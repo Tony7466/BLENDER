@@ -2,10 +2,11 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_math_matrix_types.hh"
 #include "BLI_string_ref.hh"
-#include "BLI_utildefines.h"
 
-#include "BLI_math_vector_types.hh"
+#include "DNA_vec_types.h"
+#include "DNA_view3d_types.h"
 
 #include <cstdint>
 
@@ -25,16 +26,16 @@ struct Depsgraph;
 
 namespace blender::io::grease_pencil {
 
-/* GpencilIOParams->flag. */
-enum class IOParamsFlag {
-  /* Export Filled strokes. */
-  ExportFill = (1 << 0),
-  /* Export normalized thickness. */
-  ExportNormalizedThickness = (1 << 1),
-  /* Clip camera area. */
-  ExportClipCamera = (1 << 2),
-};
-ENUM_OPERATORS(IOParamsFlag, IOParamsFlag::ExportClipCamera);
+// /* GpencilIOParams->flag. */
+// enum class IOParamsFlag {
+//   /* Export Filled strokes. */
+//   ExportFill = (1 << 0),
+//   /* Export normalized thickness. */
+//   ExportNormalizedThickness = (1 << 1),
+//   /* Clip camera area. */
+//   ExportClipCamera = (1 << 2),
+// };
+// ENUM_OPERATORS(IOParamsFlag, IOParamsFlag::ExportClipCamera);
 
 /* Object to be exported. */
 enum class ExportSelect {
@@ -55,32 +56,37 @@ struct IOContext {
   bContext &C;
   const ARegion *region;
   const View3D *v3d;
+  const RegionView3D *rv3d;
   Scene *scene;
   Depsgraph *depsgraph;
 
-  IOContext(bContext &C, const ARegion *region, const View3D *v3d, ReportList *reports);
+  IOContext(bContext &C,
+            const ARegion *region,
+            const View3D *v3d,
+            const RegionView3D *rv3d,
+            ReportList *reports);
 };
+
+struct ImportParams {
+  float scale = 1.0f;
+  int frame_number = 1;
+  int resolution = 10;
+  bool use_scene_unit = false;
+  bool recenter_bounds = false;
+  bool convert_to_poly_curves = false;
+};
+
+struct ExportParams {};
 
 class GreasePencilImporter {
  protected:
   const IOContext context_;
-  float scale_ = 1.0f;
-  int frame_number_ = 1;
-  int resolution_ = 10;
-  bool use_scene_unit_ = false;
-  bool recenter_bounds_ = false;
-  bool convert_to_poly_curves_ = false;
+  const ImportParams params_;
 
   Object *object_ = nullptr;
 
  public:
-  GreasePencilImporter(const IOContext &params,
-                       float scale,
-                       int frame_number,
-                       int resolution,
-                       bool use_scene_unit,
-                       bool recenter_bounds,
-                       bool convert_to_poly_curves);
+  GreasePencilImporter(const IOContext &context, const ImportParams &params);
 
   Object *create_object(StringRefNull name);
   int32_t create_material(StringRefNull name, bool stroke, bool fill);
@@ -89,43 +95,33 @@ class GreasePencilImporter {
 class GreasePencilExporter {
  protected:
   const IOContext context_;
-  /** Grease pencil object. */
-  Object *ob;
-  int32_t frame_start;
-  int32_t frame_end;
-  int32_t frame_cur;
-  /* #IOParamsFlag. */
-  int flag;
-  float scale;
-  ExportSelect select_mode;
-  ExportFrame frame_mode;
-  /** Stroke sampling factor. */
-  float stroke_sample;
-  int32_t resolution;
+  const ExportParams params_;
+
+  /* Camera parameters. */
+  float4x4 persmat_;
+  int2 win_size_;
+  int2 render_size_;
+  bool is_camera_;
+  float camera_ratio_;
+  rctf camera_rect_;
+
+  float2 offset_;
 
  public:
-  GreasePencilExporter(const IOContext &params);
+  GreasePencilExporter(const IOContext &context, const ExportParams &params);
+
+  // XXX force_camera_view should be true for PDF export
+  void prepare_camera_params(Scene &scene, bool force_camera_view);
 };
 
-class SVGImporter : public GreasePencilImporter {
- public:
-  using GreasePencilImporter::GreasePencilImporter;
-
-  bool read(StringRefNull filepath);
-};
-
-class SVGExporter : public GreasePencilExporter {
- public:
-  using GreasePencilExporter::GreasePencilExporter;
-
-  bool write(StringRefNull filepath);
-};
-
-class PDFExporter : public GreasePencilExporter {
- public:
-  using GreasePencilExporter::GreasePencilExporter;
-
-  bool write(StringRefNull filepath);
-};
+bool import_svg(const IOContext &context, const ImportParams &params, StringRefNull filepath);
+bool export_svg(const IOContext &context,
+                const ExportParams &params,
+                Scene &scene,
+                StringRefNull filepath);
+bool export_pdf(const IOContext &context,
+                const ExportParams &params,
+                Scene &scene,
+                StringRefNull filepath);
 
 }  // namespace blender::io::grease_pencil

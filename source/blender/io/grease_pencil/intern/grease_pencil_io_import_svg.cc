@@ -42,6 +42,13 @@ using blender::bke::greasepencil::TreeNode;
 
 namespace blender::io::grease_pencil {
 
+class SVGImporter : public GreasePencilImporter {
+ public:
+  using GreasePencilImporter::GreasePencilImporter;
+
+  bool read(StringRefNull filepath);
+};
+
 static std::string get_layer_id(const NSVGshape &shape, const int prefix)
 {
   return (shape.id_parent[0] == '\0') ? fmt::format("Layer_{:03d}", prefix) :
@@ -276,11 +283,11 @@ bool SVGImporter::read(StringRefNull filepath)
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object_->data);
 
   const float scene_unit_scale = (context_.scene->unit.system != USER_UNIT_NONE &&
-                                  use_scene_unit_) ?
+                                  params_.use_scene_unit) ?
                                      context_.scene->unit.scale_length :
                                      1.0f;
   /* Overall scale for SVG coordinates in millimeters. */
-  const float svg_scale = 0.001f * scene_unit_scale * scale_;
+  const float svg_scale = 0.001f * scene_unit_scale * params_.scale;
   /* Grease pencil is rotated 90 degrees in X axis by default. */
   const float4x4 transform = math::scale(math::from_rotation<float4x4>(math::EulerXYZ(-90, 0, 0)),
                                          float3(svg_scale));
@@ -309,9 +316,9 @@ bool SVGImporter::read(StringRefNull filepath)
     }();
 
     /* Check frame. */
-    Drawing *drawing = grease_pencil.get_drawing_at(layer, frame_number_);
+    Drawing *drawing = grease_pencil.get_drawing_at(layer, params_.frame_number);
     if (drawing == nullptr) {
-      drawing = grease_pencil.insert_frame(layer, frame_number_);
+      drawing = grease_pencil.insert_frame(layer, params_.frame_number);
       if (!drawing) {
         continue;
       }
@@ -337,25 +344,31 @@ bool SVGImporter::read(StringRefNull filepath)
   nsvgDelete(svg_data);
 
   /* Calculate bounding box and move all points to new origin center. */
-  if (recenter_bounds_) {
+  if (params_.recenter_bounds) {
     shift_to_bounds_center(grease_pencil);
   }
 
   /* Convert Bezier curves to poly curves.
    * XXX This will not be necessary once Bezier curves are fully supported in grease pencil. */
-  if (convert_to_poly_curves_) {
+  if (params_.convert_to_poly_curves) {
     for (GreasePencilDrawingBase *drawing_base : grease_pencil.drawings()) {
       if (drawing_base->type != GP_DRAWING) {
         continue;
       }
       Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap();
-      drawing.strokes_for_write().resolution_for_write().fill(resolution_);
+      drawing.strokes_for_write().resolution_for_write().fill(params_.resolution);
       drawing.strokes_for_write() = blender::geometry::resample_to_evaluated(
           drawing.strokes(), drawing.strokes().curves_range(), {});
     }
   }
 
   return true;
+}
+
+bool import_svg(const IOContext &context, const ImportParams &params, StringRefNull filepath)
+{
+  SVGImporter importer(context, params);
+  return importer.read(filepath);
 }
 
 }  // namespace blender::io::grease_pencil

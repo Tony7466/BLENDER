@@ -3,18 +3,23 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_color.hh"
+#include "BLI_math_matrix.hh"
 #include "BLI_math_vector.h"
 
+#include "BKE_camera.h"
 #include "BKE_context.hh"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_grease_pencil.hh"
 #include "BKE_material.h"
+#include "BKE_scene.hh"
 
 #include "DNA_material_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_view3d_types.h"
 
 #include "ED_object.hh"
+#include "ED_view3d.hh"
 
 #include "grease_pencil_io.hh"
 
@@ -24,34 +29,25 @@
 
 namespace blender::io::grease_pencil {
 
-IOContext::IOContext(bContext &C, const ARegion *region, const View3D *v3d, ReportList *reports)
+IOContext::IOContext(bContext &C,
+                     const ARegion *region,
+                     const View3D *v3d,
+                     const RegionView3D *rv3d,
+                     ReportList *reports)
     : reports(reports),
       C(C),
       region(region),
       v3d(v3d),
+      rv3d(rv3d),
       scene(CTX_data_scene(&C)),
       depsgraph(CTX_data_depsgraph_pointer(&C))
 {
 }
 
-GreasePencilImporter::GreasePencilImporter(const IOContext &params,
-                                           const float scale,
-                                           const int frame_number,
-                                           int resolution,
-                                           const bool use_scene_unit,
-                                           const bool recenter_bounds,
-                                           const bool convert_to_poly_curves)
-    : context_(params),
-      scale_(scale),
-      frame_number_(frame_number),
-      resolution_(resolution),
-      use_scene_unit_(use_scene_unit),
-      recenter_bounds_(recenter_bounds),
-      convert_to_poly_curves_(convert_to_poly_curves)
+GreasePencilImporter::GreasePencilImporter(const IOContext &context, const ImportParams &params)
+    : context_(context), params_(params)
 {
 }
-
-GreasePencilExporter::GreasePencilExporter(const IOContext &params) : context_(params) {}
 
 Object *GreasePencilImporter::create_object(const StringRefNull name)
 {
@@ -95,6 +91,76 @@ int32_t GreasePencilImporter::create_material(const StringRefNull name,
   }
 
   return mat_index;
+}
+
+GreasePencilExporter::GreasePencilExporter(const IOContext &context, const ExportParams &params)
+    : context_(context), params_(params)
+{
+}
+
+void GreasePencilExporter::prepare_camera_params(Scene &scene, const bool force_camera_view)
+{
+  const bool use_camera_view = force_camera_view && (context_.v3d->camera != nullptr);
+
+  /* Ensure camera switch is applied. */
+  BKE_scene_camera_switch_update(&scene);
+
+  /* Calculate camera matrix. */
+  Object *cam_ob = scene.camera;
+  if (cam_ob != nullptr) {
+    /* Set up parameters. */
+    CameraParams params;
+    BKE_camera_params_init(&params);
+    BKE_camera_params_from_object(&params, cam_ob);
+
+    /* Compute matrix, view-plane, etc. */
+    BKE_camera_params_compute_viewplane(
+        &params, scene.r.xsch, scene.r.ysch, scene.r.xasp, scene.r.yasp);
+    BKE_camera_params_compute_matrix(&params);
+
+    float4x4 viewmat = math::invert(cam_ob->object_to_world());
+    persmat_ = float4x4(params.winmat) * viewmat;
+  }
+  else {
+    persmat_ = float4x4::identity();
+  }
+
+  win_size_ = {context_.region->winx, context_.region->winy};
+
+  /* Camera rectangle. */
+  if ((context_.rv3d->persp == RV3D_CAMOB) || (use_camera_view)) {
+    BKE_render_resolution(&scene.r, false, &render_size_.x, &render_size_.y);
+
+    ED_view3d_calc_camera_border(&scene,
+                                 context_.depsgraph,
+                                 context_.region,
+                                 context_.v3d,
+                                 context_.rv3d,
+                                 &camera_rect_,
+                                 true);
+    is_camera_ = true;
+    camera_ratio_ = render_size_.x / (camera_rect_.xmax - camera_rect_.xmin);
+    offset_.x = camera_rect_.xmin;
+    offset_.y = camera_rect_.ymin;
+  }
+  else {
+    is_camera_ = false;
+    /* Calc selected object boundbox. Need set initial value to some variables. */
+    camera_ratio_ = 1.0f;
+    offset_.x = 0.0f;
+    offset_.y = 0.0f;
+
+    // create_object_list();
+
+    // selected_objects_boundbox_calc();
+    // rctf boundbox;
+    // selected_objects_boundbox_get(&boundbox);
+
+    // render_x_ = boundbox.xmax - boundbox.xmin;
+    // render_y_ = boundbox.ymax - boundbox.ymin;
+    // offset_.x = boundbox.xmin;
+    // offset_.y = boundbox.ymin;
+  }
 }
 
 }  // namespace blender::io::grease_pencil

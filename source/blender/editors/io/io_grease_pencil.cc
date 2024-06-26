@@ -6,6 +6,7 @@
  * \ingroup editor/io
  */
 
+#include "DNA_view3d_types.h"
 #ifdef WITH_IO_GREASE_PENCIL
 
 #  include "BLI_path_util.h"
@@ -136,8 +137,8 @@ static bool grease_pencil_import_svg_check(bContext * /*C*/, wmOperator *op)
 
 static int grease_pencil_import_svg_exec(bContext *C, wmOperator *op)
 {
+  using blender::io::grease_pencil::ImportParams;
   using blender::io::grease_pencil::IOContext;
-  using blender::io::grease_pencil::SVGImporter;
 
   Scene *scene = CTX_data_scene(C);
 
@@ -154,6 +155,7 @@ static int grease_pencil_import_svg_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
   View3D *v3d = get_invoke_view3d(C);
+  RegionView3D *rv3d = CTX_wm_region_view3d(C);
 
   const int resolution = RNA_int_get(op->ptr, "resolution");
   const float scale = RNA_float_get(op->ptr, "scale");
@@ -161,14 +163,9 @@ static int grease_pencil_import_svg_exec(bContext *C, wmOperator *op)
   const bool recenter_bounds = true;
   const bool convert_to_poly_curves = true;
 
-  const IOContext io_context(*C, region, v3d, op->reports);
-  SVGImporter importer(io_context,
-                       scale,
-                       scene->r.cfra,
-                       resolution,
-                       use_scene_unit,
-                       recenter_bounds,
-                       convert_to_poly_curves);
+  const IOContext io_context(*C, region, v3d, rv3d, op->reports);
+  const ImportParams params = {
+      scale, scene->r.cfra, resolution, use_scene_unit, recenter_bounds, convert_to_poly_curves};
 
   /* Loop all selected files to import them. All SVG imported shared the same import
    * parameters, but they are created in separated grease pencil objects. */
@@ -177,7 +174,7 @@ static int grease_pencil_import_svg_exec(bContext *C, wmOperator *op)
     /* Do Import. */
     WM_cursor_wait(true);
 
-    const bool done = importer.read(path);
+    const bool done = blender::io::grease_pencil::import_svg(io_context, params, path);
     WM_cursor_wait(false);
     if (!done) {
       BKE_reportf(op->reports, RPT_WARNING, "Unable to import '%s'", path.c_str());
@@ -293,7 +290,9 @@ static int grease_pencil_export_svg_invoke(bContext *C, wmOperator *op, const wm
 static int grease_pencil_export_svg_exec(bContext *C, wmOperator *op)
 {
   using blender::io::grease_pencil::ExportFrame;
+  using blender::io::grease_pencil::ExportParams;
   using blender::io::grease_pencil::ExportSelect;
+  using blender::io::grease_pencil::IOContext;
 
   Scene *scene = CTX_data_scene(C);
   Object *ob = CTX_data_active_object(C);
@@ -309,6 +308,7 @@ static int grease_pencil_export_svg_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
   View3D *v3d = get_invoke_view3d(C);
+  RegionView3D *rv3d = CTX_wm_region_view3d(C);
 
   char filepath[FILE_MAX];
   RNA_string_get(op->ptr, "filepath", filepath);
@@ -339,10 +339,12 @@ static int grease_pencil_export_svg_exec(bContext *C, wmOperator *op)
   // params.frame_mode = ExportFrame::ActiveFrame;
   // params.stroke_sample = RNA_float_get(op->ptr, "stroke_sample");
   // params.resolution = 1.0f;
+  const IOContext io_context(*C, region, v3d, rv3d, op->reports);
+  const ExportParams params = {};
 
   /* Do export. */
   WM_cursor_wait(true);
-  const bool done = false /*blender::io::grease_pencil::export_svg(filepath, params)*/;
+  const bool done = blender::io::grease_pencil::export_pdf(io_context, params, *scene, filepath);
   WM_cursor_wait(false);
 
   if (!done) {
@@ -458,6 +460,7 @@ static int grease_pencil_export_pdf_invoke(bContext *C, wmOperator *op, const wm
 static int grease_pencil_export_pdf_exec(bContext *C, wmOperator *op)
 {
   using blender::io::grease_pencil::ExportFrame;
+  using blender::io::grease_pencil::ExportParams;
   using blender::io::grease_pencil::ExportSelect;
 
   Scene *scene = CTX_data_scene(C);
