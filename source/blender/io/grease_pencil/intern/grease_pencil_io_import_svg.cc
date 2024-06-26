@@ -3,7 +3,10 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_attribute.hh"
+#include "BLI_assert.h"
 #include "BLI_bounds.hh"
+#include "BLI_color.hh"
+#include "BLI_math_color.h"
 #include "BLI_math_euler_types.hh"
 #include "BLI_math_matrix.hh"
 #include "BLI_math_vector.hh"
@@ -45,75 +48,46 @@ static std::string get_layer_id(const NSVGshape &shape, const int prefix)
                                         fmt::format("{:s}", shape.id_parent);
 }
 
-// void GpencilImporterSVG::create_stroke(bGPdata *gpd,
-//                                        bGPDframe *gpf,
-//                                        NSVGshape *shape,
-//                                        NSVGpath *path,
-//                                        const int32_t mat_index,
-//                                        const float matrix[4][4])
-// {
-//   const bool is_stroke = bool(shape->stroke.type);
-//   const bool is_fill = bool(shape->fill.type);
+/* Unpack internal NanoSVG color. */
+static ColorGeometry4f unpack_nano_color(const uint pack)
+{
+  const char4 rgb_u = {int8_t(((pack) >> 0) & 0xFF),
+                       int8_t(((pack) >> 8) & 0xFF),
+                       int8_t(((pack) >> 16) & 0xFF),
+                       int8_t(((pack) >> 24) & 0xFF)};
+  const float4 rgb_f = {float(rgb_u[0]) / 255.0f,
+                        float(rgb_u[1]) / 255.0f,
+                        float(rgb_u[2]) / 255.0f,
+                        float(rgb_u[3]) / 255.0f};
 
-//   const int edges = params_.resolution;
-//   const float step = 1.0f / float(edges - 1);
+  ColorGeometry4f color;
+  srgb_to_linearrgb_v4(color, rgb_f);
+  return color;
+}
 
-//   const int totpoints = (path->npts / 3) * params_.resolution;
+/* TODO Gradients are not yet supported (will output magenta placeholder color).
+ * This is because gradients for fill materials in particular can only be defined by materials.
+ * Since each path can have a unique gradient it potentially requires a material per curve. Stroke
+ * gradients could be baked into vertex colors. */
+static ColorGeometry4f convert_svg_color(const NSVGpaint &svg_paint)
+{
+  switch (svg_paint.type) {
+    case NSVG_PAINT_UNDEF:
+      return ColorGeometry4f(1, 0, 1, 1);
+    case NSVG_PAINT_NONE:
+      return ColorGeometry4f(0, 0, 0, 1);
+    case NSVG_PAINT_COLOR:
+      return unpack_nano_color(svg_paint.color);
+    case NSVG_PAINT_LINEAR_GRADIENT:
+      return ColorGeometry4f(0, 0, 0, 1);
+    case NSVG_PAINT_RADIAL_GRADIENT:
+      return ColorGeometry4f(0, 0, 0, 1);
 
-//   bGPDstroke *gps = BKE_gpencil_stroke_new(mat_index, totpoints, 1.0f);
-//   BLI_addtail(&gpf->strokes, gps);
-
-//   if (path->closed == '1') {
-//     gps->flag |= GP_STROKE_CYCLIC;
-//   }
-//   if (is_stroke) {
-//     gps->thickness = shape->strokeWidth * params_.scale;
-//   }
-//   /* Apply Fill vertex color. */
-//   if (is_fill) {
-//     NSVGpaint fill = shape->fill;
-//     convert_color(fill.color, gps->vert_color_fill);
-//     gps->fill_opacity_fac = gps->vert_color_fill[3];
-//     gps->vert_color_fill[3] = 1.0f;
-//   }
-
-//   int start_index = 0;
-//   for (int i = 0; i < path->npts - 1; i += 3) {
-//     float *p = &path->pts[i * 2];
-//     float a = 0.0f;
-//     for (int v = 0; v < edges; v++) {
-//       bGPDspoint *pt = &gps->points[start_index];
-//       pt->strength = shape->opacity;
-//       pt->pressure = 1.0f;
-//       pt->z = 0.0f;
-//       /* TODO(antoniov): Can be improved loading curve data instead of loading strokes. */
-//       interp_v2_v2v2v2v2_cubic(&pt->x, &p[0], &p[2], &p[4], &p[6], a);
-
-//       /* Scale from millimeters. */
-//       mul_v3_fl(&pt->x, 0.001f);
-//       mul_m4_v3(matrix, &pt->x);
-
-//       /* Apply color to vertex color. */
-//       if (is_fill) {
-//         NSVGpaint fill = shape->fill;
-//         convert_color(fill.color, pt->vert_color);
-//       }
-//       if (is_stroke) {
-//         NSVGpaint stroke = shape->stroke;
-//         convert_color(stroke.color, pt->vert_color);
-//         gps->fill_opacity_fac = pt->vert_color[3];
-//       }
-//       pt->vert_color[3] = 1.0f;
-
-//       a += step;
-//       start_index++;
-//     }
-//   }
-
-//   /* Cleanup and recalculate geometry. */
-//   BKE_gpencil_stroke_merge_distance(gpd, gpf, gps, 0.001f, true);
-//   BKE_gpencil_stroke_geometry_update(gpd, gps);
-// }
+    default:
+      BLI_assert_unreachable();
+      return ColorGeometry4f(0, 0, 0, 0);
+  }
+}
 
 /* Make room for curves and points from the SVG shape.
  * Returns the index range of newly added curves. */
@@ -168,9 +142,9 @@ static void shape_attributes_to_curves(bke::CurvesGeometry &curves,
                                        const float4x4 &transform,
                                        const int material_index)
 {
-  /* Path width is in pixels. */
-  const float path_width_scale = math::average(math::to_scale(transform)) *
-                                 bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
+  /* Path width is twice the radius. */
+  const float path_width_scale = 0.5f * math::average(math::to_scale(transform));
+  const OffsetIndices points_by_curve = curves.points_by_curve();
 
   /* nanosvg converts everything to Bezier curves. */
   curves.curve_types_for_write().slice(curves_range).fill(CURVE_TYPE_BEZIER);
@@ -179,15 +153,29 @@ static void shape_attributes_to_curves(bke::CurvesGeometry &curves,
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
   bke::SpanAttributeWriter<int> materials = attributes.lookup_or_add_for_write_span<int>(
       "material_index", bke::AttrDomain::Curve);
-  const OffsetIndices points_by_curve = curves.points_by_curve();
+  bke::SpanAttributeWriter fill_colors = attributes.lookup_or_add_for_write_span<ColorGeometry4f>(
+      "fill_color", bke::AttrDomain::Curve);
   MutableSpan<bool> cyclic = curves.cyclic_for_write();
+  bke::SpanAttributeWriter<float> fill_opacities = attributes.lookup_or_add_for_write_span<float>(
+      "fill_opacity", bke::AttrDomain::Curve);
+
   MutableSpan<float3> positions = curves.positions_for_write();
   MutableSpan<float3> handle_positions_left = curves.handle_positions_left_for_write();
   MutableSpan<float3> handle_positions_right = curves.handle_positions_right_for_write();
   MutableSpan<int8_t> handle_types_left = curves.handle_types_left_for_write();
   MutableSpan<int8_t> handle_types_right = curves.handle_types_right_for_write();
-  bke::SpanAttributeWriter radii = attributes.lookup_or_add_for_write_span<float>(
+  bke::SpanAttributeWriter<float> radii = attributes.lookup_or_add_for_write_span<float>(
       "radius", bke::AttrDomain::Point);
+  bke::SpanAttributeWriter<ColorGeometry4f> vertex_colors =
+      attributes.lookup_or_add_for_write_span<ColorGeometry4f>("vertex_color",
+                                                               bke::AttrDomain::Point);
+  bke::SpanAttributeWriter<float> point_opacities = attributes.lookup_or_add_for_write_span<float>(
+      "opacity", bke::AttrDomain::Point);
+
+  materials.span.slice(curves_range).fill(material_index);
+  const ColorGeometry4f shape_color = convert_svg_color(shape.fill);
+  fill_colors.span.slice(curves_range).fill(shape_color);
+  fill_opacities.span.slice(curves_range).fill(shape_color.a);
 
   int curve_index = curves_range.start();
   for (NSVGpath *path = shape.paths; path; path = path->next) {
@@ -196,7 +184,6 @@ static void shape_attributes_to_curves(bke::CurvesGeometry &curves,
     }
 
     cyclic[curve_index] = bool(path->closed);
-    materials.span[curve_index] = material_index;
 
     /* 2D vectors in triplets: [control point, left handle, right handle]. */
     const Span<float2> svg_path_data = Span<float>(path->pts, 2 * path->npts).cast<float2>();
@@ -204,29 +191,36 @@ static void shape_attributes_to_curves(bke::CurvesGeometry &curves,
     const IndexRange points = points_by_curve[curve_index];
     for (const int i : points.index_range()) {
       const int point_index = points[i];
-      positions[point_index] = math::transform_point(transform,
-                                                     float3(svg_path_data[i * 3], 0.0f));
-      handle_positions_left[point_index] = (i > 0) ? math::transform_point(
-                                                         transform,
-                                                         float3(svg_path_data[i * 3 - 1], 0.0f)) :
-                                                     positions[point_index];
-      handle_positions_right[point_index] = (i < points.size() - 1) ?
-                                                math::transform_point(
-                                                    transform,
-                                                    float3(svg_path_data[i * 3 + 1], 0.0f)) :
-                                                positions[point_index];
+      const float2 pos_center = svg_path_data[i * 3];
+      const float2 pos_handle_left = (i > 0) ? svg_path_data[i * 3 - 1] : pos_center;
+      const float2 pos_handle_right = (i < points.size() - 1) ? svg_path_data[i * 3 + 1] :
+                                                                pos_center;
+      positions[point_index] = math::transform_point(transform, float3(pos_center, 0.0f));
+      handle_positions_left[point_index] = math::transform_point(transform,
+                                                                 float3(pos_handle_left, 0.0f));
+      handle_positions_right[point_index] = math::transform_point(transform,
+                                                                  float3(pos_handle_right, 0.0f));
       handle_types_left[point_index] = BEZIER_HANDLE_FREE;
       handle_types_right[point_index] = BEZIER_HANDLE_FREE;
 
       radii.span[point_index] = shape.strokeWidth * path_width_scale;
+
+      const ColorGeometry4f point_color = convert_svg_color(shape.stroke);
+      vertex_colors.span[point_index] = point_color;
+      point_opacities.span[point_index] = point_color.a;
     }
 
     ++curve_index;
   }
 
   materials.finish();
+  fill_colors.finish();
+  fill_opacities.finish();
   radii.finish();
+  vertex_colors.finish();
+  point_opacities.finish();
   curves.tag_positions_changed();
+  curves.tag_radii_changed();
 }
 
 static void shift_to_bounds_center(GreasePencil &grease_pencil)
