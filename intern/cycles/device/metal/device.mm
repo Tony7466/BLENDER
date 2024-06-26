@@ -70,7 +70,10 @@ void device_metal_info(vector<DeviceInfo> &devices)
 #  endif
 
     info.has_nanovdb = true;
-    info.has_mnee = true;
+    info.has_mnee = false;
+    if (@available(macos 13.0, *)) {
+      info.has_mnee = true;
+    }
 
     info.use_hardware_raytracing = false;
 
