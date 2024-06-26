@@ -256,7 +256,9 @@ def addon_draw_item_expanded(
     if item_doc_url:
         col_a.label(text="Website")
         col_b.split(factor=0.5).operator(
-            "wm.url_open", text=domain_extract_from_url(item_doc_url), icon='HELP',
+            "wm.url_open",
+            text=domain_extract_from_url(item_doc_url),
+            icon='HELP' if addon_type in {ADDON_TYPE_LEGACY_CORE, ADDON_TYPE_LEGACY_USER} else 'URL',
         ).url = item_doc_url
     # Only add "Report a Bug" button if tracker_url is set
     # or the add-on is bundled (use official tracker then).
@@ -654,7 +656,7 @@ def addons_panel_draw(panel, context):
     split = layout.split(factor=0.5)
     row_a = split.row()
     row_b = split.row()
-    row_a.prop(wm, "addon_search", text="", icon='VIEWZOOM')
+    row_a.prop(wm, "addon_search", text="", icon='VIEWZOOM', placeholder="Search Add-ons")
     row_b.prop(view, "show_addons_enabled_only", text="Enabled Only")
     rowsub = row_b.row(align=True)
 
@@ -753,6 +755,7 @@ class notify_info:
                     notify_info._update_state = True
         return in_progress
 
+    @staticmethod
     def update_show_in_preferences():
         """
         An update was triggered externally (not from the interface).
@@ -1208,6 +1211,7 @@ def extensions_panel_draw_impl(
                 col = box.column()
 
                 row = col.row()
+                row.active = is_enabled
 
                 # The full tagline may be multiple lines (not yet supported by Blender's UI).
                 row.label(text=" {:s}.".format(item.tagline), translate=False)
@@ -1221,6 +1225,13 @@ def extensions_panel_draw_impl(
                 col_a = split.column()
                 col_b = split.column()
                 col_a.alignment = "RIGHT"
+
+                if value := ((item_remote or item_local).website):
+                    col_a.label(text="Website")
+                    col_b.split(factor=0.5).operator(
+                        "wm.url_open", text=domain_extract_from_url(value), icon='URL',
+                    ).url = value
+                del value
 
                 if is_addon:
                     col_a.label(text="Permissions")
@@ -1338,6 +1349,9 @@ class USERPREF_MT_extensions_settings(Menu):
         layout = self.layout
 
         prefs = context.preferences
+
+        layout.operator("wm.url_open_preset", text="Visit Extensions Platform", icon='URL').type = 'EXTENSIONS'
+        layout.separator()
 
         layout.operator("extensions.repo_sync_all", icon='FILE_REFRESH')
         layout.operator("extensions.repo_refresh_all")
@@ -1551,7 +1565,7 @@ def extensions_panel_draw(panel, context):
 
     row = layout.split(factor=0.5)
     row_a = row.row()
-    row_a.prop(wm, "extension_search", text="", icon='VIEWZOOM')
+    row_a.prop(wm, "extension_search", text="", icon='VIEWZOOM', placeholder="Search Extensions")
     row_b = row.row(align=True)
     row_b.prop(wm, "extension_type", text="")
     row_b.popover("USERPREF_PT_extensions_filter", text="", icon='FILTER')
