@@ -2813,15 +2813,16 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
                 return False
 
         if item_local is not None:
+            if item_local.type == "add-on":
+                message = rpt_("Add-on \"{:s}\" already installed!")
+            elif item_local.type == "theme":
+                message = rpt_("Theme \"{:s}\" already installed!")
+            else:
+                assert False, "Unreachable"
             self._draw_override = (
                 self._draw_override_errors,
                 {
-                    "errors": [
-                        iface_("{:s} \"{:s}\" already installed!").format(
-                            iface_(string.capwords(item_local.type)),
-                            item_local.name,
-                        )
-                    ]
+                    "errors": [message.format(item_local.name)]
                 }
             )
             return False
@@ -3449,18 +3450,18 @@ class EXTENSIONS_OT_userpref_allow_online_popup(Operator):
         col = layout.column()
         if bpy.app.online_access_override:
             lines = (
-                "Online access required to install or update.",
+                rpt_("Online access required to install or update."),
                 "",
-                "Launch Blender without --offline-mode"
+                rpt_("Launch Blender without --offline-mode"),
             )
         else:
             lines = (
-                "Please turn Online Access on the System settings.",
+                rpt_("Please turn Online Access on the System settings."),
                 "",
-                "Internet access is required to install extensions from the internet."
+                rpt_("Internet access is required to install extensions from the internet."),
             )
         for line in lines:
-            col.label(text=line)
+            col.label(text=line, translate=False)
 
 
 class EXTENSIONS_OT_package_enable_not_installed(Operator):

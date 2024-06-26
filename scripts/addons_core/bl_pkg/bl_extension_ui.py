@@ -226,6 +226,7 @@ def addon_draw_item_expanded(
 ):
     from bpy.app.translations import (
         pgettext_iface as iface_,
+        contexts as i18n_contexts,
     )
 
     split = layout.split(factor=0.8)
@@ -234,7 +235,7 @@ def addon_draw_item_expanded(
 
     if item_description:
         col_a.label(
-            text=" {:s}.".format(item_description),
+            text=" {:s}.".format(iface_(item_description)),
             translate=False,
         )
 
@@ -242,7 +243,7 @@ def addon_draw_item_expanded(
     rowsub.alignment = 'RIGHT'
     if addon_type == ADDON_TYPE_LEGACY_CORE:
         rowsub.active = False
-        rowsub.label(text=iface_("Built-in"))
+        rowsub.label(text="Built-in")
         rowsub.separator()
     elif addon_type == ADDON_TYPE_LEGACY_USER:
         rowsub.operator("preferences.addon_remove", text="Uninstall").module = mod.__name__
@@ -268,7 +269,7 @@ def addon_draw_item_expanded(
     # Only add "Report a Bug" button if tracker_url is set
     # or the add-on is bundled (use official tracker then).
     if item_tracker_url or (addon_type == ADDON_TYPE_LEGACY_CORE):
-        col_a.label(text="Feedback")
+        col_a.label(text="Feedback", text_ctxt=i18n_contexts.editor_preferences)
         if item_tracker_url:
             col_b.split(factor=0.5).operator(
                 "wm.url_open", text="Report a Bug", icon='URL',
@@ -419,6 +420,7 @@ def addons_panel_draw_items(
     from .bl_extension_ops import (
         pkg_info_check_exclude_filter_ex,
     )
+    from bpy.app.translations import pgettext_iface as iface_
 
     # Build a set of module names (used to calculate missing modules).
     module_names = set()
@@ -528,7 +530,7 @@ def addons_panel_draw_items(
         sub = row.row()
         sub.active = is_enabled
 
-        sub.label(text=" " + item_name, translate=False)
+        sub.label(text=" " + iface_(item_name), translate=False)
 
         if item_warning_legacy:
             sub.label(icon='ERROR')
@@ -1065,6 +1067,8 @@ def extensions_panel_draw_online_extensions_request_impl(
         self,
         _context,
 ):
+    from bpy.app.translations import pgettext_rpt as rpt_
+
     layout = self.layout
     layout_header, layout_panel = layout.panel("advanced", default_closed=False)
     layout_header.label(text="Online Extensions")
@@ -1076,10 +1080,10 @@ def extensions_panel_draw_online_extensions_request_impl(
 
     # Text wrapping isn't supported, manually wrap.
     for line in (
-            "Internet access is required to install and update online extensions. ",
-            "You can adjust this later from \"System\" preferences.",
+            rpt_("Internet access is required to install and update online extensions. "),
+            rpt_("You can adjust this later from \"System\" preferences."),
     ):
-        box.label(text=line)
+        box.label(text=line, translate=False)
 
     row = box.row(align=True)
     row.alignment = 'LEFT'
@@ -1178,7 +1182,7 @@ def extension_draw_item(
     # Without checking `is_enabled` here, there is no way for the user to know if an extension
     # is enabled or not, which is useful to show - when they may be considering removing/updating
     # extensions based on them being used or not.
-    sub.label(text=item.name, translate=False)
+    sub.label(text=item.name)
 
     del sub
 
@@ -1234,7 +1238,7 @@ def extension_draw_item(
         row.active = is_enabled
 
         # The full tagline may be multiple lines (not yet supported by Blender's UI).
-        row.label(text=" {:s}.".format(item.tagline), translate=False)
+        row.label(text=" {:s}.".format(iface_(item.tagline)), translate=False)
 
         col.separator(type='LINE')
         del col
