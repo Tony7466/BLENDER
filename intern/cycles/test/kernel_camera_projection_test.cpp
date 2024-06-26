@@ -22,7 +22,7 @@ CCL_NAMESPACE_BEGIN
  * direction_to_fisheye_lens_polynomial(fisheye_lens_polynomial_to_direction/sensor position))
  * for a couple of sensor positions and a couple of different sets of parameters.
  */
-TEST(ProjectionInverse, fisheye_lens_polynomial)
+TEST(KernelCamera, FisheyeLensPolynomialRoundtrip)
 {
   const float fov = 150.0 / 180 * M_PI;
   const float width = 36;
