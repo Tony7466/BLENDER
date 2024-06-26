@@ -1331,17 +1331,6 @@ static void rna_def_attribute_group_id_common(StructRNA *srna)
   RNA_def_property_update(prop, 0, "rna_AttributeGroup_update_active");
 }
 
-static void rna_def_attribute_group_generic_id(BlenderRNA *brna)
-{
-  StructRNA *srna;
-
-  srna = RNA_def_struct(brna, "AttributeGroupGenericID", nullptr);
-  RNA_def_struct_ui_text(srna, "Attribute Group", "Group of geometry attributes");
-  RNA_def_struct_sdna(srna, "ID");
-
-  rna_def_attribute_group_id_common(srna);
-}
-
 static void rna_def_attribute_group_mesh(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -1408,6 +1397,39 @@ static void rna_def_attribute_group_mesh(BlenderRNA *brna)
                            "The name of the active color attribute for display and editing");
 }
 
+static void rna_def_attribute_group_point_cloud(BlenderRNA *brna)
+{
+  StructRNA *srna;
+
+  srna = RNA_def_struct(brna, "AttributeGroupPointCloud", nullptr);
+  RNA_def_struct_ui_text(srna, "Attribute Group", "Group of geometry attributes");
+  RNA_def_struct_sdna(srna, "ID");
+
+  rna_def_attribute_group_id_common(srna);
+}
+
+static void rna_def_attribute_group_curves(BlenderRNA *brna)
+{
+  StructRNA *srna;
+
+  srna = RNA_def_struct(brna, "AttributeGroupCurves", nullptr);
+  RNA_def_struct_ui_text(srna, "Attribute Group", "Group of geometry attributes");
+  RNA_def_struct_sdna(srna, "ID");
+
+  rna_def_attribute_group_id_common(srna);
+}
+
+static void rna_def_attribute_group_grease_pencil(BlenderRNA *brna)
+{
+  StructRNA *srna;
+
+  srna = RNA_def_struct(brna, "AttributeGroupGreasePencil", nullptr);
+  RNA_def_struct_ui_text(srna, "Attribute Group", "Group of geometry attributes");
+  RNA_def_struct_sdna(srna, "ID");
+
+  rna_def_attribute_group_id_common(srna);
+}
+
 void rna_def_attributes_common(StructRNA *srna, const AttributeOwnerType type)
 {
   PropertyRNA *prop;
@@ -1430,9 +1452,13 @@ void rna_def_attributes_common(StructRNA *srna, const AttributeOwnerType type)
       RNA_def_property_srna(prop, "AttributeGroupMesh");
       break;
     case AttributeOwnerType::PointCloud:
+      RNA_def_property_srna(prop, "AttributeGroupPointCloud");
+      break;
     case AttributeOwnerType::Curves:
+      RNA_def_property_srna(prop, "AttributeGroupCurves");
+      break;
     case AttributeOwnerType::GreasePencil:
-      RNA_def_property_srna(prop, "AttributeGroupGenericID");
+      RNA_def_property_srna(prop, "AttributeGroupGreasePencil");
       break;
   }
 
@@ -1453,9 +1479,13 @@ void rna_def_attributes_common(StructRNA *srna, const AttributeOwnerType type)
       RNA_def_property_srna(prop, "AttributeGroupMesh");
       break;
     case AttributeOwnerType::PointCloud:
+      RNA_def_property_srna(prop, "AttributeGroupPointCloud");
+      break;
     case AttributeOwnerType::Curves:
+      RNA_def_property_srna(prop, "AttributeGroupCurves");
+      break;
     case AttributeOwnerType::GreasePencil:
-      RNA_def_property_srna(prop, "AttributeGroupGenericID");
+      RNA_def_property_srna(prop, "AttributeGroupGreasePencil");
       break;
   }
 }
@@ -1463,7 +1493,9 @@ void rna_def_attributes_common(StructRNA *srna, const AttributeOwnerType type)
 void RNA_def_attribute(BlenderRNA *brna)
 {
   rna_def_attribute(brna);
-  rna_def_attribute_group_generic_id(brna);
   rna_def_attribute_group_mesh(brna);
+  rna_def_attribute_group_point_cloud(brna);
+  rna_def_attribute_group_curves(brna);
+  rna_def_attribute_group_grease_pencil(brna);
 }
 #endif
