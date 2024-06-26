@@ -1665,6 +1665,8 @@ static int sequencer_delete_exec(bContext *C, wmOperator *op)
 
   if (RNA_boolean_get(op->ptr, "use_retiming_mode")) {
     sequencer_retiming_key_remove_exec(C, op);
+    WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
+    return OPERATOR_FINISHED;
   }
 
   SEQ_prefetch_stop(scene);
@@ -1744,12 +1746,13 @@ void SEQUENCER_OT_delete(wmOperatorType *ot)
                              "After removing the Strip, delete the associated data also");
   RNA_def_property_flag(ot->prop, PROP_SKIP_SAVE);
 
-  ot->prop = RNA_def_boolean(ot->srna,
-                             "use_retiming_mode",
-                             false,
-                             "Use Retiming Data",
-                             "Operate on retiming data instead of strips");
-  RNA_def_property_flag(ot->prop, PROP_HIDDEN);
+  PropertyRNA *prop = RNA_def_boolean(ot->srna,
+                                      "use_retiming_mode",
+                                      false,
+                                      "Use Retiming Data",
+                                      "Operate on retiming data instead of strips");
+  RNA_def_property_flag(prop, PROP_HIDDEN);
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
 /** \} */
