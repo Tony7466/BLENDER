@@ -47,13 +47,13 @@ static void calc_faces_sharp(const Sculpt &sd,
   StrokeCache &cache = *ss.cache;
   Mesh &mesh = *static_cast<Mesh *>(object.data);
 
-  SculptOrigVertData orig_data;
-  SCULPT_orig_vert_data_init(orig_data, object, node, undo::Type::Position);
+  Span<float3> prev_positions = undo::get_node(&node, undo::Type::Position)->position;
+  Span<float3> prev_normals = undo::get_node(&node, undo::Type::Position)->normal;
 
   const Span<int> verts = bke::pbvh::node_unique_verts(node);
-
-  for (const int i : verts.index_range()) {
-    SCULPT_orig_vert_data_update(orig_data, i);
+  Vector<int> prev_verts(verts.size());
+  for (int i = 0; i < prev_verts.size(); ++i) {
+    prev_verts[i] = i;
   }
 
   tls.factors.reinitialize(verts.size());
@@ -61,29 +61,28 @@ static void calc_faces_sharp(const Sculpt &sd,
   fill_factor_from_hide_and_mask(mesh, verts, factors);
 
   if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal, orig_data, verts, factors);
+    calc_front_face(cache.view_normal, prev_normals, prev_verts, factors);
   }
 
   tls.distances.reinitialize(verts.size());
   const MutableSpan<float> distances = tls.distances;
   calc_distance_falloff(
-      ss, orig_data, verts, eBrushFalloffShape(brush.falloff_shape), distances, factors);
-  calc_brush_strength_factors(ss, brush, verts, distances, factors);
+      ss, prev_positions, prev_verts, eBrushFalloffShape(brush.falloff_shape), distances, factors);
+  calc_brush_strength_factors(cache, brush, distances, factors);
 
   if (ss.cache->automasking) {
     auto_mask::calc_vert_factors(object, *ss.cache->automasking, node, verts, factors);
   }
 
-  calc_brush_texture_factors(ss, brush, orig_data, verts, factors);
+  calc_brush_texture_factors(ss, brush, prev_positions, prev_verts, factors);
 
   tls.translations.reinitialize(verts.size());
   const MutableSpan<float3> translations = tls.translations;
   for (const int i : verts.index_range()) {
-    SCULPT_orig_vert_data_update(orig_data, verts[i]);
     translations[i] = offset * factors[i];
   }
 
-  clip_and_lock_translations(sd, ss, orig_data, verts, translations);
+  clip_and_lock_translations(sd, ss, prev_positions, prev_verts, translations);
 
   if (!ss.deform_imats.is_empty()) {
     apply_crazyspace_to_translations(ss.deform_imats, verts, translations);
