@@ -545,8 +545,8 @@ void Scene::update_kernel_features()
     }
   }
 
-#ifdef __MNEE__
   dscene.data.integrator.use_caustics = false;
+#ifdef __MNEE__
   if (device->info.has_mnee && has_caustics_caster && has_caustics_receiver && has_caustics_light)
   {
     dscene.data.integrator.use_caustics = true;
