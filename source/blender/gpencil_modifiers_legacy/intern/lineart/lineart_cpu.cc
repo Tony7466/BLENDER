@@ -2365,9 +2365,8 @@ static uchar lineart_intersection_priority_check(Collection *c, Object *ob)
  * See if this object in such collection is used for generating line art,
  * Disabling a collection for line art will doable all objects inside.
  */
-static int lineart_usage_check(Collection *c, Object *ob, bool is_render)
+static int lineart_usage_check(Collection *c, Object *ob, bool is_render, bool *has_object)
 {
-
   if (!c) {
     return OBJECT_LRT_INHERIT;
   }
@@ -2383,8 +2382,14 @@ static int lineart_usage_check(Collection *c, Object *ob, bool is_render)
       if ((is_render && (c->flag & COLLECTION_HIDE_RENDER)) ||
           ((!is_render) && (c->flag & COLLECTION_HIDE_VIEWPORT)))
       {
-        return OBJECT_LRT_EXCLUDE;
+        return OBJECT_LRT_EXCLUDE_BY_COLLECTION;
       }
+
+      /* If objects are in multiple collections, some collection might still show this object. */
+      if (has_object) {
+        *has_object = true;
+      }
+
       if (ob->lineart.usage == OBJECT_LRT_INHERIT) {
         switch (c->lineart_usage) {
           case COLLECTION_LRT_OCCLUSION_ONLY:
@@ -2404,14 +2409,25 @@ static int lineart_usage_check(Collection *c, Object *ob, bool is_render)
     }
   }
 
+  int result = OBJECT_LRT_INHERIT;
+  bool other_collection_has_object = false;
+  bool has_collection_exclusion = false;
   LISTBASE_FOREACH (CollectionChild *, cc, &c->children) {
-    int result = lineart_usage_check(cc->collection, ob, is_render);
-    if (result > OBJECT_LRT_INHERIT) {
-      return result;
+    const int result_this_collection = lineart_usage_check(
+        cc->collection, ob, is_render, &other_collection_has_object);
+    if (result_this_collection == OBJECT_LRT_EXCLUDE_BY_COLLECTION) {
+      has_collection_exclusion = true;
+    }
+    else {
+      result = std::max(result, result_this_collection);
     }
   }
 
-  return OBJECT_LRT_INHERIT;
+  if (has_collection_exclusion && (!other_collection_has_object)) {
+    return OBJECT_LRT_EXCLUDE;
+  }
+
+  return result;
 }
 
 static void lineart_geometry_load_assign_thread(LineartObjectLoadTaskInfo *olti_list,
@@ -2488,7 +2504,7 @@ static void lineart_object_load_single_instance(LineartData *ld,
 {
   LineartObjectInfo *obi = static_cast<LineartObjectInfo *>(
       lineart_mem_acquire(&ld->render_data_pool, sizeof(LineartObjectInfo)));
-  obi->usage = lineart_usage_check(scene->master_collection, ob, is_render);
+  obi->usage = lineart_usage_check(scene->master_collection, ob, is_render, nullptr);
   obi->override_intersection_mask = lineart_intersection_mask_check(scene->master_collection, ob);
   obi->intersection_priority = lineart_intersection_priority_check(scene->master_collection, ob);
   Mesh *use_mesh;
