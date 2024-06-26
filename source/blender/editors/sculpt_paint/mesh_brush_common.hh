@@ -127,6 +127,12 @@ void calc_cube_distance_falloff(SculptSession &ss,
                                 Span<int> verts,
                                 MutableSpan<float> r_distances,
                                 MutableSpan<float> factors);
+void calc_cube_distance_falloff(SculptSession &ss,
+                                const Brush &brush,
+                                const float4x4 &mat,
+                                const Span<float3> positions,
+                                const MutableSpan<float> r_distances,
+                                const MutableSpan<float> factors);
 
 /**
  * Scale the distances based on the brush radius and the cached "hardness" setting, which increases
@@ -277,6 +283,9 @@ void calc_translations_to_plane(Span<float3> vert_positions,
                                 Span<int> verts,
                                 const float4 &plane,
                                 MutableSpan<float3> translations);
+void calc_translations_to_plane(Span<float3> positions,
+                                const float4 &plane,
+                                MutableSpan<float3> translations);
 
 /** Ignore points that fall below the "plane trim" threshold for the brush. */
 void filter_plane_trim_limit_factors(const Brush &brush,
@@ -289,10 +298,16 @@ void filter_below_plane_factors(Span<float3> vert_positions,
                                 Span<int> verts,
                                 const float4 &plane,
                                 MutableSpan<float> factors);
+void filter_below_plane_factors(Span<float3> positions,
+                                const float4 &plane,
+                                MutableSpan<float> factors);
 
 /* Ignore points above the plane. */
 void filter_above_plane_factors(Span<float3> vert_positions,
                                 Span<int> verts,
+                                const float4 &plane,
+                                MutableSpan<float> factors);
+void filter_above_plane_factors(Span<float3> positions,
                                 const float4 &plane,
                                 MutableSpan<float> factors);
 

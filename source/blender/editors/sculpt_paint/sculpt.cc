@@ -6897,6 +6897,34 @@ void calc_cube_distance_falloff(SculptSession &ss,
   }
 }
 
+void calc_cube_distance_falloff(SculptSession &ss,
+                                const Brush &brush,
+                                const float4x4 &mat,
+                                const Span<float3> positions,
+                                const MutableSpan<float> r_distances,
+                                const MutableSpan<float> factors)
+{
+  BLI_assert(positions.size() == factors.size());
+  BLI_assert(positions.size() == r_distances.size());
+
+  SculptBrushTest test;
+  SCULPT_brush_test_init(ss, test);
+  const float tip_roundness = brush.tip_roundness;
+  const float tip_scale_x = brush.tip_scale_x;
+  for (const int i : positions.index_range()) {
+    if (factors[i] == 0.0f) {
+      r_distances[i] = FLT_MAX;
+      continue;
+    }
+    /* TODO: Break up #SCULPT_brush_test_cube. */
+    if (!SCULPT_brush_test_cube(test, positions[i], mat.ptr(), tip_roundness, tip_scale_x)) {
+      factors[i] = 0.0f;
+      r_distances[i] = FLT_MAX;
+    }
+    r_distances[i] = test.dist;
+  }
+}
+
 void apply_hardness_to_distances(const StrokeCache &cache, const MutableSpan<float> distances)
 {
   const float hardness = cache.paint_brush.hardness;
@@ -7279,6 +7307,18 @@ void calc_translations_to_plane(const Span<float3> vert_positions,
   }
 }
 
+void calc_translations_to_plane(const Span<float3> positions,
+                                const float4 &plane,
+                                const MutableSpan<float3> translations)
+{
+  for (const int i : positions.index_range()) {
+    const float3 &position = positions[i];
+    float3 closest;
+    closest_to_plane_normalized_v3(closest, plane, position);
+    translations[i] = closest - position;
+  }
+}
+
 void filter_plane_trim_limit_factors(const Brush &brush,
                                      const StrokeCache &cache,
                                      const Span<float3> translations,
@@ -7307,6 +7347,17 @@ void filter_below_plane_factors(const Span<float3> vert_positions,
   }
 }
 
+void filter_below_plane_factors(const Span<float3> positions,
+                                const float4 &plane,
+                                const MutableSpan<float> factors)
+{
+  for (const int i : positions.index_range()) {
+    if (plane_point_side_v3(plane, positions[i]) <= 0.0f) {
+      factors[i] = 0.0f;
+    }
+  }
+}
+
 void filter_above_plane_factors(const Span<float3> vert_positions,
                                 const Span<int> verts,
                                 const float4 &plane,
@@ -7314,6 +7365,17 @@ void filter_above_plane_factors(const Span<float3> vert_positions,
 {
   for (const int i : verts.index_range()) {
     if (plane_point_side_v3(plane, vert_positions[verts[i]]) > 0.0f) {
+      factors[i] = 0.0f;
+    }
+  }
+}
+
+void filter_above_plane_factors(const Span<float3> positions,
+                                const float4 &plane,
+                                const MutableSpan<float> factors)
+{
+  for (const int i : positions.index_range()) {
+    if (plane_point_side_v3(plane, positions[i]) > 0.0f) {
       factors[i] = 0.0f;
     }
   }
