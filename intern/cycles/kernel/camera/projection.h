@@ -153,8 +153,7 @@ ccl_device float2 direction_to_fisheye_lens_polynomial(
   float r = (theta - coeff0) / coeffs.x;
 
   for (int i = 0; i < 20; i++) {
-    /* -------------------------------------------------------------------- */
-    /** \name Newton's method for finding roots
+    /*  Newton's method for finding roots
      *
      *  Given is the result theta = distortion_model(r),
      *  we need to find r.
