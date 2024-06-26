@@ -20,6 +20,7 @@
 #include "BLI_bit_span_ops.hh"
 #include "BLI_blenlib.h"
 #include "BLI_dial_2d.h"
+#include "BLI_enumerable_thread_specific.hh"
 #include "BLI_ghash.h"
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
@@ -1443,17 +1444,61 @@ static void restore_face_set(Object &object, const Span<PBVHNode *> nodes)
   }
 }
 
+static BLI_NOINLINE void translations_to_positions(const Span<float3> new_positions,
+                                                   const Span<int> verts,
+                                                   const Span<float3> vert_positions,
+                                                   const MutableSpan<float3> translations)
+{
+  for (const int i : verts.index_range()) {
+    translations[i] = new_positions[i] - vert_positions[verts[i]];
+  }
+}
+
 static void restore_position(Object &object, const Span<PBVHNode *> nodes)
 {
   SculptSession &ss = *object.sculpt;
   switch (BKE_pbvh_type(*ss.pbvh)) {
     case PBVH_FACES: {
-      MutableSpan positions = BKE_pbvh_get_vert_positions(*ss.pbvh);
+      Mesh &mesh = *static_cast<Mesh *>(object.data);
+      MutableSpan positions_eval = BKE_pbvh_get_vert_positions(*ss.pbvh);
+      MutableSpan positions_orig = mesh.vert_positions_for_write();
+
+      struct LocalData {
+        Vector<float3> translations;
+      };
+
+      threading::EnumerableThreadSpecific<LocalData> all_tls;
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+        LocalData &tls = all_tls.local();
         for (PBVHNode *node : nodes.slice(range)) {
           if (const undo::Node *unode = undo::get_node(node, undo::Type::Position)) {
             const Span<int> verts = bke::pbvh::node_unique_verts(*node);
-            array_utils::scatter(unode->position.as_span(), verts, positions);
+            array_utils::scatter(unode->position.as_span(), verts, positions_eval);
+
+            tls.translations.clear();
+            const auto ensure_translations = [&]() {
+              if (tls.translations.is_empty()) {
+                tls.translations.reinitialize(verts.size());
+              }
+              return tls.translations.as_mutable_span();
+            };
+
+            if (positions_eval.data() != positions_orig.data()) {
+              if (ss.deform_imats.is_empty()) {
+                array_utils::scatter(unode->position.as_span(), verts, positions_orig);
+              }
+              else {
+                MutableSpan<float3> translations = ensure_translations();
+                apply_crazyspace_to_translations(ss.deform_imats, verts, translations);
+                apply_translations(translations, verts, positions_orig);
+              }
+            }
+
+            if (BKE_keyblock_from_object(&object)) {
+              MutableSpan<float3> translations = ensure_translations();
+              apply_translations_to_shape_keys(object, verts, translations, positions_orig);
+            }
+
             BKE_pbvh_node_mark_positions_update(node);
           }
         }
