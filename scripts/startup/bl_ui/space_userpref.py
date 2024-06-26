@@ -900,6 +900,12 @@ class USERPREF_PT_viewport_subdivision(ViewportPanel, CenterAlignMixIn, Panel):
     bl_label = "Subdivision"
     bl_options = {'DEFAULT_CLOSED'}
 
+    @classmethod
+    def poll(cls, context):
+        import gpu
+        backend = gpu.platform.backend_type_get()
+        return backend == "OPENGL"
+
     def draw_centered(self, context, layout):
         prefs = context.preferences
         system = prefs.system
@@ -1709,8 +1715,9 @@ class USERPREF_UL_extension_repos(UIList):
         for index, orig_index in enumerate(sorted(
             range(len(items)),
             key=lambda i: (
-                items[i].use_remote_url is False,
-                items[i].name.lower(),
+                # Order [Remote, User, System].
+                0 if (repo := items[i]).use_remote_url else (1 if (repo.source != 'SYSTEM') else 2),
+                repo.name.casefold(),
             )
         )):
             indices[orig_index] = index
@@ -2262,6 +2269,23 @@ class USERPREF_PT_extensions_repos(Panel):
 
 
 # -----------------------------------------------------------------------------
+# Extensions Panels
+
+class ExtensionsPanel:
+    bl_space_type = 'PREFERENCES'
+    bl_region_type = 'WINDOW'
+    bl_context = "extensions"
+
+
+class USERPREF_PT_extensions(ExtensionsPanel, Panel):
+    bl_label = "Extensions"
+    bl_options = {'HIDE_HEADER'}
+
+    def draw(self, context):
+        pass
+
+
+# -----------------------------------------------------------------------------
 # Add-on Panels
 
 # Only a popover.
@@ -2279,7 +2303,7 @@ class USERPREF_PT_addons_filter(Panel):
 class AddOnPanel:
     bl_space_type = 'PREFERENCES'
     bl_region_type = 'WINDOW'
-    bl_context = "extensions"
+    bl_context = "addons"
 
 
 class USERPREF_PT_addons(AddOnPanel, Panel):
@@ -2315,9 +2339,8 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
             return
 
         addon_preferences_class = type(addon_preferences)
+        layout.label(text=" Preferences")
         box_prefs = layout.box()
-        box_prefs.label(text="Preferences")
-        box_prefs.separator(type='LINE')
         addon_preferences_class.layout = box_prefs
         try:
             draw(context)
@@ -2425,7 +2448,7 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
 
         show_enabled_only = prefs.view.show_addons_enabled_only
         filter = wm.addon_filter
-        search = wm.addon_search.lower()
+        search = wm.addon_search.casefold()
         support = wm.addon_support
 
         # initialized on demand
@@ -2453,11 +2476,11 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
                 continue
 
             if search and not (
-                    (search in bl_info["name"].lower() or
-                     search in iface_(bl_info["name"]).lower()) or
-                    (bl_info["author"] and (search in bl_info["author"].lower())) or
-                    ((filter == "All") and (search in bl_info["category"].lower() or
-                                            search in iface_(bl_info["category"]).lower()))
+                    (search in bl_info["name"].casefold() or
+                     search in iface_(bl_info["name"]).casefold()) or
+                    (bl_info["author"] and (search in bl_info["author"].casefold())) or
+                    ((filter == "All") and (search in bl_info["category"].casefold() or
+                                            search in iface_(bl_info["category"]).casefold()))
             ):
                 continue
 
@@ -2949,6 +2972,7 @@ classes = (
 
     USERPREF_PT_keymap,
 
+    USERPREF_PT_extensions,
     USERPREF_PT_addons,
 
     USERPREF_MT_extensions_active_repo,
