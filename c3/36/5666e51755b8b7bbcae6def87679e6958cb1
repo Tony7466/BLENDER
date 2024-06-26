@@ -1,0 +1,1 @@
+Referenced by pull request #123772, Curves: Return empty span from `offsets()` if there are no curves
