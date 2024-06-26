@@ -91,9 +91,10 @@ vector<id<MTLDevice>> const &MetalInfo::get_usable_devices()
 
     if (@available(macos 12.2, *)) {
       const char *device_name_char = [device.name UTF8String];
-      if (strstr(device_name_char, "Apple")) {
-        /* TODO: Verify the device is actually a Apple GPU,
-         * and doesn't just have Apple in the name */
+      if (!(strstr(device_name_char, "Intel") || strstr(device_name_char, "AMD")) &&
+          strstr(device_name_char, "Apple"))
+      {
+        /* TODO: Implement a better way to identify device vendor instead of relying on name. */
         usable = true;
       }
     }
