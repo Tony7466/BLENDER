@@ -43,8 +43,9 @@ void main(void)
 #endif
 
   float line_thickness = thickness;
+  bool is_outline_pass = gl_VertexID < MID_VERTEX;
 
-  if (gl_VertexID < MID_VERTEX) {
+  if (is_outline_pass) {
     /* Outline pass. */
     finalColor = colShadow;
   }
@@ -69,7 +70,7 @@ void main(void)
 
   aspect = node_link_data.aspect;
   /* Parameters for the dashed line. */
-  isMainLine = expand.y != 1.0 ? 0 : 1;
+  isMainLine = expand.y == 1.0 && !is_outline_pass ? 1 : 0;
   dashLength = dash_params.x;
   dashFactor = dash_params.y;
   dashAlpha = dash_params.z;

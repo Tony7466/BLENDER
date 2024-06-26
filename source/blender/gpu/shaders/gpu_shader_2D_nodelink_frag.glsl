@@ -30,8 +30,15 @@ void main()
 
   fragColor.a *= smoothstep(lineThickness, lineThickness - ANTIALIAS, abs(colorGradient));
   if (isMainLine != 0 && isSplitLine != 0) {
-    float center_dist_v = abs(lineUV.y - 0.5) * 2.0;
-    float split_factor = clamp(center_dist_v * 2.0, 0.3, 1.0);
-    fragColor.rgb *= split_factor;
+    float v = lineUV.y;
+    fragColor.rgb = vec3(0.0);
+    if (v > 0.5 && v < 1.0) {
+      float t = 1.0 - pow(abs((v - 0.75) * 4.0), 2);
+      fragColor.rgb = finalColor.rgb * t;
+    }
+    else if (v > 0.0 && v < 0.3) {
+      float t = 1.0 - pow(abs(v - 0.15) * 6.6666, 2);
+      fragColor.rgb = vec3(0.8) * t;
+    }
   }
 }
