@@ -907,22 +907,21 @@ static void draw_icon_centered(TimelineDrawContext &ctx,
                                int icon_id,
                                const uchar color[4])
 {
-  View2D *v2d = ctx.v2d;
-  UI_view2d_view_ortho(v2d);
+  UI_view2d_view_ortho(ctx.v2d);
   wmOrtho2_region_pixelspace(ctx.region);
 
-  const float left = ((rect.xmin - v2d->cur.xmin) / ctx.pixelx);
-  const float right = ((rect.xmax - v2d->cur.xmin) / ctx.pixelx);
-  const float bottom = ((rect.ymin - v2d->cur.ymin) / ctx.pixely);
-  const float top = ((rect.ymax - v2d->cur.ymin) / ctx.pixely);
-
   const float icon_size = 16 * UI_SCALE_FAC;
-  const float x_offset = (right - left - icon_size) * 0.5f;
-  const float y_offset = (top - bottom - icon_size) * 0.5f;
-
-  if (BLI_rctf_size_x(&v2d->cur) < icon_size) {
+  if (BLI_rctf_size_x(&ctx.v2d->cur) < icon_size) {
+    UI_view2d_view_restore(ctx.C);
     return;
   }
+
+  const float left = ((rect.xmin - ctx.v2d->cur.xmin) / ctx.pixelx);
+  const float right = ((rect.xmax - ctx.v2d->cur.xmin) / ctx.pixelx);
+  const float bottom = ((rect.ymin - ctx.v2d->cur.ymin) / ctx.pixely);
+  const float top = ((rect.ymax - ctx.v2d->cur.ymin) / ctx.pixely);
+  const float x_offset = (right - left - icon_size) * 0.5f;
+  const float y_offset = (top - bottom - icon_size) * 0.5f;
 
   UI_icon_draw_ex(left + x_offset,
                   bottom + y_offset,
