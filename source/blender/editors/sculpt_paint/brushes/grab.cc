@@ -60,13 +60,13 @@ static void calc_faces(const Sculpt &sd,
   const StrokeCache &cache = *ss.cache;
   Mesh &mesh = *static_cast<Mesh *>(object.data);
 
+  const OrigPositionData orig_data = get_orig_position_data(object, node);
   const Span<int> verts = bke::pbvh::node_unique_verts(node);
 
   tls.factors.reinitialize(verts.size());
   const MutableSpan<float> factors = tls.factors;
   fill_factor_from_hide_and_mask(mesh, verts, factors);
-
-  const OrigPositionData orig_data = get_orig_position_data(object, node);
+  filter_region_clip_factors(ss, orig_data.positions, factors);
 
   if (brush.flag & BRUSH_FRONTFACE) {
     calc_front_face(cache.view_normal, orig_data.normals, factors);
@@ -76,6 +76,7 @@ static void calc_faces(const Sculpt &sd,
   const MutableSpan<float> distances = tls.distances;
   calc_distance_falloff(
       ss, orig_data.positions, eBrushFalloffShape(brush.falloff_shape), distances, factors);
+  apply_hardness_to_distances(cache, distances);
   calc_brush_strength_factors(cache, brush, distances, factors);
 
   if (cache.automasking) {
@@ -92,24 +93,7 @@ static void calc_faces(const Sculpt &sd,
   const MutableSpan<float3> translations = tls.translations;
   translations_from_offset_and_factors(offset, factors, translations);
 
-  // for (const int i : verts.index_range()) {
-  //   translations[i] += orig_data.positions[i] - positions_eval[verts[i]];
-  // }
-
-  clip_and_lock_translations(sd, ss, positions_eval, verts, translations);
-
-  apply_translations_to_pbvh(*ss.pbvh, verts, translations);
-
-  if (!ss.deform_imats.is_empty()) {
-    apply_crazyspace_to_translations(ss.deform_imats, verts, translations);
-  }
-
-  apply_translations(translations, verts, positions_orig);
-  apply_translations_to_shape_keys(object, verts, translations, positions_orig);
-
-  // for (const int i : verts.index_range()) {
-  //   positions_orig[verts[i]] = orig_data.positions[i] + translations[i];
-  // }
+  write_translations(sd, object, positions_eval, verts, translations, positions_orig);
 }
 
 static void calc_grids(Object &object, const Brush &brush, const float3 &offset, PBVHNode &node)

@@ -2125,7 +2125,8 @@ namespace blender::ed::sculpt_paint {
 OrigPositionData get_orig_position_data(const Object &object, const PBVHNode &node)
 {
   const undo::Node *unode = undo::get_node(&node, undo::Type::Position);
-  return {unode->position, unode->normal};
+  return {unode->position.as_span().take_front(unode->unique_verts_num),
+          unode->normal.as_span().take_front(unode->unique_verts_num)};
 }
 
 }  // namespace blender::ed::sculpt_paint

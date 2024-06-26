@@ -89,6 +89,9 @@ void filter_region_clip_factors(const SculptSession &ss,
                                 Span<float3> vert_positions,
                                 Span<int> verts,
                                 MutableSpan<float> factors);
+void filter_region_clip_factors(const SculptSession &ss,
+                                Span<float3> positions,
+                                MutableSpan<float> factors);
 
 /**
  * Calculate distances based on the distance from the brush cursor and various other settings.

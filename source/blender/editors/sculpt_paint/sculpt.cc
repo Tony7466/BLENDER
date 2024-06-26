@@ -6684,7 +6684,7 @@ void calc_front_face(const float3 &view_normal,
 
   for (const int i : normals.index_range()) {
     const float dot = math::dot(view_normal, normals[i]);
-    factors[i] *= dot > 0.0f ? dot : 0.0f;
+    factors[i] *= std::max(dot, 0.0f);
   }
 }
 
@@ -6706,6 +6706,32 @@ void filter_region_clip_factors(const SculptSession &ss,
   for (const int i : verts.index_range()) {
     float3 symm_co;
     flip_v3_v3(symm_co, positions[verts[i]], mirror_symmetry_pass);
+    if (radial_symmetry_pass) {
+      symm_co = math::transform_point(symm_rot_mat_inv, symm_co);
+    }
+    if (ED_view3d_clipping_test(rv3d, symm_co, true)) {
+      factors[i] = 0.0f;
+    }
+  }
+}
+
+void filter_region_clip_factors(const SculptSession &ss,
+                                const Span<float3> positions,
+                                const MutableSpan<float> factors)
+{
+  const RegionView3D *rv3d = ss.cache ? ss.cache->vc->rv3d : ss.rv3d;
+  const View3D *v3d = ss.cache ? ss.cache->vc->v3d : ss.v3d;
+  if (!RV3D_CLIPPING_ENABLED(v3d, rv3d)) {
+    return;
+  }
+
+  const ePaintSymmetryFlags mirror_symmetry_pass = ss.cache ? ss.cache->mirror_symmetry_pass :
+                                                              ePaintSymmetryFlags(0);
+  const int radial_symmetry_pass = ss.cache ? ss.cache->radial_symmetry_pass : 0;
+  const float4x4 symm_rot_mat_inv = ss.cache ? ss.cache->symm_rot_mat_inv : float4x4::identity();
+  for (const int i : positions.index_range()) {
+    float3 symm_co;
+    flip_v3_v3(symm_co, positions[i], mirror_symmetry_pass);
     if (radial_symmetry_pass) {
       symm_co = math::transform_point(symm_rot_mat_inv, symm_co);
     }
@@ -6761,23 +6787,36 @@ void calc_distance_falloff(SculptSession &ss,
                            const MutableSpan<float> r_distances,
                            const MutableSpan<float> factors)
 {
-  BLI_assert(factors.size() == r_distances.size());
+  BLI_assert(positions.size() == factors.size());
+  BLI_assert(positions.size() == r_distances.size());
 
-  SculptBrushTest test;
-  const SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, test, falloff_shape);
+  const float3 &test_location = ss.cache ? ss.cache->location : ss.cursor_location;
+  if (falloff_shape == PAINT_FALLOFF_SHAPE_TUBE && (ss.cache || ss.filter_cache)) {
+    /* The tube falloff shape requires the cached view normal. */
+    const float3 &view_normal = ss.cache ? ss.cache->view_normal : ss.filter_cache->view_normal;
+    float4 test_plane;
+    plane_from_point_normal_v3(test_plane, test_location, view_normal);
+    for (const int i : positions.index_range()) {
+      float3 projected;
+      closest_to_plane_normalized_v3(projected, test_plane, positions[i]);
+      r_distances[i] = math::distance_squared(projected, test_location);
+    }
+  }
+  else {
+    for (const int i : positions.index_range()) {
+      r_distances[i] = math::distance_squared(test_location, positions[i]);
+    }
+  }
 
+  const float radius_sq = ss.cache ? ss.cache->radius_squared :
+                                     ss.cursor_radius * ss.cursor_radius;
   for (const int i : r_distances.index_range()) {
-    if (factors[i] == 0.0f) {
-      r_distances[i] = FLT_MAX;
-      continue;
+    if (r_distances[i] < radius_sq) {
+      r_distances[i] = std::sqrt(r_distances[i]);
     }
-    if (!sculpt_brush_test_sq_fn(test, positions[i])) {
+    else {
       factors[i] = 0.0f;
-      r_distances[i] = FLT_MAX;
-      continue;
     }
-    r_distances[i] = math::sqrt(test.dist);
   }
 }
 
