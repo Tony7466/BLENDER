@@ -194,7 +194,7 @@ static AttributeOwner owner_from_attribute_pointer_rna(PointerRNA *ptr)
 static AttributeOwner owner_from_pointer_rna(PointerRNA *ptr)
 {
   ID *id = ptr->owner_id;
-  /* TODO: Forn non-ID attribute owners, check the `ptr->type` to derive the `AttributeOwnerType`
+  /* TODO: For non-ID attribute owners, check the `ptr->type` to derive the `AttributeOwnerType`
    * and construct an `AttributeOwner` from that type and `ptr->data`. */
   return AttributeOwner::from_id(id);
 }
