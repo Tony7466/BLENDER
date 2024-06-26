@@ -1475,6 +1475,7 @@ static void restore_position(Object &object, const Span<PBVHNode *> nodes)
             const Span<int> verts = bke::pbvh::node_unique_verts(*node);
             array_utils::scatter(unode->position.as_span(), verts, positions_eval);
 
+            /* Translations are used to restore shape keys and original positions. */
             tls.translations.clear();
             const auto ensure_translations = [&]() {
               if (tls.translations.is_empty()) {
@@ -1484,10 +1485,14 @@ static void restore_position(Object &object, const Span<PBVHNode *> nodes)
             };
 
             if (positions_eval.data() != positions_orig.data()) {
+              /* When the evaluated positions and original mesh positions don't point to the same
+               * array, they must both be updated. */
               if (ss.deform_imats.is_empty()) {
                 array_utils::scatter(unode->position.as_span(), verts, positions_orig);
               }
               else {
+                /* Because brush deformation is calculated for the evaluated deformed positions,
+                 * the translations have to be transformed to the original space. */
                 MutableSpan<float3> translations = ensure_translations();
                 apply_crazyspace_to_translations(ss.deform_imats, verts, translations);
                 apply_translations(translations, verts, positions_orig);
@@ -1495,6 +1500,7 @@ static void restore_position(Object &object, const Span<PBVHNode *> nodes)
             }
 
             if (BKE_keyblock_from_object(&object)) {
+              /* Update dependent shape keys back to their original */
               MutableSpan<float3> translations = ensure_translations();
               apply_translations_to_shape_keys(object, verts, translations, positions_orig);
             }
