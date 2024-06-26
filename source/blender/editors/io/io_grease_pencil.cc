@@ -36,8 +36,6 @@
 
 #  include "grease_pencil_io.hh"
 
-#  include <iostream>
-
 #  if defined(WITH_PUGIXML) || defined(WITH_HARU)
 
 namespace blender::ed::io {
@@ -157,26 +155,20 @@ static int grease_pencil_import_svg_exec(bContext *C, wmOperator *op)
   }
   View3D *v3d = get_invoke_view3d(C);
 
-  /* Set flags. */
-  int flag = 0;
-
   const int resolution = RNA_int_get(op->ptr, "resolution");
   const float scale = RNA_float_get(op->ptr, "scale");
+  const bool use_scene_unit = RNA_boolean_get(op->ptr, "use_scene_unit");
+  const bool recenter_bounds = true;
+  const bool convert_to_poly_curves = true;
 
   const IOContext io_context(*C, region, v3d, op->reports);
-  SVGImporter importer(io_context, scale, scene->r.cfra, resolution, true);
-  // importer.region = region;
-  // importer.v3d = v3d;
-  // importer.ob = nullptr;
-  // importer.frame_start = scene->r.cfra;
-  // importer.frame_end = scene->r.cfra;
-  // importer.frame_cur = scene->r.cfra;
-  // importer.flag = flag;
-  // importer.scale = scale;
-  // importer.select_mode = blender::io::grease_pencil::ExportSelect::Active;
-  // importer.frame_mode = blender::io::grease_pencil::ExportFrame::ActiveFrame;
-  // importer.stroke_sample = 0.0f;
-  // importer.resolution = resolution;
+  SVGImporter importer(io_context,
+                       scale,
+                       scene->r.cfra,
+                       resolution,
+                       use_scene_unit,
+                       recenter_bounds,
+                       convert_to_poly_curves);
 
   /* Loop all selected files to import them. All SVG imported shared the same import
    * parameters, but they are created in separated grease pencil objects. */
@@ -242,7 +234,7 @@ void WM_OT_grease_pencil_import_svg(wmOperatorType *ot)
               "resolution",
               10,
               1,
-              30,
+              100000,
               "Resolution",
               "Resolution of the generated strokes",
               1,
@@ -251,12 +243,18 @@ void WM_OT_grease_pencil_import_svg(wmOperatorType *ot)
   RNA_def_float(ot->srna,
                 "scale",
                 10.0f,
-                0.001f,
-                100.0f,
+                0.000001f,
+                1000000.0f,
                 "Scale",
                 "Scale of the final strokes",
                 0.001f,
                 100.0f);
+
+  RNA_def_boolean(ot->srna,
+                  "use_scene_unit",
+                  false,
+                  "Scene Unit",
+                  "Apply current scene's unit (as defined by unit scale) to imported data");
 }
 
 /** \} */

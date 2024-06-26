@@ -2,12 +2,13 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BKE_attribute.hh"
 #include "BLI_bounds.hh"
 #include "BLI_math_euler_types.hh"
 #include "BLI_math_matrix.hh"
+#include "BLI_math_vector.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_path_util.h"
-#include "BLI_task.hh"
 
 #include "BKE_curves.hh"
 #include "BKE_grease_pencil.hh"
@@ -125,11 +126,13 @@ static IndexRange extend_curves_geometry(bke::CurvesGeometry &curves, const NSVG
   /* Count curves and points. */
   Vector<int> new_curve_offsets;
   for (NSVGpath *path = shape.paths; path; path = path->next) {
-    if (path->npts <= 0) {
+    if (path->npts == 0) {
       continue;
     }
-    /* nanosvg converts everything to bezier curves, points come in triplets. */
-    const int point_num = path->npts / 3;
+    BLI_assert(path->npts >= 1 && path->npts == int(path->npts / 3) * 3 + 1);
+    /* nanosvg converts everything to bezier curves, points come in triplets. Round up to the next
+     * full integer, since there is one point without handles (3*n+1 points in total). */
+    const int point_num = (path->npts + 2) / 3;
     new_curve_offsets.append(point_num);
   }
   if (new_curve_offsets.is_empty()) {
@@ -154,33 +157,76 @@ static IndexRange extend_curves_geometry(bke::CurvesGeometry &curves, const NSVG
   curves.resize(points_num, curves_num);
   curves.offsets_for_write().copy_from(new_offsets);
 
-  /* nanosvg converts everything to Bezier curves. */
-  curves.curve_types_for_write().slice(new_curves_range).fill(CURVE_TYPE_BEZIER);
-
   curves.tag_topology_changed();
-  curves.update_curve_types();
 
   return new_curves_range;
 }
 
 static void shape_attributes_to_curves(bke::CurvesGeometry &curves,
                                        const NSVGshape &shape,
-                                       const IndexRange curves_range)
+                                       const IndexRange curves_range,
+                                       const float4x4 &transform,
+                                       const int material_index)
 {
+  /* Path width is in pixels. */
+  const float path_width_scale = math::average(math::to_scale(transform)) *
+                                 bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
+
+  /* nanosvg converts everything to Bezier curves. */
+  curves.curve_types_for_write().slice(curves_range).fill(CURVE_TYPE_BEZIER);
+  curves.update_curve_types();
+
+  bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+  bke::SpanAttributeWriter<int> materials = attributes.lookup_or_add_for_write_span<int>(
+      "material_index", bke::AttrDomain::Curve);
   const OffsetIndices points_by_curve = curves.points_by_curve();
+  MutableSpan<bool> cyclic = curves.cyclic_for_write();
   MutableSpan<float3> positions = curves.positions_for_write();
+  MutableSpan<float3> handle_positions_left = curves.handle_positions_left_for_write();
+  MutableSpan<float3> handle_positions_right = curves.handle_positions_right_for_write();
+  MutableSpan<int8_t> handle_types_left = curves.handle_types_left_for_write();
+  MutableSpan<int8_t> handle_types_right = curves.handle_types_right_for_write();
+  bke::SpanAttributeWriter radii = attributes.lookup_or_add_for_write_span<float>(
+      "radius", bke::AttrDomain::Point);
 
   int curve_index = curves_range.start();
-  for (NSVGpath *path = shape.paths; path; path = path->next, ++curve_index) {
+  for (NSVGpath *path = shape.paths; path; path = path->next) {
+    if (path->npts == 0) {
+      continue;
+    }
+
+    cyclic[curve_index] = bool(path->closed);
+    materials.span[curve_index] = material_index;
+
     /* 2D vectors in triplets: [control point, left handle, right handle]. */
     const Span<float2> svg_path_data = Span<float>(path->pts, 2 * path->npts).cast<float2>();
 
     const IndexRange points = points_by_curve[curve_index];
     for (const int i : points.index_range()) {
       const int point_index = points[i];
-      positions[point_index] = float3(svg_path_data[i * 3], 0.0f);
+      positions[point_index] = math::transform_point(transform,
+                                                     float3(svg_path_data[i * 3], 0.0f));
+      handle_positions_left[point_index] = (i > 0) ? math::transform_point(
+                                                         transform,
+                                                         float3(svg_path_data[i * 3 - 1], 0.0f)) :
+                                                     positions[point_index];
+      handle_positions_right[point_index] = (i < points.size() - 1) ?
+                                                math::transform_point(
+                                                    transform,
+                                                    float3(svg_path_data[i * 3 + 1], 0.0f)) :
+                                                positions[point_index];
+      handle_types_left[point_index] = BEZIER_HANDLE_FREE;
+      handle_types_right[point_index] = BEZIER_HANDLE_FREE;
+
+      radii.span[point_index] = shape.strokeWidth * path_width_scale;
     }
+
+    ++curve_index;
   }
+
+  materials.finish();
+  radii.finish();
+  curves.tag_positions_changed();
 }
 
 static void shift_to_bounds_center(GreasePencil &grease_pencil)
@@ -206,22 +252,19 @@ static void shift_to_bounds_center(GreasePencil &grease_pencil)
       continue;
     }
     Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap();
-
-    MutableSpan<float3> positions = drawing.strokes_for_write().positions_for_write();
-    threading::parallel_for(positions.index_range(), 4096, [&](const IndexRange range) {
-      for (const int i : range) {
-        positions[i] += offset;
-      }
-    });
-
+    drawing.strokes_for_write().translate(offset);
     drawing.tag_positions_changed();
   }
 }
 
 bool SVGImporter::read(StringRefNull filepath)
 {
+  /* Fixed SVG unit for scaling. */
+  constexpr const char *svg_units = "mm";
+  constexpr float svg_dpi = 96.0f;
+
   NSVGimage *svg_data = nullptr;
-  svg_data = nsvgParseFromFile(filepath.c_str(), "mm", 96.0f);
+  svg_data = nsvgParseFromFile(filepath.c_str(), svg_units, svg_dpi);
   if (svg_data == nullptr) {
     BKE_report(context_.reports, RPT_ERROR, "Could not open SVG");
     return false;
@@ -238,9 +281,15 @@ bool SVGImporter::read(StringRefNull filepath)
   }
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object_->data);
 
+  const float scene_unit_scale = (context_.scene->unit.system != USER_UNIT_NONE &&
+                                  use_scene_unit_) ?
+                                     context_.scene->unit.scale_length :
+                                     1.0f;
+  /* Overall scale for SVG coordinates in millimeters. */
+  const float svg_scale = 0.001f * scene_unit_scale * scale_;
   /* Grease pencil is rotated 90 degrees in X axis by default. */
-  const float4x4 matrix = math::scale(math::from_rotation<float4x4>(math::EulerXYZ(-90, 0, 0)),
-                                      float3(scale_));
+  const float4x4 transform = math::scale(math::from_rotation<float4x4>(math::EulerXYZ(-90, 0, 0)),
+                                         float3(svg_scale));
 
   /* Loop all shapes. */
   std::string prv_id = "*";
@@ -273,27 +322,19 @@ bool SVGImporter::read(StringRefNull filepath)
         continue;
       }
     }
-    bke::CurvesGeometry &curves = drawing->strokes_for_write();
 
     /* Create materials. */
     const bool is_fill = bool(shape->fill.type);
     const bool is_stroke = bool(shape->stroke.type) || !is_fill;
     const StringRefNull mat_name = (is_stroke ? (is_fill ? "Both" : "Stroke") : "Fill");
-    const int32_t mat_index = create_material(mat_name, is_stroke, is_fill);
+    const int material_index = create_material(mat_name, is_stroke, is_fill);
 
+    bke::CurvesGeometry &curves = drawing->strokes_for_write();
     const IndexRange new_curves_range = extend_curves_geometry(curves, *shape);
     if (new_curves_range.is_empty()) {
       continue;
     }
-    shape_attributes_to_curves(curves, *shape, new_curves_range);
-
-    /* Convert Bezier curves to poly curves.
-     * XXX This will not be necessary once Bezier curves are fully supported in grease pencil. */
-    curves = blender::geometry::resample_to_count(
-        std::move(curves),
-        new_curves_range,
-        VArray<int>::ForSingle(resolution_, curves.curves_num()),
-        {});
+    shape_attributes_to_curves(curves, *shape, new_curves_range, transform, material_index);
 
     drawing->strokes_for_write() = std::move(curves);
   }
@@ -304,6 +345,22 @@ bool SVGImporter::read(StringRefNull filepath)
   /* Calculate bounding box and move all points to new origin center. */
   if (recenter_bounds_) {
     shift_to_bounds_center(grease_pencil);
+  }
+
+  /* Convert Bezier curves to poly curves.
+   * XXX This will not be necessary once Bezier curves are fully supported in grease pencil. */
+  if (convert_to_poly_curves_) {
+    for (GreasePencilDrawingBase *drawing_base : grease_pencil.drawings()) {
+      if (drawing_base->type != GP_DRAWING) {
+        continue;
+      }
+      Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap();
+      drawing.strokes_for_write() = blender::geometry::resample_to_count(
+          drawing.strokes(),
+          drawing.strokes().curves_range(),
+          VArray<int>::ForSingle(resolution_, drawing.strokes().curves_num()),
+          {});
+    }
   }
 
   return true;

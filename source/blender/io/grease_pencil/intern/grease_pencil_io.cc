@@ -38,12 +38,16 @@ GreasePencilImporter::GreasePencilImporter(const IOContext &params,
                                            const float scale,
                                            const int frame_number,
                                            int resolution,
-                                           const bool recenter_bounds)
+                                           const bool use_scene_unit,
+                                           const bool recenter_bounds,
+                                           const bool convert_to_poly_curves)
     : context_(params),
       scale_(scale),
       frame_number_(frame_number),
       resolution_(resolution),
-      recenter_bounds_(recenter_bounds)
+      use_scene_unit_(use_scene_unit),
+      recenter_bounds_(recenter_bounds),
+      convert_to_poly_curves_(convert_to_poly_curves)
 {
 }
 

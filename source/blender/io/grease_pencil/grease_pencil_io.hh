@@ -67,27 +67,20 @@ class GreasePencilImporter {
   float scale_ = 1.0f;
   int frame_number_ = 1;
   int resolution_ = 10;
+  bool use_scene_unit_ = false;
   bool recenter_bounds_ = false;
+  bool convert_to_poly_curves_ = false;
 
   Object *object_ = nullptr;
-  // int32_t frame_start;
-  // int32_t frame_end;
-  // int32_t frame_cur;
-  // /* #IOParamsFlag. */
-  // int flag;
-  // float scale;
-  // ExportSelect select_mode;
-  // ExportFrame frame_mode;
-  // /** Stroke sampling factor. */
-  // float stroke_sample;
-  // int32_t resolution;
 
  public:
   GreasePencilImporter(const IOContext &params,
                        float scale,
                        int frame_number,
                        int resolution,
-                       bool recenter_bounds);
+                       bool use_scene_unit,
+                       bool recenter_bounds,
+                       bool convert_to_poly_curves);
 
   Object *create_object(StringRefNull name);
   int32_t create_material(StringRefNull name, bool stroke, bool fill);
