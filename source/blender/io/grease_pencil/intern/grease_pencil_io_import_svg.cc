@@ -349,11 +349,9 @@ bool SVGImporter::read(StringRefNull filepath)
         continue;
       }
       Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap();
-      drawing.strokes_for_write() = blender::geometry::resample_to_count(
-          drawing.strokes(),
-          drawing.strokes().curves_range(),
-          VArray<int>::ForSingle(resolution_, drawing.strokes().curves_num()),
-          {});
+      drawing.strokes_for_write().resolution_for_write().fill(resolution_);
+      drawing.strokes_for_write() = blender::geometry::resample_to_evaluated(
+          drawing.strokes(), drawing.strokes().curves_range(), {});
     }
   }
 
