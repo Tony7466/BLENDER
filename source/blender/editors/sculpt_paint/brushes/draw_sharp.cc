@@ -15,6 +15,7 @@
 #include "BKE_pbvh.hh"
 #include "BKE_subdiv_ccg.hh"
 
+#include "BLI_array_utils.hh"
 #include "BLI_array.hh"
 #include "BLI_enumerable_thread_specific.hh"
 #include "BLI_math_matrix.hh"
@@ -47,14 +48,12 @@ static void calc_faces_sharp(const Sculpt &sd,
   StrokeCache &cache = *ss.cache;
   Mesh &mesh = *static_cast<Mesh *>(object.data);
 
-  Span<float3> prev_positions = undo::get_node(&node, undo::Type::Position)->position;
-  Span<float3> prev_normals = undo::get_node(&node, undo::Type::Position)->normal;
-
+  const Span<float3> prev_positions = undo::get_node(&node, undo::Type::Position)->position;
+  const Span<float3> prev_normals = undo::get_node(&node, undo::Type::Position)->normal;
   const Span<int> verts = bke::pbvh::node_unique_verts(node);
-  Vector<int> prev_verts(verts.size());
-  for (int i = 0; i < prev_verts.size(); ++i) {
-    prev_verts[i] = i;
-  }
+    
+  Array<int> prev_verts(verts.size());
+  array_utils::fill_index_range<int>(prev_verts);
 
   tls.factors.reinitialize(verts.size());
   const MutableSpan<float> factors = tls.factors;
