@@ -29,16 +29,16 @@ TEST(KernelCamera, FisheyeLensPolynomialRoundtrip)
   const float height = 41.142857142857144;
 
   /* Trivial case: The coefficients create a perfect equidistant fisheye */
-  float4 k_equidistant = make_float4(-5.79e-02, 0.0, 0.0, 0.0);
+  const float4 k_equidistant = make_float4(-5.79e-02, 0.0, 0.0, 0.0);
 
   /* The coefficients mimic a stereographic fisheye model */
-  float4 k_stereographic = make_float4(-5.79e-02, 0.0, 9.48e-05, -7.67e-06);
+  const float4 k_stereographic = make_float4(-5.79e-02, 0.0, 9.48e-05, -7.67e-06);
 
   /* The coefficients mimic a rectilinear camera (badly, but the point is to have a wide range of
    * tests). */
-  float4 k_rectilinear = make_float4(-6.50e-02, 0.0, 8.32e-05, -1.80e-06);
+  const float4 k_rectilinear = make_float4(-6.50e-02, 0.0, 8.32e-05, -1.80e-06);
 
-  float4 parameters[]{k_equidistant, k_stereographic, k_rectilinear};
+  const float4 parameters[]{k_equidistant, k_stereographic, k_rectilinear};
 
   const std::pair<float, float> points[]{
       {0.1, 0.4},
@@ -54,7 +54,7 @@ TEST(KernelCamera, FisheyeLensPolynomialRoundtrip)
    * thoroughly, nonzero values are tested for both parameters. */
   for (const float k0 : {0.0, -1e-2}) {
     for (const float k2 : {0.0, -1e-4}) {
-      for (float4 &k : parameters) {
+      for (float4 k : parameters) {
         k.y = k2;
         for (std::pair<float, float> const &pt : points) {
           const float x = pt.first;
