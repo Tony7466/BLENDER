@@ -3125,6 +3125,7 @@ struct SculptRaycastData {
   float depth;
   bool original;
   Span<int> corner_verts;
+  Span<blender::int3> corner_tris;
   Span<int> corner_tri_faces;
   blender::VArraySpan<bool> hide_poly;
 
@@ -3144,6 +3145,7 @@ struct SculptFindNearestToRayData {
   float dist_sq_to_ray;
   bool original;
   Span<int> corner_verts;
+  Span<blender::int3> corner_tris;
   Span<int> corner_tri_faces;
   blender::VArraySpan<bool> hide_poly;
 };
@@ -3605,7 +3607,8 @@ static void do_brush_action(const Scene &scene,
       return;
     }
 
-    BKE_pbvh_ensure_node_loops(*ss.pbvh);
+    const Mesh &mesh = *static_cast<const Mesh *>(ob.data);
+    BKE_pbvh_ensure_node_loops(*ss.pbvh, mesh.corner_tris());
   }
 
   const bool use_original = sculpt_tool_needs_original(brush.sculpt_tool) ? true :
@@ -5137,6 +5140,7 @@ static void sculpt_raycast_cb(PBVHNode &node, SculptRaycastData &srd, float *tmi
                               origco,
                               use_origco,
                               srd.corner_verts,
+                              srd.corner_tris,
                               srd.corner_tri_faces,
                               srd.hide_poly,
                               srd.ray_start,
@@ -5181,6 +5185,7 @@ static void sculpt_find_nearest_to_ray_cb(PBVHNode &node,
                                           origco,
                                           use_origco,
                                           srd.corner_verts,
+                                          srd.corner_tris,
                                           srd.corner_tri_faces,
                                           srd.hide_poly,
                                           srd.ray_start,
@@ -5276,6 +5281,7 @@ bool SCULPT_cursor_geometry_info_update(bContext *C,
   if (BKE_pbvh_type(*ss.pbvh) == PBVH_FACES) {
     const Mesh &mesh = *static_cast<const Mesh *>(ob.data);
     srd.corner_verts = mesh.corner_verts();
+    srd.corner_tris = mesh.corner_tris();
     srd.corner_tri_faces = mesh.corner_tri_faces();
     const bke::AttributeAccessor attributes = mesh.attributes();
     srd.hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
@@ -5426,6 +5432,7 @@ bool SCULPT_stroke_get_location_ex(bContext *C,
     if (BKE_pbvh_type(*ss.pbvh) == PBVH_FACES) {
       const Mesh &mesh = *static_cast<const Mesh *>(ob.data);
       srd.corner_verts = mesh.corner_verts();
+      srd.corner_tris = mesh.corner_tris();
       srd.corner_tri_faces = mesh.corner_tri_faces();
       const bke::AttributeAccessor attributes = mesh.attributes();
       srd.hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
@@ -5460,6 +5467,7 @@ bool SCULPT_stroke_get_location_ex(bContext *C,
   if (BKE_pbvh_type(*ss.pbvh) == PBVH_FACES) {
     const Mesh &mesh = *static_cast<const Mesh *>(ob.data);
     srd.corner_verts = mesh.corner_verts();
+    srd.corner_tris = mesh.corner_tris();
     srd.corner_tri_faces = mesh.corner_tri_faces();
     const bke::AttributeAccessor attributes = mesh.attributes();
     srd.hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
@@ -6406,6 +6414,7 @@ bool SCULPT_vertex_is_occluded(SculptSession &ss, PBVHVertRef vertex, bool origi
   srd.face_normal = face_normal;
   srd.corner_verts = ss.corner_verts;
   if (BKE_pbvh_type(*ss.pbvh) == PBVH_FACES) {
+    srd.corner_tris = BKE_pbvh_get_mesh(*ss.pbvh)->corner_tris();
     srd.corner_tri_faces = BKE_pbvh_get_mesh(*ss.pbvh)->corner_tri_faces();
   }
 
@@ -6606,7 +6615,34 @@ void calc_front_face(const float3 &view_normal,
   }
 }
 
-void calc_distance_falloff(SculptSession &ss,
+void filter_region_clip_factors(const SculptSession &ss,
+                                const Span<float3> positions,
+                                const Span<int> verts,
+                                const MutableSpan<float> factors)
+{
+  const RegionView3D *rv3d = ss.cache ? ss.cache->vc->rv3d : ss.rv3d;
+  const View3D *v3d = ss.cache ? ss.cache->vc->v3d : ss.v3d;
+  if (!RV3D_CLIPPING_ENABLED(v3d, rv3d)) {
+    return;
+  }
+
+  const ePaintSymmetryFlags mirror_symmetry_pass = ss.cache ? ss.cache->mirror_symmetry_pass :
+                                                              ePaintSymmetryFlags(0);
+  const int radial_symmetry_pass = ss.cache ? ss.cache->radial_symmetry_pass : 0;
+  const float4x4 symm_rot_mat_inv = ss.cache ? ss.cache->symm_rot_mat_inv : float4x4::identity();
+  for (const int i : verts.index_range()) {
+    float3 symm_co;
+    flip_v3_v3(symm_co, positions[verts[i]], mirror_symmetry_pass);
+    if (radial_symmetry_pass) {
+      symm_co = math::transform_point(symm_rot_mat_inv, symm_co);
+    }
+    if (ED_view3d_clipping_test(rv3d, symm_co, true)) {
+      factors[i] = 0.0f;
+    }
+  }
+}
+
+void calc_distance_falloff(const SculptSession &ss,
                            const Span<float3> positions,
                            const Span<int> verts,
                            const eBrushFalloffShape falloff_shape,
@@ -6616,21 +6652,33 @@ void calc_distance_falloff(SculptSession &ss,
   BLI_assert(verts.size() == factors.size());
   BLI_assert(verts.size() == r_distances.size());
 
-  SculptBrushTest test;
-  const SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, test, falloff_shape);
+  const float3 &test_location = ss.cache ? ss.cache->location : ss.cursor_location;
+  if (falloff_shape == PAINT_FALLOFF_SHAPE_TUBE && (ss.cache || ss.filter_cache)) {
+    /* The tube falloff shape requires the cached view normal. */
+    const float3 &view_normal = ss.cache ? ss.cache->view_normal : ss.filter_cache->view_normal;
+    float4 test_plane;
+    plane_from_point_normal_v3(test_plane, test_location, view_normal);
+    for (const int i : verts.index_range()) {
+      float3 projected;
+      closest_to_plane_normalized_v3(projected, test_plane, positions[verts[i]]);
+      r_distances[i] = math::distance_squared(projected, test_location);
+    }
+  }
+  else {
+    for (const int i : verts.index_range()) {
+      r_distances[i] = math::distance_squared(test_location, positions[verts[i]]);
+    }
+  }
 
-  for (const int i : verts.index_range()) {
-    if (factors[i] == 0.0f) {
-      r_distances[i] = FLT_MAX;
-      continue;
+  const float radius_sq = ss.cache ? ss.cache->radius_squared :
+                                     ss.cursor_radius * ss.cursor_radius;
+  for (const int i : r_distances.index_range()) {
+    if (r_distances[i] < radius_sq) {
+      r_distances[i] = std::sqrt(r_distances[i]);
     }
-    if (!sculpt_brush_test_sq_fn(test, positions[verts[i]])) {
+    else {
       factors[i] = 0.0f;
-      r_distances[i] = FLT_MAX;
-      continue;
     }
-    r_distances[i] = math::sqrt(test.dist);
   }
 }
 
@@ -6664,26 +6712,38 @@ void calc_cube_distance_falloff(SculptSession &ss,
   }
 }
 
+void apply_hardness_to_distances(const StrokeCache &cache, const MutableSpan<float> distances)
+{
+  const float hardness = cache.paint_brush.hardness;
+  if (hardness == 0.0f) {
+    return;
+  }
+  if (hardness == 1.0f) {
+    distances.fill(0.0f);
+    return;
+  }
+  const float radius = cache.radius;
+  const float threshold = hardness * radius;
+  const float radius_inv = math::rcp(radius);
+  const float hardness_inv_rcp = math::rcp(1.0f - hardness);
+  for (const int i : distances.index_range()) {
+    if (distances[i] < threshold) {
+      distances[i] = 0.0f;
+    }
+    else {
+      const float radius_factor = (distances[i] * radius_inv - hardness) * hardness_inv_rcp;
+      distances[i] = radius_factor * radius;
+    }
+  }
+}
+
 void calc_brush_strength_factors(const StrokeCache &cache,
                                  const Brush &brush,
                                  const Span<float> distances,
                                  const MutableSpan<float> factors)
 {
-  BLI_assert(factors.size() == distances.size());
-
-  for (const int i : factors.index_range()) {
-    if (factors[i] == 0.0f) {
-      /* Skip already masked-out points, as they might be outside of the brush radius and be
-       * unaffected anyway. Having such large values in the calculations below might lead to
-       * non-finite values, leading to undesired results. */
-      continue;
-    }
-
-    const float hardness = sculpt_apply_hardness(cache, distances[i]);
-    const float strength = BKE_brush_curve_strength(&brush, hardness, cache.radius);
-
-    factors[i] *= strength;
-  }
+  BKE_brush_calc_curve_factors(
+      eBrushCurvePreset(brush.curve_preset), brush.curve, distances, cache.radius, factors);
 }
 
 void calc_brush_texture_factors(SculptSession &ss,
