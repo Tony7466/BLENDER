@@ -57,6 +57,10 @@ BLI_NOINLINE static void translations_from_position(const Span<float3> positions
   }
 }
 
+/**
+ * The vertices are pinched towards a line instead of a single point. Without this we get a
+ * 'flat' surface surrounding the pinch.
+ */
 BLI_NOINLINE static void project_translations(const MutableSpan<float3> translations,
                                               const float3 &plane)
 {
@@ -176,7 +180,7 @@ static void calc_grids(const Sculpt &sd,
   calc_brush_strength_factors(cache, brush, distances, factors);
 
   if (cache.automasking) {
-    auto_mask::calc_vert_factors(object, *cache.automasking, node, grids, factors);
+    auto_mask::calc_grids_factors(object, *cache.automasking, node, grids, factors);
   }
 
   calc_brush_texture_factors(ss, brush, positions, factors);
@@ -192,8 +196,6 @@ static void calc_grids(const Sculpt &sd,
   scale_translations(translations, factors);
   scale_translations(translations, strength);
 
-  /* The vertices are pinched towards a line instead of a single point. Without this we get a
-   * 'flat' surface surrounding the pinch. */
   project_translations(translations, cache.sculpt_normal_symm);
 
   add_offset_to_translations(translations, factors, offset);

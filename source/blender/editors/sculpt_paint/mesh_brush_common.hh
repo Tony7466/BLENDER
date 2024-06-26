@@ -171,6 +171,11 @@ void calc_vert_factors(const Object &object,
                        const PBVHNode &node,
                        Span<int> verts,
                        MutableSpan<float> factors);
+void calc_grids_factors(const Object &object,
+                        const Cache &cache,
+                        const PBVHNode &node,
+                        const Span<int> grids,
+                        const MutableSpan<float> factors);
 
 }  // namespace auto_mask
 

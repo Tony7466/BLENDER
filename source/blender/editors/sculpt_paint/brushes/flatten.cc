@@ -121,7 +121,7 @@ static void calc_grids(const Sculpt &sd,
   calc_brush_strength_factors(cache, brush, distances, factors);
 
   if (cache.automasking) {
-    auto_mask::calc_vert_factors(object, *cache.automasking, node, grids, factors);
+    auto_mask::calc_grids_factors(object, *cache.automasking, node, grids, factors);
   }
 
   calc_brush_texture_factors(ss, brush, positions, factors);
