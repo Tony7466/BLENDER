@@ -1467,42 +1467,40 @@ static void restore_position(Object &object, const Span<PBVHNode *> nodes)
         Vector<float3> translations;
       };
 
+      const bool need_translations = !ss.deform_imats.is_empty() ||
+                                     BKE_keyblock_from_object(&object);
+
       threading::EnumerableThreadSpecific<LocalData> all_tls;
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
         LocalData &tls = all_tls.local();
         for (PBVHNode *node : nodes.slice(range)) {
           if (const undo::Node *unode = undo::get_node(node, undo::Type::Position)) {
             const Span<int> verts = bke::pbvh::node_unique_verts(*node);
-            array_utils::scatter(unode->position.as_span(), verts, positions_eval);
+            const Span<float3> undo_positions = unode->position.as_span().take_front(verts.size());
+            if (need_translations) {
+              tls.translations.reinitialize(verts.size());
+              translations_to_positions(undo_positions, verts, positions_eval, tls.translations);
+            }
 
-            /* Translations are used to restore shape keys and original positions. */
-            tls.translations.clear();
-            const auto ensure_translations = [&]() {
-              if (tls.translations.is_empty()) {
-                tls.translations.reinitialize(verts.size());
-              }
-              return tls.translations.as_mutable_span();
-            };
+            array_utils::scatter(undo_positions, verts, positions_eval);
 
             if (positions_eval.data() != positions_orig.data()) {
               /* When the evaluated positions and original mesh positions don't point to the same
                * array, they must both be updated. */
               if (ss.deform_imats.is_empty()) {
-                array_utils::scatter(unode->position.as_span(), verts, positions_orig);
+                array_utils::scatter(undo_positions, verts, positions_orig);
               }
               else {
                 /* Because brush deformation is calculated for the evaluated deformed positions,
                  * the translations have to be transformed to the original space. */
-                MutableSpan<float3> translations = ensure_translations();
-                apply_crazyspace_to_translations(ss.deform_imats, verts, translations);
-                apply_translations(translations, verts, positions_orig);
+                apply_crazyspace_to_translations(ss.deform_imats, verts, tls.translations);
+                apply_translations(tls.translations, verts, positions_orig);
               }
             }
 
             if (BKE_keyblock_from_object(&object)) {
               /* Update dependent shape keys back to their original */
-              MutableSpan<float3> translations = ensure_translations();
-              apply_translations_to_shape_keys(object, verts, translations, positions_orig);
+              apply_translations_to_shape_keys(object, verts, tls.translations, positions_orig);
             }
 
             BKE_pbvh_node_mark_positions_update(node);
