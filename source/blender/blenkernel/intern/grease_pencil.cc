@@ -356,6 +356,26 @@ Drawing::~Drawing()
   this->runtime = nullptr;
 }
 
+/**
+ * Return the number of triangles needed to tessellate a curve with \a curve_points points.
+ */
+static int curve_triangles_num(const int curve_points)
+{
+  BLI_assert(curve_points > 2);
+  return curve_points - 2;
+}
+
+/**
+ * Return the range of triangles that belong to the given curve.
+ */
+static IndexRange curve_triangles_range(OffsetIndices<int> points_by_curve, int curve_i)
+{
+  const IndexRange points = points_by_curve[curve_i];
+  /* This is the same as #poly_to_tri_count which is not included here. */
+  const int start_triangle = points.start() - curve_i * 2;
+  return IndexRange(start_triangle, curve_triangles_num(points.size()));
+}
+
 Span<uint3> Drawing::triangles() const
 {
   struct LocalMemArena {
@@ -374,16 +394,8 @@ Span<uint3> Drawing::triangles() const
     const Span<float3> positions = curves.positions();
     const OffsetIndices<int> points_by_curve = curves.points_by_curve();
 
-    int total_triangles = 0;
-    Array<int> tris_offests(curves.curves_num());
-    for (int curve_i : curves.curves_range()) {
-      IndexRange points = points_by_curve[curve_i];
-      if (points.size() > 2) {
-        tris_offests[curve_i] = total_triangles;
-        total_triangles += points.size() - 2;
-      }
-    }
-
+    const int total_triangles =
+        curve_triangles_range(points_by_curve, curves.curves_range().last()).last();
     r_data.resize(total_triangles);
     MutableSpan<uint3> triangles = r_data.as_mutable_span();
     threading::EnumerableThreadSpecific<LocalMemArena> all_local_mem_arenas;
@@ -395,8 +407,8 @@ Span<uint3> Drawing::triangles() const
           continue;
         }
 
-        const int num_triangles = points.size() - 2;
-        MutableSpan<uint3> r_tris = triangles.slice(tris_offests[curve_i], num_triangles);
+        MutableSpan<uint3> r_tris = triangles.slice(
+            curve_triangles_range(points_by_curve, curve_i));
 
         float(*projverts)[2] = static_cast<float(*)[2]>(
             BLI_memarena_alloc(pf_arena, sizeof(*projverts) * size_t(points.size())));
@@ -736,6 +748,20 @@ void Drawing::tag_texture_matrices_changed()
 
 void Drawing::tag_positions_changed()
 {
+  this->strokes_for_write().tag_positions_changed();
+  this->runtime->triangles_cache.tag_dirty();
+  this->runtime->curve_plane_normals_cache.tag_dirty();
+  this->tag_texture_matrices_changed();
+}
+
+void Drawing::tag_positions_changed(const IndexMask &curves)
+{
+  if (curves.size() > this->strokes().curves_num() / 2) {
+    this->tag_positions_changed();
+    return;
+  }
+  this->runtime->triangles_cache.update([&]());
+
   this->strokes_for_write().tag_positions_changed();
   this->runtime->triangles_cache.tag_dirty();
   this->runtime->curve_plane_normals_cache.tag_dirty();
