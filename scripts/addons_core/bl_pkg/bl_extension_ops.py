@@ -33,6 +33,8 @@ from bpy.props import (
 )
 from bpy.app.translations import (
     pgettext_iface as iface_,
+    pgettext_rpt as rpt_,
+
 )
 
 from . import (
@@ -112,6 +114,14 @@ def repo_lookup_by_index_or_none_with_report(index, report_fn):
     return result
 
 
+def repo_user_directory(repo_module_name):
+    path = bpy.utils.user_resource('EXTENSIONS')
+    # Technically possible this is empty but in practice never happens.
+    if path:
+        path = os.path.join(path, ".user", repo_module_name)
+    return path
+
+
 is_background = bpy.app.background
 
 # Execute tasks concurrently.
@@ -184,7 +194,6 @@ class OperatorNonBlockingSyncHelper:
         from .bl_extension_notify import (
             update_ui_region_register,
             update_non_blocking,
-            update_in_progress,
         )
 
         repos_all = extension_repos_read()
@@ -816,7 +825,11 @@ def _extensions_repo_sync_wheels(repo_cache_store):
     repos_all = extension_repos_read()
 
     wheel_list = []
-    for repo_index, pkg_manifest_local in enumerate(repo_cache_store.pkg_manifest_from_local_ensure(error_fn=print)):
+
+    for repo_index, pkg_manifest_local in enumerate(repo_cache_store.pkg_manifest_from_local_ensure(
+            error_fn=print,
+            ignore_missing=True,
+    )):
         repo = repos_all[repo_index]
         repo_module = repo.module
         repo_directory = repo.directory
@@ -1049,7 +1062,7 @@ def _repo_dir_and_index_get(repo_index, directory, report_fn):
     return directory
 
 
-def _extensions_maybe_online_action_poll_impl(cls, repo, action_text):
+def _extensions_maybe_online_action_poll_impl(cls, repo, action):
 
     if repo is not None:
         if not repo.enabled:
@@ -1065,13 +1078,19 @@ def _extensions_maybe_online_action_poll_impl(cls, repo, action_text):
 
     if online_access_required:
         if not bpy.app.online_access:
-            cls.poll_message_set(
-                "Online access required to {:s}. {:s}".format(
-                    action_text,
-                    "Launch Blender without --offline-mode" if bpy.app.online_access_override else
-                    "Enable online access in System preferences"
-                )
-            )
+            # Split message into sentences for i18n.
+            match action:
+                case 'CHECK_UPDATES':
+                    message = rpt_("Online access required to check for updates.")
+                case 'INSTALL_UPDATES':
+                    message = rpt_("Online access required to install updates.")
+                case _:
+                    assert False, "Unreachable"
+            if bpy.app.online_access_override:
+                message += " " + rpt_("Launch Blender without --offline-mode")
+            else:
+                message += " " + rpt_("Enable online access in System preferences")
+            cls.poll_message_set(message)
             return False
 
     repos_all = extension_repos_read(use_active_only=False)
@@ -1279,7 +1298,7 @@ class EXTENSIONS_OT_repo_sync_all(Operator, _ExtCmdMixIn):
     @classmethod
     def poll(cls, context):
         repo = getattr(context, "extension_repo", None)
-        return _extensions_maybe_online_action_poll_impl(cls, repo, "check for updates")
+        return _extensions_maybe_online_action_poll_impl(cls, repo, action='CHECK_UPDATES')
 
     @classmethod
     def description(cls, _context, props):
@@ -1474,7 +1493,7 @@ class EXTENSIONS_OT_package_upgrade_all(Operator, _ExtCmdMixIn):
                 cls.poll_message_set("Upgrade is not supported for local repositories")
                 return False
 
-        return _extensions_maybe_online_action_poll_impl(cls, repo, "install updates")
+        return _extensions_maybe_online_action_poll_impl(cls, repo, action='INSTALL_UPDATES')
 
     @classmethod
     def description(cls, _context, props):
@@ -1805,6 +1824,7 @@ class EXTENSIONS_OT_package_uninstall_marked(Operator, _ExtCmdMixIn):
                 partial(
                     bl_extension_utils.pkg_uninstall,
                     directory=repo_item.directory,
+                    user_directory=repo_user_directory(repo_item.module),
                     pkg_id_sequence=pkg_id_sequence,
                     use_idle=is_modal,
                 ))
@@ -2102,6 +2122,25 @@ class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
         return True
 
     def invoke(self, context, event):
+
+        # Regarding reusing the last repository.
+        # - If it's a "local" repository, use it.
+        # - If it's a "remote" repository, reset.
+        # This is done because installing a file into a remote repository is a corner-case supported so
+        # it's possible to download large extensions before installing or to down-grade to older versions.
+        # Installing into a remote repository should be intentional, not the default.
+        # This could be annoying to users if they want to install many files into a remote repository,
+        # in this case they would be better off using the file selector "Install from disk"
+        # which supports selecting multiple files, although support for dropping multiple files would
+        # also be good to support.
+        if not self.properties.is_property_set("repo"):
+            repos_valid = self._repos_valid_for_install(context)
+            repo_module = self.repo
+            if (repo_test := next((repo for repo in repos_valid if repo.module == repo_module), None)) is not None:
+                if repo_test.use_remote_url:
+                    self.properties.property_unset("repo")
+            del repo_module, repo_test, repos_valid
+
         if self.properties.is_property_set("url"):
             return self._invoke_for_drop(context, event)
 
@@ -2164,8 +2203,7 @@ class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
 
             from .bl_extension_utils import pkg_manifest_dict_from_file_or_error
 
-            repos_valid = list(repo_iter_valid_only(context, exclude_remote=False, exclude_system=True))
-            if not repos_valid:
+            if not self._repos_valid_for_install():
                 self.report({'ERROR'}, "No user repositories")
                 return {'CANCELLED'}
 
@@ -2178,24 +2216,6 @@ class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
             del result
 
             self._drop_variables = pkg_id, pkg_type
-
-            # Regarding reusing the last repository.
-            # - If it's a "local" repository, use it.
-            # - If it's a "remote" repository, reset.
-            # This is done because installing a file into a remote repository is a corner-case supported so
-            # it's possible to download large extensions before installing or to down-grade to older versions.
-            # Installing into a remote repository should be intentional, not the default.
-            # This could be annoying to users if they want to install many files into a remote repository,
-            # in this case they would be better off using the file selector "Install from disk"
-            # which supports selecting multiple files, although support for dropping multiple files would
-            # also be good to support.
-            if not self.properties.is_property_set("repo"):
-                repo_module = self.repo
-                if (repo_test := next((repo for repo in repos_valid if repo.module == repo_module), None)) is not None:
-                    if repo_test.use_remote_url:
-                        self.properties.property_unset("repo")
-                del repo_module, repo_test
-
         else:
             self._drop_variables = None
             self._legacy_drop = True
@@ -2230,6 +2250,10 @@ class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
         layout.prop(self, "target", text="Target")
         layout.prop(self, "overwrite", text="Overwrite")
         layout.prop(self, "enable_on_install")
+
+    @staticmethod
+    def _repos_valid_for_install(context):
+        return list(repo_iter_valid_only(context, exclude_remote=False, exclude_system=True))
 
 
 class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
@@ -2406,7 +2430,6 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
 
     def _invoke_for_drop(self, context, _event):
         from .bl_extension_utils import (
-            platform_from_this_system,
             url_parse_for_blender,
         )
 
@@ -2722,6 +2745,7 @@ class EXTENSIONS_OT_package_uninstall(Operator, _ExtCmdMixIn):
                 partial(
                     bl_extension_utils.pkg_uninstall,
                     directory=directory,
+                    user_directory=repo_user_directory(repo_item.module),
                     pkg_id_sequence=(pkg_id, ),
                     use_idle=is_modal,
                 ),
@@ -3091,11 +3115,10 @@ class EXTENSIONS_OT_userpref_show_for_update(Operator):
         prefs = context.preferences
 
         prefs.active_section = 'EXTENSIONS'
-        prefs.view.show_addons_enabled_only = False
 
         # Show only extensions that will be updated.
-        wm.extension_installed_only = False
-        wm.extension_updates_only = True
+        wm.extension_show_panel_installed = True
+        wm.extension_show_panel_available = False
 
         bpy.ops.screen.userpref_show('INVOKE_DEFAULT')
 

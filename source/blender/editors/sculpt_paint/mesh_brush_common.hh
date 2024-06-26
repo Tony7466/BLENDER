@@ -57,8 +57,8 @@ void scale_factors(MutableSpan<float> factors, float strength);
  */
 
 void gather_grids_positions(const SubdivCCG &subdiv_ccg,
-                             Span<int> grids,
-                             MutableSpan<float3> positions);
+                            Span<int> grids,
+                            MutableSpan<float3> positions);
 
 /**
  * Calculate initial influence factors based on vertex visibility.
