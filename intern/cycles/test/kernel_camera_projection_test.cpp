@@ -70,8 +70,16 @@ TEST(KernelCamera, FisheyeLensPolynomialRoundtrip)
           const float2 reprojection = direction_to_fisheye_lens_polynomial(
               direction, k0, k, width, height);
 
-          EXPECT_NEAR(reprojection.x, x, 1e-6);
-          EXPECT_NEAR(reprojection.y, y, 1e-6);
+          EXPECT_NEAR(reprojection.x, x, 1e-6) << "k0: " << k0 << std::endl
+                                               << "k1: " << k.x << std::endl
+                                               << "k2: " << k.y << std::endl
+                                               << "k3: " << k.z << std::endl
+                                               << "k4: " << k.w << std::endl;
+          EXPECT_NEAR(reprojection.y, y, 1e-6) << "k0: " << k0 << std::endl
+                                               << "k1: " << k.x << std::endl
+                                               << "k2: " << k.y << std::endl
+                                               << "k3: " << k.z << std::endl
+                                               << "k4: " << k.w << std::endl;
         }
       }
     }
