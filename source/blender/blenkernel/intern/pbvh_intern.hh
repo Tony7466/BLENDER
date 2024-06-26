@@ -177,11 +177,6 @@ struct PBVH {
   CustomDataLayer *color_layer;
   blender::bke::AttrDomain color_domain;
 
-  /* Initialize this to true, instead of waiting for a draw engine
-   * to set it. Prevents a crash in draw manager instancing code.
-   * TODO: This is fragile, another solution should be found. */
-  bool is_drawing = true;
-
   PBVHGPUFormat *vbo_id;
 
   PBVHPixels pixels;
