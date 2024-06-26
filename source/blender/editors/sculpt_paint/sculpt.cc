@@ -6640,6 +6640,29 @@ void fill_factor_from_hide(const Mesh &mesh,
   }
 }
 
+void fill_factor_from_hide(const SubdivCCG &subdiv_ccg,
+                           const Span<int> grids,
+                           const MutableSpan<float> r_factors)
+{
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+  BLI_assert(grids.size() * key.grid_area == r_factors.size());
+
+  const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
+  if (grid_hidden.is_empty()) {
+    r_factors.fill(1.0f);
+    return;
+  }
+  for (const int i : grids.index_range()) {
+    const BitSpan hidden = grid_hidden[grids[i]];
+    const int start = i * key.grid_area;
+    for (const int offset : IndexRange(key.grid_area)) {
+      if (hidden[offset]) {
+        r_factors[start + offset] = 0.0f;
+      }
+    }
+  }
+}
+
 void fill_factor_from_hide_and_mask(const Mesh &mesh,
                                     const Span<int> verts,
                                     const MutableSpan<float> r_factors)

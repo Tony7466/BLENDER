@@ -64,6 +64,9 @@ void gather_grids_positions(const SubdivCCG &subdiv_ccg,
  * Calculate initial influence factors based on vertex visibility.
  */
 void fill_factor_from_hide(const Mesh &mesh, Span<int> vert_indices, MutableSpan<float> r_factors);
+void fill_factor_from_hide(const SubdivCCG &subdiv_ccg,
+                           Span<int> grids,
+                           MutableSpan<float> r_factors);
 
 /**
  * Calculate initial influence factors based on vertex visibility and masking.
