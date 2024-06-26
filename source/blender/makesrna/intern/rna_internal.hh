@@ -18,9 +18,7 @@
 
 #define RNA_MAGIC ((int)~0)
 
-#ifdef __cplusplus
 enum class AttributeOwnerType;
-#endif
 
 struct FreestyleSettings;
 struct ID;
