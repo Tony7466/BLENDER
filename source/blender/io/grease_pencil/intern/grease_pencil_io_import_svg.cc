@@ -125,9 +125,15 @@ static IndexRange extend_curves_geometry(bke::CurvesGeometry &curves, const NSVG
   /* Count curves and points. */
   Vector<int> new_curve_offsets;
   for (NSVGpath *path = shape.paths; path; path = path->next) {
+    if (path->npts <= 0) {
+      continue;
+    }
     /* nanosvg converts everything to bezier curves, points come in triplets. */
     const int point_num = path->npts / 3;
     new_curve_offsets.append(point_num);
+  }
+  if (new_curve_offsets.is_empty()) {
+    return {};
   }
   new_curve_offsets.append(0);
   const OffsetIndices new_points_by_curve = offset_indices::accumulate_counts_to_offsets(
@@ -136,14 +142,17 @@ static IndexRange extend_curves_geometry(bke::CurvesGeometry &curves, const NSVG
   const IndexRange new_curves_range = {old_curves_num, new_points_by_curve.size()};
   const int curves_num = new_curves_range.one_after_last();
   const int points_num = new_points_by_curve.total_size();
-  curves.resize(points_num, curves_num);
 
   Array<int> new_offsets(curves_num + 1);
-  new_offsets.as_mutable_span().slice(0, old_curves_num).copy_from(old_offsets.drop_back(1));
+  if (old_curves_num > 0) {
+    new_offsets.as_mutable_span().slice(0, old_curves_num).copy_from(old_offsets.drop_back(1));
+  }
   new_offsets.as_mutable_span()
       .slice(old_curves_num, new_curve_offsets.size())
       .copy_from(new_curve_offsets);
-  curves.offsets_for_write() = new_offsets;
+
+  curves.resize(points_num, curves_num);
+  curves.offsets_for_write().copy_from(new_offsets);
 
   /* nanosvg converts everything to Bezier curves. */
   curves.curve_types_for_write().slice(new_curves_range).fill(CURVE_TYPE_BEZIER);
@@ -273,6 +282,9 @@ bool SVGImporter::read(StringRefNull filepath)
     const int32_t mat_index = create_material(mat_name, is_stroke, is_fill);
 
     const IndexRange new_curves_range = extend_curves_geometry(curves, *shape);
+    if (new_curves_range.is_empty()) {
+      continue;
+    }
     shape_attributes_to_curves(curves, *shape, new_curves_range);
 
     /* Convert Bezier curves to poly curves.
