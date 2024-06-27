@@ -1115,18 +1115,24 @@ void fcurve_to_keylist(AnimData *adt,
   /* Used in an exclusive way. */
   int end_index = fcu->totvert;
 
-  bool replace;
-  start_index = BKE_fcurve_bezt_binarysearch_index(fcu->bezt, range[0], fcu->totvert, &replace);
-  if (start_index > 0) {
-    start_index--;
-  }
-  end_index = BKE_fcurve_bezt_binarysearch_index(fcu->bezt, range[1], fcu->totvert, &replace);
-  if (end_index < fcu->totvert) {
-    end_index++;
+  if (!test_time_fcurve(fcu)) {
+    bool replace;
+    start_index = BKE_fcurve_bezt_binarysearch_index(fcu->bezt, range[0], fcu->totvert, &replace);
+    if (start_index > 0) {
+      start_index--;
+    }
+    end_index = BKE_fcurve_bezt_binarysearch_index(fcu->bezt, range[1], fcu->totvert, &replace);
+    if (end_index < fcu->totvert) {
+      end_index++;
+    }
   }
 
   /* Loop through beztriples, making ActKeysColumns. */
   for (int v = start_index; v < end_index; v++) {
+    const float x = fcu->bezt[v].vec[1][0];
+    if (x < range[0] || x > range[1]) {
+      continue;
+    }
     chain.cur = &fcu->bezt[v];
 
     /* Neighbor columns, accounting for being cyclic. */
