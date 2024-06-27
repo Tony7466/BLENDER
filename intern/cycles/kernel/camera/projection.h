@@ -146,6 +146,9 @@ ccl_device_inline float3 fisheye_lens_polynomial_to_direction(
 ccl_device float2 direction_to_fisheye_lens_polynomial(
     float3 dir, float coeff0, float4 coeffs, float width, float height)
 {
+  if (dir.y < 1e-8f && dir.y > -1e-8f && dir.z < 1e-8f && dir.z > -1e-8f) {
+    return {0.5f, 0.5f};
+  }
   const float theta = -safe_acosf(dir.x);
 
   /* Initialize r with the closed-form solution for the special case
@@ -178,12 +181,8 @@ ccl_device float2 direction_to_fisheye_lens_polynomial(
     /** \} */
   }
 
-  const float phi = atan2f(dir.z, dir.y);
-
-  const float u = 0.5f - r * cosf(phi) / width;
-  const float v = r * sinf(phi) / height + 0.5f;
-
-  return make_float2(u, v);
+  const float2 uv = r * normalize(make_float2(dir.y, dir.z));
+  return make_float2(0.5f - uv.x / width, uv.y / height + 0.5f);
 }
 
 /* Mirror Ball <-> Cartesion direction */
