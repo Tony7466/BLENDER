@@ -3409,6 +3409,25 @@ static void node_draw_basis(const bContext &C,
     }
     UI_block_emboss_set(&block, UI_EMBOSS);
   }
+
+  if (node.type == NODE_GROUP && node.id->asset_data != nullptr) {
+    iconofs -= iconbutw;
+    UI_block_emboss_set(&block, UI_EMBOSS_NONE);
+    uiDefIconBut(&block,
+                 UI_BTYPE_BUT_TOGGLE,
+                 0,
+                 ICON_ASSET_MANAGER,
+                 iconofs,
+                 rct.ymax - NODE_DY,
+                 iconbutw,
+                 UI_UNIT_Y,
+                 nullptr,
+                 0,
+                 0,
+                 "");
+    UI_block_emboss_set(&block, UI_EMBOSS);
+  }
+
   /* Preview. */
   if (node_is_previewable(snode, ntree, node)) {
     iconofs -= iconbutw;
