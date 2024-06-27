@@ -85,11 +85,7 @@ else()
       cmake_policy(SET CMP0009 NEW)\n
       file(GLOB_RECURSE shared_libs ${HARVEST_TARGET}/${to}/${pattern}) \n
       foreach(f \${shared_libs}) \n
-        if(IS_SYMLINK \${f})\n
-          if(APPLE)\n
-            file(REMOVE_RECURSE \${f})
-          endif()\n
-        else()\n
+        if((NOT IS_SYMLINK \${f}) OR APPLE)\n
           execute_process(COMMAND ${set_rpath_cmd} \${f}) \n
         endif()\n
       endforeach()")
