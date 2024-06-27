@@ -59,15 +59,6 @@ struct SculptProjectVector {
   bool is_valid;
 };
 
-static bool plane_point_side_flip(const float co[3], const float plane[4], const bool flip)
-{
-  float d = plane_point_side_v3(plane, co);
-  if (flip) {
-    d = -d;
-  }
-  return d <= 0.0f;
-}
-
 /**
  * \param plane: Direction, can be any length.
  */
@@ -462,149 +453,6 @@ void SCULPT_do_clay_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes)
   });
 }
 
-static void do_clay_strips_brush_task(Object &ob,
-                                      const Brush &brush,
-                                      const float (*mat)[4],
-                                      const float *area_no_sp,
-                                      const float *area_co,
-                                      PBVHNode *node)
-{
-  using namespace blender::ed::sculpt_paint;
-  SculptSession &ss = *ob.sculpt;
-
-  PBVHVertexIter vd;
-  SculptBrushTest test;
-  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss.pbvh, *node).co;
-  const bool flip = (ss.cache->bstrength < 0.0f);
-  const float bstrength = flip ? -ss.cache->bstrength : ss.cache->bstrength;
-
-  SCULPT_brush_test_init(ss, test);
-  plane_from_point_normal_v3(test.plane_tool, area_co, area_no_sp);
-  const int thread_id = BLI_task_parallel_thread_id(nullptr);
-
-  auto_mask::NodeData automask_data = auto_mask::node_begin(
-      ob, ss.cache->automasking.get(), *node);
-
-  BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    if (!SCULPT_brush_test_cube(test, vd.co, mat, brush.tip_roundness, brush.tip_scale_x)) {
-      continue;
-    }
-
-    if (!plane_point_side_flip(vd.co, test.plane_tool, flip)) {
-      continue;
-    }
-
-    float intr[3];
-    float val[3];
-    closest_to_plane_normalized_v3(intr, test.plane_tool, vd.co);
-    sub_v3_v3v3(val, intr, vd.co);
-
-    if (!SCULPT_plane_trim(*ss.cache, brush, val)) {
-      continue;
-    }
-
-    auto_mask::node_update(automask_data, vd);
-
-    /* The normal from the vertices is ignored, it causes glitch with planes, see: #44390. */
-    const float fade = bstrength * SCULPT_brush_strength_factor(ss,
-                                                                brush,
-                                                                vd.co,
-                                                                ss.cache->radius * test.dist,
-                                                                vd.no,
-                                                                vd.fno,
-                                                                vd.mask,
-                                                                vd.vertex,
-                                                                thread_id,
-                                                                &automask_data);
-
-    mul_v3_v3fl(proxy[vd.i], val, fade);
-  }
-  BKE_pbvh_vertex_iter_end;
-}
-
-void SCULPT_do_clay_strips_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes)
-{
-  using namespace blender;
-  using namespace blender::ed::sculpt_paint;
-  SculptSession &ss = *ob.sculpt;
-  const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
-
-  const bool flip = (ss.cache->bstrength < 0.0f);
-  const float radius = flip ? -ss.cache->radius : ss.cache->radius;
-  const float offset = SCULPT_brush_plane_offset_get(sd, ss);
-  const float displace = radius * (0.18f + offset);
-
-  /* The sculpt-plane normal (whatever its set to). */
-  float3 area_no_sp;
-
-  /* Geometry normal */
-  float3 area_no;
-  float3 area_co;
-
-  float temp[3];
-  float mat[4][4];
-  float scale[4][4];
-  float tmat[4][4];
-
-  calc_brush_plane(brush, ob, nodes, area_no_sp, area_co);
-  SCULPT_tilt_apply_to_normal(area_no_sp, ss.cache, brush.tilt_strength_factor);
-
-  if (brush.sculpt_plane != SCULPT_DISP_DIR_AREA || (brush.flag & BRUSH_ORIGINAL_NORMAL)) {
-    area_no = calc_area_normal(brush, ob, nodes).value_or(float3(0));
-  }
-  else {
-    area_no = area_no_sp;
-  }
-
-  if (is_zero_v3(ss.cache->grab_delta_symmetry)) {
-    return;
-  }
-
-  mul_v3_v3v3(temp, area_no_sp, ss.cache->scale);
-  mul_v3_fl(temp, displace);
-  add_v3_v3(area_co, temp);
-
-  /* Clay Strips uses a cube test with falloff in the XY axis (not in Z) and a plane to deform the
-   * vertices. When in Add mode, vertices that are below the plane and inside the cube are moved
-   * towards the plane. In this situation, there may be cases where a vertex is outside the cube
-   * but below the plane, so won't be deformed, causing artifacts. In order to prevent these
-   * artifacts, this displaces the test cube space in relation to the plane in order to
-   * deform more vertices that may be below it. */
-  /* The 0.7 and 1.25 factors are arbitrary and don't have any relation between them, they were set
-   * by doing multiple tests using the default "Clay Strips" brush preset. */
-  float area_co_displaced[3];
-  madd_v3_v3v3fl(area_co_displaced, area_co, area_no, -radius * 0.7f);
-
-  cross_v3_v3v3(mat[0], area_no, ss.cache->grab_delta_symmetry);
-  mat[0][3] = 0.0f;
-  cross_v3_v3v3(mat[1], area_no, mat[0]);
-  mat[1][3] = 0.0f;
-  copy_v3_v3(mat[2], area_no);
-  mat[2][3] = 0.0f;
-  copy_v3_v3(mat[3], area_co_displaced);
-  mat[3][3] = 1.0f;
-  normalize_m4(mat);
-
-  /* Scale brush local space matrix. */
-  scale_m4_fl(scale, ss.cache->radius);
-  mul_m4_m4m4(tmat, mat, scale);
-
-  mul_v3_fl(tmat[1], brush.tip_scale_x);
-
-  /* Deform the local space in Z to scale the test cube. As the test cube does not have falloff in
-   * Z this does not produce artifacts in the falloff cube and allows to deform extra vertices
-   * during big deformation while keeping the surface as uniform as possible. */
-  mul_v3_fl(tmat[2], 1.25f);
-
-  invert_m4_m4(mat, tmat);
-
-  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-    for (const int i : range) {
-      do_clay_strips_brush_task(ob, brush, mat, area_no_sp, area_co, nodes[i]);
-    }
-  });
-}
-
 static void do_snake_hook_brush_task(Object &ob,
                                      const Brush &brush,
                                      SculptProjectVector *spvc,
@@ -748,11 +596,9 @@ static void do_thumb_brush_task(Object &ob, const Brush &brush, const float *con
   SculptSession &ss = *ob.sculpt;
 
   PBVHVertexIter vd;
-  SculptOrigVertData orig_data;
   const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss.pbvh, *node).co;
   const float bstrength = ss.cache->bstrength;
-
-  SCULPT_orig_vert_data_init(orig_data, ob, *node, undo::Type::Position);
+  SculptOrigVertData orig_data = SCULPT_orig_vert_data_init(ob, *node, undo::Type::Position);
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
@@ -812,11 +658,9 @@ static void do_rotate_brush_task(Object &ob, const Brush &brush, const float ang
   SculptSession &ss = *ob.sculpt;
 
   PBVHVertexIter vd;
-  SculptOrigVertData orig_data;
   const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss.pbvh, *node).co;
   const float bstrength = ss.cache->bstrength;
-
-  SCULPT_orig_vert_data_init(orig_data, ob, *node, undo::Type::Position);
+  SculptOrigVertData orig_data = SCULPT_orig_vert_data_init(ob, *node, undo::Type::Position);
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
@@ -881,9 +725,8 @@ static void do_layer_brush_task(Object &ob, const Sculpt &sd, const Brush &brush
                                    brush.flag & BRUSH_PERSISTENT;
 
   PBVHVertexIter vd;
-  SculptOrigVertData orig_data;
   const float bstrength = ss.cache->bstrength;
-  SCULPT_orig_vert_data_init(orig_data, ob, *node, undo::Type::Position);
+  SculptOrigVertData orig_data = SCULPT_orig_vert_data_init(ob, *node, undo::Type::Position);
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
@@ -980,117 +823,6 @@ void SCULPT_do_layer_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes)
 }
 
 /** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Sculpt Crease & Blob Brush
- * \{ */
-
-/**
- * Used for 'SCULPT_TOOL_CREASE' and 'SCULPT_TOOL_BLOB'
- */
-static void do_crease_brush_task(Object &ob,
-                                 const Brush &brush,
-                                 SculptProjectVector *spvc,
-                                 const float flippedbstrength,
-                                 const float *offset,
-                                 PBVHNode *node)
-{
-  using namespace blender::ed::sculpt_paint;
-  SculptSession &ss = *ob.sculpt;
-
-  PBVHVertexIter vd;
-  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss.pbvh, *node).co;
-
-  SculptBrushTest test;
-  SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, test, brush.falloff_shape);
-  const int thread_id = BLI_task_parallel_thread_id(nullptr);
-
-  auto_mask::NodeData automask_data = auto_mask::node_begin(
-      ob, ss.cache->automasking.get(), *node);
-
-  BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    if (!sculpt_brush_test_sq_fn(test, vd.co)) {
-      continue;
-    }
-    /* Offset vertex. */
-    auto_mask::node_update(automask_data, vd);
-
-    const float fade = SCULPT_brush_strength_factor(ss,
-                                                    brush,
-                                                    vd.co,
-                                                    sqrtf(test.dist),
-                                                    vd.no,
-                                                    vd.fno,
-                                                    vd.mask,
-                                                    vd.vertex,
-                                                    thread_id,
-                                                    &automask_data);
-    float val1[3];
-    float val2[3];
-
-    /* First we pinch. */
-    sub_v3_v3v3(val1, test.location, vd.co);
-    if (brush.falloff_shape == PAINT_FALLOFF_SHAPE_TUBE) {
-      project_plane_v3_v3v3(val1, val1, ss.cache->view_normal);
-    }
-
-    mul_v3_fl(val1, fade * flippedbstrength);
-
-    sculpt_project_v3(spvc, val1, val1);
-
-    /* Then we draw. */
-    mul_v3_v3fl(val2, offset, fade);
-
-    add_v3_v3v3(proxy[vd.i], val1, val2);
-  }
-  BKE_pbvh_vertex_iter_end;
-}
-
-void SCULPT_do_crease_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes)
-{
-  using namespace blender;
-  SculptSession &ss = *ob.sculpt;
-  const Scene *scene = ss.cache->vc->scene;
-  const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
-  float offset[3];
-  float bstrength = ss.cache->bstrength;
-  float flippedbstrength, crease_correction;
-  float brush_alpha;
-
-  SculptProjectVector spvc;
-
-  /* Offset with as much as possible factored in already. */
-  mul_v3_v3fl(offset, ss.cache->sculpt_normal_symm, ss.cache->radius);
-  mul_v3_v3(offset, ss.cache->scale);
-  mul_v3_fl(offset, bstrength);
-
-  /* We divide out the squared alpha and multiply by the squared crease
-   * to give us the pinch strength. */
-  crease_correction = brush.crease_pinch_factor * brush.crease_pinch_factor;
-  brush_alpha = BKE_brush_alpha_get(scene, &brush);
-  if (brush_alpha > 0.0f) {
-    crease_correction /= brush_alpha * brush_alpha;
-  }
-
-  /* We always want crease to pinch or blob to relax even when draw is negative. */
-  flippedbstrength = (bstrength < 0.0f) ? -crease_correction * bstrength :
-                                          crease_correction * bstrength;
-
-  if (brush.sculpt_tool == SCULPT_TOOL_BLOB) {
-    flippedbstrength *= -1.0f;
-  }
-
-  /* Use surface normal for 'spvc', so the vertices are pinched towards a line instead of a single
-   * point. Without this we get a 'flat' surface surrounding the pinch. */
-  sculpt_project_v3_cache_init(&spvc, ss.cache->sculpt_normal_symm);
-
-  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-    for (const int i : range) {
-      do_crease_brush_task(ob, brush, &spvc, flippedbstrength, offset, nodes[i]);
-    }
-  });
-}
 
 static void do_pinch_brush_task(Object &ob,
                                 const Brush &brush,
@@ -1210,12 +942,10 @@ static void do_grab_brush_task(Object &ob,
   SculptSession &ss = *ob.sculpt;
 
   PBVHVertexIter vd;
-  SculptOrigVertData orig_data;
   const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss.pbvh, *node).co;
   const float bstrength = ss.cache->bstrength;
 
-  SCULPT_orig_vert_data_init(orig_data, ob, *node, undo::Type::Position);
-
+  SculptOrigVertData orig_data = SCULPT_orig_vert_data_init(ob, *node, undo::Type::Position);
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
       ss, test, brush.falloff_shape);
@@ -1291,12 +1021,11 @@ static void do_elastic_deform_brush_task(Object &ob,
   const float *location = ss.cache->location;
 
   PBVHVertexIter vd;
-  SculptOrigVertData orig_data;
   const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss.pbvh, *node).co;
 
   const float bstrength = ss.cache->bstrength;
 
-  SCULPT_orig_vert_data_init(orig_data, ob, *node, undo::Type::Position);
+  SculptOrigVertData orig_data = SCULPT_orig_vert_data_init(ob, *node, undo::Type::Position);
   auto_mask::NodeData automask_data = auto_mask::node_begin(
       ob, ss.cache->automasking.get(), *node);
 
@@ -1395,10 +1124,8 @@ static void do_draw_sharp_brush_task(Object &ob,
   SculptSession &ss = *ob.sculpt;
 
   PBVHVertexIter vd;
-  SculptOrigVertData orig_data;
+  SculptOrigVertData orig_data = SCULPT_orig_vert_data_init(ob, *node, undo::Type::Position);
   const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss.pbvh, *node).co;
-
-  SCULPT_orig_vert_data_init(orig_data, ob, *node, undo::Type::Position);
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
@@ -1470,10 +1197,9 @@ static void do_topology_slide_task(Object &ob, const Brush &brush, PBVHNode *nod
   SculptSession &ss = *ob.sculpt;
 
   PBVHVertexIter vd;
-  SculptOrigVertData orig_data;
   const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss.pbvh, *node).co;
 
-  SCULPT_orig_vert_data_init(orig_data, ob, *node, undo::Type::Position);
+  SculptOrigVertData orig_data = SCULPT_orig_vert_data_init(ob, *node, undo::Type::Position);
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
@@ -1630,9 +1356,8 @@ static void do_topology_relax_task(Object &ob, const Brush &brush, PBVHNode *nod
   const float bstrength = ss.cache->bstrength;
 
   PBVHVertexIter vd;
-  SculptOrigVertData orig_data;
 
-  SCULPT_orig_vert_data_init(orig_data, ob, *node, undo::Type::Position);
+  SculptOrigVertData orig_data = SCULPT_orig_vert_data_init(ob, *node, undo::Type::Position);
 
   /* TODO(@sergey): This looks very suspicious: proxy is added but is never written.
    * Either this needs to be documented better why it is needed, or removed. The removal is likely

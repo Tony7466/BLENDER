@@ -48,7 +48,7 @@ static void calc_faces(const Sculpt &sd,
                        const MutableSpan<float3> positions_orig)
 {
   SculptSession &ss = *object.sculpt;
-  StrokeCache &cache = *ss.cache;
+  const StrokeCache &cache = *ss.cache;
   Mesh &mesh = *static_cast<Mesh *>(object.data);
 
   const Span<int> verts = bke::pbvh::node_unique_verts(node);
@@ -56,7 +56,7 @@ static void calc_faces(const Sculpt &sd,
   tls.factors.reinitialize(verts.size());
   const MutableSpan<float> factors = tls.factors;
   fill_factor_from_hide_and_mask(mesh, verts, factors);
-
+  filter_region_clip_factors(ss, positions_eval, verts, factors);
   if (brush.flag & BRUSH_FRONTFACE) {
     calc_front_face(cache.view_normal, vert_normals, verts, factors);
   }
@@ -65,10 +65,11 @@ static void calc_faces(const Sculpt &sd,
   const MutableSpan<float> distances = tls.distances;
   calc_distance_falloff(
       ss, positions_eval, verts, eBrushFalloffShape(brush.falloff_shape), distances, factors);
-  calc_brush_strength_factors(ss, brush, verts, distances, factors);
+  apply_hardness_to_distances(cache, distances);
+  calc_brush_strength_factors(cache, brush, distances, factors);
 
-  if (ss.cache->automasking) {
-    auto_mask::calc_vert_factors(object, *ss.cache->automasking, node, verts, factors);
+  if (cache.automasking) {
+    auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
   }
 
   calc_brush_texture_factors(ss, brush, positions_eval, verts, factors);
@@ -80,19 +81,10 @@ static void calc_faces(const Sculpt &sd,
   tls.translations.reinitialize(verts.size());
   const MutableSpan<float3> translations = tls.translations;
   calc_translations_to_plane(positions_eval, verts, plane, translations);
-  filter_plane_trim_limit_factors(brush, *ss.cache, translations, factors);
+  filter_plane_trim_limit_factors(brush, cache, translations, factors);
   scale_translations(translations, factors);
 
-  clip_and_lock_translations(sd, ss, positions_eval, verts, translations);
-
-  apply_translations_to_pbvh(*ss.pbvh, verts, translations);
-
-  if (!ss.deform_imats.is_empty()) {
-    apply_crazyspace_to_translations(ss.deform_imats, verts, translations);
-  }
-
-  apply_translations(translations, verts, positions_orig);
-  apply_translations_to_shape_keys(object, verts, translations, positions_orig);
+  write_translations(sd, object, positions_eval, verts, translations, positions_orig);
 }
 
 static void calc_grids(
