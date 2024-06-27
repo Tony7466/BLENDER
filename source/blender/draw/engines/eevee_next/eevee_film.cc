@@ -878,6 +878,8 @@ static eShaderType get_aov_write_pass_shader_type(ViewLayerAOV *aov)
 
 void Film::write_viewport_compositor_passes()
 {
+  this->cryptomatte_sort();
+
   /* Write standard passes. */
   for (auto i : IndexRange(EEVEE_RENDER_PASS_MAX_BIT + 1)) {
     const eViewLayerEEVEEPassType pass_type = eViewLayerEEVEEPassType(

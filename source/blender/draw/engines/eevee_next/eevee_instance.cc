@@ -552,7 +552,6 @@ void Instance::draw_viewport()
   velocity.step_swap();
 
   if (this->film.is_viewport_compositor_enabled()) {
-    this->film.cryptomatte_sort();
     this->film.write_viewport_compositor_passes();
   }
 
@@ -584,7 +583,6 @@ void Instance::draw_viewport_image_render()
   velocity.step_swap();
 
   if (this->film.is_viewport_compositor_enabled()) {
-    this->film.cryptomatte_sort();
     this->film.write_viewport_compositor_passes();
   }
 }
