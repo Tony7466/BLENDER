@@ -5597,12 +5597,13 @@ static void sculpt_restore_mesh(const Sculpt &sd, Object &ob)
   SculptSession &ss = *ob.sculpt;
   const Brush *brush = BKE_paint_brush_for_read(&sd.paint);
 
-  // SCULPT_TOOL_GRAB,
-  // SCULPT_TOOL_ROTATE,
-  // SCULPT_TOOL_THUMB,
-  // SCULPT_TOOL_ELASTIC_DEFORM,
-  // SCULPT_TOOL_BOUNDARY,
-  // SCULPT_TOOL_POSE
+  /* Brushes that also use original coordinates and will need a "restore" step.
+   *  - SCULPT_TOOL_ROTATE
+   *  - SCULPT_TOOL_THUMB
+   *  - SCULPT_TOOL_ELASTIC_DEFORM
+   *  - SCULPT_TOOL_BOUNDARY
+   *  - SCULPT_TOOL_POSE
+   */
   if (ELEM(brush->sculpt_tool, SCULPT_TOOL_GRAB)) {
     restore_from_undo_step(sd, ob);
     return;
@@ -7090,8 +7091,8 @@ void scale_factors(const MutableSpan<float> factors, const float strength)
   }
 }
 void translations_from_offset_and_factors(const float3 &offset,
-                                          Span<float> factors,
-                                          MutableSpan<float3> r_translations)
+                                          const Span<float> factors,
+                                          const MutableSpan<float3> r_translations)
 {
   BLI_assert(r_translations.size() == factors.size());
 
