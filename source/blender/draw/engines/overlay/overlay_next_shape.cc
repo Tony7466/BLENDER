@@ -52,6 +52,11 @@ enum VertexClass {
   VCLASS_EMPTY_SIZE = 1 << 14,
 };
 
+#define DIAMOND_NSEGMENTS 4
+#define INNER_NSEGMENTS 8
+#define OUTER_NSEGMENTS 10
+#define CIRCLE_NSEGMENTS 32
+
 static constexpr float bone_box_verts[8][3] = {
     {1.0f, 0.0f, 1.0f},
     {1.0f, 0.0f, -1.0f},
@@ -67,13 +72,44 @@ static constexpr std::array<uint, 24> bone_box_wire = {
     0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 5, 6, 6, 7, 7, 4, 0, 4, 1, 5, 2, 6, 3, 7,
 };
 
+static void append_as_lines_cyclic(
+    Vector<Vertex> &dest, Vector<float2> verts, float z, int flag, bool dashed = false)
+{
+  const int step = dashed ? 2 : 1;
+  for (int i : IndexRange(verts.size() / step)) {
+    for (int j : IndexRange(2)) {
+      float2 cv = verts[(i * step + j) % (verts.size())];
+      dest.append({{cv[0], cv[1], z}, flag});
+    }
+  }
+}
+
+static float light_distance_z_get(char axis, const bool start)
+{
+  switch (axis) {
+    case 'x': /* - X */
+      return start ? 0.4f : 0.3f;
+    case 'X': /* + X */
+      return start ? 0.6f : 0.7f;
+    case 'y': /* - Y */
+      return start ? 1.4f : 1.3f;
+    case 'Y': /* + Y */
+      return start ? 1.6f : 1.7f;
+    case 'z': /* - Z */
+      return start ? 2.4f : 2.3f;
+    case 'Z': /* + Z */
+      return start ? 2.6f : 2.7f;
+  }
+  return 0.0;
+}
+
 /* A single ring of vertices. */
 static Vector<float2> ring_vertices(const float radius, const int segments)
 {
   Vector<float2> verts;
   for (int i : IndexRange(segments)) {
     float angle = (2 * M_PI * i) / segments;
-    verts.append(radius * float2(math::cos(angle), math::sin(angle)));
+    verts.append(radius * float2(math::sin(angle), math::cos(angle)));
   }
   return verts;
 }
@@ -103,6 +139,17 @@ static Vector<Vertex> sphere_axes_circles(const float radius,
     }
   }
   return verts;
+}
+
+static void light_append_direction_line(Vector<Vertex> &verts)
+{
+  static const Vector<float2> diamond = ring_vertices(1.2f, DIAMOND_NSEGMENTS);
+  static const float zsta = light_distance_z_get('z', true);
+  static const float zend = light_distance_z_get('z', false);
+  verts.append({{0.0, 0.0, zsta}, VCLASS_LIGHT_DIST});
+  verts.append({{0.0, 0.0, zend}, VCLASS_LIGHT_DIST});
+  append_as_lines_cyclic(verts, diamond, zsta, VCLASS_LIGHT_DIST | VCLASS_SCREENSPACE);
+  append_as_lines_cyclic(verts, diamond, zend, VCLASS_LIGHT_DIST | VCLASS_SCREENSPACE);
 }
 
 ShapeCache::ShapeCache()
@@ -356,6 +403,152 @@ ShapeCache::ShapeCache()
       }
     }
     speaker = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* ground line */
+  {
+    static const Vector<float2> ring = ring_vertices(1.35f, DIAMOND_NSEGMENTS);
+
+    Vector<Vertex> verts;
+    /* Ground Point */
+    for (int i : IndexRange(DIAMOND_NSEGMENTS)) {
+      for (int j : IndexRange(2)) {
+        float2 cv = ring[(i + j) % DIAMOND_NSEGMENTS];
+        verts.append({{cv[0], cv[1], 0.0f}, 0});
+      }
+    }
+    /* Ground Line */
+    verts.append({{0.0, 0.0, 1.0}, 0});
+    verts.append({{0.0, 0.0, 0.0}, 0});
+
+    ground_line = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* light spot volume */
+  {
+    Vector<Vertex> verts;
+
+    /* Cone apex */
+    verts.append({{0.0f, 0.0f, 0.0f}, 0});
+    /* Cone silhouette */
+    for (int a = 0; a < CIRCLE_NSEGMENTS + 1; a++) {
+      float angle = (2.0f * M_PI * a) / CIRCLE_NSEGMENTS;
+      float s = sinf(-angle);
+      float c = cosf(-angle);
+      verts.append({{s, c, -1.0f}, VCLASS_LIGHT_SPOT_SHAPE});
+    }
+    light_spot_volume = BatchPtr(GPU_batch_create_ex(
+        GPU_PRIM_TRI_FAN, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* light icon outer lines */
+  {
+    static const float r = 9.0f;
+    static const Vector<float2> ring = ring_vertices(r * 1.33f, OUTER_NSEGMENTS * 2);
+
+    Vector<Vertex> verts;
+    append_as_lines_cyclic(verts, ring, 0.0f, VCLASS_SCREENSPACE, true);
+    light_icon_outer_lines = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* light icon inner lines */
+  {
+    static const float r = 9.0f;
+    static const Vector<float2> diamond = ring_vertices(r * 0.3f, DIAMOND_NSEGMENTS);
+    static const Vector<float2> ring = ring_vertices(r * 1.0f, INNER_NSEGMENTS * 2);
+
+    Vector<Vertex> verts;
+    append_as_lines_cyclic(verts, diamond, 0.0f, VCLASS_SCREENSPACE);
+    append_as_lines_cyclic(verts, ring, 0.0f, VCLASS_SCREENSPACE, true);
+
+    light_icon_inner_lines = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* light icon sun rays */
+  {
+    static const int num_rays = 8;
+    static const float r = 9.0f;
+    static const Vector<float2> ring = ring_vertices(r * 1.0f, num_rays);
+    static const std::array<float, 4> scales{1.6f, 1.9f, 2.2f, 2.5f};
+
+    Vector<Vertex> verts;
+    for (const float2 &point : ring) {
+      for (float scale : scales) {
+        float2 scaled = point * scale;
+        verts.append({{scaled.x, scaled.y, 0.0f}, VCLASS_SCREENSPACE});
+      }
+    }
+    light_icon_sun_rays = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* light point lines */
+  {
+    static const Vector<float2> ring = ring_vertices(1.0f, CIRCLE_NSEGMENTS);
+
+    Vector<Vertex> verts;
+    append_as_lines_cyclic(verts, ring, 0.0f, VCLASS_SCREENALIGNED | VCLASS_LIGHT_AREA_SHAPE);
+    light_point_lines = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* light sun lines */
+  {
+    Vector<Vertex> verts;
+    /* Direction Line */
+    verts.append({{0.0, 0.0, 0.0}, 0});
+    verts.append({{0.0, 0.0, -20.0}, 0}); /* Good default. */
+    light_sun_lines = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* light spot lines */
+  {
+    static const Vector<float2> ring = ring_vertices(1.0f, CIRCLE_NSEGMENTS);
+
+    Vector<Vertex> verts;
+    /* Light area */
+    append_as_lines_cyclic(verts, ring, 0.0f, VCLASS_SCREENALIGNED | VCLASS_LIGHT_AREA_SHAPE);
+    /* Cone cap */
+    append_as_lines_cyclic(verts, ring, 0.0f, VCLASS_LIGHT_SPOT_SHAPE);
+    append_as_lines_cyclic(verts, ring, 0.0f, VCLASS_LIGHT_SPOT_SHAPE | VCLASS_LIGHT_SPOT_BLEND);
+    /* Cone silhouette */
+    for (const float2 &point : ring) {
+      verts.append({{0.0f, 0.0f, 0.0f}, 0});
+      verts.append({{point.x, point.y, -1.0f}, VCLASS_LIGHT_SPOT_SHAPE | VCLASS_LIGHT_SPOT_CONE});
+    }
+
+    light_append_direction_line(verts);
+
+    light_spot_lines = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* light area disk lines */
+  {
+    static const Vector<float2> ring = ring_vertices(0.5f, CIRCLE_NSEGMENTS);
+
+    Vector<Vertex> verts;
+    /* Light area */
+    append_as_lines_cyclic(verts, ring, 0.0f, VCLASS_LIGHT_AREA_SHAPE);
+
+    light_append_direction_line(verts);
+
+    light_area_disk_lines = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* light area square lines */
+  {
+    static const float rect[4][2] = {{-1.0f, -1.0f}, {-1.0f, 1.0f}, {1.0f, 1.0f}, {1.0f, -1.0f}};
+
+    Vector<Vertex> verts;
+    /* Light area */
+    for (int a = 0; a < 4; a++) {
+      for (int b = 0; b < 2; b++) {
+        float x = rect[(a + b) % 4][0];
+        float y = rect[(a + b) % 4][1];
+        verts.append({{x * 0.5f, y * 0.5f, 0.0f}, VCLASS_LIGHT_AREA_SHAPE});
+      }
+    }
+
+    light_append_direction_line(verts);
+
+    light_area_square_lines = BatchPtr(
         GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
   }
 }

@@ -78,6 +78,7 @@ void Instance::begin_sync()
   background.begin_sync(resources, state);
   prepass.begin_sync(resources, state);
   empties.begin_sync();
+  lights.begin_sync();
   metaballs.begin_sync();
   speakers.begin_sync();
   grid.begin_sync(resources, state, view);
@@ -129,6 +130,9 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
         break;
       case OB_ARMATURE:
         break;
+      case OB_LAMP:
+        lights.object_sync(ob_ref, resources, state);
+        break;
       case OB_MBALL:
         if (!in_edit_mode) {
           metaballs.object_sync(ob_ref, resources, state);
@@ -147,6 +151,7 @@ void Instance::end_sync()
 {
   resources.end_sync();
 
+  lights.end_sync(resources, shapes, state);
   metaballs.end_sync(resources, shapes, state);
   empties.end_sync(resources, shapes, state);
   speakers.end_sync(resources, shapes, state);
@@ -215,12 +220,14 @@ void Instance::draw(Manager &manager)
   background.draw(resources, manager);
 
   empties.draw(resources, manager, view);
+  lights.draw(resources, manager, view);
   metaballs.draw(resources, manager, view);
   speakers.draw(resources, manager, view);
 
   grid.draw(resources, manager, view);
 
   empties.draw_in_front(resources, manager, view);
+  lights.draw_in_front(resources, manager, view);
   metaballs.draw_in_front(resources, manager, view);
   speakers.draw_in_front(resources, manager, view);
 
