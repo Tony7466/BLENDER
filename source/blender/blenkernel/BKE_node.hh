@@ -71,6 +71,7 @@ class GatherLinkSearchOpParams;
 struct NodeExtraInfoParams;
 namespace inverse_eval {
 class InverseElemEvalParams;
+class ElemEvalParams;
 class InverseEvalParams;
 }  // namespace inverse_eval
 }  // namespace nodes
@@ -137,6 +138,7 @@ using NodeGetCompositorShaderNodeFunction =
 using NodeExtraInfoFunction = void (*)(blender::nodes::NodeExtraInfoParams &params);
 using NodeInverseElemEvalFunction =
     void (*)(blender::nodes::inverse_eval::InverseElemEvalParams &params);
+using NodeElemEvalFunction = void (*)(blender::nodes::inverse_eval::ElemEvalParams &params);
 using NodeInverseEvalFunction = void (*)(blender::nodes::inverse_eval::InverseEvalParams &params);
 
 /**
@@ -362,10 +364,14 @@ struct bNodeType {
   NodeExtraInfoFunction get_extra_info;
 
   /**
-   * "Abstract" inverse evaluation of the node. It tells the caller which inputs have to be
-   * modified so that certain parts of the outputs change. This allows figuring out how to
-   * backpropagate socket values without having to consider actual values. This is required for
-   * gizmos.
+   * "Abstract" evaluation of the node. It tells the caller which parts of the inputs affect which
+   * parts of the outputs.
+   */
+  NodeElemEvalFunction eval_elem;
+
+  /**
+   * Similar to #eval_elem but tells the caller which parts of the inputs have to be modified to
+   * modify the outputs.
    */
   NodeInverseElemEvalFunction eval_inverse_elem;
 

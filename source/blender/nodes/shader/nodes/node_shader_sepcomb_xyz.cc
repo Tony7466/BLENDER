@@ -91,6 +91,15 @@ static void sh_node_sepxyz_build_multi_function(NodeMultiFunctionBuilder &builde
   builder.set_matching_fn(separate_fn);
 }
 
+static void sh_node_sepxyz_eval_elem(inverse_eval::ElemEvalParams &params)
+{
+  using namespace inverse_eval;
+  const VectorElem vector_elem = params.get_input_elem<VectorElem>("Vector");
+  params.set_output_elem("X", vector_elem.x);
+  params.set_output_elem("Y", vector_elem.y);
+  params.set_output_elem("Z", vector_elem.z);
+}
+
 static void sh_node_sepxyz_eval_inverse_elem(inverse_eval::InverseElemEvalParams &params)
 {
   inverse_eval::VectorElem result;
@@ -131,6 +140,7 @@ void register_node_type_sh_sepxyz()
   ntype.gpu_fn = file_ns::gpu_shader_sepxyz;
   ntype.build_multi_function = file_ns::sh_node_sepxyz_build_multi_function;
   ntype.materialx_fn = file_ns::node_shader_materialx;
+  ntype.eval_elem = file_ns::sh_node_sepxyz_eval_elem;
   ntype.eval_inverse_elem = file_ns::sh_node_sepxyz_eval_inverse_elem;
   ntype.eval_inverse = file_ns::sh_node_sepxyz_eval_inverse;
 
@@ -164,6 +174,16 @@ static void sh_node_combxyz_build_multi_function(NodeMultiFunctionBuilder &build
       [](float x, float y, float z) { return float3(x, y, z); },
       mf::build::exec_presets::AllSpanOrSingle());
   builder.set_matching_fn(fn);
+}
+
+static void sh_node_combxyz_eval_elem(inverse_eval::ElemEvalParams &params)
+{
+  using namespace inverse_eval;
+  VectorElem vector_elem;
+  vector_elem.x = params.get_input_elem<FloatElem>("X");
+  vector_elem.y = params.get_input_elem<FloatElem>("Y");
+  vector_elem.z = params.get_input_elem<FloatElem>("Z");
+  params.set_output_elem("Vector", vector_elem);
 }
 
 static void sh_node_combxyz_eval_inverse_elem(inverse_eval::InverseElemEvalParams &params)
@@ -208,6 +228,7 @@ void register_node_type_sh_combxyz()
   ntype.gpu_fn = file_ns::gpu_shader_combxyz;
   ntype.build_multi_function = file_ns::sh_node_combxyz_build_multi_function;
   ntype.materialx_fn = file_ns::node_shader_materialx;
+  ntype.eval_elem = file_ns::sh_node_combxyz_eval_elem;
   ntype.eval_inverse_elem = file_ns::sh_node_combxyz_eval_inverse_elem;
   ntype.eval_inverse = file_ns::sh_node_combxyz_eval_inverse;
 

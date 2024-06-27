@@ -24,6 +24,13 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
   builder.set_matching_fn(fn);
 }
 
+static void node_eval_elem(inverse_eval::ElemEvalParams &params)
+{
+  using namespace inverse_eval;
+  const RotationElem rotation_elem = params.get_input_elem<RotationElem>("Rotation");
+  params.set_output_elem("Euler", rotation_elem.euler);
+}
+
 static void node_eval_inverse_elem(inverse_eval::InverseElemEvalParams &params)
 {
   using namespace inverse_eval;
@@ -45,6 +52,7 @@ static void node_register()
   fn_node_type_base(&ntype, FN_NODE_ROTATION_TO_EULER, "Rotation to Euler", NODE_CLASS_CONVERTER);
   ntype.declare = node_declare;
   ntype.build_multi_function = node_build_multi_function;
+  ntype.eval_elem = node_eval_elem;
   ntype.eval_inverse_elem = node_eval_inverse_elem;
   ntype.eval_inverse = node_eval_inverse;
   blender::bke::nodeRegisterType(&ntype);

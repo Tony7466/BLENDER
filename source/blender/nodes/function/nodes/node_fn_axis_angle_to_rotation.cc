@@ -32,6 +32,15 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
   builder.set_matching_fn(fn);
 }
 
+static void node_eval_elem(inverse_eval::ElemEvalParams &params)
+{
+  using namespace inverse_eval;
+  RotationElem rotation_elem;
+  rotation_elem.axis = params.get_input_elem<VectorElem>("Axis");
+  rotation_elem.angle = params.get_input_elem<FloatElem>("Angle");
+  params.set_output_elem("Rotation", rotation_elem);
+}
+
 static void node_eval_inverse_elem(inverse_eval::InverseElemEvalParams &params)
 {
   using namespace inverse_eval;
@@ -62,6 +71,7 @@ static void node_register()
       &ntype, FN_NODE_AXIS_ANGLE_TO_ROTATION, "Axis Angle to Rotation", NODE_CLASS_CONVERTER);
   ntype.declare = node_declare;
   ntype.build_multi_function = node_build_multi_function;
+  ntype.eval_elem = node_eval_elem;
   ntype.eval_inverse_elem = node_eval_inverse_elem;
   ntype.eval_inverse = node_eval_inverse;
   blender::bke::nodeRegisterType(&ntype);

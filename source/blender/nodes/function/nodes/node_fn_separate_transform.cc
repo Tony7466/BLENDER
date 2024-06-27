@@ -75,6 +75,15 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
   builder.set_matching_fn(fn);
 }
 
+static void node_eval_elem(inverse_eval::ElemEvalParams &params)
+{
+  using namespace inverse_eval;
+  const MatrixElem matrix_elem = params.get_input_elem<MatrixElem>("Transform");
+  params.set_output_elem("Translation", matrix_elem.translation);
+  params.set_output_elem("Rotation", matrix_elem.rotation);
+  params.set_output_elem("Scale", matrix_elem.scale);
+}
+
 static void node_eval_inverse_elem(inverse_eval::InverseElemEvalParams &params)
 {
   using namespace inverse_eval;
@@ -100,6 +109,7 @@ static void node_register()
       &ntype, FN_NODE_SEPARATE_TRANSFORM, "Separate Transform", NODE_CLASS_CONVERTER);
   ntype.declare = node_declare;
   ntype.build_multi_function = node_build_multi_function;
+  ntype.eval_elem = node_eval_elem;
   ntype.eval_inverse_elem = node_eval_inverse_elem;
   ntype.eval_inverse = node_eval_inverse;
   blender::bke::nodeRegisterType(&ntype);

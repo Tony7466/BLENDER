@@ -151,57 +151,85 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
   builder.set_matching_fn(fn);
 }
 
+static void node_eval_elem(inverse_eval::ElemEvalParams &params)
+{
+  using namespace inverse_eval;
+
+  std::array<std::array<FloatElem, 4>, 4> input_elems;
+  for (const int col : IndexRange(4)) {
+    for (const int row : IndexRange(4)) {
+      const bNodeSocket &socket = params.node.input_socket(col * 4 + row);
+      input_elems[col][row] = params.get_input_elem<FloatElem>(socket.identifier);
+    }
+  }
+
+  MatrixElem matrix_elem;
+  matrix_elem.translation.x = input_elems[3][0];
+  matrix_elem.translation.y = input_elems[3][1];
+  matrix_elem.translation.z = input_elems[3][2];
+
+  bool any_inner_3x3 = false;
+  for (const int col : IndexRange(3)) {
+    for (const int row : IndexRange(3)) {
+      any_inner_3x3 |= input_elems[col][row];
+    }
+  }
+  if (any_inner_3x3) {
+    matrix_elem.rotation = RotationElem::all();
+    matrix_elem.scale = VectorElem::all();
+  }
+
+  const bool any_non_transform = input_elems[0][3] | input_elems[1][3] | input_elems[2][3] |
+                                 input_elems[3][3];
+  if (any_non_transform) {
+    matrix_elem.any_non_transform = FloatElem::all();
+  }
+
+  params.set_output_elem("Matrix", matrix_elem);
+}
+
 static void node_eval_inverse_elem(inverse_eval::InverseElemEvalParams &params)
 {
   using namespace inverse_eval;
-  const MatrixElem matrix_elem = params.get_output_elem<MatrixElem>("Matrix");
 
-  params.set_input_elem("Column 4 Row 1", matrix_elem.translation.x);
-  params.set_input_elem("Column 4 Row 2", matrix_elem.translation.y);
-  params.set_input_elem("Column 4 Row 3", matrix_elem.translation.z);
+  const MatrixElem matrix_elem = params.get_output_elem<MatrixElem>("Matrix");
+  std::array<std::array<FloatElem, 4>, 4> input_elems;
+
+  input_elems[3][0] = matrix_elem.translation.x;
+  input_elems[3][1] = matrix_elem.translation.y;
+  input_elems[3][2] = matrix_elem.translation.z;
 
   if (matrix_elem.rotation || matrix_elem.scale) {
-    params.set_input_elem("Column 1 Row 1", FloatElem{true});
-    params.set_input_elem("Column 1 Row 2", FloatElem{true});
-    params.set_input_elem("Column 1 Row 3", FloatElem{true});
-    params.set_input_elem("Column 2 Row 1", FloatElem{true});
-    params.set_input_elem("Column 2 Row 2", FloatElem{true});
-    params.set_input_elem("Column 2 Row 3", FloatElem{true});
-    params.set_input_elem("Column 3 Row 1", FloatElem{true});
-    params.set_input_elem("Column 3 Row 2", FloatElem{true});
-    params.set_input_elem("Column 3 Row 3", FloatElem{true});
+    for (const int col : IndexRange(3)) {
+      for (const int row : IndexRange(3)) {
+        input_elems[col][row] = FloatElem::all();
+      }
+    }
   }
 
   if (matrix_elem.any_non_transform) {
-    params.set_input_elem("Column 1 Row 4", FloatElem{true});
-    params.set_input_elem("Column 2 Row 4", FloatElem{true});
-    params.set_input_elem("Column 3 Row 4", FloatElem{true});
-    params.set_input_elem("Column 4 Row 4", FloatElem{true});
+    for (const int col : IndexRange(4)) {
+      input_elems[col][3] = FloatElem::all();
+    }
+  }
+
+  for (const int col : IndexRange(4)) {
+    for (const int row : IndexRange(4)) {
+      const bNodeSocket &socket = params.node.input_socket(col * 4 + row);
+      params.set_input_elem(socket.identifier, input_elems[col][row]);
+    }
   }
 }
 
 static void node_eval_inverse(inverse_eval::InverseEvalParams &params)
 {
   const float4x4 matrix = params.get_output<float4x4>("Matrix");
-  params.set_input("Column 1 Row 1", matrix[0][0]);
-  params.set_input("Column 1 Row 2", matrix[0][1]);
-  params.set_input("Column 1 Row 3", matrix[0][2]);
-  params.set_input("Column 1 Row 4", matrix[0][3]);
-
-  params.set_input("Column 2 Row 1", matrix[1][0]);
-  params.set_input("Column 2 Row 2", matrix[1][1]);
-  params.set_input("Column 2 Row 3", matrix[1][2]);
-  params.set_input("Column 2 Row 4", matrix[1][3]);
-
-  params.set_input("Column 3 Row 1", matrix[2][0]);
-  params.set_input("Column 3 Row 2", matrix[2][1]);
-  params.set_input("Column 3 Row 3", matrix[2][2]);
-  params.set_input("Column 3 Row 4", matrix[2][3]);
-
-  params.set_input("Column 4 Row 1", matrix[3][0]);
-  params.set_input("Column 4 Row 2", matrix[3][1]);
-  params.set_input("Column 4 Row 3", matrix[3][2]);
-  params.set_input("Column 4 Row 4", matrix[3][3]);
+  for (const int col : IndexRange(4)) {
+    for (const int row : IndexRange(4)) {
+      const bNodeSocket &socket = params.node.input_socket(col * 4 + row);
+      params.set_input(socket.identifier, matrix[col][row]);
+    }
+  }
 }
 
 static void node_register()
@@ -210,6 +238,7 @@ static void node_register()
   fn_node_type_base(&ntype, FN_NODE_COMBINE_MATRIX, "Combine Matrix", NODE_CLASS_CONVERTER);
   ntype.declare = node_declare;
   ntype.build_multi_function = node_build_multi_function;
+  ntype.eval_elem = node_eval_elem;
   ntype.eval_inverse_elem = node_eval_inverse_elem;
   ntype.eval_inverse = node_eval_inverse;
   blender::bke::nodeRegisterType(&ntype);

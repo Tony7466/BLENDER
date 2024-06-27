@@ -317,6 +317,24 @@ static void sh_node_vector_math_build_multi_function(NodeMultiFunctionBuilder &b
   builder.set_matching_fn(fn);
 }
 
+static void node_eval_elem(inverse_eval::ElemEvalParams &params)
+{
+  using namespace inverse_eval;
+  const NodeMathOperation op = NodeMathOperation(params.node.custom1);
+  switch (op) {
+    case NODE_VECTOR_MATH_ADD:
+    case NODE_VECTOR_MATH_SUBTRACT:
+    case NODE_VECTOR_MATH_MULTIPLY:
+    case NODE_VECTOR_MATH_DIVIDE:
+    case NODE_VECTOR_MATH_SCALE: {
+      params.set_output_elem("Vector", params.get_input_elem<inverse_eval::VectorElem>("Vector"));
+      break;
+    }
+    default:
+      break;
+  }
+}
+
 static void node_eval_inverse_elem(inverse_eval::InverseElemEvalParams &params)
 {
   const NodeMathOperation op = NodeMathOperation(params.node.custom1);
@@ -536,6 +554,7 @@ void register_node_type_sh_vect_math()
   ntype.build_multi_function = file_ns::sh_node_vector_math_build_multi_function;
   ntype.gather_link_search_ops = file_ns::sh_node_vector_math_gather_link_searches;
   ntype.materialx_fn = file_ns::node_shader_materialx;
+  ntype.eval_elem = file_ns::node_eval_elem;
   ntype.eval_inverse_elem = file_ns::node_eval_inverse_elem;
   ntype.eval_inverse = file_ns::node_eval_inverse;
 

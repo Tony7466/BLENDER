@@ -189,6 +189,38 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
   builder.set_matching_fn(fn);
 }
 
+static void node_eval_elem(inverse_eval::ElemEvalParams &params)
+{
+  using namespace inverse_eval;
+  const MatrixElem matrix_elem = params.get_input_elem<MatrixElem>("Matrix");
+  std::array<std::array<FloatElem, 4>, 4> output_elems;
+
+  output_elems[3][0] = matrix_elem.translation.x;
+  output_elems[3][1] = matrix_elem.translation.y;
+  output_elems[3][2] = matrix_elem.translation.z;
+
+  if (matrix_elem.rotation || matrix_elem.scale) {
+    for (const int col : IndexRange(3)) {
+      for (const int row : IndexRange(3)) {
+        output_elems[col][row] = FloatElem::all();
+      }
+    }
+  }
+
+  if (matrix_elem.any_non_transform) {
+    for (const int col : IndexRange(4)) {
+      output_elems[col][3] = FloatElem::all();
+    }
+  }
+
+  for (const int col : IndexRange(4)) {
+    for (const int row : IndexRange(4)) {
+      const bNodeSocket &socket = params.node.output_socket(col * 4 + row);
+      params.set_output_elem(socket.identifier, output_elems[col][row]);
+    }
+  }
+}
+
 static void node_eval_inverse_elem(inverse_eval::InverseElemEvalParams &params)
 {
   using namespace inverse_eval;
@@ -245,6 +277,7 @@ static void node_register()
   fn_node_type_base(&ntype, FN_NODE_SEPARATE_MATRIX, "Separate Matrix", NODE_CLASS_CONVERTER);
   ntype.declare = node_declare;
   ntype.build_multi_function = node_build_multi_function;
+  ntype.eval_elem = node_eval_elem;
   ntype.eval_inverse_elem = node_eval_inverse_elem;
   ntype.eval_inverse = node_eval_inverse;
   blender::bke::nodeRegisterType(&ntype);

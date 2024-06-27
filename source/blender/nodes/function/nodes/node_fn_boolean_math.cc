@@ -129,6 +129,21 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
   builder.set_matching_fn(fn);
 }
 
+static void node_eval_elem(inverse_eval::ElemEvalParams &params)
+{
+  using namespace inverse_eval;
+  const NodeBooleanMathOperation op = NodeBooleanMathOperation(params.node.custom1);
+  switch (op) {
+    case NODE_BOOLEAN_MATH_NOT: {
+      params.set_output_elem("Boolean", params.get_input_elem<BoolElem>("Boolean"));
+      break;
+    }
+    default: {
+      break;
+    }
+  }
+}
+
 static void node_eval_inverse_elem(inverse_eval::InverseElemEvalParams &params)
 {
   using namespace inverse_eval;
@@ -181,6 +196,7 @@ static void node_register()
   ntype.build_multi_function = node_build_multi_function;
   ntype.draw_buttons = node_layout;
   ntype.gather_link_search_ops = node_gather_link_searches;
+  ntype.eval_elem = node_eval_elem;
   ntype.eval_inverse_elem = node_eval_inverse_elem;
   ntype.eval_inverse = node_eval_inverse;
   blender::bke::nodeRegisterType(&ntype);

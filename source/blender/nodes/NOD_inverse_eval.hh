@@ -32,6 +32,11 @@ struct PrimitiveValueElem {
     this->affected |= other.affected;
   }
 
+  void intersect(const PrimitiveValueElem &other)
+  {
+    this->affected &= other.affected;
+  }
+
   uint64_t hash() const
   {
     return get_default_hash(this->affected);
@@ -83,6 +88,13 @@ struct VectorElem {
     this->z.merge(other.z);
   }
 
+  void intersect(const VectorElem &other)
+  {
+    this->x.intersect(other.x);
+    this->y.intersect(other.y);
+    this->z.intersect(other.z);
+  }
+
   static VectorElem all()
   {
     return {true, true, true};
@@ -111,6 +123,13 @@ struct RotationElem {
     this->euler.merge(other.euler);
     this->axis.merge(other.axis);
     this->angle.merge(other.angle);
+  }
+
+  void intersect(const RotationElem &other)
+  {
+    this->euler.intersect(other.euler);
+    this->axis.intersect(other.axis);
+    this->angle.intersect(other.angle);
   }
 
   bool only_euler_angles() const
@@ -156,6 +175,14 @@ struct MatrixElem {
     this->any_non_transform.merge(other.any_non_transform);
   }
 
+  void intersect(const MatrixElem &other)
+  {
+    this->translation.intersect(other.translation);
+    this->rotation.intersect(other.rotation);
+    this->scale.intersect(other.scale);
+    this->any_non_transform.intersect(other.any_non_transform);
+  }
+
   static MatrixElem all()
   {
     return {VectorElem::all(), RotationElem::all(), VectorElem::all(), FloatElem::all()};
@@ -182,6 +209,17 @@ struct ElemVariant {
         [&](auto &value) {
           using T = std::decay_t<decltype(value)>;
           value.merge(std::get<T>(other.elem));
+        },
+        this->elem);
+  }
+
+  void intersect(const ElemVariant &other)
+  {
+    BLI_assert(this->elem.index() == other.elem.index());
+    std::visit(
+        [&](auto &value) {
+          using T = std::decay_t<decltype(value)>;
+          value.intersect(std::get<T>(other.elem));
         },
         this->elem);
   }
@@ -270,6 +308,34 @@ class InverseElemEvalParams {
   {
     const bNodeSocket &socket = node.input_by_identifier(identifier);
     input_elems_.append({&socket, ElemVariant{elem}});
+  }
+};
+
+class ElemEvalParams {
+ private:
+  const Map<const bNodeSocket *, ElemVariant> &elem_by_socket_;
+  Vector<SocketElem> &output_elems_;
+
+ public:
+  const bNode &node;
+
+  ElemEvalParams(const bNode &node,
+                 const Map<const bNodeSocket *, ElemVariant> &elem_by_socket,
+                 Vector<SocketElem> &output_elems);
+
+  template<typename T> T get_input_elem(const StringRef identifier) const
+  {
+    const bNodeSocket &socket = node.input_by_identifier(identifier);
+    if (const ElemVariant *elem = this->elem_by_socket_.lookup_ptr(&socket)) {
+      return std::get<T>(elem->elem);
+    }
+    return T();
+  }
+
+  template<typename T> void set_output_elem(const StringRef identifier, T elem)
+  {
+    const bNodeSocket &socket = node.output_by_identifier(identifier);
+    output_elems_.append({&socket, ElemVariant{elem}});
   }
 };
 
