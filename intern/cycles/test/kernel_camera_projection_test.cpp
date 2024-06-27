@@ -175,6 +175,11 @@ TEST(KernelCamera, FisheyeLensPolynomialToDirection)
       {{0.5 + rad45, 0.5}, {cos45, -sin45, 0.0}},
       {{0.5 - rad45, 0.5}, {cos45, sin45, 0.0}},
 
+      {{0.5 + rad45 * M_SQRT1_2f, 0.5 + rad45 * M_SQRT1_2f}, {cos45, -0.5f, +0.5f}},
+      {{0.5 - rad45 * M_SQRT1_2f, 0.5 + rad45 * M_SQRT1_2f}, {cos45, +0.5f, +0.5f}},
+      {{0.5 + rad45 * M_SQRT1_2f, 0.5 - rad45 * M_SQRT1_2f}, {cos45, -0.5f, -0.5f}},
+      {{0.5 - rad45 * M_SQRT1_2f, 0.5 - rad45 * M_SQRT1_2f}, {cos45, +0.5f, -0.5f}},
+
       /* 30° */
       {{0.5, 0.5 + rad30}, {cos30, 0.0, sin30}},
       {{0.5, 0.5 - rad30}, {cos30, 0.0, -sin30}},
