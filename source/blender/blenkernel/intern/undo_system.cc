@@ -230,9 +230,6 @@ static void undosys_step_decode(bContext *C,
 
 static void undosys_step_free_and_unlink(UndoStack *ustack, UndoStep *us)
 {
-  printf("%s\n", __func__);
-  printf("  %p\n", ustack);
-  printf("  %p\n", us);
   CLOG_INFO(&LOG, 2, "addr=%p, name='%s', type='%s'", us, us->name, us->type->name);
   UNDO_NESTED_CHECK_BEGIN;
   us->type->step_free(us);
@@ -283,8 +280,6 @@ void BKE_undosys_stack_destroy(UndoStack *ustack)
 
 void BKE_undosys_stack_clear(UndoStack *ustack)
 {
-  printf("%s\n", __func__);
-  printf("  %p\n", ustack);
   UNDO_NESTED_ASSERT(false);
   CLOG_INFO(&LOG, 1, "steps=%d", BLI_listbase_count(&ustack->steps));
   for (UndoStep *us = static_cast<UndoStep *>(ustack->steps.last), *us_prev; us; us = us_prev) {
@@ -480,8 +475,6 @@ UndoStep *BKE_undosys_step_push_init_with_type(UndoStack *ustack,
                                                const char *name,
                                                const UndoType *ut)
 {
-  printf("%s\n", __func__);
-  printf("  %p\n", ustack);
   UNDO_NESTED_ASSERT(false);
   /* We could detect and clean this up (but it should never happen!). */
   BLI_assert(ustack->step_init == nullptr);
@@ -497,7 +490,6 @@ UndoStep *BKE_undosys_step_push_init_with_type(UndoStack *ustack,
     }
 
     UndoStep *us = static_cast<UndoStep *>(MEM_callocN(ut->step_size, __func__));
-    printf("  %p\n", us);
     if (name != nullptr) {
       STRNCPY(us->name, name);
     }

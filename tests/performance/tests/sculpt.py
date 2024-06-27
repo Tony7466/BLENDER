@@ -115,7 +115,7 @@ def _run(args):
     context = bpy.context
 
     # Create an undo stack explicitly. This isn't created by default in background mode.
-    # bpy.ops.ed.undo_push()
+    bpy.ops.ed.undo_push()
 
     prepare_sculpt_scene(context)
 
@@ -123,7 +123,6 @@ def _run(args):
     set_view3d_context_override(context_override)
 
     with context.temp_override(**context_override):
-        # bpy.ops.paint.brush_select(sculpt_tool=sculpt_tool)
         start = time.time()
         bpy.ops.sculpt.brush_stroke(stroke=generate_stroke(context_override))
         end = time.time()
