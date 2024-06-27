@@ -1,27 +1,13 @@
-/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2021-2022 Blender Foundation
  *
  * SPDX-License-Identifier: Apache-2.0 */
 
-#define CCL_EXTERN_DECLS
+/* Copy of the regular kernels with additional shader ray-tracing kernel that takes
+ * much longer to compiler. This is only loaded when needed by the scene. */
 
-#include "kernel/device/optix/compat.h"
-#include "kernel/device/optix/globals.h"
-
-#include "kernel/device/gpu/image.h"
-#include "kernel/tables_extern.h"
-
-#include "kernel/integrator/state_util.h"
+#include "kernel/device/optix/kernel.cu"
 
 #include "kernel/integrator/shade_surface.h"
-
-extern "C" __global__ void __raygen__kernel_optix_integrator_shade_surface()
-{
-  const int global_index = optixGetLaunchIndex().x;
-  const int path_index = (kernel_params.path_index_array) ?
-                             kernel_params.path_index_array[global_index] :
-                             global_index;
-  integrator_shade_surface(nullptr, path_index, kernel_params.render_buffer);
-}
 
 extern "C" __global__ void __raygen__kernel_optix_integrator_shade_surface_raytrace()
 {

@@ -12,9 +12,6 @@ ccl_device_noinline void svm_node_combine_color(KernelGlobals kg,
                                                 uint color_type,
                                                 uint inputs_stack_offsets,
                                                 uint result_stack_offset)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   uint red_stack_offset, green_stack_offset, blue_stack_offset;
   svm_unpack_node_uchar3(
@@ -31,7 +28,6 @@ ccl_device_noinline void svm_node_combine_color(KernelGlobals kg,
     stack_store_float3(stack, result_stack_offset, color);
   }
 }
-#endif
 
 ccl_device_noinline void svm_node_separate_color(KernelGlobals kg,
                                                  ccl_private ShaderData *sd,
@@ -39,9 +35,6 @@ ccl_device_noinline void svm_node_separate_color(KernelGlobals kg,
                                                  uint color_type,
                                                  uint input_stack_offset,
                                                  uint results_stack_offsets)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   float3 color = stack_load_float3(stack, input_stack_offset);
 
@@ -59,6 +52,5 @@ ccl_device_noinline void svm_node_separate_color(KernelGlobals kg,
   if (stack_valid(blue_stack_offset))
     stack_store_float(stack, blue_stack_offset, color.z);
 }
-#endif
 
 CCL_NAMESPACE_END

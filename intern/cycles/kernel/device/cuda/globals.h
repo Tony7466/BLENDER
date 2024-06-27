@@ -32,7 +32,7 @@ struct KernelParamsCUDA {
 };
 
 #ifdef __KERNEL_GPU__
-extern __constant__ KernelParamsCUDA kernel_params;
+__constant__ KernelParamsCUDA kernel_params;
 #endif
 
 /* Abstraction macros */

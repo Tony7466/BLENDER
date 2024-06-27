@@ -101,9 +101,6 @@ ccl_device_noinline void svm_node_light_path(KernelGlobals kg,
 ccl_device_noinline void svm_node_light_falloff(ccl_private ShaderData *sd,
                                                 ccl_private float *stack,
                                                 uint4 node)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   uint strength_offset, out_offset, smooth_offset;
 
@@ -135,6 +132,5 @@ ccl_device_noinline void svm_node_light_falloff(ccl_private ShaderData *sd,
 
   stack_store_float(stack, out_offset, strength);
 }
-#endif
 
 CCL_NAMESPACE_END

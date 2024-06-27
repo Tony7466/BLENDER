@@ -13,9 +13,6 @@ ccl_device_noinline int svm_node_combine_hsv(KernelGlobals kg,
                                              uint saturation_in,
                                              uint value_in,
                                              int offset)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   uint4 node1 = read_node(kg, &offset);
   uint color_out = node1.y;
@@ -32,7 +29,6 @@ ccl_device_noinline int svm_node_combine_hsv(KernelGlobals kg,
   }
   return offset;
 }
-#endif
 
 ccl_device_noinline int svm_node_separate_hsv(KernelGlobals kg,
                                               ccl_private ShaderData *sd,
@@ -41,9 +37,6 @@ ccl_device_noinline int svm_node_separate_hsv(KernelGlobals kg,
                                               uint hue_out,
                                               uint saturation_out,
                                               int offset)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   uint4 node1 = read_node(kg, &offset);
   uint value_out = node1.y;
@@ -61,6 +54,5 @@ ccl_device_noinline int svm_node_separate_hsv(KernelGlobals kg,
     stack_store_float(stack, value_out, color.z);
   return offset;
 }
-#endif
 
 CCL_NAMESPACE_END

@@ -12,9 +12,6 @@ ccl_device_noinline void svm_node_ies(KernelGlobals kg,
                                       ccl_private ShaderData *sd,
                                       ccl_private float *stack,
                                       uint4 node)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   uint vector_offset, strength_offset, fac_offset, slot = node.z;
   svm_unpack_node_uchar3(node.y, &strength_offset, &vector_offset, &fac_offset);
@@ -32,6 +29,5 @@ ccl_device_noinline void svm_node_ies(KernelGlobals kg,
     stack_store_float(stack, fac_offset, fac);
   }
 }
-#endif
 
 CCL_NAMESPACE_END
