@@ -1930,10 +1930,9 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
       }
     }
   };
-  static BuiltinConstraintAttributeProvider<bool,
-                                            nullptr,
-                                            constraint_disable_collision_set_fn,
-                                            constraint_disable_collision_get_cache_fn>
+  static BuiltinConstraintAttributeProviderWithCache<bool,
+                                                     constraint_disable_collision_get_cache_fn,
+                                                     constraint_disable_collision_set_fn>
       constraint_disable_collision(
           PhysicsGeometry::builtin_attributes.disable_collision,
           AttrDomain::Edge,

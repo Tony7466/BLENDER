@@ -37,6 +37,8 @@ template<typename T> using RigidBodySetFn = void (*)(btRigidBody &body, T value)
 template<typename T> using ConstraintGetFn = T (*)(const btTypedConstraint *constraint);
 template<typename T> using ConstraintSetFn = void (*)(btTypedConstraint *constraint, T value);
 
+template<typename T> using PhysicsGetCacheFn = Span<T> (*)(const bke::PhysicsGeometryImpl &impl);
+
 template<typename ElemT, RigidBodyGetFn<ElemT> GetFn>
 class VArrayImpl_For_PhysicsBodies final : public VArrayImpl<ElemT> {
  private:
@@ -266,6 +268,69 @@ class VMutableArrayImpl_For_PhysicsConstraints final : public VMutableArrayImpl<
     mask.foreach_index_optimized<int64_t>([&](const int64_t i, const int64_t pos) {
       new (dst + pos) ElemT(GetFn(impl_->constraints[i]));
     });
+  }
+};
+
+template<typename ElemT, PhysicsGetCacheFn<ElemT> GetCacheFn, ConstraintSetFn<ElemT> SetFn>
+class VMutableArrayImpl_For_PhysicsConstraintsWithCache final : public VMutableArrayImpl<ElemT> {
+ private:
+  const PhysicsGeometryImpl *impl_;
+  // XXX causes mystery crashes, investigate ...
+  // std::unique_lock<std::shared_mutex> lock_;
+
+ public:
+  VMutableArrayImpl_For_PhysicsConstraintsWithCache(const PhysicsGeometryImpl &impl)
+      : VMutableArrayImpl<ElemT>(impl.constraints.size()), impl_(&impl)
+  /*, lock_(impl_->data_mutex)*/
+  {
+    // lock_.lock();
+  }
+
+  ~VMutableArrayImpl_For_PhysicsConstraintsWithCache()
+  {
+    // lock_.unlock();
+  }
+
+  template<typename OtherElemT,
+           PhysicsGetCacheFn<OtherElemT> OtherGetCacheFn,
+           ConstraintSetFn<OtherElemT> OtherSetFn>
+  friend class VMutableArrayImpl_For_PhysicsConstraintsWithCache;
+
+ private:
+  ElemT get(const int64_t index) const override
+  {
+    return GetCacheFn(*impl_)[index];
+  }
+
+  void set(const int64_t index, ElemT value) override
+  {
+    SetFn(impl_->constraints[index], value);
+  }
+
+  void materialize(const IndexMask &mask, ElemT *dst) const override
+  {
+    Span<ElemT> cache = GetCacheFn(*impl_);
+    mask.foreach_index_optimized<int64_t>([&](const int64_t i) { dst[i] = cache[i]; });
+  }
+
+  void materialize_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
+  {
+    Span<ElemT> cache = GetCacheFn(*impl_);
+    mask.foreach_index_optimized<int64_t>([&](const int64_t i) { new (dst + i) ElemT(cache[i]); });
+  }
+
+  void materialize_compressed(const IndexMask &mask, ElemT *dst) const override
+  {
+    Span<ElemT> cache = GetCacheFn(*impl_);
+    mask.foreach_index_optimized<int64_t>(
+        [&](const int64_t i, const int64_t pos) { dst[pos] = cache[i]; });
+  }
+
+  void materialize_compressed_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
+  {
+    Span<ElemT> cache = GetCacheFn(*impl_);
+    mask.foreach_index_optimized<int64_t>(
+        [&](const int64_t i, const int64_t pos) { new (dst + pos) ElemT(cache[i]); });
   }
 };
 
@@ -524,6 +589,94 @@ class BuiltinConstraintAttributeProvider final : public BuiltinPhysicsAttributeB
     GVMutableArray varray =
         VMutableArray<T>::template For<VMutableArrayImpl_For_PhysicsConstraints<T, GetFn, SetFn>>(
             physics->impl());
+
+    std::function<void()> tag_modified_fn;
+    if (update_on_change_ != nullptr) {
+      tag_modified_fn = [owner, update = update_on_change_]() { update(owner); };
+    }
+
+    return {std::move(varray), domain_, std::move(tag_modified_fn)};
+  }
+
+  bool try_delete(void * /*owner*/) const final
+  {
+    return false;
+  }
+
+  bool try_create(void * /*owner*/, const AttributeInit & /*initializer*/) const final
+  {
+    return false;
+  }
+
+  bool exists(const void * /*owner*/) const final
+  {
+    return true;
+  }
+};
+
+/**
+ * Variation for attributes that use a cached array for reading.
+ */
+template<typename T, PhysicsGetCacheFn<T> GetCacheFn, ConstraintSetFn<T> SetFn = nullptr>
+class BuiltinConstraintAttributeProviderWithCache final : public BuiltinPhysicsAttributeBase {
+  using EnsureOnAccess = void (*)(const void *owner);
+  const EnsureOnAccess ensure_on_access_;
+
+ public:
+  BuiltinConstraintAttributeProviderWithCache(std::string attribute_name,
+                                              const AttrDomain domain,
+                                              const DeletableEnum deletable,
+                                              const PhysicsAccessInfo physics_access,
+                                              const UpdateOnChange update_on_change,
+                                              const AttributeValidator validator = {},
+                                              const EnsureOnAccess ensure_on_access = nullptr)
+      : BuiltinPhysicsAttributeBase(std::move(attribute_name),
+                                    domain,
+                                    cpp_type_to_custom_data_type(CPPType::get<T>()),
+                                    deletable,
+                                    physics_access,
+                                    update_on_change,
+                                    validator),
+        ensure_on_access_(ensure_on_access)
+  {
+  }
+
+  GAttributeReader try_get_for_read(const void *owner) const final
+  {
+    const PhysicsGeometry *physics = physics_access_.get_const_physics(owner);
+    if (physics == nullptr) {
+      return {};
+    }
+
+    if (ensure_on_access_) {
+      ensure_on_access_(owner);
+    }
+
+    GVArray varray = VArray<T>::ForSpan(GetCacheFn(physics->impl()));
+
+    return {std::move(varray), domain_, nullptr};
+  }
+
+  GAttributeWriter try_get_for_write(void *owner) const final
+  {
+    if constexpr (SetFn == nullptr) {
+      return {};
+    }
+    PhysicsGeometry *physics = physics_access_.get_physics(owner);
+    if (physics == nullptr) {
+      return {};
+    }
+
+    if (ensure_on_access_) {
+      ensure_on_access_(owner);
+    }
+
+    if (physics->impl().is_cached) {
+      return try_get_cache_for_write(owner);
+    }
+
+    GVMutableArray varray = VMutableArray<T>::template For<
+        VMutableArrayImpl_For_PhysicsConstraintsWithCache<T, GetCacheFn, SetFn>>(physics->impl());
 
     std::function<void()> tag_modified_fn;
     if (update_on_change_ != nullptr) {
