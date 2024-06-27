@@ -2115,7 +2115,15 @@ static ImBuf *do_adjustment(const SeqRenderData *context,
     return nullptr;
   }
 
-  out = do_adjustment_impl(context, seq, timeline_frame);
+  /* Allow use of strobe. For movies, this is implemented in `SEQ_give_frame_index`, but it can't
+   * be used for effects, since they do not have length. */
+  float frame_index = timeline_frame - SEQ_time_start_frame_get(seq);
+  if (seq->strobe > 1.0f) {
+    frame_index -= fmodf(double(frame_index), double(seq->strobe));
+  }
+  const float new_timeline_frame = SEQ_time_start_frame_get(seq) + frame_index;
+
+  out = do_adjustment_impl(context, seq, new_timeline_frame);
 
   return out;
 }
