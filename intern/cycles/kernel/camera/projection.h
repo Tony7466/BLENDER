@@ -152,6 +152,8 @@ ccl_device float2 direction_to_fisheye_lens_polynomial(
    * coeffs.y = coeffs.z = coeffs.w = 0 */
   float r = (theta - coeff0) / coeffs.x;
 
+  const float4 diff_coeffs = make_float4(1.0f, 2.0f, 3.0f, 4.0f) * coeffs;
+
   for (int i = 0; i < 20; i++) {
     /*  Newton's method for finding roots
      *
@@ -166,9 +168,9 @@ ccl_device float2 direction_to_fisheye_lens_polynomial(
      * \{ */
     const float old_r = r;
     const float r2 = r * r;
-    r += (theta - (coeff0 + dot(coeffs, make_float4(r, r2, r2 * r, r2 * r2)))) /
-         dot(make_float4(coeffs.x, 2 * coeffs.y, 3 * coeffs.z, 4 * coeffs.w),
-             make_float4(1, r, r2, r2 * r));
+    const float F_r = theta - (coeff0 + dot(coeffs, make_float4(r, r2, r2 * r, r2 * r2)));
+    const float dF_r = dot(diff_coeffs, make_float4(1.0f, r, r2, r2 * r));
+    r += F_r / dF_r;
 
     /* Early termination if the change is below the threshold */
     if (fabsf(r - old_r) < 1e-6f) {
