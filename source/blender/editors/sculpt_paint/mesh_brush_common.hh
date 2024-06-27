@@ -56,6 +56,7 @@ void scale_factors(MutableSpan<float> factors, float strength);
  *   are built for these values, then applied to `positions_orig`.
  */
 
+/** Fill the output array with all positions in the grids referenced by the indices. */
 void gather_grids_positions(const SubdivCCG &subdiv_ccg,
                             Span<int> grids,
                             MutableSpan<float3> positions);
