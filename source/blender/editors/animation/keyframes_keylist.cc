@@ -1113,6 +1113,8 @@ void fcurve_to_keylist(AnimData *adt,
 
   /* Loop through beztriples, making ActKeysColumns. */
   for (int v = 0; v < fcu->totvert; v++) {
+    /* Not using binary search to limit the range because the FCurve might not be sorted e.g. when
+     * transforming in the Dope Sheet. */
     const float x = fcu->bezt[v].vec[1][0];
     if (x < range[0] || x > range[1]) {
       continue;
