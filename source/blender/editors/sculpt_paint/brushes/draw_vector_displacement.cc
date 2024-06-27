@@ -64,7 +64,7 @@ static void calc_brush_texture_colors(SculptSession &ss,
                                       const Span<float> factors,
                                       const MutableSpan<float4> r_colors)
 {
-  BLI_assert(verts.size() == r_colors.size());
+  BLI_assert(positions.size() == r_colors.size());
 
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
