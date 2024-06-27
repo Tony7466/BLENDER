@@ -3291,12 +3291,13 @@ static Mesh *create_liquid_geometry(FluidDomainSettings *fds,
   /* Velocities. */
   /* If needed, vertex velocities will be read too. */
   bool use_speedvectors = fds->flags & FLUID_DOMAIN_USE_SPEED_VECTORS;
+  bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
   SpanAttributeWriter<float3> velocities;
   float time_mult = fds->dx / (DT_DEFAULT * (25.0f / FPS));
 
   if (use_speedvectors) {
-    velocities = mesh->attributes_for_write().lookup_or_add_for_write_only_span<float3>(
-        "velocity", AttrDomain::Point);
+    velocities = attributes.lookup_or_add_for_write_only_span<float3>("velocity",
+                                                                      AttrDomain::Point);
   }
 
   /* Loop for vertices and normals. */
@@ -3348,7 +3349,6 @@ static Mesh *create_liquid_geometry(FluidDomainSettings *fds,
     }
   }
 
-  bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
   bke::SpanAttributeWriter material_indices = attributes.lookup_or_add_for_write_span<int>(
       "material_index", AttrDomain::Face);
 
