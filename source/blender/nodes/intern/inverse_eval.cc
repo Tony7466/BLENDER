@@ -127,7 +127,8 @@ static void traverse_upstream(
     FunctionRef<void(const NodeInContext &ctx_node, Vector<const bNodeSocket *> &r_sockets)>
         get_inputs_to_propagate,
     Set<SocketInContext> &r_final_sockets,
-    Set<NodeInContext> &r_final_value_nodes)
+    Set<NodeInContext> &r_final_value_nodes,
+    Set<SocketInContext> &r_final_group_inputs)
 {
   Set<NodeInContext> scheduled_nodes_set;
   std::priority_queue<NodeInContext, std::vector<NodeInContext>, NodeInContextUpstreamComparator>
@@ -166,6 +167,7 @@ static void traverse_upstream(
     const auto *group_context = dynamic_cast<const bke::GroupNodeComputeContext *>(
         ctx_output_socket.context);
     if (!group_context) {
+      r_final_group_inputs.add(ctx_output_socket);
       return;
     }
     const bNodeTree &caller_tree = *group_context->caller_tree();
@@ -552,6 +554,7 @@ LocalInverseEvalTargets find_local_inverse_eval_targets(const bNodeTree &tree,
 
   Set<SocketInContext> final_sockets;
   Set<NodeInContext> final_value_nodes;
+  Set<SocketInContext> final_group_inputs;
 
   traverse_upstream(
       {{nullptr, initial_socket_elem.socket}},
@@ -569,7 +572,8 @@ LocalInverseEvalTargets find_local_inverse_eval_targets(const bNodeTree &tree,
         traverse_elem::get_inputs_to_propagate(ctx_node, r_sockets, elem_by_socket);
       },
       final_sockets,
-      final_value_nodes);
+      final_value_nodes,
+      final_group_inputs);
 
   LocalInverseEvalTargets targets;
 
@@ -661,6 +665,7 @@ void foreach_element_on_inverse_eval_path(
 
   Set<SocketInContext> final_sockets;
   Set<NodeInContext> final_value_nodes;
+  Set<SocketInContext> final_group_inputs;
 
   traverse_upstream(
       {{&initial_context, initial_socket_elem.socket}},
@@ -678,10 +683,12 @@ void foreach_element_on_inverse_eval_path(
         traverse_elem::get_inputs_to_propagate(ctx_node, r_sockets, elem_by_socket);
       },
       final_sockets,
-      final_value_nodes);
+      final_value_nodes,
+      final_group_inputs);
 
   Vector<SocketInContext> forward_propagate_sockets;
   forward_propagate_sockets.extend(final_sockets.begin(), final_sockets.end());
+  forward_propagate_sockets.extend(final_group_inputs.begin(), final_group_inputs.end());
   for (const NodeInContext &ctx_node : final_value_nodes) {
     forward_propagate_sockets.append({ctx_node.context, &ctx_node.node->output_socket(0)});
   }
@@ -1115,6 +1122,7 @@ bool backpropagate_socket_values(bContext &C,
 
   Set<SocketInContext> final_sockets;
   Set<NodeInContext> final_value_nodes;
+  Set<SocketInContext> final_group_inputs;
 
   traverse_upstream(
       initial_sockets,
@@ -1191,7 +1199,8 @@ bool backpropagate_socket_values(bContext &C,
         }
       },
       final_sockets,
-      final_value_nodes);
+      final_value_nodes,
+      final_group_inputs);
 
   bool any_success = false;
   for (const SocketInContext &ctx_socket : final_sockets) {
