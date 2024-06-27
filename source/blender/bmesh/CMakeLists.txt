@@ -65,6 +65,8 @@ set(SRC
   intern/bmesh_delete.hh
   intern/bmesh_edgeloop.cc
   intern/bmesh_edgeloop.hh
+  intern/bmesh_edgeloop_uv.cc
+  intern/bmesh_edgeloop_uv.hh
   intern/bmesh_inline.hh
   intern/bmesh_interp.cc
   intern/bmesh_interp.hh

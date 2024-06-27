@@ -193,6 +193,7 @@
 #include "intern/bmesh_core.hh"
 #include "intern/bmesh_delete.hh"
 #include "intern/bmesh_edgeloop.hh"
+#include "intern/bmesh_edgeloop_uv.hh"
 #include "intern/bmesh_interp.hh"
 #include "intern/bmesh_iterators.hh"
 #include "intern/bmesh_log.hh"

@@ -54,6 +54,7 @@
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
+#include "bmesh.hh"
 #include "uvedit_intern.hh"
 
 using blender::Vector;
@@ -2789,36 +2790,17 @@ void UV_OT_stitch(wmOperatorType *ot)
 }
 
 static bool uvedit_uv_threshold_weld(Scene *scene,
-                                 blender::Vector<Object *> *objects,
-                                float threshold)
+                                     blender::Vector<Object *> *objects,
+                                     float threshold)
 {
-  std::unordered_map<std::pair<float, float>, loopData, pair_hash, pair_equal> loopMap;
-  for (size_t i = 0; i < objects->size(); i++) {
-    Object* obedit = (*objects)[i];
-    BMEditMesh *em = BKE_editmesh_from_object(obedit);
-    BMesh* bm = em->bm;
-    float aspect_y = ED_uvedit_get_aspect_y(obedit);
-    getBMLoopPointers(scene, bm, i, aspect_y, &loopMap);
-  }
-  std::vector<std::pair<loopData*,loopData*>>linesegmentsdata;
-  // Iterates through both linked lists and merges respective pairs
+  std::vector<std::vector<std::vector<BMLoop *>>> *edgeloops;
+  for (Object *objedit : *objects) {
 
-  if(construct_pairs_of_selected_UVCoordinates(&loopMap, &linesegmentsdata)){
-    for (const auto& segment : linesegmentsdata) {
-      loopData* data1 = segment.first;
-      loopData* data2 = segment.second;
-      ED_uvedit_shift_pair_of_UV_coordinates(objects, data1, data2, threshold, mid_v2_v2v2);
-
-    }
-
-  } else{
-    return false;
+    BMEditMesh *em = BKE_editmesh_from_object(objedit);
+    UV_get_edgeloops(scene, em->bm, edgeloops, uvedit_uv_select_test);
   }
   return true;
 }
-
-
-
 
 static int stitch_distance_exec(bContext *C, wmOperator *op)
 {
@@ -2835,20 +2817,17 @@ static int stitch_distance_exec(bContext *C, wmOperator *op)
     DEG_id_tag_update(static_cast<ID *>(objects[0]->data), 0);
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, objects[0]->data);
     return OPERATOR_FINISHED;
-  } else{
+  }
+  else {
     return OPERATOR_CANCELLED;
   }
-
-
 }
-
 
 void UV_OT_stitch_distance(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Stitch UVs by Distance";
-  ot->description =
-      "This operator will stitch UVs together based on the distance between them";
+  ot->description = "This operator will stitch UVs together based on the distance between them";
   ot->idname = "UV_OT_stitch_distance";
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
