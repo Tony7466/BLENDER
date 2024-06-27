@@ -473,8 +473,18 @@ void PreviewGridItem::build_grid_tile_button(uiLayout &layout,
   const GridViewStyle &style = this->get_view().get_style();
   uiBlock *block = uiLayoutGetBlock(&layout);
 
-  uiBut *but;
+  /* TODO move to interface.cc */
+  /* TODO "Assign Shortcut" becomes unavailable this way. */
   if (ot) {
+    view_item_but_->optype = const_cast<wmOperatorType *>(ot);
+    view_item_but_->opcontext = WM_OP_INVOKE_REGION_WIN;
+    view_item_but_->flag &=
+        ~UI_BUT_UNDO; /* no need for ui_but_is_rna_undo(), we never need undo here */
+    view_item_but_->opptr = MEM_new<PointerRNA>(__func__, *op_props);
+  }
+
+  uiBut *but;
+  if (ot && false) {
     but = uiDefButO_ptr(block,
                         UI_BTYPE_PREVIEW_TILE,
                         const_cast<wmOperatorType *>(ot),

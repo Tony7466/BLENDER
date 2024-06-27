@@ -10024,16 +10024,31 @@ static int ui_handle_view_item_event(bContext *C,
                                      uiBut *active_but,
                                      ARegion *region)
 {
-  if ((event->type == LEFTMOUSE) && (event->val == KM_PRESS)) {
-    /* Only bother finding the active view item button if the active button isn't already a view
-     * item. */
-    uiBut *view_but = (active_but && active_but->type == UI_BTYPE_VIEW_ITEM) ?
-                          active_but :
-                          ui_view_item_find_mouse_over(region, event->xy);
-    /* Will free active button if there already is one. */
-    if (view_but) {
-      UI_but_execute(C, region, view_but);
-    }
+  switch (event->type) {
+    case LEFTMOUSE:
+      if (event->val == KM_PRESS) {
+        /* Only bother finding the active view item button if the active button isn't already a
+         * view item. */
+        uiBut *view_but = (active_but && active_but->type == UI_BTYPE_VIEW_ITEM) ?
+                              active_but :
+                              ui_view_item_find_mouse_over(region, event->xy);
+        /* Will free active button if there already is one. */
+        if (view_but) {
+          UI_but_execute(C, region, view_but);
+        }
+      }
+      break;
+    case EVT_RETKEY:
+    case EVT_PADENTER:
+      if (event->val == KM_PRESS) {
+        if (uiBut *search_highlight_but = ui_view_item_find_search_highlight(region)) {
+          UI_but_execute(C, region, search_highlight_but);
+          return WM_UI_HANDLER_BREAK;
+        }
+      }
+      break;
+    default:
+      break;
   }
 
   return WM_UI_HANDLER_CONTINUE;
