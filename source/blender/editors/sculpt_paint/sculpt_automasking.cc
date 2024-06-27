@@ -11,6 +11,7 @@
 #include "BLI_array.hh"
 #include "BLI_hash.h"
 #include "BLI_index_range.hh"
+#include "BLI_math_base.hh"
 #include "BLI_math_base_safe.h"
 #include "BLI_math_vector.h"
 #include "BLI_math_vector_types.hh"
@@ -609,6 +610,31 @@ void calc_vert_factors(const Object &object,
       mesh_orig_vert_data_update(*data.orig_data, i);
     }
     factors[i] *= factor_get(&cache, ss, BKE_pbvh_make_vref(verts[i]), &data);
+  }
+}
+
+void calc_face_factors(const Object &object,
+                       const OffsetIndices<int> faces,
+                       const Span<int> corner_verts,
+                       const Cache &cache,
+                       const PBVHNode &node,
+                       const Span<int> face_indices,
+                       const MutableSpan<float> factors)
+{
+  SculptSession &ss = *object.sculpt;
+
+  NodeData data = node_begin(object, &cache, node);
+
+  for (const int i : face_indices.index_range()) {
+    const Span<int> face_verts = corner_verts.slice(faces[face_indices[i]]);
+    float sum = 0.0f;
+    for (const int v : face_verts.index_range()) {
+      if (data.orig_data) {
+        mesh_orig_vert_data_update(*data.orig_data, v);
+      }
+      sum += factor_get(&cache, ss, BKE_pbvh_make_vref(face_verts[v]), &data);
+    }
+    factors[i] *= sum * math::rcp(face_verts.size());
   }
 }
 

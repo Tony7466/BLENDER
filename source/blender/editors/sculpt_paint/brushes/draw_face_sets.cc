@@ -62,38 +62,36 @@ static void calc_faces(
 {
   SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
+  Mesh &mesh = *static_cast<Mesh *>(object.data);
 
   const Span<int> face_indices = tls.face_indices;
   const Span<float3> normals = tls.normals;
 
-  tls.identity.reinitialize(face_indices.size());
-  array_utils::fill_index_range<int>(tls.identity);
-  const Span<int> identity = tls.identity;
-
+  const Span<float> masks = tls.masks;
   tls.factors.reinitialize(face_indices.size());
   const MutableSpan<float> factors = tls.factors;
 
   const Span<float> masks = tls.masks;
-  // fill_factor_from_hide_and_mask(mesh, identity, factors);
+  fill_factor_from_hide_and_mask(mesh, face_indices, masks, factors);
 
   const Span<float3> positions = tls.positions;
-  filter_region_clip_factors(ss, positions, identity, factors);
+  filter_region_clip_factors(ss, positions, factors);
   if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal, normals, identity, factors);
+    calc_front_face(cache.view_normal, normals, factors);
   }
 
   tls.distances.reinitialize(face_indices.size());
   const MutableSpan<float> distances = tls.distances;
   calc_distance_falloff(
-      ss, positions, identity, eBrushFalloffShape(brush.falloff_shape), distances, factors);
+      ss, positions, eBrushFalloffShape(brush.falloff_shape), distances, factors);
   apply_hardness_to_distances(cache, distances);
   calc_brush_strength_factors(cache, brush, distances, factors);
 
   if (cache.automasking) {
-    auto_mask::calc_vert_factors(object, *cache.automasking, node, identity, factors);
+    auto_mask::calc_vert_factors(object, *cache.automasking, node, factors);
   }
 
-  calc_brush_texture_factors(ss, brush, positions, identity, factors);
+  calc_brush_texture_factors(ss, brush, positions, factors);
 }
 
 static void generate_face_data(const Mesh &mesh,

@@ -76,6 +76,10 @@ void calc_front_face(const float3 &view_normal,
                      Span<int> vert_indices,
                      MutableSpan<float> factors);
 
+void calc_front_face(const float3 &view_normal,
+                     Span<float3> vert_normals,
+                     MutableSpan<float> factors);
+
 /**
  * When the 3D view's clipping planes are enabled, brushes shouldn't have any effect on vertices
  * outside of the planes, because they're not visible. This function disables the factors for those
@@ -86,6 +90,10 @@ void filter_region_clip_factors(const SculptSession &ss,
                                 Span<int> verts,
                                 MutableSpan<float> factors);
 
+void filter_region_clip_factors(const SculptSession &ss,
+                                Span<float3> vert_positions,
+                                MutableSpan<float> factors);
+
 /**
  * Calculate distances based on the distance from the brush cursor and various other settings.
  * Also ignore vertices that are too far from the cursor.
@@ -93,6 +101,12 @@ void filter_region_clip_factors(const SculptSession &ss,
 void calc_distance_falloff(const SculptSession &ss,
                            Span<float3> vert_positions,
                            Span<int> vert_indices,
+                           eBrushFalloffShape falloff_shape,
+                           MutableSpan<float> r_distances,
+                           MutableSpan<float> factors);
+
+void calc_distance_falloff(const SculptSession &ss,
+                           Span<float3> vert_positions,
                            eBrushFalloffShape falloff_shape,
                            MutableSpan<float> r_distances,
                            MutableSpan<float> factors);
@@ -132,6 +146,11 @@ void calc_brush_texture_factors(SculptSession &ss,
                                 Span<int> vert_indices,
                                 MutableSpan<float> factors);
 
+void calc_brush_texture_factors(SculptSession &ss,
+                                const Brush &brush,
+                                Span<float3> vert_positions,
+                                MutableSpan<float> factors);
+
 namespace auto_mask {
 
 /**
@@ -142,6 +161,17 @@ void calc_vert_factors(const Object &object,
                        const PBVHNode &node,
                        Span<int> verts,
                        MutableSpan<float> factors);
+
+/**
+ * Calculate all auto-masking influence on each face.
+ */
+void calc_face_factors(const Object &object,
+                       const OffsetIndices<int> faces,
+                       const Span<int> corner_verts,
+                       const Cache &cache,
+                       const PBVHNode &node,
+                       const Span<int> face_indices,
+                       const MutableSpan<float> factors);
 
 }  // namespace auto_mask
 
