@@ -145,7 +145,7 @@ class RENDER_PT_color_management_curves(RenderButtonsPanel, Panel):
         layout.use_property_split = False
         layout.use_property_decorate = False  # No animation.
 
-        layout.enabled = view.use_curve_mapping
+        layout.active = view.use_curve_mapping
 
         layout.template_curve_mapping(view, "curve_mapping", type='COLOR', levels=True)
 
@@ -194,7 +194,7 @@ class RENDER_PT_color_management_white_balance(RenderButtonsPanel, Panel):
         layout.use_property_split = True
         layout.use_property_decorate = False  # No animation.
 
-        layout.enabled = view.use_white_balance
+        layout.active = view.use_white_balance
 
         col = layout.column()
         col.prop(view, "white_balance_temperature")
