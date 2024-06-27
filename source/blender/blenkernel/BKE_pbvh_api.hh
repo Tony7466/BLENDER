@@ -46,10 +46,6 @@ namespace blender {
 namespace bke {
 enum class AttrDomain : int8_t;
 }
-namespace draw::pbvh {
-struct NodeBatches;
-struct PBVH_GPU_Args;
-}  // namespace draw::pbvh
 }  // namespace blender
 
 struct PBVHProxyNode {
@@ -220,13 +216,6 @@ bool find_nearest_to_ray_node(PBVH &pbvh,
 void set_frustum_planes(PBVH &pbvh, PBVHFrustumPlanes *planes);
 void get_frustum_planes(const PBVH &pbvh, PBVHFrustumPlanes *planes);
 
-void draw_cb(const Mesh &mesh,
-             PBVH &pbvh,
-             bool update_only_visible,
-             const PBVHFrustumPlanes &update_frustum,
-             const PBVHFrustumPlanes &draw_frustum,
-             FunctionRef<void(draw::pbvh::NodeBatches *batches,
-                              const draw::pbvh::PBVH_GPU_Args &args)> draw_fn);
 /**
  * Get the PBVH root's bounding box.
  */

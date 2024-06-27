@@ -234,6 +234,5 @@ void bmesh_normals_update(Span<PBVHNode *> nodes);
 
 void node_pixels_free(PBVHNode *node);
 void pixels_free(PBVH *pbvh);
-void free_draw_buffers(PBVH &pbvh, PBVHNode *node);
 
 }  // namespace blender::bke::pbvh
