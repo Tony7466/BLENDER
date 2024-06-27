@@ -3174,9 +3174,7 @@ static void animsys_evaluate_nla_domain(PointerRNA *ptr, NlaEvalData *channels, 
  * Tweaked strip is evaluated differently from other strips. Adjacent strips are ignored
  * and includes a workaround for when user is not editing in place.
  */
-static void animsys_create_tweak_strip(const AnimData *adt,
-                                       const bool keyframing_to_strip,
-                                       NlaStrip *r_tweak_strip)
+static void animsys_create_tweak_strip(const AnimData *adt, NlaStrip *r_tweak_strip)
 
 {
   /* Copy active strip so we can modify how it evaluates without affecting user data. */
@@ -3199,14 +3197,6 @@ static void animsys_create_tweak_strip(const AnimData *adt,
 
     /* Disable range. */
     r_tweak_strip->flag |= NLASTRIP_FLAG_NO_TIME_MAP;
-  }
-
-  /** Controls whether able to keyframe outside range of tweaked strip. */
-  if (keyframing_to_strip) {
-    r_tweak_strip->extendmode = (is_inplace_tweak &&
-                                 !(r_tweak_strip->flag & NLASTRIP_FLAG_SYNC_LENGTH)) ?
-                                    NLASTRIP_EXTEND_NOTHING :
-                                    NLASTRIP_EXTEND_HOLD;
   }
 }
 
@@ -3365,7 +3355,7 @@ static bool animsys_evaluate_nla_for_flush(NlaEvalData *echannels,
     /** Append strip to evaluate for this track. */
     if (nlt == tweaked_track) {
       /** Tweaked strip is evaluated differently. */
-      animsys_create_tweak_strip(adt, false, &tweak_strip);
+      animsys_create_tweak_strip(adt, &tweak_strip);
       nes = nlastrips_ctime_get_strip_single(
           &estrips, &tweak_strip, anim_eval_context, flush_to_original);
     }
@@ -3496,7 +3486,7 @@ static void animsys_evaluate_nla_for_keyframing(PointerRNA *ptr,
     nlastrips_ctime_get_strip_single(upper_estrips, action_strip, anim_eval_context, false);
 
     NlaStrip *tweak_strip = &r_context->strip;
-    animsys_create_tweak_strip(adt, true, tweak_strip);
+    animsys_create_tweak_strip(adt, tweak_strip);
     r_context->eval_strip = nlastrips_ctime_get_strip_single(
         nullptr, tweak_strip, anim_eval_context, false);
   }
