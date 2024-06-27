@@ -55,7 +55,7 @@ static void node_eval_elem(inverse_eval::ElemEvalParams &params)
 {
   using namespace inverse_eval;
   const RotationElem rotation_elem = params.get_input_elem<RotationElem>("Rotation");
-  params.set_output_elem("Axis", rotation_elem.angle);
+  params.set_output_elem("Axis", rotation_elem.axis);
   params.set_output_elem("Angle", rotation_elem.angle);
 }
 

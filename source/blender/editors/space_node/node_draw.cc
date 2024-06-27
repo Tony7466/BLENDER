@@ -4185,8 +4185,6 @@ static Set<const bNodeSocket *> find_sockets_on_active_gizmo_paths(const bContex
     current_compute_context_hash = compute_context_builder.current()->hash();
   }
 
-  const wmWindowManager &wm = *CTX_wm_manager(&C);
-
   Set<const bNodeSocket *> sockets_on_gizmo_paths;
 
   ComputeContextBuilder compute_context_builder;
