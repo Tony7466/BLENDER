@@ -441,7 +441,7 @@ uiLayout *GridViewLayoutBuilder::current_layout() const
 GridViewBuilder::GridViewBuilder(uiBlock & /*block*/) {}
 
 void GridViewBuilder::build_grid_view(AbstractGridView &grid_view,
-                                      View2D &v2d,
+                                      const View2D &v2d,
                                       uiLayout &layout,
                                       std::optional<StringRef> search_string)
 {

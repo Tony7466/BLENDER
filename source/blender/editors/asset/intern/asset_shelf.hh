@@ -35,7 +35,7 @@ void build_asset_view(uiLayout &layout,
                       const AssetLibraryReference &library_ref,
                       const AssetShelf &shelf,
                       const bContext &C,
-                      ARegion &region);
+                      const ARegion &region);
 
 void catalog_selector_panel_register(ARegionType *region_type);
 void popover_panel_register(ARegionType *region_type);
