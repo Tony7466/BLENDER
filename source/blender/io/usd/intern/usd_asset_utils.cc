@@ -5,7 +5,6 @@
 #include "usd_asset_utils.hh"
 #include "usd.hh"
 
-#include <pxr/base/tf/pathUtils.h>
 #include <pxr/usd/ar/asset.h>
 #include <pxr/usd/ar/packageUtils.h>
 #include <pxr/usd/ar/resolver.h>
@@ -22,11 +21,8 @@
 #include "BLI_string_utils.hh"
 
 #include "WM_api.hh"
-#include "WM_types.hh"
 
 #include <string_view>
-
-namespace fs = std::filesystem;
 
 static const char UDIM_PATTERN[] = "<UDIM>";
 static const char UDIM_PATTERN2[] = "%3CUDIM%3E";

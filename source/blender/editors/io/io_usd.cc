@@ -688,12 +688,6 @@ void WM_OT_usd_export(wmOperatorType *ot)
                   "Use relative paths to reference external files (i.e. textures, volumes) in "
                   "USD, otherwise use absolute paths");
 
-  RNA_def_boolean(ot->srna,
-                  "use_original_paths",
-                  false,
-                  "Use Original Paths",
-                  "Export textures with original paths, and not next to USD file");
-
   RNA_def_enum(ot->srna,
                "xform_op_mode",
                rna_enum_usd_xform_op_mode_items,
