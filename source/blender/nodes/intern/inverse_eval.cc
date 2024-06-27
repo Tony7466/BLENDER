@@ -433,6 +433,15 @@ std::optional<ElemVariant> convert_socket_elem(const bNodeSocket &old_socket,
       }
       break;
     }
+    case SOCK_ROTATION: {
+      const RotationElem &rotation_elem = std::get<RotationElem>(old_elem.elem);
+      if (new_type == SOCK_MATRIX) {
+        MatrixElem matrix_elem;
+        matrix_elem.rotation = rotation_elem;
+        return ElemVariant{matrix_elem};
+      }
+      break;
+    }
     default:
       break;
   }
@@ -638,7 +647,9 @@ void foreach_element_on_inverse_eval_path(
     const ComputeContext &initial_context,
     const SocketElem &initial_socket_elem,
     FunctionRef<void(const ComputeContext &context)> foreach_context_fn,
-    FunctionRef<void(const ComputeContext &context, const bNodeSocket &socket)> foreach_socket_fn)
+    FunctionRef<void(const ComputeContext &context,
+                     const bNodeSocket &socket,
+                     const ElemVariant &elem)> foreach_socket_fn)
 {
   BLI_assert(initial_socket_elem.socket->is_input());
   if (!initial_socket_elem.elem) {
@@ -713,6 +724,7 @@ void foreach_element_on_inverse_eval_path(
         }
       },
       [&](const SocketInContext &ctx_from, const SocketInContext &ctx_to) {
+        /* TODO: Handle multi-input. */
         const ElemVariant *from_elem = finalized_elem_by_socket.lookup_ptr(ctx_from);
         if (!from_elem) {
           return false;
@@ -741,8 +753,8 @@ void foreach_element_on_inverse_eval_path(
     }
   }
   if (foreach_socket_fn) {
-    for (const SocketInContext &ctx_socket : finalized_elem_by_socket.keys()) {
-      foreach_socket_fn(*ctx_socket.context, *ctx_socket.socket);
+    for (auto &&item : finalized_elem_by_socket.items()) {
+      foreach_socket_fn(*item.key.context, *item.key.socket, item.value);
     }
   }
 }

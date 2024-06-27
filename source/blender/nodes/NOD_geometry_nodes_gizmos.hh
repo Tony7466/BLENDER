@@ -62,11 +62,15 @@ void foreach_compute_context_on_gizmo_path(const ComputeContext &gizmo_context,
                                            const bNode &gizmo_node,
                                            const bNodeSocket &gizmo_socket,
                                            FunctionRef<void(const ComputeContext &context)> fn);
-void foreach_socket_on_gizmo_path(
-    const ComputeContext &gizmo_context,
-    const bNode &gizmo_node,
-    const bNodeSocket &gizmo_socket,
-    FunctionRef<void(const ComputeContext &context, const bNodeSocket &socket)> fn);
+void foreach_socket_on_gizmo_path(const ComputeContext &gizmo_context,
+                                  const bNode &gizmo_node,
+                                  const bNodeSocket &gizmo_socket,
+                                  FunctionRef<void(const ComputeContext &context,
+                                                   const bNodeSocket &socket,
+                                                   const ie::ElemVariant &elem)> fn);
+ie::ElemVariant get_editable_gizmo_elem(const ComputeContext &gizmo_context,
+                                        const bNode &gizmo_node,
+                                        const bNodeSocket &gizmo_socket);
 
 void apply_gizmo_change(bContext &C,
                         Object &object,

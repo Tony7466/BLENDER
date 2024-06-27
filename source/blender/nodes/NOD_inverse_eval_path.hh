@@ -25,7 +25,9 @@ void foreach_element_on_inverse_eval_path(
     const ComputeContext &initial_context,
     const SocketElem &initial_socket_elem,
     FunctionRef<void(const ComputeContext &context)> foreach_context_fn,
-    FunctionRef<void(const ComputeContext &context, const bNodeSocket &socket)> foreach_socket_fn);
+    FunctionRef<void(const ComputeContext &context,
+                     const bNodeSocket &socket,
+                     const ElemVariant &elem)> foreach_socket_fn);
 
 std::optional<ElemVariant> convert_socket_elem(const bNodeSocket &old_socket,
                                                const bNodeSocket &new_socket,

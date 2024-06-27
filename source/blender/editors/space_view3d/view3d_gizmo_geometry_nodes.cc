@@ -127,6 +127,7 @@ struct GizmosUpdateParams {
   const bNode &gizmo_node;
   GeoTreeLog &tree_log;
   UpdateReport &r_report;
+  nodes::inverse_eval::ElemVariant elem;
 
   template<typename T> [[nodiscard]] bool get_input_value(const StringRef identifier, T &r_value)
   {
@@ -422,7 +423,7 @@ class TransformGizmos : public NodeGizmos {
     const auto &storage = *static_cast<const NodeGeometryTransformGizmo *>(
         params.gizmo_node.storage);
 
-    this->update_visibility(storage);
+    this->update_visibility(params, storage);
     this->update_translate_style();
     this->update_rotate_style();
     this->update_scale_style();
@@ -447,17 +448,23 @@ class TransformGizmos : public NodeGizmos {
     this->update_scale_transform_and_target_property(params, base_transform_from_socket);
   }
 
-  void update_visibility(const NodeGeometryTransformGizmo &storage)
+  void update_visibility(GizmosUpdateParams &params, const NodeGeometryTransformGizmo &storage)
   {
     any_translation_visible_ = false;
     any_rotation_visible_ = false;
     any_scale_visible_ = false;
 
+    const auto &elem = std::get<nodes::inverse_eval::MatrixElem>(params.elem.elem);
+
     for (const int axis : IndexRange(3)) {
-      const bool translation_used = storage.flag &
-                                    (GEO_NODE_TRANSFORM_GIZMO_USE_TRANSLATION_X << axis);
-      const bool rotation_used = storage.flag & (GEO_NODE_TRANSFORM_GIZMO_USE_ROTATION_X << axis);
-      const bool scale_used = storage.flag & (GEO_NODE_TRANSFORM_GIZMO_USE_SCALE_X << axis);
+      const bool translation_used = (storage.flag &
+                                     (GEO_NODE_TRANSFORM_GIZMO_USE_TRANSLATION_X << axis)) &&
+                                    elem.translation;
+      const bool rotation_used = (storage.flag &
+                                  (GEO_NODE_TRANSFORM_GIZMO_USE_ROTATION_X << axis)) &&
+                                 elem.rotation;
+      const bool scale_used = (storage.flag & (GEO_NODE_TRANSFORM_GIZMO_USE_SCALE_X << axis)) &&
+                              elem.scale;
 
       WM_gizmo_set_flag(translation_gizmos_[axis], WM_GIZMO_HIDDEN, !translation_used);
       WM_gizmo_set_flag(rotation_gizmos_[axis], WM_GIZMO_HIDDEN, !rotation_used);
@@ -877,7 +884,7 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
           const NodesModifierData &nmd_orig,
           const ComputeContext &compute_context,
           const bNode &gizmo_node,
-          const bNodeSocket & /*gizmo_socket*/) {
+          const bNodeSocket &gizmo_socket) {
         const GeoNodesObjectGizmoID gizmo_id = {&object_orig,
                                                 {compute_context.hash(), gizmo_node.identifier}};
         if (new_gizmos_by_node.contains(gizmo_id)) {
@@ -902,6 +909,9 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
             geometry = viewer_log->geometry;
           }
         }
+
+        const nodes::inverse_eval::ElemVariant elem = nodes::gizmos::get_editable_gizmo_elem(
+            compute_context, gizmo_node, gizmo_socket);
 
         bNodeTree &ntree = *nmd_orig.node_group;
         ntree.ensure_topology_cache();
@@ -939,7 +949,7 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
 
         UpdateReport report;
         GizmosUpdateParams update_params{
-            *C, object_to_world * geometry_transform, gizmo_node, tree_log, report};
+            *C, object_to_world * geometry_transform, gizmo_node, tree_log, report, elem};
         node_gizmos->update(update_params);
 
         bool any_interacting = false;

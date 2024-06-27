@@ -413,7 +413,7 @@ void foreach_compute_context_on_gizmo_path(const ComputeContext &gizmo_context,
                                            const bNodeSocket &gizmo_socket,
                                            FunctionRef<void(const ComputeContext &context)> fn)
 {
-  return ie::foreach_element_on_inverse_eval_path(
+  ie::foreach_element_on_inverse_eval_path(
       gizmo_context, {&gizmo_socket, get_gizmo_socket_elem(gizmo_node, gizmo_socket)}, fn, {});
 }
 
@@ -421,10 +421,31 @@ void foreach_socket_on_gizmo_path(
     const ComputeContext &gizmo_context,
     const bNode &gizmo_node,
     const bNodeSocket &gizmo_socket,
-    FunctionRef<void(const ComputeContext &context, const bNodeSocket &socket)> fn)
+    FunctionRef<void(
+        const ComputeContext &context, const bNodeSocket &socket, const ie::ElemVariant &elem)> fn)
 {
-  return ie::foreach_element_on_inverse_eval_path(
+  ie::foreach_element_on_inverse_eval_path(
       gizmo_context, {&gizmo_socket, get_gizmo_socket_elem(gizmo_node, gizmo_socket)}, {}, fn);
+}
+
+ie::ElemVariant get_editable_gizmo_elem(const ComputeContext &gizmo_context,
+                                        const bNode &gizmo_node,
+                                        const bNodeSocket &gizmo_socket)
+{
+  std::optional<ie::ElemVariant> found_elem;
+  ie::foreach_element_on_inverse_eval_path(
+      gizmo_context,
+      {&gizmo_socket, get_gizmo_socket_elem(gizmo_node, gizmo_socket)},
+      {},
+      [&](const ComputeContext &context, const bNodeSocket &socket, const ie::ElemVariant &elem) {
+        if (&context == &gizmo_context && &gizmo_socket == &socket) {
+          found_elem = elem;
+        }
+      });
+  if (!found_elem.has_value()) {
+    return *ie::get_elem_variant_for_socket_type(eNodeSocketDatatype(gizmo_socket.type));
+  }
+  return *found_elem;
 }
 
 void apply_gizmo_change(

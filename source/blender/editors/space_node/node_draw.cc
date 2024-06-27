@@ -4202,7 +4202,9 @@ static Set<const bNodeSocket *> find_sockets_on_active_gizmo_paths(const bContex
             gizmo_context,
             gizmo_node,
             gizmo_socket,
-            [&](const ComputeContext &compute_context, const bNodeSocket &socket) {
+            [&](const ComputeContext &compute_context,
+                const bNodeSocket &socket,
+                const nodes::inverse_eval::ElemVariant & /*elem*/) {
               if (compute_context.hash() == current_compute_context_hash) {
                 sockets_on_gizmo_paths.add(&socket);
               }
