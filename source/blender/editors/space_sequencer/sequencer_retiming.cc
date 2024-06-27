@@ -529,7 +529,7 @@ void SEQUENCER_OT_retiming_transition_add(wmOperatorType *ot)
 /** \name Retiming Delete Key
  * \{ */
 
-static int sequencer_retiming_key_delete_exec(bContext *C, wmOperator *op)
+static int sequencer_retiming_key_delete_exec(bContext *C, wmOperator * /*op*/)
 {
   Scene *scene = CTX_data_scene(C);
 

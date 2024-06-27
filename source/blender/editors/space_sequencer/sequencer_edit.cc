@@ -1699,7 +1699,7 @@ static int sequencer_delete_invoke(bContext *C, wmOperator *op, const wmEvent *e
 }
 
 static bool sequencer_delete_poll_property(const bContext * /* C */,
-                                           wmOperator *op,
+                                           wmOperator * /*op*/,
                                            const PropertyRNA *prop)
 {
   const char *prop_id = RNA_property_identifier(prop);
