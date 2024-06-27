@@ -272,7 +272,8 @@ static void traverse_upstream(
 static void traverse_downstream_partial(
     const Span<SocketInContext> initial_sockets,
     ResourceScope &scope,
-    FunctionRef<void(const NodeInContext &ctx_node)> evaluate_node,
+    FunctionRef<void(const NodeInContext &ctx_node,
+                     Vector<const bNodeSocket *> &r_outputs_to_propagate)> evaluate_node,
     FunctionRef<bool(const SocketInContext ctx_from, const SocketInContext &ctx_to)>
         propagate_value)
 {
@@ -338,6 +339,10 @@ static void traverse_downstream_partial(
     }
   }
 
+  /* Reused in multiple places to avoid allocating it multiple times. Should be cleared before
+   * using it. */
+  Vector<const bNodeSocket *> sockets_vec;
+
   while (!scheduled_nodes_queue.empty()) {
     const NodeInContext ctx_node = scheduled_nodes_queue.top();
     scheduled_nodes_queue.pop();
@@ -379,8 +384,9 @@ static void traverse_downstream_partial(
       }
     }
     else {
-      evaluate_node(ctx_node);
-      for (const bNodeSocket *socket : node.output_sockets()) {
+      sockets_vec.clear();
+      evaluate_node(ctx_node, sockets_vec);
+      for (const bNodeSocket *socket : sockets_vec) {
         forward_output({context, socket});
       }
     }
@@ -694,7 +700,7 @@ void foreach_element_on_inverse_eval_path(
   traverse_downstream_partial(
       forward_propagate_sockets,
       scope,
-      [&](const NodeInContext &ctx_node) {
+      [&](const NodeInContext &ctx_node, Vector<const bNodeSocket *> &r_outputs_to_propagate) {
         const bNode &node = *ctx_node.node;
         const bke::bNodeType &ntype = *node.typeinfo;
         if (!ntype.eval_elem) {
@@ -719,6 +725,9 @@ void foreach_element_on_inverse_eval_path(
               ElemVariant new_elem = *old_elem;
               new_elem.intersect(output_elem.elem);
               finalized_elem_by_socket.add({ctx_node.context, output_elem.socket}, new_elem);
+              if (new_elem) {
+                r_outputs_to_propagate.append(output_elem.socket);
+              }
             }
           }
         }
