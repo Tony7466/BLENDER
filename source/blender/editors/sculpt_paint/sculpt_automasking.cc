@@ -635,8 +635,6 @@ void calc_grids_factors(const Object &object,
           &cache, ss, BKE_pbvh_make_vref(grids_start + offset), &data);
     }
   }
-  for (const int i : grids.index_range()) {
-  }
 }
 
 NodeData node_begin(const Object &object, const Cache *automasking, const PBVHNode &node)

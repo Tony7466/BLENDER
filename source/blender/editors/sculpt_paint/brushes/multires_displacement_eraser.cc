@@ -38,10 +38,8 @@ static BLI_NOINLINE void calc_limit_positions(const SubdivCCG &subdiv_ccg,
                                               const MutableSpan<float3> limit_positions)
 {
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-  const Span<CCGElem *> elems = subdiv_ccg.grids;
   for (const int grid : grids) {
     const int start = grid * key.grid_area;
-    CCGElem *elem = elems[grid];
     for (const int y : IndexRange(key.grid_size)) {
       for (const int x : IndexRange(key.grid_size)) {
         const int offset = CCG_grid_xy_to_index(key.grid_size, x, y);
