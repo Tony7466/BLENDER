@@ -22,6 +22,7 @@ namespace ie = inverse_eval;
 struct TreeGizmoPropagation {
   Vector<const bNode *> nodes_containing_gizmos;
   Vector<const bNode *> gizmo_nodes;
+  Set<const bNodeSocket *> gizmo_endpoint_sockets;
   MultiValueMap<ie::ValueNodeElem, ie::SocketElem> gizmo_inputs_by_value_nodes;
   MultiValueMap<ie::SocketElem, ie::SocketElem> gizmo_inputs_by_node_inputs;
   MultiValueMap<ie::GroupInputElem, ie::SocketElem> gizmo_inputs_by_group_inputs;

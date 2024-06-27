@@ -1307,6 +1307,7 @@ static void std_node_socket_draw(
 {
   bNode *node = (bNode *)node_ptr->data;
   bNodeSocket *sock = (bNodeSocket *)ptr->data;
+  bNodeTree *tree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
   int type = sock->typeinfo->type;
   // int subtype = sock->typeinfo->subtype;
 
@@ -1316,7 +1317,10 @@ static void std_node_socket_draw(
     return;
   }
 
-  const bool has_gizmo = sock->runtime->has_gizmo;
+  const bool has_gizmo = tree->runtime->gizmo_propagation ?
+                             tree->runtime->gizmo_propagation->gizmo_endpoint_sockets.contains(
+                                 sock) :
+                             false;
 
   if (has_gizmo) {
     if (sock->in_out == SOCK_OUT && ELEM(node->type,

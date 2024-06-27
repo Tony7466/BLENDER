@@ -31,13 +31,6 @@ bool is_builtin_gizmo_node(const bNode &node)
   return ELEM(node.type, GEO_NODE_GIZMO_LINEAR, GEO_NODE_GIZMO_DIAL, GEO_NODE_GIZMO_TRANSFORM);
 }
 
-static void reset_gizmo_states(bNodeTree &tree)
-{
-  for (bNodeSocket *socket : tree.all_sockets()) {
-    socket->runtime->has_gizmo = false;
-  }
-}
-
 static ie::ElemVariant get_gizmo_socket_elem(const bNode &node, const bNodeSocket &socket)
 {
   switch (node.type) {
@@ -122,7 +115,7 @@ static TreeGizmoPropagation build_tree_gizmo_propagation(bNodeTree &tree)
   }
 
   for (const GizmoInput &gizmo_input : all_gizmo_inputs) {
-    gizmo_input.gizmo_socket->runtime->has_gizmo = true;
+    gizmo_propagation.gizmo_endpoint_sockets.add(gizmo_input.gizmo_socket);
     const ie::SocketElem gizmo_input_socket_elem{gizmo_input.gizmo_socket, gizmo_input.elem};
     const std::optional<ie::ElemVariant> converted_elem = ie::convert_socket_elem(
         *gizmo_input.gizmo_socket, *gizmo_input.propagation_start_socket, gizmo_input.elem);
@@ -138,16 +131,17 @@ static TreeGizmoPropagation build_tree_gizmo_propagation(bNodeTree &tree)
     }
     for (const ie::SocketElem &input_socket : targets.input_sockets) {
       gizmo_propagation.gizmo_inputs_by_node_inputs.add(input_socket, gizmo_input_socket_elem);
-      input_socket.socket->runtime->has_gizmo = true;
+      gizmo_propagation.gizmo_endpoint_sockets.add(input_socket.socket);
     }
     for (const ie::ValueNodeElem &value_node : targets.value_nodes) {
       gizmo_propagation.gizmo_inputs_by_value_nodes.add(value_node, gizmo_input_socket_elem);
-      value_node.node->output_socket(0).runtime->has_gizmo = true;
+      gizmo_propagation.gizmo_endpoint_sockets.add(&value_node.node->output_socket(0));
     }
     for (const ie::GroupInputElem &group_input : targets.group_inputs) {
       gizmo_propagation.gizmo_inputs_by_group_inputs.add(group_input, gizmo_input_socket_elem);
       for (const bNode *group_input_node : tree.group_input_nodes()) {
-        group_input_node->output_socket(group_input.group_input_index).runtime->has_gizmo = true;
+        gizmo_propagation.gizmo_endpoint_sockets.add(
+            &group_input_node->output_socket(group_input.group_input_index));
       }
     }
   }
@@ -158,7 +152,7 @@ static TreeGizmoPropagation build_tree_gizmo_propagation(bNodeTree &tree)
 bool update_tree_gizmo_propagation(bNodeTree &tree)
 {
   tree.ensure_topology_cache();
-  reset_gizmo_states(tree);
+
   if (tree.has_available_link_cycle()) {
     const bool changed = tree.runtime->gizmo_propagation.get() != nullptr;
     tree.runtime->gizmo_propagation.reset();
