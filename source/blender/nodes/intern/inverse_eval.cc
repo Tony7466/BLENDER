@@ -727,10 +727,6 @@ void foreach_element_on_inverse_eval_path(
         }
       },
       [&](const SocketInContext &ctx_from, const SocketInContext &ctx_to) {
-        if (ctx_to.socket->is_multi_input()) {
-          /* Not supported here. */
-          return false;
-        }
         const ElemVariant *from_elem = finalized_elem_by_socket.lookup_ptr(ctx_from);
         if (!from_elem) {
           return false;
@@ -743,6 +739,12 @@ void foreach_element_on_inverse_eval_path(
             *ctx_from.socket, *ctx_to.socket, *from_elem);
         if (!converted_elem) {
           return false;
+        }
+        if (ctx_to.socket->is_multi_input()) {
+          ElemVariant added_elem = *converted_elem;
+          added_elem.intersect(*old_ctx_to);
+          finalized_elem_by_socket.lookup_or_add(ctx_to, added_elem).merge(added_elem);
+          return true;
         }
         ElemVariant to_elem = *old_ctx_to;
         to_elem.intersect(*converted_elem);

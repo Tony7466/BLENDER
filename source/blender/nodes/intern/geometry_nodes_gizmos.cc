@@ -442,14 +442,8 @@ ie::ElemVariant get_editable_gizmo_elem(const ComputeContext &gizmo_context,
       {&gizmo_socket, get_gizmo_socket_elem(gizmo_node, gizmo_socket)},
       {},
       [&](const ComputeContext &context, const bNodeSocket &socket, const ie::ElemVariant &elem) {
-        if (context.hash() == gizmo_context.hash() &&
-            gizmo_socket.directly_linked_sockets().contains(&socket))
-        {
-          if (const std::optional<ie::ElemVariant> converted_elem = ie::convert_socket_elem(
-                  socket, gizmo_socket, elem))
-          {
-            found_elem->merge(*converted_elem);
-          }
+        if (context.hash() == gizmo_context.hash() && &socket == &gizmo_socket) {
+          found_elem->merge(elem);
         }
       });
 
