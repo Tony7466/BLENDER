@@ -6658,9 +6658,7 @@ void fill_factor_from_hide(const SubdivCCG &subdiv_ccg,
     const BitSpan hidden = grid_hidden[grids[i]];
     const int start = i * key.grid_area;
     for (const int offset : IndexRange(key.grid_area)) {
-      if (hidden[offset]) {
-        r_factors[start + offset] = 0.0f;
-      }
+      r_factors[start + offset] = hidden[offset] ? 0.0f : 1.0f;
     }
   }
 }
