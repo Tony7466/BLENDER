@@ -1331,7 +1331,7 @@ static void rna_def_colormanage(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, nullptr, "temperature");
   RNA_def_property_float_default(prop, 6500.0f);
   RNA_def_property_range(prop, 1800.0f, 100000.0f);
-  RNA_def_property_ui_range(prop, 2000.0f, 11000.0f, 10, 0);
+  RNA_def_property_ui_range(prop, 2000.0f, 11000.0f, 100, 0);
   RNA_def_property_ui_text(prop, "Temperature", "Color temperature of the scene's white point");
   RNA_def_property_update(prop, NC_WINDOW, "rna_ColorManagement_update");
 
