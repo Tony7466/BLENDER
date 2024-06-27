@@ -17,7 +17,6 @@
 #include "kernel/sample/util.h"
 #include "util/hash.h"
 #include "util/math.h"
-#include "util/types.h"
 
 CCL_NAMESPACE_BEGIN
 

@@ -335,7 +335,6 @@ set(SRC_KERNEL_LIGHT_HEADERS
 )
 
 set(SRC_KERNEL_SAMPLE_HEADERS
-  sample/class.h
   sample/lcg.h
   sample/mapping.h
   sample/mis.h

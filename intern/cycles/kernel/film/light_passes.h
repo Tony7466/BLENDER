@@ -5,7 +5,7 @@
 #pragma once
 
 #include "kernel/film/write.h"
-#include "kernel/sample/class.h"
+#include "kernel/sample/pattern.h"
 
 CCL_NAMESPACE_BEGIN
 
