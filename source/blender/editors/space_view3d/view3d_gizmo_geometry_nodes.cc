@@ -728,7 +728,7 @@ struct GeometryNodesGizmoGroup {
   Map<GeoNodesObjectGizmoID, std::unique_ptr<NodeGizmos>> gizmos_by_node;
 };
 
-static std::unique_ptr<NodeGizmos> create_node_gizmos(const bNode &gizmo_node)
+static std::unique_ptr<NodeGizmos> create_gizmo_node_gizmos(const bNode &gizmo_node)
 {
   switch (gizmo_node.type) {
     case GEO_NODE_GIZMO_LINEAR:
@@ -876,7 +876,8 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
       [&](const Object &object_orig,
           const NodesModifierData &nmd_orig,
           const ComputeContext &compute_context,
-          const bNode &gizmo_node) {
+          const bNode &gizmo_node,
+          const bNodeSocket & /*gizmo_socket*/) {
         const GeoNodesObjectGizmoID gizmo_id = {&object_orig,
                                                 {compute_context.hash(), gizmo_node.identifier}};
         if (new_gizmos_by_node.contains(gizmo_id)) {
@@ -915,7 +916,7 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
           new_gizmos_by_node.add(gizmo_id, std::move(*old_gizmos));
         }
         else {
-          std::unique_ptr<NodeGizmos> new_node_gizmos = create_node_gizmos(gizmo_node);
+          std::unique_ptr<NodeGizmos> new_node_gizmos = create_gizmo_node_gizmos(gizmo_node);
           new_node_gizmos->create_gizmos(*gzgroup);
           for (wmGizmo *gizmo : new_node_gizmos->get_all_gizmos()) {
             gizmo->flag |= WM_GIZMO_NEEDS_UNDO;

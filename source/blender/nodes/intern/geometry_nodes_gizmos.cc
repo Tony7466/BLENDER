@@ -210,7 +210,7 @@ static void foreach_gizmo_for_input(const ie::SocketElem &input_socket,
       return;
     }
     /* Found an actual built-in gizmo node. */
-    fn(*compute_context_builder.current(), node);
+    fn(*compute_context_builder.current(), node, *input_socket.socket);
     return;
   }
   if (node.is_group()) {
@@ -297,8 +297,10 @@ static void foreach_active_gizmo_in_open_node_editor(
     foreach_gizmo_for_input(gizmo_input,
                             compute_context_builder,
                             *snode.edittree,
-                            [&](const ComputeContext &compute_context, const bNode &gizmo_node) {
-                              fn(object, nmd, compute_context, gizmo_node);
+                            [&](const ComputeContext &compute_context,
+                                const bNode &gizmo_node,
+                                const bNodeSocket &gizmo_socket) {
+                              fn(object, nmd, compute_context, gizmo_node, gizmo_socket);
                             });
   }
 }
@@ -369,10 +371,11 @@ void foreach_active_gizmo_in_modifier(const Object &object,
                                        [&](const Object &object_with_gizmo,
                                            const NodesModifierData &nmd_with_gizmo,
                                            const ComputeContext &compute_context,
-                                           const bNode &gizmo_node) {
+                                           const bNode &gizmo_node,
+                                           const bNodeSocket &gizmo_socket) {
                                          BLI_assert(&object == &object_with_gizmo);
                                          BLI_assert(&nmd == &nmd_with_gizmo);
-                                         fn(compute_context, gizmo_node);
+                                         fn(compute_context, gizmo_node, gizmo_socket);
                                        });
 
   foreach_active_gizmo_exposed_to_modifier(nmd, compute_context_builder, fn);
@@ -395,8 +398,10 @@ void foreach_active_gizmo(const bContext &C,
         foreach_active_gizmo_exposed_to_modifier(
             nmd,
             compute_context_builder,
-            [&](const ComputeContext &compute_context, const bNode &gizmo_node) {
-              fn(*active_object, nmd, compute_context, gizmo_node);
+            [&](const ComputeContext &compute_context,
+                const bNode &gizmo_node,
+                const bNodeSocket &gizmo_socket) {
+              fn(*active_object, nmd, compute_context, gizmo_node, gizmo_socket);
             });
       }
     }
@@ -406,9 +411,9 @@ void foreach_active_gizmo(const bContext &C,
 void foreach_node_on_gizmo_path(
     const ComputeContext &gizmo_context,
     const bNode &gizmo_node,
+    const bNodeSocket &gizmo_socket,
     FunctionRef<void(const ComputeContext &context, const bNode &node)> fn)
 {
-  const bNodeSocket &gizmo_socket = gizmo_node.input_socket(0);
   return ie::foreach_node_on_inverse_eval_path(
       gizmo_context, {&gizmo_socket, get_gizmo_socket_elem(gizmo_node, gizmo_socket)}, fn);
 }

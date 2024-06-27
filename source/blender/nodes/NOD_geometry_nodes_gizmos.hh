@@ -38,8 +38,9 @@ bool is_builtin_gizmo_node(const bNode &node);
 
 bool update_tree_gizmo_propagation(bNodeTree &tree);
 
-using ForeachGizmoInModifierFn =
-    FunctionRef<void(const ComputeContext &compute_context, const bNode &gizmo_node)>;
+using ForeachGizmoInModifierFn = FunctionRef<void(const ComputeContext &compute_context,
+                                                  const bNode &gizmo_node,
+                                                  const bNodeSocket &gizmo_socket)>;
 
 void foreach_active_gizmo_in_modifier(const Object &object,
                                       const NodesModifierData &nmd,
@@ -50,7 +51,8 @@ void foreach_active_gizmo_in_modifier(const Object &object,
 using ForeachGizmoFn = FunctionRef<void(const Object &object,
                                         const NodesModifierData &nmd,
                                         const ComputeContext &compute_context,
-                                        const bNode &gizmo_node)>;
+                                        const bNode &gizmo_node,
+                                        const bNodeSocket &gizmo_socket)>;
 
 void foreach_active_gizmo(const bContext &C,
                           ComputeContextBuilder &compute_context_builder,
@@ -59,6 +61,7 @@ void foreach_active_gizmo(const bContext &C,
 void foreach_node_on_gizmo_path(
     const ComputeContext &gizmo_context,
     const bNode &gizmo_node,
+    const bNodeSocket &gizmo_socket,
     FunctionRef<void(const ComputeContext &context, const bNode &node)> fn);
 
 void apply_gizmo_change(bContext &C,

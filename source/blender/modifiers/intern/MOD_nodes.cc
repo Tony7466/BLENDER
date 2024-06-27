@@ -748,13 +748,16 @@ static void find_side_effect_nodes_for_active_gizmos(
       nmd_orig,
       wm,
       compute_context_builder,
-      [&](const ComputeContext &compute_context, const bNode &gizmo_node) {
+      [&](const ComputeContext &compute_context,
+          const bNode &gizmo_node,
+          const bNodeSocket &gizmo_socket) {
         try_add_side_effect_node(compute_context, gizmo_node.identifier, nmd, r_side_effect_nodes);
         r_socket_log_contexts.add(compute_context.hash());
 
         nodes::gizmos::foreach_node_on_gizmo_path(
             compute_context,
             gizmo_node,
+            gizmo_socket,
             [&](const ComputeContext &node_context, const bNode & /*node*/) {
               /* Make sure that all intermediate sockets are logged. This is necessary to be able
                * to evaluate the nodes in reverse for the gizmo. */
