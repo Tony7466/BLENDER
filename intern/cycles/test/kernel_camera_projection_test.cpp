@@ -161,33 +161,34 @@ TEST(KernelCamera, FisheyeLensPolynomialToDirection)
 
   const std::pair<float2, float3> tests[]{
       /* Center (0°) */
-      {{0.5, 0.5}, {1.0, 0.0, 0.0}},
+      {{0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}},
 
       /* 60° */
-      {{0.5, 0.5 + rad60}, {cos60, 0.0, sin60}},
-      {{0.5, 0.5 - rad60}, {cos60, 0.0, -sin60}},
-      {{0.5 + rad60, 0.5}, {cos60, -sin60, 0.0}},
-      {{0.5 - rad60, 0.5}, {cos60, sin60, 0.0}},
+      {{0.0f, +rad60}, {cos60, 0.0, sin60}},
+      {{0.0f, -rad60}, {cos60, 0.0, -sin60}},
+      {{+rad60, 0.0f}, {cos60, -sin60, 0.0}},
+      {{-rad60, 0.0f}, {cos60, sin60, 0.0}},
 
       /* 45° */
-      {{0.5, 0.5 + rad45}, {cos45, 0.0, sin45}},
-      {{0.5, 0.5 - rad45}, {cos45, 0.0, -sin45}},
-      {{0.5 + rad45, 0.5}, {cos45, -sin45, 0.0}},
-      {{0.5 - rad45, 0.5}, {cos45, sin45, 0.0}},
+      {{0.0f, +rad45}, {cos45, 0.0, sin45}},
+      {{0.0f, -rad45}, {cos45, 0.0, -sin45}},
+      {{+rad45, 0.0f}, {cos45, -sin45, 0.0}},
+      {{-rad45, 0.0f}, {cos45, sin45, 0.0}},
 
-      {{0.5 + rad45 * M_SQRT1_2f, 0.5 + rad45 * M_SQRT1_2f}, {cos45, -0.5f, +0.5f}},
-      {{0.5 - rad45 * M_SQRT1_2f, 0.5 + rad45 * M_SQRT1_2f}, {cos45, +0.5f, +0.5f}},
-      {{0.5 + rad45 * M_SQRT1_2f, 0.5 - rad45 * M_SQRT1_2f}, {cos45, -0.5f, -0.5f}},
-      {{0.5 - rad45 * M_SQRT1_2f, 0.5 - rad45 * M_SQRT1_2f}, {cos45, +0.5f, -0.5f}},
+      {{+rad45 * M_SQRT1_2f, +rad45 * M_SQRT1_2f}, {cos45, -0.5f, +0.5f}},
+      {{-rad45 * M_SQRT1_2f, +rad45 * M_SQRT1_2f}, {cos45, +0.5f, +0.5f}},
+      {{+rad45 * M_SQRT1_2f, -rad45 * M_SQRT1_2f}, {cos45, -0.5f, -0.5f}},
+      {{-rad45 * M_SQRT1_2f, -rad45 * M_SQRT1_2f}, {cos45, +0.5f, -0.5f}},
 
       /* 30° */
-      {{0.5, 0.5 + rad30}, {cos30, 0.0, sin30}},
-      {{0.5, 0.5 - rad30}, {cos30, 0.0, -sin30}},
-      {{0.5 + rad30, 0.5}, {cos30, -sin30, 0.0}},
-      {{0.5 - rad30, 0.5}, {cos30, sin30, 0.0}},
+      {{0.0f, +rad30}, {cos30, 0.0, sin30}},
+      {{0.0f, -rad30}, {cos30, 0.0, -sin30}},
+      {{+rad30, 0.0f}, {cos30, -sin30, 0.0}},
+      {{-rad30, 0.0f}, {cos30, sin30, 0.0}},
   };
 
-  for (auto [sensor, direction] : tests) {
+  for (auto [offset, direction] : tests) {
+    const float2 sensor = offset + make_float2(0.5f, 0.5f);
     for (float const scale : {1.0f, 0.5f, 2.0f, 0.25f, 4.0f, 0.125f, 8.0f, 0.0625f, 16.0f}) {
       const float width = 1.0f / scale;
       const float height = 1.0f / scale;
