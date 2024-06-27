@@ -28,10 +28,10 @@ struct LocalData {
   Vector<float3> translations;
 };
 
-static void fill_closest_to_plane(float4 test_plane,
-                                  Span<float3> positions,
-                                  Span<int> verts,
-                                  MutableSpan<float3> translations)
+BLI_NOINLINE static void fill_closest_to_plane(const float4 &test_plane,
+                                               const Span<float3> positions,
+                                               const Span<int> verts,
+                                               const MutableSpan<float3> translations)
 {
   /* Equivalent to #closest_to_plane_normalized_v3 */
   BLI_assert(verts.size() == translations.size());
