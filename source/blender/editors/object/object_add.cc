@@ -3234,6 +3234,8 @@ static int object_convert_exec(bContext *C, wmOperator *op)
     Base *base = static_cast<Base *>(ptr.data);
     Object *ob = base->object;
 
+    const bool grease_pencil_to_mesh = ob->type == OB_GREASE_PENCIL && target == OB_MESH;
+
     if (ob->flag & OB_DONE || !IS_TAGGED(ob->data)) {
       if (ob->type != target) {
         base->flag &= ~SELECT;
@@ -3327,7 +3329,7 @@ static int object_convert_exec(bContext *C, wmOperator *op)
       }
       ob_gpencil->actcol = actcol;
     }
-    else if (target == OB_CURVES) {
+    else if (target == OB_CURVES || grease_pencil_to_mesh) {
       ob->flag |= OB_DONE;
 
       Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
@@ -3380,7 +3382,14 @@ static int object_convert_exec(bContext *C, wmOperator *op)
           newob = ob;
         }
 
-        Curves *new_curves = static_cast<Curves *>(BKE_id_new(bmain, ID_CV, newob->id.name + 2));
+        Curves *new_curves;
+        if (grease_pencil_to_mesh) {
+          new_curves = static_cast<Curves *>(BKE_id_new_nomain(ID_CV, newob->id.name + 2));
+        }
+        else {
+          new_curves = static_cast<Curves *>(BKE_id_new(bmain, ID_CV, newob->id.name + 2));
+        }
+
         newob->data = new_curves;
         newob->type = OB_CURVES;
 
@@ -3404,6 +3413,23 @@ static int object_convert_exec(bContext *C, wmOperator *op)
             new_curves->geometry.wrap().tag_topology_changed();
             BKE_object_material_from_eval_data(bmain, newob, &joined_curves.get_curves()->id);
           }
+        }
+
+        if (grease_pencil_to_mesh) {
+          Mesh *new_mesh = static_cast<Mesh *>(BKE_id_new(bmain, ID_ME, newob->id.name + 2));
+          newob->data = new_mesh;
+          newob->type = OB_MESH;
+
+          bke::AnonymousAttributePropagationInfo propagation_info;
+          propagation_info.propagate_all = false;
+          Mesh *mesh = bke::curve_to_wire_mesh(new_curves->geometry.wrap(), propagation_info);
+          if (!mesh) {
+            mesh = BKE_mesh_new_nomain(0, 0, 0, 0);
+          }
+          BKE_mesh_nomain_to_mesh(mesh, new_mesh, newob);
+          BKE_object_material_from_eval_data(bmain, newob, &new_curves->id);
+
+          BKE_id_free(nullptr, new_curves);
         }
 
         BKE_object_free_derived_caches(newob);
