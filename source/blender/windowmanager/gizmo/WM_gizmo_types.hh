@@ -87,7 +87,7 @@ enum eWM_GizmoFlag {
   /** Push an undo step after each use of the gizmo. */
   WM_GIZMO_NEEDS_UNDO = (1 << 13),
 };
-ENUM_OPERATORS(eWM_GizmoFlag, WM_GIZMO_NO_TOOLTIP);
+ENUM_OPERATORS(eWM_GizmoFlag, WM_GIZMO_NEEDS_UNDO);
 
 /**
  * #wmGizmoGroupType.flag
