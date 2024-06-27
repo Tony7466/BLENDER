@@ -4190,14 +4190,20 @@ static Set<const bNodeSocket *> find_sockets_on_active_gizmo_paths(const bContex
   Set<const bNodeSocket *> sockets_on_gizmo_paths;
 
   ComputeContextBuilder compute_context_builder;
-  nodes::gizmos::foreach_active_gizmo_in_modifier(
-      *object_and_modifier->object,
-      *object_and_modifier->nmd,
-      wm,
+  nodes::gizmos::foreach_active_gizmo(
+      C,
       compute_context_builder,
-      [&](const ComputeContext &gizmo_context,
+      [&](const Object &gizmo_object,
+          const NodesModifierData &gizmo_nmd,
+          const ComputeContext &gizmo_context,
           const bNode &gizmo_node,
           const bNodeSocket &gizmo_socket) {
+        if (&gizmo_object != object_and_modifier->object) {
+          return;
+        }
+        if (&gizmo_nmd != object_and_modifier->nmd) {
+          return;
+        }
         nodes::gizmos::foreach_socket_on_gizmo_path(
             gizmo_context,
             gizmo_node,
