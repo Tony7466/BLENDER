@@ -1,1 +1,2 @@
 Referenced by issue #123738, Existing keyframes disappear while I'm holding duplicated keyframes and moving them to outside display area
+Referenced by pull request #123824, Fix #123738: Keyframe drawing issue while duplicating keys
