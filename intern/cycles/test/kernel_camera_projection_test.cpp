@@ -86,4 +86,107 @@ TEST(KernelCamera, FisheyeLensPolynomialRoundtrip)
   }
 }
 
+/**
+ * @brief Test symmetry properties of #fisheye_lens_polynomial_to_direction
+ */
+TEST(KernelCamera, FisheyeLensPolynomialToDirectionSymmetry)
+{
+  const float fov = M_PI_F;
+  const float width = 1.0f;
+  const float height = 1.0f;
+
+  /* Trivial case: The coefficients create a perfect equidistant fisheye */
+  const float4 k_equidistant = make_float4(-1.0, 0.0, 0.0, 0.0);
+  const float k0 = 0.0f;
+
+  /* Symmetry tests */
+  const float2 center{0.5, 0.5};
+  const float2 offsets[]{
+      {0.00, 0.00},
+      {0.25, 0.00},
+      {0.00, 0.25},
+      {0.25, 0.25},
+
+      {0.5, 0.0},
+      {0.0, 0.5},
+      {0.5, 0.5},
+
+      {0.75, 0.00},
+      {0.00, 0.75},
+      {0.75, 0.75},
+  };
+
+  for (float2 const &offset : offsets) {
+    const float2 point = center + offset;
+    const float3 direction = fisheye_lens_polynomial_to_direction(
+        point.x, point.y, k0, k_equidistant, fov, width, height);
+    EXPECT_NEAR(len(direction), 1.0, 1e-6);
+
+    const float2 point_mirror = center - offset;
+    const float3 direction_mirror = fisheye_lens_polynomial_to_direction(
+        point_mirror.x, point_mirror.y, k0, k_equidistant, fov, width, height);
+    EXPECT_NEAR(len(direction_mirror), 1.0, 1e-6);
+
+    EXPECT_NEAR(direction.x, +direction_mirror.x, 1e-6)
+        << "offset: (" << offset.x << ", " << offset.y << ")";
+    EXPECT_NEAR(direction.y, -direction_mirror.y, 1e-6)
+        << "offset: (" << offset.x << ", " << offset.y << ")";
+    ;
+    EXPECT_NEAR(direction.z, -direction_mirror.z, 1e-6)
+        << "offset: (" << offset.x << ", " << offset.y << ")";
+    ;
+  }
+}
+
+/**
+ * @brief Test #fisheye_lens_polynomial_to_direction with a couple of hand-crafted reference
+ * values.
+ */
+TEST(KernelCamera, FisheyeLensPolynomialToDirection)
+{
+  const float fov = M_PI_F;
+  const float width = 1.0f;
+  const float height = 1.0f;
+
+  /* Trivial case: The coefficients create a perfect equidistant fisheye */
+  const float4 k_equidistant = make_float4(-1.0, 0.0, 0.0, 0.0);
+  const float k0 = 0.0f;
+
+  const float rad60 = M_PI_F / 3.0f;
+  const float cos60 = 0.5f;
+  const float sin60 = M_SQRT3_F / 2.0f;
+
+  const float rad30 = M_PI_F / 6.0f;
+  const float cos30 = M_SQRT3_F / 2.0f;
+  const float sin30 = 0.5f;
+
+  const std::pair<float2, float3> tests[]{
+      /* Center (0°) */
+      {{0.5, 0.5}, {1.0, 0.0, 0.0}},
+
+      /* 60° */
+      {{0.5, 0.5 + rad60}, {cos60, 0.0, sin60}},
+      {{0.5, 0.5 - rad60}, {cos60, 0.0, -sin60}},
+      {{0.5 + rad60, 0.5}, {cos60, -sin60, 0.0}},
+      {{0.5 - rad60, 0.5}, {cos60, sin60, 0.0}},
+
+      /* 30° */
+      {{0.5, 0.5 + rad30}, {cos30, 0.0, sin30}},
+      {{0.5, 0.5 - rad30}, {cos30, 0.0, -sin30}},
+      {{0.5 + rad30, 0.5}, {cos30, -sin30, 0.0}},
+      {{0.5 - rad30, 0.5}, {cos30, sin30, 0.0}},
+  };
+
+  for (auto [sensor, direction] : tests) {
+    const float3 computed = fisheye_lens_polynomial_to_direction(
+        sensor.x, sensor.y, k0, k_equidistant, fov, width, height);
+    EXPECT_NEAR(direction.x, computed.x, 1e-6)
+        << "sensor: (" << sensor.x << ", " << sensor.y << ")";
+    EXPECT_NEAR(direction.y, computed.y, 1e-6)
+        << "sensor: (" << sensor.x << ", " << sensor.y << ")";
+    EXPECT_NEAR(direction.z, computed.z, 1e-6)
+        << "sensor: (" << sensor.x << ", " << sensor.y << ")";
+  }
+}
+
 CCL_NAMESPACE_END
