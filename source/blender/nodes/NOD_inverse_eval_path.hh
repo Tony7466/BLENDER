@@ -11,8 +11,6 @@
 namespace blender::nodes::inverse_eval {
 
 struct LocalInverseEvalPath {
-  Vector<SocketElem> intermediate_sockets;
-
   Vector<SocketElem> final_input_sockets;
   Vector<GroupInputElem> final_group_inputs;
   Vector<ValueNodeElem> final_value_nodes;

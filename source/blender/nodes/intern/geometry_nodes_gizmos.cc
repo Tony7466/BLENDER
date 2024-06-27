@@ -137,17 +137,19 @@ static TreeGizmoPropagation build_tree_gizmo_propagation(bNodeTree &tree)
     if (!has_target) {
       continue;
     }
-    for (const ie::SocketElem &socket_elem : path.intermediate_sockets) {
-      socket_elem.socket->runtime->has_gizmo = true;
-    }
     for (const ie::SocketElem &input_socket : path.final_input_sockets) {
       gizmo_propagation.gizmo_inputs_by_node_inputs.add(input_socket, gizmo_input_socket_elem);
+      input_socket.socket->runtime->has_gizmo = true;
     }
     for (const ie::ValueNodeElem &value_node : path.final_value_nodes) {
       gizmo_propagation.gizmo_inputs_by_value_nodes.add(value_node, gizmo_input_socket_elem);
+      value_node.node->output_socket(0).runtime->has_gizmo = true;
     }
     for (const ie::GroupInputElem &group_input : path.final_group_inputs) {
       gizmo_propagation.gizmo_inputs_by_group_inputs.add(group_input, gizmo_input_socket_elem);
+      for (const bNode *group_input_node : tree.group_input_nodes()) {
+        group_input_node->output_socket(group_input.group_input_index).runtime->has_gizmo = true;
+      }
     }
   }
 
@@ -441,7 +443,8 @@ ie::ElemVariant get_editable_gizmo_elem(const ComputeContext &gizmo_context,
       {&gizmo_socket, get_gizmo_socket_elem(gizmo_node, gizmo_socket)},
       {},
       [&](const ComputeContext &context, const bNodeSocket &socket, const ie::ElemVariant &elem) {
-        if (&context == &gizmo_context && gizmo_socket.directly_linked_sockets().contains(&socket))
+        if (context.hash() == gizmo_context.hash() &&
+            gizmo_socket.directly_linked_sockets().contains(&socket))
         {
           if (const std::optional<ie::ElemVariant> converted_elem = ie::convert_socket_elem(
                   socket, gizmo_socket, elem))

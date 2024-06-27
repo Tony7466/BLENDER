@@ -110,10 +110,10 @@ struct NodeInContextDownstreamComparator {
     const Span<int> a_common = Span<int>(a_sort_vec).take_front(common_length);
     const Span<int> b_common = Span<int>(b_sort_vec).take_front(common_length);
     if (a_common == b_common) {
-      return a_sort_vec.size() > b_sort_vec.size();
+      return a_sort_vec.size() < b_sort_vec.size();
     }
     return std::lexicographical_compare(
-        a_common.begin(), a_common.end(), b_common.begin(), b_common.end());
+        b_common.begin(), b_common.end(), a_common.begin(), a_common.end());
   }
 };
 
@@ -615,12 +615,6 @@ LocalInverseEvalPath find_local_inverse_eval_path(const bNodeTree &tree,
       continue;
     }
     path.final_group_inputs.append({group_input_index, *elem});
-  }
-
-  for (auto &&item : elem_by_socket.items()) {
-    const bNodeSocket &socket = *item.key.socket;
-    const ElemVariant &elem = item.value;
-    path.intermediate_sockets.append({&socket, elem});
   }
 
   return path;
