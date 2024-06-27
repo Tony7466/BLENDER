@@ -6,15 +6,24 @@
  * \ingroup edgreasepencil
  */
 
+#include "BLI_array_utils.hh"
+#include "BLI_index_mask.hh"
+
 #include "BKE_context.hh"
+#include "BKE_curves.hh"
+#include "BKE_curves_utils.hh"
 #include "BKE_paint.hh"
 
 #include "DNA_brush_enums.h"
 #include "DNA_object_enums.h"
 #include "DNA_scene_types.h"
 
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
+
 #include "ED_grease_pencil.hh"
 #include "ED_screen.hh"
+#include "ED_object.hh"
 
 #include "WM_api.hh"
 #include "WM_toolsystem.hh"
@@ -187,10 +196,62 @@ static void keymap_grease_pencil_fill_tool(wmKeyConfig *keyconf)
   keymap->poll = keymap_grease_pencil_fill_tool_poll;
 }
 
+static int object_grease_pencil_convert_v3_exec(bContext *C, wmOperator *op)
+{
+  Main *bmain = CTX_data_main(C);
+  Scene *scene = CTX_data_scene(C);
+  Object *object = CTX_data_active_object(C);
+  GreasePencil *grease_pencil = (GreasePencil *)object->data;
+  bke::greasepencil::Layer *layer = grease_pencil->get_active_layer();
+
+  const int cfra = scene->r.cfra;
+
+  const bke::greasepencil::Drawing *drawing = grease_pencil->get_drawing_at(*layer, cfra);
+
+  // const int type = RNA_enum_get(op->ptr, "type");
+
+  const char* ob_name = "GPencil Converted";
+  Object *curves_object = ed::object::add_type(C, OB_CURVES, ob_name, object->loc, object->rot, false, 0);
+
+  Curves *curves = (Curves *)curves_object->data;
+  Array<bool> sel_array(drawing->strokes().curves_num());
+  sel_array.fill(true);
+  IndexMaskMemory memory;
+  IndexMask select_all = IndexMask::from_bools(sel_array, memory);
+
+  bke::CurvesGeometry new_curves = bke::curves_copy_curve_selection(
+      drawing->strokes(), select_all, {});
+  curves->geometry = new_curves;
+  new_curves.tag_topology_changed();
+
+  DEG_id_tag_update(&curves->id, ID_RECALC_GEOMETRY);
+  
+  //WM_main_add_notifier(NC_GEOM | ND_DATA, &grease_pencil->id);
+
+  return OPERATOR_FINISHED;
+}
+
+void OBJECT_OT_grease_pencil_convert_v3(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Convert Grease Pencil v3";
+  ot->description = "Convert grease pencil v3 to other object types";
+  ot->idname = "OBJECT_OT_grease_pencil_convert_v3";
+
+  /* api callbacks */
+  ot->exec = object_grease_pencil_convert_v3_exec;
+  ot->poll = ED_operator_objectmode;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER;// | OPTYPE_UNDO;
+}
+
 }  // namespace blender::ed::greasepencil
 
 void ED_operatortypes_grease_pencil()
 {
+  WM_operatortype_append(blender::ed::greasepencil::OBJECT_OT_grease_pencil_convert_v3);
+
   ED_operatortypes_grease_pencil_draw();
   ED_operatortypes_grease_pencil_frames();
   ED_operatortypes_grease_pencil_layers();
