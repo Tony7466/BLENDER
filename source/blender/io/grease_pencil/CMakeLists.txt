@@ -27,6 +27,7 @@ set(SRC
   intern/grease_pencil_io.cc
 
   grease_pencil_io.hh
+  intern/grease_pencil_io_intern.hh
 )
 
 set(LIB

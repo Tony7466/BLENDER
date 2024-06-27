@@ -2,13 +2,9 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BLI_math_matrix_types.hh"
 #include "BLI_string_ref.hh"
 
-#include "DNA_vec_types.h"
 #include "DNA_view3d_types.h"
-
-#include <cstdint>
 
 #pragma once
 
@@ -20,36 +16,10 @@ struct ARegion;
 struct View3D;
 struct bContext;
 struct Scene;
-struct Object;
 struct ReportList;
 struct Depsgraph;
 
 namespace blender::io::grease_pencil {
-
-// /* GpencilIOParams->flag. */
-// enum class IOParamsFlag {
-//   /* Export Filled strokes. */
-//   ExportFill = (1 << 0),
-//   /* Export normalized thickness. */
-//   ExportNormalizedThickness = (1 << 1),
-//   /* Clip camera area. */
-//   ExportClipCamera = (1 << 2),
-// };
-// ENUM_OPERATORS(IOParamsFlag, IOParamsFlag::ExportClipCamera);
-
-/* Object to be exported. */
-enum class ExportSelect {
-  Active = 0,
-  Selected = 1,
-  Visible = 2,
-};
-
-/** Frame-range to be exported. */
-enum ExportFrame {
-  ActiveFrame = 0,
-  SelectedFrame = 1,
-  SceneFrame = 2,
-};
 
 struct IOContext {
   ReportList *reports;
@@ -76,42 +46,31 @@ struct ImportParams {
   bool convert_to_poly_curves = false;
 };
 
-struct ExportParams {};
+struct ExportParams {
+  /* Object to be exported. */
+  enum class SelectMode {
+    Active = 0,
+    Selected = 1,
+    Visible = 2,
+  };
 
-class GreasePencilImporter {
- protected:
-  const IOContext context_;
-  const ImportParams params_;
+  /** Frame-range to be exported. */
+  enum class FrameMode {
+    Active = 0,
+    Selected = 1,
+    Scene = 2,
+  };
 
-  Object *object_ = nullptr;
-
- public:
-  GreasePencilImporter(const IOContext &context, const ImportParams &params);
-
-  Object *create_object(StringRefNull name);
-  int32_t create_material(StringRefNull name, bool stroke, bool fill);
-};
-
-class GreasePencilExporter {
- protected:
-  const IOContext context_;
-  const ExportParams params_;
-
-  /* Camera parameters. */
-  float4x4 persmat_;
-  int2 win_size_;
-  int2 render_size_;
-  bool is_camera_;
-  float camera_ratio_;
-  rctf camera_rect_;
-
-  float2 offset_;
-
- public:
-  GreasePencilExporter(const IOContext &context, const ExportParams &params);
-
-  // XXX force_camera_view should be true for PDF export
-  void prepare_camera_params(Scene &scene, bool force_camera_view);
+  int frame = 1;
+  Object *object = nullptr;
+  SelectMode select_mode = SelectMode::Active;
+  FrameMode frame_mode = FrameMode::Active;
+  /* Clip drawings to camera size when exporting in camera view. */
+  bool use_clip_camera = false;
+  /* Enforce uniform stroke width by averaging radius. */
+  bool use_uniform_width = false;
+  bool export_stroke_materials = true;
+  bool export_fill_materials = true;
 };
 
 bool import_svg(const IOContext &context, const ImportParams &params, StringRefNull filepath);

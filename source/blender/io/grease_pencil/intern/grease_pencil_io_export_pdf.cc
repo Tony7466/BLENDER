@@ -2,7 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "grease_pencil_io.hh"
+#include "grease_pencil_io_intern.hh"
 
 /** \file
  * \ingroup bgrease_pencil

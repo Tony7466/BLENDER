@@ -25,7 +25,7 @@
 
 #include "ED_grease_pencil.hh"
 
-#include "grease_pencil_io.hh"
+#include "grease_pencil_io_intern.hh"
 
 #include "nanosvg.h"
 

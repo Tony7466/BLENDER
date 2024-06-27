@@ -45,12 +45,13 @@ namespace blender::ed::io {
 /* Common props for exporting. */
 static void grease_pencil_export_common_props_definition(wmOperatorType *ot)
 {
-  using blender::io::grease_pencil::ExportSelect;
+  using blender::io::grease_pencil::ExportParams;
+  using SelectMode = ExportParams::SelectMode;
 
   static const EnumPropertyItem select_items[] = {
-      {int(ExportSelect::Active), "ACTIVE", 0, "Active", "Include only the active object"},
-      {int(ExportSelect::Selected), "SELECTED", 0, "Selected", "Include selected objects"},
-      {int(ExportSelect::Visible), "VISIBLE", 0, "Visible", "Include all visible objects"},
+      {int(SelectMode::Active), "ACTIVE", 0, "Active", "Include only the active object"},
+      {int(SelectMode::Selected), "SELECTED", 0, "Selected", "Include selected objects"},
+      {int(SelectMode::Visible), "VISIBLE", 0, "Visible", "Include all visible objects"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -58,7 +59,7 @@ static void grease_pencil_export_common_props_definition(wmOperatorType *ot)
   RNA_def_enum(ot->srna,
                "selected_object_type",
                select_items,
-               int(ExportSelect::Active),
+               int(SelectMode::Active),
                "Object",
                "Which objects to include in the export");
   RNA_def_float(ot->srna,
@@ -71,11 +72,8 @@ static void grease_pencil_export_common_props_definition(wmOperatorType *ot)
                 "disables sampling",
                 0.0f,
                 100.0f);
-  RNA_def_boolean(ot->srna,
-                  "use_normalized_thickness",
-                  false,
-                  "Normalize",
-                  "Export strokes with constant thickness");
+  RNA_def_boolean(
+      ot->srna, "use_uniform_width", false, "Uniform Width", "Export strokes with uniform width");
 }
 
 static ARegion *get_invoke_region(bContext *C)
@@ -289,9 +287,7 @@ static int grease_pencil_export_svg_invoke(bContext *C, wmOperator *op, const wm
 
 static int grease_pencil_export_svg_exec(bContext *C, wmOperator *op)
 {
-  using blender::io::grease_pencil::ExportFrame;
   using blender::io::grease_pencil::ExportParams;
-  using blender::io::grease_pencil::ExportSelect;
   using blender::io::grease_pencil::IOContext;
 
   Scene *scene = CTX_data_scene(C);
@@ -314,13 +310,15 @@ static int grease_pencil_export_svg_exec(bContext *C, wmOperator *op)
   RNA_string_get(op->ptr, "filepath", filepath);
 
   const bool use_fill = RNA_boolean_get(op->ptr, "use_fill");
-  const bool use_norm_thickness = RNA_boolean_get(op->ptr, "use_normalized_thickness");
-  const ExportSelect select_mode = ExportSelect(RNA_enum_get(op->ptr, "selected_object_type"));
+  const bool use_uniform_width = RNA_boolean_get(op->ptr, "use_uniform_width");
+  const ExportParams::SelectMode select_mode = ExportParams::SelectMode(
+      RNA_enum_get(op->ptr, "selected_object_type"));
+  const ExportParams::FrameMode frame_mode = ExportParams::FrameMode::Active;
 
   const bool use_clip_camera = RNA_boolean_get(op->ptr, "use_clip_camera");
 
   /* Set flags. */
-  int flag = 0;
+  // int flag = 0;
   // SET_FLAG_FROM_TEST(flag, use_fill, int(IOParamsFlag::ExportFill));
   // SET_FLAG_FROM_TEST(flag, use_norm_thickness, int(IOParamsFlag::ExportNormalizedThickness));
   // SET_FLAG_FROM_TEST(flag, use_clip_camera, int(IOParamsFlag::ExportClipCamera));
@@ -340,11 +338,12 @@ static int grease_pencil_export_svg_exec(bContext *C, wmOperator *op)
   // params.stroke_sample = RNA_float_get(op->ptr, "stroke_sample");
   // params.resolution = 1.0f;
   const IOContext io_context(*C, region, v3d, rv3d, op->reports);
-  const ExportParams params = {};
+  const ExportParams params = {
+      scene->r.cfra, ob, select_mode, frame_mode, use_clip_camera, use_uniform_width};
 
   /* Do export. */
   WM_cursor_wait(true);
-  const bool done = blender::io::grease_pencil::export_pdf(io_context, params, *scene, filepath);
+  const bool done = blender::io::grease_pencil::export_svg(io_context, params, *scene, filepath);
   WM_cursor_wait(false);
 
   if (!done) {
@@ -377,7 +376,7 @@ static void grease_pencil_export_svg_draw(bContext * /*C*/, wmOperator *op)
   uiLayout *col = uiLayoutColumn(box, false);
   uiItemR(col, op->ptr, "stroke_sample", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, op->ptr, "use_fill", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(col, op->ptr, "use_normalized_thickness", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, op->ptr, "use_uniform_width", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, op->ptr, "use_clip_camera", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
@@ -418,7 +417,7 @@ void WM_OT_grease_pencil_export_svg(wmOperatorType *ot)
                   "use_clip_camera",
                   false,
                   "Clip Camera",
-                  "Clip drawings to camera size when export in camera view");
+                  "Clip drawings to camera size when exporting in camera view");
 }
 
 #  endif
@@ -459,9 +458,7 @@ static int grease_pencil_export_pdf_invoke(bContext *C, wmOperator *op, const wm
 
 static int grease_pencil_export_pdf_exec(bContext *C, wmOperator *op)
 {
-  using blender::io::grease_pencil::ExportFrame;
   using blender::io::grease_pencil::ExportParams;
-  using blender::io::grease_pencil::ExportSelect;
 
   Scene *scene = CTX_data_scene(C);
   Object *ob = CTX_data_active_object(C);
@@ -482,9 +479,11 @@ static int grease_pencil_export_pdf_exec(bContext *C, wmOperator *op)
   RNA_string_get(op->ptr, "filepath", filepath);
 
   const bool use_fill = RNA_boolean_get(op->ptr, "use_fill");
-  const bool use_norm_thickness = RNA_boolean_get(op->ptr, "use_normalized_thickness");
-  const ExportSelect select_mode = ExportSelect(RNA_enum_get(op->ptr, "selected_object_type"));
-  const ExportFrame frame_mode = ExportFrame(RNA_enum_get(op->ptr, "frame_mode"));
+  const bool use_uniform_width = RNA_boolean_get(op->ptr, "use_uniform_width");
+  const ExportParams::SelectMode select_mode = ExportParams::SelectMode(
+      RNA_enum_get(op->ptr, "selected_object_type"));
+  const ExportParams::FrameMode frame_mode = ExportParams::FrameMode(
+      RNA_enum_get(op->ptr, "frame_mode"));
 
   /* Set flags. */
   // int flag = 0;
@@ -546,7 +545,7 @@ static void ui_gpencil_export_pdf_settings(uiLayout *layout, PointerRNA *imfptr)
   sub = uiLayoutColumn(col, true);
   uiItemR(sub, imfptr, "stroke_sample", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(sub, imfptr, "use_fill", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(sub, imfptr, "use_normalized_thickness", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(sub, imfptr, "use_uniform_width", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 static void grease_pencil_export_pdf_draw(bContext * /*C*/, wmOperator *op)
@@ -585,12 +584,16 @@ void WM_OT_grease_pencil_export_pdf(wmOperatorType *ot)
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_DEFAULT);
 
-  using blender::io::grease_pencil::ExportFrame;
+  using blender::io::grease_pencil::ExportParams;
 
   static const EnumPropertyItem gpencil_export_frame_items[] = {
-      {int(ExportFrame::ActiveFrame), "ACTIVE", 0, "Active", "Include only active frame"},
-      {int(ExportFrame::SelectedFrame), "SELECTED", 0, "Selected", "Include selected frames"},
-      {int(ExportFrame::SceneFrame), "SCENE", 0, "Scene", "Include all scene frames"},
+      {int(ExportParams::FrameMode::Active), "ACTIVE", 0, "Active", "Include only active frame"},
+      {int(ExportParams::FrameMode::Selected),
+       "SELECTED",
+       0,
+       "Selected",
+       "Include selected frames"},
+      {int(ExportParams::FrameMode::Scene), "SCENE", 0, "Scene", "Include all scene frames"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -598,7 +601,7 @@ void WM_OT_grease_pencil_export_pdf(wmOperatorType *ot)
   ot->prop = RNA_def_enum(ot->srna,
                           "frame_mode",
                           gpencil_export_frame_items,
-                          int(ExportFrame::ActiveFrame),
+                          int(ExportParams::FrameMode::Active),
                           "Frames",
                           "Which frames to include in the export");
 }
