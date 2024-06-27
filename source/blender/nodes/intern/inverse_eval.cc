@@ -733,7 +733,10 @@ void foreach_element_on_inverse_eval_path(
         }
       },
       [&](const SocketInContext &ctx_from, const SocketInContext &ctx_to) {
-        /* TODO: Handle multi-input. */
+        if (ctx_to.socket->is_multi_input()) {
+          /* Not supported here. */
+          return false;
+        }
         const ElemVariant *from_elem = finalized_elem_by_socket.lookup_ptr(ctx_from);
         if (!from_elem) {
           return false;

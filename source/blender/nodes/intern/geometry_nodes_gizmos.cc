@@ -432,19 +432,25 @@ ie::ElemVariant get_editable_gizmo_elem(const ComputeContext &gizmo_context,
                                         const bNode &gizmo_node,
                                         const bNodeSocket &gizmo_socket)
 {
-  std::optional<ie::ElemVariant> found_elem;
+  std::optional<ie::ElemVariant> found_elem = ie::get_elem_variant_for_socket_type(
+      eNodeSocketDatatype(gizmo_socket.type));
+  BLI_assert(found_elem.has_value());
+
   ie::foreach_element_on_inverse_eval_path(
       gizmo_context,
       {&gizmo_socket, get_gizmo_socket_elem(gizmo_node, gizmo_socket)},
       {},
       [&](const ComputeContext &context, const bNodeSocket &socket, const ie::ElemVariant &elem) {
-        if (&context == &gizmo_context && &gizmo_socket == &socket) {
-          found_elem = elem;
+        if (&context == &gizmo_context && gizmo_socket.directly_linked_sockets().contains(&socket))
+        {
+          if (const std::optional<ie::ElemVariant> converted_elem = ie::convert_socket_elem(
+                  socket, gizmo_socket, elem))
+          {
+            found_elem->merge(*converted_elem);
+          }
         }
       });
-  if (!found_elem.has_value()) {
-    return *ie::get_elem_variant_for_socket_type(eNodeSocketDatatype(gizmo_socket.type));
-  }
+
   return *found_elem;
 }
 
