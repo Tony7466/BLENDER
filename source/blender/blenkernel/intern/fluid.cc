@@ -3371,6 +3371,7 @@ static Mesh *create_liquid_geometry(FluidDomainSettings *fds,
 #  endif
   }
 
+  velocities.finish();
   material_indices.finish();
 
   mesh_calc_edges(*mesh, false, false);
