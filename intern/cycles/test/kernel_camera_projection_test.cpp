@@ -164,10 +164,10 @@ TEST(KernelCamera, FisheyeLensPolynomialToDirection)
       {{0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}},
 
       /* 60° */
-      {{0.0f, +rad60}, {cos60, 0.0, sin60}},
+      {{0.0f, +rad60}, {cos60, 0.0, +sin60}},
       {{0.0f, -rad60}, {cos60, 0.0, -sin60}},
       {{+rad60, 0.0f}, {cos60, -sin60, 0.0}},
-      {{-rad60, 0.0f}, {cos60, sin60, 0.0}},
+      {{-rad60, 0.0f}, {cos60, +sin60, 0.0}},
 
       /* 45° */
       {{0.0f, +rad45}, {cos45, 0.0, sin45}},
@@ -181,10 +181,10 @@ TEST(KernelCamera, FisheyeLensPolynomialToDirection)
       {{-rad45 * M_SQRT1_2f, -rad45 * M_SQRT1_2f}, {cos45, +0.5f, -0.5f}},
 
       /* 30° */
-      {{0.0f, +rad30}, {cos30, 0.0, sin30}},
+      {{0.0f, +rad30}, {cos30, 0.0, +sin30}},
       {{0.0f, -rad30}, {cos30, 0.0, -sin30}},
       {{+rad30, 0.0f}, {cos30, -sin30, 0.0}},
-      {{-rad30, 0.0f}, {cos30, sin30, 0.0}},
+      {{-rad30, 0.0f}, {cos30, +sin30, 0.0}},
   };
 
   for (auto [offset, direction] : tests) {
