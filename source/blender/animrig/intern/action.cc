@@ -142,16 +142,6 @@ bool Action::is_action_layered() const
          BLI_listbase_is_empty(&this->curves);
 }
 
-void Action::assert_one_layer_one_strip() const
-{
-  BLI_assert(this->layers().size() == 1);
-  BLI_assert(this->layers()[0]->strips().size() == 1);
-
-  const Strip *strip = this->layers()[0]->strips()[0];
-  BLI_assert(strip->is_infinite());
-  BLI_assert(strip->type() == Strip::Type::Keyframe);
-}
-
 blender::Span<const Layer *> Action::layers() const
 {
   return blender::Span<Layer *>{reinterpret_cast<Layer **>(this->layer_array),
@@ -448,8 +438,7 @@ Layer *Action::get_layer_for_keyframing()
     return nullptr;
   }
 
-  this->assert_one_layer_one_strip();
-
+  assert_baklava_phase_1_invariants(*this);
   return this->layer(0);
 }
 
@@ -1243,4 +1232,35 @@ FCurve *action_fcurve_ensure(Main *bmain,
 
   return fcu;
 }
+
+void assert_baklava_phase_1_invariants(const Action &action)
+{
+  if (action.is_action_legacy()) {
+    return;
+  }
+  if (action.layers().is_empty()) {
+    return;
+  }
+  BLI_assert(action.layers().size() == 1);
+
+  assert_baklava_phase_1_invariants(*action.layer(0));
+}
+
+void assert_baklava_phase_1_invariants(const Layer &layer)
+{
+  if (layer.strips().is_empty()) {
+    return;
+  }
+  BLI_assert(layer.strips().size() == 1);
+
+  assert_baklava_phase_1_invariants(*layer.strip(0));
+}
+
+void assert_baklava_phase_1_invariants(const Strip &strip)
+{
+  BLI_assert(strip.type() == Strip::Type::Keyframe);
+  BLI_assert(strip.is_infinite());
+  BLI_assert(strip.frame_offset == 0.0);
+}
+
 }  // namespace blender::animrig

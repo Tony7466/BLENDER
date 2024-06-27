@@ -98,22 +98,6 @@ class Action : public ::bAction {
    */
   bool is_action_layered() const;
 
-  /**
-   * Assert that this action is a layered action with precisely one layer and
-   * one infinite keyframe strip.
-   *
-   * This is for use in Project Baklava *phase 1*, which only permits layered
-   * actions (with animation in them) to have this structure. This
-   * simultaneously serves as a todo marker for later phases and catches areas
-   * of the code with phase-1 assumptions at runtime.
-   *
-   * TODO: this function should be changed to assert fewer and fewer assumptions
-   * as we progress through the phases of Project Baklava and more and more of
-   * the new animation system is implemented. Finally, it should be removed
-   * entirely when the full system is completely implemented.
-   */
-  void assert_one_layer_one_strip() const;
-
   /* Animation Layers access. */
   blender::Span<const Layer *> layers() const;
   blender::MutableSpan<Layer *> layers();
@@ -693,6 +677,35 @@ FCurve *action_fcurve_ensure(Main *bmain,
  * Find the F-Curve from the given Action. This assumes that all the destinations are valid.
  */
 FCurve *action_fcurve_find(bAction *act, const char rna_path[], int array_index);
+
+/**
+ * Assert the invariants of Project Baklava phase 1.
+ *
+ * For an action the invariants are that it:
+ * - Is a legacy action.
+ * - OR has zero layers.
+ * - OR has a single layer that adheres to the phase 1 invariants for layers.
+ *
+ * For a layer the invariants are that it:
+ * - Has zero strips.
+ * - OR has a single strip that adheres to the phase 1 invariants for strips.
+ *
+ * For a strip the invariants are that it:
+ * - Is a keyframe strip.
+ * - AND is infinite.
+ * - AND has no time offset (i.e. aligns with scene time).
+ *
+ * This simultaneously serves as a todo marker for later phases of Project
+ * Baklava and ensures that the phase-1 invariants hold at runtime.
+ *
+ * TODO: these functions should be changed to assert fewer and fewer assumptions
+ * as we progress through the phases of Project Baklava and more and more of the
+ * new animation system is implemented. Finally, it should be removed entirely
+ * when the full system is completely implemented.
+ */
+void assert_baklava_phase_1_invariants(const Action &action);
+void assert_baklava_phase_1_invariants(const Layer &layer);
+void assert_baklava_phase_1_invariants(const Strip &strip);
 
 }  // namespace blender::animrig
 
