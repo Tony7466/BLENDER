@@ -38,12 +38,21 @@ bool is_builtin_gizmo_node(const bNode &node);
 
 bool update_tree_gizmo_propagation(bNodeTree &tree);
 
-using ForeachGizmoFn =
+using ForeachGizmoInModifierFn =
     FunctionRef<void(const ComputeContext &compute_context, const bNode &gizmo_node)>;
 
-void foreach_active_gizmo(const Object &object,
-                          const NodesModifierData &nmd,
-                          const wmWindowManager &wm,
+void foreach_active_gizmo_in_modifier(const Object &object,
+                                      const NodesModifierData &nmd,
+                                      const wmWindowManager &wm,
+                                      ComputeContextBuilder &compute_context_builder,
+                                      ForeachGizmoInModifierFn fn);
+
+using ForeachGizmoFn = FunctionRef<void(const Object &object,
+                                        const NodesModifierData &nmd,
+                                        const ComputeContext &compute_context,
+                                        const bNode &gizmo_node)>;
+
+void foreach_active_gizmo(const bContext &C,
                           ComputeContextBuilder &compute_context_builder,
                           ForeachGizmoFn fn);
 

@@ -712,8 +712,20 @@ class TransformGizmos : public NodeGizmos {
   }
 };
 
+struct GeoNodesObjectGizmoID {
+  const Object *object_orig;
+  bke::GeoNodesGizmoID gizmo_id;
+
+  BLI_STRUCT_EQUALITY_OPERATORS_2(GeoNodesObjectGizmoID, object_orig, gizmo_id)
+
+  uint64_t hash() const
+  {
+    return get_default_hash(this->object_orig, this->gizmo_id);
+  }
+};
+
 struct GeometryNodesGizmoGroup {
-  Map<bke::GeoNodesGizmoID, std::unique_ptr<NodeGizmos>> gizmos_by_node;
+  Map<GeoNodesObjectGizmoID, std::unique_ptr<NodeGizmos>> gizmos_by_node;
 };
 
 static std::unique_ptr<NodeGizmos> create_node_gizmos(const bNode &gizmo_node)
@@ -823,15 +835,7 @@ static bool WIDGETGROUP_geometry_nodes_poll(const bContext *C, wmGizmoGroupType 
   if (v3d->gizmo_flag & V3D_GIZMO_HIDE_MODIFIER) {
     return false;
   }
-  if (Object *object = CTX_data_active_object(C)) {
-    if (ModifierData *md = BKE_object_active_modifier(object)) {
-      if (md->type == eModifierType_Nodes) {
-        NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
-        return nmd->node_group != nullptr;
-      }
-    }
-  }
-  return false;
+  return true;
 }
 
 static void WIDGETGROUP_geometry_nodes_setup(const bContext * /*C*/, wmGizmoGroup *gzgroup)
@@ -853,39 +857,13 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
     return;
   }
 
-  Object *ob_orig = CTX_data_active_object(C);
-  NodesModifierData &nmd = *reinterpret_cast<NodesModifierData *>(
-      BKE_object_active_modifier(ob_orig));
-  if (!nmd.runtime->eval_log) {
-    return;
-  }
-
   const wmWindowManager *wm = CTX_wm_manager(C);
   if (wm == nullptr) {
     return;
   }
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
-  Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob_orig);
-  if (ob_eval == nullptr) {
-    return;
-  }
 
-  bke::GeometrySet geometry = bke::object_get_evaluated_geometry_set(*ob_eval);
-  if (v3d->flag2 & V3D_SHOW_VIEWER) {
-    const ViewerPath &viewer_path = v3d->viewer_path;
-    if (const geo_eval_log::ViewerNodeLog *viewer_log =
-            nmd.runtime->eval_log->find_viewer_node_log_for_path(viewer_path))
-    {
-      geometry = viewer_log->geometry;
-    }
-  }
-
-  bNodeTree &ntree = *nmd.node_group;
-  ntree.ensure_topology_cache();
-
-  const float4x4 object_to_world{ob_orig->object_to_world()};
-
-  Map<bke::GeoNodesGizmoID, std::unique_ptr<NodeGizmos>> new_gizmos_by_node;
+  Map<GeoNodesObjectGizmoID, std::unique_ptr<NodeGizmos>> new_gizmos_by_node;
 
   /* This needs to stay around for a bit longer because the compute contexts are required when
    * applying the gizmo changes. */
@@ -893,16 +871,42 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
   compute_context_builder->keep_old_contexts();
 
   nodes::gizmos::foreach_active_gizmo(
-      *ob_orig,
-      nmd,
-      *wm,
+      *C,
       *compute_context_builder,
-      [&](const ComputeContext &compute_context, const bNode &gizmo_node) {
-        const bke::GeoNodesGizmoID gizmo_id = {compute_context.hash(), gizmo_node.identifier};
+      [&](const Object &object_orig,
+          const NodesModifierData &nmd_orig,
+          const ComputeContext &compute_context,
+          const bNode &gizmo_node) {
+        const GeoNodesObjectGizmoID gizmo_id = {&object_orig,
+                                                {compute_context.hash(), gizmo_node.identifier}};
         if (new_gizmos_by_node.contains(gizmo_id)) {
           /* Already handled. */
           return;
         }
+        if (!nmd_orig.runtime->eval_log) {
+          return;
+        }
+        Object *object_eval = DEG_get_evaluated_object(depsgraph,
+                                                       const_cast<Object *>(&object_orig));
+        if (!object_eval) {
+          return;
+        }
+
+        bke::GeometrySet geometry = bke::object_get_evaluated_geometry_set(*object_eval);
+        if (v3d->flag2 & V3D_SHOW_VIEWER) {
+          const ViewerPath &viewer_path = v3d->viewer_path;
+          if (const geo_eval_log::ViewerNodeLog *viewer_log =
+                  nmd_orig.runtime->eval_log->find_viewer_node_log_for_path(viewer_path))
+          {
+            geometry = viewer_log->geometry;
+          }
+        }
+
+        bNodeTree &ntree = *nmd_orig.node_group;
+        ntree.ensure_topology_cache();
+
+        const float4x4 object_to_world{object_eval->object_to_world()};
+
         NodeGizmos *node_gizmos = nullptr;
         if (std::optional<std::unique_ptr<NodeGizmos>> old_gizmos =
                 gzgroup_data.gizmos_by_node.pop_try(gizmo_id))
@@ -925,11 +929,12 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
           WM_gizmo_set_flag(gizmo, WM_GIZMO_HIDDEN, false);
         }
 
-        GeoTreeLog &tree_log = nmd.runtime->eval_log->get_tree_log(compute_context.hash());
+        GeoTreeLog &tree_log = nmd_orig.runtime->eval_log->get_tree_log(compute_context.hash());
         tree_log.ensure_socket_values();
 
-        const float4x4 geometry_transform =
-            find_gizmo_geometry_transform(geometry, gizmo_id).value_or(float4x4::identity());
+        const float4x4 geometry_transform = find_gizmo_geometry_transform(geometry,
+                                                                          gizmo_id.gizmo_id)
+                                                .value_or(float4x4::identity());
 
         UpdateReport report;
         GizmosUpdateParams update_params{
@@ -948,17 +953,17 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
                compute_context = &compute_context,
                gizmo_node_tree = &gizmo_node.owner_tree(),
                gizmo_node = &gizmo_node,
-               ob_orig = ob_orig,
-               nmd = &nmd,
-               eval_log = nmd.runtime->eval_log](
+               object_orig = &object_orig,
+               nmd = &nmd_orig,
+               eval_log = nmd_orig.runtime->eval_log](
                   const StringRef socket_identifier,
                   const FunctionRef<void(bke::SocketValueVariant & value)> modify_value) {
                 gizmo_node_tree->ensure_topology_cache();
                 const bNodeSocket &socket = gizmo_node->input_by_identifier(socket_identifier);
 
                 nodes::gizmos::apply_gizmo_change(*const_cast<bContext *>(C),
-                                                  *ob_orig,
-                                                  *nmd,
+                                                  const_cast<Object &>(*object_orig),
+                                                  const_cast<NodesModifierData &>(*nmd),
                                                   *eval_log,
                                                   *compute_context,
                                                   socket,
@@ -972,7 +977,8 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
 
         if (report.missing_socket_logs) {
           /* Rerun modifier to make sure that values are logged. */
-          DEG_id_tag_update_for_side_effect_request(depsgraph, &ob_orig->id, ID_RECALC_GEOMETRY);
+          DEG_id_tag_update_for_side_effect_request(
+              depsgraph, const_cast<ID *>(&object_orig.id), ID_RECALC_GEOMETRY);
           WM_main_add_notifier(NC_GEOM | ND_DATA, nullptr);
         }
         if (!any_interacting) {

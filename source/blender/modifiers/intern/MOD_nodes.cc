@@ -743,7 +743,7 @@ static void find_side_effect_nodes_for_active_gizmos(
   const NodesModifierData &nmd_orig = *reinterpret_cast<const NodesModifierData *>(
       BKE_modifier_get_original(ctx.object, const_cast<ModifierData *>(&nmd.modifier)));
   ComputeContextBuilder compute_context_builder;
-  nodes::gizmos::foreach_active_gizmo(
+  nodes::gizmos::foreach_active_gizmo_in_modifier(
       *object_orig,
       nmd_orig,
       wm,

@@ -6,9 +6,12 @@
 #include "BLI_math_rotation.hh"
 
 #include "BKE_compute_contexts.hh"
+#include "BKE_context.hh"
+#include "BKE_modifier.hh"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_zones.hh"
+#include "BKE_object.hh"
 #include "BKE_workspace.hh"
 
 #include "NOD_geometry_nodes_gizmos.hh"
@@ -173,12 +176,12 @@ bool update_tree_gizmo_propagation(bNodeTree &tree)
 static void foreach_gizmo_for_input(const ie::SocketElem &input_socket,
                                     ComputeContextBuilder &compute_context_builder,
                                     const bNodeTree &tree,
-                                    const ForeachGizmoFn fn);
+                                    const ForeachGizmoInModifierFn fn);
 
 static void foreach_gizmo_for_group_input(const bNodeTree &tree,
                                           const ie::GroupInputElem &group_input,
                                           ComputeContextBuilder &compute_context_builder,
-                                          const ForeachGizmoFn fn)
+                                          const ForeachGizmoInModifierFn fn)
 {
   const TreeGizmoPropagation &gizmo_propagation = *tree.runtime->gizmo_propagation;
   for (const ie::SocketElem &gizmo_input :
@@ -191,7 +194,7 @@ static void foreach_gizmo_for_group_input(const bNodeTree &tree,
 static void foreach_gizmo_for_input(const ie::SocketElem &input_socket,
                                     ComputeContextBuilder &compute_context_builder,
                                     const bNodeTree &tree,
-                                    const ForeachGizmoFn fn)
+                                    const ForeachGizmoInModifierFn fn)
 {
   const bke::bNodeTreeZones *zones = tree.zones();
   if (!zones) {
@@ -225,8 +228,8 @@ static void foreach_gizmo_for_input(const ie::SocketElem &input_socket,
 
 static void foreach_active_gizmo_in_open_node_editor(
     const SpaceNode &snode,
-    const Object &object,
-    const NodesModifierData &nmd,
+    const Object *object_filter,
+    const NodesModifierData *nmd_filter,
     ComputeContextBuilder &compute_context_builder,
     const ForeachGizmoFn fn)
 {
@@ -241,12 +244,19 @@ static void foreach_active_gizmo_in_open_node_editor(
   if (!object_and_modifier) {
     return;
   }
-  if (object_and_modifier->object != &object) {
-    return;
+  if (object_filter) {
+    if (object_and_modifier->object != object_filter) {
+      return;
+    }
   }
-  if (object_and_modifier->nmd != &nmd) {
-    return;
+  if (nmd_filter) {
+    if (object_and_modifier->nmd != nmd_filter) {
+      return;
+    }
   }
+
+  const Object &object = *object_and_modifier->object;
+  const NodesModifierData &nmd = *object_and_modifier->nmd;
 
   const ComputeContext *prev_compute_context = compute_context_builder.current();
   compute_context_builder.push<bke::ModifierComputeContext>(nmd.modifier.name);
@@ -284,39 +294,21 @@ static void foreach_active_gizmo_in_open_node_editor(
     }
   }
   for (const ie::SocketElem &gizmo_input : used_gizmo_inputs) {
-    foreach_gizmo_for_input(gizmo_input, compute_context_builder, *snode.edittree, fn);
+    foreach_gizmo_for_input(gizmo_input,
+                            compute_context_builder,
+                            *snode.edittree,
+                            [&](const ComputeContext &compute_context, const bNode &gizmo_node) {
+                              fn(object, nmd, compute_context, gizmo_node);
+                            });
   }
 }
 
-static void foreach_active_gizmo_exposed_to_modifier(
-    const NodesModifierData &nmd,
-    ComputeContextBuilder &compute_context_builder,
-    const ForeachGizmoFn fn)
+static void foreach_active_gizmo_in_open_editors(const wmWindowManager &wm,
+                                                 const Object *object_filter,
+                                                 const NodesModifierData *nmd_filter,
+                                                 ComputeContextBuilder &compute_context_builder,
+                                                 const ForeachGizmoFn fn)
 {
-  const bNodeTree &tree = *nmd.node_group;
-  if (!tree.runtime->gizmo_propagation) {
-    return;
-  }
-  compute_context_builder.push<bke::ModifierComputeContext>(nmd.modifier.name);
-  BLI_SCOPED_DEFER([&]() { compute_context_builder.pop(); });
-
-  for (auto &&item : tree.runtime->gizmo_propagation->gizmo_inputs_by_group_inputs.items()) {
-    for (const ie::SocketElem &socket_elem : item.value) {
-      foreach_gizmo_for_input(socket_elem, compute_context_builder, tree, fn);
-    }
-  }
-}
-
-void foreach_active_gizmo(const Object &object,
-                          const NodesModifierData &nmd,
-                          const wmWindowManager &wm,
-                          ComputeContextBuilder &compute_context_builder,
-                          const ForeachGizmoFn fn)
-{
-  if (!nmd.node_group) {
-    return;
-  }
-
   LISTBASE_FOREACH (const wmWindow *, window, &wm.windows) {
     const bScreen *active_screen = BKE_workspace_active_screen_get(window->workspace_hook);
     Vector<const bScreen *> screens = {active_screen};
@@ -334,12 +326,81 @@ void foreach_active_gizmo(const Object &object,
           continue;
         }
         const SpaceNode &snode = *reinterpret_cast<const SpaceNode *>(sl);
-        foreach_active_gizmo_in_open_node_editor(snode, object, nmd, compute_context_builder, fn);
+        foreach_active_gizmo_in_open_node_editor(
+            snode, object_filter, nmd_filter, compute_context_builder, fn);
       }
     }
   }
+}
+
+static void foreach_active_gizmo_exposed_to_modifier(
+    const NodesModifierData &nmd,
+    ComputeContextBuilder &compute_context_builder,
+    const ForeachGizmoInModifierFn fn)
+{
+  const bNodeTree &tree = *nmd.node_group;
+  if (!tree.runtime->gizmo_propagation) {
+    return;
+  }
+  compute_context_builder.push<bke::ModifierComputeContext>(nmd.modifier.name);
+  BLI_SCOPED_DEFER([&]() { compute_context_builder.pop(); });
+
+  for (auto &&item : tree.runtime->gizmo_propagation->gizmo_inputs_by_group_inputs.items()) {
+    for (const ie::SocketElem &socket_elem : item.value) {
+      foreach_gizmo_for_input(socket_elem, compute_context_builder, tree, fn);
+    }
+  }
+}
+
+void foreach_active_gizmo_in_modifier(const Object &object,
+                                      const NodesModifierData &nmd,
+                                      const wmWindowManager &wm,
+                                      ComputeContextBuilder &compute_context_builder,
+                                      const ForeachGizmoInModifierFn fn)
+{
+  if (!nmd.node_group) {
+    return;
+  }
+
+  foreach_active_gizmo_in_open_editors(wm,
+                                       &object,
+                                       &nmd,
+                                       compute_context_builder,
+                                       [&](const Object &object_with_gizmo,
+                                           const NodesModifierData &nmd_with_gizmo,
+                                           const ComputeContext &compute_context,
+                                           const bNode &gizmo_node) {
+                                         BLI_assert(&object == &object_with_gizmo);
+                                         BLI_assert(&nmd == &nmd_with_gizmo);
+                                         fn(compute_context, gizmo_node);
+                                       });
 
   foreach_active_gizmo_exposed_to_modifier(nmd, compute_context_builder, fn);
+}
+
+void foreach_active_gizmo(const bContext &C,
+                          ComputeContextBuilder &compute_context_builder,
+                          const ForeachGizmoFn fn)
+{
+  const wmWindowManager *wm = CTX_wm_manager(&C);
+  if (!wm) {
+    return;
+  }
+  foreach_active_gizmo_in_open_editors(*wm, nullptr, nullptr, compute_context_builder, fn);
+
+  if (const Object *active_object = CTX_data_active_object(&C)) {
+    if (const ModifierData *md = BKE_object_active_modifier(active_object)) {
+      if (md->type == eModifierType_Nodes) {
+        const NodesModifierData &nmd = *reinterpret_cast<const NodesModifierData *>(md);
+        foreach_active_gizmo_exposed_to_modifier(
+            nmd,
+            compute_context_builder,
+            [&](const ComputeContext &compute_context, const bNode &gizmo_node) {
+              fn(*active_object, nmd, compute_context, gizmo_node);
+            });
+      }
+    }
+  }
 }
 
 void foreach_node_on_gizmo_path(
