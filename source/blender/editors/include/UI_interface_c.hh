@@ -3417,3 +3417,4 @@ blender::ui::AbstractViewItem *UI_region_views_find_item_at(const ARegion &regio
                                                             const int xy[2]);
 blender::ui::AbstractViewItem *UI_region_views_find_active_item(const ARegion *region);
 uiBut *UI_region_views_find_active_item_but(const ARegion *region);
+void UI_region_views_clear_search_highlight(const ARegion *region);

@@ -10025,6 +10025,11 @@ static int ui_handle_view_item_event(bContext *C,
                                      ARegion *region)
 {
   switch (event->type) {
+    case MOUSEMOVE:
+      if (event->xy[0] != event->prev_xy[0] || event->xy[1] != event->prev_xy[1]) {
+        UI_region_views_clear_search_highlight(region);
+      }
+      break;
     case LEFTMOUSE:
       if (event->val == KM_PRESS) {
         /* Only bother finding the active view item button if the active button isn't already a

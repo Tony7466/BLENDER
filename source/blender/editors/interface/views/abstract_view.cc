@@ -129,7 +129,7 @@ void AbstractView::draw_overlays(const ARegion & /*region*/) const
 /** \} */
 
 /* ---------------------------------------------------------------------- */
-/** \name Renaming
+/** \name Filtering
  * \{ */
 
 void AbstractView::filter(std::optional<StringRef> filter_str)
@@ -208,6 +208,11 @@ std::string AbstractView::get_context_menu_title() const
 void AbstractView::set_context_menu_title(const std::string &title)
 {
   context_menu_title = title;
+}
+
+void AbstractView::clear_search_highlight()
+{
+  foreach_view_item([](AbstractViewItem &item) { item.is_highlighted_search_ = false; });
 }
 /** \} */
 

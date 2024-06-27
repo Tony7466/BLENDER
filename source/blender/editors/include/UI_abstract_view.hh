@@ -101,8 +101,6 @@ class AbstractView {
    */
   void register_item(AbstractViewItem &item);
 
-  void filter(std::optional<StringRef> str);
-
   /** Only one item can be renamed at a time. */
   bool is_renaming() const;
   /** \return If renaming was started successfully. */
@@ -118,6 +116,8 @@ class AbstractView {
 
   std::string get_context_menu_title() const;
   void set_context_menu_title(const std::string &title);
+
+  void clear_search_highlight();
 
  protected:
   AbstractView() = default;
@@ -146,6 +146,7 @@ class AbstractView {
    */
   bool is_reconstructed() const;
 
+  void filter(std::optional<StringRef> str);
   const AbstractViewItem *search_highlight_item() const;
 };
 
