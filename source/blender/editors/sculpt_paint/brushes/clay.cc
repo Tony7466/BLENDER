@@ -28,7 +28,7 @@ struct LocalData {
   Vector<float3> translations;
 };
 
-BLI_NOINLINE static void fill_closest_to_plane(const float4 &test_plane,
+BLI_NOINLINE static void calc_closest_to_plane(const float4 &test_plane,
                                                const Span<float3> positions,
                                                const Span<int> verts,
                                                const MutableSpan<float3> translations)
