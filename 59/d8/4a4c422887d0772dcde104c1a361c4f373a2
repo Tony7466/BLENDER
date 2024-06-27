@@ -1,2 +1,2 @@
 Referenced by issue #123602, Sculpt mesh filter crash
-Referenced by issue #123768, Undo doesn't work completely for multires sculpting with big brushstrokes, leaves cracks on mesh
+Referenced by issue #123768, Clay strips brush leaves cracks on mesh
