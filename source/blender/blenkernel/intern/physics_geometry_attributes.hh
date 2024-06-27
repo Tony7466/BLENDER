@@ -469,7 +469,7 @@ class BuiltinRigidBodyAttributeProvider final : public BuiltinPhysicsAttributeBa
       return {};
     }
 
-    if (physics->impl().is_cached) {
+    if (physics->impl().is_empty) {
       return try_get_cache_for_read(owner);
     }
 
@@ -488,7 +488,7 @@ class BuiltinRigidBodyAttributeProvider final : public BuiltinPhysicsAttributeBa
       return {};
     }
 
-    if (physics->impl().is_cached) {
+    if (physics->impl().is_empty) {
       return try_get_cache_for_write(owner);
     }
 
@@ -522,8 +522,12 @@ class BuiltinRigidBodyAttributeProvider final : public BuiltinPhysicsAttributeBa
 
 /**
  * Provider for builtin constraint attributes.
+ * Reads from customdata if use_cached_read is true.
  */
-template<typename T, ConstraintGetFn<T> GetFn, ConstraintSetFn<T> SetFn = nullptr>
+template<typename T,
+         ConstraintGetFn<T> GetFn,
+         ConstraintSetFn<T> SetFn = nullptr,
+         PhysicsGetCacheFn<T> GetCacheFn = nullptr>
 class BuiltinConstraintAttributeProvider final : public BuiltinPhysicsAttributeBase {
   using EnsureOnAccess = void (*)(const void *owner);
   const EnsureOnAccess ensure_on_access_;
@@ -558,13 +562,16 @@ class BuiltinConstraintAttributeProvider final : public BuiltinPhysicsAttributeB
       ensure_on_access_(owner);
     }
 
-    if (physics->impl().is_cached) {
+    if (physics->impl().is_empty) {
       return try_get_cache_for_read(owner);
+    }
+    if constexpr (GetCacheFn) {
+      Span<T> cache = GetCacheFn(physics->impl());
+      return {VArray<T>::ForSpan(cache), domain_, nullptr};
     }
 
     GVArray varray = VArray<T>::template For<VArrayImpl_For_PhysicsConstraints<T, GetFn>>(
         physics->impl());
-
     return {std::move(varray), domain_, nullptr};
   }
 
@@ -582,101 +589,13 @@ class BuiltinConstraintAttributeProvider final : public BuiltinPhysicsAttributeB
       ensure_on_access_(owner);
     }
 
-    if (physics->impl().is_cached) {
+    if (physics->impl().is_empty) {
       return try_get_cache_for_write(owner);
     }
 
     GVMutableArray varray =
         VMutableArray<T>::template For<VMutableArrayImpl_For_PhysicsConstraints<T, GetFn, SetFn>>(
             physics->impl());
-
-    std::function<void()> tag_modified_fn;
-    if (update_on_change_ != nullptr) {
-      tag_modified_fn = [owner, update = update_on_change_]() { update(owner); };
-    }
-
-    return {std::move(varray), domain_, std::move(tag_modified_fn)};
-  }
-
-  bool try_delete(void * /*owner*/) const final
-  {
-    return false;
-  }
-
-  bool try_create(void * /*owner*/, const AttributeInit & /*initializer*/) const final
-  {
-    return false;
-  }
-
-  bool exists(const void * /*owner*/) const final
-  {
-    return true;
-  }
-};
-
-/**
- * Variation for attributes that use a cached array for reading.
- */
-template<typename T, PhysicsGetCacheFn<T> GetCacheFn, ConstraintSetFn<T> SetFn = nullptr>
-class BuiltinConstraintAttributeProviderWithCache final : public BuiltinPhysicsAttributeBase {
-  using EnsureOnAccess = void (*)(const void *owner);
-  const EnsureOnAccess ensure_on_access_;
-
- public:
-  BuiltinConstraintAttributeProviderWithCache(std::string attribute_name,
-                                              const AttrDomain domain,
-                                              const DeletableEnum deletable,
-                                              const PhysicsAccessInfo physics_access,
-                                              const UpdateOnChange update_on_change,
-                                              const AttributeValidator validator = {},
-                                              const EnsureOnAccess ensure_on_access = nullptr)
-      : BuiltinPhysicsAttributeBase(std::move(attribute_name),
-                                    domain,
-                                    cpp_type_to_custom_data_type(CPPType::get<T>()),
-                                    deletable,
-                                    physics_access,
-                                    update_on_change,
-                                    validator),
-        ensure_on_access_(ensure_on_access)
-  {
-  }
-
-  GAttributeReader try_get_for_read(const void *owner) const final
-  {
-    const PhysicsGeometry *physics = physics_access_.get_const_physics(owner);
-    if (physics == nullptr) {
-      return {};
-    }
-
-    if (ensure_on_access_) {
-      ensure_on_access_(owner);
-    }
-
-    GVArray varray = VArray<T>::ForSpan(GetCacheFn(physics->impl()));
-
-    return {std::move(varray), domain_, nullptr};
-  }
-
-  GAttributeWriter try_get_for_write(void *owner) const final
-  {
-    if constexpr (SetFn == nullptr) {
-      return {};
-    }
-    PhysicsGeometry *physics = physics_access_.get_physics(owner);
-    if (physics == nullptr) {
-      return {};
-    }
-
-    if (ensure_on_access_) {
-      ensure_on_access_(owner);
-    }
-
-    if (physics->impl().is_cached) {
-      return try_get_cache_for_write(owner);
-    }
-
-    GVMutableArray varray = VMutableArray<T>::template For<
-        VMutableArrayImpl_For_PhysicsConstraintsWithCache<T, GetCacheFn, SetFn>>(physics->impl());
 
     std::function<void()> tag_modified_fn;
     if (update_on_change_ != nullptr) {

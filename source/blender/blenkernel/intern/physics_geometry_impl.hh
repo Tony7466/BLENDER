@@ -48,7 +48,7 @@ namespace blender::bke {
 struct PhysicsGeometryImpl : public ImplicitSharingMixin {
   /* If true then the data is read-only and the attribute cache is used instead of direct access to
    * physics data. No Bullet instances are held by this component when cached. */
-  std::atomic<bool> is_cached = false;
+  std::atomic<bool> is_empty = false;
 
   /* Protects shared read/write access to physics data. */
   mutable std::shared_mutex data_mutex;

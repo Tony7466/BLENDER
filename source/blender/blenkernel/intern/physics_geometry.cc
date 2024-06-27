@@ -420,7 +420,7 @@ const PhysicsGeometryImpl &PhysicsGeometry::impl() const
 
 PhysicsGeometryImpl &PhysicsGeometry::impl_for_write()
 {
-  if (impl_->is_cached) {
+  if (impl_->is_empty) {
     /* Dummy impl for stub write access on cached physics. */
     impl_ = new PhysicsGeometryImpl();
   }
@@ -461,18 +461,12 @@ void move_physics_impl_data(const PhysicsGeometryImpl &from,
   BLI_assert(to.is_mutable());
 
   /* Early check before locking. */
-  if (from.is_cached) {
+  if (from.is_empty) {
     return;
   }
-
-  const IndexRange body_range = IndexRange(bodies_offset, from.rigid_bodies.size());
-  const IndexRange constraint_range = IndexRange(constraints_offset, from.constraints.size());
-  /* Make sure target has enough space. */
-  BLI_assert(body_range.intersect(to.rigid_bodies.index_range()) == body_range);
-  BLI_assert(constraint_range.intersect(to.constraints.index_range()) == constraint_range);
-
   std::unique_lock lock(from.data_mutex);
-  if (from.is_cached) {
+  if (from.is_empty)
+  {
     /* This may have changed before locking the mutex. */
     return;
   }
@@ -486,6 +480,12 @@ void move_physics_impl_data(const PhysicsGeometryImpl &from,
     move_world(from_mutable, to);
   }
   btDynamicsWorld *to_world = to.world;
+
+  const IndexRange body_range = IndexRange(bodies_offset, from.rigid_bodies.size());
+  const IndexRange constraint_range = IndexRange(constraints_offset, from.constraints.size());
+  /* Make sure target has enough space. */
+  BLI_assert(body_range.intersect(to.rigid_bodies.index_range()) == body_range);
+  BLI_assert(constraint_range.intersect(to.constraints.index_range()) == constraint_range);
 
   for (const int i_body : body_range.index_range()) {
     to.rigid_bodies[body_range[i_body]] = from_mutable.rigid_bodies[i_body];
@@ -511,6 +511,7 @@ void move_physics_impl_data(const PhysicsGeometryImpl &from,
   from_mutable.motion_states.reinitialize(0);
   from_mutable.constraints.reinitialize(0);
   from_mutable.constraint_feedback.reinitialize(0);
+  from_mutable.is_empty.store(true);
 }
 
 bool PhysicsGeometry::has_world() const
@@ -1084,7 +1085,7 @@ class VMutableArrayImpl_For_PhysicsConstraintTypes final : public VMutableArrayI
 
 VArray<int> PhysicsGeometry::constraint_type() const
 {
-  if (this->impl().is_cached) {
+  if (this->impl().is_empty) {
     return VArray<int>::ForSingle(-1, this->constraints_num());
   }
   return VMutableArray<int>::template For<VMutableArrayImpl_For_PhysicsConstraintTypes>(
@@ -1106,7 +1107,7 @@ void PhysicsGeometry::create_constraints(const IndexMask &selection,
                                          const VArray<int> &bodies1,
                                          const VArray<int> &bodies2)
 {
-  if (this->impl().is_cached) {
+  if (this->impl().is_empty) {
     return;
   }
 
@@ -1913,6 +1914,8 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
           nullptr,
           {});
 
+  constexpr auto constraint_disable_collision_get_fn =
+      [](const btTypedConstraint *constraint) -> bool { return false; };
   constexpr auto constraint_disable_collision_get_cache_fn =
       [](const PhysicsGeometryImpl &impl) -> Span<bool> {
     return impl.constraint_disable_collision;
@@ -1930,9 +1933,10 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
       }
     }
   };
-  static BuiltinConstraintAttributeProviderWithCache<bool,
-                                                     constraint_disable_collision_get_cache_fn,
-                                                     constraint_disable_collision_set_fn>
+  static BuiltinConstraintAttributeProvider<bool,
+                                            constraint_disable_collision_get_fn,
+                                            constraint_disable_collision_set_fn,
+                                            constraint_disable_collision_get_cache_fn>
       constraint_disable_collision(
           PhysicsGeometry::builtin_attributes.disable_collision,
           AttrDomain::Edge,
