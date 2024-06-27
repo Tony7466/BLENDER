@@ -1111,24 +1111,8 @@ void fcurve_to_keylist(AnimData *adt,
 
   BezTripleChain chain = {nullptr};
 
-  int start_index = 0;
-  /* Used in an exclusive way. */
-  int end_index = fcu->totvert;
-
-  if (!test_time_fcurve(fcu)) {
-    bool replace;
-    start_index = BKE_fcurve_bezt_binarysearch_index(fcu->bezt, range[0], fcu->totvert, &replace);
-    if (start_index > 0) {
-      start_index--;
-    }
-    end_index = BKE_fcurve_bezt_binarysearch_index(fcu->bezt, range[1], fcu->totvert, &replace);
-    if (end_index < fcu->totvert) {
-      end_index++;
-    }
-  }
-
   /* Loop through beztriples, making ActKeysColumns. */
-  for (int v = start_index; v < end_index; v++) {
+  for (int v = 0; v < fcu->totvert; v++) {
     const float x = fcu->bezt[v].vec[1][0];
     if (x < range[0] || x > range[1]) {
       continue;
@@ -1148,7 +1132,7 @@ void fcurve_to_keylist(AnimData *adt,
     add_bezt_to_keycolumns_list(keylist, &chain);
   }
 
-  update_keyblocks(keylist, &fcu->bezt[start_index], end_index - start_index);
+  update_keyblocks(keylist, &fcu->bezt[0], fcu->totvert);
 
   if (adt) {
     ANIM_nla_mapping_apply_fcurve(adt, fcu, true, false);
