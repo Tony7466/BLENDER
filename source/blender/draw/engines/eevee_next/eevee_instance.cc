@@ -112,6 +112,11 @@ void Instance::init(const int2 &output_res,
   volume_probes.init();
   volume.init();
   lookdev.init(visible_rect);
+
+  /* Pre-compile specialization constants in parallel (if supported). */
+  shaders.precompile_specializations(
+      render_buffers.data.shadow_id, shadows.get_data().ray_count, shadows.get_data().step_count);
+  shaders_are_ready_ = shaders.is_ready(is_image_render());
 }
 
 void Instance::init_light_bake(Depsgraph *depsgraph, draw::Manager *manager)
@@ -237,7 +242,7 @@ void Instance::object_sync(Object *ob)
 
   const bool is_renderable_type = ELEM(ob->type,
                                        OB_CURVES,
-                                       OB_GPENCIL_LEGACY,
+                                       OB_GREASE_PENCIL,
                                        OB_MESH,
                                        OB_POINTCLOUD,
                                        OB_VOLUME,
@@ -291,7 +296,7 @@ void Instance::object_sync(Object *ob)
       case OB_CURVES:
         sync.sync_curves(ob, ob_handle, res_handle, ob_ref);
         break;
-      case OB_GPENCIL_LEGACY:
+      case OB_GREASE_PENCIL:
         sync.sync_gpencil(ob, ob_handle, res_handle);
         break;
       case OB_LIGHTPROBE:

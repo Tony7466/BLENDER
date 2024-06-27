@@ -56,6 +56,8 @@ void VKFrameBuffer::bind(bool enabled_srgb)
   Shader::set_framebuffer_srgb_target(enabled_srgb && srgb_);
   load_stores.fill(default_load_store());
   attachment_states_.fill(GPU_ATTACHMENT_WRITE);
+  viewport_reset();
+  scissor_reset();
 }
 
 Array<VkViewport, 16> VKFrameBuffer::vk_viewports_get() const
@@ -486,7 +488,6 @@ void VKFrameBuffer::update_size()
       return;
     }
   }
-  size_set(1, 1);
 }
 
 void VKFrameBuffer::update_srgb()
@@ -529,9 +530,6 @@ void VKFrameBuffer::rendering_ensure(VKContext &context)
   depth_attachment_format_ = VK_FORMAT_UNDEFINED;
   stencil_attachment_format_ = VK_FORMAT_UNDEFINED;
 
-  viewport_reset();
-  scissor_reset();
-
   render_graph::VKResourceAccessInfo access_info;
   render_graph::VKBeginRenderingNode::CreateInfo begin_rendering(access_info);
   begin_rendering.node_data.vk_rendering_info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
@@ -561,7 +559,8 @@ void VKFrameBuffer::rendering_ensure(VKContext &context)
                                          IndexRange(attachment.mip, 1),
                                          {{'r', 'g', 'b', 'a'}},
                                          false,
-                                         srgb_ && enabled_srgb_};
+                                         srgb_ && enabled_srgb_,
+                                         VKImageViewArrayed::DONT_CARE};
       vk_image_view = color_texture.image_view_get(image_view_info).vk_handle();
     }
     attachment_info.imageView = vk_image_view;
@@ -601,7 +600,8 @@ void VKFrameBuffer::rendering_ensure(VKContext &context)
                                          IndexRange(attachment.mip, 1),
                                          {{'r', 'g', 'b', 'a'}},
                                          is_stencil_attachment,
-                                         false};
+                                         false,
+                                         VKImageViewArrayed::DONT_CARE};
       depth_image_view = depth_texture.image_view_get(image_view_info).vk_handle();
     }
 
