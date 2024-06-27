@@ -19,7 +19,6 @@ namespace blender::draw::pbvh {
 struct PBVHDrawData;
 }
 
-struct PBVHGPUFormat;
 struct BMVert;
 struct BMFace;
 
@@ -127,12 +126,6 @@ struct PBVH {
 
   /* Memory backing for PBVHNode.prim_indices. */
   blender::Array<int> prim_indices;
-  int totprim;
-  int totvert;
-
-  int leaf_limit;
-  int pixel_leaf_limit;
-  int depth_limit;
 
   /* Mesh data. The evaluated deform mesh for mesh sculpting, and the base mesh for grids. */
   Mesh *mesh;
@@ -176,8 +169,6 @@ struct PBVH {
 
   CustomDataLayer *color_layer;
   blender::bke::AttrDomain color_domain;
-
-  PBVHGPUFormat *vbo_id;
 
   PBVHPixels pixels;
 
