@@ -862,7 +862,10 @@ static bool set_rna_property_inverse(bContext &C,
 
   switch (dst_type) {
     case PROP_FLOAT: {
-      const float value = std::visit([](auto v) { return float(v); }, value_variant);
+      float value = std::visit([](auto v) { return float(v); }, value_variant);
+      float soft_min, soft_max, step, precision;
+      RNA_property_float_ui_range(&value_ptr, prop, &soft_min, &soft_max, &step, &precision);
+      value = std::clamp(value, soft_min, soft_max);
       if (array_len == 0) {
         RNA_property_float_set(&value_ptr, prop, value);
         RNA_property_update(&C, &value_ptr, prop);
@@ -876,7 +879,10 @@ static bool set_rna_property_inverse(bContext &C,
       break;
     }
     case PROP_INT: {
-      const int value = std::visit([](auto v) { return int(v); }, value_variant);
+      int value = std::visit([](auto v) { return int(v); }, value_variant);
+      int soft_min, soft_max, step;
+      RNA_property_int_ui_range(&value_ptr, prop, &soft_min, &soft_max, &step);
+      value = std::clamp(value, soft_min, soft_max);
       if (array_len == 0) {
         RNA_property_int_set(&value_ptr, prop, value);
         RNA_property_update(&C, &value_ptr, prop);
