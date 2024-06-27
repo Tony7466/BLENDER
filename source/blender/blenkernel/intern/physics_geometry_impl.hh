@@ -64,6 +64,11 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
   mutable CacheMutex constraint_disable_collision_cache;
   mutable Array<bool> constraint_disable_collision;
 
+  int body_num_;
+  int constraint_num_;
+  CustomData body_data_;
+  CustomData constraint_data_;
+
   btDiscreteDynamicsWorld *world = nullptr;
   btCollisionConfiguration *config = nullptr;
   btCollisionDispatcher *dispatcher = nullptr;
@@ -99,9 +104,12 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
   void ensure_body_indices() const;
   void ensure_constraint_indices() const;
   void ensure_constraint_disable_collision() const;
+
+  void copy_to_customdata(const AttributeAccessor attributes);
 };
 
 void move_physics_impl_data(const PhysicsGeometryImpl &from,
+                            const AttributeAccessor from_attributes,
                             PhysicsGeometryImpl &to,
                             bool use_world,
                             int rigid_bodies_offset,

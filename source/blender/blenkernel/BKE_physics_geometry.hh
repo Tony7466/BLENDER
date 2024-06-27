@@ -62,11 +62,6 @@ class PhysicsGeometry {
  private:
   Vector<CollisionShapePtr> shapes_;
 
-  int body_num_;
-  int constraint_num_;
-  CustomData body_data_;
-  CustomData constraint_data_;
-
   /* Implementation of the physics world and rigid bodies.
    * This is an implicit shared pointer, multiple users can read the physics data. Requesting write
    * access will move the data to a new component. This is somewhat different from other components

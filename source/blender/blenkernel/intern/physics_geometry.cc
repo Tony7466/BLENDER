@@ -220,10 +220,18 @@ static void remove_from_world(btDynamicsWorld *world,
   }
 }
 
-PhysicsGeometryImpl::PhysicsGeometryImpl() {}
+PhysicsGeometryImpl::PhysicsGeometryImpl()
+    : body_num_(0), constraint_num_(0), body_data_({}), constraint_data_({})
+{
+  CustomData_reset(&body_data_);
+  CustomData_reset(&constraint_data_);
+}
 
 PhysicsGeometryImpl::~PhysicsGeometryImpl()
 {
+  CustomData_free(&body_data_, body_num_);
+  CustomData_free(&constraint_data_, constraint_num_);
+
   if (this->world) {
     remove_from_world(this->world, this->rigid_bodies, this->constraints);
     destroy_world(*this);
@@ -302,6 +310,36 @@ void PhysicsGeometryImpl::ensure_constraint_disable_collision() const
   });
 }
 
+void PhysicsGeometryImpl::copy_to_customdata(const AttributeAccessor attributes)
+{
+  attributes.for_all(
+      [&](const AttributeIDRef &attribute_id, const AttributeMetaData &meta_data) -> bool {
+        CustomData *custom_data = nullptr;
+        int totelem = 0;
+        switch (meta_data.domain) {
+          case AttrDomain::Point:
+            custom_data = &body_data_;
+            totelem = body_num_;
+            break;
+          case AttrDomain::Edge:
+            custom_data = &constraint_data_;
+            totelem = constraint_num_;
+            break;
+          default:
+            BLI_assert_unreachable();
+            break;
+        }
+        const eCustomDataType data_type = meta_data.data_type;
+        void *data = CustomData_add_layer_named(
+            custom_data, data_type, CD_CONSTRUCT, totelem, attribute_id.name());
+
+        GAttributeReader reader = attributes.lookup(attribute_id);
+        reader.varray.materialize_to_uninitialized(data);
+
+        return true;
+      });
+}
+
 const PhysicsGeometry::BuiltinAttributes PhysicsGeometry::builtin_attributes = []() {
   PhysicsGeometry::BuiltinAttributes attributes;
   attributes.id = "id";
@@ -357,23 +395,12 @@ static void create_bodies(MutableSpan<btRigidBody *> rigid_bodies,
 }
 
 PhysicsGeometry::PhysicsGeometry()
-    : body_num_(0), constraint_num_(0), body_data_({}), constraint_data_({})
 {
-  CustomData_reset(&body_data_);
-  CustomData_reset(&constraint_data_);
   impl_ = new PhysicsGeometryImpl();
 }
 
 PhysicsGeometry::PhysicsGeometry(const PhysicsGeometry &other)
 {
-  CustomData_reset(&body_data_);
-  CustomData_reset(&constraint_data_);
-  body_num_ = other.body_num_;
-  constraint_num_ = other.constraint_num_;
-  CustomData_copy(&other.body_data_, &this->body_data_, CD_MASK_ALL, other.body_num_);
-  CustomData_copy(
-      &other.constraint_data_, &this->constraint_data_, CD_MASK_ALL, other.constraint_num_);
-
   impl_ = other.impl_;
   if (impl_) {
     impl_->add_user();
@@ -383,14 +410,14 @@ PhysicsGeometry::PhysicsGeometry(const PhysicsGeometry &other)
 
 PhysicsGeometry::PhysicsGeometry(int bodies_num, int constraints_num)
 {
-  body_num_ = bodies_num;
-  constraint_num_ = constraints_num;
-  CustomData_reset(&body_data_);
-  CustomData_reset(&constraint_data_);
-  CustomData_realloc(&body_data_, 0, body_num_);
-  CustomData_realloc(&constraint_data_, 0, constraint_num_);
-
   PhysicsGeometryImpl *impl = new PhysicsGeometryImpl();
+  impl->body_num_ = bodies_num;
+  impl->constraint_num_ = constraints_num;
+  CustomData_reset(&impl->body_data_);
+  CustomData_reset(&impl->constraint_data_);
+  CustomData_realloc(&impl->body_data_, 0, impl->body_num_);
+  CustomData_realloc(&impl->constraint_data_, 0, impl->constraint_num_);
+
   impl->rigid_bodies.reinitialize(bodies_num);
   impl->motion_states.reinitialize(bodies_num);
   create_bodies(impl->rigid_bodies, impl->motion_states);
@@ -408,9 +435,6 @@ PhysicsGeometry::~PhysicsGeometry()
 {
   BLI_assert(impl_ && impl_->strong_users() > 0);
   impl_->remove_user_and_delete_if_last();
-
-  CustomData_free(&body_data_, body_num_);
-  CustomData_free(&constraint_data_, constraint_num_);
 }
 
 const PhysicsGeometryImpl &PhysicsGeometry::impl() const
@@ -426,6 +450,14 @@ PhysicsGeometryImpl &PhysicsGeometry::impl_for_write()
   }
   else if (!impl_->is_mutable()) {
     PhysicsGeometryImpl *new_impl = new PhysicsGeometryImpl();
+    CustomData_reset(&new_impl->body_data_);
+    CustomData_reset(&new_impl->constraint_data_);
+    new_impl->body_num_ = impl_->body_num_;
+    new_impl->constraint_num_ = impl_->constraint_num_;
+    CustomData_copy(&impl_->body_data_, &new_impl->body_data_, CD_MASK_ALL, impl_->body_num_);
+    CustomData_copy(
+        &impl_->constraint_data_, &new_impl->constraint_data_, CD_MASK_ALL, impl_->constraint_num_);
+
     new_impl->rigid_bodies.reinitialize(impl_->rigid_bodies.size());
     new_impl->motion_states.reinitialize(impl_->motion_states.size());
     new_impl->constraints.reinitialize(impl_->constraints.size());
@@ -433,7 +465,7 @@ PhysicsGeometryImpl &PhysicsGeometry::impl_for_write()
     new_impl->constraint_feedback.fill(
         {btVector3(0, 0, 0), btVector3(0, 0, 0), btVector3(0, 0, 0), btVector3(0, 0, 0)});
     new_impl->constraints.fill(nullptr);
-    move_physics_impl_data(*impl_, *new_impl, true, 0, 0);
+    move_physics_impl_data(*impl_, this->attributes(), *new_impl, true, 0, 0);
 
     impl_ = new_impl;
   }
@@ -449,10 +481,12 @@ void move_physics_data(const PhysicsGeometry &from,
 {
   PhysicsGeometryImpl &to_impl = to.impl_for_write();
   const PhysicsGeometryImpl &from_impl = from.impl();
-  move_physics_impl_data(from_impl, to_impl, use_world, bodies_offset, constraints_offset);
+  move_physics_impl_data(
+      from_impl, from.attributes(), to_impl, use_world, bodies_offset, constraints_offset);
 }
 
 void move_physics_impl_data(const PhysicsGeometryImpl &from,
+                            const AttributeAccessor from_attributes,
                             PhysicsGeometryImpl &to,
                             const bool use_world,
                             const int bodies_offset,
@@ -465,12 +499,14 @@ void move_physics_impl_data(const PhysicsGeometryImpl &from,
     return;
   }
   std::unique_lock lock(from.data_mutex);
-  if (from.is_empty)
-  {
+  if (from.is_empty) {
     /* This may have changed before locking the mutex. */
     return;
   }
   PhysicsGeometryImpl &from_mutable = const_cast<PhysicsGeometryImpl &>(from);
+
+  /* Cache the source before moving physics data. */
+  from_mutable.copy_to_customdata(from_attributes);
 
   btDynamicsWorld *from_world = from_mutable.world;
   if (use_world) {
@@ -593,12 +629,12 @@ void PhysicsGeometry::step_simulation(float delta_time)
 
 int PhysicsGeometry::bodies_num() const
 {
-  return body_num_;
+  return impl_->body_num_;
 }
 
 int PhysicsGeometry::constraints_num() const
 {
-  return constraint_num_;
+  return impl_->constraint_num_;
 }
 
 int PhysicsGeometry::shapes_num() const
@@ -642,13 +678,13 @@ static IndexMask get_constraints_mask_for_points(const PhysicsGeometryImpl &impl
 
 void PhysicsGeometry::resize(int bodies_num, int constraints_num)
 {
-  CustomData_realloc(&body_data_, body_num_, bodies_num);
-  CustomData_realloc(&constraint_data_, constraint_num_, constraints_num);
-  body_num_ = bodies_num;
-  constraint_num_ = constraints_num;
-
   PhysicsGeometryImpl &impl = this->impl_for_write();
   impl.ensure_body_indices();
+
+  CustomData_realloc(&impl.body_data_, impl.body_num_, bodies_num);
+  CustomData_realloc(&impl.constraint_data_, impl.constraint_num_, constraints_num);
+  impl.body_num_ = bodies_num;
+  impl.constraint_num_ = constraints_num;
 
   const IndexMask bodies_to_delete = impl.rigid_bodies.index_range().drop_front(bodies_num);
   const IndexMask constraints_to_delete = impl.constraints.index_range().drop_front(

@@ -389,8 +389,8 @@ class BuiltinPhysicsAttributeBase : public bke::BuiltinAttributeProvider {
     }
 
     const CPPType &type = *custom_data_type_to_cpp_type(data_type_);
-    const CustomData &custom_data = physics->body_data_;
-    const int element_num = physics->body_num_;
+    const CustomData &custom_data = physics->impl().body_data_;
+    const int element_num = physics->impl().body_num_;
     /* When the number of elements is zero, layers might have null data but still exist. */
     if (element_num == 0) {
       if (this->layer_exists(custom_data)) {
@@ -413,7 +413,7 @@ class BuiltinPhysicsAttributeBase : public bke::BuiltinAttributeProvider {
     if (physics == nullptr) {
       return {};
     }
-    CustomData &custom_data = physics->body_data_;
+    CustomData &custom_data = physics->impl_for_write().body_data_;
 
     std::function<void()> tag_modified_fn;
     if (update_on_change_ != nullptr) {
@@ -422,7 +422,7 @@ class BuiltinPhysicsAttributeBase : public bke::BuiltinAttributeProvider {
 
     /* When the number of elements is zero, layers might have null data but still exist. */
     const CPPType &type = *custom_data_type_to_cpp_type(data_type_);
-    const int element_num = physics->body_num_;
+    const int element_num = physics->impl().body_num_;
     if (element_num == 0) {
       if (this->layer_exists(custom_data)) {
         return {GVMutableArray::ForSpan({type, nullptr, 0}), domain_, std::move(tag_modified_fn)};
