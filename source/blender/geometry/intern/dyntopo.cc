@@ -341,7 +341,7 @@ static void face_subdivide(const std::array<int, 5> &vert_offsets,
       const int split_target_vert_i = split_face_i;
 
       const float2 mid = math::midpoint(verts_by_face_type[0][split_a_vert_i], verts_by_face_type[face_side + 1][split_target_vert_i]);
-      const float2 real_mid = math::midpoint(real_verts_by_face_type[0][split_a_vert_i], real_verts_by_face_type[face_side + 1][split_target_vert_i]);
+      const float3 real_mid = math::midpoint(real_verts_by_face_type[0][split_a_vert_i], real_verts_by_face_type[face_side + 1][split_target_vert_i]);
 
       verts[vert_offset[face_side + 1][split_target_vert_i]] = mid;
       real_verts[vert_offset[face_side + 1][split_target_vert_i]] = real_mid;
