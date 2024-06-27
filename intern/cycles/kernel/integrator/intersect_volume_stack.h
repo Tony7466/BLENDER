@@ -158,20 +158,25 @@ ccl_device void integrator_volume_stack_init(KernelGlobals kg, IntegratorState s
 
 ccl_device void integrator_intersect_volume_stack(KernelGlobals kg, IntegratorState state)
 {
+#ifdef __VOLUME__
   integrator_volume_stack_init(kg, state);
 
+#  ifdef __SHADOW_CATCHER__
   if (INTEGRATOR_STATE(state, path, flag) & PATH_RAY_SHADOW_CATCHER_PASS) {
     /* Volume stack re-init for shadow catcher, continue with shading of hit. */
     integrator_intersect_next_kernel_after_shadow_catcher_volume<
         DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK>(kg, state);
   }
-  else {
+  else
+#  endif
+  {
     /* Volume stack init for camera rays, continue with intersection of camera ray. */
     integrator_path_next(kg,
                          state,
                          DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK,
                          DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST);
   }
+#endif
 }
 
 CCL_NAMESPACE_END

@@ -14,6 +14,8 @@
 #include "BKE_node_runtime.hh"
 #include "BKE_node_socket_value.hh"
 
+#include "RNA_access.hh"
+
 namespace blender::nodes {
 
 static void reset_declaration(NodeDeclaration &declaration)
@@ -22,7 +24,7 @@ static void reset_declaration(NodeDeclaration &declaration)
   new (&declaration) NodeDeclaration();
 }
 
-void build_node_declaration(const bNodeType &typeinfo,
+void build_node_declaration(const bke::bNodeType &typeinfo,
                             NodeDeclaration &r_declaration,
                             const bNodeTree *ntree,
                             const bNode *node)
@@ -33,21 +35,8 @@ void build_node_declaration(const bNodeType &typeinfo,
   node_decl_builder.finalize();
 }
 
-void NodeDeclarationBuilder::finalize()
+void NodeDeclarationBuilder::build_remaining_anonymous_attribute_relations()
 {
-  if (is_function_node_) {
-    for (BaseSocketDeclarationBuilder *socket_builder : input_socket_builders_) {
-      if (socket_builder->decl_base_->input_field_type != InputSocketFieldType::Implicit) {
-        socket_builder->decl_base_->input_field_type = InputSocketFieldType::IsSupported;
-      }
-    }
-    for (BaseSocketDeclarationBuilder *socket_builder : output_socket_builders_) {
-      socket_builder->decl_base_->output_field_dependency =
-          OutputFieldDependency::ForDependentField();
-      socket_builder->reference_pass_all_ = true;
-    }
-  }
-
   Vector<int> geometry_inputs;
   for (const int i : declaration_.inputs.index_range()) {
     if (dynamic_cast<decl::Geometry *>(declaration_.inputs[i])) {
@@ -96,7 +85,11 @@ void NodeDeclarationBuilder::finalize()
       }
     }
   }
+}
 
+void NodeDeclarationBuilder::finalize()
+{
+  this->build_remaining_anonymous_attribute_relations();
   BLI_assert(declaration_.is_valid());
 }
 
@@ -743,6 +736,26 @@ BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::align_with_previous(
   return *this;
 }
 
+BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder ::socket_name_ptr(
+    const PointerRNA ptr, const StringRef property_name)
+{
+  decl_base_->socket_name_rna = std::make_unique<SocketNameRNA>();
+  decl_base_->socket_name_rna->owner = ptr;
+  decl_base_->socket_name_rna->property_name = property_name;
+  return *this;
+}
+
+BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::socket_name_ptr(
+    const ID *id, const StructRNA *srna, const void *data, StringRef property_name)
+{
+  /* Doing const-casts here because this data is generally only available as const when creating
+   * the declaration, but it's still valid to modify later. */
+  return this->socket_name_ptr(RNA_pointer_create(const_cast<ID *>(id),
+                                                  const_cast<StructRNA *>(srna),
+                                                  const_cast<void *>(data)),
+                               property_name);
+}
+
 OutputFieldDependency OutputFieldDependency::ForFieldSource()
 {
   OutputFieldDependency field_dependency;
@@ -849,6 +862,12 @@ void id_or_index(const bNode & /*node*/, void *r_value)
 {
   new (r_value)
       bke::SocketValueVariant(fn::Field<int>(std::make_shared<bke::IDAttributeFieldInput>()));
+}
+
+void instance_transform(const bNode & /*node*/, void *r_value)
+{
+  new (r_value)
+      bke::SocketValueVariant(bke::AttributeFieldInput::Create<float4x4>("instance_transform"));
 }
 
 }  // namespace implicit_field_inputs

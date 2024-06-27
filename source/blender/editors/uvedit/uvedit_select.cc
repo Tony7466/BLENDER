@@ -195,7 +195,14 @@ void ED_uvedit_select_sync_flush(const ToolSettings *ts, BMEditMesh *em, const b
         EDBM_deselect_flush(em);
       }
       else {
-        EDBM_select_flush(em);
+        if (ts->selectmode & SCE_SELECT_VERTEX) {
+          EDBM_select_flush(em);
+        }
+        else {
+          /* Use instead of #EDBM_select_flush so selecting edges doesn't
+           * flush vertex to face selection, see: #117320. */
+          EDBM_selectmode_flush(em);
+        }
       }
     }
 
@@ -381,7 +388,7 @@ void uvedit_face_select_disable(const Scene *scene,
   }
 }
 
-bool uvedit_edge_select_test_ex(const ToolSettings *ts, BMLoop *l, const BMUVOffsets offsets)
+bool uvedit_edge_select_test_ex(const ToolSettings *ts, const BMLoop *l, const BMUVOffsets offsets)
 {
   BLI_assert(offsets.select_vert >= 0);
   BLI_assert(offsets.select_edge >= 0);
@@ -578,7 +585,7 @@ void uvedit_edge_select_disable(const Scene *scene,
   }
 }
 
-bool uvedit_uv_select_test_ex(const ToolSettings *ts, BMLoop *l, const BMUVOffsets offsets)
+bool uvedit_uv_select_test_ex(const ToolSettings *ts, const BMLoop *l, const BMUVOffsets offsets)
 {
   BLI_assert(offsets.select_vert >= 0);
   if (ts->uv_flag & UV_SYNC_SELECTION) {

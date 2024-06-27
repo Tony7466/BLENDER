@@ -183,6 +183,7 @@ set(SRC_KERNEL_CLOSURE_HEADERS
   closure/bsdf_microfacet.h
   closure/bsdf_oren_nayar.h
   closure/bsdf_phong_ramp.h
+  closure/bsdf_ray_portal.h
   closure/bsdf_sheen.h
   closure/bsdf_toon.h
   closure/bsdf_transparent.h
@@ -215,6 +216,7 @@ set(SRC_KERNEL_SVM_HEADERS
   svm/fresnel.h
   svm/wireframe.h
   svm/wavelength.h
+  svm/gabor.h
   svm/gamma.h
   svm/brightness.h
   svm/geometry.h
@@ -380,6 +382,7 @@ set(SRC_KERNEL_SAMPLE_HEADERS
 set(SRC_KERNEL_UTIL_HEADERS
   util/color.h
   util/differential.h
+  util/ies.h
   util/lookup_table.h
   util/nanovdb.h
   util/profiling.h
@@ -469,6 +472,11 @@ set(LIB
 
 )
 
+# Zstd compressor for kernels
+add_executable(zstd_compress ../cmake/zstd_compress.cpp)
+target_include_directories(zstd_compress SYSTEM PRIVATE ${ZSTD_INCLUDE_DIRS})
+target_link_libraries(zstd_compress ${ZSTD_LIBRARIES} ${PTHREADS_LIBRARIES})
+
 # CUDA module
 
 if(WITH_CYCLES_CUDA_BINARIES)
@@ -512,13 +520,21 @@ if(WITH_CYCLES_CUDA_BINARIES)
       set(format "cubin")
     endif()
 
-    add_custom_command(
-      OUTPUT kernel_${arch}.${format}
-      DEPENDS cycles_kernel_cuda
-      COMMAND ${CUDA_NVCC_EXECUTABLE} -arch=${arch} ${CUDA_NVCC_FLAGS} --${format} --device-link "\"$<JOIN:$<TARGET_OBJECTS:cycles_kernel_cuda>,\" \">\"" -o ${CMAKE_CURRENT_BINARY_DIR}/kernel_${arch}.${format})
+    set(cuda_file kernel_${arch}.${format})
+    set(cuda_file_compressed ${cuda_file}.zst)
 
-    list(APPEND cuda_link kernel_${arch}.${format})
-    delayed_install("${CMAKE_CURRENT_BINARY_DIR}" kernel_${arch}.${format} ${CYCLES_INSTALL_PATH}/lib)
+    add_custom_command(
+      OUTPUT ${cuda_file}
+      DEPENDS cycles_kernel_cuda
+      COMMAND ${CUDA_NVCC_EXECUTABLE} -arch=${arch} ${CUDA_NVCC_FLAGS} --${format} --device-link "\"$<JOIN:$<TARGET_OBJECTS:cycles_kernel_cuda>,\" \">\"" -o ${CMAKE_CURRENT_BINARY_DIR}/${cuda_file})
+
+    add_custom_command(
+      OUTPUT ${cuda_file_compressed}
+      DEPENDS ${cuda_file}
+      COMMAND "$<TARGET_FILE:zstd_compress>" ${cuda_file} ${cuda_file_compressed})
+
+    list(APPEND cuda_link ${cuda_file_compressed})
+    delayed_install("${CMAKE_CURRENT_BINARY_DIR}" ${cuda_file_compressed} ${CYCLES_INSTALL_PATH}/lib)
   endforeach()
 
   add_custom_target(cycles_kernel_cuda_link ALL DEPENDS ${cuda_link})
@@ -539,9 +555,18 @@ if(WITH_CYCLES_DEVICE_OPTIX AND WITH_CYCLES_CUDA_BINARIES)
 
   target_compile_options(cycles_kernel_optix PRIVATE -use_fast_math -lineinfo -Wno-deprecated-gpu-targets -rdc=true)
 
-  delayed_install("" "$<TARGET_OBJECTS:cycles_kernel_optix>" ${CYCLES_INSTALL_PATH}/lib/optix)
-
   cycles_set_solution_folder(cycles_kernel_optix)
+
+  foreach(output in "$<TARGET_OBJECTS:cycles_kernel_optix>")
+    set(output_compressed "${output}.zst")
+
+    add_custom_command(
+      OUTPUT ${output_compressed}
+      DEPENDS cycles_kernel_optix
+      COMMAND "$<TARGET_FILE:zstd_compress>" ${output} ${output_compressed})
+
+    delayed_install("" ${output_compressed} ${CYCLES_INSTALL_PATH}/lib/optix)
+  endforeach()
 endif()
 
 # HIP module
@@ -559,6 +584,7 @@ if(WITH_CYCLES_HIP_BINARIES AND WITH_CYCLES_DEVICE_HIP)
   macro(CYCLES_HIP_KERNEL_ADD arch name flags sources experimental)
     set(format "fatbin")
     set(hip_file ${name}_${arch}.${format})
+    set(hip_file_compressed ${hip_file}.zst)
     set(kernel_sources ${sources})
 
     set(hip_kernel_src "/device/hip/${name}.cpp")
@@ -613,8 +639,12 @@ if(WITH_CYCLES_HIP_BINARIES AND WITH_CYCLES_DEVICE_HIP)
       OUTPUT ${hip_file}
       COMMAND ${hip_command} ${hip_flags}
       DEPENDS ${kernel_sources})
-    delayed_install("${CMAKE_CURRENT_BINARY_DIR}" "${hip_file}" ${CYCLES_INSTALL_PATH}/lib)
-    list(APPEND hip_fatbins ${hip_file})
+    add_custom_command(
+      OUTPUT ${hip_file_compressed}
+      COMMAND "$<TARGET_FILE:zstd_compress>" ${hip_file} ${hip_file_compressed}
+      DEPENDS ${hip_file})
+    delayed_install("${CMAKE_CURRENT_BINARY_DIR}" "${hip_file_compressed}" ${CYCLES_INSTALL_PATH}/lib)
+    list(APPEND hip_fatbins ${hip_file_compressed})
   endmacro()
 
   foreach(arch ${CYCLES_HIP_BINARIES_ARCH})
@@ -636,6 +666,7 @@ if(WITH_CYCLES_DEVICE_HIPRT AND WITH_CYCLES_HIP_BINARIES)
     ${SRC_UTIL_HEADERS})
   set(bitcode_file ${CMAKE_CURRENT_BINARY_DIR}/kernel_rt_gfx.bc)
   set(hiprt_file ${CMAKE_CURRENT_BINARY_DIR}/kernel_rt_gfx.hipfb)
+  set(hiprt_file_compressed ${hiprt_file}.zst)
   set(kernel_sources ${hiprt_sources})
   set(hiprt_kernel_src "/device/hiprt/kernel.cpp")
   if(WIN32)
@@ -700,8 +731,12 @@ if(WITH_CYCLES_DEVICE_HIPRT AND WITH_CYCLES_HIP_BINARIES)
     OUTPUT  ${hiprt_file}
     COMMAND ${hiprt_link_command} ${hiprt_link_flags}
     DEPENDS ${bitcode_file})
-  delayed_install("${CMAKE_CURRENT_BINARY_DIR}" "${hiprt_file}" ${CYCLES_INSTALL_PATH}/lib)
-  add_custom_target(cycles_kernel_hiprt ALL DEPENDS ${hiprt_file})
+    add_custom_command(
+      OUTPUT ${hiprt_file_compressed}
+      COMMAND "$<TARGET_FILE:zstd_compress>" ${hiprt_file} ${hiprt_file_compressed}
+      DEPENDS ${hiprt_file})
+  delayed_install("${CMAKE_CURRENT_BINARY_DIR}" "${hiprt_file_compressed}" ${CYCLES_INSTALL_PATH}/lib)
+  add_custom_target(cycles_kernel_hiprt ALL DEPENDS ${hiprt_file_compressed})
   cycles_set_solution_folder(cycles_kernel_hiprt)
 endif()
 
@@ -798,7 +833,7 @@ if(WITH_CYCLES_DEVICE_ONEAPI)
     endif()
     if(NOT oclocids_ret EQUAL 0)
       list(REMOVE_ITEM CYCLES_ONEAPI_INTEL_BINARIES_ARCH ${device})
-      message(STATUS "binaries for ${device} not supported by Intel Graphics Compiler/ocloc, skipped.")
+      message(STATUS "Cycles oneAPI: binaries for ${device} not supported by Intel Graphics Compiler/ocloc, skipped.")
     endif()
   endforeach()
   list(JOIN CYCLES_ONEAPI_INTEL_BINARIES_ARCH "," gen_devices_string)

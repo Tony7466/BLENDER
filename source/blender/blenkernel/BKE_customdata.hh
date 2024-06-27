@@ -233,7 +233,7 @@ void CustomData_reset(CustomData *data);
 void CustomData_free(CustomData *data, int totelem);
 
 /**
- * Same as above, but only frees layers which matches the given mask.
+ * Same as #CustomData_free, but only frees layers which matches the given mask.
  */
 void CustomData_free_typemask(CustomData *data, int totelem, eCustomDataMask mask);
 
@@ -249,17 +249,16 @@ void *CustomData_add_layer(CustomData *data,
 
 /**
  * Adds a layer of the given type to the #CustomData object. The new layer takes ownership of the
- * passed in `layer_data`. If a #ImplicitSharingInfoHandle is passed in, its user count is
- * increased.
+ * passed in `layer_data`. If a #ImplicitSharingInfo is passed in, its user count is increased.
  */
 const void *CustomData_add_layer_with_data(CustomData *data,
                                            eCustomDataType type,
                                            void *layer_data,
                                            int totelem,
-                                           const ImplicitSharingInfoHandle *sharing_info);
+                                           const blender::ImplicitSharingInfo *sharing_info);
 
 /**
- * Same as above but accepts a name.
+ * Same as #CustomData_add_layer but accepts a name.
  */
 void *CustomData_add_layer_named(CustomData *data,
                                  eCustomDataType type,
@@ -272,7 +271,7 @@ const void *CustomData_add_layer_named_with_data(CustomData *data,
                                                  void *layer_data,
                                                  int totelem,
                                                  blender::StringRef name,
-                                                 const ImplicitSharingInfoHandle *sharing_info);
+                                                 const blender::ImplicitSharingInfo *sharing_info);
 
 void *CustomData_add_layer_anonymous(CustomData *data,
                                      eCustomDataType type,
@@ -285,7 +284,7 @@ const void *CustomData_add_layer_anonymous_with_data(
     const AnonymousAttributeIDHandle *anonymous_id,
     int totelem,
     void *layer_data,
-    const ImplicitSharingInfoHandle *sharing_info);
+    const blender::ImplicitSharingInfo *sharing_info);
 
 /**
  * Frees the active or first data layer with the give type.
@@ -305,7 +304,7 @@ bool CustomData_free_layer_named(CustomData *data, blender::StringRef name, cons
 bool CustomData_free_layer_active(CustomData *data, eCustomDataType type, int totelem);
 
 /**
- * Same as above, but free all layers with type.
+ * Same as #CustomData_free_layer_active, but free all layers with type.
  */
 void CustomData_free_layers(CustomData *data, eCustomDataType type, int totelem);
 

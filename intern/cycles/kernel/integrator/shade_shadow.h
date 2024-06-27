@@ -53,6 +53,11 @@ ccl_device_inline Spectrum integrate_transparent_surface_shadow(KernelGlobals kg
   shadow_volume_stack_enter_exit(kg, state, shadow_sd);
 #  endif
 
+  /* Disable transparent shadows for ray portals */
+  if (shadow_sd->flag & SD_RAY_PORTAL) {
+    return zero_spectrum();
+  }
+
   /* Compute transparency from closures. */
   return surface_shader_transparency(kg, shadow_sd);
 }
@@ -72,8 +77,7 @@ ccl_device_inline bool shadow_volume_shader_sample(KernelGlobals kg,
     return false;
   }
 
-  const float density = object_volume_density(kg, sd->object);
-  *extinction = sd->closure_transparent_extinction * density;
+  *extinction = sd->closure_transparent_extinction;
   return true;
 }
 
@@ -198,7 +202,8 @@ ccl_device_inline void integrate_transparent_volume_shadow(KernelGlobals kg,
   ray.tmax = (hit < num_recorded_hits) ? INTEGRATOR_STATE_ARRAY(state, shadow_isect, hit, t) :
                                          ray.tmax;
 
-  shader_setup_from_volume(kg, shadow_sd, &ray);
+  /* `object` is only needed for light tree with light linking, it is irrelevant for shadow. */
+  shader_setup_from_volume(kg, shadow_sd, &ray, OBJECT_NONE);
 
   VOLUME_READ_LAMBDA(integrator_state_read_shadow_volume_stack(state, i));
   const float step_size = volume_stack_step_size(kg, volume_read_lambda_pass);
