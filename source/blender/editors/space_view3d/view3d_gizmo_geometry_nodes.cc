@@ -943,9 +943,11 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
         GeoTreeLog &tree_log = nmd_orig.runtime->eval_log->get_tree_log(compute_context.hash());
         tree_log.ensure_socket_values();
 
-        const float4x4 geometry_transform = find_gizmo_geometry_transform(geometry,
-                                                                          gizmo_id.gizmo_id)
-                                                .value_or(float4x4::identity());
+        const std::optional<float4x4> crazy_space_geometry_transform =
+            find_gizmo_geometry_transform(geometry, gizmo_id.gizmo_id);
+
+        const float4x4 geometry_transform = crazy_space_geometry_transform.value_or(
+            float4x4::identity());
 
         UpdateReport report;
         GizmosUpdateParams update_params{
@@ -999,6 +1001,18 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
               WM_gizmo_set_flag(gizmo, WM_GIZMO_HIDDEN, true);
             }
             return;
+          }
+          const bNodeSocket &gizmo_transform_output = gizmo_node.output_socket(0);
+          if (gizmo_transform_output.is_logically_linked()) {
+            if (!crazy_space_geometry_transform) {
+              /* Hide gizmos if crazy space transform is not found but the gizmo was attached to a
+               * geometry. This has to be done after the check for missing socket logs which could
+               * cause an update that makes sure that the transforms are available too. */
+              for (wmGizmo *gizmo : node_gizmos->get_all_gizmos()) {
+                WM_gizmo_set_flag(gizmo, WM_GIZMO_HIDDEN, true);
+              }
+              return;
+            }
           }
         }
       });
