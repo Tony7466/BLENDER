@@ -98,6 +98,22 @@ class Action : public ::bAction {
    */
   bool is_action_layered() const;
 
+  /**
+   * Assert that this action is a layered action with precisely one layer and
+   * one infinite keyframe strip.
+   *
+   * This is for use in Project Baklava *phase 1*, which only permits layered
+   * actions (with animation in them) to have this structure. This
+   * simultaneously serves as a todo marker for later phases and catches areas
+   * of the code with phase-1 assumptions at runtime.
+   *
+   * TODO: this function should be changed to assert fewer and fewer assumptions
+   * as we progress through the phases of Project Baklava and more and more of
+   * the new animation system is implemented. Finally, it should be removed
+   * entirely when the full system is completely implemented.
+   */
+  void assert_one_layer_one_strip() const;
+
   /* Animation Layers access. */
   blender::Span<const Layer *> layers() const;
   blender::MutableSpan<Layer *> layers();

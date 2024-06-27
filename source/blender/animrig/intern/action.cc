@@ -142,6 +142,16 @@ bool Action::is_action_layered() const
          BLI_listbase_is_empty(&this->curves);
 }
 
+void Action::assert_one_layer_one_strip() const
+{
+  BLI_assert(this->layers().size() == 1);
+  BLI_assert(this->layers()[0]->strips().size() == 1);
+
+  const Strip *strip = this->layers()[0]->strips()[0];
+  BLI_assert(strip->is_infinite());
+  BLI_assert(strip->type() == Strip::Type::Keyframe);
+}
+
 blender::Span<const Layer *> Action::layers() const
 {
   return blender::Span<Layer *>{reinterpret_cast<Layer **>(this->layer_array),
@@ -434,15 +444,11 @@ bool Action::is_binding_animated(const binding_handle_t binding_handle) const
 
 Layer *Action::get_layer_for_keyframing()
 {
-  /* TODO: handle multiple layers. */
   if (this->layers().is_empty()) {
     return nullptr;
   }
-  if (this->layers().size() > 1) {
-    std::fprintf(stderr,
-                 "Action '%s' has multiple layers, which isn't handled by keyframing code yet.",
-                 this->id.name);
-  }
+
+  this->assert_one_layer_one_strip();
 
   return this->layer(0);
 }
