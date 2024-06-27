@@ -166,8 +166,7 @@ ccl_device float2 direction_to_fisheye_lens_polynomial(
      *  r_n+1 = r_n - F(r_n) / F'(r_n)
      *  The addition in the implementation is due to canceling of signs.
      * \{ */
-    const float old_r = r;
-    const float r2 = r * r;
+    const float old_r = r, r2 = r * r;
     const float F_r = theta - (coeff0 + dot(coeffs, make_float4(r, r2, r2 * r, r2 * r2)));
     const float dF_r = dot(diff_coeffs, make_float4(1.0f, r, r2, r2 * r));
     r += F_r / dF_r;
