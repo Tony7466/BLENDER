@@ -89,6 +89,10 @@ RE_MANIFEST_SEMVER = re.compile(
     r'(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$'
 )
 
+RE_MANIFEST_COPYRIGHT = re.compile(
+    r"([\d]+)\s[a-zA-Z\s].*$" r"([\d]+-[\d]+)\s[a-zA-Z\s].*$"
+)
+
 # Ensure names (for example), don't contain control characters.
 RE_CONTROL_CHARS = re.compile(r'[\x00-\x1f\x7f-\x9f]')
 
@@ -1296,6 +1300,15 @@ def pkg_manifest_validate_field_any_non_empty_list_of_non_empty_strings(
 
     return pkg_manifest_validate_field_any_list_of_non_empty_strings(value, strict)
 
+def pkg_manifest_validate_field_copyright(
+        value: List[str],
+        strict: bool,
+) -> Optional[str]:
+    if not value:
+        return "list may not be empty"
+    
+    return all(RE_MANIFEST_COPYRIGHT.match(i) for i in value) and pkg_manifest_validate_field_any_list_of_non_empty_strings(value, strict)
+
 
 def pkg_manifest_validate_field_any_version(
         value: str,
@@ -1528,7 +1541,7 @@ pkg_manifest_known_keys_and_types: Tuple[
     # Optional.
     ("blender_version_max", str, pkg_manifest_validate_field_any_version_primitive_or_empty),
     ("website", str, pkg_manifest_validate_field_any_non_empty_string_stripped_no_control_chars),
-    ("copyright", list, pkg_manifest_validate_field_any_non_empty_list_of_non_empty_strings),
+    ("copyright", list, pkg_manifest_validate_field_copyright),
     # Type should be `dict` eventually, some existing packages will have a list of strings instead.
     ("permissions", (dict, list), pkg_manifest_validate_field_permissions),
     ("tags", list, pkg_manifest_validate_field_any_non_empty_list_of_non_empty_strings),
