@@ -700,7 +700,7 @@ FCurve *action_fcurve_find(bAction *act, const char rna_path[], int array_index)
  *
  * TODO: these functions should be changed to assert fewer and fewer assumptions
  * as we progress through the phases of Project Baklava and more and more of the
- * new animation system is implemented. Finally, it should be removed entirely
+ * new animation system is implemented. Finally, they should be removed entirely
  * when the full system is completely implemented.
  */
 void assert_baklava_phase_1_invariants(const Action &action);
