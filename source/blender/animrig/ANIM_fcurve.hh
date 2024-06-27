@@ -24,7 +24,7 @@ struct FCurve;
 namespace blender::animrig {
 
 /* All the information needed to look up or create an FCurve. */
-struct FCurveParameters {
+struct FCurveDescriptor {
   StringRefNull rna_path;
   int array_index;
   std::optional<PropertySubType> prop_subtype;
@@ -52,7 +52,7 @@ KeyframeSettings get_keyframe_settings(bool from_userprefs);
  * If the channel's property subtype is provided, the fcurve will also be set to
  * the correct color mode based on user preferences.
  */
-FCurve *create_fcurve_for_channel(FCurveParameters fcurve_params);
+FCurve *create_fcurve_for_channel(FCurveDescriptor fcurve_descriptor);
 
 /** Initialize the given BezTriple with default values. */
 void initialize_bezt(BezTriple *beztr,
