@@ -754,12 +754,12 @@ static gpu::IndexBuf *create_index_bmesh(const Set<BMFace *, 0> &faces,
 }
 
 static void create_tri_index_grids(const Span<int> grid_indices,
-                               int display_gridsize,
-                               GPUIndexBufBuilder &elb,
-                               const BitGroupVector<> &grid_hidden,
-                               const int gridsize,
-                               const int skip,
-                               const int totgrid)
+                                   int display_gridsize,
+                                   GPUIndexBufBuilder &elb,
+                                   const BitGroupVector<> &grid_hidden,
+                                   const int gridsize,
+                                   const int skip,
+                                   const int totgrid)
 {
   uint offset = 0;
   const uint grid_vert_len = gridsize * gridsize;
@@ -884,12 +884,12 @@ static void create_lines_index_grids(const Span<int> grid_indices,
 }
 
 static void create_lines_index_grids_flat_layout(const Span<int> grid_indices,
-                                           int display_gridsize,
-                                           GPUIndexBufBuilder &elb_lines,
-                                           const BitGroupVector<> &grid_hidden,
-                                           const int gridsize,
-                                           const int skip,
-                                           const int totgrid)
+                                                 int display_gridsize,
+                                                 GPUIndexBufBuilder &elb_lines,
+                                                 const BitGroupVector<> &grid_hidden,
+                                                 const int gridsize,
+                                                 const int skip,
+                                                 const int totgrid)
 {
   uint offset = 0;
   const uint grid_vert_len = square_uint(gridsize - 1) * 4;
@@ -990,8 +990,8 @@ static void calc_material_indices(const Object &object,
 
 static gpu::IndexBuf *create_tri_index_grids(const CCGKey &key,
                                              const SubdivCCG &subdiv_ccg,
-                                         const Span<bool> sharp_faces,
-                                         const bool do_coarse,
+                                             const Span<bool> sharp_faces,
+                                             const bool do_coarse,
                                              const Span<int> grid_indices,
                                              const bool use_flat_layout)
 {
@@ -1070,15 +1070,18 @@ static gpu::IndexBuf *create_lines_index_grids(const CCGKey &key,
   return GPU_indexbuf_build(&elb_lines);
 }
 
+struct DrawCache : public bke::pbvh::DrawCache {
   Vector<gpu::IndexBuf *> lines_ibos;
   Vector<gpu::IndexBuf *> tris_ibos;
   Map<AttributeRequest, Vector<gpu::VertBuf *>> attribute_vbos;
 
   Vector<gpu::Batch *> lines_batches;
   Map<ViewportRequest, Vector<gpu::Batch *>> tris_batches;
+
+  ~DrawCache() override = default;
 };
 
-static void clear_all_data(PBVHDrawData &batches)
+static void clear_all_data(DrawCache &batches)
 {
   batches.lines_ibos.clear();
   batches.tris_ibos.clear();
@@ -1521,7 +1524,7 @@ static Span<gpu::VertBuf *> ensure_vbos(const Object &object,
                                         const Span<PBVHNode *> nodes,
                                         const IndexMask &nodes_to_update,
                                         const AttributeRequest &attr,
-                                        PBVHDrawData &draw_data)
+                                        DrawCache &draw_data)
 {
   Vector<gpu::VertBuf *> &vbos = draw_data.attribute_vbos.lookup_or_add_default(attr);
   vbos.resize(nodes.size(), nullptr);
@@ -1535,7 +1538,7 @@ static Span<gpu::VertBuf *> ensure_vbos(const Object &object,
 static Span<gpu::IndexBuf *> ensure_tris_ibos(const Object &object,
                                               const Span<const PBVHNode *> nodes,
                                               const IndexMask &nodes_to_update,
-                                              PBVHDrawData &draw_data)
+                                              DrawCache &draw_data)
 {
   const PBVH &pbvh = *object.sculpt->pbvh;
   draw_data.tris_ibos.resize(nodes.size(), nullptr);
@@ -1555,8 +1558,16 @@ static Span<gpu::IndexBuf *> ensure_tris_ibos(const Object &object,
 Span<gpu::Batch *> ensure_tris_batches(const ViewportRequest &request,
                                        const Object &object,
                                        const IndexMask &nodes_to_update,
-                                       PBVHDrawData &draw_data)
+                                       DrawCache &draw_data)
 {
+
+  // TODO
+  // batches.use_flat_layout = !sharp_faces.is_empty() &&
+  //                         std::any_of(
+  //                             grid_indices.begin(), grid_indices.end(), [&](const int grid) {
+  //                               return sharp_faces[grid_to_face_map[grid]];
+  //                             });
+
   const PBVH &pbvh = *object.sculpt->pbvh;
   const bool update_only_visible = false;  // TODO
   ;                                        // TODO
@@ -1585,7 +1596,7 @@ Span<gpu::Batch *> ensure_tris_batches(const ViewportRequest &request,
 static Span<gpu::IndexBuf *> ensure_lines_ibos(const Object &object,
                                                const Span<const PBVHNode *> nodes,
                                                const IndexMask &nodes_to_update,
-                                               PBVHDrawData &draw_data)
+                                               DrawCache &draw_data)
 {
   const PBVH &pbvh = *object.sculpt->pbvh;
   draw_data.tris_ibos.resize(nodes.size(), nullptr);
@@ -1632,7 +1643,7 @@ static Span<gpu::IndexBuf *> ensure_lines_ibos(const Object &object,
 
 Span<gpu::Batch *> ensure_lines_batches(const Object &object,
                                         const bool update_only_visible,
-                                        PBVHDrawData &draw_data)
+                                        DrawCache &draw_data)
 {
   const PBVH &pbvh = *object.sculpt->pbvh;
 

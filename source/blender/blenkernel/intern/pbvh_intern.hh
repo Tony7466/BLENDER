@@ -15,10 +15,6 @@
  * \ingroup bke
  */
 
-namespace blender::draw::pbvh {
-struct PBVHDrawData;
-}
-
 struct BMVert;
 struct BMFace;
 
@@ -172,7 +168,7 @@ struct PBVH {
 
   PBVHPixels pixels;
 
-  blender::draw::pbvh::PBVHDrawData *data_data;
+  std::unique_ptr<blender::bke::pbvh::DrawCache> draw_cache;
 
   ~PBVH();
 };

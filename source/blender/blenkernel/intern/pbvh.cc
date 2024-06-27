@@ -36,8 +36,6 @@
 #include "BKE_pbvh_api.hh"
 #include "BKE_subdiv_ccg.hh"
 
-#include "DRW_pbvh.hh"
-
 #include "bmesh.hh"
 
 #include "atomic_ops.h"
@@ -807,12 +805,6 @@ std::unique_ptr<PBVH> build_grids(const CCGKey *key, Mesh *mesh, SubdivCCG *subd
 PBVH::~PBVH()
 {
   for (PBVHNode &node : this->nodes) {
-    if (node.flag & PBVH_Leaf) {
-      if (node.draw_batches) {
-        blender::draw::pbvh::node_free(node.draw_batches);
-      }
-    }
-
     if (node.flag & (PBVH_Leaf | PBVH_TexLeaf)) {
       blender::bke::pbvh::node_pixels_free(&node);
     }
