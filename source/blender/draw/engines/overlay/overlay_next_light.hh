@@ -12,16 +12,11 @@
 
 namespace blender::draw::overlay {
 
-class Lights {
+class LightsPassHandler {
   using LightInstanceBuf = ShapeInstanceBuf<ExtraInstanceData>;
   using GroundLineInstanceBuf = ShapeInstanceBuf<float4>;
 
- private:
-  const SelectionType selection_type_;
-
-  PassSimple light_ps_ = {"Lights"};
-  PassSimple light_in_front_ps_ = {"Lights_In_front"};
-
+ public:
   struct CallBuffers {
     const SelectionType selection_type_;
     GroundLineInstanceBuf ground_line_buf = {selection_type_, "ground_line_buf"};
@@ -35,33 +30,32 @@ class Lights {
     LightInstanceBuf spot_cone_front_buf = {selection_type_, "spot_cone_front_buf"};
     LightInstanceBuf area_disk_buf = {selection_type_, "area_disk_buf"};
     LightInstanceBuf area_square_buf = {selection_type_, "area_square_buf"};
+  };
 
-  } call_buffers_[2] = {{selection_type_}, {selection_type_}};
+  const char *name = "Lights";
 
- public:
-  Lights(const SelectionType selection_type) : selection_type_(selection_type){};
-
-  void begin_sync()
+  void begin_sync(CallBuffers &call_bufs, PassSimple & /*pass*/, bool /*in_front*/)
   {
-    for (int i = 0; i < 2; i++) {
-      call_buffers_[i].ground_line_buf.clear();
-      call_buffers_[i].icon_inner_buf.clear();
-      call_buffers_[i].icon_outer_buf.clear();
-      call_buffers_[i].icon_sun_rays_buf.clear();
-      call_buffers_[i].point_buf.clear();
-      call_buffers_[i].sun_buf.clear();
-      call_buffers_[i].spot_buf.clear();
-      call_buffers_[i].spot_cone_back_buf.clear();
-      call_buffers_[i].spot_cone_front_buf.clear();
-      call_buffers_[i].area_disk_buf.clear();
-      call_buffers_[i].area_square_buf.clear();
-    }
+    call_bufs.ground_line_buf.clear();
+    call_bufs.icon_inner_buf.clear();
+    call_bufs.icon_outer_buf.clear();
+    call_bufs.icon_sun_rays_buf.clear();
+    call_bufs.point_buf.clear();
+    call_bufs.sun_buf.clear();
+    call_bufs.spot_buf.clear();
+    call_bufs.spot_cone_back_buf.clear();
+    call_bufs.spot_cone_front_buf.clear();
+    call_bufs.area_disk_buf.clear();
+    call_bufs.area_square_buf.clear();
   }
 
-  void object_sync(const ObjectRef &ob_ref, Resources &res, const State &state)
+  void object_sync(const ObjectRef &ob_ref,
+                   Resources &res,
+                   const State &state,
+                   CallBuffers &call_bufs,
+                   PassSimple & /*pass*/,
+                   bool /*in_front*/)
   {
-    CallBuffers &call_bufs = call_buffers_[int((ob_ref.object->dtx & OB_DRAW_IN_FRONT) != 0)];
-
     ExtraInstanceData data(ob_ref.object->object_to_world(),
                            float4{res.object_wire_color(ob_ref, state).xyz(), 1.0f},
                            1.0f);
@@ -148,67 +142,55 @@ class Lights {
     }
   }
 
-  void end_sync(Resources &res, ShapeCache &shapes, const State &state)
+  void end_sync(Resources &res,
+                ShapeCache &shapes,
+                const State &state,
+                CallBuffers &call_bufs,
+                PassSimple &pass,
+                bool /*in_front*/)
   {
     const DRWState pass_state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |
                                 DRW_STATE_DEPTH_LESS_EQUAL;
-    auto init_pass = [&](PassSimple &pass, CallBuffers &call_bufs) {
-      pass.init();
-      pass.state_set(pass_state | state.clipping_state);
+    pass.init();
+    pass.state_set(pass_state | state.clipping_state);
+    pass.shader_set(res.shaders.extra_shape.get());
+    pass.bind_ubo("globalsBlock", &res.globals_buf);
+    res.select_bind(pass);
+
+    call_bufs.icon_inner_buf.end_sync(pass, shapes.light_icon_outer_lines.get());
+    call_bufs.icon_outer_buf.end_sync(pass, shapes.light_icon_inner_lines.get());
+    call_bufs.icon_sun_rays_buf.end_sync(pass, shapes.light_icon_sun_rays.get());
+    call_bufs.point_buf.end_sync(pass, shapes.light_point_lines.get());
+    call_bufs.sun_buf.end_sync(pass, shapes.light_sun_lines.get());
+    call_bufs.spot_buf.end_sync(pass, shapes.light_spot_lines.get());
+    call_bufs.area_disk_buf.end_sync(pass, shapes.light_area_disk_lines.get());
+    call_bufs.area_square_buf.end_sync(pass, shapes.light_area_square_lines.get());
+    {
+      PassSimple::Sub &sub_pass = pass.sub("ground_line");
+      sub_pass.state_set(pass_state | DRW_STATE_BLEND_ALPHA | state.clipping_state);
+      sub_pass.shader_set(res.shaders.extra_ground_line.get());
+      sub_pass.bind_ubo("globalsBlock", &res.globals_buf);
+      call_bufs.ground_line_buf.end_sync(sub_pass, shapes.ground_line.get());
+    }
+    {
+      PassSimple::Sub &sub_pass = pass.sub("spot_cone_back");
+      sub_pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA |
+                         DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_CULL_BACK | state.clipping_state);
       pass.shader_set(res.shaders.extra_shape.get());
-      pass.bind_ubo("globalsBlock", &res.globals_buf);
-      res.select_bind(pass);
-
-      call_bufs.icon_inner_buf.end_sync(pass, shapes.light_icon_outer_lines.get());
-      call_bufs.icon_outer_buf.end_sync(pass, shapes.light_icon_inner_lines.get());
-      call_bufs.icon_sun_rays_buf.end_sync(pass, shapes.light_icon_sun_rays.get());
-      call_bufs.point_buf.end_sync(pass, shapes.light_point_lines.get());
-      call_bufs.sun_buf.end_sync(pass, shapes.light_sun_lines.get());
-      call_bufs.spot_buf.end_sync(pass, shapes.light_spot_lines.get());
-      call_bufs.area_disk_buf.end_sync(pass, shapes.light_area_disk_lines.get());
-      call_bufs.area_square_buf.end_sync(pass, shapes.light_area_square_lines.get());
-      {
-        PassSimple::Sub &sub_pass = pass.sub("ground_line");
-        sub_pass.state_set(pass_state | DRW_STATE_BLEND_ALPHA | state.clipping_state);
-        sub_pass.shader_set(res.shaders.extra_ground_line.get());
-        sub_pass.bind_ubo("globalsBlock", &res.globals_buf);
-        call_bufs.ground_line_buf.end_sync(sub_pass, shapes.ground_line.get());
-      }
-      {
-        PassSimple::Sub &sub_pass = pass.sub("spot_cone_back");
-        sub_pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA |
-                           DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_CULL_BACK |
-                           state.clipping_state);
-        pass.shader_set(res.shaders.extra_shape.get());
-        sub_pass.bind_ubo("globalsBlock", &res.globals_buf);
-        call_bufs.spot_cone_back_buf.end_sync(sub_pass, shapes.light_spot_volume.get());
-      }
-      {
-        PassSimple::Sub &sub_pass = pass.sub("spot_cone_front");
-        sub_pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA |
-                           DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_CULL_FRONT |
-                           state.clipping_state);
-        pass.shader_set(res.shaders.extra_shape.get());
-        sub_pass.bind_ubo("globalsBlock", &res.globals_buf);
-        call_bufs.spot_cone_front_buf.end_sync(sub_pass, shapes.light_spot_volume.get());
-      }
-    };
-
-    init_pass(light_ps_, call_buffers_[0]);
-    init_pass(light_in_front_ps_, call_buffers_[1]);
-  }
-
-  void draw(Resources &res, Manager &manager, View &view)
-  {
-    GPU_framebuffer_bind(res.overlay_line_fb);
-    manager.submit(light_ps_, view);
-  }
-
-  void draw_in_front(Resources &res, Manager &manager, View &view)
-  {
-    GPU_framebuffer_bind(res.overlay_line_in_front_fb);
-    manager.submit(light_in_front_ps_, view);
+      sub_pass.bind_ubo("globalsBlock", &res.globals_buf);
+      call_bufs.spot_cone_back_buf.end_sync(sub_pass, shapes.light_spot_volume.get());
+    }
+    {
+      PassSimple::Sub &sub_pass = pass.sub("spot_cone_front");
+      sub_pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA |
+                         DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_CULL_FRONT | state.clipping_state);
+      pass.shader_set(res.shaders.extra_shape.get());
+      sub_pass.bind_ubo("globalsBlock", &res.globals_buf);
+      call_bufs.spot_cone_front_buf.end_sync(sub_pass, shapes.light_spot_volume.get());
+    }
   }
 };
+
+using Lights = OverlayType<LightsPassHandler>;
 
 }  // namespace blender::draw::overlay
