@@ -145,11 +145,6 @@ TEST(KernelCamera, FisheyeLensPolynomialToDirectionSymmetry)
 TEST(KernelCamera, FisheyeLensPolynomialToDirection)
 {
   const float fov = M_PI_F;
-  const float width = 1.0f;
-  const float height = 1.0f;
-
-  /* Trivial case: The coefficients create a perfect equidistant fisheye */
-  const float4 k_equidistant = make_float4(-1.0, 0.0, 0.0, 0.0);
   const float k0 = 0.0f;
 
   const float rad60 = M_PI_F / 3.0f;
@@ -188,14 +183,31 @@ TEST(KernelCamera, FisheyeLensPolynomialToDirection)
   };
 
   for (auto [sensor, direction] : tests) {
-    const float3 computed = fisheye_lens_polynomial_to_direction(
-        sensor.x, sensor.y, k0, k_equidistant, fov, width, height);
-    EXPECT_NEAR(direction.x, computed.x, 1e-6)
-        << "sensor: (" << sensor.x << ", " << sensor.y << ")";
-    EXPECT_NEAR(direction.y, computed.y, 1e-6)
-        << "sensor: (" << sensor.x << ", " << sensor.y << ")";
-    EXPECT_NEAR(direction.z, computed.z, 1e-6)
-        << "sensor: (" << sensor.x << ", " << sensor.y << ")";
+    for (float const scale : {1.0f, 0.5f, 2.0f, 0.25f, 4.0f, 0.125f, 8.0f, 0.0625f, 16.0f}) {
+      const float width = 1.0f / scale;
+      const float height = 1.0f / scale;
+      /* Trivial case: The coefficients create a perfect equidistant fisheye */
+      const float4 k_equidistant = make_float4(-scale, 0.0, 0.0, 0.0);
+
+      const float3 computed = fisheye_lens_polynomial_to_direction(
+          sensor.x, sensor.y, k0, k_equidistant, fov, width, height);
+
+      EXPECT_NEAR(direction.x, computed.x, 1e-6)
+          << "sensor: (" << sensor.x << ", " << sensor.y << ")" << std::endl
+          << "scale: " << scale;
+      EXPECT_NEAR(direction.y, computed.y, 1e-6)
+          << "sensor: (" << sensor.x << ", " << sensor.y << ")" << std::endl
+          << "scale: " << scale;
+      EXPECT_NEAR(direction.z, computed.z, 1e-6)
+          << "sensor: (" << sensor.x << ", " << sensor.y << ")" << std::endl
+          << "scale: " << scale;
+
+      const float2 reprojected = direction_to_fisheye_lens_polynomial(
+          direction, k0, k_equidistant, width, height);
+
+      EXPECT_NEAR(sensor.x, reprojected.x, 1e-6) << "scale: " << scale;
+      EXPECT_NEAR(sensor.y, reprojected.y, 1e-6) << "scale: " << scale;
+    }
   }
 }
 
