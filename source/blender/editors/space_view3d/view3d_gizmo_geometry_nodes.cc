@@ -502,15 +502,15 @@ class TransformGizmos : public NodeGizmos {
 
       const bool is_interacting = gizmo_is_interacting(*gizmo);
       int draw_options = RNA_enum_get(gizmo->ptr, "draw_options");
+      /* The clipping currently looks a bit weird without the white circle around the gizmo.
+       * However, without clipping it looks also very confusing sometimes. */
+      draw_options |= ED_GIZMO_DIAL_DRAW_FLAG_CLIP;
       SET_FLAG_FROM_TEST(draw_options, is_interacting, ED_GIZMO_DIAL_DRAW_FLAG_ANGLE_VALUE);
       RNA_enum_set(gizmo->ptr, "draw_options", draw_options);
 
       WM_gizmo_set_flag(gizmo, WM_GIZMO_DRAW_VALUE, true);
       WM_gizmo_set_line_width(gizmo, 3.0f);
       RNA_boolean_set(gizmo->ptr, "wrap_angle", false);
-      /* The clipping currently looks a bit weird without the white circle around the gizmo.
-       * However, without clipping it looks also very confusing sometimes. */
-      RNA_enum_set(gizmo->ptr, "draw_options", ED_GIZMO_DIAL_DRAW_FLAG_CLIP);
     }
   }
 
