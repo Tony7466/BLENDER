@@ -157,16 +157,17 @@ const EnumPropertyItem prop_usdz_downscale_size[] = {
 };
 
 const EnumPropertyItem prop_textures[] = {
-    {USD_TEX_EXPORT_NONE, "NONE", 0, "None", "Do not export textures"},
+    {USD_TEX_EXPORT_NONE, "KEEP", 0, "Keep", "Use original location of textures"},
     {USD_TEX_EXPORT_USE_ORIGINAL_PATHS,
-     "ORIGINAL",
+     "PRESERVE",
      0,
-     "Use original paths",
-     "Reference original paths of textures"},
+     "Preserve",
+     "Preserve file paths of textures from already imported USD files."
+     "Export remaining textures to a 'textures' folder next to the USD file"},
     {USD_TEX_EXPORT_NEW_PATH,
      "NEW",
      0,
-     "Export under new path",
+     "New Path",
      "Exports textures next to USD file in a ./textures folder"},
     {0, nullptr, 0, nullptr, nullptr}};
 
@@ -671,9 +672,7 @@ void WM_OT_usd_export(wmOperatorType *ot)
                prop_textures,
                USD_TEX_EXPORT_NEW_PATH,
                "Export Textures",
-               "None: Do not export; "
-               "Use original paths: Use original paths to files on disk; "
-               "Export as new paths: Export to ./textures folder beside USD file");
+               "Texture export method");
 
   RNA_def_boolean(ot->srna,
                   "overwrite_textures",
