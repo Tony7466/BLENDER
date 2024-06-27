@@ -753,14 +753,98 @@ static gpu::IndexBuf *create_index_bmesh(const Set<BMFace *, 0> &faces,
   return GPU_indexbuf_build(&elb_lines);
 }
 
-static void create_grids_index(const Span<int> grid_indices,
+static void create_tri_index_grids(const Span<int> grid_indices,
                                int display_gridsize,
                                GPUIndexBufBuilder &elb,
-                               GPUIndexBufBuilder &elb_lines,
                                const BitGroupVector<> &grid_hidden,
                                const int gridsize,
                                const int skip,
                                const int totgrid)
+{
+  uint offset = 0;
+  const uint grid_vert_len = gridsize * gridsize;
+  for (int i = 0; i < totgrid; i++, offset += grid_vert_len) {
+    uint v0, v1, v2, v3;
+
+    const BoundedBitSpan gh = grid_hidden.is_empty() ? BoundedBitSpan() :
+                                                       grid_hidden[grid_indices[i]];
+
+    for (int y = 0; y < gridsize - skip; y += skip) {
+      for (int x = 0; x < gridsize - skip; x += skip) {
+        /* Skip hidden grid face */
+        if (!gh.is_empty() && paint_is_grid_face_hidden(gh, gridsize, x, y)) {
+          continue;
+        }
+        /* Indices in a Clockwise QUAD disposition. */
+        v0 = offset + CCG_grid_xy_to_index(gridsize, x, y);
+        v1 = offset + CCG_grid_xy_to_index(gridsize, x + skip, y);
+        v2 = offset + CCG_grid_xy_to_index(gridsize, x + skip, y + skip);
+        v3 = offset + CCG_grid_xy_to_index(gridsize, x, y + skip);
+
+        GPU_indexbuf_add_tri_verts(&elb, v0, v2, v1);
+        GPU_indexbuf_add_tri_verts(&elb, v0, v3, v2);
+      }
+    }
+  }
+}
+
+static void create_tri_index_grids_flat_layout(const Span<int> grid_indices,
+                                               int display_gridsize,
+                                               GPUIndexBufBuilder &elb,
+                                               const BitGroupVector<> &grid_hidden,
+                                               const int gridsize,
+                                               const int skip,
+                                               const int totgrid)
+{
+  uint offset = 0;
+  const uint grid_vert_len = square_uint(gridsize - 1) * 4;
+
+  for (int i = 0; i < totgrid; i++, offset += grid_vert_len) {
+    const BoundedBitSpan gh = grid_hidden.is_empty() ? BoundedBitSpan() :
+                                                       grid_hidden[grid_indices[i]];
+
+    uint v0, v1, v2, v3;
+    for (int y = 0; y < gridsize - skip; y += skip) {
+      for (int x = 0; x < gridsize - skip; x += skip) {
+        /* Skip hidden grid face */
+        if (!gh.is_empty() && paint_is_grid_face_hidden(gh, gridsize, x, y)) {
+          continue;
+        }
+
+        v0 = (y * (gridsize - 1) + x) * 4;
+
+        if (skip > 1) {
+          v1 = (y * (gridsize - 1) + x + skip - 1) * 4;
+          v2 = ((y + skip - 1) * (gridsize - 1) + x + skip - 1) * 4;
+          v3 = ((y + skip - 1) * (gridsize - 1) + x) * 4;
+        }
+        else {
+          v1 = v2 = v3 = v0;
+        }
+
+        /* VBO data are in a Clockwise QUAD disposition.  Note
+         * that vertices might be in different quads if we're
+         * building a coarse index buffer.
+         */
+        v0 += offset;
+        v1 += offset + 1;
+        v2 += offset + 2;
+        v3 += offset + 3;
+
+        GPU_indexbuf_add_tri_verts(&elb, v0, v2, v1);
+        GPU_indexbuf_add_tri_verts(&elb, v0, v3, v2);
+      }
+    }
+  }
+}
+
+static void create_lines_index_grids(const Span<int> grid_indices,
+                                     int display_gridsize,
+                                     GPUIndexBufBuilder &elb_lines,
+                                     const BitGroupVector<> &grid_hidden,
+                                     const int gridsize,
+                                     const int skip,
+                                     const int totgrid)
 {
   uint offset = 0;
   const uint grid_vert_len = gridsize * gridsize;
@@ -783,9 +867,6 @@ static void create_grids_index(const Span<int> grid_indices,
         v2 = offset + CCG_grid_xy_to_index(gridsize, x + skip, y + skip);
         v3 = offset + CCG_grid_xy_to_index(gridsize, x, y + skip);
 
-        GPU_indexbuf_add_tri_verts(&elb, v0, v2, v1);
-        GPU_indexbuf_add_tri_verts(&elb, v0, v3, v2);
-
         GPU_indexbuf_add_line_verts(&elb_lines, v0, v1);
         GPU_indexbuf_add_line_verts(&elb_lines, v0, v3);
 
@@ -802,9 +883,8 @@ static void create_grids_index(const Span<int> grid_indices,
   }
 }
 
-static void create_grids_index_flat_layout(const Span<int> grid_indices,
+static void create_lines_index_grids_flat_layout(const Span<int> grid_indices,
                                            int display_gridsize,
-                                           GPUIndexBufBuilder &elb,
                                            GPUIndexBufBuilder &elb_lines,
                                            const BitGroupVector<> &grid_hidden,
                                            const int gridsize,
@@ -846,9 +926,6 @@ static void create_grids_index_flat_layout(const Span<int> grid_indices,
         v1 += offset + 1;
         v2 += offset + 2;
         v3 += offset + 3;
-
-        GPU_indexbuf_add_tri_verts(&elb, v0, v2, v1);
-        GPU_indexbuf_add_tri_verts(&elb, v0, v3, v2);
 
         GPU_indexbuf_add_line_verts(&elb_lines, v0, v1);
         GPU_indexbuf_add_line_verts(&elb_lines, v0, v3);
@@ -911,12 +988,12 @@ static void calc_material_indices(const Object &object,
   }
 }
 
-static gpu::IndexBuf *create_index_grids(const SubdivCCG &subdiv_ccg,
+static gpu::IndexBuf *create_tri_index_grids(const CCGKey &key,
+                                             const SubdivCCG &subdiv_ccg,
                                          const Span<bool> sharp_faces,
-                                         const CCGKey &key,
-                                         const Span<int> grid_indices,
                                          const bool do_coarse,
-                                         NodeBatches &batches)
+                                             const Span<int> grid_indices,
+                                             const bool use_flat_layout)
 {
   const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
   const Span<int> grid_to_face_map = subdiv_ccg.grid_to_face_map;
@@ -926,52 +1003,73 @@ static gpu::IndexBuf *create_index_grids(const SubdivCCG &subdiv_ccg,
   int totgrid = grid_indices.size();
   int skip = 1;
 
-  const int display_level = do_coarse ? batches.coarse_level : key.level;
+  const int display_level = do_coarse ? 0 : key.level;
 
   if (display_level < key.level) {
     display_gridsize = (1 << display_level) + 1;
     skip = 1 << (key.level - display_level - 1);
   }
 
-  batches.use_flat_layout = !sharp_faces.is_empty() &&
-                            std::any_of(
-                                grid_indices.begin(), grid_indices.end(), [&](const int grid) {
-                                  return sharp_faces[grid_to_face_map[grid]];
-                                });
+  GPUIndexBufBuilder elb;
 
-  GPUIndexBufBuilder elb, elb_lines;
-
+  // TODO
   uint visible_quad_len = bke::pbvh::count_grid_quads(
       grid_hidden, grid_indices, key.grid_size, display_gridsize);
 
   GPU_indexbuf_init(&elb, GPU_PRIM_TRIS, 2 * visible_quad_len, INT_MAX);
+
+  if (use_flat_layout) {
+    create_tri_index_grids_flat_layout(
+        grid_indices, display_gridsize, elb, grid_hidden, gridsize, skip, totgrid);
+  }
+  else {
+    create_tri_index_grids(
+        grid_indices, display_gridsize, elb, grid_hidden, gridsize, skip, totgrid);
+  }
+
+  return GPU_indexbuf_build(&elb);
+}
+
+static gpu::IndexBuf *create_lines_index_grids(const CCGKey &key,
+                                               const SubdivCCG &subdiv_ccg,
+                                               const Span<bool> sharp_faces,
+                                               const bool do_coarse,
+                                               const Span<int> grid_indices,
+                                               const bool use_flat_layout)
+{
+  const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
+  const Span<int> grid_to_face_map = subdiv_ccg.grid_to_face_map;
+
+  int gridsize = key.grid_size;
+  int display_gridsize = gridsize;
+  int totgrid = grid_indices.size();
+  int skip = 1;
+
+  const int display_level = do_coarse ? 0 : key.level;
+
+  if (display_level < key.level) {
+    display_gridsize = (1 << display_level) + 1;
+    skip = 1 << (key.level - display_level - 1);
+  }
+
+  GPUIndexBufBuilder elb_lines;
   GPU_indexbuf_init(&elb_lines,
                     GPU_PRIM_LINES,
                     2 * totgrid * display_gridsize * (display_gridsize - 1),
                     INT_MAX);
 
-  if (batches.use_flat_layout) {
-    create_grids_index_flat_layout(
-        grid_indices, display_gridsize, elb, elb_lines, grid_hidden, gridsize, skip, totgrid);
+  if (use_flat_layout) {
+    create_lines_index_grids_flat_layout(
+        grid_indices, display_gridsize, elb_lines, grid_hidden, gridsize, skip, totgrid);
   }
   else {
-    create_grids_index(
-        grid_indices, display_gridsize, elb, elb_lines, grid_hidden, gridsize, skip, totgrid);
+    create_lines_index_grids(
+        grid_indices, display_gridsize, elb_lines, grid_hidden, gridsize, skip, totgrid);
   }
 
-  if (do_coarse) {
-    batches.tri_index_coarse = GPU_indexbuf_build(&elb);
-    batches.lines_index_coarse = GPU_indexbuf_build(&elb_lines);
-    batches.tris_count_coarse = visible_quad_len;
-    batches.lines_count_coarse = totgrid * display_gridsize * (display_gridsize - 1);
-  }
-  else {
-    batches.tri_index = GPU_indexbuf_build(&elb);
-    batches.lines_index = GPU_indexbuf_build(&elb_lines);
-  }
+  return GPU_indexbuf_build(&elb_lines);
 }
 
-struct PBVHDrawData {
   Vector<gpu::IndexBuf *> lines_ibos;
   Vector<gpu::IndexBuf *> tris_ibos;
   Map<AttributeRequest, Vector<gpu::VertBuf *>> attribute_vbos;
