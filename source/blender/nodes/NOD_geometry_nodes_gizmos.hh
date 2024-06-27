@@ -58,11 +58,15 @@ void foreach_active_gizmo(const bContext &C,
                           ComputeContextBuilder &compute_context_builder,
                           ForeachGizmoFn fn);
 
-void foreach_node_on_gizmo_path(
+void foreach_compute_context_on_gizmo_path(const ComputeContext &gizmo_context,
+                                           const bNode &gizmo_node,
+                                           const bNodeSocket &gizmo_socket,
+                                           FunctionRef<void(const ComputeContext &context)> fn);
+void foreach_socket_on_gizmo_path(
     const ComputeContext &gizmo_context,
     const bNode &gizmo_node,
     const bNodeSocket &gizmo_socket,
-    FunctionRef<void(const ComputeContext &context, const bNode &node)> fn);
+    FunctionRef<void(const ComputeContext &context, const bNodeSocket &socket)> fn);
 
 void apply_gizmo_change(bContext &C,
                         Object &object,

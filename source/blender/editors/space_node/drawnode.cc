@@ -2208,7 +2208,9 @@ static bool node_link_is_gizmo_link(const SpaceNode &snode, const bNodeLink &lin
   if (!link.fromsock || !link.tosock) {
     return false;
   }
-  return link.fromsock->runtime->has_gizmo && link.tosock->runtime->has_gizmo;
+  const bNodeTree &tree = *snode.edittree;
+  return tree.runtime->sockets_on_active_gizmo_paths.contains(link.fromsock) &&
+         tree.runtime->sockets_on_active_gizmo_paths.contains(link.tosock);
 }
 
 static NodeLinkDrawConfig nodelink_get_draw_config(const bContext &C,

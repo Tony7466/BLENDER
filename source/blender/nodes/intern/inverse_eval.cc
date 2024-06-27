@@ -473,10 +473,11 @@ InverseEvalParams::InverseEvalParams(
 {
 }
 
-void foreach_node_on_inverse_eval_path(
+void foreach_element_on_inverse_eval_path(
     const ComputeContext &initial_context,
     const SocketElem &initial_socket_elem,
-    FunctionRef<void(const ComputeContext &context, const bNode &node)> fn)
+    FunctionRef<void(const ComputeContext &context)> foreach_context_fn,
+    FunctionRef<void(const ComputeContext &context, const bNodeSocket &socket)> foreach_socket_fn)
 {
   BLI_assert(initial_socket_elem.socket->is_input());
   if (!initial_socket_elem.elem) {
@@ -495,7 +496,6 @@ void foreach_node_on_inverse_eval_path(
       /* Evaluate node. */
       [&](const NodeInContext &ctx_node, Vector<const bNodeSocket *> &r_modified_inputs) {
         traverse_elem::evaluate_node(ctx_node, r_modified_inputs, elem_by_socket);
-        fn(*ctx_node.context, *ctx_node.node);
       },
       /* Propagate value. */
       [&](const SocketInContext &ctx_from, const SocketInContext &ctx_to) {
@@ -507,6 +507,20 @@ void foreach_node_on_inverse_eval_path(
       },
       final_sockets,
       final_value_nodes);
+
+  if (foreach_context_fn) {
+    Set<ComputeContextHash> handled_hashes;
+    for (const SocketInContext &ctx_socket : elem_by_socket.keys()) {
+      if (handled_hashes.add(ctx_socket.context->hash())) {
+        foreach_context_fn(*ctx_socket.context);
+      }
+    }
+  }
+  if (foreach_socket_fn) {
+    for (const SocketInContext &ctx_socket : elem_by_socket.keys()) {
+      foreach_socket_fn(*ctx_socket.context, *ctx_socket.socket);
+    }
+  }
 }
 
 using DriverValueVariant = std::variant<float, int, bool>;

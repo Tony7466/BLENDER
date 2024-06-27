@@ -11,6 +11,7 @@
 #include "BLI_math_vector_types.hh"
 #include "BLI_multi_value_map.hh"
 #include "BLI_resource_scope.hh"
+#include "BLI_set.hh"
 #include "BLI_utility_mixins.hh"
 #include "BLI_vector.hh"
 #include "BLI_vector_set.hh"
@@ -173,6 +174,9 @@ class bNodeTreeRuntime : NonCopyable, NonMovable {
 
   CacheMutex tree_zones_cache_mutex;
   std::unique_ptr<bNodeTreeZones> tree_zones;
+
+  /** Only used during drawing of the node editor. */
+  Set<const bNodeSocket *> sockets_on_active_gizmo_paths;
 
   /** Only valid when #topology_cache_is_dirty is false. */
   Vector<bNodeLink *> links;
