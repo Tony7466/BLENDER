@@ -36,16 +36,6 @@ int viewport_select(ivec2 rect_size)
   return power_of_two;
 }
 
-/**
- * Select the smallest viewport that can contain the given rect of tiles to render.
- * Returns the viewport size in tile.
- */
-ivec2 viewport_size_get(int viewport_index)
-{
-  /* TODO(fclem): Experiment with non squared viewports. */
-  return ivec2(1 << viewport_index);
-}
-
 void main()
 {
   int tilemap_index = int(gl_GlobalInvocationID.z);
@@ -94,7 +84,7 @@ void main()
     ivec2 rect_max = ivec2(rect_max_x, rect_max_y);
 
     int viewport_index = viewport_select(rect_max - rect_min);
-    ivec2 viewport_size = viewport_size_get(viewport_index);
+    ivec2 viewport_size = shadow_viewport_size_get(uint(viewport_index));
 
     /* Issue one view if there is an update in the LOD. */
     if (gl_LocalInvocationIndex == 0u) {
@@ -146,6 +136,10 @@ void main()
             /* Disable local clipping. */
             render_view_buf[view_index].clip_distance_inv = 0.0;
           }
+          /* For building the render map. */
+          render_view_buf[view_index].tilemap_tiles_index = tilemap_data.tiles_index;
+          render_view_buf[view_index].tilemap_lod = lod;
+          render_view_buf[view_index].rect_min = rect_min;
         }
       }
     }
@@ -153,37 +147,6 @@ void main()
     barrier();
 
     bool lod_is_rendered = (view_index >= 0) && (view_index < SHADOW_VIEW_MAX);
-    if (lod_is_rendered && lod_valid_thread) {
-      /* Tile coordinate relative to chosen viewport origin. */
-      ivec2 viewport_tile_co = tile_co_lod - rect_min;
-      /* We need to add page indirection to the render map for the whole viewport even if this one
-       * might extend outside of the shadow-map range. To this end, we need to wrap the threads to
-       * always cover the whole mip. This is because the viewport cannot be bigger than the mip
-       * level itself. */
-      int lod_res = SHADOW_TILEMAP_RES >> lod;
-      ivec2 relative_tile_co = (viewport_tile_co + lod_res) % lod_res;
-      if (all(lessThan(relative_tile_co, viewport_size))) {
-        uint page_packed = shadow_page_pack(tile.page);
-        /* Add page to render map. */
-        int render_page_index = shadow_render_page_index_get(view_index, relative_tile_co);
-        render_map_buf[render_page_index] = do_page_render ? page_packed : 0xFFFFFFFFu;
-
-        if (do_page_render) {
-          /* Tag tile as rendered. There is a barrier after the read. So it is safe. */
-          tiles_buf[tile_index] |= SHADOW_IS_RENDERED;
-          /* Add page to clear dispatch. */
-          uint page_index = atomicAdd(clear_dispatch_buf.num_groups_z, 1u);
-          /* Add page to tile processing. */
-          atomicAdd(tile_draw_buf.vertex_len, 6u);
-          /* Add page mapping for indexing the page position in atlas and in the frame-buffer. */
-          dst_coord_buf[page_index] = page_packed;
-          src_coord_buf[page_index] = packUvec4x8(
-              uvec4(relative_tile_co.x, relative_tile_co.y, view_index, 0));
-          /* Statistics. */
-          atomicAdd(statistics_buf.page_rendered_count, 1);
-        }
-      }
-    }
 
     if (tile.is_used && tile.is_allocated && (!tile.do_update || lod_is_rendered)) {
       /* Save highest lod for this thread. */
