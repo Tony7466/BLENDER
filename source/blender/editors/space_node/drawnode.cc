@@ -64,6 +64,7 @@
 
 #include "NOD_composite.hh"
 #include "NOD_geometry.hh"
+#include "NOD_geometry_nodes_gizmos.hh"
 #include "NOD_node_declaration.hh"
 #include "NOD_shader.h"
 #include "NOD_socket.hh"
@@ -1317,20 +1318,29 @@ static void std_node_socket_draw(
 
   const bool has_gizmo = sock->runtime->has_gizmo;
 
-  if (sock->in_out == SOCK_OUT && has_gizmo &&
-      ELEM(node->type,
-           SH_NODE_VALUE,
-           FN_NODE_INPUT_VECTOR,
-           FN_NODE_INPUT_INT,
-           FN_NODE_INPUT_BOOL,
-           FN_NODE_INPUT_ROTATION,
-           NODE_GROUP_INPUT))
-  {
-    uiLayout *row = uiLayoutRow(layout, false);
-    uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
-    node_socket_button_label(C, row, ptr, node_ptr, text);
-    draw_gizmo_icon(row, ptr, node->type != NODE_GROUP_INPUT);
-    return;
+  if (has_gizmo) {
+    if (sock->in_out == SOCK_OUT && ELEM(node->type,
+                                         SH_NODE_VALUE,
+                                         FN_NODE_INPUT_VECTOR,
+                                         FN_NODE_INPUT_INT,
+                                         FN_NODE_INPUT_BOOL,
+                                         FN_NODE_INPUT_ROTATION,
+                                         NODE_GROUP_INPUT))
+    {
+      uiLayout *row = uiLayoutRow(layout, false);
+      uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
+      node_socket_button_label(C, row, ptr, node_ptr, text);
+      draw_gizmo_icon(row, ptr, node->type != NODE_GROUP_INPUT);
+      return;
+    }
+    if (sock->in_out == SOCK_IN && sock->index() == 0 &&
+        nodes::gizmos::is_builtin_gizmo_node(*node))
+    {
+      uiLayout *row = uiLayoutRow(layout, false);
+      node_socket_button_label(C, row, ptr, node_ptr, text);
+      draw_gizmo_icon(row, ptr, true);
+      return;
+    }
   }
 
   if ((sock->in_out == SOCK_OUT) || (sock->flag & SOCK_HIDE_VALUE) ||
