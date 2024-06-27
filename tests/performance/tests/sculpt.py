@@ -49,8 +49,7 @@ def prepare_sculpt_scene(context):
     group.interface.new_socket("Geometry", in_out='OUTPUT', socket_type='NodeSocketGeometry')
     group_output_node = group.nodes.new('NodeGroupOutput')
 
-    # size = 2500
-    size = 100
+    size = 1500
 
     grid_node = group.nodes.new('GeometryNodeMeshGrid')
     grid_node.inputs["Size X"].default_value = 2.0
