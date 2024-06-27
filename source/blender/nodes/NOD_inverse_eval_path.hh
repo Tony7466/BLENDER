@@ -10,14 +10,14 @@
 
 namespace blender::nodes::inverse_eval {
 
-struct LocalInverseEvalPath {
-  Vector<SocketElem> final_input_sockets;
-  Vector<GroupInputElem> final_group_inputs;
-  Vector<ValueNodeElem> final_value_nodes;
+struct LocalInverseEvalTargets {
+  Vector<SocketElem> input_sockets;
+  Vector<GroupInputElem> group_inputs;
+  Vector<ValueNodeElem> value_nodes;
 };
 
-LocalInverseEvalPath find_local_inverse_eval_path(const bNodeTree &tree,
-                                                  const SocketElem &initial_socket_elem);
+LocalInverseEvalTargets find_local_inverse_eval_targets(const bNodeTree &tree,
+                                                        const SocketElem &initial_socket_elem);
 
 void foreach_element_on_inverse_eval_path(
     const ComputeContext &initial_context,

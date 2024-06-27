@@ -129,23 +129,22 @@ static TreeGizmoPropagation build_tree_gizmo_propagation(bNodeTree &tree)
     if (!converted_elem) {
       continue;
     }
-    const ie::LocalInverseEvalPath path = ie::find_local_inverse_eval_path(
+    const ie::LocalInverseEvalTargets targets = ie::find_local_inverse_eval_targets(
         tree, {gizmo_input.propagation_start_socket, *converted_elem});
-    const bool has_target = !path.final_input_sockets.is_empty() ||
-                            !path.final_group_inputs.is_empty() ||
-                            !path.final_value_nodes.is_empty();
+    const bool has_target = !targets.input_sockets.is_empty() ||
+                            !targets.group_inputs.is_empty() || !targets.value_nodes.is_empty();
     if (!has_target) {
       continue;
     }
-    for (const ie::SocketElem &input_socket : path.final_input_sockets) {
+    for (const ie::SocketElem &input_socket : targets.input_sockets) {
       gizmo_propagation.gizmo_inputs_by_node_inputs.add(input_socket, gizmo_input_socket_elem);
       input_socket.socket->runtime->has_gizmo = true;
     }
-    for (const ie::ValueNodeElem &value_node : path.final_value_nodes) {
+    for (const ie::ValueNodeElem &value_node : targets.value_nodes) {
       gizmo_propagation.gizmo_inputs_by_value_nodes.add(value_node, gizmo_input_socket_elem);
       value_node.node->output_socket(0).runtime->has_gizmo = true;
     }
-    for (const ie::GroupInputElem &group_input : path.final_group_inputs) {
+    for (const ie::GroupInputElem &group_input : targets.group_inputs) {
       gizmo_propagation.gizmo_inputs_by_group_inputs.add(group_input, gizmo_input_socket_elem);
       for (const bNode *group_input_node : tree.group_input_nodes()) {
         group_input_node->output_socket(group_input.group_input_index).runtime->has_gizmo = true;

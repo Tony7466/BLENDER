@@ -539,8 +539,8 @@ static void get_inputs_to_propagate(const NodeInContext &ctx_node,
 
 }  // namespace traverse_elem
 
-LocalInverseEvalPath find_local_inverse_eval_path(const bNodeTree &tree,
-                                                  const SocketElem &initial_socket_elem)
+LocalInverseEvalTargets find_local_inverse_eval_targets(const bNodeTree &tree,
+                                                        const SocketElem &initial_socket_elem)
 {
   BLI_assert(!tree.has_available_link_cycle());
 
@@ -571,7 +571,7 @@ LocalInverseEvalPath find_local_inverse_eval_path(const bNodeTree &tree,
       final_sockets,
       final_value_nodes);
 
-  LocalInverseEvalPath path;
+  LocalInverseEvalTargets targets;
 
   for (const SocketInContext &ctx_socket : final_sockets) {
     if (ctx_socket.context) {
@@ -582,7 +582,7 @@ LocalInverseEvalPath find_local_inverse_eval_path(const bNodeTree &tree,
     if (!elem || !*elem) {
       continue;
     }
-    path.final_input_sockets.append({ctx_socket.socket, *elem});
+    targets.input_sockets.append({ctx_socket.socket, *elem});
   }
 
   for (const NodeInContext ctx_node : final_value_nodes) {
@@ -595,7 +595,7 @@ LocalInverseEvalPath find_local_inverse_eval_path(const bNodeTree &tree,
     if (!elem || !*elem) {
       continue;
     }
-    path.final_value_nodes.append({ctx_node.node, *elem});
+    targets.value_nodes.append({ctx_node.node, *elem});
   }
 
   for (const int group_input_index : tree.interface_inputs().index_range()) {
@@ -614,10 +614,10 @@ LocalInverseEvalPath find_local_inverse_eval_path(const bNodeTree &tree,
     if (!*elem) {
       continue;
     }
-    path.final_group_inputs.append({group_input_index, *elem});
+    targets.group_inputs.append({group_input_index, *elem});
   }
 
-  return path;
+  return targets;
 }
 
 ElemEvalParams::ElemEvalParams(const bNode &node,
