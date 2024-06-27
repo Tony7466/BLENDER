@@ -213,16 +213,12 @@ static int object_grease_pencil_convert_v3_exec(bContext *C, wmOperator *op)
   const char* ob_name = "GPencil Converted";
   Object *curves_object = ed::object::add_type(C, OB_CURVES, ob_name, object->loc, object->rot, false, 0);
 
-  Curves *curves = (Curves *)curves_object->data;
-  Array<bool> sel_array(drawing->strokes().curves_num());
-  sel_array.fill(true);
-  IndexMaskMemory memory;
-  IndexMask select_all = IndexMask::from_bools(sel_array, memory);
+  Curves *curves = static_cast<Curves *>(curves_object->data);
+  IndexMask select_all = IndexMask(drawing->strokes().curves_range());
 
-  bke::CurvesGeometry new_curves = bke::curves_copy_curve_selection(
+  const bke::CurvesGeometry new_curves = bke::curves_copy_curve_selection(
       drawing->strokes(), select_all, {});
-  curves->geometry = new_curves;
-  new_curves.tag_topology_changed();
+  curves->geometry.wrap() = new_curves;
 
   DEG_id_tag_update(&curves->id, ID_RECALC_GEOMETRY);
   
