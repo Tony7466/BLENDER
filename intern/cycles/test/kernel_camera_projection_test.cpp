@@ -160,6 +160,10 @@ TEST(KernelCamera, FisheyeLensPolynomialToDirection)
   const float cos30 = M_SQRT3_F / 2.0f;
   const float sin30 = 0.5f;
 
+  const float rad45 = M_PI_4f;
+  const float cos45 = M_SQRT1_2f;
+  const float sin45 = M_SQRT1_2f;
+
   const std::pair<float2, float3> tests[]{
       /* Center (0°) */
       {{0.5, 0.5}, {1.0, 0.0, 0.0}},
@@ -169,6 +173,12 @@ TEST(KernelCamera, FisheyeLensPolynomialToDirection)
       {{0.5, 0.5 - rad60}, {cos60, 0.0, -sin60}},
       {{0.5 + rad60, 0.5}, {cos60, -sin60, 0.0}},
       {{0.5 - rad60, 0.5}, {cos60, sin60, 0.0}},
+
+      /* 45° */
+      {{0.5, 0.5 + rad45}, {cos45, 0.0, sin45}},
+      {{0.5, 0.5 - rad45}, {cos45, 0.0, -sin45}},
+      {{0.5 + rad45, 0.5}, {cos45, -sin45, 0.0}},
+      {{0.5 - rad45, 0.5}, {cos45, sin45, 0.0}},
 
       /* 30° */
       {{0.5, 0.5 + rad30}, {cos30, 0.0, sin30}},
