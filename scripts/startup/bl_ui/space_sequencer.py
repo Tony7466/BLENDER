@@ -965,7 +965,7 @@ class SEQUENCER_MT_strip_retiming(Menu):
 
         layout.separator()
 
-        layout.operator("sequencer.delete", text="Delete Retiming Keys").use_retiming_mode = True
+        layout.operator("sequencer.retiming_key_delete")
         col = layout.column()
         col.operator("sequencer.retiming_reset")
         col.enabled = not is_retiming
