@@ -225,7 +225,6 @@ def addon_draw_item_expanded(
         item_tracker_url,  # `str`
 ):
     from bpy.app.translations import (
-        pgettext_iface as iface_,
         contexts as i18n_contexts,
     )
 
@@ -235,7 +234,7 @@ def addon_draw_item_expanded(
 
     if item_description:
         col_a.label(
-            text=" {:s}.".format(iface_(item_description)),
+            text=" {:s}.".format(item_description),
             translate=False,
         )
 
@@ -420,7 +419,6 @@ def addons_panel_draw_items(
     from .bl_extension_ops import (
         pkg_info_check_exclude_filter_ex,
     )
-    from bpy.app.translations import pgettext_iface as iface_
 
     # Build a set of module names (used to calculate missing modules).
     module_names = set()
@@ -530,7 +528,7 @@ def addons_panel_draw_items(
         sub = row.row()
         sub.active = is_enabled
 
-        sub.label(text=" " + iface_(item_name), translate=False)
+        sub.label(text=" " + item_name, translate=False)
 
         if item_warning_legacy:
             sub.label(icon='ERROR')
@@ -1182,7 +1180,7 @@ def extension_draw_item(
     # Without checking `is_enabled` here, there is no way for the user to know if an extension
     # is enabled or not, which is useful to show - when they may be considering removing/updating
     # extensions based on them being used or not.
-    sub.label(text=item.name)
+    sub.label(text=item.name, translate=False)
 
     del sub
 
@@ -1238,7 +1236,7 @@ def extension_draw_item(
         row.active = is_enabled
 
         # The full tagline may be multiple lines (not yet supported by Blender's UI).
-        row.label(text=" {:s}.".format(iface_(item.tagline)), translate=False)
+        row.label(text=" {:s}.".format(item.tagline), translate=False)
 
         col.separator(type='LINE')
         del col
