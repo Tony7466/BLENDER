@@ -66,7 +66,7 @@ struct ViewportRequest {
 
 Span<gpu::Batch *> ensure_tris_batches(const ViewportRequest &request,
                                        const Object &object,
-                                       const bool update_only_visible,
+                                       const IndexMask &nodes_to_update,
                                        PBVHDrawData &draw_data);
 
 }  // namespace blender::draw::pbvh

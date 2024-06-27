@@ -1232,7 +1232,7 @@ struct DRWSculptCallbackData {
   bool fast_mode; /* Set by draw manager. Do not init. */
 
   int debug_node_nr;
-  blender::Span<blender::draw::pbvh::AttributeRequest> attrs;
+  blender::Set<blender::draw::pbvh::AttributeRequest> attrs;
 };
 
 #define SCULPT_DEBUG_COLOR(id) (sculpt_debug_colors[id % 9])
@@ -1385,6 +1385,15 @@ static void drw_sculpt_generate_calls(DRWSculptCallbackData *scd)
   Mesh *mesh = static_cast<Mesh *>(scd->ob->data);
   bke::pbvh::update_normals(*pbvh, mesh->runtime->subdiv_ccg.get());
 
+  const IndexMask nodes_to_update;
+  const IndexMask nodes_to_draw;
+  if (scd->use_wire) {
+  }
+  else {
+    const Span<gpu::Batch *> batches = blender::draw::pbvh::ensure_tris_batches(
+        {scd->attrs, scd->fast_mode}, *scd->ob, nodes_to_update, pbvh->draw_data);
+  }
+
   bke::pbvh::draw_cb(
       *mesh,
       *pbvh,
@@ -1478,14 +1487,14 @@ void DRW_shgroup_call_sculpt_with_materials(DRWShadingGroup **shgroups,
     memset(&cd_needed, 0, sizeof(cd_needed));
   }
 
-  blender::Vector<pbvh::AttributeRequest, 16> attrs;
+  blender::Set<pbvh::AttributeRequest> attrs;
 
-  attrs.append(pbvh::CustomRequest::Position);
-  attrs.append(pbvh::CustomRequest::Normal);
+  attrs.add(pbvh::CustomRequest::Position);
+  attrs.add(pbvh::CustomRequest::Normal);
 
   for (int i = 0; i < draw_attrs.num_requests; i++) {
     const DRW_AttributeRequest &req = draw_attrs.requests[i];
-    attrs.append(pbvh::GenericRequest{req.attribute_name, req.cd_type, req.domain});
+    attrs.add(pbvh::GenericRequest{req.attribute_name, req.cd_type, req.domain});
   }
 
   /* UV maps are not in attribute requests. */
@@ -1494,7 +1503,7 @@ void DRW_shgroup_call_sculpt_with_materials(DRWShadingGroup **shgroups,
       int layer_i = CustomData_get_layer_index_n(&mesh->corner_data, CD_PROP_FLOAT2, i);
       CustomDataLayer *layer = layer_i != -1 ? mesh->corner_data.layers + layer_i : nullptr;
       if (layer) {
-        attrs.append(pbvh::GenericRequest{layer->name, CD_PROP_FLOAT2, bke::AttrDomain::Corner});
+        attrs.add(pbvh::GenericRequest{layer->name, CD_PROP_FLOAT2, bke::AttrDomain::Corner});
       }
     }
   }
@@ -1506,7 +1515,7 @@ void DRW_shgroup_call_sculpt_with_materials(DRWShadingGroup **shgroups,
   scd.use_wire = false;
   scd.use_mats = true;
   scd.use_mask = false;
-  scd.attrs = attrs;
+  scd.attrs = std::move(attrs);
 
   drw_sculpt_generate_calls(&scd);
 }

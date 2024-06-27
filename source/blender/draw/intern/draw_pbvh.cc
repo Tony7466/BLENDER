@@ -1173,11 +1173,12 @@ static void fill_vbos(const Object &object,
             break;
           }
           case PBVH_GRIDS: {
-                        const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+            const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
             const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
             const Span<CCGElem *> grids = subdiv_ccg.grids;
             nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
-              fill_vbo_position_grids(key, grids, use_flat_layout, bke::pbvh::node_grid_indices(*nodes[i]), *vbos[i]);
+              fill_vbo_position_grids(
+                  key, grids, use_flat_layout, bke::pbvh::node_grid_indices(*nodes[i]), *vbos[i]);
             });
             break;
           }
@@ -1455,12 +1456,12 @@ static Span<gpu::IndexBuf *> ensure_tris_ibos(const Object &object,
 
 Span<gpu::Batch *> ensure_tris_batches(const ViewportRequest &request,
                                        const Object &object,
-                                       const bool update_only_visible,
+                                       const IndexMask &nodes_to_update,
                                        PBVHDrawData &draw_data)
 {
   const PBVH &pbvh = *object.sculpt->pbvh;
   const bool update_only_visible = false;  // TODO
-  const IndexMask nodes_to_update;         // TODO
+  ;                                        // TODO
 
   Vector<PBVHNode *> nodes = bke::pbvh::search_gather(const_cast<PBVH &>(pbvh), {});
 
