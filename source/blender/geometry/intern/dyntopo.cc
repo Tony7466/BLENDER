@@ -266,13 +266,6 @@ static void edge_subdivide(const std::array<float2, 2> &real_verts,
 {
 }
 
-enum struct EdgeS : int8_t {
-  NoChange = 0,
-  Split = 1,
-  ADSplit = 1 << 1,
-  BDSplit = 2 << 1,
-};
-
 static void face_subdivide(const std::array<int, 5> &vert_offsets,
                            const Span<float2> verts,
                            const Span<float3> real_verts,
@@ -288,12 +281,6 @@ static void face_subdivide(const std::array<int, 5> &vert_offsets,
   Vector<Array<float2>> verts_stack = {verts};
   Vector<Array<float3>> real_verts_stack = {real_verts};
   Vector<int3> tris = {face_verts};
-
-  Vector<bool> edge_selection;
-  Vector<int> edges_list;
-
-  edge_selection.reserve(edge_verts.size());
-  edges_list.reserve(edge_verts.size());
 
   while (!offsets_stack.is_empty()) {
     BLI_assert(offsets_stack.size() == verts_stack.size());
@@ -316,44 +303,48 @@ static void face_subdivide(const std::array<int, 5> &vert_offsets,
     edge_offset_data[1] = vert_offset[1] * 2;
     edge_offset_data[2] = vert_offset[2] * 2;
     edge_offset_data[3] = vert_offset[3] * 2;
-    const OffsetIndices<int> edge_offset = offset_indices::accumulate_counts_to_offsets(
-        edge_offset_data);
-    edge_selection.resize(edge_offset.total_size());
+    const OffsetIndices<int> edge_offset = offset_indices::accumulate_counts_to_offsets(edge_offset_data);
 
-    edges_to_split_from_face(verts[0], verts[1], verts_by_face_type[0], edge_selection);
-
-    if (!edges_to_split_from_length(real_verts_by_face_type, edge_selection)) {
+    Vector<int> faces_to_split;
+    gather_faces_to_split(verts_by_face_type, centre, radius, faces_to_split);
+    if (faces_to_split.is_empty()) {
       continue;
     }
 
-    const bool split_this_tris = edge_selection[0] || edge_selection[1] || edge_selection[2];
-    if (!split_this_tris) {
-      const Span<bool> semi_selection = edge_selection.as_span().drop_front(3);
-      semi_triangle_split(verts[0],
-                          verts[1],
-                          semi_selection.slice(vert_offset[1]),
-                          verts.as_mutable_span().slice(vert_offset[1]));
-      semi_triangle_split(verts[1],
-                          verts[2],
-                          semi_selection.slice(vert_offset[2]),
-                          verts.as_mutable_span().slice(vert_offset[2]));
-      semi_triangle_split(verts[2],
-                          verts[0],
-                          semi_selection.slice(vert_offset[3]),
-                          verts.as_mutable_span().slice(vert_offset[3]));
+    Vector<int> edges_to_split;
+    gather_edges_to_split(faces_to_split, real_verts_by_face_type, max_length, edges_to_split);
+    if (edges_to_split.is_empty()) {
+      continue;
+    }
 
-      semi_triangle_split(real_verts[0],
-                          real_verts[1],
-                          semi_selection.slice(vert_offset[1]),
-                          real_verts.as_mutable_span().slice(vert_offset[1]));
-      semi_triangle_split(real_verts[1],
-                          real_verts[2],
-                          semi_selection.slice(vert_offset[2]),
-                          real_verts.as_mutable_span().slice(vert_offset[2]));
-      semi_triangle_split(real_verts[2],
-                          real_verts[0],
-                          semi_selection.slice(vert_offset[3]),
-                          real_verts.as_mutable_span().slice(vert_offset[3]));
+    if (edges_to_split.size() > 1) {
+      /* TODO. */
+      BLI_assert_unreachable();
+      break;
+    }
+
+    const std::array<int2> edges = {{0, 1}, {1, 2}, {2, 0}};
+
+    const int edge_i = edges_to_split[0];
+
+    const bool split_this_tris = ELEM(edge_i, 0, 1, 2);
+    if (!split_this_tris) {
+      const int face_side = edge_offset[1].contains(edge_i) ? 0 : (edge_offset[2].contains(edge_i) ? 1 : 2);
+      BLI_assert(edge_offset[face_side + 1].contains(edge_i));
+      const int split_face_i = (edge_offset[face_side + 1].start() - edge_i) / 2;
+      const int split_face_side_i = (edge_offset[face_side + 1].start() - edge_i) % 2;
+      BLI_assert(split_face_i > 0);
+      BLI_assert(ELEM(split_face_side_i, 0, 1));
+      
+      const int2 split_edge = edges[face_side];
+      const int split_a_vert_i = split_edge[split_face_side_i];
+      const int split_target_vert_i = split_face_i;
+
+      const float2 mid = math::midpoint(verts_by_face_type[0][split_a_vert_i], verts_by_face_type[face_side + 1][split_target_vert_i]);
+      const float2 real_mid = math::midpoint(real_verts_by_face_type[0][split_a_vert_i], real_verts_by_face_type[face_side + 1][split_target_vert_i]);
+
+      verts[vert_offset[face_side + 1][split_target_vert_i]] = mid;
+      real_verts[vert_offset[face_side + 1][split_target_vert_i]] = real_mid;
 
       offsets_stack.append(offset_data);
       verts_stack.append(std::move(verts));
@@ -362,48 +353,7 @@ static void face_subdivide(const std::array<int, 5> &vert_offsets,
       continue;
     }
 
-    edges_list.clear();
-    for (const int edge_i : edge_selection.index_range()) {
-      if (edge_selection[edge_i]) {
-        edges_list.append(edge_i);
-      }
-    }
-
-    const int largest_edge_i = *std::max_element(
-        edges_list.begin(), edges_list.end(), [&](const int edge_a, const int edge_b) -> bool {
-          const int2 a_edge = edge_verts[edge_a];
-          const int2 b_edge = edge_verts[edge_b];
-          const float a_length = math::distance_squared(real_verts[a_edge[0]],
-                                                        real_verts[a_edge[1]]);
-          const float b_length = math::distance_squared(real_verts[b_edge[0]],
-                                                        real_verts[b_edge[1]]);
-          if (UNLIKELY(a_length == b_length)) {
-            return edge_indices[edge_a] > edge_indices[edge_b];
-          }
-          return a_length > b_length;
-        });
-
-    const int2 edge = edge_verts[largest_edge_i];
-    if (math::distance_squared(real_verts[edge[0]], real_verts[edge[1]]) < max_length) {
-      continue;
-    }
-
-    const float2 mid = math::midpoint(verts[edge[0]], verts[edge[1]]);
-    const float3 real_mid = math::midpoint(real_verts[edge[0]], real_verts[edge[1]]);
-
-    if (!ELEM(largest_edge_i, 0, 1, 2)) {
-      verts[edge_split_to_vert[largest_edge_i]] = mid;
-      real_verts[edge_split_to_vert[largest_edge_i]] = real_mid;
-
-      verts_stack.append(std::move(verts));
-      tris.append(face_verts);
-      real_verts_stack.append(std::move(real_verts));
-      edge_verts_stack.append(std::move(edge_verts));
-      faces_verts_stack.append(std::move(faces_verts));
-      faces_edges_stack.append(std::move(faces_edges));
-      continue;
-    }
-
+    const int2 edge = edges[edge_i];
     const int new_vert_i = r_all_edges.index_of_or_add({face_verts[edge[0]], face_verts[edge[1]]});
 
     int3 left_face_verts = face_verts;
