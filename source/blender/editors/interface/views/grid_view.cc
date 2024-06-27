@@ -216,28 +216,51 @@ class BuildOnlyVisibleButtonsHelper {
  public:
   BuildOnlyVisibleButtonsHelper(const View2D &v2d,
                                 const AbstractGridView &grid_view,
-                                int cols_per_row);
+                                int cols_per_row,
+                                const AbstractGridViewItem *force_visible_item);
 
   bool is_item_visible(int item_idx) const;
   void fill_layout_before_visible(uiBlock &block) const;
   void fill_layout_after_visible(uiBlock &block) const;
 
  private:
-  IndexRange get_visible_range(const View2D &v2d) const;
+  IndexRange get_visible_range(const View2D &v2d,
+                               const AbstractGridViewItem *force_visible_item) const;
   void add_spacer_button(uiBlock &block, int row_count) const;
 };
 
-BuildOnlyVisibleButtonsHelper::BuildOnlyVisibleButtonsHelper(const View2D &v2d,
-                                                             const AbstractGridView &grid_view,
-                                                             const int cols_per_row)
+BuildOnlyVisibleButtonsHelper::BuildOnlyVisibleButtonsHelper(
+    const View2D &v2d,
+    const AbstractGridView &grid_view,
+    const int cols_per_row,
+    const AbstractGridViewItem *force_visible_item)
     : grid_view_(grid_view), style_(grid_view.get_style()), cols_per_row_(cols_per_row)
 {
   if ((v2d.flag & V2D_IS_INIT) && grid_view.get_item_count_filtered()) {
-    visible_items_range_ = this->get_visible_range(v2d);
+    visible_items_range_ = this->get_visible_range(v2d, force_visible_item);
   }
 }
 
-IndexRange BuildOnlyVisibleButtonsHelper::get_visible_range(const View2D &v2d) const
+static std::optional<int> find_filtered_item_index(const AbstractGridViewItem &item)
+{
+  BLI_assert(item.is_filtered_visible());
+
+  const AbstractGridView &view = item.get_view();
+  std::optional<int> index;
+
+  int i = 0;
+  view.foreach_filtered_item([&](AbstractGridViewItem &iter_item) {
+    if (&item == &iter_item) {
+      index = i;
+    }
+    i++;
+  });
+
+  return index;
+}
+
+IndexRange BuildOnlyVisibleButtonsHelper::get_visible_range(
+    const View2D &v2d, const AbstractGridViewItem *force_visible_item) const
 {
   BLI_assert(v2d.flag & V2D_IS_INIT);
 
@@ -253,9 +276,21 @@ IndexRange BuildOnlyVisibleButtonsHelper::get_visible_range(const View2D &v2d) c
   const int view_height = BLI_rcti_size_y(&v2d.mask);
   const int count_rows_in_view = std::max(view_height / style_.tile_height, 1);
   const int max_items_in_view = (count_rows_in_view + 1) * cols_per_row_;
-
   BLI_assert(max_items_in_view > 0);
-  return IndexRange(first_idx_in_view, max_items_in_view);
+
+  IndexRange visible_items(first_idx_in_view, max_items_in_view);
+
+  /* Ensure #visible_items contains #force_visible_item, adjust if necessary. */
+  if (force_visible_item && force_visible_item->is_filtered_visible()) {
+    if (std::optional<int> item_idx = find_filtered_item_index(*force_visible_item)) {
+      if (!visible_items.contains(*item_idx)) {
+        /* Move range so the first row contains #force_visible_item. */
+        return IndexRange((item_idx == 0) ? 0 : *item_idx % cols_per_row_, max_items_in_view);
+      }
+    }
+  }
+
+  return visible_items;
 }
 
 bool BuildOnlyVisibleButtonsHelper::is_item_visible(const int item_idx) const
@@ -365,7 +400,11 @@ void GridViewLayoutBuilder::build_from_view(const AbstractGridView &grid_view,
                                        uiLayoutGetWidth(parent_layout);
   const int cols_per_row = std::max(guessed_layout_width / style.tile_width, 1);
 
-  BuildOnlyVisibleButtonsHelper build_visible_helper(v2d, grid_view, cols_per_row);
+  const AbstractGridViewItem *search_highlight_item = dynamic_cast<const AbstractGridViewItem *>(
+      grid_view.search_highlight_item());
+
+  BuildOnlyVisibleButtonsHelper build_visible_helper(
+      v2d, grid_view, cols_per_row, search_highlight_item);
 
   build_visible_helper.fill_layout_before_visible(block_);
 
@@ -399,13 +438,6 @@ uiLayout *GridViewLayoutBuilder::current_layout() const
 
 /* ---------------------------------------------------------------------- */
 
-static void reset_view(View2D &v2d)
-{
-  if (v2d.flag & V2D_IS_INIT) {
-    UI_view2d_offset(&v2d, 0, 0);
-  }
-}
-
 GridViewBuilder::GridViewBuilder(uiBlock & /*block*/) {}
 
 void GridViewBuilder::build_grid_view(AbstractGridView &grid_view,
@@ -418,11 +450,7 @@ void GridViewBuilder::build_grid_view(AbstractGridView &grid_view,
   grid_view.build_items();
   grid_view.update_from_old(block);
   grid_view.change_state_delayed();
-
-  const bool filter_changed = grid_view.apply_search_filter(search_string);
-  if (filter_changed) {
-    reset_view(v2d);
-  }
+  grid_view.filter(search_string);
 
   /* Ensure the given layout is actually active. */
   UI_block_layout_set_current(&block, &layout);

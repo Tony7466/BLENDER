@@ -29,6 +29,7 @@ void AbstractViewItem::update_from_old(const AbstractViewItem &old)
 {
   is_active_ = old.is_active_;
   is_renaming_ = old.is_renaming_;
+  is_highlighted_search_ = old.is_highlighted_search_;
 }
 
 /** \} */
@@ -312,6 +313,11 @@ bool AbstractViewItem::is_active() const
   BLI_assert_msg(this->get_view().is_reconstructed(),
                  "State can't be queried until reconstruction is completed");
   return is_active_;
+}
+
+bool AbstractViewItem::is_search_highlight() const
+{
+  return is_highlighted_search_;
 }
 
 /** \} */

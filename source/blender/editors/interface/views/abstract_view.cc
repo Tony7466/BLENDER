@@ -30,6 +30,18 @@ bool AbstractView::is_reconstructed() const
   return is_reconstructed_;
 }
 
+const AbstractViewItem *AbstractView::search_highlight_item() const
+{
+  const AbstractViewItem *found_item = nullptr;
+
+  foreach_view_item([&](const AbstractViewItem &item) {
+    if (!found_item && item.is_search_highlight()) {
+      found_item = &item;
+    }
+  });
+  return found_item;
+}
+
 void AbstractView::update_from_old(uiBlock &new_block)
 {
   uiBlock *old_block = new_block.oldblock;
@@ -46,7 +58,7 @@ void AbstractView::update_from_old(uiBlock &new_block)
   }
 
   /* Update own persistent data. */
-  prev_search_string_ = old_view->prev_search_string_;
+  prev_filter_string_ = old_view->prev_filter_string_;
   /* Keep the rename buffer persistent while renaming! The rename button uses the buffer's
    * pointer to identify itself over redraws. */
   rename_buffer_ = std::move(old_view->rename_buffer_);
@@ -120,28 +132,33 @@ void AbstractView::draw_overlays(const ARegion & /*region*/) const
 /** \name Renaming
  * \{ */
 
-bool AbstractView::apply_search_filter(std::optional<StringRef> search_str)
+void AbstractView::filter(std::optional<StringRef> filter_str)
 {
   needs_filtering_ = false;
 
-  if (!search_str) {
-    return false;
-  }
-  if (search_str == prev_search_string_) {
-    return false;
-  }
-  prev_search_string_ = *search_str;
-
-  if (search_str->is_empty()) {
-    /* Can early exit, #AbstractViewItem.is_filtered_visible_ is true by default. */
-    return true;
+  if (!filter_str) {
+    return;
   }
 
+  const bool is_empty = filter_str->is_empty();
+  const bool filter_changed = filter_str != prev_filter_string_;
+  prev_filter_string_ = *filter_str;
+
+  bool has_search_highlight = false;
   foreach_view_item([&](AbstractViewItem &item) {
-    item.is_filtered_visible_ = item.should_be_filtered_visible(StringRefNull(*search_str));
-  });
+    item.is_filtered_visible_ = is_empty ||
+                                item.should_be_filtered_visible(StringRefNull(*filter_str));
 
-  return true;
+    if (filter_changed) {
+      item.is_highlighted_search_ = false;
+      /* On new filtering input, force the first visible item to be highlighted and in view, so
+       * enter activates it. */
+      if (item.is_filtered_visible_ && !has_search_highlight) {
+        item.is_highlighted_search_ = true;
+        has_search_highlight = true;
+      }
+    }
+  });
 }
 
 /* ---------------------------------------------------------------------- */

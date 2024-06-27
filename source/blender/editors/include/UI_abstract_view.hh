@@ -22,6 +22,7 @@
 #include <array>
 #include <memory>
 #include <optional>
+#include <string>
 
 #include "DNA_defs.h"
 #include "DNA_vec_types.h"
@@ -59,8 +60,9 @@ class AbstractView {
    * may be able to bind the button to a `std::string` or similar.
    */
   std::unique_ptr<std::array<char, MAX_NAME>> rename_buffer_;
-  /* Search string from the previous redraw, stored to detect changes. */
-  std::string prev_search_string_;
+  /* Search/filter string from the previous redraw, stored to detect changes. */
+  std::string prev_filter_string_;
+
   bool needs_filtering_ = true;
 
   /* See #get_bounds(). */
@@ -99,7 +101,7 @@ class AbstractView {
    */
   void register_item(AbstractViewItem &item);
 
-  bool apply_search_filter(std::optional<StringRef> str);
+  void filter(std::optional<StringRef> str);
 
   /** Only one item can be renamed at a time. */
   bool is_renaming() const;
@@ -143,6 +145,8 @@ class AbstractView {
    * #update_from_old() have finished.
    */
   bool is_reconstructed() const;
+
+  const AbstractViewItem *search_highlight_item() const;
 };
 
 class AbstractViewItem {
@@ -161,6 +165,8 @@ class AbstractViewItem {
   bool is_interactive_ = true;
   bool is_active_ = false;
   bool is_renaming_ = false;
+  /** See #is_search_highlight(). */
+  bool is_highlighted_search_ = false;
 
   /** Cache filtered state here to avoid having to re-query. */
   bool is_filtered_visible_ = true;
@@ -251,6 +257,11 @@ class AbstractViewItem {
    * can't be sure about the item state.
    */
   bool is_active() const;
+  /**
+   * Should this item be highlighted as matching search result? Only one item should be highlighted
+   * this way at a time. Pressing enter will activate it.
+   */
+  bool is_search_highlight() const;
 
   bool is_renaming() const;
   void begin_renaming();

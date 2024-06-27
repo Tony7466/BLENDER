@@ -729,7 +729,7 @@ void TreeViewBuilder::build_tree_view(AbstractTreeView &tree_view,
   tree_view.build_tree();
   tree_view.update_from_old(block);
   tree_view.change_state_delayed();
-  tree_view.apply_search_filter(search_string);
+  tree_view.filter(search_string);
 
   ensure_min_rows_items(tree_view);
 

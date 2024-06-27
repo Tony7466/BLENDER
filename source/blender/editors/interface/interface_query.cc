@@ -511,6 +511,21 @@ uiBut *ui_view_item_find_active(const ARegion *region)
   return ui_but_find(region, ui_but_is_active_view_item, nullptr);
 }
 
+uiBut *ui_view_item_find_search_highlight(const ARegion *region)
+{
+  return ui_but_find(
+      region,
+      [](const uiBut *but, const void *) {
+        if (but->type != UI_BTYPE_VIEW_ITEM) {
+          return false;
+        }
+
+        const uiButViewItem *view_item_but = (const uiButViewItem *)but;
+        return view_item_but->view_item->is_search_highlight();
+      },
+      nullptr);
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
