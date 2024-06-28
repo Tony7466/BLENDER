@@ -775,56 +775,6 @@ void foreach_element_on_inverse_eval_path(
 }
 
 using RNAValueVariant = std::variant<float, int, bool>;
-static bool set_rna_property_inverse(bContext &C,
-                                     ID &id,
-                                     const StringRefNull rna_path,
-                                     const RNAValueVariant &value);
-
-[[nodiscard]] static bool try_set_driver_source_value(bContext &C,
-                                                      ID &id,
-                                                      const StringRefNull rna_path,
-                                                      const std::optional<int> index,
-                                                      const RNAValueVariant &value_variant)
-{
-  AnimData *adt = BKE_animdata_from_id(&id);
-  if (!adt) {
-    return false;
-  }
-  LISTBASE_FOREACH (FCurve *, driver, &adt->drivers) {
-    if (driver->rna_path != rna_path) {
-      continue;
-    }
-    if (index.has_value()) {
-      if (driver->array_index != *index) {
-        continue;
-      }
-    }
-    if (!driver->driver) {
-      continue;
-    }
-    if (!ELEM(driver->driver->type,
-              DRIVER_TYPE_AVERAGE,
-              DRIVER_TYPE_SUM,
-              DRIVER_TYPE_MIN,
-              DRIVER_TYPE_MAX))
-    {
-      continue;
-    }
-    if (BLI_listbase_count(&driver->driver->variables) != 1) {
-      continue;
-    }
-    DriverVar &driver_var = *static_cast<DriverVar *>(driver->driver->variables.first);
-    if (driver_var.type != DVAR_TYPE_SINGLE_PROP) {
-      continue;
-    }
-    if (driver_var.num_targets != 1) {
-      continue;
-    }
-    DriverTarget &driver_target = driver_var.targets[0];
-    return set_rna_property_inverse(C, *driver_target.id, driver_target.rna_path, value_variant);
-  }
-  return false;
-}
 
 static bool set_rna_property_inverse(bContext &C,
                                      ID &id,
@@ -841,20 +791,6 @@ static bool set_rna_property_inverse(bContext &C,
   int index;
   if (!RNA_path_resolve_property_full(&id_ptr, rna_path.c_str(), &value_ptr, &prop, &index)) {
     return false;
-  }
-
-  const std::optional<std::string> rna_path_without_index = RNA_path_from_ID_to_property(
-      &value_ptr, prop);
-  if (!rna_path_without_index) {
-    return false;
-  }
-
-  std::optional<int> index_opt;
-  if (index >= 0) {
-    index_opt = index;
-  }
-  if (try_set_driver_source_value(C, id, *rna_path_without_index, index_opt, value_variant)) {
-    return true;
   }
 
   const PropertyType dst_type = RNA_property_type(prop);
