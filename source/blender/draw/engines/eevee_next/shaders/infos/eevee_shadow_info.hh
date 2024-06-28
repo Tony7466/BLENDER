@@ -72,8 +72,7 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_tag_usage_surfels)
     .do_static_compilation(true)
     .local_group_size(SURFEL_GROUP_SIZE)
     .storage_buf(6, Qualifier::READ_WRITE, "ShadowTileMapData", "tilemaps_buf[]")
-    /* ShadowTileDataPacked is uint. But MSL translation need the real type. */
-    .storage_buf(7, Qualifier::READ_WRITE, "uint", "tiles_buf[]")
+    .storage_buf(7, Qualifier::READ_WRITE, SHADOW_TILE_DATA_PACKED, "tiles_buf[]")
     .push_constant(Type::INT, "directional_level")
     .additional_info("eevee_shared",
                      "draw_view",
@@ -176,7 +175,7 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_tilemap_finalize)
     .typedef_source("draw_shader_shared.hh")
     .local_group_size(SHADOW_TILEMAP_RES, SHADOW_TILEMAP_RES)
     .storage_buf(0, Qualifier::READ, "ShadowTileMapData", "tilemaps_buf[]")
-    .storage_buf(1, Qualifier::READ_WRITE, SHADOW_TILE_DATA_PACKED, "tiles_buf[]")
+    .storage_buf(1, Qualifier::READ, SHADOW_TILE_DATA_PACKED, "tiles_buf[]")
     .storage_buf(2, Qualifier::READ_WRITE, "ShadowPagesInfoData", "pages_infos_buf")
     .storage_buf(3, Qualifier::READ_WRITE, "ShadowStatistics", "statistics_buf")
     .storage_buf(4, Qualifier::WRITE, "ViewMatrices", "view_infos_buf[SHADOW_VIEW_MAX]")
