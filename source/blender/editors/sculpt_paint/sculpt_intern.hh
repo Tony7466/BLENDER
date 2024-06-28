@@ -1635,7 +1635,8 @@ struct OrigPositionData {
   Span<float3> positions;
   Span<float3> normals;
 };
-OrigPositionData get_orig_position_data(const Object &object, const PBVHNode &node);
+OrigPositionData orig_position_data_get_mesh(const Object &object, const PBVHNode &node);
+OrigPositionData orig_position_data_get_grids(const Object &object, const PBVHNode &node);
 
 }
 

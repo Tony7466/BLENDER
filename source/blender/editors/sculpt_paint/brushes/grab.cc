@@ -60,7 +60,7 @@ static void calc_faces(const Sculpt &sd,
   const StrokeCache &cache = *ss.cache;
   Mesh &mesh = *static_cast<Mesh *>(object.data);
 
-  const OrigPositionData orig_data = get_orig_position_data(object, node);
+  const OrigPositionData orig_data = orig_position_data_get_mesh(object, node);
   const Span<int> verts = bke::pbvh::node_unique_verts(node);
 
   tls.factors.reinitialize(verts.size());
@@ -108,7 +108,7 @@ static void calc_grids(const Sculpt &sd,
   SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
-  const OrigPositionData orig_data = get_orig_position_data(object, node);
+  const OrigPositionData orig_data = orig_position_data_get_grids(object, node);
   const Span<int> grids = bke::pbvh::node_grid_indices(node);
   const int grid_verts_num = grids.size() * key.grid_area;
 
@@ -142,7 +142,24 @@ static void calc_grids(const Sculpt &sd,
   const MutableSpan<float3> translations = tls.translations;
   translations_from_offset_and_factors(offset, factors, translations);
 
+  clip_and_lock_translations(sd, ss, orig_data.positions, translations);
   apply_translations(translations, grids, subdiv_ccg);
+}
+
+static BLI_NOINLINE void gather_orig_position_data_bmesh(BMLog &bm_log,
+                                                         const Set<BMVert *, 0> &verts,
+                                                         const MutableSpan<float3> positions,
+                                                         const MutableSpan<float3> normals)
+{
+  int i = 0;
+  for (BMVert *vert : verts) {
+    const float *co;
+    const float *no;
+    BM_log_original_vert_data(&bm_log, vert, &co, &no);
+    positions[i] = co;
+    normals[i] = no;
+    i++;
+  }
 }
 
 static void calc_bmesh(const Sculpt &sd,
@@ -154,33 +171,26 @@ static void calc_bmesh(const Sculpt &sd,
 {
   SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
-  Mesh &mesh = *static_cast<Mesh *>(object.data);
-
-  // const OrigPositionData orig_data = get_orig_position_data(object, node);
 
   const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(&node);
 
-  Array<float3> positions(verts.size());
-  Array<float3> normals(verts.size());
-  int i = 0;
-  for (BMVert *vert : verts) {
-    BM_log_original_vert_data(ss.bm_log, vert, positions[i], normals[i]);
-    i++;
-  }
+  Array<float3> orig_positions(verts.size());
+  Array<float3> orig_normals(verts.size());
+  gather_orig_position_data_bmesh(*ss.bm_log, verts, orig_positions, orig_normals);
 
   tls.factors.reinitialize(verts.size());
   const MutableSpan<float> factors = tls.factors;
   fill_factor_from_hide_and_mask(*ss.bm, verts, factors);
-  filter_region_clip_factors(ss, orig_data.positions, factors);
+  filter_region_clip_factors(ss, orig_positions, factors);
 
   if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal, orig_data.normals, factors);
+    calc_front_face(cache.view_normal, orig_normals, factors);
   }
 
   tls.distances.reinitialize(verts.size());
   const MutableSpan<float> distances = tls.distances;
   calc_distance_falloff(
-      ss, orig_data.positions, eBrushFalloffShape(brush.falloff_shape), distances, factors);
+      ss, orig_positions, eBrushFalloffShape(brush.falloff_shape), distances, factors);
   apply_hardness_to_distances(cache, distances);
   calc_brush_strength_factors(cache, brush, distances, factors);
 
@@ -188,16 +198,17 @@ static void calc_bmesh(const Sculpt &sd,
     auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
   }
 
-  calc_brush_texture_factors(ss, brush, orig_data.positions, factors);
+  calc_brush_texture_factors(ss, brush, orig_positions, factors);
 
   if (brush.flag2 & BRUSH_GRAB_SILHOUETTE) {
-    calc_silhouette_factors(cache, offset, orig_data.normals, factors);
+    calc_silhouette_factors(cache, offset, orig_normals, factors);
   }
 
   tls.translations.reinitialize(verts.size());
   const MutableSpan<float3> translations = tls.translations;
   translations_from_offset_and_factors(offset, factors, translations);
 
+  clip_and_lock_translations(sd, ss, orig_positions, translations);
   apply_translations(translations, verts);
 }
 
