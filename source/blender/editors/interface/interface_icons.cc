@@ -6,36 +6,18 @@
  * \ingroup edinterface
  */
 
-#include <algorithm>
-#include <cmath>
-#include <cstdlib>
-#include <cstring>
-
 #include "MEM_guardedalloc.h"
 
-#include "GPU_batch.hh"
-#include "GPU_batch_presets.hh"
 #include "GPU_immediate.hh"
-#include "GPU_matrix.hh"
-#include "GPU_shader_shared.hh"
-#include "GPU_state.hh"
-#include "GPU_texture.hh"
 
 #include "BLF_api.hh"
 
 #include "BLI_blenlib.h"
-#include "BLI_fileops_types.h"
-#include "BLI_math_color_blend.h"
-#include "BLI_math_vector.h"
-#include "BLI_utildefines.h"
 
-#include "DNA_brush_types.h"
 #include "DNA_collection_types.h"
-#include "DNA_curve_types.h"
 #include "DNA_dynamicpaint_types.h"
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_grease_pencil_types.h"
-#include "DNA_object_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_sequence_types.h"
 #include "DNA_space_types.h"
@@ -52,7 +34,6 @@
 #include "BKE_studiolight.h"
 
 #include "IMB_imbuf.hh"
-#include "IMB_imbuf_types.hh"
 #include "IMB_thumbs.hh"
 
 #include "BIF_glutil.hh"
@@ -66,7 +47,6 @@
 #include "UI_interface_icons.hh"
 
 #include "WM_api.hh"
-#include "WM_types.hh"
 
 #include "interface_intern.hh"
 
