@@ -18,8 +18,8 @@ NODE_STORAGE_FUNCS(NodeGeometryDialGizmo)
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Float>("Value").hide_value().multi_input();
-  b.add_input<decl::Vector>("Position");
-  b.add_input<decl::Vector>("Up").default_value({0, 0, 1});
+  b.add_input<decl::Vector>("Position").subtype(PROP_TRANSLATION);
+  b.add_input<decl::Vector>("Up").default_value({0, 0, 1}).subtype(PROP_XYZ);
   b.add_input<decl::Bool>("Screen Space")
       .default_value(true)
       .description(
