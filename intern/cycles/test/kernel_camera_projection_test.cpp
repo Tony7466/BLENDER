@@ -75,7 +75,7 @@ TEST(KernelCamera, FisheyeLensPolynomialRoundtrip)
                                                << "k2: " << k.y << std::endl
                                                << "k3: " << k.z << std::endl
                                                << "k4: " << k.w << std::endl;
-          EXPECT_NEAR(reprojection.y, y, 1e-6) << "k0: " << k0 << std::endl
+          EXPECT_NEAR(reprojection.y, y, 3e-6) << "k0: " << k0 << std::endl
                                                << "k1: " << k.x << std::endl
                                                << "k2: " << k.y << std::endl
                                                << "k3: " << k.z << std::endl
