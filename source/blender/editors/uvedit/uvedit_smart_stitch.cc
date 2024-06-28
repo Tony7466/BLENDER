@@ -10,6 +10,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
+#include <span>
 
 #include "MEM_guardedalloc.h"
 
@@ -2816,7 +2817,12 @@ static bool uvedit_uv_threshold_weld(Scene *scene,
         break;
       }
     }  // Swap the arguments in std::min function
-    endpoints.push_back(curredgeloopendpoints);
+    if (curredgeloopendpoints.size() > 0) {
+      endpoints.push_back(curredgeloopendpoints);
+    }
+  }
+  if (endpoints.size() < 2) {
+    return false;
   }
 
   size_t min_size = edgeloops[0].size();
@@ -2889,16 +2895,12 @@ static int stitch_distance_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
-  SpaceImage *sima = CTX_wm_space_image(C);
   Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data_with_uvs(
       scene, view_layer, nullptr);
 
   const float threshold = RNA_float_get(op->ptr, "threshold");
 
   if (uvedit_uv_threshold_weld(scene, &objects, threshold)) {
-    uvedit_live_unwrap_update(sima, scene, objects[0]);
-    DEG_id_tag_update(static_cast<ID *>(objects[0]->data), 0);
-    WM_event_add_notifier(C, NC_GEOM | ND_DATA, objects[0]->data);
     return OPERATOR_FINISHED;
   }
   else {

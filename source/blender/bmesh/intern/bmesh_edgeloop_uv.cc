@@ -65,7 +65,7 @@ void UV_get_edgeloops(
             }
           }
         }
-        if (selectedconnections == 1) {
+        if (selectedconnections < 2) {
           for (BMLoop *endpointloop : uvcoord) {
             BM_elem_index_set(endpointloop, 1);
           }
