@@ -9,6 +9,7 @@
 #include "BLI_math_matrix_types.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_offset_indices.hh"
+#include "BLI_set.hh"
 #include "BLI_span.hh"
 #include "BLI_vector.hh"
 
@@ -29,6 +30,7 @@
  * new value from scratch.
  */
 
+struct BMVert;
 struct Brush;
 struct Mesh;
 struct Object;
@@ -59,10 +61,21 @@ void translations_from_offset_and_factors(const float3 &offset,
  *   are built for these values, then applied to `positions_orig`.
  */
 
+/** Fill the output array with all positions in the grids referenced by the indices. */
+void gather_grids_positions(const SubdivCCG &subdiv_ccg,
+                            Span<int> grids,
+                            MutableSpan<float3> positions);
+
+void gather_bmesh_positions(const Set<BMVert *, 0> &verts, MutableSpan<float3> positions);
+
 /**
  * Calculate initial influence factors based on vertex visibility.
  */
 void fill_factor_from_hide(const Mesh &mesh, Span<int> vert_indices, MutableSpan<float> r_factors);
+void fill_factor_from_hide(const SubdivCCG &subdiv_ccg,
+                           Span<int> grids,
+                           MutableSpan<float> r_factors);
+void fill_factor_from_hide(const Set<BMVert *, 0> &verts, MutableSpan<float> r_factors);
 
 /**
  * Calculate initial influence factors based on vertex visibility and masking.
@@ -70,15 +83,28 @@ void fill_factor_from_hide(const Mesh &mesh, Span<int> vert_indices, MutableSpan
 void fill_factor_from_hide_and_mask(const Mesh &mesh,
                                     Span<int> vert_indices,
                                     MutableSpan<float> r_factors);
+void fill_factor_from_hide_and_mask(const SubdivCCG &subdiv_ccg,
+                                    Span<int> grids,
+                                    MutableSpan<float> r_factors);
+void fill_factor_from_hide_and_mask(const BMesh &bm,
+                                    const Set<BMVert *, 0> &verts,
+                                    MutableSpan<float> r_factors);
 
 /**
  * Disable brush influence when vertex normals point away from the view.
  */
+void calc_front_face(const float3 &view_normal, Span<float3> normals, MutableSpan<float> factors);
 void calc_front_face(const float3 &view_normal,
                      Span<float3> vert_normals,
                      Span<int> vert_indices,
                      MutableSpan<float> factors);
-void calc_front_face(const float3 &view_normal, Span<float3> normals, MutableSpan<float> factors);
+void calc_front_face(const float3 &view_normal,
+                     const SubdivCCG &subdiv_ccg,
+                     Span<int> grids,
+                     MutableSpan<float> factors);
+void calc_front_face(const float3 &view_normal,
+                     const Set<BMVert *, 0> &verts,
+                     const MutableSpan<float> factors);
 
 /**
  * When the 3D view's clipping planes are enabled, brushes shouldn't have any effect on vertices
@@ -103,9 +129,9 @@ void calc_distance_falloff(const SculptSession &ss,
                            eBrushFalloffShape falloff_shape,
                            MutableSpan<float> r_distances,
                            MutableSpan<float> factors);
-void calc_distance_falloff(SculptSession &ss,
+void calc_distance_falloff(const SculptSession &ss,
                            Span<float3> positions,
-                           eBrushFalloffShape falloff_shape,
+                           const eBrushFalloffShape falloff_shape,
                            MutableSpan<float> r_distances,
                            MutableSpan<float> factors);
 
@@ -120,6 +146,12 @@ void calc_cube_distance_falloff(SculptSession &ss,
                                 Span<int> verts,
                                 MutableSpan<float> r_distances,
                                 MutableSpan<float> factors);
+void calc_cube_distance_falloff(SculptSession &ss,
+                                const Brush &brush,
+                                const float4x4 &mat,
+                                const Span<float3> positions,
+                                const MutableSpan<float> r_distances,
+                                const MutableSpan<float> factors);
 
 /**
  * Scale the distances based on the brush radius and the cached "hardness" setting, which increases
@@ -158,6 +190,16 @@ void calc_vert_factors(const Object &object,
                        const PBVHNode &node,
                        Span<int> verts,
                        MutableSpan<float> factors);
+void calc_grids_factors(const Object &object,
+                        const Cache &cache,
+                        const PBVHNode &node,
+                        Span<int> grids,
+                        MutableSpan<float> factors);
+void calc_vert_factors(const Object &object,
+                       const Cache &cache,
+                       const PBVHNode &node,
+                       const Set<BMVert *, 0> &verts,
+                       MutableSpan<float> factors);
 
 }  // namespace auto_mask
 
@@ -168,6 +210,8 @@ void calc_vert_factors(const Object &object,
  * simply add them to the final vertex positions.
  */
 void apply_translations(Span<float3> translations, Span<int> verts, MutableSpan<float3> positions);
+void apply_translations(Span<float3> translations, Span<int> grids, SubdivCCG &subdiv_ccg);
+void apply_translations(Span<float3> translations, const Set<BMVert *, 0> &verts);
 
 /**
  * Rotate translations to account for rotations from procedural deformation.
@@ -187,6 +231,10 @@ void clip_and_lock_translations(const Sculpt &sd,
                                 const SculptSession &ss,
                                 Span<float3> positions,
                                 Span<int> verts,
+                                MutableSpan<float3> translations);
+void clip_and_lock_translations(const Sculpt &sd,
+                                const SculptSession &ss,
+                                Span<float3> positions,
                                 MutableSpan<float3> translations);
 
 /**
@@ -265,6 +313,9 @@ void calc_translations_to_plane(Span<float3> vert_positions,
                                 Span<int> verts,
                                 const float4 &plane,
                                 MutableSpan<float3> translations);
+void calc_translations_to_plane(Span<float3> positions,
+                                const float4 &plane,
+                                MutableSpan<float3> translations);
 
 /** Ignore points that fall below the "plane trim" threshold for the brush. */
 void filter_plane_trim_limit_factors(const Brush &brush,
@@ -277,10 +328,16 @@ void filter_below_plane_factors(Span<float3> vert_positions,
                                 Span<int> verts,
                                 const float4 &plane,
                                 MutableSpan<float> factors);
+void filter_below_plane_factors(Span<float3> positions,
+                                const float4 &plane,
+                                MutableSpan<float> factors);
 
 /* Ignore points above the plane. */
 void filter_above_plane_factors(Span<float3> vert_positions,
                                 Span<int> verts,
+                                const float4 &plane,
+                                MutableSpan<float> factors);
+void filter_above_plane_factors(Span<float3> positions,
                                 const float4 &plane,
                                 MutableSpan<float> factors);
 
