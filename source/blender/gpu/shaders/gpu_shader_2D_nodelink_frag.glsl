@@ -2,8 +2,14 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#define ANTIALIAS 1.5
-#define MINIMUM_ALPHA 0.5
+#define ANTIALIAS 0.75
+
+float get_line_alpha(float center, float relative_radius)
+{
+  float radius = relative_radius * lineThickness;
+  float sdf = abs(lineThickness * (lineUV.y - center));
+  return smoothstep(radius, radius - ANTIALIAS, sdf);
+}
 
 float get_line_alpha(float center, float relative_radius) {
   float radius = relative_radius * lineThickness;

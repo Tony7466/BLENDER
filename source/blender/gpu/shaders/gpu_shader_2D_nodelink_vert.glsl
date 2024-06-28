@@ -69,8 +69,8 @@ void main(void)
   }
 
   aspect = node_link_data.aspect;
-  /* Parameters for the dashed line. */
   isMainLine = expand.y == 1.0 && !is_outline_pass ? 1 : 0;
+  /* Parameters for the dashed line. */
   dashLength = dash_params.x;
   dashFactor = dash_params.y;
   dashAlpha = dash_params.z;
