@@ -2,8 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include <iostream>
 #include <array>
+#include <iostream>
 
 #include "BKE_attribute.hh"
 #include "BKE_attribute_math.hh"
@@ -950,7 +950,9 @@ static void uv_vert_positions(const int edge_edges_num,
   });
 }
 
-Mesh *create_icosphere_mesh(const int resolution, const float radius, const bke::AttributeIDRef &uv_id)
+Mesh *create_icosphere_mesh(const int resolution,
+                            const float radius,
+                            const bke::AttributeIDRef &uv_id)
 {
   // std::cout << std::endl;
   const int base_edge_verts_num = math::max<int>(0, resolution - 2);
