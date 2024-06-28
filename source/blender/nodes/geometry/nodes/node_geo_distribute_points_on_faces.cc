@@ -205,10 +205,10 @@ static void interpolate_vert_attribute(const Mesh &mesh,
 
     threading::parallel_for(corner_tris.index_range(), 2048, [&](const IndexRange range) {
       for (const int64_t tri_i : range) {
-        const int3 face_tri = corner_tris[tri_i];
-        const T &a = src_typed[corner_verts[face_tri[0]]];
-        const T &b = src_typed[corner_verts[face_tri[1]]];
-        const T &c = src_typed[corner_verts[face_tri[2]]];
+        const int3 tri_verts = corner_tris[tri_i];
+        const T &a = src_typed[corner_verts[tri_verts[0]]];
+        const T &b = src_typed[corner_verts[tri_verts[1]]];
+        const T &c = src_typed[corner_verts[tri_verts[2]]];
 
         const Span<float3> bary_coords = tri_bary_coords[tri_i];
         MutableSpan<T> dst = dst_typed.slice(tri_bary_coords.offsets[tri_i]);
@@ -649,7 +649,7 @@ static void point_distribution_calculate(GeometrySet &geometry_set,
 
       Array<bool> elimination_mask(bary_coords.size(), true);
 
-      /* Temporal positions. Result point positions will be interpolated just like any other
+      /* Temporary positions. Result point positions will be interpolated just like any other
        * attribute. */
       Array<float3> positions(bary_coords.size());
       interpolate_vert_attribute(mesh,
