@@ -9,6 +9,8 @@
  * BKE_customdata.hh contains the function prototypes for this file.
  */
 
+#include <utility>
+
 #include "MEM_guardedalloc.h"
 
 /* Since we have versioning code here (CustomData_verify_versions()). */
@@ -2555,6 +2557,15 @@ class CustomDataLayerImplicitSharing : public ImplicitSharingInfo {
   {
   }
 
+  /** Hack: Allow to clear managed shared data without any form of freeing or deletion. This is
+   * currently needed in editmesh undo */
+  const void *steal_and_clear_data()
+  {
+    /* This assumes that the layer is not shared. */
+    BLI_assert(this->is_mutable());
+    return std::exchange(data_, nullptr);
+  }
+
  private:
   void delete_self_with_data() override
   {
@@ -2710,6 +2721,17 @@ void CustomData_copy_layout(const CustomData *source,
   }
 
   CustomData_merge_layout(source, dest, mask, alloctype, totelem);
+}
+
+const void *CustomData_steal_from_shared_data(CustomDataLayer *layer)
+{
+  if (!layer->data || !layer->sharing_info) {
+    return nullptr;
+  }
+
+  return reinterpret_cast<CustomDataLayerImplicitSharing *>(
+             const_cast<ImplicitSharingInfo *>(layer->sharing_info))
+      ->steal_and_clear_data();
 }
 
 static void customData_free_layer__internal(CustomDataLayer *layer, const int totelem)

@@ -287,14 +287,15 @@ static void um_arraystore_cd_compact(CustomData *cdata,
            * solution might be to not pass "dynamic" layers (see `layer_type_is_dynamic`) to the
            * array store at all. */
           BLI_assert(layer->sharing_info->is_mutable());
-          /* Intentionally don't call #MEM_delete, because we want to free the sharing info without
-           * the data here. In general this would not be allowed because one can't be sure how to
-           * free the data without the sharing info. */
-          MEM_freeN(const_cast<blender::ImplicitSharingInfo *>(layer->sharing_info));
+          /* Steal the data from the implicit sharing before calling #MEM_delete, because we want
+           * to free the sharing info without the data here. In general this would not be allowed
+           * because one can't be sure how to free the data without the sharing info. */
+          CustomData_steal_from_shared_data(layer);
+          layer->sharing_info->remove_user_and_delete_if_last();
+          layer->sharing_info = nullptr;
         }
         MEM_freeN(layer->data);
         layer->data = nullptr;
-        layer->sharing_info = nullptr;
       }
     }
 

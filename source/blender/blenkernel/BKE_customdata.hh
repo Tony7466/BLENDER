@@ -172,6 +172,13 @@ void CustomData_copy_layout(const CustomData *source,
                             eCDAllocType alloctype,
                             int totelem);
 
+/**
+ * In case the layer uses implicit sharing, clear the data pointer of the sharing data, such that
+ * the sharing data can be deleted without freeing or deleting the data it was managing.
+ *
+ * \return The shared data pointer. */
+const void *CustomData_steal_from_shared_data(CustomDataLayer *layer);
+
 /* BMESH_TODO, not really a public function but `readfile.cc` needs it. */
 void CustomData_update_typemap(CustomData *data);
 
