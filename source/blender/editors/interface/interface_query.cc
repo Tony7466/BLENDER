@@ -65,7 +65,7 @@ bool ui_but_is_toggle(const uiBut *but)
 bool ui_but_is_interactive_ex(const uiBut *but, const bool labeledit, const bool for_tooltip)
 {
   /* NOTE: #UI_BTYPE_LABEL is included for highlights, this allows drags. */
-  if (but->type == UI_BTYPE_LABEL) {
+  if (ELEM(but->type, UI_BTYPE_LABEL, UI_BTYPE_PREVIEW_TILE)) {
     if (for_tooltip) {
       /* It's important labels are considered interactive for the purpose of showing tooltip. */
       if (!ui_but_drag_is_draggable(but) && but->tip_func == nullptr &&
