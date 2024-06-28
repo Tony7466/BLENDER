@@ -34,6 +34,7 @@
 #include "BKE_mesh_wrapper.hh"
 #include "BKE_object.hh"
 #include "BKE_report.hh"
+#include "BKE_undo_system.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -48,6 +49,7 @@
 #include "ED_select_utils.hh"
 #include "ED_transform.hh"
 #include "ED_view3d.hh"
+#include "ED_undo.hh"
 
 #include "BLT_translation.hh"
 
@@ -2051,8 +2053,30 @@ bool EDBM_select_pick(bContext *C, const int mval[2], const SelectPick_Params *p
   Vector<Base *> bases = BKE_view_layer_array_from_bases_in_edit_mode(
       vc.scene, vc.view_layer, vc.v3d);
 
+  static bool found_prev = false;
+  static UndoStack *ustack_prev = BKE_undosys_stack_create();
+  UndoStack *ustack = ED_undo_stack_get();
+  bool undo_step_between = false;
+  bool empty_to_empty = false;
+
   bool changed = false;
   bool found = unified_findnearest(&vc, bases, &base_index_active, &eve, &eed, &efa);
+
+  UndoStep *step = ustack_prev->step_active;
+  while (step != 0 && undo_step_between == false) {
+    if (ustack->step_active == step)
+      undo_step_between = true;
+    else
+      step = step->prev;
+  }
+
+  if (found == false && found_prev == false && undo_step_between == false) {
+    empty_to_empty = true;
+  }
+  else
+    *ustack_prev = *ustack;
+
+  found_prev = found;
 
   if (params->sel_op == SEL_OP_SET) {
     BMElem *ele = efa ? (BMElem *)efa : (eed ? (BMElem *)eed : (BMElem *)eve);
@@ -2067,7 +2091,11 @@ bool EDBM_select_pick(bContext *C, const int mval[2], const SelectPick_Params *p
         DEG_id_tag_update(static_cast<ID *>(ob_iter->data), ID_RECALC_SELECT);
         WM_event_add_notifier(C, NC_GEOM | ND_SELECT, ob_iter->data);
       }
-      changed = true;
+
+      if (empty_to_empty == true)
+        changed = false;
+      else
+        changed = true;
     }
   }
 
