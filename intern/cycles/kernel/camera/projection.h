@@ -89,14 +89,11 @@ ccl_device float3 fisheye_to_direction(float u, float v, float fov)
 
 ccl_device float2 direction_to_fisheye_equisolid(float3 dir, float lens, float width, float height)
 {
-  float theta = safe_acosf(dir.x);
-  float r = 2.0f * lens * sinf(theta * 0.5f);
-  float phi = atan2f(dir.z, dir.y);
+  const float theta = safe_acosf(dir.x);
+  const float r = 2.0f * lens * sinf(theta * 0.5f);
 
-  float u = r * cosf(phi) / width + 0.5f;
-  float v = r * sinf(phi) / height + 0.5f;
-
-  return make_float2(u, v);
+  const float2 uv = r * safe_normalize(make_float2(dir.y, dir.z));
+  return make_float2(0.5f - uv.x / width, uv.y / height + 0.5f);
 }
 
 ccl_device_inline float3
