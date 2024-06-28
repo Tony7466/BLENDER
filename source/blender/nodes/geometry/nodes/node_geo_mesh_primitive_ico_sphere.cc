@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2024 Blender Authors
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -40,7 +40,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static Bounds<float3> calculate_bounds_ico_sphere(const float radius, const int subdivisions)
 {
-  const float delta_phi = (2.0f * math::numbers::pi) / 5.0f;
+  const float delta_phi = (2.0f * M_PI) / 5.0f;
   const float theta = std::cos(std::atan(0.5f));
   const float ro = radius * std::sin(delta_phi);
 
@@ -120,6 +120,7 @@ static Mesh *create_ico_sphere_mesh(const int subdivisions,
   geometry::debug_randomize_mesh_order(mesh);
 
   mesh->bounds_set_eager(calculate_bounds_ico_sphere(radius, subdivisions));
+
   return mesh;
 }
 
