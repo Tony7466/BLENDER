@@ -387,7 +387,7 @@ static int material_slot_de_select(bContext *C, bool select)
 {
   bool changed_multi = false;
   Object *obact = CTX_data_active_object(C);
-  Material *mat_active = obact ? BKE_object_material_get(obact, obact->actcol) : nullptr;
+  const Material *mat_active = obact ? BKE_object_material_get(obact, obact->actcol) : nullptr;
 
   Vector<Object *> objects = object_array_for_shading_edit_mode_enabled(C);
   for (Object *ob : objects) {
