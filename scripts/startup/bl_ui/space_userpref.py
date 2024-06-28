@@ -900,6 +900,12 @@ class USERPREF_PT_viewport_subdivision(ViewportPanel, CenterAlignMixIn, Panel):
     bl_label = "Subdivision"
     bl_options = {'DEFAULT_CLOSED'}
 
+    @classmethod
+    def poll(cls, context):
+        import gpu
+        backend = gpu.platform.backend_type_get()
+        return backend == "OPENGL"
+
     def draw_centered(self, context, layout):
         prefs = context.preferences
         system = prefs.system
@@ -925,6 +931,43 @@ class USERPREF_MT_interface_theme_presets(Menu):
         ("preferences.themes[0]", "Theme"),
         ("preferences.ui_styles[0]", "ThemeStyle"),
     )
+    # Prevent untrusted XML files "escaping" from these types.
+    preset_xml_secure_types = {
+        "Theme",
+        "ThemeAssetShelf",
+        "ThemeBoneColorSet",
+        "ThemeClipEditor",
+        "ThemeCollectionColor",
+        "ThemeConsole",
+        "ThemeDopeSheet",
+        "ThemeFileBrowser",
+        "ThemeFontStyle",
+        "ThemeGradientColors",
+        "ThemeGraphEditor",
+        "ThemeImageEditor",
+        "ThemeInfo",
+        "ThemeNLAEditor",
+        "ThemeNodeEditor",
+        "ThemeOutliner",
+        "ThemePanelColors",
+        "ThemePreferences",
+        "ThemeProperties",
+        "ThemeSequenceEditor",
+        "ThemeSpaceGeneric",
+        "ThemeSpaceGradient",
+        "ThemeSpaceListGeneric",
+        "ThemeSpreadsheet",
+        "ThemeStatusBar",
+        "ThemeStripColor",
+        "ThemeStyle",
+        "ThemeTextEditor",
+        "ThemeTopBar",
+        "ThemeUserInterface",
+        "ThemeView3D",
+        "ThemeWidgetColors",
+        "ThemeWidgetStateColors",
+    }
+
     draw = Menu.draw_preset
 
     @staticmethod
@@ -1709,8 +1752,9 @@ class USERPREF_UL_extension_repos(UIList):
         for index, orig_index in enumerate(sorted(
             range(len(items)),
             key=lambda i: (
-                items[i].use_remote_url is False,
-                items[i].name.lower(),
+                # Order [Remote, User, System].
+                0 if (repo := items[i]).use_remote_url else (1 if (repo.source != 'SYSTEM') else 2),
+                repo.name.casefold(),
             )
         )):
             indices[orig_index] = index
@@ -2441,7 +2485,7 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
 
         show_enabled_only = prefs.view.show_addons_enabled_only
         filter = wm.addon_filter
-        search = wm.addon_search.lower()
+        search = wm.addon_search.casefold()
         support = wm.addon_support
 
         # initialized on demand
@@ -2469,11 +2513,11 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
                 continue
 
             if search and not (
-                    (search in bl_info["name"].lower() or
-                     search in iface_(bl_info["name"]).lower()) or
-                    (bl_info["author"] and (search in bl_info["author"].lower())) or
-                    ((filter == "All") and (search in bl_info["category"].lower() or
-                                            search in iface_(bl_info["category"]).lower()))
+                    (search in bl_info["name"].casefold() or
+                     search in iface_(bl_info["name"]).casefold()) or
+                    (bl_info["author"] and (search in bl_info["author"].casefold())) or
+                    ((filter == "All") and (search in bl_info["category"].casefold() or
+                                            search in iface_(bl_info["category"]).casefold()))
             ):
                 continue
 
