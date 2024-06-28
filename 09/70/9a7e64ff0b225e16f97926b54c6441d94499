@@ -1,1 +1,2 @@
 Referenced by commit abfb9dbf593, Fix: Disabled NLA Interferes with Action Eval
+Referenced by pull request #123902, Fix #106946: NLA sync length stops keys from being inserted
