@@ -21,7 +21,6 @@ class VKQueryPool : public QueryPool {
   Vector<VkQueryPool> vk_query_pools_;
   VkQueryType vk_query_type_;
   uint32_t queries_issued_ = 0;
-  uint32_t queries_allocated_ = 0;
 
  protected:
   ~VKQueryPool();
