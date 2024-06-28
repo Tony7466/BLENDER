@@ -9,6 +9,7 @@ Where the operator shows progress, any errors and supports canceling operations.
 
 __all__ = (
     "extension_repos_read",
+    "pkg_wheel_filter",
 )
 
 import os
@@ -819,6 +820,28 @@ def _extensions_wheel_filter_for_platform(wheels):
     return wheels_compatible
 
 
+def pkg_wheel_filter(repo_module, pkg_id, repo_directory, wheels_rel):
+    # Filter only the wheels for this platform.
+    wheels_rel = _extensions_wheel_filter_for_platform(wheels_rel)
+    if not wheels_rel:
+        return None
+
+    pkg_dirpath = os.path.join(repo_directory, pkg_id)
+
+    wheels_abs = []
+    for filepath_rel in wheels_rel:
+        filepath_abs = os.path.join(pkg_dirpath, filepath_rel)
+        if not os.path.exists(filepath_abs):
+            continue
+        wheels_abs.append(filepath_abs)
+
+    if not wheels_abs:
+        return None
+
+    unique_pkg_id = "{:s}.{:s}".format(repo_module, pkg_id)
+    return (unique_pkg_id, wheels_abs)
+
+
 def _extensions_repo_sync_wheels(repo_cache_store):
     """
     This function collects all wheels from all packages and ensures the packages are either extracted or removed
@@ -838,28 +861,12 @@ def _extensions_repo_sync_wheels(repo_cache_store):
         repo_module = repo.module
         repo_directory = repo.directory
         for pkg_id, item_local in pkg_manifest_local.items():
-            pkg_dirpath = os.path.join(repo_directory, pkg_id)
             wheels_rel = item_local.wheels
             if not wheels_rel:
                 continue
 
-            # Filter only the wheels for this platform.
-            wheels_rel = _extensions_wheel_filter_for_platform(wheels_rel)
-            if not wheels_rel:
-                continue
-
-            wheels_abs = []
-            for filepath_rel in wheels_rel:
-                filepath_abs = os.path.join(pkg_dirpath, filepath_rel)
-                if not os.path.exists(filepath_abs):
-                    continue
-                wheels_abs.append(filepath_abs)
-
-            if not wheels_abs:
-                continue
-
-            unique_pkg_id = "{:s}.{:s}".format(repo_module, pkg_id)
-            wheel_list.append((unique_pkg_id, wheels_abs))
+            if (wheel_abs := pkg_wheel_filter(repo_module, pkg_id, repo_directory, wheels_rel)) is not None:
+                wheel_list.append(wheel_abs)
 
     extensions = bpy.utils.user_resource('EXTENSIONS')
     local_dir = os.path.join(extensions, ".local")
@@ -868,6 +875,13 @@ def _extensions_repo_sync_wheels(repo_cache_store):
         local_dir=local_dir,
         wheel_list=wheel_list,
     )
+
+
+def _extensions_repo_refresh_on_change(repo_cache_store):
+    import addon_utils
+    _extensions_repo_sync_wheels(repo_cache_store)
+    addon_utils.extensions_refresh(ensure_wheels=False)
+    repo_stats_calc()
 
 
 # -----------------------------------------------------------------------------
@@ -1416,6 +1430,8 @@ class EXTENSIONS_OT_repo_refresh_all(Operator):
 
         # In-line `bpy.ops.preferences.addon_refresh`.
         addon_utils.modules_refresh()
+        # Ensure compatibility info and wheels is up to date.
+        addon_utils.extensions_refresh(ensure_wheels=True)
 
         _preferences_ui_redraw()
         _preferences_ui_refresh_addons()
@@ -1754,8 +1770,7 @@ class EXTENSIONS_OT_package_install_marked(Operator, _ExtCmdMixIn):
                 error_fn=self.error_fn_from_exception,
             )
 
-        _extensions_repo_sync_wheels(repo_cache_store)
-        repo_stats_calc()
+        _extensions_repo_refresh_on_change(repo_cache_store)
 
         # TODO: it would be nice to include this message in the banner.
         def handle_error(ex):
@@ -1877,8 +1892,7 @@ class EXTENSIONS_OT_package_uninstall_marked(Operator, _ExtCmdMixIn):
                 error_fn=self.error_fn_from_exception,
             )
 
-        _extensions_repo_sync_wheels(repo_cache_store)
-        repo_stats_calc()
+        _extensions_repo_refresh_on_change(repo_cache_store)
 
         _preferences_theme_state_restore(self._theme_restore)
 
@@ -2081,8 +2095,7 @@ class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
             error_fn=self.error_fn_from_exception,
         )
 
-        _extensions_repo_sync_wheels(repo_cache_store)
-        repo_stats_calc()
+        _extensions_repo_refresh_on_change(repo_cache_store)
 
         # TODO: it would be nice to include this message in the banner.
 
@@ -2384,8 +2397,7 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
             error_fn=self.error_fn_from_exception,
         )
 
-        _extensions_repo_sync_wheels(repo_cache_store)
-        repo_stats_calc()
+        _extensions_repo_refresh_on_change(repo_cache_store)
 
         # TODO: it would be nice to include this message in the banner.
         def handle_error(ex):
@@ -2783,8 +2795,7 @@ class EXTENSIONS_OT_package_uninstall(Operator, _ExtCmdMixIn):
             error_fn=self.error_fn_from_exception,
         )
 
-        _extensions_repo_sync_wheels(repo_cache_store)
-        repo_stats_calc()
+        _extensions_repo_refresh_on_change(repo_cache_store)
 
         _preferences_theme_state_restore(self._theme_restore)
 
