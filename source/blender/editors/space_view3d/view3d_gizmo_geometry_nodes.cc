@@ -428,14 +428,17 @@ class TransformGizmos : public NodeGizmos {
     this->update_rotate_style();
     this->update_scale_style();
 
-    float4x4 base_transform_from_socket;
-    if (!params.get_input_value("Base", base_transform_from_socket)) {
+    float3 position;
+    math::Quaternion rotation;
+    if (!params.get_input_value("Position", position) ||
+        !params.get_input_value("Rotation", rotation))
+    {
       params.r_report.missing_socket_logs = true;
       return;
     }
 
-    /* Any scale and skew from the matrix is ignored. */
-    make_matrix_orthonormal_but_keep_z_axis(base_transform_from_socket);
+    float4x4 base_transform_from_socket = math::from_rotation<float4x4>(rotation);
+    base_transform_from_socket.location() = position;
 
     Scene &scene = *CTX_data_scene(&params.C);
     const TransformOrientationSlot &orientation_slot = scene.orientation_slots[0];

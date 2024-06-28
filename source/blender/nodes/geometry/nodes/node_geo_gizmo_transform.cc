@@ -18,7 +18,11 @@ NODE_STORAGE_FUNCS(NodeGeometryTransformGizmo)
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Matrix>("Value").multi_input();
-  b.add_input<decl::Matrix>("Base");
+  b.add_input<decl::Vector>("Position");
+  b.add_input<decl::Rotation>("Rotation")
+      .description(
+          "Local rotation of the gizmo. Only used if the local transforms are used in the 3D "
+          "view");
   b.add_output<decl::Geometry>("Transform");
 }
 
