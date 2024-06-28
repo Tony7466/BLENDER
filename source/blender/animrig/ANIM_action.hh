@@ -765,9 +765,15 @@ Vector<const FCurve *> fcurves_all(const Action &action);
 Vector<FCurve *> fcurves_all(Action &action);
 
 /**
- * Get (or add relevant data to be able to do so) an F-Curve from the given Action,
- * for the given animated data-block. This assumes that all the destinations are valid.
- * \param ptr: can be a null pointer.
+ * Get (or add relevant data to be able to do so) an F-Curve from the given
+ * Action. This assumes that all the destinations are valid.
+ *
+ * \param ptr: the animated ID the fcurve is being looked up/created for. For
+ * legacy actions this is optional and may be null, but for layered actions no
+ * fcurve will be found/created if it's null. If provided it is used to resolve
+ * the property that `fcurve_descriptor` points to (used for things like XYZ ->
+ * RGB), and for layered actions it is additionally used to determine the Slot
+ * to use in the action.
  */
 FCurve *action_fcurve_ensure(Main *bmain,
                              bAction *act,

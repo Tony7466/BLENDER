@@ -1311,6 +1311,27 @@ FCurve *action_fcurve_ensure(Main *bmain,
     return nullptr;
   }
 
+  if (USER_EXPERIMENTAL_TEST(&U, use_animation_baklava) && act->wrap().is_action_layered()) {
+    if (ptr == nullptr) {
+      return nullptr;
+    }
+    AnimData *adt = BKE_animdata_from_id(ptr->owner_id);
+    if (adt == nullptr || adt->action != act) {
+      return nullptr;
+    }
+
+    Action &action = act->wrap();
+    Slot &slot = action.slot_ensure_for_id(*ptr->owner_id);
+    action.assign_id(&slot, *ptr->owner_id);
+
+    action.layer_ensure_at_least_one();
+
+    assert_baklava_phase_1_invariants(action);
+    KeyframeStrip &strip = action.layer(0)->strip(0)->as<KeyframeStrip>();
+
+    return &strip.fcurve_find_or_create(slot, fcurve_descriptor);
+  }
+
   /* Try to find f-curve matching for this setting.
    * - add if not found and allowed to add one
    *   TODO: add auto-grouping support? how this works will need to be resolved
