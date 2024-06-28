@@ -29,31 +29,31 @@ TEST(KernelCamera, FisheyeLensPolynomialRoundtrip)
   const float height = 41.142857142857144f;
 
   /* Trivial case: The coefficients create a perfect equidistant fisheye */
-  const float4 k_equidistant = make_float4(-5.79e-02, 0.0, 0.0, 0.0);
+  const float4 k_equidistant = make_float4(-5.79e-02f, 0.0f, 0.0f, 0.0f);
 
   /* The coefficients mimic a stereographic fisheye model */
-  const float4 k_stereographic = make_float4(-5.79e-02, 0.0, 9.48e-05, -7.67e-06);
+  const float4 k_stereographic = make_float4(-5.79e-02f, 0.0f, 9.48e-05f, -7.67e-06f);
 
   /* The coefficients mimic a rectilinear camera (badly, but the point is to have a wide range of
    * tests). */
-  const float4 k_rectilinear = make_float4(-6.50e-02, 0.0, 8.32e-05, -1.80e-06);
+  const float4 k_rectilinear = make_float4(-6.50e-02f, 0.0f, 8.32e-05f, -1.80e-06f);
 
   const float4 parameters[]{k_equidistant, k_stereographic, k_rectilinear};
 
   const std::pair<float, float> points[]{
-      {0.1, 0.4},
-      {0.1, 0.5},
-      {0.1, 0.7},
-      {0.5, 0.5},
-      {0.5, 0.9},
-      {0.6, 0.9},
+      {0.1f, 0.4f},
+      {0.1f, 0.5f},
+      {0.1f, 0.7f},
+      {0.5f, 0.5f},
+      {0.5f, 0.9f},
+      {0.6f, 0.9f},
   };
 
   /* In the test cases k0 = k2 = 0, because for non-zero values the model is not smooth at the
    * center, but real lenses are really smooth near the center. In order to test the method
    * thoroughly, nonzero values are tested for both parameters. */
-  for (const float k0 : {0.0, -1e-2, -2e-2, -5e-2, -1e-1}) {
-    for (const float k2 : {0.0, -1e-4, 1e-4, -2e-4, 2e-4}) {
+  for (const float k0 : {0.0f, -1e-2f, -2e-2f, -5e-2f, -1e-1f}) {
+    for (const float k2 : {0.0f, -1e-4f, 1e-4f, -2e-4f, 2e-4f}) {
       for (float4 k : parameters) {
         k.y = k2;
         for (std::pair<float, float> const &pt : points) {
@@ -96,24 +96,24 @@ TEST(KernelCamera, FisheyeLensPolynomialToDirectionSymmetry)
   const float height = 1.0f;
 
   /* Trivial case: The coefficients create a perfect equidistant fisheye */
-  const float4 k_equidistant = make_float4(-1.0, 0.0, 0.0, 0.0);
+  const float4 k_equidistant = make_float4(-1.0f, 0.0f, 0.0f, 0.0f);
   const float k0 = 0.0f;
 
   /* Symmetry tests */
-  const float2 center{0.5, 0.5};
+  const float2 center{0.5f, 0.5f};
   const float2 offsets[]{
-      {0.00, 0.00},
-      {0.25, 0.00},
-      {0.00, 0.25},
-      {0.25, 0.25},
+      {0.00f, 0.00f},
+      {0.25f, 0.00f},
+      {0.00f, 0.25f},
+      {0.25f, 0.25f},
 
-      {0.5, 0.0},
-      {0.0, 0.5},
-      {0.5, 0.5},
+      {0.5f, 0.0f},
+      {0.0f, 0.5f},
+      {0.5f, 0.5f},
 
-      {0.75, 0.00},
-      {0.00, 0.75},
-      {0.75, 0.75},
+      {0.75f, 0.00f},
+      {0.00f, 0.75f},
+      {0.75f, 0.75f},
   };
 
   for (float2 const &offset : offsets) {
@@ -164,16 +164,16 @@ TEST(KernelCamera, FisheyeLensPolynomialToDirection)
       {{0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}},
 
       /* 60° */
-      {{0.0f, +rad60}, {cos60, 0.0, +sin60}},
-      {{0.0f, -rad60}, {cos60, 0.0, -sin60}},
-      {{+rad60, 0.0f}, {cos60, -sin60, 0.0}},
-      {{-rad60, 0.0f}, {cos60, +sin60, 0.0}},
+      {{0.0f, +rad60}, {cos60, 0.0f, +sin60}},
+      {{0.0f, -rad60}, {cos60, 0.0f, -sin60}},
+      {{+rad60, 0.0f}, {cos60, -sin60, 0.0f}},
+      {{-rad60, 0.0f}, {cos60, +sin60, 0.0f}},
 
       /* 45° */
-      {{0.0f, +rad45}, {cos45, 0.0, sin45}},
-      {{0.0f, -rad45}, {cos45, 0.0, -sin45}},
-      {{+rad45, 0.0f}, {cos45, -sin45, 0.0}},
-      {{-rad45, 0.0f}, {cos45, sin45, 0.0}},
+      {{0.0f, +rad45}, {cos45, 0.0f, sin45}},
+      {{0.0f, -rad45}, {cos45, 0.0f, -sin45}},
+      {{+rad45, 0.0f}, {cos45, -sin45, 0.0f}},
+      {{-rad45, 0.0f}, {cos45, sin45, 0.0f}},
 
       {{+rad45 * M_SQRT1_2F, +rad45 * M_SQRT1_2F}, {cos45, -0.5f, +0.5f}},
       {{-rad45 * M_SQRT1_2F, +rad45 * M_SQRT1_2F}, {cos45, +0.5f, +0.5f}},
@@ -181,10 +181,10 @@ TEST(KernelCamera, FisheyeLensPolynomialToDirection)
       {{-rad45 * M_SQRT1_2F, -rad45 * M_SQRT1_2F}, {cos45, +0.5f, -0.5f}},
 
       /* 30° */
-      {{0.0f, +rad30}, {cos30, 0.0, +sin30}},
-      {{0.0f, -rad30}, {cos30, 0.0, -sin30}},
-      {{+rad30, 0.0f}, {cos30, -sin30, 0.0}},
-      {{-rad30, 0.0f}, {cos30, +sin30, 0.0}},
+      {{0.0f, +rad30}, {cos30, 0.0f, +sin30}},
+      {{0.0f, -rad30}, {cos30, 0.0f, -sin30}},
+      {{+rad30, 0.0f}, {cos30, -sin30, 0.0f}},
+      {{-rad30, 0.0f}, {cos30, +sin30, 0.0f}},
   };
 
   for (auto [offset, direction] : tests) {
@@ -193,7 +193,7 @@ TEST(KernelCamera, FisheyeLensPolynomialToDirection)
       const float width = 1.0f / scale;
       const float height = 1.0f / scale;
       /* Trivial case: The coefficients create a perfect equidistant fisheye */
-      const float4 k_equidistant = make_float4(-scale, 0.0, 0.0, 0.0);
+      const float4 k_equidistant = make_float4(-scale, 0.0f, 0.0f, 0.0f);
 
       const float3 computed = fisheye_lens_polynomial_to_direction(
           sensor.x, sensor.y, k0, k_equidistant, fov, width, height);
