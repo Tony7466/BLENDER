@@ -10,7 +10,6 @@
 
 GPU_SHADER_INTERFACE_INFO(nodelink_iface, "")
     .smooth(Type::VEC4, "finalColor")
-    .smooth(Type::FLOAT, "colorGradient")
     .smooth(Type::VEC2, "lineUV")
     .flat(Type::FLOAT, "lineLength")
     .flat(Type::FLOAT, "lineThickness")

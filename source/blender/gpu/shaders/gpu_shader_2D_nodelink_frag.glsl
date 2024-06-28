@@ -5,11 +5,22 @@
 #define ANTIALIAS 1.5
 #define MINIMUM_ALPHA 0.5
 
+float get_line_alpha(float center, float relative_radius) {
+  float radius = relative_radius * lineThickness;
+  float sdf = abs(lineThickness * (lineUV.y - center));
+  return smoothstep(radius, max(0.0, radius - ANTIALIAS), sdf);
+}
+
 void main()
 {
-  fragColor = finalColor;
+  if (isMainLine == 0) {
+    fragColor = finalColor;
+    fragColor.a *= get_line_alpha(0.5, 0.5);
+    return;
+  }
 
-  if ((isMainLine != 0) && (dashFactor < 1.0)) {
+  float dash_frag_alpha = 1.0;
+  if (dashFactor < 1.0) {
     float distance_along_line = lineLength * lineUV.x;
     float normalized_distance = fract(distance_along_line / dashLength);
 
@@ -25,20 +36,19 @@ void main()
     float unclamped_alpha = 1.0 - slope * (normalized_distance_triangle - dashFactor + t);
     float alpha = max(dashAlpha, min(unclamped_alpha, 1.0));
 
-    fragColor.a *= alpha;
+    dash_frag_alpha = alpha;
   }
 
-  fragColor.a *= smoothstep(lineThickness, lineThickness - ANTIALIAS, abs(colorGradient));
-  if (isMainLine != 0 && isSplitLine != 0) {
-    float v = lineUV.y;
-    fragColor.rgb = vec3(0.0);
-    if (v > 0.5 && v < 1.0) {
-      float t = 1.0 - pow(abs((v - 0.75) * 4.0), 2);
-      fragColor.rgb = finalColor.rgb * t;
-    }
-    else if (v > 0.0 && v < 0.3) {
-      float t = 1.0 - pow(abs(v - 0.15) * 6.6666, 2);
-      fragColor.rgb = vec3(0.8) * t;
-    }
+  if (isSplitLine == 0) {
+    fragColor = finalColor;
+    fragColor.a *= get_line_alpha(0.5, 0.5);
+  }
+  else {
+    vec4 main_link = finalColor;
+    main_link.a *= get_line_alpha(2.0 / 3.0, 1.0 / 3.0);
+    vec4 secondary_link = vec4(vec3(0.8), 1.0);
+    secondary_link.a *= get_line_alpha(0.2, 0.25);
+    fragColor.rgb = main_link.rgb * main_link.a + secondary_link.rgb * secondary_link.a;
+    fragColor.a = main_link.a + secondary_link.a;
   }
 }
