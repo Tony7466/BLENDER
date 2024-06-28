@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include "util/math.h"
+
 CCL_NAMESPACE_BEGIN
 
 /* Spherical coordinates <-> Cartesian direction. */
