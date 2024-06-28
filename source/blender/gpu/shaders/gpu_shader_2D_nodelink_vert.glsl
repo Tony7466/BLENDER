@@ -44,6 +44,12 @@ void main(void)
 
   float line_thickness = thickness;
   bool is_outline_pass = gl_VertexID < MID_VERTEX;
+  isMainLine = expand.y == 1.0 && !is_outline_pass ? 1 : 0;
+
+  if ((expand.y == 1.0) && is_split_line != 0) {
+    /* Increase width because two links are drawn. */
+    line_thickness *= 1.7;
+  }
 
   if (is_outline_pass) {
     /* Outline pass. */
@@ -69,7 +75,7 @@ void main(void)
   }
 
   aspect = node_link_data.aspect;
-  isMainLine = expand.y == 1.0 && !is_outline_pass ? 1 : 0;
+
   /* Parameters for the dashed line. */
   dashLength = dash_params.x;
   dashFactor = dash_params.y;
