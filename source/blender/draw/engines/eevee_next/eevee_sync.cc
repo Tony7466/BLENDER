@@ -217,6 +217,7 @@ bool SyncModule::sync_sculpt(Object *ob,
     if (material.has_volume) {
       volume_call(material.volume_occupancy, inst_.scene, ob, geom, res_handle);
       volume_call(material.volume_material, inst_.scene, ob, geom, res_handle);
+      inst_.volume.object_sync(ob_handle);
       /* Do not render surface if we are rendering a volume object
        * and do not have a surface closure. */
       if (material.has_surface == false) {
@@ -335,7 +336,7 @@ void SyncModule::sync_point_cloud(Object *ob,
 /** \name Volume Objects
  * \{ */
 
-void SyncModule::sync_volume(Object *ob, ObjectHandle & /*ob_handle*/, ResourceHandle res_handle)
+void SyncModule::sync_volume(Object *ob, ObjectHandle &ob_handle, ResourceHandle res_handle)
 {
   if (!inst_.use_volumes) {
     return;
@@ -365,6 +366,8 @@ void SyncModule::sync_volume(Object *ob, ObjectHandle & /*ob_handle*/, ResourceH
 
   drawcall_add(material.volume_occupancy, geom, res_handle);
   drawcall_add(material.volume_material, geom, res_handle);
+
+  inst_.volume.object_sync(ob_handle);
 }
 
 /** \} */
