@@ -228,10 +228,8 @@ ccl_device float3 equiangular_cubemap_face_to_direction(float u, float v)
 
 ccl_device float2 direction_to_equiangular_cubemap_face(float3 dir)
 {
-  float u = atan2f(dir.y, dir.x) * 2.0f / M_PI_F + 0.5f;
+  float u = 0.5f - atan2f(dir.y, dir.x) * 2.0f / M_PI_F;
   float v = atan2f(dir.z, dir.x) * 2.0f / M_PI_F + 0.5f;
-
-  u = 1.0f - u;
 
   return make_float2(u, v);
 }
