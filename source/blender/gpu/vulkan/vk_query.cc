@@ -11,6 +11,8 @@
 #include "vk_context.hh"
 #include "vk_memory.hh"
 
+#include "GPU_debug.hh"
+
 namespace blender::gpu {
 
 VKQueryPool::~VKQueryPool()
@@ -62,7 +64,7 @@ void VKQueryPool::begin_query()
 
   /* When using a new query pool make sure to reset it before first usage. */
   if (is_new_pool) {
-    // vkResetQueryPool(device.vk_handle(), vk_query_pools_.last(), 0, query_chunk_len_);
+    vkResetQueryPool(device.vk_handle(), vk_query_pools_[pool_index], 0, query_chunk_len_);
   }
 
   VKContext &context = *VKContext::get();
@@ -84,6 +86,7 @@ void VKQueryPool::end_query()
 
 void VKQueryPool::get_occlusion_result(MutableSpan<uint32_t> r_values)
 {
+  GPU_debug_capture_begin(__func__);
   VKContext &context = *VKContext::get();
   /* During selection the frame buffer is still rendering. It needs to finish the render scope to
    * ensure the END_RENDERING node */
@@ -110,6 +113,7 @@ void VKQueryPool::get_occlusion_result(MutableSpan<uint32_t> r_values)
     queries_left = max_ii(queries_left - query_chunk_len_, 0);
     pool_index += 1;
   }
+  GPU_debug_capture_end();
 }
 
 }  // namespace blender::gpu
