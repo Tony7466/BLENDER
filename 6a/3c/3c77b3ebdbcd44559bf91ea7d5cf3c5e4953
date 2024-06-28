@@ -4,3 +4,4 @@ Referenced by issue #98727, Regression: Dynamic Paint displacement do not update
 Referenced by issue #97542, Regression: Hair Particles Freeze Entire MacOS!
 Referenced by commit d0eeb3d15559ddce1abf1d27b3caa1b6a6ede9d4, Cleanup: Remove mesh normals function, deprecate in RNA
 Referenced by pull request #123893, Fix #123882: Ocean Modifier not updating normals in "Displace" mode
+Referenced by commit 33ca4daf8f6de521a728e40ec02df85dc9eece38, Fix #123882: Ocean Modifier not updating normals in "Displace" mode
