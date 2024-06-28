@@ -218,8 +218,6 @@ static void do_relax_face_sets_brush_task(Object &ob,
 {
   SculptSession &ss = *ob.sculpt;
 
-  PBVHVertexIter vd;
-
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
       ss, test, brush.falloff_shape);
@@ -230,12 +228,16 @@ static void do_relax_face_sets_brush_task(Object &ob,
   auto_mask::NodeData automask_data = auto_mask::node_begin(
       ob, ss.cache->automasking.get(), *node);
 
+  PBVHVertexIter vd;
   BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
     auto_mask::node_update(automask_data, vd);
 
     if (!sculpt_brush_test_sq_fn(test, vd.co)) {
       continue;
     }
+
+    // if we're     relaxing face sets, only modify verts that DONT have a unique face set
+    // if we're not relaxing face sets, only modify verts that DO   have a unique face set
     if (relax_face_sets == vert_has_unique_face_set(ss, vd.vertex)) {
       continue;
     }
@@ -279,7 +281,6 @@ void do_relax_face_sets_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nod
   const std::array<float, 4> strengths = iteration_strengths(ss.cache->bstrength,
                                                              ss.cache->iteration_count);
   for (const float strength : strengths) {
-
     threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
       for (const int i : range) {
         do_relax_face_sets_brush_task(ob, brush, strength, nodes[i]);

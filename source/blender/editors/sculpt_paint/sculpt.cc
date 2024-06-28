@@ -625,6 +625,27 @@ bool vert_has_unique_face_set(const SculptSession &ss, PBVHVertRef vertex)
   return false;
 }
 
+bool vert_has_unique_face_set_mesh(const GroupedSpan<int> vert_to_face_map,
+                                   const int *face_sets,
+                                   int vert)
+{
+  if (!face_sets) {
+    return true;
+  }
+  int face_set = -1;
+  for (const int face_index : vert_to_face_map[vert]) {
+    if (face_set == -1) {
+      face_set = face_sets[face_index];
+    }
+    else {
+      if (face_sets[face_index] != face_set) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 }  // namespace face_set
 
 /* Sculpt Neighbor Iterators */
@@ -3897,7 +3918,7 @@ static void do_brush_action(const Scene &scene,
         do_draw_face_sets_brush(sd, ob, nodes);
       }
       else {
-        face_set::do_relax_face_sets_brush(sd, ob, nodes);
+        do_relax_face_sets_brush(sd, ob, nodes);
       }
       break;
     case SCULPT_TOOL_DISPLACEMENT_ERASER:

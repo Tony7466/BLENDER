@@ -532,6 +532,7 @@ static void relax_vertex_boundary(SculptSession &ss,
   SculptVertexNeighborIter ni;
   SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (ss, vd->vertex, ni) {
     neighbor_count++;
+
     if (!filter_boundary_face_sets ||
         (filter_boundary_face_sets && !face_set::vert_has_unique_face_set(ss, ni.vertex)))
     {
