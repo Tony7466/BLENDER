@@ -50,6 +50,7 @@ class VArrayImpl_For_PhysicsBodies final : public VArrayImpl<ElemT> {
   VArrayImpl_For_PhysicsBodies(const PhysicsGeometryImpl &impl)
       : VArrayImpl<ElemT>(impl.rigid_bodies.size()), impl_(&impl) /*, lock_(impl_->data_mutex)*/
   {
+    BLI_assert(impl.rigid_bodies.size() == impl.body_num_);
     // lock_.lock();
   }
 
@@ -105,6 +106,7 @@ class VMutableArrayImpl_For_PhysicsBodies final : public VMutableArrayImpl<ElemT
       : VMutableArrayImpl<ElemT>(impl.rigid_bodies.size()),
         impl_(&impl) /*, lock_(impl_->data_mutex)*/
   {
+    BLI_assert(impl.rigid_bodies.size() == impl.body_num_);
     // lock_.lock();
   }
 
@@ -166,6 +168,7 @@ class VArrayImpl_For_PhysicsConstraints final : public VArrayImpl<ElemT> {
   VArrayImpl_For_PhysicsConstraints(const PhysicsGeometryImpl &impl)
       : VArrayImpl<ElemT>(impl.constraints.size()), impl_(&impl) /*, lock_(impl_->data_mutex)*/
   {
+    BLI_assert(impl.constraints.size() == impl.constraint_num_);
     // lock_.lock();
   }
 
@@ -221,6 +224,7 @@ class VMutableArrayImpl_For_PhysicsConstraints final : public VMutableArrayImpl<
       : VMutableArrayImpl<ElemT>(impl.constraints.size()), impl_(&impl)
   /*, lock_(impl_->data_mutex)*/
   {
+    BLI_assert(impl.constraints.size() == impl.constraint_num_);
     // lock_.lock();
   }
 

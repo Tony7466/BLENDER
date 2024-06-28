@@ -402,9 +402,7 @@ PhysicsGeometry::PhysicsGeometry()
 PhysicsGeometry::PhysicsGeometry(const PhysicsGeometry &other)
 {
   impl_ = other.impl_;
-  if (impl_) {
-    impl_->add_user();
-  }
+  impl_->add_user();
   shapes_ = other.shapes_;
 }
 
@@ -444,22 +442,20 @@ const PhysicsGeometryImpl &PhysicsGeometry::impl() const
 
 PhysicsGeometryImpl &PhysicsGeometry::impl_for_write()
 {
-  if (impl_->is_empty) {
-    /* Dummy impl for stub write access on cached physics. */
-    impl_ = new PhysicsGeometryImpl();
+  if (impl_->is_mutable()) {
+    return *const_cast<PhysicsGeometryImpl *>(impl_);
   }
-  else if (!impl_->is_mutable()) {
-    PhysicsGeometryImpl *new_impl = new PhysicsGeometryImpl();
-    CustomData_reset(&new_impl->body_data_);
-    CustomData_reset(&new_impl->constraint_data_);
-    new_impl->body_num_ = impl_->body_num_;
-    new_impl->constraint_num_ = impl_->constraint_num_;
-    CustomData_copy(&impl_->body_data_, &new_impl->body_data_, CD_MASK_ALL, impl_->body_num_);
-    CustomData_copy(&impl_->constraint_data_,
-                    &new_impl->constraint_data_,
-                    CD_MASK_ALL,
-                    impl_->constraint_num_);
 
+  PhysicsGeometryImpl *new_impl = new PhysicsGeometryImpl();
+  CustomData_reset(&new_impl->body_data_);
+  CustomData_reset(&new_impl->constraint_data_);
+  new_impl->body_num_ = impl_->body_num_;
+  new_impl->constraint_num_ = impl_->constraint_num_;
+  CustomData_copy(&impl_->body_data_, &new_impl->body_data_, CD_MASK_ALL, impl_->body_num_);
+  CustomData_copy(
+      &impl_->constraint_data_, &new_impl->constraint_data_, CD_MASK_ALL, impl_->constraint_num_);
+
+  if (!impl_->is_empty) {
     new_impl->rigid_bodies.reinitialize(impl_->rigid_bodies.size());
     new_impl->motion_states.reinitialize(impl_->motion_states.size());
     new_impl->constraints.reinitialize(impl_->constraints.size());
@@ -468,12 +464,13 @@ PhysicsGeometryImpl &PhysicsGeometry::impl_for_write()
         {btVector3(0, 0, 0), btVector3(0, 0, 0), btVector3(0, 0, 0), btVector3(0, 0, 0)});
     new_impl->constraints.fill(nullptr);
     move_physics_impl_data(*impl_, this->attributes(), *new_impl, true, 0, 0);
-
-    if (impl_) {
-      impl_->remove_user_and_delete_if_last();
-    }
-    impl_ = new_impl;
   }
+  else {
+    new_impl->is_empty.store(true);
+  }
+
+  impl_->remove_user_and_delete_if_last();
+  impl_ = new_impl;
 
   return *const_cast<PhysicsGeometryImpl *>(impl_);
 }
@@ -713,36 +710,38 @@ void PhysicsGeometry::resize(int bodies_num, int constraints_num)
     impl.constraints[index] = nullptr;
   });
 
-  Array<btRigidBody *> new_bodies(bodies_num);
-  Array<btMotionState *> new_motion_states(bodies_num);
-  Array<btTypedConstraint *> new_constraints(constraints_num);
-  Array<btJointFeedback> new_constraint_feedback(constraints_num);
-  new_bodies.as_mutable_span().take_front(impl.rigid_bodies.size()).copy_from(impl.rigid_bodies);
-  new_motion_states.as_mutable_span()
-      .take_front(impl.motion_states.size())
-      .copy_from(impl.motion_states);
-  new_constraints.as_mutable_span()
-      .take_front(impl.constraints.size())
-      .copy_from(impl.constraints);
-  new_constraint_feedback.as_mutable_span()
-      .take_front(impl.constraints.size())
-      .copy_from(impl.constraint_feedback);
-  /* Bodies and motion states must always exist. */
-  const IndexRange bodies_to_initialize = new_bodies.index_range().drop_front(
-      impl.rigid_bodies.size());
-  const IndexRange constraints_to_initialize = new_constraints.index_range().drop_front(
-      impl.constraints.size());
-  create_bodies(new_bodies.as_mutable_span().slice(bodies_to_initialize),
-                new_motion_states.as_mutable_span().slice(bodies_to_initialize));
-  new_constraints.as_mutable_span().slice(constraints_to_initialize).fill(nullptr);
-  new_constraint_feedback.as_mutable_span()
-      .slice(constraints_to_initialize)
-      .fill({btVector3(0, 0, 0), btVector3(0, 0, 0), btVector3(0, 0, 0), btVector3(0, 0, 0)});
+  if (!impl.is_empty) {
+    Array<btRigidBody *> new_bodies(bodies_num);
+    Array<btMotionState *> new_motion_states(bodies_num);
+    Array<btTypedConstraint *> new_constraints(constraints_num);
+    Array<btJointFeedback> new_constraint_feedback(constraints_num);
+    new_bodies.as_mutable_span().take_front(impl.rigid_bodies.size()).copy_from(impl.rigid_bodies);
+    new_motion_states.as_mutable_span()
+        .take_front(impl.motion_states.size())
+        .copy_from(impl.motion_states);
+    new_constraints.as_mutable_span()
+        .take_front(impl.constraints.size())
+        .copy_from(impl.constraints);
+    new_constraint_feedback.as_mutable_span()
+        .take_front(impl.constraints.size())
+        .copy_from(impl.constraint_feedback);
+    /* Bodies and motion states must always exist. */
+    const IndexRange bodies_to_initialize = new_bodies.index_range().drop_front(
+        impl.rigid_bodies.size());
+    const IndexRange constraints_to_initialize = new_constraints.index_range().drop_front(
+        impl.constraints.size());
+    create_bodies(new_bodies.as_mutable_span().slice(bodies_to_initialize),
+                  new_motion_states.as_mutable_span().slice(bodies_to_initialize));
+    new_constraints.as_mutable_span().slice(constraints_to_initialize).fill(nullptr);
+    new_constraint_feedback.as_mutable_span()
+        .slice(constraints_to_initialize)
+        .fill({btVector3(0, 0, 0), btVector3(0, 0, 0), btVector3(0, 0, 0), btVector3(0, 0, 0)});
 
-  impl.rigid_bodies = std::move(new_bodies);
-  impl.motion_states = std::move(new_motion_states);
-  impl.constraints = std::move(new_constraints);
-  impl.constraint_feedback = std::move(new_constraint_feedback);
+    impl.rigid_bodies = std::move(new_bodies);
+    impl.motion_states = std::move(new_motion_states);
+    impl.constraints = std::move(new_constraints);
+    impl.constraint_feedback = std::move(new_constraint_feedback);
+  }
 
   this->tag_topology_changed();
 }
