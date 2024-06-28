@@ -475,22 +475,38 @@ static void sequencer_image_crop_transform_matrix(const Sequence *seq,
                                                   const float preview_scale_factor,
                                                   float r_transform_matrix[4][4])
 {
-  const StripTransform *transform = seq->strip->transform;
-  const float scale_x = transform->scale_x * image_scale_factor;
-  const float scale_y = transform->scale_y * image_scale_factor;
+  /* Center the image and scale it to expected size (downscale original media if needed). */
   const float image_center_offs_x = (out->x - in->x) / 2;
   const float image_center_offs_y = (out->y - in->y) / 2;
-  const float translate_x = transform->xofs * preview_scale_factor + image_center_offs_x;
-  const float translate_y = transform->yofs * preview_scale_factor + image_center_offs_y;
-  const float pivot[3] = {in->x * transform->origin[0], in->y * transform->origin[1], 0.0f};
-
+  float image_prescale_matrix[4][4];
   float rotation_matrix[3][3];
+  unit_m3(rotation_matrix);
+  loc_rot_size_to_mat4(image_prescale_matrix,
+                       float3{image_center_offs_x, image_center_offs_y, 0.0f},
+                       rotation_matrix,
+                       float3{image_scale_factor, image_scale_factor, 1.0f});
+  const float3 preview_scale_pivot{in->x * 0.5f, in->y * 0.5f, 0.0f};
+  transform_pivot_set_m4(image_prescale_matrix, preview_scale_pivot);
+
+  /* Apply rest of transformations. */
+  float transform_matrix[4][4];
+  const StripTransform *transform = seq->strip->transform;
+  const float translate_x = transform->xofs * preview_scale_factor;
+  const float translate_y = transform->yofs * preview_scale_factor;
   axis_angle_to_mat3_single(rotation_matrix, 'Z', transform->rotation);
-  loc_rot_size_to_mat4(r_transform_matrix,
+  loc_rot_size_to_mat4(transform_matrix,
                        float3{translate_x, translate_y, 0.0f},
                        rotation_matrix,
-                       float3{scale_x, scale_y, 1.0f});
-  transform_pivot_set_m4(r_transform_matrix, pivot);
+                       float3{transform->scale_x, transform->scale_y, 1.0f});
+
+  /* Calculate pivot point: Center of output buffer +/- half of prescaled input image. */
+  const float2 image_size{in->x * image_scale_factor, in->y * image_scale_factor};
+  const float2 origin_fac{transform->origin[0] - 0.5f, transform->origin[1] - 0.5f};
+  const float2 origin_rel = image_size * origin_fac;
+  const float3 pivot{out->x / 2 + origin_rel.x, out->y / 2 + origin_rel.y, 0.0f};
+  transform_pivot_set_m4(transform_matrix, pivot);
+
+  mul_m4_m4m4_aligned_scale(r_transform_matrix, transform_matrix, image_prescale_matrix);
   invert_m4(r_transform_matrix);
 }
 
@@ -1678,10 +1694,13 @@ static ImBuf *seq_render_scene_strip(const SeqRenderData *context,
 
       RE_AcquireResultImage(re, &rres, view_id);
 
+      /* TODO: Share the pixel data with the original image buffer from the render result using
+       * implicit sharing. */
       if (rres.ibuf && rres.ibuf->float_buffer.data) {
-        ibufs_arr[view_id] = IMB_allocImBuf(rres.rectx, rres.recty, 32, 0);
-        IMB_assign_float_buffer(
-            ibufs_arr[view_id], rres.ibuf->float_buffer.data, IB_DO_NOT_TAKE_OWNERSHIP);
+        ibufs_arr[view_id] = IMB_allocImBuf(rres.rectx, rres.recty, 32, IB_rectfloat);
+        memcpy(ibufs_arr[view_id]->float_buffer.data,
+               rres.ibuf->float_buffer.data,
+               sizeof(float[4]) * rres.rectx * rres.recty);
 
         /* float buffers in the sequencer are not linear */
         seq_imbuf_to_sequencer_space(context->scene, ibufs_arr[view_id], false);
@@ -1970,6 +1989,26 @@ static ImBuf *seq_render_strip_stack_apply_effect(
   return out;
 }
 
+static bool is_opaque_alpha_over(const Sequence *seq)
+{
+  if (seq->blend_mode != SEQ_TYPE_ALPHAOVER) {
+    return false;
+  }
+  if (seq->blend_opacity < 100.0f) {
+    return false;
+  }
+  if (seq->mul < 1.0f && (seq->flag & SEQ_MULTIPLY_ALPHA) != 0) {
+    return false;
+  }
+  LISTBASE_FOREACH (SequenceModifierData *, smd, &seq->modifiers) {
+    /* Assume result is not opaque if there is an enabled Mask modifier. */
+    if ((smd->flag & SEQUENCE_MODIFIER_MUTE) == 0 && smd->type == seqModifierType_Mask) {
+      return false;
+    }
+  }
+  return true;
+}
+
 static ImBuf *seq_render_strip_stack(const SeqRenderData *context,
                                      SeqRenderState *state,
                                      ListBase *channels,
@@ -2008,9 +2047,7 @@ static ImBuf *seq_render_strip_stack(const SeqRenderData *context,
 
     /* Early out for alpha over. It requires image to be rendered, so it can't use
      * `seq_get_early_out_for_blend_mode`. */
-    if (out == nullptr && seq->blend_mode == SEQ_TYPE_ALPHAOVER &&
-        early_out == StripEarlyOut::DoEffect && seq->blend_opacity == 100.0f)
-    {
+    if (out == nullptr && early_out == StripEarlyOut::DoEffect && is_opaque_alpha_over(seq)) {
       ImBuf *test = seq_render_strip(context, state, seq, timeline_frame);
       if (ELEM(test->planes, R_IMF_PLANES_BW, R_IMF_PLANES_RGB)) {
         early_out = StripEarlyOut::UseInput2;

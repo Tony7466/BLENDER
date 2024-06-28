@@ -180,6 +180,7 @@ CCL_NAMESPACE_BEGIN
 #define __SHADOW_LINKING__
 #define __LIGHT_TREE__
 #define __OBJECT_MOTION__
+#define __MNEE__
 #define __PASSES__
 #define __PATCH_EVAL__
 #define __POINTCLOUD__
@@ -211,8 +212,8 @@ CCL_NAMESPACE_BEGIN
 
 /* MNEE caused "Compute function exceeds available temporary registers" in macOS < 13 due to a bug
  * in spill buffer allocation sizing. */
-#if !defined(__KERNEL_METAL__) || (__KERNEL_METAL_MACOS__ >= 13)
-#  define __MNEE__
+#if defined(__KERNEL_METAL__) && (__KERNEL_METAL_MACOS__ < 13)
+#  undef __MNEE__
 #endif
 
 #if defined(__KERNEL_METAL_AMD__)
@@ -1023,6 +1024,8 @@ enum ShaderDataFlag {
   SD_EXTINCTION = (1 << 6),
   /* Shader has have volume phase (scatter) closure. */
   SD_SCATTER = (1 << 7),
+  /* Shader is being evaluated in a volume. */
+  SD_IS_VOLUME_SHADER_EVAL = (1 << 8),
   /* Shader has transparent closure. */
   SD_TRANSPARENT = (1 << 9),
   /* BSDF requires LCG for evaluation. */
@@ -1033,8 +1036,8 @@ enum ShaderDataFlag {
   SD_RAY_PORTAL = (1 << 12),
 
   SD_CLOSURE_FLAGS = (SD_EMISSION | SD_BSDF | SD_BSDF_HAS_EVAL | SD_BSSRDF | SD_HOLDOUT |
-                      SD_EXTINCTION | SD_SCATTER | SD_BSDF_NEEDS_LCG | SD_BSDF_HAS_TRANSMISSION |
-                      SD_RAY_PORTAL),
+                      SD_EXTINCTION | SD_SCATTER | SD_IS_VOLUME_SHADER_EVAL | SD_BSDF_NEEDS_LCG |
+                      SD_BSDF_HAS_TRANSMISSION | SD_RAY_PORTAL),
 
   /* Shader flags. */
 
