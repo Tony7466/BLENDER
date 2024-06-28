@@ -114,6 +114,11 @@ class VKCommandBufferInterface {
                               uint32_t offset,
                               uint32_t size,
                               const void *p_values) = 0;
+  virtual void begin_query(VkQueryPool vk_query_pool,
+                           uint32_t query_index,
+                           VkQueryControlFlags vk_query_control_flags) = 0;
+  virtual void end_query(VkQueryPool vk_query_pool, uint32_t query_index) = 0;
+
   /* VK_KHR_dynamic_rendering */
   virtual void begin_rendering(const VkRenderingInfo *p_rendering_info) = 0;
   virtual void end_rendering() = 0;
@@ -234,6 +239,10 @@ class VKCommandBufferWrapper : public VKCommandBufferInterface {
                       uint32_t offset,
                       uint32_t size,
                       const void *p_values) override;
+  void begin_query(VkQueryPool vk_query_pool,
+                   uint32_t query_index,
+                   VkQueryControlFlags vk_query_control_flags) override;
+  void end_query(VkQueryPool vk_query_pool, uint32_t query_index) override;
   void begin_rendering(const VkRenderingInfo *p_rendering_info) override;
   void end_rendering() override;
   void begin_debug_utils_label(const VkDebugUtilsLabelEXT *vk_debug_utils_label) override;

@@ -421,6 +421,12 @@ class CommandBufferLog : public VKCommandBufferInterface {
     log_.append(ss.str());
   }
 
+  void begin_query(VkQueryPool /*vk_query_pool*/,
+                   uint32_t /*query_index*/,
+                   VkQueryControlFlags /*vk_query_control_flags*/) override
+  {
+  }
+  void end_query(VkQueryPool /*vk_query_pool*/, uint32_t /*query_index*/) override {}
   void begin_debug_utils_label(const VkDebugUtilsLabelEXT * /*vk_debug_utils_label*/) override {}
   void end_debug_utils_label() override {}
 };

@@ -21,6 +21,7 @@ namespace blender::gpu::render_graph {
  */
 enum class VKNodeType {
   UNUSED,
+  BEGIN_QUERY,
   BEGIN_RENDERING,
   BLIT_IMAGE,
   CLEAR_ATTACHMENTS,
@@ -36,6 +37,7 @@ enum class VKNodeType {
   DRAW_INDEXED,
   DRAW_INDEXED_INDIRECT,
   DRAW_INDIRECT,
+  END_QUERY,
   END_RENDERING,
   FILL_BUFFER,
   SYNCHRONIZATION,
@@ -48,8 +50,14 @@ BLI_INLINE std::ostream &operator<<(std::ostream &os, const VKNodeType node_type
     case VKNodeType::UNUSED:
       os << "UNUSED";
       break;
+    case VKNodeType::BEGIN_QUERY:
+      os << "BEGIN_QUERY";
+      break;
     case VKNodeType::BEGIN_RENDERING:
       os << "BEGIN_RENDERING";
+      break;
+    case VKNodeType::END_QUERY:
+      os << "END_QUERY";
       break;
     case VKNodeType::END_RENDERING:
       os << "END_RENDERING";
