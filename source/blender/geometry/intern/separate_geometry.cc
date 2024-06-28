@@ -16,6 +16,7 @@
 #include "DNA_pointcloud_types.h"
 
 #include "GEO_mesh_copy_selection.hh"
+#include "GEO_physics_copy_selection.hh"
 
 namespace blender::geometry {
 
@@ -169,22 +170,22 @@ static std::optional<bke::PhysicsGeometry *> separate_physics_selection(
     const GeometryNodeDeleteGeometryMode mode,
     const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
-  // const bke::AttributeAccessor attributes = physics.attributes();
-  // const bke::PhysicsFieldContext context(physics, selection_domain);
-  // fn::FieldEvaluator evaluator(context, attributes.domain_size(selection_domain));
-  // evaluator.add(selection_field);
-  // evaluator.evaluate();
-  // const VArray<bool> selection = evaluator.get_evaluated<bool>(0);
+  const bke::AttributeAccessor attributes = physics.attributes();
+  const bke::PhysicsFieldContext context(physics, selection_domain);
+  fn::FieldEvaluator evaluator(context, attributes.domain_size(selection_domain));
+  evaluator.add(selection_field);
+  evaluator.evaluate();
+  const VArray<bool> selection = evaluator.get_evaluated<bool>(0);
 
-  // switch (mode) {
-  //   case GEO_NODE_DELETE_GEOMETRY_MODE_ALL:
-  //     return physics_separate_selection(physics, selection, selection_domain, propagation_info);
-  //   case GEO_NODE_DELETE_GEOMETRY_MODE_EDGE_FACE:
-  //     return physics_separate_selection_keep_bodies(
-  //         physics, selection, selection_domain, propagation_info);
-  //   case GEO_NODE_DELETE_GEOMETRY_MODE_ONLY_FACE:
-  //     return nullptr;
-  // }
+  switch (mode) {
+    case GEO_NODE_DELETE_GEOMETRY_MODE_ALL:
+      return physics_copy_selection(physics, selection, selection_domain, propagation_info);
+    case GEO_NODE_DELETE_GEOMETRY_MODE_EDGE_FACE:
+      return physics_copy_selection_keep_bodies(
+          physics, selection, selection_domain, propagation_info);
+    case GEO_NODE_DELETE_GEOMETRY_MODE_ONLY_FACE:
+      return nullptr;
+  }
   return nullptr;
 }
 
