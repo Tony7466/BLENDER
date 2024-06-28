@@ -11,12 +11,6 @@ float get_line_alpha(float center, float relative_radius)
   return smoothstep(radius, radius - ANTIALIAS, sdf);
 }
 
-float get_line_alpha(float center, float relative_radius) {
-  float radius = relative_radius * lineThickness;
-  float sdf = abs(lineThickness * (lineUV.y - center));
-  return smoothstep(radius, max(0.0, radius - ANTIALIAS), sdf);
-}
-
 void main()
 {
   if (isMainLine == 0) {
