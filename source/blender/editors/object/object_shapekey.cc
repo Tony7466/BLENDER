@@ -484,7 +484,7 @@ static int shape_key_clear_exec(bContext *C, wmOperator * /*op*/)
   }
 
   LISTBASE_FOREACH (KeyBlock *, kb, &key->block) {
-    kb->curval = 0.0f;
+    kb->curval = clamp_f(0.0f, kb->slidermin, kb->slidermax);
   }
 
   DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
