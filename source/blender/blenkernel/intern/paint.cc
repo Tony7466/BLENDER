@@ -1174,9 +1174,9 @@ bool BKE_paint_ensure(Main * /*bmain*/, ToolSettings *ts, Paint **r_paint)
 void BKE_paint_init(Main *bmain, Scene *sce, PaintMode mode, const uchar col[3])
 {
   UnifiedPaintSettings *ups = &sce->toolsettings->unified_paint_settings;
-  Paint *paint = BKE_paint_get_active_from_paintmode(sce, mode);
 
   BKE_paint_ensure_from_paintmode(bmain, sce, mode);
+  Paint *paint = BKE_paint_get_active_from_paintmode(sce, mode);
 
   /* If there's no brush, create one */
   Brush *brush = BKE_paint_brush(paint);
@@ -1818,7 +1818,7 @@ static void sculpt_update_object(Depsgraph *depsgraph,
       /* Ensure pbvh nodes have loop indices; the sculpt undo system
        * needs them for color attributes.
        */
-      BKE_pbvh_ensure_node_loops(*ss.pbvh);
+      BKE_pbvh_ensure_node_loops(*ss.pbvh, mesh_orig->corner_tris());
     }
 
     /*
