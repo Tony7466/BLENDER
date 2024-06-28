@@ -87,7 +87,8 @@ class _template_widget:
         @staticmethod
         def draw_settings(_context, layout, tool):
             props = tool.gizmo_group_properties("VIEW3D_GGT_xform_extrude")
-            layout.prop(props, "axis_type", expand=True)
+            row = layout.row(align=True)
+            row.prop(props, "axis_type", expand=True)
 
     class VIEW3D_GGT_xform_gizmo:
         @staticmethod
@@ -526,13 +527,9 @@ class _defs_view3d_add:
         show_extra = False
         if not extra:
             row = layout.row()
-            row.label(text="Depth:")
+            row.prop(tool_settings, "plane_depth", text="Depth")
             row = layout.row()
-            row.prop(tool_settings, "plane_depth", text="")
-            row = layout.row()
-            row.label(text="Orientation:")
-            row = layout.row()
-            row.prop(tool_settings, "plane_orientation", text="")
+            row.prop(tool_settings, "plane_orientation", text="Orientation")
             row = layout.row()
             row.prop(tool_settings, "snap_elements_tool")
 
@@ -836,7 +833,8 @@ class _defs_edit_mesh:
             layout.prop(props, "steps")
             layout.prop(props, "dupli")
             props = tool.gizmo_group_properties("MESH_GGT_spin")
-            layout.prop(props, "axis")
+            row = layout.row(align=True)
+            row.prop(props, "axis", expand=True)
 
         return dict(
             idname="builtin.spin",
@@ -1130,8 +1128,7 @@ class _defs_edit_mesh:
 
                 layout.prop(props, "visible_measurements")
                 layout.prop(props, "angle_snapping")
-                layout.label(text="Angle Snapping Increment")
-                layout.prop(props, "angle_snapping_increment", text="")
+                layout.prop(props, "angle_snapping_increment", text="Snap Increment")
             if show_extra:
                 layout.popover("TOPBAR_PT_tool_settings_extra", text="...")
         return dict(
@@ -1410,65 +1407,20 @@ class _defs_sculpt:
             use_separators=False,
         )
 
-    @ToolDef.from_fn
-    def hide_border():
-        def draw_settings(_context, layout, tool):
-            props = tool.operator_properties("paint.hide_show")
-            layout.prop(props, "area", expand=False)
+    @staticmethod
+    def draw_lasso_stroke_settings(layout, props, draw_inline, draw_popover):
+        if draw_inline:
+            layout.prop(props, "use_smooth_stroke", text="Stabilize Stroke")
 
-        return dict(
-            idname="builtin.box_hide",
-            label="Box Hide",
-            icon="ops.sculpt.border_hide",
-            widget=None,
-            keymap=(),
-            draw_settings=draw_settings,
-        )
+            layout.use_property_split = True
+            layout.use_property_decorate = False
+            col = layout.column()
+            col.active = props.use_smooth_stroke
+            col.prop(props, "smooth_stroke_radius", text="Radius", slider=True)
+            col.prop(props, "smooth_stroke_factor", text="Factor", slider=True)
 
-    @ToolDef.from_fn
-    def hide_lasso():
-        def draw_settings(_context, layout, tool):
-            props = tool.operator_properties("paint.hide_show_lasso_gesture")
-            layout.prop(props, "area", expand=False)
-
-        return dict(
-            idname="builtin.lasso_hide",
-            label="Lasso Hide",
-            icon="ops.sculpt.lasso_hide",
-            widget=None,
-            keymap=(),
-            draw_settings=draw_settings,
-        )
-
-    @ToolDef.from_fn
-    def hide_line():
-        def draw_settings(_context, layout, tool):
-            props = tool.operator_properties("paint.hide_show_line_gesture")
-            layout.prop(props, "use_limit_to_segment", expand=False)
-
-        return dict(
-            idname="builtin.line_hide",
-            label="Line Hide",
-            icon="ops.sculpt.line_hide",
-            widget=None,
-            keymap=(),
-            draw_settings=draw_settings,
-        )
-
-    @ToolDef.from_fn
-    def hide_polyline():
-        def draw_settings(_context, layout, tool):
-            props = tool.operator_properties("paint.hide_show_polyline_gesture")
-            layout.prop(props, "area", expand=False)
-
-        return dict(
-            idname="builtin.polyline_hide",
-            label="Polyline Hide",
-            icon="ops.sculpt.polyline_hide",
-            widget=None,
-            keymap=(),
-            draw_settings=draw_settings,
-        )
+        if draw_popover:
+            layout.popover("TOPBAR_PT_tool_settings_extra", text="Stroke")
 
     @ToolDef.from_fn
     def mask_border():
@@ -1487,9 +1439,19 @@ class _defs_sculpt:
 
     @ToolDef.from_fn
     def mask_lasso():
-        def draw_settings(_context, layout, tool):
+        def draw_settings(_context, layout, tool, *, extra=False):
+            draw_popover = False
             props = tool.operator_properties("paint.mask_lasso_gesture")
-            layout.prop(props, "use_front_faces_only", expand=False)
+
+            if not extra:
+                layout.prop(props, "use_front_faces_only", expand=False)
+                region_is_header = bpy.context.region.type == 'TOOL_HEADER'
+                if region_is_header:
+                    draw_popover = True
+                else:
+                    extra = True
+
+            _defs_sculpt.draw_lasso_stroke_settings(layout, props, extra, draw_popover)
 
         return dict(
             idname="builtin.lasso_mask",
@@ -1532,6 +1494,76 @@ class _defs_sculpt:
         )
 
     @ToolDef.from_fn
+    def hide_border():
+        def draw_settings(_context, layout, tool):
+            props = tool.operator_properties("paint.hide_show")
+            layout.prop(props, "area", expand=False)
+
+        return dict(
+            idname="builtin.box_hide",
+            label="Box Hide",
+            icon="ops.sculpt.border_hide",
+            widget=None,
+            keymap=(),
+            draw_settings=draw_settings,
+        )
+
+    @ToolDef.from_fn
+    def hide_lasso():
+        def draw_settings(_context, layout, tool, *, extra=False):
+            draw_popover = False
+            props = tool.operator_properties("paint.hide_show_lasso_gesture")
+
+            if not extra:
+                layout.prop(props, "area", expand=False)
+                region_is_header = bpy.context.region.type == 'TOOL_HEADER'
+                if region_is_header:
+                    draw_popover = True
+                else:
+                    extra = True
+
+            _defs_sculpt.draw_lasso_stroke_settings(layout, props, extra, draw_popover)
+
+        return dict(
+            idname="builtin.lasso_hide",
+            label="Lasso Hide",
+            icon="ops.sculpt.lasso_hide",
+            widget=None,
+            keymap=(),
+            draw_settings=draw_settings,
+        )
+
+    @ToolDef.from_fn
+    def hide_line():
+        def draw_settings(_context, layout, tool):
+            props = tool.operator_properties("paint.hide_show_line_gesture")
+            layout.prop(props, "use_limit_to_segment", expand=False)
+
+        return dict(
+            idname="builtin.line_hide",
+            label="Line Hide",
+            icon="ops.sculpt.line_hide",
+            widget=None,
+            keymap=(),
+            draw_settings=draw_settings,
+        )
+
+    @ToolDef.from_fn
+    def hide_polyline():
+        def draw_settings(_context, layout, tool):
+            props = tool.operator_properties("paint.hide_show_polyline_gesture")
+            layout.prop(props, "area", expand=False)
+
+        return dict(
+            idname="builtin.polyline_hide",
+            label="Polyline Hide",
+            icon="ops.sculpt.polyline_hide",
+            widget=None,
+            keymap=(),
+            draw_settings=draw_settings,
+        )
+
+    @ToolDef.from_fn
     def face_set_box():
         def draw_settings(_context, layout, tool):
             props = tool.operator_properties("sculpt.face_set_box_gesture")
@@ -1548,9 +1580,19 @@ class _defs_sculpt:
 
     @ToolDef.from_fn
     def face_set_lasso():
-        def draw_settings(_context, layout, tool):
+        def draw_settings(_context, layout, tool, *, extra=False):
+            draw_popover = False
             props = tool.operator_properties("sculpt.face_set_lasso_gesture")
-            layout.prop(props, "use_front_faces_only", expand=False)
+
+            if not extra:
+                layout.prop(props, "use_front_faces_only", expand=False)
+                region_is_header = bpy.context.region.type == 'TOOL_HEADER'
+                if region_is_header:
+                    draw_popover = True
+                else:
+                    extra = True
+
+            _defs_sculpt.draw_lasso_stroke_settings(layout, props, extra, draw_popover)
 
         return dict(
             idname="builtin.lasso_face_set",
@@ -1612,13 +1654,24 @@ class _defs_sculpt:
 
     @ToolDef.from_fn
     def trim_lasso():
-        def draw_settings(_context, layout, tool):
+        def draw_settings(_context, layout, tool, *, extra=False):
+            draw_popover = False
             props = tool.operator_properties("sculpt.trim_lasso_gesture")
-            layout.prop(props, "trim_solver", expand=False)
-            layout.prop(props, "trim_mode", expand=False)
-            layout.prop(props, "trim_orientation", expand=False)
-            layout.prop(props, "trim_extrude_mode", expand=False)
-            layout.prop(props, "use_cursor_depth", expand=False)
+
+            if not extra:
+                layout.prop(props, "trim_solver", expand=False)
+                layout.prop(props, "trim_mode", expand=False)
+                layout.prop(props, "trim_orientation", expand=False)
+                layout.prop(props, "trim_extrude_mode", expand=False)
+                layout.prop(props, "use_cursor_depth", expand=False)
+                region_is_header = bpy.context.region.type == 'TOOL_HEADER'
+                if region_is_header:
+                    draw_popover = True
+                else:
+                    extra = True
+
+            _defs_sculpt.draw_lasso_stroke_settings(layout, props, extra, draw_popover)
+
         return dict(
             idname="builtin.lasso_trim",
             label="Lasso Trim",
@@ -1907,8 +1960,10 @@ class _defs_weight_paint:
                 )
 
             props = tool.operator_properties("paint.weight_gradient")
-            layout.prop(props, "type", expand=True)
-            layout.popover("VIEW3D_PT_tools_weight_gradient")
+            row = layout.row()
+            row.prop(props, "type", expand=True)
+            row = layout.row()
+            row.popover("VIEW3D_PT_tools_weight_gradient")
 
         return dict(
             idname="builtin.gradient",
@@ -2992,7 +3047,6 @@ class _defs_sequencer_generic:
         def draw_settings(_context, layout, tool):
             props = tool.operator_properties("sequencer.split")
             row = layout.row()
-            row.use_property_split = False
             row.prop(props, "type", expand=True)
         return dict(
             idname="builtin.blade",

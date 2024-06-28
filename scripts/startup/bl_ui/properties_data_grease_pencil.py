@@ -198,6 +198,10 @@ class GREASE_PENCIL_MT_grease_pencil_add_layer_extra(Menu):
         if layer:
             layout.prop(layer, "use_locked_material")
 
+        layout.separator()
+        layout.operator("grease_pencil.layer_duplicate_object", text="Copy Layer to Selected").only_active = True
+        layout.operator("grease_pencil.layer_duplicate_object", text="Copy All Layers to Selected").only_active = False
+
 
 class GREASE_PENCIL_MT_group_context_menu(Menu):
     bl_label = "Layer Group"
@@ -206,6 +210,10 @@ class GREASE_PENCIL_MT_group_context_menu(Menu):
         layout = self.layout
         layout.operator("grease_pencil.layer_group_remove", text="Delete Group").keep_children = False
         layout.operator("grease_pencil.layer_group_remove", text="Ungroup").keep_children = True
+
+        layout.separator()
+        row = layout.row(align=True)
+        row.operator_enum("grease_pencil.layer_group_color_tag", "color_tag", icon_only=True)
 
 
 class DATA_PT_grease_pencil_layers(DataButtonsPanel, Panel):

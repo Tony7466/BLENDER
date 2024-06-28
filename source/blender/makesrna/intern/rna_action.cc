@@ -440,7 +440,7 @@ static bool rna_KeyframeActionStrip_key_insert(ID *id,
   const animrig::KeyframeSettings settings = animrig::get_keyframe_settings(true);
 
   const animrig::SingleKeyingResult result = key_strip.keyframe_insert(
-      binding, rna_path, array_index, {time, value}, settings, INSERTKEY_NOFLAGS);
+      binding, {rna_path, array_index}, {time, value}, settings, INSERTKEY_NOFLAGS);
 
   const bool ok = result == animrig::SingleKeyingResult::SUCCESS;
   if (ok) {
@@ -556,13 +556,14 @@ static FCurve *rna_Action_fcurve_new(bAction *act,
     group = nullptr;
   }
 
+  BLI_assert(data_path != nullptr);
   if (data_path[0] == '\0') {
     BKE_report(reports, RPT_ERROR, "F-Curve data path empty, invalid argument");
     return nullptr;
   }
 
   /* Annoying, check if this exists. */
-  if (blender::animrig::action_fcurve_find(act, data_path, index)) {
+  if (blender::animrig::action_fcurve_find(act, {data_path, index})) {
     BKE_reportf(reports,
                 RPT_ERROR,
                 "F-Curve '%s[%d]' already exists in action '%s'",
@@ -571,7 +572,7 @@ static FCurve *rna_Action_fcurve_new(bAction *act,
                 act->id.name + 2);
     return nullptr;
   }
-  return blender::animrig::action_fcurve_ensure(bmain, act, group, nullptr, data_path, index);
+  return blender::animrig::action_fcurve_ensure(bmain, act, group, nullptr, {data_path, index});
 }
 
 static FCurve *rna_Action_fcurve_find(bAction *act,
@@ -790,42 +791,29 @@ bool rna_Action_actedit_assign_poll(PointerRNA *ptr, PointerRNA value)
   SpaceAction *saction = (SpaceAction *)ptr->data;
   bAction *action = (bAction *)value.owner_id;
 
-  if (!action) {
-    return false;
-  }
-
-  if (action->idroot == 0) {
-    /* Always accept Actions that have not been bound to some ID type. */
-    return true;
-  }
-
-  /* Layered Actions are never limited to a specific ID type, and so these
-   * should always be shown. This is a more expensive test than just checking
-   * `action->idroot` though, and that should always be zero for layered actions
-   * anyway. */
-  if (action->wrap().is_action_layered()) {
-    return true;
-  }
-
   if (!saction) {
+    /* Unable to determine what this Action is going to be assigned to, so
+     * reject it for now. This is mostly to have a non-functional refactor of
+     * this code; personally I (Sybren) wouldn't mind to always return `true` in
+     * this case. */
     return false;
   }
 
   switch (saction->mode) {
     case SACTCONT_ACTION:
-      /* This is only Object-level for now. */
-      return action->idroot == ID_OB;
+      return blender::animrig::is_action_assignable_to(action, ID_OB);
     case SACTCONT_SHAPEKEY:
-      return action->idroot == ID_KE;
+      return blender::animrig::is_action_assignable_to(action, ID_KE);
     case SACTCONT_GPENCIL:
     case SACTCONT_DOPESHEET:
     case SACTCONT_MASK:
     case SACTCONT_CACHEFILE:
     case SACTCONT_TIMELINE:
-      /* These types do not have an 'action' selector. */
-      return false;
+      break;
   }
 
+  /* Same as above, I (Sybren) wouldn't mind returning `true` here to just
+   * always show all Actions in an unexpected place. */
   return false;
 }
 
