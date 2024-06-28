@@ -253,9 +253,8 @@ static void grease_pencil_weight_batch_ensure(Object &object,
   }
 
   GPUUsageType vbo_flag = GPU_USAGE_STATIC | GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY;
-  cache->edit_points_pos = GPU_vertbuf_create_with_format_ex(&format_points_pos, vbo_flag);
-  cache->edit_points_selection = GPU_vertbuf_create_with_format_ex(&format_points_weight,
-                                                                   vbo_flag);
+  cache->edit_points_pos = GPU_vertbuf_create_with_format_ex(format_points_pos, vbo_flag);
+  cache->edit_points_selection = GPU_vertbuf_create_with_format_ex(format_points_weight, vbo_flag);
 
   int visible_points_num = 0;
   int total_line_ids_num = 0;
@@ -265,15 +264,11 @@ static void grease_pencil_weight_batch_ensure(Object &object,
     total_points_num += curves.points_num();
   }
 
-  GPU_vertbuf_data_alloc(cache->edit_points_pos, total_points_num);
-  GPU_vertbuf_data_alloc(cache->edit_points_selection, total_points_num);
+  GPU_vertbuf_data_alloc(*cache->edit_points_pos, total_points_num);
+  GPU_vertbuf_data_alloc(*cache->edit_points_selection, total_points_num);
 
-  MutableSpan<float3> points_pos = {
-      static_cast<float3 *>(GPU_vertbuf_get_data(cache->edit_points_pos)),
-      GPU_vertbuf_get_vertex_len(cache->edit_points_pos)};
-  MutableSpan<float> points_weight = {
-      static_cast<float *>(GPU_vertbuf_get_data(cache->edit_points_selection)),
-      GPU_vertbuf_get_vertex_len(cache->edit_points_selection)};
+  MutableSpan<float3> points_pos = cache->edit_points_pos->data<float3>();
+  MutableSpan<float> points_weight = cache->edit_points_selection->data<float>();
 
   int drawing_start_offset = 0;
   for (const ed::greasepencil::DrawingInfo &info : drawings) {
@@ -429,8 +424,8 @@ static void grease_pencil_edit_batch_ensure(Object &object,
   }
 
   GPUUsageType vbo_flag = GPU_USAGE_STATIC | GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY;
-  cache->edit_points_pos = GPU_vertbuf_create_with_format_ex(&format_edit_points_pos, vbo_flag);
-  cache->edit_points_selection = GPU_vertbuf_create_with_format_ex(&format_edit_points_selection,
+  cache->edit_points_pos = GPU_vertbuf_create_with_format_ex(format_edit_points_pos, vbo_flag);
+  cache->edit_points_selection = GPU_vertbuf_create_with_format_ex(format_edit_points_selection,
                                                                    vbo_flag);
 
   int total_points_num = 0;
@@ -439,15 +434,11 @@ static void grease_pencil_edit_batch_ensure(Object &object,
     total_points_num += curves.points_num();
   }
 
-  GPU_vertbuf_data_alloc(cache->edit_points_pos, total_points_num);
-  GPU_vertbuf_data_alloc(cache->edit_points_selection, total_points_num);
+  GPU_vertbuf_data_alloc(*cache->edit_points_pos, total_points_num);
+  GPU_vertbuf_data_alloc(*cache->edit_points_selection, total_points_num);
 
-  MutableSpan<float3> edit_points = {
-      static_cast<float3 *>(GPU_vertbuf_get_data(cache->edit_points_pos)),
-      GPU_vertbuf_get_vertex_len(cache->edit_points_pos)};
-  MutableSpan<float> edit_points_selection = {
-      static_cast<float *>(GPU_vertbuf_get_data(cache->edit_points_selection)),
-      GPU_vertbuf_get_vertex_len(cache->edit_points_selection)};
+  MutableSpan<float3> edit_points = cache->edit_points_pos->data<float3>();
+  MutableSpan<float> edit_points_selection = cache->edit_points_selection->data<float>();
 
   int visible_points_num = 0;
   int total_line_ids_num = 0;
@@ -461,7 +452,7 @@ static void grease_pencil_edit_batch_ensure(Object &object,
     const VArray<bool> cyclic = curves.cyclic();
     IndexMaskMemory memory;
     const IndexMask editable_strokes = ed::greasepencil::retrieve_editable_strokes(
-        object, info.drawing, memory);
+        object, info.drawing, info.layer_index, memory);
 
     /* Assumes that if the ".selection" attribute does not exist, all points are selected. */
     const VArray<float> selection_float = *attributes.lookup_or_default<float>(
@@ -531,7 +522,7 @@ static void grease_pencil_edit_batch_ensure(Object &object,
     const VArray<bool> cyclic = curves.cyclic();
     IndexMaskMemory memory;
     const IndexMask editable_strokes = ed::greasepencil::retrieve_editable_strokes(
-        object, info.drawing, memory);
+        object, info.drawing, info.layer_index, memory);
 
     /* Fill line indices. */
     editable_strokes.foreach_index([&](const int curve_i) {
@@ -673,19 +664,15 @@ static void grease_pencil_geom_batch_ensure(Object &object,
   /* Create VBOs. */
   GPUVertFormat *format = grease_pencil_stroke_format();
   GPUVertFormat *format_col = grease_pencil_color_format();
-  cache->vbo = GPU_vertbuf_create_with_format_ex(format, vbo_flag);
-  cache->vbo_col = GPU_vertbuf_create_with_format_ex(format_col, vbo_flag);
+  cache->vbo = GPU_vertbuf_create_with_format_ex(*format, vbo_flag);
+  cache->vbo_col = GPU_vertbuf_create_with_format_ex(*format_col, vbo_flag);
   /* Add extra space at the end of the buffer because of quad load. */
-  GPU_vertbuf_data_alloc(cache->vbo, total_verts_num + 2);
-  GPU_vertbuf_data_alloc(cache->vbo_col, total_verts_num + 2);
+  GPU_vertbuf_data_alloc(*cache->vbo, total_verts_num + 2);
+  GPU_vertbuf_data_alloc(*cache->vbo_col, total_verts_num + 2);
 
   GPUIndexBufBuilder ibo;
-  MutableSpan<GreasePencilStrokeVert> verts = {
-      static_cast<GreasePencilStrokeVert *>(GPU_vertbuf_get_data(cache->vbo)),
-      GPU_vertbuf_get_vertex_len(cache->vbo)};
-  MutableSpan<GreasePencilColorVert> cols = {
-      static_cast<GreasePencilColorVert *>(GPU_vertbuf_get_data(cache->vbo_col)),
-      GPU_vertbuf_get_vertex_len(cache->vbo_col)};
+  MutableSpan<GreasePencilStrokeVert> verts = cache->vbo->data<GreasePencilStrokeVert>();
+  MutableSpan<GreasePencilColorVert> cols = cache->vbo_col->data<GreasePencilColorVert>();
   /* Create IBO. */
   GPU_indexbuf_init(&ibo, GPU_PRIM_TRIS, total_triangles_num, 0xFFFFFFFFu);
 

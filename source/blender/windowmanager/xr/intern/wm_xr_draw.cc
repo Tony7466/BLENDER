@@ -212,11 +212,10 @@ static blender::gpu::Batch *wm_xr_controller_model_batch_create(GHOST_XrContextH
   GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
   GPU_vertformat_attr_add(&format, "nor", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
 
-  blender::gpu::VertBuf *vbo = GPU_vertbuf_create_with_format(&format);
-  GPU_vertbuf_data_alloc(vbo, model_data.count_vertices);
-  void *vbo_data = GPU_vertbuf_get_data(vbo);
-  memcpy(
-      vbo_data, model_data.vertices, model_data.count_vertices * sizeof(model_data.vertices[0]));
+  blender::gpu::VertBuf *vbo = GPU_vertbuf_create_with_format(format);
+  GPU_vertbuf_data_alloc(*vbo, model_data.count_vertices);
+  vbo->data<GHOST_XrControllerModelVertex>().copy_from(
+      {model_data.vertices, model_data.count_vertices});
 
   blender::gpu::IndexBuf *ibo = nullptr;
   if (model_data.count_indices > 0 && ((model_data.count_indices % 3) == 0)) {

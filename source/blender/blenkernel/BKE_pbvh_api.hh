@@ -25,7 +25,7 @@
 #include "DNA_customdata_types.h"
 
 /* For embedding CCGKey in iterator. */
-#include "BKE_ccg.h"
+#include "BKE_ccg.hh"
 #include "BKE_pbvh.hh"
 
 #include "bmesh.hh"
@@ -164,9 +164,10 @@ void raycast(PBVH &pbvh,
 
 bool raycast_node(PBVH &pbvh,
                   PBVHNode *node,
-                  float (*origco)[3],
+                  const float (*origco)[3],
                   bool use_origco,
                   Span<int> corner_verts,
+                  Span<int3> corner_tris,
                   Span<int> corner_tri_faces,
                   Span<bool> hide_poly,
                   const float ray_start[3],
@@ -204,9 +205,10 @@ void find_nearest_to_ray(PBVH &pbvh,
 
 bool find_nearest_to_ray_node(PBVH &pbvh,
                               PBVHNode *node,
-                              float (*origco)[3],
+                              const float (*origco)[3],
                               bool use_origco,
                               Span<int> corner_verts,
+                              Span<int3> corner_tris,
                               Span<int> corner_tri_faces,
                               Span<bool> hide_poly,
                               const float ray_start[3],
@@ -353,7 +355,21 @@ void BKE_pbvh_bmesh_node_save_orig(BMesh *bm, BMLog *log, PBVHNode *node, bool u
 void BKE_pbvh_bmesh_after_stroke(PBVH &pbvh);
 
 namespace blender::bke::pbvh {
-void update_bounds(PBVH &pbvh, int flags);
+
+/**
+ * Recalculate node bounding boxes based on the current coordinates. Calculation is only done for
+ * affected nodes with the #PBVH_UpdateBB flag set.
+ */
+void update_bounds(PBVH &pbvh);
+
+/**
+ * Copy all current node bounds to the original bounds. "Original" bounds are typically from before
+ * a brush stroke started (while the "regular" bounds update on every change of positions). These
+ * are stored to optimize the BVH traversal for original coordinates enabled by various "use
+ * original" arguments in the PBVH API.
+ */
+void store_bounds_orig(PBVH &pbvh);
+
 void update_mask(PBVH &pbvh);
 void update_visibility(PBVH &pbvh);
 void update_normals(PBVH &pbvh, SubdivCCG *subdiv_ccg);
@@ -440,7 +456,7 @@ void pbvh_vertex_iter_init(PBVH &pbvh, PBVHNode *node, PBVHVertexIter *vi, int m
       vi.width = vi.gridsize; \
       vi.height = vi.gridsize; \
       vi.index = vi.vertex.i = vi.grid_indices[vi.g] * vi.key.grid_area - 1; \
-      vi.grid = CCG_elem_offset(&vi.key, vi.grids[vi.grid_indices[vi.g]], -1); \
+      vi.grid = CCG_elem_offset(vi.key, vi.grids[vi.grid_indices[vi.g]], -1); \
       if (mode == PBVH_ITER_UNIQUE) { \
         if (vi.grid_hidden) { \
           vi.gh.emplace((*vi.grid_hidden)[vi.grid_indices[vi.g]]); \
@@ -458,10 +474,10 @@ void pbvh_vertex_iter_init(PBVH &pbvh, PBVHNode *node, PBVHVertexIter *vi, int m
     for (vi.gy = 0; vi.gy < vi.height; vi.gy++) { \
       for (vi.gx = 0; vi.gx < vi.width; vi.gx++, vi.i++) { \
         if (vi.grid) { \
-          vi.grid = CCG_elem_next(&vi.key, vi.grid); \
-          vi.co = CCG_elem_co(&vi.key, vi.grid); \
-          vi.fno = CCG_elem_no(&vi.key, vi.grid); \
-          vi.mask = vi.key.has_mask ? *CCG_elem_mask(&vi.key, vi.grid) : 0.0f; \
+          vi.grid = CCG_elem_next(vi.key, vi.grid); \
+          vi.co = CCG_elem_co(vi.key, vi.grid); \
+          vi.fno = CCG_elem_no(vi.key, vi.grid); \
+          vi.mask = vi.key.has_mask ? CCG_elem_mask(vi.key, vi.grid) : 0.0f; \
           vi.index++; \
           vi.vertex.i++; \
           vi.visible = true; \
@@ -550,8 +566,6 @@ void BKE_pbvh_store_colors_vertex(PBVH &pbvh,
                                   blender::Span<int> indices,
                                   blender::MutableSpan<blender::float4> r_colors);
 
-bool BKE_pbvh_is_drawing(const PBVH &pbvh);
-
 void BKE_pbvh_update_active_vcol(PBVH &pbvh, Mesh *mesh);
 
 void BKE_pbvh_vertex_color_set(PBVH &pbvh,
@@ -562,7 +576,7 @@ blender::float4 BKE_pbvh_vertex_color_get(const PBVH &pbvh,
                                           blender::GroupedSpan<int> vert_to_face_map,
                                           PBVHVertRef vertex);
 
-void BKE_pbvh_ensure_node_loops(PBVH &pbvh);
+void BKE_pbvh_ensure_node_loops(PBVH &pbvh, blender::Span<blender::int3> corner_tris);
 int BKE_pbvh_debug_draw_gen_get(PBVHNode &node);
 
 namespace blender::bke::pbvh {

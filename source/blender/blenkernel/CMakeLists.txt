@@ -357,7 +357,7 @@ set(SRC
   BKE_cachefile.hh
   BKE_callbacks.hh
   BKE_camera.h
-  BKE_ccg.h
+  BKE_ccg.hh
   BKE_cloth.hh
   BKE_collection.hh
   BKE_collision.h
@@ -816,6 +816,10 @@ if(WITH_TBB)
   list(APPEND LIB
     ${TBB_LIBRARIES}
   )
+endif()
+
+if(WITH_EXPERIMENTAL_FEATURES)
+  add_definitions(-DWITH_ANIM_BAKLAVA)
 endif()
 
 # # Warnings as errors, this is too strict!

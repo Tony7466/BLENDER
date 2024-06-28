@@ -18,7 +18,7 @@
 #include "DNA_object_types.h"
 
 #include "BKE_brush.hh"
-#include "BKE_ccg.h"
+#include "BKE_ccg.hh"
 #include "BKE_colortools.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
@@ -138,8 +138,7 @@ static void do_pose_brush_task(Object &ob, const Brush &brush, PBVHNode *node)
   float disp[3], new_co[3];
   float final_pos[3];
 
-  SculptOrigVertData orig_data;
-  SCULPT_orig_vert_data_init(orig_data, ob, *node, undo::Type::Position);
+  SculptOrigVertData orig_data = SCULPT_orig_vert_data_init(ob, *node, undo::Type::Position);
   auto_mask::NodeData automask_data = auto_mask::node_begin(
       ob, ss.cache->automasking.get(), *node);
 

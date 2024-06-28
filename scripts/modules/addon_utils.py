@@ -390,7 +390,7 @@ def enable(module_name, *, default_set=False, persistent=False, handle_error=Non
                     "module loaded with no associated file, __path__={!r}, aborting!".format(
                         getattr(mod, "__path__", None)
                     ),
-                    name=module_name
+                    name=module_name,
                 )
             mod.__time__ = os.path.getmtime(mod_file)
             mod.__addon_enabled__ = False
@@ -536,8 +536,9 @@ def reset_all(*, reload_scripts=False):
     """
     import sys
 
-    # initializes addons_fake_modules
-    modules_refresh()
+    # Ensures stale `addons_fake_modules` isn't used.
+    modules._is_first = True
+    addons_fake_modules.clear()
 
     for path, pkg_id in _paths_with_extension_repos():
         if not pkg_id:
@@ -656,6 +657,11 @@ def module_bl_info(mod, *, info_basis=None):
 # -----------------------------------------------------------------------------
 # Extension Utilities
 
+def _version_int_left_digits(x):
+    # Parse as integer until the first non-digit.
+    return int(x[:next((i for i, c in enumerate(x) if not c.isdigit()), len(x))] or "0")
+
+
 def _bl_info_from_extension(mod_name, mod_path):
     # Extract the `bl_info` from an extensions manifest.
     # This is returned as a module which has a `bl_info` variable.
@@ -691,6 +697,14 @@ def _bl_info_from_extension(mod_name, mod_path):
         return None, filepath_toml
     if type(value) is not str:
         print("Error: \"version\" is not a string in", filepath_toml)
+        return None, filepath_toml
+    try:
+        value = tuple(
+            (int if i < 2 else _version_int_left_digits)(x)
+            for i, x in enumerate(value.split(".", 2))
+        )
+    except BaseException as ex:
+        print("Error: \"version\" is not a semantic version (X.Y.Z) in ", filepath_toml)
         return None, filepath_toml
     bl_info["version"] = value
 
@@ -779,6 +793,34 @@ class _ext_global:
 _ext_base_pkg_idname = "bl_ext"
 _ext_base_pkg_idname_with_dot = _ext_base_pkg_idname + "."
 _ext_manifest_filename_toml = "blender_manifest.toml"
+
+
+def _extension_module_name_decompose(package):
+    """
+    Returns the repository module name and the extensions ID from an extensions module name (``__package__``).
+
+    :arg module_name: The extensions module name.
+    :type module_name: string
+    :return: (repo_module_name, extension_id)
+    :rtype: tuple of strings
+    """
+    if not package.startswith(_ext_base_pkg_idname_with_dot):
+        raise ValueError("The \"package\" does not name an extension")
+
+    repo_module, pkg_idname = package[len(_ext_base_pkg_idname_with_dot):].partition(".")[0::2]
+    if not (repo_module and pkg_idname):
+        raise ValueError("The \"package\" is expected to be a module name containing 3 components")
+
+    if "." in pkg_idname:
+        raise ValueError("The \"package\" is expected to be a module name containing 3 components, found {:d}".format(
+            pkg_idname.count(".") + 3
+        ))
+
+    # Unlikely but possible.
+    if not (repo_module.isidentifier() and pkg_idname.isidentifier()):
+        raise ValueError("The \"package\" contains non-identifier characters")
+
+    return repo_module, pkg_idname
 
 
 def _extension_preferences_idmap():

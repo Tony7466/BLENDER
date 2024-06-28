@@ -551,6 +551,38 @@ void version_update_node_input(
   }
 }
 
+bNode *version_eevee_output_node_get(bNodeTree *ntree, int16_t node_type)
+{
+  bNode *output_node = nullptr;
+  /* NOTE: duplicated from `ntreeShaderOutputNode` with small adjustments so it can be called
+   * during versioning. */
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+    if (node->type != node_type) {
+      continue;
+    }
+    if (node->custom1 == SHD_OUTPUT_ALL) {
+      if (output_node == nullptr) {
+        output_node = node;
+      }
+      else if (output_node->custom1 == SHD_OUTPUT_ALL) {
+        if ((node->flag & NODE_DO_OUTPUT) && !(output_node->flag & NODE_DO_OUTPUT)) {
+          output_node = node;
+        }
+      }
+    }
+    else if (node->custom1 == SHD_OUTPUT_EEVEE) {
+      if (output_node == nullptr) {
+        output_node = node;
+      }
+      else if ((node->flag & NODE_DO_OUTPUT) && !(output_node->flag & NODE_DO_OUTPUT)) {
+        output_node = node;
+      }
+    }
+  }
+
+  return output_node;
+}
+
 static bool blendfile_or_libraries_versions_atleast(Main *bmain,
                                                     const short versionfile,
                                                     const short subversionfile)
@@ -629,9 +661,8 @@ void do_versions_after_setup(Main *new_bmain, BlendFileReadReport *reports)
     BKE_main_mesh_legacy_convert_auto_smooth(*new_bmain);
   }
 
-  if (U.experimental.use_grease_pencil_version3 &&
-      U.experimental.use_grease_pencil_version3_convert_on_load)
-  {
+  if (!blendfile_or_libraries_versions_atleast(new_bmain, 403, 3)) {
+    /* Convert all the legacy grease pencil objects. This does not touch annotations. */
     blender::bke::greasepencil::convert::legacy_main(*new_bmain, *reports);
   }
 }

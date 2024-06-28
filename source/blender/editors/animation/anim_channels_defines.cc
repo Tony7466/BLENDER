@@ -3600,7 +3600,6 @@ static bAnimChannelType ACF_GPL_LEGACY = {
 
 /* Grease Pencil Animation functions ------------------------------------------- */
 
-#ifdef WITH_GREASE_PENCIL_V3
 namespace blender::ed::animation::greasepencil {
 
 /* Get pointer to the setting */
@@ -3843,7 +3842,6 @@ static bAnimChannelType ACF_GPLGROUP = {
     /*setting_flag*/ greasepencil::layer_setting_flag,
     /*setting_ptr*/ greasepencil::layer_group_setting_ptr,
 };
-#endif
 
 /* Mask Datablock ------------------------------------------- */
 
@@ -4415,15 +4413,9 @@ static void ANIM_init_channel_typeinfo_data()
     animchannelTypeInfo[type++] = &ACF_GPD_LEGACY; /* Grease Pencil Datablock (Legacy) */
     animchannelTypeInfo[type++] = &ACF_GPL_LEGACY; /* Grease Pencil Layer (Legacy) */
 
-#ifdef WITH_GREASE_PENCIL_V3
     animchannelTypeInfo[type++] = &ACF_GPD;      /* Grease Pencil Datablock. */
     animchannelTypeInfo[type++] = &ACF_GPLGROUP; /* Grease Pencil Layer Group. */
     animchannelTypeInfo[type++] = &ACF_GPL;      /* Grease Pencil Layer. */
-#else
-    animchannelTypeInfo[type++] = nullptr;
-    animchannelTypeInfo[type++] = nullptr;
-    animchannelTypeInfo[type++] = nullptr;
-#endif
 
     animchannelTypeInfo[type++] = &ACF_MASKDATA;  /* Mask Datablock */
     animchannelTypeInfo[type++] = &ACF_MASKLAYER; /* Mask Layer */
@@ -5186,67 +5178,35 @@ static void achannel_setting_slider_cb(bContext *C, void *id_poin, void *fcu_poi
 static void achannel_setting_slider_shapekey_cb(bContext *C, void *key_poin, void *kb_poin)
 {
   Main *bmain = CTX_data_main(C);
-  Key *key = (Key *)key_poin;
-  KeyBlock *kb = (KeyBlock *)kb_poin;
-  std::optional<std::string> rna_path = BKE_keyblock_curval_rnapath_get(key, kb);
-
-  ReportList *reports = CTX_wm_reports(C);
   Scene *scene = CTX_data_scene(C);
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
-  ToolSettings *ts = scene->toolsettings;
-  ListBase nla_cache = {nullptr, nullptr};
-  PointerRNA ptr;
-  PropertyRNA *prop;
-  eInsertKeyFlags flag = INSERTKEY_NOFLAGS;
-  bool done = false;
-
-  /* Get RNA pointer */
-  PointerRNA id_ptr = RNA_id_pointer_create((ID *)key);
-
-  /* Get NLA context for value remapping */
   const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
       depsgraph, float(scene->r.cfra));
-  NlaKeyframingContext *nla_context = BKE_animsys_get_nla_keyframing_context(
-      &nla_cache, &id_ptr, key->adt, &anim_eval_context);
 
-  /* get current frame and apply NLA-mapping to it (if applicable) */
-  const float remapped_frame = BKE_nla_tweakedit_remap(
-      key->adt, anim_eval_context.eval_time, NLATIME_CONVERT_UNMAP);
+  Key *key = (Key *)key_poin;
+  KeyBlock *kb = (KeyBlock *)kb_poin;
+  PointerRNA id_ptr = RNA_id_pointer_create((ID *)key);
+  std::optional<std::string> rna_path = BKE_keyblock_curval_rnapath_get(key, kb);
 
-  /* get flags for keyframing */
-  flag = blender::animrig::get_keyframing_flags(scene);
+  /* Since this is only ever called from moving a slider for an existing
+   * shapekey in the shapekey animation editor, it shouldn't be possible for the
+   * RNA path to fail to resolve. */
+  BLI_assert(rna_path.has_value());
 
-  /* try to resolve the path stored in the F-Curve */
-  if (RNA_path_resolve_property(&id_ptr, rna_path ? rna_path->c_str() : nullptr, &ptr, &prop)) {
-    /* find or create new F-Curve */
-    /* XXX is the group name for this ok? */
-    bAction *act = blender::animrig::id_action_ensure(bmain, (ID *)key);
-    FCurve *fcu = blender::animrig::action_fcurve_ensure(
-        bmain, act, nullptr, &ptr, rna_path->c_str(), 0);
+  /* TODO: should this use the flags from user settings? For now leaving as-is,
+   * since it was already this way and might have a reason for it. This is
+   * basically a UX question about how the shape key animation editor should
+   * behave. */
+  eInsertKeyFlags flag = INSERTKEY_NOFLAGS;
 
-    /* set the special 'replace' flag if on a keyframe */
-    if (fcurve_frame_has_keyframe(fcu, remapped_frame)) {
-      flag |= INSERTKEY_REPLACE;
-    }
-
-    /* insert a keyframe for this F-Curve */
-    const AnimationEvalContext remapped_anim_eval_context = BKE_animsys_eval_context_construct_at(
-        &anim_eval_context, remapped_frame);
-    done = blender::animrig::insert_keyframe_direct(reports,
-                                                    ptr,
-                                                    prop,
-                                                    fcu,
-                                                    &remapped_anim_eval_context,
-                                                    eBezTriple_KeyframeType(ts->keyframe_type),
-                                                    nla_context,
-                                                    flag);
-
-    if (done) {
-      WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_EDITED, nullptr);
-    }
-  }
-
-  BKE_animsys_free_nla_keyframing_context_cache(&nla_cache);
+  animrig::insert_keyframes(bmain,
+                            &id_ptr,
+                            std::nullopt,
+                            {{*rna_path}},
+                            std::nullopt,
+                            anim_eval_context,
+                            eBezTriple_KeyframeType(scene->toolsettings->keyframe_type),
+                            flag);
 }
 
 /* callback for NLA Control Curve widget sliders - insert keyframes */
@@ -5549,7 +5509,6 @@ static void draw_setting_widget(bAnimContext *ac,
   }
 }
 
-#ifdef WITH_GREASE_PENCIL_V3
 static void draw_grease_pencil_layer_widgets(bAnimListElem *ale,
                                              uiBlock *block,
                                              const rctf *rect,
@@ -5633,7 +5592,6 @@ static void draw_grease_pencil_layer_widgets(bAnimListElem *ale,
                   channel_height);
   }
 }
-#endif
 
 void ANIM_channel_draw_widgets(const bContext *C,
                                bAnimContext *ac,
@@ -6056,11 +6014,9 @@ void ANIM_channel_draw_widgets(const bContext *C,
             }
           }
         }
-#ifdef WITH_GREASE_PENCIL_V3
         else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
           draw_grease_pencil_layer_widgets(ale, block, rect, offset, channel_height, array_index);
         }
-#endif
 
         /* Only if RNA-Path found. */
         if (rna_path) {

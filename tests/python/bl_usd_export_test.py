@@ -11,6 +11,7 @@ from pxr import Usd
 from pxr import UsdUtils
 from pxr import UsdGeom
 from pxr import UsdShade
+from pxr import UsdSkel
 from pxr import Gf
 
 import bpy
@@ -191,7 +192,7 @@ class USDExportTest(AbstractUSDTest):
         prim = stage.GetPrimAtPath("/root/Mesh/Mesh")
 
         self.check_primvar(prim, "p_bool", "VtArray<bool>", "vertex", 4)
-        self.check_primvar(prim, "p_int8", "VtArray<int>", "vertex", 4)
+        self.check_primvar(prim, "p_int8", "VtArray<unsigned char>", "vertex", 4)
         self.check_primvar(prim, "p_int32", "VtArray<int>", "vertex", 4)
         self.check_primvar(prim, "p_float", "VtArray<float>", "vertex", 4)
         self.check_primvar(prim, "p_color", "VtArray<GfVec3f>", "vertex", 4)
@@ -213,7 +214,7 @@ class USDExportTest(AbstractUSDTest):
         self.check_primvar_missing(prim, "e_mat4x4")
 
         self.check_primvar(prim, "f_bool", "VtArray<bool>", "uniform", 1)
-        self.check_primvar(prim, "f_int8", "VtArray<int>", "uniform", 1)
+        self.check_primvar(prim, "f_int8", "VtArray<unsigned char>", "uniform", 1)
         self.check_primvar(prim, "f_int32", "VtArray<int>", "uniform", 1)
         self.check_primvar(prim, "f_float", "VtArray<float>", "uniform", 1)
         self.check_primvar_missing(prim, "f_color")
@@ -224,7 +225,7 @@ class USDExportTest(AbstractUSDTest):
         self.check_primvar_missing(prim, "f_mat4x4")
 
         self.check_primvar(prim, "fc_bool", "VtArray<bool>", "faceVarying", 4)
-        self.check_primvar(prim, "fc_int8", "VtArray<int>", "faceVarying", 4)
+        self.check_primvar(prim, "fc_int8", "VtArray<unsigned char>", "faceVarying", 4)
         self.check_primvar(prim, "fc_int32", "VtArray<int>", "faceVarying", 4)
         self.check_primvar(prim, "fc_float", "VtArray<float>", "faceVarying", 4)
         self.check_primvar(prim, "fc_color", "VtArray<GfVec3f>", "faceVarying", 4)
@@ -237,7 +238,7 @@ class USDExportTest(AbstractUSDTest):
         prim = stage.GetPrimAtPath("/root/Curve_base/Curves/Curves")
 
         self.check_primvar(prim, "p_bool", "VtArray<bool>", "vertex", 24)
-        self.check_primvar(prim, "p_int8", "VtArray<int>", "vertex", 24)
+        self.check_primvar(prim, "p_int8", "VtArray<unsigned char>", "vertex", 24)
         self.check_primvar(prim, "p_int32", "VtArray<int>", "vertex", 24)
         self.check_primvar(prim, "p_float", "VtArray<float>", "vertex", 24)
         self.check_primvar_missing(prim, "p_color")
@@ -248,7 +249,7 @@ class USDExportTest(AbstractUSDTest):
         self.check_primvar_missing(prim, "p_mat4x4")
 
         self.check_primvar(prim, "sp_bool", "VtArray<bool>", "uniform", 2)
-        self.check_primvar(prim, "sp_int8", "VtArray<int>", "uniform", 2)
+        self.check_primvar(prim, "sp_int8", "VtArray<unsigned char>", "uniform", 2)
         self.check_primvar(prim, "sp_int32", "VtArray<int>", "uniform", 2)
         self.check_primvar(prim, "sp_float", "VtArray<float>", "uniform", 2)
         self.check_primvar_missing(prim, "sp_color")
@@ -261,7 +262,7 @@ class USDExportTest(AbstractUSDTest):
         prim = stage.GetPrimAtPath("/root/Curve_bezier_base/Curves_bezier/Curves")
 
         self.check_primvar(prim, "p_bool", "VtArray<bool>", "varying", 10)
-        self.check_primvar(prim, "p_int8", "VtArray<int>", "varying", 10)
+        self.check_primvar(prim, "p_int8", "VtArray<unsigned char>", "varying", 10)
         self.check_primvar(prim, "p_int32", "VtArray<int>", "varying", 10)
         self.check_primvar(prim, "p_float", "VtArray<float>", "varying", 10)
         self.check_primvar_missing(prim, "p_color")
@@ -272,7 +273,7 @@ class USDExportTest(AbstractUSDTest):
         self.check_primvar_missing(prim, "p_mat4x4")
 
         self.check_primvar(prim, "sp_bool", "VtArray<bool>", "uniform", 3)
-        self.check_primvar(prim, "sp_int8", "VtArray<int>", "uniform", 3)
+        self.check_primvar(prim, "sp_int8", "VtArray<unsigned char>", "uniform", 3)
         self.check_primvar(prim, "sp_int32", "VtArray<int>", "uniform", 3)
         self.check_primvar(prim, "sp_float", "VtArray<float>", "uniform", 3)
         self.check_primvar_missing(prim, "sp_color")
@@ -281,6 +282,90 @@ class USDExportTest(AbstractUSDTest):
         self.check_primvar(prim, "sp_vec3", "VtArray<GfVec3f>", "uniform", 3)
         self.check_primvar(prim, "sp_quat", "VtArray<GfQuatf>", "uniform", 3)
         self.check_primvar_missing(prim, "sp_mat4x4")
+
+    def test_animation(self):
+        bpy.ops.wm.open_mainfile(filepath=str(self.testdir / "usd_anim_test.blend"))
+        export_path = self.tempdir / "usd_anim_test.usda"
+        res = bpy.ops.wm.usd_export(
+            filepath=str(export_path),
+            export_animation=True,
+            evaluation_mode="RENDER",
+        )
+        self.assertEqual({'FINISHED'}, res, f"Unable to export to {export_path}")
+
+        stage = Usd.Stage.Open(str(export_path))
+
+        # Validate the simple object animation
+        prim = stage.GetPrimAtPath("/root/cube_anim_xform")
+        self.assertEqual(prim.GetTypeName(), "Xform")
+        loc_samples = UsdGeom.Xformable(prim).GetTranslateOp().GetTimeSamples()
+        rot_samples = UsdGeom.Xformable(prim).GetRotateXYZOp().GetTimeSamples()
+        scale_samples = UsdGeom.Xformable(prim).GetScaleOp().GetTimeSamples()
+        self.assertEqual(loc_samples, [1.0, 2.0, 3.0, 4.0])
+        self.assertEqual(rot_samples, [1.0])
+        self.assertEqual(scale_samples, [1.0])
+
+        # Validate the armature animation
+        prim = stage.GetPrimAtPath("/root/Armature/Armature")
+        self.assertEqual(prim.GetTypeName(), "Skeleton")
+        prim_skel = UsdSkel.BindingAPI(prim)
+        anim = UsdSkel.Animation(prim_skel.GetAnimationSource())
+        self.assertEqual(anim.GetJointsAttr().Get(),
+                         ['Bone',
+                          'Bone/Bone_001',
+                          'Bone/Bone_001/Bone_002',
+                          'Bone/Bone_001/Bone_002/Bone_003',
+                          'Bone/Bone_001/Bone_002/Bone_003/Bone_004'])
+        loc_samples = anim.GetTranslationsAttr().GetTimeSamples()
+        rot_samples = anim.GetRotationsAttr().GetTimeSamples()
+        scale_samples = anim.GetScalesAttr().GetTimeSamples()
+        self.assertEqual(loc_samples, [1.0, 2.0, 3.0, 4.0, 5.0])
+        self.assertEqual(rot_samples, [1.0, 2.0, 3.0, 4.0, 5.0])
+        self.assertEqual(scale_samples, [1.0, 2.0, 3.0, 4.0, 5.0])
+
+        # Validate the shape key animation
+        prim = stage.GetPrimAtPath("/root/cube_anim_keys")
+        self.assertEqual(prim.GetTypeName(), "SkelRoot")
+        prim_skel = UsdSkel.BindingAPI(prim.GetPrimAtPath("cube_anim_keys"))
+        self.assertEqual(prim_skel.GetBlendShapesAttr().Get(), ['Key_1'])
+        prim_skel = UsdSkel.BindingAPI(prim.GetPrimAtPath("Skel"))
+        anim = UsdSkel.Animation(prim_skel.GetAnimationSource())
+        weight_samples = anim.GetBlendShapeWeightsAttr().GetTimeSamples()
+        self.assertEqual(weight_samples, [1.0, 2.0, 3.0, 4.0, 5.0])
+
+    def test_materialx_network(self):
+        """Test exporting that a MaterialX export makes it out alright"""
+        bpy.ops.wm.open_mainfile(
+            filepath=str(self.testdir / "usd_materials_export.blend")
+        )
+        export_path = self.tempdir / "materialx.usda"
+        res = bpy.ops.wm.usd_export(
+            filepath=str(export_path),
+            export_materials=True,
+            generate_materialx_network=True,
+            evaluation_mode="RENDER",
+        )
+        self.assertEqual({'FINISHED'}, res, f"Unable to export to {export_path}")
+
+        stage = Usd.Stage.Open(str(export_path))
+        material_prim = stage.GetPrimAtPath("/root/_materials/Material")
+        self.assertTrue(material_prim, "Could not find Material prim")
+
+        material = UsdShade.Material(material_prim)
+        mtlx_output = material.GetOutput("mtlx:surface")
+        self.assertTrue(mtlx_output, "Could not find mtlx output")
+
+        connection, source_name, _ = UsdShade.ConnectableAPI.GetConnectedSource(
+            mtlx_output
+        ) or [None, None, None]
+
+        self.assertTrue((connection and source_name), "Could not find mtlx output source")
+
+        shader = UsdShade.Shader(connection.GetPrim())
+        self.assertTrue(shader, "Connected prim is not a shader")
+
+        shader_id = shader.GetIdAttr().Get()
+        self.assertEqual(shader_id, "ND_standard_surface_surfaceshader", "Shader is not a Standard Surface")
 
 
 def main():

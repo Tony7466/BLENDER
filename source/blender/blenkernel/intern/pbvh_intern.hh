@@ -19,7 +19,6 @@ namespace blender::draw::pbvh {
 struct PBVHBatches;
 }
 
-struct PBVHGPUFormat;
 struct BMVert;
 struct BMFace;
 
@@ -29,9 +28,10 @@ struct PBVHNode {
   /* Opaque handle for drawing code */
   blender::draw::pbvh::PBVHBatches *draw_batches = nullptr;
 
-  /* Voxel bounds */
-  blender::Bounds<blender::float3> vb = {};
-  blender::Bounds<blender::float3> orig_vb = {};
+  /** Axis aligned min and max of all vertex positions in the node. */
+  blender::Bounds<blender::float3> bounds = {};
+  /** Bounds from the start of current brush stroke. */
+  blender::Bounds<blender::float3> bounds_orig = {};
 
   /* For internal nodes, the offset of the children in the PBVH
    * 'nodes' array. */
@@ -129,12 +129,6 @@ struct PBVH {
 
   /* Memory backing for PBVHNode.prim_indices. */
   blender::Array<int> prim_indices;
-  int totprim;
-  int totvert;
-
-  int leaf_limit;
-  int pixel_leaf_limit;
-  int depth_limit;
 
   /* Mesh data. The evaluated deform mesh for mesh sculpting, and the base mesh for grids. */
   Mesh *mesh;
@@ -153,8 +147,6 @@ struct PBVH {
   /** Only valid for polygon meshes. */
   blender::OffsetIndices<int> faces;
   blender::Span<int> corner_verts;
-  /* Owned by the #PBVH, because after deformations they have to be recomputed. */
-  blender::Array<blender::int3> corner_tris;
 
   /* Grid Data */
   CCGKey gridkey;
@@ -180,16 +172,6 @@ struct PBVH {
 
   CustomDataLayer *color_layer;
   blender::bke::AttrDomain color_domain;
-
-  /* Initialize this to true, instead of waiting for a draw engine
-   * to set it. Prevents a crash in draw manager instancing code.
-   * TODO: This is fragile, another solution should be found. */
-  bool is_drawing = true;
-
-  /* Used by DynTopo to invalidate the draw cache. */
-  bool draw_cache_invalid = true;
-
-  PBVHGPUFormat *vbo_id;
 
   PBVHPixels pixels;
 
