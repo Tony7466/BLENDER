@@ -223,7 +223,7 @@ ccl_device float3 equiangular_cubemap_face_to_direction(float u, float v)
   u = tanf(u * M_PI_2_F - M_PI_4_F);
   v = tanf(v * M_PI_2_F - M_PI_4_F);
 
-  return safe_normalize(make_float3(1.0f, u, v));
+  return normalize(make_float3(1.0f, u, v));
 }
 
 ccl_device float2 direction_to_equiangular_cubemap_face(float3 dir)
