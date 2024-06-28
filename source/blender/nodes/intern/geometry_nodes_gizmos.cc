@@ -104,6 +104,7 @@ static TreeGizmoPropagation build_tree_gizmo_propagation(bNodeTree &tree)
       }
       gizmo_propagation.gizmo_nodes.append(node);
       const bNodeSocket &gizmo_input_socket = node->input_socket(0);
+      gizmo_propagation.gizmo_endpoint_sockets.add(&gizmo_input_socket);
       const ie::ElemVariant elem = get_gizmo_socket_elem(*node, gizmo_input_socket);
       for (const bNodeLink *link : gizmo_input_socket.directly_linked_links()) {
         if (!link->is_used()) {
