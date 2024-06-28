@@ -1533,8 +1533,7 @@ struct BuildGraphParams {
    */
   Map<const bNodeSocket *, lf::InputSocket *> lf_attribute_set_input_by_output_geometry_bsocket;
   /**
-   * Multi-input sockets are split into a separate node that collects all the individual values and
-   * then passes them to the main node function as list.
+   * Multi-input sockets are split into separate sockets, once for each incoming link.
    */
   Map<const bNodeLink *, lf::InputSocket *> lf_input_by_multi_input_link;
   /**
