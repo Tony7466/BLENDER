@@ -1964,7 +1964,7 @@ namespace blender::ed::sculpt_paint {
 
 namespace face_set {
 
-void do_draw_face_sets_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes);
+void do_relax_face_sets_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes);
 
 }
 

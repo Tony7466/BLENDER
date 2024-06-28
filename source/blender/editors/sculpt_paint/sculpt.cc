@@ -3895,8 +3895,12 @@ static void do_brush_action(const Scene &scene,
       cloth::do_cloth_brush(sd, ob, nodes);
       break;
     case SCULPT_TOOL_DRAW_FACE_SETS:
-      // face_set::do_draw_face_sets_brush(sd, ob, nodes);
-      do_draw_face_sets_brush(sd, ob, nodes);
+      if (!ss.cache->alt_smooth) {
+        do_draw_face_sets_brush(sd, ob, nodes);
+      }
+      else {
+        face_set::do_relax_face_sets_brush(sd, ob, nodes);
+      }
       break;
     case SCULPT_TOOL_DISPLACEMENT_ERASER:
       do_displacement_eraser_brush(sd, ob, nodes);
