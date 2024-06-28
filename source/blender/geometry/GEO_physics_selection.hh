@@ -24,14 +24,14 @@ class PhysicsGeometry;
 
 namespace blender::geometry {
 
-/** A vertex is selected if it's used by a selected edge. */
+/** A body is selected if it's used by a selected constraint. */
 IndexMask body_selection_from_constraint(Span<int> constraint_body1,
                                          Span<int> constraint_body2,
-                                         const IndexMask &edge_mask,
-                                         int verts_num,
+                                         const IndexMask &constraint_mask,
+                                         int bodies_num,
                                          IndexMaskMemory &memory);
 
-/** An edge is selected if both of its vertices are selected. */
+/** A constraint is selected if both of its bodies are selected. */
 IndexMask constraint_selection_from_body(Span<int> constraint_body1,
                                          Span<int> constraint_body2,
                                          Span<bool> body_selection,

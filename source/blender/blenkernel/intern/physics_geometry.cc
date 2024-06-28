@@ -12,6 +12,7 @@
 #include "BKE_geometry_set.hh"
 #include "BKE_physics_geometry.hh"
 
+#include "BLI_array_utils.hh"
 #include "BLI_assert.h"
 #include "BLI_index_mask.hh"
 #include "BLI_math_matrix.hh"
@@ -361,9 +362,10 @@ const PhysicsGeometry::BuiltinAttributes PhysicsGeometry::builtin_attributes = [
   attributes.angular_damping = "angular_damping";
   attributes.linear_sleeping_threshold = "linear_sleeping_threshold";
   attributes.angular_sleeping_threshold = "angular_sleeping_threshold";
-  attributes.constraint_enabled = "enabled";
+  attributes.constraint_type = "type";
   attributes.constraint_body1 = "constraint_body1";
   attributes.constraint_body2 = "constraint_body2";
+  attributes.constraint_enabled = "enabled";
   attributes.constraint_frame1 = "constraint_frame1";
   attributes.constraint_frame2 = "constraint_frame2";
   attributes.constraint_enabled = "constraint_enabled";
@@ -1123,35 +1125,39 @@ class VMutableArrayImpl_For_PhysicsConstraintTypes final : public VMutableArrayI
   }
 };
 
-VArray<int> PhysicsGeometry::constraint_type() const
-{
-  if (this->impl().is_empty) {
-    return VArray<int>::ForSingle(-1, this->constraints_num());
-  }
-  return VMutableArray<int>::template For<VMutableArrayImpl_For_PhysicsConstraintTypes>(
-      this->impl());
-}
-
-VArray<int> PhysicsGeometry::constraint_body_1() const
-{
-  return attributes().lookup<int>(builtin_attributes.constraint_body1).varray;
-}
-
-VArray<int> PhysicsGeometry::constraint_body_2() const
-{
-  return attributes().lookup<int>(builtin_attributes.constraint_body2).varray;
-}
-
 void PhysicsGeometry::create_constraints(const IndexMask &selection,
                                          const VArray<int> &types,
                                          const VArray<int> &bodies1,
                                          const VArray<int> &bodies2)
 {
-  if (this->impl().is_empty) {
+  PhysicsGeometryImpl &impl = this->impl_for_write();
+
+  if (impl.is_empty) {
+    void *types_data = CustomData_add_layer_named(&impl.constraint_data_,
+                                                  CD_PROP_INT32,
+                                                  CD_CONSTRUCT,
+                                                  impl.constraint_num_,
+                                                  builtin_attributes.constraint_type);
+    void *body1_data = CustomData_add_layer_named(&impl.constraint_data_,
+                                                  CD_PROP_INT32,
+                                                  CD_CONSTRUCT,
+                                                  impl.constraint_num_,
+                                                  builtin_attributes.constraint_body1);
+    void *body2_data = CustomData_add_layer_named(&impl.constraint_data_,
+                                                  CD_PROP_INT32,
+                                                  CD_CONSTRUCT,
+                                                  impl.constraint_num_,
+                                                  builtin_attributes.constraint_body2);
+    types.materialize_to_uninitialized(
+        MutableSpan(static_cast<int *>(types_data), impl.constraint_num_));
+    bodies1.materialize_to_uninitialized(
+        MutableSpan(static_cast<int *>(body1_data), impl.constraint_num_));
+    bodies2.materialize_to_uninitialized(
+        MutableSpan(static_cast<int *>(body2_data), impl.constraint_num_));
+
     return;
   }
 
-  PhysicsGeometryImpl &impl = this->impl_for_write();
   const IndexRange bodies_range = impl.rigid_bodies.index_range();
   selection.foreach_index([&](const int index) {
     const ConstraintType type = ConstraintType(types[index]);
@@ -1190,24 +1196,19 @@ AttributeWriter<bool> PhysicsGeometry::constraint_enabled_for_write()
   return attributes_for_write().lookup_for_write<bool>(builtin_attributes.constraint_enabled);
 }
 
+VArray<int> PhysicsGeometry::constraint_types() const
+{
+  return attributes().lookup<int>(builtin_attributes.constraint_type).varray;
+}
+
 VArray<int> PhysicsGeometry::constraint_body1() const
 {
   return attributes().lookup<int>(builtin_attributes.constraint_body1).varray;
 }
 
-AttributeWriter<int> PhysicsGeometry::constraint_body1_for_write()
-{
-  return attributes_for_write().lookup_for_write<int>(builtin_attributes.constraint_body1);
-}
-
 VArray<int> PhysicsGeometry::constraint_body2() const
 {
   return attributes().lookup<int>(builtin_attributes.constraint_body2).varray;
-}
-
-AttributeWriter<int> PhysicsGeometry::constraint_body2_for_write()
-{
-  return attributes_for_write().lookup_for_write<int>(builtin_attributes.constraint_body2);
 }
 
 VArray<float4x4> PhysicsGeometry::constraint_frame1() const

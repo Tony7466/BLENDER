@@ -95,9 +95,10 @@ class PhysicsGeometry {
     std::string total_torque;
 
     /* Constraint attributes. */
-    std::string constraint_enabled;
+    std::string constraint_type;
     std::string constraint_body1;
     std::string constraint_body2;
+    std::string constraint_enabled;
     std::string constraint_frame1;
     std::string constraint_frame2;
     std::string applied_impulse;
@@ -188,23 +189,17 @@ class PhysicsGeometry {
   void apply_angular_impulse(const IndexMask &selection, const VArray<float3> &angular_impulses);
   void clear_forces(const IndexMask &selection);
 
-  VArray<int> constraint_type() const;
-  VArray<int> constraint_body_1() const;
-  VArray<int> constraint_body_2() const;
-
   void create_constraints(const IndexMask &selection,
                           const VArray<int> &types,
                           const VArray<int> &bodies1,
                           const VArray<int> &bodies2);
 
+  VArray<int> constraint_types() const;
+  VArray<int> constraint_body1() const;
+  VArray<int> constraint_body2() const;
+
   VArray<bool> constraint_enabled() const;
   AttributeWriter<bool> constraint_enabled_for_write();
-
-  VArray<int> constraint_body1() const;
-  AttributeWriter<int> constraint_body1_for_write();
-
-  VArray<int> constraint_body2() const;
-  AttributeWriter<int> constraint_body2_for_write();
 
   VArray<float4x4> constraint_frame1() const;
   AttributeWriter<float4x4> constraint_frame1_for_write();

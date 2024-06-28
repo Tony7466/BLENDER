@@ -16,7 +16,7 @@
 #include "DNA_pointcloud_types.h"
 
 #include "GEO_mesh_copy_selection.hh"
-#include "GEO_physics_copy_selection.hh"
+#include "GEO_physics_selection.hh"
 
 namespace blender::geometry {
 
