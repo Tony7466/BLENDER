@@ -203,39 +203,6 @@ const float *SCULPT_vertex_co_get(const SculptSession &ss, PBVHVertRef vertex)
   return nullptr;
 }
 
-bool SCULPT_has_loop_colors(const Object &ob)
-{
-  using namespace blender;
-  const Mesh *mesh = BKE_object_get_original_mesh(&ob);
-  const std::optional<bke::AttributeMetaData> meta_data = mesh->attributes().lookup_meta_data(
-      mesh->active_color_attribute);
-  if (!meta_data) {
-    return false;
-  }
-  if (meta_data->domain != bke::AttrDomain::Corner) {
-    return false;
-  }
-  if (!(CD_TYPE_AS_MASK(meta_data->data_type) & CD_MASK_COLOR_ALL)) {
-    return false;
-  }
-  return true;
-}
-
-bool SCULPT_has_colors(const SculptSession &ss)
-{
-  return ss.vcol || ss.mcol;
-}
-
-blender::float4 SCULPT_vertex_color_get(const SculptSession &ss, PBVHVertRef vertex)
-{
-  return BKE_pbvh_vertex_color_get(*ss.pbvh, ss.vert_to_face_map, vertex);
-}
-
-void SCULPT_vertex_color_set(SculptSession &ss, PBVHVertRef vertex, const blender::float4 &color)
-{
-  BKE_pbvh_vertex_color_set(*ss.pbvh, ss.vert_to_face_map, vertex, color);
-}
-
 const blender::float3 SCULPT_vertex_normal_get(const SculptSession &ss, PBVHVertRef vertex)
 {
   switch (BKE_pbvh_type(*ss.pbvh)) {
@@ -1377,47 +1344,29 @@ static void restore_mask(Object &object, const Span<PBVHNode *> nodes)
 static void restore_color(Object &object, const Span<PBVHNode *> nodes)
 {
   SculptSession &ss = *object.sculpt;
-  const auto restore_generic = [&](PBVHNode *node, const undo::Node *unode) {
-    SculptOrigVertData orig_vert_data;
-    orig_vert_data_unode_init(orig_vert_data, *unode);
-    PBVHVertexIter vd;
-    BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
-      SCULPT_orig_vert_data_update(orig_vert_data, vd);
-      SCULPT_vertex_color_set(ss, vd.vertex, orig_vert_data.col);
-    }
-    BKE_pbvh_vertex_iter_end;
-    BKE_pbvh_node_mark_update_color(node);
-  };
-  switch (BKE_pbvh_type(*ss.pbvh)) {
-    case PBVH_FACES: {
-      threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-        for (PBVHNode *node : nodes.slice(range)) {
-          if (const undo::Node *unode = undo::get_node(node, undo::Type::Color)) {
-            restore_generic(node, unode);
-          }
-        }
-      });
-      break;
-    }
-    case PBVH_BMESH: {
-      for (PBVHNode *node : nodes) {
-        if (const undo::Node *unode = undo::get_node(node, undo::Type::Color)) {
-          restore_generic(node, unode);
+  BLI_assert(BKE_pbvh_type(*ss.pbvh) == PBVH_FACES);
+  Mesh &mesh = *static_cast<Mesh *>(object.data);
+  const OffsetIndices<int> faces = mesh.faces();
+  const Span<int> corner_verts = mesh.corner_verts();
+  const GroupedSpan<int> vert_to_face_map = ss.vert_to_face_map;
+  bke::GSpanAttributeWriter color_attribute = color::active_color_attribute_for_write(mesh);
+  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    for (PBVHNode *node : nodes.slice(range)) {
+      if (const undo::Node *unode = undo::get_node(node, undo::Type::Color)) {
+        const Span<int> verts = bke::pbvh::node_unique_verts(*node);
+        for (const int i : verts.index_range()) {
+          color::color_vert_set(faces,
+                                corner_verts,
+                                vert_to_face_map,
+                                color_attribute.domain,
+                                verts[i],
+                                unode->col[i],
+                                color_attribute.span);
         }
       }
-      break;
     }
-    case PBVH_GRIDS: {
-      threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-        for (PBVHNode *node : nodes.slice(range)) {
-          if (const undo::Node *unode = undo::get_node(node, undo::Type::Color)) {
-            restore_generic(node, unode);
-          }
-        }
-      });
-      break;
-    }
-  }
+  });
+  color_attribute.finish();
 }
 
 static void restore_face_set(Object &object, const Span<PBVHNode *> nodes)
@@ -3622,6 +3571,12 @@ static void push_undo_nodes(Object &ob, const Brush &brush, const Span<PBVHNode 
     }
   }
   else if (SCULPT_tool_is_paint(brush.sculpt_tool)) {
+    const Mesh &mesh = *static_cast<const Mesh *>(ob.data);
+    if (const bke::GAttributeReader attr = color::active_color_attribute(mesh)) {
+      if (attr.domain == bke::AttrDomain::Corner) {
+        BKE_pbvh_ensure_node_loops(*ss.pbvh, mesh.corner_tris());
+      }
+    }
     undo::push_nodes(ob, nodes, undo::Type::Color);
     for (PBVHNode *node : nodes) {
       BKE_pbvh_node_mark_update_color(node);
@@ -3648,18 +3603,6 @@ static void do_brush_action(const Scene &scene,
 {
   SculptSession &ss = *ob.sculpt;
   Vector<PBVHNode *> nodes, texnodes;
-
-  /* Check for unsupported features. */
-  PBVHType type = BKE_pbvh_type(*ss.pbvh);
-
-  if (SCULPT_tool_is_paint(brush.sculpt_tool) && SCULPT_has_loop_colors(ob)) {
-    if (type != PBVH_FACES) {
-      return;
-    }
-
-    const Mesh &mesh = *static_cast<const Mesh *>(ob.data);
-    BKE_pbvh_ensure_node_loops(*ss.pbvh, mesh.corner_tris());
-  }
 
   const bool use_original = sculpt_tool_needs_original(brush.sculpt_tool) ? true :
                                                                             !ss.cache->accum;
@@ -6671,6 +6614,8 @@ void filter_region_clip_factors(const SculptSession &ss,
                                 const Span<int> verts,
                                 const MutableSpan<float> factors)
 {
+  BLI_assert(verts.size() == factors.size());
+
   const RegionView3D *rv3d = ss.cache ? ss.cache->vc->rv3d : ss.rv3d;
   const View3D *v3d = ss.cache ? ss.cache->vc->v3d : ss.v3d;
   if (!RV3D_CLIPPING_ENABLED(v3d, rv3d)) {
