@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "nodes/vk_begin_query_node.hh"
 #include "nodes/vk_begin_rendering_node.hh"
 #include "nodes/vk_blit_image_node.hh"
 #include "nodes/vk_clear_attachments_node.hh"
@@ -23,6 +24,7 @@
 #include "nodes/vk_draw_indexed_node.hh"
 #include "nodes/vk_draw_indirect_node.hh"
 #include "nodes/vk_draw_node.hh"
+#include "nodes/vk_end_query_node.hh"
 #include "nodes/vk_end_rendering_node.hh"
 #include "nodes/vk_fill_buffer_node.hh"
 #include "nodes/vk_synchronization_node.hh"
@@ -45,6 +47,7 @@ using NodeHandle = uint64_t;
 struct VKRenderGraphNode {
   VKNodeType type;
   union {
+    VKBeginQueryNode::Data begin_query;
     VKBeginRenderingNode::Data begin_rendering;
     VKBlitImageNode::Data blit_image;
     VKClearAttachmentsNode::Data clear_attachments;
@@ -60,6 +63,7 @@ struct VKRenderGraphNode {
     VKDrawIndexedNode::Data draw_indexed;
     VKDrawIndexedIndirectNode::Data draw_indexed_indirect;
     VKDrawIndirectNode::Data draw_indirect;
+    VKEndQueryNode::Data end_query;
     VKEndRenderingNode::Data end_rendering;
     VKFillBufferNode::Data fill_buffer;
     VKSynchronizationNode::Data synchronization;
@@ -110,6 +114,8 @@ struct VKRenderGraphNode {
     switch (type) {
       case VKNodeType::UNUSED:
         return VK_PIPELINE_STAGE_NONE;
+      case VKNodeType::BEGIN_QUERY:
+        return VKBeginQueryNode::pipeline_stage;
       case VKNodeType::BEGIN_RENDERING:
         return VKBeginRenderingNode::pipeline_stage;
       case VKNodeType::CLEAR_ATTACHMENTS:
@@ -118,6 +124,8 @@ struct VKRenderGraphNode {
         return VKClearColorImageNode::pipeline_stage;
       case VKNodeType::CLEAR_DEPTH_STENCIL_IMAGE:
         return VKClearDepthStencilImageNode::pipeline_stage;
+      case VKNodeType::END_QUERY:
+        return VKEndQueryNode::pipeline_stage;
       case VKNodeType::END_RENDERING:
         return VKEndRenderingNode::pipeline_stage;
       case VKNodeType::FILL_BUFFER:
@@ -173,12 +181,14 @@ struct VKRenderGraphNode {
     break; \
   }
 
+        BUILD_COMMANDS(VKNodeType::BEGIN_QUERY, VKBeginQueryNode, begin_query)
         BUILD_COMMANDS(VKNodeType::BEGIN_RENDERING, VKBeginRenderingNode, begin_rendering)
         BUILD_COMMANDS(VKNodeType::CLEAR_ATTACHMENTS, VKClearAttachmentsNode, clear_attachments)
         BUILD_COMMANDS(VKNodeType::CLEAR_COLOR_IMAGE, VKClearColorImageNode, clear_color_image)
         BUILD_COMMANDS(VKNodeType::CLEAR_DEPTH_STENCIL_IMAGE,
                        VKClearDepthStencilImageNode,
                        clear_depth_stencil_image)
+        BUILD_COMMANDS(VKNodeType::END_QUERY, VKEndQueryNode, end_query)
         BUILD_COMMANDS(VKNodeType::END_RENDERING, VKEndRenderingNode, end_rendering)
         BUILD_COMMANDS(VKNodeType::FILL_BUFFER, VKFillBufferNode, fill_buffer)
         BUILD_COMMANDS(VKNodeType::COPY_BUFFER, VKCopyBufferNode, copy_buffer)
@@ -225,10 +235,12 @@ struct VKRenderGraphNode {
 #undef FREE_DATA
 
       case VKNodeType::UNUSED:
+      case VKNodeType::BEGIN_QUERY:
       case VKNodeType::BEGIN_RENDERING:
       case VKNodeType::CLEAR_ATTACHMENTS:
       case VKNodeType::CLEAR_COLOR_IMAGE:
       case VKNodeType::CLEAR_DEPTH_STENCIL_IMAGE:
+      case VKNodeType::END_QUERY:
       case VKNodeType::END_RENDERING:
       case VKNodeType::FILL_BUFFER:
       case VKNodeType::COPY_BUFFER:
