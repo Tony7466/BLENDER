@@ -48,8 +48,8 @@
 #include "ED_screen.hh"
 #include "ED_select_utils.hh"
 #include "ED_transform.hh"
-#include "ED_view3d.hh"
 #include "ED_undo.hh"
+#include "ED_view3d.hh"
 
 #include "BLT_translation.hh"
 
