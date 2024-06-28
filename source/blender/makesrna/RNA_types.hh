@@ -42,6 +42,8 @@ struct PointerRNA {
   void *data;
 };
 
+constexpr PointerRNA PointerRNA_NULL{nullptr, nullptr, nullptr};
+
 struct PropertyPointerRNA {
   PointerRNA ptr;
   PropertyRNA *prop;
@@ -72,18 +74,20 @@ enum PropertyType {
 /* also update rna_property_subtype_unit when you change this */
 enum PropertyUnit {
   PROP_UNIT_NONE = (0 << 16),
-  PROP_UNIT_LENGTH = (1 << 16),        /* m */
-  PROP_UNIT_AREA = (2 << 16),          /* m^2 */
-  PROP_UNIT_VOLUME = (3 << 16),        /* m^3 */
-  PROP_UNIT_MASS = (4 << 16),          /* kg */
-  PROP_UNIT_ROTATION = (5 << 16),      /* radians */
-  PROP_UNIT_TIME = (6 << 16),          /* frame */
-  PROP_UNIT_TIME_ABSOLUTE = (7 << 16), /* time in seconds (independent of scene) */
-  PROP_UNIT_VELOCITY = (8 << 16),      /* m/s */
-  PROP_UNIT_ACCELERATION = (9 << 16),  /* m/(s^2) */
-  PROP_UNIT_CAMERA = (10 << 16),       /* mm */
-  PROP_UNIT_POWER = (11 << 16),        /* W */
-  PROP_UNIT_TEMPERATURE = (12 << 16),  /* C */
+  PROP_UNIT_LENGTH = (1 << 16),             /* m */
+  PROP_UNIT_AREA = (2 << 16),               /* m^2 */
+  PROP_UNIT_VOLUME = (3 << 16),             /* m^3 */
+  PROP_UNIT_MASS = (4 << 16),               /* kg */
+  PROP_UNIT_ROTATION = (5 << 16),           /* radians */
+  PROP_UNIT_TIME = (6 << 16),               /* frame */
+  PROP_UNIT_TIME_ABSOLUTE = (7 << 16),      /* time in seconds (independent of scene) */
+  PROP_UNIT_VELOCITY = (8 << 16),           /* m/s */
+  PROP_UNIT_ACCELERATION = (9 << 16),       /* m/(s^2) */
+  PROP_UNIT_CAMERA = (10 << 16),            /* mm */
+  PROP_UNIT_POWER = (11 << 16),             /* W */
+  PROP_UNIT_TEMPERATURE = (12 << 16),       /* C */
+  PROP_UNIT_WAVELENGTH = (13 << 16),        /* `nm` (independent of scene). */
+  PROP_UNIT_COLOR_TEMPERATURE = (14 << 16), /* K */
 };
 ENUM_OPERATORS(PropertyUnit, PROP_UNIT_TEMPERATURE)
 
@@ -180,6 +184,12 @@ enum PropertySubType {
 
   /* temperature */
   PROP_TEMPERATURE = 43 | PROP_UNIT_TEMPERATURE,
+
+  /* wavelength */
+  PROP_WAVELENGTH = 44 | PROP_UNIT_WAVELENGTH,
+
+  /* wavelength */
+  PROP_COLOR_TEMPERATURE = 45 | PROP_UNIT_COLOR_TEMPERATURE,
 };
 
 /* Make sure enums are updated with these */
@@ -388,7 +398,7 @@ ENUM_OPERATORS(ParameterFlag, PARM_PYFUNC_OPTIONAL)
 
 struct CollectionPropertyIterator;
 struct Link;
-using IteratorSkipFunc = int (*)(CollectionPropertyIterator *iter, void *data);
+using IteratorSkipFunc = bool (*)(CollectionPropertyIterator *iter, void *data);
 
 struct ListBaseIterator {
   Link *link;
@@ -439,7 +449,7 @@ struct CollectionPropertyIterator {
 
   /* external */
   PointerRNA ptr;
-  int valid;
+  bool valid;
 };
 
 struct CollectionVector {
@@ -541,6 +551,8 @@ struct StringPropertySearchVisitParams {
   std::string text;
   /** Additional information to display. */
   std::optional<std::string> info;
+  /* Optional icon instead of #ICON_NONE. */
+  std::optional<int> icon_id;
 };
 
 enum eStringPropertySearchFlag {
@@ -610,7 +622,7 @@ struct ParameterIterator {
   int size, offset;
 
   PropertyRNA *parm;
-  int valid;
+  bool valid;
 };
 
 /** Mainly to avoid confusing casts. */

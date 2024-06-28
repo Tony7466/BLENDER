@@ -86,11 +86,15 @@ void AbstractViewItem::deactivate()
 
 void AbstractViewItem::change_state_delayed()
 {
-  const std::optional<bool> should_be_active = this->should_be_active();
-  if (should_be_active.has_value() && *should_be_active) {
-    /* Don't call #activate() here, since this reflects an external state change and therefore
-     * shouldn't call #on_activate(). */
-    set_state_active();
+  if (const std::optional<bool> should_be_active = this->should_be_active()) {
+    if (*should_be_active) {
+      /* Don't call #activate() here, since this reflects an external state change and therefore
+       * shouldn't call #on_activate(). */
+      set_state_active();
+    }
+    else {
+      is_active_ = false;
+    }
   }
 }
 
@@ -263,6 +267,11 @@ std::unique_ptr<DropTargetInterface> AbstractViewItem::create_item_drop_target()
 {
   /* There's no drop target (and hence no drop support) by default. */
   return nullptr;
+}
+
+std::optional<std::string> AbstractViewItem::debug_name() const
+{
+  return {};
 }
 
 AbstractViewItemDragController::AbstractViewItemDragController(AbstractView &view) : view_(view) {}

@@ -17,6 +17,8 @@
 #include "BKE_object.hh"
 #include "BKE_paint.hh"
 
+#include "BLT_translation.hh"
+
 #include "WM_api.hh"
 #include "WM_message.hh"
 #include "WM_toolsystem.hh"
@@ -282,7 +284,8 @@ static void curves_sculptmode_enter(bContext *C)
   wmMsgBus *mbus = CTX_wm_message_bus(C);
 
   Object *ob = CTX_data_active_object(C);
-  BKE_paint_ensure(scene->toolsettings, (Paint **)&scene->toolsettings->curves_sculpt);
+  BKE_paint_ensure(
+      CTX_data_main(C), scene->toolsettings, (Paint **)&scene->toolsettings->curves_sculpt);
   CurvesSculpt *curves_sculpt = scene->toolsettings->curves_sculpt;
 
   ob->mode = OB_MODE_SCULPT_CURVES;
@@ -459,10 +462,10 @@ static void select_random_ui(bContext * /*C*/, wmOperator *op)
   uiItemR(layout, op->ptr, "partial", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   if (RNA_boolean_get(op->ptr, "partial")) {
-    uiItemR(layout, op->ptr, "min", UI_ITEM_R_SLIDER, "Min", ICON_NONE);
+    uiItemR(layout, op->ptr, "min", UI_ITEM_R_SLIDER, IFACE_("Min"), ICON_NONE);
   }
   else {
-    uiItemR(layout, op->ptr, "probability", UI_ITEM_R_SLIDER, "Probability", ICON_NONE);
+    uiItemR(layout, op->ptr, "probability", UI_ITEM_R_SLIDER, IFACE_("Probability"), ICON_NONE);
   }
 }
 

@@ -666,7 +666,7 @@ static bool edit_constraint_poll_generic(bContext *C,
     return false;
   }
 
-  if (ptr.owner_id != nullptr && ID_IS_LINKED(ptr.owner_id)) {
+  if (ptr.owner_id != nullptr && !ID_IS_EDITABLE(ptr.owner_id)) {
     CTX_wm_operator_poll_msg_set(C, "Cannot edit library data");
     return false;
   }
@@ -1074,7 +1074,7 @@ static int followpath_path_animate_exec(bContext *C, wmOperator *op)
     {
       /* create F-Curve for path animation */
       act = animrig::id_action_ensure(bmain, &cu->id);
-      fcu = animrig::action_fcurve_ensure(bmain, act, nullptr, nullptr, "eval_time", 0);
+      fcu = animrig::action_fcurve_ensure(bmain, act, nullptr, nullptr, {"eval_time", 0});
 
       /* standard vertical range - 1:1 = 100 frames */
       standardRange = 100.0f;
@@ -1094,10 +1094,11 @@ static int followpath_path_animate_exec(bContext *C, wmOperator *op)
     prop = RNA_struct_find_property(&ptr, "offset_factor");
 
     const std::optional<std::string> path = RNA_path_from_ID_to_property(&ptr, prop);
+    BLI_assert(path.has_value());
 
     /* create F-Curve for constraint */
     act = animrig::id_action_ensure(bmain, &ob->id);
-    fcu = animrig::action_fcurve_ensure(bmain, act, nullptr, nullptr, path->c_str(), 0);
+    fcu = animrig::action_fcurve_ensure(bmain, act, nullptr, nullptr, {path->c_str(), 0});
 
     /* standard vertical range - 0.0 to 1.0 */
     standardRange = 1.0f;

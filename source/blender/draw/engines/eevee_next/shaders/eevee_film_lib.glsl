@@ -20,7 +20,7 @@ float film_depth_convert_to_scene(float depth)
     /* TODO */
     return 1.0;
   }
-  return abs(drw_depth_screen_to_view(depth));
+  return -drw_depth_screen_to_view(depth);
 }
 
 /* Load a texture sample in a specific format. Combined pass needs to use this. */
@@ -87,7 +87,7 @@ float film_weight_accumulation(ivec2 texel_film)
   /* TODO(fclem): Reference implementation, also needed for panoramic cameras. */
   if (scaling_factor > 1) {
     float weight = 0.0;
-    for (int i = 0; i < uniform_buf.film.samples_len; i++) {
+    for (int i = 0; i < samples_len; i++) {
       weight += film_sample_get(i, texel_film).weight;
     }
     return weight;
@@ -132,7 +132,7 @@ void film_sample_accum_mist(FilmSample samp, inout float accum)
 
 void film_sample_accum_combined(FilmSample samp, inout vec4 accum, inout float weight_accum)
 {
-  if (uniform_buf.film.combined_id == -1) {
+  if (combined_id == -1) {
     return;
   }
   vec4 color = film_texelfetch_as_YCoCg_opacity(combined_tx, samp.texel);
@@ -178,8 +178,13 @@ void film_cryptomatte_layer_accum_and_store(
     FilmSample src = film_sample_get(i, texel_film);
     film_sample_cryptomatte_accum(src, layer_component, cryptomatte_tx, crypto_samples);
   }
+  vec4 display_color = vec4(0.0);
   for (int i = 0; i < 4; i++) {
-    cryptomatte_store_film_sample(dst, pass_id, crypto_samples[i], out_color);
+    cryptomatte_store_film_sample(dst, pass_id, crypto_samples[i], display_color);
+  }
+
+  if (uniform_buf.film.display_storage_type == PASS_STORAGE_CRYPTOMATTE) {
+    out_color = display_color;
   }
 }
 
@@ -436,7 +441,7 @@ float film_history_blend_factor(float velocity,
 void film_store_combined(
     FilmSample dst, ivec2 src_texel, vec4 color, float color_weight, inout vec4 display)
 {
-  if (uniform_buf.film.combined_id == -1) {
+  if (combined_id == -1) {
     return;
   }
 
@@ -499,7 +504,7 @@ void film_store_combined(
     color = vec4(0.0, 0.0, 0.0, 1.0);
   }
 
-  if (uniform_buf.film.display_id == -1) {
+  if (display_id == -1) {
     display = color;
   }
   imageStore(out_combined_img, dst.texel, color);
@@ -520,7 +525,13 @@ void film_store_color(FilmSample dst, int pass_id, vec4 color, inout vec4 displa
     color = vec4(0.0, 0.0, 0.0, 1.0);
   }
 
-  if (uniform_buf.film.display_id == pass_id) {
+  /* Fix alpha not accumulating to 1 because of float imprecision. But here we cannot assume that
+   * the alpha contains actual transparency and not user data. Only bias if very close to 1. */
+  if (color.a > 0.9999 && color.a < 1.0) {
+    color.a = 1.0;
+  }
+
+  if (display_id == pass_id) {
     display = color;
   }
   imageStore(color_accum_img, ivec3(dst.texel, pass_id), color);
@@ -541,7 +552,7 @@ void film_store_value(FilmSample dst, int pass_id, float value, inout vec4 displ
     value = 0.0;
   }
 
-  if (uniform_buf.film.display_id == pass_id) {
+  if (display_id == pass_id) {
     display = vec4(value, value, value, 1.0);
   }
   imageStore(value_accum_img, ivec3(dst.texel, pass_id), vec4(value));
@@ -554,7 +565,7 @@ void film_store_data(ivec2 texel_film, int pass_id, vec4 data_sample, inout vec4
     return;
   }
 
-  if (uniform_buf.film.display_id == pass_id) {
+  if (display_id == pass_id) {
     display = data_sample;
   }
   imageStore(color_accum_img, ivec3(texel_film, pass_id), data_sample);
@@ -581,7 +592,7 @@ void film_store_weight(ivec2 texel, float value)
   imageStore(out_weight_img, ivec3(texel, FILM_WEIGHT_LAYER_ACCUMULATION), vec4(value));
 }
 
-float film_display_depth_ammend(ivec2 texel, float depth)
+float film_display_depth_amend(ivec2 texel, float depth)
 {
   /* This effectively offsets the depth of the whole 2x2 region to the lowest value of the region
    * twice. One for X and one for Y direction. */
@@ -616,7 +627,7 @@ void film_process_data(ivec2 texel_film, out vec4 out_color, out float out_depth
   /* NOTE: We split the accumulations into separate loops to avoid using too much registers and
    * maximize occupancy. */
 
-  if (uniform_buf.film.combined_id != -1) {
+  if (combined_id != -1) {
     /* NOTE: Do weight accumulation again since we use custom weights. */
     float weight_accum = 0.0;
     vec4 combined_accum = vec4(0.0);
@@ -643,10 +654,10 @@ void film_process_data(ivec2 texel_film, out vec4 out_color, out float out_depth
       vector *= vec4(vec2(uniform_buf.film.render_extent), vec2(uniform_buf.film.render_extent));
 
       film_store_depth(texel_film, depth, out_depth);
-      if (uniform_buf.film.normal_id != -1) {
+      if (normal_id != -1) {
         vec4 normal = texelFetch(
             rp_color_tx, ivec3(film_sample.texel, uniform_buf.render_pass.normal_id), 0);
-        film_store_data(texel_film, uniform_buf.film.normal_id, normal, out_color);
+        film_store_data(texel_film, normal_id, normal, out_color);
       }
       if (uniform_buf.film.position_id != -1) {
         vec4 position = texelFetch(
@@ -658,10 +669,8 @@ void film_process_data(ivec2 texel_film, out vec4 out_color, out float out_depth
     }
     else {
       out_depth = imageLoad(depth_img, texel_film).r;
-      if (uniform_buf.film.display_id != -1 &&
-          uniform_buf.film.display_id == uniform_buf.film.normal_id)
-      {
-        out_color = imageLoad(color_accum_img, ivec3(texel_film, uniform_buf.film.display_id));
+      if (display_id != -1 && display_id == normal_id) {
+        out_color = imageLoad(color_accum_img, ivec3(texel_film, display_id));
       }
     }
   }

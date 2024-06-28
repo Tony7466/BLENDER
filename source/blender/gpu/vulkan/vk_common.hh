@@ -38,6 +38,12 @@ enum class eImageViewUsage {
   Attachment,
 };
 
+enum class VKImageViewArrayed {
+  DONT_CARE,
+  NOT_ARRAYED,
+  ARRAYED,
+};
+
 VkImageAspectFlags to_vk_image_aspect_flag_bits(const eGPUTextureFormat format);
 VkImageAspectFlags to_vk_image_aspect_flag_bits(const eGPUFrameBufferBits buffers);
 VkFormat to_vk_format(const eGPUTextureFormat format);
@@ -48,13 +54,16 @@ VkFormat to_vk_format(const GPUVertCompType type,
 VkFormat to_vk_format(const shader::Type type);
 
 VkComponentSwizzle to_vk_component_swizzle(const char swizzle);
-VkImageViewType to_vk_image_view_type(const eGPUTextureType type, eImageViewUsage view_type);
+VkImageViewType to_vk_image_view_type(const eGPUTextureType type,
+                                      eImageViewUsage view_type,
+                                      VKImageViewArrayed arrayed);
 VkImageType to_vk_image_type(const eGPUTextureType type);
 VkClearColorValue to_vk_clear_color_value(const eGPUDataFormat format, const void *data);
 VkIndexType to_vk_index_type(const GPUIndexBufType index_type);
 VkPrimitiveTopology to_vk_primitive_topology(const GPUPrimType prim_type);
 VkCullModeFlags to_vk_cull_mode_flags(const eGPUFaceCullTest cull_test);
 VkSamplerAddressMode to_vk_sampler_address_mode(const GPUSamplerExtendMode extend_mode);
+VkDescriptorType to_vk_descriptor_type(const shader::ShaderCreateInfo::Resource &resource);
 
 template<typename T> VkObjectType to_vk_object_type(T /*vk_obj*/)
 {

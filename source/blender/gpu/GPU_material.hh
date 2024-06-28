@@ -85,13 +85,6 @@ enum eGPUMaterialFlag {
 
   GPU_MATFLAG_BARYCENTRIC = (1 << 20),
 
-  /* Optimization to only add the branches of the principled shader that are necessary. */
-  GPU_MATFLAG_PRINCIPLED_COAT = (1 << 21),
-  GPU_MATFLAG_PRINCIPLED_METALLIC = (1 << 22),
-  GPU_MATFLAG_PRINCIPLED_DIELECTRIC = (1 << 23),
-  GPU_MATFLAG_PRINCIPLED_GLASS = (1 << 24),
-  GPU_MATFLAG_PRINCIPLED_ANY = (1 << 25),
-
   /* Tells the render engine the material was just compiled or updated. */
   GPU_MATFLAG_UPDATED = (1 << 29),
 
@@ -146,6 +139,11 @@ struct GPUCodegenOutput {
 };
 
 using GPUCodegenCallbackFn = void (*)(void *thunk, GPUMaterial *mat, GPUCodegenOutput *codegen);
+/**
+ * Should return an already compiled pass if it's functionally equivalent to the one being
+ * compiled.
+ */
+using GPUMaterialPassReplacementCallbackFn = GPUPass *(*)(void *thunk, GPUMaterial *mat);
 
 GPUNodeLink *GPU_constant(const float *num);
 GPUNodeLink *GPU_uniform(const float *num);
@@ -237,21 +235,47 @@ enum eGPUMaterialEngine {
   GPU_MAT_COMPOSITOR,
 };
 
-GPUMaterial *GPU_material_from_nodetree(Scene *scene,
-                                        Material *ma,
-                                        bNodeTree *ntree,
-                                        ListBase *gpumaterials,
-                                        const char *name,
-                                        eGPUMaterialEngine engine,
-                                        uint64_t shader_uuid,
-                                        bool is_volume_shader,
-                                        bool is_lookdev,
-                                        GPUCodegenCallbackFn callback,
-                                        void *thunk);
+GPUMaterial *GPU_material_from_nodetree(
+    Scene *scene,
+    Material *ma,
+    bNodeTree *ntree,
+    ListBase *gpumaterials,
+    const char *name,
+    eGPUMaterialEngine engine,
+    uint64_t shader_uuid,
+    bool is_volume_shader,
+    bool is_lookdev,
+    GPUCodegenCallbackFn callback,
+    void *thunk,
+    GPUMaterialPassReplacementCallbackFn pass_replacement_cb = nullptr);
 
 void GPU_material_compile(GPUMaterial *mat);
 void GPU_material_free_single(GPUMaterial *material);
 void GPU_material_free(ListBase *gpumaterial);
+
+/**
+ * Request the creation of multiple `GPUMaterial`s at once, allowing the backend to use
+ * multithreaded compilation.
+ * Returns a handle that can be used to poll if all materials have been
+ * compiled, and to retrieve the compiled result.
+ * NOTE: This function is asynchronous on OpenGL, but it's blocking on Vulkan and Metal.
+ * WARNING: The material pointers and their pass->create_info should be valid until
+ * `GPU_material_batch_finalize` has returned.
+ */
+BatchHandle GPU_material_batch_compile(blender::Span<GPUMaterial *> mats);
+/**
+ * Returns true if all the materials from the batch have finished their compilation.
+ */
+bool GPU_material_batch_is_ready(BatchHandle handle);
+/**
+ * Assign the compiled shaders to their respective materials and flag their status.
+ * The materials list should have the same length and order as in the `GPU_material_batch_compile`
+ * call.
+ * If the compilation has not finished yet, this call will block the thread until all the
+ * shaders are ready.
+ * WARNING: The handle will be invalidated by this call, you can't process the same batch twice.
+ */
+void GPU_material_batch_finalize(BatchHandle &handle, blender::Span<GPUMaterial *> mats);
 
 void GPU_material_acquire(GPUMaterial *mat);
 void GPU_material_release(GPUMaterial *mat);

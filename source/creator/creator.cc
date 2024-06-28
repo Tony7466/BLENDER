@@ -37,7 +37,6 @@
 /* Mostly initialization functions. */
 #include "BKE_appdir.hh"
 #include "BKE_blender.hh"
-#include "BKE_blender_cli_command.hh"
 #include "BKE_brush.hh"
 #include "BKE_cachefile.hh"
 #include "BKE_callbacks.hh"
@@ -71,6 +70,8 @@
 #include "WM_api.hh"
 
 #include "RNA_define.hh"
+
+#include "GPU_compilation_subprocess.hh"
 
 #ifdef WITH_FREESTYLE
 #  include "FRS_freestyle.h"
@@ -122,6 +123,7 @@ ApplicationState app_state = []() {
   app_state.signal.use_crash_handler = true;
   app_state.signal.use_abort_handler = true;
   app_state.exit_code_on_error.python = 0;
+  app_state.main_arg_deferred = nullptr;
   return app_state;
 }();
 
@@ -328,6 +330,14 @@ int main(int argc,
 #  endif /* USE_WIN32_UNICODE_ARGS */
 #endif   /* WIN32 */
 
+#if defined(WITH_OPENGL_BACKEND) && BLI_SUBPROCESS_SUPPORT
+  if (STREQ(argv[0], "--compilation-subprocess")) {
+    BLI_assert(argc == 2);
+    GPU_compilation_subprocess_run(argv[1]);
+    return 0;
+  }
+#endif
+
   /* NOTE: Special exception for guarded allocator type switch:
    *       we need to perform switch from lock-free to fully
    *       guarded allocator before any allocation happened.
@@ -349,8 +359,8 @@ int main(int argc,
 
 #ifdef BUILD_DATE
   {
-    time_t temp_time = build_commit_timestamp;
-    tm *tm = gmtime(&temp_time);
+    const time_t temp_time = build_commit_timestamp;
+    const tm *tm = gmtime(&temp_time);
     if (LIKELY(tm)) {
       strftime(build_commit_date, sizeof(build_commit_date), "%Y-%m-%d", tm);
       strftime(build_commit_time, sizeof(build_commit_time), "%H:%M", tm);
@@ -493,7 +503,7 @@ int main(int argc,
   RNA_init();
 
   RE_engines_init();
-  BKE_node_system_init();
+  blender::bke::BKE_node_system_init();
   BKE_particle_init_rng();
   /* End second initialization. */
 
@@ -566,16 +576,9 @@ int main(int argc,
 #ifndef WITH_PYTHON_MODULE
   if (G.background) {
     int exit_code;
-    if (app_state.command.argv) {
-      const char *id = app_state.command.argv[0];
-      if (STREQ(id, "help")) {
-        BKE_blender_cli_command_print_help();
-        exit_code = EXIT_SUCCESS;
-      }
-      else {
-        exit_code = BKE_blender_cli_command_exec(
-            C, id, app_state.command.argc - 1, app_state.command.argv + 1);
-      }
+    if (app_state.main_arg_deferred != nullptr) {
+      exit_code = main_arg_deferred_handle();
+      main_arg_deferred_free();
     }
     else {
       exit_code = G.is_break ? EXIT_FAILURE : EXIT_SUCCESS;
@@ -584,6 +587,9 @@ int main(int argc,
     WM_exit(C, exit_code);
   }
   else {
+    /* Not supported, although it could be made to work if needed. */
+    BLI_assert(app_state.main_arg_deferred == nullptr);
+
     /* Shows the splash as needed. */
     WM_init_splash_on_startup(C);
 

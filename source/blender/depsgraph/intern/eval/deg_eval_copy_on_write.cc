@@ -725,7 +725,6 @@ void update_id_after_copy(const Depsgraph *depsgraph,
       Scene *scene_cow = (Scene *)id_cow;
       const Scene *scene_orig = (const Scene *)id_orig;
       scene_cow->toolsettings = scene_orig->toolsettings;
-      scene_cow->eevee.light_cache_data = scene_orig->eevee.light_cache_data;
       scene_setup_view_layers_after_remap(depsgraph, id_node, reinterpret_cast<Scene *>(id_cow));
       break;
     }
@@ -833,15 +832,22 @@ ID *deg_expand_eval_copy_datablock(const Depsgraph *depsgraph, const IDNode *id_
 #endif
   /* Do it now, so remapping will understand that possibly remapped self ID
    * is not to be remapped again. */
-  deg_tag_eval_copy_id(id_cow, id_orig);
+  deg_tag_eval_copy_id(const_cast<Depsgraph &>(*depsgraph), id_cow, id_orig);
   /* Perform remapping of the nodes. */
   RemapCallbackUserData user_data = {nullptr};
   user_data.depsgraph = depsgraph;
+  /* About IDWALK flags:
+   *  - #IDWALK_IGNORE_EMBEDDED_ID: In depsgraph embedded IDs are handled (mostly) as regular IDs,
+   *    and processed on their own, not as part of their owner ID (the owner ID's pointer to its
+   *    embedded data is set to null before actual copying, in #id_copy_inplace_no_main).
+   *  - #IDWALK_IGNORE_MISSING_OWNER_ID is necessary for the same reason: when directly processing
+   *    an embedded ID here, its owner is unknown, and its internal owner ID pointer is not yet
+   *    remapped, so it is currently 'invalid'. */
   BKE_library_foreach_ID_link(nullptr,
                               id_cow,
                               foreach_libblock_remap_callback,
                               (void *)&user_data,
-                              IDWALK_IGNORE_EMBEDDED_ID);
+                              IDWALK_IGNORE_EMBEDDED_ID | IDWALK_IGNORE_MISSING_OWNER_ID);
   /* Correct or tweak some pointers which are not taken care by foreach
    * from above. */
   update_id_after_copy(depsgraph, id_node, id_orig, id_cow);
@@ -947,7 +953,6 @@ void discard_scene_pointers(ID *id_cow)
 {
   Scene *scene_cow = (Scene *)id_cow;
   scene_cow->toolsettings = nullptr;
-  scene_cow->eevee.light_cache_data = nullptr;
 }
 
 /* nullptr-ify all edit mode pointers which points to data from
@@ -1045,7 +1050,7 @@ bool deg_validate_eval_copy_datablock(ID *id_cow)
   return data.is_valid;
 }
 
-void deg_tag_eval_copy_id(ID *id_cow, const ID *id_orig)
+void deg_tag_eval_copy_id(deg::Depsgraph &depsgraph, ID *id_cow, const ID *id_orig)
 {
   BLI_assert(id_cow != id_orig);
   BLI_assert((id_orig->tag & LIB_TAG_COPIED_ON_EVAL) == 0);
@@ -1053,6 +1058,7 @@ void deg_tag_eval_copy_id(ID *id_cow, const ID *id_orig)
   /* This ID is no longer localized, is a self-sustaining copy now. */
   id_cow->tag &= ~LIB_TAG_LOCALIZED;
   id_cow->orig_id = (ID *)id_orig;
+  id_cow->runtime.depsgraph = &reinterpret_cast<::Depsgraph &>(depsgraph);
 }
 
 bool deg_eval_copy_is_expanded(const ID *id_cow)

@@ -106,7 +106,7 @@ ModifierData *BKE_object_active_modifier(const Object *ob);
  * more than once, this function should preferably be called in stack order.
  */
 bool BKE_object_copy_modifier(
-    Main *bmain, Scene *scene, Object *ob_dst, const Object *ob_src, ModifierData *md);
+    Main *bmain, const Scene *scene, Object *ob_dst, const Object *ob_src, const ModifierData *md);
 /**
  * Copy a single GPencil modifier.
  *
@@ -506,6 +506,13 @@ bool BKE_object_obdata_texspace_get(Object *ob,
 Mesh *BKE_object_get_evaluated_mesh_no_subsurf(const Object *object);
 /** Get evaluated mesh for given object. */
 Mesh *BKE_object_get_evaluated_mesh(const Object *object);
+/**
+ * Same as #BKE_object_get_evaluated_mesh, but does not check
+ * if the object's geometry is fully evaluated already.
+ * This should barely ever be used.
+ */
+Mesh *BKE_object_get_evaluated_mesh_no_subsurf_unchecked(const Object *object);
+Mesh *BKE_object_get_evaluated_mesh_unchecked(const Object *object);
 /**
  * Get mesh which is not affected by modifiers:
  * - For original objects it will be same as `object->data`, and it is a mesh

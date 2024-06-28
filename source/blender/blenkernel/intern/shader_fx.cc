@@ -159,8 +159,8 @@ void BKE_shaderfx_copydata_generic(const ShaderFxData *fx_src, ShaderFxData *fx_
 {
   const ShaderFxTypeInfo *fxi = BKE_shaderfx_get_info(ShaderFxType(fx_src->type));
 
-  /* fx_dst may have already be fully initialized with some extra allocated data,
-   * we need to free it now to avoid memleak. */
+  /* `fx_dst` may have already be fully initialized with some extra allocated data,
+   * we need to free it now to avoid a memory leak. */
   if (fxi->free_data) {
     fxi->free_data(fx_dst);
   }
@@ -274,7 +274,7 @@ void BKE_shaderfx_blend_write(BlendWriter *writer, ListBase *fxbase)
 
 void BKE_shaderfx_blend_read_data(BlendDataReader *reader, ListBase *lb, Object *ob)
 {
-  BLO_read_list(reader, lb);
+  BLO_read_struct_list(reader, ShaderFxData, lb);
 
   LISTBASE_FOREACH (ShaderFxData *, fx, lb) {
     fx->error = nullptr;

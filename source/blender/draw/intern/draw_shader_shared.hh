@@ -153,8 +153,9 @@ enum eObjectInfoFlag : uint32_t {
   OBJECT_FROM_SET = (1u << 2u),
   OBJECT_ACTIVE = (1u << 3u),
   OBJECT_NEGATIVE_SCALE = (1u << 4u),
+  OBJECT_HOLDOUT = (1u << 5u),
   /* Avoid skipped info to change culling. */
-  OBJECT_NO_INFO = ~OBJECT_NEGATIVE_SCALE
+  OBJECT_NO_INFO = ~OBJECT_HOLDOUT
 };
 
 struct ObjectInfos {
@@ -202,6 +203,11 @@ struct ObjectBounds {
 #endif
 };
 BLI_STATIC_ASSERT_ALIGN(ObjectBounds, 16)
+
+inline bool drw_bounds_are_valid(ObjectBounds bounds)
+{
+  return bounds.bounding_sphere.w >= 0.0f;
+}
 
 /** \} */
 

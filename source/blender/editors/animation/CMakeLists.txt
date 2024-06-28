@@ -56,7 +56,7 @@ if(WITH_PYTHON)
 endif()
 
 if(WITH_EXPERIMENTAL_FEATURES)
-  add_definitions(-DWITH_GREASE_PENCIL_V3)
+  add_definitions(-DWITH_ANIM_BAKLAVA)
 endif()
 
 blender_add_lib(bf_editor_animation "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

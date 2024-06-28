@@ -757,7 +757,7 @@ static int ed_marker_add_exec(bContext *C, wmOperator * /*op*/)
   marker = static_cast<TimeMarker *>(MEM_callocN(sizeof(TimeMarker), "TimeMarker"));
   marker->flag = SELECT;
   marker->frame = frame;
-  SNPRINTF(marker->name, "F_%02d", frame); /* XXX: temp code only. */
+  SNPRINTF(marker->name, "F_%02d", frame);
   BLI_addtail(markers, marker);
 
   WM_event_add_notifier(C, NC_SCENE | ND_MARKERS, nullptr);
@@ -1744,7 +1744,8 @@ static int ed_marker_rename_invoke(bContext *C, wmOperator *op, const wmEvent *e
     RNA_string_set(op->ptr, "name", marker->name);
   }
 
-  return WM_operator_props_popup_confirm(C, op, event);
+  return WM_operator_props_popup_confirm_ex(
+      C, op, event, IFACE_("Rename Selected Time Marker"), IFACE_("Rename"));
 }
 
 static void MARKER_OT_rename(wmOperatorType *ot)
@@ -1870,6 +1871,9 @@ static int ed_marker_camera_bind_exec(bContext *C, wmOperator *op)
   marker = ED_markers_find_nearest_marker(markers, scene->r.cfra);
   if ((marker == nullptr) || (marker->frame != scene->r.cfra)) {
     marker = static_cast<TimeMarker *>(MEM_callocN(sizeof(TimeMarker), "Camera TimeMarker"));
+    /* This marker's name is only displayed in the viewport statistics, animation editors use the
+     * camera's name when bound to a marker. */
+    SNPRINTF(marker->name, "F_%02d", scene->r.cfra);
     marker->flag = SELECT;
     marker->frame = scene->r.cfra;
     BLI_addtail(markers, marker);

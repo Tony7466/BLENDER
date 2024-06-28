@@ -84,6 +84,9 @@ typedef struct AssetMetaData {
   char _pad[4];
 
 #ifdef __cplusplus
+  AssetMetaData() = default;
+  AssetMetaData(const AssetMetaData &other);
+  AssetMetaData(AssetMetaData &&other);
   /** Enables use with `std::unique_ptr<AssetMetaData>`. */
   ~AssetMetaData();
 #endif
@@ -174,6 +177,12 @@ typedef struct AssetWeakReference {
   AssetWeakReference &operator=(AssetWeakReference &&);
   ~AssetWeakReference();
 
+  friend bool operator==(const AssetWeakReference &a, const AssetWeakReference &b);
+  friend bool operator!=(const AssetWeakReference &a, const AssetWeakReference &b)
+  {
+    return !(a == b);
+  }
+
   /**
    * See AssetRepresentation::make_weak_reference().
    */
@@ -199,3 +208,8 @@ typedef struct AssetWeakReference {
 typedef struct AssetHandle {
   const struct FileDirEntry *file_data;
 } AssetHandle;
+
+struct AssetCatalogPathLink {
+  struct AssetCatalogPathLink *next, *prev;
+  char *path;
+};
