@@ -105,8 +105,11 @@ static bool eyedropper_init(bContext *C, wmOperator *op)
     }
     eye->is_undo = true;
   }
-  else if (uiBut *but = UI_context_active_but_prop_get(C, &eye->ptr, &eye->prop, &eye->index)) {
-    eye->is_undo = UI_but_flag_is_set(but, UI_BUT_UNDO);
+  else {
+    uiBut *but = UI_context_active_but_prop_get(C, &eye->ptr, &eye->prop, &eye->index);
+    if (but != nullptr) {
+      eye->is_undo = UI_but_flag_is_set(but, UI_BUT_UNDO);
+    }
   }
 
   const enum PropertySubType prop_subtype = eye->prop ? RNA_property_subtype(eye->prop) :
