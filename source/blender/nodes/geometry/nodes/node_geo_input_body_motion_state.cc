@@ -7,10 +7,12 @@
 
 #include "node_geometry_util.hh"
 
-namespace blender::nodes::node_geo_input_rigid_body_motion_cc {
+namespace blender::nodes::node_geo_input_body_motion_state_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
+  b.add_output<decl::Bool>("Static").field_source();
+  b.add_output<decl::Bool>("Kinematic").field_source();
   b.add_output<decl::Vector>("Position").field_source();
   b.add_output<decl::Rotation>("Rotation").field_source();
   b.add_output<decl::Vector>("Velocity").field_source();
@@ -19,6 +21,13 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
+  params.set_output(
+      "Static",
+      AttributeFieldInput::Create<bool>(bke::PhysicsGeometry::builtin_attributes.is_static));
+  params.set_output(
+      "Kinematic",
+      AttributeFieldInput::Create<bool>(bke::PhysicsGeometry::builtin_attributes.is_kinematic));
+
   params.set_output(
       "Position",
       AttributeFieldInput::Create<float3>(bke::PhysicsGeometry::builtin_attributes.position));
@@ -38,11 +47,11 @@ static void node_register()
   static blender::bke::bNodeType ntype;
 
   geo_node_type_base(
-      &ntype, GEO_NODE_INPUT_RIGID_BODY_MOTION, "Rigid Body Motion", NODE_CLASS_INPUT);
+      &ntype, GEO_NODE_INPUT_BODY_MOTION_STATE, "Body Motion State", NODE_CLASS_INPUT);
   ntype.geometry_node_execute = node_geo_exec;
   ntype.declare = node_declare;
   blender::bke::nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 
-}  // namespace blender::nodes::node_geo_input_rigid_body_motion_cc
+}  // namespace blender::nodes::node_geo_input_body_motion_state_cc

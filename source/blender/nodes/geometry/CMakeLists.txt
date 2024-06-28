@@ -93,8 +93,9 @@ set(SRC
   nodes/node_geo_index_of_nearest.cc
   nodes/node_geo_index_switch.cc
   nodes/node_geo_input_active_camera.cc
-  nodes/node_geo_input_body_physics_mode.cc
   nodes/node_geo_input_body_activation_state.cc
+  nodes/node_geo_input_body_mass.cc
+  nodes/node_geo_input_body_motion_state.cc
   nodes/node_geo_input_curve_handles.cc
   nodes/node_geo_input_curve_tilt.cc
   nodes/node_geo_input_edge_smooth.cc
@@ -119,8 +120,6 @@ set(SRC
   nodes/node_geo_input_normal.cc
   nodes/node_geo_input_position.cc
   nodes/node_geo_input_radius.cc
-  nodes/node_geo_input_rigid_body_info.cc
-  nodes/node_geo_input_rigid_body_motion.cc
   nodes/node_geo_input_scene_time.cc
   nodes/node_geo_input_shortest_edge_paths.cc
   nodes/node_geo_input_spline_cyclic.cc
