@@ -61,11 +61,9 @@
 
 /* ********* general editor util functions, not BKE stuff please! ********* */
 
-void ED_editors_init_for_undo(bContext *C)
+void ED_editors_init_for_undo(Main *bmain)
 {
-  Main *bmain = CTX_data_main(C);
   wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first);
-
   LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
     Scene *scene = WM_window_get_active_scene(win);
     ViewLayer *view_layer = WM_window_get_active_view_layer(win);
@@ -84,7 +82,7 @@ void ED_editors_init_for_undo(bContext *C)
           if (sl->spacetype == SPACE_VIEW3D) {
             View3D *v3d = reinterpret_cast<View3D *>(sl);
             if (v3d->localvd) {
-              v3d->localvd->runtime.flag |= V3D_RUNTIME_LOCAL_EMPTY_DIRTY;
+              v3d->localvd->runtime.flag |= V3D_RUNTIME_LOCAL_MAYBE_EMPTY;
             }
           }
         }

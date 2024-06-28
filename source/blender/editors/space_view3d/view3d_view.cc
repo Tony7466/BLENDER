@@ -1032,7 +1032,7 @@ bool ED_localview_exit_if_empty(const Depsgraph *depsgraph,
     return false;
   }
 
-  v3d->localvd->runtime.flag &= ~V3D_RUNTIME_LOCAL_EMPTY_DIRTY;
+  v3d->localvd->runtime.flag &= ~V3D_RUNTIME_LOCAL_MAYBE_EMPTY;
 
   BKE_view_layer_synced_ensure(scene, view_layer);
   LISTBASE_FOREACH (Base *, base, BKE_view_layer_object_bases_get(view_layer)) {

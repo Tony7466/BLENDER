@@ -458,7 +458,7 @@ static void wm_file_read_setup_wm_finalize(bContext *C,
         if (sl->spacetype == SPACE_VIEW3D) {
           View3D *v3d = reinterpret_cast<View3D *>(sl);
           if (v3d->localvd) {
-            v3d->localvd->runtime.flag |= V3D_RUNTIME_LOCAL_EMPTY_DIRTY;
+            v3d->localvd->runtime.flag |= V3D_RUNTIME_LOCAL_MAYBE_EMPTY;
           }
         }
       }

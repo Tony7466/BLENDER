@@ -390,7 +390,7 @@ enum {
   /** Some operators override the depth buffer for dedicated occlusion operations. */
   V3D_RUNTIME_DEPTHBUF_OVERRIDDEN = (1 << 1),
   /** Local view may have become empty, and may need to be exited. */
-  V3D_RUNTIME_LOCAL_EMPTY_DIRTY = (1 << 2),
+  V3D_RUNTIME_LOCAL_MAYBE_EMPTY = (1 << 2),
 };
 
 /** #RegionView3D::persp */
