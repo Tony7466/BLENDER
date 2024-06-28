@@ -455,8 +455,10 @@ PhysicsGeometryImpl &PhysicsGeometry::impl_for_write()
     new_impl->body_num_ = impl_->body_num_;
     new_impl->constraint_num_ = impl_->constraint_num_;
     CustomData_copy(&impl_->body_data_, &new_impl->body_data_, CD_MASK_ALL, impl_->body_num_);
-    CustomData_copy(
-        &impl_->constraint_data_, &new_impl->constraint_data_, CD_MASK_ALL, impl_->constraint_num_);
+    CustomData_copy(&impl_->constraint_data_,
+                    &new_impl->constraint_data_,
+                    CD_MASK_ALL,
+                    impl_->constraint_num_);
 
     new_impl->rigid_bodies.reinitialize(impl_->rigid_bodies.size());
     new_impl->motion_states.reinitialize(impl_->motion_states.size());
@@ -467,6 +469,9 @@ PhysicsGeometryImpl &PhysicsGeometry::impl_for_write()
     new_impl->constraints.fill(nullptr);
     move_physics_impl_data(*impl_, this->attributes(), *new_impl, true, 0, 0);
 
+    if (impl_) {
+      impl_->remove_user_and_delete_if_last();
+    }
     impl_ = new_impl;
   }
 
@@ -1951,7 +1956,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
           {});
 
   constexpr auto constraint_disable_collision_get_fn =
-      [](const btTypedConstraint *constraint) -> bool { return false; };
+      [](const btTypedConstraint * /*constraint*/) -> bool { return false; };
   constexpr auto constraint_disable_collision_get_cache_fn =
       [](const PhysicsGeometryImpl &impl) -> Span<bool> {
     return impl.constraint_disable_collision;
