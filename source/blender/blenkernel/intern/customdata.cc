@@ -2729,7 +2729,7 @@ const void *CustomData_steal_from_shared_data(CustomDataLayer *layer)
     return nullptr;
   }
 
-  return reinterpret_cast<CustomDataLayerImplicitSharing *>(
+  return dynamic_cast<CustomDataLayerImplicitSharing *>(
              const_cast<ImplicitSharingInfo *>(layer->sharing_info))
       ->steal_and_clear_data();
 }
