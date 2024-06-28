@@ -774,17 +774,17 @@ void foreach_element_on_inverse_eval_path(
   }
 }
 
-using DriverValueVariant = std::variant<float, int, bool>;
+using RNAValueVariant = std::variant<float, int, bool>;
 static bool set_rna_property_inverse(bContext &C,
                                      ID &id,
                                      const StringRefNull rna_path,
-                                     const DriverValueVariant &value);
+                                     const RNAValueVariant &value);
 
 [[nodiscard]] static bool try_set_driver_source_value(bContext &C,
                                                       ID &id,
                                                       const StringRefNull rna_path,
                                                       const std::optional<int> index,
-                                                      const DriverValueVariant &value_variant)
+                                                      const RNAValueVariant &value_variant)
 {
   AnimData *adt = BKE_animdata_from_id(&id);
   if (!adt) {
@@ -829,7 +829,7 @@ static bool set_rna_property_inverse(bContext &C,
 static bool set_rna_property_inverse(bContext &C,
                                      ID &id,
                                      const StringRefNull rna_path,
-                                     const DriverValueVariant &value_variant)
+                                     const RNAValueVariant &value_variant)
 {
   if (!ID_IS_EDITABLE(&id)) {
     return false;
