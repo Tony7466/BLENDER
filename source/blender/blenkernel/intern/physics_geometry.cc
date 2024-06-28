@@ -1994,6 +1994,36 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                 .ensure_constraint_disable_collision();
           });
 
+  static CustomDataAccessInfo body_custom_data_access = {
+      [](void *owner) -> CustomData * {
+        PhysicsGeometry *physics = static_cast<PhysicsGeometry *>(owner);
+        return &physics->impl_for_write().body_data_;
+      },
+      [](const void *owner) -> const CustomData * {
+        const PhysicsGeometry *physics = static_cast<const PhysicsGeometry *>(owner);
+        return &physics->impl().body_data_;
+      },
+      [](const void *owner) -> int {
+        const PhysicsGeometry *physics = static_cast<const PhysicsGeometry *>(owner);
+        return physics->impl().body_num_;
+      }};
+  static CustomDataAccessInfo constraint_custom_data_access = {
+      [](void *owner) -> CustomData * {
+        PhysicsGeometry *physics = static_cast<PhysicsGeometry *>(owner);
+        return &physics->impl_for_write().constraint_data_;
+      },
+      [](const void *owner) -> const CustomData * {
+        const PhysicsGeometry *physics = static_cast<const PhysicsGeometry *>(owner);
+        return &physics->impl().constraint_data_;
+      },
+      [](const void *owner) -> int {
+        const PhysicsGeometry *physics = static_cast<const PhysicsGeometry *>(owner);
+        return physics->impl().constraint_num_;
+      }};
+  static CustomDataAttributeProvider body_custom_data(AttrDomain::Point, body_custom_data_access);
+  static CustomDataAttributeProvider constraint_custom_data(AttrDomain::Point,
+                                                            constraint_custom_data_access);
+
   return ComponentAttributeProviders({&body_id,
                                       &body_static,
                                       &body_kinematic,
@@ -2027,7 +2057,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                                       &applied_torque2,
                                       &constraint_breaking_impulse_threshold,
                                       &constraint_disable_collision},
-                                     {});
+                                     {&body_custom_data, &constraint_custom_data});
 }
 
 static GVArray adapt_physics_attribute_domain(const PhysicsGeometry & /*physics*/,
