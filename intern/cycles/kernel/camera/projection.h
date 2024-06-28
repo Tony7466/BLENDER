@@ -8,6 +8,7 @@
 #pragma once
 
 #include "util/math.h"
+#include "util/types.h"
 
 CCL_NAMESPACE_BEGIN
 
