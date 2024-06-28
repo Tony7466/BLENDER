@@ -25,7 +25,7 @@ ccl_device float2 direction_to_spherical(float3 dir)
 ccl_device float3 spherical_to_direction(float theta, float phi)
 {
   float sin_theta = sinf(theta);
-  return make_float3(sin_theta * cosf(phi), sin_theta * sinf(phi), cosf(theta));
+  return make_float3(sin_theta * sinf(phi), sin_theta * cosf(phi), cosf(theta));
 }
 
 /* Equirectangular coordinates <-> Cartesian direction */
