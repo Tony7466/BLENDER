@@ -983,10 +983,9 @@ Set<int> gather_hidden_face_sets(Span<bool> hide_poly, Span<int> face_sets);
  * Initialize a #SculptOrigVertData for accessing original vertex data;
  * handles #BMesh, #Mesh, and multi-resolution.
  */
-void SCULPT_orig_vert_data_init(SculptOrigVertData &data,
-                                const Object &ob,
-                                const PBVHNode &node,
-                                blender::ed::sculpt_paint::undo::Type type);
+SculptOrigVertData SCULPT_orig_vert_data_init(const Object &ob,
+                                              const PBVHNode &node,
+                                              blender::ed::sculpt_paint::undo::Type type);
 /**
  * Update a #SculptOrigVertData for a particular vertex from the PBVH iterator.
  */
@@ -2001,7 +2000,6 @@ float SCULPT_clay_thumb_get_stabilized_pressure(
     const blender::ed::sculpt_paint::StrokeCache &cache);
 
 void SCULPT_do_clay_thumb_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
-void SCULPT_do_clay_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_snake_hook_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_thumb_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_rotate_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
