@@ -161,30 +161,30 @@ TEST(KernelCamera, FisheyeLensPolynomialToDirection)
 
   const std::pair<float2, float3> tests[]{
       /* Center (0°) */
-      {{0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}},
+      {make_float2(0.0f, 0.0f), make_float3(1.0f, 0.0f, 0.0f)},
 
       /* 60° */
-      {{0.0f, +rad60}, {cos60, 0.0f, +sin60}},
-      {{0.0f, -rad60}, {cos60, 0.0f, -sin60}},
-      {{+rad60, 0.0f}, {cos60, -sin60, 0.0f}},
-      {{-rad60, 0.0f}, {cos60, +sin60, 0.0f}},
+      {make_float2(0.0f, +rad60), make_float3(cos60, 0.0f, +sin60)},
+      {make_float2(0.0f, -rad60), make_float3(cos60, 0.0f, -sin60)},
+      {make_float2(+rad60, 0.0f), make_float3(cos60, -sin60, 0.0f)},
+      {make_float2(-rad60, 0.0f), make_float3(cos60, +sin60, 0.0f)},
 
       /* 45° */
-      {{0.0f, +rad45}, {cos45, 0.0f, sin45}},
-      {{0.0f, -rad45}, {cos45, 0.0f, -sin45}},
-      {{+rad45, 0.0f}, {cos45, -sin45, 0.0f}},
-      {{-rad45, 0.0f}, {cos45, sin45, 0.0f}},
+      {make_float2(0.0f, +rad45), make_float3(cos45, 0.0f, +sin45)},
+      {make_float2(0.0f, -rad45), make_float3(cos45, 0.0f, -sin45)},
+      {make_float2(+rad45, 0.0f), make_float3(cos45, -sin45, 0.0f)},
+      {make_float2(-rad45, 0.0f), make_float3(cos45, +sin45, 0.0f)},
 
-      {{+rad45 * M_SQRT1_2F, +rad45 * M_SQRT1_2F}, {cos45, -0.5f, +0.5f}},
-      {{-rad45 * M_SQRT1_2F, +rad45 * M_SQRT1_2F}, {cos45, +0.5f, +0.5f}},
-      {{+rad45 * M_SQRT1_2F, -rad45 * M_SQRT1_2F}, {cos45, -0.5f, -0.5f}},
-      {{-rad45 * M_SQRT1_2F, -rad45 * M_SQRT1_2F}, {cos45, +0.5f, -0.5f}},
+      {make_float2(+rad45 * M_SQRT1_2F, +rad45 * M_SQRT1_2F), make_float3(cos45, -0.5f, +0.5f)},
+      {make_float2(-rad45 * M_SQRT1_2F, +rad45 * M_SQRT1_2F), make_float3(cos45, +0.5f, +0.5f)},
+      {make_float2(+rad45 * M_SQRT1_2F, -rad45 * M_SQRT1_2F), make_float3(cos45, -0.5f, -0.5f)},
+      {make_float2(-rad45 * M_SQRT1_2F, -rad45 * M_SQRT1_2F), make_float3(cos45, +0.5f, -0.5f)},
 
       /* 30° */
-      {{0.0f, +rad30}, {cos30, 0.0f, +sin30}},
-      {{0.0f, -rad30}, {cos30, 0.0f, -sin30}},
-      {{+rad30, 0.0f}, {cos30, -sin30, 0.0f}},
-      {{-rad30, 0.0f}, {cos30, +sin30, 0.0f}},
+      {make_float2(0.0f, +rad30), make_float3(cos30, 0.0f, +sin30)},
+      {make_float2(0.0f, -rad30), make_float3(cos30, 0.0f, -sin30)},
+      {make_float2(+rad30, 0.0f), make_float3(cos30, -sin30, 0.0f)},
+      {make_float2(-rad30, 0.0f), make_float3(cos30, +sin30, 0.0f)},
   };
 
   for (auto [offset, direction] : tests) {
