@@ -434,11 +434,12 @@ bool Action::is_binding_animated(const binding_handle_t binding_handle) const
 
 Layer *Action::get_layer_for_keyframing()
 {
+  assert_baklava_phase_1_invariants(*this);
+
   if (this->layers().is_empty()) {
     return nullptr;
   }
 
-  assert_baklava_phase_1_invariants(*this);
   return this->layer(0);
 }
 

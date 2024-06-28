@@ -704,7 +704,9 @@ FCurve *action_fcurve_find(bAction *act, const char rna_path[], int array_index)
  * when the full system is completely implemented.
  */
 void assert_baklava_phase_1_invariants(const Action &action);
+/** \copydoc assert_baklava_phase_1_invariants(const Action &) */
 void assert_baklava_phase_1_invariants(const Layer &layer);
+/** \copydoc assert_baklava_phase_1_invariants(const Action &) */
 void assert_baklava_phase_1_invariants(const Strip &strip);
 
 }  // namespace blender::animrig

@@ -860,13 +860,14 @@ static SingleKeyingResult insert_key_layer(Layer &layer,
   assert_baklava_phase_1_invariants(layer);
   BLI_assert(layer.strips().size() == 1);
 
-  return layer.strip(0)->as<KeyframeStrip>().keyframe_insert(binding,
-                                                             rna_path,
-                                                             key_data.array_index,
-                                                             prop_subtype,
-                                                             key_data.position,
-                                                             key_settings,
-                                                             insert_key_flags);
+  Strip *strip = layer.strip(0);
+  return strip->as<KeyframeStrip>().keyframe_insert(binding,
+                                                    rna_path,
+                                                    key_data.array_index,
+                                                    prop_subtype,
+                                                    key_data.position,
+                                                    key_settings,
+                                                    insert_key_flags);
 }
 
 static CombinedKeyingResult insert_key_layered_action(Action &action,
