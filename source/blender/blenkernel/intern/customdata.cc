@@ -2570,6 +2570,11 @@ class CustomDataLayerImplicitSharing : public ImplicitSharingInfo {
     data_ = nullptr;
     totelem_ = 0;
   }
+
+  void clear_data() override
+  {
+    data_ = nullptr;
+  }
 };
 
 /** Create a #ImplicitSharingInfo that takes ownership of the data. */

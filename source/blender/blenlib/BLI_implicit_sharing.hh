@@ -177,12 +177,37 @@ class ImplicitSharingInfo : NonCopyable, NonMovable {
     }
   }
 
+  /**
+   * Very specific case. This is very similar to #remove_user_and_delete_if_last, but:
+   *   - The shared data should not be shared (i.e. there should be only one strong user).
+   *   - The actual data is supposed to have been 'stolen' by some other storage system, and is
+   *      therefore _not_ freed or deleted in any way.
+   *
+   * Note that to support this feature, an #ImplicitSharingInfo implementation must provide a
+   * private override of the #clear_data util.
+   */
+  virtual void moved_data_remove_only_user_and_delete()
+  {
+    const int old_user_count = strong_users_.fetch_sub(1, std::memory_order_acq_rel);
+    BLI_assert(old_user_count == 1);
+
+    const_cast<ImplicitSharingInfo *>(this)->clear_data();
+    /* The rest of the process can be handled by regular 'remove user' code. */
+    const_cast<ImplicitSharingInfo *>(this)->remove_user_and_delete_if_last();
+  }
+
  private:
   /** Has to free the #ImplicitSharingInfo and the referenced data. The data might have been freed
    * before by #delete_data_only already. This case should be handled here. */
   virtual void delete_self_with_data() = 0;
   /** Can free the referenced data but the #ImplicitSharingInfo still has to be kept alive. */
   virtual void delete_data_only() {}
+  /** Clear internal data storage, without any freeing or deletion. Only implemented by some types
+   * of #ImplicitSharingInfo, only required by #moved_data_remove_only_user_and_delete . */
+  virtual void clear_data()
+  {
+    BLI_assert_unreachable();
+  }
 };
 
 /**

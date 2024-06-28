@@ -288,13 +288,15 @@ static void um_arraystore_cd_compact(CustomData *cdata,
            * array store at all. */
           BLI_assert(layer->sharing_info->is_mutable());
           /* Intentionally don't call #MEM_delete, because we want to free the sharing info without
-           * the data here. In general this would not be allowed because one can't be sure how to
-           * free the data without the sharing info. */
-          MEM_freeN(const_cast<blender::ImplicitSharingInfo *>(layer->sharing_info));
+           * the data here. In a way, the data has been `std::move`d into the ownership of the
+           * #BArrayCustomData by the call to #BLI_array_store_state_add. In general this would not
+           * be allowed because one can't be sure how to free the data without the sharing info. */
+          const_cast<blender::ImplicitSharingInfo *>(layer->sharing_info)
+              ->moved_data_remove_only_user_and_delete();
+          layer->sharing_info = nullptr;
         }
         MEM_freeN(layer->data);
         layer->data = nullptr;
-        layer->sharing_info = nullptr;
       }
     }
 
