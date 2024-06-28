@@ -104,6 +104,8 @@ class Camera {
   bool overscan_changed_;
   /** Whether or not the camera was synced from a camera object. */
   bool is_camera_object_ = false;
+  void *last_camera_object = nullptr;
+  bool camera_changed_ = false;
 
  public:
   Camera(Instance &inst, CameraData &data) : inst_(inst), data_(data){};
@@ -159,6 +161,10 @@ class Camera {
   bool overscan_changed() const
   {
     return overscan_changed_;
+  }
+  bool camera_changed() const
+  {
+    return camera_changed_;
   }
 
  private:
