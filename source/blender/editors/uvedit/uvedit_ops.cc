@@ -383,30 +383,26 @@ void getBMLoopPointers(
 // This function takes in loopData from 2 UVcoordinates and shifts them to a new location which is
 // determined by the user function
 void ED_uvedit_shift_pair_of_UV_coordinates(
-    blender::Vector<Object *> *objects,
-    loopData *UVcoord1,
-    loopData *UVcoord2,
+    BMUVOffsets offset1,
+    BMUVOffsets offset2,
+    std::vector<BMLoop *> *UVcoord1,
+    std::vector<BMLoop *> *UVcoord2,
     float threshold,
     blender::FunctionRef<void(float[2], float[2], float[2])> user_fn)
 {
-  // Grabs the offset for each respective object that the UV coordinates belong to
-  const BMUVOffsets offset1 = BM_uv_map_get_offsets(
-      BKE_editmesh_from_object((*objects)[UVcoord1->objectindex])->bm);
-  const BMUVOffsets offset2 = BM_uv_map_get_offsets(
-      BKE_editmesh_from_object((*objects)[UVcoord2->objectindex])->bm);
-  float *luv1 = BM_ELEM_CD_GET_FLOAT_P(UVcoord1->loops[0], offset1.uv);
-  float *luv2 = BM_ELEM_CD_GET_FLOAT_P(UVcoord2->loops[0], offset2.uv);
+  float *luv1 = BM_ELEM_CD_GET_FLOAT_P((*UVcoord1)[0], offset1.uv);
+  float *luv2 = BM_ELEM_CD_GET_FLOAT_P((*UVcoord2)[0], offset2.uv);
   float newloc[2];
   user_fn(newloc, luv1, luv2);
   float dist = dist_v2v2(luv1, luv2);
 
   if (dist <= threshold) {
-    for (BMLoop *loop : UVcoord1->loops) {
+    for (BMLoop *loop : *UVcoord1) {
       float *currluv = BM_ELEM_CD_GET_FLOAT_P(loop, offset1.uv);
       currluv[0] = newloc[0];
       currluv[1] = newloc[1];
     }
-    for (BMLoop *loop : UVcoord2->loops) {
+    for (BMLoop *loop : *UVcoord2) {
       float *currluv = BM_ELEM_CD_GET_FLOAT_P(loop, offset2.uv);
       currluv[0] = newloc[0];
       currluv[1] = newloc[1];

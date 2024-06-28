@@ -8,9 +8,9 @@
 
 #pragma once
 #include "BKE_customdata.hh"
-#include <unordered_map>
 #include <set>
 #include <tuple>
+#include <unordered_map>
 
 struct ARegion;
 struct ARegionType;
@@ -295,41 +295,46 @@ struct FaceIsland {
 
 /* `uvedit_smart_stitch.cc` */
 struct loopData {
-    std::vector<BMLoop*> loops;
-    std::pair<float, float> connec1 = std::make_pair(-1.0f, -1.0f);
-    std::pair<float, float> connec2 = std::make_pair(-1.0f, -1.0f);
-    int objectindex;
-    int islandindex;
+  std::vector<BMLoop *> loops;
+  std::pair<float, float> connec1 = std::make_pair(-1.0f, -1.0f);
+  std::pair<float, float> connec2 = std::make_pair(-1.0f, -1.0f);
+  int objectindex;
+  int islandindex;
 };
 struct pair_hash {
-    template <class T1, class T2>
-    std::size_t operator () (const std::pair<T1,T2> &p) const {
-        auto h1 = std::hash<T1>{}(p.first);
-        auto h2 = std::hash<T2>{}(p.second); 
+  template<class T1, class T2> std::size_t operator()(const std::pair<T1, T2> &p) const
+  {
+    auto h1 = std::hash<T1>{}(p.first);
+    auto h2 = std::hash<T2>{}(p.second);
 
-        // Mainly for demonstration purposes, i.e. works but is overly simple
-        // In the real world, use sth. like boost.hash_combine
-        return h1 ^ h2;  
-    }
+    // Mainly for demonstration purposes, i.e. works but is overly simple
+    // In the real world, use sth. like boost.hash_combine
+    return h1 ^ h2;
+  }
 };
 struct pair_equal {
-    template <class T1, class T2>
-    bool operator () (const std::pair<T1,T2> &lhs, const std::pair<T1,T2> &rhs) const {
-        return lhs.first == rhs.first && lhs.second == rhs.second;
-    }
+  template<class T1, class T2>
+  bool operator()(const std::pair<T1, T2> &lhs, const std::pair<T1, T2> &rhs) const
+  {
+    return lhs.first == rhs.first && lhs.second == rhs.second;
+  }
 };
-void getBMLoopPointers(Scene* scene, 
-                       BMesh* bm,
-                       int objectIndex,
-                       float aspect_y,
-                       std::unordered_map<std::pair<float, float>, loopData, pair_hash, pair_equal>* loopMapPtr);
-bool  construct_pairs_of_selected_UVCoordinates(std::unordered_map<std::pair<float, float>, loopData, pair_hash, pair_equal>* loopMapPtr, std::vector<std::pair<loopData*,loopData*>>* linesegmentsdata);
-void ED_uvedit_shift_pair_of_UV_coordinates(blender::Vector<Object *> *objects,
-                  loopData* UVcoord1,
-                  loopData* UVcoord2,
-                  float threshold,
-                  blender::FunctionRef<void(float[2], float[2], float[2])>user_fn);
-
+void getBMLoopPointers(
+    Scene *scene,
+    BMesh *bm,
+    int objectIndex,
+    float aspect_y,
+    std::unordered_map<std::pair<float, float>, loopData, pair_hash, pair_equal> *loopMapPtr);
+bool construct_pairs_of_selected_UVCoordinates(
+    std::unordered_map<std::pair<float, float>, loopData, pair_hash, pair_equal> *loopMapPtr,
+    std::vector<std::pair<loopData *, loopData *>> *linesegmentsdata);
+void ED_uvedit_shift_pair_of_UV_coordinates(
+    BMUVOffsets offset1,
+    BMUVOffsets offset2,
+    std::vector<BMLoop *> *UVcoord1,
+    std::vector<BMLoop *> *UVcoord2,
+    float threshold,
+    blender::FunctionRef<void(float[2], float[2], float[2])> user_fn);
 
 /**
  * Calculate islands and add them to \a island_list returning the number of items added.

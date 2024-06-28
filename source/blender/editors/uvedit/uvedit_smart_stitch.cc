@@ -6,6 +6,7 @@
  * \ingroup eduv
  */
 
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
@@ -2793,11 +2794,93 @@ static bool uvedit_uv_threshold_weld(Scene *scene,
                                      blender::Vector<Object *> *objects,
                                      float threshold)
 {
-  std::vector<std::vector<std::vector<BMLoop *>>> *edgeloops;
+  std::vector<std::vector<std::vector<BMLoop *>>> edgeloops;
+  std::vector<BMUVOffsets> offsetmap;  // Initialize the edgeloops vector
   for (Object *objedit : *objects) {
-
     BMEditMesh *em = BKE_editmesh_from_object(objedit);
-    UV_get_edgeloops(scene, em->bm, edgeloops, uvedit_uv_select_test);
+    UV_get_edgeloops(scene, em->bm, &edgeloops, uvedit_uv_select_test);
+    BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
+    // Pass the address of edgeloops
+    while (offsetmap.size() < edgeloops.size()) {
+      offsetmap.push_back(offsets);
+    }
+  }
+  std::vector<std::vector<std::vector<BMLoop *>>> endpoints;
+  for (const auto &curredgeloop : edgeloops) {
+    std::vector<std::vector<BMLoop *>> curredgeloopendpoints;
+    for (const auto &UVcoordinate : curredgeloop) {
+      if (UVcoordinate[0]->head.index == 1) {
+        curredgeloopendpoints.push_back(UVcoordinate);
+      }
+      if (curredgeloopendpoints.size() == 2) {
+        break;
+      }
+    }  // Swap the arguments in std::min function
+    endpoints.push_back(curredgeloopendpoints);
+  }
+
+  size_t min_size = edgeloops[0].size();
+
+  for (const auto &array : edgeloops) {
+    min_size = std::min(min_size, array.size());
+  }
+
+  if (min_size > 1) {
+    for (size_t i = 0; i < endpoints.size() - 1; i++) {
+      const auto &curredgeloopendpoints = endpoints[i];
+      const auto &nextedgeloopendpoints = endpoints[i + 1];
+      float len_1 =
+          dist_v2v2(BM_ELEM_CD_GET_FLOAT_P(curredgeloopendpoints[0][0], offsetmap[i].uv),
+                    BM_ELEM_CD_GET_FLOAT_P(nextedgeloopendpoints[0][0], offsetmap[i + 1].uv)) +
+          dist_v2v2(BM_ELEM_CD_GET_FLOAT_P(curredgeloopendpoints[1][0], offsetmap[i].uv),
+                    BM_ELEM_CD_GET_FLOAT_P(nextedgeloopendpoints[1][0], offsetmap[i + 1].uv));
+      float len_2 =
+          dist_v2v2(BM_ELEM_CD_GET_FLOAT_P(curredgeloopendpoints[0][0], offsetmap[i].uv),
+                    BM_ELEM_CD_GET_FLOAT_P(nextedgeloopendpoints[1][0], offsetmap[i + 1].uv)) +
+          dist_v2v2(BM_ELEM_CD_GET_FLOAT_P(curredgeloopendpoints[1][0], offsetmap[i].uv),
+                    BM_ELEM_CD_GET_FLOAT_P(nextedgeloopendpoints[0][0], offsetmap[i + 1].uv));
+      if (len_1 > len_2) {
+        std::swap(endpoints[i + 1][0], endpoints[i + 1][1]);
+      }
+    }
+  }
+
+  std::vector<BMLoop *> line1 = endpoints[0][0];
+  std::vector<BMLoop *> line2 = endpoints[1][0];
+  std::vector<BMLoop *> prev1;
+  std::vector<BMLoop *> prev2;
+  while (line1 != prev1 and line2 != prev2) {
+
+    ED_uvedit_shift_pair_of_UV_coordinates(
+        offsetmap[0], offsetmap[1], &line1, &line2, threshold, mid_v2_v2v2);
+    std::set<int> nextv1_set;
+    std::set<int> nextv2_set;
+    for (BMLoop *loop : line1) {
+      nextv1_set.insert(loop->next->v->head.index);
+      nextv1_set.insert(loop->prev->v->head.index);
+    }
+    for (BMLoop *loop : line2) {
+      nextv2_set.insert(loop->next->v->head.index);
+      nextv2_set.insert(loop->prev->v->head.index);
+    }
+
+    std::vector<BMLoop *> tmp1 = line1;
+    std::vector<BMLoop *> tmp2 = line2;
+
+    for (std::vector<BMLoop *> UVcoord : edgeloops[0]) {
+      if (nextv1_set.find(UVcoord[0]->v->head.index) != nextv1_set.end() and UVcoord != prev1) {
+        line1 = UVcoord;
+        break;
+      }
+    }
+    for (std::vector<BMLoop *> UVcoord : edgeloops[1]) {
+      if (nextv2_set.find(UVcoord[0]->v->head.index) != nextv2_set.end() and UVcoord != prev2) {
+        line2 = UVcoord;
+        break;
+      }
+    }
+    prev1 = tmp1;
+    prev2 = tmp2;
   }
   return true;
 }
