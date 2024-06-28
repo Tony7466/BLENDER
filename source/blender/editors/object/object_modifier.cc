@@ -2487,6 +2487,10 @@ static int multires_subdivide_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
+  /* ensure that grid paint mask layer is created */
+  BKE_sculpt_mask_layers_ensure(
+      CTX_data_ensure_evaluated_depsgraph(C), CTX_data_main(C), object, mmd);
+
   const eMultiresSubdivideModeType subdivide_mode = (eMultiresSubdivideModeType)RNA_enum_get(
       op->ptr, "mode");
   multiresModifier_subdivide(object, mmd, subdivide_mode);
@@ -2495,12 +2499,6 @@ static int multires_subdivide_exec(bContext *C, wmOperator *op)
 
   DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, object);
-
-  if (object->mode & OB_MODE_SCULPT) {
-    /* ensure that grid paint mask layer is created */
-    BKE_sculpt_mask_layers_ensure(
-        CTX_data_ensure_evaluated_depsgraph(C), CTX_data_main(C), object, mmd);
-  }
 
   return OPERATOR_FINISHED;
 }
