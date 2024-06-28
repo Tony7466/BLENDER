@@ -45,8 +45,6 @@ class MetalDevice : public Device {
       nil; /* encoder used for fetching device pointers from MTLAccelerationStructure */
   /*---------------------------------------------------*/
 
-  MetalGPUVendor device_vendor;
-
   uint kernel_features;
   bool using_nanovdb = false;
   MTLResourceOptions default_storage_mode;
@@ -106,7 +104,7 @@ class MetalDevice : public Device {
 
   void set_error(const string &error) override;
 
-  MetalDevice(const DeviceInfo &info, Stats &stats, Profiler &profiler);
+  MetalDevice(const DeviceInfo &info, Stats &stats, Profiler &profiler, bool headless);
 
   virtual ~MetalDevice();
 
@@ -139,6 +137,8 @@ class MetalDevice : public Device {
   virtual unique_ptr<DeviceQueue> gpu_queue_create() override;
 
   virtual void build_bvh(BVH *bvh, Progress &progress, bool refit) override;
+
+  virtual void release_bvh(BVH *bvh) override;
 
   virtual void optimize_for_scene(Scene *scene) override;
 

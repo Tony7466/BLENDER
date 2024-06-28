@@ -5,9 +5,9 @@
 /** \file
  * \ingroup depsgraph
  *
- * Datatypes for internal use in the Depsgraph
+ * Data-types for internal use in the Depsgraph
  *
- * All of these datatypes are only really used within the "core" depsgraph.
+ * All of these data-types are only really used within the "core" depsgraph.
  * In particular, node types declared here form the structure of operations
  * in the graph.
  */
@@ -75,7 +75,7 @@ struct Depsgraph {
 
   /* Copy-on-Write Functionality ........ */
 
-  /* For given original ID get ID which is created by CoW system. */
+  /* For given original ID get ID which is created by copy-on-evaluation system. */
   ID *get_cow_id(const ID *id_orig) const;
 
   /* Core Graph Functionality ........... */

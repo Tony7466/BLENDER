@@ -37,7 +37,6 @@ struct bContext;
 struct uiBlock;
 struct uiButViewItem;
 struct uiLayout;
-struct uiViewItemHandle;
 struct ViewLink;
 struct wmDrag;
 struct wmNotifier;
@@ -53,7 +52,7 @@ class AbstractView {
 
   bool is_reconstructed_ = false;
   /**
-   * Only one item can be renamed at a time. So rather than giving each item an own rename buffer
+   * Only one item can be renamed at a time. So rather than giving each item its own rename buffer
    * (which just adds unused memory in most cases), have one here that is managed by the view.
    *
    * This fixed-size buffer is needed because that's what the rename button requires. In future we
@@ -64,9 +63,10 @@ class AbstractView {
   /* See #get_bounds(). */
   std::optional<rcti> bounds_;
 
+  std::string context_menu_title;
+
  public:
   virtual ~AbstractView() = default;
-
   /**
    * If a view wants to support dropping data into it, it has to return a drop target here.
    * That is an object implementing #DropTargetInterface.
@@ -108,6 +108,9 @@ class AbstractView {
    * Updated as part of #UI_block_end(), before that it's unset.
    */
   std::optional<rcti> get_bounds() const;
+
+  std::string get_context_menu_title() const;
+  void set_context_menu_title(const std::string &title);
 
  protected:
   AbstractView() = default;
@@ -209,6 +212,13 @@ class AbstractViewItem {
    */
   virtual std::unique_ptr<DropTargetInterface> create_item_drop_target();
 
+  /**
+   * View types should implement this to return some name or identifier of the item, which is
+   * helpful for debugging (there's nothing to identify the item just from the #AbstractViewItem
+   * otherwise).
+   */
+  virtual std::optional<std::string> debug_name() const;
+
   /** Return the result of #is_filtered_visible(), but ensure the result is cached so it's only
    * queried once per redraw. */
   bool is_filtered_visible_cached() const;
@@ -250,9 +260,6 @@ class AbstractViewItem {
   void begin_renaming();
   void end_renaming();
   void rename_apply(const bContext &C);
-
-  template<typename ToType = AbstractViewItem>
-  static ToType *from_item_handle(uiViewItemHandle *handle);
 
  protected:
   AbstractViewItem() = default;
@@ -302,14 +309,6 @@ class AbstractViewItem {
    */
   void add_rename_button(uiBlock &block);
 };
-
-template<typename ToType> ToType *AbstractViewItem::from_item_handle(uiViewItemHandle *handle)
-{
-  static_assert(std::is_base_of<AbstractViewItem, ToType>::value,
-                "Type must derive from and implement the AbstractViewItem interface");
-
-  return dynamic_cast<ToType *>(reinterpret_cast<AbstractViewItem *>(handle));
-}
 
 /* ---------------------------------------------------------------------- */
 /** \name Drag 'n Drop

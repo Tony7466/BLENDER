@@ -139,7 +139,7 @@ struct Main {
   /** The currently opened .blend file was written from a newer version of Blender, and has forward
    * compatibility issues (data loss).
    *
-   * \note: In practice currently this is only based on the version numbers, in the future it
+   * \note In practice currently this is only based on the version numbers, in the future it
    * could try to use more refined detection on load. */
   bool has_forward_compatibility_issues;
 
@@ -182,6 +182,20 @@ struct Main {
    * various data management process must have this property set to false..
    */
   bool is_global_main;
+
+  /**
+   * True if the Action Binding-to-ID mapping is dirty.
+   *
+   * If this flag is set, the next call to `animrig::Binding::users(bmain)` and related functions
+   * will trigger a rebuild of the Binding-to-ID mapping. Since constructing this mapping requires
+   * a full scan of the animatable IDs in this `Main` anyway, it is kept as a flag here.
+   *
+   * \note This flag should not be set directly. Use animrig::Binding::users_invalidate() instead.
+   * That way the handling of this flag is limited to the code in animrig::Binding.
+   *
+   * \see blender::animrig::Binding::users_invalidate(Main &bmain)
+   */
+  bool is_action_binding_to_id_map_dirty;
 
   BlendThumbnail *blen_thumb;
 
@@ -257,7 +271,7 @@ struct Main {
  * \note Always generate a non-global Main, use #BKE_blender_globals_main_replace to put a newly
  * created one in `G_MAIN`.
  */
-Main *BKE_main_new(void);
+Main *BKE_main_new();
 void BKE_main_free(Main *mainvar);
 
 /** Struct packaging log/report info about a Main merge result. */
@@ -499,6 +513,10 @@ int set_listbasepointers(Main *main, ListBase *lb[]);
 #define MAIN_VERSION_FILE_OLDER_OR_EQUAL(main, ver, subver) \
   ((main)->versionfile < (ver) || \
    ((main)->versionfile == (ver) && (main)->subversionfile <= (subver)))
+
+#define LIBRARY_VERSION_FILE_ATLEAST(lib, ver, subver) \
+  ((lib)->runtime.versionfile > (ver) || \
+   ((lib)->runtime.versionfile == (ver) && (lib)->runtime.subversionfile >= (subver)))
 
 /**
  * The size of thumbnails (optionally) stored in the `.blend` files header.

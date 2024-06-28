@@ -65,9 +65,7 @@ Fence *MTLBackend::fence_alloc()
 
 FrameBuffer *MTLBackend::framebuffer_alloc(const char *name)
 {
-  MTLContext *mtl_context = static_cast<MTLContext *>(
-      reinterpret_cast<Context *>(GPU_context_active_get()));
-  return new MTLFrameBuffer(mtl_context, name);
+  return new MTLFrameBuffer(MTLContext::get(), name);
 };
 
 IndexBuf *MTLBackend::indexbuf_alloc()
@@ -75,7 +73,7 @@ IndexBuf *MTLBackend::indexbuf_alloc()
   return new MTLIndexBuf();
 };
 
-PixelBuffer *MTLBackend::pixelbuf_alloc(uint size)
+PixelBuffer *MTLBackend::pixelbuf_alloc(size_t size)
 {
   return new MTLPixelBuffer(size);
 };
@@ -87,8 +85,7 @@ QueryPool *MTLBackend::querypool_alloc()
 
 Shader *MTLBackend::shader_alloc(const char *name)
 {
-  MTLContext *mtl_context = MTLContext::get();
-  return new MTLShader(mtl_context, name);
+  return new MTLShader(MTLContext::get(), name);
 };
 
 Texture *MTLBackend::texture_alloc(const char *name)
@@ -96,12 +93,12 @@ Texture *MTLBackend::texture_alloc(const char *name)
   return new gpu::MTLTexture(name);
 }
 
-UniformBuf *MTLBackend::uniformbuf_alloc(int size, const char *name)
+UniformBuf *MTLBackend::uniformbuf_alloc(size_t size, const char *name)
 {
   return new MTLUniformBuf(size, name);
 };
 
-StorageBuf *MTLBackend::storagebuf_alloc(int size, GPUUsageType usage, const char *name)
+StorageBuf *MTLBackend::storagebuf_alloc(size_t size, GPUUsageType usage, const char *name)
 {
   return new MTLStorageBuf(size, usage, name);
 }
@@ -210,6 +207,7 @@ void MTLBackend::platform_init(MTLContext *ctx)
   else if (strstr(vendor, "Intel")) {
     device = GPU_DEVICE_INTEL;
     driver = GPU_DRIVER_OFFICIAL;
+    support_level = GPU_SUPPORT_LEVEL_LIMITED;
   }
   else if (strstr(vendor, "Apple") || strstr(vendor, "APPLE")) {
     /* Apple Silicon. */
@@ -306,66 +304,50 @@ bool MTLBackend::metal_is_supported()
     return false;
   }
 
-  if (@available(macOS 10.15, *)) {
-    id<MTLDevice> device = MTLCreateSystemDefaultDevice();
+  id<MTLDevice> device = MTLCreateSystemDefaultDevice();
 
-    /* Debug: Enable low power GPU with Environment Var: METAL_FORCE_INTEL. */
-    static const char *forceIntelStr = getenv("METAL_FORCE_INTEL");
-    bool forceIntel = forceIntelStr ? (atoi(forceIntelStr) != 0) : false;
+  /* Debug: Enable low power GPU with Environment Var: METAL_FORCE_INTEL. */
+  static const char *forceIntelStr = getenv("METAL_FORCE_INTEL");
+  bool forceIntel = forceIntelStr ? (atoi(forceIntelStr) != 0) : false;
 
-    if (forceIntel) {
-      NSArray<id<MTLDevice>> *allDevices = MTLCopyAllDevices();
-      for (id<MTLDevice> _device in allDevices) {
-        if (_device.lowPower) {
-          device = _device;
-        }
+  if (forceIntel) {
+    NSArray<id<MTLDevice>> *allDevices = MTLCopyAllDevices();
+    for (id<MTLDevice> _device in allDevices) {
+      if (_device.lowPower) {
+        device = _device;
       }
     }
-
-    /* If Intel, we must be on macOS 11.2+ for full Metal backend support. */
-    NSString *gpu_name = [device name];
-    const char *vendor = [gpu_name UTF8String];
-    if ((strstr(vendor, "Intel") || strstr(vendor, "INTEL"))) {
-      if (@available(macOS 11.2, *)) {
-        /* Intel device supported -- Carry on.
-         * NOTE: @available syntax cannot be negated. */
-      }
-      else {
-        return false;
-      }
-    }
-
-    /* Metal Viewport requires argument buffer tier-2 support and Barycentric Coordinates.
-     * These are available on most hardware configurations supporting Metal 2.2. */
-    bool supports_argument_buffers_tier2 = ([device argumentBuffersSupport] ==
-                                            MTLArgumentBuffersTier2);
-    bool supports_barycentrics = [device supportsShaderBarycentricCoordinates] ||
-                                 supports_barycentric_whitelist(device);
-    bool supported_metal_version = [device supportsFamily:MTLGPUFamilyMac2];
-
-    bool result = supports_argument_buffers_tier2 && supports_barycentrics &&
-                  supported_os_version && supported_metal_version;
-
-    if (G.debug & G_DEBUG_GPU) {
-      if (!supports_argument_buffers_tier2) {
-        printf("[Metal] Device does not support argument buffers tier 2\n");
-      }
-      if (!supports_barycentrics) {
-        printf("[Metal] Device does not support barycentrics coordinates\n");
-      }
-      if (!supported_metal_version) {
-        printf("[Metal] Device does not support metal 2.2 or higher\n");
-      }
-
-      if (result) {
-        printf("Device with name %s supports metal minimum requirements\n",
-               [[device name] UTF8String]);
-      }
-    }
-
-    return result;
   }
-  return false;
+
+  /* Metal Viewport requires argument buffer tier-2 support and Barycentric Coordinates.
+   * These are available on most hardware configurations supporting Metal 2.2. */
+  bool supports_argument_buffers_tier2 = ([device argumentBuffersSupport] ==
+                                          MTLArgumentBuffersTier2);
+  bool supports_barycentrics = [device supportsShaderBarycentricCoordinates] ||
+                               supports_barycentric_whitelist(device);
+  bool supported_metal_version = [device supportsFamily:MTLGPUFamilyMac2];
+
+  bool result = supports_argument_buffers_tier2 && supports_barycentrics && supported_os_version &&
+                supported_metal_version;
+
+  if (G.debug & G_DEBUG_GPU) {
+    if (!supports_argument_buffers_tier2) {
+      printf("[Metal] Device does not support argument buffers tier 2\n");
+    }
+    if (!supports_barycentrics) {
+      printf("[Metal] Device does not support barycentrics coordinates\n");
+    }
+    if (!supported_metal_version) {
+      printf("[Metal] Device does not support metal 2.2 or higher\n");
+    }
+
+    if (result) {
+      printf("Device with name %s supports metal minimum requirements\n",
+             [[device name] UTF8String]);
+    }
+  }
+
+  return result;
 }
 
 void MTLBackend::capabilities_init(MTLContext *ctx)
@@ -429,6 +411,8 @@ void MTLBackend::capabilities_init(MTLContext *ctx)
   GCaps.max_textures_geom = 0; /* N/A geometry shaders not supported. */
   GCaps.max_textures_frag = GCaps.max_textures;
 
+  GCaps.max_images = GCaps.max_textures;
+
   /* Conservative uniform data limit is 4KB per-stage -- This is the limit of setBytes.
    * MTLBuffer path is also supported but not as efficient. */
   GCaps.max_uniforms_vert = 1024;
@@ -441,7 +425,6 @@ void MTLBackend::capabilities_init(MTLContext *ctx)
 
   /* Feature support */
   GCaps.mem_stats_support = false;
-  GCaps.compute_shader_support = true;
   GCaps.shader_draw_parameters_support = true;
   GCaps.hdr_viewport_support = true;
 
@@ -452,21 +435,18 @@ void MTLBackend::capabilities_init(MTLContext *ctx)
   GCaps.max_shader_storage_buffer_bindings = 14;
   GCaps.max_storage_buffer_size = size_t(ctx->device.maxBufferLength);
 
-  if (GCaps.compute_shader_support) {
-    GCaps.max_work_group_count[0] = 65535;
-    GCaps.max_work_group_count[1] = 65535;
-    GCaps.max_work_group_count[2] = 65535;
-
-    /* In Metal, total_thread_count is 512 or 1024, such that
-     * threadgroup `width*height*depth <= total_thread_count` */
-    uint max_threads_per_threadgroup_per_dim = ([device supportsFamily:MTLGPUFamilyApple4] ||
-                                                MTLBackend::capabilities.supports_family_mac1) ?
-                                                   1024 :
-                                                   512;
-    GCaps.max_work_group_size[0] = max_threads_per_threadgroup_per_dim;
-    GCaps.max_work_group_size[1] = max_threads_per_threadgroup_per_dim;
-    GCaps.max_work_group_size[2] = max_threads_per_threadgroup_per_dim;
-  }
+  GCaps.max_work_group_count[0] = 65535;
+  GCaps.max_work_group_count[1] = 65535;
+  GCaps.max_work_group_count[2] = 65535;
+  /* In Metal, total_thread_count is 512 or 1024, such that
+   * threadgroup `width*height*depth <= total_thread_count` */
+  uint max_threads_per_threadgroup_per_dim = ([device supportsFamily:MTLGPUFamilyApple4] ||
+                                              MTLBackend::capabilities.supports_family_mac1) ?
+                                                 1024 :
+                                                 512;
+  GCaps.max_work_group_size[0] = max_threads_per_threadgroup_per_dim;
+  GCaps.max_work_group_size[1] = max_threads_per_threadgroup_per_dim;
+  GCaps.max_work_group_size[2] = max_threads_per_threadgroup_per_dim;
 
   GCaps.transform_feedback_support = true;
   GCaps.stencil_export_support = true;

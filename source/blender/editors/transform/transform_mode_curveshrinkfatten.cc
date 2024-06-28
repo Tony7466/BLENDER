@@ -12,7 +12,6 @@
 #include "BLI_math_vector.h"
 #include "BLI_string.h"
 
-#include "BKE_context.hh"
 #include "BKE_unit.hh"
 
 #include "ED_screen.hh"
@@ -45,7 +44,7 @@ static void applyCurveShrinkFatten(TransInfo *t)
 
   t->values_final[0] = ratio;
 
-  /* header print for NumInput */
+  /* Header print for NumInput. */
   if (hasNumInput(&t->num)) {
     char c[NUM_STR_REP_LEN];
 

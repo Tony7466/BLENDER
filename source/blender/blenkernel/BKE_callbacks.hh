@@ -69,7 +69,7 @@ struct PointerRNA;
  * All callbacks here must be exposed via the Python module `bpy.app.handlers`,
  * see `bpy_app_handlers.cc`.
  */
-typedef enum {
+enum eCbEvent {
   BKE_CB_EVT_FRAME_CHANGE_PRE,
   BKE_CB_EVT_FRAME_CHANGE_POST,
   BKE_CB_EVT_RENDER_PRE,
@@ -109,9 +109,9 @@ typedef enum {
   BKE_CB_EVT_EXTENSION_REPOS_UPDATE_PRE,
   BKE_CB_EVT_EXTENSION_REPOS_UPDATE_POST,
   BKE_CB_EVT_EXTENSION_REPOS_SYNC,
-  BKE_CB_EVT_EXTENSION_REPOS_UPGRADE,
+  BKE_CB_EVT_EXTENSION_REPOS_FILES_CLEAR,
   BKE_CB_EVT_TOT,
-} eCbEvent;
+};
 
 struct bCallbackFuncStore {
   bCallbackFuncStore *next, *prev;
@@ -128,8 +128,8 @@ void BKE_callback_exec_string(Main *bmain, eCbEvent evt, const char *str);
 void BKE_callback_add(bCallbackFuncStore *funcstore, eCbEvent evt);
 void BKE_callback_remove(bCallbackFuncStore *funcstore, eCbEvent evt);
 
-void BKE_callback_global_init(void);
+void BKE_callback_global_init();
 /**
  * Call on application exit.
  */
-void BKE_callback_global_finalize(void);
+void BKE_callback_global_finalize();

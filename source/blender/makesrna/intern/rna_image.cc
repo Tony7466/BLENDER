@@ -18,6 +18,7 @@
 #include "BKE_image_format.h"
 #include "BKE_node_tree_update.hh"
 
+#include "BLT_translation.hh"
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
 
@@ -60,7 +61,7 @@ static const EnumPropertyItem image_source_items[] = {
 
 #  include "BKE_global.hh"
 
-#  include "GPU_texture.h"
+#  include "GPU_texture.hh"
 
 #  include "IMB_imbuf.hh"
 #  include "IMB_imbuf_types.hh"
@@ -95,7 +96,7 @@ static void rna_Image_source_set(PointerRNA *ptr, int value)
     }
 
     DEG_id_tag_update(&ima->id, 0);
-    DEG_id_tag_update(&ima->id, ID_RECALC_EDITORS);
+    DEG_id_tag_update(&ima->id, ID_RECALC_EDITORS | ID_RECALC_SOURCE);
     DEG_relations_tag_update(G_MAIN);
   }
 }
@@ -106,7 +107,7 @@ static void rna_Image_reload_update(Main *bmain, Scene * /*scene*/, PointerRNA *
   BKE_image_signal(bmain, ima, nullptr, IMA_SIGNAL_RELOAD);
   WM_main_add_notifier(NC_IMAGE | NA_EDITED, &ima->id);
   DEG_id_tag_update(&ima->id, 0);
-  DEG_id_tag_update(&ima->id, ID_RECALC_EDITORS);
+  DEG_id_tag_update(&ima->id, ID_RECALC_EDITORS | ID_RECALC_SOURCE);
 }
 
 static int rna_Image_generated_type_get(PointerRNA *ptr)
@@ -191,6 +192,7 @@ static void rna_Image_generated_update(Main *bmain, Scene * /*scene*/, PointerRN
   Image *ima = (Image *)ptr->owner_id;
   BKE_image_signal(bmain, ima, nullptr, IMA_SIGNAL_FREE);
   BKE_image_partial_update_mark_full_update(ima);
+  DEG_id_tag_update(&ima->id, ID_RECALC_EDITORS | ID_RECALC_SOURCE);
 }
 
 static void rna_Image_colormanage_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
@@ -230,6 +232,7 @@ static void rna_Image_views_format_update(Main *bmain, Scene *scene, PointerRNA 
 
   BKE_image_release_ibuf(ima, ibuf, lock);
   BKE_image_partial_update_mark_full_update(ima);
+  DEG_id_tag_update(&ima->id, ID_RECALC_EDITORS | ID_RECALC_SOURCE);
 }
 
 static void rna_ImageUser_update(Main *bmain, Scene *scene, PointerRNA *ptr)
@@ -274,6 +277,8 @@ static std::optional<std::string> rna_ImageUser_path(const PointerRNA *ptr)
         return rna_Node_ImageUser_path(ptr);
       case ID_CA:
         return rna_CameraBackgroundImage_image_or_movieclip_user_path(ptr);
+      case ID_SCR:
+        return " ... image_user";
       default:
         break;
     }
@@ -1150,6 +1155,7 @@ static void rna_def_image(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "source", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, image_source_items);
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_IMAGE);
   RNA_def_property_enum_funcs(prop, nullptr, "rna_Image_source_set", "rna_Image_source_itemf");
   RNA_def_property_ui_text(prop, "Source", "Where the image comes from");
   RNA_def_property_update(prop, NC_IMAGE | ND_DISPLAY, nullptr);
