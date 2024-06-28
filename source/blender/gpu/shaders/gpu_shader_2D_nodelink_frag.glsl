@@ -45,7 +45,7 @@ void main()
   }
   else {
     vec4 main_link = finalColor;
-    main_link.a *= get_line_alpha(2.0 / 3.0, 1.0 / 3.0);
+    main_link.a *= get_line_alpha(0.75, 0.3);
     vec4 secondary_link = vec4(vec3(0.8), 1.0);
     secondary_link.a *= get_line_alpha(0.2, 0.25);
     fragColor.rgb = main_link.rgb * main_link.a + secondary_link.rgb * secondary_link.a;
