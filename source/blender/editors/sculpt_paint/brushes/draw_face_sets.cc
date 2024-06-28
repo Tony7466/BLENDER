@@ -35,13 +35,19 @@ struct LocalData {
   Vector<float> distances;
 };
 
-static void generate_face_data(const Mesh &mesh,
-                               const Span<float3> positions_eval,
-                               const PBVHNode &node,
-                               const Span<int> face_indices,
-                               const MutableSpan<float3> positions,
-                               const MutableSpan<float3> normals,
-                               const MutableSpan<float> masks)
+BLI_NOINLINE static void scale_factors(const MutableSpan<float> factors, const float strength)
+{
+  for (float factor : factors) {
+    factor *= strength;
+  }
+}
+
+BLI_NOINLINE static void generate_face_data(const Mesh &mesh,
+                                            const Span<float3> positions_eval,
+                                            const Span<int> face_indices,
+                                            const MutableSpan<float3> positions,
+                                            const MutableSpan<float3> normals,
+                                            const MutableSpan<float> masks)
 {
   BLI_assert(face_indices.size() == positions.size());
   BLI_assert(face_indices.size() == normals.size());
@@ -56,7 +62,7 @@ static void generate_face_data(const Mesh &mesh,
   }
 
   for (const int i : face_indices.index_range()) {
-    normals[i] = bke::mesh::face_normal_calc(positions,
+    normals[i] = bke::mesh::face_normal_calc(positions_eval,
                                              corner_verts.slice(faces[face_indices[i]]));
   }
 
@@ -78,10 +84,10 @@ static void generate_face_data(const Mesh &mesh,
   }
 }
 
-static void fill_factor_from_hide_and_mask(const Mesh &mesh,
-                                           const Span<int> face_indices,
-                                           const Span<float> masks,
-                                           const MutableSpan<float> r_factors)
+BLI_NOINLINE static void fill_factor_from_hide_and_mask(const Mesh &mesh,
+                                                        const Span<int> face_indices,
+                                                        const Span<float> masks,
+                                                        const MutableSpan<float> r_factors)
 {
   BLI_assert(face_indices.size() == r_factors.size());
   BLI_assert(masks.size() == r_factors.size());
@@ -117,7 +123,6 @@ static bool calc_faces(Object &object,
   const Span<int> face_indices = tls.face_indices;
   const Span<float3> normals = tls.normals;
 
-  const Span<float> masks = tls.masks;
   tls.factors.reinitialize(face_indices.size());
   const MutableSpan<float> factors = tls.factors;
 
@@ -145,6 +150,7 @@ static bool calc_faces(Object &object,
   }
 
   calc_brush_texture_factors(ss, brush, positions, factors);
+  scale_factors(factors, strength);
 
   bool any_changed = false;
   for (const int i : face_indices.index_range()) {
@@ -183,7 +189,7 @@ static void do_draw_face_sets_brush_mesh(Object &object,
       tls.masks.reinitialize(face_indices.size());
 
       generate_face_data(
-          mesh, positions_eval, *nodes[i], face_indices, tls.positions, tls.normals, tls.masks);
+          mesh, positions_eval, face_indices, tls.positions, tls.normals, tls.masks);
 
       bool any_changed = calc_faces(
           object, brush, ss.cache->bstrength, ss.cache->paint_face_set, *nodes[i], tls, face_sets);
@@ -194,76 +200,6 @@ static void do_draw_face_sets_brush_mesh(Object &object,
     }
   });
 
-  attribute.finish();
-}
-
-static void do_draw_face_sets_brush_faces(Object &ob,
-                                          const Brush &brush,
-                                          const Span<PBVHNode *> nodes)
-{
-  SculptSession &ss = *ob.sculpt;
-  const Span<float3> positions = SCULPT_mesh_deformed_positions_get(ss);
-
-  Mesh &mesh = *static_cast<Mesh *>(ob.data);
-  const OffsetIndices<int> faces = mesh.faces();
-  const Span<int> corner_verts = mesh.corner_verts();
-  const bke::AttributeAccessor attributes = mesh.attributes();
-  const VArraySpan<bool> hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
-
-  bke::SpanAttributeWriter<int> attribute = face_set::ensure_face_sets_mesh(ob);
-  MutableSpan<int> face_sets = attribute.span;
-
-  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-    const float bstrength = ss.cache->bstrength;
-    const int thread_id = BLI_task_parallel_thread_id(nullptr);
-    for (PBVHNode *node : nodes.slice(range)) {
-      SculptBrushTest test;
-      SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-          ss, test, brush.falloff_shape);
-
-      auto_mask::NodeData automask_data = auto_mask::node_begin(
-          ob, ss.cache->automasking.get(), *node);
-
-      bool changed = false;
-
-      PBVHVertexIter vd;
-      BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
-        auto_mask::node_update(automask_data, vd);
-
-        for (const int face_i : ss.vert_to_face_map[vd.index]) {
-          const IndexRange face = faces[face_i];
-          const float3 center = bke::mesh::face_center_calc(positions, corner_verts.slice(face));
-
-          if (!sculpt_brush_test_sq_fn(test, center)) {
-            continue;
-          }
-          if (!hide_poly.is_empty() && hide_poly[face_i]) {
-            continue;
-          }
-          const float fade = bstrength * SCULPT_brush_strength_factor(ss,
-                                                                      brush,
-                                                                      vd.co,
-                                                                      sqrtf(test.dist),
-                                                                      vd.no,
-                                                                      vd.fno,
-                                                                      vd.mask,
-                                                                      vd.vertex,
-                                                                      thread_id,
-                                                                      &automask_data);
-
-          if (fade > FACE_SET_BRUSH_MIN_FADE) {
-            face_sets[face_i] = ss.cache->paint_face_set;
-            changed = true;
-          }
-        }
-      }
-      BKE_pbvh_vertex_iter_end;
-
-      if (changed) {
-        undo::push_node(ob, node, undo::Type::FaceSet);
-      }
-    }
-  });
   attribute.finish();
 }
 
