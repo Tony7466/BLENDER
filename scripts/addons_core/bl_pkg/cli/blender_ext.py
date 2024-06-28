@@ -89,10 +89,6 @@ RE_MANIFEST_SEMVER = re.compile(
     r'(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$'
 )
 
-RE_MANIFEST_COPYRIGHT = re.compile(
-    r"([\d]+)\s[a-zA-Z\s].*$" r"([\d]+-[\d]+)\s[a-zA-Z\s].*$"
-)
-
 # Ensure names (for example), don't contain control characters.
 RE_CONTROL_CHARS = re.compile(r'[\x00-\x1f\x7f-\x9f]')
 
@@ -1306,8 +1302,15 @@ def pkg_manifest_validate_field_copyright(
 ) -> Optional[str]:
     if not value:
         return "list may not be empty"
+        
+    if strict:
+        year, name = value.partition(" ")
+        if not all(x.isdigit() for x in year.partition("-")[0::2]):
+            return "invalid year" 
+        if not name.strip():
+            return "name may not be empty"
     
-    return all(RE_MANIFEST_COPYRIGHT.match(i) for i in value) and pkg_manifest_validate_field_any_list_of_non_empty_strings(value, strict)
+    return pkg_manifest_validate_field_any_list_of_non_empty_strings(value, strict)
 
 
 def pkg_manifest_validate_field_any_version(
