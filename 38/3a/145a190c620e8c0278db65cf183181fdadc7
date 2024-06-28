@@ -9,3 +9,4 @@ Referenced by issue #115526, Black mesh after using array modifier (On smoothed 
 Referenced by pull request #115612, Fix #115526: missing normals on first chunk of array modifier
 Referenced by commit 6023a6a4237d681a05ffaba628969ad60d67ae9c, Fix #115526: missing normals on first chunk of array modifier
 Referenced by issue #117332, Strange behavior of imported dae object
+Referenced by pull request #123893, Fix #123882: Ocean Modifier not updating normals in "Displace" mode
