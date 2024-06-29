@@ -123,35 +123,9 @@ std::optional<bke::PhysicsGeometry *> physics_copy_selection(
 
   bke::PhysicsGeometry *dst_physics = new bke::PhysicsGeometry(body_mask.size(),
                                                                constraint_mask.size());
-  //BKE_physics_copy_parameters_for_eval(dst_physics, &src_physics);
-  bke::MutableAttributeAccessor dst_attributes = dst_physics->attributes_for_write();
-  Array<int> dst_types(dst_physics->constraints_num());
-  Array<int> dst_body1(dst_physics->constraints_num());
-  Array<int> dst_body2(dst_physics->constraints_num());
 
-  remap_bodies(src_physics.bodies_num(),
-               body_mask,
-               constraint_mask,
-               src_types,
-               src_body1,
-               src_body2,
-               dst_types,
-               dst_body1,
-               dst_body2);
-
-  dst_physics->create_constraints(dst_physics->constraints_range(),
-                                  VArray<int>::ForSpan(dst_types),
-                                  VArray<int>::ForSpan(dst_body1),
-                                  VArray<int>::ForSpan(dst_body2));
-
-  bke::gather_attributes(
-      src_attributes, bke::AttrDomain::Point, propagation_info, {}, body_mask, dst_attributes);
-  bke::gather_attributes(src_attributes,
-                         bke::AttrDomain::Edge,
-                         propagation_info,
-                         {},
-                         constraint_mask,
-                         dst_attributes);
+  dst_physics->move_or_copy_selection(
+      src_physics, true, body_mask, constraint_mask, 0, 0, propagation_info);
 
   return dst_physics;
 }

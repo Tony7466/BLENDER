@@ -108,11 +108,13 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
   void copy_to_customdata(const AttributeAccessor attributes);
 };
 
-void move_physics_impl_data(const PhysicsGeometryImpl &from,
+bool move_physics_impl_data(const PhysicsGeometryImpl &from,
                             const AttributeAccessor from_attributes,
                             PhysicsGeometryImpl &to,
                             bool use_world,
-                            int rigid_bodies_offset,
+                            const IndexMask &body_mask,
+                            const IndexMask &constraint_mask,
+                            int bodies_offset,
                             int constraints_offset);
 
 struct CollisionShapeImpl {

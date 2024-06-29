@@ -71,6 +71,10 @@ class PhysicsGeometry {
 
  public:
   static const struct BuiltinAttributes {
+    Set<std::string> all;
+    /* Attributes that should not be copied when there is a physics world. */
+    Set<std::string> skip_copy;
+
     /* Body attributes. */
     std::string id;
     std::string is_static;
@@ -130,6 +134,15 @@ class PhysicsGeometry {
   IndexRange shapes_range() const;
 
   void resize(int bodies_num, int constraints_num);
+
+  void move_or_copy_selection(
+      const PhysicsGeometry &from,
+      bool use_world,
+      const IndexMask &body_mask,
+      const IndexMask &constraint_mask,
+      int rigid_bodies_offset,
+      int constraints_offset,
+      const bke::AnonymousAttributePropagationInfo &propagation_info);
 
   void set_overlap_filter(OverlapFilterFn fn);
   void clear_overlap_filter();
@@ -225,12 +238,6 @@ class PhysicsGeometry {
 
   friend class BuiltinPhysicsAttributeBase;
 };
-
-void move_physics_data(const PhysicsGeometry &from,
-                       PhysicsGeometry &to,
-                       bool use_world,
-                       int rigid_bodies_offset,
-                       int constraints_offset);
 
 // class FlagToBoolFieldInput : public bke::AttributeFieldInput {
 //  public:

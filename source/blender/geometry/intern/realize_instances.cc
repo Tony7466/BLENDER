@@ -2022,11 +2022,13 @@ static void execute_realize_physics_task(const RealizeInstancesOptions &options,
     dst_physics.add_shape(physics.shapes()[i]);
   }
 
-  bke::move_physics_data(physics,
-                         dst_physics,
-                         task.use_world,
-                         task.start_indices.body,
-                         task.start_indices.constraint);
+  dst_physics.move_or_copy_selection(physics,
+                                     task.use_world,
+                                     physics.bodies_range(),
+                                     physics.constraints_range(),
+                                     task.start_indices.body,
+                                     task.start_indices.constraint,
+                                     {});
 
   UNUSED_VARS(options, all_physics_info, dst_physics);
 }

@@ -343,41 +343,49 @@ void PhysicsGeometryImpl::copy_to_customdata(const AttributeAccessor attributes)
 
 const PhysicsGeometry::BuiltinAttributes PhysicsGeometry::builtin_attributes = []() {
   PhysicsGeometry::BuiltinAttributes attributes;
-  attributes.id = "id";
-  attributes.is_static = "static";
-  attributes.is_kinematic = "kinematic";
-  attributes.mass = "mass";
-  attributes.inertia = "inertia";
-  attributes.center_of_mass = "center_of_mass";
-  attributes.position = "position";
-  attributes.rotation = "rotation";
-  attributes.velocity = "velocity";
-  attributes.angular_velocity = "angular_velocity";
-  attributes.activation_state = "activation_state";
-  attributes.friction = "friction";
-  attributes.rolling_friction = "rolling_friction";
-  attributes.spinning_friction = "spinning_friction";
-  attributes.restitution = "restitution";
-  attributes.linear_damping = "linear_damping";
-  attributes.angular_damping = "angular_damping";
-  attributes.linear_sleeping_threshold = "linear_sleeping_threshold";
-  attributes.angular_sleeping_threshold = "angular_sleeping_threshold";
-  attributes.constraint_type = "type";
-  attributes.constraint_body1 = "constraint_body1";
-  attributes.constraint_body2 = "constraint_body2";
-  attributes.constraint_enabled = "enabled";
-  attributes.constraint_frame1 = "constraint_frame1";
-  attributes.constraint_frame2 = "constraint_frame2";
-  attributes.constraint_enabled = "constraint_enabled";
-  attributes.applied_impulse = "applied_impulse";
-  attributes.applied_force1 = "applied_force1";
-  attributes.applied_force2 = "applied_force2";
-  attributes.applied_torque1 = "applied_torque1";
-  attributes.applied_torque2 = "applied_torque2";
-  attributes.breaking_impulse_threshold = "breaking_impulse_threshold";
-  attributes.disable_collision = "disable_collision";
-  attributes.total_force = "total_force";
-  attributes.total_torque = "total_torque";
+
+  auto register_attribute = [&](const StringRef name, const bool skip_copy = true) {
+    if (skip_copy) {
+      attributes.skip_copy.add(name);
+    }
+    return attributes.all.lookup_key_or_add(name);
+  };
+
+  attributes.id = register_attribute("id");
+  attributes.is_static = register_attribute("static");
+  attributes.is_kinematic = register_attribute("kinematic");
+  attributes.mass = register_attribute("mass");
+  attributes.inertia = register_attribute("inertia");
+  attributes.center_of_mass = register_attribute("center_of_mass");
+  attributes.position = register_attribute("position");
+  attributes.rotation = register_attribute("rotation");
+  attributes.velocity = register_attribute("velocity");
+  attributes.angular_velocity = register_attribute("angular_velocity");
+  attributes.activation_state = register_attribute("activation_state");
+  attributes.friction = register_attribute("friction");
+  attributes.rolling_friction = register_attribute("rolling_friction");
+  attributes.spinning_friction = register_attribute("spinning_friction");
+  attributes.restitution = register_attribute("restitution");
+  attributes.linear_damping = register_attribute("linear_damping");
+  attributes.angular_damping = register_attribute("angular_damping");
+  attributes.linear_sleeping_threshold = register_attribute("linear_sleeping_threshold");
+  attributes.angular_sleeping_threshold = register_attribute("angular_sleeping_threshold");
+  attributes.constraint_type = register_attribute("type");
+  attributes.constraint_body1 = register_attribute("constraint_body1");
+  attributes.constraint_body2 = register_attribute("constraint_body2");
+  attributes.constraint_enabled = register_attribute("enabled");
+  attributes.constraint_frame1 = register_attribute("constraint_frame1");
+  attributes.constraint_frame2 = register_attribute("constraint_frame2");
+  attributes.constraint_enabled = register_attribute("constraint_enabled");
+  attributes.applied_impulse = register_attribute("applied_impulse");
+  attributes.applied_force1 = register_attribute("applied_force1");
+  attributes.applied_force2 = register_attribute("applied_force2");
+  attributes.applied_torque1 = register_attribute("applied_torque1");
+  attributes.applied_torque2 = register_attribute("applied_torque2");
+  attributes.breaking_impulse_threshold = register_attribute("breaking_impulse_threshold");
+  attributes.disable_collision = register_attribute("disable_collision");
+  attributes.total_force = register_attribute("total_force");
+  attributes.total_torque = register_attribute("total_torque");
 
   return attributes;
 }();
@@ -465,7 +473,14 @@ PhysicsGeometryImpl &PhysicsGeometry::impl_for_write()
     new_impl->constraint_feedback.fill(
         {btVector3(0, 0, 0), btVector3(0, 0, 0), btVector3(0, 0, 0), btVector3(0, 0, 0)});
     new_impl->constraints.fill(nullptr);
-    move_physics_impl_data(*impl_, this->attributes(), *new_impl, true, 0, 0);
+    move_physics_impl_data(*impl_,
+                           this->attributes(),
+                           *new_impl,
+                           true,
+                           this->bodies_range(),
+                           this->constraints_range(),
+                           0,
+                           0);
   }
   else {
     new_impl->is_empty.store(true);
@@ -477,22 +492,12 @@ PhysicsGeometryImpl &PhysicsGeometry::impl_for_write()
   return *const_cast<PhysicsGeometryImpl *>(impl_);
 }
 
-void move_physics_data(const PhysicsGeometry &from,
-                       PhysicsGeometry &to,
-                       const bool use_world,
-                       int bodies_offset,
-                       int constraints_offset)
-{
-  PhysicsGeometryImpl &to_impl = to.impl_for_write();
-  const PhysicsGeometryImpl &from_impl = from.impl();
-  move_physics_impl_data(
-      from_impl, from.attributes(), to_impl, use_world, bodies_offset, constraints_offset);
-}
-
-void move_physics_impl_data(const PhysicsGeometryImpl &from,
+bool move_physics_impl_data(const PhysicsGeometryImpl &from,
                             const AttributeAccessor from_attributes,
                             PhysicsGeometryImpl &to,
                             const bool use_world,
+                            const IndexMask &body_mask,
+                            const IndexMask &constraint_mask,
                             const int bodies_offset,
                             const int constraints_offset)
 {
@@ -500,12 +505,12 @@ void move_physics_impl_data(const PhysicsGeometryImpl &from,
 
   /* Early check before locking. */
   if (from.is_empty) {
-    return;
+    return false;
   }
   std::unique_lock lock(from.data_mutex);
   if (from.is_empty) {
     /* This may have changed before locking the mutex. */
-    return;
+    return false;
   }
   PhysicsGeometryImpl &from_mutable = const_cast<PhysicsGeometryImpl &>(from);
 
@@ -521,18 +526,46 @@ void move_physics_impl_data(const PhysicsGeometryImpl &from,
   }
   btDynamicsWorld *to_world = to.world;
 
-  const IndexRange body_range = IndexRange(bodies_offset, from.rigid_bodies.size());
-  const IndexRange constraint_range = IndexRange(constraints_offset, from.constraints.size());
+  const IndexRange body_range = IndexRange(bodies_offset, body_mask.size());
+  const IndexRange constraint_range = IndexRange(constraints_offset, constraint_mask.size());
   /* Make sure target has enough space. */
   BLI_assert(body_range.intersect(to.rigid_bodies.index_range()) == body_range);
   BLI_assert(constraint_range.intersect(to.constraints.index_range()) == constraint_range);
 
-  for (const int i_body : body_range.index_range()) {
-    to.rigid_bodies[body_range[i_body]] = from_mutable.rigid_bodies[i_body];
-    to.motion_states[body_range[i_body]] = from_mutable.motion_states[i_body];
+  /* No need to update topology caches on full copy. */
+  if (body_range == from_mutable.rigid_bodies.index_range()) {
+    to.rigid_bodies = from_mutable.rigid_bodies;
+    to.motion_states = from_mutable.motion_states;
+    from_mutable.rigid_bodies.reinitialize(0);
+    from_mutable.motion_states.reinitialize(0);
   }
-  for (const int i_constraint : constraint_range.index_range()) {
-    to.constraints[constraint_range[i_constraint]] = from_mutable.constraints[i_constraint];
+  else {
+    body_mask.foreach_index([&](const int src_i, const int dst_i) {
+      to.rigid_bodies[dst_i] = from_mutable.rigid_bodies[src_i];
+      to.motion_states[dst_i] = from_mutable.motion_states[src_i];
+      from_mutable.rigid_bodies[src_i] = nullptr;
+      from_mutable.motion_states[src_i] = nullptr;
+    });
+    for (const int src_i : from_mutable.rigid_bodies.index_range()) {
+      delete from_mutable.rigid_bodies[src_i];
+      delete from_mutable.motion_states[src_i];
+    }
+    from_mutable.rigid_bodies.reinitialize(0);
+    from_mutable.motion_states.reinitialize(0);
+    to.tag_body_topology_changed();
+  }
+  if (constraint_range == from_mutable.constraints.index_range()) {
+    to.constraints = from_mutable.constraints;
+    from_mutable.constraints.reinitialize(0);
+  }
+  else {
+    constraint_mask.foreach_index([&](const int src_i, const int dst_i) {
+      to.constraints[dst_i] = from_mutable.constraints[src_i];
+    });
+    for (const int src_i : from_mutable.constraints.index_range()) {
+      delete from_mutable.constraints[src_i];
+    }
+    from_mutable.constraints.reinitialize(0);
   }
 
   /* Move all bodies and constraints to the new world. */
@@ -552,6 +585,8 @@ void move_physics_impl_data(const PhysicsGeometryImpl &from,
   from_mutable.constraints.reinitialize(0);
   from_mutable.constraint_feedback.reinitialize(0);
   from_mutable.is_empty.store(true);
+
+  return true;
 }
 
 bool PhysicsGeometry::has_world() const
@@ -746,6 +781,90 @@ void PhysicsGeometry::resize(int bodies_num, int constraints_num)
   }
 
   this->tag_topology_changed();
+}
+
+static void remap_bodies(const int src_bodies_num,
+                         const IndexMask &bodies_mask,
+                         const IndexMask &constraints_mask,
+                         const Span<int> src_constraint_types,
+                         const Span<int> src_constraint_body1,
+                         const Span<int> src_constraint_body2,
+                         MutableSpan<int> dst_constraint_types,
+                         MutableSpan<int> dst_constraint_body1,
+                         MutableSpan<int> dst_constraint_body2)
+{
+  Array<int> map(src_bodies_num);
+  index_mask::build_reverse_map<int>(bodies_mask, map);
+  threading::parallel_invoke(bodies_mask.size() > 1024, [&]() {
+    constraints_mask.foreach_index(GrainSize(512), [&](const int64_t src_i, const int64_t dst_i) {
+      dst_constraint_types[dst_i] = map[src_constraint_types[src_i]];
+      dst_constraint_body1[dst_i] = map[src_constraint_body1[src_i]];
+      dst_constraint_body2[dst_i] = map[src_constraint_body2[src_i]];
+    });
+  });
+}
+
+void PhysicsGeometry::move_or_copy_selection(
+    const PhysicsGeometry &from,
+    const bool use_world,
+    const IndexMask &body_mask,
+    const IndexMask &constraint_mask,
+    int bodies_offset,
+    int constraints_offset,
+    const bke::AnonymousAttributePropagationInfo &propagation_info)
+{
+  const bool has_physics_data = move_physics_impl_data(from.impl(),
+                                                       this->attributes(),
+                                                       this->impl_for_write(),
+                                                       use_world,
+                                                       body_mask,
+                                                       constraint_mask,
+                                                       bodies_offset,
+                                                       constraints_offset);
+
+  const Set<std::string> skip_attributes = has_physics_data ? builtin_attributes.skip_copy :
+                                                              Set<std::string>{};
+
+  /* Physics data is empty, copy attributes instead. */
+
+  const VArraySpan<int> src_types = from.constraint_types();
+  const VArraySpan<int> src_body1 = from.constraint_body1();
+  const VArraySpan<int> src_body2 = from.constraint_body2();
+  const bke::AttributeAccessor src_attributes = from.attributes();
+
+  //BKE_physics_copy_parameters_for_eval(dst_physics, &src_physics);
+  bke::MutableAttributeAccessor dst_attributes = this->attributes_for_write();
+  Array<int> dst_types(this->constraints_num());
+  Array<int> dst_body1(this->constraints_num());
+  Array<int> dst_body2(this->constraints_num());
+
+  remap_bodies(from.bodies_num(),
+               body_mask,
+               constraint_mask,
+               src_types,
+               src_body1,
+               src_body2,
+               dst_types,
+               dst_body1,
+               dst_body2);
+
+  this->create_constraints(this->constraints_range(),
+                           VArray<int>::ForSpan(dst_types),
+                           VArray<int>::ForSpan(dst_body1),
+                           VArray<int>::ForSpan(dst_body2));
+
+  bke::gather_attributes(src_attributes,
+                         bke::AttrDomain::Point,
+                         propagation_info,
+                         skip_attributes,
+                         body_mask,
+                         dst_attributes);
+  bke::gather_attributes(src_attributes,
+                         bke::AttrDomain::Edge,
+                         propagation_info,
+                         skip_attributes,
+                         constraint_mask,
+                         dst_attributes);
 }
 
 void PhysicsGeometry::tag_collision_shapes_changed() {}
