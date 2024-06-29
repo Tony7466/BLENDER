@@ -16,7 +16,8 @@ from bpy.props import (
 )
 from bpy.app.translations import (
     contexts as i18n_contexts,
-    pgettext_rpt as rpt_
+    pgettext_tip as n_,
+    pgettext_rpt as rpt_,
 )
 
 from math import pi
@@ -263,13 +264,14 @@ def enum_openimagedenoise_denoiser(self, context):
     import _cycles
     if _cycles.with_openimagedenoise:
         return [('OPENIMAGEDENOISE', "OpenImageDenoise",
-                 "Use Intel OpenImageDenoise AI denoiser", 4)]
+                 n_("Use Intel OpenImageDenoise AI denoiser"), 4)]
     return []
 
 
 def enum_optix_denoiser(self, context):
     if not context or bool(context.preferences.addons[__package__].preferences.get_devices_for_type('OPTIX')):
-        return [('OPTIX', "OptiX", "Use the OptiX AI denoiser with GPU acceleration, only available on NVIDIA GPUs when configured in the system tab in the user preferences", 2)]
+        return [('OPTIX', "OptiX", n_(
+            "Use the OptiX AI denoiser with GPU acceleration, only available on NVIDIA GPUs when configured in the system tab in the user preferences"), 2)]
     return []
 
 
@@ -281,11 +283,11 @@ def enum_preview_denoiser(self, context):
         items = [
             ('AUTO',
              "Automatic",
-             ("Use GPU accelerated denoising if supported, for the best performance. "
-              "Prefer OpenImageDenoise over OptiX"),
+             n_("Use GPU accelerated denoising if supported, for the best performance. "
+                "Prefer OpenImageDenoise over OptiX"),
              0)]
     else:
-        items = [('AUTO', "None", "Blender was compiled without a viewport denoiser", 0)]
+        items = [('AUTO', "None", n_("Blender was compiled without a viewport denoiser"), 0)]
 
     items += optix_items
     items += oidn_items
@@ -1438,7 +1440,7 @@ class CyclesRenderLayerSettings(bpy.types.PropertyGroup):
 
     pass_debug_sample_count: BoolProperty(
         name="Debug Sample Count",
-        description="Number of samples/camera rays per pixel",
+        description="Number of samples per pixel taken, divided by the maximum number of samples. To analyze adaptive sampling",
         default=False,
         update=update_render_passes,
     )
@@ -1767,12 +1769,9 @@ class CyclesPreferences(bpy.types.AddonPreferences):
                     col.label(text=rpt_("    %s or newer") % driver_version, icon='BLANK1', translate=False)
                     col.label(text=rpt_("  - oneAPI Level-Zero Loader"), icon='BLANK1', translate=False)
             elif device_type == 'METAL':
-                silicon_mac_version = "12.2"
-                amd_mac_version = "12.3"
-                col.label(text=rpt_("Requires Apple Silicon with macOS %s or newer") % silicon_mac_version,
+                mac_version = "12.2"
+                col.label(text=rpt_("Requires Apple Silicon with macOS %s or newer") % mac_version,
                           icon='BLANK1', translate=False)
-                col.label(text=rpt_("or AMD with macOS %s or newer") % amd_mac_version, icon='BLANK1',
-                          translate=False)
             return
 
         for device in devices:
@@ -1814,21 +1813,12 @@ class CyclesPreferences(bpy.types.AddonPreferences):
 
         if compute_device_type == 'METAL':
             import platform
-            import re
-            is_navi_2 = False
-            for device in devices:
-                if re.search(r"((RX)|(Pro)|(PRO))\s+W?6\d00X", device.name):
-                    is_navi_2 = True
-                    break
 
-            # MetalRT only works on Apple Silicon and Navi2.
-            is_arm64 = platform.machine() == 'arm64'
-            if is_arm64 or (is_navi_2 and has_rt_api_support['METAL']):
+            # MetalRT only works on Apple Silicon.
+            if (platform.machine() == 'arm64'):
                 col = layout.column()
                 col.use_property_split = True
-                # Kernel specialization is only supported on Apple Silicon
-                if is_arm64:
-                    col.prop(self, "kernel_optimization_level")
+                col.prop(self, "kernel_optimization_level")
                 if has_rt_api_support['METAL']:
                     col.prop(self, "metalrt")
 

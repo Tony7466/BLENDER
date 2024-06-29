@@ -821,7 +821,7 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
     }
 
     /* Keying Sets */
-    /* TODO: check on modifyability of Keying Set when doing this */
+    /* TODO: check on modifiability of Keying Set when doing this. */
     if (is_anim) {
       uiItemS(layout);
 
@@ -1070,8 +1070,10 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
 
   {
     const ARegion *region = CTX_wm_region_popup(C) ? CTX_wm_region_popup(C) : CTX_wm_region(C);
-    uiButViewItem *view_item_but = (uiButViewItem *)ui_view_item_find_mouse_over(region,
-                                                                                 event->xy);
+    uiButViewItem *view_item_but = (but->type == UI_BTYPE_VIEW_ITEM) ?
+                                       static_cast<uiButViewItem *>(but) :
+                                       static_cast<uiButViewItem *>(
+                                           ui_view_item_find_mouse_over(region, event->xy));
     if (view_item_but) {
       BLI_assert(view_item_but->type == UI_BTYPE_VIEW_ITEM);
 
@@ -1344,17 +1346,6 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
                   UI_ITEM_NONE,
                   nullptr);
     }
-  }
-
-  if (BKE_addon_find(&U.addons, "ui_translate")) {
-    uiItemFullO(layout,
-                "UI_OT_edittranslation_init",
-                nullptr,
-                ICON_NONE,
-                nullptr,
-                WM_OP_INVOKE_DEFAULT,
-                UI_ITEM_NONE,
-                nullptr);
   }
 
   /* Show header tools for header buttons. */
