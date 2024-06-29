@@ -317,7 +317,10 @@ void world_material_to_dome_light(const USDExportParams &params,
     char dest_path[FILE_MAX];
     BLI_path_split_dir_part(base_path.c_str(), dest_path, FILE_MAX);
 
-    BLI_path_join(dest_path, FILE_MAX, dest_path, "textures", file_path);
+    BLI_path_append_dir(dest_path, FILE_MAX, "textures");
+    BLI_dir_create_recursive(dest_path);
+
+    BLI_path_append(dest_path, FILE_MAX, file_path);
 
     if (BLI_copy(source_path.c_str(), dest_path) != 0) {
       CLOG_WARN(&LOG, "USD Export: Couldn't write world color image to %s", dest_path);
