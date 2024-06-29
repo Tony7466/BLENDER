@@ -283,10 +283,6 @@ const EnumPropertyItem *rna_enum_attribute_domain_itemf(ID *id,
     if (!include_instances && domain_item->value == int(AttrDomain::Instance)) {
       continue;
     }
-    if (!U.experimental.use_grease_pencil_version3 && domain_item->value == int(AttrDomain::Layer))
-    {
-      continue;
-    }
 
     if (domain_item->value == int(AttrDomain::Point) && id_type == ID_ME) {
       RNA_enum_item_add(&item, &totitem, &mesh_vertex_domain_item);
@@ -318,7 +314,7 @@ static int rna_Attribute_domain_get(PointerRNA *ptr)
 static bool rna_Attribute_is_internal_get(PointerRNA *ptr)
 {
   const CustomDataLayer *layer = (const CustomDataLayer *)ptr->data;
-  return !BKE_attribute_allow_procedural_access(layer->name);
+  return !blender::bke::allow_procedural_attribute_access(layer->name);
 }
 
 static bool rna_Attribute_is_required_get(PointerRNA *ptr)

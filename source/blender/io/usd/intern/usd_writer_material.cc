@@ -98,11 +98,6 @@ static const pxr::TfToken translation("translation", pxr::TfToken::Immortal);
 static const pxr::TfToken rotation("rotation", pxr::TfToken::Immortal);
 }  // namespace usdtokens
 
-/* Cycles specific tokens. */
-namespace cyclestokens {
-static const std::string UVMap("UVMap");
-}  // namespace cyclestokens
-
 namespace blender::io::usd {
 
 /* Preview surface input specification. */
@@ -130,7 +125,7 @@ static void create_uv_input(const USDExporterContext &usd_export_context,
                             bNodeSocket *input_socket,
                             pxr::UsdShadeMaterial &usd_material,
                             pxr::UsdShadeInput &usd_input,
-                            const std::string &default_uv,
+                            const std::string &active_uvmap_name,
                             ReportList *reports);
 static void export_texture(const USDExporterContext &usd_export_context, bNode *node);
 static bNode *find_bsdf_node(Material *material);
@@ -159,15 +154,12 @@ void create_input(pxr::UsdShadeShader &shader,
 static void create_usd_preview_surface_material(const USDExporterContext &usd_export_context,
                                                 Material *material,
                                                 pxr::UsdShadeMaterial &usd_material,
-                                                const std::string &default_uv,
+                                                const std::string &active_uvmap_name,
                                                 ReportList *reports)
 {
   if (!material) {
     return;
   }
-
-  /* Default map when creating UV primvar reader shaders. */
-  std::string default_uv_sampler = default_uv.empty() ? cyclestokens::UVMap : default_uv;
 
   /* We only handle the first instance of either principled or
    * diffuse bsdf nodes in the material's node tree, because
@@ -306,7 +298,7 @@ static void create_usd_preview_surface_material(const USDExporterContext &usd_ex
                                                                  pxr::SdfValueTypeNames->Float2))
         {
           create_uv_input(
-              usd_export_context, socket, usd_material, st_input, default_uv_sampler, reports);
+              usd_export_context, socket, usd_material, st_input, active_uvmap_name, reports);
         }
       }
 
@@ -463,7 +455,7 @@ static void create_uvmap_shader(const USDExporterContext &usd_export_context,
                                 bNodeLink *uvmap_link,
                                 pxr::UsdShadeMaterial &usd_material,
                                 pxr::UsdShadeInput &usd_input,
-                                const std::string &default_uv,
+                                const std::string &active_uvmap_name,
                                 ReportList *reports)
 
 {
@@ -481,13 +473,16 @@ static void create_uvmap_shader(const USDExporterContext &usd_export_context,
     return;
   }
 
-  std::string uv_name = default_uv;
+  std::string uv_name = active_uvmap_name;
   if (uv_node && uv_node->storage) {
     NodeShaderUVMap *shader_uv_map = static_cast<NodeShaderUVMap *>(uv_node->storage);
-    /* We need to make valid here because actual uv primvar has been. */
-    uv_name = make_safe_name(shader_uv_map->uv_map,
-                             usd_export_context.export_params.allow_unicode);
+    uv_name = shader_uv_map->uv_map;
   }
+  if (usd_export_context.export_params.rename_uvmaps && uv_name == active_uvmap_name) {
+    uv_name = usdtokens::st;
+  }
+  /* We need to make valid, same as was done when exporting UV primvar. */
+  uv_name = make_safe_name(uv_name, usd_export_context.export_params.allow_unicode);
 
   uv_shader.CreateInput(usdtokens::varname, pxr::SdfValueTypeNames->String).Set(uv_name);
   usd_input.ConnectToSource(uv_shader.ConnectableAPI(), usdtokens::result);
@@ -497,7 +492,7 @@ static void create_transform2d_shader(const USDExporterContext &usd_export_conte
                                       bNodeLink *mapping_link,
                                       pxr::UsdShadeMaterial &usd_material,
                                       pxr::UsdShadeInput &usd_input,
-                                      const std::string &default_uv,
+                                      const std::string &uvmap_name,
                                       ReportList *reports)
 
 {
@@ -512,7 +507,7 @@ static void create_transform2d_shader(const USDExporterContext &usd_export_conte
 
   if (mapping_node->custom1 != TEXMAP_TYPE_POINT) {
     if (bNodeSocket *socket = bke::nodeFindSocket(mapping_node, SOCK_IN, "Vector")) {
-      create_uv_input(usd_export_context, socket, usd_material, usd_input, default_uv, reports);
+      create_uv_input(usd_export_context, socket, usd_material, usd_input, uvmap_name, reports);
     }
     return;
   }
@@ -576,7 +571,7 @@ static void create_transform2d_shader(const USDExporterContext &usd_export_conte
     if (pxr::UsdShadeInput in_input = transform2d_shader.CreateInput(
             usdtokens::in, pxr::SdfValueTypeNames->Float2))
     {
-      create_uv_input(usd_export_context, socket, usd_material, in_input, default_uv, reports);
+      create_uv_input(usd_export_context, socket, usd_material, in_input, uvmap_name, reports);
     }
   }
 }
@@ -585,7 +580,7 @@ static void create_uv_input(const USDExporterContext &usd_export_context,
                             bNodeSocket *input_socket,
                             pxr::UsdShadeMaterial &usd_material,
                             pxr::UsdShadeInput &usd_input,
-                            const std::string &default_uv,
+                            const std::string &active_uvmap_name,
                             ReportList *reports)
 {
   if (!(usd_material && usd_input)) {
@@ -593,8 +588,11 @@ static void create_uv_input(const USDExporterContext &usd_export_context,
   }
 
   if (bNodeLink *mapping_link = traverse_channel(input_socket, SH_NODE_MAPPING)) {
+    /* Use either "st" or active UV map name from mesh, depending if it was renamed. */
+    std::string uvmap_name = (usd_export_context.export_params.rename_uvmaps) ? usdtokens::st :
+                                                                                active_uvmap_name;
     create_transform2d_shader(
-        usd_export_context, mapping_link, usd_material, usd_input, default_uv, reports);
+        usd_export_context, mapping_link, usd_material, usd_input, uvmap_name, reports);
     return;
   }
 
@@ -602,7 +600,7 @@ static void create_uv_input(const USDExporterContext &usd_export_context,
 
   /* Note that uvmap_link might be null, but create_uv_shader() can handle this case. */
   create_uvmap_shader(
-      usd_export_context, uvmap_link, usd_material, usd_input, default_uv, reports);
+      usd_export_context, uvmap_link, usd_material, usd_input, active_uvmap_name, reports);
 }
 
 static bool is_in_memory_texture(Image *ima)
@@ -1186,22 +1184,27 @@ static pxr::SdfPath reflow_materialx_paths(pxr::SdfPath input_path,
 static void create_usd_materialx_material(const USDExporterContext &usd_export_context,
                                           pxr::SdfPath usd_path,
                                           Material *material,
+                                          const std::string &active_uvmap_name,
                                           pxr::UsdShadeMaterial &usd_material)
 {
+  blender::nodes::materialx::ExportParams export_params = {
+      /* We want to re-use the same MaterialX document generation code as used by the renderer.
+       * While the graph is traversed, we also want it to export the textures out. */
+      (usd_export_context.export_image_fn) ? usd_export_context.export_image_fn :
+                                             std::bind(materialx_export_image,
+                                                       usd_export_context,
+                                                       std::placeholders::_1,
+                                                       std::placeholders::_2,
+                                                       std::placeholders::_3,
+                                                       std::placeholders::_4),
+      /* Active UV map name to use for default texture coordinates. */
+      (usd_export_context.export_params.rename_uvmaps) ? "st" : active_uvmap_name,
+      active_uvmap_name,
+  };
 
-  /* We want to re-use the same MaterialX document generation code as used by the renderer.
-   * While the graph is traversed, we also want it to export the textures out. */
-  ExportImageFunction export_image_fn = (usd_export_context.export_image_fn) ?
-                                            usd_export_context.export_image_fn :
-                                            std::bind(materialx_export_image,
-                                                      usd_export_context,
-                                                      std::placeholders::_1,
-                                                      std::placeholders::_2,
-                                                      std::placeholders::_3,
-                                                      std::placeholders::_4);
   std::string material_name = usd_path.GetElementString();
   MaterialX::DocumentPtr doc = blender::nodes::materialx::export_to_materialx(
-      usd_export_context.depsgraph, material, material_name, export_image_fn);
+      usd_export_context.depsgraph, material, material_name, export_params);
 
   /* We want to merge the MaterialX graph under the same Material as the USDPreviewSurface
    * This allows for the same material assignment to have two levels of complexity so other
@@ -1370,7 +1373,7 @@ static void create_usd_materialx_material(const USDExporterContext &usd_export_c
 pxr::UsdShadeMaterial create_usd_material(const USDExporterContext &usd_export_context,
                                           pxr::SdfPath usd_path,
                                           Material *material,
-                                          const std::string &active_uv,
+                                          const std::string &active_uvmap_name,
                                           ReportList *reports)
 {
   pxr::UsdShadeMaterial usd_material = pxr::UsdShadeMaterial::Define(usd_export_context.stage,
@@ -1378,7 +1381,7 @@ pxr::UsdShadeMaterial create_usd_material(const USDExporterContext &usd_export_c
 
   if (material->use_nodes && usd_export_context.export_params.generate_preview_surface) {
     create_usd_preview_surface_material(
-        usd_export_context, material, usd_material, active_uv, reports);
+        usd_export_context, material, usd_material, active_uvmap_name, reports);
   }
   else {
     create_usd_viewport_material(usd_export_context, material, usd_material);
@@ -1386,7 +1389,8 @@ pxr::UsdShadeMaterial create_usd_material(const USDExporterContext &usd_export_c
 
 #ifdef WITH_MATERIALX
   if (material->use_nodes && usd_export_context.export_params.generate_materialx_network) {
-    create_usd_materialx_material(usd_export_context, usd_path, material, usd_material);
+    create_usd_materialx_material(
+        usd_export_context, usd_path, material, active_uvmap_name, usd_material);
   }
 #endif
 
