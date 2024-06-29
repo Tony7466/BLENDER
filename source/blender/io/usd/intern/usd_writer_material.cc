@@ -916,9 +916,12 @@ std::string get_tex_image_asset_filepath(Image *ima,
       path = get_usd_source_path(&ima->id);
     }
 
-    if (path.empty()) {
-      if (is_packed_texture(ima)) {
+    if (is_packed_texture(ima)) {
+      if (path.empty()) {
+        char file_name[FILE_MAX];
         path = get_in_memory_texture_filename(ima);
+        BLI_path_join(file_name, FILE_MAX, ".", "textures", path.c_str());
+        path = file_name;
       }
       else if (ima->filepath[0] != '\0') {
         /* Get absolute path. */
