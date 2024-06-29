@@ -617,7 +617,7 @@ static void grease_pencil_geom_batch_ensure(Object &object,
   Vector<Array<int>> tris_start_offsets_per_visible_drawing;
   for (const ed::greasepencil::DrawingInfo &info : drawings) {
     const bke::CurvesGeometry &curves = info.drawing.strokes();
-    const OffsetIndices<int> eval_points_by_curve = curves.evaluated_points_by_curve();
+    const OffsetIndices<int> points_by_curve = curves.evaluated_points_by_curve();
     const VArray<bool> cyclic = curves.cyclic();
     IndexMaskMemory memory;
     const IndexMask visible_strokes = ed::greasepencil::retrieve_visible_strokes(
@@ -633,7 +633,7 @@ static void grease_pencil_geom_batch_ensure(Object &object,
     int t_offset = 0;
     int pos = 0;
     for (const int curve_i : curves.curves_range()) {
-      IndexRange points = eval_points_by_curve[curve_i];
+      IndexRange points = points_by_curve[curve_i];
       if (visible_strokes.contains(curve_i)) {
         tris_start_offsets[pos++] = t_offset;
       }
@@ -646,7 +646,7 @@ static void grease_pencil_geom_batch_ensure(Object &object,
     int num_cyclic = 0;
     int num_points = 0;
     visible_strokes.foreach_index([&](const int curve_i, const int pos) {
-      IndexRange points = eval_points_by_curve[curve_i];
+      IndexRange points = points_by_curve[curve_i];
       const bool is_cyclic = cyclic[curve_i];
 
       if (is_cyclic) {
@@ -695,7 +695,7 @@ static void grease_pencil_geom_batch_ensure(Object &object,
     }
 
     const bke::AttributeAccessor attributes = curves.attributes();
-    const OffsetIndices<int> eval_points_by_curve = curves.evaluated_points_by_curve();
+    const OffsetIndices<int> points_by_curve = curves.evaluated_points_by_curve();
     const Span<float3> positions = curves.evaluated_positions();
     const VArray<bool> cyclic = curves.cyclic();
 
@@ -781,7 +781,7 @@ static void grease_pencil_geom_batch_ensure(Object &object,
     };
 
     visible_strokes.foreach_index([&](const int curve_i, const int pos) {
-      const IndexRange points = eval_points_by_curve[curve_i];
+      const IndexRange points = points_by_curve[curve_i];
       const bool is_cyclic = cyclic[curve_i];
       const int verts_start_offset = verts_start_offsets[pos];
       const int tris_start_offset = tris_start_offsets[pos];
