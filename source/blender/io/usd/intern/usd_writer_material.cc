@@ -622,6 +622,7 @@ static std::string get_in_memory_texture_filename(Image *ima)
   bool is_dirty = BKE_image_is_dirty(ima);
   bool is_generated = ima->source == IMA_SRC_GENERATED;
   bool is_packed = BKE_image_has_packedfile(ima);
+  bool is_tiled = ima->source == IMA_SRC_TILED;
   if (!(is_generated || is_dirty || is_packed)) {
     return "";
   }
@@ -641,6 +642,14 @@ static std::string get_in_memory_texture_filename(Image *ima)
   STRNCPY(file_name, ima->id.name + 2);
 
   BKE_image_path_ext_from_imformat_ensure(file_name, sizeof(file_name), &imageFormat);
+
+  if (is_tiled) {
+    /* Ensure that the UDIM tag is in. */
+    char file_body[FILE_MAX];
+    char file_ext[FILE_MAX];
+    BLI_string_split_suffix(file_name, FILE_MAX, file_body, file_ext);
+    BLI_snprintf(file_name, FILE_MAX, "%s.<UDIM>%s", file_body, file_ext);
+  }
 
   return file_name;
 }

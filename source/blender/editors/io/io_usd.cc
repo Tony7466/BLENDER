@@ -158,7 +158,7 @@ const EnumPropertyItem prop_usdz_downscale_size[] = {
 
 const EnumPropertyItem prop_textures[] = {
     {USD_TEX_EXPORT_NONE, "KEEP", 0, "Keep", "Use original location of textures"},
-    {USD_TEX_EXPORT_USE_ORIGINAL_PATHS,
+    {USD_TEX_EXPORT_PRESERVE,
      "PRESERVE",
      0,
      "Preserve",
@@ -288,12 +288,12 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
 
   const eUSDTexExportMode textures_mode = eUSDTexExportMode(RNA_enum_get(op->ptr, "textures"));
   bool export_textures = RNA_boolean_get(op->ptr, "export_textures");
-  bool use_original_paths = RNA_boolean_get(op->ptr, "use_original_paths");
+  bool use_original_paths = false;
 
   if (!export_textures) {
     switch (textures_mode) {
-      case eUSDTexExportMode::USD_TEX_EXPORT_USE_ORIGINAL_PATHS:
-        export_textures = true;
+      case eUSDTexExportMode::USD_TEX_EXPORT_PRESERVE:
+        export_textures = false;
         use_original_paths = true;
         break;
       case eUSDTexExportMode::USD_TEX_EXPORT_NEW_PATH:

@@ -100,7 +100,7 @@ typedef enum eUSDZTextureDownscaleSize {
  */
 enum eUSDTexExportMode {
   USD_TEX_EXPORT_NONE = 0,
-  USD_TEX_EXPORT_USE_ORIGINAL_PATHS,
+  USD_TEX_EXPORT_PRESERVE,
   USD_TEX_EXPORT_NEW_PATH,
 };
 
