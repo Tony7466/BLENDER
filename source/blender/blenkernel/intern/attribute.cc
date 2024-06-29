@@ -55,9 +55,8 @@ AttributeOwner AttributeOwner::from_id(ID *id)
     case ID_GP:
       return AttributeOwner(AttributeOwnerType::GreasePencil, id);
     default:
-      BLI_assert_unreachable();
+      return {};
   }
-  return {};
 }
 
 AttributeOwnerType AttributeOwner::type() const
@@ -67,33 +66,33 @@ AttributeOwnerType AttributeOwner::type() const
 
 bool AttributeOwner::is_valid() const
 {
-  return ptr_ != nullptr && type_ != AttributeOwnerType::None;
+  return ptr_ != nullptr;
 }
 
 Mesh *AttributeOwner::get_mesh() const
 {
-  BLI_assert(ptr_ != nullptr);
+  BLI_assert(this->is_valid());
   BLI_assert(type_ == AttributeOwnerType::Mesh);
   return reinterpret_cast<Mesh *>(ptr_);
 }
 
 PointCloud *AttributeOwner::get_pointcloud() const
 {
-  BLI_assert(ptr_ != nullptr);
+  BLI_assert(this->is_valid());
   BLI_assert(type_ == AttributeOwnerType::PointCloud);
   return reinterpret_cast<PointCloud *>(ptr_);
 }
 
 Curves *AttributeOwner::get_curves() const
 {
-  BLI_assert(ptr_ != nullptr);
+  BLI_assert(this->is_valid());
   BLI_assert(type_ == AttributeOwnerType::Curves);
   return reinterpret_cast<Curves *>(ptr_);
 }
 
 GreasePencil *AttributeOwner::get_grease_pencil() const
 {
-  BLI_assert(ptr_ != nullptr);
+  BLI_assert(this->is_valid());
   BLI_assert(type_ == AttributeOwnerType::GreasePencil);
   return reinterpret_cast<GreasePencil *>(ptr_);
 }
@@ -198,11 +197,6 @@ bool BKE_attributes_supported(const AttributeOwner &owner)
     }
   }
   return false;
-}
-
-bool BKE_attribute_allow_procedural_access(const char *attribute_name)
-{
-  return blender::bke::allow_procedural_attribute_access(attribute_name);
 }
 
 static bool bke_attribute_rename_if_exists(AttributeOwner &owner,
@@ -788,7 +782,7 @@ CustomDataLayer *BKE_attributes_active_get(AttributeOwner &owner)
       CustomDataLayer *layer = &customdata->layers[i];
       if (CD_MASK_PROP_ALL & CD_TYPE_AS_MASK(layer->type)) {
         if (index == active_index) {
-          if (BKE_attribute_allow_procedural_access(layer->name)) {
+          if (blender::bke::allow_procedural_attribute_access(layer->name)) {
             return layer;
           }
           return nullptr;

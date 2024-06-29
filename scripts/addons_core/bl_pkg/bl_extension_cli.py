@@ -18,12 +18,13 @@ import sys
 
 from typing import (
     Any,
-    Dict,
     List,
     Optional,
     Tuple,
     Union,
 )
+
+from .bl_extension_utils import PkgManifest_Normalized
 
 show_color = (
     False if os.environ.get("NO_COLOR") else
@@ -110,13 +111,14 @@ class subcmd_utils:
     ) -> Union[List[Tuple[int, str]], str]:
         # Takes a terse lists of package names and expands to repo index and name list,
         # returning an error string if any can't be resolved.
-        from . import repo_cache_store
+        from . import repo_cache_store_ensure
         from .bl_extension_ops import extension_repos_read
 
         repo_map = {}
         errors = []
 
         repos_all = extension_repos_read()
+        repo_cache_store = repo_cache_store_ensure()
         for (
                 repo_index,
                 pkg_manifest,
@@ -127,7 +129,12 @@ class subcmd_utils:
         ):
             # Show any exceptions created while accessing the JSON,
             repo = repos_all[repo_index]
-            repo_map[repo.module] = (repo_index, set(pkg_manifest.keys()))
+            if pkg_manifest is None:
+                errors.append("Repository \"{:s}\" has no data, sync may be needed!".format(repo.module))
+                repo_packages = set()
+            else:
+                repo_packages = set(pkg_manifest.keys())
+            repo_map[repo.module] = (repo_index, repo_packages)
 
         repos_and_packages = []
 
@@ -188,19 +195,20 @@ class subcmd_query:
 
         def list_item(
                 pkg_id: str,
-                item_remote: Optional[Dict[str, Any]],
-                item_local: Optional[Dict[str, Any]],
+                item_local: Optional[PkgManifest_Normalized],
+                item_remote: Optional[PkgManifest_Normalized],
+                has_remote: bool,
         ) -> None:
             # Both can't be None.
             assert item_remote is not None or item_local is not None
 
             if item_remote is not None:
-                item_version = item_remote["version"]
+                item_version = item_remote.version
                 if item_local is None:
                     item_local_version = None
                     is_outdated = False
                 else:
-                    item_local_version = item_local["version"]
+                    item_local_version = item_local.version
                     is_outdated = item_local_version != item_version
 
                 if item_local is not None:
@@ -215,17 +223,21 @@ class subcmd_query:
                     status_info = ""
                 item = item_remote
             else:
-                # All local-only packages are installed.
-                status_info = " [{:s}]".format(colorize("installed", "green"))
-                assert isinstance(item_local, dict)
+                # All local-only packages are installed,
+                # if they're in a repository with a remote but no remote info - they're "orphan".
+                status_info = " [{:s}]".format(
+                    colorize("orphan", "yellow") if has_remote else
+                    colorize("installed", "green")
+                )
+                assert isinstance(item_local, PkgManifest_Normalized)
                 item = item_local
 
             print(
                 "  {:s}{:s}: \"{:s}\", {:s}".format(
                     colorize(pkg_id, "bold"),
                     status_info,
-                    item["name"],
-                    colorize(item.get("tagline", "<no tagline>"), "faint"),
+                    item.name,
+                    colorize(item.tagline or "<no tagline>", "faint"),
                 ))
 
         if sync:
@@ -235,31 +247,29 @@ class subcmd_query:
         # NOTE: exactly how this data is extracted is rather arbitrary.
         # This uses the same code paths as drawing code.
         from .bl_extension_ops import extension_repos_read
-        from . import repo_cache_store
+        from . import repo_cache_store_ensure
 
         repos_all = extension_repos_read()
+        repo_cache_store = repo_cache_store_ensure()
 
         for repo_index, (
-                pkg_manifest_remote,
                 pkg_manifest_local,
+                pkg_manifest_remote,
         ) in enumerate(zip(
-            repo_cache_store.pkg_manifest_from_remote_ensure(error_fn=print),
             repo_cache_store.pkg_manifest_from_local_ensure(error_fn=print),
+            repo_cache_store.pkg_manifest_from_remote_ensure(error_fn=print),
+            strict=True,
         )):
             # Show any exceptions created while accessing the JSON,
             repo = repos_all[repo_index]
 
             print("Repository: \"{:s}\" (id={:s})".format(repo.name, repo.module))
-            if pkg_manifest_remote is not None:
-                for pkg_id, item_remote in pkg_manifest_remote.items():
-                    if pkg_manifest_local is not None:
-                        item_local = pkg_manifest_local.get(pkg_id)
-                    else:
-                        item_local = None
-                    list_item(pkg_id, item_remote, item_local)
-            else:
-                for pkg_id, item_local in pkg_manifest_local.items():
-                    list_item(pkg_id, None, item_local)
+            has_remote = repo.remote_url and (pkg_manifest_remote is not None)
+            pkg_id_set = set((pkg_manifest_local or {}).keys()) | set((pkg_manifest_remote or {}).keys())
+            for pkg_id in sorted(pkg_id_set):
+                item_local = pkg_manifest_local.get(pkg_id) if (pkg_manifest_local is not None) else None
+                item_remote = pkg_manifest_remote.get(pkg_id) if (pkg_manifest_remote is not None) else None
+                list_item(pkg_id, item_local, item_remote, has_remote)
 
         return True
 
@@ -640,7 +650,7 @@ def cli_extension_args_install_file(subparsers: "argparse._SubParsersAction[argp
         "install-file",
         help="Install package from file.",
         description=(
-            "Install a package file into a local repository."
+            "Install a package file into a user repository."
         ),
         formatter_class=argparse.RawTextHelpFormatter,
     )
