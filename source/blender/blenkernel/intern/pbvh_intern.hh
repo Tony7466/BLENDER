@@ -137,10 +137,6 @@ struct PBVH {
   blender::Span<blender::float3> vert_normals;
   blender::Span<blender::float3> face_normals;
 
-  /** Only valid for polygon meshes. */
-  blender::OffsetIndices<int> faces;
-  blender::Span<int> corner_verts;
-
   /* Grid Data */
   CCGKey gridkey;
   SubdivCCG *subdiv_ccg;
@@ -162,9 +158,6 @@ struct PBVH {
   int num_planes;
 
   BMLog *bm_log;
-
-  CustomDataLayer *color_layer;
-  blender::bke::AttrDomain color_domain;
 
   PBVHPixels pixels;
 
