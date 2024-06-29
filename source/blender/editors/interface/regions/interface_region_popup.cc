@@ -583,13 +583,14 @@ void ui_layout_panel_popup_scroll_apply(Panel *panel, const float dy)
   if (!panel || dy == 0.0f) {
     return;
   }
+  float scroll = dy * panel->runtime->block->aspect;
   for (LayoutPanelBody &body : panel->runtime->layout_panels.bodies) {
-    body.start_y += dy;
-    body.end_y += dy;
+    body.start_y += scroll;
+    body.end_y += scroll;
   }
   for (LayoutPanelHeader &headcer : panel->runtime->layout_panels.headers) {
-    headcer.start_y += dy;
-    headcer.end_y += dy;
+    headcer.start_y += scroll;
+    headcer.end_y += scroll;
   }
 }
 
