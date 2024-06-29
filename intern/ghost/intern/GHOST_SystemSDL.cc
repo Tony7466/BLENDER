@@ -46,6 +46,7 @@ GHOST_IWindow *GHOST_SystemSDL::createWindow(const char *title,
                                              GHOST_TWindowState state,
                                              GHOST_GPUSettings gpuSettings,
                                              const bool exclusive,
+                                             const int16_t /* display */,
                                              const bool /* is_dialog */,
                                              const GHOST_IWindow *parentWindow)
 {

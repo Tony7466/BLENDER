@@ -163,6 +163,8 @@ extern GHOST_TSuccess GHOST_GetAllDisplayDimensions(GHOST_SystemHandle systemhan
  * \param width: The width the window.
  * \param height: The height the window.
  * \param state: The state of the window when opened.
+ * \param display: The index of the display (monitor) the window should be on.
+ * (display == -1 means primary/main monitor)
  * \param is_dialog: Stay on top of parent window, no icon in taskbar, can't be minimized.
  * \param gpuSettings: Misc GPU options.
  * \return A handle to the new window ( == nullptr if creation failed).
@@ -175,6 +177,7 @@ extern GHOST_WindowHandle GHOST_CreateWindow(GHOST_SystemHandle systemhandle,
                                              uint32_t width,
                                              uint32_t height,
                                              GHOST_TWindowState state,
+                                             int16_t display,
                                              bool is_dialog,
                                              GHOST_GPUSettings gpuSettings);
 
@@ -678,6 +681,13 @@ extern void GHOST_ScreenToClient(
  */
 extern void GHOST_ClientToScreen(
     GHOST_WindowHandle windowhandle, int32_t inX, int32_t inY, int32_t *outX, int32_t *outY);
+
+/**
+ * Returns the index of the display (monitor) the window is on.
+ * \param windowhandle: The handle to the window.
+ * \return The index of the display (for macOS, otherwise defaults to -1).
+ */
+extern int16_t GHOST_GetWindowDisplay(GHOST_WindowHandle windowhandle);
 
 /**
  * Returns the state of the window (normal, minimized, maximized).

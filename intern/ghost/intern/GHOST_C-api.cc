@@ -165,6 +165,7 @@ GHOST_WindowHandle GHOST_CreateWindow(GHOST_SystemHandle systemhandle,
                                       uint32_t width,
                                       uint32_t height,
                                       GHOST_TWindowState state,
+                                      int16_t display,
                                       bool is_dialog,
                                       GHOST_GPUSettings gpuSettings)
 {
@@ -178,6 +179,7 @@ GHOST_WindowHandle GHOST_CreateWindow(GHOST_SystemHandle systemhandle,
                                                   state,
                                                   gpuSettings,
                                                   false,
+                                                  display,
                                                   is_dialog,
                                                   (GHOST_IWindow *)parent_windowhandle);
 }
@@ -689,6 +691,13 @@ void GHOST_ClientToScreen(
   const GHOST_IWindow *window = (const GHOST_IWindow *)windowhandle;
 
   window->clientToScreen(inX, inY, *outX, *outY);
+}
+
+int16_t GHOST_GetWindowDisplay(GHOST_WindowHandle windowhandle)
+{
+  const GHOST_IWindow *window = (const GHOST_IWindow *)windowhandle;
+
+  return window->getDisplay();
 }
 
 GHOST_TWindowState GHOST_GetWindowState(GHOST_WindowHandle windowhandle)

@@ -503,6 +503,11 @@ GHOST_TSuccess GHOST_WindowWin32::setClientSize(uint32_t width, uint32_t height)
   return success;
 }
 
+int16_t GHOST_WindowWin32::getDisplay() const
+{
+  return -1;
+}
+
 GHOST_TWindowState GHOST_WindowWin32::getState() const
 {
   if (::IsIconic(m_hWnd)) {

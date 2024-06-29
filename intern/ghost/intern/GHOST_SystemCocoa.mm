@@ -716,14 +716,23 @@ GHOST_IWindow *GHOST_SystemCocoa::createWindow(const char *title,
                                                GHOST_TWindowState state,
                                                GHOST_GPUSettings gpuSettings,
                                                const bool /*exclusive*/,
+                                               const int16_t display,
                                                const bool is_dialog,
                                                const GHOST_IWindow *parentWindow)
 {
   GHOST_IWindow *window = nullptr;
   @autoreleasepool {
+    /* Get the display (monitor) for the new window. */
+    NSScreen *screen = [NSScreen mainScreen];
+    if (display != -1) {
+      NSArray *screens = [NSScreen screens];
+      if (display < [screens count]) {
+        screen = [screens objectAtIndex:display];
+      }
+    }
 
     /* Get the available rect for including window contents. */
-    NSRect frame = [[NSScreen mainScreen] visibleFrame];
+    NSRect frame = [screen visibleFrame];
     NSRect contentRect = [NSWindow
         contentRectForFrameRect:frame
                       styleMask:(NSWindowStyleMaskTitled | NSWindowStyleMaskClosable |
@@ -746,6 +755,7 @@ GHOST_IWindow *GHOST_SystemCocoa::createWindow(const char *title,
                                    gpuSettings.context_type,
                                    gpuSettings.flags & GHOST_gpuStereoVisual,
                                    gpuSettings.flags & GHOST_gpuDebugContext,
+                                   display,
                                    is_dialog,
                                    (GHOST_WindowCocoa *)parentWindow);
 

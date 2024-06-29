@@ -296,6 +296,7 @@ GHOST_WindowCocoa::GHOST_WindowCocoa(GHOST_SystemCocoa *systemCocoa,
                                      uint32_t height,
                                      GHOST_TWindowState state,
                                      GHOST_TDrawingContextType type,
+                                     const int16_t display,
                                      const bool stereoVisual,
                                      bool is_debug,
                                      bool is_dialog,
@@ -314,6 +315,15 @@ GHOST_WindowCocoa::GHOST_WindowCocoa(GHOST_SystemCocoa *systemCocoa,
 
   NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 
+  /* Get the display (monitor) for the new window. */
+  NSScreen *screen = [NSScreen mainScreen];
+  if (display != -1) {
+    NSArray *screens = [NSScreen screens];
+    if (display < [screens count]) {
+      screen = [screens objectAtIndex:display];
+    }
+  }
+  
   /* Creates the window. */
   NSRect rect;
   NSSize minSize;
@@ -332,7 +342,8 @@ GHOST_WindowCocoa::GHOST_WindowCocoa(GHOST_SystemCocoa *systemCocoa,
   m_window = [[CocoaWindow alloc] initWithContentRect:rect
                                             styleMask:styleMask
                                               backing:NSBackingStoreBuffered
-                                                defer:NO];
+                                                defer:NO
+                                               screen:screen];
 
   [m_window setSystemAndWindowCocoa:systemCocoa windowCocoa:this];
 
@@ -646,6 +657,20 @@ GHOST_TSuccess GHOST_WindowCocoa::setClientSize(uint32_t width, uint32_t height)
   }
   [pool drain];
   return GHOST_kSuccess;
+}
+
+int16_t GHOST_WindowCocoa::getDisplay() const
+{
+  int16_t display = -1;
+  NSArray *screens = [NSScreen screens];
+  for (int16_t index = 0; index < [screens count]; index++) {
+    NSScreen *screen = [screens objectAtIndex:index];
+    if (screen == m_window.screen) {
+      display = index;
+      break;
+    }
+  }
+  return display;
 }
 
 GHOST_TWindowState GHOST_WindowCocoa::getState() const

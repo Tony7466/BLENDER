@@ -81,6 +81,7 @@ class GHOST_SystemCocoa : public GHOST_System {
    * \param gpuSettings: Misc GPU settings.
    * \param exclusive: Use to show the window on top and ignore others (used full-screen).
    * \param parentWindow: Parent (embedder) window.
+   * \param display: Index of the display (monitor) to create the window on.
    * \return The new window (or 0 if creation failed).
    */
   GHOST_IWindow *createWindow(const char *title,
@@ -91,6 +92,7 @@ class GHOST_SystemCocoa : public GHOST_System {
                               GHOST_TWindowState state,
                               GHOST_GPUSettings gpuSettings,
                               const bool exclusive = false,
+                              const int16_t display = -1,
                               const bool is_dialog = false,
                               const GHOST_IWindow *parentWindow = nullptr);
 

@@ -716,10 +716,14 @@ typedef struct UserDef_SpaceData {
  * Size and position data for a window.
  */
 typedef struct UserDef_WindowPositionData {
-  int size_x;
-  int size_y;
+  /* Position and size of #ghostwin window. */
   int pos_x;
   int pos_y;
+  int size_x;
+  int size_y;
+  /* The index of the display (monitor) the window is on (used for macOS). */
+  int display;
+  char _pad0[4];
 } UserDef_WindowPositionData;
 
 /**

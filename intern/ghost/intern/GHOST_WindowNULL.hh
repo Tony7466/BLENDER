@@ -126,6 +126,10 @@ class GHOST_WindowNULL : public GHOST_Window {
   {
     return GHOST_kSuccess;
   }
+  int16_t getDisplay() const override
+  {
+    return -1;
+  }
   GHOST_TSuccess setState(GHOST_TWindowState /*state*/) override
   {
     return GHOST_kSuccess;

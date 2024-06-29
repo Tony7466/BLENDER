@@ -212,6 +212,7 @@ class GHOST_SystemWayland : public GHOST_System {
                               GHOST_TWindowState state,
                               GHOST_GPUSettings gpuSettings,
                               const bool exclusive,
+                              const int16_t display,
                               const bool is_dialog,
                               const GHOST_IWindow *parentWindow) override;
 

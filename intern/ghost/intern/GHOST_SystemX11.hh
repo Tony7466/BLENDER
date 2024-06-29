@@ -126,6 +126,7 @@ class GHOST_SystemX11 : public GHOST_System {
                               GHOST_TWindowState state,
                               GHOST_GPUSettings gpuSettings,
                               const bool exclusive = false,
+                              const int16_t display = -1,
                               const bool is_dialog = false,
                               const GHOST_IWindow *parentWindow = nullptr) override;
 

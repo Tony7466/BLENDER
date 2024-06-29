@@ -439,6 +439,7 @@ int main(int argc, char **argv)
                                      320,
                                      200,
                                      GHOST_kWindowStateNormal,
+                                     -1,
                                      false,
                                      GHOST_kDrawingContextTypeOpenGL,
                                      gpuSettings);
@@ -456,6 +457,7 @@ int main(int argc, char **argv)
                                           320,
                                           200,
                                           GHOST_kWindowStateNormal,
+                                          -1,
                                           false,
                                           GHOST_kDrawingContextTypeOpenGL,
                                           gpuSettings);

@@ -108,6 +108,8 @@ class GHOST_WindowSDL : public GHOST_Window {
 
   void clientToScreen(int32_t inX, int32_t inY, int32_t &outX, int32_t &outY) const override;
 
+  int16_t getDisplay() const override;
+
   GHOST_TSuccess setState(GHOST_TWindowState state) override;
 
   GHOST_TWindowState getState() const override;

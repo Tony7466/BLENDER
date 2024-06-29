@@ -2245,6 +2245,11 @@ GHOST_TSuccess GHOST_WindowWayland::setWindowCursorVisibility(bool visible)
   return ok;
 }
 
+int16_t GHOST_WindowWayland::getDisplay() const
+{
+  return -1;
+}
+
 GHOST_TSuccess GHOST_WindowWayland::setState(GHOST_TWindowState state)
 {
 #ifdef USE_EVENT_BACKGROUND_THREAD

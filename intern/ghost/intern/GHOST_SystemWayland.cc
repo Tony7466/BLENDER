@@ -8214,6 +8214,7 @@ GHOST_IWindow *GHOST_SystemWayland::createWindow(const char *title,
                                                  const GHOST_TWindowState state,
                                                  const GHOST_GPUSettings gpuSettings,
                                                  const bool exclusive,
+                                                 const int16_t /*display*/,
                                                  const bool is_dialog,
                                                  const GHOST_IWindow *parentWindow)
 {

@@ -235,6 +235,7 @@ class GHOST_ISystem {
    * \param state: The state of the window when opened.
    * \param gpuSettings: Misc GPU settings.
    * \param exclusive: Use to show the window on top and ignore others (used full-screen).
+   * \param display: Index of the display (monitor) to create the window on (for macOS).
    * \param is_dialog: Stay on top of parent window, no icon in taskbar, can't be minimized.
    * \param parentWindow: Parent (embedder) window
    * \return The new window (or 0 if creation failed).
@@ -247,6 +248,7 @@ class GHOST_ISystem {
                                       GHOST_TWindowState state,
                                       GHOST_GPUSettings gpuSettings,
                                       const bool exclusive = false,
+                                      const int16_t display = -1,
                                       const bool is_dialog = false,
                                       const GHOST_IWindow *parentWindow = nullptr) = 0;
 

@@ -127,6 +127,11 @@ GHOST_TSuccess GHOST_WindowSDL::setState(GHOST_TWindowState state)
   return GHOST_kSuccess;
 }
 
+int16_t GHOST_WindowSDL::getDisplay() const
+{
+  return -1;
+}
+
 GHOST_TWindowState GHOST_WindowSDL::getState() const
 {
   Uint32 flags = SDL_GetWindowFlags(m_sdl_win);

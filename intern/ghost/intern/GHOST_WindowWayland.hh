@@ -127,6 +127,8 @@ class GHOST_WindowWayland : public GHOST_Window {
 
   GHOST_TSuccess setWindowCursorVisibility(bool visible) override;
 
+  int16_t getDisplay() const override;
+
   GHOST_TSuccess setState(GHOST_TWindowState state) override;
 
   GHOST_TWindowState getState() const override;

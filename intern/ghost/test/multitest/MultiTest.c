@@ -319,6 +319,7 @@ MainWindow *mainwindow_new(MultiTestApp *app)
                            400,
                            400,
                            GHOST_kWindowStateNormal,
+                           -1,
                            false,
                            GHOST_kDrawingContextTypeOpenGL,
                            gpuSettings);
@@ -580,6 +581,7 @@ LoggerWindow *loggerwindow_new(MultiTestApp *app)
                            800,
                            300,
                            GHOST_kWindowStateNormal,
+                           -1,
                            false,
                            GHOST_kDrawingContextTypeOpenGL,
                            gpuSettings);
@@ -783,6 +785,7 @@ ExtraWindow *extrawindow_new(MultiTestApp *app)
                            400,
                            400,
                            GHOST_kWindowStateNormal,
+                           -1,
                            false,
                            GHOST_kDrawingContextTypeOpenGL,
                            gpuSettings);

@@ -157,6 +157,12 @@ class GHOST_IWindow {
   virtual bool canAcceptDragOperation() const = 0;
 
   /**
+   * Returns the index of the display (monitor) the window is on.
+   * \return The index of the display (for macOS, otherwise defaults to -1).
+   */
+  virtual int16_t getDisplay() const = 0;
+
+  /**
    * Returns the state of the window (normal, minimized, maximized).
    * \return The state of the window.
    */

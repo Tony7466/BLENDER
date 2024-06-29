@@ -758,6 +758,9 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
     }
   }
 
+  /* Get the display (monitor) the window should be on (for macOS). */
+  const int16_t display = win->stored_position ? win->stored_position->display : -1;
+
   /* Clear drawable so we can set the new window. */
   wmWindow *prev_windrawable = wm->windrawable;
   wm_window_clear_drawable(wm);
@@ -771,6 +774,7 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
       win->sizex,
       win->sizey,
       (GHOST_TWindowState)win->windowstate,
+      display,
       is_dialog,
       gpuSettings);
 
@@ -2543,17 +2547,22 @@ void wm_window_store_position(wmWindow *win)
   pos_x -= extent_left;
   pos_y += extent_top;
 
+  /* Get the display (monitor) the window is on (for macOS). */
+  const int16_t display = GHOST_GetWindowDisplay(static_cast<GHOST_WindowHandle>(win->ghostwin));
+
   /* Store position and size in user preferences. But neglect differences of 1 pixel (due to
    * rounding), otherwise a window can crawl by a pixel every time you open it. */
   if (std::abs(win->stored_position->pos_x - pos_x) > 1 ||
       std::abs(win->stored_position->pos_y - pos_y) > 1 ||
       std::abs(win->stored_position->size_x - win->sizex) > 1 ||
-      std::abs(win->stored_position->size_y - win->sizey) > 1)
+      std::abs(win->stored_position->size_y - win->sizey) > 1 ||
+      win->stored_position->display != display)
   {
     win->stored_position->pos_x = pos_x;
     win->stored_position->pos_y = pos_y;
     win->stored_position->size_x = win->sizex;
     win->stored_position->size_y = win->sizey;
+    win->stored_position->display = display;
 
     U.runtime.is_dirty = true;
   }

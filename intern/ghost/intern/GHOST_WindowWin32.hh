@@ -167,6 +167,12 @@ class GHOST_WindowWin32 : public GHOST_Window {
   GHOST_TSuccess setClientSize(uint32_t width, uint32_t height);
 
   /**
+   * Returns the index of the display (monitor) the window is on.
+   * \return The index of the display (for macOS, otherwise defaults to -1).
+   */
+  int16_t getDisplay() const;
+
+  /**
    * Returns the state of the window (normal, minimized, maximized).
    * \return The state of the window.
    */

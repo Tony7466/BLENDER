@@ -609,6 +609,11 @@ void GHOST_WindowX11::clientToScreen(int32_t inX, int32_t inY, int32_t &outX, in
   outY = ay;
 }
 
+int16_t GHOST_WindowX11::getDisplay() const
+{
+  return -1;
+}
+
 GHOST_TSuccess GHOST_WindowX11::setDialogHints(GHOST_WindowX11 *parentWindow)
 {
 
