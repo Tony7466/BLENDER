@@ -218,10 +218,8 @@ ccl_device float2 direction_to_mirrorball(float3 dir)
  * https://blog.google/products/google-ar-vr/bringing-pixels-front-and-center-vr-video/ */
 ccl_device float3 equiangular_cubemap_face_to_direction(float u, float v)
 {
-  u = (1.0f - u);
-
-  u = tanf(u * M_PI_2_F - M_PI_4_F);
-  v = tanf(v * M_PI_2_F - M_PI_4_F);
+  u = tanf((0.5f - u) * M_PI_2_F);
+  v = tanf((v - 0.5f) * M_PI_2_F);
 
   return normalize(make_float3(1.0f, u, v));
 }
