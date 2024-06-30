@@ -196,6 +196,28 @@ static void wm_block_splash_close_on_fileselect(bContext *C, void *arg1, void * 
   }
 }
 
+#if defined(__APPLE__)
+/* Check if Blender is running under Rosetta for the purpose of displaying a splash screen warning
+ * From Apple's WWDC 2020 Session - Explore the new system architecture of Apple Silicon Macs
+ * Timecode: 14:31 - https://developer.apple.com/videos/play/wwdc2020/10686/*/
+
+#include <sys/sysctl.h>
+
+static int is_using_macos_rosetta() {
+  int ret = 0;
+  size_t size = sizeof(ret);
+
+  if (sysctlbyname("sysctl.proc_translated", &ret, &size, nullptr, 0) != -1) {
+    return ret;
+  }
+  // If "sysctl.proc_translated" is not present then must be native
+  if (errno == ENOENT) {
+    return 0;
+  }
+  return -1;
+}
+#endif /* __APPLE__ */
+
 static uiBlock *wm_block_splash_create(bContext *C, ARegion *region, void * /*arg*/)
 {
   const uiStyle *style = UI_style_get_dpi();
@@ -268,6 +290,15 @@ static uiBlock *wm_block_splash_create(bContext *C, ARegion *region, void * /*ar
   if (mt) {
     UI_menutype_draw(C, mt, layout);
   }
+
+#if defined(__APPLE__)
+  if (is_using_macos_rosetta() > 0) {
+    uiItemL(layout,
+            "Using Intel Blender binary on an Apple Sillicon Mac. Expect reduced performance",
+            ICON_ERROR);
+    uiItemS(layout);
+  }
+#endif
 
   UI_block_bounds_set_centered(block, 0);
 
