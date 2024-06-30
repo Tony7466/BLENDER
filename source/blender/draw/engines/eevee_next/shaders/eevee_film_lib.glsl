@@ -412,10 +412,10 @@ float film_history_blend_factor(float velocity,
                                 float luma_incoming,
                                 float luma_history)
 {
-  /* 5% of incoming color by default. */
-  float blend = 0.05;
+  /* 10% of incoming color by default. Average to 32 effective samples per pixels. */
+  float blend = 0.1;
   /* Blend less history if the pixel has substantial velocity. */
-  blend = mix(blend, 0.20, saturate(velocity * 0.02));
+  blend = mix(blend, 0.3, saturate(velocity * 0.02));
   /**
    * "High Quality Temporal Supersampling" by Brian Karis at SIGGRAPH 2014 (Slide 43)
    * Bias towards history if incoming pixel is near clamping. Reduces flicker.
