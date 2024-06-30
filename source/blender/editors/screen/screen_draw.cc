@@ -219,36 +219,59 @@ void ED_screen_draw_edges(wmWindow *win)
   }
 }
 
-static void screen_draw_area_icon(float center_x,
-                                  float center_y,
-                                  int icon,
-                                  uchar *color,
-                                  float *bg = nullptr,
-                                  float *outline = nullptr)
+static void screen_draw_area_icon(
+    rctf *rect, int icon, uchar *color, float *bg_color = nullptr, float *outline = nullptr)
 {
   if (!U.experimental.use_docking) {
     return;
   }
 
-  const float bg_width = U.pixelsize * 50.0f;
-  const float bg_height = U.pixelsize * 40.0f;
-  rctf combined = {center_x - (bg_width / 2.0f),
-                   center_x + bg_width - (bg_width / 2.0f),
-                   center_y - (bg_height / 2.0f),
-                   center_y + bg_height - (bg_height / 2.0f)};
-  if (bg) {
-    UI_draw_roundbox_4fv_ex(
-        &combined, bg, nullptr, 1.0f, outline ? outline : nullptr, U.pixelsize, 6 * U.pixelsize);
+  if ((rect->xmax - rect->xmin) < UI_SCALE_FAC * 75.0f ||
+      (rect->ymax - rect->ymin) < UI_SCALE_FAC * 60.0f)
+  {
+    return;
   }
-  UI_icon_draw_ex(center_x - U.pixelsize * 16.0f,
-                  center_y - U.pixelsize * 16.0f,
+
+  float icon_size = 32.0f * UI_SCALE_FAC;
+  const float center_x = BLI_rctf_cent_x(rect);
+  const float center_y = BLI_rctf_cent_y(rect);
+
+  if (bg_color) {
+    const float bg_width = UI_SCALE_FAC * 50.0f;
+    const float bg_height = UI_SCALE_FAC * 40.0f;
+    rctf combined = {center_x - (bg_width / 2.0f),
+                     center_x + bg_width - (bg_width / 2.0f),
+                     center_y - (bg_height / 2.0f),
+                     center_y + bg_height - (bg_height / 2.0f)};
+    UI_draw_roundbox_4fv_ex(&combined,
+                            bg_color,
+                            nullptr,
+                            1.0f,
+                            outline ? outline : nullptr,
+                            U.pixelsize,
+                            6 * U.pixelsize);
+  }
+
+  UI_icon_draw_ex(center_x - (icon_size / 2.0f),
+                  center_y - (icon_size / 2.0f),
                   icon,
-                  0.5f,
+                  (16.0f * UI_SCALE_FAC) / icon_size,
                   float(color[3]) / 255.0f,
                   0.0f,
                   color,
                   false,
                   UI_NO_ICON_OVERLAY_TEXT);
+}
+
+static void screen_draw_area_closed(int xmin, int xmax, int ymin, int ymax)
+{
+  rctf rect = {float(xmin), float(xmax), float(ymin), float(ymax)};
+  float darken[4] = {0.0f, 0.0f, 0.0f, 0.7f};
+  UI_draw_roundbox_corner_set(UI_CNR_ALL);
+  UI_draw_roundbox_4fv_ex(&rect, darken, nullptr, 1.0f, nullptr, U.pixelsize, 6 * U.pixelsize);
+
+  uchar color[4] = {255, 255, 255, 128};
+  screen_draw_area_icon(&rect, ICON_CANCEL, color, nullptr, nullptr);
 }
 
 static int area_icon(ScrArea *area)
@@ -273,18 +296,8 @@ void screen_draw_join_highlight(ScrArea *sa1, ScrArea *sa2, eScreenDir dir)
 {
   if (dir == SCREEN_DIR_NONE || !sa2) {
     /* Darken source if docking. Done here because might be a different window. */
-    rctf rect;
-    BLI_rctf_rcti_copy(&rect, &sa1->totrct);
-    float darken[4] = {0.0f, 0.0f, 0.0f, 0.7f};
-    UI_draw_roundbox_corner_set(UI_CNR_ALL);
-    UI_draw_roundbox_4fv_ex(&rect, darken, nullptr, 1.0f, nullptr, U.pixelsize, 6 * U.pixelsize);
-    if (BLI_rctf_size_x(&rect) > U.pixelsize * 75.0f &&
-        BLI_rctf_size_y(&rect) > U.pixelsize * 60.0f)
-    {
-      uchar icon_color[4] = {255, 255, 255, 128};
-      screen_draw_area_icon(
-          (rect.xmin + rect.xmax) / 2.0f, (rect.ymin + rect.ymax) / 2.0f, ICON_CANCEL, icon_color);
-    }
+    screen_draw_area_closed(
+        sa1->totrct.xmin, sa1->totrct.xmax, sa1->totrct.ymin, sa1->totrct.ymax);
     return;
   }
 
@@ -305,109 +318,42 @@ void screen_draw_join_highlight(ScrArea *sa1, ScrArea *sa2, eScreenDir dir)
   area_getoffsets(sa1, sa2, dir, &offset1, &offset2);
   if (offset1 < 0 || offset2 > 0) {
     /* Show partial areas that will be closed. */
-    uint pos_id = GPU_vertformat_attr_add(
-        immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-    immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-    GPU_blend(GPU_BLEND_ALPHA);
-    immUniformColor4fv(blender::float4{0.0f, 0.0f, 0.0f, 0.7f});
-
-    uchar icon_color[4] = {255, 255, 255, 128};
-
     if (vertical) {
       if (sa1->totrct.xmin < combined.xmin) {
-        immRectf(pos_id, sa1->totrct.xmin, sa1->totrct.ymin, combined.xmin, sa1->totrct.ymax);
-        if ((combined.xmin - sa1->totrct.xmin) > U.pixelsize * 75.0f &&
-            (sa1->totrct.ymax - sa1->totrct.ymin) > U.pixelsize * 60.0f)
-        {
-          screen_draw_area_icon((sa1->totrct.xmin + combined.xmin) / 2.0f,
-                                (sa1->totrct.ymin + sa1->totrct.ymax) / 2.0f,
-                                ICON_CANCEL,
-                                icon_color,
-                                nullptr);
-        }
+        screen_draw_area_closed(
+            sa1->totrct.xmin, combined.xmin, sa1->totrct.ymin, sa1->totrct.ymax);
       }
       if (sa2->totrct.xmin < combined.xmin) {
-        immRectf(pos_id, sa2->totrct.xmin, sa2->totrct.ymin, combined.xmin, sa2->totrct.ymax);
-        if ((combined.xmin - sa2->totrct.xmin) > U.pixelsize * 75.0f &&
-            (sa2->totrct.ymax - sa2->totrct.ymin) > U.pixelsize * 60.0f)
-        {
-          screen_draw_area_icon((sa2->totrct.xmin + combined.xmin) / 2.0f,
-                                (sa2->totrct.ymin + sa2->totrct.ymax) / 2.0f,
-                                ICON_CANCEL,
-                                icon_color);
-        }
+        screen_draw_area_closed(
+            sa2->totrct.xmin, combined.xmin, sa2->totrct.ymin, sa2->totrct.ymax);
       }
       if (sa1->totrct.xmax > combined.xmax) {
-        immRectf(pos_id, combined.xmax, sa1->totrct.ymin, sa1->totrct.xmax, sa1->totrct.ymax);
-        if ((sa1->totrct.xmax - combined.xmax) > U.pixelsize * 75.0f &&
-            (sa1->totrct.ymax - sa1->totrct.ymin) > U.pixelsize * 60.0f)
-        {
-          screen_draw_area_icon((combined.xmax + sa1->totrct.xmax) / 2.0f,
-                                (sa1->totrct.ymin + sa1->totrct.ymax) / 2.0f,
-                                ICON_CANCEL,
-                                icon_color);
-        }
+        screen_draw_area_closed(
+            combined.xmax, sa1->totrct.xmax, sa1->totrct.ymin, sa1->totrct.ymax);
       }
       if (sa2->totrct.xmax > combined.xmax) {
-        immRectf(pos_id, combined.xmax, sa2->totrct.ymin, sa2->totrct.xmax, sa2->totrct.ymax);
-        if ((sa2->totrct.xmax - combined.xmax) > U.pixelsize * 75.0f &&
-            (sa2->totrct.ymax - sa2->totrct.ymin) > U.pixelsize * 60.0f)
-        {
-          screen_draw_area_icon((combined.xmax + sa2->totrct.xmax) / 2.0f,
-                                (sa2->totrct.ymin + sa2->totrct.ymax) / 2.0f,
-                                ICON_CANCEL,
-                                icon_color);
-        }
+        screen_draw_area_closed(
+            combined.xmax, sa2->totrct.xmax, sa2->totrct.ymin, sa2->totrct.ymax);
       }
     }
     else {
       if (sa1->totrct.ymin < combined.ymin) {
-        immRectf(pos_id, sa1->totrct.xmin, sa1->totrct.ymin, sa1->totrct.xmax, combined.ymin);
-        if ((sa1->totrct.xmax - sa1->totrct.xmin) > U.pixelsize * 75.0f &&
-            (combined.ymin - sa1->totrct.ymin) > U.pixelsize * 60.0f)
-        {
-          screen_draw_area_icon((sa1->totrct.xmin + sa1->totrct.xmax) / 2.0f,
-                                (combined.ymin + sa1->totrct.ymin) / 2.0f,
-                                ICON_CANCEL,
-                                icon_color);
-        }
+        screen_draw_area_closed(
+            sa1->totrct.xmin, sa1->totrct.xmax, sa1->totrct.ymin, combined.ymin);
       }
       if (sa2->totrct.ymin < combined.ymin) {
-        immRectf(pos_id, sa2->totrct.xmin, sa2->totrct.ymin, sa2->totrct.xmax, combined.ymin);
-        if ((sa2->totrct.xmax - sa2->totrct.xmin) > U.pixelsize * 75.0f &&
-            (combined.ymin - sa2->totrct.ymin) > U.pixelsize * 60.0f)
-        {
-          screen_draw_area_icon((sa2->totrct.xmin + sa2->totrct.xmax) / 2.0f,
-                                (combined.ymin + sa2->totrct.ymin) / 2.0f,
-                                ICON_CANCEL,
-                                icon_color);
-        }
+        screen_draw_area_closed(
+            sa2->totrct.xmin, sa2->totrct.xmax, sa2->totrct.ymin, combined.ymin);
       }
       if (sa1->totrct.ymax > combined.ymax) {
-        immRectf(pos_id, sa1->totrct.xmin, combined.ymax, sa1->totrct.xmax, sa1->totrct.ymax);
-        if ((sa1->totrct.xmax - sa1->totrct.xmin) > U.pixelsize * 75.0f &&
-            (sa1->totrct.ymax - combined.ymax) > U.pixelsize * 60.0f)
-        {
-          screen_draw_area_icon((sa1->totrct.xmin + sa1->totrct.xmax) / 2.0f,
-                                (sa1->totrct.ymax + combined.ymax) / 2.0f,
-                                ICON_CANCEL,
-                                icon_color);
-        }
+        screen_draw_area_closed(
+            sa1->totrct.xmin, sa1->totrct.xmax, combined.ymax, sa1->totrct.ymax);
       }
       if (sa2->totrct.ymax > combined.ymax) {
-        immRectf(pos_id, sa2->totrct.xmin, combined.ymax, sa2->totrct.xmax, sa2->totrct.ymax);
-        if ((sa2->totrct.xmax - sa2->totrct.xmin) > U.pixelsize * 75.0f &&
-            (sa2->totrct.ymax - combined.ymax) > U.pixelsize * 60.0f)
-        {
-          screen_draw_area_icon((sa2->totrct.xmin + sa2->totrct.xmax) / 2.0f,
-                                (sa2->totrct.ymax + combined.ymax) / 2.0f,
-                                ICON_CANCEL,
-                                icon_color);
-        }
+        screen_draw_area_closed(
+            sa2->totrct.xmin, sa2->totrct.xmax, combined.ymax, sa2->totrct.ymax);
       }
     }
-    immUnbindProgram();
-    GPU_blend(GPU_BLEND_NONE);
   }
 
   /* Outline the combined area. */
@@ -444,20 +390,11 @@ void screen_draw_join_highlight(ScrArea *sa1, ScrArea *sa2, eScreenDir dir)
   rctf sa2new;
   BLI_rctf_isect(&combined, &sa2tot, &sa2new);
 
-  if (BLI_rctf_size_x(&sa2new) > U.pixelsize * 75.0f &&
-      BLI_rctf_size_y(&sa2new) > U.pixelsize * 60.0f)
-  {
-    const int icon = area_icon(sa1);
-    uchar icon_color[4] = {255, 255, 255, 255};
-    float bg_color[4] = {0.0f, 0.0f, 0.0f, 0.4f};
-    float outline_color[4] = {1.0f, 1.0f, 1.0f, 0.4f};
-    screen_draw_area_icon((sa2new.xmin + sa2new.xmax) / 2.0f,
-                          (sa2new.ymin + sa2new.ymax) / 2.0f,
-                          icon,
-                          icon_color,
-                          bg_color,
-                          outline_color);
-  }
+  const int icon = area_icon(sa1);
+  uchar icon_color[4] = {255, 255, 255, 255};
+  float bg_color[4] = {0.0f, 0.0f, 0.0f, 0.4f};
+  float outline_color[4] = {1.0f, 1.0f, 1.0f, 0.4f};
+  screen_draw_area_icon(&sa2new, icon, icon_color, bg_color, outline_color);
 }
 
 void screen_draw_dock_preview(const struct wmWindow * /* win */,
@@ -513,43 +450,15 @@ void screen_draw_dock_preview(const struct wmWindow * /* win */,
 
   if (dock_target == DOCKING_CENTER) {
     UI_draw_roundbox_4fv_ex(&dest, inner, nullptr, 1.0f, outline, U.pixelsize, 6 * U.pixelsize);
-    if (BLI_rctf_size_x(&dest) > U.pixelsize * 75.0f &&
-        BLI_rctf_size_y(&dest) > U.pixelsize * 60.0f)
-    {
-      screen_draw_area_icon((dest.xmin + dest.xmax) / 2.0f,
-                            (dest.ymin + dest.ymax) / 2.0f,
-                            icon1,
-                            icon_color,
-                            bg_color,
-                            outline);
-    }
+    screen_draw_area_icon(&dest, icon1, icon_color, bg_color, outline);
   }
   else {
     UI_draw_roundbox_4fv_ex(&dest, inner, nullptr, 1.0f, outline, U.pixelsize, 6 * U.pixelsize);
+    screen_draw_area_icon(&dest, icon1, icon_color, bg_color, outline);
 
-    if (BLI_rctf_size_x(&dest) > U.pixelsize * 75.0f &&
-        BLI_rctf_size_y(&dest) > U.pixelsize * 60.0f)
-    {
-      screen_draw_area_icon((dest.xmin + dest.xmax) / 2.0f,
-                            (dest.ymin + dest.ymax) / 2.0f,
-                            icon1,
-                            icon_color,
-                            bg_color,
-                            outline);
-    }
-
-    if (BLI_rctf_size_x(&remainder) > U.pixelsize * 75.0f &&
-        BLI_rctf_size_y(&remainder) > U.pixelsize * 60.0f)
-    {
-      bg_color[3] = 0.3f;
-      icon_color[3] = 128;
-      screen_draw_area_icon((remainder.xmin + remainder.xmax) / 2.0f,
-                            (remainder.ymin + remainder.ymax) / 2.0f,
-                            icon2,
-                            icon_color,
-                            bg_color,
-                            nullptr);
-    }
+    bg_color[3] = 0.3f;
+    icon_color[3] = 128;
+    screen_draw_area_icon(&remainder, icon2, icon_color, bg_color, nullptr);
 
     /* Darken the split position itself. */
     if (ELEM(dock_target, DOCKING_RIGHT, DOCKING_LEFT)) {
