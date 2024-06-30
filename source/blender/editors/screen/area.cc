@@ -518,12 +518,17 @@ void ED_region_do_draw(bContext *C, ARegion *region)
 
   /* Set client-side window decoration titlebar colors */
   if (at->regionid == RGN_TYPE_WINDOW) {
-    /* If this is a main window, use the topbar color */
+    /* For main windows, use the topbar color, for floating editor windows, use the header
+     * color, except for the View 3D editor which is transparent, in which case use the window
+     * background color instead */
     if (WM_window_has_global_areas(win)) {
       UI_SetTheme(SPACE_TOPBAR, RGN_TYPE_HEADER);
     }
-    else {
+    else if (area_spacetype == SPACE_VIEW3D) {
       UI_SetTheme(area_spacetype, RGN_TYPE_WINDOW);
+    }
+    else {
+      UI_SetTheme(area_spacetype, RGN_TYPE_HEADER);
     }
 
     float tb_background_color[4], tb_title_color[4];
