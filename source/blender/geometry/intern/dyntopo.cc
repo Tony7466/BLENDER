@@ -266,6 +266,37 @@ static void edge_subdivide(const std::array<float2, 2> &real_verts,
 {
 }
 
+static void gather_faces_to_split(const GroupedSpan<float2> verts_by_face_type, const float2 centre, const float radius, Vector<int> &r_faces_to_split)
+{
+  if (triangle_is_in_range(verts_by_face_type[0][0], verts_by_face_type[0][1], verts_by_face_type[0][2], centre, radius)) {
+    r_faces_to_split.append(0);
+  }
+  int offset = 1;
+  for (const int face_i : verts_by_face_type[1].index_range()) {
+    if (triangle_is_in_range(verts_by_face_type[0][0], verts_by_face_type[0][1], verts_by_face_type[1][face_i], centre, radius)) {
+      r_faces_to_split.append(offset + face_i);
+    }
+  }
+  offset += verts_by_face_type[1].size();
+  for (const int face_i : verts_by_face_type[2].index_range()) {
+    if (triangle_is_in_range(verts_by_face_type[0][1], verts_by_face_type[0][2], verts_by_face_type[2][face_i], centre, radius)) {
+      r_faces_to_split.append(offset + face_i);
+    }
+  }
+  offset += verts_by_face_type[2].size();
+  for (const int face_i : verts_by_face_type[3].index_range()) {
+    if (triangle_is_in_range(verts_by_face_type[0][2], verts_by_face_type[0][0], verts_by_face_type[3][face_i], centre, radius)) {
+      r_faces_to_split.append(offset + face_i);
+    }
+  }
+}
+
+static void gather_edges_to_split(const Span<int> faces, const GroupedSpan<float3> real_verts_by_face_type, const float max_length, Vector<int> &r_edges_to_split)
+{
+  float max_length = std::numeric_limits<float>::lowest();
+  if (max_length < math::distance_squared()){}
+}
+
 static void face_subdivide(const std::array<int, 5> &vert_offsets,
                            const Span<float2> verts,
                            const Span<float3> real_verts,
@@ -297,13 +328,6 @@ static void face_subdivide(const std::array<int, 5> &vert_offsets,
     const OffsetIndices<int> vert_offset(offset_data);
     const GroupedSpan<float2> verts_by_face_type(vert_offset, verts);
     const GroupedSpan<float3> real_verts_by_face_type(vert_offset, real_verts);
-
-    std::array<int, 5> edge_offset_data;
-    edge_offset_data[0] = vert_offset[0];
-    edge_offset_data[1] = vert_offset[1] * 2;
-    edge_offset_data[2] = vert_offset[2] * 2;
-    edge_offset_data[3] = vert_offset[3] * 2;
-    const OffsetIndices<int> edge_offset = offset_indices::accumulate_counts_to_offsets(edge_offset_data);
 
     Vector<int> faces_to_split;
     gather_faces_to_split(verts_by_face_type, centre, radius, faces_to_split);
@@ -363,19 +387,146 @@ static void face_subdivide(const std::array<int, 5> &vert_offsets,
 
     Vector<float2> left_verts;
     Vector<float2> right_verts;
-    left_verts.extend(verts.as_span().take_front(3));
-    right_verts.extend(verts.as_span().take_front(3));
-
-    left_verts[edge[0]] = mid;
-    right_verts[edge[1]] = mid;
 
     Vector<float3> left_real_verts;
     Vector<float3> right_real_verts;
-    left_real_verts.extend(real_verts.as_span().take_front(3));
-    right_real_verts.extend(real_verts.as_span().take_front(3));
 
-    left_real_verts[edge[0]] = real_mid;
-    right_real_verts[edge[1]] = real_mid;
+    std::array<int, 5> left_offset_data;
+    std::array<int, 5> right_offset_data;
+    left_offset_data[0] = 3;
+    right_offset_data[0] = 3;
+
+    switch (edge_i) {
+      case 0: {
+        left_verts.append(mid);
+        left_verts.append(verts_by_face_type[0][1]);
+        left_verts.append(verts_by_face_type[0][2]);
+        left_verts.extend(verts_by_face_type[1]);
+        left_verts.extend(verts_by_face_type[2]);
+        left_verts.append(verts_by_face_type[0][0]);
+
+        left_offset_data[1] = verts_by_face_type[1].size();
+        left_offset_data[2] = verts_by_face_type[2].size();
+        left_offset_data[3] = 1;
+
+        right_verts.append(verts_by_face_type[0][0]);
+        right_verts.append(mid);
+        right_verts.append(verts_by_face_type[0][2]);
+        right_verts.extend(verts_by_face_type[1]);
+        right_verts.extend(verts_by_face_type[0][1]);
+        right_verts.extend(verts_by_face_type[3]);
+
+        right_offset_data[1] = verts_by_face_type[1].size();
+        right_offset_data[2] = 1;
+        right_offset_data[3] = verts_by_face_type[3].size();
+
+        left_real_verts.append(mid);
+        left_real_verts.append(verts_by_face_type[0][1]);
+        left_real_verts.append(verts_by_face_type[0][2]);
+        left_real_verts.extend(verts_by_face_type[1]);
+        left_real_verts.extend(verts_by_face_type[2]);
+        left_real_verts.append(verts_by_face_type[0][0]);
+
+        right_real_verts.append(verts_by_face_type[0][0]);
+        right_real_verts.append(mid);
+        right_real_verts.append(verts_by_face_type[0][2]);
+        right_real_verts.extend(verts_by_face_type[1]);
+        right_real_verts.extend(verts_by_face_type[0][1]);
+        right_real_verts.extend(verts_by_face_type[3]);
+        break;
+      }
+      case 1: {
+        left_verts.append(verts_by_face_type[0][0]);
+        left_verts.append(verts_by_face_type[0][1]);
+        left_verts.append(mid);
+        left_verts.extend(verts_by_face_type[1]);
+        left_verts.extend(verts_by_face_type[2]);
+        left_verts.append(verts_by_face_type[0][2]);
+
+        left_offset_data[1] = verts_by_face_type[1].size();
+        left_offset_data[2] = verts_by_face_type[2].size();
+        left_offset_data[3] = 1;
+
+        right_verts.append(verts_by_face_type[0][0]);
+        right_verts.append(mid);
+        right_verts.append(verts_by_face_type[0][2]);
+        right_verts.extend(verts_by_face_type[0][1]);
+        right_verts.extend(verts_by_face_type[2]);
+        right_verts.extend(verts_by_face_type[3]);
+
+        left_offset_data[1] = 1;
+        left_offset_data[2] = verts_by_face_type[2].size();
+        left_offset_data[3] = verts_by_face_type[3].size();
+        
+        left_real_verts.append(verts_by_face_type[0][0]);
+        left_real_verts.append(verts_by_face_type[0][1]);
+        left_real_verts.append(mid);
+        left_real_verts.extend(verts_by_face_type[1]);
+        left_real_verts.extend(verts_by_face_type[2]);
+        left_real_verts.append(verts_by_face_type[0][2]);
+
+        right_real_verts.append(verts_by_face_type[0][0]);
+        right_real_verts.append(mid);
+        right_real_verts.append(verts_by_face_type[0][2]);
+        right_real_verts.extend(verts_by_face_type[0][1]);
+        right_real_verts.extend(verts_by_face_type[2]);
+        right_real_verts.extend(verts_by_face_type[3]);
+        break;
+      }
+      case 2: {
+        left_verts.append(verts_by_face_type[0][0]);
+        left_verts.append(verts_by_face_type[0][1]);
+        left_verts.append(mid);
+        left_verts.extend(verts_by_face_type[1]);
+        left_verts.append(verts_by_face_type[0][2]);
+        left_verts.extend(verts_by_face_type[3]);
+
+        left_offset_data[1] = verts_by_face_type[1].size();
+        left_offset_data[2] = 1;
+        left_offset_data[3] = verts_by_face_type[3].size();
+
+        right_verts.append(mid);
+        right_verts.append(verts_by_face_type[0][1]);
+        right_verts.append(verts_by_face_type[0][2]);
+        right_verts.extend(verts_by_face_type[0][0]);
+        right_verts.extend(verts_by_face_type[2]);
+        right_verts.extend(verts_by_face_type[3]);
+
+        left_offset_data[1] = 1;
+        left_offset_data[2] = verts_by_face_type[2].size();
+        left_offset_data[3] = verts_by_face_type[3].size();
+        
+        left_real_verts.append(verts_by_face_type[0][0]);
+        left_real_verts.append(verts_by_face_type[0][1]);
+        left_real_verts.append(mid);
+        left_real_verts.extend(verts_by_face_type[1]);
+        left_real_verts.append(verts_by_face_type[0][2]);
+        left_real_verts.extend(verts_by_face_type[3]);
+
+        right_real_verts.append(mid);
+        right_real_verts.append(verts_by_face_type[0][1]);
+        right_real_verts.append(verts_by_face_type[0][2]);
+        right_real_verts.extend(verts_by_face_type[0][0]);
+        right_real_verts.extend(verts_by_face_type[2]);
+        right_real_verts.extend(verts_by_face_type[3]);
+        break;
+      }
+    }
+
+    offset_indices::accumulate_counts_to_offsets(left_offset_data);
+    offset_indices::accumulate_counts_to_offsets(right_offset_data);
+
+    offsets_stack.append(left_offset_data);
+    offsets_stack.append(right_offset_data);
+    
+    verts_stack.append(left_verts);
+    verts_stack.append(right_verts);
+    
+    real_verts_stack.append(left_real_verts);
+    real_verts_stack.append(right_real_verts);
+    
+    tris.append(left_face_verts);
+    tris.append(right_face_verts);
   }
 }
 
