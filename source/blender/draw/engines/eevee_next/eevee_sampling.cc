@@ -162,11 +162,21 @@ void Sampling::step()
 
   data_.sample_index = sample_;
 
+  /* Morton order decode. */
+  auto morton_order = [](uint index) -> uint2 {
+    auto compact_one_by_one = [](uint x) {
+      x &= 0x55555555;
+      x = (x ^ (x >> 1)) & 0x33333333;
+      x = (x ^ (x >> 2)) & 0x0f0f0f0f;
+      x = (x ^ (x >> 4)) & 0x00ff00ff;
+      x = (x ^ (x >> 8)) & 0x0000ffff;
+      return x;
+    };
+    return uint2(compact_one_by_one(index >> 0), compact_one_by_one(index >> 1));
+  };
   /* Bijection of 64x64 to sequential indices. */
-  /* TODO(fclem): Could try random index into morton order. */
   int blue_noise_sample_index = ((sample_ / UTIL_FAST_NOISE_LEN) * 937) % square_i(UTIL_TEX_SIZE);
-  data_.blue_noise_offset = float2(blue_noise_sample_index % UTIL_TEX_SIZE,
-                                   blue_noise_sample_index / UTIL_TEX_SIZE);
+  data_.blue_noise_offset = float2(morton_order(blue_noise_sample_index));
   data_.blue_noise_layer = sample_ % UTIL_FAST_NOISE_LEN;
   data_.push_update();
 
