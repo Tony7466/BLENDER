@@ -7,10 +7,10 @@ add_subdirectory(realtime_compositor)
 if(WITH_COMPOSITOR_CPU)
   set(INC
     .
+    algorithms
     intern
     nodes
     operations
-    algorithms
     realtime_compositor
     ../blenkernel
     ../blentranslation
@@ -34,7 +34,6 @@ if(WITH_COMPOSITOR_CPU)
   set(SRC
     COM_compositor.hh
     COM_defines.h
-    COM_profile.hh
 
     intern/COM_BufferArea.h
     intern/COM_BufferRange.h
@@ -83,10 +82,6 @@ if(WITH_COMPOSITOR_CPU)
     intern/COM_WorkScheduler.cc
     intern/COM_WorkScheduler.h
     intern/COM_compositor.cc
-    intern/COM_profile.cc
-
-    operations/COM_QualityStepHelper.cc
-    operations/COM_QualityStepHelper.h
 
     # Internal nodes
     nodes/COM_SocketProxyNode.cc
@@ -482,8 +477,6 @@ if(WITH_COMPOSITOR_CPU)
     # Distort operation
     operations/COM_DisplaceOperation.cc
     operations/COM_DisplaceOperation.h
-    operations/COM_DisplaceSimpleOperation.cc
-    operations/COM_DisplaceSimpleOperation.h
     operations/COM_FlipOperation.cc
     operations/COM_FlipOperation.h
     operations/COM_MapUVOperation.cc
@@ -520,6 +513,8 @@ if(WITH_COMPOSITOR_CPU)
     operations/COM_DilateErodeOperation.h
     operations/COM_GlareBaseOperation.cc
     operations/COM_GlareBaseOperation.h
+    operations/COM_GlareBloomOperation.cc
+    operations/COM_GlareBloomOperation.h
     operations/COM_GlareFogGlowOperation.cc
     operations/COM_GlareFogGlowOperation.h
     operations/COM_GlareGhostOperation.cc
@@ -578,23 +573,17 @@ if(WITH_COMPOSITOR_CPU)
     PRIVATE bf::intern::atomic
   )
 
-  list(APPEND INC
-    ${CMAKE_CURRENT_BINARY_DIR}/operations
-  )
-
-  set(GENSRC_DIR ${CMAKE_CURRENT_BINARY_DIR}/operations)
-  set(GENSRC ${GENSRC_DIR}/COM_SMAAAreaTexture.h)
-  add_custom_command(
-    OUTPUT ${GENSRC}
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${GENSRC_DIR}
-    COMMAND "$<TARGET_FILE:smaa_areatex>" ${GENSRC}
-    DEPENDS smaa_areatex
-  )
-  list(APPEND SRC
-    ${GENSRC}
-  )
-  unset(GENSRC)
-  unset(GENSRC_DIR)
+  if(WITH_TBB)
+    list(APPEND INC_SYS
+      ${TBB_INCLUDE_DIRS}
+    )
+    add_definitions(-DWITH_TBB)
+    if(WIN32)
+      # TBB includes Windows.h which will define min/max macros
+      # that will collide with the stl versions.
+      add_definitions(-DNOMINMAX)
+    endif()
+  endif()
 
   if(WITH_OPENIMAGEDENOISE)
     add_definitions(-DWITH_OPENIMAGEDENOISE)
@@ -607,6 +596,16 @@ if(WITH_COMPOSITOR_CPU)
       ${OPENIMAGEDENOISE_LIBRARIES}
       ${TBB_LIBRARIES}
     )
+  endif()
+
+  if(WITH_FFTW3)
+    list(APPEND INC_SYS
+      ${FFTW3_INCLUDE_DIRS}
+    )
+    list(APPEND LIB
+      ${FFTW3_LIBRARIES}
+    )
+    add_definitions(-DWITH_FFTW3)
   endif()
 
   blender_add_lib(bf_compositor "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

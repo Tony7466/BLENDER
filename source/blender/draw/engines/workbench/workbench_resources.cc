@@ -21,7 +21,7 @@ static bool get_matcap_tx(Texture &matcap_tx, StudioLight &studio_light)
   if (matcap_diffuse && matcap_diffuse->float_buffer.data) {
     int layers = 1;
     float *buffer = matcap_diffuse->float_buffer.data;
-    Vector<float> combined_buffer = {};
+    Vector<float> combined_buffer;
 
     if (matcap_specular && matcap_specular->float_buffer.data) {
       int size = matcap_diffuse->x * matcap_diffuse->y * 4;
@@ -174,6 +174,11 @@ void SceneResources::init(const SceneState &scene_state)
   }
 
   clip_planes_buf.push_update();
+
+  missing_tx.ensure_2d(
+      GPU_RGBA8, int2(1), GPU_TEXTURE_USAGE_SHADER_READ, float4(1.0f, 0.0f, 1.0f, 1.0f));
+  missing_texture.gpu.texture = missing_tx;
+  missing_texture.name = "Missing Texture";
 }
 
 }  // namespace blender::workbench

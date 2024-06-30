@@ -241,8 +241,8 @@ void seq_time_update_effects_strip_range(const Scene *scene,
   /* Second pass: Recursive call to update effects in chain and in order, so they inherit length
    * correctly. */
   for (Sequence *seq : effects) {
-    blender::Span effects = seq_sequence_lookup_effects_by_seq(scene, seq);
-    seq_time_update_effects_strip_range(scene, effects);
+    blender::Span effects_recurse = seq_sequence_lookup_effects_by_seq(scene, seq);
+    seq_time_update_effects_strip_range(scene, effects_recurse);
   }
 }
 
@@ -360,7 +360,7 @@ void SEQ_timeline_init_boundbox(const Scene *scene, rctf *rect)
 {
   rect->xmin = scene->r.sfra;
   rect->xmax = scene->r.efra + 1;
-  rect->ymin = 0.0f;
+  rect->ymin = 1.0f; /* The first strip is drawn at y == 1.0f */
   rect->ymax = 8.0f;
 }
 
@@ -377,8 +377,9 @@ void SEQ_timeline_expand_boundbox(const Scene *scene, const ListBase *seqbase, r
     if (rect->xmax < SEQ_time_right_handle_frame_get(scene, seq) + 1) {
       rect->xmax = SEQ_time_right_handle_frame_get(scene, seq) + 1;
     }
-    if (rect->ymax < seq->machine) {
-      rect->ymax = seq->machine;
+    if (rect->ymax < seq->machine + 1.0f) {
+      /* We do +1 here to account for the channel thickness. Channel n has range of <n, n+1>. */
+      rect->ymax = seq->machine + 1.0f;
     }
   }
 }

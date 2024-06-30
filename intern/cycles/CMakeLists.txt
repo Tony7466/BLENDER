@@ -11,9 +11,9 @@ else()
   # be started with --env-system-scripts pointing to the release folder, which will
   # lack the cycles addon, and we don't want to write into it.
   if(NOT WINDOWS_PYTHON_DEBUG)
-    set(CYCLES_INSTALL_PATH "scripts/addons/cycles")
+    set(CYCLES_INSTALL_PATH "scripts/addons_core/cycles")
   else()
-    set(CYCLES_INSTALL_PATH "$ENV{appdata}/blender foundation/blender/${BLENDER_VERSION}/scripts/addons/cycles")
+    set(CYCLES_INSTALL_PATH "$ENV{appdata}/blender foundation/blender/${BLENDER_VERSION}/scripts/addons_core/cycles")
   endif()
 endif()
 
@@ -64,6 +64,15 @@ if(WITH_CYCLES_NATIVE_ONLY)
     endif()
     set(CYCLES_KERNEL_FLAGS "${MSVC_NATIVE_ARCH_FLAGS}")
   endif()
+elseif(WIN32 AND MSVC AND SUPPORT_NEON_BUILD AND SSE2NEON_FOUND)
+  set(CXX_HAS_SSE FALSE)
+  set(CXX_HAS_AVX FALSE)
+  set(CXX_HAS_AVX2 FALSE)
+  set(CYCLES_KERNEL_FLAGS "/fp:fast -D_CRT_SECURE_NO_WARNINGS /GS-")
+  string(APPEND CMAKE_CXX_FLAGS " ${CYCLES_KERNEL_FLAGS}")
+  string(APPEND CMAKE_CXX_FLAGS_RELEASE " /Ox")
+  string(APPEND CMAKE_CXX_FLAGS_RELWITHDEBINFO " /Ox")
+  string(APPEND CMAKE_CXX_FLAGS_MINSIZEREL " /Ox")
 elseif(NOT WITH_CPU_SIMD OR (SUPPORT_NEON_BUILD AND SSE2NEON_FOUND))
   set(CXX_HAS_SSE42 FALSE)
   set(CXX_HAS_AVX FALSE)
@@ -86,7 +95,8 @@ elseif(WIN32 AND MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   # grained control and the speedup we get here is too big to ignore.
   set(CYCLES_KERNEL_FLAGS "/fp:fast -D_CRT_SECURE_NO_WARNINGS /GS-")
 
-  # "jumptablerdata" improves performance when there is contention in large switch statements such as in svm.h
+  # "jumptablerdata" improves performance when there is contention in large switch statements
+  # such as in `svm.h`.
   # This flag is supported starting with MSVC 17.7 preview 3:
   # https://learn.microsoft.com/en-us/cpp/build/reference/jump-table-rdata
   if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 19.37.32820)
@@ -112,11 +122,23 @@ elseif(CMAKE_COMPILER_IS_GNUCC OR (CMAKE_CXX_COMPILER_ID MATCHES "Clang"))
   check_cxx_compiler_flag(-mavx2 CXX_HAS_AVX2)
 
   # Assume no signal trapping for better code generation.
-  set(CYCLES_KERNEL_FLAGS "-fno-trapping-math")
-  # Avoid overhead of setting errno for NaNs.
-  string(APPEND CYCLES_KERNEL_FLAGS " -fno-math-errno")
-  # Let compiler optimize 0.0 - x without worrying about signed zeros.
-  string(APPEND CYCLES_KERNEL_FLAGS " -fno-signed-zeros")
+  # We need to omit or modify specific flags to pass through clang-cl to prevent
+  # unknown flag errors
+  if (WIN32 AND MSVC)
+    # Pass clang flags directly to clang otherwise. Clang-cl doesn't recognize
+    # these flags by default
+    set(CYCLES_KERNEL_FLAGS " /clang:-fno-trapping-math")
+    # Avoid overhead of setting errno for NaNs.
+    string(APPEND CYCLES_KERNEL_FLAGS " /clang:-fno-math-errno")
+    # Let compiler optimize 0.0 - x without worrying about signed zeros.
+    string(APPEND CYCLES_KERNEL_FLAGS " /clang:-fno-signed-zeros")
+  else ()
+    set(CYCLES_KERNEL_FLAGS " -fno-trapping-math")
+    # Avoid overhead of setting errno for NaNs.
+    string(APPEND CYCLES_KERNEL_FLAGS " -fno-math-errno")
+    # Let compiler optimize 0.0 - x without worrying about signed zeros.
+    string(APPEND CYCLES_KERNEL_FLAGS " -fno-signed-zeros")
+  endif()
 
   if(CMAKE_COMPILER_IS_GNUCC)
     # Assume no signal trapping for better code generation.
@@ -140,7 +162,7 @@ elseif(CMAKE_COMPILER_IS_GNUCC OR (CMAKE_CXX_COMPILER_ID MATCHES "Clang"))
     string(APPEND CMAKE_CXX_FLAGS " ${CYCLES_KERNEL_FLAGS}")
   endif()
 
-elseif(WIN32 AND CMAKE_CXX_COMPILER_ID MATCHES "Intel")
+elseif(WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
   check_cxx_compiler_flag(/QxSSE4.2 CXX_HAS_SSE42)
   check_cxx_compiler_flag(/arch:AVX CXX_HAS_AVX)
   check_cxx_compiler_flag(/QxCORE-AVX2 CXX_HAS_AVX2)
@@ -152,7 +174,7 @@ elseif(WIN32 AND CMAKE_CXX_COMPILER_ID MATCHES "Intel")
       set(CYCLES_AVX2_KERNEL_FLAGS "/QxCORE-AVX2")
     endif()
   endif()
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
   check_cxx_compiler_flag(-xsse4.2 CXX_HAS_SSE42)
   check_cxx_compiler_flag(-xavx CXX_HAS_AVX)
   check_cxx_compiler_flag(-xcore-avx2 CXX_HAS_AVX2)
@@ -209,10 +231,6 @@ endif()
 
 if(WITH_CYCLES_OSL)
   add_definitions(-DWITH_OSL)
-  # osl 1.9.x
-  add_definitions(-DOSL_STATIC_BUILD)
-  # pre 1.9
-  add_definitions(-DOSL_STATIC_LIBRARY)
   include_directories(
     SYSTEM
     ${OSL_INCLUDE_DIR}
@@ -377,7 +395,7 @@ if(WITH_CYCLES_DEBUG_NAN)
   add_definitions(-DWITH_CYCLES_DEBUG_NAN)
 endif()
 
-if(NOT OPENIMAGEIO_PUGIXML_FOUND)
+if((NOT OPENIMAGEIO_PUGIXML_FOUND) OR WIN32)
   add_definitions(-DWITH_SYSTEM_PUGIXML)
 endif()
 
@@ -455,5 +473,9 @@ if(WITH_CYCLES_HYDRA_RENDER_DELEGATE OR (WITH_CYCLES_STANDALONE AND WITH_USD))
 endif()
 
 if(NOT WITH_BLENDER)
-  delayed_do_install(${CMAKE_BINARY_DIR}/bin)
+  if(CYCLES_STANDALONE_REPOSITORY)
+    delayed_do_install()
+  else()
+    delayed_do_install(${CMAKE_BINARY_DIR}/bin)
+  endif()
 endif()

@@ -22,7 +22,7 @@ enum ThumbSize {
   THB_FAIL,
 };
 
-enum ThumbSource {
+enum ThumbSource : int8_t {
   THB_SOURCE_IMAGE,
   THB_SOURCE_MOVIE,
   THB_SOURCE_BLEND,
@@ -78,7 +78,7 @@ ImBuf *IMB_thumb_manage(const char *file_or_lib_path, ThumbSize size, ThumbSourc
 /**
  * Create the necessary directories to store the thumbnails.
  */
-void IMB_thumb_makedirs(void);
+void IMB_thumb_makedirs();
 
 /**
  * Special function for loading a thumbnail embedded into a blend file.
@@ -88,12 +88,14 @@ ImBuf *IMB_thumb_load_blend(const char *blen_path, const char *blen_group, const
 /**
  * Special function for previewing fonts.
  */
-ImBuf *IMB_thumb_load_font(const char *filename, unsigned int x, unsigned int y);
+ImBuf *IMB_thumb_load_font(const char *filepath, unsigned int x, unsigned int y);
 bool IMB_thumb_load_font_get_hash(char *r_hash);
+
+ImBuf *IMB_font_preview(const char *filepath, unsigned int width, const float color[4]);
 
 /* Threading */
 
-void IMB_thumb_locks_acquire(void);
-void IMB_thumb_locks_release(void);
+void IMB_thumb_locks_acquire();
+void IMB_thumb_locks_release();
 void IMB_thumb_path_lock(const char *path);
 void IMB_thumb_path_unlock(const char *path);
