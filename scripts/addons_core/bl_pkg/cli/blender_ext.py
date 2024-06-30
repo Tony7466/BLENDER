@@ -1304,7 +1304,7 @@ def pkg_manifest_validate_field_copyright(
         return "list may not be empty"
         
     if strict:
-        year, name = value.partition(" ")
+        year, _, name = value.partition(" ")
         if not all(x.isdigit() for x in year.partition("-")[0::2]):
             return "invalid year" 
         if not name.strip():
