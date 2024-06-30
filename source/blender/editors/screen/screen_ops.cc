@@ -1466,13 +1466,7 @@ static void area_dupli_fn(bScreen * /*screen*/, ScrArea *area, void *user_data)
 static bool area_dupli_open(bContext *C, ScrArea *area, const int x, const int y)
 {
   bScreen *screen = CTX_wm_screen(C);
-
-  const rcti window_rect = {
-      /*xmin*/ x,
-      /*xmax*/ x + area->winx,
-      /*ymin*/ y,
-      /*ymax*/ y + area->winy,
-  };
+  const rcti window_rect = {x, x + area->winx, y, y + area->winy};
 
   /* Create new window. No need to set space_type since it will be copied over. */
   wmWindow *newwin = WM_window_open(C,
@@ -1501,7 +1495,6 @@ static bool area_dupli_open(bContext *C, ScrArea *area, const int x, const int y
 static int area_dupli_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   ScrArea *area = CTX_wm_area(C);
-
   if (event && event->customdata) {
     sActionzoneData *sad = static_cast<sActionzoneData *>(event->customdata);
     if (sad == nullptr) {
@@ -3541,13 +3534,13 @@ struct sAreaJoinData {
   ScrArea *sa2;                /* Potential target area (removed or reduced). */
   eScreenDir dir;              /* Direction of potential join. */
   eScreenAxis split_dir;       /* Direction of split within the source area. */
-  float split_fac;             /* Split factor in split_dir direction. */
+  eAreaDockTarget dock_target; /* Position within target we are pointing to. */
   int x, y;                    /* Starting mouse position. */
+  float split_fac;             /* Split factor in split_dir direction. */
   wmWindow *win1;              /* Window of source area. */
   wmWindow *win2;              /* Window of the target area. */
   wmWindow *draw_dock_win;     /* Window getting docking highlight. */
   bool close_win;              /* Close the source window when done. */
-  eAreaDockTarget dock_target; /* Position within target we are pointing to. */
   void *draw_callback;         /* call #screen_draw_join_highlight */
   void *draw_dock_callback;    /* call #screen_draw_dock_highlight, overlay on draw_dock_win. */
 };
@@ -3616,7 +3609,6 @@ static bool area_join_init(bContext *C, wmOperator *op, ScrArea *sa1, ScrArea *s
 
   sAreaJoinData *jd = static_cast<sAreaJoinData *>(
       MEM_callocN(sizeof(sAreaJoinData), "op_area_join"));
-
   jd->sa1 = sa1;
   jd->sa2 = sa2;
   jd->dir = area_getorientation(sa1, sa2);
@@ -3821,14 +3813,13 @@ static eAreaDockTarget area_docking_target(sAreaJoinData *jd, const wmEvent *eve
   }
 
   /* Convert to local coordinates in sa2. */
-  int x = event->xy[0] + jd->win1->posx - jd->win2->posx - jd->sa2->totrct.xmin;
-  int y = event->xy[1] + jd->win1->posy - jd->win2->posy - jd->sa2->totrct.ymin;
+  const int x = event->xy[0] + jd->win1->posx - jd->win2->posx - jd->sa2->totrct.xmin;
+  const int y = event->xy[1] + jd->win1->posy - jd->win2->posy - jd->sa2->totrct.ymin;
 
-  float fac_x = float(x) / float(jd->sa2->winx);
-  float fac_y = float(y) / float(jd->sa2->winy);
-
-  int min_x = 2 * AREAMINX * UI_SCALE_FAC;
-  int min_y = 2 * HEADERY * UI_SCALE_FAC;
+  const float fac_x = float(x) / float(jd->sa2->winx);
+  const float fac_y = float(y) / float(jd->sa2->winy);
+  const int min_x = 2 * AREAMINX * UI_SCALE_FAC;
+  const int min_y = 2 * HEADERY * UI_SCALE_FAC;
 
   if (ELEM(jd->dir, SCREEN_DIR_N, SCREEN_DIR_S)) {
     /* Up or Down to immediate neighbor. */
@@ -3859,16 +3850,10 @@ static eAreaDockTarget area_docking_target(sAreaJoinData *jd, const wmEvent *eve
 
   /* if the area is narrow then there are only two docking targets. */
   if (jd->sa2->winx < min_x) {
-    if (y < jd->sa2->winy / 2) {
-      return DOCKING_BOTTOM;
-    }
-    return DOCKING_TOP;
+    return (y < jd->sa2->winy / 2) ? DOCKING_BOTTOM : DOCKING_TOP;
   }
   if (jd->sa2->winy < min_y) {
-    if (x < jd->sa2->winx / 2) {
-      return DOCKING_LEFT;
-    }
-    return DOCKING_RIGHT;
+    return (x < jd->sa2->winx / 2) ? DOCKING_LEFT : DOCKING_RIGHT;
   }
 
   /* Are we in the center? But not in same area! */
@@ -3877,9 +3862,9 @@ static eAreaDockTarget area_docking_target(sAreaJoinData *jd, const wmEvent *eve
   }
 
   /* Area is large enough for four docking targets. */
-  float area_ratio = float(jd->sa2->winx) / float(jd->sa2->winy);
-  bool TL = float(x) / float(y + 1) < area_ratio;
-  bool BL = float(x) / float(jd->sa2->winy - y + 1) < area_ratio;
+  const float area_ratio = float(jd->sa2->winx) / float(jd->sa2->winy);
+  const bool TL = float(x) / float(y + 1) < area_ratio;
+  const bool BL = float(x) / float(jd->sa2->winy - y + 1) < area_ratio;
   if (TL && !BL) {
     return DOCKING_TOP;
   }
@@ -4047,10 +4032,8 @@ static int area_join_modal(bContext *C, wmOperator *op, const wmEvent *event)
           return OPERATOR_CANCELLED;
         }
 
-        bool close_win = jd->close_win;
-
+        const bool close_win = jd->close_win;
         area_join_exit(C, op);
-
         if (close_win) {
           wm_window_close(C, CTX_wm_manager(C), CTX_wm_window(C));
         }

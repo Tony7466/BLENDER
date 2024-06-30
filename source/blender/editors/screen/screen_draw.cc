@@ -226,32 +226,26 @@ static void screen_draw_area_icon(
     return;
   }
 
-  if ((rect->xmax - rect->xmin) < UI_SCALE_FAC * 75.0f ||
-      (rect->ymax - rect->ymin) < UI_SCALE_FAC * 60.0f)
+  if (BLI_rctf_size_x(rect) < UI_SCALE_FAC * 75.0f || BLI_rctf_size_y(rect) < UI_SCALE_FAC * 60.0f)
   {
     return;
   }
 
-  float icon_size = 32.0f * UI_SCALE_FAC;
   const float center_x = BLI_rctf_cent_x(rect);
   const float center_y = BLI_rctf_cent_y(rect);
 
   if (bg_color) {
     const float bg_width = UI_SCALE_FAC * 50.0f;
     const float bg_height = UI_SCALE_FAC * 40.0f;
-    rctf combined = {center_x - (bg_width / 2.0f),
-                     center_x + bg_width - (bg_width / 2.0f),
-                     center_y - (bg_height / 2.0f),
-                     center_y + bg_height - (bg_height / 2.0f)};
-    UI_draw_roundbox_4fv_ex(&combined,
-                            bg_color,
-                            nullptr,
-                            1.0f,
-                            outline ? outline : nullptr,
-                            U.pixelsize,
-                            6 * U.pixelsize);
+    rctf rect = {center_x - (bg_width / 2.0f),
+                 center_x + bg_width - (bg_width / 2.0f),
+                 center_y - (bg_height / 2.0f),
+                 center_y + bg_height - (bg_height / 2.0f)};
+    UI_draw_roundbox_4fv_ex(
+        &rect, bg_color, nullptr, 1.0f, outline ? outline : nullptr, U.pixelsize, 6 * U.pixelsize);
   }
 
+  const float icon_size = 32.0f * UI_SCALE_FAC;
   UI_icon_draw_ex(center_x - (icon_size / 2.0f),
                   center_y - (icon_size / 2.0f),
                   icon,
@@ -265,13 +259,15 @@ static void screen_draw_area_icon(
 
 static void screen_draw_area_closed(int xmin, int xmax, int ymin, int ymax)
 {
+  /* Darken the area. */
   rctf rect = {float(xmin), float(xmax), float(ymin), float(ymax)};
   float darken[4] = {0.0f, 0.0f, 0.0f, 0.7f};
   UI_draw_roundbox_corner_set(UI_CNR_ALL);
   UI_draw_roundbox_4fv_ex(&rect, darken, nullptr, 1.0f, nullptr, U.pixelsize, 6 * U.pixelsize);
 
+  /* Show "X" icon in the middle if there is space. */
   uchar color[4] = {255, 255, 255, 128};
-  screen_draw_area_icon(&rect, ICON_CANCEL, color, nullptr, nullptr);
+  screen_draw_area_icon(&rect, ICON_CANCEL, color);
 }
 
 static int area_icon(ScrArea *area)
@@ -295,7 +291,7 @@ static int area_icon(ScrArea *area)
 void screen_draw_join_highlight(ScrArea *sa1, ScrArea *sa2, eScreenDir dir)
 {
   if (dir == SCREEN_DIR_NONE || !sa2) {
-    /* Darken source if docking. Done here because might be a different window. */
+    /* Darken source if docking. Done here because it might be a different window. */
     screen_draw_area_closed(
         sa1->totrct.xmin, sa1->totrct.xmax, sa1->totrct.ymin, sa1->totrct.ymax);
     return;
