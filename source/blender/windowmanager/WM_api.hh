@@ -375,7 +375,11 @@ void WM_window_title(wmWindowManager *wm, wmWindow *win, const char *title = nul
 
 bool WM_stereo3d_enabled(wmWindow *win, bool only_fullscreen_test);
 
-void WM_window_set_use_decoration(const wmWindow *win, bool use_decoration);
+/** Client-Side Window Decorations */
+void WM_window_set_use_csd(const wmWindow *win, bool use_csd);
+void WM_window_set_titlebar_csd_color(const wmWindow *win,
+                                      const float tb_background_col[4],
+                                      const float tb_title_text_col[4]);
 
 /* `wm_files.cc`. */
 

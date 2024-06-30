@@ -602,9 +602,17 @@ void WM_window_set_dpi(const wmWindow *win)
   U.widget_unit = int(roundf(18.0f * U.scale_factor)) + (2 * pixelsize);
 }
 
-void WM_window_set_use_decoration(const wmWindow *win, const bool use_decoration)
+void WM_window_set_use_csd(const wmWindow *win, bool use_csd)
 {
-  GHOST_SetUseDecoration(static_cast<GHOST_WindowHandle>(win->ghostwin), use_decoration);
+  GHOST_SetUseCSD(static_cast<GHOST_WindowHandle>(win->ghostwin), use_csd);
+}
+
+void WM_window_set_titlebar_csd_color(const wmWindow *win,
+                                      const float tb_background_col[4],
+                                      const float tb_title_text_col[4])
+{
+  GHOST_SetTitlebarCSDColors(
+      static_cast<GHOST_WindowHandle>(win->ghostwin), tb_background_col, tb_title_text_col);
 }
 
 /**
@@ -867,9 +875,10 @@ static void wm_window_ghostwindow_ensure(wmWindowManager *wm, wmWindow *win, boo
 
     WM_window_set_dpi(win);
 
-    /* If the window has global areas (topbar/statusbar), enable decorations */
-    const bool use_decoration = WM_window_has_global_areas(win);
-    WM_window_set_use_decoration(win, use_decoration);
+    /* If the window doesn't have global areas (topbar/statusbar), enable simple decorations */
+    //    const bool use_decoration = !WM_window_has_global_areas(win);
+    const bool use_decoration = true;
+    WM_window_set_use_csd(win, use_decoration);
   }
 
   /* Add key-map handlers (1 handler for all keys in map!). */

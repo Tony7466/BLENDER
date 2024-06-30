@@ -89,9 +89,17 @@ class GHOST_IWindow {
 
   /**
    * Enable or disable custom client-side window decorations
-   * \param useDecoration: Whether to use custom client-side window decorations
+   * \param useCSD: Whether to use custom client-side window decorations
    */
-  virtual void setUseDecoration(bool useDecoration) = 0;
+  virtual void setUseCSD(bool useCSD) = 0;
+
+  /**
+   * Set colors to be used by custom titlebar client-side window decorations
+   * \param tbBackgroundCol: Titlebar background color
+   * \param tbTitleTextCol: Titlebar title text color
+   */
+  virtual void setTitlebarCSDColors(const float tbBackgroundCol[4],
+                                    const float tbTitleTextCol[4]) = 0;
 
   /**
    * Returns the window rectangle dimensions.

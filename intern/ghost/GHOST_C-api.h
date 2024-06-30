@@ -596,10 +596,20 @@ extern char *GHOST_GetTitle(GHOST_WindowHandle windowhandle);
 extern GHOST_TSuccess GHOST_SetPath(GHOST_WindowHandle windowhandle, const char *filepath);
 
 /**
- * Enables or disables custom client-side window decorations
- * \param useDecoration: Whether to use custom client-side window decorations
+ * Enable or disable custom client-side window decorations
+ * \param useCSD: Whether to use custom client-side window decorations
  */
-extern void GHOST_SetUseDecoration(GHOST_WindowHandle windowhandle, bool useDecoration);
+extern void GHOST_SetUseCSD(GHOST_WindowHandle windowhandle, bool useCSD);
+
+/**
+ * Set colors to be used by custom titlebar client-side window decorations
+ * \param tbBackgroundCol: Titlebar background color
+ * \param tbTitleTextCol: Titlebar title text color
+ */
+// TODO: Rename to TitleTextCol
+extern void GHOST_SetTitlebarCSDColors(GHOST_WindowHandle windowhandle,
+                                       const float tbBackgroundCol[4],
+                                       const float tbTitleTextCol[4]);
 
 /**
  * Returns the window rectangle dimensions.

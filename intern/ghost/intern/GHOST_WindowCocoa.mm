@@ -546,20 +546,35 @@ GHOST_TSuccess GHOST_WindowCocoa::setPath(const char *filepath)
   return success;
 }
 
-void GHOST_WindowCocoa::setUseDecoration(const bool useDecoration)
+void GHOST_WindowCocoa::setUseCSD(const bool useCSD)
 {
-  if (useDecoration) {
-    [m_window setTitlebarAppearsTransparent:YES];
-    [m_window setTitleVisibility:NSWindowTitleHidden];
-    [m_window setStyleMask:[m_window styleMask] | NSWindowStyleMaskFullSizeContentView];
-  }
-  else {
-    [m_window setTitlebarAppearsTransparent:NO];
-    [m_window setTitleVisibility:NSWindowTitleVisible];
-    [m_window setStyleMask:[m_window styleMask] & ~NSWindowStyleMaskFullSizeContentView];
-  }
+  m_window.titlebarAppearsTransparent = useCSD;
+  GHOST_Window::setUseCSD(useCSD);
+}
 
-  GHOST_Window::setUseDecoration(useDecoration);
+void GHOST_WindowCocoa::setTitlebarCSDColors(const float tbBackgroundCol[4],
+                                             const float /*tbTitleTextCol*/[4])
+{
+  @autoreleasepool {
+    /* Titlebar Background Color */
+    m_window.backgroundColor = [NSColor colorWithRed:tbBackgroundCol[0]
+                                               green:tbBackgroundCol[1]
+                                                blue:tbBackgroundCol[2]
+                                               alpha:tbBackgroundCol[3]];
+
+    /**
+     * Determine wether we should use the macOS dark or light titlebar text appearance by getting
+     * the the theme window background color, and finding it's HSV V component, with V value
+     * below 0.5 considered as being part of dark themes, and value above 0.5 considered as being
+     * part of light themes.
+     */
+
+    const float hsv_v = MAX(tbBackgroundCol[0], MAX(tbBackgroundCol[1], tbBackgroundCol[2]));
+
+    const NSAppearanceName win_appearance = hsv_v < 0.5 ? NSAppearanceNameVibrantDark :
+                                                          NSAppearanceNameVibrantLight;
+    m_window.appearance = [NSAppearance appearanceNamed:win_appearance];
+  }
 }
 
 void GHOST_WindowCocoa::getWindowBounds(GHOST_Rect &bounds) const

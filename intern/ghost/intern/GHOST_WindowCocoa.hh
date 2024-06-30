@@ -93,9 +93,16 @@ class GHOST_WindowCocoa : public GHOST_Window {
 
   /**
    * Enable or disable custom client-side window decorations
-   * \param useDecoration: Whether to use custom client-side window decorations
+   * \param useCSD: Whether to use custom client-side window decorations
    */
-  void setUseDecoration(bool useDecoration);
+  void setUseCSD(bool useCSD);
+
+  /**
+   * Set colors to be used by custom titlebar client-side window decorations
+   * \param tbBackgroundCol: Titlebar background color
+   * \param tbTitleTextCol: Titlebar title text color
+   */
+  void setTitlebarCSDColors(const float tbBackgroundCol[4], const float tbTitleTextCol[4]);
 
   /**
    * Returns the window rectangle dimensions.

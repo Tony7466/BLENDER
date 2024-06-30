@@ -514,7 +514,25 @@ void ED_region_do_draw(bContext *C, ARegion *region)
 
   wmOrtho2_region_pixelspace(region);
 
-  UI_SetTheme(area ? area->spacetype : 0, at->regionid);
+  const char area_spacetype = area ? area->spacetype : 0;
+
+  /* Set client-side window decoration titlebar colors */
+  if (at->regionid == RGN_TYPE_WINDOW) {
+    /* If this is a main window, use the topbar color */
+    if (WM_window_has_global_areas(win)) {
+      UI_SetTheme(SPACE_TOPBAR, RGN_TYPE_HEADER);
+    }
+    else {
+      UI_SetTheme(area_spacetype, RGN_TYPE_WINDOW);
+    }
+
+    float tb_background_color[4], tb_title_color[4];
+    UI_GetThemeColor4fv(TH_BACK, tb_background_color);
+    UI_GetThemeColor4fv(TH_BUTBACK_TEXT, tb_title_color);
+    WM_window_set_titlebar_csd_color(win, tb_background_color, tb_title_color);
+  }
+
+  UI_SetTheme(area_spacetype, at->regionid);
 
   if (area && area_is_pseudo_minimized(area)) {
     UI_ThemeClearColor(TH_EDITOR_OUTLINE);
