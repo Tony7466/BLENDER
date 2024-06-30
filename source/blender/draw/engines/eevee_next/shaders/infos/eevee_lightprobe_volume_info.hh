@@ -80,6 +80,7 @@ GPU_SHADER_CREATE_INFO(eevee_surfel_light)
                      "eevee_global_ubo",
                      "eevee_utility_texture",
                      "eevee_surfel_common",
+                     "eevee_sampling_data",
                      "eevee_light_data",
                      "eevee_shadow_data")
     .compute_source("eevee_surfel_light_comp.glsl")

@@ -678,6 +678,7 @@ void IrradianceBake::sync()
     pass.bind_resources(inst_.uniform_data);
     pass.bind_resources(inst_.lights);
     pass.bind_resources(inst_.shadows);
+    pass.bind_resources(inst_.sampling);
     /* Sync with the surfel creation stage. */
     pass.barrier(GPU_BARRIER_SHADER_STORAGE);
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);

@@ -138,21 +138,21 @@ vec2 regular_grid_2d(int i, int sample_count)
  * by Martin Roberts
  * https://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/
  */
-float r_1d(int i)
+float r_1d(uint i)
 {
   /* Golden ratio. */
   const float phi_1 = 1.618033988749;
   const float alpha = 1.0 / phi_1;
   return fract(float(i) * alpha);
 }
-vec2 r_2d(int i)
+vec2 r_2d(uint i)
 {
   /* Plastic constant. */
   const float phi_2 = 1.32471795724474602596;
   const vec2 alpha = vec2(1.0 / phi_2, 1.0 / (phi_2 * phi_2));
   return fract(float(i) * alpha);
 }
-vec3 r_3d(int i)
+vec3 r_3d(uint i)
 {
   const float phi_3 = 1.22074408460575947536;
   const vec3 alpha = vec3(1.0 / phi_3, 1.0 / (phi_3 * phi_3), 1.0 / (phi_3 * phi_3 * phi_3));
