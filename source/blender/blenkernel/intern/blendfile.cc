@@ -1746,7 +1746,7 @@ ID *PartialWriteContext::id_add_copy(const ID *id, const bool regenerate_session
                                    (LIB_ID_CREATE_NO_MAIN | LIB_ID_CREATE_NO_USER_REFCOUNT));
   ctx_root_id->tag |= LIB_TAG_TEMP_MAIN;
   if (regenerate_session_uid) {
-    /* Callling #BKE_lib_libblock_session_uid_renew is not needed here, copying already generated a
+    /* Calling #BKE_lib_libblock_session_uid_renew is not needed here, copying already generated a
      * new one. */
     BLI_assert(BKE_main_idmap_lookup_uid(matching_uid_map_, id->session_uid) == nullptr);
   }

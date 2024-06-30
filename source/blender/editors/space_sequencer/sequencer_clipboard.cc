@@ -130,7 +130,6 @@ static bool sequencer_write_copy_paste_file(Main *bmain_src,
                             scene_name,
                             nullptr,
                             {blendfile::PartialWriteContext::IDAddOperations::SET_FAKE_USER}));
-  id_fake_user_set(&scene_dst->id);
   scene_dst->id.flag |= LIB_CLIPBOARD_MARK;
 
   /* Create an empty sequence editor data to store all copied strips. */
@@ -163,9 +162,11 @@ static bool sequencer_write_copy_paste_file(Main *bmain_src,
   if (!BLI_listbase_is_empty(&fcurves_dst) || !BLI_listbase_is_empty(&drivers_dst)) {
     BLI_assert(scene_dst->adt == nullptr);
     scene_dst->adt = BKE_animdata_ensure_id(&scene_dst->id);
-    scene_dst->adt->action = reinterpret_cast<bAction *>(copy_buffer.id_create(
-        ID_AC, scene_name, nullptr, {blendfile::PartialWriteContext::IDAddOperations::NOP}));
-    id_fake_user_set(&scene_dst->adt->action->id);
+    scene_dst->adt->action = reinterpret_cast<bAction *>(
+        copy_buffer.id_create(ID_AC,
+                              scene_name,
+                              nullptr,
+                              {blendfile::PartialWriteContext::IDAddOperations::SET_FAKE_USER}));
     BLI_movelisttolist(&scene_dst->adt->action->curves, &fcurves_dst);
     BLI_movelisttolist(&scene_dst->adt->drivers, &drivers_dst);
   }
@@ -194,7 +195,11 @@ static bool sequencer_write_copy_paste_file(Main *bmain_src,
     }
 
     /* The Action ID of the destination scene has already been added (created actually) in the copy
-     * buffer, trying to add it again here would lead to serious issues. */
+     * buffer. This is necessary to ensure that only the relevant sequencer-related animation data
+     * is copied into the destination paste buffer, and not the whole scene's animation. See the
+     * code around the call to #sequencer_copy_animation above.
+     *
+     * So trying to add it again here would lead to serious issues. */
     if (scene_dst->adt && scene_dst->adt->action == reinterpret_cast<bAction *>(id_src)) {
       BLI_assert(GS(id_src->name) == ID_AC);
       return IDWALK_RET_NOP;
@@ -221,10 +226,9 @@ static bool sequencer_write_copy_paste_file(Main *bmain_src,
         }
         return blendfile::PartialWriteContext::IDAddOperations::CLEAR_DEPENDENCIES;
       };
-      id_dst = copy_buffer.id_add(
-          id_src,
-          {blendfile::PartialWriteContext::IDAddOperations::CLEAR_DEPENDENCIES},
-          partial_write_dependencies_filter_cb);
+      id_dst = copy_buffer.id_add(id_src,
+                                  {blendfile::PartialWriteContext::IDAddOperations::NOP},
+                                  partial_write_dependencies_filter_cb);
     }
     *cb_data->id_pointer = id_dst;
     return IDWALK_RET_NOP;

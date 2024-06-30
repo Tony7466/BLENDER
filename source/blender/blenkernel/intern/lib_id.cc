@@ -703,9 +703,9 @@ ID *BKE_id_copy_in_lib(Main *bmain,
   data.id_src = id;
   data.id_dst = newid;
   data.flag = flag;
-  /* When copying an embedded ID, typically at this point its owner ID pinter will still point to
+  /* When copying an embedded ID, typically at this point its owner ID pointer will still point to
    * the owner of the source, this code has no access to its valid (i.e. destination) owner. This
-   * can be added at some point is needed, but currently the #id_copy_libmanagement_cb callback
+   * can be added at some point if needed, but currently the #id_copy_libmanagement_cb callback
    * does need this information. */
   BKE_library_foreach_ID_link(
       bmain, newid, id_copy_libmanagement_cb, &data, IDWALK_IGNORE_MISSING_OWNER_ID);
