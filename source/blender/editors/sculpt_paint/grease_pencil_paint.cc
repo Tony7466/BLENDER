@@ -20,6 +20,7 @@
 #include "BLI_math_geom.h"
 #include "BLI_noise.hh"
 #include "BLI_rand.hh"
+#include "BLI_time.h"
 
 #include "DEG_depsgraph_query.hh"
 
@@ -258,6 +259,11 @@ class PaintOperation : public GreasePencilStrokeOperation {
   float stroke_random_hue_factor_;
   float stroke_random_sat_factor_;
   float stroke_random_val_factor_;
+
+  /* The current time at which the paint operation begins. */
+  double start_time_;
+  /* Current delta time from #start_time_, updated after each extension sample. */
+  double delta_time_;
 
   friend struct PaintOperationExecutor;
 
@@ -511,6 +517,7 @@ struct PaintOperationExecutor {
 
     Set<std::string> point_attributes_to_skip;
     Set<std::string> curve_attributes_to_skip;
+    bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
     curves.positions_for_write()[last_active_point] = start_location;
     drawing_->radii_for_write()[last_active_point] = start_radius;
     drawing_->opacities_for_write()[last_active_point] = start_opacity;
@@ -523,8 +530,12 @@ struct PaintOperationExecutor {
       drawing_->fill_colors_for_write()[active_curve] = *fill_color_;
       curve_attributes_to_skip.add("fill_color");
     }
+    bke::SpanAttributeWriter<float> delta_times = attributes.lookup_or_add_for_write_span<float>(
+        "delta_time", bke::AttrDomain::Point);
+    delta_times.span[last_active_point] = 0.0f;
+    point_attributes_to_skip.add("delta_time");
+    delta_times.finish();
 
-    bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
     bke::SpanAttributeWriter<int> materials = attributes.lookup_or_add_for_write_span<int>(
         "material_index", bke::AttrDomain::Curve);
     bke::SpanAttributeWriter<bool> cyclic = attributes.lookup_or_add_for_write_span<bool>(
@@ -574,6 +585,12 @@ struct PaintOperationExecutor {
       curve_attributes_to_skip.add("fill_opacity");
       fill_opacities.finish();
     }
+
+    bke::SpanAttributeWriter<float> init_times = attributes.lookup_or_add_for_write_span<float>(
+        "init_time", bke::AttrDomain::Curve);
+    init_times.span[active_curve] = self.start_time_;
+    curve_attributes_to_skip.add("init_time");
+    init_times.finish();
 
     curves.curve_types_for_write()[active_curve] = CURVE_TYPE_POLY;
     curves.update_curve_types();
@@ -746,19 +763,28 @@ struct PaintOperationExecutor {
       self.smoothed_pen_direction_ = self.screen_space_coords_orig_.last() - coords;
     }
     else {
-      self.smoothed_pen_direction_ = math::interpolate(
-          self.smoothed_pen_direction_, self.screen_space_coords_orig_.last() - coords, 0.1f);
+      /* The smoothing rate is a factor from 0 to 1 that represents how quickly the
+       * `smoothed_pen_direction_` "reacts" to changes in direction.
+       *  - 1.0f: Immediate reaction.
+       *  - 0.0f: No reaction (value never changes). */
+      constexpr float smoothing_rate_factor = 0.3f;
+      self.smoothed_pen_direction_ = math::interpolate(self.smoothed_pen_direction_,
+                                                       self.screen_space_coords_orig_.last() -
+                                                           coords,
+                                                       smoothing_rate_factor);
     }
 
     /* Approximate brush with non-circular shape by changing the radius based on the angle. */
     float radius_factor = 1.0f;
     if (settings_->draw_angle_factor > 0.0f) {
+      /* `angle` is the angle to the horizontal line in screen space. */
       const float angle = settings_->draw_angle;
       const float2 angle_vec = float2(math::cos(angle), math::sin(angle));
 
-      /* `angle_factor` is the angle to the horizontal line in screen space. */
-      const float angle_factor =
-          1.0f - math::abs(math::dot(angle_vec, math::normalize(self.smoothed_pen_direction_)));
+      /* The angle factor is 1.0f when the direction is aligned with the angle vector and 0.0f when
+       * it is orthogonal to the angle vector. This is consistent with the behavior from GPv2. */
+      const float angle_factor = math::abs(
+          math::dot(angle_vec, math::normalize(self.smoothed_pen_direction_)));
 
       /* Influence is controlled by `draw_angle_factor`. */
       radius_factor = math::interpolate(1.0f, angle_factor, settings_->draw_angle_factor);
@@ -813,6 +839,8 @@ struct PaintOperationExecutor {
     MutableSpan<float3> new_positions = positions.slice(new_points);
     MutableSpan<float> new_radii = drawing_->radii_for_write().slice(new_points);
     MutableSpan<float> new_opacities = drawing_->opacities_for_write().slice(new_points);
+
+    /* Interploate the screen space positions. */
     linear_interpolation<float2>(prev_coords, coords, new_screen_space_coords, is_first_sample);
     point_attributes_to_skip.add_multiple({"position", "radius", "opacity"});
 
@@ -869,7 +897,21 @@ struct PaintOperationExecutor {
       point_attributes_to_skip.add("vertex_color");
     }
 
+    bke::SpanAttributeWriter<float> delta_times = attributes.lookup_or_add_for_write_span<float>(
+        "delta_time", bke::AttrDomain::Point);
+    const double new_delta_time = BLI_time_now_seconds() - self.start_time_;
+    linear_interpolation<float>(float(self.delta_time_),
+                                float(new_delta_time),
+                                delta_times.span.slice(new_points),
+                                is_first_sample);
+    point_attributes_to_skip.add("delta_time");
+    delta_times.finish();
+
+    /* Update the accumulated distance along the stroke in pixels. */
     self.accum_distance_ += distance_px;
+
+    /* Update the current delta time. */
+    self.delta_time_ = new_delta_time;
 
     /* Update screen space buffers with new points. */
     self.screen_space_coords_orig_.extend(new_screen_space_coords);
@@ -994,6 +1036,11 @@ void PaintOperation::on_stroke_begin(const bContext &C, const InputSample &start
 
   /* We're now starting to draw. */
   grease_pencil->runtime->is_drawing_stroke = true;
+
+  /* Initialize the start time to the current time. */
+  start_time_ = BLI_time_now_seconds();
+  /* Delta time starts at 0. */
+  delta_time_ = 0.0f;
 
   PaintOperationExecutor executor{C};
   executor.process_start_sample(*this, C, start_sample, material_index, use_fill);
