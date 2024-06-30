@@ -639,7 +639,8 @@ static void grease_pencil_geom_batch_ensure(Object &object,
     for (const int curve_i : curves.curves_range()) {
       IndexRange points = points_by_curve[curve_i];
       if (visible_strokes.contains(curve_i)) {
-        tris_start_offsets[pos++] = t_offset;
+        tris_start_offsets[pos] = t_offset;
+        pos++;
       }
       if (points.size() >= 3) {
         t_offset += points.size() - 2;
