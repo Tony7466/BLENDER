@@ -7456,7 +7456,7 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_docking", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_ui_text(prop,
                            "Docking - Drag Areas Around",
-                           "Drag editor areas to new locations, including between windows.");
+                           "Drag editor areas to new locations, including between windows");
   RNA_def_property_update(prop, 0, "rna_userdef_update");
 }
 

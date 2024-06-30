@@ -404,6 +404,8 @@ void screen_draw_dock_preview(const struct wmWindow * /* win */,
 
   float outline[4] = {1.0f, 1.0f, 1.0f, 0.4f};
   float inner[4] = {1.0f, 1.0f, 1.0f, 0.1f};
+  float bg_color[4] = {0.0f, 0.0f, 0.0f, 0.4f};
+  uchar icon_color[4] = {255, 255, 255, 255};
   float border[4];
   UI_GetThemeColor4fv(TH_EDITOR_OUTLINE, border);
   UI_draw_roundbox_corner_set(UI_CNR_ALL);
@@ -416,10 +418,6 @@ void screen_draw_dock_preview(const struct wmWindow * /* win */,
 
   const int icon1 = area_icon(source);
   const int icon2 = area_icon(target);
-
-  uchar icon_color[4] = {255, 255, 255, 255};
-  float outline_color[4] = {1.0f, 1.0f, 1.0f, 0.4f};
-  float bg_color[4] = {0.0f, 0.0f, 0.0f, 0.4f};
 
   float split;
 
