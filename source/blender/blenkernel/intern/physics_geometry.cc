@@ -532,17 +532,16 @@ bool move_physics_impl_data(const PhysicsGeometryImpl &from,
   BLI_assert(body_range.intersect(to.rigid_bodies.index_range()) == body_range);
   BLI_assert(constraint_range.intersect(to.constraints.index_range()) == constraint_range);
 
-  /* No need to update topology caches on full copy. */
-  if (body_range == from_mutable.rigid_bodies.index_range()) {
-    to.rigid_bodies = from_mutable.rigid_bodies;
-    to.motion_states = from_mutable.motion_states;
-    from_mutable.rigid_bodies.reinitialize(0);
-    from_mutable.motion_states.reinitialize(0);
+  /* No need to update topology caches on full copy.
+   * Note: empty index ranges will always compare equal! */
+  if (!body_range.is_empty() && body_range == from_mutable.rigid_bodies.index_range()) {
+    to.rigid_bodies.as_mutable_span().slice(body_range).copy_from(from_mutable.rigid_bodies);
+    to.motion_states.as_mutable_span().slice(body_range).copy_from(from_mutable.motion_states);
   }
   else {
     body_mask.foreach_index([&](const int src_i, const int dst_i) {
-      to.rigid_bodies[dst_i] = from_mutable.rigid_bodies[src_i];
-      to.motion_states[dst_i] = from_mutable.motion_states[src_i];
+      to.rigid_bodies[body_range[dst_i]] = from_mutable.rigid_bodies[src_i];
+      to.motion_states[body_range[dst_i]] = from_mutable.motion_states[src_i];
       from_mutable.rigid_bodies[src_i] = nullptr;
       from_mutable.motion_states[src_i] = nullptr;
     });
@@ -550,22 +549,18 @@ bool move_physics_impl_data(const PhysicsGeometryImpl &from,
       delete from_mutable.rigid_bodies[src_i];
       delete from_mutable.motion_states[src_i];
     }
-    from_mutable.rigid_bodies.reinitialize(0);
-    from_mutable.motion_states.reinitialize(0);
     to.tag_body_topology_changed();
   }
-  if (constraint_range == from_mutable.constraints.index_range()) {
-    to.constraints = from_mutable.constraints;
-    from_mutable.constraints.reinitialize(0);
+  if (!constraint_range.is_empty() && constraint_range == from_mutable.constraints.index_range()) {
+    to.constraints.as_mutable_span().slice(body_range).copy_from(from_mutable.constraints);
   }
   else {
     constraint_mask.foreach_index([&](const int src_i, const int dst_i) {
-      to.constraints[dst_i] = from_mutable.constraints[src_i];
+      to.constraints[constraint_range[dst_i]] = from_mutable.constraints[src_i];
     });
     for (const int src_i : from_mutable.constraints.index_range()) {
       delete from_mutable.constraints[src_i];
     }
-    from_mutable.constraints.reinitialize(0);
   }
 
   /* Move all bodies and constraints to the new world. */
@@ -814,7 +809,7 @@ void PhysicsGeometry::move_or_copy_selection(
     const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
   const bool has_physics_data = move_physics_impl_data(from.impl(),
-                                                       this->attributes(),
+                                                       from.attributes(),
                                                        this->impl_for_write(),
                                                        use_world,
                                                        body_mask,

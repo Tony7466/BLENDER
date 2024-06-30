@@ -105,7 +105,7 @@ int PhysicsComponent::constraints_num() const
 
 int PhysicsComponent::shapes_num() const
 {
-  return 0;
+  return physics_ ? physics_->shapes_num() : 0;
 }
 
 bool PhysicsComponent::owns_direct_data() const
