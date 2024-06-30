@@ -875,10 +875,7 @@ static void wm_window_ghostwindow_ensure(wmWindowManager *wm, wmWindow *win, boo
 
     WM_window_set_dpi(win);
 
-    /* If the window doesn't have global areas (topbar/statusbar), enable simple decorations */
-    //    const bool use_decoration = !WM_window_has_global_areas(win);
-    const bool use_decoration = true;
-    WM_window_set_use_csd(win, use_decoration);
+    WM_window_set_use_csd(win, true);
   }
 
   /* Add key-map handlers (1 handler for all keys in map!). */
