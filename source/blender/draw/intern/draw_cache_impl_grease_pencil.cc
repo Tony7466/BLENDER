@@ -580,11 +580,15 @@ static void grease_pencil_edit_batch_ensure(Object &object,
 }
 
 template<typename T>
-static Array<T> attribute_interpolate(const VArray<T> input, const bke::CurvesGeometry &curves)
+static VArray<T> attribute_interpolate(const VArray<T> &input, const bke::CurvesGeometry &curves)
 {
+  if (curves.is_single_type(CURVE_TYPE_POLY)) {
+    return input;
+  }
+
   Array<T> out(curves.evaluated_points_num());
   curves.interpolate_to_evaluated(VArraySpan(input), out.as_mutable_span());
-  return out;
+  return VArray<T>::ForContainer(std::move(out));
 };
 
 static void grease_pencil_geom_batch_ensure(Object &object,
@@ -701,11 +705,11 @@ static void grease_pencil_geom_batch_ensure(Object &object,
 
     curves.ensure_can_interpolate_to_evaluated();
 
-    Array<float> radii = attribute_interpolate<float>(info.drawing.radii(), curves);
-    Array<float> opacities = attribute_interpolate<float>(info.drawing.opacities(), curves);
-    Array<float> rotations = attribute_interpolate<float>(
+    const VArray<float> radii = attribute_interpolate<float>(info.drawing.radii(), curves);
+    const VArray<float> opacities = attribute_interpolate<float>(info.drawing.opacities(), curves);
+    const VArray<float> rotations = attribute_interpolate<float>(
         *attributes.lookup_or_default<float>("rotation", bke::AttrDomain::Point, 0.0f), curves);
-    Array<ColorGeometry4f> vertex_colors = attribute_interpolate<ColorGeometry4f>(
+    const VArray<ColorGeometry4f> vertex_colors = attribute_interpolate<ColorGeometry4f>(
         *attributes.lookup_or_default<ColorGeometry4f>(
             "vertex_color", bke::AttrDomain::Point, ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f)),
         curves);
