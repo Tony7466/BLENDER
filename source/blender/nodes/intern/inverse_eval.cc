@@ -37,6 +37,8 @@
 
 namespace blender::nodes::inverse_eval {
 
+using namespace value_elem;
+
 static bool is_supported_value_node(const bNode &node)
 {
   return ELEM(node.type,
@@ -393,67 +395,6 @@ static void traverse_downstream_partial(
       }
     }
   }
-}
-
-std::optional<ElemVariant> get_elem_variant_for_socket_type(const eNodeSocketDatatype type)
-{
-  switch (type) {
-    case SOCK_FLOAT:
-      return {{FloatElem()}};
-    case SOCK_INT:
-      return {{IntElem()}};
-    case SOCK_BOOLEAN:
-      return {{BoolElem()}};
-    case SOCK_VECTOR:
-      return {{VectorElem()}};
-    case SOCK_ROTATION:
-      return {{RotationElem()}};
-    case SOCK_MATRIX:
-      return {{MatrixElem()}};
-    default:
-      return std::nullopt;
-  }
-}
-
-std::optional<ElemVariant> convert_socket_elem(const bNodeSocket &old_socket,
-                                               const bNodeSocket &new_socket,
-                                               const ElemVariant &old_elem)
-{
-  const eNodeSocketDatatype old_type = eNodeSocketDatatype(old_socket.type);
-  const eNodeSocketDatatype new_type = eNodeSocketDatatype(new_socket.type);
-  if (old_type == new_type) {
-    return old_elem;
-  }
-  if (ELEM(old_type, SOCK_INT, SOCK_FLOAT, SOCK_BOOLEAN) &&
-      ELEM(new_type, SOCK_INT, SOCK_FLOAT, SOCK_BOOLEAN))
-  {
-    std::optional<ElemVariant> new_elem = get_elem_variant_for_socket_type(new_type);
-    if (old_elem) {
-      new_elem->set_all();
-    }
-    return new_elem;
-  }
-  switch (old_type) {
-    case SOCK_MATRIX: {
-      const MatrixElem &transform_elem = std::get<MatrixElem>(old_elem.elem);
-      if (new_type == SOCK_ROTATION) {
-        return ElemVariant{transform_elem.rotation};
-      }
-      break;
-    }
-    case SOCK_ROTATION: {
-      const RotationElem &rotation_elem = std::get<RotationElem>(old_elem.elem);
-      if (new_type == SOCK_MATRIX) {
-        MatrixElem matrix_elem;
-        matrix_elem.rotation = rotation_elem;
-        return ElemVariant{matrix_elem};
-      }
-      break;
-    }
-    default:
-      break;
-  }
-  return std::nullopt;
 }
 
 std::optional<SocketValueVariant> convert_socket_value(const bNodeSocket &old_socket,

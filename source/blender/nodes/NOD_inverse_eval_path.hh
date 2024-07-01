@@ -27,8 +27,4 @@ void foreach_element_on_inverse_eval_path(
                      const bNodeSocket &socket,
                      const ElemVariant &elem)> foreach_socket_fn);
 
-std::optional<ElemVariant> convert_socket_elem(const bNodeSocket &old_socket,
-                                               const bNodeSocket &new_socket,
-                                               const ElemVariant &old_elem);
-
 }  // namespace blender::nodes::inverse_eval

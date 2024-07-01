@@ -94,6 +94,7 @@ set(SRC
   intern/node_socket_declarations.cc
   intern/node_util.cc
   intern/socket_search_link.cc
+  intern/value_elem.cc
 
   NOD_common.h
   NOD_composite.hh
@@ -122,6 +123,7 @@ set(SRC
   NOD_socket_search_link.hh
   NOD_static_types.h
   NOD_texture.h
+  NOD_value_elem.hh
   intern/node_common.h
   intern/node_exec.hh
   intern/node_util.hh
