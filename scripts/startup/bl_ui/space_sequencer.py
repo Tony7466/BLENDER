@@ -955,7 +955,7 @@ class SEQUENCER_MT_strip_retiming(Menu):
     bl_label = "Retiming"
 
     def draw(self, context):
-        is_retiming = context.scene.sequence_editor.selected_retiming_keys
+        is_retiming_mode = context.scene.sequence_editor.selected_retiming_keys
         strip = context.active_sequence_strip
         layout = self.layout
 
@@ -963,14 +963,12 @@ class SEQUENCER_MT_strip_retiming(Menu):
         layout.operator("sequencer.retiming_add_freeze_frame_slide")
         col = layout.column()
         col.operator("sequencer.retiming_add_transition_slide")
-        col.enabled = is_retiming
+        
+        col.separator()
 
-        layout.separator()
-
-        layout.operator("sequencer.retiming_key_delete")
-        col = layout.column()
-        col.operator("sequencer.retiming_reset")
-        col.enabled = not is_retiming
+        col.operator("sequencer.retiming_key_delete")
+        col.enabled = is_retiming_mode
+        layout.operator("sequencer.retiming_reset")
 
         layout.separator()
 

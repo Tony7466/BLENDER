@@ -48,6 +48,34 @@ bool sequencer_retiming_mode_is_active(const bContext *C)
   return SEQ_retiming_selection_get(ed).size() > 0;
 }
 
+static bool retiming_poll(bContext *C)
+{
+  const Editing *ed = SEQ_editing_get(CTX_data_scene(C));
+  if (ed == nullptr) {
+    return false;
+  }
+
+  if (SEQ_query_selected_strips(ed->seqbasep).size() == 0 &&
+      SEQ_retiming_selection_get(ed).size() == 0)
+  {
+    CTX_wm_operator_poll_msg_set(C, "A strip or its retiming keys must be selected");
+    return false;
+  }
+
+  if (SEQ_retiming_selection_get(ed).size() > 0) {
+    return true;
+  }
+
+  for (Sequence *seq : SEQ_query_selected_strips(ed->seqbasep)) {
+    if (SEQ_retiming_is_allowed(seq)) {
+      /* There exists at least one selected strip that can be retimed. */
+      return true;
+    }
+  }
+  CTX_wm_operator_poll_msg_set(C, "The selected strips cannot be retimed");
+  return false;
+}
+
 /*-------------------------------------------------------------------- */
 /** \name Retiming Data Show
  * \{ */
@@ -112,30 +140,13 @@ void SEQUENCER_OT_retiming_show(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = sequencer_retiming_data_show_exec;
-  ot->poll = sequencer_editing_initialized_and_active;
+  ot->poll = retiming_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
 /** \} */
-
-static bool retiming_poll(bContext *C)
-{
-  const Editing *ed = SEQ_editing_get(CTX_data_scene(C));
-  if (ed == nullptr) {
-    return false;
-  }
-  Sequence *seq = ed->act_seq;
-  if (seq == nullptr) {
-    return false;
-  }
-  if (!SEQ_retiming_is_allowed(seq)) {
-    CTX_wm_operator_poll_msg_set(C, "This strip type cannot be retimed");
-    return false;
-  }
-  return true;
-}
 
 static void retiming_key_overlap(Scene *scene, Sequence *seq)
 {
