@@ -335,8 +335,8 @@ bool SVGImporter::read(StringRefNull filepath)
     if (new_curves_range.is_empty()) {
       continue;
     }
-    shape_attributes_to_curves(curves, *shape, new_curves_range, transform, material_index);
 
+    shape_attributes_to_curves(curves, *shape, new_curves_range, transform, material_index);
     drawing->strokes_for_write() = std::move(curves);
   }
 

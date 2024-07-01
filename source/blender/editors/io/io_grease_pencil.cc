@@ -147,13 +147,17 @@ static int grease_pencil_import_svg_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
+  /* Note: Region data is found using "big area" functions, rather than context. This is necessary
+   * since export operators are not always invoked from a View3D. This enables the operator to find
+   * the most relevant 3D view for projection of strokes. */
   ARegion *region = get_invoke_region(C);
   if (region == nullptr) {
     BKE_report(op->reports, RPT_ERROR, "Unable to find valid 3D View area");
     return OPERATOR_CANCELLED;
   }
   View3D *v3d = get_invoke_view3d(C);
-  RegionView3D *rv3d = CTX_wm_region_view3d(C);
+  BLI_assert(v3d != nullptr);
+  RegionView3D *rv3d = (RegionView3D *)region->regiondata;
 
   const int resolution = RNA_int_get(op->ptr, "resolution");
   const float scale = RNA_float_get(op->ptr, "scale");
@@ -298,24 +302,28 @@ static int grease_pencil_export_svg_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
+  /* Note: Region data is found using "big area" functions, rather than context. This is necessary
+   * since export operators are not always invoked from a View3D. This enables the operator to find
+   * the most relevant 3D view for projection of strokes. */
   ARegion *region = get_invoke_region(C);
   if (region == nullptr) {
     BKE_report(op->reports, RPT_ERROR, "Unable to find valid 3D View area");
     return OPERATOR_CANCELLED;
   }
   View3D *v3d = get_invoke_view3d(C);
-  RegionView3D *rv3d = CTX_wm_region_view3d(C);
+  RegionView3D *rv3d = (RegionView3D *)region->regiondata;
 
   char filepath[FILE_MAX];
   RNA_string_get(op->ptr, "filepath", filepath);
 
-  const bool use_fill = RNA_boolean_get(op->ptr, "use_fill");
+  const bool export_stroke_materials = true;
+  const bool export_fill_materials = RNA_boolean_get(op->ptr, "use_fill");
   const bool use_uniform_width = RNA_boolean_get(op->ptr, "use_uniform_width");
   const ExportParams::SelectMode select_mode = ExportParams::SelectMode(
       RNA_enum_get(op->ptr, "selected_object_type"));
   const ExportParams::FrameMode frame_mode = ExportParams::FrameMode::Active;
-
   const bool use_clip_camera = RNA_boolean_get(op->ptr, "use_clip_camera");
+  const float stroke_sample = RNA_float_get(op->ptr, "stroke_sample");
 
   /* Set flags. */
   // int flag = 0;
@@ -335,11 +343,17 @@ static int grease_pencil_export_svg_exec(bContext *C, wmOperator *op)
   // params.scale = 1.0f;
   // params.select_mode = select_mode;
   // params.frame_mode = ExportFrame::ActiveFrame;
-  // params.stroke_sample = RNA_float_get(op->ptr, "stroke_sample");
   // params.resolution = 1.0f;
   const IOContext io_context(*C, region, v3d, rv3d, op->reports);
-  const ExportParams params = {
-      scene->r.cfra, ob, select_mode, frame_mode, use_clip_camera, use_uniform_width};
+  const ExportParams params = {scene->r.cfra,
+                               ob,
+                               select_mode,
+                               frame_mode,
+                               export_stroke_materials,
+                               export_fill_materials,
+                               use_clip_camera,
+                               use_uniform_width,
+                               stroke_sample};
 
   /* Do export. */
   WM_cursor_wait(true);

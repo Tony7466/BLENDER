@@ -65,12 +65,14 @@ struct ExportParams {
   Object *object = nullptr;
   SelectMode select_mode = SelectMode::Active;
   FrameMode frame_mode = FrameMode::Active;
+  bool export_stroke_materials = true;
+  bool export_fill_materials = true;
   /* Clip drawings to camera size when exporting in camera view. */
   bool use_clip_camera = false;
   /* Enforce uniform stroke width by averaging radius. */
   bool use_uniform_width = false;
-  bool export_stroke_materials = true;
-  bool export_fill_materials = true;
+  /* Distance for resampling outline curves before export, disabled if zero. */
+  float outline_resample_length = 0.0f;
 };
 
 bool import_svg(const IOContext &context, const ImportParams &params, StringRefNull filepath);

@@ -21,7 +21,7 @@
 #include "ED_object.hh"
 #include "ED_view3d.hh"
 
-#include "grease_pencil_io.hh"
+#include "grease_pencil_io_intern.hh"
 
 /** \file
  * \ingroup bgrease_pencil
