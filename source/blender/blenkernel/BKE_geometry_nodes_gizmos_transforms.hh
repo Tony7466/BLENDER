@@ -20,6 +20,8 @@ namespace blender::bke {
  * gizmo node).
  */
 struct GeoNodesGizmoID {
+  /** Storing only the hash of the compute context is enough here and is cheaper than making a deep
+   * copy of the actual compute context. */
   ComputeContextHash compute_context_hash;
   int node_id;
 

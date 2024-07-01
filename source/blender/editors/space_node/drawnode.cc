@@ -1275,7 +1275,7 @@ static bool socket_needs_attribute_search(bNode &node, bNodeSocket &socket)
   return node_decl->inputs[socket_index]->is_attribute_name;
 }
 
-static void draw_gizmo_icon(uiLayout *layout, PointerRNA *socket_ptr, const bool allow_pinning)
+static void draw_gizmo_icon(uiLayout *layout, PointerRNA *socket_ptr)
 {
   if (allow_pinning) {
     uiItemR(layout, socket_ptr, "pin_gizmo", UI_ITEM_NONE, "", ICON_GIZMO);
@@ -1334,7 +1334,12 @@ static void std_node_socket_draw(
       uiLayout *row = uiLayoutRow(layout, false);
       uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
       node_socket_button_label(C, row, ptr, node_ptr, text);
-      draw_gizmo_icon(row, ptr, node->type != NODE_GROUP_INPUT);
+      if (node->type == NODE_GROUP_INPUT) {
+        uiItemL(row, "", ICON_GIZMO);
+      }
+      else {
+        draw_gizmo_icon(row, ptr);
+      }
       return;
     }
     if (sock->in_out == SOCK_IN && sock->index() == 0 &&
@@ -1342,7 +1347,7 @@ static void std_node_socket_draw(
     {
       uiLayout *row = uiLayoutRow(layout, false);
       node_socket_button_label(C, row, ptr, node_ptr, text);
-      draw_gizmo_icon(row, ptr, true);
+      draw_gizmo_icon(row, ptr);
       return;
     }
   }
@@ -1356,6 +1361,8 @@ static void std_node_socket_draw(
 
   text = (sock->flag & SOCK_HIDE_LABEL) ? "" : text;
 
+  /* Some socket types draw the gizmo icon in a special way to look better. All others use a
+   * fallback default code path. */
   bool gizmo_handled = false;
 
   switch (type) {
@@ -1378,7 +1385,7 @@ static void std_node_socket_draw(
             uiLayout *row = uiLayoutRow(column, true);
             uiItemL(row, text, ICON_NONE);
             if (has_gizmo) {
-              draw_gizmo_icon(row, ptr, true);
+              draw_gizmo_icon(row, ptr);
               gizmo_handled = true;
             }
           }
@@ -1392,7 +1399,7 @@ static void std_node_socket_draw(
         uiLayout *row = uiLayoutRow(column, true);
         uiItemL(row, text, ICON_NONE);
         if (has_gizmo) {
-          draw_gizmo_icon(row, ptr, true);
+          draw_gizmo_icon(row, ptr);
           gizmo_handled = true;
         }
       }
@@ -1534,7 +1541,7 @@ static void std_node_socket_draw(
   }
 
   if (has_gizmo && !gizmo_handled) {
-    draw_gizmo_icon(layout, ptr, true);
+    draw_gizmo_icon(layout, ptr);
   }
 }
 

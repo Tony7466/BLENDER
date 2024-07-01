@@ -138,8 +138,10 @@ class ComputeContextBuilder {
   std::optional<Vector<destruct_ptr<ComputeContext>>> old_contexts_;
 
  public:
-  /* If called, compute contexts are not destructed when they are popped. Instead their lifetime
-   * will be the lifetime of this builder. */
+  /**
+   * If called, compute contexts are not destructed when they are popped. Instead their lifetime
+   * will be the lifetime of this builder.
+   */
   void keep_old_contexts()
   {
     if (!old_contexts_.has_value()) {
@@ -181,6 +183,7 @@ class ComputeContextBuilder {
     }
   }
 
+  /** Pops all compute contexts until the given one is at the top. */
   void pop_until(const ComputeContext *context)
   {
     while (!contexts_.is_empty()) {

@@ -175,7 +175,10 @@ class bNodeTreeRuntime : NonCopyable, NonMovable {
   CacheMutex tree_zones_cache_mutex;
   std::unique_ptr<bNodeTreeZones> tree_zones;
 
-  /** Only used during drawing of the node editor. */
+  /**
+   * The stored sockets are drawn using a special link to indicate that there is a gizmo. This is
+   * only valid during node editor drawing.
+   */
   Set<const bNodeSocket *> sockets_on_active_gizmo_paths;
 
   /** Only valid when #topology_cache_is_dirty is false. */
