@@ -354,13 +354,11 @@ static bool freeze_frame_add_from_strip_selection(bContext *C,
 {
   Scene *scene = CTX_data_scene(C);
   blender::VectorSet<Sequence *> strips = ED_sequencer_selected_strips_from_context(C);
+  strips.remove_if([&](Sequence *seq) { return !SEQ_retiming_is_allowed(seq); });
   const int timeline_frame = BKE_scene_frame_get(scene);
   bool success = false;
 
   for (Sequence *seq : strips) {
-    if (!SEQ_retiming_is_allowed(seq)) {
-      continue;
-    }
     success |= freeze_frame_add_new_for_seq(C, op, seq, timeline_frame, duration);
     SEQ_relations_invalidate_cache_raw(scene, seq);
   }
@@ -655,11 +653,9 @@ static int strip_speed_set_exec(bContext *C, const wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
   blender::VectorSet<Sequence *> strips = ED_sequencer_selected_strips_from_context(C);
+  strips.remove_if([&](Sequence *seq) { return !SEQ_retiming_is_allowed(seq); });
 
   for (Sequence *seq : strips) {
-    if (!SEQ_retiming_is_allowed(seq)) {
-      continue;
-    }
     SeqRetimingKey *key = ensure_left_and_right_keys(C, seq);
 
     if (key == nullptr) {
