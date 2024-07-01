@@ -38,7 +38,7 @@ struct LocalData {
 BLI_NOINLINE static void calc_silhouette_factors(const StrokeCache &cache,
                                                  const float3 &offset,
                                                  const Span<float3> normals,
-                                                 MutableSpan<float> factors)
+                                                 const MutableSpan<float> factors)
 {
   const float sign = math::sign(math::dot(cache.initial_normal, cache.grab_delta_symmetry));
   const float3 test_dir = math::normalize(offset) * sign;
