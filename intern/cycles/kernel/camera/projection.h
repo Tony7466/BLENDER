@@ -63,7 +63,7 @@ ccl_device float3 equirectangular_to_direction(float u, float v)
 
 ccl_device float2 direction_to_fisheye(float3 dir, float fov)
 {
-  const float r = atan2f(sqrtf(dir.y * dir.y + dir.z * dir.z), dir.x) / fov;
+  const float r = atan2f(len(make_float2(dir.y, dir.z)), dir.x) / fov;
   const float2 uv = r * safe_normalize(make_float2(dir.y, dir.z));
   return make_float2(0.5f - uv.x, uv.y + 0.5f);
 }
