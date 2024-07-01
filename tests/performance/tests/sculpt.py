@@ -82,9 +82,9 @@ def generate_stroke(context):
 
     template = {
         "name": "stroke",
-        "mouse" : (0.0, 0.0),
+        "mouse": (0.0, 0.0),
         "mouse_event": (0, 0),
-        "pen_flip" : False,
+        "pen_flip": False,
         "is_start": True,
         "location": (0, 0, 0),
         "pressure": 1.0,
@@ -107,6 +107,7 @@ def generate_stroke(context):
         stroke.append(step)
 
     return stroke
+
 
 def _run(args):
     import bpy
