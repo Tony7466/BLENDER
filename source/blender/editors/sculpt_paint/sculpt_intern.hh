@@ -786,6 +786,15 @@ bool SCULPT_stroke_is_first_brush_step(const blender::ed::sculpt_paint::StrokeCa
 bool SCULPT_stroke_is_first_brush_step_of_symmetry_pass(
     const blender::ed::sculpt_paint::StrokeCache &cache);
 
+/**
+ * Align the grab delta to the brush normal.
+ *
+ * \param grab_delta: Typically from `ss.cache->grab_delta_symmetry`.
+ */
+void sculpt_project_v3_normal_align(const SculptSession &ss,
+                                    float normal_weight,
+                                    float grab_delta[3]);
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -827,16 +836,8 @@ const blender::float3 SCULPT_vertex_normal_get(const SculptSession &ss, PBVHVert
 float SCULPT_mask_get_at_grids_vert_index(const SubdivCCG &subdiv_ccg,
                                           const CCGKey &key,
                                           int vert_index);
-blender::float4 SCULPT_vertex_color_get(const SculptSession &ss, PBVHVertRef vertex);
-void SCULPT_vertex_color_set(SculptSession &ss, PBVHVertRef vertex, const blender::float4 &color);
 
 bool SCULPT_vertex_is_occluded(SculptSession &ss, PBVHVertRef vertex, bool original);
-
-/** Returns true if a color attribute exists in the current sculpt session. */
-bool SCULPT_has_colors(const SculptSession &ss);
-
-/** Returns true if the active color attribute is on loop (AttrDomain::Corner) domain. */
-bool SCULPT_has_loop_colors(const Object &ob);
 
 const float *SCULPT_vertex_persistent_co_get(const SculptSession &ss, PBVHVertRef vertex);
 blender::float3 SCULPT_vertex_persistent_normal_get(const SculptSession &ss, PBVHVertRef vertex);
@@ -1123,22 +1124,6 @@ void sculpt_apply_texture(const SculptSession &ss,
                           const int thread_id,
                           float *r_value,
                           float r_rgba[4]);
-
-/**
- * Return a color of a brush texture on a particular vertex multiplied by active masks.
- */
-void SCULPT_brush_strength_color(
-    SculptSession &ss,
-    const Brush &brush,
-    const float brush_point[3],
-    float len,
-    const float vno[3],
-    const float fno[3],
-    float mask,
-    const PBVHVertRef vertex,
-    int thread_id,
-    const blender::ed::sculpt_paint::auto_mask::NodeData *automask_data,
-    float r_rgba[4]);
 
 /**
  * Calculates the vertex offset for a single vertex depending on the brush setting rgb as vector
@@ -1553,7 +1538,13 @@ void bmesh_four_neighbor_average(float avg[3], const float3 &direction, BMVert *
 
 float3 neighbor_coords_average(SculptSession &ss, PBVHVertRef vertex);
 float neighbor_mask_average(SculptSession &ss, SculptMaskWriteInfo write_info, PBVHVertRef vertex);
-float4 neighbor_color_average(SculptSession &ss, PBVHVertRef vertex);
+float4 neighbor_color_average(SculptSession &ss,
+                              OffsetIndices<int> faces,
+                              Span<int> corner_verts,
+                              GroupedSpan<int> vert_to_face_map,
+                              GSpan color_attribute,
+                              bke::AttrDomain color_domain,
+                              int vert);
 
 /**
  * Mask the mesh boundaries smoothing only the mesh surface without using auto-masking.
@@ -1641,6 +1632,24 @@ void push_end_ex(Object &ob, const bool use_nested_undo);
 void restore_from_bmesh_enter_geometry(const StepData &step_data, Mesh &mesh);
 BMLogEntry *get_bmesh_log_entry();
 
+}
+
+namespace blender::ed::sculpt_paint {
+
+struct OrigPositionData {
+  Span<float3> positions;
+  Span<float3> normals;
+};
+/**
+ * Retrieve positions from the latest undo state. This is often used for modal actions that depend
+ * on the initial state of the geometry from before the start of the action.
+ */
+OrigPositionData orig_position_data_get_mesh(const Object &object, const PBVHNode &node);
+OrigPositionData orig_position_data_get_grids(const Object &object, const PBVHNode &node);
+void orig_position_data_gather_bmesh(const BMLog &bm_log,
+                                     const Set<BMVert *, 0> &verts,
+                                     MutableSpan<float3> positions,
+                                     MutableSpan<float3> normals);
 }
 
 /** \} */
@@ -1949,18 +1958,13 @@ void pivot_line_preview_draw(uint gpuattr, SculptSession &ss);
 
 }
 
-/* Multi-plane Scrape Brush. */
-/* Main Brush Function. */
-void SCULPT_do_multiplane_scrape_brush(const Sculpt &sd,
-                                       Object &ob,
-                                       blender::Span<PBVHNode *> nodes);
-void SCULPT_multiplane_scrape_preview_draw(uint gpuattr,
-                                           const Brush &brush,
-                                           const SculptSession &ss,
-                                           const float outline_col[3],
-                                           float outline_alpha);
-
 namespace blender::ed::sculpt_paint {
+
+void multiplane_scrape_preview_draw(uint gpuattr,
+                                    const Brush &brush,
+                                    const SculptSession &ss,
+                                    const float outline_col[3],
+                                    float outline_alpha);
 
 namespace face_set {
 
@@ -1969,6 +1973,42 @@ void do_relax_face_sets_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nod
 }
 
 namespace color {
+
+/* Swaps colors at each element in indices with values in colors. */
+void swap_gathered_colors(Span<int> indices,
+                          GMutableSpan color_attribute,
+                          MutableSpan<float4> r_colors);
+
+/* Stores colors from the elements in indices into colors. */
+void gather_colors(const GSpan color_attribute,
+                   const Span<int> indices,
+                   MutableSpan<float4> r_colors);
+
+/* Like gather_colors but handles loop->vert conversion */
+void gather_colors_vert(OffsetIndices<int> faces,
+                        Span<int> corner_verts,
+                        GroupedSpan<int> vert_to_face_map,
+                        GSpan color_attribute,
+                        bke::AttrDomain color_domain,
+                        Span<int> verts,
+                        MutableSpan<float4> r_colors);
+
+void color_vert_set(OffsetIndices<int> faces,
+                    Span<int> corner_verts,
+                    GroupedSpan<int> vert_to_face_map,
+                    bke::AttrDomain color_domain,
+                    int vert,
+                    const float4 &color,
+                    GMutableSpan color_attribute);
+float4 color_vert_get(OffsetIndices<int> faces,
+                      Span<int> corner_verts,
+                      GroupedSpan<int> vert_to_face_map,
+                      GSpan color_attribute,
+                      bke::AttrDomain color_domain,
+                      int vert);
+
+bke::GAttributeReader active_color_attribute(const Mesh &mesh);
+bke::GSpanAttributeWriter active_color_attribute_for_write(Mesh &mesh);
 
 void do_paint_brush(PaintModeSettings &paint_mode_settings,
                     const Sculpt &sd,
@@ -2005,7 +2045,6 @@ void SCULPT_do_thumb_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode 
 void SCULPT_do_rotate_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_layer_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_pinch_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
-void SCULPT_do_grab_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_elastic_deform_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_draw_sharp_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_slide_relax_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);

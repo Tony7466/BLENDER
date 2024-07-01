@@ -213,35 +213,73 @@ static void action_free_data(ID *id)
 static void action_foreach_id(ID *id, LibraryForeachIDData *data)
 {
   animrig::Action &action = reinterpret_cast<bAction *>(id)->wrap();
-  const int flag = BKE_lib_query_foreachid_process_flags_get(data);
 
-  /* TODO: it might be nice to have some iterator that just visits all animation channels
-   * in the layered Action data, and use that to replace this nested for-loop. */
-  for (animrig::Layer *layer : action.layers()) {
-    for (animrig::Strip *strip : layer->strips()) {
-      switch (strip->type()) {
-        case animrig::Strip::Type::Keyframe: {
-          auto &key_strip = strip->as<animrig::KeyframeStrip>();
-          for (animrig::ChannelBag *channelbag_for_binding : key_strip.channelbags()) {
-            for (FCurve *fcurve : channelbag_for_binding->fcurves()) {
-              BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(data, BKE_fcurve_foreach_id(fcurve, data));
-            }
-          }
+  /* When this function is called without the IDWALK_READONLY flag, calls to
+   * BKE_LIB_FOREACHID_PROCESS_... macros can change ID pointers. ID remapping is the main example
+   * of such use.
+   *
+   * Those ID pointer changes are not guaranteed to be valid, though. For example, the remapping
+   * can be used to replace one Mesh with another, but that neither means that the new Mesh is
+   * animated with the same Action, nor that the old Mesh is no longer animated by that Action. In
+   * other words, the best that can be done is to invalidate the cache.
+   *
+   * NOTE: early-returns by BKE_LIB_FOREACHID_PROCESS_... macros are forbidden in non-readonly
+   * cases (see #IDWALK_RET_STOP_ITER documentation). */
+
+  const int flag = BKE_lib_query_foreachid_process_flags_get(data);
+  const bool is_readonly = flag & IDWALK_READONLY;
+
+  constexpr int idwalk_flags = IDWALK_CB_NEVER_SELF | IDWALK_CB_LOOPBACK;
+
+  Main *bmain = BKE_lib_query_foreachid_process_main_get(data);
+
+  if (is_readonly) {
+    /* bmain is still necessary to have, because in the read-only mode the cache
+     * may still be dirty, and we have no way to check. Without that knowledge
+     * it's possible to report invalid pointers, which should be avoided at all
+     * time. */
+    if (bmain) {
+      for (animrig::Binding *binding : action.bindings()) {
+        for (ID *binding_user : binding->users(*bmain)) {
+          BKE_LIB_FOREACHID_PROCESS_ID(data, binding_user, idwalk_flags);
         }
       }
     }
   }
+  else if (bmain && !bmain->is_action_binding_to_id_map_dirty) {
+    /* Because BKE_library_foreach_ID_link() can be called with bmain=nullptr,
+     * there are cases where we do not know which `main` this is called for. An example is in
+     * `deg_eval_copy_on_write.cc`, function `deg_expand_eval_copy_datablock`.
+     *
+     * Also if the cache is already dirty, we shouldn't loop over the pointers in there. If we
+     * were to call `binding->users(*bmain)` in that case, it would rebuild the cache. But then
+     * another ID using the same Action may also trigger a rebuild of the cache, because another
+     * user pointer changed, forcing way too many rebuilds of the user map.  */
+    bool should_invalidate = false;
 
-  /* Legacy F-Curves. */
-  LISTBASE_FOREACH (FCurve *, fcu, &action.curves) {
-    BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(data, BKE_fcurve_foreach_id(fcu, data));
+    for (animrig::Binding *binding : action.bindings()) {
+      for (ID *binding_user : binding->runtime_users()) {
+        ID *old_pointer = binding_user;
+        BKE_LIB_FOREACHID_PROCESS_ID(data, binding_user, idwalk_flags);
+        /* If binding_user changed, the cache should be invalidated. */
+        should_invalidate |= (binding_user != old_pointer);
+      }
+    }
+
+    if (should_invalidate) {
+      animrig::Binding::users_invalidate(*bmain);
+    }
   }
+
+  /* Note that, even though `BKE_fcurve_foreach_id()` exists, it is not called here. That function
+   * is only relevant for drivers, but the F-Curves stored in an Action are always just animation
+   * data, not drivers. */
 
   LISTBASE_FOREACH (TimeMarker *, marker, &action.markers) {
     BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, marker->camera, IDWALK_CB_NOP);
   }
 
-  /* Even more legacy IPO curves. */
+  /* Legacy IPO curves. */
   if (flag & IDWALK_DO_DEPRECATED_POINTERS) {
     LISTBASE_FOREACH (bActionChannel *, chan, &action.chanbase) {
       BKE_LIB_FOREACHID_PROCESS_ID_NOCHECK(data, chan->ipo, IDWALK_CB_USER);
@@ -305,7 +343,12 @@ static void write_bindings(BlendWriter *writer, Span<animrig::Binding *> binding
 {
   BLO_write_pointer_array(writer, bindings.size(), bindings.data());
   for (animrig::Binding *binding : bindings) {
-    BLO_write_struct(writer, ActionBinding, binding);
+    /* Make a shallow copy using the C type, so that no new runtime struct is
+     * allocated for the copy. */
+    ActionBinding shallow_copy = *binding;
+    shallow_copy.runtime = nullptr;
+
+    BLO_write_struct_at_address(writer, ActionBinding, binding, &shallow_copy);
   }
 }
 
@@ -383,6 +426,7 @@ static void read_bindings(BlendDataReader *reader, animrig::Action &anim)
 
   for (int i = 0; i < anim.binding_array_num; i++) {
     BLO_read_struct(reader, ActionBinding, &anim.binding_array[i]);
+    anim.binding_array[i]->wrap().blend_read_post();
   }
 }
 
@@ -443,7 +487,7 @@ static AssetTypeInfo AssetType_AC = {
 IDTypeInfo IDType_ID_AC = {
     /*id_code*/ ID_AC,
     /*id_filter*/ FILTER_ID_AC,
-    /*dependencies_id_types*/ 0,
+    /*dependencies_id_types*/ FILTER_ID_ALL,
     /*main_listbase_index*/ INDEX_ID_AC,
     /*struct_size*/ sizeof(bAction),
     /*name*/ "Action",
