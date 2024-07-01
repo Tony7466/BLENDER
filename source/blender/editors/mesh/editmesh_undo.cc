@@ -273,7 +273,7 @@ static void um_arraystore_cd_compact(CustomData *cdata,
             else {
               const ImplicitSharingInfo *sharing_info = implicit_sharing::info_for_mem_free(
                   layer->data);
-              bcd->states[i] = ImplicitSharingInfoAndData{layer->sharing_info, layer->data};
+              bcd->states[i] = ImplicitSharingInfoAndData{sharing_info, layer->data};
             }
           }
           else {
