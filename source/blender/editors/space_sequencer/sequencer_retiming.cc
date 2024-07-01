@@ -87,6 +87,9 @@ static void sequencer_retiming_data_show_selection(ListBase *seqbase)
     if ((seq->flag & SELECT) == 0) {
       continue;
     }
+    if (!SEQ_retiming_is_allowed(seq)) {
+      continue;
+    }
     seq->flag |= SEQ_SHOW_RETIMING;
   }
 }
@@ -95,6 +98,9 @@ static void sequencer_retiming_data_hide_selection(ListBase *seqbase)
 {
   LISTBASE_FOREACH (Sequence *, seq, seqbase) {
     if ((seq->flag & SELECT) == 0) {
+      continue;
+    }
+    if (!SEQ_retiming_is_allowed(seq)) {
       continue;
     }
     seq->flag &= ~SEQ_SHOW_RETIMING;
@@ -149,6 +155,10 @@ void SEQUENCER_OT_retiming_show(wmOperatorType *ot)
 
 /** \} */
 
+/*-------------------------------------------------------------------- */
+/** \name Retiming Reset
+ * \{ */
+
 static void retiming_key_overlap(Scene *scene, Sequence *seq)
 {
   ListBase *seqbase = SEQ_active_seqbase_get(SEQ_editing_get(scene));
@@ -161,19 +171,18 @@ static void retiming_key_overlap(Scene *scene, Sequence *seq)
   SEQ_transform_handle_overlap(scene, seqbase, strips, dependant, true);
 }
 
-/*-------------------------------------------------------------------- */
-/** \name Retiming Reset
- * \{ */
-
 static int sequencer_retiming_reset_exec(bContext *C, wmOperator * /*op*/)
 {
   Scene *scene = CTX_data_scene(C);
   const Editing *ed = SEQ_editing_get(scene);
-  Sequence *seq = ed->act_seq;
 
-  SEQ_retiming_data_clear(seq);
+  for (Sequence *seq : SEQ_query_selected_strips(ed->seqbasep)) {
+    if (SEQ_retiming_is_allowed(seq)) {
+      SEQ_retiming_data_clear(seq);
+      retiming_key_overlap(scene, seq);
+    }
+  }
 
-  retiming_key_overlap(scene, seq);
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
   return OPERATOR_FINISHED;
 }
@@ -231,6 +240,9 @@ static int retiming_key_add_from_selection(bContext *C,
   bool inserted = false;
 
   for (Sequence *seq : strips) {
+    if (!SEQ_retiming_is_allowed(seq)) {
+      continue;
+    }
     inserted |= retiming_key_add_new_for_seq(C, op, seq, timeline_frame);
   }
 
@@ -325,15 +337,12 @@ static bool freeze_frame_add_new_for_seq(const bContext *C,
   SeqRetimingKey *key = SEQ_retiming_add_key(scene, seq, timeline_frame);
 
   if (key == nullptr) {
-    key = SEQ_retiming_key_get_by_timeline_frame(scene, seq, timeline_frame);
+    BKE_report(op->reports, RPT_WARNING, "Cannot create freeze frame");
+    return false;
   }
 
   if (SEQ_retiming_key_is_transition_start(key)) {
     BKE_report(op->reports, RPT_WARNING, "Cannot create key inside of speed transition");
-    return false;
-  }
-  if (key == nullptr) {
-    BKE_report(op->reports, RPT_WARNING, "Cannot create freeze frame");
     return false;
   }
 
@@ -357,6 +366,7 @@ static bool freeze_frame_add_from_strip_selection(bContext *C,
 {
   Scene *scene = CTX_data_scene(C);
   blender::VectorSet<Sequence *> strips = ED_sequencer_selected_strips_from_context(C);
+  strips.remove_if([&](Sequence *seq) { return !SEQ_retiming_is_allowed(seq); });
   const int timeline_frame = BKE_scene_frame_get(scene);
   bool success = false;
 
@@ -655,6 +665,7 @@ static int strip_speed_set_exec(bContext *C, const wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
   blender::VectorSet<Sequence *> strips = ED_sequencer_selected_strips_from_context(C);
+  strips.remove_if([&](Sequence *seq) { return !SEQ_retiming_is_allowed(seq); });
 
   for (Sequence *seq : strips) {
     SeqRetimingKey *key = ensure_left_and_right_keys(C, seq);
