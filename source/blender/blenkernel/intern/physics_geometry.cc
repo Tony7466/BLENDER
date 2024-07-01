@@ -344,11 +344,16 @@ void PhysicsGeometryImpl::copy_to_customdata(const AttributeAccessor attributes)
 const PhysicsGeometry::BuiltinAttributes PhysicsGeometry::builtin_attributes = []() {
   PhysicsGeometry::BuiltinAttributes attributes;
 
+  int num_all = 0;
+  int num_skip = 0;
   auto register_attribute = [&](const StringRef name, const bool skip_copy = true) {
+    BLI_assert(num_all < attributes.num_builtin_attributes);
+    BLI_assert(num_skip < attributes.num_builtin_attributes);
+    attributes.all[num_all++] = name;
     if (skip_copy) {
-      attributes.skip_copy.add(name);
+      attributes.skip_copy[num_skip++] = name;
     }
-    return attributes.all.lookup_key_or_add(name);
+    return name;
   };
 
   attributes.id = register_attribute("id");
@@ -815,8 +820,9 @@ void PhysicsGeometry::move_or_copy_selection(
                                                        bodies_offset,
                                                        constraints_offset);
 
-  const Set<std::string> skip_attributes = has_physics_data ? builtin_attributes.skip_copy :
-                                                              Set<std::string>{};
+  const Set<std::string> skip_attributes = has_physics_data ?
+                                               Set<std::string>{builtin_attributes.skip_copy} :
+                                               Set<std::string>{};
 
   /* Physics data is empty, copy attributes instead. */
 
