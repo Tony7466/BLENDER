@@ -58,6 +58,9 @@ static void sequencer_retiming_data_show_selection(ListBase *seqbase)
     if ((seq->flag & SELECT) == 0) {
       continue;
     }
+    if (!SEQ_retiming_is_allowed(seq)) {
+      continue;
+    }
     seq->flag |= SEQ_SHOW_RETIMING;
   }
 }
@@ -66,6 +69,9 @@ static void sequencer_retiming_data_hide_selection(ListBase *seqbase)
 {
   LISTBASE_FOREACH (Sequence *, seq, seqbase) {
     if ((seq->flag & SELECT) == 0) {
+      continue;
+    }
+    if (!SEQ_retiming_is_allowed(seq)) {
       continue;
     }
     seq->flag &= ~SEQ_SHOW_RETIMING;
