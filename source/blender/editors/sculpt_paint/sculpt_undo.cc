@@ -2117,14 +2117,14 @@ void push_multires_mesh_end(bContext *C, const char *str)
 
 namespace blender::ed::sculpt_paint {
 
-OrigPositionData orig_position_data_get_mesh(const Object &object, const PBVHNode &node)
+OrigPositionData orig_position_data_get_mesh(const Object & /*object*/, const PBVHNode &node)
 {
   const undo::Node *unode = undo::get_node(&node, undo::Type::Position);
   return {unode->position.as_span().take_front(unode->unique_verts_num),
           unode->normal.as_span().take_front(unode->unique_verts_num)};
 }
 
-OrigPositionData orig_position_data_get_grids(const Object &object, const PBVHNode &node)
+OrigPositionData orig_position_data_get_grids(const Object & /*object*/, const PBVHNode &node)
 {
   const undo::Node *unode = undo::get_node(&node, undo::Type::Position);
   return {unode->position.as_span(), unode->normal.as_span()};

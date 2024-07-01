@@ -1635,6 +1635,10 @@ struct OrigPositionData {
   Span<float3> positions;
   Span<float3> normals;
 };
+/**
+ * Retrieve positions from the latest undo state. This is often used for modal actions that depend
+ * on the initial state of the geometry from before the start of the action.
+ */
 OrigPositionData orig_position_data_get_mesh(const Object &object, const PBVHNode &node);
 OrigPositionData orig_position_data_get_grids(const Object &object, const PBVHNode &node);
 
