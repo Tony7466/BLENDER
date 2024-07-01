@@ -166,7 +166,9 @@ static int sequencer_retiming_reset_exec(bContext *C, wmOperator * /*op*/)
   }
   else {
     for (Sequence *seq : SEQ_query_selected_strips(ed->seqbasep)) {
-      targets.add(seq);
+      if (SEQ_retiming_is_allowed(seq)) {
+        targets.add(seq);
+      }
     }
   }
 
