@@ -63,13 +63,18 @@ void VKQueryPool::begin_query()
   BLI_assert(pool_index < vk_query_pools_.size());
 
   /* When using a new query pool make sure to reset it before first usage. */
+  VKContext &context = *VKContext::get();
+  VkQueryPool vk_query_pool = vk_query_pools_[pool_index];
   if (is_new_pool) {
-    vkResetQueryPool(device.vk_handle(), vk_query_pools_[pool_index], 0, query_chunk_len_);
+    render_graph::VKResetQueryPoolNode::Data reset_query_pool = {};
+    reset_query_pool.vk_query_pool = vk_query_pool;
+    reset_query_pool.first_query = 0;
+    reset_query_pool.query_count = query_chunk_len_;
+    context.render_graph.add_node(reset_query_pool);
   }
 
-  VKContext &context = *VKContext::get();
   render_graph::VKBeginQueryNode::Data begin_query = {};
-  begin_query.vk_query_pool = vk_query_pools_.last();
+  begin_query.vk_query_pool = vk_query_pool;
   begin_query.query_index = query_index_in_pool();
   context.render_graph.add_node(begin_query);
 }

@@ -27,6 +27,7 @@
 #include "nodes/vk_end_query_node.hh"
 #include "nodes/vk_end_rendering_node.hh"
 #include "nodes/vk_fill_buffer_node.hh"
+#include "nodes/vk_reset_query_pool_node.hh"
 #include "nodes/vk_synchronization_node.hh"
 #include "nodes/vk_update_mipmaps_node.hh"
 
@@ -66,6 +67,7 @@ struct VKRenderGraphNode {
     VKEndQueryNode::Data end_query;
     VKEndRenderingNode::Data end_rendering;
     VKFillBufferNode::Data fill_buffer;
+    VKResetQueryPoolNode::Data reset_query_pool;
     VKSynchronizationNode::Data synchronization;
     VKUpdateMipmapsNode::Data update_mipmaps;
   };
@@ -152,6 +154,8 @@ struct VKRenderGraphNode {
         return VKDrawIndexedIndirectNode::pipeline_stage;
       case VKNodeType::DRAW_INDIRECT:
         return VKDrawIndirectNode::pipeline_stage;
+      case VKNodeType::RESET_QUERY_POOL:
+        return VKResetQueryPoolNode::pipeline_stage;
       case VKNodeType::SYNCHRONIZATION:
         return VKSynchronizationNode::pipeline_stage;
       case VKNodeType::UPDATE_MIPMAPS:
@@ -198,6 +202,7 @@ struct VKRenderGraphNode {
         BUILD_COMMANDS(
             VKNodeType::COPY_IMAGE_TO_BUFFER, VKCopyImageToBufferNode, copy_image_to_buffer)
         BUILD_COMMANDS(VKNodeType::BLIT_IMAGE, VKBlitImageNode, blit_image)
+        BUILD_COMMANDS(VKNodeType::RESET_QUERY_POOL, VKResetQueryPoolNode, reset_query_pool)
         BUILD_COMMANDS(VKNodeType::SYNCHRONIZATION, VKSynchronizationNode, synchronization)
         BUILD_COMMANDS(VKNodeType::UPDATE_MIPMAPS, VKUpdateMipmapsNode, update_mipmaps)
         BUILD_COMMANDS(VKNodeType::DISPATCH, VKDispatchNode, dispatch)
@@ -248,6 +253,7 @@ struct VKRenderGraphNode {
       case VKNodeType::COPY_IMAGE_TO_BUFFER:
       case VKNodeType::COPY_BUFFER_TO_IMAGE:
       case VKNodeType::BLIT_IMAGE:
+      case VKNodeType::RESET_QUERY_POOL:
       case VKNodeType::SYNCHRONIZATION:
       case VKNodeType::UPDATE_MIPMAPS:
         break;

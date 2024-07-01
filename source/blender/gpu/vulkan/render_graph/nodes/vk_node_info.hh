@@ -40,6 +40,7 @@ enum class VKNodeType {
   END_QUERY,
   END_RENDERING,
   FILL_BUFFER,
+  RESET_QUERY_POOL,
   SYNCHRONIZATION,
   UPDATE_MIPMAPS,
 };
@@ -106,6 +107,9 @@ BLI_INLINE std::ostream &operator<<(std::ostream &os, const VKNodeType node_type
       break;
     case VKNodeType::DRAW_INDIRECT:
       os << "DRAW_INDIRECT";
+      break;
+    case VKNodeType::RESET_QUERY_POOL:
+      os << "RESET_QUERY_POOL";
       break;
     case VKNodeType::SYNCHRONIZATION:
       os << "SYNCHRONIZATION";
