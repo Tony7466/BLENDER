@@ -72,6 +72,28 @@ static Collection *find_or_create_collection(Main *bmain,
   return target;
 }
 
+static void geometry_to_blender_meshes(const OBJImportParams &import_params,
+                                       Vector<std::unique_ptr<Geometry>> &all_geometries,
+                                       const GlobalVertices &global_vertices)
+{
+  for (const std::unique_ptr<Geometry> &geometry : all_geometries) {
+    Mesh *mesh = nullptr;
+
+    if (geometry->geom_type_ == GEOM_MESH) {
+      MeshFromGeometry mesh_ob_from_geometry{*geometry, global_vertices};
+      mesh = mesh_ob_from_geometry.create_mesh(import_params);
+    }
+
+    // TODO : Do we handle curves?
+    // else if (geometry->geom_type_ == GEOM_CURVE) {
+    //   CurveFromGeometry curve_ob_from_geometry(*geometry, global_vertices);
+    //   obj = curve_ob_from_geometry.create_curve(bmain, import_params);
+    // }
+
+    // TODO : How do we return the Mesh* array?
+  }
+}
+
 /**
  * Make Blender Mesh, Curve etc from Geometry and add them to the import collection.
  */
@@ -103,7 +125,8 @@ static void geometry_to_blender_objects(Main *bmain,
     Object *obj = nullptr;
     if (geometry->geom_type_ == GEOM_MESH) {
       MeshFromGeometry mesh_ob_from_geometry{*geometry, global_vertices};
-      obj = mesh_ob_from_geometry.create_mesh(bmain, materials, created_materials, import_params);
+      obj = mesh_ob_from_geometry.create_mesh_object(
+          bmain, materials, created_materials, import_params);
     }
     else if (geometry->geom_type_ == GEOM_CURVE) {
       CurveFromGeometry curve_ob_from_geometry(*geometry, global_vertices);
@@ -135,6 +158,19 @@ static void geometry_to_blender_objects(Main *bmain,
 
   DEG_id_tag_update(&scene->id, ID_RECALC_BASE_FLAGS);
   DEG_relations_tag_update(bmain);
+}
+
+void importer_mesh(const OBJImportParams &import_params, size_t read_buffer_size)
+{
+  /* List of Geometry instances to be parsed from OBJ file. */
+  Vector<std::unique_ptr<Geometry>> all_geometries;
+  /* Container for vertex and UV vertex coordinates. */
+  GlobalVertices global_vertices;
+
+  OBJParser obj_parser{import_params, read_buffer_size};
+  obj_parser.parse(all_geometries, global_vertices);
+
+  geometry_to_blender_meshes(import_params, all_geometries, global_vertices);
 }
 
 void importer_main(bContext *C, const OBJImportParams &import_params)

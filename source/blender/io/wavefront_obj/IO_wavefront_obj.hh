@@ -85,6 +85,11 @@ struct OBJImportParams {
 };
 
 /**
+ * Reads and retuns just the meshes in the obj file
+ */
+void OBJ_import_mesh(const OBJImportParams *import_params);
+
+/**
  * Perform the full import process.
  * Import also changes the selection & the active object; callers
  * need to update the UI bits if needed.

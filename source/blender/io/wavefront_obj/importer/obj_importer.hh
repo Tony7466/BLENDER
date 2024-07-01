@@ -12,6 +12,8 @@
 
 namespace blender::io::obj {
 
+void importer_mesh(const OBJImportParams &import_params, size_t read_buffer_size = 256 * 1024);
+
 /* Main import function used from within Blender. */
 void importer_main(bContext *C, const OBJImportParams &import_params);
 

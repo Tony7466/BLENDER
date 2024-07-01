@@ -39,3 +39,8 @@ void OBJ_import(bContext *C, const OBJImportParams *import_params)
   blender::io::obj::importer_main(C, *import_params);
   report_duration("import", start_time, import_params->filepath);
 }
+
+void OBJ_import_mesh(const OBJImportParams *import_params)
+{
+  blender::io::obj::importer_mesh(*import_params);
+}
