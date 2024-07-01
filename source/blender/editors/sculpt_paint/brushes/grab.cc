@@ -146,7 +146,7 @@ static void calc_grids(const Sculpt &sd,
   apply_translations(translations, grids, subdiv_ccg);
 }
 
-static BLI_NOINLINE void gather_orig_position_data_bmesh(BMLog &bm_log,
+static BLI_NOINLINE void gather_orig_position_data_bmesh(const BMLog &bm_log,
                                                          const Set<BMVert *, 0> &verts,
                                                          const MutableSpan<float3> positions,
                                                          const MutableSpan<float3> normals)
@@ -155,7 +155,7 @@ static BLI_NOINLINE void gather_orig_position_data_bmesh(BMLog &bm_log,
   for (BMVert *vert : verts) {
     const float *co;
     const float *no;
-    BM_log_original_vert_data(&bm_log, vert, &co, &no);
+    BM_log_original_vert_data(&const_cast<BMLog &>(bm_log), vert, &co, &no);
     positions[i] = co;
     normals[i] = no;
     i++;
