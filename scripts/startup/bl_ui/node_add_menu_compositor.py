@@ -158,6 +158,7 @@ class NODE_MT_category_compositor_filter(Menu):
         layout.separator()
         node_add_menu.add_node_type(layout, "CompositorNodeFilter")
         node_add_menu.add_node_type(layout, "CompositorNodeGlare")
+        node_add_menu.add_bloom_node_setup(layout, label="Bloom")
         node_add_menu.add_node_type(layout, "CompositorNodeKuwahara")
         node_add_menu.add_node_type(layout, "CompositorNodePixelate")
         node_add_menu.add_node_type(layout, "CompositorNodePosterize")

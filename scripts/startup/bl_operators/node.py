@@ -219,6 +219,65 @@ class NODE_OT_add_repeat_zone(NodeAddZoneOperator, Operator):
     output_node_type = "GeometryNodeRepeatOutput"
 
 
+class NODE_OT_add_bloom_node_setup(NodeAddOperator, Operator):
+    """Add a node setup that replicates the old EEVEE bloom effect"""
+    bl_idname = "node.add_bloom_node_setup"
+    bl_label = "Add Bloom Node Setup"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        space = context.space_data
+        tree = space.edit_tree
+
+        self.deselect_nodes(context)
+
+        # First, add the inputs that can be controlled, defaulting to the original EEVEE defaults.
+        # With a reroute for the input image.
+        input_image_node = self.create_node(context, "NodeReroute")
+        input_image_node.label = "Bloom Input"
+
+        input_intensity_node = self.create_node(context, "CompositorNodeValue")
+        input_intensity_node.label = "Bloom Intensity"
+        input_intensity_node.outputs["Value"].default_value = 0.05
+        input_intensity_node.location.y = input_image_node.location.y - 20
+
+        input_tint_node = self.create_node(context, "CompositorNodeRGB")
+        input_tint_node.label = "Bloom Tint"
+        input_tint_node.outputs["RGBA"].default_value = (1.0, ) * 4
+        input_tint_node.location.y = input_intensity_node.location.y - input_intensity_node.height
+
+        # Add the bloom node itself, but set the Mix to 1, since we will be adding it to the image
+        # ourselves after tinting it.
+        glare_node = self.create_node(context, "CompositorNodeGlare")
+        glare_node.glare_type = "BLOOM"
+        glare_node.quality = "HIGH"
+        glare_node.mix = 1
+        glare_node.threshold = 0.8
+        glare_node.location.x = input_intensity_node.location.x + input_intensity_node.width + 20
+
+        tree.links.new(glare_node.inputs["Image"], input_image_node.outputs[0])
+
+        # Tint the bloom by multiplying by the tint color.
+        tint_node = self.create_node(context, "CompositorNodeMixRGB")
+        tint_node.blend_type = "MULTIPLY"
+        tint_node.inputs["Fac"].hide = True
+        tint_node.location.x = glare_node.location.x + glare_node.width + 20
+
+        tree.links.new(tint_node.inputs["Image"], glare_node.outputs["Image"])
+        tree.links.new(tint_node.inputs["Image_001"], input_tint_node.outputs["RGBA"])
+
+        # Add the bloom to the original image.
+        mix_node = self.create_node(context, "CompositorNodeMixRGB")
+        mix_node.blend_type = "ADD"
+        mix_node.location.x = tint_node.location.x + tint_node.width + 20
+
+        tree.links.new(mix_node.inputs["Fac"], input_intensity_node.outputs["Value"])
+        tree.links.new(mix_node.inputs["Image"], input_image_node.outputs[0])
+        tree.links.new(mix_node.inputs["Image_001"], tint_node.outputs["Image"])
+
+        return {'FINISHED'}
+
+
 class NODE_OT_collapse_hide_unused_toggle(Operator):
     """Toggle collapsed nodes and hide unused sockets"""
     bl_idname = "node.collapse_hide_unused_toggle"
@@ -419,6 +478,7 @@ classes = (
     NODE_OT_add_node,
     NODE_OT_add_simulation_zone,
     NODE_OT_add_repeat_zone,
+    NODE_OT_add_bloom_node_setup,
     NODE_OT_collapse_hide_unused_toggle,
     NODE_OT_interface_item_new,
     NODE_OT_interface_item_duplicate,
