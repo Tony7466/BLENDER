@@ -110,7 +110,7 @@ class AbstractView {
   std::optional<rcti> get_bounds() const;
 
   std::string get_context_menu_title() const;
-  void set_context_menu_title(std::string title);
+  void set_context_menu_title(const std::string &title);
 
  protected:
   AbstractView() = default;
@@ -211,6 +211,13 @@ class AbstractViewItem {
    *       around currently. So it can not contain persistent state.
    */
   virtual std::unique_ptr<DropTargetInterface> create_item_drop_target();
+
+  /**
+   * View types should implement this to return some name or identifier of the item, which is
+   * helpful for debugging (there's nothing to identify the item just from the #AbstractViewItem
+   * otherwise).
+   */
+  virtual std::optional<std::string> debug_name() const;
 
   /** Return the result of #is_filtered_visible(), but ensure the result is cached so it's only
    * queried once per redraw. */

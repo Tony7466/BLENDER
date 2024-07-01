@@ -708,7 +708,7 @@ uiBlock *ui_popup_block_refresh(bContext *C,
     BLI_addhead(&block->saferct, saferct);
   }
 
-  if (block->flag & UI_BLOCK_RADIAL) {
+  if (block->flag & UI_BLOCK_PIE_MENU) {
     const int win_width = UI_SCREEN_MARGIN;
 
     const int winx = WM_window_pixels_x(window);
@@ -921,6 +921,10 @@ uiPopupBlockHandle *ui_popup_block_create(bContext *C,
 
   uiBlock *block = ui_popup_block_refresh(C, handle, butregion, but);
   handle = block->handle;
+
+  /* Wait with tooltips until the mouse is moved, button handling will re-enable them on the first
+   * actual mouse move. */
+  block->tooltipdisabled = true;
 
   if (can_refresh) {
     CTX_wm_region_popup_set(C, region_popup_prev);

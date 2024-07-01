@@ -394,6 +394,11 @@ class VIEW3D_PT_tools_brush_settings_advanced(Panel, View3DPaintBrushPanel):
     @classmethod
     def poll(cls, context):
         mode = cls.get_brush_mode(context)
+        if mode == 'SCULPT_GREASE_PENCIL':
+            settings = cls.paint_settings(context)
+            tool = settings.brush.gpencil_sculpt_tool
+            return tool in {'SMOOTH', 'RANDOMIZE'}
+
         return mode is not None and mode != 'SCULPT_CURVES'
 
     def draw(self, context):
@@ -2614,10 +2619,8 @@ class VIEW3D_PT_tools_grease_pencil_v3_brush_advanced(View3DPanel, Panel):
         if brush is None:
             return
         if brush.gpencil_tool != 'FILL':
-            size_owner = ups if ups.use_unified_size else brush
-
             row = col.row(align=True)
-            row.prop(size_owner, "use_locked_size", expand=True)
+            row.prop(brush, "use_locked_size", expand=True)
             col.separator()
 
             col.prop(brush, "spacing", slider=True)
@@ -2735,7 +2738,7 @@ class VIEW3D_PT_tools_grease_pencil_v3_brush_post_processing(View3DPanel, Panel)
         col1.prop(gp_settings, "pen_subdivision_steps", text="Subdivisions")
 
         col1 = col.column(align=True)
-        col1.prop(gp_settings, "simplify_factor")
+        col1.prop(gp_settings, "simplify_pixel_threshold", slider=True)
 
         col1 = col.column(align=True)
         col1.prop(gp_settings, "use_trim")
@@ -2802,7 +2805,7 @@ class VIEW3D_PT_tools_grease_pencil_v3_brush_random(View3DPanel, Panel):
             col.template_curve_mapping(gp_settings, "curve_random_strength", brush=True, use_negative_slope=True)
 
         row = col.row(align=True)
-        row.prop(gp_settings, "uv_random", text="UV", slider=True)
+        row.prop(gp_settings, "uv_random", text="Rotation", slider=True)
         row.prop(gp_settings, "use_stroke_random_uv", text="", icon='GP_SELECT_STROKES')
         row.prop(gp_settings, "use_random_press_uv", text="", icon='STYLUS_PRESSURE')
         if gp_settings.use_random_press_uv and self.is_popover is False:

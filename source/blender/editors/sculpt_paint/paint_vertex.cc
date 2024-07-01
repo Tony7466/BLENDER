@@ -273,6 +273,22 @@ void init_session_data(const ToolSettings &ts, Object &ob)
       }
     }
   }
+  else if (ob.mode == OB_MODE_VERTEX_PAINT) {
+    /* Allocate scratch array for previous colors if needed. */
+    SculptSession &ss = *ob.sculpt;
+    if (!vwpaint::brush_use_accumulate(*ts.vpaint)) {
+      if (ss.cache->prev_colors_vpaint.is_empty()) {
+        const Mesh *mesh = BKE_object_get_original_mesh(&ob);
+        const GVArray attribute = *mesh->attributes().lookup(mesh->active_color_attribute);
+        ss.cache->prev_colors_vpaint = GArray(attribute.type(), attribute.size());
+        attribute.type().value_initialize_n(ss.cache->prev_colors_vpaint.data(),
+                                            ss.cache->prev_colors_vpaint.size());
+      }
+    }
+    else {
+      ss.cache->prev_colors_vpaint = {};
+    }
+  }
 }
 
 Vector<PBVHNode *> pbvh_gather_generic(Object &ob, const VPaint &wp, const Brush &brush)
@@ -287,9 +303,9 @@ Vector<PBVHNode *> pbvh_gather_generic(Object &ob, const VPaint &wp, const Brush
       return node_in_sphere(node, ss.cache->location, ss.cache->radius_squared, true);
     });
 
-    ss.cache->sculpt_normal_symm =
-        use_normal ? SCULPT_pbvh_calc_area_normal(brush, ob, nodes).value_or(float3(0)) :
-                     float3(0);
+    ss.cache->sculpt_normal_symm = use_normal ?
+                                       calc_area_normal(brush, ob, nodes).value_or(float3(0)) :
+                                       float3(0);
   }
   else {
     const DistRayAABB_Precalc ray_dist_precalc = dist_squared_ray_to_aabb_v3_precalc(
@@ -545,7 +561,7 @@ void update_cache_variants(bContext *C, VPaint &vp, Object &ob, PointerRNA *ptr)
   cache->radius_squared = cache->radius * cache->radius;
 
   if (ss.pbvh) {
-    bke::pbvh::update_bounds(*ss.pbvh, PBVH_UpdateBB);
+    bke::pbvh::update_bounds(*ss.pbvh);
   }
 }
 
@@ -743,26 +759,9 @@ static void paint_and_tex_color_alpha_intern(const VPaint &vp,
   }
 }
 
-static void vertex_paint_init_stroke(Scene &scene, Depsgraph &depsgraph, Object &ob)
+static void vertex_paint_init_stroke(Depsgraph &depsgraph, Object &ob)
 {
   vwpaint::init_stroke(depsgraph, ob);
-
-  SculptSession &ss = *ob.sculpt;
-  ToolSettings &ts = *scene.toolsettings;
-
-  /* Allocate scratch array for previous colors if needed. */
-  if (!vwpaint::brush_use_accumulate(*ts.vpaint)) {
-    if (ss.cache->prev_colors_vpaint.is_empty()) {
-      const Mesh *mesh = BKE_object_get_original_mesh(&ob);
-      const GVArray attribute = *mesh->attributes().lookup(mesh->active_color_attribute);
-      ss.cache->prev_colors_vpaint = GArray(attribute.type(), attribute.size());
-      attribute.type().value_initialize_n(ss.cache->prev_colors_vpaint.data(),
-                                          ss.cache->prev_colors_vpaint.size());
-    }
-  }
-  else {
-    ss.cache->prev_colors_vpaint = {};
-  }
 }
 
 /** \} */
@@ -999,7 +998,7 @@ static bool vpaint_stroke_test_start(bContext *C, wmOperator *op, const float mo
   paint_stroke_set_mode_data(stroke, vpd);
 
   /* If not previously created, create vertex/weight paint mode session data */
-  vertex_paint_init_stroke(scene, depsgraph, ob);
+  vertex_paint_init_stroke(depsgraph, ob);
   vwpaint::update_cache_invariants(C, vp, ss, op, mouse);
   vwpaint::init_session_data(ts, ob);
 
@@ -1816,6 +1815,11 @@ static void vpaint_do_paint(bContext *C,
       mesh.active_color_attribute);
   BLI_assert(attribute.domain == vpd.domain);
 
+  if (attribute.domain == bke::AttrDomain::Corner) {
+    /* The sculpt undo system needs PBVH node corner indices for corner domain color attributes. */
+    BKE_pbvh_ensure_node_loops(*ss.pbvh, mesh.corner_tris());
+  }
+
   /* Paint those leaves. */
   vpaint_paint_leaves(C, vp, vpd, ob, mesh, attribute.span, nodes);
 
@@ -1976,10 +1980,6 @@ static int vpaint_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 
   Object &ob = *CTX_data_active_object(C);
 
-  if (SCULPT_has_loop_colors(ob) && ob.sculpt->pbvh) {
-    BKE_pbvh_ensure_node_loops(*ob.sculpt->pbvh);
-  }
-
   undo::push_begin_ex(ob, "Vertex Paint");
 
   if ((retval = op->type->modal(C, op, event)) == OPERATOR_FINISHED) {
@@ -2131,7 +2131,8 @@ static void fill_mesh_color(Mesh &mesh,
     BMesh *bm = em->bm;
     const std::string name = attribute_name;
     const CustomDataLayer *layer = BKE_id_attributes_color_find(&mesh.id, name.c_str());
-    const AttrDomain domain = BKE_id_attribute_domain(&mesh.id, layer);
+    AttributeOwner owner = AttributeOwner::from_id(&mesh.id);
+    const AttrDomain domain = BKE_attribute_domain(owner, layer);
     if (layer->type == CD_PROP_COLOR) {
       fill_bm_face_or_corner_attribute<ColorPaint4f>(
           *bm, color, domain, layer->offset, use_vert_sel);
@@ -2216,6 +2217,11 @@ static int vertex_color_set_exec(bContext *C, wmOperator *op)
 
   undo::push_begin(obact, op);
   Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(*obact.sculpt->pbvh, {});
+
+  const Mesh &mesh = *static_cast<const Mesh *>(obact.data);
+  /* The sculpt undo system needs PBVH node corner indices for corner domain color attributes. */
+  BKE_pbvh_ensure_node_loops(*obact.sculpt->pbvh, mesh.corner_tris());
+
   for (PBVHNode *node : nodes) {
     undo::push_node(obact, node, undo::Type::Color);
   }

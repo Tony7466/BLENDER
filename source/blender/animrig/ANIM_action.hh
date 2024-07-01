@@ -16,10 +16,13 @@
 #include "DNA_anim_types.h"
 
 #include "BLI_math_vector.hh"
-#include "BLI_set.hh"
+#include "BLI_span.hh"
 #include "BLI_string_ref.hh"
+#include "BLI_vector.hh"
 
 #include "RNA_types.hh"
+
+#include <utility>
 
 struct AnimationEvalContext;
 struct FCurve;
@@ -115,6 +118,12 @@ class Action : public ::bAction {
    * \return true when the layer was found & removed, false if it wasn't found.
    */
   bool layer_remove(Layer &layer_to_remove);
+
+  /**
+   * If the Action is empty, create a default layer with a single infinite
+   * keyframe strip.
+   */
+  void layer_ensure_at_least_one();
 
   /* Animation Binding access. */
   blender::Span<const Binding *> bindings() const;
@@ -217,6 +226,15 @@ class Action : public ::bAction {
    */
   bool is_binding_animated(binding_handle_t binding_handle) const;
 
+  /**
+   * Get the layer that should be used for user-level keyframe insertion.
+   *
+   * \return The layer, or nullptr if no layer exists that can currently be used
+   * for keyframing (e.g. all layers are locked, once we've implemented
+   * locking).
+   */
+  Layer *get_layer_for_keyframing();
+
  protected:
   /** Return the layer's index, or -1 if not found in this animation. */
   int64_t find_layer_index(const Layer &layer) const;
@@ -301,6 +319,7 @@ class Strip : public ::ActionStrip {
   template<typename T> T &as();
   template<typename T> const T &as() const;
 
+  bool is_infinite() const;
   bool contains_frame(float frame_time) const;
   bool is_last_frame(float frame_time) const;
 
@@ -367,7 +386,27 @@ class Layer : public ::ActionLayer {
   blender::MutableSpan<Strip *> strips();
   const Strip *strip(int64_t index) const;
   Strip *strip(int64_t index);
+
+  /**
+   * Add a new Strip of the given type.
+   *
+   * \see strip_add<T>() for a templated version that returns the strip as its
+   * concrete C++ type.
+   */
   Strip &strip_add(Strip::Type strip_type);
+
+  /**
+   * Add a new strip of the type of T.
+   *
+   * T must be a concrete subclass of animrig::Strip.
+   *
+   * \see KeyframeStrip
+   */
+  template<typename T> T &strip_add()
+  {
+    Strip &strip = this->strip_add(T::TYPE);
+    return strip.as<T>();
+  }
 
   /**
    * Remove the strip from this layer.
@@ -402,9 +441,17 @@ ENUM_OPERATORS(Layer::Flags, Layer::Flags::Enabled);
  */
 class Binding : public ::ActionBinding {
  public:
-  Binding() = default;
-  Binding(const Binding &other) = default;
-  ~Binding() = default;
+  Binding();
+  Binding(const Binding &other);
+  ~Binding();
+
+  /**
+   * Update the Binding after reading it from a blend file.
+   *
+   * This is a low-level function and should not typically be used. It's only here to let
+   * blenkernel allocate the runtime struct when reading a Binding from disk, without having to
+   * share the struct definition itself. */
+  void blend_read_post();
 
   /**
    * Binding handle value indicating that there is no binding assigned.
@@ -437,6 +484,48 @@ class Binding : public ::ActionBinding {
   /** Return whether this Binding has an `idtype` set. */
   bool has_idtype() const;
 
+  /** Return the set of IDs that are animated by this Binding. */
+  Span<ID *> users(Main &bmain) const;
+
+  /**
+   * Directly return the runtime users vector.
+   *
+   * This function does not refresh the users cache, so it may be out of date.
+   *
+   * This is a low-level function, and should only be used when calling `users(bmain)` is not
+   * appropriate.
+   *
+   * \see Binding::users(Main &bmain)
+   */
+  Vector<ID *> runtime_users();
+
+  /**
+   * Register this ID as animated by this Binding.
+   *
+   * This is a low-level function and should not typically be used.
+   * Use #Action::assign_id(binding, animated_id) instead.
+   */
+  void users_add(ID &animated_id);
+
+  /**
+   * Register this ID as no longer animated by this Binding.
+   *
+   * This is a low-level function and should not typically be used.
+   * Use #Action::assign_id(nullptr, animated_id) instead.
+   */
+  void users_remove(ID &animated_id);
+
+  /**
+   * Mark the users cache as 'dirty', triggering a full rebuild next time it is accessed.
+   *
+   * This is typically not necessary, and only called from low-level code.
+   *
+   * \note This static method invalidates all user caches of all Action Bindings.
+   *
+   * \see blender::animrig::internal::rebuild_binding_user_cache()
+   */
+  static void users_invalidate(Main &bmain);
+
  protected:
   friend Action;
 
@@ -456,9 +545,21 @@ static_assert(sizeof(Binding) == sizeof(::ActionBinding),
  */
 class KeyframeStrip : public ::KeyframeActionStrip {
  public:
+  /**
+   * Low-level strip type.
+   *
+   * Do not use this in comparisons directly, use Strip::as<KeyframeStrip>() or
+   * Strip::is<KeyframeStrip>() instead. This value is here only to make
+   * functions like those easier to write.
+   */
+  static constexpr Strip::Type TYPE = Strip::Type::Keyframe;
+
   KeyframeStrip() = default;
   KeyframeStrip(const KeyframeStrip &other);
   ~KeyframeStrip();
+
+  /** Implicitly convert a KeyframeStrip& to a Strip&. */
+  operator Strip &();
 
   /* ChannelBag array access. */
   blender::Span<const ChannelBag *> channelbags() const;
@@ -487,20 +588,23 @@ class KeyframeStrip : public ::KeyframeActionStrip {
    *
    * If it cannot be found, `nullptr` is returned.
    */
-  FCurve *fcurve_find(const Binding &binding, StringRefNull rna_path, int array_index);
+  FCurve *fcurve_find(const Binding &binding, FCurveDescriptor fcurve_descriptor);
 
   /**
    * Find an FCurve for this binding + RNA path + array index combination.
    *
    * If it cannot be found, a new one is created.
+   *
+   * \param `prop_subtype` The subtype of the property this fcurve is for, if
+   * available.
    */
-  FCurve &fcurve_find_or_create(const Binding &binding, StringRefNull rna_path, int array_index);
+  FCurve &fcurve_find_or_create(const Binding &binding, FCurveDescriptor fcurve_descriptor);
 
   SingleKeyingResult keyframe_insert(const Binding &binding,
-                                     StringRefNull rna_path,
-                                     int array_index,
+                                     FCurveDescriptor fcurve_descriptor,
                                      float2 time_value,
-                                     const KeyframeSettings &settings);
+                                     const KeyframeSettings &settings,
+                                     eInsertKeyFlags insert_key_flags = INSERTKEY_NOFLAGS);
 };
 static_assert(sizeof(KeyframeStrip) == sizeof(::KeyframeActionStrip),
               "DNA struct and its C++ wrapper must have the same size");
@@ -548,6 +652,14 @@ static_assert(sizeof(ChannelBag) == sizeof(::ActionChannelBag),
 bool assign_animation(Action &anim, ID &animated_id);
 
 /**
+ * Return whether the given Action can be assigned to the ID.
+ *
+ * This always returns `true` for layered Actions. For legacy Actions it
+ * returns `true` if the Action's `idroot` matches the ID.
+ */
+bool is_action_assignable_to(const bAction *dna_action, ID_Type id_code);
+
+/**
  * Ensure that this ID is no longer animated.
  */
 void unassign_animation(ID &animated_id);
@@ -559,16 +671,27 @@ void unassign_animation(ID &animated_id);
  * binding, before un-assigning. This is to ensure that the stored name reflects
  * the actual binding that was used, making re-binding trivial.
  *
- * \param adt: the AnimData of the animated ID.
+ * \param animated_id: the animated ID.
  *
  * \note this does not clear the Animation pointer, just the binding handle.
  */
-void unassign_binding(AnimData &adt);
+void unassign_binding(ID &animated_id);
 
 /**
  * Return the Animation of this ID, or nullptr if it has none.
  */
 Action *get_animation(ID &animated_id);
+
+/**
+ * Get the Action and the Binding that animate this ID.
+ *
+ * \return One of two options:
+ *  - pair<Action, Binding> when an Action and a Binding are assigned. In other
+ *    words, when this ID is actually animated by this Action+Binding pair.
+ *  - nullopt: when this ID is not animated. This can have several causes: not
+ *    an animatable type, no Action assigned, or no Binding assigned.
+ */
+std::optional<std::pair<Action *, Binding *>> get_action_binding_pair(ID &animated_id);
 
 /**
  * Return the F-Curves for this specific binding handle.
@@ -584,6 +707,20 @@ Span<FCurve *> fcurves_for_animation(Action &anim, binding_handle_t binding_hand
 Span<const FCurve *> fcurves_for_animation(const Action &anim, binding_handle_t binding_handle);
 
 /**
+ * Return all F-Curves in the Action.
+ *
+ * This works for both legacy and layered Actions.
+ *
+ * This is a utility function whose purpose is unclear after multi-layer animation is introduced.
+ * It might still be useful, it might not be.
+
+ * The use of this function is an indicator for code that might have to be altered when
+ * multi-layered animation is getting implemented.
+ */
+Vector<const FCurve *> fcurves_all(const Action &action);
+Vector<FCurve *> fcurves_all(Action &action);
+
+/**
  * Get (or add relevant data to be able to do so) F-Curve from the given Action,
  * for the given Animation Data block. This assumes that all the destinations are valid.
  * \param ptr: can be a null pointer.
@@ -592,13 +729,43 @@ FCurve *action_fcurve_ensure(Main *bmain,
                              bAction *act,
                              const char group[],
                              PointerRNA *ptr,
-                             const char rna_path[],
-                             int array_index);
+                             FCurveDescriptor fcurve_descriptor);
 
 /**
  * Find the F-Curve from the given Action. This assumes that all the destinations are valid.
  */
-FCurve *action_fcurve_find(bAction *act, const char rna_path[], int array_index);
+FCurve *action_fcurve_find(bAction *act, FCurveDescriptor fcurve_descriptor);
+
+/**
+ * Assert the invariants of Project Baklava phase 1.
+ *
+ * For an action the invariants are that it:
+ * - Is a legacy action.
+ * - OR has zero layers.
+ * - OR has a single layer that adheres to the phase 1 invariants for layers.
+ *
+ * For a layer the invariants are that it:
+ * - Has zero strips.
+ * - OR has a single strip that adheres to the phase 1 invariants for strips.
+ *
+ * For a strip the invariants are that it:
+ * - Is a keyframe strip.
+ * - AND is infinite.
+ * - AND has no time offset (i.e. aligns with scene time).
+ *
+ * This simultaneously serves as a todo marker for later phases of Project
+ * Baklava and ensures that the phase-1 invariants hold at runtime.
+ *
+ * TODO: these functions should be changed to assert fewer and fewer assumptions
+ * as we progress through the phases of Project Baklava and more and more of the
+ * new animation system is implemented. Finally, they should be removed entirely
+ * when the full system is completely implemented.
+ */
+void assert_baklava_phase_1_invariants(const Action &action);
+/** \copydoc assert_baklava_phase_1_invariants(const Action &) */
+void assert_baklava_phase_1_invariants(const Layer &layer);
+/** \copydoc assert_baklava_phase_1_invariants(const Action &) */
+void assert_baklava_phase_1_invariants(const Strip &strip);
 
 }  // namespace blender::animrig
 
