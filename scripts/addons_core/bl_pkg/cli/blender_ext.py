@@ -1304,11 +1304,12 @@ def pkg_manifest_validate_field_copyright(
         return "list may not be empty"
         
     if strict:
-        year, _, name = value.partition(" ")
-        if not all(x.isdigit() for x in year.partition("-")[0::2]):
-            return "invalid year" 
-        if not name.strip():
-            return "name may not be empty"
+        for copyright in value:
+            year, name = copyright.partition(" ")[0::2]
+            if not all(x.isdigit() for x in year.partition("-")[0::2]):
+                return "invalid year" 
+            if not name.strip():
+                return "name may not be empty"
     
     return pkg_manifest_validate_field_any_list_of_non_empty_strings(value, strict)
 
