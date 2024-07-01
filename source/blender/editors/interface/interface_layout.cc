@@ -4140,6 +4140,11 @@ static void ui_litem_estimate_panel_header(uiLayout *litem)
   litem->h = h;
 }
 
+static float layout_panel_y_offset()
+{
+  return float(UI_style_get_dpi()->panelspace);
+}
+
 static void ui_litem_layout_panel_header(uiLayout *litem)
 {
   uiLayoutItemPanelHeader *header_litem = reinterpret_cast<uiLayoutItemPanelHeader *>(litem);
@@ -4153,10 +4158,11 @@ static void ui_litem_layout_panel_header(uiLayout *litem)
   litem->y -= h;
   ui_item_position(item, litem->x, litem->y, litem->w, h);
 
-  panel->runtime->layout_panels.headers.append({float(litem->y),
-                                                float(litem->y + litem->h),
-                                                header_litem->open_prop_owner,
-                                                header_litem->open_prop_name});
+  panel->runtime->layout_panels.headers.append(
+      {float(litem->y) - layout_panel_y_offset(),
+       float(litem->y + litem->h) - layout_panel_y_offset(),
+       header_litem->open_prop_owner,
+       header_litem->open_prop_name});
 }
 
 /* panel body layout */
@@ -4170,7 +4176,8 @@ static void ui_litem_layout_panel_body(uiLayout *litem)
   Panel *panel = litem->root->block->panel;
   ui_litem_layout_column(litem, false, false);
   panel->runtime->layout_panels.bodies.append(
-      {float(litem->y - litem->space), float(litem->y + litem->h + litem->space)});
+      {float(litem->y - litem->space) - layout_panel_y_offset(),
+       float(litem->y + litem->h + litem->space) - layout_panel_y_offset()});
 }
 
 /* box layout */

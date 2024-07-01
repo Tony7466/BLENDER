@@ -126,6 +126,20 @@ static void ui_popup_block_position(wmWindow *window,
 
   ui_block_to_window_rctf(butregion, but->block, &block->rect, &block->rect);
 
+  /* `block->rect` is already scaled with `butregion->winrct`, apply this scale to layout panels
+   * too. */
+  Panel *panel = block->panel;
+  if (panel) {
+    for (LayoutPanelBody &bodie : panel->runtime->layout_panels.bodies) {
+      bodie.start_y /= block->aspect;
+      bodie.end_y /= block->aspect;
+    }
+    for (LayoutPanelHeader &header : panel->runtime->layout_panels.headers) {
+      header.start_y /= block->aspect;
+      header.end_y /= block->aspect;
+    }
+  }
+
   /* Compute direction relative to button, based on available space. */
   const int size_x = BLI_rctf_size_x(&block->rect) + 0.2f * UI_UNIT_X; /* 4 for shadow */
   const int size_y = BLI_rctf_size_y(&block->rect) + 0.2f * UI_UNIT_Y;
