@@ -226,9 +226,7 @@ bool OptiXDenoiser::is_device_supported(const DeviceInfo &device)
      * intern/cycles/device/cuda/device.cpp */
     int major;
     cuDeviceGetAttribute(&major, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, device.num);
-    if (major > 5) {
-      return true;
-    }
+    return major >= 5;
   }
   return false;
 }
