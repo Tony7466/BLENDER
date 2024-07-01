@@ -130,9 +130,9 @@ static void ui_popup_block_position(wmWindow *window,
    * too. */
   Panel *panel = block->panel;
   if (panel) {
-    for (LayoutPanelBody &bodie : panel->runtime->layout_panels.bodies) {
-      bodie.start_y /= block->aspect;
-      bodie.end_y /= block->aspect;
+    for (LayoutPanelBody &body : panel->runtime->layout_panels.bodies) {
+      body.start_y /= block->aspect;
+      body.end_y /= block->aspect;
     }
     for (LayoutPanelHeader &header : panel->runtime->layout_panels.headers) {
       header.start_y /= block->aspect;
