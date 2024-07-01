@@ -203,6 +203,7 @@ bool SyncModule::sync_sculpt(Object *ob,
 
   bool is_alpha_blend = false;
   bool has_transparent_shadows = false;
+  bool has_volume = false;
   float inflate_bounds = 0.0f;
   for (SculptBatch &batch :
        sculpt_batches_per_material_get(ob_ref.object, material_array.gpu_materials))
@@ -217,7 +218,7 @@ bool SyncModule::sync_sculpt(Object *ob,
     if (material.has_volume) {
       volume_call(material.volume_occupancy, inst_.scene, ob, geom, res_handle);
       volume_call(material.volume_material, inst_.scene, ob, geom, res_handle);
-      inst_.volume.object_sync(ob_handle);
+      has_volume = true;
       /* Do not render surface if we are rendering a volume object
        * and do not have a surface closure. */
       if (material.has_surface == false) {
@@ -246,6 +247,10 @@ bool SyncModule::sync_sculpt(Object *ob,
     if (GPU_material_has_displacement_output(gpu_material)) {
       inflate_bounds = math::max(inflate_bounds, mat->inflate_bounds);
     }
+  }
+
+  if (has_volume) {
+    inst_.volume.object_sync(ob_handle);
   }
 
   /* Use a valid bounding box. The PBVH module already does its own culling, but a valid */
