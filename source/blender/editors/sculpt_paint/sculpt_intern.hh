@@ -1641,7 +1641,10 @@ struct OrigPositionData {
  */
 OrigPositionData orig_position_data_get_mesh(const Object &object, const PBVHNode &node);
 OrigPositionData orig_position_data_get_grids(const Object &object, const PBVHNode &node);
-
+void orig_position_data_gather_bmesh(const BMLog &bm_log,
+                                     const Set<BMVert *, 0> &verts,
+                                     MutableSpan<float3> positions,
+                                     MutableSpan<float3> normals);
 }
 
 /** \} */

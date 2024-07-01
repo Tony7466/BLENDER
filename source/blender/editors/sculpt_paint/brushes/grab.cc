@@ -148,22 +148,6 @@ static void calc_grids(const Sculpt &sd,
   apply_translations(translations, grids, subdiv_ccg);
 }
 
-BLI_NOINLINE static void gather_orig_position_data_bmesh(const BMLog &bm_log,
-                                                         const Set<BMVert *, 0> &verts,
-                                                         const MutableSpan<float3> positions,
-                                                         const MutableSpan<float3> normals)
-{
-  int i = 0;
-  for (BMVert *vert : verts) {
-    const float *co;
-    const float *no;
-    BM_log_original_vert_data(&const_cast<BMLog &>(bm_log), vert, &co, &no);
-    positions[i] = co;
-    normals[i] = no;
-    i++;
-  }
-}
-
 static void calc_bmesh(const Sculpt &sd,
                        Object &object,
                        const Brush &brush,
@@ -178,7 +162,7 @@ static void calc_bmesh(const Sculpt &sd,
 
   Array<float3> orig_positions(verts.size());
   Array<float3> orig_normals(verts.size());
-  gather_orig_position_data_bmesh(*ss.bm_log, verts, orig_positions, orig_normals);
+  orig_position_data_gather_bmesh(*ss.bm_log, verts, orig_positions, orig_normals);
 
   tls.factors.reinitialize(verts.size());
   const MutableSpan<float> factors = tls.factors;

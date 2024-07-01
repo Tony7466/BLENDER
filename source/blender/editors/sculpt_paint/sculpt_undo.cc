@@ -2130,4 +2130,20 @@ OrigPositionData orig_position_data_get_grids(const Object & /*object*/, const P
   return {unode->position.as_span(), unode->normal.as_span()};
 }
 
+void orig_position_data_gather_bmesh(const BMLog &bm_log,
+                                     const Set<BMVert *, 0> &verts,
+                                     const MutableSpan<float3> positions,
+                                     const MutableSpan<float3> normals)
+{
+  int i = 0;
+  for (BMVert *vert : verts) {
+    const float *co;
+    const float *no;
+    BM_log_original_vert_data(&const_cast<BMLog &>(bm_log), vert, &co, &no);
+    positions[i] = co;
+    normals[i] = no;
+    i++;
+  }
+}
+
 }  // namespace blender::ed::sculpt_paint
