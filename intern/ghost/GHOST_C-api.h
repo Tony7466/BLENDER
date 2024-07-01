@@ -606,7 +606,6 @@ extern void GHOST_SetUseCSD(GHOST_WindowHandle windowhandle, bool useCSD);
  * \param tbBackgroundCol: Titlebar background color
  * \param tbTitleTextCol: Titlebar title text color
  */
-// TODO: Rename to TitleTextCol
 extern void GHOST_SetTitlebarCSDColors(GHOST_WindowHandle windowhandle,
                                        const float tbBackgroundCol[4],
                                        const float tbTitleTextCol[4]);
