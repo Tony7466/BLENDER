@@ -181,10 +181,18 @@ void apply_translations_to_pbvh(PBVH &pbvh, Span<int> verts, Span<float3> positi
  */
 void write_translations(const Sculpt &sd,
                         Object &object,
-                        Span<float3> positions_eval,
-                        Span<int> verts,
-                        MutableSpan<float3> translations,
-                        MutableSpan<float3> positions_orig);
+                        const Span<float3> positions_eval,
+                        const Span<int> verts,
+                        const MutableSpan<float3> translations,
+                        const MutableSpan<float3> positions_orig);
+
+void write_translations_prev(const Sculpt &sd,
+                             Object &object,
+                             const Span<float3> &prev_positions,
+                             const Array<int> &prev_verts,
+                             const Span<int> &verts,
+                             const MutableSpan<float3> &translations,
+                             const MutableSpan<float3> &positions_orig);
 
 /**
  * Creates OffsetIndices based on each node's unique vertex count, allowing for easy slicing of a

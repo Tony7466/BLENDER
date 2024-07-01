@@ -15,8 +15,8 @@
 #include "BKE_pbvh.hh"
 #include "BKE_subdiv_ccg.hh"
 
-#include "BLI_array_utils.hh"
 #include "BLI_array.hh"
+#include "BLI_array_utils.hh"
 #include "BLI_enumerable_thread_specific.hh"
 #include "BLI_math_matrix.hh"
 #include "BLI_math_vector.hh"
@@ -51,7 +51,7 @@ static void calc_faces_sharp(const Sculpt &sd,
   const Span<float3> prev_positions = undo::get_node(&node, undo::Type::Position)->position;
   const Span<float3> prev_normals = undo::get_node(&node, undo::Type::Position)->normal;
   const Span<int> verts = bke::pbvh::node_unique_verts(node);
-    
+
   Array<int> prev_verts(verts.size());
   array_utils::fill_index_range<int>(prev_verts);
 
@@ -81,15 +81,8 @@ static void calc_faces_sharp(const Sculpt &sd,
     translations[i] = offset * factors[i];
   }
 
-  clip_and_lock_translations(sd, ss, prev_positions, prev_verts, translations);
-
-  if (!ss.deform_imats.is_empty()) {
-    apply_crazyspace_to_translations(ss.deform_imats, verts, translations);
-  }
-
-  apply_translations(translations, verts, positions_orig);
-  apply_translations_to_shape_keys(object, verts, translations, positions_orig);
-  apply_translations_to_pbvh(*ss.pbvh, verts, translations);
+  write_translations_prev(
+      sd, object, prev_positions, prev_verts, verts, translations, positions_orig);
 }
 
 static void calc_grids_sharp(Object &object,

@@ -6843,6 +6843,28 @@ void write_translations(const Sculpt &sd,
   apply_translations_to_shape_keys(object, verts, translations, positions_orig);
 }
 
+void write_translations_prev(const Sculpt &sd,
+                             Object &object,
+                             const Span<float3> &prev_positions,
+                             const Array<int> &prev_verts,
+                             const Span<int> &verts,
+                             const MutableSpan<float3> &translations,
+                             const MutableSpan<float3> &positions_orig)
+{
+  SculptSession &ss = *object.sculpt;
+
+  clip_and_lock_translations(sd, ss, prev_positions, prev_verts, translations);
+
+  apply_translations_to_pbvh(*ss.pbvh, verts, translations);
+
+  if (!ss.deform_imats.is_empty()) {
+    apply_crazyspace_to_translations(ss.deform_imats, verts, translations);
+  }
+
+  apply_translations(translations, verts, positions_orig);
+  apply_translations_to_shape_keys(object, verts, translations, positions_orig);
+}
+
 void scale_translations(const MutableSpan<float3> translations, const Span<float> factors)
 {
   for (const int i : translations.index_range()) {
