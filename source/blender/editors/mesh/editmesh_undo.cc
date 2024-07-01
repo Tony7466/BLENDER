@@ -266,15 +266,15 @@ static void um_arraystore_cd_compact(CustomData *cdata,
         if (layer->data) {
           if (layer_type_is_dynamic) {
             /* See comment on `layer_type_is_dynamic` above. */
+            const ImplicitSharingInfo *sharing_info;
             if (layer->sharing_info) {
-              bcd->states[i] = ImplicitSharingInfoAndData{layer->sharing_info, layer->data};
-              layer->sharing_info->add_user();
+              sharing_info = layer->sharing_info;
+              sharing_info->add_user();
             }
             else {
-              const ImplicitSharingInfo *sharing_info = implicit_sharing::info_for_mem_free(
-                  layer->data);
-              bcd->states[i] = ImplicitSharingInfoAndData{sharing_info, layer->data};
+              sharing_info = implicit_sharing::info_for_mem_free(layer->data);
             }
+            bcd->states[i] = ImplicitSharingInfoAndData{sharing_info, layer->data};
           }
           else {
             BArrayState *state_reference = nullptr;
@@ -290,6 +290,17 @@ static void um_arraystore_cd_compact(CustomData *cdata,
           bcd->states[i] = nullptr;
         }
       }
+
+      if (layer->data) {
+        if (layer->sharing_info) {
+          layer->sharing_info->remove_user_and_delete_if_last();
+          layer->sharing_info = nullptr;
+          layer->data = nullptr;
+        }
+        else {
+          MEM_SAFE_FREE(layer->data);
+        }
+      }
     }
 
     if (create) {
@@ -298,8 +309,6 @@ static void um_arraystore_cd_compact(CustomData *cdata,
       }
     }
   }
-
-  CustomData_free(cdata, data_len);
 
   if (create) {
     *r_bcd_first = bcd_first;
