@@ -2136,10 +2136,10 @@ void orig_position_data_gather_bmesh(const BMLog &bm_log,
                                      const MutableSpan<float3> normals)
 {
   int i = 0;
-  for (BMVert *vert : verts) {
+  for (const BMVert *vert : verts) {
     const float *co;
     const float *no;
-    BM_log_original_vert_data(&const_cast<BMLog &>(bm_log), vert, &co, &no);
+    BM_log_original_vert_data(&const_cast<BMLog &>(bm_log), const_cast<BMVert *>(vert), &co, &no);
     positions[i] = co;
     normals[i] = no;
     i++;
