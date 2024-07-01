@@ -53,12 +53,10 @@ static void remap_bodies(const int src_bodies_num,
 {
   Array<int> map(src_bodies_num);
   index_mask::build_reverse_map<int>(bodies_mask, map);
-  threading::parallel_invoke(bodies_mask.size() > 1024, [&]() {
-    constraints_mask.foreach_index(GrainSize(512), [&](const int64_t src_i, const int64_t dst_i) {
-      dst_constraint_types[dst_i] = map[src_constraint_types[src_i]];
-      dst_constraint_body1[dst_i] = map[src_constraint_body1[src_i]];
-      dst_constraint_body2[dst_i] = map[src_constraint_body2[src_i]];
-    });
+  constraints_mask.foreach_index(GrainSize(512), [&](const int64_t src_i, const int64_t dst_i) {
+    dst_constraint_types[dst_i] = map[src_constraint_types[src_i]];
+    dst_constraint_body1[dst_i] = map[src_constraint_body1[src_i]];
+    dst_constraint_body2[dst_i] = map[src_constraint_body2[src_i]];
   });
 }
 
@@ -97,11 +95,9 @@ std::optional<bke::PhysicsGeometry *> physics_copy_selection(
     }
     case bke::AttrDomain::Edge: {
       const VArraySpan<bool> span(selection);
-      threading::parallel_invoke(src_body1.size() > 1024, [&]() {
-        constraint_mask = IndexMask::from_bools(span, memory.local());
-        body_mask = body_selection_from_constraint(
-            src_body1, src_body2, constraint_mask, src_physics.bodies_num(), memory.local());
-      });
+      constraint_mask = IndexMask::from_bools(span, memory.local());
+      body_mask = body_selection_from_constraint(
+          src_body1, src_body2, constraint_mask, src_physics.bodies_num(), memory.local());
       break;
     }
     case bke::AttrDomain::Face: {
@@ -150,17 +146,12 @@ std::optional<bke::PhysicsGeometry *> physics_copy_selection_keep_bodies(
   switch (selection_domain) {
     case bke::AttrDomain::Point: {
       const VArraySpan<bool> span(selection);
-      threading::parallel_invoke(src_body1.size() > 1024, [&]() {
-        constraint_mask = constraint_selection_from_body(
-            src_body1, src_body2, span, memory.local());
-      });
+      constraint_mask = constraint_selection_from_body(src_body1, src_body2, span, memory.local());
       break;
     }
     case bke::AttrDomain::Edge: {
       const VArraySpan<bool> span(selection);
-      threading::parallel_invoke(src_body1.size() > 1024, [&]() {
-        constraint_mask = IndexMask::from_bools(span, memory.local());
-      });
+      constraint_mask = IndexMask::from_bools(span, memory.local());
       break;
     }
     default:

@@ -790,12 +790,10 @@ static void remap_bodies(const int src_bodies_num,
 {
   Array<int> map(src_bodies_num);
   index_mask::build_reverse_map<int>(bodies_mask, map);
-  threading::parallel_invoke(bodies_mask.size() > 1024, [&]() {
-    constraints_mask.foreach_index(GrainSize(512), [&](const int64_t src_i, const int64_t dst_i) {
-      dst_constraint_types[dst_i] = map[src_constraint_types[src_i]];
-      dst_constraint_body1[dst_i] = map[src_constraint_body1[src_i]];
-      dst_constraint_body2[dst_i] = map[src_constraint_body2[src_i]];
-    });
+  constraints_mask.foreach_index(GrainSize(512), [&](const int64_t src_i, const int64_t dst_i) {
+    dst_constraint_types[dst_i] = map[src_constraint_types[src_i]];
+    dst_constraint_body1[dst_i] = map[src_constraint_body1[src_i]];
+    dst_constraint_body2[dst_i] = map[src_constraint_body2[src_i]];
   });
 }
 
@@ -827,7 +825,7 @@ void PhysicsGeometry::move_or_copy_selection(
   const VArraySpan<int> src_body2 = from.constraint_body2();
   const bke::AttributeAccessor src_attributes = from.attributes();
 
-  //BKE_physics_copy_parameters_for_eval(dst_physics, &src_physics);
+  // BKE_physics_copy_parameters_for_eval(dst_physics, &src_physics);
   bke::MutableAttributeAccessor dst_attributes = this->attributes_for_write();
   Array<int> dst_types(this->constraints_num());
   Array<int> dst_body1(this->constraints_num());
