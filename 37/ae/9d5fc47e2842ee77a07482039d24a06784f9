@@ -1,1 +1,2 @@
 Referenced by issue #123923, Regression: error when (un-)installing user extension
+Referenced by commit 75f500ad025b7d77e8bbc948f0edb7361239e475, Fix #123923: regression un-installing an extension
