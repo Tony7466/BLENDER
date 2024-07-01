@@ -48,6 +48,7 @@ AssetMetaData *BKE_asset_metadata_copy(const AssetMetaData *source)
 
 AssetMetaData::AssetMetaData(const AssetMetaData &other)
     : local_type_info(other.local_type_info),
+      properties(nullptr),
       catalog_id(other.catalog_id),
       active_tag(other.active_tag),
       tot_tags(other.tot_tags)
@@ -73,6 +74,7 @@ AssetMetaData::AssetMetaData(AssetMetaData &&other)
       author(std::exchange(other.author, nullptr)),
       description(std::exchange(other.description, nullptr)),
       copyright(std::exchange(other.copyright, nullptr)),
+      license(std::exchange(other.license, nullptr)),
       active_tag(other.active_tag),
       tot_tags(other.tot_tags)
 {
