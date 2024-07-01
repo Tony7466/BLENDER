@@ -104,7 +104,8 @@ class Camera {
   bool overscan_changed_;
   /** Whether or not the camera was synced from a camera object. */
   bool is_camera_object_ = false;
-  void *last_camera_object = nullptr;
+  /** Just for tracking camera changes, use Instance::camera_orig_object for data access. */
+  Object *last_camera_object_ = nullptr;
   bool camera_changed_ = false;
 
  public:
