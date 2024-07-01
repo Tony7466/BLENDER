@@ -157,11 +157,23 @@ static int sequencer_retiming_reset_exec(bContext *C, wmOperator * /*op*/)
 {
   Scene *scene = CTX_data_scene(C);
   const Editing *ed = SEQ_editing_get(scene);
-  Sequence *seq = ed->act_seq;
 
-  SEQ_retiming_data_clear(seq);
+  blender::VectorSet<Sequence *> targets;
+  if (sequencer_retiming_mode_is_active(C)) {
+    for (Sequence *seq : SEQ_retiming_selection_get(ed).values()) {
+      targets.add(seq);
+    }
+  }
+  else {
+    for (Sequence *seq : SEQ_query_selected_strips(ed->seqbasep)) {
+      targets.add(seq);
+    }
+  }
 
-  retiming_key_overlap(scene, seq);
+  for (Sequence *seq : targets) {
+    SEQ_retiming_data_clear(seq);
+    retiming_key_overlap(scene, seq);
+  }
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
   return OPERATOR_FINISHED;
 }
