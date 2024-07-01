@@ -137,6 +137,10 @@ static bool retiming_poll(bContext *C)
   return true;
 }
 
+/*-------------------------------------------------------------------- */
+/** \name Retiming Reset
+ * \{ */
+
 static void retiming_key_overlap(Scene *scene, Sequence *seq)
 {
   ListBase *seqbase = SEQ_active_seqbase_get(SEQ_editing_get(scene));
@@ -148,10 +152,6 @@ static void retiming_key_overlap(Scene *scene, Sequence *seq)
   dependant.remove(seq);
   SEQ_transform_handle_overlap(scene, seqbase, strips, dependant, true);
 }
-
-/*-------------------------------------------------------------------- */
-/** \name Retiming Reset
- * \{ */
 
 static int sequencer_retiming_reset_exec(bContext *C, wmOperator * /*op*/)
 {
