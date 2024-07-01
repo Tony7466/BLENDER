@@ -528,7 +528,8 @@ void ED_region_do_draw(bContext *C, ARegion *region)
        * window background color instead */
       if (area_spacetype == SPACE_VIEW3D) {
         UI_SetTheme(area_spacetype, RGN_TYPE_WINDOW);
-      } else {
+      }
+      else {
         UI_SetTheme(area_spacetype, RGN_TYPE_HEADER);
       }
     }
