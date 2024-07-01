@@ -968,7 +968,9 @@ class SEQUENCER_MT_strip_retiming(Menu):
 
         col.operator("sequencer.retiming_key_delete")
         col.enabled = is_retiming_mode
+        col = layout.column()
         layout.operator("sequencer.retiming_reset")
+        col.enabled = not is_retiming_mode
 
         layout.separator()
 

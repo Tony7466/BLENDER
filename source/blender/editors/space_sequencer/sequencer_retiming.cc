@@ -55,18 +55,19 @@ static bool retiming_poll(bContext *C)
     return false;
   }
 
-  if (SEQ_query_selected_strips(ed->seqbasep).size() == 0 &&
-      SEQ_retiming_selection_get(ed).size() == 0)
-  {
+  blender::VectorSet strips = SEQ_query_selected_strips(ed->seqbasep);
+  int num_keys = SEQ_retiming_selection_get(ed).size();
+
+  if (strips.size() == 0 && num_keys == 0) {
     CTX_wm_operator_poll_msg_set(C, "A strip or its retiming keys must be selected");
     return false;
   }
 
-  if (SEQ_retiming_selection_get(ed).size() > 0) {
+  if (num_keys > 0) {
     return true;
   }
 
-  for (Sequence *seq : SEQ_query_selected_strips(ed->seqbasep)) {
+  for (Sequence *seq : strips) {
     if (SEQ_retiming_is_allowed(seq)) {
       /* There exists at least one selected strip that can be retimed. */
       return true;
