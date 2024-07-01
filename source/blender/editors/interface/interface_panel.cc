@@ -1207,8 +1207,8 @@ void ui_draw_layout_panels_backdrop(const ARegion *region,
   for (const LayoutPanelBody &body : panel->runtime->layout_panels.bodies) {
 
     rctf panel_blockspace = panel->runtime->block->rect;
-    panel_blockspace.ymin = block->rect.ymax + body.start_y;
     panel_blockspace.ymax = block->rect.ymax + body.end_y;
+    panel_blockspace.ymin = block->rect.ymax + body.start_y;
 
     if (panel_blockspace.ymax <= panel->runtime->block->rect.ymin) {
       /* Layout panels no longer fits in block rectangle, stop drawing backdrops. */
@@ -1995,11 +1995,8 @@ static void ui_do_drag(const bContext *C, const wmEvent *event, Panel *panel)
 
 LayoutPanelHeader *ui_layout_panel_header_under_mouse(const Panel &panel, const int my)
 {
-  const uiBlock *block = panel.runtime->block;
   for (LayoutPanelHeader &header : panel.runtime->layout_panels.headers) {
-    const float ymin = block->rect.ymax + header.start_y;
-    const float ymax = block->rect.ymax + header.end_y;
-    if (IN_RANGE(float(my), ymin, ymax)) {
+    if (IN_RANGE(float(my - panel.runtime->block->rect.ymax), header.start_y, header.end_y)) {
       return &header;
     }
   }

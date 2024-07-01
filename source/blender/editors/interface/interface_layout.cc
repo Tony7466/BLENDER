@@ -4140,11 +4140,6 @@ static void ui_litem_estimate_panel_header(uiLayout *litem)
   litem->h = h;
 }
 
-static float layout_panel_y_offset()
-{
-  return float(UI_style_get_dpi()->panelspace);
-}
-
 static void ui_litem_layout_panel_header(uiLayout *litem)
 {
   uiLayoutItemPanelHeader *header_litem = reinterpret_cast<uiLayoutItemPanelHeader *>(litem);
@@ -4157,12 +4152,11 @@ static void ui_litem_layout_panel_header(uiLayout *litem)
   ui_item_size(item, &w, &h);
   litem->y -= h;
   ui_item_position(item, litem->x, litem->y, litem->w, h);
-
-  panel->runtime->layout_panels.headers.append(
-      {float(litem->y) - layout_panel_y_offset(),
-       float(litem->y + litem->h) - layout_panel_y_offset(),
-       header_litem->open_prop_owner,
-       header_litem->open_prop_name});
+  const float offset = UI_style_get_dpi()->panelspace;
+  panel->runtime->layout_panels.headers.append({float(litem->y) - offset,
+                                                float(litem->y + litem->h) - offset,
+                                                header_litem->open_prop_owner,
+                                                header_litem->open_prop_name});
 }
 
 /* panel body layout */
@@ -4175,9 +4169,10 @@ static void ui_litem_layout_panel_body(uiLayout *litem)
 {
   Panel *panel = litem->root->block->panel;
   ui_litem_layout_column(litem, false, false);
+  const float offset = UI_style_get_dpi()->panelspace;
   panel->runtime->layout_panels.bodies.append(
-      {float(litem->y - litem->space) - layout_panel_y_offset(),
-       float(litem->y + litem->h + litem->space) - layout_panel_y_offset()});
+      {float(litem->y - litem->space) - offset,
+       float(litem->y + litem->h + litem->space) - offset});
 }
 
 /* box layout */
