@@ -223,7 +223,7 @@ class NODE_OT_add_bloom_node_setup(NodeAddOperator, Operator):
     """Add a node setup that replicates the old EEVEE bloom effect"""
     bl_idname = "node.add_bloom_node_setup"
     bl_label = "Add Bloom Node Setup"
-    bl_options = {'REGISTER', 'UNDO'}
+    bl_options = {'REGISTER', 'UNDO', 'INTERNAL'}
 
     def execute(self, context):
         space = context.space_data
