@@ -269,6 +269,12 @@ static void foreach_active_gizmo_in_open_node_editor(
     const bNodeSocket &output_socket = node.output_socket(0);
     if ((node.flag & NODE_SELECT) || (output_socket.flag & SOCK_GIZMO_PIN)) {
       used_gizmo_inputs.add_multiple(item.value);
+      continue;
+    }
+    for (const ie::SocketElem &socket_elem : item.value) {
+      if (socket_elem.socket->owner_node().flag & NODE_SELECT) {
+        used_gizmo_inputs.add(socket_elem);
+      }
     }
   }
   for (auto &&item : gizmo_propagation.gizmo_inputs_by_node_inputs.items()) {
@@ -276,6 +282,12 @@ static void foreach_active_gizmo_in_open_node_editor(
     const bNode &node = socket.owner_node();
     if ((node.flag & NODE_SELECT) || (socket.flag & SOCK_GIZMO_PIN)) {
       used_gizmo_inputs.add_multiple(item.value);
+      continue;
+    }
+    for (const ie::SocketElem &socket_elem : item.value) {
+      if (socket_elem.socket->owner_node().flag & NODE_SELECT) {
+        used_gizmo_inputs.add(socket_elem);
+      }
     }
   }
   for (const bNode *gizmo_node : gizmo_propagation.gizmo_nodes) {
