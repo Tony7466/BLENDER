@@ -1566,7 +1566,7 @@ typedef struct ToolSettings {
   float uvcalc_weights_factor;
   float uvcalc_relative_scale;
 
-  char uvcalc_weights_attribute[64]; /* MAX_VGROUP_NAME */
+  char uvcalc_weights_group[64]; /* MAX_VGROUP_NAME */
 
   /* Auto-IK. */
   /** Runtime only. */

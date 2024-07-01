@@ -195,11 +195,11 @@ struct UnwrapOptions {
 
   bool importance_weights;
   ParamSlimOptions slim_options;
-  char weights_attribute[MAX_VGROUP_NAME];
+  char weights_group[MAX_VGROUP_NAME];
 
   void init_weight_influence(float w_influence)
   {
-    slim_options.weight_influence = importance_weights && strlen(weights_attribute) ? w_influence :
+    slim_options.weight_influence = importance_weights && strlen(weights_group) ? w_influence :
                                                                                       0.0f;
   }
 };
@@ -255,7 +255,7 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSe
     options.use_subsurf = (ts->uvcalc_flag & UVCALC_USESUBSURF) != 0;
 
     options.importance_weights = ts->uvcalc_importance_weights;
-    STRNCPY(options.weights_attribute, ts->uvcalc_weights_attribute);
+    STRNCPY(options.weights_group, ts->uvcalc_weights_group);
     options.init_weight_influence(ts->uvcalc_weights_factor);
 
     options.slim_options.iterations = ts->uvcalc_iterations;
@@ -268,7 +268,7 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSe
     options.use_subsurf = RNA_boolean_get(op->ptr, "use_subsurf_data");
 
     options.importance_weights = RNA_boolean_get(op->ptr, "importance_weights");
-    RNA_string_get(op->ptr, "weights_attribute", options.weights_attribute);
+    RNA_string_get(op->ptr, "weights_group", options.weights_group);
     options.init_weight_influence(RNA_float_get(op->ptr, "weights_factor"));
 
     options.slim_options.iterations = RNA_int_get(op->ptr, "iterations");
@@ -354,11 +354,11 @@ static void unwrap_options_sync_toolsettings(wmOperator *op, ToolSettings *ts)
     RNA_float_set(op->ptr, "weights_factor", ts->uvcalc_weights_factor);
   }
 
-  if (RNA_struct_property_is_set(op->ptr, "weights_attribute")) {
-    RNA_string_get(op->ptr, "weights_attribute", ts->uvcalc_weights_attribute);
+  if (RNA_struct_property_is_set(op->ptr, "weights_group")) {
+    RNA_string_get(op->ptr, "weights_group", ts->uvcalc_weights_group);
   }
   else {
-    RNA_string_set(op->ptr, "weights_attribute", ts->uvcalc_weights_attribute);
+    RNA_string_set(op->ptr, "weights_group", ts->uvcalc_weights_group);
   }
 
   unwrap_options_sync_flag(op, ts, "fill_holes", UVCALC_FILLHOLES, false);
@@ -626,7 +626,7 @@ static ParamHandle *construct_param_handle(const Scene *scene,
   BM_mesh_elem_index_ensure(bm, BM_VERT);
 
   const BMUVOffsets offsets = BM_uv_map_get_offsets(bm);
-  const int cd_weight_index = BKE_object_defgroup_name_index(ob, options->weights_attribute);
+  const int cd_weight_index = BKE_object_defgroup_name_index(ob, options->weights_group);
 
   BM_ITER_MESH_INDEX (efa, &iter, bm, BM_FACES_OF_MESH, i) {
     if (uvedit_is_face_affected(scene, efa, options, offsets)) {
@@ -681,7 +681,7 @@ static ParamHandle *construct_param_handle_multi(const Scene *scene,
       continue;
     }
 
-    const int cd_weight_index = BKE_object_defgroup_name_index(obedit, options->weights_attribute);
+    const int cd_weight_index = BKE_object_defgroup_name_index(obedit, options->weights_group);
 
     BM_ITER_MESH_INDEX (efa, &iter, bm, BM_FACES_OF_MESH, i) {
       if (uvedit_is_face_affected(scene, efa, options, offsets)) {
@@ -785,7 +785,7 @@ static ParamHandle *construct_param_handle_subsurfed(const Scene *scene,
   BMEdge **edgeMap;
 
   const BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
-  const int cd_weight_index = BKE_object_defgroup_name_index(ob, options->weights_attribute);
+  const int cd_weight_index = BKE_object_defgroup_name_index(ob, options->weights_group);
 
   ParamHandle *handle = new blender::geometry::ParamHandle();
 
@@ -2785,23 +2785,24 @@ static void unwrap_draw(bContext * /*C*/, wmOperator *op)
   if (is_slim) {
     uiItemR(col, &ptr, "iterations", UI_ITEM_NONE, nullptr, ICON_NONE);
     uiItemR(col, &ptr, "allow_flips", UI_ITEM_NONE, nullptr, ICON_NONE);
+
+    uiItemS(col);
     uiItemR(col, &ptr, "importance_weights", UI_ITEM_NONE, nullptr, ICON_NONE);
 
     if (RNA_boolean_get(op->ptr, "importance_weights")) {
       col = uiLayoutColumn(layout, true);
-      uiItemR(col, &ptr, "weights_attribute", UI_ITEM_NONE, nullptr, ICON_NONE);
+      uiItemR(col, &ptr, "weights_group", UI_ITEM_NONE, nullptr, ICON_NONE);
       uiItemR(col, &ptr, "weights_factor", UI_ITEM_NONE, nullptr, ICON_NONE);
     }
   }
   else {
-    col = uiLayoutColumn(layout, true);
     uiItemR(col, &ptr, "fill_holes", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 
-  col = uiLayoutColumn(layout, true);
+  uiItemS(col);
   uiItemR(col, &ptr, "use_subsurf_data", UI_ITEM_NONE, nullptr, ICON_NONE);
 
-  col = uiLayoutColumn(layout, true);
+  uiItemS(col);
   uiItemR(col, &ptr, "correct_aspect", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, &ptr, "margin_method", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, &ptr, "margin", UI_ITEM_NONE, nullptr, ICON_NONE);
@@ -2888,18 +2889,18 @@ void UV_OT_unwrap(wmOperatorType *ot)
                   "Importance Weights",
                   "Whether to take into account per-vertex importance weights");
   RNA_def_string(ot->srna,
-                 "weights_attribute",
-                 _DNA_DEFAULT_ToolSettings_UVCalc_WeightsAttribute,
+                 "weights_group",
+                 _DNA_DEFAULT_ToolSettings_UVCalc_WeightsGroup,
                  MAX_ID_NAME,
-                 "Attribute",
+                 "Weights Group",
                  "Vertex group name for importance weights (modulating the deform)");
   RNA_def_float(
       ot->srna,
       "weights_factor",
-      _DNA_DEFAULT_ToolSettings_UVCalc_VertexGroupFactor,
+      _DNA_DEFAULT_ToolSettings_UVCalc_WeightsFactor,
       -10000.0,
       10000.0,
-      "Factor",
+      "Weights Factor",
       "How much influence the weightmap has for weighted parameterization, 0 being no influence",
       -10.0,
       10.0);
