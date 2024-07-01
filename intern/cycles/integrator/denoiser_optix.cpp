@@ -221,7 +221,16 @@ uint OptiXDenoiser::get_device_type_mask() const
 
 bool OptiXDenoiser::is_device_supported(const DeviceInfo &device)
 {
-  return device.denoisers & DENOISER_OPTIX;
+  if (device.type == DEVICE_CUDA || device.type == DEVICE_OPTIX) {
+    /* device.num is coresponding to CUDA device enumeration order, see device_cuda_info in
+     * intern/cycles/device/cuda/device.cpp */
+    int major;
+    cuDeviceGetAttribute(&major, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, device.num);
+    if (major > 5) {
+      return true;
+    }
+  }
+  return false;
 }
 
 bool OptiXDenoiser::denoise_buffer(const DenoiseTask &task)
