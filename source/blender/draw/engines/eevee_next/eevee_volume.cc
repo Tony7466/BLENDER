@@ -121,8 +121,11 @@ void VolumeModule::end_sync()
     valid_history_ = false;
   }
 
-  if (valid_history_ && current_objects_ != previous_objects_) {
-    valid_history_ = false;
+  if (valid_history_) {
+    /* Avoid the (potentially expensive) check if valid_history_ is already false. */
+    if (current_objects_ != previous_objects_) {
+      valid_history_ = false;
+    }
   }
 
   if (inst_.camera.is_perspective()) {

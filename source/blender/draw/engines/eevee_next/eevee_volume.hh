@@ -55,6 +55,7 @@ class VolumeModule {
   bool use_reprojection_;
   bool use_lights_;
 
+  /* Track added/removed volume objects to reset the accumulation history. */
   Set<ObjectKey> previous_objects_;
   Set<ObjectKey> current_objects_;
 
