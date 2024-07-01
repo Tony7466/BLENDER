@@ -1201,7 +1201,6 @@ void ui_draw_layout_panels_backdrop(const ARegion *region,
                                     float subpanel_backcolor[4])
 {
   /* Draw backdrops for layout panels. */
-  const uiBlock *block = panel->runtime->block;
   const float aspect = ui_block_is_popup_any(panel->runtime->block) ?
                            panel->runtime->block->aspect :
                            1.0f;
