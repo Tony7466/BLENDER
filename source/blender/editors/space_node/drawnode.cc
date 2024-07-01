@@ -1277,12 +1277,7 @@ static bool socket_needs_attribute_search(bNode &node, bNodeSocket &socket)
 
 static void draw_gizmo_icon(uiLayout *layout, PointerRNA *socket_ptr)
 {
-  if (allow_pinning) {
-    uiItemR(layout, socket_ptr, "pin_gizmo", UI_ITEM_NONE, "", ICON_GIZMO);
-  }
-  else {
-    uiItemL(layout, "", ICON_GIZMO);
-  }
+  uiItemR(layout, socket_ptr, "pin_gizmo", UI_ITEM_NONE, "", ICON_GIZMO);
 }
 
 static void draw_node_socket_without_value(uiLayout *layout, bNodeSocket *sock, const char *text)
