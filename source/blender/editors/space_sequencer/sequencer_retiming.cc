@@ -651,7 +651,7 @@ static int strip_speed_set_exec(bContext *C, const wmOperator *op)
   blender::VectorSet<Sequence *> strips = ED_sequencer_selected_strips_from_context(C);
 
   for (Sequence *seq : strips) {
-    if (!SEQ_retiming_is_allowed) {
+    if (!SEQ_retiming_is_allowed(seq)) {
       continue;
     }
     SeqRetimingKey *key = ensure_left_and_right_keys(C, seq);
