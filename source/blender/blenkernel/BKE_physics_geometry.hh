@@ -135,14 +135,13 @@ class PhysicsGeometry {
 
   void resize(int bodies_num, int constraints_num);
 
-  void move_or_copy_selection(
-      const PhysicsGeometry &from,
-      bool use_world,
-      const IndexMask &body_mask,
-      const IndexMask &constraint_mask,
-      int rigid_bodies_offset,
-      int constraints_offset,
-      const bke::AnonymousAttributePropagationInfo &propagation_info);
+  void move_or_copy_selection(const PhysicsGeometry &from,
+                              bool use_world,
+                              const IndexMask &body_mask,
+                              const IndexMask &constraint_mask,
+                              int rigid_bodies_offset,
+                              int constraints_offset,
+                              const bke::AnonymousAttributePropagationInfo &propagation_info);
 
   void set_overlap_filter(OverlapFilterFn fn);
   void clear_overlap_filter();

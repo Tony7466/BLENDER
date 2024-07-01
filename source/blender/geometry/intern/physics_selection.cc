@@ -41,25 +41,6 @@ IndexMask constraint_selection_from_body(Span<int> constraint_body1,
       });
 }
 
-static void remap_bodies(const int src_bodies_num,
-                         const IndexMask &bodies_mask,
-                         const IndexMask &constraints_mask,
-                         const Span<int> src_constraint_types,
-                         const Span<int> src_constraint_body1,
-                         const Span<int> src_constraint_body2,
-                         MutableSpan<int> dst_constraint_types,
-                         MutableSpan<int> dst_constraint_body1,
-                         MutableSpan<int> dst_constraint_body2)
-{
-  Array<int> map(src_bodies_num);
-  index_mask::build_reverse_map<int>(bodies_mask, map);
-  constraints_mask.foreach_index(GrainSize(512), [&](const int64_t src_i, const int64_t dst_i) {
-    dst_constraint_types[dst_i] = map[src_constraint_types[src_i]];
-    dst_constraint_body1[dst_i] = map[src_constraint_body1[src_i]];
-    dst_constraint_body2[dst_i] = map[src_constraint_body2[src_i]];
-  });
-}
-
 std::optional<bke::PhysicsGeometry *> physics_copy_selection(
     const bke::PhysicsGeometry &src_physics,
     const VArray<bool> &selection,
