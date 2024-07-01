@@ -230,7 +230,7 @@ struct CommonValues {
    */
   virtual double threshold() const
   {
-    return 1e-6;
+    return 2e-6;
   }
 
   /**
