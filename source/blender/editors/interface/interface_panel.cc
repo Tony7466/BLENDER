@@ -1202,13 +1202,15 @@ void ui_draw_layout_panels_backdrop(const ARegion *region,
 {
   /* Draw backdrops for layout panels. */
   const uiBlock *block = panel->runtime->block;
-  const float aspect = ui_block_is_popup_any(block) ? block->aspect : 1.0f;
+  const float aspect = ui_block_is_popup_any(panel->runtime->block) ?
+                           panel->runtime->block->aspect :
+                           1.0f;
 
   for (const LayoutPanelBody &body : panel->runtime->layout_panels.bodies) {
 
     rctf panel_blockspace = panel->runtime->block->rect;
-    panel_blockspace.ymax = block->rect.ymax + body.end_y;
-    panel_blockspace.ymin = block->rect.ymax + body.start_y;
+    panel_blockspace.ymax = panel->runtime->block->rect.ymax + body.end_y;
+    panel_blockspace.ymin = panel->runtime->block->rect.ymax + body.start_y;
 
     if (panel_blockspace.ymax <= panel->runtime->block->rect.ymin) {
       /* Layout panels no longer fits in block rectangle, stop drawing backdrops. */
