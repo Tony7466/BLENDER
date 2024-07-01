@@ -492,9 +492,9 @@ void do_draw_face_sets_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> node
 
   if (ss.cache->alt_smooth) {
     SCULPT_boundary_info_ensure(ob);
-    SculptSession &ss = *ob.sculpt;
-    std::array<float, 4> strengths = iteration_strengths(ss.cache->bstrength,
-                                                         ss.cache->iteration_count);
+    const SculptSession &ss = *ob.sculpt;
+    const std::array<float, 4> strengths = iteration_strengths(ss.cache->bstrength,
+                                                               ss.cache->iteration_count);
     for (const float strength : strengths) {
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
         for (const int i : range) {
