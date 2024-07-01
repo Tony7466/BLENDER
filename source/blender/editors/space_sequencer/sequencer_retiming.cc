@@ -219,6 +219,9 @@ static int retiming_key_add_from_selection(bContext *C,
   bool inserted = false;
 
   for (Sequence *seq : strips) {
+    if (!SEQ_retiming_is_allowed(seq)) {
+      continue;
+    }
     inserted |= retiming_key_add_new_for_seq(C, op, seq, timeline_frame);
   }
 
@@ -349,6 +352,9 @@ static bool freeze_frame_add_from_strip_selection(bContext *C,
   bool success = false;
 
   for (Sequence *seq : strips) {
+    if (!SEQ_retiming_is_allowed(seq)) {
+      continue;
+    }
     success |= freeze_frame_add_new_for_seq(C, op, seq, timeline_frame, duration);
     SEQ_relations_invalidate_cache_raw(scene, seq);
   }
@@ -645,6 +651,9 @@ static int strip_speed_set_exec(bContext *C, const wmOperator *op)
   blender::VectorSet<Sequence *> strips = ED_sequencer_selected_strips_from_context(C);
 
   for (Sequence *seq : strips) {
+    if (!SEQ_retiming_is_allowed) {
+      continue;
+    }
     SeqRetimingKey *key = ensure_left_and_right_keys(C, seq);
 
     if (key == nullptr) {
