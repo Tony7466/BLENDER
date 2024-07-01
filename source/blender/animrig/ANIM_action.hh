@@ -188,6 +188,18 @@ class Action : public ::bAction {
    */
   Binding &binding_add_for_id(const ID &animated_id);
 
+  /**
+   * Ensure that an appropriate Binding exists for the given ID.
+   *
+   * If the ID is already using this Action with a Binding, that Binding is
+   * returned. Otherwise an appropriate Binding is either found or (if
+   * necessary) created.
+   *
+   * Note that this assigns neither this Action nor the Binding to the ID. This
+   * merely ensures that an appropriate Binding exists.
+   */
+  Binding &binding_ensure_for_id(const ID &animated_id);
+
   /** Assign this animation to the ID.
    *
    * \param binding: The binding this ID should be animated by, may be nullptr if it is to be
