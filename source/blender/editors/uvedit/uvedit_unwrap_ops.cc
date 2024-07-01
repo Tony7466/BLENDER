@@ -200,7 +200,7 @@ struct UnwrapOptions {
   void init_weight_influence(float w_influence)
   {
     slim_options.weight_influence = importance_weights && strlen(weights_group) ? w_influence :
-                                                                                      0.0f;
+                                                                                  0.0f;
   }
 };
 
