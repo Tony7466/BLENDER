@@ -66,10 +66,8 @@ std::optional<bke::PhysicsGeometry *> physics_copy_selection(
     const bke::AttrDomain selection_domain,
     const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
-  const VArraySpan<int> src_types = src_physics.constraint_types();
   const VArraySpan<int> src_body1 = src_physics.constraint_body1();
   const VArraySpan<int> src_body2 = src_physics.constraint_body2();
-  const bke::AttributeAccessor src_attributes = src_physics.attributes();
 
   if (selection.is_empty()) {
     return std::nullopt;
@@ -132,10 +130,8 @@ std::optional<bke::PhysicsGeometry *> physics_copy_selection_keep_bodies(
     const bke::AttrDomain selection_domain,
     const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
-  const VArraySpan<int> src_types = src_physics.constraint_types();
   const VArraySpan<int> src_body1 = src_physics.constraint_body1();
   const VArraySpan<int> src_body2 = src_physics.constraint_body2();
-  const bke::AttributeAccessor src_attributes = src_physics.attributes();
 
   if (selection.is_empty()) {
     return std::nullopt;
@@ -166,35 +162,9 @@ std::optional<bke::PhysicsGeometry *> physics_copy_selection_keep_bodies(
 
   bke::PhysicsGeometry *dst_physics = new bke::PhysicsGeometry(src_physics.bodies_num(),
                                                                constraint_mask.size());
-  // BKE_physics_copy_parameters_for_eval(dst_physics, &src_physics);
-  bke::MutableAttributeAccessor dst_attributes = dst_physics->attributes_for_write();
-  Array<int> dst_types(dst_physics->constraints_num());
-  Array<int> dst_body1(dst_physics->constraints_num());
-  Array<int> dst_body2(dst_physics->constraints_num());
 
-  remap_bodies(src_physics.bodies_num(),
-               src_physics.bodies_range(),
-               constraint_mask,
-               src_types,
-               src_body1,
-               src_body2,
-               dst_types,
-               dst_body1,
-               dst_body2);
-
-  dst_physics->create_constraints(dst_physics->constraints_range(),
-                                  VArray<int>::ForSpan(dst_types),
-                                  VArray<int>::ForSpan(dst_body1),
-                                  VArray<int>::ForSpan(dst_body2));
-
-  bke::copy_attributes(
-      src_attributes, bke::AttrDomain::Point, propagation_info, {}, dst_attributes);
-  bke::gather_attributes(src_attributes,
-                         bke::AttrDomain::Edge,
-                         propagation_info,
-                         {},
-                         constraint_mask,
-                         dst_attributes);
+  dst_physics->move_or_copy_selection(
+      src_physics, true, src_physics.bodies_range(), constraint_mask, 0, 0, propagation_info);
 
   return dst_physics;
 }
