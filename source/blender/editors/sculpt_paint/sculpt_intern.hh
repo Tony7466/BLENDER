@@ -786,6 +786,11 @@ bool SCULPT_stroke_is_first_brush_step(const blender::ed::sculpt_paint::StrokeCa
 bool SCULPT_stroke_is_first_brush_step_of_symmetry_pass(
     const blender::ed::sculpt_paint::StrokeCache &cache);
 
+/**
+ * Align the grab delta to the brush normal.
+ *
+ * \param grab_delta: Typically from `ss.cache->grab_delta_symmetry`.
+ */
 void sculpt_project_v3_normal_align(const SculptSession &ss,
                                     float normal_weight,
                                     float grab_delta[3]);

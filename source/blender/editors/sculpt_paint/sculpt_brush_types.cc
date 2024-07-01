@@ -112,11 +112,6 @@ static void sculpt_rake_rotate(const SculptSession &ss,
 #endif
 }
 
-/**
- * Align the grab delta to the brush normal.
- *
- * \param grab_delta: Typically from `ss.cache->grab_delta_symmetry`.
- */
 void sculpt_project_v3_normal_align(const SculptSession &ss,
                                     const float normal_weight,
                                     float grab_delta[3])
