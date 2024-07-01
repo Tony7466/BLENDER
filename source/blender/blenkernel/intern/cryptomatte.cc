@@ -186,9 +186,9 @@ CryptomatteSession *BKE_cryptomatte_init_from_render_result(const RenderResult *
   return session;
 }
 
-CryptomatteSession *BKE_cryptomatte_init_from_scene(const Scene *scene, bool use_meta_data)
+CryptomatteSession *BKE_cryptomatte_init_from_scene(const Scene *scene, bool build_meta_data)
 {
-  CryptomatteSession *session = new CryptomatteSession(scene, use_meta_data);
+  CryptomatteSession *session = new CryptomatteSession(scene, build_meta_data);
   return session;
 }
 
