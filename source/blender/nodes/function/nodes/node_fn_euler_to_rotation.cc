@@ -5,6 +5,7 @@
 #include "BLI_math_euler.hh"
 
 #include "NOD_inverse_eval.hh"
+#include "NOD_value_elem_eval.hh"
 
 #include "node_function_util.hh"
 
@@ -25,17 +26,17 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
   builder.set_matching_fn(fn);
 }
 
-static void node_eval_elem(inverse_eval::ElemEvalParams &params)
+static void node_eval_elem(value_elem::ElemEvalParams &params)
 {
-  using namespace inverse_eval;
+  using namespace value_elem;
   RotationElem rotation_elem;
   rotation_elem.euler = params.get_input_elem<VectorElem>("Euler");
   params.set_output_elem("Rotation", rotation_elem);
 }
 
-static void node_eval_inverse_elem(inverse_eval::InverseElemEvalParams &params)
+static void node_eval_inverse_elem(value_elem::InverseElemEvalParams &params)
 {
-  using namespace inverse_eval;
+  using namespace value_elem;
   const RotationElem rotation_elem = params.get_output_elem<RotationElem>("Rotation");
   VectorElem vector_elem = rotation_elem.euler;
   if (!rotation_elem.only_euler_angles()) {

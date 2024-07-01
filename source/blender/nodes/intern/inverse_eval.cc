@@ -8,6 +8,7 @@
 #include "NOD_inverse_eval_path.hh"
 #include "NOD_inverse_eval_run.hh"
 #include "NOD_node_in_compute_context.hh"
+#include "NOD_value_elem_eval.hh"
 
 #include "BKE_anim_data.hh"
 #include "BKE_compute_contexts.hh"
@@ -563,21 +564,6 @@ LocalInverseEvalTargets find_local_inverse_eval_targets(const bNodeTree &tree,
   }
 
   return targets;
-}
-
-ElemEvalParams::ElemEvalParams(const bNode &node,
-                               const Map<const bNodeSocket *, ElemVariant> &elem_by_socket,
-                               Vector<SocketElem> &output_elems)
-    : elem_by_socket_(elem_by_socket), output_elems_(output_elems), node(node)
-{
-}
-
-InverseElemEvalParams::InverseElemEvalParams(
-    const bNode &node,
-    const Map<const bNodeSocket *, ElemVariant> &elem_by_socket,
-    Vector<SocketElem> &input_elems)
-    : elem_by_socket_(elem_by_socket), input_elems_(input_elems), node(node)
-{
 }
 
 InverseEvalParams::InverseEvalParams(

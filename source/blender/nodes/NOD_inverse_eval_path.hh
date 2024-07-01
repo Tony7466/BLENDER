@@ -7,8 +7,11 @@
 #include "BLI_compute_context.hh"
 
 #include "NOD_inverse_eval.hh"
+#include "NOD_value_elem.hh"
 
 namespace blender::nodes::inverse_eval {
+
+using namespace value_elem;
 
 struct LocalInverseEvalTargets {
   Vector<SocketElem> input_sockets;

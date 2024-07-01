@@ -13,6 +13,7 @@
 
 #include "NOD_inverse_eval.hh"
 #include "NOD_socket_search_link.hh"
+#include "NOD_value_elem_eval.hh"
 
 #include "NOD_rna_define.hh"
 
@@ -129,9 +130,9 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
   builder.set_matching_fn(fn);
 }
 
-static void node_eval_elem(inverse_eval::ElemEvalParams &params)
+static void node_eval_elem(value_elem::ElemEvalParams &params)
 {
-  using namespace inverse_eval;
+  using namespace value_elem;
   const NodeBooleanMathOperation op = NodeBooleanMathOperation(params.node.custom1);
   switch (op) {
     case NODE_BOOLEAN_MATH_NOT: {
@@ -144,9 +145,9 @@ static void node_eval_elem(inverse_eval::ElemEvalParams &params)
   }
 }
 
-static void node_eval_inverse_elem(inverse_eval::InverseElemEvalParams &params)
+static void node_eval_inverse_elem(value_elem::InverseElemEvalParams &params)
 {
-  using namespace inverse_eval;
+  using namespace value_elem;
   const NodeBooleanMathOperation op = NodeBooleanMathOperation(params.node.custom1);
   switch (op) {
     case NODE_BOOLEAN_MATH_NOT: {

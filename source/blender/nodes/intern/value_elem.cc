@@ -2,7 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "NOD_value_elem.hh"
+#include "NOD_value_elem_eval.hh"
 
 namespace blender::nodes::value_elem {
 
@@ -65,6 +65,21 @@ std::optional<ElemVariant> convert_socket_elem(const bNodeSocket &old_socket,
       break;
   }
   return std::nullopt;
+}
+
+ElemEvalParams::ElemEvalParams(const bNode &node,
+                               const Map<const bNodeSocket *, ElemVariant> &elem_by_socket,
+                               Vector<SocketElem> &output_elems)
+    : elem_by_socket_(elem_by_socket), output_elems_(output_elems), node(node)
+{
+}
+
+InverseElemEvalParams::InverseElemEvalParams(
+    const bNode &node,
+    const Map<const bNodeSocket *, ElemVariant> &elem_by_socket,
+    Vector<SocketElem> &input_elems)
+    : elem_by_socket_(elem_by_socket), input_elems_(input_elems), node(node)
+{
 }
 
 }  // namespace blender::nodes::value_elem

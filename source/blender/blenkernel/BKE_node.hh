@@ -69,9 +69,11 @@ class NodeDeclarationBuilder;
 class GatherAddNodeSearchParams;
 class GatherLinkSearchOpParams;
 struct NodeExtraInfoParams;
-namespace inverse_eval {
+namespace value_elem {
 class InverseElemEvalParams;
 class ElemEvalParams;
+}  // namespace value_elem
+namespace inverse_eval {
 class InverseEvalParams;
 }  // namespace inverse_eval
 }  // namespace nodes
@@ -137,8 +139,8 @@ using NodeGetCompositorShaderNodeFunction =
     blender::realtime_compositor::ShaderNode *(*)(blender::nodes::DNode node);
 using NodeExtraInfoFunction = void (*)(blender::nodes::NodeExtraInfoParams &params);
 using NodeInverseElemEvalFunction =
-    void (*)(blender::nodes::inverse_eval::InverseElemEvalParams &params);
-using NodeElemEvalFunction = void (*)(blender::nodes::inverse_eval::ElemEvalParams &params);
+    void (*)(blender::nodes::value_elem::InverseElemEvalParams &params);
+using NodeElemEvalFunction = void (*)(blender::nodes::value_elem::ElemEvalParams &params);
 using NodeInverseEvalFunction = void (*)(blender::nodes::inverse_eval::InverseEvalParams &params);
 
 /**

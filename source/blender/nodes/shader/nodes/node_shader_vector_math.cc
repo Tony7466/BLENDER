@@ -13,6 +13,7 @@
 #include "NOD_math_functions.hh"
 #include "NOD_multi_function.hh"
 #include "NOD_socket_search_link.hh"
+#include "NOD_value_elem_eval.hh"
 
 #include "RNA_enum_types.hh"
 
@@ -317,9 +318,9 @@ static void sh_node_vector_math_build_multi_function(NodeMultiFunctionBuilder &b
   builder.set_matching_fn(fn);
 }
 
-static void node_eval_elem(inverse_eval::ElemEvalParams &params)
+static void node_eval_elem(value_elem::ElemEvalParams &params)
 {
-  using namespace inverse_eval;
+  using namespace value_elem;
   const NodeMathOperation op = NodeMathOperation(params.node.custom1);
   switch (op) {
     case NODE_VECTOR_MATH_ADD:
@@ -327,7 +328,7 @@ static void node_eval_elem(inverse_eval::ElemEvalParams &params)
     case NODE_VECTOR_MATH_MULTIPLY:
     case NODE_VECTOR_MATH_DIVIDE:
     case NODE_VECTOR_MATH_SCALE: {
-      params.set_output_elem("Vector", params.get_input_elem<inverse_eval::VectorElem>("Vector"));
+      params.set_output_elem("Vector", params.get_input_elem<VectorElem>("Vector"));
       break;
     }
     default:
@@ -335,7 +336,7 @@ static void node_eval_elem(inverse_eval::ElemEvalParams &params)
   }
 }
 
-static void node_eval_inverse_elem(inverse_eval::InverseElemEvalParams &params)
+static void node_eval_inverse_elem(value_elem::InverseElemEvalParams &params)
 {
   const NodeMathOperation op = NodeMathOperation(params.node.custom1);
   switch (op) {
@@ -344,7 +345,7 @@ static void node_eval_inverse_elem(inverse_eval::InverseElemEvalParams &params)
     case NODE_VECTOR_MATH_MULTIPLY:
     case NODE_VECTOR_MATH_DIVIDE:
     case NODE_VECTOR_MATH_SCALE: {
-      params.set_input_elem("Vector", params.get_output_elem<inverse_eval::VectorElem>("Vector"));
+      params.set_input_elem("Vector", params.get_output_elem<value_elem::VectorElem>("Vector"));
       break;
     }
     default:

@@ -12,6 +12,7 @@
 
 #include "NOD_inverse_eval.hh"
 #include "NOD_multi_function.hh"
+#include "NOD_value_elem_eval.hh"
 
 namespace blender::nodes::node_shader_sepcomb_xyz_cc::sep {
 
@@ -91,21 +92,22 @@ static void sh_node_sepxyz_build_multi_function(NodeMultiFunctionBuilder &builde
   builder.set_matching_fn(separate_fn);
 }
 
-static void sh_node_sepxyz_eval_elem(inverse_eval::ElemEvalParams &params)
+static void sh_node_sepxyz_eval_elem(value_elem::ElemEvalParams &params)
 {
-  using namespace inverse_eval;
+  using namespace value_elem;
   const VectorElem vector_elem = params.get_input_elem<VectorElem>("Vector");
   params.set_output_elem("X", vector_elem.x);
   params.set_output_elem("Y", vector_elem.y);
   params.set_output_elem("Z", vector_elem.z);
 }
 
-static void sh_node_sepxyz_eval_inverse_elem(inverse_eval::InverseElemEvalParams &params)
+static void sh_node_sepxyz_eval_inverse_elem(value_elem::InverseElemEvalParams &params)
 {
-  inverse_eval::VectorElem result;
-  result.x = params.get_output_elem<inverse_eval::FloatElem>("X");
-  result.y = params.get_output_elem<inverse_eval::FloatElem>("Y");
-  result.z = params.get_output_elem<inverse_eval::FloatElem>("Z");
+  using namespace value_elem;
+  value_elem::VectorElem result;
+  result.x = params.get_output_elem<FloatElem>("X");
+  result.y = params.get_output_elem<FloatElem>("Y");
+  result.z = params.get_output_elem<FloatElem>("Z");
   params.set_input_elem("Vector", result);
 }
 
@@ -176,9 +178,9 @@ static void sh_node_combxyz_build_multi_function(NodeMultiFunctionBuilder &build
   builder.set_matching_fn(fn);
 }
 
-static void sh_node_combxyz_eval_elem(inverse_eval::ElemEvalParams &params)
+static void sh_node_combxyz_eval_elem(value_elem::ElemEvalParams &params)
 {
-  using namespace inverse_eval;
+  using namespace value_elem;
   VectorElem vector_elem;
   vector_elem.x = params.get_input_elem<FloatElem>("X");
   vector_elem.y = params.get_input_elem<FloatElem>("Y");
@@ -186,9 +188,9 @@ static void sh_node_combxyz_eval_elem(inverse_eval::ElemEvalParams &params)
   params.set_output_elem("Vector", vector_elem);
 }
 
-static void sh_node_combxyz_eval_inverse_elem(inverse_eval::InverseElemEvalParams &params)
+static void sh_node_combxyz_eval_inverse_elem(value_elem::InverseElemEvalParams &params)
 {
-  using namespace inverse_eval;
+  using namespace value_elem;
   const VectorElem output_elem = params.get_output_elem<VectorElem>("Vector");
   params.set_input_elem("X", output_elem.x);
   params.set_input_elem("Y", output_elem.y);

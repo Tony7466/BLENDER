@@ -5,6 +5,7 @@
 #include "BLI_math_matrix.hh"
 
 #include "NOD_inverse_eval.hh"
+#include "NOD_value_elem_eval.hh"
 
 #include "node_function_util.hh"
 
@@ -189,9 +190,9 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
   builder.set_matching_fn(fn);
 }
 
-static void node_eval_elem(inverse_eval::ElemEvalParams &params)
+static void node_eval_elem(value_elem::ElemEvalParams &params)
 {
-  using namespace inverse_eval;
+  using namespace value_elem;
   const MatrixElem matrix_elem = params.get_input_elem<MatrixElem>("Matrix");
   std::array<std::array<FloatElem, 4>, 4> output_elems;
 
@@ -221,9 +222,9 @@ static void node_eval_elem(inverse_eval::ElemEvalParams &params)
   }
 }
 
-static void node_eval_inverse_elem(inverse_eval::InverseElemEvalParams &params)
+static void node_eval_inverse_elem(value_elem::InverseElemEvalParams &params)
 {
-  using namespace inverse_eval;
+  using namespace value_elem;
 
   std::array<std::array<FloatElem, 4>, 4> output_elems;
   for (const int col : IndexRange(4)) {
