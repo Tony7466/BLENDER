@@ -576,6 +576,7 @@ if(WITH_GTESTS)
     tests/BLI_pool_test.cc
     tests/BLI_random_access_iterator_mixin_test.cc
     tests/BLI_ressource_strings.h
+    tests/BLI_result_test.cc
     tests/BLI_serialize_test.cc
     tests/BLI_session_uid_test.cc
     tests/BLI_set_test.cc
