@@ -1021,6 +1021,7 @@ static void do_topology_slide_task(Object &ob, const Brush &brush, PBVHNode *nod
 }
 
 namespace blender::ed::sculpt_paint::smooth {
+
 static void relax_vertex_interior(SculptSession &ss,
                                   PBVHVertexIter *vd,
                                   const float factor,
