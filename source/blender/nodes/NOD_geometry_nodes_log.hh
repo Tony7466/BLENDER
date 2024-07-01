@@ -219,6 +219,9 @@ class GeoTreeLogger {
     int32_t node_id;
     StringRefNull message;
   };
+  struct EvaluatedGizmoNode {
+    int32_t node_id;
+  };
 
   linear_allocator::ChunkedList<WarningWithNode> node_warnings;
   linear_allocator::ChunkedList<SocketValueLog, 16> input_socket_values;
@@ -227,6 +230,7 @@ class GeoTreeLogger {
   linear_allocator::ChunkedList<ViewerNodeLogWithNode> viewer_node_logs;
   linear_allocator::ChunkedList<AttributeUsageWithNode> used_named_attributes;
   linear_allocator::ChunkedList<DebugMessage> debug_messages;
+  linear_allocator::ChunkedList<EvaluatedGizmoNode> evaluated_gizmo_nodes;
 
   GeoTreeLogger();
   ~GeoTreeLogger();
@@ -285,6 +289,7 @@ class GeoTreeLog {
   bool reduced_existing_attributes_ = false;
   bool reduced_used_named_attributes_ = false;
   bool reduced_debug_messages_ = false;
+  bool reduced_evaluated_gizmo_nodes_ = false;
 
  public:
   Map<int32_t, GeoNodeLog> nodes;
@@ -293,6 +298,7 @@ class GeoTreeLog {
   std::chrono::nanoseconds run_time_sum{0};
   Vector<const GeometryAttributeInfo *> existing_attributes;
   Map<StringRefNull, NamedAttributeUsage> used_named_attributes;
+  Set<int> evaluated_gizmo_nodes;
 
   GeoTreeLog(GeoModifierLog *modifier_log, Vector<GeoTreeLogger *> tree_loggers);
   ~GeoTreeLog();
@@ -304,6 +310,7 @@ class GeoTreeLog {
   void ensure_existing_attributes();
   void ensure_used_named_attributes();
   void ensure_debug_messages();
+  void ensure_evaluated_gizmo_nodes();
 
   ValueLog *find_socket_value_log(const bNodeSocket &query_socket);
   [[nodiscard]] bool try_convert_primitive_socket_value(const GenericValueLog &value_log,

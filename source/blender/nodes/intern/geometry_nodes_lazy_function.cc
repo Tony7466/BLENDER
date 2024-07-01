@@ -965,6 +965,12 @@ class LazyFunctionForGizmoNode : public LazyFunction {
     for (const int i : inputs_.index_range()) {
       params.try_get_input_data_ptr_or_request(i);
     }
+
+    const auto &local_user_data = *static_cast<GeoNodesLFLocalUserData *>(context.local_user_data);
+    if (geo_eval_log::GeoTreeLogger *tree_logger = local_user_data.try_get_tree_logger(user_data))
+    {
+      tree_logger->evaluated_gizmo_nodes.append(*tree_logger->allocator, {bnode_.identifier});
+    }
   }
 };
 

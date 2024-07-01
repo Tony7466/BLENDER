@@ -152,6 +152,29 @@ class NodeGizmos {
   virtual void update(GizmosUpdateParams & /*params*/) {}
 
   virtual Vector<wmGizmo *> get_all_gizmos() = 0;
+
+  void hide_all()
+  {
+    for (wmGizmo *gizmo : this->get_all_gizmos()) {
+      WM_gizmo_set_flag(gizmo, WM_GIZMO_HIDDEN, true);
+    }
+  }
+
+  void show_all()
+  {
+    for (wmGizmo *gizmo : this->get_all_gizmos()) {
+      WM_gizmo_set_flag(gizmo, WM_GIZMO_HIDDEN, false);
+    }
+  }
+
+  bool is_any_interacting()
+  {
+    bool any_interacting = false;
+    for (const wmGizmo *gizmo : this->get_all_gizmos()) {
+      any_interacting |= gizmo_is_interacting(*gizmo);
+    }
+    return any_interacting;
+  }
 };
 
 class LinearGizmo : public NodeGizmos {
@@ -938,16 +961,27 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
           new_gizmos_by_node.add(gizmo_id, std::move(new_node_gizmos));
         }
 
-        /* Unhide all, may be hidden below again. */
-        for (wmGizmo *gizmo : node_gizmos->get_all_gizmos()) {
-          WM_gizmo_set_flag(gizmo, WM_GIZMO_HIDDEN, false);
-        }
+        node_gizmos->show_all();
 
         GeoTreeLog &tree_log = nmd_orig.runtime->eval_log->get_tree_log(compute_context.hash());
         tree_log.ensure_socket_values();
+        tree_log.ensure_evaluated_gizmo_nodes();
 
         const std::optional<float4x4> crazy_space_geometry_transform =
             find_gizmo_geometry_transform(geometry, gizmo_id.gizmo_id);
+
+        const bool missing_logged_data = !tree_log.evaluated_gizmo_nodes.contains(
+            gizmo_node.identifier);
+        const bool missing_used_transform = gizmo_node.output_socket(0).is_logically_linked() &&
+                                            !crazy_space_geometry_transform.has_value();
+        if (missing_logged_data || missing_used_transform) {
+          /* Rerun modifier to make sure that values are logged. */
+          DEG_id_tag_update_for_side_effect_request(
+              depsgraph, const_cast<ID *>(&object_orig.id), ID_RECALC_GEOMETRY);
+          WM_main_add_notifier(NC_GEOM | ND_DATA, nullptr);
+          node_gizmos->hide_all();
+          return;
+        }
 
         const float4x4 geometry_transform = crazy_space_geometry_transform.value_or(
             float4x4::identity());
@@ -957,10 +991,7 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
             *C, object_to_world * geometry_transform, gizmo_node, tree_log, report, elem};
         node_gizmos->update(update_params);
 
-        bool any_interacting = false;
-        for (const wmGizmo *gizmo : node_gizmos->get_all_gizmos()) {
-          any_interacting |= gizmo_is_interacting(*gizmo);
-        }
+        bool any_interacting = node_gizmos->is_any_interacting();
 
         if (!any_interacting) {
           node_gizmos->apply_change =
@@ -991,31 +1022,11 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
               };
         }
 
-        if (report.missing_socket_logs) {
-          /* Rerun modifier to make sure that values are logged. */
-          DEG_id_tag_update_for_side_effect_request(
-              depsgraph, const_cast<ID *>(&object_orig.id), ID_RECALC_GEOMETRY);
-          WM_main_add_notifier(NC_GEOM | ND_DATA, nullptr);
-        }
         if (!any_interacting) {
           if (report.missing_socket_logs || report.invalid_transform) {
             /* Avoid showing gizmos which are in the wrong place. */
-            for (wmGizmo *gizmo : node_gizmos->get_all_gizmos()) {
-              WM_gizmo_set_flag(gizmo, WM_GIZMO_HIDDEN, true);
-            }
+            node_gizmos->hide_all();
             return;
-          }
-          const bNodeSocket &gizmo_transform_output = gizmo_node.output_socket(0);
-          if (gizmo_transform_output.is_logically_linked()) {
-            if (!crazy_space_geometry_transform) {
-              /* Hide gizmos if crazy space transform is not found but the gizmo was attached to a
-               * geometry. This has to be done after the check for missing socket logs which could
-               * cause an update that makes sure that the transforms are available too. */
-              for (wmGizmo *gizmo : node_gizmos->get_all_gizmos()) {
-                WM_gizmo_set_flag(gizmo, WM_GIZMO_HIDDEN, true);
-              }
-              return;
-            }
           }
         }
       });
