@@ -60,6 +60,7 @@ void register_node_type_sh_mix_shader();
 void register_node_type_sh_mix();
 void register_node_type_sh_normal_map();
 void register_node_type_sh_normal();
+void register_node_type_sh_npr();
 void register_node_type_sh_object_info();
 void register_node_type_sh_output_aov();
 void register_node_type_sh_output_eevee_material();

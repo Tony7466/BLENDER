@@ -186,16 +186,21 @@ typedef struct Material {
 
   /** Nodes */
   char use_nodes;
+  char use_npr_nodes;
 
   /** Preview render. */
   char pr_type;
+  char _pad2[1];
   short pr_texture;
   short pr_flag;
 
   /** Index for render passes. */
   short index;
 
+  char _pad3[6];
+
   struct bNodeTree *nodetree;
+  struct bNodeTree *npr_nodetree;
   /** Old animation system, deprecated for 2.5. */
   struct Ipo *ipo DNA_DEPRECATED;
   struct PreviewImage *preview;
@@ -229,7 +234,7 @@ typedef struct Material {
   /* Displacement. */
   float inflate_bounds;
 
-  char _pad3[4];
+  char _pad4[4];
 
   /**
    * Cached slots for texture painting, must be refreshed via

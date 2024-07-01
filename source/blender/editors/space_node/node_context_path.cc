@@ -78,7 +78,7 @@ static void get_context_path_node_shader(const bContext &C,
   }
   else {
     Object *object = CTX_data_active_object(&C);
-    if (snode.shaderfrom == SNODE_SHADER_OBJECT && object != nullptr) {
+    if (ELEM(snode.shaderfrom, SNODE_SHADER_OBJECT, SNODE_SHADER_NPR) && object != nullptr) {
       ui::context_path_add_generic(path, RNA_Object, object);
       if (!(object->matbits && object->matbits[object->actcol - 1])) {
         context_path_add_object_data(path, *object);

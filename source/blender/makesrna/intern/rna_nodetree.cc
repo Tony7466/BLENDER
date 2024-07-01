@@ -4007,6 +4007,20 @@ static PointerRNA rna_NodeMenuSwitch_enum_definition_get(PointerRNA *ptr)
   return *ptr;
 }
 
+static bool rna_NodeShaderNPR_node_tree_poll(PointerRNA * /*ptr*/, PointerRNA value)
+{
+  bNodeTree *ntree = static_cast<bNodeTree *>(value.data);
+  if (ntree->type != NTREE_SHADER) {
+    return false;
+  }
+  return true;
+}
+
+static void rna_NodeShaderNPR_node_tree_update(Main *bmain, Scene *scene, PointerRNA *ptr)
+{
+  /* TODO(NPR) */
+}
+
 #else
 
 static const EnumPropertyItem prop_image_layer_items[] = {
@@ -5998,6 +6012,21 @@ static void def_sh_script(StructRNA *srna)
   parm = RNA_def_pointer(func, "sock", "NodeSocket", "Socket", "");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
 #  endif
+}
+
+static void def_sh_npr(StructRNA *srna)
+{
+  RNA_def_struct_sdna_from(srna, "NodeShaderNPR", "storage");
+
+  PropertyRNA *prop = RNA_def_property(srna, "nodetree", PROP_POINTER, PROP_NONE);
+  RNA_def_property_pointer_sdna(prop, nullptr, "nodetree");
+  RNA_def_property_clear_flag(prop, PROP_PTR_NO_OWNERSHIP);
+  // RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_ui_text(prop, "Node Tree", "NPR Node Tree");
+  RNA_def_property_pointer_funcs(
+      prop, nullptr, nullptr, nullptr, "rna_NodeShaderNPR_node_tree_poll");
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_update(prop, 0, "rna_NodeShaderNPR_node_tree_update");
 }
 
 /* -- Compositor Nodes ------------------------------------------------------ */

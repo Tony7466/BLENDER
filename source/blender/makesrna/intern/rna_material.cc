@@ -249,6 +249,11 @@ static void rna_Material_use_nodes_update(bContext *C, PointerRNA *ptr)
   if (ma->use_nodes && ma->nodetree == nullptr) {
     ED_node_shader_default(C, &ma->id);
   }
+#  if 0
+  if (ma->use_npr_nodes && ma->npr_nodetree == nullptr) {
+    ED_node_npr_shader_default(C, &ma->id);
+  }
+#  endif
 
   DEG_id_tag_update(&ma->id, ID_RECALC_SYNC_TO_EVAL);
   DEG_relations_tag_update(bmain);
@@ -1143,6 +1148,21 @@ void RNA_def_material(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);
   RNA_def_property_ui_text(prop, "Use Nodes", "Use shader nodes to render the material");
   RNA_def_property_update(prop, 0, "rna_Material_use_nodes_update");
+
+  prop = RNA_def_property(srna, "npr_nodetree", PROP_POINTER, PROP_NONE);
+  RNA_def_property_pointer_sdna(prop, nullptr, "npr_nodetree");
+  // RNA_def_property_clear_flag(prop, PROP_PTR_NO_OWNERSHIP);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_ui_text(prop, "NPR Node Tree", "NPR node tree for node based materials");
+
+#  if 0
+  prop = RNA_def_property(srna, "use_npr_nodes", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "use_npr_nodes", 1);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);
+  RNA_def_property_ui_text(prop, "Use NPR Nodes", "Use NPR shader nodes to render the material");
+  RNA_def_property_update(prop, 0, "rna_Material_use_nodes_update");
+#  endif
 
   /* common */
   rna_def_animdata_common(srna);

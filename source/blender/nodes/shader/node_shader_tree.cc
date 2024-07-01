@@ -100,12 +100,25 @@ static void shader_get_from_context(const bContext *C,
     }
   }
 #endif
-  else { /* SNODE_SHADER_WORLD */
+  else if (snode->shaderfrom == SNODE_SHADER_WORLD) {
     if (scene->world) {
       *r_from = nullptr;
       *r_id = &scene->world->id;
       *r_ntree = scene->world->nodetree;
     }
+  }
+  else if (snode->shaderfrom == SNODE_SHADER_NPR) {
+    if (ob) {
+      *r_from = &ob->id;
+      Material *ma = BKE_object_material_get(ob, ob->actcol);
+      if (ma) {
+        *r_id = &ma->id;
+        *r_ntree = ma->npr_nodetree;
+      }
+    }
+  }
+  else {
+    BLI_assert_unreachable();
   }
 }
 
