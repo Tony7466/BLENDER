@@ -34,7 +34,7 @@ const AbstractViewItem *AbstractView::search_highlight_item() const
 {
   const AbstractViewItem *found_item = nullptr;
 
-  foreach_view_item([&](const AbstractViewItem &item) {
+  this->foreach_view_item([&](const AbstractViewItem &item) {
     if (!found_item && item.is_search_highlight()) {
       found_item = &item;
     }
@@ -145,7 +145,7 @@ void AbstractView::filter(std::optional<StringRef> filter_str)
   prev_filter_string_ = *filter_str;
 
   bool has_search_highlight = false;
-  foreach_view_item([&](AbstractViewItem &item) {
+  this->foreach_view_item([&](AbstractViewItem &item) {
     item.is_filtered_visible_ = is_empty ||
                                 item.should_be_filtered_visible(StringRefNull(*filter_str));
 
@@ -212,7 +212,7 @@ void AbstractView::set_context_menu_title(const std::string &title)
 
 void AbstractView::clear_search_highlight()
 {
-  foreach_view_item([](AbstractViewItem &item) { item.is_highlighted_search_ = false; });
+  this->foreach_view_item([](AbstractViewItem &item) { item.is_highlighted_search_ = false; });
 }
 /** \} */
 

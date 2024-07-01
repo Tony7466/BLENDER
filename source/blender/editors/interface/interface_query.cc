@@ -515,12 +515,12 @@ uiBut *ui_view_item_find_search_highlight(const ARegion *region)
 {
   return ui_but_find(
       region,
-      [](const uiBut *but, const void *) {
+      [](const uiBut *but, const void * /*find_custom_data*/) {
         if (but->type != UI_BTYPE_VIEW_ITEM) {
           return false;
         }
 
-        const uiButViewItem *view_item_but = (const uiButViewItem *)but;
+        const uiButViewItem *view_item_but = static_cast<const uiButViewItem *>(but);
         return view_item_but->view_item->is_search_highlight();
       },
       nullptr);
