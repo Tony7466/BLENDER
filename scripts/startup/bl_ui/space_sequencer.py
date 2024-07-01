@@ -963,7 +963,7 @@ class SEQUENCER_MT_strip_retiming(Menu):
         layout.operator("sequencer.retiming_add_freeze_frame_slide")
         col = layout.column()
         col.operator("sequencer.retiming_add_transition_slide")
-        
+
         col.separator()
 
         col.operator("sequencer.retiming_key_delete")
