@@ -155,8 +155,7 @@ static void calc_bmesh_sharp(Object &object,
   const int mask_offset = CustomData_get_offset_named(
       &ss.bm->vdata, CD_PROP_FLOAT, ".sculpt_mask");
 
-  SculptOrigVertData orig_data;
-  SCULPT_orig_vert_data_init(orig_data, object, node, undo::Type::Position);
+  SculptOrigVertData orig_data = SCULPT_orig_vert_data_init(object, node, undo::Type::Position);
 
   /* TODO: Remove usage of proxies. */
   const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss.pbvh, node).co;

@@ -39,14 +39,12 @@ def _local_module_reload():
     import importlib
     from . import (
         bl_extension_cli,
-        bl_extension_local,
         bl_extension_notify,
         bl_extension_ops,
         bl_extension_ui,
         bl_extension_utils,
     )
     importlib.reload(bl_extension_cli)
-    importlib.reload(bl_extension_local)
     importlib.reload(bl_extension_notify)
     importlib.reload(bl_extension_ops)
     importlib.reload(bl_extension_ui)
@@ -91,6 +89,50 @@ def cookie_from_session():
 
 # -----------------------------------------------------------------------------
 # Shared Low Level Utilities
+
+# NOTE(@ideasman42): this is used externally from `addon_utils` which is something we try to avoid but done in
+# the case of generating compatibility cache, avoiding this "bad-level call" would be good but impractical when
+# the command line tool is treated as a stand-alone program (which I prefer to keep).
+def manifest_compatible_with_wheel_data_or_error(
+        pkg_manifest_filepath,  # `str`
+        repo_module,  # `str`
+        pkg_id,  # `str`
+        repo_directory,  # `str`
+        wheel_list,  # `List[Tuple[str, List[str]]]`
+):  # `Optional[str]`
+    from bl_pkg.bl_extension_utils import (
+        pkg_manifest_dict_is_valid_or_error,
+        toml_from_filepath,
+    )
+    from bl_pkg.bl_extension_ops import (
+        pkg_manifest_params_compatible_or_error_for_this_system,
+    )
+
+    try:
+        manifest_dict = toml_from_filepath(pkg_manifest_filepath)
+    except Exception as ex:
+        return "Error reading TOML data {:s}".format(str(ex))
+
+    if (error := pkg_manifest_dict_is_valid_or_error(manifest_dict, from_repo=False, strict=False)):
+        return error
+
+    if isinstance(error := pkg_manifest_params_compatible_or_error_for_this_system(
+            blender_version_min=manifest_dict.get("blender_version_min", ""),
+            blender_version_max=manifest_dict.get("blender_version_max", ""),
+            platforms=manifest_dict.get("platforms", ""),
+    ), str):
+        return error
+
+    # NOTE: the caller may need to collect wheels when refreshing.
+    # While this isn't so clean it happens to be efficient.
+    # It could be refactored to work differently in the future if that is ever needed.
+    if wheels_rel := manifest_dict.get("wheels"):
+        from .bl_extension_ops import pkg_wheel_filter
+        if (wheel_abs := pkg_wheel_filter(repo_module, pkg_id, repo_directory, wheels_rel)) is not None:
+            wheel_list.append(wheel_abs)
+
+    return None
+
 
 def repo_paths_or_none(repo_item):
     if (directory := repo_item.directory) == "":
@@ -311,10 +353,10 @@ def extenion_repos_files_clear(directory, _):
     #
     # Safer because removing a repository which points to an arbitrary path
     # has the potential to wipe user data #119481.
-    import shutil
     import os
     from .bl_extension_utils import (
         scandir_with_demoted_errors,
+        rmtree_with_fallback_or_error,
         PKG_MANIFEST_FILENAME_TOML,
         REPO_LOCAL_PRIVATE_DIR,
     )
@@ -324,21 +366,15 @@ def extenion_repos_files_clear(directory, _):
         return
 
     if os.path.isdir(path := os.path.join(directory, REPO_LOCAL_PRIVATE_DIR)):
-        try:
-            shutil.rmtree(path)
-        except Exception as ex:
-            print("Failed to remove files", ex)
+        if (error := rmtree_with_fallback_or_error(path)) is not None:
+            print("Failed to remove \"{:s}\", error ({:s})".format(path, error))
 
     for entry in scandir_with_demoted_errors(directory):
-        if not entry.is_dir():
-            continue
         path = entry.path
         if not os.path.exists(os.path.join(path, PKG_MANIFEST_FILENAME_TOML)):
             continue
-        try:
-            shutil.rmtree(path)
-        except Exception as ex:
-            print("Failed to remove files", ex)
+        if (error := rmtree_with_fallback_or_error(path)) is not None:
+            print("Failed to remove \"{:s}\", error ({:s})".format(path, error))
 
 
 # -----------------------------------------------------------------------------
@@ -585,15 +621,6 @@ def register():
         description="Show extensions by type",
         default='ADDON',
     )
-    WindowManager.extension_updates_only = BoolProperty(
-        name="Show Updates Available",
-        description="Only show extensions with updates available",
-    )
-    WindowManager.extension_show_panel_enabled = BoolProperty(
-        name="Show Enabled Extensions",
-        description="Only show enabled extensions",
-        default=True,
-    )
     WindowManager.extension_show_panel_installed = BoolProperty(
         name="Show Installed Extensions",
         description="Only show installed extensions",
@@ -637,7 +664,6 @@ def unregister():
     del WindowManager.extension_tags
     del WindowManager.extension_search
     del WindowManager.extension_type
-    del WindowManager.extension_show_panel_enabled
     del WindowManager.extension_show_panel_installed
     del WindowManager.extension_show_panel_available
 
