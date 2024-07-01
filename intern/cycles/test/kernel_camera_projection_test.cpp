@@ -10,9 +10,10 @@
 #include "kernel/device/cpu/compat.h"
 #include "kernel/device/cpu/globals.h"
 
+#include "kernel/types.h"
+
 #include "kernel/camera/camera.h"
 #include "kernel/camera/projection.h"
-#include "kernel/types.h"
 
 CCL_NAMESPACE_BEGIN
 
