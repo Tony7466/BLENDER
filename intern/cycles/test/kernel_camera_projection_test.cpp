@@ -295,10 +295,6 @@ struct FisheyeEquidistant : public CommonValues {
 };
 
 struct FisheyeEquisolid : public CommonValues {
-  double threshold() const
-  {
-    return 5e-5;
-  }
   bool skip_invalid() const
   {
     return true;
