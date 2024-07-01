@@ -45,8 +45,8 @@ struct CryptomatteSession {
   CryptomatteSession(const Main *bmain);
   CryptomatteSession(StampData *stamp_data);
   CryptomatteSession(const ViewLayer *view_layer);
-  CryptomatteSession(const Scene *scene, bool use_meta_data = false);
-  void init(const ViewLayer *view_layer, bool use_meta_data = false);
+  CryptomatteSession(const Scene *scene, bool build_meta_data = false);
+  void init(const ViewLayer *view_layer, bool build_meta_data = false);
 
   blender::bke::cryptomatte::CryptomatteLayer &add_layer(std::string layer_name);
   std::optional<std::string> operator[](float encoded_hash) const;
@@ -95,19 +95,19 @@ CryptomatteSession::CryptomatteSession(const ViewLayer *view_layer)
   init(view_layer);
 }
 
-CryptomatteSession::CryptomatteSession(const Scene *scene, bool use_meta_data)
+CryptomatteSession::CryptomatteSession(const Scene *scene, bool build_meta_data)
 {
 
-  if (use_meta_data) {
+  if (build_meta_data) {
     BKE_scene_view_layers_synced_ensure(scene);
   }
 
   LISTBASE_FOREACH (const ViewLayer *, view_layer, &scene->view_layers) {
-    init(view_layer, use_meta_data);
+    init(view_layer, build_meta_data);
   }
 }
 
-void CryptomatteSession::init(const ViewLayer *view_layer, bool use_meta_data)
+void CryptomatteSession::init(const ViewLayer *view_layer, bool build_meta_data)
 {
   eViewLayerCryptomatteFlags cryptoflags = static_cast<eViewLayerCryptomatteFlags>(
       view_layer->cryptomatte_flag & VIEW_LAYER_CRYPTOMATTE_ALL);
@@ -121,7 +121,7 @@ void CryptomatteSession::init(const ViewLayer *view_layer, bool use_meta_data)
     blender::bke::cryptomatte::CryptomatteLayer &objects = add_layer(
         blender::StringRefNull(view_layer->name) + "." + RE_PASSNAME_CRYPTOMATTE_OBJECT);
 
-    if (use_meta_data) {
+    if (build_meta_data) {
       LISTBASE_FOREACH (Base *, base, object_bases) {
         objects.add_ID(base->object->id);
       }
@@ -136,7 +136,7 @@ void CryptomatteSession::init(const ViewLayer *view_layer, bool use_meta_data)
     blender::bke::cryptomatte::CryptomatteLayer &materials = add_layer(
         blender::StringRefNull(view_layer->name) + "." + RE_PASSNAME_CRYPTOMATTE_MATERIAL);
 
-    if (use_meta_data) {
+    if (build_meta_data) {
       LISTBASE_FOREACH (Base *, base, object_bases) {
         for (int i = 0; i < base->object->totcol; i++) {
           Material *material = BKE_object_material_get(base->object, i + 1);
