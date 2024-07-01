@@ -25,8 +25,16 @@ inline namespace draw_face_sets_cc {
 
 constexpr float FACE_SET_BRUSH_MIN_FADE = 0.05f;
 
-struct LocalData {
-  Vector<int> identity;
+struct MeshLocalData {
+  Vector<int> face_indices;
+  Vector<float3> positions;
+  Vector<float3> normals;
+  Vector<float> masks;
+  Vector<float> factors;
+  Vector<float> distances;
+};
+
+struct GridLocalData {
   Vector<int> face_indices;
   Vector<float3> positions;
   Vector<float3> normals;
@@ -84,10 +92,10 @@ BLI_NOINLINE static void generate_face_data(const Mesh &mesh,
   }
 }
 
-BLI_NOINLINE static void fill_factor_from_hide_and_mask(const Mesh &mesh,
-                                                        const Span<int> face_indices,
-                                                        const Span<float> masks,
-                                                        const MutableSpan<float> r_factors)
+BLI_NOINLINE static void fill_factor_from_hide_and_mask_faces(const Mesh &mesh,
+                                                              const Span<int> face_indices,
+                                                              const Span<float> masks,
+                                                              const MutableSpan<float> r_factors)
 {
   BLI_assert(face_indices.size() == r_factors.size());
   BLI_assert(masks.size() == r_factors.size());
@@ -108,12 +116,27 @@ BLI_NOINLINE static void fill_factor_from_hide_and_mask(const Mesh &mesh,
   }
 }
 
+BLI_NOINLINE static bool apply_face_set(const int face_set_id,
+                                        const Span<int> face_indices,
+                                        const Span<float> factors,
+                                        const MutableSpan<int> face_sets)
+{
+  bool any_changed = false;
+  for (const int i : face_indices.index_range()) {
+    if (factors[i] > FACE_SET_BRUSH_MIN_FADE) {
+      face_sets[face_indices[i]] = face_set_id;
+      any_changed = true;
+    }
+  }
+  return any_changed;
+}
+
 static bool calc_faces(Object &object,
                        const Brush &brush,
                        float strength,
                        int face_set_id,
                        const PBVHNode &node,
-                       LocalData &tls,
+                       MeshLocalData &tls,
                        MutableSpan<int> face_sets)
 {
   SculptSession &ss = *object.sculpt;
@@ -127,7 +150,7 @@ static bool calc_faces(Object &object,
   const MutableSpan<float> factors = tls.factors;
 
   const Span<float> masks = tls.masks;
-  fill_factor_from_hide_and_mask(mesh, face_indices, masks, factors);
+  fill_factor_from_hide_and_mask_faces(mesh, face_indices, masks, factors);
 
   const Span<float3> positions = tls.positions;
   filter_region_clip_factors(ss, positions, factors);
@@ -152,15 +175,7 @@ static bool calc_faces(Object &object,
   calc_brush_texture_factors(ss, brush, positions, factors);
   scale_factors(factors, strength);
 
-  bool any_changed = false;
-  for (const int i : face_indices.index_range()) {
-    if (factors[i] > FACE_SET_BRUSH_MIN_FADE) {
-      face_sets[face_indices[i]] = face_set_id;
-      any_changed = true;
-    }
-  }
-
-  return any_changed;
+  return apply_face_set(face_set_id, face_indices, factors, face_sets);
 }
 
 static void do_draw_face_sets_brush_mesh(Object &object,
@@ -173,13 +188,13 @@ static void do_draw_face_sets_brush_mesh(Object &object,
 
   Mesh &mesh = *static_cast<Mesh *>(object.data);
   const Span<int> corner_tris = mesh.corner_tri_faces();
-  threading::EnumerableThreadSpecific<LocalData> all_tls;
+  threading::EnumerableThreadSpecific<MeshLocalData> all_tls;
 
   bke::SpanAttributeWriter<int> attribute = face_set::ensure_face_sets_mesh(object);
   MutableSpan<int> face_sets = attribute.span;
 
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-    LocalData &tls = all_tls.local();
+    MeshLocalData &tls = all_tls.local();
     for (const int i : range) {
       const Span<int> face_indices = bke::pbvh::node_face_indices_calc_mesh(
           corner_tris, *nodes[i], tls.face_indices);
@@ -203,58 +218,95 @@ static void do_draw_face_sets_brush_mesh(Object &object,
   attribute.finish();
 }
 
-static void do_draw_face_sets_brush_grids(Object &ob,
+BLI_NOINLINE static void calc_face_indices_grids(const SubdivCCG &subdiv_ccg,
+                                                 const Span<int> grids,
+                                                 const MutableSpan<int> face_indices)
+{
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+  BLI_assert(grids.size() * key.grid_area == face_indices.size());
+
+  for (const int i : grids.index_range()) {
+    const int start = i * key.grid_area;
+    for (const int offset : IndexRange(key.grid_area)) {
+      face_indices[start + offset] = BKE_subdiv_ccg_grid_to_face_index(subdiv_ccg, grids[i]);
+    }
+  }
+}
+
+static bool calc_grids(Object &object,
+                       const Brush &brush,
+                       float strength,
+                       int face_set_id,
+                       const PBVHNode &node,
+                       GridLocalData &tls,
+                       MutableSpan<int> face_sets)
+{
+  SculptSession &ss = *object.sculpt;
+  const StrokeCache &cache = *ss.cache;
+  SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+
+  const Span<int> grids = bke::pbvh::node_grid_indices(node);
+  const int grid_verts_num = grids.size() * key.grid_area;
+
+  tls.positions.reinitialize(grid_verts_num);
+  MutableSpan<float3> positions = tls.positions;
+  gather_grids_positions(subdiv_ccg, grids, positions);
+
+  tls.factors.reinitialize(grid_verts_num);
+  const MutableSpan<float> factors = tls.factors;
+  fill_factor_from_hide_and_mask(subdiv_ccg, grids, factors);
+  filter_region_clip_factors(ss, positions, factors);
+  if (brush.flag & BRUSH_FRONTFACE) {
+    calc_front_face(cache.view_normal, subdiv_ccg, grids, factors);
+  }
+
+  tls.distances.reinitialize(grid_verts_num);
+  const MutableSpan<float> distances = tls.distances;
+  calc_distance_falloff(
+      ss, positions, eBrushFalloffShape(brush.falloff_shape), distances, factors);
+  apply_hardness_to_distances(cache, distances);
+  calc_brush_strength_factors(cache, brush, distances, factors);
+
+  if (cache.automasking) {
+    auto_mask::calc_grids_factors(object, *cache.automasking, node, grids, factors);
+  }
+
+  calc_brush_texture_factors(ss, brush, positions, factors);
+  scale_factors(factors, strength);
+
+  tls.face_indices.reinitialize(grid_verts_num);
+  MutableSpan<int> face_indices = tls.face_indices;
+
+  calc_face_indices_grids(subdiv_ccg, grids, face_indices);
+  return apply_face_set(face_set_id, face_indices, factors, face_sets);
+}
+
+static void do_draw_face_sets_brush_grids(Object &object,
                                           const Brush &brush,
                                           const Span<PBVHNode *> nodes)
 {
-  SculptSession &ss = *ob.sculpt;
-  const float bstrength = ss.cache->bstrength;
-  SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  SculptSession &ss = *object.sculpt;
 
-  bke::SpanAttributeWriter<int> attribute = face_set::ensure_face_sets_mesh(ob);
+  bke::SpanAttributeWriter<int> attribute = face_set::ensure_face_sets_mesh(object);
   MutableSpan<int> face_sets = attribute.span;
+  threading::EnumerableThreadSpecific<GridLocalData> all_tls;
 
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-    const int thread_id = BLI_task_parallel_thread_id(nullptr);
+    GridLocalData &tls = all_tls.local();
     for (PBVHNode *node : nodes.slice(range)) {
-      SculptBrushTest test;
-      SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-          ss, test, brush.falloff_shape);
+      for (const int i : range) {
+        bool any_changed = calc_grids(object,
+                                      brush,
+                                      ss.cache->bstrength,
+                                      ss.cache->paint_face_set,
+                                      *nodes[i],
+                                      tls,
+                                      face_sets);
 
-      auto_mask::NodeData automask_data = auto_mask::node_begin(
-          ob, ss.cache->automasking.get(), *node);
-
-      bool changed = false;
-
-      PBVHVertexIter vd;
-      BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
-        auto_mask::node_update(automask_data, vd);
-
-        if (!sculpt_brush_test_sq_fn(test, vd.co)) {
-          continue;
+        if (any_changed) {
+          undo::push_node(object, node, undo::Type::FaceSet);
         }
-        const float fade = bstrength * SCULPT_brush_strength_factor(ss,
-                                                                    brush,
-                                                                    vd.co,
-                                                                    sqrtf(test.dist),
-                                                                    vd.no,
-                                                                    vd.fno,
-                                                                    vd.mask,
-                                                                    vd.vertex,
-                                                                    thread_id,
-                                                                    &automask_data);
-
-        if (fade > FACE_SET_BRUSH_MIN_FADE) {
-          const int face_index = BKE_subdiv_ccg_grid_to_face_index(subdiv_ccg,
-                                                                   vd.grid_indices[vd.g]);
-          face_sets[face_index] = ss.cache->paint_face_set;
-          changed = true;
-        }
-      }
-      BKE_pbvh_vertex_iter_end;
-
-      if (changed) {
-        undo::push_node(ob, node, undo::Type::FaceSet);
       }
     }
   });
