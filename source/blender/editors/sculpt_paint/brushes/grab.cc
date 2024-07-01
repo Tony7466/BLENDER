@@ -40,6 +40,8 @@ BLI_NOINLINE static void calc_silhouette_factors(const StrokeCache &cache,
                                                  const Span<float3> normals,
                                                  const MutableSpan<float> factors)
 {
+  BLI_assert(normals.size() == factors.size());
+
   const float sign = math::sign(math::dot(cache.initial_normal, cache.grab_delta_symmetry));
   const float3 test_dir = math::normalize(offset) * sign;
   for (const int i : factors.index_range()) {
