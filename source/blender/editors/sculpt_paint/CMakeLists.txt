@@ -122,6 +122,7 @@ set(SRC
   brushes/draw.cc
   brushes/fill.cc
   brushes/flatten.cc
+  brushes/grab.cc
   brushes/inflate.cc
   brushes/mask.cc
   brushes/multiplane_scrape.cc
