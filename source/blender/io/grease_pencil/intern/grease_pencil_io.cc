@@ -10,6 +10,7 @@
 #include "BKE_context.hh"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_grease_pencil.hh"
+#include "BKE_layer.hh"
 #include "BKE_material.h"
 #include "BKE_scene.hh"
 
@@ -17,6 +18,8 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_view3d_types.h"
+
+#include "DEG_depsgraph_query.hh"
 
 #include "ED_object.hh"
 #include "ED_view3d.hh"
@@ -161,6 +164,57 @@ void GreasePencilExporter::prepare_camera_params(Scene &scene, const bool force_
     // offset_.x = boundbox.xmin;
     // offset_.y = boundbox.ymin;
   }
+}
+
+Vector<GreasePencilExporter::ObjectInfo> GreasePencilExporter::retrieve_objects() const
+{
+  using SelectMode = ExportParams::SelectMode;
+
+  Scene &scene = *CTX_data_scene(&context_.C);
+  ViewLayer *view_layer = CTX_data_view_layer(&context_.C);
+  const float3 camera_z_axis = float3(context_.rv3d->viewinv[2]);
+
+  BKE_view_layer_synced_ensure(&scene, view_layer);
+
+  Vector<ObjectInfo> objects;
+  auto add_object = [&](Object *object) {
+    if (object == nullptr || object->type != OB_GREASE_PENCIL) {
+      return;
+    }
+
+    const float3 position = object->object_to_world().location();
+
+    /* Save z-depth from view to sort from back to front. */
+    const bool use_ortho_depth = is_camera_ || !context_.rv3d->is_persp;
+    const float depth = use_ortho_depth ? math::dot(camera_z_axis, position) :
+                                          -ED_view3d_calc_zfac(context_.rv3d, position);
+    objects.append({object, depth});
+  };
+
+  switch (params_.select_mode) {
+    case SelectMode::Active:
+      add_object(params_.object);
+      break;
+    case SelectMode::Selected:
+      LISTBASE_FOREACH (Base *, base, BKE_view_layer_object_bases_get(view_layer)) {
+        if (base->flag & BASE_SELECTED) {
+          add_object(base->object);
+        }
+      }
+      break;
+    case SelectMode::Visible:
+      LISTBASE_FOREACH (Base *, base, BKE_view_layer_object_bases_get(view_layer)) {
+        add_object(base->object);
+      }
+      break;
+  }
+
+  /* Sort list of objects from point of view. */
+  std::sort(objects.begin(), objects.end(), [](const ObjectInfo &info1, const ObjectInfo &info2) {
+    return info1.depth < info2.depth;
+  });
+
+  return objects;
 }
 
 }  // namespace blender::io::grease_pencil

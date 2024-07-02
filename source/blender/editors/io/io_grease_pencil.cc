@@ -48,7 +48,7 @@ static void grease_pencil_export_common_props_definition(wmOperatorType *ot)
   using blender::io::grease_pencil::ExportParams;
   using SelectMode = ExportParams::SelectMode;
 
-  static const EnumPropertyItem select_items[] = {
+  static const EnumPropertyItem select_mode_items[] = {
       {int(SelectMode::Active), "ACTIVE", 0, "Active", "Include only the active object"},
       {int(SelectMode::Selected), "SELECTED", 0, "Selected", "Include selected objects"},
       {int(SelectMode::Visible), "VISIBLE", 0, "Visible", "Include all visible objects"},
@@ -58,7 +58,7 @@ static void grease_pencil_export_common_props_definition(wmOperatorType *ot)
   RNA_def_boolean(ot->srna, "use_fill", true, "Fill", "Export strokes with fill enabled");
   RNA_def_enum(ot->srna,
                "selected_object_type",
-               select_items,
+               select_mode_items,
                int(SelectMode::Active),
                "Object",
                "Which objects to include in the export");
@@ -76,37 +76,28 @@ static void grease_pencil_export_common_props_definition(wmOperatorType *ot)
       ot->srna, "use_uniform_width", false, "Uniform Width", "Export strokes with uniform width");
 }
 
-static ARegion *get_invoke_region(bContext *C)
+/* Note: Region data is found using "big area" functions, rather than context. This is necessary
+ * since export operators are not always invoked from a View3D. This enables the operator to find
+ * the most relevant 3D view for projection of strokes. */
+static bool get_invoke_region(bContext *C,
+                              ARegion **r_region,
+                              View3D **r_view3d,
+                              RegionView3D **r_rv3d)
 {
   bScreen *screen = CTX_wm_screen(C);
   if (screen == nullptr) {
-    return nullptr;
+    return false;
   }
   ScrArea *area = BKE_screen_find_big_area(screen, SPACE_VIEW3D, 0);
   if (area == nullptr) {
-    return nullptr;
+    return false;
   }
 
   ARegion *region = BKE_area_find_region_type(area, RGN_TYPE_WINDOW);
-
-  return region;
-}
-
-static View3D *get_invoke_view3d(bContext *C)
-{
-  bScreen *screen = CTX_wm_screen(C);
-  if (screen == nullptr) {
-    return nullptr;
-  }
-  ScrArea *area = BKE_screen_find_big_area(screen, SPACE_VIEW3D, 0);
-  if (area == nullptr) {
-    return nullptr;
-  }
-  if (area != nullptr) {
-    return static_cast<View3D *>(area->spacedata.first);
-  }
-
-  return nullptr;
+  *r_region = region;
+  *r_view3d = static_cast<View3D *>(area->spacedata.first);
+  *r_rv3d = static_cast<RegionView3D *>(region->regiondata);
+  return true;
 }
 
 }  // namespace blender::ed::io
@@ -147,17 +138,13 @@ static int grease_pencil_import_svg_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  /* Note: Region data is found using "big area" functions, rather than context. This is necessary
-   * since export operators are not always invoked from a View3D. This enables the operator to find
-   * the most relevant 3D view for projection of strokes. */
-  ARegion *region = get_invoke_region(C);
-  if (region == nullptr) {
+  ARegion *region;
+  View3D *v3d;
+  RegionView3D *rv3d;
+  if (!get_invoke_region(C, &region, &v3d, &rv3d)) {
     BKE_report(op->reports, RPT_ERROR, "Unable to find valid 3D View area");
     return OPERATOR_CANCELLED;
   }
-  View3D *v3d = get_invoke_view3d(C);
-  BLI_assert(v3d != nullptr);
-  RegionView3D *rv3d = (RegionView3D *)region->regiondata;
 
   const int resolution = RNA_int_get(op->ptr, "resolution");
   const float scale = RNA_float_get(op->ptr, "scale");
@@ -302,16 +289,13 @@ static int grease_pencil_export_svg_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  /* Note: Region data is found using "big area" functions, rather than context. This is necessary
-   * since export operators are not always invoked from a View3D. This enables the operator to find
-   * the most relevant 3D view for projection of strokes. */
-  ARegion *region = get_invoke_region(C);
-  if (region == nullptr) {
+  ARegion *region;
+  View3D *v3d;
+  RegionView3D *rv3d;
+  if (!get_invoke_region(C, &region, &v3d, &rv3d)) {
     BKE_report(op->reports, RPT_ERROR, "Unable to find valid 3D View area");
     return OPERATOR_CANCELLED;
   }
-  View3D *v3d = get_invoke_view3d(C);
-  RegionView3D *rv3d = (RegionView3D *)region->regiondata;
 
   char filepath[FILE_MAX];
   RNA_string_get(op->ptr, "filepath", filepath);
@@ -325,28 +309,8 @@ static int grease_pencil_export_svg_exec(bContext *C, wmOperator *op)
   const bool use_clip_camera = RNA_boolean_get(op->ptr, "use_clip_camera");
   const float stroke_sample = RNA_float_get(op->ptr, "stroke_sample");
 
-  /* Set flags. */
-  // int flag = 0;
-  // SET_FLAG_FROM_TEST(flag, use_fill, int(IOParamsFlag::ExportFill));
-  // SET_FLAG_FROM_TEST(flag, use_norm_thickness, int(IOParamsFlag::ExportNormalizedThickness));
-  // SET_FLAG_FROM_TEST(flag, use_clip_camera, int(IOParamsFlag::ExportClipCamera));
-
-  // IOParams params{};
-  // params.C = C;
-  // params.region = region;
-  // params.v3d = v3d;
-  // params.ob = ob;
-  // params.frame_start = scene->r.cfra;
-  // params.frame_end = scene->r.cfra;
-  // params.frame_cur = scene->r.cfra;
-  // params.flag = flag;
-  // params.scale = 1.0f;
-  // params.select_mode = select_mode;
-  // params.frame_mode = ExportFrame::ActiveFrame;
-  // params.resolution = 1.0f;
   const IOContext io_context(*C, region, v3d, rv3d, op->reports);
-  const ExportParams params = {scene->r.cfra,
-                               ob,
+  const ExportParams params = {ob,
                                select_mode,
                                frame_mode,
                                export_stroke_materials,
@@ -355,7 +319,6 @@ static int grease_pencil_export_svg_exec(bContext *C, wmOperator *op)
                                use_uniform_width,
                                stroke_sample};
 
-  /* Do export. */
   WM_cursor_wait(true);
   const bool done = blender::io::grease_pencil::export_svg(io_context, params, *scene, filepath);
   WM_cursor_wait(false);
@@ -473,6 +436,7 @@ static int grease_pencil_export_pdf_invoke(bContext *C, wmOperator *op, const wm
 static int grease_pencil_export_pdf_exec(bContext *C, wmOperator *op)
 {
   using blender::io::grease_pencil::ExportParams;
+  using blender::io::grease_pencil::IOContext;
 
   Scene *scene = CTX_data_scene(C);
   Object *ob = CTX_data_active_object(C);
@@ -482,46 +446,39 @@ static int grease_pencil_export_pdf_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  ARegion *region = get_invoke_region(C);
-  if (region == nullptr) {
+  ARegion *region;
+  View3D *v3d;
+  RegionView3D *rv3d;
+  if (!get_invoke_region(C, &region, &v3d, &rv3d)) {
     BKE_report(op->reports, RPT_ERROR, "Unable to find valid 3D View area");
     return OPERATOR_CANCELLED;
   }
-  View3D *v3d = get_invoke_view3d(C);
 
   char filepath[FILE_MAX];
   RNA_string_get(op->ptr, "filepath", filepath);
 
-  const bool use_fill = RNA_boolean_get(op->ptr, "use_fill");
+  const bool export_stroke_materials = true;
+  const bool export_fill_materials = RNA_boolean_get(op->ptr, "use_fill");
   const bool use_uniform_width = RNA_boolean_get(op->ptr, "use_uniform_width");
   const ExportParams::SelectMode select_mode = ExportParams::SelectMode(
       RNA_enum_get(op->ptr, "selected_object_type"));
   const ExportParams::FrameMode frame_mode = ExportParams::FrameMode(
       RNA_enum_get(op->ptr, "frame_mode"));
+  const bool use_clip_camera = RNA_boolean_get(op->ptr, "use_clip_camera");
+  const float stroke_sample = RNA_float_get(op->ptr, "stroke_sample");
 
-  /* Set flags. */
-  // int flag = 0;
-  // SET_FLAG_FROM_TEST(flag, use_fill, int(IOParamsFlag::ExportFill));
-  // SET_FLAG_FROM_TEST(flag, use_norm_thickness, int(IOParamsFlag::ExportNormalizedThickness));
+  const IOContext io_context(*C, region, v3d, rv3d, op->reports);
+  const ExportParams params = {ob,
+                               select_mode,
+                               frame_mode,
+                               export_stroke_materials,
+                               export_fill_materials,
+                               use_clip_camera,
+                               use_uniform_width,
+                               stroke_sample};
 
-  // IOParams params{};
-  // params.C = C;
-  // params.region = region;
-  // params.v3d = v3d;
-  // params.ob = ob;
-  // params.frame_start = scene->r.sfra;
-  // params.frame_end = scene->r.efra;
-  // params.frame_cur = scene->r.cfra;
-  // params.flag = flag;
-  // params.scale = 1.0f;
-  // params.select_mode = select_mode;
-  // params.frame_mode = frame_mode;
-  // params.stroke_sample = RNA_float_get(op->ptr, "stroke_sample");
-  // params.resolution = 1.0f;
-
-  /* Do export. */
   WM_cursor_wait(true);
-  const bool done = false /*blender::io::grease_pencil::export_pdf(filepath, params)*/;
+  const bool done = blender::io::grease_pencil::export_pdf(io_context, params, *scene, filepath);
   WM_cursor_wait(false);
 
   if (!done) {
@@ -600,7 +557,7 @@ void WM_OT_grease_pencil_export_pdf(wmOperatorType *ot)
 
   using blender::io::grease_pencil::ExportParams;
 
-  static const EnumPropertyItem gpencil_export_frame_items[] = {
+  static const EnumPropertyItem frame_mode_items[] = {
       {int(ExportParams::FrameMode::Active), "ACTIVE", 0, "Active", "Include only active frame"},
       {int(ExportParams::FrameMode::Selected),
        "SELECTED",
@@ -614,7 +571,7 @@ void WM_OT_grease_pencil_export_pdf(wmOperatorType *ot)
   blender::ed::io::grease_pencil_export_common_props_definition(ot);
   ot->prop = RNA_def_enum(ot->srna,
                           "frame_mode",
-                          gpencil_export_frame_items,
+                          frame_mode_items,
                           int(ExportParams::FrameMode::Active),
                           "Frames",
                           "Which frames to include in the export");

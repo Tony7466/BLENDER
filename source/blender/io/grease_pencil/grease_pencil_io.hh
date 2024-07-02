@@ -61,7 +61,6 @@ struct ExportParams {
     Scene = 2,
   };
 
-  int frame = 1;
   Object *object = nullptr;
   SelectMode select_mode = SelectMode::Active;
   FrameMode frame_mode = FrameMode::Active;

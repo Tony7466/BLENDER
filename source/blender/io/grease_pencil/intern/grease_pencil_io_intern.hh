@@ -2,8 +2,10 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_function_ref.hh"
 #include "BLI_math_matrix_types.hh"
 #include "BLI_string_ref.hh"
+#include "BLI_vector.hh"
 
 #include "DNA_vec_types.h"
 
@@ -19,6 +21,10 @@
 
 struct Scene;
 struct Object;
+struct GreasePencil;
+namespace blender::bke::greasepencil {
+class Layer;
+}  // namespace blender::bke::greasepencil
 
 namespace blender::io::grease_pencil {
 
@@ -37,6 +43,12 @@ class GreasePencilImporter {
 };
 
 class GreasePencilExporter {
+ public:
+  struct ObjectInfo {
+    const Object *object;
+    float depth;
+  };
+
  protected:
   const IOContext context_;
   const ExportParams params_;
@@ -56,6 +68,8 @@ class GreasePencilExporter {
 
   // XXX force_camera_view should be true for PDF export
   void prepare_camera_params(Scene &scene, bool force_camera_view);
+
+  Vector<ObjectInfo> retrieve_objects() const;
 };
 
 }  // namespace blender::io::grease_pencil
