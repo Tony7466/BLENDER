@@ -335,6 +335,8 @@ void SyncModule::sync_point_cloud(Object *ob,
     inst_.manager->update_handle_bounds(res_handle, ob_ref, mat->inflate_bounds);
   }
 
+  inst_.manager->extract_object_attributes(res_handle, ob_ref, material.shading.gpumat);
+
   inst_.shadows.sync_object(ob,
                             ob_handle,
                             res_handle,
@@ -348,7 +350,10 @@ void SyncModule::sync_point_cloud(Object *ob,
 /** \name Volume Objects
  * \{ */
 
-void SyncModule::sync_volume(Object *ob, ObjectHandle &ob_handle, ResourceHandle res_handle)
+void SyncModule::sync_volume(Object *ob,
+                             ObjectHandle &ob_handle,
+                             ResourceHandle res_handle,
+                             const ObjectRef &ob_ref)
 {
   if (!inst_.use_volumes) {
     return;
@@ -375,6 +380,8 @@ void SyncModule::sync_volume(Object *ob, ObjectHandle &ob_handle, ResourceHandle
       object_pass->draw(geom, res_handle);
     }
   };
+
+  inst_.manager->extract_object_attributes(res_handle, ob_ref, material.volume_material.gpumat);
 
   drawcall_add(material.volume_occupancy, geom, res_handle);
   drawcall_add(material.volume_material, geom, res_handle);
@@ -601,6 +608,8 @@ void SyncModule::sync_curves(Object *ob,
   if (GPU_material_has_displacement_output(gpu_material) && mat->inflate_bounds != 0.0f) {
     inst_.manager->update_handle_bounds(res_handle, ob_ref, mat->inflate_bounds);
   }
+
+  inst_.manager->extract_object_attributes(res_handle, ob_ref, material.shading.gpumat);
 
   inst_.shadows.sync_object(ob,
                             ob_handle,
