@@ -598,7 +598,7 @@ std::optional<SocketValueVariant> get_logged_socket_value(geo_eval_log::GeoTreeL
   return std::nullopt;
 }
 
-void backpropagate_socket_values_through_nodes(
+static void backpropagate_socket_values_through_nodes(
     const NodeInContext &ctx_node,
     geo_eval_log::GeoModifierLog &eval_log,
     Map<SocketInContext, SocketValueVariant> &value_by_socket,
