@@ -562,6 +562,16 @@ static void face_subdivide(const std::array<int, 5> &vert_offsets,
     tris.append(left_face_verts);
     tris.append(right_face_verts);
   }
+
+  std::cout << __func__ << ":\n";
+  for (const OrderedEdge e : r_unique_edges) {
+    std::cout << "  " << e << ", ";
+  }
+  std::cout << ";\n";
+  for (const OrderedEdge e : r_all_edges) {
+    std::cout << "  " << e << ", ";
+  }
+  std::cout << ";\n";
 }
 
 static void edge_subdivide_count(const float2 a_vert,
