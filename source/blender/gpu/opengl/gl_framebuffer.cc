@@ -186,7 +186,6 @@ void GLFrameBuffer::update_attachments()
     }
   }
 
-#if 0
   if (GLContext::unused_fb_slot_workaround) {
     /* Fill normally un-occupied slots to avoid rendering artifacts on some hardware. */
     GLuint gl_tex = 0;
@@ -204,7 +203,6 @@ void GLFrameBuffer::update_attachments()
       }
     }
   }
-#endif
 
   if (first_attachment != GPU_FB_MAX_ATTACHMENT) {
     GPUAttachment &attach = attachments_[first_attachment];
