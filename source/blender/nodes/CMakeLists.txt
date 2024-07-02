@@ -93,6 +93,7 @@ set(SRC
   intern/node_socket.cc
   intern/node_socket_declarations.cc
   intern/node_util.cc
+  intern/partial_eval.cc
   intern/socket_search_link.cc
   intern/value_elem.cc
 
@@ -112,6 +113,7 @@ set(SRC
   NOD_node_declaration.hh
   NOD_node_extra_info.hh
   NOD_node_in_compute_context.hh
+  NOD_partial_eval.hh
   NOD_register.hh
   NOD_rna_define.hh
   NOD_shader.h

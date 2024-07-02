@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#pragma once
+
 #include "BLI_compute_context.hh"
 #include "BLI_hash.hh"
 #include "BLI_struct_equality_utils.hh"
