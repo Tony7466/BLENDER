@@ -9,8 +9,6 @@
 
 #include "kernel/geom/geom.h"
 
-#include "kernel/integrator/state_util.h"
-
 /* Device specific acceleration structures for ray tracing. */
 
 #if defined(__EMBREE__)

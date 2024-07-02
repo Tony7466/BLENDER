@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "kernel/sample/mapping.h"
+#include "kernel/geom/geom.h"
 
 CCL_NAMESPACE_BEGIN
 

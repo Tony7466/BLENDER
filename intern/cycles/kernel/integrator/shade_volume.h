@@ -9,14 +9,12 @@
 #include "kernel/film/light_passes.h"
 
 #include "kernel/integrator/guiding.h"
-#include "kernel/integrator/intersect.h"
 #include "kernel/integrator/path_state.h"
 #include "kernel/integrator/shadow_catcher.h"
 #include "kernel/integrator/shadow_linking.h"
 #include "kernel/integrator/volume_shader.h"
 #include "kernel/integrator/volume_stack.h"
 
-#include "kernel/light/light.h"
 #include "kernel/light/sample.h"
 
 CCL_NAMESPACE_BEGIN

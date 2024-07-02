@@ -4,9 +4,6 @@
 
 #pragma once
 
-#include "kernel/integrator/state_util.h"
-#include "kernel/integrator/state_flow.h"
-
 #include "kernel/bvh/bvh.h"
 
 CCL_NAMESPACE_BEGIN

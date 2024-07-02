@@ -5,13 +5,13 @@
 #pragma once
 
 #include "kernel/bvh/bvh.h"
-#include "kernel/geom/geom.h"
-#include "kernel/integrator/volume_stack.h"
-
+#include "kernel/integrator/path_state.h"
 #include "kernel/integrator/shadow_catcher.h"
+#include "kernel/integrator/volume_stack.h"
 
 CCL_NAMESPACE_BEGIN
 
+#ifdef __VOLUME__
 ccl_device void integrator_volume_stack_init(KernelGlobals kg, IntegratorState state)
 {
   PROFILING_INIT(kg, PROFILING_INTERSECT_VOLUME_STACK);
@@ -52,7 +52,7 @@ ccl_device void integrator_volume_stack_init(KernelGlobals kg, IntegratorState s
   /* Store to avoid global fetches on every intersection step. */
   const uint volume_stack_size = kernel_data.volume_stack_size;
 
-#ifdef __VOLUME_RECORD_ALL__
+#  ifdef __VOLUME_RECORD_ALL__
   Intersection hits[2 * MAX_VOLUME_STACK_SIZE + 1];
   uint num_hits = scene_intersect_volume(kg, &volume_ray, hits, 2 * volume_stack_size, visibility);
   if (num_hits > 0) {
@@ -95,7 +95,7 @@ ccl_device void integrator_volume_stack_init(KernelGlobals kg, IntegratorState s
       }
     }
   }
-#else
+#  else
   /* CUDA does not support definition of a variable size arrays, so use the maximum possible. */
   int enclosed_volumes[MAX_VOLUME_STACK_SIZE];
   int step = 0;
@@ -149,12 +149,13 @@ ccl_device void integrator_volume_stack_init(KernelGlobals kg, IntegratorState s
     volume_ray.self.prim = isect.prim;
     ++step;
   }
-#endif
+#  endif
 
   /* Write terminator. */
   const VolumeStack new_entry = {OBJECT_NONE, SHADER_NONE};
   integrator_state_write_volume_stack(state, stack_index, new_entry);
 }
+#endif
 
 ccl_device void integrator_intersect_volume_stack(KernelGlobals kg, IntegratorState state)
 {

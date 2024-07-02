@@ -6,12 +6,8 @@
 
 #pragma once
 
-#include "kernel/closure/alloc.h"
 #include "kernel/closure/bsdf.h"
-#include "kernel/closure/bsdf_util.h"
-#include "kernel/closure/emissive.h"
 #include "kernel/film/light_passes.h"
-
 #include "kernel/integrator/guiding.h"
 
 #ifdef __SVM__

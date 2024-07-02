@@ -6,7 +6,6 @@
 
 #include "kernel/camera/camera.h"
 #include "kernel/geom/geom.h"
-#include "kernel/sample/mapping.h"
 
 CCL_NAMESPACE_BEGIN
 

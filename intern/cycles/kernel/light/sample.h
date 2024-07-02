@@ -8,7 +8,6 @@
 #include "kernel/integrator/surface_shader.h"
 
 #include "kernel/light/distribution.h"
-#include "kernel/light/light.h"
 
 #ifdef __LIGHT_TREE__
 #  include "kernel/light/tree.h"

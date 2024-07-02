@@ -4,13 +4,12 @@
 
 #pragma once
 
-#include "kernel/geom/geom.h"
-#include "kernel/integrator/surface_shader.h"
+#include "kernel/film/cryptomatte_passes.h"
 
 #include "kernel/camera/camera.h"
+#include "kernel/integrator/surface_shader.h"
 
-#include "kernel/film/cryptomatte_passes.h"
-#include "kernel/film/write.h"
+#include "kernel/geom/geom.h"
 
 CCL_NAMESPACE_BEGIN
 

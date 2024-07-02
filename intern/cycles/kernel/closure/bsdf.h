@@ -5,6 +5,7 @@
 #pragma once
 
 // clang-format off
+#include "kernel/closure/alloc.h"
 #include "kernel/closure/bsdf_ashikhmin_velvet.h"
 #include "kernel/closure/bsdf_diffuse.h"
 #include "kernel/closure/bsdf_oren_nayar.h"

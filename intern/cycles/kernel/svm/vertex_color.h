@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "kernel/geom/geom.h"
+
 CCL_NAMESPACE_BEGIN
 
 ccl_device_noinline void svm_node_vertex_color(KernelGlobals kg,

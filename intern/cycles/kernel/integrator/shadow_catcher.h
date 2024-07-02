@@ -6,17 +6,16 @@
 
 #include "kernel/bvh/util.h"
 #include "kernel/film/light_passes.h"
-#include "kernel/integrator/state_flow.h"
-#include "kernel/integrator/state_util.h"
 
 CCL_NAMESPACE_BEGIN
+
+#ifdef __SHADOW_CATCHER__
 
 /* Check whether current surface bounce is where path is to be split for the shadow catcher. */
 ccl_device_inline bool kernel_shadow_catcher_is_path_split_bounce(KernelGlobals kg,
                                                                   IntegratorState state,
                                                                   const int object_flag)
 {
-#ifdef __SHADOW_CATCHER__
   if (!kernel_data.integrator.has_shadow_catcher) {
     return false;
   }
@@ -42,10 +41,6 @@ ccl_device_inline bool kernel_shadow_catcher_is_path_split_bounce(KernelGlobals 
   }
 
   return true;
-#else
-  (void)object_flag;
-  return false;
-#endif
 }
 
 /* Check whether the current path can still split. */
@@ -65,8 +60,6 @@ ccl_device_inline bool kernel_shadow_catcher_path_can_split(KernelGlobals kg,
 
   return (path_flag & PATH_RAY_TRANSPARENT_BACKGROUND) != 0;
 }
-
-#ifdef __SHADOW_CATCHER__
 
 /* Schedule next kernel to be executed after updating volume stack for shadow catcher. */
 template<DeviceKernel current_kernel>

@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "kernel/svm/color_util.h"
+
 CCL_NAMESPACE_BEGIN
 
 /* Node */

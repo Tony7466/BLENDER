@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "kernel/closure/bsdf_util.h"
+
 CCL_NAMESPACE_BEGIN
 
 /* Fresnel Node */

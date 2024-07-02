@@ -4,17 +4,11 @@
 
 #pragma once
 
-#include "kernel/film/light_passes.h"
-
+#include "kernel/bvh/bvh.h"
 #include "kernel/integrator/guiding.h"
-#include "kernel/integrator/intersect.h"
 #include "kernel/integrator/path_state.h"
 #include "kernel/integrator/shadow_catcher.h"
-#include "kernel/integrator/state_util.h"
-
 #include "kernel/light/light.h"
-
-#include "kernel/bvh/bvh.h"
 
 CCL_NAMESPACE_BEGIN
 
