@@ -1195,7 +1195,7 @@ PyObject *BPy_BMLayerItem_GetItem(BPy_BMElem *py_ele, BPy_BMLayerItem *py_layer)
     }
     case CD_PROP_STRING: {
       MStringProperty *mstring = static_cast<MStringProperty *>(value);
-      ret = PyBytes_FromStringAndSize(mstring->s, mstring->s_len);
+      ret = PyBytes_FromStringAndSize(mstring->s, strlen(mstring->s));
       break;
     }
     case CD_PROP_FLOAT2: {
