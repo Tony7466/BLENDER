@@ -385,40 +385,30 @@ class BuiltinPhysicsAttributeBase : public bke::BuiltinAttributeProvider {
     return CustomData_get_named_layer_index(&custom_data, data_type_, name_) != -1;
   }
 
-  GAttributeReader try_get_cache_for_read(const void *owner) const
+  GAttributeReader try_get_cache_for_read(const CustomData *custom_data,
+                                          const int element_num) const
   {
-    const PhysicsGeometry *physics = physics_access_.get_const_physics(owner);
-    if (physics == nullptr) {
-      return {};
-    }
-
     const CPPType &type = *custom_data_type_to_cpp_type(data_type_);
-    const CustomData &custom_data = physics->impl().body_data_;
-    const int element_num = physics->impl().body_num_;
     /* When the number of elements is zero, layers might have null data but still exist. */
     if (element_num == 0) {
-      if (this->layer_exists(custom_data)) {
+      if (this->layer_exists(*custom_data)) {
         return {GVArray::ForSpan({type, nullptr, 0}), domain_, nullptr};
       }
       return {};
     }
 
-    const int index = CustomData_get_named_layer_index(&custom_data, data_type_, name_);
+    const int index = CustomData_get_named_layer_index(custom_data, data_type_, name_);
     if (index == -1) {
       return {};
     }
-    const CustomDataLayer &layer = custom_data.layers[index];
+    const CustomDataLayer &layer = custom_data->layers[index];
     return {GVArray::ForSpan({type, layer.data, element_num}), domain_, layer.sharing_info};
   }
 
-  GAttributeWriter try_get_cache_for_write(void *owner) const
+  GAttributeWriter try_get_cache_for_write(void *owner,
+                                           CustomData *custom_data,
+                                           const int element_num) const
   {
-    PhysicsGeometry *physics = physics_access_.get_physics(owner);
-    if (physics == nullptr) {
-      return {};
-    }
-    CustomData &custom_data = physics->impl_for_write().body_data_;
-
     std::function<void()> tag_modified_fn;
     if (update_on_change_ != nullptr) {
       tag_modified_fn = [owner, update = update_on_change_]() { update(owner); };
@@ -426,16 +416,14 @@ class BuiltinPhysicsAttributeBase : public bke::BuiltinAttributeProvider {
 
     /* When the number of elements is zero, layers might have null data but still exist. */
     const CPPType &type = *custom_data_type_to_cpp_type(data_type_);
-    const int element_num = physics->impl().body_num_;
     if (element_num == 0) {
-      if (this->layer_exists(custom_data)) {
+      if (this->layer_exists(*custom_data)) {
         return {GVMutableArray::ForSpan({type, nullptr, 0}), domain_, std::move(tag_modified_fn)};
       }
       return {};
     }
 
-    void *data = CustomData_get_layer_named_for_write(
-        &custom_data, data_type_, name_, element_num);
+    void *data = CustomData_get_layer_named_for_write(custom_data, data_type_, name_, element_num);
     if (data == nullptr) {
       return {};
     }
@@ -474,7 +462,7 @@ class BuiltinRigidBodyAttributeProvider final : public BuiltinPhysicsAttributeBa
     }
 
     if (physics->impl().is_empty) {
-      return try_get_cache_for_read(owner);
+      return try_get_cache_for_read(&physics->impl().body_data_, physics->bodies_num());
     }
 
     GVArray varray = VArray<T>::template For<VArrayImpl_For_PhysicsBodies<T, GetFn>>(
@@ -493,7 +481,8 @@ class BuiltinRigidBodyAttributeProvider final : public BuiltinPhysicsAttributeBa
     }
 
     if (physics->impl().is_empty) {
-      return try_get_cache_for_write(owner);
+      return try_get_cache_for_write(
+          owner, &physics->impl_for_write().body_data_, physics->bodies_num());
     }
 
     GVMutableArray varray =
@@ -567,7 +556,7 @@ class BuiltinConstraintAttributeProvider final : public BuiltinPhysicsAttributeB
     }
 
     if (physics->impl().is_empty) {
-      return try_get_cache_for_read(owner);
+      return try_get_cache_for_read(&physics->impl().constraint_data_, physics->constraints_num());
     }
     if constexpr (GetCacheFn) {
       Span<T> cache = GetCacheFn(physics->impl());
@@ -594,7 +583,8 @@ class BuiltinConstraintAttributeProvider final : public BuiltinPhysicsAttributeB
     }
 
     if (physics->impl().is_empty) {
-      return try_get_cache_for_write(owner);
+      return try_get_cache_for_write(
+          owner, &physics->impl_for_write().constraint_data_, physics->constraints_num());
     }
 
     GVMutableArray varray =
