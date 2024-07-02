@@ -4,6 +4,18 @@
 
 #pragma once
 
+/**
+ * A #ValueElem is an abstract element or part of a value. It does not store the actual value of
+ * the type but which parts of it are affected. For example, #VectorElem does not store the actual
+ * vector values but just a boolean for each component.
+ *
+ * Some nodes implement special #node_eval_elem and #node_eval_inverse_elem methods which allow
+ * analysing the potential impact of changing part of a value in one place of a node tree.
+ *
+ * The types are generally quite small and trivially copyable and destructible. They just contain
+ * some bools.
+ */
+
 #include <optional>
 #include <variant>
 
@@ -14,6 +26,9 @@
 
 namespace blender::nodes::value_elem {
 
+/**
+ * Common base type value primitive types that can't be subdivided further.
+ */
 struct PrimitiveValueElem {
   bool affected = false;
 
@@ -62,6 +77,7 @@ struct IntElem : public PrimitiveValueElem {
 };
 
 struct VectorElem {
+  /** Members indicate which components of the vector are affected. */
   FloatElem x;
   FloatElem y;
   FloatElem z;
@@ -99,6 +115,11 @@ struct VectorElem {
 };
 
 struct RotationElem {
+  /**
+   * The euler and axis-angle components have overlap. All components that can be affected need to
+   * be tagged. For example if a node affects the euler angles, it indirectly also affects the
+   * axis-angle.
+   */
   VectorElem euler;
   VectorElem axis;
   FloatElem angle;
@@ -129,16 +150,6 @@ struct RotationElem {
     this->angle.intersect(other.angle);
   }
 
-  bool only_euler_angles() const
-  {
-    return !(this->axis || this->angle);
-  }
-
-  bool only_axis_angle() const
-  {
-    return !this->euler;
-  }
-
   static RotationElem all()
   {
     return {VectorElem::all(), VectorElem::all(), true};
@@ -149,6 +160,7 @@ struct MatrixElem {
   VectorElem translation;
   RotationElem rotation;
   VectorElem scale;
+  /** For 4x4 matrices this describes whether any entry of the last row is affected. */
   FloatElem any_non_transform;
 
   operator bool() const
@@ -186,6 +198,10 @@ struct MatrixElem {
   }
 };
 
+/**
+ * A generic type that can hold the value element for any of the above types and has the same
+ * interface. This should be used when the data type is not known at compile time.
+ */
 struct ElemVariant {
   std::variant<BoolElem, FloatElem, IntElem, VectorElem, RotationElem, MatrixElem> elem;
 
@@ -244,6 +260,7 @@ struct ElemVariant {
   BLI_STRUCT_EQUALITY_OPERATORS_1(ElemVariant, elem)
 };
 
+/** Utility struct to pair a socket with a value element. */
 struct SocketElem {
   const bNodeSocket *socket = nullptr;
   ElemVariant elem;
@@ -256,6 +273,7 @@ struct SocketElem {
   BLI_STRUCT_EQUALITY_OPERATORS_2(SocketElem, socket, elem)
 };
 
+/** Utility struct to pair a group input index with a value element. */
 struct GroupInputElem {
   int group_input_index = 0;
   ElemVariant elem;
@@ -268,6 +286,7 @@ struct GroupInputElem {
   BLI_STRUCT_EQUALITY_OPERATORS_2(GroupInputElem, group_input_index, elem)
 };
 
+/** Utility struct to pair a value node with a value element. */
 struct ValueNodeElem {
   const bNode *node = nullptr;
   ElemVariant elem;
@@ -280,8 +299,12 @@ struct ValueNodeElem {
   BLI_STRUCT_EQUALITY_OPERATORS_2(ValueNodeElem, node, elem)
 };
 
+/**
+ * Get the default value element for the given socket type if it exists.
+ */
 std::optional<ElemVariant> get_elem_variant_for_socket_type(eNodeSocketDatatype type);
 
+/** Converts the type of a value element if possible. */
 std::optional<ElemVariant> convert_socket_elem(const bNodeSocket &old_socket,
                                                const bNodeSocket &new_socket,
                                                const ElemVariant &old_elem);

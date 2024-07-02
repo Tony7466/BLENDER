@@ -39,9 +39,6 @@ static void node_eval_inverse_elem(value_elem::InverseElemEvalParams &params)
   using namespace value_elem;
   const RotationElem rotation_elem = params.get_output_elem<RotationElem>("Rotation");
   VectorElem vector_elem = rotation_elem.euler;
-  if (!rotation_elem.only_euler_angles()) {
-    vector_elem = VectorElem::all();
-  }
   params.set_input_elem("Euler", vector_elem);
 }
 

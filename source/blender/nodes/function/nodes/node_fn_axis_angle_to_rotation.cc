@@ -48,10 +48,6 @@ static void node_eval_inverse_elem(value_elem::InverseElemEvalParams &params)
   const RotationElem rotation_elem = params.get_output_elem<RotationElem>("Rotation");
   VectorElem axis_elem = rotation_elem.axis;
   FloatElem angle_elem = rotation_elem.angle;
-  if (!rotation_elem.only_axis_angle()) {
-    axis_elem = VectorElem::all();
-    angle_elem = FloatElem::all();
-  }
   params.set_input_elem("Axis", axis_elem);
   params.set_input_elem("Angle", angle_elem);
 }
