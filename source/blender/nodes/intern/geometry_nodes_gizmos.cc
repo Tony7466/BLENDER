@@ -480,8 +480,8 @@ void apply_gizmo_change(
     if (!old_value) {
       continue;
     }
-    const std::optional<bke::SocketValueVariant> old_value_converted = ie::convert_socket_value(
-        *link->fromsock, *link->tosock, *old_value);
+    const std::optional<bke::SocketValueVariant> old_value_converted =
+        ie::convert_single_socket_value(*link->fromsock, *link->tosock, *old_value);
     if (!old_value_converted) {
       continue;
     }

@@ -230,6 +230,7 @@ class GeoTreeLogger {
   linear_allocator::ChunkedList<ViewerNodeLogWithNode> viewer_node_logs;
   linear_allocator::ChunkedList<AttributeUsageWithNode> used_named_attributes;
   linear_allocator::ChunkedList<DebugMessage> debug_messages;
+  /** Keeps track of which gizmo nodes have been tracked by this evaluation. */
   linear_allocator::ChunkedList<EvaluatedGizmoNode> evaluated_gizmo_nodes;
 
   GeoTreeLogger();

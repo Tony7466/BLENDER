@@ -619,7 +619,7 @@ void GIZMOGROUP_OT_gizmo_tweak(wmOperatorType *ot)
   ot->poll = ED_operator_region_gizmo_active;
 
 /* TODO(@ideasman42): This causes problems tweaking settings for operators,
- * need to find a way to support this. */
+ * need to find a way to support this. May want to use #WM_GIZMO_NEEDS_UNDO instead. */
 #if 0
   ot->flag = OPTYPE_UNDO;
 #endif

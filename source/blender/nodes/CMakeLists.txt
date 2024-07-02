@@ -108,6 +108,7 @@ set(SRC
   NOD_geometry_nodes_log.hh
   NOD_inverse_eval_params.hh
   NOD_inverse_eval_path.hh
+  NOD_inverse_eval_run.hh
   NOD_math_functions.hh
   NOD_multi_function.hh
   NOD_node_declaration.hh
@@ -126,6 +127,7 @@ set(SRC
   NOD_static_types.h
   NOD_texture.h
   NOD_value_elem.hh
+  NOD_value_elem_eval.hh
   intern/node_common.h
   intern/node_exec.hh
   intern/node_util.hh

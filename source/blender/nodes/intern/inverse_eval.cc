@@ -41,9 +41,9 @@ namespace blender::nodes::inverse_eval {
 
 using namespace value_elem;
 
-std::optional<SocketValueVariant> convert_socket_value(const bNodeSocket &old_socket,
-                                                       const bNodeSocket &new_socket,
-                                                       const SocketValueVariant &old_value)
+std::optional<SocketValueVariant> convert_single_socket_value(const bNodeSocket &old_socket,
+                                                              const bNodeSocket &new_socket,
+                                                              const SocketValueVariant &old_value)
 {
   const eNodeSocketDatatype old_type = eNodeSocketDatatype(old_socket.type);
   const eNodeSocketDatatype new_type = eNodeSocketDatatype(new_socket.type);
@@ -667,7 +667,7 @@ bool backpropagate_socket_values(bContext &C,
   for (const SocketToUpdate &socket_to_update : sockets_to_update) {
     if (socket_to_update.multi_input_link) {
       BLI_assert(socket_to_update.multi_input_link->tosock == socket_to_update.socket);
-      const std::optional<SocketValueVariant> converted_value = convert_socket_value(
+      const std::optional<SocketValueVariant> converted_value = convert_single_socket_value(
           *socket_to_update.socket,
           *socket_to_update.multi_input_link->fromsock,
           socket_to_update.new_value);
@@ -705,7 +705,7 @@ bool backpropagate_socket_values(bContext &C,
         if (!from_value) {
           return false;
         }
-        const std::optional<SocketValueVariant> converted_value = convert_socket_value(
+        const std::optional<SocketValueVariant> converted_value = convert_single_socket_value(
             *ctx_from.socket, *ctx_to.socket, *from_value);
         if (!converted_value) {
           return false;
