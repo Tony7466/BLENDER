@@ -69,7 +69,7 @@ class AbstractView {
   std::optional<rcti> bounds_;
 
   std::string context_menu_title;
-  /** See #set_keep_popup_open(). */
+  /** See #set_popup_keep_open(). */
   bool popup_keep_open_ = false;
 
  public:
