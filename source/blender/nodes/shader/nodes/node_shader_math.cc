@@ -189,7 +189,9 @@ static void node_eval_elem(value_elem::ElemEvalParams &params)
     case NODE_MATH_SUBTRACT:
     case NODE_MATH_MULTIPLY:
     case NODE_MATH_DIVIDE: {
-      params.set_output_elem("Value", params.get_input_elem<FloatElem>("Value"));
+      FloatElem output_elem = params.get_input_elem<FloatElem>("Value");
+      output_elem.merge(params.get_input_elem<FloatElem>("Value_001"));
+      params.set_output_elem("Value", output_elem);
       break;
     }
     default:

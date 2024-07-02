@@ -22,6 +22,10 @@ static bool is_supported_value_node(const bNode &node)
               FN_NODE_INPUT_ROTATION);
 }
 
+/**
+ * Creates a vector of integer for a node in a context that can be used to order them for
+ * evaluation.
+ */
 static Vector<int> get_global_node_sort_vector_right_to_left(const ComputeContext *initial_context,
                                                              const bNode &initial_node)
 {
@@ -38,6 +42,7 @@ static Vector<int> get_global_node_sort_vector_right_to_left(const ComputeContex
   return vec;
 }
 
+/** Same as above but for the case when evaluating nodes in the opposite order. */
 static Vector<int> get_global_node_sort_vector_left_to_right(const ComputeContext *initial_context,
                                                              const bNode &initial_node)
 {
@@ -76,6 +81,12 @@ struct NodeInContextUpstreamComparator {
   }
 };
 
+/**
+ * Defines a partial order of #NodeInContext that can be used to evaluate nodes left to right
+ * (downstream).
+ * - Upstream nodes are sorted before downstream nodes.
+ * - Nodes inside a node group are sorted before the group node.
+ */
 struct NodeInContextDownstreamComparator {
   bool operator()(const NodeInContext &a, const NodeInContext &b) const
   {
@@ -100,9 +111,11 @@ void eval_downstream(
     FunctionRef<bool(const SocketInContext &ctx_from, const SocketInContext &ctx_to)>
         propagate_value_fn)
 {
-  Set<NodeInContext> scheduled_nodes_set;
+  /* Priority queue that makes sure that nodes are evaluated in the right order. */
   std::priority_queue<NodeInContext, std::vector<NodeInContext>, NodeInContextDownstreamComparator>
       scheduled_nodes_queue;
+  /* Used to make sure that the same node is not scheduled more than once. */
+  Set<NodeInContext> scheduled_nodes_set;
 
   const auto schedule_node = [&](const NodeInContext &ctx_node) {
     if (scheduled_nodes_set.add(ctx_node)) {
@@ -119,9 +132,13 @@ void eval_downstream(
           return;
         }
         group_tree->ensure_topology_cache();
+        if (group_tree->has_available_link_cycle()) {
+          return;
+        }
         const auto &group_context = scope.construct<bke::GroupNodeComputeContext>(
             ctx_group_node_input.context, node, node.owner_tree());
         const int socket_index = ctx_group_node_input.socket->index();
+        /* Forward the value to every group input node. */
         for (const bNode *group_input_node : group_tree->group_input_nodes()) {
           if (propagate_value_fn(ctx_group_node_input,
                                  {&group_context, &group_input_node->output_socket(socket_index)}))
@@ -149,6 +166,7 @@ void eval_downstream(
     }
   };
 
+  /* Do initial scheduling based on initial sockets. */
   for (const SocketInContext &ctx_socket : initial_sockets) {
     if (ctx_socket.socket->is_input()) {
       const bNode &node = ctx_socket.socket->owner_node();
@@ -166,6 +184,7 @@ void eval_downstream(
    * using it. */
   Vector<const bNodeSocket *> sockets_vec;
 
+  /* Handle all scheduled nodes in the right order until no more nodes are scheduled. */
   while (!scheduled_nodes_queue.empty()) {
     const NodeInContext ctx_node = scheduled_nodes_queue.top();
     scheduled_nodes_queue.pop();
@@ -194,6 +213,8 @@ void eval_downstream(
       }
       const ComputeContext &group_context = scope.construct<bke::GroupNodeComputeContext>(
           context, node, node.owner_tree());
+      /* Propagate the values from the group output node to the outputs of the group node and
+       * continue forwarding them from there. */
       for (const int index : group->interface_outputs().index_range()) {
         if (propagate_value_fn({&group_context, &group_output->input_socket(index)},
                                {context, &node.output_socket(index)}))
@@ -227,9 +248,11 @@ UpstreamEvalTargets eval_upstream(
     FunctionRef<void(const NodeInContext &ctx_node, Vector<const bNodeSocket *> &r_sockets)>
         get_inputs_to_propagate_fn)
 {
-  Set<NodeInContext> scheduled_nodes_set;
+  /* Priority queue that makes sure that nodes are evaluated in the right order. */
   std::priority_queue<NodeInContext, std::vector<NodeInContext>, NodeInContextUpstreamComparator>
       scheduled_nodes_queue;
+  /* Used to make sure that the same node is not scheduled more than once. */
+  Set<NodeInContext> scheduled_nodes_set;
 
   UpstreamEvalTargets eval_targets;
 
@@ -271,10 +294,15 @@ UpstreamEvalTargets eval_upstream(
     }
     const bNodeTree &caller_tree = *group_context->caller_tree();
     caller_tree.ensure_topology_cache();
+    if (caller_tree.has_available_link_cycle()) {
+      return;
+    }
     const bNode &caller_node = *group_context->caller_group_node();
     const bNodeSocket &caller_input_socket = caller_node.input_socket(
         ctx_output_socket.socket->index());
     const ComputeContext *parent_context = ctx_output_socket.context->parent();
+    /* Note that we might propagate multiple values to the same input of the group node. The
+     * callback has to handle that case gracefully. */
     propagate_value_fn(ctx_output_socket, {parent_context, &caller_input_socket});
     schedule_node({parent_context, &caller_node});
   };
@@ -306,6 +334,7 @@ UpstreamEvalTargets eval_upstream(
     }
   };
 
+  /* Do initial scheduling based on initial sockets. */
   for (const SocketInContext &ctx_socket : initial_sockets) {
     if (ctx_socket.socket->is_input()) {
       forward_input(ctx_socket);
@@ -328,6 +357,7 @@ UpstreamEvalTargets eval_upstream(
    * using it. */
   Vector<const bNodeSocket *> sockets_vec;
 
+  /* Handle all nodes in the right order until there are no more nodes to evaluate. */
   while (!scheduled_nodes_queue.empty()) {
     const NodeInContext ctx_node = scheduled_nodes_queue.top();
     scheduled_nodes_queue.pop();
@@ -336,6 +366,7 @@ UpstreamEvalTargets eval_upstream(
     const ComputeContext *context = ctx_node.context;
 
     if (is_supported_value_node(node)) {
+      /* Can't go back further from here, but remember that we reached a value node. */
       eval_targets.value_nodes.add(ctx_node);
     }
     else if (node.is_reroute()) {
@@ -343,6 +374,8 @@ UpstreamEvalTargets eval_upstream(
       forward_input({context, &node.input_socket(0)});
     }
     else if (node.is_group()) {
+      /* Once we get here, the nodes within the group have all been evaluated already and the
+       * inputs of the group node are already set properly by #forward_group_input_to_parent. */
       sockets_vec.clear();
       get_inputs_to_propagate_fn(ctx_node, sockets_vec);
       for (const bNodeSocket *socket : sockets_vec) {

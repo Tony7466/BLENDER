@@ -326,10 +326,20 @@ static void node_eval_elem(value_elem::ElemEvalParams &params)
     case NODE_VECTOR_MATH_ADD:
     case NODE_VECTOR_MATH_SUBTRACT:
     case NODE_VECTOR_MATH_MULTIPLY:
-    case NODE_VECTOR_MATH_DIVIDE:
-    case NODE_VECTOR_MATH_SCALE: {
-      params.set_output_elem("Vector", params.get_input_elem<VectorElem>("Vector"));
+    case NODE_VECTOR_MATH_DIVIDE: {
+      VectorElem output_elem;
+      output_elem.merge(params.get_input_elem<VectorElem>("Vector"));
+      output_elem.merge(params.get_input_elem<VectorElem>("Vector_001"));
+      params.set_output_elem("Vector", output_elem);
       break;
+    }
+    case NODE_VECTOR_MATH_SCALE: {
+      VectorElem output_elem;
+      output_elem.merge(params.get_input_elem<VectorElem>("Vector"));
+      if (params.get_input_elem<FloatElem>("Scale")) {
+        output_elem = VectorElem::all();
+      }
+      params.set_output_elem("Vector", output_elem);
     }
     default:
       break;

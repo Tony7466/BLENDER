@@ -893,6 +893,7 @@ class LazyFunctionForViewerInputUsage : public LazyFunction {
   }
 };
 
+/** Checks if the geometry nodes caller requested this gizmo to be evaluated. */
 static bool gizmo_is_used(const GeoNodesLFUserData &user_data,
                           const lf::FunctionNode &lf_gizmo_node)
 {
@@ -924,6 +925,8 @@ class LazyFunctionForGizmoNode : public LazyFunction {
   {
     debug_name_ = bnode.name;
     const bNodeSocket &gizmo_socket = bnode.input_socket(0);
+    /* Create inputs for every input of the multi-input socket to make sure that they can be
+     * logged. */
     for (const bNodeLink *link : gizmo_socket.directly_linked_links()) {
       if (!link->is_used()) {
         continue;
@@ -3590,10 +3593,6 @@ struct GeometryNodesLazyFunctionBuilder {
       lf::OutputSocket &lf_socket = lf_node.output(lf_index);
       graph_params.lf_output_by_bsocket.add(bsocket, &lf_socket);
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, bsocket);
-    }
-
-    if (ELEM(bnode.type, SH_NODE_MATH, SH_NODE_VECTOR_MATH, SH_NODE_MAP_RANGE)) {
-      mapping_->possible_side_effect_node_map.add(&bnode, &lf_node);
     }
 
     this->build_standard_node_input_socket_usage(bnode, graph_params);
