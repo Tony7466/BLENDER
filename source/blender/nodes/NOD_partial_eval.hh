@@ -14,6 +14,24 @@
 
 namespace blender::nodes::partial_eval {
 
+/**
+ * Evaluating part of a node tree from left-to-right. The part that's evaluated starts at
+ * the given sockets and is propagated downstream step-by-step. The caller is responsible for
+ * storing the socket values (a value per #SocketInContext).
+ *
+ * \note This handles node groups transparently, but does not handle e.g. repeat zones yet.
+ *
+ * \param initial_sockets: Sockets where the evaluation should start.
+ * \param scope: Is used to construct compute contexts which the caller may want to outlive the
+ *   entire evaluation.
+ * \param evaluate_node_fn: Is called when all (relevant) upstream nodes are already evaluated and
+ *   evaluates the given node. This should updated the values the caller stores for the output
+ *   sockets.
+ * \param propagate_value_fn: Should copy the value stored for one socket to the other socket. This
+ *   may have to do type conversions. The return value indicates success. False indicates that the
+ *   value was not propagated and as such the target node also shouldn't be evaluated (unless there
+ *   are other reasons to evaluate it).
+ */
 void eval_downstream(
     const Span<SocketInContext> initial_sockets,
     ResourceScope &scope,
@@ -28,6 +46,29 @@ struct UpstreamEvalTargets {
   Set<SocketInContext> group_inputs;
 };
 
+/**
+ * Evaluates part of a node tree from right-to-left (inverse direction). The caller is responsible
+ * for storing the socket values (a value per #SocketInContext). Evaluation in the upstream
+ * direction is not always well defined, because output sockets may be linked to multiple inputs
+ * and nodes may not always have an inverse evaluation function. The caller is responsible for
+ * handling these cases gracefully in the given callbacks.
+ *
+ * \note This handles node groups transparently, but does not handle e.g. repeat zones yet.
+ *
+ * \param initial_sockets: Sockets where the evaluation should start.
+ * \param scope: Is used to construct compute contexts which the caller may want to outlive the
+ *   entire evaluation.
+ * \param evaluate_node_fn: Called to evaluate the node in reverse, i.e. it's outputs are computed
+ *   first, and the node evaluation computes the inputs.
+ * \param propagate_value_fn: Should copy the value from one socket to another, while optionally
+ *   doing type conversions. This has to handle the case when multiple values are propagated to the
+ *   same socket. Returning false indicates that no value was propagated.
+ * \param get_inputs_to_propagate_fn: Gathers a list of input sockets that should be propagated
+ *   further.
+ *
+ * \return Places in the node tree that have gotten new values that can't be propagated further in
+ *   the node tree.
+ */
 UpstreamEvalTargets eval_upstream(
     const Span<SocketInContext> initial_sockets,
     ResourceScope &scope,
