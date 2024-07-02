@@ -22,12 +22,6 @@
 #include "physics_geometry_attributes.hh"
 #include "physics_geometry_impl.hh"
 
-#include <BulletDynamics/ConstraintSolver/btConeTwistConstraint.h>
-#include <BulletDynamics/ConstraintSolver/btFixedConstraint.h>
-#include <BulletDynamics/ConstraintSolver/btGearConstraint.h>
-#include <BulletDynamics/ConstraintSolver/btGeneric6DofConstraint.h>
-#include <BulletDynamics/ConstraintSolver/btGeneric6DofSpring2Constraint.h>
-#include <BulletDynamics/ConstraintSolver/btGeneric6DofSpringConstraint.h>
 #include <functional>
 #include <mutex>
 
@@ -36,6 +30,12 @@
 #  include <BulletCollision/CollisionShapes/btCollisionShape.h>
 #  include <BulletCollision/Gimpact/btGImpactCollisionAlgorithm.h>
 #  include <BulletCollision/Gimpact/btGImpactShape.h>
+#  include <BulletDynamics/ConstraintSolver/btConeTwistConstraint.h>
+#  include <BulletDynamics/ConstraintSolver/btFixedConstraint.h>
+#  include <BulletDynamics/ConstraintSolver/btGearConstraint.h>
+#  include <BulletDynamics/ConstraintSolver/btGeneric6DofConstraint.h>
+#  include <BulletDynamics/ConstraintSolver/btGeneric6DofSpring2Constraint.h>
+#  include <BulletDynamics/ConstraintSolver/btGeneric6DofSpringConstraint.h>
 #  include <BulletDynamics/ConstraintSolver/btPoint2PointConstraint.h>
 #  include <BulletDynamics/ConstraintSolver/btTypedConstraint.h>
 #  include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
@@ -1161,88 +1161,6 @@ static btTypedConstraint *make_constraint_type(const PhysicsGeometry::Constraint
   return constraint;
 }
 
-/* Specialization for changing btTypedConstraint pointers. */
-class VMutableArrayImpl_For_PhysicsConstraintTypes final : public VMutableArrayImpl<int> {
-  using ConstraintType = bke::PhysicsGeometry::ConstraintType;
-
- private:
-  const PhysicsGeometryImpl *impl_;
-  // XXX causes mystery crashes, investigate ...
-  // std::unique_lock<std::shared_mutex> lock_;
-
- public:
-  VMutableArrayImpl_For_PhysicsConstraintTypes(const PhysicsGeometryImpl &impl)
-      : VMutableArrayImpl<int>(impl.constraints.size()),
-        impl_(&impl) /*, lock_(impl_->data_mutex)*/
-  {
-    // lock_.lock();
-  }
-
-  ~VMutableArrayImpl_For_PhysicsConstraintTypes()
-  {
-    // lock_.unlock();
-  }
-
- private:
-  ConstraintType get_constraint_type(const btTypedConstraint *constraint) const
-  {
-    return constraint ? to_blender(constraint->getConstraintType()) : ConstraintType::None;
-  }
-
-  btTypedConstraint *ensure_constraint_type(btTypedConstraint *constraint,
-                                            const ConstraintType type,
-                                            btJointFeedback *feedback) const
-  {
-    const btTypedConstraintType bt_type = to_bullet(type);
-    if (!constraint || constraint->getConstraintType() == bt_type) {
-      return constraint;
-    }
-
-    btRigidBody &body1 = constraint->getRigidBodyA();
-    btRigidBody &body2 = constraint->getRigidBodyB();
-    delete constraint;
-    return make_constraint_type(type, body1, body2, feedback);
-  }
-
-  int get(const int64_t index) const override
-  {
-    return int(get_constraint_type(impl_->constraints[index]));
-  }
-
-  void set(const int64_t index, int value) override
-  {
-    bke::PhysicsGeometryImpl &impl = *const_cast<bke::PhysicsGeometryImpl *>(impl_);
-    impl.constraints[index] = this->ensure_constraint_type(
-        impl.constraints[index], ConstraintType(value), &impl.constraint_feedback[index]);
-  }
-
-  void materialize(const IndexMask &mask, int *dst) const override
-  {
-    mask.foreach_index_optimized<int64_t>(
-        [&](const int64_t i) { dst[i] = int(get_constraint_type(impl_->constraints[i])); });
-  }
-
-  void materialize_to_uninitialized(const IndexMask &mask, int *dst) const override
-  {
-    mask.foreach_index_optimized<int64_t>(
-        [&](const int64_t i) { dst[i] = int(get_constraint_type(impl_->constraints[i])); });
-  }
-
-  void materialize_compressed(const IndexMask &mask, int *dst) const override
-  {
-    mask.foreach_index_optimized<int64_t>([&](const int64_t i, const int64_t pos) {
-      dst[pos] = int(get_constraint_type(impl_->constraints[i]));
-    });
-  }
-
-  void materialize_compressed_to_uninitialized(const IndexMask &mask, int *dst) const override
-  {
-    mask.foreach_index_optimized<int64_t>([&](const int64_t i, const int64_t pos) {
-      dst[pos] = int(get_constraint_type(impl_->constraints[i]));
-    });
-  }
-};
-
 void PhysicsGeometry::create_constraints(const IndexMask &selection,
                                          const VArray<int> &types,
                                          const VArray<int> &bodies1,
@@ -1684,6 +1602,18 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
       BuiltinAttributeProvider::NonDeletable,
       physics_access,
       nullptr);
+
+  constexpr auto constraint_type_get_fn = [](const btTypedConstraint *constraint) -> int {
+    return int(constraint ? to_blender(constraint->getConstraintType()) :
+                            bke::PhysicsGeometry::ConstraintType::None);
+  };
+  static BuiltinConstraintAttributeProvider<int, constraint_type_get_fn> constraint_type(
+      PhysicsGeometry::builtin_attributes.constraint_type,
+      AttrDomain::Edge,
+      BuiltinAttributeProvider::NonDeletable,
+      physics_access,
+      nullptr,
+      {});
 
   constexpr auto constraint_enabled_get_fn = [](const btTypedConstraint *constraint) -> bool {
     return constraint ? constraint->isEnabled() : false;
@@ -2164,9 +2094,10 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                                       &body_angular_sleeping_threshold,
                                       &body_total_force,
                                       &body_total_torque,
-                                      &constraint_enabled,
+                                      &constraint_type,
                                       &constraint_body1,
                                       &constraint_body2,
+                                      &constraint_enabled,
                                       &constraint_frame1,
                                       &constraint_frame2,
                                       &constraint_applied_impulse,
