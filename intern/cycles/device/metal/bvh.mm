@@ -1315,8 +1315,8 @@ bool BVHMetal::build(Progress &progress,
         refit = false;
       }
     }
-    
-    if(!refit) {
+
+    if (!refit) {
       set_accel_struct(nil);
     }
   }

@@ -176,10 +176,9 @@ id<MTLBuffer> MetalBufferPool::get_buffer(id<MTLDevice> device,
   {
     thread_scoped_lock lock(buffer_mutex);
     /* Find an unused buffer with matching size and storage mode. */
-    for (MetalBufferListEntry& bufferEntry : temp_buffers) {
+    for (MetalBufferListEntry &bufferEntry : temp_buffers) {
       if (bufferEntry.buffer.length == length && storageMode == bufferEntry.buffer.storageMode &&
-          cpuCacheMode == bufferEntry.buffer.cpuCacheMode &&
-          bufferEntry.command_buffer == nil)
+          cpuCacheMode == bufferEntry.buffer.cpuCacheMode && bufferEntry.command_buffer == nil)
       {
         buffer = bufferEntry.buffer;
         bufferEntry.command_buffer = command_buffer;
@@ -187,14 +186,15 @@ id<MTLBuffer> MetalBufferPool::get_buffer(id<MTLDevice> device,
       }
     }
     if (!buffer) {
-      /* Create a new buffer and add it to the pool. Typically this pool will only grow to a handful of entries. */
+      /* Create a new buffer and add it to the pool. Typically this pool will only grow to a
+       * handful of entries. */
       buffer = [device newBufferWithLength:length options:options];
       stats.mem_alloc(buffer.allocatedSize);
       total_temp_mem_size += buffer.allocatedSize;
       temp_buffers.push_back(MetalBufferListEntry{buffer, command_buffer});
     }
   }
-  
+
   /* Copy over data */
   if (pointer) {
     memcpy(buffer.contents, pointer, length);
@@ -202,17 +202,16 @@ id<MTLBuffer> MetalBufferPool::get_buffer(id<MTLDevice> device,
       [buffer didModifyRange:NSMakeRange(0, length)];
     }
   }
-  
+
   return buffer;
 }
-
 
 void MetalBufferPool::process_command_buffer_completion(id<MTLCommandBuffer> command_buffer)
 {
   assert(command_buffer);
   thread_scoped_lock lock(buffer_mutex);
   /* Mark any temp buffers associated with command_buffer as unused. */
-  for (MetalBufferListEntry& buffer_entry : temp_buffers) {
+  for (MetalBufferListEntry &buffer_entry : temp_buffers) {
     if (buffer_entry.command_buffer == command_buffer) {
       buffer_entry.command_buffer = nil;
     }
@@ -223,7 +222,7 @@ MetalBufferPool::~MetalBufferPool()
 {
   thread_scoped_lock lock(buffer_mutex);
   /* Release all buffers that have not been recently reused */
-  for (MetalBufferListEntry& buffer_entry : temp_buffers) {
+  for (MetalBufferListEntry &buffer_entry : temp_buffers) {
     total_temp_mem_size -= buffer_entry.buffer.allocatedSize;
     [buffer_entry.buffer release];
     buffer_entry.buffer = nil;

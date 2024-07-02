@@ -88,11 +88,12 @@ struct MetalKernelPipeline {
   NSArray *table_functions[METALRT_TABLE_NUM] = {nil};
 };
 
-/* An actively instanced pipeline that can only be used by a single instance of MetalDeviceQueue. */
+/* An actively instanced pipeline that can only be used by a single instance of MetalDeviceQueue.
+ */
 struct MetalDispatchPipeline {
   ~MetalDispatchPipeline();
 
-  bool update(MetalDevice* metal_device, DeviceKernel kernel);
+  bool update(MetalDevice *metal_device, DeviceKernel kernel);
   void free_intersection_function_tables();
 
   int pipeline_id = -1;

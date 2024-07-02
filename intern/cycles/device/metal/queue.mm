@@ -479,7 +479,7 @@ bool MetalDeviceQueue::enqueue(DeviceKernel kernel,
           string_printf("Could not activate pipeline for %s\n", device_kernel_as_string(kernel)));
       return false;
     }
-    MetalDispatchPipeline& active_pipeline = active_pipelines_[kernel];
+    MetalDispatchPipeline &active_pipeline = active_pipelines_[kernel];
 
     /* Encode ancillaries */
     [metal_device_->mtlAncillaryArgEncoder setArgumentBuffer:arg_buffer offset:metal_offsets];
@@ -505,8 +505,8 @@ bool MetalDeviceQueue::enqueue(DeviceKernel kernel,
         for (int table = 0; table < METALRT_TABLE_NUM; table++) {
           if (active_pipeline.intersection_func_table[table]) {
             [active_pipeline.intersection_func_table[table] setBuffer:arg_buffer
-                                                                 offset:globals_offsets
-                                                                atIndex:1];
+                                                               offset:globals_offsets
+                                                              atIndex:1];
             [metal_device_->mtlAncillaryArgEncoder
                 setIntersectionFunctionTable:active_pipeline.intersection_func_table[table]
                                      atIndex:4 + table];
@@ -535,8 +535,7 @@ bool MetalDeviceQueue::enqueue(DeviceKernel kernel,
 
         if (id<MTLAccelerationStructure> accel_struct = metal_device_->accel_struct) {
           /* Mark all Accelerations resources as used */
-          [mtlComputeCommandEncoder useResource:accel_struct
-                                          usage:MTLResourceUsageRead];
+          [mtlComputeCommandEncoder useResource:accel_struct usage:MTLResourceUsageRead];
           [mtlComputeCommandEncoder useResource:metal_device_->blas_buffer
                                           usage:MTLResourceUsageRead];
           [mtlComputeCommandEncoder useResources:metal_device_->unique_blas_array.data()

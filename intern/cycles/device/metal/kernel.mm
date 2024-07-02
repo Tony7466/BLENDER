@@ -477,9 +477,10 @@ MetalDispatchPipeline::~MetalDispatchPipeline()
   free_intersection_function_tables();
 }
 
-bool MetalDispatchPipeline::update(MetalDevice* metal_device, DeviceKernel kernel)
+bool MetalDispatchPipeline::update(MetalDevice *metal_device, DeviceKernel kernel)
 {
-  const MetalKernelPipeline *best_pipeline = MetalDeviceKernels::get_best_pipeline(metal_device, kernel);
+  const MetalKernelPipeline *best_pipeline = MetalDeviceKernels::get_best_pipeline(metal_device,
+                                                                                   kernel);
   if (!best_pipeline) {
     return false;
   }

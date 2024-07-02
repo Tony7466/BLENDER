@@ -1436,7 +1436,7 @@ void MetalDevice::build_bvh(BVH *bvh, Progress &progress, bool refit)
 
 void MetalDevice::free_bvh()
 {
-  for (auto& blas : unique_blas_array) {
+  for (id<MTLAccelerationStructure> &blas : unique_blas_array) {
     [blas release];
   }
   unique_blas_array.clear();
@@ -1461,7 +1461,7 @@ void MetalDevice::update_bvh(BVHMetal *bvh_metal)
     unique_blas_array = bvh_metal->unique_blas_array;
 
     [accel_struct retain];
-    for (auto& blas : unique_blas_array) {
+    for (id<MTLAccelerationStructure> &blas : unique_blas_array) {
       [blas retain];
     }
 
