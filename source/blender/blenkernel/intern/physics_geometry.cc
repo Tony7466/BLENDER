@@ -794,11 +794,15 @@ static void remap_bodies(const int src_bodies_num,
                          MutableSpan<int> dst_constraint_body2)
 {
   Array<int> map(src_bodies_num);
+  const IndexRange body_range = map.index_range();
   index_mask::build_reverse_map<int>(bodies_mask, map);
   constraints_mask.foreach_index(GrainSize(512), [&](const int64_t src_i, const int64_t dst_i) {
-    dst_constraint_types[dst_i] = map[src_constraint_types[src_i]];
-    dst_constraint_body1[dst_i] = map[src_constraint_body1[src_i]];
-    dst_constraint_body2[dst_i] = map[src_constraint_body2[src_i]];
+    dst_constraint_types[dst_i] = src_constraint_types[src_i];
+
+    const int body1 = src_constraint_body1[src_i];
+    const int body2 = src_constraint_body2[src_i];
+    dst_constraint_body1[dst_i] = body_range.contains(body1) ? map[body1] : -1;
+    dst_constraint_body2[dst_i] = body_range.contains(body2) ? map[body2] : -1;
   });
 }
 
