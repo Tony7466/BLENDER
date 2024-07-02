@@ -2757,7 +2757,7 @@ bool WM_window_has_global_areas(const wmWindow *win)
   /**
    * Return whether the window should contain global areas (topbar/statusbar)
    */
-  bScreen *screen = BKE_workspace_active_screen_get(win->workspace_hook);
+  const bScreen *screen = BKE_workspace_active_screen_get(win->workspace_hook);
   if ((win->parent != nullptr) || screen->temp) {
     return false;
   }
