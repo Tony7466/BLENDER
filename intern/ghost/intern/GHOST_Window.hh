@@ -90,15 +90,15 @@ class GHOST_Window : public GHOST_IWindow {
   }
 
   /**
-   * Enable or disable custom client-side window decorations
-   * \param useCSD: Whether to use custom client-side window decorations
+   * Enable or disable custom client-side window decorations.
+   * \param useCSD: Whether to use custom client-side window decorations.
    */
   virtual void setUseCSD(bool useCSD) override;
 
   /**
-   * Set colors to be used by custom titlebar client-side window decorations
-   * \param backgroundColor: Titlebar background color
-   * \param titleTextColor: Titlebar title text color
+   * Set colors to be used by custom titlebar client-side window decorations.
+   * \param backgroundColor: Titlebar background color.
+   * \param titleTextColor: Titlebar title text color.
    */
   virtual void setTitlebarCSDColors(const float /*backgroundColor*/[4],
                                     const float /*titleTextColor*/[4]) override{};
@@ -424,7 +424,7 @@ class GHOST_Window : public GHOST_IWindow {
   /** Stores whether this is a full screen window. */
   bool m_fullScreen;
 
-  /** Stores whether the windows has custom client-side decorations */
+  /** Stores whether the windows has custom client-side decorations. */
   bool m_useCSD;
 
   /** Whether to attempt to initialize a context with a stereo frame-buffer. */

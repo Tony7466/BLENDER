@@ -516,16 +516,16 @@ void ED_region_do_draw(bContext *C, ARegion *region)
 
   const char area_spacetype = area ? area->spacetype : 0;
 
-  /* Set client-side window decoration titlebar colors */
+  /* Set client-side window decoration titlebar colors. */
   if (at->regionid == RGN_TYPE_WINDOW) {
-    /* For main windows, use the topbar color */
+    /* For main windows, use the topbar color. */
     if (WM_window_has_global_areas(win)) {
       UI_SetTheme(SPACE_TOPBAR, RGN_TYPE_HEADER);
     }
-    /* For single editor floating windows, use the editor header color */
+    /* For single editor floating windows, use the editor header color. */
     else if (BLI_listbase_is_single(&CTX_wm_screen(C)->areabase)) {
       /* Except for the View 3D editor which has a transparent titlebar, in which case use the
-       * window background color instead */
+       * window background color instead. */
       if (area_spacetype == SPACE_VIEW3D) {
         UI_SetTheme(area_spacetype, RGN_TYPE_WINDOW);
       }
@@ -533,7 +533,7 @@ void ED_region_do_draw(bContext *C, ARegion *region)
         UI_SetTheme(area_spacetype, RGN_TYPE_HEADER);
       }
     }
-    /* For floating window with multiple editors/areas, use the default space color */
+    /* For floating window with multiple editors/areas, use the default space color. */
     else {
       UI_SetTheme(0, RGN_TYPE_WINDOW);
     }

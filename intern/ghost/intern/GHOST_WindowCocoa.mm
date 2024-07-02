@@ -556,13 +556,14 @@ void GHOST_WindowCocoa::setTitlebarCSDColors(const float backgroundColor[4],
                                              const float /*titleTextColor*/[4])
 {
   @autoreleasepool {
-    /* Titlebar Background Color */
+    /* Titlebar background color. */
     m_window.backgroundColor = [NSColor colorWithRed:backgroundColor[0]
                                                green:backgroundColor[1]
                                                 blue:backgroundColor[2]
                                                alpha:backgroundColor[3]];
 
     /**
+     * Titlebar title text color.
      * Determine whether we should use the macOS dark or light titlebar text appearance by using
      * the value (V) component of the titlebar background's HSV representation. With values below
      * 0.5 considered as dark themes, and values above 0.5 considered as light themes.

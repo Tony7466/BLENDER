@@ -92,15 +92,15 @@ class GHOST_WindowCocoa : public GHOST_Window {
   GHOST_TSuccess setPath(const char *filepath);
 
   /**
-   * Enable or disable custom client-side window decorations
-   * \param useCSD: Whether to use custom client-side window decorations
+   * Enable or disable custom client-side window decorations.
+   * \param useCSD: Whether to use custom client-side window decorations.
    */
   void setUseCSD(bool useCSD);
 
   /**
-   * Set colors to be used by custom titlebar client-side window decorations
-   * \param backgroundColor: Titlebar background color
-   * \param titleTextColor: Titlebar title text color
+   * Set colors to be used by custom titlebar client-side window decorations.
+   * \param backgroundColor: Titlebar background color.
+   * \param titleTextColor: Titlebar title text color.
    */
   void setTitlebarCSDColors(const float backgroundColor[4], const float titleTextColor[4]);
 
