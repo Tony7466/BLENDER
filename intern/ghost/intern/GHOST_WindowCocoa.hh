@@ -325,7 +325,6 @@ class GHOST_WindowCocoa : public GHOST_Window {
   bool m_immediateDraw;
   bool m_debug_context;  // for debug messages during context setup
   bool m_is_dialog;
-  bool m_use_decoration;
 };
 
 #ifdef WITH_INPUT_IME
