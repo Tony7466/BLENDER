@@ -273,7 +273,7 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   RNA_string_get(op->ptr, "root_prim_path", root_prim_path);
   process_prim_path(root_prim_path);
 
-  char custom_properties_namespace[FILE_MAX];
+  char custom_properties_namespace[MAX_IDPROP_NAME];
   RNA_string_get(op->ptr, "custom_properties_namespace", custom_properties_namespace);
 
   USDExportParams params = {
