@@ -273,14 +273,6 @@ void write_translations(const Sculpt &sd,
                         const MutableSpan<float3> translations,
                         const MutableSpan<float3> positions_orig);
 
-void write_translations_prev(const Sculpt &sd,
-                             Object &object,
-                             const Span<float3> &prev_positions,
-                             const Array<int> &prev_verts,
-                             const Span<int> &verts,
-                             const MutableSpan<float3> &translations,
-                             const MutableSpan<float3> &positions_orig);
-
 /**
  * Creates OffsetIndices based on each node's unique vertex count, allowing for easy slicing of a
  * new array.
