@@ -45,6 +45,7 @@
 
 using namespace blender::io::usd;
 
+/* test edit */
 namespace blender::io::hydra {
 
 MaterialData::MaterialData(HydraSceneDelegate *scene_delegate,
