@@ -615,30 +615,6 @@ void ED_node_shader_default(const bContext *C, ID *id)
   }
 }
 
-void ED_node_npr_shader_default(const bContext *C, Material *ma)
-{
-  Main *bmain = CTX_data_main(C);
-
-  Object *ob = CTX_data_active_object(C);
-  Material *ma_default;
-
-  if (ob && ob->type == OB_VOLUME) {
-    ma_default = BKE_material_default_volume();
-  }
-  else {
-    ma_default = BKE_material_default_surface();
-  }
-
-  ma->npr_nodetree = blender::bke::ntreeCopyTree(bmain, ma_default->npr_nodetree);
-  ma->npr_nodetree->owner_id = nullptr;
-  for (bNode *node_iter : ma->npr_nodetree->all_nodes()) {
-    STRNCPY_UTF8(node_iter->name, DATA_(node_iter->name));
-    blender::bke::nodeUniqueName(ma->npr_nodetree, node_iter);
-  }
-
-  BKE_ntree_update_main_tree(bmain, ma->npr_nodetree, nullptr);
-}
-
 void ED_node_composit_default(const bContext *C, Scene *sce)
 {
   /* but lets check it anyway */

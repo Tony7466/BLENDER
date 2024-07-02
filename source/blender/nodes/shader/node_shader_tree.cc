@@ -108,14 +108,7 @@ static void shader_get_from_context(const bContext *C,
     }
   }
   else if (snode->shaderfrom == SNODE_SHADER_NPR) {
-    if (ob) {
-      *r_from = &ob->id;
-      Material *ma = BKE_object_material_get(ob, ob->actcol);
-      if (ma) {
-        *r_id = &ma->id;
-        *r_ntree = ma->npr_nodetree;
-      }
-    }
+    /* TODO(NPR): ? */
   }
   else {
     BLI_assert_unreachable();
