@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "NOD_inverse_eval.hh"
+#include "NOD_inverse_eval_params.hh"
 
 #include "BKE_node_socket_value.hh"
 

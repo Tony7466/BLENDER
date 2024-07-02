@@ -106,7 +106,7 @@ set(SRC
   NOD_geometry_nodes_gizmos.hh
   NOD_geometry_nodes_lazy_function.hh
   NOD_geometry_nodes_log.hh
-  NOD_inverse_eval.hh
+  NOD_inverse_eval_params.hh
   NOD_inverse_eval_path.hh
   NOD_math_functions.hh
   NOD_multi_function.hh

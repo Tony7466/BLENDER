@@ -15,7 +15,7 @@
 #include "BKE_workspace.hh"
 
 #include "NOD_geometry_nodes_gizmos.hh"
-#include "NOD_inverse_eval.hh"
+#include "NOD_inverse_eval_params.hh"
 #include "NOD_inverse_eval_path.hh"
 
 #include "DNA_modifier_types.h"

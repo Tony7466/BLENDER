@@ -4,7 +4,7 @@
 
 #include "BLI_math_euler.hh"
 
-#include "NOD_inverse_eval.hh"
+#include "NOD_inverse_eval_params.hh"
 #include "NOD_value_elem_eval.hh"
 
 #include "node_function_util.hh"

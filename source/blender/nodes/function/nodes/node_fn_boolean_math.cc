@@ -11,7 +11,7 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "NOD_inverse_eval.hh"
+#include "NOD_inverse_eval_params.hh"
 #include "NOD_socket_search_link.hh"
 #include "NOD_value_elem_eval.hh"
 
