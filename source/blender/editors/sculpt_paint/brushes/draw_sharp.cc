@@ -142,22 +142,23 @@ static void calc_bmesh_sharp(const Sculpt &sd,
 
   const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(&node);
 
-  tls.positions.reinitialize(verts.size());
-  MutableSpan<float3> positions = tls.positions;
-  gather_bmesh_positions(verts, positions);
+  Array<float3> orig_positions(verts.size());
+  Array<float3> orig_normals(verts.size());
+  orig_position_data_gather_bmesh(*ss.bm_log, verts, orig_positions, orig_normals);
 
   tls.factors.reinitialize(verts.size());
   const MutableSpan<float> factors = tls.factors;
   fill_factor_from_hide_and_mask(*ss.bm, verts, factors);
-  filter_region_clip_factors(ss, positions, factors);
+  filter_region_clip_factors(ss, orig_positions, factors);
+
   if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal, verts, factors);
+    calc_front_face(cache.view_normal, orig_normals, factors);
   }
 
   tls.distances.reinitialize(verts.size());
   const MutableSpan<float> distances = tls.distances;
   calc_distance_falloff(
-      ss, positions, eBrushFalloffShape(brush.falloff_shape), distances, factors);
+      ss, orig_positions, eBrushFalloffShape(brush.falloff_shape), distances, factors);
   apply_hardness_to_distances(cache, distances);
   calc_brush_strength_factors(cache, brush, distances, factors);
 
@@ -165,13 +166,13 @@ static void calc_bmesh_sharp(const Sculpt &sd,
     auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
   }
 
-  calc_brush_texture_factors(ss, brush, positions, factors);
+  calc_brush_texture_factors(ss, brush, orig_positions, factors);
 
   tls.translations.reinitialize(verts.size());
   const MutableSpan<float3> translations = tls.translations;
   translations_from_offset_and_factors(offset, factors, translations);
 
-  clip_and_lock_translations(sd, ss, positions, translations);
+  clip_and_lock_translations(sd, ss, orig_positions, translations);
   apply_translations(translations, verts);
 }
 
