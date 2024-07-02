@@ -24,7 +24,7 @@ void USDLightReader::create_object(Main *bmain, const double /*motionSampleTime*
 {
   Light *blight = static_cast<Light *>(BKE_light_add(bmain, name_.c_str()));
 
-  object_ = BKE_object_add_only_object(bmain, OB_LAMP, name_.c_str());
+  object_ = BKE_object_add_only_object(bmain, OB_LAMP, object_name_.c_str());
   object_->data = blight;
 }
 

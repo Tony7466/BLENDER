@@ -190,7 +190,7 @@ void USDMeshReader::create_object(Main *bmain, const double /*motionSampleTime*/
 {
   Mesh *mesh = BKE_mesh_add(bmain, name_.c_str());
 
-  object_ = BKE_object_add_only_object(bmain, OB_MESH, name_.c_str());
+  object_ = BKE_object_add_only_object(bmain, OB_MESH, object_name_.c_str());
   object_->data = mesh;
 }
 

@@ -52,6 +52,20 @@ void USDPrimReader::set_props(const bool merge_with_parent,
   }
 }
 
+static void split(const std::string &s, const char delim, std::vector<std::string> &tokens)
+{
+  tokens.clear();
+
+  std::stringstream ss(s);
+  std::string item;
+
+  while (std::getline(ss, item, delim)) {
+    if (!item.empty()) {
+      tokens.push_back(item);
+    }
+  }
+}
+
 USDPrimReader::USDPrimReader(const pxr::UsdPrim &prim,
                              const USDImportParams &import_params,
                              const ImportSettings &settings)
@@ -65,6 +79,15 @@ USDPrimReader::USDPrimReader(const pxr::UsdPrim &prim,
       refcount_(0),
       is_in_instancer_proto_(false)
 {
+  std::vector<std::string> parts;
+  split(prim_path_, '/', parts);
+
+  if (parts.size() >= 2) {
+    object_name_ = parts[parts.size() - 2];
+  }
+  else {
+    object_name_ = name_;
+  }
 }
 
 USDPrimReader::~USDPrimReader() = default;

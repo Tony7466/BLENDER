@@ -50,7 +50,7 @@ void USDNurbsReader::create_object(Main *bmain, const double /*motionSampleTime*
   curve_->actvert = CU_ACT_NONE;
   curve_->resolu = 2;
 
-  object_ = BKE_object_add_only_object(bmain, OB_CURVES_LEGACY, name_.c_str());
+  object_ = BKE_object_add_only_object(bmain, OB_CURVES_LEGACY, object_name_.c_str());
   object_->data = curve_;
 }
 

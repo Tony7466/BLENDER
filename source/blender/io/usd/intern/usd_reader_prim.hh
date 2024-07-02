@@ -88,6 +88,7 @@ class USDPrimReader {
 
  protected:
   std::string name_;
+  std::string object_name_;
   std::string prim_path_;
   Object *object_;
   pxr::UsdPrim prim_;

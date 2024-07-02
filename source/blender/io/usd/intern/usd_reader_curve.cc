@@ -135,7 +135,7 @@ void USDCurvesReader::create_object(Main *bmain, const double /*motionSampleTime
 {
   curve_ = static_cast<Curves *>(BKE_curves_add(bmain, name_.c_str()));
 
-  object_ = BKE_object_add_only_object(bmain, OB_CURVES, name_.c_str());
+  object_ = BKE_object_add_only_object(bmain, OB_CURVES, object_name_.c_str());
   object_->data = curve_;
 }
 
