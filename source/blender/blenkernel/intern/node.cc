@@ -4225,7 +4225,7 @@ void nodeLabel(const bNodeTree *ntree, const bNode *node, char *label, const int
   label[0] = '\0';
 
   if (node->label[0] != '\0') {
-    BLI_strncpy(label, node->label, label_maxncpy);
+    BLI_strncpy(label, IFACE_(node->label), label_maxncpy);
   }
   else if (node->typeinfo->labelfunc) {
     node->typeinfo->labelfunc(ntree, node, label, label_maxncpy);
