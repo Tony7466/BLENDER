@@ -318,6 +318,10 @@ void USDAbstractWriter::write_user_properties(const pxr::UsdPrim &prim,
 
   const StringRef displayName_identifier = "displayName";
 
+  const char *props_namespace =
+      this->usd_export_context_.export_params.custom_properties_namespace;
+  const std::string prefix = props_namespace[0] == '\0' ? "" : std::string(props_namespace) + ":";
+
   for (IDProperty *prop = (IDProperty *)properties->data.group.first; prop; prop = prop->next) {
     if (displayName_identifier == prop->name) {
       if (prop->type == IDP_STRING && prop->data.pointer) {
@@ -328,7 +332,7 @@ void USDAbstractWriter::write_user_properties(const pxr::UsdPrim &prim,
 
     std::string prop_name = make_safe_name(prop->name,
                                            usd_export_context_.export_params.allow_unicode);
-    std::string full_prop_name = "userProperties:" + prop_name;
+    std::string full_prop_name = prefix + prop_name;
 
     pxr::TfToken prop_token = pxr::TfToken(full_prop_name);
 
