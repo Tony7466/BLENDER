@@ -192,10 +192,24 @@ static void transform_curve_edit_hints(bke::CurvesEditHints &edit_hints, const f
   }
 }
 
+static void transform_gizmo_edit_hints(bke::GizmoEditHints &edit_hints, const float4x4 &transform)
+{
+  for (float4x4 &m : edit_hints.gizmo_transforms.values()) {
+    m = transform * m;
+  }
+}
+
 static void translate_curve_edit_hints(bke::CurvesEditHints &edit_hints, const float3 &translation)
 {
   if (const std::optional<MutableSpan<float3>> positions = edit_hints.positions_for_write()) {
     translate_positions(*positions, translation);
+  }
+}
+
+static void translate_gizmos_edit_hints(bke::GizmoEditHints &edit_hints, const float3 &translation)
+{
+  for (float4x4 &m : edit_hints.gizmo_transforms.values()) {
+    m.location() += translation;
   }
 }
 
@@ -222,13 +236,8 @@ void translate_geometry(bke::GeometrySet &geometry, const float3 translation)
   if (bke::CurvesEditHints *curve_edit_hints = geometry.get_curve_edit_hints_for_write()) {
     translate_curve_edit_hints(*curve_edit_hints, translation);
   }
-  if (geometry.get_component<bke::GeometryComponentEditData>()) {
-    auto &component = geometry.get_component_for_write<bke::GeometryComponentEditData>();
-    if (bke::GizmosEditHints *gizmo_edit_hints = component.gizmos_edit_hints_.get()) {
-      for (float4x4 &m : gizmo_edit_hints->gizmo_transforms.values()) {
-        m.location() += translation;
-      }
-    }
+  if (bke::GizmoEditHints *gizmo_edit_hints = geometry.get_gizmo_edit_hints_for_write()) {
+    translate_gizmos_edit_hints(*gizmo_edit_hints, translation);
   }
 }
 
@@ -257,13 +266,8 @@ std::optional<TransformGeometryErrors> transform_geometry(bke::GeometrySet &geom
   if (bke::CurvesEditHints *curve_edit_hints = geometry.get_curve_edit_hints_for_write()) {
     transform_curve_edit_hints(*curve_edit_hints, transform);
   }
-  if (geometry.get_component<bke::GeometryComponentEditData>()) {
-    auto &component = geometry.get_component_for_write<bke::GeometryComponentEditData>();
-    if (bke::GizmosEditHints *gizmo_edit_hints = component.gizmos_edit_hints_.get()) {
-      for (float4x4 &m : gizmo_edit_hints->gizmo_transforms.values()) {
-        m = transform * m;
-      }
-    }
+  if (bke::GizmoEditHints *gizmo_edit_hints = geometry.get_gizmo_edit_hints_for_write()) {
+    transform_gizmo_edit_hints(*gizmo_edit_hints, transform);
   }
 
   if (errors.volume_too_small) {

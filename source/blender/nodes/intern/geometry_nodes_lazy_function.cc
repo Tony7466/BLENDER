@@ -958,8 +958,8 @@ class LazyFunctionForGizmoNode : public LazyFunction {
       GeometrySet geometry;
       GeometryComponentEditData &edit_data =
           geometry.get_component_for_write<GeometryComponentEditData>();
-      edit_data.gizmos_edit_hints_ = std::make_unique<bke::GizmosEditHints>();
-      edit_data.gizmos_edit_hints_->gizmo_transforms.add(
+      edit_data.gizmo_edit_hints_ = std::make_unique<bke::GizmoEditHints>();
+      edit_data.gizmo_edit_hints_->gizmo_transforms.add(
           {user_data.compute_context->hash(), bnode_.identifier}, float4x4::identity());
       params.set_output(0, std::move(geometry));
     }

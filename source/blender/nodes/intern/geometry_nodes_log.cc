@@ -126,8 +126,7 @@ GeometryInfoLog::GeometryInfoLog(const bke::GeometrySet &geometry_set)
           info.has_deform_matrices = curve_edit_hints->deform_mats.has_value();
           info.has_deformed_positions = curve_edit_hints->positions().has_value();
         }
-        if (const bke::GizmosEditHints *gizmo_edit_hints = edit_component.gizmos_edit_hints_.get())
-        {
+        if (const bke::GizmoEditHints *gizmo_edit_hints = edit_component.gizmo_edit_hints_.get()) {
           if (!this->edit_data_info) {
             this->edit_data_info.emplace();
           }

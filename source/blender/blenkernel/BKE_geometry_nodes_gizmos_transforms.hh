@@ -33,7 +33,7 @@ struct GeoNodesGizmoID {
   }
 };
 
-struct GizmosEditHints {
+struct GizmoEditHints {
   /**
    * Additional transform that is applied to the gizmo because the corresponding geometry has been
    * transformed the same.
