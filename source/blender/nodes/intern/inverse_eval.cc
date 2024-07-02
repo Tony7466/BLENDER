@@ -598,6 +598,59 @@ std::optional<SocketValueVariant> get_logged_socket_value(geo_eval_log::GeoTreeL
   return std::nullopt;
 }
 
+void backpropagate_socket_values_through_nodes(
+    const NodeInContext &ctx_node,
+    geo_eval_log::GeoModifierLog &eval_log,
+    Map<SocketInContext, SocketValueVariant> &value_by_socket,
+    Vector<const bNodeSocket *> &r_modified_inputs)
+{
+  const bNode &node = *ctx_node.node;
+  const ComputeContext *context = ctx_node.context;
+  const bke::bNodeType &ntype = *node.typeinfo;
+  if (!ntype.eval_inverse) {
+    /* Node does not support inverse evaluation. */
+    return;
+  }
+  if (!context) {
+    /* We need a context here to access the tree log. */
+    return;
+  }
+  geo_eval_log::GeoTreeLog &tree_log = eval_log.get_tree_log(context->hash());
+  tree_log.ensure_socket_values();
+  Map<const bNodeSocket *, SocketValueVariant> old_socket_values;
+  for (const bNodeSocket *socket : node.input_sockets()) {
+    if (!socket->is_available()) {
+      continue;
+    }
+    if (const std::optional<SocketValueVariant> value = get_logged_socket_value(tree_log, *socket))
+    {
+      old_socket_values.add(socket, *value);
+    }
+  }
+  for (const bNodeSocket *socket : node.output_sockets()) {
+    if (!socket->is_available()) {
+      continue;
+    }
+    if (const SocketValueVariant *value = value_by_socket.lookup_ptr({context, socket})) {
+      old_socket_values.add(socket, *value);
+    }
+    else if (const std::optional<SocketValueVariant> value = get_logged_socket_value(tree_log,
+                                                                                     *socket))
+    {
+      old_socket_values.add(socket, *value);
+    }
+  }
+
+  Map<const bNodeSocket *, SocketValueVariant> updated_socket_values;
+  InverseEvalParams params{node, old_socket_values, updated_socket_values};
+  ntype.eval_inverse(params);
+  for (auto &&item : updated_socket_values.items()) {
+    const bNodeSocket &socket = *item.key;
+    value_by_socket.add({context, &socket}, std::move(item.value));
+    r_modified_inputs.append(&socket);
+  }
+}
+
 bool backpropagate_socket_values(bContext &C,
                                  Object &object,
                                  NodesModifierData &nmd,
@@ -643,52 +696,8 @@ bool backpropagate_socket_values(bContext &C,
       scope,
       /* Evaluate node. */
       [&](const NodeInContext &ctx_node, Vector<const bNodeSocket *> &r_modified_inputs) {
-        const bNode &node = *ctx_node.node;
-        const ComputeContext *context = ctx_node.context;
-        const bke::bNodeType &ntype = *node.typeinfo;
-        if (!ntype.eval_inverse) {
-          /* Node does not support inverse evaluation. */
-          return;
-        }
-        if (!context) {
-          /* We need a context here to access the tree log. */
-          return;
-        }
-        geo_eval_log::GeoTreeLog &tree_log = eval_log.get_tree_log(context->hash());
-        tree_log.ensure_socket_values();
-        Map<const bNodeSocket *, SocketValueVariant> old_socket_values;
-        for (const bNodeSocket *socket : node.input_sockets()) {
-          if (!socket->is_available()) {
-            continue;
-          }
-          if (const std::optional<SocketValueVariant> value = get_logged_socket_value(tree_log,
-                                                                                      *socket))
-          {
-            old_socket_values.add(socket, *value);
-          }
-        }
-        for (const bNodeSocket *socket : node.output_sockets()) {
-          if (!socket->is_available()) {
-            continue;
-          }
-          if (const SocketValueVariant *value = value_by_socket.lookup_ptr({context, socket})) {
-            old_socket_values.add(socket, *value);
-          }
-          else if (const std::optional<SocketValueVariant> value = get_logged_socket_value(
-                       tree_log, *socket))
-          {
-            old_socket_values.add(socket, *value);
-          }
-        }
-
-        Map<const bNodeSocket *, SocketValueVariant> updated_socket_values;
-        InverseEvalParams params{node, old_socket_values, updated_socket_values};
-        ntype.eval_inverse(params);
-        for (auto &&item : updated_socket_values.items()) {
-          const bNodeSocket &socket = *item.key;
-          value_by_socket.add({context, &socket}, std::move(item.value));
-          r_modified_inputs.append(&socket);
-        }
+        backpropagate_socket_values_through_nodes(
+            ctx_node, eval_log, value_by_socket, r_modified_inputs);
       },
       /* Propagate value. */
       [&](const SocketInContext &ctx_from, const SocketInContext &ctx_to) {
