@@ -19,6 +19,7 @@
 #include "BKE_anim_data.hh"
 #include "BKE_context.hh"
 #include "BKE_global.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_report.hh"
 #include "BKE_scene.hh"
 
@@ -768,19 +769,10 @@ static int convert_action_exec(bContext *C, wmOperator *op)
   BLI_assert(adt != nullptr);
   BLI_assert(adt->action != nullptr);
 
-  animrig::Action &anim = adt->action->wrap();
+  animrig::Action &legacy_action = adt->action->wrap();
   Main *bmain = CTX_data_main(C);
-  if (anim.is_empty()) {
-    anim.binding_add_for_id(object->id);
-    BKE_report(op->reports, RPT_WARNING, "Converted an empty action to layered");
-    anim.assign_id(anim.binding(0), object->id);
-    ANIM_id_update(bmain, &object->id);
-    DEG_relations_tag_update(bmain);
-    WM_main_add_notifier(NC_ANIMATION | ND_NLA_ACTCHANGE, nullptr);
-    return OPERATOR_FINISHED;
-  }
 
-  animrig::Action *layered_action = animrig::convert_to_layered_action(*bmain, anim);
+  animrig::Action *layered_action = animrig::convert_to_layered_action(*bmain, legacy_action);
   /* We did already check if the action can be converted. */
   BLI_assert(layered_action != nullptr);
 
