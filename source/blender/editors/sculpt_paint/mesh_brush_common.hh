@@ -32,6 +32,7 @@
 
 struct BMesh;
 struct BMVert;
+struct BMFace;
 struct Brush;
 struct Mesh;
 struct Object;
@@ -111,6 +112,9 @@ void calc_front_face(const float3 &view_normal,
                      MutableSpan<float> factors);
 void calc_front_face(const float3 &view_normal,
                      const Set<BMVert *, 0> &verts,
+                     const MutableSpan<float> factors);
+void calc_front_face(const float3 &view_normal,
+                     const Set<BMFace *, 0> &faces,
                      const MutableSpan<float> factors);
 
 /**

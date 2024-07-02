@@ -6865,6 +6865,20 @@ void calc_front_face(const float3 &view_normal,
   }
 }
 
+void calc_front_face(const float3 &view_normal,
+                     const Set<BMFace *, 0> &faces,
+                     const MutableSpan<float> factors)
+{
+  BLI_assert(faces.size() == factors.size());
+
+  int i = 0;
+  for (const BMFace *face : faces) {
+    const float dot = math::dot(view_normal, float3(face->no));
+    factors[i] *= std::max(dot, 0.0f);
+    i++;
+  }
+}
+
 void filter_region_clip_factors(const SculptSession &ss,
                                 const Span<float3> positions,
                                 const Span<int> verts,

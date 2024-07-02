@@ -33,11 +33,16 @@ struct MeshLocalData {
   Vector<float> factors;
   Vector<float> distances;
 };
-
 struct GridLocalData {
   Vector<int> face_indices;
   Vector<float3> positions;
-  Vector<float3> normals;
+  Vector<float> masks;
+  Vector<float> factors;
+  Vector<float> distances;
+};
+
+struct BMeshLocalData {
+  Vector<float3> positions;
   Vector<float> masks;
   Vector<float> factors;
   Vector<float> distances;
@@ -50,12 +55,12 @@ BLI_NOINLINE static void scale_factors(const MutableSpan<float> factors, const f
   }
 }
 
-BLI_NOINLINE static void generate_face_data(const Mesh &mesh,
-                                            const Span<float3> positions_eval,
-                                            const Span<int> face_indices,
-                                            const MutableSpan<float3> positions,
-                                            const MutableSpan<float3> normals,
-                                            const MutableSpan<float> masks)
+BLI_NOINLINE static void generate_face_data_mesh(const Mesh &mesh,
+                                                 const Span<float3> positions_eval,
+                                                 const Span<int> face_indices,
+                                                 const MutableSpan<float3> positions,
+                                                 const MutableSpan<float3> normals,
+                                                 const MutableSpan<float> masks)
 {
   BLI_assert(face_indices.size() == positions.size());
   BLI_assert(face_indices.size() == normals.size());
@@ -82,7 +87,7 @@ BLI_NOINLINE static void generate_face_data(const Mesh &mesh,
       const float inv_size = math::rcp(face_verts.size());
       float sum = 0.0f;
       for (const int f_i : face_verts) {
-        sum += span[f_i];
+        sum += (1.0f - span[f_i]);
       }
       masks[i] = mask * inv_size;
     }
@@ -203,7 +208,7 @@ static void do_draw_face_sets_brush_mesh(Object &object,
       tls.normals.reinitialize(face_indices.size());
       tls.masks.reinitialize(face_indices.size());
 
-      generate_face_data(
+      generate_face_data_mesh(
           mesh, positions_eval, face_indices, tls.positions, tls.normals, tls.masks);
 
       bool any_changed = calc_faces(
@@ -313,9 +318,156 @@ static void do_draw_face_sets_brush_grids(Object &object,
   attribute.finish();
 }
 
-static void do_draw_face_sets_brush_bmesh(Object &ob,
+BLI_NOINLINE static void fill_factor_from_hide_and_mask_faces(const Set<BMFace *, 0L> &node_faces,
+                                                              const Span<float> masks,
+                                                              const MutableSpan<float> r_factors)
+{
+  BLI_assert(node_faces.size() == masks.size());
+  BLI_assert(node_faces.size() == r_factors.size());
+
+  for (const int i : masks.index_range()) {
+    r_factors[i] = 1.0f - masks[i];
+  }
+
+  int i = 0;
+  for (const BMFace *face : node_faces) {
+    if (BM_elem_flag_test(face, BM_ELEM_HIDDEN)) {
+      r_factors[i] = 0.0f;
+    }
+    i++;
+  }
+}
+
+static void generate_face_data_bmesh(const BMesh &bm,
+                                     const Set<BMFace *, 0L> &node_faces,
+                                     const MutableSpan<float3> positions,
+                                     const MutableSpan<float> masks)
+{
+  BLI_assert(node_faces.size() == positions.size());
+  BLI_assert(node_faces.size() == masks.size());
+
+  int i = 0;
+  for (const BMFace *f : node_faces) {
+    float3 face_center;
+    BM_face_calc_center_median(f, face_center);
+
+    positions[i] = face_center;
+    i++;
+  }
+
+  /* TODO: Avoid overhead of accessing attributes for every PBVH node. */
+  const int mask_offset = CustomData_get_offset_named(&bm.vdata, CD_PROP_FLOAT, ".sculpt_mask");
+  if (mask_offset == -1) {
+    masks.fill(1.0f);
+  }
+  else {
+    i = 0;
+    for (BMFace *f : node_faces) {
+      const BMLoop *l_iter = f->l_first = BM_FACE_FIRST_LOOP(f);
+      int total_verts = 0;
+      float sum;
+      do {
+        BMVert *vert = l_iter->v;
+        sum += 1.0f - BM_ELEM_CD_GET_FLOAT(vert, mask_offset);
+        total_verts++;
+      } while ((l_iter = l_iter->next) != f->l_first);
+    }
+  }
+}
+
+BLI_NOINLINE static bool apply_face_set(const int face_set_id,
+                                        const Set<BMFace *, 0> &faces,
+                                        const MutableSpan<float> factors,
+                                        const int cd_offset)
+{
+  bool any_changed = false;
+  int i = 0;
+  for (BMFace *face : faces) {
+    if (factors[i] > FACE_SET_BRUSH_MIN_FADE) {
+      int &fset = *static_cast<int *>(POINTER_OFFSET(face->head.data, cd_offset));
+      fset = face_set_id;
+    }
+    i++;
+  }
+  return any_changed;
+}
+
+static bool calc_bmesh(Object &object,
+                       const Brush &brush,
+                       const float strength,
+                       const int face_set_id,
+                       PBVHNode &node,
+                       BMeshLocalData &tls,
+                       const int cd_offset)
+{
+  SculptSession &ss = *object.sculpt;
+  const StrokeCache &cache = *ss.cache;
+
+  const Set<BMFace *, 0> &faces = BKE_pbvh_bmesh_node_faces(&node);
+
+  const Span<float3> positions = tls.positions;
+  tls.factors.reinitialize(faces.size());
+  const MutableSpan<float> factors = tls.factors;
+  fill_factor_from_hide_and_mask_faces(faces, tls.masks, factors);
+  filter_region_clip_factors(ss, positions, factors);
+  if (brush.flag & BRUSH_FRONTFACE) {
+    calc_front_face(cache.view_normal, faces, factors);
+  }
+
+  tls.distances.reinitialize(faces.size());
+  const MutableSpan<float> distances = tls.distances;
+  calc_distance_falloff(
+      ss, positions, eBrushFalloffShape(brush.falloff_shape), distances, factors);
+  apply_hardness_to_distances(cache, distances);
+  calc_brush_strength_factors(cache, brush, distances, factors);
+
+  /* Disable auto-masking code path which rely on an undo step to access original data.
+   *
+   * This is because the dynamic topology uses BMesh Log based undo system, which creates a
+   * single node for the undo step, and its type could be different for the needs of the
+   * brush undo and the original data access.
+   *
+   * For the brushes like Draw the ss.cache->automasking is set to nullptr at the first step
+   * of the brush, as there is an explicit check there for the brushes which support dynamic
+   * topology. Do it locally here for the Draw Face Set brush here, to mimic the behavior of
+   * the other brushes but without marking the brush as supporting dynamic topology. */
+  auto_mask::node_begin(object, nullptr, node);
+
+  calc_brush_texture_factors(ss, brush, positions, factors);
+  scale_factors(factors, strength);
+
+  return apply_face_set(face_set_id, faces, factors, cd_offset);
+}
+
+static void do_draw_face_sets_brush_bmesh(Object &object,
                                           const Brush &brush,
                                           const Span<PBVHNode *> nodes)
+{
+  SculptSession &ss = *object.sculpt;
+  const int cd_offset = face_set::ensure_face_sets_bmesh(object);
+  threading::EnumerableThreadSpecific<BMeshLocalData> all_tls;
+  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    BMeshLocalData &tls = all_tls.local();
+    for (const int i : range) {
+      Set<BMFace *, 0L> node_faces = BKE_pbvh_bmesh_node_faces(nodes[i]);
+      tls.positions.reinitialize(node_faces.size());
+      tls.masks.reinitialize(node_faces.size());
+
+      generate_face_data_bmesh(*ss.bm, node_faces, tls.positions, tls.masks);
+
+      bool any_changed = false;
+      any_changed = calc_bmesh(
+          object, brush, ss.cache->bstrength, ss.cache->paint_face_set, *nodes[i], tls, cd_offset);
+      if (any_changed) {
+        undo::push_node(object, nodes[i], undo::Type::FaceSet);
+      }
+    }
+  });
+}
+
+static void do_draw_face_sets_brush_bmesh_old(Object &ob,
+                                              const Brush &brush,
+                                              const Span<PBVHNode *> nodes)
 {
   SculptSession &ss = *ob.sculpt;
   const float bstrength = ss.cache->bstrength;
