@@ -1058,6 +1058,12 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
         const std::optional<blender::StringRefNull> group = default_channel_group_for_path(
             &ptr, identifier);
 
+        AnimData *adt = BKE_animdata_from_id(ptr.owner_id);
+        if (adt && adt->action) {
+          Action *action = &adt->action->wrap();
+          deselect_keys_actions({action});
+        }
+
         /* NOTE: `index == -1` is a magic number, meaning either "operate on all
          * elements" or "not an array property". */
         const std::optional<int> array_index = (all || index < 0) ? std::nullopt :
