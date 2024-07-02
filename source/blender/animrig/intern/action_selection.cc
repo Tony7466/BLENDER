@@ -2,6 +2,7 @@
 #include "DNA_anim_types.h"
 
 #include "BLI_listbase.h"
+#include "BLI_set.hh"
 
 #include "BKE_anim_data.hh"
 #include "BKE_fcurve.hh"

@@ -20,6 +20,7 @@
 #include "DNA_sequence_types.h"
 
 #include "BLI_blenlib.h"
+#include "BLI_set.hh"
 #include "BLI_utildefines.h"
 
 #include "BKE_action.h"
