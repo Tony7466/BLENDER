@@ -31,6 +31,10 @@ static void node_eval_elem(value_elem::ElemEvalParams &params)
   using namespace value_elem;
   RotationElem rotation_elem;
   rotation_elem.euler = params.get_input_elem<VectorElem>("Euler");
+  if (rotation_elem) {
+    rotation_elem.axis = VectorElem::all();
+    rotation_elem.angle = FloatElem::all();
+  }
   params.set_output_elem("Rotation", rotation_elem);
 }
 

@@ -66,6 +66,9 @@ static void node_eval_inverse_elem(value_elem::InverseElemEvalParams &params)
   RotationElem rotation_elem;
   rotation_elem.axis = params.get_output_elem<VectorElem>("Axis");
   rotation_elem.angle = params.get_output_elem<FloatElem>("Angle");
+  if (rotation_elem) {
+    rotation_elem.euler = VectorElem::all();
+  }
   params.set_input_elem("Rotation", rotation_elem);
 }
 
