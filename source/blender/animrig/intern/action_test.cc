@@ -71,6 +71,19 @@ TEST_F(ActionLayersTest, add_layer)
   ASSERT_EQ(0, layer.strips().size()) << "Expected newly added layer to have no strip.";
 }
 
+TEST_F(ActionLayersTest, add_layer__reset_idroot)
+{
+  /* An empty Action is a valid legacy Action, and thus can have its idroot set to a non-zero
+   * value. If such an Action gets a layer, it no longer is a valid legacy Action, and thus its
+   * idtype should be reset to zero. */
+  anim->idroot = ID_CA; /* Fake that this was assigned to a camera data-block. */
+  ASSERT_NE(0, anim->idroot) << "anim->idroot should not be zero at the start of this test.";
+
+  anim->layer_add("layer name");
+
+  EXPECT_EQ(0, anim->idroot) << "anim->idroot should get reset when the Action becomes layered.";
+}
+
 TEST_F(ActionLayersTest, remove_layer)
 {
   Layer &layer0 = anim->layer_add("Test Læür nul");
@@ -128,9 +141,9 @@ TEST_F(ActionLayersTest, add_strip)
   /* Add some keys to check that also the strip data is freed correctly. */
   const KeyframeSettings settings = get_keyframe_settings(false);
   Binding &binding = anim->binding_add();
-  strip.as<KeyframeStrip>().keyframe_insert(binding, "location", 0, {1.0f, 47.0f}, settings);
+  strip.as<KeyframeStrip>().keyframe_insert(binding, {"location", 0}, {1.0f, 47.0f}, settings);
   another_strip.as<KeyframeStrip>().keyframe_insert(
-      binding, "location", 0, {1.0f, 47.0f}, settings);
+      binding, {"location", 0}, {1.0f, 47.0f}, settings);
 }
 
 TEST_F(ActionLayersTest, remove_strip)
@@ -143,9 +156,9 @@ TEST_F(ActionLayersTest, remove_strip)
   /* Add some keys to check that also the strip data is freed correctly. */
   const KeyframeSettings settings = get_keyframe_settings(false);
   Binding &binding = anim->binding_add();
-  strip0.as<KeyframeStrip>().keyframe_insert(binding, "location", 0, {1.0f, 47.0f}, settings);
-  strip1.as<KeyframeStrip>().keyframe_insert(binding, "location", 0, {1.0f, 47.0f}, settings);
-  strip2.as<KeyframeStrip>().keyframe_insert(binding, "location", 0, {1.0f, 47.0f}, settings);
+  strip0.as<KeyframeStrip>().keyframe_insert(binding, {"location", 0}, {1.0f, 47.0f}, settings);
+  strip1.as<KeyframeStrip>().keyframe_insert(binding, {"location", 0}, {1.0f, 47.0f}, settings);
+  strip2.as<KeyframeStrip>().keyframe_insert(binding, {"location", 0}, {1.0f, 47.0f}, settings);
 
   EXPECT_TRUE(layer.strip_remove(strip1));
   EXPECT_EQ(2, layer.strips().size());
@@ -166,6 +179,16 @@ TEST_F(ActionLayersTest, remove_strip)
     EXPECT_FALSE(layer.strip_remove(other_strip))
         << "Removing a strip not owned by the layer should be gracefully rejected";
   }
+}
+
+TEST_F(ActionLayersTest, add_remove_strip_of_concrete_type)
+{
+  Layer &layer = anim->layer_add("Test Læür");
+  KeyframeStrip &key_strip = layer.strip_add<KeyframeStrip>();
+
+  /* key_strip is of type KeyframeStrip, but should be implicitly converted to a
+   * Strip reference. */
+  EXPECT_TRUE(layer.strip_remove(key_strip));
 }
 
 TEST_F(ActionLayersTest, add_binding)
@@ -189,6 +212,19 @@ TEST_F(ActionLayersTest, add_binding)
   }
 }
 
+TEST_F(ActionLayersTest, add_binding__reset_idroot)
+{
+  /* An empty Action is a valid legacy Action, and thus can have its idroot set
+   * to a non-zero value. If such an Action gets a binding, it no longer is a
+   * valid legacy Action, and thus its idtype should be reset to zero. */
+  anim->idroot = ID_CA; /* Fake that this was assigned to a camera data-block. */
+  ASSERT_NE(0, anim->idroot) << "anim->idroot should not be zero at the start of this test.";
+
+  anim->binding_add();
+
+  EXPECT_EQ(0, anim->idroot) << "anim->idroot should get reset when the Action becomes layered.";
+}
+
 TEST_F(ActionLayersTest, add_binding_multiple)
 {
   Binding &bind_cube = anim->binding_add();
@@ -205,6 +241,7 @@ TEST_F(ActionLayersTest, anim_assign_id)
 {
   /* Assign to the only, 'virgin' Binding, should always work. */
   Binding &binding_cube = anim->binding_add();
+  ASSERT_NE(nullptr, binding_cube.runtime);
   ASSERT_STREQ(binding_cube.name, "XXBinding");
   ASSERT_TRUE(anim->assign_id(&binding_cube, cube->id));
   EXPECT_EQ(binding_cube.handle, cube->adt->binding_handle);
@@ -212,17 +249,25 @@ TEST_F(ActionLayersTest, anim_assign_id)
   EXPECT_STREQ(binding_cube.name, cube->adt->binding_name)
       << "The binding name should be copied to the adt";
 
+  EXPECT_TRUE(binding_cube.users(*bmain).contains(&cube->id))
+      << "Expecting Cube to be registered as animated by its binding.";
+
   /* Assign another ID to the same Binding. */
   ASSERT_TRUE(anim->assign_id(&binding_cube, suzanne->id));
   EXPECT_STREQ(binding_cube.name, "OBBinding");
   EXPECT_STREQ(binding_cube.name, cube->adt->binding_name)
       << "The binding name should be copied to the adt";
 
+  EXPECT_TRUE(binding_cube.users(*bmain).contains(&cube->id))
+      << "Expecting Suzanne to be registered as animated by the Cube binding.";
+
   { /* Assign Cube to another animation+binding without unassigning first. */
     Action *another_anim = static_cast<Action *>(BKE_id_new(bmain, ID_AC, "ACOtherAnim"));
     Binding &another_binding = another_anim->binding_add();
     ASSERT_FALSE(another_anim->assign_id(&another_binding, cube->id))
         << "Assigning animation (with this function) when already assigned should fail.";
+    EXPECT_TRUE(binding_cube.users(*bmain).contains(&cube->id))
+        << "Expecting Cube to still be registered as animated by its binding.";
   }
 
   { /* Assign Cube to another binding of the same Animation, this should work. */
@@ -232,6 +277,10 @@ TEST_F(ActionLayersTest, anim_assign_id)
     ASSERT_EQ(anim->id.us, user_count_pre)
         << "Assigning to a different binding of the same animation should _not_ change the user "
            "count of that Animation";
+    EXPECT_FALSE(binding_cube.users(*bmain).contains(&cube->id))
+        << "Expecting Cube to no longer be registered as animated by the Cube binding.";
+    EXPECT_TRUE(binding_cube_2.users(*bmain).contains(&cube->id))
+        << "Expecting Cube to be registered as animated by the 'cube_2' binding.";
   }
 
   { /* Unassign the animation. */
@@ -239,6 +288,12 @@ TEST_F(ActionLayersTest, anim_assign_id)
     anim->unassign_id(cube->id);
     ASSERT_EQ(anim->id.us, user_count_pre - 1)
         << "Unassigning an animation should lower its user count";
+
+    ASSERT_EQ(2, anim->bindings().size()) << "Expecting the Action to have two Bindings";
+    EXPECT_FALSE(anim->binding(0)->users(*bmain).contains(&cube->id))
+        << "Expecting Cube to no longer be registered as animated by any binding.";
+    EXPECT_FALSE(anim->binding(1)->users(*bmain).contains(&cube->id))
+        << "Expecting Cube to no longer be registered as animated by any binding.";
   }
 
   /* Assign Cube to another 'virgin' binding. This should not cause a name
@@ -250,11 +305,15 @@ TEST_F(ActionLayersTest, anim_assign_id)
       << "The binding should be uniquely named";
   EXPECT_STREQ("OBBinding.002", cube->adt->binding_name)
       << "The binding name should be copied to the adt";
+  EXPECT_TRUE(another_binding_cube.users(*bmain).contains(&cube->id))
+      << "Expecting Cube to be registered as animated by the 'another_binding_cube' binding.";
 
   /* Create an ID of another type. This should not be assignable to this binding. */
   ID *mesh = static_cast<ID *>(BKE_id_new_nomain(ID_ME, "Mesh"));
   EXPECT_FALSE(anim->assign_id(&binding_cube, *mesh))
       << "Mesh should not be animatable by an Object binding";
+  EXPECT_FALSE(another_binding_cube.users(*bmain).contains(mesh))
+      << "Expecting Mesh to not be registered as animated by the 'binding_cube' binding.";
   BKE_id_free(nullptr, mesh);
 }
 
@@ -438,7 +497,7 @@ TEST_F(ActionLayersTest, KeyframeStrip__keyframe_insert)
 
   const KeyframeSettings settings = get_keyframe_settings(false);
   SingleKeyingResult result_loc_a = key_strip.keyframe_insert(
-      binding, "location", 0, {1.0f, 47.0f}, settings);
+      binding, {"location", 0}, {1.0f, 47.0f}, settings);
   ASSERT_EQ(SingleKeyingResult::SUCCESS, result_loc_a)
       << "Expected keyframe insertion to be successful";
 
@@ -449,7 +508,7 @@ TEST_F(ActionLayersTest, KeyframeStrip__keyframe_insert)
 
   /* Insert a second key, should insert into the same FCurve as before. */
   SingleKeyingResult result_loc_b = key_strip.keyframe_insert(
-      binding, "location", 0, {5.0f, 47.1f}, settings);
+      binding, {"location", 0}, {5.0f, 47.1f}, settings);
   EXPECT_EQ(SingleKeyingResult::SUCCESS, result_loc_b);
   ASSERT_EQ(1, channels->fcurves().size()) << "Expect insertion with the same (binding/rna "
                                               "path/array index) tuple to go into the same FCurve";
@@ -462,11 +521,53 @@ TEST_F(ActionLayersTest, KeyframeStrip__keyframe_insert)
 
   /* Insert another key for another property, should create another FCurve. */
   SingleKeyingResult result_rot = key_strip.keyframe_insert(
-      binding, "rotation_quaternion", 0, {1.0f, 0.25f}, settings);
+      binding, {"rotation_quaternion", 0}, {1.0f, 0.25f}, settings);
   EXPECT_EQ(SingleKeyingResult::SUCCESS, result_rot);
   ASSERT_EQ(2, channels->fcurves().size()) << "Expected a second FCurve to be created.";
   EXPECT_EQ(2, channels->fcurves()[0]->totvert);
   EXPECT_EQ(1, channels->fcurves()[1]->totvert);
+}
+
+TEST_F(ActionLayersTest, is_action_assignable_to)
+{
+  EXPECT_TRUE(is_action_assignable_to(nullptr, ID_OB))
+      << "nullptr Actions should be assignable to any type.";
+  EXPECT_TRUE(is_action_assignable_to(nullptr, ID_CA))
+      << "nullptr Actions should be assignable to any type.";
+
+  EXPECT_TRUE(is_action_assignable_to(anim, ID_OB))
+      << "Empty Actions should be assignable to any type.";
+  EXPECT_TRUE(is_action_assignable_to(anim, ID_CA))
+      << "Empty Actions should be assignable to any type.";
+
+  /* Make the Action a legacy one. */
+  FCurve fake_fcurve;
+  BLI_addtail(&anim->curves, &fake_fcurve);
+  ASSERT_FALSE(anim->is_empty());
+  ASSERT_TRUE(anim->is_action_legacy());
+  ASSERT_EQ(0, anim->idroot);
+
+  EXPECT_TRUE(is_action_assignable_to(anim, ID_OB))
+      << "Legacy Actions with idroot=0 should be assignable to any type.";
+  EXPECT_TRUE(is_action_assignable_to(anim, ID_CA))
+      << "Legacy Actions with idroot=0 should be assignable to any type.";
+
+  /* Set the legacy idroot. */
+  anim->idroot = ID_CA;
+  EXPECT_FALSE(is_action_assignable_to(anim, ID_OB))
+      << "Legacy Actions with idroot=ID_CA should NOT be assignable to ID_OB.";
+  EXPECT_TRUE(is_action_assignable_to(anim, ID_CA))
+      << "Legacy Actions with idroot=CA should be assignable to ID_CA.";
+
+  /* Make the Action a layered one. */
+  BLI_poptail(&anim->curves);
+  anim->layer_add("layer");
+  ASSERT_EQ(0, anim->idroot) << "Adding a layer should clear the idroot.";
+
+  EXPECT_TRUE(is_action_assignable_to(anim, ID_OB))
+      << "Layered Actions should be assignable to any type.";
+  EXPECT_TRUE(is_action_assignable_to(anim, ID_CA))
+      << "Layered Actions should be assignable to any type.";
 }
 
 }  // namespace blender::animrig::tests

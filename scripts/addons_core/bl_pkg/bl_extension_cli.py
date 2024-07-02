@@ -18,12 +18,13 @@ import sys
 
 from typing import (
     Any,
-    Dict,
     List,
     Optional,
     Tuple,
     Union,
 )
+
+from .bl_extension_utils import PkgManifest_Normalized
 
 show_color = (
     False if os.environ.get("NO_COLOR") else
@@ -57,9 +58,10 @@ if show_color:
     }
 
     def colorize(text: str, color: str) -> str:
-        return (color_codes[color] + text + color_codes["normal"])
+        return color_codes[color] + text + color_codes["normal"]
 else:
     def colorize(text: str, color: str) -> str:
+        _ = color
         return text
 
 # -----------------------------------------------------------------------------
@@ -91,7 +93,7 @@ class subcmd_utils:
     ) -> bool:
         import bpy
         try:
-            bpy.ops.bl_pkg.repo_sync_all()
+            bpy.ops.extensions.repo_sync_all()
             if show_done:
                 sys.stdout.write("Done...\n\n")
         except Exception:
@@ -109,13 +111,14 @@ class subcmd_utils:
     ) -> Union[List[Tuple[int, str]], str]:
         # Takes a terse lists of package names and expands to repo index and name list,
         # returning an error string if any can't be resolved.
-        from . import repo_cache_store
+        from . import repo_cache_store_ensure
         from .bl_extension_ops import extension_repos_read
 
         repo_map = {}
         errors = []
 
         repos_all = extension_repos_read()
+        repo_cache_store = repo_cache_store_ensure()
         for (
                 repo_index,
                 pkg_manifest,
@@ -126,7 +129,12 @@ class subcmd_utils:
         ):
             # Show any exceptions created while accessing the JSON,
             repo = repos_all[repo_index]
-            repo_map[repo.module] = (repo_index, set(pkg_manifest.keys()))
+            if pkg_manifest is None:
+                errors.append("Repository \"{:s}\" has no data, sync may be needed!".format(repo.module))
+                repo_packages = set()
+            else:
+                repo_packages = set(pkg_manifest.keys())
+            repo_map[repo.module] = (repo_index, repo_packages)
 
         repos_and_packages = []
 
@@ -136,7 +144,7 @@ class subcmd_utils:
                 errors.append("Malformed package name \"{:s}\", expected \"repo_id.pkg_id\"!".format(pkg_id_full))
                 continue
             if repo_id:
-                repo_index, repo_packages = repo_map.get(repo_id, (-1, ()))
+                repo_index, _repo_packages = repo_map.get(repo_id, (-1, ()))
                 if repo_index == -1:
                     errors.append("Repository \"{:s}\" not found in [{:s}]!".format(
                         repo_id,
@@ -145,7 +153,7 @@ class subcmd_utils:
                     continue
             else:
                 repo_index = -1
-                for repo_id_iter, (repo_index_iter, repo_packages_iter) in repo_map.items():
+                for _repo_id_iter, (repo_index_iter, repo_packages_iter) in repo_map.items():
                     if pkg_id in repo_packages_iter:
                         repo_index = repo_index_iter
                         break
@@ -187,19 +195,20 @@ class subcmd_query:
 
         def list_item(
                 pkg_id: str,
-                item_remote: Optional[Dict[str, Any]],
-                item_local: Optional[Dict[str, Any]],
+                item_local: Optional[PkgManifest_Normalized],
+                item_remote: Optional[PkgManifest_Normalized],
+                has_remote: bool,
         ) -> None:
             # Both can't be None.
             assert item_remote is not None or item_local is not None
 
             if item_remote is not None:
-                item_version = item_remote["version"]
+                item_version = item_remote.version
                 if item_local is None:
                     item_local_version = None
                     is_outdated = False
                 else:
-                    item_local_version = item_local["version"]
+                    item_local_version = item_local.version
                     is_outdated = item_local_version != item_version
 
                 if item_local is not None:
@@ -214,17 +223,21 @@ class subcmd_query:
                     status_info = ""
                 item = item_remote
             else:
-                # All local-only packages are installed.
-                status_info = " [{:s}]".format(colorize("installed", "green"))
-                assert isinstance(item_local, dict)
+                # All local-only packages are installed,
+                # if they're in a repository with a remote but no remote info - they're "orphan".
+                status_info = " [{:s}]".format(
+                    colorize("orphan", "yellow") if has_remote else
+                    colorize("installed", "green")
+                )
+                assert isinstance(item_local, PkgManifest_Normalized)
                 item = item_local
 
             print(
                 "  {:s}{:s}: \"{:s}\", {:s}".format(
                     colorize(pkg_id, "bold"),
                     status_info,
-                    item["name"],
-                    colorize(item.get("tagline", "<no tagline>"), "faint"),
+                    item.name,
+                    colorize(item.tagline or "<no tagline>", "faint"),
                 ))
 
         if sync:
@@ -234,31 +247,29 @@ class subcmd_query:
         # NOTE: exactly how this data is extracted is rather arbitrary.
         # This uses the same code paths as drawing code.
         from .bl_extension_ops import extension_repos_read
-        from . import repo_cache_store
+        from . import repo_cache_store_ensure
 
         repos_all = extension_repos_read()
+        repo_cache_store = repo_cache_store_ensure()
 
         for repo_index, (
-                pkg_manifest_remote,
                 pkg_manifest_local,
+                pkg_manifest_remote,
         ) in enumerate(zip(
-            repo_cache_store.pkg_manifest_from_remote_ensure(error_fn=print),
             repo_cache_store.pkg_manifest_from_local_ensure(error_fn=print),
+            repo_cache_store.pkg_manifest_from_remote_ensure(error_fn=print),
+            strict=True,
         )):
             # Show any exceptions created while accessing the JSON,
             repo = repos_all[repo_index]
 
             print("Repository: \"{:s}\" (id={:s})".format(repo.name, repo.module))
-            if pkg_manifest_remote is not None:
-                for pkg_id, item_remote in pkg_manifest_remote.items():
-                    if pkg_manifest_local is not None:
-                        item_local = pkg_manifest_local.get(pkg_id)
-                    else:
-                        item_local = None
-                    list_item(pkg_id, item_remote, item_local)
-            else:
-                for pkg_id, item_local in pkg_manifest_local.items():
-                    list_item(pkg_id, None, item_local)
+            has_remote = repo.remote_url and (pkg_manifest_remote is not None)
+            pkg_id_set = set((pkg_manifest_local or {}).keys()) | set((pkg_manifest_remote or {}).keys())
+            for pkg_id in sorted(pkg_id_set):
+                item_local = pkg_manifest_local.get(pkg_id) if (pkg_manifest_local is not None) else None
+                item_remote = pkg_manifest_remote.get(pkg_id) if (pkg_manifest_remote is not None) else None
+                list_item(pkg_id, item_local, item_remote, has_remote)
 
         return True
 
@@ -282,7 +293,7 @@ class subcmd_pkg:
 
         import bpy
         try:
-            bpy.ops.bl_pkg.pkg_upgrade_all()
+            bpy.ops.extensions.package_upgrade_all()
         except RuntimeError:
             return False  # The error will have been printed.
         return True
@@ -308,13 +319,13 @@ class subcmd_pkg:
 
         import bpy
         for repo_index, pkg_id in repos_and_packages:
-            bpy.ops.bl_pkg.pkg_mark_set(
+            bpy.ops.extensions.package_mark_set(
                 repo_index=repo_index,
                 pkg_id=pkg_id,
             )
 
         try:
-            bpy.ops.bl_pkg.pkg_install_marked(enable_on_install=enable_on_install)
+            bpy.ops.extensions.package_install_marked(enable_on_install=enable_on_install)
         except RuntimeError:
             return False  # The error will have been printed.
 
@@ -339,10 +350,10 @@ class subcmd_pkg:
 
         import bpy
         for repo_index, pkg_id in repos_and_packages:
-            bpy.ops.bl_pkg.pkg_mark_set(repo_index=repo_index, pkg_id=pkg_id)
+            bpy.ops.extensions.package_mark_set(repo_index=repo_index, pkg_id=pkg_id)
 
         try:
-            bpy.ops.bl_pkg.pkg_uninstall_marked()
+            bpy.ops.extensions.package_uninstall_marked()
         except RuntimeError:
             return False  # The error will have been printed.
 
@@ -365,7 +376,7 @@ class subcmd_pkg:
         filepath = os.path.abspath(filepath)
 
         try:
-            bpy.ops.bl_pkg.pkg_install_files(
+            bpy.ops.extensions.package_install_files(
                 filepath=filepath,
                 repo=repo_id,
                 enable_on_install=enable_on_install,
@@ -408,7 +419,7 @@ class subcmd_repo:
     def add(
             *,
             name: str,
-            id: str,
+            repo_id: str,
             directory: str,
             url: str,
             cache: bool,
@@ -424,7 +435,7 @@ class subcmd_repo:
 
         repo = extension_repos.new(
             name=name,
-            module=id,
+            module=repo_id,
             custom_directory=directory,
             remote_url=url,
         )
@@ -438,21 +449,21 @@ class subcmd_repo:
     @staticmethod
     def remove(
             *,
-            id: str,
+            repo_id: str,
             no_prefs: bool,
     ) -> bool:
         from bpy import context
         extension_repos = context.preferences.extensions.repos
         extension_repos_module_map = {repo.module: repo for repo in extension_repos}
-        repo = extension_repos_module_map.get(id)
+        repo = extension_repos_module_map.get(repo_id)
         if repo is None:
             sys.stderr.write("Repository: \"{:s}\" not found in [{:s}]\n".format(
-                id,
+                repo_id,
                 ", ".join(["\"{:s}\"".format(x) for x in sorted(extension_repos_module_map.keys())])
             ))
             return False
         extension_repos.remove(repo)
-        print("Removed repo \"{:s}\"".format(id))
+        print("Removed repo \"{:s}\"".format(repo_id))
 
         if not no_prefs:
             blender_preferences_write()
@@ -547,7 +558,7 @@ def generic_arg_repo_id(subparse: argparse.ArgumentParser) -> None:
 
 def generic_arg_package_repo_id_positional(subparse: argparse.ArgumentParser) -> None:
     subparse.add_argument(
-        dest="id",
+        dest="repo_id",
         metavar="ID",
         type=str,
         help=(
@@ -639,7 +650,7 @@ def cli_extension_args_install_file(subparsers: "argparse._SubParsersAction[argp
         "install-file",
         help="Install package from file.",
         description=(
-            "Install a package file into a local repository."
+            "Install a package file into a user repository."
         ),
         formatter_class=argparse.RawTextHelpFormatter,
     )
@@ -771,7 +782,7 @@ def cli_extension_args_repo_add(subparsers: "argparse._SubParsersAction[argparse
 
     subparse.set_defaults(
         func=lambda args: subcmd_repo.add(
-            id=args.id,
+            repo_id=args.repo_id,
             name=args.name,
             directory=args.directory,
             url=args.url,
@@ -797,7 +808,7 @@ def cli_extension_args_repo_remove(subparsers: "argparse._SubParsersAction[argpa
 
     subparse.set_defaults(
         func=lambda args: subcmd_repo.remove(
-            id=args.id,
+            repo_id=args.repo_id,
             no_prefs=args.no_prefs,
         ),
     )

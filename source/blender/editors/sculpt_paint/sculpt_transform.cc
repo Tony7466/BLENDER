@@ -138,16 +138,19 @@ static std::array<float4x4, 8> transform_matrices_init(
   return mats;
 }
 
+static constexpr float transform_mirror_max_distance_eps = 0.00002f;
+
 static void transform_node(Object &ob,
                            const std::array<float4x4, 8> &transform_mats,
                            PBVHNode *node)
 {
   SculptSession &ss = *ob.sculpt;
 
-  SculptOrigVertData orig_data;
-  SCULPT_orig_vert_data_init(orig_data, ob, *node, undo::Type::Position);
+  SculptOrigVertData orig_data = SCULPT_orig_vert_data_init(ob, *node, undo::Type::Position);
 
   PBVHVertexIter vd;
+
+  const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(ob);
 
   undo::push_node(ob, node, undo::Type::Position);
   BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
@@ -172,10 +175,21 @@ static void transform_node(Object &ob,
     sub_v3_v3v3(disp, transformed_co, start_co);
     mul_v3_fl(disp, 1.0f - fade);
     add_v3_v3v3(vd.co, start_co, disp);
+
+    /* Keep vertices on the mirror axis. */
+    if ((symm & PAINT_SYMM_X) && (fabs(start_co[0]) < transform_mirror_max_distance_eps)) {
+      vd.co[0] = 0.0f;
+    }
+    if ((symm & PAINT_SYMM_Y) && (fabs(start_co[1]) < transform_mirror_max_distance_eps)) {
+      vd.co[1] = 0.0f;
+    }
+    if ((symm & PAINT_SYMM_Z) && (fabs(start_co[2]) < transform_mirror_max_distance_eps)) {
+      vd.co[2] = 0.0f;
+    }
   }
   BKE_pbvh_vertex_iter_end;
 
-  BKE_pbvh_node_mark_update(node);
+  BKE_pbvh_node_mark_positions_update(node);
 }
 
 static void sculpt_transform_all_vertices(Object &ob)
@@ -205,8 +219,7 @@ static void elastic_transform_node(Object &ob,
 
   const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss.pbvh, *node).co;
 
-  SculptOrigVertData orig_data;
-  SCULPT_orig_vert_data_init(orig_data, ob, *node, undo::Type::Position);
+  SculptOrigVertData orig_data = SCULPT_orig_vert_data_init(ob, *node, undo::Type::Position);
 
   KelvinletParams params;
   /* TODO(pablodp606): These parameters can be exposed if needed as transform strength and volume
@@ -238,7 +251,7 @@ static void elastic_transform_node(Object &ob,
   }
   BKE_pbvh_vertex_iter_end;
 
-  BKE_pbvh_node_mark_update(node);
+  BKE_pbvh_node_mark_positions_update(node);
 }
 
 static void transform_radius_elastic(const Sculpt &sd, Object &ob, const float transform_radius)
@@ -321,7 +334,7 @@ void update_modal_transform(bContext *C, Object &ob)
     SCULPT_flush_stroke_deform(sd, ob, true);
   }
 
-  SCULPT_flush_update_step(C, SCULPT_UPDATE_COORDS);
+  flush_update_step(C, UpdateType::Position);
 }
 
 void end_transform(bContext *C, Object &ob)
@@ -330,7 +343,8 @@ void end_transform(bContext *C, Object &ob)
   if (ss.filter_cache) {
     filter::cache_free(ss);
   }
-  SCULPT_flush_update_done(C, ob, SCULPT_UPDATE_COORDS);
+  undo::push_end(ob);
+  flush_update_done(C, ob, UpdateType::Position);
 }
 
 enum class PivotPositionMode {
@@ -369,6 +383,15 @@ static EnumPropertyItem prop_sculpt_pivot_position_types[] = {
      "Sets the pivot position to the surface under the cursor"},
     {0, nullptr, 0, nullptr, nullptr},
 };
+
+static bool set_pivot_depends_on_cursor(bContext & /*C*/, wmOperatorType & /*ot*/, PointerRNA *ptr)
+{
+  if (!ptr) {
+    return true;
+  }
+  const PivotPositionMode mode = PivotPositionMode(RNA_enum_get(ptr, "mode"));
+  return mode == PivotPositionMode::CursorSurface;
+}
 
 static int set_pivot_position_exec(bContext *C, wmOperator *op)
 {
@@ -474,6 +497,17 @@ static int set_pivot_position_invoke(bContext *C, wmOperator *op, const wmEvent 
   return set_pivot_position_exec(C, op);
 }
 
+static bool set_pivot_position_poll_property(const bContext * /*C*/,
+                                             wmOperator *op,
+                                             const PropertyRNA *prop)
+{
+  if (STRPREFIX(RNA_property_identifier(prop), "mouse_")) {
+    const PivotPositionMode mode = PivotPositionMode(RNA_enum_get(op->ptr, "mode"));
+    return mode == PivotPositionMode::CursorSurface;
+  }
+  return true;
+}
+
 void SCULPT_OT_set_pivot_position(wmOperatorType *ot)
 {
   ot->name = "Set Pivot Position";
@@ -483,8 +517,10 @@ void SCULPT_OT_set_pivot_position(wmOperatorType *ot)
   ot->invoke = set_pivot_position_invoke;
   ot->exec = set_pivot_position_exec;
   ot->poll = SCULPT_mode_poll;
+  ot->depends_on_cursor = set_pivot_depends_on_cursor;
+  ot->poll_property = set_pivot_position_poll_property;
 
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_DEPENDS_ON_CURSOR;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
   RNA_def_enum(ot->srna,
                "mode",
                prop_sculpt_pivot_position_types,

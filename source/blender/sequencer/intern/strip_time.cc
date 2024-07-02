@@ -62,10 +62,11 @@ float SEQ_give_frame_index(const Scene *scene, Sequence *seq, float timeline_fra
   float frame_index;
   float sta = SEQ_time_start_frame_get(seq);
   float end = SEQ_time_content_end_frame_get(scene, seq) - 1;
-  const float frame_index_max = seq->len - 1;
+  float frame_index_max = seq->len - 1;
 
   if (seq->type & SEQ_TYPE_EFFECT) {
     end = SEQ_time_right_handle_frame_get(scene, seq);
+    frame_index_max = end - sta;
   }
 
   if (end < sta) {
@@ -360,7 +361,7 @@ void SEQ_timeline_init_boundbox(const Scene *scene, rctf *rect)
 {
   rect->xmin = scene->r.sfra;
   rect->xmax = scene->r.efra + 1;
-  rect->ymin = 0.0f;
+  rect->ymin = 1.0f; /* The first strip is drawn at y == 1.0f */
   rect->ymax = 8.0f;
 }
 
@@ -377,8 +378,9 @@ void SEQ_timeline_expand_boundbox(const Scene *scene, const ListBase *seqbase, r
     if (rect->xmax < SEQ_time_right_handle_frame_get(scene, seq) + 1) {
       rect->xmax = SEQ_time_right_handle_frame_get(scene, seq) + 1;
     }
-    if (rect->ymax < seq->machine) {
-      rect->ymax = seq->machine;
+    if (rect->ymax < seq->machine + 1.0f) {
+      /* We do +1 here to account for the channel thickness. Channel n has range of <n, n+1>. */
+      rect->ymax = seq->machine + 1.0f;
     }
   }
 }

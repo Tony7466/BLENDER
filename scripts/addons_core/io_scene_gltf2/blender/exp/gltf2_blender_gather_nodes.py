@@ -405,8 +405,14 @@ def __gather_name(blender_object, export_settings):
 
 def __gather_trans_rot_scale(vnode, export_settings):
     if vnode.parent_uuid is None:
-        # No parent, so matrix is world matrix
-        trans, rot, sca = vnode.matrix_world.decompose()
+        # No parent, so matrix is world matrix, except if we export a collection
+        if export_settings['gltf_collection'] and export_settings['gltf_at_collection_center']:
+            # If collection, we need to take into account the collection offset
+            trans, rot, sca = vnode.matrix_world.decompose()
+            trans -= export_settings['gltf_collection_center']
+        else:
+            # No parent, so matrix is world matrix
+            trans, rot, sca = vnode.matrix_world.decompose()
     else:
         # calculate local matrix
         if export_settings['vtree'].nodes[vnode.parent_uuid].skin is None:
@@ -470,6 +476,12 @@ def gather_skin(vnode, export_settings):
         return None
 
     blender_object = export_settings['vtree'].nodes[vnode].blender_object
+
+    # Lattice can have armature modifiers & vertex groups, but we don't want to export them
+    # Avoid crash getting mesh data from lattices
+    if blender_object and blender_object.type == 'LATTICE':
+        return None
+
     modifiers = {m.type: m for m in blender_object.modifiers} if blender_object else {}
     if "ARMATURE" not in modifiers or modifiers["ARMATURE"].object is None:
         return None

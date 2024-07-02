@@ -32,6 +32,7 @@
 
 #include "BLI_fileops.h"
 #include "BLI_listbase.h"
+#include "BLI_map.hh"
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_threads.h"
@@ -129,6 +130,12 @@
 /* here we store all renders */
 static struct {
   std::forward_list<Render *> render_list;
+  /* Special renders that can be used for interactive compositing, each scene has its own render,
+   * keyed with the scene name returned from scene_render_name_get and matches the same name in
+   * render_list. Those renders are separate from standard renders because the GPU context can't be
+   * bound for compositing and rendering at the same time, so those renders are essentially used to
+   * get a persistent dedicated GPU context to interactive compositor execution. */
+  blender::Map<std::string, Render *> interactive_compositor_renders;
 } RenderGlobal;
 
 /** \} */
@@ -553,6 +560,19 @@ Render *RE_NewSceneRender(const Scene *scene)
   return RE_NewRender(render_name);
 }
 
+Render *RE_NewInteractiveCompositorRender(const Scene *scene)
+{
+  char render_name[MAX_SCENE_RENDER_NAME];
+  scene_render_name_get(scene, sizeof(render_name), render_name);
+
+  return RenderGlobal.interactive_compositor_renders.lookup_or_add_cb(render_name, [&]() {
+    Render *render = MEM_new<Render>("New Interactive Compositor Render");
+    STRNCPY(render->name, render_name);
+    RE_InitRenderCB(render);
+    return render;
+  });
+}
+
 void RE_InitRenderCB(Render *re)
 {
   /* set default empty callbacks */
@@ -591,6 +611,11 @@ void RE_FreeAllRender()
   while (!RenderGlobal.render_list.empty()) {
     RE_FreeRender(static_cast<Render *>(RenderGlobal.render_list.front()));
   }
+
+  for (Render *render : RenderGlobal.interactive_compositor_renders.values()) {
+    RE_FreeRender(render);
+  }
+  RenderGlobal.interactive_compositor_renders.clear();
 
 #ifdef WITH_FREESTYLE
   /* finalize Freestyle */
@@ -702,6 +727,16 @@ void RE_FreeUnusedGPUResources()
       re_gpu_texture_caches_free(re);
       RE_blender_gpu_context_free(re);
       RE_system_gpu_context_free(re);
+
+      /* We also free the resources from the interactive compositor render of the scene if one
+       * exists. */
+      Render *interactive_compositor_render =
+          RenderGlobal.interactive_compositor_renders.lookup_default(re->name, nullptr);
+      if (interactive_compositor_render) {
+        re_gpu_texture_caches_free(interactive_compositor_render);
+        RE_blender_gpu_context_free(interactive_compositor_render);
+        RE_system_gpu_context_free(interactive_compositor_render);
+      }
     }
   }
 }
@@ -1160,6 +1195,14 @@ static bool compositor_needs_render(Scene *sce, const bool this_scene)
         return true;
       }
     }
+
+    if (node->type == CMP_NODE_CRYPTOMATTE &&
+        node->custom1 == CMP_NODE_CRYPTOMATTE_SOURCE_RENDER && (node->flag & NODE_MUTED) == 0)
+    {
+      if (this_scene == 0 || node->id == nullptr || node->id == &sce->id) {
+        return true;
+      }
+    }
   }
   return false;
 }
@@ -1204,6 +1247,25 @@ static void do_render_compositor_scenes(Render *re)
   GSet *scenes_rendered = BLI_gset_ptr_new(__func__);
   for (bNode *node : re->scene->nodetree->all_nodes()) {
     if (node->type == CMP_NODE_R_LAYERS && (node->flag & NODE_MUTED) == 0) {
+      if (node->id && node->id != (ID *)re->scene) {
+        Scene *scene = (Scene *)node->id;
+        if (!BLI_gset_haskey(scenes_rendered, scene) &&
+            render_scene_has_layers_to_render(scene, nullptr))
+        {
+          do_render_compositor_scene(re, scene, cfra);
+          BLI_gset_add(scenes_rendered, scene);
+          node->typeinfo->updatefunc(restore_scene->nodetree, node);
+
+          if (scene != re->scene) {
+            changed_scene = true;
+          }
+        }
+      }
+    }
+
+    if (node->type == CMP_NODE_CRYPTOMATTE &&
+        node->custom1 == CMP_NODE_CRYPTOMATTE_SOURCE_RENDER && (node->flag & NODE_MUTED) == 0)
+    {
       if (node->id && node->id != (ID *)re->scene) {
         Scene *scene = (Scene *)node->id;
         if (!BLI_gset_haskey(scenes_rendered, scene) &&
@@ -2039,7 +2101,7 @@ void RE_RenderFreestyleStrokes(Render *re, Main *bmain, Scene *scene, const bool
       char scene_engine[32];
       STRNCPY(scene_engine, re->r.engine);
       if (use_eevee_for_freestyle_render(re)) {
-        change_renderdata_engine(re, RE_engine_id_BLENDER_EEVEE);
+        change_renderdata_engine(re, RE_engine_id_BLENDER_EEVEE_NEXT);
       }
 
       RE_engine_render(re, false);

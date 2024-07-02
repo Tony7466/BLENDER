@@ -1490,8 +1490,9 @@ static void rna_def_gpencil_options(BlenderRNA *brna)
   /* Jitter factor for new strokes */
   prop = RNA_def_property(srna, "pen_jitter", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, nullptr, "draw_jitter");
-  RNA_def_property_range(prop, 0.0f, 1.0f);
-  RNA_def_property_ui_text(prop, "Jitter", "Jitter factor for new strokes");
+  RNA_def_property_range(prop, 0.0f, 100.0f);
+  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.001, 3);
+  RNA_def_property_ui_text(prop, "Jitter", "Jitter factor of brush radius for new strokes");
   RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_BRUSH);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, nullptr);
@@ -1574,6 +1575,17 @@ static void rna_def_gpencil_options(BlenderRNA *brna)
   RNA_def_property_range(prop, 0, 100.0);
   RNA_def_property_ui_range(prop, 0, 100.0, 1.0f, 3);
   RNA_def_property_ui_text(prop, "Simplify", "Factor of Simplify using adaptive algorithm");
+  RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, ParameterFlag(0));
+
+  prop = RNA_def_property(srna, "simplify_pixel_threshold", PROP_FLOAT, PROP_PIXEL);
+  RNA_def_property_float_sdna(prop, nullptr, "simplify_px");
+  RNA_def_property_range(prop, 0, 10.0);
+  RNA_def_property_ui_range(prop, 0, 10.0, 1.0f, 1);
+  RNA_def_property_ui_text(
+      prop,
+      "Simplify",
+      "Threashold in screen space used for the simplify algorithm. Points within this threashold "
+      "are treated as if they were in a straight line");
   RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, ParameterFlag(0));
 
   /* Curves for pressure */
@@ -2248,6 +2260,7 @@ static void rna_def_curves_sculpt_options(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, density_mode_items);
   RNA_def_property_ui_text(
       prop, "Density Mode", "Determines whether the brush adds or removes curves");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_OPERATOR_DEFAULT);
 
   prop = RNA_def_property(srna, "curve_parameter_falloff", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "CurveMapping");

@@ -226,6 +226,7 @@ typedef struct bNodeSocket {
   bNode &owner_node();
   const bNode &owner_node() const;
   /** Node tree this socket belongs to. */
+  bNodeTree &owner_tree();
   const bNodeTree &owner_tree() const;
 
   /** Links which are incident to this socket. */
@@ -483,6 +484,7 @@ typedef struct bNode {
   blender::MutableSpan<bNodePanelState> panel_states();
   /** Node tree this node belongs to. */
   const bNodeTree &owner_tree() const;
+  bNodeTree &owner_tree();
 #endif
 } bNode;
 
@@ -1300,6 +1302,13 @@ typedef struct NodeTexEnvironment {
   char _pad[4];
 } NodeTexEnvironment;
 
+typedef struct NodeTexGabor {
+  NodeTexBase base;
+  /* Stores NodeGaborType. */
+  char type;
+  char _pad[7];
+} NodeTexGabor;
+
 typedef struct NodeTexGradient {
   NodeTexBase base;
   int gradient_type;
@@ -1791,11 +1800,28 @@ typedef struct NodeGeometryMeshToPoints {
   uint8_t mode;
 } NodeGeometryMeshToPoints;
 
-typedef struct NodeGeometryAttributeCapture {
+typedef struct NodeGeometryAttributeCaptureItem {
   /** #eCustomDataType. */
   int8_t data_type;
+  char _pad[3];
+  /**
+   * If the identifier is zero, the item supports forward-compatibility with older versions of
+   * Blender when it was only possible to capture a single attribute at a time.
+   */
+  int identifier;
+  char *name;
+} NodeGeometryAttributeCaptureItem;
+
+typedef struct NodeGeometryAttributeCapture {
+  /** #eCustomDataType. */
+  int8_t data_type_legacy;
   /** #AttrDomain. */
   int8_t domain;
+  char _pad[2];
+  int next_identifier;
+  NodeGeometryAttributeCaptureItem *capture_items;
+  int capture_items_num;
+  int active_index;
 } NodeGeometryAttributeCapture;
 
 typedef struct NodeGeometryStoreNamedAttribute {
@@ -2193,6 +2219,11 @@ enum {
   SHD_PROJ_EQUIRECTANGULAR = 0,
   SHD_PROJ_MIRROR_BALL = 1,
 };
+
+typedef enum NodeGaborType {
+  SHD_GABOR_TYPE_2D = 0,
+  SHD_GABOR_TYPE_3D = 1,
+} NodeGaborType;
 
 enum {
   SHD_IMAGE_EXTENSION_REPEAT = 0,

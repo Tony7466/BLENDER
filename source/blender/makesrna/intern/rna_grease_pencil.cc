@@ -6,6 +6,8 @@
  * \ingroup RNA
  */
 
+#include "BKE_global.hh"
+
 #include "BLI_string.h"
 
 #include "DNA_grease_pencil_types.h"
@@ -101,7 +103,7 @@ static void rna_grease_pencil_layer_mask_name_set(PointerRNA *ptr, const char *v
 
   const std::string oldname(mask->layer_name);
   if (bke::greasepencil::TreeNode *node = grease_pencil->find_node_by_name(oldname)) {
-    grease_pencil->rename_node(*node, value);
+    grease_pencil->rename_node(*G_MAIN, *node, value);
   }
 }
 
@@ -194,7 +196,7 @@ static void rna_GreasePencilLayer_name_set(PointerRNA *ptr, const char *value)
   GreasePencil *grease_pencil = rna_grease_pencil(ptr);
   GreasePencilLayer *layer = static_cast<GreasePencilLayer *>(ptr->data);
 
-  grease_pencil->rename_node(layer->wrap().as_node(), value);
+  grease_pencil->rename_node(*G_MAIN, layer->wrap().as_node(), value);
 }
 
 static int rna_GreasePencilLayer_pass_index_get(PointerRNA *ptr)
@@ -516,7 +518,7 @@ static void rna_GreasePencilLayerGroup_name_set(PointerRNA *ptr, const char *val
   GreasePencil *grease_pencil = rna_grease_pencil(ptr);
   GreasePencilLayerTreeGroup *group = static_cast<GreasePencilLayerTreeGroup *>(ptr->data);
 
-  grease_pencil->rename_node(group->wrap().as_node(), value);
+  grease_pencil->rename_node(*G_MAIN, group->wrap().as_node(), value);
 }
 
 static void rna_iterator_grease_pencil_layer_groups_begin(CollectionPropertyIterator *iter,
@@ -761,6 +763,13 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Blend Mode", "Blend mode");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 
+  prop = RNA_def_property(srna, "use_locked_material", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, "GreasePencilLayerTreeNode", "flag", GP_LAYER_TREE_NODE_USE_LOCKED_MATERIAL);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_ui_text(
+      prop, "Use Locked Materials Editing", "Allow editing locked materials in the layer");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, nullptr);
   /* Local transformation matrix. */
   prop = RNA_def_property(srna, "matrix_local", PROP_FLOAT, PROP_MATRIX);
   RNA_def_property_multi_array(prop, 2, rna_matrix_dimsize_4x4);
