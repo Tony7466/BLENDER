@@ -11,6 +11,15 @@
 
 namespace blender::nodes::inverse_eval {
 
+/**
+ * Is passed to inverse node evaluation functions to figure out how the inputs have to change
+ * exactly to get a specific output value. What is special here is that this gives access to
+ * (logged) node inputs and node output values, instead of just either inputs or outputs.
+ *
+ * This is required because sometimes certain inputs are fixed and need to be known to be able to
+ * figure out how another input changes. A typical example of this is the math node, where the
+ * second input is fixed and only the first input changes.
+ */
 class InverseEvalParams {
  private:
   const Map<const bNodeSocket *, bke::SocketValueVariant> &socket_values_;

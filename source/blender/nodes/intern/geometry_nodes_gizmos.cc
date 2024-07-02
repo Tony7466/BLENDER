@@ -88,9 +88,6 @@ static TreeGizmoPropagation build_tree_gizmo_propagation(bNodeTree &tree)
         continue;
       }
       const TreeGizmoPropagation &group_gizmo_propagation = *group.runtime->gizmo_propagation;
-      if (group_gizmo_propagation.gizmo_inputs_by_group_inputs.size() > 0) {
-        gizmo_propagation.nodes_containing_gizmos.append(node);
-      }
       for (const ie::GroupInputElem &group_input_elem :
            group_gizmo_propagation.gizmo_inputs_by_group_inputs.keys())
       {

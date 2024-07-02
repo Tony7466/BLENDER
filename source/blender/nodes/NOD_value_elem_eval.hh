@@ -10,6 +10,10 @@
 
 namespace blender::nodes::value_elem {
 
+/**
+ * Is passed to the node evaluation function to figure which outputs change when parts of the
+ * inputs change.
+ */
 class ElemEvalParams {
  private:
   const Map<const bNodeSocket *, ElemVariant> &elem_by_socket_;
@@ -38,6 +42,10 @@ class ElemEvalParams {
   }
 };
 
+/**
+ * Same as above but for inverse evaluation, i.e. to figure out which inputs need to change when
+ * specific parts of the output change.
+ */
 class InverseElemEvalParams {
  private:
   const Map<const bNodeSocket *, ElemVariant> &elem_by_socket_;
