@@ -1251,12 +1251,10 @@ class NodeTreeMainUpdater {
     if (node.typeinfo->nclass == NODE_CLASS_OUTPUT) {
       return true;
     }
-    if (ELEM(node.type,
-             NODE_GROUP_OUTPUT,
-             GEO_NODE_GIZMO_LINEAR,
-             GEO_NODE_GIZMO_DIAL,
-             GEO_NODE_GIZMO_TRANSFORM))
-    {
+    if (node.type == NODE_GROUP_OUTPUT) {
+      return true;
+    }
+    if (nodes::gizmos::is_builtin_gizmo_node(node)) {
       return true;
     }
     /* Assume node groups without output sockets are outputs. */

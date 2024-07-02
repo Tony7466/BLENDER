@@ -67,11 +67,11 @@ std::optional<SocketValueVariant> convert_socket_value(const bNodeSocket &old_so
   return std::nullopt;
 }
 
-namespace traverse_elem {
+namespace eval_elem {
 
-static void evaluate_node(const NodeInContext &ctx_node,
-                          Vector<const bNodeSocket *> &r_modified_inputs,
-                          Map<SocketInContext, ElemVariant> &elem_by_socket)
+static void evaluate_node_upstream(const NodeInContext &ctx_node,
+                                   Vector<const bNodeSocket *> &r_modified_inputs,
+                                   Map<SocketInContext, ElemVariant> &elem_by_socket)
 {
   const bNode &node = *ctx_node.node;
   const bke::bNodeType &ntype = *node.typeinfo;
@@ -124,7 +124,74 @@ static void get_inputs_to_propagate(const NodeInContext &ctx_node,
   }
 }
 
-}  // namespace traverse_elem
+static void evaluate_node_downstream_filtered(
+    const NodeInContext &ctx_node,
+    const Map<SocketInContext, ElemVariant> &old_elem_by_socket,
+    Map<SocketInContext, ElemVariant> &new_elem_by_socket,
+    Vector<const bNodeSocket *> &r_outputs_to_propagate)
+{
+  const bNode &node = *ctx_node.node;
+  const bke::bNodeType &ntype = *node.typeinfo;
+  if (!ntype.eval_elem) {
+    return;
+  }
+  Vector<SocketElem> output_elems;
+  Map<const bNodeSocket *, ElemVariant> elem_by_local_socket;
+  for (const bNodeSocket *input_socket : node.input_sockets()) {
+    if (const ElemVariant *elem = new_elem_by_socket.lookup_ptr({ctx_node.context, input_socket}))
+    {
+      elem_by_local_socket.add(input_socket, *elem);
+    }
+  }
+  ElemEvalParams params{node, elem_by_local_socket, output_elems};
+  ntype.eval_elem(params);
+  for (const SocketElem &output_elem : output_elems) {
+    if (output_elem.elem) {
+      if (const ElemVariant *old_elem = old_elem_by_socket.lookup_ptr(
+              {ctx_node.context, output_elem.socket}))
+      {
+        ElemVariant new_elem = *old_elem;
+        new_elem.intersect(output_elem.elem);
+        new_elem_by_socket.add({ctx_node.context, output_elem.socket}, new_elem);
+        if (new_elem) {
+          r_outputs_to_propagate.append(output_elem.socket);
+        }
+      }
+    }
+  }
+}
+
+static bool propagate_value_filtered(const SocketInContext &ctx_from,
+                                     const SocketInContext &ctx_to,
+                                     const Map<SocketInContext, ElemVariant> &old_elem_by_socket,
+                                     Map<SocketInContext, ElemVariant> &new_elem_by_socket)
+{
+  const ElemVariant *from_elem = new_elem_by_socket.lookup_ptr(ctx_from);
+  if (!from_elem) {
+    return false;
+  }
+  const ElemVariant *old_ctx_to = old_elem_by_socket.lookup_ptr(ctx_to);
+  if (!old_ctx_to) {
+    return false;
+  }
+  const std::optional<ElemVariant> converted_elem = convert_socket_elem(
+      *ctx_from.socket, *ctx_to.socket, *from_elem);
+  if (!converted_elem) {
+    return false;
+  }
+  if (ctx_to.socket->is_multi_input()) {
+    ElemVariant added_elem = *converted_elem;
+    added_elem.intersect(*old_ctx_to);
+    new_elem_by_socket.lookup_or_add(ctx_to, added_elem).merge(added_elem);
+    return true;
+  }
+  ElemVariant to_elem = *old_ctx_to;
+  to_elem.intersect(*converted_elem);
+  new_elem_by_socket.add(ctx_to, to_elem);
+  return true;
+}
+
+}  // namespace eval_elem
 
 LocalInverseEvalTargets find_local_inverse_eval_targets(const bNodeTree &tree,
                                                         const SocketElem &initial_socket_elem)
@@ -142,15 +209,15 @@ LocalInverseEvalTargets find_local_inverse_eval_targets(const bNodeTree &tree,
       scope,
       /* Evaluate node. */
       [&](const NodeInContext &ctx_node, Vector<const bNodeSocket *> &r_modified_inputs) {
-        traverse_elem::evaluate_node(ctx_node, r_modified_inputs, elem_by_socket);
+        eval_elem::evaluate_node_upstream(ctx_node, r_modified_inputs, elem_by_socket);
       },
       /* Propagate value. */
       [&](const SocketInContext &ctx_from, const SocketInContext &ctx_to) {
-        return traverse_elem::propagate_value(ctx_from, ctx_to, elem_by_socket);
+        return eval_elem::propagate_value(ctx_from, ctx_to, elem_by_socket);
       },
       /* Get input sockets to propagate. */
       [&](const NodeInContext &ctx_node, Vector<const bNodeSocket *> &r_sockets) {
-        traverse_elem::get_inputs_to_propagate(ctx_node, r_sockets, elem_by_socket);
+        eval_elem::get_inputs_to_propagate(ctx_node, r_sockets, elem_by_socket);
       });
 
   LocalInverseEvalTargets targets;
@@ -231,15 +298,15 @@ void foreach_element_on_inverse_eval_path(
       scope,
       /* Evaluate node. */
       [&](const NodeInContext &ctx_node, Vector<const bNodeSocket *> &r_modified_inputs) {
-        traverse_elem::evaluate_node(ctx_node, r_modified_inputs, elem_by_socket);
+        eval_elem::evaluate_node_upstream(ctx_node, r_modified_inputs, elem_by_socket);
       },
       /* Propagate value. */
       [&](const SocketInContext &ctx_from, const SocketInContext &ctx_to) {
-        return traverse_elem::propagate_value(ctx_from, ctx_to, elem_by_socket);
+        return eval_elem::propagate_value(ctx_from, ctx_to, elem_by_socket);
       },
       /* Get input sockets to propagate. */
       [&](const NodeInContext &ctx_node, Vector<const bNodeSocket *> &r_sockets) {
-        traverse_elem::get_inputs_to_propagate(ctx_node, r_sockets, elem_by_socket);
+        eval_elem::get_inputs_to_propagate(ctx_node, r_sockets, elem_by_socket);
       });
 
   Vector<SocketInContext> forward_propagate_sockets;
@@ -260,61 +327,12 @@ void foreach_element_on_inverse_eval_path(
       forward_propagate_sockets,
       scope,
       [&](const NodeInContext &ctx_node, Vector<const bNodeSocket *> &r_outputs_to_propagate) {
-        const bNode &node = *ctx_node.node;
-        const bke::bNodeType &ntype = *node.typeinfo;
-        if (!ntype.eval_elem) {
-          return;
-        }
-        Vector<SocketElem> output_elems;
-        Map<const bNodeSocket *, ElemVariant> elem_by_local_socket;
-        for (const bNodeSocket *input_socket : node.input_sockets()) {
-          if (const ElemVariant *elem = finalized_elem_by_socket.lookup_ptr(
-                  {ctx_node.context, input_socket}))
-          {
-            elem_by_local_socket.add(input_socket, *elem);
-          }
-        }
-        ElemEvalParams params{node, elem_by_local_socket, output_elems};
-        ntype.eval_elem(params);
-        for (const SocketElem &output_elem : output_elems) {
-          if (output_elem.elem) {
-            if (const ElemVariant *old_elem = elem_by_socket.lookup_ptr(
-                    {ctx_node.context, output_elem.socket}))
-            {
-              ElemVariant new_elem = *old_elem;
-              new_elem.intersect(output_elem.elem);
-              finalized_elem_by_socket.add({ctx_node.context, output_elem.socket}, new_elem);
-              if (new_elem) {
-                r_outputs_to_propagate.append(output_elem.socket);
-              }
-            }
-          }
-        }
+        eval_elem::evaluate_node_downstream_filtered(
+            ctx_node, elem_by_socket, finalized_elem_by_socket, r_outputs_to_propagate);
       },
       [&](const SocketInContext &ctx_from, const SocketInContext &ctx_to) {
-        const ElemVariant *from_elem = finalized_elem_by_socket.lookup_ptr(ctx_from);
-        if (!from_elem) {
-          return false;
-        }
-        const ElemVariant *old_ctx_to = elem_by_socket.lookup_ptr(ctx_to);
-        if (!old_ctx_to) {
-          return false;
-        }
-        const std::optional<ElemVariant> converted_elem = convert_socket_elem(
-            *ctx_from.socket, *ctx_to.socket, *from_elem);
-        if (!converted_elem) {
-          return false;
-        }
-        if (ctx_to.socket->is_multi_input()) {
-          ElemVariant added_elem = *converted_elem;
-          added_elem.intersect(*old_ctx_to);
-          finalized_elem_by_socket.lookup_or_add(ctx_to, added_elem).merge(added_elem);
-          return true;
-        }
-        ElemVariant to_elem = *old_ctx_to;
-        to_elem.intersect(*converted_elem);
-        finalized_elem_by_socket.add(ctx_to, to_elem);
-        return true;
+        return eval_elem::propagate_value_filtered(
+            ctx_from, ctx_to, elem_by_socket, finalized_elem_by_socket);
       });
 
   if (foreach_context_fn) {
