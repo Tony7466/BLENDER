@@ -557,7 +557,7 @@ bool move_physics_impl_data(const PhysicsGeometryImpl &from,
     to.tag_body_topology_changed();
   }
   if (!constraint_range.is_empty() && constraint_range == from_mutable.constraints.index_range()) {
-    to.constraints.as_mutable_span().slice(body_range).copy_from(from_mutable.constraints);
+    to.constraints.as_mutable_span().slice(constraint_range).copy_from(from_mutable.constraints);
   }
   else {
     constraint_mask.foreach_index([&](const int src_i, const int dst_i) {
