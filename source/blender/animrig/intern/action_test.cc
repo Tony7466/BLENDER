@@ -573,8 +573,8 @@ TEST_F(ActionLayersTest, is_action_assignable_to)
 TEST_F(ActionLayersTest, conversion_to_layered)
 {
   EXPECT_TRUE(anim->is_empty());
-  FCurve *legacy_fcu_0 = action_fcurve_ensure(bmain, anim, "Test", nullptr, "location", 0);
-  FCurve *legacy_fcu_1 = action_fcurve_ensure(bmain, anim, "Test", nullptr, "location", 1);
+  FCurve *legacy_fcu_0 = action_fcurve_ensure(bmain, anim, "Test", nullptr, {"location", 0});
+  FCurve *legacy_fcu_1 = action_fcurve_ensure(bmain, anim, "Test", nullptr, {"location", 1});
 
   KeyframeSettings settings;
   settings.handle = HD_AUTO;
@@ -598,7 +598,7 @@ TEST_F(ActionLayersTest, conversion_to_layered)
 
   Action *long_name_action = static_cast<Action *>(BKE_id_new(
       bmain, ID_AC, "name_for_an_action_that_is_exactly_64_chars_which_is_MAX_ID_NAME"));
-  action_fcurve_ensure(bmain, long_name_action, "Long", nullptr, "location", 0);
+  action_fcurve_ensure(bmain, long_name_action, "Long", nullptr, {"location", 0});
   converted = convert_to_layered_action(*bmain, *long_name_action);
   /* AC gets added automatically by Blender, the long name is shortened to make space for
    * "_layered". */
