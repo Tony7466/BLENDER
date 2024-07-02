@@ -69,6 +69,7 @@
 #include "SEQ_iterator.hh"
 #include "SEQ_retiming.hh"
 #include "SEQ_sequencer.hh"
+#include "SEQ_time.hh"
 
 #include "ANIM_armature_iter.hh"
 #include "ANIM_bone_collections.hh"
@@ -2649,22 +2650,28 @@ static void add_image_editor_asset_shelf(Main &bmain)
   }
 }
 
-static bool versioning_convert_strip_speed_factor(Sequence *seq, void * /*user_data*/)
+static bool versioning_convert_strip_speed_factor(Sequence *seq, void *user_data)
 {
+  Scene *scene = static_cast<Scene *>(user_data);
+
   const float speed_factor = seq->speed_factor;
   if (speed_factor == 1.0f || !SEQ_retiming_is_allowed(seq) || SEQ_retiming_keys_count(seq) > 0) {
     return true;
   }
 
-  float length_factor = speed_factor;
-  if (seq->type == SEQ_TYPE_SOUND_RAM) {
-    length_factor = 1.0f;
-  }
-
-  const int strip_len = round_fl_to_int(seq->len / length_factor);
   SEQ_retiming_data_ensure(seq);
   SeqRetimingKey *last_key = &SEQ_retiming_keys_get(seq)[1];
-  last_key->strip_frame_index = strip_len;
+
+  if (seq->type == SEQ_TYPE_SOUND_RAM) {
+    const int prev_length = seq->len - seq->startofs - seq->endofs;
+
+    last_key->strip_frame_index = seq->len / speed_factor;
+    const float left_handle = SEQ_time_left_handle_frame_get(scene, seq);
+    SEQ_time_right_handle_frame_set(scene, seq, left_handle + prev_length);
+  }
+  else {
+    last_key->strip_frame_index = seq->len / speed_factor;
+  }
 
   return true;
 }
@@ -4227,7 +4234,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       Editing *ed = SEQ_editing_get(scene);
       if (ed != nullptr) {
-        SEQ_for_each_callback(&ed->seqbase, versioning_convert_strip_speed_factor, nullptr);
+        SEQ_for_each_callback(&ed->seqbase, versioning_convert_strip_speed_factor, scene);
       }
     }
   } /**
