@@ -95,11 +95,11 @@ class GHOST_IWindow {
 
   /**
    * Set colors to be used by custom titlebar client-side window decorations
-   * \param tbBackgroundCol: Titlebar background color
-   * \param tbTitleTextCol: Titlebar title text color
+   * \param backgroundColor: Titlebar background color
+   * \param titleTextColor: Titlebar title text color
    */
-  virtual void setTitlebarCSDColors(const float tbBackgroundCol[4],
-                                    const float tbTitleTextCol[4]) = 0;
+  virtual void setTitlebarCSDColors(const float backgroundColor[4],
+                                    const float titleTextColor[4]) = 0;
 
   /**
    * Returns the window rectangle dimensions.

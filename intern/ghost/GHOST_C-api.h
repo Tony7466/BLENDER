@@ -603,12 +603,12 @@ extern void GHOST_SetUseCSD(GHOST_WindowHandle windowhandle, bool useCSD);
 
 /**
  * Set colors to be used by custom titlebar client-side window decorations
- * \param tbBackgroundCol: Titlebar background color
- * \param tbTitleTextCol: Titlebar title text color
+ * \param backgroundColor: Titlebar background color
+ * \param titleTextColor: Titlebar title text color
  */
 extern void GHOST_SetTitlebarCSDColors(GHOST_WindowHandle windowhandle,
-                                       const float tbBackgroundCol[4],
-                                       const float tbTitleTextCol[4]);
+                                       const float backgroundColor[4],
+                                       const float titleTextColor[4]);
 
 /**
  * Returns the window rectangle dimensions.

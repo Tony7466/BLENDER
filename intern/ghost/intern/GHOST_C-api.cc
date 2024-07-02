@@ -615,12 +615,12 @@ void GHOST_SetUseCSD(GHOST_WindowHandle windowhandle, bool useCSD)
 }
 
 extern void GHOST_SetTitlebarCSDColors(GHOST_WindowHandle windowhandle,
-                                       const float tbBackgroundCol[4],
-                                       const float tbTitleTextCol[4])
+                                       const float backgroundColor[4],
+                                       const float titleTextColor[4])
 {
 
   GHOST_IWindow *window = (GHOST_IWindow *)windowhandle;
-  window->setTitlebarCSDColors(tbBackgroundCol, tbTitleTextCol);
+  window->setTitlebarCSDColors(backgroundColor, titleTextColor);
 }
 
 GHOST_RectangleHandle GHOST_GetWindowBounds(GHOST_WindowHandle windowhandle)

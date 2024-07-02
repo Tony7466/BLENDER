@@ -378,8 +378,8 @@ bool WM_stereo3d_enabled(wmWindow *win, bool only_fullscreen_test);
 /** Client-Side Window Decorations */
 void WM_window_set_use_csd(const wmWindow *win, bool use_csd);
 void WM_window_set_titlebar_csd_color(const wmWindow *win,
-                                      const float tb_background_col[4],
-                                      const float tb_title_text_col[4]);
+                                      const float background_color[4],
+                                      const float title_text_color[4]);
 
 /* `wm_files.cc`. */
 

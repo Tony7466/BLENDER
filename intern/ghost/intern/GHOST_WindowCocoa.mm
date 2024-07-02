@@ -552,15 +552,15 @@ void GHOST_WindowCocoa::setUseCSD(const bool useCSD)
   GHOST_Window::setUseCSD(useCSD);
 }
 
-void GHOST_WindowCocoa::setTitlebarCSDColors(const float tbBackgroundCol[4],
-                                             const float /*tbTitleTextCol*/[4])
+void GHOST_WindowCocoa::setTitlebarCSDColors(const float backgroundColor[4],
+                                             const float /*titleTextColor*/[4])
 {
   @autoreleasepool {
     /* Titlebar Background Color */
-    m_window.backgroundColor = [NSColor colorWithRed:tbBackgroundCol[0]
-                                               green:tbBackgroundCol[1]
-                                                blue:tbBackgroundCol[2]
-                                               alpha:tbBackgroundCol[3]];
+    m_window.backgroundColor = [NSColor colorWithRed:backgroundColor[0]
+                                               green:backgroundColor[1]
+                                                blue:backgroundColor[2]
+                                               alpha:backgroundColor[3]];
 
     /**
      * Determine whether we should use the macOS dark or light titlebar text appearance by using
@@ -568,7 +568,7 @@ void GHOST_WindowCocoa::setTitlebarCSDColors(const float tbBackgroundCol[4],
      * 0.5 considered as dark themes, and values above 0.5 considered as light themes.
      */
 
-    const float hsv_v = MAX(tbBackgroundCol[0], MAX(tbBackgroundCol[1], tbBackgroundCol[2]));
+    const float hsv_v = MAX(backgroundColor[0], MAX(backgroundColor[1], backgroundColor[2]));
 
     const NSAppearanceName win_appearance = hsv_v < 0.5 ? NSAppearanceNameVibrantDark :
                                                           NSAppearanceNameVibrantLight;
