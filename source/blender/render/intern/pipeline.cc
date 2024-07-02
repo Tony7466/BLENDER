@@ -1172,50 +1172,46 @@ static void do_render_compositor_scene(Render *re, Scene *sce, int cfra)
   do_render_engine(resc);
 }
 
-/* Returns true if the given node requires a render of the given scene. The node is assumed to be
- * part of the scene compositor node tree. */
-static bool compositor_node_needs_render(const bNode *node, const Scene *scene)
+/* Get the scene referenced by the given node if the node uses its render. Returns nullptr
+ * otherwise. */
+static Scene *get_scene_referenced_by_node(const bNode *node)
 {
   if (node->flag & NODE_MUTED) {
-    return false;
+    return nullptr;
   }
 
   if (node->type == CMP_NODE_R_LAYERS) {
-    /* If the referenced scene is nullptr, we assume it references the given scene. */
-    if (node->id == nullptr || node->id == &scene->id) {
-      return true;
-    }
+    return reinterpret_cast<Scene *>(node->id);
+  }
+  else if (node->type == CMP_NODE_CRYPTOMATTE &&
+           node->custom1 == CMP_NODE_CRYPTOMATTE_SOURCE_RENDER)
+  {
+    return reinterpret_cast<Scene *>(node->id);
   }
 
-  if (node->type == CMP_NODE_CRYPTOMATTE && node->custom1 == CMP_NODE_CRYPTOMATTE_SOURCE_RENDER) {
-    /* If the referenced scene is nullptr, we assume it references the given scene. */
-    if (node->id == nullptr || node->id == &scene->id) {
-      return true;
-    }
-  }
-
-  return false;
+  return nullptr;
 }
 
 /* Returns true if the given scene needs a render, either because it doesn't use the compositor
  * pipeline and thus needs a simple render, or that its compositor node tree requires the scene to
  * be rendered. */
-static bool compositor_needs_render(Scene *sce)
+static bool compositor_needs_render(Scene *scene)
 {
-  bNodeTree *ntree = sce->nodetree;
+  bNodeTree *ntree = scene->nodetree;
 
   if (ntree == nullptr) {
     return true;
   }
-  if (sce->use_nodes == false) {
+  if (scene->use_nodes == false) {
     return true;
   }
-  if ((sce->r.scemode & R_DOCOMP) == 0) {
+  if ((scene->r.scemode & R_DOCOMP) == 0) {
     return true;
   }
 
   for (const bNode *node : ntree->all_nodes()) {
-    if (compositor_node_needs_render(node, sce)) {
+    Scene *node_scene = get_scene_referenced_by_node(node);
+    if (node_scene && node_scene == scene) {
       return true;
     }
   }
@@ -1244,26 +1240,6 @@ static bool node_tree_has_composite_output(const bNodeTree *node_tree)
     }
   }
   return false;
-}
-
-/* Get the scene referenced by the given node if the node uses its render. Returns nullptr
- * otherwise. */
-static Scene *get_scene_referenced_by_node(const bNode *node)
-{
-  if (node->flag & NODE_MUTED) {
-    return nullptr;
-  }
-
-  if (node->type == CMP_NODE_R_LAYERS) {
-    return reinterpret_cast<Scene *>(node->id);
-  }
-  else if (node->type == CMP_NODE_CRYPTOMATTE &&
-           node->custom1 == CMP_NODE_CRYPTOMATTE_SOURCE_RENDER)
-  {
-    return reinterpret_cast<Scene *>(node->id);
-  }
-
-  return nullptr;
 }
 
 /* Render all scenes references by the compositor of the given render's scene. */
