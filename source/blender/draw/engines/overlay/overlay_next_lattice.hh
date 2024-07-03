@@ -18,69 +18,66 @@ namespace blender::draw::overlay {
 
 class Lattices {
  private:
-  PassMain lattice_ps_ = {"Lattice"};
-  PassMain lattice_in_front_ps_ = {"Lattice_in_front"};
+  PassMain ps_ = {"Lattice"};
+  PassMain in_front_ps_ = {"Lattice_in_front"};
 
-  PassMain edit_lattice_wire_ps_ = {"Edit_lattice_wire"};
-  PassMain edit_lattice_wire_in_front_ps_ = {"Edit_lattice_wire_in_front"};
-
-  PassMain edit_lattice_point_ps_ = {"Edit_lattice_point"};
-  PassMain edit_lattice_point_in_front_ps_ = {"Edit_lattice_point_in_front"};
+  PassMain::Sub *lattice_ps_[2];
+  PassMain::Sub *edit_lattice_wire_ps_[2];
+  PassMain::Sub *edit_lattice_point_ps_[2];
 
  public:
   void begin_sync(Resources &res, const State &state)
   {
-    auto init_pass = [&](PassMain &pass, GPUShader *shader, bool add_weight_tex) {
+    const DRWState pass_state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |
+                                DRW_STATE_DEPTH_LESS_EQUAL | state.clipping_state;
+    auto init_pass = [&](PassMain &pass, int in_front) {
+      auto create_sub_pass = [&](const char *name, GPUShader *shader, bool add_weight_tex) {
+        PassMain::Sub &sub_pass = pass.sub(name);
+        sub_pass.state_set(pass_state);
+        sub_pass.shader_set(shader);
+        sub_pass.bind_ubo("globalsBlock", &res.globals_buf);
+        if (add_weight_tex) {
+          /* TODO: Replace G_draw.weight_ramp with res.weight_ramp. */
+          sub_pass.bind_texture("weightTex", G_draw.weight_ramp);
+        }
+        return &sub_pass;
+      };
+
       pass.init();
-      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL |
-                     state.clipping_state);
-      pass.shader_set(shader);
-      pass.bind_ubo("globalsBlock", &res.globals_buf);
-      if (add_weight_tex) {
-        /* TODO: Replace G_draw.weight_ramp with res.weight_ramp. */
-        pass.bind_texture("weightTex", G_draw.weight_ramp);
-      }
+      edit_lattice_wire_ps_[in_front] = create_sub_pass(
+          "edit_lattice_wire", res.shaders.lattice_wire.get(), true);
+      edit_lattice_point_ps_[in_front] = create_sub_pass(
+          "edit_lattice_points", res.shaders.lattice_points.get(), false);
+      lattice_ps_[in_front] = create_sub_pass(
+          "lattice", res.shaders.extra_wire_object.get(), false);
       res.select_bind(pass);
     };
 
-    GPUShader *shader = res.shaders.extra_wire_object.get();
-    init_pass(lattice_ps_, shader, false);
-    init_pass(lattice_in_front_ps_, shader, false);
-
-    shader = res.shaders.lattice_points.get();
-    init_pass(edit_lattice_point_ps_, shader, false);
-    init_pass(edit_lattice_point_in_front_ps_, shader, false);
-
-    shader = res.shaders.lattice_wire.get();
-    init_pass(edit_lattice_wire_ps_, shader, true);
-    init_pass(edit_lattice_wire_in_front_ps_, shader, true);
+    init_pass(ps_, 0);
+    init_pass(in_front_ps_, 1);
   }
 
   void edit_object_sync(Manager &manager, const ObjectRef &ob_ref, Resources &res)
   {
-    const bool draw_in_front = (ob_ref.object->dtx & OB_DRAW_IN_FRONT) != 0;
+    const int in_front = (ob_ref.object->dtx & OB_DRAW_IN_FRONT) != 0 ? 1 : 0;
     {
-      PassMain &pass = draw_in_front ? edit_lattice_wire_in_front_ps_ : edit_lattice_wire_ps_;
       gpu::Batch *geom = DRW_cache_lattice_wire_get(ob_ref.object, true);
       if (geom) {
         ResourceHandle res_handle = manager.resource_handle(ob_ref);
-        pass.draw(geom, res_handle, res.select_id(ob_ref).get());
+        edit_lattice_wire_ps_[in_front]->draw(geom, res_handle, res.select_id(ob_ref).get());
       }
     }
     {
-      PassMain &pass = draw_in_front ? edit_lattice_point_in_front_ps_ : edit_lattice_point_ps_;
       gpu::Batch *geom = DRW_cache_lattice_vert_overlay_get(ob_ref.object);
       if (geom) {
         ResourceHandle res_handle = manager.resource_handle(ob_ref);
-        pass.draw(geom, res_handle, res.select_id(ob_ref).get());
+        edit_lattice_point_ps_[in_front]->draw(geom, res_handle, res.select_id(ob_ref).get());
       }
     }
   }
 
   void object_sync(Manager &manager, const ObjectRef &ob_ref, Resources &res, const State &state)
   {
-    PassMain &pass = (ob_ref.object->dtx & OB_DRAW_IN_FRONT) != 0 ? lattice_in_front_ps_ :
-                                                                    lattice_ps_;
     gpu::Batch *geom = DRW_cache_lattice_wire_get(ob_ref.object, false);
     if (geom) {
       const float4 &color = res.object_wire_color(ob_ref, state);
@@ -90,24 +87,21 @@ class Lattices {
       }
       draw_mat[3][3] = 0.0f /* No stipples. */;
       ResourceHandle res_handle = manager.resource_handle(ob_ref, &draw_mat, nullptr, nullptr);
-      pass.draw(geom, res_handle, res.select_id(ob_ref).get());
+      const int in_front = (ob_ref.object->dtx & OB_DRAW_IN_FRONT) != 0 ? 1 : 0;
+      lattice_ps_[in_front]->draw(geom, res_handle, res.select_id(ob_ref).get());
     }
   }
 
   void draw(Resources &res, Manager &manager, View &view)
   {
     GPU_framebuffer_bind(res.overlay_line_fb);
-    manager.submit(lattice_ps_, view);
-    manager.submit(edit_lattice_wire_ps_, view);
-    manager.submit(edit_lattice_point_ps_, view);
+    manager.submit(ps_, view);
   }
 
   void draw_in_front(Resources &res, Manager &manager, View &view)
   {
     GPU_framebuffer_bind(res.overlay_line_in_front_fb);
-    manager.submit(lattice_in_front_ps_, view);
-    manager.submit(edit_lattice_wire_in_front_ps_, view);
-    manager.submit(edit_lattice_point_in_front_ps_, view);
+    manager.submit(in_front_ps_, view);
   }
 };
 }  // namespace blender::draw::overlay
