@@ -633,10 +633,11 @@ void RNA_def_camera(BlenderRNA *brna)
        "Defines the lens projection as polynomial to allow real world camera lenses to be "
        "mimicked"},
       {CAM_PANORAMA_CENTRAL_CYLINDRICAL,
-      "CENTRAL_CYLINDRICAL",
-      0,
-      "Central Cylindrical",
-      "Projection onto a virtual cylinder from its center, similar as a rotating panoramic camera"},
+       "CENTRAL_CYLINDRICAL",
+       0,
+       "Central Cylindrical",
+       "Projection onto a virtual cylinder from its center, similar as a rotating panoramic "
+       "camera"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -935,22 +936,28 @@ void RNA_def_camera(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "central_cylindrical_range_u_min", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_ui_range(prop, -M_PI, M_PI, 3, 2);
-  RNA_def_property_ui_text(prop, "Min Longitude", "Minimum Longitude value for the central cylindrical lens (in degree)");
+  RNA_def_property_ui_text(prop,
+                           "Min Longitude",
+                           "Minimum Longitude value for the central cylindrical lens (in degree)");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Camera_update");
 
   prop = RNA_def_property(srna, "central_cylindrical_range_u_max", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_ui_range(prop, -M_PI, M_PI, 3, 2);
-  RNA_def_property_ui_text(prop, "Max Longitude", "Maximum Longitude value for the central cylindrical lens (in degree)");
+  RNA_def_property_ui_text(prop,
+                           "Max Longitude",
+                           "Maximum Longitude value for the central cylindrical lens (in degree)");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Camera_update");
 
   prop = RNA_def_property(srna, "central_cylindrical_range_v_min", PROP_FLOAT, PROP_NONE);
   RNA_def_property_ui_range(prop, -10.0f, 10.0f, 0.1f, 3);
-  RNA_def_property_ui_text(prop, "Min Height", "Minimum Height value for the central cylindrical lens (in meters)");
+  RNA_def_property_ui_text(
+      prop, "Min Height", "Minimum Height value for the central cylindrical lens (in meters)");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Camera_update");
 
   prop = RNA_def_property(srna, "central_cylindrical_range_v_max", PROP_FLOAT, PROP_NONE);
   RNA_def_property_ui_range(prop, -10.0f, 10.0f, 0.1f, 3);
-  RNA_def_property_ui_text(prop, "Max Height", "Maximum Height value for the central cylindrical lens (in meters)");
+  RNA_def_property_ui_text(
+      prop, "Max Height", "Maximum Height value for the central cylindrical lens (in meters)");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Camera_update");
 
   prop = RNA_def_property(srna, "central_cylindrical_radius", PROP_FLOAT, PROP_NONE);

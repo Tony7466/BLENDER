@@ -431,7 +431,6 @@ void Camera::update(Scene *scene)
                                                 central_cylindrical_range_v_min,
                                                 central_cylindrical_range_v_max);
 
-
   switch (stereo_eye) {
     case STEREO_LEFT:
       kcam->interocular_offset = -interocular_distance * 0.5f;
