@@ -31,6 +31,9 @@ bool is_builtin_gizmo_node(const bNode &node)
   return ELEM(node.type, GEO_NODE_GIZMO_LINEAR, GEO_NODE_GIZMO_DIAL, GEO_NODE_GIZMO_TRANSFORM);
 }
 
+/**
+ * Get the part of a socket value that may be edited with gizmos.
+ */
 static ie::ElemVariant get_gizmo_socket_elem(const bNode &node, const bNodeSocket &socket)
 {
   switch (node.type) {
@@ -72,13 +75,17 @@ static TreeGizmoPropagation build_tree_gizmo_propagation(bNodeTree &tree)
 
   struct GizmoInput {
     const bNodeSocket *gizmo_socket;
+    /* For multi-input sockets we start propagation at the origin socket. */
     const bNodeSocket *propagation_start_socket;
     ie::ElemVariant elem;
   };
 
+  /* Gather all gizmo inputs so that we can find their inverse evaluation targets afterwards. */
   Vector<GizmoInput> all_gizmo_inputs;
-
   for (const bNode *node : tree.all_nodes()) {
+    if (node->is_muted()) {
+      continue;
+    }
     if (node->is_group()) {
       if (!node->id) {
         continue;
@@ -96,9 +103,6 @@ static TreeGizmoPropagation build_tree_gizmo_propagation(bNodeTree &tree)
       }
     }
     if (is_builtin_gizmo_node(*node)) {
-      if (node->is_muted()) {
-        continue;
-      }
       gizmo_propagation.gizmo_nodes.append(node);
       const bNodeSocket &gizmo_input_socket = node->input_socket(0);
       gizmo_propagation.gizmo_endpoint_sockets.add(&gizmo_input_socket);
@@ -112,9 +116,12 @@ static TreeGizmoPropagation build_tree_gizmo_propagation(bNodeTree &tree)
     }
   }
 
+  /* Find the local gizmo targets for all gizmo inputs. */
   for (const GizmoInput &gizmo_input : all_gizmo_inputs) {
     gizmo_propagation.gizmo_endpoint_sockets.add(gizmo_input.gizmo_socket);
     const ie::SocketElem gizmo_input_socket_elem{gizmo_input.gizmo_socket, gizmo_input.elem};
+    /* The conversion is necessary when e.g. connecting a Rotation directly to the matrix input of
+     * the Transform Gizmo node. */
     const std::optional<ie::ElemVariant> converted_elem = ie::convert_socket_elem(
         *gizmo_input.gizmo_socket, *gizmo_input.propagation_start_socket, gizmo_input.elem);
     if (!converted_elem) {
@@ -127,6 +134,7 @@ static TreeGizmoPropagation build_tree_gizmo_propagation(bNodeTree &tree)
     if (!has_target) {
       continue;
     }
+    /* Remember all the gizmo targets for quick lookup later on. */
     for (const ie::SocketElem &input_socket : targets.input_sockets) {
       gizmo_propagation.gizmo_inputs_by_node_inputs.add(input_socket, gizmo_input_socket_elem);
       gizmo_propagation.gizmo_endpoint_sockets.add(input_socket.socket);
@@ -191,6 +199,7 @@ static void foreach_gizmo_for_input(const ie::SocketElem &input_socket,
 {
   const bke::bNodeTreeZones *zones = tree.zones();
   if (!zones) {
+    /* There are invalid zones. */
     return;
   }
   const bNode &node = input_socket.socket->owner_node();
@@ -252,6 +261,7 @@ static void foreach_active_gizmo_in_open_node_editor(
   const NodesModifierData &nmd = *object_and_modifier->nmd;
 
   if (!(nmd.modifier.mode & eModifierMode_Realtime)) {
+    /* Disabled modifiers can't have gizmos currently. */
     return;
   }
 
@@ -265,6 +275,8 @@ static void foreach_active_gizmo_in_open_node_editor(
   snode.edittree->ensure_topology_cache();
   const TreeGizmoPropagation &gizmo_propagation = *snode.edittree->runtime->gizmo_propagation;
   Set<ie::SocketElem> used_gizmo_inputs;
+
+  /* Check gizmos on value nodes. */
   for (auto &&item : gizmo_propagation.gizmo_inputs_by_value_nodes.items()) {
     const bNode &node = *item.key.node;
     const bNodeSocket &output_socket = node.output_socket(0);
@@ -278,6 +290,7 @@ static void foreach_active_gizmo_in_open_node_editor(
       }
     }
   }
+  /* Check gizmos on input sockets. */
   for (auto &&item : gizmo_propagation.gizmo_inputs_by_node_inputs.items()) {
     const bNodeSocket &socket = *item.key.socket;
     const bNode &node = socket.owner_node();
@@ -291,6 +304,7 @@ static void foreach_active_gizmo_in_open_node_editor(
       }
     }
   }
+  /* Check built-in gizmo nodes. */
   for (const bNode *gizmo_node : gizmo_propagation.gizmo_nodes) {
     if (gizmo_node->is_muted()) {
       continue;
@@ -474,6 +488,8 @@ void apply_gizmo_change(
 
   const bNodeTree &gizmo_node_tree = gizmo_socket.owner_tree();
   geo_eval_log::GeoTreeLog &gizmo_tree_log = eval_log.get_tree_log(gizmo_context.hash());
+
+  /* Gather all sockets to update together with their new values. */
   for (const bNodeLink *link : gizmo_socket.directly_linked_links()) {
     gizmo_node_tree.ensure_topology_cache();
     if (!link->is_used()) {
@@ -497,6 +513,8 @@ void apply_gizmo_change(
 
     sockets_to_update.append({&gizmo_context, &gizmo_socket, link, new_value});
   }
+
+  /* Actually backpropagate the socket values. */
   ie::backpropagate_socket_values(C, object, nmd, eval_log, sockets_to_update);
 }
 
