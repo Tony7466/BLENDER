@@ -152,9 +152,6 @@ class LightsPassHandler {
     const DRWState pass_state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |
                                 DRW_STATE_DEPTH_LESS_EQUAL | state.clipping_state;
     pass.init();
-    pass.state_set(pass_state);
-    pass.shader_set(res.shaders.extra_shape.get());
-    pass.bind_ubo("globalsBlock", &res.globals_buf);
     res.select_bind(pass);
 
     if (!in_front) {
@@ -176,15 +173,20 @@ class LightsPassHandler {
         call_bufs.spot_cone_back_buf.end_sync(sub_pass, shapes.light_spot_volume.get());
       }
     }
-
-    call_bufs.icon_inner_buf.end_sync(pass, shapes.light_icon_outer_lines.get());
-    call_bufs.icon_outer_buf.end_sync(pass, shapes.light_icon_inner_lines.get());
-    call_bufs.icon_sun_rays_buf.end_sync(pass, shapes.light_icon_sun_rays.get());
-    call_bufs.point_buf.end_sync(pass, shapes.light_point_lines.get());
-    call_bufs.sun_buf.end_sync(pass, shapes.light_sun_lines.get());
-    call_bufs.spot_buf.end_sync(pass, shapes.light_spot_lines.get());
-    call_bufs.area_disk_buf.end_sync(pass, shapes.light_area_disk_lines.get());
-    call_bufs.area_square_buf.end_sync(pass, shapes.light_area_square_lines.get());
+    {
+      PassSimple::Sub &sub_pass = pass.sub("light_shapes");
+      sub_pass.state_set(pass_state);
+      sub_pass.shader_set(res.shaders.extra_shape.get());
+      sub_pass.bind_ubo("globalsBlock", &res.globals_buf);
+      call_bufs.icon_inner_buf.end_sync(sub_pass, shapes.light_icon_outer_lines.get());
+      call_bufs.icon_outer_buf.end_sync(sub_pass, shapes.light_icon_inner_lines.get());
+      call_bufs.icon_sun_rays_buf.end_sync(sub_pass, shapes.light_icon_sun_rays.get());
+      call_bufs.point_buf.end_sync(sub_pass, shapes.light_point_lines.get());
+      call_bufs.sun_buf.end_sync(sub_pass, shapes.light_sun_lines.get());
+      call_bufs.spot_buf.end_sync(sub_pass, shapes.light_spot_lines.get());
+      call_bufs.area_disk_buf.end_sync(sub_pass, shapes.light_area_disk_lines.get());
+      call_bufs.area_square_buf.end_sync(sub_pass, shapes.light_area_square_lines.get());
+    }
     {
       PassSimple::Sub &sub_pass = pass.sub("ground_line");
       sub_pass.state_set(pass_state | DRW_STATE_BLEND_ALPHA);
