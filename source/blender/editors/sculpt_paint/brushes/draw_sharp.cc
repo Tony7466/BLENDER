@@ -64,9 +64,9 @@ static void calc_faces_sharp(const Sculpt &sd,
 
   tls.distances.reinitialize(verts.size());
   const MutableSpan<float> distances = tls.distances;
-    calc_brush_distances(
-        ss, orig_data.positions, eBrushFalloffShape(brush.falloff_shape), distances);
-    filter_distances_with_radius(cache.radius, distances, factors);
+  calc_brush_distances(
+      ss, orig_data.positions, eBrushFalloffShape(brush.falloff_shape), distances);
+  filter_distances_with_radius(cache.radius, distances, factors);
   apply_hardness_to_distances(cache, distances);
   calc_brush_strength_factors(cache, brush, distances, factors);
 
@@ -95,7 +95,7 @@ static void calc_grids_sharp(const Sculpt &sd,
   SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
-    const OrigPositionData orig_data = orig_position_data_get_grids(object, node);
+  const OrigPositionData orig_data = orig_position_data_get_grids(object, node);
   const Span<int> grids = bke::pbvh::node_grid_indices(node);
   const int grid_verts_num = grids.size() * key.grid_area;
 
@@ -109,9 +109,9 @@ static void calc_grids_sharp(const Sculpt &sd,
 
   tls.distances.reinitialize(grid_verts_num);
   const MutableSpan<float> distances = tls.distances;
-    calc_brush_distances(
-        ss, orig_data.positions, eBrushFalloffShape(brush.falloff_shape), distances);
-    filter_distances_with_radius(cache.radius, distances, factors);
+  calc_brush_distances(
+      ss, orig_data.positions, eBrushFalloffShape(brush.falloff_shape), distances);
+  filter_distances_with_radius(cache.radius, distances, factors);
   apply_hardness_to_distances(cache, distances);
   calc_brush_strength_factors(cache, brush, distances, factors);
 
@@ -156,8 +156,8 @@ static void calc_bmesh_sharp(const Sculpt &sd,
 
   tls.distances.reinitialize(verts.size());
   const MutableSpan<float> distances = tls.distances;
-    calc_brush_distances(ss, orig_positions, eBrushFalloffShape(brush.falloff_shape), distances);
-    filter_distances_with_radius(cache.radius, distances, factors);
+  calc_brush_distances(ss, orig_positions, eBrushFalloffShape(brush.falloff_shape), distances);
+  filter_distances_with_radius(cache.radius, distances, factors);
   apply_hardness_to_distances(cache, distances);
   calc_brush_strength_factors(cache, brush, distances, factors);
 
