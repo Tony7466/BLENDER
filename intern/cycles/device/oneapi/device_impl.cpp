@@ -1087,7 +1087,7 @@ std::vector<sycl::device> available_sycl_devices()
            * actual driver version doesn't start with 1.3. */
 #  if __LIBSYCL_MAJOR_VERSION < 8
           if (check_driver_version &&
-              device.get_info<sycl::info::device::driver_version>().find("1.3.") != 0)
+              !string_startswith(device.get_info<sycl::info::device::driver_version>(), "1.3."))
           {
             check_driver_version = false;
           }
