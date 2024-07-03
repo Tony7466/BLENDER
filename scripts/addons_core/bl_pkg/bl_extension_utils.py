@@ -39,7 +39,7 @@ __all__ = (
     "json_to_filepath",
 
     "pkg_manifest_dict_is_valid_or_error",
-    "pkg_manifest_dict_from_file_or_error",
+    "pkg_manifest_dict_from_archive_or_error",
     "pkg_manifest_archive_url_abs_from_remote_url",
 
     "CommandBatch",
@@ -201,11 +201,13 @@ def rmtree_with_fallback_or_error(
         remove_link: bool = True,
 ) -> Optional[str]:
     from .cli.blender_ext import rmtree_with_fallback_or_error as fn
-    return fn(
+    result = fn(
         path,
         remove_file=remove_file,
         remove_link=remove_link,
     )
+    assert result is None or isinstance(result, str)
+    return result
 
 
 # -----------------------------------------------------------------------------
@@ -474,6 +476,15 @@ def url_parse_for_blender(url: str) -> Tuple[str, Dict[str, str]]:
                             None,  # `parsed_url.query,`
                             None,  # `parsed_url.fragment,`
                         ))
+                    elif value.startswith("./"):
+                        value_xform = urllib.parse.urlunparse((
+                            parsed_url.scheme,
+                            parsed_url.netloc,
+                            parsed_url.path.rsplit("/", 1)[0] + value[1:],
+                            None,  # `parsed_url.params,`
+                            None,  # `parsed_url.query,`
+                            None,  # `parsed_url.fragment,`
+                        ))
                     else:
                         value_xform = value
         if value_xform is not None:
@@ -568,6 +579,7 @@ def pkg_install_files(
         *,
         directory: str,
         files: Sequence[str],
+        blender_version: Tuple[int, int, int],
         use_idle: bool,
 ) -> Generator[InfoItemSeq, None, None]:
     """
@@ -577,6 +589,7 @@ def pkg_install_files(
     yield from command_output_from_json_0([
         "install-files", *files,
         "--local-dir", directory,
+        "--blender-version", "{:d}.{:d}.{:d}".format(*blender_version),
     ], use_idle=use_idle)
     yield [COMPLETE_ITEM]
 
@@ -700,7 +713,7 @@ def pkg_manifest_dict_is_valid_or_error(
     return None
 
 
-def pkg_manifest_dict_from_file_or_error(
+def pkg_manifest_dict_from_archive_or_error(
         filepath: str,
 ) -> Union[Dict[str, Any], str]:
     from .cli.blender_ext import pkg_manifest_from_archive_and_validate

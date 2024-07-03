@@ -16,10 +16,13 @@
 #include "DNA_anim_types.h"
 
 #include "BLI_math_vector.hh"
-#include "BLI_set.hh"
+#include "BLI_span.hh"
 #include "BLI_string_ref.hh"
+#include "BLI_vector.hh"
 
 #include "RNA_types.hh"
+
+#include <utility>
 
 struct AnimationEvalContext;
 struct FCurve;
@@ -184,6 +187,26 @@ class Action : public ::bAction {
    * merely initializes the Binding itself to suitable values to start animating this ID.
    */
   Binding &binding_add_for_id(const ID &animated_id);
+
+  /**
+   * Ensure that an appropriate Binding exists for the given ID.
+   *
+   * If a suitable Binding can be found, that Binding is returned.  Otherwise,
+   * one is created.
+   *
+   * This is essentially a wrapper for `find_suitable_binding_for()` and
+   * `binding_add_for_id()`, and follows their semantics. Notably, like both of
+   * those methods, this Action does not need to already be assigned to the ID.
+   * And like `find_suitable_binding_for()`, if this Action *is* already
+   * assigned to the ID with a valid Binding, that Binding is returned.
+   *
+   * Note that this assigns neither this Action nor the Binding to the ID. This
+   * merely ensures that an appropriate Binding exists.
+   *
+   * \see `Action::find_suitable_binding_for()`
+   * \see `Action::binding_add_for_id()`
+   */
+  Binding &binding_ensure_for_id(const ID &animated_id);
 
   /** Assign this animation to the ID.
    *
@@ -438,9 +461,17 @@ ENUM_OPERATORS(Layer::Flags, Layer::Flags::Enabled);
  */
 class Binding : public ::ActionBinding {
  public:
-  Binding() = default;
-  Binding(const Binding &other) = default;
-  ~Binding() = default;
+  Binding();
+  Binding(const Binding &other);
+  ~Binding();
+
+  /**
+   * Update the Binding after reading it from a blend file.
+   *
+   * This is a low-level function and should not typically be used. It's only here to let
+   * blenkernel allocate the runtime struct when reading a Binding from disk, without having to
+   * share the struct definition itself. */
+  void blend_read_post();
 
   /**
    * Binding handle value indicating that there is no binding assigned.
@@ -461,7 +492,7 @@ class Binding : public ::ActionBinding {
   std::string name_prefix_for_idtype() const;
 
   /**
-   * Return the name without the prefix.
+   * Return the name without the prefix, also known as the "display name".
    *
    * \see name_prefix_for_idtype
    */
@@ -472,6 +503,48 @@ class Binding : public ::ActionBinding {
 
   /** Return whether this Binding has an `idtype` set. */
   bool has_idtype() const;
+
+  /** Return the set of IDs that are animated by this Binding. */
+  Span<ID *> users(Main &bmain) const;
+
+  /**
+   * Directly return the runtime users vector.
+   *
+   * This function does not refresh the users cache, so it may be out of date.
+   *
+   * This is a low-level function, and should only be used when calling `users(bmain)` is not
+   * appropriate.
+   *
+   * \see Binding::users(Main &bmain)
+   */
+  Vector<ID *> runtime_users();
+
+  /**
+   * Register this ID as animated by this Binding.
+   *
+   * This is a low-level function and should not typically be used.
+   * Use #Action::assign_id(binding, animated_id) instead.
+   */
+  void users_add(ID &animated_id);
+
+  /**
+   * Register this ID as no longer animated by this Binding.
+   *
+   * This is a low-level function and should not typically be used.
+   * Use #Action::assign_id(nullptr, animated_id) instead.
+   */
+  void users_remove(ID &animated_id);
+
+  /**
+   * Mark the users cache as 'dirty', triggering a full rebuild next time it is accessed.
+   *
+   * This is typically not necessary, and only called from low-level code.
+   *
+   * \note This static method invalidates all user caches of all Action Bindings.
+   *
+   * \see blender::animrig::internal::rebuild_binding_user_cache()
+   */
+  static void users_invalidate(Main &bmain);
 
  protected:
   friend Action;
@@ -628,6 +701,17 @@ void unassign_binding(ID &animated_id);
  * Return the Animation of this ID, or nullptr if it has none.
  */
 Action *get_animation(ID &animated_id);
+
+/**
+ * Get the Action and the Binding that animate this ID.
+ *
+ * \return One of two options:
+ *  - pair<Action, Binding> when an Action and a Binding are assigned. In other
+ *    words, when this ID is actually animated by this Action+Binding pair.
+ *  - nullopt: when this ID is not animated. This can have several causes: not
+ *    an animatable type, no Action assigned, or no Binding assigned.
+ */
+std::optional<std::pair<Action *, Binding *>> get_action_binding_pair(ID &animated_id);
 
 /**
  * Return the F-Curves for this specific binding handle.
