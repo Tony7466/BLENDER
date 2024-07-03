@@ -1007,13 +1007,17 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
 
         const bool missing_logged_data = !tree_log.evaluated_gizmo_nodes.contains(
             gizmo_node.identifier);
-        const bool missing_used_transform = gizmo_node.output_socket(0).is_logically_linked() &&
-                                            !crazy_space_geometry_transform.has_value();
-        if (missing_logged_data || missing_used_transform) {
+        if (missing_logged_data) {
           /* Rerun modifier to make sure that values are logged. */
           DEG_id_tag_update_for_side_effect_request(
               depsgraph, const_cast<ID *>(&object_orig.id), ID_RECALC_GEOMETRY);
           WM_main_add_notifier(NC_GEOM | ND_DATA, nullptr);
+          node_gizmos->hide_all();
+          return;
+        }
+        const bool missing_used_transform = gizmo_node.output_socket(0).is_logically_linked() &&
+                                            !crazy_space_geometry_transform.has_value();
+        if (missing_used_transform) {
           node_gizmos->hide_all();
           return;
         }
