@@ -1,1 +1,2 @@
 Referenced by issue #124090, Video sequence editor, empty adjust last operation panel when deleting a video strip
+Referenced by pull request #124095, Fix #124090: Delete strip operator missing redo panel property
