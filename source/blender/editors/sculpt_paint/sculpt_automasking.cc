@@ -635,8 +635,8 @@ void calc_face_factors(const Object &object,
   for (const int i : face_indices.index_range()) {
     const Span<int> face_verts = corner_verts.slice(faces[face_indices[i]]);
     float sum = 0.0f;
-    for (const int v : face_verts.index_range()) {
-      sum += factor_get(&cache, ss, BKE_pbvh_make_vref(face_verts[v]), &data);
+    for (const int vert : face_verts) {
+      sum += factor_get(&cache, ss, BKE_pbvh_make_vref(vert), &data);
     }
     factors[i] *= sum * math::rcp(float(face_verts.size()));
   }

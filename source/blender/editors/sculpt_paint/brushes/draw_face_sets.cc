@@ -65,8 +65,8 @@ BLI_NOINLINE static void generate_face_data_mesh(const Mesh &mesh,
       const Span<int> face_verts = corner_verts.slice(faces[face_indices[i]]);
       const float inv_size = math::rcp(float(face_verts.size()));
       float sum = 0.0f;
-      for (const int f_i : face_verts) {
-        sum += span[f_i];
+      for (const int vert : face_verts) {
+        sum += span[vert];
       }
       masks[i] = sum * inv_size;
     }
@@ -306,19 +306,19 @@ struct BMeshLocalData {
   Vector<float> distances;
 };
 
-BLI_NOINLINE static void fill_factor_from_hide_and_mask(const Set<BMFace *, 0L> &node_faces,
+BLI_NOINLINE static void fill_factor_from_hide_and_mask(const Set<BMFace *, 0L> &faces,
                                                         const Span<float> masks,
                                                         const MutableSpan<float> r_factors)
 {
-  BLI_assert(node_faces.size() == masks.size());
-  BLI_assert(node_faces.size() == r_factors.size());
+  BLI_assert(faces.size() == masks.size());
+  BLI_assert(faces.size() == r_factors.size());
 
   for (const int i : masks.index_range()) {
     r_factors[i] = 1.0f - masks[i];
   }
 
   int i = 0;
-  for (const BMFace *face : node_faces) {
+  for (const BMFace *face : faces) {
     if (BM_elem_flag_test(face, BM_ELEM_HIDDEN)) {
       r_factors[i] = 0.0f;
     }
