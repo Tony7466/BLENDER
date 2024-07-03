@@ -1,2 +1,2 @@
 Referenced by issue #123960, EEVEE: Volume Render Result vs. Viewport are very inconsistent in some conditions
-Referenced by issue #124118, Curves node incorrectly processes clamped handles
+Referenced by issue #124118, Regression: Curves node incorrectly processes clamped handles
