@@ -189,6 +189,8 @@ static void do_draw_face_sets_brush_mesh(Object &object,
       tls.normals.reinitialize(face_indices.size());
       calc_face_normals(mesh, positions_eval, face_indices, tls.normals);
 
+      undo::push_node(object, nodes[i], undo::Type::FaceSet);
+
       calc_faces(object,
                  brush,
                  ss.cache->bstrength,
@@ -198,8 +200,6 @@ static void do_draw_face_sets_brush_mesh(Object &object,
                  *nodes[i],
                  tls,
                  face_sets);
-
-      undo::push_node(object, nodes[i], undo::Type::FaceSet);
     }
   });
 
@@ -292,6 +292,8 @@ static void do_draw_face_sets_brush_grids(Object &object,
     GridLocalData &tls = all_tls.local();
     for (PBVHNode *node : nodes.slice(range)) {
       for (const int i : range) {
+        undo::push_node(object, node, undo::Type::FaceSet);
+
         calc_grids(object,
                    brush,
                    ss.cache->bstrength,
@@ -299,8 +301,6 @@ static void do_draw_face_sets_brush_grids(Object &object,
                    *nodes[i],
                    tls,
                    face_sets);
-
-        undo::push_node(object, node, undo::Type::FaceSet);
       }
     }
   });
@@ -448,12 +448,12 @@ static void do_draw_face_sets_brush_bmesh(Object &object,
       tls.positions.reinitialize(node_faces.size());
       tls.masks.reinitialize(node_faces.size());
 
+      undo::push_node(object, nodes[i], undo::Type::FaceSet);
+
       generate_face_data_bmesh(*ss.bm, node_faces, tls.positions, tls.masks);
 
       calc_bmesh(
           object, brush, ss.cache->bstrength, ss.cache->paint_face_set, *nodes[i], tls, cd_offset);
-
-      undo::push_node(object, nodes[i], undo::Type::FaceSet);
     }
   });
 }
