@@ -625,17 +625,20 @@ void calc_face_factors(const Object &object,
   SculptSession &ss = *object.sculpt;
 
   NodeData data = node_begin(object, &cache, node);
+  /* NOTE: We explicitly nullify data.orig_data here as we currently cannot go from mesh vert index
+   * to the undo node array index. The only brush this method is currently used for is the Draw
+   * Face Set brush, which never modifies the position of the vertices in a brush stroke. This
+   * needs to be implemented in the future if brushes that iterate over faces need original
+   * position and normal data. */
+  data.orig_data = std::nullopt;
 
   for (const int i : face_indices.index_range()) {
     const Span<int> face_verts = corner_verts.slice(faces[face_indices[i]]);
     float sum = 0.0f;
     for (const int v : face_verts.index_range()) {
-      if (data.orig_data) {
-        mesh_orig_vert_data_update(*data.orig_data, v);
-      }
       sum += factor_get(&cache, ss, BKE_pbvh_make_vref(face_verts[v]), &data);
     }
-    factors[i] *= sum * math::rcp(face_verts.size());
+    factors[i] *= sum * math::rcp(float(face_verts.size()));
   }
 }
 
