@@ -363,8 +363,7 @@ BLI_NOINLINE static void apply_face_set(const int face_set_id,
   int i = 0;
   for (BMFace *face : faces) {
     if (factors[i] > FACE_SET_BRUSH_MIN_FADE) {
-      int &fset = *static_cast<int *>(POINTER_OFFSET(face->head.data, cd_offset));
-      fset = face_set_id;
+      BM_ELEM_CD_SET_INT(face, cd_offset, face_set_id);
     }
     i++;
   }
