@@ -35,28 +35,28 @@ struct MeshLocalData {
 
 static void calc_face_centers(const OffsetIndices<int> faces,
                               const Span<int> corner_verts,
-                              const Span<float3> positions_eval,
+                              const Span<float3> vert_positions,
                               const Span<int> face_indices,
                               const MutableSpan<float3> positions)
 {
   BLI_assert(face_indices.size() == positions.size());
 
   for (const int i : face_indices.index_range()) {
-    positions[i] = bke::mesh::face_center_calc(positions_eval,
+    positions[i] = bke::mesh::face_center_calc(vert_positions,
                                                corner_verts.slice(faces[face_indices[i]]));
   }
 }
 
 static void calc_face_normals(const OffsetIndices<int> faces,
                               const Span<int> corner_verts,
-                              const Span<float3> positions_eval,
+                              const Span<float3> vert_positions,
                               const Span<int> face_indices,
                               const MutableSpan<float3> normals)
 {
   BLI_assert(face_indices.size() == normals.size());
 
   for (const int i : face_indices.index_range()) {
-    normals[i] = bke::mesh::face_normal_calc(positions_eval,
+    normals[i] = bke::mesh::face_normal_calc(vert_positions,
                                              corner_verts.slice(faces[face_indices[i]]));
   }
 }
