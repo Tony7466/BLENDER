@@ -320,9 +320,85 @@ static void gather_edges_to_split(const Span<int> faces,
                                   Vector<int> &r_edges_to_split)
 {
   float max_length_iter = std::numeric_limits<float>::lowest();
-  // if (max_length_iter < math::distance_squared()) {
+  for (const int face_i : faces) {
+    if (face_i == 0) {
+      const float ab_length = math::distance_squared(real_verts_by_face_type[0][0], real_verts_by_face_type[0][1]);
+      if (max_length_iter == ab_length) {
+        r_edges_to_split.append(0);
+      } else if (max_length_iter < ab_length) {
+        r_edges_to_split.clear();
+        max_length_iter = ab_length;
+        r_edges_to_split.append(0);
+      }
+      const float bc_length = math::distance_squared(real_verts_by_face_type[0][1], real_verts_by_face_type[0][2]);
+      if (max_length_iter == bc_length) {
+        r_edges_to_split.append(0);
+      } else if (max_length_iter < bc_length) {
+        r_edges_to_split.clear();
+        max_length_iter = bc_length;
+        r_edges_to_split.append(1);
+      }
+      const float ca_length = math::distance_squared(real_verts_by_face_type[0][2], real_verts_by_face_type[0][0]);
+      if (max_length_iter == ca_length) {
+        r_edges_to_split.append(0);
+      } else if (max_length_iter < ca_length) {
+        r_edges_to_split.clear();
+        max_length_iter = ca_length;
+        r_edges_to_split.append(2);
+      }
+    }
 
-  // }
+    const IndexRange ab_faces = real_verts_by_face_type[1].index_range();
+    int offset = 1;
+    int edge_offset = 3;
+    if (ab_faces.contains(face_i - offset)) {
+      const side_edges_offset = (face_i - offset) * 2;
+      const float ad_length = math::distance_squared(real_verts_by_face_type[0][0], real_verts_by_face_type[1][face_i - offset]);
+      if (max_length_iter == ad_length) {
+        r_edges_to_split.append(0);
+      } else if (max_length_iter < ad_length) {
+        max_length_iter = ad_length;
+        r_edges_to_split.append(edge_offset + side_edges_offset + 0);
+      }
+      const float bd_length = math::distance_squared(real_verts_by_face_type[0][1], real_verts_by_face_type[1][face_i - offset]);
+      if (max_length_iter == bd_length) {
+        r_edges_to_split.append(0);
+      } else if (max_length_iter < bd_length) {
+        max_length_iter = bd_length;
+        r_edges_to_split.append(edge_offset + side_edges_offset + 1);
+      }
+    }
+    offset += ab_faces.size();
+
+    const IndexRange bc_faces = real_verts_by_face_type[2].index_range();
+    if (bc_faces.contains(face_i - offset)) {
+      const float ad_length = math::distance_squared(real_verts_by_face_type[0][1], real_verts_by_face_type[1][face_i - offset]);
+      if (max_length_iter < ab_length) {
+        max_length_iter = ab_length;
+        r_edges_to_split.append(0);
+      }
+      const float bd_length = math::distance_squared(real_verts_by_face_type[0][2], real_verts_by_face_type[1][face_i - offset]);
+      if (max_length_iter < bc_length) {
+        max_length_iter = bc_length;
+        r_edges_to_split.append(1);
+      }
+    }
+    offset += bc_faces.size();
+
+    const IndexRange ca_faces = real_verts_by_face_type[3].index_range();
+    if (ca_faces.contains(face_i - offset)) {
+      const float ad_length = math::distance_squared(real_verts_by_face_type[0][2], real_verts_by_face_type[1][face_i - offset]);
+      if (max_length_iter < ab_length) {
+        max_length_iter = ab_length;
+        r_edges_to_split.append(0);
+      }
+      const float bd_length = math::distance_squared(real_verts_by_face_type[0][0], real_verts_by_face_type[1][face_i - offset]);
+      if (max_length_iter < bc_length) {
+        max_length_iter = bc_length;
+        r_edges_to_split.append(1);
+      }
+    }
+  }
 }
 
 static void face_subdivide(const std::array<int, 5> &vert_offsets,
