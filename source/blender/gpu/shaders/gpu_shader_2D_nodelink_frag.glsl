@@ -52,7 +52,8 @@ void main()
     back_link_color.a *= get_line_alpha(0.2, 0.25);
 
     /* Combine both links. */
-    fragColor.rgb = main_link_color.rgb * main_link_color.a + back_link_color.rgb * back_link_color.a;
+    fragColor.rgb = main_link_color.rgb * main_link_color.a +
+                    back_link_color.rgb * back_link_color.a;
     fragColor.a = main_link_color.a + back_link_color.a;
   }
 }
