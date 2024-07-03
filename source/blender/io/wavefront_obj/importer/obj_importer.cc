@@ -15,6 +15,8 @@
 #include "BLI_string_ref.hh"
 
 #include "BKE_context.hh"
+#include "BKE_geometry_set.hh"
+#include "BKE_instances.hh"
 #include "BKE_layer.hh"
 
 #include "DEG_depsgraph_build.hh"
@@ -74,23 +76,27 @@ static Collection *find_or_create_collection(Main *bmain,
 
 static void geometry_to_blender_meshes(const OBJImportParams &import_params,
                                        Vector<std::unique_ptr<Geometry>> &all_geometries,
-                                       const GlobalVertices &global_vertices)
+                                       const GlobalVertices &global_vertices,
+                                       bke::Instances *instances)
 {
   for (const std::unique_ptr<Geometry> &geometry : all_geometries) {
-    Mesh *mesh = nullptr;
+    bke::GeometrySet geometry_set;
 
     if (geometry->geom_type_ == GEOM_MESH) {
       MeshFromGeometry mesh_ob_from_geometry{*geometry, global_vertices};
-      mesh = mesh_ob_from_geometry.create_mesh(import_params);
+      Mesh *mesh = mesh_ob_from_geometry.create_mesh(import_params);
+      geometry_set = bke::GeometrySet::from_mesh(mesh);
     }
 
-    // TODO : Do we handle curves?
+    // TODO : Handle curves
+    // convert to the new curve - curve_legacy_to_curves()
     // else if (geometry->geom_type_ == GEOM_CURVE) {
     //   CurveFromGeometry curve_ob_from_geometry(*geometry, global_vertices);
     //   obj = curve_ob_from_geometry.create_curve(bmain, import_params);
     // }
 
-    // TODO : How do we return the Mesh* array?
+    const int handle = instances->add_reference(bke::InstanceReference{geometry_set});
+    instances->add_instance(handle, float4x4::identity());
   }
 }
 
@@ -160,7 +166,9 @@ static void geometry_to_blender_objects(Main *bmain,
   DEG_relations_tag_update(bmain);
 }
 
-void importer_mesh(const OBJImportParams &import_params, size_t read_buffer_size)
+void importer_mesh(const OBJImportParams &import_params,
+                   bke::Instances *instances,
+                   size_t read_buffer_size)
 {
   /* List of Geometry instances to be parsed from OBJ file. */
   Vector<std::unique_ptr<Geometry>> all_geometries;
@@ -170,7 +178,7 @@ void importer_mesh(const OBJImportParams &import_params, size_t read_buffer_size
   OBJParser obj_parser{import_params, read_buffer_size};
   obj_parser.parse(all_geometries, global_vertices);
 
-  geometry_to_blender_meshes(import_params, all_geometries, global_vertices);
+  geometry_to_blender_meshes(import_params, all_geometries, global_vertices, instances);
 }
 
 void importer_main(bContext *C, const OBJImportParams &import_params)

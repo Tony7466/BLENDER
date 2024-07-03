@@ -11,6 +11,8 @@
 #include "BLI_path_util.h"
 #include "BLI_timeit.hh"
 
+#include "BKE_instances.hh"
+
 #include "IO_wavefront_obj.hh"
 
 #include "obj_exporter.hh"
@@ -40,7 +42,7 @@ void OBJ_import(bContext *C, const OBJImportParams *import_params)
   report_duration("import", start_time, import_params->filepath);
 }
 
-void OBJ_import_mesh(const OBJImportParams *import_params)
+void OBJ_import_mesh(const OBJImportParams *import_params, blender::bke::Instances *instances)
 {
-  blender::io::obj::importer_mesh(*import_params);
+  blender::io::obj::importer_mesh(*import_params, instances);
 }

@@ -4,10 +4,11 @@
 
 #include "node_geometry_util.hh"
 
-#include "BKE_mesh.hh"
-
-#include "BKE_report.hh"
 #include "BLI_string.h"
+
+#include "BKE_instances.hh"
+#include "BKE_mesh.hh"
+#include "BKE_report.hh"
 
 #include "IO_wavefront_obj.hh"
 
@@ -44,7 +45,10 @@ static void node_geo_exec(GeoNodeExecParams params)
   BKE_reports_init(&reports, RPT_STORE);
   import_params.reports = &reports;
 
-  OBJ_import_mesh(&import_params);
+  // TODO : How is this cleaned up ?
+  bke::Instances *instances = new bke::Instances();
+
+  OBJ_import_mesh(&import_params, instances);
 
   LISTBASE_FOREACH (Report *, report, &(import_params.reports)->list) {
     NodeWarningType type;
@@ -64,12 +68,12 @@ static void node_geo_exec(GeoNodeExecParams params)
   BKE_reports_free(&reports);
 
   // TODO : Set output
-  // if (mesh != nullptr) {
-  //   params.set_output("Mesh", GeometrySet::from_mesh(mesh));
-  // }
-  // else {
-  //   params.set_default_remaining_outputs();
-  // }
+  if (instances->instances_num() > 0) {
+    params.set_output("Mesh", GeometrySet::from_instances(instances));
+  }
+  else {
+    params.set_default_remaining_outputs();
+  }
 }
 
 static void node_register()
