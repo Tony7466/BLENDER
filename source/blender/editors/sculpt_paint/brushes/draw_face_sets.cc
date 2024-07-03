@@ -428,10 +428,7 @@ static void do_draw_face_sets_brush_bmesh(Object &object,
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     BMeshLocalData &tls = all_tls.local();
     for (const int i : range) {
-      Set<BMFace *, 0L> node_faces = BKE_pbvh_bmesh_node_faces(nodes[i]);
-
       undo::push_node(object, nodes[i], undo::Type::FaceSet);
-
       calc_bmesh(
           object, brush, ss.cache->bstrength, ss.cache->paint_face_set, *nodes[i], tls, cd_offset);
     }
