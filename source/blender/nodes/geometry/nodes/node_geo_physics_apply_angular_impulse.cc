@@ -45,7 +45,10 @@ static void node_geo_exec(GeoNodeExecParams params)
 static void node_register()
 {
   static blender::bke::bNodeType ntype;
-  geo_node_type_base(&ntype, GEO_NODE_PHYSICS_APPLY_ANGULAR_IMPULSE, "Apply Angular Impulse", NODE_CLASS_GEOMETRY);
+  geo_node_type_base(&ntype,
+                     GEO_NODE_PHYSICS_APPLY_ANGULAR_IMPULSE,
+                     "Apply Angular Impulse",
+                     NODE_CLASS_GEOMETRY);
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
 

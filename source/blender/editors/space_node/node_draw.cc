@@ -2783,8 +2783,8 @@ static bNodeInstanceKey current_node_instance_key(const SpaceNode &snode, const 
 {
   const bNodeTreePath *path = static_cast<const bNodeTreePath *>(snode.treepath.last);
 
-  /* Some code in this file checks for the non-null elements of the tree path. However, if we
-   * did iterate into a node it is expected that there is a tree, and it should be in the path.
+  /* Some code in this file checks for the non-null elements of the tree path. However, if we did
+   * iterate into a node it is expected that there is a tree, and it should be in the path.
    * Otherwise something else went wrong. */
   BLI_assert(path);
 
@@ -3091,8 +3091,7 @@ static Vector<NodeExtraInfoRow> node_get_extra_info(const bContext &C,
   }
 
   if (!(snode.edittree->type == NTREE_GEOMETRY)) {
-    /* Currently geometry and compositor nodes are the only nodes to have extra info per nodes.
-     */
+    /* Currently geometry and compositor nodes are the only nodes to have extra info per nodes. */
     return rows;
   }
 
@@ -3957,8 +3956,7 @@ static void frame_node_prepare_for_draw(bNode &node, Span<bNode *> nodes)
   rctf rect;
   node_to_updated_rect(node, rect);
 
-  /* Frame can be resized manually only if shrinking is disabled or no children are attached.
-   */
+  /* Frame can be resized manually only if shrinking is disabled or no children are attached. */
   data->flag |= NODE_FRAME_RESIZEABLE;
   /* For shrinking bounding box, initialize the rect from first child node. */
   bool bbinit = (data->flag & NODE_FRAME_SHRINK);
@@ -4528,8 +4526,7 @@ static void node_draw_zones_and_frames(const bContext &C,
 
   GPU_blend(GPU_BLEND_ALPHA);
 
-  /* Draw all the contour lines after to prevent them from getting hidden by overlapping zones.
-   */
+  /* Draw all the contour lines after to prevent them from getting hidden by overlapping zones. */
   for (const ZoneOrNode &zone_or_node : draw_order) {
     const bNodeTreeZone *const *zone_p = std::get_if<const bNodeTreeZone *>(&zone_or_node);
     if (!zone_p) {
@@ -4744,8 +4741,8 @@ static void draw_background_color(const SpaceNode &snode)
   const int max_tree_length = 3;
   const float bright_factor = 0.25f;
 
-  /* We ignore the first element of the path since it is the top-most tree and it doesn't need
-   * to be brighter. We also set a cap to how many levels we want to set apart, to avoid the
+  /* We ignore the first element of the path since it is the top-most tree and it doesn't need to
+   * be brighter. We also set a cap to how many levels we want to set apart, to avoid the
    * background from getting too bright. */
   const int clamped_tree_path_length = BLI_listbase_count_at_most(&snode.treepath,
                                                                   max_tree_length);

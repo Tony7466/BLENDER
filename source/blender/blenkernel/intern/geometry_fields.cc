@@ -305,8 +305,7 @@ GVArray GeometryFieldInput::get_varray_for_context(const fn::FieldContext &conte
   if (const PhysicsFieldContext *physics_context = dynamic_cast<const PhysicsFieldContext *>(
           &context))
   {
-    return this->get_varray_for_context({physics_context->physics(),
-                                         physics_context->domain()},
+    return this->get_varray_for_context({physics_context->physics(), physics_context->domain()},
                                         mask);
   }
   if (const InstancesFieldContext *instances_context = dynamic_cast<const InstancesFieldContext *>(

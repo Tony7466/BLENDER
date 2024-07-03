@@ -26,7 +26,8 @@ static void node_geo_exec(GeoNodeExecParams params)
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Physics");
   Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
   Field<float3> forces_field = params.extract_input<Field<float3>>("Force");
-  Field<float3> relative_positions_field = params.extract_input<Field<float3>>("Relative Position");
+  Field<float3> relative_positions_field = params.extract_input<Field<float3>>(
+      "Relative Position");
 
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     if (bke::PhysicsGeometry *physics = geometry_set.get_physics_for_write()) {
