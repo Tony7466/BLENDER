@@ -528,9 +528,8 @@ static void blender_camera_sync(Camera *cam,
 
   cam->set_central_cylindrical_range_u_min(bcam->central_cylindrical_range_u_min);
   cam->set_central_cylindrical_range_u_max(bcam->central_cylindrical_range_u_max);
-  cam->set_central_cylindrical_range_v_min(bcam->central_cylindrical_range_v_min);
-  cam->set_central_cylindrical_range_v_max(bcam->central_cylindrical_range_v_max);
-  cam->set_central_cylindrical_radius(bcam->central_cylindrical_radius);
+  cam->set_central_cylindrical_range_v_min(bcam->central_cylindrical_range_v_min / bcam->central_cylindrical_radius);
+  cam->set_central_cylindrical_range_v_max(bcam->central_cylindrical_range_v_max / bcam->central_cylindrical_radius);
 
   /* panorama stereo */
   cam->set_interocular_distance(bcam->interocular_distance);
