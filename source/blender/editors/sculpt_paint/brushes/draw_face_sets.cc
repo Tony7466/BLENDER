@@ -34,16 +34,12 @@ struct MeshLocalData {
   Vector<float> distances;
 };
 
-BLI_NOINLINE static void generate_face_data_mesh(const Mesh &mesh,
-                                                 const Span<float3> positions_eval,
-                                                 const Span<int> face_indices,
-                                                 const MutableSpan<float3> positions,
-                                                 const MutableSpan<float3> normals,
-                                                 const MutableSpan<float> masks)
+static void calc_face_centers(Mesh &mesh,
+                              const Span<float3> positions_eval,
+                              const Span<int> face_indices,
+                              const MutableSpan<float3> positions)
 {
   BLI_assert(face_indices.size() == positions.size());
-  BLI_assert(face_indices.size() == normals.size());
-  BLI_assert(face_indices.size() == masks.size());
 
   const OffsetIndices<int> faces = mesh.faces();
   const Span<int> corner_verts = mesh.corner_verts();
@@ -52,12 +48,34 @@ BLI_NOINLINE static void generate_face_data_mesh(const Mesh &mesh,
     positions[i] = bke::mesh::face_center_calc(positions_eval,
                                                corner_verts.slice(faces[face_indices[i]]));
   }
+}
+
+static void calc_face_normals(Mesh &mesh,
+                              const Span<float3> positions_eval,
+                              const Span<int> face_indices,
+                              const MutableSpan<float3> normals)
+{
+  BLI_assert(face_indices.size() == normals.size());
+
+  const OffsetIndices<int> faces = mesh.faces();
+  const Span<int> corner_verts = mesh.corner_verts();
 
   for (const int i : face_indices.index_range()) {
     normals[i] = bke::mesh::face_normal_calc(positions_eval,
                                              corner_verts.slice(faces[face_indices[i]]));
   }
+}
 
+BLI_NOINLINE static void fill_factor_from_hide_and_mask(const Mesh &mesh,
+                                                        const Span<int> face_indices,
+                                                        const MutableSpan<float> r_factors)
+{
+  BLI_assert(face_indices.size() == r_factors.size());
+
+  const OffsetIndices<int> faces = mesh.faces();
+  const Span<int> corner_verts = mesh.corner_verts();
+
+  /* TODO: Avoid overhead of accessing attributes for every PBVH node. */
   const bke::AttributeAccessor attributes = mesh.attributes();
   if (const VArray mask = *attributes.lookup<float>(".sculpt_mask", bke::AttrDomain::Point)) {
     const VArraySpan span(mask);
@@ -68,28 +86,13 @@ BLI_NOINLINE static void generate_face_data_mesh(const Mesh &mesh,
       for (const int vert : face_verts) {
         sum += span[vert];
       }
-      masks[i] = sum * inv_size;
+      r_factors[i] = 1.0f - sum * inv_size;
     }
   }
   else {
-    masks.fill(0.0f);
-  }
-}
-
-BLI_NOINLINE static void fill_factor_from_hide_and_mask(const Mesh &mesh,
-                                                        const Span<int> face_indices,
-                                                        const Span<float> masks,
-                                                        const MutableSpan<float> r_factors)
-{
-  BLI_assert(face_indices.size() == r_factors.size());
-  BLI_assert(masks.size() == r_factors.size());
-
-  for (const int i : masks.index_range()) {
-    r_factors[i] = 1.0f - masks[i];
+    r_factors.fill(1.0f);
   }
 
-  /* TODO: Avoid overhead of accessing attributes for every PBVH node. */
-  const bke::AttributeAccessor attributes = mesh.attributes();
   if (const VArray hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Point)) {
     const VArraySpan span(hide_poly);
     for (const int i : face_indices.index_range()) {
@@ -118,6 +121,8 @@ static void calc_faces(Object &object,
                        const Brush &brush,
                        const float strength,
                        const int face_set_id,
+                       const Span<float3> face_centers,
+                       const Span<float3> face_normals,
                        const PBVHNode &node,
                        MeshLocalData &tls,
                        const MutableSpan<int> face_sets)
@@ -127,24 +132,22 @@ static void calc_faces(Object &object,
   Mesh &mesh = *static_cast<Mesh *>(object.data);
 
   const Span<int> face_indices = tls.face_indices;
-  const Span<float3> normals = tls.normals;
 
   tls.factors.reinitialize(face_indices.size());
   const MutableSpan<float> factors = tls.factors;
 
   const Span<float> masks = tls.masks;
-  fill_factor_from_hide_and_mask(mesh, face_indices, masks, factors);
+  fill_factor_from_hide_and_mask(mesh, face_indices, factors);
 
-  const Span<float3> positions = tls.positions;
-  filter_region_clip_factors(ss, positions, factors);
+  filter_region_clip_factors(ss, face_centers, factors);
   if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal, normals, factors);
+    calc_front_face(cache.view_normal, face_normals, factors);
   }
 
   tls.distances.reinitialize(face_indices.size());
   const MutableSpan<float> distances = tls.distances;
   calc_distance_falloff(
-      ss, positions, eBrushFalloffShape(brush.falloff_shape), distances, factors);
+      ss, face_centers, eBrushFalloffShape(brush.falloff_shape), distances, factors);
   apply_hardness_to_distances(cache, distances);
   calc_brush_strength_factors(cache, brush, distances, factors);
 
@@ -155,7 +158,7 @@ static void calc_faces(Object &object,
         object, faces, corner_verts, *cache.automasking, node, face_indices, factors);
   }
 
-  calc_brush_texture_factors(ss, brush, positions, factors);
+  calc_brush_texture_factors(ss, brush, face_centers, factors);
   scale_factors(factors, strength);
 
   apply_face_set(face_set_id, face_indices, factors, face_sets);
@@ -183,14 +186,20 @@ static void do_draw_face_sets_brush_mesh(Object &object,
           corner_tris, *nodes[i], tls.face_indices);
 
       tls.positions.reinitialize(face_indices.size());
+      calc_face_centers(mesh, positions_eval, face_indices, tls.positions);
+
       tls.normals.reinitialize(face_indices.size());
-      tls.masks.reinitialize(face_indices.size());
+      calc_face_normals(mesh, positions_eval, face_indices, tls.normals);
 
-      generate_face_data_mesh(
-          mesh, positions_eval, face_indices, tls.positions, tls.normals, tls.masks);
-
-      calc_faces(
-          object, brush, ss.cache->bstrength, ss.cache->paint_face_set, *nodes[i], tls, face_sets);
+      calc_faces(object,
+                 brush,
+                 ss.cache->bstrength,
+                 ss.cache->paint_face_set,
+                 tls.positions,
+                 tls.normals,
+                 *nodes[i],
+                 tls,
+                 face_sets);
 
       undo::push_node(object, nodes[i], undo::Type::FaceSet);
     }
