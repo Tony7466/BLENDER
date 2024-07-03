@@ -786,6 +786,15 @@ bool SCULPT_stroke_is_first_brush_step(const blender::ed::sculpt_paint::StrokeCa
 bool SCULPT_stroke_is_first_brush_step_of_symmetry_pass(
     const blender::ed::sculpt_paint::StrokeCache &cache);
 
+/**
+ * Align the grab delta to the brush normal.
+ *
+ * \param grab_delta: Typically from `ss.cache->grab_delta_symmetry`.
+ */
+void sculpt_project_v3_normal_align(const SculptSession &ss,
+                                    float normal_weight,
+                                    float grab_delta[3]);
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -1625,6 +1634,27 @@ BMLogEntry *get_bmesh_log_entry();
 
 }
 
+namespace blender::ed::sculpt_paint {
+
+struct OrigPositionData {
+  Span<float3> positions;
+  Span<float3> normals;
+};
+/**
+ * Retrieve positions from the latest undo state. This is often used for modal actions that depend
+ * on the initial state of the geometry from before the start of the action.
+ */
+OrigPositionData orig_position_data_get_mesh(const Object &object, const PBVHNode &node);
+OrigPositionData orig_position_data_get_grids(const Object &object, const PBVHNode &node);
+void orig_position_data_gather_bmesh(const BMLog &bm_log,
+                                     const Set<BMVert *, 0> &verts,
+                                     MutableSpan<float3> positions,
+                                     MutableSpan<float3> normals);
+
+Span<float4> orig_color_data_get_mesh(const Object &object, const PBVHNode &node);
+
+}
+
 /** \} */
 
 void SCULPT_vertcos_to_key(Object &ob, KeyBlock *kb, blender::Span<blender::float3> vertCos);
@@ -1762,7 +1792,11 @@ struct Operation {
 };
 
 /* Determines whether or not a gesture action should be applied. */
-bool is_affected(GestureData &gesture_data, const float3 &co, const float3 &vertex_normal);
+bool is_affected(const GestureData &gesture_data, const float3 &position, const float3 &normal);
+void filter_factors(const GestureData &gesture_data,
+                    Span<float3> positions,
+                    Span<float3> normals,
+                    MutableSpan<float> factors);
 
 /* Initialization functions. */
 std::unique_ptr<GestureData> init_from_box(bContext *C, wmOperator *op);
@@ -1931,22 +1965,17 @@ void pivot_line_preview_draw(uint gpuattr, SculptSession &ss);
 
 }
 
-/* Multi-plane Scrape Brush. */
-/* Main Brush Function. */
-void SCULPT_do_multiplane_scrape_brush(const Sculpt &sd,
-                                       Object &ob,
-                                       blender::Span<PBVHNode *> nodes);
-void SCULPT_multiplane_scrape_preview_draw(uint gpuattr,
-                                           const Brush &brush,
-                                           const SculptSession &ss,
-                                           const float outline_col[3],
-                                           float outline_alpha);
-
 namespace blender::ed::sculpt_paint {
+
+void multiplane_scrape_preview_draw(uint gpuattr,
+                                    const Brush &brush,
+                                    const SculptSession &ss,
+                                    const float outline_col[3],
+                                    float outline_alpha);
 
 namespace face_set {
 
-void do_draw_face_sets_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes);
+void do_relax_face_sets_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes);
 
 }
 
@@ -2014,23 +2043,18 @@ void SCULPT_do_paint_brush_image(PaintModeSettings &paint_mode_settings,
                                  blender::Span<PBVHNode *> texnodes);
 bool SCULPT_use_image_paint_brush(PaintModeSettings &settings, Object &ob);
 
-float SCULPT_clay_thumb_get_stabilized_pressure(
-    const blender::ed::sculpt_paint::StrokeCache &cache);
+namespace blender::ed::sculpt_paint {
 
-void SCULPT_do_clay_thumb_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
+float clay_thumb_get_stabilized_pressure(const blender::ed::sculpt_paint::StrokeCache &cache);
+
+}
+
 void SCULPT_do_snake_hook_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
-void SCULPT_do_thumb_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
-void SCULPT_do_rotate_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_layer_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
-void SCULPT_do_pinch_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
-void SCULPT_do_grab_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_elastic_deform_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_draw_sharp_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_slide_relax_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 
-void SCULPT_do_displacement_smear_brush(const Sculpt &sd,
-                                        Object &ob,
-                                        blender::Span<PBVHNode *> nodes);
 /** \} */
 
 void SCULPT_bmesh_topology_rake(const Sculpt &sd,
