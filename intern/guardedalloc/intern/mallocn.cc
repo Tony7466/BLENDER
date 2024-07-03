@@ -15,7 +15,7 @@
 
 #include <cassert>
 
-#include "mallocn_intern.h"
+#include "mallocn_intern.hh"
 
 #include "mallocn_intern_function_pointers.hh"
 
