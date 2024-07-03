@@ -1585,6 +1585,9 @@ class CyclesPreferences(bpy.types.AddonPreferences):
     def get_device_list(self, compute_device_type):
         import _cycles
         device_list = _cycles.available_devices(compute_device_type)
+        # Make sure device entries are up to date and not referenced before
+        # we know we won't add new devices. This way we guarantee to not
+        # hold pointers to a resized array.
         self.update_device_entries(device_list)
         return device_list
 
@@ -1638,7 +1641,7 @@ class CyclesPreferences(bpy.types.AddonPreferences):
         for device_type in ('CUDA', 'OPTIX', 'HIP', 'METAL', 'ONEAPI'):
             # Query the device list to trigger all required updates.
             # Note that even though the device list is unused,
-            # the function has side-effects with internal state update.
+            # the function has side-effects with internal state updates.
             _device_list = self.get_device_list(device_type)
 
     # Deprecated: use refresh_devices instead.
