@@ -169,11 +169,11 @@ static void do_draw_face_sets_brush_mesh(Object &object,
   const OffsetIndices<int> faces = mesh.faces();
   const Span<int> corner_verts = mesh.corner_verts();
   const Span<int> corner_tris = mesh.corner_tri_faces();
-  threading::EnumerableThreadSpecific<MeshLocalData> all_tls;
 
   bke::SpanAttributeWriter<int> attribute = face_set::ensure_face_sets_mesh(object);
   MutableSpan<int> face_sets = attribute.span;
 
+  threading::EnumerableThreadSpecific<MeshLocalData> all_tls;
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     MeshLocalData &tls = all_tls.local();
     for (const int i : range) {
@@ -282,8 +282,8 @@ static void do_draw_face_sets_brush_grids(Object &object,
 
   bke::SpanAttributeWriter<int> attribute = face_set::ensure_face_sets_mesh(object);
   MutableSpan<int> face_sets = attribute.span;
-  threading::EnumerableThreadSpecific<GridLocalData> all_tls;
 
+  threading::EnumerableThreadSpecific<GridLocalData> all_tls;
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     GridLocalData &tls = all_tls.local();
     for (PBVHNode *node : nodes.slice(range)) {
@@ -423,6 +423,7 @@ static void do_draw_face_sets_brush_bmesh(Object &object,
 {
   SculptSession &ss = *object.sculpt;
   const int cd_offset = face_set::ensure_face_sets_bmesh(object);
+
   threading::EnumerableThreadSpecific<BMeshLocalData> all_tls;
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     BMeshLocalData &tls = all_tls.local();
