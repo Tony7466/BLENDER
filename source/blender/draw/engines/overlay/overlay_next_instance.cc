@@ -219,8 +219,8 @@ void Instance::draw(Manager &manager)
 
   background.draw(resources, manager);
 
-  empties.draw(resources, manager, view);
   lights.draw(resources, manager, view);
+  empties.draw(resources, manager, view);
   metaballs.draw(resources, manager, view);
   speakers.draw(resources, manager, view);
 

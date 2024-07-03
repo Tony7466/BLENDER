@@ -103,7 +103,7 @@ class LightsPassHandler {
       case LA_SPOT:
         /* Previous implementation was using the clip-end distance as cone size.
          * We cannot do this anymore so we use a fixed size of 10. (see #72871) */
-        matrix = math::scale(matrix, float3(10.0f));
+        rescale_m4(matrix.ptr(), float3{10.0f, 10.0f, 10.0f});
         /* For cycles and EEVEE the spot attenuation is:
          * `y = (1/sqrt(1 + x^2) - a)/((1 - a) b)`
          * x being the tangent of the angle between the light direction and the generatrix of the
@@ -147,15 +147,35 @@ class LightsPassHandler {
                 const State &state,
                 CallBuffers &call_bufs,
                 PassSimple &pass,
-                bool /*in_front*/)
+                bool in_front)
   {
     const DRWState pass_state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |
-                                DRW_STATE_DEPTH_LESS_EQUAL;
+                                DRW_STATE_DEPTH_LESS_EQUAL | state.clipping_state;
     pass.init();
-    pass.state_set(pass_state | state.clipping_state);
+    pass.state_set(pass_state);
     pass.shader_set(res.shaders.extra_shape.get());
     pass.bind_ubo("globalsBlock", &res.globals_buf);
     res.select_bind(pass);
+
+    if (!in_front) {
+      {
+        PassSimple::Sub &sub_pass = pass.sub("spot_cone_front");
+        sub_pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA | DRW_STATE_CULL_FRONT |
+                           state.clipping_state);
+        sub_pass.shader_set(res.shaders.extra_shape.get());
+        sub_pass.bind_ubo("globalsBlock", &res.globals_buf);
+        call_bufs.spot_cone_front_buf.end_sync(sub_pass, shapes.light_spot_volume.get());
+      }
+      {
+        PassSimple::Sub &sub_pass = pass.sub("spot_cone_back");
+        sub_pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA |
+                           DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_CULL_BACK |
+                           state.clipping_state);
+        sub_pass.shader_set(res.shaders.extra_shape.get());
+        sub_pass.bind_ubo("globalsBlock", &res.globals_buf);
+        call_bufs.spot_cone_back_buf.end_sync(sub_pass, shapes.light_spot_volume.get());
+      }
+    }
 
     call_bufs.icon_inner_buf.end_sync(pass, shapes.light_icon_outer_lines.get());
     call_bufs.icon_outer_buf.end_sync(pass, shapes.light_icon_inner_lines.get());
@@ -167,26 +187,10 @@ class LightsPassHandler {
     call_bufs.area_square_buf.end_sync(pass, shapes.light_area_square_lines.get());
     {
       PassSimple::Sub &sub_pass = pass.sub("ground_line");
-      sub_pass.state_set(pass_state | DRW_STATE_BLEND_ALPHA | state.clipping_state);
+      sub_pass.state_set(pass_state | DRW_STATE_BLEND_ALPHA);
       sub_pass.shader_set(res.shaders.extra_ground_line.get());
       sub_pass.bind_ubo("globalsBlock", &res.globals_buf);
       call_bufs.ground_line_buf.end_sync(sub_pass, shapes.ground_line.get());
-    }
-    {
-      PassSimple::Sub &sub_pass = pass.sub("spot_cone_back");
-      sub_pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA |
-                         DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_CULL_BACK | state.clipping_state);
-      pass.shader_set(res.shaders.extra_shape.get());
-      sub_pass.bind_ubo("globalsBlock", &res.globals_buf);
-      call_bufs.spot_cone_back_buf.end_sync(sub_pass, shapes.light_spot_volume.get());
-    }
-    {
-      PassSimple::Sub &sub_pass = pass.sub("spot_cone_front");
-      sub_pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA |
-                         DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_CULL_FRONT | state.clipping_state);
-      pass.shader_set(res.shaders.extra_shape.get());
-      sub_pass.bind_ubo("globalsBlock", &res.globals_buf);
-      call_bufs.spot_cone_front_buf.end_sync(sub_pass, shapes.light_spot_volume.get());
     }
   }
 };

@@ -224,7 +224,6 @@ struct ExtraInstanceData {
   {
     ExtraInstanceData copy = *this;
     copy.color_ = color;
-    copy.object_to_world_ = this->object_to_world_;
     return copy;
   }
 

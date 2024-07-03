@@ -431,7 +431,7 @@ ShapeCache::ShapeCache()
     /* Cone apex */
     verts.append({{0.0f, 0.0f, 0.0f}, 0});
     /* Cone silhouette */
-    for (int a = 0; a < CIRCLE_NSEGMENTS + 1; a++) {
+    for (int a : IndexRange(CIRCLE_NSEGMENTS + 1)) {
       float angle = (2.0f * M_PI * a) / CIRCLE_NSEGMENTS;
       float s = sinf(-angle);
       float c = cosf(-angle);
@@ -538,8 +538,8 @@ ShapeCache::ShapeCache()
 
     Vector<Vertex> verts;
     /* Light area */
-    for (int a = 0; a < 4; a++) {
-      for (int b = 0; b < 2; b++) {
+    for (int a : IndexRange(4)) {
+      for (int b : IndexRange(2)) {
         float x = rect[(a + b) % 4][0];
         float y = rect[(a + b) % 4][1];
         verts.append({{x * 0.5f, y * 0.5f, 0.0f}, VCLASS_LIGHT_AREA_SHAPE});
