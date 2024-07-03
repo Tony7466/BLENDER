@@ -1275,7 +1275,7 @@ static bool socket_needs_attribute_search(bNode &node, bNodeSocket &socket)
   return node_decl->inputs[socket_index]->is_attribute_name;
 }
 
-static void draw_gizmo_icon(uiLayout *layout, PointerRNA *socket_ptr)
+static void draw_gizmo_pin_icon(uiLayout *layout, PointerRNA *socket_ptr)
 {
   uiItemR(layout, socket_ptr, "pin_gizmo", UI_ITEM_NONE, "", ICON_GIZMO);
 }
@@ -1333,7 +1333,7 @@ static void std_node_socket_draw(
         uiItemL(row, "", ICON_GIZMO);
       }
       else {
-        draw_gizmo_icon(row, ptr);
+        draw_gizmo_pin_icon(row, ptr);
       }
       return;
     }
@@ -1342,7 +1342,7 @@ static void std_node_socket_draw(
     {
       uiLayout *row = uiLayoutRow(layout, false);
       node_socket_button_label(C, row, ptr, node_ptr, text);
-      draw_gizmo_icon(row, ptr);
+      draw_gizmo_pin_icon(row, ptr);
       return;
     }
   }
@@ -1380,7 +1380,7 @@ static void std_node_socket_draw(
             uiLayout *row = uiLayoutRow(column, true);
             uiItemL(row, text, ICON_NONE);
             if (has_gizmo) {
-              draw_gizmo_icon(row, ptr);
+              draw_gizmo_pin_icon(row, ptr);
               gizmo_handled = true;
             }
           }
@@ -1394,7 +1394,7 @@ static void std_node_socket_draw(
         uiLayout *row = uiLayoutRow(column, true);
         uiItemL(row, text, ICON_NONE);
         if (has_gizmo) {
-          draw_gizmo_icon(row, ptr);
+          draw_gizmo_pin_icon(row, ptr);
           gizmo_handled = true;
         }
       }
@@ -1536,7 +1536,7 @@ static void std_node_socket_draw(
   }
 
   if (has_gizmo && !gizmo_handled) {
-    draw_gizmo_icon(layout, ptr);
+    draw_gizmo_pin_icon(layout, ptr);
   }
 }
 
@@ -1884,13 +1884,13 @@ static struct {
   uint dim_factor_id;
   uint thickness_id;
   uint dash_params_id;
-  uint is_split_line_id;
+  uint has_back_link_id;
   GPUVertBufRaw p0_step, p1_step, p2_step, p3_step;
   GPUVertBufRaw colid_step, muted_step, start_color_step, end_color_step;
   GPUVertBufRaw dim_factor_step;
   GPUVertBufRaw thickness_step;
   GPUVertBufRaw dash_params_step;
-  GPUVertBufRaw is_split_line_step;
+  GPUVertBufRaw has_back_link_step;
   uint count;
   bool enabled;
 } g_batch_link;
@@ -1912,7 +1912,7 @@ static void nodelink_batch_reset()
   GPU_vertbuf_attr_get_raw_data(
       g_batch_link.inst_vbo, g_batch_link.dash_params_id, &g_batch_link.dash_params_step);
   GPU_vertbuf_attr_get_raw_data(
-      g_batch_link.inst_vbo, g_batch_link.is_split_line_id, &g_batch_link.is_split_line_step);
+      g_batch_link.inst_vbo, g_batch_link.has_back_link_id, &g_batch_link.has_back_link_step);
   GPU_vertbuf_attr_get_raw_data(
       g_batch_link.inst_vbo, g_batch_link.start_color_id, &g_batch_link.start_color_step);
   GPU_vertbuf_attr_get_raw_data(
@@ -2044,7 +2044,7 @@ static void nodelink_batch_init()
       &format_inst, "thickness", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
   g_batch_link.dash_params_id = GPU_vertformat_attr_add(
       &format_inst, "dash_params", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-  g_batch_link.is_split_line_id = GPU_vertformat_attr_add(
+  g_batch_link.has_back_link_id = GPU_vertformat_attr_add(
       &format_inst, "has_back_link", GPU_COMP_U32, 1, GPU_FETCH_INT);
   g_batch_link.inst_vbo = GPU_vertbuf_create_with_format_ex(format_inst, GPU_USAGE_STREAM);
   /* Alloc max count but only draw the range we need. */
@@ -2169,7 +2169,7 @@ static void nodelink_batch_add_link(const SpaceNode &snode,
   *(float *)GPU_vertbuf_raw_step(&g_batch_link.thickness_step) = draw_config.thickness;
   float3 dash_params(draw_config.dash_length, draw_config.dash_factor, draw_config.dash_alpha);
   copy_v3_v3((float *)GPU_vertbuf_raw_step(&g_batch_link.dash_params_step), dash_params);
-  *(int *)GPU_vertbuf_raw_step(&g_batch_link.is_split_line_step) = draw_config.has_back_link;
+  *(int *)GPU_vertbuf_raw_step(&g_batch_link.has_back_link_step) = draw_config.has_back_link;
 
   if (g_batch_link.count == NODELINK_GROUP_SIZE) {
     nodelink_batch_draw(snode);
