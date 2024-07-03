@@ -54,6 +54,11 @@ def object_eevee_shader_nodes_poll(context):
     return (object_shader_nodes_poll(context) and
             eevee_shader_nodes_poll(context))
 
+def npr_shader_nodes_poll(context):
+    snode = context.space_data
+    return (eevee_shader_nodes_poll and
+            snode.tree_type == 'ShaderNodeTree' and
+            snode.shader_type == 'NPR')
 
 class NODE_MT_category_shader_input(Menu):
     bl_idname = "NODE_MT_category_shader_input"
@@ -83,6 +88,7 @@ class NODE_MT_category_shader_input(Menu):
         node_add_menu.add_node_type(layout, "ShaderNodeValue")
         node_add_menu.add_node_type(layout, "ShaderNodeVolumeInfo")
         node_add_menu.add_node_type(layout, "ShaderNodeWireframe")
+        node_add_menu.add_node_type(layout, "ShaderNodeNPR_Input", poll=npr_shader_nodes_poll(context))
 
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
@@ -117,6 +123,11 @@ class NODE_MT_category_shader_output(Menu):
             layout,
             "ShaderNodeOutputLineStyle",
             poll=line_style_shader_nodes_poll(context),
+        )
+        node_add_menu.add_node_type(
+            layout,
+            "ShaderNodeNPR_Output",
+            poll=npr_shader_nodes_poll(context),
         )
 
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)

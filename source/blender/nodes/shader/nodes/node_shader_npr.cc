@@ -19,6 +19,7 @@ namespace blender::nodes::node_shader_npr_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Shader>("Shader");
+  /* TODO(NPR): Output should have its own socket type. */
   b.add_output<decl::Shader>("NPR");
 }
 

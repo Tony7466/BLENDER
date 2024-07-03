@@ -108,7 +108,8 @@ static void shader_get_from_context(const bContext *C,
     }
   }
   else if (snode->shaderfrom == SNODE_SHADER_NPR) {
-    /* TODO(NPR): ? */
+    *r_ntree = snode->nodetree;
+    /* TODO(NPR): Only if node tree is a NPR node tree. */
   }
   else {
     BLI_assert_unreachable();

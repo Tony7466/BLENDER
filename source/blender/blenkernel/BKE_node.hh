@@ -968,6 +968,8 @@ void BKE_nodetree_remove_layer_n(bNodeTree *ntree, Scene *scene, int layer_index
 #define SH_NODE_BSDF_RAY_PORTAL 714
 #define SH_NODE_TEX_GABOR 715
 #define SH_NODE_NPR 716
+#define SH_NODE_NPR_INPUT 717
+#define SH_NODE_NPR_OUTPUT 718
 
 /** \} */
 
