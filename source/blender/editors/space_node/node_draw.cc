@@ -4174,6 +4174,7 @@ static Set<const bNodeSocket *> find_sockets_on_active_gizmo_paths(const bContex
   }
   snode.edittree->ensure_topology_cache();
 
+  /* Compute compute context hash for the current node tree path. */
   ComputeContextHash current_compute_context_hash;
   {
     ComputeContextBuilder compute_context_builder;
@@ -4753,6 +4754,8 @@ static void draw_nodetree(const bContext &C,
     tree_draw_ctx.active_geometry_nodes_viewer = viewer_path::find_geometry_nodes_viewer(
         workspace->viewer_path, *snode);
 
+    /* This set of socket is used when drawing links to determine which links should use the
+     * special gizmo drawing. */
     ntree.runtime->sockets_on_active_gizmo_paths = find_sockets_on_active_gizmo_paths(C, *snode);
   }
   else if (ntree.type == NTREE_COMPOSIT) {
