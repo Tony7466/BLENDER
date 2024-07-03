@@ -6914,14 +6914,12 @@ void filter_region_clip_factors(const SculptSession &ss,
   }
 }
 
-void calc_distance_falloff(const SculptSession &ss,
-                           const Span<float3> positions,
-                           const Span<int> verts,
-                           const eBrushFalloffShape falloff_shape,
-                           const MutableSpan<float> r_distances,
-                           const MutableSpan<float> factors)
+void calc_brush_distances(const SculptSession &ss,
+                          const Span<float3> positions,
+                          const Span<int> verts,
+                          const eBrushFalloffShape falloff_shape,
+                          const MutableSpan<float> r_distances)
 {
-  BLI_assert(verts.size() == factors.size());
   BLI_assert(verts.size() == r_distances.size());
 
   const float3 &test_location = ss.cache ? ss.cache->location : ss.cursor_location;
@@ -6933,34 +6931,21 @@ void calc_distance_falloff(const SculptSession &ss,
     for (const int i : verts.index_range()) {
       float3 projected;
       closest_to_plane_normalized_v3(projected, test_plane, positions[verts[i]]);
-      r_distances[i] = math::distance_squared(projected, test_location);
+      r_distances[i] = math::distance(projected, test_location);
     }
   }
   else {
     for (const int i : verts.index_range()) {
-      r_distances[i] = math::distance_squared(test_location, positions[verts[i]]);
-    }
-  }
-
-  const float radius_sq = ss.cache ? ss.cache->radius_squared :
-                                     ss.cursor_radius * ss.cursor_radius;
-  for (const int i : r_distances.index_range()) {
-    if (r_distances[i] < radius_sq) {
-      r_distances[i] = std::sqrt(r_distances[i]);
-    }
-    else {
-      factors[i] = 0.0f;
+      r_distances[i] = math::distance(test_location, positions[verts[i]]);
     }
   }
 }
 
-void calc_distance_falloff(const SculptSession &ss,
-                           const Span<float3> positions,
-                           const eBrushFalloffShape falloff_shape,
-                           const MutableSpan<float> r_distances,
-                           const MutableSpan<float> factors)
+void calc_brush_distances(const SculptSession &ss,
+                          const Span<float3> positions,
+                          const eBrushFalloffShape falloff_shape,
+                          const MutableSpan<float> r_distances)
 {
-  BLI_assert(positions.size() == factors.size());
   BLI_assert(positions.size() == r_distances.size());
 
   const float3 &test_location = ss.cache ? ss.cache->location : ss.cursor_location;
@@ -6972,34 +6957,34 @@ void calc_distance_falloff(const SculptSession &ss,
     for (const int i : positions.index_range()) {
       float3 projected;
       closest_to_plane_normalized_v3(projected, test_plane, positions[i]);
-      r_distances[i] = math::distance_squared(projected, test_location);
+      r_distances[i] = math::distance(projected, test_location);
     }
   }
   else {
     for (const int i : positions.index_range()) {
-      r_distances[i] = math::distance_squared(test_location, positions[i]);
+      r_distances[i] = math::distance(test_location, positions[i]);
     }
   }
+}
 
-  const float radius_sq = ss.cache ? ss.cache->radius_squared :
-                                     ss.cursor_radius * ss.cursor_radius;
-  for (const int i : r_distances.index_range()) {
-    if (r_distances[i] < radius_sq) {
-      r_distances[i] = std::sqrt(r_distances[i]);
-    }
-    else {
+void filter_distances_with_radius(const float radius,
+                                  const Span<float> distances,
+                                  const MutableSpan<float> factors)
+{
+  for (const int i : distances.index_range()) {
+    if (distances[i] > radius) {
       factors[i] = 0.0f;
     }
   }
 }
 
-void calc_cube_distance_falloff(SculptSession &ss,
-                                const Brush &brush,
-                                const float4x4 &mat,
-                                const Span<float3> positions,
-                                const Span<int> verts,
-                                const MutableSpan<float> r_distances,
-                                const MutableSpan<float> factors)
+void calc_brush_cube_distances(SculptSession &ss,
+                               const Brush &brush,
+                               const float4x4 &mat,
+                               const Span<float3> positions,
+                               const Span<int> verts,
+                               const MutableSpan<float> r_distances,
+                               const MutableSpan<float> factors)
 {
   BLI_assert(verts.size() == factors.size());
   BLI_assert(verts.size() == r_distances.size());
@@ -7023,12 +7008,12 @@ void calc_cube_distance_falloff(SculptSession &ss,
   }
 }
 
-void calc_cube_distance_falloff(SculptSession &ss,
-                                const Brush &brush,
-                                const float4x4 &mat,
-                                const Span<float3> positions,
-                                const MutableSpan<float> r_distances,
-                                const MutableSpan<float> factors)
+void calc_brush_cube_distances(SculptSession &ss,
+                               const Brush &brush,
+                               const float4x4 &mat,
+                               const Span<float3> positions,
+                               const MutableSpan<float> r_distances,
+                               const MutableSpan<float> factors)
 {
   BLI_assert(positions.size() == factors.size());
   BLI_assert(positions.size() == r_distances.size());
@@ -7051,9 +7036,10 @@ void calc_cube_distance_falloff(SculptSession &ss,
   }
 }
 
-void apply_hardness_to_distances(const StrokeCache &cache, const MutableSpan<float> distances)
+void apply_hardness_to_distances(const float radius,
+                                 const float hardness,
+                                 const MutableSpan<float> distances)
 {
-  const float hardness = cache.paint_brush.hardness;
   if (hardness == 0.0f) {
     return;
   }
@@ -7061,7 +7047,6 @@ void apply_hardness_to_distances(const StrokeCache &cache, const MutableSpan<flo
     distances.fill(0.0f);
     return;
   }
-  const float radius = cache.radius;
   const float threshold = hardness * radius;
   const float radius_inv = math::rcp(radius);
   const float hardness_inv_rcp = math::rcp(1.0f - hardness);
