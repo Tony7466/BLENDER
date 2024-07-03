@@ -1581,7 +1581,7 @@ class CyclesPreferences(bpy.types.AddonPreferences):
     )
 
     # Be careful when deciding when to call this function,
-    # as Blender can crash with some drivers.
+    # as Blender can crash with `_cycles.available_devices()` on some drivers.
     def get_device_list(self, compute_device_type):
         import _cycles
         device_list = _cycles.available_devices(compute_device_type)
