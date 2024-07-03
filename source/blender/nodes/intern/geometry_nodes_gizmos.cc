@@ -363,6 +363,9 @@ static void foreach_active_gizmo_exposed_to_modifier(
     ComputeContextBuilder &compute_context_builder,
     const ForeachGizmoInModifierFn fn)
 {
+  if (!nmd.node_group) {
+    return;
+  }
   const bNodeTree &tree = *nmd.node_group;
   if (!tree.runtime->gizmo_propagation) {
     return;
