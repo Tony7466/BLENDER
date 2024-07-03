@@ -38,7 +38,7 @@ from bpy_extras.io_utils import ImportHelper
 # -----------------------------------------------------------------------------
 # Constants
 
-COMPATIBLE_ENGINES = {'CYCLES', 'BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT', 'BLENDER_WORKBENCH'}
+COMPATIBLE_ENGINES = {'CYCLES', 'BLENDER_EEVEE_NEXT', 'BLENDER_WORKBENCH'}
 
 # -----------------------------------------------------------------------------
 # Image loading
@@ -354,7 +354,7 @@ class MaterialProperties_MixIn:
             body.prop(self, "use_backface_culling")
 
             engine = context.scene.render.engine
-            if engine not in ('CYCLES', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'):
+            if engine not in COMPATIBLE_ENGINES:
                 body.label(text=tip_("{:s} is not supported").format(engine), icon='ERROR')
 
             body.prop(self, "overwrite_material")
