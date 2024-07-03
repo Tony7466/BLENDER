@@ -3129,6 +3129,13 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
           }
         }
       }
+
+      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+        Editing *ed = SEQ_editing_get(scene);
+        if (ed != nullptr) {
+          SEQ_for_each_callback(&ed->seqbase, versioning_convert_strip_speed_factor, scene);
+        }
+      }
     }
 
     if (!DNA_struct_member_exists(fd->filesdna, "SceneEEVEE", "int", "shadow_step_count")) {
@@ -4240,15 +4247,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         mat->surface_render_method = (mat->blend_method == MA_BM_BLEND) ?
                                          MA_SURFACE_METHOD_FORWARD :
                                          MA_SURFACE_METHOD_DEFERRED;
-      }
-    }
-  }
-
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 65)) {
-    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-      Editing *ed = SEQ_editing_get(scene);
-      if (ed != nullptr) {
-        SEQ_for_each_callback(&ed->seqbase, versioning_convert_strip_speed_factor, scene);
       }
     }
   }
