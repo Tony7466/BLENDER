@@ -92,7 +92,7 @@ static void get_axis_gizmo_colors(const int axis, float *r_color, float *r_color
 
 static void make_matrix_orthonormal_but_keep_z_axis(float4x4 &m)
 {
-  /* Without this, the gizmos may be skewed. */
+  /* Without this, the gizmo may be skewed. */
   m.x_axis() = math::normalize(math::cross(m.y_axis(), m.z_axis()));
   m.y_axis() = math::normalize(math::cross(m.z_axis(), m.x_axis()));
   m.z_axis() = math::normalize(m.z_axis());
@@ -143,14 +143,25 @@ struct GizmosUpdateParams {
 
 class NodeGizmos {
  public:
+  /**
+   * Should be called when the gizmo is modified. It encapsulates the complexity of handling
+   * multi-input gizmo sockets and the backpropagation of the change through the node tree. Search
+   * for `apply_change =` to find where this is set.
+   */
   ApplyChangeFn apply_change;
 
   virtual ~NodeGizmos() = default;
 
+  /**
+   * Called after the initial construction to build the individual gizmos. The gizmos have to be
+   * added to the given group.
+   */
   virtual void create_gizmos(wmGizmoGroup &gzgroup) = 0;
 
+  /** Update the styling, transforms and target property of the gizmos. */
   virtual void update(GizmosUpdateParams & /*params*/) {}
 
+  /** Get a list of all owned gizmos. */
   virtual Vector<wmGizmo *> get_all_gizmos() = 0;
 
   void hide_all()
@@ -167,6 +178,7 @@ class NodeGizmos {
     }
   }
 
+  /** Returns true if any of the gizmos is currently interacted with. */
   bool is_any_interacting()
   {
     bool any_interacting = false;
@@ -182,6 +194,7 @@ class LinearGizmo : public NodeGizmos {
   wmGizmo *gizmo_ = nullptr;
 
   struct EditData {
+    /** An additional that has to be applied because the gizmo has been scaled. */
     float factor_from_transform = 1.0f;
     float current_value = 0.0f;
   } edit_data_;
@@ -405,6 +418,10 @@ class TransformGizmos : public NodeGizmos {
 
   int transform_orientation_ = V3D_ORIENT_GLOBAL;
 
+  /**
+   * Transformation of the object and potentialy crazy-space transforms applied on top of the
+   * gizmos.
+   */
   float4x4 parent_transform_;
 
   struct EditData {
@@ -641,18 +658,17 @@ class TransformGizmos : public NodeGizmos {
         self.edit_data_.current_rotation[axis_i] = new_gizmo_value;
         self.apply_change("Value", [&](bke::SocketValueVariant &value_variant) {
           float4x4 value = value_variant.get<float4x4>();
-          float3x3 rotation_matrix;
+          float3 local_rotation_axis;
           if (self.transform_orientation_ == V3D_ORIENT_GLOBAL) {
-            const float3 local_rotation_axis = math::normalize(math::transform_direction(
+            local_rotation_axis = math::normalize(math::transform_direction(
                 math::invert(float3x3(self.parent_transform_)), math::to_vector<float3>(axis)));
-            rotation_matrix = math::from_rotation<float3x3>(
-                math::AxisAngle(local_rotation_axis, -new_gizmo_value));
           }
           else {
-            const float3 local_rotation_axis = math::normalize(float3(value[axis_i]));
-            rotation_matrix = math::from_rotation<float3x3>(
-                math::AxisAngle(local_rotation_axis, -new_gizmo_value));
+            local_rotation_axis = math::normalize(float3(value[axis_i]));
           }
+          float3x3 rotation_matrix;
+          rotation_matrix = math::from_rotation<float3x3>(
+              math::AxisAngle(local_rotation_axis, -new_gizmo_value));
           value.view<3, 3>() = rotation_matrix * value.view<3, 3>();
           value_variant.set(value);
         });
@@ -745,6 +761,7 @@ class TransformGizmos : public NodeGizmos {
   }
 };
 
+/** Uniquely identifies a gizmo node. */
 struct GeoNodesObjectGizmoID {
   const Object *object_orig;
   bke::GeoNodesGizmoID gizmo_id;
@@ -758,6 +775,7 @@ struct GeoNodesObjectGizmoID {
 };
 
 struct GeometryNodesGizmoGroup {
+  /* Gizmos for all active gizmo nodes. */
   Map<GeoNodesObjectGizmoID, std::unique_ptr<NodeGizmos>> gizmos_by_node;
 };
 
@@ -852,6 +870,25 @@ static std::optional<float4x4> find_gizmo_geometry_transform_recursive(
 }
 
 /**
+ * Find the geometry that the gizmo should be drawn for. This is generally either the final
+ * evaluated geometry or the viewer geometry.
+ */
+static bke::GeometrySet find_geometry_for_gizmo(const Object &object_eval,
+                                                const NodesModifierData &nmd_orig,
+                                                const View3D &v3d)
+{
+  if (v3d.flag2 & V3D_SHOW_VIEWER) {
+    const ViewerPath &viewer_path = v3d.viewer_path;
+    if (const geo_eval_log::ViewerNodeLog *viewer_log =
+            nmd_orig.runtime->eval_log->find_viewer_node_log_for_path(viewer_path))
+    {
+      return viewer_log->geometry;
+    }
+  }
+  return bke::object_get_evaluated_geometry_set(object_eval);
+}
+
+/**
  * Tries to find a transformation of the gizmo in the given geometry.
  */
 static std::optional<float4x4> find_gizmo_geometry_transform(const bke::GeometrySet &geometry,
@@ -896,6 +933,8 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
   }
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
 
+  /* A new map containing the active gizmos is build. This is less error prone than trying to
+   * update the old map inplace. */
   Map<GeoNodesObjectGizmoID, std::unique_ptr<NodeGizmos>> new_gizmos_by_node;
 
   /* This needs to stay around for a bit longer because the compute contexts are required when
@@ -918,6 +957,7 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
           return;
         }
         if (!nmd_orig.runtime->eval_log) {
+          /* Can't create gizmos without any logged data. */
           return;
         }
         Object *object_eval = DEG_get_evaluated_object(depsgraph,
@@ -926,34 +966,28 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
           return;
         }
 
-        bke::GeometrySet geometry = bke::object_get_evaluated_geometry_set(*object_eval);
-        if (v3d->flag2 & V3D_SHOW_VIEWER) {
-          const ViewerPath &viewer_path = v3d->viewer_path;
-          if (const geo_eval_log::ViewerNodeLog *viewer_log =
-                  nmd_orig.runtime->eval_log->find_viewer_node_log_for_path(viewer_path))
-          {
-            geometry = viewer_log->geometry;
-          }
-        }
+        const bke::GeometrySet geometry = find_geometry_for_gizmo(*object_eval, nmd_orig, *v3d);
 
+        /* Figure out which parts of the gizmo are editable. */
         const nodes::inverse_eval::ElemVariant elem = nodes::gizmos::get_editable_gizmo_elem(
             compute_context, gizmo_node, gizmo_socket);
 
         bNodeTree &ntree = *nmd_orig.node_group;
         ntree.ensure_topology_cache();
 
-        const float4x4 object_to_world{object_eval->object_to_world()};
-
         NodeGizmos *node_gizmos = nullptr;
         if (std::optional<std::unique_ptr<NodeGizmos>> old_gizmos =
                 gzgroup_data.gizmos_by_node.pop_try(gizmo_id))
         {
+          /* Gizmos for this node existed already, reuse them. */
           node_gizmos = old_gizmos->get();
           new_gizmos_by_node.add(gizmo_id, std::move(*old_gizmos));
         }
         else {
+          /* There are no gizmos for this node yet, create new ones. */
           std::unique_ptr<NodeGizmos> new_node_gizmos = create_gizmo_node_gizmos(gizmo_node);
           new_node_gizmos->create_gizmos(*gzgroup);
+          /* Enable undo for all geometry nodes gizmos. */
           for (wmGizmo *gizmo : new_node_gizmos->get_all_gizmos()) {
             gizmo->flag |= WM_GIZMO_NEEDS_UNDO;
           }
@@ -961,6 +995,7 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
           new_gizmos_by_node.add(gizmo_id, std::move(new_node_gizmos));
         }
 
+        /* Initially show all gizmos. They may be hidden as part of the update again. */
         node_gizmos->show_all();
 
         GeoTreeLog &tree_log = nmd_orig.runtime->eval_log->get_tree_log(compute_context.hash());
@@ -983,6 +1018,7 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
           return;
         }
 
+        const float4x4 object_to_world{object_eval->object_to_world()};
         const float4x4 geometry_transform = crazy_space_geometry_transform.value_or(
             float4x4::identity());
 
@@ -994,6 +1030,12 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
         bool any_interacting = node_gizmos->is_any_interacting();
 
         if (!any_interacting) {
+          if (report.missing_socket_logs || report.invalid_transform) {
+            /* Avoid showing gizmos which are in the wrong place. */
+            node_gizmos->hide_all();
+            return;
+          }
+          /* Update the callback to apply gizmo changes based on the new context. */
           node_gizmos->apply_change =
               [C = C,
                compute_context_builder,
@@ -1004,7 +1046,7 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
                nmd = &nmd_orig,
                eval_log = nmd_orig.runtime->eval_log](
                   const StringRef socket_identifier,
-                  const FunctionRef<void(bke::SocketValueVariant & value)> modify_value) {
+                  const FunctionRef<void(bke::SocketValueVariant &)> modify_value) {
                 gizmo_node_tree->ensure_topology_cache();
                 const bNodeSocket &socket = gizmo_node->input_by_identifier(socket_identifier);
 
@@ -1020,14 +1062,6 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
                 ED_node_tree_propagate_change(const_cast<bContext *>(C), main, nullptr);
                 WM_main_add_notifier(NC_GEOM | ND_DATA, nullptr);
               };
-        }
-
-        if (!any_interacting) {
-          if (report.missing_socket_logs || report.invalid_transform) {
-            /* Avoid showing gizmos which are in the wrong place. */
-            node_gizmos->hide_all();
-            return;
-          }
         }
       });
 
