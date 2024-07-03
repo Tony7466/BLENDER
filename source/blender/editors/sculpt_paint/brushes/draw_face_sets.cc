@@ -112,6 +112,8 @@ BLI_NOINLINE static void apply_face_set(const int face_set_id,
                                         const Span<float> factors,
                                         const MutableSpan<int> face_sets)
 {
+  BLI_assert(face_indices.size() == factors.size());
+
   for (const int i : face_indices.index_range()) {
     if (factors[i] > FACE_SET_BRUSH_MIN_FADE) {
       face_sets[face_indices[i]] = face_set_id;
