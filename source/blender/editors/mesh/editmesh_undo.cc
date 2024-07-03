@@ -201,13 +201,11 @@ static void um_arraystore_cd_compact(CustomData *cdata,
      * The array data isn't comparable once copied from the mesh,
      * this bottlenecks on high poly meshes, see #84114.
      *
-     * Notes:
+     * Ideally the data would be expanded into a format that could be de-duplicated effectively,
+     * this would require a flat representation of each dynamic custom-data layer.
      *
-     * - Ideally the data would be expanded into a format that could be de-duplicated effectively,
-     *   this would require a flat representation of each dynamic custom-data layer.
-     *
-     * - The data in the layer could be kept as-is to save on the extra copy,
-     *   it would complicate logic in this function.
+     * Instead, these non-trivial custom data layer are stored in the undo system using implicit
+     * sharing, to avoid the copy from the undo mesh.
      */
     const bool layer_type_is_dynamic = CustomData_layertype_is_dynamic(type);
 
