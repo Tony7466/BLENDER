@@ -75,7 +75,6 @@ void main(void)
   }
 
   aspect = node_link_data.aspect;
-
   /* Parameters for the dashed line. */
   dashLength = dash_params.x;
   dashFactor = dash_params.y;

@@ -42,7 +42,7 @@ struct NodeLinkData {
   float dim_factor;
   float thickness;
   float4 dash_params;
-  int has_back_link;
+  bool32_t has_back_link;
   float aspect;
   float arrowSize;
   float _pad;
