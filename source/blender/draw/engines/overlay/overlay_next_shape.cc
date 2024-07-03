@@ -52,6 +52,8 @@ enum VertexClass {
   VCLASS_EMPTY_SIZE = 1 << 14,
 };
 
+#define DIAMOND_NSEGMENTS 4
+
 static constexpr float bone_box_verts[8][3] = {
     {1.0f, 0.0f, 1.0f},
     {1.0f, 0.0f, -1.0f},
@@ -65,6 +67,26 @@ static constexpr float bone_box_verts[8][3] = {
 
 static constexpr std::array<uint, 24> bone_box_wire = {
     0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 5, 6, 6, 7, 7, 4, 0, 4, 1, 5, 2, 6, 3, 7,
+};
+
+static const std::array<uint3, 12> bone_box_solid_tris{
+    uint3{0, 2, 1}, /* bottom */
+    {0, 3, 2},
+
+    {0, 1, 5}, /* sides */
+    {0, 5, 4},
+
+    {1, 2, 6},
+    {1, 6, 5},
+
+    {2, 3, 7},
+    {2, 7, 6},
+
+    {3, 0, 4},
+    {3, 4, 7},
+
+    {4, 5, 6}, /* top */
+    {4, 6, 7},
 };
 
 /* A single ring of vertices. */
@@ -103,6 +125,18 @@ static Vector<Vertex> sphere_axes_circles(const float radius,
     }
   }
   return verts;
+}
+
+static void append_as_lines_cyclic(
+    Vector<Vertex> &dest, Vector<float2> verts, float z, int flag, bool dashed = false)
+{
+  const int step = dashed ? 2 : 1;
+  for (int i : IndexRange(verts.size() / step)) {
+    for (int j : IndexRange(2)) {
+      float2 cv = verts[(i * step + j) % (verts.size())];
+      dest.append({{cv[0], cv[1], z}, flag});
+    }
+  }
 }
 
 ShapeCache::ShapeCache()
@@ -356,6 +390,83 @@ ShapeCache::ShapeCache()
       }
     }
     speaker = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* camera distances */
+  {
+    static const Vector<float2> diamond = ring_vertices(1.5f, DIAMOND_NSEGMENTS);
+    static const Vector<float2> cross = {{1.0f, 0.0f}, {-1.0f, 0.0f}, {0.0f, 1.0f}, {0.0f, -1.0f}};
+
+    Vector<Vertex> verts;
+    verts.append({{0.0f, 0.0f, 0.0f}, VCLASS_CAMERA_DIST});
+    verts.append({{0.0f, 0.0f, 1.0f}, VCLASS_CAMERA_DIST});
+
+    append_as_lines_cyclic(verts, diamond, 0.0f, VCLASS_CAMERA_DIST | VCLASS_SCREENSPACE);
+    append_as_lines_cyclic(verts, diamond, 1.0f, VCLASS_CAMERA_DIST | VCLASS_SCREENSPACE);
+
+    /* Focus cross */
+    for (const float2 &point : cross) {
+      verts.append({{point.x, point.y, 2.0f}, VCLASS_CAMERA_DIST});
+    }
+    camera_distances = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* camera frame */
+  {
+    static const Vector<float2> rect{{-1.0f, -1.0f}, {-1.0f, 1.0f}, {1.0f, 1.0f}, {1.0f, -1.0f}};
+    Vector<Vertex> verts;
+    /* Frame */
+    append_as_lines_cyclic(verts, rect, 1.0f, VCLASS_CAMERA_FRAME);
+    /* Wires to origin. */
+    for (const float2 &point : rect) {
+      verts.append({{point.x, point.y, 1.0f}, VCLASS_CAMERA_FRAME});
+      verts.append({{point.x, point.y, 0.0f}, VCLASS_CAMERA_FRAME});
+    }
+    camera_frame = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* camera tria */
+  {
+    static const Vector<float2> triangle = {{-1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 0.0f}};
+    Vector<Vertex> verts(2 * 3);
+    /* Wire */
+    append_as_lines_cyclic(verts, triangle, 1.0f, VCLASS_CAMERA_FRAME);
+    camera_tria_wire = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+
+    verts.clear();
+    /* Triangle */
+    for (const float2 &point : triangle) {
+      verts.append({{point.x, point.y, 1.0f}, VCLASS_CAMERA_FRAME});
+    }
+    camera_tria = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_TRIS, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* camera volume */
+  {
+    Vector<Vertex> verts;
+    for (const uint3 &tri : bone_box_solid_tris) {
+      for (const int i : IndexRange(tri.type_length)) {
+        const int v = tri[i];
+        const float x = bone_box_verts[v][2];
+        const float y = bone_box_verts[v][0];
+        const float z = bone_box_verts[v][1];
+        verts.append({{x, y, z}, VCLASS_CAMERA_FRAME | VCLASS_CAMERA_VOLUME});
+      }
+    }
+    camera_volume = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_TRIS, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* camera volume wire */
+  {
+    Vector<Vertex> verts(bone_box_wire.size());
+    for (int i : bone_box_wire) {
+      const float x = bone_box_verts[i][2];
+      const float y = bone_box_verts[i][0];
+      const float z = bone_box_verts[i][1];
+      verts.append({{x, y, z}, VCLASS_CAMERA_FRAME | VCLASS_CAMERA_VOLUME});
+    }
+    camera_volume_wire = BatchPtr(
         GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
   }
 }

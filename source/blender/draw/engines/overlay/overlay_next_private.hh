@@ -84,6 +84,14 @@ class ShapeCache {
 
   BatchPtr speaker;
 
+  BatchPtr camera_distances;
+  BatchPtr camera_frame;
+  BatchPtr camera_tria_wire;
+  BatchPtr camera_tria;
+
+  BatchPtr camera_volume;
+  BatchPtr camera_volume_wire;
+
   ShapeCache();
 };
 
@@ -258,7 +266,7 @@ template<typename InstanceDataT> struct ShapeInstanceBuf : private select::Selec
     data_buf.append(data);
   }
 
-  void end_sync(PassSimple &pass, gpu::Batch *shape)
+  void end_sync(PassSimple::Sub &pass, gpu::Batch *shape)
   {
     if (data_buf.is_empty()) {
       return;

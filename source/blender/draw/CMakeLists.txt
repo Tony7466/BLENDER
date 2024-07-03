@@ -291,6 +291,7 @@ set(SRC
   engines/overlay/overlay_engine.h
   engines/overlay/overlay_next_background.hh
   engines/overlay/overlay_next_empty.hh
+  engines/overlay/overlay_next_camera.hh
   engines/overlay/overlay_next_grid.hh
   engines/overlay/overlay_next_instance.hh
   engines/overlay/overlay_next_metaball.hh

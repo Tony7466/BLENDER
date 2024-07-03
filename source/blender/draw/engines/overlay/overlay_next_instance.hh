@@ -11,6 +11,7 @@
 #include "overlay_next_private.hh"
 
 #include "overlay_next_background.hh"
+#include "overlay_next_camera.hh"
 #include "overlay_next_empty.hh"
 #include "overlay_next_grid.hh"
 #include "overlay_next_metaball.hh"
@@ -41,6 +42,7 @@ class Instance {
   Background background;
   Prepass prepass;
   Metaballs metaballs = {selection_type_};
+  Cameras cameras = {selection_type_};
   Empties empties = {selection_type_};
   Speakers speakers = {selection_type_};
   Grid grid;
