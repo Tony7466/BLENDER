@@ -1580,8 +1580,8 @@ class CyclesPreferences(bpy.types.AddonPreferences):
         ),
     )
 
-    # Be careful when deciding when to call this function, as it can cause
-    # Blender to crash if the user has a unstable driver.
+    # Be careful when deciding when to call this function,
+    # as Blender can crash with some drivers.
     def get_device_list(self, compute_device_type):
         import _cycles
         device_list = _cycles.available_devices(compute_device_type)
@@ -1636,7 +1636,10 @@ class CyclesPreferences(bpy.types.AddonPreferences):
         # Ensure `self.devices` is not re-allocated when the second call to
         # get_devices_for_type is made, freeing items from the first list.
         for device_type in ('CUDA', 'OPTIX', 'HIP', 'METAL', 'ONEAPI'):
-            self.get_device_list(device_type)
+            # Query the device list to trigger all required updates.
+            # Note that even though the device list is unused,
+            # the function has side-effects with internal state update.
+            _device_list = self.get_device_list(device_type)
 
     # Deprecated: use refresh_devices instead.
     def get_devices(self, compute_device_type=''):
