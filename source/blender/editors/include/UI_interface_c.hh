@@ -2033,8 +2033,8 @@ void UI_init_userdef();
 void UI_reinit_font();
 void UI_exit();
 
-/* Only when changing UI font, ensure text style weights match font weight if
- * the font is non-variable. So if choosing a bold font, change to bold weights. */
+/* When changing UI font, update text style weights with default font weight
+ * if non-variable. Therefore fixed weight bold font will look bold. */
 void UI_update_text_styles();
 
 /* Layout

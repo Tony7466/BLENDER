@@ -341,6 +341,7 @@ int BLF_default_weight(int fontid)
   if (font) {
     return font->metrics.weight;
   }
+  return 400;
 }
 
 bool BLF_has_variable_weight(int fontid)

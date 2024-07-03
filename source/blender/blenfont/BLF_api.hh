@@ -110,10 +110,10 @@ void BLF_size(int fontid, float size);
  */
 void BLF_character_weight(int fontid, int weight);
 
-/* Return the font's design weight. Useful for non-variable fonts. */
+/* Return the font's default design weight (100-900). */
 int BLF_default_weight(int fontid) ATTR_WARN_UNUSED_RESULT;
 
-/* Return whether the font has a variable weight axis. */
+/* Return true if the font has a variable (multiple master) weight axis. */
 bool BLF_has_variable_weight(int fontid) ATTR_WARN_UNUSED_RESULT;
 
 /* Goal: small but useful color API. */

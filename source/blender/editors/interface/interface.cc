@@ -6617,13 +6617,12 @@ void UI_update_text_styles()
     return;
   }
 
+  uiStyle *style = static_cast<uiStyle *>(U.uistyles.first);
   const int weight = BLF_default_weight(0);
-  LISTBASE_FOREACH (uiStyle *, style, &U.uistyles) {
-    style->paneltitle.character_weight = weight;
-    style->grouplabel.character_weight = weight;
-    style->widgetlabel.character_weight = weight;
-    style->widget.character_weight = weight;
-  }
+  style->paneltitle.character_weight = weight;
+  style->grouplabel.character_weight = weight;
+  style->widgetlabel.character_weight = weight;
+  style->widget.character_weight = weight;
 }
 
 void UI_exit()
