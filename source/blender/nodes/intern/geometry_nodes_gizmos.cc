@@ -251,6 +251,10 @@ static void foreach_active_gizmo_in_open_node_editor(
   const Object &object = *object_and_modifier->object;
   const NodesModifierData &nmd = *object_and_modifier->nmd;
 
+  if (!(nmd.modifier.mode & eModifierMode_Realtime)) {
+    return;
+  }
+
   const ComputeContext *prev_compute_context = compute_context_builder.current();
   compute_context_builder.push<bke::ModifierComputeContext>(nmd.modifier.name);
   BLI_SCOPED_DEFER([&]() { compute_context_builder.pop_until(prev_compute_context); });
@@ -398,6 +402,9 @@ void foreach_active_gizmo(const bContext &C,
 
   if (const Object *active_object = CTX_data_active_object(&C)) {
     if (const ModifierData *md = BKE_object_active_modifier(active_object)) {
+      if (!(md->mode & eModifierMode_Realtime)) {
+        return;
+      }
       if (md->type == eModifierType_Nodes) {
         const NodesModifierData &nmd = *reinterpret_cast<const NodesModifierData *>(md);
         foreach_active_gizmo_exposed_to_modifier(
