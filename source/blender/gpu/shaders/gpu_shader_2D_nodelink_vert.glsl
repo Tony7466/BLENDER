@@ -35,7 +35,7 @@ void main(void)
   float dim_factor = node_link_data.dim_factor;
   float thickness = node_link_data.thickness;
   vec3 dash_params = node_link_data.dash_params.xyz;
-  int has_back_link = node_link_data.has_back_link;
+  int has_back_link = node_link_data.has_back_link ? 1 : 0;
 
   vec4 colShadow = node_link_data.colors[0];
   vec4 colStart = node_link_data.colors[1];
