@@ -170,6 +170,9 @@ static void world_blend_write(BlendWriter *writer, ID *id, const void *id_addres
   if (wrld->lightgroup) {
     BLO_write_struct(writer, LightgroupMembership, wrld->lightgroup);
   }
+
+  /* Runtime data, so we clear it. */
+  wrld->last_update = 0;
 }
 
 static void world_blend_read_data(BlendDataReader *reader, ID *id)
@@ -226,4 +229,5 @@ void BKE_world_eval(Depsgraph *depsgraph, World *world)
 {
   DEG_debug_print_eval(depsgraph, __func__, world->id.name, world);
   GPU_material_free(&world->gpumaterial);
+  world->last_update = DEG_get_update_count(depsgraph);
 }
