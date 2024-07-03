@@ -33,8 +33,6 @@
 #include "DNA_scene_types.h"
 #include "DNA_world_types.h"
 
-#include "../hydra/image.hh"
-
 #include <string>
 
 #include "CLG_log.h"
