@@ -64,8 +64,9 @@ static void calc_faces_sharp(const Sculpt &sd,
 
   tls.distances.reinitialize(verts.size());
   const MutableSpan<float> distances = tls.distances;
-  calc_distance_falloff(
-      ss, orig_data.positions, eBrushFalloffShape(brush.falloff_shape), distances, factors);
+    calc_brush_distances(
+        ss, orig_data.positions, eBrushFalloffShape(brush.falloff_shape), distances);
+    filter_distances_with_radius(cache.radius, distances, factors);
   apply_hardness_to_distances(cache, distances);
   calc_brush_strength_factors(cache, brush, distances, factors);
 
@@ -94,25 +95,23 @@ static void calc_grids_sharp(const Sculpt &sd,
   SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
+    const OrigPositionData orig_data = orig_position_data_get_grids(object, node);
   const Span<int> grids = bke::pbvh::node_grid_indices(node);
   const int grid_verts_num = grids.size() * key.grid_area;
-
-  tls.positions.reinitialize(grid_verts_num);
-  MutableSpan<float3> positions = tls.positions;
-  gather_grids_positions(subdiv_ccg, grids, positions);
 
   tls.factors.reinitialize(grid_verts_num);
   const MutableSpan<float> factors = tls.factors;
   fill_factor_from_hide_and_mask(subdiv_ccg, grids, factors);
-  filter_region_clip_factors(ss, positions, factors);
+  filter_region_clip_factors(ss, orig_data.positions, factors);
   if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal, subdiv_ccg, grids, factors);
+    calc_front_face(cache.view_normal, orig_data.normals, grids, factors);
   }
 
   tls.distances.reinitialize(grid_verts_num);
   const MutableSpan<float> distances = tls.distances;
-  calc_distance_falloff(
-      ss, positions, eBrushFalloffShape(brush.falloff_shape), distances, factors);
+    calc_brush_distances(
+        ss, orig_data.positions, eBrushFalloffShape(brush.falloff_shape), distances);
+    filter_distances_with_radius(cache.radius, distances, factors);
   apply_hardness_to_distances(cache, distances);
   calc_brush_strength_factors(cache, brush, distances, factors);
 
@@ -120,13 +119,13 @@ static void calc_grids_sharp(const Sculpt &sd,
     auto_mask::calc_grids_factors(object, *cache.automasking, node, grids, factors);
   }
 
-  calc_brush_texture_factors(ss, brush, positions, factors);
+  calc_brush_texture_factors(ss, brush, orig_data.positions, factors);
 
   tls.translations.reinitialize(grid_verts_num);
   const MutableSpan<float3> translations = tls.translations;
   translations_from_offset_and_factors(offset, factors, translations);
 
-  clip_and_lock_translations(sd, ss, positions, translations);
+  clip_and_lock_translations(sd, ss, orig_data.positions, translations);
   apply_translations(translations, grids, subdiv_ccg);
 }
 
@@ -157,8 +156,8 @@ static void calc_bmesh_sharp(const Sculpt &sd,
 
   tls.distances.reinitialize(verts.size());
   const MutableSpan<float> distances = tls.distances;
-  calc_distance_falloff(
-      ss, orig_positions, eBrushFalloffShape(brush.falloff_shape), distances, factors);
+    calc_brush_distances(ss, orig_positions, eBrushFalloffShape(brush.falloff_shape), distances);
+    filter_distances_with_radius(cache.radius, distances, factors);
   apply_hardness_to_distances(cache, distances);
   calc_brush_strength_factors(cache, brush, distances, factors);
 
