@@ -398,6 +398,7 @@ void foreach_active_gizmo_in_modifier(const Object &object,
                                            const bNodeSocket &gizmo_socket) {
                                          BLI_assert(&object == &object_with_gizmo);
                                          BLI_assert(&nmd == &nmd_with_gizmo);
+                                         UNUSED_VARS_NDEBUG(object_with_gizmo, nmd_with_gizmo);
                                          fn(compute_context, gizmo_node, gizmo_socket);
                                        });
 
