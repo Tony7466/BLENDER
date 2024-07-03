@@ -2033,6 +2033,10 @@ void UI_init_userdef();
 void UI_reinit_font();
 void UI_exit();
 
+/* Only when changing UI font, ensure text style weights match font weight if
+ * the font is non-variable. So if choosing a bold font, change to bold weights. */
+void UI_update_text_styles();
+
 /* Layout
  *
  * More automated layout of buttons. Has three levels:
