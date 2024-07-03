@@ -1305,8 +1305,10 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
         return static_cast<const PhysicsGeometry *>(owner);
       }};
 
-  constexpr auto id_get_fn = [](const btRigidBody &body) -> int { return body.getUserIndex(); };
-  constexpr auto id_set_fn = [](btRigidBody &body, int value) { body.setUserIndex(value); };
+  static constexpr auto id_get_fn = [](const btRigidBody &body) -> int {
+    return body.getUserIndex();
+  };
+  static constexpr auto id_set_fn = [](btRigidBody &body, int value) { body.setUserIndex(value); };
   static BuiltinRigidBodyAttributeProvider<int, id_get_fn, id_set_fn> body_id(
       PhysicsGeometry::builtin_attributes.id,
       AttrDomain::Point,
@@ -1314,10 +1316,10 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
       physics_access,
       nullptr);
 
-  constexpr auto static_get_fn = [](const btRigidBody &body) -> bool {
+  static constexpr auto static_get_fn = [](const btRigidBody &body) -> bool {
     return body.isStaticObject();
   };
-  constexpr auto static_set_fn = [](btRigidBody &body, bool value) {
+  static constexpr auto static_set_fn = [](btRigidBody &body, bool value) {
     const bool is_moveable_shape = !body.getCollisionShape() ||
                                    !body.getCollisionShape()->isNonMoving();
     if (is_moveable_shape) {
@@ -1338,10 +1340,10 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
       physics_access,
       nullptr);
 
-  constexpr auto kinematic_get_fn = [](const btRigidBody &body) -> bool {
+  static constexpr auto kinematic_get_fn = [](const btRigidBody &body) -> bool {
     return body.isKinematicObject();
   };
-  constexpr auto kinematic_set_fn = [](btRigidBody &body, bool value) {
+  static constexpr auto kinematic_set_fn = [](btRigidBody &body, bool value) {
     int bt_collision_flags = body.getCollisionFlags();
     SET_FLAG_FROM_TEST(bt_collision_flags, value, btCollisionObject::CF_KINEMATIC_OBJECT);
     body.setCollisionFlags(bt_collision_flags);
@@ -1353,8 +1355,10 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                      physics_access,
                      nullptr);
 
-  constexpr auto mass_get_fn = [](const btRigidBody &body) -> float { return body.getMass(); };
-  constexpr auto mass_set_fn = [](btRigidBody &body, float value) {
+  static constexpr auto mass_get_fn = [](const btRigidBody &body) -> float {
+    return body.getMass();
+  };
+  static constexpr auto mass_set_fn = [](btRigidBody &body, float value) {
     const bool is_moveable_shape = !body.getCollisionShape() ||
                                    !body.getCollisionShape()->isNonMoving();
     if (is_moveable_shape) {
@@ -1369,10 +1373,10 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
       physics_access,
       nullptr);
 
-  constexpr auto inertia_get_fn = [](const btRigidBody &body) -> float3 {
+  static constexpr auto inertia_get_fn = [](const btRigidBody &body) -> float3 {
     return to_blender(body.getLocalInertia());
   };
-  constexpr auto inertia_set_fn = [](btRigidBody &body, float3 value) {
+  static constexpr auto inertia_set_fn = [](btRigidBody &body, float3 value) {
     const bool is_moveable_shape = !body.getCollisionShape() ||
                                    !body.getCollisionShape()->isNonMoving();
     if (is_moveable_shape) {
@@ -1394,10 +1398,10 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
       physics_access,
       nullptr);
 
-  constexpr auto center_of_mass_get_fn = [](const btRigidBody &body) -> float4x4 {
+  static constexpr auto center_of_mass_get_fn = [](const btRigidBody &body) -> float4x4 {
     return to_blender(body.getCenterOfMassTransform());
   };
-  constexpr auto center_of_mass_set_fn = [](btRigidBody &body, float4x4 value) {
+  static constexpr auto center_of_mass_set_fn = [](btRigidBody &body, float4x4 value) {
     body.setCenterOfMassTransform(to_bullet(value));
   };
   static BuiltinRigidBodyAttributeProvider<float4x4, center_of_mass_get_fn, center_of_mass_set_fn>
@@ -1407,10 +1411,10 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                           physics_access,
                           nullptr);
 
-  constexpr auto position_get_fn = [](const btRigidBody &body) -> float3 {
+  static constexpr auto position_get_fn = [](const btRigidBody &body) -> float3 {
     return to_blender(body.getWorldTransform().getOrigin());
   };
-  constexpr auto position_set_fn = [](btRigidBody &body, float3 value) {
+  static constexpr auto position_set_fn = [](btRigidBody &body, float3 value) {
     body.getWorldTransform().setOrigin(to_bullet(value));
   };
   static BuiltinRigidBodyAttributeProvider<float3, position_get_fn, position_set_fn> body_position(
@@ -1420,10 +1424,10 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
       physics_access,
       nullptr);
 
-  constexpr auto rotation_get_fn = [](const btRigidBody &body) -> math::Quaternion {
+  static constexpr auto rotation_get_fn = [](const btRigidBody &body) -> math::Quaternion {
     return to_blender(body.getWorldTransform().getRotation());
   };
-  constexpr auto rotation_set_fn = [](btRigidBody &body, math::Quaternion value) {
+  static constexpr auto rotation_set_fn = [](btRigidBody &body, math::Quaternion value) {
     body.getWorldTransform().setRotation(to_bullet(value));
   };
   static BuiltinRigidBodyAttributeProvider<math::Quaternion, rotation_get_fn, rotation_set_fn>
@@ -1433,10 +1437,10 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                     physics_access,
                     nullptr);
 
-  constexpr auto velocity_get_fn = [](const btRigidBody &body) -> float3 {
+  static constexpr auto velocity_get_fn = [](const btRigidBody &body) -> float3 {
     return to_blender(body.getLinearVelocity());
   };
-  constexpr auto velocity_set_fn = [](btRigidBody &body, float3 value) {
+  static constexpr auto velocity_set_fn = [](btRigidBody &body, float3 value) {
     body.setLinearVelocity(to_bullet(value));
   };
   static BuiltinRigidBodyAttributeProvider<float3, velocity_get_fn, velocity_set_fn> body_velocity(
@@ -1446,10 +1450,10 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
       physics_access,
       nullptr);
 
-  constexpr auto angular_velocity_get_fn = [](const btRigidBody &body) -> float3 {
+  static constexpr auto angular_velocity_get_fn = [](const btRigidBody &body) -> float3 {
     return to_blender(body.getAngularVelocity());
   };
-  constexpr auto angular_velocity_set_fn = [](btRigidBody &body, float3 value) {
+  static constexpr auto angular_velocity_set_fn = [](btRigidBody &body, float3 value) {
     body.setAngularVelocity(to_bullet(value));
   };
   static BuiltinRigidBodyAttributeProvider<float3,
@@ -1461,10 +1465,10 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                             physics_access,
                             nullptr);
 
-  constexpr auto activation_state_get_fn = [](const btRigidBody &body) -> int {
+  static constexpr auto activation_state_get_fn = [](const btRigidBody &body) -> int {
     return int(activation_state_to_blender(body.getActivationState()));
   };
-  constexpr auto activation_state_set_fn = [](btRigidBody &body, int value) {
+  static constexpr auto activation_state_set_fn = [](btRigidBody &body, int value) {
     /* Note: there is also setActivationState, but that only sets if the state is not
      * always-active or always-sleeping. This check can be performed on the caller side if the
      * "always-x" state must be retained. */
@@ -1478,10 +1482,12 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                             physics_access,
                             nullptr);
 
-  constexpr auto friction_get_fn = [](const btRigidBody &body) -> float {
+  static constexpr auto friction_get_fn = [](const btRigidBody &body) -> float {
     return body.getFriction();
   };
-  constexpr auto friction_set_fn = [](btRigidBody &body, float value) { body.setFriction(value); };
+  static constexpr auto friction_set_fn = [](btRigidBody &body, float value) {
+    body.setFriction(value);
+  };
   static BuiltinRigidBodyAttributeProvider<float, friction_get_fn, friction_set_fn> body_friction(
       PhysicsGeometry::builtin_attributes.friction,
       AttrDomain::Point,
@@ -1489,10 +1495,10 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
       physics_access,
       nullptr);
 
-  constexpr auto rolling_friction_get_fn = [](const btRigidBody &body) -> float {
+  static constexpr auto rolling_friction_get_fn = [](const btRigidBody &body) -> float {
     return body.getRollingFriction();
   };
-  constexpr auto rolling_friction_set_fn = [](btRigidBody &body, float value) {
+  static constexpr auto rolling_friction_set_fn = [](btRigidBody &body, float value) {
     body.setRollingFriction(value);
   };
   static BuiltinRigidBodyAttributeProvider<float, rolling_friction_get_fn, rolling_friction_set_fn>
@@ -1502,10 +1508,10 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                             physics_access,
                             nullptr);
 
-  constexpr auto spinning_friction_get_fn = [](const btRigidBody &body) -> float {
+  static constexpr auto spinning_friction_get_fn = [](const btRigidBody &body) -> float {
     return body.getSpinningFriction();
   };
-  constexpr auto spinning_friction_set_fn = [](btRigidBody &body, float value) {
+  static constexpr auto spinning_friction_set_fn = [](btRigidBody &body, float value) {
     body.setSpinningFriction(value);
   };
   static BuiltinRigidBodyAttributeProvider<float,
@@ -1517,10 +1523,10 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                              physics_access,
                              nullptr);
 
-  constexpr auto restitution_get_fn = [](const btRigidBody &body) -> float {
+  static constexpr auto restitution_get_fn = [](const btRigidBody &body) -> float {
     return body.getRestitution();
   };
-  constexpr auto restitution_set_fn = [](btRigidBody &body, float value) {
+  static constexpr auto restitution_set_fn = [](btRigidBody &body, float value) {
     body.setRestitution(value);
   };
   static BuiltinRigidBodyAttributeProvider<float, restitution_get_fn, restitution_set_fn>
@@ -1530,10 +1536,10 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                        physics_access,
                        nullptr);
 
-  constexpr auto linear_damping_get_fn = [](const btRigidBody &body) -> float {
+  static constexpr auto linear_damping_get_fn = [](const btRigidBody &body) -> float {
     return body.getLinearSleepingThreshold();
   };
-  constexpr auto linear_damping_set_fn = [](btRigidBody &body, float value) {
+  static constexpr auto linear_damping_set_fn = [](btRigidBody &body, float value) {
     body.setSleepingThresholds(value, body.getAngularSleepingThreshold());
   };
   static BuiltinRigidBodyAttributeProvider<float, linear_damping_get_fn, linear_damping_set_fn>
@@ -1543,10 +1549,10 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                           physics_access,
                           nullptr);
 
-  constexpr auto angular_damping_get_fn = [](const btRigidBody &body) -> float {
+  static constexpr auto angular_damping_get_fn = [](const btRigidBody &body) -> float {
     return body.getAngularSleepingThreshold();
   };
-  constexpr auto angular_damping_set_fn = [](btRigidBody &body, float value) {
+  static constexpr auto angular_damping_set_fn = [](btRigidBody &body, float value) {
     body.setSleepingThresholds(value, body.getAngularSleepingThreshold());
   };
   static BuiltinRigidBodyAttributeProvider<float, angular_damping_get_fn, angular_damping_set_fn>
@@ -1556,10 +1562,10 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                            physics_access,
                            nullptr);
 
-  constexpr auto linear_sleeping_threshold_get_fn = [](const btRigidBody &body) -> float {
+  static constexpr auto linear_sleeping_threshold_get_fn = [](const btRigidBody &body) -> float {
     return body.getLinearSleepingThreshold();
   };
-  constexpr auto linear_sleeping_threshold_set_fn = [](btRigidBody &body, float value) {
+  static constexpr auto linear_sleeping_threshold_set_fn = [](btRigidBody &body, float value) {
     body.setSleepingThresholds(value, body.getAngularSleepingThreshold());
   };
   static BuiltinRigidBodyAttributeProvider<float,
@@ -1571,10 +1577,10 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                                      physics_access,
                                      nullptr);
 
-  constexpr auto angular_sleeping_threshold_get_fn = [](const btRigidBody &body) -> float {
+  static constexpr auto angular_sleeping_threshold_get_fn = [](const btRigidBody &body) -> float {
     return body.getAngularSleepingThreshold();
   };
-  constexpr auto angular_sleeping_threshold_set_fn = [](btRigidBody &body, float value) {
+  static constexpr auto angular_sleeping_threshold_set_fn = [](btRigidBody &body, float value) {
     body.setSleepingThresholds(body.getLinearSleepingThreshold(), value);
   };
   static BuiltinRigidBodyAttributeProvider<float,
@@ -1587,7 +1593,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
           physics_access,
           nullptr);
 
-  constexpr auto total_force_get_fn = [](const btRigidBody &body) -> float3 {
+  static constexpr auto total_force_get_fn = [](const btRigidBody &body) -> float3 {
     return to_blender(body.getTotalForce());
   };
   static BuiltinRigidBodyAttributeProvider<float3, total_force_get_fn> body_total_force(
@@ -1597,7 +1603,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
       physics_access,
       nullptr);
 
-  constexpr auto total_torque_get_fn = [](const btRigidBody &body) -> float3 {
+  static constexpr auto total_torque_get_fn = [](const btRigidBody &body) -> float3 {
     return to_blender(body.getTotalTorque());
   };
   static BuiltinRigidBodyAttributeProvider<float3, total_torque_get_fn> body_total_torque(
@@ -1607,7 +1613,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
       physics_access,
       nullptr);
 
-  constexpr auto constraint_type_get_fn = [](const btTypedConstraint *constraint) -> int {
+  static constexpr auto constraint_type_get_fn = [](const btTypedConstraint *constraint) -> int {
     return int(constraint ? to_blender(constraint->getConstraintType()) :
                             bke::PhysicsGeometry::ConstraintType::None);
   };
@@ -1619,10 +1625,12 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
       nullptr,
       {});
 
-  constexpr auto constraint_enabled_get_fn = [](const btTypedConstraint *constraint) -> bool {
+  static constexpr auto constraint_enabled_get_fn =
+      [](const btTypedConstraint *constraint) -> bool {
     return constraint ? constraint->isEnabled() : false;
   };
-  constexpr auto constraint_enabled_set_fn = [](btTypedConstraint *constraint, const bool value) {
+  static constexpr auto constraint_enabled_set_fn = [](btTypedConstraint *constraint,
+                                                       const bool value) {
     if (constraint) {
       constraint->setEnabled(value);
     }
@@ -1637,7 +1645,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                          nullptr,
                          {});
 
-  constexpr auto constraint_body1_get_fn = [](const btTypedConstraint *constraint) -> int {
+  static constexpr auto constraint_body1_get_fn = [](const btTypedConstraint *constraint) -> int {
     return constraint ? get_body_index(constraint->getRigidBodyA()) : -1;
   };
   static BuiltinConstraintAttributeProvider<int, constraint_body1_get_fn> constraint_body1(
@@ -1652,7 +1660,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
         physics->impl().ensure_body_indices();
       });
 
-  constexpr auto constraint_body2_get_fn = [](const btTypedConstraint *constraint) -> int {
+  static constexpr auto constraint_body2_get_fn = [](const btTypedConstraint *constraint) -> int {
     return constraint ? get_body_index(constraint->getRigidBodyB()) : -1;
   };
   static BuiltinConstraintAttributeProvider<int, constraint_body2_get_fn> constraint_body2(
@@ -1667,7 +1675,8 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
         physics->impl().ensure_body_indices();
       });
 
-  constexpr auto constraint_frame1_get_fn = [](const btTypedConstraint *constraint) -> float4x4 {
+  static constexpr auto constraint_frame1_get_fn =
+      [](const btTypedConstraint *constraint) -> float4x4 {
     if (!constraint) {
       return float4x4::identity();
     }
@@ -1715,7 +1724,8 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
         return float4x4::identity();
     }
   };
-  constexpr auto constraint_frame1_set_fn = [](btTypedConstraint *constraint, float4x4 value) {
+  static constexpr auto constraint_frame1_set_fn = [](btTypedConstraint *constraint,
+                                                      float4x4 value) {
     if (!constraint) {
       return;
     }
@@ -1781,7 +1791,8 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                         nullptr,
                         {});
 
-  constexpr auto constraint_frame2_get_fn = [](const btTypedConstraint *constraint) -> float4x4 {
+  static constexpr auto constraint_frame2_get_fn =
+      [](const btTypedConstraint *constraint) -> float4x4 {
     if (!constraint) {
       return float4x4::identity();
     }
@@ -1829,7 +1840,8 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
         return float4x4::identity();
     }
   };
-  constexpr auto constraint_frame2_set_fn = [](btTypedConstraint *constraint, float4x4 value) {
+  static constexpr auto constraint_frame2_set_fn = [](btTypedConstraint *constraint,
+                                                      float4x4 value) {
     if (!constraint) {
       return;
     }
@@ -1895,7 +1907,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                         nullptr,
                         {});
 
-  constexpr auto constraint_applied_impulse_get_fn =
+  static constexpr auto constraint_applied_impulse_get_fn =
       [](const btTypedConstraint *constraint) -> float {
     /* Note: applied transform requires that needsFeedback is set first. */
     return constraint && constraint->needsFeedback() ?
@@ -1910,7 +1922,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                                  nullptr,
                                  {});
 
-  constexpr auto applied_force1_get_fn = [](const btTypedConstraint *constraint) -> float3 {
+  static constexpr auto applied_force1_get_fn = [](const btTypedConstraint *constraint) -> float3 {
     if (!constraint) {
       return float3(0.0f);
     }
@@ -1929,7 +1941,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
       nullptr,
       {});
 
-  constexpr auto applied_force2_get_fn = [](const btTypedConstraint *constraint) -> float3 {
+  static constexpr auto applied_force2_get_fn = [](const btTypedConstraint *constraint) -> float3 {
     if (!constraint) {
       return float3(0.0f);
     }
@@ -1948,7 +1960,8 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
       nullptr,
       {});
 
-  constexpr auto applied_torque1_get_fn = [](const btTypedConstraint *constraint) -> float3 {
+  static constexpr auto applied_torque1_get_fn =
+      [](const btTypedConstraint *constraint) -> float3 {
     if (!constraint) {
       return float3(0.0f);
     }
@@ -1967,7 +1980,8 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
       nullptr,
       {});
 
-  constexpr auto applied_torque2_get_fn = [](const btTypedConstraint *constraint) -> float3 {
+  static constexpr auto applied_torque2_get_fn =
+      [](const btTypedConstraint *constraint) -> float3 {
     if (!constraint) {
       return float3(0.0f);
     }
@@ -1986,16 +2000,16 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
       nullptr,
       {});
 
-  constexpr auto constraint_breaking_impulse_threshold_get_fn =
+  static constexpr auto constraint_breaking_impulse_threshold_get_fn =
       [](const btTypedConstraint *constraint) -> float {
     return constraint ? to_blender(constraint->getBreakingImpulseThreshold()) : float(0.0f);
   };
-  constexpr auto constraint_breaking_impulse_threshold_set_fn = [](btTypedConstraint *constraint,
-                                                                   const float value) {
-    if (constraint) {
-      constraint->setBreakingImpulseThreshold(value);
-    }
-  };
+  static constexpr auto constraint_breaking_impulse_threshold_set_fn =
+      [](btTypedConstraint *constraint, const float value) {
+        if (constraint) {
+          constraint->setBreakingImpulseThreshold(value);
+        }
+      };
   static BuiltinConstraintAttributeProvider<float,
                                             constraint_breaking_impulse_threshold_get_fn,
                                             constraint_breaking_impulse_threshold_set_fn>
@@ -2007,14 +2021,14 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
           nullptr,
           {});
 
-  constexpr auto constraint_disable_collision_get_fn =
+  static constexpr auto constraint_disable_collision_get_fn =
       [](const btTypedConstraint * /*constraint*/) -> bool { return false; };
-  constexpr auto constraint_disable_collision_get_cache_fn =
+  static constexpr auto constraint_disable_collision_get_cache_fn =
       [](const PhysicsGeometryImpl &impl) -> Span<bool> {
     return impl.constraint_disable_collision;
   };
-  constexpr auto constraint_disable_collision_set_fn = [](btTypedConstraint *constraint,
-                                                          bool value) {
+  static constexpr auto constraint_disable_collision_set_fn = [](btTypedConstraint *constraint,
+                                                                 bool value) {
     if (constraint) {
       if (value) {
         constraint->getRigidBodyA().addConstraintRef(constraint);
