@@ -307,67 +307,53 @@ static void do_draw_face_sets_brush_grids(Object &object,
 }
 struct BMeshLocalData {
   Vector<float3> positions;
-  Vector<float> masks;
   Vector<float> factors;
   Vector<float> distances;
 };
 
-BLI_NOINLINE static void fill_factor_from_hide_and_mask(const Set<BMFace *, 0L> &faces,
-                                                        const Span<float> masks,
+BLI_NOINLINE static void fill_factor_from_hide_and_mask(const BMesh &bm,
+                                                        const Set<BMFace *, 0L> &faces,
                                                         const MutableSpan<float> r_factors)
 {
-  BLI_assert(faces.size() == masks.size());
   BLI_assert(faces.size() == r_factors.size());
 
-  for (const int i : masks.index_range()) {
-    r_factors[i] = 1.0f - masks[i];
-  }
-
+  /* TODO: Avoid overhead of accessing attributes for every PBVH node. */
+  const int mask_offset = CustomData_get_offset_named(&bm.vdata, CD_PROP_FLOAT, ".sculpt_mask");
   int i = 0;
-  for (const BMFace *face : faces) {
-    if (BM_elem_flag_test(face, BM_ELEM_HIDDEN)) {
+  for (BMFace *f : faces) {
+    if (BM_elem_flag_test(f, BM_ELEM_HIDDEN)) {
       r_factors[i] = 0.0f;
+      continue;
     }
+    if (mask_offset == -1) {
+      r_factors[i] = 1.0f;
+      continue;
+    }
+
+    const BMLoop *l_iter = f->l_first = BM_FACE_FIRST_LOOP(f);
+    int total_verts = 0;
+    float sum;
+    do {
+      BMVert *vert = l_iter->v;
+      sum += BM_ELEM_CD_GET_FLOAT(vert, mask_offset);
+      total_verts++;
+    } while ((l_iter = l_iter->next) != f->l_first);
+    r_factors[i] = 1.0f - sum * math::rcp(float(total_verts));
     i++;
   }
 }
 
-static void generate_face_data_bmesh(const BMesh &bm,
-                                     const Set<BMFace *, 0L> &node_faces,
-                                     const MutableSpan<float3> positions,
-                                     const MutableSpan<float> masks)
+static void calc_face_centers(const Set<BMFace *, 0L> &faces, const MutableSpan<float3> centers)
 {
-  BLI_assert(node_faces.size() == positions.size());
-  BLI_assert(node_faces.size() == masks.size());
+  BLI_assert(faces.size() == centers.size());
 
   int i = 0;
-  for (const BMFace *f : node_faces) {
+  for (const BMFace *f : faces) {
     float3 face_center;
     BM_face_calc_center_median(f, face_center);
 
-    positions[i] = face_center;
+    centers[i] = face_center;
     i++;
-  }
-
-  /* TODO: Avoid overhead of accessing attributes for every PBVH node. */
-  const int mask_offset = CustomData_get_offset_named(&bm.vdata, CD_PROP_FLOAT, ".sculpt_mask");
-  if (mask_offset == -1) {
-    masks.fill(1.0f);
-  }
-  else {
-    i = 0;
-    for (BMFace *f : node_faces) {
-      const BMLoop *l_iter = f->l_first = BM_FACE_FIRST_LOOP(f);
-      int total_verts = 0;
-      float sum;
-      do {
-        BMVert *vert = l_iter->v;
-        sum += BM_ELEM_CD_GET_FLOAT(vert, mask_offset);
-        total_verts++;
-      } while ((l_iter = l_iter->next) != f->l_first);
-      masks[i] = sum * math::rcp(float(total_verts));
-      i++;
-    }
   }
 }
 
@@ -398,11 +384,13 @@ static void calc_bmesh(Object &object,
   const StrokeCache &cache = *ss.cache;
 
   const Set<BMFace *, 0> &faces = BKE_pbvh_bmesh_node_faces(&node);
+  tls.positions.reinitialize(faces.size());
+  const MutableSpan<float3> positions = tls.positions;
+  calc_face_centers(faces, positions);
 
-  const Span<float3> positions = tls.positions;
   tls.factors.reinitialize(faces.size());
   const MutableSpan<float> factors = tls.factors;
-  fill_factor_from_hide_and_mask(faces, tls.masks, factors);
+  fill_factor_from_hide_and_mask(*ss.bm, faces, factors);
   filter_region_clip_factors(ss, positions, factors);
   if (brush.flag & BRUSH_FRONTFACE) {
     calc_front_face(cache.view_normal, faces, factors);
@@ -444,12 +432,8 @@ static void do_draw_face_sets_brush_bmesh(Object &object,
     BMeshLocalData &tls = all_tls.local();
     for (const int i : range) {
       Set<BMFace *, 0L> node_faces = BKE_pbvh_bmesh_node_faces(nodes[i]);
-      tls.positions.reinitialize(node_faces.size());
-      tls.masks.reinitialize(node_faces.size());
 
       undo::push_node(object, nodes[i], undo::Type::FaceSet);
-
-      generate_face_data_bmesh(*ss.bm, node_faces, tls.positions, tls.masks);
 
       calc_bmesh(
           object, brush, ss.cache->bstrength, ss.cache->paint_face_set, *nodes[i], tls, cd_offset);
