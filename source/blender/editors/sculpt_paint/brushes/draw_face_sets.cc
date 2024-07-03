@@ -115,17 +115,25 @@ static void calc_faces(Object &object,
                        const Brush &brush,
                        const float strength,
                        const int face_set_id,
-                       const Span<float3> face_centers,
-                       const Span<float3> face_normals,
+                       Span<float3> positions_eval,
                        const PBVHNode &node,
+                       const Span<int> face_indices,
                        MeshLocalData &tls,
                        const MutableSpan<int> face_sets)
 {
   SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
   Mesh &mesh = *static_cast<Mesh *>(object.data);
+  const OffsetIndices<int> faces = mesh.faces();
+  const Span<int> corner_verts = mesh.corner_verts();
 
-  const Span<int> face_indices = tls.face_indices;
+  tls.positions.reinitialize(face_indices.size());
+  const MutableSpan<float3> face_centers = tls.positions;
+  calc_face_centers(faces, corner_verts, positions_eval, face_indices, face_centers);
+
+  tls.normals.reinitialize(face_indices.size());
+  const MutableSpan<float3> face_normals = tls.normals;
+  calc_face_normals(faces, corner_verts, positions_eval, face_indices, face_normals);
 
   tls.factors.reinitialize(face_indices.size());
   const MutableSpan<float> factors = tls.factors;
@@ -166,8 +174,6 @@ static void do_draw_face_sets_brush_mesh(Object &object,
   const Span<float3> positions_eval = BKE_pbvh_get_vert_positions(pbvh);
 
   Mesh &mesh = *static_cast<Mesh *>(object.data);
-  const OffsetIndices<int> faces = mesh.faces();
-  const Span<int> corner_verts = mesh.corner_verts();
   const Span<int> corner_tris = mesh.corner_tri_faces();
 
   bke::SpanAttributeWriter<int> attribute = face_set::ensure_face_sets_mesh(object);
@@ -180,21 +186,15 @@ static void do_draw_face_sets_brush_mesh(Object &object,
       const Span<int> face_indices = bke::pbvh::node_face_indices_calc_mesh(
           corner_tris, *nodes[i], tls.face_indices);
 
-      tls.positions.reinitialize(face_indices.size());
-      calc_face_centers(faces, corner_verts, positions_eval, face_indices, tls.positions);
-
-      tls.normals.reinitialize(face_indices.size());
-      calc_face_normals(faces, corner_verts, positions_eval, face_indices, tls.normals);
-
       undo::push_node(object, nodes[i], undo::Type::FaceSet);
 
       calc_faces(object,
                  brush,
                  ss.cache->bstrength,
                  ss.cache->paint_face_set,
-                 tls.positions,
-                 tls.normals,
+                 positions_eval,
                  *nodes[i],
+                 face_indices,
                  tls,
                  face_sets);
     }
