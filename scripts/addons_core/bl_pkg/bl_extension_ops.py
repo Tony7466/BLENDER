@@ -70,6 +70,26 @@ def url_append_defaults(url):
     return url_append_query_for_blender(url, blender_version=bpy.app.version)
 
 
+def url_normalize(url):
+    # Ensure consistent use of `file://` so multiple representations aren't considered different repositories.
+    # Currently this only makes changes for UNC paths on WIN32.
+    import sys
+    import re
+
+    prefix = "file://"
+    if url.startswith(prefix):
+        if sys.platform == "win32":
+            # Not a drive, e.g. `file:///C:/path`.
+            path_lstrip = url[len(prefix):].lstrip("/")
+            if re.match("[A-Za-z]:", path_lstrip) is None:
+                # Ensure:
+                # MS-Edge uses: `file://HOST/share/path`
+                # Firefox uses: `file://///HOST/share/path`
+                # Both can work prefer the shorter one.
+                url = prefix + path_lstrip
+    return url
+
+
 def rna_prop_repo_enum_valid_only_itemf(_self, context):
     if context is None:
         result = []
@@ -477,6 +497,9 @@ def repo_cache_store_refresh_from_prefs(repo_cache_store, include_disabled=False
         repos.append((directory, remote_url))
 
     repo_cache_store.refresh_from_repos(repos=repos)
+    # Return the repository directory & URL's as it can be useful to know which repositories are now available.
+    # NOTE: it might be better to return a list of `RepoItem`, for now it's not needed.
+    return repos
 
 
 def _preferences_ensure_disabled(*, repo_item, pkg_id_sequence, default_set):
@@ -2589,6 +2612,9 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
         url = self.url
         print("DROP URL:", url)
 
+        # Needed for UNC paths on WIN32.
+        url = self.url = url_normalize(url)
+
         url, url_params = url_parse_for_blender(url)
 
         # Check if the extension is compatible with the current platform.
@@ -3278,6 +3304,45 @@ class EXTENSIONS_OT_repo_unlock(Operator):
         return {'FINISHED'}
 
 
+class EXTENSIONS_OT_userpref_tags_set(Operator):
+    """Set the value of all tags"""
+    bl_idname = "extensions.userpref_tags_set"
+    bl_label = "Set Extension Tags"
+    bl_options = {'INTERNAL'}
+
+    value: BoolProperty(
+        name="Value",
+        description="Enable or disable all tags",
+        options={'SKIP_SAVE'},
+    )
+    data_path: StringProperty(
+        name="Data Path",
+        options={'SKIP_SAVE'},
+    )
+
+    def execute(self, context):
+        from .bl_extension_ui import (
+            tags_clear,
+            tags_refresh,
+        )
+
+        wm = context.window_manager
+
+        value = self.value
+        tags_attr = self.data_path
+
+        # Internal error, could happen if called from some unexpected place.
+        if tags_attr not in {"extension_tags", "addon_tags"}:
+            return {'CANCELLED'}
+
+        tags_clear(wm, tags_attr)
+        if self.value is False:
+            tags_refresh(wm, tags_attr, default_value=False)
+
+        _preferences_ui_redraw()
+        return {'FINISHED'}
+
+
 # NOTE: this is a modified version of `PREFERENCES_OT_addon_show`.
 # It would make most sense to extend this operator to support showing extensions to upgrade (eventually).
 class EXTENSIONS_OT_userpref_show_for_update(Operator):
@@ -3287,6 +3352,8 @@ class EXTENSIONS_OT_userpref_show_for_update(Operator):
     bl_options = {'INTERNAL'}
 
     def execute(self, context):
+        from .bl_extension_ui import tags_clear
+
         wm = context.window_manager
         prefs = context.preferences
 
@@ -3295,6 +3362,10 @@ class EXTENSIONS_OT_userpref_show_for_update(Operator):
         # Show only extensions that will be updated.
         wm.extension_show_panel_installed = True
         wm.extension_show_panel_available = False
+
+        # Clear other filtering option.
+        wm.extension_search = ""
+        tags_clear(wm, "extension_tags")
 
         bpy.ops.screen.userpref_show('INVOKE_DEFAULT')
 
@@ -3444,6 +3515,7 @@ classes = (
     EXTENSIONS_OT_repo_lock,
     EXTENSIONS_OT_repo_unlock,
 
+    EXTENSIONS_OT_userpref_tags_set,
     EXTENSIONS_OT_userpref_show_for_update,
     EXTENSIONS_OT_userpref_show_online,
     EXTENSIONS_OT_userpref_allow_online,
