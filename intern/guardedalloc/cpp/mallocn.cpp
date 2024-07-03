@@ -19,7 +19,7 @@ void *operator new[](size_t size, const char *str);
 /* not default but can be used when needing to set a string */
 void *operator new(size_t size, const char *str)
 {
-    return mem_mallocN_aligned_ex(size, 1, str, AllocationType::NEW_DELETE);
+  return mem_mallocN_aligned_ex(size, 1, str, AllocationType::NEW_DELETE);
 }
 void *operator new[](size_t size, const char *str)
 {

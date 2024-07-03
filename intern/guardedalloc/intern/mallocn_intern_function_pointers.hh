@@ -11,10 +11,10 @@
 namespace mem_guarded::internal {
 
 enum class AllocationType {
-    /** Allocation is handled through 'C type' alloc/free calls. */
-    ALLOC_FREE,
-    /** Allocation is handled through 'C++ type' new/delete calls. */
-    NEW_DELETE,
+  /** Allocation is handled through 'C type' alloc/free calls. */
+  ALLOC_FREE,
+  /** Allocation is handled through 'C++ type' new/delete calls. */
+  NEW_DELETE,
 };
 
 /** Internal implementation of #MEM_freeN, exposed because #MEM_delete needs access to it. */
