@@ -4265,7 +4265,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 1)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 7)) {
     Camera default_cam = *DNA_struct_default_get(Camera);
     LISTBASE_FOREACH (Camera *, camera, &bmain->cameras) {
       camera->central_cylindrical_range_u_min = default_cam.central_cylindrical_range_u_min;
