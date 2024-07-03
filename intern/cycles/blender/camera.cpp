@@ -243,7 +243,7 @@ static void blender_camera_from_object(BlenderCamera *bcam,
     bcam->central_cylindrical_range_v_min = b_camera.central_cylindrical_range_v_min();
     bcam->central_cylindrical_range_v_max = b_camera.central_cylindrical_range_v_max();
     bcam->central_cylindrical_radius = b_camera.central_cylindrical_radius();
-    
+
 
     bcam->interocular_distance = b_camera.stereo().interocular_distance();
     if (b_camera.stereo().convergence_mode() == BL::CameraStereoData::convergence_mode_PARALLEL) {

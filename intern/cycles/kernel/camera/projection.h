@@ -61,17 +61,18 @@ ccl_device float3 equirectangular_to_direction(float u, float v)
 
 ccl_device float2 direction_to_central_cylindrical(float3 dir, float4 range)
 {
-    float theta = -atan2f(dir.y, dir.x);  
-    float u = inverse_lerp(theta, range.x, range.y);
-    float v = (dir.z - range.z) / (range.w - range.z);
-    return make_float2(u, v);
+  const float z = dir.z / len(make_float2(dir.x, dir.y));
+  const float theta = atan2f(dir.y, dir.x);
+  const float u = inverse_lerp(theta, range.x, range.y);
+  const float v = inverse_lerp(range.z, range.w, z);
+  return make_float2(u, v);
 }
 
 ccl_device float3 central_cylindrical_to_direction(float u, float v, float4 range)
 {
-    float theta = -mix(range.x, range.y, u);
-    float z = v * (range.w - range.z) + range.z;
-    return make_float3(cosf(theta), sinf(theta), z);
+  const float theta = mix(range.x, range.y, u);
+  const float z = mix(range.z, range.w, v);
+  return make_float3(cosf(theta), sinf(theta), z);
 }
 
 /* Fisheye <-> Cartesian direction */
@@ -305,7 +306,6 @@ ccl_device_inline float2 direction_to_panorama(ccl_constant KernelCamera *cam, f
                                                   cam->sensorheight);
     case PANORAMA_CENTRAL_CYLINDRICAL:
       return direction_to_central_cylindrical(dir, cam->central_cylindrical_range);
-                                           
     case PANORAMA_FISHEYE_EQUISOLID:
     default:
       return direction_to_fisheye_equisolid(

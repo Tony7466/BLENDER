@@ -426,8 +426,8 @@ void Camera::update(Scene *scene)
   kcam->fisheye_lens_polynomial_bias = fisheye_polynomial_k0;
   kcam->fisheye_lens_polynomial_coefficients = make_float4(
       fisheye_polynomial_k1, fisheye_polynomial_k2, fisheye_polynomial_k3, fisheye_polynomial_k4);
-  kcam->central_cylindrical_range = make_float4(central_cylindrical_range_u_min,
-                                                central_cylindrical_range_u_max,
+  kcam->central_cylindrical_range = make_float4(-central_cylindrical_range_u_min,
+                                                -central_cylindrical_range_u_max,
                                                 central_cylindrical_range_v_min,
                                                 central_cylindrical_range_v_max);
 
