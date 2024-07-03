@@ -33,15 +33,13 @@ struct MeshLocalData {
   Vector<float> distances;
 };
 
-static void calc_face_centers(Mesh &mesh,
+static void calc_face_centers(const OffsetIndices<int> faces,
+                              const Span<int> corner_verts,
                               const Span<float3> positions_eval,
                               const Span<int> face_indices,
                               const MutableSpan<float3> positions)
 {
   BLI_assert(face_indices.size() == positions.size());
-
-  const OffsetIndices<int> faces = mesh.faces();
-  const Span<int> corner_verts = mesh.corner_verts();
 
   for (const int i : face_indices.index_range()) {
     positions[i] = bke::mesh::face_center_calc(positions_eval,
@@ -49,15 +47,13 @@ static void calc_face_centers(Mesh &mesh,
   }
 }
 
-static void calc_face_normals(Mesh &mesh,
+static void calc_face_normals(const OffsetIndices<int> faces,
+                              const Span<int> corner_verts,
                               const Span<float3> positions_eval,
                               const Span<int> face_indices,
                               const MutableSpan<float3> normals)
 {
   BLI_assert(face_indices.size() == normals.size());
-
-  const OffsetIndices<int> faces = mesh.faces();
-  const Span<int> corner_verts = mesh.corner_verts();
 
   for (const int i : face_indices.index_range()) {
     normals[i] = bke::mesh::face_normal_calc(positions_eval,
@@ -171,6 +167,8 @@ static void do_draw_face_sets_brush_mesh(Object &object,
   const Span<float3> positions_eval = BKE_pbvh_get_vert_positions(pbvh);
 
   Mesh &mesh = *static_cast<Mesh *>(object.data);
+  const OffsetIndices<int> faces = mesh.faces();
+  const Span<int> corner_verts = mesh.corner_verts();
   const Span<int> corner_tris = mesh.corner_tri_faces();
   threading::EnumerableThreadSpecific<MeshLocalData> all_tls;
 
@@ -184,10 +182,10 @@ static void do_draw_face_sets_brush_mesh(Object &object,
           corner_tris, *nodes[i], tls.face_indices);
 
       tls.positions.reinitialize(face_indices.size());
-      calc_face_centers(mesh, positions_eval, face_indices, tls.positions);
+      calc_face_centers(faces, corner_verts, positions_eval, face_indices, tls.positions);
 
       tls.normals.reinitialize(face_indices.size());
-      calc_face_normals(mesh, positions_eval, face_indices, tls.normals);
+      calc_face_normals(faces, corner_verts, positions_eval, face_indices, tls.normals);
 
       undo::push_node(object, nodes[i], undo::Type::FaceSet);
 
