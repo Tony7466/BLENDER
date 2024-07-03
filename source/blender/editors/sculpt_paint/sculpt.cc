@@ -7091,7 +7091,7 @@ void calc_brush_strength_factors(const StrokeCache &cache,
       eBrushCurvePreset(brush.curve_preset), brush.curve, distances, cache.radius, factors);
 }
 
-void calc_brush_texture_factors(SculptSession &ss,
+void calc_brush_texture_factors(const SculptSession &ss,
                                 const Brush &brush,
                                 const Span<float3> vert_positions,
                                 const Span<int> verts,
@@ -7116,7 +7116,7 @@ void calc_brush_texture_factors(SculptSession &ss,
   }
 }
 
-void calc_brush_texture_factors(SculptSession &ss,
+void calc_brush_texture_factors(const SculptSession &ss,
                                 const Brush &brush,
                                 const Span<float3> positions,
                                 const MutableSpan<float> factors)
