@@ -275,69 +275,6 @@ class VMutableArrayImpl_For_PhysicsConstraints final : public VMutableArrayImpl<
   }
 };
 
-template<typename ElemT, PhysicsGetCacheFn<ElemT> GetCacheFn, ConstraintSetFn<ElemT> SetFn>
-class VMutableArrayImpl_For_PhysicsConstraintsWithCache final : public VMutableArrayImpl<ElemT> {
- private:
-  const PhysicsGeometryImpl *impl_;
-  // XXX causes mystery crashes, investigate ...
-  // std::unique_lock<std::shared_mutex> lock_;
-
- public:
-  VMutableArrayImpl_For_PhysicsConstraintsWithCache(const PhysicsGeometryImpl &impl)
-      : VMutableArrayImpl<ElemT>(impl.constraints.size()), impl_(&impl)
-  /*, lock_(impl_->data_mutex)*/
-  {
-    // lock_.lock();
-  }
-
-  ~VMutableArrayImpl_For_PhysicsConstraintsWithCache()
-  {
-    // lock_.unlock();
-  }
-
-  template<typename OtherElemT,
-           PhysicsGetCacheFn<OtherElemT> OtherGetCacheFn,
-           ConstraintSetFn<OtherElemT> OtherSetFn>
-  friend class VMutableArrayImpl_For_PhysicsConstraintsWithCache;
-
- private:
-  ElemT get(const int64_t index) const override
-  {
-    return GetCacheFn(*impl_)[index];
-  }
-
-  void set(const int64_t index, ElemT value) override
-  {
-    SetFn(impl_->constraints[index], value);
-  }
-
-  void materialize(const IndexMask &mask, ElemT *dst) const override
-  {
-    Span<ElemT> cache = GetCacheFn(*impl_);
-    mask.foreach_index_optimized<int64_t>([&](const int64_t i) { dst[i] = cache[i]; });
-  }
-
-  void materialize_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
-  {
-    Span<ElemT> cache = GetCacheFn(*impl_);
-    mask.foreach_index_optimized<int64_t>([&](const int64_t i) { new (dst + i) ElemT(cache[i]); });
-  }
-
-  void materialize_compressed(const IndexMask &mask, ElemT *dst) const override
-  {
-    Span<ElemT> cache = GetCacheFn(*impl_);
-    mask.foreach_index_optimized<int64_t>(
-        [&](const int64_t i, const int64_t pos) { dst[pos] = cache[i]; });
-  }
-
-  void materialize_compressed_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
-  {
-    Span<ElemT> cache = GetCacheFn(*impl_);
-    mask.foreach_index_optimized<int64_t>(
-        [&](const int64_t i, const int64_t pos) { new (dst + pos) ElemT(cache[i]); });
-  }
-};
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
