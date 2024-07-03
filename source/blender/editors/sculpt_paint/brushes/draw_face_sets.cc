@@ -209,7 +209,6 @@ static void do_draw_face_sets_brush_mesh(Object &object,
 struct GridLocalData {
   Vector<int> face_indices;
   Vector<float3> positions;
-  Vector<float> masks;
   Vector<float> factors;
   Vector<float> distances;
 };
