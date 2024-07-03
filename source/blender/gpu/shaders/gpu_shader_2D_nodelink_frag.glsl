@@ -39,7 +39,7 @@ void main()
     dash_frag_alpha = alpha;
   }
 
-  if (isSplitLine == 0) {
+  if (hasBackLink == 0) {
     fragColor = finalColor;
     fragColor.a *= get_line_alpha(0.5, 0.5);
   }

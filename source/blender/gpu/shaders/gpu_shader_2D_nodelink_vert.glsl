@@ -35,7 +35,7 @@ void main(void)
   float dim_factor = node_link_data.dim_factor;
   float thickness = node_link_data.thickness;
   vec3 dash_params = node_link_data.dash_params.xyz;
-  int is_split_line = node_link_data.is_split_line;
+  int has_back_link = node_link_data.has_back_link;
 
   vec4 colShadow = node_link_data.colors[0];
   vec4 colStart = node_link_data.colors[1];
@@ -46,7 +46,7 @@ void main(void)
   bool is_outline_pass = gl_VertexID < MID_VERTEX;
   isMainLine = expand.y == 1.0 && !is_outline_pass ? 1 : 0;
 
-  if ((expand.y == 1.0) && is_split_line != 0) {
+  if ((expand.y == 1.0) && has_back_link != 0) {
     /* Increase width because two links are drawn. */
     line_thickness *= 1.7;
   }
@@ -84,7 +84,7 @@ void main(void)
   lineLength = distance(P0, P3);
   /* TODO: Incorrect U, this leads to non-uniform dash distribution. */
   lineUV = uv;
-  isSplitLine = is_split_line;
+  hasBackLink = has_back_link;
 
   float t = uv.x;
   float t2 = t * t;

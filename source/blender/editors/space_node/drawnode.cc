@@ -2045,7 +2045,7 @@ static void nodelink_batch_init()
   g_batch_link.dash_params_id = GPU_vertformat_attr_add(
       &format_inst, "dash_params", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
   g_batch_link.is_split_line_id = GPU_vertformat_attr_add(
-      &format_inst, "is_split_line", GPU_COMP_U32, 1, GPU_FETCH_INT);
+      &format_inst, "has_back_link", GPU_COMP_U32, 1, GPU_FETCH_INT);
   g_batch_link.inst_vbo = GPU_vertbuf_create_with_format_ex(format_inst, GPU_USAGE_STREAM);
   /* Alloc max count but only draw the range we need. */
   GPU_vertbuf_data_alloc(*g_batch_link.inst_vbo, NODELINK_GROUP_SIZE);
@@ -2130,7 +2130,7 @@ struct NodeLinkDrawConfig {
   bool drawarrow;
   bool drawmuted;
   bool highlighted;
-  bool is_split;
+  bool has_back_link;
 
   float dim_factor;
   float thickness;
@@ -2169,7 +2169,7 @@ static void nodelink_batch_add_link(const SpaceNode &snode,
   *(float *)GPU_vertbuf_raw_step(&g_batch_link.thickness_step) = draw_config.thickness;
   float3 dash_params(draw_config.dash_length, draw_config.dash_factor, draw_config.dash_alpha);
   copy_v3_v3((float *)GPU_vertbuf_raw_step(&g_batch_link.dash_params_step), dash_params);
-  *(int *)GPU_vertbuf_raw_step(&g_batch_link.is_split_line_step) = draw_config.is_split;
+  *(int *)GPU_vertbuf_raw_step(&g_batch_link.is_split_line_step) = draw_config.has_back_link;
 
   if (g_batch_link.count == NODELINK_GROUP_SIZE) {
     nodelink_batch_draw(snode);
@@ -2259,7 +2259,7 @@ static NodeLinkDrawConfig nodelink_get_draw_config(const bContext &C,
   /* Clamp the thickness to make the links more readable when zooming out. */
   draw_config.thickness = LINK_WIDTH * max_ff(UI_SCALE_FAC * scale, 1.0f) *
                           (field_link ? 0.7f : 1.0f);
-  draw_config.is_split = gizmo_link;
+  draw_config.has_back_link = gizmo_link;
   draw_config.highlighted = link.flag & NODE_LINK_TEMP_HIGHLIGHT;
   draw_config.drawarrow = ((link.tonode && (link.tonode->type == NODE_REROUTE)) &&
                            (link.fromnode && (link.fromnode->type == NODE_REROUTE)));
@@ -2351,7 +2351,7 @@ static void node_draw_link_bezier_ex(const SpaceNode &snode,
     node_link_data.dash_params[0] = draw_config.dash_length;
     node_link_data.dash_params[1] = draw_config.dash_factor;
     node_link_data.dash_params[2] = draw_config.dash_alpha;
-    node_link_data.is_split_line = draw_config.is_split;
+    node_link_data.has_back_link = draw_config.has_back_link;
     node_link_data.aspect = snode.runtime->aspect;
     node_link_data.arrowSize = ARROW_SIZE;
 
