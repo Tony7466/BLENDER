@@ -27,6 +27,9 @@
 
 #include "atomic_ops.h"
 #include "mallocn_intern.h"
+#include "mallocn_intern_function_pointers.hh"
+
+using namespace mem_guarded::internal;
 
 typedef struct MemHead {
   /* Length of allocated memory block. */
@@ -99,7 +102,7 @@ size_t MEM_lockfree_allocN_len(const void *vmemh)
   return 0;
 }
 
-void MEM_lockfree_freeN(void *vmemh, const bool is_cpp_delete)
+void MEM_lockfree_freeN(void *vmemh, AllocationType allocation_type)
 {
   if (UNLIKELY(leak_detector_has_run)) {
     print_error("%s\n", free_after_leak_detection_message);
@@ -116,7 +119,7 @@ void MEM_lockfree_freeN(void *vmemh, const bool is_cpp_delete)
   MemHead *memh = MEMHEAD_FROM_PTR(vmemh);
   size_t len = MEMHEAD_LEN(memh);
 
-  if (!is_cpp_delete && MEMHEAD_IS_FROM_CPP_NEW(memh)) {
+  if (allocation_type != AllocationType::NEW_DELETE && MEMHEAD_IS_FROM_CPP_NEW(memh)) {
     print_error(
         "Attempt to use C-style MEM_freeN on a pointer created with CPP-style MEM_new or new\n");
 #ifdef WITH_ASSERT_ABORT
@@ -157,7 +160,7 @@ void *MEM_lockfree_dupallocN(const void *vmemh)
     if (UNLIKELY(MEMHEAD_IS_ALIGNED(memh))) {
       const MemHeadAligned *memh_aligned = MEMHEAD_ALIGNED_FROM_PTR(vmemh);
       newp = MEM_lockfree_mallocN_aligned(
-          prev_size, size_t(memh_aligned->alignment), "dupli_malloc", false);
+          prev_size, size_t(memh_aligned->alignment), "dupli_malloc", AllocationType::ALLOC_FREE);
     }
     else {
       newp = MEM_lockfree_mallocN(prev_size, "dupli_malloc");
@@ -189,7 +192,8 @@ void *MEM_lockfree_reallocN_id(void *vmemh, size_t len, const char *str)
     }
     else {
       const MemHeadAligned *memh_aligned = MEMHEAD_ALIGNED_FROM_PTR(vmemh);
-      newp = MEM_lockfree_mallocN_aligned(len, size_t(memh_aligned->alignment), "realloc", false);
+      newp = MEM_lockfree_mallocN_aligned(
+          len, size_t(memh_aligned->alignment), "realloc", AllocationType::ALLOC_FREE);
     }
 
     if (newp) {
@@ -203,7 +207,7 @@ void *MEM_lockfree_reallocN_id(void *vmemh, size_t len, const char *str)
       }
     }
 
-    MEM_lockfree_freeN(vmemh, false);
+    MEM_lockfree_freeN(vmemh, AllocationType::ALLOC_FREE);
   }
   else {
     newp = MEM_lockfree_mallocN(len, str);
@@ -234,7 +238,8 @@ void *MEM_lockfree_recallocN_id(void *vmemh, size_t len, const char *str)
     }
     else {
       const MemHeadAligned *memh_aligned = MEMHEAD_ALIGNED_FROM_PTR(vmemh);
-      newp = MEM_lockfree_mallocN_aligned(len, size_t(memh_aligned->alignment), "recalloc", false);
+      newp = MEM_lockfree_mallocN_aligned(
+          len, size_t(memh_aligned->alignment), "recalloc", AllocationType::ALLOC_FREE);
     }
 
     if (newp) {
@@ -253,7 +258,7 @@ void *MEM_lockfree_recallocN_id(void *vmemh, size_t len, const char *str)
       }
     }
 
-    MEM_lockfree_freeN(vmemh, false);
+    MEM_lockfree_freeN(vmemh, AllocationType::ALLOC_FREE);
   }
   else {
     newp = MEM_lockfree_callocN(len, str);
@@ -361,7 +366,7 @@ void *MEM_lockfree_malloc_arrayN(size_t len, size_t size, const char *str)
 void *MEM_lockfree_mallocN_aligned(size_t len,
                                    size_t alignment,
                                    const char *str,
-                                   const bool is_cpp_new)
+                                   const AllocationType allocation_type)
 {
   /* Huge alignment values doesn't make sense and they wouldn't fit into 'short' used in the
    * MemHead. */
@@ -413,7 +418,8 @@ void *MEM_lockfree_mallocN_aligned(size_t len,
     }
 
     memh->len = len | size_t(MEMHEAD_FLAG_ALIGN) |
-                size_t(is_cpp_new ? MEMHEAD_FLAG_FROM_CPP_NEW : 0);
+                size_t(allocation_type == AllocationType::NEW_DELETE ? MEMHEAD_FLAG_FROM_CPP_NEW :
+                                                                       0);
     memh->alignment = short(alignment);
     memory_usage_block_alloc(len);
 

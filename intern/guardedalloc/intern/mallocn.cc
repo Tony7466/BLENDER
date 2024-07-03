@@ -35,7 +35,7 @@ const char *malloc_conf =
 
 size_t (*MEM_allocN_len)(const void *vmemh) = MEM_lockfree_allocN_len;
 void (*mem_guarded::internal::mem_freeN_ex)(void *vmemh,
-                                            const bool is_cpp_delete) = MEM_lockfree_freeN;
+                                            AllocationType allocation_type) = MEM_lockfree_freeN;
 void *(*MEM_dupallocN)(const void *vmemh) = MEM_lockfree_dupallocN;
 void *(*MEM_reallocN_id)(void *vmemh, size_t len, const char *str) = MEM_lockfree_reallocN_id;
 void *(*MEM_recallocN_id)(void *vmemh, size_t len, const char *str) = MEM_lockfree_recallocN_id;
@@ -46,7 +46,7 @@ void *(*MEM_malloc_arrayN)(size_t len, size_t size, const char *str) = MEM_lockf
 void *(*mem_guarded::internal::mem_mallocN_aligned_ex)(size_t len,
                                                        size_t alignment,
                                                        const char *str,
-                                                       const bool is_cpp_new) =
+                                                       AllocationType allocation_type) =
     MEM_lockfree_mallocN_aligned;
 void *(*MEM_calloc_arrayN_aligned)(size_t len,
                                    size_t size,
@@ -104,12 +104,12 @@ void aligned_free(void *ptr)
 
 void MEM_freeN(void *vmemh)
 {
-  mem_freeN_ex(vmemh, false);
+  mem_freeN_ex(vmemh, AllocationType::ALLOC_FREE);
 }
 
 void *MEM_mallocN_aligned(size_t len, size_t alignment, const char *str)
 {
-  return mem_mallocN_aligned_ex(len, alignment, str, false);
+  return mem_mallocN_aligned_ex(len, alignment, str, AllocationType::ALLOC_FREE);
 }
 
 /**

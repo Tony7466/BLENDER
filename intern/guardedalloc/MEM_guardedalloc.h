@@ -300,7 +300,7 @@ template<typename T, typename... Args>
 inline T *MEM_new(const char *allocation_name, Args &&...args)
 {
   void *buffer = mem_guarded::internal::mem_mallocN_aligned_ex(
-      sizeof(T), alignof(T), allocation_name, true);
+      sizeof(T), alignof(T), allocation_name, mem_guarded::internal::AllocationType::NEW_DELETE);
   return new (buffer) T(std::forward<Args>(args)...);
 }
 
@@ -318,7 +318,8 @@ template<typename T> inline void MEM_delete(const T *ptr)
   }
   /* C++ allows destruction of `const` objects, so the pointer is allowed to be `const`. */
   ptr->~T();
-  mem_guarded::internal::mem_freeN_ex(const_cast<T *>(ptr), true);
+  mem_guarded::internal::mem_freeN_ex(const_cast<T *>(ptr),
+                                      mem_guarded::internal::AllocationType::NEW_DELETE);
 }
 
 /**
@@ -369,33 +370,44 @@ template<typename T> inline T *MEM_cnew(const char *allocation_name, const T &ot
     void *operator new(size_t num_bytes) \
     { \
       return mem_guarded::internal::mem_mallocN_aligned_ex( \
-          num_bytes, __STDCPP_DEFAULT_NEW_ALIGNMENT__, _id, true); \
+          num_bytes, \
+          __STDCPP_DEFAULT_NEW_ALIGNMENT__, \
+          _id, \
+          mem_guarded::internal::AllocationType::NEW_DELETE); \
     } \
     void *operator new(size_t num_bytes, std::align_val_t alignment) \
     { \
       return mem_guarded::internal::mem_mallocN_aligned_ex( \
-          num_bytes, size_t(alignment), _id, true); \
+          num_bytes, size_t(alignment), _id, mem_guarded::internal::AllocationType::NEW_DELETE); \
     } \
     void operator delete(void *mem) \
     { \
       if (mem) { \
-        mem_guarded::internal::mem_freeN_ex(mem, true); \
+        mem_guarded::internal::mem_freeN_ex(mem, \
+                                            mem_guarded::internal::AllocationType::NEW_DELETE); \
       } \
     } \
     void *operator new[](size_t num_bytes) \
     { \
       return mem_guarded::internal::mem_mallocN_aligned_ex( \
-          num_bytes, __STDCPP_DEFAULT_NEW_ALIGNMENT__, _id "[]", true); \
+          num_bytes, \
+          __STDCPP_DEFAULT_NEW_ALIGNMENT__, \
+          _id "[]", \
+          mem_guarded::internal::AllocationType::NEW_DELETE); \
     } \
     void *operator new[](size_t num_bytes, std::align_val_t alignment) \
     { \
       return mem_guarded::internal::mem_mallocN_aligned_ex( \
-          num_bytes, size_t(alignment), _id "[]", true); \
+          num_bytes, \
+          size_t(alignment), \
+          _id "[]", \
+          mem_guarded::internal::AllocationType::NEW_DELETE); \
     } \
     void operator delete[](void *mem) \
     { \
       if (mem) { \
-        mem_guarded::internal::mem_freeN_ex(mem, true); \
+        mem_guarded::internal::mem_freeN_ex(mem, \
+                                            mem_guarded::internal::AllocationType::NEW_DELETE); \
       } \
     } \
     void *operator new(size_t /*count*/, void *ptr) \
