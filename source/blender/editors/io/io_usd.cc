@@ -690,8 +690,10 @@ void WM_OT_usd_export(wmOperatorType *ot)
                  MAX_IDPROP_NAME,
                  "Namespace",
                  "If set, add the given namespace as a prefix to exported custom property names. "
-                 "This does not apply to blender object and data names which are always exported "
-                 "in the 'userProperties:blender' namespace ");
+                 "This only applies to property names that do not already have a prefix "
+                 "(e.g., it would apply to name 'bar' but not 'foo:bar') and does not apply "
+                 "to blender object and data names which are always exported in the "
+                 "'userProperties:blender' namespace");
 
   RNA_def_boolean(ot->srna,
                   "author_blender_name",

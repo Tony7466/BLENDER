@@ -5,6 +5,7 @@
 #include "usd_utils.hh"
 #include "usd_writer_material.hh"
 
+#include <pxr/base/tf/stringUtils.h>
 #include <pxr/usd/usdGeom/bboxCache.h>
 #include <pxr/usd/usdGeom/scope.h>
 
@@ -318,9 +319,8 @@ void USDAbstractWriter::write_user_properties(const pxr::UsdPrim &prim,
 
   const StringRef displayName_identifier = "displayName";
 
-  const char *props_namespace =
-      this->usd_export_context_.export_params.custom_properties_namespace;
-  const std::string prefix = props_namespace[0] == '\0' ? "" : std::string(props_namespace) + ":";
+  const std::string default_namespace(
+      usd_export_context_.export_params.custom_properties_namespace);
 
   for (IDProperty *prop = (IDProperty *)properties->data.group.first; prop; prop = prop->next) {
     if (displayName_identifier == prop->name) {
@@ -330,10 +330,20 @@ void USDAbstractWriter::write_user_properties(const pxr::UsdPrim &prim,
       continue;
     }
 
-    std::string prop_name = make_safe_name(prop->name,
-                                           usd_export_context_.export_params.allow_unicode);
-    std::string full_prop_name = prefix + prop_name;
+    std::vector<std::string> path_names = pxr::TfStringTokenize(prop->name, ":");
 
+    /* If the path does not already have a namespace prefix, prepend the default namespace
+     * specified by the user, if any. */
+    if (!default_namespace.empty() && path_names.size() < 2) {
+      path_names.insert(path_names.begin(), default_namespace);
+    }
+
+    std::vector<std::string> safe_names;
+    for (const std::string &name : path_names) {
+      safe_names.push_back(make_safe_name(name, usd_export_context_.export_params.allow_unicode));
+    }
+
+    std::string full_prop_name = pxr::SdfPath::JoinIdentifier(safe_names);
     pxr::TfToken prop_token = pxr::TfToken(full_prop_name);
 
     if (prim.HasAttribute(prop_token)) {
