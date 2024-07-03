@@ -29,7 +29,6 @@ struct MeshLocalData {
   Vector<int> face_indices;
   Vector<float3> positions;
   Vector<float3> normals;
-  Vector<float> masks;
   Vector<float> factors;
   Vector<float> distances;
 };
@@ -136,7 +135,6 @@ static void calc_faces(Object &object,
   tls.factors.reinitialize(face_indices.size());
   const MutableSpan<float> factors = tls.factors;
 
-  const Span<float> masks = tls.masks;
   fill_factor_from_hide_and_mask(mesh, face_indices, factors);
 
   filter_region_clip_factors(ss, face_centers, factors);
