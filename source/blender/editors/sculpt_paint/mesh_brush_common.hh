@@ -122,8 +122,8 @@ void calc_front_face(const float3 &view_normal,
 
 /**
  * When the 3D view's clipping planes are enabled, brushes shouldn't have any effect on vertices
- * outside of the planes, because they're not visible. This function disables the factors for
- * those vertices.
+ * outside of the planes, because they're not visible. This function disables the factors for those
+ * vertices.
  */
 void filter_region_clip_factors(const SculptSession &ss,
                                 Span<float3> vert_positions,
@@ -169,8 +169,8 @@ void calc_brush_cube_distances(SculptSession &ss,
                                const MutableSpan<float> factors);
 
 /**
- * Scale the distances based on the brush radius and the cached "hardness" setting, which
- * increases the strength of the effect for vertices torwards the outside of the radius.
+ * Scale the distances based on the brush radius and the cached "hardness" setting, which increases
+ * the strength of the effect for vertices torwards the outside of the radius.
  */
 void apply_hardness_to_distances(float radius, float hardness, MutableSpan<float> distances);
 inline void apply_hardness_to_distances(const StrokeCache &cache,
@@ -237,8 +237,8 @@ void calc_face_factors(const Object &object,
 /**
  * Many brushes end up calculating translations from the original positions. Instead of applying
  * these directly to the modified values, it's helpful to process them separately to easily
- * calculate various effects like clipping. After they are processed, this function can be used
- * to simply add them to the final vertex positions.
+ * calculate various effects like clipping. After they are processed, this function can be used to
+ * simply add them to the final vertex positions.
  */
 void apply_translations(Span<float3> translations, Span<int> verts, MutableSpan<float3> positions);
 void apply_translations(Span<float3> translations, Span<int> grids, SubdivCCG &subdiv_ccg);
@@ -272,9 +272,9 @@ void clip_and_lock_translations(const Sculpt &sd,
                                 MutableSpan<float3> translations);
 
 /**
- * Applying final positions to shape keys is non-trivial because the mesh positions and the
- * active shape key positions must be kept in sync, and shape keys dependent on the active key
- * must also be modified.
+ * Applying final positions to shape keys is non-trivial because the mesh positions and the active
+ * shape key positions must be kept in sync, and shape keys dependent on the active key must also
+ * be modified.
  */
 void apply_translations_to_shape_keys(Object &object,
                                       Span<int> verts,
