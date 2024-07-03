@@ -34,13 +34,6 @@ struct MeshLocalData {
   Vector<float> distances;
 };
 
-BLI_NOINLINE static void scale_factors(const MutableSpan<float> factors, const float strength)
-{
-  for (float factor : factors) {
-    factor *= strength;
-  }
-}
-
 BLI_NOINLINE static void generate_face_data_mesh(const Mesh &mesh,
                                                  const Span<float3> positions_eval,
                                                  const Span<int> face_indices,
