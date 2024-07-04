@@ -12,6 +12,16 @@
 
 #include "DNA_node_types.h"
 
+/**
+ * This header provides functionality that makes it relatively straight forward to evaluate parts
+ * of a node tree. The evaluator is designed to be flexible and simple to use in different
+ * contexts. It's not designed to be highly efficient and parallel. However, it has a lower
+ * start-up cost compared to e.g. the lazy-function evaluation for geometry nodes, which needs to
+ * convert the entire node graph into a lazy-function graph first. So it can be more efficient when
+ * only very few nodes of a larger graph have to be evaluated and those nodes are cheap.
+ *
+ * The evaluator does not use recursion, so it can be used on node graphs of every size and depth.
+ */
 namespace blender::nodes::partial_eval {
 
 /**
