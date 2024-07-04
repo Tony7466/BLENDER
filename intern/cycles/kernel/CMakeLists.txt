@@ -67,26 +67,6 @@ set(SRC_KERNEL_DEVICE_CPU_HEADERS
 set(SRC_KERNEL_DEVICE_GPU_HEADERS
   device/gpu/image.h
   device/gpu/kernel.h
-  device/gpu/kernel_adaptive_sampling.h
-  device/gpu/kernel_bake.h
-  device/gpu/kernel_cryptomatte_passes.h
-  device/gpu/kernel_denoising.h
-  device/gpu/kernel_film.h
-  device/gpu/kernel_integrator.h
-  device/gpu/kernel_integrator_init_from_bake.h
-  device/gpu/kernel_integrator_init_from_camera.h
-  device/gpu/kernel_integrator_intersect_closest.h
-  device/gpu/kernel_integrator_intersect_dedicated_light.h
-  device/gpu/kernel_integrator_intersect_shadow.h
-  device/gpu/kernel_integrator_intersect_subsurface.h
-  device/gpu/kernel_integrator_intersect_volume_stack.h
-  device/gpu/kernel_integrator_shade_background.h
-  device/gpu/kernel_integrator_shade_dedicated_light.h
-  device/gpu/kernel_integrator_shade_light.h
-  device/gpu/kernel_integrator_shade_shadow.h
-  device/gpu/kernel_integrator_shade_surface.h
-  device/gpu/kernel_integrator_shade_volume.h
-  device/gpu/kernel_integrator_shadow_catcher.h
   device/gpu/parallel_active_index.h
   device/gpu/parallel_prefix_sum.h
   device/gpu/parallel_sorted_index.h
