@@ -173,6 +173,7 @@ static void blo_update_defaults_screen(bScreen *screen,
                                     SEQ_TIMELINE_SHOW_STRIP_RETIMING | SEQ_TIMELINE_WAVEFORMS_HALF;
       seq->preview_overlay.flag |= SEQ_PREVIEW_SHOW_OUTLINE_SELECTED;
       seq->cache_overlay.flag = SEQ_CACHE_SHOW | SEQ_CACHE_SHOW_FINAL_OUT;
+      seq->draw_flag |= SEQ_DRAW_TRANSFORM_PREVIEW;
     }
     else if (area->spacetype == SPACE_TEXT) {
       /* Show syntax and line numbers in Script workspace text editor. */
@@ -725,12 +726,15 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
   LISTBASE_FOREACH (Brush *, brush, &bmain->brushes) {
     brush->blur_kernel_radius = 2;
 
-    /* Use full strength for all non-sculpt brushes,
-     * when painting we want to use full color/weight always.
-     *
-     * Note that sculpt is an exception,
-     * its values are overwritten by #BKE_brush_sculpt_reset below. */
-    brush->alpha = 1.0;
+    /* Grease Pencil brushes have specific alpha values set. */
+    if (!brush->gpencil_settings) {
+      /* Use full strength for all non-sculpt brushes,
+       * when painting we want to use full color/weight always.
+       *
+       * Note that sculpt is an exception,
+       * its values are overwritten by #BKE_brush_sculpt_reset below. */
+      brush->alpha = 1.0;
+    }
 
     /* Enable anti-aliasing by default. */
     brush->sampling_flag |= BRUSH_PAINT_ANTIALIASING;
@@ -909,13 +913,6 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
       if (!brush->automasking_cavity_curve) {
         brush->automasking_cavity_curve = BKE_sculpt_default_cavity_curve();
       }
-    }
-  }
-
-  if (app_template && STREQ(app_template, "2D_Animation")) {
-    /* Disable the unified paint setting for the brush radius. */
-    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-      scene->toolsettings->unified_paint_settings.flag &= ~UNIFIED_PAINT_SIZE;
     }
   }
 

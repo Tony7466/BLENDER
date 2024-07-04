@@ -928,7 +928,6 @@ static void drw_shgroup_custom_bone_curve(const ArmatureDrawContext *ctx,
                                           Curve *curve,
                                           const float (*bone_mat)[4],
                                           const float outline_color[4],
-                                          const float wire_width,
                                           Object *custom)
 {
   using namespace blender::draw;
@@ -952,8 +951,7 @@ static void drw_shgroup_custom_bone_curve(const ArmatureDrawContext *ctx,
 
     DRWCallBuffer *buf = custom_bone_instance_shgroup(ctx, ctx->custom_wire, loose_edges);
     OVERLAY_bone_instance_data_set_color_hint(&inst_data, outline_color);
-    inst_data.color_a = encode_2f_to_float(outline_color[0], outline_color[1]);
-    inst_data.color_b = encode_2f_to_float(outline_color[2], wire_width / WIRE_WIDTH_COMPRESSION);
+    OVERLAY_bone_instance_data_set_color(&inst_data, outline_color);
     DRW_buffer_add_entry_struct(buf, inst_data.mat);
   }
 
@@ -982,7 +980,7 @@ static void drw_shgroup_bone_custom_solid(const ArmatureDrawContext *ctx,
 
   if (ELEM(custom->type, OB_CURVES_LEGACY, OB_FONT, OB_SURF)) {
     drw_shgroup_custom_bone_curve(
-        ctx, static_cast<Curve *>(custom->data), bone_mat, outline_color, wire_width, custom);
+        ctx, static_cast<Curve *>(custom->data), bone_mat, outline_color, custom);
   }
 }
 
@@ -1001,7 +999,7 @@ static void drw_shgroup_bone_custom_wire(const ArmatureDrawContext *ctx,
 
   if (ELEM(custom->type, OB_CURVES_LEGACY, OB_FONT, OB_SURF)) {
     drw_shgroup_custom_bone_curve(
-        ctx, static_cast<Curve *>(custom->data), bone_mat, color, wire_width, custom);
+        ctx, static_cast<Curve *>(custom->data), bone_mat, color, custom);
   }
 }
 

@@ -498,26 +498,10 @@ static void id_search_cb_objects_from_scene(const bContext *C,
 }
 
 static ARegion *template_ID_search_menu_item_tooltip(
-    bContext *C, ARegion *region, const rcti *item_rect, void *arg, void *active)
+    bContext *C, ARegion *region, const rcti *item_rect, void * /*arg*/, void *active)
 {
-  TemplateID *template_ui = static_cast<TemplateID *>(arg);
   ID *active_id = static_cast<ID *>(active);
-  StructRNA *type = RNA_property_pointer_type(&template_ui->ptr, template_ui->prop);
-
-  uiSearchItemTooltipData tooltip_data = {{0}};
-
-  tooltip_data.name = active_id->name + 2;
-  SNPRINTF(tooltip_data.description,
-           TIP_("Choose %s data-block to be assigned to this user"),
-           RNA_struct_ui_name(type));
-  if (ID_IS_LINKED(active_id)) {
-    SNPRINTF(tooltip_data.hint,
-             TIP_("Source library: %s\n%s"),
-             active_id->lib->id.name + 2,
-             active_id->lib->filepath);
-  }
-
-  return UI_tooltip_create_from_search_item_generic(C, region, item_rect, &tooltip_data);
+  return UI_tooltip_create_from_search_item_generic(C, region, item_rect, active_id);
 }
 
 /* ID Search browse menu, open */
@@ -3768,7 +3752,7 @@ static void colorband_buttons_layout(uiLayout *layout,
     }
   });
 
-  RNAUpdateCb *tools_cb = MEM_new<RNAUpdateCb>(__func__, cb);
+  RNAUpdateCb *tools_cb = MEM_cnew<RNAUpdateCb>(__func__, cb);
   bt = uiDefIconBlockBut(block,
                          colorband_tools_fn,
                          tools_cb,
@@ -4746,7 +4730,7 @@ static void curvemap_buttons_layout(uiLayout *layout,
     UI_but_func_set(bt, [cb](bContext &C) { rna_update_cb(C, cb); });
   }
 
-  RNAUpdateCb *tools_cb = MEM_new<RNAUpdateCb>(__func__, cb);
+  RNAUpdateCb *tools_cb = MEM_cnew<RNAUpdateCb>(__func__, cb);
   if (brush && neg_slope) {
     bt = uiDefIconBlockBut(block,
                            curvemap_brush_tools_negslope_func,
@@ -5199,7 +5183,7 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, const
   /* There is probably potential to use simpler "uiItemR" functions here, but automatic updating
    * after a preset is selected would be more complicated. */
   uiLayout *row = uiLayoutRow(layout, true);
-  RNAUpdateCb *presets_cb = MEM_new<RNAUpdateCb>(__func__, cb);
+  RNAUpdateCb *presets_cb = MEM_cnew<RNAUpdateCb>(__func__, cb);
   bt = uiDefBlockBut(block,
                      curve_profile_presets_fn,
                      presets_cb,
@@ -5324,7 +5308,7 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, const
   });
 
   /* Reset view, reset curve */
-  RNAUpdateCb *tools_cb = MEM_new<RNAUpdateCb>(__func__, cb);
+  RNAUpdateCb *tools_cb = MEM_cnew<RNAUpdateCb>(__func__, cb);
   bt = uiDefIconBlockBut(block,
                          curve_profile_tools_fn,
                          tools_cb,
@@ -5983,22 +5967,22 @@ static void do_running_jobs(bContext *C, void * /*arg*/, int event)
       G.is_break = true;
       break;
     case B_STOPCAST:
-      WM_jobs_stop(CTX_wm_manager(C), CTX_wm_screen(C), nullptr);
+      WM_jobs_stop_all_from_owner(CTX_wm_manager(C), CTX_wm_screen(C));
       break;
     case B_STOPANIM:
       WM_operator_name_call(C, "SCREEN_OT_animation_play", WM_OP_INVOKE_SCREEN, nullptr, nullptr);
       break;
     case B_STOPCOMPO:
-      WM_jobs_stop(CTX_wm_manager(C), CTX_data_scene(C), nullptr);
+      WM_jobs_stop_all_from_owner(CTX_wm_manager(C), CTX_data_scene(C));
       break;
     case B_STOPSEQ:
-      WM_jobs_stop(CTX_wm_manager(C), CTX_data_scene(C), nullptr);
+      WM_jobs_stop_all_from_owner(CTX_wm_manager(C), CTX_data_scene(C));
       break;
     case B_STOPCLIP:
-      WM_jobs_stop(CTX_wm_manager(C), CTX_data_scene(C), nullptr);
+      WM_jobs_stop_all_from_owner(CTX_wm_manager(C), CTX_data_scene(C));
       break;
     case B_STOPFILE:
-      WM_jobs_stop(CTX_wm_manager(C), CTX_data_scene(C), nullptr);
+      WM_jobs_stop_all_from_owner(CTX_wm_manager(C), CTX_data_scene(C));
       break;
     case B_STOPOTHER:
       G.is_break = true;
@@ -6792,7 +6776,7 @@ int uiTemplateStatusBarModalItem(uiLayout *layout,
 #endif
       uiItemL(layout, "", icon);
 
-      uiItemS_ex(layout, 0.6f);
+      uiItemS_ex(layout, 0.3f);
       uiItemL(layout, xyz_label, ICON_NONE);
       uiItemS_ex(layout, 0.7f);
       return 3;
@@ -6822,13 +6806,19 @@ bool uiTemplateEventFromKeymapItem(uiLayout *layout,
     }
 
     /* Icon and text separately is closer together with aligned layout. */
-    uiItemL(layout, "", icon);
-    if (icon < ICON_MOUSE_LMB || icon > ICON_MOUSE_RMB_DRAG) {
-      /* Mouse icons are left-aligned. Everything else needs a bit of space here. */
-      uiItemS_ex(layout, 0.6f);
+
+    if (icon >= ICON_MOUSE_LMB && icon <= ICON_MOUSE_RMB_DRAG) {
+      /* Negative space before all narrow mice icons. */
+      uiItemS_ex(layout, -0.5f);
     }
+    uiItemL(layout, "", icon);
+    if (icon >= ICON_MOUSE_LMB && icon <= ICON_MOUSE_RMB) {
+      /* Negative space after non-drag mice icons. */
+      uiItemS_ex(layout, -0.5f);
+    }
+
+    uiItemS_ex(layout, 0.3f);
     uiItemL(layout, CTX_IFACE_(BLT_I18NCONTEXT_ID_WINDOWMANAGER, text), ICON_NONE);
-    /* Separate items with some extra space. */
     uiItemS_ex(layout, 0.7f);
     ok = true;
   }
@@ -6894,6 +6884,14 @@ void uiTemplateColormanagedViewSettings(uiLayout *layout,
   if (view_settings->flag & COLORMANAGE_VIEW_USE_CURVES) {
     uiTemplateCurveMapping(
         col, &view_transform_ptr, "curve_mapping", 'c', true, false, false, false);
+  }
+
+  col = uiLayoutColumn(layout, false);
+  uiItemR(col, &view_transform_ptr, "use_white_balance", UI_ITEM_NONE, nullptr, ICON_NONE);
+  if (view_settings->flag & COLORMANAGE_VIEW_USE_WHITE_BALANCE) {
+    uiItemR(
+        col, &view_transform_ptr, "white_balance_temperature", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, &view_transform_ptr, "white_balance_tint", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 }
 

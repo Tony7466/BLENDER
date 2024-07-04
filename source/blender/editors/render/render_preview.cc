@@ -194,16 +194,8 @@ void ED_preview_ensure_dbase(const bool with_gpencil)
     base_initialized = true;
   }
   if (!base_initialized_gpencil && with_gpencil) {
-
-    if (U.experimental.use_grease_pencil_version3) {
-      G_pr_main_grease_pencil = load_main_from_memory(datatoc_preview_grease_pencil_blend,
-                                                      datatoc_preview_grease_pencil_blend_size);
-    }
-    else {
-      G_pr_main_grease_pencil = load_main_from_memory(
-          datatoc_preview_grease_pencil_legacy_blend,
-          datatoc_preview_grease_pencil_legacy_blend_size);
-    }
+    G_pr_main_grease_pencil = load_main_from_memory(datatoc_preview_grease_pencil_blend,
+                                                    datatoc_preview_grease_pencil_blend_size);
     base_initialized_gpencil = true;
   }
 #else
@@ -2121,8 +2113,7 @@ void ED_preview_kill_jobs(wmWindowManager *wm, Main * /*bmain*/)
   if (wm) {
     /* This is called to stop all preview jobs before scene data changes, to
      * avoid invalid memory access. */
-    WM_jobs_kill(wm, nullptr, common_preview_startjob);
-    WM_jobs_kill(wm, nullptr, icon_preview_startjob_all_sizes);
+    WM_jobs_kill_type(wm, nullptr, WM_JOB_TYPE_RENDER_PREVIEW);
   }
 }
 

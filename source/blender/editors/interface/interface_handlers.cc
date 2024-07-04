@@ -9849,30 +9849,62 @@ static int ui_handle_list_event(bContext *C, const wmEvent *event, ARegion *regi
 }
 
 /* Handle mouse hover for Views and UiList rows. */
-static int ui_handle_viewlist_items_hover(const wmEvent *event, const ARegion *region)
+static int ui_handle_viewlist_items_hover(const wmEvent *event, ARegion *region)
 {
-  bool has_item = false;
-  LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
-    LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
-      if (ELEM(but->type, UI_BTYPE_VIEW_ITEM, UI_BTYPE_LISTROW)) {
-        but->flag &= ~UI_HOVER;
-        has_item = true;
+  const bool has_list = !BLI_listbase_is_empty(&region->ui_lists);
+  const bool has_view = [&]() {
+    LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
+      if (!BLI_listbase_is_empty(&block->views)) {
+        return true;
       }
     }
-  }
+    return false;
+  }();
 
-  if (!has_item) {
+  if (!has_view && !has_list) {
     /* Avoid unnecessary lookup. */
     return WM_UI_HANDLER_CONTINUE;
   }
 
   /* Always highlight the hovered view item, even if the mouse hovers another button inside. */
-  uiBut *hovered_row_but = ui_view_item_find_mouse_over(region, event->xy);
-  if (!hovered_row_but) {
-    hovered_row_but = ui_list_row_find_mouse_over(region, event->xy);
+  uiBut *highlight_row_but = [&]() -> uiBut * {
+    if (uiBut *but = ui_view_item_find_search_highlight(region)) {
+      return but;
+    }
+    if (uiBut *but = ui_view_item_find_mouse_over(region, event->xy)) {
+      return but;
+    }
+    if (uiBut *but = ui_list_row_find_mouse_over(region, event->xy)) {
+      return but;
+    }
+    return nullptr;
+  }();
+
+  bool changed = false;
+
+  if (highlight_row_but && !(highlight_row_but->flag & UI_HOVER)) {
+    highlight_row_but->flag |= UI_HOVER;
+    changed = true;
   }
-  if (hovered_row_but) {
-    hovered_row_but->flag |= UI_HOVER;
+
+  LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
+    LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
+      if (but == highlight_row_but) {
+        continue;
+      }
+      if (!ELEM(but->type, UI_BTYPE_VIEW_ITEM, UI_BTYPE_LISTROW)) {
+        continue;
+      }
+
+      if (but->flag & UI_HOVER) {
+        but->flag &= ~UI_HOVER;
+        changed = true;
+      }
+    }
+  }
+
+  if (changed) {
+    ED_region_tag_redraw_no_rebuild(region);
   }
 
   return WM_UI_HANDLER_CONTINUE;
@@ -9883,16 +9915,36 @@ static int ui_handle_view_item_event(bContext *C,
                                      uiBut *active_but,
                                      ARegion *region)
 {
-  if ((event->type == LEFTMOUSE) && (event->val == KM_PRESS)) {
-    /* Only bother finding the active view item button if the active button isn't already a view
-     * item. */
-    uiBut *view_but = (active_but && active_but->type == UI_BTYPE_VIEW_ITEM) ?
-                          active_but :
-                          ui_view_item_find_mouse_over(region, event->xy);
-    /* Will free active button if there already is one. */
-    if (view_but) {
-      UI_but_execute(C, region, view_but);
-    }
+  switch (event->type) {
+    case MOUSEMOVE:
+      if (event->xy[0] != event->prev_xy[0] || event->xy[1] != event->prev_xy[1]) {
+        UI_region_views_clear_search_highlight(region);
+      }
+      break;
+    case LEFTMOUSE:
+      if (event->val == KM_PRESS) {
+        /* Only bother finding the active view item button if the active button isn't already a
+         * view item. */
+        uiBut *view_but = (active_but && active_but->type == UI_BTYPE_VIEW_ITEM) ?
+                              active_but :
+                              ui_view_item_find_mouse_over(region, event->xy);
+        /* Will free active button if there already is one. */
+        if (view_but) {
+          UI_but_execute(C, region, view_but);
+        }
+      }
+      break;
+    case EVT_RETKEY:
+    case EVT_PADENTER:
+      if (event->val == KM_PRESS) {
+        if (uiBut *search_highlight_but = ui_view_item_find_search_highlight(region)) {
+          UI_but_execute(C, region, search_highlight_but);
+          return WM_UI_HANDLER_BREAK;
+        }
+      }
+      break;
+    default:
+      break;
   }
 
   return WM_UI_HANDLER_CONTINUE;
@@ -11435,7 +11487,7 @@ static int ui_handle_menus_recursive(bContext *C,
     bool inside = false;
     /* root pie menus accept the key that spawned
      * them as double click to improve responsiveness */
-    const bool do_recursion = (!(block->flag & UI_BLOCK_RADIAL) ||
+    const bool do_recursion = (!(block->flag & UI_BLOCK_PIE_MENU) ||
                                event->type != block->pie_data.event_type);
 
     if (do_recursion) {
@@ -11506,15 +11558,14 @@ static int ui_handle_menus_recursive(bContext *C,
     }
     else {
       uiBlock *block = static_cast<uiBlock *>(menu->region->uiblocks.first);
-      uiBut *listbox = ui_list_find_mouse_over(menu->region, event);
 
-      if (block->flag & UI_BLOCK_RADIAL) {
+      if (block->flag & UI_BLOCK_PIE_MENU) {
         retval = ui_pie_handler(C, event, menu);
       }
       else if (event->type == LEFTMOUSE || event->val != KM_DBL_CLICK) {
         bool handled = false;
 
-        if (listbox) {
+        if (uiBut *listbox = ui_list_find_mouse_over(menu->region, event)) {
           const int retval_test = ui_handle_list_event(C, event, menu->region, listbox);
           if (retval_test != WM_UI_HANDLER_CONTINUE) {
             retval = retval_test;
@@ -11765,7 +11816,7 @@ static int ui_popup_handler(bContext *C, const wmEvent *event, void *userdata)
     uiBlock *block = static_cast<uiBlock *>(menu->region->uiblocks.first);
 
     /* set last pie event to allow chained pie spawning */
-    if (block->flag & UI_BLOCK_RADIAL) {
+    if (block->flag & UI_BLOCK_PIE_MENU) {
       win->pie_event_type_last = block->pie_data.event_type;
       reset_pie = true;
     }

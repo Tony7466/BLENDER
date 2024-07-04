@@ -26,7 +26,6 @@ enum PBVHNodeFlags {
 
   PBVH_UpdateNormals = 1 << 1,
   PBVH_UpdateBB = 1 << 2,
-  PBVH_UpdateOriginalBB = 1 << 3,
   PBVH_UpdateDrawBuffers = 1 << 4,
   PBVH_UpdateRedraw = 1 << 5,
   PBVH_UpdateMask = 1 << 6,
@@ -79,8 +78,6 @@ inline PBVHType BKE_pbvh_type(const PBVH &pbvh)
   return ((const PBVHPublic &)pbvh).type;
 }
 
-/* Needed for the render engines integration. */
-void BKE_pbvh_is_drawing_set(PBVH &pbvh, bool val);
 void BKE_pbvh_draw_debug_cb(PBVH &pbvh,
                             void (*draw_fn)(PBVHNode *node,
                                             void *user_data,

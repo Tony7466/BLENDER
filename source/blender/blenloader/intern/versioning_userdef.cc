@@ -164,7 +164,7 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
     FROM_DEFAULT_V4_UCHAR(space_view3d.time_gp_keyframe);
   }
 
-  if (!USER_VERSION_ATLEAST(402, 57)) {
+  if (!USER_VERSION_ATLEAST(403, 1)) {
     FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_generated);
     FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_generated_select);
   }
@@ -181,6 +181,13 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
     FROM_DEFAULT_V4_UCHAR(space_sequencer.scene);
     FROM_DEFAULT_V4_UCHAR(space_sequencer.text_strip);
     FROM_DEFAULT_V4_UCHAR(space_sequencer.transition);
+  }
+
+  if (!USER_VERSION_ATLEAST(403, 5)) {
+    FROM_DEFAULT_V4_UCHAR(space_view3d.before_current_frame);
+    FROM_DEFAULT_V4_UCHAR(space_view3d.after_current_frame);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.before_current_frame);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.after_current_frame);
   }
 
   /**

@@ -128,7 +128,7 @@ enum eUIEmbossType {
   /** Pull-down menu style */
   UI_EMBOSS_PULLDOWN = 2,
   /** Pie Menu */
-  UI_EMBOSS_RADIAL = 3,
+  UI_EMBOSS_PIE_MENU = 3,
   /**
    * The same as #UI_EMBOSS_NONE, unless the button has
    * a coloring status like an animation state or red alert.
@@ -171,7 +171,7 @@ enum {
 
   UI_BLOCK_POPUP_HOLD = 1 << 18,
   UI_BLOCK_LIST_ITEM = 1 << 19,
-  UI_BLOCK_RADIAL = 1 << 20,
+  UI_BLOCK_PIE_MENU = 1 << 20,
   UI_BLOCK_POPOVER = 1 << 21,
   UI_BLOCK_POPOVER_ONCE = 1 << 22,
   /** Always show key-maps, even for non-menus. */
@@ -1368,6 +1368,11 @@ uiBut *uiDefIconTextButO_ptr(uiBlock *block,
                              short height,
                              const char *tip);
 
+void UI_but_operator_set(uiBut *but,
+                         wmOperatorType *optype,
+                         wmOperatorCallContext opcontext,
+                         const PointerRNA *opptr = nullptr);
+
 /** For passing inputs to ButO buttons. */
 PointerRNA *UI_but_operator_ptr_ensure(uiBut *but);
 
@@ -2028,6 +2033,10 @@ void UI_init_userdef();
 void UI_reinit_font();
 void UI_exit();
 
+/* When changing UI font, update text style weights with default font weight
+ * if non-variable. Therefore fixed weight bold font will look bold. */
+void UI_update_text_styles();
+
 /* Layout
  *
  * More automated layout of buttons. Has three levels:
@@ -2347,6 +2356,7 @@ uiLayout *uiLayoutAbsolute(uiLayout *layout, bool align);
 uiLayout *uiLayoutSplit(uiLayout *layout, float percentage, bool align);
 uiLayout *uiLayoutOverlap(uiLayout *layout);
 uiBlock *uiLayoutAbsoluteBlock(uiLayout *layout);
+/** Pie menu layout: Buttons are arranged around a center. */
 uiLayout *uiLayoutRadial(uiLayout *layout);
 
 /* templates */
@@ -2726,10 +2736,7 @@ void uiTemplateLightLinkingCollection(uiLayout *layout,
                                       const char *propname);
 
 void uiTemplateBoneCollectionTree(uiLayout *layout, bContext *C);
-
-#ifdef WITH_GREASE_PENCIL_V3
 void uiTemplateGreasePencilLayerTree(uiLayout *layout, bContext *C);
-#endif
 
 void uiTemplateNodeTreeInterface(uiLayout *layout, PointerRNA *ptr);
 /**
@@ -3317,15 +3324,6 @@ ARegion *UI_tooltip_create_from_button_or_extra_icon(
 ARegion *UI_tooltip_create_from_gizmo(bContext *C, wmGizmo *gz);
 void UI_tooltip_free(bContext *C, bScreen *screen, ARegion *region);
 
-struct uiSearchItemTooltipData {
-  /** A description for the item, e.g. what happens when selecting it. */
-  char description[UI_MAX_DRAW_STR];
-  /* The full name of the item, without prefixes or suffixes (e.g. hint with UI_SEP_CHARP). */
-  const char *name;
-  /** Additional info about the item (e.g. library name of a linked data-block). */
-  char hint[UI_MAX_DRAW_STR];
-};
-
 /**
  * Create a tooltip from search-item tooltip data \a item_tooltip data.
  * To be called from a callback set with #UI_but_func_search_set_tooltip().
@@ -3333,11 +3331,10 @@ struct uiSearchItemTooltipData {
  * \param item_rect: Rectangle of the search item in search region space (#ui_searchbox_butrect())
  *                   which is passed to the tooltip callback.
  */
-ARegion *UI_tooltip_create_from_search_item_generic(
-    bContext *C,
-    const ARegion *searchbox_region,
-    const rcti *item_rect,
-    const uiSearchItemTooltipData *item_tooltip_data);
+ARegion *UI_tooltip_create_from_search_item_generic(bContext *C,
+                                                    const ARegion *searchbox_region,
+                                                    const rcti *item_rect,
+                                                    ID *id);
 
 /* How long before a tool-tip shows. */
 #define UI_TOOLTIP_DELAY 0.5
@@ -3411,3 +3408,4 @@ blender::ui::AbstractViewItem *UI_region_views_find_item_at(const ARegion &regio
                                                             const int xy[2]);
 blender::ui::AbstractViewItem *UI_region_views_find_active_item(const ARegion *region);
 uiBut *UI_region_views_find_active_item_but(const ARegion *region);
+void UI_region_views_clear_search_highlight(const ARegion *region);
