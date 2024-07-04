@@ -624,7 +624,11 @@ static void OVERLAY_draw_scene(void *vedata)
   }
 
   OVERLAY_image_background_draw(data);
-  OVERLAY_background_draw(data);
+  /* Do not render background if XR passthrough is enabled. */
+  if ((pd->v3d_flag & V3D_XR_SESSION_SURFACE) == 0) 
+  {
+    OVERLAY_background_draw(data);
+  }
 
   OVERLAY_antialiasing_start(data);
 
