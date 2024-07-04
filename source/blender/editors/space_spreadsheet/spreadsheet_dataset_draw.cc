@@ -12,6 +12,7 @@
 
 #include "BKE_context.hh"
 #include "BKE_curves.hh"
+#include "BKE_geometry_set_instances.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_instances.hh"
 #include "BKE_volume.hh"
@@ -26,6 +27,7 @@
 
 #include "BLT_translation.hh"
 
+#include "spreadsheet_data_source_geometry.hh"
 #include "spreadsheet_dataset_draw.hh"
 #include "spreadsheet_intern.hh"
 
@@ -411,6 +413,30 @@ class InstancesViewItem : public DataSetViewItem {
   }
 };
 
+class InstanceReferenceViewItem : public DataSetViewItem {
+ private:
+  const bke::InstanceReference &reference_;
+  int reference_index_;
+
+ public:
+  InstanceReferenceViewItem(const bke::Instances &instances, const int reference_index)
+      : reference_(instances.references()[reference_index]), reference_index_(reference_index)
+  {
+    label_ = std::to_string(reference_index);
+  }
+
+  void build_row(uiLayout &row) override
+  {
+    const int icon = get_instance_reference_icon(reference_);
+    uiItemL(&row, reference_.name().c_str(), icon);
+  }
+
+  int reference_index() const
+  {
+    return reference_index_;
+  }
+};
+
 class GeometryDataSetTreeView : public ui::AbstractTreeView {
  private:
   bke::GeometrySet root_geometry_set_;
@@ -515,7 +541,36 @@ class GeometryDataSetTreeView : public ui::AbstractTreeView {
 
   void build_tree_for_instances(const bke::Instances *instances, ui::TreeViewItemContainer &parent)
   {
-    parent.add_tree_item<InstancesViewItem>(instances);
+    auto &instances_view = parent.add_tree_item<InstancesViewItem>(instances);
+    if (!instances) {
+      return;
+    }
+    const Span<bke::InstanceReference> references = instances->references();
+    for (const int reference_i : references.index_range()) {
+      auto &reference_item = instances_view.add_tree_item<InstanceReferenceViewItem>(*instances,
+                                                                                     reference_i);
+      const bke::InstanceReference &reference = references[reference_i];
+      switch (reference.type()) {
+        case bke::InstanceReference::Type::Object: {
+          const Object &object = reference.object();
+          const bke::GeometrySet geometry_set = bke::object_get_evaluated_geometry_set(object);
+          this->build_tree_for_geometry(geometry_set, reference_item, false);
+          break;
+        }
+        case bke::InstanceReference::Type::Collection: {
+          /* TODO */
+          break;
+        }
+        case bke::InstanceReference::Type::GeometrySet: {
+          const bke::GeometrySet &geometry_set = reference.geometry_set();
+          this->build_tree_for_geometry(geometry_set, reference_item, false);
+          break;
+        }
+        case bke::InstanceReference::Type::None: {
+          break;
+        }
+      }
+    }
   }
 };
 
@@ -526,7 +581,12 @@ GeometryDataSetTreeView &DataSetViewItem::get_tree() const
 
 void DataSetViewItem::get_parent_instance_ids(Vector<SpreadsheetInstanceID> &r_instance_ids) const
 {
-  UNUSED_VARS(r_instance_ids);
+  this->foreach_parent([&](const ui::AbstractTreeViewItem &item) {
+    if (auto *reference_item = dynamic_cast<const InstanceReferenceViewItem *>(&item)) {
+      r_instance_ids.append({reference_item->reference_index()});
+    }
+  });
+  std::reverse(r_instance_ids.begin(), r_instance_ids.end());
 }
 
 void DataSetViewItem::on_activate(bContext &C)

@@ -6,9 +6,14 @@
 #include "BLI_rand.hh"
 #include "BLI_task.hh"
 
+#include "DNA_collection_types.h"
+#include "DNA_object_types.h"
+
 #include "BKE_customdata.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_instances.hh"
+
+#include "BLT_translation.hh"
 
 namespace blender::bke {
 
@@ -33,6 +38,21 @@ bool InstanceReference::owns_direct_data() const
     return true;
   }
   return geometry_set_->owns_direct_data();
+}
+
+std::string InstanceReference::name() const
+{
+  switch (type_) {
+    case Type::Object:
+      return this->object().id.name + 2;
+    case Type::Collection:
+      return this->collection().id.name + 2;
+    case Type::GeometrySet:
+      return IFACE_("Geometry");
+    case Type::None:
+      break;
+  }
+  return "";
 }
 
 bool operator==(const InstanceReference &a, const InstanceReference &b)

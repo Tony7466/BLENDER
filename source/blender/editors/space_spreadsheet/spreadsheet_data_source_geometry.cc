@@ -42,6 +42,8 @@
 #include "RNA_access.hh"
 #include "RNA_enum_types.hh"
 
+#include "UI_resources.hh"
+
 #include "bmesh.hh"
 
 #include "spreadsheet_data_source_geometry.hh"
@@ -543,6 +545,25 @@ int VolumeDataSource::tot_rows() const
     return 0;
   }
   return BKE_volume_num_grids(volume);
+}
+
+int get_instance_reference_icon(const bke::InstanceReference &reference)
+{
+  switch (reference.type()) {
+    case bke::InstanceReference::Type::Object: {
+      return ICON_OBJECT_DATA;
+    }
+    case bke::InstanceReference::Type::Collection: {
+      return ICON_OUTLINER_COLLECTION;
+    }
+    case bke::InstanceReference::Type::GeometrySet: {
+      return ICON_EMPTY_AXIS;
+    }
+    case bke::InstanceReference::Type::None: {
+      break;
+    }
+  }
+  return ICON_NONE;
 }
 
 bke::GeometrySet spreadsheet_get_display_geometry_set(const SpaceSpreadsheet *sspreadsheet,

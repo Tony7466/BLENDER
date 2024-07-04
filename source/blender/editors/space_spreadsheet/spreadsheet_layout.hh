@@ -9,6 +9,8 @@
 #include "spreadsheet_column_values.hh"
 #include "spreadsheet_draw.hh"
 
+#include "BKE_instances.hh"
+
 namespace blender::ed::spreadsheet {
 
 /* Layout information for a single column. */

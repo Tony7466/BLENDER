@@ -86,6 +86,8 @@ class InstanceReference {
   GeometrySet &geometry_set();
   const GeometrySet &geometry_set() const;
 
+  std::string name() const;
+
   bool owns_direct_data() const;
   void ensure_owns_direct_data();
 

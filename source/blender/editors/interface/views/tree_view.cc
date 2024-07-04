@@ -83,6 +83,13 @@ void TreeViewItemContainer::foreach_item_recursive(ItemIterFn iter_fn, IterOptio
   }
 }
 
+void TreeViewItemContainer::foreach_parent(ItemIterFn iter_fn) const
+{
+  for (ui::AbstractTreeViewItem *item = parent_; item; item = item->parent_) {
+    iter_fn(*item);
+  }
+}
+
 /* ---------------------------------------------------------------------- */
 
 /* Implementation for the base class virtual function. More specialized iterators below. */
