@@ -179,6 +179,10 @@ remove_cc_flag(
 if(MSVC_CLANG) # Clangs version of cl doesn't support all flags
   string(APPEND CMAKE_CXX_FLAGS " ${CXX_WARN_FLAGS} /nologo /J /Gd /EHsc -Wno-unused-command-line-argument -Wno-microsoft-enum-forward-reference ")
   string(APPEND CMAKE_C_FLAGS   " /nologo /J /Gd -Wno-unused-command-line-argument -Wno-microsoft-enum-forward-reference")
+  if(CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64")
+    string(APPEND CMAKE_CXX_FLAGS " /DGLOG_NO_ABBREVIATED_SEVERITIES=1")
+    string(APPEND CMAKE_C_FLAGS " /DGLOG_NO_ABBREVIATED_SEVERITIES=1")
+  endif()
 else()
   string(APPEND CMAKE_CXX_FLAGS " /nologo /J /Gd /MP /EHsc /bigobj")
   string(APPEND CMAKE_C_FLAGS   " /nologo /J /Gd /MP /bigobj")
