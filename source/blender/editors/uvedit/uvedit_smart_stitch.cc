@@ -2791,6 +2791,51 @@ void UV_OT_stitch(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
+static bool uvedit_uv_threshold_center_vertex_loops(bContext *C,
+                                                    Scene *scene,
+                                                    blender::Vector<Object *> *objects,
+                                                    float threshold)
+{
+  SpaceImage *sima = CTX_wm_space_image(C);
+  for (Object *obedit : *objects) {
+    BMEditMesh *em = BKE_editmesh_from_object(obedit);
+    BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
+    std::vector<std::vector<std::vector<BMLoop *>>> edgeloops;
+    UV_get_edgeloops(scene, em->bm, &edgeloops, uvedit_uv_select_test);
+    for (std::vector<std::vector<BMLoop *>> &edgeloop : edgeloops) {
+      std::sort(
+          edgeloop.begin(), edgeloop.end(), [](std::vector<BMLoop *> a, std::vector<BMLoop *> b) {
+            return a[0]->v->head.index < b[0]->v->head.index;
+          });
+    }
+
+    auto ptr1 = edgeloops[0].begin();
+    auto ptr2 = edgeloops[1].begin();
+
+    while (ptr1 != edgeloops[0].end()) {
+      int v1 = (*ptr1)[0]->v->head.index;
+      int v2 = (*ptr2)[0]->v->head.index;
+      if (v1 == v2) {
+        ED_uvedit_shift_pair_of_UV_coordinates(
+            offsets, offsets, &(*ptr1), &(*ptr2), threshold, mid_v2_v2v2);
+        ptr1++;
+        ptr2++;
+      }
+      else if (v1 < v2) {
+        ptr1++;
+      }
+      else {
+        ptr2++;
+      }
+    }
+    uvedit_live_unwrap_update(sima, scene, obedit);
+    DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
+    WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
+  }
+
+  return true;
+}
+
 static bool uvedit_uv_threshold_weld(Scene *scene,
                                      blender::Vector<Object *> *objects,
                                      float threshold)
@@ -2822,7 +2867,7 @@ static bool uvedit_uv_threshold_weld(Scene *scene,
     }
   }
   if (endpoints.size() < 2) {
-    return false;
+    return true;
   }
 
   size_t min_size = edgeloops[0].size();
@@ -2899,13 +2944,13 @@ static int stitch_distance_exec(bContext *C, wmOperator *op)
       scene, view_layer, nullptr);
 
   const float threshold = RNA_float_get(op->ptr, "threshold");
-
-  if (uvedit_uv_threshold_weld(scene, &objects, threshold)) {
-    return OPERATOR_FINISHED;
+  if (RNA_boolean_get(op->ptr, "underlying_geometry")) {
+    uvedit_uv_threshold_center_vertex_loops(C, scene, &objects, threshold);
   }
   else {
-    return OPERATOR_CANCELLED;
+    uvedit_uv_threshold_weld(scene, &objects, threshold);
   }
+  return OPERATOR_FINISHED;
 }
 
 void UV_OT_stitch_distance(wmOperatorType *ot)
@@ -2929,4 +2974,9 @@ void UV_OT_stitch_distance(wmOperatorType *ot)
                 "Maximum distance between welded vertices",
                 0.0f,
                 1.0f);
+  RNA_def_boolean(ot->srna,
+                  "underlying_geometry",
+                  false,
+                  "Underlying Geometry",
+                  "Stitch UVs based on underlying geometry");
 }
