@@ -33,6 +33,7 @@
 #include "DEG_depsgraph_query.hh"
 
 #include "ED_curves.hh"
+#include "ED_outliner.hh"
 #include "ED_spreadsheet.hh"
 
 #include "NOD_geometry_nodes_lazy_function.hh"
@@ -552,7 +553,8 @@ int get_instance_reference_icon(const bke::InstanceReference &reference)
 {
   switch (reference.type()) {
     case bke::InstanceReference::Type::Object: {
-      return ICON_OBJECT_DATA;
+      const Object &object = reference.object();
+      return ED_outliner_icon_from_id(object.id);
     }
     case bke::InstanceReference::Type::Collection: {
       return ICON_OUTLINER_COLLECTION;
