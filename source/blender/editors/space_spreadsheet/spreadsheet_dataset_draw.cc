@@ -10,6 +10,7 @@
 #include "BKE_context.hh"
 #include "BKE_curves.hh"
 #include "BKE_grease_pencil.hh"
+#include "BKE_instances.hh"
 #include "BKE_volume.hh"
 
 #include "RNA_access.hh"
@@ -119,6 +120,26 @@ class GeometryDataSetTreeView : public ui::AbstractTreeView {
     }
   }
 
+  void build_instances()
+  {
+    GeometryDataSetTreeViewItem &instances_item = this->add_tree_item<GeometryDataSetTreeViewItem>(
+        bke::GeometryComponent::Type::Instance,
+        bke::AttrDomain::Instance,
+        IFACE_("Instances"),
+        ICON_EMPTY_AXIS);
+
+    if (!geometry_set_.has_instances()) {
+      return;
+    }
+    const bke::Instances &instances = *geometry_set_.get_instances();
+    const Span<bke::InstanceReference> references = instances.references();
+    for (const int reference_i : references.index_range()) {
+      const bke::InstanceReference &reference = references[reference_i];
+      instances_item.add_tree_item<GeometryDataSetTreeViewItem>(
+          bke::GeometryComponent::Type::Mesh, "test", ICON_MESH_CAPSULE);
+    }
+  }
+
   void build_tree() override
   {
     GeometryDataSetTreeViewItem &mesh = this->add_tree_item<GeometryDataSetTreeViewItem>(
@@ -162,10 +183,7 @@ class GeometryDataSetTreeView : public ui::AbstractTreeView {
     this->add_tree_item<GeometryDataSetTreeViewItem>(
         bke::GeometryComponent::Type::Volume, IFACE_("Volume Grids"), ICON_VOLUME_DATA);
 
-    this->add_tree_item<GeometryDataSetTreeViewItem>(bke::GeometryComponent::Type::Instance,
-                                                     bke::AttrDomain::Instance,
-                                                     IFACE_("Instances"),
-                                                     ICON_EMPTY_AXIS);
+    this->build_instances();
   }
 };
 
