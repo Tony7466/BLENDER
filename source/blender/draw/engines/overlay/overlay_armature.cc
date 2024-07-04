@@ -951,8 +951,8 @@ static void drw_shgroup_bone_custom_mesh_wire(const ArmatureDrawContext *ctx,
 
     /* Only draw points at the corners if they can actually round them off. */
     if (wire_width > 1) {
-      blender::gpu::Batch *pts = DRW_mesh_batch_cache_get_all_verts(mesh);
-      buf = custom_bone_instance_shgroup(ctx, ctx->custom_wire_points, pts);
+      blender::gpu::Batch *verts = DRW_mesh_batch_cache_get_all_verts(mesh);
+      buf = custom_bone_instance_shgroup(ctx, ctx->custom_wire_points, verts);
       BoneInstanceData inst_data;
       mul_m4_m4m4(inst_data.mat, ctx->ob->object_to_world().ptr(), bone_mat);
       OVERLAY_bone_instance_data_set_color_hint(&inst_data, color);

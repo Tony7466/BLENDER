@@ -63,9 +63,7 @@ void main()
   /* Due to an AMD glitch, this line was moved out of the `do_vertex`
    * function (see #62792). */
   view_clipping_distances_set(gl_in[0]);
-
   const vec4 final_color = geometry_in[0].finalColor;
-
   do_vertex(final_color, pos0, half_size, edge_ofs);
   do_vertex(final_color, pos0, -half_size, -edge_ofs);
 

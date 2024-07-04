@@ -189,7 +189,6 @@ GPU_SHADER_INTERFACE_INFO(overlay_armature_shape_wire_point_iface, "")
 
 GPU_SHADER_CREATE_INFO(overlay_armature_shape_wire_point)
     .do_static_compilation(true)
-    // .builtins(BuiltinBits::POINT_SIZE)
     .typedef_source("overlay_shader_shared.h")
     .vertex_in(0, Type::VEC3, "pos")
     .vertex_in(2, Type::MAT4, "inst_obmat")
