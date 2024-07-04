@@ -2660,7 +2660,12 @@ static bool versioning_convert_strip_speed_factor(Sequence *seq, void *user_data
 {
   Scene *scene = static_cast<Scene *>(user_data);
 
-  const float speed_factor = seq->speed_factor;
+  float speed_factor = seq->speed_factor;
+
+  if (speed_factor == 0.0f) {
+    speed_factor = 1.0f;
+  }
+
   if (speed_factor == 1.0f || !SEQ_retiming_is_allowed(seq) || SEQ_retiming_keys_count(seq) > 0) {
     return true;
   }
@@ -2668,7 +2673,7 @@ static bool versioning_convert_strip_speed_factor(Sequence *seq, void *user_data
   SEQ_retiming_data_ensure(seq);
   SeqRetimingKey *last_key = &SEQ_retiming_keys_get(seq)[1];
 
-  last_key->strip_frame_index = seq->len / speed_factor;
+  last_key->strip_frame_index = (seq->len) / speed_factor;
 
   if (seq->type == SEQ_TYPE_SOUND_RAM) {
     const int prev_length = seq->len - seq->startofs - seq->endofs;
