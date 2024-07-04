@@ -40,6 +40,7 @@ class ExtraColumns {
 
 class GeometryDataSource : public DataSource {
  private:
+  /* TODO: Rethink handling of object_eval_. */
   Object *object_eval_;
   const bke::GeometrySet geometry_set_;
   const bke::GeometryComponent *component_;

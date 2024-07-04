@@ -12,6 +12,7 @@
 #include "BKE_editmesh.hh"
 #include "BKE_geometry_fields.hh"
 #include "BKE_geometry_set.hh"
+#include "BKE_geometry_set_instances.hh"
 #include "BKE_global.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_instances.hh"
@@ -629,13 +630,54 @@ bke::GeometrySet spreadsheet_get_display_geometry_set(const SpaceSpreadsheet *ss
   return geometry_set;
 }
 
+static bke::GeometrySet get_geometry_set_for_instance_ids(
+    const bke::GeometrySet &root_geometry, const Span<SpreadsheetInstanceID> instance_ids)
+{
+  bke::GeometrySet geometry = root_geometry;
+  for (const SpreadsheetInstanceID &instance_id : instance_ids) {
+    const bke::Instances *instances = geometry.get_instances();
+    if (!instances) {
+      return {};
+    }
+    const Span<bke::InstanceReference> references = instances->references();
+    if (instance_id.reference_index < 0 || instance_id.reference_index >= references.size()) {
+      return {};
+    }
+    const bke::InstanceReference &reference = references[instance_id.reference_index];
+    switch (reference.type()) {
+      case bke::InstanceReference::Type::GeometrySet: {
+        geometry = reference.geometry_set();
+        break;
+      }
+      case bke::InstanceReference::Type::Object: {
+        const Object &object = reference.object();
+        geometry = bke::object_get_evaluated_geometry_set(object);
+        break;
+      }
+      case bke::InstanceReference::Type::Collection: {
+        /* TODO. */
+        return {};
+      }
+      case bke::InstanceReference::Type::None: {
+        return {};
+      }
+    }
+  }
+  return geometry;
+}
+
 std::unique_ptr<DataSource> data_source_from_geometry(const bContext *C, Object *object_eval)
 {
   SpaceSpreadsheet *sspreadsheet = CTX_wm_space_spreadsheet(C);
+
+  const bke::GeometrySet root_geometry_set = spreadsheet_get_display_geometry_set(sspreadsheet,
+                                                                                  object_eval);
+  const bke::GeometrySet geometry_set = get_geometry_set_for_instance_ids(
+      root_geometry_set, Span{sspreadsheet->instance_ids, sspreadsheet->instance_ids_num});
+
   const bke::AttrDomain domain = (bke::AttrDomain)sspreadsheet->attribute_domain;
   const auto component_type = bke::GeometryComponent::Type(sspreadsheet->geometry_component_type);
   const int active_layer_index = sspreadsheet->active_layer_index;
-  bke::GeometrySet geometry_set = spreadsheet_get_display_geometry_set(sspreadsheet, object_eval);
   if (!geometry_set.has(component_type)) {
     return {};
   }
