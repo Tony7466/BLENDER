@@ -66,8 +66,7 @@ int OBJCurve::total_splines() const
 
 int OBJCurve::total_spline_vertices(const int spline_index) const
 {
-  const Nurb *const nurb = static_cast<Nurb *>(
-      BLI_findlink(&export_curve_->nurb, spline_index));
+  const Nurb *const nurb = static_cast<Nurb *>(BLI_findlink(&export_curve_->nurb, spline_index));
   return nurb->pntsu * nurb->pntsv;
 }
 
@@ -85,14 +84,16 @@ float4 OBJCurve::vertex_coordinates(const int spline_index,
   return r_coord;
 }
 
-int OBJCurve::spline_control_points(const int spline_index, int uv) const {
+int OBJCurve::spline_control_points(const int spline_index, int uv) const
+{
   const Nurb *nurb = static_cast<Nurb *>(BLI_findlink(&export_curve_->nurb, spline_index));
   return uv ? nurb->pntsv : nurb->pntsu;
 }
 
 int OBJCurve::total_spline_control_points(const int spline_index, int uv) const
 {
-  const Nurb *const nurb = static_cast<const Nurb *>(BLI_findlink(&export_curve_->nurb, spline_index));
+  const Nurb *const nurb = static_cast<const Nurb *>(
+      BLI_findlink(&export_curve_->nurb, spline_index));
   int degree = nurb->type == CU_POLY ? 1 : (uv ? nurb->orderv : nurb->orderu) - 1;
   /* Total control points = Number of points in the curve (+ degree of the
    * curve if it is cyclic). */

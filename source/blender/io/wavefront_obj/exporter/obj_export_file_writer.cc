@@ -469,8 +469,9 @@ void OBJWriter::write_nurbs_curve(FormatHandler &fh, const OBJCurve &obj_nurbs_d
       for (int i = 0; i < total_control_points_u; i++) {
         /* "+1" to keep indices one-based, even if they're negative: i.e., -1 refers to the
          * last vertex coordinate, -2 second last. */
-        fh.write_obj_face_v(
-            -(((i % spline_control_points_u) + ((j % spline_control_points_v) * spline_control_points_u)) + 1));
+        fh.write_obj_face_v(-(((i % spline_control_points_u) +
+                               ((j % spline_control_points_v) * spline_control_points_u)) +
+                              1));
       }
     }
     fh.write_obj_newline();
