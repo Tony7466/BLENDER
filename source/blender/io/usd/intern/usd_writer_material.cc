@@ -923,10 +923,10 @@ std::string get_tex_image_asset_filepath(Image *ima,
         BLI_path_join(file_name, FILE_MAX, ".", "textures", path.c_str());
         path = file_name;
       }
-      else if (ima->filepath[0] != '\0') {
-        /* Get absolute path. */
-        path = get_tex_image_asset_filepath(ima);
-      }
+    }
+    else if (ima->filepath[0] != '\0') {
+      /* Get absolute path. */
+      path = get_tex_image_asset_filepath(ima);
     }
   }
 
