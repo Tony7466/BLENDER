@@ -303,10 +303,10 @@ void foreach_element_on_inverse_eval_path(
 
   /* The upstream propagation may also follow node paths that don't end up in upstream targets.
    * That can happen if there is a node on the path that does not support inverse evaluation. In
-   * this case, parts of the evaluation path that discovered has to be discarded again. This is
-   * done using a second pass. Now we start the evaluation at the discovered upstream targets and
-   * propagate the changed socket elements downstream. We only care about the sockets that have
-   * already been used by upstream evaluation, therefor the downstream evaluation is filtered.  */
+   * this case, parts of the evaluation path has to be discarded again. This is done using a second
+   * pass. Now we start the evaluation at the discovered upstream targets and propagate the changed
+   * socket elements downstream. We only care about the sockets that have already been used by
+   * upstream evaluation, therefor the downstream evaluation is filtered.  */
 
   /* Gather all upstream evaluation targets to start downstream evaluation there. */
   Vector<SocketInContext> initial_downstream_evaluation_sockets;
