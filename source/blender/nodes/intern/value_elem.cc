@@ -59,7 +59,22 @@ std::optional<ElemVariant> convert_socket_elem(const bNodeSocket &old_socket,
         matrix_elem.rotation = rotation_elem;
         return ElemVariant{matrix_elem};
       }
+      if (new_type == SOCK_VECTOR) {
+        return ElemVariant{rotation_elem.euler};
+      }
       break;
+    }
+    case SOCK_VECTOR: {
+      const VectorElem &vector_elem = std::get<VectorElem>(old_elem.elem);
+      if (new_type == SOCK_ROTATION) {
+        RotationElem rotation_elem;
+        rotation_elem.euler = vector_elem;
+        if (rotation_elem) {
+          rotation_elem.angle = FloatElem::all();
+          rotation_elem.axis = VectorElem::all();
+        }
+        return ElemVariant{rotation_elem};
+      }
     }
     default:
       break;
