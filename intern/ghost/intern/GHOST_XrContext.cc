@@ -596,6 +596,12 @@ void GHOST_XrContext::setDrawViewFunc(GHOST_XrDrawViewFn draw_view_fn)
   m_custom_funcs.draw_view_fn = draw_view_fn;
 }
 
+void GHOST_XrContext::setPassthroughEnabledFunc(
+    GHOST_XrPassthroughEnabledFn passthrough_enabled_fn)
+{
+  m_custom_funcs.passthrough_enabled_fn = passthrough_enabled_fn;
+}
+
 bool GHOST_XrContext::needsUpsideDownDrawing() const
 {
   /* Must only be called after the session was started */
