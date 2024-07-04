@@ -236,7 +236,7 @@ void ED_uvedit_shift_pair_of_UV_coordinates(
   float *luv2 = BM_ELEM_CD_GET_FLOAT_P((*UVcoord2)[0], offset2.uv);
   float newloc[2];
   user_fn(newloc, luv1, luv2);
-  float dist = len_squared_v2v2(luv1, luv2);
+  float dist = dist_v2v2(luv1, luv2);
 
   if (dist <= threshold) {
     for (BMLoop *loop : *UVcoord1) {

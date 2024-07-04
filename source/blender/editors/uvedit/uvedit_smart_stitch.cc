@@ -2800,39 +2800,55 @@ static bool uvedit_uv_threshold_center_vertex_loops(bContext *C,
   for (Object *obedit : *objects) {
     BMEditMesh *em = BKE_editmesh_from_object(obedit);
     BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
-    std::vector<std::vector<std::vector<BMLoop *>>> edgeloops;
-    UV_get_edgeloops(scene, em->bm, &edgeloops, uvedit_uv_select_test);
-    for (std::vector<std::vector<BMLoop *>> &edgeloop : edgeloops) {
-      std::sort(
-          edgeloop.begin(), edgeloop.end(), [](std::vector<BMLoop *> a, std::vector<BMLoop *> b) {
-            return a[0]->v->head.index < b[0]->v->head.index;
-          });
+    BMVert *v;
+    BMLoop *l;
+    BMIter viter, liter;
+    BM_ITER_MESH (v, &viter, em->bm, BM_VERTS_OF_MESH) {
+      std::vector<float *> luvmap;
+      BM_ITER_ELEM (l, &liter, v, BM_LOOPS_OF_VERT) {
+        if (uvedit_uv_select_test(scene, l, offsets)) {
+          luvmap.push_back(BM_ELEM_CD_GET_FLOAT_P(l, offsets.uv));
+        }
+      }
+      auto outer = luvmap.begin();
+      while (outer != luvmap.end()) {
+        auto inner = luvmap.begin();
+        bool keep = false;
+        while (inner != luvmap.end()) {
+          if (outer != inner) {
+            float dist = dist_v2v2(*outer, *inner);
+            if (dist < threshold and dist > 0.0f) {
+              keep = true;
+            }
+          }
+          if (keep) {
+            break;
+          }
+          ++inner;
+        }
+        if (!keep) {
+          luvmap.erase(outer);
+        }
+        else {
+          ++outer;
+        }
+      }
+      if (luvmap.size() > 0) {
+        std::vector<float> sum(2, 0.0f);
+        for (auto &luv : luvmap) {
+          sum[0] += luv[0];
+          sum[1] += luv[1];
+        }
+        std::vector<float> cent(2);
+        cent[0] = sum[0] / luvmap.size();
+        cent[1] = sum[1] / luvmap.size();
+        for (auto &luv : luvmap) {
+          luv[0] = cent[0];
+          luv[1] = cent[1];
+        }
+      }
     }
-
-    auto ptr1 = edgeloops[0].begin();
-    auto ptr2 = edgeloops[1].begin();
-
-    while (ptr1 != edgeloops[0].end()) {
-      int v1 = (*ptr1)[0]->v->head.index;
-      int v2 = (*ptr2)[0]->v->head.index;
-      if (v1 == v2) {
-        ED_uvedit_shift_pair_of_UV_coordinates(
-            offsets, offsets, &(*ptr1), &(*ptr2), threshold, mid_v2_v2v2);
-        ptr1++;
-        ptr2++;
-      }
-      else if (v1 < v2) {
-        ptr1++;
-      }
-      else {
-        ptr2++;
-      }
-    }
-    uvedit_live_unwrap_update(sima, scene, obedit);
-    DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
-    WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
   }
-
   return true;
 }
 
