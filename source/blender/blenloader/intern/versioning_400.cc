@@ -781,7 +781,7 @@ static void version_nla_tweakmode_incomplete(Main *bmain)
 
 static bool versioning_convert_strip_speed_factor(Sequence *seq, void *user_data)
 {
-  Scene *scene = static_cast<Scene *>(user_data);
+  const Scene *scene = static_cast<Scene *>(user_data);
   const float speed_factor = seq->speed_factor;
 
   if (speed_factor == 1.0f || !SEQ_retiming_is_allowed(seq) || SEQ_retiming_keys_count(seq) > 0) {
