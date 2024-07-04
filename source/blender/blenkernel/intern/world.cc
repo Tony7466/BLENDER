@@ -144,8 +144,10 @@ static void world_blend_write(BlendWriter *writer, ID *id, const void *id_addres
 {
   World *wrld = (World *)id;
 
-  /* Clean up, important in undo case to reduce false detection of changed datablocks. */
+  /* Clean up runtime data, important in undo case to reduce false detection of changed
+   * datablocks. */
   BLI_listbase_clear(&wrld->gpumaterial);
+  wrld->last_update = 0;
 
   /* write LibData */
   BLO_write_id_struct(writer, World, id_address, &wrld->id);
@@ -170,9 +172,6 @@ static void world_blend_write(BlendWriter *writer, ID *id, const void *id_addres
   if (wrld->lightgroup) {
     BLO_write_struct(writer, LightgroupMembership, wrld->lightgroup);
   }
-
-  /* Runtime data, so we clear it. */
-  wrld->last_update = 0;
 }
 
 static void world_blend_read_data(BlendDataReader *reader, ID *id)

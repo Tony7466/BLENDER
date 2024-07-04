@@ -95,9 +95,7 @@ typedef struct World {
 
   /** Runtime. */
   ListBase gpumaterial;
-
-  /** The Depsgraph::update_count when this World was last updated.
-   *  NOTE: Runtime-only data, cleared on file write. */
+  /* The Depsgraph::update_count when this World was last updated. */
   uint64_t last_update;
 
 } World;
