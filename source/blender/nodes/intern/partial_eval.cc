@@ -12,7 +12,7 @@
 
 namespace blender::nodes::partial_eval {
 
-static bool is_supported_value_node(const bNode &node)
+bool is_supported_value_node(const bNode &node)
 {
   return ELEM(node.type,
               SH_NODE_VALUE,

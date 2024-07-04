@@ -66,6 +66,7 @@
 #include "NOD_geometry.hh"
 #include "NOD_geometry_nodes_gizmos.hh"
 #include "NOD_node_declaration.hh"
+#include "NOD_partial_eval.hh"
 #include "NOD_shader.h"
 #include "NOD_socket.hh"
 #include "NOD_texture.h"
@@ -1326,13 +1327,16 @@ static void std_node_socket_draw(
                                          FN_NODE_INPUT_ROTATION,
                                          NODE_GROUP_INPUT))
     {
-      uiLayout *row = uiLayoutRow(layout, false);
-      uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
-      node_socket_button_label(C, row, ptr, node_ptr, text);
-      if (node->type == NODE_GROUP_INPUT) {
+      if (node->is_group_output()) {
+        uiLayout *row = uiLayoutRow(layout, false);
+        uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
+        node_socket_button_label(C, row, ptr, node_ptr, text);
         uiItemL(row, "", ICON_GIZMO);
       }
-      else {
+      else if (nodes::partial_eval::is_supported_value_node(*node)) {
+        uiLayout *row = uiLayoutRow(layout, false);
+        uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
+        node_socket_button_label(C, row, ptr, node_ptr, text);
         draw_gizmo_pin_icon(row, ptr);
       }
       return;

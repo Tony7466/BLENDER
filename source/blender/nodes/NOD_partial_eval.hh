@@ -79,4 +79,6 @@ UpstreamEvalTargets eval_upstream(
     FunctionRef<void(const NodeInContext &ctx_node, Vector<const bNodeSocket *> &r_sockets)>
         get_inputs_to_propagate_fn);
 
+bool is_supported_value_node(const bNode &node);
+
 }  // namespace blender::nodes::partial_eval
