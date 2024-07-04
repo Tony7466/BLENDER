@@ -15,6 +15,7 @@
 #include "BLI_string_ref.hh"
 
 #include "BKE_context.hh"
+#include "BKE_curve_legacy_convert.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_instances.hh"
 #include "BKE_layer.hh"
@@ -87,13 +88,12 @@ static void geometry_to_blender_meshes(const OBJImportParams &import_params,
       Mesh *mesh = mesh_ob_from_geometry.create_mesh(import_params);
       geometry_set = bke::GeometrySet::from_mesh(mesh);
     }
-
-    // TODO : Handle curves
-    // convert to the new curve - curve_legacy_to_curves()
-    // else if (geometry->geom_type_ == GEOM_CURVE) {
-    //   CurveFromGeometry curve_ob_from_geometry(*geometry, global_vertices);
-    //   obj = curve_ob_from_geometry.create_curve(bmain, import_params);
-    // }
+    else if (geometry->geom_type_ == GEOM_CURVE) {
+      CurveFromGeometry curve_ob_from_geometry(*geometry, global_vertices);
+      Curve *curve = curve_ob_from_geometry.create_curve(import_params);
+      Curves *curves_id = bke::curve_legacy_to_curves(*curve);
+      geometry_set = bke::GeometrySet::from_curves(curves_id);
+    }
 
     const int handle = instances->add_reference(bke::InstanceReference{geometry_set});
     instances->add_instance(handle, float4x4::identity());
@@ -136,7 +136,7 @@ static void geometry_to_blender_objects(Main *bmain,
     }
     else if (geometry->geom_type_ == GEOM_CURVE) {
       CurveFromGeometry curve_ob_from_geometry(*geometry, global_vertices);
-      obj = curve_ob_from_geometry.create_curve(bmain, import_params);
+      obj = curve_ob_from_geometry.create_curve_object(bmain, import_params);
     }
     if (obj != nullptr) {
       Collection *target_collection = find_or_create_collection(
