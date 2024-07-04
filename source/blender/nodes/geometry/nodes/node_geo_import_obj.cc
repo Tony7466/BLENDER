@@ -24,8 +24,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       .hide_label()
       .description("Path to a OBJ file");
 
-  // TODO : Change this to a mesh array, multi_input, could copy join geometry logic ?
-  b.add_output<decl::Geometry>("Mesh");
+  b.add_output<decl::Geometry>("Instances").supported_type(GeometryComponent::Type::Instance);
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -67,9 +66,8 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   BKE_reports_free(&reports);
 
-  // TODO : Set output
   if (instances->instances_num() > 0) {
-    params.set_output("Mesh", GeometrySet::from_instances(instances));
+    params.set_output("Instances", GeometrySet::from_instances(instances));
   }
   else {
     params.set_default_remaining_outputs();
