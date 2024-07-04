@@ -134,9 +134,9 @@ def use_multi_device(context):
 
 def show_device_active(context):
     cscene = context.scene.cycles
-    if cscene.device != 'GPU':
+    if cscene.device == 'CPU':
         return True
-    return backend_has_active_gpu(context)
+    return use_gpu(context)
 
 
 def show_preview_denoise_active(context):
