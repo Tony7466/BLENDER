@@ -233,6 +233,7 @@ enum eGPUMaterialEngine {
   GPU_MAT_EEVEE_LEGACY = 0,
   GPU_MAT_EEVEE,
   GPU_MAT_COMPOSITOR,
+  GPU_MAT_NPR,
 };
 
 GPUMaterial *GPU_material_from_nodetree(

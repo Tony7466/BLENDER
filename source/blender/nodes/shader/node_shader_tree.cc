@@ -1198,13 +1198,42 @@ static void ntree_shader_pruned_unused(bNodeTree *ntree, bNode *output_node)
   }
 }
 
-void ntreeGPUMaterialNodes(bNodeTree *localtree, GPUMaterial *mat)
+void ntreeGPUMaterialNodesNPR(bNodeTree *localtree, GPUMaterial *mat)
+{
+  bNode *output = nullptr;
+  LISTBASE_FOREACH (bNode *, node, &localtree->nodes) {
+    if (node->type = SH_NODE_NPR_OUTPUT) {
+      output = node;
+      break;
+#if 0
+      /* TODO(NPR) */
+      if ((node->flag & NODE_DO_OUTPUT) && !(output->flag & NODE_DO_OUTPUT)) {
+        output = node;
+      }
+#endif
+    }
+  }
+
+  if (!output) {
+    return;
+  }
+
+  bNodeTreeExec *exec = ntreeShaderBeginExecTree(localtree);
+  ntreeExecGPUNodes(exec, mat, output);
+  ntreeShaderEndExecTree(exec);
+}
+
+void ntreeGPUMaterialNodes(bNodeTree *localtree, GPUMaterial *mat, eGPUMaterialEngine engine)
 {
   bNodeTreeExec *exec;
 
   ntree_shader_groups_remove_muted_links(localtree);
   ntree_shader_groups_expand_inputs(localtree);
   ntree_shader_groups_flatten(localtree);
+
+  if (engine == GPU_MAT_NPR) {
+    ntreeGPUMaterialNodesNPR(localtree, mat);
+  }
 
   bNode *output = ntreeShaderOutputNode(localtree, SHD_OUTPUT_EEVEE);
 

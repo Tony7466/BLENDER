@@ -866,7 +866,7 @@ GPUMaterial *GPU_material_from_nodetree(Scene *scene,
 
   /* Localize tree to create links for reroute and mute. */
   bNodeTree *localtree = blender::bke::ntreeLocalize(ntree, nullptr);
-  ntreeGPUMaterialNodes(localtree, mat);
+  ntreeGPUMaterialNodes(localtree, mat, engine);
 
   gpu_material_ramp_texture_build(mat);
   gpu_material_sky_texture_build(mat);
