@@ -99,7 +99,7 @@ typedef enum eUSDZTextureDownscaleSize {
  *  Behavior when exporting textures.
  */
 enum eUSDTexExportMode {
-  USD_TEX_EXPORT_NONE = 0,
+  USD_TEX_EXPORT_KEEP = 0,
   USD_TEX_EXPORT_PRESERVE,
   USD_TEX_EXPORT_NEW_PATH,
 };

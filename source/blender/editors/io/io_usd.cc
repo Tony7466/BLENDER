@@ -157,7 +157,7 @@ const EnumPropertyItem prop_usdz_downscale_size[] = {
 };
 
 const EnumPropertyItem prop_textures[] = {
-    {USD_TEX_EXPORT_NONE, "KEEP", 0, "Keep", "Use original location of textures"},
+    {USD_TEX_EXPORT_KEEP, "KEEP", 0, "Keep", "Use original location of textures"},
     {USD_TEX_EXPORT_PRESERVE,
      "PRESERVE",
      0,

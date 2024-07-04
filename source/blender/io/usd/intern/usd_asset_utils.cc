@@ -624,7 +624,7 @@ std::string get_relative_path(const std::string &path, const std::string &anchor
   BLI_path_rel(result_path, anchor_parent_dir);
 
   if ((result_path[0] != '\0') && (BLI_strnlen(result_path, FILE_MAX) > 2) &&
-      (result_path[0] == result_path[1] == '/'))
+      (result_path[0] == '/') && (result_path[1] == '/'))
   {
     /* Strip the Blender relative path marker, and set paths to Unix-style. */
     BLI_string_replace_char(result_path, '\\', '/');
