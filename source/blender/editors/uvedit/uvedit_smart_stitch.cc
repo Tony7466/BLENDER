@@ -2791,12 +2791,10 @@ void UV_OT_stitch(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
-static bool uvedit_uv_threshold_weld_underlyinggeometry(bContext *C,
-                                                        Scene *scene,
-                                                        blender::Vector<Object *> *objects,
-                                                        float threshold)
+static bool uvedit_uv_threshold_weld_underlying_geometry(Scene *scene,
+                                                         blender::Vector<Object *> *objects,
+                                                         float threshold)
 {
-  SpaceImage *sima = CTX_wm_space_image(C);
   for (Object *obedit : *objects) {
     BMEditMesh *em = BKE_editmesh_from_object(obedit);
     BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
@@ -2981,8 +2979,7 @@ static int stitch_distance_exec(bContext *C, wmOperator *op)
   if (RNA_boolean_get(op->ptr, "underlying_geometry")) {
     /* Since we are using len_squared_v2v2 to calculate distance, we need to square the
      * user-defined threshold*/
-    changed = uvedit_uv_threshold_weld_underlyinggeometry(
-        C, scene, &objects, threshold * threshold);
+    changed = uvedit_uv_threshold_weld_underlying_geometry(scene, &objects, threshold * threshold);
   }
   else {
     changed = uvedit_uv_threshold_weld(scene, &objects, threshold * threshold);
