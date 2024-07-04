@@ -644,24 +644,9 @@ static bke::GeometrySet get_geometry_set_for_instance_ids(
       return {};
     }
     const bke::InstanceReference &reference = references[instance_id.reference_index];
-    switch (reference.type()) {
-      case bke::InstanceReference::Type::GeometrySet: {
-        geometry = reference.geometry_set();
-        break;
-      }
-      case bke::InstanceReference::Type::Object: {
-        const Object &object = reference.object();
-        geometry = bke::object_get_evaluated_geometry_set(object);
-        break;
-      }
-      case bke::InstanceReference::Type::Collection: {
-        /* TODO. */
-        return {};
-      }
-      case bke::InstanceReference::Type::None: {
-        return {};
-      }
-    }
+    bke::GeometrySet reference_geometry;
+    reference.to_geometry_set(reference_geometry);
+    geometry = reference_geometry;
   }
   return geometry;
 }

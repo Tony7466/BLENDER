@@ -4,6 +4,7 @@
 
 #include "BLI_string.h"
 
+#include "DNA_collection_types.h"
 #include "DNA_curves_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_pointcloud_types.h"
@@ -26,6 +27,8 @@
 #include "WM_types.hh"
 
 #include "BLT_translation.hh"
+
+#include "ED_outliner.hh"
 
 #include "spreadsheet_data_source_geometry.hh"
 #include "spreadsheet_dataset_draw.hh"
@@ -437,6 +440,53 @@ class InstanceReferenceViewItem : public DataSetViewItem {
   }
 };
 
+class CollectionChildViewItem : public DataSetViewItem {
+ private:
+  const CollectionChild *collection_child_;
+  int child_index_;
+
+ public:
+  CollectionChildViewItem(const CollectionChild &collection_child, const int child_index)
+      : collection_child_(&collection_child), child_index_(child_index)
+  {
+    label_ = std::to_string(child_index);
+  }
+
+  void build_row(uiLayout &row) override
+  {
+    uiItemL(&row, collection_child_->collection->id.name + 2, ICON_OUTLINER_COLLECTION);
+  }
+
+  int child_index() const
+  {
+    return child_index_;
+  }
+};
+
+class CollectionObjectViewItem : public DataSetViewItem {
+ private:
+  const CollectionObject *collection_object_;
+  int child_index_;
+
+ public:
+  CollectionObjectViewItem(const CollectionObject &collection_object, const int child_index)
+      : collection_object_(&collection_object), child_index_(child_index)
+  {
+    label_ = std::to_string(child_index);
+  }
+
+  void build_row(uiLayout &row) override
+  {
+    const int icon = ED_outliner_icon_from_id(collection_object_->ob->id);
+    uiItemL(&row, collection_object_->ob->id.name + 2, icon);
+  }
+
+  int child_index() const
+  {
+    return child_index_;
+  }
+};
+
 class GeometryDataSetTreeView : public ui::AbstractTreeView {
  private:
   bke::GeometrySet root_geometry_set_;
@@ -550,26 +600,31 @@ class GeometryDataSetTreeView : public ui::AbstractTreeView {
       auto &reference_item = instances_view.add_tree_item<InstanceReferenceViewItem>(*instances,
                                                                                      reference_i);
       const bke::InstanceReference &reference = references[reference_i];
-      switch (reference.type()) {
-        case bke::InstanceReference::Type::Object: {
-          const Object &object = reference.object();
-          const bke::GeometrySet geometry_set = bke::object_get_evaluated_geometry_set(object);
-          this->build_tree_for_geometry(geometry_set, reference_item, false);
-          break;
-        }
-        case bke::InstanceReference::Type::Collection: {
-          /* TODO */
-          break;
-        }
-        case bke::InstanceReference::Type::GeometrySet: {
-          const bke::GeometrySet &geometry_set = reference.geometry_set();
-          this->build_tree_for_geometry(geometry_set, reference_item, false);
-          break;
-        }
-        case bke::InstanceReference::Type::None: {
-          break;
-        }
+      if (reference.type() == bke::InstanceReference::Type::Collection) {
+        this->build_tree_for_collection(reference.collection(), reference_item);
       }
+      else {
+        bke::GeometrySet reference_geometry;
+        reference.to_geometry_set(reference_geometry);
+        this->build_tree_for_geometry(reference_geometry, reference_item, false);
+      }
+    }
+  }
+
+  void build_tree_for_collection(const Collection &collection, ui::TreeViewItemContainer &parent)
+  {
+    int child_index = 0;
+    LISTBASE_FOREACH (CollectionChild *, collection_child, &collection.children) {
+      auto &collection_child_item = parent.add_tree_item<CollectionChildViewItem>(
+          *collection_child, child_index++);
+      this->build_tree_for_collection(*collection_child->collection, collection_child_item);
+    }
+    LISTBASE_FOREACH (CollectionObject *, collection_object, &collection.gobject) {
+      auto &collection_object_item = parent.add_tree_item<CollectionObjectViewItem>(
+          *collection_object, child_index++);
+      const bke::GeometrySet geometry = bke::object_get_evaluated_geometry_set(
+          *collection_object->ob);
+      this->build_tree_for_geometry(geometry, collection_object_item, false);
     }
   }
 };
@@ -584,6 +639,13 @@ void DataSetViewItem::get_parent_instance_ids(Vector<SpreadsheetInstanceID> &r_i
   this->foreach_parent([&](const ui::AbstractTreeViewItem &item) {
     if (auto *reference_item = dynamic_cast<const InstanceReferenceViewItem *>(&item)) {
       r_instance_ids.append({reference_item->reference_index()});
+    }
+    else if (auto *collection_object_item = dynamic_cast<const CollectionObjectViewItem *>(&item))
+    {
+      r_instance_ids.append({collection_object_item->child_index()});
+    }
+    else if (auto *collection_child_item = dynamic_cast<const CollectionChildViewItem *>(&item)) {
+      r_instance_ids.append({collection_child_item->child_index()});
     }
   });
   std::reverse(r_instance_ids.begin(), r_instance_ids.end());
