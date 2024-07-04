@@ -19,12 +19,11 @@ namespace blender::nodes::node_geo_import_obj {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::String>("Path")
-      .default_value("")
       .subtype(PROP_FILEPATH)
       .hide_label()
       .description("Path to a OBJ file");
 
-  b.add_output<decl::Geometry>("Instances").supported_type(GeometryComponent::Type::Instance);
+  b.add_output<decl::Geometry>("Instances");
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -66,12 +65,12 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   BKE_reports_free(&reports);
 
-  if (instances->instances_num() > 0) {
-    params.set_output("Instances", GeometrySet::from_instances(instances));
-  }
-  else {
+  if (instances->instances_num() == 0) {
     params.set_default_remaining_outputs();
+    return;
   }
+
+  params.set_output("Instances", GeometrySet::from_instances(instances));
 }
 
 static void node_register()
