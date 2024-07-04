@@ -943,13 +943,6 @@ void dist_ensure_v2_v2fl(float v1[2], const float v2[2], const float dist)
   }
 }
 
-float dist_v2v2(const float v1[2], const float v2[2])
-{
-  float vec[2];
-  sub_v2_v2v2(vec, v1, v2);
-  return sqrtf(len_squared_v2(vec));
-}
-
 void axis_sort_v3(const float axis_values[3], int r_axis_order[3])
 {
   float v[3];

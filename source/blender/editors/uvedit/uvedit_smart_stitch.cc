@@ -2816,7 +2816,7 @@ static bool uvedit_uv_threshold_center_vertex_loops(bContext *C,
         bool keep = false;
         while (inner != luvmap.end()) {
           if (outer != inner) {
-            float dist = dist_v2v2(*outer, *inner);
+            float dist = len_squared_v2v2(*outer, *inner);
             if (dist < threshold and dist > 0.0f) {
               keep = true;
             }
@@ -2851,18 +2851,21 @@ static bool uvedit_uv_threshold_center_vertex_loops(bContext *C,
   }
   return true;
 }
-
+/* Note: Since we are using len squared for distance its possible that in certain
+scenarios that two distances caluclated will be mistakely considered the same
+value due to the precision of the float data type. In such a scenario the function may
+incorrectly pair up edgeloop endpoints */
 static bool uvedit_uv_threshold_weld(Scene *scene,
                                      blender::Vector<Object *> *objects,
                                      float threshold)
 {
   std::vector<std::vector<std::vector<BMLoop *>>> edgeloops;
-  std::vector<BMUVOffsets> offsetmap;  // Initialize the edgeloops vector
+  std::vector<BMUVOffsets> offsetmap;
   for (Object *objedit : *objects) {
     BMEditMesh *em = BKE_editmesh_from_object(objedit);
     UV_get_edgeloops(scene, em->bm, &edgeloops, uvedit_uv_select_test);
     BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
-    // Pass the address of edgeloops
+
     while (offsetmap.size() < edgeloops.size()) {
       offsetmap.push_back(offsets);
     }
@@ -2896,16 +2899,18 @@ static bool uvedit_uv_threshold_weld(Scene *scene,
     for (size_t i = 0; i < endpoints.size() - 1; i++) {
       const auto &curredgeloopendpoints = endpoints[i];
       const auto &nextedgeloopendpoints = endpoints[i + 1];
-      float len_1 =
-          dist_v2v2(BM_ELEM_CD_GET_FLOAT_P(curredgeloopendpoints[0][0], offsetmap[i].uv),
-                    BM_ELEM_CD_GET_FLOAT_P(nextedgeloopendpoints[0][0], offsetmap[i + 1].uv)) +
-          dist_v2v2(BM_ELEM_CD_GET_FLOAT_P(curredgeloopendpoints[1][0], offsetmap[i].uv),
-                    BM_ELEM_CD_GET_FLOAT_P(nextedgeloopendpoints[1][0], offsetmap[i + 1].uv));
-      float len_2 =
-          dist_v2v2(BM_ELEM_CD_GET_FLOAT_P(curredgeloopendpoints[0][0], offsetmap[i].uv),
-                    BM_ELEM_CD_GET_FLOAT_P(nextedgeloopendpoints[1][0], offsetmap[i + 1].uv)) +
-          dist_v2v2(BM_ELEM_CD_GET_FLOAT_P(curredgeloopendpoints[1][0], offsetmap[i].uv),
-                    BM_ELEM_CD_GET_FLOAT_P(nextedgeloopendpoints[0][0], offsetmap[i + 1].uv));
+      float len_1 = len_squared_v2v2(
+                        BM_ELEM_CD_GET_FLOAT_P(curredgeloopendpoints[0][0], offsetmap[i].uv),
+                        BM_ELEM_CD_GET_FLOAT_P(nextedgeloopendpoints[0][0], offsetmap[i + 1].uv)) +
+                    len_squared_v2v2(
+                        BM_ELEM_CD_GET_FLOAT_P(curredgeloopendpoints[1][0], offsetmap[i].uv),
+                        BM_ELEM_CD_GET_FLOAT_P(nextedgeloopendpoints[1][0], offsetmap[i + 1].uv));
+      float len_2 = len_squared_v2v2(
+                        BM_ELEM_CD_GET_FLOAT_P(curredgeloopendpoints[0][0], offsetmap[i].uv),
+                        BM_ELEM_CD_GET_FLOAT_P(nextedgeloopendpoints[1][0], offsetmap[i + 1].uv)) +
+                    len_squared_v2v2(
+                        BM_ELEM_CD_GET_FLOAT_P(curredgeloopendpoints[1][0], offsetmap[i].uv),
+                        BM_ELEM_CD_GET_FLOAT_P(nextedgeloopendpoints[0][0], offsetmap[i + 1].uv));
       if (len_1 > len_2) {
         std::swap(endpoints[i + 1][0], endpoints[i + 1][1]);
       }
