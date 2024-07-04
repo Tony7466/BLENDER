@@ -114,7 +114,7 @@ static BIFIconID curves_domain_to_icon(const bke::AttrDomain domain)
 }
 
 class DataSetViewItem : public ui::AbstractTreeViewItem {
- private:
+ public:
   GeometryDataSetTreeView &get_tree() const;
 
   void get_parent_instance_ids(Vector<SpreadsheetInstanceID> &r_instance_ids) const;
@@ -128,9 +128,22 @@ class DataSetViewItem : public ui::AbstractTreeViewItem {
     return std::nullopt;
   }
 
-  virtual std::optional<GeometryDataIdentifier> get_data_id_to_activate() const
+  std::optional<GeometryDataIdentifier> get_data_id_to_activate() const
   {
-    return this->get_exact_data_id();
+    if (std::optional<GeometryDataIdentifier> data_id = this->get_exact_data_id()) {
+      return data_id;
+    }
+    /* Try to find the next data item that can be activated. */
+    std::optional<GeometryDataIdentifier> data_id;
+    this->foreach_item_recursive([&](const ui::AbstractTreeViewItem &item) {
+      if (data_id) {
+        return;
+      }
+      if (auto *data_set_view_item = dynamic_cast<const DataSetViewItem *>(&item)) {
+        data_id = data_set_view_item->get_exact_data_id();
+      }
+    });
+    return data_id;
   }
 };
 
@@ -139,12 +152,6 @@ class MeshViewItem : public DataSetViewItem {
   MeshViewItem()
   {
     label_ = IFACE_("Mesh");
-  }
-
-  std::optional<GeometryDataIdentifier> get_data_id_to_activate() const override
-  {
-    return GeometryDataIdentifier{
-        bke::GeometryComponent::Type::Mesh, std::nullopt, bke::AttrDomain::Point};
   }
 
   void build_row(uiLayout &row) override
@@ -184,12 +191,6 @@ class CurvesViewItem : public DataSetViewItem {
   CurvesViewItem()
   {
     label_ = IFACE_("Curve");
-  }
-
-  std::optional<GeometryDataIdentifier> get_data_id_to_activate() const override
-  {
-    return GeometryDataIdentifier{
-        bke::GeometryComponent::Type::Curve, std::nullopt, bke::AttrDomain::Point};
   }
 
   void build_row(uiLayout &row) override
@@ -232,12 +233,6 @@ class GreasePencilViewItem : public DataSetViewItem {
     label_ = IFACE_("Grease Pencil");
   }
 
-  std::optional<GeometryDataIdentifier> get_data_id_to_activate() const override
-  {
-    return GeometryDataIdentifier{
-        bke::GeometryComponent::Type::GreasePencil, std::nullopt, bke::AttrDomain::Layer};
-  }
-
   void build_row(uiLayout &row) override
   {
     uiItemL(&row, label_.c_str(), ICON_OUTLINER_DATA_GREASEPENCIL);
@@ -278,12 +273,6 @@ class GreasePencilLayerViewItem : public DataSetViewItem {
       : layer_(layer), layer_index_(layer_index)
   {
     label_ = layer_.name();
-  }
-
-  std::optional<GeometryDataIdentifier> get_data_id_to_activate() const override
-  {
-    return GeometryDataIdentifier{
-        bke::GeometryComponent::Type::GreasePencil, layer_index_, bke::AttrDomain::Point};
   }
 
   void build_row(uiLayout &row) override
@@ -330,12 +319,6 @@ class PointCloudViewItem : public DataSetViewItem {
   PointCloudViewItem()
   {
     label_ = IFACE_("Point Cloud");
-  }
-
-  std::optional<GeometryDataIdentifier> get_data_id_to_activate() const override
-  {
-    return GeometryDataIdentifier{
-        bke::GeometryComponent::Type::PointCloud, std::nullopt, bke::AttrDomain::Point};
   }
 
   void build_row(uiLayout &row) override
@@ -653,13 +636,29 @@ void DataSetViewItem::get_parent_instance_ids(Vector<SpreadsheetInstanceID> &r_i
 
 void DataSetViewItem::on_activate(bContext &C)
 {
-  const std::optional<GeometryDataIdentifier> data_to_activate = this->get_data_id_to_activate();
-  if (!data_to_activate) {
-    return;
+  Vector<SpreadsheetInstanceID> instance_ids;
+  std::optional<GeometryDataIdentifier> data_id = this->get_exact_data_id();
+  if (data_id) {
+    this->get_parent_instance_ids(instance_ids);
+  }
+  else {
+    /* Try to find the next data item that can be activated. */
+    this->foreach_item_recursive([&](const ui::AbstractTreeViewItem &item) {
+      if (data_id) {
+        return;
+      }
+      if (auto *data_set_view_item = dynamic_cast<const DataSetViewItem *>(&item)) {
+        data_id = data_set_view_item->get_exact_data_id();
+        if (data_id) {
+          data_set_view_item->get_parent_instance_ids(instance_ids);
+        }
+      }
+    });
   }
 
-  Vector<SpreadsheetInstanceID> instance_ids;
-  this->get_parent_instance_ids(instance_ids);
+  if (!data_id) {
+    return;
+  }
 
   bScreen &screen = *CTX_wm_screen(&C);
   SpaceSpreadsheet &sspreadsheet = *CTX_wm_space_spreadsheet(&C);
@@ -669,12 +668,12 @@ void DataSetViewItem::on_activate(bContext &C)
   sspreadsheet.instance_ids_num = instance_ids.size();
   initialized_copy_n(instance_ids.data(), instance_ids.size(), sspreadsheet.instance_ids);
 
-  sspreadsheet.geometry_component_type = uint8_t(data_to_activate->component_type);
-  if (data_to_activate->domain) {
-    sspreadsheet.attribute_domain = uint8_t(*data_to_activate->domain);
+  sspreadsheet.geometry_component_type = uint8_t(data_id->component_type);
+  if (data_id->domain) {
+    sspreadsheet.attribute_domain = uint8_t(*data_id->domain);
   }
-  if (data_to_activate->layer_index) {
-    sspreadsheet.active_layer_index = *data_to_activate->layer_index;
+  if (data_id->layer_index) {
+    sspreadsheet.active_layer_index = *data_id->layer_index;
   }
   PointerRNA ptr = RNA_pointer_create(&screen.id, &RNA_SpaceSpreadsheet, &sspreadsheet);
   /* These updates also make sure that the attribute domain is set properly based on the
