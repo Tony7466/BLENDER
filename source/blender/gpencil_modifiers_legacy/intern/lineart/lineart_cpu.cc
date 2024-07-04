@@ -38,6 +38,7 @@
 #include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_grease_pencil.hh"
 #include "BKE_grease_pencil_legacy_convert.hh"
+#include "BKE_instances.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
@@ -63,6 +64,7 @@
 #include "ED_grease_pencil.hh"
 
 #include "GEO_join_geometries.hh"
+#include "GEO_realize_instances.hh"
 
 #include "lineart_intern.h"
 
@@ -2522,7 +2524,21 @@ static void lineart_object_load_single_instance(LineartData *ld,
 
   /* In case we still can not get any mesh geometry data from the object, same as above. */
   if (!use_mesh) {
-    return;
+
+    /* Get Instanced collections from geometry set  */
+    if(ob->runtime->geometry_set_eval){
+      blender::bke::GeometrySet &geom_set=*ob->runtime->geometry_set_eval;
+      if(geom_set.has_instances()){
+        blender::geometry::RealizeInstancesOptions options;
+        options.keep_original_ids = true;
+        blender::bke::GeometrySet realized = blender::geometry::realize_instances(geom_set,options);
+        use_mesh = std::move(realized.get_mesh_for_write());
+      }
+    }
+
+    if(!use_mesh){
+      return;
+    }
   }
 
   if (!lineart_geometry_check_visible(
