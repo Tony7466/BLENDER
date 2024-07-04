@@ -764,7 +764,7 @@ class TransformGizmos : public NodeGizmos {
 /** Uniquely identifies a gizmo node. */
 struct GeoNodesObjectGizmoID {
   const Object *object_orig;
-  bke::GeoNodesGizmoID gizmo_id;
+  bke::NodeGizmoID gizmo_id;
 
   BLI_STRUCT_EQUALITY_OPERATORS_2(GeoNodesObjectGizmoID, object_orig, gizmo_id)
 
@@ -794,7 +794,7 @@ static std::unique_ptr<NodeGizmos> create_gizmo_node_gizmos(const bNode &gizmo_n
 
 /** Finds the gizmo transform stored directly in the geometry, ignoring the instances. */
 static const float4x4 *find_direct_gizmo_transform(const bke::GeometrySet &geometry,
-                                                   const bke::GeoNodesGizmoID &gizmo_id)
+                                                   const bke::NodeGizmoID &gizmo_id)
 {
   if (const auto *edit_data_component = geometry.get_component<bke::GeometryComponentEditData>()) {
     if (edit_data_component->gizmo_edit_hints_) {
@@ -812,7 +812,7 @@ static const float4x4 *find_direct_gizmo_transform(const bke::GeometrySet &geome
  * True, if the geometry contains a transform for the given gizmo. Also checks if all instances.
  */
 static bool has_nested_gizmo_transform(const bke::GeometrySet &geometry,
-                                       const bke::GeoNodesGizmoID &gizmo_id)
+                                       const bke::NodeGizmoID &gizmo_id)
 {
   if (find_direct_gizmo_transform(geometry, gizmo_id)) {
     return true;
@@ -834,9 +834,7 @@ static bool has_nested_gizmo_transform(const bke::GeometrySet &geometry,
 }
 
 static std::optional<float4x4> find_gizmo_geometry_transform_recursive(
-    const bke::GeometrySet &geometry,
-    const bke::GeoNodesGizmoID &gizmo_id,
-    const float4x4 &transform)
+    const bke::GeometrySet &geometry, const bke::NodeGizmoID &gizmo_id, const float4x4 &transform)
 {
   if (const float4x4 *m = find_direct_gizmo_transform(geometry, gizmo_id)) {
     return transform * *m;
@@ -892,7 +890,7 @@ static bke::GeometrySet find_geometry_for_gizmo(const Object &object_eval,
  * Tries to find a transformation of the gizmo in the given geometry.
  */
 static std::optional<float4x4> find_gizmo_geometry_transform(const bke::GeometrySet &geometry,
-                                                             const bke::GeoNodesGizmoID &gizmo_id)
+                                                             const bke::NodeGizmoID &gizmo_id)
 {
   const float4x4 identity = float4x4::identity();
   return find_gizmo_geometry_transform_recursive(geometry, gizmo_id, identity);

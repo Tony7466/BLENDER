@@ -19,13 +19,13 @@ namespace blender::bke {
  * the path of group nodes to get from the geometry nodes modifier to the group containing the
  * gizmo node).
  */
-struct GeoNodesGizmoID {
+struct NodeGizmoID {
   /** Storing only the hash of the compute context is enough here and is cheaper than making a deep
    * copy of the actual compute context. */
   ComputeContextHash compute_context_hash;
   int node_id;
 
-  BLI_STRUCT_EQUALITY_OPERATORS_2(GeoNodesGizmoID, compute_context_hash, node_id)
+  BLI_STRUCT_EQUALITY_OPERATORS_2(NodeGizmoID, compute_context_hash, node_id)
 
   uint64_t hash() const
   {
@@ -38,7 +38,7 @@ struct GizmoEditHints {
    * Additional transform that is applied to the gizmo because the corresponding geometry has been
    * transformed the same.
    */
-  Map<GeoNodesGizmoID, float4x4> gizmo_transforms;
+  Map<NodeGizmoID, float4x4> gizmo_transforms;
 };
 
 }  // namespace blender::bke
