@@ -602,6 +602,12 @@ void GHOST_XrContext::setPassthroughEnabledFunc(
   m_custom_funcs.passthrough_enabled_fn = passthrough_enabled_fn;
 }
 
+void GHOST_XrContext::setDisablePassthroughFunc(
+    GHOST_XrDisablePassthroughFn disable_passthrough_fn)
+{
+  m_custom_funcs.disable_passthrough_fn = disable_passthrough_fn;
+}
+
 bool GHOST_XrContext::needsUpsideDownDrawing() const
 {
   /* Must only be called after the session was started */

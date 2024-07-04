@@ -465,6 +465,9 @@ void GHOST_XrSession::draw(void *draw_customdata)
     if (m_oxr->passthrough_supported) {
       layers.push_back((XrCompositionLayerBaseHeader *)&m_oxr->passthrough_layer);
     }
+    else {
+      m_context->getCustomFuncs().disable_passthrough_fn(draw_customdata);
+    }
   }
 
   if (m_draw_info->frame_state.shouldRender) {

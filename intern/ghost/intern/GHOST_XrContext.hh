@@ -32,6 +32,9 @@ struct GHOST_XrCustomFuncs {
 
   /** Function to check if passthrough is enabled. */
   GHOST_XrPassthroughEnabledFn passthrough_enabled_fn = nullptr;
+
+  /** Function to force disable passthrough if not supported. */
+  GHOST_XrDisablePassthroughFn disable_passthrough_fn = nullptr;
 };
 
 /**
@@ -76,6 +79,7 @@ class GHOST_XrContext : public GHOST_IXrContext {
                                    GHOST_XrGraphicsContextUnbindFn unbind_fn) override;
   void setDrawViewFunc(GHOST_XrDrawViewFn draw_view_fn) override;
   void setPassthroughEnabledFunc(GHOST_XrPassthroughEnabledFn passthrough_enabled_fn) override;
+  void setDisablePassthroughFunc(GHOST_XrDisablePassthroughFn disable_passthrough_fn) override;
   bool needsUpsideDownDrawing() const override;
 
   void handleSessionStateChange(const XrEventDataSessionStateChanged &lifecycle);

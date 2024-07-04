@@ -1053,6 +1053,13 @@ void GHOST_XrPassthroughEnabledFunc(GHOST_XrContextHandle xr_contexthandle,
   GHOST_XR_CAPI_CALL(xr_context->setPassthroughEnabledFunc(passthrough_enabled_fn), xr_context);
 }
 
+void GHOST_XrDisablePassthroughFunc(GHOST_XrContextHandle xr_contexthandle,
+                                    GHOST_XrDisablePassthroughFn disable_passthrough_fn)
+{
+  GHOST_IXrContext *xr_context = (GHOST_IXrContext *)xr_contexthandle;
+  GHOST_XR_CAPI_CALL(xr_context->setDisablePassthroughFunc(disable_passthrough_fn), xr_context);
+}
+
 int GHOST_XrSessionNeedsUpsideDownDrawing(const GHOST_XrContextHandle xr_contexthandle)
 {
   const GHOST_IXrContext *xr_context = (const GHOST_IXrContext *)xr_contexthandle;

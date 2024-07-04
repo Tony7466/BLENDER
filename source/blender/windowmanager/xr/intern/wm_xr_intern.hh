@@ -252,3 +252,10 @@ void wm_xr_draw_controllers(const bContext *C, ARegion *region, void *customdata
  * It's assigned to Ghost-XR as a callback (see GHOST_XrPassthroughEnabledFunc()).
  */
 bool wm_xr_passthrough_enabled(void *customdata);
+/**
+ * \brief Disable XR passthrough if not supported.
+ *
+ * In case passthrough is not supported by the XR runtime, force uncheck the toggle in the GUI.
+ * It's assigned to Ghost-XR as a callback (see GHOST_XrDisablePassthroughFunc()).
+ */
+void wm_xr_disable_passthrough(void *customdata);
