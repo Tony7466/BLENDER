@@ -236,8 +236,8 @@ static void node_eval_inverse(inverse_eval::InverseEvalParams &params)
     }
     case NODE_MATH_MULTIPLY: {
       params.set_input(first_input_id,
-                       safe_divide(params.get_output<float>(output_id),
-                                   params.get_input<float>(second_input_id)));
+                       math::safe_divide(params.get_output<float>(output_id),
+                                         params.get_input<float>(second_input_id)));
       break;
     }
     case NODE_MATH_DIVIDE: {
