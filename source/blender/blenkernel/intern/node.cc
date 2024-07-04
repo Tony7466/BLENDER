@@ -182,7 +182,7 @@ static void ntree_copy_data(Main * /*bmain*/,
   /* copy links */
   BLI_listbase_clear(&ntree_dst->links);
   LISTBASE_FOREACH (const bNodeLink *, src_link, &ntree_src->links) {
-    bNodeLink *dst_link = static_cast<bNodeLink *>(MEM_dupallocN(src_link));
+    bNodeLink *dst_link = MEM_new<bNodeLink>(__func__, *src_link);
     dst_link->fromnode = dst_runtime.nodes_by_id.lookup_key_as(src_link->fromnode->identifier);
     dst_link->fromsock = socket_map.lookup(src_link->fromsock);
     dst_link->tonode = dst_runtime.nodes_by_id.lookup_key_as(src_link->tonode->identifier);
@@ -292,7 +292,9 @@ static void ntree_free_data(ID *id)
   /* XXX not nice, but needed to free localized node groups properly */
   free_localized_node_groups(ntree);
 
-  BLI_freelistN(&ntree->links);
+  LISTBASE_FOREACH_MUTABLE (bNodeLink *, link, &ntree->links) {
+    MEM_delete(link);
+  }
 
   LISTBASE_FOREACH_MUTABLE (bNode *, node, &ntree->nodes) {
     node_free_node(ntree, node);
@@ -667,11 +669,11 @@ static void cleanup_legacy_sockets(bNodeTree *ntree)
   /* Clean up temporary inputs/outputs. */
   LISTBASE_FOREACH_MUTABLE (bNodeSocket *, socket, &ntree->inputs_legacy) {
     legacy_socket_interface_free(socket);
-    MEM_freeN(socket);
+    MEM_delete(socket);
   }
   LISTBASE_FOREACH_MUTABLE (bNodeSocket *, socket, &ntree->outputs_legacy) {
     legacy_socket_interface_free(socket);
-    MEM_freeN(socket);
+    MEM_delete(socket);
   }
   BLI_listbase_clear(&ntree->inputs_legacy);
   BLI_listbase_clear(&ntree->outputs_legacy);
@@ -2686,7 +2688,7 @@ bNode *node_copy_with_mapping(bNodeTree *dst_tree,
 
   BLI_listbase_clear(&node_dst->inputs);
   LISTBASE_FOREACH (const bNodeSocket *, src_socket, &node_src.inputs) {
-    bNodeSocket *dst_socket = static_cast<bNodeSocket *>(MEM_dupallocN(src_socket));
+    bNodeSocket *dst_socket = MEM_new<bNodeSocket>(__func__, *src_socket);
     node_socket_copy(dst_socket, src_socket, flag);
     BLI_addtail(&node_dst->inputs, dst_socket);
     socket_map.add_new(src_socket, dst_socket);
@@ -2694,7 +2696,7 @@ bNode *node_copy_with_mapping(bNodeTree *dst_tree,
 
   BLI_listbase_clear(&node_dst->outputs);
   LISTBASE_FOREACH (const bNodeSocket *, src_socket, &node_src.outputs) {
-    bNodeSocket *dst_socket = static_cast<bNodeSocket *>(MEM_dupallocN(src_socket));
+    bNodeSocket *dst_socket = MEM_new<bNodeSocket>(__func__, *src_socket);
     node_socket_copy(dst_socket, src_socket, flag);
     BLI_addtail(&node_dst->outputs, dst_socket);
     socket_map.add_new(src_socket, dst_socket);
@@ -2705,7 +2707,9 @@ bNode *node_copy_with_mapping(bNodeTree *dst_tree,
   }
 
   node_dst->panel_states_array = static_cast<bNodePanelState *>(
-      MEM_dupallocN(node_src.panel_states_array));
+      MEM_malloc_arrayN(node_src.num_panel_states, sizeof(bNodePanelState), __func__));
+  std::copy_n(
+      node_src.panel_states_array, node_src.num_panel_states, node_dst->panel_states_array);
 
   node_dst->runtime->internal_links = node_src.runtime->internal_links;
   for (bNodeLink &dst_link : node_dst->runtime->internal_links) {
@@ -3468,12 +3472,12 @@ void node_free_node(bNodeTree *ntree, bNode *node)
   LISTBASE_FOREACH_MUTABLE (bNodeSocket *, sock, &node->inputs) {
     /* Remember, no ID user refcount management here! */
     node_socket_free(sock, false);
-    MEM_freeN(sock);
+    MEM_delete(sock);
   }
   LISTBASE_FOREACH_MUTABLE (bNodeSocket *, sock, &node->outputs) {
     /* Remember, no ID user refcount management here! */
     node_socket_free(sock, false);
-    MEM_freeN(sock);
+    MEM_delete(sock);
   }
 
   MEM_SAFE_FREE(node->panel_states_array);
