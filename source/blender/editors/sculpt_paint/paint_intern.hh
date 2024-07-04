@@ -12,6 +12,7 @@
 #include "BLI_compiler_compat.h"
 #include "BLI_function_ref.hh"
 #include "BLI_math_vector_types.hh"
+#include "BLI_set.hh"
 #include "BLI_span.hh"
 #include "BLI_vector.hh"
 
@@ -23,6 +24,8 @@ enum class PaintMode : int8_t;
 
 struct ARegion;
 struct bContext;
+struct BMesh;
+struct BMVert;
 struct Brush;
 struct ColorManagedDisplay;
 struct ColorSpace;
@@ -42,6 +45,7 @@ struct ReportList;
 struct Scene;
 struct SculptSession;
 struct SpaceImage;
+struct SubdivCCG;
 struct ToolSettings;
 struct VertProjHandle;
 struct ViewContext;
