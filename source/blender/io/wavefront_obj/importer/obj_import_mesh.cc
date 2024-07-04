@@ -300,7 +300,7 @@ void MeshFromGeometry::create_uv_verts(Mesh *mesh)
 
   uv_map.finish();
 
-  /* If we have an object without UVs which resides in the same .obj file
+  /* If we have an object without UVs which resides in the same `.obj` file
    * as an object which *does* have UVs we can end up adding a UV layer
    * filled with zeroes.
    * We could maybe check before creating this layer but that would need
@@ -400,8 +400,9 @@ void MeshFromGeometry::create_colors(Mesh *mesh)
         mesh_geometry_.vertex_index_max_ < block.start_vertex_index + block.colors.size())
     {
       /* This block is suitable, use colors from it. */
-      CustomDataLayer *color_layer = BKE_id_attribute_new(
-          &mesh->id, "Color", CD_PROP_COLOR, bke::AttrDomain::Point, nullptr);
+      AttributeOwner owner = AttributeOwner::from_id(&mesh->id);
+      CustomDataLayer *color_layer = BKE_attribute_new(
+          owner, "Color", CD_PROP_COLOR, bke::AttrDomain::Point, nullptr);
       BKE_id_attributes_active_color_set(&mesh->id, color_layer->name);
       BKE_id_attributes_default_color_set(&mesh->id, color_layer->name);
       float4 *colors = (float4 *)color_layer->data;

@@ -138,7 +138,7 @@ class AssetLibrary {
    * Remove an asset from the library that was added using #add_external_asset() or
    * #add_local_id_asset(). Can usually be expected to be constant time complexity (worst case may
    * differ).
-   * \note This is save to call if \a asset is freed (dangling reference), will not perform any
+   * \note This is safe to call if \a asset is freed (dangling reference), will not perform any
    *       change then.
    * \return True on success, false if the asset couldn't be found inside the library (also the
    *         case when the reference is dangling).
@@ -240,6 +240,14 @@ std::string AS_asset_library_find_suitable_root_path_from_path(blender::StringRe
  *         false.
  */
 std::string AS_asset_library_find_suitable_root_path_from_main(const Main *bmain);
+
+/**
+ * Checks if the asset library service is in a usable state, i.e. after initializing and before
+ * calling #AS_asset_libraries_exit(). Only needed in rare cases, e.g. when it's known that asset
+ * library data may be accessed via dangling pointers on file exit, see #120466. Would be nicer to
+ * clear the pointers instead, but not worth the extra logic for such a corner case.
+ */
+bool AS_asset_libraries_available();
 
 /**
  * Force clearing of all asset library data. After calling this, new asset libraries can be loaded

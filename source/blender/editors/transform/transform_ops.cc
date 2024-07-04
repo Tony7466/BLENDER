@@ -419,7 +419,7 @@ static int transform_modal(bContext *C, wmOperator *op, const wmEvent *event)
 
   /* XXX insert keys are called here, and require context. */
   t->context = C;
-  exit_code = transformEvent(t, event);
+  exit_code = transformEvent(t, op, event);
   t->context = nullptr;
 
   /* Allow navigation while transforming. */
@@ -558,33 +558,28 @@ static bool transform_poll_property(const bContext *C, wmOperator *op, const Pro
   const char *prop_id = RNA_property_identifier(prop);
 
   /* Orientation/Constraints. */
-  {
+  if (STRPREFIX(prop_id, "constraint")) {
     /* Hide orientation axis if no constraints are set, since it won't be used. */
     PropertyRNA *prop_con = RNA_struct_find_property(op->ptr, "orient_type");
     if (!ELEM(prop_con, nullptr, prop)) {
-      if (STRPREFIX(prop_id, "constraint")) {
 
-        /* Special case: show constraint axis if we don't have values,
-         * needed for mirror operator. */
-        if (STREQ(prop_id, "constraint_axis") &&
-            (RNA_struct_find_property(op->ptr, "value") == nullptr))
-        {
-          return true;
-        }
-
-        return false;
+      /* Special case: show constraint axis if we don't have values,
+       * needed for mirror operator. */
+      if (STREQ(prop_id, "constraint_axis") &&
+          (RNA_struct_find_property(op->ptr, "value") == nullptr))
+      {
+        return true;
       }
+
+      return false;
     }
+    return true;
   }
 
   /* Orientation Axis. */
-  {
-    if (STREQ(prop_id, "orient_axis")) {
-      eTfmMode mode = (eTfmMode)transformops_mode(op);
-      if (mode == TFM_ALIGN) {
-        return false;
-      }
-    }
+  if (STREQ(prop_id, "orient_axis")) {
+    eTfmMode mode = (eTfmMode)transformops_mode(op);
+    return mode != TFM_ALIGN;
   }
 
   /* Proportional Editing. */
@@ -604,15 +599,18 @@ static bool transform_poll_property(const bContext *C, wmOperator *op, const Pro
        * - "use_proportional_projected". */
       return false;
     }
+    return true;
   }
 
   /* Snapping. */
-  {
-    if (STREQ(prop_id, "use_snap_project")) {
-      if (RNA_boolean_get(op->ptr, "snap") == false) {
-        return false;
-      }
-    }
+  if (STREQ(prop_id, "use_snap_project")) {
+    return RNA_boolean_get(op->ptr, "snap");
+  }
+
+  /* #P_CORRECT_UV. */
+  if (STREQ(prop_id, "correct_uv")) {
+    ScrArea *area = CTX_wm_area(C);
+    return area->spacetype == SPACE_VIEW3D;
   }
 
   return true;
@@ -707,11 +705,15 @@ void Transform_Properties(wmOperatorType *ot, int flags)
 
       RNA_def_boolean(ot->srna, "use_snap_project", false, "Project Individual Elements", "");
 
-      /* TODO(@gfxcoder): Rename `snap_target` to `snap_source` to avoid previous ambiguity of
-       * "target" (now, "source" is geometry to be moved and "target" is geometry to which moved
-       * geometry is snapped).  Use "Source snap point" and "Point on source that will snap to
-       * target" for name and description, respectively. */
-      prop = RNA_def_enum(ot->srna, "snap_target", rna_enum_snap_source_items, 0, "Snap With", "");
+      /* TODO(@gfxcoder): Rename `snap_target` to `snap_base` to avoid previous ambiguity of
+       * "target" (now, "base" or "source" is geometry to be moved and "target" is geometry to
+       * which moved geometry is snapped). */
+      prop = RNA_def_enum(ot->srna,
+                          "snap_target",
+                          rna_enum_snap_source_items,
+                          0,
+                          "Snap Base",
+                          "Point on source that will snap to target");
       RNA_def_property_flag(prop, PROP_HIDDEN);
 
       /* Target selection. */
@@ -1346,6 +1348,13 @@ static void TRANSFORM_OT_seq_slide(wmOperatorType *ot)
   prop = RNA_def_float_vector(
       ot->srna, "value", 2, nullptr, -FLT_MAX, FLT_MAX, "Offset", "", -FLT_MAX, FLT_MAX);
   RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 1, 0);
+
+  prop = RNA_def_boolean(ot->srna,
+                         "use_restore_handle_selection",
+                         false,
+                         "Restore Handle Selection",
+                         "Restore handle selection after tweaking");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
   WM_operatortype_props_advanced_begin(ot);
 

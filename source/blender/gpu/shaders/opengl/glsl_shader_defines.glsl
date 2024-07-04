@@ -62,8 +62,8 @@
 #define int32_t int
 #define uint32_t uint
 
-/* Fast store variant macro. In GLSL this is the same as imageStore, but assumes no bounds
- * checking. */
+/* Fast load/store variant macro. In GLSL this is the same as imageLoad/imageStore, but assumes no
+ * bounds checking. */
 #define imageStoreFast imageStore
 #define imageLoadFast imageLoad
 
@@ -82,6 +82,9 @@
 #define isampler2DArrayAtomic isampler2DArray
 #define isampler2DAtomic isampler2D
 #define isampler3DAtomic isampler3D
+
+/* Pass through functions. */
+#define imageFence(image)
 
 /* Backend Functions. */
 #define select(A, B, mask) mix(A, B, mask)

@@ -158,7 +158,8 @@ ccl_device_inline float3 operator/=(float3 &a, float f)
   return a = a * invf;
 }
 
-#  if !(defined(__KERNEL_METAL__) || defined(__KERNEL_CUDA__) || defined(__KERNEL_HIP__))
+#  if !(defined(__KERNEL_METAL__) || defined(__KERNEL_CUDA__) || defined(__KERNEL_HIP__) || \
+        defined(__KERNEL_ONEAPI__))
 ccl_device_inline packed_float3 operator*=(packed_float3 &a, const float3 b)
 {
   a = float3(a) * b;
@@ -309,6 +310,11 @@ ccl_device_inline float3 fabs(const float3 a)
 #  endif
 }
 
+ccl_device_inline float3 fmod(const float3 a, const float b)
+{
+  return make_float3(fmodf(a.x, b), fmodf(a.y, b), fmodf(a.z, b));
+}
+
 ccl_device_inline float3 sqrt(const float3 a)
 {
 #  ifdef __KERNEL_SSE__
@@ -364,6 +370,11 @@ ccl_device_inline float3 exp(float3 v)
 ccl_device_inline float3 log(float3 v)
 {
   return make_float3(logf(v.x), logf(v.y), logf(v.z));
+}
+
+ccl_device_inline float3 cos(float3 v)
+{
+  return make_float3(cosf(v.x), cosf(v.y), cosf(v.z));
 }
 
 ccl_device_inline float3 reflect(const float3 incident, const float3 normal)

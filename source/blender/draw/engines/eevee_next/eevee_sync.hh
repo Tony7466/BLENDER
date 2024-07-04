@@ -155,7 +155,7 @@ class SyncModule {
 
   Map<ObjectKey, ObjectHandle> ob_handles = {};
 
-  bool world_updated_;
+  bool world_updated_ = false;
 
  public:
   SyncModule(Instance &inst) : inst_(inst){};
@@ -178,7 +178,10 @@ class SyncModule {
                         ObjectHandle &ob_handle,
                         ResourceHandle res_handle,
                         const ObjectRef &ob_ref);
-  void sync_volume(Object *ob, ObjectHandle &ob_handle, ResourceHandle res_handle);
+  void sync_volume(Object *ob,
+                   ObjectHandle &ob_handle,
+                   ResourceHandle res_handle,
+                   const ObjectRef &ob_ref);
   void sync_gpencil(Object *ob, ObjectHandle &ob_handle, ResourceHandle res_handle);
   void sync_curves(Object *ob,
                    ObjectHandle &ob_handle,

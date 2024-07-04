@@ -57,7 +57,7 @@
 
 #include "UI_interface.hh"
 
-#include "curve_intern.h"
+#include "curve_intern.hh"
 
 #define MAXTEXT 32766
 
@@ -670,7 +670,7 @@ static void text_insert_unicode_confirm(bContext *C, void *arg_block, void *arg_
   if (val > 31 && val < 0x10FFFF) {
     Object *obedit = CTX_data_edit_object(C);
     if (obedit) {
-      char32_t utf32[2] = {val, 0};
+      const char32_t utf32[2] = {val, 0};
       font_paste_wchar(obedit, utf32, 1, nullptr);
       text_update_edited(C, obedit, FO_EDIT);
     }
@@ -693,8 +693,8 @@ static uiBlock *wm_block_insert_unicode_create(bContext *C, ARegion *region, voi
   uiLayout *layout = UI_block_layout(
       block, UI_LAYOUT_VERTICAL, UI_LAYOUT_PANEL, 0, 0, 200 * UI_SCALE_FAC, UI_UNIT_Y, 0, style);
 
-  uiItemL_ex(layout, "Insert Unicode Character", ICON_NONE, true, false);
-  uiItemL(layout, "Enter a Unicode codepoint hex value", ICON_NONE);
+  uiItemL_ex(layout, IFACE_("Insert Unicode Character"), ICON_NONE, true, false);
+  uiItemL(layout, RPT_("Enter a Unicode codepoint hex value"), ICON_NONE);
 
   uiBut *text_but = uiDefBut(block,
                              UI_BTYPE_TEXT,
@@ -809,7 +809,7 @@ static void txt_add_object(bContext *C,
   object = BKE_view_layer_active_object_get(view_layer);
 
   /* seems to assume view align ? TODO: look into this, could be an operator option. */
-  ED_object_base_init_transform_on_add(object, nullptr, rot);
+  blender::ed::object::init_transform_on_add(object, nullptr, rot);
 
   BKE_object_where_is_calc(depsgraph, scene, obedit);
 

@@ -112,6 +112,11 @@ static void actkeys_list_element_to_keylist(bAnimContext *ac,
         ob_to_keylist(ads, ob, keylist, 0, range);
         break;
       }
+      case ALE_ACTION_LAYERED: {
+        bAction *action = (bAction *)ale->key_data;
+        action_to_keylist(adt, action, keylist, 0, range);
+        break;
+      }
       case ALE_ACT: {
         bAction *act = (bAction *)ale->key_data;
         action_to_keylist(adt, act, keylist, 0, range);
@@ -122,6 +127,16 @@ static void actkeys_list_element_to_keylist(bAnimContext *ac,
         fcurve_to_keylist(adt, fcu, keylist, 0, range);
         break;
       }
+      case ALE_NONE:
+      case ALE_GPFRAME:
+      case ALE_MASKLAY:
+      case ALE_NLASTRIP:
+      case ALE_ALL:
+      case ALE_GROUP:
+      case ALE_GREASE_PENCIL_CEL:
+      case ALE_GREASE_PENCIL_DATA:
+      case ALE_GREASE_PENCIL_GROUP:
+        break;
     }
   }
   else if (ale->type == ANIMTYPE_SUMMARY) {

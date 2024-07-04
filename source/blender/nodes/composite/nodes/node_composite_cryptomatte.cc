@@ -8,6 +8,8 @@
 
 #include <string>
 
+#include <fmt/format.h>
+
 #include "node_composite_util.hh"
 
 #include "BLI_assert.h"
@@ -23,10 +25,11 @@
 
 #include "IMB_imbuf_types.hh"
 
-#include "GPU_shader.h"
-#include "GPU_texture.h"
+#include "GPU_shader.hh"
+#include "GPU_texture.hh"
 
 #include "DNA_image_types.h"
+#include "DNA_scene_types.h"
 
 #include "BKE_context.hh"
 #include "BKE_cryptomatte.hh"
@@ -325,6 +328,8 @@ class BaseCryptoMatteOperation : public NodeOperation {
      * which is a 32-bit float. See the shader for more information. */
     output_pick.set_precision(ResultPrecision::Full);
 
+    output_pick.is_data = true;
+
     const Domain domain = compute_domain();
     output_pick.allocate_texture(domain);
     output_pick.bind_as_image(shader, "output_img");
@@ -421,7 +426,7 @@ namespace blender::nodes::node_composite_cryptomatte_cc {
 
 NODE_STORAGE_FUNCS(NodeCryptomatte)
 
-static bNodeSocketTemplate cmp_node_cryptomatte_out[] = {
+static bke::bNodeSocketTemplate cmp_node_cryptomatte_out[] = {
     {SOCK_RGBA, N_("Image")},
     {SOCK_FLOAT, N_("Matte")},
     {SOCK_RGBA, N_("Pick")},
@@ -479,7 +484,7 @@ static void node_copy_cryptomatte(bNodeTree * /*dst_ntree*/,
   dest_node->storage = dest_nc;
 }
 
-static bool node_poll_cryptomatte(const bNodeType * /*ntype*/,
+static bool node_poll_cryptomatte(const blender::bke::bNodeType * /*ntype*/,
                                   const bNodeTree *ntree,
                                   const char **r_disabled_hint)
 {
@@ -531,7 +536,7 @@ class CryptoMatteOperation : public BaseCryptoMatteOperation {
     return Vector<GPUTexture *>();
   }
 
-  /* Returns all the relevant Cryptomatte layers from the selected render. */
+  /* Returns all the relevant Cryptomatte layers from the selected layer. */
   Vector<GPUTexture *> get_layers_from_render()
   {
     Vector<GPUTexture *> layers;
@@ -541,53 +546,50 @@ class CryptoMatteOperation : public BaseCryptoMatteOperation {
       return layers;
     }
 
-    Render *render = RE_GetSceneRender(scene);
-    if (!render) {
-      return layers;
-    }
-
-    RenderResult *render_result = RE_AcquireResultRead(render);
-    if (!render_result) {
-      RE_ReleaseResult(render);
-      return layers;
-    }
-
-    int view_layer_index;
     const std::string type_name = get_type_name();
+
+    int view_layer_index = 0;
     LISTBASE_FOREACH_INDEX (ViewLayer *, view_layer, &scene->view_layers, view_layer_index) {
-      RenderLayer *render_layer = RE_GetRenderLayer(render_result, view_layer->name);
-      if (!render_layer) {
+      /* Not the viewer layer used by the node. */
+      if (!StringRef(type_name).startswith(view_layer->name)) {
         continue;
       }
 
-      LISTBASE_FOREACH (RenderPass *, render_pass, &render_layer->passes) {
-        /* We are only interested in passes of the current view. Except if the current view is
-         * unnamed, that is, in the case of mono rendering, in which case we just return the first
-         * view. */
-        if (!context().get_view_name().is_empty() &&
-            context().get_view_name() != render_pass->view)
-        {
-          continue;
-        }
+      /* Find out which type of Cryptomatte layer the node uses.  */
+      const char *cryptomatte_type = nullptr;
+      const std::string layer_prefix = std::string(view_layer->name) + ".";
+      if (type_name == layer_prefix + RE_PASSNAME_CRYPTOMATTE_OBJECT) {
+        cryptomatte_type = RE_PASSNAME_CRYPTOMATTE_OBJECT;
+      }
+      else if (type_name == layer_prefix + RE_PASSNAME_CRYPTOMATTE_ASSET) {
+        cryptomatte_type = RE_PASSNAME_CRYPTOMATTE_ASSET;
+      }
+      else if (type_name == layer_prefix + RE_PASSNAME_CRYPTOMATTE_MATERIAL) {
+        cryptomatte_type = RE_PASSNAME_CRYPTOMATTE_MATERIAL;
+      }
 
-        /* If the combined pass name doesn't start with the Cryptomatte type name, then it is not a
-         * Cryptomatte layer. */
-        const std::string combined_name = get_combined_layer_pass_name(render_layer, render_pass);
-        if (combined_name == type_name || !StringRef(combined_name).startswith(type_name)) {
-          continue;
-        }
+      if (!cryptomatte_type) {
+        return layers;
+      }
 
+      /* Each layer stores two ranks/levels, so do ceiling division by two. */
+      const int cryptomatte_layers_count = int(math::ceil(view_layer->cryptomatte_levels / 2.0f));
+      for (int i = 0; i < cryptomatte_layers_count; i++) {
+        const std::string pass_name = fmt::format("{}{:02}", cryptomatte_type, i);
         GPUTexture *pass_texture = context().get_input_texture(
-            scene, view_layer_index, render_pass->name);
+            scene, view_layer_index, pass_name.c_str());
+
+        /* If this Cryptomatte layer wasn't found, then all later Cryptomatte layers can't be used
+         * even if they were found. */
+        if (!pass_texture) {
+          return layers;
+        }
         layers.append(pass_texture);
       }
 
-      if (!layers.is_empty()) {
-        break;
-      }
+      /* The target view later was processed already, no need to check other view layers. */
+      return layers;
     }
-
-    RE_ReleaseResult(render);
 
     return layers;
   }
@@ -767,7 +769,7 @@ void register_node_type_cmp_cryptomatte()
 {
   namespace file_ns = blender::nodes::node_composite_cryptomatte_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_CRYPTOMATTE, "Cryptomatte", NODE_CLASS_MATTE);
   ntype.declare = file_ns::cmp_node_cryptomatte_declare;
@@ -775,11 +777,11 @@ void register_node_type_cmp_cryptomatte()
   ntype.initfunc = file_ns::node_init_cryptomatte;
   ntype.initfunc_api = file_ns::node_init_api_cryptomatte;
   ntype.poll = file_ns::node_poll_cryptomatte;
-  node_type_storage(
+  blender::bke::node_type_storage(
       &ntype, "NodeCryptomatte", file_ns::node_free_cryptomatte, file_ns::node_copy_cryptomatte);
   ntype.get_compositor_operation = file_ns::get_compositor_operation;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
 
 /** \} */
@@ -795,7 +797,7 @@ bNodeSocket *ntreeCompositCryptomatteAddSocket(bNodeTree *ntree, bNode *node)
   char sockname[32];
   n->inputs_num++;
   SNPRINTF(sockname, "Crypto %.2d", n->inputs_num - 1);
-  bNodeSocket *sock = nodeAddStaticSocket(
+  bNodeSocket *sock = blender::bke::nodeAddStaticSocket(
       ntree, node, SOCK_IN, SOCK_RGBA, PROP_NONE, nullptr, sockname);
   return sock;
 }
@@ -808,7 +810,7 @@ int ntreeCompositCryptomatteRemoveSocket(bNodeTree *ntree, bNode *node)
     return 0;
   }
   bNodeSocket *sock = static_cast<bNodeSocket *>(node->inputs.last);
-  nodeRemoveSocket(ntree, node, sock);
+  blender::bke::nodeRemoveSocket(ntree, node, sock);
   n->inputs_num--;
   return 1;
 }
@@ -820,7 +822,7 @@ static void node_init_cryptomatte_legacy(bNodeTree *ntree, bNode *node)
   namespace file_ns = blender::nodes::node_composite_cryptomatte_cc;
   file_ns::node_init_cryptomatte(ntree, node);
 
-  nodeAddStaticSocket(ntree, node, SOCK_IN, SOCK_RGBA, PROP_NONE, "image", "Image");
+  bke::nodeAddStaticSocket(ntree, node, SOCK_IN, SOCK_RGBA, PROP_NONE, "image", "Image");
 
   /* Add three inputs by default, as recommended by the Cryptomatte specification. */
   ntreeCompositCryptomatteAddSocket(ntree, node);
@@ -863,18 +865,18 @@ void register_node_type_cmp_cryptomatte_legacy()
   namespace legacy_file_ns = blender::nodes::node_composite_legacy_cryptomatte_cc;
   namespace file_ns = blender::nodes::node_composite_cryptomatte_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(
       &ntype, CMP_NODE_CRYPTOMATTE_LEGACY, "Cryptomatte (Legacy)", NODE_CLASS_MATTE);
   blender::bke::node_type_socket_templates(&ntype, nullptr, file_ns::cmp_node_cryptomatte_out);
   ntype.initfunc = legacy_file_ns::node_init_cryptomatte_legacy;
-  node_type_storage(
+  blender::bke::node_type_storage(
       &ntype, "NodeCryptomatte", file_ns::node_free_cryptomatte, file_ns::node_copy_cryptomatte);
   ntype.gather_link_search_ops = nullptr;
   ntype.get_compositor_operation = legacy_file_ns::get_compositor_operation;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
 
 /** \} */
