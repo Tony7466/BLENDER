@@ -591,4 +591,8 @@ bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawing &draw
                                           float outline_offset,
                                           int material_index);
 
+void merge_layer(GreasePencil &grease_pencil,
+                 bke::greasepencil::Layer &top,
+                 bke::greasepencil::Layer &to_bottom);
+
 }  // namespace blender::ed::greasepencil

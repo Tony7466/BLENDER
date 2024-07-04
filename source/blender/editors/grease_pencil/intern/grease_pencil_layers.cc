@@ -7,6 +7,7 @@
  */
 
 #include "BKE_context.hh"
+#include "BKE_curves.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_report.hh"
 
@@ -15,6 +16,8 @@
 #include "DEG_depsgraph.hh"
 
 #include "ED_grease_pencil.hh"
+
+#include "GEO_join_geometries.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -887,6 +890,165 @@ static void GREASE_PENCIL_OT_layer_duplicate_object(wmOperatorType *ot)
   ot->prop = RNA_def_enum(ot->srna, "mode", copy_mode, 0, "Mode", "");
 }
 
+void merge_layer(GreasePencil &grease_pencil,
+                 bke::greasepencil::Layer &top,
+                 bke::greasepencil::Layer &to_bottom)
+{
+  const blender::Map<blender::bke::greasepencil::FramesMapKeyT, GreasePencilFrame> &src_frames =
+      top.frames();
+  blender::Map<blender::bke::greasepencil::FramesMapKeyT, GreasePencilFrame> &target_frames =
+      to_bottom.frames_for_write();
+  MutableSpan<GreasePencilDrawingBase *> drawings = grease_pencil.drawings();
+
+  src_frames.foreach_item([&](const blender::bke::greasepencil::FramesMapKeyT &key,
+                              const GreasePencilFrame &frame) {
+    const GreasePencilFrame *frame_read = top.frame_at(key);
+    GreasePencilDrawingBase *source_drawing_base = drawings[frame_read->drawing_index];
+    if (source_drawing_base->type == GP_DRAWING_REFERENCE) {
+      /* TODO: We don't handle drawing reference atm. */
+      return;
+    }
+    GreasePencilFrame *frame_write = to_bottom.frame_at(key);
+    if (!frame_write) {
+      grease_pencil.insert_frame(to_bottom, key);
+      frame_write = to_bottom.frame_at(key);
+    }
+    GreasePencilDrawingBase *target_drawing_base = drawings[frame_write->drawing_index];
+    if (target_drawing_base->type == GP_DRAWING_REFERENCE) {
+      return;
+    }
+
+    bke::greasepencil::Drawing *source_drawing = reinterpret_cast<bke::greasepencil::Drawing *>(
+        source_drawing_base);
+    bke::greasepencil::Drawing *target_drawing = reinterpret_cast<bke::greasepencil::Drawing *>(
+        target_drawing_base);
+    bke::CurvesGeometry &source_geometry = source_drawing->geometry.wrap();
+    bke::CurvesGeometry &target_geometry = target_drawing->geometry.wrap();
+    Curves *source_curves = bke::curves_new_nomain(std::move(source_geometry));
+    Curves *target_curves = bke::curves_new_nomain(std::move(target_geometry));
+
+    Array<bke::GeometrySet, 2> geometries = {bke::GeometrySet::from_curves(target_curves),
+                                             bke::GeometrySet::from_curves(source_curves)};
+
+    bke::GeometrySet result_geometry_set = geometry::join_geometries(geometries, {});
+    target_drawing->strokes_for_write() = std::move(
+        result_geometry_set.get_curves_for_write()->geometry.wrap());
+    target_drawing->tag_topology_changed();
+  });
+  grease_pencil.remove_layer(top);
+  grease_pencil.update_drawing_users_for_layer(to_bottom);
+}
+
+enum {
+  GREASE_PENCIL_LAYER_MERGE_ACTIVE = 0,
+  GREASE_PENCIL_LAYER_MERGE_ALL = 1,
+};
+
+static void apply_layer_settings(GreasePencil &grease_pencil, bke::greasepencil::Layer &layer)
+{
+  blender::Map<blender::bke::greasepencil::FramesMapKeyT, GreasePencilFrame> &frames =
+      layer.frames_for_write();
+  MutableSpan<GreasePencilDrawingBase *> drawings = grease_pencil.drawings();
+  frames.foreach_item([&](const blender::bke::greasepencil::FramesMapKeyT &key,
+                          const GreasePencilFrame &frame) {
+    GreasePencilDrawingBase *drawing_base = drawings[frame.drawing_index];
+    if (drawing_base->type == GP_DRAWING_REFERENCE) {
+      /* TODO: We don't handle drawing reference atm. */
+      return;
+    }
+    bke::greasepencil::Drawing *drawing = reinterpret_cast<bke::greasepencil::Drawing *>(
+        drawing_base);
+    CurvesGeometry &curves = drawing->geometry;
+    bke::MutableAttributeAccessor attributes = curves.wrap().attributes_for_write();
+    bke::SpanAttributeWriter<float3> positions = attributes.lookup_or_add_for_write_span<float3>(
+        "position", bke::AttrDomain::Point);
+    bke::SpanAttributeWriter<float> opacities = attributes.lookup_or_add_for_write_span<float>(
+        "opacity", bke::AttrDomain::Point);
+
+    BLI_assert(positions.span.size() == opacities.span.size());
+
+    float4x4 layer_transform = layer.local_transform();
+    threading::parallel_for(IndexRange(positions.span.size()), 65536, [&](const IndexRange range) {
+      for (const int index : range) {
+        positions.span[index] = math::transform_point(layer_transform, positions.span[index]);
+        opacities.span[index] *= layer.opacity;
+      }
+    });
+    positions.finish();
+    opacities.finish();
+    static_cast<float3>(layer.translation) = float3(0.0f);
+    static_cast<float3>(layer.rotation) = float3(0.0f);
+    static_cast<float3>(layer.scale) = float3(0.0f);
+    layer.opacity = 1.0f;
+  });
+}
+
+static int gpencil_merge_layer_exec(bContext *C, wmOperator *op)
+{
+  using namespace blender::bke::greasepencil;
+  Object *object = CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+  bke::greasepencil::Layer *active_layer = grease_pencil.get_active_layer();
+
+  if (!active_layer) {
+    BKE_report(op->reports, RPT_ERROR, "No valid active layer");
+    return OPERATOR_CANCELLED;
+  }
+
+  GreasePencilLayerTreeNode *next_node = grease_pencil.active_node->next;
+  if (!next_node || next_node->type == GP_LAYER_TREE_GROUP) {
+    BKE_report(op->reports, RPT_ERROR, "No layers to merge");
+    return OPERATOR_CANCELLED;
+  }
+
+  bke::greasepencil::Layer &bottom_layer = next_node->wrap().as_layer();
+
+  /* TODO: Use mode GREASE_PENCIL_LAYER_MERGE_ACTIVE/ALL, now just merge 1 layer per call.  */
+
+  apply_layer_settings(grease_pencil, *active_layer);
+  merge_layer(grease_pencil, *active_layer, bottom_layer);
+
+  /* TODO: Clear any invalid mask. Some other layer could be using the merged layer. */
+  // LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+  //   BKE_gpencil_layer_mask_cleanup(gpd, gpl);
+  // }
+
+  /* notifiers */
+  DEG_id_tag_update(&grease_pencil.id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
+  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_SELECTED, nullptr);
+
+  return OPERATOR_FINISHED;
+}
+
+static void GREASE_PENCIL_OT_layer_merge(wmOperatorType *ot)
+{
+  static const EnumPropertyItem merge_modes[] = {
+      {GREASE_PENCIL_LAYER_MERGE_ACTIVE,
+       "ACTIVE",
+       0,
+       "Active",
+       "Combine active layer into the layer below"},
+      {GREASE_PENCIL_LAYER_MERGE_ALL, "ALL", 0, "All", "Combine all layers into the active layer"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  /* identifiers */
+  ot->name = "Merge Down v3";
+  ot->idname = "GREASE_PENCIL_OT_layer_merge";
+  ot->description = "Combine Layers";
+
+  /* callbacks */
+  ot->exec = gpencil_merge_layer_exec;
+  ot->poll = active_grease_pencil_layer_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  ot->prop = RNA_def_enum(
+      ot->srna, "mode", merge_modes, GREASE_PENCIL_LAYER_MERGE_ACTIVE, "Mode", "");
+}
+
 }  // namespace blender::ed::greasepencil
 
 void ED_operatortypes_grease_pencil_layers()
@@ -901,6 +1063,7 @@ void ED_operatortypes_grease_pencil_layers()
   WM_operatortype_append(GREASE_PENCIL_OT_layer_isolate);
   WM_operatortype_append(GREASE_PENCIL_OT_layer_lock_all);
   WM_operatortype_append(GREASE_PENCIL_OT_layer_duplicate);
+  WM_operatortype_append(GREASE_PENCIL_OT_layer_merge);
 
   WM_operatortype_append(GREASE_PENCIL_OT_layer_group_add);
   WM_operatortype_append(GREASE_PENCIL_OT_layer_group_remove);
