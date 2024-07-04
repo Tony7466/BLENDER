@@ -27,7 +27,7 @@ struct NodesModifierRuntime {
   /**
    * Contains logged information from the last evaluation.
    * This can be used to help the user to debug a node tree.
-   * This is a shared pointer, because we might want to keep it around in some cases after the
+   * This is a shared pointer because we might want to keep it around in some cases after the
    * evaluation (e.g. for gizmo backpropagation).
    */
   std::shared_ptr<nodes::geo_eval_log::GeoModifierLog> eval_log;

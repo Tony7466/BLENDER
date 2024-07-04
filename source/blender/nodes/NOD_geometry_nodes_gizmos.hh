@@ -121,7 +121,7 @@ ie::ElemVariant get_editable_gizmo_elem(const ComputeContext &gizmo_context,
  * \param gizmo_socket: The gizmo socket whose gizmo is modified.
  * \param apply_on_gizmo_value_fn: Applies the change done to the gizmo to the value in the gizmo
  *   node. For example, if an arrow gizmo is moved, the distance it's moved is added to the socket
- *   value. This is a callback, because gizmo sockets are multi-inputs and thus multiple values
+ *   value. This is a callback because gizmo sockets are multi-inputs and thus multiple values
  *   need to change.
  *
  */
