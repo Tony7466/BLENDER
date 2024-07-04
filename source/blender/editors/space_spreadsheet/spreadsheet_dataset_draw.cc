@@ -123,27 +123,10 @@ class DataSetViewItem : public ui::AbstractTreeViewItem {
 
   std::optional<bool> should_be_active() const override;
 
-  virtual std::optional<GeometryDataIdentifier> get_exact_data_id() const
+  /** Get information about which part of a geometry this item corresponds to. */
+  virtual std::optional<GeometryDataIdentifier> get_geometry_data_id() const
   {
     return std::nullopt;
-  }
-
-  std::optional<GeometryDataIdentifier> get_data_id_to_activate() const
-  {
-    if (std::optional<GeometryDataIdentifier> data_id = this->get_exact_data_id()) {
-      return data_id;
-    }
-    /* Try to find the next data item that can be activated. */
-    std::optional<GeometryDataIdentifier> data_id;
-    this->foreach_item_recursive([&](const ui::AbstractTreeViewItem &item) {
-      if (data_id) {
-        return;
-      }
-      if (auto *data_set_view_item = dynamic_cast<const DataSetViewItem *>(&item)) {
-        data_id = data_set_view_item->get_exact_data_id();
-      }
-    });
-    return data_id;
   }
 };
 
@@ -171,7 +154,7 @@ class MeshDomainViewItem : public DataSetViewItem {
     label_ = mesh_domain_to_label(domain);
   }
 
-  std::optional<GeometryDataIdentifier> get_exact_data_id() const override
+  std::optional<GeometryDataIdentifier> get_geometry_data_id() const override
   {
     return GeometryDataIdentifier{bke::GeometryComponent::Type::Mesh, std::nullopt, domain_};
   }
@@ -211,7 +194,7 @@ class CurvesDomainViewItem : public DataSetViewItem {
     label_ = curves_domain_to_label(domain);
   }
 
-  std::optional<GeometryDataIdentifier> get_exact_data_id() const override
+  std::optional<GeometryDataIdentifier> get_geometry_data_id() const override
   {
     return GeometryDataIdentifier{bke::GeometryComponent::Type::Curve, std::nullopt, domain_};
   }
@@ -249,7 +232,7 @@ class GreasePencilLayersViewItem : public DataSetViewItem {
     label_ = IFACE_("Layer");
   }
 
-  std::optional<GeometryDataIdentifier> get_exact_data_id() const override
+  std::optional<GeometryDataIdentifier> get_geometry_data_id() const override
   {
     return GeometryDataIdentifier{
         bke::GeometryComponent::Type::GreasePencil, std::nullopt, bke::AttrDomain::Layer};
@@ -296,7 +279,7 @@ class GreasePencilLayerCurvesDomainViewItem : public DataSetViewItem {
     label_ = curves_domain_to_label(domain);
   }
 
-  std::optional<GeometryDataIdentifier> get_exact_data_id() const override
+  std::optional<GeometryDataIdentifier> get_geometry_data_id() const override
   {
     return GeometryDataIdentifier{
         bke::GeometryComponent::Type::GreasePencil, layer_index_, domain_};
@@ -337,7 +320,7 @@ class PointsViewItem : public DataSetViewItem {
     label_ = IFACE_("Point");
   }
 
-  std::optional<GeometryDataIdentifier> get_exact_data_id() const override
+  std::optional<GeometryDataIdentifier> get_geometry_data_id() const override
   {
     return GeometryDataIdentifier{
         bke::GeometryComponent::Type::PointCloud, std::nullopt, bke::AttrDomain::Point};
@@ -361,7 +344,7 @@ class VolumeGridsViewItem : public DataSetViewItem {
     label_ = IFACE_("Volume Grids");
   }
 
-  std::optional<GeometryDataIdentifier> get_exact_data_id() const override
+  std::optional<GeometryDataIdentifier> get_geometry_data_id() const override
   {
     return GeometryDataIdentifier{
         bke::GeometryComponent::Type::Volume, std::nullopt, std::nullopt};
@@ -385,7 +368,7 @@ class InstancesViewItem : public DataSetViewItem {
     label_ = IFACE_("Instances");
   }
 
-  std::optional<GeometryDataIdentifier> get_exact_data_id() const override
+  std::optional<GeometryDataIdentifier> get_geometry_data_id() const override
   {
     return GeometryDataIdentifier{
         bke::GeometryComponent::Type::Instance, std::nullopt, bke::AttrDomain::Instance};
@@ -637,7 +620,7 @@ void DataSetViewItem::get_parent_instance_ids(Vector<SpreadsheetInstanceID> &r_i
 void DataSetViewItem::on_activate(bContext &C)
 {
   Vector<SpreadsheetInstanceID> instance_ids;
-  std::optional<GeometryDataIdentifier> data_id = this->get_exact_data_id();
+  std::optional<GeometryDataIdentifier> data_id = this->get_geometry_data_id();
   if (data_id) {
     this->get_parent_instance_ids(instance_ids);
   }
@@ -648,7 +631,7 @@ void DataSetViewItem::on_activate(bContext &C)
         return;
       }
       if (auto *data_set_view_item = dynamic_cast<const DataSetViewItem *>(&item)) {
-        data_id = data_set_view_item->get_exact_data_id();
+        data_id = data_set_view_item->get_geometry_data_id();
         if (data_id) {
           data_set_view_item->get_parent_instance_ids(instance_ids);
         }
@@ -687,7 +670,7 @@ std::optional<bool> DataSetViewItem::should_be_active() const
   GeometryDataSetTreeView &tree_view = this->get_tree();
   SpaceSpreadsheet &sspreadsheet = tree_view.sspreadsheet_;
 
-  const std::optional<GeometryDataIdentifier> data_id = this->get_exact_data_id();
+  const std::optional<GeometryDataIdentifier> data_id = this->get_geometry_data_id();
   if (!data_id) {
     return false;
   }

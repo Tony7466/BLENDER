@@ -1979,6 +1979,10 @@ typedef struct SpaceSpreadsheet {
    */
   ViewerPath viewer_path;
 
+  /**
+   * The "path" to the currently active instance reference. This is needed when viewing nested
+   * instances.
+   */
   SpreadsheetInstanceID *instance_ids;
   int instance_ids_num;
 
