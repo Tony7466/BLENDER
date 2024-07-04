@@ -4175,15 +4175,18 @@ static Set<const bNodeSocket *> find_sockets_on_active_gizmo_paths(const bContex
   snode.edittree->ensure_topology_cache();
 
   /* Compute compute context hash for the current node tree path. */
-  ComputeContextHash current_compute_context_hash;
-  {
+  std::optional<ComputeContextHash> current_compute_context_hash =
+      [&]() -> std::optional<ComputeContextHash> {
     ComputeContextBuilder compute_context_builder;
     compute_context_builder.push<bke::ModifierComputeContext>(
         object_and_modifier->nmd->modifier.name);
     if (!ed::space_node::push_compute_context_for_tree_path(snode, compute_context_builder)) {
-      return {};
+      return std::nullopt;
     }
-    current_compute_context_hash = compute_context_builder.current()->hash();
+    return compute_context_builder.current()->hash();
+  }();
+  if (!current_compute_context_hash) {
+    return {};
   }
 
   Set<const bNodeSocket *> sockets_on_gizmo_paths;
@@ -4210,7 +4213,7 @@ static Set<const bNodeSocket *> find_sockets_on_active_gizmo_paths(const bContex
             [&](const ComputeContext &compute_context,
                 const bNodeSocket &socket,
                 const nodes::inverse_eval::ElemVariant & /*elem*/) {
-              if (compute_context.hash() == current_compute_context_hash) {
+              if (compute_context.hash() == *current_compute_context_hash) {
                 sockets_on_gizmo_paths.add(&socket);
               }
             });
