@@ -39,13 +39,18 @@ class PDFExporter : public GreasePencilExporter {
   bool export_scene(Scene &scene, StringRefNull filepath);
   void export_grease_pencil_objects(int frame_number);
   void export_grease_pencil_layer(const Object &object,
-                                  const GreasePencil &grease_pencil,
                                   const bke::greasepencil::Layer &layer,
-                                  const int frame_number);
+                                  const bke::greasepencil::Drawing &drawing);
 
   bool create_document();
   bool add_page();
 
+  void write_stroke_to_polyline(const float4x4 &transform,
+                                const Span<float3> positions,
+                                const bool cyclic,
+                                const ColorGeometry4f &color,
+                                const float opacity,
+                                std::optional<float> width);
   bool write_to_file(StringRefNull filepath);
 };
 
@@ -116,6 +121,8 @@ bool PDFExporter::export_scene(Scene &scene, StringRefNull filepath)
 
 void PDFExporter::export_grease_pencil_objects(const int frame_number)
 {
+  using bke::greasepencil::Drawing;
+
   Vector<ObjectInfo> objects = retrieve_objects();
 
   for (const ObjectInfo &info : objects) {
@@ -127,214 +134,40 @@ void PDFExporter::export_grease_pencil_objects(const int frame_number)
     const GreasePencil *grease_pencil_eval = static_cast<const GreasePencil *>(ob_eval->data);
 
     for (const bke::greasepencil::Layer *layer : grease_pencil_eval->layers()) {
-      export_grease_pencil_layer(*ob_eval, *grease_pencil_eval, *layer, frame_number);
+      if (!layer->is_visible()) {
+        return;
+      }
+      const Drawing *drawing = grease_pencil_eval->get_drawing_at(*layer, frame_number);
+      if (drawing == nullptr) {
+        return;
+      }
+
+      export_grease_pencil_layer(*ob_eval, *layer, *drawing);
     }
   }
 }
 
-//   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd_eval->layers) {
-//     if (gpl->flag & GP_LAYER_HIDE) {
-//       continue;
-//     }
-//     prepare_layer_export_matrix(ob, gpl);
-
-//     bGPDframe *gpf = gpl->actframe;
-//     if ((gpf == nullptr) || (gpf->strokes.first == nullptr)) {
-//       continue;
-//     }
-
-//     LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
-//       if (gps->totpoints < 2) {
-//         continue;
-//       }
-//       if (!ED_gpencil_stroke_material_visible(ob, gps)) {
-//         continue;
-//       }
-//       /* Skip invisible lines. */
-//       prepare_stroke_export_colors(ob, gps);
-//       const float fill_opacity = fill_color_[3] * gpl->opacity;
-//       const float stroke_opacity = stroke_color_[3] * stroke_average_opacity_get() *
-//                                    gpl->opacity;
-//       if ((fill_opacity < GPENCIL_ALPHA_OPACITY_THRESH) &&
-//           (stroke_opacity < GPENCIL_ALPHA_OPACITY_THRESH))
-//       {
-//         continue;
-//       }
-
-//       MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, gps->mat_nr + 1);
-//       const bool is_stroke = ((gp_style->flag & GP_MATERIAL_STROKE_SHOW) &&
-//                               (gp_style->stroke_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH) &&
-//                               (stroke_opacity > GPENCIL_ALPHA_OPACITY_THRESH));
-//       const bool is_fill = ((gp_style->flag & GP_MATERIAL_FILL_SHOW) &&
-//                             (gp_style->fill_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH));
-
-//       if ((!is_stroke) && (!is_fill)) {
-//         continue;
-//       }
-
-//       /* Duplicate the stroke to apply any layer thickness change. */
-//       bGPDstroke *gps_duplicate = BKE_gpencil_stroke_duplicate(gps, true, false);
-
-//       /* Apply layer thickness change. */
-//       gps_duplicate->thickness += gpl->line_change;
-//       /* Apply object scale to thickness. */
-//       const float scalef = mat4_to_scale(ob->object_to_world().ptr());
-//       gps_duplicate->thickness = ceilf(float(gps_duplicate->thickness) * scalef);
-//       CLAMP_MIN(gps_duplicate->thickness, 1.0f);
-//       /* Fill. */
-//       if ((is_fill) && (params_.flag & GP_EXPORT_FILL)) {
-//         /* Fill is exported as polygon for fill and stroke in a different shape. */
-//         export_stroke_to_polyline(gpd_eval, gpl, gps_duplicate, is_stroke, true, false);
-//       }
-
-//       /* Stroke. */
-//       if (is_stroke) {
-//         if (is_normalized) {
-//           export_stroke_to_polyline(gpd_eval, gpl, gps_duplicate, is_stroke, false, true);
-//         }
-//         else {
-//           bGPDstroke *gps_perimeter = BKE_gpencil_stroke_perimeter_from_view(
-//               rv3d_->viewmat, gpd_eval, gpl, gps_duplicate, 3, diff_mat_.ptr(), 0.0f);
-
-//           /* Sample stroke. */
-//           if (params_.stroke_sample > 0.0f) {
-//             BKE_gpencil_stroke_sample(gpd_eval, gps_perimeter, params_.stroke_sample, false,
-//             0);
-//           }
-
-//           export_stroke_to_polyline(gpd_eval, gpl, gps_perimeter, is_stroke, false, false);
-
-//           BKE_gpencil_free_stroke(gps_perimeter);
-//         }
-//       }
-//       BKE_gpencil_free_stroke(gps_duplicate);
-//     }
-//   }
 void PDFExporter::export_grease_pencil_layer(const Object &object,
-                                             const GreasePencil &grease_pencil,
                                              const bke::greasepencil::Layer &layer,
-                                             const int frame_number)
+                                             const bke::greasepencil::Drawing &drawing)
 {
   using bke::greasepencil::Drawing;
-
-  if (!layer.is_visible()) {
-    return;
-  }
-  const Drawing *drawing = grease_pencil.get_drawing_at(layer, frame_number);
-  if (drawing == nullptr) {
-    return;
-  }
 
   const float4x4 layer_to_world = layer.to_world_space(object);
   const float4x4 viewmat = float4x4(context_.rv3d->viewmat);
   const float4x4 layer_to_view = viewmat * layer_to_world;
 
-  /* Layer node. */
-  // const std::string txt = "Layer: " + layer.name();
-  // node.append_child(pugi::node_comment).set_value(txt.c_str());
+  auto write_stroke = [&](const Span<float3> positions,
+                          const bool cyclic,
+                          const ColorGeometry4f &color,
+                          const float opacity,
+                          const std::optional<float> width,
+                          const bool /*round_cap*/,
+                          const bool /*is_outline*/) {
+    write_stroke_to_polyline(layer_to_view, positions, cyclic, color, opacity, width);
+  };
 
-  // pugi::xml_node layer_node = node.append_child("g");
-  // layer_node.append_attribute("id").set_value(layer.name().c_str());
-
-  const bke::CurvesGeometry &curves = drawing->strokes();
-  const bke::AttributeAccessor attributes = curves.attributes();
-  const OffsetIndices points_by_curve = curves.points_by_curve();
-  const VArray<bool> cyclic = curves.cyclic();
-  const VArraySpan<int> material_indices = *attributes.lookup_or_default<int>(
-      "material_index", bke::AttrDomain::Curve, 0);
-  const Span<float3> positions = curves.positions();
-  const VArraySpan<float> radii = drawing->radii();
-  const VArraySpan<float> opacities = drawing->opacities();
-  const VArray<int8_t> start_caps = *attributes.lookup_or_default<int8_t>(
-      "start_cap", bke::AttrDomain::Curve, GP_STROKE_CAP_TYPE_ROUND);
-  const VArray<int8_t> end_caps = *attributes.lookup_or_default<int8_t>(
-      "end_cap", bke::AttrDomain::Curve, 0);
-
-  Array<float3> world_positions(positions.size());
-  threading::parallel_for(positions.index_range(), 4096, [&](const IndexRange range) {
-    for (const int i : range) {
-      world_positions[i] = math::transform_point(layer_to_world, positions[i]);
-    }
-  });
-
-  for (const int i_curve : curves.curves_range()) {
-    const IndexRange points = points_by_curve[i_curve];
-    if (points.size() < 2) {
-      continue;
-    }
-
-    const bool is_cyclic = cyclic[i_curve];
-    const int material_index = material_indices[i_curve];
-    const Material *material = BKE_object_material_get(const_cast<Object *>(&object),
-                                                       material_index + 1);
-    BLI_assert(material->gp_style != nullptr);
-    if (material->gp_style->flag & GP_MATERIAL_HIDE) {
-      continue;
-    }
-    const bool is_stroke_material = material->gp_style->flag & GP_MATERIAL_STROKE_SHOW;
-    const bool is_fill_material = material->gp_style->flag & GP_MATERIAL_FILL_SHOW;
-
-    /* Fill. */
-    if (is_fill_material && params_.export_fill_materials) {
-      // /* Fill is always exported as polygon because the stroke of the fill is done
-      //  * in a different SVG command. */
-      // pugi::xml_node element_node = write_polyline(
-      //     layer_node, layer_to_view, positions.slice(points), is_cyclic, std::nullopt);
-
-      // const ColorGeometry4f fill_color = {material->gp_style->fill_rgba};
-      // write_fill_color_attribute(element_node, fill_color, layer.opacity);
-    }
-
-    /* Stroke. */
-    if (is_stroke_material && params_.export_stroke_materials) {
-      const ColorGeometry4f stroke_color = {material->gp_style->stroke_rgba};
-      const GreasePencilStrokeCapType start_cap = GreasePencilStrokeCapType(start_caps[i_curve]);
-      const GreasePencilStrokeCapType end_cap = GreasePencilStrokeCapType(end_caps[i_curve]);
-      const bool round_cap = start_cap == GP_STROKE_CAP_TYPE_ROUND ||
-                             end_cap == GP_STROKE_CAP_TYPE_ROUND;
-
-      /* Compute per-point stroke width based on pixel size. */
-      VArray<float> widths = VArray<float>::ForFunc(points.size(), [&](const int index) {
-        const float3 &pos = world_positions[points[index]];
-        const float radius = radii[points[index]];
-        return 2.0f * radius * ED_view3d_pixel_size(context_.rv3d, pos);
-      });
-      const std::optional<float> uniform_width = params_.use_uniform_width ?
-                                                     try_get_constant_value(widths) :
-                                                     std::nullopt;
-      if (uniform_width) {
-        pugi::xml_node element_node = write_polyline(
-            layer_node, layer_to_view, positions.slice(points), is_cyclic, uniform_width);
-        write_stroke_color_attribute(
-            element_node, stroke_color, layer.opacity, round_cap, opacities);
-      }
-      else {
-        const IndexMask single_curve_mask = IndexRange::from_single(i_curve);
-
-        constexpr int corner_subdivisions = 3;
-        constexpr float outline_radius = 0.0f;
-        constexpr float outline_offset = 0.0f;
-        bke::CurvesGeometry outline = ed::greasepencil::create_curves_outline(*drawing,
-                                                                              single_curve_mask,
-                                                                              layer_to_view,
-                                                                              corner_subdivisions,
-                                                                              outline_radius,
-                                                                              outline_offset,
-                                                                              material_index);
-
-        /* Sample the outline stroke. */
-        if (params_.outline_resample_length > 0.0f) {
-          VArray<float> resample_lengths = VArray<float>::ForSingle(
-              params_.outline_resample_length, curves.curves_num());
-          outline = geometry::resample_to_length(outline, single_curve_mask, resample_lengths);
-        }
-
-        pugi::xml_node element_node = write_path(layer_node, layer_to_view, positions, is_cyclic);
-        /* Use stroke color to fill the outline. */
-        write_fill_color_attribute(element_node, stroke_color, layer.opacity);
-      }
-    }
-  }
+  foreach_stroke_in_layer(object, layer, drawing, write_stroke);
 }
 
 bool PDFExporter::create_document()
@@ -363,6 +196,73 @@ bool PDFExporter::add_page()
   HPDF_Page_SetHeight(page_, render_size_.y);
 
   return true;
+}
+
+void PDFExporter::write_stroke_to_polyline(const float4x4 &transform,
+                                           const Span<float3> positions,
+                                           const bool cyclic,
+                                           const ColorGeometry4f &color,
+                                           const float opacity,
+                                           std::optional<float> width)
+{
+  if (width) {
+    HPDF_Page_SetLineJoin(page_, HPDF_ROUND_JOIN);
+    HPDF_Page_SetLineWidth(page_, std::max(*width, 1.0f));
+  }
+
+  const float total_opacity = color.a * opacity;
+
+  HPDF_Page_GSave(page_);
+  HPDF_ExtGState gstate = (total_opacity < 1.0f) ? HPDF_CreateExtGState(pdf_) : nullptr;
+
+  ColorGeometry4f srgb;
+  linearrgb_to_srgb_v3_v3(srgb, color);
+  if (width) {
+    HPDF_Page_SetRGBFill(page_, srgb.r, srgb.g, srgb.b);
+    HPDF_Page_SetRGBStroke(page_, srgb.r, srgb.g, srgb.b);
+    if (gstate) {
+      HPDF_ExtGState_SetAlphaFill(gstate, clamp_f(opacity, 0.0f, 1.0f));
+      HPDF_ExtGState_SetAlphaStroke(gstate, clamp_f(opacity, 0.0f, 1.0f));
+    }
+  }
+  else {
+    HPDF_Page_SetRGBFill(page_, srgb.r, srgb.g, srgb.b);
+    if (gstate) {
+      HPDF_ExtGState_SetAlphaFill(gstate, clamp_f(opacity, 0.0f, 1.0f));
+    }
+  }
+  if (gstate) {
+    HPDF_Page_SetExtGState(page_, gstate);
+  }
+
+  for (const int i : positions.index_range()) {
+    float2 screen_co = float2(0);
+    ED_view3d_project_float_ex(context_.region,
+                               const_cast<float(*)[4]>(context_.rv3d->winmat),
+                               false,
+                               math::transform_point(transform, positions[i]),
+                               screen_co,
+                               V3D_PROJ_TEST_NOP);
+
+    if (i == 0) {
+      HPDF_Page_MoveTo(page_, screen_co.x, screen_co.y);
+    }
+    else {
+      HPDF_Page_LineTo(page_, screen_co.x, screen_co.y);
+    }
+  }
+  if (cyclic) {
+    HPDF_Page_ClosePath(page_);
+  }
+
+  if (width) {
+    HPDF_Page_Stroke(page_);
+  }
+  else {
+    HPDF_Page_Fill(page_);
+  }
+
+  HPDF_Page_GRestore(page_);
 }
 
 bool PDFExporter::write_to_file(StringRefNull filepath)

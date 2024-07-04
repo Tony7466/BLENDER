@@ -6,14 +6,17 @@
 #include "BLI_math_matrix.hh"
 #include "BLI_math_vector.h"
 
+#include "BKE_attribute.hh"
 #include "BKE_camera.h"
 #include "BKE_context.hh"
+#include "BKE_curves.hh"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_grease_pencil.hh"
 #include "BKE_layer.hh"
 #include "BKE_material.h"
 #include "BKE_scene.hh"
 
+#include "BLI_math_vector.hh"
 #include "DNA_material_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
@@ -21,6 +24,9 @@
 
 #include "DEG_depsgraph_query.hh"
 
+#include "GEO_resample_curves.hh"
+
+#include "ED_grease_pencil.hh"
 #include "ED_object.hh"
 #include "ED_view3d.hh"
 
@@ -31,6 +37,49 @@
  */
 
 namespace blender::io::grease_pencil {
+
+static float get_average(const Span<float> values)
+{
+  return values.is_empty() ? 0.0f :
+                             std::accumulate(values.begin(), values.end(), 0.0f) / values.size();
+}
+
+static ColorGeometry4f get_average(const Span<ColorGeometry4f> values)
+{
+  if (values.is_empty()) {
+    return ColorGeometry4f(0);
+  }
+  /* ColorGeometry4f does not support arithmetic directly. */
+  Span<float4> rgba_values = values.cast<float4>();
+  float4 avg_rgba = std::accumulate(rgba_values.begin(), rgba_values.end(), float4(0)) /
+                    values.size();
+  return ColorGeometry4f(avg_rgba);
+}
+
+static std::optional<float> try_get_constant_value(const VArray<float> values,
+                                                   const float epsilon = 1e-5f)
+{
+  if (values.is_empty()) {
+    return std::nullopt;
+  }
+  const float first_value = values.first();
+  const std::optional<float> first_value_opt = std::make_optional(first_value);
+  return threading::parallel_reduce(
+      values.index_range().drop_front(1),
+      4096,
+      first_value_opt,
+      [&](const IndexRange range, const std::optional<float> /*value*/) -> std::optional<float> {
+        for (const int i : range) {
+          if (math::abs(values[i] - first_value) > epsilon) {
+            return std::nullopt;
+          }
+        }
+        return first_value_opt;
+      },
+      [&](const std::optional<float> a, const std::optional<float> b) {
+        return (a && b) ? first_value_opt : std::nullopt;
+      });
+}
 
 IOContext::IOContext(bContext &C,
                      const ARegion *region,
@@ -166,6 +215,32 @@ void GreasePencilExporter::prepare_camera_params(Scene &scene, const bool force_
   }
 }
 
+ColorGeometry4f GreasePencilExporter::compute_average_stroke_color(
+    const Material &material, const Span<ColorGeometry4f> vertex_colors)
+{
+  const MaterialGPencilStyle &gp_style = *material.gp_style;
+
+  const ColorGeometry4f material_color = ColorGeometry4f(gp_style.stroke_rgba);
+  const ColorGeometry4f avg_vertex_color = get_average(vertex_colors);
+  return math::interpolate(material_color, avg_vertex_color, avg_vertex_color.a);
+}
+
+float GreasePencilExporter::compute_average_stroke_opacity(const Span<float> opacities)
+{
+  return get_average(opacities);
+}
+
+std::optional<float> GreasePencilExporter::try_get_uniform_point_width(
+    const RegionView3D &rv3d, const Span<float3> world_positions, const Span<float> radii)
+{
+  VArray<float> widths = VArray<float>::ForFunc(world_positions.size(), [&](const int index) {
+    const float3 &pos = world_positions[index];
+    const float radius = radii[index];
+    return 2.0f * radius * ED_view3d_pixel_size(&rv3d, pos);
+  });
+  return try_get_constant_value(widths);
+}
+
 Vector<GreasePencilExporter::ObjectInfo> GreasePencilExporter::retrieve_objects() const
 {
   using SelectMode = ExportParams::SelectMode;
@@ -215,6 +290,139 @@ Vector<GreasePencilExporter::ObjectInfo> GreasePencilExporter::retrieve_objects(
   });
 
   return objects;
+}
+
+void GreasePencilExporter::foreach_stroke_in_layer(const Object &object,
+                                                   const bke::greasepencil::Layer &layer,
+                                                   const bke::greasepencil::Drawing &drawing,
+                                                   WriteStrokeFn stroke_fn)
+{
+  using bke::greasepencil::Drawing;
+
+  const float4x4 layer_to_world = layer.to_world_space(object);
+  const float4x4 viewmat = float4x4(context_.rv3d->viewmat);
+  const float4x4 layer_to_view = viewmat * layer_to_world;
+
+  const bke::CurvesGeometry &curves = drawing.strokes();
+  const bke::AttributeAccessor attributes = curves.attributes();
+  /* Curve attributes. */
+  const OffsetIndices points_by_curve = curves.points_by_curve();
+  const VArray<bool> cyclic = curves.cyclic();
+  const VArraySpan<int> material_indices = *attributes.lookup_or_default<int>(
+      "material_index", bke::AttrDomain::Curve, 0);
+  const VArraySpan<ColorGeometry4f> fill_colors = drawing.fill_colors();
+  const VArray<int8_t> start_caps = *attributes.lookup_or_default<int8_t>(
+      "start_cap", bke::AttrDomain::Curve, GP_STROKE_CAP_TYPE_ROUND);
+  const VArray<int8_t> end_caps = *attributes.lookup_or_default<int8_t>(
+      "end_cap", bke::AttrDomain::Curve, 0);
+  /* Point attributes. */
+  const Span<float3> positions = curves.positions();
+  const VArraySpan<float> radii = drawing.radii();
+  const VArraySpan<float> opacities = drawing.opacities();
+  const VArraySpan<ColorGeometry4f> vertex_colors = drawing.vertex_colors();
+
+  Array<float3> world_positions(positions.size());
+  threading::parallel_for(positions.index_range(), 4096, [&](const IndexRange range) {
+    for (const int i : range) {
+      world_positions[i] = math::transform_point(layer_to_world, positions[i]);
+    }
+  });
+
+  for (const int i_curve : curves.curves_range()) {
+    const IndexRange points = points_by_curve[i_curve];
+    if (points.size() < 2) {
+      continue;
+    }
+
+    const bool is_cyclic = cyclic[i_curve];
+    const int material_index = material_indices[i_curve];
+    const Material *material = BKE_object_material_get(const_cast<Object *>(&object),
+                                                       material_index + 1);
+    BLI_assert(material->gp_style != nullptr);
+    if (material->gp_style->flag & GP_MATERIAL_HIDE) {
+      continue;
+    }
+    const bool is_stroke_material = material->gp_style->flag & GP_MATERIAL_STROKE_SHOW;
+    const bool is_fill_material = material->gp_style->flag & GP_MATERIAL_FILL_SHOW;
+
+    /* Fill. */
+    if (is_fill_material && params_.export_fill_materials) {
+      const ColorGeometry4f material_fill_color = ColorGeometry4f(material->gp_style->fill_rgba);
+      const ColorGeometry4f fill_color = math::interpolate(
+          material_fill_color, fill_colors[i_curve], fill_colors[i_curve].a);
+      stroke_fn(positions.slice(points),
+                is_cyclic,
+                fill_color,
+                layer.opacity,
+                std::nullopt,
+                false,
+                false);
+    }
+
+    /* Stroke. */
+    if (is_stroke_material && params_.export_stroke_materials) {
+      const ColorGeometry4f stroke_color = compute_average_stroke_color(
+          *material, vertex_colors.slice(points));
+      const float stroke_opacity = compute_average_stroke_opacity(opacities.slice(points)) *
+                                   layer.opacity;
+      const std::optional<float> uniform_width = params_.use_uniform_width ?
+                                                     try_get_uniform_point_width(
+                                                         *context_.rv3d,
+                                                         world_positions.as_span().slice(points),
+                                                         radii.slice(points)) :
+                                                     std::nullopt;
+      if (uniform_width) {
+        const GreasePencilStrokeCapType start_cap = GreasePencilStrokeCapType(start_caps[i_curve]);
+        const GreasePencilStrokeCapType end_cap = GreasePencilStrokeCapType(end_caps[i_curve]);
+        const bool round_cap = start_cap == GP_STROKE_CAP_TYPE_ROUND ||
+                               end_cap == GP_STROKE_CAP_TYPE_ROUND;
+
+        stroke_fn(positions.slice(points),
+                  is_cyclic,
+                  stroke_color,
+                  stroke_opacity,
+                  uniform_width,
+                  round_cap,
+                  false);
+      }
+      else {
+        const IndexMask single_curve_mask = IndexRange::from_single(i_curve);
+
+        constexpr int corner_subdivisions = 3;
+        constexpr float outline_radius = 0.0f;
+        constexpr float outline_offset = 0.0f;
+        bke::CurvesGeometry outline = ed::greasepencil::create_curves_outline(drawing,
+                                                                              single_curve_mask,
+                                                                              layer_to_view,
+                                                                              corner_subdivisions,
+                                                                              outline_radius,
+                                                                              outline_offset,
+                                                                              material_index);
+
+        /* Sample the outline stroke. */
+        if (params_.outline_resample_length > 0.0f) {
+          VArray<float> resample_lengths = VArray<float>::ForSingle(
+              params_.outline_resample_length, curves.curves_num());
+          outline = geometry::resample_to_length(outline, single_curve_mask, resample_lengths);
+        }
+
+        const OffsetIndices outline_points_by_curve = outline.points_by_curve();
+        const Span<float3> outline_positions = outline.positions();
+
+        for (const int i_outline_curve : outline.curves_range()) {
+          const IndexRange outline_points = outline_points_by_curve[i_outline_curve];
+          /* Use stroke color to fill the outline. */
+          stroke_fn(outline_positions.slice(outline_points),
+                    true,
+                    stroke_color,
+                    stroke_opacity,
+                    std::nullopt,
+                    false,
+                    true);
+        }
+      }
+    }
+  }
 }
 
 }  // namespace blender::io::grease_pencil

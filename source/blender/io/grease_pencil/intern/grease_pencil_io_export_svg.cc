@@ -7,6 +7,7 @@
 #include "BKE_material.h"
 #include "BLI_color.hh"
 #include "BLI_math_matrix.hh"
+#include "BLI_offset_indices.hh"
 #include "BLI_string.h"
 #include "BLI_task.hh"
 #include "BLI_vector.hh"
@@ -50,52 +51,17 @@ static std::string rgb_to_hexstr(const float color[3])
   return fmt::format("#{:02X}{:02X}{:02X}", r, g, b);
 }
 
-static float get_average(const Span<float> values)
-{
-  return values.is_empty() ? 0.0f :
-                             std::accumulate(values.begin(), values.end(), 0.0f) / values.size();
-}
-
-static std::optional<float> try_get_constant_value(const VArray<float> values,
-                                                   const float epsilon = 1e-5f)
-{
-  if (values.is_empty()) {
-    return std::nullopt;
-  }
-  const float first_value = values.first();
-  const std::optional<float> first_value_opt = std::make_optional(first_value);
-  return threading::parallel_reduce(
-      values.index_range().drop_front(1),
-      4096,
-      first_value_opt,
-      [&](const IndexRange range, const std::optional<float> /*value*/) -> std::optional<float> {
-        for (const int i : range) {
-          if (math::abs(values[i] - first_value) > epsilon) {
-            return std::nullopt;
-          }
-        }
-        return first_value_opt;
-      },
-      [&](const std::optional<float> a, const std::optional<float> b) {
-        return (a && b) ? first_value_opt : std::nullopt;
-      });
-}
-
 static void write_stroke_color_attribute(pugi::xml_node node,
                                          const ColorGeometry4f &stroke_color,
-                                         const float layer_opacity,
-                                         const bool round_cap,
-                                         const Span<float> point_opacities)
+                                         const float stroke_opacity,
+                                         const bool round_cap)
 {
-  const float average_stroke_opacity = get_average(point_opacities);
-
   ColorGeometry4f color;
   linearrgb_to_srgb_v3_v3(color, stroke_color);
   std::string stroke_hex = rgb_to_hexstr(color);
 
   node.append_attribute("stroke").set_value(stroke_hex.c_str());
-  node.append_attribute("stroke-opacity")
-      .set_value(stroke_color.a * average_stroke_opacity * layer_opacity);
+  node.append_attribute("stroke-opacity").set_value(stroke_color.a * stroke_opacity);
 
   node.append_attribute("fill").set_value("none");
   node.append_attribute("stroke-linecap").set_value(round_cap ? "round" : "square");
@@ -144,9 +110,8 @@ class SVGExporter : public GreasePencilExporter {
   void export_grease_pencil_objects(pugi::xml_node node, int frame_number);
   void export_grease_pencil_layer(pugi::xml_node node,
                                   const Object &object,
-                                  const GreasePencil &grease_pencil,
                                   const bke::greasepencil::Layer &layer,
-                                  int frame_number);
+                                  const bke::greasepencil::Drawing &drawing);
 
   void write_document_header();
   pugi::xml_node write_main_node();
@@ -179,6 +144,8 @@ bool SVGExporter::export_scene(Scene &scene, StringRefNull filepath)
 
 void SVGExporter::export_grease_pencil_objects(pugi::xml_node node, const int frame_number)
 {
+  using bke::greasepencil::Drawing;
+
   const bool is_clipping = is_camera_ && params_.use_clip_camera;
 
   Vector<ObjectInfo> objects = retrieve_objects();
@@ -217,137 +184,64 @@ void SVGExporter::export_grease_pencil_objects(pugi::xml_node node, const int fr
     const GreasePencil *grease_pencil_eval = static_cast<const GreasePencil *>(ob_eval->data);
 
     for (const bke::greasepencil::Layer *layer : grease_pencil_eval->layers()) {
-      export_grease_pencil_layer(ob_node, *ob_eval, *grease_pencil_eval, *layer, frame_number);
+      if (!layer->is_visible()) {
+        return;
+      }
+      const Drawing *drawing = grease_pencil_eval->get_drawing_at(*layer, frame_number);
+      if (drawing == nullptr) {
+        return;
+      }
+
+      /* Layer node. */
+      const std::string txt = "Layer: " + layer->name();
+      node.append_child(pugi::node_comment).set_value(txt.c_str());
+
+      pugi::xml_node layer_node = node.append_child("g");
+      layer_node.append_attribute("id").set_value(layer->name().c_str());
+
+      export_grease_pencil_layer(layer_node, *ob_eval, *layer, *drawing);
     }
   }
 }
 
-void SVGExporter::export_grease_pencil_layer(pugi::xml_node node,
+void SVGExporter::export_grease_pencil_layer(pugi::xml_node layer_node,
                                              const Object &object,
-                                             const GreasePencil &grease_pencil,
                                              const bke::greasepencil::Layer &layer,
-                                             const int frame_number)
+                                             const bke::greasepencil::Drawing &drawing)
 {
   using bke::greasepencil::Drawing;
-
-  if (!layer.is_visible()) {
-    return;
-  }
-  const Drawing *drawing = grease_pencil.get_drawing_at(layer, frame_number);
-  if (drawing == nullptr) {
-    return;
-  }
 
   const float4x4 layer_to_world = layer.to_world_space(object);
   const float4x4 viewmat = float4x4(context_.rv3d->viewmat);
   const float4x4 layer_to_view = viewmat * layer_to_world;
 
-  /* Layer node. */
-  const std::string txt = "Layer: " + layer.name();
-  node.append_child(pugi::node_comment).set_value(txt.c_str());
-
-  pugi::xml_node layer_node = node.append_child("g");
-  layer_node.append_attribute("id").set_value(layer.name().c_str());
-
-  const bke::CurvesGeometry &curves = drawing->strokes();
-  const bke::AttributeAccessor attributes = curves.attributes();
-  const OffsetIndices points_by_curve = curves.points_by_curve();
-  const VArray<bool> cyclic = curves.cyclic();
-  const VArraySpan<int> material_indices = *attributes.lookup_or_default<int>(
-      "material_index", bke::AttrDomain::Curve, 0);
-  const Span<float3> positions = curves.positions();
-  const VArraySpan<float> radii = drawing->radii();
-  const VArraySpan<float> opacities = drawing->opacities();
-  const VArray<int8_t> start_caps = *attributes.lookup_or_default<int8_t>(
-      "start_cap", bke::AttrDomain::Curve, GP_STROKE_CAP_TYPE_ROUND);
-  const VArray<int8_t> end_caps = *attributes.lookup_or_default<int8_t>(
-      "end_cap", bke::AttrDomain::Curve, 0);
-
-  Array<float3> world_positions(positions.size());
-  threading::parallel_for(positions.index_range(), 4096, [&](const IndexRange range) {
-    for (const int i : range) {
-      world_positions[i] = math::transform_point(layer_to_world, positions[i]);
+  auto write_stroke = [&](const Span<float3> positions,
+                          const bool cyclic,
+                          const ColorGeometry4f &color,
+                          const float opacity,
+                          const std::optional<float> width,
+                          const bool round_cap,
+                          const bool is_outline) {
+    if (is_outline) {
+      pugi::xml_node element_node = write_path(layer_node, layer_to_view, positions, cyclic);
+      write_fill_color_attribute(element_node, color, opacity);
     }
-  });
-
-  for (const int i_curve : curves.curves_range()) {
-    const IndexRange points = points_by_curve[i_curve];
-    if (points.size() < 2) {
-      continue;
-    }
-
-    const bool is_cyclic = cyclic[i_curve];
-    const int material_index = material_indices[i_curve];
-    const Material *material = BKE_object_material_get(const_cast<Object *>(&object),
-                                                       material_index + 1);
-    BLI_assert(material->gp_style != nullptr);
-    if (material->gp_style->flag & GP_MATERIAL_HIDE) {
-      continue;
-    }
-    const bool is_stroke_material = material->gp_style->flag & GP_MATERIAL_STROKE_SHOW;
-    const bool is_fill_material = material->gp_style->flag & GP_MATERIAL_FILL_SHOW;
-
-    /* Fill. */
-    if (is_fill_material && params_.export_fill_materials) {
+    else {
       /* Fill is always exported as polygon because the stroke of the fill is done
        * in a different SVG command. */
       pugi::xml_node element_node = write_polyline(
-          layer_node, layer_to_view, positions.slice(points), is_cyclic, std::nullopt);
+          layer_node, layer_to_view, positions, cyclic, width);
 
-      const ColorGeometry4f fill_color = {material->gp_style->fill_rgba};
-      write_fill_color_attribute(element_node, fill_color, layer.opacity);
-    }
-
-    /* Stroke. */
-    if (is_stroke_material && params_.export_stroke_materials) {
-      const ColorGeometry4f stroke_color = {material->gp_style->stroke_rgba};
-      const GreasePencilStrokeCapType start_cap = GreasePencilStrokeCapType(start_caps[i_curve]);
-      const GreasePencilStrokeCapType end_cap = GreasePencilStrokeCapType(end_caps[i_curve]);
-      const bool round_cap = start_cap == GP_STROKE_CAP_TYPE_ROUND ||
-                             end_cap == GP_STROKE_CAP_TYPE_ROUND;
-
-      /* Compute per-point stroke width based on pixel size. */
-      VArray<float> widths = VArray<float>::ForFunc(points.size(), [&](const int index) {
-        const float3 &pos = world_positions[points[index]];
-        const float radius = radii[points[index]];
-        return 2.0f * radius * ED_view3d_pixel_size(context_.rv3d, pos);
-      });
-      const std::optional<float> uniform_width = params_.use_uniform_width ?
-                                                     try_get_constant_value(widths) :
-                                                     std::nullopt;
-      if (uniform_width) {
-        pugi::xml_node element_node = write_polyline(
-            layer_node, layer_to_view, positions.slice(points), is_cyclic, uniform_width);
-        write_stroke_color_attribute(
-            element_node, stroke_color, layer.opacity, round_cap, opacities);
+      if (width) {
+        write_stroke_color_attribute(element_node, color, opacity, round_cap);
       }
       else {
-        const IndexMask single_curve_mask = IndexRange::from_single(i_curve);
-
-        constexpr int corner_subdivisions = 3;
-        constexpr float outline_radius = 0.0f;
-        constexpr float outline_offset = 0.0f;
-        bke::CurvesGeometry outline = ed::greasepencil::create_curves_outline(*drawing,
-                                                                              single_curve_mask,
-                                                                              layer_to_view,
-                                                                              corner_subdivisions,
-                                                                              outline_radius,
-                                                                              outline_offset,
-                                                                              material_index);
-
-        /* Sample the outline stroke. */
-        if (params_.outline_resample_length > 0.0f) {
-          VArray<float> resample_lengths = VArray<float>::ForSingle(
-              params_.outline_resample_length, curves.curves_num());
-          outline = geometry::resample_to_length(outline, single_curve_mask, resample_lengths);
-        }
-
-        pugi::xml_node element_node = write_path(layer_node, layer_to_view, positions, is_cyclic);
-        /* Use stroke color to fill the outline. */
-        write_fill_color_attribute(element_node, stroke_color, layer.opacity);
+        write_fill_color_attribute(element_node, color, opacity);
       }
     }
-  }
+  };
+
+  foreach_stroke_in_layer(object, layer, drawing, write_stroke);
 }
 
 void SVGExporter::write_document_header()

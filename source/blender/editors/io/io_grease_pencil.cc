@@ -464,7 +464,7 @@ static int grease_pencil_export_pdf_exec(bContext *C, wmOperator *op)
       RNA_enum_get(op->ptr, "selected_object_type"));
   const ExportParams::FrameMode frame_mode = ExportParams::FrameMode(
       RNA_enum_get(op->ptr, "frame_mode"));
-  const bool use_clip_camera = RNA_boolean_get(op->ptr, "use_clip_camera");
+  const bool use_clip_camera = false;
   const float stroke_sample = RNA_float_get(op->ptr, "stroke_sample");
 
   const IOContext io_context(*C, region, v3d, rv3d, op->reports);
