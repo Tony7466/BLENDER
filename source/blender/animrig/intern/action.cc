@@ -125,7 +125,7 @@ template<typename T> static void shrink_array(T **array, int *num, const int shr
 bool Action::is_empty() const
 {
   return this->layer_array_num == 0 && this->binding_array_num == 0 &&
-         BLI_listbase_is_empty(&this->curves);
+         BLI_listbase_is_empty(&this->curves) && BLI_listbase_is_empty(&this->groups);
 }
 bool Action::is_action_legacy() const
 {
