@@ -90,7 +90,7 @@ static void geometry_to_blender_meshes(const OBJImportParams &import_params,
     }
     else if (geometry->geom_type_ == GEOM_CURVE) {
       CurveFromGeometry curve_ob_from_geometry(*geometry, global_vertices);
-      Curve *curve = curve_ob_from_geometry.create_curve(import_params);
+      Curve *curve = curve_ob_from_geometry.create_curve();
       Curves *curves_id = bke::curve_legacy_to_curves(*curve);
       geometry_set = bke::GeometrySet::from_curves(curves_id);
     }

@@ -32,7 +32,7 @@ class CurveFromGeometry : NonMovable, NonCopyable {
   {
   }
 
-  Curve *create_curve(const OBJImportParams &import_params);
+  Curve *create_curve();
 
   Object *create_curve_object(Main *bmain, const OBJImportParams &import_params);
 

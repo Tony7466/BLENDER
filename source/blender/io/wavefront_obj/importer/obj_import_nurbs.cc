@@ -20,11 +20,11 @@
 
 namespace blender::io::obj {
 
-Curve *blender::io::obj::CurveFromGeometry::create_curve(const OBJImportParams &import_params)
+Curve *blender::io::obj::CurveFromGeometry::create_curve()
 {
   BLI_assert(!curve_geometry_.nurbs_element_.curv_indices.is_empty());
 
-  Curve *curve;
+  Curve *curve = nullptr;
 
   BKE_curve_init(curve, OB_CURVES_LEGACY);
 
