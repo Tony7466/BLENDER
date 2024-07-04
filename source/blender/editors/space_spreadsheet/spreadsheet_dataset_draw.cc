@@ -399,7 +399,7 @@ class InstancesViewItem : public DataSetViewItem {
     label_ = IFACE_("Instances");
   }
 
-  std::optional<GeometryDataIdentifier> get_data_id_to_activate() const override
+  std::optional<GeometryDataIdentifier> get_exact_data_id() const override
   {
     return GeometryDataIdentifier{
         bke::GeometryComponent::Type::Instance, std::nullopt, bke::AttrDomain::Instance};
