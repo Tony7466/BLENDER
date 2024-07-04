@@ -147,31 +147,28 @@ class LightsPassHandler {
                 const State &state,
                 CallBuffers &call_bufs,
                 PassSimple &pass,
-                bool in_front)
+                bool /*in_front*/)
   {
     const DRWState pass_state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |
                                 DRW_STATE_DEPTH_LESS_EQUAL | state.clipping_state;
     pass.init();
     res.select_bind(pass);
 
-    if (!in_front) {
-      {
-        PassSimple::Sub &sub_pass = pass.sub("spot_cone_front");
-        sub_pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA | DRW_STATE_CULL_FRONT |
-                           state.clipping_state);
-        sub_pass.shader_set(res.shaders.extra_shape.get());
-        sub_pass.bind_ubo("globalsBlock", &res.globals_buf);
-        call_bufs.spot_cone_front_buf.end_sync(sub_pass, shapes.light_spot_volume.get());
-      }
-      {
-        PassSimple::Sub &sub_pass = pass.sub("spot_cone_back");
-        sub_pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA |
-                           DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_CULL_BACK |
-                           state.clipping_state);
-        sub_pass.shader_set(res.shaders.extra_shape.get());
-        sub_pass.bind_ubo("globalsBlock", &res.globals_buf);
-        call_bufs.spot_cone_back_buf.end_sync(sub_pass, shapes.light_spot_volume.get());
-      }
+    {
+      PassSimple::Sub &sub_pass = pass.sub("spot_cone_front");
+      sub_pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA | DRW_STATE_CULL_FRONT |
+                         state.clipping_state);
+      sub_pass.shader_set(res.shaders.extra_shape.get());
+      sub_pass.bind_ubo("globalsBlock", &res.globals_buf);
+      call_bufs.spot_cone_front_buf.end_sync(sub_pass, shapes.light_spot_volume.get());
+    }
+    {
+      PassSimple::Sub &sub_pass = pass.sub("spot_cone_back");
+      sub_pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA |
+                         DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_CULL_BACK | state.clipping_state);
+      sub_pass.shader_set(res.shaders.extra_shape.get());
+      sub_pass.bind_ubo("globalsBlock", &res.globals_buf);
+      call_bufs.spot_cone_back_buf.end_sync(sub_pass, shapes.light_spot_volume.get());
     }
     {
       PassSimple::Sub &sub_pass = pass.sub("light_shapes");
