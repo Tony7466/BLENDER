@@ -225,7 +225,7 @@ def addon_draw_item_expanded(
         item_tracker_url,  # `str`
 ):
     from bpy.app.translations import (
-        pgettext_iface as iface_,
+        contexts as i18n_contexts,
     )
 
     split = layout.split(factor=0.8)
@@ -242,7 +242,7 @@ def addon_draw_item_expanded(
     rowsub.alignment = 'RIGHT'
     if addon_type == ADDON_TYPE_LEGACY_CORE:
         rowsub.active = False
-        rowsub.label(text=iface_("Built-in"))
+        rowsub.label(text="Built-in")
         rowsub.separator()
     elif addon_type == ADDON_TYPE_LEGACY_USER:
         rowsub.operator("preferences.addon_remove", text="Uninstall").module = mod.__name__
@@ -268,7 +268,7 @@ def addon_draw_item_expanded(
     # Only add "Report a Bug" button if tracker_url is set
     # or the add-on is bundled (use official tracker then).
     if item_tracker_url or (addon_type == ADDON_TYPE_LEGACY_CORE):
-        col_a.label(text="Feedback")
+        col_a.label(text="Feedback", text_ctxt=i18n_contexts.editor_preferences)
         if item_tracker_url:
             col_b.split(factor=0.5).operator(
                 "wm.url_open", text="Report a Bug", icon='URL',
@@ -1065,6 +1065,8 @@ def extensions_panel_draw_online_extensions_request_impl(
         self,
         _context,
 ):
+    from bpy.app.translations import pgettext_rpt as rpt_
+
     layout = self.layout
     layout_header, layout_panel = layout.panel("advanced", default_closed=False)
     layout_header.label(text="Online Extensions")
@@ -1076,10 +1078,10 @@ def extensions_panel_draw_online_extensions_request_impl(
 
     # Text wrapping isn't supported, manually wrap.
     for line in (
-            "Internet access is required to install and update online extensions. ",
-            "You can adjust this later from \"System\" preferences.",
+            rpt_("Internet access is required to install and update online extensions. "),
+            rpt_("You can adjust this later from \"System\" preferences."),
     ):
-        box.label(text=line)
+        box.label(text=line, translate=False)
 
     row = box.row(align=True)
     row.alignment = 'LEFT'
@@ -2039,7 +2041,7 @@ def tags_clear(wm, tags_attr):
         wm[tags_attr] = {}
 
 
-def tags_refresh(wm, tags_attr):
+def tags_refresh(wm, tags_attr, *, default_value):
     import idprop
     tags_idprop = wm.get(tags_attr)
     if isinstance(tags_idprop, idprop.types.IDPropertyGroup):
@@ -2059,7 +2061,7 @@ def tags_refresh(wm, tags_attr):
     for tag in tags_to_rem:
         del tags_idprop[tag]
     for tag in tags_to_add:
-        tags_idprop[tag] = True
+        tags_idprop[tag] = default_value
 
     return list(sorted(tags_next))
 
@@ -2068,21 +2070,49 @@ def tags_panel_draw(layout, context, tags_attr):
     from bpy.utils import escape_identifier
     from bpy.app.translations import contexts as i18n_contexts
     wm = context.window_manager
-    tags_sorted = tags_refresh(wm, tags_attr)
-    layout.label(text="Show Tags")
-    # Add one so the first row is longer in the case of an odd number.
-    tags_len_half = (len(tags_sorted) + 1) // 2
+
     split = layout.split(factor=0.5)
-    col = split.column()
-    for i, t in enumerate(sorted(tags_sorted)):
-        if i == tags_len_half:
-            col = split.column()
-        col.prop(
-            getattr(wm, tags_attr),
-            "[\"{:s}\"]".format(escape_identifier(t)),
-            text=t,
-            text_ctxt=i18n_contexts.editor_preferences,
-        )
+    row = split.row()
+    row.label(text="Show Tags")
+    subrow = row.row()
+    subrow.alignment = 'RIGHT'
+    subrow.label(text="Select")
+
+    # NOTE: this is a workaround, as we don't have a convenient way for the UI to click on a
+    # single tag and de-select others (think file or outliner selection, also layers in 2.4x).
+    # This implements check-boxes with an awkward select All/None which has the down side that
+    # a single tag always takes 2 clicks instead of one.
+    row = split.row()
+    props = row.operator("extensions.userpref_tags_set", text="All")
+    props.value = True
+    props.data_path = tags_attr
+    props = row.operator("extensions.userpref_tags_set", text="None")
+    props.value = False
+    props.data_path = tags_attr
+    del split, row
+
+    layout.separator(type='LINE')
+
+    if tags_sorted := tags_refresh(wm, tags_attr, default_value=True):
+        # Use the `length + 1` so the first row is longer in the case of an odd number.
+        tags_len_half = (len(tags_sorted) + 1) // 2
+        split = layout.split(factor=0.5)
+        col = split.column()
+        tags_prop = getattr(wm, tags_attr)
+        for i, t in enumerate(sorted(tags_sorted)):
+            if i == tags_len_half:
+                col = split.column()
+            col.prop(
+                tags_prop,
+                "[\"{:s}\"]".format(escape_identifier(t)),
+                text=t,
+                text_ctxt=i18n_contexts.editor_preferences,
+            )
+    else:
+        # Show some text else this seems like an error.
+        col = layout.column()
+        col.label(text="No visible tags.")
+        col.active = False
 
 
 # -----------------------------------------------------------------------------
