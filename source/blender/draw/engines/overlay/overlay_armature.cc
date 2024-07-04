@@ -89,6 +89,7 @@ struct ArmatureDrawContext {
   DRWShadingGroup *custom_solid;
   DRWShadingGroup *custom_outline;
   DRWShadingGroup *custom_wire;
+  DRWShadingGroup *custom_wire_points;
   GHash *custom_shapes_ghash;
 
   OVERLAY_ExtraCallBuffers *extras;
@@ -474,6 +475,25 @@ void OVERLAY_armature_cache_init(OVERLAY_Data *vedata)
       }
       else {
         cb->transp.custom_wire = cb->solid.custom_wire;
+      }
+    }
+    {
+      format = formats->pos_color;
+
+      sh = OVERLAY_shader_armature_shape_wire_point();
+      cb->solid.custom_wire_points = grp = DRW_shgroup_create(sh, armature_ps);
+      grp = DRW_shgroup_create(sh, armature_ps);
+      DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
+      DRW_shgroup_uniform_float_copy(grp, "alpha", 1.0f);
+
+      if (use_wire_alpha) {
+        cb->transp.custom_wire_points = grp = DRW_shgroup_create(sh, armature_ps);
+        DRW_shgroup_state_enable(grp, DRW_STATE_BLEND_ALPHA);
+        DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
+        DRW_shgroup_uniform_float_copy(grp, "alpha", wire_alpha);
+      }
+      else {
+        cb->transp.custom_wire_points = cb->solid.custom_wire_points;
       }
     }
     {
@@ -891,6 +911,16 @@ static void drw_shgroup_bone_custom_solid_mesh(const ArmatureDrawContext *ctx,
     inst_data.color_a = encode_2f_to_float(outline_color[0], outline_color[1]);
     inst_data.color_b = encode_2f_to_float(outline_color[2], wire_width / WIRE_WIDTH_COMPRESSION);
     DRW_buffer_add_entry_struct(buf, inst_data.mat);
+    if (wire_width > 1) {
+      blender::gpu::Batch *verts = DRW_mesh_batch_cache_get_all_verts(mesh);
+      buf = custom_bone_instance_shgroup(ctx, ctx->custom_wire_points, verts);
+      mul_m4_m4m4(inst_data.mat, ctx->ob->object_to_world().ptr(), bone_mat);
+      OVERLAY_bone_instance_data_set_color_hint(&inst_data, outline_color);
+      inst_data.color_a = encode_2f_to_float(outline_color[0], outline_color[1]);
+      inst_data.color_b = encode_2f_to_float(outline_color[2],
+                                             wire_width / WIRE_WIDTH_COMPRESSION);
+      DRW_buffer_add_entry_struct(buf, inst_data.mat);
+    }
   }
 
   /* TODO(fclem): needs to be moved elsewhere. */
@@ -918,6 +948,18 @@ static void drw_shgroup_bone_custom_mesh_wire(const ArmatureDrawContext *ctx,
     inst_data.color_a = encode_2f_to_float(color[0], color[1]);
     inst_data.color_b = encode_2f_to_float(color[2], wire_width / WIRE_WIDTH_COMPRESSION);
     DRW_buffer_add_entry_struct(buf, inst_data.mat);
+
+    /* Only draw points at the corners if they can actually round them off. */
+    if (wire_width > 1) {
+      blender::gpu::Batch *pts = DRW_mesh_batch_cache_get_all_verts(mesh);
+      buf = custom_bone_instance_shgroup(ctx, ctx->custom_wire_points, pts);
+      BoneInstanceData inst_data;
+      mul_m4_m4m4(inst_data.mat, ctx->ob->object_to_world().ptr(), bone_mat);
+      OVERLAY_bone_instance_data_set_color_hint(&inst_data, color);
+      inst_data.color_a = encode_2f_to_float(color[0], color[1]);
+      inst_data.color_b = encode_2f_to_float(color[2], wire_width / WIRE_WIDTH_COMPRESSION);
+      DRW_buffer_add_entry_struct(buf, inst_data.mat);
+    }
   }
 
   /* TODO(fclem): needs to be moved elsewhere. */
@@ -2791,6 +2833,7 @@ static void armature_context_setup(ArmatureDrawContext *ctx,
   ctx->custom_solid = (is_filled) ? cb->custom_fill : nullptr;
   ctx->custom_outline = cb->custom_outline;
   ctx->custom_wire = cb->custom_wire;
+  ctx->custom_wire_points = cb->custom_wire_points;
   ctx->custom_shapes_ghash = cb->custom_shapes_ghash;
   ctx->show_relations = pd->armature.show_relations;
   ctx->do_relations = !DRW_state_is_select() && pd->armature.show_relations &&

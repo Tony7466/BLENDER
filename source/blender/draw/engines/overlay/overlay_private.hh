@@ -232,6 +232,7 @@ struct OVERLAY_ArmatureCallBuffersInner {
   DRWShadingGroup *custom_outline;
   DRWShadingGroup *custom_fill;
   DRWShadingGroup *custom_wire;
+  DRWShadingGroup *custom_wire_points;
 
   GHash *custom_shapes_ghash;
 };
@@ -731,6 +732,7 @@ GPUShader *OVERLAY_shader_armature_degrees_of_freedom_solid();
 GPUShader *OVERLAY_shader_armature_envelope(bool use_outline);
 GPUShader *OVERLAY_shader_armature_shape(bool use_outline);
 GPUShader *OVERLAY_shader_armature_shape_wire();
+GPUShader *OVERLAY_shader_armature_shape_wire_point();
 GPUShader *OVERLAY_shader_armature_sphere(bool use_outline);
 GPUShader *OVERLAY_shader_armature_stick();
 GPUShader *OVERLAY_shader_armature_wire();

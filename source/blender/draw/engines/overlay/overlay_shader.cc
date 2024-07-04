@@ -243,6 +243,18 @@ GPUShader *OVERLAY_shader_armature_shape_wire()
   return sh_data->armature_shape_wire;
 }
 
+GPUShader *OVERLAY_shader_armature_shape_wire_point()
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  if (!sh_data->armature_wire) {
+    sh_data->armature_wire = GPU_shader_create_from_info_name(
+        (draw_ctx->sh_cfg == GPU_SHADER_CFG_CLIPPED) ? "overlay_armature_shape_wire_point" :
+                                                       "overlay_armature_shape_wire_point");
+  }
+  return sh_data->armature_wire;
+}
+
 GPUShader *OVERLAY_shader_armature_envelope(bool use_outline)
 {
   const DRWContextState *draw_ctx = DRW_context_state_get();
