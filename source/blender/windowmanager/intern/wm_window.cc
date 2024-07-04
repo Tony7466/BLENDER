@@ -478,7 +478,7 @@ void wm_window_close(bContext *C, wmWindowManager *wm, wmWindow *win)
     WM_event_add_notifier(C, NC_SCREEN | ND_LAYOUTDELETE, nullptr);
   }
 
-  WM_main_add_notifier(NC_WM | ND_DATACHANGED, nullptr);
+  WM_main_add_notifier(NC_WINDOW | NA_REMOVED, nullptr);
 }
 
 void wm_window_title(wmWindowManager *wm, wmWindow *win)

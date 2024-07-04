@@ -103,13 +103,13 @@ static void outliner_main_region_listener(const wmRegionListenerParams *params)
 
   /* context changes */
   switch (wmn->category) {
+    case NC_WINDOW:
+      if (space_outliner->outlinevis == SO_DATA_API && ELEM(wmn->action, NA_ADDED, NA_REMOVED)) {
+        ED_region_tag_redraw(region);
+      }
+      break;
     case NC_WM:
       switch (wmn->data) {
-        case ND_DATACHANGED:
-          if (space_outliner->outlinevis == SO_DATA_API) {
-            ED_region_tag_redraw(region);
-          }
-          break;
         case ND_LIB_OVERRIDE_CHANGED:
           ED_region_tag_redraw(region);
           break;
