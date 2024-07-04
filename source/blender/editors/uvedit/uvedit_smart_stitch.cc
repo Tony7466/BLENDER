@@ -2810,7 +2810,7 @@ static bool uvedit_uv_threshold_weld(Scene *scene,
   for (const auto &curredgeloop : edgeloops) {
     std::vector<std::vector<BMLoop *>> curredgeloopendpoints;
     for (const auto &UVcoordinate : curredgeloop) {
-      if (UVcoordinate[0]->head.index == 1) {
+      if (UVcoordinate[0]->head.index == -2) {
         curredgeloopendpoints.push_back(UVcoordinate);
       }
       if (curredgeloopendpoints.size() == 2) {

@@ -18,7 +18,7 @@ void UV_get_edgeloops(
   std::queue<BMLoop *> queue;
   BM_ITER_MESH (v, &viter, bm, BM_VERTS_OF_MESH) {
     BM_ITER_ELEM (l, &liter, v, BM_LOOPS_OF_VERT) {
-      if (callback(scene, l, offsets) and (l->head.index != -1 and l->head.index != 1)) {
+      if (callback(scene, l, offsets) and (l->head.index != -1 and l->head.index != -2)) {
         queue.push(l);
       }
       else {
@@ -54,20 +54,20 @@ void UV_get_edgeloops(
 
           if (callback(scene, currl->next, offsets)) {
             selectedconnections++;
-            if (currl->next->head.index != -1 and currl->next->head.index != 1) {
+            if (currl->next->head.index != -1 and currl->next->head.index != -2) {
               queue.push(currl->next);
             }
           }
           if (callback(scene, currl->prev, offsets)) {
             selectedconnections++;
-            if (currl->prev->head.index != -1 and currl->prev->head.index != 1) {
+            if (currl->prev->head.index != -1 and currl->prev->head.index != -2) {
               queue.push(currl->prev);
             }
           }
         }
         if (selectedconnections < 2) {
           for (BMLoop *endpointloop : uvcoord) {
-            BM_elem_index_set(endpointloop, 1);
+            BM_elem_index_set(endpointloop, -2);
           }
         }
         edgeloop.push_back(uvcoord);
