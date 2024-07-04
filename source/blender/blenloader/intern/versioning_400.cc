@@ -4245,16 +4245,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
                                             SEQ_SNAP_TO_STRIPS_PREVIEW;
     }
   }
-
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 4)) {
-    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-      SequencerToolSettings *sequencer_tool_settings = SEQ_tool_settings_ensure(scene);
-      sequencer_tool_settings->snap_mode |= SEQ_SNAP_TO_PREVIEW_BORDERS |
-                                            SEQ_SNAP_TO_PREVIEW_CENTER |
-                                            SEQ_SNAP_TO_STRIPS_PREVIEW;
-    }
-  }
-
   /**
    * Always bump subversion in BKE_blender_version.h when adding versioning
    * code here, and wrap it inside a MAIN_VERSION_FILE_ATLEAST check.
