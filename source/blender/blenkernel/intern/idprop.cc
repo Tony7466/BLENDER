@@ -60,6 +60,14 @@ static size_t idp_size_table[] = {
     sizeof(int),       /* #IDP_ENUM */
 };
 
+#define CHECK_DEFAULT_ARRAY(prop, uidata) \
+  if (prop->type != IDP_ARRAY) { \
+    if (uidata->default_array != nullptr) { \
+      fprintf(stderr, "IDPROP ERROR: %s: %s (%d)\n", __func__, prop->name, prop->type); \
+    }; \
+    uidata->default_array = nullptr; \
+  }
+
 /* -------------------------------------------------------------------- */
 /** \name Array Functions (IDP Array API)
  * \{ */
@@ -273,7 +281,8 @@ IDPropertyUIData *IDP_ui_data_copy(const IDProperty *prop)
       break;
     }
     case IDP_UI_DATA_TYPE_INT: {
-      const IDPropertyUIDataInt *src = (const IDPropertyUIDataInt *)prop->ui_data;
+      IDPropertyUIDataInt *src = (IDPropertyUIDataInt *)prop->ui_data;
+      CHECK_DEFAULT_ARRAY(prop, src);
       IDPropertyUIDataInt *dst = (IDPropertyUIDataInt *)dst_ui_data;
       dst->default_array = static_cast<int *>(MEM_dupallocN(src->default_array));
       dst->enum_items = static_cast<IDPropertyUIDataEnumItem *>(MEM_dupallocN(src->enum_items));
@@ -287,13 +296,15 @@ IDPropertyUIData *IDP_ui_data_copy(const IDProperty *prop)
       break;
     }
     case IDP_UI_DATA_TYPE_BOOLEAN: {
-      const IDPropertyUIDataBool *src = (const IDPropertyUIDataBool *)prop->ui_data;
+      IDPropertyUIDataBool *src = (IDPropertyUIDataBool *)prop->ui_data;
+      CHECK_DEFAULT_ARRAY(prop, src);
       IDPropertyUIDataBool *dst = (IDPropertyUIDataBool *)dst_ui_data;
       dst->default_array = static_cast<int8_t *>(MEM_dupallocN(src->default_array));
       break;
     }
     case IDP_UI_DATA_TYPE_FLOAT: {
-      const IDPropertyUIDataFloat *src = (const IDPropertyUIDataFloat *)prop->ui_data;
+      IDPropertyUIDataFloat *src = (IDPropertyUIDataFloat *)prop->ui_data;
+      CHECK_DEFAULT_ARRAY(prop, src);
       IDPropertyUIDataFloat *dst = (IDPropertyUIDataFloat *)dst_ui_data;
       dst->default_array = static_cast<double *>(MEM_dupallocN(src->default_array));
       break;
@@ -1297,6 +1308,7 @@ static void write_ui_data(const IDProperty *prop, BlendWriter *writer)
     }
     case IDP_UI_DATA_TYPE_INT: {
       IDPropertyUIDataInt *ui_data_int = (IDPropertyUIDataInt *)ui_data;
+      CHECK_DEFAULT_ARRAY(prop, ui_data_int);
       if (prop->type == IDP_ARRAY) {
         BLO_write_int32_array(
             writer, uint(ui_data_int->default_array_len), (int32_t *)ui_data_int->default_array);
@@ -1314,6 +1326,7 @@ static void write_ui_data(const IDProperty *prop, BlendWriter *writer)
     }
     case IDP_UI_DATA_TYPE_BOOLEAN: {
       IDPropertyUIDataBool *ui_data_bool = (IDPropertyUIDataBool *)ui_data;
+      CHECK_DEFAULT_ARRAY(prop, ui_data_bool);
       if (prop->type == IDP_ARRAY) {
         BLO_write_int8_array(writer,
                              uint(ui_data_bool->default_array_len),
@@ -1324,6 +1337,7 @@ static void write_ui_data(const IDProperty *prop, BlendWriter *writer)
     }
     case IDP_UI_DATA_TYPE_FLOAT: {
       IDPropertyUIDataFloat *ui_data_float = (IDPropertyUIDataFloat *)ui_data;
+      CHECK_DEFAULT_ARRAY(prop, ui_data_float);
       if (prop->type == IDP_ARRAY) {
         BLO_write_double_array(
             writer, uint(ui_data_float->default_array_len), ui_data_float->default_array);
@@ -1433,6 +1447,7 @@ static void read_ui_data(IDProperty *prop, BlendDataReader *reader)
     case IDP_UI_DATA_TYPE_INT: {
       BLO_read_struct(reader, IDPropertyUIDataInt, &prop->ui_data);
       IDPropertyUIDataInt *ui_data_int = (IDPropertyUIDataInt *)prop->ui_data;
+      CHECK_DEFAULT_ARRAY(prop, ui_data_int);
       if (prop->type == IDP_ARRAY) {
         BLO_read_int32_array(
             reader, ui_data_int->default_array_len, (int **)&ui_data_int->default_array);
@@ -1452,6 +1467,7 @@ static void read_ui_data(IDProperty *prop, BlendDataReader *reader)
     case IDP_UI_DATA_TYPE_BOOLEAN: {
       BLO_read_struct(reader, IDPropertyUIDataBool, &prop->ui_data);
       IDPropertyUIDataBool *ui_data_bool = (IDPropertyUIDataBool *)prop->ui_data;
+      CHECK_DEFAULT_ARRAY(prop, ui_data_bool);
       if (prop->type == IDP_ARRAY) {
         BLO_read_int8_array(
             reader, ui_data_bool->default_array_len, (int8_t **)&ui_data_bool->default_array);
@@ -1461,6 +1477,7 @@ static void read_ui_data(IDProperty *prop, BlendDataReader *reader)
     case IDP_UI_DATA_TYPE_FLOAT: {
       BLO_read_struct(reader, IDPropertyUIDataFloat, &prop->ui_data);
       IDPropertyUIDataFloat *ui_data_float = (IDPropertyUIDataFloat *)prop->ui_data;
+      CHECK_DEFAULT_ARRAY(prop, ui_data_float);
       if (prop->type == IDP_ARRAY) {
         BLO_read_double_array(
             reader, ui_data_float->default_array_len, (double **)&ui_data_float->default_array);
