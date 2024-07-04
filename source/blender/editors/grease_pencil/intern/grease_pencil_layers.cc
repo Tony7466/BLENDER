@@ -995,13 +995,13 @@ static int gpencil_merge_layer_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  GreasePencilLayerTreeNode *next_node = grease_pencil.active_node->next;
-  if (!next_node || next_node->type == GP_LAYER_TREE_GROUP) {
+  bke::greasepencil::TreeNode *prev_node = grease_pencil.active_node->wrap().prev_node();
+  if (!prev_node || prev_node->type == GP_LAYER_TREE_GROUP) {
     BKE_report(op->reports, RPT_ERROR, "No layers to merge");
     return OPERATOR_CANCELLED;
   }
 
-  bke::greasepencil::Layer &bottom_layer = next_node->wrap().as_layer();
+  bke::greasepencil::Layer &bottom_layer = prev_node->wrap().as_layer();
 
   /* TODO: Use mode GREASE_PENCIL_LAYER_MERGE_ACTIVE/ALL, now just merge 1 layer per call.  */
 

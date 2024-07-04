@@ -291,6 +291,12 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
   const TreeNode *parent_node() const;
   TreeNode *parent_node();
 
+  const TreeNode *next_node() const;
+  TreeNode *next_node();
+
+  const TreeNode *prev_node() const;
+  TreeNode *prev_node();
+
   /**
    * \returns the number of non-null parents of the node.
    */

@@ -865,6 +865,22 @@ TreeNode *TreeNode::parent_node()
 {
   return this->parent_group() ? &this->parent->wrap().as_node() : nullptr;
 }
+const TreeNode *TreeNode::next_node() const
+{
+  return (this->next) ? &this->next->wrap() : nullptr;
+}
+TreeNode *TreeNode::next_node()
+{
+  return (this->next) ? &this->next->wrap() : nullptr;
+}
+const TreeNode *TreeNode::prev_node() const
+{
+  return (this->prev) ? &this->prev->wrap() : nullptr;
+}
+TreeNode *TreeNode::prev_node()
+{
+  return (this->prev) ? &this->prev->wrap() : nullptr;
+}
 
 int64_t TreeNode::depth() const
 {
