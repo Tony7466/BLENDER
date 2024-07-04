@@ -81,9 +81,11 @@ bool PDFExporter::export_scene(Scene &scene, StringRefNull filepath)
 
   switch (params_.frame_mode) {
     case ExportParams::FrameMode::Active: {
-      this->prepare_camera_params(scene, true);
+      const int frame_number = scene.r.cfra;
+
+      this->prepare_camera_params(scene, frame_number, true);
       this->add_page();
-      this->export_grease_pencil_objects(scene.r.cfra);
+      this->export_grease_pencil_objects(frame_number);
       result = this->write_to_file(filepath);
       break;
     }
@@ -99,7 +101,7 @@ bool PDFExporter::export_scene(Scene &scene, StringRefNull filepath)
           scene.r.cfra = frame_number;
           BKE_scene_graph_update_for_newframe(context_.depsgraph);
 
-          this->prepare_camera_params(scene, true);
+          this->prepare_camera_params(scene, frame_number, true);
           this->add_page();
           this->export_grease_pencil_objects(frame_number);
         }

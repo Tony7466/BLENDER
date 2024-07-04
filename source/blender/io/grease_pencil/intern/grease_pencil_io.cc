@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_bounds.hh"
 #include "BLI_color.hh"
 #include "BLI_math_matrix.hh"
 #include "BLI_math_vector.h"
@@ -9,6 +10,7 @@
 #include "BKE_attribute.hh"
 #include "BKE_camera.h"
 #include "BKE_context.hh"
+#include "BKE_crazyspace.hh"
 #include "BKE_curves.hh"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_grease_pencil.hh"
@@ -17,6 +19,7 @@
 #include "BKE_scene.hh"
 
 #include "BLI_math_vector.hh"
+#include "DNA_grease_pencil_types.h"
 #include "DNA_material_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
@@ -31,6 +34,7 @@
 #include "ED_view3d.hh"
 
 #include "grease_pencil_io_intern.hh"
+#include <optional>
 
 /** \file
  * \ingroup bgrease_pencil
@@ -150,7 +154,139 @@ GreasePencilExporter::GreasePencilExporter(const IOContext &context, const Expor
 {
 }
 
-void GreasePencilExporter::prepare_camera_params(Scene &scene, const bool force_camera_view)
+constexpr const char *attr_material_index = "material_index";
+
+static IndexMask get_visible_strokes(const Object &object,
+                                     const bke::greasepencil::Drawing &drawing,
+                                     IndexMaskMemory &memory)
+{
+  const bke::CurvesGeometry &strokes = drawing.strokes();
+  const bke::AttributeAccessor attributes = strokes.attributes();
+  const VArray<int> materials = *attributes.lookup<int>(attr_material_index,
+                                                        bke::AttrDomain::Curve);
+
+  auto is_visible_curve = [&](const int curve_i) {
+    /* Check if stroke can be drawn. */
+    const IndexRange points = strokes.points_by_curve()[curve_i];
+    if (points.size() < 2) {
+      return false;
+    }
+
+    /* Check if the material is visible. */
+    const Material *material = BKE_object_material_get(const_cast<Object *>(&object),
+                                                       materials[curve_i] + 1);
+    const MaterialGPencilStyle *gp_style = material ? material->gp_style : nullptr;
+    const bool is_hidden_material = (gp_style->flag & GP_MATERIAL_HIDE);
+    const bool is_stroke_material = (gp_style->flag & GP_MATERIAL_STROKE_SHOW);
+    if (gp_style == nullptr || is_hidden_material || !is_stroke_material) {
+      return false;
+    }
+
+    return true;
+  };
+
+  return IndexMask::from_predicate(
+      strokes.curves_range(), GrainSize(512), memory, is_visible_curve);
+}
+
+static std::optional<Bounds<float2>> compute_drawing_bounds(
+    const ARegion &region,
+    const RegionView3D &rv3d,
+    const Object &object,
+    const Object &object_eval,
+    const int layer_index,
+    const int frame_number,
+    const bke::greasepencil::Drawing &drawing)
+{
+  using bke::greasepencil::Drawing;
+  using bke::greasepencil::Layer;
+
+  std::optional<Bounds<float2>> drawing_bounds = std::nullopt;
+
+  BLI_assert(object.type == OB_GREASE_PENCIL);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
+
+  BLI_assert(grease_pencil.has_active_layer());
+
+  const Layer &layer = *grease_pencil.layers()[layer_index];
+  const float4x4 layer_to_world = layer.to_world_space(object);
+  const bke::crazyspace::GeometryDeformation deformation =
+      bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
+          &object_eval, object, layer_index, frame_number);
+  const VArray<float> radii = drawing.radii();
+  const bke::CurvesGeometry &strokes = drawing.strokes();
+
+  IndexMaskMemory curve_mask_memory;
+  const IndexMask curve_mask = get_visible_strokes(object, drawing, curve_mask_memory);
+
+  curve_mask.foreach_index(GrainSize(512), [&](const int curve_i) {
+    const IndexRange points = strokes.points_by_curve()[curve_i];
+    /* Check if stroke can be drawn. */
+    if (points.size() < 2) {
+      return;
+    }
+
+    for (const int point_i : points) {
+      const float3 pos_world = math::transform_point(layer_to_world,
+                                                     deformation.positions[point_i]);
+      float2 pos_view;
+      eV3DProjStatus result = ED_view3d_project_float_global(
+          &region, pos_world, pos_view, V3D_PROJ_TEST_NOP);
+      if (result == V3D_PROJ_RET_OK) {
+        const float pixels = radii[point_i] / ED_view3d_pixel_size(&rv3d, pos_world);
+
+        std::optional<Bounds<float2>> point_bounds = Bounds<float2>(pos_view);
+        point_bounds->pad(pixels);
+        drawing_bounds = bounds::merge(drawing_bounds, point_bounds);
+      }
+    }
+  });
+
+  return *drawing_bounds;
+}
+
+static std::optional<Bounds<float2>> compute_objects_bounds(
+    const ARegion &region,
+    const RegionView3D &rv3d,
+    const Depsgraph &depsgraph,
+    const Span<GreasePencilExporter::ObjectInfo> objects,
+    const int frame_number)
+{
+  using bke::greasepencil::Drawing;
+  using bke::greasepencil::Layer;
+  using ObjectInfo = GreasePencilExporter::ObjectInfo;
+
+  constexpr float gap = 10.0f;
+
+  std::optional<Bounds<float2>> full_bounds = std::nullopt;
+
+  for (const ObjectInfo &info : objects) {
+    const Object *object_eval = DEG_get_evaluated_object(&depsgraph, info.object);
+    const GreasePencil &grease_pencil_eval = *static_cast<GreasePencil *>(object_eval->data);
+
+    for (const int layer_index : grease_pencil_eval.layers().index_range()) {
+      const Layer &layer = *grease_pencil_eval.layers()[layer_index];
+      const Drawing *drawing = grease_pencil_eval.get_drawing_at(layer, frame_number);
+      if (drawing == nullptr) {
+        continue;
+      }
+
+      std::optional<Bounds<float2>> layer_bounds = compute_drawing_bounds(
+          region, rv3d, *info.object, *object_eval, layer_index, frame_number, *drawing);
+
+      full_bounds = bounds::merge(full_bounds, layer_bounds);
+    }
+  }
+
+  /* Add small gap. */
+  full_bounds->pad(gap);
+
+  return full_bounds;
+}
+
+void GreasePencilExporter::prepare_camera_params(Scene &scene,
+                                                 const int frame_number,
+                                                 const bool force_camera_view)
 {
   const bool use_camera_view = force_camera_view && (context_.v3d->camera != nullptr);
 
@@ -197,21 +333,18 @@ void GreasePencilExporter::prepare_camera_params(Scene &scene, const bool force_
   }
   else {
     is_camera_ = false;
-    /* Calc selected object boundbox. Need set initial value to some variables. */
-    camera_ratio_ = 1.0f;
-    offset_.x = 0.0f;
-    offset_.y = 0.0f;
 
-    // create_object_list();
-
-    // selected_objects_boundbox_calc();
-    // rctf boundbox;
-    // selected_objects_boundbox_get(&boundbox);
-
-    // render_x_ = boundbox.xmax - boundbox.xmin;
-    // render_y_ = boundbox.ymax - boundbox.ymin;
-    // offset_.x = boundbox.xmin;
-    // offset_.y = boundbox.ymin;
+    Vector<ObjectInfo> objects = this->retrieve_objects();
+    std::optional<Bounds<float2>> full_bounds = compute_objects_bounds(
+        *context_.region, *context_.rv3d, *context_.depsgraph, objects, frame_number);
+    if (full_bounds) {
+      render_size_ = int2(full_bounds->size());
+      offset_ = full_bounds->min;
+    }
+    else {
+      camera_ratio_ = 1.0f;
+      offset_ = float2(0);
+    }
   }
 }
 

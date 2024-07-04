@@ -133,11 +133,13 @@ class SVGExporter : public GreasePencilExporter {
 
 bool SVGExporter::export_scene(Scene &scene, StringRefNull filepath)
 {
-  this->prepare_camera_params(scene, false);
+  const int frame_number = scene.r.cfra;
+
+  this->prepare_camera_params(scene, frame_number, false);
 
   this->write_document_header();
   pugi::xml_node main_node = this->write_main_node();
-  this->export_grease_pencil_objects(main_node, scene.r.cfra);
+  this->export_grease_pencil_objects(main_node, frame_number);
 
   return this->write_to_file(filepath);
 }

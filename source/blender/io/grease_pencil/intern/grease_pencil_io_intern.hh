@@ -50,7 +50,7 @@ class GreasePencilImporter {
 class GreasePencilExporter {
  public:
   struct ObjectInfo {
-    const Object *object;
+    Object *object;
     float depth;
   };
 
@@ -71,7 +71,7 @@ class GreasePencilExporter {
  public:
   GreasePencilExporter(const IOContext &context, const ExportParams &params);
 
-  void prepare_camera_params(Scene &scene, bool force_camera_view);
+  void prepare_camera_params(Scene &scene, int frame_number, bool force_camera_view);
 
   static ColorGeometry4f compute_average_stroke_color(const Material &material,
                                                       const Span<ColorGeometry4f> vertex_colors);
