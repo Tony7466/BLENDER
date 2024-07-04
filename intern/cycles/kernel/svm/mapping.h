@@ -16,6 +16,9 @@ ccl_device_noinline void svm_node_mapping(KernelGlobals kg,
                                           uint type,
                                           uint inputs_stack_offsets,
                                           uint result_stack_offset)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   uint vector_stack_offset, location_stack_offset, rotation_stack_offset, scale_stack_offset;
   svm_unpack_node_uchar4(inputs_stack_offsets,
@@ -32,6 +35,7 @@ ccl_device_noinline void svm_node_mapping(KernelGlobals kg,
   float3 result = svm_mapping((NodeMappingType)type, vector, location, rotation, scale);
   stack_store_float3(stack, result_stack_offset, result);
 }
+#endif
 
 /* Texture Mapping */
 
@@ -41,6 +45,9 @@ ccl_device_noinline int svm_node_texture_mapping(KernelGlobals kg,
                                                  uint vec_offset,
                                                  uint out_offset,
                                                  int offset)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   float3 v = stack_load_float3(stack, vec_offset);
 
@@ -53,6 +60,7 @@ ccl_device_noinline int svm_node_texture_mapping(KernelGlobals kg,
   stack_store_float3(stack, out_offset, r);
   return offset;
 }
+#endif
 
 ccl_device_noinline int svm_node_min_max(KernelGlobals kg,
                                          ccl_private ShaderData *sd,
@@ -60,6 +68,9 @@ ccl_device_noinline int svm_node_min_max(KernelGlobals kg,
                                          uint vec_offset,
                                          uint out_offset,
                                          int offset)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   float3 v = stack_load_float3(stack, vec_offset);
 
@@ -70,5 +81,6 @@ ccl_device_noinline int svm_node_min_max(KernelGlobals kg,
   stack_store_float3(stack, out_offset, r);
   return offset;
 }
+#endif
 
 CCL_NAMESPACE_END

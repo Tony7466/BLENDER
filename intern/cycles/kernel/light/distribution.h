@@ -43,12 +43,16 @@ ccl_device int light_distribution_sample(KernelGlobals kg, const float rand)
 ccl_device_noinline bool light_distribution_sample(KernelGlobals kg,
                                                    const float rand,
                                                    ccl_private LightSample *ls)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   /* Sample light index from distribution. */
   ls->emitter_id = light_distribution_sample(kg, rand);
   ls->pdf_selection = kernel_data.integrator.distribution_pdf_lights;
   return true;
 }
+#endif
 
 ccl_device_inline float light_distribution_pdf_lamp(KernelGlobals kg)
 {

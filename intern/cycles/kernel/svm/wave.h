@@ -75,6 +75,9 @@ ccl_device_noinline_cpu float svm_wave(NodeWaveType type,
 
 ccl_device_noinline int svm_node_tex_wave(
     KernelGlobals kg, ccl_private ShaderData *sd, ccl_private float *stack, uint4 node, int offset)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   uint4 node2 = read_node(kg, &offset);
   uint4 node3 = read_node(kg, &offset);
@@ -118,5 +121,6 @@ ccl_device_noinline int svm_node_tex_wave(
     stack_store_float3(stack, color_offset, make_float3(f, f, f));
   return offset;
 }
+#endif
 
 CCL_NAMESPACE_END

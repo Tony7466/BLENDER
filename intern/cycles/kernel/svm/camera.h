@@ -12,6 +12,9 @@ ccl_device_noinline void svm_node_camera(KernelGlobals kg,
                                          uint out_vector,
                                          uint out_zdepth,
                                          uint out_distance)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   float distance;
   float zdepth;
@@ -34,5 +37,6 @@ ccl_device_noinline void svm_node_camera(KernelGlobals kg,
     stack_store_float(stack, out_distance, distance);
   }
 }
+#endif
 
 CCL_NAMESPACE_END

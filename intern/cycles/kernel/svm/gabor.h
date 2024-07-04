@@ -280,6 +280,9 @@ ccl_device_noinline int svm_node_tex_gabor(KernelGlobals kg,
                                            uint stack_offsets_1,
                                            uint stack_offsets_2,
                                            int offset)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   uint coordinates_stack_offset;
   uint scale_stack_offset;
@@ -360,5 +363,6 @@ ccl_device_noinline int svm_node_tex_gabor(KernelGlobals kg,
 
   return offset;
 }
+#endif
 
 CCL_NAMESPACE_END

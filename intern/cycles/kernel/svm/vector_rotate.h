@@ -13,6 +13,9 @@ ccl_device_noinline void svm_node_vector_rotate(ccl_private ShaderData *sd,
                                                 uint input_stack_offsets,
                                                 uint axis_stack_offsets,
                                                 uint result_stack_offset)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   uint type, vector_stack_offset, rotation_stack_offset, center_stack_offset, axis_stack_offset,
       angle_stack_offset, invert;
@@ -69,5 +72,6 @@ ccl_device_noinline void svm_node_vector_rotate(ccl_private ShaderData *sd,
     stack_store_float3(stack, result_stack_offset, result);
   }
 }
+#endif
 
 CCL_NAMESPACE_END

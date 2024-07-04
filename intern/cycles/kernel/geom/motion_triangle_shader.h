@@ -23,6 +23,9 @@ CCL_NAMESPACE_BEGIN
 
 /* return 3 triangle vertex normals */
 ccl_device_noinline void motion_triangle_shader_setup(KernelGlobals kg, ccl_private ShaderData *sd)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   /* Get shader. */
   sd->shader = kernel_data_fetch(tri_shader, sd->prim);
@@ -51,15 +54,16 @@ ccl_device_noinline void motion_triangle_shader_setup(KernelGlobals kg, ccl_priv
   sd->Ng = Ng;
   sd->N = Ng;
   /* Compute derivatives of P w.r.t. uv. */
-#ifdef __DPDU__
+#  ifdef __DPDU__
   sd->dPdu = (verts[1] - verts[0]);
   sd->dPdv = (verts[2] - verts[0]);
-#endif
+#  endif
   /* Compute smooth normal. */
   if (sd->shader & SHADER_SMOOTH_NORMAL) {
     sd->N = motion_triangle_smooth_normal(
         kg, Ng, sd->object, tri_vindex, numsteps, step, t, sd->u, sd->v);
   }
 }
+#endif
 
 CCL_NAMESPACE_END

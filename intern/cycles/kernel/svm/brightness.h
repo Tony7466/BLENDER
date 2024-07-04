@@ -10,6 +10,9 @@ CCL_NAMESPACE_BEGIN
 
 ccl_device_noinline void svm_node_brightness(
     ccl_private ShaderData *sd, ccl_private float *stack, uint in_color, uint out_color, uint node)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   uint bright_offset, contrast_offset;
   float3 color = stack_load_float3(stack, in_color);
@@ -23,5 +26,6 @@ ccl_device_noinline void svm_node_brightness(
   if (stack_valid(out_color))
     stack_store_float3(stack, out_color, color);
 }
+#endif
 
 CCL_NAMESPACE_END

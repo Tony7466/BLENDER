@@ -36,6 +36,9 @@ ccl_device_inline float3 texco_remap_square(float3 co)
 
 ccl_device_noinline int svm_node_tex_image(
     KernelGlobals kg, ccl_private ShaderData *sd, ccl_private float *stack, uint4 node, int offset)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   uint co_offset, out_offset, alpha_offset, flags;
 
@@ -106,11 +109,15 @@ ccl_device_noinline int svm_node_tex_image(
     stack_store_float(stack, alpha_offset, f.w);
   return offset;
 }
+#endif
 
 ccl_device_noinline void svm_node_tex_image_box(KernelGlobals kg,
                                                 ccl_private ShaderData *sd,
                                                 ccl_private float *stack,
                                                 uint4 node)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   /* get object space normal */
   float3 N = sd->N;
@@ -208,11 +215,15 @@ ccl_device_noinline void svm_node_tex_image_box(KernelGlobals kg,
   if (stack_valid(alpha_offset))
     stack_store_float(stack, alpha_offset, f.w);
 }
+#endif
 
 ccl_device_noinline void svm_node_tex_environment(KernelGlobals kg,
                                                   ccl_private ShaderData *sd,
                                                   ccl_private float *stack,
                                                   uint4 node)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   uint id = node.y;
   uint co_offset, out_offset, alpha_offset, flags;
@@ -237,5 +248,6 @@ ccl_device_noinline void svm_node_tex_environment(KernelGlobals kg,
   if (stack_valid(alpha_offset))
     stack_store_float(stack, alpha_offset, f.w);
 }
+#endif
 
 CCL_NAMESPACE_END

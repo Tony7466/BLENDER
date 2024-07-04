@@ -95,6 +95,9 @@ ccl_device_noinline_cpu float3 svm_magic(float3 p, float scale, int n, float dis
 
 ccl_device_noinline int svm_node_tex_magic(
     KernelGlobals kg, ccl_private ShaderData *sd, ccl_private float *stack, uint4 node, int offset)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   uint depth;
   uint scale_offset, distortion_offset, co_offset, fac_offset, color_offset;
@@ -115,5 +118,6 @@ ccl_device_noinline int svm_node_tex_magic(
     stack_store_float3(stack, color_offset, color);
   return offset;
 }
+#endif
 
 CCL_NAMESPACE_END

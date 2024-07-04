@@ -25,12 +25,17 @@ endif()
 ###########################################################################
 
 if(WITH_CYCLES_DEVICE_CUDA AND (WITH_CYCLES_CUDA_BINARIES OR NOT WITH_CUDA_DYNLOAD))
-  find_package(CUDA) # Try to auto locate CUDA toolkit
-  set_and_warn_library_found("CUDA compiler" CUDA_FOUND WITH_CYCLES_CUDA_BINARIES)
+  cmake_minimum_required(VERSION 3.9) # Required for CUDA_PTX_COMPILATION support
 
-  if(CUDA_FOUND)
-    message(STATUS "Found CUDA ${CUDA_NVCC_EXECUTABLE} (${CUDA_VERSION})")
+  include(CheckLanguage)
+  check_language(CUDA)
+
+  if(CMAKE_CUDA_COMPILER)
+    enable_language(CUDA)
+    set(CUDA_TOOLKIT_INCLUDE ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+    set(CUDA_NVCC_EXECUTABLE ${CMAKE_CUDA_COMPILER})
   else()
+    set_and_warn_library_found("CUDA compiler" CUDA_FOUND WITH_CYCLES_CUDA_BINARIES)
     if(NOT WITH_CUDA_DYNLOAD)
       message(STATUS "Additionally falling back to dynamic CUDA load")
       set(WITH_CUDA_DYNLOAD ON)

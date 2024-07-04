@@ -13,6 +13,9 @@ ccl_device_noinline int svm_node_normal(KernelGlobals kg,
                                         uint out_normal_offset,
                                         uint out_dot_offset,
                                         int offset)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   /* read extra data */
   uint4 node1 = read_node(kg, &offset);
@@ -33,5 +36,6 @@ ccl_device_noinline int svm_node_normal(KernelGlobals kg,
   }
   return offset;
 }
+#endif
 
 CCL_NAMESPACE_END

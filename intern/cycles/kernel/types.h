@@ -196,14 +196,16 @@ CCL_NAMESPACE_BEGIN
 #define __VOLUME__
 
 /* Device specific features */
-#ifdef WITH_OSL
-#  define __OSL__
+#ifdef __OSL__
 #  ifdef __KERNEL_OPTIX__
 /* Kernels with OSL support are built separately in OptiX and don't need SVM. */
 #    undef __SVM__
 #  endif
 #endif
 #ifndef __KERNEL_GPU__
+#  ifdef WITH_OSL
+#    define __OSL__
+#  endif
 #  ifdef WITH_PATH_GUIDING
 #    define __PATH_GUIDING__
 #  endif
