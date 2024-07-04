@@ -712,6 +712,123 @@ void UI_popup_block_ex(bContext *C,
   WM_event_add_mousemove(window);
 }
 
+static void popup_block_template_close_cb(bContext *C, void *arg1, void * /*arg2*/)
+{
+  uiBlock *block = (uiBlock *)arg1;
+
+  uiPopupBlockHandle *handle = block->handle;
+  if (handle == nullptr) {
+    printf("Error: used outside of a popup!\n");
+    return;
+  }
+
+  wmWindow *win = CTX_wm_window(C);
+  UI_popup_menu_retval_set(block, UI_RETURN_CANCEL, true);
+
+  if (handle->cancel_func) {
+    handle->cancel_func(C, handle->popup_arg);
+  }
+
+  UI_popup_block_close(C, win, block);
+}
+
+void UI_popup_block_template_confirm(uiBlock *block,
+                                     bool cancel_default,
+                                     blender::FunctionRef<uiBut *()> confirm_fn,
+                                     blender::FunctionRef<uiBut *()> cancel_fn)
+{
+#ifdef _WIN32
+  const bool windows_layout = true;
+#else
+  const bool windows_layout = false;
+#endif
+
+  if (uiBut *but = windows_layout ? confirm_fn() : cancel_fn()) {
+    bool is_cancel = windows_layout ? false : true;
+    UI_but_func_set(but, popup_block_template_close_cb, block, nullptr);
+    if (cancel_default == is_cancel) {
+      UI_but_flag_enable(but, UI_BUT_ACTIVE_DEFAULT);
+    }
+  }
+  if (uiBut *but = windows_layout ? cancel_fn() : confirm_fn()) {
+    bool is_cancel = windows_layout ? true : false;
+    UI_but_func_set(but, popup_block_template_close_cb, block, nullptr);
+    if (cancel_default == is_cancel) {
+      UI_but_flag_enable(but, UI_BUT_ACTIVE_DEFAULT);
+    }
+  }
+}
+
+void UI_popup_block_template_confirm_op(uiLayout *layout,
+                                        wmOperatorType *ot,
+                                        const char *confirm_text,
+                                        const char *cancel_text,
+                                        const int icon,
+                                        bool cancel_default,
+                                        PointerRNA *r_ptr)
+{
+  uiBlock *block = uiLayoutGetBlock(layout);
+
+  if (confirm_text == nullptr) {
+    confirm_text = IFACE_("OK");
+  }
+  if (cancel_text == nullptr) {
+    cancel_text = IFACE_("Cancel");
+  }
+
+  /* Use a split so both buttons are the same size. */
+  const bool show_confirm = confirm_text[0] != '\0';
+  const bool show_cancel = cancel_text[0] != '\0';
+  uiLayout *row = (show_confirm && show_cancel) ? uiLayoutSplit(layout, 0.5f, false) : layout;
+
+  /* When only one button is shown, make it default. */
+  if (!show_confirm) {
+    cancel_default = true;
+  }
+
+  auto confirm_fn = [&row, &ot, &confirm_text, &icon, &r_ptr, &show_confirm]() -> uiBut * {
+    if (!show_confirm) {
+      return nullptr;
+    }
+    uiBlock *block = uiLayoutGetBlock(row);
+    uiItemFullO_ptr(row,
+                    ot,
+                    confirm_text,
+                    icon,
+                    nullptr,
+                    uiLayoutGetOperatorContext(row),
+                    UI_ITEM_NONE,
+                    r_ptr);
+
+    uiBut *confirm_but = (uiBut *)block->buttons.last;
+    return confirm_but;
+  };
+
+  auto cancel_fn = [&row, &cancel_text, &show_cancel]() -> uiBut * {
+    if (!show_cancel) {
+      return nullptr;
+    }
+    uiBlock *block = uiLayoutGetBlock(row);
+    uiBut *cancel_but = uiDefIconTextBut(block,
+                                         UI_BTYPE_BUT,
+                                         1,
+                                         ICON_NONE,
+                                         cancel_text,
+                                         0,
+                                         0,
+                                         UI_UNIT_X, /* Ignored, as a split is used. */
+                                         UI_UNIT_Y,
+                                         nullptr,
+                                         0.0,
+                                         0.0,
+                                         "");
+
+    return cancel_but;
+  };
+
+  UI_popup_block_template_confirm(block, cancel_default, confirm_fn, cancel_fn);
+}
+
 #if 0 /* UNUSED */
 void uiPupBlockOperator(bContext *C,
                         uiBlockCreateFunc func,

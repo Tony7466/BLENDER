@@ -1590,7 +1590,7 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
 #endif
 
   /* New column so as not to interfere with custom layouts, see: #26436. */
-  {
+  if (!UI_block_has_active_default_button(uiLayoutGetBlock(layout))) {
     uiLayout *col = uiLayoutColumn(layout, false);
     uiBlock *col_block = uiLayoutGetBlock(col);
     uiBut *confirm_but;
