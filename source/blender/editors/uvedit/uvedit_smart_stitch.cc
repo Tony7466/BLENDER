@@ -2791,10 +2791,10 @@ void UV_OT_stitch(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
-static bool uvedit_uv_threshold_center_vertex_loops(bContext *C,
-                                                    Scene *scene,
-                                                    blender::Vector<Object *> *objects,
-                                                    float threshold)
+static bool uvedit_uv_threshold_weld_underlyinggeometry(bContext *C,
+                                                        Scene *scene,
+                                                        blender::Vector<Object *> *objects,
+                                                        float threshold)
 {
   SpaceImage *sima = CTX_wm_space_image(C);
   for (Object *obedit : *objects) {
@@ -2805,11 +2805,14 @@ static bool uvedit_uv_threshold_center_vertex_loops(bContext *C,
     BMIter viter, liter;
     BM_ITER_MESH (v, &viter, em->bm, BM_VERTS_OF_MESH) {
       std::vector<float *> luvmap;
+      /*Grap all luv pointers from selected loops*/
       BM_ITER_ELEM (l, &liter, v, BM_LOOPS_OF_VERT) {
         if (uvedit_uv_select_test(scene, l, offsets)) {
           luvmap.push_back(BM_ELEM_CD_GET_FLOAT_P(l, offsets.uv));
         }
       }
+      /*Filter out luv pointers who are not within threshold
+      distance of another selected loop from same vertex*/
       auto outer = luvmap.begin();
       while (outer != luvmap.end()) {
         auto inner = luvmap.begin();
@@ -2817,6 +2820,8 @@ static bool uvedit_uv_threshold_center_vertex_loops(bContext *C,
         while (inner != luvmap.end()) {
           if (outer != inner) {
             float dist = len_squared_v2v2(*outer, *inner);
+            /*Does not compare loops' distances if
+            they are at the same UV coordinate */
             if (dist < threshold and dist > 0.0f) {
               keep = true;
             }
@@ -2833,6 +2838,8 @@ static bool uvedit_uv_threshold_center_vertex_loops(bContext *C,
           ++outer;
         }
       }
+      /*Calculate centerpoint of all selected loops within
+      threshold and shift coordinates there*/
       if (luvmap.size() > 0) {
         std::vector<float> sum(2, 0.0f);
         for (auto &luv : luvmap) {
@@ -2861,6 +2868,7 @@ static bool uvedit_uv_threshold_weld(Scene *scene,
 {
   std::vector<std::vector<std::vector<BMLoop *>>> edgeloops;
   std::vector<BMUVOffsets> offsetmap;
+  /*Constructs array of edgeloops*/
   for (Object *objedit : *objects) {
     BMEditMesh *em = BKE_editmesh_from_object(objedit);
     UV_get_edgeloops(scene, em->bm, &edgeloops, uvedit_uv_select_test);
@@ -2870,6 +2878,7 @@ static bool uvedit_uv_threshold_weld(Scene *scene,
       offsetmap.push_back(offsets);
     }
   }
+  /*Gets the endpoints of edge respective edgeloop*/
   std::vector<std::vector<std::vector<BMLoop *>>> endpoints;
   for (const auto &curredgeloop : edgeloops) {
     std::vector<std::vector<BMLoop *>> curredgeloopendpoints;
@@ -2894,7 +2903,8 @@ static bool uvedit_uv_threshold_weld(Scene *scene,
   for (const auto &array : edgeloops) {
     min_size = std::min(min_size, array.size());
   }
-
+  /*Find correct pairing of endpoints between edgeloops
+  by searching for combination with smalled distance*/
   if (min_size > 1) {
     for (size_t i = 0; i < endpoints.size() - 1; i++) {
       const auto &curredgeloopendpoints = endpoints[i];
@@ -2916,7 +2926,8 @@ static bool uvedit_uv_threshold_weld(Scene *scene,
       }
     }
   }
-
+  /*Iterates through 2 selected edgeloops starting at endpoints
+  and utilizes pointers in BMLoop to traverse edgeloops*/
   std::vector<BMLoop *> line1 = endpoints[0][0];
   std::vector<BMLoop *> line2 = endpoints[1][0];
   std::vector<BMLoop *> prev1;
@@ -2970,7 +2981,8 @@ static int stitch_distance_exec(bContext *C, wmOperator *op)
   if (RNA_boolean_get(op->ptr, "underlying_geometry")) {
     /* Since we are using len_squared_v2v2 to calculate distance, we need to square the
      * user-defined threshold*/
-    changed = uvedit_uv_threshold_center_vertex_loops(C, scene, &objects, threshold * threshold);
+    changed = uvedit_uv_threshold_weld_underlyinggeometry(
+        C, scene, &objects, threshold * threshold);
   }
   else {
     changed = uvedit_uv_threshold_weld(scene, &objects, threshold * threshold);
