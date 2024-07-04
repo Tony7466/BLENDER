@@ -1,0 +1,1 @@
+Referenced by issue #124143, 'C-style MEM_freeN on a pointer created with CPP-style' error when switching to shader editor
