@@ -2400,7 +2400,7 @@ typedef struct NodesModifierDataBlock {
 } NodesModifierDataBlock;
 
 typedef struct NodesModifierBakeFile {
-  const char *relative_filepath;
+  const char *name;
   PackedFile *packed_file;
 } NodesModifierBakeFile;
 

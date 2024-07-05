@@ -974,21 +974,38 @@ static bool try_find_baked_data(const NodesModifierBake &bake,
       return false;
     }
     bake_cache.reset();
+    Map<SubFrame, const NodesModifierBakeFile *> file_by_frame;
     for (const NodesModifierBakeFile &meta_file :
          Span{bake.packed->meta_files, bake.packed->meta_files_num})
     {
+      const std::optional<SubFrame> frame = bake::file_name_to_frame(meta_file.name);
+      if (!frame) {
+        return false;
+      }
+      if (!file_by_frame.add(*frame, &meta_file)) {
+        /* Can only have on file per (sub)frame. */
+        return false;
+      }
+    }
+    /* Make sure frames processed in the right order. */
+    Vector<SubFrame> frames;
+    frames.extend(file_by_frame.keys().begin(), file_by_frame.keys().end());
+
+    for (const SubFrame &frame : frames) {
+      const NodesModifierBakeFile &meta_file = *file_by_frame.lookup(frame);
       auto frame_cache = std::make_unique<bake::FrameCache>();
-      frame_cache->frame = *bake::file_name_to_frame(meta_file.relative_filepath);
+      frame_cache->frame = frame;
       frame_cache->meta_buffer = Span(static_cast<const std::byte *>(meta_file.packed_file->data),
                                       meta_file.packed_file->size);
       bake_cache.frames.append(std::move(frame_cache));
     }
+
     bake_cache.memory_blob_reader = std::make_unique<bake::MemoryBlobReader>();
     for (const NodesModifierBakeFile &blob_file :
          Span{bake.packed->blob_files, bake.packed->blob_files_num})
     {
       bake_cache.memory_blob_reader->add(
-          blob_file.relative_filepath,
+          blob_file.name,
           Span(static_cast<const std::byte *>(blob_file.packed_file->data),
                blob_file.packed_file->size));
     }
@@ -2428,7 +2445,7 @@ static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const Modi
         BLO_write_struct_array(
             writer, NodesModifierBakeFile, bake.packed->blob_files_num, bake.packed->blob_files);
         const auto write_bake_file = [&](const NodesModifierBakeFile &bake_file) {
-          BLO_write_string(writer, bake_file.relative_filepath);
+          BLO_write_string(writer, bake_file.name);
           BKE_packedfile_blend_write(writer, bake_file.packed_file);
         };
         for (const NodesModifierBakeFile &meta_file :
@@ -2490,7 +2507,7 @@ static void blend_read(BlendDataReader *reader, ModifierData *md)
       BLO_read_struct_array(
           reader, NodesModifierBakeFile, bake.packed->blob_files_num, &bake.packed->blob_files);
       const auto read_bake_file = [&](NodesModifierBakeFile &bake_file) {
-        BLO_read_string(reader, &bake_file.relative_filepath);
+        BLO_read_string(reader, &bake_file.name);
         BKE_packedfile_blend_read(reader, &bake_file.packed_file);
       };
       for (NodesModifierBakeFile &meta_file :
@@ -2546,7 +2563,7 @@ static void copy_data(const ModifierData *md, ModifierData *target, const int fl
           }
           *bake_files = static_cast<NodesModifierBakeFile *>(MEM_dupallocN(*bake_files));
           for (NodesModifierBakeFile &bake_file : MutableSpan{*bake_files, bake_files_num}) {
-            bake_file.relative_filepath = BLI_strdup_null(bake_file.relative_filepath);
+            bake_file.name = BLI_strdup_null(bake_file.name);
             bake_file.packed_file = BKE_packedfile_duplicate(bake_file.packed_file);
           }
         };
@@ -2583,7 +2600,7 @@ void nodes_modifier_packed_bake_free(NodesModifierPackedBake *packed_bake)
 {
   const auto free_packed_files = [](NodesModifierBakeFile *files, const int files_num) {
     for (NodesModifierBakeFile &file : MutableSpan{files, files_num}) {
-      MEM_SAFE_FREE(file.relative_filepath);
+      MEM_SAFE_FREE(file.name);
       BKE_packedfile_free(file.packed_file);
     }
     MEM_freeN(files);

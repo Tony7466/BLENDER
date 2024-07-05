@@ -365,7 +365,7 @@ static void bake_geometry_nodes_startjob(void *customdata, wmJobWorkerStatus *wo
           for (const int i : IndexRange(num)) {
             NodesModifierBakeFile &bake_file = bake_files[i];
             MemoryBakeFile &memory = memory_bake_files[i];
-            bake_file.relative_filepath = BLI_strdup_null(memory.name.c_str());
+            bake_file.name = BLI_strdup_null(memory.name.c_str());
             const int64_t data_size = memory.data.size();
             void *data = MEM_mallocN(data_size, __func__);
             memcpy(data, memory.data.data(), data_size);
