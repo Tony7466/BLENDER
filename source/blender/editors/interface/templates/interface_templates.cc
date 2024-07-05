@@ -3752,7 +3752,7 @@ static void colorband_buttons_layout(uiLayout *layout,
     }
   });
 
-  RNAUpdateCb *tools_cb = MEM_cnew<RNAUpdateCb>(__func__, cb);
+  RNAUpdateCb *tools_cb = MEM_new<RNAUpdateCb>(__func__, cb);
   bt = uiDefIconBlockBut(block,
                          colorband_tools_fn,
                          tools_cb,
@@ -3765,7 +3765,12 @@ static void colorband_buttons_layout(uiLayout *layout,
                          TIP_("Tools"));
   /* Pass ownership of `tools_cb` to the button. */
   UI_but_funcN_set(
-      bt, [](bContext *, void *, void *) {}, tools_cb, nullptr);
+      bt,
+      [](bContext *, void *, void *) {},
+      tools_cb,
+      nullptr,
+      but_func_argN_free<RNAUpdateCb>,
+      but_func_argN_copy<RNAUpdateCb>);
 
   UI_block_align_end(block);
   UI_block_emboss_set(block, UI_EMBOSS);
@@ -4036,7 +4041,9 @@ void uiTemplateIconView(uiLayout *layout,
                          0,
                          UI_UNIT_X * icon_scale,
                          UI_UNIT_Y * icon_scale,
-                         "");
+                         "",
+                         but_func_argN_free<IconViewMenuArgs>,
+                         but_func_argN_copy<IconViewMenuArgs>);
   }
   else {
     but = uiDefIconBut(block,
@@ -4730,7 +4737,7 @@ static void curvemap_buttons_layout(uiLayout *layout,
     UI_but_func_set(bt, [cb](bContext &C) { rna_update_cb(C, cb); });
   }
 
-  RNAUpdateCb *tools_cb = MEM_cnew<RNAUpdateCb>(__func__, cb);
+  RNAUpdateCb *tools_cb = MEM_new<RNAUpdateCb>(__func__, cb);
   if (brush && neg_slope) {
     bt = uiDefIconBlockBut(block,
                            curvemap_brush_tools_negslope_func,
@@ -4757,9 +4764,19 @@ static void curvemap_buttons_layout(uiLayout *layout,
   }
   /* Pass ownership of `tools_cb` to the button. */
   UI_but_funcN_set(
-      bt, [](bContext *, void *, void *) {}, tools_cb, nullptr);
+      bt,
+      [](bContext *, void *, void *) {},
+      tools_cb,
+      nullptr,
+      but_func_argN_free<RNAUpdateCb>,
+      but_func_argN_copy<RNAUpdateCb>);
 
-  UI_block_funcN_set(block, rna_update_cb, MEM_cnew<RNAUpdateCb>(__func__, cb), nullptr);
+  UI_block_funcN_set(block,
+                     rna_update_cb,
+                     MEM_new<RNAUpdateCb>(__func__, cb),
+                     nullptr,
+                     but_func_argN_free<RNAUpdateCb>,
+                     but_func_argN_copy<RNAUpdateCb>);
 
   /* Curve itself. */
   const int size = max_ii(uiLayoutGetWidth(layout), UI_UNIT_X);
@@ -5183,7 +5200,7 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, const
   /* There is probably potential to use simpler "uiItemR" functions here, but automatic updating
    * after a preset is selected would be more complicated. */
   uiLayout *row = uiLayoutRow(layout, true);
-  RNAUpdateCb *presets_cb = MEM_cnew<RNAUpdateCb>(__func__, cb);
+  RNAUpdateCb *presets_cb = MEM_new<RNAUpdateCb>(__func__, cb);
   bt = uiDefBlockBut(block,
                      curve_profile_presets_fn,
                      presets_cb,
@@ -5195,7 +5212,12 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, const
                      "");
   /* Pass ownership of `presets_cb` to the button. */
   UI_but_funcN_set(
-      bt, [](bContext *, void *, void *) {}, presets_cb, nullptr);
+      bt,
+      [](bContext *, void *, void *) {},
+      presets_cb,
+      nullptr,
+      but_func_argN_free<RNAUpdateCb>,
+      but_func_argN_copy<RNAUpdateCb>);
 
   /* Show a "re-apply" preset button when it has been changed from the preset. */
   if (profile->flag & PROF_DIRTY_PRESET) {
@@ -5308,7 +5330,7 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, const
   });
 
   /* Reset view, reset curve */
-  RNAUpdateCb *tools_cb = MEM_cnew<RNAUpdateCb>(__func__, cb);
+  RNAUpdateCb *tools_cb = MEM_new<RNAUpdateCb>(__func__, cb);
   bt = uiDefIconBlockBut(block,
                          curve_profile_tools_fn,
                          tools_cb,
@@ -5321,9 +5343,19 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, const
                          TIP_("Tools"));
   /* Pass ownership of `presets_cb` to the button. */
   UI_but_funcN_set(
-      bt, [](bContext *, void *, void *) {}, tools_cb, nullptr);
+      bt,
+      [](bContext *, void *, void *) {},
+      tools_cb,
+      nullptr,
+      but_func_argN_free<RNAUpdateCb>,
+      but_func_argN_copy<RNAUpdateCb>);
 
-  UI_block_funcN_set(block, rna_update_cb, MEM_new<RNAUpdateCb>(__func__, cb), nullptr);
+  UI_block_funcN_set(block,
+                     rna_update_cb,
+                     MEM_new<RNAUpdateCb>(__func__, cb),
+                     nullptr,
+                     but_func_argN_free<RNAUpdateCb>,
+                     but_func_argN_copy<RNAUpdateCb>);
 
   /* The path itself */
   int path_width = max_ii(uiLayoutGetWidth(layout), UI_UNIT_X);
@@ -6936,7 +6968,7 @@ void uiTemplateComponentMenu(uiLayout *layout,
                              const char *propname,
                              const char *name)
 {
-  ComponentMenuArgs *args = MEM_cnew<ComponentMenuArgs>(__func__);
+  ComponentMenuArgs *args = MEM_new<ComponentMenuArgs>(__func__);
 
   args->ptr = *ptr;
   STRNCPY(args->propname, propname);
@@ -6944,8 +6976,18 @@ void uiTemplateComponentMenu(uiLayout *layout,
   uiBlock *block = uiLayoutGetBlock(layout);
   UI_block_align_begin(block);
 
-  uiBut *but = uiDefBlockButN(
-      block, component_menu, args, name, 0, 0, UI_UNIT_X * 6, UI_UNIT_Y, "");
+  uiBut *but = uiDefBlockButN(block,
+                              component_menu,
+                              /* FIXME: MEM_new freed by MEM_freeN: #args. */
+                              args,
+                              name,
+                              0,
+                              0,
+                              UI_UNIT_X * 6,
+                              UI_UNIT_Y,
+                              "",
+                              but_func_argN_free<ComponentMenuArgs>,
+                              but_func_argN_copy<ComponentMenuArgs>);
   /* set rna directly, uiDefBlockButN doesn't do this */
   but->rnapoin = *ptr;
   but->rnaprop = RNA_struct_find_property(ptr, propname);
