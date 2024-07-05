@@ -188,11 +188,10 @@ static std::optional<blender::bke::MutableAttributeAccessor> get_attribute_acces
 
 }  // namespace blender::bke
 
-bool BKE_attributes_supported(const AttributeOwner &owner)
+bool BKE_attributes_supported(const blender::bke::AttributeAccessor &accessor)
 {
-  const std::array<DomainInfo, ATTR_DOMAIN_NUM> info = get_domains(owner);
   for (const int domain : IndexRange(ATTR_DOMAIN_NUM)) {
-    if (info[domain].customdata) {
+    if (accessor.domain_supported(blender::bke::AttrDomain(domain))) {
       return true;
     }
   }
