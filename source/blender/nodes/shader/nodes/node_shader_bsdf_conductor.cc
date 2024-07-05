@@ -17,12 +17,12 @@ static void node_declare(NodeDeclarationBuilder &b)
       .default_value({0.183f, 0.421f, 1.373f})
       .min(0.0f)
       .max(100.0f)
-      .description("PLACEHOLDER");
+      .description("Real part of the conductor's IOR");
   b.add_input<decl::Vector>("Extinction")
       .default_value({3.424f, 2.346f, 1.770f})
       .min(0.0f)
       .max(100.0f)
-      .description("PLACE HOLDER");
+      .description("Complex part of the conductor's IOR");
   b.add_input<decl::Float>("Roughness")
       .default_value(0.5f)
       .min(0.0f)
