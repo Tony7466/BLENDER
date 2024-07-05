@@ -365,7 +365,7 @@ bool OptiXDevice::load_kernels(const uint kernel_features)
     if (i < MOD_INTEGRATOR_INTERSECT_CLOSEST || i >= MOD_INTEGRATOR_SHADE_BACKGROUND)
       module_name += suffix;
 
-    ptx_filename = path_get("lib/optix/" + module_name + ".ptx");
+    ptx_filename = path_get("lib/optix/" + module_name + ".ptx.zst");
     string ptx_data;
     if (use_adaptive_compilation() || path_file_size(ptx_filename) == -1) {
       string cflags = compile_kernel_get_common_cflags(kernel_features);
