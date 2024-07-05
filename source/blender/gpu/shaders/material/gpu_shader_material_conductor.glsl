@@ -6,14 +6,14 @@ vec3 fresnel_conductor(float cosi, const vec3 eta, const vec3 k)
 {
   const vec3 cosiv3 = vec3(cosi);
 
-  const vec3 sqr_cosi = vec3(cosi * cosi);
+  const vec3 cosi_sqr = vec3(cosi * cosi);
   const vec3 one = vec3(1.0);
   const vec3 tmp_f = (eta * eta) + (k * k);
 
-  const vec3 tmp = tmp_f * sqr_cosi;
+  const vec3 tmp = tmp_f * cosi_sqr;
   const vec3 Rparl2 = (tmp - (2.0 * eta * cosiv3) + one) / (tmp + (2.0 * eta * cosiv3) + one);
-  const vec3 Rperp2 = (tmp_f - (2.0 * eta * cosiv3) + sqr_cosi) /
-                      (tmp_f + (2.0 * eta * cosiv3) + sqr_cosi);
+  const vec3 Rperp2 = (tmp_f - (2.0 * eta * cosiv3) + cosi_sqr) /
+                      (tmp_f + (2.0 * eta * cosiv3) + cosi_sqr);
   return (Rparl2 + Rperp2) * 0.5;
 }
 
