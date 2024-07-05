@@ -271,7 +271,10 @@ static void rna_NodeSocket_type_set(PointerRNA *ptr, int value)
   blender::bke::nodeFindNode(ntree, sock, &node, nullptr);
   if (node->type != NODE_CUSTOM) {
     /* Can't change the socket type on built-in nodes like this. */
-    return;
+    if (!node->is_reroute()) {
+      /* TODO: Refactor reroute node to avoid this hack. */
+      return;
+    }
   }
   blender::bke::nodeModifySocketTypeStatic(ntree, node, sock, value, 0);
 }
