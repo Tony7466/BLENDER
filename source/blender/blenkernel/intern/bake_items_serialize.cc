@@ -153,13 +153,9 @@ BlobSlice DiskBlobWriter::write_as_stream(const StringRef file_extension,
   return {file_name, {0, written_bytes_num}};
 }
 
-MemoryBlobReader::MemoryBlobReader(const Span<NodesModifierBakeFile> blob_files)
+void MemoryBlobReader::add(const StringRef name, const Span<std::byte> blob)
 {
-  for (const NodesModifierBakeFile &blob_file : blob_files) {
-    blob_by_name_.add(blob_file.relative_filepath,
-                      Span{static_cast<const std::byte *>(blob_file.packed_file->data),
-                           blob_file.packed_file->size});
-  }
+  blob_by_name_.add(name, blob);
 }
 
 bool MemoryBlobReader::read(const BlobSlice &slice, void *r_data) const

@@ -56,9 +56,11 @@ struct NodeBakeCache {
   /** All cached frames sorted by frame. */
   Vector<std::unique_ptr<FrameCache>> frames;
 
-  /** Where to load blobs from disk when loading the baked data lazily. */
+  /** Loads blob data from memory when the bake is packed. */
+  std::unique_ptr<MemoryBlobReader> memory_blob_reader;
+  /** Where to load blobs from disk when loading the baked data lazily from disk. */
   std::optional<std::string> blobs_dir;
-  bool load_from_packed = false;
+
   /** Used to avoid reading blobs multiple times for different frames. */
   std::unique_ptr<BlobReadSharing> blob_sharing;
   /** Used to avoid checking if a bake exists many times. */

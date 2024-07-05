@@ -934,13 +934,12 @@ static void ensure_bake_loaded(const NodesModifierBake &bake,
   if (!frame_cache.state.items_by_id.is_empty()) {
     return;
   }
-  if (bake_cache.load_from_packed && frame_cache.meta_buffer.has_value()) {
+  if (bake_cache.memory_blob_reader && frame_cache.meta_buffer.has_value()) {
     const std::string meta_str{reinterpret_cast<const char *>(frame_cache.meta_buffer->data()),
                                size_t(frame_cache.meta_buffer->size())};
     std::istringstream meta_stream{meta_str};
-    bake::MemoryBlobReader blob_reader{Span{bake.packed->blob_files, bake.packed->blob_files_num}};
     std::optional<bake::BakeState> bake_state = bake::deserialize_bake(
-        meta_stream, blob_reader, *bake_cache.blob_sharing);
+        meta_stream, *bake_cache.memory_blob_reader, *bake_cache.blob_sharing);
     if (!bake_state.has_value()) {
       return;
     }
@@ -984,7 +983,15 @@ static bool try_find_baked_data(const NodesModifierBake &bake,
                                       meta_file.packed_file->size);
       bake_cache.frames.append(std::move(frame_cache));
     }
-    bake_cache.load_from_packed = true;
+    bake_cache.memory_blob_reader = std::make_unique<bake::MemoryBlobReader>();
+    for (const NodesModifierBakeFile &blob_file :
+         Span{bake.packed->blob_files, bake.packed->blob_files_num})
+    {
+      bake_cache.memory_blob_reader->add(
+          blob_file.relative_filepath,
+          Span(static_cast<const std::byte *>(blob_file.packed_file->data),
+               blob_file.packed_file->size));
+    }
     bake_cache.blob_sharing = std::make_unique<bake::BlobReadSharing>();
     return true;
   }

@@ -10,8 +10,6 @@
 
 #include "BKE_bake_items.hh"
 
-struct NodesModifierBakeFile;
-
 namespace blender::bke::bake {
 
 /**
@@ -191,7 +189,8 @@ class MemoryBlobReader : public BlobReader {
   Map<StringRef, Span<std::byte>> blob_by_name_;
 
  public:
-  MemoryBlobReader(Span<NodesModifierBakeFile> blob_files);
+  void add(StringRef name, Span<std::byte> blob);
+
   [[nodiscard]] bool read(const BlobSlice &slice, void *r_data) const override;
 };
 
