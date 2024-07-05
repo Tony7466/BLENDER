@@ -4042,11 +4042,11 @@ static void rna_NodeConvertColorSpace_to_color_space_set(PointerRNA *ptr, int va
 static void rna_reroute_node_socket_type_set(PointerRNA *ptr, const char *value)
 {
   const bNodeTree &ntree = *reinterpret_cast<bNodeTree *>(ptr->owner_id);
-  bNodeTreeType *ntree_type = ntree.typeinfo;
+  blender::bke::bNodeTreeType *ntree_type = ntree.typeinfo;
 
   bNode &node = *static_cast<bNode *>(ptr->data);
 
-  bNodeSocketType *socket_type = nodeSocketTypeFind(value);
+  blender::bke::bNodeSocketType *socket_type = blender::bke::nodeSocketTypeFind(value);
   if (socket_type == nullptr) {
     return;
   }
