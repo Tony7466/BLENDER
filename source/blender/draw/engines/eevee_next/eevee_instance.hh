@@ -30,6 +30,7 @@
 #include "eevee_lookdev.hh"
 #include "eevee_material.hh"
 #include "eevee_motion_blur.hh"
+#include "eevee_npr.hh"
 #include "eevee_pipeline.hh"
 #include "eevee_raytrace.hh"
 #include "eevee_renderbuffers.hh"
@@ -108,6 +109,7 @@ class Instance {
   VolumeProbeModule volume_probes;
   LightProbeModule light_probes;
   VolumeModule volume;
+  NPRModule npr;
 
   /** Input data. */
   Depsgraph *depsgraph;
@@ -169,7 +171,8 @@ class Instance {
         planar_probes(*this),
         volume_probes(*this),
         light_probes(*this),
-        volume(*this, uniform_data.data.volumes){};
+        volume(*this, uniform_data.data.volumes),
+        npr(*this){};
   ~Instance(){};
 
   /* Render & Viewport. */

@@ -124,6 +124,7 @@ set(SRC
   engines/eevee_next/eevee_lut.cc
   engines/eevee_next/eevee_material.cc
   engines/eevee_next/eevee_motion_blur.cc
+  engines/eevee_next/eevee_npr.cc
   engines/eevee_next/eevee_pipeline.cc
   engines/eevee_next/eevee_lightprobe_planar.cc
   engines/eevee_next/eevee_precompute.cc
@@ -257,6 +258,7 @@ set(SRC
   engines/eevee_next/eevee_lut.hh
   engines/eevee_next/eevee_material.hh
   engines/eevee_next/eevee_motion_blur.hh
+  engines/eevee_next/eevee_npr.hh
   engines/eevee_next/eevee_pipeline.hh
   engines/eevee_next/eevee_lightprobe_planar.hh
   engines/eevee_next/eevee_precompute.hh
