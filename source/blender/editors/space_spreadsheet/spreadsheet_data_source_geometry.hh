@@ -71,11 +71,6 @@ class GeometryDataSource : public DataSource {
   {
   }
 
-  Object *object_eval() const
-  {
-    return object_eval_;
-  }
-
   bool has_selection_filter() const override;
   IndexMask apply_selection_filter(IndexMaskMemory &memory) const;
 
