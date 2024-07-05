@@ -141,7 +141,7 @@ bool Action::is_action_layered() const
   /* This is a valid layered Action if there is ANY layered info (because that
    * takes precedence) or when there is no legacy info. */
   return this->layer_array_num > 0 || this->binding_array_num > 0 ||
-         BLI_listbase_is_empty(&this->curves);
+         BLI_listbase_is_empty(&this->curves) || BLI_listbase_is_empty(&this->groups);
 }
 
 blender::Span<const Layer *> Action::layers() const
