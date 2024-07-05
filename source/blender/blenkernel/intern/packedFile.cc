@@ -785,14 +785,30 @@ int BKE_packedfile_unpack_volume(Main *bmain,
   return ret_value;
 }
 
-int BKE_packedfile_unpack_geometry_nodes_bake(Main &bmain,
-                                              ReportList *reports,
-                                              Object &object,
-                                              NodesModifierData &nmd,
-                                              NodesModifierBake &bake,
-                                              enum ePF_FileStatus how)
+static int BKE_packedfile_unpack_geometry_nodes_bake(Main &bmain,
+                                                     ReportList *reports,
+                                                     Object &object,
+                                                     NodesModifierData &nmd,
+                                                     NodesModifierBake &bake,
+                                                     enum ePF_FileStatus how)
 {
-  return RET_ERROR;
+  using namespace blender::bke;
+  const std::optional<bake::BakePath> bake_path = bake::get_node_bake_path(
+      bmain, object, nmd, bake.id);
+  if (!bake_path) {
+    /* Has no data to pack. */
+    return RET_ERROR;
+  }
+
+  BLI_delete(bake_path->meta_dir.c_str(), true, true);
+  BLI_delete(bake_path->blobs_dir.c_str(), true, true);
+
+  bake::unpack_bake_to_disk(*bake.packed, *bake_path, reports);
+  blender::nodes_modifier_packed_bake_free(bake.packed);
+  bake.packed = nullptr;
+  nmd.runtime->cache->get_node_bake_cache(bake.id)->reset();
+  DEG_id_tag_update(&object.id, ID_RECALC_GEOMETRY);
+  return RET_OK;
 }
 
 int BKE_packedfile_unpack_all_libraries(Main *bmain, ReportList *reports)

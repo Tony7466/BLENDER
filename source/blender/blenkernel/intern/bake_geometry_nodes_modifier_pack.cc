@@ -70,6 +70,24 @@ bool unpack_bake_to_disk(const NodesModifierPackedBake &packed_bake,
                          const BakePath &bake_path,
                          ReportList *reports)
 {
+  for (const NodesModifierBakeFile &bake_file :
+       Span{packed_bake.meta_files, packed_bake.meta_files_num})
+  {
+    char file_path[FILE_MAX];
+    BLI_path_join(file_path, sizeof(file_path), bake_path.meta_dir.c_str(), bake_file.name);
+    BLI_file_ensure_parent_dir_exists(file_path);
+    fstream fs(file_path, std::ios::out);
+    fs.write(static_cast<const char *>(bake_file.packed_file->data), bake_file.packed_file->size);
+  }
+  for (const NodesModifierBakeFile &bake_file :
+       Span{packed_bake.blob_files, packed_bake.blob_files_num})
+  {
+    char file_path[FILE_MAX];
+    BLI_path_join(file_path, sizeof(file_path), bake_path.blobs_dir.c_str(), bake_file.name);
+    BLI_file_ensure_parent_dir_exists(file_path);
+    fstream fs(file_path, std::ios::out | std::ios::binary);
+    fs.write(static_cast<const char *>(bake_file.packed_file->data), bake_file.packed_file->size);
+  }
   return false;
 }
 

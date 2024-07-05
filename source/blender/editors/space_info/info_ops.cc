@@ -246,6 +246,7 @@ static int unpack_all_exec(bContext *C, wmOperator *op)
     WM_cursor_wait(false);
   }
   G.fileflags &= ~G_FILE_AUTOPACK;
+  WM_main_add_notifier(NC_WINDOW, nullptr);
 
   return OPERATOR_FINISHED;
 }
