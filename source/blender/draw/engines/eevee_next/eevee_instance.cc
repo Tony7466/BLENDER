@@ -565,7 +565,7 @@ void Instance::draw_viewport()
         GPU_type_matches_ex(GPU_DEVICE_ANY, GPU_OS_ANY, GPU_DRIVER_ANY, GPU_BACKEND_OPENGL))
     {
       ss << "\n"
-         << "Increasing Preferences > System > Max Shader Compilation Subprocesses\n"
+         << "Increasing Preferences > System > Max Shader Compilation Subprocesses "
          << "may improve compilation time.";
     }
     info = ss.str();
