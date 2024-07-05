@@ -807,11 +807,24 @@ void UI_popup_block_ex(bContext *C,
                        void *arg,
                        wmOperator *op);
 
+/**
+ * Return true when #UI_popup_block_template_confirm and related functions are supported.
+ */
 bool UI_popup_block_template_confirm_is_supported(const uiBlock *block);
+/**
+ * Create confirm & cancel buttons in a popup using callback functions.
+ */
 void UI_popup_block_template_confirm(uiBlock *block,
                                      bool cancel_default,
                                      blender::FunctionRef<uiBut *()> confirm_fn,
                                      blender::FunctionRef<uiBut *()> cancel_fn);
+/**
+ * Create confirm & cancel buttons in a popup using an operator.
+ *
+ * \param confirm_text: The text to confirm, null for default text or an empty string to hide.
+ * \param cancel_text: The text to cancel, null for default text or an empty string to hide.
+ * \param r_ptr: The pointer for operator properties, set a "confirm" button has been created.
+ */
 void UI_popup_block_template_confirm_op(uiLayout *layout,
                                         wmOperatorType *ot,
                                         const char *confirm_text,
