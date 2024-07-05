@@ -595,4 +595,13 @@ void merge_layer(GreasePencil &grease_pencil,
                  bke::greasepencil::Layer &top,
                  bke::greasepencil::Layer &to_bottom);
 
+namespace cutter {
+bke::CurvesGeometry trim_curve_segments(const bke::CurvesGeometry &src,
+                                        Span<float2> screen_space_positions,
+                                        Span<rcti> screen_space_curve_bounds,
+                                        const IndexMask &curve_selection,
+                                        const Vector<Vector<int>> &selected_points_in_curves,
+                                        bool keep_caps);
+};  // namespace cutter
+
 }  // namespace blender::ed::greasepencil
