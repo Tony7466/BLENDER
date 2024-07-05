@@ -580,6 +580,11 @@ static int file_select_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
+  if (sfile->layout == nullptr) {
+    /* Can occur if interacting with Blender during startup. #124161. */
+    return OPERATOR_CANCELLED;
+  }
+
   int mval[2];
   mval[0] = RNA_int_get(op->ptr, "mouse_x");
   mval[1] = RNA_int_get(op->ptr, "mouse_y");
@@ -1486,6 +1491,11 @@ static int file_column_sort_ui_context_invoke(bContext *C,
 {
   const ARegion *region = CTX_wm_region(C);
   SpaceFile *sfile = CTX_wm_space_file(C);
+
+  if (sfile->layout == nullptr) {
+    /* Can occur if interacting with Blender during startup. #124161. */
+    return OPERATOR_CANCELLED;
+  }
 
   if (file_attribute_column_header_is_inside(
           &region->v2d, sfile->layout, event->mval[0], event->mval[1]))

@@ -1972,6 +1972,11 @@ static int outliner_box_select_invoke(bContext *C, wmOperator *op, const wmEvent
   float view_mval[2];
   const bool tweak = RNA_boolean_get(op->ptr, "tweak");
 
+  if (BLI_listbase_is_empty(&region->uiblocks)) {
+    /* Can occur if interacting with Blender during startup. #124161. */
+    return OPERATOR_CANCELLED;
+  }
+
   int mval[2];
   WM_event_drag_start_mval(event, region, mval);
   UI_view2d_region_to_view(&region->v2d, mval[0], mval[1], &view_mval[0], &view_mval[1]);
