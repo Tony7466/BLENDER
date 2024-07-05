@@ -810,7 +810,7 @@ static bool convert_action_poll(bContext *C)
   return true;
 }
 
-static void ANIM_OT_convert_to_layered_action(wmOperatorType *ot)
+static void ANIM_OT_convert_legacy_action(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Convert Legacy Action";
@@ -873,7 +873,7 @@ void ED_operatortypes_anim()
   WM_operatortype_append(ANIM_OT_keying_set_active_set);
 
   WM_operatortype_append(ANIM_OT_binding_unassign_object);
-  WM_operatortype_append(ANIM_OT_convert_to_layered_action);
+  WM_operatortype_append(ANIM_OT_convert_legacy_action);
 }
 
 void ED_keymap_anim(wmKeyConfig *keyconf)
