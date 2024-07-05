@@ -38,6 +38,8 @@
 #include "BKE_scene.hh"
 
 #include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "ED_keyframing.hh"
 #include "ED_object.hh"
@@ -376,16 +378,16 @@ static int insert_key(bContext *C, wmOperator *op)
 
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
-  const float scene_frame = BKE_scene_frame_get(scene);
 
+  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   const eInsertKeyFlags insert_key_flags = animrig::get_keyframing_flags(scene);
   const eBezTriple_KeyframeType key_type = eBezTriple_KeyframeType(
       scene->toolsettings->keyframe_type);
-  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
       depsgraph, BKE_scene_frame_get(scene));
 
   animrig::CombinedKeyingResult combined_result;
+  const float scene_frame = DEG_get_ctime(depsgraph);
   blender::Set<ID *> ids;
   for (PointerRNA &id_ptr : selection) {
     ID *selected_id = id_ptr.owner_id;
