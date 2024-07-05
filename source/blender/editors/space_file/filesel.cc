@@ -484,7 +484,7 @@ ID *ED_fileselect_active_asset_get(const SpaceFile *sfile)
     return nullptr;
   }
 
-  FileSelectParams *params = ED_fileselect_get_active_params(sfile);
+  FileSelectParams *params = ED_fileselect_ensure_active_params(const_cast<SpaceFile *>(sfile));
   const FileDirEntry *file = filelist_file(sfile->files, params->active_file);
   if (file == nullptr) {
     return nullptr;
