@@ -164,6 +164,8 @@ bNodeSocket *ntreeCompositOutputFileAddSocket(bNodeTree *ntree,
   else {
     BKE_image_format_init(&sockdata->format, false);
   }
+  BKE_image_format_update_color_space_for_type(&nimf->format);
+
   /* use node data format by default */
   sockdata->use_node_format = true;
   sockdata->save_as_render = true;
@@ -237,6 +239,7 @@ static void init_output_file(const bContext *C, PointerRNA *ptr)
   else {
     BKE_image_format_init(&nimf->format, false);
   }
+  BKE_image_format_update_color_space_for_type(&nimf->format);
 
   /* add one socket by default */
   ntreeCompositOutputFileAddSocket(ntree, node, "Image", format);
@@ -344,6 +347,21 @@ static void node_composit_buts_file_output_ex(uiLayout *layout, bContext *C, Poi
 
   node_composit_buts_file_output(layout, C, ptr);
   uiTemplateImageSettings(layout, &imfptr, true);
+
+  /* Don't draw color space if the image type requires float and color space was overriden, because
+   * it was already drawn in uiTemplateImageSettings. */
+  const bool override_color_management = RNA_enum_get(&imfptr, "color_management") ==
+                                         R_IMF_COLOR_MANAGEMENT_OVERRIDE;
+  const bool type_requires_linear = BKE_imtype_requires_linear_float(
+      RNA_enum_get(&imfptr, "file_format"));
+  if (!(override_color_management && type_requires_linear)) {
+    uiLayout *col = uiLayoutColumn(layout, true);
+    uiLayoutSetPropSep(col, true);
+    uiLayoutSetPropDecorate(col, false);
+
+    PointerRNA linear_settings_ptr = RNA_pointer_get(&imfptr, "linear_colorspace_settings");
+    uiItemR(col, &linear_settings_ptr, "name", UI_ITEM_NONE, IFACE_("Color Space"), ICON_NONE);
+  }
 
   /* disable stereo output for multilayer, too much work for something that no one will use */
   /* if someone asks for that we can implement it */
@@ -468,6 +486,16 @@ static void node_composit_buts_file_output_ex(uiLayout *layout, bContext *C, Poi
 
         col = uiLayoutColumn(layout, false);
         uiTemplateImageSettings(col, &imfptr, use_color_management);
+
+        if (!use_color_management) {
+          uiLayout *col = uiLayoutColumn(layout, true);
+          uiLayoutSetPropSep(col, true);
+          uiLayoutSetPropDecorate(col, false);
+
+          PointerRNA linear_settings_ptr = RNA_pointer_get(&imfptr, "linear_colorspace_settings");
+          uiItemR(
+              col, &linear_settings_ptr, "name", UI_ITEM_NONE, IFACE_("Color Space"), ICON_NONE);
+        }
 
         if (is_multiview) {
           col = uiLayoutColumn(layout, false);

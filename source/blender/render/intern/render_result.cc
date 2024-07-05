@@ -1098,6 +1098,9 @@ ImBuf *RE_render_result_rect_to_ibuf(RenderResult *rr,
     ibuf->channels = rv->ibuf->channels;
   }
 
+  IMB_colormanagement_assign_float_colorspace(ibuf, imf->linear_colorspace_settings.name);
+  IMB_colormanagement_assign_byte_colorspace(ibuf, imf->linear_colorspace_settings.name);
+
   /* float factor for random dither, imbuf takes care of it */
   ibuf->dither = dither;
 

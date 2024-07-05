@@ -218,25 +218,8 @@ void BKE_image_save_options_update(ImageSaveOptions *opts, const Image *image)
       BKE_color_managed_colorspace_settings_copy(&opts->im_format.linear_colorspace_settings,
                                                  &image->colorspace_settings);
     }
-    else if (opts->im_format.imtype != opts->prev_imtype &&
-             !IMB_colormanagement_space_name_is_data(
-                 opts->im_format.linear_colorspace_settings.name))
-    {
-      const bool linear_float_output = BKE_imtype_requires_linear_float(opts->im_format.imtype);
-
-      /* TODO: detect if the colorspace is linear, not just equal to scene linear. */
-      const bool is_linear = IMB_colormanagement_space_name_is_scene_linear(
-          opts->im_format.linear_colorspace_settings.name);
-
-      /* If changing to a linear float or byte format, ensure we have a compatible color space. */
-      if (linear_float_output && !is_linear) {
-        STRNCPY(opts->im_format.linear_colorspace_settings.name,
-                IMB_colormanagement_role_colorspace_name_get(COLOR_ROLE_DEFAULT_FLOAT));
-      }
-      else if (!linear_float_output && is_linear) {
-        STRNCPY(opts->im_format.linear_colorspace_settings.name,
-                IMB_colormanagement_role_colorspace_name_get(COLOR_ROLE_DEFAULT_BYTE));
-      }
+    else if (opts->im_format.imtype != opts->prev_imtype) {
+      BKE_image_format_update_color_space_for_type(&opts->im_format);
     }
   }
 
