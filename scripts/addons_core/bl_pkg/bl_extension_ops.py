@@ -59,7 +59,7 @@ rna_prop_enable_on_install = BoolProperty(
 )
 rna_prop_enable_on_install_type_map = {
     "add-on": "Enable Add-on",
-    "theme": "Set Current Theme",
+    "theme": "Set as the Current Theme",
 }
 
 _ext_base_pkg_idname = "bl_ext"
@@ -1824,7 +1824,7 @@ class EXTENSIONS_OT_package_install_marked(Operator, _ExtCmdMixIn):
                 self._repo_map_packages_addon_only.append((repo_item.directory, pkg_id_sequence_addon_only))
 
         if not cmd_batch:
-            self.report({'ERROR'}, "No un-installed packages marked")
+            self.report({'ERROR'}, "No uninstalled packages marked")
             return None
 
         # Lock repositories.
@@ -2685,7 +2685,7 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
                 blender_version_max=url_params.get("blender_version_max", ""),
                 platforms=[platform for platform in url_params.get("platforms", "").split(",") if platform],
         ), str):
-            self.report({'ERROR'}, iface_("The extension is incompatible with this system:\n{:s}").format(error))
+            self.report({'ERROR'}, iface_("This extension is incompatible with your system:\n{:s}").format(error))
             return {'CANCELLED'}
         del error
 
@@ -2870,9 +2870,9 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
 
         if item_local is not None:
             if item_local.type == "add-on":
-                message = rpt_("Add-on \"{:s}\" already installed!")
+                message = rpt_("Add-on \"{:s}\" is already installed!")
             elif item_local.type == "theme":
-                message = rpt_("Theme \"{:s}\" already installed!")
+                message = rpt_("Theme \"{:s}\" is already installed!")
             else:
                 assert False, "Unreachable"
             self._draw_override = (
@@ -2929,7 +2929,7 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
             subcol = box.column(align=True)
             subcol.label(text=iface_("URL: {:s}").format(url_for_display), translate=False)
         else:
-            col.label(text="Alternatively download the extension to Install from Disk.")
+            col.label(text="Alternatively, download the extension to Install from Disk.")
 
         layout.operator_context = 'INVOKE_DEFAULT'
         props = layout.operator("preferences.extension_repo_add", text="Add Repository...")
@@ -3442,7 +3442,7 @@ class EXTENSIONS_OT_userpref_show_online(Operator):
     def poll(cls, _context):
         if bpy.app.online_access_override:
             if not bpy.app.online_access:
-                cls.poll_message_set("Blender was launched in offline-mode which cannot be changed at runtime")
+                cls.poll_message_set("Blender was launched in offline mode, which cannot be changed at runtime")
                 return False
         return True
 
@@ -3462,7 +3462,7 @@ class EXTENSIONS_OT_userpref_allow_online(Operator):
     def poll(cls, _context):
         if bpy.app.online_access_override:
             if not bpy.app.online_access:
-                cls.poll_message_set("Blender was launched in offline-mode which cannot be changed at runtime")
+                cls.poll_message_set("Blender was launched in offline mode, which cannot be changed at runtime")
                 return False
         return True
 
@@ -3512,7 +3512,7 @@ class EXTENSIONS_OT_userpref_allow_online_popup(Operator):
             )
         else:
             lines = (
-                rpt_("Please turn Online Access on the System settings."),
+                rpt_("Please turn Online Access on in the System settings."),
                 "",
                 rpt_("Internet access is required to install extensions from the internet."),
             )
