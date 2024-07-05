@@ -4058,13 +4058,13 @@ static const EnumPropertyItem node_conductor_distribution_items[] = {
 };
 
 static const EnumPropertyItem node_conductor_fresnel_type_items[] = {
-    {SHD_CONDUCTOR, "CONDUCTOR", 0, "Conductor Fresnel", ""},
+    {SHD_CONDUCTOR, "CONDUCTOR", 0, "Physical Conductor", ""},
     {SHD_ARTISTIC_CONDUCTOR,
      "ARTISTIC_CONDUCTOR",
      0,
-     "Conductor Fresnel - Artistic",
-     "Conductive Fresnel with artist friendly color inputs"},
-    {SHD_CONDUCTOR_F82, "F82", 0, "F82 Tint Fresnel", ""},
+     "Artistic Conductor",
+     "Conductor Fresnel with artist friendly color inputs"},
+    {SHD_CONDUCTOR_F82, "F82", 0, "F82 Approximation", ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
