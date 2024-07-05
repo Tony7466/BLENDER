@@ -2788,8 +2788,95 @@ void UV_OT_stitch(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
+static bool uvedit_uv_threshold_weld_underlying_geometry(Scene *scene,
+                                                         blender::Vector<Object *> *objects,
+                                                         float threshold)
+{
+  for (Object *obedit : *objects) {
+    BMEditMesh *em = BKE_editmesh_from_object(obedit);
+    BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
+    BMVert *v;
+    BMLoop *l;
+    BMIter viter, liter;
+    BM_ITER_MESH (v, &viter, em->bm, BM_VERTS_OF_MESH) {
+      std::vector<float *> luvmap;
+      /*Grap all luv pointers from selected loops*/
+      BM_ITER_ELEM (l, &liter, v, BM_LOOPS_OF_VERT) {
+        if (uvedit_uv_select_test(scene, l, offsets)) {
+          luvmap.push_back(BM_ELEM_CD_GET_FLOAT_P(l, offsets.uv));
+        }
+      }
+      /*Filter out luv pointers who are not within threshold
+      distance of another selected loop from same vertex*/
+      auto outer = luvmap.begin();
+      while (outer != luvmap.end()) {
+        auto inner = luvmap.begin();
+        bool keep = false;
+        while (inner != luvmap.end()) {
+          if (outer != inner) {
+            float dist = len_squared_v2v2(*outer, *inner);
+            /*Does not compare loops' distances if
+            they are at the same UV coordinate */
+            if (dist < threshold and dist > 0.0f) {
+              keep = true;
+            }
+          }
+          if (keep) {
+            break;
+          }
+          ++inner;
+        }
+        if (!keep) {
+          luvmap.erase(outer);
+        }
+        else {
+          ++outer;
+        }
+      }
+      /*Calculate centerpoint of all selected loops within
+      threshold and shift coordinates there*/
+      if (luvmap.size() > 0) {
+        std::vector<float> sum(2, 0.0f);
+        for (auto &luv : luvmap) {
+          sum[0] += luv[0];
+          sum[1] += luv[1];
+        }
+        std::vector<float> cent(2);
+        cent[0] = sum[0] / luvmap.size();
+        cent[1] = sum[1] / luvmap.size();
+        for (auto &luv : luvmap) {
+          luv[0] = cent[0];
+          luv[1] = cent[1];
+        }
+      }
+    }
+  }
+  return true;
+}
 static int stitch_distance_exec(bContext *C, wmOperator *op)
 {
+  Scene *scene = CTX_data_scene(C);
+  SpaceImage *sima = CTX_wm_space_image(C);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data_with_uvs(
+      scene, view_layer, nullptr);
+
+  const float threshold = RNA_float_get(op->ptr, "threshold");
+  bool changed = false;
+  if (RNA_boolean_get(op->ptr, "underlying_geometry")) {
+    /* Since we are using len_squared_v2v2 to calculate distance, we need to square the
+     * user-defined threshold*/
+    changed = uvedit_uv_threshold_weld_underlying_geometry(scene, &objects, threshold * threshold);
+  }
+  if (changed) {
+    for (int ob_index = 0; ob_index < objects.size(); ob_index++) {
+      Object *obedit = objects[ob_index];
+      uvedit_live_unwrap_update(sima, scene, obedit);
+      DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
+      WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
+    }
+  }
+
   return OPERATOR_FINISHED;
 }
 
