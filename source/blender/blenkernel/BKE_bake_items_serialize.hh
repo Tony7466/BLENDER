@@ -47,6 +47,9 @@ class BlobReader {
  * Abstract base class for writing binary data.
  */
 class BlobWriter {
+ protected:
+  int64_t total_written_size_ = 0;
+
  public:
   /**
    * Write the provided binary data.
@@ -62,6 +65,11 @@ class BlobWriter {
    */
   virtual BlobSlice write_as_stream(StringRef file_extension,
                                     FunctionRef<void(std::ostream &)> fn);
+
+  int64_t written_size() const
+  {
+    return total_written_size_;
+  }
 };
 
 /**

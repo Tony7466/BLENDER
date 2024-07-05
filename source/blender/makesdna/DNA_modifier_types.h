@@ -2442,6 +2442,9 @@ typedef struct NodesModifierBake {
   int active_data_block;
   NodesModifierDataBlock *data_blocks;
   NodesModifierPackedBake *packed;
+
+  void *_pad2;
+  int64_t bake_size;
 } NodesModifierBake;
 
 typedef struct NodesModifierPanel {

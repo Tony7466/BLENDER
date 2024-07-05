@@ -126,6 +126,7 @@ BlobSlice DiskBlobWriter::write(const void *data, const int64_t size)
   const int64_t old_offset = current_offset_;
   blob_stream_.write(static_cast<const char *>(data), size);
   current_offset_ += size;
+  total_written_size_ += size;
   return {blob_name_, {old_offset, size}};
 }
 
@@ -150,6 +151,7 @@ BlobSlice DiskBlobWriter::write_as_stream(const StringRef file_extension,
   std::fstream stream{path, std::ios::out | std::ios::binary};
   fn(stream);
   const int64_t written_bytes_num = stream.tellg();
+  total_written_size_ += written_bytes_num;
   return {file_name, {0, written_bytes_num}};
 }
 
@@ -184,6 +186,7 @@ BlobSlice MemoryBlobWriter::write(const void *data, int64_t size)
   const int64_t old_offset = stream.offset;
   stream.stream->write(static_cast<const char *>(data), size);
   stream.offset += size;
+  total_written_size_ += size;
   return {blob_name_, IndexRange::from_begin_size(old_offset, size)};
 }
 
@@ -197,8 +200,9 @@ BlobSlice MemoryBlobWriter::write_as_stream(const StringRef file_extension,
   OutputStream stream{std::make_unique<std::ostringstream>(std::ios::binary)};
   fn(*stream.stream);
   /* TODO: Find a better way to access the size. */
-  const int64_t size = stream.stream->rdbuf()->str().size();
+  const int64_t size = stream.stream->tellp();
   stream_by_name_.add_new(name, std::move(stream));
+  total_written_size_ += size;
   return {base_name_, IndexRange(size)};
 }
 

@@ -17,6 +17,7 @@
 #include "BKE_bake_geometry_nodes_modifier.hh"
 #include "BKE_bake_items_socket.hh"
 #include "BKE_context.hh"
+#include "BKE_global.hh"
 #include "BKE_screen.hh"
 
 #include "ED_node.hh"
@@ -616,10 +617,15 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
     }
 
     draw_bake_button(col, ctx);
-    if (ctx.is_baked) {
-      std::string label = get_baked_string(ctx);
+    if (ctx.is_baked && !G.is_rendering) {
+      const std::string baked_frame_str = get_baked_string(ctx);
+      const std::string size_str = get_size_string(ctx);
+      std::string label;
       if (ctx.bake->packed) {
-        label += IFACE_(" (packed)");
+        label = fmt::format(IFACE_("{} ({} packed)"), baked_frame_str, size_str);
+      }
+      else {
+        label = fmt::format(IFACE_("{} ({} on disk)"), baked_frame_str, size_str);
       }
       uiItemL(col, label.c_str(), ICON_NONE);
     }
@@ -751,6 +757,13 @@ std::string get_baked_string(const BakeDrawContext &ctx)
     return fmt::format(RPT_("Baked Frame {}"), ctx.baked_range->first());
   }
   return fmt::format(RPT_("Baked {} - {}"), ctx.baked_range->first(), ctx.baked_range->last());
+}
+
+std::string get_size_string(const BakeDrawContext &ctx)
+{
+  char dst[BLI_STR_FORMAT_INT64_BYTE_UNIT_SIZE];
+  BLI_str_format_byte_unit(dst, ctx.bake->bake_size, true);
+  return dst;
 }
 
 static void draw_bake_data_block_list_item(uiList * /*ui_list*/,

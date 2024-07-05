@@ -96,5 +96,6 @@ struct BakeDrawContext {
                                          BakeDrawContext &r_ctx);
 
 std::string get_baked_string(const BakeDrawContext &ctx);
+std::string get_size_string(const BakeDrawContext &ctx);
 
 }  // namespace blender::nodes

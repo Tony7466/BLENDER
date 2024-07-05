@@ -285,6 +285,7 @@ static void bake_geometry_nodes_startjob(void *customdata, wmJobWorkerStatus *wo
   };
 
   Map<NodeBakeRequest *, PackedBake> packed_data_by_bake;
+  Map<NodeBakeRequest *, int64_t> size_by_bake;
 
   for (float frame_f = global_bake_start_frame; frame_f <= global_bake_end_frame;
        frame_f += frame_step_size)
@@ -321,6 +322,8 @@ static void bake_geometry_nodes_startjob(void *customdata, wmJobWorkerStatus *wo
         continue;
       }
 
+      int64_t &written_size = size_by_bake.lookup_or_add(&request, 0);
+
       if (request.path.has_value()) {
         char meta_path[FILE_MAX];
         BLI_path_join(meta_path,
@@ -331,6 +334,8 @@ static void bake_geometry_nodes_startjob(void *customdata, wmJobWorkerStatus *wo
         bake::DiskBlobWriter blob_writer{request.path->blobs_dir, frame_file_name};
         fstream meta_file{meta_path, std::ios::out};
         bake::serialize_bake(frame_cache.state, blob_writer, *request.blob_sharing, meta_file);
+        written_size += blob_writer.written_size();
+        written_size += meta_file.tellp();
       }
       else {
         PackedBake &packed_data = packed_data_by_bake.lookup_or_add_default(&request);
@@ -345,6 +350,8 @@ static void bake_geometry_nodes_startjob(void *customdata, wmJobWorkerStatus *wo
         for (auto &&item : blob_stream_by_name.items()) {
           packed_data.blob_files.append({item.key, item.value.stream->str()});
         }
+        written_size += blob_writer.written_size();
+        written_size += meta_file.tellp();
       }
     }
 
@@ -353,11 +360,16 @@ static void bake_geometry_nodes_startjob(void *customdata, wmJobWorkerStatus *wo
   }
 
   for (NodeBakeRequest &request : job.bake_requests) {
+    NodesModifierBake *bake = request.nmd->find_bake(request.bake_id);
+    bake->bake_size = size_by_bake.lookup_default(&request, 0);
+
     PackedBake *packed_data = packed_data_by_bake.lookup_ptr(&request);
     if (!packed_data) {
       continue;
     }
+
     NodesModifierPackedBake *packed_bake = MEM_cnew<NodesModifierPackedBake>(__func__);
+
     packed_bake->meta_files_num = packed_data->meta_files.size();
     packed_bake->blob_files_num = packed_data->blob_files.size();
 
@@ -367,7 +379,7 @@ static void bake_geometry_nodes_startjob(void *customdata, wmJobWorkerStatus *wo
                                                                     __func__);
 
     auto transfer_to_bake =
-        [](NodesModifierBakeFile *bake_files, MemoryBakeFile *memory_bake_files, const int num) {
+        [&](NodesModifierBakeFile *bake_files, MemoryBakeFile *memory_bake_files, const int num) {
           for (const int i : IndexRange(num)) {
             NodesModifierBakeFile &bake_file = bake_files[i];
             MemoryBakeFile &memory = memory_bake_files[i];
@@ -386,7 +398,6 @@ static void bake_geometry_nodes_startjob(void *customdata, wmJobWorkerStatus *wo
     transfer_to_bake(
         packed_bake->blob_files, packed_data->blob_files.data(), packed_bake->blob_files_num);
 
-    NodesModifierBake *bake = request.nmd->find_bake(request.bake_id);
     /* Should have been freed before. */
     BLI_assert(bake->packed == nullptr);
     bake->packed = packed_bake;
