@@ -272,7 +272,8 @@ static void rna_NodeSocket_type_set(PointerRNA *ptr, int value)
   if (node->type != NODE_CUSTOM) {
     /* Can't change the socket type on built-in nodes like this. */
     if (!node->is_reroute()) {
-      /* TODO: Refactor reroute node to avoid this hack. */
+      /* TODO: Refactor reroute node to avoid direct change of the socket type in built-in node and
+       * use proper node method for this. */
       return;
     }
   }
