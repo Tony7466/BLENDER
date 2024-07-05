@@ -18,12 +18,13 @@ void main()
 
   if (all(equal(tile, ivec2(0)))) {
 
-    /* Workaround: Using atomics to initialize num groups on Intel GPUs. On Windows/Intel Arc
-     * assignments are ignored when shader later on accesses the variables using atomic operations.
+    /* Workaround: Using atomics to initialize num groups on Windows/Intel GPUs. On Windows/Intel
+     * Arc assignments are ignored when shader later on accesses the variables using atomic
+     * operations.
      *
      * Ref #124060.
      */
-#if GPU_INTEL
+#if defined(GPU_INTEL) && defined(OS_WIN)
     atomicExchange(raytrace_tracing_dispatch_buf.num_groups_y, 1u);
     atomicExchange(raytrace_denoise_dispatch_buf.num_groups_y, 1u);
 
