@@ -851,21 +851,14 @@ static void insert_fcurve_key(bAnimContext *ac,
   const std::optional<blender::StringRefNull> channel_group = fcu->grp ?
                                                                   std::optional(fcu->grp->name) :
                                                                   std::nullopt;
-  if (ale->id && !ale->owner) {
-    BLI_assert(ale->fcurve_owner_id != nullptr);
-    BLI_assert(GS(ale->fcurve_owner_id->name) == ID_AC);
-    ID *id = action_get_id_for_keying(*ale->bmain,
-                                      *reinterpret_cast<bAction *>(ale->fcurve_owner_id),
-                                      ale->binding_handle,
-                                      ale->id);
 
-    if (id == nullptr) {
-      // TODO: handle case where we don't have an unambiguous ID to key from.
-      // Right now we just punt on it and return without keying, but that's not
-      // a good final solution.
-      return;
-    }
+  BLI_assert(ale->owner == nullptr);
+  BLI_assert(ale->fcurve_owner_id != nullptr);
+  BLI_assert(GS(ale->fcurve_owner_id->name) == ID_AC);
+  bAction *action = reinterpret_cast<bAction *>(ale->fcurve_owner_id);
+  ID *id = action_get_id_for_keying(*ale->bmain, *action, ale->binding_handle, ale->id);
 
+  if (id) {
     PointerRNA id_rna_pointer = RNA_id_pointer_create(id);
     CombinedKeyingResult result = insert_keyframes(ac->bmain,
                                                    &id_rna_pointer,
@@ -880,6 +873,10 @@ static void insert_fcurve_key(bAnimContext *ac,
     }
   }
   else {
+    /* TODO: when layered action strips are allowed to have time offsets, that
+     * mapping will need to be handled here. */
+    assert_baklava_phase_1_invariants(action->wrap());
+
     AnimData *adt = ANIM_nla_mapping_get(ac, ale);
 
     /* adjust current frame for NLA-scaling */
