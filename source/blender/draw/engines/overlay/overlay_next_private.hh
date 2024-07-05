@@ -126,6 +126,7 @@ class ShaderModule {
   ShaderPtr armature_sphere_outline;
   ShaderPtr depth_mesh;
   ShaderPtr extra_shape;
+  ShaderPtr extra_wire;
 
   ShaderModule(const SelectionType selection_type, const bool clipping_enabled);
 
@@ -275,6 +276,43 @@ template<typename InstanceDataT> struct ShapeInstanceBuf : private select::Selec
     data_buf.push_update();
     pass.bind_ssbo("data_buf", &data_buf);
     pass.draw(shape, data_buf.size());
+  }
+};
+
+struct LineInstanceBuf : private select::SelectBuf {
+
+  StorageVectorBuffer<PointData> data_buf;
+  int instance_count = 0;
+  uint32_t last = -1;
+
+  LineInstanceBuf(const SelectionType selection_type, const char *name = nullptr)
+      : select::SelectBuf(selection_type), data_buf(name){};
+
+  void clear()
+  {
+    this->select_clear();
+    data_buf.clear();
+  }
+
+  void append(const float3 &start, const float3 &end, const float4 &color, select::ID select_id)
+  {
+    if (last != select_id.get()) {
+      instance_count++;
+    }
+    this->select_append(select_id);
+    data_buf.append({float4{start}, color});
+    data_buf.append({float4{end}, color});
+  }
+
+  void end_sync(PassSimple::Sub &pass)
+  {
+    if (data_buf.is_empty()) {
+      return;
+    }
+    this->select_bind(pass);
+    data_buf.push_update();
+    pass.bind_ssbo("data_buf", &data_buf);
+    pass.draw_procedural(GPU_PRIM_LINES, instance_count, data_buf.size());
   }
 };
 

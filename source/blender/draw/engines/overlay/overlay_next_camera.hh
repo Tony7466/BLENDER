@@ -76,6 +76,7 @@ class Cameras {
     CameraInstanceBuf tria_wire_buf = {selection_type_, "camera_tria_wire_buf"};
     CameraInstanceBuf volume_buf = {selection_type_, "camera_volume_buf"};
     CameraInstanceBuf volume_wire_buf = {selection_type_, "camera_volume_wire_buf"};
+    LineInstanceBuf stereo_connect_lines = {selection_type_, "camera_dashed_lines_buf"};
   } call_buffers_[2] = {{selection_type_}, {selection_type_}};
 
   /**
@@ -86,6 +87,7 @@ class Cameras {
                          const select::ID select_id,
                          const Scene *scene,
                          const View3D *v3d,
+                         Resources &res,
                          Object *ob,
                          CallBuffers &call_buffers)
   {
@@ -119,10 +121,10 @@ class Cameras {
         call_buffers.frame_buf.append(stereodata, select_id);
 
         /* Connecting line between cameras. */
-        // OVERLAY_extra_line_dashed(cb,
-        //                           stereodata.matrix.location(),
-        //                           instdata.object_to_world_.location(),
-        //                           G_draw.block.color_wire);
+        call_buffers.stereo_connect_lines.append(stereodata.matrix.location(),
+                                                 instdata.object_to_world_.location(),
+                                                 res.theme_settings.color_wire,
+                                                 select_id);
       }
 
       if (is_stereo3d_volume && !is_select) {
@@ -201,6 +203,7 @@ class Cameras {
       call_buffers_[i].tria_wire_buf.clear();
       call_buffers_[i].volume_buf.clear();
       call_buffers_[i].volume_wire_buf.clear();
+      call_buffers_[i].stereo_connect_lines.clear();
     }
   }
 
@@ -290,7 +293,7 @@ class Cameras {
     else {
       /* Stereo cameras, volumes, plane drawing. */
       if (is_stereo3d_display_extra) {
-        stereoscopy_extra(data, select_id, scene, v3d, ob, call_buffers);
+        stereoscopy_extra(data, select_id, scene, v3d, res, ob, call_buffers);
       }
       else {
         call_buffers.frame_buf.append(data, select_id);
@@ -379,6 +382,14 @@ class Cameras {
         call_bufs.frame_buf.end_sync(sub_pass, shapes.camera_frame.get());
         call_bufs.tria_buf.end_sync(sub_pass, shapes.camera_tria.get());
         call_bufs.tria_wire_buf.end_sync(sub_pass, shapes.camera_tria_wire.get());
+      }
+      {
+        PassSimple &sub_pass = pass;
+        sub_pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |
+                           DRW_STATE_DEPTH_LESS_EQUAL | state.clipping_state);
+        sub_pass.shader_set(res.shaders.extra_wire.get());
+        sub_pass.bind_ubo("globalsBlock", &res.globals_buf);
+        call_bufs.stereo_connect_lines.end_sync(sub_pass);
       }
     };
     init_pass(camera_ps_, call_buffers_[0], false);

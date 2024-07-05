@@ -81,6 +81,19 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
     info.vertex_inputs_.pop_last();
     info.vertex_inputs_.pop_last();
   });
+  extra_wire = selectable_shader("overlay_extra_wire", [](gpu::shader::ShaderCreateInfo &info) {
+    info.typedef_source("overlay_shader_shared.h");
+    info.storage_buf(0, Qualifier::READ, "PointData", "data_buf[]");
+    info.define("pos", "data_buf[gl_VertexID].pos_.xyz");
+    info.define("color", "data_buf[gl_VertexID].color_");
+    info.define("colorid", "0");
+    info.additional_infos_.clear();
+    info.additional_info(
+        "draw_view", "draw_modelmat_new", "draw_resource_handle_new", "draw_globals");
+    info.vertex_inputs_.pop_last();
+    info.vertex_inputs_.pop_last();
+    info.vertex_inputs_.pop_last();
+  });
 }
 
 ShaderModule &ShaderModule::module_get(SelectionType selection_type, bool clipping_enabled)
