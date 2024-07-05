@@ -839,26 +839,24 @@ static void insert_fcurve_key(bAnimContext *ac,
   Scene *scene = ac->scene;
   ToolSettings *ts = scene->toolsettings;
 
-  /* Read value from property the F-Curve represents, or from the curve only?
-   * - ale->id != nullptr:
-   *   Typically, this means that we have enough info to try resolving the path.
-   *
-   * - ale->owner != nullptr:
-   *   If this is set, then the path may not be resolvable from the ID alone,
-   *   so it's easier for now to just read the F-Curve directly.
-   *   (TODO: add the full-blown PointerRNA relative parsing case here...)
-   */
-  const std::optional<blender::StringRefNull> channel_group = fcu->grp ?
-                                                                  std::optional(fcu->grp->name) :
-                                                                  std::nullopt;
-
+  /* These asserts are ensuring that the fcurve we're keying lives on an Action,
+   * rather than being an fcurve for e.g. a driver or NLA Strip. This should
+   * always hold true for this function, since all the other cases take
+   * different code paths before getting here. */
   BLI_assert(ale->owner == nullptr);
   BLI_assert(ale->fcurve_owner_id != nullptr);
   BLI_assert(GS(ale->fcurve_owner_id->name) == ID_AC);
-  bAction *action = reinterpret_cast<bAction *>(ale->fcurve_owner_id);
-  ID *id = action_get_id_for_keying(*ale->bmain, *action, ale->binding_handle, ale->id);
 
+  bAction *action = reinterpret_cast<bAction *>(ale->fcurve_owner_id);
+  ID *id = action_binding_get_id_for_keying(*ale->bmain, *action, ale->binding_handle, ale->id);
+
+  /* If we found an unambiguous ID to use for keying the channel, go through the
+   * normal keyframing code path.  Otherwise, just directly key the fcurve
+   * itself. */
   if (id) {
+    const std::optional<blender::StringRefNull> channel_group = fcu->grp ?
+                                                                    std::optional(fcu->grp->name) :
+                                                                    std::nullopt;
     PointerRNA id_rna_pointer = RNA_id_pointer_create(id);
     CombinedKeyingResult result = insert_keyframes(ac->bmain,
                                                    &id_rna_pointer,

@@ -1375,16 +1375,17 @@ FCurve *action_fcurve_ensure(Main *bmain,
   return fcu;
 }
 
-ID *action_get_id_for_keying(Main &bmain,
-                             bAction &act,
-                             const binding_handle_t binding_handle,
-                             ID *active_id)
+ID *action_binding_get_id_for_keying(Main &bmain,
+                                     bAction &act,
+                                     const binding_handle_t binding_handle,
+                                     ID *priority_id)
 {
-  BLI_assert(active_id == nullptr || id_action_get(active_id) == &act);
-
   Action &action = act.wrap();
   if (action.is_action_legacy()) {
-    return active_id;
+    if (id_action_get(priority_id) == &act) {
+      return priority_id;
+    }
+    return nullptr;
   }
 
   Binding *binding = action.binding_for_handle(binding_handle);
@@ -1396,8 +1397,8 @@ ID *action_get_id_for_keying(Main &bmain,
   if (users.size() == 1) {
     return users[0];
   }
-  if (users.contains(active_id)) {
-    return active_id;
+  if (users.contains(priority_id)) {
+    return priority_id;
   }
 
   return nullptr;

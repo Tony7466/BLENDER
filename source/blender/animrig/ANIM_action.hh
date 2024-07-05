@@ -780,10 +780,32 @@ FCurve *action_fcurve_ensure(Main *bmain,
  */
 FCurve *action_fcurve_find(bAction *act, FCurveDescriptor fcurve_descriptor);
 
-ID *action_get_id_for_keying(Main &bmain,
-                             bAction &act,
-                             binding_handle_t binding_handle = Binding::unassigned,
-                             ID *active_id = nullptr);
+/**
+ * Find an appropriate user of the given Action + Binding for keyframing
+ * purposes.
+ *
+ * (NOTE: although this function exists for handling situations caused by the
+ * expanded capabilities of layered actions, for convenience it also works with
+ * legacy actions. For legacy actions this simply returns `priority_id` as long
+ * as it's a user of `act`.)
+ *
+ * Usually this function shouldn't be necessary, because you'll already have an
+ * obvious ID that you're keying. But in some cases (such as the action editor
+ * where multiply bindings are accessible) that ID may not be a user of the
+ * specific binding you're keying. This function attempts to handle those cases
+ * and get an appropriate user when possible.
+ *
+ * This function is not guaranteed to succeed. For example, there may be no
+ * users of the specified binding, or there may be multiple users without a
+ * clear "winner" that should be used. When that happens, nullptr is returned.
+ *
+ * \param priority_id: whenever this is among the users of the action + binding,
+ * it is given priority and is returned. May be null.
+ */
+ID *action_binding_get_id_for_keying(Main &bmain,
+                                     bAction &act,
+                                     binding_handle_t binding_handle,
+                                     ID *priority_id);
 
 /**
  * Assert the invariants of Project Baklava phase 1.
