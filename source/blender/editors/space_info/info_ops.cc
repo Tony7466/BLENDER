@@ -158,6 +158,8 @@ static int pack_all_exec(bContext *C, wmOperator *op)
 
   BKE_packedfile_pack_all(bmain, op->reports, true);
 
+  WM_main_add_notifier(NC_WINDOW, nullptr);
+
   return OPERATOR_FINISHED;
 }
 

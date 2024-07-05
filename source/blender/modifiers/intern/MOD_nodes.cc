@@ -2595,7 +2595,7 @@ void nodes_modifier_packed_bake_free(NodesModifierPackedBake *packed_bake)
       MEM_SAFE_FREE(file.name);
       BKE_packedfile_free(file.packed_file);
     }
-    MEM_freeN(files);
+    MEM_SAFE_FREE(files);
   };
   free_packed_files(packed_bake->meta_files, packed_bake->meta_files_num);
   free_packed_files(packed_bake->blob_files, packed_bake->blob_files_num);

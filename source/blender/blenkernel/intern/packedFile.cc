@@ -29,6 +29,8 @@
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
 
+#include "BKE_bake_geometry_nodes_modifier.hh"
+#include "BKE_bake_geometry_nodes_modifier_pack.hh"
 #include "BKE_image.h"
 #include "BKE_image_format.h"
 #include "BKE_main.hh"
@@ -38,8 +40,12 @@
 #include "BKE_vfont.hh"
 #include "BKE_volume.hh"
 
+#include "DEG_depsgraph.hh"
+
 #include "IMB_imbuf.hh"
 #include "IMB_imbuf_types.hh"
+
+#include "MOD_nodes.hh"
 
 #include "BLO_read_write.hh"
 
@@ -266,6 +272,25 @@ PackedFile *BKE_packedfile_new(ReportList *reports, const char *filepath_rel, co
   return pf;
 }
 
+static int BKE_packedfile_pack_geometry_nodes_bake(Main &bmain,
+                                                   ReportList *reports,
+                                                   Object &object,
+                                                   NodesModifierData &nmd,
+                                                   NodesModifierBake &bake)
+{
+  using namespace blender::bke;
+  const std::optional<bake::BakePath> bake_path = bake::get_node_bake_path(
+      bmain, object, nmd, bake.id);
+  if (!bake_path) {
+    /* Has no data to pack. */
+    return RET_OK;
+  }
+  bake.packed = bake::pack_bake_from_disk(*bake_path, reports);
+  nmd.runtime->cache->get_node_bake_cache(bake.id)->reset();
+  DEG_id_tag_update(&object.id, ID_RECALC_GEOMETRY);
+  return RET_OK;
+}
+
 void BKE_packedfile_pack_all(Main *bmain, ReportList *reports, bool verbose)
 {
   Image *ima;
@@ -320,6 +345,22 @@ void BKE_packedfile_pack_all(Main *bmain, ReportList *reports, bool verbose)
       volume->packedfile = BKE_packedfile_new(
           reports, volume->filepath, BKE_main_blendfile_path(bmain));
       tot++;
+    }
+  }
+
+  LISTBASE_FOREACH (Object *, object, &bmain->objects) {
+    if (ID_IS_LINKED(object)) {
+      continue;
+    }
+    LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
+      if (md->type == eModifierType_Nodes) {
+        NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
+        for (NodesModifierBake &bake : blender::MutableSpan{nmd->bakes, nmd->bakes_num}) {
+          if (!bake.packed) {
+            BKE_packedfile_pack_geometry_nodes_bake(*bmain, reports, *object, *nmd, bake);
+          }
+        }
+      }
     }
   }
 
@@ -744,6 +785,16 @@ int BKE_packedfile_unpack_volume(Main *bmain,
   return ret_value;
 }
 
+int BKE_packedfile_unpack_geometry_nodes_bake(Main &bmain,
+                                              ReportList *reports,
+                                              Object &object,
+                                              NodesModifierData &nmd,
+                                              NodesModifierBake &bake,
+                                              enum ePF_FileStatus how)
+{
+  return RET_ERROR;
+}
+
 int BKE_packedfile_unpack_all_libraries(Main *bmain, ReportList *reports)
 {
   Library *lib;
@@ -838,6 +889,22 @@ void BKE_packedfile_unpack_all(Main *bmain, ReportList *reports, enum ePF_FileSt
   {
     if (volume->packedfile && !ID_IS_LINKED(volume)) {
       BKE_packedfile_unpack_volume(bmain, reports, volume, how);
+    }
+  }
+
+  LISTBASE_FOREACH (Object *, object, &bmain->objects) {
+    if (ID_IS_LINKED(object)) {
+      continue;
+    }
+    LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
+      if (md->type == eModifierType_Nodes) {
+        NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
+        for (NodesModifierBake &bake : blender::MutableSpan{nmd->bakes, nmd->bakes_num}) {
+          if (bake.packed) {
+            BKE_packedfile_unpack_geometry_nodes_bake(*bmain, reports, *object, *nmd, bake, how);
+          }
+        }
+      }
     }
   }
 }
