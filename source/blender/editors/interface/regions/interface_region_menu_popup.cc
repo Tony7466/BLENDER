@@ -732,6 +732,14 @@ static void popup_block_template_close_cb(bContext *C, void *arg1, void * /*arg2
   UI_popup_block_close(C, win, block);
 }
 
+bool UI_popup_block_template_confirm_is_supported(const uiBlock *block)
+{
+  if (block->flag & (UI_BLOCK_KEEP_OPEN | UI_BLOCK_POPOVER)) {
+    return true;
+  }
+  return false;
+}
+
 void UI_popup_block_template_confirm(uiBlock *block,
                                      bool cancel_default,
                                      blender::FunctionRef<uiBut *()> confirm_fn,
@@ -742,19 +750,24 @@ void UI_popup_block_template_confirm(uiBlock *block,
 #else
   const bool windows_layout = false;
 #endif
-
-  if (uiBut *but = windows_layout ? confirm_fn() : cancel_fn()) {
-    bool is_cancel = windows_layout ? false : true;
-    UI_but_func_set(but, popup_block_template_close_cb, block, nullptr);
-    if (cancel_default == is_cancel) {
-      UI_but_flag_enable(but, UI_BUT_ACTIVE_DEFAULT);
-    }
+  blender::FunctionRef<uiBut *()> *button_functions[2];
+  if (windows_layout) {
+    ARRAY_SET_ITEMS(button_functions, &confirm_fn, &cancel_fn);
   }
-  if (uiBut *but = windows_layout ? cancel_fn() : confirm_fn()) {
-    bool is_cancel = windows_layout ? true : false;
-    UI_but_func_set(but, popup_block_template_close_cb, block, nullptr);
-    if (cancel_default == is_cancel) {
-      UI_but_flag_enable(but, UI_BUT_ACTIVE_DEFAULT);
+  else {
+    ARRAY_SET_ITEMS(button_functions, &cancel_fn, &confirm_fn);
+  }
+
+  for (int i = 0; i < ARRAY_SIZE(button_functions); i++) {
+    blender::FunctionRef<uiBut *()> *but_fn = button_functions[i];
+    if (uiBut *but = (*but_fn)()) {
+      bool is_cancel = (but_fn == &cancel_fn);
+      if ((block->flag & UI_BLOCK_LOOP) == 0) {
+        UI_but_func_set(but, popup_block_template_close_cb, block, nullptr);
+      }
+      if (cancel_default == is_cancel) {
+        UI_but_flag_enable(but, UI_BUT_ACTIVE_DEFAULT);
+      }
     }
   }
 }

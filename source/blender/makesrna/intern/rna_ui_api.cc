@@ -977,7 +977,6 @@ void rna_uiTemplateAssetShelfPopover(uiLayout *layout,
 }
 
 PointerRNA rna_uiTemplatePopupConfirm(uiLayout *layout,
-                                      bContext *C,
                                       ReportList *reports,
                                       const char *opname,
                                       const char *text,
@@ -1002,7 +1001,7 @@ PointerRNA rna_uiTemplatePopupConfirm(uiLayout *layout,
   if (opname[0] ? (!ot || !ot->srna) : false) {
     RNA_warning("%s '%s'", ot ? "operator missing srna" : "unknown operator", opname);
   }
-  else if (CTX_wm_region_popup(C) == nullptr) {
+  else if (!UI_popup_block_template_confirm_is_supported(uiLayoutGetBlock(layout))) {
     BKE_reportf(reports, RPT_ERROR, "template_popup_confirm used outside of a popup");
   }
   else {
@@ -2378,7 +2377,7 @@ void RNA_api_ui_layout(StructRNA *srna)
   RNA_def_boolean(func, "cancel_default", false, "", "Cancel button by default");
   RNA_def_function_ui_description(
       func, "Add confirm & cancel buttons into a popup which will close the popup when pressed");
-  RNA_def_function_flag(func, FUNC_USE_CONTEXT | FUNC_USE_REPORTS);
+  RNA_def_function_flag(func, FUNC_USE_REPORTS);
 
   parm = RNA_def_pointer(
       func, "properties", "OperatorProperties", "", "Operator properties to fill in");

@@ -674,6 +674,10 @@ bool UI_but_is_utf8(const uiBut *but);
 bool UI_block_is_empty_ex(const uiBlock *block, bool skip_title);
 bool UI_block_is_empty(const uiBlock *block);
 bool UI_block_can_add_separator(const uiBlock *block);
+/**
+ * Return true when the block has a default button.
+ * Use this for popups to detect when pressing "Return" will run an action.
+ */
 bool UI_block_has_active_default_button(const uiBlock *block);
 
 uiList *UI_list_find_mouse_over(const ARegion *region, const wmEvent *event);
@@ -803,6 +807,7 @@ void UI_popup_block_ex(bContext *C,
                        void *arg,
                        wmOperator *op);
 
+bool UI_popup_block_template_confirm_is_supported(const uiBlock *block);
 void UI_popup_block_template_confirm(uiBlock *block,
                                      bool cancel_default,
                                      blender::FunctionRef<uiBut *()> confirm_fn,
