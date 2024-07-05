@@ -82,16 +82,15 @@ static int node_shader_gpu_bsdf_conductor(GPUMaterial *mat,
 
 static void node_shader_update_conductor(bNodeTree *ntree, bNode *node)
 {
-  const int fresnel_method = node->custom2;
+  const bool is_physical = (node->custom2 == SHD_CONDUCTOR);
 
   bke::nodeSetSocketAvailability(
-      ntree, bke::nodeFindSocket(node, SOCK_IN, "Base Color"), fresnel_method != SHD_CONDUCTOR);
+      ntree, bke::nodeFindSocket(node, SOCK_IN, "Base Color"), !is_physical);
   bke::nodeSetSocketAvailability(
-      ntree, bke::nodeFindSocket(node, SOCK_IN, "Edge Tint"), fresnel_method != SHD_CONDUCTOR);
+      ntree, bke::nodeFindSocket(node, SOCK_IN, "Edge Tint"), !is_physical);
+  bke::nodeSetSocketAvailability(ntree, bke::nodeFindSocket(node, SOCK_IN, "IOR"), is_physical);
   bke::nodeSetSocketAvailability(
-      ntree, bke::nodeFindSocket(node, SOCK_IN, "IOR"), fresnel_method == SHD_CONDUCTOR);
-  bke::nodeSetSocketAvailability(
-      ntree, bke::nodeFindSocket(node, SOCK_IN, "Extinction"), fresnel_method == SHD_CONDUCTOR);
+      ntree, bke::nodeFindSocket(node, SOCK_IN, "Extinction"), is_physical);
 }
 
 NODE_SHADER_MATERIALX_BEGIN
