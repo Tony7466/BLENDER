@@ -18,6 +18,7 @@
 #include "BLI_path_util.h"
 
 #include "DNA_material_types.h"
+#include "DNA_modifier_types.h"
 #include "DNA_volume_types.h"
 
 #include "RNA_access.hh"
@@ -128,13 +129,20 @@ BlobSlice DiskBlobWriter::write(const void *data, const int64_t size)
   return {blob_name_, {old_offset, size}};
 }
 
+static std::string make_independent_file_name(const StringRef base_name,
+                                              const int file_index,
+                                              const StringRef extension)
+{
+  return fmt::format("{}_file_{}{}", base_name, file_index, extension);
+}
+
 BlobSlice DiskBlobWriter::write_as_stream(const StringRef file_extension,
                                           const FunctionRef<void(std::ostream &)> fn)
 {
   BLI_assert(file_extension.startswith("."));
   independent_file_count_++;
-  const std::string file_name = fmt::format(
-      "{}_file_{}{}", base_name_, independent_file_count_, file_extension);
+  const std::string file_name = make_independent_file_name(
+      base_name_, independent_file_count_, file_extension);
 
   char path[FILE_MAX];
   BLI_path_join(path, sizeof(path), blob_dir_.c_str(), file_name.c_str());
@@ -143,6 +151,59 @@ BlobSlice DiskBlobWriter::write_as_stream(const StringRef file_extension,
   fn(stream);
   const int64_t written_bytes_num = stream.tellg();
   return {file_name, {0, written_bytes_num}};
+}
+
+MemoryBlobReader::MemoryBlobReader(const Span<NodesModifierBakeFile> blob_files)
+{
+  for (const NodesModifierBakeFile &blob_file : blob_files) {
+    blob_by_name_.add(blob_file.relative_filepath,
+                      Span{static_cast<const std::byte *>(blob_file.packed_file->data),
+                           blob_file.packed_file->size});
+  }
+}
+
+bool MemoryBlobReader::read(const BlobSlice &slice, void *r_data) const
+{
+  if (slice.range.is_empty()) {
+    return true;
+  }
+  const Span<std::byte> blob_data = blob_by_name_.lookup_default(slice.name, {});
+  if (!blob_data.index_range().contains(slice.range)) {
+    return false;
+  }
+  const void *copy_src = blob_data.slice(slice.range).data();
+  memcpy(r_data, copy_src, slice.range.size());
+  return true;
+}
+
+MemoryBlobWriter::MemoryBlobWriter(std::string base_name) : base_name_(std::move(base_name))
+{
+  blob_name_ = base_name_ + ".blob";
+  stream_by_name_.add(blob_name_, {std::make_unique<std::ostringstream>(std::ios::binary)});
+}
+
+BlobSlice MemoryBlobWriter::write(const void *data, int64_t size)
+{
+  OutputStream &stream = stream_by_name_.lookup(blob_name_);
+  const int64_t old_offset = stream.offset;
+  stream.stream->write(static_cast<const char *>(data), size);
+  stream.offset += size;
+  return {blob_name_, IndexRange::from_begin_size(old_offset, size)};
+}
+
+BlobSlice MemoryBlobWriter::write_as_stream(const StringRef file_extension,
+                                            const FunctionRef<void(std::ostream &)> fn)
+{
+  BLI_assert(file_extension.startswith("."));
+  independent_file_count_++;
+  const std::string name = make_independent_file_name(
+      base_name_, independent_file_count_, file_extension);
+  OutputStream stream{std::make_unique<std::ostringstream>(std::ios::binary)};
+  fn(*stream.stream);
+  /* TODO: Find a better way to access the size. */
+  const int64_t size = stream.stream->rdbuf()->str().size();
+  stream_by_name_.add_new(name, std::move(stream));
+  return {base_name_, IndexRange(size)};
 }
 
 BlobWriteSharing::~BlobWriteSharing()

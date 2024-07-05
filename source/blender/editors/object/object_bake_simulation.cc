@@ -31,6 +31,7 @@
 #include "BKE_main.hh"
 #include "BKE_modifier.hh"
 #include "BKE_node_runtime.hh"
+#include "BKE_packedFile.h"
 #include "BKE_report.hh"
 #include "BKE_scene.hh"
 
@@ -272,6 +273,18 @@ static void bake_geometry_nodes_startjob(void *customdata, wmJobWorkerStatus *wo
   const float progress_per_frame = frame_step_size / frames_to_bake;
   const int old_frame = job.scene->r.cfra;
 
+  struct MemoryBakeFile {
+    std::string name;
+    std::string data;
+  };
+
+  struct PackedBake {
+    Vector<MemoryBakeFile> meta_files;
+    Vector<MemoryBakeFile> blob_files;
+  };
+
+  Map<NodeBakeRequest *, PackedBake> packed_data_by_bake;
+
   for (float frame_f = global_bake_start_frame; frame_f <= global_bake_end_frame;
        frame_f += frame_step_size)
   {
@@ -307,21 +320,70 @@ static void bake_geometry_nodes_startjob(void *customdata, wmJobWorkerStatus *wo
         continue;
       }
 
-      const bake::BakePath path = request.path;
+      PackedBake &packed_data = packed_data_by_bake.lookup_or_add_default(&request);
 
-      char meta_path[FILE_MAX];
-      BLI_path_join(meta_path,
-                    sizeof(meta_path),
-                    path.meta_dir.c_str(),
-                    (frame_file_name + ".json").c_str());
-      BLI_file_ensure_parent_dir_exists(meta_path);
-      bake::DiskBlobWriter blob_writer{path.blobs_dir, frame_file_name};
-      fstream meta_file{meta_path, std::ios::out};
+      // const bake::BakePath path = request.path;
+
+      // char meta_path[FILE_MAX];
+      // BLI_path_join(meta_path,
+      //               sizeof(meta_path),
+      //               path.meta_dir.c_str(),
+      //               (frame_file_name + ".json").c_str());
+      // BLI_file_ensure_parent_dir_exists(meta_path);
+      bake::MemoryBlobWriter blob_writer{frame_file_name};
+      std::ostringstream meta_file{std::ios::binary};
       bake::serialize_bake(frame_cache.state, blob_writer, *request.blob_sharing, meta_file);
+
+      packed_data.meta_files.append({frame_file_name + ".json", meta_file.str()});
+      const Map<std::string, bake::MemoryBlobWriter::OutputStream> &blob_stream_by_name =
+          blob_writer.get_stream_by_name();
+      for (auto &&item : blob_stream_by_name.items()) {
+        packed_data.blob_files.append({item.key, item.value.stream->str()});
+      }
     }
 
     worker_status->progress += progress_per_frame;
     worker_status->do_update = true;
+  }
+
+  for (NodeBakeRequest &request : job.bake_requests) {
+    PackedBake *packed_data = packed_data_by_bake.lookup_ptr(&request);
+    if (!packed_data) {
+      continue;
+    }
+    NodesModifierPackedBake *packed_bake = MEM_cnew<NodesModifierPackedBake>(__func__);
+    packed_bake->meta_files_num = packed_data->meta_files.size();
+    packed_bake->blob_files_num = packed_data->blob_files.size();
+
+    packed_bake->meta_files = MEM_cnew_array<NodesModifierBakeFile>(packed_bake->meta_files_num,
+                                                                    __func__);
+    packed_bake->blob_files = MEM_cnew_array<NodesModifierBakeFile>(packed_bake->blob_files_num,
+                                                                    __func__);
+
+    auto transfer_to_bake =
+        [](NodesModifierBakeFile *bake_files, MemoryBakeFile *memory_bake_files, const int num) {
+          for (const int i : IndexRange(num)) {
+            NodesModifierBakeFile &bake_file = bake_files[i];
+            MemoryBakeFile &memory = memory_bake_files[i];
+            bake_file.relative_filepath = BLI_strdup_null(memory.name.c_str());
+            const int64_t data_size = memory.data.size();
+            void *data = MEM_mallocN(data_size, __func__);
+            memcpy(data, memory.data.data(), data_size);
+            memory.data.clear();
+            memory.data.shrink_to_fit();
+            bake_file.packed_file = BKE_packedfile_new_from_memory(data, data_size);
+          }
+        };
+
+    transfer_to_bake(
+        packed_bake->meta_files, packed_data->meta_files.data(), packed_bake->meta_files_num);
+    transfer_to_bake(
+        packed_bake->blob_files, packed_data->blob_files.data(), packed_bake->blob_files_num);
+
+    NodesModifierBake *bake = request.nmd->find_bake(request.bake_id);
+    /* Should have been freed before. */
+    BLI_assert(bake->packed == nullptr);
+    bake->packed = packed_bake;
   }
 
   /* Tag simulations as being baked. */
@@ -410,6 +472,11 @@ static void try_delete_bake(
     return;
   }
   clear_data_block_references(*bake);
+
+  if (bake->packed) {
+    nodes_modifier_packed_bake_free(bake->packed);
+    bake->packed = nullptr;
+  }
 
   const std::optional<bake::BakePath> bake_path = bake::get_node_bake_path(
       *bmain, object, nmd, bake_id);

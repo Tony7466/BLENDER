@@ -10,6 +10,8 @@
 
 #include "BKE_bake_items.hh"
 
+struct NodesModifierBakeFile;
+
 namespace blender::bke::bake {
 
 /**
@@ -182,6 +184,42 @@ class DiskBlobWriter : public BlobWriter {
 
   BlobSlice write_as_stream(StringRef file_extension,
                             FunctionRef<void(std::ostream &)> fn) override;
+};
+
+class MemoryBlobReader : public BlobReader {
+ private:
+  Map<StringRef, Span<std::byte>> blob_by_name_;
+
+ public:
+  MemoryBlobReader(Span<NodesModifierBakeFile> blob_files);
+  [[nodiscard]] bool read(const BlobSlice &slice, void *r_data) const override;
+};
+
+class MemoryBlobWriter : public BlobWriter {
+ public:
+  struct OutputStream {
+    std::unique_ptr<std::ostringstream> stream;
+    int64_t offset = 0;
+  };
+
+ private:
+  std::string base_name_;
+  std::string blob_name_;
+  Map<std::string, OutputStream> stream_by_name_;
+  int independent_file_count_ = 0;
+
+ public:
+  MemoryBlobWriter(std::string base_name);
+
+  BlobSlice write(const void *data, int64_t size) override;
+
+  BlobSlice write_as_stream(StringRef file_extension,
+                            FunctionRef<void(std::ostream &)> fn) override;
+
+  const Map<std::string, OutputStream> &get_stream_by_name() const
+  {
+    return stream_by_name_;
+  }
 };
 
 void serialize_bake(const BakeState &bake_state,

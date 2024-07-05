@@ -37,6 +37,7 @@ struct FrameCache {
   BakeState state;
   /** Used when the baked data is loaded lazily. */
   std::optional<std::string> meta_path;
+  std::optional<Span<std::byte>> meta_buffer;
 };
 
 /**
@@ -57,6 +58,7 @@ struct NodeBakeCache {
 
   /** Where to load blobs from disk when loading the baked data lazily. */
   std::optional<std::string> blobs_dir;
+  bool load_from_packed = false;
   /** Used to avoid reading blobs multiple times for different frames. */
   std::unique_ptr<BlobReadSharing> blob_sharing;
   /** Used to avoid checking if a bake exists many times. */

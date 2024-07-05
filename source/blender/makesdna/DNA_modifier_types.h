@@ -12,6 +12,7 @@
 
 #include "DNA_defs.h"
 #include "DNA_listBase.h"
+#include "DNA_packedFile_types.h"
 #include "DNA_session_uid_types.h"
 
 #ifdef __cplusplus
@@ -2398,6 +2399,18 @@ typedef struct NodesModifierDataBlock {
   char _pad[4];
 } NodesModifierDataBlock;
 
+typedef struct NodesModifierBakeFile {
+  const char *relative_filepath;
+  PackedFile *packed_file;
+} NodesModifierBakeFile;
+
+typedef struct NodesModifierPackedBake {
+  int meta_files_num;
+  int blob_files_num;
+  NodesModifierBakeFile *meta_files;
+  NodesModifierBakeFile *blob_files;
+} NodesModifierPackedBake;
+
 typedef struct NodesModifierBake {
   /** An id that references a nested node in the node tree. Also see #bNestedNodeRef. */
   int id;
@@ -2428,6 +2441,7 @@ typedef struct NodesModifierBake {
   int data_blocks_num;
   int active_data_block;
   NodesModifierDataBlock *data_blocks;
+  NodesModifierPackedBake *packed;
 } NodesModifierBake;
 
 typedef struct NodesModifierPanel {

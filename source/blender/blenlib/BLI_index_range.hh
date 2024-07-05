@@ -249,6 +249,20 @@ class IndexRange {
     return value >= start_ && value < start_ + size_;
   }
 
+  constexpr bool contains(const IndexRange range) const
+  {
+    if (range.is_empty()) {
+      return true;
+    }
+    if (range.start_ < start_) {
+      return false;
+    }
+    if (range.start_ + range.size_ > start_ + size_) {
+      return false;
+    }
+    return true;
+  }
+
   /**
    * Returns a new range, that contains a sub-interval of the current one.
    */

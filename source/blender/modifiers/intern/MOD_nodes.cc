@@ -57,6 +57,7 @@
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.hh"
 #include "BKE_object.hh"
+#include "BKE_packedFile.h"
 #include "BKE_pointcloud.hh"
 #include "BKE_screen.hh"
 #include "BKE_workspace.hh"
@@ -926,9 +927,24 @@ static BakeFrameIndices get_bake_frame_indices(
   return frame_indices;
 }
 
-static void ensure_bake_loaded(bake::NodeBakeCache &bake_cache, bake::FrameCache &frame_cache)
+static void ensure_bake_loaded(const NodesModifierBake &bake,
+                               bake::NodeBakeCache &bake_cache,
+                               bake::FrameCache &frame_cache)
 {
   if (!frame_cache.state.items_by_id.is_empty()) {
+    return;
+  }
+  if (bake_cache.load_from_packed && frame_cache.meta_buffer.has_value()) {
+    const std::string meta_str{reinterpret_cast<const char *>(frame_cache.meta_buffer->data()),
+                               size_t(frame_cache.meta_buffer->size())};
+    std::istringstream meta_stream{meta_str};
+    bake::MemoryBlobReader blob_reader{Span{bake.packed->blob_files, bake.packed->blob_files_num}};
+    std::optional<bake::BakeState> bake_state = bake::deserialize_bake(
+        meta_stream, blob_reader, *bake_cache.blob_sharing);
+    if (!bake_state.has_value()) {
+      return;
+    }
+    frame_cache.state = std::move(*bake_state);
     return;
   }
   if (!bake_cache.blobs_dir) {
@@ -937,9 +953,9 @@ static void ensure_bake_loaded(bake::NodeBakeCache &bake_cache, bake::FrameCache
   if (!frame_cache.meta_path) {
     return;
   }
-  bke::bake::DiskBlobReader blob_reader{*bake_cache.blobs_dir};
+  bake::DiskBlobReader blob_reader{*bake_cache.blobs_dir};
   fstream meta_file{*frame_cache.meta_path};
-  std::optional<bke::bake::BakeState> bake_state = bke::bake::deserialize_bake(
+  std::optional<bake::BakeState> bake_state = bake::deserialize_bake(
       meta_file, blob_reader, *bake_cache.blob_sharing);
   if (!bake_state.has_value()) {
     return;
@@ -947,12 +963,32 @@ static void ensure_bake_loaded(bake::NodeBakeCache &bake_cache, bake::FrameCache
   frame_cache.state = std::move(*bake_state);
 }
 
-static bool try_find_baked_data(bake::NodeBakeCache &bake,
+static bool try_find_baked_data(const NodesModifierBake &bake,
+                                bake::NodeBakeCache &bake_cache,
                                 const Main &bmain,
                                 const Object &object,
                                 const NodesModifierData &nmd,
                                 const int id)
 {
+  if (bake.packed) {
+    if (bake.packed->meta_files_num == 0) {
+      return false;
+    }
+    bake_cache.reset();
+    for (const NodesModifierBakeFile &meta_file :
+         Span{bake.packed->meta_files, bake.packed->meta_files_num})
+    {
+      auto frame_cache = std::make_unique<bake::FrameCache>();
+      frame_cache->frame = *bake::file_name_to_frame(meta_file.relative_filepath);
+      frame_cache->meta_buffer = Span(static_cast<const std::byte *>(meta_file.packed_file->data),
+                                      meta_file.packed_file->size);
+      bake_cache.frames.append(std::move(frame_cache));
+    }
+    bake_cache.load_from_packed = true;
+    bake_cache.blob_sharing = std::make_unique<bake::BlobReadSharing>();
+    return true;
+  }
+
   std::optional<bake::BakePath> bake_path = bake::get_node_bake_path(bmain, object, nmd, id);
   if (!bake_path) {
     return false;
@@ -961,15 +997,15 @@ static bool try_find_baked_data(bake::NodeBakeCache &bake,
   if (meta_files.is_empty()) {
     return false;
   }
-  bake.reset();
+  bake_cache.reset();
   for (const bake::MetaFile &meta_file : meta_files) {
     auto frame_cache = std::make_unique<bake::FrameCache>();
     frame_cache->frame = meta_file.frame;
     frame_cache->meta_path = meta_file.path;
-    bake.frames.append(std::move(frame_cache));
+    bake_cache.frames.append(std::move(frame_cache));
   }
-  bake.blobs_dir = bake_path->blobs_dir;
-  bake.blob_sharing = std::make_unique<bake::BlobReadSharing>();
+  bake_cache.blobs_dir = bake_path->blobs_dir;
+  bake_cache.blob_sharing = std::make_unique<bake::BlobReadSharing>();
   return true;
 }
 
@@ -1104,7 +1140,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
       /* Try load baked data. */
       if (!node_cache.bake.failed_finding_bake) {
         if (node_cache.cache_status != bake::CacheStatus::Baked) {
-          if (try_find_baked_data(node_cache.bake, *bmain_, *ctx_.object, nmd_, zone_id)) {
+          if (try_find_baked_data(bake, node_cache.bake, *bmain_, *ctx_.object, nmd_, zone_id)) {
             node_cache.cache_status = bake::CacheStatus::Baked;
           }
           else {
@@ -1125,7 +1161,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
     const BakeFrameIndices frame_indices = get_bake_frame_indices(node_cache.bake.frames,
                                                                   current_frame_);
     if (node_cache.cache_status == bake::CacheStatus::Baked) {
-      this->read_from_cache(frame_indices, node_cache, zone_behavior);
+      this->read_from_cache(bake, frame_indices, node_cache, zone_behavior);
       return;
     }
     if (use_frame_cache_) {
@@ -1164,7 +1200,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
           return;
         }
       }
-      this->read_from_cache(frame_indices, node_cache, zone_behavior);
+      this->read_from_cache(bake, frame_indices, node_cache, zone_behavior);
       return;
     }
 
@@ -1250,7 +1286,8 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
     };
   }
 
-  void read_from_cache(const BakeFrameIndices &frame_indices,
+  void read_from_cache(const NodesModifierBake &bake,
+                       const BakeFrameIndices &frame_indices,
                        bake::SimulationNodeCache &node_cache,
                        nodes::SimulationZoneBehavior &zone_behavior) const
   {
@@ -1266,44 +1303,46 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
       zone_behavior.input.emplace<sim_input::PassThrough>();
     }
     if (frame_indices.current) {
-      this->read_single(*frame_indices.current, node_cache, zone_behavior);
+      this->read_single(bake, *frame_indices.current, node_cache, zone_behavior);
     }
     else if (frame_indices.next) {
       if (frame_indices.prev) {
         this->read_interpolated(
-            *frame_indices.prev, *frame_indices.next, node_cache, zone_behavior);
+            bake, *frame_indices.prev, *frame_indices.next, node_cache, zone_behavior);
       }
       else {
         this->output_pass_through(zone_behavior);
       }
     }
     else if (frame_indices.prev) {
-      this->read_single(*frame_indices.prev, node_cache, zone_behavior);
+      this->read_single(bake, *frame_indices.prev, node_cache, zone_behavior);
     }
     else {
       this->output_pass_through(zone_behavior);
     }
   }
 
-  void read_single(const int frame_index,
+  void read_single(const NodesModifierBake &bake,
+                   const int frame_index,
                    bake::SimulationNodeCache &node_cache,
                    nodes::SimulationZoneBehavior &zone_behavior) const
   {
     bake::FrameCache &frame_cache = *node_cache.bake.frames[frame_index];
-    ensure_bake_loaded(node_cache.bake, frame_cache);
+    ensure_bake_loaded(bake, node_cache.bake, frame_cache);
     auto &read_single_info = zone_behavior.output.emplace<sim_output::ReadSingle>();
     read_single_info.state = frame_cache.state;
   }
 
-  void read_interpolated(const int prev_frame_index,
+  void read_interpolated(const NodesModifierBake &bake,
+                         const int prev_frame_index,
                          const int next_frame_index,
                          bake::SimulationNodeCache &node_cache,
                          nodes::SimulationZoneBehavior &zone_behavior) const
   {
     bake::FrameCache &prev_frame_cache = *node_cache.bake.frames[prev_frame_index];
     bake::FrameCache &next_frame_cache = *node_cache.bake.frames[next_frame_index];
-    ensure_bake_loaded(node_cache.bake, prev_frame_cache);
-    ensure_bake_loaded(node_cache.bake, next_frame_cache);
+    ensure_bake_loaded(bake, node_cache.bake, prev_frame_cache);
+    ensure_bake_loaded(bake, node_cache.bake, next_frame_cache);
     auto &read_interpolated_info = zone_behavior.output.emplace<sim_output::ReadInterpolated>();
     read_interpolated_info.mix_factor = (float(current_frame_) - float(prev_frame_cache.frame)) /
                                         (float(next_frame_cache.frame) -
@@ -1397,7 +1436,7 @@ class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
     /* Try load baked data. */
     if (node_cache.bake.frames.is_empty()) {
       if (!node_cache.bake.failed_finding_bake) {
-        if (!try_find_baked_data(node_cache.bake, *bmain_, *ctx_.object, nmd_, id)) {
+        if (!try_find_baked_data(bake, node_cache.bake, *bmain_, *ctx_.object, nmd_, id)) {
           node_cache.bake.failed_finding_bake = true;
         }
       }
@@ -1410,30 +1449,32 @@ class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
     const BakeFrameIndices frame_indices = get_bake_frame_indices(node_cache.bake.frames,
                                                                   current_frame_);
     if (frame_indices.current) {
-      this->read_single(*frame_indices.current, node_cache, behavior);
+      this->read_single(bake, *frame_indices.current, node_cache, behavior);
       return;
     }
     if (frame_indices.prev && frame_indices.next) {
-      this->read_interpolated(*frame_indices.prev, *frame_indices.next, node_cache, behavior);
+      this->read_interpolated(
+          bake, *frame_indices.prev, *frame_indices.next, node_cache, behavior);
       return;
     }
     if (frame_indices.prev) {
-      this->read_single(*frame_indices.prev, node_cache, behavior);
+      this->read_single(bake, *frame_indices.prev, node_cache, behavior);
       return;
     }
     if (frame_indices.next) {
-      this->read_single(*frame_indices.next, node_cache, behavior);
+      this->read_single(bake, *frame_indices.next, node_cache, behavior);
       return;
     }
     BLI_assert_unreachable();
   }
 
-  void read_single(const int frame_index,
+  void read_single(const NodesModifierBake &bake,
+                   const int frame_index,
                    bake::BakeNodeCache &node_cache,
                    nodes::BakeNodeBehavior &behavior) const
   {
     bake::FrameCache &frame_cache = *node_cache.bake.frames[frame_index];
-    ensure_bake_loaded(node_cache.bake, frame_cache);
+    ensure_bake_loaded(bake, node_cache.bake, frame_cache);
     if (this->check_read_error(frame_cache, behavior)) {
       return;
     }
@@ -1441,15 +1482,16 @@ class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
     read_single_info.state = frame_cache.state;
   }
 
-  void read_interpolated(const int prev_frame_index,
+  void read_interpolated(const NodesModifierBake &bake,
+                         const int prev_frame_index,
                          const int next_frame_index,
                          bake::BakeNodeCache &node_cache,
                          nodes::BakeNodeBehavior &behavior) const
   {
     bake::FrameCache &prev_frame_cache = *node_cache.bake.frames[prev_frame_index];
     bake::FrameCache &next_frame_cache = *node_cache.bake.frames[next_frame_index];
-    ensure_bake_loaded(node_cache.bake, prev_frame_cache);
-    ensure_bake_loaded(node_cache.bake, next_frame_cache);
+    ensure_bake_loaded(bake, node_cache.bake, prev_frame_cache);
+    ensure_bake_loaded(bake, node_cache.bake, next_frame_cache);
     if (this->check_read_error(prev_frame_cache, behavior) ||
         this->check_read_error(next_frame_cache, behavior))
     {
@@ -2372,6 +2414,27 @@ static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const Modi
         BLO_write_string(writer, item.id_name);
         BLO_write_string(writer, item.lib_name);
       }
+      if (bake.packed) {
+        BLO_write_struct(writer, NodesModifierPackedBake, bake.packed);
+        BLO_write_struct_array(
+            writer, NodesModifierBakeFile, bake.packed->meta_files_num, bake.packed->meta_files);
+        BLO_write_struct_array(
+            writer, NodesModifierBakeFile, bake.packed->blob_files_num, bake.packed->blob_files);
+        const auto write_bake_file = [&](const NodesModifierBakeFile &bake_file) {
+          BLO_write_string(writer, bake_file.relative_filepath);
+          BKE_packedfile_blend_write(writer, bake_file.packed_file);
+        };
+        for (const NodesModifierBakeFile &meta_file :
+             Span{bake.packed->meta_files, bake.packed->meta_files_num})
+        {
+          write_bake_file(meta_file);
+        }
+        for (const NodesModifierBakeFile &blob_file :
+             Span{bake.packed->blob_files, bake.packed->blob_files_num})
+        {
+          write_bake_file(blob_file);
+        }
+      }
     }
     BLO_write_struct_array(writer, NodesModifierPanel, nmd->panels_num, nmd->panels);
 
@@ -2412,6 +2475,28 @@ static void blend_read(BlendDataReader *reader, ModifierData *md)
       BLO_read_string(reader, &data_block.id_name);
       BLO_read_string(reader, &data_block.lib_name);
     }
+
+    BLO_read_struct(reader, NodesModifierPackedBake, &bake.packed);
+    if (bake.packed) {
+      BLO_read_struct_array(
+          reader, NodesModifierBakeFile, bake.packed->meta_files_num, &bake.packed->meta_files);
+      BLO_read_struct_array(
+          reader, NodesModifierBakeFile, bake.packed->blob_files_num, &bake.packed->blob_files);
+      const auto read_bake_file = [&](NodesModifierBakeFile &bake_file) {
+        BLO_read_string(reader, &bake_file.relative_filepath);
+        BKE_packedfile_blend_read(reader, &bake_file.packed_file);
+      };
+      for (NodesModifierBakeFile &meta_file :
+           MutableSpan{bake.packed->meta_files, bake.packed->meta_files_num})
+      {
+        read_bake_file(meta_file);
+      }
+      for (NodesModifierBakeFile &blob_file :
+           MutableSpan{bake.packed->blob_files, bake.packed->blob_files_num})
+      {
+        read_bake_file(blob_file);
+      }
+    }
   }
   BLO_read_struct_array(reader, NodesModifierPanel, nmd->panels_num, &nmd->panels);
 
@@ -2445,6 +2530,22 @@ static void copy_data(const ModifierData *md, ModifierData *target, const int fl
           }
         }
       }
+      if (bake.packed) {
+        bake.packed = static_cast<NodesModifierPackedBake *>(MEM_dupallocN(bake.packed));
+        const auto copy_bake_files_inplace = [](NodesModifierBakeFile **bake_files,
+                                                const int bake_files_num) {
+          if (!*bake_files) {
+            return;
+          }
+          *bake_files = static_cast<NodesModifierBakeFile *>(MEM_dupallocN(*bake_files));
+          for (NodesModifierBakeFile &bake_file : MutableSpan{*bake_files, bake_files_num}) {
+            bake_file.relative_filepath = BLI_strdup_null(bake_file.relative_filepath);
+            bake_file.packed_file = BKE_packedfile_duplicate(bake_file.packed_file);
+          }
+        };
+        copy_bake_files_inplace(&bake.packed->meta_files, bake.packed->meta_files_num);
+        copy_bake_files_inplace(&bake.packed->blob_files, bake.packed->blob_files_num);
+      }
     }
   }
 
@@ -2471,6 +2572,20 @@ static void copy_data(const ModifierData *md, ModifierData *target, const int fl
   }
 }
 
+void nodes_modifier_packed_bake_free(NodesModifierPackedBake *packed_bake)
+{
+  const auto free_packed_files = [](NodesModifierBakeFile *files, const int files_num) {
+    for (NodesModifierBakeFile &file : MutableSpan{files, files_num}) {
+      MEM_SAFE_FREE(file.relative_filepath);
+      BKE_packedfile_free(file.packed_file);
+    }
+    MEM_freeN(files);
+  };
+  free_packed_files(packed_bake->meta_files, packed_bake->meta_files_num);
+  free_packed_files(packed_bake->blob_files, packed_bake->blob_files_num);
+  MEM_SAFE_FREE(packed_bake);
+}
+
 static void free_data(ModifierData *md)
 {
   NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
@@ -2488,6 +2603,10 @@ static void free_data(ModifierData *md)
       MEM_SAFE_FREE(data_block.lib_name);
     }
     MEM_SAFE_FREE(bake.data_blocks);
+
+    if (bake.packed) {
+      nodes_modifier_packed_bake_free(bake.packed);
+    }
   }
   MEM_SAFE_FREE(nmd->bakes);
 
