@@ -476,6 +476,15 @@ def url_parse_for_blender(url: str) -> Tuple[str, Dict[str, str]]:
                             None,  # `parsed_url.query,`
                             None,  # `parsed_url.fragment,`
                         ))
+                    elif value.startswith("./"):
+                        value_xform = urllib.parse.urlunparse((
+                            parsed_url.scheme,
+                            parsed_url.netloc,
+                            parsed_url.path.rsplit("/", 1)[0] + value[1:],
+                            None,  # `parsed_url.params,`
+                            None,  # `parsed_url.query,`
+                            None,  # `parsed_url.fragment,`
+                        ))
                     else:
                         value_xform = value
         if value_xform is not None:
@@ -570,6 +579,7 @@ def pkg_install_files(
         *,
         directory: str,
         files: Sequence[str],
+        blender_version: Tuple[int, int, int],
         use_idle: bool,
 ) -> Generator[InfoItemSeq, None, None]:
     """
@@ -579,6 +589,7 @@ def pkg_install_files(
     yield from command_output_from_json_0([
         "install-files", *files,
         "--local-dir", directory,
+        "--blender-version", "{:d}.{:d}.{:d}".format(*blender_version),
     ], use_idle=use_idle)
     yield [COMPLETE_ITEM]
 
@@ -770,6 +781,7 @@ class CommandBatchItem:
         "fn_with_args",
         "fn_iter",
         "status",
+        "has_fatal_error",
         "has_error",
         "has_warning",
         "msg_log",
@@ -787,6 +799,7 @@ class CommandBatchItem:
         self.fn_with_args = fn_with_args
         self.fn_iter: Optional[Generator[InfoItemSeq, bool, None]] = None
         self.status = CommandBatchItem.STATUS_NOT_YET_STARTED
+        self.has_fatal_error = False
         self.has_error = False
         self.has_warning = False
         self.msg_log: List[Tuple[str, Any]] = []
@@ -956,7 +969,11 @@ class CommandBatch:
 
                     command_output[cmd_index].append((ty, msg))
                     if ty != 'PROGRESS':
-                        if ty == 'ERROR':
+                        if ty == 'FATAL_ERROR':
+                            if not cmd.has_fatal_error:
+                                cmd.has_fatal_error = True
+                                status_data_changed = True
+                        elif ty == 'ERROR':
                             if not cmd.has_error:
                                 cmd.has_error = True
                                 status_data_changed = True
@@ -992,7 +1009,7 @@ class CommandBatch:
         failure_count = 0
         for cmd in self._batch:
             status_flag |= 1 << cmd.status
-            if cmd.has_error or cmd.has_warning:
+            if cmd.has_fatal_error or cmd.has_error or cmd.has_warning:
                 failure_count += 1
         return CommandBatch_StatusFlag(
             flag=status_flag,
