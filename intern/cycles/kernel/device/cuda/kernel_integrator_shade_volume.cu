@@ -9,7 +9,7 @@
 #include "kernel/device/cuda/globals.h"
 
 #include "kernel/device/gpu/image.h"
-#include "kernel/tables_extern.h"
+#include "kernel/tables.h"
 
 #include "kernel/integrator/state.h"
 #include "kernel/integrator/state_flow.h"

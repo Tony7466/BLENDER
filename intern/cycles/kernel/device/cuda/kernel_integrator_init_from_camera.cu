@@ -8,7 +8,7 @@
 #include "kernel/device/cuda/config.h"
 #include "kernel/device/cuda/globals.h"
 
-#include "kernel/tables_extern.h"
+#include "kernel/tables.h"
 
 #include "kernel/device/gpu/work_stealing.h"
 
