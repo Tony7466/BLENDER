@@ -17,11 +17,11 @@ void main()
   ivec2 tile = ivec2(gl_GlobalInvocationID.xy);
 
   if (all(equal(tile, ivec2(0)))) {
-    raytrace_tracing_dispatch_buf.num_groups_y = 1;
-    raytrace_denoise_dispatch_buf.num_groups_y = 1;
+    atomicExchange(raytrace_tracing_dispatch_buf.num_groups_y, 1u);
+    atomicExchange(raytrace_denoise_dispatch_buf.num_groups_y, 1u);
 
-    raytrace_tracing_dispatch_buf.num_groups_z = 1;
-    raytrace_denoise_dispatch_buf.num_groups_z = 1;
+    atomicExchange(raytrace_tracing_dispatch_buf.num_groups_z, 1u);
+    atomicExchange(raytrace_denoise_dispatch_buf.num_groups_z, 1u);
   }
 
   if (!in_image_range(tile, tile_raytrace_tracing_img)) {
