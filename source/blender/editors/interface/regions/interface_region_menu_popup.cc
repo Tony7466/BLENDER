@@ -804,6 +804,7 @@ void UI_popup_block_template_confirm_op(uiLayout *layout,
       return nullptr;
     }
     uiBlock *block = uiLayoutGetBlock(row);
+    const uiBut *but_ref = (uiBut *)block->buttons.last;
     uiItemFullO_ptr(row,
                     ot,
                     confirm_text,
@@ -813,8 +814,10 @@ void UI_popup_block_template_confirm_op(uiLayout *layout,
                     UI_ITEM_NONE,
                     r_ptr);
 
-    uiBut *confirm_but = (uiBut *)block->buttons.last;
-    return confirm_but;
+    if (but_ref == block->buttons.last) {
+      return nullptr;
+    }
+    return static_cast<uiBut *>(block->buttons.last);
   };
 
   auto cancel_fn = [&row, &cancel_text, &show_cancel]() -> uiBut * {
@@ -822,21 +825,21 @@ void UI_popup_block_template_confirm_op(uiLayout *layout,
       return nullptr;
     }
     uiBlock *block = uiLayoutGetBlock(row);
-    uiBut *cancel_but = uiDefIconTextBut(block,
-                                         UI_BTYPE_BUT,
-                                         1,
-                                         ICON_NONE,
-                                         cancel_text,
-                                         0,
-                                         0,
-                                         UI_UNIT_X, /* Ignored, as a split is used. */
-                                         UI_UNIT_Y,
-                                         nullptr,
-                                         0.0,
-                                         0.0,
-                                         "");
+    uiBut *but = uiDefIconTextBut(block,
+                                  UI_BTYPE_BUT,
+                                  1,
+                                  ICON_NONE,
+                                  cancel_text,
+                                  0,
+                                  0,
+                                  UI_UNIT_X, /* Ignored, as a split is used. */
+                                  UI_UNIT_Y,
+                                  nullptr,
+                                  0.0,
+                                  0.0,
+                                  "");
 
-    return cancel_but;
+    return but;
   };
 
   UI_popup_block_template_confirm(block, cancel_default, confirm_fn, cancel_fn);
