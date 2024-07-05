@@ -617,7 +617,10 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
 
     draw_bake_button(col, ctx);
     if (ctx.is_baked) {
-      const std::string label = get_baked_string(ctx);
+      std::string label = get_baked_string(ctx);
+      if (ctx.bake->packed) {
+        label += IFACE_(" (packed)");
+      }
       uiItemL(col, label.c_str(), ICON_NONE);
     }
   }
