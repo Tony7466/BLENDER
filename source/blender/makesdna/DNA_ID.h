@@ -551,10 +551,10 @@ enum eLibrary_Tag {
   /** The blend file of this library is writable for asset editing. */
   LIBRARY_ASSET_FILE_WRITABLE = 1 << 2,
   /**
-   * The blend file of this library has the #G_FILE_MINIMAL_ASSET_EDIT_FILE flag set (refer to it
-   * for more info).
+   * The blend file of this library has the #G_FILE_ASSET_EDIT_FILE flag set (refer to it for more
+   * info).
    */
-  LIBRARY_IS_MINIMAL_ASSET_EDIT_FILE = 1 << 3,
+  LIBRARY_IS_ASSET_EDIT_FILE = 1 << 3,
 };
 
 /**

@@ -75,7 +75,7 @@ static ID *asset_link_id(Main &global_main,
   if (local_asset && local_asset->lib) {
     local_asset->lib->runtime.tag |= LIBRARY_ASSET_EDITABLE;
 
-    if ((local_asset->lib->runtime.tag & LIBRARY_IS_MINIMAL_ASSET_EDIT_FILE) &&
+    if ((local_asset->lib->runtime.tag & LIBRARY_IS_ASSET_EDIT_FILE) &&
         StringRef(filepath).endswith(BLENDER_ASSET_FILE_SUFFIX) &&
         BKE_preferences_asset_library_containing_path(&U, filepath) &&
         BLI_file_is_writable(filepath))
@@ -230,7 +230,7 @@ static bool asset_write_in_library(Main &bmain,
 
   BKE_packedfile_pack_all(new_main, nullptr, false);
 
-  const int write_flags = G_FILE_COMPRESS | G_FILE_MINIMAL_ASSET_EDIT_FILE;
+  const int write_flags = G_FILE_COMPRESS | G_FILE_ASSET_EDIT_FILE;
   const bool success = BLO_write_file(
       new_main, filepath.c_str(), write_flags, &blend_file_write_params, &reports);
 
