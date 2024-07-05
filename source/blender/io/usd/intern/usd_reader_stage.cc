@@ -317,10 +317,9 @@ bool USDStageReader::include_by_purpose(const pxr::UsdGeomImageable &imageable) 
   return true;
 }
 
-/* Determine if the given reader can use the parent of the encapsulated USD prim
- * to compute the Blender object's transform. If so, the reader is appropriately
- * flagged and the function returns true. Otherwise, the function returns false. */
-static bool merge_with_parent(USDPrimReader *reader)
+/* Return true if the given reader can use the parent of the encapsulated USD prim
+ * to compute the Blender object's transform. Return false otherwise. */
+static bool can_merge_with_parent(USDPrimReader *reader)
 {
   USDXformReader *xform_reader = dynamic_cast<USDXformReader *>(reader);
 
@@ -350,39 +349,31 @@ static bool merge_with_parent(USDPrimReader *reader)
     return false;
   }
 
-  /* Flag the Xform reader as merged. */
-  xform_reader->set_use_parent_xform(true);
-
   return true;
 }
 
-/* Return true if the given reader has been flagged as merged. */
-static bool is_merged_with_parent(const USDPrimReader *reader)
+static void flag_as_merged(USDPrimReader *reader)
 {
-  const USDXformReader *xform_reader = dynamic_cast<const USDXformReader *>(reader);
-  return xform_reader && xform_reader->use_parent_xform();
+  if (USDXformReader *xform_reader = dynamic_cast<USDXformReader *>(reader)) {
+    xform_reader->set_use_parent_xform(true);
+  }
 }
 
-/* If child_readers contains only a single non-xform prim reader which has not already been
- * merged with its parent, return that reader. Return null otherwise. Note this will return
- * null if there are more than one candidate for merging. */
+/* If child_readers contains a prim reader which can be merged with its parent,
+ * return that reader. Return null otherwise. */
 static USDPrimReader *get_merge_candidate(const blender::Vector<USDPrimReader *> &child_readers)
 {
   if (child_readers.is_empty()) {
     return nullptr;
   }
-  USDPrimReader *candidate = nullptr;
+
   for (USDPrimReader *reader : child_readers) {
-    if (!is_merged_with_parent(reader) && !reader->prim().IsA<pxr::UsdGeomXform>()) {
-      if (candidate != nullptr) {
-        /* More than one candidate was found. */
-        return nullptr;
-      }
-      candidate = reader;
+    if (can_merge_with_parent(reader)) {
+      return reader;
     }
   }
 
-  return candidate;
+  return nullptr;
 }
 
 USDPrimReader *USDStageReader::collect_readers(const pxr::UsdPrim &prim,
@@ -445,15 +436,18 @@ USDPrimReader *USDStageReader::collect_readers(const pxr::UsdPrim &prim,
     }
   }
 
-  /* Check if we can merge an Xform with one of its child prims. */
-  if (USDPrimReader *child_to_merge = get_merge_candidate(child_readers)) {
-    if (merge_with_parent(child_to_merge)) {
+  /* If this prim is an Xform, check if we can merge it with one of its child prims. */
+  if (prim.IsA<pxr::UsdGeomXform>()) {
+    if (USDPrimReader *child_to_merge = get_merge_candidate(child_readers)) {
+      flag_as_merged(child_to_merge);
       /* Reparent siblings to the merged child. */
       for (USDPrimReader *child_reader : child_readers) {
         if (child_reader != child_to_merge) {
           child_reader->parent(child_to_merge);
         }
       }
+      /* Don't create a reader for this prim (because the merged child will account for
+       * this prim's transform) and return the merged child instead. */
       return child_to_merge;
     }
   }
