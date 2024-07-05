@@ -38,7 +38,6 @@
 #include "BKE_scene.hh"
 
 #include "DEG_depsgraph.hh"
-#include "DEG_depsgraph_build.hh"
 #include "DEG_depsgraph_query.hh"
 
 #include "ED_keyframing.hh"
@@ -379,10 +378,10 @@ static int insert_key(bContext *C, wmOperator *op)
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
 
-  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   const eInsertKeyFlags insert_key_flags = animrig::get_keyframing_flags(scene);
   const eBezTriple_KeyframeType key_type = eBezTriple_KeyframeType(
       scene->toolsettings->keyframe_type);
+  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
       depsgraph, BKE_scene_frame_get(scene));
 
