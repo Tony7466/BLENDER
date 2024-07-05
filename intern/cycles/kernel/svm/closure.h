@@ -490,9 +490,9 @@ ccl_device
           sd, sizeof(MicrofacetBsdf), rgb_to_spectrum(make_float3(mix_weight)));
 
       if (!(bsdf == NULL)) {
-        uint base_ior_offest, edge_tint_k_offset, rotation_offset, tangent_offset;
+        uint base_ior_offset, edge_tint_k_offset, rotation_offset, tangent_offset;
         svm_unpack_node_uchar4(
-            node.z, &base_ior_offest, &edge_tint_k_offset, &rotation_offset, &tangent_offset);
+            node.z, &base_ior_offset, &edge_tint_k_offset, &rotation_offset, &tangent_offset);
 
         float3 valid_reflection_N = maybe_ensure_valid_specular_reflection(sd, N);
         float3 T = stack_load_float3(stack, tangent_offset);
@@ -532,11 +532,11 @@ ccl_device
 
           float3 n, k;
           if (type == CLOSURE_BSDF_CONDUCTOR) {
-            n = max(stack_load_float3(stack, base_ior_offest), zero_float3());
+            n = max(stack_load_float3(stack, base_ior_offset), zero_float3());
             k = max(stack_load_float3(stack, edge_tint_k_offset), zero_float3());
           }
           else {
-            const float3 color = saturate(stack_load_float3(stack, base_ior_offest));
+            const float3 color = saturate(stack_load_float3(stack, base_ior_offset));
             const float3 tint = saturate(stack_load_float3(stack, edge_tint_k_offset));
             complex_ior_from_base_edge(color, tint, &n, &k);
           }
@@ -549,7 +549,7 @@ ccl_device
           ccl_private FresnelF82Tint *fresnel = (ccl_private FresnelF82Tint *)closure_alloc_extra(
               sd, sizeof(FresnelF82Tint));
 
-          const float3 color = saturate(stack_load_float3(stack, base_ior_offest));
+          const float3 color = saturate(stack_load_float3(stack, base_ior_offset));
           const float3 tint = saturate(stack_load_float3(stack, edge_tint_k_offset));
 
           fresnel->f0 = rgb_to_spectrum(color);
