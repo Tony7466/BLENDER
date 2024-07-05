@@ -5,6 +5,9 @@
 #include "kernel/device/optix/compat.h"
 #include "kernel/device/optix/globals.h"
 
+#undef ccl_device_noinline
+#define ccl_device_noinline __device__ __noinline__
+
 #include "kernel/tables.h"
 
 #include "kernel/device/gpu/image.h"

@@ -78,9 +78,6 @@ ccl_device_noinline void svm_node_wireframe(KernelGlobals kg,
                                             ccl_private ShaderData *sd,
                                             ccl_private float *stack,
                                             uint4 node)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   uint in_size = node.y;
   uint out_fac = node.z;
@@ -108,6 +105,5 @@ ccl_device_noinline void svm_node_wireframe(KernelGlobals kg,
   if (stack_valid(out_fac))
     stack_store_float(stack, out_fac, f);
 }
-#endif
 
 CCL_NAMESPACE_END

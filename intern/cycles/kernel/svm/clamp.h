@@ -15,9 +15,6 @@ ccl_device_noinline int svm_node_clamp(KernelGlobals kg,
                                        uint parameters_stack_offsets,
                                        uint result_stack_offset,
                                        int offset)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   uint min_stack_offset, max_stack_offset, type;
   svm_unpack_node_uchar3(parameters_stack_offsets, &min_stack_offset, &max_stack_offset, &type);
@@ -36,6 +33,5 @@ ccl_device_noinline int svm_node_clamp(KernelGlobals kg,
   }
   return offset;
 }
-#endif
 
 CCL_NAMESPACE_END

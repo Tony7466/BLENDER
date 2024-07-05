@@ -6,6 +6,9 @@
 #include "kernel/device/cuda/config.h"
 #include "kernel/device/cuda/globals.h"
 
+#undef ccl_device_noinline
+#define ccl_device_noinline __device__ __noinline__
+
 #include "kernel/tables.h"
 
 __constant__ KernelParamsCUDA kernel_params;

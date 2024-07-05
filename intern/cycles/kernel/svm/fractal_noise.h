@@ -12,9 +12,6 @@ CCL_NAMESPACE_BEGIN
 
 ccl_device_noinline float noise_fbm(
     float p, float detail, float roughness, float lacunarity, bool normalize)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   float fscale = 1.0f;
   float amp = 1.0f;
@@ -39,13 +36,9 @@ ccl_device_noinline float noise_fbm(
     return normalize ? 0.5f * sum / maxamp + 0.5f : sum;
   }
 }
-#endif
 
 ccl_device_noinline float noise_fbm(
     float2 p, float detail, float roughness, float lacunarity, bool normalize)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   float fscale = 1.0f;
   float amp = 1.0f;
@@ -70,13 +63,9 @@ ccl_device_noinline float noise_fbm(
     return normalize ? 0.5f * sum / maxamp + 0.5f : sum;
   }
 }
-#endif
 
 ccl_device_noinline float noise_fbm(
     float3 p, float detail, float roughness, float lacunarity, bool normalize)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   float fscale = 1.0f;
   float amp = 1.0f;
@@ -101,13 +90,9 @@ ccl_device_noinline float noise_fbm(
     return normalize ? 0.5f * sum / maxamp + 0.5f : sum;
   }
 }
-#endif
 
 ccl_device_noinline float noise_fbm(
     float4 p, float detail, float roughness, float lacunarity, bool normalize)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   float fscale = 1.0f;
   float amp = 1.0f;
@@ -132,7 +117,6 @@ ccl_device_noinline float noise_fbm(
     return normalize ? 0.5f * sum / maxamp + 0.5f : sum;
   }
 }
-#endif
 
 /* Multifractal */
 
@@ -140,9 +124,6 @@ ccl_device_noinline float noise_multi_fractal(float p,
                                               float detail,
                                               float roughness,
                                               float lacunarity)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   float value = 1.0f;
   float pwr = 1.0f;
@@ -160,15 +141,11 @@ ccl_device_noinline float noise_multi_fractal(float p,
 
   return value;
 }
-#endif
 
 ccl_device_noinline float noise_multi_fractal(float2 p,
                                               float detail,
                                               float roughness,
                                               float lacunarity)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   float value = 1.0f;
   float pwr = 1.0f;
@@ -186,15 +163,11 @@ ccl_device_noinline float noise_multi_fractal(float2 p,
 
   return value;
 }
-#endif
 
 ccl_device_noinline float noise_multi_fractal(float3 p,
                                               float detail,
                                               float roughness,
                                               float lacunarity)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   float value = 1.0f;
   float pwr = 1.0f;
@@ -212,15 +185,11 @@ ccl_device_noinline float noise_multi_fractal(float3 p,
 
   return value;
 }
-#endif
 
 ccl_device_noinline float noise_multi_fractal(float4 p,
                                               float detail,
                                               float roughness,
                                               float lacunarity)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   float value = 1.0f;
   float pwr = 1.0f;
@@ -238,15 +207,11 @@ ccl_device_noinline float noise_multi_fractal(float4 p,
 
   return value;
 }
-#endif
 
 /* Heterogeneous Terrain */
 
 ccl_device_noinline float noise_hetero_terrain(
     float p, float detail, float roughness, float lacunarity, float offset)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   float pwr = roughness;
 
@@ -269,13 +234,9 @@ ccl_device_noinline float noise_hetero_terrain(
 
   return value;
 }
-#endif
 
 ccl_device_noinline float noise_hetero_terrain(
     float2 p, float detail, float roughness, float lacunarity, float offset)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   float pwr = roughness;
 
@@ -298,13 +259,9 @@ ccl_device_noinline float noise_hetero_terrain(
 
   return value;
 }
-#endif
 
 ccl_device_noinline float noise_hetero_terrain(
     float3 p, float detail, float roughness, float lacunarity, float offset)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   float pwr = roughness;
 
@@ -327,13 +284,9 @@ ccl_device_noinline float noise_hetero_terrain(
 
   return value;
 }
-#endif
 
 ccl_device_noinline float noise_hetero_terrain(
     float4 p, float detail, float roughness, float lacunarity, float offset)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   float pwr = roughness;
 
@@ -356,15 +309,11 @@ ccl_device_noinline float noise_hetero_terrain(
 
   return value;
 }
-#endif
 
 /* Hybrid Additive/Multiplicative Multifractal Terrain */
 
 ccl_device_noinline float noise_hybrid_multi_fractal(
     float p, float detail, float roughness, float lacunarity, float offset, float gain)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   float pwr = 1.0f;
   float value = 0.0f;
@@ -393,13 +342,9 @@ ccl_device_noinline float noise_hybrid_multi_fractal(
 
   return value;
 }
-#endif
 
 ccl_device_noinline float noise_hybrid_multi_fractal(
     float2 p, float detail, float roughness, float lacunarity, float offset, float gain)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   float pwr = 1.0f;
   float value = 0.0f;
@@ -428,13 +373,9 @@ ccl_device_noinline float noise_hybrid_multi_fractal(
 
   return value;
 }
-#endif
 
 ccl_device_noinline float noise_hybrid_multi_fractal(
     float3 p, float detail, float roughness, float lacunarity, float offset, float gain)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   float pwr = 1.0f;
   float value = 0.0f;
@@ -463,13 +404,9 @@ ccl_device_noinline float noise_hybrid_multi_fractal(
 
   return value;
 }
-#endif
 
 ccl_device_noinline float noise_hybrid_multi_fractal(
     float4 p, float detail, float roughness, float lacunarity, float offset, float gain)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   float pwr = 1.0f;
   float value = 0.0f;
@@ -498,15 +435,11 @@ ccl_device_noinline float noise_hybrid_multi_fractal(
 
   return value;
 }
-#endif
 
 /* Ridged Multifractal Terrain */
 
 ccl_device_noinline float noise_ridged_multi_fractal(
     float p, float detail, float roughness, float lacunarity, float offset, float gain)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   float pwr = roughness;
 
@@ -527,13 +460,9 @@ ccl_device_noinline float noise_ridged_multi_fractal(
 
   return value;
 }
-#endif
 
 ccl_device_noinline float noise_ridged_multi_fractal(
     float2 p, float detail, float roughness, float lacunarity, float offset, float gain)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   float pwr = roughness;
 
@@ -554,13 +483,9 @@ ccl_device_noinline float noise_ridged_multi_fractal(
 
   return value;
 }
-#endif
 
 ccl_device_noinline float noise_ridged_multi_fractal(
     float3 p, float detail, float roughness, float lacunarity, float offset, float gain)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   float pwr = roughness;
 
@@ -581,13 +506,9 @@ ccl_device_noinline float noise_ridged_multi_fractal(
 
   return value;
 }
-#endif
 
 ccl_device_noinline float noise_ridged_multi_fractal(
     float4 p, float detail, float roughness, float lacunarity, float offset, float gain)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   float pwr = roughness;
 
@@ -608,6 +529,5 @@ ccl_device_noinline float noise_ridged_multi_fractal(
 
   return value;
 }
-#endif
 
 CCL_NAMESPACE_END

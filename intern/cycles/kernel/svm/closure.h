@@ -1092,9 +1092,6 @@ ccl_device_noinline void svm_node_closure_emission(KernelGlobals kg,
                                                    ccl_private float *stack,
                                                    Spectrum closure_weight,
                                                    uint4 node)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   uint mix_weight_offset = node.y;
   Spectrum weight = closure_weight;
@@ -1115,15 +1112,11 @@ ccl_device_noinline void svm_node_closure_emission(KernelGlobals kg,
 
   emission_setup(sd, weight);
 }
-#endif
 
 ccl_device_noinline void svm_node_closure_background(ccl_private ShaderData *sd,
                                                      ccl_private float *stack,
                                                      Spectrum closure_weight,
                                                      uint4 node)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   uint mix_weight_offset = node.y;
   Spectrum weight = closure_weight;
@@ -1140,15 +1133,11 @@ ccl_device_noinline void svm_node_closure_background(ccl_private ShaderData *sd,
 
   background_setup(sd, weight);
 }
-#endif
 
 ccl_device_noinline void svm_node_closure_holdout(ccl_private ShaderData *sd,
                                                   ccl_private float *stack,
                                                   Spectrum closure_weight,
                                                   uint4 node)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   uint mix_weight_offset = node.y;
 
@@ -1167,7 +1156,6 @@ ccl_device_noinline void svm_node_closure_holdout(ccl_private ShaderData *sd,
 
   sd->flag |= SD_HOLDOUT;
 }
-#endif
 
 /* Closure Nodes */
 
@@ -1191,9 +1179,6 @@ ccl_device_noinline void svm_node_emission_weight(KernelGlobals kg,
                                                   ccl_private float *stack,
                                                   ccl_private Spectrum *closure_weight,
                                                   uint4 node)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   uint color_offset = node.y;
   uint strength_offset = node.z;
@@ -1201,14 +1186,10 @@ ccl_device_noinline void svm_node_emission_weight(KernelGlobals kg,
   float strength = stack_load_float(stack, strength_offset);
   *closure_weight = rgb_to_spectrum(stack_load_float3(stack, color_offset)) * strength;
 }
-#endif
 
 ccl_device_noinline void svm_node_mix_closure(ccl_private ShaderData *sd,
                                               ccl_private float *stack,
                                               uint4 node)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   /* fetch weight from blend input, previous mix closures,
    * and write to stack to be used by closure nodes later */
@@ -1227,7 +1208,6 @@ ccl_device_noinline void svm_node_mix_closure(ccl_private ShaderData *sd,
   if (stack_valid(weight2_offset))
     stack_store_float(stack, weight2_offset, in_weight * weight);
 }
-#endif
 
 /* (Bump) normal */
 

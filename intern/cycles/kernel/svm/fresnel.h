@@ -15,9 +15,6 @@ ccl_device_noinline void svm_node_fresnel(ccl_private ShaderData *sd,
                                           uint ior_offset,
                                           uint ior_value,
                                           uint node)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   uint normal_offset, out_offset;
   svm_unpack_node_uchar2(node, &normal_offset, &out_offset);
@@ -32,16 +29,12 @@ ccl_device_noinline void svm_node_fresnel(ccl_private ShaderData *sd,
 
   stack_store_float(stack, out_offset, f);
 }
-#endif
 
 /* Layer Weight Node */
 
 ccl_device_noinline void svm_node_layer_weight(ccl_private ShaderData *sd,
                                                ccl_private float *stack,
                                                uint4 node)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   uint blend_offset = node.y;
   uint blend_value = node.z;
@@ -77,6 +70,5 @@ ccl_device_noinline void svm_node_layer_weight(ccl_private ShaderData *sd,
 
   stack_store_float(stack, out_offset, f);
 }
-#endif
 
 CCL_NAMESPACE_END

@@ -15,9 +15,6 @@ ccl_device_noinline void svm_node_geometry(KernelGlobals kg,
                                            ccl_private float *stack,
                                            uint type,
                                            uint out_offset)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   float3 data;
 
@@ -28,11 +25,11 @@ ccl_device_noinline void svm_node_geometry(KernelGlobals kg,
     case NODE_GEOM_N:
       data = sd->N;
       break;
-#  ifdef __DPDU__
+#ifdef __DPDU__
     case NODE_GEOM_T:
       data = primitive_tangent(kg, sd);
       break;
-#  endif
+#endif
     case NODE_GEOM_I:
       data = sd->wi;
       break;
@@ -48,18 +45,14 @@ ccl_device_noinline void svm_node_geometry(KernelGlobals kg,
 
   stack_store_float3(stack, out_offset, data);
 }
-#endif
 
 ccl_device_noinline void svm_node_geometry_bump_dx(KernelGlobals kg,
                                                    ccl_private ShaderData *sd,
                                                    ccl_private float *stack,
                                                    uint type,
                                                    uint out_offset)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
-#  ifdef __RAY_DIFFERENTIALS__
+#ifdef __RAY_DIFFERENTIALS__
   float3 data;
 
   switch (type) {
@@ -75,22 +68,18 @@ ccl_device_noinline void svm_node_geometry_bump_dx(KernelGlobals kg,
   }
 
   stack_store_float3(stack, out_offset, data);
-#  else
+#else
   svm_node_geometry(kg, sd, stack, type, out_offset);
-#  endif
-}
 #endif
+}
 
 ccl_device_noinline void svm_node_geometry_bump_dy(KernelGlobals kg,
                                                    ccl_private ShaderData *sd,
                                                    ccl_private float *stack,
                                                    uint type,
                                                    uint out_offset)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
-#  ifdef __RAY_DIFFERENTIALS__
+#ifdef __RAY_DIFFERENTIALS__
   float3 data;
 
   switch (type) {
@@ -106,11 +95,10 @@ ccl_device_noinline void svm_node_geometry_bump_dy(KernelGlobals kg,
   }
 
   stack_store_float3(stack, out_offset, data);
-#  else
+#else
   svm_node_geometry(kg, sd, stack, type, out_offset);
-#  endif
-}
 #endif
+}
 
 /* Object Info */
 
@@ -119,9 +107,6 @@ ccl_device_noinline void svm_node_object_info(KernelGlobals kg,
                                               ccl_private float *stack,
                                               uint type,
                                               uint out_offset)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   float data;
 
@@ -159,7 +144,6 @@ ccl_device_noinline void svm_node_object_info(KernelGlobals kg,
 
   stack_store_float(stack, out_offset, data);
 }
-#endif
 
 /* Particle Info */
 
@@ -168,9 +152,6 @@ ccl_device_noinline void svm_node_particle_info(KernelGlobals kg,
                                                 ccl_private float *stack,
                                                 uint type,
                                                 uint out_offset)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   switch (type) {
     case NODE_INFO_PAR_INDEX: {
@@ -199,13 +180,13 @@ ccl_device_noinline void svm_node_particle_info(KernelGlobals kg,
       stack_store_float3(stack, out_offset, particle_location(kg, particle_id));
       break;
     }
-#  if 0 /* XXX float4 currently not supported in SVM stack */
+#if 0 /* XXX float4 currently not supported in SVM stack */
     case NODE_INFO_PAR_ROTATION: {
       int particle_id = object_particle_id(kg, sd->object);
       stack_store_float4(stack, out_offset, particle_rotation(kg, particle_id));
       break;
     }
-#  endif
+#endif
     case NODE_INFO_PAR_SIZE: {
       int particle_id = object_particle_id(kg, sd->object);
       stack_store_float(stack, out_offset, particle_size(kg, particle_id));
@@ -223,7 +204,6 @@ ccl_device_noinline void svm_node_particle_info(KernelGlobals kg,
     }
   }
 }
-#endif
 
 #ifdef __HAIR__
 
@@ -234,9 +214,6 @@ ccl_device_noinline void svm_node_hair_info(KernelGlobals kg,
                                             ccl_private float *stack,
                                             uint type,
                                             uint out_offset)
-#  ifdef CCL_EXTERN_DECLS
-    ;
-#  else
 {
   float data;
   float3 data3;
@@ -265,8 +242,6 @@ ccl_device_noinline void svm_node_hair_info(KernelGlobals kg,
     }
   }
 }
-#  endif
-
 #endif
 
 #ifdef __POINTCLOUD__
@@ -278,9 +253,6 @@ ccl_device_noinline void svm_node_point_info(KernelGlobals kg,
                                              ccl_private float *stack,
                                              uint type,
                                              uint out_offset)
-#  ifdef CCL_EXTERN_DECLS
-    ;
-#  else
 {
   switch (type) {
     case NODE_INFO_POINT_POSITION:
@@ -293,7 +265,6 @@ ccl_device_noinline void svm_node_point_info(KernelGlobals kg,
       break; /* handled as attribute */
   }
 }
-#  endif
 
 #endif
 

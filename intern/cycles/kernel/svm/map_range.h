@@ -21,9 +21,6 @@ ccl_device_noinline int svm_node_map_range(KernelGlobals kg,
                                            uint parameters_stack_offsets,
                                            uint results_stack_offsets,
                                            int offset)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   uint from_min_stack_offset, from_max_stack_offset, to_min_stack_offset, to_max_stack_offset;
   uint type_stack_offset, steps_stack_offset, result_stack_offset;
@@ -78,7 +75,6 @@ ccl_device_noinline int svm_node_map_range(KernelGlobals kg,
   stack_store_float(stack, result_stack_offset, result);
   return offset;
 }
-#endif
 
 ccl_device_noinline int svm_node_vector_map_range(KernelGlobals kg,
                                                   ccl_private ShaderData *sd,
@@ -87,9 +83,6 @@ ccl_device_noinline int svm_node_vector_map_range(KernelGlobals kg,
                                                   uint parameters_stack_offsets,
                                                   uint results_stack_offsets,
                                                   int offset)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   uint from_min_stack_offset, from_max_stack_offset, to_min_stack_offset, to_max_stack_offset;
   uint steps_stack_offset, clamp_stack_offset, range_type_stack_offset, result_stack_offset;
@@ -156,6 +149,5 @@ ccl_device_noinline int svm_node_vector_map_range(KernelGlobals kg,
   stack_store_float3(stack, result_stack_offset, result);
   return offset;
 }
-#endif
 
 CCL_NAMESPACE_END

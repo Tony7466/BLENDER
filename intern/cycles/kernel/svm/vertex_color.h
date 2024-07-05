@@ -14,9 +14,6 @@ ccl_device_noinline void svm_node_vertex_color(KernelGlobals kg,
                                                uint layer_id,
                                                uint color_offset,
                                                uint alpha_offset)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   AttributeDescriptor descriptor = find_attribute(kg, sd, layer_id);
   if (descriptor.offset != ATTR_STD_NOT_FOUND) {
@@ -36,7 +33,6 @@ ccl_device_noinline void svm_node_vertex_color(KernelGlobals kg,
     stack_store_float(stack, alpha_offset, 0.0f);
   }
 }
-#endif
 
 ccl_device_noinline void svm_node_vertex_color_bump_dx(KernelGlobals kg,
                                                        ccl_private ShaderData *sd,
@@ -44,9 +40,6 @@ ccl_device_noinline void svm_node_vertex_color_bump_dx(KernelGlobals kg,
                                                        uint layer_id,
                                                        uint color_offset,
                                                        uint alpha_offset)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   AttributeDescriptor descriptor = find_attribute(kg, sd, layer_id);
   if (descriptor.offset != ATTR_STD_NOT_FOUND) {
@@ -70,7 +63,6 @@ ccl_device_noinline void svm_node_vertex_color_bump_dx(KernelGlobals kg,
     stack_store_float(stack, alpha_offset, 0.0f);
   }
 }
-#endif
 
 ccl_device_noinline void svm_node_vertex_color_bump_dy(KernelGlobals kg,
                                                        ccl_private ShaderData *sd,
@@ -78,9 +70,6 @@ ccl_device_noinline void svm_node_vertex_color_bump_dy(KernelGlobals kg,
                                                        uint layer_id,
                                                        uint color_offset,
                                                        uint alpha_offset)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   AttributeDescriptor descriptor = find_attribute(kg, sd, layer_id);
   if (descriptor.offset != ATTR_STD_NOT_FOUND) {
@@ -104,6 +93,5 @@ ccl_device_noinline void svm_node_vertex_color_bump_dy(KernelGlobals kg,
     stack_store_float(stack, alpha_offset, 0.0f);
   }
 }
-#endif
 
 CCL_NAMESPACE_END

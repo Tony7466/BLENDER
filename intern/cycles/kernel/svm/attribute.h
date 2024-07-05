@@ -162,15 +162,12 @@ ccl_device_noinline void svm_node_attr_bump_dx(KernelGlobals kg,
                                                ccl_private ShaderData *sd,
                                                ccl_private float *stack,
                                                uint4 node)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   NodeAttributeOutputType type = NODE_ATTR_OUTPUT_FLOAT;
   uint out_offset = 0;
   AttributeDescriptor desc = svm_node_attr_init(kg, sd, node, &type, &out_offset);
 
-#  ifdef __VOLUME__
+#ifdef __VOLUME__
   /* Volume */
   if (primitive_is_volume_attribute(sd, desc)) {
     if (type == NODE_ATTR_OUTPUT_FLOAT) {
@@ -184,7 +181,7 @@ ccl_device_noinline void svm_node_attr_bump_dx(KernelGlobals kg,
     }
     return;
   }
-#  endif
+#endif
 
   if (node.y == ATTR_STD_GENERATED && desc.element == ATTR_ELEMENT_NONE) {
     /* No generated attribute, fall back to object coordinates. */
@@ -258,21 +255,17 @@ ccl_device_noinline void svm_node_attr_bump_dx(KernelGlobals kg,
     }
   }
 }
-#endif
 
 ccl_device_noinline void svm_node_attr_bump_dy(KernelGlobals kg,
                                                ccl_private ShaderData *sd,
                                                ccl_private float *stack,
                                                uint4 node)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   NodeAttributeOutputType type = NODE_ATTR_OUTPUT_FLOAT;
   uint out_offset = 0;
   AttributeDescriptor desc = svm_node_attr_init(kg, sd, node, &type, &out_offset);
 
-#  ifdef __VOLUME__
+#ifdef __VOLUME__
   /* Volume */
   if (primitive_is_volume_attribute(sd, desc)) {
     if (type == NODE_ATTR_OUTPUT_FLOAT) {
@@ -286,7 +279,7 @@ ccl_device_noinline void svm_node_attr_bump_dy(KernelGlobals kg,
     }
     return;
   }
-#  endif
+#endif
 
   if (node.y == ATTR_STD_GENERATED && desc.element == ATTR_ELEMENT_NONE) {
     /* No generated attribute, fall back to object coordinates. */
@@ -360,6 +353,5 @@ ccl_device_noinline void svm_node_attr_bump_dy(KernelGlobals kg,
     }
   }
 }
-#endif
 
 CCL_NAMESPACE_END

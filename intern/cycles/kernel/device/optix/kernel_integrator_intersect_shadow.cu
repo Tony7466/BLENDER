@@ -2,8 +2,6 @@
  *
  * SPDX-License-Identifier: Apache-2.0 */
 
-#define CCL_EXTERN_DECLS
-
 #include "kernel/device/optix/compat.h"
 #include "kernel/device/optix/globals.h"
 

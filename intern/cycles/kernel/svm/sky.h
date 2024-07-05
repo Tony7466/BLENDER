@@ -208,9 +208,6 @@ ccl_device_noinline int svm_node_tex_sky(KernelGlobals kg,
                                          ccl_private float *stack,
                                          uint4 node,
                                          int offset)
-#ifdef CCL_EXTERN_DECLS
-    ;
-#else
 {
   /* Load data */
   uint dir_offset = node.y;
@@ -329,6 +326,5 @@ ccl_device_noinline int svm_node_tex_sky(KernelGlobals kg,
   stack_store_float3(stack, out_offset, f);
   return offset;
 }
-#endif
 
 CCL_NAMESPACE_END
