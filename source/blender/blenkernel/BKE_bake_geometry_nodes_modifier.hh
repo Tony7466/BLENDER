@@ -122,11 +122,4 @@ std::optional<std::string> get_modifier_bake_path(const Main &bmain,
                                                   const Object &object,
                                                   const NodesModifierData &nmd);
 
-/**
- * Get the directory that contains all baked data for the given modifier by default.
- */
-std::string get_default_modifier_bake_directory(const Main &bmain,
-                                                const Object &object,
-                                                const NodesModifierData &nmd);
-
 }  // namespace blender::bke::bake

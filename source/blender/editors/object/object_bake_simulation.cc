@@ -218,7 +218,8 @@ struct NodeBakeRequest {
   int bake_id;
   int node_type;
 
-  bake::BakePath path;
+  /** Store bake in this location if available, otherwise pack the baked data. */
+  std::optional<bake::BakePath> path;
   int frame_start;
   int frame_end;
   std::unique_ptr<bake::BlobWriteSharing> blob_sharing;
@@ -320,25 +321,30 @@ static void bake_geometry_nodes_startjob(void *customdata, wmJobWorkerStatus *wo
         continue;
       }
 
-      PackedBake &packed_data = packed_data_by_bake.lookup_or_add_default(&request);
+      if (request.path.has_value()) {
+        char meta_path[FILE_MAX];
+        BLI_path_join(meta_path,
+                      sizeof(meta_path),
+                      request.path->meta_dir.c_str(),
+                      (frame_file_name + ".json").c_str());
+        BLI_file_ensure_parent_dir_exists(meta_path);
+        bake::DiskBlobWriter blob_writer{request.path->blobs_dir, frame_file_name};
+        fstream meta_file{meta_path, std::ios::out};
+        bake::serialize_bake(frame_cache.state, blob_writer, *request.blob_sharing, meta_file);
+      }
+      else {
+        PackedBake &packed_data = packed_data_by_bake.lookup_or_add_default(&request);
 
-      // const bake::BakePath path = request.path;
+        bake::MemoryBlobWriter blob_writer{frame_file_name};
+        std::ostringstream meta_file{std::ios::binary};
+        bake::serialize_bake(frame_cache.state, blob_writer, *request.blob_sharing, meta_file);
 
-      // char meta_path[FILE_MAX];
-      // BLI_path_join(meta_path,
-      //               sizeof(meta_path),
-      //               path.meta_dir.c_str(),
-      //               (frame_file_name + ".json").c_str());
-      // BLI_file_ensure_parent_dir_exists(meta_path);
-      bake::MemoryBlobWriter blob_writer{frame_file_name};
-      std::ostringstream meta_file{std::ios::binary};
-      bake::serialize_bake(frame_cache.state, blob_writer, *request.blob_sharing, meta_file);
-
-      packed_data.meta_files.append({frame_file_name + ".json", meta_file.str()});
-      const Map<std::string, bake::MemoryBlobWriter::OutputStream> &blob_stream_by_name =
-          blob_writer.get_stream_by_name();
-      for (auto &&item : blob_stream_by_name.items()) {
-        packed_data.blob_files.append({item.key, item.value.stream->str()});
+        packed_data.meta_files.append({frame_file_name + ".json", meta_file.str()});
+        const Map<std::string, bake::MemoryBlobWriter::OutputStream> &blob_stream_by_name =
+            blob_writer.get_stream_by_name();
+        for (auto &&item : blob_stream_by_name.items()) {
+          packed_data.blob_files.append({item.key, item.value.stream->str()});
+        }
       }
     }
 
@@ -601,16 +607,12 @@ static Vector<NodeBakeRequest> collect_simulations_to_bake(Main &bmain,
         request.bake_id = id;
         request.node_type = node->type;
         request.blob_sharing = std::make_unique<bake::BlobWriteSharing>();
-        std::optional<bake::BakePath> path = bake::get_node_bake_path(bmain, *object, *nmd, id);
-        if (!path) {
-          continue;
-        }
+        request.path = bake::get_node_bake_path(bmain, *object, *nmd, id);
         std::optional<IndexRange> frame_range = bake::get_node_bake_frame_range(
             scene, *object, *nmd, id);
         if (!frame_range) {
           continue;
         }
-        request.path = std::move(*path);
         request.frame_start = frame_range->first();
         request.frame_end = frame_range->last();
 
@@ -687,37 +689,6 @@ static bool bake_directory_has_data(const StringRefNull absolute_bake_dir)
   return true;
 }
 
-static void bake_simulation_validate_paths(bContext *C,
-                                           wmOperator *op,
-                                           const Span<Object *> objects)
-{
-  Main *bmain = CTX_data_main(C);
-
-  for (Object *object : objects) {
-    if (!BKE_id_is_editable(bmain, &object->id)) {
-      continue;
-    }
-
-    LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
-      if (md->type != eModifierType_Nodes) {
-        continue;
-      }
-
-      NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
-      if (StringRef(nmd->bake_directory).is_empty()) {
-        BKE_reportf(op->reports,
-                    RPT_INFO,
-                    "Bake directory of object %s, modifier %s is empty, setting default path",
-                    object->id.name + 2,
-                    md->name);
-
-        nmd->bake_directory = BLI_strdup(
-            bake::get_default_modifier_bake_directory(*bmain, *object, *nmd).c_str());
-      }
-    }
-  }
-}
-
 /* Map for counting path references. */
 using PathUsersMap = Map<std::string,
                          int,
@@ -768,9 +739,6 @@ static int bake_simulation_invoke(bContext *C, wmOperator *op, const wmEvent * /
       objects.append(object);
     }
   }
-
-  /* Set empty paths to default. */
-  bake_simulation_validate_paths(C, op, objects);
 
   PathUsersMap path_users = bake_simulation_get_path_users(C, objects);
   bool has_path_conflict = false;
@@ -880,11 +848,6 @@ static Vector<NodeBakeRequest> bake_single_node_gather_bake_request(bContext *C,
   if (!BKE_modifier_is_enabled(scene, md, eModifierMode_Realtime)) {
     BKE_report(op->reports, RPT_ERROR, "Modifier containing the node is disabled");
     return {};
-  }
-
-  if (StringRef(nmd.bake_directory).is_empty()) {
-    const std::string directory = bake::get_default_modifier_bake_directory(*bmain, *object, nmd);
-    nmd.bake_directory = BLI_strdup(directory.c_str());
   }
 
   const int bake_id = RNA_int_get(op->ptr, "bake_id");
