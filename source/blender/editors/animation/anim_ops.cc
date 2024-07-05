@@ -813,8 +813,8 @@ static bool convert_action_poll(bContext *C)
 static void ANIM_OT_convert_to_layered_action(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Convert to Layered Action";
-  ot->idname = "ANIM_OT_convert_to_layered_action";
+  ot->name = "Convert Legacy Action";
+  ot->idname = "ANIM_OT_convert_legacy_action";
   ot->description = "Convert a legacy Action to a layered Action on the active object";
 
   /* api callbacks */
