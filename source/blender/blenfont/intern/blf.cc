@@ -335,6 +335,28 @@ void BLF_character_weight(int fontid, int weight)
   }
 }
 
+int BLF_default_weight(int fontid)
+{
+  FontBLF *font = blf_get(fontid);
+  if (font) {
+    return font->metrics.weight;
+  }
+  return 400;
+}
+
+bool BLF_has_variable_weight(int fontid)
+{
+  FontBLF *font = blf_get(fontid);
+  if (font && font->variations) {
+    for (int i = 0; i < int(font->variations->num_axis); i++) {
+      if (font->variations->axis[i].tag == BLF_VARIATION_AXIS_WEIGHT) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 void BLF_aspect(int fontid, float x, float y, float z)
 {
   FontBLF *font = blf_get(fontid);
@@ -598,6 +620,15 @@ void BLF_draw_svg_icon(
     blf_draw_svg_icon(font, icon_id, x, y, size, color, outline_alpha);
     blf_draw_gpu__end(font);
   }
+}
+
+blender::Array<uchar> BLF_svg_icon_bitmap(uint icon_id, float size, int *r_width, int *r_height)
+{
+  FontBLF *font = global_font[0];
+  if (font) {
+    return blf_svg_icon_bitmap(font, icon_id, size, r_width, r_height);
+  }
+  return {};
 }
 
 void BLF_boundbox_foreach_glyph(
