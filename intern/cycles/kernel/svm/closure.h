@@ -479,8 +479,8 @@ ccl_device
       bsdf_transparent_setup(sd, weight, path_flag);
       break;
     }
-    case CLOSURE_BSDF_CONDUCTOR:
-    case CLOSURE_BSDF_CONDUCTOR_F82:
+    case CLOSURE_BSDF_PHYSICAL_CONDUCTOR:
+    case CLOSURE_BSDF_F82_CONDUCTOR:
     case CLOSURE_BSDF_ARTISTIC_CONDUCTOR: {
 #ifdef __CAUSTICS_TRICKS__
       if (!kernel_data.integrator.caustics_reflective && (path_flag & PATH_RAY_DIFFUSE))
@@ -526,12 +526,12 @@ ccl_device
 
         const bool is_multiggx = (distribution == CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID);
 
-        if (type == CLOSURE_BSDF_CONDUCTOR || type == CLOSURE_BSDF_ARTISTIC_CONDUCTOR) {
+        if (type == CLOSURE_BSDF_PHYSICAL_CONDUCTOR || type == CLOSURE_BSDF_ARTISTIC_CONDUCTOR) {
           ccl_private FresnelConductor *fresnel = (ccl_private FresnelConductor *)
               closure_alloc_extra(sd, sizeof(FresnelConductor));
 
           float3 n, k;
-          if (type == CLOSURE_BSDF_CONDUCTOR) {
+          if (type == CLOSURE_BSDF_PHYSICAL_CONDUCTOR) {
             n = max(stack_load_float3(stack, base_ior_offset), zero_float3());
             k = max(stack_load_float3(stack, edge_tint_k_offset), zero_float3());
           }

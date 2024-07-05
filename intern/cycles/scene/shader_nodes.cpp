@@ -2437,9 +2437,9 @@ NODE_DEFINE(MetallicBsdfNode)
       distribution, "Distribution", distribution_enum, CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID);
 
   static NodeEnum fresnel_type_enum;
-  fresnel_type_enum.insert("f82", CLOSURE_BSDF_CONDUCTOR_F82);
+  fresnel_type_enum.insert("f82", CLOSURE_BSDF_F82_CONDUCTOR);
   fresnel_type_enum.insert("artist_conductor", CLOSURE_BSDF_ARTISTIC_CONDUCTOR);
-  fresnel_type_enum.insert("conductor", CLOSURE_BSDF_CONDUCTOR);
+  fresnel_type_enum.insert("physical_conductor", CLOSURE_BSDF_PHYSICAL_CONDUCTOR);
   SOCKET_ENUM(fresnel_type, "fresnel_type", fresnel_type_enum, CLOSURE_BSDF_ARTISTIC_CONDUCTOR);
 
   SOCKET_IN_COLOR(edge_tint, "Edge Tint", make_float3(1.0f, 1.0f, 1.0f));
@@ -2460,14 +2460,14 @@ NODE_DEFINE(MetallicBsdfNode)
 
 MetallicBsdfNode::MetallicBsdfNode() : BsdfNode(get_node_type())
 {
-  closure = CLOSURE_BSDF_CONDUCTOR;
+  closure = CLOSURE_BSDF_PHYSICAL_CONDUCTOR;
 }
 
 bool MetallicBsdfNode::is_isotropic()
 {
   ShaderInput *anisotropy_input = input("Anisotropy");
-  /* Keep in sync with the thresholds in OSL's node_conductor_bsdf and SVM's svm_node_closure_bsdf.
-   */
+  /* Keep in sync with the thresholds in OSL's node_conductor_bsdf and SVM's
+   * svm_node_metallic_bsdf. */
   return (!anisotropy_input->link && fabsf(anisotropy) <= 1e-4f);
 }
 
@@ -2501,10 +2501,10 @@ void MetallicBsdfNode::compile(SVMCompiler &compiler)
   ShaderInput *ior_in = input("IOR");
   ShaderInput *k_in = input("Extinction");
 
-  int base_color_ior_offset = fresnel_type == CLOSURE_BSDF_CONDUCTOR ?
+  int base_color_ior_offset = fresnel_type == CLOSURE_BSDF_PHYSICAL_CONDUCTOR ?
                                   compiler.stack_assign(ior_in) :
                                   compiler.stack_assign(base_color_in);
-  int edge_tint_k_offset = fresnel_type == CLOSURE_BSDF_CONDUCTOR ?
+  int edge_tint_k_offset = fresnel_type == CLOSURE_BSDF_PHYSICAL_CONDUCTOR ?
                                compiler.stack_assign(k_in) :
                                compiler.stack_assign(edge_tint_in);
 

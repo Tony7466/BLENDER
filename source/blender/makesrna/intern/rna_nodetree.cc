@@ -4058,7 +4058,7 @@ static const EnumPropertyItem node_metallic_distribution_items[] = {
 };
 
 static const EnumPropertyItem node_metallic_fresnel_type_items[] = {
-    {SHD_CONDUCTOR, "CONDUCTOR", 0, "Physical Conductor", ""},
+    {SHD_PHYSICAL_CONDUCTOR, "PHYSICAL_CONDUCTOR", 0, "Physical Conductor", ""},
     {SHD_ARTISTIC_CONDUCTOR,
      "ARTISTIC_CONDUCTOR",
      0,

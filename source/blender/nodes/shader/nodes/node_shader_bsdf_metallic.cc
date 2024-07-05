@@ -69,7 +69,7 @@ static int node_shader_gpu_bsdf_metallic(GPUMaterial *mat,
   GPU_material_flag_set(mat, GPU_MATFLAG_GLOSSY);
 
   float use_multi_scatter = (node->custom1 == SHD_GLOSSY_MULTI_GGX) ? 1.0f : 0.0f;
-  float use_complex_ior = (node->custom2 == SHD_CONDUCTOR) ? 1.0f : 0.0f;
+  float use_complex_ior = (node->custom2 == SHD_PHYSICAL_CONDUCTOR) ? 1.0f : 0.0f;
 
   return GPU_stack_link(mat,
                         node,
@@ -82,7 +82,7 @@ static int node_shader_gpu_bsdf_metallic(GPUMaterial *mat,
 
 static void node_shader_update_metallic(bNodeTree *ntree, bNode *node)
 {
-  const bool is_physical = (node->custom2 == SHD_CONDUCTOR);
+  const bool is_physical = (node->custom2 == SHD_PHYSICAL_CONDUCTOR);
 
   bke::nodeSetSocketAvailability(
       ntree, bke::nodeFindSocket(node, SOCK_IN, "Base Color"), !is_physical);
@@ -111,7 +111,7 @@ NODE_SHADER_MATERIALX_BEGIN
    * the IOR and Extinction values directly.
    * `node` is not defined here so we can't use `node->custom2` */
 
-  /* if (node->custom2 == SHD_CONDUCTOR) {
+  /* if (node->custom2 == SHD_PHYSICAL_CONDUCTOR) {
       USE_IOR_AND_EXTINCTION;
    }
    else {

@@ -18,18 +18,18 @@ vec3 fresnel_conductor(float cosi, const vec3 eta, const vec3 k)
 }
 
 void node_bsdf_metallic(vec4 base_color,
-                         vec4 edge_tint,
-                         vec3 ior,
-                         vec3 extinction,
-                         float roughness,
-                         float anisotropy,
-                         float rotation,
-                         vec3 N,
-                         vec3 T,
-                         float weight,
-                         const float do_multiscatter,
-                         const float use_complex_ior,
-                         out Closure result)
+                        vec4 edge_tint,
+                        vec3 ior,
+                        vec3 extinction,
+                        float roughness,
+                        float anisotropy,
+                        float rotation,
+                        vec3 N,
+                        vec3 T,
+                        float weight,
+                        const float do_multiscatter,
+                        const float use_complex_ior,
+                        out Closure result)
 {
   vec3 F0 = base_color.rgb;
   vec3 F82 = edge_tint.rgb;

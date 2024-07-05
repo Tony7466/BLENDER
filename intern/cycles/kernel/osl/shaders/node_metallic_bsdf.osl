@@ -10,7 +10,7 @@ shader node_metallic_bsdf(color BaseColor = 1.0,
                           vector IOR = vector(0.183, 0.421, 1.373),
                           vector Extinction = vector(3.424, 2.346, 1.770),
                           string distribution = "multi_ggx",
-                          string fresnel_type = "conductor",
+                          string fresnel_type = "physical_conductor",
                           float Roughness = 0.5,
                           float Anisotropy = 0.0,
                           float Rotation = 0.0,
@@ -40,7 +40,7 @@ shader node_metallic_bsdf(color BaseColor = 1.0,
   }
   else {
     vector n, k;
-    if (fresnel_type == "conductor") {
+    if (fresnel_type == "physical_conductor") {
       n = max(IOR, 0.0);
       k = max(Extinction, 0.0);
     }
