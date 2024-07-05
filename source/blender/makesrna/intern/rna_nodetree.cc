@@ -4045,7 +4045,7 @@ static const EnumPropertyItem node_ycc_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-static const EnumPropertyItem node_conductor_distrobution_items[] = {
+static const EnumPropertyItem node_conductor_distribution_items[] = {
     {SHD_GLOSSY_BECKMANN, "BECKMANN", 0, "Beckmann", ""},
     {SHD_GLOSSY_GGX, "GGX", 0, "GGX", ""},
     {SHD_GLOSSY_MULTI_GGX,
@@ -5561,7 +5561,7 @@ static void def_conductor(StructRNA *srna)
 
   prop = RNA_def_property(srna, "distribution", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "custom1");
-  RNA_def_property_enum_items(prop, node_conductor_distrobution_items);
+  RNA_def_property_enum_items(prop, node_conductor_distribution_items);
   RNA_def_property_ui_text(prop, "Distribution", "Light scattering distribution on rough surface");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
