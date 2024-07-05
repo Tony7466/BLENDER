@@ -1142,6 +1142,7 @@ static void simplify_stroke(bke::greasepencil::Drawing &drawing,
   const IndexMask points_to_delete = IndexMask::from_bools(points_to_delete_arr, memory);
   if (!points_to_delete.is_empty()) {
     drawing.strokes_for_write().remove_points(points_to_delete, {});
+    drawing.tag_topology_changed();
   }
 }
 
