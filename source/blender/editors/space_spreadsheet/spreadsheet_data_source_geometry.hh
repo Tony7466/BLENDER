@@ -40,8 +40,11 @@ class ExtraColumns {
 
 class GeometryDataSource : public DataSource {
  private:
-  /* TODO: Rethink handling of object_eval_. */
-  Object *object_eval_;
+  /**
+   * Object that contains original data for the geometry component. This is used for selection
+   * filtering. May be null.
+   */
+  Object *object_orig_;
   const bke::GeometrySet geometry_set_;
   const bke::GeometryComponent *component_;
   bke::AttrDomain domain_;
@@ -56,13 +59,13 @@ class GeometryDataSource : public DataSource {
   mutable ResourceScope scope_;
 
  public:
-  GeometryDataSource(Object *object_eval,
+  GeometryDataSource(Object *object_orig,
                      bke::GeometrySet geometry_set,
                      const bke::GeometryComponent::Type component_type,
                      const bke::AttrDomain domain,
                      const int layer_index = -1,
                      ExtraColumns extra_columns = {})
-      : object_eval_(object_eval),
+      : object_orig_(object_orig),
         geometry_set_(std::move(geometry_set)),
         component_(geometry_set_.get_component(component_type)),
         domain_(domain),
