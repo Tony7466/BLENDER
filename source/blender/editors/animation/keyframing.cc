@@ -171,7 +171,8 @@ static int insert_key_with_keyingset(bContext *C, wmOperator *op, KeyingSet *ks)
   Object *obedit = CTX_data_edit_object(C);
   bool ob_edit_mode = false;
 
-  const float cfra = BKE_scene_frame_get(scene);
+  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
+  const float cfra = DEG_get_ctime(depsgraph);
   const bool confirm = op->flag & OP_IS_INVOKE;
   /* exit the edit mode to make sure that those object data properties that have been
    * updated since the last switching to the edit mode will be keyframed correctly
@@ -967,8 +968,9 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
   PointerRNA ptr = {nullptr};
   PropertyRNA *prop = nullptr;
   uiBut *but;
+  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
-      CTX_data_depsgraph_pointer(C), BKE_scene_frame_get(scene));
+      depsgraph, DEG_get_ctime(depsgraph));
   bool changed = false;
   int index;
   const bool all = RNA_boolean_get(op->ptr, "all");
