@@ -2799,11 +2799,11 @@ static bool uvedit_uv_threshold_weld_underlying_geometry(Scene *scene,
     BMLoop *l;
     BMIter viter, liter;
     BM_ITER_MESH (v, &viter, em->bm, BM_VERTS_OF_MESH) {
-      std::vector<float *> luvmap;
+      blender::Vector<float *> luvmap;
       /*Grap all luv pointers from selected loops*/
       BM_ITER_ELEM (l, &liter, v, BM_LOOPS_OF_VERT) {
         if (uvedit_uv_select_test(scene, l, offsets)) {
-          luvmap.push_back(BM_ELEM_CD_GET_FLOAT_P(l, offsets.uv));
+          luvmap.append(BM_ELEM_CD_GET_FLOAT_P(l, offsets.uv));
         }
       }
       /*Filter out luv pointers who are not within threshold
@@ -2827,7 +2827,8 @@ static bool uvedit_uv_threshold_weld_underlying_geometry(Scene *scene,
           ++inner;
         }
         if (!keep) {
-          luvmap.erase(outer);
+          int outerIndex = std::distance(luvmap.begin(), outer);
+          luvmap.remove(outerIndex);
         }
         else {
           ++outer;
