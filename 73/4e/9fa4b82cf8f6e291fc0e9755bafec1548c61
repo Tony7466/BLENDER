@@ -1,1 +1,2 @@
 Referenced by issue #124212, Edit mode undo crash after recent fix
+Referenced by commit ecebf94e2568bd82ac61d36e43c61d7e8e4bf1ba, Fix	#124212: Edit mode undo crash with no faces
