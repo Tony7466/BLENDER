@@ -20,6 +20,7 @@
 
 #include "DNA_ID.h"
 #include "DNA_image_types.h"
+#include "DNA_modifier_types.h"
 #include "DNA_packedFile_types.h"
 #include "DNA_sound_types.h"
 #include "DNA_vfont_types.h"
@@ -138,6 +139,35 @@ int BKE_packedfile_count_all(Main *bmain)
   {
     if (volume->packedfile && !ID_IS_LINKED(volume)) {
       count++;
+    }
+  }
+
+  LISTBASE_FOREACH (Object *, object, &bmain->objects) {
+    if (ID_IS_LINKED(object)) {
+      continue;
+    }
+    LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
+      if (md->type == eModifierType_Nodes) {
+        NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
+        for (const NodesModifierBake &bake : blender::Span{nmd->bakes, nmd->bakes_num}) {
+          if (bake.packed) {
+            for (const NodesModifierBakeFile &meta_file :
+                 blender::Span{bake.packed->meta_files, bake.packed->meta_files_num})
+            {
+              if (meta_file.packed_file) {
+                count++;
+              }
+            }
+            for (const NodesModifierBakeFile &blob_file :
+                 blender::Span{bake.packed->blob_files, bake.packed->blob_files_num})
+            {
+              if (blob_file.packed_file) {
+                count++;
+              }
+            }
+          }
+        }
+      }
     }
   }
 
