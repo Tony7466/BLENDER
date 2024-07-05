@@ -1422,6 +1422,10 @@ static size_t animfilter_action(bAnimContext *ac,
   FCurve *lastchan = nullptr;
   size_t items = 0;
 
+  if (action.is_empty()) {
+    return 0;
+  }
+
   /* don't include anything from this action if it is linked in from another file,
    * and we're getting stuff for editing...
    */
