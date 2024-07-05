@@ -40,6 +40,7 @@
 #include "UI_interface_icons.hh"
 #include "UI_view2d.hh"
 
+#include "ANIM_action.hh"
 #include "ANIM_animdata.hh"
 #include "ANIM_fcurve.hh"
 #include "ANIM_keyframing.hh"
@@ -851,7 +852,21 @@ static void insert_fcurve_key(bAnimContext *ac,
                                                                   std::optional(fcu->grp->name) :
                                                                   std::nullopt;
   if (ale->id && !ale->owner) {
-    PointerRNA id_rna_pointer = RNA_id_pointer_create(ale->id);
+    BLI_assert(ale->fcurve_owner_id != nullptr);
+    BLI_assert(GS(ale->fcurve_owner_id->name) == ID_AC);
+    ID *id = action_get_id_for_keying(*ale->bmain,
+                                      *reinterpret_cast<bAction *>(ale->fcurve_owner_id),
+                                      ale->binding_handle,
+                                      ale->id);
+
+    if (id == nullptr) {
+      // TODO: handle case where we don't have an unambiguous ID to key from.
+      // Right now we just punt on it and return without keying, but that's not
+      // a good final solution.
+      return;
+    }
+
+    PointerRNA id_rna_pointer = RNA_id_pointer_create(id);
     CombinedKeyingResult result = insert_keyframes(ac->bmain,
                                                    &id_rna_pointer,
                                                    channel_group,

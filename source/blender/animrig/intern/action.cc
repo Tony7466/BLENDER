@@ -40,6 +40,7 @@
 #include "DEG_depsgraph_build.hh"
 
 #include "ANIM_action.hh"
+#include "ANIM_animdata.hh"
 #include "ANIM_fcurve.hh"
 #include "action_runtime.hh"
 
@@ -1372,6 +1373,34 @@ FCurve *action_fcurve_ensure(Main *bmain,
   DEG_relations_tag_update(bmain);
 
   return fcu;
+}
+
+ID *action_get_id_for_keying(Main &bmain,
+                             bAction &act,
+                             const binding_handle_t binding_handle,
+                             ID *active_id)
+{
+  BLI_assert(active_id == nullptr || id_action_get(active_id) == &act);
+
+  Action &action = act.wrap();
+  if (action.is_action_legacy()) {
+    return active_id;
+  }
+
+  Binding *binding = action.binding_for_handle(binding_handle);
+  if (binding == nullptr) {
+    return nullptr;
+  }
+
+  blender::Span<ID *> users = binding->users(bmain);
+  if (users.size() == 1) {
+    return users[0];
+  }
+  if (users.contains(active_id)) {
+    return active_id;
+  }
+
+  return nullptr;
 }
 
 void assert_baklava_phase_1_invariants(const Action &action)

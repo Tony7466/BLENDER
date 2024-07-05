@@ -35,6 +35,16 @@ namespace blender::animrig {
 /** \name Public F-Curves API
  * \{ */
 
+bAction *id_action_get(ID *id)
+{
+  AnimData *adt = BKE_animdata_from_id(id);
+  if (adt == nullptr) {
+    return nullptr;
+  }
+
+  return adt->action;
+}
+
 bAction *id_action_ensure(Main *bmain, ID *id)
 {
   AnimData *adt;

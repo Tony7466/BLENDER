@@ -25,6 +25,13 @@ namespace blender::animrig {
 class Action;
 
 /**
+ * Get the Action assigned to the given ID.
+ *
+ * If no Action is assigned to the ID, returns nullptr.
+ */
+bAction *id_action_get(ID *id);
+
+/**
  * Get (or add relevant data to be able to do so) the Active Action for the given
  * Animation Data block, given an ID block where the Animation Data should reside.
  */

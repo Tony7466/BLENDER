@@ -780,6 +780,11 @@ FCurve *action_fcurve_ensure(Main *bmain,
  */
 FCurve *action_fcurve_find(bAction *act, FCurveDescriptor fcurve_descriptor);
 
+ID *action_get_id_for_keying(Main &bmain,
+                             bAction &act,
+                             binding_handle_t binding_handle = Binding::unassigned,
+                             ID *active_id = nullptr);
+
 /**
  * Assert the invariants of Project Baklava phase 1.
  *
