@@ -221,10 +221,7 @@ static bool geometry_attributes_poll(bContext *C)
   if (!data || !BKE_id_is_editable(bmain, data)) {
     return false;
   }
-  if (std::optional<AttributeAccessor> attributes = AttributeAccessor::from_id(*data)) {
-    return BKE_attributes_supported(*attributes);
-  }
-  return false;
+  return AttributeAccessor::from_id(*data).has_value();
 }
 
 static bool geometry_attributes_remove_poll(bContext *C)

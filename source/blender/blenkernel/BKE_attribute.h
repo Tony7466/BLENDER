@@ -74,8 +74,6 @@ class AttributeOwner {
 
 /* Attributes. */
 
-bool BKE_attributes_supported(const blender::bke::AttributeAccessor &accessor);
-
 /**
  * Create a new attribute layer.
  */
