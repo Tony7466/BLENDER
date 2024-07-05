@@ -197,12 +197,6 @@ static bool bake_simulation_poll(bContext *C)
   if (!ED_operator_object_active(C)) {
     return false;
   }
-  Main *bmain = CTX_data_main(C);
-  const StringRefNull path = BKE_main_blendfile_path(bmain);
-  if (path.is_empty()) {
-    CTX_wm_operator_poll_msg_set(C, "File must be saved before baking");
-    return false;
-  }
   Object *ob = context_active_object(C);
   const bool use_frame_cache = ob->flag & OB_FLAG_USE_SIMULATION_CACHE;
   if (!use_frame_cache) {
@@ -966,13 +960,6 @@ static int delete_single_bake_exec(bContext *C, wmOperator *op)
 
 static bool bake_poll(bContext *C)
 {
-  Main *bmain = CTX_data_main(C);
-  if (BKE_main_blendfile_path(bmain)[0] == '\0') {
-    /* Saving the .blend file is not technically necessary in all cases but only when the bake path
-     * depends on the .blend file path (which is the case by default). */
-    CTX_wm_operator_poll_msg_set(C, "File must be saved before baking");
-    return false;
-  }
   return true;
 }
 
