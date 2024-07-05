@@ -34,6 +34,7 @@ from bpy.props import (
 )
 from bpy.app.translations import (
     pgettext_iface as iface_,
+    pgettext_tip as tip_,
     pgettext_rpt as rpt_,
 
 )
@@ -1399,7 +1400,7 @@ class EXTENSIONS_OT_repo_sync_all(Operator, _ExtCmdMixIn):
     @classmethod
     def description(cls, _context, props):
         if props.use_active_only:
-            return "Refresh the list of extensions for the active repository"
+            return tip_("Refresh the list of extensions for the active repository")
         return ""  # Default.
 
     def exec_command_iter(self, is_modal):
@@ -1596,7 +1597,7 @@ class EXTENSIONS_OT_package_upgrade_all(Operator, _ExtCmdMixIn):
     @classmethod
     def description(cls, _context, props):
         if props.use_active_only:
-            return "Upgrade all the extensions to their latest version for the active repository"
+            return tip_("Upgrade all the extensions to their latest version for the active repository")
         return ""  # Default.
 
     def exec_command_iter(self, is_modal):
@@ -2355,7 +2356,8 @@ class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
 
             from .bl_extension_utils import pkg_manifest_dict_from_archive_or_error
 
-            if not self._repos_valid_for_install(context):
+            repos_valid = self._repos_valid_for_install(context)
+            if not repos_valid:
                 self.report({'ERROR'}, "No user repositories")
                 return {'CANCELLED'}
 
@@ -2365,9 +2367,14 @@ class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
 
             pkg_id = result["id"]
             pkg_type = result["type"]
-            del result
+
+            if not self.properties.is_property_set("repo"):
+                if (repo := self._repo_detect_from_manifest_dict(result, repos_valid)) is not None:
+                    self.repo = repo
+                del repo
 
             self._drop_variables = pkg_id, pkg_type
+            del result, pkg_id, pkg_type
         else:
             self._drop_variables = None
             self._legacy_drop = True
@@ -2406,6 +2413,50 @@ class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
     @staticmethod
     def _repos_valid_for_install(context):
         return list(repo_iter_valid_only(context, exclude_remote=False, exclude_system=True))
+
+    # Use to set the repository default when dropping a file.
+    # This is only used to set the default value.
+    # If it fails to find a match the user may still select the repository,
+    # this is just intended to handle the common case where a user may download an
+    # extension from a remote repository they use, dropping the file into Blender.
+    @staticmethod
+    def _repo_detect_from_manifest_dict(manifest_dict, repos_valid):
+        repos_valid = [
+            repo_item for repo_item in repos_valid
+            if repo_item.use_remote_url
+        ]
+        if not repos_valid:
+            return None
+
+        repo_cache_store = repo_cache_store_ensure()
+        repo_cache_store_refresh_from_prefs(repo_cache_store)
+
+        for repo_item in repos_valid:
+            pkg_manifest_remote = repo_cache_store.refresh_remote_from_directory(
+                directory=repo_item.directory,
+                error_fn=print,
+                force=False,
+            )
+            if pkg_manifest_remote is None:
+                continue
+
+            # NOTE: The exact method of matching extensions is a little arbitrary.
+            # Use (id, type, (name or tagline)) since this has a good change of finding a correct match.
+            # Since an extension might be renamed, check if the `name` or the `tagline` match.
+            item_remote = pkg_manifest_remote.get(manifest_dict["id"])
+            if item_remote is None:
+                continue
+            if item_remote.type != manifest_dict["type"]:
+                continue
+            if (
+                    (item_remote.name != manifest_dict["name"]) and
+                    (item_remote.tagline != manifest_dict["tagline"])
+            ):
+                continue
+
+            return repo_item.module
+
+        return None
 
 
 class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
@@ -2812,15 +2863,16 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
                 return False
 
         if item_local is not None:
+            if item_local.type == "add-on":
+                message = rpt_("Add-on \"{:s}\" already installed!")
+            elif item_local.type == "theme":
+                message = rpt_("Theme \"{:s}\" already installed!")
+            else:
+                assert False, "Unreachable"
             self._draw_override = (
                 self._draw_override_errors,
                 {
-                    "errors": [
-                        iface_("{:s} \"{:s}\" already installed!").format(
-                            iface_(string.capwords(item_local.type)),
-                            item_local.name,
-                        )
-                    ]
+                    "errors": [message.format(item_local.name)]
                 }
             )
             return False
@@ -2989,7 +3041,7 @@ class EXTENSIONS_OT_package_uninstall_system(Operator):
 
     @classmethod
     def description(cls, _context, _props):
-        return EXTENSIONS_OT_package_uninstall.__doc__
+        return tip_(EXTENSIONS_OT_package_uninstall.__doc__)
 
     def execute(self, _context):
         return {'CANCELLED'}
@@ -3304,6 +3356,45 @@ class EXTENSIONS_OT_repo_unlock(Operator):
         return {'FINISHED'}
 
 
+class EXTENSIONS_OT_userpref_tags_set(Operator):
+    """Set the value of all tags"""
+    bl_idname = "extensions.userpref_tags_set"
+    bl_label = "Set Extension Tags"
+    bl_options = {'INTERNAL'}
+
+    value: BoolProperty(
+        name="Value",
+        description="Enable or disable all tags",
+        options={'SKIP_SAVE'},
+    )
+    data_path: StringProperty(
+        name="Data Path",
+        options={'SKIP_SAVE'},
+    )
+
+    def execute(self, context):
+        from .bl_extension_ui import (
+            tags_clear,
+            tags_refresh,
+        )
+
+        wm = context.window_manager
+
+        value = self.value
+        tags_attr = self.data_path
+
+        # Internal error, could happen if called from some unexpected place.
+        if tags_attr not in {"extension_tags", "addon_tags"}:
+            return {'CANCELLED'}
+
+        tags_clear(wm, tags_attr)
+        if self.value is False:
+            tags_refresh(wm, tags_attr, default_value=False)
+
+        _preferences_ui_redraw()
+        return {'FINISHED'}
+
+
 # NOTE: this is a modified version of `PREFERENCES_OT_addon_show`.
 # It would make most sense to extend this operator to support showing extensions to upgrade (eventually).
 class EXTENSIONS_OT_userpref_show_for_update(Operator):
@@ -3409,18 +3500,18 @@ class EXTENSIONS_OT_userpref_allow_online_popup(Operator):
         col = layout.column()
         if bpy.app.online_access_override:
             lines = (
-                "Online access required to install or update.",
+                rpt_("Online access required to install or update."),
                 "",
-                "Launch Blender without --offline-mode"
+                rpt_("Launch Blender without --offline-mode"),
             )
         else:
             lines = (
-                "Please turn Online Access on the System settings.",
+                rpt_("Please turn Online Access on the System settings."),
                 "",
-                "Internet access is required to install extensions from the internet."
+                rpt_("Internet access is required to install extensions from the internet."),
             )
         for line in lines:
-            col.label(text=line)
+            col.label(text=line, translate=False)
 
 
 class EXTENSIONS_OT_package_enable_not_installed(Operator):
@@ -3476,6 +3567,7 @@ classes = (
     EXTENSIONS_OT_repo_lock,
     EXTENSIONS_OT_repo_unlock,
 
+    EXTENSIONS_OT_userpref_tags_set,
     EXTENSIONS_OT_userpref_show_for_update,
     EXTENSIONS_OT_userpref_show_online,
     EXTENSIONS_OT_userpref_allow_online,
