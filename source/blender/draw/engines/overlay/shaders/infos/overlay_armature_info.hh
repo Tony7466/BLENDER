@@ -191,11 +191,16 @@ GPU_SHADER_CREATE_INFO(overlay_armature_shape_wire_point)
     .do_static_compilation(true)
     .typedef_source("overlay_shader_shared.h")
     .vertex_in(0, Type::VEC3, "pos")
-    .vertex_in(2, Type::MAT4, "inst_obmat")
+    /* Per instance. */
+    .vertex_in(1, Type::MAT4, "inst_obmat")
     .vertex_out(overlay_armature_shape_wire_point_iface)
     .vertex_source("overlay_armature_shape_wire_point_vert.glsl")
     .fragment_source("overlay_point_varying_color_frag.glsl")
     .additional_info("overlay_frag_output", "overlay_armature_common", "draw_globals");
+
+GPU_SHADER_CREATE_INFO(overlay_armature_shape_wire_point_clipped)
+    .do_static_compilation(true)
+    .additional_info("overlay_armature_shape_wire_point", "drw_clipped");
 
 /** \} */
 
