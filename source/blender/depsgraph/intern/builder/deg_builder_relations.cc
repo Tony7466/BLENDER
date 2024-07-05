@@ -1183,48 +1183,61 @@ void DepsgraphRelationBuilder::build_object_pointcache(Object *object)
     FLAG_GEOMETRY = (1 << 1),
     FLAG_ALL = (FLAG_TRANSFORM | FLAG_GEOMETRY),
   };
-  ListBase ptcache_id_list;
-  BKE_ptcache_ids_from_object(&ptcache_id_list, object, scene_, 0);
+
   int handled_components = 0;
-  LISTBASE_FOREACH (PTCacheID *, ptcache_id, &ptcache_id_list) {
-    /* Check which components needs the point cache. */
-    int flag = -1;
-    if (ptcache_id->type == PTCACHE_TYPE_RIGIDBODY) {
-      if (object->rigidbody_object->type == RBO_TYPE_PASSIVE) {
-        continue;
-      }
-      flag = FLAG_TRANSFORM;
-      OperationKey transform_key(
-          &object->id, NodeType::TRANSFORM, OperationCode::TRANSFORM_SIMULATION_INIT);
-      add_relation(point_cache_key, transform_key, "Point Cache -> Rigid Body");
-      /* Manual changes to effectors need to invalidate simulation.
-       *
-       * Don't add this relation for the render pipeline dependency graph as it does not contain
-       * rigid body simulation. Good thing is that there are no user edits in such dependency
-       * graph, so the relation is not really needed in it. */
-      if (!graph_->is_render_pipeline_depsgraph) {
-        OperationKey rigidbody_rebuild_key(
-            &scene_->id, NodeType::TRANSFORM, OperationCode::RIGIDBODY_REBUILD);
-        add_relation(rigidbody_rebuild_key,
-                     point_cache_key,
-                     "Rigid Body Rebuild -> Point Cache Reset",
-                     RELATION_FLAG_FLUSH_USER_EDIT_ONLY);
-      }
-    }
-    else {
-      flag = FLAG_GEOMETRY;
-      OperationKey geometry_key(&object->id, NodeType::GEOMETRY, OperationCode::GEOMETRY_EVAL);
-      add_relation(point_cache_key, geometry_key, "Point Cache -> Geometry");
-    }
-    BLI_assert(flag != -1);
-    /* Tag that we did handle that component. */
-    handled_components |= flag;
-    if (handled_components == FLAG_ALL) {
-      break;
-    }
-  }
+  bool has_point_cache = false;
+  BKE_ptcache_foreach_object_cache(
+      *object, *scene_, false, [&](PTCacheID &ptcache_id, ModifierData *md) {
+        has_point_cache = true;
+
+        /* Check which components needs the point cache. */
+        int flag = -1;
+        if (ptcache_id.type == PTCACHE_TYPE_RIGIDBODY) {
+          if (object->rigidbody_object->type == RBO_TYPE_PASSIVE) {
+            return true;
+          }
+          flag = FLAG_TRANSFORM;
+          OperationKey transform_key(
+              &object->id, NodeType::TRANSFORM, OperationCode::TRANSFORM_SIMULATION_INIT);
+          add_relation(point_cache_key, transform_key, "Point Cache -> Rigid Body");
+          /* Manual changes to effectors need to invalidate simulation.
+           *
+           * Don't add this relation for the render pipeline dependency graph as it does not
+           * contain rigid body simulation. Good thing is that there are no user edits in such
+           * dependency graph, so the relation is not really needed in it. */
+          if (!graph_->is_render_pipeline_depsgraph) {
+            OperationKey rigidbody_rebuild_key(
+                &scene_->id, NodeType::TRANSFORM, OperationCode::RIGIDBODY_REBUILD);
+            add_relation(rigidbody_rebuild_key,
+                         point_cache_key,
+                         "Rigid Body Rebuild -> Point Cache Reset",
+                         RELATION_FLAG_FLUSH_USER_EDIT_ONLY);
+          }
+        }
+        else {
+          flag = FLAG_GEOMETRY;
+          OperationKey geometry_key(&object->id, NodeType::GEOMETRY, OperationCode::GEOMETRY_EVAL);
+          add_relation(point_cache_key, geometry_key, "Point Cache -> Geometry");
+
+          /* For caches in specific modifiers:
+           * Input data changes from previous modifiers require a point cache reset. */
+          if (md && md->prev) {
+            const OperationKey prev_modifier_key(
+                &object->id, NodeType::GEOMETRY, OperationCode::MODIFIER, md->prev->name);
+            add_relation(prev_modifier_key, point_cache_key, "Previous Modifier -> Point Cache");
+          }
+        }
+        BLI_assert(flag != -1);
+        /* Tag that we did handle that component. */
+        handled_components |= flag;
+        if (handled_components == FLAG_ALL) {
+          return false;
+        }
+
+        return true;
+      });
   /* Manual edits to any dependency (or self) should reset the point cache. */
-  if (!BLI_listbase_is_empty(&ptcache_id_list)) {
+  if (has_point_cache) {
     OperationKey transform_eval_key(
         &object->id, NodeType::TRANSFORM, OperationCode::TRANSFORM_EVAL);
     OperationKey geometry_init_key(
@@ -1238,7 +1251,6 @@ void DepsgraphRelationBuilder::build_object_pointcache(Object *object)
                  "Geometry Init -> Point Cache",
                  RELATION_FLAG_FLUSH_USER_EDIT_ONLY);
   }
-  BLI_freelistN(&ptcache_id_list);
 }
 
 void DepsgraphRelationBuilder::build_object_instance_collection(Object *object)
