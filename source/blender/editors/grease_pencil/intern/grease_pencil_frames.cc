@@ -355,7 +355,7 @@ bool ensure_active_keyframe(const Scene &scene,
   if (blender::animrig::is_autokey_on(&scene) && needs_new_drawing) {
     const Brush *brush = BKE_paint_brush_for_read(&scene.toolsettings->gp_paint->paint);
     const bool is_tool_supported = (brush->gpencil_tool == GPAINT_TOOL_ERASE) ||
-                                   brush->sculpt_tool;
+                                   (brush->sculpt_tool != 0);
 
     if (((scene.toolsettings->gpencil_flags & GP_TOOL_FLAG_RETAIN_LAST) != 0) || is_tool_supported)
     {
