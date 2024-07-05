@@ -2532,7 +2532,7 @@ static void lineart_object_load_single_instance(LineartData *ld,
         blender::geometry::RealizeInstancesOptions options;
         options.keep_original_ids = true;
         blender::bke::GeometrySet realized = blender::geometry::realize_instances(geom_set,options);
-        use_mesh = std::move(realized.get_mesh_for_write());
+        use_mesh = realized.get_mesh_for_write();
       }
     }
 
