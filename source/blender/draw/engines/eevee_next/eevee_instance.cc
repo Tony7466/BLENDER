@@ -8,11 +8,13 @@
  * An instance contains all structures needed to do a complete render.
  */
 
+#include <fmt/format.h>
 #include <sstream>
 
 #include "BKE_global.hh"
 #include "BKE_object.hh"
 #include "BLI_rect.h"
+#include "BLT_translation.hh"
 #include "DEG_depsgraph_query.hh"
 #include "DNA_ID.h"
 #include "DNA_lightprobe_types.h"
@@ -542,7 +544,7 @@ void Instance::draw_viewport()
   if (!shaders_are_ready_) {
     DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
     GPU_framebuffer_clear_color_depth(dfbl->default_fb, float4(0.0f), 1.0f);
-    info += "Compiling EEVEE Engine Shaders\n";
+    screen_info("Compiling EEVEE engine shaders");
     DRW_viewport_request_redraw();
     return;
   }
@@ -558,22 +560,23 @@ void Instance::draw_viewport()
   }
 
   if (materials.queued_shaders_count > 0) {
-    std::stringstream ss;
-    ss << "Compiling Shaders (" << materials.queued_shaders_count << " remaining)";
+    screen_info(
+        fmt::format(RPT_("Compiling shaders ({} remaining)"), materials.queued_shaders_count),
+        false);
+
     if (!GPU_use_parallel_compilation() &&
         GPU_type_matches_ex(GPU_DEVICE_ANY, GPU_OS_ANY, GPU_DRIVER_ANY, GPU_BACKEND_OPENGL))
     {
-      ss << "\n"
-         << "Increasing Preferences > System > Max Shader Compilation Subprocesses "
-         << "may improve compilation time.";
+      screen_info(
+          "Increasing Preferences > System > Max Shader Compilation Subprocesses may improve "
+          "compilation time.");
     }
-    info = ss.str();
     DRW_viewport_request_redraw();
   }
   else if (materials.queued_optimize_shaders_count > 0) {
-    std::stringstream ss;
-    ss << "Optimizing Shaders (" << materials.queued_optimize_shaders_count << " remaining)";
-    info = ss.str();
+    screen_info(fmt::format(RPT_("Optimizing shaders ({} remaining)"),
+                            materials.queued_optimize_shaders_count),
+                false);
   }
 }
 
@@ -741,6 +744,12 @@ void Instance::light_bake_irradiance(
       return;
     }
   }
+}
+
+void Instance::screen_info(StringRefNull msg, bool translate)
+{
+  info += translate ? RPT_(msg.c_str()) : msg;
+  info += "\n";
 }
 
 /** \} */

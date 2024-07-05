@@ -227,6 +227,8 @@ class Instance {
 
   static void update_passes(RenderEngine *engine, Scene *scene, ViewLayer *view_layer);
 
+  void screen_info(StringRefNull msg, bool translate = true);
+
   bool is_viewport() const
   {
     return render == nullptr && !is_baking();

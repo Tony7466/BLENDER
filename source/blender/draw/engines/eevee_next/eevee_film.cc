@@ -67,7 +67,7 @@ void Film::init_aovs()
   }
 
   if (aovs.size() > AOV_MAX) {
-    inst_.info += "Error: Too many AOVs\n";
+    inst_.screen_info("Error: Too many AOVs");
     return;
   }
 

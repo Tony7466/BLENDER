@@ -319,6 +319,7 @@ set(LIB
   bf_realtime_compositor
   bf_windowmanager
   PRIVATE bf::intern::atomic
+  PRIVATE bf::extern::fmtlib
 )
 
 set(GLSL_SRC
