@@ -322,29 +322,41 @@ static void gather_edges_to_split(const Span<int> faces,
   float max_length_iter = std::numeric_limits<float>::lowest();
   for (const int face_i : faces) {
     if (face_i == 0) {
-      const float ab_length = math::distance_squared(real_verts_by_face_type[0][0], real_verts_by_face_type[0][1]);
+      const float ab_length = math::distance_squared(real_verts_by_face_type[0][0],
+                                                     real_verts_by_face_type[0][1]);
       if (max_length_iter == ab_length) {
         r_edges_to_split.append(0);
-      } else if (max_length_iter < ab_length) {
+        // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
+      }
+      else if (max_length_iter < ab_length) {
         r_edges_to_split.clear();
         max_length_iter = ab_length;
         r_edges_to_split.append(0);
+        // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
       }
-      const float bc_length = math::distance_squared(real_verts_by_face_type[0][1], real_verts_by_face_type[0][2]);
+      const float bc_length = math::distance_squared(real_verts_by_face_type[0][1],
+                                                     real_verts_by_face_type[0][2]);
       if (max_length_iter == bc_length) {
-        r_edges_to_split.append(0);
-      } else if (max_length_iter < bc_length) {
+        r_edges_to_split.append(1);
+        // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
+      }
+      else if (max_length_iter < bc_length) {
         r_edges_to_split.clear();
         max_length_iter = bc_length;
         r_edges_to_split.append(1);
+        // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
       }
-      const float ca_length = math::distance_squared(real_verts_by_face_type[0][2], real_verts_by_face_type[0][0]);
+      const float ca_length = math::distance_squared(real_verts_by_face_type[0][2],
+                                                     real_verts_by_face_type[0][0]);
       if (max_length_iter == ca_length) {
-        r_edges_to_split.append(0);
-      } else if (max_length_iter < ca_length) {
+        r_edges_to_split.append(2);
+        // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
+      }
+      else if (max_length_iter < ca_length) {
         r_edges_to_split.clear();
         max_length_iter = ca_length;
         r_edges_to_split.append(2);
+        // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
       }
     }
 
@@ -352,53 +364,103 @@ static void gather_edges_to_split(const Span<int> faces,
     int offset = 1;
     int edge_offset = 3;
     if (ab_faces.contains(face_i - offset)) {
-      const side_edges_offset = (face_i - offset) * 2;
-      const float ad_length = math::distance_squared(real_verts_by_face_type[0][0], real_verts_by_face_type[1][face_i - offset]);
+      const int side_edges_offset = (face_i - offset) * 2;
+      const float ad_length = math::distance_squared(real_verts_by_face_type[0][0],
+                                                     real_verts_by_face_type[1][face_i - offset]);
       if (max_length_iter == ad_length) {
-        r_edges_to_split.append(0);
-      } else if (max_length_iter < ad_length) {
+        r_edges_to_split.append(edge_offset + side_edges_offset + 0);
+        // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
+      }
+      else if (max_length_iter < ad_length) {
+        r_edges_to_split.clear();
         max_length_iter = ad_length;
         r_edges_to_split.append(edge_offset + side_edges_offset + 0);
+        // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
       }
-      const float bd_length = math::distance_squared(real_verts_by_face_type[0][1], real_verts_by_face_type[1][face_i - offset]);
+      const float bd_length = math::distance_squared(real_verts_by_face_type[0][1],
+                                                     real_verts_by_face_type[1][face_i - offset]);
       if (max_length_iter == bd_length) {
-        r_edges_to_split.append(0);
-      } else if (max_length_iter < bd_length) {
+        r_edges_to_split.append(edge_offset + side_edges_offset + 1);
+        // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
+      }
+      else if (max_length_iter < bd_length) {
+        r_edges_to_split.clear();
         max_length_iter = bd_length;
         r_edges_to_split.append(edge_offset + side_edges_offset + 1);
+        // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
       }
     }
     offset += ab_faces.size();
+    edge_offset += ab_faces.size() * 2;
 
     const IndexRange bc_faces = real_verts_by_face_type[2].index_range();
     if (bc_faces.contains(face_i - offset)) {
-      const float ad_length = math::distance_squared(real_verts_by_face_type[0][1], real_verts_by_face_type[1][face_i - offset]);
-      if (max_length_iter < ab_length) {
-        max_length_iter = ab_length;
-        r_edges_to_split.append(0);
+      const int side_edges_offset = (face_i - offset) * 2;
+      const float de_length = math::distance_squared(real_verts_by_face_type[0][1],
+                                                     real_verts_by_face_type[2][face_i - offset]);
+      if (max_length_iter == de_length) {
+        r_edges_to_split.append(edge_offset + side_edges_offset + 0);
+        // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
       }
-      const float bd_length = math::distance_squared(real_verts_by_face_type[0][2], real_verts_by_face_type[1][face_i - offset]);
-      if (max_length_iter < bc_length) {
-        max_length_iter = bc_length;
-        r_edges_to_split.append(1);
+      else if (max_length_iter < de_length) {
+        r_edges_to_split.clear();
+        max_length_iter = de_length;
+        r_edges_to_split.append(edge_offset + side_edges_offset + 0);
+        // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
+      }
+      const float ce_length = math::distance_squared(real_verts_by_face_type[0][2],
+                                                     real_verts_by_face_type[2][face_i - offset]);
+      if (max_length_iter == ce_length) {
+        r_edges_to_split.append(edge_offset + side_edges_offset + 1);
+        // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
+      }
+      else if (max_length_iter < ce_length) {
+        r_edges_to_split.clear();
+        max_length_iter = ce_length;
+        r_edges_to_split.append(edge_offset + side_edges_offset + 1);
+        // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
       }
     }
     offset += bc_faces.size();
+    edge_offset += bc_faces.size() * 2;
 
     const IndexRange ca_faces = real_verts_by_face_type[3].index_range();
     if (ca_faces.contains(face_i - offset)) {
-      const float ad_length = math::distance_squared(real_verts_by_face_type[0][2], real_verts_by_face_type[1][face_i - offset]);
-      if (max_length_iter < ab_length) {
-        max_length_iter = ab_length;
-        r_edges_to_split.append(0);
+      const int side_edges_offset = (face_i - offset) * 2;
+      const float cf_length = math::distance_squared(real_verts_by_face_type[0][2],
+                                                     real_verts_by_face_type[3][face_i - offset]);
+      if (max_length_iter == cf_length) {
+        r_edges_to_split.append(edge_offset + side_edges_offset + 0);
+        // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
       }
-      const float bd_length = math::distance_squared(real_verts_by_face_type[0][0], real_verts_by_face_type[1][face_i - offset]);
-      if (max_length_iter < bc_length) {
-        max_length_iter = bc_length;
-        r_edges_to_split.append(1);
+      else if (max_length_iter < cf_length) {
+        r_edges_to_split.clear();
+        max_length_iter = cf_length;
+        r_edges_to_split.append(edge_offset + side_edges_offset + 0);
+        // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
+      }
+      const float af_length = math::distance_squared(real_verts_by_face_type[0][0],
+                                                     real_verts_by_face_type[3][face_i - offset]);
+      if (max_length_iter == af_length) {
+        r_edges_to_split.append(edge_offset + side_edges_offset + 1);
+        // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
+      }
+      else if (max_length_iter < af_length) {
+        r_edges_to_split.clear();
+        max_length_iter = af_length;
+        r_edges_to_split.append(edge_offset + side_edges_offset + 1);
+        // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
       }
     }
   }
+
+  if (max_length_iter < max_length) {
+    r_edges_to_split.clear();
+  }
+
+  // std::cout << "\t" << __func__ << ":\n";
+  // std::cout << "\t\t" << max_length_iter << ";\n";
+  // std::cout << "\t\t" << r_edges_to_split.as_span() << ";\n";
 }
 
 static void face_subdivide(const std::array<int, 5> &vert_offsets,
@@ -417,6 +479,7 @@ static void face_subdivide(const std::array<int, 5> &vert_offsets,
   Vector<int3> tris = {face_verts};
 
   while (!offsets_stack.is_empty()) {
+    // std::cout << "Stack call." << std::endl;
     BLI_assert(offsets_stack.size() == verts_stack.size());
     BLI_assert(offsets_stack.size() == real_verts_stack.size());
     BLI_assert(offsets_stack.size() == tris.size());
@@ -425,6 +488,11 @@ static void face_subdivide(const std::array<int, 5> &vert_offsets,
     Vector<float2> verts = verts_stack.pop_last();
     Vector<float3> real_verts = real_verts_stack.pop_last();
     const int3 face_verts = tris.pop_last();
+
+    // std::cout << " -" << offset_data << std::endl;
+    // std::cout << " -" << verts.as_span() << std::endl;
+    // std::cout << " -" << real_verts.as_span() << std::endl;
+    // std::cout << " -" << face_verts << std::endl;
 
     BLI_assert(offset_data[1] == 3);
 
@@ -564,9 +632,9 @@ static void face_subdivide(const std::array<int, 5> &vert_offsets,
         right_verts.extend(verts_by_face_type[2]);
         right_verts.extend(verts_by_face_type[3]);
 
-        left_offset_data[1] = 1;
-        left_offset_data[2] = verts_by_face_type[2].size();
-        left_offset_data[3] = verts_by_face_type[3].size();
+        right_offset_data[1] = 1;
+        right_offset_data[2] = verts_by_face_type[2].size();
+        right_offset_data[3] = verts_by_face_type[3].size();
 
         left_real_verts.append(real_verts_by_face_type[0][0]);
         left_real_verts.append(real_verts_by_face_type[0][1]);
@@ -602,9 +670,9 @@ static void face_subdivide(const std::array<int, 5> &vert_offsets,
         right_verts.extend(verts_by_face_type[2]);
         right_verts.extend(verts_by_face_type[3]);
 
-        left_offset_data[1] = 1;
-        left_offset_data[2] = verts_by_face_type[2].size();
-        left_offset_data[3] = verts_by_face_type[3].size();
+        right_offset_data[1] = 1;
+        right_offset_data[2] = verts_by_face_type[2].size();
+        right_offset_data[3] = verts_by_face_type[3].size();
 
         left_real_verts.append(real_verts_by_face_type[0][0]);
         left_real_verts.append(real_verts_by_face_type[0][1]);
@@ -622,6 +690,9 @@ static void face_subdivide(const std::array<int, 5> &vert_offsets,
         break;
       }
     }
+
+    // std::cout << "\t left_offset_data" << left_offset_data << ";\n";
+    // std::cout << "\t right_offset_data" << right_offset_data << ";\n";
 
     offset_indices::accumulate_counts_to_offsets(left_offset_data);
     offset_indices::accumulate_counts_to_offsets(right_offset_data);
@@ -1109,30 +1180,30 @@ Mesh *subdivide(const Mesh &src_mesh,
   Array<int> face_total_edges(src_mesh.faces_num + 1);
 
   for (const int edge_i : IndexRange(src_mesh.edges_num)) {
-    const int2 edge = edges[edge_i];
+    // const int2 edge = edges[edge_i];
 
-    const Span<int> edge_faces = edge_to_face_map[edge_i];
+    // const Span<int> edge_faces = edge_to_face_map[edge_i];
 
-    const int3 left_verts = gather_tri(faces[edge_faces[0]], corner_verts);
-    const int3 right_verts = gather_tri(faces[edge_faces[1]], corner_verts);
+    //  const int3 left_verts = gather_tri(faces[edge_faces[0]], corner_verts);
+    // const int3 right_verts = gather_tri(faces[edge_faces[1]], corner_verts);
 
-    BLI_assert(elem(left_verts, edge[0]) && elem(left_verts, edge[1]));
-    BLI_assert(elem(right_verts, edge[0]) && elem(right_verts, edge[1]));
+    // BLI_assert(elem(left_verts, edge[0]) && elem(left_verts, edge[1]));
+    // BLI_assert(elem(right_verts, edge[0]) && elem(right_verts, edge[1]));
 
-    const int a_vert = exclusive_one(left_verts, edge);
-    const int b_vert = exclusive_one(right_verts, edge);
+    // const int a_vert = exclusive_one(left_verts, edge);
+    // const int b_vert = exclusive_one(right_verts, edge);
 
     // std::cout << "Edge: " << edge_i << ";\n";
 
-    int total_verts_in = 0;
-    edge_subdivide_count(projection[edge[0]],
-                         projection[edge[1]],
-                         projection[a_vert],
-                         projection[b_vert],
-                         centre,
-                         squared_radius,
-                         squared_max_length,
-                         total_verts_in);
+    int total_verts_in = 0; /*
+     edge_subdivide_count(projection[edge[0]],
+                          projection[edge[1]],
+                          projection[a_vert],
+                          projection[b_vert],
+                          centre,
+                          squared_radius,
+                          squared_max_length,
+                          total_verts_in);*/
     edge_total_verts[edge_i] = total_verts_in;
   }
 
@@ -1145,15 +1216,19 @@ Mesh *subdivide(const Mesh &src_mesh,
     const int2 edge_bc = edges[face_edges[1]];
     const int2 edge_ca = edges[face_edges[2]];
 
+    BLI_assert(OrderedEdge(face_verts[0], face_verts[1]) == OrderedEdge(edge_ab));
+    BLI_assert(OrderedEdge(face_verts[1], face_verts[2]) == OrderedEdge(edge_bc));
+    BLI_assert(OrderedEdge(face_verts[2], face_verts[0]) == OrderedEdge(edge_ca));
+
     const Span<int> ab_faces = edge_to_face_map[face_edges[0]];
     const Span<int> bc_faces = edge_to_face_map[face_edges[1]];
     const Span<int> ca_faces = edge_to_face_map[face_edges[2]];
 
     std::array<int, 5> vert_offsets;
     vert_offsets[0] = 3;
-    vert_offsets[1] = ab_faces.size();
-    vert_offsets[2] = bc_faces.size();
-    vert_offsets[3] = ca_faces.size();
+    vert_offsets[1] = ab_faces.size() - 1;
+    vert_offsets[2] = bc_faces.size() - 1;
+    vert_offsets[3] = ca_faces.size() - 1;
     offset_indices::accumulate_counts_to_offsets(vert_offsets);
 
     Vector<float2> uv_verts;
@@ -1165,25 +1240,34 @@ Mesh *subdivide(const Mesh &src_mesh,
     verts.append(src_positions[face_verts[1]]);
     verts.append(src_positions[face_verts[2]]);
     for (const int other_face_i : ab_faces) {
-      const IndexRange other_face = faces[other_face_i];
-      const int3 other_face_edges = gather_tri(other_face, corner_verts);
-      const int d_vert = exclusive_one(other_face_edges, edge_ab);
-      uv_verts.append(projection[d_vert]);
-      verts.append(src_positions[d_vert]);
+      if (other_face_i != face_i) {
+        const IndexRange other_face = faces[other_face_i];
+        const int3 other_face_verts = gather_tri(other_face, corner_verts);
+        const int d_vert = exclusive_one(other_face_verts, edge_ab);
+        BLI_assert(!elem(face_verts, d_vert));
+        uv_verts.append(projection[d_vert]);
+        verts.append(src_positions[d_vert]);
+      }
     }
     for (const int other_face_i : bc_faces) {
-      const IndexRange other_face = faces[other_face_i];
-      const int3 other_face_edges = gather_tri(other_face, corner_verts);
-      const int e_vert = exclusive_one(other_face_edges, edge_bc);
-      uv_verts.append(projection[e_vert]);
-      verts.append(src_positions[e_vert]);
+      if (other_face_i != face_i) {
+        const IndexRange other_face = faces[other_face_i];
+        const int3 other_face_verts = gather_tri(other_face, corner_verts);
+        const int e_vert = exclusive_one(other_face_verts, edge_bc);
+        BLI_assert(!elem(face_verts, e_vert));
+        uv_verts.append(projection[e_vert]);
+        verts.append(src_positions[e_vert]);
+      }
     }
     for (const int other_face_i : ca_faces) {
-      const IndexRange other_face = faces[other_face_i];
-      const int3 other_face_edges = gather_tri(other_face, corner_verts);
-      const int f_vert = exclusive_one(other_face_edges, edge_ca);
-      uv_verts.append(projection[f_vert]);
-      verts.append(src_positions[f_vert]);
+      if (other_face_i != face_i) {
+        const IndexRange other_face = faces[other_face_i];
+        const int3 other_face_verts = gather_tri(other_face, corner_verts);
+        const int f_vert = exclusive_one(other_face_verts, edge_ca);
+        BLI_assert(!elem(face_verts, f_vert));
+        uv_verts.append(projection[f_vert]);
+        verts.append(src_positions[f_vert]);
+      }
     }
 
     VectorSet<OrderedEdge> face_edges_set;
