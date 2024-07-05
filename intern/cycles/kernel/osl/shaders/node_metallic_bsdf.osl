@@ -5,18 +5,18 @@
 #include "node_fresnel.h"
 #include "stdcycles.h"
 
-shader node_conductor_bsdf(color BaseColor = 1.0,
-                           color EdgeTint = 1.0,
-                           vector IOR = vector(0.183, 0.421, 1.373),
-                           vector Extinction = vector(3.424, 2.346, 1.770),
-                           string distribution = "multi_ggx",
-                           string fresnel_type = "conductor",
-                           float Roughness = 0.5,
-                           float Anisotropy = 0.0,
-                           float Rotation = 0.0,
-                           normal Normal = N,
-                           normal Tangent = 0.0,
-                           output closure color BSDF = 0)
+shader node_metallic_bsdf(color BaseColor = 1.0,
+                          color EdgeTint = 1.0,
+                          vector IOR = vector(0.183, 0.421, 1.373),
+                          vector Extinction = vector(3.424, 2.346, 1.770),
+                          string distribution = "multi_ggx",
+                          string fresnel_type = "conductor",
+                          float Roughness = 0.5,
+                          float Anisotropy = 0.0,
+                          float Rotation = 0.0,
+                          normal Normal = N,
+                          normal Tangent = 0.0,
+                          output closure color BSDF = 0)
 {
   float r2 = clamp(Roughness, 0.0, 1.0);
   r2 *= r2;

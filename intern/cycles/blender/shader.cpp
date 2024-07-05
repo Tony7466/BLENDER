@@ -548,34 +548,34 @@ static ShaderNode *add_node(Scene *scene,
 
     node = subsurface;
   }
-  else if (b_node.is_a(&RNA_ShaderNodeBsdfConductor)) {
-    BL::ShaderNodeBsdfConductor b_conductor_node(b_node);
-    ConductorBsdfNode *conductor = graph->create_node<ConductorBsdfNode>();
+  else if (b_node.is_a(&RNA_ShaderNodeBsdfMetallic)) {
+    BL::ShaderNodeBsdfMetallic b_metallic_node(b_node);
+    MetallicBsdfNode *metal = graph->create_node<MetallicBsdfNode>();
 
-    switch (b_conductor_node.distribution()) {
-      case BL::ShaderNodeBsdfConductor::distribution_BECKMANN:
-        conductor->set_distribution(CLOSURE_BSDF_MICROFACET_BECKMANN_ID);
+    switch (b_metallic_node.distribution()) {
+      case BL::ShaderNodeBsdfMetallic::distribution_BECKMANN:
+        metal->set_distribution(CLOSURE_BSDF_MICROFACET_BECKMANN_ID);
         break;
-      case BL::ShaderNodeBsdfConductor::distribution_GGX:
-        conductor->set_distribution(CLOSURE_BSDF_MICROFACET_GGX_ID);
+      case BL::ShaderNodeBsdfMetallic::distribution_GGX:
+        metal->set_distribution(CLOSURE_BSDF_MICROFACET_GGX_ID);
         break;
-      case BL::ShaderNodeBsdfConductor::distribution_MULTI_GGX:
-        conductor->set_distribution(CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID);
+      case BL::ShaderNodeBsdfMetallic::distribution_MULTI_GGX:
+        metal->set_distribution(CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID);
         break;
     }
 
-    switch (b_conductor_node.fresnel_type()) {
-      case BL::ShaderNodeBsdfConductor::fresnel_type_ARTISTIC_CONDUCTOR:
-        conductor->set_fresnel_type(CLOSURE_BSDF_ARTISTIC_CONDUCTOR);
+    switch (b_metallic_node.fresnel_type()) {
+      case BL::ShaderNodeBsdfMetallic::fresnel_type_ARTISTIC_CONDUCTOR:
+        metal->set_fresnel_type(CLOSURE_BSDF_ARTISTIC_CONDUCTOR);
         break;
-      case BL::ShaderNodeBsdfConductor::fresnel_type_CONDUCTOR:
-        conductor->set_fresnel_type(CLOSURE_BSDF_CONDUCTOR);
+      case BL::ShaderNodeBsdfMetallic::fresnel_type_CONDUCTOR:
+        metal->set_fresnel_type(CLOSURE_BSDF_CONDUCTOR);
         break;
-      case BL::ShaderNodeBsdfConductor::fresnel_type_F82:
-        conductor->set_fresnel_type(CLOSURE_BSDF_CONDUCTOR_F82);
+      case BL::ShaderNodeBsdfMetallic::fresnel_type_F82:
+        metal->set_fresnel_type(CLOSURE_BSDF_CONDUCTOR_F82);
         break;
     }
-    node = conductor;
+    node = metal;
   }
   else if (b_node.is_a(&RNA_ShaderNodeBsdfAnisotropic)) {
     BL::ShaderNodeBsdfAnisotropic b_glossy_node(b_node);

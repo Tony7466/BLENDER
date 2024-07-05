@@ -2419,11 +2419,11 @@ void BsdfNode::compile(OSLCompiler & /*compiler*/)
   assert(0);
 }
 
-/* Conductor BSDF Closure */
+/* Metallic BSDF Closure */
 
-NODE_DEFINE(ConductorBsdfNode)
+NODE_DEFINE(MetallicBsdfNode)
 {
-  NodeType *type = NodeType::add("Conductor_bsdf", create, NodeType::SHADER);
+  NodeType *type = NodeType::add("Metallic_bsdf", create, NodeType::SHADER);
 
   SOCKET_IN_COLOR(color, "Base Color", make_float3(1.0f, 1.0f, 1.0f));
   SOCKET_IN_NORMAL(normal, "Normal", zero_float3(), SocketType::LINK_NORMAL);
@@ -2458,12 +2458,12 @@ NODE_DEFINE(ConductorBsdfNode)
   return type;
 }
 
-ConductorBsdfNode::ConductorBsdfNode() : BsdfNode(get_node_type())
+MetallicBsdfNode::MetallicBsdfNode() : BsdfNode(get_node_type())
 {
   closure = CLOSURE_BSDF_CONDUCTOR;
 }
 
-bool ConductorBsdfNode::is_isotropic()
+bool MetallicBsdfNode::is_isotropic()
 {
   ShaderInput *anisotropy_input = input("Anisotropy");
   /* Keep in sync with the thresholds in OSL's node_conductor_bsdf and SVM's svm_node_closure_bsdf.
@@ -2471,7 +2471,7 @@ bool ConductorBsdfNode::is_isotropic()
   return (!anisotropy_input->link && fabsf(anisotropy) <= 1e-4f);
 }
 
-void ConductorBsdfNode::attributes(Shader *shader, AttributeRequestSet *attributes)
+void MetallicBsdfNode::attributes(Shader *shader, AttributeRequestSet *attributes)
 {
   if (shader->has_surface_link()) {
     ShaderInput *tangent_in = input("Tangent");
@@ -2483,7 +2483,7 @@ void ConductorBsdfNode::attributes(Shader *shader, AttributeRequestSet *attribut
   ShaderNode::attributes(shader, attributes);
 }
 
-void ConductorBsdfNode::simplify_settings(Scene * /* scene */)
+void MetallicBsdfNode::simplify_settings(Scene * /* scene */)
 {
   /* If the anisotropy is close enough to zero, fall back to the isotropic case. */
   ShaderInput *tangent_input = input("Tangent");
@@ -2492,7 +2492,7 @@ void ConductorBsdfNode::simplify_settings(Scene * /* scene */)
   }
 }
 
-void ConductorBsdfNode::compile(SVMCompiler &compiler)
+void MetallicBsdfNode::compile(SVMCompiler &compiler)
 {
   compiler.add_node(NODE_CLOSURE_SET_WEIGHT, one_float3());
 
@@ -2528,11 +2528,11 @@ void ConductorBsdfNode::compile(SVMCompiler &compiler)
   compiler.add_node(normal_offset);
 }
 
-void ConductorBsdfNode::compile(OSLCompiler &compiler)
+void MetallicBsdfNode::compile(OSLCompiler &compiler)
 {
   compiler.parameter(this, "distribution");
   compiler.parameter(this, "fresnel_type");
-  compiler.add(this, "node_conductor_bsdf");
+  compiler.add(this, "node_metallic_bsdf");
 }
 
 /* Glossy BSDF Closure */

@@ -19,12 +19,12 @@ void register_shader_nodes()
   register_node_type_sh_bevel();
   register_node_type_sh_blackbody();
   register_node_type_sh_brightcontrast();
-  register_node_type_sh_bsdf_conductor();
   register_node_type_sh_bsdf_diffuse();
   register_node_type_sh_bsdf_glass();
   register_node_type_sh_bsdf_glossy();
   register_node_type_sh_bsdf_hair_principled();
   register_node_type_sh_bsdf_hair();
+  register_node_type_sh_bsdf_metallic();
   register_node_type_sh_bsdf_principled();
   register_node_type_sh_bsdf_ray_portal();
   register_node_type_sh_bsdf_refraction();

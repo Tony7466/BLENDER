@@ -20,7 +20,6 @@ set(SRC_OSL
   node_combine_rgb.osl
   node_combine_hsv.osl
   node_combine_xyz.osl
-  node_conductor_bsdf.osl
   node_convert_from_color.osl
   node_convert_from_float.osl
   node_convert_from_int.osl
@@ -57,6 +56,7 @@ set(SRC_OSL
   node_map_range.osl
   node_mapping.osl
   node_math.osl
+  node_metallic_bsdf.osl
   node_mix.osl
   node_mix_closure.osl
   node_mix_color.osl

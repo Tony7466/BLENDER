@@ -4045,7 +4045,7 @@ static const EnumPropertyItem node_ycc_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-static const EnumPropertyItem node_conductor_distribution_items[] = {
+static const EnumPropertyItem node_metallic_distribution_items[] = {
     {SHD_GLOSSY_BECKMANN, "BECKMANN", 0, "Beckmann", ""},
     {SHD_GLOSSY_GGX, "GGX", 0, "GGX", ""},
     {SHD_GLOSSY_MULTI_GGX,
@@ -4057,7 +4057,7 @@ static const EnumPropertyItem node_conductor_distribution_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-static const EnumPropertyItem node_conductor_fresnel_type_items[] = {
+static const EnumPropertyItem node_metallic_fresnel_type_items[] = {
     {SHD_CONDUCTOR, "CONDUCTOR", 0, "Physical Conductor", ""},
     {SHD_ARTISTIC_CONDUCTOR,
      "ARTISTIC_CONDUCTOR",
@@ -5555,19 +5555,19 @@ static void def_sh_tex_pointdensity(StructRNA *srna)
   RNA_def_function_output(func, parm);
 }
 
-static void def_conductor(StructRNA *srna)
+static void def_metallic(StructRNA *srna)
 {
   PropertyRNA *prop;
 
   prop = RNA_def_property(srna, "distribution", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "custom1");
-  RNA_def_property_enum_items(prop, node_conductor_distribution_items);
+  RNA_def_property_enum_items(prop, node_metallic_distribution_items);
   RNA_def_property_ui_text(prop, "Distribution", "Light scattering distribution on rough surface");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "fresnel_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "custom2");
-  RNA_def_property_enum_items(prop, node_conductor_fresnel_type_items);
+  RNA_def_property_enum_items(prop, node_metallic_fresnel_type_items);
   RNA_def_property_ui_text(prop, "Fresnel Type", "PLACE HOLDER");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }

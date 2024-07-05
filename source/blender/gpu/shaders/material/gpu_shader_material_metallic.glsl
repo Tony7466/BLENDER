@@ -17,7 +17,7 @@ vec3 fresnel_conductor(float cosi, const vec3 eta, const vec3 k)
   return (Rparl2 + Rperp2) * 0.5;
 }
 
-void node_bsdf_conductor(vec4 base_color,
+void node_bsdf_metallic(vec4 base_color,
                          vec4 edge_tint,
                          vec3 ior,
                          vec3 extinction,

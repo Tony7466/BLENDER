@@ -604,9 +604,9 @@ class SheenBsdfNode : public BsdfNode {
   }
 };
 
-class ConductorBsdfNode : public BsdfNode {
+class MetallicBsdfNode : public BsdfNode {
  public:
-  SHADER_NODE_CLASS(ConductorBsdfNode)
+  SHADER_NODE_CLASS(MetallicBsdfNode)
 
   void simplify_settings(Scene *scene);
   ClosureType get_closure_type()
