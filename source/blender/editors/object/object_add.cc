@@ -3410,8 +3410,10 @@ static int object_convert_exec(bContext *C, wmOperator *op)
         BKE_object_free_modifiers(newob, 0);
       }
       else {
-        BKE_reportf(
-            op->reports, RPT_WARNING, "Object '%s' has no evaluated curves data", ob->id.name + 2);
+        BKE_reportf(op->reports,
+                    RPT_WARNING,
+                    "Object '%s' has no evaluated grease pencil data",
+                    ob->id.name + 2);
       }
     }
     else if (ob->type == OB_GREASE_PENCIL && target == OB_MESH) {
