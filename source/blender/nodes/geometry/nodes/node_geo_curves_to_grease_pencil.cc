@@ -34,24 +34,21 @@ static void node_geo_exec(GeoNodeExecParams params)
   for (const int instance_i : IndexRange(instances->instances_num())) {
     std::string name = std::to_string(instance_i);
     const bke::InstanceReference &reference = references[reference_handles[instance_i]];
-    if (reference.type() != bke::InstanceReference::Type::GeometrySet) {
-      /* TODO */
-      continue;
-    }
-    GeometrySet instance_geometry = reference.geometry_set();
-    const Curves *instance_curves = instance_geometry.get_curves();
-    if (!instance_curves) {
-      /* TODO: Create empty layer? */
-      continue;
-    }
 
     bke::greasepencil::Drawing &drawing =
         reinterpret_cast<GreasePencilDrawing *>(grease_pencil->drawing(instance_i))->wrap();
-    drawing.strokes_for_write() = instance_curves->geometry.wrap();
-
     bke::greasepencil::Layer &layer = grease_pencil->add_layer(std::move(name));
     layer.add_frame(0)->drawing_index = instance_i;
     drawing.add_user();
+
+    GeometrySet instance_geometry;
+    reference.to_geometry_set(instance_geometry);
+    const Curves *instance_curves = instance_geometry.get_curves();
+    if (!instance_curves) {
+      continue;
+    }
+
+    drawing.strokes_for_write() = instance_curves->geometry.wrap();
   }
 
   params.set_output("Grease Pencil", GeometrySet::from_grease_pencil(grease_pencil));
