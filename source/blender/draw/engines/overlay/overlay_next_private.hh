@@ -282,8 +282,7 @@ template<typename InstanceDataT> struct ShapeInstanceBuf : private select::Selec
 struct LineInstanceBuf : private select::SelectBuf {
 
   StorageVectorBuffer<PointData> data_buf;
-  int instance_count = 0;
-  uint32_t last = -1;
+  int color_id = 0;
 
   LineInstanceBuf(const SelectionType selection_type, const char *name = nullptr)
       : select::SelectBuf(selection_type), data_buf(name){};
@@ -296,12 +295,17 @@ struct LineInstanceBuf : private select::SelectBuf {
 
   void append(const float3 &start, const float3 &end, const float4 &color, select::ID select_id)
   {
-    if (last != select_id.get()) {
-      instance_count++;
-    }
     this->select_append(select_id);
     data_buf.append({float4{start}, color});
     data_buf.append({float4{end}, color});
+  }
+
+  void append(const float3 &start, const float3 &end, const int color_id, select::ID select_id)
+  {
+    this->color_id = color_id;
+    this->select_append(select_id);
+    data_buf.append({float4{start}, float4{}});
+    data_buf.append({float4{end}, float4{}});
   }
 
   void end_sync(PassSimple::Sub &pass)
@@ -312,7 +316,10 @@ struct LineInstanceBuf : private select::SelectBuf {
     this->select_bind(pass);
     data_buf.push_update();
     pass.bind_ssbo("data_buf", &data_buf);
-    pass.draw_procedural(GPU_PRIM_LINES, instance_count, data_buf.size());
+    if (color_id) {
+      pass.push_constant("colorid", color_id);
+    }
+    pass.draw_procedural(GPU_PRIM_LINES, data_buf.size() / 2, 2);
   }
 };
 
