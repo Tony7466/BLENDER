@@ -147,7 +147,7 @@ class FormatHandler : NonCopyable, NonMovable {
   {
     write_impl("deg {} {}\n", degs.first, degs.second);
   }
-  void write_obj_curve_begin(ObjectType type = OB_CURVES_LEGACY)
+  void write_obj_curve_begin(ObjectType type)
   {
     switch (type) {
       case OB_CURVES_LEGACY:
