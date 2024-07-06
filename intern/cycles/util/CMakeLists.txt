@@ -7,6 +7,7 @@ set(INC
 )
 
 set(INC_SYS
+  ${ZSTD_INCLUDE_DIRS}
 )
 
 set(SRC
@@ -20,7 +21,6 @@ set(SRC
   path.cpp
   profiling.cpp
   string.cpp
-  simd.cpp
   system.cpp
   task.cpp
   thread.cpp
@@ -33,6 +33,7 @@ set(SRC
 
 set(LIB
   ${TBB_LIBRARIES}
+  ${ZSTD_LIBRARIES}
 )
 
 set(SRC_HEADERS
@@ -136,7 +137,7 @@ set(SRC_HEADERS
   xml.h
 )
 
-if(CXX_HAS_SSE)
+if(CXX_HAS_SSE42)
   set_source_files_properties(transform_sse42.cpp PROPERTIES COMPILE_FLAGS "${CYCLES_SSE42_KERNEL_FLAGS}")
 endif()
 if(CXX_HAS_AVX2)

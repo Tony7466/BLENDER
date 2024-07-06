@@ -33,7 +33,6 @@
 #include "BLT_translation.hh"
 
 #include "RNA_access.hh"
-#include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
 #include "UI_interface.hh"
@@ -41,7 +40,7 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "screen_intern.h"
+#include "screen_intern.hh"
 
 struct ScreenshotData {
   uint8_t *dumprect;

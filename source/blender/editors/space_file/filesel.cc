@@ -484,6 +484,10 @@ ID *ED_fileselect_active_asset_get(const SpaceFile *sfile)
     return nullptr;
   }
 
+  if (sfile->files == nullptr) {
+    return nullptr;
+  }
+
   FileSelectParams *params = ED_fileselect_get_active_params(sfile);
   const FileDirEntry *file = filelist_file(sfile->files, params->active_file);
   if (file == nullptr) {
@@ -1349,7 +1353,7 @@ void file_params_invoke_rename_postscroll(wmWindowManager *wm, wmWindow *win, Sp
 void file_params_rename_end(wmWindowManager *wm,
                             wmWindow *win,
                             SpaceFile *sfile,
-                            FileDirEntry *rename_file)
+                            const FileDirEntry *rename_file)
 {
   FileSelectParams *params = ED_fileselect_get_active_params(sfile);
 

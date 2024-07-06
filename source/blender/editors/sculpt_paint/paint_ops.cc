@@ -17,8 +17,6 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.hh"
-
 #include "IMB_interp.hh"
 
 #include "DNA_brush_types.h"
@@ -270,14 +268,16 @@ static int brush_scale_size_exec(bContext *C, wmOperator *op)
   Scene *scene = CTX_data_scene(C);
   Paint *paint = BKE_paint_get_active_from_context(C);
   Brush *brush = BKE_paint_brush(paint);
-  const bool is_gpencil = (brush && brush->gpencil_settings != nullptr);
-  // Object *ob = CTX_data_active_object(C);
   float scalar = RNA_float_get(op->ptr, "scalar");
 
+  /* Grease Pencil brushes in Paint mode do not use unified size. */
+  const bool use_unified_size = !(brush && brush->gpencil_settings &&
+                                  brush->ob_mode == OB_MODE_PAINT_GPENCIL_LEGACY);
+
   if (brush) {
-    /* pixel radius */
+    /* Pixel radius. */
     {
-      const int old_size = (!is_gpencil) ? BKE_brush_size_get(scene, brush) : brush->size;
+      const int old_size = (use_unified_size) ? BKE_brush_size_get(scene, brush) : brush->size;
       int size = int(scalar * old_size);
 
       if (abs(old_size - size) < U.pixelsize) {
@@ -288,25 +288,31 @@ static int brush_scale_size_exec(bContext *C, wmOperator *op)
           size -= U.pixelsize;
         }
       }
-      /* Grease Pencil does not use unified size. */
-      if (is_gpencil) {
-        brush->size = max_ii(size, 1);
-        WM_main_add_notifier(NC_BRUSH | NA_EDITED, brush);
-        return OPERATOR_FINISHED;
-      }
 
-      BKE_brush_size_set(scene, brush, size);
+      if (use_unified_size) {
+        BKE_brush_size_set(scene, brush, size);
+      }
+      else {
+        brush->size = max_ii(size, 1);
+      }
     }
 
-    /* unprojected radius */
+    /* Unprojected radius. */
     {
-      float unprojected_radius = scalar * BKE_brush_unprojected_radius_get(scene, brush);
+      float unprojected_radius = scalar * (use_unified_size ?
+                                               BKE_brush_unprojected_radius_get(scene, brush) :
+                                               brush->unprojected_radius);
 
       if (unprojected_radius < 0.001f) { /* XXX magic number */
         unprojected_radius = 0.001f;
       }
 
-      BKE_brush_unprojected_radius_set(scene, brush, unprojected_radius);
+      if (use_unified_size) {
+        BKE_brush_unprojected_radius_set(scene, brush, unprojected_radius);
+      }
+      else {
+        brush->unprojected_radius = unprojected_radius;
+      }
     }
 
     WM_main_add_notifier(NC_BRUSH | NA_EDITED, brush);
@@ -364,7 +370,7 @@ static bool palette_poll(bContext *C)
 {
   Paint *paint = BKE_paint_get_active_from_context(C);
 
-  if (paint && paint->palette != nullptr && !ID_IS_LINKED(paint->palette) &&
+  if (paint && paint->palette != nullptr && ID_IS_EDITABLE(paint->palette) &&
       !ID_IS_OVERRIDE_LIBRARY(paint->palette))
   {
     return true;
@@ -384,8 +390,8 @@ static int palette_color_add_exec(bContext *C, wmOperator * /*op*/)
   color = BKE_palette_color_add(palette);
   palette->active_color = BLI_listbase_count(&palette->colors) - 1;
 
-  if (paint->brush) {
-    const Brush *brush = paint->brush;
+  const Brush *brush = BKE_paint_brush_for_read(paint);
+  if (brush) {
     if (ELEM(mode,
              PaintMode::Texture3D,
              PaintMode::Texture2D,
@@ -945,6 +951,7 @@ static const PaintMode brush_select_paint_modes[] = {
     PaintMode::SculptGPencil,
     PaintMode::WeightGPencil,
     PaintMode::SculptCurves,
+    PaintMode::SculptGreasePencil,
 };
 
 static int brush_select_exec(bContext *C, wmOperator *op)
@@ -1010,6 +1017,10 @@ static void PAINT_OT_brush_select(wmOperatorType *ot)
   for (int i = 0; i < ARRAY_SIZE(brush_select_paint_modes); i++) {
     const PaintMode paint_mode = brush_select_paint_modes[i];
     const char *prop_id = BKE_paint_get_tool_prop_id_from_paintmode(paint_mode);
+    /* Prevent a duplicate `gpencil_sculpt_tool` property. */
+    if (RNA_struct_type_find_property_no_base(ot->srna, prop_id)) {
+      continue;
+    }
     prop = RNA_def_enum(
         ot->srna, prop_id, BKE_paint_get_tool_enum_from_paintmode(paint_mode), 0, prop_id, "");
     RNA_def_property_translation_context(
@@ -1514,7 +1525,9 @@ void ED_operatortypes_paint()
   WM_operatortype_append(PAINT_OT_weight_sample_group);
 
   /* uv */
-  WM_operatortype_append(SCULPT_OT_uv_sculpt_stroke);
+  WM_operatortype_append(SCULPT_OT_uv_sculpt_grab);
+  WM_operatortype_append(SCULPT_OT_uv_sculpt_relax);
+  WM_operatortype_append(SCULPT_OT_uv_sculpt_pinch);
 
   /* vertex selection */
   WM_operatortype_append(PAINT_OT_vert_select_all);
@@ -1549,14 +1562,21 @@ void ED_operatortypes_paint()
   WM_operatortype_append(PAINT_OT_face_vert_reveal);
 
   /* partial visibility */
+  WM_operatortype_append(hide::PAINT_OT_hide_show_all);
+  WM_operatortype_append(hide::PAINT_OT_hide_show_masked);
   WM_operatortype_append(hide::PAINT_OT_hide_show);
+  WM_operatortype_append(hide::PAINT_OT_hide_show_lasso_gesture);
+  WM_operatortype_append(hide::PAINT_OT_hide_show_line_gesture);
+  WM_operatortype_append(hide::PAINT_OT_hide_show_polyline_gesture);
   WM_operatortype_append(hide::PAINT_OT_visibility_invert);
+  WM_operatortype_append(hide::PAINT_OT_visibility_filter);
 
   /* paint masking */
   WM_operatortype_append(mask::PAINT_OT_mask_flood_fill);
   WM_operatortype_append(mask::PAINT_OT_mask_lasso_gesture);
   WM_operatortype_append(mask::PAINT_OT_mask_box_gesture);
   WM_operatortype_append(mask::PAINT_OT_mask_line_gesture);
+  WM_operatortype_append(mask::PAINT_OT_mask_polyline_gesture);
 }
 
 void ED_keymap_paint(wmKeyConfig *keyconf)

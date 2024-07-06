@@ -139,7 +139,7 @@ struct Main {
   /** The currently opened .blend file was written from a newer version of Blender, and has forward
    * compatibility issues (data loss).
    *
-   * \note: In practice currently this is only based on the version numbers, in the future it
+   * \note In practice currently this is only based on the version numbers, in the future it
    * could try to use more refined detection on load. */
   bool has_forward_compatibility_issues;
 
@@ -182,6 +182,20 @@ struct Main {
    * various data management process must have this property set to false..
    */
   bool is_global_main;
+
+  /**
+   * True if the Action Slot-to-ID mapping is dirty.
+   *
+   * If this flag is set, the next call to `animrig::Slot::users(bmain)` and related functions
+   * will trigger a rebuild of the Slot-to-ID mapping. Since constructing this mapping requires
+   * a full scan of the animatable IDs in this `Main` anyway, it is kept as a flag here.
+   *
+   * \note This flag should not be set directly. Use animrig::Slot::users_invalidate() instead.
+   * That way the handling of this flag is limited to the code in animrig::Slot.
+   *
+   * \see blender::animrig::Slot::users_invalidate(Main &bmain)
+   */
+  bool is_action_slot_to_id_map_dirty;
 
   BlendThumbnail *blen_thumb;
 
@@ -258,7 +272,37 @@ struct Main {
  * created one in `G_MAIN`.
  */
 Main *BKE_main_new(void);
-void BKE_main_free(Main *mainvar);
+/**
+ * Initialize a Main data-base.
+ *
+ * \note Always generate a non-global Main, use #BKE_blender_globals_main_replace to put a newly
+ * created one in `G_MAIN`.
+ */
+void BKE_main_init(Main &bmain);
+/**
+ * Make given \a bmain empty again, and free all runtime mappings.
+ *
+ * This is similar to a call to #BKE_main_destroy followed by #BKE_main_init, however the internal
+ * #Main::lock is kept unchanged, and the #Main::is_global_main flag is not reset to `true` either.
+ *
+ * \note: Unlike #BKE_main_free, only process the given \a bmain, without handling any potential
+ * other linked Main.
+ */
+void BKE_main_clear(Main &bmain);
+/**
+ * Clear and free all data in given \a bmain, but does not free \a bmain itself.
+ *
+ * \note: In most cases, #BKE_main_free should be used instead of this function.
+ *
+ * \note: Unlike #BKE_main_free, only process the given \a bmain, without handling any potential
+ * other linked Main.
+ */
+void BKE_main_destroy(Main &bmain);
+/**
+ * Completely destroy the given \a bmain, and all its linked 'libraries' ones if any (all other
+ * bmains, following the #Main.next chained list).
+ */
+void BKE_main_free(Main *bmain);
 
 /** Struct packaging log/report info about a Main merge result. */
 struct MainMergeReport {
@@ -499,6 +543,10 @@ int set_listbasepointers(Main *main, ListBase *lb[]);
 #define MAIN_VERSION_FILE_OLDER_OR_EQUAL(main, ver, subver) \
   ((main)->versionfile < (ver) || \
    ((main)->versionfile == (ver) && (main)->subversionfile <= (subver)))
+
+#define LIBRARY_VERSION_FILE_ATLEAST(lib, ver, subver) \
+  ((lib)->runtime.versionfile > (ver) || \
+   ((lib)->runtime.versionfile == (ver) && (lib)->runtime.subversionfile >= (subver)))
 
 /**
  * The size of thumbnails (optionally) stored in the `.blend` files header.
