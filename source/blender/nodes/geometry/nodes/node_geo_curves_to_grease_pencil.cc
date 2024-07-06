@@ -31,6 +31,8 @@ static void node_geo_exec(GeoNodeExecParams params)
   GreasePencil *grease_pencil = BKE_grease_pencil_new_nomain();
   grease_pencil->add_empty_drawings(instances_num);
 
+  VectorSet<Material *> all_materials;
+
   for (const int instance_i : IndexRange(instances->instances_num())) {
     std::string name = std::to_string(instance_i);
     const bke::InstanceReference &reference = references[reference_handles[instance_i]];
@@ -48,8 +50,29 @@ static void node_geo_exec(GeoNodeExecParams params)
       continue;
     }
 
-    drawing.strokes_for_write() = instance_curves->geometry.wrap();
+    bke::CurvesGeometry &strokes = drawing.strokes_for_write();
+    strokes = instance_curves->geometry.wrap();
+
+    Vector<int> new_material_indices;
+    for (Material *material : Span{instance_curves->mat, instance_curves->totcol}) {
+      new_material_indices.append(all_materials.index_of_or_add(material));
+    }
+
+    /* Remap material indices. */
+    bke::SpanAttributeWriter<int> material_indices =
+        strokes.attributes_for_write().lookup_or_add_for_write_span<int>("material_index",
+                                                                         bke::AttrDomain::Curve);
+    for (int &material_index : material_indices.span) {
+      if (material_index >= 0 && material_index < new_material_indices.size()) {
+        material_index = new_material_indices[material_index];
+      }
+    }
+    material_indices.finish();
   }
+
+  grease_pencil->material_array_num = all_materials.size();
+  grease_pencil->material_array = MEM_cnew_array<Material *>(all_materials.size(), __func__);
+  initialized_copy_n(all_materials.data(), all_materials.size(), grease_pencil->material_array);
 
   params.set_output("Grease Pencil", GeometrySet::from_grease_pencil(grease_pencil));
 }
