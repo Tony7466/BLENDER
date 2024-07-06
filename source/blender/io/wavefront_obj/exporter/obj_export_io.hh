@@ -164,7 +164,7 @@ class FormatHandler : NonCopyable, NonMovable {
   {
     write_impl("surf 0.0 1.0 0.0 1.0");
   }
-  void write_obj_nurbs_parm_begin(int uv = 0)
+  void write_obj_nurbs_parm_begin(int uv)
   {
     write_impl("parm {} 0.0", uv ? "v" : "u");
   }
