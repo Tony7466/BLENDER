@@ -1224,7 +1224,10 @@ void DepsgraphRelationBuilder::build_object_pointcache(Object *object)
           if (md && md->prev) {
             const OperationKey prev_modifier_key(
                 &object->id, NodeType::GEOMETRY, OperationCode::MODIFIER, md->prev->name);
-            add_relation(prev_modifier_key, point_cache_key, "Previous Modifier -> Point Cache");
+            add_relation(prev_modifier_key,
+                         point_cache_key,
+                         "Previous Modifier -> Point Cache",
+                         RELATION_FLAG_FLUSH_USER_EDIT_ONLY);
           }
         }
         BLI_assert(flag != -1);
