@@ -691,6 +691,13 @@ static void grease_pencil_geom_batch_ensure(Object &object,
     const VArray<ColorGeometry4f> stroke_fill_colors = info.drawing.fill_colors();
     const VArray<int> materials = *attributes.lookup_or_default<int>(
         "material_index", bke::AttrDomain::Curve, 0);
+    const VArray<float> u_translations = *attributes.lookup_or_default<float>(
+        "u_translation", bke::AttrDomain::Curve, 0.0f);
+    const VArray<float> u_scales = *attributes.lookup_or_default<float>(
+        "u_scale", bke::AttrDomain::Curve, 1.0f);
+    const VArray<float> fill_opacities = *attributes.lookup_or_default<float>(
+        "fill_opacity", bke::AttrDomain::Curve, 1.0f);
+    const Span<float4x2> texture_matrices = info.drawing.texture_matrices();
 
     const Span<Vector<uint3>> triangles = info.drawing.triangles();
     const Span<int> verts_start_offsets = verts_start_offsets_per_visible_drawing[drawing_i];

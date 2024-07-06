@@ -371,11 +371,11 @@ static int select_shape_exec(bContext *C, wmOperator * /*op*/)
   const bke::AttrDomain selection_domain = ED_grease_pencil_selection_domain_get(
       scene->toolsettings);
 
-  const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
+  const Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     IndexMaskMemory memory;
     const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
-        *object, info.drawing, memory);
+        *object, info.drawing, info.layer_index, memory);
     if (strokes.is_empty()) {
       return;
     }
@@ -387,7 +387,7 @@ static int select_shape_exec(bContext *C, wmOperator * /*op*/)
     /* If the attribute does not exist then each curves is it's own shape. */
     if (!shape_ids) {
       const IndexMask selectable_strokes = ed::greasepencil::retrieve_editable_strokes(
-          *object, info.drawing, memory);
+          *object, info.drawing, info.layer_index, memory);
       blender::ed::curves::select_linked(curves, selectable_strokes);
       return;
     }

@@ -1761,11 +1761,11 @@ static int grease_pencil_join_shape_exec(bContext *C, wmOperator * /*op*/)
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
   bool changed = false;
-  const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
+  const Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
   for (const MutableDrawingInfo &info : drawings) {
     IndexMaskMemory memory;
     const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
-        *object, info.drawing, memory);
+        *object, info.drawing, info.layer_index, memory);
     if (strokes.is_empty()) {
       continue;
     }
@@ -1845,11 +1845,11 @@ static int grease_pencil_separate_shape_exec(bContext *C, wmOperator * /*op*/)
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
   bool changed = false;
-  const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
+  const Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
   for (const MutableDrawingInfo &info : drawings) {
     IndexMaskMemory memory;
     const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
-        *object, info.drawing, memory);
+        *object, info.drawing, info.layer_index, memory);
     if (strokes.is_empty()) {
       continue;
     }
