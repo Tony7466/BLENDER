@@ -1,1 +1,1 @@
-Referenced by issue #124070, 4.3 alpha crashes when opening the preferences window.
+Referenced by issue #124070, Crash when accessing screen from depsgraph_update_pre
