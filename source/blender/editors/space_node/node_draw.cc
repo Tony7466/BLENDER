@@ -1664,6 +1664,18 @@ static std::optional<std::string> create_description_inspection_string(const bNo
   return TIP_(description.c_str());
 }
 
+static std::optional<std::string> create_data_type_inspection_string(const bNodeSocket &socket)
+{
+  if (socket.runtime->declaration == nullptr) {
+    return std::nullopt;
+  }
+  const blender::nodes::SocketDeclaration &socket_decl = *socket.runtime->declaration;
+  if (socket_decl.is_volume_grid) {
+    return "Volume Grid";
+  }
+  return std::nullopt;
+}
+
 static std::optional<std::string> create_log_inspection_string(geo_log::GeoTreeLog *geo_tree_log,
                                                                const bNodeSocket &socket)
 {
@@ -1887,6 +1899,9 @@ static std::string node_socket_get_tooltip(const SpaceNode *snode,
   Vector<std::string> inspection_strings;
 
   if (std::optional<std::string> info = create_description_inspection_string(socket)) {
+    inspection_strings.append(std::move(*info));
+  }
+  if (std::optional<std::string> info = create_data_type_inspection_string(socket)) {
     inspection_strings.append(std::move(*info));
   }
   if (std::optional<std::string> info = create_log_inspection_string(geo_tree_log, socket)) {

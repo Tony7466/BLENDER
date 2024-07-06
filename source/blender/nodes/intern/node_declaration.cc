@@ -756,6 +756,12 @@ BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::socket_name_ptr(
                                property_name);
 }
 
+BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::is_volume_grid(const bool value)
+{
+  decl_base_->is_volume_grid = value;
+  return *this;
+}
+
 OutputFieldDependency OutputFieldDependency::ForFieldSource()
 {
   OutputFieldDependency field_dependency;

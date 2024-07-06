@@ -29,7 +29,7 @@ static void node_declare(NodeDeclarationBuilder &b)
     return;
   }
 
-  b.add_input(eCustomDataType(node->custom1), "Grid").hide_value();
+  b.add_input(eCustomDataType(node->custom1), "Grid").hide_value().is_volume_grid();
 }
 
 static void search_link_ops(GatherLinkSearchOpParams &params)

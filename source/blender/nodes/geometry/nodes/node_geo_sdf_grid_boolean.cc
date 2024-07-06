@@ -28,10 +28,10 @@ enum class Operation {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Float>("Grid 1").hide_value();
-  b.add_input<decl::Float>("Grid 2").hide_value().multi_input().make_available(
+  b.add_input<decl::Float>("Grid 1").hide_value().is_volume_grid();
+  b.add_input<decl::Float>("Grid 2").hide_value().multi_input().is_volume_grid().make_available(
       [](bNode &node) { node.custom1 = int16_t(Operation::Difference); });
-  b.add_output<decl::Float>("Grid").hide_value();
+  b.add_output<decl::Float>("Grid").hide_value().is_volume_grid();
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)

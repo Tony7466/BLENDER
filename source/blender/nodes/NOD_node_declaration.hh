@@ -189,6 +189,7 @@ class SocketDeclaration : public ItemDeclaration {
   bool is_default_link_socket = false;
   /** Puts this socket on the same line as the previous one in the UI. */
   bool align_with_previous_socket = false;
+  bool is_volume_grid = false;
 
   InputSocketFieldType input_field_type = InputSocketFieldType::None;
   OutputFieldDependency output_field_dependency;
@@ -383,6 +384,8 @@ class BaseSocketDeclarationBuilder {
                                                 const StructRNA *srna,
                                                 const void *data,
                                                 StringRef property_name);
+
+  BaseSocketDeclarationBuilder &is_volume_grid(bool value = true);
 
   /** Index in the list of inputs or outputs. */
   int index() const;
