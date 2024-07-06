@@ -196,6 +196,9 @@ enum {
    * Even so, accessing from the menu should behave usefully.
    */
   OPTYPE_DEPENDS_ON_CURSOR = (1 << 11),
+
+  /** Handle events before modal operators without this flag. */
+  OPTYPE_MODAL_PRIORITY = (1 << 12),
 };
 
 /** For #WM_cursor_grab_enable wrap axis. */
@@ -413,7 +416,6 @@ struct wmNotifier {
 #define ND_TOOLSETTINGS (15 << 16)
 #define ND_LAYER (16 << 16)
 #define ND_FRAME_RANGE (17 << 16)
-#define ND_TRANSFORM_DONE (18 << 16)
 #define ND_WORLD (92 << 16)
 #define ND_LAYER_CONTENT (101 << 16)
 
@@ -591,6 +593,8 @@ struct wmGesture {
   int modal_state;
   /** Optional, draw the active side of the straight-line gesture. */
   bool draw_active_side;
+  /** Latest mouse position relative to area. Currently only used by lasso drawing code.*/
+  blender::int2 mval;
 
   /**
    * For modal operators which may be running idle, waiting for an event to activate the gesture.
@@ -610,6 +614,9 @@ struct wmGesture {
   /** For gestures that support flip, stores if flip is enabled using the modal keymap
    * toggle. */
   uint use_flip : 1;
+  /** For gestures that support smoothing, stores if smoothing is enabled using the modal keymap
+   * toggle. */
+  uint use_smooth : 1;
 
   /**
    * customdata

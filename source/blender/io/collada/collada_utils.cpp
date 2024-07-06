@@ -45,6 +45,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_legacy_convert.hh"
 #include "BKE_mesh_runtime.hh"
+#include "BKE_mesh_wrapper.hh"
 #include "BKE_node.hh"
 #include "BKE_object.hh"
 #include "BKE_scene.hh"
@@ -282,12 +283,16 @@ Mesh *bc_get_mesh_copy(BlenderContext &blender_context,
     tmpmesh = (Mesh *)ob->data;
   }
 
-  Mesh *mesh = BKE_mesh_copy_for_eval(tmpmesh);
+  Mesh *mesh = BKE_mesh_copy_for_eval(*tmpmesh);
 
   if (triangulate) {
     bc_triangulate_mesh(mesh);
   }
   BKE_mesh_tessface_ensure(mesh);
+
+  /* Ensure data exists if currently in edit mode. */
+  BKE_mesh_wrapper_ensure_mdata(mesh);
+
   return mesh;
 }
 
@@ -1265,7 +1270,7 @@ double bc_get_reflectivity(Material *ma)
 
 bool bc_get_float_from_shader(bNode *shader, double &val, std::string nodeid)
 {
-  bNodeSocket *socket = blender::bke::nodeFindSocket(shader, SOCK_IN, nodeid.c_str());
+  bNodeSocket *socket = blender::bke::nodeFindSocket(shader, SOCK_IN, nodeid);
   if (socket) {
     bNodeSocketValueFloat *ref = (bNodeSocketValueFloat *)socket->default_value;
     val = double(ref->value);
@@ -1279,7 +1284,7 @@ COLLADASW::ColorOrTexture bc_get_cot_from_shader(bNode *shader,
                                                  Color &default_color,
                                                  bool with_alpha)
 {
-  bNodeSocket *socket = blender::bke::nodeFindSocket(shader, SOCK_IN, nodeid.c_str());
+  bNodeSocket *socket = blender::bke::nodeFindSocket(shader, SOCK_IN, nodeid);
   if (socket) {
     bNodeSocketValueRGBA *dcol = (bNodeSocketValueRGBA *)socket->default_value;
     float *col = dcol->value;

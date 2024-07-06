@@ -322,6 +322,7 @@ static SocketDeclarationPtr declaration_for_interface_socket(
       const auto &value = node_interface::get_socket_data_as<bNodeSocketValueString>(io_socket);
       std::unique_ptr<decl::String> decl = std::make_unique<decl::String>();
       decl->default_value = value.value;
+      decl->subtype = PropertySubType(value.subtype);
       dst = std::move(decl);
       break;
     }
@@ -450,6 +451,11 @@ static void set_default_input_field(const bNodeTreeInterfaceSocket &input, Socke
           implicit_field_inputs::id_or_index);
       decl.hide_value = true;
     }
+  }
+  else if (decl.socket_type == SOCK_MATRIX) {
+    decl.implicit_input_fn = std::make_unique<ImplicitInputValueFn>(
+        implicit_field_inputs::instance_transform);
+    decl.hide_value = true;
   }
 }
 

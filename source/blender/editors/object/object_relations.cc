@@ -544,7 +544,8 @@ bool parent_set(ReportList *reports,
       if (partype == PAR_FOLLOW) {
         /* get or create F-Curve */
         bAction *act = animrig::id_action_ensure(bmain, &cu->id);
-        FCurve *fcu = animrig::action_fcurve_ensure(bmain, act, nullptr, nullptr, "eval_time", 0);
+        FCurve *fcu = animrig::action_fcurve_ensure(
+            bmain, act, nullptr, nullptr, {"eval_time", 0});
 
         /* setup dummy 'generator' modifier here to get 1-1 correspondence still working */
         if (!fcu->bezt && !fcu->fpt && !fcu->modifiers.first) {
@@ -1495,6 +1496,9 @@ static int make_links_data_exec(bContext *C, wmOperator *op)
             /* if amount of material indices changed: */
             BKE_object_materials_test(bmain, ob_dst, static_cast<ID *>(ob_dst->data));
 
+            if (ob_dst->type == OB_ARMATURE) {
+              BKE_pose_rebuild(bmain, ob_dst, static_cast<bArmature *>(ob_dst->data), true);
+            }
             DEG_id_tag_update(&ob_dst->id, ID_RECALC_GEOMETRY);
             break;
           case MAKE_LINKS_MATERIALS:
@@ -2262,7 +2266,8 @@ static int make_local_exec(bContext *C, wmOperator *op)
     CTX_DATA_END;
   }
 
-  BKE_library_make_local(bmain, nullptr, nullptr, true, false); /* nullptr is all libraries. */
+  BKE_library_make_local(
+      bmain, nullptr, nullptr, true, false, true); /* nullptr is all libraries. */
 
   WM_event_add_notifier(C, NC_WINDOW, nullptr);
   return OPERATOR_FINISHED;

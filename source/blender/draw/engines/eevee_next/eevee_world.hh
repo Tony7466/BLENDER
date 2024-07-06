@@ -106,13 +106,28 @@ class World {
     return scene_world_get()->sun_shadow_maximum_resolution;
   }
 
+  float sun_shadow_filter_radius()
+  {
+    return scene_world_get()->sun_shadow_filter_radius;
+  }
+
+  float sun_shadow_jitter_overblur()
+  {
+    return scene_world_get()->sun_shadow_jitter_overblur;
+  }
+
   bool use_sun_shadow()
   {
     return scene_world_get()->flag & WO_USE_SUN_SHADOW;
   }
 
+  bool use_sun_shadow_jitter()
+  {
+    return scene_world_get()->flag & WO_USE_SUN_SHADOW_JITTER;
+  }
+
  private:
-  void sync_volume();
+  void sync_volume(const WorldHandle &world_handle);
 
   /* Returns a dummy black world for when a valid world isn't present or when we want to suppress
    * any light coming from the world. */

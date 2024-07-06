@@ -89,8 +89,13 @@ struct Light : public LightData, NonCopyable {
 
  private:
   float shadow_lod_min_get(const ::Light *la);
+  float shadow_shape_size_get(const ::Light *la);
   float attenuation_radius_get(const ::Light *la, float light_threshold, float light_power);
-  void shape_parameters_set(const ::Light *la, const float3 &scale, float threshold);
+  void shape_parameters_set(const ::Light *la,
+                            const float3 &scale,
+                            const float3 &z_axis,
+                            float threshold,
+                            bool do_jitter);
   float shape_radiance_get();
   float point_radiance_get();
 };
@@ -152,6 +157,8 @@ class LightModule {
   PassSimple culling_ps_ = {"LightCulling"};
   /** Total number of words the tile buffer needs to contain for the render resolution. */
   uint total_word_count_ = 0;
+  /** Flipped state of the view being processed. True for planar probe views. */
+  bool view_is_flipped_ = false;
 
   /** Update light on the GPU after culling. Ran for each sample. */
   PassSimple update_ps_ = {"LightUpdate"};

@@ -130,8 +130,10 @@ void draw_seq_strip_thumbnail(View2D *v2d,
                               Sequence *seq,
                               float y1,
                               float y2,
+                              float y_top,
                               float pixelx,
-                              float pixely);
+                              float pixely,
+                              float round_radius);
 
 /* sequencer_draw_channels.c */
 
@@ -233,6 +235,7 @@ void SEQUENCER_OT_scene_frame_range_update(wmOperatorType *ot);
 
 void SEQUENCER_OT_select_all(wmOperatorType *ot);
 void SEQUENCER_OT_select(wmOperatorType *ot);
+void SEQUENCER_OT_select_handle(wmOperatorType *ot);
 void SEQUENCER_OT_select_side_of_frame(wmOperatorType *ot);
 void SEQUENCER_OT_select_more(wmOperatorType *ot);
 void SEQUENCER_OT_select_less(wmOperatorType *ot);
@@ -282,6 +285,9 @@ void SEQUENCER_OT_strip_modifier_equalizer_redefine(wmOperatorType *ot);
 
 /* `sequencer_view.cc` */
 
+void SEQ_get_timeline_region_padding(const bContext *C, float *r_pad_top, float *r_pad_bottom);
+void SEQ_add_timeline_region_padding(const bContext *C, rctf *view_box);
+
 void SEQUENCER_OT_sample(wmOperatorType *ot);
 void SEQUENCER_OT_view_all(wmOperatorType *ot);
 void SEQUENCER_OT_view_frame(wmOperatorType *ot);
@@ -313,12 +319,12 @@ void SEQUENCER_OT_retiming_show(wmOperatorType *ot);
 void SEQUENCER_OT_retiming_key_add(wmOperatorType *ot);
 void SEQUENCER_OT_retiming_freeze_frame_add(wmOperatorType *ot);
 void SEQUENCER_OT_retiming_transition_add(wmOperatorType *ot);
+void SEQUENCER_OT_retiming_key_delete(wmOperatorType *ot);
 void SEQUENCER_OT_retiming_segment_speed_set(wmOperatorType *ot);
 int sequencer_retiming_key_select_exec(bContext *C, wmOperator *op);
 /* Select a key and all following keys. */
 int sequencer_retiming_select_linked_time(bContext *C, wmOperator *op);
 int sequencer_select_exec(bContext *C, wmOperator *op);
-int sequencer_retiming_key_remove_exec(bContext *C, wmOperator *op);
 int sequencer_retiming_select_all_exec(bContext *C, wmOperator *op);
 int sequencer_retiming_box_select_exec(bContext *C, wmOperator *op);
 
@@ -329,6 +335,7 @@ SeqRetimingKey *retiming_mousover_key_get(const bContext *C, const int mval[2], 
 int left_fake_key_frame_get(const bContext *C, const Sequence *seq);
 int right_fake_key_frame_get(const bContext *C, const Sequence *seq);
 bool retiming_keys_are_visible(const SpaceSeq *sseq);
+rctf seq_retiming_keys_box_get(const Scene *scene, const View2D *v2d, const Sequence *seq);
 
 /* `sequencer_timeline_draw.cc` */
 blender::Vector<Sequence *> sequencer_visible_strips_get(const bContext *C);

@@ -364,7 +364,7 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
                                 OB_GREASE_PENCIL);
   const bool draw_surface = (ob->dt >= OB_WIRE) && (renderable || (ob->dt == OB_WIRE));
   const bool draw_facing = draw_surface && (pd->overlay.flag & V3D_OVERLAY_FACE_ORIENTATION) &&
-                           !is_select;
+                           (ob->dt >= OB_SOLID) && !is_select;
   const bool draw_fade = draw_surface && (pd->overlay.flag & V3D_OVERLAY_FADE_INACTIVE) &&
                          overlay_should_fade_object(ob, draw_ctx->obact);
   const bool draw_mode_transfer = draw_surface;
@@ -631,6 +631,12 @@ static void OVERLAY_draw_scene(void *vedata)
   DRW_view_set_active(nullptr);
 
   if (DRW_state_is_fbo()) {
+    GPU_framebuffer_bind(fbl->overlay_default_fb);
+  }
+
+  OVERLAY_facing_draw(data);
+
+  if (DRW_state_is_fbo()) {
     GPU_framebuffer_bind(fbl->overlay_color_only_fb);
   }
 
@@ -643,7 +649,6 @@ static void OVERLAY_draw_scene(void *vedata)
 
   OVERLAY_image_draw(data);
   OVERLAY_fade_draw(data);
-  OVERLAY_facing_draw(data);
   OVERLAY_mode_transfer_draw(data);
   OVERLAY_extra_blend_draw(data);
   OVERLAY_volume_draw(data);

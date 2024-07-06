@@ -87,6 +87,7 @@ class DrawingPlacement {
   DrawingPlacementDepth depth_;
   DrawingPlacementPlane plane_;
   ViewDepths *depth_cache_ = nullptr;
+  bool use_project_only_selected_ = false;
   float surface_offset_;
 
   float3 placement_loc_;
@@ -102,7 +103,7 @@ class DrawingPlacement {
                    const ARegion &region,
                    const View3D &view3d,
                    const Object &eval_object,
-                   const bke::greasepencil::Layer &layer);
+                   const bke::greasepencil::Layer *layer);
   ~DrawingPlacement();
 
  public:
@@ -117,6 +118,17 @@ class DrawingPlacement {
    */
   float3 project(float2 co) const;
   void project(Span<float2> src, MutableSpan<float3> dst) const;
+
+  /**
+   * Projects a 3D position (in local space) to the drawing plane.
+   */
+  float3 reproject(float3 pos) const;
+  void reproject(Span<float3> src, MutableSpan<float3> dst) const;
+
+  float4x4 to_world_space() const;
+
+ private:
+  float3 project_depth(float2 co) const;
 };
 
 void set_selected_frames_type(bke::greasepencil::Layer &layer,
@@ -146,7 +158,7 @@ void select_layer_channel(GreasePencil &grease_pencil, bke::greasepencil::Layer 
 struct KeyframeClipboard {
   /* Datatype for use in copy/paste buffer. */
   struct DrawingBufferItem {
-    blender::bke::greasepencil::FramesMapKey frame_number;
+    blender::bke::greasepencil::FramesMapKeyT frame_number;
     bke::greasepencil::Drawing drawing;
     int duration;
     eBezTriple_KeyframeType keytype;
@@ -154,8 +166,8 @@ struct KeyframeClipboard {
 
   struct LayerBufferItem {
     Vector<DrawingBufferItem> drawing_buffers;
-    blender::bke::greasepencil::FramesMapKey first_frame;
-    blender::bke::greasepencil::FramesMapKey last_frame;
+    blender::bke::greasepencil::FramesMapKeyT first_frame;
+    blender::bke::greasepencil::FramesMapKeyT last_frame;
   };
 
   Map<std::string, LayerBufferItem> copy_buffer{};
@@ -230,15 +242,19 @@ bool grease_pencil_weight_painting_poll(bContext *C);
 
 float opacity_from_input_sample(const float pressure,
                                 const Brush *brush,
-                                const Scene *scene,
                                 const BrushGpencilSettings *settings);
-float radius_from_input_sample(const float pressure,
-                               const float3 location,
-                               ViewContext vc,
+float radius_from_input_sample(const RegionView3D *rv3d,
+                               const ARegion *region,
                                const Brush *brush,
-                               const Scene *scene,
+                               float pressure,
+                               float3 location,
+                               float4x4 to_world,
                                const BrushGpencilSettings *settings);
 int grease_pencil_draw_operator_invoke(bContext *C, wmOperator *op);
+float4x2 calculate_texture_space(const Scene *scene,
+                                 const ARegion *region,
+                                 const float2 &mouse,
+                                 const DrawingPlacement &placement);
 
 struct DrawingInfo {
   const bke::greasepencil::Drawing &drawing;
@@ -272,6 +288,7 @@ Vector<DrawingInfo> retrieve_visible_drawings(const Scene &scene,
 
 IndexMask retrieve_editable_strokes(Object &grease_pencil_object,
                                     const bke::greasepencil::Drawing &drawing,
+                                    int layer_index,
                                     IndexMaskMemory &memory);
 IndexMask retrieve_editable_strokes_by_material(Object &object,
                                                 const bke::greasepencil::Drawing &drawing,
@@ -279,9 +296,10 @@ IndexMask retrieve_editable_strokes_by_material(Object &object,
                                                 IndexMaskMemory &memory);
 IndexMask retrieve_editable_points(Object &object,
                                    const bke::greasepencil::Drawing &drawing,
+                                   int layer_index,
                                    IndexMaskMemory &memory);
 IndexMask retrieve_editable_elements(Object &object,
-                                     const bke::greasepencil::Drawing &drawing,
+                                     const MutableDrawingInfo &info,
                                      bke::AttrDomain selection_domain,
                                      IndexMaskMemory &memory);
 
@@ -294,12 +312,15 @@ IndexMask retrieve_visible_points(Object &object,
 
 IndexMask retrieve_editable_and_selected_strokes(Object &grease_pencil_object,
                                                  const bke::greasepencil::Drawing &drawing,
+                                                 int layer_index,
                                                  IndexMaskMemory &memory);
 IndexMask retrieve_editable_and_selected_points(Object &object,
                                                 const bke::greasepencil::Drawing &drawing,
+                                                int layer_index,
                                                 IndexMaskMemory &memory);
 IndexMask retrieve_editable_and_selected_elements(Object &object,
                                                   const bke::greasepencil::Drawing &drawing,
+                                                  int layer_index,
                                                   bke::AttrDomain selection_domain,
                                                   IndexMaskMemory &memory);
 
@@ -406,7 +427,7 @@ void clipboard_free();
 const bke::CurvesGeometry &clipboard_curves();
 /**
  * Paste curves from the clipboard into the drawing.
- * \param paste_back Render behind existing curves by inserting curves at the front.
+ * \param paste_back: Render behind existing curves by inserting curves at the front.
  * \return Index range of the new curves in the drawing after pasting.
  */
 IndexRange clipboard_paste_strokes(Main &bmain,
@@ -435,6 +456,7 @@ enum FillToolFitMethod {
  * \param boundary_layers: Layers that are purely for boundaries, regular strokes are not rendered.
  * \param src_drawings: Drawings to include as boundary strokes.
  * \param invert: Construct boundary around empty areas instead.
+ * \param alpha_threshold: Render transparent stroke where opacity is below the threshold.
  * \param fill_point: Point from which to start the bucket fill.
  * \param fit_method: View fitting method to include all strokes.
  * \param stroke_material_index: Material index to use for the new strokes.
@@ -447,6 +469,7 @@ bke::CurvesGeometry fill_strokes(const ViewContext &view_context,
                                  const VArray<bool> &boundary_layers,
                                  Span<DrawingInfo> src_drawings,
                                  bool invert,
+                                 const std::optional<float> alpha_threshold,
                                  const float2 &fill_point,
                                  FillToolFitMethod fit_method,
                                  int stroke_material_index,
@@ -470,11 +493,11 @@ RegionViewData region_init(ARegion &region, const int2 &win_size);
 void region_reset(ARegion &region, const RegionViewData &data);
 
 /**
- * Create and offscreen buffer for rendering.
+ * Create and off-screen buffer for rendering.
  */
 GPUOffScreen *image_render_begin(const int2 &win_size);
 /**
- * Finish rendering and convert the offscreen buffer into an image.
+ * Finish rendering and convert the off-screen buffer into an image.
  */
 Image *image_render_end(Main &bmain, GPUOffScreen *buffer);
 
@@ -522,7 +545,8 @@ void draw_grease_pencil_stroke(const RegionView3D &rv3d,
                                bool cyclic,
                                eGPDstroke_Caps cap_start,
                                eGPDstroke_Caps cap_end,
-                               bool fill_stroke);
+                               bool fill_stroke,
+                               float radius_scale = 1.0f);
 /**
  * Draw points as quads or circles.
  */
@@ -530,7 +554,8 @@ void draw_dots(IndexRange indices,
                Span<float3> positions,
                const VArray<float> &radii,
                const VArray<ColorGeometry4f> &colors,
-               const float4x4 &layer_to_world);
+               const float4x4 &layer_to_world,
+               const float radius_scale);
 
 /**
  * Draw curves geometry.
@@ -543,10 +568,36 @@ void draw_grease_pencil_strokes(const RegionView3D &rv3d,
                                 const IndexMask &strokes_mask,
                                 const VArray<ColorGeometry4f> &colors,
                                 const float4x4 &layer_to_world,
-                                int mode,
                                 bool use_xray,
-                                bool fill_strokes);
+                                float radius_scale = 1.0f);
 
 }  // namespace image_render
+
+/**
+ * Create new strokes tracing the rendered outline of existing strokes.
+ * \param drawing: Drawing with input strokes.
+ * \param strokes: Selection curves to trace.
+ * \param transform: Transform to apply to strokes.
+ * \param corner_subdivisions: Subdivisions for corners and start/end cap.
+ * \param outline_radius: Radius of the new outline strokes.
+ * \param outline_offset: Offset of the outline from the original stroke.
+ * \param material_index: The material index for the new outline strokes.
+ */
+bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawing &drawing,
+                                          const IndexMask &strokes,
+                                          const float4x4 &transform,
+                                          int corner_subdivisions,
+                                          float outline_radius,
+                                          float outline_offset,
+                                          int material_index);
+
+namespace cutter {
+bke::CurvesGeometry trim_curve_segments(const bke::CurvesGeometry &src,
+                                        Span<float2> screen_space_positions,
+                                        Span<rcti> screen_space_curve_bounds,
+                                        const IndexMask &curve_selection,
+                                        const Vector<Vector<int>> &selected_points_in_curves,
+                                        bool keep_caps);
+};  // namespace cutter
 
 }  // namespace blender::ed::greasepencil

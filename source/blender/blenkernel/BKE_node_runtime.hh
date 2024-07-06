@@ -74,6 +74,10 @@ namespace blender::bke {
 
 using NodeIDVectorSet = VectorSet<bNode *, DefaultProbingStrategy, NodeIDHash, NodeIDEquality>;
 
+struct NodeLinkError {
+  std::string tooltip;
+};
+
 /**
  * Runtime data for #bNodeTree from the perspective of execution instructions (rather than runtime
  * data from evaluation of the node tree). Evaluation data is not the responsibility of the node
@@ -143,6 +147,13 @@ class bNodeTreeRuntime : NonCopyable, NonMovable {
   std::mutex geometry_nodes_lazy_function_graph_info_mutex;
   std::unique_ptr<nodes::GeometryNodesLazyFunctionGraphInfo>
       geometry_nodes_lazy_function_graph_info;
+
+  /**
+   * Stores information about invalid links. This information is then displayed to the user. The
+   * key of the map is the node identifier. The data is stored per target-node because we want to
+   * display the error information there.
+   */
+  MultiValueMap<int, NodeLinkError> link_errors_by_target_node;
 
   /**
    * Protects access to all topology cache variables below. This is necessary so that the cache can
@@ -288,7 +299,7 @@ class bNodeRuntime : NonCopyable, NonMovable {
   /** Update flags. */
   int update = 0;
 
-  /** Offset that will be added to #bNote::locx for insert offset animation. */
+  /** Offset that will be added to #bNode::locx for insert offset animation. */
   float anim_ofsx;
 
   /** List of cached internal links (input to output), for muted nodes and operators. */
@@ -692,6 +703,12 @@ inline const bNodeTree &bNode::owner_tree() const
   return *this->runtime->owner_tree;
 }
 
+inline bNodeTree &bNode::owner_tree()
+{
+  BLI_assert(blender::bke::node_tree_runtime::topology_cache_is_available(*this));
+  return *this->runtime->owner_tree;
+}
+
 inline blender::StringRefNull bNode::label_or_name() const
 {
   if (this->label[0] == '\0') {
@@ -853,6 +870,12 @@ inline bNode &bNodeSocket::owner_node()
 }
 
 inline const bNodeTree &bNodeSocket::owner_tree() const
+{
+  BLI_assert(blender::bke::node_tree_runtime::topology_cache_is_available(*this));
+  return *this->runtime->owner_node->runtime->owner_tree;
+}
+
+inline bNodeTree &bNodeSocket::owner_tree()
 {
   BLI_assert(blender::bke::node_tree_runtime::topology_cache_is_available(*this));
   return *this->runtime->owner_node->runtime->owner_tree;

@@ -8,6 +8,7 @@
 
 #include <cmath>
 #include <cstring>
+#include <fmt/format.h>
 
 #include "MEM_guardedalloc.h"
 
@@ -1477,7 +1478,7 @@ static int area_dupli_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 
   /* Create new window. No need to set space_type since it will be copied over. */
   wmWindow *newwin = WM_window_open(C,
-                                    "Blender",
+                                    nullptr,
                                     &window_rect,
                                     SPACE_EMPTY,
                                     false,
@@ -2278,6 +2279,9 @@ static bool area_split_apply(bContext *C, wmOperator *op)
   WM_event_add_notifier(C, NC_SCREEN | NA_EDITED, nullptr);
   /* Update preview thumbnail */
   BKE_icon_changed(screen->id.icon_id);
+
+  /* We have more than one area now, so reset window title. */
+  WM_window_title(CTX_wm_manager(C), CTX_wm_window(C));
 
   return true;
 }
@@ -3562,12 +3566,19 @@ static bool area_join_apply(bContext *C, wmOperator *op)
     return false;
   }
 
-  if (!screen_area_join(C, CTX_wm_screen(C), jd->sa1, jd->sa2)) {
+  bScreen *screen = CTX_wm_screen(C);
+
+  if (!screen_area_join(C, screen, jd->sa1, jd->sa2)) {
     return false;
   }
   if (CTX_wm_area(C) == jd->sa2) {
     CTX_wm_area_set(C, nullptr);
     CTX_wm_region_set(C, nullptr);
+  }
+
+  if (BLI_listbase_is_single(&screen->areabase)) {
+    /* Areas reduced to just one, so show nicer title. */
+    WM_window_title(CTX_wm_manager(C), CTX_wm_window(C));
   }
 
   return true;
@@ -4489,6 +4500,12 @@ static void ed_screens_statusbar_menu_create(uiLayout *layout, void * /*arg*/)
   if (GPU_mem_stats_supported()) {
     uiItemR(layout, &ptr, "show_statusbar_vram", UI_ITEM_NONE, IFACE_("Video Memory"), ICON_NONE);
   }
+  uiItemR(layout,
+          &ptr,
+          "show_extensions_updates",
+          UI_ITEM_NONE,
+          IFACE_("Extensions Updates"),
+          ICON_NONE);
   uiItemR(
       layout, &ptr, "show_statusbar_version", UI_ITEM_NONE, IFACE_("Blender Version"), ICON_NONE);
 }
@@ -4790,7 +4807,7 @@ static int screen_animation_step_invoke(bContext *C, wmOperator * /*op*/, const 
       if (delta_frames < 1.0) {
         /* We can render faster than the scene frame rate. However skipping or delaying frames
          * here seems to in practice lead to jittery playback so just step forward a minimum of
-         * one frame. (Even though this can lead to too fast playback, the jitteryness is more
+         * one frame. (Even though this can lead to too fast playback, the jitteriness is more
          * annoying)
          */
         delta_frames = 1.0f;
@@ -5230,7 +5247,7 @@ static int userpref_show_exec(bContext *C, wmOperator *op)
 
   /* changes context! */
   if (WM_window_open(C,
-                     IFACE_("Blender Preferences"),
+                     nullptr,
                      &window_rect,
                      SPACE_USERPREF,
                      false,
@@ -5254,6 +5271,22 @@ static int userpref_show_exec(bContext *C, wmOperator *op)
   return OPERATOR_CANCELLED;
 }
 
+static std::string userpref_show_get_description(bContext *C,
+                                                 wmOperatorType * /*ot*/,
+                                                 PointerRNA *ptr)
+{
+  PropertyRNA *prop = RNA_struct_find_property(ptr, "section");
+  if (RNA_property_is_set(ptr, prop)) {
+    int section = RNA_property_enum_get(ptr, prop);
+    const char *section_name;
+    if (RNA_property_enum_name_gettexted(C, ptr, prop, section, &section_name)) {
+      return fmt::format(TIP_("Show {} preferences"), section_name);
+    }
+  }
+  /* Fallback to default. */
+  return "";
+}
+
 static void SCREEN_OT_userpref_show(wmOperatorType *ot)
 {
   PropertyRNA *prop;
@@ -5266,6 +5299,7 @@ static void SCREEN_OT_userpref_show(wmOperatorType *ot)
   /* api callbacks */
   ot->exec = userpref_show_exec;
   ot->poll = ED_operator_screenactive_nobackground; /* Not in background as this opens a window. */
+  ot->get_description = userpref_show_get_description;
 
   prop = RNA_def_enum(ot->srna,
                       "section",

@@ -371,7 +371,7 @@ static int actkeys_viewall(bContext *C, const bool only_sel)
 {
   bAnimContext ac;
   View2D *v2d;
-  float extra, min, max;
+  float min, max;
   bool found;
 
   /* get editor data */
@@ -399,9 +399,7 @@ static int actkeys_viewall(bContext *C, const bool only_sel)
     v2d->cur.xmin = min;
     v2d->cur.xmax = max;
 
-    extra = 0.125f * BLI_rctf_size_x(&v2d->cur);
-    v2d->cur.xmin -= extra;
-    v2d->cur.xmax += extra;
+    v2d->cur = ANIM_frame_range_view2d_add_xmargin(*v2d, v2d->cur);
   }
 
   /* set vertical range */
@@ -709,9 +707,9 @@ static int actkeys_paste_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static std::string actkeys_paste_description(bContext * /*C*/,
-                                             wmOperatorType * /*ot*/,
-                                             PointerRNA *ptr)
+static std::string actkeys_paste_get_description(bContext * /*C*/,
+                                                 wmOperatorType * /*ot*/,
+                                                 PointerRNA *ptr)
 {
   /* Custom description if the 'flipped' option is used. */
   if (RNA_boolean_get(ptr, "flipped")) {
@@ -735,7 +733,7 @@ void ACTION_OT_paste(wmOperatorType *ot)
 
   /* api callbacks */
   //  ot->invoke = WM_operator_props_popup; /* Better wait for action redo panel. */
-  ot->get_description = actkeys_paste_description;
+  ot->get_description = actkeys_paste_get_description;
   ot->exec = actkeys_paste_exec;
   ot->poll = ED_operator_action_active;
 
@@ -806,9 +804,8 @@ static void insert_grease_pencil_key(bAnimContext *ac,
 
   bool changed = false;
   if (hold_previous) {
-    const std::optional<FramesMapKey> active_frame_number = layer->frame_key_at(
-        current_frame_number);
-    if (!active_frame_number || layer->frames().lookup(*active_frame_number).is_end()) {
+    const std::optional<int> active_frame_number = layer->start_frame_at(current_frame_number);
+    if (!active_frame_number) {
       /* There is no active frame to hold to, or it's an end frame. Therefore just insert a blank
        * frame. */
       changed |= grease_pencil->insert_frame(*layer, current_frame_number) != nullptr;
@@ -850,15 +847,19 @@ static void insert_fcurve_key(bAnimContext *ac,
    *   so it's easier for now to just read the F-Curve directly.
    *   (TODO: add the full-blown PointerRNA relative parsing case here...)
    */
+  const std::optional<blender::StringRefNull> channel_group = fcu->grp ?
+                                                                  std::optional(fcu->grp->name) :
+                                                                  std::nullopt;
   if (ale->id && !ale->owner) {
-    CombinedKeyingResult result = insert_keyframe(ac->bmain,
-                                                  *ale->id,
-                                                  ((fcu->grp) ? (fcu->grp->name) : (nullptr)),
-                                                  fcu->rna_path,
-                                                  fcu->array_index,
-                                                  &anim_eval_context,
-                                                  eBezTriple_KeyframeType(ts->keyframe_type),
-                                                  flag);
+    PointerRNA id_rna_pointer = RNA_id_pointer_create(ale->id);
+    CombinedKeyingResult result = insert_keyframes(ac->bmain,
+                                                   &id_rna_pointer,
+                                                   channel_group,
+                                                   {{fcu->rna_path, {}, fcu->array_index}},
+                                                   std::nullopt,
+                                                   anim_eval_context,
+                                                   eBezTriple_KeyframeType(ts->keyframe_type),
+                                                   flag);
     if (result.get_count(SingleKeyingResult::SUCCESS) == 0) {
       result.generate_reports(reports);
     }

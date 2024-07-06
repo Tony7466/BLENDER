@@ -39,6 +39,7 @@
 #include "BKE_geometry_set.hh"
 #include "BKE_node_tree_zones.hh"
 #include "BKE_viewer_path.hh"
+#include "BKE_volume_grid.hh"
 
 #include "FN_field.hh"
 
@@ -145,6 +146,12 @@ class GeometryInfoLog : public ValueLog {
     bool has_deformed_positions;
     bool has_deform_matrices;
   };
+  struct VolumeInfo {
+    int grids_num;
+  };
+  struct GridInfo {
+    bool is_empty;
+  };
 
   std::optional<MeshInfo> mesh_info;
   std::optional<CurveInfo> curve_info;
@@ -152,8 +159,11 @@ class GeometryInfoLog : public ValueLog {
   std::optional<GreasePencilInfo> grease_pencil_info;
   std::optional<InstancesInfo> instances_info;
   std::optional<EditDataInfo> edit_data_info;
+  std::optional<VolumeInfo> volume_info;
+  std::optional<GridInfo> grid_info;
 
   GeometryInfoLog(const bke::GeometrySet &geometry_set);
+  GeometryInfoLog(const bke::GVolumeGrid &grid);
 };
 
 /**
@@ -294,6 +304,23 @@ class GeoTreeLog {
   void ensure_debug_messages();
 
   ValueLog *find_socket_value_log(const bNodeSocket &query_socket);
+  [[nodiscard]] bool try_convert_primitive_socket_value(const GenericValueLog &value_log,
+                                                        const CPPType &dst_type,
+                                                        void *dst);
+
+  template<typename T>
+  std::optional<T> find_primitive_socket_value(const bNodeSocket &query_socket)
+  {
+    if (auto *value_log = dynamic_cast<GenericValueLog *>(
+            this->find_socket_value_log(query_socket)))
+    {
+      T value;
+      if (this->try_convert_primitive_socket_value(*value_log, CPPType::get<T>(), &value)) {
+        return value;
+      }
+    }
+    return std::nullopt;
+  }
 };
 
 /**

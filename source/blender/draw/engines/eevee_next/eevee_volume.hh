@@ -35,6 +35,7 @@
 
 #pragma once
 
+#include "BLI_set.hh"
 #include "eevee_shader_shared.hh"
 
 namespace blender::eevee {
@@ -53,6 +54,10 @@ class VolumeModule {
   bool enabled_;
   bool use_reprojection_;
   bool use_lights_;
+
+  /* Track added/removed volume objects to reset the accumulation history. */
+  Set<ObjectKey> previous_objects_;
+  Set<ObjectKey> current_objects_;
 
   VolumesInfoData &data_;
 
@@ -134,12 +139,16 @@ class VolumeModule {
 
   void begin_sync();
 
+  void world_sync(const WorldHandle &world_handle);
+
+  void object_sync(const ObjectHandle &ob_handle);
+
   void end_sync();
 
   /* Render material properties. */
   void draw_prepass(View &main_view);
   /* Compute scattering and integration. */
-  void draw_compute(View &main_view);
+  void draw_compute(View &main_view, int2 extent);
   /* Final image compositing. */
   void draw_resolve(View &view);
 

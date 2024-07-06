@@ -183,28 +183,12 @@ void BKE_fmodifier_name_set(FModifier *fcm, const char *name)
    * Ensure the name is unique. */
   const FModifierTypeInfo *fmi = get_fmodifier_typeinfo(fcm->type);
   ListBase list = BLI_listbase_from_link((Link *)fcm);
-  BLI_uniquename(&list, fcm, DATA_(fmi->name), '.', offsetof(FModifier, name), sizeof(fcm->name));
-}
-
-void BKE_fmodifiers_foreach_id(ListBase *fmodifiers, LibraryForeachIDData *data)
-{
-  LISTBASE_FOREACH (FModifier *, fcm, fmodifiers) {
-    /* library data for specific F-Modifier types */
-    switch (fcm->type) {
-      case FMODIFIER_TYPE_PYTHON: {
-        FMod_Python *fcm_py = (FMod_Python *)fcm->data;
-        BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, fcm_py->script, IDWALK_CB_NOP);
-
-        BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(
-            data, IDP_foreach_property(fcm_py->prop, IDP_TYPE_FILTER_ID, [&](IDProperty *prop) {
-              BKE_lib_query_idpropertiesForeachIDLink_callback(prop, data);
-            }));
-        break;
-      }
-      default:
-        break;
-    }
-  }
+  BLI_uniquename(&list,
+                 fcm,
+                 CTX_DATA_(BLT_I18NCONTEXT_ID_ACTION, fmi->name),
+                 '.',
+                 offsetof(FModifier, name),
+                 sizeof(fcm->name));
 }
 
 void BKE_fcurve_foreach_id(FCurve *fcu, LibraryForeachIDData *data)
@@ -220,8 +204,6 @@ void BKE_fcurve_foreach_id(FCurve *fcu, LibraryForeachIDData *data)
       DRIVER_TARGETS_LOOPER_END;
     }
   }
-
-  BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(data, BKE_fmodifiers_foreach_id(&fcu->modifiers, data));
 }
 
 /* ----------------- Finding F-Curves -------------------------- */
@@ -2449,7 +2431,7 @@ float evaluate_fcurve(const FCurve *fcu, float evaltime)
   return evaluate_fcurve_ex(fcu, evaltime, 0.0);
 }
 
-float evaluate_fcurve_only_curve(FCurve *fcu, float evaltime)
+float evaluate_fcurve_only_curve(const FCurve *fcu, float evaltime)
 {
   /* Can be used to evaluate the (key-framed) f-curve only.
    * Also works for driver-f-curves when the driver itself is not relevant.
@@ -2576,15 +2558,6 @@ void BKE_fmodifiers_blend_write(BlendWriter *writer, ListBase *fmodifiers)
 
           break;
         }
-        case FMODIFIER_TYPE_PYTHON: {
-          FMod_Python *data = static_cast<FMod_Python *>(fcm->data);
-
-          /* Write ID Properties -- and copy this comment EXACTLY for easy finding
-           * of library blocks that implement this. */
-          IDP_BlendWrite(writer, data->prop);
-
-          break;
-        }
       }
     }
   }
@@ -2608,14 +2581,6 @@ void BKE_fmodifiers_blend_read_data(BlendDataReader *reader, ListBase *fmodifier
         FMod_Envelope *data = (FMod_Envelope *)fcm->data;
 
         BLO_read_struct_array(reader, FCM_EnvelopeData, data->totvert, &data->data);
-
-        break;
-      }
-      case FMODIFIER_TYPE_PYTHON: {
-        FMod_Python *data = (FMod_Python *)fcm->data;
-
-        BLO_read_struct(reader, IDProperty, &data->prop);
-        IDP_BlendDataRead(reader, &data->prop);
 
         break;
       }

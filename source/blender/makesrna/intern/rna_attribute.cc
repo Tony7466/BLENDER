@@ -111,6 +111,13 @@ const EnumPropertyItem rna_enum_attribute_domain_only_mesh_no_edge_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+const EnumPropertyItem rna_enum_attribute_domain_only_mesh_no_corner_items[] = {
+    {int(AttrDomain::Point), "POINT", 0, "Point", "Attribute on point"},
+    {int(AttrDomain::Edge), "EDGE", 0, "Edge", "Attribute on mesh edge"},
+    {int(AttrDomain::Face), "FACE", 0, "Face", "Attribute on mesh faces"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
 const EnumPropertyItem rna_enum_attribute_domain_point_face_curve_items[] = {
     {int(AttrDomain::Point), "POINT", 0, "Point", "Attribute on point"},
     {int(AttrDomain::Face), "FACE", 0, "Face", "Attribute on mesh faces"},
@@ -225,13 +232,15 @@ static StructRNA *rna_Attribute_refine(PointerRNA *ptr)
 static void rna_Attribute_name_set(PointerRNA *ptr, const char *value)
 {
   const CustomDataLayer *layer = (const CustomDataLayer *)ptr->data;
-  BKE_id_attribute_rename(ptr->owner_id, layer->name, value, nullptr);
+  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
+  BKE_attribute_rename(owner, layer->name, value, nullptr);
 }
 
 static int rna_Attribute_name_editable(const PointerRNA *ptr, const char **r_info)
 {
   CustomDataLayer *layer = static_cast<CustomDataLayer *>(ptr->data);
-  if (BKE_id_attribute_required(ptr->owner_id, layer->name)) {
+  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
+  if (BKE_attribute_required(owner, layer->name)) {
     *r_info = N_("Cannot modify name of required geometry attribute");
     return false;
   }
@@ -274,10 +283,6 @@ const EnumPropertyItem *rna_enum_attribute_domain_itemf(ID *id,
     if (!include_instances && domain_item->value == int(AttrDomain::Instance)) {
       continue;
     }
-    if (!U.experimental.use_grease_pencil_version3 && domain_item->value == int(AttrDomain::Layer))
-    {
-      continue;
-    }
 
     if (domain_item->value == int(AttrDomain::Point) && id_type == ID_ME) {
       RNA_enum_item_add(&item, &totitem, &mesh_vertex_domain_item);
@@ -302,31 +307,32 @@ static const EnumPropertyItem *rna_Attribute_domain_itemf(bContext * /*C*/,
 
 static int rna_Attribute_domain_get(PointerRNA *ptr)
 {
-  return int(
-      BKE_id_attribute_domain(ptr->owner_id, static_cast<const CustomDataLayer *>(ptr->data)));
+  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
+  return int(BKE_attribute_domain(owner, static_cast<const CustomDataLayer *>(ptr->data)));
 }
 
 static bool rna_Attribute_is_internal_get(PointerRNA *ptr)
 {
   const CustomDataLayer *layer = (const CustomDataLayer *)ptr->data;
-  return !BKE_attribute_allow_procedural_access(layer->name);
+  return !blender::bke::allow_procedural_attribute_access(layer->name);
 }
 
 static bool rna_Attribute_is_required_get(PointerRNA *ptr)
 {
   const CustomDataLayer *layer = (const CustomDataLayer *)ptr->data;
-  return BKE_id_attribute_required(ptr->owner_id, layer->name);
+  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
+  return BKE_attribute_required(owner, layer->name);
 }
 
 static void rna_Attribute_data_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
-  ID *id = ptr->owner_id;
+  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
   CustomDataLayer *layer = (CustomDataLayer *)ptr->data;
   if (!(CD_TYPE_AS_MASK(layer->type) & CD_MASK_PROP_ALL)) {
     iter->valid = false;
   }
 
-  const int length = BKE_id_attribute_data_length(id, layer);
+  const int length = BKE_attribute_data_length(owner, layer);
   const size_t struct_size = CustomData_get_elem_size(layer);
   CustomData_ensure_data_is_mutable(layer, length);
 
@@ -335,9 +341,9 @@ static void rna_Attribute_data_begin(CollectionPropertyIterator *iter, PointerRN
 
 static int rna_Attribute_data_length(PointerRNA *ptr)
 {
-  ID *id = ptr->owner_id;
+  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
   CustomDataLayer *layer = (CustomDataLayer *)ptr->data;
-  return BKE_id_attribute_data_length(id, layer);
+  return BKE_attribute_data_length(owner, layer);
 }
 
 static void rna_Attribute_update_data(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
@@ -395,13 +401,42 @@ static void rna_FloatColorAttributeValue_color_srgb_set(PointerRNA *ptr, const f
   srgb_to_linearrgb_v4(col->color, values);
 }
 
+/* String Attribute */
+
+static void rna_StringAttributeValue_s_get(PointerRNA *ptr, char *value)
+{
+  const MStringProperty *mstring = static_cast<const MStringProperty *>(ptr->data);
+  const int len = std::min<int>(mstring->s_len, sizeof(mstring->s) - 1);
+  memcpy(value, mstring->s, len);
+  /* RNA accessors require this. */
+  value[len] = '\0';
+}
+
+static int rna_StringAttributeValue_s_length(PointerRNA *ptr)
+{
+  const MStringProperty *mstring = static_cast<const MStringProperty *>(ptr->data);
+  const int len = std::min<int>(mstring->s_len, sizeof(mstring->s) - 1);
+  return len;
+}
+
+static void rna_StringAttributeValue_s_set(PointerRNA *ptr, const char *value)
+{
+  /* NOTE: RNA does not support byte-strings which contain null bytes.
+   * If `PROP_BYTESTRING` supported this then a value & length could be passed in
+   * and `MStringProperty` could be set with values to include null bytes. */
+  MStringProperty *mstring = static_cast<MStringProperty *>(ptr->data);
+  mstring->s_len = BLI_strnlen(value, sizeof(MStringProperty::s));
+  memcpy(mstring->s, value, mstring->s_len);
+}
+
 /* Attribute Group */
 
 static PointerRNA rna_AttributeGroup_new(
     ID *id, ReportList *reports, const char *name, const int type, const int domain)
 {
-  CustomDataLayer *layer = BKE_id_attribute_new(
-      id, name, eCustomDataType(type), AttrDomain(domain), reports);
+  AttributeOwner owner = AttributeOwner::from_id(id);
+  CustomDataLayer *layer = BKE_attribute_new(
+      owner, name, eCustomDataType(type), AttrDomain(domain), reports);
 
   if (!layer) {
     return PointerRNA_NULL;
@@ -426,8 +461,9 @@ static PointerRNA rna_AttributeGroup_new(
 
 static void rna_AttributeGroup_remove(ID *id, ReportList *reports, PointerRNA *attribute_ptr)
 {
+  AttributeOwner owner = AttributeOwner::from_id(id);
   const CustomDataLayer *layer = (const CustomDataLayer *)attribute_ptr->data;
-  BKE_id_attribute_remove(id, layer->name, reports);
+  BKE_attribute_remove(owner, layer->name, reports);
   RNA_POINTER_INVALIDATE(attribute_ptr);
 
   DEG_id_tag_update(id, ID_RECALC_GEOMETRY);
@@ -445,8 +481,8 @@ static bool rna_Attributes_noncolor_layer_skip(CollectionPropertyIterator *iter,
   CustomDataLayer *layer = (CustomDataLayer *)data;
 
   /* Check valid domain here, too, keep in line with rna_AttributeGroup_color_length(). */
-  ID *id = iter->parent.owner_id;
-  const AttrDomain domain = BKE_id_attribute_domain(id, layer);
+  AttributeOwner owner = AttributeOwner::from_id(iter->parent.owner_id);
+  const AttrDomain domain = BKE_attribute_domain(owner, layer);
   if (!(ATTR_DOMAIN_AS_MASK(domain) & ATTR_DOMAIN_MASK_COLOR)) {
     return true;
   }
@@ -466,7 +502,8 @@ static void rna_AttributeGroup_next_domain(ID *id,
                                        nullptr :
                                        (CustomDataLayer *)iter->internal.array.endptr -
                                            iter->internal.array.length;
-    CustomData *customdata = BKE_id_attributes_iterator_next_domain(id, prev_layers);
+    AttributeOwner owner = AttributeOwner::from_id(id);
+    CustomData *customdata = BKE_attributes_iterator_next_domain(owner, prev_layers);
     if (customdata == nullptr) {
       return;
     }
@@ -531,25 +568,28 @@ PointerRNA rna_AttributeGroup_color_iterator_get(CollectionPropertyIterator *ite
 
 int rna_AttributeGroup_color_length(PointerRNA *ptr)
 {
-  return BKE_id_attributes_length(ptr->owner_id, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
+  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
+  return BKE_attributes_length(owner, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
 }
 
 int rna_AttributeGroup_length(PointerRNA *ptr)
 {
-  return BKE_id_attributes_length(ptr->owner_id, ATTR_DOMAIN_MASK_ALL, CD_MASK_PROP_ALL);
+  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
+  return BKE_attributes_length(owner, ATTR_DOMAIN_MASK_ALL, CD_MASK_PROP_ALL);
 }
 
 static int rna_AttributeGroup_active_index_get(PointerRNA *ptr)
 {
-  return *BKE_id_attributes_active_index_p(ptr->owner_id);
+  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
+  return *BKE_attributes_active_index_p(owner);
 }
 
 static PointerRNA rna_AttributeGroup_active_get(PointerRNA *ptr)
 {
-  ID *id = ptr->owner_id;
-  CustomDataLayer *layer = BKE_id_attributes_active_get(id);
+  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
+  CustomDataLayer *layer = BKE_attributes_active_get(owner);
 
-  PointerRNA attribute_ptr = RNA_pointer_create(id, &RNA_Attribute, layer);
+  PointerRNA attribute_ptr = RNA_pointer_create(ptr->owner_id, &RNA_Attribute, layer);
   return attribute_ptr;
 }
 
@@ -557,21 +597,23 @@ static void rna_AttributeGroup_active_set(PointerRNA *ptr,
                                           PointerRNA attribute_ptr,
                                           ReportList * /*reports*/)
 {
-  ID *id = ptr->owner_id;
+  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
   CustomDataLayer *layer = static_cast<CustomDataLayer *>(attribute_ptr.data);
-  BKE_id_attributes_active_set(id, layer->name);
+  BKE_attributes_active_set(owner, layer->name);
 }
 
 static void rna_AttributeGroup_active_index_set(PointerRNA *ptr, int value)
 {
-  *BKE_id_attributes_active_index_p(ptr->owner_id) = value;
+  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
+  *BKE_attributes_active_index_p(owner) = value;
 }
 
 static void rna_AttributeGroup_active_index_range(
     PointerRNA *ptr, int *min, int *max, int *softmin, int *softmax)
 {
+  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
   *min = 0;
-  *max = BKE_id_attributes_length(ptr->owner_id, ATTR_DOMAIN_MASK_ALL, CD_MASK_PROP_ALL);
+  *max = BKE_attributes_length(owner, ATTR_DOMAIN_MASK_ALL, CD_MASK_PROP_ALL);
 
   *softmin = *min;
   *softmax = *max;
@@ -584,14 +626,14 @@ static void rna_AttributeGroup_update_active(Main *bmain, Scene *scene, PointerR
 
 static PointerRNA rna_AttributeGroup_active_color_get(PointerRNA *ptr)
 {
-  ID *id = ptr->owner_id;
-  CustomDataLayer *layer = BKE_id_attribute_search_for_write(
-      ptr->owner_id,
-      BKE_id_attributes_active_color_name(id),
+  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
+  CustomDataLayer *layer = BKE_attribute_search_for_write(
+      owner,
+      BKE_id_attributes_active_color_name(ptr->owner_id),
       CD_MASK_COLOR_ALL,
       ATTR_DOMAIN_MASK_COLOR);
 
-  PointerRNA attribute_ptr = RNA_pointer_create(id, &RNA_Attribute, layer);
+  PointerRNA attribute_ptr = RNA_pointer_create(ptr->owner_id, &RNA_Attribute, layer);
   return attribute_ptr;
 }
 
@@ -606,20 +648,21 @@ static void rna_AttributeGroup_active_color_set(PointerRNA *ptr,
 
 static int rna_AttributeGroup_active_color_index_get(PointerRNA *ptr)
 {
-  const CustomDataLayer *layer = BKE_id_attribute_search(
-      ptr->owner_id,
+  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
+  const CustomDataLayer *layer = BKE_attribute_search(
+      owner,
       BKE_id_attributes_active_color_name(ptr->owner_id),
       CD_MASK_COLOR_ALL,
       ATTR_DOMAIN_MASK_COLOR);
 
-  return BKE_id_attribute_to_index(
-      ptr->owner_id, layer, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
+  return BKE_attribute_to_index(owner, layer, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
 }
 
 static void rna_AttributeGroup_active_color_index_set(PointerRNA *ptr, int value)
 {
-  CustomDataLayer *layer = BKE_id_attribute_from_index(
-      ptr->owner_id, value, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
+  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
+  CustomDataLayer *layer = BKE_attribute_from_index(
+      owner, value, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
 
   if (!layer) {
     fprintf(stderr, "%s: error setting active color index to %d\n", __func__, value);
@@ -632,8 +675,9 @@ static void rna_AttributeGroup_active_color_index_set(PointerRNA *ptr, int value
 static void rna_AttributeGroup_active_color_index_range(
     PointerRNA *ptr, int *min, int *max, int *softmin, int *softmax)
 {
+  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
   *min = 0;
-  *max = BKE_id_attributes_length(ptr->owner_id, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
+  *max = BKE_attributes_length(owner, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
 
   *softmin = *min;
   *softmax = *max;
@@ -654,17 +698,18 @@ static void rna_AttributeGroup_update_active_color(Main * /*bmain*/,
 
 static int rna_AttributeGroup_render_color_index_get(PointerRNA *ptr)
 {
+  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
   const CustomDataLayer *layer = BKE_id_attributes_color_find(
       ptr->owner_id, BKE_id_attributes_default_color_name(ptr->owner_id));
 
-  return BKE_id_attribute_to_index(
-      ptr->owner_id, layer, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
+  return BKE_attribute_to_index(owner, layer, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
 }
 
 static void rna_AttributeGroup_render_color_index_set(PointerRNA *ptr, int value)
 {
-  CustomDataLayer *layer = BKE_id_attribute_from_index(
-      ptr->owner_id, value, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
+  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
+  CustomDataLayer *layer = BKE_attribute_from_index(
+      owner, value, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
 
   if (!layer) {
     fprintf(stderr, "%s: error setting render color index to %d\n", __func__, value);
@@ -677,8 +722,9 @@ static void rna_AttributeGroup_render_color_index_set(PointerRNA *ptr, int value
 static void rna_AttributeGroup_render_color_index_range(
     PointerRNA *ptr, int *min, int *max, int *softmin, int *softmax)
 {
+  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
   *min = 0;
-  *max = BKE_id_attributes_length(ptr->owner_id, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
+  *max = BKE_attributes_length(owner, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
 
   *softmin = *min;
   *softmax = *max;
@@ -971,8 +1017,12 @@ static void rna_def_attribute_string(BlenderRNA *brna)
   srna = RNA_def_struct(brna, "StringAttributeValue", nullptr);
   RNA_def_struct_sdna(srna, "MStringProperty");
   RNA_def_struct_ui_text(srna, "String Attribute Value", "String value in geometry attribute");
-  prop = RNA_def_property(srna, "value", PROP_STRING, PROP_NONE);
+  prop = RNA_def_property(srna, "value", PROP_STRING, PROP_BYTESTRING);
   RNA_def_property_string_sdna(prop, nullptr, "s");
+  RNA_def_property_string_funcs(prop,
+                                "rna_StringAttributeValue_s_get",
+                                "rna_StringAttributeValue_s_length",
+                                "rna_StringAttributeValue_s_set");
   RNA_def_property_update(prop, 0, "rna_Attribute_update_data");
 }
 

@@ -1202,7 +1202,7 @@ static bool do_lasso_select_grease_pencil(const ViewContext *vc,
 
     IndexMaskMemory memory;
     const IndexMask elements = ed::greasepencil::retrieve_editable_elements(
-        *vc->obedit, info.drawing, selection_domain, memory);
+        *vc->obedit, info, selection_domain, memory);
     if (elements.is_empty()) {
       continue;
     }
@@ -2983,7 +2983,7 @@ static bool ed_object_select_pick(bContext *C,
   }
 
   if (gpu != nullptr) {
-    MEM_freeN(gpu);
+    MEM_delete(gpu);
   }
 
   return (changed_object || changed_pose || changed_track);
@@ -3246,7 +3246,7 @@ static bool ed_grease_pencil_select_pick(bContext *C,
 
           IndexMaskMemory memory;
           const IndexMask elements = ed::greasepencil::retrieve_editable_elements(
-              *vc.obedit, info.drawing, selection_domain, memory);
+              *vc.obedit, info, selection_domain, memory);
           if (elements.is_empty()) {
             continue;
           }
@@ -3280,7 +3280,7 @@ static bool ed_grease_pencil_select_pick(bContext *C,
         ed::greasepencil::MutableDrawingInfo info = drawings[i];
         IndexMaskMemory memory;
         const IndexMask elements = ed::greasepencil::retrieve_editable_elements(
-            *vc.obedit, info.drawing, selection_domain, memory);
+            *vc.obedit, info, selection_domain, memory);
         if (elements.is_empty()) {
           continue;
         }
@@ -4260,7 +4260,7 @@ static bool do_grease_pencil_box_select(const ViewContext *vc,
             ob_eval, *vc->obedit, info.layer_index, info.frame_number);
     IndexMaskMemory memory;
     const IndexMask elements = ed::greasepencil::retrieve_editable_elements(
-        *vc->obedit, info.drawing, selection_domain, memory);
+        *vc->obedit, info, selection_domain, memory);
     if (elements.is_empty()) {
       continue;
     }
@@ -5054,7 +5054,6 @@ static bool armature_circle_select(const ViewContext *vc,
 
   if (data.is_changed) {
     ED_armature_edit_sync_selection(arm->edbo);
-    ED_armature_edit_validate_active(arm);
     WM_main_add_notifier(NC_OBJECT | ND_BONE_SELECT, vc->obedit);
   }
   return data.is_changed;
@@ -5122,7 +5121,7 @@ static bool grease_pencil_circle_select(const ViewContext *vc,
             ob_eval, *vc->obedit, info.layer_index, info.frame_number);
     IndexMaskMemory memory;
     const IndexMask elements = ed::greasepencil::retrieve_editable_elements(
-        *vc->obedit, info.drawing, selection_domain, memory);
+        *vc->obedit, info, selection_domain, memory);
     if (elements.is_empty()) {
       continue;
     }

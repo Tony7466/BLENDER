@@ -54,13 +54,19 @@
 
 const EnumPropertyItem rna_enum_preference_section_items[] = {
     {USER_SECTION_INTERFACE, "INTERFACE", 0, "Interface", ""},
-    {USER_SECTION_THEME, "THEMES", 0, "Themes", ""},
     {USER_SECTION_VIEWPORT, "VIEWPORT", 0, "Viewport", ""},
     {USER_SECTION_LIGHT, "LIGHTS", 0, "Lights", ""},
     {USER_SECTION_EDITING, "EDITING", 0, "Editing", ""},
     {USER_SECTION_ANIMATION, "ANIMATION", 0, "Animation", ""},
     RNA_ENUM_ITEM_SEPR,
-    {USER_SECTION_EXTENSIONS, "EXTENSIONS", 0, "Extensions", ""},
+    {USER_SECTION_EXTENSIONS,
+     "EXTENSIONS",
+     0,
+     "Get Extensions",
+     "Browse, install and manage extensions from remote and local repositories"},
+    RNA_ENUM_ITEM_SEPR,
+    {USER_SECTION_ADDONS, "ADDONS", 0, "Add-ons", "Manage add-ons installed via Extensions"},
+    {USER_SECTION_THEME, "THEMES", 0, "Themes", "Edit and save themes installed via Extensions"},
 #if 0 /* def WITH_USERDEF_WORKSPACES */
     RNA_ENUM_ITEM_SEPR,
     {USER_SECTION_WORKSPACE_CONFIG, "WORKSPACE_CONFIG", 0, "Configuration File", ""},
@@ -270,9 +276,6 @@ static void rna_userdef_gizmo_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 
 static void rna_userdef_theme_update_icons(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
-  if (!G.background) {
-    UI_icons_reload_internal_textures();
-  }
   rna_userdef_theme_update(bmain, scene, ptr);
 }
 
@@ -311,6 +314,7 @@ static void rna_userdef_font_update(Main * /*bmain*/, Scene * /*scene*/, Pointer
 {
   BLF_cache_clear();
   UI_reinit_font();
+  UI_update_text_styles();
 }
 
 static void rna_userdef_language_update(Main *bmain, Scene * /*scene*/, PointerRNA * /*ptr*/)
@@ -346,6 +350,18 @@ static void rna_userdef_asset_library_path_set(PointerRNA *ptr, const char *valu
 {
   bUserAssetLibrary *library = (bUserAssetLibrary *)ptr->data;
   BKE_preferences_asset_library_path_set(library, value);
+}
+
+/**
+ * Use sparingly as a sync may be time consuming.
+ * Any change that may cause loading remote data to change behavior
+ * (such as the URL or access token) must use this update function.
+ */
+static void rna_userdef_extension_sync_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
+{
+  BKE_callback_exec(bmain, &ptr, 1, BKE_CB_EVT_EXTENSION_REPOS_SYNC);
+  WM_main_add_notifier(NC_WINDOW, nullptr);
+  USERDEF_TAG_DIRTY;
 }
 
 static void rna_userdef_extension_repo_name_set(PointerRNA *ptr, const char *value)
@@ -385,6 +401,32 @@ static int rna_userdef_extension_repo_directory_length(PointerRNA *ptr)
   return BKE_preferences_extension_repo_dirpath_get(repo, dirpath, sizeof(dirpath));
 }
 
+static void rna_userdef_extension_repo_access_token_get(PointerRNA *ptr, char *value)
+{
+  const bUserExtensionRepo *repo = (bUserExtensionRepo *)ptr->data;
+  if (repo->access_token) {
+    strcpy(value, repo->access_token);
+  }
+  else {
+    value[0] = '\0';
+  }
+}
+
+static int rna_userdef_extension_repo_access_token_length(PointerRNA *ptr)
+{
+  const bUserExtensionRepo *repo = (bUserExtensionRepo *)ptr->data;
+  return (repo->access_token) ? strlen(repo->access_token) : 0;
+}
+
+static void rna_userdef_extension_repo_access_token_set(PointerRNA *ptr, const char *value)
+{
+  bUserExtensionRepo *repo = (bUserExtensionRepo *)ptr->data;
+  if (repo->access_token) {
+    MEM_freeN(repo->access_token);
+  }
+  repo->access_token = value[0] ? BLI_strdup(value) : nullptr;
+}
+
 static void rna_userdef_extension_repo_generic_flag_set_impl(PointerRNA *ptr,
                                                              const bool value,
                                                              const int flag)
@@ -413,6 +455,15 @@ static void rna_userdef_extension_repo_use_remote_url_set(PointerRNA *ptr, bool 
       ptr, value, USER_EXTENSION_REPO_FLAG_USE_REMOTE_URL);
 }
 
+static void rna_userdef_extension_repo_source_set(PointerRNA *ptr, int value)
+{
+  Main *bmain = G.main;
+  bUserExtensionRepo *repo = (bUserExtensionRepo *)ptr->data;
+  BKE_callback_exec_null(bmain, BKE_CB_EVT_EXTENSION_REPOS_UPDATE_PRE);
+  repo->source = value;
+  BKE_callback_exec_null(bmain, BKE_CB_EVT_EXTENSION_REPOS_UPDATE_POST);
+}
+
 static void rna_userdef_script_autoexec_update(Main * /*bmain*/,
                                                Scene * /*scene*/,
                                                PointerRNA *ptr)
@@ -426,6 +477,45 @@ static void rna_userdef_script_autoexec_update(Main * /*bmain*/,
   }
 
   USERDEF_TAG_DIRTY;
+}
+
+static void rna_userdef_use_online_access_set(PointerRNA *ptr, bool value)
+{
+  /* A `set` function is needed to clear the override flags. */
+  UserDef *userdef = (UserDef *)ptr->data;
+
+  if ((G.f & G_FLAG_INTERNET_ALLOW) == 0) {
+    if (G.f & G_FLAG_INTERNET_OVERRIDE_PREF_OFFLINE) {
+      /* The `editable` check should account for this, assert since this is security related. */
+      BLI_assert_unreachable();
+      return;
+    }
+  }
+
+  if (value) {
+    userdef->flag |= USER_INTERNET_ALLOW;
+    G.f |= G_FLAG_INTERNET_ALLOW;
+  }
+  else {
+    userdef->flag &= ~USER_INTERNET_ALLOW;
+    G.f &= ~G_FLAG_INTERNET_ALLOW;
+  }
+
+  /* Once the user edits this option (even to set it to the value it was)
+   * it's no longer considered overridden. */
+  G.f &= ~G_FLAG_INTERNET_OVERRIDE_PREF_ANY;
+}
+
+static int rna_userdef_use_online_access_editable(const PointerRNA * /*ptr*/, const char **r_info)
+{
+  if ((G.f & G_FLAG_INTERNET_ALLOW) == 0) {
+    /* Return 0 when blender was invoked with `--offline-mode` "forced". */
+    if (G.f & G_FLAG_INTERNET_OVERRIDE_PREF_OFFLINE) {
+      *r_info = "Launched with \"--offline-mode\", cannot be changed";
+      return 0;
+    }
+  }
+  return PROP_EDITABLE;
 }
 
 static void rna_userdef_script_directory_name_set(PointerRNA *ptr, const char *value)
@@ -641,18 +731,6 @@ static void rna_userdef_keyconfig_reload_update(bContext *C,
 {
   WM_keyconfig_reload(C);
   USERDEF_TAG_DIRTY;
-}
-
-static void rna_userdef_use_grease_pencil_version3_update(bContext *C, PointerRNA *ptr)
-{
-  Main *bmain = CTX_data_main(C);
-  rna_userdef_keyconfig_reload_update(C, bmain, nullptr, ptr);
-  /* Update nodes because some sockets may only exist depending on whether grease pencil 3 is
-   * enabled. */
-  LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
-    BKE_ntree_update_tag_all(ntree);
-  }
-  ED_node_tree_propagate_change(C, bmain, nullptr);
 }
 
 static void rna_userdef_timecode_style_set(PointerRNA *ptr, int value)
@@ -1064,7 +1142,8 @@ static PointerRNA rna_Addon_preferences_get(PointerRNA *ptr)
   if (apt) {
     if (addon->prop == nullptr) {
       /* name is unimportant. */
-      addon->prop = blender::bke::idprop::create_group(addon->module).release();
+      addon->prop =
+          blender::bke::idprop::create_group(addon->module, IDP_FLAG_STATIC_TYPE).release();
     }
     return rna_pointer_inherit_refine(ptr, apt->rna_ext.srna, addon->prop);
   }
@@ -1346,7 +1425,7 @@ static size_t max_memory_in_megabytes()
   return (limit_bytes >> 20);
 }
 
-/* Same as above, but clipped to int capacity. */
+/* Same as #max_memory_in_megabytes, but clipped to int capacity. */
 static int max_memory_in_megabytes_int()
 {
   const size_t limit_megabytes = max_memory_in_megabytes();
@@ -2628,6 +2707,29 @@ static void rna_def_userdef_theme_space_view3d(BlenderRNA *brna)
       "Shade for bones corresponding to a locked weight group during painting");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
+  /* Time specific. */
+  prop = RNA_def_property(srna, "frame_current", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_float_sdna(prop, nullptr, "cframe");
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_ui_text(prop, "Current Frame", "");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "before_current_frame", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_ui_text(
+      prop,
+      "Before Current Frame",
+      "The color for things before the current frame (for onion skinning, motion paths, etc.)");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "after_current_frame", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_ui_text(
+      prop,
+      "After Current Frame",
+      "The color for things after the current frame (for onion skinning, motion paths, etc.)");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
   /* misc */
 
   prop = RNA_def_property(srna, "bundle_solid", PROP_FLOAT, PROP_COLOR_GAMMA);
@@ -2660,12 +2762,6 @@ static void rna_def_userdef_theme_space_view3d(BlenderRNA *brna)
   prop = RNA_def_property(srna, "transform", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_array(prop, 3);
   RNA_def_property_ui_text(prop, "Transform", "");
-  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
-
-  prop = RNA_def_property(srna, "frame_current", PROP_FLOAT, PROP_COLOR_GAMMA);
-  RNA_def_property_float_sdna(prop, nullptr, "cframe");
-  RNA_def_property_array(prop, 3);
-  RNA_def_property_ui_text(prop, "Current Frame", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
   rna_def_userdef_theme_spaces_paint_curves(srna);
@@ -4909,8 +5005,8 @@ static void rna_def_userdef_view(BlenderRNA *brna)
   prop = RNA_def_property(srna, "ui_scale", PROP_FLOAT, PROP_NONE);
   RNA_def_property_ui_text(
       prop, "UI Scale", "Changes the size of the fonts and widgets in the interface");
-  RNA_def_property_range(prop, 0.25f, 4.0f);
-  RNA_def_property_ui_range(prop, 0.5f, 2.0f, 1, 2);
+  RNA_def_property_range(prop, 0.25f, 6.0f);
+  RNA_def_property_ui_range(prop, 0.5f, 3.0f, 1, 2);
   RNA_def_property_update(prop, 0, "rna_userdef_gpu_update");
 
   prop = RNA_def_property(srna, "ui_line_width", PROP_ENUM, PROP_NONE);
@@ -5347,6 +5443,12 @@ static void rna_def_userdef_view(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, nullptr, "statusbar_flag", STATUSBAR_SHOW_SCENE_DURATION);
   RNA_def_property_ui_text(prop, "Show Scene Duration", "Show scene duration");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO, "rna_userdef_update");
+
+  prop = RNA_def_property(srna, "show_extensions_updates", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "statusbar_flag", STATUSBAR_SHOW_EXTENSIONS_UPDATES);
+  RNA_def_property_ui_text(prop, "Extensions Updates", "Show Extensions Update Count");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO, "rna_userdef_update");
 }
 
 static void rna_def_userdef_edit(BlenderRNA *brna)
@@ -5615,6 +5717,13 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, nullptr, "sculpt_paint_overlay_col");
   RNA_def_property_array(prop, 3);
   RNA_def_property_ui_text(prop, "Sculpt/Paint Overlay Color", "Color of texture overlay");
+
+  /* VSE */
+  prop = RNA_def_property(srna, "use_sequencer_simplified_tweaking", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "sequencer_editor_flag", USER_SEQ_ED_SIMPLE_TWEAKING);
+  RNA_def_property_ui_text(
+      prop, "Tweak Handles", "Allows dragging handles without selecting them first");
 
   /* duplication linking */
   prop = RNA_def_property(srna, "use_duplicate_mesh", PROP_BOOLEAN, PROP_NONE);
@@ -6117,6 +6226,44 @@ static void rna_def_userdef_system(BlenderRNA *brna)
       prop,
       "GPU Backend",
       "GPU backend to use (requires restarting Blender for changes to take effect)");
+
+  prop = RNA_def_property(srna, "max_shader_compilation_subprocesses", PROP_INT, PROP_NONE);
+  RNA_def_property_range(prop, 0, INT16_MAX);
+  RNA_def_property_ui_text(prop,
+                           "Max Shader Compilation Subprocesses",
+                           "Max number of parallel shader compilation subprocesses, "
+                           "clamped at the max threads supported by the CPU "
+                           "(requires restarting Blender for changes to take effect). "
+                           "Setting it to 0 disables subprocess shader compilation ");
+
+  /* Network. */
+
+  prop = RNA_def_property(srna, "use_online_access", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", USER_INTERNET_ALLOW);
+  RNA_def_property_boolean_funcs(prop, nullptr, "rna_userdef_use_online_access_set");
+  RNA_def_property_ui_text(prop,
+                           "Allow Online Access",
+                           "Allow Blender to access the internet. Add-ons that follow this "
+                           "setting will only connect to the internet if enabled. However, "
+                           "Blender cannot prevent third-party add-ons from violating this rule");
+  RNA_def_property_editable_func(prop, "rna_userdef_use_online_access_editable");
+  RNA_def_property_update(prop, 0, "rna_userdef_update");
+
+  prop = RNA_def_property(srna, "network_timeout", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_int_sdna(prop, nullptr, "network_timeout");
+  RNA_def_property_ui_text(
+      prop,
+      "Network Timeout",
+      "The time in seconds to wait for online operations before a connection may "
+      "fail with a time-out error. Zero uses the systems default");
+
+  prop = RNA_def_property(srna, "network_connection_limit", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_int_sdna(prop, nullptr, "network_connection_limit");
+  RNA_def_property_ui_text(
+      prop,
+      "Network Connection Limit",
+      "Limit the number of simultaneous internet connections online operations may make at once. "
+      "Zero disables the limit");
 
   /* Audio */
 
@@ -6650,6 +6797,20 @@ static void rna_def_userdef_filepaths_extension_repo(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
+  static const EnumPropertyItem source_type_items[] = {
+      {USER_EXTENSION_REPO_SOURCE_USER,
+       "USER",
+       0,
+       "User",
+       "Repository managed by the user, stored in user directories"},
+      {USER_EXTENSION_REPO_SOURCE_SYSTEM,
+       "SYSTEM",
+       0,
+       "System",
+       "Read-only repository provided by the system"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   srna = RNA_def_struct(brna, "UserExtensionRepo", nullptr);
   RNA_def_struct_sdna(srna, "bUserExtensionRepo");
   RNA_def_struct_ui_text(
@@ -6691,7 +6852,24 @@ static void rna_def_userdef_filepaths_extension_repo(BlenderRNA *brna)
       "Remote URL to the extension repository, "
       "the file-system may be referenced using the file URI scheme: \"file://\"");
   RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_EDITOR_FILEBROWSER);
-  RNA_def_property_update(prop, 0, "rna_userdef_update");
+  RNA_def_property_update(prop, 0, "rna_userdef_extension_sync_update");
+
+  prop = RNA_def_property(srna, "access_token", PROP_STRING, PROP_PASSWORD);
+  RNA_def_property_ui_text(
+      prop, "Secret", "Personal access token, may be required by some repositories");
+  RNA_def_property_string_funcs(prop,
+                                "rna_userdef_extension_repo_access_token_get",
+                                "rna_userdef_extension_repo_access_token_length",
+                                "rna_userdef_extension_repo_access_token_set");
+  RNA_def_property_update(prop, 0, "rna_userdef_extension_sync_update");
+
+  prop = RNA_def_property(srna, "source", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, source_type_items);
+  RNA_def_property_enum_funcs(prop, nullptr, "rna_userdef_extension_repo_source_set", nullptr);
+  RNA_def_property_ui_text(
+      prop,
+      "Source",
+      "Select if the repository is in a user managed or system provided directory");
 
   /* NOTE(@ideasman42): this is intended to be used by a package manger component
    * which is not yet integrated. */
@@ -6700,16 +6878,24 @@ static void rna_def_userdef_filepaths_extension_repo(BlenderRNA *brna)
   RNA_def_property_ui_text(prop,
                            "Clean Files After Install",
                            "Downloaded package files are deleted after installation");
+  RNA_def_property_update(prop, 0, "rna_userdef_update");
 
   prop = RNA_def_property(srna, "enabled", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_negative_sdna(prop, nullptr, "flag", USER_EXTENSION_REPO_FLAG_DISABLED);
   RNA_def_property_ui_text(prop, "Enabled", "Enable the repository");
   RNA_def_property_boolean_funcs(prop, nullptr, "rna_userdef_extension_repo_enabled_set");
+  RNA_def_property_update(prop, 0, "rna_userdef_update");
 
   prop = RNA_def_property(srna, "use_sync_on_startup", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", USER_EXTENSION_REPO_FLAG_SYNC_ON_STARTUP);
   RNA_def_property_ui_text(
       prop, "Check for Updates on Startup", "Allow Blender to check for updates upon launch");
+  RNA_def_property_update(prop, 0, "rna_userdef_update");
+
+  prop = RNA_def_property(srna, "use_access_token", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", USER_EXTENSION_REPO_FLAG_USE_ACCESS_TOKEN);
+  RNA_def_property_ui_text(prop, "Requires Access Token", "Repository requires an access token");
+  RNA_def_property_update(prop, 0, "rna_userdef_extension_sync_update");
 
   prop = RNA_def_property(srna, "use_custom_directory", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(
@@ -6720,11 +6906,13 @@ static void rna_def_userdef_filepaths_extension_repo(BlenderRNA *brna)
                            "When disabled a user's extensions directory is created");
   RNA_def_property_boolean_funcs(
       prop, nullptr, "rna_userdef_extension_repo_use_custom_directory_set");
+  RNA_def_property_update(prop, 0, "rna_userdef_update");
 
   prop = RNA_def_property(srna, "use_remote_url", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", USER_EXTENSION_REPO_FLAG_USE_REMOTE_URL);
   RNA_def_property_ui_text(prop, "Use Remote", "Synchronize the repository with a remote URL");
   RNA_def_property_boolean_funcs(prop, nullptr, "rna_userdef_extension_repo_use_remote_url_set");
+  RNA_def_property_update(prop, 0, "rna_userdef_update");
 }
 
 static void rna_def_userdef_script_directory(BlenderRNA *brna)
@@ -7218,22 +7406,6 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
                            "completely reread assets from disk");
   RNA_def_property_update(prop, 0, "rna_userdef_ui_update");
 
-  prop = RNA_def_property(srna, "use_grease_pencil_version3", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "use_grease_pencil_version3", 1);
-  RNA_def_property_ui_text(prop, "Grease Pencil 3.0", "Enable the new grease pencil 3.0 codebase");
-  /* The key-map depends on this setting, it needs to be reloaded. */
-  RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);
-  RNA_def_property_update(prop, 0, "rna_userdef_use_grease_pencil_version3_update");
-
-  prop = RNA_def_property(
-      srna, "use_grease_pencil_version3_convert_on_load", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "use_grease_pencil_version3_convert_on_load", 1);
-  RNA_def_property_ui_text(prop,
-                           "Grease Pencil 3.0 Automatic Conversion",
-                           "Enable automatic conversion to grease pencil 3.0 data when opening a "
-                           "blendfile (only active if 'Grease Pencil 3.0' is enabled)");
-  RNA_def_property_update(prop, 0, "rna_userdef_ui_update");
-
   prop = RNA_def_property(srna, "use_viewport_debug", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "use_viewport_debug", 1);
   RNA_def_property_ui_text(prop,
@@ -7258,22 +7430,35 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "New Volume Nodes", "Enables visibility of the new Volume nodes in the UI");
 
+  prop = RNA_def_property(srna, "use_new_file_import_nodes", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_ui_text(
+      prop, "New File Import Nodes", "Enables visibility of the new File Import nodes in the UI");
+
   prop = RNA_def_property(srna, "use_shader_node_previews", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_ui_text(
       prop, "Shader Node Previews", "Enables previews in the shader node editor");
   RNA_def_property_update(prop, 0, "rna_userdef_ui_update");
 
-  prop = RNA_def_property(srna, "use_extension_utils", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "use_extensions_debug", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_ui_text(
-      prop, "Extensions Development Utilities", "Developer support utilities for extensions");
+      prop,
+      "Extensions Debug",
+      "Extra debugging information & developer support utilities for extensions");
   RNA_def_property_update(prop, 0, "rna_userdef_update");
+
+  prop = RNA_def_property(srna, "use_recompute_usercount_on_save_debug", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_ui_text(prop,
+                           "Recompute ID Usercount On Save",
+                           "Recompute all ID usercounts before saving to a blendfile. Allows to "
+                           "work around invalid usercount handling in code that may lead to loss "
+                           "of data due to wrongly detected unused data-blocks");
 
   prop = RNA_def_property(srna, "use_animation_baklava", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "use_animation_baklava", 1);
   RNA_def_property_ui_text(
       prop,
-      "New Animation Data-block",
-      "The new 'Animation' data-block can contain the animation for multiple data-blocks at once");
+      "Multi-Slot Actions",
+      "The new 'layered' Action can contain the animation for multiple data-blocks at once");
   RNA_def_property_update(prop, 0, "rna_userdef_update");
 }
 
@@ -7346,8 +7531,7 @@ void RNA_def_userdef(BlenderRNA *brna)
   RNA_def_property_enum_sdna(prop, nullptr, "space_data.section_active");
   RNA_def_property_enum_items(prop, rna_enum_preference_section_items);
   RNA_def_property_enum_funcs(prop, nullptr, nullptr, "rna_UseDef_active_section_itemf");
-  RNA_def_property_ui_text(
-      prop, "Active Section", "Active section of the preferences shown in the user interface");
+  RNA_def_property_ui_text(prop, "Active Section", "Preferences");
   RNA_def_property_update(prop, 0, "rna_userdef_ui_update");
 
   /* don't expose this directly via the UI, modify via an operator */

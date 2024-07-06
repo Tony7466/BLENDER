@@ -126,6 +126,19 @@ static void ui_popup_block_position(wmWindow *window,
 
   ui_block_to_window_rctf(butregion, but->block, &block->rect, &block->rect);
 
+  /* `block->rect` is already scaled with `butregion->winrct`,
+   * apply this scale to layout panels too. */
+  if (Panel *panel = block->panel) {
+    for (LayoutPanelBody &body : panel->runtime->layout_panels.bodies) {
+      body.start_y /= block->aspect;
+      body.end_y /= block->aspect;
+    }
+    for (LayoutPanelHeader &header : panel->runtime->layout_panels.headers) {
+      header.start_y /= block->aspect;
+      header.end_y /= block->aspect;
+    }
+  }
+
   /* Compute direction relative to button, based on available space. */
   const int size_x = BLI_rctf_size_x(&block->rect) + 0.2f * UI_UNIT_X; /* 4 for shadow */
   const int size_y = BLI_rctf_size_y(&block->rect) + 0.2f * UI_UNIT_Y;
@@ -578,7 +591,7 @@ static void ui_popup_block_remove(bContext *C, uiPopupBlockHandle *handle)
   }
 }
 
-void UI_layout_panel_popup_scroll_apply(Panel *panel, const float dy)
+void ui_layout_panel_popup_scroll_apply(Panel *panel, const float dy)
 {
   if (!panel || dy == 0.0f) {
     return;
@@ -708,7 +721,7 @@ uiBlock *ui_popup_block_refresh(bContext *C,
     BLI_addhead(&block->saferct, saferct);
   }
 
-  if (block->flag & UI_BLOCK_RADIAL) {
+  if (block->flag & UI_BLOCK_PIE_MENU) {
     const int win_width = UI_SCREEN_MARGIN;
 
     const int winx = WM_window_pixels_x(window);
@@ -816,7 +829,7 @@ uiBlock *ui_popup_block_refresh(bContext *C,
     }
   }
   /* Apply popup scroll offset to layout panels. */
-  UI_layout_panel_popup_scroll_apply(block->panel, handle->scrolloffset);
+  ui_layout_panel_popup_scroll_apply(block->panel, handle->scrolloffset);
 
   if (block_old) {
     block->oldblock = block_old;
@@ -922,12 +935,12 @@ uiPopupBlockHandle *ui_popup_block_create(bContext *C,
   uiBlock *block = ui_popup_block_refresh(C, handle, butregion, but);
   handle = block->handle;
 
+  /* Wait with tooltips until the mouse is moved, button handling will re-enable them on the first
+   * actual mouse move. */
+  block->tooltipdisabled = true;
+
   if (can_refresh) {
     CTX_wm_region_popup_set(C, region_popup_prev);
-  }
-
-  if (block->flag & UI_BLOCK_KEEP_OPEN) {
-    handle->can_refresh = true;
   }
 
   /* keep centered on window resizing */

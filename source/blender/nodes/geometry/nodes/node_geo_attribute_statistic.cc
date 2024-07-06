@@ -63,6 +63,7 @@ static std::optional<eCustomDataType> node_type_from_other_socket(const bNodeSoc
       return CD_PROP_FLOAT;
     case SOCK_VECTOR:
     case SOCK_RGBA:
+    case SOCK_ROTATION:
       return CD_PROP_FLOAT3;
     default:
       return {};
@@ -355,7 +356,7 @@ static void node_rna(StructRNA *srna)
                     rna_enum_attribute_domain_items,
                     NOD_inline_enum_accessors(custom2),
                     int(AttrDomain::Point),
-                    enums::domain_experimental_grease_pencil_version3_fn,
+                    nullptr,
                     true);
 }
 

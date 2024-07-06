@@ -335,7 +335,7 @@ static void ui_update_window_matrix(const wmWindow *window, const ARegion *regio
 void ui_region_winrct_get_no_margin(const ARegion *region, rcti *r_rect)
 {
   uiBlock *block = static_cast<uiBlock *>(region->uiblocks.first);
-  if (block && (block->flag & UI_BLOCK_LOOP) && (block->flag & UI_BLOCK_RADIAL) == 0) {
+  if (block && (block->flag & UI_BLOCK_LOOP) && (block->flag & UI_BLOCK_PIE_MENU) == 0) {
     BLI_rcti_rctf_copy_floor(r_rect, &block->rect);
     BLI_rcti_translate(r_rect, region->winrct.xmin, region->winrct.ymin);
   }
@@ -1551,7 +1551,7 @@ static void ui_menu_block_set_keymaps(const bContext *C, uiBlock *block)
     return;
   }
 
-  if (block->flag & UI_BLOCK_RADIAL) {
+  if (block->flag & UI_BLOCK_PIE_MENU) {
     LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
       if (but->pie_dir != UI_RADIAL_NONE) {
         const std::string str = ui_but_pie_direction_string(but);
@@ -1624,7 +1624,7 @@ static PointerRNA *ui_but_extra_operator_icon_add_ptr(uiBut *but,
                                                       wmOperatorCallContext opcontext,
                                                       int icon)
 {
-  uiButExtraOpIcon *extra_op_icon = MEM_new<uiButExtraOpIcon>(__func__);
+  uiButExtraOpIcon *extra_op_icon = MEM_cnew<uiButExtraOpIcon>(__func__);
 
   extra_op_icon->icon = icon;
   extra_op_icon->optype_params = MEM_cnew<wmOperatorCallParams>(__func__);
@@ -2059,7 +2059,7 @@ void UI_block_draw(const bContext *C, uiBlock *block)
   wmOrtho2_region_pixelspace(region);
 
   /* back */
-  if (block->flag & UI_BLOCK_RADIAL) {
+  if (block->flag & UI_BLOCK_PIE_MENU) {
     ui_draw_pie_center(block);
   }
   else if (block->flag & UI_BLOCK_POPOVER) {
@@ -2084,11 +2084,10 @@ void UI_block_draw(const bContext *C, uiBlock *block)
     const bTheme *btheme = UI_GetTheme();
     const float aspect = block->panel->runtime->block->aspect;
     const float radius = btheme->tui.panel_roundness * U.widget_unit * 0.5f / aspect;
-    UI_draw_layout_panels_backdrop(region, block->panel, radius, subpanel_backcolor);
+    ui_draw_layout_panels_backdrop(region, block->panel, radius, subpanel_backcolor);
   }
 
   BLF_batch_draw_begin();
-  UI_icon_draw_cache_begin();
   UI_widgetbase_draw_cache_begin();
 
   /* widgets */
@@ -2111,7 +2110,6 @@ void UI_block_draw(const bContext *C, uiBlock *block)
   }
 
   UI_widgetbase_draw_cache_end();
-  UI_icon_draw_cache_end();
   BLF_batch_draw_end();
 
   ui_block_views_draw_overlays(region, block);
@@ -3612,7 +3610,7 @@ uiBlock *UI_block_begin(const bContext *C, ARegion *region, std::string name, eU
     STRNCPY(block->display_device, scene->display_settings.display_device);
 
     /* Copy to avoid crash when scene gets deleted with UI still open. */
-    UnitSettings *unit = MEM_new<UnitSettings>(__func__);
+    UnitSettings *unit = MEM_cnew<UnitSettings>(__func__);
     memcpy(unit, &scene->unit, sizeof(scene->unit));
     block->unit = unit;
   }
@@ -4125,7 +4123,7 @@ static uiBut *ui_def_but(uiBlock *block,
     }
   }
 
-  if (block->flag & UI_BLOCK_RADIAL) {
+  if (block->flag & UI_BLOCK_PIE_MENU) {
     but->drawflag |= UI_BUT_TEXT_LEFT;
     if (!but->str.empty()) {
       but->drawflag |= UI_BUT_ICON_LEFT;
@@ -4730,9 +4728,7 @@ static uiBut *ui_def_but_operator_ptr(uiBlock *block,
   }
 
   uiBut *but = ui_def_but(block, type, -1, str, x, y, width, height, nullptr, 0, 0, tip);
-  but->optype = ot;
-  but->opcontext = opcontext;
-  but->flag &= ~UI_BUT_UNDO; /* no need for ui_but_is_rna_undo(), we never need undo here */
+  UI_but_operator_set(but, ot, opcontext);
 
   /* Enable quick tooltip label if this is a tool button without a label. */
   if (str.is_empty() && !ui_block_is_popover(block) && UI_but_is_tool(but)) {
@@ -4783,12 +4779,12 @@ uiBut *uiDefButImage(
   return but;
 }
 
-uiBut *uiDefButAlert(uiBlock *block, int icon, int x, int y, short width, short height)
+uiBut *uiDefButAlert(uiBlock *block, int icon, int x, int y, short width, short /*height*/)
 {
-  ImBuf *ibuf = UI_icon_alert_imbuf_get((eAlertIcon)icon);
+  ImBuf *ibuf = UI_icon_alert_imbuf_get((eAlertIcon)icon, float(width));
   if (ibuf) {
     bTheme *btheme = UI_GetTheme();
-    return uiDefButImage(block, ibuf, x, y, width, height, btheme->tui.wcol_menu_back.text);
+    return uiDefButImage(block, ibuf, x, y, ibuf->x, ibuf->y, btheme->tui.wcol_menu_back.text);
   }
   return nullptr;
 }
@@ -5620,6 +5616,21 @@ uiBut *uiDefIconTextButO(uiBlock *block,
   return uiDefIconTextButO_ptr(block, type, ot, opcontext, icon, str, x, y, width, height, tip);
 }
 
+void UI_but_operator_set(uiBut *but,
+                         wmOperatorType *optype,
+                         wmOperatorCallContext opcontext,
+                         const PointerRNA *op_props)
+{
+  but->optype = optype;
+  but->opcontext = opcontext;
+  but->flag &= ~UI_BUT_UNDO; /* no need for ui_but_is_rna_undo(), we never need undo here */
+
+  MEM_SAFE_FREE(but->opptr);
+  if (op_props) {
+    but->opptr = MEM_new<PointerRNA>(__func__, *op_props);
+  }
+}
+
 /* END Button containing both string label and icon */
 
 /* cruft to make uiBlock and uiBut private */
@@ -5767,6 +5778,14 @@ void UI_but_context_ptr_set(uiBlock *block, uiBut *but, const char *name, const 
 const PointerRNA *UI_but_context_ptr_get(const uiBut *but, const char *name, const StructRNA *type)
 {
   return CTX_store_ptr_lookup(but->context, name, type);
+}
+
+std::optional<blender::StringRefNull> UI_but_context_string_get(const uiBut *but, const char *name)
+{
+  if (!but->context) {
+    return {};
+  }
+  return CTX_store_string_lookup(but->context, name);
 }
 
 const bContextStore *UI_but_context_get(const uiBut *but)
@@ -6432,7 +6451,21 @@ std::string UI_but_string_get_label(uiBut &but)
     }
     return but.str.substr(0, str_len);
   }
+
   return UI_but_string_get_rna_label(but);
+}
+
+std::string UI_but_context_menu_title_from_button(uiBut &but)
+{
+  if (but.type == UI_BTYPE_VIEW_ITEM) {
+    const uiButViewItem &view_item_but = static_cast<const uiButViewItem &>(but);
+    if (view_item_but.view_item == nullptr) {
+      return "";
+    }
+    const blender::ui::AbstractView &tree_view = view_item_but.view_item->get_view();
+    return IFACE_(tree_view.get_context_menu_title().c_str());
+  }
+  return UI_but_string_get_label(but);
 }
 
 std::string UI_but_string_get_tooltip_label(const uiBut &but)
@@ -6576,6 +6609,20 @@ void UI_init_userdef()
 void UI_reinit_font()
 {
   uiStyleInit();
+}
+
+void UI_update_text_styles()
+{
+  if (BLF_has_variable_weight(0)) {
+    return;
+  }
+
+  uiStyle *style = static_cast<uiStyle *>(U.uistyles.first);
+  const int weight = BLF_default_weight(0);
+  style->paneltitle.character_weight = weight;
+  style->grouplabel.character_weight = weight;
+  style->widgetlabel.character_weight = weight;
+  style->widget.character_weight = weight;
 }
 
 void UI_exit()

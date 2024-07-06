@@ -831,7 +831,7 @@ void BKE_id_material_eval_ensure_default_slot(ID *id)
   }
 }
 
-int BKE_object_material_index_get(Object *ob, Material *ma)
+int BKE_object_material_index_get(Object *ob, const Material *ma)
 {
   short *totcol = BKE_object_material_len_p(ob);
   Material *read_ma = nullptr;
@@ -1234,7 +1234,7 @@ void BKE_object_material_from_eval_data(Main *bmain, Object *ob_orig, const ID *
 
   /* Create new material slots based on materials on evaluated geometry. */
   *orig_totcol = *eval_totcol;
-  *orig_mat = MEM_cnew_array<Material *>(*eval_totcol, __func__);
+  *orig_mat = *eval_totcol > 0 ? MEM_cnew_array<Material *>(*eval_totcol, __func__) : nullptr;
   for (int i = 0; i < *eval_totcol; i++) {
     Material *material_eval = (*eval_mat)[i];
     if (material_eval != nullptr) {

@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.2.0 Alpha (b'9a3c7290a9c1')\n"
+"Project-Id-Version: Blender 4.2.0 Beta (b'78330522d2ae')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-05-06 10:38+0000\n"
+"POT-Creation-Date: 2024-07-01 09:24+0000\n"
 "PO-Revision-Date: 2024-04-29 13:44+0000\n"
 "Last-Translator: Anonymous <noreply@weblate.org>\n"
 "Language-Team: Greek <https://translate.blender.org/projects/blender-ui/ui/el/>\n"
@@ -35,12 +35,16 @@ msgid "Select"
 msgstr "Επιλογή"
 
 
-msgid "Message"
-msgstr "Μήνυμα"
-
-
 msgid "On"
 msgstr "Ενεργό"
+
+
+msgid "Always"
+msgstr "Πάντα"
+
+
+msgid "Center"
+msgstr "Κεντράρισμα"
 
 
 msgid "Action"
@@ -57,10 +61,6 @@ msgstr "Αφαίρεση"
 
 msgid "Hold"
 msgstr "Κράτα"
-
-
-msgid "New"
-msgstr "Νέο"
 
 
 msgid "End Frame"
@@ -143,10 +143,6 @@ msgid "Deform"
 msgstr "Παραμόρφωση"
 
 
-msgid "Remove"
-msgstr "Remove"
-
-
 msgid "Mode"
 msgstr "Κατάσταση"
 
@@ -169,10 +165,6 @@ msgstr "Μεγέθυνση"
 
 msgid "Left"
 msgstr "Αριστερά"
-
-
-msgid "Center"
-msgstr "Κεντράρισμα"
 
 
 msgid "Linear"
@@ -241,10 +233,6 @@ msgstr "Κάμερα"
 
 msgid "Bone"
 msgstr "Οστό"
-
-
-msgid "Always"
-msgstr "Πάντα"
 
 
 msgid "Script"
@@ -475,10 +463,6 @@ msgid "Panel"
 msgstr "Ταμπλό"
 
 
-msgid "Movie"
-msgstr "Βίντεο"
-
-
 msgid "Render polygon transparent, depending on alpha channel of the texture"
 msgstr "Render polygon transparent, depending on alpha channel of the texture"
 
@@ -549,6 +533,10 @@ msgstr "Περιοχή"
 
 msgid "Sharp"
 msgstr "Απότομο"
+
+
+msgid "Themes"
+msgstr "Θέματα"
 
 
 msgid "Mist"
@@ -645,6 +633,10 @@ msgstr "Δίνη"
 
 msgid "Wave"
 msgstr "Κύμα"
+
+
+msgid "New"
+msgstr "Νέο"
 
 
 msgid "Lines"
@@ -756,12 +748,21 @@ msgid "Open"
 msgstr "Άνοιγμα"
 
 
+msgctxt "Operator"
+msgid "Rotate"
+msgstr "Rotate"
+
+
 msgid "Both"
 msgstr "Both"
 
 
 msgid "Join"
 msgstr "Ένωσε"
+
+
+msgid "Remove"
+msgstr "Remove"
 
 
 msgid "Next Keyframe"
@@ -835,10 +836,6 @@ msgid "Bake"
 msgstr "Φτιάξε"
 
 
-msgid "Monkey"
-msgstr "Μαϊμού"
-
-
 msgctxt "Operator"
 msgid "Join"
 msgstr "Ένωσε"
@@ -895,10 +892,6 @@ msgid "Sync"
 msgstr "Συγχρον"
 
 
-msgid "Themes"
-msgstr "Θέματα"
-
-
 msgctxt "Operator"
 msgid "Save"
 msgstr "Αποθήκευση"
@@ -907,11 +900,6 @@ msgstr "Αποθήκευση"
 msgctxt "Operator"
 msgid "Save As"
 msgstr "Αποθήκευση ως"
-
-
-msgctxt "Operator"
-msgid "Rotate"
-msgstr "Rotate"
 
 
 msgctxt "Operator"
@@ -944,10 +932,6 @@ msgstr "Polar ZY"
 
 msgid "Pan"
 msgstr "Ολίσθηση προβολής"
-
-
-msgid "Pause"
-msgstr "Παύση"
 
 
 msgctxt "Operator"
@@ -1042,12 +1026,16 @@ msgid "Layer:"
 msgstr "Στρώμα"
 
 
+msgid "Cancel"
+msgstr "Ακύρωση"
+
+
 msgid "Fields"
 msgstr "Πεδία"
 
 
-msgid "Cancel"
-msgstr "Ακύρωση"
+msgid "Movie"
+msgstr "Βίντεο"
 
 
 msgid "Life"

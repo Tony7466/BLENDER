@@ -15,6 +15,7 @@
 #include "DNA_scene_types.h"
 
 #include "BLI_listbase.h"
+#include "BLI_math_base.hh"
 #include "BLI_math_rotation.h"
 #include "BLI_rand.h"
 
@@ -166,7 +167,7 @@ static void brush_make_local(Main *bmain, ID *id, const int flags)
      * does not deal properly with it. */
     /* NOTE: assert below ensures that the comment above is valid, and that exception is
      * acceptable for the time being. */
-    BKE_lib_id_make_local(bmain, &brush->clone.image->id, 0);
+    BKE_lib_id_make_local(bmain, &brush->clone.image->id, LIB_ID_MAKELOCAL_ASSET_DATA_CLEAR);
     BLI_assert(!ID_IS_LINKED(brush->clone.image) && brush->clone.image->id.newid == nullptr);
   }
 
@@ -710,10 +711,8 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
   brush->smooth_stroke_radius = SMOOTH_STROKE_RADIUS;
   brush->smooth_stroke_factor = SMOOTH_STROKE_FACTOR;
 
-  /* GPv3 uses the `Scene` size aka BRUSH_LOCK_SIZE by default. */
-  if (U.experimental.use_grease_pencil_version3) {
-    brush->flag |= BRUSH_LOCK_SIZE;
-  }
+  /* GP uses the `Scene` size aka BRUSH_LOCK_SIZE by default. */
+  brush->flag |= BRUSH_LOCK_SIZE;
 
   brush->rgb[0] = 0.498f;
   brush->rgb[1] = 1.0f;
@@ -724,6 +723,9 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
   brush->secondary_rgb[2] = 1.0f;
 
   brush->curve_preset = BRUSH_CURVE_SMOOTH;
+
+  /* Use a default spacing of 100%. */
+  brush->spacing = 100;
 
   if (brush->gpencil_settings == nullptr) {
     return;
@@ -740,16 +742,23 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
   switch (type) {
     case GP_BRUSH_PRESET_AIRBRUSH: {
       brush->size = 300.0f;
-      if (U.experimental.use_grease_pencil_version3) {
-        brush->unprojected_radius = brush->size *
-                                    bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
-      }
+      brush->unprojected_radius = brush->size * bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
       brush->gpencil_settings->flag |= GP_BRUSH_USE_PRESSURE;
+      SET_FLAG_FROM_TEST(brush->flag,
+                         (brush->gpencil_settings->flag & GP_BRUSH_USE_PRESSURE) != 0,
+                         BRUSH_SIZE_PRESSURE);
 
       brush->gpencil_settings->draw_strength = 0.4f;
       brush->gpencil_settings->flag |= GP_BRUSH_USE_STRENGTH_PRESSURE;
+      brush->alpha = brush->gpencil_settings->draw_strength;
+      SET_FLAG_FROM_TEST(brush->flag,
+                         (brush->gpencil_settings->flag & GP_BRUSH_USE_STRENGTH_PRESSURE) != 0,
+                         BRUSH_ALPHA_PRESSURE);
 
       brush->gpencil_settings->input_samples = 10;
+      /* Use a high point density. */
+      brush->spacing = 15;
+
       brush->gpencil_settings->active_smooth = ACTIVE_SMOOTH;
       brush->gpencil_settings->draw_angle = 0.0f;
       brush->gpencil_settings->draw_angle_factor = 0.0f;
@@ -767,13 +776,17 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
     }
     case GP_BRUSH_PRESET_INK_PEN: {
       brush->size = 60.0f;
-      if (U.experimental.use_grease_pencil_version3) {
-        brush->unprojected_radius = brush->size *
-                                    bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
-      }
+      brush->unprojected_radius = brush->size * bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
       brush->gpencil_settings->flag |= GP_BRUSH_USE_PRESSURE;
+      SET_FLAG_FROM_TEST(brush->flag,
+                         (brush->gpencil_settings->flag & GP_BRUSH_USE_PRESSURE) != 0,
+                         BRUSH_SIZE_PRESSURE);
 
       brush->gpencil_settings->draw_strength = 1.0f;
+      brush->alpha = brush->gpencil_settings->draw_strength;
+      SET_FLAG_FROM_TEST(brush->flag,
+                         (brush->gpencil_settings->flag & GP_BRUSH_USE_STRENGTH_PRESSURE) != 0,
+                         BRUSH_ALPHA_PRESSURE);
 
       brush->gpencil_settings->input_samples = 10;
       brush->gpencil_settings->active_smooth = ACTIVE_SMOOTH;
@@ -787,6 +800,7 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
       brush->gpencil_settings->draw_smoothlvl = 1;
       brush->gpencil_settings->draw_subdivide = 0;
       brush->gpencil_settings->simplify_f = 0.002f;
+      brush->gpencil_settings->simplify_px = 0.4f;
 
       brush->gpencil_settings->draw_random_press = 0.0f;
       brush->gpencil_settings->draw_jitter = 0.0f;
@@ -806,13 +820,17 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
     }
     case GP_BRUSH_PRESET_INK_PEN_ROUGH: {
       brush->size = 60.0f;
-      if (U.experimental.use_grease_pencil_version3) {
-        brush->unprojected_radius = brush->size *
-                                    bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
-      }
+      brush->unprojected_radius = brush->size * bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
       brush->gpencil_settings->flag |= GP_BRUSH_USE_PRESSURE;
+      SET_FLAG_FROM_TEST(brush->flag,
+                         (brush->gpencil_settings->flag & GP_BRUSH_USE_PRESSURE) != 0,
+                         BRUSH_SIZE_PRESSURE);
 
       brush->gpencil_settings->draw_strength = 1.0f;
+      brush->alpha = brush->gpencil_settings->draw_strength;
+      SET_FLAG_FROM_TEST(brush->flag,
+                         (brush->gpencil_settings->flag & GP_BRUSH_USE_STRENGTH_PRESSURE) != 0,
+                         BRUSH_ALPHA_PRESSURE);
 
       brush->gpencil_settings->input_samples = 10;
       brush->gpencil_settings->active_smooth = ACTIVE_SMOOTH;
@@ -826,6 +844,7 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
       brush->gpencil_settings->draw_smoothlvl = 2;
       brush->gpencil_settings->draw_subdivide = 0;
       brush->gpencil_settings->simplify_f = 0.000f;
+      brush->gpencil_settings->simplify_px = 0.0f;
 
       brush->gpencil_settings->flag |= GP_BRUSH_GROUP_RANDOM;
       brush->gpencil_settings->draw_random_press = 0.6f;
@@ -847,13 +866,17 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
     }
     case GP_BRUSH_PRESET_MARKER_BOLD: {
       brush->size = 150.0f;
-      if (U.experimental.use_grease_pencil_version3) {
-        brush->unprojected_radius = brush->size *
-                                    bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
-      }
+      brush->unprojected_radius = brush->size * bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
       brush->gpencil_settings->flag &= ~GP_BRUSH_USE_PRESSURE;
+      SET_FLAG_FROM_TEST(brush->flag,
+                         (brush->gpencil_settings->flag & GP_BRUSH_USE_PRESSURE) != 0,
+                         BRUSH_SIZE_PRESSURE);
 
       brush->gpencil_settings->draw_strength = 0.3f;
+      brush->alpha = brush->gpencil_settings->draw_strength;
+      SET_FLAG_FROM_TEST(brush->flag,
+                         (brush->gpencil_settings->flag & GP_BRUSH_USE_STRENGTH_PRESSURE) != 0,
+                         BRUSH_ALPHA_PRESSURE);
 
       brush->gpencil_settings->input_samples = 10;
       brush->gpencil_settings->active_smooth = ACTIVE_SMOOTH;
@@ -867,6 +890,7 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
       brush->gpencil_settings->draw_smoothlvl = 1;
       brush->gpencil_settings->draw_subdivide = 0;
       brush->gpencil_settings->simplify_f = 0.002f;
+      brush->gpencil_settings->simplify_px = 0.4f;
 
       brush->gpencil_settings->flag &= ~GP_BRUSH_GROUP_RANDOM;
       brush->gpencil_settings->draw_random_press = 0.0f;
@@ -888,18 +912,23 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
     }
     case GP_BRUSH_PRESET_MARKER_CHISEL: {
       brush->size = 150.0f;
-      if (U.experimental.use_grease_pencil_version3) {
-        brush->unprojected_radius = brush->size *
-                                    bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
-      }
+      brush->unprojected_radius = brush->size * bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
+
       brush->gpencil_settings->flag |= GP_BRUSH_USE_PRESSURE;
+      SET_FLAG_FROM_TEST(brush->flag,
+                         (brush->gpencil_settings->flag & GP_BRUSH_USE_PRESSURE) != 0,
+                         BRUSH_SIZE_PRESSURE);
 
       brush->gpencil_settings->draw_strength = 1.0f;
+      brush->alpha = brush->gpencil_settings->draw_strength;
+      SET_FLAG_FROM_TEST(brush->flag,
+                         (brush->gpencil_settings->flag & GP_BRUSH_USE_STRENGTH_PRESSURE) != 0,
+                         BRUSH_ALPHA_PRESSURE);
 
       brush->gpencil_settings->input_samples = 10;
       brush->gpencil_settings->active_smooth = 0.3f;
       brush->gpencil_settings->draw_angle = DEG2RAD(35.0f);
-      brush->gpencil_settings->draw_angle_factor = 0.5f;
+      brush->gpencil_settings->draw_angle_factor = 0.75f;
       brush->gpencil_settings->hardness = 1.0f;
       copy_v2_fl(brush->gpencil_settings->aspect_ratio, 1.0f);
 
@@ -908,6 +937,7 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
       brush->gpencil_settings->draw_smoothlvl = 1;
       brush->gpencil_settings->draw_subdivide = 0;
       brush->gpencil_settings->simplify_f = 0.002f;
+      brush->gpencil_settings->simplify_px = 0.4f;
 
       brush->gpencil_settings->flag &= ~GP_BRUSH_GROUP_RANDOM;
       brush->gpencil_settings->draw_random_press = 0.0f;
@@ -933,14 +963,18 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
     }
     case GP_BRUSH_PRESET_PEN: {
       brush->size = 25.0f;
-      if (U.experimental.use_grease_pencil_version3) {
-        brush->unprojected_radius = brush->size *
-                                    bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
-      }
+      brush->unprojected_radius = brush->size * bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
       brush->gpencil_settings->flag &= ~GP_BRUSH_USE_PRESSURE;
+      SET_FLAG_FROM_TEST(brush->flag,
+                         (brush->gpencil_settings->flag & GP_BRUSH_USE_PRESSURE) != 0,
+                         BRUSH_SIZE_PRESSURE);
 
       brush->gpencil_settings->draw_strength = 1.0f;
       brush->gpencil_settings->flag &= ~GP_BRUSH_USE_STRENGTH_PRESSURE;
+      brush->alpha = brush->gpencil_settings->draw_strength;
+      SET_FLAG_FROM_TEST(brush->flag,
+                         (brush->gpencil_settings->flag & GP_BRUSH_USE_STRENGTH_PRESSURE) != 0,
+                         BRUSH_ALPHA_PRESSURE);
 
       brush->gpencil_settings->input_samples = 10;
       brush->gpencil_settings->active_smooth = ACTIVE_SMOOTH;
@@ -954,6 +988,7 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
       brush->gpencil_settings->draw_smoothlvl = 1;
       brush->gpencil_settings->draw_subdivide = 1;
       brush->gpencil_settings->simplify_f = 0.002f;
+      brush->gpencil_settings->simplify_px = 0.4f;
 
       brush->gpencil_settings->draw_random_press = 0.0f;
       brush->gpencil_settings->draw_random_strength = 0.0f;
@@ -968,16 +1003,22 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
     }
     case GP_BRUSH_PRESET_PENCIL_SOFT: {
       brush->size = 80.0f;
-      if (U.experimental.use_grease_pencil_version3) {
-        brush->unprojected_radius = brush->size *
-                                    bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
-      }
+      brush->unprojected_radius = brush->size * bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
       brush->gpencil_settings->flag |= GP_BRUSH_USE_PRESSURE;
+      SET_FLAG_FROM_TEST(brush->flag,
+                         (brush->gpencil_settings->flag & GP_BRUSH_USE_PRESSURE) != 0,
+                         BRUSH_SIZE_PRESSURE);
 
       brush->gpencil_settings->draw_strength = 0.4f;
       brush->gpencil_settings->flag |= GP_BRUSH_USE_STRENGTH_PRESSURE;
+      brush->alpha = brush->gpencil_settings->draw_strength;
+      SET_FLAG_FROM_TEST(brush->flag,
+                         (brush->gpencil_settings->flag & GP_BRUSH_USE_STRENGTH_PRESSURE) != 0,
+                         BRUSH_ALPHA_PRESSURE);
 
       brush->gpencil_settings->input_samples = 10;
+      /* Use a higher point density. */
+      brush->spacing = 20;
       brush->gpencil_settings->active_smooth = ACTIVE_SMOOTH;
       brush->gpencil_settings->draw_angle = 0.0f;
       brush->gpencil_settings->draw_angle_factor = 0.0f;
@@ -989,6 +1030,7 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
       brush->gpencil_settings->draw_smoothlvl = 1;
       brush->gpencil_settings->draw_subdivide = 0;
       brush->gpencil_settings->simplify_f = 0.000f;
+      brush->gpencil_settings->simplify_px = 0.0f;
 
       brush->gpencil_settings->draw_random_press = 0.0f;
       brush->gpencil_settings->draw_random_strength = 0.0f;
@@ -1006,14 +1048,18 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
     }
     case GP_BRUSH_PRESET_PENCIL: {
       brush->size = 20.0f;
-      if (U.experimental.use_grease_pencil_version3) {
-        brush->unprojected_radius = brush->size *
-                                    bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
-      }
+      brush->unprojected_radius = brush->size * bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
       brush->gpencil_settings->flag |= GP_BRUSH_USE_PRESSURE;
+      SET_FLAG_FROM_TEST(brush->flag,
+                         (brush->gpencil_settings->flag & GP_BRUSH_USE_PRESSURE) != 0,
+                         BRUSH_SIZE_PRESSURE);
 
       brush->gpencil_settings->draw_strength = 0.6f;
       brush->gpencil_settings->flag |= GP_BRUSH_USE_STRENGTH_PRESSURE;
+      brush->alpha = brush->gpencil_settings->draw_strength;
+      SET_FLAG_FROM_TEST(brush->flag,
+                         (brush->gpencil_settings->flag & GP_BRUSH_USE_STRENGTH_PRESSURE) != 0,
+                         BRUSH_ALPHA_PRESSURE);
 
       brush->gpencil_settings->input_samples = 10;
       brush->gpencil_settings->active_smooth = ACTIVE_SMOOTH;
@@ -1027,6 +1073,7 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
       brush->gpencil_settings->draw_smoothlvl = 1;
       brush->gpencil_settings->draw_subdivide = 0;
       brush->gpencil_settings->simplify_f = 0.002f;
+      brush->gpencil_settings->simplify_px = 0.4f;
 
       brush->gpencil_settings->draw_random_press = 0.0f;
       brush->gpencil_settings->draw_jitter = 0.0f;
@@ -2531,7 +2578,10 @@ void BKE_brush_scale_size(int *r_brush_size,
   (*r_brush_size) = int(float(*r_brush_size) * scale);
 }
 
-void BKE_brush_jitter_pos(const Scene *scene, Brush *brush, const float pos[2], float jitterpos[2])
+void BKE_brush_jitter_pos(const Scene &scene,
+                          const Brush &brush,
+                          const float pos[2],
+                          float jitterpos[2])
 {
   float rand_pos[2];
   float spread;
@@ -2542,13 +2592,13 @@ void BKE_brush_jitter_pos(const Scene *scene, Brush *brush, const float pos[2], 
     rand_pos[1] = BLI_rng_get_float(brush_rng) - 0.5f;
   } while (len_squared_v2(rand_pos) > square_f(0.5f));
 
-  if (brush->flag & BRUSH_ABSOLUTE_JITTER) {
-    diameter = 2 * brush->jitter_absolute;
+  if (brush.flag & BRUSH_ABSOLUTE_JITTER) {
+    diameter = 2 * brush.jitter_absolute;
     spread = 1.0;
   }
   else {
-    diameter = 2 * BKE_brush_size_get(scene, brush);
-    spread = brush->jitter;
+    diameter = 2 * BKE_brush_size_get(&scene, &brush);
+    spread = brush.jitter;
   }
   /* find random position within a circle of diameter 1 */
   jitterpos[0] = pos[0] + 2 * rand_pos[0] * diameter * spread;
@@ -2566,6 +2616,129 @@ void BKE_brush_randomize_texture_coords(UnifiedPaintSettings *ups, bool mask)
   else {
     ups->tex_mouse[0] = BLI_rng_get_float(brush_rng) * ups->pixel_radius;
     ups->tex_mouse[1] = BLI_rng_get_float(brush_rng) * ups->pixel_radius;
+  }
+}
+
+void BKE_brush_calc_curve_factors(const eBrushCurvePreset preset,
+                                  const CurveMapping *cumap,
+                                  const blender::Span<float> distances,
+                                  const float brush_radius,
+                                  const blender::MutableSpan<float> factors)
+{
+  BLI_assert(factors.size() == distances.size());
+
+  const float radius_rcp = blender::math::rcp(brush_radius);
+  switch (preset) {
+    case BRUSH_CURVE_CUSTOM: {
+      for (const int i : distances.index_range()) {
+        const float distance = distances[i];
+        if (distance >= brush_radius) {
+          factors[i] = 0.0f;
+          continue;
+        }
+        factors[i] *= BKE_curvemapping_evaluateF(cumap, 0, distance * radius_rcp);
+      }
+      break;
+    }
+    case BRUSH_CURVE_SHARP: {
+      for (const int i : distances.index_range()) {
+        const float distance = distances[i];
+        if (distance >= brush_radius) {
+          factors[i] = 0.0f;
+          continue;
+        }
+        const float factor = 1.0f - distance * radius_rcp;
+        factors[i] *= factor * factor;
+      }
+      break;
+    }
+    case BRUSH_CURVE_SMOOTH: {
+      for (const int i : distances.index_range()) {
+        const float distance = distances[i];
+        if (distance >= brush_radius) {
+          factors[i] = 0.0f;
+          continue;
+        }
+        const float factor = 1.0f - distance * radius_rcp;
+        factors[i] *= 3.0f * factor * factor - 2.0f * factor * factor * factor;
+      }
+      break;
+    }
+    case BRUSH_CURVE_SMOOTHER: {
+      for (const int i : distances.index_range()) {
+        const float distance = distances[i];
+        if (distance >= brush_radius) {
+          factors[i] = 0.0f;
+          continue;
+        }
+        const float factor = 1.0f - distance * radius_rcp;
+        factors[i] *= pow3f(factor) * (factor * (factor * 6.0f - 15.0f) + 10.0f);
+      }
+      break;
+    }
+    case BRUSH_CURVE_ROOT: {
+      for (const int i : distances.index_range()) {
+        const float distance = distances[i];
+        if (distance >= brush_radius) {
+          factors[i] = 0.0f;
+          continue;
+        }
+        const float factor = 1.0f - distance * radius_rcp;
+        factors[i] *= sqrtf(factor);
+      }
+      break;
+    }
+    case BRUSH_CURVE_LIN: {
+      for (const int i : distances.index_range()) {
+        const float distance = distances[i];
+        if (distance >= brush_radius) {
+          factors[i] = 0.0f;
+          continue;
+        }
+        const float factor = 1.0f - distance * radius_rcp;
+        factors[i] *= factor;
+      }
+      break;
+    }
+    case BRUSH_CURVE_CONSTANT: {
+      break;
+    }
+    case BRUSH_CURVE_SPHERE: {
+      for (const int i : distances.index_range()) {
+        const float distance = distances[i];
+        if (distance >= brush_radius) {
+          factors[i] = 0.0f;
+          continue;
+        }
+        const float factor = 1.0f - distance * radius_rcp;
+        factors[i] *= sqrtf(2 * factor - factor * factor);
+      }
+      break;
+    }
+    case BRUSH_CURVE_POW4: {
+      for (const int i : distances.index_range()) {
+        const float distance = distances[i];
+        if (distance >= brush_radius) {
+          factors[i] = 0.0f;
+          continue;
+        }
+        const float factor = 1.0f - distance * radius_rcp;
+        factors[i] *= factor * factor * factor * factor;
+      }
+      break;
+    }
+    case BRUSH_CURVE_INVSQUARE: {
+      for (const int i : distances.index_range()) {
+        const float distance = distances[i];
+        if (distance >= brush_radius) {
+          factors[i] = 0.0f;
+          continue;
+        }
+        const float factor = 1.0f - distance * radius_rcp;
+        factors[i] *= factor * (2.0f - factor);
+      }
+      break;
+    }
   }
 }
 

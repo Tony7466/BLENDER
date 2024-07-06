@@ -84,6 +84,7 @@
 #include "NOD_common.h"
 #include "NOD_composite.hh"
 #include "NOD_geo_bake.hh"
+#include "NOD_geo_capture_attribute.hh"
 #include "NOD_geo_index_switch.hh"
 #include "NOD_geo_menu_switch.hh"
 #include "NOD_geo_repeat.hh"
@@ -540,6 +541,8 @@ static StringRef get_legacy_socket_subtype_idname(StringRef idname, const void *
         return "NodeSocketFloatDistance";
       case PROP_WAVELENGTH:
         return "NodeSocketFloatWavelength";
+      case PROP_COLOR_TEMPERATURE:
+        return "NodeSocketFloatColorTemperature";
     }
   }
   if (idname == "NodeSocketInt") {
@@ -842,6 +845,23 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
           BLO_write_string(writer, storage->string);
         }
         BLO_write_struct_by_name(writer, node->typeinfo->storagename, storage);
+      }
+      else if (node->type == GEO_NODE_CAPTURE_ATTRIBUTE) {
+        auto &storage = *static_cast<NodeGeometryAttributeCapture *>(node->storage);
+        /* Improve forward compatibility. */
+        storage.data_type_legacy = CD_PROP_FLOAT;
+        for (const NodeGeometryAttributeCaptureItem &item :
+             Span{storage.capture_items, storage.capture_items_num})
+        {
+          if (item.identifier == 0) {
+            /* The sockets of this item have the same identifiers that have been used by older
+             * Blender versions before the node supported capturing multiple attributes. */
+            storage.data_type_legacy = item.data_type;
+            break;
+          }
+        }
+        BLO_write_struct(writer, NodeGeometryAttributeCapture, node->storage);
+        nodes::CaptureAttributeItemsAccessor::blend_write(writer, *node);
       }
       else if (node->typeinfo != &NodeTypeUndefined) {
         BLO_write_struct_by_name(writer, node->typeinfo->storagename, node->storage);
@@ -1156,6 +1176,10 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
         }
         case GEO_NODE_MENU_SWITCH: {
           nodes::MenuSwitchItemsAccessor::blend_read_data(reader, *node);
+          break;
+        }
+        case GEO_NODE_CAPTURE_ATTRIBUTE: {
+          nodes::CaptureAttributeItemsAccessor::blend_read_data(reader, *node);
           break;
         }
 
@@ -1780,17 +1804,23 @@ const char *nodeSocketSubTypeLabel(int subtype)
   return "";
 }
 
-bNodeSocket *nodeFindSocket(const bNode *node,
-                            const eNodeSocketInOut in_out,
-                            const char *identifier)
+bNodeSocket *nodeFindSocket(bNode *node, const eNodeSocketInOut in_out, const StringRef identifier)
 {
   const ListBase *sockets = (in_out == SOCK_IN) ? &node->inputs : &node->outputs;
   LISTBASE_FOREACH (bNodeSocket *, sock, sockets) {
-    if (STREQ(sock->identifier, identifier)) {
+    if (sock->identifier == identifier) {
       return sock;
     }
   }
   return nullptr;
+}
+
+const bNodeSocket *nodeFindSocket(const bNode *node,
+                                  const eNodeSocketInOut in_out,
+                                  const StringRef identifier)
+{
+  /* Reuse the implementation of the mutable accessor. */
+  return nodeFindSocket(const_cast<bNode *>(node), in_out, identifier);
 }
 
 bNodeSocket *node_find_enabled_socket(bNode &node,
@@ -2090,6 +2120,8 @@ const char *nodeStaticSocketType(const int type, const int subtype)
           return "NodeSocketFloatDistance";
         case PROP_WAVELENGTH:
           return "NodeSocketFloatWavelength";
+        case PROP_COLOR_TEMPERATURE:
+          return "NodeSocketFloatColorTemperature";
         case PROP_NONE:
         default:
           return "NodeSocketFloat";
@@ -2133,7 +2165,12 @@ const char *nodeStaticSocketType(const int type, const int subtype)
     case SOCK_RGBA:
       return "NodeSocketColor";
     case SOCK_STRING:
-      return "NodeSocketString";
+      switch (PropertySubType(subtype)) {
+        case PROP_FILEPATH:
+          return "NodeSocketStringFilePath";
+        default:
+          return "NodeSocketString";
+      }
     case SOCK_SHADER:
       return "NodeSocketShader";
     case SOCK_OBJECT:
@@ -2177,6 +2214,8 @@ const char *nodeStaticSocketInterfaceTypeNew(const int type, const int subtype)
           return "NodeTreeInterfaceSocketFloatDistance";
         case PROP_WAVELENGTH:
           return "NodeTreeInterfaceSocketFloatWavelength";
+        case PROP_COLOR_TEMPERATURE:
+          return "NodeTreeInterfaceSocketFloatColorTemperature";
         case PROP_NONE:
         default:
           return "NodeTreeInterfaceSocketFloat";
@@ -2220,7 +2259,12 @@ const char *nodeStaticSocketInterfaceTypeNew(const int type, const int subtype)
     case SOCK_RGBA:
       return "NodeTreeInterfaceSocketColor";
     case SOCK_STRING:
-      return "NodeTreeInterfaceSocketString";
+      switch (PropertySubType(subtype)) {
+        case PROP_FILEPATH:
+          return "NodeTreeInterfaceSocketVectorTranslation";
+        default:
+          return "NodeTreeInterfaceSocketString";
+      }
     case SOCK_SHADER:
       return "NodeTreeInterfaceSocketShader";
     case SOCK_OBJECT:

@@ -60,8 +60,9 @@ struct OutputCopy {
 };
 
 /**
- * Same as above, but the values can be output by move, instead of copy. This can reduce the amount
- * of unnecessary copies, when the old simulation state is not needed anymore.
+ * Same as #OutputCopy, but the values can be output by move, instead of copy.
+ * This can reduce the amount of unnecessary copies,
+ * when the old simulation state is not needed anymore.
  */
 struct OutputMove {
   float delta_time;
@@ -193,6 +194,9 @@ struct GeoNodesOperatorData {
   int2 mouse_position;
   int2 region_size;
   const RegionView3D *rv3d = nullptr;
+  int active_point_index = -1;
+  int active_edge_index = -1;
+  int active_face_index = -1;
 };
 
 struct GeoNodesCallData {

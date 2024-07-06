@@ -71,8 +71,10 @@ typedef struct World {
   float sun_threshold;
   /** Angle for sun extraction. */
   float sun_angle;
-  /** Maximum resolution for extracted sun shadow. */
+  /** Shadow properties for sun extraction. */
   float sun_shadow_maximum_resolution;
+  float sun_shadow_jitter_overblur;
+  float sun_shadow_filter_radius;
   char _pad4[4];
 
   /** Old animation system, deprecated for 2.5. */
@@ -89,8 +91,13 @@ typedef struct World {
   /** Light-group membership information. */
   struct LightgroupMembership *lightgroup;
 
+  void *_pad1;
+
   /** Runtime. */
   ListBase gpumaterial;
+  /* The Depsgraph::update_count when this World was last updated. */
+  uint64_t last_update;
+
 } World;
 
 /* **************** WORLD ********************* */
@@ -131,14 +138,15 @@ enum {
    * Use shadowing from the extracted sun light.
    */
   WO_USE_SUN_SHADOW = 1 << 4,
+  WO_USE_SUN_SHADOW_JITTER = 1 << 5,
 };
 
 /** #World::probe_resolution. */
 typedef enum eLightProbeResolution {
-  LIGHT_PROBE_RESOLUTION_64 = 6,
   LIGHT_PROBE_RESOLUTION_128 = 7,
   LIGHT_PROBE_RESOLUTION_256 = 8,
   LIGHT_PROBE_RESOLUTION_512 = 9,
   LIGHT_PROBE_RESOLUTION_1024 = 10,
   LIGHT_PROBE_RESOLUTION_2048 = 11,
+  LIGHT_PROBE_RESOLUTION_4096 = 12,
 } eLightProbeResolution;
