@@ -14,7 +14,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Grease Pencil")
       .supported_type(bke::GeometryComponent::Type::GreasePencil);
-  b.add_output<decl::Geometry>("Instances");
+  b.add_output<decl::Geometry>("Curve Instances");
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -74,7 +74,7 @@ static void node_geo_exec(GeoNodeExecParams params)
         return true;
       });
 
-  params.set_output("Instances", GeometrySet::from_instances(instances));
+  params.set_output("Curve Instances", GeometrySet::from_instances(instances));
 }
 
 static void node_register()

@@ -12,13 +12,13 @@ namespace blender::nodes::node_geo_curves_to_grease_pencil_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>("Instances").only_instances();
+  b.add_input<decl::Geometry>("Curve Instances").only_instances();
   b.add_output<decl::Geometry>("Grease Pencil");
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
-  GeometrySet instances_geometry = params.extract_input<GeometrySet>("Instances");
+  GeometrySet instances_geometry = params.extract_input<GeometrySet>("Curve Instances");
   const bke::Instances *instances = instances_geometry.get_instances();
   if (!instances) {
     params.set_default_remaining_outputs();
@@ -27,6 +27,10 @@ static void node_geo_exec(GeoNodeExecParams params)
   const Span<int> reference_handles = instances->reference_handles();
   const Span<bke::InstanceReference> references = instances->references();
   const int instances_num = instances->instances_num();
+  if (instances_num == 0) {
+    params.set_default_remaining_outputs();
+    return;
+  }
 
   GreasePencil *grease_pencil = BKE_grease_pencil_new_nomain();
   grease_pencil->add_empty_drawings(instances_num);
