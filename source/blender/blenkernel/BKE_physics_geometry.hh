@@ -240,10 +240,4 @@ class PhysicsGeometry {
   friend class BuiltinPhysicsAttributeBase;
 };
 
-// class FlagToBoolFieldInput : public bke::AttributeFieldInput {
-//  public:
-//   GVArray get_varray_for_context(const GeometryFieldContext &context,
-//                                  const IndexMask &mask) const override;
-// };
-
 }  // namespace blender::bke
