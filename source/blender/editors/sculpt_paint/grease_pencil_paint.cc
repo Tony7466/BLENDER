@@ -1336,27 +1336,21 @@ static void deselect_stroke(const bContext &C,
   selection.finish();
 }
 
-void PaintOperation::process_stroke_weights(const bContext &C, bke::greasepencil::Drawing &drawing)
+static void process_stroke_weights(const Object &object,
+                                   bke::greasepencil::Drawing &drawing,
+                                   const int active_curve)
 {
-  Scene &scene = *CTX_data_scene(&C);
-  Object *object = CTX_data_active_object(&C);
-
-  if (!(scene.toolsettings->gpencil_flags & GP_TOOL_FLAG_CREATE_WEIGHTS)) {
-    return;
-  }
-
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
-  const int stroke_index = curves.curves_range().last();
-  const IndexRange points = curves.points_by_curve()[stroke_index];
+  const IndexRange points = curves.points_by_curve()[active_curve];
 
-  const int def_nr = BKE_object_defgroup_active_index_get(object) - 1;
+  const int def_nr = BKE_object_defgroup_active_index_get(&object) - 1;
 
   if (def_nr == -1) {
     return;
   }
 
   const bDeformGroup *defgroup = static_cast<const bDeformGroup *>(
-      BLI_findlink(BKE_object_defgroup_list(object), def_nr));
+      BLI_findlink(BKE_object_defgroup_list(&object), def_nr));
 
   const StringRef vertex_group_name = defgroup->name;
 
@@ -1366,7 +1360,7 @@ void PaintOperation::process_stroke_weights(const bContext &C, bke::greasepencil
   /* Loop through all modifiers trying to find the pose channel for the vertex group name. */
   bPoseChannel *channel = nullptr;
   Object *ob_arm = nullptr;
-  LISTBASE_FOREACH (ModifierData *, md, &(object)->modifiers) {
+  LISTBASE_FOREACH (ModifierData *, md, &(&object)->modifiers) {
     if (md->type != eModifierType_GreasePencilArmature) {
       continue;
     }
@@ -1402,7 +1396,7 @@ void PaintOperation::process_stroke_weights(const bContext &C, bke::greasepencil
     return;
   }
 
-  const float4x4 obinv = math::invert(object->object_to_world());
+  const float4x4 obinv = math::invert(object.object_to_world());
 
   const float4x4 postmat = obinv * ob_arm->object_to_world();
   const float4x4 premat = math::invert(postmat);
@@ -1467,6 +1461,9 @@ void PaintOperation::on_stroke_done(const bContext &C)
     }
     if ((settings->flag & GP_BRUSH_TRIM_STROKE) != 0) {
       trim_stroke_ends(drawing, active_curve, on_back);
+    }
+    if ((scene->toolsettings->gpencil_flags & GP_TOOL_FLAG_CREATE_WEIGHTS) != 0) {
+      process_stroke_weights(*object, drawing, active_curve);
     }
     if ((settings->flag & GP_BRUSH_OUTLINE_STROKE) != 0) {
       const float outline_radius = float(brush->unprojected_radius) * settings->outline_fac * 0.5f;
