@@ -74,6 +74,35 @@ static void node_geo_exec(GeoNodeExecParams params)
   grease_pencil->material_array = MEM_cnew_array<Material *>(all_materials.size(), __func__);
   initialized_copy_n(all_materials.data(), all_materials.size(), grease_pencil->material_array);
 
+  const bke::AttributeAccessor instances_attributes = instances->attributes();
+  bke::MutableAttributeAccessor grease_pencil_attributes = grease_pencil->attributes_for_write();
+  instances_attributes.for_all(
+      [&](const AttributeIDRef &attribute_id, const AttributeMetaData &meta_data) {
+        if (instances_attributes.is_builtin(attribute_id) &&
+            !grease_pencil_attributes.is_builtin(attribute_id))
+        {
+          return true;
+        }
+        const GAttributeReader src_attribute = instances_attributes.lookup(attribute_id);
+        if (!src_attribute) {
+          return true;
+        }
+        if (src_attribute.varray.is_span() && src_attribute.sharing_info) {
+          grease_pencil_attributes.add(
+              attribute_id,
+              AttrDomain::Layer,
+              meta_data.data_type,
+              bke::AttributeInitShared{src_attribute.varray.get_internal_span().data(),
+                                       *src_attribute.sharing_info});
+          return true;
+        }
+        grease_pencil_attributes.add(attribute_id,
+                                     AttrDomain::Layer,
+                                     meta_data.data_type,
+                                     bke::AttributeInitVArray(src_attribute.varray));
+        return false;
+      });
+
   params.set_output("Grease Pencil", GeometrySet::from_grease_pencil(grease_pencil));
 }
 

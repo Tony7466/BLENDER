@@ -50,6 +50,30 @@ static void node_geo_exec(GeoNodeExecParams params)
     instances->add_instance(handle, transform);
   }
 
+  const bke::AttributeAccessor grease_pencil_attributes = grease_pencil->attributes();
+  bke::MutableAttributeAccessor instances_attributes = instances->attributes_for_write();
+  grease_pencil_attributes.for_all(
+      [&](const AttributeIDRef &attribute_id, const AttributeMetaData &meta_data) {
+        const GAttributeReader src_attribute = grease_pencil_attributes.lookup(attribute_id);
+        if (!src_attribute) {
+          return true;
+        }
+        if (src_attribute.varray.is_span() && src_attribute.sharing_info) {
+          instances_attributes.add(
+              attribute_id,
+              AttrDomain::Instance,
+              meta_data.data_type,
+              bke::AttributeInitShared{src_attribute.varray.get_internal_span().data(),
+                                       *src_attribute.sharing_info});
+          return true;
+        }
+        instances_attributes.add(attribute_id,
+                                 AttrDomain::Instance,
+                                 meta_data.data_type,
+                                 bke::AttributeInitVArray(src_attribute.varray));
+        return true;
+      });
+
   params.set_output("Instances", GeometrySet::from_instances(instances));
 }
 
