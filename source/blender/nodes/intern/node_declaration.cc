@@ -6,6 +6,7 @@
 #include "NOD_socket_declarations.hh"
 #include "NOD_socket_declarations_geometry.hh"
 
+#include "BLI_math_quaternion_types.hh"
 #include "BLI_stack.hh"
 #include "BLI_utildefines.h"
 
@@ -868,6 +869,12 @@ void instance_transform(const bNode & /*node*/, void *r_value)
 {
   new (r_value)
       bke::SocketValueVariant(bke::AttributeFieldInput::Create<float4x4>("instance_transform"));
+}
+
+void rotation(const bNode & /*node*/, void *r_value)
+{
+  new (r_value)
+      bke::SocketValueVariant(bke::AttributeFieldInput::Create<math::Quaternion>("rotation"));
 }
 
 }  // namespace implicit_field_inputs

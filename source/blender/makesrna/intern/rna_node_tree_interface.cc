@@ -456,6 +456,14 @@ static const EnumPropertyItem *rna_NodeTreeInterfaceSocket_default_input_itemf(
           N_("Transformation of each instance from the geometry context")};
       RNA_enum_item_add(&items, &items_count, &instance_transform);
     }
+    else if (type->type == SOCK_ROTATION) {
+      const EnumPropertyItem rotation{GEO_NODE_DEFAULT_FIELD_INPUT_ROTATION_FIELD,
+                                      "ROTATION",
+                                      0,
+                                      N_("Rotation"),
+                                      N_("The rotation from the context")};
+      RNA_enum_item_add(&items, &items_count, &rotation);
+    }
   }
 
   RNA_enum_item_end(&items, &items_count);

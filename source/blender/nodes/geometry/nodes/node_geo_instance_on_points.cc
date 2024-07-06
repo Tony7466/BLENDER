@@ -31,7 +31,9 @@ static void node_declare(NodeDeclarationBuilder &b)
       .description(
           "Index of the instance used for each point. This is only used when Pick Instances "
           "is on. By default the point index is used");
-  b.add_input<decl::Rotation>("Rotation").field_on({0}).description("Rotation of the instances");
+  b.add_input<decl::Rotation>("Rotation")
+      .implicit_field_on(implicit_field_inputs::rotation, {0})
+      .description("Rotation of the instances");
   b.add_input<decl::Vector>("Scale")
       .default_value({1.0f, 1.0f, 1.0f})
       .subtype(PROP_XYZ)
@@ -200,7 +202,8 @@ static void node_geo_exec(GeoNodeExecParams params)
 
     const Array<GeometryComponent::Type> types{GeometryComponent::Type::Mesh,
                                                GeometryComponent::Type::PointCloud,
-                                               GeometryComponent::Type::Curve};
+                                               GeometryComponent::Type::Curve,
+                                               GeometryComponent::Type::Physics};
 
     Map<AttributeIDRef, AttributeKind> attributes_to_propagate;
     geometry_set.gather_attributes_for_propagation(types,

@@ -602,6 +602,7 @@ void normal(const bNode &node, void *r_value);
 void index(const bNode &node, void *r_value);
 void id_or_index(const bNode &node, void *r_value);
 void instance_transform(const bNode &node, void *r_value);
+void rotation(const bNode &node, void *r_value);
 }  // namespace implicit_field_inputs
 
 void build_node_declaration(const bke::bNodeType &typeinfo,
