@@ -177,6 +177,118 @@ static void move_world(PhysicsGeometryImpl &from, PhysicsGeometryImpl &to)
   from.overlap_filter = nullptr;
 }
 
+static void create_bodies(MutableSpan<btRigidBody *> rigid_bodies,
+                          MutableSpan<btMotionState *> motion_states,
+                          const IndexMask &mask)
+{
+  mask.foreach_index([&](const int index) {
+    const float mass = 1.0f;
+    const float3 local_inertia = float3(0.0f);
+    btMotionState *motion_state = motion_states[index] = new btDefaultMotionState();
+    btCollisionShape *collision_shape = nullptr;
+    rigid_bodies[index] = new btRigidBody(
+        mass, motion_state, collision_shape, to_bullet(local_inertia));
+    rigid_bodies[index]->updateInertiaTensor();
+  });
+}
+
+static void create_bodies(MutableSpan<btRigidBody *> rigid_bodies,
+                          MutableSpan<btMotionState *> motion_states)
+{
+  return create_bodies(rigid_bodies, motion_states, rigid_bodies.index_range());
+}
+
+static btTypedConstraint *make_bullet_constraint_type(const PhysicsGeometry::ConstraintType type,
+                                                      btRigidBody &body1,
+                                                      btRigidBody &body2)
+{
+  using ConstraintType = PhysicsGeometry::ConstraintType;
+
+  [[maybe_unused]] btTransform zero_mat = btTransform::getIdentity();
+  [[maybe_unused]] btVector3 zero_vec = btVector3(0, 0, 0);
+  [[maybe_unused]] btVector3 axis_x = btVector3(1, 0, 0);
+  [[maybe_unused]] btVector3 axis_y = btVector3(0, 1, 0);
+  [[maybe_unused]] btVector3 axis_z = btVector3(0, 0, 1);
+
+  switch (type) {
+    case ConstraintType::None:
+      return nullptr;
+    case ConstraintType::Fixed:
+      return new btFixedConstraint(body1, body2, zero_mat, zero_mat);
+    case ConstraintType::Point:
+      return new btPoint2PointConstraint(body1, body2, zero_vec, zero_vec);
+    case ConstraintType::Hinge:
+      return new btHinge2Constraint(body1, body2, zero_vec, axis_x, axis_y);
+    case ConstraintType::Slider:
+      return new btSliderConstraint(body1, body2, zero_mat, zero_mat, true);
+    case ConstraintType::ConeTwist:
+      return new btConeTwistConstraint(body1, body2, zero_mat, zero_mat);
+    case ConstraintType::SixDoF:
+      return new btGeneric6DofConstraint(body1, body2, zero_mat, zero_mat, true);
+    case ConstraintType::SixDoFSpring:
+      return new btGeneric6DofSpringConstraint(body1, body2, zero_mat, zero_mat, true);
+    case ConstraintType::SixDoFSpring2:
+      return new btGeneric6DofSpring2Constraint(body1, body2, zero_mat, zero_mat);
+    case ConstraintType::Contact:
+      /* Can't be created manually. */
+      return nullptr;
+    case ConstraintType::Gear:
+      return new btGearConstraint(body1, body2, zero_vec, zero_vec);
+  }
+  BLI_assert_unreachable();
+  return nullptr;
+}
+
+static btTypedConstraint *make_constraint_type(const PhysicsGeometry::ConstraintType type,
+                                               btRigidBody &body1,
+                                               btRigidBody &body2,
+                                               btJointFeedback *feedback)
+{
+  btTypedConstraint *constraint = make_bullet_constraint_type(type, body1, body2);
+  if (constraint) {
+    // constraint->enableFeedback(true);
+    constraint->setJointFeedback(feedback);
+  }
+  return constraint;
+}
+
+static void create_constraints(MutableSpan<btTypedConstraint *> constraints,
+                               MutableSpan<btJointFeedback> constraint_feedback,
+                               const Span<btRigidBody *> rigid_bodies,
+                               const IndexMask &selection,
+                               const VArray<int> &types,
+                               const VArray<int> &bodies1,
+                               const VArray<int> &bodies2)
+{
+  using ConstraintType = PhysicsGeometry::ConstraintType;
+
+  const IndexRange bodies_range = rigid_bodies.index_range();
+  selection.foreach_index([&](const int index) {
+    const ConstraintType type = ConstraintType(types[index]);
+    const int body_index1 = bodies1[index];
+    const int body_index2 = bodies2[index];
+    btRigidBody *fixed_body = &btTypedConstraint::getFixedBody();
+    btRigidBody *body1 = bodies_range.contains(body_index1) ? rigid_bodies[body_index1] :
+                                                              fixed_body;
+    btRigidBody *body2 = bodies_range.contains(body_index2) ? rigid_bodies[body_index2] :
+                                                              fixed_body;
+
+    if (constraints[index]) {
+      const btTypedConstraint &current_constraint = *constraints[index];
+      const ConstraintType current_type = to_blender(current_constraint.getConstraintType());
+      const btRigidBody *current_body1 = &current_constraint.getRigidBodyA();
+      const btRigidBody *current_body2 = &current_constraint.getRigidBodyB();
+      if (current_type == type && current_body1 == body1 && current_body2 == body2) {
+        return;
+      }
+
+      delete constraints[index];
+    }
+
+    constraints[index] = make_constraint_type(type, *body1, *body2, &constraint_feedback[index]);
+  });
+}
+
 /* Various checks on constraints to ensure Bullet doesn't crash. */
 static bool is_constraint_valid(const btTypedConstraint &constraint)
 {
@@ -312,8 +424,78 @@ void PhysicsGeometryImpl::ensure_constraint_disable_collision() const
   });
 }
 
+void PhysicsGeometryImpl::realize(const PhysicsGeometryImpl &from,
+                                  const AttributeAccessor from_attributes,
+                                  const IndexMask &body_mask,
+                                  const IndexMask &constraint_mask,
+                                  int bodies_offset,
+                                  int constraints_offset,
+                                  const AnonymousAttributePropagationInfo &propagation_info,
+                                  MutableAttributeAccessor to_attributes)
+{
+  using ConstraintType = PhysicsGeometry::ConstraintType;
+
+  BLI_assert(!this->is_empty);
+  BLI_assert(from.is_empty);
+
+  btDynamicsWorld *to_world = this->world;
+
+  const IndexRange body_range = IndexRange(bodies_offset, body_mask.size());
+  const IndexRange constraint_range = IndexRange(constraints_offset, constraint_mask.size());
+  /* Make sure target has enough space. */
+  BLI_assert(body_range.intersect(this->rigid_bodies.index_range()) == body_range);
+  BLI_assert(constraint_range.intersect(this->constraints.index_range()) == constraint_range);
+
+  create_bodies(this->rigid_bodies.as_mutable_span().slice(body_range),
+                this->motion_states.as_mutable_span().slice(body_range),
+                body_mask);
+  this->tag_body_topology_changed();
+
+  const VArray<int> constraint_types = *from_attributes.lookup_or_default(
+      PhysicsGeometry::builtin_attributes.constraint_type,
+      AttrDomain::Edge,
+      int(ConstraintType::None));
+  const VArray<int> constraint_bodies1 = *from_attributes.lookup_or_default(
+      PhysicsGeometry::builtin_attributes.constraint_body1, AttrDomain::Edge, -1);
+  const VArray<int> constraint_bodies2 = *from_attributes.lookup_or_default(
+      PhysicsGeometry::builtin_attributes.constraint_body2, AttrDomain::Edge, -1);
+  create_constraints(this->constraints.as_mutable_span().slice(constraint_range),
+                     this->constraint_feedback.as_mutable_span().slice(constraint_range),
+                     this->rigid_bodies.as_span().slice(body_range),
+                     constraint_mask,
+                     constraint_types,
+                     constraint_bodies1,
+                     constraint_bodies2);
+
+  Set<std::string> skip_attributes = {PhysicsGeometry::builtin_attributes.skip_copy};
+  skip_attributes.add_multiple({PhysicsGeometry::builtin_attributes.constraint_type,
+                                PhysicsGeometry::builtin_attributes.constraint_body1,
+                                PhysicsGeometry::builtin_attributes.constraint_body2});
+  gather_attributes(from_attributes,
+                    AttrDomain::Point,
+                    propagation_info,
+                    skip_attributes,
+                    body_mask,
+                    to_attributes);
+  gather_attributes(from_attributes,
+                    AttrDomain::Edge,
+                    propagation_info,
+                    skip_attributes,
+                    constraint_mask,
+                    to_attributes);
+
+  /* Add all bodies and constraints to the world. */
+  if (to_world != nullptr) {
+    add_to_world(to_world,
+                 this->rigid_bodies.as_span().slice(body_range),
+                 this->constraints.as_span().slice(constraint_range));
+  }
+}
+
 void PhysicsGeometryImpl::copy_to_customdata(const AttributeAccessor attributes)
 {
+  BLI_assert(!this->is_empty);
+
   attributes.for_all(
       [&](const AttributeIDRef &attribute_id, const AttributeMetaData &meta_data) -> bool {
         CustomData *custom_data = nullptr;
@@ -340,6 +522,98 @@ void PhysicsGeometryImpl::copy_to_customdata(const AttributeAccessor attributes)
 
         return true;
       });
+}
+
+bool PhysicsGeometryImpl::move(const PhysicsGeometryImpl &from,
+                               const AttributeAccessor from_attributes,
+                               const bool use_world,
+                               const IndexMask &body_mask,
+                               const IndexMask &constraint_mask,
+                               const int bodies_offset,
+                               const int constraints_offset)
+{
+  BLI_assert(this->is_mutable());
+  BLI_assert(!this->is_empty);
+
+  /* Early check before locking. */
+  if (from.is_empty) {
+    return false;
+  }
+  std::unique_lock lock(from.data_mutex);
+  if (from.is_empty) {
+    /* This may have changed before locking the mutex. */
+    return false;
+  }
+  PhysicsGeometryImpl &from_mutable = const_cast<PhysicsGeometryImpl &>(from);
+
+  /* Cache the source before moving physics data. */
+  from_mutable.copy_to_customdata(from_attributes);
+
+  btDynamicsWorld *from_world = from_mutable.world;
+  if (use_world) {
+    if (this->world) {
+      destroy_world(*this);
+    }
+    move_world(from_mutable, *this);
+  }
+  btDynamicsWorld *to_world = this->world;
+
+  const IndexRange body_range = IndexRange(bodies_offset, body_mask.size());
+  const IndexRange constraint_range = IndexRange(constraints_offset, constraint_mask.size());
+  /* Make sure target has enough space. */
+  BLI_assert(body_range.intersect(this->rigid_bodies.index_range()) == body_range);
+  BLI_assert(constraint_range.intersect(this->constraints.index_range()) == constraint_range);
+
+  /* No need to update topology caches on full copy.
+   * Note: empty index ranges will always compare equal! */
+  if (!body_range.is_empty() && body_range == from_mutable.rigid_bodies.index_range()) {
+    this->rigid_bodies.as_mutable_span().slice(body_range).copy_from(from_mutable.rigid_bodies);
+    this->motion_states.as_mutable_span().slice(body_range).copy_from(from_mutable.motion_states);
+  }
+  else {
+    body_mask.foreach_index([&](const int src_i, const int dst_i) {
+      this->rigid_bodies[body_range[dst_i]] = from_mutable.rigid_bodies[src_i];
+      this->motion_states[body_range[dst_i]] = from_mutable.motion_states[src_i];
+      from_mutable.rigid_bodies[src_i] = nullptr;
+      from_mutable.motion_states[src_i] = nullptr;
+    });
+    for (const int src_i : from_mutable.rigid_bodies.index_range()) {
+      delete from_mutable.rigid_bodies[src_i];
+      delete from_mutable.motion_states[src_i];
+    }
+    this->tag_body_topology_changed();
+  }
+  if (!constraint_range.is_empty() && constraint_range == from_mutable.constraints.index_range()) {
+    this->constraints.as_mutable_span().slice(constraint_range).copy_from(from_mutable.constraints);
+  }
+  else {
+    constraint_mask.foreach_index([&](const int src_i, const int dst_i) {
+      this->constraints[constraint_range[dst_i]] = from_mutable.constraints[src_i];
+    });
+    for (const int src_i : from_mutable.constraints.index_range()) {
+      delete from_mutable.constraints[src_i];
+    }
+  }
+
+  /* Move all bodies and constraints to the new world. */
+  if (to_world != from_world) {
+    remove_from_world(from_world,
+                      this->rigid_bodies.as_span().slice(body_range),
+                      this->constraints.as_span().slice(constraint_range));
+    add_to_world(to_world,
+                 this->rigid_bodies.as_span().slice(body_range),
+                 this->constraints.as_span().slice(constraint_range));
+  }
+
+  /* Clear source pointers. */
+  from_mutable.world = nullptr;
+  from_mutable.rigid_bodies.reinitialize(0);
+  from_mutable.motion_states.reinitialize(0);
+  from_mutable.constraints.reinitialize(0);
+  from_mutable.constraint_feedback.reinitialize(0);
+  from_mutable.is_empty.store(true);
+
+  return true;
 }
 
 const PhysicsGeometry::BuiltinAttributes PhysicsGeometry::builtin_attributes = []() {
@@ -395,20 +669,6 @@ const PhysicsGeometry::BuiltinAttributes PhysicsGeometry::builtin_attributes = [
 
   return attributes;
 }();
-
-static void create_bodies(MutableSpan<btRigidBody *> rigid_bodies,
-                          MutableSpan<btMotionState *> motion_states)
-{
-  for (const int i : rigid_bodies.index_range()) {
-    const float mass = 1.0f;
-    const float3 local_inertia = float3(0.0f);
-    btMotionState *motion_state = motion_states[i] = new btDefaultMotionState();
-    btCollisionShape *collision_shape = nullptr;
-    rigid_bodies[i] = new btRigidBody(
-        mass, motion_state, collision_shape, to_bullet(local_inertia));
-    rigid_bodies[i]->updateInertiaTensor();
-  }
-}
 
 PhysicsGeometry::PhysicsGeometry()
 {
@@ -479,14 +739,8 @@ PhysicsGeometryImpl &PhysicsGeometry::impl_for_write()
     new_impl->constraint_feedback.fill(
         {btVector3(0, 0, 0), btVector3(0, 0, 0), btVector3(0, 0, 0), btVector3(0, 0, 0)});
     new_impl->constraints.fill(nullptr);
-    move_physics_impl_data(*impl_,
-                           this->attributes(),
-                           *new_impl,
-                           true,
-                           this->bodies_range(),
-                           this->constraints_range(),
-                           0,
-                           0);
+    new_impl->move(
+        *impl_, this->attributes(), true, this->bodies_range(), this->constraints_range(), 0, 0);
   }
   else {
     new_impl->is_empty.store(true);
@@ -496,98 +750,6 @@ PhysicsGeometryImpl &PhysicsGeometry::impl_for_write()
   impl_ = new_impl;
 
   return *const_cast<PhysicsGeometryImpl *>(impl_);
-}
-
-bool move_physics_impl_data(const PhysicsGeometryImpl &from,
-                            const AttributeAccessor from_attributes,
-                            PhysicsGeometryImpl &to,
-                            const bool use_world,
-                            const IndexMask &body_mask,
-                            const IndexMask &constraint_mask,
-                            const int bodies_offset,
-                            const int constraints_offset)
-{
-  BLI_assert(to.is_mutable());
-
-  /* Early check before locking. */
-  if (from.is_empty) {
-    return false;
-  }
-  std::unique_lock lock(from.data_mutex);
-  if (from.is_empty) {
-    /* This may have changed before locking the mutex. */
-    return false;
-  }
-  PhysicsGeometryImpl &from_mutable = const_cast<PhysicsGeometryImpl &>(from);
-
-  /* Cache the source before moving physics data. */
-  from_mutable.copy_to_customdata(from_attributes);
-
-  btDynamicsWorld *from_world = from_mutable.world;
-  if (use_world) {
-    if (to.world) {
-      destroy_world(to);
-    }
-    move_world(from_mutable, to);
-  }
-  btDynamicsWorld *to_world = to.world;
-
-  const IndexRange body_range = IndexRange(bodies_offset, body_mask.size());
-  const IndexRange constraint_range = IndexRange(constraints_offset, constraint_mask.size());
-  /* Make sure target has enough space. */
-  BLI_assert(body_range.intersect(to.rigid_bodies.index_range()) == body_range);
-  BLI_assert(constraint_range.intersect(to.constraints.index_range()) == constraint_range);
-
-  /* No need to update topology caches on full copy.
-   * Note: empty index ranges will always compare equal! */
-  if (!body_range.is_empty() && body_range == from_mutable.rigid_bodies.index_range()) {
-    to.rigid_bodies.as_mutable_span().slice(body_range).copy_from(from_mutable.rigid_bodies);
-    to.motion_states.as_mutable_span().slice(body_range).copy_from(from_mutable.motion_states);
-  }
-  else {
-    body_mask.foreach_index([&](const int src_i, const int dst_i) {
-      to.rigid_bodies[body_range[dst_i]] = from_mutable.rigid_bodies[src_i];
-      to.motion_states[body_range[dst_i]] = from_mutable.motion_states[src_i];
-      from_mutable.rigid_bodies[src_i] = nullptr;
-      from_mutable.motion_states[src_i] = nullptr;
-    });
-    for (const int src_i : from_mutable.rigid_bodies.index_range()) {
-      delete from_mutable.rigid_bodies[src_i];
-      delete from_mutable.motion_states[src_i];
-    }
-    to.tag_body_topology_changed();
-  }
-  if (!constraint_range.is_empty() && constraint_range == from_mutable.constraints.index_range()) {
-    to.constraints.as_mutable_span().slice(constraint_range).copy_from(from_mutable.constraints);
-  }
-  else {
-    constraint_mask.foreach_index([&](const int src_i, const int dst_i) {
-      to.constraints[constraint_range[dst_i]] = from_mutable.constraints[src_i];
-    });
-    for (const int src_i : from_mutable.constraints.index_range()) {
-      delete from_mutable.constraints[src_i];
-    }
-  }
-
-  /* Move all bodies and constraints to the new world. */
-  if (to_world != from_world) {
-    remove_from_world(from_world,
-                      to.rigid_bodies.as_span().slice(body_range),
-                      to.constraints.as_span().slice(constraint_range));
-    add_to_world(to_world,
-                 to.rigid_bodies.as_span().slice(body_range),
-                 to.constraints.as_span().slice(constraint_range));
-  }
-
-  /* Clear source pointers. */
-  from_mutable.world = nullptr;
-  from_mutable.rigid_bodies.reinitialize(0);
-  from_mutable.motion_states.reinitialize(0);
-  from_mutable.constraints.reinitialize(0);
-  from_mutable.constraint_feedback.reinitialize(0);
-  from_mutable.is_empty.store(true);
-
-  return true;
 }
 
 bool PhysicsGeometry::has_world() const
@@ -816,14 +978,13 @@ void PhysicsGeometry::move_or_copy_selection(
     int constraints_offset,
     const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
-  const bool has_physics_data = move_physics_impl_data(from.impl(),
-                                                       from.attributes(),
-                                                       this->impl_for_write(),
-                                                       use_world,
-                                                       body_mask,
-                                                       constraint_mask,
-                                                       bodies_offset,
-                                                       constraints_offset);
+  const bool has_physics_data = this->impl_for_write().move(from.impl(),
+                                                            from.attributes(),
+                                                            use_world,
+                                                            body_mask,
+                                                            constraint_mask,
+                                                            bodies_offset,
+                                                            constraints_offset);
 
   const Set<std::string> skip_attributes = has_physics_data ?
                                                Set<std::string>{builtin_attributes.skip_copy} :
@@ -1112,60 +1273,6 @@ void PhysicsGeometry::clear_forces(const IndexMask &selection)
   selection.foreach_index([&](const int index) { impl.rigid_bodies[index]->clearForces(); });
 }
 
-static btTypedConstraint *make_bullet_constraint_type(const PhysicsGeometry::ConstraintType type,
-                                                      btRigidBody &body1,
-                                                      btRigidBody &body2)
-{
-  using ConstraintType = PhysicsGeometry::ConstraintType;
-
-  [[maybe_unused]] btTransform zero_mat = btTransform::getIdentity();
-  [[maybe_unused]] btVector3 zero_vec = btVector3(0, 0, 0);
-  [[maybe_unused]] btVector3 axis_x = btVector3(1, 0, 0);
-  [[maybe_unused]] btVector3 axis_y = btVector3(0, 1, 0);
-  [[maybe_unused]] btVector3 axis_z = btVector3(0, 0, 1);
-
-  switch (type) {
-    case ConstraintType::None:
-      return nullptr;
-    case ConstraintType::Fixed:
-      return new btFixedConstraint(body1, body2, zero_mat, zero_mat);
-    case ConstraintType::Point:
-      return new btPoint2PointConstraint(body1, body2, zero_vec, zero_vec);
-    case ConstraintType::Hinge:
-      return new btHinge2Constraint(body1, body2, zero_vec, axis_x, axis_y);
-    case ConstraintType::Slider:
-      return new btSliderConstraint(body1, body2, zero_mat, zero_mat, true);
-    case ConstraintType::ConeTwist:
-      return new btConeTwistConstraint(body1, body2, zero_mat, zero_mat);
-    case ConstraintType::SixDoF:
-      return new btGeneric6DofConstraint(body1, body2, zero_mat, zero_mat, true);
-    case ConstraintType::SixDoFSpring:
-      return new btGeneric6DofSpringConstraint(body1, body2, zero_mat, zero_mat, true);
-    case ConstraintType::SixDoFSpring2:
-      return new btGeneric6DofSpring2Constraint(body1, body2, zero_mat, zero_mat);
-    case ConstraintType::Contact:
-      /* Can't be created manually. */
-      return nullptr;
-    case ConstraintType::Gear:
-      return new btGearConstraint(body1, body2, zero_vec, zero_vec);
-  }
-  BLI_assert_unreachable();
-  return nullptr;
-}
-
-static btTypedConstraint *make_constraint_type(const PhysicsGeometry::ConstraintType type,
-                                               btRigidBody &body1,
-                                               btRigidBody &body2,
-                                               btJointFeedback *feedback)
-{
-  btTypedConstraint *constraint = make_bullet_constraint_type(type, body1, body2);
-  if (constraint) {
-    // constraint->enableFeedback(true);
-    constraint->setJointFeedback(feedback);
-  }
-  return constraint;
-}
-
 void PhysicsGeometry::create_constraints(const IndexMask &selection,
                                          const VArray<int> &types,
                                          const VArray<int> &bodies1,
@@ -1199,32 +1306,13 @@ void PhysicsGeometry::create_constraints(const IndexMask &selection,
     return;
   }
 
-  const IndexRange bodies_range = impl.rigid_bodies.index_range();
-  selection.foreach_index([&](const int index) {
-    const ConstraintType type = ConstraintType(types[index]);
-    const int body_index1 = bodies1[index];
-    const int body_index2 = bodies2[index];
-    btRigidBody *fixed_body = &btTypedConstraint::getFixedBody();
-    btRigidBody *body1 = bodies_range.contains(body_index1) ? impl.rigid_bodies[body_index1] :
-                                                              fixed_body;
-    btRigidBody *body2 = bodies_range.contains(body_index2) ? impl.rigid_bodies[body_index2] :
-                                                              fixed_body;
-
-    if (impl.constraints[index]) {
-      const btTypedConstraint &current_constraint = *impl.constraints[index];
-      const ConstraintType current_type = to_blender(current_constraint.getConstraintType());
-      const btRigidBody *current_body1 = &current_constraint.getRigidBodyA();
-      const btRigidBody *current_body2 = &current_constraint.getRigidBodyB();
-      if (current_type == type && current_body1 == body1 && current_body2 == body2) {
-        return;
-      }
-
-      delete impl.constraints[index];
-    }
-
-    impl.constraints[index] = make_constraint_type(
-        type, *body1, *body2, &impl.constraint_feedback[index]);
-  });
+  bke::create_constraints(impl.constraints,
+                          impl.constraint_feedback,
+                          impl.rigid_bodies,
+                          selection,
+                          types,
+                          bodies1,
+                          bodies2);
 }
 
 VArray<bool> PhysicsGeometry::constraint_enabled() const
