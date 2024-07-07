@@ -126,6 +126,43 @@ struct Context {
   }
 };
 
+struct ChannelID {
+ private:
+  int index_;
+
+ public:
+  ChannelID() : index_(-1) {}
+
+  explicit ChannelID(const int index) : index_(index)
+  {
+    BLI_assert(index >= 0);
+  }
+
+  static ChannelID from_main_or_dynamic_index(const int index)
+  {
+    BLI_assert(index >= -1);
+    ChannelID channel;
+    channel.index_ = index;
+    return channel;
+  }
+
+  bool is_main() const
+  {
+    return index_ < 0;
+  }
+
+  bool is_dynamic() const
+  {
+    return index_ >= 0;
+  }
+
+  int dynamic_index() const
+  {
+    BLI_assert(this->is_dynamic());
+    return index_;
+  }
+};
+
 /**
  * Defines the calling convention for a lazy-function. During execution, a lazy-function retrieves
  * its inputs and sets the outputs through #Params.
@@ -149,13 +186,13 @@ class Params {
    *
    * The #LazyFunction must leave returned object in an initialized state, but can move from it.
    */
-  void *try_get_input_data_ptr(int index) const;
+  void *try_get_input_data_ptr(int index, ChannelID channel = {}) const;
 
   /**
    * Same as #try_get_input_data_ptr, but if the data is not yet available, request it. This makes
    * sure that the data will be available in a future execution of the #LazyFunction.
    */
-  void *try_get_input_data_ptr_or_request(int index);
+  void *try_get_input_data_ptr_or_request(int index, ChannelID channel = {});
 
   /**
    * Get a pointer to where the output value should be stored.
@@ -163,41 +200,44 @@ class Params {
    * The #LazyFunction is responsible for initializing the value.
    * After the output has been initialized to its final value, #output_set has to be called.
    */
-  void *get_output_data_ptr(int index);
+  void *get_output_data_ptr(int index, ChannelID channel = {});
 
   /**
    * Call this after the output value is initialized. After this is called, the value must not be
    * touched anymore. It may be moved or destructed immediately.
    */
-  void output_set(int index);
+  void output_set(int index, ChannelID channel = {});
 
   /**
    * Allows the #LazyFunction to check whether an output was computed already without keeping
    * track of it itself.
    */
-  bool output_was_set(int index) const;
+  bool output_was_set(int index, ChannelID channel = {}) const;
 
   /**
    * Can be used to detect which outputs have to be computed.
    */
-  ValueUsage get_output_usage(int index) const;
+  ValueUsage get_output_usage(int index, ChannelID channel = {}) const;
 
   /**
    * Tell the caller of the #LazyFunction that a specific input will definitely not be used.
    * Only an input that was not #ValueUsage::Used can become unused.
    */
-  void set_input_unused(int index);
+  void set_input_unused(int index, ChannelID channel = {});
 
+  int get_input_channels_num(int index) const;
+  int get_output_channels_num(int index) const;
   IndexRange add_output_channels(int index, int num);
 
   /**
    * Typed utility methods that wrap the methods above.
    */
-  template<typename T> T extract_input(int index);
-  template<typename T> T &get_input(int index) const;
-  template<typename T> T *try_get_input_data_ptr(int index) const;
-  template<typename T> T *try_get_input_data_ptr_or_request(int index);
+  template<typename T> T extract_input(int index, ChannelID channel = {});
+  template<typename T> T &get_input(int index, ChannelID channel = {}) const;
+  template<typename T> T *try_get_input_data_ptr(int index, ChannelID channel = {}) const;
+  template<typename T> T *try_get_input_data_ptr_or_request(int index, ChannelID channel = {});
   template<typename T> void set_output(int index, T &&value);
+  template<typename T> void set_output(int index, ChannelID channel, T &&value);
 
   /**
    * Returns true when the lazy-function is now allowed to use multi-threading when interacting
@@ -213,14 +253,16 @@ class Params {
    * methods above to make it easy to insert additional debugging logic on top of the
    * implementations.
    */
-  virtual void *try_get_input_data_ptr_impl(int index, int channel = -1) const = 0;
-  virtual void *try_get_input_data_ptr_or_request_impl(int index, int channel = -1) = 0;
-  virtual void *get_output_data_ptr_impl(int index, int channel = -1) = 0;
-  virtual void output_set_impl(int index, int channel = -1) = 0;
-  virtual bool output_was_set_impl(int index, int channel = -1) const = 0;
-  virtual ValueUsage get_output_usage_impl(int index, int channel = -1) const = 0;
-  virtual void set_input_unused_impl(int index, int channel = -1) = 0;
+  virtual void *try_get_input_data_ptr_impl(int index, ChannelID channel) const = 0;
+  virtual void *try_get_input_data_ptr_or_request_impl(int index, ChannelID channel) = 0;
+  virtual void *get_output_data_ptr_impl(int index, ChannelID channel) = 0;
+  virtual void output_set_impl(int index, ChannelID channel) = 0;
+  virtual bool output_was_set_impl(int index, ChannelID channel) const = 0;
+  virtual ValueUsage get_output_usage_impl(int index, ChannelID channel) const = 0;
+  virtual void set_input_unused_impl(int index, ChannelID channel) = 0;
 
+  virtual int get_input_channels_num_impl(int index) const = 0;
+  virtual int get_output_channels_num_impl(int index) const = 0;
   virtual IndexRange add_output_channels_impl(int index, int num) = 0;
 
   virtual bool try_enable_multi_threading_impl();
@@ -391,50 +433,64 @@ inline Params::Params(const LazyFunction &fn,
 {
 }
 
-inline void *Params::try_get_input_data_ptr(const int index) const
+inline void *Params::try_get_input_data_ptr(const int index, const ChannelID channel) const
 {
   BLI_assert(index >= 0 && index < fn_.inputs().size());
-  return this->try_get_input_data_ptr_impl(index);
+  return this->try_get_input_data_ptr_impl(index, channel);
 }
 
-inline void *Params::try_get_input_data_ptr_or_request(const int index)
-{
-  BLI_assert(index >= 0 && index < fn_.inputs().size());
-  this->assert_valid_thread();
-  return this->try_get_input_data_ptr_or_request_impl(index);
-}
-
-inline void *Params::get_output_data_ptr(const int index)
-{
-  BLI_assert(index >= 0 && index < fn_.outputs().size());
-  this->assert_valid_thread();
-  return this->get_output_data_ptr_impl(index);
-}
-
-inline void Params::output_set(const int index)
-{
-  BLI_assert(index >= 0 && index < fn_.outputs().size());
-  this->assert_valid_thread();
-  this->output_set_impl(index);
-}
-
-inline bool Params::output_was_set(const int index) const
-{
-  BLI_assert(index >= 0 && index < fn_.outputs().size());
-  return this->output_was_set_impl(index);
-}
-
-inline ValueUsage Params::get_output_usage(const int index) const
-{
-  BLI_assert(index >= 0 && index < fn_.outputs().size());
-  return this->get_output_usage_impl(index);
-}
-
-inline void Params::set_input_unused(const int index)
+inline void *Params::try_get_input_data_ptr_or_request(const int index, const ChannelID channel)
 {
   BLI_assert(index >= 0 && index < fn_.inputs().size());
   this->assert_valid_thread();
-  this->set_input_unused_impl(index);
+  return this->try_get_input_data_ptr_or_request_impl(index, channel);
+}
+
+inline void *Params::get_output_data_ptr(const int index, const ChannelID channel)
+{
+  BLI_assert(index >= 0 && index < fn_.outputs().size());
+  this->assert_valid_thread();
+  return this->get_output_data_ptr_impl(index, channel);
+}
+
+inline void Params::output_set(const int index, const ChannelID channel)
+{
+  BLI_assert(index >= 0 && index < fn_.outputs().size());
+  this->assert_valid_thread();
+  this->output_set_impl(index, channel);
+}
+
+inline bool Params::output_was_set(const int index, const ChannelID channel) const
+{
+  BLI_assert(index >= 0 && index < fn_.outputs().size());
+  return this->output_was_set_impl(index, channel);
+}
+
+inline ValueUsage Params::get_output_usage(const int index, const ChannelID channel) const
+{
+  BLI_assert(index >= 0 && index < fn_.outputs().size());
+  return this->get_output_usage_impl(index, channel);
+}
+
+inline void Params::set_input_unused(const int index, const ChannelID channel)
+{
+  BLI_assert(index >= 0 && index < fn_.inputs().size());
+  this->assert_valid_thread();
+  this->set_input_unused_impl(index, channel);
+}
+
+inline int Params::get_input_channels_num(const int index) const
+{
+  BLI_assert(index >= 0 && index < fn_.inputs().size());
+  this->assert_valid_thread();
+  return this->get_input_channels_num_impl(index);
+}
+
+inline int Params::get_output_channels_num(const int index) const
+{
+  BLI_assert(index >= 0 && index < fn_.outputs().size());
+  this->assert_valid_thread();
+  return this->get_output_channels_num_impl(index);
 }
 
 inline IndexRange Params::add_output_channels(const int index, const int num)
@@ -445,39 +501,47 @@ inline IndexRange Params::add_output_channels(const int index, const int num)
   return this->add_output_channels_impl(index, num);
 }
 
-template<typename T> inline T Params::extract_input(const int index)
+template<typename T> inline T Params::extract_input(const int index, const ChannelID channel)
 {
   this->assert_valid_thread();
-  void *data = this->try_get_input_data_ptr(index);
+  void *data = this->try_get_input_data_ptr(index, channel);
   BLI_assert(data != nullptr);
   T return_value = std::move(*static_cast<T *>(data));
   return return_value;
 }
 
-template<typename T> inline T &Params::get_input(const int index) const
+template<typename T> inline T &Params::get_input(const int index, const ChannelID channel) const
 {
-  void *data = this->try_get_input_data_ptr(index);
+  void *data = this->try_get_input_data_ptr(index, channel);
   BLI_assert(data != nullptr);
   return *static_cast<T *>(data);
 }
 
-template<typename T> inline T *Params::try_get_input_data_ptr(const int index) const
+template<typename T>
+inline T *Params::try_get_input_data_ptr(const int index, const ChannelID channel) const
 {
   this->assert_valid_thread();
-  return static_cast<T *>(this->try_get_input_data_ptr(index));
+  return static_cast<T *>(this->try_get_input_data_ptr(index, channel));
 }
 
-template<typename T> inline T *Params::try_get_input_data_ptr_or_request(const int index)
+template<typename T>
+inline T *Params::try_get_input_data_ptr_or_request(const int index, const ChannelID channel)
 {
   this->assert_valid_thread();
-  return static_cast<T *>(this->try_get_input_data_ptr_or_request(index));
+  return static_cast<T *>(this->try_get_input_data_ptr_or_request(index, channel));
 }
 
 template<typename T> inline void Params::set_output(const int index, T &&value)
 {
+  this->set_output(index, ChannelID(), std::forward<T>(value));
+}
+
+template<typename T>
+inline void Params::set_output(const int index, const ChannelID channel, T &&value)
+{
   using DecayT = std::decay_t<T>;
   this->assert_valid_thread();
-  void *data = this->get_output_data_ptr(index);
+  void *data = this->get_output_data_ptr(index, channel);
   new (data) DecayT(std::forward<T>(value));
   this->output_set(index);
 }

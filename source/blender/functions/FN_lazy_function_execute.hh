@@ -36,14 +36,16 @@ class BasicParams : public Params {
               Span<ValueUsage> output_usages,
               MutableSpan<bool> set_outputs);
 
-  void *try_get_input_data_ptr_impl(int index, int channel) const override;
-  void *try_get_input_data_ptr_or_request_impl(int index, int channel) override;
-  void *get_output_data_ptr_impl(int index, int channel) override;
-  void output_set_impl(int index, int channel) override;
-  bool output_was_set_impl(int index, int channel) const override;
-  ValueUsage get_output_usage_impl(int index, int channel) const override;
-  void set_input_unused_impl(int index, int channel) override;
+  void *try_get_input_data_ptr_impl(int index, ChannelID channel) const override;
+  void *try_get_input_data_ptr_or_request_impl(int index, ChannelID channel) override;
+  void *get_output_data_ptr_impl(int index, ChannelID channel) override;
+  void output_set_impl(int index, ChannelID channel) override;
+  bool output_was_set_impl(int index, ChannelID channel) const override;
+  ValueUsage get_output_usage_impl(int index, ChannelID channel) const override;
+  void set_input_unused_impl(int index, ChannelID channel) override;
 
+  int get_input_channels_num_impl(int index) const override;
+  int get_output_channels_num_impl(int index) const override;
   IndexRange add_output_channels_impl(int index, int num) override;
 
   bool try_enable_multi_threading_impl() override;
@@ -67,14 +69,16 @@ class RemappedParams : public Params {
                  Span<int> output_map,
                  bool &multi_threading_enabled);
 
-  void *try_get_input_data_ptr_impl(int index, int channel) const override;
-  void *try_get_input_data_ptr_or_request_impl(int index, int channel) override;
-  void *get_output_data_ptr_impl(int index, int channel) override;
-  void output_set_impl(int index, int channel) override;
-  bool output_was_set_impl(int index, int channel) const override;
-  ValueUsage get_output_usage_impl(int index, int channel) const override;
-  void set_input_unused_impl(int index, int channel) override;
+  void *try_get_input_data_ptr_impl(int index, ChannelID channel) const override;
+  void *try_get_input_data_ptr_or_request_impl(int index, ChannelID channel) override;
+  void *get_output_data_ptr_impl(int index, ChannelID channel) override;
+  void output_set_impl(int index, ChannelID channel) override;
+  bool output_was_set_impl(int index, ChannelID channel) const override;
+  ValueUsage get_output_usage_impl(int index, ChannelID channel) const override;
+  void set_input_unused_impl(int index, ChannelID channel) override;
 
+  int get_input_channels_num_impl(int index) const override;
+  int get_output_channels_num_impl(int index) const override;
   IndexRange add_output_channels_impl(int index, int num) override;
 
   bool try_enable_multi_threading_impl() override;
