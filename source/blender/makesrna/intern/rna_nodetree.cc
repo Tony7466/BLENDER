@@ -5568,7 +5568,7 @@ static void def_metallic(StructRNA *srna)
   prop = RNA_def_property(srna, "fresnel_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "custom2");
   RNA_def_property_enum_items(prop, node_metallic_fresnel_type_items);
-  RNA_def_property_ui_text(prop, "Fresnel Type", "PLACE HOLDER");
+  RNA_def_property_ui_text(prop, "Fresnel Type", "Fresnel method used to tint the metal");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
