@@ -29,12 +29,12 @@ BasicParams::BasicParams(const LazyFunction &fn,
 {
 }
 
-void *BasicParams::try_get_input_data_ptr_impl(const int index) const
+void *BasicParams::try_get_input_data_ptr_impl(const int index, const int /*channel*/) const
 {
   return inputs_[index].get();
 }
 
-void *BasicParams::try_get_input_data_ptr_or_request_impl(const int index)
+void *BasicParams::try_get_input_data_ptr_or_request_impl(const int index, const int /*channel*/)
 {
   void *value = inputs_[index].get();
   if (value == nullptr) {
@@ -43,29 +43,34 @@ void *BasicParams::try_get_input_data_ptr_or_request_impl(const int index)
   return value;
 }
 
-void *BasicParams::get_output_data_ptr_impl(const int index)
+void *BasicParams::get_output_data_ptr_impl(const int index, const int /*channel*/)
 {
   return outputs_[index].get();
 }
 
-void BasicParams::output_set_impl(const int index)
+void BasicParams::output_set_impl(const int index, const int /*channel*/)
 {
   set_outputs_[index] = true;
 }
 
-bool BasicParams::output_was_set_impl(const int index) const
+bool BasicParams::output_was_set_impl(const int index, const int /*channel*/) const
 {
   return set_outputs_[index];
 }
 
-ValueUsage BasicParams::get_output_usage_impl(const int index) const
+ValueUsage BasicParams::get_output_usage_impl(const int index, const int /*channel*/) const
 {
   return output_usages_[index];
 }
 
-void BasicParams::set_input_unused_impl(const int index)
+void BasicParams::set_input_unused_impl(const int index, const int /*channel*/)
 {
   input_usages_[index] = ValueUsage::Unused;
+}
+
+IndexRange BasicParams::add_output_channels_impl(const int /*index*/, const int /*num*/)
+{
+  return {};
 }
 
 bool BasicParams::try_enable_multi_threading_impl()
@@ -92,39 +97,45 @@ RemappedParams::RemappedParams(const LazyFunction &fn,
 {
 }
 
-void *RemappedParams::try_get_input_data_ptr_impl(const int index) const
+void *RemappedParams::try_get_input_data_ptr_impl(const int index, const int /*channel*/) const
 {
   return base_params_.try_get_input_data_ptr(input_map_[index]);
 }
 
-void *RemappedParams::try_get_input_data_ptr_or_request_impl(const int index)
+void *RemappedParams::try_get_input_data_ptr_or_request_impl(const int index,
+                                                             const int /*channel*/)
 {
   return base_params_.try_get_input_data_ptr_or_request(input_map_[index]);
 }
 
-void *RemappedParams::get_output_data_ptr_impl(const int index)
+void *RemappedParams::get_output_data_ptr_impl(const int index, const int /*channel*/)
 {
   return base_params_.get_output_data_ptr(output_map_[index]);
 }
 
-void RemappedParams::output_set_impl(const int index)
+void RemappedParams::output_set_impl(const int index, const int /*channel*/)
 {
   return base_params_.output_set(output_map_[index]);
 }
 
-bool RemappedParams::output_was_set_impl(const int index) const
+bool RemappedParams::output_was_set_impl(const int index, const int /*channel*/) const
 {
   return base_params_.output_was_set(output_map_[index]);
 }
 
-lf::ValueUsage RemappedParams::get_output_usage_impl(const int index) const
+lf::ValueUsage RemappedParams::get_output_usage_impl(const int index, const int /*channel*/) const
 {
   return base_params_.get_output_usage(output_map_[index]);
 }
 
-void RemappedParams::set_input_unused_impl(const int index)
+void RemappedParams::set_input_unused_impl(const int index, const int /*channel*/)
 {
   return base_params_.set_input_unused(input_map_[index]);
+}
+
+IndexRange RemappedParams::add_output_channels_impl(const int index, const int num)
+{
+  return base_params_.add_output_channels(output_map_[index], num);
 }
 
 bool RemappedParams::try_enable_multi_threading_impl()

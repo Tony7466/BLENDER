@@ -1342,7 +1342,7 @@ class GraphExecutorLFParams final : public Params {
     return executor_.get_local_data();
   }
 
-  void *try_get_input_data_ptr_impl(const int index) const override
+  void *try_get_input_data_ptr_impl(const int index, const int /*channel*/) const override
   {
     const InputState &input_state = node_state_.inputs[index];
     if (input_state.was_ready_for_execution) {
@@ -1351,7 +1351,7 @@ class GraphExecutorLFParams final : public Params {
     return nullptr;
   }
 
-  void *try_get_input_data_ptr_or_request_impl(const int index) override
+  void *try_get_input_data_ptr_or_request_impl(const int index, const int /*channel*/) override
   {
     const InputState &input_state = node_state_.inputs[index];
     if (input_state.was_ready_for_execution) {
@@ -1361,7 +1361,7 @@ class GraphExecutorLFParams final : public Params {
         node_, node_state_, index, current_task_, this->get_local_data());
   }
 
-  void *get_output_data_ptr_impl(const int index) override
+  void *get_output_data_ptr_impl(const int index, const int /*channel*/) override
   {
     OutputState &output_state = node_state_.outputs[index];
     BLI_assert(!output_state.has_been_computed);
@@ -1373,7 +1373,7 @@ class GraphExecutorLFParams final : public Params {
     return output_state.value;
   }
 
-  void output_set_impl(const int index) override
+  void output_set_impl(const int index, const int /*channel*/) override
   {
     OutputState &output_state = node_state_.outputs[index];
     BLI_assert(!output_state.has_been_computed);
@@ -1387,22 +1387,27 @@ class GraphExecutorLFParams final : public Params {
     output_state.has_been_computed = true;
   }
 
-  bool output_was_set_impl(const int index) const override
+  bool output_was_set_impl(const int index, const int /*channel*/) const override
   {
     const OutputState &output_state = node_state_.outputs[index];
     return output_state.has_been_computed;
   }
 
-  ValueUsage get_output_usage_impl(const int index) const override
+  ValueUsage get_output_usage_impl(const int index, const int /*channel*/) const override
   {
     const OutputState &output_state = node_state_.outputs[index];
     return output_state.usage_for_execution;
   }
 
-  void set_input_unused_impl(const int index) override
+  void set_input_unused_impl(const int index, const int /*channel*/) override
   {
     executor_.set_input_unused_during_execution(
         node_, node_state_, index, current_task_, this->get_local_data());
+  }
+
+  IndexRange add_output_channels_impl(const int /*index*/, const int /*num*/)
+  {
+    return {};
   }
 
   bool try_enable_multi_threading_impl() override

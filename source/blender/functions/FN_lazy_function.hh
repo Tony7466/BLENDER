@@ -188,6 +188,8 @@ class Params {
    */
   void set_input_unused(int index);
 
+  IndexRange add_output_channels(int index, int num);
+
   /**
    * Typed utility methods that wrap the methods above.
    */
@@ -211,13 +213,16 @@ class Params {
    * methods above to make it easy to insert additional debugging logic on top of the
    * implementations.
    */
-  virtual void *try_get_input_data_ptr_impl(int index) const = 0;
-  virtual void *try_get_input_data_ptr_or_request_impl(int index) = 0;
-  virtual void *get_output_data_ptr_impl(int index) = 0;
-  virtual void output_set_impl(int index) = 0;
-  virtual bool output_was_set_impl(int index) const = 0;
-  virtual ValueUsage get_output_usage_impl(int index) const = 0;
-  virtual void set_input_unused_impl(int index) = 0;
+  virtual void *try_get_input_data_ptr_impl(int index, int channel = -1) const = 0;
+  virtual void *try_get_input_data_ptr_or_request_impl(int index, int channel = -1) = 0;
+  virtual void *get_output_data_ptr_impl(int index, int channel = -1) = 0;
+  virtual void output_set_impl(int index, int channel = -1) = 0;
+  virtual bool output_was_set_impl(int index, int channel = -1) const = 0;
+  virtual ValueUsage get_output_usage_impl(int index, int channel = -1) const = 0;
+  virtual void set_input_unused_impl(int index, int channel = -1) = 0;
+
+  virtual IndexRange add_output_channels_impl(int index, int num) = 0;
+
   virtual bool try_enable_multi_threading_impl();
 };
 
@@ -430,6 +435,14 @@ inline void Params::set_input_unused(const int index)
   BLI_assert(index >= 0 && index < fn_.inputs().size());
   this->assert_valid_thread();
   this->set_input_unused_impl(index);
+}
+
+inline IndexRange Params::add_output_channels(const int index, const int num)
+{
+  BLI_assert(num >= 0);
+  BLI_assert(index >= 0 && index < fn_.inputs().size());
+  this->assert_valid_thread();
+  return this->add_output_channels_impl(index, num);
 }
 
 template<typename T> inline T Params::extract_input(const int index)
