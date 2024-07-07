@@ -1,2 +1,3 @@
 Referenced by issue #124098, Support some actions closing popups
 Referenced by issue #119521, Extensions Platform: beta launch
+Referenced by issue #124302, Shade auto smooth, followed by shade flat, then toggling object in outliner leads to crash (access violation)
