@@ -59,7 +59,7 @@ rna_prop_enable_on_install = BoolProperty(
 )
 rna_prop_enable_on_install_type_map = {
     "add-on": "Enable Add-on",
-    "theme": "Set as the Current Theme",
+    "theme": "Set Current Theme",
 }
 
 _ext_base_pkg_idname = "bl_ext"
@@ -2685,7 +2685,7 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
                 blender_version_max=url_params.get("blender_version_max", ""),
                 platforms=[platform for platform in url_params.get("platforms", "").split(",") if platform],
         ), str):
-            self.report({'ERROR'}, iface_("This extension is incompatible with your system:\n{:s}").format(error))
+            self.report({'ERROR'}, iface_("The extension is incompatible with this system:\n{:s}").format(error))
             return {'CANCELLED'}
         del error
 
