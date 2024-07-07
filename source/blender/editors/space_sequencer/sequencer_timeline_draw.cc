@@ -1416,20 +1416,30 @@ static void draw_strips_foreground(TimelineDrawContext *timeline_ctx,
      *  - Slightly lighter.
      *  - Red when overlapping with other strips. */
     const eSeqOverlapMode overlap_mode = SEQ_tool_settings_overlap_mode_get(timeline_ctx->scene);
-    if ((G.moving & G_TRANSFORM_SEQ) && selected && overlap_mode != SEQ_OVERLAP_OVERWRITE) {
-      if (strip.seq->flag & SEQ_OVERLAP) {
+    if (G.moving & G_TRANSFORM_SEQ) {
+      if ((strip.seq->flag & SEQ_OVERLAP) && (overlap_mode != SEQ_OVERLAP_OVERWRITE)) {
         col[0] = 255;
         col[1] = col[2] = 33;
       }
-      else {
+      else if (selected) {
         UI_GetColorPtrShade3ubv(col, col, 70);
       }
     }
-    if (selected)
+
+    const bool overlaps = (strip.seq->flag & SEQ_OVERLAP) && (G.moving & G_TRANSFORM_SEQ);
+    if (overlaps) {
+      data.flags |= GPU_SEQ_FLAG_OVERLAP;
+    }
+
+    if (selected) {
       data.flags |= GPU_SEQ_FLAG_SELECTED;
+    }
     else if (active) {
-      /* A subtle highlight outline when active but not selected. */
-      UI_GetThemeColorShade3ubv(TH_SEQ_ACTIVE, -40, col);
+      /* If the strips overlap when retiming, don't replace the red outline. */
+      if (!overlaps) {
+        /* A subtle highlight outline when active but not selected. */
+        UI_GetThemeColorShade3ubv(TH_SEQ_ACTIVE, -40, col);
+      }
       data.flags |= GPU_SEQ_FLAG_ACTIVE;
     }
     data.col_outline = color_pack(col);
