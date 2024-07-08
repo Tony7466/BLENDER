@@ -8,6 +8,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_math_base.hh"
 #include "BLI_math_vector.h"
 #include "BLI_task.h"
 
@@ -15,6 +16,7 @@
 
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
+#include "BKE_subdiv_ccg.hh"
 
 #include "sculpt_intern.hh"
 
@@ -24,6 +26,116 @@
 #include <cstdlib>
 
 namespace blender::ed::sculpt_paint::smooth {
+
+static float3 average_positions(const Span<float3> positions, const Span<int> indices)
+{
+  const float factor = math::rcp(float(indices.size()));
+  float3 result(0);
+  for (const int i : indices) {
+    result += positions[i] * factor;
+  }
+  return result;
+}
+
+void average_neighbor_position_mesh(const Span<float3> positions,
+                                    const Span<Vector<int>> vert_neighbors,
+                                    const MutableSpan<float3> new_positions)
+{
+  BLI_assert(vert_neighbors.size() == new_positions.size());
+
+  for (const int i : vert_neighbors.index_range()) {
+    const Span<int> neighbors = vert_neighbors[i];
+    new_positions[i] = average_positions(positions, neighbors);
+  }
+}
+
+void average_neighbor_position_grids(const SubdivCCG &subdiv_ccg,
+                                     const Span<int> grids,
+                                     const MutableSpan<float3> new_positions)
+{
+  BLI_assert(vert_neighbors.size() == new_positions.size());
+
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+  const Span<CCGElem *> elems = subdiv_ccg.grids;
+
+  for (const int i : grids.index_range()) {
+    const int grid = grids[i];
+    CCGElem *elem = elems[grid];
+    const int node_verts_start = i * key.grid_area;
+
+    for (const int y : IndexRange(key.grid_size)) {
+      for (const int x : IndexRange(key.grid_size)) {
+        const int offset = CCG_grid_xy_to_index(key.grid_size, x, y);
+
+        SubdivCCGCoord coord{};
+        coord.grid_index = grid;
+        coord.x = x;
+        coord.y = y;
+
+        SubdivCCGNeighbors neighbors;
+        BKE_subdiv_ccg_neighbor_coords_get(subdiv_ccg, coord, false, neighbors);
+
+        float sum = 0.0f;
+        for (const SubdivCCGCoord neighbor : neighbors.coords) {
+          sum += CCG_grid_elem_mask(
+              key, subdiv_ccg.grids[neighbor.grid_index], neighbor.x, neighbor.y);
+        }
+        new_positions[node_verts_start + offset] = sum / neighbors.coords.size();
+      }
+    }
+  }
+
+  for (const int i : grids.index_range()) {
+    const Span<int> neighbors = vert_neighbors[i];
+    new_positions[i] = average_positions(positions, neighbors);
+  }
+}
+
+void average_neighbor_position_bmesh(const Set<BMVert *, 0> &verts,
+                                     const MutableSpan<float3> new_positions)
+{
+  BLI_assert(vert_neighbors.size() == new_positions.size());
+  Vector<BMVert *, 64> neighbors;
+
+  int i = 0;
+  for (BMVert *vert : verts) {
+    float3 sum(0);
+    int total = 0;
+    int neighbor_count = 0;
+    const bool is_boundary = BM_vert_is_boundary(vert);
+
+    neighbors.clear();
+    for (BMVert *neighbor : vert_neighbors_get_bmesh(*vert, neighbors)) {
+      neighbor_count++;
+      if (is_boundary) {
+        /* Boundary vertices use only other boundary vertices. */
+        if (BM_vert_is_boundary(neighbor)) {
+          sum += float3(neighbor->co);
+          total++;
+        }
+      }
+      else {
+        /* Interior vertices use all neighbors. */
+        sum += float3(neighbor->co);
+        total++;
+      }
+      sum += float3(vert->co);
+    }
+
+    /* Do not modify corner vertices. */
+    if (neighbor_count <= 2 && is_boundary) {
+      new_positions[i] = float3(vert->co);
+    }
+
+    /* Avoid division by 0 when there are no neighbors. */
+    if (total == 0) {
+      new_positions[i] = float3(vert->co);
+    }
+
+    new_positions[i] = sum / total;
+    i++;
+  }
+}
 
 float3 neighbor_coords_average_interior(const SculptSession &ss, PBVHVertRef vertex)
 {

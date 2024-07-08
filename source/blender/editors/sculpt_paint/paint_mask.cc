@@ -195,12 +195,64 @@ static float average_masks(const Span<float> masks, const Span<int> indices)
   return result;
 }
 
-void average_neighbor_masks(const Span<float> masks,
-                            const Span<Vector<int>> vert_neighbors,
-                            const MutableSpan<float> new_masks)
+void average_neighbor_mask_mesh(const Span<float> masks,
+                                const Span<Vector<int>> vert_neighbors,
+                                const MutableSpan<float> new_masks)
 {
   for (const int i : vert_neighbors.index_range()) {
     new_masks[i] = average_masks(masks, vert_neighbors[i]);
+  }
+}
+
+void average_neighbor_mask_grids(const SubdivCCG &subdiv_ccg,
+                                 Span<int> grids,
+                                 MutableSpan<float> new_masks)
+{
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+  const Span<CCGElem *> elems = subdiv_ccg.grids;
+
+  for (const int i : grids.index_range()) {
+    const int grid = grids[i];
+    CCGElem *elem = elems[grid];
+    const int node_verts_start = i * key.grid_area;
+
+    for (const int y : IndexRange(key.grid_size)) {
+      for (const int x : IndexRange(key.grid_size)) {
+        const int offset = CCG_grid_xy_to_index(key.grid_size, x, y);
+
+        SubdivCCGCoord coord{};
+        coord.grid_index = grid;
+        coord.x = x;
+        coord.y = y;
+
+        SubdivCCGNeighbors neighbors;
+        BKE_subdiv_ccg_neighbor_coords_get(subdiv_ccg, coord, false, neighbors);
+
+        float sum = 0.0f;
+        for (const SubdivCCGCoord neighbor : neighbors.coords) {
+          sum += CCG_grid_elem_mask(
+              key, subdiv_ccg.grids[neighbor.grid_index], neighbor.x, neighbor.y);
+        }
+        new_masks[node_verts_start + offset] = sum / neighbors.coords.size();
+      }
+    }
+  }
+}
+
+void average_neighbor_mask_bmesh(int mask_offset,
+                                 const Set<BMVert *, 0> &verts,
+                                 MutableSpan<float> new_masks)
+{
+  Vector<BMVert *, 64> neighbors;
+
+  int i = 0;
+  for (BMVert *vert : verts) {
+    float sum = 0.0f;
+    neighbors.clear();
+    for (BMVert *neighbor : vert_neighbors_get_bmesh(*vert, neighbors)) {
+      sum += BM_ELEM_CD_GET_FLOAT(neighbor, mask_offset);
+    }
+    new_masks[i] = sum / neighbors.size();
   }
 }
 

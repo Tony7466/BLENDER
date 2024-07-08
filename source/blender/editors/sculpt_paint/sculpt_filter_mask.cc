@@ -77,6 +77,7 @@ static void mask_decrease_contrast(const Span<float> src, const MutableSpan<floa
 }
 
 struct LocalData {
+  Vector<int> visible_verts;
   Vector<float> mask;
   Vector<float> new_mask;
   Vector<Vector<int>> vert_neighbors;
@@ -85,6 +86,7 @@ struct LocalData {
 static void mask_filter_mesh(const OffsetIndices<int> faces,
                              const Span<int> corner_verts,
                              const GroupedSpan<int> vert_to_face_map,
+                             const Span<bool> hide_vert,
                              const Span<bool> hide_poly,
                              const FilterType mode,
                              const Span<float> prev_mask,
@@ -92,7 +94,7 @@ static void mask_filter_mesh(const OffsetIndices<int> faces,
                              LocalData &tls,
                              MutableSpan<float> mask)
 {
-  const Span<int> verts = bke::pbvh::node_unique_verts(node);
+  const Span<int> verts = hide::node_visible_verts(node, hide_vert, tls.visible_verts);
 
   tls.mask.reinitialize(verts.size());
   const MutableSpan<float> node_mask = tls.mask;
