@@ -21,6 +21,7 @@ namespace blender::ed::sculpt_paint {
 inline namespace relax_face_sets_cc {
 
 struct LocalData {
+  Vector<float> factors;
   Vector<float> distances;
   Vector<Vector<int>> vert_neighbors;
   Vector<float3> translations;
@@ -146,47 +147,6 @@ static bool get_average_position(const Span<float3> vert_positions,
 
 /** \} */
 
-static void calc_factors_faces(const Brush &brush,
-                               const Span<float3> positions_eval,
-                               const Span<float3> vert_normals,
-                               const PBVHNode &node,
-                               const float strength,
-                               const bool relax_face_sets,
-                               Object &object,
-                               LocalData &tls,
-                               const MutableSpan<float> factors)
-{
-  SculptSession &ss = *object.sculpt;
-  const StrokeCache &cache = *ss.cache;
-  const Mesh &mesh = *static_cast<Mesh *>(object.data);
-
-  const Span<int> verts = bke::pbvh::node_unique_verts(node);
-
-  fill_factor_from_hide_and_mask(mesh, verts, factors);
-  filter_region_clip_factors(ss, positions_eval, verts, factors);
-  if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal, vert_normals, verts, factors);
-  }
-
-  tls.distances.reinitialize(verts.size());
-  const MutableSpan<float> distances = tls.distances;
-  calc_brush_distances(
-      ss, positions_eval, verts, eBrushFalloffShape(brush.falloff_shape), distances);
-  filter_distances_with_radius(cache.radius, distances, factors);
-  apply_hardness_to_distances(cache, distances);
-  calc_brush_strength_factors(cache, brush, distances, factors);
-
-  if (cache.automasking) {
-    auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
-  }
-
-  scale_factors(factors, strength * strength);
-
-  calc_brush_texture_factors(ss, brush, positions_eval, verts, factors);
-
-  filter_factors_on_face_sets(ss.vert_to_face_map, ss.face_sets, relax_face_sets, verts, factors);
-}
-
 BLI_NOINLINE static void calc_relaxed_positions_faces(const OffsetIndices<int> faces,
                                                       const Span<int> corner_verts,
                                                       const int *face_sets,
@@ -198,10 +158,8 @@ BLI_NOINLINE static void calc_relaxed_positions_faces(const OffsetIndices<int> f
                                                       const Span<float3> vert_normals,
                                                       const bool relax_face_sets,
                                                       LocalData &tls,
-                                                      const Span<float> factors,
                                                       const MutableSpan<float3> new_positions)
 {
-  BLI_assert(verts.size() == factors.size());
   BLI_assert(verts.size() == new_positions.size());
 
   tls.vert_neighbors.reinitialize(verts.size());
@@ -216,7 +174,7 @@ BLI_NOINLINE static void calc_relaxed_positions_faces(const OffsetIndices<int> f
       continue;
     }
 
-    Vector<int, 16> filtered_neighbors =
+    const Vector<int, 16> filtered_neighbors =
         boundary_verts[verts[i]] ?
             filtered_boundary_neighbors(
                 vert_to_face_map, face_sets, boundary_verts, relax_face_sets, vert_neighbors[i]) :
@@ -259,23 +217,58 @@ BLI_NOINLINE static void calc_relaxed_positions_faces(const OffsetIndices<int> f
     closest_to_plane_v3(smooth_closest_plane, plane, smoothed_position);
 
     float3 displacement = smooth_closest_plane - vert_positions[verts[i]];
-    new_positions[i] = vert_positions[verts[i]] + displacement * factors[i];
+    new_positions[i] = vert_positions[verts[i]] + displacement;
   }
 }
 
 BLI_NOINLINE static void apply_positions_faces(const Sculpt &sd,
+                                               const Brush &brush,
                                                const Span<float3> positions_eval,
+                                               const Span<float3> vert_normals,
                                                const PBVHNode &node,
+                                               const float strength,
+                                               const bool relax_face_sets,
                                                Object &object,
                                                LocalData &tls,
                                                const Span<float3> new_positions,
                                                const MutableSpan<float3> positions_orig)
 {
+  SculptSession &ss = *object.sculpt;
+  const StrokeCache &cache = *ss.cache;
+  const Mesh &mesh = *static_cast<Mesh *>(object.data);
+
   const Span<int> verts = bke::pbvh::node_unique_verts(node);
+  tls.factors.reinitialize(verts.size());
+  const MutableSpan<float> factors = tls.factors;
+
+  fill_factor_from_hide_and_mask(mesh, verts, factors);
+  filter_region_clip_factors(ss, positions_eval, verts, factors);
+  if (brush.flag & BRUSH_FRONTFACE) {
+    calc_front_face(cache.view_normal, vert_normals, verts, factors);
+  }
+
+  tls.distances.reinitialize(verts.size());
+  const MutableSpan<float> distances = tls.distances;
+  calc_brush_distances(
+      ss, positions_eval, verts, eBrushFalloffShape(brush.falloff_shape), distances);
+  filter_distances_with_radius(cache.radius, distances, factors);
+  apply_hardness_to_distances(cache, distances);
+  calc_brush_strength_factors(cache, brush, distances, factors);
+
+  if (cache.automasking) {
+    auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
+  }
+
+  scale_factors(factors, strength * strength);
+
+  calc_brush_texture_factors(ss, brush, positions_eval, verts, factors);
+
+  filter_factors_on_face_sets(ss.vert_to_face_map, ss.face_sets, relax_face_sets, verts, factors);
 
   tls.translations.reinitialize(verts.size());
   const MutableSpan<float3> translations = tls.translations;
   translations_from_new_positions(new_positions, verts, positions_eval, translations);
+  scale_translations(translations, factors);
 
   write_translations(sd, object, positions_eval, verts, translations, positions_orig);
 }
@@ -310,21 +303,6 @@ static void do_relax_face_sets_brush_mesh(const Sculpt &sd,
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     LocalData &tls = all_tls.local();
     for (const int i : range) {
-      calc_factors_faces(brush,
-                         positions_eval,
-                         vert_normals,
-                         *nodes[i],
-                         strength,
-                         relax_face_sets,
-                         object,
-                         tls,
-                         factors.as_mutable_span().slice(node_vert_offsets[i]));
-    }
-  });
-
-  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-    LocalData &tls = all_tls.local();
-    for (const int i : range) {
       calc_relaxed_positions_faces(faces,
                                    corner_verts,
                                    ss.face_sets,
@@ -336,7 +314,6 @@ static void do_relax_face_sets_brush_mesh(const Sculpt &sd,
                                    vert_normals,
                                    relax_face_sets,
                                    tls,
-                                   factors.as_span().slice(node_vert_offsets[i]),
                                    new_positions.as_mutable_span().slice(node_vert_offsets[i]));
     }
   });
@@ -345,8 +322,12 @@ static void do_relax_face_sets_brush_mesh(const Sculpt &sd,
     LocalData &tls = all_tls.local();
     for (const int i : range) {
       apply_positions_faces(sd,
+                            brush,
                             positions_eval,
+                            vert_normals,
                             *nodes[i],
+                            strength,
+                            relax_face_sets,
                             object,
                             tls,
                             new_positions.as_span().slice(node_vert_offsets[i]),
