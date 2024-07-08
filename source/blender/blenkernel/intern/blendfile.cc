@@ -874,6 +874,18 @@ static void setup_app_data(bContext *C,
     BLI_assert(bfd->curscene != nullptr);
     mode = LOAD_UNDO;
   }
+  else if (bfd->fileflags & G_FILE_ASSET_EDIT_FILE) {
+    BKE_report(reports->reports,
+               RPT_WARNING,
+               "This file is managed by the asset system, you cannot overwrite it (using \"Save "
+               "As\" is possible)");
+    /* From now on the file in memory is a normal file, further saving it will contain a
+     * window-manager, scene, ... and potentially user created data. Use #Main.is_asset_edit_file
+     * to detect if saving this file needs extra protections. */
+    bfd->fileflags &= ~G_FILE_ASSET_EDIT_FILE;
+    BLI_assert(bfd->main->is_asset_edit_file);
+    mode = LOAD_UI_OFF;
+  }
   /* May happen with library files, loading undo-data should never have a null `curscene`
    * (but may have a null `curscreen`). */
   else if (ELEM(nullptr, bfd->curscreen, bfd->curscene)) {
@@ -1470,6 +1482,15 @@ UserDef *BKE_blendfile_userdef_from_defaults()
   BKE_preferences_asset_library_default_add(userdef);
 
   BKE_preferences_extension_repo_add_defaults_all(userdef);
+
+  {
+    BKE_preferences_asset_shelf_settings_ensure_catalog_path_enabled(
+        userdef, "VIEW3D_AST_brush_sculpt", "Brushes/Mesh/Sculpt/Cloth");
+    BKE_preferences_asset_shelf_settings_ensure_catalog_path_enabled(
+        userdef, "VIEW3D_AST_brush_sculpt", "Brushes/Mesh/Sculpt/General");
+    BKE_preferences_asset_shelf_settings_ensure_catalog_path_enabled(
+        userdef, "VIEW3D_AST_brush_sculpt", "Brushes/Mesh/Sculpt/Painting");
+  }
 
   return userdef;
 }
