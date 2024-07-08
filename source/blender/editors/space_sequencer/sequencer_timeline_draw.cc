@@ -71,7 +71,7 @@ using namespace blender::ed::seq;
 
 #define MUTE_ALPHA 120
 
-constexpr float MISSING_ICON_SIZE = 12.0f;
+constexpr float ICON_SIZE = 12.0f;
 
 struct StripDrawContext {
   Sequence *seq;
@@ -90,6 +90,7 @@ struct StripDrawContext {
   bool show_strip_color_tag;
   bool missing_data_block;
   bool missing_media;
+  bool is_linked;
 };
 
 struct TimelineDrawContext {
@@ -198,7 +199,8 @@ static void strip_draw_context_set_text_overlay_visibility(TimelineDrawContext *
 
   const bool overlays_enabled = (ctx->sseq->timeline_overlay.flag &
                                  (SEQ_TIMELINE_SHOW_STRIP_NAME | SEQ_TIMELINE_SHOW_STRIP_SOURCE |
-                                  SEQ_TIMELINE_SHOW_STRIP_DURATION)) != 0;
+                                  SEQ_TIMELINE_SHOW_STRIP_DURATION |
+                                  SEQ_TIMELINE_SHOW_STRIP_LINKS)) != 0;
 
   strip_ctx->can_draw_text_overlay = (strip_ctx->top - strip_ctx->bottom) / ctx->pixely >=
                                      threshold;
@@ -256,6 +258,7 @@ static StripDrawContext strip_draw_context_get(TimelineDrawContext *ctx, Sequenc
   /* Determine if strip (or contents of meta strip) has missing data/media. */
   strip_ctx.missing_data_block = !SEQ_sequence_has_valid_data(seq);
   strip_ctx.missing_media = media_presence_is_missing(scene, seq);
+  strip_ctx.is_linked = true;
   if (seq->type == SEQ_TYPE_META) {
     const ListBase *seqbase = &seq->seqbase;
     LISTBASE_FOREACH (const Sequence *, sub, seqbase) {
@@ -873,6 +876,10 @@ static size_t draw_seq_text_get_overlay_string(TimelineDrawContext *timeline_ctx
     text_array[i++] = strip_duration_text;
   }
 
+  if (timeline_ctx->sseq->timeline_overlay.flag & SEQ_TIMELINE_SHOW_STRIP_DURATION) {
+    // TODO
+  }
+
   BLI_assert(i <= ARRAY_SIZE(text_array));
 
   return BLI_string_join_array(r_overlay_string, overlay_string_len, text_array, i);
@@ -910,7 +917,7 @@ static void draw_icon_centered(TimelineDrawContext &ctx,
   UI_view2d_view_ortho(ctx.v2d);
   wmOrtho2_region_pixelspace(ctx.region);
 
-  const float icon_size = 16 * UI_SCALE_FAC;
+  const float icon_size = ICON_SIZE * UI_SCALE_FAC;
   if (BLI_rctf_size_x(&ctx.v2d->cur) < icon_size) {
     UI_view2d_view_restore(ctx.C);
     return;
@@ -940,12 +947,13 @@ static void draw_icon_centered(TimelineDrawContext &ctx,
 static void draw_strip_icons(TimelineDrawContext *timeline_ctx,
                              const Vector<StripDrawContext> &strips)
 {
-  const float icon_size_x = MISSING_ICON_SIZE * timeline_ctx->pixelx * UI_SCALE_FAC;
+  const float icon_size_x = ICON_SIZE * timeline_ctx->pixelx * UI_SCALE_FAC;
 
   for (const StripDrawContext &strip : strips) {
     const bool missing_data = strip.missing_data_block;
     const bool missing_media = strip.missing_media;
-    if (!missing_data && !missing_media) {
+    const bool is_linked = strip.is_linked;
+    if (!missing_data && !missing_media && !is_linked) {
       continue;
     }
 
@@ -969,6 +977,11 @@ static void draw_strip_icons(TimelineDrawContext *timeline_ctx,
       if (missing_media) {
         rect.xmax = min_ff(strip.right_handle - strip.handle_width, rect.xmin + icon_size_x);
         draw_icon_centered(*timeline_ctx, rect, ICON_ERROR, col);
+        rect.xmin = rect.xmax;
+      }
+      if (is_linked) {
+        rect.xmax = min_ff(strip.right_handle - strip.handle_width, rect.xmin + icon_size_x);
+        draw_icon_centered(*timeline_ctx, rect, ICON_LINKED, col);
       }
     }
 
@@ -1024,12 +1037,17 @@ static void draw_seq_text_overlay(TimelineDrawContext *timeline_ctx,
   rect.ymin = !strip_ctx->can_draw_strip_content ? strip_ctx->bottom :
                                                    strip_ctx->strip_content_top;
   rect.xmin = max_ff(rect.xmin, timeline_ctx->v2d->cur.xmin + text_margin);
+  int num_icons = 0;
   if (strip_ctx->missing_data_block) {
-    rect.xmin += MISSING_ICON_SIZE * timeline_ctx->pixelx * UI_SCALE_FAC;
+    num_icons++;
   }
   if (strip_ctx->missing_media) {
-    rect.xmin += MISSING_ICON_SIZE * timeline_ctx->pixelx * UI_SCALE_FAC;
+    num_icons++;
   }
+  if (strip_ctx->is_linked) {
+    num_icons++;
+  }
+  rect.xmin += num_icons * ICON_SIZE * timeline_ctx->pixelx * UI_SCALE_FAC;
   rect.xmin = min_ff(rect.xmin, timeline_ctx->v2d->cur.xmax);
 
   CLAMP(rect.xmax, timeline_ctx->v2d->cur.xmin + text_margin, timeline_ctx->v2d->cur.xmax);
