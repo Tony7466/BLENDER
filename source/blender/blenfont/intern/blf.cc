@@ -609,15 +609,20 @@ int BLF_draw_mono(int fontid, const char *str, const size_t str_len, int cwidth,
   return columns;
 }
 
-void BLF_draw_svg_icon(
-    uint icon_id, float x, float y, float size, float color[4], float outline_alpha)
+void BLF_draw_svg_icon(uint icon_id,
+                       float x,
+                       float y,
+                       float size,
+                       float color[4],
+                       float outline_alpha,
+                       std::function<void(std::string &)> edit_source_cb)
 {
   FontBLF *font = global_font[0];
   if (font) {
     /* Avoid bgl usage to corrupt BLF drawing. */
     GPU_bgl_end();
     blf_draw_gpu__start(font);
-    blf_draw_svg_icon(font, icon_id, x, y, size, color, outline_alpha);
+    blf_draw_svg_icon(font, icon_id, x, y, size, color, outline_alpha, edit_source_cb);
     blf_draw_gpu__end(font);
   }
 }

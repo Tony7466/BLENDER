@@ -1377,6 +1377,37 @@ static int get_draw_size(enum eIconSizes size)
   }
 }
 
+static void icon_source_edit_cb(std::string &xml)
+{
+  bTheme *btheme = UI_GetTheme();
+  const std::string id = "MeshSelected";
+  uchar *col = btheme->space_view3d.vertex_select;
+
+  size_t g_start;
+  g_start = xml.find(id);
+  if (g_start != std::string::npos) {
+    size_t g_end = xml.find("</g>", g_start);
+    if (g_end == std::string::npos) {
+      // break;
+    }
+
+    char hex[10];
+    BLI_snprintf(hex, sizeof(hex), "#%02x%02x%02x%02x", col[0], col[1], col[2], col[3]);
+
+    size_t att_start;
+    while (std::string::npos != (att_start = xml.find("fill=\"", g_start))) {
+      if (att_start > g_end) {
+        break;
+      }
+      size_t att_end = xml.find("\"", att_start + 6);
+      if (att_end != std::string::npos && (att_end - att_start < 12)) {
+        xml.replace(att_start + 6, att_end - att_start - 6, hex);
+      }
+      g_start = att_end;
+    }
+  }
+}
+
 static void icon_draw_size(float x,
                            float y,
                            int icon_id,
@@ -1476,7 +1507,13 @@ static void icon_draw_size(float x,
                                             0.0f;
 
     if (di->type == ICON_TYPE_SVG_COLOR) {
-      BLF_draw_svg_icon(uint(icon_id), x, y, float(draw_size) / aspect, nullptr, outline_intensity);
+      BLF_draw_svg_icon(uint(icon_id),
+                        x,
+                        y,
+                        float(draw_size) / aspect,
+                        nullptr,
+                        outline_intensity,
+                        icon_source_edit_cb);
     }
     else {
       float color[4];
@@ -1487,7 +1524,8 @@ static void icon_draw_size(float x,
         UI_GetThemeColor4fv(TH_TEXT, color);
       }
       color[3] = alpha;
-      BLF_draw_svg_icon(uint(icon_id), x, y, float(draw_size) / aspect, color, outline_intensity);
+      BLF_draw_svg_icon(
+          uint(icon_id), x, y, float(draw_size) / aspect, color, outline_intensity, nullptr);
     }
 
     if (text_overlay && text_overlay->text[0] != '\0') {
