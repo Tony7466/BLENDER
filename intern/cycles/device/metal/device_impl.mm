@@ -1476,8 +1476,7 @@ void MetalDevice::update_bvh(BVHMetal *bvh_metal)
 
   for (uint64_t i = 0; i < count; ++i) {
     if (bvh_metal->blas_array[i]) {
-      [mtlBlasArgEncoder setArgumentBuffer:blas_buffer
-                                    offset:i * mtlBlasArgEncoder.encodedLength];
+      [mtlBlasArgEncoder setArgumentBuffer:blas_buffer offset:i * mtlBlasArgEncoder.encodedLength];
       [mtlBlasArgEncoder setAccelerationStructure:bvh_metal->blas_array[i] atIndex:0];
     }
   }

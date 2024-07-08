@@ -56,7 +56,7 @@ const char *kernel_type_as_string(MetalPipelineType pso_type);
 
 /* A pipeline object that can be shared between multiple instances of MetalDeviceQueue. */
 class MetalKernelPipeline {
-public:
+ public:
   void compile();
 
   int pipeline_id;
@@ -91,13 +91,13 @@ public:
 /* An actively instanced pipeline that can only be used by a single instance of MetalDeviceQueue.
  */
 class MetalDispatchPipeline {
-public:
+ public:
   ~MetalDispatchPipeline();
 
   bool update(MetalDevice *metal_device, DeviceKernel kernel);
   void free_intersection_function_tables();
 
-private:
+ private:
   friend class MetalDeviceQueue;
   friend struct ShaderCache;
 
