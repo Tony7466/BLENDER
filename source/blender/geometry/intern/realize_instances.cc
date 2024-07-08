@@ -178,6 +178,7 @@ struct RealizeCurveTask {
 
 struct GreasePencilRealizeInfo {
   const GreasePencil *grease_pencil = nullptr;
+  /** Matches the order in #AllGreasePencilsInfo.attributes. */
   Array<std::optional<GVArraySpan>> attributes;
   /** Maps old material indices to new material indices. */
   Array<int> material_index_map;
@@ -236,8 +237,11 @@ struct AllCurvesInfo {
 };
 
 struct AllGreasePencilsInfo {
+  /** Ordering of all attributes that are propagated to the output grease pencil generically. */
   OrderedAttributes attributes;
+  /** Ordering of the original gresae pencils that are joined. */
   VectorSet<const GreasePencil *> order;
+  /** Preprocessed data about every original grease pencil. This is ordered by #order. */
   Array<GreasePencilRealizeInfo> realize_info;
   /** Ordered materials on the output grease pencil. */
   VectorSet<Material *> materials;
