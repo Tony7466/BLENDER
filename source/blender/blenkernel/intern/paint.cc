@@ -1855,6 +1855,12 @@ void BKE_sculpt_update_object_before_eval(Object *ob_eval)
 
   if (ss && ss->building_vp_handle == false) {
     if (!ss->cache && !ss->filter_cache && !ss->expand_cache) {
+      if (ss->pbvh) {
+        /* Before destroying the pbvh, flush the updates to the underlying representation to ensure
+         * that PBVH rendering works as expected for the Curve stroke type.
+         * See #122947 for more information. */
+        blender::bke::pbvh::update_normals(*ss->pbvh, ss->subdiv_ccg);
+      }
       /* We free pbvh on changes, except in the middle of drawing a stroke
        * since it can't deal with changing PVBH node organization, we hope
        * topology does not change in the meantime .. weak. */
