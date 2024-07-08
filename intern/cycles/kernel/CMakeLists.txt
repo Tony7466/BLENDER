@@ -497,7 +497,8 @@ if(WITH_CYCLES_CUDA_BINARIES)
 
   # build for each arch
   set(CYCLES_CUDA_BINARIES_ARCH_WITHOUT_PREFIX ${CYCLES_CUDA_BINARIES_ARCH})
-  list(TRANSFORM CYCLES_CUDA_BINARIES_ARCH_WITHOUT_PREFIX REPLACE "sm_" "")
+  list(TRANSFORM CYCLES_CUDA_BINARIES_ARCH_WITHOUT_PREFIX REPLACE "sm_|compute_" "")
+  list(REMOVE_DUPLICATES CYCLES_CUDA_BINARIES_ARCH_WITHOUT_PREFIX)
 
   add_library(cycles_kernel_cuda STATIC
     ${SRC_KERNEL_DEVICE_CUDA}
@@ -508,7 +509,7 @@ if(WITH_CYCLES_CUDA_BINARIES)
     CUDA_SEPARABLE_COMPILATION ON
     CUDA_ARCHITECTURES "${CYCLES_CUDA_BINARIES_ARCH_WITHOUT_PREFIX}")
 
-  target_compile_options(cycles_kernel_cuda PRIVATE -use_fast_math -lineinfo -Wno-deprecated-gpu-targets)
+  target_compile_options(cycles_kernel_cuda PRIVATE -use_fast_math -Wno-deprecated-gpu-targets)
 
   cycles_set_solution_folder(cycles_kernel_cuda)
 
@@ -554,7 +555,7 @@ if(WITH_CYCLES_DEVICE_OPTIX AND WITH_CYCLES_CUDA_BINARIES)
     CUDA_OPTIX_COMPILATION ON
     CUDA_ARCHITECTURES 50)
 
-  target_compile_options(cycles_kernel_optix PRIVATE -use_fast_math -lineinfo -Wno-deprecated-gpu-targets -rdc=true)
+  target_compile_options(cycles_kernel_optix PRIVATE -use_fast_math -rdc=true)
 
   cycles_set_solution_folder(cycles_kernel_optix)
 
@@ -562,7 +563,7 @@ if(WITH_CYCLES_DEVICE_OPTIX AND WITH_CYCLES_CUDA_BINARIES)
     # Get object file name
     get_filename_component(optix_file ${optix_source_file} NAME_WE)
     set(optix_file ${optix_file}.optixir)
-    set(optix_file_compressed ${optix_file}.optixir.zst)
+    set(optix_file_compressed ${optix_file}.zst)
     # Get full path to object file (this is a hack since CMake provides no way to query those paths from the cycles_kernel_optix target)
     list(FIND SRC_KERNEL_DEVICE_OPTIX ${optix_source_file} optix_source_file_index)
     set(optix_file $<LIST:GET,$<TARGET_OBJECTS:cycles_kernel_optix>,${optix_source_file_index}>)
