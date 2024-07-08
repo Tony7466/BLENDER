@@ -95,10 +95,10 @@ void neighbor_position_average_interior_grids(const OffsetIndices<int> faces,
                                               const Span<int> grids,
                                               const MutableSpan<float3> new_positions)
 {
-  BLI_assert(vert_neighbors.size() == new_positions.size());
-
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
   const Span<CCGElem *> elems = subdiv_ccg.grids;
+
+  BLI_assert(grids.size() * key.grid_area == new_positions.size());
 
   for (const int i : grids.index_range()) {
     const int grid = grids[i];
