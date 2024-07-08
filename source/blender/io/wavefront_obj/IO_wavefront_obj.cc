@@ -44,5 +44,5 @@ void OBJ_import(bContext *C, const OBJImportParams *import_params)
 
 void OBJ_import_mesh(const OBJImportParams *import_params, blender::bke::Instances *instances)
 {
-  blender::io::obj::importer_mesh(*import_params, instances);
+  blender::io::obj::importer_geometry(*import_params, instances);
 }

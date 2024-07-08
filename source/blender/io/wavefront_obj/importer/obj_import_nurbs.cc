@@ -6,6 +6,7 @@
  * \ingroup obj
  */
 
+#include "BKE_lib_id.hh"
 #include "BKE_object.hh"
 
 #include "BLI_listbase.h"
@@ -24,7 +25,7 @@ Curve *blender::io::obj::CurveFromGeometry::create_curve()
 {
   BLI_assert(!curve_geometry_.nurbs_element_.curv_indices.is_empty());
 
-  Curve *curve = nullptr;
+  Curve *curve = static_cast<Curve *>(BKE_id_new_nomain(ID_CU_LEGACY, nullptr));
 
   BKE_curve_init(curve, OB_CURVES_LEGACY);
 

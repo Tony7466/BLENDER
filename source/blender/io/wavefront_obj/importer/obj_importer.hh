@@ -12,9 +12,9 @@
 
 namespace blender::io::obj {
 
-void importer_mesh(const OBJImportParams &import_params,
-                   bke::Instances *instances,
-                   size_t read_buffer_size = 256 * 1024);
+void importer_geometry(const OBJImportParams &import_params,
+                       bke::Instances *instances,
+                       size_t read_buffer_size = 256 * 1024);
 
 /* Main import function used from within Blender. */
 void importer_main(bContext *C, const OBJImportParams &import_params);

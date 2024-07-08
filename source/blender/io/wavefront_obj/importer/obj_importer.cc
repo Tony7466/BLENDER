@@ -75,10 +75,10 @@ static Collection *find_or_create_collection(Main *bmain,
   return target;
 }
 
-static void geometry_to_blender_meshes(const OBJImportParams &import_params,
-                                       Vector<std::unique_ptr<Geometry>> &all_geometries,
-                                       const GlobalVertices &global_vertices,
-                                       bke::Instances *instances)
+static void geometry_to_blender_geometry_set(const OBJImportParams &import_params,
+                                             Vector<std::unique_ptr<Geometry>> &all_geometries,
+                                             const GlobalVertices &global_vertices,
+                                             bke::Instances *instances)
 {
   for (const std::unique_ptr<Geometry> &geometry : all_geometries) {
     bke::GeometrySet geometry_set;
@@ -166,9 +166,9 @@ static void geometry_to_blender_objects(Main *bmain,
   DEG_relations_tag_update(bmain);
 }
 
-void importer_mesh(const OBJImportParams &import_params,
-                   bke::Instances *instances,
-                   size_t read_buffer_size)
+void importer_geometry(const OBJImportParams &import_params,
+                       bke::Instances *instances,
+                       size_t read_buffer_size)
 {
   /* List of Geometry instances to be parsed from OBJ file. */
   Vector<std::unique_ptr<Geometry>> all_geometries;
@@ -178,7 +178,7 @@ void importer_mesh(const OBJImportParams &import_params,
   OBJParser obj_parser{import_params, read_buffer_size};
   obj_parser.parse(all_geometries, global_vertices);
 
-  geometry_to_blender_meshes(import_params, all_geometries, global_vertices, instances);
+  geometry_to_blender_geometry_set(import_params, all_geometries, global_vertices, instances);
 }
 
 void importer_main(bContext *C, const OBJImportParams &import_params)

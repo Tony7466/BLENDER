@@ -36,7 +36,6 @@ class MeshFromGeometry : NonMovable, NonCopyable {
 
   Mesh *create_mesh(const OBJImportParams &import_params);
 
-  // TODO : rename this to create_mesh_object
   Object *create_mesh_object(Main *bmain,
                              Map<std::string, std::unique_ptr<MTLMaterial>> &materials,
                              Map<std::string, Material *> &created_materials,

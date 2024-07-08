@@ -43,7 +43,6 @@ static void node_geo_exec(GeoNodeExecParams params)
   BKE_reports_init(&reports, RPT_STORE);
   import_params.reports = &reports;
 
-  // TODO : How is this cleaned up ?
   bke::Instances *instances = new bke::Instances();
 
   OBJ_import_mesh(&import_params, instances);
