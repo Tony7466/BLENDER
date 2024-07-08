@@ -382,14 +382,15 @@ def register():
             if props:
                 for prop, value in props:
                     setattr(kmi.properties, prop, value)
-            addon_keymaps.append((km, kmi))
+            addon_keymaps.append(km)
 
 
 def unregister():
 
     # keymaps
-    for km, kmi in addon_keymaps:
-        km.keymap_items.remove(kmi)
+    for km in addon_keymaps:
+        for kmi in km.keymap_items:
+            km.keymap_items.remove(kmi)
     addon_keymaps.clear()
 
     from bpy.utils import unregister_class
