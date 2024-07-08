@@ -1312,6 +1312,22 @@ FCurve *action_fcurve_ensure(Main *bmain,
   }
 
   if (USER_EXPERIMENTAL_TEST(&U, use_animation_baklava) && act->wrap().is_action_layered()) {
+    /* NOTE: for layered actions we require the following:
+     *
+     * - `ptr` is non-null.
+     * - `ptr`s owner ID is already uses `act`.
+     *
+     * This isn't for any principled reason, but rather is because adding
+     * support for layered actions to this function was a fix to make Follow
+     * Path animation work properly with layered actions (see PR #124353), and
+     * those are the requirements the Follow Path code conveniently met.
+     * Moreover those requirements were also already met by the other call sites
+     * that potentially call this function with layered actions.
+     *
+     * Trying to puzzle out what "should" happen when these requirements don't
+     * hold, or if this is even the best place to handle the layered action
+     * cases at all, was leading to discussion of larger changes than made sense
+     * to tackle at that point. */
     if (ptr == nullptr) {
       return nullptr;
     }
@@ -1319,8 +1335,9 @@ FCurve *action_fcurve_ensure(Main *bmain,
     if (adt == nullptr || adt->action != act) {
       return nullptr;
     }
-
     Action &action = act->wrap();
+
+    /* Ensure the id has an assigned slot. */
     Slot &slot = action.slot_ensure_for_id(*ptr->owner_id);
     action.assign_id(&slot, *ptr->owner_id);
 

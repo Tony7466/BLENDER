@@ -768,11 +768,14 @@ Vector<FCurve *> fcurves_all(Action &action);
  * Get (or add relevant data to be able to do so) an F-Curve from the given
  * Action. This assumes that all the destinations are valid.
  *
+ * NOTE: this function is primarily intended for use with legacy actions, but
+ * for reasons of expedience it now also works with layered actions under the
+ * following limited circumstances: `ptr` must be non-null and must be a user of
+ * `act`. Otherwise this function will return nullptr for layered actions. See
+ * the comments in the implementation for more details.
+ *
  * \param ptr: the animated ID the fcurve is being looked up/created for. For
- * legacy actions this is optional and may be null, but for layered actions no
- * fcurve will be found/created if it's null and the function will return
- * nullptr. If provided it is used for things like XYZ -> RGB, and for layered
- * actions it is additionally used to determine the Slot to use in the action.
+ * legacy actions this is optional and may be null.
  */
 FCurve *action_fcurve_ensure(Main *bmain,
                              bAction *act,
