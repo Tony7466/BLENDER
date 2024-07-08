@@ -543,13 +543,15 @@ endif()
 # OptiX PTX modules
 
 if(WITH_CYCLES_DEVICE_OPTIX AND WITH_CYCLES_CUDA_BINARIES)
+  cmake_minimum_required(VERSION 3.27) # Required for CUDA_OPTIX_COMPILATION support
+
   add_library(cycles_kernel_optix OBJECT
     ${SRC_KERNEL_DEVICE_OPTIX}
     ${SRC_KERNEL_DEVICE_GPU_HEADERS}
     ${SRC_KERNEL_DEVICE_OPTIX_HEADERS})
 
   set_target_properties(cycles_kernel_optix PROPERTIES
-    CUDA_PTX_COMPILATION ON
+    CUDA_OPTIX_COMPILATION ON
     CUDA_ARCHITECTURES 50)
 
   target_compile_options(cycles_kernel_optix PRIVATE -use_fast_math -lineinfo -Wno-deprecated-gpu-targets -rdc=true)
@@ -559,19 +561,19 @@ if(WITH_CYCLES_DEVICE_OPTIX AND WITH_CYCLES_CUDA_BINARIES)
   foreach(optix_source_file ${SRC_KERNEL_DEVICE_OPTIX})
     # Get object file name
     get_filename_component(optix_file ${optix_source_file} NAME_WE)
-    set(optix_file ${optix_file}.ptx)
-	  set(optix_file_compressed ${optix_file}.zst)
-    # Get full path to object file
+    set(optix_file ${optix_file}.optixir)
+    set(optix_file_compressed ${optix_file}.optixir.zst)
+    # Get full path to object file (this is a hack since CMake provides no way to query those paths from the cycles_kernel_optix target)
     list(FIND SRC_KERNEL_DEVICE_OPTIX ${optix_source_file} optix_source_file_index)
-	  set(optix_file $<LIST:GET,$<TARGET_OBJECTS:cycles_kernel_optix>,${optix_source_file_index}>)
-  
+    set(optix_file $<LIST:GET,$<TARGET_OBJECTS:cycles_kernel_optix>,${optix_source_file_index}>)
+
     add_custom_command(
-	    OUTPUT ${optix_file_compressed}
+      OUTPUT ${optix_file_compressed}
       DEPENDS cycles_kernel_optix
       COMMAND "$<TARGET_FILE:zstd_compress>" ${optix_file} ${optix_file_compressed})
-	  
-	  list(APPEND optix_link ${optix_file_compressed})
-	  delayed_install("${CMAKE_CURRENT_BINARY_DIR}" ${optix_file_compressed} ${CYCLES_INSTALL_PATH}/lib/optix)
+
+    list(APPEND optix_link ${optix_file_compressed})
+    delayed_install("${CMAKE_CURRENT_BINARY_DIR}" ${optix_file_compressed} ${CYCLES_INSTALL_PATH}/lib/optix)
   endforeach()
 
   add_custom_target(cycles_kernel_optix_link ALL DEPENDS ${optix_link})

@@ -25,8 +25,6 @@ endif()
 ###########################################################################
 
 if(WITH_CYCLES_DEVICE_CUDA AND (WITH_CYCLES_CUDA_BINARIES OR NOT WITH_CUDA_DYNLOAD))
-  cmake_minimum_required(VERSION 3.9) # Required for CUDA_PTX_COMPILATION support
-
   include(CheckLanguage)
   check_language(CUDA)
 

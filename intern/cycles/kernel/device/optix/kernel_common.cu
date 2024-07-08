@@ -19,6 +19,7 @@
 #include "kernel/bvh/bvh.h"
 #include "kernel/geom/motion_triangle_shader.h"
 #include "kernel/geom/subd_triangle.h"
+#include "kernel/light/distribution.h"
 #include "kernel/svm/svm.h"
 
 // Instantiate SVM node functions

@@ -210,7 +210,7 @@ bool OptiXDevice::load_kernels(const uint kernel_features)
   string suffix = use_osl ? "_osl" : "";
   string ptx_filename;
   if (need_optix_kernels) {
-    ptx_filename = path_get("lib/optix/kernel_common" + suffix + ".ptx.zst");
+    ptx_filename = path_get("lib/optix/kernel_common" + suffix + ".optixir.zst");
     if (use_adaptive_compilation() || path_file_size(ptx_filename) == -1) {
       std::string optix_include_dir = get_optix_include_dir();
       if (optix_include_dir.empty()) {
@@ -332,7 +332,7 @@ bool OptiXDevice::load_kernels(const uint kernel_features)
     pipeline_options.traversableGraphFlags = OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_ANY;
   }
 
-  /* Load and compile PTX modules with OptiX kernels. */
+  /* Load and compile modules with OptiX kernels. */
   const char *module_names[NUM_MODULES] = {};
   module_names[MOD_COMMON] = "kernel_common";
   module_names[MOD_INTEGRATOR_INTERSECT_CLOSEST] = "kernel_integrator_intersect_closest";
@@ -361,11 +361,11 @@ bool OptiXDevice::load_kernels(const uint kernel_features)
       continue;
     }
 
-	string module_name = module_names[i];
+    string module_name = module_names[i];
     if (i < MOD_INTEGRATOR_INTERSECT_CLOSEST || i >= MOD_INTEGRATOR_SHADE_BACKGROUND)
       module_name += suffix;
 
-    ptx_filename = path_get("lib/optix/" + module_name + ".ptx.zst");
+    ptx_filename = path_get("lib/optix/" + module_name + ".optixir.zst");
     string ptx_data;
     if (use_adaptive_compilation() || path_file_size(ptx_filename) == -1) {
       string cflags = compile_kernel_get_common_cflags(kernel_features);
@@ -838,8 +838,8 @@ bool OptiXDevice::load_osl_kernels()
   osl_groups.resize(osl_kernels.size() * 2 + 1);
   osl_modules.resize(osl_kernels.size() + 1);
 
-  { /* Load and compile PTX module with OSL services. */
-    string ptx_data, ptx_filename = path_get("lib/optix/services_optix.ptx.zst");
+  { /* Load and compile module with OSL services. */
+    string ptx_data, ptx_filename = path_get("lib/optix/services_optix.optixir.zst");
     if (!path_read_compressed_text(ptx_filename, ptx_data)) {
       set_error(string_printf("Failed to load OptiX OSL services kernel from '%s'",
                               ptx_filename.c_str()));
