@@ -2215,17 +2215,10 @@ bool BKE_sculptsession_use_pbvh_draw(const Object *ob, const RegionView3D *rv3d)
   }
 
   if (BKE_pbvh_type(*ss->pbvh) == PBVH_FACES) {
-    Mesh *mesh = static_cast<Mesh *>(ob->data);
     /* Regular mesh only draws from PBVH without modifiers and shape keys, or for
      * external engines that do not have access to the PBVH like Eevee does. */
     const bool external_engine = rv3d && rv3d->view_render != nullptr;
-
-    /* If an object has a linked duplicate, disable PBVH drawing to ensure that normals are
-     * displayed correctly. See #122947 for more information. */
-    const bool multiple_users = (ID_REAL_USERS(&mesh->id) > 1);
-
-    return !(ss->shapekey_active || ss->deform_modifiers_active || external_engine ||
-             multiple_users);
+    return !(ss->shapekey_active || ss->deform_modifiers_active || external_engine);
   }
 
   /* Multires and dyntopo always draw directly from the PBVH. */
