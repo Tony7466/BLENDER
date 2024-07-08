@@ -135,7 +135,8 @@ using DeviceShaderCache = std::pair<id<MTLDevice>, unique_ptr<ShaderCache>>;
 int g_shaderCacheCount = 0;
 DeviceShaderCache g_shaderCache[MAX_POSSIBLE_GPUS_ON_SYSTEM];
 
-std::atomic_int g_next_pipeline_id = 0;
+/* Next UID for associating a MetalDispatchPipeline with an originating MetalKernelPipeline. */
+static std::atomic_int g_next_pipeline_id = 0;
 
 ShaderCache *get_shader_cache(id<MTLDevice> mtlDevice)
 {
@@ -507,7 +508,7 @@ bool MetalDispatchPipeline::update(MetalDevice *metal_device, DeviceKernel kerne
             newIntersectionFunctionTableWithDescriptor:ift_desc];
 
         /* Finally write the function handles into this pipeline's table */
-        int size = (int)[best_pipeline->table_functions[table] count];
+        int size = int([best_pipeline->table_functions[table] count]);
         for (int i = 0; i < size; i++) {
           id<MTLFunctionHandle> handle = [pipeline
               functionHandleWithFunction:best_pipeline->table_functions[table][i]];
