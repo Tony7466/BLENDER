@@ -215,8 +215,8 @@ static float average_masks(const CCGKey &key,
 }
 
 void average_neighbor_mask_grids(const SubdivCCG &subdiv_ccg,
-                                 Span<int> grids,
-                                 MutableSpan<float> new_masks)
+                                 const Span<int> grids,
+                                 const MutableSpan<float> new_masks)
 {
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
   const Span<CCGElem *> elems = subdiv_ccg.grids;
@@ -255,7 +255,7 @@ static float average_masks(const int mask_offset, const Span<const BMVert *> ver
 
 void average_neighbor_mask_bmesh(const int mask_offset,
                                  const Set<BMVert *, 0> &verts,
-                                 MutableSpan<float> new_masks)
+                                 const MutableSpan<float> new_masks)
 {
   Vector<BMVert *, 64> neighbors;
   int i = 0;
