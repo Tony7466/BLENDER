@@ -802,7 +802,7 @@ FCurve *action_fcurve_find(bAction *act, FCurveDescriptor fcurve_descriptor);
  * is given priority and is returned. May be null.
  */
 ID *action_slot_get_id_for_keying(Main &bmain,
-                                  bAction &act,
+                                  Action &action,
                                   slot_handle_t slot_handle,
                                   ID *primary_id);
 

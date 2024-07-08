@@ -1374,13 +1374,12 @@ FCurve *action_fcurve_ensure(Main *bmain,
 }
 
 ID *action_slot_get_id_for_keying(Main &bmain,
-                                  bAction &act,
+                                  Action &action,
                                   const slot_handle_t slot_handle,
                                   ID *primary_id)
 {
-  Action &action = act.wrap();
   if (action.is_action_legacy()) {
-    if (id_action_get(primary_id) == &act) {
+    if (primary_id && get_action(*primary_id) == &action) {
       return primary_id;
     }
     return nullptr;
