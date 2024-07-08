@@ -389,7 +389,7 @@ def unregister():
 
     # keymaps
     for km in addon_keymaps:
-        for kmi in km.keymap_items:
+        for kmi in list(km.keymap_items):
             km.keymap_items.remove(kmi)
     addon_keymaps.clear()
 
