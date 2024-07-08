@@ -89,8 +89,7 @@ void assign_to_vertex_group_from_mask(bke::CurvesGeometry &curves,
 
   const MutableSpan<MDeformVert> dverts = curves.deform_verts_for_write();
   mask.foreach_index([&](const int point_i) {
-    MDeformWeight *dw = BKE_defvert_ensure_index(&dverts[point_i], def_nr);
-    if (dw) {
+    if (MDeformWeight *dw = BKE_defvert_ensure_index(&dverts[point_i], def_nr)) {
       dw->weight = weight;
     }
   });
