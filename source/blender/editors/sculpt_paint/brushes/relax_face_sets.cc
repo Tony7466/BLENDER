@@ -62,7 +62,7 @@ static bool get_normal_boundary(const GroupedSpan<int> vert_to_face_map,
                                 const int *face_sets,
                                 const BitSpan boundary_verts,
                                 const float3 &current_position,
-                                const Span<float3> positions,
+                                const Span<float3> vert_positions,
                                 const bool filter_boundary_face_sets,
                                 const Span<int> neighbors,
                                 float3 &r_new_normal)
@@ -84,7 +84,7 @@ static bool get_normal_boundary(const GroupedSpan<int> vert_to_face_map,
       continue;
     }
 
-    const float3 to_neighbor = positions[vert] - current_position;
+    const float3 to_neighbor = vert_positions[vert] - current_position;
     normal += math::normalize(to_neighbor);
     total++;
   }
@@ -102,7 +102,7 @@ static bool get_normal_boundary(const GroupedSpan<int> vert_to_face_map,
 static bool get_average_position_boundary(const GroupedSpan<int> vert_to_face_map,
                                           const int *face_sets,
                                           const BitSpan boundary_verts,
-                                          const Span<float3> positions,
+                                          const Span<float3> vert_positions,
                                           const bool filter_boundary_face_sets,
                                           const Span<int> neighbors,
                                           float3 &r_new_position)
@@ -124,7 +124,7 @@ static bool get_average_position_boundary(const GroupedSpan<int> vert_to_face_ma
       continue;
     }
 
-    average_position += positions[vert];
+    average_position += vert_positions[vert];
     total++;
   }
 
@@ -140,7 +140,7 @@ static bool get_average_position_boundary(const GroupedSpan<int> vert_to_face_ma
 
 static bool get_average_position_interior(const GroupedSpan<int> vert_to_face_map,
                                           const int *face_sets,
-                                          const Span<float3> positions,
+                                          const Span<float3> vert_positions,
                                           const bool filter_boundary_face_sets,
                                           const Span<int> neighbors,
                                           float3 &r_new_position)
@@ -156,7 +156,7 @@ static bool get_average_position_interior(const GroupedSpan<int> vert_to_face_ma
       continue;
     }
 
-    average_position += positions[vert];
+    average_position += vert_positions[vert];
     total++;
   }
 
