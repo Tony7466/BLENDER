@@ -124,8 +124,7 @@ class VIEW3D_HT_tool_header(Header):
 
                         if brush.gpencil_tool not in {'FILL', 'TINT'}:
                             layout.popover("VIEW3D_PT_tools_grease_pencil_v3_brush_stroke")
-
-                    # layout.popover("VIEW3D_PT_tools_grease_pencil_paint_appearance")
+                    layout.popover("VIEW3D_PT_tools_grease_pencil_paint_appearance")
         elif tool_mode == 'SCULPT_GPENCIL':
             if is_valid_context:
                 brush = context.tool_settings.gpencil_sculpt_paint.brush
@@ -6085,6 +6084,7 @@ class VIEW3D_MT_edit_greasepencil_cleanup(Menu):
         layout = self.layout
 
         layout.operator("grease_pencil.clean_loose")
+        layout.operator("grease_pencil.frame_clean_duplicate")
 
         if ob.mode != 'PAINT_GREASE_PENCIL':
             layout.operator("grease_pencil.stroke_merge_by_distance", text="Merge by Distance")

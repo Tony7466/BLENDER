@@ -67,7 +67,9 @@
 #include "IMB_imbuf_enums.h"
 
 #include "SEQ_iterator.hh"
+#include "SEQ_retiming.hh"
 #include "SEQ_sequencer.hh"
+#include "SEQ_time.hh"
 
 #include "ANIM_armature_iter.hh"
 #include "ANIM_bone_collections.hh"
@@ -358,6 +360,12 @@ static void versioning_eevee_material_shadow_none(Material *material)
   }
 
   bNodeSocket *out_sock = blender::bke::nodeFindSocket(output_node, SOCK_IN, "Surface");
+  bNodeSocket *volume_sock = blender::bke::nodeFindSocket(output_node, SOCK_IN, "Volume");
+  if (out_sock->link == nullptr && volume_sock->link) {
+    /* Don't apply versioning to a material that only has a volumetric input as this makes the
+     * object surface opaque to the camera, hiding the volume inside. */
+    return;
+  }
 
   bNode *mix_node = blender::bke::nodeAddNode(nullptr, ntree, "ShaderNodeMixShader");
   STRNCPY(mix_node->label, "Disable Shadow");
@@ -771,6 +779,29 @@ static void version_nla_tweakmode_incomplete(Main *bmain)
   }
 }
 
+static bool versioning_convert_strip_speed_factor(Sequence *seq, void *user_data)
+{
+  const Scene *scene = static_cast<Scene *>(user_data);
+  const float speed_factor = seq->speed_factor;
+
+  if (speed_factor == 1.0f || !SEQ_retiming_is_allowed(seq) || SEQ_retiming_keys_count(seq) > 0) {
+    return true;
+  }
+
+  SEQ_retiming_data_ensure(seq);
+  SeqRetimingKey *last_key = &SEQ_retiming_keys_get(seq)[1];
+
+  last_key->strip_frame_index = (seq->len) / speed_factor;
+
+  if (seq->type == SEQ_TYPE_SOUND_RAM) {
+    const int prev_length = seq->len - seq->startofs - seq->endofs;
+    const float left_handle = SEQ_time_left_handle_frame_get(scene, seq);
+    SEQ_time_right_handle_frame_set(scene, seq, left_handle + prev_length);
+  }
+
+  return true;
+}
+
 void do_versions_after_linking_400(FileData *fd, Main *bmain)
 {
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 9)) {
@@ -851,18 +882,17 @@ void do_versions_after_linking_400(FileData *fd, Main *bmain)
     FOREACH_NODETREE_END;
   }
 
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 34)) {
-    BKE_mesh_legacy_face_map_to_generic(bmain);
-  }
-
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 5)) {
-    Scene *scene = static_cast<Scene *>(bmain->scenes.first);
-    bool is_cycles = scene && STREQ(scene->r.engine, RE_engine_id_CYCLES);
-    if (!is_cycles) {
-      LISTBASE_FOREACH (Object *, object, &bmain->objects) {
-        versioning_eevee_shadow_settings(object);
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 27)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      Editing *ed = SEQ_editing_get(scene);
+      if (ed != nullptr) {
+        SEQ_for_each_callback(&ed->seqbase, versioning_convert_strip_speed_factor, scene);
       }
     }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 34)) {
+    BKE_mesh_legacy_face_map_to_generic(bmain);
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 23)) {
@@ -894,6 +924,17 @@ void do_versions_after_linking_400(FileData *fd, Main *bmain)
     /* Shift animation data to accommodate the new Roughness input. */
     version_node_socket_index_animdata(
         bmain, NTREE_SHADER, SH_NODE_SUBSURFACE_SCATTERING, 4, 1, 5);
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 50)) {
+    Scene *scene = static_cast<Scene *>(bmain->scenes.first);
+    bool scene_uses_eevee_legacy = scene && STREQ(scene->r.engine, RE_engine_id_BLENDER_EEVEE);
+
+    if (scene_uses_eevee_legacy) {
+      LISTBASE_FOREACH (Object *, object, &bmain->objects) {
+        versioning_eevee_shadow_settings(object);
+      }
+    }
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 51)) {
@@ -958,6 +999,11 @@ void do_versions_after_linking_400(FileData *fd, Main *bmain)
         STRNCPY(scene->r.engine, RE_engine_id_BLENDER_EEVEE_NEXT);
       }
     }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 6)) {
+    /* Shift animation data to accommodate the new Diffuse Roughness input. */
+    version_node_socket_index_animdata(bmain, NTREE_SHADER, SH_NODE_BSDF_PRINCIPLED, 7, 1, 30);
   }
 
   /**
@@ -1869,7 +1915,7 @@ static void change_input_socket_to_rotation_type(bNodeTree &ntree,
   socket.type = SOCK_ROTATION;
   STRNCPY(socket.idname, "NodeSocketRotation");
   auto *old_value = static_cast<bNodeSocketValueVector *>(socket.default_value);
-  auto *new_value = MEM_new<bNodeSocketValueRotation>(__func__);
+  auto *new_value = MEM_cnew<bNodeSocketValueRotation>(__func__);
   copy_v3_v3(new_value->value_euler, old_value->value);
   socket.default_value = new_value;
   MEM_freeN(old_value);
@@ -4214,6 +4260,23 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 64)) {
+    Scene *scene = static_cast<Scene *>(bmain->scenes.first);
+    bool is_eevee_legacy = scene && STR_ELEM(scene->r.engine, RE_engine_id_BLENDER_EEVEE);
+    if (is_eevee_legacy) {
+      /* Re-apply versioning made for EEVEE-Next in 4.1 before it got delayed. */
+      LISTBASE_FOREACH (Material *, material, &bmain->materials) {
+        bool transparent_shadows = material->blend_shadow != MA_BS_SOLID;
+        SET_FLAG_FROM_TEST(material->blend_flag, transparent_shadows, MA_BL_TRANSPARENT_SHADOW);
+      }
+      LISTBASE_FOREACH (Material *, mat, &bmain->materials) {
+        mat->surface_render_method = (mat->blend_method == MA_BM_BLEND) ?
+                                         MA_SURFACE_METHOD_FORWARD :
+                                         MA_SURFACE_METHOD_DEFERRED;
+      }
+    }
+  }
+
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 3)) {
     LISTBASE_FOREACH (Brush *, brush, &bmain->brushes) {
       if (BrushGpencilSettings *settings = brush->gpencil_settings) {
@@ -4229,6 +4292,21 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 4)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      scene->view_settings.temperature = 6500.0f;
+      scene->view_settings.tint = 10.0f;
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 7)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      SequencerToolSettings *sequencer_tool_settings = SEQ_tool_settings_ensure(scene);
+      sequencer_tool_settings->snap_mode |= SEQ_SNAP_TO_PREVIEW_BORDERS |
+                                            SEQ_SNAP_TO_PREVIEW_CENTER |
+                                            SEQ_SNAP_TO_STRIPS_PREVIEW;
+    }
+  }
   /**
    * Always bump subversion in BKE_blender_version.h when adding versioning
    * code here, and wrap it inside a MAIN_VERSION_FILE_ATLEAST check.

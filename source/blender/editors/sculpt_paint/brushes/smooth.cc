@@ -121,15 +121,17 @@ BLI_NOINLINE static void apply_positions_faces(const Sculpt &sd,
   tls.factors.reinitialize(verts.size());
   const MutableSpan<float> factors = tls.factors;
   fill_factor_from_hide_and_mask(mesh, verts, factors);
-
+  filter_region_clip_factors(ss, positions_eval, verts, factors);
   if (brush.flag & BRUSH_FRONTFACE) {
     calc_front_face(cache.view_normal, vert_normals, verts, factors);
   }
 
   tls.distances.reinitialize(verts.size());
   const MutableSpan<float> distances = tls.distances;
-  calc_distance_falloff(
-      ss, positions_eval, verts, eBrushFalloffShape(brush.falloff_shape), distances, factors);
+  calc_brush_distances(
+      ss, positions_eval, verts, eBrushFalloffShape(brush.falloff_shape), distances);
+  filter_distances_with_radius(cache.radius, distances, factors);
+  apply_hardness_to_distances(cache, distances);
   calc_brush_strength_factors(cache, brush, distances, factors);
 
   if (cache.automasking) {
@@ -167,12 +169,8 @@ BLI_NOINLINE static void do_smooth_brush_mesh(const Sculpt &sd,
   const Span<float3> vert_normals = BKE_pbvh_get_vert_normals(pbvh);
   MutableSpan<float3> positions_orig = mesh.vert_positions_for_write();
 
-  Array<int> node_vert_offset_data(nodes.size() + 1);
-  for (const int i : nodes.index_range()) {
-    node_vert_offset_data[i] = bke::pbvh::node_unique_verts(*nodes[i]).size();
-  }
-  const OffsetIndices<int> node_vert_offsets = offset_indices::accumulate_counts_to_offsets(
-      node_vert_offset_data);
+  Array<int> node_offset_data;
+  const OffsetIndices<int> node_vert_offsets = create_node_vert_offsets(nodes, node_offset_data);
   Array<float3> new_positions(node_vert_offsets.total_size());
 
   threading::EnumerableThreadSpecific<LocalData> all_tls;

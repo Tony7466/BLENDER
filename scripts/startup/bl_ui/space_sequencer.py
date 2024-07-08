@@ -174,18 +174,16 @@ class SEQUENCER_HT_header(Header):
 
         if st.view_type == 'PREVIEW':
             layout.prop(sequencer_tool_settings, "pivot_point", text="", icon_only=True)
-            layout.separator_spacer()
 
         if st.view_type in {'SEQUENCER', 'SEQUENCER_PREVIEW'}:
             row = layout.row(align=True)
             row.prop(sequencer_tool_settings, "overlap_mode", text="")
 
-        if st.view_type in {'SEQUENCER', 'SEQUENCER_PREVIEW'}:
-            row = layout.row(align=True)
-            row.prop(tool_settings, "use_snap_sequencer", text="")
-            sub = row.row(align=True)
-            sub.popover(panel="SEQUENCER_PT_snapping")
-            layout.separator_spacer()
+        row = layout.row(align=True)
+        row.prop(tool_settings, "use_snap_sequencer", text="")
+        sub = row.row(align=True)
+        sub.popover(panel="SEQUENCER_PT_snapping")
+        layout.separator_spacer()
 
         if st.view_type in {'PREVIEW', 'SEQUENCER_PREVIEW'}:
             layout.prop(st, "display_mode", text="", icon_only=True)
@@ -573,7 +571,7 @@ class SEQUENCER_MT_select(Menu):
     def draw(self, context):
         layout = self.layout
         st = context.space_data
-        has_sequencer, _has_preview = _space_view_types(st)
+        has_sequencer, has_preview = _space_view_types(st)
         is_retiming = context.scene.sequence_editor.selected_retiming_keys
 
         layout.operator("sequencer.select_all", text="All").action = 'SELECT'
@@ -582,12 +580,14 @@ class SEQUENCER_MT_select(Menu):
 
         layout.separator()
 
-        layout.operator("sequencer.select_box", text="Box Select")
-
         col = layout.column()
         if has_sequencer:
+            col.operator("sequencer.select_box", text="Box Select")
             props = col.operator("sequencer.select_box", text="Box Select (Include Handles)")
             props.include_handles = True
+        elif has_preview:
+            col.operator_context = 'INVOKE_REGION_PREVIEW'
+            col.operator("sequencer.select_box", text="Box Select")
 
         col.separator()
 
@@ -965,7 +965,7 @@ class SEQUENCER_MT_strip_retiming(Menu):
 
         layout.separator()
 
-        layout.operator("sequencer.delete", text="Delete Retiming Keys")
+        layout.operator("sequencer.retiming_key_delete")
         col = layout.column()
         col.operator("sequencer.retiming_reset")
         col.enabled = not is_retiming
@@ -1873,7 +1873,7 @@ class SEQUENCER_PT_movie_clip(SequencerButtonsPanel, Panel):
         if strip.type == 'MOVIECLIP':
             col = layout.column(heading="Use")
             col.prop(strip, "stabilize2d", text="2D Stabilized Clip")
-            col.prop(strip, "undistort", text="Undestorted Clip")
+            col.prop(strip, "undistort", text="Undistorted Clip")
 
         clip = strip.clip
         if clip:
@@ -2874,6 +2874,46 @@ class SEQUENCER_PT_snapping(Panel):
     bl_region_type = 'HEADER'
     bl_label = ""
 
+    def draw(self, _context):
+        pass
+
+
+class SEQUENCER_PT_preview_snapping(Panel):
+    bl_space_type = 'SEQUENCE_EDITOR'
+    bl_region_type = 'HEADER'
+    bl_parent_id = "SEQUENCER_PT_snapping"
+    bl_label = "Preview Snapping"
+
+    @classmethod
+    def poll(cls, context):
+        st = context.space_data
+        return st.view_type in {'PREVIEW', 'SEQUENCER_PREVIEW'}
+
+    def draw(self, context):
+        tool_settings = context.tool_settings
+        sequencer_tool_settings = tool_settings.sequencer_tool_settings
+
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        col = layout.column(heading="Snap to", align=True)
+        col.prop(sequencer_tool_settings, "snap_to_borders")
+        col.prop(sequencer_tool_settings, "snap_to_center")
+        col.prop(sequencer_tool_settings, "snap_to_strips_preview")
+
+
+class SEQUENCER_PT_sequencer_snapping(Panel):
+    bl_space_type = 'SEQUENCE_EDITOR'
+    bl_region_type = 'HEADER'
+    bl_parent_id = "SEQUENCER_PT_snapping"
+    bl_label = "Sequencer Snapping"
+
+    @classmethod
+    def poll(cls, context):
+        st = context.space_data
+        return st.view_type in {'SEQUENCER', 'SEQUENCER_PREVIEW'}
+
     def draw(self, context):
         tool_settings = context.tool_settings
         sequencer_tool_settings = tool_settings.sequencer_tool_settings
@@ -2984,6 +3024,8 @@ classes = (
     SEQUENCER_PT_annotation_onion,
 
     SEQUENCER_PT_snapping,
+    SEQUENCER_PT_preview_snapping,
+    SEQUENCER_PT_sequencer_snapping,
 )
 
 if __name__ == "__main__":  # only for live edit.

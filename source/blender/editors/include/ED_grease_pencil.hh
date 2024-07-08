@@ -251,6 +251,10 @@ float radius_from_input_sample(const RegionView3D *rv3d,
                                float4x4 to_world,
                                const BrushGpencilSettings *settings);
 int grease_pencil_draw_operator_invoke(bContext *C, wmOperator *op);
+float4x2 calculate_texture_space(const Scene *scene,
+                                 const ARegion *region,
+                                 const float2 &mouse,
+                                 const DrawingPlacement &placement);
 
 struct DrawingInfo {
   const bke::greasepencil::Drawing &drawing;
@@ -586,5 +590,14 @@ bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawing &draw
                                           float outline_radius,
                                           float outline_offset,
                                           int material_index);
+
+namespace cutter {
+bke::CurvesGeometry trim_curve_segments(const bke::CurvesGeometry &src,
+                                        Span<float2> screen_space_positions,
+                                        Span<rcti> screen_space_curve_bounds,
+                                        const IndexMask &curve_selection,
+                                        const Vector<Vector<int>> &selected_points_in_curves,
+                                        bool keep_caps);
+};  // namespace cutter
 
 }  // namespace blender::ed::greasepencil
