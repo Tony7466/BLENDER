@@ -26,6 +26,8 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
   const Span<int> reference_handles = instances->reference_handles();
   const Span<bke::InstanceReference> references = instances->references();
+  const Span<float4x4> transforms = instances->transforms();
+
   const int instances_num = instances->instances_num();
   if (instances_num == 0) {
     params.set_default_remaining_outputs();
@@ -44,6 +46,8 @@ static void node_geo_exec(GeoNodeExecParams params)
     bke::greasepencil::Layer *layer = grease_pencil->layer(instance_i);
     BLI_assert(layer);
     layer->set_name(name);
+    layer->set_local_transform(transforms[instance_i]);
+
     bke::greasepencil::Drawing *drawing = grease_pencil->get_eval_drawing(*layer);
     BLI_assert(drawing);
 
