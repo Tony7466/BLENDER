@@ -61,7 +61,6 @@ static bool subdiv_coord_is_boundary(const OffsetIndices<int> faces,
                                      const SubdivCCG &subdiv_ccg,
                                      const SubdivCCGCoord coord)
 {
-  const int grid_index = coord.grid_index;
   int v1, v2;
   const SubdivCCGAdjacencyType adjacency = BKE_subdiv_ccg_coarse_mesh_adjacency_info_get(
       subdiv_ccg, coord, corner_verts, faces, v1, v2);
@@ -96,16 +95,18 @@ void neighbor_position_average_interior_grids(const OffsetIndices<int> faces,
                                               const Span<int> grids,
                                               const MutableSpan<float3> new_positions)
 {
-  BLI_assert(vert_neighbors.size() == new_positions.size());
-
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
   const Span<CCGElem *> elems = subdiv_ccg.grids;
+
+  BLI_assert(grids.size() * key.grid_area == new_positions.size());
 
   for (const int i : grids.index_range()) {
     const int grid = grids[i];
     CCGElem *elem = elems[grid];
     const int node_verts_start = i * key.grid_area;
 
+    /* TODO: This loop could be optimized in the future by skipping unnecessary logic for
+     * non-boundary grid vertices. */
     for (const int y : IndexRange(key.grid_size)) {
       for (const int x : IndexRange(key.grid_size)) {
         const int offset = CCG_grid_xy_to_index(key.grid_size, x, y);
@@ -157,7 +158,7 @@ static float3 average_positions(const Span<const BMVert *> verts)
 void neighbor_position_average_interior_bmesh(const Set<BMVert *, 0> &verts,
                                               const MutableSpan<float3> new_positions)
 {
-  BLI_assert(vert_neighbors.size() == new_positions.size());
+  BLI_assert(verts.size() == new_positions.size());
   Vector<BMVert *, 64> neighbor_data;
 
   int i = 0;

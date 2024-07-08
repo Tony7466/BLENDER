@@ -143,6 +143,8 @@ static void do_smooth_brush_mesh(const Brush &brush,
 
   threading::EnumerableThreadSpecific<LocalData> all_tls;
   for (const float strength : iteration_strengths(brush_strength)) {
+    /* Calculate new masks into a separate array to avoid non-threadsafe access of values from
+     * neighboring nodes. */
     threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
       LocalData &tls = all_tls.local();
       for (const int i : range) {
@@ -219,16 +221,14 @@ static void calc_grids(
   const MutableSpan<float> masks = tls.masks;
   mask::gather_mask_grids(subdiv_ccg, grids, masks);
 
-  tls.masks.reinitialize(grid_verts_num);
-  const MutableSpan<float> masks = tls.masks;
-  mask::average_neighbor_mask_grids(subdiv_ccg, grids, masks);
-
   tls.new_masks.reinitialize(grid_verts_num);
   const MutableSpan<float> new_masks = tls.new_masks;
-  mask::mix_new_masks(new_masks, factors, new_masks);
-  mask::clamp_mask(new_masks);
+  mask::average_neighbor_mask_grids(subdiv_ccg, grids, new_masks);
 
-  mask::scatter_mask_grids(new_masks, subdiv_ccg, grids);
+  mask::mix_new_masks(new_masks, factors, masks);
+  mask::clamp_mask(masks);
+
+  mask::scatter_mask_grids(masks, subdiv_ccg, grids);
 }
 
 static void calc_bmesh(Object &object,
@@ -274,16 +274,14 @@ static void calc_bmesh(Object &object,
   const MutableSpan<float> masks = tls.masks;
   mask::gather_mask_bmesh(*ss.bm, verts, masks);
 
-  tls.masks.reinitialize(verts.size());
-  const MutableSpan<float> masks = tls.masks;
-  mask::average_neighbor_mask_bmesh(mask_offset, verts, masks);
-
   tls.new_masks.reinitialize(verts.size());
   const MutableSpan<float> new_masks = tls.new_masks;
-  mask::mix_new_masks(new_masks, factors, new_masks);
-  mask::clamp_mask(new_masks);
+  mask::average_neighbor_mask_bmesh(mask_offset, verts, new_masks);
 
-  mask::scatter_mask_bmesh(new_masks, *ss.bm, verts);
+  mask::mix_new_masks(new_masks, factors, masks);
+  mask::clamp_mask(masks);
+
+  mask::scatter_mask_bmesh(masks, *ss.bm, verts);
 }
 
 }  // namespace smooth_mask_cc

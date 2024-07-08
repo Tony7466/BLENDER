@@ -56,44 +56,6 @@ struct LocalData {
   Vector<float3> translations;
 };
 
-static void average_neighbor_position_mesh(const OffsetIndices<int> faces,
-                                           const Span<int> corner_verts,
-                                           const GroupedSpan<int> vert_to_face_map,
-                                           const BitSpan boundary_verts,
-                                           const Span<bool> hide_poly,
-                                           const Span<int> verts,
-                                           const Span<float3> positions,
-                                           LocalData &tls,
-                                           const MutableSpan<float3> new_positions)
-{
-  tls.vert_neighbors.reinitialize(verts.size());
-  calc_vert_neighbors_interior(
-      faces, corner_verts, vert_to_face_map, boundary_verts, hide_poly, verts, tls.vert_neighbors);
-  const Span<Vector<int>> vert_neighbors = tls.vert_neighbors;
-  smooth::neighbor_position_average_mesh(positions, verts, vert_neighbors, new_positions);
-}
-
-BLI_NOINLINE static void translations_from_new_positions(const Span<float3> new_positions,
-                                                         const Span<int> verts,
-                                                         const Span<float3> old_positions,
-                                                         const MutableSpan<float3> translations)
-{
-  BLI_assert(new_positions.size() == verts.size());
-  for (const int i : verts.index_range()) {
-    translations[i] = new_positions[i] - old_positions[verts[i]];
-  }
-}
-
-BLI_NOINLINE static void translations_from_new_positions(const Span<float3> new_positions,
-                                                         const Span<float3> old_positions,
-                                                         const MutableSpan<float3> translations)
-{
-  BLI_assert(new_positions.size() == old_positions.size());
-  for (const int i : new_positions.index_range()) {
-    translations[i] = new_positions[i] - old_positions[i];
-  }
-}
-
 BLI_NOINLINE static void apply_positions_faces(const Sculpt &sd,
                                                const Brush &brush,
                                                const Span<float3> positions_eval,
@@ -167,20 +129,25 @@ BLI_NOINLINE static void do_smooth_brush_mesh(const Sculpt &sd,
   Array<float3> new_positions(node_vert_offsets.total_size());
 
   threading::EnumerableThreadSpecific<LocalData> all_tls;
+
+  /* Calculate the new positions into a separate array in a separate loop because multiple loops
+   * are updated in parallel. Without this there would be non-threadsafe access to changing
+   * positions in other PBVH nodes. */
   for (const float strength : iteration_strengths(brush_strength)) {
     threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
       LocalData &tls = all_tls.local();
       for (const int i : range) {
-        average_neighbor_position_mesh(
-            faces,
-            corner_verts,
-            ss.vert_to_face_map,
-            ss.vertex_info.boundary,
-            hide_poly,
-            bke::pbvh::node_unique_verts(*nodes[i]),
-            positions_eval,
-            tls,
-            new_positions.as_mutable_span().slice(node_vert_offsets[i]));
+        const Span<int> verts = bke::pbvh::node_unique_verts(*nodes[i]);
+        tls.vert_neighbors.reinitialize(verts.size());
+        calc_vert_neighbors_interior(faces,
+                                     corner_verts,
+                                     ss.vert_to_face_map,
+                                     ss.vertex_info.boundary,
+                                     hide_poly,
+                                     verts,
+                                     tls.vert_neighbors);
+        smooth::neighbor_position_average_mesh(
+            positions_eval, verts, tls.vert_neighbors, new_positions);
       }
     });
 

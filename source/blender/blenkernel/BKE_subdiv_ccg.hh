@@ -16,6 +16,7 @@
 #include "BLI_index_mask_fwd.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_sys_types.h"
+#include "BLI_vector.hh"
 
 #include "BKE_ccg.hh"
 
