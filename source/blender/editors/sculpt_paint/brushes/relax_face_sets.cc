@@ -58,6 +58,8 @@ static void filter_factors_on_face_sets(const GroupedSpan<int> vert_to_face_map,
 /** \name Relax Vertex
  * \{ */
 
+static Vector<int, 16> filtered_neighbors() {}
+
 static bool get_normal_boundary(const GroupedSpan<int> vert_to_face_map,
                                 const int *face_sets,
                                 const BitSpan boundary_verts,
