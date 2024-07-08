@@ -55,6 +55,10 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Float>("Start Frequency").min(0).supports_field();
   b.add_input<decl::Float>("End Frequency").min(0).supports_field();
   b.add_output<decl::Float>("Amplitude").dependent_field({1, 3, 4});
+
+#ifdef WITH_FFTW3
+  fftw::initialize_float();
+#endif
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -172,7 +176,12 @@ class SampleSoundFunction : public mf::MultiFunction {
           const float *bins = results->arr[result_index].fft;
 
           if (bins[bin_index] == 0) {
-            dst[i] = bins[bin_index + bin_end] - bins[bin_index + bin_start];
+            if (bin_end == bin_start) {
+              dst[i] = bins[bin_index + bin_end + 1] - bins[bin_index + bin_start];
+            }
+            else {
+              dst[i] = bins[bin_index + bin_end] - bins[bin_index + bin_start];
+            }
             return;
           }
         }
@@ -210,14 +219,14 @@ class SampleSoundFunction : public mf::MultiFunction {
             break;
         }
 
-        fftw::initialize_float();
         fftwf_complex *fft_buf = static_cast<fftwf_complex *>(
             fftwf_malloc(sizeof(*fft_buf) * fft_size / 2 + 1));
         fftwf_plan plan = fftwf_plan_dft_r2c_1d(fft_size, buf.data(), fft_buf, FFTW_ESTIMATE);
         fftwf_execute(plan);
 
         if (result_index == -1) {
-          const int64_t total_bins = int64_t(math::ceil(length_) * sound_->samplerate) / 2 + 1;
+          const int64_t total_bins = math::ceil(length_ * sound_->samplerate / fft_size) *
+                                     fft_size / 2;
 
           FFTResult fft_result = {.parameter = parameter,
                                   .fft = static_cast<float *>(MEM_malloc_arrayN(
@@ -240,7 +249,12 @@ class SampleSoundFunction : public mf::MultiFunction {
                                 (math::abs(fft_buf[i - 1][0]) / (fft_size / 2));
         }
 
-        dst[i] = bins[bin_index + bin_end] - bins[bin_index + bin_start];
+        if (bin_end == bin_start) {
+          dst[i] = bins[bin_index + bin_end + 1] - bins[bin_index + bin_start];
+        }
+        else {
+          dst[i] = bins[bin_index + bin_end] - bins[bin_index + bin_start];
+        }
 
         fftwf_destroy_plan(plan);
         fftwf_free(fft_buf);
