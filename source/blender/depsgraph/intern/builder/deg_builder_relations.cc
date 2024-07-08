@@ -1195,7 +1195,7 @@ static const ModifierData *get_latter_modifier(const ModifierData *md1, const Mo
 
 void DepsgraphRelationBuilder::build_object_pointcache(Object *object)
 {
-  std::optional<ComponentKey> point_cache_key = std::nullopt;
+  std::optional<ComponentKey> point_cache_key;
   bool has_rigid_body_relation = false;
   bool has_geometry_eval_relation = false;
   const ModifierData *last_input_modifier = nullptr;
