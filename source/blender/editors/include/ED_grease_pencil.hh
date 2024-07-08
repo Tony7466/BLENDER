@@ -591,9 +591,9 @@ bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawing &draw
                                           float outline_offset,
                                           int material_index);
 
-void merge_layer(GreasePencil &grease_pencil,
-                 bke::greasepencil::Layer &top,
-                 bke::greasepencil::Layer &to_bottom);
+void merge_layers(GreasePencil &grease_pencil,
+                  bke::greasepencil::Layer &source_layer,
+                  bke::greasepencil::Layer &bottom_layer);
 
 namespace cutter {
 bke::CurvesGeometry trim_curve_segments(const bke::CurvesGeometry &src,
