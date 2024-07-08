@@ -229,6 +229,9 @@ set(SRC
   node_geometry_util.cc
 
   node_geometry_util.hh
+
+  node_geometry_cache.hh
+  node_geometry_cache.cc
 )
 
 set(LIB
