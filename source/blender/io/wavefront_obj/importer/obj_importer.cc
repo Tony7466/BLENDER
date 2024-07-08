@@ -76,7 +76,7 @@ static Collection *find_or_create_collection(Main *bmain,
 }
 
 static void geometry_to_blender_geometry_set(const OBJImportParams &import_params,
-                                             Vector<std::unique_ptr<Geometry>> &all_geometries,
+                                             const Span<std::unique_ptr<Geometry>> &all_geometries,
                                              const GlobalVertices &global_vertices,
                                              Vector<bke::GeometrySet> &geometries)
 {
@@ -95,7 +95,7 @@ static void geometry_to_blender_geometry_set(const OBJImportParams &import_param
       geometry_set = bke::GeometrySet::from_curves(curves_id);
     }
 
-    geometries.append(geometry_set);
+    geometries.append(std::move(geometry_set));
   }
 }
 

@@ -71,7 +71,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   bke::Instances *instances = new bke::Instances();
 
-  for (auto geometry : geometries) {
+  for (GeometrySet geometry : geometries) {
     const int handle = instances->add_reference(bke::InstanceReference{geometry});
     instances->add_instance(handle, float4x4::identity());
   }
