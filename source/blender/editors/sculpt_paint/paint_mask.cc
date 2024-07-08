@@ -219,6 +219,7 @@ void average_neighbor_mask_grids(const SubdivCCG &subdiv_ccg,
     for (const int y : IndexRange(key.grid_size)) {
       for (const int x : IndexRange(key.grid_size)) {
         const int offset = CCG_grid_xy_to_index(key.grid_size, x, y);
+        const int node_vert_index = node_verts_start + offset;
 
         SubdivCCGCoord coord{};
         coord.grid_index = grid;
@@ -233,7 +234,7 @@ void average_neighbor_mask_grids(const SubdivCCG &subdiv_ccg,
           sum += CCG_grid_elem_mask(
               key, subdiv_ccg.grids[neighbor.grid_index], neighbor.x, neighbor.y);
         }
-        new_masks[node_verts_start + offset] = sum / neighbors.coords.size();
+        new_masks[node_vert_index] = sum / neighbors.coords.size();
       }
     }
   }

@@ -70,7 +70,7 @@ static void average_neighbor_position_mesh(const OffsetIndices<int> faces,
   calc_vert_neighbors_interior(
       faces, corner_verts, vert_to_face_map, boundary_verts, hide_poly, verts, tls.vert_neighbors);
   const Span<Vector<int>> vert_neighbors = tls.vert_neighbors;
-  smooth::average_neighbor_position_mesh(positions, vert_neighbors, new_positions);
+  smooth::neighbor_position_average_mesh(positions, verts, vert_neighbors, new_positions);
 }
 
 BLI_NOINLINE static void translations_from_new_positions(const Span<float3> new_positions,
@@ -203,6 +203,9 @@ BLI_NOINLINE static void do_smooth_brush_mesh(const Sculpt &sd,
 }
 
 static void calc_grids(const Sculpt &sd,
+                       const OffsetIndices<int> faces,
+                       const Span<int> corner_verts,
+                       const BitSpan boundary_verts,
                        Object &object,
                        const Brush &brush,
                        const float strength,
@@ -246,7 +249,8 @@ static void calc_grids(const Sculpt &sd,
 
   tls.new_positions.reinitialize(grid_verts_num);
   const MutableSpan<float3> new_positions = tls.new_positions;
-  /// TODO
+  smooth::neighbor_position_average_interior_grids(
+      faces, corner_verts, boundary_verts, subdiv_ccg, grids, new_positions);
 
   tls.translations.reinitialize(grid_verts_num);
   const MutableSpan<float3> translations = tls.translations;
@@ -298,7 +302,7 @@ static void calc_bmesh(const Sculpt &sd,
 
   tls.new_positions.reinitialize(verts.size());
   const MutableSpan<float3> new_positions = tls.new_positions;
-  /// TODO
+  smooth::neighbor_position_average_interior_bmesh(verts, new_positions);
 
   tls.translations.reinitialize(verts.size());
   const MutableSpan<float3> translations = tls.translations;
@@ -326,12 +330,24 @@ void do_smooth_brush(const Sculpt &sd,
       do_smooth_brush_mesh(sd, brush, object, nodes, brush_strength);
       break;
     case PBVH_GRIDS: {
+      const Mesh &base_mesh = *static_cast<const Mesh *>(object.data);
+      const OffsetIndices faces = base_mesh.faces();
+      const Span<int> corner_verts = base_mesh.corner_verts();
+
       threading::EnumerableThreadSpecific<LocalData> all_tls;
       for (const float strength : iteration_strengths(brush_strength)) {
         threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
           LocalData &tls = all_tls.local();
           for (const int i : range) {
-            calc_grids(sd, object, brush, strength, *nodes[i], tls);
+            calc_grids(sd,
+                       faces,
+                       corner_verts,
+                       ss.vertex_info.boundary,
+                       object,
+                       brush,
+                       strength,
+                       *nodes[i],
+                       tls);
           }
         });
       }

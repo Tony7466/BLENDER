@@ -83,7 +83,8 @@ struct LocalData {
   Vector<Vector<int>> vert_neighbors;
 };
 
-static void mask_filter_mesh(const OffsetIndices<int> faces,
+static void mask_filter_mesh(Object &object,
+                             const OffsetIndices<int> faces,
                              const Span<int> corner_verts,
                              const GroupedSpan<int> vert_to_face_map,
                              const Span<bool> hide_vert,
@@ -160,36 +161,41 @@ static void mask_filter_mesh(const OffsetIndices<int> faces,
 
 static void mask_filter_grids(const FilterType mode,
                               const Span<float> prev_mask,
+                              Object &object,
                               PBVHNode &node,
-                              LocalData &tls,
-                              MutableSpan<float> mask)
+                              LocalData &tls)
 {
-  const Span<int> verts = bke::pbvh::node_unique_verts(node);
+  SculptSession &ss = *object.sculpt;
+  const StrokeCache &cache = *ss.cache;
+  SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
-  tls.mask.reinitialize(verts.size());
+  const Span<int> grids = bke::pbvh::node_grid_indices(node);
+  const int grid_verts_num = grids.size() * key.grid_area;
+
+  tls.mask.reinitialize(grid_verts_num);
   const MutableSpan<float> node_mask = tls.mask;
-  array_utils::gather(mask.as_span(), verts, node_mask);
+  gather_mask_grids(subdiv_ccg, grids, node_mask);
 
-  tls.new_mask.reinitialize(verts.size());
+  tls.new_mask.reinitialize(grid_verts_num);
   const MutableSpan<float> new_mask = node_mask;
 
   switch (mode) {
     case FilterType::Smooth:
-      tls.vert_neighbors.reinitialize(verts.size());
+      tls.vert_neighbors.reinitialize(grid_verts_num);
       const MutableSpan<Vector<int>> neighbors = tls.vert_neighbors;
-      calc_vert_neighbors(faces, corner_verts, vert_to_face_map, hide_poly, verts, neighbors);
-      average_neighbor_mask_mesh(prev_mask, neighbors, new_mask);
+      average_neighbor_mask_grids(subdiv_ccg, neighbors, new_mask);
       mask::clamp_mask(new_mask);
       break;
     case FilterType::Sharpen:
-      tls.vert_neighbors.reinitialize(verts.size());
+      tls.vert_neighbors.reinitialize(grid_verts_num);
       const MutableSpan<Vector<int>> neighbors = tls.vert_neighbors;
       calc_vert_neighbors(faces, corner_verts, vert_to_face_map, hide_poly, verts, neighbors);
-      average_neighbor_mask_mesh(mask, neighbors, new_mask);
+      average_neighbor_mask_grids(mask, neighbors, new_mask);
       mask::clamp_mask(new_mask);
       break;
     case FilterType::Grow:
-      tls.vert_neighbors.reinitialize(verts.size());
+      tls.vert_neighbors.reinitialize(grid_verts_num);
       const MutableSpan<Vector<int>> neighbors = tls.vert_neighbors;
       calc_vert_neighbors(faces, corner_verts, vert_to_face_map, hide_poly, verts, neighbors);
       for (const int i : verts.index_range()) {
@@ -200,7 +206,7 @@ static void mask_filter_grids(const FilterType mode,
       }
       break;
     case FilterType::Shrink:
-      tls.vert_neighbors.reinitialize(verts.size());
+      tls.vert_neighbors.reinitialize(grid_verts_num);
       const MutableSpan<Vector<int>> neighbors = tls.vert_neighbors;
       calc_vert_neighbors(faces, corner_verts, vert_to_face_map, hide_poly, verts, neighbors);
       for (const int i : verts.index_range()) {
@@ -224,15 +230,14 @@ static void mask_filter_grids(const FilterType mode,
     return;
   }
 
-  array_utils::scatter(new_mask.as_span(), verts, mask);
+  scatter_mask_bmesh(new_mask.as_span(), verts);
   BKE_pbvh_node_mark_update_mask(&node);
 }
 
 static void mask_filter_bmesh(const FilterType mode,
                               const Span<float> prev_mask,
                               PBVHNode &node,
-                              LocalData &tls,
-                              MutableSpan<float> mask)
+                              LocalData &tls)
 {
   const Span<int> verts = bke::pbvh::node_unique_verts(node);
 

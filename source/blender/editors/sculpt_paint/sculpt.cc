@@ -658,6 +658,32 @@ Span<BMVert *> vert_neighbors_get_bmesh(BMVert &vert, Vector<BMVert *, 64> &neig
   return neighbors;
 }
 
+Span<BMVert *> vert_neighbors_get_interior_bmesh(BMVert &vert, Vector<BMVert *, 64> &neighbors)
+{
+  BMIter liter;
+  BMLoop *l;
+  BM_ITER_ELEM (l, &liter, &vert, BM_LOOPS_OF_VERT) {
+    for (BMVert *other_vert : {l->prev->v, l->next->v}) {
+      if (other_vert != &vert) {
+        neighbors.append(other_vert);
+      }
+    }
+  }
+
+  if (BM_vert_is_boundary(&vert)) {
+    if (neighbors.size() == 2) {
+      /* Do not include neighbors of corner vertices. */
+      neighbors.clear();
+    }
+    else {
+      /* Only include other boundary vertices as neighbors of boundary vertices. */
+      neighbors.remove_if([&](const BMVert *vert) { return !BM_vert_is_boundary(vert); });
+    }
+  }
+
+  return neighbors;
+}
+
 static void sculpt_vertex_neighbors_get_faces(const SculptSession &ss,
                                               PBVHVertRef vertex,
                                               SculptVertexNeighborIter *iter)

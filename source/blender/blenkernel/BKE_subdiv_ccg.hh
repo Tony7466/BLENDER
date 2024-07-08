@@ -221,7 +221,7 @@ void BKE_subdiv_ccg_topology_counters(const SubdivCCG &subdiv_ccg,
                                       int &r_num_loops);
 
 struct SubdivCCGNeighbors {
-  blender::Array<SubdivCCGCoord, 256> coords;
+  blender::Vector<SubdivCCGCoord, 256> coords;
   int num_duplicates;
 };
 
