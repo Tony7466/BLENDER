@@ -1373,30 +1373,30 @@ FCurve *action_fcurve_ensure(Main *bmain,
   return fcu;
 }
 
-ID *action_binding_get_id_for_keying(Main &bmain,
-                                     bAction &act,
-                                     const binding_handle_t binding_handle,
-                                     ID *priority_id)
+ID *action_slot_get_id_for_keying(Main &bmain,
+                                  bAction &act,
+                                  const slot_handle_t slot_handle,
+                                  ID *primary_id)
 {
   Action &action = act.wrap();
   if (action.is_action_legacy()) {
-    if (id_action_get(priority_id) == &act) {
-      return priority_id;
+    if (id_action_get(primary_id) == &act) {
+      return primary_id;
     }
     return nullptr;
   }
 
-  Binding *binding = action.binding_for_handle(binding_handle);
-  if (binding == nullptr) {
+  Slot *slot = action.slot_for_handle(slot_handle);
+  if (slot == nullptr) {
     return nullptr;
   }
 
-  blender::Span<ID *> users = binding->users(bmain);
+  blender::Span<ID *> users = slot->users(bmain);
   if (users.size() == 1) {
     return users[0];
   }
-  if (users.contains(priority_id)) {
-    return priority_id;
+  if (users.contains(primary_id)) {
+    return primary_id;
   }
 
   return nullptr;
