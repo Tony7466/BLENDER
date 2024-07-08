@@ -316,8 +316,7 @@ static PointerRNA rna_AnimData_action_slot_get(PointerRNA *ptr)
   if (!slot) {
     return PointerRNA_NULL;
   }
-
-  return rna_pointer_inherit_refine(ptr, &RNA_ActionSlot, slot);
+  return RNA_pointer_create(&action.id, &RNA_ActionSlot, slot);
 }
 
 static void rna_AnimData_action_slot_set(PointerRNA *ptr, PointerRNA value, ReportList *reports)
