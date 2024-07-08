@@ -43,12 +43,6 @@ static const std::array<NDOF_DeviceT, 9> legacy_device_types = {
     NDOF_SpaceTraveler,
 };
 
-static bool IsLegacyDevice(NDOF_DeviceT pid)
-{
-  return std::find(legacy_device_types.begin(), legacy_device_types.end(), pid) !=
-         legacy_device_types.end();
-}
-
 /* Printable values for #NDOF_ButtonT enum (keep aligned) */
 static const std::map<NDOF_ButtonT, const char *> ndof_button_names = {
     {NDOF_BUTTON_INVALID, "NDOF_BUTTON_INVALID"},
