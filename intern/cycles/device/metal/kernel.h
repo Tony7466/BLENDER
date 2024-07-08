@@ -55,8 +55,8 @@ enum MetalPipelineType {
 const char *kernel_type_as_string(MetalPipelineType pso_type);
 
 /* A pipeline object that can be shared between multiple instances of MetalDeviceQueue. */
-struct MetalKernelPipeline {
-
+class MetalKernelPipeline {
+public:
   void compile();
 
   int pipeline_id;
@@ -90,11 +90,16 @@ struct MetalKernelPipeline {
 
 /* An actively instanced pipeline that can only be used by a single instance of MetalDeviceQueue.
  */
-struct MetalDispatchPipeline {
+class MetalDispatchPipeline {
+public:
   ~MetalDispatchPipeline();
 
   bool update(MetalDevice *metal_device, DeviceKernel kernel);
   void free_intersection_function_tables();
+
+private:
+  friend class MetalDeviceQueue;
+  friend struct ShaderCache;
 
   int pipeline_id = -1;
 

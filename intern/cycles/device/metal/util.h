@@ -51,7 +51,7 @@ struct MetalInfo {
 };
 
 /* Pool of MTLBuffers whose lifetime is linked to a single MTLCommandBuffer */
-struct MetalBufferPool {
+class MetalBufferPool {
   struct MetalBufferListEntry {
     id<MTLBuffer> buffer;
     id<MTLCommandBuffer> command_buffer;
@@ -60,6 +60,7 @@ struct MetalBufferPool {
   thread_mutex buffer_mutex;
   size_t total_temp_mem_size = 0;
 
+public:
   ~MetalBufferPool();
 
   id<MTLBuffer> get_buffer(id<MTLDevice> device,
