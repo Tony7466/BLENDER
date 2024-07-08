@@ -1856,8 +1856,8 @@ void BKE_sculpt_update_object_before_eval(Object *ob_eval)
   if (ss && ss->building_vp_handle == false) {
     if (!ss->cache && !ss->filter_cache && !ss->expand_cache) {
       if (ss->pbvh) {
-        /* Before destroying the pbvh, flush the updates to the underlying representation to ensure
-         * that PBVH rendering works as expected for the Curve stroke type.
+        /* PBVH nodes may contain dirty normal tags. To avoid losing that information when the PBVH
+         * is deleted, make sure all tagged geometry normals are up to date.
          * See #122947 for more information. */
         blender::bke::pbvh::update_normals(*ss->pbvh, ss->subdiv_ccg);
       }
