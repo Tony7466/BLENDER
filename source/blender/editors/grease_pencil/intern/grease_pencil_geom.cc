@@ -8,16 +8,22 @@
 
 #include <limits>
 
+#include "BKE_attribute.hh"
 #include "BLI_enumerable_thread_specific.hh"
 #include "BLI_kdtree.h"
 #include "BLI_math_vector.hh"
+#include "BLI_offset_indices.hh"
 #include "BLI_rect.h"
 #include "BLI_stack.hh"
 
 #include "BKE_curves_utils.hh"
 #include "BKE_grease_pencil.hh"
 
+#include "BLI_task.hh"
+#include "DNA_curves_types.h"
 #include "ED_grease_pencil.hh"
+#include "ED_view3d.hh"
+#include "GEO_reorder.hh"
 
 extern "C" {
 #include "curve_fit_nd.h"
@@ -330,6 +336,141 @@ blender::bke::CurvesGeometry curves_merge_by_distance(
   });
 
   return dst_curves;
+}
+
+bke::CurvesGeometry curves_merge_endpoints(
+    const bke::CurvesGeometry &src_curves,
+    Span<int> connect_to_curve,
+    Span<bool> flip_direction,
+    const bke::AnonymousAttributePropagationInfo &propagation_info)
+{
+  BLI_assert(connect_to_curve.size() == src_curves.curves_num());
+  const IndexRange curves_range = src_curves.curves_range();
+
+  /* Find a new ordering of curves based on connectivity. */
+  Array<int> new_by_old_map(src_curves.curves_num(), -1);
+  Vector<int> old_by_new_map;
+  Vector<int> flip_by_new_map;
+  old_by_new_map.reserve(src_curves.curves_num());
+
+  for (const int src_i : src_curves.curves_range()) {
+    /* Add all connected curves in sequence. */
+    int connect_i = src_i;
+    /* When connecting to an end point flip the direction. */
+    bool direction_flipped = flip_direction[src_i];
+    while (curves_range.contains(connect_i)) {
+      /* Stop if target curve is already inserted. */
+      if (new_by_old_map[connect_i] != -1) {
+        break;
+      }
+
+      const int dst_i = old_by_new_map.size();
+      new_by_old_map[connect_i] = dst_i;
+      old_by_new_map.append(connect_i);
+      flip_by_new_map.append(direction_flipped);
+
+      /* Switch direction when connecting to a flipped curve. */
+      direction_flipped ^= flip_direction[connect_i];
+      connect_i = connect_to_curve[connect_i];
+    }
+  }
+
+  bke::CurvesGeometry ordered_curves = geometry::reorder_curves_geometry(
+      src_curves, old_by_new_map, propagation_info);
+
+  // TODO update curve topology attributes (counts + offsets) to actually merge adjacent point
+  // spans. Make cyclic if the last curve connects to the first.
+
+  return ordered_curves;
+}
+
+bke::CurvesGeometry curves_merge_endpoints_by_distance(
+    const ARegion &region,
+    const bke::CurvesGeometry &src_curves,
+    const float4x4 &layer_to_world,
+    const float merge_distance,
+    const IndexMask &selection,
+    const bke::AnonymousAttributePropagationInfo &propagation_info)
+{
+  const bke::AttributeAccessor src_attributes = src_curves.attributes();
+  const OffsetIndices src_points_by_curve = src_curves.points_by_curve();
+  const Span<float3> src_positions = src_curves.positions();
+  const float merge_distance_squared = merge_distance * merge_distance;
+
+  Array<float2> screen_start_points(src_curves.curves_num());
+  Array<float2> screen_end_points(src_curves.curves_num());
+  /* For comparing screen space positions use a 2D KDTree. Each curve adds 2 points. */
+  KDTree_2d *tree = BLI_kdtree_2d_new(2 * src_curves.curves_num());
+
+  threading::parallel_for(src_curves.curves_range(), 1024, [&](const IndexRange range) {
+    for (const int src_i : range) {
+      const IndexRange points = src_points_by_curve[src_i];
+      const float3 start_pos = src_positions[points.first()];
+      const float3 end_pos = src_positions[points.last()];
+      const float3 start_world = math::transform_point(layer_to_world, start_pos);
+      const float3 end_world = math::transform_point(layer_to_world, end_pos);
+
+      float2 &start_co = screen_start_points[src_i];
+      float2 &end_co = screen_end_points[src_i];
+      ED_view3d_project_float_global(&region, start_world, start_co, V3D_PROJ_TEST_NOP);
+      ED_view3d_project_float_global(&region, end_world, end_co, V3D_PROJ_TEST_NOP);
+
+      BLI_kdtree_2d_insert(tree, 2 * src_i, start_co);
+      BLI_kdtree_2d_insert(tree, 2 * src_i + 1, end_co);
+    }
+  });
+  BLI_kdtree_2d_balance(tree);
+
+  Array<int> connect_to_curve(src_curves.curves_num(), -1);
+  Array<bool> flip_direction(src_curves.curves_num(), false);
+  selection.foreach_index(GrainSize(512), [&](const int src_i) {
+    const float2 &start_co = screen_start_points[src_i];
+    const float2 &end_co = screen_end_points[src_i];
+    /* Index of KDTree points so they can be ignored. */
+    const int start_index = src_i * 2;
+    const int end_index = src_i * 2 + 1;
+
+    KDTreeNearest_2d nearest_start, nearest_end;
+    const bool is_start_ok = (BLI_kdtree_2d_find_nearest_cb_cpp(
+                                  tree,
+                                  start_co,
+                                  &nearest_start,
+                                  [&](const int other, const float * /*co*/, const float dist_sq) {
+                                    return (start_index == other ||
+                                            dist_sq > merge_distance_squared) ?
+                                               0 :
+                                               1;
+                                  }) != -1);
+    const bool is_end_ok = (BLI_kdtree_2d_find_nearest_cb_cpp(
+                                tree,
+                                end_co,
+                                &nearest_end,
+                                [&](const int other, const float * /*co*/, const float dist_sq) {
+                                  return (end_index == other || dist_sq > merge_distance_squared) ?
+                                             0 :
+                                             1;
+                                }) != -1);
+
+    if (is_start_ok) {
+      const int curve_index = nearest_start.index / 2;
+      const bool is_end_point = bool(nearest_start.index % 2);
+      if (connect_to_curve[curve_index] < 0) {
+        connect_to_curve[curve_index] = src_i;
+        flip_direction[curve_index] = !is_end_point;
+      }
+    }
+    if (is_end_ok) {
+      const int curve_index = nearest_end.index / 2;
+      const bool is_end_point = bool(nearest_end.index % 2);
+      if (connect_to_curve[src_i] < 0) {
+        connect_to_curve[src_i] = curve_index;
+        flip_direction[src_i] = is_end_point;
+      }
+    }
+  });
+  BLI_kdtree_2d_free(tree);
+
+  return curves_merge_endpoints(src_curves, connect_to_curve, flip_direction, propagation_info);
 }
 
 /* Generate points in an counter-clockwise arc between two directions. */

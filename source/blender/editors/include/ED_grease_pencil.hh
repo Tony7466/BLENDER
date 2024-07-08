@@ -366,6 +366,8 @@ int curve_merge_by_distance(const IndexRange points,
                             const IndexMask &selection,
                             const float merge_distance,
                             MutableSpan<int> r_merge_indices);
+ * \param flip_direction: Flip direction of input curves.
+    Span<bool> flip_direction,
 /**
  * Structure describing a point in the destination relatively to the source.
  * If a point in the destination \a is_src_point, then it corresponds
