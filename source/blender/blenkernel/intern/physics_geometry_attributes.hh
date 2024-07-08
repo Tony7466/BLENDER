@@ -286,8 +286,8 @@ class VMutableArrayImpl_For_PhysicsConstraints final : public VMutableArrayImpl<
  * components in a generic way.
  */
 struct PhysicsAccessInfo {
-  using PhysicsGetter = PhysicsGeometry *(*)(void *owner);
-  using ConstPhysicsGetter = const PhysicsGeometry *(*)(const void *owner);
+  using PhysicsGetter = PhysicsGeometryImpl *(*)(void *owner);
+  using ConstPhysicsGetter = const PhysicsGeometryImpl *(*)(const void *owner);
 
   PhysicsGetter get_physics;
   ConstPhysicsGetter get_const_physics;
@@ -553,5 +553,7 @@ class BuiltinConstraintAttributeProvider final : public BuiltinPhysicsAttributeB
 };
 
 /** \} */
+
+const AttributeAccessorFunctions &get_physics_accessor_functions_ref(bool use_physics_data);
 
 }  // namespace blender::bke
