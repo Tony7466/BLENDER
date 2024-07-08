@@ -10,6 +10,7 @@
 
 struct ScrArea;
 struct SpaceProperties;
+struct bAction;
 struct bContext;
 struct PointerRNA;
 
@@ -25,6 +26,9 @@ void ED_buttons_search_string_set(SpaceProperties *sbuts, const char *value);
 int ED_buttons_search_string_length(SpaceProperties *sbuts);
 const char *ED_buttons_search_string_get(SpaceProperties *sbuts);
 
+bAction *ED_buttons_action_get(SpaceProperties *sbuts);
+void ED_buttons_action_set(SpaceProperties *sbuts, bAction *action);
+
 bool ED_buttons_should_sync_with_outliner(const bContext *C,
                                           const SpaceProperties *sbuts,
                                           ScrArea *area);
@@ -32,3 +36,10 @@ void ED_buttons_set_context(const bContext *C,
                             SpaceProperties *sbuts,
                             PointerRNA *ptr,
                             int context);
+
+/**
+ * Return the ID that is pointed to by sbuts->path.
+ *
+ * Also accounts for pinning.
+ */
+ID *ED_buttons_context_id_path(SpaceProperties *sbuts);

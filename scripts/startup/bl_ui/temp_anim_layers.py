@@ -57,7 +57,7 @@ class VIEW3D_PT_animation_layers(Panel):
             row.prop(adt, "action_slot", text="Slot")
             row.operator("anim.slot_unassign_object", text="", icon='X')
 
-            slot = anim.slots.get(adt.action_slot, None)
+            slot = adt.action_slot
             if slot:
                 slot_sub.prop(slot, "name_display", text="Name")
 

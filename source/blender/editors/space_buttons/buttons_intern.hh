@@ -16,6 +16,7 @@ struct ARegionType;
 struct ID;
 struct SpaceProperties;
 struct Tex;
+struct bAction;
 struct bContext;
 struct bContextDataResult;
 struct bNode;
@@ -31,6 +32,15 @@ struct SpaceProperties_Runtime {
    * that match the search filter. Only valid when #search_string is set.
    */
   BLI_bitmap *tab_search_results;
+
+  /**
+   * Action selector support.
+   *
+   * Since the `id.animation_data.action` property does not exist when
+   * `id.animation_data == None`, there has to be *something* else that has an
+   * .action property for that initial ID selector to do its thing.
+   */
+  bAction *action;
 };
 
 /* context data */
