@@ -58,19 +58,13 @@ static void filter_factors_on_face_sets(const GroupedSpan<int> vert_to_face_map,
 /** \name Relax Vertex
  * \{ */
 
-static Vector<int, 16> filtered_neighbors() {}
-
-static bool get_normal_boundary(const GroupedSpan<int> vert_to_face_map,
-                                const int *face_sets,
-                                const BitSpan boundary_verts,
-                                const float3 &current_position,
-                                const Span<float3> vert_positions,
-                                const bool filter_boundary_face_sets,
-                                const Span<int> neighbors,
-                                float3 &r_new_normal)
+static Vector<int, 16> filtered_boundary_neighbors(const GroupedSpan<int> vert_to_face_map,
+                                                   const int *face_sets,
+                                                   const BitSpan boundary_verts,
+                                                   const bool filter_boundary_face_sets,
+                                                   const Span<int> neighbors)
 {
-  int total = 0;
-  float3 normal(0.0f, 0.0f, 0.0f);
+  Vector<int, 16> result;
   for (const int vert : neighbors) {
     /* If we are filtering face sets, then we only want to affect vertices that have more than one
      * face set, i.e. are on the boundary of a face set and another face set. */
@@ -86,13 +80,43 @@ static bool get_normal_boundary(const GroupedSpan<int> vert_to_face_map,
       continue;
     }
 
+    result.append(vert);
+  }
+  return result;
+}
+
+static Vector<int, 16> filtered_interior_neighbors(const GroupedSpan<int> vert_to_face_map,
+                                                   const int *face_sets,
+                                                   const bool filter_boundary_face_sets,
+                                                   const Span<int> neighbors)
+{
+  Vector<int, 16> result;
+  for (const int vert : neighbors) {
+    /* If we are filtering face sets, then we only want to affect vertices that have more than one
+     * face set, i.e. are on the boundary of a face set and another face set. */
+    if (filter_boundary_face_sets &&
+        face_set::vert_has_unique_face_set_mesh(vert_to_face_map, face_sets, vert))
+    {
+      continue;
+    }
+    result.append(vert);
+  }
+  return result;
+}
+
+static bool get_normal_boundary(const float3 &current_position,
+                                const Span<float3> vert_positions,
+                                const Span<int> neighbors,
+                                float3 &r_new_normal)
+{
+  float3 normal(0.0f, 0.0f, 0.0f);
+  for (const int vert : neighbors) {
     const float3 to_neighbor = vert_positions[vert] - current_position;
     normal += math::normalize(to_neighbor);
-    total++;
   }
 
   /* If we are not dealing with a corner vertex, skip this step.*/
-  if (total != 2) {
+  if (neighbors.size() != 2) {
     return false;
   }
 
@@ -101,72 +125,20 @@ static bool get_normal_boundary(const GroupedSpan<int> vert_to_face_map,
   return true;
 }
 
-static bool get_average_position_boundary(const GroupedSpan<int> vert_to_face_map,
-                                          const int *face_sets,
-                                          const BitSpan boundary_verts,
-                                          const Span<float3> vert_positions,
-                                          const bool filter_boundary_face_sets,
-                                          const Span<int> neighbors,
-                                          float3 &r_new_position)
+static bool get_average_position(const Span<float3> vert_positions,
+                                 const Span<int> neighbors,
+                                 float3 &r_new_position)
 {
-  int total = 0;
-  float3 average_position(0.0f, 0.0f, 0.0f);
-  for (const int vert : neighbors) {
-    /* If we are filtering face sets, then we only want to affect vertices that have more than one
-     * face set, i.e. are on the boundary of a face set and another face set. */
-    if (filter_boundary_face_sets &&
-        face_set::vert_has_unique_face_set_mesh(vert_to_face_map, face_sets, vert))
-    {
-      continue;
-    }
-
-    /* When the vertex to relax is boundary, use only connected boundary vertices for the average
-     * position. */
-    if (!boundary_verts[vert]) {
-      continue;
-    }
-
-    average_position += vert_positions[vert];
-    total++;
-  }
-
-  if (total == 0) {
+  if (neighbors.size() == 0) {
     return false;
   }
 
-  average_position *= math::rcp(float(total));
-  r_new_position = average_position;
-
-  return true;
-}
-
-static bool get_average_position_interior(const GroupedSpan<int> vert_to_face_map,
-                                          const int *face_sets,
-                                          const Span<float3> vert_positions,
-                                          const bool filter_boundary_face_sets,
-                                          const Span<int> neighbors,
-                                          float3 &r_new_position)
-{
-  int total = 0;
   float3 average_position(0.0f, 0.0f, 0.0f);
   for (const int vert : neighbors) {
-    /* If we are filtering face sets, then we only want to affect vertices that have more than one
-     * face set, i.e. are on the boundary of a face set and another face set. */
-    if (filter_boundary_face_sets &&
-        face_set::vert_has_unique_face_set_mesh(vert_to_face_map, face_sets, vert))
-    {
-      continue;
-    }
-
     average_position += vert_positions[vert];
-    total++;
   }
 
-  if (total == 0) {
-    return false;
-  }
-
-  average_position *= math::rcp(float(total));
+  average_position *= math::rcp(float(neighbors.size()));
   r_new_position = average_position;
 
   return true;
@@ -244,26 +216,17 @@ BLI_NOINLINE static void calc_relaxed_positions_faces(const OffsetIndices<int> f
       continue;
     }
 
+    Vector<int, 16> filtered_neighbors =
+        boundary_verts[verts[i]] ?
+            filtered_boundary_neighbors(
+                vert_to_face_map, face_sets, boundary_verts, relax_face_sets, vert_neighbors[i]) :
+            filtered_interior_neighbors(
+                vert_to_face_map, face_sets, relax_face_sets, vert_neighbors[i]);
+
     /* Smoothed position calculation */
     float3 smoothed_position;
-    bool has_new_position = false;
-    if (boundary_verts[verts[i]]) {
-      has_new_position = get_average_position_boundary(vert_to_face_map,
-                                                       face_sets,
-                                                       boundary_verts,
-                                                       positions,
-                                                       relax_face_sets,
-                                                       vert_neighbors[i],
-                                                       smoothed_position);
-    }
-    else {
-      has_new_position = get_average_position_interior(vert_to_face_map,
-                                                       face_sets,
-                                                       positions,
-                                                       relax_face_sets,
-                                                       vert_neighbors[i],
-                                                       smoothed_position);
-    }
+    const bool has_new_position = get_average_position(
+        positions, filtered_neighbors, smoothed_position);
 
     if (!has_new_position) {
       new_positions[i] = positions[verts[i]];
@@ -273,14 +236,8 @@ BLI_NOINLINE static void calc_relaxed_positions_faces(const OffsetIndices<int> f
     /* Normal Calculation */
     float3 normal;
     if (boundary_verts[verts[i]]) {
-      bool has_boundary_normal = get_normal_boundary(vert_to_face_map,
-                                                     face_sets,
-                                                     boundary_verts,
-                                                     positions[verts[i]],
-                                                     positions,
-                                                     relax_face_sets,
-                                                     vert_neighbors[i],
-                                                     normal);
+      bool has_boundary_normal = get_normal_boundary(
+          positions[verts[i]], positions, filtered_neighbors, normal);
 
       if (!has_boundary_normal) {
         normal = normals[verts[i]];
