@@ -2079,15 +2079,20 @@ static void execute_realize_grease_pencil_tasks(
   if (tasks.is_empty()) {
     return;
   }
-  const RealizeGreasePencilTask &last_task = tasks.last();
-  const GreasePencil &last_grease_pencil = *last_task.grease_pencil_info->grease_pencil;
-  const int total_layers_num = last_task.start_index + last_grease_pencil.layers().size();
 
   /* Allocate new grease pencil. */
   GreasePencil *dst_grease_pencil = BKE_grease_pencil_new_nomain();
   r_realized_geometry.replace_grease_pencil(dst_grease_pencil);
-  dst_grease_pencil->add_layers_with_empty_drawings_for_eval(total_layers_num);
-  bke::MutableAttributeAccessor dst_attributes = dst_grease_pencil->attributes_for_write();
+
+  /* Prepare layer names. This is currently quadratic in the number of layers because layer names
+   * are made unique. */
+  for (const RealizeGreasePencilTask &task : tasks) {
+    const GreasePencil &src_grease_pencil = *task.grease_pencil_info->grease_pencil;
+    for (const bke::greasepencil::Layer *src_layer : src_grease_pencil.layers()) {
+      bke::greasepencil::Layer &dst_layer = dst_grease_pencil->add_layer(src_layer->name());
+      dst_grease_pencil->insert_frame(dst_layer, dst_grease_pencil->runtime->eval_frame);
+    }
+  }
 
   /* Transfer material pointers. The material indices are updated for each task separately. */
   if (!all_grease_pencils_info.materials.is_empty()) {
@@ -2100,6 +2105,7 @@ static void execute_realize_grease_pencil_tasks(
   }
 
   /* Prepare generic output attributes. */
+  bke::MutableAttributeAccessor dst_attributes = dst_grease_pencil->attributes_for_write();
   Vector<GSpanAttributeWriter> dst_attribute_writers;
   for (const int attribute_index : ordered_attributes.index_range()) {
     const AttributeIDRef &attribute_id = ordered_attributes.ids[attribute_index];
@@ -2121,9 +2127,6 @@ static void execute_realize_grease_pencil_tasks(
   for (GSpanAttributeWriter &dst_attribute : dst_attribute_writers) {
     dst_attribute.finish();
   }
-
-  /* TODO: transfer materials */
-  /* TODO: transfer layer names */
 }
 
 /** \} */
