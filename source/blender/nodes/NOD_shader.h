@@ -31,6 +31,8 @@ void ntreeShaderEndExecTree(struct bNodeTreeExec *exec);
  */
 struct bNode *ntreeShaderOutputNode(struct bNodeTree *ntree, int target);
 
+bNodeTree *npr_tree_get(struct Material *material);
+
 /**
  * This one needs to work on a local tree.
  */

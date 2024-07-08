@@ -2,7 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-void npr_passthrough(in Closure Shader, out Closure NPR)
+void npr_passthrough(in Closure Shader, float weight, out Closure NPR)
 {
   NPR = Shader;
 }

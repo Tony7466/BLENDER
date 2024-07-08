@@ -372,6 +372,10 @@ Material &MaterialModule::material_sync(Object *ob,
         mat.volume_occupancy = MaterialPass();
         mat.volume_material = MaterialPass();
       }
+
+      if (surface_pipe == MAT_PIPE_DEFERRED) {
+        mat.npr_index = inst_.npr.sync_material(blender_mat);
+      }
     }
 
     if (!(ob->visibility_flag & OB_HIDE_SHADOW)) {

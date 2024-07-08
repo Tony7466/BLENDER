@@ -112,6 +112,7 @@ void Instance::init(const int2 &output_res,
   volume_probes.init();
   volume.init();
   lookdev.init(visible_rect);
+  npr.init();
 
   /* Pre-compile specialization constants in parallel (if supported). */
   shaders.precompile_specializations(
@@ -154,6 +155,7 @@ void Instance::init_light_bake(Depsgraph *depsgraph, draw::Manager *manager)
   volume_probes.init();
   volume.init();
   lookdev.init(&empty_rect);
+  npr.init();
 }
 
 void Instance::set_time(float time)

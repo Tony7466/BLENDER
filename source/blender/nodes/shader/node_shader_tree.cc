@@ -948,6 +948,7 @@ static void ntree_shader_weight_tree_invert(bNodeTree *ntree, bNode *output_node
             case SH_NODE_EEVEE_SPECULAR:
             case SH_NODE_EMISSION:
             case SH_NODE_HOLDOUT:
+            case SH_NODE_NPR:
             case SH_NODE_SUBSURFACE_SCATTERING:
             case SH_NODE_VOLUME_ABSORPTION:
             case SH_NODE_VOLUME_PRINCIPLED:
@@ -1233,6 +1234,7 @@ void ntreeGPUMaterialNodes(bNodeTree *localtree, GPUMaterial *mat, eGPUMaterialE
 
   if (engine == GPU_MAT_NPR) {
     ntreeGPUMaterialNodesNPR(localtree, mat);
+    return;
   }
 
   bNode *output = ntreeShaderOutputNode(localtree, SHD_OUTPUT_EEVEE);
@@ -1349,4 +1351,34 @@ void ntreeShaderEndExecTree(bNodeTreeExec *exec)
      * same problem as noted in #ntreeBeginExecTree. */
     ntree->runtime->execdata = nullptr;
   }
+}
+
+static void get_npr_node(bNode *node) {}
+
+bNodeTree *npr_tree_get(Material *material)
+{
+  if (!material || !material->nodetree) {
+    return nullptr;
+  }
+
+  /* TODO(NPR): This won't work if the npr node is inside a group or there's a re-route node. */
+  if (bNode *output = ntreeShaderOutputNode(material->nodetree, SHD_OUTPUT_EEVEE)) {
+    bNodeSocket *surface_socket = nullptr;
+    LISTBASE_FOREACH (bNodeSocket *, socket, &output->inputs) {
+      if (STREQ(socket->name, "Surface")) {
+        surface_socket = socket;
+        break;
+      }
+    }
+    if (surface_socket && surface_socket->link && surface_socket->link->fromnode &&
+        surface_socket->link->fromnode->type == SH_NODE_NPR)
+    {
+      NodeShaderNPR *storage = static_cast<NodeShaderNPR *>(
+          surface_socket->link->fromnode->storage);
+      if (storage) {
+        return storage->nodetree;
+      }
+    }
+  }
+  return nullptr;
 }

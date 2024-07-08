@@ -325,6 +325,7 @@ struct Material {
   bool has_transparent_shadows;
   bool has_surface;
   bool has_volume;
+  int npr_index;
   MaterialPass shadow;
   MaterialPass shading;
   MaterialPass prepass;
