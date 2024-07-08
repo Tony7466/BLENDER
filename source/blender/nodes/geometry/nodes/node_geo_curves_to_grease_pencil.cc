@@ -49,7 +49,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
 
   GreasePencil *grease_pencil = BKE_grease_pencil_new_nomain();
-  grease_pencil->add_layers_with_empty_drawings(layer_num);
+  grease_pencil->add_layers_with_empty_drawings_for_eval(layer_num);
 
   VectorSet<Material *> all_materials;
 

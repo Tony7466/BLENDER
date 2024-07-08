@@ -2403,7 +2403,7 @@ bool GreasePencil::remove_frames(blender::bke::greasepencil::Layer &layer,
   return false;
 }
 
-void GreasePencil::add_layers_with_empty_drawings(const int num)
+void GreasePencil::add_layers_with_empty_drawings_for_eval(const int num)
 {
   using namespace blender;
   using namespace blender::bke::greasepencil;

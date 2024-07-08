@@ -610,7 +610,7 @@ typedef struct GreasePencil {
    * Adds multiple layers each with its own empty drawing. This can be more efficient than adding
    * every layer and drawing one by one.
    */
-  void add_layers_with_empty_drawings(int num);
+  void add_layers_with_empty_drawings_for_eval(int num);
 
   /**
    * Low-level resizing of drawings array. Only allocates new entries in the array, no drawings are
