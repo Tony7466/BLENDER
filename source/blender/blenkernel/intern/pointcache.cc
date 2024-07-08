@@ -1145,7 +1145,7 @@ static bool foreach_object_particle_ptcache(Object *object, PointCacheIdFn callb
       continue;
     }
     BKE_ptcache_id_from_particles(&pid, object, psys);
-    // TODO figure out the particle modifier for this system and put it here.
+    /* TODO figure out the particle modifier for this system and put it here. */
     if (!callback(pid, nullptr)) {
       return false;
     }
