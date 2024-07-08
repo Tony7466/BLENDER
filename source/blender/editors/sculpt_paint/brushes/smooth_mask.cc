@@ -143,6 +143,8 @@ static void do_smooth_brush_mesh(const Brush &brush,
 
   threading::EnumerableThreadSpecific<LocalData> all_tls;
   for (const float strength : iteration_strengths(brush_strength)) {
+    /* Calculate new masks into a separate array to avoid non-threadsafe access of values from
+     * neighboring nodes. */
     threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
       LocalData &tls = all_tls.local();
       for (const int i : range) {

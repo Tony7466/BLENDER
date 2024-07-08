@@ -146,6 +146,10 @@ BLI_NOINLINE static void do_smooth_brush_mesh(const Sculpt &sd,
   Array<float3> new_positions(node_vert_offsets.total_size());
 
   threading::EnumerableThreadSpecific<LocalData> all_tls;
+
+  /* Calculate the new positions into a separate array in a separate loop because multiple loops
+   * are updated in parallel. Without this there would be non-threadsafe access to changing
+   * positions in other PBVH nodes. */
   for (const float strength : iteration_strengths(brush_strength)) {
     threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
       LocalData &tls = all_tls.local();
