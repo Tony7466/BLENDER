@@ -158,7 +158,7 @@ static float3 average_positions(const Span<const BMVert *> verts)
 void neighbor_position_average_interior_bmesh(const Set<BMVert *, 0> &verts,
                                               const MutableSpan<float3> new_positions)
 {
-  BLI_assert(vert_neighbors.size() == new_positions.size());
+  BLI_assert(verts.size() == new_positions.size());
   Vector<BMVert *, 64> neighbor_data;
 
   int i = 0;
