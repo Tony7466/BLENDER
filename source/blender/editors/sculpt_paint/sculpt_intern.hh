@@ -806,29 +806,6 @@ void sculpt_project_v3_normal_align(const SculptSession &ss,
 /** \name Sculpt mesh accessor API
  * \{ */
 
-struct SculptMaskWriteInfo {
-  float *layer = nullptr;
-  int bm_offset = -1;
-};
-SculptMaskWriteInfo SCULPT_mask_get_for_write(SculptSession &ss);
-inline void SCULPT_mask_vert_set(const PBVHType type,
-                                 const SculptMaskWriteInfo mask_write,
-                                 const float value,
-                                 PBVHVertexIter &vd)
-{
-  switch (type) {
-    case PBVH_FACES:
-      mask_write.layer[vd.index] = value;
-      break;
-    case PBVH_BMESH:
-      BM_ELEM_CD_SET_FLOAT(vd.bm_vert, mask_write.bm_offset, value);
-      break;
-    case PBVH_GRIDS:
-      CCG_elem_mask(vd.key, vd.grid) = value;
-      break;
-  }
-}
-
 /** Ensure random access; required for PBVH_BMESH */
 void SCULPT_vertex_random_access_ensure(SculptSession &ss);
 
@@ -1542,7 +1519,6 @@ namespace blender::ed::sculpt_paint::smooth {
 void bmesh_four_neighbor_average(float avg[3], const float3 &direction, const BMVert *v);
 
 float3 neighbor_coords_average(SculptSession &ss, PBVHVertRef vertex);
-float neighbor_mask_average(SculptSession &ss, SculptMaskWriteInfo write_info, PBVHVertRef vertex);
 float4 neighbor_color_average(SculptSession &ss,
                               OffsetIndices<int> faces,
                               Span<int> corner_verts,

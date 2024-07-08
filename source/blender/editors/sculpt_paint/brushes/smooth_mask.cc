@@ -58,6 +58,15 @@ static float average_masks(const Span<float> masks, const Span<int> indices)
   return result;
 }
 
+static void average_neighbor_masks(const Span<float> masks,
+                                   const Span<Vector<int>> vert_neighbors,
+                                   const MutableSpan<float> new_masks)
+{
+  for (const int i : vert_neighbors.index_range()) {
+    new_masks[i] = average_masks(masks, vert_neighbors[i]);
+  }
+}
+
 static void calc_smooth_masks_faces(const OffsetIndices<int> faces,
                                     const Span<int> corner_verts,
                                     const GroupedSpan<int> vert_to_face_map,
@@ -70,16 +79,7 @@ static void calc_smooth_masks_faces(const OffsetIndices<int> faces,
   tls.vert_neighbors.reinitialize(verts.size());
   calc_vert_neighbors(faces, corner_verts, vert_to_face_map, hide_poly, verts, tls.vert_neighbors);
   const Span<Vector<int>> vert_neighbors = tls.vert_neighbors;
-
-  for (const int i : verts.index_range()) {
-    const Span<int> neighbors = vert_neighbors[i];
-    if (neighbors.is_empty()) {
-      new_masks[i] = masks[verts[i]];
-    }
-    else {
-      new_masks[i] = average_masks(masks, neighbors);
-    }
-  }
+  average_neighbor_masks(masks, vert_neighbors, new_masks);
 }
 
 static void apply_masks_faces(const Brush &brush,

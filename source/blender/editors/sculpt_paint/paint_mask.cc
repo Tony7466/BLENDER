@@ -185,6 +185,25 @@ void scatter_mask_bmesh(const Span<float> mask, const BMesh &bm, const Set<BMVer
   }
 }
 
+static float average_masks(const Span<float> masks, const Span<int> indices)
+{
+  const float factor = math::rcp(float(indices.size()));
+  float result = 0;
+  for (const int i : indices) {
+    result += masks[i] * factor;
+  }
+  return result;
+}
+
+void average_neighbor_masks(const Span<float> masks,
+                            const Span<Vector<int>> vert_neighbors,
+                            const MutableSpan<float> new_masks)
+{
+  for (const int i : vert_neighbors.index_range()) {
+    new_masks[i] = average_masks(masks, vert_neighbors[i]);
+  }
+}
+
 void update_mask_mesh(Object &object,
                       const Span<PBVHNode *> nodes,
                       FunctionRef<void(MutableSpan<float>, Span<int>)> update_fn)

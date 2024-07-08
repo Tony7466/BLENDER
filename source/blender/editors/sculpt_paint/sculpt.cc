@@ -139,26 +139,6 @@ bool ED_sculpt_report_if_shape_key_is_locked(const Object &ob, ReportList *repor
  * different index for each grid.
  * \{ */
 
-SculptMaskWriteInfo SCULPT_mask_get_for_write(SculptSession &ss)
-{
-  SculptMaskWriteInfo info;
-  switch (BKE_pbvh_type(*ss.pbvh)) {
-    case PBVH_FACES: {
-      Mesh *mesh = BKE_pbvh_get_mesh(*ss.pbvh);
-      info.layer = static_cast<float *>(CustomData_get_layer_named_for_write(
-          &mesh->vert_data, CD_PROP_FLOAT, ".sculpt_mask", mesh->verts_num));
-      break;
-    }
-    case PBVH_BMESH:
-      info.bm_offset = CustomData_get_offset_named(
-          &BKE_pbvh_get_bmesh(*ss.pbvh)->vdata, CD_PROP_FLOAT, ".sculpt_mask");
-      break;
-    case PBVH_GRIDS:
-      break;
-  }
-  return info;
-}
-
 void SCULPT_vertex_random_access_ensure(SculptSession &ss)
 {
   if (BKE_pbvh_type(*ss.pbvh) == PBVH_BMESH) {
