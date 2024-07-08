@@ -295,7 +295,7 @@ static uiBlock *wm_block_splash_create(bContext *C, ARegion *region, void * /*ar
 #if defined(__APPLE__)
   if (is_using_macos_rosetta() > 0) {
     uiItemL(layout,
-            "Using Intel Blender binary on an Apple Sillicon Mac. Expect reduced performance",
+            "Using Intel Blender binary on an Apple Silicon Mac. Expect reduced performance.",
             ICON_ERROR);
     uiItemS(layout);
   }
