@@ -66,6 +66,10 @@ void translations_from_new_positions(Span<float3> new_positions,
                                      Span<int> verts,
                                      Span<float3> old_positions,
                                      MutableSpan<float3> translations);
+void translations_from_new_positions(Span<float3> new_positions,
+                                     Span<float3> old_positions,
+                                     MutableSpan<float3> translations);
+
 void transform_positions(Span<float3> src, const float4x4 &transform, MutableSpan<float3> dst);
 
 /**
@@ -179,7 +183,7 @@ void calc_brush_cube_distances(const SculptSession &ss,
 
 /**
  * Scale the distances based on the brush radius and the cached "hardness" setting, which increases
- * the strength of the effect for vertices torwards the outside of the radius.
+ * the strength of the effect for vertices towards the outside of the radius.
  */
 void apply_hardness_to_distances(float radius, float hardness, MutableSpan<float> distances);
 inline void apply_hardness_to_distances(const StrokeCache &cache,
