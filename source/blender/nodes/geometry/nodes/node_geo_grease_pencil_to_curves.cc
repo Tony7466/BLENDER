@@ -14,6 +14,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Grease Pencil")
       .supported_type(bke::GeometryComponent::Type::GreasePencil);
+  b.add_input<decl::Bool>("Selection").default_value(true).hide_value().field_on_all();
   b.add_output<decl::Geometry>("Curve Instances");
 }
 
@@ -27,11 +28,25 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
 
   const Span<const bke::greasepencil::Layer *> layers = grease_pencil->layers();
+  const int layers_num = layers.size();
+
+  const bke::GreasePencilFieldContext field_context{*grease_pencil};
+  const Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
+  FieldEvaluator evaluator{field_context, layers_num};
+  evaluator.set_selection(selection_field);
+  evaluator.evaluate();
+  const IndexMask layer_selection = evaluator.get_evaluated_selection_as_mask();
+
+  const int instances_num = layer_selection.size();
+  if (instances_num == 0) {
+    params.set_default_remaining_outputs();
+    return;
+  }
 
   bke::Instances *instances = new bke::Instances();
   std::optional<int> empty_geometry_handle;
 
-  for (const int layer_i : layers.index_range()) {
+  layer_selection.foreach_index([&](const int layer_i) {
     const bke::greasepencil::Layer &layer = *layers[layer_i];
     const bke::greasepencil::Drawing *drawing = grease_pencil->get_eval_drawing(layer);
     const float4x4 transform = layer.local_transform();
@@ -40,7 +55,7 @@ static void node_geo_exec(GeoNodeExecParams params)
         empty_geometry_handle = instances->add_reference(bke::InstanceReference());
       }
       instances->add_instance(*empty_geometry_handle, transform);
-      continue;
+      return;
     }
     const bke::CurvesGeometry &layer_strokes = drawing->strokes();
     Curves *curves_id = bke::curves_new_nomain(layer_strokes);
@@ -48,7 +63,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     curves_id->totcol = grease_pencil->material_array_num;
     const int handle = instances->add_reference(GeometrySet::from_curves(curves_id));
     instances->add_instance(handle, transform);
-  }
+  });
 
   const bke::AttributeAccessor grease_pencil_attributes = grease_pencil->attributes();
   bke::MutableAttributeAccessor instances_attributes = instances->attributes_for_write();
@@ -59,6 +74,7 @@ static void node_geo_exec(GeoNodeExecParams params)
           return true;
         }
         if (src_attribute.varray.is_span() && src_attribute.sharing_info) {
+          /* Try reusing existing attribute array. */
           instances_attributes.add(
               attribute_id,
               AttrDomain::Instance,
@@ -67,10 +83,17 @@ static void node_geo_exec(GeoNodeExecParams params)
                                        *src_attribute.sharing_info});
           return true;
         }
-        instances_attributes.add(attribute_id,
-                                 AttrDomain::Instance,
-                                 meta_data.data_type,
-                                 bke::AttributeInitVArray(src_attribute.varray));
+        if (!instances_attributes.add(attribute_id,
+                                      AttrDomain::Instance,
+                                      meta_data.data_type,
+                                      bke::AttributeInitConstruct()))
+        {
+          return true;
+        }
+        bke::GSpanAttributeWriter dst_attribute = instances_attributes.lookup_for_write_span(
+            attribute_id);
+        array_utils::gather(src_attribute.varray, layer_selection, dst_attribute.span);
+        dst_attribute.finish();
         return true;
       });
 
