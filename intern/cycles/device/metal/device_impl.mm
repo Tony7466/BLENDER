@@ -1468,10 +1468,10 @@ void MetalDevice::update_bvh(BVHMetal *bvh_metal)
     [blas retain];
   }
 
-  // allocate required buffers for BLAS array
+  // Allocate required buffers for BLAS array.
   uint64_t count = bvh_metal->blas_array.size();
-  uint64_t bufferSize = mtlBlasArgEncoder.encodedLength * count;
-  blas_buffer = [mtlDevice newBufferWithLength:bufferSize options:default_storage_mode];
+  uint64_t buffer_size = mtlBlasArgEncoder.encodedLength * count;
+  blas_buffer = [mtlDevice newBufferWithLength:buffer_size options:default_storage_mode];
   stats.mem_alloc(blas_buffer.allocatedSize);
 
   for (uint64_t i = 0; i < count; ++i) {
