@@ -1314,8 +1314,11 @@ bool BVHMetal::build(Progress &progress,
                      bool refit)
 {
   if (@available(macos 12.0, *)) {
-    if (refit && params.bvh_type != BVH_TYPE_STATIC) {
-      if (!accel_struct) {
+    if (refit) {
+      /* It isn't valid to refit a non-existent BVH, or one which wasn't constructed as dynamic.
+       * In such cases, assert in development but try to recover in the wild. */
+      if (params.bvh_type != BVH_TYPE_DYNAMIC || !accel_struct) {
+        assert(false);
         refit = false;
       }
     }
