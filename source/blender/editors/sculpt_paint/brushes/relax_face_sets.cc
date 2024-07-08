@@ -109,15 +109,15 @@ static bool get_normal_boundary(const float3 &current_position,
                                 const Span<int> neighbors,
                                 float3 &r_new_normal)
 {
+  /* If we are not dealing with a corner vertex, skip this step.*/
+  if (neighbors.size() != 2) {
+    return false;
+  }
+
   float3 normal(0.0f, 0.0f, 0.0f);
   for (const int vert : neighbors) {
     const float3 to_neighbor = vert_positions[vert] - current_position;
     normal += math::normalize(to_neighbor);
-  }
-
-  /* If we are not dealing with a corner vertex, skip this step.*/
-  if (neighbors.size() != 2) {
-    return false;
   }
 
   r_new_normal = math::normalize(normal);
@@ -194,8 +194,8 @@ BLI_NOINLINE static void calc_relaxed_positions_faces(const OffsetIndices<int> f
                                                       const BitSpan boundary_verts,
                                                       const Span<bool> hide_poly,
                                                       const Span<int> verts,
-                                                      const Span<float3> positions,
-                                                      const Span<float3> normals,
+                                                      const Span<float3> vert_positions,
+                                                      const Span<float3> vert_normals,
                                                       const bool relax_face_sets,
                                                       LocalData &tls,
                                                       const Span<float> factors,
@@ -212,7 +212,7 @@ BLI_NOINLINE static void calc_relaxed_positions_faces(const OffsetIndices<int> f
   for (const int i : verts.index_range()) {
     /* Don't modify corner vertices */
     if (vert_neighbors[i].size() <= 2) {
-      new_positions[i] = positions[verts[i]];
+      new_positions[i] = vert_positions[verts[i]];
       continue;
     }
 
@@ -226,10 +226,10 @@ BLI_NOINLINE static void calc_relaxed_positions_faces(const OffsetIndices<int> f
     /* Smoothed position calculation */
     float3 smoothed_position;
     const bool has_new_position = get_average_position(
-        positions, filtered_neighbors, smoothed_position);
+        vert_positions, filtered_neighbors, smoothed_position);
 
     if (!has_new_position) {
-      new_positions[i] = positions[verts[i]];
+      new_positions[i] = vert_positions[verts[i]];
       continue;
     }
 
@@ -237,29 +237,29 @@ BLI_NOINLINE static void calc_relaxed_positions_faces(const OffsetIndices<int> f
     float3 normal;
     if (boundary_verts[verts[i]]) {
       bool has_boundary_normal = get_normal_boundary(
-          positions[verts[i]], positions, filtered_neighbors, normal);
+          vert_positions[verts[i]], vert_positions, filtered_neighbors, normal);
 
       if (!has_boundary_normal) {
-        normal = normals[verts[i]];
+        normal = vert_normals[verts[i]];
       }
     }
     else {
-      normal = normals[verts[i]];
+      normal = vert_normals[verts[i]];
     }
 
     if (math::is_zero(normal)) {
-      new_positions[i] = positions[verts[i]];
+      new_positions[i] = vert_positions[verts[i]];
       continue;
     }
 
     float4 plane;
-    plane_from_point_normal_v3(plane, positions[verts[i]], normal);
+    plane_from_point_normal_v3(plane, vert_positions[verts[i]], normal);
 
     float3 smooth_closest_plane;
     closest_to_plane_v3(smooth_closest_plane, plane, smoothed_position);
 
-    float3 displacement = smooth_closest_plane - positions[verts[i]];
-    new_positions[i] = positions[verts[i]] + displacement * factors[i];
+    float3 displacement = smooth_closest_plane - vert_positions[verts[i]];
+    new_positions[i] = vert_positions[verts[i]] + displacement * factors[i];
   }
 }
 
