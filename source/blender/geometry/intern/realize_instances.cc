@@ -2011,6 +2011,7 @@ static void execute_realize_grease_pencil_task(
     const RealizeInstancesOptions &options,
     const RealizeGreasePencilTask &task,
     const OrderedAttributes &ordered_attributes,
+    const VectorSet<Material *> &materials,
     GreasePencil &dst_grease_pencil,
     MutableSpan<GSpanAttributeWriter> dst_attribute_writers)
 {
@@ -2048,6 +2049,31 @@ static void execute_realize_grease_pencil_task(
         return dst_layers_slice;
       },
       dst_attribute_writers);
+
+  /* Find new material indices. */
+  /* TODO: Do in preprocessing. */
+  Array<int> new_by_old_material_index(src_grease_pencil.material_array_num);
+  for (const int i : new_by_old_material_index.index_range()) {
+    Material *material = src_grease_pencil.material_array[i];
+    new_by_old_material_index[i] = materials.index_of(material);
+  }
+
+  /* Remap materials. */
+  for (const int layer_i : dst_layers.index_range()) {
+    bke::greasepencil::Layer &layer = *dst_layers[layer_i];
+    bke::greasepencil::Drawing &drawing = *dst_grease_pencil.get_eval_drawing(layer);
+    bke::CurvesGeometry &curves = drawing.strokes_for_write();
+
+    bke::SpanAttributeWriter<int> material_indices =
+        curves.attributes_for_write().lookup_or_add_for_write_span<int>("material_index",
+                                                                        bke::AttrDomain::Curve);
+    for (int &material_index : material_indices.span) {
+      if (material_index >= 0 && material_index < new_by_old_material_index.size()) {
+        material_index = new_by_old_material_index[material_index];
+      }
+    }
+    material_indices.finish();
+  }
 }
 
 static void execute_realize_grease_pencil_tasks(
@@ -2070,6 +2096,21 @@ static void execute_realize_grease_pencil_tasks(
   dst_grease_pencil->add_layers_with_empty_drawings_for_eval(total_layers_num);
   bke::MutableAttributeAccessor dst_attributes = dst_grease_pencil->attributes_for_write();
 
+  /* Gather materials from all grease pencils. The material indices on curves are remapped for each
+   * task separately. */
+  VectorSet<Material *> dst_materials;
+  for (const GreasePencilRealizeInfo &info : all_grease_pencils_info.realize_info) {
+    const GreasePencil &grease_pencil = *info.grease_pencil;
+    for (const int i : IndexRange(grease_pencil.material_array_num)) {
+      Material *material = grease_pencil.material_array[i];
+      dst_materials.add(material);
+    }
+  }
+  dst_grease_pencil->material_array_num = dst_materials.size();
+  dst_grease_pencil->material_array = MEM_cnew_array<Material *>(dst_materials.size(), __func__);
+  uninitialized_copy_n(
+      dst_materials.data(), dst_materials.size(), dst_grease_pencil->material_array);
+
   /* Prepare generic output attributes. */
   Vector<GSpanAttributeWriter> dst_attribute_writers;
   for (const int attribute_index : ordered_attributes.index_range()) {
@@ -2083,8 +2124,12 @@ static void execute_realize_grease_pencil_tasks(
   threading::parallel_for(tasks.index_range(), 100, [&](const IndexRange task_range) {
     for (const int task_index : task_range) {
       const RealizeGreasePencilTask &task = tasks[task_index];
-      execute_realize_grease_pencil_task(
-          options, task, ordered_attributes, *dst_grease_pencil, dst_attribute_writers);
+      execute_realize_grease_pencil_task(options,
+                                         task,
+                                         ordered_attributes,
+                                         dst_materials,
+                                         *dst_grease_pencil,
+                                         dst_attribute_writers);
     }
   });
 
