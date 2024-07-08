@@ -1392,6 +1392,12 @@ ID *action_slot_get_id_for_keying(Main &bmain,
 
   blender::Span<ID *> users = slot->users(bmain);
   if (users.size() == 1) {
+    /* We only do this for `users.size() == 1` and not `users.size() >= 1`
+     * because when there's more than one user it's ambiguous which user we
+     * should return, and that would be unpredictable for end users of Blender.
+     * We also expect that to be a corner case anyway.  So instead we let that
+     * case either get disambiguated by the primary ID in the case below, or
+     * return null. */
     return users[0];
   }
   if (users.contains(primary_id)) {
