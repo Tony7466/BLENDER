@@ -90,6 +90,7 @@ NODE_DEFINE(Camera)
   panorama_type_enum.insert("fisheye_equidistant", PANORAMA_FISHEYE_EQUIDISTANT);
   panorama_type_enum.insert("fisheye_equisolid", PANORAMA_FISHEYE_EQUISOLID);
   panorama_type_enum.insert("fisheye_lens_polynomial", PANORAMA_FISHEYE_LENS_POLYNOMIAL);
+  panorama_type_enum.insert("fisheye_624", PANORAMA_FISHEYE_624);
   SOCKET_ENUM(panorama_type, "Panorama Type", panorama_type_enum, PANORAMA_EQUIRECTANGULAR);
 
   SOCKET_FLOAT(fisheye_fov, "Fisheye FOV", M_PI_F);
@@ -107,6 +108,23 @@ NODE_DEFINE(Camera)
   SOCKET_FLOAT(fisheye_polynomial_k2, "Fisheye Polynomial K2", 0.0f);
   SOCKET_FLOAT(fisheye_polynomial_k3, "Fisheye Polynomial K3", 0.0f);
   SOCKET_FLOAT(fisheye_polynomial_k4, "Fisheye Polynomial K4", 0.0f);
+
+  // default fisheye624 distortions (from real-world Aria HMD)
+  SOCKET_FLOAT(fisheye624_f, "Focal Length", 240.96908202503016128f);
+  SOCKET_FLOAT(fisheye624_cx, "Principal Point x", 319.30031322283957707f);
+  SOCKET_FLOAT(fisheye624_cy, "Principal Point y", 239.70226462142591117f);
+  SOCKET_FLOAT(fisheye624_k0, "1. Radial Distortion Coefficient", -0.00029975978022917562074f);
+  SOCKET_FLOAT(fisheye624_k1, "2. Radial Distortion Coefficient", 0.025925353248573888842f);
+  SOCKET_FLOAT(fisheye624_k2, "3. Radial Distortion Coefficient", 0.0049689703789174387294f);
+  SOCKET_FLOAT(fisheye624_k3, "4. Radial Distortion Coefficient", -0.0082339337266616879907f);
+  SOCKET_FLOAT(fisheye624_k4, "5. Radial Distortion Coefficient", -0.0058290815323180505958f);
+  SOCKET_FLOAT(fisheye624_k5, "6. Radial Distortion Coefficient", 0.0026384817055371189917f);
+  SOCKET_FLOAT(fisheye624_p0, "1. Tangential Distortion Coefficient", 0.00016612194528025018398f);
+  SOCKET_FLOAT(fisheye624_p1, "2. Tangential Distortion Coefficient", 2.3049914803609829601e-05f);
+  SOCKET_FLOAT(fisheye624_s0, "1. Thin Prismatic Distortion Coefficient", -0.00025728595469903830411f);
+  SOCKET_FLOAT(fisheye624_s1, "2. Thin Prismatic Distortion Coefficient", -3.7265140092139775881e-05f);
+  SOCKET_FLOAT(fisheye624_s2, "3. Thin Prismatic Distortion Coefficient", -0.0006244819671333829f);
+  SOCKET_FLOAT(fisheye624_s3, "4. Thin Prismatic Distortion Coefficient", -6.834843688531277463e-05f);
 
   static NodeEnum stereo_eye_enum;
   stereo_eye_enum.insert("none", STEREO_NONE);
@@ -420,6 +438,15 @@ void Camera::update(Scene *scene)
   kcam->fisheye_lens_polynomial_bias = fisheye_polynomial_k0;
   kcam->fisheye_lens_polynomial_coefficients = make_float4(
       fisheye_polynomial_k1, fisheye_polynomial_k2, fisheye_polynomial_k3, fisheye_polynomial_k4);
+  
+  /* pack 15 floats into a dense array */
+  float params[15] = {fisheye624_f,
+    fisheye624_cx, fisheye624_cy,
+    fisheye624_k0, fisheye624_k1, fisheye624_k2, fisheye624_k3, fisheye624_k4, fisheye624_k5,
+    fisheye624_p0, fisheye624_p1,
+    fisheye624_s0, fisheye624_s1, fisheye624_s2, fisheye624_s3
+  };
+	memcpy(kcam->fisheye624_params, params, sizeof(params));
 
   switch (stereo_eye) {
     case STEREO_LEFT:

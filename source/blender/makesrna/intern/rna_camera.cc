@@ -632,6 +632,11 @@ void RNA_def_camera(BlenderRNA *brna)
        "Fisheye Lens Polynomial",
        "Defines the lens projection as polynomial to allow real world camera lenses to be "
        "mimicked"},
+      {CAM_PANORAMA_FISHEYE_624,
+       "FISHEYE_624",
+       0,
+       "Fisheye 624 Camera Projection Model",
+       "Lens projection model of popular real-world HMDs (Quest, Aria, etc.)"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -926,6 +931,81 @@ void RNA_def_camera(BlenderRNA *brna)
   prop = RNA_def_property(srna, "fisheye_polynomial_k4", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 0.1, 6);
   RNA_def_property_ui_text(prop, "Fisheye Polynomial K4", "Coefficient K4 of the lens polynomial");
+  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Camera_update");
+
+  prop = RNA_def_property(srna, "fisheye624_f", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 0.1, 6);
+  RNA_def_property_ui_text(prop, "Focal Length", "Focal Length");
+  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Camera_update");
+
+  prop = RNA_def_property(srna, "fisheye624_cx", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 0.1, 6);
+  RNA_def_property_ui_text(prop, "Principal Point cx", "Principal point in width.");
+  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Camera_update");
+
+  prop = RNA_def_property(srna, "fisheye624_cy", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 0.1, 6);
+  RNA_def_property_ui_text(prop, "Principal Point cy", "Principal point in height.");
+  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Camera_update");
+
+  prop = RNA_def_property(srna, "fisheye624_k0", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 0.1, 6);
+  RNA_def_property_ui_text(prop, "Radial Distortion k0", "1. Radial Disortion");
+  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Camera_update");
+
+  prop = RNA_def_property(srna, "fisheye624_k1", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 0.1, 6);
+  RNA_def_property_ui_text(prop, "Radial Distortion k1", "2. Radial Disortion");
+  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Camera_update");
+
+  prop = RNA_def_property(srna, "fisheye624_k2", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 0.1, 6);
+  RNA_def_property_ui_text(prop, "Radial Distortion k2", "3. Radial Disortion");
+  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Camera_update");
+
+  prop = RNA_def_property(srna, "fisheye624_k3", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 0.1, 6);
+  RNA_def_property_ui_text(prop, "Radial Distortion k3", "4. Radial Disortion");
+  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Camera_update");
+
+  prop = RNA_def_property(srna, "fisheye624_k4", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 0.1, 6);
+  RNA_def_property_ui_text(prop, "Radial Distortion k4", "5. Radial Disortion");
+  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Camera_update");
+
+  prop = RNA_def_property(srna, "fisheye624_k5", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 0.1, 6);
+  RNA_def_property_ui_text(prop, "Radial Distortion k5", "6. Radial Disortion");
+  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Camera_update");
+
+  prop = RNA_def_property(srna, "fisheye624_p0", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 0.1, 6);
+  RNA_def_property_ui_text(prop, "Radial Distortion p0", "1. Tangential Disortion");
+  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Camera_update");
+
+  prop = RNA_def_property(srna, "fisheye624_p1", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 0.1, 6);
+  RNA_def_property_ui_text(prop, "Radial Distortion p1", "2. Tangential Disortion");
+  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Camera_update");
+
+  prop = RNA_def_property(srna, "fisheye624_s0", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 0.1, 6);
+  RNA_def_property_ui_text(prop, "Radial Distortion s0", "1. Prismatic Disortion");
+  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Camera_update");
+
+  prop = RNA_def_property(srna, "fisheye624_s1", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 0.1, 6);
+  RNA_def_property_ui_text(prop, "Radial Distortion s1", "2. Prismatic Disortion");
+  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Camera_update");
+
+  prop = RNA_def_property(srna, "fisheye624_s2", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 0.1, 6);
+  RNA_def_property_ui_text(prop, "Radial Distortion s2", "3. Prismatic Disortion");
+  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Camera_update");
+
+  prop = RNA_def_property(srna, "fisheye624_s3", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 0.1, 6);
+  RNA_def_property_ui_text(prop, "Radial Distortion s3", "4. Prismatic Disortion");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Camera_update");
 
   /* pointers */

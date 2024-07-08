@@ -101,6 +101,23 @@ typedef struct Camera {
   float fisheye_polynomial_k2;
   float fisheye_polynomial_k3;
   float fisheye_polynomial_k4;
+  // fisheye624 distortions
+  float fisheye624_f;
+  float fisheye624_cx;
+  float fisheye624_cy;
+  float fisheye624_k0;
+  float fisheye624_k1;
+  float fisheye624_k2;
+  float fisheye624_k3;
+  float fisheye624_k4;
+  float fisheye624_k5;
+  float fisheye624_p0;
+  float fisheye624_p1;
+  float fisheye624_s0;
+  float fisheye624_s1;
+  float fisheye624_s2;
+  float fisheye624_s3;
+  char _pad2[4];
 
   /** Old animation system, deprecated for 2.5. */
   struct Ipo *ipo DNA_DEPRECATED;
@@ -136,6 +153,7 @@ enum {
   CAM_PANORAMA_MIRRORBALL = 3,
   CAM_PANORAMA_FISHEYE_LENS_POLYNOMIAL = 4,
   CAM_PANORAMA_EQUIANGULAR_CUBEMAP_FACE = 5,
+  CAM_PANORAMA_FISHEYE_624 = 6,
 };
 
 /* dtx */
