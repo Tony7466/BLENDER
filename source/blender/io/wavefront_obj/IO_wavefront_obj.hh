@@ -10,6 +10,8 @@
 
 #include "BLI_path_util.h"
 
+#include "BKE_geometry_set.hh"
+
 #include "DEG_depsgraph.hh"
 
 #include "IO_orientation.hh"
@@ -17,10 +19,6 @@
 
 struct bContext;
 struct ReportList;
-
-namespace blender::bke {
-struct GeometrySet;
-}
 
 struct OBJExportParams {
   /** Full path to the destination `.OBJ` file. */
@@ -92,7 +90,7 @@ struct OBJImportParams {
  * Reads and retuns just the meshes in the obj file
  */
 void OBJ_import_geometries(const OBJImportParams *import_params,
-                           std::vector<blender::bke::GeometrySet> &geometries);
+                           blender::Vector<blender::bke::GeometrySet> &geometries);
 
 /**
  * Perform the full import process.

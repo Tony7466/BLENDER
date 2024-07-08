@@ -13,7 +13,7 @@
 namespace blender::io::obj {
 
 void importer_geometry(const OBJImportParams &import_params,
-                       std::vector<bke::GeometrySet> &geometries,
+                       Vector<bke::GeometrySet> &geometries,
                        size_t read_buffer_size = 256 * 1024);
 
 /* Main import function used from within Blender. */

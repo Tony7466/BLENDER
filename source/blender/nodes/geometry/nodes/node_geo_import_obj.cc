@@ -43,7 +43,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   BKE_reports_init(&reports, RPT_STORE);
   import_params.reports = &reports;
 
-  std::vector<bke::GeometrySet> geometries;
+  Vector<bke::GeometrySet> geometries;
 
   OBJ_import_geometries(&import_params, geometries);
 

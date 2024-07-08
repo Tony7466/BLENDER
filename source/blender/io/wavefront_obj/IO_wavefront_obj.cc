@@ -11,8 +11,6 @@
 #include "BLI_path_util.h"
 #include "BLI_timeit.hh"
 
-#include "BKE_geometry_set.hh"
-
 #include "IO_wavefront_obj.hh"
 
 #include "obj_exporter.hh"
@@ -43,7 +41,7 @@ void OBJ_import(bContext *C, const OBJImportParams *import_params)
 }
 
 void OBJ_import_geometries(const OBJImportParams *import_params,
-                           std::vector<blender::bke::GeometrySet> &geometries)
+                           blender::Vector<blender::bke::GeometrySet> &geometries)
 {
   blender::io::obj::importer_geometry(*import_params, geometries);
 }

@@ -78,7 +78,7 @@ static Collection *find_or_create_collection(Main *bmain,
 static void geometry_to_blender_geometry_set(const OBJImportParams &import_params,
                                              Vector<std::unique_ptr<Geometry>> &all_geometries,
                                              const GlobalVertices &global_vertices,
-                                             std::vector<bke::GeometrySet> &geometries)
+                                             Vector<bke::GeometrySet> &geometries)
 {
   for (const std::unique_ptr<Geometry> &geometry : all_geometries) {
     bke::GeometrySet geometry_set;
@@ -95,7 +95,7 @@ static void geometry_to_blender_geometry_set(const OBJImportParams &import_param
       geometry_set = bke::GeometrySet::from_curves(curves_id);
     }
 
-    geometries.push_back(geometry_set);
+    geometries.append(geometry_set);
   }
 }
 
@@ -166,7 +166,7 @@ static void geometry_to_blender_objects(Main *bmain,
 }
 
 void importer_geometry(const OBJImportParams &import_params,
-                       std::vector<bke::GeometrySet> &geometries,
+                       Vector<bke::GeometrySet> &geometries,
                        size_t read_buffer_size)
 {
   /* List of Geometry instances to be parsed from OBJ file. */
