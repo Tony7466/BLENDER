@@ -890,23 +890,13 @@ static void GREASE_PENCIL_OT_layer_duplicate_object(wmOperatorType *ot)
   ot->prop = RNA_def_enum(ot->srna, "mode", copy_mode, 0, "Mode", "");
 }
 
-static void apply_layer_settings(GreasePencil &grease_pencil,
-                                 bke::greasepencil::Layer &source_layer,
-                                 const bke::greasepencil::Layer &target_layer)
+void merge_layers(GreasePencil &grease_pencil,
+                  bke::greasepencil::Layer &source_layer,
+                  bke::greasepencil::Layer &target_layer)
 {
-  blender::Map<blender::bke::greasepencil::FramesMapKeyT, GreasePencilFrame> &frames =
-      source_layer.frames_for_write();
-  MutableSpan<GreasePencilDrawingBase *> drawings = grease_pencil.drawings();
-  frames.foreach_item([&](const blender::bke::greasepencil::FramesMapKeyT &key,
-                          const GreasePencilFrame &frame) {
-    GreasePencilDrawingBase *drawing_base = drawings[frame.drawing_index];
-    if (drawing_base->type == GP_DRAWING_REFERENCE) {
-      /* TODO: We don't handle drawing reference atm. */
-      return;
-    }
-    bke::greasepencil::Drawing *drawing = reinterpret_cast<bke::greasepencil::Drawing *>(
-        drawing_base);
-    CurvesGeometry &curves = drawing->geometry;
+  auto process_source_layer_drawing = [&](bke::greasepencil::Layer &source_layer,
+                                          bke::greasepencil::Drawing &source_drawing) {
+    CurvesGeometry &curves = source_drawing.geometry;
     bke::MutableAttributeAccessor attributes = curves.wrap().attributes_for_write();
     bke::SpanAttributeWriter<float3> positions = attributes.lookup_or_add_for_write_span<float3>(
         "position", bke::AttrDomain::Point);
@@ -930,23 +920,10 @@ static void apply_layer_settings(GreasePencil &grease_pencil,
     static_cast<float3>(source_layer.rotation) = float3(0.0f);
     static_cast<float3>(source_layer.scale) = float3(0.0f);
     source_layer.opacity = 1.0f;
-  });
-}
+  };
 
-void merge_layers(GreasePencil &grease_pencil,
-                 bke::greasepencil::Layer &source_layer,
-                 bke::greasepencil::Layer &target_layer)
-{
-  apply_layer_settings(grease_pencil, source_layer, target_layer);
-
-  const blender::Map<blender::bke::greasepencil::FramesMapKeyT, GreasePencilFrame> &src_frames =
-      source_layer.frames();
-  blender::Map<blender::bke::greasepencil::FramesMapKeyT, GreasePencilFrame> &target_frames =
-      target_layer.frames_for_write();
-  MutableSpan<GreasePencilDrawingBase *> drawings = grease_pencil.drawings();
-
-  src_frames.foreach_item([&](const blender::bke::greasepencil::FramesMapKeyT &key,
-                              const GreasePencilFrame &frame) {
+  source_layer.frames().foreach_item([&](const blender::bke::greasepencil::FramesMapKeyT &key,
+                                         const GreasePencilFrame &frame) {
     if (frame.is_end()) {
       return;
     }
@@ -957,8 +934,10 @@ void merge_layers(GreasePencil &grease_pencil,
       target_drawing = grease_pencil.insert_frame(target_layer, key);
     }
 
-    bke::CurvesGeometry &source_geometry = source_drawing->geometry.wrap();
-    bke::CurvesGeometry &target_geometry = target_drawing->geometry.wrap();
+    process_source_layer_drawing(source_layer, *source_drawing);
+
+    bke::CurvesGeometry &source_geometry = source_drawing->strokes_for_write();
+    bke::CurvesGeometry &target_geometry = target_drawing->strokes_for_write();
     Curves *source_curves = bke::curves_new_nomain(std::move(source_geometry));
     Curves *target_curves = bke::curves_new_nomain(std::move(target_geometry));
 
