@@ -239,7 +239,7 @@ struct AllCurvesInfo {
 struct AllGreasePencilsInfo {
   /** Ordering of all attributes that are propagated to the output grease pencil generically. */
   OrderedAttributes attributes;
-  /** Ordering of the original gresae pencils that are joined. */
+  /** Ordering of the original grease pencils that are joined. */
   VectorSet<const GreasePencil *> order;
   /** Preprocessed data about every original grease pencil. This is ordered by #order. */
   Array<GreasePencilRealizeInfo> realize_info;
