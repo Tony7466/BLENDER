@@ -770,10 +770,9 @@ Vector<FCurve *> fcurves_all(Action &action);
  *
  * \param ptr: the animated ID the fcurve is being looked up/created for. For
  * legacy actions this is optional and may be null, but for layered actions no
- * fcurve will be found/created if it's null. If provided it is used to resolve
- * the property that `fcurve_descriptor` points to (used for things like XYZ ->
- * RGB), and for layered actions it is additionally used to determine the Slot
- * to use in the action.
+ * fcurve will be found/created if it's null and the function will return
+ * nullptr. If provided it is used for things like XYZ -> RGB, and for layered
+ * actions it is additionally used to determine the Slot to use in the action.
  */
 FCurve *action_fcurve_ensure(Main *bmain,
                              bAction *act,
