@@ -12,12 +12,8 @@
 #  include <fftw3.h>
 #endif
 
-#include <list>
-#include <map>
-
 #include "BLI_array.hh"
-#include "BLI_listbase.h"
-#include "BLI_map.hh"
+#include "BLI_fftw.hh"
 #include "BLI_task.hh"
 
 #include "BKE_attribute_math.hh"
@@ -44,109 +40,6 @@ namespace blender::nodes::node_geo_sample_sound_cc {
 
 NODE_STORAGE_FUNCS(NodeGeometrySampleSound);
 
-struct Sample {
-  int time;
-  float freq_start, freq_end;
-  float smoothness;
-  NodeGeometrySampleSoundWindow window;
-
-  friend bool operator==(const Sample &lhs, const Sample &rhs)
-  {
-    return lhs.time == rhs.time && lhs.freq_start == rhs.freq_start &&
-           lhs.freq_end == rhs.freq_end && lhs.smoothness == rhs.smoothness &&
-           lhs.window == rhs.window;
-  }
-
-  uint64_t hash() const
-  {
-    uint64_t temp = get_default_hash(
-        this->time, this->freq_start, this->freq_end, this->smoothness);
-    return get_default_hash(temp, this->window);
-  }
-};
-
-// An LRU cache implementation similar to boost's lru_cache, but uses BLI_map and BLI_listbase.
-// FIXME: this is currently not thread safe, neither is boost's lru_cache.
-template<class K, class V> class LRUCache {
- public:
-  LRUCache(size_t capacity) : capacity_(capacity)
-  {
-    static_assert(std::is_trivial_v<K>, "LRUCache only allows trivial key type");
-
-    list_.first = nullptr;
-    list_.last = nullptr;
-  }
-  ~LRUCache()
-  {
-    BLI_freelistN(&list_);
-  }
-
-  bool contains(const K &key)
-  {
-    return map_.contains(key);
-  }
-
-  void insert(const K &key, const V &value)
-  {
-    if (!contains(key)) {
-      if (map_.size() >= capacity_) {
-        evict();
-      }
-
-      auto node = MEM_cnew<LinkData>("LRUCache ListBase Node");
-      auto data = MEM_cnew<K>("LRUCache ListBase Node Data");
-      memcpy(data, &key, sizeof(*data));
-      node->data = data;
-
-      BLI_addhead(&list_, node);
-      map_.add(key, std::make_pair(value, list_.first));
-    }
-  }
-
-  V get(const K &key)
-  {
-    auto i = map_.lookup(key);
-    auto j = i.second;
-    if (j != list_.first) {
-      // FIXME: would crash here
-      BLI_remlink(&list_, j);
-      BLI_addhead(&list_, j);
-
-      const V &value = i.first;
-      map_.add(key, std::make_pair(value, list_.first));
-
-      return value;
-    }
-    else {
-      return i.first;
-    }
-  }
-
-  void clear()
-  {
-    map_.clear();
-    BLI_freelistN(&list_);
-    BLI_listbase_clear(&list_);
-  }
-
- private:
-  ListBase list_;
-  Map<K, std::pair<V, void *>> map_;
-  size_t capacity_;
-
-  void evict()
-  {
-    auto i = static_cast<LinkData *>(list_.last);
-    map_.remove(*static_cast<K *>(i->data));
-    BLI_freelinkN(&list_, i);
-  }
-};
-
-using CacheType = LRUCache<Sample, float>;
-
-// TODO: redesign the whole caching system when everything's settled down.
-static Map<const bSound *, std::shared_ptr<CacheType>> g_caches;
-
 static void node_declare(NodeDeclarationBuilder &b)
 {
   const bNode *node = b.node_or_null();
@@ -168,7 +61,8 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
   uiItemR(layout, ptr, "specify_channel", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(layout, ptr, "specify_frequency", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(layout, ptr, "window", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "window", UI_ITEM_NONE, "", ICON_NONE);
+  uiItemR(layout, ptr, "fft_size", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -183,33 +77,35 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 #ifdef WITH_AUDASPACE
 
 class SampleSoundFunction : public mf::MultiFunction {
-  const bSound *sound_;
+  bSound *sound_;
   const float smoothness_;
   const bool specify_channel_;
   const bool specify_frequency_;
   const NodeGeometrySampleSoundWindow window_;
+  const NodeGeometrySampleSoundFFTSize fft_size_;
   const double frame_rate_;
-
-  std::shared_ptr<CacheType> cache_;
+  const float length_;
 
   AUD_Device *device_;
   AUD_Handle *handle_;
 
  public:
-  SampleSoundFunction(const bSound *sound,
+  SampleSoundFunction(bSound *sound,
                       const float smoothness,
                       const bool specify_channel,
                       const bool specify_frequency,
-                      const NodeGeometrySampleSoundWindow window_,
+                      const NodeGeometrySampleSoundWindow window,
+                      const NodeGeometrySampleSoundFFTSize fft_size,
                       const double frame_rate,
-                      std::shared_ptr<CacheType> cache)
+                      const float length)
       : sound_(sound),
         smoothness_(smoothness),
         specify_channel_(specify_channel),
         specify_frequency_(specify_frequency),
-        window_(window_),
+        window_(window),
+        fft_size_(fft_size),
         frame_rate_(frame_rate),
-        cache_(cache)
+        length_(length)
   {
     static const mf::Signature signature = []() {
       mf::Signature signature;
@@ -233,9 +129,9 @@ class SampleSoundFunction : public mf::MultiFunction {
 
   void init()
   {
-    AUD_DeviceSpecs specs{
+    AUD_DeviceSpecs specs = {
         .format = AUD_FORMAT_FLOAT32,
-        .specs{
+        .specs = {
             .rate = AUD_SampleRate(sound_->samplerate), .channels = AUD_CHANNELS_MONO,
             // TODO: support specifying channels
             // .channels = specify_channel_ ? AUD_Channels(sound_->audio_channels) :
@@ -255,125 +151,155 @@ class SampleSoundFunction : public mf::MultiFunction {
     MutableSpan<float> dst = params.uninitialized_single_output<float>(3, "Amplitude");
 
     mask.foreach_index([&](int64_t i) {
-      const int sample_i = times[i] * sound_->samplerate;
-
-      {
-        Sample key;
-        if (specify_frequency_) {
-          key = {sample_i, freqs_start[i], freqs_end[i], smoothness_, window_};
-        }
-        else {
-          // XXX: better get rid of special values (i.e. `-1` here)
-          key = {sample_i, -1, -1, smoothness_, GEO_NODE_SAMPLE_SOUND_WINDOW_NONE};
-        }
-
-        if (cache_->contains(key)) {
-          dst[i] = cache_->get(key);
-          return;
-        }
-      }
-
-      const int sample_n = sound_->samplerate * smoothness_ + 1;
-      Array<float> buf(sample_n);
-
-      AUD_Device_lock(device_);
-
-      // FIXME: eliminate floating-point errors
-      const double position = double(sample_i) / double(sound_->samplerate) - smoothness_;
-      if (position < 0) {
-        const int empty_n = (-position * sound_->samplerate);
-        const int read_n = sample_n - empty_n;
-
-        buf.fill(0);
-        AUD_Handle_setPosition(handle_, 0);
-        // XXX: pointer arithmetic
-        AUD_Device_read(device_, reinterpret_cast<unsigned char *>(buf.data() + empty_n), read_n);
-      }
-      else {
-        AUD_Handle_setPosition(handle_, position);
-        AUD_Device_read(device_, reinterpret_cast<unsigned char *>(buf.data()), sample_n);
-      }
+      const int64_t sample_index = times[i] * sound_->samplerate;
 
       if (specify_frequency_) {
 #  ifdef WITH_FFTW3
+        const int fft_size = 1 << fft_size_;
+        const int64_t aligned_index = (sample_index / fft_size) * fft_size;
+        const int64_t bin_index = aligned_index / 2;
+        const int bin_start = math::clamp(
+            int(freqs_start[i] / sound_->samplerate * fft_size), 0, fft_size / 2 - 1);
+        const int bin_end = math::clamp(
+            int(freqs_end[i] / sound_->samplerate * fft_size), 0, fft_size / 2 - 1);
+        // TODO: temporal smoothing (interpolation)
+        // double offset_factor = float(sample_index % (fft_size / 2)) / float(fft_size / 2);
+
+        FFTParameter parameter = {.fft_size = fft_size_, .window = window_};
+        int result_index = BKE_sound_findindex_fft_result(sound_, &parameter);
+        if (result_index != -1) {
+          const FFTResults *results = static_cast<FFTResults *>(sound_->fft_results);
+          const float *bins = results->arr[result_index].fft;
+
+          if (bins[bin_index] == 0) {
+            dst[i] = bins[bin_index + bin_end] - bins[bin_index + bin_start];
+            return;
+          }
+        }
+
+        if (aligned_index < 0) {
+          dst[i] = 0;
+          return;
+        }
+
+        Array<float> buf(fft_size);
+
+        AUD_Device_lock(device_);
+        AUD_Handle_setPosition(handle_, double(aligned_index) / double(sound_->samplerate));
+        AUD_Device_read(device_, reinterpret_cast<unsigned char *>(buf.data()), fft_size);
+        AUD_Device_unlock(device_);
+
         switch (window_) {
           case GEO_NODE_SAMPLE_SOUND_WINDOW_NONE:
             break;
           case GEO_NODE_SAMPLE_SOUND_WINDOW_HANN:
             for (size_t i = 0; i < buf.size(); ++i) {
-              buf[i] *= 0.5 - 0.5 * math::cos((2 * math::numbers::pi * i) / sample_n);
+              buf[i] *= 0.5 - 0.5 * math::cos((2 * math::numbers::pi * i) / buf.size());
             }
             break;
           case GEO_NODE_SAMPLE_SOUND_WINDOW_HAMMING:
             for (size_t i = 0; i < buf.size(); ++i) {
-              buf[i] *= 0.54 - 0.46 * math::cos((2 * math::numbers::pi * i) / sample_n);
+              buf[i] *= 0.54 - 0.46 * math::cos((2 * math::numbers::pi * i) / buf.size());
             }
             break;
           case GEO_NODE_SAMPLE_SOUND_WINDOW_BLACKMAN:
             for (size_t i = 0; i < buf.size(); ++i) {
-              buf[i] *= 0.42 - 0.5 * math::cos((2 * math::numbers::pi * i) / sample_n) +
-                        0.08 * math::cos((4 * math::numbers::pi * i) / sample_n);
+              buf[i] *= 0.42 - 0.5 * math::cos((2 * math::numbers::pi * i) / buf.size()) +
+                        0.08 * math::cos((4 * math::numbers::pi * i) / buf.size());
             }
             break;
         }
 
-        fftwf_complex *fft_buf = (fftwf_complex *)fftwf_malloc(sizeof(*fft_buf) *
-                                                               (sample_n / 2 + 1));
-        fftwf_plan plan = fftwf_plan_dft_r2c_1d(sample_n, buf.data(), fft_buf, FFTW_ESTIMATE);
+        fftw::initialize_float();
+        fftwf_complex *fft_buf = static_cast<fftwf_complex *>(
+            fftwf_malloc(sizeof(*fft_buf) * fft_size / 2 + 1));
+        fftwf_plan plan = fftwf_plan_dft_r2c_1d(fft_size, buf.data(), fft_buf, FFTW_ESTIMATE);
         fftwf_execute(plan);
 
-        const int bin_start = math::clamp(
-            int(freqs_start[i] / sound_->samplerate * sample_n / 2), 0, sample_n / 2);
-        const int bin_end = math::clamp(
-            int(freqs_end[i] / sound_->samplerate * sample_n / 2), 0, sample_n / 2);
-        float result = 0;
-        for (size_t i = bin_start; i < bin_end; ++i) {
-          result += math::abs(fft_buf[i][0]) / (bin_end - bin_start + 1);
+        if (result_index == -1) {
+          const int64_t total_bins = int64_t(math::ceil(length_) * sound_->samplerate) / 2 + 1;
+
+          FFTResult fft_result = {.parameter = parameter,
+                                  .fft = static_cast<float *>(MEM_malloc_arrayN(
+                                      total_bins, sizeof(float), "FFTResult.fft"))};
+          for (int64_t i = 0; i < total_bins; ++i) {
+            // XXX: get rid of special values
+            fft_result.fft[i] = -1;
+          }
+
+          result_index = BKE_sound_add_fft_result(sound_, &fft_result);
         }
-        dst[i] = result;
+
+        const FFTResults *results = static_cast<FFTResults *>(sound_->fft_results);
+        float *bins = results->arr[result_index].fft;
+
+        // TODO: parallel scan
+        bins[bin_index] = 0;
+        for (int i = 1; i < fft_size / 2; ++i) {
+          bins[bin_index + i] = bins[bin_index + i - 1] +
+                                (math::abs(fft_buf[i - 1][0]) / (fft_size / 2));
+        }
+
+        dst[i] = bins[bin_index + bin_end] - bins[bin_index + bin_start];
 
         fftwf_destroy_plan(plan);
         fftwf_free(fft_buf);
-
-        cache_->insert({sample_i, freqs_start[i], freqs_end[i], smoothness_, window_}, result);
 #  else  // WITH_FFTW3
         dst[i] = 0;
 #  endif
       }
       else {
-        // TODO: find better averaging algorithms & temporal smoothing
+        const int sample_length = sound_->samplerate * smoothness_ + 1;
+        Array<float> buf(sample_length);
+
+        AUD_Device_lock(device_);
+
+        // FIXME: eliminate floating-point errors
+        const double position = double(sample_index) / double(sound_->samplerate) - smoothness_;
+        if (position < 0) {
+          const int empty_n = (-position * sound_->samplerate);
+          const int read_n = sample_length - empty_n;
+
+          buf.fill(0);
+          AUD_Handle_setPosition(handle_, 0);
+          AUD_Device_read(
+              device_, reinterpret_cast<unsigned char *>(buf.data() + empty_n), read_n);
+        }
+        else {
+          AUD_Handle_setPosition(handle_, position);
+          AUD_Device_read(device_, reinterpret_cast<unsigned char *>(buf.data()), sample_length);
+        }
+
+        AUD_Device_unlock(device_);
+
         float result = 0;
         for (float sample : buf) {
-          result += math::abs(sample) / sample_n;
+          result += math::abs(sample) / sample_length;
         }
         dst[i] = result;
-
-        cache_->insert({sample_i, -1, -1, smoothness_, GEO_NODE_SAMPLE_SOUND_WINDOW_NONE}, result);
       }
-
-      AUD_Device_unlock(device_);
     });
   }
 };
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
-  const bSound *sound = params.extract_input<bSound *>("Sound");
+  bSound *sound = params.extract_input<bSound *>("Sound");
   if (!sound) {
     params.set_output("Amplitude", fn::make_constant_field<float>(0));
     return;
   }
 
-  // TODO: dynamic/configurable cache size?
-  auto cache = g_caches.lookup_or_add(sound, std::make_shared<CacheType>(16384));
-
   const NodeGeometrySampleSound &storage = node_storage(params.node());
   const bool specify_channel = bool(storage.specify_channel);
   const bool specify_frequency = bool(storage.specify_frequency);
   const NodeGeometrySampleSoundWindow window = NodeGeometrySampleSoundWindow(storage.window);
+  const NodeGeometrySampleSoundFFTSize fft_size = NodeGeometrySampleSoundFFTSize(storage.fft_size);
 
   const Scene *scene = DEG_get_input_scene(params.depsgraph());
+  Main *bmain = params.bmain();
   const double frame_rate = double(scene->r.frs_sec) / double(scene->r.frs_sec_base);
+  const float length = BKE_sound_get_length(bmain, sound);
 
   const float smoothness = params.extract_input<float>("Smoothness");
   Field<float> times = params.extract_input<Field<float>>("Time");
@@ -381,7 +307,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   Field<float> freqs_end = params.extract_input<Field<float>>("End Frequency");
 
   auto fn = std::make_shared<SampleSoundFunction>(
-      sound, smoothness, specify_channel, specify_frequency, window, frame_rate, cache);
+      sound, smoothness, specify_channel, specify_frequency, window, fft_size, frame_rate, length);
   auto op = FieldOperation::Create(
       std::move(fn), {std::move(times), std::move(freqs_start), std::move(freqs_end)});
   params.set_output("Amplitude", std::move(Field<float>(op)));

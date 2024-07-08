@@ -23,6 +23,21 @@ struct Sequence;
 struct bSound;
 struct SoundInfo;
 
+typedef struct FFTParameter {
+  int fft_size;
+  int window;
+} FFTParameter;
+
+typedef struct FFTResult {
+  FFTParameter parameter;
+  float *fft;
+} FFTResult;
+
+typedef struct FFTResults {
+  int len;
+  FFTResult *arr;
+} FFTResults;
+
 typedef struct SoundWaveform {
   int length;
   float *data;
@@ -181,6 +196,12 @@ void BKE_sound_seek_scene(struct Main *bmain, struct Scene *scene);
 double BKE_sound_sync_scene(struct Scene *scene);
 
 int BKE_sound_scene_playing(struct Scene *scene);
+
+void BKE_sound_free_fft_results(struct bSound *sound);
+
+int BKE_sound_findindex_fft_result(struct bSound *sound, struct FFTParameter *parameter);
+
+int BKE_sound_add_fft_result(struct bSound *sound, struct FFTResult* result);
 
 void BKE_sound_free_waveform(struct bSound *sound);
 

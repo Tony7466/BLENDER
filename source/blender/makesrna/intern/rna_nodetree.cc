@@ -9773,11 +9773,24 @@ static void def_geo_string_to_curves(StructRNA *srna)
 
 static void def_geo_sample_sound(StructRNA *srna)
 {
-  static const EnumPropertyItem rna_node_geometry_sample_sound_window_function[] = {
+  static const EnumPropertyItem rna_node_geometry_sample_sound_window[] = {
       {GEO_NODE_SAMPLE_SOUND_WINDOW_NONE, "NONE", 0, "None", "None"},
       {GEO_NODE_SAMPLE_SOUND_WINDOW_HANN, "HANN", 0, "Hann", "Hann"},
       {GEO_NODE_SAMPLE_SOUND_WINDOW_HAMMING, "HAMMING", 0, "Hamming", "Hamming"},
       {GEO_NODE_SAMPLE_SOUND_WINDOW_BLACKMAN, "BLACKMAN", 0, "Blackman", "Blackman"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem rna_node_geometry_sample_sound_fft_size[] = {
+      {GEO_NODE_SAMPLE_SOUND_FFT_SIZE_128, "128", 0, "128", "128"},
+      {GEO_NODE_SAMPLE_SOUND_FFT_SIZE_256, "256", 0, "256", "256"},
+      {GEO_NODE_SAMPLE_SOUND_FFT_SIZE_512, "512", 0, "512", "512"},
+      {GEO_NODE_SAMPLE_SOUND_FFT_SIZE_1024, "1024", 0, "1024", "1024"},
+      {GEO_NODE_SAMPLE_SOUND_FFT_SIZE_2048, "2048", 0, "2048", "2048"},
+      {GEO_NODE_SAMPLE_SOUND_FFT_SIZE_4096, "4096", 0, "4096", "4096"},
+      {GEO_NODE_SAMPLE_SOUND_FFT_SIZE_8192, "8192", 0, "8192", "8192"},
+      {GEO_NODE_SAMPLE_SOUND_FFT_SIZE_16384, "16384", 0, "16384", "16384"},
+      {GEO_NODE_SAMPLE_SOUND_FFT_SIZE_32768, "32768", 0, "32768", "32768"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -9801,8 +9814,18 @@ static void def_geo_sample_sound(StructRNA *srna)
                            // TODO: fill in the tooltips
                            "Window function");
   RNA_def_property_enum_sdna(prop, nullptr, "window");
-  RNA_def_property_enum_items(prop, rna_node_geometry_sample_sound_window_function);
+  RNA_def_property_enum_items(prop, rna_node_geometry_sample_sound_window);
   RNA_def_property_enum_default(prop, GEO_NODE_SAMPLE_SOUND_WINDOW_HANN);
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "fft_size", PROP_ENUM, PROP_NONE);
+  RNA_def_property_ui_text(prop,
+                           "FFT size",
+                           // TODO: fill in the tooltips
+                           "FFT size");
+  RNA_def_property_enum_sdna(prop, nullptr, "fft_size");
+  RNA_def_property_enum_items(prop, rna_node_geometry_sample_sound_fft_size);
+  RNA_def_property_enum_default(prop, GEO_NODE_SAMPLE_SOUND_FFT_SIZE_1024);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 

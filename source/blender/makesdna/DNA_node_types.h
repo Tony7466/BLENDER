@@ -1794,7 +1794,8 @@ typedef struct NodeGeometrySampleSound {
   int8_t specify_frequency;
   /** #NodeGeometrySampleSoundWindow. */
   int8_t window;
-  char _pad[1];
+  /** #NodeGeometrySampleSoundFFTSize. */
+  int8_t fft_size;
 } NodeGeometrySampleSound;
 
 typedef struct NodeGeometryRaycast {
@@ -2929,3 +2930,15 @@ typedef enum NodeGeometrySampleSoundWindow {
   GEO_NODE_SAMPLE_SOUND_WINDOW_HAMMING = 2,
   GEO_NODE_SAMPLE_SOUND_WINDOW_BLACKMAN = 3,
 } NodeGeometrySampleSoundWindow;
+
+typedef enum NodeGeometrySampleSoundFFTSize {
+  GEO_NODE_SAMPLE_SOUND_FFT_SIZE_128 = 7,
+  GEO_NODE_SAMPLE_SOUND_FFT_SIZE_256 = 8,
+  GEO_NODE_SAMPLE_SOUND_FFT_SIZE_512 = 9,
+  GEO_NODE_SAMPLE_SOUND_FFT_SIZE_1024 = 10,
+  GEO_NODE_SAMPLE_SOUND_FFT_SIZE_2048 = 11,
+  GEO_NODE_SAMPLE_SOUND_FFT_SIZE_4096 = 12,
+  GEO_NODE_SAMPLE_SOUND_FFT_SIZE_8192 = 13,
+  GEO_NODE_SAMPLE_SOUND_FFT_SIZE_16384 = 14,
+  GEO_NODE_SAMPLE_SOUND_FFT_SIZE_32768 = 15,
+} NodeGeometrySampleSoundFFTSize;

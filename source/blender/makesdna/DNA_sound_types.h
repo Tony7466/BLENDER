@@ -75,6 +75,13 @@ typedef struct bSound {
   /* XXX unused currently (SOUND_TYPE_LIMITER) */
   // float start, end;
 
+  /**
+   * Runtime FFT results.
+   */
+  void *fft_results;
+
+  void *_pad2;
+
   /* Description of Audio channels, as of #eSoundChannels. */
   int audio_channels;
 

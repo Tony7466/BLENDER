@@ -99,6 +99,7 @@ static void sound_free_data(ID *id)
 
   sound_free_audio(sound);
   BKE_sound_free_waveform(sound);
+  BKE_sound_free_fft_results(sound);
 
   if (sound->spinlock) {
     BLI_spin_end(static_cast<SpinLock *>(sound->spinlock));
@@ -1042,6 +1043,57 @@ int BKE_sound_scene_playing(Scene *scene)
   return -1;
 }
 
+void BKE_sound_free_fft_results(bSound *sound)
+{
+  if (!sound->fft_results) {
+    return;
+  }
+
+  FFTResults *results = static_cast<FFTResults *>(sound->fft_results);
+  for (int i = 0; i < results->len; ++i) {
+    FFTResult result = results->arr[i];
+    MEM_freeN(result.fft);
+  }
+  MEM_freeN(results->arr);
+
+  MEM_freeN(sound->fft_results);
+  sound->fft_results = nullptr;
+}
+
+int BKE_sound_add_fft_result(bSound *sound, FFTResult *result)
+{
+  FFTResults *results = static_cast<FFTResults *>(sound->fft_results);
+
+  if (!results) {
+    results = static_cast<FFTResults *>(MEM_callocN(sizeof(FFTResults), "FFTResults"));
+    sound->fft_results = results;
+  }
+
+  results->len += 1;
+  results->arr = static_cast<FFTResult *>(
+      MEM_reallocN(results->arr, results->len * sizeof(FFTResult)));
+  results->arr[results->len - 1] = *result;
+
+  return results->len - 1;
+}
+
+int BKE_sound_findindex_fft_result(bSound *sound, FFTParameter *parameter)
+{
+  FFTResults *results = static_cast<FFTResults *>(sound->fft_results);
+
+  if (!results) {
+    return -1;
+  }
+
+  for (int i = 0; i < results->len; ++i) {
+    if (memcmp(&results->arr[i].parameter, parameter, sizeof(FFTParameter)) == 0) {
+      return i;
+    }
+  }
+
+  return -1;
+}
+
 void BKE_sound_free_waveform(bSound *sound)
 {
   if ((sound->tags & SOUND_TAGS_WAVEFORM_NO_RELOAD) == 0) {
@@ -1438,6 +1490,10 @@ bool BKE_sound_stream_info_get(Main * /*main*/,
 {
   return false;
 }
+
+void BKE_sound_free_fft_results(struct bSound *sound) {}
+int BKE_sound_findindex_fft_result(struct bSound *sound, struct FFTParameter *parameter) {}
+int BKE_sound_add_fft_result(struct bSound *sound, struct FFTResult *result) {}
 
 #endif /* WITH_AUDASPACE */
 
