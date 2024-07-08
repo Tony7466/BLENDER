@@ -33,19 +33,19 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
 
   GreasePencil *grease_pencil = BKE_grease_pencil_new_nomain();
-  grease_pencil->add_empty_drawings(instances_num);
+  grease_pencil->add_layers_with_empty_drawings(instances_num);
 
   VectorSet<Material *> all_materials;
 
-  for (const int instance_i : IndexRange(instances->instances_num())) {
-    std::string name = std::to_string(instance_i);
+  for (const int instance_i : IndexRange(instances_num)) {
     const bke::InstanceReference &reference = references[reference_handles[instance_i]];
+    const std::string name = reference.name();
 
-    bke::greasepencil::Drawing &drawing =
-        reinterpret_cast<GreasePencilDrawing *>(grease_pencil->drawing(instance_i))->wrap();
-    bke::greasepencil::Layer &layer = grease_pencil->add_layer(std::move(name));
-    layer.add_frame(0)->drawing_index = instance_i;
-    drawing.add_user();
+    bke::greasepencil::Layer *layer = grease_pencil->layer(instance_i);
+    BLI_assert(layer);
+    layer->set_name(name);
+    bke::greasepencil::Drawing *drawing = grease_pencil->get_eval_drawing(*layer);
+    BLI_assert(drawing);
 
     GeometrySet instance_geometry;
     reference.to_geometry_set(instance_geometry);
@@ -54,7 +54,7 @@ static void node_geo_exec(GeoNodeExecParams params)
       continue;
     }
 
-    bke::CurvesGeometry &strokes = drawing.strokes_for_write();
+    bke::CurvesGeometry &strokes = drawing->strokes_for_write();
     strokes = instance_curves->geometry.wrap();
 
     Vector<int> new_material_indices;
