@@ -291,6 +291,7 @@ struct LineInstanceBuf : private select::SelectBuf {
   {
     this->select_clear();
     data_buf.clear();
+    color_id = 0;
   }
 
   void append(const float3 &start, const float3 &end, const float4 &color, select::ID select_id)

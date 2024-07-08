@@ -24,7 +24,7 @@ void main()
 
   fragColor.a = 1.0;
 
-#ifndef SELECT_ENABLE
+#if !(defined(SELECT_EDGES) || defined(SELECT_ENABLE))
   if (fract(dist / dash_width) > dash_factor) {
     discard;
   }
