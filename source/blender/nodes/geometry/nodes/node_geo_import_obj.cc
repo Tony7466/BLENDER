@@ -43,9 +43,9 @@ static void node_geo_exec(GeoNodeExecParams params)
   BKE_reports_init(&reports, RPT_STORE);
   import_params.reports = &reports;
 
-  bke::Instances *instances = new bke::Instances();
+  std::vector<bke::GeometrySet> geometries;
 
-  OBJ_import_mesh(&import_params, instances);
+  OBJ_import_geometries(&import_params, geometries);
 
   LISTBASE_FOREACH (Report *, report, &(import_params.reports)->list) {
     NodeWarningType type;
@@ -64,9 +64,16 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   BKE_reports_free(&reports);
 
-  if (instances->instances_num() == 0) {
+  if (geometries.size() == 0) {
     params.set_default_remaining_outputs();
     return;
+  }
+
+  bke::Instances *instances = new bke::Instances();
+
+  for (auto geometry : geometries) {
+    const int handle = instances->add_reference(bke::InstanceReference{geometry});
+    instances->add_instance(handle, float4x4::identity());
   }
 
   params.set_output("Instances", GeometrySet::from_instances(instances));

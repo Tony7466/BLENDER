@@ -19,7 +19,7 @@ struct bContext;
 struct ReportList;
 
 namespace blender::bke {
-class Instances;
+struct GeometrySet;
 }
 
 struct OBJExportParams {
@@ -91,7 +91,8 @@ struct OBJImportParams {
 /**
  * Reads and retuns just the meshes in the obj file
  */
-void OBJ_import_mesh(const OBJImportParams *import_params, blender::bke::Instances *instances);
+void OBJ_import_geometries(const OBJImportParams *import_params,
+                           std::vector<blender::bke::GeometrySet> &geometries);
 
 /**
  * Perform the full import process.
