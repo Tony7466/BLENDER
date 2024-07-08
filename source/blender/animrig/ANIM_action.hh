@@ -790,7 +790,7 @@ FCurve *action_fcurve_find(bAction *act, FCurveDescriptor fcurve_descriptor);
  *
  * Usually this function shouldn't be necessary, because you'll already have an
  * obvious ID that you're keying. But in some cases (such as the action editor
- * where multiply slots are accessible) the active ID that would normally get
+ * where multiple slots are accessible) the active ID that would normally get
  * keyed might have nothing to do with the slot that's actually getting keyed.
  *
  * This function handles such cases by attempting to find an actual user of the
