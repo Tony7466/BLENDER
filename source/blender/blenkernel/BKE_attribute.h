@@ -18,7 +18,8 @@
 
 namespace blender::bke {
 enum class AttrDomain : int8_t;
-}
+class AttributeAccessor;
+}  // namespace blender::bke
 struct CustomData;
 struct CustomDataLayer;
 struct ID;
@@ -72,9 +73,6 @@ class AttributeOwner {
   ((AttrDomainMask)((ATTR_DOMAIN_MASK_POINT | ATTR_DOMAIN_MASK_CORNER)))
 
 /* Attributes. */
-
-bool BKE_attributes_supported(const AttributeOwner &owner);
-bool BKE_attribute_allow_procedural_access(const char *attribute_name);
 
 /**
  * Create a new attribute layer.

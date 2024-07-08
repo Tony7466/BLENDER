@@ -2088,7 +2088,6 @@ void UI_block_draw(const bContext *C, uiBlock *block)
   }
 
   BLF_batch_draw_begin();
-  UI_icon_draw_cache_begin();
   UI_widgetbase_draw_cache_begin();
 
   /* widgets */
@@ -2111,7 +2110,6 @@ void UI_block_draw(const bContext *C, uiBlock *block)
   }
 
   UI_widgetbase_draw_cache_end();
-  UI_icon_draw_cache_end();
   BLF_batch_draw_end();
 
   ui_block_views_draw_overlays(region, block);
@@ -3393,7 +3391,7 @@ static void ui_but_free(const bContext *C, uiBut *but)
   }
 
   if (but->func_argN) {
-    MEM_freeN(but->func_argN);
+    but->func_argN_free_fn(but->func_argN);
   }
 
   if (but->tip_arg_free) {
@@ -3470,7 +3468,7 @@ void UI_block_free(const bContext *C, uiBlock *block)
   }
 
   if (block->func_argN) {
-    MEM_freeN(block->func_argN);
+    block->func_argN_free_fn(block->func_argN);
   }
 
   ui_block_free_active_operator(block);
@@ -4112,7 +4110,7 @@ static uiBut *ui_def_but(uiBlock *block,
 
   but->funcN = block->funcN;
   if (block->func_argN) {
-    but->func_argN = MEM_dupallocN(block->func_argN);
+    but->func_argN = block->func_argN_copy_fn(block->func_argN);
   }
 
   but->pos = -1; /* cursor invisible */
@@ -4447,6 +4445,8 @@ void ui_but_rna_menu_convert_to_panel_type(uiBut *but, const char *panel_type)
   //  BLI_assert((void *)but->poin == but);
   but->menu_create_func = ui_def_but_rna__panel_type;
   but->func_argN = BLI_strdup(panel_type);
+  but->func_argN_free_fn = MEM_freeN;
+  but->func_argN_copy_fn = MEM_dupallocN;
 }
 
 bool ui_but_menu_draw_as_popover(const uiBut *but)
@@ -4475,6 +4475,8 @@ void ui_but_rna_menu_convert_to_menu_type(uiBut *but, const char *menu_type)
   BLI_assert(but->menu_create_func == ui_def_but_rna__menu);
   BLI_assert((void *)but->poin == but);
   but->menu_create_func = ui_def_but_rna__menu_type;
+  BLI_assert(but->func_argN_free_fn == MEM_freeN);
+  BLI_assert(but->func_argN_copy_fn == MEM_dupallocN);
   but->func_argN = BLI_strdup(menu_type);
 }
 
@@ -4730,9 +4732,7 @@ static uiBut *ui_def_but_operator_ptr(uiBlock *block,
   }
 
   uiBut *but = ui_def_but(block, type, -1, str, x, y, width, height, nullptr, 0, 0, tip);
-  but->optype = ot;
-  but->opcontext = opcontext;
-  but->flag &= ~UI_BUT_UNDO; /* no need for ui_but_is_rna_undo(), we never need undo here */
+  UI_but_operator_set(but, ot, opcontext);
 
   /* Enable quick tooltip label if this is a tool button without a label. */
   if (str.is_empty() && !ui_block_is_popover(block) && UI_but_is_tool(but)) {
@@ -4783,12 +4783,12 @@ uiBut *uiDefButImage(
   return but;
 }
 
-uiBut *uiDefButAlert(uiBlock *block, int icon, int x, int y, short width, short height)
+uiBut *uiDefButAlert(uiBlock *block, int icon, int x, int y, short width, short /*height*/)
 {
-  ImBuf *ibuf = UI_icon_alert_imbuf_get((eAlertIcon)icon);
+  ImBuf *ibuf = UI_icon_alert_imbuf_get((eAlertIcon)icon, float(width));
   if (ibuf) {
     bTheme *btheme = UI_GetTheme();
-    return uiDefButImage(block, ibuf, x, y, width, height, btheme->tui.wcol_menu_back.text);
+    return uiDefButImage(block, ibuf, x, y, ibuf->x, ibuf->y, btheme->tui.wcol_menu_back.text);
   }
   return nullptr;
 }
@@ -5620,6 +5620,21 @@ uiBut *uiDefIconTextButO(uiBlock *block,
   return uiDefIconTextButO_ptr(block, type, ot, opcontext, icon, str, x, y, width, height, tip);
 }
 
+void UI_but_operator_set(uiBut *but,
+                         wmOperatorType *optype,
+                         wmOperatorCallContext opcontext,
+                         const PointerRNA *op_props)
+{
+  but->optype = optype;
+  but->opcontext = opcontext;
+  but->flag &= ~UI_BUT_UNDO; /* no need for ui_but_is_rna_undo(), we never need undo here */
+
+  MEM_SAFE_FREE(but->opptr);
+  if (op_props) {
+    but->opptr = MEM_cnew<PointerRNA>(__func__, *op_props);
+  }
+}
+
 /* END Button containing both string label and icon */
 
 /* cruft to make uiBlock and uiBut private */
@@ -5814,14 +5829,21 @@ void UI_block_func_set(uiBlock *block, uiButHandleFunc func, void *arg1, void *a
   block->func_arg2 = arg2;
 }
 
-void UI_block_funcN_set(uiBlock *block, uiButHandleNFunc funcN, void *argN, void *arg2)
+void UI_block_funcN_set(uiBlock *block,
+                        uiButHandleNFunc funcN,
+                        void *argN,
+                        void *arg2,
+                        uiButArgNFree func_argN_free_fn,
+                        uiButArgNCopy func_argN_copy_fn)
 {
   if (block->func_argN) {
-    MEM_freeN(block->func_argN);
+    block->func_argN_free_fn(block->func_argN);
   }
 
   block->funcN = funcN;
   block->func_argN = argN;
+  block->func_argN_free_fn = func_argN_free_fn;
+  block->func_argN_copy_fn = func_argN_copy_fn;
   block->func_arg2 = arg2;
 }
 
@@ -5854,14 +5876,21 @@ void UI_but_func_set(uiBut *but, std::function<void(bContext &)> func)
   but->apply_func = std::move(func);
 }
 
-void UI_but_funcN_set(uiBut *but, uiButHandleNFunc funcN, void *argN, void *arg2)
+void UI_but_funcN_set(uiBut *but,
+                      uiButHandleNFunc funcN,
+                      void *argN,
+                      void *arg2,
+                      uiButArgNFree func_argN_free_fn,
+                      uiButArgNCopy func_argN_copy_fn)
 {
   if (but->func_argN) {
-    MEM_freeN(but->func_argN);
+    but->func_argN_free_fn(but->func_argN);
   }
 
   but->funcN = funcN;
   but->func_argN = argN;
+  but->func_argN_free_fn = func_argN_free_fn;
+  but->func_argN_copy_fn = func_argN_copy_fn;
   but->func_arg2 = arg2;
 }
 
@@ -5935,15 +5964,19 @@ uiBut *uiDefBlockButN(uiBlock *block,
                       int y,
                       short width,
                       short height,
-                      const char *tip)
+                      const char *tip,
+                      uiButArgNFree func_argN_free_fn,
+                      uiButArgNCopy func_argN_copy_fn)
 {
   uiBut *but = ui_def_but(
       block, UI_BTYPE_BLOCK, 0, str, x, y, width, height, nullptr, 0.0, 0.0, tip);
   but->block_create_func = func;
   if (but->func_argN) {
-    MEM_freeN(but->func_argN);
+    but->func_argN_free_fn(but->func_argN);
   }
   but->func_argN = argN;
+  but->func_argN_free_fn = func_argN_free_fn;
+  but->func_argN_copy_fn = func_argN_copy_fn;
   ui_but_update(but);
   return but;
 }
@@ -6598,6 +6631,20 @@ void UI_init_userdef()
 void UI_reinit_font()
 {
   uiStyleInit();
+}
+
+void UI_update_text_styles()
+{
+  if (BLF_has_variable_weight(0)) {
+    return;
+  }
+
+  uiStyle *style = static_cast<uiStyle *>(U.uistyles.first);
+  const int weight = BLF_default_weight(0);
+  style->paneltitle.character_weight = weight;
+  style->grouplabel.character_weight = weight;
+  style->widgetlabel.character_weight = weight;
+  style->widget.character_weight = weight;
 }
 
 void UI_exit()

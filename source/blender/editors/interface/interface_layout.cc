@@ -3033,6 +3033,8 @@ static uiBut *ui_item_menu(uiLayout *layout,
       but->poin = (char *)but;
     }
     but->func_argN = argN;
+    but->func_argN_free_fn = MEM_freeN;
+    but->func_argN_copy_fn = MEM_dupallocN;
   }
 
   if (ELEM(layout->root->type, UI_LAYOUT_PANEL, UI_LAYOUT_TOOLBAR) ||
@@ -4152,9 +4154,9 @@ static void ui_litem_layout_panel_header(uiLayout *litem)
   ui_item_size(item, &w, &h);
   litem->y -= h;
   ui_item_position(item, litem->x, litem->y, litem->w, h);
-
-  panel->runtime->layout_panels.headers.append({float(litem->y),
-                                                float(litem->y + litem->h),
+  const float offset = UI_style_get_dpi()->panelspace;
+  panel->runtime->layout_panels.headers.append({float(litem->y) - offset,
+                                                float(litem->y + litem->h) - offset,
                                                 header_litem->open_prop_owner,
                                                 header_litem->open_prop_name});
 }
@@ -4169,8 +4171,11 @@ static void ui_litem_layout_panel_body(uiLayout *litem)
 {
   Panel *panel = litem->root->block->panel;
   ui_litem_layout_column(litem, false, false);
-  panel->runtime->layout_panels.bodies.append(
-      {float(litem->y - litem->space), float(litem->y + litem->h + litem->space)});
+  const float offset = UI_style_get_dpi()->panelspace;
+  panel->runtime->layout_panels.bodies.append({
+      float(litem->y - litem->space) - offset,
+      float(litem->y + litem->h + litem->space) - offset,
+  });
 }
 
 /* box layout */

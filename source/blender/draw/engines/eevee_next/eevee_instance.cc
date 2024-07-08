@@ -175,7 +175,6 @@ void Instance::update_eval_members()
 void Instance::view_update()
 {
   sampling.reset();
-  sync.view_update();
 }
 
 /** \} */
@@ -242,7 +241,7 @@ void Instance::object_sync(Object *ob)
 
   const bool is_renderable_type = ELEM(ob->type,
                                        OB_CURVES,
-                                       OB_GPENCIL_LEGACY,
+                                       OB_GREASE_PENCIL,
                                        OB_MESH,
                                        OB_POINTCLOUD,
                                        OB_VOLUME,
@@ -291,12 +290,12 @@ void Instance::object_sync(Object *ob)
         sync.sync_point_cloud(ob, ob_handle, res_handle, ob_ref);
         break;
       case OB_VOLUME:
-        sync.sync_volume(ob, ob_handle, res_handle);
+        sync.sync_volume(ob, ob_handle, res_handle, ob_ref);
         break;
       case OB_CURVES:
         sync.sync_curves(ob, ob_handle, res_handle, ob_ref);
         break;
-      case OB_GPENCIL_LEGACY:
+      case OB_GREASE_PENCIL:
         sync.sync_gpencil(ob, ob_handle, res_handle);
         break;
       case OB_LIGHTPROBE:
