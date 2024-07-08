@@ -156,9 +156,7 @@ def repo_active_or_none():
     return active_repo
 
 
-def repo_stats_calc_outdated_for_repo_directory(repo_directory):
-
-    repo_cache_store = repo_cache_store_ensure()
+def repo_stats_calc_outdated_for_repo_directory(repo_cache_store, repo_directory):
     pkg_manifest_local = repo_cache_store.refresh_local_from_directory(
         directory=repo_directory,
         error_fn=print,
@@ -194,6 +192,9 @@ def repo_stats_calc():
         return
 
     import os
+
+    repo_cache_store = repo_cache_store_ensure()
+
     package_count = 0
 
     for repo_item in bpy.context.preferences.extensions.repos:
@@ -211,7 +212,7 @@ def repo_stats_calc():
         if not os.path.isdir(repo_directory):
             continue
 
-        package_count += repo_stats_calc_outdated_for_repo_directory(repo_directory)
+        package_count += repo_stats_calc_outdated_for_repo_directory(repo_cache_store, repo_directory)
 
     bpy.context.window_manager.extensions_updates = package_count
 
@@ -399,7 +400,6 @@ def monkeypatch_extenions_repos_update_pre_impl():
 
 def monkeypatch_extenions_repos_update_post_impl():
     import os
-    # pylint: disable-next=redefined-outer-name
     from . import bl_extension_ops
 
     repo_cache_store = repo_cache_store_ensure()
@@ -436,7 +436,7 @@ def monkeypatch_extensions_repos_update_pre(*_):
     except Exception as ex:
         print_debug("ERROR", str(ex))
     try:
-        monkeypatch_extensions_repos_update_pre._fn_orig()
+        monkeypatch_extensions_repos_update_pre.fn_orig()
     except Exception as ex:
         print_debug("ERROR", str(ex))
 
@@ -445,7 +445,7 @@ def monkeypatch_extensions_repos_update_pre(*_):
 def monkeypatch_extenions_repos_update_post(*_):
     print_debug("POST:")
     try:
-        monkeypatch_extenions_repos_update_post._fn_orig()
+        monkeypatch_extenions_repos_update_post.fn_orig()
     except Exception as ex:
         print_debug("ERROR", str(ex))
     try:
@@ -457,40 +457,50 @@ def monkeypatch_extenions_repos_update_post(*_):
 def monkeypatch_install():
     import addon_utils
 
+    # pylint: disable-next=protected-access
     handlers = bpy.app.handlers._extension_repos_update_pre
+    # pylint: disable-next=protected-access
     fn_orig = addon_utils._initialize_extension_repos_pre
+
     fn_override = monkeypatch_extensions_repos_update_pre
     for i, fn in enumerate(handlers):
         if fn is fn_orig:
             handlers[i] = fn_override
-            fn_override._fn_orig = fn_orig
+            fn_override.fn_orig = fn_orig
             break
 
+    # pylint: disable-next=protected-access
     handlers = bpy.app.handlers._extension_repos_update_post
+    # pylint: disable-next=protected-access
     fn_orig = addon_utils._initialize_extension_repos_post
+
     fn_override = monkeypatch_extenions_repos_update_post
     for i, fn in enumerate(handlers):
         if fn is fn_orig:
             handlers[i] = fn_override
-            fn_override._fn_orig = fn_orig
+            fn_override.fn_orig = fn_orig
             break
 
 
 def monkeypatch_uninstall():
+    # pylint: disable-next=protected-access
     handlers = bpy.app.handlers._extension_repos_update_pre
+
     fn_override = monkeypatch_extensions_repos_update_pre
     for i, fn in enumerate(handlers):
         if fn is fn_override:
-            handlers[i] = fn_override._fn_orig
-            del fn_override._fn_orig
+            handlers[i] = fn_override.fn_orig
+            del fn_override.fn_orig
             break
 
+    # pylint: disable-next=protected-access
     handlers = bpy.app.handlers._extension_repos_update_post
+
     fn_override = monkeypatch_extenions_repos_update_post
     for i, fn in enumerate(handlers):
         if fn is fn_override:
-            handlers[i] = fn_override._fn_orig
-            del fn_override._fn_orig
+            handlers[i] = fn_override.fn_orig
+            del fn_override.fn_orig
             break
 
 
@@ -635,9 +645,11 @@ def register():
     from bl_ui.space_userpref import USERPREF_MT_interface_theme_presets
     USERPREF_MT_interface_theme_presets.append(theme_preset_draw)
 
+    # pylint: disable-next=protected-access
     handlers = bpy.app.handlers._extension_repos_sync
     handlers.append(extenion_repos_sync)
 
+    # pylint: disable-next=protected-access
     handlers = bpy.app.handlers._extension_repos_files_clear
     handlers.append(extenion_repos_files_clear)
 
@@ -675,10 +687,12 @@ def unregister():
     from bl_ui.space_userpref import USERPREF_MT_interface_theme_presets
     USERPREF_MT_interface_theme_presets.remove(theme_preset_draw)
 
+    # pylint: disable-next=protected-access
     handlers = bpy.app.handlers._extension_repos_sync
     if extenion_repos_sync in handlers:
         handlers.remove(extenion_repos_sync)
 
+    # pylint: disable-next=protected-access
     handlers = bpy.app.handlers._extension_repos_files_clear
     if extenion_repos_files_clear in handlers:
         handlers.remove(extenion_repos_files_clear)
