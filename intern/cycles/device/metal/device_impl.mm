@@ -1456,31 +1456,33 @@ void MetalDevice::update_bvh(BVHMetal *bvh_metal)
 {
   free_bvh();
 
-  if (bvh_metal) {
-    accel_struct = bvh_metal->accel_struct;
-    unique_blas_array = bvh_metal->unique_blas_array;
+  if (!bvh_metal) {
+    return;
+  }
 
-    [accel_struct retain];
-    for (id<MTLAccelerationStructure> &blas : unique_blas_array) {
-      [blas retain];
-    }
+  accel_struct = bvh_metal->accel_struct;
+  unique_blas_array = bvh_metal->unique_blas_array;
 
-    // allocate required buffers for BLAS array
-    uint64_t count = bvh_metal->blas_array.size();
-    uint64_t bufferSize = mtlBlasArgEncoder.encodedLength * count;
-    blas_buffer = [mtlDevice newBufferWithLength:bufferSize options:default_storage_mode];
-    stats.mem_alloc(blas_buffer.allocatedSize);
+  [accel_struct retain];
+  for (id<MTLAccelerationStructure> &blas : unique_blas_array) {
+    [blas retain];
+  }
 
-    for (uint64_t i = 0; i < count; ++i) {
-      if (bvh_metal->blas_array[i]) {
-        [mtlBlasArgEncoder setArgumentBuffer:blas_buffer
-                                      offset:i * mtlBlasArgEncoder.encodedLength];
-        [mtlBlasArgEncoder setAccelerationStructure:bvh_metal->blas_array[i] atIndex:0];
-      }
+  // allocate required buffers for BLAS array
+  uint64_t count = bvh_metal->blas_array.size();
+  uint64_t bufferSize = mtlBlasArgEncoder.encodedLength * count;
+  blas_buffer = [mtlDevice newBufferWithLength:bufferSize options:default_storage_mode];
+  stats.mem_alloc(blas_buffer.allocatedSize);
+
+  for (uint64_t i = 0; i < count; ++i) {
+    if (bvh_metal->blas_array[i]) {
+      [mtlBlasArgEncoder setArgumentBuffer:blas_buffer
+                                    offset:i * mtlBlasArgEncoder.encodedLength];
+      [mtlBlasArgEncoder setAccelerationStructure:bvh_metal->blas_array[i] atIndex:0];
     }
-    if (default_storage_mode == MTLResourceStorageModeManaged) {
-      [blas_buffer didModifyRange:NSMakeRange(0, blas_buffer.length)];
-    }
+  }
+  if (default_storage_mode == MTLResourceStorageModeManaged) {
+    [blas_buffer didModifyRange:NSMakeRange(0, blas_buffer.length)];
   }
 }
 
