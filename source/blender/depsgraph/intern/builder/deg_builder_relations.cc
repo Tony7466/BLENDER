@@ -1176,7 +1176,7 @@ void DepsgraphRelationBuilder::build_object_parent(Object *object)
 }
 
 /* Returns the modifier that is last in the modifier stack. */
-static const ModifierData *get_last_modifier(const ModifierData *md1, const ModifierData *md2)
+static const ModifierData *get_latter_modifier(const ModifierData *md1, const ModifierData *md2)
 {
   if (md1 == nullptr) {
     return md2;
@@ -1237,7 +1237,7 @@ void DepsgraphRelationBuilder::build_object_pointcache(Object *object)
         }
 
         if (md && md->prev) {
-          last_input_modifier = get_last_modifier(last_input_modifier, md->prev);
+          last_input_modifier = get_latter_modifier(last_input_modifier, md->prev);
         }
 
         return true;
