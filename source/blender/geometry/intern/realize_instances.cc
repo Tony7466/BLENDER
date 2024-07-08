@@ -2051,9 +2051,9 @@ static void execute_realize_grease_pencil_task(
     dst_curves = src_curves;
 
     /* Remap materials. */
+    bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
     bke::SpanAttributeWriter<int> material_indices =
-        dst_curves.attributes_for_write().lookup_or_add_for_write_span<int>(
-            "material_index", bke::AttrDomain::Curve);
+        dst_attributes.lookup_or_add_for_write_span<int>("material_index", bke::AttrDomain::Curve);
     for (int &material_index : material_indices.span) {
       if (material_index >= 0 && material_index < src_grease_pencil.material_array_num) {
         material_index = grease_pencil_info.material_index_map[material_index];
