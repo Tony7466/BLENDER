@@ -572,10 +572,29 @@ TEST_F(ActionLayersTest, is_action_assignable_to)
       << "Layered Actions should be assignable to any type.";
 }
 
+TEST_F(ActionLayersTest, action_slot_get_id_for_keying__empty_action)
+{
+  action->assign_id(nullptr, cube->id);
+
+  /* Double-check that the action is considered empty for the test. */
+  EXPECT_TRUE(action->is_empty());
+
+  /* A `primary_id` that uses the action should get returned. Every other case
+   * should return nullptr. */
+  EXPECT_EQ(&cube->id, action_slot_get_id_for_keying(*bmain, *action, 0, &cube->id));
+  EXPECT_EQ(nullptr, action_slot_get_id_for_keying(*bmain, *action, 0, nullptr));
+  EXPECT_EQ(nullptr, action_slot_get_id_for_keying(*bmain, *action, 0, &suzanne->id));
+}
+
 TEST_F(ActionLayersTest, action_slot_get_id_for_keying__legacy_action)
 {
-  AnimData *adt = BKE_animdata_ensure_id(&cube->id);
-  adt->action = action;
+  FCurve *fcurve = action_fcurve_ensure(bmain, action, nullptr, nullptr, {"location", 0});
+  EXPECT_FALSE(fcurve == nullptr);
+
+  action->assign_id(nullptr, cube->id);
+
+  /* Double-check that the action is considered legacy for the test. */
+  EXPECT_TRUE(action->is_action_legacy());
 
   /* A `primary_id` that uses the action should get returned. Every other case
    * should return nullptr. */
@@ -587,6 +606,9 @@ TEST_F(ActionLayersTest, action_slot_get_id_for_keying__legacy_action)
 TEST_F(ActionLayersTest, action_slot_get_id_for_keying__layered_action)
 {
   Slot &slot = action->slot_add();
+
+  /* Double-check that the action is considered layered for the test. */
+  EXPECT_TRUE(action->is_action_layered());
 
   /* A slot with no users should never return a user. */
   EXPECT_EQ(nullptr, action_slot_get_id_for_keying(*bmain, *action, slot.handle, nullptr));
