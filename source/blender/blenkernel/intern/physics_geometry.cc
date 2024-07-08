@@ -492,11 +492,18 @@ void PhysicsGeometryImpl::realize(const PhysicsGeometryImpl &from,
   }
 }
 
-void PhysicsGeometryImpl::copy_to_customdata(const AttributeAccessor attributes)
+bool PhysicsGeometryImpl::try_copy_to_customdata(const PhysicsGeometryImpl &from,
+                                                 const AttributeAccessor from_attributes,
+                                                 const IndexMask &body_mask,
+                                                 const IndexMask &constraint_mask,
+                                                 const int bodies_offset,
+                                                 const int constraints_offset)
 {
-  BLI_assert(!this->is_empty);
+  if (this->is_empty) {
+    return false;
+  }
 
-  attributes.for_all(
+  from_attributes.for_all(
       [&](const AttributeIDRef &attribute_id, const AttributeMetaData &meta_data) -> bool {
         CustomData *custom_data = nullptr;
         int totelem = 0;
@@ -517,20 +524,20 @@ void PhysicsGeometryImpl::copy_to_customdata(const AttributeAccessor attributes)
         void *data = CustomData_add_layer_named(
             custom_data, data_type, CD_CONSTRUCT, totelem, attribute_id.name());
 
-        GAttributeReader reader = attributes.lookup(attribute_id);
+        GAttributeReader reader = from_attributes.lookup(attribute_id);
         reader.varray.materialize_to_uninitialized(data);
 
         return true;
       });
 }
 
-bool PhysicsGeometryImpl::move(const PhysicsGeometryImpl &from,
-                               const AttributeAccessor from_attributes,
-                               const bool use_world,
-                               const IndexMask &body_mask,
-                               const IndexMask &constraint_mask,
-                               const int bodies_offset,
-                               const int constraints_offset)
+bool PhysicsGeometryImpl::try_move(const PhysicsGeometryImpl &from,
+                                   const AttributeAccessor from_attributes,
+                                   const bool use_world,
+                                   const IndexMask &body_mask,
+                                   const IndexMask &constraint_mask,
+                                   const int bodies_offset,
+                                   const int constraints_offset)
 {
   BLI_assert(this->is_mutable());
   BLI_assert(!this->is_empty);
@@ -547,7 +554,8 @@ bool PhysicsGeometryImpl::move(const PhysicsGeometryImpl &from,
   PhysicsGeometryImpl &from_mutable = const_cast<PhysicsGeometryImpl &>(from);
 
   /* Cache the source before moving physics data. */
-  from_mutable.copy_to_customdata(from_attributes);
+  from_mutable.try_copy_to_customdata(
+      from, from_attributes, body_mask, constraint_mask, bodies_offset, constraints_offset);
 
   btDynamicsWorld *from_world = from_mutable.world;
   if (use_world) {
@@ -739,7 +747,7 @@ PhysicsGeometryImpl &PhysicsGeometry::impl_for_write()
     new_impl->constraint_feedback.fill(
         {btVector3(0, 0, 0), btVector3(0, 0, 0), btVector3(0, 0, 0), btVector3(0, 0, 0)});
     new_impl->constraints.fill(nullptr);
-    new_impl->move(
+    new_impl->try_move(
         *impl_, this->attributes(), true, this->bodies_range(), this->constraints_range(), 0, 0);
   }
   else {
@@ -969,6 +977,72 @@ static void remap_bodies(const int src_bodies_num,
   });
 }
 
+void PhysicsGeometry::cache_or_copy_selection(
+    const PhysicsGeometry &from,
+    const IndexMask &body_mask,
+    const IndexMask &constraint_mask,
+    int bodies_offset,
+    int constraints_offset,
+    const bke::AnonymousAttributePropagationInfo &propagation_info)
+{
+  if (!impl_->is_empty) {
+    return;
+  }
+
+  PhysicsGeometryImpl &impl = this->impl_for_write();
+  const bool is_cached = impl.try_copy_to_customdata(from.impl(),
+                                                     from.attributes(),
+                                                     body_mask,
+                                                     constraint_mask,
+                                                     bodies_offset,
+                                                     constraints_offset);
+
+  const Set<std::string> skip_attributes = is_cached ?
+                                               Set<std::string>{builtin_attributes.skip_copy} :
+                                               Set<std::string>{};
+
+  /* Physics data is empty, copy attributes instead. */
+
+  const VArraySpan<int> src_types = from.constraint_types();
+  const VArraySpan<int> src_body1 = from.constraint_body1();
+  const VArraySpan<int> src_body2 = from.constraint_body2();
+  const bke::AttributeAccessor src_attributes = from.attributes();
+
+  // BKE_physics_copy_parameters_for_eval(dst_physics, &src_physics);
+  bke::MutableAttributeAccessor dst_attributes = this->attributes_for_write();
+  Array<int> dst_types(this->constraints_num());
+  Array<int> dst_body1(this->constraints_num());
+  Array<int> dst_body2(this->constraints_num());
+
+  remap_bodies(from.bodies_num(),
+               body_mask,
+               constraint_mask,
+               src_types,
+               src_body1,
+               src_body2,
+               dst_types,
+               dst_body1,
+               dst_body2);
+
+  this->create_constraints(this->constraints_range(),
+                           VArray<int>::ForSpan(dst_types),
+                           VArray<int>::ForSpan(dst_body1),
+                           VArray<int>::ForSpan(dst_body2));
+
+  bke::gather_attributes(src_attributes,
+                         bke::AttrDomain::Point,
+                         propagation_info,
+                         skip_attributes,
+                         body_mask,
+                         dst_attributes);
+  bke::gather_attributes(src_attributes,
+                         bke::AttrDomain::Edge,
+                         propagation_info,
+                         skip_attributes,
+                         constraint_mask,
+                         dst_attributes);
+}
+
 void PhysicsGeometry::move_or_copy_selection(
     const PhysicsGeometry &from,
     const bool use_world,
@@ -978,15 +1052,20 @@ void PhysicsGeometry::move_or_copy_selection(
     int constraints_offset,
     const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
-  const bool has_physics_data = this->impl_for_write().move(from.impl(),
-                                                            from.attributes(),
-                                                            use_world,
-                                                            body_mask,
-                                                            constraint_mask,
-                                                            bodies_offset,
-                                                            constraints_offset);
+  if (impl_->is_empty) {
+    return;
+  }
 
-  const Set<std::string> skip_attributes = has_physics_data ?
+  PhysicsGeometryImpl &impl = this->impl_for_write();
+  const bool was_moved = impl.try_move(from.impl(),
+                                       from.attributes(),
+                                       use_world,
+                                       body_mask,
+                                       constraint_mask,
+                                       bodies_offset,
+                                       constraints_offset);
+
+  const Set<std::string> skip_attributes = was_moved ?
                                                Set<std::string>{builtin_attributes.skip_copy} :
                                                Set<std::string>{};
 
