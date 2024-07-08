@@ -999,9 +999,11 @@ bool GHOST_XrSession::getControllerModelData(const char *subaction_path,
 
 /** \} */ /* Controller Model */
 
-/**
- * Meta Quest Passthrough support
- */
+/* -------------------------------------------------------------------- */
+/** \name Meta Quest Passthrough
+ *
+ * \{ */
+
 static PFN_xrCreatePassthroughFB g_xrCreatePassthroughFB = nullptr;
 static PFN_xrCreatePassthroughLayerFB g_xrCreatePassthroughLayerFB = nullptr;
 static PFN_xrPassthroughStartFB g_xrPassthroughStartFB = nullptr;
@@ -1025,14 +1027,14 @@ static void init_passthrough_extension_functions(XrInstance instance)
 
 void GHOST_XrSession::enablePassthrough()
 {
-
   if (!m_context->isExtensionEnabled(XR_FB_PASSTHROUGH_EXTENSION_NAME)) {
     m_oxr->passthrough_supported = false;
     return;
   }
 
-  if (m_oxr->passthrough_layer.layerHandle != XR_NULL_HANDLE)
+  if (m_oxr->passthrough_layer.layerHandle != XR_NULL_HANDLE) {
     return; /* Already initialized */
+  }
 
   init_passthrough_extension_functions(m_context->getInstance());
 
@@ -1040,7 +1042,7 @@ void GHOST_XrSession::enablePassthrough()
 
   XrPassthroughCreateInfoFB passthrough_create_info = {};
   passthrough_create_info.type = XR_TYPE_PASSTHROUGH_CREATE_INFO_FB;
-  passthrough_create_info.next = NULL;
+  passthrough_create_info.next = nullptr;
   passthrough_create_info.flags |= XR_PASSTHROUGH_IS_RUNNING_AT_CREATION_BIT_FB;
 
   XrPassthroughFB passthrough_handle;
@@ -1068,3 +1070,5 @@ void GHOST_XrSession::enablePassthrough()
 
   m_oxr->passthrough_supported = (result == XR_SUCCESS);
 }
+
+/** \} */ /* Meta Quest Passthrough */
