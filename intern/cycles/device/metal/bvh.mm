@@ -1030,6 +1030,11 @@ bool BVHMetal::build_TLAS(Progress &progress,
     uint32_t num_motion_transforms = 0;
     for (Object *ob : objects) {
       num_instances++;
+
+      /* Skip motion for non-traceable objects */
+      if (!ob->is_traceable())
+        continue;
+
       if (ob->use_motion()) {
         num_motion_transforms += max((size_t)1, ob->get_motion().size());
       }
@@ -1105,7 +1110,7 @@ bool BVHMetal::build_TLAS(Progress &progress,
       /* Skip non-traceable objects */
       Geometry const *geom = ob->get_geometry();
       BVHMetal const *blas = static_cast<BVHMetal const *>(geom->bvh);
-      if (!blas || !blas->accel_struct || !ob->is_traceable()) {
+      if (!blas || !blas->accel_struct) {
         /* Place a degenerate instance, to ensure [[instance_id]] equals ob->get_mtl_device_index()
          * in our intersection functions */
         blas = nullptr;
@@ -1170,7 +1175,6 @@ bool BVHMetal::build_TLAS(Progress &progress,
         desc.motionStartBorderMode = MTLMotionBorderModeVanish;
         desc.motionEndBorderMode = MTLMotionBorderModeVanish;
         desc.intersectionFunctionTableOffset = 0;
-        desc.options = MTLAccelerationStructureInstanceOptionOpaque;
 
         int key_count = ob->get_motion().size();
         if (key_count) {
