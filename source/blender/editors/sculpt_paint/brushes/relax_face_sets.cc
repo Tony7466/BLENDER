@@ -37,7 +37,8 @@ static std::array<float, 4> iteration_strengths(const float strength, const int 
   return {modified_strength, modified_strength, strength, strength};
 }
 
-static void filter_factors_on_face_sets(const SculptSession &ss,
+static void filter_factors_on_face_sets(const GroupedSpan<int> vert_to_face_map,
+                                        const int *face_sets,
                                         const bool relax_face_sets,
                                         const Span<int> verts,
                                         const MutableSpan<float> factors)
@@ -220,7 +221,7 @@ static void calc_factors_faces(const Brush &brush,
 
   calc_brush_texture_factors(ss, brush, positions_eval, verts, factors);
 
-  filter_factors_on_face_sets(ss, relax_face_sets, verts, factors);
+  filter_factors_on_face_sets(ss.vert_to_face_map, ss.face_sets, relax_face_sets, verts, factors);
 }
 
 BLI_NOINLINE static void calc_relaxed_positions_faces(const OffsetIndices<int> faces,
