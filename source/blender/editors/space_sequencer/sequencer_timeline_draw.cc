@@ -12,7 +12,6 @@
 
 #include "BLI_array.hh"
 #include "BLI_blenlib.h"
-#include "BLI_map.hh"
 #include "BLI_string_utils.hh"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
@@ -45,7 +44,6 @@
 #include "SEQ_prefetch.hh"
 #include "SEQ_relations.hh"
 #include "SEQ_render.hh"
-#include "SEQ_retiming.hh"
 #include "SEQ_select.hh"
 #include "SEQ_sequencer.hh"
 #include "SEQ_time.hh"
