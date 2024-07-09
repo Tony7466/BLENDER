@@ -551,14 +551,16 @@ static void IndexBuf_add_bezier_lines(Object &object,
   *r_drawing_line_start_offset += bezier_points.size() * 3;
 }
 
-static void IndexBuf_add_bezier_points(Object &object,
-                                       const bke::greasepencil::Drawing &drawing,
-                                       int layer_index,
-                                       const OffsetIndices<int> &points_by_curve,
-                                       GPUIndexBufBuilder *epb,
-                                       IndexMaskMemory &memory,
-                                       int *r_drawing_start_offset)
+static void IndexBuf_add_points(Object &object,
+                                const bke::greasepencil::Drawing &drawing,
+                                int layer_index,
+                                const OffsetIndices<int> &points_by_curve,
+                                GPUIndexBufBuilder *epb,
+                                IndexMaskMemory &memory,
+                                int *r_drawing_start_offset)
 {
+  const bke::CurvesGeometry &curves = drawing.strokes();
+
   /* Fill point indices. */
   const IndexMask selected_editable_strokes =
       ed::greasepencil::retrieve_editable_and_selected_strokes(
@@ -961,13 +963,13 @@ static void grease_pencil_edit_batch_ensure(Object &object,
     IndexBuf_add_bezier_lines(
         object, info.drawing, info.layer_index, &elb, memory, &drawing_line_start_offset);
 
-    IndexBuf_add_bezier_points(object,
-                               info.drawing,
-                               info.layer_index,
-                               points_by_curve,
-                               &epb,
-                               memory,
-                               &drawing_start_offset);
+    IndexBuf_add_points(object,
+                        info.drawing,
+                        info.layer_index,
+                        points_by_curve,
+                        &epb,
+                        memory,
+                        &drawing_start_offset);
 
     IndexBuf_add_bezier_line_points(
         object, info.drawing, info.layer_index, &epb, memory, &drawing_start_offset);
