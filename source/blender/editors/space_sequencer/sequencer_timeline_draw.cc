@@ -12,6 +12,7 @@
 
 #include "BLI_array.hh"
 #include "BLI_blenlib.h"
+#include "BLI_map.hh"
 #include "BLI_string_utils.hh"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
@@ -44,6 +45,7 @@
 #include "SEQ_prefetch.hh"
 #include "SEQ_relations.hh"
 #include "SEQ_render.hh"
+#include "SEQ_retiming.hh"
 #include "SEQ_select.hh"
 #include "SEQ_sequencer.hh"
 #include "SEQ_time.hh"
@@ -1245,25 +1247,57 @@ static void visible_strips_ordered_get(TimelineDrawContext *timeline_ctx,
                                        Vector<StripDrawContext> &r_unselected,
                                        Vector<StripDrawContext> &r_selected)
 {
-  Sequence *act_seq = SEQ_select_active_get(timeline_ctx->scene);
-  Vector<Sequence *> strips = sequencer_visible_strips_get(timeline_ctx->C);
   r_unselected.clear();
   r_selected.clear();
 
-  for (Sequence *seq : strips) {
-    /* Active will be added last. */
-    if (seq == act_seq) {
-      continue;
+  Sequence *act_seq = SEQ_select_active_get(timeline_ctx->scene);
+  Vector<Sequence *> strips = sequencer_visible_strips_get(timeline_ctx->C);
+
+  /* Special case for "active retiming mode" - retiming key is selected. */
+  Map<SeqRetimingKey *, Sequence *> retiming_selection = SEQ_retiming_selection_get(
+      timeline_ctx->ed);
+  if (retiming_selection.size() > 0) {
+    /* TODO(@il4n): Temporary code for a bug fix. */
+    retiming_selection.remove_if([&](auto item) {
+      bool is_visible = false;
+      for (Sequence *seq : strips) {
+        if (seq == item.value) {
+          is_visible = true;
+          break;
+        }
+      }
+      return !is_visible;
+    });
+
+    for (Sequence *seq : retiming_selection.values()) {
+      StripDrawContext strip_ctx = strip_draw_context_get(timeline_ctx, seq);
+      r_selected.append(strip_ctx);
+      /* Remove selected strips from visible strips. */
+      strips.remove_if([seq](Sequence *seq_visible) { return seq == seq_visible; });
     }
 
-    StripDrawContext strip_ctx = strip_draw_context_get(timeline_ctx, seq);
-    if ((seq->flag & SELECT) == 0) {
+    for (Sequence *seq : strips) {
+      StripDrawContext strip_ctx = strip_draw_context_get(timeline_ctx, seq);
       r_unselected.append(strip_ctx);
     }
-    else {
-      r_selected.append(strip_ctx);
+  }
+  else {
+    for (Sequence *seq : strips) {
+      /* Active will be added last. */
+      if (seq == act_seq) {
+        continue;
+      }
+
+      StripDrawContext strip_ctx = strip_draw_context_get(timeline_ctx, seq);
+      if ((seq->flag & SELECT) == 0) {
+        r_unselected.append(strip_ctx);
+      }
+      else {
+        r_selected.append(strip_ctx);
+      }
     }
   }
+
   /* Add active, if any. */
   if (act_seq) {
     StripDrawContext strip_ctx = strip_draw_context_get(timeline_ctx, act_seq);
