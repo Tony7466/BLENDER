@@ -531,11 +531,12 @@ static void IndexBuf_add_line_points(Object &object,
 static void IndexBuf_add_nurbs_lines(Object &object,
                                      const bke::greasepencil::Drawing &drawing,
                                      int layer_index,
-                                     const OffsetIndices<int> &points_by_curve,
                                      GPUIndexBufBuilder *elb,
                                      IndexMaskMemory &memory,
                                      int *r_drawing_line_start_offset)
 {
+  const bke::CurvesGeometry &curves = drawing.strokes();
+  const OffsetIndices<int> points_by_curve = curves.points_by_curve();
   const IndexMask nurbs_curves = grease_pencil_get_visible_NURBS_curves(
       object, drawing, layer_index, memory);
   if (nurbs_curves.is_empty()) {
@@ -587,12 +588,12 @@ static void IndexBuf_add_bezier_lines(Object &object,
 static void IndexBuf_add_points(Object &object,
                                 const bke::greasepencil::Drawing &drawing,
                                 int layer_index,
-                                const OffsetIndices<int> &points_by_curve,
                                 GPUIndexBufBuilder *epb,
                                 IndexMaskMemory &memory,
                                 int *r_drawing_start_offset)
 {
   const bke::CurvesGeometry &curves = drawing.strokes();
+  const OffsetIndices<int> points_by_curve = curves.points_by_curve();
 
   /* Fill point indices. */
   const IndexMask selected_editable_strokes =
@@ -955,38 +956,21 @@ static void grease_pencil_edit_batch_ensure(Object &object,
   drawing_line_start_offset = 0;
   for (const ed::greasepencil::DrawingInfo &info : drawings) {
     const Layer *layer = layers[info.layer_index];
-    const bke::CurvesGeometry &curves = info.drawing.strokes();
-    const OffsetIndices<int> points_by_curve = curves.points_by_curve();
     IndexMaskMemory memory;
 
     IndexBuf_add_line_points(
         object, info.drawing, info.layer_index, &elb, memory, &drawing_line_start_offset);
 
-    if (layer->is_locked()) {
-      continue;
+    if (!layer->is_locked()) {
+      IndexBuf_add_nurbs_lines(
+          object, info.drawing, info.layer_index, &elb, memory, &drawing_line_start_offset);
+      IndexBuf_add_bezier_lines(
+          object, info.drawing, info.layer_index, &elb, memory, &drawing_line_start_offset);
+      IndexBuf_add_points(
+          object, info.drawing, info.layer_index, &epb, memory, &drawing_start_offset);
+      IndexBuf_add_bezier_line_points(
+          object, info.drawing, info.layer_index, &epb, memory, &drawing_start_offset);
     }
-
-    IndexBuf_add_nurbs_lines(object,
-                             info.drawing,
-                             info.layer_index,
-                             points_by_curve,
-                             &elb,
-                             memory,
-                             &drawing_line_start_offset);
-
-    IndexBuf_add_bezier_lines(
-        object, info.drawing, info.layer_index, &elb, memory, &drawing_line_start_offset);
-
-    IndexBuf_add_points(object,
-                        info.drawing,
-                        info.layer_index,
-                        points_by_curve,
-                        &epb,
-                        memory,
-                        &drawing_start_offset);
-
-    IndexBuf_add_bezier_line_points(
-        object, info.drawing, info.layer_index, &epb, memory, &drawing_start_offset);
   }
 
   cache->edit_line_indices = GPU_indexbuf_build(&elb);
