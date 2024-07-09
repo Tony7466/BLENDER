@@ -1523,11 +1523,11 @@ static int imb_exr_split_channel_name(ExrChannel *echan,
         echan->chan_id = chan_id;
       }
       else {
-        echan->chan_id = 'I'; /* Default to X if unknown. */
+        echan->chan_id = 'I'; /* Default to I if unknown. */
       }
     }
     else {
-      echan->chan_id = 'I'; /* Default to X if unknown. */
+      echan->chan_id = 'I'; /* Default to I if unknown. */
     }
   }
   end -= len + 1; /* +1 to skip '.' separator */
