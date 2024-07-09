@@ -1,1 +1,2 @@
 Referenced by issue #124344, GPv3: Keyframes with duplicate drawings are generated in draw mode
+Referenced by commit 6bbffc6b690254e74fccb0cde04dee8d5f06bd71, Revert "Fix #124082: GPv3: New frames created in sculpt mode are empty"
