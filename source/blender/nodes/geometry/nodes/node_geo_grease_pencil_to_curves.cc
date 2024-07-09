@@ -71,6 +71,9 @@ static void node_geo_exec(GeoNodeExecParams params)
   bke::MutableAttributeAccessor instances_attributes = instances->attributes_for_write();
   grease_pencil_attributes.for_all(
       [&](const AttributeIDRef &attribute_id, const AttributeMetaData &meta_data) {
+        if (ELEM(attribute_id, "opacity")) {
+          return true;
+        }
         const GAttributeReader src_attribute = grease_pencil_attributes.lookup(attribute_id);
         if (!src_attribute) {
           return true;
@@ -98,6 +101,16 @@ static void node_geo_exec(GeoNodeExecParams params)
         dst_attribute.finish();
         return true;
       });
+
+  {
+    SpanAttributeWriter<float> opacity_attribute =
+        instances_attributes.lookup_or_add_for_write_only_span<float>("opacity",
+                                                                      AttrDomain::Instance);
+    layer_selection.foreach_index([&](const int layer_i, const int instance_i) {
+      opacity_attribute.span[instance_i] = grease_pencil->layer(layer_i)->opacity;
+    });
+    opacity_attribute.finish();
+  }
 
   GeometrySet instances_geometry = GeometrySet::from_instances(instances);
   instances_geometry.name = std::move(grease_pencil_geometry.name);
