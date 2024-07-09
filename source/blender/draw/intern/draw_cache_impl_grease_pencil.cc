@@ -495,6 +495,34 @@ static IndexMask grease_pencil_get_visible_NURBS_curves(Object &object,
   return IndexMask::from_intersection(selected_editable_strokes, nurbs_curves, memory);
 }
 
+static void IndexBuf_add_nurbs_lines(Object &object,
+                                     const bke::greasepencil::Drawing &drawing,
+                                     int layer_index,
+                                     const OffsetIndices<int> &points_by_curve,
+                                     GPUIndexBufBuilder *elb,
+                                     IndexMaskMemory &memory,
+                                     int *r_drawing_line_start_offset)
+{
+  const IndexMask nurbs_curves = grease_pencil_get_visible_NURBS_curves(
+      object, drawing, layer_index, memory);
+  if (nurbs_curves.is_empty()) {
+    return;
+  }
+
+  /* Add all NURBS points. */
+  nurbs_curves.foreach_index([&](const int curve_i) {
+    const IndexRange points = points_by_curve[curve_i];
+
+    for (const int point_i : points.index_range()) {
+      GPU_indexbuf_add_generic_vert(elb, point_i + (*r_drawing_line_start_offset));
+    }
+
+    GPU_indexbuf_add_primitive_restart(elb);
+
+    *r_drawing_line_start_offset += points.size();
+  });
+}
+
 static void grease_pencil_edit_batch_ensure(Object &object,
                                             const GreasePencil &grease_pencil,
                                             const Scene &scene)
@@ -849,23 +877,13 @@ static void grease_pencil_edit_batch_ensure(Object &object,
       continue;
     }
 
-    const IndexMask nurbs_curves = grease_pencil_get_visible_NURBS_curves(
-        object, info.drawing, info.layer_index, memory);
-    if (!nurbs_curves.is_empty()) {
-
-      /* Add all NURBS points. */
-      nurbs_curves.foreach_index([&](const int curve_i) {
-        const IndexRange points = points_by_curve[curve_i];
-
-        for (const int point_i : points.index_range()) {
-          GPU_indexbuf_add_generic_vert(&elb, point_i + drawing_line_start_offset);
-        }
-
-        GPU_indexbuf_add_primitive_restart(&elb);
-
-        drawing_line_start_offset += points.size();
-      });
-    }
+    IndexBuf_add_nurbs_lines(object,
+                             info.drawing,
+                             info.layer_index,
+                             points_by_curve,
+                             &elb,
+                             memory,
+                             &drawing_line_start_offset);
 
     const IndexMask bezier_points = grease_pencil_get_visible_bezier_points(
         object, info.drawing, info.layer_index, memory);
