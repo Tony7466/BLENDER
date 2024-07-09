@@ -73,7 +73,7 @@ static constexpr std::array<uint, 24> bone_box_wire = {
 };
 
 static void append_as_lines_cyclic(
-    Vector<Vertex> &dest, Vector<float2> verts, float z, int flag, bool dashed = false)
+    Vector<Vertex> &dest, Span<float2> verts, float z, int flag, bool dashed = false)
 {
   const int step = dashed ? 2 : 1;
   for (int i : IndexRange(verts.size() / step)) {
@@ -109,7 +109,7 @@ static Vector<float2> ring_vertices(const float radius, const int segments)
   Vector<float2> verts;
   for (int i : IndexRange(segments)) {
     float angle = (2 * M_PI * i) / segments;
-    verts.append(radius * float2(math::sin(angle), math::cos(angle)));
+    verts.append(radius * float2(math::cos(angle), math::sin(angle)));
   }
   return verts;
 }
@@ -411,12 +411,7 @@ ShapeCache::ShapeCache()
 
     Vector<Vertex> verts;
     /* Ground Point */
-    for (int i : IndexRange(DIAMOND_NSEGMENTS)) {
-      for (int j : IndexRange(2)) {
-        float2 cv = ring[(i + j) % DIAMOND_NSEGMENTS];
-        verts.append({{cv[0], cv[1], 0.0f}, 0});
-      }
-    }
+    append_as_lines_cyclic(verts, ring, 0.0f, 0);
     /* Ground Line */
     verts.append({{0.0, 0.0, 1.0}, 0});
     verts.append({{0.0, 0.0, 0.0}, 0});
@@ -454,7 +449,7 @@ ShapeCache::ShapeCache()
   {
     static const float r = 9.0f;
     static const Vector<float2> diamond = ring_vertices(r * 0.3f, DIAMOND_NSEGMENTS);
-    static const Vector<float2> ring = ring_vertices(r * 1.0f, INNER_NSEGMENTS * 2);
+    static const Vector<float2> ring = ring_vertices(r, INNER_NSEGMENTS * 2);
 
     Vector<Vertex> verts;
     append_as_lines_cyclic(verts, diamond, 0.0f, VCLASS_SCREENSPACE);
@@ -467,7 +462,7 @@ ShapeCache::ShapeCache()
   {
     static const int num_rays = 8;
     static const float r = 9.0f;
-    static const Vector<float2> ring = ring_vertices(r * 1.0f, num_rays);
+    static const Vector<float2> ring = ring_vertices(r, num_rays);
     static const std::array<float, 4> scales{1.6f, 1.9f, 2.2f, 2.5f};
 
     Vector<Vertex> verts;
@@ -534,17 +529,11 @@ ShapeCache::ShapeCache()
   }
   /* light area square lines */
   {
-    static const float rect[4][2] = {{-1.0f, -1.0f}, {-1.0f, 1.0f}, {1.0f, 1.0f}, {1.0f, -1.0f}};
+    static const Array<float2> rect{{-0.5f, -0.5f}, {-0.5f, 0.5f}, {0.5f, 0.5f}, {0.5f, -0.5f}};
 
     Vector<Vertex> verts;
     /* Light area */
-    for (int a : IndexRange(4)) {
-      for (int b : IndexRange(2)) {
-        float x = rect[(a + b) % 4][0];
-        float y = rect[(a + b) % 4][1];
-        verts.append({{x * 0.5f, y * 0.5f, 0.0f}, VCLASS_LIGHT_AREA_SHAPE});
-      }
-    }
+    append_as_lines_cyclic(verts, rect, 0.0f, VCLASS_LIGHT_AREA_SHAPE);
 
     light_append_direction_line(verts);
 
