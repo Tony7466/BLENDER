@@ -359,10 +359,9 @@ bool ensure_active_keyframe(const bContext *C,
     ViewLayer *view_layer = CTX_data_view_layer(C);
     const Brush *brush = BKE_paint_brush_for_read(
         BKE_paint_get_active(const_cast<Scene *>(&scene), view_layer));
-    const bool is_tool_supported = (brush->gpencil_tool == GPAINT_TOOL_ERASE) ||
-                                   (brush->sculpt_tool != 0);
 
-    if (((scene.toolsettings->gpencil_flags & GP_TOOL_FLAG_RETAIN_LAST) != 0) || is_tool_supported)
+    if (((scene.toolsettings->gpencil_flags & GP_TOOL_FLAG_RETAIN_LAST) != 0) ||
+        (brush->gpencil_tool == GPAINT_TOOL_ERASE))
     {
       /* For additive drawing, we duplicate the frame that's currently visible and insert it at the
        * current frame.
