@@ -1067,12 +1067,29 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
         }
       });
 
+  /* Hide all except the interacting gizmo. */
+  bool any_gizmo_interactive = false;
+  for (const std::unique_ptr<NodeGizmos> &node_gizmos : new_gizmos_by_node.values()) {
+    any_gizmo_interactive |= node_gizmos->is_any_interacting();
+  }
+  if (any_gizmo_interactive) {
+    for (std::unique_ptr<NodeGizmos> &node_gizmos : new_gizmos_by_node.values()) {
+      for (wmGizmo *gizmo : node_gizmos->get_all_gizmos()) {
+        if (!gizmo_is_interacting(*gizmo)) {
+          WM_gizmo_set_flag(gizmo, WM_GIZMO_HIDDEN, true);
+        }
+      }
+    }
+  }
+
+  /* Remove gizmos that are not used anymore. */
   for (std::unique_ptr<NodeGizmos> &node_gizmos : gzgroup_data.gizmos_by_node.values()) {
     const Vector<wmGizmo *> gizmos = node_gizmos->get_all_gizmos();
     for (wmGizmo *gizmo : gizmos) {
       WM_gizmo_unlink(&gzgroup->gizmos, gzgroup->parent_gzmap, gizmo, const_cast<bContext *>(C));
     }
   }
+
   gzgroup_data.gizmos_by_node = std::move(new_gizmos_by_node);
 }
 
