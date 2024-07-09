@@ -102,6 +102,9 @@ static void node_geo_exec(GeoNodeExecParams params)
     {
       return true;
     }
+    if (ELEM(attribute_id, "opacity")) {
+      return true;
+    }
     const GAttributeReader src_attribute = instances_attributes.lookup(attribute_id);
     if (!src_attribute) {
       return true;
@@ -129,6 +132,16 @@ static void node_geo_exec(GeoNodeExecParams params)
     dst_attribute.finish();
     return true;
   });
+
+  {
+    if (const AttributeReader<float> opacity_attribute = instances_attributes.lookup<float>(
+            "opacity"))
+    {
+      instance_selection.foreach_index([&](const int instance_i, const int layer_i) {
+        grease_pencil->layer(layer_i)->opacity = opacity_attribute.varray[instance_i];
+      });
+    }
+  }
 
   GeometrySet grease_pencil_geometry = GeometrySet::from_grease_pencil(grease_pencil);
   grease_pencil_geometry.name = std::move(instances_geometry.name);
