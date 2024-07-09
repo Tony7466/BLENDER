@@ -1315,7 +1315,7 @@ FCurve *action_fcurve_ensure(Main *bmain,
     /* NOTE: for layered actions we require the following:
      *
      * - `ptr` is non-null.
-     * - `ptr`s owner ID is already uses `act`.
+     * - `ptr` either is or has an owning ID that already uses `act`.
      *
      * This isn't for any principled reason, but rather is because adding
      * support for layered actions to this function was a fix to make Follow
