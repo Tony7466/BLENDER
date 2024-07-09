@@ -27,7 +27,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static void node_shader_buts_npr(uiLayout *layout, bContext *C, PointerRNA *ptr)
 {
-  uiTemplateID(layout, C, ptr, "nodetree", "render.npr_new", nullptr, nullptr, 0, false, nullptr);
+  uiTemplateID(layout, C, ptr, "nprtree", "render.npr_new", nullptr, nullptr, 0, false, nullptr);
 }
 
 static void node_shader_buts_npr_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
@@ -35,12 +35,6 @@ static void node_shader_buts_npr_ex(uiLayout *layout, bContext *C, PointerRNA *p
   uiItemS(layout);
 
   node_shader_buts_npr(layout, C, ptr);
-}
-
-static void node_shader_init(bNodeTree * /*ntree*/, bNode *node)
-{
-  NodeShaderNPR *attr = MEM_cnew<NodeShaderNPR>("NodeShaderNPR");
-  node->storage = attr;
 }
 
 static int node_shader_fn(GPUMaterial *mat,
@@ -62,12 +56,9 @@ void register_node_type_sh_npr()
 
   sh_node_type_base(&ntype, SH_NODE_NPR, "NPR", NODE_CLASS_SHADER);
   ntype.declare = file_ns::node_declare;
-  ntype.initfunc = file_ns::node_shader_init;
   ntype.add_ui_poll = object_eevee_shader_nodes_poll;
   ntype.draw_buttons = file_ns::node_shader_buts_npr;
   ntype.draw_buttons_ex = file_ns::node_shader_buts_npr_ex;
-  blender::bke::node_type_storage(
-      &ntype, "NodeShaderNPR", node_free_standard_storage, node_copy_standard_storage);
   ntype.gpu_fn = file_ns::node_shader_fn;
 
   blender::bke::nodeRegisterType(&ntype);

@@ -4007,6 +4007,13 @@ static PointerRNA rna_NodeMenuSwitch_enum_definition_get(PointerRNA *ptr)
   return *ptr;
 }
 
+static void rna_NodeShaderNPR_node_tree_set(PointerRNA *ptr,
+                                            const PointerRNA value,
+                                            ReportList * /*reports*/)
+{
+  /* TODO(NPR): See rna_NodeGroup_node_tree_set */
+}
+
 static bool rna_NodeShaderNPR_node_tree_poll(PointerRNA * /*ptr*/, PointerRNA value)
 {
   bNodeTree *ntree = static_cast<bNodeTree *>(value.data);
@@ -6016,17 +6023,18 @@ static void def_sh_script(StructRNA *srna)
 
 static void def_sh_npr(StructRNA *srna)
 {
-  RNA_def_struct_sdna_from(srna, "NodeShaderNPR", "storage");
-
-  PropertyRNA *prop = RNA_def_property(srna, "nodetree", PROP_POINTER, PROP_NONE);
-  RNA_def_property_pointer_sdna(prop, nullptr, "nodetree");
-  RNA_def_property_clear_flag(prop, PROP_PTR_NO_OWNERSHIP);
-  // RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
-  RNA_def_property_ui_text(prop, "Node Tree", "NPR Node Tree");
-  RNA_def_property_pointer_funcs(
-      prop, nullptr, nullptr, nullptr, "rna_NodeShaderNPR_node_tree_poll");
+  PropertyRNA *prop = RNA_def_property(srna, "nprtree", PROP_POINTER, PROP_NONE);
+  RNA_def_property_pointer_sdna(prop, nullptr, "id");
+  RNA_def_property_struct_type(prop, "NodeTree");
+  RNA_def_property_pointer_funcs(prop,
+                                 nullptr,
+                                 nullptr,  // "rna_NodeShaderNPR_node_tree_set",
+                                 nullptr,
+                                 "rna_NodeShaderNPR_node_tree_poll");
   RNA_def_property_flag(prop, PROP_EDITABLE);
-  RNA_def_property_update(prop, 0, "rna_NodeShaderNPR_node_tree_update");
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_ui_text(prop, "NPRTree Tree", "");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeShaderNPR_node_tree_update");
 }
 
 /* -- Compositor Nodes ------------------------------------------------------ */

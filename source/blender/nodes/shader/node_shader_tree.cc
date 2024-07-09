@@ -1369,11 +1369,7 @@ bNodeTree *npr_tree_get(Material *material)
     if (surface_socket && surface_socket->link && surface_socket->link->fromnode &&
         surface_socket->link->fromnode->type == SH_NODE_NPR)
     {
-      NodeShaderNPR *storage = static_cast<NodeShaderNPR *>(
-          surface_socket->link->fromnode->storage);
-      if (storage) {
-        return storage->nodetree;
-      }
+      return reinterpret_cast<bNodeTree *>(surface_socket->link->fromnode->id);
     }
   }
   return nullptr;

@@ -1394,10 +1394,6 @@ typedef struct NodeShaderHairPrincipled {
   char _pad[4];
 } NodeShaderHairPrincipled;
 
-typedef struct NodeShaderNPR {
-  struct bNodeTree *nodetree;
-} NodeShaderNPR;
-
 /** TEX_output. */
 typedef struct TexNodeOutput {
   char name[64];
