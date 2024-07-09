@@ -19,6 +19,7 @@
 #include "DEG_depsgraph.hh"
 
 #include "DNA_scene_types.h"
+#include "DNA_layer_types.h"
 
 #include "ANIM_keyframing.hh"
 
@@ -336,7 +337,8 @@ void create_keyframe_edit_data_selected_frames_list(KeyframeEditData *ked,
   }
 }
 
-bool ensure_active_keyframe(const Scene &scene,
+bool ensure_active_keyframe(const bContext *C,
+                            const Scene &scene,
                             GreasePencil &grease_pencil,
                             bool &r_inserted_keyframe)
 {
@@ -354,7 +356,9 @@ bool ensure_active_keyframe(const Scene &scene,
   const int current_start_frame = *active_layer.start_frame_at(current_frame);
   const bool needs_new_drawing = is_first || (current_start_frame < current_frame);
   if (blender::animrig::is_autokey_on(&scene) && needs_new_drawing) {
-    const Brush *brush = BKE_paint_brush_for_read(&scene.toolsettings->gp_paint->paint);
+    ViewLayer *view_layer = CTX_data_view_layer(C);
+    const Brush *brush = BKE_paint_brush_for_read(
+        BKE_paint_get_active(const_cast<Scene *>(&scene), view_layer));
     const bool is_tool_supported = (brush->gpencil_tool == GPAINT_TOOL_ERASE) ||
                                    (brush->sculpt_tool != 0);
 
