@@ -249,100 +249,95 @@ enum {
    * Motion from 3D input (translation & rotation).
    * Check #WM_EVENT_IS_CONSECUTIVE to detect motion events.
    */
-  NDOF_MOTION = 0x018f, /* 399 */
+  NDOF_MOTION = 0x0190, /* 400 */
 
 #define _NDOF_MIN NDOF_MOTION
-#define _NDOF_BUTTON_MIN NDOF_BUTTON_INVALID
-
-  NDOF_BUTTON_INVALID = 0x0190, /* 400 */
+#define _NDOF_BUTTON_MIN NDOF_BUTTON_MENU
 
   /* These two are available from any 3Dconnexion device. */
+
   NDOF_BUTTON_MENU = 0x0191, /* 401 */
   NDOF_BUTTON_FIT = 0x0192,  /* 402 */
   /* Standard views. */
   NDOF_BUTTON_TOP = 0x0193,    /* 403 */
-  NDOF_BUTTON_LEFT = 0x0194,   /* 404 */
-  NDOF_BUTTON_RIGHT = 0x0195,  /* 405 */
-  NDOF_BUTTON_FRONT = 0x0196,  /* 406 */
-  NDOF_BUTTON_BOTTOM = 0x0197, /* 407 */
+  NDOF_BUTTON_BOTTOM = 0x0194, /* 404 */
+  NDOF_BUTTON_LEFT = 0x0195,   /* 405 */
+  NDOF_BUTTON_RIGHT = 0x0196,  /* 406 */
+  NDOF_BUTTON_FRONT = 0x0197,  /* 407 */
   NDOF_BUTTON_BACK = 0x0198,   /* 408 */
-
-  /* Basic 90 degree rotations. */
-  NDOF_BUTTON_ROLL_CW = 0x0199,  /* 409 */
-  NDOF_BUTTON_ROLL_CCW = 0x019a, /* 410 */
   /* More views. */
-  NDOF_BUTTON_ISO1 = 0x019b, /* 411 */
-  NDOF_BUTTON_ISO2 = 0x019c, /* 412 */
-
-  /* General-purpose buttons. */
-  NDOF_BUTTON_1 = 0x019d,  /* 413 */
-  NDOF_BUTTON_2 = 0x019e,  /* 414 */
-  NDOF_BUTTON_3 = 0x019f,  /* 415 */
-  NDOF_BUTTON_4 = 0x01a0,  /* 416 */
-  NDOF_BUTTON_5 = 0x01a1,  /* 417 */
-  NDOF_BUTTON_6 = 0x01a2,  /* 418 */
-  NDOF_BUTTON_7 = 0x01a3,  /* 419 */
-  NDOF_BUTTON_8 = 0x01a4,  /* 420 */
-  NDOF_BUTTON_9 = 0x01a5,  /* 421 */
-  NDOF_BUTTON_10 = 0x01a6, /* 422 */
-  NDOF_BUTTON_11 = 0x01dd,  /* 477 */
-  NDOF_BUTTON_12 = 0x01de, /* 478 */
-
+  NDOF_BUTTON_ISO1 = 0x0199, /* 409 */
+  NDOF_BUTTON_ISO2 = 0x019a, /* 410 */
+  /* 90 degree rotations. */
+  NDOF_BUTTON_ROLL_CW = 0x019b,  /* 411 */
+  NDOF_BUTTON_ROLL_CCW = 0x019c, /* 412 */
+  NDOF_BUTTON_SPIN_CW = 0x019d,  /* 413 */
+  NDOF_BUTTON_SPIN_CCW = 0x019e, /* 414 */
+  NDOF_BUTTON_TILT_CW = 0x019f,  /* 415 */
+  NDOF_BUTTON_TILT_CCW = 0x01a0, /* 416 */
   /* Device control. */
-  NDOF_BUTTON_ROTATE = 0x01ab,   /* 427 */
-  NDOF_BUTTON_PANZOOM = 0x01ac,  /* 428 */
-  NDOF_BUTTON_DOMINANT = 0x01ad, /* 429 */
-  NDOF_BUTTON_PLUS = 0x01ae,     /* 430 */
-  NDOF_BUTTON_MINUS = 0x01af,    /* 431 */
+  NDOF_BUTTON_ROTATE = 0x01a1,   /* 417 */
+  NDOF_BUTTON_PANZOOM = 0x01a2,  /* 418 */
+  NDOF_BUTTON_DOMINANT = 0x01a3, /* 419 */
+  NDOF_BUTTON_PLUS = 0x01a4,     /* 420 */
+  NDOF_BUTTON_MINUS = 0x01a5,    /* 421 */
+  /* Restore views. */
+  NDOF_BUTTON_V1 = 0x01a6, /* 422 */
+  NDOF_BUTTON_V2 = 0x01a7, /* 423 */
+  NDOF_BUTTON_V3 = 0x01a8, /* 424 */
+  /* General-purpose buttons. */
+  NDOF_BUTTON_1 = 0x01aa,  /* 426 */
+  NDOF_BUTTON_2 = 0x01ab,  /* 427 */
+  NDOF_BUTTON_3 = 0x01ac,  /* 428 */
+  NDOF_BUTTON_4 = 0x01ad,  /* 429 */
+  NDOF_BUTTON_5 = 0x01ae,  /* 430 */
+  NDOF_BUTTON_6 = 0x01af,  /* 431 */
+  NDOF_BUTTON_7 = 0x01b0,  /* 432 */
+  NDOF_BUTTON_8 = 0x01b1,  /* 433 */
+  NDOF_BUTTON_9 = 0x01b2,  /* 434 */
+  NDOF_BUTTON_10 = 0x01b3, /* 435 */
+  /* More general-purpose buttons. */
+  NDOF_BUTTON_11 = 0x01b4, /* 436 */
+  NDOF_BUTTON_12 = 0x01b5, /* 437 */
 
-  /* More 90 degrees rotations. */
-  NDOF_BUTTON_SPIN_CW = 0x01b0,  /* 432 */
-  NDOF_BUTTON_SPIN_CCW = 0x01b1, /* 433 */
-  NDOF_BUTTON_TILT_CW = 0x01b2,  /* 434 */
-  NDOF_BUTTON_TILT_CCW = 0x01b3, /* 435 */
-
-/* Disabled as GHOST converts these to keyboard events
- * which use regular keyboard event handling logic. */
+  /* Disabled as GHOST converts these to keyboard events
+   * which use regular keyboard event handling logic. */
 #if 0
   /* Keyboard emulation. */
-  NDOF_BUTTON_ESC = 0x01b5,    /* 437 */
-  NDOF_BUTTON_ENTER = 0x01b6,  /* 438 */
-  NDOF_BUTTON_DELETE = 0x01b7, /* 439 */
-  NDOF_BUTTON_TAB = 0x01b8,    /* 440 */
-  NDOF_BUTTON_SPACE = 0x01b9,  /* 441 */
-  NDOF_BUTTON_ALT = 0x01ba,    /* 442 */
-  NDOF_BUTTON_SHIFT = 0x01bb,  /* 443 */
-  NDOF_BUTTON_CTRL = 0x01bc,   /* 444 */
+  NDOF_BUTTON_ESC = 0x01b6,    /* 438 */
+  NDOF_BUTTON_ENTER = 0x01b7,  /* 439 */
+  NDOF_BUTTON_DELETE = 0x01b8, /* 440 */
+  NDOF_BUTTON_TAB = 0x01b9,    /* 441 */
+  NDOF_BUTTON_SPACE = 0x01ba,  /* 442 */
+  NDOF_BUTTON_ALT = 0x01bb,    /* 443 */
+  NDOF_BUTTON_SHIFT = 0x01bc,  /* 444 */
+  NDOF_BUTTON_CTRL = 0x01bd,   /* 445 */
 #endif
 
+  /* Store views. */
+  NDOF_BUTTON_SAVE_V1 = 0x01be, /* 446 */
+  NDOF_BUTTON_SAVE_V2 = 0x01bf, /* 447 */
+  NDOF_BUTTON_SAVE_V3 = 0x01c0, /* 448 */
 
-  /* Keyboard Pro special button. */
-  NDOF_BUTTON_KBP_F1 = 0x01b9, /* 441 */
-  NDOF_BUTTON_KBP_F2 = 0x01ba, /* 442 */
-  NDOF_BUTTON_KBP_F3 = 0x01bb, /* 443 */
-  NDOF_BUTTON_KBP_F4 = 0x01bc, /* 444 */
-  NDOF_BUTTON_KBP_F5 = 0x01bd, /* 445 */
-  NDOF_BUTTON_KBP_F6 = 0x01be, /* 446 */
-  NDOF_BUTTON_KBP_F7 = 0x01bf, /* 447 */
-  NDOF_BUTTON_KBP_F8 = 0x01c0, /* 448 */
-  NDOF_BUTTON_KBP_F9 = 0x01c1, /* 449 */
-  NDOF_BUTTON_KBP_F10 = 0x01c2, /* 450 */
-  NDOF_BUTTON_KBP_F11 = 0x01c3, /* 451 */
-  NDOF_BUTTON_KBP_F12 = 0x01c4, /* 452 */
-
-  /* Store/restore views. */
-  NDOF_BUTTON_V1 = 0x01f7, /* 503 */
-  NDOF_BUTTON_V2 = 0x01f8, /* 504 */
-  NDOF_BUTTON_V3 = 0x01f9, /* 505 */
-  NDOF_BUTTON_SAVE_V1 = 0x021b, /* 539 */
-  NDOF_BUTTON_SAVE_V2 = 0x021c, /* 540 */
-  NDOF_BUTTON_SAVE_V3 = 0x021d, /* 541 */
+  /* Keyboard Pro special buttons. */
+  NDOF_BUTTON_KBP_F1 = 0x01c1, /* 449 */
+  NDOF_BUTTON_KBP_F2 = 0x01c2, /* 450 */
+  NDOF_BUTTON_KBP_F3 = 0x01c3, /* 451 */
+  NDOF_BUTTON_KBP_F4 = 0x01c4, /* 452 */
+  NDOF_BUTTON_KBP_F5 = 0x01c5, /* 453 */
+  NDOF_BUTTON_KBP_F6 = 0x01c6, /* 454 */
+  NDOF_BUTTON_KBP_F7 = 0x01c7, /* 455 */
+  NDOF_BUTTON_KBP_F8 = 0x01c8, /* 456 */
+  NDOF_BUTTON_KBP_F9 = 0x01c9, /* 457 */
+  NDOF_BUTTON_KBP_F10 = 0x01ca, /* 458 */
+  NDOF_BUTTON_KBP_F11 = 0x01cb, /* 459 */
+  NDOF_BUTTON_KBP_F12 = 0x01cc, /* 460 */
 
   /* Numpad Pro special buttons. */
-  NDOF_BUTTON_NP_F1 = 0x0251, /* 593 */
-  NDOF_BUTTON_NP_F2 = 0x0252, /* 594 */
-  NDOF_BUTTON_NP_F3 = 0x0253, /* 595 */
-  NDOF_BUTTON_NP_F4 = 0x0254, /* 596 */
+  NDOF_BUTTON_NP_F1 = 0x01cd, /* 461 */
+  NDOF_BUTTON_NP_F2 = 0x01ce, /* 462 */
+  NDOF_BUTTON_NP_F3 = 0x01d0, /* 463 */
+  NDOF_BUTTON_NP_F4 = 0x01d1, /* 464 */
 
 #define _NDOF_MAX NDOF_BUTTON_NP_F4
 #define _NDOF_BUTTON_MAX NDOF_BUTTON_NP_F4
