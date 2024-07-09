@@ -1310,12 +1310,13 @@ FCurve *action_fcurve_ensure(Main *bmain,
   if (act == nullptr) {
     return nullptr;
   }
+  Action &action = act->wrap();
 
-  if (USER_EXPERIMENTAL_TEST(&U, use_animation_baklava) && act->wrap().is_action_layered()) {
+  if (USER_EXPERIMENTAL_TEST(&U, use_animation_baklava) && action.is_action_layered()) {
     /* NOTE: for layered actions we require the following:
      *
      * - `ptr` is non-null.
-     * - `ptr` either is or has an owning ID that already uses `act`.
+     * - `ptr` has an `owner_id` that already uses `act`.
      *
      * This isn't for any principled reason, but rather is because adding
      * support for layered actions to this function was a fix to make Follow
@@ -1328,14 +1329,15 @@ FCurve *action_fcurve_ensure(Main *bmain,
      * hold, or if this is even the best place to handle the layered action
      * cases at all, was leading to discussion of larger changes than made sense
      * to tackle at that point. */
+    BLI_assert(ptr != nullptr);
     if (ptr == nullptr) {
       return nullptr;
     }
     AnimData *adt = BKE_animdata_from_id(ptr->owner_id);
+    BLI_assert(adt != nullptr && adt->action == act);
     if (adt == nullptr || adt->action != act) {
       return nullptr;
     }
-    Action &action = act->wrap();
 
     /* Ensure the id has an assigned slot. */
     Slot &slot = action.slot_ensure_for_id(*ptr->owner_id);

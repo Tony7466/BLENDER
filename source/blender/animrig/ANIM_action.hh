@@ -770,10 +770,10 @@ Vector<FCurve *> fcurves_all(Action &action);
  *
  * NOTE: this function is primarily intended for use with legacy actions, but
  * for reasons of expedience it now also works with layered actions under the
- * following limited circumstances: `ptr` must be non-null and must either be or
- * have an owning ID that already uses `act`. Otherwise this function will
- * return nullptr for layered actions. See the comments in the implementation
- * for more details.
+ * following limited circumstances: `ptr` must be non-null and must have an
+ * `owner_id` that already uses `act`. Otherwise this function will return
+ * nullptr for layered actions. See the comments in the implementation for more
+ * details.
  *
  * \param ptr: RNA pointer for the struct the fcurve is being looked up/created
  * for. For legacy actions this is optional and may be null.
