@@ -355,19 +355,49 @@ IndexMask polyline_detect_corners(Span<float2> points,
                                   float angle_threshold,
                                   IndexMaskMemory &memory);
 
+/**
+ * Merge points that are close together on each selected curve.
+ * Points are not merged across curves.
+ */
 bke::CurvesGeometry curves_merge_by_distance(
     const bke::CurvesGeometry &src_curves,
     const float merge_distance,
     const IndexMask &selection,
     const bke::AnonymousAttributePropagationInfo &propagation_info);
 
+/**
+ * Merge points on the same curve that are close together.
+ */
 int curve_merge_by_distance(const IndexRange points,
                             const Span<float> distances,
                             const IndexMask &selection,
                             const float merge_distance,
                             MutableSpan<int> r_merge_indices);
+
+/**
+ * Join each selected curve's end point with another curve's start point to form a single curve.
+ *
+ * \param connect_to_curve: Index of the curve to connect to, invalid indices are ignored
+ *                          (set to -1 to leave a curve disconnected).
  * \param flip_direction: Flip direction of input curves.
+ */
+bke::CurvesGeometry curves_merge_endpoints(
+    const bke::CurvesGeometry &src_curves,
+    Span<int> connect_to_curve,
     Span<bool> flip_direction,
+    const bke::AnonymousAttributePropagationInfo &propagation_info);
+
+/**
+ * Connect selected curve endpoints with the closest endpoints of other curves.
+ */
+bke::CurvesGeometry curves_merge_endpoints_by_distance(
+    const ARegion &region,
+    const bke::CurvesGeometry &src_curves,
+    const float4x4 &layer_to_world,
+    const float merge_distance,
+    const IndexMask &selection,
+    const bke::AnonymousAttributePropagationInfo &propagation_info);
+
 /**
  * Structure describing a point in the destination relatively to the source.
  * If a point in the destination \a is_src_point, then it corresponds
