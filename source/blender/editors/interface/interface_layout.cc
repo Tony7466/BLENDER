@@ -146,7 +146,6 @@ struct uiLayout : uiItem {
   bContextStore *context;
   uiLayout *parent;
   blender::Vector<uiItem *> items;
-  // ListBase items;
 
   char heading[UI_MAX_NAME_STR];
 
@@ -6295,7 +6294,7 @@ void UI_paneltype_draw(bContext *C, PanelType *pt, uiLayout *layout)
  * As we don't use triple quotes in the UI it's good-enough in practice.
  * \{ */
 
-static void ui_layout_introspect_button(DynStr *ds, uiButtonItem *bitem)
+static void ui_layout_introspect_button(DynStr *ds, const uiButtonItem *bitem)
 {
   uiBut *but = bitem->but;
   BLI_dynstr_appendf(ds, "'type':%d, ", int(but->type));
