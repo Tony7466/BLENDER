@@ -551,6 +551,28 @@ static void IndexBuf_add_bezier_lines(Object &object,
   *r_drawing_line_start_offset += bezier_points.size() * 3;
 }
 
+static void IndexBuf_add_bezier_points(Object &object,
+                                       const bke::greasepencil::Drawing &drawing,
+                                       int layer_index,
+                                       GPUIndexBufBuilder *epb,
+                                       IndexMaskMemory &memory,
+                                       int *r_drawing_start_offset)
+{
+  const IndexMask bezier_points = grease_pencil_get_visible_bezier_points(
+      object, drawing, layer_index, memory);
+
+  if (bezier_points.is_empty()) {
+    return;
+  }
+
+  /* Add all bezier points. */
+  for (const int point : IndexRange(bezier_points.size() * 2)) {
+    GPU_indexbuf_add_generic_vert(epb, point + (*r_drawing_start_offset));
+  }
+
+  *r_drawing_start_offset += bezier_points.size() * 2;
+}
+
 static void grease_pencil_edit_batch_ensure(Object &object,
                                             const GreasePencil &grease_pencil,
                                             const Scene &scene)
@@ -930,16 +952,8 @@ static void grease_pencil_edit_batch_ensure(Object &object,
 
     drawing_start_offset += curves.points_num();
 
-    const IndexMask bezier_points = grease_pencil_get_visible_bezier_points(
-        object, info.drawing, info.layer_index, memory);
-    if (!bezier_points.is_empty()) {
-      /* Add all bezier points. */
-      for (const int point : IndexRange(bezier_points.size() * 2)) {
-        GPU_indexbuf_add_generic_vert(&epb, point + drawing_start_offset);
-      }
-
-      drawing_start_offset += bezier_points.size() * 2;
-    }
+    IndexBuf_add_bezier_points(
+        object, info.drawing, info.layer_index, &epb, memory, &drawing_start_offset);
   }
 
   cache->edit_line_indices = GPU_indexbuf_build(&elb);
