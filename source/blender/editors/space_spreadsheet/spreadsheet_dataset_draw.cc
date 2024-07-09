@@ -397,7 +397,11 @@ class InstanceReferenceViewItem : public DataSetViewItem {
   void build_row(uiLayout &row) override
   {
     const int icon = get_instance_reference_icon(reference_);
-    uiItemL(&row, reference_.name().c_str(), icon);
+    std::string name = reference_.name();
+    if (name.empty()) {
+      name = IFACE_("Geometry");
+    }
+    uiItemL(&row, name.c_str(), icon);
   }
 
   int reference_index() const
