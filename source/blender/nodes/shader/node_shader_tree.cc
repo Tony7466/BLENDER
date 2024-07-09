@@ -1356,8 +1356,6 @@ void ntreeShaderEndExecTree(bNodeTreeExec *exec)
   }
 }
 
-static void get_npr_node(bNode *node) {}
-
 bNodeTree *npr_tree_get(Material *material)
 {
   if (!material || !material->nodetree) {
@@ -1366,13 +1364,7 @@ bNodeTree *npr_tree_get(Material *material)
 
   /* TODO(NPR): This won't work if the npr node is inside a group or there's a re-route node. */
   if (bNode *output = ntreeShaderOutputNode(material->nodetree, SHD_OUTPUT_EEVEE)) {
-    bNodeSocket *surface_socket = nullptr;
-    LISTBASE_FOREACH (bNodeSocket *, socket, &output->inputs) {
-      if (STREQ(socket->name, "Surface")) {
-        surface_socket = socket;
-        break;
-      }
-    }
+    bNodeSocket *surface_socket = ntree_shader_node_find_input(output, "Surface");
     if (surface_socket && surface_socket->link && surface_socket->link->fromnode &&
         surface_socket->link->fromnode->type == SH_NODE_NPR)
     {
