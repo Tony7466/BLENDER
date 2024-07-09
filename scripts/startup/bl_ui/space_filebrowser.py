@@ -498,10 +498,16 @@ class FILEBROWSER_MT_view(FileBrowserMenu, Menu):
         layout = self.layout
         st = context.space_data
         params = st.params
+        filepaths = context.preferences.filepaths
 
         layout.prop(st, "show_region_toolbar", text="Source List")
         layout.prop(st, "show_region_ui", text="File Path")
         layout.operator("file.view_selected")
+
+        layout.separator()
+
+        layout.prop(filepaths, "show_recent_locations")
+        layout.prop(filepaths, "show_system_bookmarks")
 
         layout.separator()
 
