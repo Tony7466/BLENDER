@@ -492,6 +492,22 @@ static IndexMask grease_pencil_get_visible_NURBS_curves(Object &object,
   return IndexMask::from_intersection(selected_editable_strokes, nurbs_curves, memory);
 }
 
+static IndexMask grease_pencil_get_visible_non_nurbs_curves(
+    Object &object, const bke::greasepencil::Drawing &drawing, IndexMaskMemory &memory)
+{
+  const bke::CurvesGeometry &curves = drawing.strokes();
+  const IndexMask visible_strokes = ed::greasepencil::retrieve_visible_strokes(
+      object, drawing, memory);
+
+  const VArray<int8_t> types = curves.curve_types();
+  const IndexMask non_nurbs_curves = IndexMask::from_predicate(
+      curves.curves_range(), GrainSize(4096), memory, [&](const int64_t curve_i) {
+        return types[curve_i] != CURVE_TYPE_NURBS;
+      });
+
+  return IndexMask::from_intersection(visible_strokes, non_nurbs_curves, memory);
+}
+
 static void IndexBuf_add_line_points(Object &object,
                                      const bke::greasepencil::Drawing &drawing,
                                      int /*layer_index*/,
@@ -503,11 +519,11 @@ static void IndexBuf_add_line_points(Object &object,
   const VArray<bool> cyclic = curves.cyclic();
   const OffsetIndices<int> points_by_curve_eval = curves.evaluated_points_by_curve();
 
-  const IndexMask visible_strokes = ed::greasepencil::retrieve_visible_strokes(
+  const IndexMask visible_strokes_for_lines = grease_pencil_get_visible_non_nurbs_curves(
       object, drawing, memory);
 
   /* Fill line indices. */
-  visible_strokes.foreach_index([&](const int curve_i) {
+  visible_strokes_for_lines.foreach_index([&](const int curve_i) {
     const IndexRange points = points_by_curve_eval[curve_i];
     const bool is_cyclic = cyclic[curve_i];
 
@@ -746,7 +762,7 @@ static void grease_pencil_edit_batch_ensure(Object &object,
     const OffsetIndices<int> points_by_curve = curves.points_by_curve();
 
     IndexMaskMemory memory;
-    const IndexMask visible_strokes = ed::greasepencil::retrieve_visible_strokes(
+    const IndexMask visible_strokes_for_lines = grease_pencil_get_visible_non_nurbs_curves(
         object, info.drawing, memory);
 
     const IndexRange points(drawing_start_offset, curves.points_num());
@@ -793,15 +809,15 @@ static void grease_pencil_edit_batch_ensure(Object &object,
     drawing_line_start_offset += curves.evaluated_points_num();
 
     /* Add one id for the restart after every curve. */
-    total_line_ids_num += visible_strokes.size();
-    Array<int> size_per_editable_stroke(visible_strokes.size());
+    total_line_ids_num += visible_strokes_for_lines.size();
+    Array<int> size_per_editable_stroke(visible_strokes_for_lines.size());
     offset_indices::gather_group_sizes(
-        points_by_curve_eval, visible_strokes, size_per_editable_stroke);
+        points_by_curve_eval, visible_strokes_for_lines, size_per_editable_stroke);
     /* Add one id for every non-cyclic segment. */
     total_line_ids_num += std::accumulate(
         size_per_editable_stroke.begin(), size_per_editable_stroke.end(), 0);
     /* Add one id for the last segment of every cyclic curve. */
-    total_line_ids_num += array_utils::count_booleans(curves.cyclic(), visible_strokes);
+    total_line_ids_num += array_utils::count_booleans(curves.cyclic(), visible_strokes_for_lines);
 
     /* Do not show points for locked layers. */
     if (layer.is_locked()) {
