@@ -43,6 +43,7 @@ struct PBVHNode;
 struct Sculpt;
 struct SculptSession;
 struct SubdivCCG;
+struct SubdivCCGNeighbors;
 
 namespace blender::ed::sculpt_paint {
 struct StrokeCache;
@@ -318,6 +319,9 @@ void write_translations(const Sculpt &sd,
  * new array.
  */
 OffsetIndices<int> create_node_vert_offsets(Span<PBVHNode *> nodes, Array<int> &node_data);
+OffsetIndices<int> create_node_vert_offsets(Span<PBVHNode *> nodes,
+                                            const CCGKey &key,
+                                            Array<int> &node_data);
 
 /**
  * Find vertices connected to the indexed vertices across faces.

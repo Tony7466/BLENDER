@@ -49,6 +49,7 @@ struct Image;
 struct ImageUser;
 struct KeyBlock;
 struct Object;
+struct SubdivCCGCoord;
 struct SculptProjectVector;
 struct bContext;
 struct PaintModeSettings;
@@ -968,6 +969,7 @@ bool vert_has_unique_face_set_grids(const GroupedSpan<int> vert_to_face_map,
                                     const int *face_sets,
                                     const SubdivCCG &subdiv_ccg,
                                     const SubdivCCGCoord &coord);
+bool vert_has_unique_face_set_bmesh();
 
 /**
  * Creates the sculpt face set attribute on the mesh if it doesn't exist.

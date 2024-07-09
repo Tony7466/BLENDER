@@ -75,7 +75,6 @@ static void filter_factors_on_face_sets_grids(const GroupedSpan<int> vert_to_fac
                                               const MutableSpan<float> factors)
 {
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-  const Span<CCGElem *> elems = subdiv_ccg.grids;
   BLI_assert(grids.size() * key.grid_area == factors.size());
 
   for (const int i : grids.index_range()) {
@@ -460,7 +459,6 @@ BLI_NOINLINE static void calc_relaxed_positions_grids(const OffsetIndices<int> f
                                                       const int *face_sets,
                                                       const GroupedSpan<int> vert_to_face_map,
                                                       const BitSpan boundary_verts,
-                                                      const Span<bool> hide_poly,
                                                       const PBVHNode &node,
                                                       const bool relax_face_sets,
                                                       Object &object,
@@ -468,7 +466,6 @@ BLI_NOINLINE static void calc_relaxed_positions_grids(const OffsetIndices<int> f
                                                       const MutableSpan<float3> new_positions)
 {
   SculptSession &ss = *object.sculpt;
-  const StrokeCache &cache = *ss.cache;
   SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
   const Span<CCGElem *> elems = subdiv_ccg.grids;
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
@@ -646,20 +643,18 @@ static void do_relax_face_sets_brush_grids(const Sculpt &sd,
                                            const float relax_face_sets)
 {
   const SculptSession &ss = *object.sculpt;
+  SubdivCCG subdiv_ccg = *ss.subdiv_ccg;
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+
   Mesh &mesh = *static_cast<Mesh *>(object.data);
   const OffsetIndices faces = mesh.faces();
   const Span<int> corner_verts = mesh.corner_verts();
   const bke::AttributeAccessor attributes = mesh.attributes();
   const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
 
-  const PBVH &pbvh = *ss.pbvh;
-
-  const Span<float3> positions_eval = BKE_pbvh_get_vert_positions(pbvh);
-  const Span<float3> vert_normals = BKE_pbvh_get_vert_normals(pbvh);
-  MutableSpan<float3> positions_orig = mesh.vert_positions_for_write();
-
   Array<int> node_offset_data;
-  const OffsetIndices<int> node_vert_offsets = create_node_vert_offsets(nodes, node_offset_data);
+  const OffsetIndices<int> node_vert_offsets = create_node_vert_offsets(
+      nodes, key, node_offset_data);
 
   Array<float3> new_positions(node_vert_offsets.total_size());
 
@@ -672,7 +667,6 @@ static void do_relax_face_sets_brush_grids(const Sculpt &sd,
                                    ss.face_sets,
                                    ss.vert_to_face_map,
                                    ss.vertex_info.boundary,
-                                   hide_poly,
                                    *nodes[i],
                                    relax_face_sets,
                                    object,

@@ -606,7 +606,8 @@ bool vert_has_unique_face_set(const SculptSession &ss, PBVHVertRef vertex)
         case SUBDIV_CCG_ADJACENT_VERTEX:
           return sculpt_check_unique_face_set_in_base_mesh(ss, v1);
         case SUBDIV_CCG_ADJACENT_EDGE:
-          return sculpt_check_unique_face_set_for_edge_in_base_mesh(ss, v1, v2);
+          return sculpt_check_unique_face_set_for_edge_in_base_mesh(
+              ss.vert_to_face_map, ss.face_sets, ss.corner_verts, ss.faces, v1, v2);
         case SUBDIV_CCG_ADJACENT_NONE:
           return true;
       }
@@ -650,7 +651,6 @@ bool vert_has_unique_face_set_grids(const GroupedSpan<int> vert_to_face_map,
   if (!face_sets) {
     return true;
   }
-  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
   int v1, v2;
   const SubdivCCGAdjacencyType adjacency = BKE_subdiv_ccg_coarse_mesh_adjacency_info_get(
       subdiv_ccg, coord, corner_verts, faces, v1, v2);
@@ -661,6 +661,9 @@ bool vert_has_unique_face_set_grids(const GroupedSpan<int> vert_to_face_map,
       return sculpt_check_unique_face_set_for_edge_in_base_mesh(
           vert_to_face_map, face_sets, corner_verts, faces, v1, v2);
     case SUBDIV_CCG_ADJACENT_NONE:
+      return true;
+    default:
+      BLI_assert_unreachable();
       return true;
   }
 }
@@ -7458,6 +7461,17 @@ OffsetIndices<int> create_node_vert_offsets(Span<PBVHNode *> nodes, Array<int> &
   return offset_indices::accumulate_counts_to_offsets(node_data);
 }
 
+OffsetIndices<int> create_node_vert_offsets(Span<PBVHNode *> nodes,
+                                            const CCGKey &key,
+                                            Array<int> &node_data)
+{
+  node_data.reinitialize(nodes.size() + 1);
+  for (const int i : nodes.index_range()) {
+    node_data[i] = bke::pbvh::node_grid_indices(*nodes[i]).size() * key.grid_area;
+  }
+  return offset_indices::accumulate_counts_to_offsets(node_data);
+}
+
 void calc_vert_neighbors(const OffsetIndices<int> faces,
                          const Span<int> corner_verts,
                          const GroupedSpan<int> vert_to_face,
@@ -7553,13 +7567,11 @@ void calc_vert_neighbors_interior(const OffsetIndices<int> faces,
                                   const MutableSpan<SubdivCCGNeighbors> result)
 {
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-  const Span<CCGElem *> elems = subdiv_ccg.grids;
 
   BLI_assert(grids.size() * key.grid_area == result.size());
 
   for (const int i : grids.index_range()) {
     const int grid = grids[i];
-    CCGElem *elem = elems[grid];
     const int node_verts_start = i * key.grid_area;
 
     /* TODO: This loop could be optimized in the future by skipping unnecessary logic for
@@ -7590,7 +7602,7 @@ void calc_vert_neighbors_interior(const OffsetIndices<int> faces,
             });
           }
         }
-        result[node_vert_index + offset] = neighbors;
+        result[node_vert_index] = neighbors;
       }
     }
   }

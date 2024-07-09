@@ -1654,9 +1654,9 @@ SubdivCCGAdjacencyType BKE_subdiv_ccg_coarse_mesh_adjacency_info_get(
 
 bool BKE_subdiv_ccg_coord_is_mesh_boundary(const OffsetIndices<int> faces,
                                            const Span<int> corner_verts,
-                                           const blender::BitSpan boundary_verts,
+                                           const blender::BitSpan &boundary_verts,
                                            const SubdivCCG &subdiv_ccg,
-                                           const SubdivCCGCoord coord)
+                                           const SubdivCCGCoord &coord)
 {
   int v1, v2;
   const SubdivCCGAdjacencyType adjacency = BKE_subdiv_ccg_coarse_mesh_adjacency_info_get(
