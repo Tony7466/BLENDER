@@ -19,7 +19,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   Vector<GeometrySet> geometries = params.extract_input<Vector<GeometrySet>>("Geometry");
   std::unique_ptr<bke::Instances> instances = std::make_unique<bke::Instances>();
 
-  std::string name = geometries.is_empty() ? "" : geometries[0].name;
+  std::string name = geometries.size() == 1 ? geometries[0].name : "";
 
   for (GeometrySet &geometry : geometries) {
     geometry.ensure_owns_direct_data();
