@@ -132,6 +132,11 @@ TEST_F(AssetRepresentationTest, weak_reference__compare)
     other.relative_asset_identifier = "path/to/an/asset";
     EXPECT_EQ(weak_ref, other);
 
+    other.relative_asset_identifier = "";
+    EXPECT_NE(weak_ref, other);
+    other.relative_asset_identifier = nullptr;
+    EXPECT_NE(weak_ref, other);
+
     /* Make the destructor work. */
     other.asset_library_identifier = nullptr;
     other.relative_asset_identifier = nullptr;
@@ -150,6 +155,11 @@ TEST_F(AssetRepresentationTest, weak_reference__compare)
     other.asset_library_identifier = "My custom lib";
     other.relative_asset_identifier = "path\\to\\an\\asset";
     EXPECT_EQ(weak_ref, other);
+
+    other.relative_asset_identifier = "";
+    EXPECT_NE(weak_ref, other);
+    other.relative_asset_identifier = nullptr;
+    EXPECT_NE(weak_ref, other);
 
     /* Make the destructor work. */
     other.asset_library_identifier = nullptr;
