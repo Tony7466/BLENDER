@@ -732,7 +732,8 @@ static bool ntree_weight_tree_tag_nodes(bNode *fromnode, bNode *tonode, void *us
                                        SH_NODE_MIX_SHADER,
                                        SH_NODE_OUTPUT_WORLD,
                                        SH_NODE_OUTPUT_MATERIAL,
-                                       SH_NODE_SHADERTORGB);
+                                       SH_NODE_SHADERTORGB,
+                                       SH_NODE_NPR);
   if (tonode->runtime->tmp_flag == -1 && to_node_from_weight_tree) {
     tonode->runtime->tmp_flag = *node_count;
     *node_count += (tonode->type == SH_NODE_MIX_SHADER) ? 4 : 1;
@@ -791,7 +792,8 @@ static void ntree_shader_weight_tree_invert(bNodeTree *ntree, bNode *output_node
               ->value = 1.0f;
           break;
         }
-        case SH_NODE_ADD_SHADER: {
+        case SH_NODE_ADD_SHADER:
+        case SH_NODE_NPR: {
           /* Simple passthrough node. Each original inputs will get the same weight. */
           /* TODO(fclem): Better use some kind of reroute node? */
           nodes_copy[id] = blender::bke::nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
@@ -883,7 +885,8 @@ static void ntree_shader_weight_tree_invert(bNodeTree *ntree, bNode *output_node
           case SH_NODE_OUTPUT_LIGHT:
           case SH_NODE_OUTPUT_WORLD:
           case SH_NODE_OUTPUT_MATERIAL:
-          case SH_NODE_ADD_SHADER: {
+          case SH_NODE_ADD_SHADER:
+          case SH_NODE_NPR: {
             tonode = nodes_copy[node->runtime->tmp_flag];
             tosock = ntree_shader_node_output_get(tonode, 0);
             break;
@@ -916,7 +919,8 @@ static void ntree_shader_weight_tree_invert(bNodeTree *ntree, bNode *output_node
           bNode *fromnode = sock->link->fromnode;
 
           switch (fromnode->type) {
-            case SH_NODE_ADD_SHADER: {
+            case SH_NODE_ADD_SHADER:
+            case SH_NODE_NPR: {
               fromnode = nodes_copy[fromnode->runtime->tmp_flag];
               fromsock = ntree_shader_node_input_get(fromnode, 1);
               if (fromsock->link) {
@@ -948,7 +952,6 @@ static void ntree_shader_weight_tree_invert(bNodeTree *ntree, bNode *output_node
             case SH_NODE_EEVEE_SPECULAR:
             case SH_NODE_EMISSION:
             case SH_NODE_HOLDOUT:
-            case SH_NODE_NPR:
             case SH_NODE_SUBSURFACE_SCATTERING:
             case SH_NODE_VOLUME_ABSORPTION:
             case SH_NODE_VOLUME_PRINCIPLED:
