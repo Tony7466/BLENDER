@@ -91,6 +91,9 @@ void VKCommandBuilder::build_node_group(VKRenderGraph &render_graph,
   for (NodeHandle node_handle : node_group) {
     VKRenderGraphNode &node = render_graph.nodes_[node_handle];
     build_pipeline_barriers(render_graph, command_buffer, node_handle, node.pipeline_stage_get());
+    if (node.type == VKNodeType::BEGIN_RENDERING) {
+      update_layered_attachments(render_graph, node_handle);
+    }
   }
 
   for (NodeHandle node_handle : node_group) {
@@ -133,6 +136,12 @@ void VKCommandBuilder::build_node_group(VKRenderGraph &render_graph,
       activate_debug_group(render_graph, command_buffer, node_handle);
     }
     node.build_commands(command_buffer, state_.active_pipelines);
+
+    /* When layered image has different layouts we reset the layouts to
+     * VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL. */
+    if (node.type == VKNodeType::END_RENDERING && !state_.layered_bindings.is_empty()) {
+      reset_layered_bindings(command_buffer);
+    }
   }
   if (is_rendering) {
     /* Suspend rendering as the next node group will contain data transfer/dispatch commands. */
@@ -477,6 +486,51 @@ void VKCommandBuilder::add_image_barrier(VkImage vk_image,
   vk_image_memory_barrier_.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
   vk_image_memory_barrier_.newLayout = VK_IMAGE_LAYOUT_UNDEFINED;
   vk_image_memory_barrier_.subresourceRange.aspectMask = VK_IMAGE_ASPECT_NONE;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Sub-resource tracking
+ * \{ */
+
+void VKCommandBuilder::update_layered_attachments(const VKRenderGraph &render_graph,
+                                                  NodeHandle node_handle)
+{
+  state_.layered_attachments.clear();
+  state_.layered_bindings.clear();
+
+  const VKRenderGraphNodeLinks &links = render_graph.links_[node_handle];
+  for (const VKRenderGraphLink &link : links.outputs) {
+    VKResourceStateTracker::Resource &resource = render_graph.resources_.resources_.lookup(
+        link.resource.handle);
+    if (resource.has_multiple_layers()) {
+      state_.layered_attachments.add(resource.image.vk_image);
+    }
+  }
+}
+
+void VKCommandBuilder::add_layered_binding(VKCommandBufferInterface &command_buffer) {}
+
+void VKCommandBuilder::reset_layered_bindings(VKCommandBufferInterface &command_buffer)
+{
+  reset_barriers();
+  /* We should be able to do better. BOTTOM/TOP is really a worst case barrier. */
+  state_.src_stage_mask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+  state_.dst_stage_mask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+  for (const LayeredImageBinding &binding : state_.layered_bindings) {
+    add_image_barrier(
+        binding.vk_image,
+        VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT |
+            VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT |
+            VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        binding.vk_image_layout,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VK_IMAGE_ASPECT_COLOR_BIT);
+  }
+  send_pipeline_barriers(command_buffer);
+  state_.layered_bindings.clear();
 }
 
 /** \} */

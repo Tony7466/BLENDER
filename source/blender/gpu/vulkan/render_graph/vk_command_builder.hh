@@ -8,12 +8,20 @@
 
 #pragma once
 
+#include "BLI_set.hh"
+
 #include "vk_common.hh"
 #include "vk_render_graph_node.hh"
 #include "vk_scheduler.hh"
 
 namespace blender::gpu::render_graph {
 class VKRenderGraph;
+
+struct LayeredImageBinding {
+  VkImage vk_image;
+  VkImageLayout vk_image_layout;
+  uint32_t layer;
+};
 
 /**
  * Build the command buffer for sending to the device queue.
@@ -55,6 +63,17 @@ class VKCommandBuilder {
     int64_t active_debug_group_id = -1;
     /** Current level of debug groups. (number of nested debug groups). */
     int debug_level = 0;
+
+    /**
+     * All layered attachments of the last rendering scope (VKNodeType::BEGIN_RENDERING).
+     *
+     * when binding layer from these images we expect that they aren't used as attachment and can
+     * be transitioned into a different image layout. These image layouts are stored in
+     * `layered_bindings`.
+     */
+    Set<VkImage> layered_attachments;
+
+    Vector<LayeredImageBinding> layered_bindings;
   } state_;
 
  public:
@@ -147,6 +166,15 @@ class VKCommandBuilder {
    * Make sure no debugging groups are active anymore.
    */
   void finish_debug_groups(VKCommandBufferInterface &command_buffer);
+
+ private:
+  void update_layered_attachments(const VKRenderGraph &render_graph, NodeHandle node_handle);
+  void add_layered_binding(VKCommandBufferInterface &command_buffer
+
+  );
+  void reset_layered_bindings(VKCommandBufferInterface &command_buffer
+
+  );
 };
 
 }  // namespace blender::gpu::render_graph

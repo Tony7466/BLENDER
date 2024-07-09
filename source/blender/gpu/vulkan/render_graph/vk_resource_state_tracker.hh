@@ -134,6 +134,8 @@ class VKResourceStateTracker {
       struct {
         /** VkImage handle of the resource being tracked. */
         VkImage vk_image = VK_NULL_HANDLE;
+        /** Number of layers that the resource has. */
+        uint32_t layer_count = 0;
 
         /**
          * Original image layout when the resource was added to the state tracker.
@@ -173,6 +175,25 @@ class VKResourceStateTracker {
       BLI_assert(type == VKResourceType::IMAGE);
       barrier_state.image_layout = image.vk_image_layout;
     }
+
+    /**
+     * Check if the given resource handle has multiple layers.
+     *
+     * Returns true when
+     * - handle is a layered image with more than one layer.
+     *
+     * Returns false when
+     * - handle isn't an image resource or
+     * - handle isn't a layered image or
+     * - handle has only a single layer.
+     */
+    bool has_multiple_layers()
+    {
+      if (type == VKResourceType::BUFFER) {
+        return false;
+      }
+      return image.layer_count > 1;
+    }
   };
 
   Map<ResourceHandle, Resource> resources_;
@@ -206,6 +227,7 @@ class VKResourceStateTracker {
    * the resource state can be tracked during its lifetime.
    */
   void add_image(VkImage vk_image,
+                 uint32_t layer_count,
                  VkImageLayout vk_image_layout,
                  ResourceOwner owner,
                  const char *name = nullptr);
