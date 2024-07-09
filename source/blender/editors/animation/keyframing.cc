@@ -167,11 +167,14 @@ static bool modify_key_op_poll(bContext *C)
 
 static int insert_key_with_keyingset(bContext *C, wmOperator *op, KeyingSet *ks)
 {
+  Scene *scene = CTX_data_scene(C);
   Object *obedit = CTX_data_edit_object(C);
   bool ob_edit_mode = false;
 
-  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
-  const float cfra = DEG_get_ctime(depsgraph);
+  /* The depsgraph needs to be in an evaluated state to ensure the values we get from the
+   * properties are actually the values of the current frame. */
+  CTX_data_ensure_evaluated_depsgraph(C);
+  const float cfra = BKE_scene_frame_get(scene);
   const bool confirm = op->flag & OP_IS_INVOKE;
   /* exit the edit mode to make sure that those object data properties that have been
    * updated since the last switching to the edit mode will be keyframed correctly
@@ -375,18 +378,20 @@ static int insert_key(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
+  /* The depsgraph needs to be in an evaluated state to ensure the values we get from the
+   * properties are actually the values of the current frame. */
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
+  const float scene_frame = BKE_scene_frame_get(scene);
 
   const eInsertKeyFlags insert_key_flags = animrig::get_keyframing_flags(scene);
   const eBezTriple_KeyframeType key_type = eBezTriple_KeyframeType(
       scene->toolsettings->keyframe_type);
-  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
       depsgraph, BKE_scene_frame_get(scene));
 
   animrig::CombinedKeyingResult combined_result;
-  const float scene_frame = DEG_get_ctime(depsgraph);
   blender::Set<ID *> ids;
   for (PointerRNA &id_ptr : selection) {
     ID *selected_id = id_ptr.owner_id;
@@ -967,9 +972,12 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
   PointerRNA ptr = {nullptr};
   PropertyRNA *prop = nullptr;
   uiBut *but;
-  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
+
+  /* The depsgraph needs to be in an evaluated state to ensure the values we get from the
+   * properties are actually the values of the current frame. */
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
-      depsgraph, DEG_get_ctime(depsgraph));
+      depsgraph, BKE_scene_frame_get(scene));
   bool changed = false;
   int index;
   const bool all = RNA_boolean_get(op->ptr, "all");
