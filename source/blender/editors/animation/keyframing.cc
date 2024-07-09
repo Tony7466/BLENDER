@@ -171,9 +171,6 @@ static int insert_key_with_keyingset(bContext *C, wmOperator *op, KeyingSet *ks)
   Object *obedit = CTX_data_edit_object(C);
   bool ob_edit_mode = false;
 
-  /* The depsgraph needs to be in an evaluated state to ensure the values we get from the
-   * properties are actually the values of the current frame. */
-  CTX_data_ensure_evaluated_depsgraph(C);
   const float cfra = BKE_scene_frame_get(scene);
   const bool confirm = op->flag & OP_IS_INVOKE;
   /* exit the edit mode to make sure that those object data properties that have been
