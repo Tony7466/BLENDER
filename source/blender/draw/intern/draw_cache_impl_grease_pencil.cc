@@ -495,6 +495,39 @@ static IndexMask grease_pencil_get_visible_NURBS_curves(Object &object,
   return IndexMask::from_intersection(selected_editable_strokes, nurbs_curves, memory);
 }
 
+static void IndexBuf_add_line_points(Object &object,
+                                     const bke::greasepencil::Drawing &drawing,
+                                     int /*layer_index*/,
+                                     GPUIndexBufBuilder *elb,
+                                     IndexMaskMemory &memory,
+                                     int *r_drawing_line_start_offset)
+{
+  const bke::CurvesGeometry &curves = drawing.strokes();
+  const VArray<bool> cyclic = curves.cyclic();
+  const OffsetIndices<int> points_by_curve_eval = curves.evaluated_points_by_curve();
+
+  const IndexMask visible_strokes = ed::greasepencil::retrieve_visible_strokes(
+      object, drawing, memory);
+
+  /* Fill line indices. */
+  visible_strokes.foreach_index([&](const int curve_i) {
+    const IndexRange points = points_by_curve_eval[curve_i];
+    const bool is_cyclic = cyclic[curve_i];
+
+    for (const int point_i : points) {
+      GPU_indexbuf_add_generic_vert(elb, point_i + (*r_drawing_line_start_offset));
+    }
+
+    if (is_cyclic) {
+      GPU_indexbuf_add_generic_vert(elb, points.first() + (*r_drawing_line_start_offset));
+    }
+
+    GPU_indexbuf_add_primitive_restart(elb);
+  });
+
+  *r_drawing_line_start_offset += curves.evaluated_points_num();
+}
+
 static void IndexBuf_add_nurbs_lines(Object &object,
                                      const bke::greasepencil::Drawing &drawing,
                                      int layer_index,
@@ -923,30 +956,11 @@ static void grease_pencil_edit_batch_ensure(Object &object,
   for (const ed::greasepencil::DrawingInfo &info : drawings) {
     const Layer *layer = layers[info.layer_index];
     const bke::CurvesGeometry &curves = info.drawing.strokes();
-    const OffsetIndices<int> points_by_curve_eval = curves.evaluated_points_by_curve();
     const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-    const VArray<bool> cyclic = curves.cyclic();
     IndexMaskMemory memory;
-    const IndexMask visible_strokes = ed::greasepencil::retrieve_visible_strokes(
-        object, info.drawing, memory);
 
-    /* Fill line indices. */
-    visible_strokes.foreach_index([&](const int curve_i) {
-      const IndexRange points = points_by_curve_eval[curve_i];
-      const bool is_cyclic = cyclic[curve_i];
-
-      for (const int point_i : points) {
-        GPU_indexbuf_add_generic_vert(&elb, point_i + drawing_line_start_offset);
-      }
-
-      if (is_cyclic) {
-        GPU_indexbuf_add_generic_vert(&elb, points.first() + drawing_line_start_offset);
-      }
-
-      GPU_indexbuf_add_primitive_restart(&elb);
-    });
-
-    drawing_line_start_offset += curves.evaluated_points_num();
+    IndexBuf_add_line_points(
+        object, info.drawing, info.layer_index, &elb, memory, &drawing_line_start_offset);
 
     if (layer->is_locked()) {
       continue;
