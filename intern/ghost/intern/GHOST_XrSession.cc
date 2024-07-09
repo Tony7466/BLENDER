@@ -472,7 +472,9 @@ void GHOST_XrSession::draw(void *draw_customdata)
 
   if (m_draw_info->frame_state.shouldRender) {
     proj_layer = drawLayer(projection_layer_views, draw_customdata);
-    proj_layer.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+    if (layers.size() > 0) {
+      proj_layer.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+    }
     layers.push_back(reinterpret_cast<XrCompositionLayerBaseHeader *>(&proj_layer));
   }
 
