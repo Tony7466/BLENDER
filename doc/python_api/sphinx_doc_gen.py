@@ -1172,7 +1172,7 @@ context_type_map = {
     # context_member: (RNA type, is_collection)
     "active_action": ("Action", False),
     "active_annotation_layer": ("GPencilLayer", False),
-    "active_bone": ("EditBone", False),
+    "active_bone": ("(:class:`bpy.types.EditBone`, :class:`bpy.types.Bone`)", False),
     "active_file": ("FileSelectEntry", False),
     "active_gpencil_frame": ("GreasePencilLayer", True),
     "active_gpencil_layer": ("GPencilLayer", True),
