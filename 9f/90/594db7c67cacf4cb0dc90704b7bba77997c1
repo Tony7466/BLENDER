@@ -1,3 +1,4 @@
 Referenced by commit bbcc720c13283f076191573d11a43a04a891f1c6, Fix: Property search crash after recent allocator change
 Referenced by issue #124372, Regression: Crash in CurveMap buttons
 Referenced by pull request #124388, Fix #124372: Crash in curve custom falloff UI
+Referenced by commit 5d8e29f84e695d8b463b8ddaac1d102a6ed245d5, Fix #124372: Crash in curve custom falloff UI
