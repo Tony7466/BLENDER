@@ -74,7 +74,7 @@ static void shader_get_from_context(const bContext *C,
   BKE_view_layer_synced_ensure(scene, view_layer);
   Object *ob = BKE_view_layer_active_object_get(view_layer);
 
-  if (snode->shaderfrom == SNODE_SHADER_OBJECT) {
+  if (ELEM(snode->shaderfrom, SNODE_SHADER_OBJECT, SNODE_SHADER_NPR)) {
     if (ob) {
       *r_from = &ob->id;
       if (ob->type == OB_LAMP) {
@@ -86,6 +86,11 @@ static void shader_get_from_context(const bContext *C,
         if (ma) {
           *r_id = &ma->id;
           *r_ntree = ma->nodetree;
+          if (snode->shaderfrom == SNODE_SHADER_NPR) {
+            bNodeTree *nprtree = npr_tree_get(ma);
+            *r_id = &nprtree->id;
+            *r_ntree = nprtree;
+          }
         }
       }
     }
@@ -106,10 +111,6 @@ static void shader_get_from_context(const bContext *C,
       *r_id = &scene->world->id;
       *r_ntree = scene->world->nodetree;
     }
-  }
-  else if (snode->shaderfrom == SNODE_SHADER_NPR) {
-    *r_ntree = snode->nodetree;
-    /* TODO(NPR): Only if node tree is a NPR node tree. */
   }
   else {
     BLI_assert_unreachable();
