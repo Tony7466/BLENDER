@@ -5,3 +5,4 @@ Referenced by commit f647e1a5b76e6d3b14e62c6239cf4716ae90bb66, Weight Paint: exp
 Referenced by issue #122236, Can not move cursor in sculpt mode
 Referenced by pull request #123778, Fix #123770: Vertex paint Accumulate option breaks Blur action
 Referenced by commit d4f5d4a6f60445bdfc67c4fe559bdf7136fa4863, Fix #123770: Vertex paint Accumulate option breaks Blur action
+Referenced by issue #109399, Blender LTS: Maintenance Task 3.6
