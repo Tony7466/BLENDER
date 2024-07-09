@@ -1037,6 +1037,11 @@ void blo_do_versions_userdef(UserDef *userdef)
         userdef, "VIEW3D_AST_brush_sculpt", "Brushes/Mesh Sculpt/Paint");
   }
 
+  if (!USER_VERSION_ATLEAST(403, 9)) {
+    /* Clear old userdef flag for "Filter Files". */
+    userdef->uiflag &= ~USER_UIFLAG_UNUSED_3;
+  }
+
   /**
    * Always bump subversion in BKE_blender_version.h when adding versioning
    * code here, and wrap it inside a USER_VERSION_ATLEAST check.
