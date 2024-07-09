@@ -1033,14 +1033,12 @@ static void graph_draw_driver_settings_panel(uiLayout *layout,
     col = uiLayoutColumn(layout, true);
     block = uiLayoutGetBlock(col);
 
-    if (driver->flag & DRIVER_FLAG_INVALID) {
-      if (G.f & G_FLAG_SCRIPT_AUTOEXEC_FAIL) {
-        /* TODO: Add button to enable? */
-        uiItemL(col, RPT_("Python restricted for security"), ICON_ERROR);
-      }
-      else {
-        uiItemL(col, RPT_("ERROR: Invalid Python expression"), ICON_CANCEL);
-      }
+    if (driver->flag & DRIVER_FLAG_PYTHON_BLOCKED) {
+      /* TODO: Add button to enable? */
+      uiItemL(col, RPT_("Python restricted for security"), ICON_ERROR);
+    }
+    else if (driver->flag & DRIVER_FLAG_INVALID) {
+      uiItemL(col, RPT_("ERROR: Invalid Python expression"), ICON_CANCEL);
     }
     else if (!BKE_driver_has_simple_expression(driver)) {
       uiItemL(col, RPT_("Slow Python expression"), ICON_INFO);

@@ -683,6 +683,7 @@ float BPY_driver_exec(PathResolvedRNA *anim_rna,
       {
         if (!(G.f & G_FLAG_SCRIPT_AUTOEXEC_FAIL_QUIET)) {
           G.f |= G_FLAG_SCRIPT_AUTOEXEC_FAIL;
+          driver_orig->flag |= DRIVER_FLAG_PYTHON_BLOCKED;
           SNPRINTF(G.autoexec_fail, "Driver '%s'", expr);
         }
 
