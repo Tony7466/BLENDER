@@ -124,7 +124,24 @@ static void smooth_mask_mesh(const OffsetIndices<int> faces,
   calc_vert_neighbors(faces, corner_verts, vert_to_face_map, hide_poly, verts, neighbors);
 
   average_neighbor_mask_mesh(mask, neighbors, new_mask);
-  mask::clamp_mask(new_mask);
+}
+
+BLI_NOINLINE static void sharpen_masks(const Span<float> old_masks,
+                                       const MutableSpan<float> new_mask)
+{
+  for (const int i : old_masks.index_range()) {
+    float val = new_mask[i];
+    float mask = old_masks[i];
+    val -= mask;
+    if (mask > 0.5f) {
+      mask += 0.05f;
+    }
+    else {
+      mask -= 0.05f;
+    }
+    mask += val / 2.0f;
+    new_mask[i] = mask;
+  }
 }
 
 static void sharpen_mask_mesh(const OffsetIndices<int> faces,
@@ -138,16 +155,18 @@ static void sharpen_mask_mesh(const OffsetIndices<int> faces,
 {
   const Span<int> verts = bke::pbvh::node_unique_verts(node);
 
+  tls.node_mask.reinitialize(verts.size());
+  const MutableSpan<float> node_mask = tls.node_mask;
+  array_utils::gather<float>(mask, verts, node_mask);
+
   tls.vert_neighbors.reinitialize(verts.size());
   const MutableSpan<Vector<int>> neighbors = tls.vert_neighbors;
   calc_vert_neighbors(faces, corner_verts, vert_to_face_map, hide_poly, verts, neighbors);
 
   average_neighbor_mask_mesh(mask, neighbors, new_mask);
-  for (const int i : verts.index_range()) {
-    const float offset = mask[verts[i]] > 0.5f ? 0.05f : -0.05f;
-    new_mask[i] -= mask[verts[i]];
-    new_mask[i] = (new_mask[i] - mask[verts[i]]) * 0.5f + offset;
-  }
+
+  sharpen_masks(node_mask, new_mask);
+
   mask::clamp_mask(new_mask);
 }
 
