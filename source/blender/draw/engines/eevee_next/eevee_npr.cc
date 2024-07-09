@@ -9,9 +9,9 @@
 
 /**
  * NPR TODOs:
- * - Check handling of NPR node shader weight (ntree_shader_weight_tree_invert).
+ * - Fix hacky handling of NPR node shader weight (ntree_shader_weight_tree_invert).
  *   NPR socket type.
- *
+ * - Store eSpaceNode_ShaderFrom in the tree itself.
  */
 
 #include "eevee_npr.hh"
