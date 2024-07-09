@@ -481,10 +481,7 @@ GHOST_TSuccess GHOST_ContextEGL::initializeDrawingContext()
      * See #102994. */
     /* EGL_EXT_present_opaque isn't added to the latest release of epoxy, but is part of the latest
      * EGL https://github.com/KhronosGroup/EGL-Registry/blob/main/api/egl.xml */
-    if (epoxy_egl_version(m_display) >= 14 &&
-        epoxy_has_egl_extension(m_display, "EGL_KHR_image_base") &&
-        epoxy_has_egl_extension(m_display, "EGL_EXT_present_opaque"))
-    {
+    if (epoxy_has_egl_extension(m_display, "EGL_EXT_present_opaque")) {
 #  ifndef EGL_PRESENT_OPAQUE_EXT
 #    define EGL_PRESENT_OPAQUE_EXT 0x31DF
 #  endif
