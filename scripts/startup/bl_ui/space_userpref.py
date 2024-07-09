@@ -2617,7 +2617,6 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
         if filter in {"All", "Enabled"}:
             # Append missing scripts
             # First collect scripts that are used but have no script file.
-            module_names = {mod.__name__ for mod in addon_modules}
             missing_modules = {
                 addon_module_name for addon_module_name in used_addon_module_name_map
                 if addon_module_name not in module_names
@@ -2904,6 +2903,8 @@ class USERPREF_PT_experimental_debugging(ExperimentalPanel, Panel):
             context, (
                 ({"property": "use_undo_legacy"}, ("blender/blender/issues/60695", "#60695")),
                 ({"property": "override_auto_resync"}, ("blender/blender/issues/83811", "#83811")),
+                ({"property": "use_all_linked_data_direct"}, None),
+                ({"property": "use_recompute_usercount_on_save_debug"}, None),
                 ({"property": "use_cycles_debug"}, None),
                 ({"property": "show_asset_debug_info"}, None),
                 ({"property": "use_asset_indexing"}, None),
