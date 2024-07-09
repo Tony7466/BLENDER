@@ -103,24 +103,24 @@
 
 static bool isStartedFromCommandPrompt();
 
-static const std::map<uint16_t, NDOF_ButtonT> longButtonHIDsToNDOFButtons = {
-    {3, NDOF_BUTTON_BOTTOM},
-    {5, NDOF_BUTTON_LEFT},
-    {6, NDOF_BUTTON_BACK},
-    {9, NDOF_BUTTON_ROLL_CCW},
-    {11, NDOF_BUTTON_ISO2},
-    {32, NDOF_BUTTON_SPIN_CCW},
-    {34, NDOF_BUTTON_TILT_CCW},
-    {103, NDOF_BUTTON_SAVE_VIEW_1},
-    {104, NDOF_BUTTON_SAVE_VIEW_2},
-    {105, NDOF_BUTTON_SAVE_VIEW_3},
+static const std::map<uint16_t, GHOST_NDOF_ButtonT> longButtonHIDsToGHOST_NDOFButtons = {
+    {3, GHOST_NDOF_BUTTON_BOTTOM},
+    {5, GHOST_NDOF_BUTTON_LEFT},
+    {6, GHOST_NDOF_BUTTON_BACK},
+    {9, GHOST_NDOF_BUTTON_ROLL_CCW},
+    {11, GHOST_NDOF_BUTTON_ISO2},
+    {32, GHOST_NDOF_BUTTON_SPIN_CCW},
+    {34, GHOST_NDOF_BUTTON_TILT_CCW},
+    {103, GHOST_NDOF_BUTTON_SAVE_V1},
+    {104, GHOST_NDOF_BUTTON_SAVE_V2},
+    {105, GHOST_NDOF_BUTTON_SAVE_V3},
 };
 
-static NDOF_ButtonT translateLongButtonToNDOFButton(uint16_t longKey)
+static GHOST_NDOF_ButtonT translateLongButtonToNDOFButton(uint16_t longKey)
 {
-  const auto iter = longButtonHIDsToNDOFButtons.find(longKey);
-  if (iter == longButtonHIDsToNDOFButtons.end()) {
-    return static_cast<NDOF_ButtonT>(longKey);
+  const auto iter = longButtonHIDsToGHOST_NDOFButtons.find(longKey);
+  if (iter == longButtonHIDsToGHOST_NDOFButtons.end()) {
+    return static_cast<GHOST_NDOF_ButtonT>(longKey);
   }
   return iter->second;
 }
@@ -1480,7 +1480,7 @@ bool GHOST_SystemWin32::processNDOF(RAWINPUT const &raw)
       NDOF_Button_Array buttons;
       const uint16_t *payload = reinterpret_cast<const uint16_t *>(data + 1);
       for (int i = 0; i < buttons.size(); i++) {
-        buttons[i] = static_cast<NDOF_ButtonT>(*(payload + i));
+        buttons[i] = static_cast<GHOST_NDOF_ButtonT>(*(payload + i));
       }
       m_ndofManager->updateButtonsArray(buttons, now, NDOF_Button_Type::ShortButton);
       break;

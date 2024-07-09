@@ -4988,6 +4988,152 @@ void WM_event_add_mousemove(wmWindow *win)
  * \{ */
 
 /**
+ * \return The WM enum for NDOF button or #EVENT_NONE (which should be ignored)
+ */
+static int wm_event_type_from_ndof_button(GHOST_NDOF_ButtonT button)
+{
+  switch (button)
+  {
+  case GHOST_NDOF_BUTTON_MENU:
+		return NDOF_BUTTON_MENU;
+  case GHOST_NDOF_BUTTON_FIT:
+		return NDOF_BUTTON_FIT;
+  case GHOST_NDOF_BUTTON_TOP:
+		return NDOF_BUTTON_TOP;
+  case GHOST_NDOF_BUTTON_LEFT:
+		return NDOF_BUTTON_LEFT;
+  case GHOST_NDOF_BUTTON_RIGHT:
+		return NDOF_BUTTON_RIGHT;
+  case GHOST_NDOF_BUTTON_FRONT:
+		return NDOF_BUTTON_FRONT;
+  case GHOST_NDOF_BUTTON_BOTTOM:
+		return NDOF_BUTTON_BOTTOM;
+  case GHOST_NDOF_BUTTON_BACK:
+		return NDOF_BUTTON_BACK;
+  case GHOST_NDOF_BUTTON_ROLL_CW:
+		return NDOF_BUTTON_ROLL_CW;
+  case GHOST_NDOF_BUTTON_ROLL_CCW:
+		return NDOF_BUTTON_ROLL_CCW;
+  case GHOST_NDOF_BUTTON_ISO1:
+		return NDOF_BUTTON_ISO1;
+  case GHOST_NDOF_BUTTON_ISO2:
+		return NDOF_BUTTON_ISO2;
+  case GHOST_NDOF_BUTTON_1:
+		return NDOF_BUTTON_1;
+  case GHOST_NDOF_BUTTON_2:
+		return NDOF_BUTTON_2;
+  case GHOST_NDOF_BUTTON_3:
+		return NDOF_BUTTON_3;
+  case GHOST_NDOF_BUTTON_4:
+		return NDOF_BUTTON_4;
+  case GHOST_NDOF_BUTTON_5:
+		return NDOF_BUTTON_5;
+  case GHOST_NDOF_BUTTON_6:
+		return NDOF_BUTTON_6;
+  case GHOST_NDOF_BUTTON_7:
+		return NDOF_BUTTON_7;
+  case GHOST_NDOF_BUTTON_8:
+		return NDOF_BUTTON_8;
+  case GHOST_NDOF_BUTTON_9:
+		return NDOF_BUTTON_9;
+  case GHOST_NDOF_BUTTON_10:
+		return NDOF_BUTTON_10;
+  case GHOST_NDOF_BUTTON_11:
+		return NDOF_BUTTON_11;
+  case GHOST_NDOF_BUTTON_12:
+		return NDOF_BUTTON_12;
+  case GHOST_NDOF_BUTTON_ROTATE:
+		return NDOF_BUTTON_ROTATE;
+  case GHOST_NDOF_BUTTON_PANZOOM:
+		return NDOF_BUTTON_PANZOOM;
+  case GHOST_NDOF_BUTTON_DOMINANT:
+		return NDOF_BUTTON_DOMINANT;
+  case GHOST_NDOF_BUTTON_PLUS:
+		return NDOF_BUTTON_PLUS;
+  case GHOST_NDOF_BUTTON_MINUS:
+		return NDOF_BUTTON_MINUS;
+  case GHOST_NDOF_BUTTON_SPIN_CW:
+		return NDOF_BUTTON_SPIN_CW;
+  case GHOST_NDOF_BUTTON_SPIN_CCW:
+		return NDOF_BUTTON_SPIN_CCW;
+  case GHOST_NDOF_BUTTON_TILT_CW:
+		return NDOF_BUTTON_TILT_CW;
+  case GHOST_NDOF_BUTTON_TILT_CCW:
+		return NDOF_BUTTON_TILT_CCW;
+  case GHOST_NDOF_BUTTON_KBP_F1:
+		return NDOF_BUTTON_KBP_F1;
+  case GHOST_NDOF_BUTTON_KBP_F2:
+		return NDOF_BUTTON_KBP_F2;
+  case GHOST_NDOF_BUTTON_KBP_F3:
+		return NDOF_BUTTON_KBP_F3;
+  case GHOST_NDOF_BUTTON_KBP_F4:
+		return NDOF_BUTTON_KBP_F4;
+  case GHOST_NDOF_BUTTON_KBP_F5:
+		return NDOF_BUTTON_KBP_F5;
+  case GHOST_NDOF_BUTTON_KBP_F6:
+		return NDOF_BUTTON_KBP_F6;
+  case GHOST_NDOF_BUTTON_KBP_F7:
+		return NDOF_BUTTON_KBP_F7;
+  case GHOST_NDOF_BUTTON_KBP_F8:
+		return NDOF_BUTTON_KBP_F8;
+  case GHOST_NDOF_BUTTON_KBP_F9:
+		return NDOF_BUTTON_KBP_F9;
+  case GHOST_NDOF_BUTTON_KBP_F10:
+		return NDOF_BUTTON_KBP_F10;
+  case GHOST_NDOF_BUTTON_KBP_F11:
+		return NDOF_BUTTON_KBP_F11;
+  case GHOST_NDOF_BUTTON_KBP_F12:
+		return NDOF_BUTTON_KBP_F12;
+  case GHOST_NDOF_BUTTON_V1:
+		return NDOF_BUTTON_V1;
+  case GHOST_NDOF_BUTTON_V2:
+		return NDOF_BUTTON_V2;
+  case GHOST_NDOF_BUTTON_V3:
+		return NDOF_BUTTON_V3;
+  case GHOST_NDOF_BUTTON_SAVE_V1:
+		return NDOF_BUTTON_SAVE_V1;
+  case GHOST_NDOF_BUTTON_SAVE_V2:
+		return NDOF_BUTTON_SAVE_V2;
+  case GHOST_NDOF_BUTTON_SAVE_V3:
+		return NDOF_BUTTON_SAVE_V3;
+  case GHOST_NDOF_BUTTON_NP_F1:
+		return NDOF_BUTTON_NP_F1;
+  case GHOST_NDOF_BUTTON_NP_F2:
+		return NDOF_BUTTON_NP_F2;
+  case GHOST_NDOF_BUTTON_NP_F3:
+		return NDOF_BUTTON_NP_F3;
+  case GHOST_NDOF_BUTTON_NP_F4:
+		return NDOF_BUTTON_NP_F4;
+
+/* Disabled as GHOST converts these to keyboard events
+ * which use regular keyboard event handling logic. */
+#if 0
+  /* Keyboard emulation. */
+  case GHOST_NDOF_BUTTON_ESC:
+		return NDOF_BUTTON_ESC;
+  case GHOST_NDOF_BUTTON_ENTER:
+		return NDOF_BUTTON_ENTER;
+  case GHOST_NDOF_BUTTON_DELETE:
+		return NDOF_BUTTON_DELETE;
+  case GHOST_NDOF_BUTTON_TAB:
+		return NDOF_BUTTON_TAB;
+  case GHOST_NDOF_BUTTON_SPACE:
+		return NDOF_BUTTON_SPACE;
+  case GHOST_NDOF_BUTTON_ALT:
+		return NDOF_BUTTON_ALT;
+  case GHOST_NDOF_BUTTON_SHIFT:
+		return NDOF_BUTTON_SHIFT;
+  case GHOST_NDOF_BUTTON_CTRL:
+		return NDOF_BUTTON_CTRL;
+#endif
+
+  default:
+    CLOG_WARN(WM_LOG_EVENTS, "unknown event type %d from ndof button", int(button));
+    return EVENT_NONE;
+  };
+}
+
+/**
  * \return The WM enum for key or #EVENT_NONE (which should be ignored).
  */
 static int wm_event_type_from_ghost_key(GHOST_TKey key)
@@ -6008,8 +6154,7 @@ void wm_event_add_ghostevent(wmWindowManager *wm,
     case GHOST_kEventNDOFButton: {
       const GHOST_TEventNDOFButtonData *e = static_cast<const GHOST_TEventNDOFButtonData *>(
           customdata);
-
-      event.type = NDOF_BUTTON_INDEX_AS_EVENT(e->button);
+      event.type = wm_event_type_from_ndof_button(static_cast<GHOST_NDOF_ButtonT>(e->button));
 
       switch (e->action) {
         case GHOST_kPress:

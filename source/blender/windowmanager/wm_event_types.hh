@@ -481,8 +481,6 @@ enum eEventType_Mask {
   (EVT_TYPE_MASK_KEYBOARD | EVT_TYPE_MASK_MOUSE | EVT_TYPE_MASK_NDOF)
 #define EVT_TYPE_MASK_HOTKEY_EXCLUDE EVT_TYPE_MASK_KEYBOARD_MODIFIER
 
-#define NDOF_BUTTON_INDEX_AS_EVENT(i) (_NDOF_BUTTON_MIN + (i))
-
 bool WM_event_type_mask_test(int event_type, enum eEventType_Mask mask);
 
 /** \} */
