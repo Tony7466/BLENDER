@@ -61,7 +61,9 @@ static void node_geo_exec(GeoNodeExecParams params)
     Curves *curves_id = bke::curves_new_nomain(layer_strokes);
     curves_id->mat = static_cast<Material **>(MEM_dupallocN(grease_pencil->material_array));
     curves_id->totcol = grease_pencil->material_array_num;
-    const int handle = instances->add_reference(GeometrySet::from_curves(curves_id));
+    GeometrySet curves_geometry = GeometrySet::from_curves(curves_id);
+    curves_geometry.name = layer.name();
+    const int handle = instances->add_reference(std::move(curves_geometry));
     instances->add_instance(handle, transform);
   });
 
@@ -97,7 +99,10 @@ static void node_geo_exec(GeoNodeExecParams params)
         return true;
       });
 
-  params.set_output("Curve Instances", GeometrySet::from_instances(instances));
+  GeometrySet instances_geometry = GeometrySet::from_instances(instances);
+  instances_geometry.name = std::move(grease_pencil_geometry.name);
+
+  params.set_output("Curve Instances", std::move(instances_geometry));
 }
 
 static void node_register()
