@@ -54,7 +54,8 @@ static EnumPropertyItem prop_mask_filter_types[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-static void mask_increase_contrast(const Span<float> src, const MutableSpan<float> dst)
+BLI_NOINLINE static void mask_increase_contrast(const Span<float> src,
+                                                const MutableSpan<float> dst)
 {
   const float contrast = 0.1f;
   const float delta = contrast * 0.5f;
@@ -65,7 +66,8 @@ static void mask_increase_contrast(const Span<float> src, const MutableSpan<floa
   }
 }
 
-static void mask_decrease_contrast(const Span<float> src, const MutableSpan<float> dst)
+BLI_NOINLINE static void mask_decrease_contrast(const Span<float> src,
+                                                const MutableSpan<float> dst)
 {
   const float contrast = -0.1f;
   const float delta = contrast * 0.5f;
@@ -73,6 +75,24 @@ static void mask_decrease_contrast(const Span<float> src, const MutableSpan<floa
   const float offset = gain * -delta;
   for (const int i : src.index_range()) {
     dst[i] = gain * src[i] + offset;
+  }
+}
+
+BLI_NOINLINE static void sharpen_masks(const Span<float> old_masks,
+                                       const MutableSpan<float> new_mask)
+{
+  for (const int i : old_masks.index_range()) {
+    float val = new_mask[i];
+    float mask = old_masks[i];
+    val -= mask;
+    if (mask > 0.5f) {
+      mask += 0.05f;
+    }
+    else {
+      mask -= 0.05f;
+    }
+    mask += val / 2.0f;
+    new_mask[i] = mask;
   }
 }
 
@@ -124,24 +144,6 @@ static void smooth_mask_mesh(const OffsetIndices<int> faces,
   calc_vert_neighbors(faces, corner_verts, vert_to_face_map, hide_poly, verts, neighbors);
 
   average_neighbor_mask_mesh(mask, neighbors, new_mask);
-}
-
-BLI_NOINLINE static void sharpen_masks(const Span<float> old_masks,
-                                       const MutableSpan<float> new_mask)
-{
-  for (const int i : old_masks.index_range()) {
-    float val = new_mask[i];
-    float mask = old_masks[i];
-    val -= mask;
-    if (mask > 0.5f) {
-      mask += 0.05f;
-    }
-    else {
-      mask -= 0.05f;
-    }
-    mask += val / 2.0f;
-    new_mask[i] = mask;
-  }
 }
 
 static void sharpen_mask_mesh(const OffsetIndices<int> faces,
