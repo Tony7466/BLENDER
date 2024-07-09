@@ -7072,11 +7072,11 @@ static void rna_def_userdef_filepaths(BlenderRNA *brna)
   RNA_def_struct_nested(brna, srna, "Preferences");
   RNA_def_struct_ui_text(srna, "File Paths", "Default paths for external files");
 
-  prop = RNA_def_property(srna, "show_hidden_files_datablocks", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "show_hidden_datablocks", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_negative_sdna(prop, nullptr, "uiflag", USER_HIDE_DOT);
   RNA_def_property_ui_text(prop,
-                           "Show Hidden Files/Data-Blocks",
-                           "Show files and data-blocks that are normally hidden");
+                           "Show Hidden Data-Blocks",
+                           "Show dot-prefixed data-blocks in the file browser and when searching");
 
   prop = RNA_def_property(srna, "show_recent_locations", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_negative_sdna(prop, nullptr, "uiflag", USER_HIDE_RECENT);

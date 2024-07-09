@@ -1779,6 +1779,9 @@ class USERPREF_PT_saveload_blend(SaveLoadPanel, CenterAlignMixIn, Panel):
         paths = prefs.filepaths
         view = prefs.view
 
+        col = layout.column(heading="Filter")
+        col.prop(paths, "show_hidden_datablocks")
+
         col = layout.column(heading="Save")
         col.prop(view, "use_save_prompt")
 
@@ -1801,8 +1804,6 @@ class USERPREF_PT_saveload_blend(SaveLoadPanel, CenterAlignMixIn, Panel):
 
         layout.separator()
 
-        layout.separator()
-
         col = layout.column(heading="Default To")
         col.prop(paths, "use_relative_paths")
         col.prop(paths, "use_file_compression")
@@ -1822,9 +1823,6 @@ class USERPREF_PT_saveload_file_browser(SaveLoadPanel, CenterAlignMixIn, Panel):
         col = layout.column(heading="Show Locations")
         col.prop(paths, "show_recent_locations", text="Recent")
         col.prop(paths, "show_system_bookmarks", text="System")
-
-        col = layout.column(heading="Defaults")
-        col.prop(paths, "show_hidden_files_datablocks")
 
 
 # -----------------------------------------------------------------------------

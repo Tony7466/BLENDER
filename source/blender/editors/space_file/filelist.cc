@@ -203,6 +203,7 @@ enum {
   FLF_HIDE_PARENT = 1 << 2,
   FLF_HIDE_LIB_DIR = 1 << 3,
   FLF_ASSETS_ONLY = 1 << 4,
+  FLF_HIDE_DOT_DATABLOCKS = 1 << 5,
 };
 
 struct FileListReadJob;
@@ -686,11 +687,23 @@ static bool is_filtered_hidden(const char *filename,
     }
   }
 
-  /* Check for _OUR_ "hidden" attribute. This not only mirrors OS-level hidden file
-   * attribute but is also set for Linux/Mac "dot" files. See `filelist_readjob_list_dir`.
-   */
-  if ((filter->flags & FLF_HIDE_DOT) && (file->attributes & FILE_ATTR_HIDDEN)) {
-    return true;
+  if (file->typeflag & FILE_TYPE_BLENDERLIB) {
+    /* Hidden datablocks do not have the "hidden" attribute set, and they are only filtered based
+     * on a separate flag controlled by user preferences. */
+    if ((filter->flags & FLF_HIDE_DOT) && (filter->flags & FLF_HIDE_DOT_DATABLOCKS) &&
+        filename[0] == '.')
+    {
+      return true;
+    }
+  }
+  else {
+    /* Filter hidden files by file browser filter flags.
+     * Check for _OUR_ "hidden" attribute. This not only mirrors OS-level hidden file
+     * attribute but is also set for Linux/Mac "dot" files. See `filelist_readjob_list_dir`.
+     */
+    if ((filter->flags & FLF_HIDE_DOT) && (file->attributes & FILE_ATTR_HIDDEN)) {
+      return true;
+    }
   }
 
   /* For data-blocks (but not the group directories), check the asset-only filter. */
@@ -981,6 +994,7 @@ void filelist_filter(FileList *filelist)
 void filelist_setfilter_options(FileList *filelist,
                                 const bool do_filter,
                                 const bool hide_dot,
+                                const bool hide_dot_datablocks,
                                 const bool hide_parent,
                                 const uint64_t filter,
                                 const uint64_t filter_id,
@@ -996,6 +1010,11 @@ void filelist_setfilter_options(FileList *filelist,
   }
   if (((filelist->filter_data.flags & FLF_HIDE_DOT) != 0) != (hide_dot != 0)) {
     filelist->filter_data.flags ^= FLF_HIDE_DOT;
+    update = true;
+  }
+  if (((filelist->filter_data.flags & FLF_HIDE_DOT_DATABLOCKS) != 0) != (hide_dot_datablocks != 0))
+  {
+    filelist->filter_data.flags ^= FLF_HIDE_DOT_DATABLOCKS;
     update = true;
   }
   if (((filelist->filter_data.flags & FLF_HIDE_PARENT) != 0) != (hide_parent != 0)) {

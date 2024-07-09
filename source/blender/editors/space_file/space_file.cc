@@ -240,6 +240,7 @@ static void file_refresh(const bContext *C, ScrArea *area)
       sfile->files,
       (params->flag & FILE_FILTER) != 0,
       (params->flag & FILE_HIDE_DOT) != 0,
+      (U.uiflag & USER_HIDE_DOT) != 0,
       true, /* Just always hide parent, prefer to not add an extra user option for this. */
       params->filter,
       params->filter_id,

@@ -45,6 +45,7 @@ void filelist_sort(FileList *filelist);
 void filelist_setfilter_options(FileList *filelist,
                                 bool do_filter,
                                 bool hide_dot,
+                                bool hide_dot_datablocks,
                                 bool hide_parent,
                                 uint64_t filter,
                                 uint64_t filter_id,

@@ -292,13 +292,6 @@ static FileSelectParams *fileselect_ensure_updated_file_params(SpaceFile *sfile)
       params->filter_glob[0] = '\0';
     }
 
-    if (U.uiflag & USER_HIDE_DOT) {
-      params->flag |= FILE_HIDE_DOT;
-    }
-    else {
-      params->flag &= ~FILE_HIDE_DOT;
-    }
-
     if (params->type == FILE_LOADLIB) {
       params->flag |= RNA_boolean_get(op->ptr, "link") ? FILE_LINK : 0;
       params->flag |= RNA_boolean_get(op->ptr, "autoselect") ? FILE_AUTOSELECT : 0;

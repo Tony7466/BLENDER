@@ -148,6 +148,7 @@ void AssetList::setup()
       files,
       true,
       true,
+      true,
       true, /* Just always hide parent, prefer to not add an extra user option for this. */
       FILE_TYPE_BLENDERLIB,
       FILTER_ID_ALL,
