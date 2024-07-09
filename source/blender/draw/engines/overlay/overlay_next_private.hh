@@ -92,6 +92,8 @@ class ShapeCache {
   BatchPtr camera_volume;
   BatchPtr camera_volume_wire;
 
+  BatchPtr sphere_low_detail;
+
   ShapeCache();
 };
 

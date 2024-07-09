@@ -82,6 +82,7 @@ class Cameras {
     CameraInstanceBuf tria_wire_buf = {selection_type_, "camera_tria_wire_buf"};
     CameraInstanceBuf volume_buf = {selection_type_, "camera_volume_buf"};
     CameraInstanceBuf volume_wire_buf = {selection_type_, "camera_volume_wire_buf"};
+    CameraInstanceBuf sphere_solid_buf = {selection_type_, "camera_sphere_solid_buf"};
     LineInstanceBuf stereo_connect_lines = {selection_type_, "camera_dashed_lines_buf"};
     LineInstanceBuf tracking_path = {selection_type_, "camera_tracking_path_buf"};
   } call_buffers_[2] = {{selection_type_}, {selection_type_}};
@@ -175,10 +176,9 @@ class Cameras {
             // OVERLAY_empty_shape(cb, bundle_mat, v3d->bundle_size, v3d->bundle_drawtype, color);
           }
 
-          const float4 bundle_color_v4{float3{bundle_color}, 1.0f};
-
-          bundle_mat[3][3] = v3d->bundle_size; /* See shader. */
-          // DRW_buffer_add_entry(cb->empty_sphere_solid, bundle_color_v4, bundle_mat);
+          call_buffers.sphere_solid_buf.append(
+              ExtraInstanceData{bundle_mat, {float3{bundle_color}, 1.0f}, v3d->bundle_size},
+              select_id);
         }
         else {
           // OVERLAY_empty_shape(
@@ -345,6 +345,7 @@ class Cameras {
       call_buffers_[i].tria_wire_buf.clear();
       call_buffers_[i].volume_buf.clear();
       call_buffers_[i].volume_wire_buf.clear();
+      call_buffers_[i].sphere_solid_buf.clear();
       call_buffers_[i].stereo_connect_lines.clear();
       call_buffers_[i].tracking_path.clear();
     }
@@ -526,6 +527,7 @@ class Cameras {
         call_bufs.frame_buf.end_sync(sub_pass, shapes.camera_frame.get());
         call_bufs.tria_buf.end_sync(sub_pass, shapes.camera_tria.get());
         call_bufs.tria_wire_buf.end_sync(sub_pass, shapes.camera_tria_wire.get());
+        call_bufs.sphere_solid_buf.end_sync(sub_pass, shapes.sphere_low_detail.get());
       }
       {
         PassSimple::Sub &sub_pass = pass.sub("camera_extra_wire");

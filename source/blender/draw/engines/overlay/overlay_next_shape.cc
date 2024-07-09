@@ -16,6 +16,12 @@ struct Vertex {
   int vclass;
 };
 
+struct VertShaded {
+  float3 pos;
+  int v_class;
+  float3 nor;
+};
+
 /* Caller gets ownership of the #gpu::VertBuf. */
 static gpu::VertBuf *vbo_from_vector(Vector<Vertex> &vector)
 {
@@ -28,6 +34,21 @@ static gpu::VertBuf *vbo_from_vector(Vector<Vertex> &vector)
   gpu::VertBuf *vbo = GPU_vertbuf_create_with_format(format);
   GPU_vertbuf_data_alloc(*vbo, vector.size());
   vbo->data<Vertex>().copy_from(vector);
+  return vbo;
+}
+
+static gpu::VertBuf *vbo_from_vector(Vector<VertShaded> &vector)
+{
+  static GPUVertFormat format = {0};
+  if (format.attr_len == 0) {
+    GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+    GPU_vertformat_attr_add(&format, "vclass", GPU_COMP_I32, 1, GPU_FETCH_INT);
+    GPU_vertformat_attr_add(&format, "nor", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+  }
+
+  gpu::VertBuf *vbo = GPU_vertbuf_create_with_format(format);
+  GPU_vertbuf_data_alloc(*vbo, vector.size());
+  vbo->data<VertShaded>().copy_from(vector);
   return vbo;
 }
 
@@ -51,6 +72,17 @@ enum VertexClass {
   VCLASS_EMPTY_AXES_SHADOW = 1 << 13,
   VCLASS_EMPTY_SIZE = 1 << 14,
 };
+
+/* Sphere shape resolution */
+/* Low */
+#define DRW_SPHERE_SHAPE_LATITUDE_LOW 32
+#define DRW_SPHERE_SHAPE_LONGITUDE_LOW 24
+/* Medium */
+#define DRW_SPHERE_SHAPE_LATITUDE_MEDIUM 64
+#define DRW_SPHERE_SHAPE_LONGITUDE_MEDIUM 48
+/* High */
+#define DRW_SPHERE_SHAPE_LATITUDE_HIGH 80
+#define DRW_SPHERE_SHAPE_LONGITUDE_HIGH 60
 
 #define DIAMOND_NSEGMENTS 4
 
@@ -90,11 +122,14 @@ static const std::array<uint3, 12> bone_box_solid_tris{
 };
 
 /* A single ring of vertices. */
-static Vector<float2> ring_vertices(const float radius, const int segments)
+static Vector<float2> ring_vertices(const float radius,
+                                    const int segments,
+                                    const bool half = false)
 {
   Vector<float2> verts;
-  for (int i : IndexRange(segments)) {
-    float angle = (2 * M_PI * i) / segments;
+  const float full = (half ? 1.0f : 2.0f) * M_PI;
+  for (const int i : IndexRange(segments + (half ? 1 : 0))) {
+    const float angle = (full * i) / segments;
     verts.append(radius * float2(math::cos(angle), math::sin(angle)));
   }
   return verts;
@@ -135,6 +170,49 @@ static void append_as_lines_cyclic(
     for (int j : IndexRange(2)) {
       float2 cv = verts[(i * step + j) % (verts.size())];
       dest.append({{cv[0], cv[1], z}, flag});
+    }
+  }
+}
+
+static VertShaded sphere_lat_lon_vert(const float2 &lat_pt, const float2 &lon_pt)
+{
+  const float x = lon_pt.y * lat_pt.x;
+  const float y = lon_pt.x;
+  const float z = lon_pt.y * lat_pt.y;
+  return VertShaded{{x, y, z}, VCLASS_EMPTY_SCALED, {x, y, z}};
+}
+
+static void append_sphere(Vector<VertShaded> &dest, const eDRWLevelOfDetail level_of_detail)
+{
+  BLI_assert(level_of_detail >= DRW_LOD_LOW && level_of_detail < DRW_LOD_MAX);
+  static const std::array<Vector<float2>, DRW_LOD_MAX> latitude_rings = {
+      ring_vertices(1.0f, DRW_SPHERE_SHAPE_LATITUDE_LOW),
+      ring_vertices(1.0f, DRW_SPHERE_SHAPE_LATITUDE_MEDIUM),
+      ring_vertices(1.0f, DRW_SPHERE_SHAPE_LATITUDE_HIGH)};
+  static const std::array<Vector<float2>, DRW_LOD_MAX> longitude_half_rings = {
+      ring_vertices(1.0f, DRW_SPHERE_SHAPE_LONGITUDE_LOW, true),
+      ring_vertices(1.0f, DRW_SPHERE_SHAPE_LONGITUDE_MEDIUM, true),
+      ring_vertices(1.0f, DRW_SPHERE_SHAPE_LONGITUDE_HIGH, true)};
+
+  const Vector<float2> &latitude_ring = latitude_rings[level_of_detail];
+  const Vector<float2> &longitude_half_ring = longitude_half_rings[level_of_detail];
+
+  for (const int i : latitude_ring.index_range()) {
+    const float2 lat_pt = latitude_ring[i];
+    const float2 next_lat_pt = latitude_ring[(i + 1) % latitude_ring.size()];
+    for (const int j : IndexRange(longitude_half_ring.size() - 1)) {
+      const float2 lon_pt = longitude_half_ring[j];
+      const float2 next_lon_pt = longitude_half_ring[j + 1];
+      if (j != 0) { /* Pole */
+        dest.append(sphere_lat_lon_vert(next_lat_pt, next_lon_pt));
+        dest.append(sphere_lat_lon_vert(next_lat_pt, lon_pt));
+        dest.append(sphere_lat_lon_vert(lat_pt, lon_pt));
+      }
+      if (j != longitude_half_ring.index_range().last(1)) { /* Pole */
+        dest.append(sphere_lat_lon_vert(lat_pt, next_lon_pt));
+        dest.append(sphere_lat_lon_vert(next_lat_pt, next_lon_pt));
+        dest.append(sphere_lat_lon_vert(lat_pt, lon_pt));
+      }
     }
   }
 }
@@ -468,6 +546,13 @@ ShapeCache::ShapeCache()
     }
     camera_volume_wire = BatchPtr(
         GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* spheres */
+  {
+    Vector<VertShaded> verts;
+    append_sphere(verts, DRW_LOD_LOW);
+    sphere_low_detail = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_TRIS, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
   }
 }
 
