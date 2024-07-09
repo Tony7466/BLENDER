@@ -812,10 +812,89 @@ static int uv_remove_doubles_to_unselected(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static int uvedit_uv_threshold_weld_underlying_geometry(bContext *C, wmOperator *op)
+{
+  Scene *scene = CTX_data_scene(C);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data_with_uvs(
+      scene, view_layer, nullptr);
+  /* Since we are using len_squared_v2v2 to calculate distance, we need to square the
+   * user-defined threshold*/
+  float threshold = RNA_float_get(op->ptr, "threshold");
+  threshold = threshold * threshold;
+  for (Object *obedit : objects) {
+    BMEditMesh *em = BKE_editmesh_from_object(obedit);
+    BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
+    BMVert *v;
+    BMLoop *l;
+    BMIter viter, liter;
+    BM_ITER_MESH (v, &viter, em->bm, BM_VERTS_OF_MESH) {
+      blender::Vector<float *> luvmap;
+      /*Grap all luv pointers from selected loops*/
+      BM_ITER_ELEM (l, &liter, v, BM_LOOPS_OF_VERT) {
+        if (uvedit_uv_select_test(scene, l, offsets)) {
+          luvmap.append(BM_ELEM_CD_GET_FLOAT_P(l, offsets.uv));
+        }
+      }
+      if (luvmap.size() == 0) {
+        continue;
+      }
+      std::vector<float> sum(2, 0.0f);
+      std::vector<float> cent(2);
+      /*Find the central UV coordinate*/
+      for (auto &luv : luvmap) {
+        sum[0] += luv[0];
+        sum[1] += luv[1];
+      }
+      cent[0] = sum[0] / luvmap.size();
+      cent[1] = sum[1] / luvmap.size();
+
+      /*Find central UV*/
+      float mindist = len_squared_v2v2(cent.data(), luvmap[0]);
+      int centeruv = 0;
+      for (int i = 0; i < luvmap.size(); i++) {
+        float dist = len_squared_v2v2(cent.data(), luvmap[i]);
+        if (dist < mindist) {
+          mindist = dist;
+          centeruv = i;
+        }
+      }
+      /*Filter UV coordinates that are not within threshold distance of central UV*/
+      for (int i = 0; i < luvmap.size(); i++) {
+        if (i != centeruv) {
+          float dist = len_squared_v2v2(luvmap[centeruv], luvmap[i]);
+          if (dist > threshold) {
+            sum[0] -= luvmap[i][0];
+            sum[1] -= luvmap[i][1];
+            luvmap.remove_and_reorder(i);
+          }
+        }
+      }
+      if (luvmap.size() > 0) {
+        /*Recalculate centerpoint*/
+        cent[0] = sum[0] / luvmap.size();
+        cent[1] = sum[1] / luvmap.size();
+        /* Shift all UV coordinates to new cent loc */
+        if (luvmap.size() > 0) {
+          for (int i = 0; i < luvmap.size(); i++) {
+            float *luv = luvmap[i];
+            luv[0] = cent[0];
+            luv[1] = cent[1];
+          }
+        }
+      }
+    }
+  }
+  return OPERATOR_FINISHED;
+}
+
 static int uv_remove_doubles_exec(bContext *C, wmOperator *op)
 {
   if (RNA_boolean_get(op->ptr, "use_unselected")) {
     return uv_remove_doubles_to_unselected(C, op);
+  }
+  else if (RNA_boolean_get(op->ptr, "underlying_geometry")) {
+    return uvedit_uv_threshold_weld_underlying_geometry(C, op);
   }
   return uv_remove_doubles_to_selected(C, op);
 }
@@ -847,6 +926,11 @@ static void UV_OT_remove_doubles(wmOperatorType *ot)
                   false,
                   "Unselected",
                   "Merge selected to other unselected vertices");
+  RNA_def_boolean(ot->srna,
+                  "underlying_geometry",
+                  false,
+                  "Underlying Geometry",
+                  "Weld UVs based on underlying geometry");
 }
 
 /** \} */
@@ -1884,7 +1968,6 @@ void ED_operatortypes_uvedit()
   WM_operatortype_append(UV_OT_align);
 
   WM_operatortype_append(UV_OT_rip);
-  WM_operatortype_append(UV_OT_stitch_distance);
   WM_operatortype_append(UV_OT_stitch);
   WM_operatortype_append(UV_OT_shortest_path_pick);
   WM_operatortype_append(UV_OT_shortest_path_select);

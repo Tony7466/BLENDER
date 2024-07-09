@@ -383,19 +383,6 @@ class IMAGE_MT_uvs_merge(Menu):
 
         layout.operator("uv.remove_doubles", text="By Distance")
 
-class IMAGE_MT_uvs_stitch(Menu):
-    bl_label = "Stitch"
-
-    def draw(self, _context):
-        layout = self.layout
-
-        layout.operator("uv.stitch", text="Stitch Operation")
-        
-        
-        layout.separator()
-        
-        layout.operator("uv.stitch_distance", text="By Distance")
-
 
 class IMAGE_MT_uvs_split(Menu):
     bl_label = "Split"
@@ -596,7 +583,6 @@ class IMAGE_MT_uvs_context_menu(Menu):
 
             # Remove
             layout.menu("IMAGE_MT_uvs_merge")
-            layout.menu("IMAGE_MT_uvs_stitch")
             layout.menu("IMAGE_MT_uvs_split")
 
 
@@ -1721,7 +1707,6 @@ classes = (
     IMAGE_MT_uvs_mirror,
     IMAGE_MT_uvs_align,
     IMAGE_MT_uvs_merge,
-    IMAGE_MT_uvs_stitch,
     IMAGE_MT_uvs_split,
     IMAGE_MT_uvs_unwrap,
     IMAGE_MT_uvs_select_mode,
