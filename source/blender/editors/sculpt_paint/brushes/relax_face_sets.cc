@@ -490,7 +490,7 @@ BLI_NOINLINE static void calc_relaxed_positions_grids(const OffsetIndices<int> f
         const int offset = CCG_grid_xy_to_index(key.grid_size, x, y);
         const int grid_idx = start + offset;
         SubdivCCGCoord coord{};
-        coord.grid_index = i;
+        coord.grid_index = grids[i];
         coord.x = x;
         coord.y = y;
 
@@ -643,7 +643,7 @@ static void do_relax_face_sets_brush_grids(const Sculpt &sd,
                                            const float relax_face_sets)
 {
   const SculptSession &ss = *object.sculpt;
-  SubdivCCG subdiv_ccg = *ss.subdiv_ccg;
+  SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
   Mesh &mesh = *static_cast<Mesh *>(object.data);
