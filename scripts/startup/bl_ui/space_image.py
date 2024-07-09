@@ -583,6 +583,7 @@ class IMAGE_MT_uvs_context_menu(Menu):
 
             # Remove
             layout.menu("IMAGE_MT_uvs_merge")
+            layout.operator("uv.stitch")
             layout.menu("IMAGE_MT_uvs_split")
 
 
