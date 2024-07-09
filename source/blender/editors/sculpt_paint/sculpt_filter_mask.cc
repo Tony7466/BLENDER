@@ -76,7 +76,7 @@ static void mask_decrease_contrast(const Span<float> src, const MutableSpan<floa
   }
 }
 
-struct LocalData {
+struct FilterLocalData {
   Vector<int> visible_verts;
   Vector<float> node_mask;
   Vector<float> new_mask;
@@ -93,16 +93,18 @@ static void apply_new_mask_mesh(Object &object,
   threading::EnumerableThreadSpecific<Vector<int>> all_tls;
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     Vector<int> &tls = all_tls.local();
-    for (const int i : range) {
-      const Span<int> verts = hide::node_visible_verts(*nodes[i], hide_vert, tls);
-      const Span<float> new_node_mask = new_mask.slice(node_verts[i]);
-      if (array_utils::indexed_data_equal<float>(mask, verts, new_node_mask)) {
-        return;
+    threading::isolate_task([&]() {
+      for (const int i : range) {
+        const Span<int> verts = hide::node_visible_verts(*nodes[i], hide_vert, tls);
+        const Span<float> new_node_mask = new_mask.slice(node_verts[i]);
+        if (array_utils::indexed_data_equal<float>(mask, verts, new_node_mask)) {
+          return;
+        }
+        undo::push_node(object, nodes[i], undo::Type::Mask);
+        array_utils::scatter(new_node_mask, verts, mask);
+        BKE_pbvh_node_mark_update_mask(nodes[i]);
       }
-      undo::push_node(object, nodes[i], undo::Type::Mask);
-      array_utils::scatter(new_node_mask, verts, mask);
-      BKE_pbvh_node_mark_update_mask(nodes[i]);
-    }
+    });
   });
 }
 
@@ -112,7 +114,7 @@ static void smooth_mask_mesh(const OffsetIndices<int> faces,
                              const Span<bool> hide_poly,
                              const Span<float> mask,
                              PBVHNode &node,
-                             LocalData &tls,
+                             FilterLocalData &tls,
                              MutableSpan<float> new_mask)
 {
   const Span<int> verts = bke::pbvh::node_unique_verts(node);
@@ -122,8 +124,6 @@ static void smooth_mask_mesh(const OffsetIndices<int> faces,
   calc_vert_neighbors(faces, corner_verts, vert_to_face_map, hide_poly, verts, neighbors);
 
   average_neighbor_mask_mesh(mask, neighbors, new_mask);
-  //   val -= mask;
-  //   mask += val;
   mask::clamp_mask(new_mask);
 }
 
@@ -133,7 +133,7 @@ static void sharpen_mask_mesh(const OffsetIndices<int> faces,
                               const Span<bool> hide_poly,
                               const Span<float> mask,
                               PBVHNode &node,
-                              LocalData &tls,
+                              FilterLocalData &tls,
                               MutableSpan<float> new_mask)
 {
   const Span<int> verts = bke::pbvh::node_unique_verts(node);
@@ -145,16 +145,9 @@ static void sharpen_mask_mesh(const OffsetIndices<int> faces,
   average_neighbor_mask_mesh(mask, neighbors, new_mask);
   for (const int i : verts.index_range()) {
     const float offset = mask[verts[i]] > 0.5f ? 0.05f : -0.05f;
-    new_mask[i] = new_mask[i] * 0.5f + offset;
+    new_mask[i] -= mask[verts[i]];
+    new_mask[i] = (new_mask[i] - mask[verts[i]]) * 0.5f + offset;
   }
-  //   val -= mask;
-  //   if (mask > 0.5f) {
-  //     mask += 0.05f;
-  //   }
-  //   else {
-  //     mask -= 0.05f;
-  //   }
-  //   mask += val / 2.0f;
   mask::clamp_mask(new_mask);
 }
 
@@ -164,7 +157,7 @@ static void grow_mask_mesh(const OffsetIndices<int> faces,
                            const Span<bool> hide_poly,
                            const Span<float> mask,
                            PBVHNode &node,
-                           LocalData &tls,
+                           FilterLocalData &tls,
                            MutableSpan<float> new_mask)
 {
   const Span<int> verts = bke::pbvh::node_unique_verts(node);
@@ -187,7 +180,7 @@ static void shrink_mask_mesh(const OffsetIndices<int> faces,
                              const Span<bool> hide_poly,
                              const Span<float> mask,
                              PBVHNode &node,
-                             LocalData &tls,
+                             FilterLocalData &tls,
                              MutableSpan<float> new_mask)
 {
   const Span<int> verts = bke::pbvh::node_unique_verts(node);
@@ -207,7 +200,7 @@ static void shrink_mask_mesh(const OffsetIndices<int> faces,
 static void increase_contrast_mask_mesh(const Object &object,
                                         const Span<bool> hide_vert,
                                         PBVHNode &node,
-                                        LocalData &tls,
+                                        FilterLocalData &tls,
                                         MutableSpan<float> mask)
 {
   const Span<int> verts = hide::node_visible_verts(node, hide_vert, tls.visible_verts);
@@ -233,7 +226,7 @@ static void increase_contrast_mask_mesh(const Object &object,
 static void decrease_contrast_mask_mesh(const Object &object,
                                         const Span<bool> hide_vert,
                                         PBVHNode &node,
-                                        LocalData &tls,
+                                        FilterLocalData &tls,
                                         MutableSpan<float> mask)
 {
   const Span<int> verts = hide::node_visible_verts(node, hide_vert, tls.visible_verts);
@@ -294,7 +287,7 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
     iterations = int(num_verts / 50000.0f) + 1;
   }
 
-  threading::EnumerableThreadSpecific<LocalData> all_tls;
+  threading::EnumerableThreadSpecific<FilterLocalData> all_tls;
   switch (BKE_pbvh_type(pbvh)) {
     case PBVH_FACES: {
       Mesh &mesh = *static_cast<Mesh *>(ob.data);
@@ -305,61 +298,54 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
       const VArraySpan hide_vert = *attributes.lookup<bool>(".hide_vert", bke::AttrDomain::Point);
       const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
       bke::SpanAttributeWriter mask = attributes.lookup_for_write_span<float>(".sculpt_mask");
-      switch (filter_type) {
-        case FilterType::Smooth: {
-          Array<int> node_vert_offset_data;
-          OffsetIndices node_offsets = create_node_vert_offsets(nodes, node_vert_offset_data);
-          Array<float> new_masks(node_offsets.total_size());
 
-          for (int i = 0; i < iterations; i++) {
+      Array<int> node_vert_offset_data;
+      OffsetIndices node_offsets = create_node_vert_offsets(nodes, node_vert_offset_data);
+      Array<float> new_masks(node_offsets.total_size());
+
+      for (int i = 0; i < iterations; i++) {
+        switch (filter_type) {
+          case FilterType::Smooth: {
             threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-              LocalData &tls = all_tls.local();
-              for (const int i : range) {
-                smooth_mask_mesh(faces,
-                                 corner_verts,
-                                 vert_to_face_map,
-                                 hide_poly,
-                                 mask.span,
-                                 *nodes[i],
-                                 tls,
-                                 new_masks.as_mutable_span().slice(node_offsets[i]));
-              }
+              FilterLocalData &tls = all_tls.local();
+              threading::isolate_task([&]() {
+                for (const int i : range) {
+                  smooth_mask_mesh(faces,
+                                   corner_verts,
+                                   vert_to_face_map,
+                                   hide_poly,
+                                   mask.span,
+                                   *nodes[i],
+                                   tls,
+                                   new_masks.as_mutable_span().slice(node_offsets[i]));
+                }
+              });
             });
             apply_new_mask_mesh(ob, hide_vert, nodes, node_offsets, new_masks, mask.span);
+            break;
           }
-          break;
-        }
-        case FilterType::Sharpen: {
-          Array<int> node_vert_offset_data;
-          OffsetIndices node_offsets = create_node_vert_offsets(nodes, node_vert_offset_data);
-          Array<float> new_masks(node_offsets.total_size());
-
-          for (int i = 0; i < iterations; i++) {
+          case FilterType::Sharpen: {
             threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-              LocalData &tls = all_tls.local();
-              for (const int i : range) {
-                sharpen_mask_mesh(faces,
-                                  corner_verts,
-                                  vert_to_face_map,
-                                  hide_poly,
-                                  mask.span,
-                                  *nodes[i],
-                                  tls,
-                                  new_masks.as_mutable_span().slice(node_offsets[i]));
-              }
+              FilterLocalData &tls = all_tls.local();
+              threading::isolate_task([&]() {
+                for (const int i : range) {
+                  sharpen_mask_mesh(faces,
+                                    corner_verts,
+                                    vert_to_face_map,
+                                    hide_poly,
+                                    mask.span,
+                                    *nodes[i],
+                                    tls,
+                                    new_masks.as_mutable_span().slice(node_offsets[i]));
+                }
+              });
             });
             apply_new_mask_mesh(ob, hide_vert, nodes, node_offsets, new_masks, mask.span);
+            break;
           }
-          break;
-        }
-        case FilterType::Grow: {
-          Array<int> node_vert_offset_data;
-          OffsetIndices node_offsets = create_node_vert_offsets(nodes, node_vert_offset_data);
-          Array<float> new_masks(node_offsets.total_size());
-
-          for (int i = 0; i < iterations; i++) {
+          case FilterType::Grow: {
             threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-              LocalData &tls = all_tls.local();
+              FilterLocalData &tls = all_tls.local();
               for (const int i : range) {
                 grow_mask_mesh(faces,
                                corner_verts,
@@ -372,17 +358,11 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
               }
             });
             apply_new_mask_mesh(ob, hide_vert, nodes, node_offsets, new_masks, mask.span);
+            break;
           }
-          break;
-        }
-        case FilterType::Shrink: {
-          Array<int> node_vert_offset_data;
-          OffsetIndices node_offsets = create_node_vert_offsets(nodes, node_vert_offset_data);
-          Array<float> new_masks(node_offsets.total_size());
-
-          for (int i = 0; i < iterations; i++) {
+          case FilterType::Shrink: {
             threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-              LocalData &tls = all_tls.local();
+              FilterLocalData &tls = all_tls.local();
               for (const int i : range) {
                 shrink_mask_mesh(faces,
                                  corner_verts,
@@ -395,30 +375,32 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
               }
             });
             apply_new_mask_mesh(ob, hide_vert, nodes, node_offsets, new_masks, mask.span);
+            break;
           }
-
-          break;
-        }
-        case FilterType::ContrastIncrease: {
-          threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-            LocalData &tls = all_tls.local();
-            for (const int i : range) {
-              increase_contrast_mask_mesh(ob, hide_vert, *nodes[i], tls, mask.span);
-            }
-          });
-          break;
-        }
-        case FilterType::ContrastDecrease: {
-          threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-            LocalData &tls = all_tls.local();
-            for (const int i : range) {
-              decrease_contrast_mask_mesh(ob, hide_vert, *nodes[i], tls, mask.span);
-            }
-          });
-          break;
+          case FilterType::ContrastIncrease: {
+            threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+              FilterLocalData &tls = all_tls.local();
+              threading::isolate_task([&]() {
+                for (const int i : range) {
+                  increase_contrast_mask_mesh(ob, hide_vert, *nodes[i], tls, mask.span);
+                }
+              });
+            });
+            break;
+          }
+          case FilterType::ContrastDecrease: {
+            threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+              FilterLocalData &tls = all_tls.local();
+              threading::isolate_task([&]() {
+                for (const int i : range) {
+                  decrease_contrast_mask_mesh(ob, hide_vert, *nodes[i], tls, mask.span);
+                }
+              });
+            });
+            break;
+          }
         }
       }
-
       mask.finish();
       break;
     }
