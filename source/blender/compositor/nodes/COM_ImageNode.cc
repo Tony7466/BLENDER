@@ -134,27 +134,32 @@ void ImageNode::convert_to_operations(NodeConverter &converter,
                 /* dummy operation is added below */
                 break;
             }
-            if (index == 0 && operation) {
-              converter.add_preview(operation->get_output_socket());
-            }
-            if (STREQ(rpass->name, RE_PASSNAME_COMBINED) && !(bnode_socket->flag & SOCK_UNAVAIL)) {
-              for (NodeOutput *alpha_socket : get_output_sockets()) {
-                bNodeSocket *bnode_alpha_socket = alpha_socket->get_bnode_socket();
-                if (!STREQ(bnode_alpha_socket->name, "Alpha")) {
-                  continue;
+
+            if (operation) {
+              if (index == 0) {
+                converter.add_preview(operation->get_output_socket());
+              }
+              if (STREQ(rpass->name, RE_PASSNAME_COMBINED) && !(bnode_socket->flag & SOCK_UNAVAIL))
+              {
+                for (NodeOutput *alpha_socket : get_output_sockets()) {
+                  bNodeSocket *bnode_alpha_socket = alpha_socket->get_bnode_socket();
+                  if (!STREQ(bnode_alpha_socket->name, "Alpha")) {
+                    continue;
+                  }
+                  NodeImageLayer *alpha_storage = (NodeImageLayer *)bnode_socket->storage;
+                  if (!STREQ(alpha_storage->pass_name, RE_PASSNAME_COMBINED)) {
+                    continue;
+                  }
+                  SeparateChannelOperation *separate_operation;
+                  separate_operation = new SeparateChannelOperation();
+                  separate_operation->set_channel(3);
+                  converter.add_operation(separate_operation);
+                  converter.add_link(operation->get_output_socket(),
+                                     separate_operation->get_input_socket(0));
+                  converter.map_output_socket(alpha_socket,
+                                              separate_operation->get_output_socket());
+                  break;
                 }
-                NodeImageLayer *alpha_storage = (NodeImageLayer *)bnode_socket->storage;
-                if (!STREQ(alpha_storage->pass_name, RE_PASSNAME_COMBINED)) {
-                  continue;
-                }
-                SeparateChannelOperation *separate_operation;
-                separate_operation = new SeparateChannelOperation();
-                separate_operation->set_channel(3);
-                converter.add_operation(separate_operation);
-                converter.add_link(operation->get_output_socket(),
-                                   separate_operation->get_input_socket(0));
-                converter.map_output_socket(alpha_socket, separate_operation->get_output_socket());
-                break;
               }
             }
           }

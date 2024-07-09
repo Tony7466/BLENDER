@@ -1488,24 +1488,7 @@ static int imb_exr_split_channel_name(ExrChannel *echan,
     echan->chan_id = BLI_toupper_ascii(channelname[0]);
   }
   else if (len > 1) {
-    if (len == 2) {
-      /* Some multi-layers are using two-letter channels name,
-       * like, MX or NZ, which is basically has structure of
-       *   <pass_prefix><component>
-       *
-       * This is a bit silly, but see file from #35658.
-       *
-       * Here we do some magic to distinguish such cases.
-       */
-      const char chan_id = BLI_toupper_ascii(channelname[1]);
-      if (ELEM(chan_id, 'X', 'Y', 'Z', 'R', 'G', 'B', 'U', 'V', 'A')) {
-        echan->chan_id = chan_id;
-      }
-      else {
-        echan->chan_id = 'X'; /* Default to X if unknown. */
-      }
-    }
-    else if (BLI_strcaseeq(channelname, "red")) {
+    if (BLI_strcaseeq(channelname, "red")) {
       echan->chan_id = 'R';
     }
     else if (BLI_strcaseeq(channelname, "green")) {
@@ -1520,8 +1503,31 @@ static int imb_exr_split_channel_name(ExrChannel *echan,
     else if (BLI_strcaseeq(channelname, "depth")) {
       echan->chan_id = 'Z';
     }
+    else if (BLI_strcaseeq(channelname, "id") || BLI_strcaseeq(channelname, "objectid") ||
+             BLI_strcaseeq(channelname, "materialid") ||
+             BLI_strcaseeq(channelname, "particleid") || BLI_strcaseeq(channelname, "instanceid"))
+    {
+      echan->chan_id = 'I';
+    }
+    else if (len == 2) {
+      /* Some multi-layers are using two-letter channels name,
+       * like, MX or NZ, which is basically has structure of
+       *   <pass_prefix><component>
+       *
+       * This is a bit silly, but see file from #35658.
+       *
+       * Here we do some magic to distinguish such cases.
+       */
+      const char chan_id = BLI_toupper_ascii(channelname[1]);
+      if (ELEM(chan_id, 'X', 'Y', 'Z', 'R', 'G', 'B', 'U', 'V', 'A')) {
+        echan->chan_id = chan_id;
+      }
+      else {
+        echan->chan_id = 'I'; /* Default to X if unknown. */
+      }
+    }
     else {
-      echan->chan_id = 'X'; /* Default to X if unknown. */
+      echan->chan_id = 'I'; /* Default to X if unknown. */
     }
   }
   end -= len + 1; /* +1 to skip '.' separator */
