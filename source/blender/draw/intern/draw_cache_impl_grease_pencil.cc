@@ -845,6 +845,10 @@ static void grease_pencil_edit_batch_ensure(Object &object,
 
     drawing_line_start_offset += curves.evaluated_points_num();
 
+    if (layer->is_locked()) {
+      continue;
+    }
+
     const IndexMask nurbs_curves = grease_pencil_get_visible_NURBS_curves(
         object, info.drawing, info.layer_index, memory);
     if (!nurbs_curves.is_empty()) {
@@ -882,28 +886,26 @@ static void grease_pencil_edit_batch_ensure(Object &object,
     }
 
     /* Fill point indices. */
-    if (!layer->is_locked()) {
-      const IndexMask selected_editable_strokes =
-          ed::greasepencil::retrieve_editable_and_selected_strokes(
-              object, info.drawing, info.layer_index, memory);
+    const IndexMask selected_editable_strokes =
+        ed::greasepencil::retrieve_editable_and_selected_strokes(
+            object, info.drawing, info.layer_index, memory);
 
-      selected_editable_strokes.foreach_index([&](const int curve_i) {
-        const IndexRange points = points_by_curve[curve_i];
-        for (const int point : points) {
-          GPU_indexbuf_add_generic_vert(&epb, point + drawing_start_offset);
-        }
-      });
-
-      drawing_start_offset += curves.points_num();
-
-      if (!bezier_points.is_empty()) {
-        /* Add all bezier points. */
-        for (const int point : IndexRange(bezier_points.size() * 2)) {
-          GPU_indexbuf_add_generic_vert(&epb, point + drawing_start_offset);
-        }
-
-        drawing_start_offset += bezier_points.size() * 2;
+    selected_editable_strokes.foreach_index([&](const int curve_i) {
+      const IndexRange points = points_by_curve[curve_i];
+      for (const int point : points) {
+        GPU_indexbuf_add_generic_vert(&epb, point + drawing_start_offset);
       }
+    });
+
+    drawing_start_offset += curves.points_num();
+
+    if (!bezier_points.is_empty()) {
+      /* Add all bezier points. */
+      for (const int point : IndexRange(bezier_points.size() * 2)) {
+        GPU_indexbuf_add_generic_vert(&epb, point + drawing_start_offset);
+      }
+
+      drawing_start_offset += bezier_points.size() * 2;
     }
   }
 
