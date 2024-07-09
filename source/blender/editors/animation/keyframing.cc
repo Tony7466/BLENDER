@@ -167,7 +167,6 @@ static bool modify_key_op_poll(bContext *C)
 
 static int insert_key_with_keyingset(bContext *C, wmOperator *op, KeyingSet *ks)
 {
-  Scene *scene = CTX_data_scene(C);
   Object *obedit = CTX_data_edit_object(C);
   bool ob_edit_mode = false;
 
