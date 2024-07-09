@@ -611,7 +611,7 @@ class Slot : public ::ActionSlot {
 };
 static_assert(sizeof(Slot) == sizeof(::ActionSlot),
               "DNA struct and its C++ wrapper must have the same size");
-ENUM_OPERATORS(Slot::Flags, Slot::Flags::Selected);
+ENUM_OPERATORS(Slot::Flags, Slot::Flags::Active);
 
 /**
  * KeyframeStrips effectively contain a bag of F-Curves for each Slot.
