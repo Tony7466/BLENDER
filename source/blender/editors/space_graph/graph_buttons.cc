@@ -1036,6 +1036,7 @@ static void graph_draw_driver_settings_panel(uiLayout *layout,
     if (driver->flag & DRIVER_FLAG_PYTHON_BLOCKED) {
       /* TODO: Add button to enable? */
       uiItemL(col, RPT_("Python restricted for security"), ICON_ERROR);
+      uiItemL(col, RPT_("Slow Python expression"), ICON_INFO);
     }
     else if (driver->flag & DRIVER_FLAG_INVALID) {
       uiItemL(col, RPT_("ERROR: Invalid Python expression"), ICON_CANCEL);
