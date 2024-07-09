@@ -490,6 +490,10 @@ void ShaderModule::material_create_info_amend(GPUMaterial *gpumat, GPUCodegenOut
   if (pipeline_type == MAT_PIPE_DEFERRED) {
     info.additional_info("eevee_render_pass_out");
     info.additional_info("eevee_cryptomatte_out");
+    if (GPU_material_flag_get(gpumat, GPU_MATFLAG_NPR)) {
+      /* TODO(NPR): Detect when npr_enabled is true? */
+      info.additional_info("eevee_surf_deferred_npr_output");
+    }
   }
 
   int32_t closure_data_slots = 0;

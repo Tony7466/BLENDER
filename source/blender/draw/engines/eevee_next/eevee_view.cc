@@ -100,12 +100,18 @@ void ShadingView::render()
                inst_.pipelines.deferred.closure_layer_count(),
                inst_.pipelines.deferred.normal_layer_count());
 
+  GPUAttachment npr_index_attachment = GPU_ATTACHMENT_NONE;
+  if (rbufs.npr_index_tx.is_valid()) {
+    npr_index_attachment = GPU_ATTACHMENT_TEXTURE(rbufs.npr_index_tx);
+  }
+
   gbuffer_fb_.ensure(GPU_ATTACHMENT_TEXTURE(rbufs.depth_tx),
                      GPU_ATTACHMENT_TEXTURE(rbufs.combined_tx),
                      GPU_ATTACHMENT_TEXTURE(gbuf.header_tx),
                      GPU_ATTACHMENT_TEXTURE_LAYER(gbuf.normal_tx.layer_view(0), 0),
                      GPU_ATTACHMENT_TEXTURE_LAYER(gbuf.closure_tx.layer_view(0), 0),
-                     GPU_ATTACHMENT_TEXTURE_LAYER(gbuf.closure_tx.layer_view(1), 0));
+                     GPU_ATTACHMENT_TEXTURE_LAYER(gbuf.closure_tx.layer_view(1), 0),
+                     npr_index_attachment);
 
   /* If camera has any motion, compute motion vector in the film pass. Otherwise, we avoid float
    * precision issue by setting the motion of all static geometry to 0. */

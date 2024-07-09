@@ -78,6 +78,8 @@ class Instance {
 
   bool shaders_are_ready_ = true;
 
+  bool npr_enabled_ = true;
+
  public:
   ShaderModule &shaders;
   SyncModule sync;
@@ -253,6 +255,11 @@ class Instance {
   bool overlays_enabled() const
   {
     return overlays_enabled_;
+  }
+
+  bool npr_enabled() const
+  {
+    return npr_enabled_;
   }
 
   bool is_playback() const

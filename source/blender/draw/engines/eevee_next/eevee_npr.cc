@@ -34,7 +34,7 @@ void NPRModule::init()
   passes_.append({});
 }
 
-static void codegen_callback(void *thunk, GPUMaterial *mat, GPUCodegenOutput *codegen)
+static void codegen_callback(void * /*thunk*/, GPUMaterial * /*mat*/, GPUCodegenOutput *codegen)
 {
   using namespace blender::gpu::shader;
   ShaderCreateInfo &info = *reinterpret_cast<ShaderCreateInfo *>(codegen->create_info);

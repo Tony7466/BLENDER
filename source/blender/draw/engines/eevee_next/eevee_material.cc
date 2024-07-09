@@ -161,7 +161,8 @@ MaterialPass MaterialModule::material_pass_get(Object *ob,
                                                ::Material *blender_mat,
                                                eMaterialPipeline pipeline_type,
                                                eMaterialGeometry geometry_type,
-                                               eMaterialProbe probe_capture)
+                                               eMaterialProbe probe_capture,
+                                               int npr_index)
 {
   bNodeTree *ntree = (blender_mat->use_nodes && blender_mat->nodetree != nullptr) ?
                          blender_mat->nodetree :
@@ -241,6 +242,9 @@ MaterialPass MaterialModule::material_pass_get(Object *ob,
       /* Create a sub for this material as `shader_sub` is for sharing shader between materials. */
       matpass.sub_pass = &shader_sub->sub(GPU_material_get_name(matpass.gpumat));
       matpass.sub_pass->material_set(*inst_.manager, matpass.gpumat);
+      if (pipeline_type == MAT_PIPE_DEFERRED) {
+        matpass.sub_pass->push_constant("npr_index", npr_index);
+      }
     }
     else {
       matpass.sub_pass = nullptr;
@@ -327,7 +331,11 @@ Material &MaterialModule::material_sync(Object *ob,
         mat.prepass = MaterialPass();
       }
 
-      mat.shading = material_pass_get(ob, blender_mat, surface_pipe, geometry_type);
+      if (surface_pipe == MAT_PIPE_DEFERRED) {
+        mat.npr_index = inst_.npr.sync_material(blender_mat);
+      }
+      mat.shading = material_pass_get(
+          ob, blender_mat, surface_pipe, geometry_type, MAT_PROBE_NONE, mat.npr_index);
       if (hide_on_camera) {
         /* Only null the sub_pass.
          * mat.shading.gpumat is is always needed for using the GPU_material API. */
@@ -371,10 +379,6 @@ Material &MaterialModule::material_sync(Object *ob,
       else {
         mat.volume_occupancy = MaterialPass();
         mat.volume_material = MaterialPass();
-      }
-
-      if (surface_pipe == MAT_PIPE_DEFERRED) {
-        mat.npr_index = inst_.npr.sync_material(blender_mat);
       }
     }
 

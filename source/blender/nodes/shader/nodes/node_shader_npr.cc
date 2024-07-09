@@ -43,6 +43,7 @@ static int node_shader_fn(GPUMaterial *mat,
                           GPUNodeStack *in,
                           GPUNodeStack *out)
 {
+  GPU_material_flag_set(mat, GPU_MATFLAG_NPR);
   return GPU_stack_link(mat, node, "npr_passthrough", in, out);
 }
 

@@ -392,7 +392,8 @@ class MaterialModule {
                                  ::Material *blender_mat,
                                  eMaterialPipeline pipeline_type,
                                  eMaterialGeometry geometry_type,
-                                 eMaterialProbe probe_capture = MAT_PROBE_NONE);
+                                 eMaterialProbe probe_capture = MAT_PROBE_NONE,
+                                 int npr_index = 0);
 };
 
 /** \} */
