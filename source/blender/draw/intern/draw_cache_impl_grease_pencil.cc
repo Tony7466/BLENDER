@@ -477,7 +477,6 @@ static IndexMask grease_pencil_get_visible_NURBS_curves(Object &object,
     return IndexMask(0);
   }
 
-  const Array<int> point_to_curve_map = curves.point_to_curve_map();
   const VArray<int8_t> types = curves.curve_types();
 
   const IndexMask selected_editable_strokes =
