@@ -49,20 +49,17 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
 
   GreasePencil *grease_pencil = BKE_grease_pencil_new_nomain();
-  grease_pencil->add_layers_with_empty_drawings_for_eval(layer_num);
 
   VectorSet<Material *> all_materials;
 
   instance_selection.foreach_index([&](const int instance_i, const int layer_i) {
     const bke::InstanceReference &reference = references[reference_handles[instance_i]];
-    const std::string name = reference.name();
 
-    bke::greasepencil::Layer *layer = grease_pencil->layer(layer_i);
-    BLI_assert(layer);
-    layer->set_name(name);
-    layer->set_local_transform(transforms[instance_i]);
+    bke::greasepencil::Layer &layer = grease_pencil->add_layer(reference.name());
+    grease_pencil->insert_frame(layer, grease_pencil->runtime->eval_frame);
+    layer.set_local_transform(transforms[instance_i]);
 
-    bke::greasepencil::Drawing *drawing = grease_pencil->get_eval_drawing(*layer);
+    bke::greasepencil::Drawing *drawing = grease_pencil->get_eval_drawing(layer);
     BLI_assert(drawing);
 
     GeometrySet instance_geometry;
@@ -133,7 +130,9 @@ static void node_geo_exec(GeoNodeExecParams params)
     return true;
   });
 
-  params.set_output("Grease Pencil", GeometrySet::from_grease_pencil(grease_pencil));
+  GeometrySet grease_pencil_geometry = GeometrySet::from_grease_pencil(grease_pencil);
+  grease_pencil_geometry.name = std::move(instances_geometry.name);
+  params.set_output("Grease Pencil", std::move(grease_pencil_geometry));
 }
 
 static void node_register()
