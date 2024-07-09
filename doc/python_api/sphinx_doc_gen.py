@@ -1776,8 +1776,17 @@ def pyrna2sphinx(basepath):
             # Context does its own thing.
             # "active_object": ("Object", False),
             for ref_attr, (ref_type, ref_is_seq) in sorted(context_type_map.items()):
-                if ref_type == struct_id:
-                    fw("   * :mod:`bpy.context.{:s}`\n".format(ref_attr))
+                if ref_type.isidentifier():
+                    if ref_type == struct_id:
+                        fw("   * :mod:`bpy.context.{:s}`\n".format(ref_attr))
+                else:
+                    if ref_type[0] == "(" and ref_type[-1] == ")":
+                        ref_split = ref_type[1:-1].split(",")
+                        for ref in ref_split:
+                            t = ref[ref.find("`")+1:ref.rfind("`")].split(".")[-1]
+                            if t == struct_id:
+                                fw("   * :mod:`bpy.context.{:s}`\n".format(ref_attr))
+                                break
             del ref_attr, ref_type, ref_is_seq
 
             for ref in struct.references:
