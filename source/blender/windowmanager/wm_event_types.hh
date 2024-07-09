@@ -300,8 +300,8 @@ enum {
   NDOF_BUTTON_11 = 0x01b4, /* 436 */
   NDOF_BUTTON_12 = 0x01b5, /* 437 */
 
-  /* Disabled as GHOST converts these to keyboard events
-   * which use regular keyboard event handling logic. */
+/* Disabled as GHOST converts these to keyboard events
+ * which use regular keyboard event handling logic. */
 #if 0
   /* Keyboard emulation. */
   NDOF_BUTTON_ESC = 0x01b6,    /* 438 */
@@ -320,15 +320,15 @@ enum {
   NDOF_BUTTON_SAVE_V3 = 0x01c0, /* 448 */
 
   /* Keyboard Pro special buttons. */
-  NDOF_BUTTON_KBP_F1 = 0x01c1, /* 449 */
-  NDOF_BUTTON_KBP_F2 = 0x01c2, /* 450 */
-  NDOF_BUTTON_KBP_F3 = 0x01c3, /* 451 */
-  NDOF_BUTTON_KBP_F4 = 0x01c4, /* 452 */
-  NDOF_BUTTON_KBP_F5 = 0x01c5, /* 453 */
-  NDOF_BUTTON_KBP_F6 = 0x01c6, /* 454 */
-  NDOF_BUTTON_KBP_F7 = 0x01c7, /* 455 */
-  NDOF_BUTTON_KBP_F8 = 0x01c8, /* 456 */
-  NDOF_BUTTON_KBP_F9 = 0x01c9, /* 457 */
+  NDOF_BUTTON_KBP_F1 = 0x01c1,  /* 449 */
+  NDOF_BUTTON_KBP_F2 = 0x01c2,  /* 450 */
+  NDOF_BUTTON_KBP_F3 = 0x01c3,  /* 451 */
+  NDOF_BUTTON_KBP_F4 = 0x01c4,  /* 452 */
+  NDOF_BUTTON_KBP_F5 = 0x01c5,  /* 453 */
+  NDOF_BUTTON_KBP_F6 = 0x01c6,  /* 454 */
+  NDOF_BUTTON_KBP_F7 = 0x01c7,  /* 455 */
+  NDOF_BUTTON_KBP_F8 = 0x01c8,  /* 456 */
+  NDOF_BUTTON_KBP_F9 = 0x01c9,  /* 457 */
   NDOF_BUTTON_KBP_F10 = 0x01ca, /* 458 */
   NDOF_BUTTON_KBP_F11 = 0x01cb, /* 459 */
   NDOF_BUTTON_KBP_F12 = 0x01cc, /* 460 */
