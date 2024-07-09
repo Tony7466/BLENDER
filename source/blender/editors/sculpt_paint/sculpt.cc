@@ -540,37 +540,27 @@ bool vert_has_face_set(const SculptSession &ss, PBVHVertRef vertex, int face_set
 
 static bool sculpt_check_unique_face_set_in_base_mesh(const SculptSession &ss, int index)
 {
-  if (!ss.face_sets) {
-    return true;
-  }
-  int face_set = -1;
-  for (const int face_index : ss.vert_to_face_map[index]) {
-    if (face_set == -1) {
-      face_set = ss.face_sets[face_index];
-    }
-    else {
-      if (ss.face_sets[face_index] != face_set) {
-        return false;
-      }
-    }
-  }
-  return true;
+  return vert_has_unique_face_set_mesh(ss.vert_to_face_map, ss.face_sets, index);
 }
 
 /**
  * Checks if the face sets of the adjacent faces to the edge between \a v1 and \a v2
  * in the base mesh are equal.
  */
-static bool sculpt_check_unique_face_set_for_edge_in_base_mesh(const SculptSession &ss,
-                                                               int v1,
-                                                               int v2)
+static bool sculpt_check_unique_face_set_for_edge_in_base_mesh(
+    const GroupedSpan<int> vert_to_face_map,
+    const int *face_sets,
+    const Span<int> corner_verts,
+    const OffsetIndices<int> faces,
+    int v1,
+    int v2)
 {
-  const Span<int> vert_map = ss.vert_to_face_map[v1];
+  const Span<int> vert_map = vert_to_face_map[v1];
   int p1 = -1, p2 = -1;
   for (int i = 0; i < vert_map.size(); i++) {
     const int face_i = vert_map[i];
-    for (const int corner : ss.faces[face_i]) {
-      if (ss.corner_verts[corner] == v2) {
+    for (const int corner : faces[face_i]) {
+      if (corner_verts[corner] == v2) {
         if (p1 == -1) {
           p1 = vert_map[i];
           break;
@@ -585,7 +575,7 @@ static bool sculpt_check_unique_face_set_for_edge_in_base_mesh(const SculptSessi
   }
 
   if (p1 != -1 && p2 != -1) {
-    return ss.face_sets[p1] == ss.face_sets[p2];
+    return face_sets[p1] == face_sets[p2];
   }
   return true;
 }
@@ -645,6 +635,40 @@ bool vert_has_unique_face_set_mesh(const GroupedSpan<int> vert_to_face_map,
       }
     }
   }
+  return true;
+}
+
+bool vert_has_unique_face_set_grids(const GroupedSpan<int> vert_to_face_map,
+                                    const Span<int> corner_verts,
+                                    const OffsetIndices<int> faces,
+                                    const int *face_sets,
+                                    const SubdivCCG &subdiv_ccg,
+                                    const SubdivCCGCoord &coord)
+{
+  /* TODO: Move this check higher out of this function & make this function take empty span instead
+   * of a raw pointer. */
+  if (!face_sets) {
+    return true;
+  }
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+  int v1, v2;
+  const SubdivCCGAdjacencyType adjacency = BKE_subdiv_ccg_coarse_mesh_adjacency_info_get(
+      subdiv_ccg, coord, corner_verts, faces, v1, v2);
+  switch (adjacency) {
+    case SUBDIV_CCG_ADJACENT_VERTEX:
+      return vert_has_unique_face_set_mesh(vert_to_face_map, face_sets, v1);
+    case SUBDIV_CCG_ADJACENT_EDGE:
+      return sculpt_check_unique_face_set_for_edge_in_base_mesh(
+          vert_to_face_map, face_sets, corner_verts, faces, v1, v2);
+    case SUBDIV_CCG_ADJACENT_NONE:
+      return true;
+  }
+}
+
+bool vert_has_unique_face_set_bmesh()
+{
+  /* TODO: Obviously not fully implemented yet. Needs to be implemented for Relax Face Sets brush
+   * to work. */
   return true;
 }
 
@@ -7495,6 +7519,78 @@ void calc_vert_neighbors_interior(const OffsetIndices<int> faces,
       else {
         /* Only include other boundary vertices as neighbors of boundary vertices. */
         neighbors.remove_if([&](const int vert) { return !boundary_verts[vert]; });
+      }
+    }
+  }
+}
+
+static bool subdiv_coord_is_boundary(const OffsetIndices<int> faces,
+                                     const Span<int> corner_verts,
+                                     const BitSpan boundary_verts,
+                                     const SubdivCCG &subdiv_ccg,
+                                     const SubdivCCGCoord coord)
+{
+  int v1, v2;
+  const SubdivCCGAdjacencyType adjacency = BKE_subdiv_ccg_coarse_mesh_adjacency_info_get(
+      subdiv_ccg, coord, corner_verts, faces, v1, v2);
+  switch (adjacency) {
+    case SUBDIV_CCG_ADJACENT_VERTEX:
+      return boundary_verts[v1];
+    case SUBDIV_CCG_ADJACENT_EDGE:
+      return boundary_verts[v1] && boundary_verts[v2];
+    case SUBDIV_CCG_ADJACENT_NONE:
+      return false;
+  }
+  BLI_assert_unreachable();
+  return false;
+}
+
+void calc_vert_neighbors_interior(const OffsetIndices<int> faces,
+                                  const Span<int> corner_verts,
+                                  const BitSpan boundary_verts,
+                                  const SubdivCCG &subdiv_ccg,
+                                  const Span<int> grids,
+                                  const MutableSpan<SubdivCCGNeighbors> result)
+{
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+  const Span<CCGElem *> elems = subdiv_ccg.grids;
+
+  BLI_assert(grids.size() * key.grid_area == result.size());
+
+  for (const int i : grids.index_range()) {
+    const int grid = grids[i];
+    CCGElem *elem = elems[grid];
+    const int node_verts_start = i * key.grid_area;
+
+    /* TODO: This loop could be optimized in the future by skipping unnecessary logic for
+     * non-boundary grid vertices. */
+    for (const int y : IndexRange(key.grid_size)) {
+      for (const int x : IndexRange(key.grid_size)) {
+        const int offset = CCG_grid_xy_to_index(key.grid_size, x, y);
+        const int node_vert_index = node_verts_start + offset;
+
+        SubdivCCGCoord coord{};
+        coord.grid_index = grid;
+        coord.x = x;
+        coord.y = y;
+
+        SubdivCCGNeighbors neighbors;
+        BKE_subdiv_ccg_neighbor_coords_get(subdiv_ccg, coord, false, neighbors);
+
+        if (subdiv_coord_is_boundary(faces, corner_verts, boundary_verts, subdiv_ccg, coord)) {
+          if (neighbors.coords.size() == 2) {
+            /* Do not include neighbors of corner vertices. */
+            neighbors.coords.clear();
+          }
+          else {
+            /* Only include other boundary vertices as neighbors of boundary vertices. */
+            neighbors.coords.remove_if([&](const SubdivCCGCoord coord) {
+              return !subdiv_coord_is_boundary(
+                  faces, corner_verts, boundary_verts, subdiv_ccg, coord);
+            });
+          }
+        }
+        result[node_vert_index + offset] = neighbors;
       }
     }
   }

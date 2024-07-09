@@ -962,6 +962,12 @@ bool vert_has_unique_face_set(const SculptSession &ss, PBVHVertRef vertex);
 bool vert_has_unique_face_set_mesh(const GroupedSpan<int> vert_to_face_map,
                                    const int *face_sets,
                                    int vert);
+bool vert_has_unique_face_set_grids(const GroupedSpan<int> vert_to_face_map,
+                                    const Span<int> corner_verts,
+                                    const OffsetIndices<int> faces,
+                                    const int *face_sets,
+                                    const SubdivCCG &subdiv_ccg,
+                                    const SubdivCCGCoord &coord);
 
 /**
  * Creates the sculpt face set attribute on the mesh if it doesn't exist.
