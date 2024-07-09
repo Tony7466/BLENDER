@@ -25,6 +25,8 @@
 #include "ED_view3d.hh"
 #include "GEO_reorder.hh"
 
+#include <iostream>
+
 extern "C" {
 #include "curve_fit_nd.h"
 }
@@ -338,6 +340,56 @@ blender::bke::CurvesGeometry curves_merge_by_distance(
   return dst_curves;
 }
 
+static Vector<int> toposort_connected_curves(const Span<int> connect_to_curve)
+{
+  const IndexRange range = connect_to_curve.index_range();
+  enum Flag {
+    OnStack = 1,
+    Inserted = 2,
+  };
+  Array<uint8_t> flag(connect_to_curve.size(), 0);
+
+  Vector<int> sorted_curves;
+  sorted_curves.reserve(connect_to_curve.size());
+
+  Stack<int> stack;
+  for (const int i : range) {
+    stack.push(i);
+    flag[i] |= OnStack;
+  }
+
+  bool has_cycle = false;
+  while (!stack.is_empty()) {
+    const int current = stack.peek();
+    // if ((flag[current] & Handled) != 0) {
+    //   stack.pop();
+    //   continue;
+    // }
+
+    // flag[current] |= Handled;
+    const int next = connect_to_curve[current];
+    if (range.contains(next)) {
+      const bool is_inserted = (flag[next] & Inserted) != 0;
+      if (!is_inserted) {
+        const bool is_on_stack = (flag[next] & OnStack) != 0;
+        if (is_on_stack) {
+          has_cycle = true;
+        }
+        else {
+          stack.push(next);
+          continue;
+        }
+      }
+    }
+
+    sorted_curves.append(current);
+    stack.pop();
+  }
+  UNUSED_VARS(has_cycle);
+
+  return sorted_curves;
+}
+
 bke::CurvesGeometry curves_merge_endpoints(
     const bke::CurvesGeometry &src_curves,
     Span<int> connect_to_curve,
@@ -346,6 +398,13 @@ bke::CurvesGeometry curves_merge_endpoints(
 {
   BLI_assert(connect_to_curve.size() == src_curves.curves_num());
   const IndexRange curves_range = src_curves.curves_range();
+
+  Vector<int> sorted_curves = toposort_connected_curves(connect_to_curve);
+  std::cout << "Sorted curves: ";
+  for (const int i : sorted_curves.index_range()) {
+    std::cout << sorted_curves[i] << ", ";
+  }
+  std::cout << std::endl;
 
   /* Find a new ordering of curves based on connectivity. */
   Array<int> new_by_old_map(src_curves.curves_num(), -1);
