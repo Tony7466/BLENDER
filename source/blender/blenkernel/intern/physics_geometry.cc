@@ -2395,12 +2395,12 @@ AttributeWriter<bool> PhysicsGeometry::constraint_disable_collision_for_write()
 
 AttributeAccessor PhysicsGeometry::attributes() const
 {
-  return AttributeAccessor(this, bke::get_physics_accessor_functions_ref(true));
+  return AttributeAccessor(&this->impl(), bke::get_physics_accessor_functions_ref(true));
 }
 
 MutableAttributeAccessor PhysicsGeometry::attributes_for_write()
 {
-  return MutableAttributeAccessor(this, bke::get_physics_accessor_functions_ref(true));
+  return MutableAttributeAccessor(&this->impl_for_write(), bke::get_physics_accessor_functions_ref(true));
 }
 
 /** \} */

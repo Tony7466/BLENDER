@@ -631,14 +631,36 @@ static void constraint_disable_collision_set_fn(btTypedConstraint *constraint, b
   }
 }
 
+template<bool force_cache>
+struct PhysicsAttributeProviderTypes {
+  template<typename T,
+           RigidBodyGetFn<T> GetFn,
+           RigidBodySetFn<T> SetFn>
+  using BuiltinRigidBodyAttributeProvider = BuiltinRigidBodyAttributeProvider<T, GetFn, SetFn>;
+};
+
+template<>
+struct PhysicsAttributeProviderTypes<true> {
+  template<typename T,
+           RigidBodyGetFn<T> GetFn,
+           RigidBodySetFn<T> SetFn>
+  using BuiltinRigidBodyAttributeProvider = BuiltinRigidBodyAttributeProvider<T, nullptr, nullptr>;
+};
+
+template <bool force_cache>
 static ComponentAttributeProviders create_attribute_providers_for_physics()
 {
-  static PhysicsAccessInfo physics_access = {
-      [](void *owner) -> PhysicsGeometry * { return static_cast<PhysicsGeometry *>(owner); },
-      [](const void *owner) -> const PhysicsGeometry * {
-        return static_cast<const PhysicsGeometry *>(owner);
-      }};
-  static BuiltinRigidBodyAttributeProvider<int, id_get_fn, id_set_fn> body_id(
+  static PhysicsAccessInfo physics_access = {[](void *owner) -> PhysicsGeometryImpl * {
+                                               return static_cast<PhysicsGeometryImpl *>(owner);
+                                             },
+                                             [](const void *owner) -> const PhysicsGeometryImpl * {
+                                               return static_cast<const PhysicsGeometryImpl *>(
+                                                   owner);
+                                             }};
+
+  using ProviderTypes = PhysicsAttributeProviderTypes<force_cache>;
+
+  static ProviderTypes::template BuiltinRigidBodyAttributeProvider<int, id_get_fn, id_set_fn> body_id(
       PhysicsGeometry::builtin_attributes.id,
       AttrDomain::Point,
       BuiltinAttributeProvider::NonDeletable,
@@ -973,9 +995,11 @@ static GVArray adapt_physics_attribute_domain(const PhysicsGeometry & /*physics*
   return {};
 }
 
+template <bool force_cache>
 static AttributeAccessorFunctions get_physics_accessor_functions()
 {
-  static const ComponentAttributeProviders providers = create_attribute_providers_for_physics();
+  static const ComponentAttributeProviders providers =
+      create_attribute_providers_for_physics<force_cache>();
   AttributeAccessorFunctions fn =
       attribute_accessor_functions::accessor_functions_for_providers<providers>();
   fn.domain_size = [](const void *owner, const AttrDomain domain) {
@@ -1008,10 +1032,11 @@ static AttributeAccessorFunctions get_physics_accessor_functions()
   return fn;
 }
 
-const AttributeAccessorFunctions &get_physics_accessor_functions_ref(const bool use_physics_data)
+const AttributeAccessorFunctions &get_physics_accessor_functions_ref(const bool force_cache)
 {
-  static const AttributeAccessorFunctions fn = get_physics_accessor_functions();
-  return fn;
+  static const AttributeAccessorFunctions physics_fn = get_physics_accessor_functions<false>();
+  static const AttributeAccessorFunctions cached_fn = get_physics_accessor_functions<true>();
+  return force_cache ? cached_fn : physics_fn;
 }
 
 /** \} */

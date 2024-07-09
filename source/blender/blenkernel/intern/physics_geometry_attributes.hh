@@ -393,17 +393,17 @@ class BuiltinRigidBodyAttributeProvider final : public BuiltinPhysicsAttributeBa
 
   GAttributeReader try_get_for_read(const void *owner) const final
   {
-    const PhysicsGeometry *physics = physics_access_.get_const_physics(owner);
-    if (physics == nullptr) {
+    const PhysicsGeometryImpl *impl = physics_access_.get_const_physics(owner);
+    if (impl == nullptr) {
       return {};
     }
 
-    if (physics->impl().is_empty) {
-      return try_get_cache_for_read(&physics->impl().body_data_, physics->bodies_num());
+    constexpr bool force_cache = (GetFn == nullptr);
+    if (force_cache || impl->is_empty) {
+      return try_get_cache_for_read(&impl->body_data_, impl->body_num_);
     }
 
-    GVArray varray = VArray<T>::template For<VArrayImpl_For_PhysicsBodies<T, GetFn>>(
-        physics->impl());
+    GVArray varray = VArray<T>::template For<VArrayImpl_For_PhysicsBodies<T, GetFn>>(*impl);
     return {std::move(varray), domain_, nullptr};
   }
 
@@ -412,19 +412,19 @@ class BuiltinRigidBodyAttributeProvider final : public BuiltinPhysicsAttributeBa
     if constexpr (SetFn == nullptr) {
       return {};
     }
-    PhysicsGeometry *physics = physics_access_.get_physics(owner);
-    if (physics == nullptr) {
+    PhysicsGeometryImpl *impl = physics_access_.get_physics(owner);
+    if (impl == nullptr) {
       return {};
     }
 
-    if (physics->impl().is_empty) {
-      return try_get_cache_for_write(
-          owner, &physics->impl_for_write().body_data_, physics->bodies_num());
+    constexpr bool force_cache = (GetFn == nullptr);
+    if (force_cache || impl->is_empty) {
+      return try_get_cache_for_write(owner, &impl->body_data_, impl->body_num_);
     }
 
     GVMutableArray varray =
         VMutableArray<T>::template For<VMutableArrayImpl_For_PhysicsBodies<T, GetFn, SetFn>>(
-            physics->impl());
+            *impl);
 
     std::function<void()> tag_modified_fn;
     if (update_on_change_ != nullptr) {
@@ -483,8 +483,8 @@ class BuiltinConstraintAttributeProvider final : public BuiltinPhysicsAttributeB
 
   GAttributeReader try_get_for_read(const void *owner) const final
   {
-    const PhysicsGeometry *physics = physics_access_.get_const_physics(owner);
-    if (physics == nullptr) {
+    const PhysicsGeometryImpl *impl = physics_access_.get_const_physics(owner);
+    if (impl == nullptr) {
       return {};
     }
 
@@ -492,16 +492,16 @@ class BuiltinConstraintAttributeProvider final : public BuiltinPhysicsAttributeB
       ensure_on_access_(owner);
     }
 
-    if (physics->impl().is_empty) {
-      return try_get_cache_for_read(&physics->impl().constraint_data_, physics->constraints_num());
+    constexpr bool force_cache = (GetFn == nullptr);
+    if (force_cache  || impl->is_empty) {
+      return try_get_cache_for_read(&impl->constraint_data_, impl->constraint_num_);
     }
     if constexpr (GetCacheFn) {
-      Span<T> cache = GetCacheFn(physics->impl());
+      Span<T> cache = GetCacheFn(*impl);
       return {VArray<T>::ForSpan(cache), domain_, nullptr};
     }
 
-    GVArray varray = VArray<T>::template For<VArrayImpl_For_PhysicsConstraints<T, GetFn>>(
-        physics->impl());
+    GVArray varray = VArray<T>::template For<VArrayImpl_For_PhysicsConstraints<T, GetFn>>(*impl);
     return {std::move(varray), domain_, nullptr};
   }
 
@@ -510,8 +510,8 @@ class BuiltinConstraintAttributeProvider final : public BuiltinPhysicsAttributeB
     if constexpr (SetFn == nullptr) {
       return {};
     }
-    PhysicsGeometry *physics = physics_access_.get_physics(owner);
-    if (physics == nullptr) {
+    PhysicsGeometryImpl *impl = physics_access_.get_physics(owner);
+    if (impl == nullptr) {
       return {};
     }
 
@@ -519,14 +519,14 @@ class BuiltinConstraintAttributeProvider final : public BuiltinPhysicsAttributeB
       ensure_on_access_(owner);
     }
 
-    if (physics->impl().is_empty) {
-      return try_get_cache_for_write(
-          owner, &physics->impl_for_write().constraint_data_, physics->constraints_num());
+    constexpr bool force_cache = (GetFn == nullptr);
+    if (force_cache || impl->is_empty) {
+      return try_get_cache_for_write(owner, &impl->constraint_data_, impl->constraint_num_);
     }
 
     GVMutableArray varray =
         VMutableArray<T>::template For<VMutableArrayImpl_For_PhysicsConstraints<T, GetFn, SetFn>>(
-            physics->impl());
+            *impl);
 
     std::function<void()> tag_modified_fn;
     if (update_on_change_ != nullptr) {
@@ -554,6 +554,6 @@ class BuiltinConstraintAttributeProvider final : public BuiltinPhysicsAttributeB
 
 /** \} */
 
-const AttributeAccessorFunctions &get_physics_accessor_functions_ref(bool use_physics_data);
+const AttributeAccessorFunctions &get_physics_accessor_functions_ref(bool force_cache);
 
 }  // namespace blender::bke
