@@ -396,6 +396,14 @@ void VKCommandBuilder::add_image_read_barriers(VKRenderGraph &render_graph,
       continue;
     }
 
+    if (state_.layered_attachments.contains(resource.image.vk_image) &&
+        resource_state.image_layout != link.vk_image_layout)
+    {
+      wait_access |= VK_ACCESS_TRANSFER_WRITE_BIT;
+      state_.src_stage_mask |= VK_PIPELINE_STAGE_TRANSFER_BIT;
+      continue;
+    }
+
     state_.src_stage_mask |= resource_state.vk_pipeline_stages;
     state_.dst_stage_mask |= node_stages;
 
