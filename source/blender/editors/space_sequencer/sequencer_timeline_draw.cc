@@ -1244,68 +1244,21 @@ static void draw_seq_timeline_channels(TimelineDrawContext *ctx)
  * sure that visually selected are always "on top" of others. It matters
  * while selection is being dragged over other strips. */
 static void visible_strips_ordered_get(TimelineDrawContext *timeline_ctx,
-                                       Vector<StripDrawContext> &r_unselected,
-                                       Vector<StripDrawContext> &r_selected)
+                                       Vector<StripDrawContext> &r_bottom_layer,
+                                       Vector<StripDrawContext> &r_top_layer)
 {
-  r_unselected.clear();
-  r_selected.clear();
+  r_bottom_layer.clear();
+  r_top_layer.clear();
 
-  Sequence *act_seq = SEQ_select_active_get(timeline_ctx->scene);
   Vector<Sequence *> strips = sequencer_visible_strips_get(timeline_ctx->C);
 
-  /* Special case for "active retiming mode" - retiming key is selected. */
-  Map<SeqRetimingKey *, Sequence *> retiming_selection = SEQ_retiming_selection_get(
-      timeline_ctx->ed);
-  if (retiming_selection.size() > 0) {
-    /* TODO(@il4n): Temporary code for a bug fix. */
-    retiming_selection.remove_if([&](auto item) {
-      bool is_visible = false;
-      for (Sequence *seq : strips) {
-        if (seq == item.value) {
-          is_visible = true;
-          break;
-        }
-      }
-      return !is_visible;
-    });
-
-    for (Sequence *seq : retiming_selection.values()) {
-      StripDrawContext strip_ctx = strip_draw_context_get(timeline_ctx, seq);
-      r_selected.append(strip_ctx);
-      /* Remove selected strips from visible strips. */
-      strips.remove_if([seq](Sequence *seq_visible) { return seq == seq_visible; });
-    }
-
-    for (Sequence *seq : strips) {
-      StripDrawContext strip_ctx = strip_draw_context_get(timeline_ctx, seq);
-      r_unselected.append(strip_ctx);
-    }
-  }
-  else {
-    for (Sequence *seq : strips) {
-      /* Active will be added last. */
-      if (seq == act_seq) {
-        continue;
-      }
-
-      StripDrawContext strip_ctx = strip_draw_context_get(timeline_ctx, seq);
-      if ((seq->flag & SELECT) == 0) {
-        r_unselected.append(strip_ctx);
-      }
-      else {
-        r_selected.append(strip_ctx);
-      }
-    }
-  }
-
-  /* Add active, if any. */
-  if (act_seq) {
-    StripDrawContext strip_ctx = strip_draw_context_get(timeline_ctx, act_seq);
-    if ((act_seq->flag & SELECT) == 0) {
-      r_unselected.append(strip_ctx);
+  for (Sequence *seq : strips) {
+    StripDrawContext strip_ctx = strip_draw_context_get(timeline_ctx, seq);
+    if ((seq->flag & SEQ_OVERLAP) == 0) {
+      r_bottom_layer.append(strip_ctx);
     }
     else {
-      r_selected.append(strip_ctx);
+      r_top_layer.append(strip_ctx);
     }
   }
 }
@@ -1569,10 +1522,10 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx, StripsDrawBatch &
     return;
   }
 
-  Vector<StripDrawContext> unselected, selected;
-  visible_strips_ordered_get(timeline_ctx, unselected, selected);
-  draw_seq_strips(timeline_ctx, strips_batch, unselected);
-  draw_seq_strips(timeline_ctx, strips_batch, selected);
+  Vector<StripDrawContext> bottom_layer, top_layer;
+  visible_strips_ordered_get(timeline_ctx, bottom_layer, top_layer);
+  draw_seq_strips(timeline_ctx, strips_batch, bottom_layer);
+  draw_seq_strips(timeline_ctx, strips_batch, top_layer);
 }
 
 static void draw_timeline_sfra_efra(TimelineDrawContext *ctx)
