@@ -408,7 +408,6 @@ static IndexMask grease_pencil_get_visible_bezier_points(Object &object,
                                                          IndexMaskMemory &memory)
 {
   const bke::CurvesGeometry &curves = drawing.strokes();
-  const IndexRange points_range = curves.points_range();
 
   if (!curves.has_curve_with_type(CURVE_TYPE_BEZIER)) {
     return IndexMask(0);
@@ -428,7 +427,7 @@ static IndexMask grease_pencil_get_visible_bezier_points(Object &object,
       object, drawing, layer_index, memory);
 
   const IndexMask selected_points = IndexMask::from_predicate(
-      points_range, GrainSize(4096), memory, [&](const int64_t point_i) {
+      curves.points_range(), GrainSize(4096), memory, [&](const int64_t point_i) {
         const bool is_selected = selected_point[point_i] || selected_left[point_i] ||
                                  selected_right[point_i];
         const bool is_bezier = types[point_to_curve_map[point_i]] == CURVE_TYPE_BEZIER;
@@ -444,7 +443,6 @@ static IndexMask grease_pencil_get_visible_NURBS_points(Object &object,
                                                         IndexMaskMemory &memory)
 {
   const bke::CurvesGeometry &curves = drawing.strokes();
-  const IndexRange points_range = curves.points_range();
 
   if (!curves.has_curve_with_type(CURVE_TYPE_NURBS)) {
     return IndexMask(0);
@@ -458,7 +456,7 @@ static IndexMask grease_pencil_get_visible_NURBS_points(Object &object,
           object, drawing, layer_index, memory);
 
   const IndexMask nurbs_points = IndexMask::from_predicate(
-      points_range, GrainSize(4096), memory, [&](const int64_t point_i) {
+      curves.points_range(), GrainSize(4096), memory, [&](const int64_t point_i) {
         const int curve_i = point_to_curve_map[point_i];
         const bool is_selected = editable_and_selected_curves.contains(curve_i);
         const bool is_nurbs = types[curve_i] == CURVE_TYPE_NURBS;
@@ -474,7 +472,6 @@ static IndexMask grease_pencil_get_visible_NURBS_curves(Object &object,
                                                         IndexMaskMemory &memory)
 {
   const bke::CurvesGeometry &curves = drawing.strokes();
-  const IndexRange points_range = curves.points_range();
 
   if (!curves.has_curve_with_type(CURVE_TYPE_NURBS)) {
     return IndexMask(0);
