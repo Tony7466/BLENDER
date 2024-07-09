@@ -1,1 +1,2 @@
 Referenced by commit 4ec3f0c98179ff74dd86131900872ca101237fb2, Fix: new-free mismatch
+Referenced by commit 165b60fd3e9f9f4a30875d4fb0c1f2fb650cec8a, Fix #124398: new/free mismatch
