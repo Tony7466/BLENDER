@@ -206,21 +206,19 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
       const bke::InstanceReference value = data.get<bke::InstanceReference>(real_index);
       const std::string name = value.name();
       const int icon = get_instance_reference_icon(value);
-      if (!name.empty()) {
-        uiDefIconTextBut(params.block,
-                         UI_BTYPE_LABEL,
-                         0,
-                         icon,
-                         name.c_str(),
-                         params.xmin,
-                         params.ymin,
-                         params.width,
-                         params.height,
-                         nullptr,
-                         0,
-                         0,
-                         nullptr);
-      }
+      uiDefIconTextBut(params.block,
+                       UI_BTYPE_LABEL,
+                       0,
+                       icon,
+                       name.c_str(),
+                       params.xmin,
+                       params.ymin,
+                       params.width,
+                       params.height,
+                       nullptr,
+                       0,
+                       0,
+                       nullptr);
     }
     else if (data.type().is<std::string>()) {
       uiDefIconTextBut(params.block,
