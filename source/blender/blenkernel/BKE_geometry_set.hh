@@ -427,7 +427,7 @@ struct GeometrySet {
   friend bool operator==(const GeometrySet &a, const GeometrySet &b)
   {
     /* This compares only the component pointers, not the actual geometry data. */
-    return Span(a.components_) == Span(b.components_);
+    return Span(a.components_) == Span(b.components_) && a.name == b.name;
   }
 
  private:
