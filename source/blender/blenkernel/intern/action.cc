@@ -487,7 +487,7 @@ IDTypeInfo IDType_ID_AC = {
     /*id_code*/ ID_AC,
     /*id_filter*/ FILTER_ID_AC,
 
-    /* This value will be set dynamically in `BKE_idtype_init()` to include all
+    /* This value will be set dynamically in `BKE_idtype_init()` to only include
      * animatable ID types (see `animrig::Binding::users()`). */
     /*dependencies_id_types*/ FILTER_ID_ALL,
 
