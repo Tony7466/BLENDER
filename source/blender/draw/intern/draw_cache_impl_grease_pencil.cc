@@ -554,9 +554,32 @@ static void IndexBuf_add_bezier_lines(Object &object,
 static void IndexBuf_add_bezier_points(Object &object,
                                        const bke::greasepencil::Drawing &drawing,
                                        int layer_index,
+                                       const OffsetIndices<int> &points_by_curve,
                                        GPUIndexBufBuilder *epb,
                                        IndexMaskMemory &memory,
                                        int *r_drawing_start_offset)
+{
+  /* Fill point indices. */
+  const IndexMask selected_editable_strokes =
+      ed::greasepencil::retrieve_editable_and_selected_strokes(
+          object, drawing, layer_index, memory);
+
+  selected_editable_strokes.foreach_index([&](const int curve_i) {
+    const IndexRange points = points_by_curve[curve_i];
+    for (const int point : points) {
+      GPU_indexbuf_add_generic_vert(epb, point + (*r_drawing_start_offset));
+    }
+  });
+
+  *r_drawing_start_offset += curves.points_num();
+}
+
+static void IndexBuf_add_bezier_line_points(Object &object,
+                                            const bke::greasepencil::Drawing &drawing,
+                                            int layer_index,
+                                            GPUIndexBufBuilder *epb,
+                                            IndexMaskMemory &memory,
+                                            int *r_drawing_start_offset)
 {
   const IndexMask bezier_points = grease_pencil_get_visible_bezier_points(
       object, drawing, layer_index, memory);
@@ -938,21 +961,15 @@ static void grease_pencil_edit_batch_ensure(Object &object,
     IndexBuf_add_bezier_lines(
         object, info.drawing, info.layer_index, &elb, memory, &drawing_line_start_offset);
 
-    /* Fill point indices. */
-    const IndexMask selected_editable_strokes =
-        ed::greasepencil::retrieve_editable_and_selected_strokes(
-            object, info.drawing, info.layer_index, memory);
+    IndexBuf_add_bezier_points(object,
+                               info.drawing,
+                               info.layer_index,
+                               points_by_curve,
+                               &epb,
+                               memory,
+                               &drawing_start_offset);
 
-    selected_editable_strokes.foreach_index([&](const int curve_i) {
-      const IndexRange points = points_by_curve[curve_i];
-      for (const int point : points) {
-        GPU_indexbuf_add_generic_vert(&epb, point + drawing_start_offset);
-      }
-    });
-
-    drawing_start_offset += curves.points_num();
-
-    IndexBuf_add_bezier_points(
+    IndexBuf_add_bezier_line_points(
         object, info.drawing, info.layer_index, &epb, memory, &drawing_start_offset);
   }
 
