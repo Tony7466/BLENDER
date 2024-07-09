@@ -869,21 +869,22 @@ static int uvedit_uv_threshold_weld_underlying_geometry(bContext *C, wmOperator 
         }
 
         /*Filter UV coordinates that are not within threshold distance of central UV*/
-        for (int i = 0; i < luvmap.size(); i++) {
-          if (i != centeruv) {
-            float dist = len_squared_v2v2(luvmap[centeruv], luvmap[i]);
-            if (dist > threshold) {
-              sum[0] -= luvmap[i][0];
-              sum[1] -= luvmap[i][1];
-              luvmap.remove_and_reorder(i);
+        float *center = luvmap[centeruv];
+        int i = 0;
+        while (i < luvmap.size()) {
+          float dist = len_squared_v2v2(center, luvmap[i]);
+          if (dist > threshold) {
+            sum[0] -= luvmap[i][0];
+            sum[1] -= luvmap[i][1];
+            luvmap.remove_and_reorder(i);
+          }
+          else {
+            /*if the coordinate that is within threshold distance is not at same UV coordinate
+             * that means a new merge occured*/
+            if (dist != 0.0f) {
+              changed = true;
             }
-            else {
-              /*if the coordinate that is within threshold distance is not at same UV coordinate
-               * that means a new merge occured*/
-              if (dist != 0.0f) {
-                changed = true;
-              }
-            }
+            i++;
           }
         }
         if (changed) {
