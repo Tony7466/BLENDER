@@ -811,7 +811,10 @@ static int uv_remove_doubles_to_unselected(bContext *C, wmOperator *op)
 
   return OPERATOR_FINISHED;
 }
-
+/*NOTE:
+  The calculation for the centerpoint of loops belonging to a vertex will be skewed if one UV
+  coordinate holds more loops than the others
+*/
 static int uvedit_uv_threshold_weld_underlying_geometry(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
@@ -829,53 +832,65 @@ static int uvedit_uv_threshold_weld_underlying_geometry(bContext *C, wmOperator 
     BMLoop *l;
     BMIter viter, liter;
     BM_ITER_MESH (v, &viter, em->bm, BM_VERTS_OF_MESH) {
-      blender::Vector<float *> luvmap;
-      /*Grap all luv pointers from selected loops*/
-      BM_ITER_ELEM (l, &liter, v, BM_LOOPS_OF_VERT) {
-        if (uvedit_uv_select_test(scene, l, offsets)) {
-          luvmap.append(BM_ELEM_CD_GET_FLOAT_P(l, offsets.uv));
-        }
-      }
-      if (luvmap.size() == 0) {
-        continue;
-      }
-      std::vector<float> sum(2, 0.0f);
-      std::vector<float> cent(2);
-      /*Find the central UV coordinate*/
-      for (auto &luv : luvmap) {
-        sum[0] += luv[0];
-        sum[1] += luv[1];
-      }
-      cent[0] = sum[0] / luvmap.size();
-      cent[1] = sum[1] / luvmap.size();
+      bool changed = true;
+      while (changed) {
+        changed = false;
+        blender::Vector<float *> luvmap;
 
-      /*Find central UV*/
-      float mindist = len_squared_v2v2(cent.data(), luvmap[0]);
-      int centeruv = 0;
-      for (int i = 0; i < luvmap.size(); i++) {
-        float dist = len_squared_v2v2(cent.data(), luvmap[i]);
-        if (dist < mindist) {
-          mindist = dist;
-          centeruv = i;
-        }
-      }
-      /*Filter UV coordinates that are not within threshold distance of central UV*/
-      for (int i = 0; i < luvmap.size(); i++) {
-        if (i != centeruv) {
-          float dist = len_squared_v2v2(luvmap[centeruv], luvmap[i]);
-          if (dist > threshold) {
-            sum[0] -= luvmap[i][0];
-            sum[1] -= luvmap[i][1];
-            luvmap.remove_and_reorder(i);
+        /*Grap all luv pointers from selected loops*/
+        BM_ITER_ELEM (l, &liter, v, BM_LOOPS_OF_VERT) {
+          if (uvedit_uv_select_test(scene, l, offsets)) {
+            luvmap.append(BM_ELEM_CD_GET_FLOAT_P(l, offsets.uv));
           }
         }
-      }
-      if (luvmap.size() > 0) {
-        /*Recalculate centerpoint*/
+        if (luvmap.size() == 0) {
+          break;
+        }
+
+        /*Find the central UV coordinate*/
+        std::vector<float> sum(2, 0.0f);
+        std::vector<float> cent(2);
+        for (auto &luv : luvmap) {
+          sum[0] += luv[0];
+          sum[1] += luv[1];
+        }
         cent[0] = sum[0] / luvmap.size();
         cent[1] = sum[1] / luvmap.size();
-        /* Shift all UV coordinates to new cent loc */
-        if (luvmap.size() > 0) {
+
+        /*Find central UV*/
+        float mindist = len_squared_v2v2(cent.data(), luvmap[0]);
+        int centeruv = 0;
+        for (int i = 0; i < luvmap.size(); i++) {
+          float dist = len_squared_v2v2(cent.data(), luvmap[i]);
+          if (dist < mindist) {
+            mindist = dist;
+            centeruv = i;
+          }
+        }
+
+        /*Filter UV coordinates that are not within threshold distance of central UV*/
+        for (int i = 0; i < luvmap.size(); i++) {
+          if (i != centeruv) {
+            float dist = len_squared_v2v2(luvmap[centeruv], luvmap[i]);
+            if (dist > threshold) {
+              sum[0] -= luvmap[i][0];
+              sum[1] -= luvmap[i][1];
+              luvmap.remove_and_reorder(i);
+            }
+            else {
+              /*if the coordinate that is within threshold distance is not at same UV coordinate
+               * that means a new merge occured*/
+              if (dist != 0.0f) {
+                changed = true;
+              }
+            }
+          }
+        }
+        if (changed) {
+          /*Recalculate centerpoint*/
+          cent[0] = sum[0] / luvmap.size();
+          cent[1] = sum[1] / luvmap.size();
+          /* Shift all UV coordinates to new cent loc */
           for (int i = 0; i < luvmap.size(); i++) {
             float *luv = luvmap[i];
             luv[0] = cent[0];
@@ -1432,8 +1447,8 @@ static int uv_hide_exec(bContext *C, wmOperator *op)
           }
         }
         else if (em->selectmode == SCE_SELECT_FACE) {
-          /* Deselect BMesh face depending on the type of UV selectmode and the type of UV element
-           * being considered. */
+          /* Deselect BMesh face depending on the type of UV selectmode and the type of UV
+           * element being considered. */
           BM_ITER_ELEM (l, &liter, efa, BM_LOOPS_OF_FACE) {
             if (UV_EDGE_SEL_TEST(l, !swap) && (ts->uv_selectmode == UV_SELECT_EDGE)) {
               BM_face_select_set(em->bm, efa, false);
@@ -1562,9 +1577,10 @@ static int uv_reveal_exec(bContext *C, wmOperator *op)
       continue;
     }
 
-    /* NOTE(@sidd017): Supporting selections in all cases is quite difficult considering there are
-     * at least 12 cases to look into (3 mesh select-modes + 4 uv select-modes + sticky modes).
-     * For now we select all UV faces as sticky disabled to ensure proper UV selection states (vert
+    /* NOTE(@sidd017): Supporting selections in all cases is quite difficult considering there
+     * are at least 12 cases to look into (3 mesh select-modes + 4 uv select-modes + sticky
+     * modes). For now we select all UV faces as sticky disabled to ensure proper UV selection
+     * states (vert
      * + edge flags) */
     if (use_face_center) {
       if (em->selectmode == SCE_SELECT_FACE) {
