@@ -4346,6 +4346,19 @@ static void get_view_range(Scene *scene, const bool use_preview_range, float r_r
   }
 }
 
+enum eFrameSelected_Mode {
+  FRAME_ANIMCHAN_BOTH = 0,
+  FRAME_ANIMCHAN_WIDTH = 1,
+  FRAME_ANIMCHAN_HEIGHT = 2,
+};
+
+static const EnumPropertyItem prop_animchannel_frame_types[] = {
+    {FRAME_ANIMCHAN_BOTH, "BOTH", 0, "Width and Height", ""},
+    {FRAME_ANIMCHAN_WIDTH, "WIDTH", 0, "Width Only", ""},
+    {FRAME_ANIMCHAN_HEIGHT, "HEIGHT", 0, "Height Only", ""},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
 static int graphkeys_view_selected_channels_exec(bContext *C, wmOperator *op)
 {
   bAnimContext ac;
@@ -4402,9 +4415,14 @@ static int graphkeys_view_selected_channels_exec(bContext *C, wmOperator *op)
 
   add_region_padding(C, window_region, &bounds);
 
-  if (ac.spacetype == SPACE_ACTION) {
+  const int dimensions = RNA_enum_get(op->ptr, "dimensions");
+  if (ac.spacetype == SPACE_ACTION || dimensions == FRAME_ANIMCHAN_WIDTH) {
     bounds.ymin = window_region->v2d.cur.ymin;
     bounds.ymax = window_region->v2d.cur.ymax;
+  }
+  if (dimensions == FRAME_ANIMCHAN_HEIGHT) {
+    bounds.xmin = window_region->v2d.cur.xmin;
+    bounds.xmax = window_region->v2d.cur.xmax;
   }
 
   const int smooth_viewtx = WM_operator_smooth_viewtx_get(op);
@@ -4444,6 +4462,13 @@ static void ANIM_OT_channels_view_selected(wmOperatorType *ot)
                              true,
                              "Use Preview Range",
                              "Ignore frames outside of the preview range");
+  
+  ot->prop = RNA_def_enum(ot->srna,
+                          "dimensions",
+                          prop_animchannel_frame_types,
+                          FRAME_ANIMCHAN_BOTH,
+                          "Dimensions",
+                          "Dimensions to modify");
 }
 
 static int graphkeys_channel_view_pick_invoke(bContext *C, wmOperator *op, const wmEvent *event)
@@ -4491,9 +4516,14 @@ static int graphkeys_channel_view_pick_invoke(bContext *C, wmOperator *op, const
 
   add_region_padding(C, window_region, &bounds);
 
-  if (ac.spacetype == SPACE_ACTION) {
+  const int dimensions = RNA_enum_get(op->ptr, "dimensions");
+  if (ac.spacetype == SPACE_ACTION || dimensions == FRAME_ANIMCHAN_WIDTH) {
     bounds.ymin = window_region->v2d.cur.ymin;
     bounds.ymax = window_region->v2d.cur.ymax;
+  }
+  if (dimensions == FRAME_ANIMCHAN_HEIGHT) {
+    bounds.xmin = window_region->v2d.cur.xmin;
+    bounds.xmax = window_region->v2d.cur.xmax;
   }
 
   const int smooth_viewtx = WM_operator_smooth_viewtx_get(op);
@@ -4528,6 +4558,13 @@ static void ANIM_OT_channel_view_pick(wmOperatorType *ot)
                              true,
                              "Use Preview Range",
                              "Ignore frames outside of the preview range");
+
+    ot->prop = RNA_def_enum(ot->srna,
+                          "dimensions",
+                          prop_animchannel_frame_types,
+                          FRAME_ANIMCHAN_BOTH,
+                          "Dimensions",
+                          "Dimensions to modify");
 }
 
 static const EnumPropertyItem channel_bake_key_options[] = {
