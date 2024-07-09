@@ -7,6 +7,13 @@
  *
  */
 
+/**
+ * NPR TODOs:
+ * - Check handling of NPR node shader weight (ntree_shader_weight_tree_invert).
+ *   NPR socket type.
+ *
+ */
+
 #include "eevee_npr.hh"
 
 #include "DNA_material_types.h"
