@@ -485,7 +485,9 @@ GHOST_TSuccess GHOST_ContextEGL::initializeDrawingContext()
         epoxy_has_egl_extension(m_display, "EGL_KHR_image_base") &&
         epoxy_has_egl_extension(m_display, "EGL_EXT_present_opaque"))
     {
-#  define EGL_PRESENT_OPAQUE_EXT 0x31DF
+#  ifndef EGL_PRESENT_OPAQUE_EXT
+#    define EGL_PRESENT_OPAQUE_EXT 0x31DF
+#  endif
       surface_attrib_list.push_back(EGL_PRESENT_OPAQUE_EXT);
       surface_attrib_list.push_back(EGL_TRUE);
     }
