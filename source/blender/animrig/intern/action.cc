@@ -1455,11 +1455,11 @@ Action *convert_to_layered_action(Main &bmain, const Action &legacy_action)
   bAction *dna_action = BKE_action_add(&bmain, layered_action_name.c_str());
 
   Action &converted_action = dna_action->wrap();
-  Binding &binding = converted_action.binding_add();
+  Slot &slot = converted_action.slot_add();
   Layer &layer = converted_action.layer_add(legacy_action.id.name);
   KeyframeStrip &strip = layer.strip_add<KeyframeStrip>();
   BLI_assert(strip.channelbags_array_num == 0);
-  ChannelBag *bag = &strip.channelbag_for_binding_add(binding);
+  ChannelBag *bag = &strip.channelbag_for_slot_add(slot);
 
   const int fcu_count = BLI_listbase_count(&legacy_action.curves);
   bag->fcurve_array = MEM_cnew_array<FCurve *>(fcu_count, "Convert to layered action");

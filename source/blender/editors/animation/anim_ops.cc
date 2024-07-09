@@ -760,7 +760,7 @@ static void ANIM_OT_slot_unassign_object(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-static int convert_action_exec(bContext *C, wmOperator *op)
+static int convert_action_exec(bContext *C, wmOperator * /* op */)
 {
   using namespace blender;
 
@@ -776,11 +776,11 @@ static int convert_action_exec(bContext *C, wmOperator *op)
   /* We did already check if the action can be converted. */
   BLI_assert(layered_action != nullptr);
 
-  animrig::unassign_animation(object->id);
-  BLI_assert(layered_action->binding_array_num == 1);
-  animrig::Slot *binding = layered_action->slot(0);
-  layered_action->slot_name_set(*bmain, *binding, object->id.name);
-  layered_action->assign_id(binding, object->id);
+  animrig::unassign_action(object->id);
+  BLI_assert(layered_action->slot_array_num == 1);
+  animrig::Slot *slot = layered_action->slot(0);
+  layered_action->slot_name_set(*bmain, *slot, object->id.name);
+  layered_action->assign_id(slot, object->id);
 
   ANIM_id_update(bmain, &object->id);
   DEG_relations_tag_update(bmain);
@@ -801,7 +801,7 @@ static bool convert_action_poll(bContext *C)
     return false;
   }
 
-  /* This will also convert empty actions to layered by just adding an empty binding. */
+  /* This will also convert empty actions to layered by just adding an empty slot. */
   if (!adt->action->wrap().is_action_legacy()) {
     CTX_wm_operator_poll_msg_set(C, "Action is already layered");
     return false;
@@ -873,6 +873,7 @@ void ED_operatortypes_anim()
   WM_operatortype_append(ANIM_OT_keying_set_active_set);
 
   WM_operatortype_append(ANIM_OT_slot_unassign_object);
+  WM_operatortype_append(ANIM_OT_convert_legacy_action);
 }
 
 void ED_keymap_anim(wmKeyConfig *keyconf)

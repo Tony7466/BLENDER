@@ -632,9 +632,9 @@ TEST_F(ActionLayersTest, action_slot_get_id_for_keying__layered_action)
 
 TEST_F(ActionLayersTest, conversion_to_layered)
 {
-  EXPECT_TRUE(anim->is_empty());
-  FCurve *legacy_fcu_0 = action_fcurve_ensure(bmain, anim, "Test", nullptr, {"location", 0});
-  FCurve *legacy_fcu_1 = action_fcurve_ensure(bmain, anim, "Test", nullptr, {"location", 1});
+  EXPECT_TRUE(action->is_empty());
+  FCurve *legacy_fcu_0 = action_fcurve_ensure(bmain, action, "Test", nullptr, {"location", 0});
+  FCurve *legacy_fcu_1 = action_fcurve_ensure(bmain, action, "Test", nullptr, {"location", 1});
 
   KeyframeSettings settings;
   settings.handle = HD_AUTO;
@@ -644,8 +644,8 @@ TEST_F(ActionLayersTest, conversion_to_layered)
   insert_vert_fcurve(legacy_fcu_0, {1, 1}, settings, INSERTKEY_NOFLAGS);
   add_fmodifier(&legacy_fcu_1->modifiers, FMODIFIER_TYPE_NOISE, legacy_fcu_1);
 
-  Action *converted = convert_to_layered_action(*bmain, *anim);
-  ASSERT_TRUE(converted != anim);
+  Action *converted = convert_to_layered_action(*bmain, *action);
+  ASSERT_TRUE(converted != action);
   EXPECT_STREQ(converted->id.name, "ACACÄnimåtië_layered");
   Strip *strip = converted->layer(0)->strip(0);
   KeyframeStrip key_strip = strip->as<KeyframeStrip>();
@@ -668,9 +668,9 @@ TEST_F(ActionLayersTest, conversion_to_layered)
 
 TEST_F(ActionLayersTest, empty_to_layered)
 {
-  ASSERT_TRUE(anim->is_empty());
-  Action *converted = convert_to_layered_action(*bmain, *anim);
-  ASSERT_TRUE(converted != anim);
+  ASSERT_TRUE(action->is_empty());
+  Action *converted = convert_to_layered_action(*bmain, *action);
+  ASSERT_TRUE(converted != action);
   ASSERT_TRUE(converted->is_action_layered());
   ASSERT_FALSE(converted->is_action_legacy());
 }
