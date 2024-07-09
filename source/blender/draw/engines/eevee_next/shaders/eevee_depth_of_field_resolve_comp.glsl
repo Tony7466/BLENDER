@@ -20,6 +20,11 @@ shared uint shared_max_slight_focus_abs_coc;
  */
 float dof_slight_focus_coc_tile_get(vec2 frag_coord)
 {
+  if (gl_LocalInvocationIndex == 0u) {
+    shared_max_slight_focus_abs_coc = floatBitsToUint(0.0);
+  }
+  barrier();
+
   float local_abs_max = 0.0;
   /* Sample in a cross (X) pattern. This covers all pixels over the whole tile, as long as
    * dof_max_slight_focus_radius is less than the group size. */
@@ -33,12 +38,14 @@ float dof_slight_focus_coc_tile_get(vec2 frag_coord)
     }
   }
 
-  if (gl_LocalInvocationIndex == 0u) {
-    shared_max_slight_focus_abs_coc = floatBitsToUint(0.0);
-  }
-  barrier();
-  /* Use atomic reduce operation. */
+/* Use atomic reduce operation. */
+#if defined(OS_MAC) && defined(GPU_ATI)
+  shared_max_slight_focus_abs_coc = max(shared_max_slight_focus_abs_coc,
+                                        floatBitsToUint(local_abs_max));
+#else
   atomicMax(shared_max_slight_focus_abs_coc, floatBitsToUint(local_abs_max));
+#endif
+
   /* "Broadcast" result across all threads. */
   barrier();
 
