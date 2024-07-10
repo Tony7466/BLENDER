@@ -33,18 +33,6 @@ static const char *ndof_progress_string[] = {
     "finished",
 };
 
-static const std::array<NDOF_DeviceT, 9> legacy_device_types = {
-    NDOF_SpaceNavigator,
-    NDOF_SpaceExplorer,
-    NDOF_SpacePilotPro,
-    NDOF_SpaceMousePro,
-    NDOF_SpaceMouseWireless,
-    NDOF_SpaceMouseProWireless,
-    NDOF_SpacePilot,
-    NDOF_Spaceball5000,
-    NDOF_SpaceTraveler,
-};
-
 /* Printable values for #NDOF_ButtonT enum (keep aligned) */
 static const std::map<GHOST_NDOF_ButtonT, const char *> ndof_button_names = {
     {GHOST_NDOF_BUTTON_INVALID, "NDOF_BUTTON_INVALID"},
