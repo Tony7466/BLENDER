@@ -1,3 +1,3 @@
 Referenced by issue #100749, Blender LTS: Maintenance Task 3.3
 Referenced by issue #109399, Blender LTS: Maintenance Task 3.6
-Referenced by issue #124217, Blender crash when importing EXR from other DDC and does not recognize passes.
+Referenced by issue #124217, Blender crash when importing EXR from other DDC (Deep IDs) and does not recognize passes.
