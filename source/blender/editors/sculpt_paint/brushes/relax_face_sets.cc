@@ -49,11 +49,11 @@ static std::array<float, 4> iteration_strengths(const float strength, const int 
   return {modified_strength, modified_strength, strength, strength};
 }
 
-static void filter_factors_on_face_sets_mesh(const GroupedSpan<int> vert_to_face_map,
-                                             const int *face_sets,
-                                             const bool relax_face_sets,
-                                             const Span<int> verts,
-                                             const MutableSpan<float> factors)
+BLI_NOINLINE static void filter_factors_on_face_sets_mesh(const GroupedSpan<int> vert_to_face_map,
+                                                          const int *face_sets,
+                                                          const bool relax_face_sets,
+                                                          const Span<int> verts,
+                                                          const MutableSpan<float> factors)
 {
   BLI_assert(verts.size() == factors.size());
 
@@ -65,14 +65,14 @@ static void filter_factors_on_face_sets_mesh(const GroupedSpan<int> vert_to_face
     }
   }
 }
-static void filter_factors_on_face_sets_grids(const GroupedSpan<int> vert_to_face_map,
-                                              const Span<int> corner_verts,
-                                              const OffsetIndices<int> faces,
-                                              const SubdivCCG &subdiv_ccg,
-                                              const int *face_sets,
-                                              const bool relax_face_sets,
-                                              const Span<int> grids,
-                                              const MutableSpan<float> factors)
+BLI_NOINLINE static void filter_factors_on_face_sets_grids(const GroupedSpan<int> vert_to_face_map,
+                                                           const Span<int> corner_verts,
+                                                           const OffsetIndices<int> faces,
+                                                           const SubdivCCG &subdiv_ccg,
+                                                           const int *face_sets,
+                                                           const bool relax_face_sets,
+                                                           const Span<int> grids,
+                                                           const MutableSpan<float> factors)
 {
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
   BLI_assert(grids.size() * key.grid_area == factors.size());
@@ -82,6 +82,10 @@ static void filter_factors_on_face_sets_grids(const GroupedSpan<int> vert_to_fac
     for (const int y : IndexRange(key.grid_size)) {
       for (const int x : IndexRange(key.grid_size)) {
         const int offset = CCG_grid_xy_to_index(key.grid_size, x, y);
+        if (factors[start + offset] == 0.0f) {
+          continue;
+        }
+
         SubdivCCGCoord coord{};
         coord.grid_index = grids[i];
         coord.x = x;
@@ -251,6 +255,47 @@ static bool get_average_position(const CCGKey &key,
 }
 
 /** \} */
+BLI_NOINLINE static void calc_factors_faces(const Brush &brush,
+                                            const Span<float3> positions_eval,
+                                            const Span<float3> vert_normals,
+                                            const PBVHNode &node,
+                                            const float strength,
+                                            const bool relax_face_sets,
+                                            Object &object,
+                                            MeshLocalData &tls,
+                                            const MutableSpan<float> factors)
+{
+  SculptSession &ss = *object.sculpt;
+  const StrokeCache &cache = *ss.cache;
+  const Mesh &mesh = *static_cast<Mesh *>(object.data);
+
+  const Span<int> verts = bke::pbvh::node_unique_verts(node);
+
+  fill_factor_from_hide_and_mask(mesh, verts, factors);
+  filter_region_clip_factors(ss, positions_eval, verts, factors);
+  if (brush.flag & BRUSH_FRONTFACE) {
+    calc_front_face(cache.view_normal, vert_normals, verts, factors);
+  }
+
+  tls.distances.reinitialize(verts.size());
+  const MutableSpan<float> distances = tls.distances;
+  calc_brush_distances(
+      ss, positions_eval, verts, eBrushFalloffShape(brush.falloff_shape), distances);
+  filter_distances_with_radius(cache.radius, distances, factors);
+  apply_hardness_to_distances(cache, distances);
+  calc_brush_strength_factors(cache, brush, distances, factors);
+
+  if (cache.automasking) {
+    auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
+  }
+
+  scale_factors(factors, strength);
+
+  calc_brush_texture_factors(ss, brush, positions_eval, verts, factors);
+
+  filter_factors_on_face_sets_mesh(
+      ss.vert_to_face_map, ss.face_sets, relax_face_sets, verts, factors);
+}
 
 BLI_NOINLINE static void calc_relaxed_positions_faces(const OffsetIndices<int> faces,
                                                       const Span<int> corner_verts,
@@ -263,8 +308,10 @@ BLI_NOINLINE static void calc_relaxed_positions_faces(const OffsetIndices<int> f
                                                       const Span<float3> vert_normals,
                                                       const bool relax_face_sets,
                                                       MeshLocalData &tls,
+                                                      const Span<float> factors,
                                                       const MutableSpan<float3> new_positions)
 {
+  BLI_assert(verts.size() == factors.size());
   BLI_assert(verts.size() == new_positions.size());
 
   tls.vert_neighbors.reinitialize(verts.size());
@@ -273,6 +320,11 @@ BLI_NOINLINE static void calc_relaxed_positions_faces(const OffsetIndices<int> f
   const Span<Vector<int>> vert_neighbors = tls.vert_neighbors;
 
   for (const int i : verts.index_range()) {
+    if (factors[i] == 0.0f) {
+      new_positions[i] = vert_positions[verts[i]];
+      continue;
+    }
+
     /* Don't modify corner vertices */
     if (vert_neighbors[i].size() <= 2) {
       new_positions[i] = vert_positions[verts[i]];
@@ -335,59 +387,22 @@ BLI_NOINLINE static void calc_relaxed_positions_faces(const OffsetIndices<int> f
     closest_to_plane_v3(smooth_closest_plane, plane, smoothed_position);
 
     float3 displacement = smooth_closest_plane - vert_positions[verts[i]];
-    new_positions[i] = vert_positions[verts[i]] + displacement;
+    new_positions[i] = vert_positions[verts[i]] + displacement * factors[i];
   }
 }
 
 BLI_NOINLINE static void apply_positions_faces(const Sculpt &sd,
-                                               const Brush &brush,
                                                const Span<float3> positions_eval,
-                                               const Span<float3> vert_normals,
                                                const PBVHNode &node,
-                                               const float strength,
-                                               const bool relax_face_sets,
                                                Object &object,
                                                MeshLocalData &tls,
                                                const Span<float3> new_positions,
                                                const MutableSpan<float3> positions_orig)
 {
-  SculptSession &ss = *object.sculpt;
-  const StrokeCache &cache = *ss.cache;
-  const Mesh &mesh = *static_cast<Mesh *>(object.data);
-
   const Span<int> verts = bke::pbvh::node_unique_verts(node);
-  tls.factors.reinitialize(verts.size());
-  const MutableSpan<float> factors = tls.factors;
-
-  fill_factor_from_hide_and_mask(mesh, verts, factors);
-  filter_region_clip_factors(ss, positions_eval, verts, factors);
-  if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal, vert_normals, verts, factors);
-  }
-
-  tls.distances.reinitialize(verts.size());
-  const MutableSpan<float> distances = tls.distances;
-  calc_brush_distances(
-      ss, positions_eval, verts, eBrushFalloffShape(brush.falloff_shape), distances);
-  filter_distances_with_radius(cache.radius, distances, factors);
-  apply_hardness_to_distances(cache, distances);
-  calc_brush_strength_factors(cache, brush, distances, factors);
-
-  if (cache.automasking) {
-    auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
-  }
-
-  scale_factors(factors, strength);
-
-  calc_brush_texture_factors(ss, brush, positions_eval, verts, factors);
-
-  filter_factors_on_face_sets_mesh(
-      ss.vert_to_face_map, ss.face_sets, relax_face_sets, verts, factors);
-
   tls.translations.reinitialize(verts.size());
   const MutableSpan<float3> translations = tls.translations;
   translations_from_new_positions(new_positions, verts, positions_eval, translations);
-  scale_translations(translations, factors);
 
   write_translations(sd, object, positions_eval, verts, translations, positions_orig);
 }
@@ -416,8 +431,24 @@ static void do_relax_face_sets_brush_mesh(const Sculpt &sd,
   const OffsetIndices<int> node_vert_offsets = create_node_vert_offsets(nodes, node_offset_data);
 
   Array<float3> new_positions(node_vert_offsets.total_size());
+  Array<float> factors(node_vert_offsets.total_size());
 
   threading::EnumerableThreadSpecific<MeshLocalData> all_tls;
+  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    MeshLocalData &tls = all_tls.local();
+    for (const int i : range) {
+      calc_factors_faces(brush,
+                         positions_eval,
+                         vert_normals,
+                         *nodes[i],
+                         strength,
+                         relax_face_sets,
+                         object,
+                         tls,
+                         factors.as_mutable_span().slice(node_vert_offsets[i]));
+    }
+  });
+
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     MeshLocalData &tls = all_tls.local();
     for (const int i : range) {
@@ -432,6 +463,7 @@ static void do_relax_face_sets_brush_mesh(const Sculpt &sd,
                                    vert_normals,
                                    relax_face_sets,
                                    tls,
+                                   factors.as_span().slice(node_vert_offsets[i]),
                                    new_positions.as_mutable_span().slice(node_vert_offsets[i]));
     }
   });
@@ -440,18 +472,67 @@ static void do_relax_face_sets_brush_mesh(const Sculpt &sd,
     MeshLocalData &tls = all_tls.local();
     for (const int i : range) {
       apply_positions_faces(sd,
-                            brush,
                             positions_eval,
-                            vert_normals,
                             *nodes[i],
-                            strength,
-                            relax_face_sets,
                             object,
                             tls,
                             new_positions.as_span().slice(node_vert_offsets[i]),
                             positions_orig);
     }
   });
+}
+
+BLI_NOINLINE static void calc_factors_grids(const Brush &brush,
+                                            const Span<int> corner_verts,
+                                            const OffsetIndices<int> faces,
+                                            const PBVHNode &node,
+                                            const float strength,
+                                            const bool relax_face_sets,
+                                            Object &object,
+                                            GridLocalData &tls,
+                                            const MutableSpan<float> factors)
+{
+  SculptSession &ss = *object.sculpt;
+  const StrokeCache &cache = *ss.cache;
+  SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+
+  const Span<int> grids = bke::pbvh::node_grid_indices(node);
+  const int grid_verts_num = grids.size() * key.grid_area;
+
+  tls.positions.reinitialize(grid_verts_num);
+  const MutableSpan<float3> positions = tls.positions;
+  gather_grids_positions(subdiv_ccg, grids, positions);
+
+  fill_factor_from_hide_and_mask(subdiv_ccg, grids, factors);
+  filter_region_clip_factors(ss, positions, factors);
+  if (brush.flag & BRUSH_FRONTFACE) {
+    calc_front_face(cache.view_normal, subdiv_ccg, grids, factors);
+  }
+
+  tls.distances.reinitialize(grid_verts_num);
+  const MutableSpan<float> distances = tls.distances;
+  calc_brush_distances(ss, positions, eBrushFalloffShape(brush.falloff_shape), distances);
+  filter_distances_with_radius(cache.radius, distances, factors);
+  apply_hardness_to_distances(cache, distances);
+  calc_brush_strength_factors(cache, brush, distances, factors);
+
+  if (cache.automasking) {
+    auto_mask::calc_grids_factors(object, *cache.automasking, node, grids, factors);
+  }
+
+  scale_factors(factors, strength);
+
+  calc_brush_texture_factors(ss, brush, positions, factors);
+
+  filter_factors_on_face_sets_grids(ss.vert_to_face_map,
+                                    corner_verts,
+                                    faces,
+                                    subdiv_ccg,
+                                    ss.face_sets,
+                                    relax_face_sets,
+                                    grids,
+                                    factors);
 }
 
 BLI_NOINLINE static void calc_relaxed_positions_grids(const OffsetIndices<int> faces,
@@ -463,6 +544,7 @@ BLI_NOINLINE static void calc_relaxed_positions_grids(const OffsetIndices<int> f
                                                       const bool relax_face_sets,
                                                       Object &object,
                                                       GridLocalData &tls,
+                                                      const Span<float> factors,
                                                       const MutableSpan<float3> new_positions)
 {
   SculptSession &ss = *object.sculpt;
@@ -473,10 +555,11 @@ BLI_NOINLINE static void calc_relaxed_positions_grids(const OffsetIndices<int> f
   const Span<int> grids = bke::pbvh::node_grid_indices(node);
   const int grid_verts_num = grids.size() * key.grid_area;
   BLI_assert(grid_verts_num == new_positions.size());
+  BLI_assert(grid_verts_num == factors.size());
 
   tls.vert_neighbors.reinitialize(grid_verts_num);
   calc_vert_neighbors_interior(
-      faces, corner_verts, boundary_verts, subdiv_ccg, grids, tls.vert_neighbors);
+      faces, corner_verts, boundary_verts, subdiv_ccg, grids, factors, tls.vert_neighbors);
   const Span<SubdivCCGNeighbors> vert_neighbors = tls.vert_neighbors;
 
   tls.positions.reinitialize(grid_verts_num);
@@ -489,13 +572,15 @@ BLI_NOINLINE static void calc_relaxed_positions_grids(const OffsetIndices<int> f
       for (const int x : IndexRange(key.grid_size)) {
         const int offset = CCG_grid_xy_to_index(key.grid_size, x, y);
         const int grid_idx = start + offset;
+        if (factors[grid_idx] == 0.0f) {
+          new_positions[grid_idx] = positions[grid_idx];
+          continue;
+        }
+
         SubdivCCGCoord coord{};
         coord.grid_index = grids[i];
         coord.x = x;
         coord.y = y;
-
-        bool is_boundary = BKE_subdiv_ccg_coord_is_mesh_boundary(
-            faces, corner_verts, boundary_verts, subdiv_ccg, coord);
 
         const SubdivCCGNeighbors vert_neighbor = vert_neighbors[start + offset];
         /* Don't modify corner vertices */
@@ -503,6 +588,9 @@ BLI_NOINLINE static void calc_relaxed_positions_grids(const OffsetIndices<int> f
           new_positions[grid_idx] = positions[grid_idx];
           continue;
         }
+
+        bool is_boundary = BKE_subdiv_ccg_coord_is_mesh_boundary(
+            faces, corner_verts, boundary_verts, subdiv_ccg, coord);
 
         Vector<SubdivCCGCoord, 16> neighbors;
         if (is_boundary) {
@@ -565,25 +653,19 @@ BLI_NOINLINE static void calc_relaxed_positions_grids(const OffsetIndices<int> f
         closest_to_plane_v3(smooth_closest_plane, plane, smoothed_position);
 
         float3 displacement = smooth_closest_plane - positions[grid_idx];
-        new_positions[grid_idx] = positions[grid_idx] + displacement;
+        new_positions[grid_idx] = positions[grid_idx] + displacement * factors[grid_idx];
       }
     }
   }
 }
 
 BLI_NOINLINE static void apply_positions_grids(const Sculpt &sd,
-                                               const Brush &brush,
-                                               const Span<int> corner_verts,
-                                               const OffsetIndices<int> faces,
                                                const PBVHNode &node,
-                                               const float strength,
-                                               const bool relax_face_sets,
                                                Object &object,
                                                GridLocalData &tls,
                                                const Span<float3> new_positions)
 {
   SculptSession &ss = *object.sculpt;
-  const StrokeCache &cache = *ss.cache;
   SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
@@ -594,42 +676,9 @@ BLI_NOINLINE static void apply_positions_grids(const Sculpt &sd,
   const MutableSpan<float3> positions = tls.positions;
   gather_grids_positions(subdiv_ccg, grids, positions);
 
-  tls.factors.reinitialize(grid_verts_num);
-  const MutableSpan<float> factors = tls.factors;
-  fill_factor_from_hide_and_mask(subdiv_ccg, grids, factors);
-  filter_region_clip_factors(ss, positions, factors);
-  if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal, subdiv_ccg, grids, factors);
-  }
-
-  tls.distances.reinitialize(grid_verts_num);
-  const MutableSpan<float> distances = tls.distances;
-  calc_brush_distances(ss, positions, eBrushFalloffShape(brush.falloff_shape), distances);
-  filter_distances_with_radius(cache.radius, distances, factors);
-  apply_hardness_to_distances(cache, distances);
-  calc_brush_strength_factors(cache, brush, distances, factors);
-
-  if (cache.automasking) {
-    auto_mask::calc_grids_factors(object, *cache.automasking, node, grids, factors);
-  }
-
-  scale_factors(factors, strength);
-
-  calc_brush_texture_factors(ss, brush, positions, factors);
-
-  filter_factors_on_face_sets_grids(ss.vert_to_face_map,
-                                    corner_verts,
-                                    faces,
-                                    subdiv_ccg,
-                                    ss.face_sets,
-                                    relax_face_sets,
-                                    grids,
-                                    factors);
-
   tls.translations.reinitialize(grid_verts_num);
   const MutableSpan<float3> translations = tls.translations;
   translations_from_new_positions(new_positions, positions, translations);
-  scale_translations(translations, factors);
 
   clip_and_lock_translations(sd, ss, positions, translations);
   apply_translations(translations, grids, subdiv_ccg);
@@ -657,8 +706,24 @@ static void do_relax_face_sets_brush_grids(const Sculpt &sd,
       nodes, key, node_offset_data);
 
   Array<float3> new_positions(node_vert_offsets.total_size());
+  Array<float> factors(node_vert_offsets.total_size());
 
   threading::EnumerableThreadSpecific<GridLocalData> all_tls;
+  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    GridLocalData &tls = all_tls.local();
+    for (const int i : range) {
+      calc_factors_grids(brush,
+                         corner_verts,
+                         faces,
+                         *nodes[i],
+                         strength,
+                         relax_face_sets,
+                         object,
+                         tls,
+                         factors.as_mutable_span().slice(node_vert_offsets[i]));
+    }
+  });
+
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     GridLocalData &tls = all_tls.local();
     for (const int i : range) {
@@ -671,6 +736,7 @@ static void do_relax_face_sets_brush_grids(const Sculpt &sd,
                                    relax_face_sets,
                                    object,
                                    tls,
+                                   factors.as_span().slice(node_vert_offsets[i]),
                                    new_positions.as_mutable_span().slice(node_vert_offsets[i]));
     }
   });
@@ -678,16 +744,8 @@ static void do_relax_face_sets_brush_grids(const Sculpt &sd,
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     GridLocalData &tls = all_tls.local();
     for (const int i : range) {
-      apply_positions_grids(sd,
-                            brush,
-                            corner_verts,
-                            faces,
-                            *nodes[i],
-                            strength,
-                            relax_face_sets,
-                            object,
-                            tls,
-                            new_positions.as_span().slice(node_vert_offsets[i]));
+      apply_positions_grids(
+          sd, *nodes[i], object, tls, new_positions.as_span().slice(node_vert_offsets[i]));
     }
   });
 }

@@ -370,6 +370,7 @@ void calc_vert_neighbors_interior(OffsetIndices<int> faces,
                                   BitSpan boundary_verts,
                                   const SubdivCCG &subdiv_ccg,
                                   const Span<int> grids,
+                                  const Span<float> factors,
                                   const MutableSpan<SubdivCCGNeighbors> result);
 
 /** Find the translation from each vertex position to the closest point on the plane. */
