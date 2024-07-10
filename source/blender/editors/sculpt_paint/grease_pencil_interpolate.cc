@@ -359,7 +359,6 @@ static bke::CurvesGeometry interpolate_between_curves(const GreasePencil &grease
                                  dst_curves);
   }
 
-  dst_curves.tag_topology_changed();
   return dst_curves;
 }
 
