@@ -325,6 +325,7 @@ OffsetIndices<int> create_node_vert_offsets(Span<PBVHNode *> nodes, Array<int> &
 OffsetIndices<int> create_node_vert_offsets(Span<PBVHNode *> nodes,
                                             const CCGKey &key,
                                             Array<int> &node_data);
+OffsetIndices<int> create_node_vert_offsets_bmesh(Span<PBVHNode *> nodes, Array<int> &node_data);
 
 /**
  * Find vertices connected to the indexed vertices across faces.
@@ -374,6 +375,9 @@ void calc_vert_neighbors_interior(OffsetIndices<int> faces,
                                   const SubdivCCG &subdiv_ccg,
                                   const Span<int> grids,
                                   const MutableSpan<Vector<SubdivCCGCoord>> result);
+
+void calc_vert_neighbors_interior(const Set<BMVert *, 0> &verts,
+                                  MutableSpan<Vector<BMVert *>> result);
 
 /** Find the translation from each vertex position to the closest point on the plane. */
 void calc_translations_to_plane(Span<float3> vert_positions,

@@ -969,7 +969,7 @@ bool vert_has_unique_face_set_grids(const GroupedSpan<int> vert_to_face_map,
                                     const int *face_sets,
                                     const SubdivCCG &subdiv_ccg,
                                     const SubdivCCGCoord &coord);
-bool vert_has_unique_face_set_bmesh();
+bool vert_has_unique_face_set_bmesh(const BMVert *vert);
 
 /**
  * Creates the sculpt face set attribute on the mesh if it doesn't exist.

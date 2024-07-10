@@ -31,10 +31,16 @@ struct MeshLocalData {
 
 struct GridLocalData {
   Vector<float3> positions;
-  Vector<float3> new_positions;
   Vector<float> factors;
   Vector<float> distances;
   Vector<Vector<SubdivCCGCoord>> vert_neighbors;
+  Vector<float3> translations;
+};
+
+struct BMeshLocalData {
+  Vector<float> factors;
+  Vector<float> distances;
+  Vector<Vector<BMVert *>> vert_neighbors;
   Vector<float3> translations;
 };
 
@@ -100,20 +106,18 @@ BLI_NOINLINE static void filter_factors_on_face_sets_grids(const GroupedSpan<int
     }
   }
 }
-static void filter_factors_on_face_sets_bmesh(const GroupedSpan<int> vert_to_face_map,
-                                              const int *face_sets,
-                                              const bool relax_face_sets,
-                                              const Span<int> verts,
+static void filter_factors_on_face_sets_bmesh(const bool relax_face_sets,
+                                              const Set<BMVert *, 0> verts,
                                               const MutableSpan<float> factors)
 {
   BLI_assert(verts.size() == factors.size());
 
-  for (const int i : verts.index_range()) {
-    if (relax_face_sets ==
-        face_set::vert_has_unique_face_set_mesh(vert_to_face_map, face_sets, verts[i]))
-    {
+  int i = 0;
+  for (const BMVert *vert : verts) {
+    if (relax_face_sets == face_set::vert_has_unique_face_set_bmesh(vert)) {
       factors[i] = 0.0f;
     }
+    i++;
   }
 }
 
@@ -262,6 +266,73 @@ BLI_NOINLINE static bool get_average_position(const CCGKey &key,
   return true;
 }
 
+static Vector<BMVert *, 16> filtered_neighbors(
+    const Span<BMVert *> neighbors,
+    const bool filter_boundary_face_sets,
+    FunctionRef<bool(const BMVert *)> is_unique_element_fn,
+    FunctionRef<bool(const BMVert *)> is_boundary_element_fn)
+{
+  Vector<BMVert *, 16> result;
+  for (BMVert *vert : neighbors) {
+    /* If we are filtering face sets, then we only want to affect vertices that have more than one
+     * face set, i.e. are on the boundary of a face set and another face set. */
+    if (filter_boundary_face_sets && is_unique_element_fn(vert)) {
+      continue;
+    }
+
+    /* When the vertex to relax is boundary, use only connected boundary vertices for the average
+     * position. */
+    if (is_boundary_element_fn && is_boundary_element_fn(vert)) {
+      continue;
+    }
+
+    result.append(vert);
+  }
+  return result;
+}
+
+static bool get_normal_boundary(const float3 &current_position,
+                                const Span<BMVert *> neighbors,
+                                float3 &r_new_normal)
+{
+  /* If we are not dealing with a corner vertex, skip this step.*/
+  if (neighbors.size() != 2) {
+    return false;
+  }
+
+  float3 normal(0.0f, 0.0f, 0.0f);
+  int i = 0;
+  for (BMVert *vert : neighbors) {
+    const float3 neighbor_pos = vert->co;
+    const float3 to_neighbor = neighbor_pos - current_position;
+    normal += math::normalize(to_neighbor);
+    i++;
+  }
+
+  r_new_normal = math::normalize(normal);
+
+  return true;
+}
+
+static bool get_average_position(const Span<BMVert *> neighbors, float3 &r_new_position)
+{
+  if (neighbors.size() == 0) {
+    return false;
+  }
+
+  float3 average_position(0.0f, 0.0f, 0.0f);
+  int i = 0;
+  for (BMVert *vert : neighbors) {
+    average_position += vert->co;
+    i++;
+  }
+
+  average_position *= math::rcp(float(neighbors.size()));
+  r_new_position = average_position;
+
+  return true;
+}
+
 /** \} */
 BLI_NOINLINE static void calc_factors_faces(const Brush &brush,
                                             const Span<float3> positions_eval,
@@ -401,13 +472,12 @@ BLI_NOINLINE static void calc_relaxed_positions_faces(const OffsetIndices<int> f
 
 BLI_NOINLINE static void apply_positions_faces(const Sculpt &sd,
                                                const Span<float3> positions_eval,
-                                               const PBVHNode &node,
+                                               const Span<int> verts,
                                                Object &object,
                                                MeshLocalData &tls,
                                                const Span<float3> new_positions,
                                                const MutableSpan<float3> positions_orig)
 {
-  const Span<int> verts = bke::pbvh::node_unique_verts(node);
   tls.translations.reinitialize(verts.size());
   const MutableSpan<float3> translations = tls.translations;
   translations_from_new_positions(new_positions, verts, positions_eval, translations);
@@ -481,7 +551,7 @@ static void do_relax_face_sets_brush_mesh(const Sculpt &sd,
     for (const int i : range) {
       apply_positions_faces(sd,
                             positions_eval,
-                            *nodes[i],
+                            bke::pbvh::node_unique_verts(*nodes[i]),
                             object,
                             tls,
                             new_positions.as_span().slice(node_vert_offsets[i]),
@@ -547,7 +617,7 @@ BLI_NOINLINE static void calc_relaxed_positions_grids(const OffsetIndices<int> f
                                                       const int *face_sets,
                                                       const GroupedSpan<int> vert_to_face_map,
                                                       const BitSpan boundary_verts,
-                                                      const PBVHNode &node,
+                                                      const Span<int> grids,
                                                       const bool relax_face_sets,
                                                       Object &object,
                                                       GridLocalData &tls,
@@ -560,7 +630,6 @@ BLI_NOINLINE static void calc_relaxed_positions_grids(const OffsetIndices<int> f
   const Span<CCGElem *> elems = subdiv_ccg.grids;
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
-  const Span<int> grids = bke::pbvh::node_grid_indices(node);
   const int grid_verts_num = grids.size() * key.grid_area;
   BLI_assert(grid_verts_num == new_positions.size());
   BLI_assert(grid_verts_num == factors.size());
@@ -665,7 +734,7 @@ BLI_NOINLINE static void calc_relaxed_positions_grids(const OffsetIndices<int> f
 }
 
 BLI_NOINLINE static void apply_positions_grids(const Sculpt &sd,
-                                               const PBVHNode &node,
+                                               const Span<int> grids,
                                                Object &object,
                                                GridLocalData &tls,
                                                const Span<float3> positions,
@@ -675,7 +744,6 @@ BLI_NOINLINE static void apply_positions_grids(const Sculpt &sd,
   SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
-  const Span<int> grids = bke::pbvh::node_grid_indices(node);
   const int grid_verts_num = grids.size() * key.grid_area;
 
   tls.translations.reinitialize(grid_verts_num);
@@ -736,7 +804,7 @@ static void do_relax_face_sets_brush_grids(const Sculpt &sd,
                                    ss.face_sets,
                                    ss.vert_to_face_map,
                                    ss.vertex_info.boundary,
-                                   *nodes[i],
+                                   bke::pbvh::node_grid_indices(*nodes[i]),
                                    relax_face_sets,
                                    object,
                                    tls,
@@ -750,11 +818,208 @@ static void do_relax_face_sets_brush_grids(const Sculpt &sd,
     GridLocalData &tls = all_tls.local();
     for (const int i : range) {
       apply_positions_grids(sd,
-                            *nodes[i],
+                            bke::pbvh::node_grid_indices(*nodes[i]),
                             object,
                             tls,
                             current_positions.as_mutable_span().slice(node_vert_offsets[i]),
                             new_positions.as_span().slice(node_vert_offsets[i]));
+    }
+  });
+}
+
+static void calc_factors_bmesh(Object &object,
+                               const Brush &brush,
+                               PBVHNode &node,
+                               const float strength,
+                               const bool relax_face_sets,
+                               BMeshLocalData &tls,
+                               MutableSpan<float3> positions,
+                               MutableSpan<float> factors)
+{
+  SculptSession &ss = *object.sculpt;
+  const StrokeCache &cache = *ss.cache;
+
+  const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(&node);
+
+  gather_bmesh_positions(verts, positions);
+
+  fill_factor_from_hide_and_mask(*ss.bm, verts, factors);
+  filter_region_clip_factors(ss, positions, factors);
+  if (brush.flag & BRUSH_FRONTFACE) {
+    calc_front_face(cache.view_normal, verts, factors);
+  }
+
+  tls.distances.reinitialize(verts.size());
+  const MutableSpan<float> distances = tls.distances;
+  calc_brush_distances(ss, positions, eBrushFalloffShape(brush.falloff_shape), distances);
+  filter_distances_with_radius(cache.radius, distances, factors);
+  apply_hardness_to_distances(cache, distances);
+  calc_brush_strength_factors(cache, brush, distances, factors);
+
+  if (cache.automasking) {
+    auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
+  }
+
+  scale_factors(factors, strength);
+
+  calc_brush_texture_factors(ss, brush, positions, factors);
+  filter_factors_on_face_sets_bmesh(relax_face_sets, verts, factors);
+}
+
+BLI_NOINLINE static void calc_relaxed_positions_bmesh(const Set<BMVert *, 0> &verts,
+                                                      const Span<float3> positions,
+                                                      const bool relax_face_sets,
+                                                      BMeshLocalData &tls,
+                                                      const Span<float> factors,
+                                                      const MutableSpan<float3> new_positions)
+{
+  BLI_assert(verts.size() == factors.size());
+  BLI_assert(verts.size() == new_positions.size());
+
+  tls.vert_neighbors.reinitialize(verts.size());
+  calc_vert_neighbors_interior(verts, tls.vert_neighbors);
+  const Span<Vector<BMVert *>> vert_neighbors = tls.vert_neighbors;
+
+  int i = 0;
+  for (const BMVert *vert : verts) {
+    if (factors[i] == 0.0f) {
+      new_positions[i] = positions[i];
+      i++;
+      continue;
+    }
+
+    /* Don't modify corner vertices */
+    if (vert_neighbors[i].size() <= 2) {
+      new_positions[i] = positions[i];
+      i++;
+      continue;
+    }
+
+    Vector<BMVert *, 16> neighbors;
+    if (BM_vert_is_boundary(vert)) {
+      neighbors = filtered_neighbors(
+          vert_neighbors[i],
+          relax_face_sets,
+          [&](const BMVert *vert) { return face_set::vert_has_unique_face_set_bmesh(vert); },
+          [&](const BMVert *vert) { return !BM_vert_is_boundary(vert); });
+    }
+    else {
+      neighbors = filtered_neighbors(
+          vert_neighbors[i],
+          relax_face_sets,
+          [&](const BMVert *vert) { return face_set::vert_has_unique_face_set_bmesh(vert); },
+          {});
+    }
+
+    /* Smoothed position calculation */
+    float3 smoothed_position;
+    const bool has_new_position = get_average_position(neighbors, smoothed_position);
+
+    if (!has_new_position) {
+      new_positions[i] = positions[i];
+      i++;
+      continue;
+    }
+
+    /* Normal Calculation */
+    float3 normal;
+    if (BM_vert_is_boundary(vert)) {
+      bool has_boundary_normal = get_normal_boundary(positions[i], neighbors, normal);
+
+      if (!has_boundary_normal) {
+        normal = vert->no;
+      }
+    }
+    else {
+      normal = vert->no;
+    }
+
+    if (math::is_zero(normal)) {
+      new_positions[i] = positions[i];
+      i++;
+      continue;
+    }
+
+    float4 plane;
+    plane_from_point_normal_v3(plane, positions[i], normal);
+
+    float3 smooth_closest_plane;
+    closest_to_plane_v3(smooth_closest_plane, plane, smoothed_position);
+
+    float3 displacement = smooth_closest_plane - positions[i];
+    new_positions[i] = positions[i] + displacement * factors[i];
+    i++;
+  }
+}
+
+BLI_NOINLINE static void apply_positions_bmesh(const Sculpt &sd,
+                                               const Set<BMVert *, 0> verts,
+                                               Object &object,
+                                               BMeshLocalData &tls,
+                                               const Span<float3> new_positions,
+                                               const Span<float3> positions)
+
+{
+  SculptSession &ss = *object.sculpt;
+  tls.translations.reinitialize(verts.size());
+  const MutableSpan<float3> translations = tls.translations;
+  translations_from_new_positions(new_positions, positions, translations);
+
+  clip_and_lock_translations(sd, ss, positions, translations);
+  apply_translations(translations, verts);
+}
+
+static void do_relax_face_sets_brush_bmesh(const Sculpt &sd,
+                                           const Brush &brush,
+                                           Object &object,
+                                           const Span<PBVHNode *> nodes,
+                                           const float strength,
+                                           const float relax_face_sets)
+{
+  Array<int> node_offset_data;
+  const OffsetIndices<int> node_vert_offsets = create_node_vert_offsets_bmesh(nodes,
+                                                                              node_offset_data);
+
+  Array<float3> current_positions(node_vert_offsets.total_size());
+  Array<float3> new_positions(node_vert_offsets.total_size());
+  Array<float> factors(node_vert_offsets.total_size());
+
+  threading::EnumerableThreadSpecific<BMeshLocalData> all_tls;
+  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    BMeshLocalData &tls = all_tls.local();
+    for (const int i : range) {
+      calc_factors_bmesh(object,
+                         brush,
+                         *nodes[i],
+                         strength,
+                         relax_face_sets,
+                         tls,
+                         current_positions.as_mutable_span().slice(node_vert_offsets[i]),
+                         factors.as_mutable_span().slice(node_vert_offsets[i]));
+    }
+  });
+
+  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    BMeshLocalData &tls = all_tls.local();
+    for (const int i : range) {
+      calc_relaxed_positions_bmesh(BKE_pbvh_bmesh_node_unique_verts(nodes[i]),
+                                   current_positions.as_mutable_span().slice(node_vert_offsets[i]),
+                                   relax_face_sets,
+                                   tls,
+                                   factors.as_span().slice(node_vert_offsets[i]),
+                                   new_positions.as_mutable_span().slice(node_vert_offsets[i]));
+    }
+  });
+
+  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    BMeshLocalData &tls = all_tls.local();
+    for (const int i : range) {
+      apply_positions_bmesh(sd,
+                            BKE_pbvh_bmesh_node_unique_verts(nodes[i]),
+                            object,
+                            tls,
+                            new_positions.as_span().slice(node_vert_offsets[i]),
+                            current_positions.as_span().slice(node_vert_offsets[i]));
     }
   });
 }
@@ -785,6 +1050,8 @@ void do_relax_face_sets_brush(const Sculpt &sd, Object &object, Span<PBVHNode *>
             sd, brush, object, nodes, strength * strength, relax_face_sets);
         break;
       case PBVH_BMESH:
+        do_relax_face_sets_brush_bmesh(
+            sd, brush, object, nodes, strength * strength, relax_face_sets);
         break;
     }
   }

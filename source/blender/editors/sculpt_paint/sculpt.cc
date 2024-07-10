@@ -667,7 +667,7 @@ bool vert_has_unique_face_set_grids(const GroupedSpan<int> vert_to_face_map,
   return true;
 }
 
-bool vert_has_unique_face_set_bmesh()
+bool vert_has_unique_face_set_bmesh(const BMVert * /* vert */)
 {
   /* TODO: Obviously not fully implemented yet. Needs to be implemented for Relax Face Sets brush
    * to work. */
@@ -7376,6 +7376,15 @@ OffsetIndices<int> create_node_vert_offsets(Span<PBVHNode *> nodes,
   return offset_indices::accumulate_counts_to_offsets(node_data);
 }
 
+OffsetIndices<int> create_node_vert_offsets_bmesh(Span<PBVHNode *> nodes, Array<int> &node_data)
+{
+  node_data.reinitialize(nodes.size() + 1);
+  for (const int i : nodes.index_range()) {
+    node_data[i] = BKE_pbvh_bmesh_node_unique_verts(nodes[i]).size();
+  }
+  return offset_indices::accumulate_counts_to_offsets(node_data);
+}
+
 void calc_vert_neighbors(const OffsetIndices<int> faces,
                          const Span<int> corner_verts,
                          const GroupedSpan<int> vert_to_face,
@@ -7439,6 +7448,21 @@ void calc_vert_neighbors_interior(const OffsetIndices<int> faces,
         neighbors.remove_if([&](const int vert) { return !boundary_verts[vert]; });
       }
     }
+  }
+}
+
+void calc_vert_neighbors_interior(const Set<BMVert *, 0> &verts,
+                                  MutableSpan<Vector<BMVert *>> result)
+{
+  BLI_assert(verts.size() == result.size());
+  Vector<BMVert *, 64> neighbor_data;
+
+  int i = 0;
+  for (BMVert *vert : verts) {
+    neighbor_data.clear();
+    vert_neighbors_get_interior_bmesh(*vert, neighbor_data);
+    result[i] = neighbor_data;
+    i++;
   }
 }
 
