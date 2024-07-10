@@ -1410,12 +1410,10 @@ static void draw_strips_foreground(TimelineDrawContext *timeline_ctx,
     if (selected) {
       data.flags |= GPU_SEQ_FLAG_SELECTED;
     }
-    else if (active) {
+    else if (active && !overlaps) {
       /* If the strips overlap when retiming, don't replace the red outline. */
-      if (!overlaps) {
-        /* A subtle highlight outline when active but not selected. */
-        UI_GetThemeColorShade3ubv(TH_SEQ_ACTIVE, -40, col);
-      }
+      /* A subtle highlight outline when active but not selected. */
+      UI_GetThemeColorShade3ubv(TH_SEQ_ACTIVE, -40, col);
       data.flags |= GPU_SEQ_FLAG_ACTIVE;
     }
     data.col_outline = color_pack(col);
