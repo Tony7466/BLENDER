@@ -9,6 +9,8 @@
  */
 #pragma once
 
+#include "ANIM_keyframing.hh"
+
 #include "BLI_math_vector_types.hh"
 #include "BLI_string_ref.hh"
 
@@ -20,6 +22,13 @@ struct AnimData;
 struct FCurve;
 
 namespace blender::animrig {
+
+/* All the information needed to look up or create an FCurve. */
+struct FCurveDescriptor {
+  StringRefNull rna_path;
+  int array_index;
+  std::optional<PropertySubType> prop_subtype;
+};
 
 /* This is used to pass in the settings for a keyframe into a function. */
 struct KeyframeSettings {
@@ -37,9 +46,13 @@ struct KeyframeSettings {
 KeyframeSettings get_keyframe_settings(bool from_userprefs);
 
 /**
- * Create an fcurve for a specific channel, pre-set-up with default flags and interpolation mode.
+ * Create an fcurve for a specific channel, pre-set-up with default flags and
+ * interpolation mode.
+ *
+ * If the channel's property subtype is provided, the fcurve will also be set to
+ * the correct color mode based on user preferences.
  */
-FCurve *create_fcurve_for_channel(StringRef rna_path, int array_index);
+FCurve *create_fcurve_for_channel(FCurveDescriptor fcurve_descriptor);
 
 /** Initialize the given BezTriple with default values. */
 void initialize_bezt(BezTriple *beztr,

@@ -91,7 +91,7 @@ enum uiWidgetTypeEnum {
    * widget. To be used when multiple menu items should be displayed close to each other
    * horizontally. */
   UI_WTYPE_MENU_ITEM_UNPADDED,
-  UI_WTYPE_MENU_ITEM_RADIAL,
+  UI_WTYPE_MENU_ITEM_PIE,
   UI_WTYPE_MENU_BACK,
 
   /* specials */
@@ -1264,9 +1264,10 @@ static void widget_draw_icon_centered(const BIFIconID icon,
     const float desaturate = 1.0 - btheme->tui.icon_saturation;
     uchar color[4] = {mono_color[0], mono_color[1], mono_color[2], mono_color[3]};
     const bool has_theme = UI_icon_get_theme_color(int(icon), color);
+    const bool outline = btheme->tui.icon_border_intensity > 0.0f && has_theme;
 
     UI_icon_draw_ex(
-        x, y, icon, aspect * UI_INV_SCALE_FAC, alpha, desaturate, color, has_theme, nullptr);
+        x, y, icon, aspect * UI_INV_SCALE_FAC, alpha, desaturate, color, outline, nullptr);
   }
 }
 
@@ -1352,19 +1353,19 @@ static void widget_draw_icon(
 
     /* Get theme color. */
     uchar color[4] = {mono_color[0], mono_color[1], mono_color[2], mono_color[3]};
-    const bool has_theme = UI_icon_get_theme_color(icon, color);
+    const bTheme *btheme = UI_GetTheme();
+    const bool has_theme = UI_icon_get_theme_color(int(icon), color);
+    const bool outline = btheme->tui.icon_border_intensity > 0.0f && has_theme;
 
     /* to indicate draggable */
     if (ui_but_drag_is_draggable(but) && (but->flag & UI_HOVER)) {
-      UI_icon_draw_ex(
-          xs, ys, icon, aspect, 1.25f, 0.0f, color, has_theme, &but->icon_overlay_text);
+      UI_icon_draw_ex(xs, ys, icon, aspect, 1.25f, 0.0f, color, outline, &but->icon_overlay_text);
     }
     else if (but->flag & (UI_HOVER | UI_SELECT | UI_SELECT_DRAW)) {
-      UI_icon_draw_ex(
-          xs, ys, icon, aspect, alpha, 0.0f, color, has_theme, &but->icon_overlay_text);
+      UI_icon_draw_ex(xs, ys, icon, aspect, alpha, 0.0f, color, outline, &but->icon_overlay_text);
     }
     else if (!((but->icon != ICON_NONE) && UI_but_is_tool(but))) {
-      if (has_theme) {
+      if (outline) {
         alpha *= 0.8f;
       }
       UI_icon_draw_ex(xs,
@@ -1374,15 +1375,14 @@ static void widget_draw_icon(
                       alpha,
                       0.0f,
                       color,
-                      has_theme,
+                      outline,
                       &but->icon_overlay_text,
                       but->drawflag & UI_BUT_ICON_INVERT);
     }
     else {
-      const bTheme *btheme = UI_GetTheme();
       const float desaturate = 1.0 - btheme->tui.icon_saturation;
       UI_icon_draw_ex(
-          xs, ys, icon, aspect, alpha, desaturate, color, has_theme, &but->icon_overlay_text);
+          xs, ys, icon, aspect, alpha, desaturate, color, outline, &but->icon_overlay_text);
     }
   }
 
@@ -2315,7 +2315,7 @@ static void widget_draw_text_icon(const uiFontStyle *fstyle,
       /* pass (even if its a menu toolbar) */
     }
     else if (ui_block_is_pie_menu(but->block)) {
-      if (but->emboss == UI_EMBOSS_RADIAL) {
+      if (but->emboss == UI_EMBOSS_PIE_MENU) {
         rect->xmin += 0.3f * U.widget_unit;
       }
     }
@@ -4169,12 +4169,12 @@ static void widget_menu_itembut_unpadded(uiWidgetColors *wcol,
   widgetbase_draw(&wtb, wcol);
 }
 
-static void widget_menu_radial_itembut(uiBut *but,
-                                       uiWidgetColors *wcol,
-                                       rcti *rect,
-                                       const uiWidgetStateInfo * /*state*/,
-                                       int /*roundboxalign*/,
-                                       const float zoom)
+static void widget_menu_pie_itembut(uiBut *but,
+                                    uiWidgetColors *wcol,
+                                    rcti *rect,
+                                    const uiWidgetStateInfo * /*state*/,
+                                    int /*roundboxalign*/,
+                                    const float zoom)
 {
   const float fac = but->block->pie_data.alphafac;
 
@@ -4712,9 +4712,9 @@ static uiWidgetType *widget_type(uiWidgetTypeEnum type)
       wt.custom = widget_nodesocket;
       break;
 
-    case UI_WTYPE_MENU_ITEM_RADIAL:
+    case UI_WTYPE_MENU_ITEM_PIE:
       wt.wcol_theme = &btheme->tui.wcol_pie_menu;
-      wt.custom = widget_menu_radial_itembut;
+      wt.custom = widget_menu_pie_itembut;
       wt.state = widget_state_pie_menu_item;
       break;
   }
@@ -4843,8 +4843,8 @@ void ui_draw_but(const bContext *C, ARegion *region, uiStyle *style, uiBut *but,
         break;
     }
   }
-  else if (but->emboss == UI_EMBOSS_RADIAL) {
-    wt = widget_type(UI_WTYPE_MENU_ITEM_RADIAL);
+  else if (but->emboss == UI_EMBOSS_PIE_MENU) {
+    wt = widget_type(UI_WTYPE_MENU_ITEM_PIE);
   }
   else {
     BLI_assert(but->emboss == UI_EMBOSS);

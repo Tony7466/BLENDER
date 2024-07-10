@@ -893,7 +893,7 @@ static StructRNA *rna_Header_register(Main *bmain,
   }
 
   /* create a new header type */
-  ht = MEM_new<HeaderType>(__func__);
+  ht = MEM_cnew<HeaderType>(__func__);
   memcpy(ht, &dummy_ht, sizeof(dummy_ht));
 
   ht->rna_ext.srna = RNA_def_struct_ptr(&BLENDER_RNA, ht->idname, &RNA_Header);
@@ -1323,6 +1323,15 @@ static void rna_AssetShelf_asset_library_set(PointerRNA *ptr, int value)
       value);
 }
 
+static int rna_AssetShelf_preview_size_default(PointerRNA *ptr, PropertyRNA * /*prop*/)
+{
+  AssetShelf *shelf = static_cast<AssetShelf *>(ptr->data);
+  if (shelf->type && shelf->type->default_preview_size) {
+    return shelf->type->default_preview_size;
+  }
+  return ASSET_SHELF_PREVIEW_SIZE_DEFAULT;
+}
+
 static void rna_Panel_bl_description_set(PointerRNA *ptr, const char *value)
 {
   Panel *data = (Panel *)(ptr->data);
@@ -1659,7 +1668,7 @@ static void rna_def_ui_layout(BlenderRNA *brna)
       {UI_EMBOSS, "NORMAL", 0, "Regular", "Draw standard button emboss style"},
       {UI_EMBOSS_NONE, "NONE", 0, "None", "Draw only text and icons"},
       {UI_EMBOSS_PULLDOWN, "PULLDOWN_MENU", 0, "Pulldown Menu", "Draw pulldown menu style"},
-      {UI_EMBOSS_RADIAL, "RADIAL_MENU", 0, "Radial Menu", "Draw radial menu style"},
+      {UI_EMBOSS_PIE_MENU, "RADIAL_MENU", 0, "Pie Menu", "Draw radial menu style"},
       {UI_EMBOSS_NONE_OR_STATUS,
        "NONE_OR_STATUS",
        0,
@@ -2413,6 +2422,7 @@ static void rna_def_asset_shelf(BlenderRNA *brna)
   prop = RNA_def_property(srna, "preview_size", PROP_INT, PROP_UNSIGNED);
   RNA_def_property_int_sdna(prop, nullptr, "settings.preview_size");
   RNA_def_property_range(prop, 32, 256);
+  RNA_def_property_int_default_func(prop, "rna_AssetShelf_preview_size_default");
   RNA_def_property_ui_text(prop, "Preview Size", "Size of the asset preview thumbnails in pixels");
   RNA_def_property_update(prop, NC_SPACE | ND_REGIONS_ASSET_SHELF, nullptr);
 

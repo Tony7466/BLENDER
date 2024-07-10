@@ -89,11 +89,17 @@ unique_ptr<Denoiser> Denoiser::create(Device *denoiser_device,
      * or between few GPU and a CPU. */
     single_denoiser_device = find_best_device(denoiser_device, params.type);
   }
+  /* Ensure that we have a device to be used later in the code below. */
+  if (single_denoiser_device == nullptr) {
+    single_denoiser_device = cpu_fallback_device;
+  }
 
   bool is_cpu_denoiser_device = single_denoiser_device->info.type == DEVICE_CPU;
   if (is_cpu_denoiser_device == false) {
 #ifdef WITH_OPTIX
-    if (params.type == DENOISER_OPTIX) {
+    if (params.type == DENOISER_OPTIX &&
+        OptiXDenoiser::is_device_supported(single_denoiser_device->info))
+    {
       return make_unique<OptiXDenoiser>(single_denoiser_device, params);
     }
 #endif
@@ -118,18 +124,20 @@ unique_ptr<Denoiser> Denoiser::create(Device *denoiser_device,
       is_cpu_denoiser_device ? single_denoiser_device : cpu_fallback_device, oidn_params);
 }
 
-DenoiserType Denoiser::automatic_viewport_denoiser_type(const DeviceInfo &path_trace_device_info)
+DenoiserType Denoiser::automatic_viewport_denoiser_type(const DeviceInfo &denoise_device_info)
 {
 #ifdef WITH_OPENIMAGEDENOISE
-  if (path_trace_device_info.type != DEVICE_CPU &&
-      OIDNDenoiserGPU::is_device_supported(path_trace_device_info))
+  if (denoise_device_info.type != DEVICE_CPU &&
+      OIDNDenoiserGPU::is_device_supported(denoise_device_info))
   {
     return DENOISER_OPENIMAGEDENOISE;
   }
+#else
+  (void)denoise_device_info;
 #endif
 
 #ifdef WITH_OPTIX
-  if (!Device::available_devices(DEVICE_MASK_OPTIX).empty()) {
+  if (OptiXDenoiser::is_device_supported(denoise_device_info)) {
     return DENOISER_OPTIX;
   }
 #endif
@@ -144,7 +152,7 @@ DenoiserType Denoiser::automatic_viewport_denoiser_type(const DeviceInfo &path_t
 }
 
 Denoiser::Denoiser(Device *denoiser_device, const DenoiseParams &params)
-    : denoiser_device_(denoiser_device), params_(params)
+    : denoiser_device_(denoiser_device), denoise_kernels_are_loaded_(false), params_(params)
 {
   DCHECK(denoiser_device_);
   DCHECK(params.use);
@@ -169,6 +177,11 @@ const DenoiseParams &Denoiser::get_params() const
 
 bool Denoiser::load_kernels(Progress *progress)
 {
+  /* If we have successfully loaded kernels once, then there is no need to repeat this again. */
+  if (denoise_kernels_are_loaded_) {
+    return denoise_kernels_are_loaded_;
+  }
+
   if (progress) {
     progress->set_status("Loading denoising kernels (may take a few minutes the first time)");
   }
@@ -191,6 +204,7 @@ bool Denoiser::load_kernels(Progress *progress)
   VLOG_WORK << "Will denoise on " << denoiser_device_->info.description << " ("
             << denoiser_device_->info.id << ")";
 
+  denoise_kernels_are_loaded_ = true;
   return true;
 }
 

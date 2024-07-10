@@ -25,6 +25,7 @@
 #include "BKE_brush.hh"
 #include "BKE_context.hh"
 #include "BKE_layer.hh"
+#include "BKE_mesh.hh"
 #include "BKE_modifier.hh"
 #include "BKE_object_types.hh"
 #include "BKE_paint.hh"
@@ -113,25 +114,14 @@ void cache_init(bContext *C,
   ss.filter_cache->random_seed = rand();
 
   if (undo_type == undo::Type::Color) {
-    BKE_pbvh_ensure_node_loops(pbvh);
+    const Mesh &mesh = *static_cast<const Mesh *>(ob.data);
+    BKE_pbvh_ensure_node_loops(pbvh, mesh.corner_tris());
   }
 
   ss.filter_cache->nodes = bke::pbvh::search_gather(
       pbvh, [&](PBVHNode &node) { return !node_fully_masked_or_hidden(node); });
 
-  for (PBVHNode *node : ss.filter_cache->nodes) {
-    BKE_pbvh_node_mark_positions_update(node);
-  }
-
-  /* `mesh->runtime.subdiv_ccg` is not available. Updating of the normals is done during drawing.
-   * Filters can't use normals in multi-resolution. */
-  if (BKE_pbvh_type(pbvh) != PBVH_GRIDS) {
-    bke::pbvh::update_normals(pbvh, nullptr);
-  }
-
-  for (const int i : ss.filter_cache->nodes.index_range()) {
-    undo::push_node(ob, ss.filter_cache->nodes[i], undo_type);
-  }
+  undo::push_nodes(ob, ss.filter_cache->nodes, undo_type);
 
   /* Setup orientation matrices. */
   copy_m4_m4(ss.filter_cache->obmat.ptr(), ob.object_to_world().ptr());
@@ -176,7 +166,7 @@ void cache_init(bContext *C,
       return !node_fully_masked_or_hidden(node) && node_in_sphere(node, co, radius_sq, true);
     });
 
-    const std::optional<float3> area_normal = SCULPT_pbvh_calc_area_normal(*brush, ob, nodes);
+    const std::optional<float3> area_normal = calc_area_normal(*brush, ob, nodes);
     if (BKE_paint_brush_for_read(&sd.paint) && area_normal) {
       ss.filter_cache->initial_normal = *area_normal;
       ss.last_normal = ss.filter_cache->initial_normal;
@@ -331,8 +321,7 @@ static void mesh_filter_task(Object &ob,
 {
   SculptSession &ss = *ob.sculpt;
 
-  SculptOrigVertData orig_data;
-  SCULPT_orig_vert_data_init(orig_data, ob, *node, undo::Type::Position);
+  SculptOrigVertData orig_data = SCULPT_orig_vert_data_init(ob, *node, undo::Type::Position);
 
   /* When using the relax face sets meshes filter,
    * each 3 iterations, do a whole mesh relax to smooth the contents of the Face Set. */
@@ -518,7 +507,7 @@ static void mesh_filter_task(Object &ob,
   }
   BKE_pbvh_vertex_iter_end;
 
-  BKE_pbvh_node_mark_update(node);
+  BKE_pbvh_node_mark_positions_update(node);
 }
 
 static void mesh_filter_enhance_details_init_directions(SculptSession &ss)
@@ -707,17 +696,25 @@ static void sculpt_mesh_filter_apply(bContext *C, wmOperator *op)
 
   SCULPT_vertex_random_access_ensure(ss);
 
-  threading::parallel_for(ss.filter_cache->nodes.index_range(), 1, [&](const IndexRange range) {
+  const Span<PBVHNode *> nodes = ss.filter_cache->nodes;
+
+  /* The relax mesh filter needs updated normals. */
+  if (ELEM(MESH_FILTER_RELAX, MESH_FILTER_RELAX_FACE_SETS)) {
+    bke::pbvh::update_normals(*ss.pbvh, ss.subdiv_ccg);
+  }
+
+  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     for (const int i : range) {
-      mesh_filter_task(
-          ob, eSculptMeshFilterType(filter_type), filter_strength, ss.filter_cache->nodes[i]);
+      mesh_filter_task(ob, eSculptMeshFilterType(filter_type), filter_strength, nodes[i]);
+      BKE_pbvh_node_mark_positions_update(nodes[i]);
     }
   });
 
   if (filter_type == MESH_FILTER_SURFACE_SMOOTH) {
-    threading::parallel_for(ss.filter_cache->nodes.index_range(), 1, [&](const IndexRange range) {
+    threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
       for (const int i : range) {
-        mesh_filter_surface_smooth_displace_task(ob, filter_strength, ss.filter_cache->nodes[i]);
+        mesh_filter_surface_smooth_displace_task(ob, filter_strength, nodes[i]);
+        BKE_pbvh_node_mark_positions_update(nodes[i]);
       }
     });
   }
@@ -726,11 +723,6 @@ static void sculpt_mesh_filter_apply(bContext *C, wmOperator *op)
 
   if (ss.deform_modifiers_active || ss.shapekey_active) {
     SCULPT_flush_stroke_deform(sd, ob, true);
-  }
-
-  /* The relax mesh filter needs the updated normals of the modified mesh after each iteration. */
-  if (ELEM(MESH_FILTER_RELAX, MESH_FILTER_RELAX_FACE_SETS)) {
-    bke::pbvh::update_normals(*ss.pbvh, ss.subdiv_ccg);
   }
 
   flush_update_step(C, UpdateType::Position);
@@ -816,8 +808,7 @@ static void sculpt_mesh_filter_cancel(bContext *C, wmOperator * /*op*/)
   for (PBVHNode *node : nodes) {
     PBVHVertexIter vd;
 
-    SculptOrigVertData orig_data;
-    SCULPT_orig_vert_data_init(orig_data, ob, *node, undo::Type::Position);
+    SculptOrigVertData orig_data = SCULPT_orig_vert_data_init(ob, *node, undo::Type::Position);
 
     BKE_pbvh_vertex_iter_begin (*ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
       SCULPT_orig_vert_data_update(orig_data, vd);
@@ -826,7 +817,7 @@ static void sculpt_mesh_filter_cancel(bContext *C, wmOperator * /*op*/)
     }
     BKE_pbvh_vertex_iter_end;
 
-    BKE_pbvh_node_mark_update(node);
+    BKE_pbvh_node_mark_positions_update(node);
   }
 
   blender::bke::pbvh::update_bounds(*ss->pbvh);

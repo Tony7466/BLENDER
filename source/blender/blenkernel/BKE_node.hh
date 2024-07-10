@@ -662,17 +662,18 @@ void nodeAttachNode(bNodeTree *ntree, bNode *node, bNode *parent);
 void nodeDetachNode(bNodeTree *ntree, bNode *node);
 
 /**
- * Same as above but expects that the socket definitely is in the node tree.
+ * Finds a node based on given socket and returns true on success.
+ */
+bool nodeFindNodeTry(bNodeTree *ntree, bNodeSocket *sock, bNode **r_node, int *r_sockindex);
+
+/**
+ * Same as #nodeFindNodeTry but expects that the socket definitely is in the node tree.
  */
 void nodeFindNode(bNodeTree *ntree, bNodeSocket *sock, bNode **r_node, int *r_sockindex);
 /**
  * Finds a node based on its name.
  */
 bNode *nodeFindNodebyName(bNodeTree *ntree, const char *name);
-/**
- * Finds a node based on given socket and returns true on success.
- */
-bool nodeFindNodeTry(bNodeTree *ntree, bNodeSocket *sock, bNode **r_node, int *r_sockindex);
 
 bool nodeIsParentAndChild(const bNode *parent, const bNode *child);
 
@@ -965,6 +966,7 @@ void BKE_nodetree_remove_layer_n(bNodeTree *ntree, Scene *scene, int layer_index
 #define SH_NODE_SEPARATE_COLOR 712
 #define SH_NODE_MIX 713
 #define SH_NODE_BSDF_RAY_PORTAL 714
+#define SH_NODE_TEX_GABOR 715
 
 /** \} */
 
@@ -1333,6 +1335,9 @@ void BKE_nodetree_remove_layer_n(bNodeTree *ntree, Scene *scene, int layer_index
 #define GEO_NODE_TOOL_ACTIVE_ELEMENT 2135
 #define GEO_NODE_SET_INSTANCE_TRANSFORM 2136
 #define GEO_NODE_INPUT_INSTANCE_TRANSFORM 2137
+#define GEO_NODE_IMPORT_STL 2138
+#define GEO_NODE_IMPORT_OBJ 2139
+#define GEO_NODE_SET_GEOMETRY_NAME 2140
 
 /** \} */
 

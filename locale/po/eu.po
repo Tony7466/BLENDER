@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.2.0 Alpha (b'5bc71c870435')\n"
+"Project-Id-Version: Blender 4.2.0 Beta (b'987b781412f1')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-06-03 07:20+0000\n"
+"POT-Creation-Date: 2024-07-08 18:33+0000\n"
 "PO-Revision-Date: 2024-04-29 13:54+0000\n"
 "Last-Translator: Anonymous <noreply@weblate.org>\n"
 "Language-Team: Basque <https://translate.blender.org/projects/blender-ui/ui/eu/>\n"
@@ -167,6 +167,10 @@ msgid "Expanded"
 msgstr "Hedatua"
 
 
+msgid "Action"
+msgstr "Akzioa"
+
+
 msgid "Replace"
 msgstr "Ordezkatu"
 
@@ -177,10 +181,6 @@ msgstr "Gehitu"
 
 msgid "Multiply"
 msgstr "Biderkatu"
-
-
-msgid "Action"
-msgstr "Akzioa"
 
 
 msgid "Heads"
@@ -411,10 +411,6 @@ msgid "Delete"
 msgstr "Ezabatu"
 
 
-msgid "UV"
-msgstr "UV"
-
-
 msgid "Onion Skinning"
 msgstr "Tipula-azapa"
 
@@ -576,6 +572,10 @@ msgstr "Angelu Minimoa"
 
 msgid "Show/Hide"
 msgstr "Erakutsi/Ezkutatu"
+
+
+msgid "UV"
+msgstr "UV"
 
 
 msgid "Show/Hide Faces"
@@ -1501,6 +1501,11 @@ msgid "Join"
 msgstr "Elkartu"
 
 
+msgctxt "Operator"
+msgid "New"
+msgstr "Berria"
+
+
 msgid "Child"
 msgstr "Umea"
 
@@ -1856,11 +1861,6 @@ msgstr "Animazioa"
 msgctxt "Operator"
 msgid "Report a Bug"
 msgstr "Akats baten berri eman"
-
-
-msgctxt "Operator"
-msgid "New"
-msgstr "Berria"
 
 
 msgid "3D View"

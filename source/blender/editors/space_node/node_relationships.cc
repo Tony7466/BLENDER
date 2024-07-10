@@ -757,7 +757,7 @@ static int view_socket(const bContext &C,
     bNode &target_node = *link->tonode;
     if (is_viewer_socket(target_socket) && ELEM(viewer_node, nullptr, &target_node)) {
       finalize_viewer_link(C, snode, target_node, *link);
-      position_viewer_node(btree, *viewer_node, bnode_to_view, region);
+      position_viewer_node(btree, target_node, bnode_to_view, region);
       return OPERATOR_FINISHED;
     }
   }
@@ -782,6 +782,8 @@ static int view_socket(const bContext &C,
   if (viewer_bsocket == nullptr) {
     return OPERATOR_CANCELLED;
   }
+  viewer_bsocket->flag &= ~SOCK_HIDDEN;
+
   bNodeLink *viewer_link = nullptr;
   LISTBASE_FOREACH_MUTABLE (bNodeLink *, link, &btree.links) {
     if (link->tosock == viewer_bsocket) {
@@ -940,6 +942,10 @@ static bool should_create_drag_link_search_menu(const bNodeTree &node_tree,
   /* Don't allow a drag from the "new socket" (group input node or simulation nodes currently).
    * Handling these properly in node callbacks increases the complexity too much for now. */
   if (nldrag.start_socket->type == SOCK_CUSTOM) {
+    return false;
+  }
+  if (nldrag.start_socket->type == SOCK_TEXTURE) {
+    /* This socket types is not used anymore, but can currently still exists in files. */
     return false;
   }
   return true;
@@ -1206,7 +1212,9 @@ static void add_dragged_links_to_tree(bContext &C, bNodeLinkDrag &nldrag)
     }
 
     /* Before actually adding the link let nodes perform special link insertion handling. */
-    bNodeLink *new_link = MEM_new<bNodeLink>(__func__, link);
+
+    bNodeLink *new_link = static_cast<bNodeLink *>(MEM_mallocN(sizeof(bNodeLink), __func__));
+    *new_link = link;
     if (link.fromnode->typeinfo->insert_link) {
       if (!link.fromnode->typeinfo->insert_link(&ntree, link.fromnode, new_link)) {
         MEM_freeN(new_link);

@@ -32,6 +32,7 @@
 #include "BKE_modifier.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
+#include "BKE_subdiv_ccg.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
@@ -962,7 +963,7 @@ static void cloth_brush_apply_brush_foces(const Sculpt &sd, Object &ob, Span<PBV
   if (brush.cloth_deform_type == BRUSH_CLOTH_DEFORM_PINCH_PERPENDICULAR ||
       brush.cloth_force_falloff_type == BRUSH_CLOTH_FORCE_FALLOFF_PLANE)
   {
-    SCULPT_calc_brush_plane(sd, ob, nodes, area_no, area_co);
+    calc_brush_plane(brush, ob, nodes, area_no, area_co);
 
     /* Initialize stroke local space matrix. */
     cross_v3_v3v3(mat[0], area_no, ss.cache->grab_delta_symmetry);
@@ -1067,7 +1068,7 @@ SimulationData *brush_simulation_create(Object &ob,
           &ss.bm->vdata, CD_PROP_FLOAT, ".sculpt_mask");
       break;
     case PBVH_GRIDS:
-      cloth_sim->grid_key = *BKE_pbvh_get_grid_key(*ss.pbvh);
+      cloth_sim->grid_key = BKE_subdiv_ccg_key_top_level(*ss.subdiv_ccg);
       break;
   }
 
@@ -1226,7 +1227,7 @@ void simulation_free(SimulationData *cloth_sim)
   if (cloth_sim->collider_list) {
     BKE_collider_cache_free(&cloth_sim->collider_list);
   }
-  MEM_SAFE_FREE(cloth_sim);
+  MEM_delete(cloth_sim);
 }
 
 void simulation_limits_draw(const uint gpuattr,
@@ -1464,7 +1465,7 @@ static void cloth_filter_apply_forces_task(Object &ob,
   }
   BKE_pbvh_vertex_iter_end;
 
-  BKE_pbvh_node_mark_update(node);
+  BKE_pbvh_node_mark_positions_update(node);
 }
 
 static int sculpt_cloth_filter_modal(bContext *C, wmOperator *op, const wmEvent *event)
@@ -1514,6 +1515,10 @@ static int sculpt_cloth_filter_modal(bContext *C, wmOperator *op, const wmEvent 
 
   /* Update and write the simulation to the nodes. */
   do_simulation_step(sd, ob, *ss.filter_cache->cloth_sim, ss.filter_cache->nodes);
+
+  for (PBVHNode *node : ss.filter_cache->nodes) {
+    BKE_pbvh_node_mark_positions_update(node);
+  }
 
   if (ss.deform_modifiers_active || ss.shapekey_active) {
     SCULPT_flush_stroke_deform(sd, ob, true);

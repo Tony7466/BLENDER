@@ -378,7 +378,14 @@ def script_paths_pref():
     return paths
 
 
-def script_paths(*, subdir=None, user_pref=True, check_all=False, use_user=True):
+def script_paths_system_environment():
+    """Returns a list of system script directories from environment variables."""
+    if env_system_path := _os.environ.get("BLENDER_SYSTEM_SCRIPTS"):
+        return [_os.path.normpath(env_system_path)]
+    return []
+
+
+def script_paths(*, subdir=None, user_pref=True, check_all=False, use_user=True, use_system_environment=True):
     """
     Returns a list of valid script paths.
 
@@ -388,6 +395,10 @@ def script_paths(*, subdir=None, user_pref=True, check_all=False, use_user=True)
     :type user_pref: bool
     :arg check_all: Include local, user and system paths rather just the paths Blender uses.
     :type check_all: bool
+    :arg use_user: Include user paths
+    :type use_user: bool
+    :arg use_system_environment: Include BLENDER_SYSTEM_SCRIPTS variable path
+    :type use_system_environment: bool
     :return: script paths.
     :rtype: list
     """
@@ -418,6 +429,9 @@ def script_paths(*, subdir=None, user_pref=True, check_all=False, use_user=True)
 
     if user_pref:
         base_paths.extend(script_paths_pref())
+
+    if use_system_environment:
+        base_paths.extend(script_paths_system_environment())
 
     scripts = []
     for path in base_paths:
@@ -473,15 +487,21 @@ def app_template_paths(*, path=None):
     """
     subdir_args = (path,) if path is not None else ()
     # Note: keep in sync with: Blender's 'BKE_appdir_app_template_any'.
-    # Uses 'BLENDER_USER_SCRIPTS', 'BLENDER_SYSTEM_SCRIPTS'
-    # ... in this case 'system' accounts for 'local' too.
-    for resource_fn, module_name in (
-            (_user_resource, "bl_app_templates_user"),
-            (system_resource, "bl_app_templates_system"),
-    ):
-        path_test = resource_fn('SCRIPTS', path=_os.path.join("startup", module_name, *subdir_args))
-        if path_test and _os.path.isdir(path_test):
+    # Uses BLENDER_USER_SCRIPTS
+    path_test = _user_resource('SCRIPTS', path=_os.path.join("startup", "bl_app_templates_user", *subdir_args))
+    if path_test and _os.path.isdir(path_test):
+        yield path_test
+
+    # Uses BLENDER_SYSTTEM_SCRIPTS
+    for path in script_paths_system_environment():
+        path_test = _os.path.join(path, "startup", "bl_app_templates_system", *subdir_args)
+        if _os.path.isdir(path_test):
             yield path_test
+
+    # Uses default local or system location.
+    path_test = system_resource('SCRIPTS', path=_os.path.join("startup", "bl_app_templates_system", *subdir_args))
+    if path_test and _os.path.isdir(path_test):
+        yield path_test
 
 
 def preset_paths(subdir):
@@ -494,7 +514,7 @@ def preset_paths(subdir):
     :rtype: list
     """
     dirs = []
-    for path in script_paths(subdir="presets", check_all=True):
+    for path in script_paths(subdir="presets"):
         directory = _os.path.join(path, subdir)
         if not directory.startswith(path):
             raise Exception("invalid subdir given {!r}".format(subdir))
@@ -741,8 +761,7 @@ def user_resource(resource_type, *, path="", create=False):
     :type type: string
     :arg path: Optional subdirectory.
     :type path: string
-    :arg create: Treat the path as a directory and create
-       it if its not existing.
+    :arg create: Treat the path as a directory and create it if its not existing.
     :type create: boolean
     :return: a path.
     :rtype: string
@@ -753,6 +772,55 @@ def user_resource(resource_type, *, path="", create=False):
     if create:
         # should always be true.
         if target_path:
+            # create path if not existing.
+            if not _os.path.exists(target_path):
+                try:
+                    _os.makedirs(target_path)
+                except:
+                    import traceback
+                    traceback.print_exc()
+                    target_path = ""
+            elif not _os.path.isdir(target_path):
+                print("Path {!r} found but isn't a directory!".format(target_path))
+                target_path = ""
+
+    return target_path
+
+
+def extension_path_user(package, *, path="", create=False):
+    """
+    Return a user writable directory associated with an extension.
+
+    .. note::
+
+       This allows each extension to have it's own user directory to store files.
+
+       The location of the extension it self is not a suitable place to store files
+       because it is cleared each upgrade and the users may not have write permissions
+       to the repository (typically "System" repositories).
+
+    :arg package: The ``__package__`` of the extension.
+    :type package: string
+    :arg path: Optional subdirectory.
+    :type path: string
+    :arg create: Treat the path as a directory and create it if its not existing.
+    :type create: boolean
+    :return: a path.
+    :rtype: string
+    """
+    from addon_utils import _extension_module_name_decompose
+
+    # Handles own errors.
+    repo_module, pkg_idname = _extension_module_name_decompose(package)
+
+    target_path = _user_resource('EXTENSIONS')
+    # Should always be true.
+    if target_path:
+        if path:
+            target_path = _os.path.join(target_path, ".user", repo_module, pkg_idname, path)
+        else:
+            target_path = _os.path.join(target_path, ".user", repo_module, pkg_idname)
+        if create:
             # create path if not existing.
             if not _os.path.exists(target_path):
                 try:
@@ -809,17 +877,16 @@ def register_submodule_factory(module_name, submodule_names):
     def register():
         nonlocal module
         module = __import__(name=module_name, fromlist=submodule_names)
-        submodules[:] = [getattr(module, name) for name in submodule_names]
-        for mod in submodules:
+        submodules[:] = [(getattr(module, mod_name), mod_name) for mod_name in submodule_names]
+        for mod, _mod_name in submodules:
             mod.register()
 
     def unregister():
         from sys import modules
-        for mod in reversed(submodules):
+        for mod, mod_name in reversed(submodules):
             mod.unregister()
-            name = mod.__name__
-            delattr(module, name.partition(".")[2])
-            del modules[name]
+            delattr(module, mod_name)
+            del modules[mod.__name__]
         submodules.clear()
 
     return register, unregister
@@ -833,10 +900,8 @@ def register_tool(tool_cls, *, after=None, separator=False, group=False):
     """
     Register a tool in the toolbar.
 
-    :arg tool: A tool subclass.
-    :type tool: :class:`bpy.types.WorkSpaceTool` subclass.
-    :arg space_type: Space type identifier.
-    :type space_type: string
+    :arg tool_cls: A tool subclass.
+    :type tool_cls: :class:`bpy.types.WorkSpaceTool` subclass.
     :arg after: Optional identifiers this tool will be added after.
     :type after: collection of strings or None.
     :arg separator: When true, add a separator before this tool.

@@ -6,6 +6,9 @@
  * \ingroup RNA
  */
 
+#include "BKE_attribute.h"
+#include "BKE_global.hh"
+
 #include "BLI_string.h"
 
 #include "DNA_grease_pencil_types.h"
@@ -101,7 +104,7 @@ static void rna_grease_pencil_layer_mask_name_set(PointerRNA *ptr, const char *v
 
   const std::string oldname(mask->layer_name);
   if (bke::greasepencil::TreeNode *node = grease_pencil->find_node_by_name(oldname)) {
-    grease_pencil->rename_node(*node, value);
+    grease_pencil->rename_node(*G_MAIN, *node, value);
   }
 }
 
@@ -194,7 +197,7 @@ static void rna_GreasePencilLayer_name_set(PointerRNA *ptr, const char *value)
   GreasePencil *grease_pencil = rna_grease_pencil(ptr);
   GreasePencilLayer *layer = static_cast<GreasePencilLayer *>(ptr->data);
 
-  grease_pencil->rename_node(layer->wrap().as_node(), value);
+  grease_pencil->rename_node(*G_MAIN, layer->wrap().as_node(), value);
 }
 
 static int rna_GreasePencilLayer_pass_index_get(PointerRNA *ptr)
@@ -516,7 +519,7 @@ static void rna_GreasePencilLayerGroup_name_set(PointerRNA *ptr, const char *val
   GreasePencil *grease_pencil = rna_grease_pencil(ptr);
   GreasePencilLayerTreeGroup *group = static_cast<GreasePencilLayerTreeGroup *>(ptr->data);
 
-  grease_pencil->rename_node(group->wrap().as_node(), value);
+  grease_pencil->rename_node(*G_MAIN, group->wrap().as_node(), value);
 }
 
 static void rna_iterator_grease_pencil_layer_groups_begin(CollectionPropertyIterator *iter,
@@ -1193,7 +1196,7 @@ static void rna_def_grease_pencil_data(BlenderRNA *brna)
   RNA_def_struct_ui_icon(srna, ICON_OUTLINER_DATA_GREASEPENCIL);
 
   /* attributes */
-  rna_def_attributes_common(srna);
+  rna_def_attributes_common(srna, AttributeOwnerType::GreasePencil);
 
   /* Animation Data */
   rna_def_animdata_common(srna);

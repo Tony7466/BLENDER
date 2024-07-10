@@ -465,9 +465,9 @@ void GPU_shader_transform_feedback_disable(GPUShader *shader)
 void Shader::specialization_constants_init(const shader::ShaderCreateInfo &info)
 {
   using namespace shader;
-  for (const ShaderCreateInfo::SpecializationConstant &sc : info.specialization_constants_) {
+  for (const SpecializationConstant &sc : info.specialization_constants_) {
     constants.types.append(sc.type);
-    constants.values.append(sc.default_value);
+    constants.values.append(sc.value);
   }
   constants.is_dirty = true;
 }
@@ -513,6 +513,17 @@ void GPU_shader_constant_float(GPUShader *sh, const char *name, float value)
 void GPU_shader_constant_bool(GPUShader *sh, const char *name, bool value)
 {
   GPU_shader_constant_bool_ex(sh, unwrap(sh)->interface->constant_get(name)->location, value);
+}
+
+SpecializationBatchHandle GPU_shader_batch_specializations(
+    blender::Span<ShaderSpecialization> specializations)
+{
+  return Context::get()->compiler->precompile_specializations(specializations);
+}
+
+bool GPU_shader_batch_specializations_is_ready(SpecializationBatchHandle &handle)
+{
+  return Context::get()->compiler->specialization_batch_is_ready(handle);
 }
 
 /** \} */

@@ -632,14 +632,13 @@ static bke::CurvesGeometry boundary_to_curves(const Scene &scene,
     constexpr const float pressure = 1.0f;
     radii.span[point_i] = ed::greasepencil::radius_from_input_sample(view_context.rv3d,
                                                                      view_context.region,
-                                                                     &scene,
                                                                      &brush,
                                                                      pressure,
                                                                      position,
                                                                      placement.to_world_space(),
                                                                      brush.gpencil_settings);
     opacities.span[point_i] = ed::greasepencil::opacity_from_input_sample(
-        pressure, &brush, &scene, brush.gpencil_settings);
+        pressure, &brush, brush.gpencil_settings);
   }
 
   if (scene.toolsettings->gp_paint->mode == GPPAINT_FLAG_USE_VERTEXCOLOR) {
@@ -804,10 +803,9 @@ static VArray<ColorGeometry4f> get_stroke_colors(const Object &object,
                                                  const VArray<float> &opacities,
                                                  const VArray<int> materials,
                                                  const ColorGeometry4f &tint_color,
-                                                 const float alpha_threshold,
-                                                 const bool brush_fill_hide)
+                                                 const std::optional<float> alpha_threshold)
 {
-  if (brush_fill_hide) {
+  if (!alpha_threshold) {
     return VArray<ColorGeometry4f>::ForSingle(tint_color, curves.points_num());
   }
 
@@ -821,7 +819,7 @@ static VArray<ColorGeometry4f> get_stroke_colors(const Object &object,
                                        1.0f;
       const IndexRange points = curves.points_by_curve()[curve_i];
       for (const int point_i : points) {
-        const float alpha = (material_alpha * opacities[point_i] > alpha_threshold ? 1.0f : 0.0f);
+        const float alpha = (material_alpha * opacities[point_i] > *alpha_threshold ? 1.0f : 0.0f);
         colors[point_i] = ColorGeometry4f(tint_color.r, tint_color.g, tint_color.b, alpha);
       }
     }
@@ -988,6 +986,7 @@ bke::CurvesGeometry fill_strokes(const ViewContext &view_context,
                                  const VArray<bool> &boundary_layers,
                                  const Span<DrawingInfo> src_drawings,
                                  const bool invert,
+                                 const std::optional<float> alpha_threshold,
                                  const float2 &fill_point,
                                  const ExtensionData &extensions,
                                  const FillToolFitMethod fit_method,
@@ -1044,8 +1043,6 @@ bke::CurvesGeometry fill_strokes(const ViewContext &view_context,
     return {};
   }
 
-  const float alpha_threshold = 0.2f;
-  const bool brush_fill_hide = false;
   const bool use_xray = false;
 
   const float4x4 layer_to_world = layer.to_world_space(object);
@@ -1085,8 +1082,7 @@ bke::CurvesGeometry fill_strokes(const ViewContext &view_context,
                                                                     opacities,
                                                                     materials,
                                                                     draw_boundary_color,
-                                                                    alpha_threshold,
-                                                                    brush_fill_hide);
+                                                                    alpha_threshold);
 
     image_render::draw_grease_pencil_strokes(rv3d,
                                              image_size,

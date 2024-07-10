@@ -37,6 +37,9 @@ static fn::Field<int> get_count_input_from_length(const fn::Field<float> &length
       [](const float curve_length, const float sample_length) {
         /* Find the number of sampled segments by dividing the total length by
          * the sample length. Then there is one more sampled point than segment. */
+        if (UNLIKELY(sample_length == 0.0f)) {
+          return 1;
+        }
         const int count = int(curve_length / sample_length) + 1;
         return std::max(1, count);
       },
@@ -112,7 +115,7 @@ static void retrieve_attribute_spans(const Span<bke::AttributeIDRef> ids,
   }
 }
 
-struct AttributesForInterpolation : NonCopyable, NonMovable {
+struct AttributesForResample : NonCopyable, NonMovable {
   Vector<GSpan> src;
   Vector<GMutableSpan> dst;
 
@@ -133,7 +136,7 @@ struct AttributesForInterpolation : NonCopyable, NonMovable {
 static void gather_point_attributes_to_interpolate(
     const CurvesGeometry &src_curves,
     CurvesGeometry &dst_curves,
-    AttributesForInterpolation &result,
+    AttributesForResample &result,
     const ResampleCurvesOutputAttributeIDs &output_ids)
 {
   VectorSet<bke::AttributeIDRef> ids;
@@ -193,7 +196,7 @@ static void gather_point_attributes_to_interpolate(
 
 static void copy_or_defaults_for_unselected_curves(const CurvesGeometry &src_curves,
                                                    const IndexMask &unselected_curves,
-                                                   const AttributesForInterpolation &attributes,
+                                                   const AttributesForResample &attributes,
                                                    CurvesGeometry &dst_curves)
 {
   const OffsetIndices src_points_by_curve = src_curves.points_by_curve();
@@ -265,7 +268,7 @@ static void resample_to_uniform(const CurvesGeometry &src_curves,
 
   MutableSpan<float3> dst_positions = dst_curves.positions_for_write();
 
-  AttributesForInterpolation attributes;
+  AttributesForResample attributes;
   gather_point_attributes_to_interpolate(src_curves, dst_curves, attributes, output_ids);
 
   src_curves.ensure_evaluated_lengths();
@@ -528,26 +531,20 @@ CurvesGeometry resample_to_evaluated(const CurvesGeometry &src_curves,
 
   MutableSpan<float3> dst_positions = dst_curves.positions_for_write();
 
-  AttributesForInterpolation attributes;
+  AttributesForResample attributes;
   gather_point_attributes_to_interpolate(src_curves, dst_curves, attributes, output_ids);
 
   src_curves.ensure_can_interpolate_to_evaluated();
   selection.foreach_segment(GrainSize(512), [&](const IndexMaskSegment selection_segment) {
     /* Evaluate generic point attributes directly to the result attributes. */
     for (const int i_attribute : attributes.dst.index_range()) {
-      const CPPType &type = attributes.src[i_attribute].type();
-      bke::attribute_math::convert_to_static_type(type, [&](auto dummy) {
-        using T = decltype(dummy);
-        Span<T> src = attributes.src[i_attribute].typed<T>();
-        MutableSpan<T> dst = attributes.dst[i_attribute].typed<T>();
-
-        for (const int i_curve : selection_segment) {
-          const IndexRange src_points = src_points_by_curve[i_curve];
-          const IndexRange dst_points = dst_points_by_curve[i_curve];
-          src_curves.interpolate_to_evaluated(
-              i_curve, src.slice(src_points), dst.slice(dst_points));
-        }
-      });
+      for (const int i_curve : selection_segment) {
+        const IndexRange src_points = src_points_by_curve[i_curve];
+        const IndexRange dst_points = dst_points_by_curve[i_curve];
+        src_curves.interpolate_to_evaluated(i_curve,
+                                            attributes.src[i_attribute].slice(src_points),
+                                            attributes.dst[i_attribute].slice(dst_points));
+      }
     }
 
     auto copy_evaluated_data = [&](const Span<float3> src, MutableSpan<float3> dst) {
