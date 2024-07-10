@@ -194,7 +194,6 @@ inline void sample_at_length(const Span<float> accumulated_segment_lengths,
  * \param accumulated_segment_lengths: The accumulated lengths of the original elements being
  * sampled. Could be calculated by #accumulate_lengths.
  * \param include_last_point: Generally false for cyclic sequences and true otherwise.
- * \param reverse: Generate samples in reverse order starting at the end of the range.
  * \param r_segment_indices: The index of the previous point at each sample.
  * \param r_factors: The portion of the length in each segment at each sample.
  */
