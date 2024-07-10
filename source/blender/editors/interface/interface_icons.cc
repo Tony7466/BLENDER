@@ -1292,31 +1292,44 @@ static int get_draw_size(enum eIconSizes size)
 
 static void icon_source_edit_cb(std::string &xml)
 {
+  struct ColorItem {
+    const char *name;
+    uchar *col;
+  };
+
   bTheme *btheme = UI_GetTheme();
-  const std::string id = "MeshSelected";
-  uchar *col = btheme->space_view3d.vertex_select;
+  const ColorItem items[] = {{"MeshSelected", btheme->space_view3d.vertex_select},
+                             {"RegularSelected", btheme->tui.wcol_regular.inner}};
 
-  size_t g_start;
-  g_start = xml.find(id);
-  if (g_start != std::string::npos) {
-    size_t g_end = xml.find(">", g_start);
-    if (g_end == std::string::npos) {
-      // break;
-    }
-
-    char att[20];
-    BLI_snprintf(att, sizeof(att), "fill=\"#%02x%02x%02x%02x\"", col[0], col[1], col[2], col[3]);
-
-    size_t att_start;
-    while (std::string::npos != (att_start = xml.find("fill=\"", g_start))) {
-      if (att_start > g_end) {
-        break;
+  for (const ColorItem &item : items) {
+    size_t g_start;
+    g_start = xml.find(item.name);
+    if (g_start != std::string::npos) {
+      size_t g_end = xml.find(">", g_start);
+      if (g_end == std::string::npos) {
+        continue;
       }
-      size_t att_end = xml.find("\"", att_start + 6);
-      if (att_end != std::string::npos && (att_end - att_start < 20)) {
-        xml.replace(att_start, att_end - att_start + 1, att);
+
+      char att[20];
+      BLI_snprintf(att,
+                   sizeof(att),
+                   "fill=\"#%02x%02x%02x%02x\"",
+                   item.col[0],
+                   item.col[1],
+                   item.col[2],
+                   item.col[3]);
+
+      size_t att_start;
+      while (std::string::npos != (att_start = xml.find("fill=\"", g_start))) {
+        if (att_start > g_end) {
+          break;
+        }
+        size_t att_end = xml.find("\"", att_start + 6);
+        if (att_end != std::string::npos && (att_end - att_start < 20)) {
+          xml.replace(att_start, att_end - att_start + 1, att);
+        }
+        g_start = att_end;
       }
-      g_start = att_end;
     }
   }
 }
