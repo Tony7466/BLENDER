@@ -7563,13 +7563,11 @@ void calc_vert_neighbors_interior(const OffsetIndices<int> faces,
                                   const BitSpan boundary_verts,
                                   const SubdivCCG &subdiv_ccg,
                                   const Span<int> grids,
-                                  const Span<float> factors,
                                   const MutableSpan<Vector<SubdivCCGCoord>> result)
 {
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
   BLI_assert(grids.size() * key.grid_area == result.size());
-  BLI_assert(grids.size() * key.grid_area == factors.size());
 
   for (const int i : grids.index_range()) {
     const int grid = grids[i];
@@ -7588,12 +7586,6 @@ void calc_vert_neighbors_interior(const OffsetIndices<int> faces,
         coord.y = y;
 
         SubdivCCGNeighbors neighbors;
-
-        if (factors[node_vert_index] == 0.0f) {
-          result[node_vert_index] = neighbors.coords;
-          continue;
-        }
-
         BKE_subdiv_ccg_neighbor_coords_get(subdiv_ccg, coord, false, neighbors);
 
         if (subdiv_coord_is_boundary(faces, corner_verts, boundary_verts, subdiv_ccg, coord)) {

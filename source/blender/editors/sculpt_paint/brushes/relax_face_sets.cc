@@ -567,7 +567,7 @@ BLI_NOINLINE static void calc_relaxed_positions_grids(const OffsetIndices<int> f
 
   tls.vert_neighbors.reinitialize(grid_verts_num);
   calc_vert_neighbors_interior(
-      faces, corner_verts, boundary_verts, subdiv_ccg, grids, factors, tls.vert_neighbors);
+      faces, corner_verts, boundary_verts, subdiv_ccg, grids, tls.vert_neighbors);
   const Span<Vector<SubdivCCGCoord>> vert_neighbors = tls.vert_neighbors;
 
   for (const int i : grids.index_range()) {
