@@ -412,31 +412,17 @@ bke::CurvesGeometry curves_merge_endpoints_by_distance(
     if (is_start_ok) {
       const int curve_index = nearest_start.index / 2;
       const bool is_end_point = bool(nearest_start.index % 2);
-      if (is_end_point) {
-        if (connect_to_curve[curve_index] < 0) {
-          connect_to_curve[curve_index] = src_i;
-        }
-      }
-      else {
-        if (connect_to_curve[src_i] < 0) {
-          connect_to_curve[src_i] = curve_index;
-          flip_direction[src_i] = true;
-        }
+      if (connect_to_curve[curve_index] < 0) {
+        connect_to_curve[curve_index] = src_i;
+        flip_direction[curve_index] = !is_end_point;
       }
     }
     if (is_end_ok) {
       const int curve_index = nearest_end.index / 2;
       const bool is_end_point = bool(nearest_end.index % 2);
-      if (is_end_point) {
-        if (connect_to_curve[curve_index] < 0) {
-          connect_to_curve[curve_index] = src_i;
-          flip_direction[src_i] = true;
-        }
-      }
-      else {
-        if (connect_to_curve[src_i] < 0) {
-          connect_to_curve[src_i] = curve_index;
-        }
+      if (connect_to_curve[src_i] < 0) {
+        connect_to_curve[src_i] = curve_index;
+        flip_direction[curve_index] = is_end_point;
       }
     }
   });
