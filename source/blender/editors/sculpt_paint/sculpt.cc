@@ -3511,9 +3511,6 @@ void SCULPT_vertcos_to_key(Object &ob, KeyBlock *kb, const Span<float3> vertCos)
 
 namespace blender::ed::sculpt_paint {
 
-/* NOTE: we do the topology update before any brush actions to avoid
- * issues with the proxies. The size of the proxy can't change, so
- * topology must be updated first. */
 static void sculpt_topology_update(const Scene & /*scene*/,
                                    const Sculpt &sd,
                                    Object &ob,
@@ -3795,7 +3792,7 @@ static void do_brush_action(const Scene &scene,
       do_rotate_brush(sd, ob, nodes);
       break;
     case SCULPT_TOOL_SNAKE_HOOK:
-      SCULPT_do_snake_hook_brush(sd, ob, nodes);
+      do_snake_hook_brush(sd, ob, nodes);
       break;
     case SCULPT_TOOL_NUDGE:
       do_nudge_brush(sd, ob, nodes);
@@ -3959,99 +3956,7 @@ static void sculpt_flush_pbvhvert_deform(SculptSession &ss,
   }
 }
 
-static void sculpt_combine_proxies_node(Object &object,
-                                        const Sculpt &sd,
-                                        const bool use_orco,
-                                        PBVHNode &node)
-{
-  SculptSession &ss = *object.sculpt;
-
-  const float(*orco)[3] = nullptr;
-  if (use_orco && !ss.bm) {
-    orco = reinterpret_cast<const float(*)[3]>(
-        (undo::get_node(&node, undo::Type::Position)->position.data()));
-  }
-
-  MutableSpan<PBVHProxyNode> proxies = BKE_pbvh_node_get_proxies(&node);
-
-  Mesh &mesh = *static_cast<Mesh *>(object.data);
-  MutableSpan<float3> positions = mesh.vert_positions_for_write();
-
-  PBVHVertexIter vd;
-  BKE_pbvh_vertex_iter_begin (*ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
-    float val[3];
-
-    if (use_orco) {
-      if (ss.bm) {
-        copy_v3_v3(val, BM_log_original_vert_co(ss.bm_log, vd.bm_vert));
-      }
-      else {
-        copy_v3_v3(val, orco[vd.i]);
-      }
-    }
-    else {
-      copy_v3_v3(val, vd.co);
-    }
-
-    for (const PBVHProxyNode &proxy_node : proxies) {
-      add_v3_v3(val, proxy_node.co[vd.i]);
-    }
-
-    SCULPT_clip(sd, ss, vd.co, val);
-
-    if (ss.deform_modifiers_active) {
-      sculpt_flush_pbvhvert_deform(ss, vd, positions);
-    }
-  }
-  BKE_pbvh_vertex_iter_end;
-
-  BKE_pbvh_node_free_proxies(&node);
-}
-
-static void sculpt_combine_proxies(const Sculpt &sd, Object &ob)
-{
-  SculptSession &ss = *ob.sculpt;
-  const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
-
-  if (!ss.cache->supports_gravity && sculpt_tool_is_proxy_used(brush.sculpt_tool)) {
-    /* First line is tools that don't support proxies. */
-    return;
-  }
-
-  /* First line is tools that don't support proxies. */
-  const bool use_orco = ELEM(brush.sculpt_tool,
-                             SCULPT_TOOL_GRAB,
-                             SCULPT_TOOL_ROTATE,
-                             SCULPT_TOOL_THUMB,
-                             SCULPT_TOOL_ELASTIC_DEFORM,
-                             SCULPT_TOOL_BOUNDARY,
-                             SCULPT_TOOL_POSE);
-
-  Vector<PBVHNode *> nodes = bke::pbvh::gather_proxies(*ss.pbvh);
-
-  threading::parallel_for(nodes.index_range(), 1, [&](IndexRange range) {
-    for (const int i : range) {
-      sculpt_combine_proxies_node(ob, sd, use_orco, *nodes[i]);
-    }
-  });
-}
-
 }  // namespace blender::ed::sculpt_paint
-
-void SCULPT_combine_transform_proxies(const Sculpt &sd, Object &ob)
-{
-  using namespace blender;
-  using namespace blender::ed::sculpt_paint;
-  SculptSession &ss = *ob.sculpt;
-
-  Vector<PBVHNode *> nodes = bke::pbvh::gather_proxies(*ss.pbvh);
-
-  threading::parallel_for(nodes.index_range(), 1, [&](IndexRange range) {
-    for (const int i : range) {
-      sculpt_combine_proxies_node(ob, sd, false, *nodes[i]);
-    }
-  });
-}
 
 /**
  * Copy the modified vertices from the #PBVH to the active key.
@@ -5945,7 +5850,6 @@ static void sculpt_stroke_update_step(bContext *C,
   }
 
   do_symmetrical_brush_actions(scene, sd, ob, do_brush_action, ups, tool_settings.paint_mode);
-  sculpt_combine_proxies(sd, ob);
 
   /* Hack to fix noise texture tearing mesh. */
   sculpt_fix_noise_tear(sd, ob);
@@ -5969,6 +5873,7 @@ static void sculpt_stroke_update_step(bContext *C,
              SCULPT_TOOL_ELASTIC_DEFORM,
              SCULPT_TOOL_CREASE,
              SCULPT_TOOL_GRAB,
+             SCULPT_TOOL_SNAKE_HOOK,
              SCULPT_TOOL_THUMB,
              SCULPT_TOOL_DRAW,
              SCULPT_TOOL_FILL,

@@ -1093,8 +1093,6 @@ bool node_in_cylinder(const DistRayAABB_Precalc &dist_ray_precalc,
 
 }
 
-void SCULPT_combine_transform_proxies(const Sculpt &sd, Object &ob);
-
 /**
  * Initialize a point-in-brush test with a given falloff shape.
  *
@@ -2070,7 +2068,6 @@ float clay_thumb_get_stabilized_pressure(const blender::ed::sculpt_paint::Stroke
 
 }
 
-void SCULPT_do_snake_hook_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_layer_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_topology_relax_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 
