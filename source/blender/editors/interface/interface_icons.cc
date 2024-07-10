@@ -44,6 +44,7 @@
 
 #include "UI_interface.hh"
 #include "UI_interface_icons.hh"
+#include "UI_resources.hh"
 
 #include "WM_api.hh"
 
@@ -1294,42 +1295,48 @@ static void icon_source_edit_cb(std::string &xml)
 {
   struct ColorItem {
     const char *name;
-    uchar *col;
+    uchar *col = {0};
+    int colorid = TH_UNDEFINED;
   };
 
   bTheme *btheme = UI_GetTheme();
   const ColorItem items[] = {{"MeshSelected", btheme->space_view3d.vertex_select},
-                             {"RegularSelected", btheme->tui.wcol_regular.inner}};
+                             {"RegularSelected", btheme->tui.wcol_regular.inner},
+                             {"RedAlert", nullptr, TH_REDALERT},
+                             {"Back", nullptr, TH_BACK},
+                             {"Text", nullptr, TH_TEXT},
+                             {"TextHi", nullptr, TH_TEXT_HI},
+                             {"Error", nullptr, TH_INFO_ERROR},
+                             {"Warning", nullptr, TH_INFO_WARNING}};
 
   for (const ColorItem &item : items) {
-    size_t g_start;
-    g_start = xml.find(item.name);
+    size_t g_start = xml.find(item.name);
     if (g_start != std::string::npos) {
       size_t g_end = xml.find(">", g_start);
       if (g_end == std::string::npos) {
         continue;
       }
 
-      char att[20];
-      BLI_snprintf(att,
-                   sizeof(att),
-                   "fill=\"#%02x%02x%02x%02x\"",
-                   item.col[0],
-                   item.col[1],
-                   item.col[2],
-                   item.col[3]);
-
-      size_t att_start;
-      while (std::string::npos != (att_start = xml.find("fill=\"", g_start))) {
-        if (att_start > g_end) {
-          break;
-        }
-        size_t att_end = xml.find("\"", att_start + 6);
-        if (att_end != std::string::npos && (att_end - att_start < 20)) {
-          xml.replace(att_start, att_end - att_start + 1, att);
-        }
-        g_start = att_end;
+      size_t att_start = xml.find("fill=\"", g_start);
+      if (att_start == std::string::npos || att_start > g_end) {
+        continue;
       }
+      size_t att_end = xml.find("\"", att_start + 6);
+      if (att_end == std::string::npos || att_end - att_start > 20) {
+        continue;
+      }
+
+      uchar color[4];
+      if (item.col) {
+        memcpy(color, item.col, sizeof(color));
+      }
+      else {
+        UI_GetThemeColor4ubv(item.colorid, color);
+      }
+      char att[20];
+      BLI_snprintf(
+          att, sizeof(att), "fill=\"#%02x%02x%02x%02x\"", color[0], color[1], color[2], color[3]);
+      xml.replace(att_start, att_end - att_start + 1, att);
     }
   }
 }
