@@ -362,20 +362,12 @@ void calc_vert_neighbors_interior(OffsetIndices<int> faces,
                                   Span<bool> hide_poly,
                                   Span<int> verts,
                                   MutableSpan<Vector<int>> result);
-/**
- * Find vertices connected to the indexed vertices across faces. For boundary vertices (stored in
- * the \a boundary_verts argument), only include other boundary vertices. Also skip connectivity
- * across hidden faces and skip neighbors of corner vertices.
- *
- * \note See #calc_vert_neighbors for information on why we use a Vector per element.
- */
 void calc_vert_neighbors_interior(OffsetIndices<int> faces,
                                   Span<int> corner_verts,
                                   BitSpan boundary_verts,
                                   const SubdivCCG &subdiv_ccg,
                                   const Span<int> grids,
                                   const MutableSpan<Vector<SubdivCCGCoord>> result);
-
 void calc_vert_neighbors_interior(const Set<BMVert *, 0> &verts,
                                   MutableSpan<Vector<BMVert *>> result);
 
