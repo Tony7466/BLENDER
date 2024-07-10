@@ -13,6 +13,7 @@
 /* Logging, use `ghost.ndof.*` prefix. */
 #include "CLG_log.h"
 
+#include <algorithm>
 #include <array>
 #include <climits>
 #include <cmath>
