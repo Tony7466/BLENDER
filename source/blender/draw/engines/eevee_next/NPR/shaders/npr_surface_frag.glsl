@@ -19,5 +19,5 @@ void main()
 
   g_combined_color = texelFetch(combined_tx, texel, 0);
 
-  out_color = nodetree_npr();
+  out_color = nodetree_npr().rgb;
 }
