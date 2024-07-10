@@ -596,13 +596,13 @@ extern char *GHOST_GetTitle(GHOST_WindowHandle windowhandle);
 extern GHOST_TSuccess GHOST_SetPath(GHOST_WindowHandle windowhandle, const char *filepath);
 
 /**
- * Enable or disable custom client-side window decorations.
+ * Enable or disable custom client-side window decorations (CSD).
  * \param useCSD: Whether to use custom client-side window decorations.
  */
 extern void GHOST_SetUseCSD(GHOST_WindowHandle windowhandle, bool useCSD);
 
 /**
- * Set colors to be used by custom titlebar client-side window decorations.
+ * Set colors to be used by custom titlebar client-side window decorations (CSD).
  * \param backgroundColor: Titlebar background color.
  * \param titleTextColor: Titlebar title text color.
  */

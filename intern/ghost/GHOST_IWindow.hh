@@ -88,13 +88,13 @@ class GHOST_IWindow {
   virtual GHOST_TSuccess setPath(const char *filepath) = 0;
 
   /**
-   * Enable or disable custom client-side window decorations.
+   * Enable or disable custom client-side window decorations (CSD).
    * \param useCSD: Whether to use custom client-side window decorations.
    */
   virtual void setUseCSD(bool useCSD) = 0;
 
   /**
-   * Set colors to be used by custom titlebar client-side window decorations.
+   * Set colors to be used by custom titlebar client-side window decorations (CSD).
    * \param backgroundColor: Titlebar background color.
    * \param titleTextColor: Titlebar title text color.
    */

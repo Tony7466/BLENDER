@@ -604,6 +604,7 @@ void WM_window_set_dpi(const wmWindow *win)
 
 void WM_window_set_use_csd(const wmWindow *win, bool use_csd)
 {
+  /* Enable Client-Side Window Decorations (CSD). */
   GHOST_SetUseCSD(static_cast<GHOST_WindowHandle>(win->ghostwin), use_csd);
 }
 
