@@ -452,7 +452,9 @@ void GHOST_NDOFManager::updateButton(int button_number, bool press, uint64_t tim
   /* For bistmask devices button maping isn't unified, therefore check the button map. */
   if (std::find(bitmask_devices_.begin(), bitmask_devices_.end(), device_type_) !=
       bitmask_devices_.end())
+  {
     button = hid_map_[button_number];
+  }
 
   if (button == GHOST_NDOF_BUTTON_INVALID) {
     CLOG_INFO(
@@ -487,7 +489,9 @@ void GHOST_NDOFManager::updateButtonsBitmask(int button_bits, uint64_t time)
    * In this case, packet has to be ignored if it came from such a device. */
   if (std::find(bitmask_devices_.begin(), bitmask_devices_.end(), device_type_) ==
       bitmask_devices_.end())
+  {
     return;
+  }
 
   button_bits &= hid_map_button_mask_; /* Discard any "garbage" bits. */
 
