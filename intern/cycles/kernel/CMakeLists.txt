@@ -526,7 +526,7 @@ if(WITH_CYCLES_CUDA_BINARIES)
     add_custom_command(
       OUTPUT ${cuda_file}
       DEPENDS cycles_kernel_cuda
-      COMMAND ${CUDA_NVCC_EXECUTABLE} -arch=${arch} ${CUDA_NVCC_FLAGS} --${format} --device-link "\"$<JOIN:$<TARGET_OBJECTS:cycles_kernel_cuda>,\" \">\"" -o ${CMAKE_CURRENT_BINARY_DIR}/${cuda_file})
+      COMMAND ${CUDA_NVCC_EXECUTABLE} -arch=${arch} ${CUDA_NVCC_FLAGS} -${format} -dlink "\"$<JOIN:$<TARGET_OBJECTS:cycles_kernel_cuda>,\" \">\"" -o ${CMAKE_CURRENT_BINARY_DIR}/${cuda_file})
 
     add_custom_command(
       OUTPUT ${cuda_file_compressed}

@@ -33,18 +33,17 @@ typedef unsigned long long uint64_t;
 #  define FLT_EPSILON 1.192092896e-07F
 #endif
 
-#define ccl_device \
-  static __device__ \
-      __forceinline__  // Function calls are bad for OptiX performance, so inline everything
+/* Function calls are bad for OptiX performance, so inline everything */
+#define ccl_device static __device__ __forceinline__
 #define ccl_device_extern extern "C" __device__
-#define ccl_device_inline __device__ __forceinline__
+#define ccl_device_inline inline __device__ __forceinline__
+#define ccl_device_inline_method ccl_device_inline
 #define ccl_device_forceinline __device__ __forceinline__
-#define ccl_device_inline_method __device__ __forceinline__
 #define ccl_device_noinline inline __device__ __noinline__
 #define ccl_device_noinline_cpu ccl_device
 #define ccl_global
 #define ccl_inline_constant inline __constant__
-#define ccl_device_constant __constant__ __device__
+#define ccl_device_constant __constant__
 #define ccl_static_constexpr static constexpr
 #define ccl_constant const
 #define ccl_gpu_shared __shared__
