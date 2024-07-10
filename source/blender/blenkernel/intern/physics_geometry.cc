@@ -425,19 +425,18 @@ void PhysicsGeometryImpl::ensure_constraint_disable_collision() const
 }
 
 void PhysicsGeometryImpl::realize(const PhysicsGeometryImpl &from,
-                                  const AttributeAccessor from_attributes,
                                   const IndexMask &body_mask,
                                   const IndexMask &constraint_mask,
                                   int bodies_offset,
                                   int constraints_offset,
-                                  const AnonymousAttributePropagationInfo &propagation_info,
-                                  MutableAttributeAccessor to_attributes)
+                                  const AnonymousAttributePropagationInfo &propagation_info)
 {
   using ConstraintType = PhysicsGeometry::ConstraintType;
 
   BLI_assert(!this->is_empty);
   BLI_assert(from.is_empty);
 
+  MutableAttributeAccessor to_attributes = this->attributes_for_write();
   btDynamicsWorld *to_world = this->world;
 
   const IndexRange body_range = IndexRange(bodies_offset, body_mask.size());
@@ -451,6 +450,7 @@ void PhysicsGeometryImpl::realize(const PhysicsGeometryImpl &from,
                 body_mask);
   this->tag_body_topology_changed();
 
+  const AttributeAccessor from_attributes = this->attributes();
   const VArray<int> constraint_types = *from_attributes.lookup_or_default(
       PhysicsGeometry::builtin_attributes.constraint_type,
       AttrDomain::Edge,
@@ -493,7 +493,6 @@ void PhysicsGeometryImpl::realize(const PhysicsGeometryImpl &from,
 }
 
 bool PhysicsGeometryImpl::try_copy_to_customdata(const PhysicsGeometryImpl &from,
-                                                 const AttributeAccessor from_attributes,
                                                  const IndexMask &body_mask,
                                                  const IndexMask &constraint_mask,
                                                  const int bodies_offset,
@@ -503,6 +502,7 @@ bool PhysicsGeometryImpl::try_copy_to_customdata(const PhysicsGeometryImpl &from
     return false;
   }
 
+  const AttributeAccessor from_attributes = this->attributes();
   from_attributes.for_all(
       [&](const AttributeIDRef &attribute_id, const AttributeMetaData &meta_data) -> bool {
         CustomData *custom_data = nullptr;
@@ -534,7 +534,6 @@ bool PhysicsGeometryImpl::try_copy_to_customdata(const PhysicsGeometryImpl &from
 }
 
 bool PhysicsGeometryImpl::try_move(const PhysicsGeometryImpl &from,
-                                   const AttributeAccessor from_attributes,
                                    const bool use_world,
                                    const IndexMask &body_mask,
                                    const IndexMask &constraint_mask,
@@ -557,7 +556,7 @@ bool PhysicsGeometryImpl::try_move(const PhysicsGeometryImpl &from,
 
   /* Cache the source before moving physics data. */
   from_mutable.try_copy_to_customdata(
-      from, from_attributes, body_mask, constraint_mask, bodies_offset, constraints_offset);
+      from, body_mask, constraint_mask, bodies_offset, constraints_offset);
 
   btDynamicsWorld *from_world = from_mutable.world;
   if (use_world) {
@@ -626,6 +625,16 @@ bool PhysicsGeometryImpl::try_move(const PhysicsGeometryImpl &from,
   from_mutable.is_empty.store(true);
 
   return true;
+}
+
+AttributeAccessor PhysicsGeometryImpl::attributes() const
+{
+  return AttributeAccessor(this, bke::get_physics_accessor_functions_ref(false));
+}
+
+MutableAttributeAccessor PhysicsGeometryImpl::attributes_for_write()
+{
+  return MutableAttributeAccessor(this, bke::get_physics_accessor_functions_ref(false));
 }
 
 const PhysicsGeometry::BuiltinAttributes PhysicsGeometry::builtin_attributes = []() {
@@ -751,8 +760,7 @@ PhysicsGeometryImpl &PhysicsGeometry::impl_for_write()
     new_impl->constraint_feedback.fill(
         {btVector3(0, 0, 0), btVector3(0, 0, 0), btVector3(0, 0, 0), btVector3(0, 0, 0)});
     new_impl->constraints.fill(nullptr);
-    new_impl->try_move(
-        *impl_, this->attributes(), true, this->bodies_range(), this->constraints_range(), 0, 0);
+    new_impl->try_move(*impl_, true, this->bodies_range(), this->constraints_range(), 0, 0);
   }
   else {
     new_impl->is_empty.store(true);
@@ -994,12 +1002,8 @@ void PhysicsGeometry::cache_or_copy_selection(
   }
 
   PhysicsGeometryImpl &impl = this->impl_for_write();
-  const bool is_cached = impl.try_copy_to_customdata(from.impl(),
-                                                     from.attributes(),
-                                                     body_mask,
-                                                     constraint_mask,
-                                                     bodies_offset,
-                                                     constraints_offset);
+  const bool is_cached = impl.try_copy_to_customdata(
+      from.impl(), body_mask, constraint_mask, bodies_offset, constraints_offset);
 
   const Set<std::string> skip_attributes = is_cached ?
                                                Set<std::string>{builtin_attributes.skip_copy} :
@@ -1061,13 +1065,8 @@ void PhysicsGeometry::move_or_copy_selection(
   }
 
   PhysicsGeometryImpl &impl = this->impl_for_write();
-  const bool was_moved = impl.try_move(from.impl(),
-                                       from.attributes(),
-                                       use_world,
-                                       body_mask,
-                                       constraint_mask,
-                                       bodies_offset,
-                                       constraints_offset);
+  const bool was_moved = impl.try_move(
+      from.impl(), use_world, body_mask, constraint_mask, bodies_offset, constraints_offset);
 
   const Set<std::string> skip_attributes = was_moved ?
                                                Set<std::string>{builtin_attributes.skip_copy} :

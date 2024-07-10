@@ -106,26 +106,25 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
   void ensure_constraint_disable_collision() const;
 
   void realize(const PhysicsGeometryImpl &from,
-               const AttributeAccessor from_attributes,
                const IndexMask &body_mask,
                const IndexMask &constraint_mask,
                int bodies_offset,
                int constraints_offset,
-               const AnonymousAttributePropagationInfo &propagation_info,
-               MutableAttributeAccessor to_attributes);
+               const AnonymousAttributePropagationInfo &propagation_info);
   bool try_copy_to_customdata(const PhysicsGeometryImpl &from,
-                              const AttributeAccessor from_attributes,
                               const IndexMask &body_mask,
                               const IndexMask &constraint_mask,
                               const int bodies_offset,
                               const int constraints_offset);
   bool try_move(const PhysicsGeometryImpl &from,
-                const AttributeAccessor from_attributes,
                 bool use_world,
                 const IndexMask &body_mask,
                 const IndexMask &constraint_mask,
                 int bodies_offset,
                 int constraints_offset);
+
+  bke::AttributeAccessor attributes() const;
+  bke::MutableAttributeAccessor attributes_for_write();
 };
 
 struct CollisionShapeImpl {
