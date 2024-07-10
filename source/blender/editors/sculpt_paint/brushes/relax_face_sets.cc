@@ -490,6 +490,7 @@ BLI_NOINLINE static void calc_factors_grids(const Brush &brush,
                                             const bool relax_face_sets,
                                             Object &object,
                                             GridLocalData &tls,
+                                            const MutableSpan<float3> positions,
                                             const MutableSpan<float> factors)
 {
   SculptSession &ss = *object.sculpt;
@@ -500,8 +501,6 @@ BLI_NOINLINE static void calc_factors_grids(const Brush &brush,
   const Span<int> grids = bke::pbvh::node_grid_indices(node);
   const int grid_verts_num = grids.size() * key.grid_area;
 
-  tls.positions.reinitialize(grid_verts_num);
-  const MutableSpan<float3> positions = tls.positions;
   gather_grids_positions(subdiv_ccg, grids, positions);
 
   fill_factor_from_hide_and_mask(subdiv_ccg, grids, factors);
@@ -545,6 +544,7 @@ BLI_NOINLINE static void calc_relaxed_positions_grids(const OffsetIndices<int> f
                                                       Object &object,
                                                       GridLocalData &tls,
                                                       const Span<float> factors,
+                                                      const Span<float3> positions,
                                                       const MutableSpan<float3> new_positions)
 {
   SculptSession &ss = *object.sculpt;
@@ -562,9 +562,6 @@ BLI_NOINLINE static void calc_relaxed_positions_grids(const OffsetIndices<int> f
       faces, corner_verts, boundary_verts, subdiv_ccg, grids, factors, tls.vert_neighbors);
   const Span<SubdivCCGNeighbors> vert_neighbors = tls.vert_neighbors;
 
-  tls.positions.reinitialize(grid_verts_num);
-  const MutableSpan<float3> positions = tls.positions;
-  gather_grids_positions(subdiv_ccg, grids, positions);
   for (const int i : grids.index_range()) {
     CCGElem *elem = elems[grids[i]];
     const int start = i * key.grid_area;
@@ -663,6 +660,7 @@ BLI_NOINLINE static void apply_positions_grids(const Sculpt &sd,
                                                const PBVHNode &node,
                                                Object &object,
                                                GridLocalData &tls,
+                                               const Span<float3> positions,
                                                const Span<float3> new_positions)
 {
   SculptSession &ss = *object.sculpt;
@@ -671,10 +669,6 @@ BLI_NOINLINE static void apply_positions_grids(const Sculpt &sd,
 
   const Span<int> grids = bke::pbvh::node_grid_indices(node);
   const int grid_verts_num = grids.size() * key.grid_area;
-
-  tls.positions.reinitialize(grid_verts_num);
-  const MutableSpan<float3> positions = tls.positions;
-  gather_grids_positions(subdiv_ccg, grids, positions);
 
   tls.translations.reinitialize(grid_verts_num);
   const MutableSpan<float3> translations = tls.translations;
@@ -705,6 +699,7 @@ static void do_relax_face_sets_brush_grids(const Sculpt &sd,
   const OffsetIndices<int> node_vert_offsets = create_node_vert_offsets(
       nodes, key, node_offset_data);
 
+  Array<float3> current_positions(node_vert_offsets.total_size());
   Array<float3> new_positions(node_vert_offsets.total_size());
   Array<float> factors(node_vert_offsets.total_size());
 
@@ -720,6 +715,7 @@ static void do_relax_face_sets_brush_grids(const Sculpt &sd,
                          relax_face_sets,
                          object,
                          tls,
+                         current_positions.as_mutable_span().slice(node_vert_offsets[i]),
                          factors.as_mutable_span().slice(node_vert_offsets[i]));
     }
   });
@@ -737,6 +733,7 @@ static void do_relax_face_sets_brush_grids(const Sculpt &sd,
                                    object,
                                    tls,
                                    factors.as_span().slice(node_vert_offsets[i]),
+                                   current_positions.as_span().slice(node_vert_offsets[i]),
                                    new_positions.as_mutable_span().slice(node_vert_offsets[i]));
     }
   });
@@ -744,8 +741,12 @@ static void do_relax_face_sets_brush_grids(const Sculpt &sd,
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     GridLocalData &tls = all_tls.local();
     for (const int i : range) {
-      apply_positions_grids(
-          sd, *nodes[i], object, tls, new_positions.as_span().slice(node_vert_offsets[i]));
+      apply_positions_grids(sd,
+                            *nodes[i],
+                            object,
+                            tls,
+                            current_positions.as_mutable_span().slice(node_vert_offsets[i]),
+                            new_positions.as_span().slice(node_vert_offsets[i]));
     }
   });
 }
