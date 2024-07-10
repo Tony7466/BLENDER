@@ -154,8 +154,8 @@ static void find_curve_mapping_from_index(const GreasePencil &grease_pencil,
   const int old_pairs_num = pairs.from_frames.size();
   pairs.from_frames.append_n_times(interval->first, pairs_num);
   pairs.to_frames.append_n_times(interval->second, pairs_num);
-  pairs.from_curves.reinitialize(old_pairs_num + pairs_num);
-  pairs.to_curves.reinitialize(old_pairs_num + pairs_num);
+  pairs.from_curves.resize(old_pairs_num + pairs_num);
+  pairs.to_curves.resize(old_pairs_num + pairs_num);
   array_utils::fill_index_range(
       pairs.from_curves.as_mutable_span().slice(old_pairs_num, pairs_num));
   array_utils::fill_index_range(pairs.to_curves.as_mutable_span().slice(old_pairs_num, pairs_num));
