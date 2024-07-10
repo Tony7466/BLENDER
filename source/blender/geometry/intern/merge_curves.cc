@@ -9,50 +9,61 @@
 
 namespace blender::geometry {
 
-/* Topological sorting that puts connected curves into contiguous ranges. */
-static Vector<int> toposort_connected_curves(const Span<int> connect_to_curve)
+enum Flag {
+  OnStack = 1,
+  Inserted = 2,
+};
+
+template<typename Fn>
+static void foreach_connected_curve(const Span<int> connect_to_curve,
+                                    MutableSpan<uint8_t> flags,
+                                    const int start,
+                                    Fn fn)
 {
   const IndexRange range = connect_to_curve.index_range();
-  enum Flag {
-    OnStack = 1,
-    Inserted = 2,
-  };
-  Array<uint8_t> flag(connect_to_curve.size(), 0);
-
-  Vector<int> sorted_curves;
-  sorted_curves.reserve(connect_to_curve.size());
 
   Stack<int> stack;
+
   bool has_cycle = false;
   auto push_curve = [&](const int curve_i) -> bool {
-    if ((flag[curve_i] & Inserted) != 0) {
+    if ((flags[curve_i] & Inserted) != 0) {
       return false;
     }
-    if ((flag[curve_i] & OnStack) != 0) {
+    if ((flags[curve_i] & OnStack) != 0) {
       has_cycle = true;
       return false;
     }
     stack.push(curve_i);
-    flag[curve_i] |= OnStack;
+    flags[curve_i] |= OnStack;
+    fn(curve_i);
     return true;
   };
 
-  auto process_stack = [&]() {
-    while (!stack.is_empty()) {
-      const int current = stack.peek();
+  push_curve(start);
 
-      const int next = connect_to_curve[current];
-      if (range.contains(next)) {
-        if (push_curve(next)) {
-          continue;
-        }
+  while (!stack.is_empty()) {
+    const int current = stack.peek();
+
+    const int next = connect_to_curve[current];
+    if (range.contains(next)) {
+      if (push_curve(next)) {
+        continue;
       }
-
-      flag[current] |= Inserted;
-      sorted_curves.prepend(current);
-      stack.pop();
     }
-  };
+
+    flags[current] |= Inserted;
+    stack.pop();
+  }
+
+  UNUSED_VARS(has_cycle);
+}
+
+/* Topological sorting that puts connected curves into contiguous ranges. */
+static Vector<int> toposort_connected_curves(const Span<int> connect_to_curve)
+{
+  const IndexRange range = connect_to_curve.index_range();
+
+  Array<uint8_t> flags(connect_to_curve.size());
 
   /* First add all open chains by finding curves without a connection. */
   Array<bool> is_start_curve(range.size(), true);
@@ -62,23 +73,29 @@ static Vector<int> toposort_connected_curves(const Span<int> connect_to_curve)
       is_start_curve[next] = false;
     }
   }
+  /* Mark all curves that can be reached from a start curve. These must not be added before the
+   * start curve, or it can lead to gaps in curve ranges. */
+  flags.fill(0);
+  Array<bool> is_reachable(range.size(), false);
   for (const int curve_i : range) {
     if (is_start_curve[curve_i]) {
-      push_curve(curve_i);
+      foreach_connected_curve(
+          connect_to_curve, flags, curve_i, [&](const int index) { is_reachable[index] = true; });
     }
   }
-  process_stack();
 
-  /* Handle remaining curves (cyclic connections). */
+  Vector<int> sorted_curves;
+  sorted_curves.reserve(connect_to_curve.size());
+
+  flags.fill(0);
   for (const int curve_i : range) {
-    if (!is_start_curve[curve_i]) {
-      push_curve(curve_i);
+    if (is_start_curve[curve_i] || !is_reachable[curve_i]) {
+      foreach_connected_curve(
+          connect_to_curve, flags, curve_i, [&](const int index) { sorted_curves.append(index); });
     }
   }
-  process_stack();
 
   BLI_assert(sorted_curves.size() == range.size());
-  UNUSED_VARS(has_cycle);
   return sorted_curves;
 }
 
@@ -210,18 +227,15 @@ static void find_connected_ranges(const bke::CurvesGeometry &src_curves,
                                    -1;
     if (dst_connect_to == dst_i + 1) {
       /* Connected to next curve, continue the range. */
-      r_joined_cyclic.last() = false;
     }
     else {
       /* Make cyclic if connected to start. */
-      if (dst_connect_to == start_index) {
-        r_joined_cyclic.last() = true;
+      if (dst_i != start_index) {
+        r_joined_cyclic.last() = (dst_connect_to == start_index);
       }
 
       /* Start new curve. */
-      if (dst_i < curves_range.last()) {
-        start_index = -1;
-      }
+      start_index = -1;
     }
   }
   /* Offsets has one more entry for the overall size. */
