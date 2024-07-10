@@ -59,20 +59,26 @@ static bool interpolate_attribute_to_poly_curve(const bke::AttributeIDRef &attri
   return !no_interpolation.contains(attribute_id.name());
 }
 
+struct AttributesForInterpolation {
+  Vector<GVArraySpan> src_from;
+  Vector<GVArraySpan> src_to;
+
+  Vector<bke::GSpanAttributeWriter> dst;
+};
+
 /**
  * Retrieve spans from source and result attributes.
  */
-static void retrieve_attribute_spans(const Span<bke::AttributeIDRef> ids,
-                                     const CurvesGeometry &src_from_curves,
-                                     const CurvesGeometry &src_to_curves,
-                                     CurvesGeometry &dst_curves,
-                                     Vector<GVArraySpan> &src_from,
-                                     Vector<GVArraySpan> &src_to,
-                                     Vector<GMutableSpan> &dst,
-                                     Vector<bke::GSpanAttributeWriter> &dst_attributes)
+static AttributesForInterpolation retrieve_attribute_spans(const Span<bke::AttributeIDRef> ids,
+                                                           const CurvesGeometry &src_from_curves,
+                                                           const CurvesGeometry &src_to_curves,
+                                                           CurvesGeometry &dst_curves)
 {
+  AttributesForInterpolation result;
+
   const bke::AttributeAccessor src_from_attributes = src_from_curves.attributes();
   const bke::AttributeAccessor src_to_attributes = src_to_curves.attributes();
+  bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
   for (const int i : ids.index_range()) {
     eCustomDataType data_type;
 
@@ -83,8 +89,8 @@ static void retrieve_attribute_spans(const Span<bke::AttributeIDRef> ids,
       const GVArray src_to_attribute = *src_to_attributes.lookup(
           ids[i], bke::AttrDomain::Point, data_type);
 
-      src_from.append(src_from_attribute);
-      src_to.append(src_to_attribute ? src_to_attribute : GVArraySpan{});
+      result.src_from.append(src_from_attribute);
+      result.src_to.append(src_to_attribute ? src_to_attribute : GVArraySpan{});
     }
     else {
       const GVArray src_to_attribute = *src_to_attributes.lookup(ids[i], bke::AttrDomain::Point);
@@ -93,33 +99,23 @@ static void retrieve_attribute_spans(const Span<bke::AttributeIDRef> ids,
 
       data_type = bke::cpp_type_to_custom_data_type(src_to_attribute.type());
 
-      src_from.append(GVArraySpan{});
-      src_to.append(src_to_attribute);
+      result.src_from.append(GVArraySpan{});
+      result.src_to.append(src_to_attribute);
     }
 
-    bke::GSpanAttributeWriter dst_attribute =
-        dst_curves.attributes_for_write().lookup_or_add_for_write_only_span(
-            ids[i], bke::AttrDomain::Point, data_type);
-    dst.append(dst_attribute.span);
-    dst_attributes.append(std::move(dst_attribute));
+    bke::GSpanAttributeWriter dst_attribute = dst_attributes.lookup_or_add_for_write_only_span(
+        ids[i], bke::AttrDomain::Point, data_type);
+    result.dst.append(std::move(dst_attribute));
   }
+
+  return result;
 }
-
-struct AttributesForInterpolation : NonCopyable, NonMovable {
-  Vector<GVArraySpan> src_from;
-  Vector<GVArraySpan> src_to;
-  Vector<GMutableSpan> dst;
-
-  Vector<bke::GSpanAttributeWriter> dst_attributes;
-};
 
 /**
  * Gather a set of all generic attribute IDs to copy to the result curves.
  */
-static void gather_point_attributes_to_interpolate(const CurvesGeometry &from_curves,
-                                                   const CurvesGeometry &to_curves,
-                                                   CurvesGeometry &dst_curves,
-                                                   AttributesForInterpolation &result)
+static AttributesForInterpolation gather_point_attributes_to_interpolate(
+    const CurvesGeometry &from_curves, const CurvesGeometry &to_curves, CurvesGeometry &dst_curves)
 {
   VectorSet<bke::AttributeIDRef> ids;
   auto add_attribute = [&](const bke::AttributeIDRef &id, const bke::AttributeMetaData meta_data) {
@@ -145,14 +141,7 @@ static void gather_point_attributes_to_interpolate(const CurvesGeometry &from_cu
    * curves and because the evaluated positions are cached for each evaluated point. */
   ids.remove_contained("position");
 
-  retrieve_attribute_spans(ids,
-                           from_curves,
-                           to_curves,
-                           dst_curves,
-                           result.src_from,
-                           result.src_to,
-                           result.dst,
-                           result.dst_attributes);
+  return retrieve_attribute_spans(ids, from_curves, to_curves, dst_curves);
 }
 
 /* Resample a span of attribute values from source curves to a destination buffer. */
@@ -177,6 +166,7 @@ static void resample_curve_attribute(const bke::CurvesGeometry &src_curves,
   const OffsetIndices<int> src_evaluated_points_by_curve = src_curves.evaluated_points_by_curve();
   const VArray<int8_t> curve_types = src_curves.curve_types();
 
+#ifndef NDEBUG
   const int curves_num = src_curves.curves_num();
   BLI_assert(src_points_by_curve.size() == curves_num);
   BLI_assert(dst_points_by_curve.size() == curves_num);
@@ -185,6 +175,7 @@ static void resample_curve_attribute(const bke::CurvesGeometry &src_curves,
   const int dst_points_num = dst_data.size();
   BLI_assert(sample_indices.size() == dst_points_num);
   BLI_assert(sample_factors.size() == dst_points_num);
+#endif
 
   bke::attribute_math::convert_to_static_type(type, [&](auto dummy) {
     using T = decltype(dummy);
@@ -259,8 +250,8 @@ void interpolate_curves(const CurvesGeometry &from_curves,
 
   MutableSpan<float3> dst_positions = dst_curves.positions_for_write();
 
-  AttributesForInterpolation attributes;
-  gather_point_attributes_to_interpolate(from_curves, to_curves, dst_curves, attributes);
+  AttributesForInterpolation attributes = gather_point_attributes_to_interpolate(
+      from_curves, to_curves, dst_curves);
 
   from_curves.ensure_evaluated_lengths();
   to_curves.ensure_evaluated_lengths();
@@ -350,7 +341,7 @@ void interpolate_curves(const CurvesGeometry &from_curves,
           resample_curve_attribute(from_curves,
                                    dst_points_by_curve,
                                    attributes.src_from[i_attribute],
-                                   attributes.dst[i_attribute],
+                                   attributes.dst[i_attribute].span,
                                    segment_range,
                                    from_sample_indices,
                                    from_sample_factors,
@@ -359,7 +350,7 @@ void interpolate_curves(const CurvesGeometry &from_curves,
           resample_curve_attribute(to_curves,
                                    dst_points_by_curve,
                                    attributes.src_to[i_attribute],
-                                   attributes.dst[i_attribute],
+                                   attributes.dst[i_attribute].span,
                                    segment_range,
                                    to_sample_indices,
                                    to_sample_factors,
@@ -388,7 +379,7 @@ void interpolate_curves(const CurvesGeometry &from_curves,
                                  false);
       });
 
-  for (bke::GSpanAttributeWriter &attribute : attributes.dst_attributes) {
+  for (bke::GSpanAttributeWriter &attribute : attributes.dst) {
     attribute.finish();
   }
 }
