@@ -936,6 +936,9 @@ typedef struct GHOST_XrControllerModelData {
 
 /**
  * NDOF device button event types.
+ *
+ * These are the values behind particular buttons in 3Dconnexion devices.
+ * The same exact values are used by 3Dconnexion driver.
  */
 typedef enum {
 
@@ -1036,7 +1039,6 @@ typedef enum {
   GHOST_NDOF_BUTTON_NP_F3 = 231,
   GHOST_NDOF_BUTTON_NP_F4 = 232,
 
-  /* add more here as needed - don't change value of anything that may already be used */
   GHOST_NDOF_BUTTON_USER = 0x10000
 
 } GHOST_NDOF_ButtonT;
