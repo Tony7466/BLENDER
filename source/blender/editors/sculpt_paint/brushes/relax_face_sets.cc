@@ -121,6 +121,19 @@ static void filter_factors_on_face_sets_bmesh(const bool relax_face_sets,
   }
 }
 
+static float3 closest_on_plane_to_smoothed_point(const float3 current_position,
+                                                 const float3 normal,
+                                                 const float3 smoothed_position)
+{
+  float4 plane;
+  plane_from_point_normal_v3(plane, current_position, normal);
+
+  float3 smooth_closest_plane;
+  closest_to_plane_v3(smooth_closest_plane, plane, smoothed_position);
+
+  return smooth_closest_plane;
+}
+
 /* -------------------------------------------------------------------- */
 /** \name Relax Vertex
  * \{ */
@@ -459,13 +472,10 @@ BLI_NOINLINE static void calc_relaxed_positions_faces(const OffsetIndices<int> f
       continue;
     }
 
-    float4 plane;
-    plane_from_point_normal_v3(plane, vert_positions[verts[i]], normal);
+    const float3 closest_point = closest_on_plane_to_smoothed_point(
+        vert_positions[verts[i]], normal, smoothed_position);
 
-    float3 smooth_closest_plane;
-    closest_to_plane_v3(smooth_closest_plane, plane, smoothed_position);
-
-    float3 displacement = smooth_closest_plane - vert_positions[verts[i]];
+    float3 displacement = closest_point - vert_positions[verts[i]];
     new_positions[i] = vert_positions[verts[i]] + displacement * factors[i];
   }
 }
@@ -720,13 +730,10 @@ BLI_NOINLINE static void calc_relaxed_positions_grids(const OffsetIndices<int> f
           continue;
         }
 
-        float4 plane;
-        plane_from_point_normal_v3(plane, positions[grid_idx], normal);
+        const float3 closest_point = closest_on_plane_to_smoothed_point(
+            positions[grid_idx], normal, smoothed_position);
 
-        float3 smooth_closest_plane;
-        closest_to_plane_v3(smooth_closest_plane, plane, smoothed_position);
-
-        float3 displacement = smooth_closest_plane - positions[grid_idx];
+        float3 displacement = closest_point - positions[grid_idx];
         new_positions[grid_idx] = positions[grid_idx] + displacement * factors[grid_idx];
       }
     }
@@ -940,13 +947,10 @@ BLI_NOINLINE static void calc_relaxed_positions_bmesh(const Set<BMVert *, 0> &ve
       continue;
     }
 
-    float4 plane;
-    plane_from_point_normal_v3(plane, positions[i], normal);
+    const float3 closest_point = closest_on_plane_to_smoothed_point(
+        positions[i], normal, smoothed_position);
 
-    float3 smooth_closest_plane;
-    closest_to_plane_v3(smooth_closest_plane, plane, smoothed_position);
-
-    float3 displacement = smooth_closest_plane - positions[i];
+    float3 displacement = closest_point - positions[i];
     new_positions[i] = positions[i] + displacement * factors[i];
     i++;
   }
