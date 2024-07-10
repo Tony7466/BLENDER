@@ -255,6 +255,15 @@ void VKContext::update_pipeline_data(VKShader &vk_shader,
     r_pipeline_data.push_constants_data = vk_shader.push_constants.data();
   }
 
+  /* When using the push constant fallback we need to add a read access dependency to the uniform
+   * buffer after the buffer has been updated.
+   * NOTE: this alters the context instance variable `access_info_` which isn't clear from the API.
+   */
+  if (push_constants_layout.storage_type_get() == VKPushConstants::StorageType::UNIFORM_BUFFER) {
+    access_info_.buffers.append(
+        {vk_shader.push_constants.uniform_buffer_get()->vk_handle(), VK_ACCESS_UNIFORM_READ_BIT});
+  }
+
   /* Update descriptor set. */
   r_pipeline_data.vk_descriptor_set = VK_NULL_HANDLE;
   if (vk_shader.has_descriptor_set()) {
@@ -322,13 +331,17 @@ void VKContext::swap_buffers_pre_handler(const GHOST_VulkanSwapChainData &swap_c
   VKDevice &device = VKBackend::get().device;
   device.resources.add_image(swap_chain_data.image,
                              VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-                             render_graph::ResourceOwner::SWAP_CHAIN);
+                             render_graph::ResourceOwner::SWAP_CHAIN,
+                             "SwapchainImage");
 
   framebuffer.rendering_end(*this);
   render_graph.add_node(blit_image);
   render_graph.submit_for_present(swap_chain_data.image);
 
   device.resources.remove_image(swap_chain_data.image);
+#if 0
+  device.debug_print();
+#endif
   device.destroy_discarded_resources();
 }
 

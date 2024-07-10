@@ -185,11 +185,6 @@ void VKFrameBuffer::clear(const eGPUFrameBufferBits buffers,
     else {
       VKTexture *depth_texture = unwrap(unwrap(depth_tex()));
       if (depth_texture != nullptr) {
-        if (G.debug & G_DEBUG_GPU) {
-          std::cout
-              << "PERFORMANCE: impact clearing depth texture in render pass that doesn't allow "
-                 "depth writes.\n";
-        }
         depth_texture->clear_depth_stencil(buffers, clear_depth, clear_stencil);
       }
     }
@@ -559,7 +554,8 @@ void VKFrameBuffer::rendering_ensure(VKContext &context)
                                          IndexRange(attachment.mip, 1),
                                          {{'r', 'g', 'b', 'a'}},
                                          false,
-                                         srgb_ && enabled_srgb_};
+                                         srgb_ && enabled_srgb_,
+                                         VKImageViewArrayed::DONT_CARE};
       vk_image_view = color_texture.image_view_get(image_view_info).vk_handle();
     }
     attachment_info.imageView = vk_image_view;
@@ -599,7 +595,8 @@ void VKFrameBuffer::rendering_ensure(VKContext &context)
                                          IndexRange(attachment.mip, 1),
                                          {{'r', 'g', 'b', 'a'}},
                                          is_stencil_attachment,
-                                         false};
+                                         false,
+                                         VKImageViewArrayed::DONT_CARE};
       depth_image_view = depth_texture.image_view_get(image_view_info).vk_handle();
     }
 

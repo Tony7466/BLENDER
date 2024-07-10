@@ -8,6 +8,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_math_base.hh"
 #include "BLI_math_vector.h"
 #include "BLI_task.h"
 
@@ -15,6 +16,7 @@
 
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
+#include "BKE_subdiv_ccg.hh"
 
 #include "sculpt_intern.hh"
 
@@ -24,6 +26,154 @@
 #include <cstdlib>
 
 namespace blender::ed::sculpt_paint::smooth {
+
+static float3 average_positions(const Span<float3> positions, const Span<int> indices)
+{
+  const float factor = math::rcp(float(indices.size()));
+  float3 result(0);
+  for (const int i : indices) {
+    result += positions[i] * factor;
+  }
+  return result;
+}
+
+void neighbor_position_average_mesh(const Span<float3> positions,
+                                    const Span<int> verts,
+                                    const Span<Vector<int>> vert_neighbors,
+                                    const MutableSpan<float3> new_positions)
+{
+  BLI_assert(vert_neighbors.size() == new_positions.size());
+
+  for (const int i : vert_neighbors.index_range()) {
+    const Span<int> neighbors = vert_neighbors[i];
+    if (neighbors.is_empty()) {
+      new_positions[i] = positions[verts[i]];
+    }
+    else {
+      new_positions[i] = average_positions(positions, neighbors);
+    }
+  }
+}
+
+static bool subdiv_coord_is_boundary(const OffsetIndices<int> faces,
+                                     const Span<int> corner_verts,
+                                     const BitSpan boundary_verts,
+                                     const SubdivCCG &subdiv_ccg,
+                                     const SubdivCCGCoord coord)
+{
+  int v1, v2;
+  const SubdivCCGAdjacencyType adjacency = BKE_subdiv_ccg_coarse_mesh_adjacency_info_get(
+      subdiv_ccg, coord, corner_verts, faces, v1, v2);
+  switch (adjacency) {
+    case SUBDIV_CCG_ADJACENT_VERTEX:
+      return boundary_verts[v1];
+    case SUBDIV_CCG_ADJACENT_EDGE:
+      return boundary_verts[v1] && boundary_verts[v2];
+    case SUBDIV_CCG_ADJACENT_NONE:
+      return false;
+  }
+  BLI_assert_unreachable();
+  return false;
+}
+
+static float3 average_positions(const CCGKey &key,
+                                const Span<CCGElem *> elems,
+                                const Span<SubdivCCGCoord> coords)
+{
+  const float factor = math::rcp(float(coords.size()));
+  float3 result(0);
+  for (const SubdivCCGCoord coord : coords) {
+    result += CCG_grid_elem_co(key, elems[coord.grid_index], coord.x, coord.y) * factor;
+  }
+  return result;
+}
+
+void neighbor_position_average_interior_grids(const OffsetIndices<int> faces,
+                                              const Span<int> corner_verts,
+                                              const BitSpan boundary_verts,
+                                              const SubdivCCG &subdiv_ccg,
+                                              const Span<int> grids,
+                                              const MutableSpan<float3> new_positions)
+{
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+  const Span<CCGElem *> elems = subdiv_ccg.grids;
+
+  BLI_assert(grids.size() * key.grid_area == new_positions.size());
+
+  for (const int i : grids.index_range()) {
+    const int grid = grids[i];
+    CCGElem *elem = elems[grid];
+    const int node_verts_start = i * key.grid_area;
+
+    /* TODO: This loop could be optimized in the future by skipping unnecessary logic for
+     * non-boundary grid vertices. */
+    for (const int y : IndexRange(key.grid_size)) {
+      for (const int x : IndexRange(key.grid_size)) {
+        const int offset = CCG_grid_xy_to_index(key.grid_size, x, y);
+        const int node_vert_index = node_verts_start + offset;
+
+        SubdivCCGCoord coord{};
+        coord.grid_index = grid;
+        coord.x = x;
+        coord.y = y;
+
+        SubdivCCGNeighbors neighbors;
+        BKE_subdiv_ccg_neighbor_coords_get(subdiv_ccg, coord, false, neighbors);
+
+        if (subdiv_coord_is_boundary(faces, corner_verts, boundary_verts, subdiv_ccg, coord)) {
+          if (neighbors.coords.size() == 2) {
+            /* Do not include neighbors of corner vertices. */
+            neighbors.coords.clear();
+          }
+          else {
+            /* Only include other boundary vertices as neighbors of boundary vertices. */
+            neighbors.coords.remove_if([&](const SubdivCCGCoord coord) {
+              return !subdiv_coord_is_boundary(
+                  faces, corner_verts, boundary_verts, subdiv_ccg, coord);
+            });
+          }
+        }
+
+        if (neighbors.coords.is_empty()) {
+          new_positions[node_vert_index] = CCG_elem_offset_co(key, elem, offset);
+        }
+        else {
+          new_positions[node_vert_index] = average_positions(key, elems, neighbors.coords);
+        }
+      }
+    }
+  }
+}
+
+static float3 average_positions(const Span<const BMVert *> verts)
+{
+  const float factor = math::rcp(float(verts.size()));
+  float3 result(0);
+  for (const BMVert *vert : verts) {
+    result += float3(vert->co) * factor;
+  }
+  return result;
+}
+
+void neighbor_position_average_interior_bmesh(const Set<BMVert *, 0> &verts,
+                                              const MutableSpan<float3> new_positions)
+{
+  BLI_assert(verts.size() == new_positions.size());
+  Vector<BMVert *, 64> neighbor_data;
+
+  int i = 0;
+  for (BMVert *vert : verts) {
+    neighbor_data.clear();
+    const Span<BMVert *> neighbors = vert_neighbors_get_interior_bmesh(*vert, neighbor_data);
+    if (neighbors.is_empty()) {
+      new_positions[i] = float3(vert->co);
+    }
+    else {
+      new_positions[i] = average_positions(neighbors);
+    }
+    i++;
+  }
+}
 
 float3 neighbor_coords_average_interior(const SculptSession &ss, PBVHVertRef vertex)
 {
@@ -63,7 +213,7 @@ float3 neighbor_coords_average_interior(const SculptSession &ss, PBVHVertRef ver
   return avg / total;
 }
 
-void bmesh_four_neighbor_average(float avg[3], const float3 &direction, BMVert *v)
+void bmesh_four_neighbor_average(float avg[3], const float3 &direction, const BMVert *v)
 {
   float avg_co[3] = {0.0f, 0.0f, 0.0f};
   float tot_co = 0.0f;
@@ -71,7 +221,7 @@ void bmesh_four_neighbor_average(float avg[3], const float3 &direction, BMVert *
   BMIter eiter;
   BMEdge *e;
 
-  BM_ITER_ELEM (e, &eiter, v, BM_EDGES_OF_VERT) {
+  BM_ITER_ELEM (e, &eiter, const_cast<BMVert *>(v), BM_EDGES_OF_VERT) {
     if (BM_edge_is_boundary(e)) {
       copy_v3_v3(avg, v->co);
       return;
@@ -147,7 +297,7 @@ float neighbor_mask_average(SculptSession &ss,
     case PBVH_GRIDS: {
       SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (ss, vertex, ni) {
         avg += SCULPT_mask_get_at_grids_vert_index(
-            *ss.subdiv_ccg, *BKE_pbvh_get_grid_key(*ss.pbvh), ni.vertex.i);
+            *ss.subdiv_ccg, BKE_subdiv_ccg_key_top_level(*ss.subdiv_ccg), ni.vertex.i);
         total++;
       }
       SCULPT_VERTEX_NEIGHBORS_ITER_END(ni);
@@ -167,14 +317,21 @@ float neighbor_mask_average(SculptSession &ss,
   return 0.0f;
 }
 
-float4 neighbor_color_average(SculptSession &ss, PBVHVertRef vertex)
+float4 neighbor_color_average(SculptSession &ss,
+                              const OffsetIndices<int> faces,
+                              const Span<int> corner_verts,
+                              const GroupedSpan<int> vert_to_face_map,
+                              const GSpan color_attribute,
+                              const bke::AttrDomain color_domain,
+                              const int vert)
 {
   float4 avg(0);
   int total = 0;
 
   SculptVertexNeighborIter ni;
-  SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (ss, vertex, ni) {
-    float4 tmp = SCULPT_vertex_color_get(ss, ni.vertex);
+  SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (ss, PBVHVertRef{vert}, ni) {
+    float4 tmp = color::color_vert_get(
+        faces, corner_verts, vert_to_face_map, color_attribute, color_domain, ni.index);
 
     avg += tmp;
     total++;
@@ -184,7 +341,8 @@ float4 neighbor_color_average(SculptSession &ss, PBVHVertRef vertex)
   if (total > 0) {
     return avg / total;
   }
-  return SCULPT_vertex_color_get(ss, vertex);
+  return color::color_vert_get(
+      faces, corner_verts, vert_to_face_map, color_attribute, color_domain, vert);
 }
 
 static void do_enhance_details_brush_task(Object &ob,
@@ -317,14 +475,13 @@ static void do_surface_smooth_brush_laplacian_task(Object &ob, const Brush &brus
   float alpha = brush.surface_smooth_shape_preservation;
 
   PBVHVertexIter vd;
-  SculptOrigVertData orig_data;
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
       ss, test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
-  SCULPT_orig_vert_data_init(orig_data, ob, *node, undo::Type::Position);
+  SculptOrigVertData orig_data = SCULPT_orig_vert_data_init(ob, *node, undo::Type::Position);
   auto_mask::NodeData automask_data = auto_mask::node_begin(
       ob, ss.cache->automasking.get(), *node);
 

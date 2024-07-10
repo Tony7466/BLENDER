@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "BLI_array.hh"
 #include "BLI_bounds_types.hh"
 #include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
@@ -43,8 +44,8 @@ struct rcti;
 #define BLF_CACHE_BYTES 400000
 
 /**
- * Offset from icon id to Unicode Supplimentary Private Use Area-B,
- * added with Unicode 2.0. 65,536 codepoints at U+100000..U+10FFFF.
+ * Offset from icon id to Unicode Supplementary Private Use Area-B,
+ * added with Unicode 2.0. 65,536 code-points at U+100000..U+10FFFF.
  */
 #define BLF_ICON_OFFSET 0x100000L
 
@@ -106,6 +107,9 @@ void blf_draw_svg_icon(FontBLF *font,
                        float size,
                        float color[4],
                        float outline_alpha);
+
+blender::Array<uchar> blf_svg_icon_bitmap(
+    FontBLF *font, uint icon_id, float size, int *r_width, int *r_height);
 
 blender::Vector<blender::StringRef> blf_font_string_wrap(FontBLF *font,
                                                          blender::StringRef str,
