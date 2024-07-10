@@ -7577,42 +7577,6 @@ void calc_vert_neighbors_interior(const OffsetIndices<int> faces,
   }
 }
 
-void calc_vert_neighbors_interior(const Set<BMVert *, 0> &verts,
-                                  MutableSpan<Vector<BMVert *>> result)
-{
-  BLI_assert(verts.size() == result.size());
-  Vector<BMVert *, 64> neighbor_data;
-
-  int i = 0;
-  for (BMVert *vert : verts) {
-    neighbor_data.clear();
-    vert_neighbors_get_interior_bmesh(*vert, neighbor_data);
-    result[i] = neighbor_data;
-    i++;
-  }
-}
-
-static bool subdiv_coord_is_boundary(const OffsetIndices<int> faces,
-                                     const Span<int> corner_verts,
-                                     const BitSpan boundary_verts,
-                                     const SubdivCCG &subdiv_ccg,
-                                     const SubdivCCGCoord coord)
-{
-  int v1, v2;
-  const SubdivCCGAdjacencyType adjacency = BKE_subdiv_ccg_coarse_mesh_adjacency_info_get(
-      subdiv_ccg, coord, corner_verts, faces, v1, v2);
-  switch (adjacency) {
-    case SUBDIV_CCG_ADJACENT_VERTEX:
-      return boundary_verts[v1];
-    case SUBDIV_CCG_ADJACENT_EDGE:
-      return boundary_verts[v1] && boundary_verts[v2];
-    case SUBDIV_CCG_ADJACENT_NONE:
-      return false;
-  }
-  BLI_assert_unreachable();
-  return false;
-}
-
 void calc_vert_neighbors_interior(const OffsetIndices<int> faces,
                                   const Span<int> corner_verts,
                                   const BitSpan boundary_verts,
@@ -7643,7 +7607,9 @@ void calc_vert_neighbors_interior(const OffsetIndices<int> faces,
         SubdivCCGNeighbors neighbors;
         BKE_subdiv_ccg_neighbor_coords_get(subdiv_ccg, coord, false, neighbors);
 
-        if (subdiv_coord_is_boundary(faces, corner_verts, boundary_verts, subdiv_ccg, coord)) {
+        if (BKE_subdiv_ccg_coord_is_mesh_boundary(
+                faces, corner_verts, boundary_verts, subdiv_ccg, coord))
+        {
           if (neighbors.coords.size() == 2) {
             /* Do not include neighbors of corner vertices. */
             neighbors.coords.clear();
@@ -7651,7 +7617,7 @@ void calc_vert_neighbors_interior(const OffsetIndices<int> faces,
           else {
             /* Only include other boundary vertices as neighbors of boundary vertices. */
             neighbors.coords.remove_if([&](const SubdivCCGCoord coord) {
-              return !subdiv_coord_is_boundary(
+              return !BKE_subdiv_ccg_coord_is_mesh_boundary(
                   faces, corner_verts, boundary_verts, subdiv_ccg, coord);
             });
           }
@@ -7659,6 +7625,21 @@ void calc_vert_neighbors_interior(const OffsetIndices<int> faces,
         result[node_vert_index] = neighbors.coords;
       }
     }
+  }
+}
+
+void calc_vert_neighbors_interior(const Set<BMVert *, 0> &verts,
+                                  MutableSpan<Vector<BMVert *>> result)
+{
+  BLI_assert(verts.size() == result.size());
+  Vector<BMVert *, 64> neighbor_data;
+
+  int i = 0;
+  for (BMVert *vert : verts) {
+    neighbor_data.clear();
+    vert_neighbors_get_interior_bmesh(*vert, neighbor_data);
+    result[i] = neighbor_data;
+    i++;
   }
 }
 
