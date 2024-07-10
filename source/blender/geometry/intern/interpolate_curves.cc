@@ -157,7 +157,7 @@ static void gather_point_attributes_to_interpolate(const CurvesGeometry &from_cu
 
 /* Resample a span of attribute values from source curves to a destination buffer. */
 static void resample_curve_attribute(const bke::CurvesGeometry &src_curves,
-                                     bke::CurvesGeometry &dst_curves,
+                                     const OffsetIndices<int> dst_points_by_curve,
                                      GSpan src_data,
                                      GMutableSpan dst_data,
                                      const IndexMask &curve_selection,
@@ -175,7 +175,6 @@ static void resample_curve_attribute(const bke::CurvesGeometry &src_curves,
 
   const OffsetIndices<int> src_points_by_curve = src_curves.points_by_curve();
   const OffsetIndices<int> src_evaluated_points_by_curve = src_curves.evaluated_points_by_curve();
-  const OffsetIndices<int> dst_points_by_curve = dst_curves.points_by_curve();
   const VArray<int8_t> curve_types = src_curves.curve_types();
 
   const int curves_num = src_curves.curves_num();
@@ -349,7 +348,7 @@ void interpolate_curves(const CurvesGeometry &from_curves,
           const float from_mix_factor = from_has_data ? 1.0f : 0.0f;
           const float to_mix_factor = from_has_data ? (to_has_data ? mix_factor : 0.0f) : 1.0f;
           resample_curve_attribute(from_curves,
-                                   dst_curves,
+                                   dst_points_by_curve,
                                    attributes.src_from[i_attribute],
                                    attributes.dst[i_attribute],
                                    segment_range,
@@ -358,7 +357,7 @@ void interpolate_curves(const CurvesGeometry &from_curves,
                                    from_mix_factor,
                                    false);
           resample_curve_attribute(to_curves,
-                                   dst_curves,
+                                   dst_points_by_curve,
                                    attributes.src_to[i_attribute],
                                    attributes.dst[i_attribute],
                                    segment_range,
@@ -370,7 +369,7 @@ void interpolate_curves(const CurvesGeometry &from_curves,
 
         /* Interpolate the evaluated positions to the resampled curves. */
         resample_curve_attribute(from_curves,
-                                 dst_curves,
+                                 dst_points_by_curve,
                                  from_evaluated_positions,
                                  dst_positions,
                                  segment_range,
@@ -379,7 +378,7 @@ void interpolate_curves(const CurvesGeometry &from_curves,
                                  1.0f,
                                  false);
         resample_curve_attribute(to_curves,
-                                 dst_curves,
+                                 dst_points_by_curve,
                                  to_evaluated_positions,
                                  dst_positions,
                                  segment_range,
