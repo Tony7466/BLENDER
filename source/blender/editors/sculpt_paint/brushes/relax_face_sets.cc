@@ -65,7 +65,7 @@ BLI_NOINLINE static void filter_factors_on_face_sets_mesh(const GroupedSpan<int>
 
   for (const int i : verts.index_range()) {
     if (relax_face_sets ==
-        face_set::vert_has_unique_face_set_mesh(vert_to_face_map, face_sets, verts[i]))
+        face_set::vert_has_unique_face_set(vert_to_face_map, face_sets, verts[i]))
     {
       factors[i] = 0.0f;
     }
@@ -97,7 +97,7 @@ BLI_NOINLINE static void filter_factors_on_face_sets_grids(const GroupedSpan<int
         coord.x = x;
         coord.y = y;
         if (relax_face_sets ==
-            face_set::vert_has_unique_face_set_grids(
+            face_set::vert_has_unique_face_set(
                 vert_to_face_map, corner_verts, faces, face_sets, subdiv_ccg, coord))
         {
           factors[start + offset] = 0.0f;
@@ -114,7 +114,7 @@ static void filter_factors_on_face_sets_bmesh(const bool relax_face_sets,
 
   int i = 0;
   for (const BMVert *vert : verts) {
-    if (relax_face_sets == face_set::vert_has_unique_face_set_bmesh(vert)) {
+    if (relax_face_sets == face_set::vert_has_unique_face_set(vert)) {
       factors[i] = 0.0f;
     }
     i++;
@@ -416,7 +416,7 @@ BLI_NOINLINE static void calc_relaxed_positions_faces(const OffsetIndices<int> f
           vert_neighbors[i],
           relax_face_sets,
           [&](const int vert) {
-            return face_set::vert_has_unique_face_set_mesh(vert_to_face_map, face_sets, vert);
+            return face_set::vert_has_unique_face_set(vert_to_face_map, face_sets, vert);
           },
           [&](const int vert) { return !boundary_verts[vert]; });
     }
@@ -424,7 +424,7 @@ BLI_NOINLINE static void calc_relaxed_positions_faces(const OffsetIndices<int> f
       neighbors = filtered_neighbors(vert_neighbors[i],
                                      relax_face_sets,
                                      [&](const int vert) {
-                                       return face_set::vert_has_unique_face_set_mesh(
+                                       return face_set::vert_has_unique_face_set(
                                            vert_to_face_map, face_sets, vert);
                                      },
                                      {});
@@ -672,7 +672,7 @@ BLI_NOINLINE static void calc_relaxed_positions_grids(const OffsetIndices<int> f
               vert_neighbor,
               relax_face_sets,
               [&](const SubdivCCGCoord &neighbor) {
-                return face_set::vert_has_unique_face_set_grids(
+                return face_set::vert_has_unique_face_set(
                     vert_to_face_map, corner_verts, faces, face_sets, subdiv_ccg, neighbor);
               },
               [&](const SubdivCCGCoord &neighbor) {
@@ -685,7 +685,7 @@ BLI_NOINLINE static void calc_relaxed_positions_grids(const OffsetIndices<int> f
               vert_neighbor,
               relax_face_sets,
               [&](const SubdivCCGCoord &neighbor) {
-                return face_set::vert_has_unique_face_set_grids(
+                return face_set::vert_has_unique_face_set(
                     vert_to_face_map, corner_verts, faces, face_sets, subdiv_ccg, neighbor);
               },
               {});
@@ -900,14 +900,14 @@ BLI_NOINLINE static void calc_relaxed_positions_bmesh(const Set<BMVert *, 0> &ve
       neighbors = filtered_neighbors(
           vert_neighbors[i],
           relax_face_sets,
-          [&](const BMVert *vert) { return face_set::vert_has_unique_face_set_bmesh(vert); },
+          [&](const BMVert *vert) { return face_set::vert_has_unique_face_set(vert); },
           [&](const BMVert *vert) { return !BM_vert_is_boundary(vert); });
     }
     else {
       neighbors = filtered_neighbors(
           vert_neighbors[i],
           relax_face_sets,
-          [&](const BMVert *vert) { return face_set::vert_has_unique_face_set_bmesh(vert); },
+          [&](const BMVert *vert) { return face_set::vert_has_unique_face_set(vert); },
           {});
     }
 

@@ -659,64 +659,6 @@ bool vert_has_unique_face_set(const BMVert * /* vert */)
   return true;
 }
 
-bool vert_has_unique_face_set_mesh(const GroupedSpan<int> vert_to_face_map,
-                                   const int *face_sets,
-                                   int vert)
-{
-  /* TODO: Move this check higher out of this function & make this function take empty span instead
-   * of a raw pointer. */
-  if (!face_sets) {
-    return true;
-  }
-  int face_set = -1;
-  for (const int face_index : vert_to_face_map[vert]) {
-    if (face_set == -1) {
-      face_set = face_sets[face_index];
-    }
-    else {
-      if (face_sets[face_index] != face_set) {
-        return false;
-      }
-    }
-  }
-  return true;
-}
-
-bool vert_has_unique_face_set_grids(const GroupedSpan<int> vert_to_face_map,
-                                    const Span<int> corner_verts,
-                                    const OffsetIndices<int> faces,
-                                    const int *face_sets,
-                                    const SubdivCCG &subdiv_ccg,
-                                    const SubdivCCGCoord &coord)
-{
-  /* TODO: Move this check higher out of this function & make this function take empty span instead
-   * of a raw pointer. */
-  if (!face_sets) {
-    return true;
-  }
-  int v1, v2;
-  const SubdivCCGAdjacencyType adjacency = BKE_subdiv_ccg_coarse_mesh_adjacency_info_get(
-      subdiv_ccg, coord, corner_verts, faces, v1, v2);
-  switch (adjacency) {
-    case SUBDIV_CCG_ADJACENT_VERTEX:
-      return vert_has_unique_face_set_mesh(vert_to_face_map, face_sets, v1);
-    case SUBDIV_CCG_ADJACENT_EDGE:
-      return sculpt_check_unique_face_set_for_edge_in_base_mesh(
-          vert_to_face_map, face_sets, corner_verts, faces, v1, v2);
-    case SUBDIV_CCG_ADJACENT_NONE:
-      return true;
-  }
-  BLI_assert_unreachable();
-  return true;
-}
-
-bool vert_has_unique_face_set_bmesh(const BMVert * /* vert */)
-{
-  /* TODO: Obviously not fully implemented yet. Needs to be implemented for Relax Face Sets brush
-   * to work. */
-  return true;
-}
-
 }  // namespace face_set
 
 /* Sculpt Neighbor Iterators */
