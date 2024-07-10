@@ -291,8 +291,8 @@ bool BKE_subdiv_ccg_coord_is_mesh_boundary(blender::OffsetIndices<int> faces,
 
 /* Get array which is indexed by face index and contains index of a first grid of the face.
  *
- * The "ensure" version allocates the mapping if it's not known yet and stores it in the
- * subdiv_ccg descriptor. This function is NOT safe for threading.
+ * The "ensure" version allocates the mapping if it's not known yet and stores it in the subdiv_ccg
+ * descriptor. This function is NOT safe for threading.
  *
  * The "get" version simply returns cached array. */
 const int *BKE_subdiv_ccg_start_face_grid_index_ensure(SubdivCCG &subdiv_ccg);
