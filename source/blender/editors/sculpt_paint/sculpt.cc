@@ -7564,7 +7564,7 @@ void calc_vert_neighbors_interior(const OffsetIndices<int> faces,
                                   const SubdivCCG &subdiv_ccg,
                                   const Span<int> grids,
                                   const Span<float> factors,
-                                  const MutableSpan<SubdivCCGNeighbors> result)
+                                  const MutableSpan<Vector<SubdivCCGCoord>> result)
 {
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
@@ -7590,7 +7590,7 @@ void calc_vert_neighbors_interior(const OffsetIndices<int> faces,
         SubdivCCGNeighbors neighbors;
 
         if (factors[node_vert_index] == 0.0f) {
-          result[node_vert_index] = neighbors;
+          result[node_vert_index] = neighbors.coords;
           continue;
         }
 
@@ -7609,7 +7609,7 @@ void calc_vert_neighbors_interior(const OffsetIndices<int> faces,
             });
           }
         }
-        result[node_vert_index] = neighbors;
+        result[node_vert_index] = neighbors.coords;
       }
     }
   }

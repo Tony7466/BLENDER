@@ -34,7 +34,7 @@ struct GridLocalData {
   Vector<float3> new_positions;
   Vector<float> factors;
   Vector<float> distances;
-  Vector<SubdivCCGNeighbors> vert_neighbors;
+  Vector<Vector<SubdivCCGCoord>> vert_neighbors;
   Vector<float3> translations;
 };
 
@@ -185,7 +185,7 @@ static bool get_average_position(const Span<float3> vert_positions,
   return true;
 }
 
-static Vector<SubdivCCGCoord, 16> filtered_neighbors(
+BLI_NOINLINE static Vector<SubdivCCGCoord, 16> filtered_neighbors(
     const Span<SubdivCCGCoord> neighbors,
     const bool filter_boundary_face_sets,
     FunctionRef<bool(SubdivCCGCoord)> is_unique_element_fn,
@@ -210,11 +210,11 @@ static Vector<SubdivCCGCoord, 16> filtered_neighbors(
   return result;
 }
 
-static bool get_normal_boundary(const CCGKey &key,
-                                const Span<CCGElem *> elems,
-                                const float3 &current_position,
-                                const Span<SubdivCCGCoord> neighbors,
-                                float3 &r_new_normal)
+BLI_NOINLINE static bool get_normal_boundary(const CCGKey &key,
+                                             const Span<CCGElem *> elems,
+                                             const float3 &current_position,
+                                             const Span<SubdivCCGCoord> neighbors,
+                                             float3 &r_new_normal)
 {
   /* If we are not dealing with a corner vertex, skip this step.*/
   if (neighbors.size() != 2) {
@@ -233,13 +233,13 @@ static bool get_normal_boundary(const CCGKey &key,
   return true;
 }
 
-static bool get_average_position(const CCGKey &key,
-                                 const Span<CCGElem *> elems,
-                                 const Span<float3> positions,
-                                 const Span<SubdivCCGCoord> neighbors,
-                                 const int current_grid,
-                                 const int current_grid_start,
-                                 float3 &r_new_position)
+BLI_NOINLINE static bool get_average_position(const CCGKey &key,
+                                              const Span<CCGElem *> elems,
+                                              const Span<float3> positions,
+                                              const Span<SubdivCCGCoord> neighbors,
+                                              const int current_grid,
+                                              const int current_grid_start,
+                                              float3 &r_new_position)
 {
   if (neighbors.size() == 0) {
     return false;
@@ -568,7 +568,7 @@ BLI_NOINLINE static void calc_relaxed_positions_grids(const OffsetIndices<int> f
   tls.vert_neighbors.reinitialize(grid_verts_num);
   calc_vert_neighbors_interior(
       faces, corner_verts, boundary_verts, subdiv_ccg, grids, factors, tls.vert_neighbors);
-  const Span<SubdivCCGNeighbors> vert_neighbors = tls.vert_neighbors;
+  const Span<Vector<SubdivCCGCoord>> vert_neighbors = tls.vert_neighbors;
 
   for (const int i : grids.index_range()) {
     CCGElem *elem = elems[grids[i]];
@@ -587,9 +587,9 @@ BLI_NOINLINE static void calc_relaxed_positions_grids(const OffsetIndices<int> f
         coord.x = x;
         coord.y = y;
 
-        const SubdivCCGNeighbors vert_neighbor = vert_neighbors[start + offset];
+        const Span<SubdivCCGCoord> vert_neighbor = vert_neighbors[start + offset];
         /* Don't modify corner vertices */
-        if (vert_neighbor.coords.size() <= 2) {
+        if (vert_neighbor.size() <= 2) {
           new_positions[grid_idx] = positions[grid_idx];
           continue;
         }
@@ -600,7 +600,7 @@ BLI_NOINLINE static void calc_relaxed_positions_grids(const OffsetIndices<int> f
         Vector<SubdivCCGCoord, 16> neighbors;
         if (is_boundary) {
           neighbors = filtered_neighbors(
-              vert_neighbor.coords,
+              vert_neighbor,
               relax_face_sets,
               [&](const SubdivCCGCoord &neighbor) {
                 return face_set::vert_has_unique_face_set_grids(
@@ -613,7 +613,7 @@ BLI_NOINLINE static void calc_relaxed_positions_grids(const OffsetIndices<int> f
         }
         else {
           neighbors = filtered_neighbors(
-              vert_neighbor.coords,
+              vert_neighbor,
               relax_face_sets,
               [&](const SubdivCCGCoord &neighbor) {
                 return face_set::vert_has_unique_face_set_grids(

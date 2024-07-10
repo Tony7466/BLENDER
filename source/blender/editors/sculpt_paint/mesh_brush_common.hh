@@ -13,6 +13,8 @@
 #include "BLI_span.hh"
 #include "BLI_vector.hh"
 
+#include "BKE_subdiv_ccg.hh"
+
 #include "DNA_brush_enums.h"
 
 #include "sculpt_intern.hh"
@@ -43,6 +45,7 @@ struct PBVHNode;
 struct Sculpt;
 struct SculptSession;
 struct SubdivCCG;
+struct SubdivCCGCoord;
 struct SubdivCCGNeighbors;
 
 namespace blender::ed::sculpt_paint {
@@ -371,7 +374,7 @@ void calc_vert_neighbors_interior(OffsetIndices<int> faces,
                                   const SubdivCCG &subdiv_ccg,
                                   const Span<int> grids,
                                   const Span<float> factors,
-                                  const MutableSpan<SubdivCCGNeighbors> result);
+                                  const MutableSpan<Vector<SubdivCCGCoord>> result);
 
 /** Find the translation from each vertex position to the closest point on the plane. */
 void calc_translations_to_plane(Span<float3> vert_positions,
