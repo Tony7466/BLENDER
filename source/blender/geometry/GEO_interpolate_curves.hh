@@ -11,30 +11,16 @@
 
 namespace blender::geometry {
 
-using bke::CurvesGeometry;
-
 /**
  * Create new curves that are interpolated between "from" and "to" curves.
  */
-CurvesGeometry interpolate_curves(const CurvesGeometry &from_curves,
-                                  const CurvesGeometry &to_curves,
-                                  Span<int> from_curve_indices,
-                                  Span<int> to_curve_indices,
-                                  const IndexMask &selection,
-                                  const VArray<int> &dst_curve_counts,
-                                  Span<bool> curve_flip_direction,
-                                  float mix_factor);
-
-/**
- * Create new curves that are interpolated between "from" and "to" curves.
- */
-void interpolate_curves(const CurvesGeometry &from_curves,
-                        const CurvesGeometry &to_curves,
+void interpolate_curves(const bke::CurvesGeometry &from_curves,
+                        const bke::CurvesGeometry &to_curves,
                         Span<int> from_curve_indices,
                         Span<int> to_curve_indices,
                         const IndexMask &selection,
                         Span<bool> curve_flip_direction,
                         const float mix_factor,
-                        CurvesGeometry &dst_curves);
+                        bke::CurvesGeometry &dst_curves);
 
 }  // namespace blender::geometry

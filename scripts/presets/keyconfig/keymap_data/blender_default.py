@@ -4603,7 +4603,6 @@ def km_grease_pencil_paint_mode(params):
         op_tool_optional(
             ("grease_pencil.interpolate", {"type": 'E', "value": 'PRESS', "ctrl": True}, None),
             (op_tool_cycle, "builtin.interpolate"), params),
-        ),
 
         op_asset_shelf_popup(
             "VIEW3D_AST_brush_gpencil_paint",

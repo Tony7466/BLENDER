@@ -18,6 +18,8 @@
 
 namespace blender::geometry {
 
+using bke::CurvesGeometry;
+
 /**
  * Return true if the attribute should be copied/interpolated to the result curves.
  * Don't output attributes that correspond to curve types that have no curves in the result.
@@ -244,7 +246,7 @@ void interpolate_curves(const CurvesGeometry &from_curves,
   BLI_assert(from_curve_indices.size() == selection.size());
   BLI_assert(to_curve_indices.size() == selection.size());
 
-  if (from_curves.curves_range().is_empty() || to_curves.curves_range().is_empty()) {
+  if (from_curves.curves_num() == 0 || to_curves.curves_num() == 0) {
     return;
   }
 
@@ -390,45 +392,6 @@ void interpolate_curves(const CurvesGeometry &from_curves,
   for (bke::GSpanAttributeWriter &attribute : attributes.dst_attributes) {
     attribute.finish();
   }
-}
-
-CurvesGeometry interpolate_curves(const CurvesGeometry &from_curves,
-                                  const CurvesGeometry &to_curves,
-                                  Span<int> from_curve_indices,
-                                  Span<int> to_curve_indices,
-                                  const IndexMask &selection,
-                                  const VArray<int> &dst_curve_counts,
-                                  const Span<bool> curve_flip_direction,
-                                  const float mix_factor)
-{
-  if (from_curves.curves_range().is_empty() || to_curves.curves_range().is_empty()) {
-    return {};
-  }
-
-  const int dst_curve_num = from_curve_indices.size();
-  BLI_assert(to_curve_indices.size() == dst_curve_num);
-  BLI_assert(dst_curve_counts.size() == dst_curve_num);
-  Array<int> dst_curve_offsets(dst_curve_num + 1);
-  dst_curve_counts.materialize_to_uninitialized(dst_curve_offsets);
-  offset_indices::accumulate_counts_to_offsets(dst_curve_offsets);
-  const int dst_point_num = dst_curve_offsets.last();
-
-  CurvesGeometry dst_curves(dst_point_num, dst_curve_num);
-  /* Offsets are empty when there are no curves. */
-  if (dst_curve_num > 0) {
-    dst_curves.offsets_for_write().copy_from(dst_curve_offsets);
-  }
-
-  interpolate_curves(from_curves,
-                     to_curves,
-                     from_curve_indices,
-                     to_curve_indices,
-                     selection,
-                     curve_flip_direction,
-                     mix_factor,
-                     dst_curves);
-
-  return dst_curves;
 }
 
 }  // namespace blender::geometry
