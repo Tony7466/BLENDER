@@ -361,7 +361,6 @@ static GlyphBLF *blf_glyph_cache_add_svg(
   }
 
   NSVGimage *image = nsvgParse(svg_source.data(), "px", 96.0f);
-  // MEM_freeN(writeable);
 
   if (image == nullptr) {
     return blf_glyph_cache_add_blank(gc, charcode);

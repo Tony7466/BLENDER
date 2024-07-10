@@ -255,7 +255,7 @@ static void rna_userdef_theme_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   /* Recreate gizmos when changing themes. */
   WM_reinit_gizmomap_all(bmain);
-
+  BLF_cache_clear();
   rna_userdef_update(bmain, scene, ptr);
 }
 

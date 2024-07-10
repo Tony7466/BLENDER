@@ -1299,13 +1299,13 @@ static void icon_source_edit_cb(std::string &xml)
   size_t g_start;
   g_start = xml.find(id);
   if (g_start != std::string::npos) {
-    size_t g_end = xml.find("</g>", g_start);
+    size_t g_end = xml.find(">", g_start);
     if (g_end == std::string::npos) {
       // break;
     }
 
-    char hex[10];
-    BLI_snprintf(hex, sizeof(hex), "#%02x%02x%02x%02x", col[0], col[1], col[2], col[3]);
+    char att[20];
+    BLI_snprintf(att, sizeof(att), "fill=\"#%02x%02x%02x%02x\"", col[0], col[1], col[2], col[3]);
 
     size_t att_start;
     while (std::string::npos != (att_start = xml.find("fill=\"", g_start))) {
@@ -1313,8 +1313,8 @@ static void icon_source_edit_cb(std::string &xml)
         break;
       }
       size_t att_end = xml.find("\"", att_start + 6);
-      if (att_end != std::string::npos && (att_end - att_start < 12)) {
-        xml.replace(att_start + 6, att_end - att_start - 6, hex);
+      if (att_end != std::string::npos && (att_end - att_start < 20)) {
+        xml.replace(att_start, att_end - att_start + 1, att);
       }
       g_start = att_end;
     }
