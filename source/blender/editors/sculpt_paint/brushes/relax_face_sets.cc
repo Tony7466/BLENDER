@@ -235,7 +235,10 @@ static bool get_normal_boundary(const CCGKey &key,
 
 static bool get_average_position(const CCGKey &key,
                                  const Span<CCGElem *> elems,
+                                 const Span<float3> positions,
                                  const Span<SubdivCCGCoord> neighbors,
+                                 const int current_grid,
+                                 const int current_grid_start,
                                  float3 &r_new_position)
 {
   if (neighbors.size() == 0) {
@@ -244,8 +247,13 @@ static bool get_average_position(const CCGKey &key,
 
   float3 average_position(0.0f, 0.0f, 0.0f);
   for (const SubdivCCGCoord &coord : neighbors) {
-
-    average_position += CCG_grid_elem_co(key, elems[coord.grid_index], coord.x, coord.y);
+    if (current_grid == coord.grid_index) {
+      const int offset = CCG_grid_xy_to_index(key.grid_size, coord.x, coord.y);
+      average_position += positions[current_grid_start + offset];
+    }
+    else {
+      average_position += CCG_grid_elem_co(key, elems[coord.grid_index], coord.x, coord.y);
+    }
   }
 
   average_position *= math::rcp(float(neighbors.size()));
@@ -617,7 +625,7 @@ BLI_NOINLINE static void calc_relaxed_positions_grids(const OffsetIndices<int> f
         /* Smoothed position calculation */
         float3 smoothed_position;
         const bool has_new_position = get_average_position(
-            key, elems, neighbors, smoothed_position);
+            key, elems, positions, neighbors, grids[i], start, smoothed_position);
 
         if (!has_new_position) {
           new_positions[grid_idx] = positions[grid_idx];
