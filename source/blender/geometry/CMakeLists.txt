@@ -21,6 +21,7 @@ set(SRC
   intern/extend_curves.cc
   intern/fillet_curves.cc
   intern/join_geometries.cc
+  intern/merge_curves.cc
   intern/mesh_boolean.cc
   intern/mesh_copy_selection.cc
   intern/mesh_merge_by_distance.cc
@@ -57,6 +58,7 @@ set(SRC
   GEO_extend_curves.hh
   GEO_fillet_curves.hh
   GEO_join_geometries.hh
+  GEO_merge_curves.hh
   GEO_mesh_boolean.hh
   GEO_mesh_copy_selection.hh
   GEO_mesh_merge_by_distance.hh
