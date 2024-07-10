@@ -333,8 +333,8 @@ static bke::CurvesGeometry interpolate_between_curves(const GreasePencil &grease
     if (!from_drawing || !to_drawing) {
       continue;
     }
-    const IndexRange from_curves = from_drawing->strokes().points_range();
-    const IndexRange to_curves = to_drawing->strokes().points_range();
+    const IndexRange from_curves = from_drawing->strokes().curves_range();
+    const IndexRange to_curves = to_drawing->strokes().curves_range();
 
     /* Subset of target curves that are filled by this frame pair. */
     IndexMaskMemory selection_memory;
