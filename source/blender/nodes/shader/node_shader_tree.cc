@@ -1220,9 +1220,10 @@ void ntreeGPUMaterialNodesNPR(bNodeTree *localtree, GPUMaterial *mat)
   }
 
   if (!output) {
-    return;
+    // return;
   }
 
+  ntree_shader_pruned_unused(localtree, output);
   bNodeTreeExec *exec = ntreeShaderBeginExecTree(localtree);
   ntreeExecGPUNodes(exec, mat, output);
   ntreeShaderEndExecTree(exec);

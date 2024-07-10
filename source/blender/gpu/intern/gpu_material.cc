@@ -681,6 +681,13 @@ void GPU_material_output_thickness(GPUMaterial *material, GPUNodeLink *link)
   }
 }
 
+void GPU_material_output_npr(GPUMaterial *material, GPUNodeLink *link)
+{
+  if (!material->graph.outlink_npr) {
+    material->graph.outlink_npr = link;
+  }
+}
+
 void GPU_material_add_output_link_aov(GPUMaterial *material, GPUNodeLink *link, int hash)
 {
   GPUNodeGraphOutputLink *aov_link = static_cast<GPUNodeGraphOutputLink *>(

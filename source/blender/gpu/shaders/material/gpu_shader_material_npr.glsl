@@ -2,18 +2,21 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-void npr_passthrough(in Closure Shader, float weight, out Closure NPR)
+void npr_passthrough(in Closure shader, float weight, out Closure npr)
 {
-  NPR = Shader;
+  npr = shader;
 }
 
-void npr_input(out vec4 Color)
+void npr_input(out vec4 color)
 {
-  /* TODO(NPR) */
-  Color = vec4(1);
+#if defined(NPR_SHADER) && defined(GPU_FRAGMENT_SHADER)
+  color = g_combined_color;
+#else
+  color = vec4(0.0);
+#endif
 }
 
-void npr_output(vec4 Color)
+void npr_output(vec4 color, out vec4 out_color)
 {
-  /* TODO(NPR) */
+  out_color = color;
 }

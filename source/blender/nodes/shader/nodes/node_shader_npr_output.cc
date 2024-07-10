@@ -27,11 +27,17 @@ static int node_shader_fn(GPUMaterial *mat,
                           GPUNodeStack *in,
                           GPUNodeStack *out)
 {
-  return GPU_stack_link(mat, node, "npr_output", in, out);
+  GPUNodeLink *outlink_npr = nullptr;
+  /* Passthrough node in order to do the right socket conversions. */
+  if (in[0].link) {
+    GPU_link(mat, "npr_output", in[0].link, &outlink_npr);
+    GPU_material_output_npr(mat, outlink_npr);
 #if 0
-  GPU_link(mat, "npr_output", in[0].link, &outlink_npr);
-  GPU_material_output_npr(mat, outlink_npr);
+    GPU_link(mat, "npr_output", in[0].link, &outlink_npr);
+    GPU_material_output_npr(mat, outlink_npr);
 #endif
+  }
+  return true;
 }
 
 }  // namespace blender::nodes::node_shader_npr_output_cc

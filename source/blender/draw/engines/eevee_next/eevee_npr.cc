@@ -47,6 +47,14 @@ static void codegen_callback(void * /*thunk*/, GPUMaterial * /*mat*/, GPUCodegen
   using namespace blender::gpu::shader;
   ShaderCreateInfo &info = *reinterpret_cast<ShaderCreateInfo *>(codegen->create_info);
   info.additional_info("npr_surface");
+
+  std::stringstream frag_gen;
+  frag_gen << (!codegen->material_functions.empty() ? codegen->material_functions : "\n");
+  frag_gen << "vec4 nodetree_npr(){\n";
+  frag_gen << (!codegen->npr.empty() ? codegen->npr : "return g_combined_color;\n");
+  frag_gen << "}\n\n";
+
+  info.fragment_source_generated = frag_gen.str();
 }
 
 int NPRModule::sync_material(::Material *material)

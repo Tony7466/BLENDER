@@ -133,6 +133,7 @@ struct GPUCodegenOutput {
   std::string surface;
   std::string volume;
   std::string thickness;
+  std::string npr;
   std::string composite;
   std::string material_functions;
 
@@ -204,6 +205,8 @@ void GPU_material_output_surface(GPUMaterial *material, GPUNodeLink *link);
 void GPU_material_output_volume(GPUMaterial *material, GPUNodeLink *link);
 void GPU_material_output_displacement(GPUMaterial *material, GPUNodeLink *link);
 void GPU_material_output_thickness(GPUMaterial *material, GPUNodeLink *link);
+
+void GPU_material_output_npr(GPUMaterial *material, GPUNodeLink *link);
 
 void GPU_material_add_output_link_aov(GPUMaterial *material, GPUNodeLink *link, int hash);
 
