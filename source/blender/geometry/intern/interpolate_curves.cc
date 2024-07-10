@@ -148,12 +148,12 @@ static AttributesForInterpolation gather_point_attributes_to_interpolate(
 static void resample_curve_attribute(const bke::CurvesGeometry &src_curves,
                                      const OffsetIndices<int> dst_points_by_curve,
                                      const GSpan src_data,
-                                     GMutableSpan dst_data,
                                      const IndexMask &curve_selection,
                                      const Span<int> sample_indices,
                                      const Span<float> sample_factors,
                                      const float mix_weight,
-                                     const bool use_evaluated_points)
+                                     const bool use_evaluated_points,
+                                     GMutableSpan dst_data)
 {
   if (mix_weight == 0.0f) {
     return;
@@ -341,42 +341,42 @@ void interpolate_curves(const CurvesGeometry &from_curves,
           resample_curve_attribute(from_curves,
                                    dst_points_by_curve,
                                    attributes.src_from[i_attribute],
-                                   attributes.dst[i_attribute].span,
                                    segment_range,
                                    from_sample_indices,
                                    from_sample_factors,
                                    from_mix_factor,
-                                   false);
+                                   false,
+                                   attributes.dst[i_attribute].span);
           resample_curve_attribute(to_curves,
                                    dst_points_by_curve,
                                    attributes.src_to[i_attribute],
-                                   attributes.dst[i_attribute].span,
                                    segment_range,
                                    to_sample_indices,
                                    to_sample_factors,
                                    to_mix_factor,
-                                   false);
+                                   false,
+                                   attributes.dst[i_attribute].span);
         }
 
         /* Interpolate the evaluated positions to the resampled curves. */
         resample_curve_attribute(from_curves,
                                  dst_points_by_curve,
                                  from_evaluated_positions,
-                                 dst_positions,
                                  segment_range,
                                  from_sample_indices,
                                  from_sample_factors,
                                  1.0f,
-                                 false);
+                                 false,
+                                 dst_positions);
         resample_curve_attribute(to_curves,
                                  dst_points_by_curve,
                                  to_evaluated_positions,
-                                 dst_positions,
                                  segment_range,
                                  to_sample_indices,
                                  to_sample_factors,
                                  mix_factor,
-                                 false);
+                                 false,
+                                 dst_positions);
       });
 
   for (bke::GSpanAttributeWriter &attribute : attributes.dst) {
