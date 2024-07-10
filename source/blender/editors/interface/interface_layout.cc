@@ -364,7 +364,7 @@ static int ui_text_icon_width(uiLayout *layout,
 static void ui_item_size(const uiItem *item, int *r_w, int *r_h)
 {
   if (item->type == ITEM_BUTTON) {
-    const uiButtonItem *bitem = dynamic_cast<const uiButtonItem *>(item);
+    const uiButtonItem *bitem = static_cast<const uiButtonItem *>(item);
 
     if (r_w) {
       *r_w = BLI_rctf_size_x(&bitem->but->rect);
@@ -374,7 +374,7 @@ static void ui_item_size(const uiItem *item, int *r_w, int *r_h)
     }
   }
   else {
-    const uiLayout *litem = dynamic_cast<const uiLayout *>(item);
+    const uiLayout *litem = static_cast<const uiLayout *>(item);
 
     if (r_w) {
       *r_w = litem->w;
@@ -388,7 +388,7 @@ static void ui_item_size(const uiItem *item, int *r_w, int *r_h)
 static void ui_item_offset(const uiItem *item, int *r_x, int *r_y)
 {
   if (item->type == ITEM_BUTTON) {
-    const uiButtonItem *bitem = dynamic_cast<const uiButtonItem *>(item);
+    const uiButtonItem *bitem = static_cast<const uiButtonItem *>(item);
 
     if (r_x) {
       *r_x = bitem->but->rect.xmin;
@@ -410,7 +410,7 @@ static void ui_item_offset(const uiItem *item, int *r_x, int *r_y)
 static void ui_item_position(uiItem *item, const int x, const int y, const int w, const int h)
 {
   if (item->type == ITEM_BUTTON) {
-    uiButtonItem *bitem = dynamic_cast<uiButtonItem *>(item);
+    uiButtonItem *bitem = static_cast<uiButtonItem *>(item);
 
     bitem->but->rect.xmin = x;
     bitem->but->rect.ymin = y;
@@ -420,7 +420,7 @@ static void ui_item_position(uiItem *item, const int x, const int y, const int w
     ui_but_update(bitem->but); /* for strlen */
   }
   else {
-    uiLayout *litem = dynamic_cast<uiLayout *>(item);
+    uiLayout *litem = static_cast<uiLayout *>(item);
 
     litem->x = x;
     litem->y = y + h;
@@ -432,7 +432,7 @@ static void ui_item_position(uiItem *item, const int x, const int y, const int w
 static void ui_item_move(uiItem *item, const int delta_xmin, const int delta_xmax)
 {
   if (item->type == ITEM_BUTTON) {
-    uiButtonItem *bitem = dynamic_cast<uiButtonItem *>(item);
+    uiButtonItem *bitem = static_cast<uiButtonItem *>(item);
 
     bitem->but->rect.xmin += delta_xmin;
     bitem->but->rect.xmax += delta_xmax;
@@ -440,7 +440,7 @@ static void ui_item_move(uiItem *item, const int delta_xmin, const int delta_xma
     ui_but_update(bitem->but); /* for strlen */
   }
   else {
-    uiLayout *litem = dynamic_cast<uiLayout *>(item);
+    uiLayout *litem = static_cast<uiLayout *>(item);
 
     if (delta_xmin > 0) {
       litem->x += delta_xmin;
@@ -3822,7 +3822,7 @@ static void ui_litem_layout_row(uiLayout *litem)
       bool min_flag = item->flag & UI_ITEM_FIXED_SIZE;
       /* ignore min flag for rows with right or center alignment */
       if (item->type != ITEM_BUTTON &&
-          ELEM((dynamic_cast<uiLayout *>(item))->alignment,
+          ELEM((static_cast<uiLayout *>(item))->alignment,
                UI_LAYOUT_ALIGN_RIGHT,
                UI_LAYOUT_ALIGN_CENTER) &&
           litem->alignment == UI_LAYOUT_ALIGN_EXPAND && litem->flag & UI_ITEM_FIXED_SIZE)
@@ -4023,7 +4023,7 @@ static bool ui_item_is_radial_displayable(uiItem *item)
 {
 
   if ((item->type == ITEM_BUTTON) &&
-      ((dynamic_cast<uiButtonItem *>(item))->but->type == UI_BTYPE_LABEL))
+      ((static_cast<uiButtonItem *>(item))->but->type == UI_BTYPE_LABEL))
   {
     return false;
   }
@@ -4077,7 +4077,7 @@ static void ui_litem_layout_radial(uiLayout *litem)
     bool use_dir = true;
 
     if (item->type == ITEM_BUTTON) {
-      uiButtonItem *bitem = dynamic_cast<uiButtonItem *>(item);
+      uiButtonItem *bitem = static_cast<uiButtonItem *>(item);
 
       bitem->but->pie_dir = dir;
       /* Scale the buttons. */
@@ -4172,7 +4172,7 @@ static void ui_litem_estimate_panel_header(uiLayout *litem)
 
 static void ui_litem_layout_panel_header(uiLayout *litem)
 {
-  uiLayoutItemPanelHeader *header_litem = dynamic_cast<uiLayoutItemPanelHeader *>(litem);
+  uiLayoutItemPanelHeader *header_litem = static_cast<uiLayoutItemPanelHeader *>(litem);
   Panel *panel = litem->root->block->panel;
 
   BLI_assert(litem->items.size() == 1);
@@ -4223,7 +4223,7 @@ static void ui_litem_estimate_box(uiLayout *litem)
 
 static void ui_litem_layout_box(uiLayout *litem)
 {
-  uiLayoutItemBx *box = dynamic_cast<uiLayoutItemBx *>(litem);
+  uiLayoutItemBx *box = static_cast<uiLayoutItemBx *>(litem);
   const uiStyle *style = litem->root->style;
 
   int boxspace = style->boxspace;
@@ -4268,7 +4268,7 @@ static void ui_litem_layout_box(uiLayout *litem)
 static void ui_litem_estimate_column_flow(uiLayout *litem)
 {
   const uiStyle *style = litem->root->style;
-  uiLayoutItemFlow *flow = dynamic_cast<uiLayoutItemFlow *>(litem);
+  uiLayoutItemFlow *flow = static_cast<uiLayoutItemFlow *>(litem);
   int itemw, itemh, maxw = 0;
 
   /* compute max needed width and total height */
@@ -4331,7 +4331,7 @@ static void ui_litem_estimate_column_flow(uiLayout *litem)
 static void ui_litem_layout_column_flow(uiLayout *litem)
 {
   const uiStyle *style = litem->root->style;
-  uiLayoutItemFlow *flow = dynamic_cast<uiLayoutItemFlow *>(litem);
+  uiLayoutItemFlow *flow = static_cast<uiLayoutItemFlow *>(litem);
   int col, emh, itemw, itemh;
 
   /* compute max needed width and total height */
@@ -4554,7 +4554,7 @@ static void ui_litem_grid_flow_compute(blender::Span<uiItem *> items,
 static void ui_litem_estimate_grid_flow(uiLayout *litem)
 {
   const uiStyle *style = litem->root->style;
-  uiLayoutItemGridFlow *gflow = dynamic_cast<uiLayoutItemGridFlow *>(litem);
+  uiLayoutItemGridFlow *gflow = static_cast<uiLayoutItemGridFlow *>(litem);
 
   const int space_x = style->columnspace;
   const int space_y = style->buttonspacey;
@@ -4678,7 +4678,7 @@ static void ui_litem_estimate_grid_flow(uiLayout *litem)
 static void ui_litem_layout_grid_flow(uiLayout *litem)
 {
   const uiStyle *style = litem->root->style;
-  uiLayoutItemGridFlow *gflow = dynamic_cast<uiLayoutItemGridFlow *>(litem);
+  uiLayoutItemGridFlow *gflow = static_cast<uiLayoutItemGridFlow *>(litem);
 
   if (gflow->tot_items == 0) {
     litem->w = litem->h = 0;
@@ -4829,7 +4829,7 @@ static void ui_litem_estimate_split(uiLayout *litem)
 
 static void ui_litem_layout_split(uiLayout *litem)
 {
-  uiLayoutItemSplit *split = dynamic_cast<uiLayoutItemSplit *>(litem);
+  uiLayoutItemSplit *split = static_cast<uiLayoutItemSplit *>(litem);
   float extra_pixel = 0.0f;
   const int tot = int(litem->items.size());
 
@@ -5131,7 +5131,7 @@ uiLayout *uiLayoutRadial(uiLayout *layout)
   /* only one radial wheel per root layout is allowed, so check and return that, if it exists */
   for (uiItem *item : layout->root->layout->items) {
     if (item->type == ITEM_LAYOUT_RADIAL) {
-      uiLayout *litem = dynamic_cast<uiLayout *>(item);
+      uiLayout *litem = static_cast<uiLayout *>(item);
       UI_block_layout_set_current(layout->root->block, litem);
       return litem;
     }
@@ -5156,10 +5156,10 @@ void ui_layout_list_set_labels_active(uiLayout *layout)
 {
   for (uiItem *item : layout->items) {
     if (item->type != ITEM_BUTTON) {
-      ui_layout_list_set_labels_active(dynamic_cast<uiLayout *>(item));
+      ui_layout_list_set_labels_active(static_cast<uiLayout *>(item));
     }
     else {
-      uiButtonItem *bitem = dynamic_cast<uiButtonItem *>(item);
+      uiButtonItem *bitem = static_cast<uiButtonItem *>(item);
       if (bitem->but->flag & UI_BUT_LIST_ITEM) {
         UI_but_flag_enable(bitem->but, UI_SELECT);
       }
@@ -5562,7 +5562,7 @@ static void ui_item_scale(uiLayout *litem, const float scale[2])
   for (auto riter = litem->items.rbegin(); riter != litem->items.rend(); riter++) {
     uiItem *item = *riter;
     if (item->type != ITEM_BUTTON) {
-      uiLayout *subitem = dynamic_cast<uiLayout *>(item);
+      uiLayout *subitem = static_cast<uiLayout *>(item);
       ui_item_scale(subitem, scale);
     }
 
@@ -5586,7 +5586,7 @@ static void ui_item_scale(uiLayout *litem, const float scale[2])
 static void ui_item_estimate(uiItem *item)
 {
   if (item->type != ITEM_BUTTON) {
-    uiLayout *litem = dynamic_cast<uiLayout *>(item);
+    uiLayout *litem = static_cast<uiLayout *>(item);
 
     if (litem->items.is_empty()) {
       litem->w = 0;
@@ -5655,7 +5655,7 @@ static void ui_item_align(uiLayout *litem, short nr)
   for (auto riter = litem->items.rbegin(); riter != litem->items.rend(); riter++) {
     uiItem *item = *riter;
     if (item->type == ITEM_BUTTON) {
-      uiButtonItem *bitem = dynamic_cast<uiButtonItem *>(item);
+      uiButtonItem *bitem = static_cast<uiButtonItem *>(item);
 #ifndef USE_UIBUT_SPATIAL_ALIGN
       if (ui_but_can_align(bitem->but))
 #endif
@@ -5672,13 +5672,13 @@ static void ui_item_align(uiLayout *litem, short nr)
       /* pass */
     }
     else if (item->type == ITEM_LAYOUT_BOX) {
-      uiLayoutItemBx *box = dynamic_cast<uiLayoutItemBx *>(item);
+      uiLayoutItemBx *box = static_cast<uiLayoutItemBx *>(item);
       if (!box->roundbox->alignnr) {
         box->roundbox->alignnr = nr;
       }
     }
     else {
-      uiLayout *litem = dynamic_cast<uiLayout *>(item);
+      uiLayout *litem = static_cast<uiLayout *>(item);
       if (litem->align) {
         ui_item_align(litem, nr);
       }
@@ -5691,11 +5691,11 @@ static void ui_item_flag(uiLayout *litem, int flag)
   for (auto riter = litem->items.rbegin(); riter != litem->items.rend(); riter++) {
     uiItem *item = *riter;
     if (item->type == ITEM_BUTTON) {
-      uiButtonItem *bitem = dynamic_cast<uiButtonItem *>(item);
+      uiButtonItem *bitem = static_cast<uiButtonItem *>(item);
       bitem->but->flag |= flag;
     }
     else {
-      ui_item_flag(dynamic_cast<uiLayout *>(item), flag);
+      ui_item_flag(static_cast<uiLayout *>(item), flag);
     }
   }
 }
@@ -5703,7 +5703,7 @@ static void ui_item_flag(uiLayout *litem, int flag)
 static void ui_item_layout(uiItem *item)
 {
   if (item->type != ITEM_BUTTON) {
-    uiLayout *litem = dynamic_cast<uiLayout *>(item);
+    uiLayout *litem = static_cast<uiLayout *>(item);
 
     if (litem->items.is_empty()) {
       return;
@@ -5769,7 +5769,7 @@ static void ui_item_layout(uiItem *item)
   }
   else {
     if (item->flag & UI_ITEM_BOX_ITEM) {
-      uiButtonItem *bitem = dynamic_cast<uiButtonItem *>(item);
+      uiButtonItem *bitem = static_cast<uiButtonItem *>(item);
       bitem->but->drawflag |= UI_BUT_BOX_ITEM;
     }
   }
@@ -5796,13 +5796,13 @@ static void ui_layout_free(uiLayout *layout)
 {
   for (uiItem *item : layout->items) {
     if (item->type == ITEM_BUTTON) {
-      uiButtonItem *bitem = dynamic_cast<uiButtonItem *>(item);
+      uiButtonItem *bitem = static_cast<uiButtonItem *>(item);
 
       bitem->but->layout = nullptr;
       MEM_delete(item);
     }
     else {
-      uiLayout *litem = dynamic_cast<uiLayout *>(item);
+      uiLayout *litem = static_cast<uiLayout *>(item);
       ui_layout_free(litem);
     }
   }
@@ -5936,14 +5936,14 @@ static uiButtonItem *ui_layout_find_button_item(const uiLayout *layout, const ui
 
   for (uiItem *item : child_list) {
     if (item->type == ITEM_BUTTON) {
-      uiButtonItem *bitem = dynamic_cast<uiButtonItem *>(item);
+      uiButtonItem *bitem = static_cast<uiButtonItem *>(item);
 
       if (bitem->but == but) {
         return bitem;
       }
     }
     else {
-      uiButtonItem *nested_item = ui_layout_find_button_item(dynamic_cast<uiLayout *>(item), but);
+      uiButtonItem *nested_item = ui_layout_find_button_item(static_cast<uiLayout *>(item), but);
       if (nested_item) {
         return nested_item;
       }
@@ -5960,7 +5960,7 @@ void ui_layout_remove_but(uiLayout *layout, const uiBut *but)
                                               layout->items;
   const int64_t removed_num = child_list.remove_if([but](auto item) {
     if (item->type == ITEM_BUTTON) {
-      uiButtonItem *bitem = dynamic_cast<uiButtonItem *>(item);
+      uiButtonItem *bitem = static_cast<uiButtonItem *>(item);
       return (bitem->but == but);
     }
     return false;
@@ -6085,7 +6085,7 @@ void uiLayoutSetTooltipFunc(uiLayout *layout,
     }
 
     if (item->type == ITEM_BUTTON) {
-      uiButtonItem *bitem = dynamic_cast<uiButtonItem *>(item);
+      uiButtonItem *bitem = static_cast<uiButtonItem *>(item);
       if (bitem->but->type == UI_BTYPE_DECORATOR) {
         continue;
       }
@@ -6093,7 +6093,7 @@ void uiLayoutSetTooltipFunc(uiLayout *layout,
       arg_used = true;
     }
     else {
-      uiLayoutSetTooltipFunc(dynamic_cast<uiLayout *>(item), func, arg, copy_arg, free_arg);
+      uiLayoutSetTooltipFunc(static_cast<uiLayout *>(item), func, arg, copy_arg, free_arg);
       arg_used = true;
     }
   }
@@ -6190,7 +6190,7 @@ static bool ui_layout_has_panel_label(const uiLayout *layout, const PanelType *p
 {
   for (uiItem *subitem : layout->items) {
     if (subitem->type == ITEM_BUTTON) {
-      uiButtonItem *bitem = dynamic_cast<uiButtonItem *>(subitem);
+      uiButtonItem *bitem = static_cast<uiButtonItem *>(subitem);
       if (!(bitem->but->flag & UI_HIDDEN) &&
           bitem->but->str == CTX_IFACE_(pt->translation_context, pt->label))
       {
@@ -6198,7 +6198,7 @@ static bool ui_layout_has_panel_label(const uiLayout *layout, const PanelType *p
       }
     }
     else {
-      uiLayout *litem = dynamic_cast<uiLayout *>(subitem);
+      uiLayout *litem = static_cast<uiLayout *>(subitem);
       if (ui_layout_has_panel_label(litem, pt)) {
         return true;
       }
@@ -6372,11 +6372,11 @@ static void ui_layout_introspect_items(DynStr *ds, blender::Span<uiItem *> items
 
     switch (item->type) {
       case ITEM_BUTTON:
-        ui_layout_introspect_button(ds, dynamic_cast<const uiButtonItem *>(item));
+        ui_layout_introspect_button(ds, static_cast<const uiButtonItem *>(item));
         break;
       default:
         BLI_dynstr_append(ds, "'items':");
-        ui_layout_introspect_items(ds, (dynamic_cast<const uiLayout *>(item))->items);
+        ui_layout_introspect_items(ds, (static_cast<const uiLayout *>(item))->items);
         break;
     }
 
@@ -6395,7 +6395,7 @@ const char *UI_layout_introspect(uiLayout *layout)
 {
   DynStr *ds = BLI_dynstr_new();
   uiLayout layout_copy(*layout);
-  blender::Vector<uiItem *> layout_dummy_list(1, dynamic_cast<uiItem *>(&layout_copy));
+  blender::Vector<uiItem *> layout_dummy_list(1, static_cast<uiItem *>(&layout_copy));
   ui_layout_introspect_items(ds, layout_dummy_list);
   const char *result = BLI_dynstr_get_cstring(ds);
   BLI_dynstr_free(ds);
