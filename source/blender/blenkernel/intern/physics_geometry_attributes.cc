@@ -820,29 +820,29 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                          nullptr,
                          {});
   static BuiltinConstraintAttributeProvider<int, force_cache, constraint_body1_get_fn>
-      constraint_body1(PhysicsGeometry::builtin_attributes.constraint_body1,
-                       AttrDomain::Edge,
-                       BuiltinAttributeProvider::NonDeletable,
-                       physics_access,
-                       nullptr,
-                       {},
-                       [](const void *owner) {
-                         const PhysicsGeometry *physics = static_cast<const PhysicsGeometry *>(
-                             owner);
-                         physics->impl().ensure_body_indices();
-                       });
+      constraint_body1(
+          PhysicsGeometry::builtin_attributes.constraint_body1,
+          AttrDomain::Edge,
+          BuiltinAttributeProvider::NonDeletable,
+          physics_access,
+          nullptr,
+          {},
+          [](const void *owner) {
+            const PhysicsGeometryImpl *impl = static_cast<const PhysicsGeometryImpl *>(owner);
+            impl->ensure_body_indices();
+          });
   static BuiltinConstraintAttributeProvider<int, force_cache, constraint_body2_get_fn>
-      constraint_body2(PhysicsGeometry::builtin_attributes.constraint_body2,
-                       AttrDomain::Edge,
-                       BuiltinAttributeProvider::NonDeletable,
-                       physics_access,
-                       nullptr,
-                       {},
-                       [](const void *owner) {
-                         const PhysicsGeometry *physics = static_cast<const PhysicsGeometry *>(
-                             owner);
-                         physics->impl().ensure_body_indices();
-                       });
+      constraint_body2(
+          PhysicsGeometry::builtin_attributes.constraint_body2,
+          AttrDomain::Edge,
+          BuiltinAttributeProvider::NonDeletable,
+          physics_access,
+          nullptr,
+          {},
+          [](const void *owner) {
+            const PhysicsGeometryImpl *impl = static_cast<const PhysicsGeometryImpl *>(owner);
+            impl->ensure_body_indices();
+          });
   static BuiltinConstraintAttributeProvider<float4x4,
                                             force_cache,
                                             constraint_frame1_get_fn,
@@ -920,42 +920,40 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
           BuiltinAttributeProvider::NonDeletable,
           physics_access,
           [](void *owner) {
-            static_cast<PhysicsGeometry *>(owner)
-                ->impl_for_write()
-                .tag_constraint_disable_collision_changed();
+            PhysicsGeometryImpl *impl = static_cast<PhysicsGeometryImpl *>(owner);
+            impl->tag_constraint_disable_collision_changed();
           },
           {},
           [](const void *owner) {
-            static_cast<const PhysicsGeometry *>(owner)
-                ->impl()
-                .ensure_constraint_disable_collision();
+            const PhysicsGeometryImpl *impl = static_cast<const PhysicsGeometryImpl *>(owner);
+            impl->ensure_constraint_disable_collision();
           });
 
   static CustomDataAccessInfo body_custom_data_access = {
       [](void *owner) -> CustomData * {
-        PhysicsGeometry *physics = static_cast<PhysicsGeometry *>(owner);
-        return &physics->impl_for_write().body_data_;
+        PhysicsGeometryImpl *impl = static_cast<PhysicsGeometryImpl *>(owner);
+        return &impl->body_data_;
       },
       [](const void *owner) -> const CustomData * {
-        const PhysicsGeometry *physics = static_cast<const PhysicsGeometry *>(owner);
-        return &physics->impl().body_data_;
+        const PhysicsGeometryImpl *impl = static_cast<const PhysicsGeometryImpl *>(owner);
+        return &impl->body_data_;
       },
       [](const void *owner) -> int {
-        const PhysicsGeometry *physics = static_cast<const PhysicsGeometry *>(owner);
-        return physics->impl().body_num_;
+        const PhysicsGeometryImpl *impl = static_cast<const PhysicsGeometryImpl *>(owner);
+        return impl->body_num_;
       }};
   static CustomDataAccessInfo constraint_custom_data_access = {
       [](void *owner) -> CustomData * {
-        PhysicsGeometry *physics = static_cast<PhysicsGeometry *>(owner);
-        return &physics->impl_for_write().constraint_data_;
+        PhysicsGeometryImpl *impl = static_cast<PhysicsGeometryImpl *>(owner);
+        return &impl->constraint_data_;
       },
       [](const void *owner) -> const CustomData * {
-        const PhysicsGeometry *physics = static_cast<const PhysicsGeometry *>(owner);
-        return &physics->impl().constraint_data_;
+        const PhysicsGeometryImpl *impl = static_cast<const PhysicsGeometryImpl *>(owner);
+        return &impl->constraint_data_;
       },
       [](const void *owner) -> int {
-        const PhysicsGeometry *physics = static_cast<const PhysicsGeometry *>(owner);
-        return physics->impl().constraint_num_;
+        const PhysicsGeometryImpl *impl = static_cast<const PhysicsGeometryImpl *>(owner);
+        return impl->constraint_num_;
       }};
   static CustomDataAttributeProvider body_custom_data(AttrDomain::Point, body_custom_data_access);
   static CustomDataAttributeProvider constraint_custom_data(AttrDomain::Point,
@@ -998,7 +996,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                                      {&body_custom_data, &constraint_custom_data});
 }
 
-static GVArray adapt_physics_attribute_domain(const PhysicsGeometry & /*physics*/,
+static GVArray adapt_physics_attribute_domain(const PhysicsGeometryImpl & /*impl*/,
                                               const GVArray &varray,
                                               const AttrDomain from,
                                               const AttrDomain to)
@@ -1023,12 +1021,12 @@ static AttributeAccessorFunctions get_physics_accessor_functions(const bool forc
     if (owner == nullptr) {
       return 0;
     }
-    const PhysicsGeometry &physics = *static_cast<const PhysicsGeometry *>(owner);
+    const PhysicsGeometryImpl &impl = *static_cast<const PhysicsGeometryImpl *>(owner);
     switch (domain) {
       case AttrDomain::Point:
-        return int(physics.bodies_num());
+        return impl.body_num_;
       case AttrDomain::Edge:
-        return int(physics.constraints_num());
+        return impl.constraint_num_;
       default:
         return 0;
     }
@@ -1043,8 +1041,8 @@ static AttributeAccessorFunctions get_physics_accessor_functions(const bool forc
     if (owner == nullptr) {
       return {};
     }
-    const PhysicsGeometry &physics = *static_cast<const PhysicsGeometry *>(owner);
-    return adapt_physics_attribute_domain(physics, varray, from_domain, to_domain);
+    const PhysicsGeometryImpl &impl = *static_cast<const PhysicsGeometryImpl *>(owner);
+    return adapt_physics_attribute_domain(impl, varray, from_domain, to_domain);
   };
   return fn;
 }
