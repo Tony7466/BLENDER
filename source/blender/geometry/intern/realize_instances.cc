@@ -12,6 +12,8 @@
 
 #include "BKE_curves.hh"
 #include "BKE_customdata.hh"
+#include "BKE_deform.hh"
+#include "BKE_geometry_nodes_gizmos_transforms.hh"
 #include "BKE_geometry_set_instances.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_instances.hh"
@@ -192,6 +194,11 @@ struct RealizeGreasePencilTask {
   AttributeFallbacksArray attribute_fallbacks;
 };
 
+struct RealizeEditDataTask {
+  const bke::GeometryComponentEditData *edit_data;
+  float4x4 transform;
+};
+
 struct AllPointCloudsInfo {
   /** Ordering of all attributes that are propagated to the output point cloud generically. */
   OrderedAttributes attributes;
@@ -262,11 +269,11 @@ struct GatherTasks {
   Vector<RealizeMeshTask> mesh_tasks;
   Vector<RealizeCurveTask> curve_tasks;
   Vector<RealizeGreasePencilTask> grease_pencil_tasks;
+  Vector<RealizeEditDataTask> edit_data_tasks;
 
   /* Volumes only have very simple support currently. Only the first found volume is put into the
    * output. */
   ImplicitSharingPtr<const bke::VolumeComponent> first_volume;
-  ImplicitSharingPtr<const bke::GeometryComponentEditData> first_edit_data;
 };
 
 /** Current offsets while during the gather operation. */
@@ -732,12 +739,10 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
         break;
       }
       case bke::GeometryComponent::Type::Edit: {
-        if (!gather_info.r_tasks.first_edit_data) {
-          const bke::GeometryComponentEditData *edit_component =
-              static_cast<const bke::GeometryComponentEditData *>(component);
-          edit_component->add_user();
-          gather_info.r_tasks.first_edit_data =
-              ImplicitSharingPtr<const bke::GeometryComponentEditData>(edit_component);
+        const auto *edit_component = static_cast<const bke::GeometryComponentEditData *>(
+            component);
+        if (edit_component->gizmo_edit_hints_ || edit_component->curves_edit_hints_) {
+          gather_info.r_tasks.edit_data_tasks.append({edit_component, base_transform});
         }
         break;
       }
@@ -2083,7 +2088,6 @@ static void execute_realize_grease_pencil_tasks(
   if (tasks.is_empty()) {
     return;
   }
-
   /* Allocate new grease pencil. */
   GreasePencil *dst_grease_pencil = BKE_grease_pencil_new_nomain();
   r_realized_geometry.replace_grease_pencil(dst_grease_pencil);
@@ -2132,6 +2136,36 @@ static void execute_realize_grease_pencil_tasks(
     dst_attribute.finish();
   }
 }
+/* -------------------------------------------------------------------- */
+/** \name Edit Data
+ * \{ */
+
+static void execute_realize_edit_data_tasks(const Span<RealizeEditDataTask> tasks,
+                                            bke::GeometrySet &r_realized_geometry)
+{
+  if (tasks.is_empty()) {
+    return;
+  }
+
+  auto &component = r_realized_geometry.get_component_for_write<bke::GeometryComponentEditData>();
+  for (const RealizeEditDataTask &task : tasks) {
+    if (!component.curves_edit_hints_) {
+      if (task.edit_data->curves_edit_hints_) {
+        component.curves_edit_hints_ = std::make_unique<bke::CurvesEditHints>(
+            *task.edit_data->curves_edit_hints_);
+      }
+    }
+    if (const bke::GizmoEditHints *src_gizmo_edit_hints = task.edit_data->gizmo_edit_hints_.get())
+    {
+      if (!component.gizmo_edit_hints_) {
+        component.gizmo_edit_hints_ = std::make_unique<bke::GizmoEditHints>();
+      }
+      for (auto item : src_gizmo_edit_hints->gizmo_transforms.items()) {
+        component.gizmo_edit_hints_->gizmo_transforms.add(item.key, task.transform * item.value);
+      }
+    }
+  }
+}
 
 /** \} */
 
@@ -2148,7 +2182,8 @@ static void remove_id_attribute_from_instances(bke::GeometrySet &geometry_set)
   });
 }
 
-/** Propagate instances from the old geometry set to the new geometry set if they are not realized.
+/** Propagate instances from the old geometry set to the new geometry set if they are not
+ * realized.
  */
 static void propagate_instances_to_keep(
     const bke::GeometrySet &geometry_set,
@@ -2193,8 +2228,8 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
 {
   /* The algorithm works in three steps:
    * 1. Preprocess each unique geometry that is instanced (e.g. each `Mesh`).
-   * 2. Gather "tasks" that need to be executed to realize the instances. Each task corresponds to
-   *    instances of the previously preprocessed geometry.
+   * 2. Gather "tasks" that need to be executed to realize the instances. Each task corresponds
+   * to instances of the previously preprocessed geometry.
    * 3. Execute all tasks in parallel.
    */
 
@@ -2278,12 +2313,10 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
                                         gather_info.r_tasks.grease_pencil_tasks,
                                         all_grease_pencils_info.attributes,
                                         new_geometry_set);
+    execute_realize_edit_data_tasks(gather_info.r_tasks.edit_data_tasks, new_geometry_set);
   });
   if (gather_info.r_tasks.first_volume) {
     new_geometry_set.add(*gather_info.r_tasks.first_volume);
-  }
-  if (gather_info.r_tasks.first_edit_data) {
-    new_geometry_set.add(*gather_info.r_tasks.first_edit_data);
   }
 
   return new_geometry_set;
