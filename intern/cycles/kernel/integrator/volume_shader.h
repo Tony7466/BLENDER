@@ -467,11 +467,18 @@ ccl_device_inline void volume_shader_eval(KernelGlobals kg,
   sd->num_closure_left = max_closures;
   sd->flag = SD_IS_VOLUME_SHADER_EVAL;
   sd->object_flag = 0;
+  sd->object = OBJECT_NONE;
+  sd->shader = SHADER_NONE;
 
   for (int i = 0;; i++) {
     const VolumeStack entry = stack_read(i);
     if (entry.shader == SHADER_NONE) {
       break;
+    }
+
+    if (entry.object == sd->object && entry.shader == sd->shader) {
+      /* Already in the stack, do not accumulate properties. */
+      continue;
     }
 
     /* Setup shader-data from stack. it's mostly setup already in
