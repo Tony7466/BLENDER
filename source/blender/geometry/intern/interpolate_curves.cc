@@ -66,8 +66,8 @@ static void retrieve_attribute_spans(const Span<bke::AttributeIDRef> ids,
                                      const CurvesGeometry &src_from_curves,
                                      const CurvesGeometry &src_to_curves,
                                      CurvesGeometry &dst_curves,
-                                     Vector<GSpan> &src_from,
-                                     Vector<GSpan> &src_to,
+                                     Vector<GVArraySpan> &src_from,
+                                     Vector<GVArraySpan> &src_to,
                                      Vector<GMutableSpan> &dst,
                                      Vector<bke::GSpanAttributeWriter> &dst_attributes)
 {
@@ -83,8 +83,8 @@ static void retrieve_attribute_spans(const Span<bke::AttributeIDRef> ids,
       const GVArray src_to_attribute = *src_to_attributes.lookup(
           ids[i], bke::AttrDomain::Point, data_type);
 
-      src_from.append(src_from_attribute.get_internal_span());
-      src_to.append(src_to_attribute ? src_to_attribute.get_internal_span() : GSpan{});
+      src_from.append(src_from_attribute);
+      src_to.append(src_to_attribute ? src_to_attribute : GVArraySpan{});
     }
     else {
       const GVArray src_to_attribute = *src_to_attributes.lookup(ids[i], bke::AttrDomain::Point);
@@ -93,8 +93,8 @@ static void retrieve_attribute_spans(const Span<bke::AttributeIDRef> ids,
 
       data_type = bke::cpp_type_to_custom_data_type(src_to_attribute.type());
 
-      src_from.append(GSpan{});
-      src_to.append(src_to_attribute.get_internal_span());
+      src_from.append(GVArraySpan{});
+      src_to.append(src_to_attribute);
     }
 
     bke::GSpanAttributeWriter dst_attribute =
@@ -106,8 +106,8 @@ static void retrieve_attribute_spans(const Span<bke::AttributeIDRef> ids,
 }
 
 struct AttributesForInterpolation : NonCopyable, NonMovable {
-  Vector<GSpan> src_from;
-  Vector<GSpan> src_to;
+  Vector<GVArraySpan> src_from;
+  Vector<GVArraySpan> src_to;
   Vector<GMutableSpan> dst;
 
   Vector<bke::GSpanAttributeWriter> dst_attributes;
