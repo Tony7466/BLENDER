@@ -1,1 +1,1 @@
-Referenced by issue #124437, Separated object doesn't inherit the material (if material is linked to the object instead of its data)
+Referenced by issue #124437, Separated object doesn't inherit the material (if material is linked to the object instead of its mesh)
