@@ -50,7 +50,6 @@ struct Image;
 struct ImageUser;
 struct KeyBlock;
 struct Object;
-struct SubdivCCGCoord;
 struct SculptProjectVector;
 struct bContext;
 struct PaintModeSettings;
