@@ -15,6 +15,9 @@
  */
 
 #include "eevee_npr.hh"
+#include "eevee_instance.hh"
+
+#include "NPR/npr_defines.hh"
 
 #include "DNA_material_types.h"
 #include "DRW_render.hh"
@@ -25,13 +28,18 @@
 
 namespace blender::eevee {
 
-void NPRModule::init()
+void NPRModule::init() {}
+
+void NPRModule::begin_sync()
 {
-  passes_.clear();
   indices_.clear();
 
-  /* Append an empty pass for materials without a NPR pass. */
-  passes_.append({});
+  surface_ps_.init();
+  surface_ps_.state_set(DRW_STATE_WRITE_COLOR);
+  surface_ps_.bind_texture(INDEX_TX_SLOT, &inst_.render_buffers.npr_index_tx);
+  surface_ps_.bind_texture(DEPTH_TX_SLOT, &inst_.render_buffers.depth_tx);
+  surface_ps_.bind_texture(NORMAL_TX_SLOT, &inst_.gbuffer.normal_tx);
+  surface_ps_.bind_texture(COMBINED_TX_SLOT, &inst_.render_buffers.combined_tx);
 }
 
 static void codegen_callback(void * /*thunk*/, GPUMaterial * /*mat*/, GPUCodegenOutput *codegen)
@@ -65,10 +73,34 @@ int NPRModule::sync_material(::Material *material)
     return 0;
   }
 
-  int index = passes_.size();
-  passes_.append({ntree, mat});
+  int index = indices_.size() + 1;
+  PassSimple::Sub &sub_ps = surface_ps_.sub(ntree->id.name);
+  sub_ps.material_set(*inst_.manager, mat);
+  sub_ps.push_constant("npr_index", index);
+  sub_ps.draw_procedural(GPU_PRIM_TRIS, 1, 3);
   indices_.add(ntree, index);
   return index;
+}
+
+void NPRModule::end_sync() {}
+
+void NPRModule::render(View &view)
+{
+  surface_tx_.acquire(inst_.render_buffers.extent_get(),
+                      inst_.render_buffers.color_format,
+                      GPU_TEXTURE_USAGE_ATTACHMENT);
+  /* TODO(NPR): Optimize-out this copy. */
+  GPU_texture_copy(surface_tx_, inst_.render_buffers.combined_tx);
+
+  surface_fb_.ensure(GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE(surface_tx_));
+  surface_fb_.bind();
+
+  inst_.manager->submit(surface_ps_, view);
+
+  /* TODO(NPR): Optimize-out this copy. */
+  GPU_texture_copy(inst_.render_buffers.combined_tx, surface_tx_);
+
+  surface_tx_.release();
 }
 
 }  // namespace blender::eevee

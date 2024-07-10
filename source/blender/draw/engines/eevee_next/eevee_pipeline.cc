@@ -780,6 +780,10 @@ GPUTexture *DeferredLayer::render(View &main_view,
   if (use_screen_transmission_) {
     /* Update for refraction. */
     inst_.hiz_buffer.update();
+    /* Reset the NPR index buffer. */
+    int clear_value = 0;
+    GPU_texture_clear(
+        inst_.render_buffers.npr_index_tx, eGPUDataFormat::GPU_DATA_UINT, &clear_value);
   }
 
   GPU_framebuffer_bind(prepass_fb);
@@ -839,6 +843,8 @@ GPUTexture *DeferredLayer::render(View &main_view,
   for (int i = 0; i < ARRAY_SIZE(direct_radiance_txs_); i++) {
     direct_radiance_txs_[i].release();
   }
+
+  inst_.npr.render(render_view);
 
   inst_.pipelines.deferred.debug_draw(render_view, combined_fb);
 

@@ -11,6 +11,7 @@
 
 #include "BLI_map.hh"
 #include "BLI_vector.hh"
+#include "eevee_shader_shared.hh"
 
 struct bNodeTree;
 struct GPUMaterial;
@@ -24,18 +25,19 @@ class NPRModule {
  private:
   Instance &inst_;
 
-  struct PassInfo {
-    bNodeTree *ntree;
-    GPUMaterial *gpu_mat;
-  };
-  Vector<PassInfo> passes_;
+  TextureFromPool surface_tx_ = {"NPR.Surface"};
+  Framebuffer surface_fb_ = {"NPR.Surface"};
+  PassSimple surface_ps_ = {"NPR.Surface"};
   Map<bNodeTree *, int> indices_;
 
  public:
   NPRModule(Instance &inst) : inst_(inst){};
 
   void init();
+  void begin_sync();
   int sync_material(::Material *material);
+  void end_sync();
+  void render(View &view);
 };
 
 }  // namespace blender::eevee

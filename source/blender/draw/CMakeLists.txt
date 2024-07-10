@@ -274,6 +274,7 @@ set(SRC
   engines/eevee_next/eevee_view.hh
   engines/eevee_next/eevee_volume.hh
   engines/eevee_next/eevee_world.hh
+  engines/eevee_next/npr/npr_defines.hh
   engines/external/external_engine.h
   engines/gpencil/gpencil_engine.h
   engines/image/image_batches.hh
