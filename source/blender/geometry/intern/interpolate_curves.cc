@@ -158,11 +158,11 @@ static void gather_point_attributes_to_interpolate(const CurvesGeometry &from_cu
 /* Resample a span of attribute values from source curves to a destination buffer. */
 static void resample_curve_attribute(const bke::CurvesGeometry &src_curves,
                                      const OffsetIndices<int> dst_points_by_curve,
-                                     GSpan src_data,
+                                     const GSpan src_data,
                                      GMutableSpan dst_data,
                                      const IndexMask &curve_selection,
-                                     Span<int> sample_indices,
-                                     Span<float> sample_factors,
+                                     const Span<int> sample_indices,
+                                     const Span<float> sample_factors,
                                      const float mix_weight,
                                      const bool use_evaluated_points)
 {
