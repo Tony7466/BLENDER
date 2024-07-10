@@ -195,7 +195,7 @@ static void resample_curve_attribute(const bke::CurvesGeometry &src_curves,
       });
     }
     else {
-      Vector<std::byte> evaluated_buffer;
+      Vector<T> evaluated_data;
       curve_selection.foreach_index([&](const int i_curve) {
         const IndexRange src_points = src_points_by_curve[i_curve];
         const IndexRange dst_points = dst_points_by_curve[i_curve];
@@ -209,11 +209,11 @@ static void resample_curve_attribute(const bke::CurvesGeometry &src_curves,
         }
         else {
           const IndexRange src_evaluated_points = src_evaluated_points_by_curve[i_curve];
-          evaluated_buffer.reinitialize(sizeof(T) * src_evaluated_points.size());
-          MutableSpan<T> evaluated = evaluated_buffer.as_mutable_span().cast<T>();
-          src_curves.interpolate_to_evaluated(i_curve, src.slice(src_points), evaluated);
+          evaluated_data.reinitialize(src_evaluated_points.size());
+          src_curves.interpolate_to_evaluated(
+              i_curve, src.slice(src_points), evaluated_data.as_mutable_span());
 
-          length_parameterize::interpolate_mix(evaluated.as_span(),
+          length_parameterize::interpolate_mix(evaluated_data.as_span(),
                                                sample_indices.slice(dst_points),
                                                sample_factors.slice(dst_points),
                                                mix_weight,
