@@ -1230,7 +1230,7 @@ context_type_map = {
     "particle_settings": (["ParticleSettings"], False),
     "particle_system": (["ParticleSystem"], False),
     "particle_system_editable": (["ParticleSystem"], False),
-    "property": (["AnyType", "string", "int"], False),
+    "property": (["AnyType", "str", "int"], False),
     "pointcloud": (["PointCloud"], False),
     "pose_bone": (["PoseBone"], False),
     "pose_object": (["Object"], False),
@@ -1383,14 +1383,14 @@ def pycontext2sphinx(basepath):
 
             type_strs = []
             for member_type in member_types:
-                if hasattr(__builtins__, member_type):
-                    type_strs.append(member_type)
+                if member_type in __builtins__.keys():
+                    type_strs.append(":class:`{:s}`".format(member_type))
                 elif member_type.isidentifier():
                     type_strs.append(":class:`bpy.types.{:s}`".format(member_type))
             if len(type_strs) == 1:
                 member_type_str = type_strs[0]
             else:
-                member_type_str = "({})".format(", ".join(type_strs))
+                member_type_str = "({:s})".format(", ".join(type_strs))
             fw("   :type: {:s} {:s}\n\n".format("sequence of " if is_seq else "", member_type_str))
             write_example_ref("   ", fw, "bpy.context." + member)
 
@@ -1788,7 +1788,7 @@ def pyrna2sphinx(basepath):
             # "active_object": (["Object"], False),
             for ref_attr, (ref_types, ref_is_seq) in sorted(context_type_map.items()):
                 for ref_type in ref_types:
-                    if not hasattr(__builtins__, ref_type) and ref_type.isidentifier():
+                    if ref_type not in __builtins__.keys() and ref_type.isidentifier():
                         if ref_type == struct_id:
                             fw("   * :mod:`bpy.context.{:s}`\n".format(ref_attr))
             del ref_attr, ref_types, ref_is_seq
