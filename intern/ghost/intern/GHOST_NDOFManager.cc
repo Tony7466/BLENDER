@@ -72,6 +72,7 @@ static const std::map<GHOST_NDOF_ButtonT, const char *> ndof_button_names = {
     MAP_ENTRY(NDOF_BUTTON_NP_F1),    MAP_ENTRY(NDOF_BUTTON_NP_F2),
     MAP_ENTRY(NDOF_BUTTON_NP_F3),    MAP_ENTRY(NDOF_BUTTON_NP_F4),
 };
+#undef MAP_ENTRY
 
 static const char *ndof_device_names[] = {
     "UnknownDevice",
