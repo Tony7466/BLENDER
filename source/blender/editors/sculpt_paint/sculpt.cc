@@ -629,7 +629,7 @@ bool vert_has_unique_face_set(const GroupedSpan<int> vert_to_face_map,
                               const OffsetIndices<int> faces,
                               const int *face_sets,
                               const SubdivCCG &subdiv_ccg,
-                              const SubdivCCGCoord &coord)
+                              SubdivCCGCoord coord)
 {
   /* TODO: Move this check higher out of this function & make this function take empty span instead
    * of a raw pointer. */
