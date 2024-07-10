@@ -1488,9 +1488,10 @@ static void draw_strips_foreground(TimelineDrawContext *timeline_ctx,
     strip_data_outline_params_set(strip, timeline_ctx, data);
     strip_data_highlight_flags_set(strip, timeline_ctx, data);
     strip_data_handle_flags_set(strip, timeline_ctx, data);
-    strips_batch.flush_batch();
-    GPU_blend(GPU_BLEND_ALPHA);
   }
+
+  strips_batch.flush_batch();
+  GPU_blend(GPU_BLEND_ALPHA);
 }
 
 static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
