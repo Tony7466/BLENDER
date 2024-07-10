@@ -662,10 +662,9 @@ bool vert_has_unique_face_set_grids(const GroupedSpan<int> vert_to_face_map,
           vert_to_face_map, face_sets, corner_verts, faces, v1, v2);
     case SUBDIV_CCG_ADJACENT_NONE:
       return true;
-    default:
-      BLI_assert_unreachable();
-      return true;
   }
+  BLI_assert_unreachable();
+  return true;
 }
 
 bool vert_has_unique_face_set_bmesh()
