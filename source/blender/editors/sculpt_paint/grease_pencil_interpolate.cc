@@ -343,11 +343,12 @@ static bke::CurvesGeometry interpolate_between_curves(const GreasePencil &grease
     MutableSpan<int> pair_from_indices = sorted_from_curve_indices.as_mutable_span().slice(
         pair_range);
     MutableSpan<int> pair_to_indices = sorted_to_curve_indices.as_mutable_span().slice(pair_range);
-    for (const int i : pair_range.index_range()) {
-      const int pair_index = sorted_pairs[pair_range[i]];
-      pair_from_indices[i] = std::clamp(
+    for (const int i : pair_range) {
+      const int pair_index = sorted_pairs[i];
+      sorted_from_curve_indices[i] = std::clamp(
           curve_pairs.from_curves[pair_index], 0, int(from_curves.last()));
-      pair_to_indices[i] = std::clamp(curve_pairs.to_curves[pair_index], 0, int(to_curves.last()));
+      sorted_to_curve_indices[i] = std::clamp(
+          curve_pairs.to_curves[pair_index], 0, int(to_curves.last()));
     }
     geometry::interpolate_curves(from_drawing->strokes(),
                                  to_drawing->strokes(),
