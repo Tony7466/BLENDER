@@ -1370,8 +1370,6 @@ static void strip_data_lock_flags_set(const StripDrawContext &strip,
   }
 }
 
-/* Colors: Unselected, selected, selected moving(shaded), active, overlapping
- * States: Selected, Active, Overlapping */
 static void strip_data_outline_params_set(const StripDrawContext &strip,
                                           const TimelineDrawContext *timeline_ctx,
                                           SeqStripDrawData &data)
