@@ -282,11 +282,12 @@ SubdivCCGAdjacencyType BKE_subdiv_ccg_coarse_mesh_adjacency_info_get(
     int &r_v1,
     int &r_v2);
 
+/* Determines if a given grid coordinate is on a coarse mesh boundary. */
 bool BKE_subdiv_ccg_coord_is_mesh_boundary(blender::OffsetIndices<int> faces,
                                            blender::Span<int> corner_verts,
-                                           const blender::BitSpan &boundary_verts,
+                                           blender::BitSpan boundary_verts,
                                            const SubdivCCG &subdiv_ccg,
-                                           const SubdivCCGCoord &coord);
+                                           SubdivCCGCoord coord);
 
 /* Get array which is indexed by face index and contains index of a first grid of the face.
  *
