@@ -203,7 +203,6 @@ static bke::CurvesGeometry interpolate_between_curves(const GreasePencil &grease
                                                       const float mix_factor,
                                                       const InterpolateFlipMode flip_mode)
 {
-  using namespace blender;
   using bke::greasepencil::Drawing;
 
   const int dst_curve_num = curve_pairs.from_curves.size();
@@ -726,21 +725,17 @@ static void GREASE_PENCIL_OT_interpolate(wmOperatorType *ot)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
-  /* identifiers */
   ot->name = "Grease Pencil Interpolation";
   ot->idname = "GREASE_PENCIL_OT_interpolate";
   ot->description = "Interpolate grease pencil strokes between frames";
 
-  /* callbacks */
   ot->invoke = grease_pencil_interpolate_invoke;
   ot->modal = grease_pencil_interpolate_modal;
   ot->cancel = grease_pencil_interpolate_cancel;
   ot->poll = grease_pencil_interpolate_poll;
 
-  /* flags */
   ot->flag = OPTYPE_UNDO | OPTYPE_BLOCKING;
 
-  /* properties */
   RNA_def_float_factor(
       ot->srna,
       "shift",
