@@ -833,6 +833,8 @@ GPUTexture *DeferredLayer::render(View &main_view,
   GPU_framebuffer_bind(combined_fb);
   inst_.manager->submit(combine_ps_);
 
+  inst_.npr.render(render_view);
+
   if (use_feedback_output_ && !use_clamp_direct_) {
     /* We skip writing the radiance during the combine pass. Do a simple fast copy. */
     GPU_texture_copy(radiance_feedback_tx_, rb.combined_tx);
@@ -843,8 +845,6 @@ GPUTexture *DeferredLayer::render(View &main_view,
   for (int i = 0; i < ARRAY_SIZE(direct_radiance_txs_); i++) {
     direct_radiance_txs_[i].release();
   }
-
-  inst_.npr.render(render_view);
 
   inst_.pipelines.deferred.debug_draw(render_view, combined_fb);
 
