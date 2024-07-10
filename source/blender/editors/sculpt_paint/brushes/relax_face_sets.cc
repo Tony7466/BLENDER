@@ -490,7 +490,7 @@ static void do_relax_face_sets_brush_mesh(const Sculpt &sd,
                                           Object &object,
                                           const Span<PBVHNode *> nodes,
                                           const float strength,
-                                          const float relax_face_sets)
+                                          const bool relax_face_sets)
 {
   const SculptSession &ss = *object.sculpt;
   Mesh &mesh = *static_cast<Mesh *>(object.data);
@@ -759,7 +759,7 @@ static void do_relax_face_sets_brush_grids(const Sculpt &sd,
                                            Object &object,
                                            const Span<PBVHNode *> nodes,
                                            const float strength,
-                                           const float relax_face_sets)
+                                           const bool relax_face_sets)
 {
   const SculptSession &ss = *object.sculpt;
   SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
@@ -974,7 +974,7 @@ static void do_relax_face_sets_brush_bmesh(const Sculpt &sd,
                                            Object &object,
                                            const Span<PBVHNode *> nodes,
                                            const float strength,
-                                           const float relax_face_sets)
+                                           const bool relax_face_sets)
 {
   Array<int> node_offset_data;
   const OffsetIndices<int> node_vert_offsets = create_node_vert_offsets_bmesh(nodes,
