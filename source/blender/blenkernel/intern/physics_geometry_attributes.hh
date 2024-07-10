@@ -372,7 +372,7 @@ class BuiltinPhysicsAttributeBase : public bke::BuiltinAttributeProvider {
 /**
  * Provider for builtin rigid body attributes.
  */
-template<typename T, RigidBodyGetFn<T> GetFn, RigidBodySetFn<T> SetFn = nullptr>
+template<typename T, bool force_cache, RigidBodyGetFn<T> GetFn, RigidBodySetFn<T> SetFn = nullptr>
 class BuiltinRigidBodyAttributeProvider final : public BuiltinPhysicsAttributeBase {
  public:
   BuiltinRigidBodyAttributeProvider(std::string attribute_name,
@@ -398,7 +398,6 @@ class BuiltinRigidBodyAttributeProvider final : public BuiltinPhysicsAttributeBa
       return {};
     }
 
-    constexpr bool force_cache = (GetFn == nullptr);
     if (force_cache || impl->is_empty) {
       return try_get_cache_for_read(&impl->body_data_, impl->body_num_);
     }
@@ -417,7 +416,6 @@ class BuiltinRigidBodyAttributeProvider final : public BuiltinPhysicsAttributeBa
       return {};
     }
 
-    constexpr bool force_cache = (GetFn == nullptr);
     if (force_cache || impl->is_empty) {
       return try_get_cache_for_write(owner, &impl->body_data_, impl->body_num_);
     }
@@ -455,6 +453,7 @@ class BuiltinRigidBodyAttributeProvider final : public BuiltinPhysicsAttributeBa
  * Reads from customdata if use_cached_read is true.
  */
 template<typename T,
+         bool force_cache,
          ConstraintGetFn<T> GetFn,
          ConstraintSetFn<T> SetFn = nullptr,
          PhysicsGetCacheFn<T> GetCacheFn = nullptr>
@@ -492,8 +491,7 @@ class BuiltinConstraintAttributeProvider final : public BuiltinPhysicsAttributeB
       ensure_on_access_(owner);
     }
 
-    constexpr bool force_cache = (GetFn == nullptr);
-    if (force_cache  || impl->is_empty) {
+    if (force_cache || impl->is_empty) {
       return try_get_cache_for_read(&impl->constraint_data_, impl->constraint_num_);
     }
     if constexpr (GetCacheFn) {
@@ -519,7 +517,6 @@ class BuiltinConstraintAttributeProvider final : public BuiltinPhysicsAttributeB
       ensure_on_access_(owner);
     }
 
-    constexpr bool force_cache = (GetFn == nullptr);
     if (force_cache || impl->is_empty) {
       return try_get_cache_for_write(owner, &impl->constraint_data_, impl->constraint_num_);
     }

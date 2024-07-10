@@ -632,22 +632,6 @@ static void constraint_disable_collision_set_fn(btTypedConstraint *constraint, b
 }
 
 template<bool force_cache>
-struct PhysicsAttributeProviderTypes {
-  template<typename T,
-           RigidBodyGetFn<T> GetFn,
-           RigidBodySetFn<T> SetFn>
-  using BuiltinRigidBodyAttributeProvider = BuiltinRigidBodyAttributeProvider<T, GetFn, SetFn>;
-};
-
-template<>
-struct PhysicsAttributeProviderTypes<true> {
-  template<typename T,
-           RigidBodyGetFn<T> GetFn,
-           RigidBodySetFn<T> SetFn>
-  using BuiltinRigidBodyAttributeProvider = BuiltinRigidBodyAttributeProvider<T, nullptr, nullptr>;
-};
-
-template <bool force_cache>
 static ComponentAttributeProviders create_attribute_providers_for_physics()
 {
   static PhysicsAccessInfo physics_access = {[](void *owner) -> PhysicsGeometryImpl * {
@@ -658,63 +642,68 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                                                    owner);
                                              }};
 
-  using ProviderTypes = PhysicsAttributeProviderTypes<force_cache>;
-
-  static ProviderTypes::template BuiltinRigidBodyAttributeProvider<int, id_get_fn, id_set_fn> body_id(
+  static BuiltinRigidBodyAttributeProvider<int, force_cache, id_get_fn, id_set_fn> body_id(
       PhysicsGeometry::builtin_attributes.id,
       AttrDomain::Point,
       BuiltinAttributeProvider::NonDeletable,
       physics_access,
       nullptr);
-  static BuiltinRigidBodyAttributeProvider<bool, static_get_fn, static_set_fn> body_static(
-      PhysicsGeometry::builtin_attributes.is_static,
-      AttrDomain::Point,
-      BuiltinAttributeProvider::NonDeletable,
-      physics_access,
-      nullptr);
-  static BuiltinRigidBodyAttributeProvider<bool, kinematic_get_fn, kinematic_set_fn>
+  static BuiltinRigidBodyAttributeProvider<bool, force_cache, static_get_fn, static_set_fn>
+      body_static(PhysicsGeometry::builtin_attributes.is_static,
+                  AttrDomain::Point,
+                  BuiltinAttributeProvider::NonDeletable,
+                  physics_access,
+                  nullptr);
+  static BuiltinRigidBodyAttributeProvider<bool, force_cache, kinematic_get_fn, kinematic_set_fn>
       body_kinematic(PhysicsGeometry::builtin_attributes.is_kinematic,
                      AttrDomain::Point,
                      BuiltinAttributeProvider::NonDeletable,
                      physics_access,
                      nullptr);
-  static BuiltinRigidBodyAttributeProvider<float, mass_get_fn, mass_set_fn> body_mass(
+  static BuiltinRigidBodyAttributeProvider<float, force_cache, mass_get_fn, mass_set_fn> body_mass(
       PhysicsGeometry::builtin_attributes.mass,
       AttrDomain::Point,
       BuiltinAttributeProvider::NonDeletable,
       physics_access,
       nullptr);
-  static BuiltinRigidBodyAttributeProvider<float3, inertia_get_fn, inertia_set_fn> body_inertia(
-      PhysicsGeometry::builtin_attributes.inertia,
-      AttrDomain::Point,
-      BuiltinAttributeProvider::NonDeletable,
-      physics_access,
-      nullptr);
-  static BuiltinRigidBodyAttributeProvider<float4x4, center_of_mass_get_fn, center_of_mass_set_fn>
+  static BuiltinRigidBodyAttributeProvider<float3, force_cache, inertia_get_fn, inertia_set_fn>
+      body_inertia(PhysicsGeometry::builtin_attributes.inertia,
+                   AttrDomain::Point,
+                   BuiltinAttributeProvider::NonDeletable,
+                   physics_access,
+                   nullptr);
+  static BuiltinRigidBodyAttributeProvider<float4x4,
+                                           force_cache,
+                                           center_of_mass_get_fn,
+                                           center_of_mass_set_fn>
       body_center_of_mass(PhysicsGeometry::builtin_attributes.center_of_mass,
                           AttrDomain::Point,
                           BuiltinAttributeProvider::NonDeletable,
                           physics_access,
                           nullptr);
-  static BuiltinRigidBodyAttributeProvider<float3, position_get_fn, position_set_fn> body_position(
-      PhysicsGeometry::builtin_attributes.position,
-      AttrDomain::Point,
-      BuiltinAttributeProvider::NonDeletable,
-      physics_access,
-      nullptr);
-  static BuiltinRigidBodyAttributeProvider<math::Quaternion, rotation_get_fn, rotation_set_fn>
+  static BuiltinRigidBodyAttributeProvider<float3, force_cache, position_get_fn, position_set_fn>
+      body_position(PhysicsGeometry::builtin_attributes.position,
+                    AttrDomain::Point,
+                    BuiltinAttributeProvider::NonDeletable,
+                    physics_access,
+                    nullptr);
+  static BuiltinRigidBodyAttributeProvider<math::Quaternion,
+                                           force_cache,
+                                           rotation_get_fn,
+                                           rotation_set_fn>
       body_rotation(PhysicsGeometry::builtin_attributes.rotation,
                     AttrDomain::Point,
                     BuiltinAttributeProvider::NonDeletable,
                     physics_access,
                     nullptr);
-  static BuiltinRigidBodyAttributeProvider<float3, velocity_get_fn, velocity_set_fn> body_velocity(
-      PhysicsGeometry::builtin_attributes.velocity,
-      AttrDomain::Point,
-      BuiltinAttributeProvider::NonDeletable,
-      physics_access,
-      nullptr);
+  static BuiltinRigidBodyAttributeProvider<float3, force_cache, velocity_get_fn, velocity_set_fn>
+      body_velocity(PhysicsGeometry::builtin_attributes.velocity,
+                    AttrDomain::Point,
+                    BuiltinAttributeProvider::NonDeletable,
+                    physics_access,
+                    nullptr);
   static BuiltinRigidBodyAttributeProvider<float3,
+                                           force_cache,
                                            angular_velocity_get_fn,
                                            angular_velocity_set_fn>
       body_angular_velocity(PhysicsGeometry::builtin_attributes.angular_velocity,
@@ -722,25 +711,32 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                             BuiltinAttributeProvider::NonDeletable,
                             physics_access,
                             nullptr);
-  static BuiltinRigidBodyAttributeProvider<int, activation_state_get_fn, activation_state_set_fn>
+  static BuiltinRigidBodyAttributeProvider<int,
+                                           force_cache,
+                                           activation_state_get_fn,
+                                           activation_state_set_fn>
       body_activation_state(PhysicsGeometry::builtin_attributes.activation_state,
                             AttrDomain::Point,
                             BuiltinAttributeProvider::NonDeletable,
                             physics_access,
                             nullptr);
-  static BuiltinRigidBodyAttributeProvider<float, friction_get_fn, friction_set_fn> body_friction(
-      PhysicsGeometry::builtin_attributes.friction,
-      AttrDomain::Point,
-      BuiltinAttributeProvider::NonDeletable,
-      physics_access,
-      nullptr);
-  static BuiltinRigidBodyAttributeProvider<float, rolling_friction_get_fn, rolling_friction_set_fn>
+  static BuiltinRigidBodyAttributeProvider<float, force_cache, friction_get_fn, friction_set_fn>
+      body_friction(PhysicsGeometry::builtin_attributes.friction,
+                    AttrDomain::Point,
+                    BuiltinAttributeProvider::NonDeletable,
+                    physics_access,
+                    nullptr);
+  static BuiltinRigidBodyAttributeProvider<float,
+                                           force_cache,
+                                           rolling_friction_get_fn,
+                                           rolling_friction_set_fn>
       body_rolling_friction(PhysicsGeometry::builtin_attributes.rolling_friction,
                             AttrDomain::Point,
                             BuiltinAttributeProvider::NonDeletable,
                             physics_access,
                             nullptr);
   static BuiltinRigidBodyAttributeProvider<float,
+                                           force_cache,
                                            spinning_friction_get_fn,
                                            spinning_friction_set_fn>
       body_spinning_friction(PhysicsGeometry::builtin_attributes.spinning_friction,
@@ -748,25 +744,35 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                              BuiltinAttributeProvider::NonDeletable,
                              physics_access,
                              nullptr);
-  static BuiltinRigidBodyAttributeProvider<float, restitution_get_fn, restitution_set_fn>
+  static BuiltinRigidBodyAttributeProvider<float,
+                                           force_cache,
+                                           restitution_get_fn,
+                                           restitution_set_fn>
       body_restitution(PhysicsGeometry::builtin_attributes.restitution,
                        AttrDomain::Point,
                        BuiltinAttributeProvider::NonDeletable,
                        physics_access,
                        nullptr);
-  static BuiltinRigidBodyAttributeProvider<float, linear_damping_get_fn, linear_damping_set_fn>
+  static BuiltinRigidBodyAttributeProvider<float,
+                                           force_cache,
+                                           linear_damping_get_fn,
+                                           linear_damping_set_fn>
       body_linear_damping(PhysicsGeometry::builtin_attributes.linear_damping,
                           AttrDomain::Point,
                           BuiltinAttributeProvider::NonDeletable,
                           physics_access,
                           nullptr);
-  static BuiltinRigidBodyAttributeProvider<float, angular_damping_get_fn, angular_damping_set_fn>
+  static BuiltinRigidBodyAttributeProvider<float,
+                                           force_cache,
+                                           angular_damping_get_fn,
+                                           angular_damping_set_fn>
       body_angular_damping(PhysicsGeometry::builtin_attributes.angular_damping,
                            AttrDomain::Point,
                            BuiltinAttributeProvider::NonDeletable,
                            physics_access,
                            nullptr);
   static BuiltinRigidBodyAttributeProvider<float,
+                                           force_cache,
                                            linear_sleeping_threshold_get_fn,
                                            linear_sleeping_threshold_set_fn>
       body_linear_sleeping_threshold(PhysicsGeometry::builtin_attributes.linear_sleeping_threshold,
@@ -775,6 +781,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                                      physics_access,
                                      nullptr);
   static BuiltinRigidBodyAttributeProvider<float,
+                                           force_cache,
                                            angular_sleeping_threshold_get_fn,
                                            angular_sleeping_threshold_set_fn>
       body_angular_sleeping_threshold(
@@ -783,26 +790,27 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
           BuiltinAttributeProvider::NonDeletable,
           physics_access,
           nullptr);
-  static BuiltinRigidBodyAttributeProvider<float3, total_force_get_fn> body_total_force(
-      PhysicsGeometry::builtin_attributes.total_force,
-      AttrDomain::Point,
-      BuiltinAttributeProvider::NonDeletable,
-      physics_access,
-      nullptr);
-  static BuiltinRigidBodyAttributeProvider<float3, total_torque_get_fn> body_total_torque(
-      PhysicsGeometry::builtin_attributes.total_torque,
-      AttrDomain::Point,
-      BuiltinAttributeProvider::NonDeletable,
-      physics_access,
-      nullptr);
-  static BuiltinConstraintAttributeProvider<int, constraint_type_get_fn> constraint_type(
-      PhysicsGeometry::builtin_attributes.constraint_type,
-      AttrDomain::Edge,
-      BuiltinAttributeProvider::NonDeletable,
-      physics_access,
-      nullptr,
-      {});
+  static BuiltinRigidBodyAttributeProvider<float3, force_cache, total_force_get_fn>
+      body_total_force(PhysicsGeometry::builtin_attributes.total_force,
+                       AttrDomain::Point,
+                       BuiltinAttributeProvider::NonDeletable,
+                       physics_access,
+                       nullptr);
+  static BuiltinRigidBodyAttributeProvider<float3, force_cache, total_torque_get_fn>
+      body_total_torque(PhysicsGeometry::builtin_attributes.total_torque,
+                        AttrDomain::Point,
+                        BuiltinAttributeProvider::NonDeletable,
+                        physics_access,
+                        nullptr);
+  static BuiltinConstraintAttributeProvider<int, force_cache, constraint_type_get_fn>
+      constraint_type(PhysicsGeometry::builtin_attributes.constraint_type,
+                      AttrDomain::Edge,
+                      BuiltinAttributeProvider::NonDeletable,
+                      physics_access,
+                      nullptr,
+                      {});
   static BuiltinConstraintAttributeProvider<bool,
+                                            force_cache,
                                             constraint_enabled_get_fn,
                                             constraint_enabled_set_fn>
       constraint_enabled(PhysicsGeometry::builtin_attributes.constraint_enabled,
@@ -811,29 +819,32 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                          physics_access,
                          nullptr,
                          {});
-  static BuiltinConstraintAttributeProvider<int, constraint_body1_get_fn> constraint_body1(
-      PhysicsGeometry::builtin_attributes.constraint_body1,
-      AttrDomain::Edge,
-      BuiltinAttributeProvider::NonDeletable,
-      physics_access,
-      nullptr,
-      {},
-      [](const void *owner) {
-        const PhysicsGeometry *physics = static_cast<const PhysicsGeometry *>(owner);
-        physics->impl().ensure_body_indices();
-      });
-  static BuiltinConstraintAttributeProvider<int, constraint_body2_get_fn> constraint_body2(
-      PhysicsGeometry::builtin_attributes.constraint_body2,
-      AttrDomain::Edge,
-      BuiltinAttributeProvider::NonDeletable,
-      physics_access,
-      nullptr,
-      {},
-      [](const void *owner) {
-        const PhysicsGeometry *physics = static_cast<const PhysicsGeometry *>(owner);
-        physics->impl().ensure_body_indices();
-      });
+  static BuiltinConstraintAttributeProvider<int, force_cache, constraint_body1_get_fn>
+      constraint_body1(PhysicsGeometry::builtin_attributes.constraint_body1,
+                       AttrDomain::Edge,
+                       BuiltinAttributeProvider::NonDeletable,
+                       physics_access,
+                       nullptr,
+                       {},
+                       [](const void *owner) {
+                         const PhysicsGeometry *physics = static_cast<const PhysicsGeometry *>(
+                             owner);
+                         physics->impl().ensure_body_indices();
+                       });
+  static BuiltinConstraintAttributeProvider<int, force_cache, constraint_body2_get_fn>
+      constraint_body2(PhysicsGeometry::builtin_attributes.constraint_body2,
+                       AttrDomain::Edge,
+                       BuiltinAttributeProvider::NonDeletable,
+                       physics_access,
+                       nullptr,
+                       {},
+                       [](const void *owner) {
+                         const PhysicsGeometry *physics = static_cast<const PhysicsGeometry *>(
+                             owner);
+                         physics->impl().ensure_body_indices();
+                       });
   static BuiltinConstraintAttributeProvider<float4x4,
+                                            force_cache,
                                             constraint_frame1_get_fn,
                                             constraint_frame1_set_fn>
       constraint_frame1(PhysicsGeometry::builtin_attributes.constraint_frame1,
@@ -843,6 +854,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                         nullptr,
                         {});
   static BuiltinConstraintAttributeProvider<float4x4,
+                                            force_cache,
                                             constraint_frame2_get_fn,
                                             constraint_frame2_set_fn>
       constraint_frame2(PhysicsGeometry::builtin_attributes.constraint_frame2,
@@ -851,42 +863,43 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                         physics_access,
                         nullptr,
                         {});
-  static BuiltinConstraintAttributeProvider<float, constraint_applied_impulse_get_fn>
+  static BuiltinConstraintAttributeProvider<float, force_cache, constraint_applied_impulse_get_fn>
       constraint_applied_impulse(PhysicsGeometry::builtin_attributes.applied_impulse,
                                  AttrDomain::Edge,
                                  BuiltinAttributeProvider::NonDeletable,
                                  physics_access,
                                  nullptr,
                                  {});
-  static BuiltinConstraintAttributeProvider<float3, applied_force1_get_fn> applied_force1(
-      PhysicsGeometry::builtin_attributes.applied_force1,
-      AttrDomain::Edge,
-      BuiltinAttributeProvider::NonDeletable,
-      physics_access,
-      nullptr,
-      {});
-  static BuiltinConstraintAttributeProvider<float3, applied_force2_get_fn> applied_force2(
-      PhysicsGeometry::builtin_attributes.applied_force2,
-      AttrDomain::Edge,
-      BuiltinAttributeProvider::NonDeletable,
-      physics_access,
-      nullptr,
-      {});
-  static BuiltinConstraintAttributeProvider<float3, applied_torque1_get_fn> applied_torque1(
-      PhysicsGeometry::builtin_attributes.applied_torque1,
-      AttrDomain::Edge,
-      BuiltinAttributeProvider::NonDeletable,
-      physics_access,
-      nullptr,
-      {});
-  static BuiltinConstraintAttributeProvider<float3, applied_torque2_get_fn> applied_torque2(
-      PhysicsGeometry::builtin_attributes.applied_torque2,
-      AttrDomain::Edge,
-      BuiltinAttributeProvider::NonDeletable,
-      physics_access,
-      nullptr,
-      {});
+  static BuiltinConstraintAttributeProvider<float3, force_cache, applied_force1_get_fn>
+      applied_force1(PhysicsGeometry::builtin_attributes.applied_force1,
+                     AttrDomain::Edge,
+                     BuiltinAttributeProvider::NonDeletable,
+                     physics_access,
+                     nullptr,
+                     {});
+  static BuiltinConstraintAttributeProvider<float3, force_cache, applied_force2_get_fn>
+      applied_force2(PhysicsGeometry::builtin_attributes.applied_force2,
+                     AttrDomain::Edge,
+                     BuiltinAttributeProvider::NonDeletable,
+                     physics_access,
+                     nullptr,
+                     {});
+  static BuiltinConstraintAttributeProvider<float3, force_cache, applied_torque1_get_fn>
+      applied_torque1(PhysicsGeometry::builtin_attributes.applied_torque1,
+                      AttrDomain::Edge,
+                      BuiltinAttributeProvider::NonDeletable,
+                      physics_access,
+                      nullptr,
+                      {});
+  static BuiltinConstraintAttributeProvider<float3, force_cache, applied_torque2_get_fn>
+      applied_torque2(PhysicsGeometry::builtin_attributes.applied_torque2,
+                      AttrDomain::Edge,
+                      BuiltinAttributeProvider::NonDeletable,
+                      physics_access,
+                      nullptr,
+                      {});
   static BuiltinConstraintAttributeProvider<float,
+                                            force_cache,
                                             constraint_breaking_impulse_threshold_get_fn,
                                             constraint_breaking_impulse_threshold_set_fn>
       constraint_breaking_impulse_threshold(
@@ -897,6 +910,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
           nullptr,
           {});
   static BuiltinConstraintAttributeProvider<bool,
+                                            force_cache,
                                             constraint_disable_collision_get_fn,
                                             constraint_disable_collision_set_fn,
                                             constraint_disable_collision_get_cache_fn>
@@ -995,13 +1009,16 @@ static GVArray adapt_physics_attribute_domain(const PhysicsGeometry & /*physics*
   return {};
 }
 
-template <bool force_cache>
-static AttributeAccessorFunctions get_physics_accessor_functions()
+static AttributeAccessorFunctions get_physics_accessor_functions(const bool force_cache)
 {
   static const ComponentAttributeProviders providers =
-      create_attribute_providers_for_physics<force_cache>();
+      create_attribute_providers_for_physics<false>();
+  static const ComponentAttributeProviders providers_cached =
+      create_attribute_providers_for_physics<true>();
   AttributeAccessorFunctions fn =
-      attribute_accessor_functions::accessor_functions_for_providers<providers>();
+      force_cache ?
+          attribute_accessor_functions::accessor_functions_for_providers<providers_cached>() :
+          attribute_accessor_functions::accessor_functions_for_providers<providers>();
   fn.domain_size = [](const void *owner, const AttrDomain domain) {
     if (owner == nullptr) {
       return 0;
@@ -1034,9 +1051,8 @@ static AttributeAccessorFunctions get_physics_accessor_functions()
 
 const AttributeAccessorFunctions &get_physics_accessor_functions_ref(const bool force_cache)
 {
-  static const AttributeAccessorFunctions physics_fn = get_physics_accessor_functions<false>();
-  static const AttributeAccessorFunctions cached_fn = get_physics_accessor_functions<true>();
-  return force_cache ? cached_fn : physics_fn;
+  static const AttributeAccessorFunctions fn = get_physics_accessor_functions(force_cache);
+  return fn;
 }
 
 /** \} */
