@@ -342,6 +342,7 @@ blender::bke::CurvesGeometry curves_merge_by_distance(
   return dst_curves;
 }
 
+/* Topological sorting that puts connected curves into contiguous ranges. */
 static Vector<int> toposort_connected_curves(const Span<int> connect_to_curve)
 {
   const IndexRange range = connect_to_curve.index_range();
@@ -369,11 +370,7 @@ static Vector<int> toposort_connected_curves(const Span<int> connect_to_curve)
     return true;
   };
 
-  /* Iterate in reverse to preserve original order of disconnected curves. */
-  for (const int i : range.index_range()) {
-    const int curve_i = range[range.size() - 1 - i];
-    push_curve(curve_i);
-
+  auto process_stack = [&]() {
     while (!stack.is_empty()) {
       const int current = stack.peek();
 
@@ -388,7 +385,30 @@ static Vector<int> toposort_connected_curves(const Span<int> connect_to_curve)
       sorted_curves.prepend(current);
       stack.pop();
     }
+  };
+
+  /* First add all open chains by finding curves without a connection. */
+  Array<bool> is_start_curve(range.size(), true);
+  for (const int curve_i : range) {
+    const int next = connect_to_curve[curve_i];
+    if (range.contains(next)) {
+      is_start_curve[next] = false;
+    }
   }
+  for (const int curve_i : range) {
+    if (is_start_curve[curve_i]) {
+      push_curve(curve_i);
+    }
+  }
+  process_stack();
+
+  /* Handle remaining curves (cyclic connections). */
+  for (const int curve_i : range) {
+    if (!is_start_curve[curve_i]) {
+      push_curve(curve_i);
+    }
+  }
+  process_stack();
 
   BLI_assert(sorted_curves.size() == range.size());
   UNUSED_VARS(has_cycle);
@@ -487,8 +507,9 @@ static bke::CurvesGeometry reorder_and_flip_curves(const bke::CurvesGeometry &sr
 static void find_connected_ranges(const bke::CurvesGeometry &src_curves,
                                   const Span<int> old_by_new_map,
                                   Span<int> connect_to_curve,
+                                  Span<bool> cyclic,
                                   Vector<int> &r_joined_curve_offsets,
-                                  Vector<bool> &r_cyclic)
+                                  Vector<bool> &r_joined_cyclic)
 {
   const IndexRange curves_range = src_curves.curves_range();
 
@@ -499,13 +520,20 @@ static void find_connected_ranges(const bke::CurvesGeometry &src_curves,
   }
 
   r_joined_curve_offsets.reserve(curves_range.size() + 1);
-  r_cyclic.reserve(curves_range.size());
+  r_joined_cyclic.reserve(curves_range.size());
 
   int start_index = -1;
-  r_joined_curve_offsets.append(0);
-  r_cyclic.append(false);
   for (const int dst_i : curves_range) {
     const int src_i = old_by_new_map[dst_i];
+    /* Strokes are cyclic if they are not connected and the original stroke is cyclic, or if the
+     * the last stroke of a chain is merged with the first stroke. */
+    const bool src_cyclic = cyclic[src_i];
+
+    if (start_index < 0) {
+      r_joined_curve_offsets.append(0);
+      r_joined_cyclic.append(src_cyclic);
+      start_index = dst_i;
+    }
 
     ++r_joined_curve_offsets.last();
 
@@ -515,18 +543,22 @@ static void find_connected_ranges(const bke::CurvesGeometry &src_curves,
                                    -1;
     if (dst_connect_to == dst_i + 1) {
       /* Connected to next curve, continue the range. */
+      r_joined_cyclic.last() = false;
     }
     else {
       /* Make cyclic if connected to start. */
       if (dst_connect_to == start_index) {
-        r_cyclic.last() = true;
+        r_joined_cyclic.last() = true;
       }
 
       /* Start new curve. */
-      r_joined_curve_offsets.append(0);
-      r_cyclic.append(false);
+      if (dst_i < curves_range.last()) {
+        start_index = -1;
+      }
     }
   }
+  /* Offsets has one more entry for the overall size. */
+  r_joined_curve_offsets.append(0);
 
   offset_indices::accumulate_counts_to_offsets(r_joined_curve_offsets);
 }
@@ -573,20 +605,21 @@ bke::CurvesGeometry curves_merge_endpoints(
     const bke::AnonymousAttributePropagationInfo & /*propagation_info*/)
 {
   BLI_assert(connect_to_curve.size() == src_curves.curves_num());
+  const VArraySpan<bool> src_cyclic = src_curves.cyclic();
 
   Vector<int> old_by_new_map = toposort_connected_curves(connect_to_curve);
 
   Vector<int> joined_curve_offsets;
   Vector<bool> cyclic;
   find_connected_ranges(
-      src_curves, old_by_new_map, connect_to_curve, joined_curve_offsets, cyclic);
+      src_curves, old_by_new_map, connect_to_curve, src_cyclic, joined_curve_offsets, cyclic);
 
   bke::CurvesGeometry ordered_curves = reorder_and_flip_curves(
       src_curves, old_by_new_map, flip_direction);
 
   OffsetIndices joined_curves_by_new = OffsetIndices<int>(joined_curve_offsets);
   bke::CurvesGeometry merged_curves = join_curves_ranges(ordered_curves, joined_curves_by_new);
-  merged_curves.cyclic_for_write().copy_from(cyclic.as_span().drop_back(1));
+  merged_curves.cyclic_for_write().copy_from(cyclic);
 
   return merged_curves;
 }
@@ -621,8 +654,8 @@ bke::CurvesGeometry curves_merge_endpoints_by_distance(
       ED_view3d_project_float_global(&region, start_world, start_co, V3D_PROJ_TEST_NOP);
       ED_view3d_project_float_global(&region, end_world, end_co, V3D_PROJ_TEST_NOP);
 
-      BLI_kdtree_2d_insert(tree, 2 * src_i, start_co);
-      BLI_kdtree_2d_insert(tree, 2 * src_i + 1, end_co);
+      BLI_kdtree_2d_insert(tree, src_i * 2, start_co);
+      BLI_kdtree_2d_insert(tree, src_i * 2 + 1, end_co);
     }
   });
   BLI_kdtree_2d_balance(tree);
