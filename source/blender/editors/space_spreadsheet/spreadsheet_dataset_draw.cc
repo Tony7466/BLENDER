@@ -135,6 +135,7 @@ class MeshViewItem : public DataSetViewItem {
   MeshViewItem()
   {
     label_ = IFACE_("Mesh");
+    this->disable_activatable();
   }
 
   void build_row(uiLayout &row) override
@@ -174,6 +175,7 @@ class CurvesViewItem : public DataSetViewItem {
   CurvesViewItem()
   {
     label_ = IFACE_("Curve");
+    this->disable_activatable();
   }
 
   void build_row(uiLayout &row) override
@@ -214,6 +216,7 @@ class GreasePencilViewItem : public DataSetViewItem {
   GreasePencilViewItem()
   {
     label_ = IFACE_("Grease Pencil");
+    this->disable_activatable();
   }
 
   void build_row(uiLayout &row) override
@@ -256,6 +259,7 @@ class GreasePencilLayerViewItem : public DataSetViewItem {
       : layer_(layer), layer_index_(layer_index)
   {
     label_ = layer_.name();
+    this->disable_activatable();
   }
 
   void build_row(uiLayout &row) override
@@ -302,6 +306,7 @@ class PointCloudViewItem : public DataSetViewItem {
   PointCloudViewItem()
   {
     label_ = IFACE_("Point Cloud");
+    this->disable_activatable();
   }
 
   void build_row(uiLayout &row) override
@@ -392,6 +397,7 @@ class InstanceReferenceViewItem : public DataSetViewItem {
       : reference_(instances.references()[reference_index]), reference_index_(reference_index)
   {
     label_ = std::to_string(reference_index);
+    this->disable_activatable();
   }
 
   void build_row(uiLayout &row) override
@@ -420,6 +426,7 @@ class CollectionChildViewItem : public DataSetViewItem {
       : collection_child_(&collection_child), child_index_(child_index)
   {
     label_ = std::to_string(child_index);
+    this->disable_activatable();
   }
 
   void build_row(uiLayout &row) override
@@ -443,6 +450,7 @@ class CollectionObjectViewItem : public DataSetViewItem {
       : collection_object_(&collection_object), child_index_(child_index)
   {
     label_ = std::to_string(child_index);
+    this->disable_activatable();
   }
 
   void build_row(uiLayout &row) override
@@ -623,29 +631,12 @@ void DataSetViewItem::get_parent_instance_ids(Vector<SpreadsheetInstanceID> &r_i
 
 void DataSetViewItem::on_activate(bContext &C)
 {
-  Vector<SpreadsheetInstanceID> instance_ids;
   std::optional<GeometryDataIdentifier> data_id = this->get_geometry_data_id();
-  if (data_id) {
-    this->get_parent_instance_ids(instance_ids);
-  }
-  else {
-    /* Try to find the next data item that can be activated. */
-    this->foreach_item_recursive([&](const ui::AbstractTreeViewItem &item) {
-      if (data_id) {
-        return;
-      }
-      if (auto *data_set_view_item = dynamic_cast<const DataSetViewItem *>(&item)) {
-        data_id = data_set_view_item->get_geometry_data_id();
-        if (data_id) {
-          data_set_view_item->get_parent_instance_ids(instance_ids);
-        }
-      }
-    });
-  }
-
   if (!data_id) {
     return;
   }
+  Vector<SpreadsheetInstanceID> instance_ids;
+  this->get_parent_instance_ids(instance_ids);
 
   bScreen &screen = *CTX_wm_screen(&C);
   SpaceSpreadsheet &sspreadsheet = *CTX_wm_space_spreadsheet(&C);
