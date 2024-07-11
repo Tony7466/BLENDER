@@ -38,8 +38,19 @@ void NPRModule::begin_sync()
   surface_ps_.state_set(DRW_STATE_WRITE_COLOR);
   surface_ps_.bind_texture(INDEX_TX_SLOT, &inst_.render_buffers.npr_index_tx);
   surface_ps_.bind_texture(DEPTH_TX_SLOT, &inst_.render_buffers.depth_tx);
-  surface_ps_.bind_texture(NORMAL_TX_SLOT, &inst_.gbuffer.normal_tx);
-  surface_ps_.bind_texture(COMBINED_TX_SLOT, &inst_.render_buffers.combined_tx);
+#if 0
+  surface_ps_.bind_resources(inst_.gbuffer);
+#else
+  /* Bind manually to pre-defined slots. */
+  surface_ps_.bind_texture(GBUF_NORMAL_TX_SLOT, &inst_.gbuffer.normal_tx);
+  surface_ps_.bind_texture(GBUF_HEADER_TX_SLOT, &inst_.gbuffer.header_tx);
+  surface_ps_.bind_texture(GBUF_CLOSURE_TX_SLOT, &inst_.gbuffer.closure_tx);
+#endif
+  for (int i : IndexRange(3)) {
+    surface_ps_.bind_texture(DIRECT_RADIANCE_TX_SLOT_1 + i, &direct_radiance_txs_[i]);
+    surface_ps_.bind_texture(INDIRECT_RADIANCE_TX_SLOT_1 + i, &indirect_radiance_txs_[i]);
+  };
+  surface_ps_.bind_resources(inst_.uniform_data);
 }
 
 static void codegen_callback(void * /*thunk*/, GPUMaterial * /*mat*/, GPUCodegenOutput *codegen)
@@ -85,6 +96,7 @@ int NPRModule::sync_material(::Material *material)
   PassSimple::Sub &sub_ps = surface_ps_.sub(ntree->id.name);
   sub_ps.material_set(*inst_.manager, mat);
   sub_ps.push_constant("npr_index", index);
+  sub_ps.push_constant("use_split_radiance", &use_split_radiance_);
   sub_ps.draw_procedural(GPU_PRIM_TRIS, 1, 3);
   indices_.add(ntree, index);
   return index;
@@ -92,23 +104,28 @@ int NPRModule::sync_material(::Material *material)
 
 void NPRModule::end_sync() {}
 
-void NPRModule::render(View &view)
+void NPRModule::render(View &view,
+                       TextureFromPool direct_radiance_txs[3],
+                       RayTraceResultTexture indirect_radiance_txs[3])
 {
-  surface_tx_.acquire(inst_.render_buffers.extent_get(),
-                      inst_.render_buffers.color_format,
-                      GPU_TEXTURE_USAGE_ATTACHMENT);
-  /* TODO(NPR): Optimize-out this copy. */
-  GPU_texture_copy(surface_tx_, inst_.render_buffers.combined_tx);
+  use_split_radiance_ = indirect_radiance_txs != nullptr;
+  for (int i : IndexRange(3)) {
+    direct_radiance_txs_[i] = direct_radiance_txs[i];
+    if (indirect_radiance_txs) {
+      indirect_radiance_txs_[i] = indirect_radiance_txs[i];
+    }
+  }
 
-  surface_fb_.ensure(GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE(surface_tx_));
+  surface_fb_.ensure(GPU_ATTACHMENT_NONE,
+                     GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.combined_tx));
   surface_fb_.bind();
 
   inst_.manager->submit(surface_ps_, view);
 
-  /* TODO(NPR): Optimize-out this copy. */
-  GPU_texture_copy(inst_.render_buffers.combined_tx, surface_tx_);
-
-  surface_tx_.release();
+  for (int i : IndexRange(3)) {
+    direct_radiance_txs_[i] = nullptr;
+    indirect_radiance_txs_[i] = nullptr;
+  }
 }
 
 }  // namespace blender::eevee

@@ -833,7 +833,9 @@ GPUTexture *DeferredLayer::render(View &main_view,
   GPU_framebuffer_bind(combined_fb);
   inst_.manager->submit(combine_ps_);
 
-  inst_.npr.render(render_view);
+  inst_.npr.render(render_view,
+                   direct_radiance_txs_,
+                   use_split_radiance_ ? indirect_result_.closures : nullptr);
 
   if (use_feedback_output_ && !use_clamp_direct_) {
     /* We skip writing the radiance during the combine pass. Do a simple fast copy. */

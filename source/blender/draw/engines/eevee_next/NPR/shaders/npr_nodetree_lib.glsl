@@ -5,6 +5,12 @@
 #pragma BLENDER_REQUIRE(draw_view_lib.glsl)
 
 vec4 g_combined_color;
+vec4 g_diffuse_color;
+vec4 g_diffuse_direct;
+vec4 g_diffuse_indirect;
+vec4 g_specular_color;
+vec4 g_specular_direct;
+vec4 g_specular_indirect;
 
 vec4 nodetree_npr();
 

@@ -25,10 +25,13 @@ class NPRModule {
  private:
   Instance &inst_;
 
-  TextureFromPool surface_tx_ = {"NPR.Surface"};
   Framebuffer surface_fb_ = {"NPR.Surface"};
   PassSimple surface_ps_ = {"NPR.Surface"};
   Map<bNodeTree *, int> indices_;
+
+  GPUTexture *direct_radiance_txs_[3] = {0};
+  GPUTexture *indirect_radiance_txs_[3] = {0};
+  bool use_split_radiance_;
 
  public:
   NPRModule(Instance &inst) : inst_(inst){};
@@ -37,7 +40,9 @@ class NPRModule {
   void begin_sync();
   int sync_material(::Material *material);
   void end_sync();
-  void render(View &view);
+  void render(View &view,
+              TextureFromPool direct_radiance_txs[3],
+              class RayTraceResultTexture indirect_radiance_txs[3]);
 };
 
 }  // namespace blender::eevee

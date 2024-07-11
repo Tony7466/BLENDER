@@ -18,7 +18,13 @@ namespace blender::nodes::node_shader_npr_input_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_output<decl::Color>("Color");
+  b.add_output<decl::Color>("Combined Color");
+  b.add_output<decl::Color>("Diffuse Color");
+  b.add_output<decl::Color>("Diffuse Direct");
+  b.add_output<decl::Color>("Diffuse Indirect");
+  b.add_output<decl::Color>("Specular Color");
+  b.add_output<decl::Color>("Specular Direct");
+  b.add_output<decl::Color>("Specular Indirect");
 }
 
 static int node_shader_fn(GPUMaterial *mat,
