@@ -937,8 +937,10 @@ typedef struct GHOST_XrControllerModelData {
 /**
  * NDOF device button event types.
  *
- * These are the values behind particular buttons in 3Dconnexion devices.
- * The same exact values are used by 3Dconnexion driver.
+ * SpaceMouse devices ship with an internal identifier number for each button.
+ * Deprecated versions of the 3DxWare SDK have a "virtualkeys.h" header file
+ * where some of these numbers are found but it is basically an arbitrary assignment
+ * made by the vendor (3Dconnexion) since the application has the freedom to override as necessary.
  */
 typedef enum {
 

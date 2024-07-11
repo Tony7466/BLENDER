@@ -103,6 +103,11 @@
 
 static bool isStartedFromCommandPrompt();
 
+/**
+ * SpaceMouse devices ship with an internal identifier number for each long press event.
+ * These values can be found in <3DxWare installation path>/3DxWinCore/Cfg/Base.xml.
+ * For input processing purposes these identifiers have to be mapped to particular button events.
+ */
 static const std::map<uint16_t, GHOST_NDOF_ButtonT> longButtonHIDsToGHOST_NDOFButtons = {
     {3, GHOST_NDOF_BUTTON_BOTTOM},
     {5, GHOST_NDOF_BUTTON_LEFT},
