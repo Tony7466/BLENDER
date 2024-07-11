@@ -442,7 +442,7 @@ class Context : public realtime_compositor::Context {
       return;
     }
 
-    if (StringRef(render_pass->chan_id, 4) == "XYZW") {
+    if (StringRef(render_pass->chan_id) == "XYZW") {
       meta_data.is_4d_vector = true;
     }
 
