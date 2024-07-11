@@ -270,24 +270,6 @@ static void screen_draw_area_closed(int xmin, int xmax, int ymin, int ymax)
   screen_draw_area_icon(&rect, ICON_CANCEL, color);
 }
 
-static int area_icon(ScrArea *area)
-{
-  const int index = RNA_enum_from_value(rna_enum_space_type_items, area->spacetype);
-  const EnumPropertyItem item = rna_enum_space_type_items[index];
-  if (item.value == SPACE_ACTION) {
-    const int subtype = area->type->space_subtype_get(area);
-    int subindex = RNA_enum_from_value(rna_enum_space_action_mode_items, subtype);
-    return rna_enum_space_action_mode_items[subindex].icon;
-  }
-  if (item.value == SPACE_IMAGE) {
-    const int subtype = area->type->space_subtype_get(area);
-    int subindex = RNA_enum_from_value(rna_enum_space_image_mode_items, subtype);
-    return rna_enum_space_image_mode_items[subindex].icon;
-  }
-  /* Can't figure out how to differenciate between node editors. */
-  return item.icon;
-}
-
 void screen_draw_join_highlight(ScrArea *sa1, ScrArea *sa2, eScreenDir dir)
 {
   if (dir == SCREEN_DIR_NONE || !sa2) {
@@ -386,11 +368,10 @@ void screen_draw_join_highlight(ScrArea *sa1, ScrArea *sa2, eScreenDir dir)
   rctf sa2new;
   BLI_rctf_isect(&combined, &sa2tot, &sa2new);
 
-  const int icon = area_icon(sa1);
   uchar icon_color[4] = {255, 255, 255, 255};
   float bg_color[4] = {0.0f, 0.0f, 0.0f, 0.4f};
   float outline_color[4] = {1.0f, 1.0f, 1.0f, 0.4f};
-  screen_draw_area_icon(&sa2new, icon, icon_color, bg_color, outline_color);
+  screen_draw_area_icon(&sa2new, ED_area_icon(sa1), icon_color, bg_color, outline_color);
 }
 
 void screen_draw_dock_preview(const struct wmWindow * /* win */,
@@ -415,9 +396,6 @@ void screen_draw_dock_preview(const struct wmWindow * /* win */,
   rctf remainder;
   BLI_rctf_rcti_copy(&dest, &target->totrct);
   BLI_rctf_rcti_copy(&remainder, &target->totrct);
-
-  const int icon1 = area_icon(source);
-  const int icon2 = area_icon(target);
 
   float split;
 
@@ -444,15 +422,15 @@ void screen_draw_dock_preview(const struct wmWindow * /* win */,
 
   if (dock_target == DOCKING_CENTER) {
     UI_draw_roundbox_4fv_ex(&dest, inner, nullptr, 1.0f, outline, U.pixelsize, 6 * U.pixelsize);
-    screen_draw_area_icon(&dest, icon1, icon_color, bg_color, outline);
+    screen_draw_area_icon(&dest, ED_area_icon(source), icon_color, bg_color, outline);
   }
   else {
     UI_draw_roundbox_4fv_ex(&dest, inner, nullptr, 1.0f, outline, U.pixelsize, 6 * U.pixelsize);
-    screen_draw_area_icon(&dest, icon1, icon_color, bg_color, outline);
+    screen_draw_area_icon(&dest, ED_area_icon(source), icon_color, bg_color, outline);
 
     bg_color[3] = 0.3f;
     icon_color[3] = 128;
-    screen_draw_area_icon(&remainder, icon2, icon_color, bg_color, nullptr);
+    screen_draw_area_icon(&remainder, ED_area_icon(target), icon_color, bg_color, nullptr);
 
     /* Darken the split position itself. */
     if (ELEM(dock_target, DOCKING_RIGHT, DOCKING_LEFT)) {
