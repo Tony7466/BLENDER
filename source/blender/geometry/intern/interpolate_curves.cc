@@ -144,16 +144,6 @@ static AttributesForInterpolation gather_point_attributes_to_interpolate(
   return retrieve_attribute_spans(ids, from_curves, to_curves, dst_curves);
 }
 
-template<typename T>
-static void mix_into(MutableSpan<T> dst, const Span<T> src, const float mix_weight)
-{
-  BLI_assert(src.size() == dst.size());
-
-  for (const int i : src.index_range()) {
-    dst[i] = math::interpolate(dst[i], src[i], mix_weight);
-  }
-}
-
 /* Resample a span of attribute values from source curves to a destination buffer. */
 static void sample_curve_attribute(const bke::CurvesGeometry &src_curves,
                                    const OffsetIndices<int> dst_points_by_curve,
