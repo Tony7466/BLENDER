@@ -916,7 +916,7 @@ blender::StringRefNull ED_area_name(ScrArea *area)
   return item.name;
 }
 
-int ED_area_icon(ScrArea *area)
+int ED_area_icon(const ScrArea *area)
 {
   if (area->type->space_icon_get) {
     return area->type->space_icon_get(area);

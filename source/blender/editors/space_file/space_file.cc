@@ -839,7 +839,7 @@ static blender::StringRefNull file_space_name_get(ScrArea *area)
   return item.name;
 }
 
-static int file_space_icon_get(ScrArea *area)
+static int file_space_icon_get(const ScrArea *area)
 {
   SpaceFile *sfile = static_cast<SpaceFile *>(area->spacedata.first);
   const int index = RNA_enum_from_value(rna_enum_space_file_browse_mode_items, sfile->browse_mode);

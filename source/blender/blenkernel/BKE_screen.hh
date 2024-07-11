@@ -129,7 +129,7 @@ struct SpaceType {
   /* Return a custom name, based on subtype or other reason. */
   blender::StringRefNull (*space_name_get)(ScrArea *area);
   /* Return a custom icon, based on subtype or other reason. */
-  int (*space_icon_get)(ScrArea *area);
+  int (*space_icon_get)(const ScrArea *area);
 
   /**
    * Update pointers for all structs directly owned by this space.

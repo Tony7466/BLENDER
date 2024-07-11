@@ -1085,7 +1085,7 @@ static blender::StringRefNull image_space_name_get(ScrArea *area)
   return item.name;
 }
 
-static int image_space_icon_get(ScrArea *area)
+static int image_space_icon_get(const ScrArea *area)
 {
   SpaceImage *sima = static_cast<SpaceImage *>(area->spacedata.first);
   const int index = RNA_enum_from_value(rna_enum_space_image_mode_items, sima->mode);

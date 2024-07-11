@@ -876,7 +876,7 @@ static blender::StringRefNull graph_space_name_get(ScrArea *area)
   return item.name;
 }
 
-static int graph_space_icon_get(ScrArea *area)
+static int graph_space_icon_get(const ScrArea *area)
 {
   SpaceGraph *sgraph = static_cast<SpaceGraph *>(area->spacedata.first);
   const int index = RNA_enum_from_value(rna_enum_space_graph_mode_items, sgraph->mode);

@@ -874,7 +874,7 @@ static blender::StringRefNull action_space_name_get(ScrArea *area)
   return item.name;
 }
 
-static int action_space_icon_get(ScrArea *area)
+static int action_space_icon_get(const ScrArea *area)
 {
   SpaceAction *sact = static_cast<SpaceAction *>(area->spacedata.first);
   const int index = RNA_enum_from_value(rna_enum_space_action_mode_items, sact->mode);

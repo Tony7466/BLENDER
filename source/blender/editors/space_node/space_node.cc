@@ -1341,7 +1341,7 @@ static blender::StringRefNull node_space_name_get(ScrArea *area)
   return tree_type->ui_name;
 }
 
-static int node_space_icon_get(ScrArea *area)
+static int node_space_icon_get(const ScrArea *area)
 {
   SpaceNode *snode = static_cast<SpaceNode *>(area->spacedata.first);
   bke::bNodeTreeType *tree_type = bke::ntreeTypeFind(snode->tree_idname);
