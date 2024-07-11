@@ -3830,7 +3830,7 @@ static int click_select_channel_action_slot(bAnimContext *ac,
   switch (selectmode) {
     case SELECT_REPLACE:
       ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_CLEAR);
-      /* Fallthrough. */
+      ATTR_FALLTHROUGH;
     case SELECT_ADD:
       slot->set_selected(true);
       action->slot_active_set(slot->handle);
