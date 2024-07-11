@@ -547,6 +547,7 @@ static void grease_pencil_fill_extension_cut(const bContext &C,
   Array<float2> view_ends(max_bvh_lines);
 
   BVHTree *tree = BLI_bvhtree_new(max_bvh_lines, 0.0f, 4, 6);
+  BLI_SCOPED_DEFER([&]() { BLI_bvhtree_free(tree); });
 
   /* Insert extension lines for intersection.
    * Note: These are added first, so that the extension index matches its index in BVH data. */
@@ -671,7 +672,6 @@ static void grease_pencil_fill_extension_cut(const bContext &C,
       new_extension_ends[i_line] = extension_data.lines.ends[i_line];
     }
   }
-  BLI_bvhtree_free(tree);
 
   extension_data.lines.ends = std::move(new_extension_ends);
 }
