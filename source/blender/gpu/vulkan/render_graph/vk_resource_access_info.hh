@@ -31,6 +31,15 @@ struct VKImageAccess {
   VkImage vk_image;
   VkAccessFlags vk_access_flags;
   VkImageAspectFlags vk_image_aspect;
+  /* Used for sub-resource tracking within a rendering scope.
+   *
+   * By default all layers of images are tracked as a single resource. Only inside a render scope
+   * we can temporary change a subset of layers, when the image is used as an attachment and a
+   * image load/store.
+   *
+   * Currently we only support a single layer per binding. layer_count is assumed to be 1 in these
+   * cases. */
+  uint32_t layer_base;
 
   /** Determine the image layout for the vk_access_flags. */
   VkImageLayout to_vk_image_layout() const;

@@ -87,12 +87,21 @@ void VKCommandBuilder::build_node_group(VKRenderGraph &render_graph,
                                         Span<NodeHandle> node_group,
                                         std::optional<NodeHandle> &r_rendering_scope)
 {
+  if (node_group.first() == 189 && node_group.last() == 192) {
+    std::cout << "break;\n";
+  }
   bool is_rendering = false;
   for (NodeHandle node_handle : node_group) {
     VKRenderGraphNode &node = render_graph.nodes_[node_handle];
+#if 1
+    std::cout << "node_group: " << node_group.first() << "-" << node_group.last()
+              << ", node_handle: " << node_handle << ", node_type: " << node.type << "\n";
+#endif
+    std::cout << "layered_attachments: " << state_.layered_attachments.size()
+              << ", bindings: " << state_.layered_bindings.size() << "\n";
     build_pipeline_barriers(render_graph, command_buffer, node_handle, node.pipeline_stage_get());
     if (node.type == VKNodeType::BEGIN_RENDERING) {
-      update_layered_attachments(render_graph, node_handle);
+      begin_subresource_tracking(render_graph, node_handle);
     }
   }
 
@@ -122,10 +131,12 @@ void VKCommandBuilder::build_node_group(VKRenderGraph &render_graph,
       BLI_assert(r_rendering_scope.has_value());
       if (!is_rendering) {
         // Resuming paused rendering scope.
+        begin_subresource_tracking(render_graph, *r_rendering_scope);
         VKRenderGraphNode &rendering_node = render_graph.nodes_[*r_rendering_scope];
         rendering_node.begin_rendering.vk_rendering_info.flags = VK_RENDERING_RESUMING_BIT;
         rendering_node.build_commands(command_buffer, state_.active_pipelines);
         is_rendering = true;
+        // TODO: setup subresource tracking.
       }
     }
 #if 0
@@ -139,14 +150,17 @@ void VKCommandBuilder::build_node_group(VKRenderGraph &render_graph,
 
     /* When layered image has different layouts we reset the layouts to
      * VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL. */
-    if (node.type == VKNodeType::END_RENDERING && !state_.layered_bindings.is_empty()) {
-      reset_layered_bindings(command_buffer);
+    if (node.type == VKNodeType::END_RENDERING && state_.subresource_tracking_enabled()) {
+      end_subresource_tracking(command_buffer);
     }
   }
   if (is_rendering) {
     /* Suspend rendering as the next node group will contain data transfer/dispatch commands. */
     is_rendering = false;
     command_buffer.end_rendering();
+    if (state_.subresource_tracking_enabled()) {
+      end_subresource_tracking(command_buffer);
+    }
   }
 }
 
@@ -399,8 +413,10 @@ void VKCommandBuilder::add_image_read_barriers(VKRenderGraph &render_graph,
     if (state_.layered_attachments.contains(resource.image.vk_image) &&
         resource_state.image_layout != link.vk_image_layout)
     {
-      wait_access |= VK_ACCESS_TRANSFER_WRITE_BIT;
-      state_.src_stage_mask |= VK_PIPELINE_STAGE_TRANSFER_BIT;
+      update_subresource_tracking(resource.image.vk_image,
+                                  link.layer_base,
+                                  resource_state.image_layout,
+                                  link.vk_image_layout);
       continue;
     }
 
@@ -435,6 +451,17 @@ void VKCommandBuilder::add_image_write_barriers(VKRenderGraph &render_graph,
     VKResourceBarrierState &resource_state = resource.barrier_state;
     const VkAccessFlags wait_access = resource_state.vk_access;
 
+    if (state_.layered_attachments.contains(resource.image.vk_image) &&
+        resource_state.image_layout != link.vk_image_layout)
+    {
+      update_subresource_tracking(resource.image.vk_image,
+                                  link.layer_base,
+                                  resource_state.image_layout,
+                                  link.vk_image_layout);
+
+      continue;
+    }
+
     state_.src_stage_mask |= resource_state.vk_pipeline_stages;
     state_.dst_stage_mask |= node_stages;
 
@@ -458,7 +485,9 @@ void VKCommandBuilder::add_image_barrier(VkImage vk_image,
                                          VkAccessFlags dst_access_mask,
                                          VkImageLayout old_layout,
                                          VkImageLayout new_layout,
-                                         VkImageAspectFlags aspect_mask)
+                                         VkImageAspectFlags aspect_mask,
+                                         uint32_t layer_base,
+                                         uint32_t layer_count)
 {
   BLI_assert(aspect_mask != VK_IMAGE_ASPECT_NONE);
   for (VkImageMemoryBarrier &vk_image_memory_barrier : vk_image_memory_barriers_) {
@@ -486,6 +515,8 @@ void VKCommandBuilder::add_image_barrier(VkImage vk_image,
   vk_image_memory_barrier_.oldLayout = old_layout;
   vk_image_memory_barrier_.newLayout = new_layout;
   vk_image_memory_barrier_.subresourceRange.aspectMask = aspect_mask;
+  vk_image_memory_barrier_.subresourceRange.baseArrayLayer = layer_base;
+  vk_image_memory_barrier_.subresourceRange.layerCount = layer_count;
   vk_image_memory_barriers_.append(vk_image_memory_barrier_);
   /* Reset state for reuse. */
   vk_image_memory_barrier_.srcAccessMask = VK_ACCESS_NONE;
@@ -494,6 +525,8 @@ void VKCommandBuilder::add_image_barrier(VkImage vk_image,
   vk_image_memory_barrier_.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
   vk_image_memory_barrier_.newLayout = VK_IMAGE_LAYOUT_UNDEFINED;
   vk_image_memory_barrier_.subresourceRange.aspectMask = VK_IMAGE_ASPECT_NONE;
+  vk_image_memory_barrier_.subresourceRange.baseArrayLayer = 0;
+  vk_image_memory_barrier_.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
 }
 
 /** \} */
@@ -502,9 +535,10 @@ void VKCommandBuilder::add_image_barrier(VkImage vk_image,
 /** \name Sub-resource tracking
  * \{ */
 
-void VKCommandBuilder::update_layered_attachments(const VKRenderGraph &render_graph,
+void VKCommandBuilder::begin_subresource_tracking(const VKRenderGraph &render_graph,
                                                   NodeHandle node_handle)
 {
+  BLI_assert(render_graph.nodes_[node_handle].type == VKNodeType::BEGIN_RENDERING);
   state_.layered_attachments.clear();
   state_.layered_bindings.clear();
 
@@ -513,32 +547,73 @@ void VKCommandBuilder::update_layered_attachments(const VKRenderGraph &render_gr
     VKResourceStateTracker::Resource &resource = render_graph.resources_.resources_.lookup(
         link.resource.handle);
     if (resource.has_multiple_layers()) {
-      state_.layered_attachments.add(resource.image.vk_image);
+      if (state_.layered_attachments.add(resource.image.vk_image)) {
+        std::cout << "subresource tracking activated for resource " << resource.image.vk_image
+                  << "\n";
+      }
     }
   }
 }
 
-void VKCommandBuilder::add_layered_binding(VKCommandBufferInterface &command_buffer) {}
-
-void VKCommandBuilder::reset_layered_bindings(VKCommandBufferInterface &command_buffer)
+void VKCommandBuilder::update_subresource_tracking(VkImage vk_image,
+                                                   uint32_t layer,
+                                                   VkImageLayout old_layout,
+                                                   VkImageLayout new_layout)
 {
-  reset_barriers();
+  for (const LayeredImageBinding &binding : state_.layered_bindings) {
+    if (binding.vk_image == vk_image && binding.layer == layer) {
+      BLI_assert_msg(binding.vk_image_layout == new_layout,
+                     "We don't support that one layer transitions multiple times during a "
+                     "rendering scope.");
+      /* Early exit as layer is in correct layout. This is a normal case as we expect multiple draw
+       * commands to take place during a rendering scope with the same layer access.*/
+      return;
+    }
+  }
+
+  std::cout << "subresource layout transfer resource " << vk_image << " layer " << layer << "\n";
+  state_.layered_bindings.append({vk_image, new_layout, layer});
+
   /* We should be able to do better. BOTTOM/TOP is really a worst case barrier. */
   state_.src_stage_mask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
   state_.dst_stage_mask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-  for (const LayeredImageBinding &binding : state_.layered_bindings) {
-    add_image_barrier(
-        binding.vk_image,
-        VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT |
-            VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-        VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT |
-            VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-        binding.vk_image_layout,
-        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        VK_IMAGE_ASPECT_COLOR_BIT);
+  add_image_barrier(vk_image,
+                    VK_ACCESS_TRANSFER_WRITE_BIT,
+                    VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT |
+                        VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                    old_layout,
+                    new_layout,
+                    VK_IMAGE_ASPECT_COLOR_BIT,
+                    layer,
+                    1);
+}
+
+void VKCommandBuilder::end_subresource_tracking(VKCommandBufferInterface &command_buffer)
+{
+  if (!state_.layered_bindings.is_empty()) {
+    reset_barriers();
+    /* We should be able to do better. BOTTOM/TOP is really a worst case barrier. */
+    state_.src_stage_mask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+    state_.dst_stage_mask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+    for (const LayeredImageBinding &binding : state_.layered_bindings) {
+      std::cout << "subresource layout transfer resource " << binding.vk_image << " layer "
+                << binding.layer << "\n";
+      add_image_barrier(
+          binding.vk_image,
+          VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT |
+              VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+          VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT |
+              VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+          binding.vk_image_layout,
+          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+          VK_IMAGE_ASPECT_COLOR_BIT,
+          binding.layer,
+          1);
+    }
+    send_pipeline_barriers(command_buffer);
   }
-  send_pipeline_barriers(command_buffer);
   state_.layered_bindings.clear();
+  state_.layered_attachments.clear();
 }
 
 /** \} */

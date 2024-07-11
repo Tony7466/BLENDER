@@ -51,6 +51,11 @@ struct VKRenderGraphLink {
    */
   VkImageAspectFlags vk_image_aspect = VK_IMAGE_ASPECT_NONE;
 
+  /**
+   * The layer to track for subresource tracking.
+   */
+  uint32_t layer_base;
+
   void debug_print(std::ostream &ss, const VKResourceStateTracker &resources) const;
 };
 

@@ -78,13 +78,15 @@ void VKResourceAccessInfo::build_links(VKResourceStateTracker &resources,
       node_links.outputs.append({versioned_resource,
                                  image_access.vk_access_flags,
                                  image_layout,
-                                 image_access.vk_image_aspect});
+                                 image_access.vk_image_aspect,
+                                 image_access.layer_base});
     }
     else {
       node_links.inputs.append({versioned_resource,
                                 image_access.vk_access_flags,
                                 image_layout,
-                                image_access.vk_image_aspect});
+                                image_access.vk_image_aspect,
+                                image_access.layer_base});
     }
   }
 }

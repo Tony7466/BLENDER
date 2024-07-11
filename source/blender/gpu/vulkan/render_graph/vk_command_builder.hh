@@ -74,6 +74,10 @@ class VKCommandBuilder {
     Set<VkImage> layered_attachments;
 
     Vector<LayeredImageBinding> layered_bindings;
+    const bool subresource_tracking_enabled() const
+    {
+      return !layered_attachments.is_empty();
+    }
   } state_;
 
  public:
@@ -142,7 +146,9 @@ class VKCommandBuilder {
                          VkAccessFlags dst_access_mask,
                          VkImageLayout old_image_layout,
                          VkImageLayout new_image_layout,
-                         VkImageAspectFlags aspect_mask);
+                         VkImageAspectFlags aspect_mask,
+                         uint32_t layer_base = 0,
+                         uint32_t layer_count = VK_REMAINING_ARRAY_LAYERS);
   void add_image_read_barriers(VKRenderGraph &render_graph,
                                NodeHandle node_handle,
                                VkPipelineStageFlags node_stages);
@@ -168,11 +174,21 @@ class VKCommandBuilder {
   void finish_debug_groups(VKCommandBufferInterface &command_buffer);
 
  private:
-  void update_layered_attachments(const VKRenderGraph &render_graph, NodeHandle node_handle);
-  void add_layered_binding(VKCommandBufferInterface &command_buffer
-
-  );
-  void reset_layered_bindings(VKCommandBufferInterface &command_buffer
+  /**
+   * Update the layered attachments list when beginning a new render scope.
+   *
+   */
+  void begin_subresource_tracking(const VKRenderGraph &render_graph, NodeHandle node_handle);
+  /**
+   * Ensure the layout of a layer.
+   *
+   * - `old_layout` should be the expected layout of the full image.
+   */
+  void update_subresource_tracking(VkImage vk_image,
+                                   uint32_t layer,
+                                   VkImageLayout old_layout,
+                                   VkImageLayout new_layout);
+  void end_subresource_tracking(VKCommandBufferInterface &command_buffer
 
   );
 };

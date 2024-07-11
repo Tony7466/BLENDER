@@ -26,7 +26,7 @@ TEST(vk_render_graph, begin_rendering_copy_buffer_end_rendering)
   {
     VKResourceAccessInfo access_info = {};
     access_info.images.append(
-        {image, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_IMAGE_ASPECT_COLOR_BIT});
+        {image, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_IMAGE_ASPECT_COLOR_BIT, 0});
     VKBeginRenderingNode::CreateInfo begin_rendering(access_info);
     begin_rendering.node_data.color_attachments[0].sType =
         VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
@@ -128,7 +128,7 @@ TEST(vk_render_graph, begin_clear_attachments_copy_buffer_end)
   {
     VKResourceAccessInfo access_info = {};
     access_info.images.append(
-        {image, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_IMAGE_ASPECT_COLOR_BIT});
+        {image, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_IMAGE_ASPECT_COLOR_BIT, 0});
     VKBeginRenderingNode::CreateInfo begin_rendering(access_info);
     begin_rendering.node_data.color_attachments[0].sType =
         VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
@@ -251,7 +251,7 @@ TEST(vk_render_graph, begin_copy_buffer_clear_attachments_end)
   {
     VKResourceAccessInfo access_info = {};
     access_info.images.append(
-        {image, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_IMAGE_ASPECT_COLOR_BIT});
+        {image, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_IMAGE_ASPECT_COLOR_BIT, 0});
     VKBeginRenderingNode::CreateInfo begin_rendering(access_info);
     begin_rendering.node_data.color_attachments[0].sType =
         VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
@@ -374,7 +374,7 @@ TEST(vk_render_graph, begin_clear_attachments_copy_buffer_clear_attachments_end)
   {
     VKResourceAccessInfo access_info = {};
     access_info.images.append(
-        {image, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_IMAGE_ASPECT_COLOR_BIT});
+        {image, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_IMAGE_ASPECT_COLOR_BIT, 0});
     VKBeginRenderingNode::CreateInfo begin_rendering(access_info);
     begin_rendering.node_data.color_attachments[0].sType =
         VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;

@@ -542,9 +542,14 @@ void VKTexture::add_to_descriptor_set(AddToDescriptorSetContext &data,
       const VKSampler &sampler = device.samplers().get(sampler_state);
       data.descriptor_set.bind(*this, *location, sampler, arrayed);
     }
+    uint32_t layer_base = 0;
+    if (arrayed == VKImageViewArrayed::ARRAYED && is_texture_view()) {
+      layer_base = layer_offset_;
+    }
     data.resource_access_info.images.append({vk_image_handle(),
                                              data.shader_interface.access_mask(bind_type, binding),
-                                             to_vk_image_aspect_flag_bits(device_format_)});
+                                             to_vk_image_aspect_flag_bits(device_format_),
+                                             layer_base});
   }
 }
 
