@@ -19,7 +19,7 @@ TEST(vk_render_graph, begin_rendering_copy_buffer_end_rendering)
   Vector<std::string> log;
   VKResourceStateTracker resources;
   VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log), resources);
-  resources.add_image(image, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, ResourceOwner::SWAP_CHAIN);
+  resources.add_image(image, 1, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, ResourceOwner::SWAP_CHAIN);
   resources.add_buffer(buffer_src);
   resources.add_buffer(buffer_dst);
 
@@ -121,7 +121,7 @@ TEST(vk_render_graph, begin_clear_attachments_copy_buffer_end)
   Vector<std::string> log;
   VKResourceStateTracker resources;
   VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log), resources);
-  resources.add_image(image, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, ResourceOwner::SWAP_CHAIN);
+  resources.add_image(image, 1, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, ResourceOwner::SWAP_CHAIN);
   resources.add_buffer(buffer_src);
   resources.add_buffer(buffer_dst);
 
@@ -244,7 +244,7 @@ TEST(vk_render_graph, begin_copy_buffer_clear_attachments_end)
   Vector<std::string> log;
   VKResourceStateTracker resources;
   VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log), resources);
-  resources.add_image(image, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, ResourceOwner::SWAP_CHAIN);
+  resources.add_image(image, 1, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, ResourceOwner::SWAP_CHAIN);
   resources.add_buffer(buffer_src);
   resources.add_buffer(buffer_dst);
 
@@ -367,7 +367,7 @@ TEST(vk_render_graph, begin_clear_attachments_copy_buffer_clear_attachments_end)
   Vector<std::string> log;
   VKResourceStateTracker resources;
   VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log), resources);
-  resources.add_image(image, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, ResourceOwner::SWAP_CHAIN);
+  resources.add_image(image, 1, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, ResourceOwner::SWAP_CHAIN);
   resources.add_buffer(buffer_src);
   resources.add_buffer(buffer_dst);
 

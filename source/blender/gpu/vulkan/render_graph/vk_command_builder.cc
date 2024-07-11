@@ -386,7 +386,7 @@ void VKCommandBuilder::add_image_read_barriers(VKRenderGraph &render_graph,
       continue;
     }
     VKResourceBarrierState &resource_state = resource.barrier_state;
-    const VkAccessFlags wait_access = resource_state.vk_access;
+    VkAccessFlags wait_access = resource_state.vk_access;
 
     if ((resource_state.vk_access & link.vk_access_flags) == link.vk_access_flags &&
         (resource_state.vk_pipeline_stages & node_stages) == node_stages &&
