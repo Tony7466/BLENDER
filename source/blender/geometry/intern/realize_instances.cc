@@ -191,16 +191,12 @@ struct RealizePhysicsInfo {
 
 /** Start indices in the final output curves data-block. */
 struct PhysicsElementStartIndices {
-  bool has_world = false;
   int body = 0;
   int constraint = 0;
 };
 
 struct RealizePhysicsTask {
   PhysicsElementStartIndices start_indices;
-  /* Use the physics world from this geometry. */
-  bool use_world;
-
   const RealizePhysicsInfo *physics_info;
   /** Transformation applied to transform and motion state of bodies. */
   float4x4 transform;
@@ -704,14 +700,10 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
         if (physics != nullptr) {
           const int physics_index = gather_info.physics.order.index_of(physics);
           const RealizePhysicsInfo &physics_info = gather_info.physics.realize_info[physics_index];
-          const bool use_world = !gather_info.r_offsets.physics_offsets.has_world &&
-                                 physics_info.physics->has_world();
           gather_info.r_tasks.physics_tasks.append({gather_info.r_offsets.physics_offsets,
-                                                    use_world,
                                                     &physics_info,
                                                     base_transform,
                                                     base_instance_context.physics});
-          gather_info.r_offsets.physics_offsets.has_world |= use_world;
           gather_info.r_offsets.physics_offsets.body += physics->bodies_num();
           gather_info.r_offsets.physics_offsets.constraint += physics->constraints_num();
         }
@@ -2030,7 +2022,9 @@ static void execute_realize_physics_task(const RealizeInstancesOptions &options,
                                          MutableSpan<int> all_dst_constraint_bodies2)
 {
   const RealizePhysicsInfo &physics_info = *task.physics_info;
-  const bke::PhysicsGeometry &physics = *physics_info.physics;
+  // const bke::PhysicsGeometry &physics = *physics_info.physics;
+
+  UNUSED_VARS(options, all_physics_info);
 
   const VArray<float3> src_positions = physics_info.positions;
   const VArray<math::Quaternion> src_rotations = physics_info.rotations;
@@ -2109,18 +2103,6 @@ static void execute_realize_physics_task(const RealizeInstancesOptions &options,
         }
       },
       dst_attribute_writers);
-
-  for (const int i : physics.shapes().index_range()) {
-    dst_physics.add_shape(physics.shapes()[i]);
-  }
-
-  ////dst_physics.move_or_copy_selection(physics,
-  ////                                   task.use_world,
-  ////                                   physics.bodies_range(),
-  ////                                   physics.constraints_range(),
-  ////                                   task.start_indices.body,
-  ////                                   task.start_indices.constraint,
-  ////                                   {});
 }
 
 static void execute_realize_physics_tasks(const RealizeInstancesOptions &options,
@@ -2363,6 +2345,9 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
   }
   if (gather_info.r_tasks.first_edit_data) {
     new_geometry_set.add(*gather_info.r_tasks.first_edit_data);
+  }
+  if (new_geometry_set.has_physics()) {
+    new_geometry_set.get_physics_for_write()->realize();
   }
 
   return new_geometry_set;

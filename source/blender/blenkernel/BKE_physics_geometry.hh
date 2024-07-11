@@ -137,6 +137,8 @@ class PhysicsGeometry {
 
   void resize(int bodies_num, int constraints_num);
 
+  void realize();
+
   /**
    * Copy data from another geometry.
    * Physics data is never moved, instead gets cached when copying to an empty geometry.
@@ -151,7 +153,8 @@ class PhysicsGeometry {
   /**
    * If the target has a physics world this moves the source data to the target,
    * after copying source data to the cache.
-   * Custom data is realized to physics data if the target has physics, otherwise gets copied as usual.
+   * Custom data is realized to physics data if the target has physics, otherwise gets copied as
+   * usual.
    */
   void move_or_copy_selection(const PhysicsGeometry &from,
                               bool use_world,

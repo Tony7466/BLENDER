@@ -424,30 +424,19 @@ void PhysicsGeometryImpl::ensure_constraint_disable_collision() const
   });
 }
 
-void PhysicsGeometryImpl::realize(const PhysicsGeometryImpl &from,
-                                  const IndexMask &body_mask,
-                                  const IndexMask &constraint_mask,
-                                  int bodies_offset,
-                                  int constraints_offset,
-                                  const AnonymousAttributePropagationInfo &propagation_info)
+void PhysicsGeometryImpl::realize()
 {
   using ConstraintType = PhysicsGeometry::ConstraintType;
 
   BLI_assert(!this->is_empty);
-  BLI_assert(from.is_empty);
 
   MutableAttributeAccessor to_attributes = this->attributes_for_write();
   btDynamicsWorld *to_world = this->world;
 
-  const IndexRange body_range = IndexRange(bodies_offset, body_mask.size());
-  const IndexRange constraint_range = IndexRange(constraints_offset, constraint_mask.size());
-  /* Make sure target has enough space. */
-  BLI_assert(body_range.intersect(this->rigid_bodies.index_range()) == body_range);
-  BLI_assert(constraint_range.intersect(this->constraints.index_range()) == constraint_range);
+  const IndexRange body_range = this->rigid_bodies.index_range();
+  const IndexRange constraint_range = this->constraints.index_range();
 
-  create_bodies(this->rigid_bodies.as_mutable_span().slice(body_range),
-                this->motion_states.as_mutable_span().slice(body_range),
-                body_mask);
+  create_bodies(this->rigid_bodies, this->motion_states, body_range);
   this->tag_body_topology_changed();
 
   const AttributeAccessor from_attributes = this->attributes();
@@ -459,10 +448,10 @@ void PhysicsGeometryImpl::realize(const PhysicsGeometryImpl &from,
       PhysicsGeometry::builtin_attributes.constraint_body1, AttrDomain::Edge, -1);
   const VArray<int> constraint_bodies2 = *from_attributes.lookup_or_default(
       PhysicsGeometry::builtin_attributes.constraint_body2, AttrDomain::Edge, -1);
-  create_constraints(this->constraints.as_mutable_span().slice(constraint_range),
-                     this->constraint_feedback.as_mutable_span().slice(constraint_range),
-                     this->rigid_bodies.as_span().slice(body_range),
-                     constraint_mask,
+  create_constraints(this->constraints,
+                     this->constraint_feedback,
+                     this->rigid_bodies,
+                     constraint_range,
                      constraint_types,
                      constraint_bodies1,
                      constraint_bodies2);
@@ -471,18 +460,10 @@ void PhysicsGeometryImpl::realize(const PhysicsGeometryImpl &from,
   skip_attributes.add_multiple({PhysicsGeometry::builtin_attributes.constraint_type,
                                 PhysicsGeometry::builtin_attributes.constraint_body1,
                                 PhysicsGeometry::builtin_attributes.constraint_body2});
-  gather_attributes(from_attributes,
-                    AttrDomain::Point,
-                    propagation_info,
-                    skip_attributes,
-                    body_mask,
-                    to_attributes);
-  gather_attributes(from_attributes,
-                    AttrDomain::Edge,
-                    propagation_info,
-                    skip_attributes,
-                    constraint_mask,
-                    to_attributes);
+  gather_attributes(
+      from_attributes, AttrDomain::Point, {}, skip_attributes, body_range, to_attributes);
+  gather_attributes(
+      from_attributes, AttrDomain::Edge, {}, skip_attributes, constraint_range, to_attributes);
 
   /* Add all bodies and constraints to the world. */
   if (to_world != nullptr) {
@@ -966,6 +947,11 @@ void PhysicsGeometry::resize(int bodies_num, int constraints_num)
   }
 
   this->tag_topology_changed();
+}
+
+void PhysicsGeometry::realize()
+{
+  impl_for_write().realize();
 }
 
 static void remap_bodies(const int src_bodies_num,

@@ -105,12 +105,7 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
   void ensure_constraint_indices() const;
   void ensure_constraint_disable_collision() const;
 
-  void realize(const PhysicsGeometryImpl &from,
-               const IndexMask &body_mask,
-               const IndexMask &constraint_mask,
-               int bodies_offset,
-               int constraints_offset,
-               const AnonymousAttributePropagationInfo &propagation_info);
+  void realize();
   bool try_copy_to_customdata(const PhysicsGeometryImpl &from,
                               const IndexMask &body_mask,
                               const IndexMask &constraint_mask,
