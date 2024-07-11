@@ -18,24 +18,20 @@ namespace blender::nodes::node_shader_npr_output_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Color>("Color");
+  b.add_input<decl::Color>("Color").hide_value();
 }
 
 static int node_shader_fn(GPUMaterial *mat,
-                          bNode *node,
+                          bNode * /*node*/,
                           bNodeExecData * /*execdata*/,
                           GPUNodeStack *in,
-                          GPUNodeStack *out)
+                          GPUNodeStack * /*out*/)
 {
   GPUNodeLink *outlink_npr = nullptr;
   /* Passthrough node in order to do the right socket conversions. */
   if (in[0].link) {
     GPU_link(mat, "npr_output", in[0].link, &outlink_npr);
     GPU_material_output_npr(mat, outlink_npr);
-#if 0
-    GPU_link(mat, "npr_output", in[0].link, &outlink_npr);
-    GPU_material_output_npr(mat, outlink_npr);
-#endif
   }
   return true;
 }
