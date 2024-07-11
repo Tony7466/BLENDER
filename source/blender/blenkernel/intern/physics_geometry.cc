@@ -424,32 +424,6 @@ void PhysicsGeometryImpl::ensure_constraint_disable_collision() const
   });
 }
 
-static void copy_physics_attributes(const AttributeAccessor &from_attributes,
-                                    MutableAttributeAccessor &to_attributes,
-                                    const IndexMask &body_mask,
-                                    const IndexMask &constraint_mask,
-                                    int bodies_offset,
-                                    int constraints_offset,
-                                    const AnonymousAttributePropagationInfo &propagation_info)
-{
-  Set<std::string> skip_attributes = {PhysicsGeometry::builtin_attributes.skip_copy};
-  skip_attributes.add_multiple({PhysicsGeometry::builtin_attributes.constraint_type,
-                                PhysicsGeometry::builtin_attributes.constraint_body1,
-                                PhysicsGeometry::builtin_attributes.constraint_body2});
-  gather_attributes_group_to_group(from_attributes,
-                    AttrDomain::Point,
-                    propagation_info,
-                    skip_attributes,
-                    body_mask,
-                    to_attributes);
-  gather_attributes(from_attributes,
-                    AttrDomain::Edge,
-                    propagation_info,
-                    skip_attributes,
-                    constraint_mask,
-                    to_attributes);
-}
-
 void PhysicsGeometryImpl::realize(const PhysicsGeometryImpl &from,
                                   const IndexMask &body_mask,
                                   const IndexMask &constraint_mask,
