@@ -341,6 +341,38 @@ PhysicsGeometryImpl::PhysicsGeometryImpl()
   CustomData_reset(&constraint_data_);
 }
 
+PhysicsGeometryImpl::PhysicsGeometryImpl(int bodies_num, int constraints_num)
+    : body_num_(bodies_num), constraint_num_(constraints_num), body_data_({}), constraint_data_({})
+{
+  CustomData_reset(&body_data_);
+  CustomData_reset(&constraint_data_);
+  CustomData_realloc(&body_data_, 0, body_num_);
+  CustomData_realloc(&constraint_data_, 0, constraint_num_);
+}
+
+PhysicsGeometryImpl::PhysicsGeometryImpl(const PhysicsGeometryImpl &other) {
+  CustomData_reset(&body_data_);
+  CustomData_reset(&constraint_data_);
+  body_num_ = other.body_num_;
+  constraint_num_ = other.constraint_num_;
+  CustomData_copy(&other.body_data_, &body_data_, CD_MASK_ALL, other.body_num_);
+  CustomData_copy(&other.constraint_data_, &constraint_data_, CD_MASK_ALL, other.constraint_num_);
+
+  if (!other.is_empty) {
+    rigid_bodies.reinitialize(other.rigid_bodies.size());
+    motion_states.reinitialize(other.motion_states.size());
+    constraints.reinitialize(other.constraints.size());
+    constraint_feedback.reinitialize(other.constraints.size());
+    constraint_feedback.fill(
+        {btVector3(0, 0, 0), btVector3(0, 0, 0), btVector3(0, 0, 0), btVector3(0, 0, 0)});
+    constraints.fill(nullptr);
+    const IndexRange body_range(body_num_);
+    if (try_move(other, true, IndexRange(body_num_), IndexRange(constraint_num_))) {
+      is_empty.store(false);
+    }
+  }
+}
+
 PhysicsGeometryImpl::~PhysicsGeometryImpl()
 {
   CustomData_free(&body_data_, body_num_);
@@ -674,34 +706,17 @@ PhysicsGeometry::PhysicsGeometry()
   impl_ = new PhysicsGeometryImpl();
 }
 
+PhysicsGeometry::PhysicsGeometry(int bodies_num, int constraints_num)
+{
+  impl_ = new PhysicsGeometryImpl(bodies_num, constraints_num);
+  this->tag_topology_changed();
+}
+
 PhysicsGeometry::PhysicsGeometry(const PhysicsGeometry &other)
 {
   impl_ = other.impl_;
   impl_->add_user();
   shapes_ = other.shapes_;
-}
-
-PhysicsGeometry::PhysicsGeometry(int bodies_num, int constraints_num)
-{
-  PhysicsGeometryImpl *impl = new PhysicsGeometryImpl();
-  impl->body_num_ = bodies_num;
-  impl->constraint_num_ = constraints_num;
-  CustomData_reset(&impl->body_data_);
-  CustomData_reset(&impl->constraint_data_);
-  CustomData_realloc(&impl->body_data_, 0, impl->body_num_);
-  CustomData_realloc(&impl->constraint_data_, 0, impl->constraint_num_);
-
-  impl->rigid_bodies.reinitialize(bodies_num);
-  impl->motion_states.reinitialize(bodies_num);
-  create_bodies(impl->rigid_bodies, impl->motion_states);
-  impl->constraints.reinitialize(constraints_num);
-  impl->constraint_feedback.reinitialize(constraints_num);
-  impl->constraint_feedback.fill(
-      {btVector3(0, 0, 0), btVector3(0, 0, 0), btVector3(0, 0, 0), btVector3(0, 0, 0)});
-  impl->constraints.fill(nullptr);
-  impl_ = impl;
-
-  this->tag_topology_changed();
 }
 
 PhysicsGeometry::~PhysicsGeometry()
@@ -721,28 +736,8 @@ PhysicsGeometryImpl &PhysicsGeometry::impl_for_write()
     return *const_cast<PhysicsGeometryImpl *>(impl_);
   }
 
-  PhysicsGeometryImpl *new_impl = new PhysicsGeometryImpl();
-  CustomData_reset(&new_impl->body_data_);
-  CustomData_reset(&new_impl->constraint_data_);
-  new_impl->body_num_ = impl_->body_num_;
-  new_impl->constraint_num_ = impl_->constraint_num_;
-  CustomData_copy(&impl_->body_data_, &new_impl->body_data_, CD_MASK_ALL, impl_->body_num_);
-  CustomData_copy(
-      &impl_->constraint_data_, &new_impl->constraint_data_, CD_MASK_ALL, impl_->constraint_num_);
-
-  if (!impl_->is_empty) {
-    new_impl->rigid_bodies.reinitialize(impl_->rigid_bodies.size());
-    new_impl->motion_states.reinitialize(impl_->motion_states.size());
-    new_impl->constraints.reinitialize(impl_->constraints.size());
-    new_impl->constraint_feedback.reinitialize(impl_->constraints.size());
-    new_impl->constraint_feedback.fill(
-        {btVector3(0, 0, 0), btVector3(0, 0, 0), btVector3(0, 0, 0), btVector3(0, 0, 0)});
-    new_impl->constraints.fill(nullptr);
-    new_impl->try_move(*impl_, true, this->bodies_range(), this->constraints_range());
-  }
-  else {
-    new_impl->is_empty.store(true);
-  }
+  PhysicsGeometryImpl *new_impl = new PhysicsGeometryImpl(impl_->body_num_,
+                                                          impl_->constraint_num_);
 
   impl_->remove_user_and_delete_if_last();
   impl_ = new_impl;
