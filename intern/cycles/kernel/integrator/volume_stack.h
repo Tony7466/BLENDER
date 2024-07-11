@@ -57,10 +57,18 @@ ccl_device void volume_stack_enter_exit(KernelGlobals kg,
   else {
     /* Enter volume object: add to stack. */
     int i;
+    int insert_pos = 0;
+    /* Count the elements in the stack and check if the object is already present. */
     for (i = 0;; i++) {
       VolumeStack entry = stack_read(i);
       if (entry.shader == SHADER_NONE) {
         break;
+      }
+
+      if (entry.object == sd->object && entry.shader == sd->shader) {
+        /* Insert the object next to itself. It does not combine at the overlap, but functions as a
+         * counter, so that we exit closed meshes after the correct amount of intersections. */
+        insert_pos = i + 1;
       }
     }
 
@@ -69,11 +77,19 @@ ccl_device void volume_stack_enter_exit(KernelGlobals kg,
       return;
     }
 
-    /* Add to the end of the stack. */
+    if (insert_pos == 0) {
+      /* Add to the top if no intersection of the same object is present. */
+      insert_pos = i;
+    }
+
+    /* Shift stack entries starting at (and including) `insert_pos`. */
+    for (int j = i; j >= insert_pos; j--) {
+      stack_write(j + 1, stack_read(j));
+    }
+
+    /* Add entry at insert position. */
     const VolumeStack new_entry = {sd->object, sd->shader};
-    const VolumeStack empty_entry = {OBJECT_NONE, SHADER_NONE};
-    stack_write(i, new_entry);
-    stack_write(i + 1, empty_entry);
+    stack_write(insert_pos, new_entry);
   }
 }
 
