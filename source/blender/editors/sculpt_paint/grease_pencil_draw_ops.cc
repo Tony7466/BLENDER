@@ -1257,6 +1257,7 @@ enum class FillToolModalKey : int8_t {
 static int grease_pencil_fill_event_modal_map(bContext *C, wmOperator *op, const wmEvent *event)
 {
   auto &op_data = *static_cast<GreasePencilFillOpData *>(op->customdata);
+  /* Extension line length increment, for normal and precise mode respectively. */
   const float extension_delta = (op_data.precision ? 0.002f : 0.02f);
 
   switch (event->val) {
