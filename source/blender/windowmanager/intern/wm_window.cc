@@ -502,7 +502,7 @@ void WM_window_title(wmWindowManager *wm, wmWindow *win, const char *title)
     ScrArea *area = (screen) ? static_cast<ScrArea *>(screen->areabase.first) : nullptr;
     const char *name = "Blender";
     if (is_single && area && area->spacetype != SPACE_EMPTY) {
-      name = IFACE_(ED_area_name(area).data());
+      name = IFACE_(ED_area_name(area).c_str());
     }
     GHOST_SetTitle(handle, name);
     return;
