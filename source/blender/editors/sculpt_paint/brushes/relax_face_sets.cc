@@ -117,9 +117,9 @@ static void filter_factors_on_face_sets_bmesh(const bool relax_face_sets,
   }
 }
 
-static float3 closest_on_plane_to_smoothed_point(const float3 current_position,
-                                                 const float3 normal,
-                                                 const float3 smoothed_position)
+static float3 translation_to_plane(const float3 current_position,
+                                   const float3 normal,
+                                   const float3 smoothed_position)
 {
   float4 plane;
   plane_from_point_normal_v3(plane, current_position, normal);
@@ -127,7 +127,7 @@ static float3 closest_on_plane_to_smoothed_point(const float3 current_position,
   float3 smooth_closest_plane;
   closest_to_plane_v3(smooth_closest_plane, plane, smoothed_position);
 
-  return smooth_closest_plane;
+  return smooth_closest_plane - current_position;
 }
 
 /* -------------------------------------------------------------------- */
@@ -468,11 +468,10 @@ BLI_NOINLINE static void calc_relaxed_translations_faces(const OffsetIndices<int
       continue;
     }
 
-    const float3 closest_point = closest_on_plane_to_smoothed_point(
+    const float3 translation = translation_to_plane(
         vert_positions[verts[i]], normal, smoothed_position);
 
-    const float3 displacement = closest_point - vert_positions[verts[i]];
-    translations[i] = displacement * factors[i];
+    translations[i] = translation * factors[i];
   }
 }
 
@@ -719,11 +718,10 @@ BLI_NOINLINE static void calc_relaxed_translations_grids(const OffsetIndices<int
           continue;
         }
 
-        const float3 closest_point = closest_on_plane_to_smoothed_point(
+        const float3 translation = translation_to_plane(
             positions[grid_idx], normal, smoothed_position);
 
-        const float3 displacement = closest_point - positions[grid_idx];
-        translations[grid_idx] = displacement * factors[grid_idx];
+        translations[grid_idx] = translation * factors[grid_idx];
       }
     }
   }
@@ -926,11 +924,9 @@ BLI_NOINLINE static void calc_relaxed_translations_bmesh(const Set<BMVert *, 0> 
       continue;
     }
 
-    const float3 closest_point = closest_on_plane_to_smoothed_point(
-        positions[i], normal, smoothed_position);
+    const float3 translation = translation_to_plane(positions[i], normal, smoothed_position);
 
-    const float3 displacement = closest_point - positions[i];
-    translations[i] = displacement * factors[i];
+    translations[i] = translation * factors[i];
     i++;
   }
 }
