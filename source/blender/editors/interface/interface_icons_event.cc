@@ -320,7 +320,7 @@ void icon_draw_rect_input(float x,
   else if (event_type == EVT_RIGHTBRACKETKEY) {
     icon_draw_rect_input_text(&rect, color, "]", 12.0f, 1.5f);
   }
-  else if ((event_type >= NDOF_BUTTON_MENU)) {
+  else if (ISNDOF_BUTTON(event_type)) {
     if ((event_type >= NDOF_BUTTON_V1) && (event_type <= NDOF_BUTTON_V3)) {
       char str[7];
       SNPRINTF(str, "%sv%i", BLI_STR_UTF8_CIRCLED_WHITE_BULLET, 1 + event_type - NDOF_BUTTON_V1);
