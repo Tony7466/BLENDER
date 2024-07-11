@@ -32,13 +32,15 @@ struct KernelParamsCUDA {
 };
 
 #ifdef __KERNEL_GPU__
-extern __constant__ KernelParamsCUDA kernel_params;
-#endif
+
+ccl_inline_constant KernelParamsCUDA kernel_params;
 
 /* Abstraction macros */
-#define kernel_data kernel_params.data
-#define kernel_data_fetch(name, index) kernel_params.name[(index)]
-#define kernel_data_array(name) (kernel_params.name)
-#define kernel_integrator_state kernel_params.integrator_state
+#  define kernel_data kernel_params.data
+#  define kernel_data_fetch(name, index) kernel_params.name[(index)]
+#  define kernel_data_array(name) (kernel_params.name)
+#  define kernel_integrator_state kernel_params.integrator_state
+
+#endif /* __KERNEL_GPU__ */
 
 CCL_NAMESPACE_END

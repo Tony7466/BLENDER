@@ -21,7 +21,6 @@ set(SRC_KERNEL_DEVICE_CPU
 set(SRC_KERNEL_DEVICE_CUDA
   device/cuda/kernel_adaptive_sampling.cu
   device/cuda/kernel_bake.cu
-  device/cuda/kernel_common.cu
   device/cuda/kernel_cryptomatte_passes.cu
   device/cuda/kernel_denoising.cu
   device/cuda/kernel_film.cu
