@@ -2347,7 +2347,7 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
     new_geometry_set.add(*gather_info.r_tasks.first_edit_data);
   }
   if (new_geometry_set.has_physics()) {
-    new_geometry_set.get_physics_for_write()->realize();
+    new_geometry_set.get_physics_for_write()->realize_from_cache();
   }
 
   return new_geometry_set;

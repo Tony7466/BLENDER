@@ -431,7 +431,6 @@ void PhysicsGeometryImpl::realize()
   BLI_assert(!this->is_empty);
 
   MutableAttributeAccessor to_attributes = this->attributes_for_write();
-  btDynamicsWorld *to_world = this->world;
 
   const IndexRange body_range = this->rigid_bodies.index_range();
   const IndexRange constraint_range = this->constraints.index_range();
@@ -466,11 +465,12 @@ void PhysicsGeometryImpl::realize()
       from_attributes, AttrDomain::Edge, {}, skip_attributes, constraint_range, to_attributes);
 
   /* Add all bodies and constraints to the world. */
-  if (to_world != nullptr) {
-    add_to_world(to_world,
-                 this->rigid_bodies.as_span().slice(body_range),
-                 this->constraints.as_span().slice(constraint_range));
+  if (this->world == nullptr) {
+    create_world(*this);
   }
+  add_to_world(this->world,
+               this->rigid_bodies.as_span().slice(body_range),
+               this->constraints.as_span().slice(constraint_range));
 }
 
 bool PhysicsGeometryImpl::try_copy_to_customdata(const PhysicsGeometryImpl &from,
@@ -760,22 +760,6 @@ bool PhysicsGeometry::has_world() const
   return this->impl().world != nullptr;
 }
 
-void PhysicsGeometry::set_world_enabled(const bool enabled)
-{
-  PhysicsGeometryImpl &impl = this->impl_for_write();
-  if (enabled) {
-    if (this->impl().world == nullptr) {
-      create_world(impl);
-    }
-  }
-  else {
-    if (this->impl().world != nullptr) {
-      destroy_world(impl);
-    }
-  }
-  // ensure_bodies_simulated(*this);
-}
-
 void PhysicsGeometry::set_overlap_filter(OverlapFilterFn fn)
 {
   PhysicsGeometryImpl &impl = this->impl_for_write();
@@ -949,9 +933,17 @@ void PhysicsGeometry::resize(int bodies_num, int constraints_num)
   this->tag_topology_changed();
 }
 
-void PhysicsGeometry::realize()
+void PhysicsGeometry::realize_from_cache()
 {
-  impl_for_write().realize();
+  PhysicsGeometryImpl &impl = impl_for_write();
+
+  impl.realize();
+}
+
+void PhysicsGeometry::freeze_to_cache()
+{
+  impl_for_write().try_copy_to_customdata(
+      *impl_, impl_->rigid_bodies.index_range(), impl_->constraints.index_range(), 0, 0);
 }
 
 static void remap_bodies(const int src_bodies_num,
@@ -977,130 +969,130 @@ static void remap_bodies(const int src_bodies_num,
   });
 }
 
-void PhysicsGeometry::cache_or_copy_selection(
-    const PhysicsGeometry &from,
-    const IndexMask &body_mask,
-    const IndexMask &constraint_mask,
-    int bodies_offset,
-    int constraints_offset,
-    const bke::AnonymousAttributePropagationInfo &propagation_info)
-{
-  if (!impl_->is_empty) {
-    return;
-  }
+// void PhysicsGeometry::cache_or_copy_selection(
+//     const PhysicsGeometry &from,
+//     const IndexMask &body_mask,
+//     const IndexMask &constraint_mask,
+//     int bodies_offset,
+//     int constraints_offset,
+//     const bke::AnonymousAttributePropagationInfo &propagation_info)
+// {
+//   if (!impl_->is_empty) {
+//     return;
+//   }
 
-  PhysicsGeometryImpl &impl = this->impl_for_write();
-  const bool is_cached = impl.try_copy_to_customdata(
-      from.impl(), body_mask, constraint_mask, bodies_offset, constraints_offset);
+//   PhysicsGeometryImpl &impl = this->impl_for_write();
+//   const bool is_cached = impl.try_copy_to_customdata(
+//       from.impl(), body_mask, constraint_mask, bodies_offset, constraints_offset);
 
-  const Set<std::string> skip_attributes = is_cached ?
-                                               Set<std::string>{builtin_attributes.skip_copy} :
-                                               Set<std::string>{};
+//   const Set<std::string> skip_attributes = is_cached ?
+//                                                Set<std::string>{builtin_attributes.skip_copy} :
+//                                                Set<std::string>{};
 
-  /* Physics data is empty, copy attributes instead. */
+//   /* Physics data is empty, copy attributes instead. */
 
-  const VArraySpan<int> src_types = from.constraint_types();
-  const VArraySpan<int> src_body1 = from.constraint_body1();
-  const VArraySpan<int> src_body2 = from.constraint_body2();
-  const bke::AttributeAccessor src_attributes = from.attributes();
+//   const VArraySpan<int> src_types = from.constraint_types();
+//   const VArraySpan<int> src_body1 = from.constraint_body1();
+//   const VArraySpan<int> src_body2 = from.constraint_body2();
+//   const bke::AttributeAccessor src_attributes = from.attributes();
 
-  // BKE_physics_copy_parameters_for_eval(dst_physics, &src_physics);
-  bke::MutableAttributeAccessor dst_attributes = this->attributes_for_write();
-  Array<int> dst_types(this->constraints_num());
-  Array<int> dst_body1(this->constraints_num());
-  Array<int> dst_body2(this->constraints_num());
+//   // BKE_physics_copy_parameters_for_eval(dst_physics, &src_physics);
+//   bke::MutableAttributeAccessor dst_attributes = this->attributes_for_write();
+//   Array<int> dst_types(this->constraints_num());
+//   Array<int> dst_body1(this->constraints_num());
+//   Array<int> dst_body2(this->constraints_num());
 
-  remap_bodies(from.bodies_num(),
-               body_mask,
-               constraint_mask,
-               src_types,
-               src_body1,
-               src_body2,
-               dst_types,
-               dst_body1,
-               dst_body2);
+//   remap_bodies(from.bodies_num(),
+//                body_mask,
+//                constraint_mask,
+//                src_types,
+//                src_body1,
+//                src_body2,
+//                dst_types,
+//                dst_body1,
+//                dst_body2);
 
-  this->create_constraints(this->constraints_range(),
-                           VArray<int>::ForSpan(dst_types),
-                           VArray<int>::ForSpan(dst_body1),
-                           VArray<int>::ForSpan(dst_body2));
+//   this->create_constraints(this->constraints_range(),
+//                            VArray<int>::ForSpan(dst_types),
+//                            VArray<int>::ForSpan(dst_body1),
+//                            VArray<int>::ForSpan(dst_body2));
 
-  bke::gather_attributes(src_attributes,
-                         bke::AttrDomain::Point,
-                         propagation_info,
-                         skip_attributes,
-                         body_mask,
-                         dst_attributes);
-  bke::gather_attributes(src_attributes,
-                         bke::AttrDomain::Edge,
-                         propagation_info,
-                         skip_attributes,
-                         constraint_mask,
-                         dst_attributes);
-}
+//   bke::gather_attributes(src_attributes,
+//                          bke::AttrDomain::Point,
+//                          propagation_info,
+//                          skip_attributes,
+//                          body_mask,
+//                          dst_attributes);
+//   bke::gather_attributes(src_attributes,
+//                          bke::AttrDomain::Edge,
+//                          propagation_info,
+//                          skip_attributes,
+//                          constraint_mask,
+//                          dst_attributes);
+// }
 
-void PhysicsGeometry::move_or_copy_selection(
-    const PhysicsGeometry &from,
-    const bool use_world,
-    const IndexMask &body_mask,
-    const IndexMask &constraint_mask,
-    int bodies_offset,
-    int constraints_offset,
-    const bke::AnonymousAttributePropagationInfo &propagation_info)
-{
-  if (impl_->is_empty) {
-    return;
-  }
+// void PhysicsGeometry::move_or_copy_selection(
+//     const PhysicsGeometry &from,
+//     const bool use_world,
+//     const IndexMask &body_mask,
+//     const IndexMask &constraint_mask,
+//     int bodies_offset,
+//     int constraints_offset,
+//     const bke::AnonymousAttributePropagationInfo &propagation_info)
+// {
+//   if (impl_->is_empty) {
+//     return;
+//   }
 
-  PhysicsGeometryImpl &impl = this->impl_for_write();
-  const bool was_moved = impl.try_move(
-      from.impl(), use_world, body_mask, constraint_mask, bodies_offset, constraints_offset);
+//   PhysicsGeometryImpl &impl = this->impl_for_write();
+//   const bool was_moved = impl.try_move(
+//       from.impl(), use_world, body_mask, constraint_mask, bodies_offset, constraints_offset);
 
-  const Set<std::string> skip_attributes = was_moved ?
-                                               Set<std::string>{builtin_attributes.skip_copy} :
-                                               Set<std::string>{};
+//   const Set<std::string> skip_attributes = was_moved ?
+//                                                Set<std::string>{builtin_attributes.skip_copy} :
+//                                                Set<std::string>{};
 
-  /* Physics data is empty, copy attributes instead. */
+//   /* Physics data is empty, copy attributes instead. */
 
-  const VArraySpan<int> src_types = from.constraint_types();
-  const VArraySpan<int> src_body1 = from.constraint_body1();
-  const VArraySpan<int> src_body2 = from.constraint_body2();
-  const bke::AttributeAccessor src_attributes = from.attributes();
+//   const VArraySpan<int> src_types = from.constraint_types();
+//   const VArraySpan<int> src_body1 = from.constraint_body1();
+//   const VArraySpan<int> src_body2 = from.constraint_body2();
+//   const bke::AttributeAccessor src_attributes = from.attributes();
 
-  // BKE_physics_copy_parameters_for_eval(dst_physics, &src_physics);
-  bke::MutableAttributeAccessor dst_attributes = this->attributes_for_write();
-  Array<int> dst_types(this->constraints_num());
-  Array<int> dst_body1(this->constraints_num());
-  Array<int> dst_body2(this->constraints_num());
+//   // BKE_physics_copy_parameters_for_eval(dst_physics, &src_physics);
+//   bke::MutableAttributeAccessor dst_attributes = this->attributes_for_write();
+//   Array<int> dst_types(this->constraints_num());
+//   Array<int> dst_body1(this->constraints_num());
+//   Array<int> dst_body2(this->constraints_num());
 
-  remap_bodies(from.bodies_num(),
-               body_mask,
-               constraint_mask,
-               src_types,
-               src_body1,
-               src_body2,
-               dst_types,
-               dst_body1,
-               dst_body2);
+//   remap_bodies(from.bodies_num(),
+//                body_mask,
+//                constraint_mask,
+//                src_types,
+//                src_body1,
+//                src_body2,
+//                dst_types,
+//                dst_body1,
+//                dst_body2);
 
-  this->create_constraints(this->constraints_range(),
-                           VArray<int>::ForSpan(dst_types),
-                           VArray<int>::ForSpan(dst_body1),
-                           VArray<int>::ForSpan(dst_body2));
+//   this->create_constraints(this->constraints_range(),
+//                            VArray<int>::ForSpan(dst_types),
+//                            VArray<int>::ForSpan(dst_body1),
+//                            VArray<int>::ForSpan(dst_body2));
 
-  bke::gather_attributes(src_attributes,
-                         bke::AttrDomain::Point,
-                         propagation_info,
-                         skip_attributes,
-                         body_mask,
-                         dst_attributes);
-  bke::gather_attributes(src_attributes,
-                         bke::AttrDomain::Edge,
-                         propagation_info,
-                         skip_attributes,
-                         constraint_mask,
-                         dst_attributes);
-}
+//   bke::gather_attributes(src_attributes,
+//                          bke::AttrDomain::Point,
+//                          propagation_info,
+//                          skip_attributes,
+//                          body_mask,
+//                          dst_attributes);
+//   bke::gather_attributes(src_attributes,
+//                          bke::AttrDomain::Edge,
+//                          propagation_info,
+//                          skip_attributes,
+//                          constraint_mask,
+//                          dst_attributes);
+// }
 
 void PhysicsGeometry::tag_collision_shapes_changed() {}
 

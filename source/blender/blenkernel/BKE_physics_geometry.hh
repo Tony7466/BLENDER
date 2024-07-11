@@ -125,8 +125,6 @@ class PhysicsGeometry {
   PhysicsGeometryImpl &impl_for_write();
 
   bool has_world() const;
-  void set_world_enabled(bool enable);
-
   int bodies_num() const;
   int constraints_num() const;
   int shapes_num() const;
@@ -137,32 +135,8 @@ class PhysicsGeometry {
 
   void resize(int bodies_num, int constraints_num);
 
-  void realize();
-
-  /**
-   * Copy data from another geometry.
-   * Physics data is never moved, instead gets cached when copying to an empty geometry.
-   * Custom data is simply copied as usual.
-   */
-  void cache_or_copy_selection(const PhysicsGeometry &from,
-                               const IndexMask &body_mask,
-                               const IndexMask &constraint_mask,
-                               int rigid_bodies_offset,
-                               int constraints_offset,
-                               const bke::AnonymousAttributePropagationInfo &propagation_info);
-  /**
-   * If the target has a physics world this moves the source data to the target,
-   * after copying source data to the cache.
-   * Custom data is realized to physics data if the target has physics, otherwise gets copied as
-   * usual.
-   */
-  void move_or_copy_selection(const PhysicsGeometry &from,
-                              bool use_world,
-                              const IndexMask &body_mask,
-                              const IndexMask &constraint_mask,
-                              int rigid_bodies_offset,
-                              int constraints_offset,
-                              const bke::AnonymousAttributePropagationInfo &propagation_info);
+  void realize_from_cache();
+  void freeze_to_cache();
 
   void set_overlap_filter(OverlapFilterFn fn);
   void clear_overlap_filter();
