@@ -394,19 +394,20 @@ bke::CurvesGeometry curves_merge_endpoints_by_distance(
                                   start_co,
                                   &nearest_start,
                                   [&](const int other, const float * /*co*/, const float dist_sq) {
-                                    return (start_index == other ||
-                                            dist_sq > merge_distance_squared) ?
-                                               0 :
-                                               1;
+                                    if (start_index == other || dist_sq > merge_distance_squared) {
+                                      return 0;
+                                    }
+                                    return 1;
                                   }) != -1);
     const bool is_end_ok = (BLI_kdtree_2d_find_nearest_cb_cpp(
                                 tree,
                                 end_co,
                                 &nearest_end,
                                 [&](const int other, const float * /*co*/, const float dist_sq) {
-                                  return (end_index == other || dist_sq > merge_distance_squared) ?
-                                             0 :
-                                             1;
+                                  if (end_index == other || dist_sq > merge_distance_squared) {
+                                    return 0;
+                                  }
+                                  return 1;
                                 }) != -1);
 
     if (is_start_ok) {
