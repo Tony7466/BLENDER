@@ -20,17 +20,17 @@
 shared float array_of_values[threadgroup_size];
 
 /* Only works for 2D threadgroups where the size is a power of 2 */
-float parallelMax(const float value, const uint2 tid)
+float parallelMax(const float value)
 {
-  uint flat_tid = gl_LocalInvocationIndex;
-  array_of_values[flat_tid] = value;
+  uint thread_id = gl_LocalInvocationIndex;
+  array_of_values[thread_id] = value;
   threadgroup_barrier(mem_flags::mem_threadgroup);
 
   for (uint i = threadgroup_size; i > 0; i >>= 1) {
-    uint halfWidth = i >> 1;
-    if (flat_tid < halfWidth) {
-      array_of_values[flat_tid] = max(array_of_values[flat_tid],
-                                      array_of_values[flat_tid + halfWidth]);
+    uint half_width = i >> 1;
+    if (thread_id < half_width) {
+      array_of_values[thread_id] = max(array_of_values[thread_id],
+                                       array_of_values[thread_id + half_width]);
     }
     threadgroup_barrier(mem_flags::mem_threadgroup);
   }
@@ -60,7 +60,7 @@ float dof_slight_focus_coc_tile_get(vec2 frag_coord)
   }
 
 #if defined(GPU_METAL) && defined(GPU_ATI)
-  return parallelMax(local_abs_max, gl_LocalInvocationID.xy);
+  return parallelMax(local_abs_max);
 
 #else
   if (gl_LocalInvocationIndex == 0u) {
