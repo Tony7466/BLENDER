@@ -52,7 +52,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   VectorSet<Material *> all_materials;
 
-  instance_selection.foreach_index([&](const int instance_i, const int layer_i) {
+  instance_selection.foreach_index([&](const int instance_i) {
     const bke::InstanceReference &reference = references[reference_handles[instance_i]];
 
     bke::greasepencil::Layer &layer = grease_pencil->add_layer(reference.name());
@@ -134,6 +134,8 @@ static void node_geo_exec(GeoNodeExecParams params)
   });
 
   {
+    /* Manually propagate "opacity" data, because it's not a layer attribute on grease pencil
+     * yet. */
     if (const AttributeReader<float> opacity_attribute = instances_attributes.lookup<float>(
             "opacity"))
     {
