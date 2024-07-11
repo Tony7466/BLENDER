@@ -508,7 +508,11 @@ if(WITH_CYCLES_CUDA_BINARIES)
     CUDA_SEPARABLE_COMPILATION ON
     CUDA_ARCHITECTURES "${CYCLES_CUDA_BINARIES_ARCH_WITHOUT_PREFIX}")
 
-  target_compile_options(cycles_kernel_cuda PRIVATE -use_fast_math -split-compile 0 -Wno-deprecated-gpu-targets)
+  target_compile_options(cycles_kernel_cuda PRIVATE
+    -use_fast_math
+    -split-compile=0
+    -maxrregcount=64 # Maximum number of registers for functions, overriden by __launch_bounds__ for entry points
+    -Wno-deprecated-gpu-targets)
 
   cycles_set_solution_folder(cycles_kernel_cuda)
 
@@ -554,7 +558,10 @@ if(WITH_CYCLES_DEVICE_OPTIX AND WITH_CYCLES_CUDA_BINARIES)
     CUDA_OPTIX_COMPILATION ON
     CUDA_ARCHITECTURES 50)
 
-  target_compile_options(cycles_kernel_optix PRIVATE -use_fast_math -split-compile 0 -rdc=true)
+  target_compile_options(cycles_kernel_optix PRIVATE
+    -use_fast_math
+    -split-compile=0
+    -rdc=true)
 
   cycles_set_solution_folder(cycles_kernel_optix)
 
