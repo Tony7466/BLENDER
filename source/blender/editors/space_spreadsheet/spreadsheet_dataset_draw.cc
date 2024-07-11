@@ -173,11 +173,11 @@ class GeometryDataSetTreeView : public ui::AbstractTreeView {
     physics.add_tree_item<GeometryDataSetTreeViewItem>(bke::GeometryComponent::Type::Physics,
                                                        bke::AttrDomain::Point,
                                                        IFACE_("Bodies"),
-                                                       ICON_PHYSICS);
+                                                       ICON_RIGID_BODY);
     physics.add_tree_item<GeometryDataSetTreeViewItem>(bke::GeometryComponent::Type::Physics,
                                                        bke::AttrDomain::Edge,
                                                        IFACE_("Constraints"),
-                                                       ICON_PHYSICS);
+                                                       ICON_RIGID_BODY_CONSTRAINT);
   }
 };
 
