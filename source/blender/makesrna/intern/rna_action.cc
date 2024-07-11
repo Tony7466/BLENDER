@@ -103,6 +103,7 @@ static animrig::Action &rna_action(const PointerRNA *ptr)
 
 static animrig::Slot &rna_data_slot(const PointerRNA *ptr)
 {
+  BLI_assert(ptr->type == &RNA_ActionSlot);
   return reinterpret_cast<ActionSlot *>(ptr->data)->wrap();
 }
 
@@ -143,6 +144,32 @@ template<typename T>
 static void rna_iterator_array_begin(CollectionPropertyIterator *iter, MutableSpan<T *> items)
 {
   rna_iterator_array_begin(iter, (void *)items.data(), sizeof(T *), items.size(), 0, nullptr);
+}
+
+static PointerRNA rna_ActionSlots_active_get(PointerRNA *ptr)
+{
+  animrig::Action &action = rna_action(ptr);
+  animrig::Slot *active_slot = action.slot_active_get();
+
+  if (!active_slot) {
+    return PointerRNA_NULL;
+  }
+  return RNA_pointer_create(&action.id, &RNA_ActionSlot, active_slot);
+}
+
+static void rna_ActionSlots_active_set(PointerRNA *ptr,
+                                       PointerRNA value,
+                                       struct ReportList * /*reports*/)
+{
+  animrig::Action &action = rna_action(ptr);
+
+  if (value.data) {
+    animrig::Slot &slot = rna_data_slot(&value);
+    action.slot_active_set(slot.handle);
+  }
+  else {
+    action.slot_active_set(animrig::Slot::unassigned);
+  }
 }
 
 static ActionSlot *rna_Action_slots_new(bAction *dna_action,
@@ -1163,6 +1190,7 @@ static void rna_def_dopesheet(BlenderRNA *brna)
 static void rna_def_action_slots(BlenderRNA *brna, PropertyRNA *cprop)
 {
   StructRNA *srna;
+  PropertyRNA *prop;
 
   FunctionRNA *func;
   PropertyRNA *parm;
@@ -1171,6 +1199,15 @@ static void rna_def_action_slots(BlenderRNA *brna, PropertyRNA *cprop)
   srna = RNA_def_struct(brna, "ActionSlots", nullptr);
   RNA_def_struct_sdna(srna, "bAction");
   RNA_def_struct_ui_text(srna, "Action Slots", "Collection of action slots");
+
+  prop = RNA_def_property(srna, "active", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "ActionSlot");
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_pointer_funcs(
+      prop, "rna_ActionSlots_active_get", "rna_ActionSlots_active_set", nullptr, nullptr);
+  RNA_def_property_update_notifier(prop, NC_ANIMATION | ND_ANIMCHAN);
+
+  RNA_def_property_ui_text(prop, "Active Slot", "Active slot for this action");
 
   /* Animation.slots.new(...) */
   func = RNA_def_function(srna, "new", "rna_Action_slots_new");
