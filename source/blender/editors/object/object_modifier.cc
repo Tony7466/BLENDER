@@ -50,6 +50,7 @@
 #include "BKE_geometry_set.hh"
 #include "BKE_global.hh"
 #include "BKE_gpencil_modifier_legacy.h"
+#include "BKE_grease_pencil.hh"
 #include "BKE_idprop.hh"
 #include "BKE_key.hh"
 #include "BKE_lattice.hh"
@@ -1147,6 +1148,60 @@ static bool modifier_apply_obdata(
     Main *bmain = DEG_get_bmain(depsgraph);
     BKE_object_material_from_eval_data(bmain, ob, &pointcloud_eval->id);
     BKE_pointcloud_nomain_to_pointcloud(pointcloud_eval, &points);
+  }
+  else if (ob->type == OB_GREASE_PENCIL) {
+    using namespace bke::greasepencil;
+    if (mti->modify_geometry_set == nullptr) {
+      return false;
+    }
+    GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob->data);
+
+    bke::GeometrySet geometry_set = bke::GeometrySet::from_grease_pencil(
+        &grease_pencil, bke::GeometryOwnershipType::ReadOnly);
+
+    const int eval_frame = int(DEG_get_ctime(depsgraph));
+    ModifierEvalContext mectx = {depsgraph, ob, ModifierApplyFlag(0)};
+    mti->modify_geometry_set(md_eval, &mectx, &geometry_set);
+    if (!geometry_set.has_grease_pencil()) {
+      BKE_report(reports,
+                 RPT_ERROR,
+                 "Evaluated geometry from modifier does not contain grease pencil geometry");
+      return false;
+    }
+    GreasePencil &grease_pencil_eval = *geometry_set.get_grease_pencil_for_write();
+
+    /* Anonymous attributes shouldn't be available on original geometry. */
+    grease_pencil_eval.attributes_for_write().remove_anonymous();
+
+    for (const Layer *layer_eval : grease_pencil_eval.layers()) {
+      Drawing *drawing_eval = grease_pencil_eval.get_drawing_at(*layer_eval, eval_frame);
+      if (drawing_eval == nullptr) {
+        continue;
+      }
+      /* Anonymous attributes shouldn't be available on original geometry. */
+      drawing_eval->strokes_for_write().attributes_for_write().remove_anonymous();
+
+      /* Check if the original geometry has a layer with the same name. */
+      TreeNode *node_orig = grease_pencil.find_node_by_name(layer_eval->name());
+      if (node_orig && node_orig->is_layer()) {
+        /* Apply to the original drawing. */
+        Drawing *drawing_orig = grease_pencil.get_drawing_at(node_orig->as_layer(), eval_frame);
+        if (drawing_orig) {
+          drawing_orig->strokes_for_write() = std::move(drawing_eval->strokes());
+          drawing_orig->tag_topology_changed();
+        }
+      }
+      else {
+        /* Create a new layer. */
+        Layer &new_layer = grease_pencil.add_layer(layer_eval->name());
+        Drawing &drawing_orig = *grease_pencil.insert_frame(new_layer, eval_frame);
+        drawing_orig.strokes_for_write() = std::move(drawing_eval->strokes());
+        drawing_orig.tag_topology_changed();
+      }
+    }
+
+    Main *bmain = DEG_get_bmain(depsgraph);
+    BKE_object_material_from_eval_data(bmain, ob, &grease_pencil_eval.id);
   }
   else {
     /* TODO: implement for volumes. */
