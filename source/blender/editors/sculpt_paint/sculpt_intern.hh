@@ -14,6 +14,7 @@
 #include "BKE_attribute.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
+#include "BKE_subdiv_ccg.hh"
 
 #include "BLI_array.hh"
 #include "BLI_bit_vector.hh"
@@ -462,7 +463,7 @@ struct StrokeCache {
   float vertex_rotation; /* amount to rotate the vertices when using rotate brush */
   Dial *dial;
 
-  char saved_active_brush_name[MAX_ID_NAME];
+  Brush *saved_active_brush;
   char saved_mask_brush_tool;
   int saved_smooth_size; /* smooth tool copies the size of the current tool */
 
@@ -754,7 +755,12 @@ bool SCULPT_cursor_geometry_info_update(bContext *C,
                                         SculptCursorGeometryInfo *out,
                                         const float mouse[2],
                                         bool use_sampled_normal);
-void SCULPT_geometry_preview_lines_update(bContext *C, SculptSession &ss, float radius);
+
+namespace blender::ed::sculpt_paint {
+
+void geometry_preview_lines_update(bContext *C, SculptSession &ss, float radius);
+
+}
 
 void SCULPT_stroke_modifiers_check(const bContext *C, Object &ob, const Brush &brush);
 float SCULPT_raycast_init(ViewContext *vc,
@@ -897,6 +903,7 @@ void SCULPT_vertex_neighbors_get(const SculptSession &ss,
 namespace blender::ed::sculpt_paint {
 
 Span<BMVert *> vert_neighbors_get_bmesh(BMVert &vert, Vector<BMVert *, 64> &neighbors);
+Span<BMVert *> vert_neighbors_get_interior_bmesh(BMVert &vert, Vector<BMVert *, 64> &neighbors);
 
 }
 
@@ -952,6 +959,16 @@ int vert_face_set_get(const SculptSession &ss, PBVHVertRef vertex);
 
 bool vert_has_face_set(const SculptSession &ss, PBVHVertRef vertex, int face_set);
 bool vert_has_unique_face_set(const SculptSession &ss, PBVHVertRef vertex);
+bool vert_has_unique_face_set(const GroupedSpan<int> vert_to_face_map,
+                              const int *face_sets,
+                              int vert);
+bool vert_has_unique_face_set(const GroupedSpan<int> vert_to_face_map,
+                              const Span<int> corner_verts,
+                              const OffsetIndices<int> faces,
+                              const int *face_sets,
+                              const SubdivCCG &subdiv_ccg,
+                              SubdivCCGCoord coord);
+bool vert_has_unique_face_set(const BMVert *vert);
 
 /**
  * Creates the sculpt face set attribute on the mesh if it doesn't exist.
@@ -1026,12 +1043,12 @@ void calc_area_center(const Brush &brush,
                       Span<PBVHNode *> nodes,
                       float r_area_co[3]);
 
-}
+PBVHVertRef nearest_vert_calc(const Object &object,
+                              const float3 &location,
+                              float max_distance,
+                              bool use_original);
 
-PBVHVertRef SCULPT_nearest_vertex_get(const Object &ob,
-                                      const float co[3],
-                                      float max_distance,
-                                      bool use_original);
+}
 
 int SCULPT_plane_point_side(const float co[3], const float plane[4]);
 int SCULPT_plane_trim(const blender::ed::sculpt_paint::StrokeCache &cache,
@@ -1086,8 +1103,6 @@ bool node_in_cylinder(const DistRayAABB_Precalc &dist_ray_precalc,
                       bool original);
 
 }
-
-void SCULPT_combine_transform_proxies(const Sculpt &sd, Object &ob);
 
 /**
  * Initialize a point-in-brush test with a given falloff shape.
@@ -1534,7 +1549,7 @@ namespace blender::ed::sculpt_paint::smooth {
  * For bmesh: Average surrounding verts based on an orthogonality measure.
  * Naturally converges to a quad-like structure.
  */
-void bmesh_four_neighbor_average(float avg[3], const float3 &direction, BMVert *v);
+void bmesh_four_neighbor_average(float avg[3], const float3 &direction, const BMVert *v);
 
 float3 neighbor_coords_average(SculptSession &ss, PBVHVertRef vertex);
 float neighbor_mask_average(SculptSession &ss, SculptMaskWriteInfo write_info, PBVHVertRef vertex);
@@ -1550,6 +1565,21 @@ float4 neighbor_color_average(SculptSession &ss,
  * Mask the mesh boundaries smoothing only the mesh surface without using auto-masking.
  */
 float3 neighbor_coords_average_interior(const SculptSession &ss, PBVHVertRef vertex);
+
+void neighbor_position_average_interior_grids(OffsetIndices<int> faces,
+                                              Span<int> corner_verts,
+                                              BitSpan boundary_verts,
+                                              const SubdivCCG &subdiv_ccg,
+                                              Span<int> grids,
+                                              MutableSpan<float3> new_positions);
+
+void neighbor_position_average_interior_bmesh(const Set<BMVert *, 0> &verts,
+                                              MutableSpan<float3> new_positions);
+
+void neighbor_position_average_mesh(Span<float3> positions,
+                                    Span<int> verts,
+                                    Span<Vector<int>> vert_neighbors,
+                                    MutableSpan<float3> new_positions);
 
 void enhance_details_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes);
 
@@ -1632,6 +1662,8 @@ void push_end_ex(Object &ob, const bool use_nested_undo);
 void restore_from_bmesh_enter_geometry(const StepData &step_data, Mesh &mesh);
 BMLogEntry *get_bmesh_log_entry();
 
+void restore_position_from_undo_step(Object &object);
+
 }
 
 namespace blender::ed::sculpt_paint {
@@ -1650,6 +1682,9 @@ void orig_position_data_gather_bmesh(const BMLog &bm_log,
                                      const Set<BMVert *, 0> &verts,
                                      MutableSpan<float3> positions,
                                      MutableSpan<float3> normals);
+
+Span<float4> orig_color_data_get_mesh(const Object &object, const PBVHNode &node);
+
 }
 
 /** \} */
@@ -1789,7 +1824,11 @@ struct Operation {
 };
 
 /* Determines whether or not a gesture action should be applied. */
-bool is_affected(GestureData &gesture_data, const float3 &co, const float3 &vertex_normal);
+bool is_affected(const GestureData &gesture_data, const float3 &position, const float3 &normal);
+void filter_factors(const GestureData &gesture_data,
+                    Span<float3> positions,
+                    Span<float3> normals,
+                    MutableSpan<float> factors);
 
 /* Initialization functions. */
 std::unique_ptr<GestureData> init_from_box(bContext *C, wmOperator *op);
@@ -1968,7 +2007,7 @@ void multiplane_scrape_preview_draw(uint gpuattr,
 
 namespace face_set {
 
-void do_draw_face_sets_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes);
+void do_relax_face_sets_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes);
 
 }
 
@@ -2036,28 +2075,16 @@ void SCULPT_do_paint_brush_image(PaintModeSettings &paint_mode_settings,
                                  blender::Span<PBVHNode *> texnodes);
 bool SCULPT_use_image_paint_brush(PaintModeSettings &settings, Object &ob);
 
-float SCULPT_clay_thumb_get_stabilized_pressure(
-    const blender::ed::sculpt_paint::StrokeCache &cache);
+namespace blender::ed::sculpt_paint {
 
-void SCULPT_do_clay_thumb_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
-void SCULPT_do_snake_hook_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
-void SCULPT_do_thumb_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
-void SCULPT_do_rotate_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
+float clay_thumb_get_stabilized_pressure(const blender::ed::sculpt_paint::StrokeCache &cache);
+
+}
+
 void SCULPT_do_layer_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
-void SCULPT_do_pinch_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
-void SCULPT_do_elastic_deform_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
-void SCULPT_do_draw_sharp_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
-void SCULPT_do_slide_relax_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
+void SCULPT_do_topology_relax_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 
-void SCULPT_do_displacement_smear_brush(const Sculpt &sd,
-                                        Object &ob,
-                                        blender::Span<PBVHNode *> nodes);
 /** \} */
-
-void SCULPT_bmesh_topology_rake(const Sculpt &sd,
-                                Object &ob,
-                                blender::Span<PBVHNode *> nodes,
-                                float bstrength);
 
 /* end sculpt_brush_types.cc */
 
