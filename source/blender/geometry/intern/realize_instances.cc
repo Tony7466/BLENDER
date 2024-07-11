@@ -1987,8 +1987,8 @@ static AllPhysicsInfo preprocess_physics(const bke::GeometrySet &geometry_set,
     physics_info.angular_velocities = physics->body_angular_velocities();
     physics_info.constraint_bodies1 = physics->constraint_body1();
     physics_info.constraint_bodies2 = physics->constraint_body2();
-    /* Access attributes. */
-    bke::AttributeAccessor attributes = physics->attributes();
+    /* Access attributes from custom data (ignore any realized physics data). */
+    bke::AttributeAccessor attributes = physics->attributes(/* force_cache */ true);
     physics_info.attributes.reinitialize(info.attributes.size());
     for (const int attribute_index : info.attributes.index_range()) {
       const AttributeIDRef &attribute_id = info.attributes.ids[attribute_index];
@@ -2345,9 +2345,6 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
   }
   if (gather_info.r_tasks.first_edit_data) {
     new_geometry_set.add(*gather_info.r_tasks.first_edit_data);
-  }
-  if (new_geometry_set.has_physics()) {
-    new_geometry_set.get_physics_for_write()->realize_from_cache();
   }
 
   return new_geometry_set;

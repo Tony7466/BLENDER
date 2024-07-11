@@ -936,7 +936,6 @@ void PhysicsGeometry::resize(int bodies_num, int constraints_num)
 void PhysicsGeometry::realize_from_cache()
 {
   PhysicsGeometryImpl &impl = impl_for_write();
-
   impl.realize();
 }
 
@@ -1031,68 +1030,65 @@ static void remap_bodies(const int src_bodies_num,
 //                          dst_attributes);
 // }
 
-// void PhysicsGeometry::move_or_copy_selection(
-//     const PhysicsGeometry &from,
-//     const bool use_world,
-//     const IndexMask &body_mask,
-//     const IndexMask &constraint_mask,
-//     int bodies_offset,
-//     int constraints_offset,
-//     const bke::AnonymousAttributePropagationInfo &propagation_info)
-// {
-//   if (impl_->is_empty) {
-//     return;
-//   }
+void PhysicsGeometry::move_or_copy_selection(
+    const PhysicsGeometry &from,
+    const bool use_world,
+    const IndexMask &body_mask,
+    const IndexMask &constraint_mask,
+    const bke::AnonymousAttributePropagationInfo &propagation_info)
+{
+  if (impl_->is_empty) {
+    return;
+  }
 
-//   PhysicsGeometryImpl &impl = this->impl_for_write();
-//   const bool was_moved = impl.try_move(
-//       from.impl(), use_world, body_mask, constraint_mask, bodies_offset, constraints_offset);
+  PhysicsGeometryImpl &impl = this->impl_for_write();
+  const bool was_moved = impl.try_move(from.impl(), use_world, body_mask, constraint_mask, 0, 0);
 
-//   const Set<std::string> skip_attributes = was_moved ?
-//                                                Set<std::string>{builtin_attributes.skip_copy} :
-//                                                Set<std::string>{};
+  const Set<std::string> skip_attributes = was_moved ?
+                                               Set<std::string>{builtin_attributes.skip_copy} :
+                                               Set<std::string>{};
 
-//   /* Physics data is empty, copy attributes instead. */
+  /* Physics data is empty, copy attributes instead. */
 
-//   const VArraySpan<int> src_types = from.constraint_types();
-//   const VArraySpan<int> src_body1 = from.constraint_body1();
-//   const VArraySpan<int> src_body2 = from.constraint_body2();
-//   const bke::AttributeAccessor src_attributes = from.attributes();
+  const VArraySpan<int> src_types = from.constraint_types();
+  const VArraySpan<int> src_body1 = from.constraint_body1();
+  const VArraySpan<int> src_body2 = from.constraint_body2();
+  const bke::AttributeAccessor src_attributes = from.attributes();
 
-//   // BKE_physics_copy_parameters_for_eval(dst_physics, &src_physics);
-//   bke::MutableAttributeAccessor dst_attributes = this->attributes_for_write();
-//   Array<int> dst_types(this->constraints_num());
-//   Array<int> dst_body1(this->constraints_num());
-//   Array<int> dst_body2(this->constraints_num());
+  // BKE_physics_copy_parameters_for_eval(dst_physics, &src_physics);
+  bke::MutableAttributeAccessor dst_attributes = this->attributes_for_write();
+  Array<int> dst_types(this->constraints_num());
+  Array<int> dst_body1(this->constraints_num());
+  Array<int> dst_body2(this->constraints_num());
 
-//   remap_bodies(from.bodies_num(),
-//                body_mask,
-//                constraint_mask,
-//                src_types,
-//                src_body1,
-//                src_body2,
-//                dst_types,
-//                dst_body1,
-//                dst_body2);
+  remap_bodies(from.bodies_num(),
+               body_mask,
+               constraint_mask,
+               src_types,
+               src_body1,
+               src_body2,
+               dst_types,
+               dst_body1,
+               dst_body2);
 
-//   this->create_constraints(this->constraints_range(),
-//                            VArray<int>::ForSpan(dst_types),
-//                            VArray<int>::ForSpan(dst_body1),
-//                            VArray<int>::ForSpan(dst_body2));
+  this->create_constraints(this->constraints_range(),
+                           VArray<int>::ForSpan(dst_types),
+                           VArray<int>::ForSpan(dst_body1),
+                           VArray<int>::ForSpan(dst_body2));
 
-//   bke::gather_attributes(src_attributes,
-//                          bke::AttrDomain::Point,
-//                          propagation_info,
-//                          skip_attributes,
-//                          body_mask,
-//                          dst_attributes);
-//   bke::gather_attributes(src_attributes,
-//                          bke::AttrDomain::Edge,
-//                          propagation_info,
-//                          skip_attributes,
-//                          constraint_mask,
-//                          dst_attributes);
-// }
+  bke::gather_attributes(src_attributes,
+                         bke::AttrDomain::Point,
+                         propagation_info,
+                         skip_attributes,
+                         body_mask,
+                         dst_attributes);
+  bke::gather_attributes(src_attributes,
+                         bke::AttrDomain::Edge,
+                         propagation_info,
+                         skip_attributes,
+                         constraint_mask,
+                         dst_attributes);
+}
 
 void PhysicsGeometry::tag_collision_shapes_changed() {}
 
@@ -1448,15 +1444,15 @@ AttributeWriter<bool> PhysicsGeometry::constraint_disable_collision_for_write()
   return attributes_for_write().lookup_for_write<bool>(builtin_attributes.disable_collision);
 }
 
-AttributeAccessor PhysicsGeometry::attributes() const
+AttributeAccessor PhysicsGeometry::attributes(const bool force_cache) const
 {
-  return AttributeAccessor(&this->impl(), bke::get_physics_accessor_functions_ref(false));
+  return AttributeAccessor(&this->impl(), bke::get_physics_accessor_functions_ref(force_cache));
 }
 
-MutableAttributeAccessor PhysicsGeometry::attributes_for_write()
+MutableAttributeAccessor PhysicsGeometry::attributes_for_write(const bool force_cache)
 {
   return MutableAttributeAccessor(&this->impl_for_write(),
-                                  bke::get_physics_accessor_functions_ref(false));
+                                  bke::get_physics_accessor_functions_ref(force_cache));
 }
 
 /** \} */

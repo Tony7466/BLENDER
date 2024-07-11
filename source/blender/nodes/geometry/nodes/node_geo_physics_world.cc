@@ -33,7 +33,8 @@ static void node_geo_exec(GeoNodeExecParams params)
   const float3 gravity = params.extract_input<float3>("Gravity");
 
   bke::PhysicsGeometry *physics = new bke::PhysicsGeometry();
-  physics->set_world_enabled(true);
+  /* This creates the physics world. */
+  physics->realize_from_cache();
   physics->set_gravity(gravity);
 
   params.set_output("Geometry", GeometrySet::from_physics(physics));

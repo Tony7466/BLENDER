@@ -137,6 +137,11 @@ class PhysicsGeometry {
 
   void realize_from_cache();
   void freeze_to_cache();
+  void move_or_copy_selection(const PhysicsGeometry &from,
+                              const bool use_world,
+                              const IndexMask &body_mask,
+                              const IndexMask &constraint_mask,
+                              const bke::AnonymousAttributePropagationInfo &propagation_info);
 
   void set_overlap_filter(OverlapFilterFn fn);
   void clear_overlap_filter();
@@ -227,8 +232,8 @@ class PhysicsGeometry {
   void tag_topology_changed();
   void tag_physics_changed();
 
-  bke::AttributeAccessor attributes() const;
-  bke::MutableAttributeAccessor attributes_for_write();
+  bke::AttributeAccessor attributes(bool force_cache = false) const;
+  bke::MutableAttributeAccessor attributes_for_write(bool force_cache = false);
 
   friend class BuiltinPhysicsAttributeBase;
 };
