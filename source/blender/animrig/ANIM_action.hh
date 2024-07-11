@@ -851,11 +851,6 @@ void assert_baklava_phase_1_invariants(const Strip &strip);
 void deselect_keys_actions(blender::Span<bAction *> actions);
 
 /**
- * Deselect all keys of the actions referenced by these objects.
- */
-void deselect_keys_assigned_actions(Span<Object *> objects);
-
-/**
  * Deselect all keys within the action.
  */
 void action_deselect_keys(Action &action);

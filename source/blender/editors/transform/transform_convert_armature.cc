@@ -25,6 +25,7 @@
 
 #include "BIK_api.h"
 
+#include "ED_anim_api.hh"
 #include "ED_armature.hh"
 
 #include "DEG_depsgraph.hh"
@@ -1670,7 +1671,7 @@ static void special_aftertrans_update__pose(bContext *C, TransInfo *t)
           objects.append(td->ob);
         }
       }
-      blender::animrig::deselect_keys_assigned_actions(objects);
+      ANIM_deselect_keys_in_animation_editors(C);
     }
 
     GSet *motionpath_updates = BLI_gset_ptr_new("motionpath updates");

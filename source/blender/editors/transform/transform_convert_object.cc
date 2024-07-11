@@ -24,6 +24,8 @@
 #include "ANIM_action.hh"
 #include "ANIM_keyframing.hh"
 #include "ANIM_rna.hh"
+
+#include "ED_anim_api.hh"
 #include "ED_object.hh"
 
 #include "DEG_depsgraph_query.hh"
@@ -911,7 +913,7 @@ static void special_aftertrans_update__object(bContext *C, TransInfo *t)
       const TransData *td = &tc->data[i];
       objects.append(td->ob);
     }
-    blender::animrig::deselect_keys_assigned_actions(objects);
+    ANIM_deselect_keys_in_animation_editors(C);
   }
 
   for (int i = 0; i < tc->data_len; i++) {

@@ -41,6 +41,7 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 
+#include "ED_anim_api.hh"
 #include "ED_curves.hh"
 #include "ED_keyframing.hh"
 #include "ED_object.hh"
@@ -218,7 +219,7 @@ static int snap_sel_to_grid_exec(bContext *C, wmOperator *op)
     }
 
     if (blender::animrig::is_autokey_on(scene)) {
-      blender::animrig::deselect_keys_assigned_actions(objects_orig);
+      ANIM_deselect_keys_in_animation_editors(C);
     }
 
     for (Object *ob_eval : objects_eval) {
@@ -510,7 +511,7 @@ static bool snap_selected_to_location(bContext *C,
     }
 
     if (blender::animrig::is_autokey_on(scene)) {
-      blender::animrig::deselect_keys_assigned_actions(objects);
+      ANIM_deselect_keys_in_animation_editors(C);
     }
 
     for (Object *ob : objects) {

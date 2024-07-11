@@ -30,18 +30,4 @@ void deselect_keys_actions(Span<bAction *> actions)
   }
 }
 
-void deselect_keys_assigned_actions(Span<Object *> objects)
-{
-  Vector<bAction *> actions;
-  for (Object *ob : objects) {
-    AnimData *adt = BKE_animdata_from_id(&ob->id);
-    if (!adt || !adt->action) {
-      continue;
-    }
-    actions.append(adt->action);
-  }
-
-  deselect_keys_actions(actions);
-}
-
 }  // namespace blender::animrig
