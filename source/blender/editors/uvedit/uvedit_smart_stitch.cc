@@ -2791,118 +2791,65 @@ void UV_OT_stitch(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
-static bool uvedit_uv_threshold_weld_underlying_geometry(Scene *scene,
-                                                         blender::Vector<Object *> *objects,
-                                                         float threshold)
-{
-  for (Object *obedit : *objects) {
-    BMEditMesh *em = BKE_editmesh_from_object(obedit);
-    BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
-    BMVert *v;
-    BMLoop *l;
-    BMIter viter, liter;
-    BM_ITER_MESH (v, &viter, em->bm, BM_VERTS_OF_MESH) {
-      std::vector<float *> luvmap;
-      /*Grap all luv pointers from selected loops*/
-      BM_ITER_ELEM (l, &liter, v, BM_LOOPS_OF_VERT) {
-        if (uvedit_uv_select_test(scene, l, offsets)) {
-          luvmap.push_back(BM_ELEM_CD_GET_FLOAT_P(l, offsets.uv));
-        }
-      }
-      /*Filter out luv pointers who are not within threshold
-      distance of another selected loop from same vertex*/
-      auto outer = luvmap.begin();
-      while (outer != luvmap.end()) {
-        auto inner = luvmap.begin();
-        bool keep = false;
-        while (inner != luvmap.end()) {
-          if (outer != inner) {
-            float dist = len_squared_v2v2(*outer, *inner);
-            /*Does not compare loops' distances if
-            they are at the same UV coordinate */
-            if (dist < threshold and dist > 0.0f) {
-              keep = true;
-            }
-          }
-          if (keep) {
-            break;
-          }
-          ++inner;
-        }
-        if (!keep) {
-          luvmap.erase(outer);
-        }
-        else {
-          ++outer;
-        }
-      }
-      /*Calculate centerpoint of all selected loops within
-      threshold and shift coordinates there*/
-      if (luvmap.size() > 0) {
-        std::vector<float> sum(2, 0.0f);
-        for (auto &luv : luvmap) {
-          sum[0] += luv[0];
-          sum[1] += luv[1];
-        }
-        std::vector<float> cent(2);
-        cent[0] = sum[0] / luvmap.size();
-        cent[1] = sum[1] / luvmap.size();
-        for (auto &luv : luvmap) {
-          luv[0] = cent[0];
-          luv[1] = cent[1];
-        }
-      }
-    }
-  }
-  return true;
-}
 /* Note: Since we are using len squared for distance its possible that in certain
 scenarios that two distances caluclated will be mistakely considered the same
 value due to the precision of the float data type. In such a scenario the function may
-incorrectly pair up edgeloop endpoints */
-static bool uvedit_uv_threshold_weld(Scene *scene,
-                                     blender::Vector<Object *> *objects,
-                                     float threshold)
+incorrectly pair up edgeloop endpoints. */
+
+static void uvedit_uv_threshold_weld(bContext *C, wmOperator *op)
 {
-  std::vector<std::vector<std::vector<BMLoop *>>> edgeloops;
-  std::vector<BMUVOffsets> offsetmap;
+  Scene *scene = CTX_data_scene(C);
+  SpaceImage *sima = CTX_wm_space_image(C);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data_with_uvs(
+      scene, view_layer, nullptr);
+  const float threshold = RNA_float_get(op->ptr, "threshold");
+  const float threshold_sq = threshold * threshold;
+  blender::Vector<blender::Vector<blender::Vector<BMLoop *>>> edgeloops;
+  blender::Vector<BMUVOffsets> offsetmap;
   /*Constructs array of edgeloops*/
-  for (Object *objedit : *objects) {
+  for (Object *objedit : objects) {
     BMEditMesh *em = BKE_editmesh_from_object(objedit);
     UV_get_edgeloops(scene, em->bm, &edgeloops, uvedit_uv_select_test);
     BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
 
     while (offsetmap.size() < edgeloops.size()) {
-      offsetmap.push_back(offsets);
+      offsetmap.append(offsets);
     }
   }
-  /*Gets the endpoints of edge respective edgeloop*/
-  std::vector<std::vector<std::vector<BMLoop *>>> endpoints;
+
+  /*Get the endpoints of each respective edgeloop.*/
+
+  blender::Vector<blender::Vector<blender::Vector<BMLoop *>>> endpoints;
   for (const auto &curredgeloop : edgeloops) {
-    std::vector<std::vector<BMLoop *>> curredgeloopendpoints;
+    blender::Vector<blender::Vector<BMLoop *>> curredgeloopendpoints;
     for (const auto &UVcoordinate : curredgeloop) {
       if (UVcoordinate[0]->head.index == -2) {
-        curredgeloopendpoints.push_back(UVcoordinate);
+        curredgeloopendpoints.append(UVcoordinate);
       }
       if (curredgeloopendpoints.size() == 2) {
         break;
       }
     }
     if (curredgeloopendpoints.size() > 0) {
-      endpoints.push_back(curredgeloopendpoints);
+      endpoints.append(curredgeloopendpoints);
     }
   }
   if (endpoints.size() < 2) {
-    return false;
+    return;
   }
 
   size_t min_size = edgeloops[0].size();
 
-  for (const auto &array : edgeloops) {
-    min_size = std::min(min_size, array.size());
+  for (const auto &UVcoordinate : edgeloops) {
+    if (UVcoordinate.size() < min_size) {
+      min_size = UVcoordinate.size();
+    }
   }
+
   /*Find correct pairing of endpoints between edgeloops
-  by searching for combination with smalled distance*/
+  by searching for combination with smalled distance.*/
+
   if (min_size > 1) {
     for (size_t i = 0; i < endpoints.size() - 1; i++) {
       const auto &curredgeloopendpoints = endpoints[i];
@@ -2924,46 +2871,54 @@ static bool uvedit_uv_threshold_weld(Scene *scene,
       }
     }
   }
-  /*Iterates through 2 selected edgeloops starting at endpoints
-  and utilizes pointers in BMLoop to traverse edgeloops*/
-  std::vector<BMLoop *> line1 = endpoints[0][0];
-  std::vector<BMLoop *> line2 = endpoints[1][0];
-  std::vector<BMLoop *> prev1;
-  std::vector<BMLoop *> prev2;
-  while (line1 != prev1 and line2 != prev2) {
+
+  /*Iterate through 2 selected edgeloops starting at endpoints.
+  This logic uses pointers in BMLoop to traverse edgeloops.*/
+
+  blender::Vector<BMLoop *> line1UV = endpoints[0][0];
+  blender::Vector<BMLoop *> line2UV = endpoints[1][0];
+  blender::Vector<BMLoop *> prev1;
+  blender::Vector<BMLoop *> prev2;
+  while (line1UV != prev1 and line2UV != prev2) {
 
     ED_uvedit_shift_pair_of_UV_coordinates(
-        offsetmap[0], offsetmap[1], &line1, &line2, threshold, mid_v2_v2v2);
+        offsetmap[0], offsetmap[1], &line1UV, &line2UV, threshold, mid_v2_v2v2);
     std::set<int> nextv1_set;
     std::set<int> nextv2_set;
-    for (BMLoop *loop : line1) {
+    for (BMLoop *loop : line1UV) {
       nextv1_set.insert(loop->next->v->head.index);
       nextv1_set.insert(loop->prev->v->head.index);
     }
-    for (BMLoop *loop : line2) {
+    for (BMLoop *loop : line2UV) {
       nextv2_set.insert(loop->next->v->head.index);
       nextv2_set.insert(loop->prev->v->head.index);
     }
 
-    std::vector<BMLoop *> tmp1 = line1;
-    std::vector<BMLoop *> tmp2 = line2;
+    blender::Vector<BMLoop *> tmp1 = line1UV;
+    blender::Vector<BMLoop *> tmp2 = line2UV;
 
-    for (std::vector<BMLoop *> UVcoord : edgeloops[0]) {
+    for (blender::Vector<BMLoop *> UVcoord : edgeloops[0]) {
       if (nextv1_set.find(UVcoord[0]->v->head.index) != nextv1_set.end() and UVcoord != prev1) {
-        line1 = UVcoord;
+        line1UV = UVcoord;
         break;
       }
     }
-    for (std::vector<BMLoop *> UVcoord : edgeloops[1]) {
+    for (blender::Vector<BMLoop *> UVcoord : edgeloops[1]) {
       if (nextv2_set.find(UVcoord[0]->v->head.index) != nextv2_set.end() and UVcoord != prev2) {
-        line2 = UVcoord;
+        line2UV = UVcoord;
         break;
       }
     }
     prev1 = tmp1;
     prev2 = tmp2;
   }
-  return true;
+
+  for (int ob_index = 0; ob_index < objects.size(); ob_index++) {
+    Object *obedit = objects[ob_index];
+    uvedit_live_unwrap_update(sima, scene, obedit);
+    DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
+    WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
+  }
 }
 
 static int stitch_distance_exec(bContext *C, wmOperator *op)
@@ -2975,23 +2930,8 @@ static int stitch_distance_exec(bContext *C, wmOperator *op)
       scene, view_layer, nullptr);
 
   const float threshold = RNA_float_get(op->ptr, "threshold");
-  bool changed = false;
-  if (RNA_boolean_get(op->ptr, "underlying_geometry")) {
-    /* Since we are using len_squared_v2v2 to calculate distance, we need to square the
-     * user-defined threshold*/
-    changed = uvedit_uv_threshold_weld_underlying_geometry(scene, &objects, threshold * threshold);
-  }
-  else {
-    changed = uvedit_uv_threshold_weld(scene, &objects, threshold * threshold);
-  }
-  if (changed) {
-    for (int ob_index = 0; ob_index < objects.size(); ob_index++) {
-      Object *obedit = objects[ob_index];
-      uvedit_live_unwrap_update(sima, scene, obedit);
-      DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
-      WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
-    }
-  }
+
+  uvedit_uv_threshold_weld(C, op);
 
   return OPERATOR_FINISHED;
 }
@@ -3017,9 +2957,4 @@ void UV_OT_stitch_distance(wmOperatorType *ot)
                 "Maximum distance between welded vertices",
                 0.0f,
                 1.0f);
-  RNA_def_boolean(ot->srna,
-                  "underlying_geometry",
-                  false,
-                  "Underlying Geometry",
-                  "Stitch UVs based on underlying geometry");
 }

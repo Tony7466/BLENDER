@@ -227,8 +227,8 @@ void ED_uvedit_foreach_uv(const Scene *scene,
 void ED_uvedit_shift_pair_of_UV_coordinates(
     BMUVOffsets offset1,
     BMUVOffsets offset2,
-    std::vector<BMLoop *> *UVcoord1,
-    std::vector<BMLoop *> *UVcoord2,
+    blender::Vector<BMLoop *> *UVcoord1,
+    blender::Vector<BMLoop *> *UVcoord2,
     float threshold,
     blender::FunctionRef<void(float[2], float[2], float[2])> user_fn)
 {

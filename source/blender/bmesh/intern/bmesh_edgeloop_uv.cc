@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #include "bmesh_edgeloop_uv.hh"
 #include "bmesh.hh"
 #include <queue>
@@ -6,7 +9,7 @@ using namespace blender;
 void UV_get_edgeloops(
     const Scene *scene,
     BMesh *bm,
-    std::vector<std::vector<std::vector<BMLoop *>>> *edgeloops,
+    blender::Vector<blender::Vector<blender::Vector<BMLoop *>>> *edgeloops,
     blender::FunctionRef<bool(const Scene *scene, BMLoop *l, const BMUVOffsets offsets)> callback)
 
 {
@@ -24,7 +27,7 @@ void UV_get_edgeloops(
       else {
         continue;
       }
-      std::vector<std::vector<BMLoop *>> edgeloop;
+      blender::Vector<blender::Vector<BMLoop *>> edgeloop;
       // while the queue is not empty
       while (!queue.empty()) {
         // pop the front of queue and store in queuel
@@ -38,7 +41,7 @@ void UV_get_edgeloops(
         BMVert *queuev = queuel->v;
 
         // vector of current UV coord
-        std::vector<BMLoop *> uvcoord;
+        blender::Vector<BMLoop *> uvcoord;
 
         // iterate over the loops of the vertex
         BMLoop *currl;
@@ -50,7 +53,7 @@ void UV_get_edgeloops(
             continue;
           }
           BM_elem_index_set(currl, -1);
-          uvcoord.push_back(currl);
+          uvcoord.append(currl);
 
           if (callback(scene, currl->next, offsets)) {
             selectedconnections++;
@@ -70,10 +73,10 @@ void UV_get_edgeloops(
             BM_elem_index_set(endpointloop, -2);
           }
         }
-        edgeloop.push_back(uvcoord);
+        edgeloop.append(uvcoord);
       }
-      if (!edgeloop.empty()) {
-        edgeloops->push_back(edgeloop);
+      if (edgeloop.size() != 0) {
+        edgeloops->append(edgeloop);
       }
     }
   }
