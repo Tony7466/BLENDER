@@ -1187,7 +1187,7 @@ static bool modifier_apply_obdata(
         /* Apply to the original drawing. */
         Drawing *drawing_orig = grease_pencil.get_drawing_at(node_orig->as_layer(), eval_frame);
         if (drawing_orig) {
-          drawing_orig->strokes_for_write() = std::move(drawing_eval->strokes());
+          drawing_orig->strokes_for_write() = std::move(drawing_eval->strokes_for_write());
           drawing_orig->tag_topology_changed();
         }
       }
@@ -1195,7 +1195,7 @@ static bool modifier_apply_obdata(
         /* Create a new layer. */
         Layer &new_layer = grease_pencil.add_layer(layer_eval->name());
         Drawing &drawing_orig = *grease_pencil.insert_frame(new_layer, eval_frame);
-        drawing_orig.strokes_for_write() = std::move(drawing_eval->strokes());
+        drawing_orig.strokes_for_write() = std::move(drawing_eval->strokes_for_write());
         drawing_orig.tag_topology_changed();
       }
     }
