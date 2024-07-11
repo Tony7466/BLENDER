@@ -15,7 +15,7 @@
 
 /* Workarounds for Metal/AMD issue where atomicMax lead to incorrect results.
  * See #123052 */
-#if defined(GPU_METAL) && defined(GPU_ATI)
+#if defined(GPU_METAL)
 #  define threadgroup_size (gl_WorkGroupSize.x * gl_WorkGroupSize.y)
 shared float array_of_values[threadgroup_size];
 
