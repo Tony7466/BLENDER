@@ -106,7 +106,7 @@ class GHOST_NDOFManager {
   int translation_[3];
   int rotation_[3];
 
-  int button_depressed_;
+  int button_depressed_; /* Bit field. */
   NDOF_Button_Array pressed_buttons_cache_;
   NDOF_Button_Array pressed_long_buttons_cache_;
 
