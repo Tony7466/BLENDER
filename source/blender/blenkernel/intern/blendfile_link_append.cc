@@ -1738,10 +1738,8 @@ void BKE_blendfile_override(BlendfileLinkAppendContext *lapp_context,
   const bool do_use_exisiting_liboverrides = (flags &
                                               BKE_LIBLINK_OVERRIDE_USE_EXISTING_LIBOVERRIDES) != 0;
 
-  GHash *linked_ids_to_local_liboverrides = nullptr;
+  blender::Map<ID *, ID *> linked_ids_to_local_liboverrides;
   if (do_use_exisiting_liboverrides) {
-    linked_ids_to_local_liboverrides = BLI_ghash_ptr_new(__func__);
-
     ID *id_iter;
     FOREACH_MAIN_ID_BEGIN (bmain, id_iter) {
       if (ID_IS_LINKED(id_iter)) {
@@ -1757,15 +1755,9 @@ void BKE_blendfile_override(BlendfileLinkAppendContext *lapp_context,
         continue;
       }
 
-      /* In case several liboverrides exist of the same data, only consider the first found one. */
-      ID **id_ptr;
-      if (BLI_ghash_ensure_p(linked_ids_to_local_liboverrides,
-                             id_iter->override_library->reference,
-                             (void ***)&id_ptr))
-      {
-        continue;
-      }
-      *id_ptr = id_iter;
+      /* In case several liboverrides exist of the same data, only consider the first found one, so
+       * don't use `add_overwrite`. */
+      linked_ids_to_local_liboverrides.add(id_iter->override_library->reference, id_iter);
     }
     FOREACH_MAIN_ID_END;
   }
@@ -1780,8 +1772,7 @@ void BKE_blendfile_override(BlendfileLinkAppendContext *lapp_context,
     BLI_assert(item->userdata == nullptr);
 
     if (do_use_exisiting_liboverrides) {
-      item->liboverride_id = static_cast<ID *>(
-          BLI_ghash_lookup(linked_ids_to_local_liboverrides, id));
+      item->liboverride_id = linked_ids_to_local_liboverrides.lookup_default(id, nullptr);
     }
     if (item->liboverride_id == nullptr) {
       item->liboverride_id = BKE_lib_override_library_create_from_id(bmain, id, false);
@@ -1799,10 +1790,6 @@ void BKE_blendfile_override(BlendfileLinkAppendContext *lapp_context,
         }
       }
     }
-  }
-
-  if (do_use_exisiting_liboverrides) {
-    BLI_ghash_free(linked_ids_to_local_liboverrides, nullptr, nullptr);
   }
 
   BKE_main_namemap_clear(bmain);
