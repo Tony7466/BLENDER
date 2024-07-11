@@ -99,6 +99,7 @@ static Vector<int> toposort_connected_curves(const Span<int> connect_to_curve)
   return sorted_curves;
 }
 
+/* TODO Add an optimized function for reversing the order of spans. */
 static void reverse_order(GMutableSpan span)
 {
   const CPPType &cpptype = span.type();
