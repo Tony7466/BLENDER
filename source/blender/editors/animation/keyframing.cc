@@ -432,7 +432,6 @@ static int insert_key(bContext *C, wmOperator *op)
 static int insert_key_exec(bContext *C, wmOperator *op)
 {
   ANIM_deselect_keys_in_animation_editors(C);
-  // deselect_keys_of_selection(C);
 
   Scene *scene = CTX_data_scene(C);
   /* Use the active keying set if there is one. */
@@ -1043,11 +1042,7 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
         const std::optional<blender::StringRefNull> group = default_channel_group_for_path(
             &ptr, identifier);
 
-        AnimData *adt = BKE_animdata_from_id(ptr.owner_id);
-        if (adt && adt->action) {
-          Action *action = &adt->action->wrap();
-          deselect_keys_actions({action});
-        }
+        ANIM_deselect_keys_in_animation_editors(C);
 
         /* NOTE: `index == -1` is a magic number, meaning either "operate on all
          * elements" or "not an array property". */
