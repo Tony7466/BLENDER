@@ -93,11 +93,11 @@ static std::optional<FramesMapKeyIntervalT> find_frames_interval(
   using SortedKeysIterator = Layer::SortedKeysIterator;
 
   const Span<FramesMapKeyT> sorted_keys = layer.sorted_keys();
-  SortedKeysIterator next_key_it = layer.sorted_keys_iterator_at(frame_number);
-  if (!next_key_it) {
+  SortedKeysIterator prev_key_it = layer.sorted_keys_iterator_at(frame_number);
+  if (!prev_key_it) {
     return std::nullopt;
   }
-  SortedKeysIterator prev_key_it = next_key_it - 1;
+  SortedKeysIterator next_key_it = std::next(prev_key_it);
 
   /* Skip over invalid keyframes on either side. */
   auto is_valid_keyframe = [&](const FramesMapKeyT key) {
