@@ -630,10 +630,23 @@ class FileOutputOperation : public NodeOperation {
     const int2 size = result.domain().size;
     switch (result.type()) {
       case ResultType::Color:
-        file_output.add_pass(pass_name, view_name, "RGBA", buffer);
+        /* Use lowercase rgba for Cryptomatte layers because the EXR internal compression rules
+         * specify that all uppercase RGBA channels will be compressed, and Cryptomatte should not
+         * be compressed. */
+        if (result.meta_data.is_cryptomatte_layer()) {
+          file_output.add_pass(pass_name, view_name, "rgba", buffer);
+        }
+        else {
+          file_output.add_pass(pass_name, view_name, "RGBA", buffer);
+        }
         break;
       case ResultType::Vector:
-        file_output.add_pass(pass_name, view_name, "XYZ", float4_to_float3_image(size, buffer));
+        if (result.meta_data.is_4d_vector) {
+          file_output.add_pass(pass_name, view_name, "XYZW", buffer);
+        }
+        else {
+          file_output.add_pass(pass_name, view_name, "XYZ", float4_to_float3_image(size, buffer));
+        }
         break;
       case ResultType::Float:
         file_output.add_pass(pass_name, view_name, "V", buffer);
@@ -700,6 +713,12 @@ class FileOutputOperation : public NodeOperation {
   {
     StringRef cryptomatte_layer_name = bke::cryptomatte::BKE_cryptomatte_extract_layer_name(name);
 
+    if (result.meta_data.is_cryptomatte_layer()) {
+      file_output.add_meta_data(
+          bke::cryptomatte::BKE_cryptomatte_meta_data_key(cryptomatte_layer_name, "name"),
+          cryptomatte_layer_name);
+    }
+
     if (!result.meta_data.cryptomatte.manifest.empty()) {
       file_output.add_meta_data(
           bke::cryptomatte::BKE_cryptomatte_meta_data_key(cryptomatte_layer_name, "manifest"),
@@ -716,15 +735,6 @@ class FileOutputOperation : public NodeOperation {
       file_output.add_meta_data(
           bke::cryptomatte::BKE_cryptomatte_meta_data_key(cryptomatte_layer_name, "conversion"),
           result.meta_data.cryptomatte.conversion);
-    }
-
-    if (!result.meta_data.cryptomatte.manifest.empty() ||
-        !result.meta_data.cryptomatte.hash.empty() ||
-        !result.meta_data.cryptomatte.conversion.empty())
-    {
-      file_output.add_meta_data(
-          bke::cryptomatte::BKE_cryptomatte_meta_data_key(cryptomatte_layer_name, "name"),
-          cryptomatte_layer_name);
     }
   }
 
