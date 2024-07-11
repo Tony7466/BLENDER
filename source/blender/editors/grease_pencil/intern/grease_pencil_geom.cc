@@ -368,15 +368,17 @@ bke::CurvesGeometry curves_merge_endpoints_by_distance(
       const float3 start_world = math::transform_point(layer_to_world, start_pos);
       const float3 end_world = math::transform_point(layer_to_world, end_pos);
 
-      float2 &start_co = screen_start_points[src_i];
-      float2 &end_co = screen_end_points[src_i];
-      ED_view3d_project_float_global(&region, start_world, start_co, V3D_PROJ_TEST_NOP);
-      ED_view3d_project_float_global(&region, end_world, end_co, V3D_PROJ_TEST_NOP);
-
-      BLI_kdtree_2d_insert(tree, src_i * 2, start_co);
-      BLI_kdtree_2d_insert(tree, src_i * 2 + 1, end_co);
+      ED_view3d_project_float_global(
+          &region, start_world, screen_start_points[src_i], V3D_PROJ_TEST_NOP);
+      ED_view3d_project_float_global(
+          &region, end_world, screen_end_points[src_i], V3D_PROJ_TEST_NOP);
     }
   });
+  /* Note: KDTree insertion is not thread-safe, don't parallelize this. */
+  for (const int src_i : src_curves.curves_range()) {
+    BLI_kdtree_2d_insert(tree, src_i * 2, screen_start_points[src_i]);
+    BLI_kdtree_2d_insert(tree, src_i * 2 + 1, screen_end_points[src_i]);
+  }
   BLI_kdtree_2d_balance(tree);
 
   Array<int> connect_to_curve(src_curves.curves_num(), -1);
