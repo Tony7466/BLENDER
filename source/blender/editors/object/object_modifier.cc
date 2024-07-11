@@ -1154,12 +1154,14 @@ static bool modifier_apply_obdata(
     if (mti->modify_geometry_set == nullptr) {
       return false;
     }
+    const int eval_frame = int(DEG_get_ctime(depsgraph));
     GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob->data);
+    /* Setup the eval frame for modifier evaluation. */
+    grease_pencil.runtime->eval_frame = eval_frame;
 
     bke::GeometrySet geometry_set = bke::GeometrySet::from_grease_pencil(
         &grease_pencil, bke::GeometryOwnershipType::ReadOnly);
 
-    const int eval_frame = int(DEG_get_ctime(depsgraph));
     ModifierEvalContext mectx = {depsgraph, ob, ModifierApplyFlag(0)};
     mti->modify_geometry_set(md_eval, &mectx, &geometry_set);
     if (!geometry_set.has_grease_pencil()) {
@@ -1202,6 +1204,8 @@ static bool modifier_apply_obdata(
 
     Main *bmain = DEG_get_bmain(depsgraph);
     BKE_object_material_from_eval_data(bmain, ob, &grease_pencil_eval.id);
+    /* Reset the eval frame. */
+    grease_pencil.runtime->eval_frame = 0;
   }
   else {
     /* TODO: implement for volumes. */
