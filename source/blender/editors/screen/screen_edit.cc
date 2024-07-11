@@ -918,7 +918,7 @@ blender::StringRefNull ED_area_name(ScrArea *area)
 
 int ED_area_icon(ScrArea *area)
 {
-  if (area->type->space_name_get) {
+  if (area->type->space_icon_get) {
     return area->type->space_icon_get(area);
   }
 
