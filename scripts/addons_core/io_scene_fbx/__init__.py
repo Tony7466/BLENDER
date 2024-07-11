@@ -357,7 +357,7 @@ class ExportFBX(bpy.types.Operator, ExportHelper):
         name="Apply Transform",
         description="Bake space transform into object data, avoids getting unwanted rotations to objects when "
         "target space is not aligned with Blender's space "
-        "(WARNING! experimental option, use at own risk, known to be broken with armatures/animations)",
+        "(WARNING! experimental option, use at own risk)",
         default=False,
     )
 

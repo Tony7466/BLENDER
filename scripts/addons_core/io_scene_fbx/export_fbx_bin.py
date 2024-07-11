@@ -3459,13 +3459,17 @@ def save_single(operator, scene, depsgraph, filepath="",
     # Calculate bone correction matrix
     bone_correction_matrix = None  # Default is None = no change
     bone_correction_matrix_inv = None
-    if (primary_bone_axis, secondary_bone_axis) != ('Y', 'X'):
+    if (primary_bone_axis, secondary_bone_axis) != ('Y', 'X') or bake_space_transform:
         from bpy_extras.io_utils import axis_conversion
         bone_correction_matrix = axis_conversion(from_forward=secondary_bone_axis,
                                                  from_up=primary_bone_axis,
                                                  to_forward='X',
                                                  to_up='Y',
                                                  ).to_4x4()
+        if bake_space_transform:
+            _, _, scale = global_matrix.decompose()
+            bone_correction_matrix = Matrix.Diagonal(
+                (1 / scale.x, 1 / scale.y, 1 / scale.z, 1)) @ bone_correction_matrix
         bone_correction_matrix_inv = bone_correction_matrix.inverted()
 
     media_settings = FBXExportSettingsMedia(

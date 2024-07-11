@@ -1737,7 +1737,7 @@ class ObjectWrapper(metaclass=MetaObjectWrapper):
         # NOTE: Only applies to object types supporting this!!! Currently, only meshes and the like...
         # TODO: Check whether this can work for bones too...
         return (scene_data.settings.bake_space_transform and self._tag in {'OB', 'DP'} and
-                self.bdata.type in BLENDER_OBJECT_TYPES_MESHLIKE | {'EMPTY'})
+                self.bdata.type in BLENDER_OBJECT_TYPES_MESHLIKE | {'EMPTY', 'ARMATURE'})
 
     def fbx_object_matrix(self, scene_data, rest=False, local_space=False, global_space=False):
         """
@@ -1788,12 +1788,18 @@ class ObjectWrapper(metaclass=MetaObjectWrapper):
                 # Move matrix to global Blender space.
                 matrix = (parent.matrix_rest_global if rest else parent.matrix_global) @ matrix
             elif parent.use_bake_space_transform(scene_data):
-                # Blender's and FBX's local space of parent may differ if we use bake_space_transform...
-                # Apply parent's *Blender* local space...
-                matrix = (parent.matrix_rest_local if rest else parent.matrix_local) @ matrix
-                # ...and move it back into parent's *FBX* local space.
-                par_mat = parent.fbx_object_matrix(scene_data, rest=rest, local_space=True)
-                matrix = par_mat.inverted_safe() @ matrix
+                matrix = (self.matrix_rest_local if rest else self.matrix_local)
+
+                if self.is_bone and scene_data.settings.bone_correction_matrix:
+                    # This is a bone with an armature as parent.
+                    # So enter bone space.
+                    matrix = matrix @ scene_data.settings.bone_correction_matrix
+                # bake
+                matrix = scene_data.settings.global_matrix @ matrix
+            elif scene_data.settings.bone_correction_matrix_inv and parent and parent.is_bone and self.use_bake_space_transform(scene_data):
+                # This is a 'non-bone' object with a bone as parent.
+                # So bail out of bone space.
+                matrix = scene_data.settings.bone_correction_matrix_inv @ matrix
 
         if self.use_bake_space_transform(scene_data):
             # If we bake the transforms we need to post-multiply inverse global transform.
