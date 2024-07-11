@@ -917,8 +917,6 @@ static void insert_action_keys(bAnimContext *ac, short mode)
 
   ANIM_animdata_filter(ac, &anim_data, filter, ac->data, eAnimCont_Types(ac->datatype));
 
-  ANIM_animdata_deselect_action_keys(&anim_data);
-
   /* Init keyframing flag. */
   flag = blender::animrig::get_keyframing_flags(scene);
 
@@ -976,6 +974,8 @@ static int actkeys_insertkey_exec(bContext *C, wmOperator *op)
 
   /* what channels to affect? */
   mode = RNA_enum_get(op->ptr, "type");
+
+  ANIM_deselect_keys_in_animation_editors(C);
 
   /* insert keyframes */
   insert_action_keys(&ac, mode);

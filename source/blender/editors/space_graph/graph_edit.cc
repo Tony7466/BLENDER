@@ -144,8 +144,6 @@ static void insert_graph_keys(bAnimContext *ac, eGraphKeys_InsertKey_Types mode)
     return;
   }
 
-  ANIM_animdata_deselect_action_keys(&anim_data);
-
   /* Init key-framing flag. */
   eInsertKeyFlags flag = blender::animrig::get_keyframing_flags(scene);
   KeyframeSettings settings = get_keyframe_settings(true);
@@ -259,6 +257,8 @@ static int graphkeys_insertkey_exec(bContext *C, wmOperator *op)
   if (ANIM_animdata_get_context(C, &ac) == 0) {
     return OPERATOR_CANCELLED;
   }
+
+  ANIM_deselect_keys_in_animation_editors(C);
 
   /* Which channels to affect? */
   mode = eGraphKeys_InsertKey_Types(RNA_enum_get(op->ptr, "type"));
