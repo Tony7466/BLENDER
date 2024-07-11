@@ -37,9 +37,9 @@ float parallelMax(const float value, const uint2 tid)
 
   return array_of_values[0];
 }
-#else
-shared uint shared_max_slight_focus_abs_coc;
 #endif
+
+shared uint shared_max_slight_focus_abs_coc;
 
 /**
  * Returns The max CoC in the Slight Focus range inside this compute tile.
