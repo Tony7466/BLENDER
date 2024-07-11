@@ -13,7 +13,34 @@
 
 #pragma BLENDER_REQUIRE(eevee_depth_of_field_accumulator_lib.glsl)
 
+#if defined(GPU_METAL) && defined(GPU_ATI)
+#  define threadgroup_width (gl_WorkGroupSize.x)
+#  define threadgroup_height (gl_WorkGroupSize.y)
+#  define threadgroup_size (threadgroup_width * threadgroup_height)
+#  define simd_width 32
+shared float array_of_values[threadgroup_width * threadgroup_height];
+
+/* Only works for 2D threadgroups where the size is a power of 2 */
+float parallelMax(const float value, const uint2 tid)
+{
+  uint flat_tid = tid.x + (tid.y * threadgroup_width);
+  array_of_values[flat_tid] = value;
+  threadgroup_barrier(mem_flags::mem_threadgroup);
+
+  for (uint i = threadgroup_size; i > 0; i >>= 1) {
+    uint halfWidth = i >> 1;
+    if (flat_tid < halfWidth) {
+      array_of_values[flat_tid] = max(array_of_values[flat_tid],
+                                      array_of_values[flat_tid + halfWidth]);
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+  }
+
+  return array_of_values[0];
+}
+#else
 shared uint shared_max_slight_focus_abs_coc;
+#endif
 
 /**
  * Returns The max CoC in the Slight Focus range inside this compute tile.
@@ -39,9 +66,9 @@ float dof_slight_focus_coc_tile_get(vec2 frag_coord)
   }
 
 /* Use atomic reduce operation. */
-#if defined(OS_MAC) && defined(GPU_ATI)
-  shared_max_slight_focus_abs_coc = max(shared_max_slight_focus_abs_coc,
-                                        floatBitsToUint(local_abs_max));
+#if defined(GPU_METAL) && defined(GPU_ATI)
+  return parallelMax(local_abs_max, gl_LocalInvocationID.xy);
+
 #else
   atomicMax(shared_max_slight_focus_abs_coc, floatBitsToUint(local_abs_max));
 #endif
