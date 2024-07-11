@@ -2017,14 +2017,18 @@ class _defs_weight_paint:
 class _defs_grease_pencil_paint:
 
     @staticmethod
-    def generate_from_brushes(context):
+    def get_gpencil_tool_data_block(context):
         # Though `data_block` is conceptually unnecessary with a single brush tool,
         # it's still used because many areas assume that brush tools have it set #bToolRef.
-        tool = None
         if context:
             brush = context.tool_settings.gpencil_paint.brush
             if brush:
-                tool = brush.gpencil_tool
+                return brush.gpencil_tool
+        return None
+
+    @staticmethod
+    def generate_from_brushes(context):
+        tool = _defs_grease_pencil_paint.get_gpencil_tool_data_block(context)
         return [
             ToolDef.from_dict(
                 dict(
@@ -2078,101 +2082,143 @@ class _defs_grease_pencil_paint:
         brush_basic_grease_pencil_paint_settings(layout, context, brush, compact=True)
         return True
 
-    @ToolDef.from_fn
-    def line():
+    @staticmethod
+    def line(context):
         def draw_settings(context, layout, tool):
             props = tool.operator_properties("grease_pencil.primitive_line")
             _defs_grease_pencil_paint.grease_pencil_primitive_toolbar(context, layout, tool, props)
 
-        return dict(
-            idname="builtin.line",
-            label="Line",
-            icon="ops.gpencil.primitive_line",
-            cursor='CROSSHAIR',
-            widget=None,
-            keymap=(),
-            draw_settings=draw_settings,
-        )
+        tool = _defs_grease_pencil_paint.get_gpencil_tool_data_block(context)
+        return [
+            ToolDef.from_dict(
+                dict(
+                    idname="builtin.line",
+                    label="Line",
+                    icon="ops.gpencil.primitive_line",
+                    cursor='CROSSHAIR',
+                    widget=None,
+                    # For some reason the name needs to be passed explicitly when not using `@ToolDef.from_fn`
+                    keymap="3D View Tool: Paint Grease Pencil, Line",
+                    data_block=tool,
+                    draw_settings=draw_settings,
+                )
+            )
+        ]
 
-    @ToolDef.from_fn
-    def polyline():
+    @staticmethod
+    def polyline(context):
         def draw_settings(context, layout, tool):
             props = tool.operator_properties("grease_pencil.primitive_polyline")
             _defs_grease_pencil_paint.grease_pencil_primitive_toolbar(context, layout, tool, props)
 
-        return dict(
-            idname="builtin.polyline",
-            label="Polyline",
-            icon="ops.gpencil.primitive_polyline",
-            cursor='CROSSHAIR',
-            widget=None,
-            keymap=(),
-            draw_settings=draw_settings,
-        )
+        tool = _defs_grease_pencil_paint.get_gpencil_tool_data_block(context)
+        return [
+            ToolDef.from_dict(
+                dict(
+                    idname="builtin.polyline",
+                    label="Polyline",
+                    icon="ops.gpencil.primitive_polyline",
+                    cursor='CROSSHAIR',
+                    widget=None,
+                    # For some reason the name needs to be passed explicitly when not using `@ToolDef.from_fn`
+                    keymap="3D View Tool: Paint Grease Pencil, Polyline",
+                    data_block=tool,
+                    draw_settings=draw_settings,
+                )
+            )
+        ]
 
-    @ToolDef.from_fn
-    def arc():
+    @staticmethod
+    def arc(context):
         def draw_settings(context, layout, tool):
             props = tool.operator_properties("grease_pencil.primitive_arc")
             _defs_grease_pencil_paint.grease_pencil_primitive_toolbar(context, layout, tool, props)
 
-        return dict(
-            idname="builtin.arc",
-            label="Arc",
-            icon="ops.gpencil.primitive_arc",
-            cursor='CROSSHAIR',
-            widget=None,
-            keymap=(),
-            draw_settings=draw_settings,
-        )
+        tool = _defs_grease_pencil_paint.get_gpencil_tool_data_block(context)
+        return [
+            ToolDef.from_dict(
+                dict(
+                    idname="builtin.arc",
+                    label="Arc",
+                    icon="ops.gpencil.primitive_arc",
+                    cursor='CROSSHAIR',
+                    widget=None,
+                    # For some reason the name needs to be passed explicitly when not using `@ToolDef.from_fn`
+                    keymap="3D View Tool: Paint Grease Pencil, Arc",
+                    data_block=tool,
+                    draw_settings=draw_settings,
+                )
+            )
+        ]
 
-    @ToolDef.from_fn
-    def curve():
+    @staticmethod
+    def curve(context):
         def draw_settings(context, layout, tool):
             props = tool.operator_properties("grease_pencil.primitive_curve")
             _defs_grease_pencil_paint.grease_pencil_primitive_toolbar(context, layout, tool, props)
 
-        return dict(
-            idname="builtin.curve",
-            label="Curve",
-            icon="ops.gpencil.primitive_curve",
-            cursor='CROSSHAIR',
-            widget=None,
-            keymap=(),
-            draw_settings=draw_settings,
-        )
+        tool = _defs_grease_pencil_paint.get_gpencil_tool_data_block(context)
+        return [
+            ToolDef.from_dict(
+                dict(
+                    idname="builtin.curve",
+                    label="Curve",
+                    icon="ops.gpencil.primitive_curve",
+                    cursor='CROSSHAIR',
+                    widget=None,
+                    # For some reason the name needs to be passed explicitly when not using `@ToolDef.from_fn`
+                    keymap="3D View Tool: Paint Grease Pencil, Curve",
+                    data_block=tool,
+                    draw_settings=draw_settings,
+                )
+            )
+        ]
 
-    @ToolDef.from_fn
-    def box():
+    @staticmethod
+    def box(context):
         def draw_settings(context, layout, tool):
             props = tool.operator_properties("grease_pencil.primitive_box")
             _defs_grease_pencil_paint.grease_pencil_primitive_toolbar(context, layout, tool, props)
 
-        return dict(
-            idname="builtin.box",
-            label="Box",
-            icon="ops.gpencil.primitive_box",
-            cursor='CROSSHAIR',
-            widget=None,
-            keymap=(),
-            draw_settings=draw_settings,
-        )
+        tool = _defs_grease_pencil_paint.get_gpencil_tool_data_block(context)
+        return [
+            ToolDef.from_dict(
+                dict(
+                    idname="builtin.box",
+                    label="Box",
+                    icon="ops.gpencil.primitive_box",
+                    cursor='CROSSHAIR',
+                    widget=None,
+                    # For some reason the name needs to be passed explicitly when not using `@ToolDef.from_fn`
+                    keymap="3D View Tool: Paint Grease Pencil, Box",
+                    data_block=tool,
+                    draw_settings=draw_settings,
+                )
+            )
+        ]
 
-    @ToolDef.from_fn
-    def circle():
+    @staticmethod
+    def circle(context):
         def draw_settings(context, layout, tool):
             props = tool.operator_properties("grease_pencil.primitive_circle")
             _defs_grease_pencil_paint.grease_pencil_primitive_toolbar(context, layout, tool, props)
 
-        return dict(
-            idname="builtin.circle",
-            label="Circle",
-            icon="ops.gpencil.primitive_circle",
-            cursor='CROSSHAIR',
-            widget=None,
-            keymap=(),
-            draw_settings=draw_settings,
-        )
+        tool = _defs_grease_pencil_paint.get_gpencil_tool_data_block(context)
+        return [
+            ToolDef.from_dict(
+                dict(
+                    idname="builtin.circle",
+                    label="Circle",
+                    icon="ops.gpencil.primitive_circle",
+                    cursor='CROSSHAIR',
+                    widget=None,
+                    # For some reason the name needs to be passed explicitly when not using `@ToolDef.from_fn`
+                    keymap="3D View Tool: Paint Grease Pencil, Circle",
+                    data_block=tool,
+                    draw_settings=draw_settings,
+                )
+            )
+        ]
 
 
 class _defs_image_generic:
