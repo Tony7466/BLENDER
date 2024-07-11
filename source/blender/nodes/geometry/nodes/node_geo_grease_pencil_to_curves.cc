@@ -6,6 +6,8 @@
 #include "BKE_grease_pencil.hh"
 #include "BKE_instances.hh"
 
+#include "GEO_realize_instances.hh"
+
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_grease_pencil_to_curves_cc {
@@ -15,7 +17,8 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Geometry>("Grease Pencil")
       .supported_type(bke::GeometryComponent::Type::GreasePencil);
   b.add_input<decl::Bool>("Selection").default_value(true).hide_value().field_on_all();
-  b.add_output<decl::Geometry>("Curve Instances");
+  b.add_input<decl::Bool>("Layers as Instances").default_value(true);
+  b.add_output<decl::Geometry>("Curves").propagate_all();
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -114,10 +117,17 @@ static void node_geo_exec(GeoNodeExecParams params)
     opacity_attribute.finish();
   }
 
-  GeometrySet instances_geometry = GeometrySet::from_instances(instances);
-  instances_geometry.name = std::move(grease_pencil_geometry.name);
+  GeometrySet curves_geometry = GeometrySet::from_instances(instances);
+  curves_geometry.name = std::move(grease_pencil_geometry.name);
 
-  params.set_output("Curve Instances", std::move(instances_geometry));
+  const bool layers_as_instances = params.get_input<bool>("Layers as Instances");
+  if (!layers_as_instances) {
+    geometry::RealizeInstancesOptions options;
+    options.propagation_info = params.get_output_propagation_info("Curves");
+    curves_geometry = geometry::realize_instances(curves_geometry, options);
+  }
+
+  params.set_output("Curves", std::move(curves_geometry));
 }
 
 static void node_register()
