@@ -61,10 +61,10 @@
 #include "grease_pencil_intern.hh"
 #include "paint_intern.hh"
 #include "wm_event_types.hh"
-#include <optional>
 
 #include <algorithm>
 #include <fmt/format.h>
+#include <optional>
 
 namespace blender::ed::sculpt_paint {
 
