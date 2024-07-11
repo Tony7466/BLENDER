@@ -424,6 +424,32 @@ void PhysicsGeometryImpl::ensure_constraint_disable_collision() const
   });
 }
 
+static void copy_physics_attributes(const AttributeAccessor &from_attributes,
+                                    MutableAttributeAccessor &to_attributes,
+                                    const IndexMask &body_mask,
+                                    const IndexMask &constraint_mask,
+                                    int bodies_offset,
+                                    int constraints_offset,
+                                    const AnonymousAttributePropagationInfo &propagation_info)
+{
+  Set<std::string> skip_attributes = {PhysicsGeometry::builtin_attributes.skip_copy};
+  skip_attributes.add_multiple({PhysicsGeometry::builtin_attributes.constraint_type,
+                                PhysicsGeometry::builtin_attributes.constraint_body1,
+                                PhysicsGeometry::builtin_attributes.constraint_body2});
+  gather_attributes_group_to_group(from_attributes,
+                    AttrDomain::Point,
+                    propagation_info,
+                    skip_attributes,
+                    body_mask,
+                    to_attributes);
+  gather_attributes(from_attributes,
+                    AttrDomain::Edge,
+                    propagation_info,
+                    skip_attributes,
+                    constraint_mask,
+                    to_attributes);
+}
+
 void PhysicsGeometryImpl::realize(const PhysicsGeometryImpl &from,
                                   const IndexMask &body_mask,
                                   const IndexMask &constraint_mask,
@@ -502,7 +528,9 @@ bool PhysicsGeometryImpl::try_copy_to_customdata(const PhysicsGeometryImpl &from
     return false;
   }
 
-  const AttributeAccessor from_attributes = this->attributes();
+  const AttributeAccessor from_attributes = from.attributes();
+  /* Force use of cache for writing. */
+  MutableAttributeAccessor to_attributes = this->attributes_for_write(true);
   from_attributes.for_all(
       [&](const AttributeIDRef &attribute_id, const AttributeMetaData &meta_data) -> bool {
         CustomData *custom_data = nullptr;
@@ -627,12 +655,12 @@ bool PhysicsGeometryImpl::try_move(const PhysicsGeometryImpl &from,
   return true;
 }
 
-AttributeAccessor PhysicsGeometryImpl::attributes() const
+AttributeAccessor PhysicsGeometryImpl::attributes(const bool force_cache) const
 {
   return AttributeAccessor(this, bke::get_physics_accessor_functions_ref(false));
 }
 
-MutableAttributeAccessor PhysicsGeometryImpl::attributes_for_write()
+MutableAttributeAccessor PhysicsGeometryImpl::attributes_for_write(const bool force_cache)
 {
   return MutableAttributeAccessor(this, bke::get_physics_accessor_functions_ref(false));
 }

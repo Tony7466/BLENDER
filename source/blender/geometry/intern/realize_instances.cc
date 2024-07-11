@@ -178,6 +178,14 @@ struct RealizeCurveTask {
 
 struct RealizePhysicsInfo {
   const bke::PhysicsGeometry *physics;
+  VArray<float3> positions;
+  VArray<math::Quaternion> rotations;
+  VArray<float3> velocities;
+  VArray<float3> angular_velocities;
+  VArray<int> constraint_bodies1;
+  VArray<int> constraint_bodies2;
+  /** Matches the order in #AllMeshesInfo.attributes. */
+  Array<std::optional<GVArraySpan>> attributes;
 };
 
 /** Start indices in the final output curves data-block. */
@@ -242,6 +250,8 @@ struct AllCurvesInfo {
 };
 
 struct AllPhysicsInfo {
+  /** Ordering of all attributes that are propagated to the output physics generically. */
+  OrderedAttributes attributes;
   /** Ordering of the original geometries that are joined. */
   VectorSet<const bke::PhysicsGeometry *> order;
   /** Preprocessed data about every original geometry. This is ordered by #order. */
@@ -319,6 +329,8 @@ struct InstanceContext {
   AttributeFallbacksArray meshes;
   /** Ordered by #AllCurvesInfo.attributes. */
   AttributeFallbacksArray curves;
+  /** Ordered by #AllPhysicsInfo.attributes. */
+  AttributeFallbacksArray physics;
   /** Ordered by #AllInstancesInfo.attributes. */
   AttributeFallbacksArray instances;
   /** Id mixed from all parent instances. */
@@ -328,6 +340,7 @@ struct InstanceContext {
       : pointclouds(gather_info.pointclouds.attributes.size()),
         meshes(gather_info.meshes.attributes.size()),
         curves(gather_info.curves.attributes.size()),
+        physics(gather_info.physics.attributes.size()),
         instances(gather_info.instances_attriubutes.size())
   {
     // empty
@@ -556,6 +569,8 @@ static void gather_realize_tasks_for_instances(GatherTasksInfo &gather_info,
       gather_info, instances, gather_info.meshes.attributes);
   Vector<std::pair<int, GSpan>> curve_attributes_to_override = prepare_attribute_fallbacks(
       gather_info, instances, gather_info.curves.attributes);
+  Vector<std::pair<int, GSpan>> physics_attributes_to_override = prepare_attribute_fallbacks(
+      gather_info, instances, gather_info.physics.attributes);
   Vector<std::pair<int, GSpan>> instance_attributes_to_override = prepare_attribute_fallbacks(
       gather_info, instances, gather_info.instances_attriubutes);
 
@@ -1963,6 +1978,24 @@ static AllPhysicsInfo preprocess_physics(const bke::GeometrySet &geometry_set,
     RealizePhysicsInfo &physics_info = info.realize_info[physics_index];
     const bke::PhysicsGeometry *physics = info.order[physics_index];
     physics_info.physics = physics;
+    physics_info.positions = physics->body_positions();
+    physics_info.rotations = physics->body_rotations();
+    physics_info.velocities = physics->body_velocities();
+    physics_info.angular_velocities = physics->body_angular_velocities();
+    physics_info.constraint_bodies1 = physics->constraint_body1();
+    physics_info.constraint_bodies2 = physics->constraint_body2();
+    /* Access attributes. */
+    bke::AttributeAccessor attributes = physics->attributes();
+    physics_info.attributes.reinitialize(info.attributes.size());
+    for (const int attribute_index : info.attributes.index_range()) {
+      const AttributeIDRef &attribute_id = info.attributes.ids[attribute_index];
+      const eCustomDataType data_type = info.attributes.kinds[attribute_index].data_type;
+      const bke::AttrDomain domain = info.attributes.kinds[attribute_index].domain;
+      if (attributes.contains(attribute_id)) {
+        GVArray attribute = *attributes.lookup_or_default(attribute_id, domain, data_type);
+        mesh_info.attributes[attribute_index].emplace(std::move(attribute));
+      }
+    }
   }
   return info;
 }
@@ -1970,24 +2003,98 @@ static AllPhysicsInfo preprocess_physics(const bke::GeometrySet &geometry_set,
 static void execute_realize_physics_task(const RealizeInstancesOptions &options,
                                          const AllPhysicsInfo &all_physics_info,
                                          const RealizePhysicsTask &task,
-                                         bke::PhysicsGeometry &dst_physics)
+                                         bke::PhysicsGeometry &dst_physics,
+                                         VMutableArray<float3> all_dst_positions,
+                                         VMutableArray<math::Quaternion> all_dst_rotations,
+                                         VMutableArray<float3> all_dst_velocities,
+                                         VMutableArray<float3> all_dst_angular_velocities,
+                                         VMutableArray<int> all_dst_constraint_bodies1,
+                                         VMutableArray<int> all_dst_constraint_bodies2)
 {
   const RealizePhysicsInfo &physics_info = *task.physics_info;
   const bke::PhysicsGeometry &physics = *physics_info.physics;
 
-  for (const int i : physics.shapes().index_range()) {
-    dst_physics.add_shape(physics.shapes()[i]);
-  }
+  const VArray<float3> src_positions = physics_info.positions;
+  const VArray<math::Quaternion> src_rotations = physics_info.rotations;
+  const VArray<float3> src_velocities = physics_info.velocities;
+  const VArray<float3> src_angular_velocities = physics_info.angular_velocities;
+  const VArray<int> src_constraint_bodies1 = physics_info.constraint_bodies1;
+  const VArray<int> src_constraint_bodies2 = physics_info.constraint_bodies2;
 
-  dst_physics.move_or_copy_selection(physics,
-                                     task.use_world,
-                                     physics.bodies_range(),
-                                     physics.constraints_range(),
-                                     task.start_indices.body,
-                                     task.start_indices.constraint,
-                                     {});
+  const IndexRange dst_body_range(task.start_indices.body, src_positions.size());
+  const IndexRange dst_constraint_range(task.start_indices.constraint, src_constraint_bodies1.size());
 
-  UNUSED_VARS(options, all_physics_info, dst_physics);
+  threading::parallel_for(src_positions.index_range(), 1024, [&](const IndexRange range) {
+    for (const int i : range) {
+      all_dst_positions.set(dst_body_range[i],
+                            math::transform_point(task.transform, src_positions[i]));
+    }
+  });
+  threading::parallel_for(src_rotations.index_range(), 1024, [&](const IndexRange range) {
+    for (const int i : range) {
+      all_dst_rotations.set(dst_body_range[i],
+                            math::to_quaternion(task.transform) * src_rotations[i]);
+    }
+  });
+  threading::parallel_for(src_velocities.index_range(), 1024, [&](const IndexRange range) {
+    for (const int i : range) {
+      all_dst_velocities.set(dst_body_range[i],
+                             math::transform_direction(task.transform, src_velocities[i]));
+    }
+  });
+  threading::parallel_for(src_angular_velocities.index_range(), 1024, [&](const IndexRange range) {
+    for (const int i : range) {
+      all_dst_angular_velocities.set(
+          dst_body_range[i], math::transform_direction(task.transform, src_angular_velocities[i]));
+    }
+  });
+  threading::parallel_for(src_constraint_bodies1.index_range(), 1024, [&](const IndexRange range) {
+    for (const int i : range) {
+      all_dst_constraint_bodies1.set(dst_constraint_range[i],
+                                     src_constraint_bodies1[i] + task.start_indices.body);
+    }
+  });
+  threading::parallel_for(src_constraint_bodies1.index_range(), 1024, [&](const IndexRange range) {
+    for (const int i : range) {
+      all_dst_constraint_bodies1.set(dst_constraint_range[i],
+                                     src_constraint_bodies1[i] + task.start_indices.body);
+    }
+  });
+
+  copy_generic_attributes_to_result(
+      physics_info.attributes,
+      task.attribute_fallbacks,
+      ordered_attributes,
+      [&](const bke::AttrDomain domain) {
+        switch (domain) {
+          case bke::AttrDomain::Point:
+            return dst_vert_range;
+          case bke::AttrDomain::Edge:
+            return dst_edge_range;
+          case bke::AttrDomain::Face:
+            return dst_face_range;
+          case bke::AttrDomain::Corner:
+            return dst_loop_range;
+          default:
+            BLI_assert_unreachable();
+            return IndexRange();
+        }
+      },
+      dst_attribute_writers);
+
+  //for (const int i : physics.shapes().index_range()) {
+  //  dst_physics.add_shape(physics.shapes()[i]);
+  //}
+
+  ////dst_physics.move_or_copy_selection(physics,
+  ////                                   task.use_world,
+  ////                                   physics.bodies_range(),
+  ////                                   physics.constraints_range(),
+  ////                                   task.start_indices.body,
+  ////                                   task.start_indices.constraint,
+  ////                                   {});
+
+  //UNUSED_VARS(options, all_physics_info, dst_physics);
 }
 
 static void execute_realize_physics_tasks(const RealizeInstancesOptions &options,

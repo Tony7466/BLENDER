@@ -123,8 +123,8 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
                 int bodies_offset,
                 int constraints_offset);
 
-  bke::AttributeAccessor attributes() const;
-  bke::MutableAttributeAccessor attributes_for_write();
+  bke::AttributeAccessor attributes(bool force_cache = false) const;
+  bke::MutableAttributeAccessor attributes_for_write(bool force_cache = false);
 };
 
 struct CollisionShapeImpl {
