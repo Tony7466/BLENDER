@@ -4916,7 +4916,7 @@ static int ui_do_but_TOG(bContext *C, uiBut *but, uiHandleButtonData *data, cons
 
 static void force_activate_view_item_but(bContext *C, ARegion *region, uiButViewItem *but)
 {
-  if (but->active) {
+  if (but->active && (but->active->state != BUTTON_STATE_WAIT_DRAG)) {
     button_activate_state(C, but, BUTTON_STATE_EXIT);
   }
   else {
