@@ -1300,14 +1300,20 @@ static void icon_source_edit_cb(std::string &xml)
   };
 
   bTheme *btheme = UI_GetTheme();
-  const ColorItem items[] = {{"MeshSelected", btheme->space_view3d.vertex_select},
-                             {"RegularSelected", btheme->tui.wcol_regular.inner},
-                             {"RedAlert", nullptr, TH_REDALERT},
-                             {"Back", nullptr, TH_BACK},
-                             {"Text", nullptr, TH_TEXT},
-                             {"TextHi", nullptr, TH_TEXT_HI},
-                             {"Error", nullptr, TH_INFO_ERROR},
-                             {"Warning", nullptr, TH_INFO_WARNING}};
+  const ColorItem items[] = {
+      {"view3d.mesh_selected", btheme->space_view3d.vertex_select},
+      {"widget.regular_inner", btheme->tui.wcol_regular.inner},
+      {"widget.back", nullptr, TH_BACK},
+      {"widget.text", nullptr, TH_TEXT},
+      {"widget.text_hi", nullptr, TH_TEXT_HI},
+      {"theme.axis_x", nullptr, TH_AXIS_X},
+      {"theme.axis_y", nullptr, TH_AXIS_Y},
+      {"theme.axis_z", nullptr, TH_AXIS_Z},
+      {"theme.red_alert", nullptr, TH_REDALERT},
+      {"theme.error", nullptr, TH_INFO_ERROR},
+      {"theme.warning", nullptr, TH_INFO_WARNING},
+      {"theme.info", nullptr, TH_INFO_INFO},
+  };
 
   for (const ColorItem &item : items) {
     size_t g_start = xml.find(item.name);
