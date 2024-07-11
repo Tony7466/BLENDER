@@ -1322,6 +1322,16 @@ static void rna_def_action_slot(BlenderRNA *brna)
                            "This is used, for example, on a KeyframeActionStrip to look up the "
                            "ActionChannelBag for this Slot");
 
+  prop = RNA_def_property(srna, "active", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "slot_flags", int(animrig::Slot::Flags::Active));
+  RNA_def_property_ui_text(
+      prop,
+      "Active",
+      "Whether this is the active slot, can be set by assigning to action.slots.active");
+  RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE | PROP_EDITABLE);
+  RNA_def_property_update_notifier(prop, NC_ANIMATION | ND_ANIMCHAN | NA_SELECTED);
+
   prop = RNA_def_property(srna, "select", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "slot_flags", int(animrig::Slot::Flags::Selected));
   RNA_def_property_ui_text(prop, "Select", "Selection state of the slot");
