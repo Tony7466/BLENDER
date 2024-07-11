@@ -1174,31 +1174,42 @@ static bool modifier_apply_obdata(
 
     /* Anonymous attributes shouldn't be available on original geometry. */
     grease_pencil_eval.attributes_for_write().remove_anonymous();
-
-    for (const Layer *layer_eval : grease_pencil_eval.layers()) {
+    Array<int> layer_eval_map(grease_pencil_eval.layers().size());
+    for (const int layer_eval_i : grease_pencil_eval.layers().index_range()) {
+      const Layer *layer_eval = grease_pencil_eval.layer(layer_eval_i);
       Drawing *drawing_eval = grease_pencil_eval.get_drawing_at(*layer_eval, eval_frame);
-      if (drawing_eval == nullptr) {
-        continue;
+      if (drawing_eval) {
+        /* Anonymous attributes shouldn't be available on original geometry. */
+        drawing_eval->strokes_for_write().attributes_for_write().remove_anonymous();
       }
-      /* Anonymous attributes shouldn't be available on original geometry. */
-      drawing_eval->strokes_for_write().attributes_for_write().remove_anonymous();
 
       /* Check if the original geometry has a layer with the same name. */
       TreeNode *node_orig = grease_pencil.find_node_by_name(layer_eval->name());
       if (node_orig && node_orig->is_layer()) {
-        /* Apply to the original drawing. */
-        Drawing *drawing_orig = grease_pencil.get_drawing_at(node_orig->as_layer(), eval_frame);
-        if (drawing_orig) {
+        /* Use the existing layer. */
+        Layer &layer_orig = node_orig->as_layer();
+        layer_orig.opacity = layer_eval->opacity;
+        layer_orig.set_local_transform(layer_eval->local_transform());
+
+        Drawing *drawing_orig = grease_pencil.get_drawing_at(layer_orig, eval_frame);
+        if (drawing_orig && drawing_eval) {
           drawing_orig->strokes_for_write() = std::move(drawing_eval->strokes_for_write());
           drawing_orig->tag_topology_changed();
         }
+        layer_eval_map[layer_eval_i] = *grease_pencil.get_layer_index(layer_orig);
       }
       else {
         /* Create a new layer. */
-        Layer &new_layer = grease_pencil.add_layer(layer_eval->name());
-        Drawing &drawing_orig = *grease_pencil.insert_frame(new_layer, eval_frame);
-        drawing_orig.strokes_for_write() = std::move(drawing_eval->strokes_for_write());
-        drawing_orig.tag_topology_changed();
+        Layer &layer_orig = grease_pencil.add_layer(layer_eval->name());
+        layer_orig.opacity = layer_eval->opacity;
+        layer_orig.set_local_transform(layer_eval->local_transform());
+
+        Drawing &drawing_orig = *grease_pencil.insert_frame(layer_orig, eval_frame);
+        if (drawing_eval) {
+          drawing_orig.strokes_for_write() = std::move(drawing_eval->strokes_for_write());
+          drawing_orig.tag_topology_changed();
+        }
+        layer_eval_map[layer_eval_i] = *grease_pencil.get_layer_index(layer_orig);
       }
     }
 
