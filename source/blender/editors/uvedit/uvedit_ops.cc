@@ -846,67 +846,70 @@ static int uvedit_uv_threshold_weld_underlying_geometry(bContext *C, wmOperator 
       if (luvmap.size() <= 1) {
         continue;
       }
-      blender::float2 cent = {0.0f, 0.0f};
-      for (auto &luv : luvmap) {
-        cent[0] += luv[0];
-        cent[1] += luv[1];
-      }
-      cent[0] /= luvmap.size();
-      cent[1] /= luvmap.size();
 
-      /*Find the loop closest to the average coordinate. This loop will be the base that all other
-       * loops' distances are calculated from*/
-
-      float mindist = len_squared_v2v2(cent, luvmap[0]);
-      float *center;
-      for (int i = 0; i < luvmap.size(); i++) {
-        float dist = len_squared_v2v2(cent, luvmap[i]);
-        if (dist < mindist) {
-          mindist = dist;
-          center = luvmap[i];
+      while (luvmap.size() > 1) {
+        blender::float2 cent = {0.0f, 0.0f};
+        for (auto &luv : luvmap) {
+          cent[0] += luv[0];
+          cent[1] += luv[1];
         }
-      }
+        cent[0] /= luvmap.size();
+        cent[1] /= luvmap.size();
 
-      bool changed = true;
+        /*Find the loop closest to the cent coordinate. This loop will be the base that all
+         * other loops' distances are calculated from.*/
 
-      /*Keep trying to perform merges until there are no more changes occuring to the loops of
-       * the current vertex.*/
+        float mindist = len_squared_v2v2(cent, luvmap[0]);
+        float *center = luvmap[0];
+        int centerindex = 0;
+        for (int i = 0; i < luvmap.size(); i++) {
+          float dist = len_squared_v2v2(cent, luvmap[i]);
+          if (dist < mindist) {
+            mindist = dist;
+            center = luvmap[i];
+            centerindex = i;
+          }
+        }
+        float *tmp = center;
+        luvmap[centerindex] = luvmap[luvmap.size() - 1];
+        luvmap[luvmap.size() - 1] = tmp;
+        blender::float2 sum = {center[0], center[1]};
 
-      while (changed) {
-        changed = false;
+        /*Move all the UVs within threshold to the end of the array.*/
 
-        blender::Vector<float *> mergeuvs;
-
-        /*Filter UV coordinates that are not within threshold distance of central UV.*/
-
-        blender::float2 sum = {0.0f, 0.0f};
         int i = 0;
-        while (i < luvmap.size()) {
+        int mergesection = 1;
+        while (luvmap[i] != center and i < luvmap.size() - mergesection) {
           float dist = len_squared_v2v2(center, luvmap[i]);
           if (dist < threshold_sq) {
             sum[0] += luvmap[i][0];
             sum[1] += luvmap[i][1];
-            mergeuvs.append(luvmap[i]);
-
-            /*If the coordinate that is within threshold distance is not at same UV coordinate
-             * that means the weld operation will result in a change to UVs.*/
-
-            if (dist != 0.0f) {
-              changed = true;
-            }
+            float *tmp = luvmap[i];
+            luvmap[i] = luvmap[luvmap.size() - mergesection - 1];
+            luvmap[luvmap.size() - mergesection - 1] = tmp;
+            mergesection++;
           }
-          i++;
+          else {
+            i++;
+          }
         }
-        if (changed) {
+
+        /*Shift all uvs in threshold to newly calculated center and then remove those loops' data
+         * from luvmap.*/
+
+        if (mergesection > 1) {
           blender::float2 midpoint = {0.0f, 0.0f};
-          midpoint[0] = sum[0] / mergeuvs.size();
-          midpoint[1] = sum[1] / mergeuvs.size();
-          for (int i = 0; i < mergeuvs.size(); i++) {
-            float *luv = mergeuvs[i];
+          midpoint[0] = sum[0] / mergesection;
+          midpoint[1] = sum[1] / mergesection;
+
+          for (int j = luvmap.size() - mergesection; j < luvmap.size(); j++) {
+            float *luv = luvmap[j];
             luv[0] = midpoint[0];
             luv[1] = midpoint[1];
           }
         }
+
+        luvmap.resize(luvmap.size() - mergesection);
       }
     }
     uvedit_live_unwrap_update(sima, scene, obedit);
