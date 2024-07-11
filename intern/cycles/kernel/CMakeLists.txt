@@ -478,6 +478,7 @@ target_link_libraries(zstd_compress ${ZSTD_LIBRARIES} ${PTHREADS_LIBRARIES})
 # CUDA module
 
 if(WITH_CYCLES_CUDA_BINARIES)
+  # CUDA version
   execute_process(COMMAND ${CUDA_NVCC_EXECUTABLE} "--version" OUTPUT_VARIABLE NVCC_OUT)
   string(REGEX REPLACE ".*release ([0-9]+)\\.([0-9]+).*" "\\1" CUDA_VERSION_MAJOR "${NVCC_OUT}")
   string(REGEX REPLACE ".*release ([0-9]+)\\.([0-9]+).*" "\\2" CUDA_VERSION_MINOR "${NVCC_OUT}")
@@ -499,6 +500,16 @@ if(WITH_CYCLES_CUDA_BINARIES)
   list(TRANSFORM CYCLES_CUDA_BINARIES_ARCH_WITHOUT_PREFIX REPLACE "sm_|compute_" "")
   list(REMOVE_DUPLICATES CYCLES_CUDA_BINARIES_ARCH_WITHOUT_PREFIX)
 
+  if("${CUDA_VERSION}" GREATER_EQUAL 110)
+    list(REMOVE_ITEM CYCLES_CUDA_BINARIES_ARCH_WITHOUT_PREFIX 30)
+  endif()
+  if("${CUDA_VERSION}" GREATER_EQUAL 120)
+    list(REMOVE_ITEM CYCLES_CUDA_BINARIES_ARCH_WITHOUT_PREFIX 35 37)
+  endif()
+  if("${CUDA_VERSION}" LESS 111)
+    list(REMOVE_ITEM CYCLES_CUDA_BINARIES_ARCH_WITHOUT_PREFIX 86 89)
+  endif()
+
   add_library(cycles_kernel_cuda STATIC
     ${SRC_KERNEL_DEVICE_CUDA}
     ${SRC_KERNEL_DEVICE_GPU_HEADERS}
@@ -510,13 +521,53 @@ if(WITH_CYCLES_CUDA_BINARIES)
 
   target_compile_options(cycles_kernel_cuda PRIVATE
     -use_fast_math
-    -split-compile=0
     -maxrregcount=64 # Maximum number of registers for functions, overriden by __launch_bounds__ for entry points
     -Wno-deprecated-gpu-targets)
+
+  if(WITH_CYCLES_CUDA_BUILD_SERIAL)
+    target_compile_options(cycles_kernel_cuda PRIVATE --threads=1)
+  else()
+    target_compile_options(cycles_kernel_cuda PRIVATE --split-compile=0)
+  endif()
+  if(WITH_CYCLES_DEBUG)
+    target_compile_options(cycles_kernel_cuda PRIVATE --ptxas-options="-v")
+  endif()
 
   cycles_set_solution_folder(cycles_kernel_cuda)
 
   foreach(arch ${CYCLES_CUDA_BINARIES_ARCH})
+    if(${arch} MATCHES ".*_2.")
+      message(STATUS "CUDA binaries for ${arch} are no longer supported, skipped.")
+      continue()
+    elseif(${arch} MATCHES ".*_30")
+      if(DEFINED CUDA10_NVCC_EXECUTABLE)
+        set(cuda_nvcc_executable ${CUDA10_NVCC_EXECUTABLE})
+        set(cuda_toolkit_root_dir ${CUDA10_TOOLKIT_ROOT_DIR})
+      elseif("${CUDA_VERSION}" GREATER_EQUAL 110) # Support for sm_30 was removed in CUDA 11
+        message(STATUS "CUDA binaries for ${arch} require CUDA 10 or earlier, skipped.")
+        continue()
+      endif()
+    elseif(${arch} MATCHES ".*_3.")
+      if(DEFINED CUDA11_NVCC_EXECUTABLE)
+        set(cuda_nvcc_executable ${CUDA11_NVCC_EXECUTABLE})
+        set(cuda_toolkit_root_dir ${CUDA11_TOOLKIT_ROOT_DIR})
+      elseif("${CUDA_VERSION}" GREATER_EQUAL 120) # Support for sm_35, sm_37 was removed in CUDA 12
+        message(STATUS "CUDA binaries for ${arch} require CUDA 11 or earlier, skipped.")
+        continue()
+      endif()
+    elseif(${arch} MATCHES ".*_7." AND "${CUDA_VERSION}" LESS 100)
+      message(STATUS "CUDA binaries for ${arch} require CUDA 10.0+, skipped.")
+    elseif(${arch} MATCHES ".*_8.")
+      if("${CUDA_VERSION}" GREATER_EQUAL 111) # Support for sm_86 was introduced in CUDA 11
+      elseif(DEFINED CUDA11_NVCC_EXECUTABLE)
+        set(cuda_nvcc_executable ${CUDA11_NVCC_EXECUTABLE})
+        set(cuda_toolkit_root_dir ${CUDA11_TOOLKIT_ROOT_DIR})
+      else()
+        message(STATUS "CUDA binaries for ${arch} require CUDA 11.1+, skipped.")
+        continue()
+      endif()
+    endif()
+
     if(${arch} MATCHES "compute_.*")
       set(format "ptx")
     else()
@@ -526,10 +577,51 @@ if(WITH_CYCLES_CUDA_BINARIES)
     set(cuda_file kernel_${arch}.${format})
     set(cuda_file_compressed ${cuda_file}.zst)
 
-    add_custom_command(
-      OUTPUT ${cuda_file}
-      DEPENDS cycles_kernel_cuda
-      COMMAND ${CUDA_NVCC_EXECUTABLE} -arch=${arch} ${CUDA_NVCC_FLAGS} -${format} -dlink "\"$<JOIN:$<TARGET_OBJECTS:cycles_kernel_cuda>,\" \">\"" -o ${CMAKE_CURRENT_BINARY_DIR}/${cuda_file})
+    if(DEFINED cuda_nvcc_executable)
+      set(cuda_nvcc_flags "$<JOIN:$<TARGET_PROPERTY:cycles_kernel_cuda,COMPILE_OPTIONS>, >"
+        -I ${CMAKE_CURRENT_SOURCE_DIR}/..
+        -I ${CMAKE_CURRENT_SOURCE_DIR}/device/cuda)
+      if(CUDA_HOST_COMPILER)
+        set(cuda_nvcc_flags ${cuda_nvcc_flags}
+          -ccbin="${CUDA_HOST_COMPILER}")
+      endif()
+      if(WITH_NANOVDB)
+        set(cuda_nvcc_flags ${cuda_nvcc_flags}
+          -D WITH_NANOVDB)
+      endif()
+
+      add_custom_command(
+        OUTPUT ${cuda_file}
+        DEPENDS
+          device/cuda/kernel.cu
+          ${SRC_KERNEL_HEADERS}
+          ${SRC_KERNEL_DEVICE_GPU_HEADERS}
+          ${SRC_KERNEL_DEVICE_CUDA_HEADERS}
+          ${SRC_UTIL_HEADERS}
+        COMMAND
+          ${cuda_nvcc_executable}
+          -arch=${arch}
+          ${CUDA_NVCC_FLAGS}
+          -${format}
+          ${cuda_nvcc_flags}
+          ${CMAKE_CURRENT_SOURCE_DIR}/device/cuda/kernel.cu
+          -o ${CMAKE_CURRENT_BINARY_DIR}/${cuda_file})
+
+      unset(cuda_nvcc_flags)
+      unset(cuda_nvcc_executable)
+      unset(cuda_toolkit_root_dir)
+    else()
+      add_custom_command(
+        OUTPUT ${cuda_file}
+        DEPENDS cycles_kernel_cuda
+        COMMAND
+          ${CUDA_NVCC_EXECUTABLE}
+          -arch=${arch}
+          ${CUDA_NVCC_FLAGS}
+          -${format}
+          -dlink "\"$<JOIN:$<TARGET_OBJECTS:cycles_kernel_cuda>,\" \">\""
+          -o ${CMAKE_CURRENT_BINARY_DIR}/${cuda_file})
+    endif()
 
     add_custom_command(
       OUTPUT ${cuda_file_compressed}
