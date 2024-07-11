@@ -120,7 +120,7 @@ struct BlendfileLinkAppendContext {
   GHash *new_id_to_item;
 
   /** Runtime info used by append code to manage re-use of already appended matching IDs. */
-  GHash *library_weak_reference_mapping;
+  MainLibraryWeakReferenceMap *library_weak_reference_mapping;
 
   /** Embedded blendfile and its size, if needed. */
   const void *blendfile_mem;
