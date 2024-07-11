@@ -23,10 +23,13 @@ bl_info = {
     "tracker_url": "https://projects.blender.org/blender/blender-addons/issues",
 }
 
-import ast
 import abc
+import ast
+import base64
+import zstandard
 import contextlib
-from typing import Iterable, Optional, Union, Any, TypeAlias, Iterator
+import json
+from typing import Iterable, Optional, Union, Any, TypeAlias, Iterator, cast, Callable
 
 import bpy
 from bpy.types import Context, Object, Operator, Panel, PoseBone, UILayout, FCurve, Camera, FModifierStepped
@@ -280,6 +283,50 @@ def _copy_matrix_to_clipboard(window_manager: bpy.types.WindowManager, matrix: M
     window_manager.clipboard = f"Matrix((\n{as_string}\n))"
 
 
+# Matrix as 4 tuples of 4 floats, or as string 'I' for identity.
+JSONMatrix = Union[tuple[tuple[float]], str]
+
+
+class JSONEncoder(json.encoder.JSONEncoder):
+    def default(self, o: Any) -> Any:
+        if isinstance(o, Matrix):
+            return self.encode_matrix(o)
+        return super().default(o)
+
+    def encode_matrix(self, matrix: Matrix) -> JSONMatrix:
+        if matrix == Matrix.Identity(4):
+            return "I"
+        json_matrix = tuple(tuple(row) for row in matrix)
+        return cast(JSONMatrix, json_matrix)
+
+    @staticmethod
+    def decode_matrix(json_value: JSONMatrix) -> Matrix:
+        if json_value == "I":
+            return Matrix.Identity(4)
+        return Matrix(json_value)
+
+    @staticmethod
+    def compress(json_data: str) -> str:
+        """Compress the JSON data to roughly 1/2 or 1/3 the original size."""
+        data = base64.b64encode(zstandard.compress(json_data.encode(), 9))
+        return "POSE-" + data.decode("ASCII") + "-POSE"
+
+    @staticmethod
+    def decompress(clipboard_data: str) -> str:
+        """Decompress the clipboard to a JSON string."""
+
+        # Strip off the "POSE-" prefix and suffix. The poll() function already
+        # checks the prefix, and the suffix is just assumed to be there.
+        compressed = clipboard_data[5:-5]
+        decompressed = zstandard.decompress(base64.b64decode(compressed))
+        return decompressed.decode()
+
+
+def _copy_named_matrices_to_clipboard(window_manager: bpy.types.WindowManager, matrices: dict[str, Matrix]) -> None:
+    json_data = json.dumps(matrices, cls=JSONEncoder)
+    window_manager.clipboard = JSONEncoder.compress(json_data)
+
+
 class OBJECT_OT_copy_global_transform(Operator):
     bl_idname = "object.copy_global_transform"
     bl_label = "Copy Global Transform"
@@ -296,6 +343,36 @@ class OBJECT_OT_copy_global_transform(Operator):
     def execute(self, context: Context) -> set[str]:
         mat = get_matrix(context)
         _copy_matrix_to_clipboard(context.window_manager, mat)
+        return {'FINISHED'}
+
+
+class OBJECT_OT_copy_global_transforms_by_name(Operator):
+    bl_idname = "object.copy_global_transforms_by_name"
+    bl_label = "Copy Global Transforms (Named)"
+    bl_description = (
+        "Copies the matrix of the selected objects or pose bones to the clipboard, "
+        "so they can be pasted back to the objects/bones with the same name. Uses "
+        "world-space matrices"
+    )
+    # This operator cannot be un-done because it manipulates data outside Blender.
+    bl_options = {'REGISTER'}
+
+    @classmethod
+    def poll(cls, context: Context) -> bool:
+        return bool(context.selected_pose_bones) or bool(context.selected_objects)
+
+    def execute(self, context: Context) -> set[str]:
+        matrices_by_name: dict[str, Matrix] = {}
+
+        if context.mode == 'POSE':
+            for bone in context.selected_pose_bones:
+                mat = bone.id_data.matrix_world @ bone.matrix
+                matrices_by_name[bone.name] = mat
+        else:
+            for ob in context.selected_objects:
+                matrices_by_name[ob.name] = ob.matrix_world
+
+        _copy_named_matrices_to_clipboard(context.window_manager, matrices_by_name)
         return {'FINISHED'}
 
 
@@ -332,6 +409,11 @@ class OBJECT_OT_copy_relative_transform(Operator):
 
 class UnableToMirrorError(Exception):
     """Raised when mirroring is enabled but no mirror object/bone is set."""
+
+
+# MatrixSetter is a function that gets a context, and then sets the appropriate
+# matrix (or matrices) on whatever it feels it needs to set.
+MatrixSetter = Callable[[Context], None]
 
 
 class OBJECT_OT_paste_transform(Operator):
@@ -404,7 +486,8 @@ class OBJECT_OT_paste_transform(Operator):
             return False
 
         clipboard = context.window_manager.clipboard.strip()
-        if not (clipboard.startswith("Matrix(") or clipboard.startswith("<Matrix 4x4")):
+        if not (clipboard.startswith("Matrix(") or clipboard.startswith(
+                "<Matrix 4x4") or clipboard.startswith('POSE-')):
             cls.poll_message_set("Clipboard does not contain a valid matrix")
             return False
         return True
@@ -440,6 +523,8 @@ class OBJECT_OT_paste_transform(Operator):
             mat = Matrix(ast.literal_eval(clipboard[6:]))
         elif clipboard.startswith("<Matrix 4x4"):
             mat = self.parse_repr_m4(clipboard[12:-1])
+        elif clipboard.startswith("POSE-"):
+            return self._execute_named_matrices(context, clipboard)
         else:
             mat = self.parse_print_m4(clipboard)
 
@@ -458,7 +543,65 @@ class OBJECT_OT_paste_transform(Operator):
             'EXISTING_KEYS': self._paste_existing_keys,
             'BAKE': self._paste_bake,
         }[self.method]
-        return applicator(context, mat)
+
+        def matrix_setter(context: Context) -> None:
+            set_matrix(context, mat)
+
+        return applicator(context, matrix_setter)
+
+    def _execute_named_matrices(self, context: Context, clipboard: str) -> set[str]:
+        try:
+            json_data = JSONEncoder.decompress(clipboard)
+            json_matrices = json.loads(json_data)
+        except ValueError as ex:
+            self.report({"ERROR"}, "No valid JSON on clipboard: %s" % ex)
+            return {"CANCELLED"}
+
+        if not json_matrices or not isinstance(json_matrices, dict):
+            self.report({"ERROR"}, "No valid JSON on clipboard: %s" % ex)
+            return {"CANCELLED"}
+
+        try:
+            processed_matrices = {
+                name: self._preprocess_matrix(context, JSONEncoder.decode_matrix(matrix))
+                for name, matrix in json_matrices.items()
+            }
+        except UnableToMirrorError:
+            self.report({'ERROR'}, "Unable to mirror, no mirror object/bone configured")
+            return {'CANCELLED'}
+
+        print(f'Pasting to {len(processed_matrices)} named things')
+
+        applicator = {
+            'CURRENT': self._paste_current,
+            'EXISTING_KEYS': self._paste_existing_keys,
+            'BAKE': self._paste_bake,
+        }[self.method]
+
+        depsgraph = context.view_layer.depsgraph
+        if context.mode == 'POSE':
+            selected_bones = {bone.name: bone for bone in context.selected_pose_bones}
+
+            def matrix_setter(context: Context) -> None:
+                for name, matrix in processed_matrices.items():
+                    bone = selected_bones.get(name, None)
+                    if not bone:
+                        continue
+                    arm_eval = bone.id_data.evaluated_get(depsgraph)
+                    bone.matrix = arm_eval.matrix_world.inverted() @ matrix
+                    AutoKeying.autokey_transformation(context, bone)
+        else:
+            selected_objects = {ob.name: ob for ob in context.selected_objects}
+
+            def matrix_setter(context: Context) -> None:
+                for name, matrix in processed_matrices.items():
+                    ob = selected_objects.get(name, None)
+                    if not ob:
+                        continue
+                    ob.matrix_world = matrix
+                    AutoKeying.autokey_transformation(context, ob)
+
+        return applicator(context, matrix_setter)
 
     def _preprocess_matrix(self, context: Context, matrix: Matrix) -> Matrix:
         matrix = self._relative_to_world(context, matrix)
@@ -538,11 +681,11 @@ class OBJECT_OT_paste_transform(Operator):
         return mirrored_world
 
     @staticmethod
-    def _paste_current(context: Context, matrix: Matrix) -> set[str]:
-        set_matrix(context, matrix)
+    def _paste_current(context: Context, matrix_setter: MatrixSetter) -> set[str]:
+        matrix_setter(context)
         return {'FINISHED'}
 
-    def _paste_existing_keys(self, context: Context, matrix: Matrix) -> set[str]:
+    def _paste_existing_keys(self, context: Context, matrix_setter: MatrixSetter) -> set[str]:
         if not context.scene.tool_settings.use_keyframe_insert_auto:
             self.report({'ERROR'}, "This mode requires auto-keying to work properly")
             return {'CANCELLED'}
@@ -552,10 +695,10 @@ class OBJECT_OT_paste_transform(Operator):
             self.report({'WARNING'}, "No selected frames found")
             return {'CANCELLED'}
 
-        self._paste_on_frames(context, frame_numbers, matrix)
+        self._paste_on_frames(context, frame_numbers, matrix_setter)
         return {'FINISHED'}
 
-    def _paste_bake(self, context: Context, matrix: Matrix) -> set[str]:
+    def _paste_bake(self, context: Context, matrix_setter: MatrixSetter) -> set[str]:
         if not context.scene.tool_settings.use_keyframe_insert_auto:
             self.report({'ERROR'}, "This mode requires auto-keying to work properly")
             return {'CANCELLED'}
@@ -566,7 +709,7 @@ class OBJECT_OT_paste_transform(Operator):
 
         frame_start, frame_end = self._determine_bake_range(context)
         frame_range = range(round(frame_start), round(frame_end) + bake_step, bake_step)
-        self._paste_on_frames(context, frame_range, matrix)
+        self._paste_on_frames(context, frame_range, matrix_setter)
         return {'FINISHED'}
 
     def _determine_bake_range(self, context: Context) -> tuple[float, float]:
@@ -582,12 +725,12 @@ class OBJECT_OT_paste_transform(Operator):
         self.report({'INFO'}, "No selected keys, pasting over scene range")
         return context.scene.frame_start, context.scene.frame_end
 
-    def _paste_on_frames(self, context: Context, frame_numbers: Iterable[float], matrix: Matrix) -> None:
+    def _paste_on_frames(self, context: Context, frame_numbers: Iterable[float], matrix_setter: MatrixSetter) -> None:
         current_frame = context.scene.frame_current_final
         try:
             for frame in frame_numbers:
                 context.scene.frame_set(int(frame), subframe=frame % 1.0)
-                set_matrix(context, matrix)
+                matrix_setter(context)
         finally:
             context.scene.frame_set(int(current_frame), subframe=current_frame % 1.0)
 
@@ -869,7 +1012,9 @@ class VIEW3D_PT_copy_global_transform(PanelMixin, Panel):
         scene = context.scene
 
         # No need to put "Global Transform" in the operator text, given that it's already in the panel title.
-        layout.operator("object.copy_global_transform", text="Copy", icon='COPYDOWN')
+        copy_row = layout.row(align=True)
+        copy_row.operator("object.copy_global_transform", text="Copy", icon='COPYDOWN')
+        copy_row.operator("object.copy_global_transforms_by_name", text="Named", icon='COPYDOWN')
 
         paste_col = layout.column(align=True)
 
@@ -1009,6 +1154,7 @@ def _refresh_3d_panels():
 
 classes = (
     OBJECT_OT_copy_global_transform,
+    OBJECT_OT_copy_global_transforms_by_name,
     OBJECT_OT_copy_relative_transform,
     OBJECT_OT_paste_transform,
     OBJECT_OT_fix_to_camera,
