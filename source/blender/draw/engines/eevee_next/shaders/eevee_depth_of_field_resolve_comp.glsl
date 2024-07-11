@@ -16,16 +16,13 @@
 /* Workarounds for Metal/AMD issue where atomicMax lead to incorrect results.
  * See #123052 */
 #if defined(GPU_METAL) && defined(GPU_ATI)
-#  define threadgroup_width (gl_WorkGroupSize.x)
-#  define threadgroup_height (gl_WorkGroupSize.y)
-#  define threadgroup_size (threadgroup_width * threadgroup_height)
-#  define simd_width 32
-shared float array_of_values[threadgroup_width * threadgroup_height];
+#  define threadgroup_size (gl_WorkGroupSize.x * gl_WorkGroupSize.y)
+shared float array_of_values[threadgroup_size];
 
 /* Only works for 2D threadgroups where the size is a power of 2 */
 float parallelMax(const float value, const uint2 tid)
 {
-  uint flat_tid = tid.x + (tid.y * threadgroup_width);
+  uint flat_tid = gl_LocalInvocationIndex;
   array_of_values[flat_tid] = value;
   threadgroup_barrier(mem_flags::mem_threadgroup);
 
