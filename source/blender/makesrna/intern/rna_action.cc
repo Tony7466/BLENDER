@@ -88,6 +88,8 @@ const EnumPropertyItem rna_enum_strip_type_items[] = {
 
 #  include "WM_api.hh"
 
+#  include "UI_interface_icons.hh"
+
 #  include "DEG_depsgraph.hh"
 
 #  include "ANIM_keyframing.hh"
@@ -274,6 +276,13 @@ static std::optional<std::string> rna_ActionSlot_path(const PointerRNA *ptr)
   char name_esc[sizeof(slot.name) * 2];
   BLI_str_escape(name_esc, slot.name, sizeof(name_esc));
   return fmt::format("slots[\"{}\"]", name_esc);
+}
+
+int rna_ActionSlot_idtype_icon_get(PointerRNA *ptr)
+{
+  animrig::Slot &slot = rna_data_slot(ptr);
+  return UI_icon_from_idcode(slot.idtype);
+  ;
 }
 
 /* Name functions that ignore the first two ID characters */
@@ -1283,10 +1292,14 @@ static void rna_def_action_slot(BlenderRNA *brna)
   RNA_def_property_string_funcs(prop, nullptr, nullptr, "rna_ActionSlot_name_set");
   RNA_def_property_string_maxlength(prop, sizeof(ActionSlot::name) - 2);
   RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN, "rna_ActionSlot_name_update");
-  RNA_def_struct_ui_text(
-      srna,
+  RNA_def_property_ui_text(
+      prop,
       "Slot Name",
       "Used when connecting an Action to a data-block, to find the correct slot handle");
+
+  prop = RNA_def_property(srna, "idtype_icon", PROP_INT, PROP_NONE);
+  RNA_def_property_int_funcs(prop, "rna_ActionSlot_idtype_icon_get", nullptr, nullptr);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
   prop = RNA_def_property(srna, "name_display", PROP_STRING, PROP_NONE);
   RNA_def_property_string_funcs(prop,
@@ -1295,19 +1308,19 @@ static void rna_def_action_slot(BlenderRNA *brna)
                                 "rna_ActionSlot_name_display_set");
   RNA_def_property_string_maxlength(prop, sizeof(ActionSlot::name) - 2);
   RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN, "rna_ActionSlot_name_update");
-  RNA_def_struct_ui_text(
-      srna,
+  RNA_def_property_ui_text(
+      prop,
       "Slot Display Name",
       "Name of the slot for showing in the interface. It is the name, without the first two "
       "characters that identify what kind of data-block it animates");
 
   prop = RNA_def_property(srna, "handle", PROP_INT, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_struct_ui_text(srna,
-                         "Slot Handle",
-                         "Number specific to this Slot, unique within the Action"
-                         "This is used, for example, on a KeyframeActionStrip to look up the "
-                         "ActionChannelBag for this Slot");
+  RNA_def_property_ui_text(prop,
+                           "Slot Handle",
+                           "Number specific to this Slot, unique within the Action"
+                           "This is used, for example, on a KeyframeActionStrip to look up the "
+                           "ActionChannelBag for this Slot");
 }
 
 static void rna_def_ActionLayer_strips(BlenderRNA *brna, PropertyRNA *cprop)
