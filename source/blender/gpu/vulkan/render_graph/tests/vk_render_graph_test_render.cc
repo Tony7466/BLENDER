@@ -142,7 +142,7 @@ TEST(vk_render_graph, begin_draw_end)
   Vector<std::string> log;
   VKResourceStateTracker resources;
   VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log), resources);
-  resources.add_image(image, 1, VK_IMAGE_LAYOUT_UNDEFINED, ResourceOwner::APPLICATION);
+  resources.add_image(image, VK_IMAGE_LAYOUT_UNDEFINED, ResourceOwner::APPLICATION);
 
   {
     VKResourceAccessInfo access_info = {};
