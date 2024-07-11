@@ -108,15 +108,11 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
   void realize();
   bool try_copy_to_customdata(const PhysicsGeometryImpl &from,
                               const IndexMask &body_mask,
-                              const IndexMask &constraint_mask,
-                              const int bodies_offset,
-                              const int constraints_offset);
+                              const IndexMask &constraint_mask);
   bool try_move(const PhysicsGeometryImpl &from,
                 bool use_world,
                 const IndexMask &body_mask,
-                const IndexMask &constraint_mask,
-                int bodies_offset,
-                int constraints_offset);
+                const IndexMask &constraint_mask);
 
   bke::AttributeAccessor attributes(bool force_cache = false) const;
   bke::MutableAttributeAccessor attributes_for_write(bool force_cache = false);

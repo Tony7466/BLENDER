@@ -475,9 +475,7 @@ void PhysicsGeometryImpl::realize()
 
 bool PhysicsGeometryImpl::try_copy_to_customdata(const PhysicsGeometryImpl &from,
                                                  const IndexMask &body_mask,
-                                                 const IndexMask &constraint_mask,
-                                                 const int bodies_offset,
-                                                 const int constraints_offset)
+                                                 const IndexMask &constraint_mask)
 {
   if (this->is_empty) {
     return false;
@@ -519,9 +517,7 @@ bool PhysicsGeometryImpl::try_copy_to_customdata(const PhysicsGeometryImpl &from
 bool PhysicsGeometryImpl::try_move(const PhysicsGeometryImpl &from,
                                    const bool use_world,
                                    const IndexMask &body_mask,
-                                   const IndexMask &constraint_mask,
-                                   const int bodies_offset,
-                                   const int constraints_offset)
+                                   const IndexMask &constraint_mask)
 {
   BLI_assert(this->is_mutable());
   BLI_assert(!this->is_empty);
@@ -538,8 +534,7 @@ bool PhysicsGeometryImpl::try_move(const PhysicsGeometryImpl &from,
   PhysicsGeometryImpl &from_mutable = const_cast<PhysicsGeometryImpl &>(from);
 
   /* Cache the source before moving physics data. */
-  from_mutable.try_copy_to_customdata(
-      from, body_mask, constraint_mask, bodies_offset, constraints_offset);
+  from_mutable.try_copy_to_customdata(from, body_mask, constraint_mask);
 
   btDynamicsWorld *from_world = from_mutable.world;
   if (use_world) {
@@ -550,8 +545,8 @@ bool PhysicsGeometryImpl::try_move(const PhysicsGeometryImpl &from,
   }
   btDynamicsWorld *to_world = this->world;
 
-  const IndexRange body_range = IndexRange(bodies_offset, body_mask.size());
-  const IndexRange constraint_range = IndexRange(constraints_offset, constraint_mask.size());
+  const IndexRange body_range = IndexRange(body_mask.size());
+  const IndexRange constraint_range = IndexRange(constraint_mask.size());
   /* Make sure target has enough space. */
   BLI_assert(body_range.intersect(this->rigid_bodies.index_range()) == body_range);
   BLI_assert(constraint_range.intersect(this->constraints.index_range()) == constraint_range);
@@ -743,7 +738,7 @@ PhysicsGeometryImpl &PhysicsGeometry::impl_for_write()
     new_impl->constraint_feedback.fill(
         {btVector3(0, 0, 0), btVector3(0, 0, 0), btVector3(0, 0, 0), btVector3(0, 0, 0)});
     new_impl->constraints.fill(nullptr);
-    new_impl->try_move(*impl_, true, this->bodies_range(), this->constraints_range(), 0, 0);
+    new_impl->try_move(*impl_, true, this->bodies_range(), this->constraints_range());
   }
   else {
     new_impl->is_empty.store(true);
@@ -942,7 +937,7 @@ void PhysicsGeometry::realize_from_cache()
 void PhysicsGeometry::freeze_to_cache()
 {
   impl_for_write().try_copy_to_customdata(
-      *impl_, impl_->rigid_bodies.index_range(), impl_->constraints.index_range(), 0, 0);
+      *impl_, impl_->rigid_bodies.index_range(), impl_->constraints.index_range());
 }
 
 static void remap_bodies(const int src_bodies_num,
@@ -1042,7 +1037,7 @@ void PhysicsGeometry::move_or_copy_selection(
   }
 
   PhysicsGeometryImpl &impl = this->impl_for_write();
-  const bool was_moved = impl.try_move(from.impl(), use_world, body_mask, constraint_mask, 0, 0);
+  const bool was_moved = impl.try_move(from.impl(), use_world, body_mask, constraint_mask);
 
   const Set<std::string> skip_attributes = was_moved ?
                                                Set<std::string>{builtin_attributes.skip_copy} :
