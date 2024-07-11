@@ -161,7 +161,7 @@ static void sample_curve_attribute(const bke::CurvesGeometry &src_curves,
                                    const IndexMask &curve_selection,
                                    const Span<int> sample_indices,
                                    const Span<float> sample_factors,
-                                   GMutableSpan sampled_data)
+                                   GMutableSpan dst_data)
 {
 
   const CPPType &type = src_data.type();
