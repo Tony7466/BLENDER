@@ -131,6 +131,26 @@ TEST(merge_curves, CyclicConnection)
   EXPECT_EQ_ARRAY(Span({0, 1, 2, 3, 4, 5, 9, 10, 11, 6, 7, 8}).data(), dst_indices.data(), 12);
 }
 
+TEST(merge_curves, SelfConnectCurve)
+{
+  bke::CurvesGeometry src_curves = create_test_curves({0, 3, 6, 9, 12},
+                                                      {false, false, false, false});
+
+  Array<int> connect_to_curve = {-1, 1, 2, -1};
+  Array<bool> flip_direction(4, false);
+
+  bke::CurvesGeometry dst_curves = geometry::curves_merge_endpoints(
+      src_curves, connect_to_curve, flip_direction, {});
+  const VArraySpan<bool> cyclic = dst_curves.cyclic();
+  const VArraySpan<int> dst_indices = *dst_curves.attributes().lookup<int>("test_index");
+
+  EXPECT_EQ(dst_curves.points_num(), 12);
+  EXPECT_EQ(dst_curves.curves_num(), 4);
+  EXPECT_EQ_ARRAY(Span({0, 3, 6, 9, 12}).data(), dst_curves.offsets().data(), 5);
+  EXPECT_EQ_ARRAY(Span({false, true, true, false}).data(), cyclic.data(), 4);
+  EXPECT_EQ_ARRAY(Span({0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}).data(), dst_indices.data(), 12);
+}
+
 TEST(merge_curves, MergeAll)
 {
   bke::CurvesGeometry src_curves = create_test_curves({0, 3, 6, 9, 12},
@@ -168,7 +188,7 @@ TEST(merge_curves, Branching)
   EXPECT_EQ(dst_curves.points_num(), 12);
   EXPECT_EQ(dst_curves.curves_num(), 3);
   EXPECT_EQ_ARRAY(Span({0, 6, 9, 12}).data(), dst_curves.offsets().data(), 4);
-  EXPECT_EQ_ARRAY(Span({false, true, false}).data(), cyclic.data(), 3);
+  EXPECT_EQ_ARRAY(Span({false, false, false}).data(), cyclic.data(), 3);
   EXPECT_EQ_ARRAY(Span({0, 1, 2, 6, 7, 8, 3, 4, 5, 9, 10, 11}).data(), dst_indices.data(), 12);
 }
 

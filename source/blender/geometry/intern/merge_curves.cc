@@ -223,18 +223,17 @@ static void find_connected_ranges(const bke::CurvesGeometry &src_curves,
     ++r_joined_curve_offsets.last();
 
     const int src_connect_to = connect_to_curve[src_i];
-    const int dst_connect_to = curves_range.contains(src_connect_to) ?
-                                   new_by_old_map[src_connect_to] :
-                                   -1;
-    if (dst_connect_to == dst_i + 1) {
-      /* Connected to next curve, continue the range. */
-    }
-    else {
-      /* Make cyclic if connected to start. */
-      if (dst_i != start_index) {
+    const bool is_connected = curves_range.contains(src_connect_to);
+    const int dst_connect_to = is_connected ? new_by_old_map[src_connect_to] : -1;
+
+    /* Check for end of chain. */
+    if (dst_connect_to != dst_i + 1) {
+      /* Set cyclic state for connected curves.
+       * Becomes cyclic if connected to the start. */
+      const bool is_chain = (is_connected || dst_i != start_index);
+      if (is_chain) {
         r_joined_cyclic.last() = (dst_connect_to == start_index);
       }
-
       /* Start new curve. */
       start_index = -1;
     }
