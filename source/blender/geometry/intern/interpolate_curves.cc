@@ -202,14 +202,18 @@ static void sample_curve_attribute(const bke::CurvesGeometry &src_curves,
 }
 
 template<typename T>
-static void mix_arrays(const Span<T> src, const float mix_factor, const MutableSpan<T> dst)
+static void mix_arrays(const Span<T> from,
+                       const Span<T> to,
+                       const float mix_factor,
+                       const MutableSpan<T> dst)
 {
   for (const int i : dst.index_range()) {
-    dst[i] = math::interpolate(src[i], dst[i], mix_factor);
+    dst[i] = math::interpolate(from[i], to[i], mix_factor);
   }
 }
 
-static void mix_arrays(const GSpan src,
+static void mix_arrays(const GSpan src_from,
+                       const GSpan src_to,
                        const float mix_factor,
                        const IndexMask &group_selection,
                        const OffsetIndices<int> groups,
@@ -219,9 +223,10 @@ static void mix_arrays(const GSpan src,
     const IndexRange range = groups[curve];
     bke::attribute_math::convert_to_static_type(dst.type(), [&](auto dummy) {
       using T = decltype(dummy);
-      const Span<T> from = src.typed<T>();
+      const Span<T> from = src_from.typed<T>();
+      const Span<T> to = src_to.typed<T>();
       const MutableSpan<T> dst_typed = dst.typed<T>();
-      mix_arrays(from.slice(range), mix_factor, dst_typed.slice(range));
+      mix_arrays(from.slice(range), to.slice(range), mix_factor, dst_typed.slice(range));
     });
   });
 }
@@ -339,9 +344,7 @@ void interpolate_curves(const CurvesGeometry &from_curves,
                              to_sample_indices,
                              to_sample_factors,
                              to_samples);
-      dst.type().value_initialize_n(dst.data(), dst.size());
-      mix_arrays(from_samples, mix_factor, selection, dst_points_by_curve, dst);
-      mix_arrays(to_samples, 1.0f - mix_factor, selection, dst_points_by_curve, dst);
+      mix_arrays(from_samples, to_samples, mix_factor, selection, dst_points_by_curve, dst);
     }
     else if (!src_from.is_empty()) {
       sample_curve_attribute(from_curves,
@@ -383,10 +386,12 @@ void interpolate_curves(const CurvesGeometry &from_curves,
                            to_sample_factors,
                            to_samples.as_mutable_span());
 
-    dst_positions.fill(float3(0.0f));
-    mix_arrays(from_samples.as_span(), mix_factor, selection, dst_points_by_curve, dst_positions);
-    mix_arrays(
-        to_samples.as_span(), 1.0f - mix_factor, selection, dst_points_by_curve, dst_positions);
+    mix_arrays(from_samples.as_span(),
+               to_samples.as_span(),
+               mix_factor,
+               selection,
+               dst_points_by_curve,
+               dst_positions);
   }
 
   for (bke::GSpanAttributeWriter &attribute : attributes.dst) {
