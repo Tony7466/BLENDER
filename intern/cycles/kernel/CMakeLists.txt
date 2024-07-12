@@ -501,30 +501,32 @@ if(WITH_CYCLES_CUDA_BINARIES)
   list(REMOVE_ITEM CYCLES_CUDA_BINARIES_ARCH_WITHOUT_PREFIX 30 35 37)
   list(REMOVE_DUPLICATES CYCLES_CUDA_BINARIES_ARCH_WITHOUT_PREFIX)
 
-  add_library(cycles_kernel_cuda STATIC
-    ${SRC_KERNEL_DEVICE_CUDA}
-    ${SRC_KERNEL_DEVICE_GPU_HEADERS}
-    ${SRC_KERNEL_DEVICE_CUDA_HEADERS})
+  if(NOT WITH_CYCLES_CUDA_BUILD_WHOLE_PROGRAM)
+    add_library(cycles_kernel_cuda STATIC
+      ${SRC_KERNEL_DEVICE_CUDA}
+      ${SRC_KERNEL_DEVICE_GPU_HEADERS}
+      ${SRC_KERNEL_DEVICE_CUDA_HEADERS})
 
-  set_target_properties(cycles_kernel_cuda PROPERTIES
-    CUDA_SEPARABLE_COMPILATION ON
-    CUDA_ARCHITECTURES "${CYCLES_CUDA_BINARIES_ARCH_WITHOUT_PREFIX}")
+    set_target_properties(cycles_kernel_cuda PROPERTIES
+      CUDA_SEPARABLE_COMPILATION ON
+      CUDA_ARCHITECTURES "${CYCLES_CUDA_BINARIES_ARCH_WITHOUT_PREFIX}")
 
-  target_compile_options(cycles_kernel_cuda PRIVATE
-    -use_fast_math
-    -maxrregcount=64 # Maximum number of registers for functions, overriden by __launch_bounds__ for entry points
-    -Wno-deprecated-gpu-targets)
+    target_compile_options(cycles_kernel_cuda PRIVATE
+      -use_fast_math
+      -maxrregcount=64 # Maximum number of registers for functions, overriden by __launch_bounds__ for entry points
+      -Wno-deprecated-gpu-targets)
 
-  if(WITH_CYCLES_CUDA_BUILD_SERIAL)
-    target_compile_options(cycles_kernel_cuda PRIVATE --threads=1)
-  else()
-    target_compile_options(cycles_kernel_cuda PRIVATE --split-compile=0)
+    if(WITH_CYCLES_CUDA_BUILD_SERIAL)
+      target_compile_options(cycles_kernel_cuda PRIVATE --threads=1)
+    else()
+      target_compile_options(cycles_kernel_cuda PRIVATE --split-compile=0)
+    endif()
+    if(WITH_CYCLES_DEBUG)
+      target_compile_options(cycles_kernel_cuda PRIVATE --ptxas-options="-v")
+    endif()
+
+    cycles_set_solution_folder(cycles_kernel_cuda)
   endif()
-  if(WITH_CYCLES_DEBUG)
-    target_compile_options(cycles_kernel_cuda PRIVATE --ptxas-options="-v")
-  endif()
-
-  cycles_set_solution_folder(cycles_kernel_cuda)
 
   foreach(arch ${CYCLES_CUDA_BINARIES_ARCH})
     if(${arch} MATCHES ".*_2.")
@@ -533,21 +535,17 @@ if(WITH_CYCLES_CUDA_BINARIES)
     elseif(${arch} MATCHES ".*_30")
       if(DEFINED CUDA10_NVCC_EXECUTABLE)
         set(cuda_nvcc_executable ${CUDA10_NVCC_EXECUTABLE})
-        set(cuda_toolkit_root_dir ${CUDA10_TOOLKIT_ROOT_DIR})
       elseif("${CUDA_VERSION}" LESS 110) # Support for sm_30 was removed in CUDA 11
         set(cuda_nvcc_executable ${CUDA_NVCC_EXECUTABLE})
-        set(cuda_toolkit_root_dir ${CUDA_TOOLKIT_ROOT_DIR})
-      else
+      else()
         message(STATUS "CUDA binaries for ${arch} require CUDA 10 or earlier, skipped.")
         continue()
       endif()
     elseif(${arch} MATCHES ".*_3.")
       if(DEFINED CUDA11_NVCC_EXECUTABLE)
         set(cuda_nvcc_executable ${CUDA11_NVCC_EXECUTABLE})
-        set(cuda_toolkit_root_dir ${CUDA11_TOOLKIT_ROOT_DIR})
       elseif("${CUDA_VERSION}" LESS 120) # Support for sm_35, sm_37 was removed in CUDA 12
         set(cuda_nvcc_executable ${CUDA_NVCC_EXECUTABLE})
-        set(cuda_toolkit_root_dir ${CUDA_TOOLKIT_ROOT_DIR})
       else()
         message(STATUS "CUDA binaries for ${arch} require CUDA 11 or earlier, skipped.")
         continue()
@@ -557,7 +555,6 @@ if(WITH_CYCLES_CUDA_BINARIES)
         # Support for sm_70 was introduced in CUDA 10
       elseif(DEFINED CUDA10_NVCC_EXECUTABLE)
         set(cuda_nvcc_executable ${CUDA10_NVCC_EXECUTABLE})
-        set(cuda_toolkit_root_dir ${CUDA10_TOOLKIT_ROOT_DIR})
       else()
         message(STATUS "CUDA binaries for ${arch} require CUDA 10.0+, skipped.")
         continue()
@@ -567,7 +564,6 @@ if(WITH_CYCLES_CUDA_BINARIES)
         # Support for sm_86 was introduced in CUDA 11
       elseif(DEFINED CUDA11_NVCC_EXECUTABLE)
         set(cuda_nvcc_executable ${CUDA11_NVCC_EXECUTABLE})
-        set(cuda_toolkit_root_dir ${CUDA11_TOOLKIT_ROOT_DIR})
       else()
         message(STATUS "CUDA binaries for ${arch} require CUDA 11.1+, skipped.")
         continue()
@@ -583,19 +579,42 @@ if(WITH_CYCLES_CUDA_BINARIES)
     set(cuda_file kernel_${arch}.${format})
     set(cuda_file_compressed ${cuda_file}.zst)
 
+    if(WITH_CYCLES_CUDA_BUILD_WHOLE_PROGRAM AND NOT DEFINED cuda_nvcc_executable)
+      # Optionally force building kernel with whole program optimizations using the custom target instead of using separate compilation
+      set(cuda_nvcc_executable ${CUDA_NVCC_EXECUTABLE})
+    endif()
     if(DEFINED cuda_nvcc_executable)
-      set(cuda_nvcc_flags "$<JOIN:$<TARGET_PROPERTY:cycles_kernel_cuda,COMPILE_OPTIONS>, >"
+      set(cuda_nvcc_flags
         -I ${CMAKE_CURRENT_SOURCE_DIR}/..
-        -I ${CMAKE_CURRENT_SOURCE_DIR}/device/cuda)
+        -I ${CMAKE_CURRENT_SOURCE_DIR}/device/cuda
+        -use_fast_math
+        -Wno-deprecated-gpu-targets)
+
+      if(CUDA_HOST_COMPILER)
+        set(cuda_nvcc_flags ${cuda_nvcc_flags}
+          -ccbin="${CUDA_HOST_COMPILER}")
+      endif()
 
       if(WITH_NANOVDB)
         set(cuda_nvcc_flags ${cuda_nvcc_flags}
           -D WITH_NANOVDB)
       endif()
 
-      if(CUDA_HOST_COMPILER)
+      if(WITH_CYCLES_DEBUG)
         set(cuda_nvcc_flags ${cuda_nvcc_flags}
-          -ccbin="${CUDA_HOST_COMPILER}")
+          -D WITH_CYCLES_DEBUG
+          --ptxas-options="-v")
+      endif()
+
+      if("${CUDA_VERSION}" GREATER_EQUAL 110)
+        # Helps with compatibility when using recent clang host compiler
+        set(cuda_nvcc_flags ${cuda_nvcc_flags}
+          -std=c++17)
+      endif()
+
+      if(WITH_COMPILER_CCACHE AND CCACHE_PROGRAM)
+        set(cuda_nvcc_executable
+          ${CCACHE_PROGRAM} ${cuda_nvcc_executable})
       endif()
 
       add_custom_command(
@@ -617,7 +636,6 @@ if(WITH_CYCLES_CUDA_BINARIES)
 
       unset(cuda_nvcc_flags)
       unset(cuda_nvcc_executable)
-      unset(cuda_toolkit_root_dir)
     else()
       add_custom_command(
         OUTPUT ${cuda_file}
