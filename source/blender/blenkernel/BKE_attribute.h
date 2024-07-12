@@ -18,7 +18,8 @@
 
 namespace blender::bke {
 enum class AttrDomain : int8_t;
-}
+class AttributeAccessor;
+}  // namespace blender::bke
 struct CustomData;
 struct CustomDataLayer;
 struct ID;
@@ -40,7 +41,6 @@ typedef enum AttrDomainMask {
 ENUM_OPERATORS(AttrDomainMask, ATTR_DOMAIN_MASK_ALL);
 
 enum class AttributeOwnerType {
-  None = 0,
   Mesh,
   PointCloud,
   Curves,
@@ -48,7 +48,7 @@ enum class AttributeOwnerType {
 };
 
 class AttributeOwner {
-  AttributeOwnerType type_ = AttributeOwnerType::None;
+  AttributeOwnerType type_;
   void *ptr_ = nullptr;
 
  public:
@@ -73,9 +73,6 @@ class AttributeOwner {
   ((AttrDomainMask)((ATTR_DOMAIN_MASK_POINT | ATTR_DOMAIN_MASK_CORNER)))
 
 /* Attributes. */
-
-bool BKE_attributes_supported(const AttributeOwner &owner);
-bool BKE_attribute_allow_procedural_access(const char *attribute_name);
 
 /**
  * Create a new attribute layer.

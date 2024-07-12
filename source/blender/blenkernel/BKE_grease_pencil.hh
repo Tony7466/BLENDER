@@ -526,6 +526,13 @@ class Layer : public ::GreasePencilLayer {
   float4x4 local_transform() const;
 
   /**
+   * Updates the local transform of the layer based on the matrix.
+   *
+   * \note The matrix is decomposed into location, rotation and scale, so any skew is lost.
+   */
+  void set_local_transform(const float4x4 &transform);
+
+  /**
    * Returns the transformation from layer space to object space.
    */
   float4x4 to_object_space(const Object &object) const;
@@ -848,8 +855,15 @@ class GreasePencilRuntime {
    * Allocated and freed by the drawing code. See `DRW_grease_pencil_batch_cache_*` functions.
    */
   void *batch_cache = nullptr;
-  /* The frame on which the object was evaluated (only valid for evaluated object). */
+  /**
+   * The frame on which the object was evaluated (only valid for evaluated object).
+   */
   int eval_frame = 0;
+  /**
+   * Set to true while drawing a stroke (e.g. with the draw tool).
+   * Used for example to temporarily hide the paint cursor in the viewport.
+   */
+  bool is_drawing_stroke = false;
 
  public:
   GreasePencilRuntime() {}
