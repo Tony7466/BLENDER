@@ -2826,28 +2826,31 @@ static bool uvedit_uv_threshold_weld(bContext *C, wmOperator *op)
   }
 
   /* This code block gets the endpoints of each respective edge loop and the data is nested with
-     the same heirarchy as edgeloops_arr. NOTE: This logic will intentionally only include 2
-     endpoints for each edge loop. In cases where internal loops are selected, this will not be
-     able to differentiate between an endpoint that is part of an internal boundary loop. Note that
-     any edgeloops that are cycles will not be included since they wont have any endpoints.*/
+     the same heirarchy as edgeloops_arr.*/
 
   blender::Vector<blender::Vector<blender::Vector<BMLoop *>>> endpoints_arr;
-  for (blender::Vector<blender::Vector<BMLoop *>> &curredgeloop : edgeloops_arr) {
+  for (int i = 0; i < edgeloops_arr.size(); i++) {
     blender::Vector<blender::Vector<BMLoop *>> curredgeloopendpoints_arr;
-    for (blender::Vector<BMLoop *> &UVcoordinate_arr : curredgeloop) {
-      if (UVcoordinate_arr[0]->head.index == -2) {
-        curredgeloopendpoints_arr.append(UVcoordinate_arr);
-      }
-      if (curredgeloopendpoints_arr.size() == 2) {
-        break;
+    for (int j = 0; j < edgeloops_arr[i].size(); j++) {
+
+      /*If any of the loops for the current UV coordinate have an index of -1 they are a endpoint*/
+
+      if (edgeloops_arr[i][j][0]->head.index == -1) {
+        curredgeloopendpoints_arr.append(edgeloops_arr[i][j]);
       }
     }
+
+    /*If edgeloop does not have 2 endpoints it is cyclic*/
+
     if (curredgeloopendpoints_arr.size() > 0) {
       endpoints_arr.append(curredgeloopendpoints_arr);
     }
+    else {
+      return false;
+    }
   }
 
-  /*This function requires there be at least 2 edgeloops selected.*/
+  /*This function requires there be only 2 edgeloops selected.*/
 
   if (endpoints_arr.size() != 2) {
     return false;
@@ -2856,18 +2859,20 @@ static bool uvedit_uv_threshold_weld(bContext *C, wmOperator *op)
   /*Find correct pairing of endpoints between edgeloops
   by searching for combination with smalled distance.*/
 
-  const auto &curredgeloopendpoints = endpoints_arr[0];
-  const auto &nextedgeloopendpoints = endpoints_arr[1];
-  float len_1 =
-      len_squared_v2v2(BM_ELEM_CD_GET_FLOAT_P(curredgeloopendpoints[0][0], offsetmap_arr[0].uv),
-                       BM_ELEM_CD_GET_FLOAT_P(nextedgeloopendpoints[0][0], offsetmap_arr[1].uv)) +
-      len_squared_v2v2(BM_ELEM_CD_GET_FLOAT_P(curredgeloopendpoints[1][0], offsetmap_arr[0].uv),
-                       BM_ELEM_CD_GET_FLOAT_P(nextedgeloopendpoints[1][0], offsetmap_arr[1].uv));
-  float len_2 =
-      len_squared_v2v2(BM_ELEM_CD_GET_FLOAT_P(curredgeloopendpoints[0][0], offsetmap_arr[0].uv),
-                       BM_ELEM_CD_GET_FLOAT_P(nextedgeloopendpoints[1][0], offsetmap_arr[1].uv)) +
-      len_squared_v2v2(BM_ELEM_CD_GET_FLOAT_P(curredgeloopendpoints[1][0], offsetmap_arr[0].uv),
-                       BM_ELEM_CD_GET_FLOAT_P(nextedgeloopendpoints[0][0], offsetmap_arr[1].uv));
+  const auto &edgeloop1_endpoints_arr = endpoints_arr[0];
+  const auto &edgeloop2_endpoints_arr = endpoints_arr[1];
+  float len_1 = len_squared_v2v2(
+                    BM_ELEM_CD_GET_FLOAT_P(edgeloop1_endpoints_arr[0][0], offsetmap_arr[0].uv),
+                    BM_ELEM_CD_GET_FLOAT_P(edgeloop2_endpoints_arr[0][0], offsetmap_arr[1].uv)) +
+                len_squared_v2v2(
+                    BM_ELEM_CD_GET_FLOAT_P(edgeloop1_endpoints_arr[1][0], offsetmap_arr[0].uv),
+                    BM_ELEM_CD_GET_FLOAT_P(edgeloop2_endpoints_arr[1][0], offsetmap_arr[1].uv));
+  float len_2 = len_squared_v2v2(
+                    BM_ELEM_CD_GET_FLOAT_P(edgeloop1_endpoints_arr[0][0], offsetmap_arr[0].uv),
+                    BM_ELEM_CD_GET_FLOAT_P(edgeloop2_endpoints_arr[1][0], offsetmap_arr[1].uv)) +
+                len_squared_v2v2(
+                    BM_ELEM_CD_GET_FLOAT_P(edgeloop1_endpoints_arr[1][0], offsetmap_arr[0].uv),
+                    BM_ELEM_CD_GET_FLOAT_P(edgeloop2_endpoints_arr[0][0], offsetmap_arr[1].uv));
   if (len_1 > len_2) {
     std::swap(endpoints_arr[1][0], endpoints_arr[1][1]);
   }

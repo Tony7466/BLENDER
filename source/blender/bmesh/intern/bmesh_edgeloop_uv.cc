@@ -28,6 +28,12 @@ bool UV_get_edgeloops(
         continue;
       }
       blender::Vector<blender::Vector<BMLoop *>> edgeloop;
+
+      /*This will be used to check whether the current continuous selection is a valid edge loop or
+       * not*/
+
+      bool valid_edgeloop = true;
+
       // while the queue is not empty
       while (!queue.empty()) {
         // pop the front of queue and store in queuel
@@ -52,7 +58,7 @@ bool UV_get_edgeloops(
           if (currluv[0] != luv[0] || currluv[1] != luv[1]) {
             continue;
           }
-          BM_elem_index_set(currl, -1);
+          BM_elem_index_set(currl, -2);
           uvcoord.append(currl);
 
           if (callback(scene, currl->next, offsets)) {
@@ -69,16 +75,18 @@ bool UV_get_edgeloops(
           }
         }
         if (selectedconnections > 2 || selectedconnections < 1) {
-          return false;
+          valid_edgeloop = false;
         }
         else if (selectedconnections == 1) {
           for (BMLoop *endpointloop : uvcoord) {
-            BM_elem_index_set(endpointloop, -2);
+            BM_elem_index_set(endpointloop, -1);
           }
         }
-        edgeloop.append(uvcoord);
+        if (valid_edgeloop) {
+          edgeloop.append(uvcoord);
+        }
       }
-      if (edgeloop.size() != 0) {
+      if (edgeloop.size() != 0 && valid_edgeloop) {
         edgeloops->append(edgeloop);
       }
     }
