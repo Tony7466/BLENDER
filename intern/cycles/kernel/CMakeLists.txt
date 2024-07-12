@@ -522,7 +522,7 @@ if(WITH_CYCLES_CUDA_BINARIES)
       target_compile_options(cycles_kernel_cuda PRIVATE --split-compile=0)
     endif()
     if(WITH_CYCLES_DEBUG)
-      target_compile_options(cycles_kernel_cuda PRIVATE --ptxas-options="-v")
+      target_compile_options(cycles_kernel_cuda PRIVATE -lineinfo --ptxas-options="-v")
     endif()
 
     cycles_set_solution_folder(cycles_kernel_cuda)
@@ -603,6 +603,7 @@ if(WITH_CYCLES_CUDA_BINARIES)
       if(WITH_CYCLES_DEBUG)
         set(cuda_nvcc_flags ${cuda_nvcc_flags}
           -D WITH_CYCLES_DEBUG
+          -lineinfo
           --ptxas-options="-v")
       endif()
 
