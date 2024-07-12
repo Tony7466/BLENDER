@@ -28,7 +28,6 @@
 
 #include "DNA_brush_enums.h"
 #include "DNA_brush_types.h"
-#include "DNA_grease_pencil_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_view3d_types.h"
 #include "DNA_windowmanager_types.h"
@@ -91,6 +90,15 @@ static GreasePencilStrokeOperation *get_stroke_operation(bContext &C, wmOperator
   const BrushStrokeMode stroke_mode = BrushStrokeMode(RNA_enum_get(op->ptr, "mode"));
 
   if (mode == PaintMode::GPencil) {
+    if (eBrushGPaintTool(brush.gpencil_tool) == GPAINT_TOOL_DRAW &&
+        stroke_mode == BRUSH_STROKE_ERASE)
+    {
+      /* Special case: We're using the draw tool but with the eraser mode. */
+      Object *object = CTX_data_active_object(&C);
+      GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+      grease_pencil.runtime->use_eraser_temp = true;
+      return greasepencil::new_erase_operation().release();
+    }
     /* FIXME: Somehow store the unique_ptr in the PaintStroke. */
     switch (eBrushGPaintTool(brush.gpencil_tool)) {
       case GPAINT_TOOL_DRAW:
@@ -130,16 +138,12 @@ static GreasePencilStrokeOperation *get_stroke_operation(bContext &C, wmOperator
     switch (eBrushGPWeightTool(brush.gpencil_weight_tool)) {
       case GPWEIGHT_TOOL_DRAW:
         return greasepencil::new_weight_paint_draw_operation(stroke_mode).release();
-        break;
       case GPWEIGHT_TOOL_BLUR:
         return greasepencil::new_weight_paint_blur_operation().release();
-        break;
       case GPWEIGHT_TOOL_AVERAGE:
         return greasepencil::new_weight_paint_average_operation().release();
-        break;
       case GPWEIGHT_TOOL_SMEAR:
         return greasepencil::new_weight_paint_smear_operation().release();
-        break;
     }
   }
   return nullptr;
