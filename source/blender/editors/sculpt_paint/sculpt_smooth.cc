@@ -55,27 +55,6 @@ void neighbor_position_average_mesh(const Span<float3> positions,
   }
 }
 
-static bool subdiv_coord_is_boundary(const OffsetIndices<int> faces,
-                                     const Span<int> corner_verts,
-                                     const BitSpan boundary_verts,
-                                     const SubdivCCG &subdiv_ccg,
-                                     const SubdivCCGCoord coord)
-{
-  int v1, v2;
-  const SubdivCCGAdjacencyType adjacency = BKE_subdiv_ccg_coarse_mesh_adjacency_info_get(
-      subdiv_ccg, coord, corner_verts, faces, v1, v2);
-  switch (adjacency) {
-    case SUBDIV_CCG_ADJACENT_VERTEX:
-      return boundary_verts[v1];
-    case SUBDIV_CCG_ADJACENT_EDGE:
-      return boundary_verts[v1] && boundary_verts[v2];
-    case SUBDIV_CCG_ADJACENT_NONE:
-      return false;
-  }
-  BLI_assert_unreachable();
-  return false;
-}
-
 static float3 average_positions(const CCGKey &key,
                                 const Span<CCGElem *> elems,
                                 const Span<SubdivCCGCoord> coords)
@@ -120,7 +99,9 @@ void neighbor_position_average_interior_grids(const OffsetIndices<int> faces,
         SubdivCCGNeighbors neighbors;
         BKE_subdiv_ccg_neighbor_coords_get(subdiv_ccg, coord, false, neighbors);
 
-        if (subdiv_coord_is_boundary(faces, corner_verts, boundary_verts, subdiv_ccg, coord)) {
+        if (BKE_subdiv_ccg_coord_is_mesh_boundary(
+                faces, corner_verts, boundary_verts, subdiv_ccg, coord))
+        {
           if (neighbors.coords.size() == 2) {
             /* Do not include neighbors of corner vertices. */
             neighbors.coords.clear();
@@ -128,7 +109,7 @@ void neighbor_position_average_interior_grids(const OffsetIndices<int> faces,
           else {
             /* Only include other boundary vertices as neighbors of boundary vertices. */
             neighbors.coords.remove_if([&](const SubdivCCGCoord coord) {
-              return !subdiv_coord_is_boundary(
+              return !BKE_subdiv_ccg_coord_is_mesh_boundary(
                   faces, corner_verts, boundary_verts, subdiv_ccg, coord);
             });
           }
@@ -400,8 +381,7 @@ void enhance_details_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes)
 
   if (SCULPT_stroke_is_first_brush_step(*ss.cache)) {
     const int totvert = SCULPT_vertex_count_get(ss);
-    ss.cache->detail_directions = static_cast<float(*)[3]>(
-        MEM_malloc_arrayN(totvert, sizeof(float[3]), "details directions"));
+    ss.cache->detail_directions.reinitialize(totvert);
 
     for (int i = 0; i < totvert; i++) {
       PBVHVertRef vertex = BKE_pbvh_index_to_vertex(*ss.pbvh, i);
@@ -423,7 +403,7 @@ void enhance_details_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes)
 void surface_smooth_laplacian_step(SculptSession &ss,
                                    float *disp,
                                    const float co[3],
-                                   float (*laplacian_disp)[3],
+                                   MutableSpan<float3> laplacian_disp,
                                    const PBVHVertRef vertex,
                                    const float origco[3],
                                    const float alpha)
@@ -443,7 +423,7 @@ void surface_smooth_laplacian_step(SculptSession &ss,
 
 void surface_smooth_displace_step(SculptSession &ss,
                                   float *co,
-                                  float (*laplacian_disp)[3],
+                                  MutableSpan<float3> laplacian_disp,
                                   const PBVHVertRef vertex,
                                   const float beta,
                                   const float fade)
