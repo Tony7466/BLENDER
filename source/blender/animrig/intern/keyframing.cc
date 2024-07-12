@@ -694,6 +694,10 @@ int delete_keyframe(Main *bmain,
     }
 
     int key_count = 0;
+    /* This loop's clause is copied from the pre-existing code for legacy
+     * actions below, to ensure behavioral consistency between the two code
+     * paths. In the future when legacy actions are removed, we can restructure
+     * it to be clearer. */
     for (; array_index < array_index_max; array_index++) {
       FCurve *fcurve = channelbag->fcurve_find(rna_path, array_index);
       if (fcurve == nullptr) {

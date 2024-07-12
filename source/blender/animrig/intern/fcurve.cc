@@ -78,7 +78,6 @@ bool fcurve_delete_keyframe_at_time(FCurve *fcurve, const float time)
     return false;
   }
 
-  /* Delete the key at the index (will sanity check + do recalc afterwards). */
   BKE_fcurve_delete_key(fcurve, index);
   BKE_fcurve_handles_recalc(fcurve);
 
