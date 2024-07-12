@@ -1417,7 +1417,6 @@ void PaintOperation::on_stroke_done(const bContext &C)
   attributes.remove(".draw_tool_screen_space_positions");
 
   drawing.set_texture_matrices({texture_space_}, IndexRange::from_single(active_curve));
-  drawing.tag_topology_changed();
 
   if (do_automerge_endpoints) {
     constexpr float merge_distance = 20.0f;
@@ -1426,6 +1425,8 @@ void PaintOperation::on_stroke_done(const bContext &C)
     drawing.strokes_for_write() = ed::greasepencil::curves_merge_endpoints_by_distance(
         *region, drawing.strokes(), layer_to_world, merge_distance, selection, {});
   }
+
+  drawing.tag_topology_changed();
 
   /* Now we're done drawing. */
   grease_pencil.runtime->is_drawing_stroke = false;
