@@ -322,7 +322,6 @@ def _template_space_region_type_toggle(
             items.extend([
                 ("wm.context_toggle", sidebar_key,
                  {"properties": [("data_path", 'space_data.show_region_ui')]}),
-                 
                 op_menu_pie("WM_MT_region_toggle_pie", sidebar_key_drag),
             ])
         else:
@@ -1460,14 +1459,23 @@ def km_view3d_generic(params):
         {"items": items},
     )
 
-    items.extend([
-        *_template_space_region_type_toggle(
-            params,
-            toolbar_key={"type": 'T', "value": 'PRESS'},
-            sidebar_key={"type": 'N', "value": 'CLICK'} if params.use_pie_click_drag else {"type": 'N', "value": 'PRESS'},
-            sidebar_key_drag={"type": 'N', "value": 'CLICK_DRAG'} if params.use_pie_click_drag else None,
-        )
-    ])
+    items.extend(
+        [
+            *
+            _template_space_region_type_toggle(
+                params,
+                toolbar_key={
+                    "type": 'T',
+                    "value": 'PRESS'},
+                sidebar_key={
+                    "type": 'N',
+                    "value": 'CLICK'} if params.use_pie_click_drag else {
+                    "type": 'N',
+                        "value": 'PRESS'},
+                sidebar_key_drag={
+                    "type": 'N',
+                    "value": 'CLICK_DRAG'} if params.use_pie_click_drag else None,
+            )])
 
     return keymap
 
@@ -2103,14 +2111,24 @@ def km_node_generic(params):
         {"items": items},
     )
 
-    items.extend([
-        *_template_space_region_type_toggle(
-            params,
-            toolbar_key={"type": 'T', "value": 'PRESS'},
-            sidebar_key={"type": 'N', "value": 'CLICK'} if params.use_pie_click_drag else {"type": 'N', "value": 'PRESS'},
-            sidebar_key_drag={"type": 'N', "value": 'CLICK_DRAG'} if params.use_pie_click_drag else None,
-        ),
-    ])
+    items.extend(
+        [
+            *
+            _template_space_region_type_toggle(
+                params,
+                toolbar_key={
+                    "type": 'T',
+                    "value": 'PRESS'},
+                sidebar_key={
+                    "type": 'N',
+                    "value": 'CLICK'} if params.use_pie_click_drag else {
+                    "type": 'N',
+                        "value": 'PRESS'},
+                sidebar_key_drag={
+                    "type": 'N',
+                    "value": 'CLICK_DRAG'} if params.use_pie_click_drag else None,
+            ),
+        ])
 
     return keymap
 
@@ -3483,14 +3501,24 @@ def km_spreadsheet_generic(params):
         {"items": items},
     )
 
-    items.extend([
-        *_template_space_region_type_toggle(
-            params,
-            channels_key={"type": 'T', "value": 'PRESS'},
-            sidebar_key={"type": 'N', "value": 'CLICK'} if params.use_pie_click_drag else {"type": 'N', "value": 'PRESS'},
-            sidebar_key_drag={"type": 'N', "value": 'CLICK_DRAG'} if params.use_pie_click_drag else None,
-        ),
-    ])
+    items.extend(
+        [
+            *
+            _template_space_region_type_toggle(
+                params,
+                channels_key={
+                    "type": 'T',
+                    "value": 'PRESS'},
+                sidebar_key={
+                    "type": 'N',
+                    "value": 'CLICK'} if params.use_pie_click_drag else {
+                    "type": 'N',
+                        "value": 'PRESS'},
+                sidebar_key_drag={
+                    "type": 'N',
+                    "value": 'CLICK_DRAG'} if params.use_pie_click_drag else None,
+            ),
+        ])
 
     return keymap
 
