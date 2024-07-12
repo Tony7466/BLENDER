@@ -181,7 +181,7 @@ static void stroke_done(const bContext *C, PaintStroke *stroke)
       paint_stroke_mode_data(stroke));
   if (operation != nullptr) {
     operation->on_stroke_done(*C);
-    operation->~GreasePencilStrokeOperation();
+    delete operation;
   }
 }
 
