@@ -650,7 +650,7 @@ set(CYCLES_TEST_DEVICES CPU CACHE STRING "\
 Run regression tests on the specified device types (CPU CUDA OPTIX HIP)"
 )
 option(WITH_CYCLES_TEST_OSL "\
-Run addition Cycles test with OSL enabled"
+Run additional Cycles test with OSL enabled"
   OFF
 )
 mark_as_advanced(WITH_CYCLES_KERNEL_ASAN)
