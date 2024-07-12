@@ -828,93 +828,102 @@ static int uvedit_uv_threshold_weld_underlying_geometry(bContext *C, wmOperator 
   /* Since we are using len_squared_v2v2 to calculate distance, we need to square the
    * user-defined threshold*/
 
-  float threshold = RNA_float_get(op->ptr, "threshold");
-  float threshold_sq = threshold * threshold;
+  float threshold_sq = pow(RNA_float_get(op->ptr, "threshold"), 2);
   for (Object *obedit : objects) {
     BMEditMesh *em = BKE_editmesh_from_object(obedit);
     BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
     BMVert *v;
     BMLoop *l;
     BMIter viter, liter;
+
+    /*The Changed varaible keeps track if any loops from the current object are merged*/
+    blender::Vector<float *> luvmapvector;
+    luvmapvector.reserve(32);
+    bool changed = false;
     BM_ITER_MESH (v, &viter, em->bm, BM_VERTS_OF_MESH) {
-      blender::Vector<float *> luvmap;
+
       BM_ITER_ELEM (l, &liter, v, BM_LOOPS_OF_VERT) {
         if (uvedit_uv_select_test(scene, l, offsets)) {
-          luvmap.append(BM_ELEM_CD_GET_FLOAT_P(l, offsets.uv));
+          luvmapvector.append(BM_ELEM_CD_GET_FLOAT_P(l, offsets.uv));
         }
       }
-      if (luvmap.size() <= 1) {
+      int luvmapsize = luvmapvector.size();
+      if (luvmapsize <= 1) {
+        luvmapvector.resize(0);
         continue;
       }
 
-      while (luvmap.size() > 1) {
-        blender::float2 cent = {0.0f, 0.0f};
-        for (auto &luv : luvmap) {
-          cent[0] += luv[0];
-          cent[1] += luv[1];
+      while (luvmapvector.size() > 1) {
+        blender::float2 average_UV_coord = {0.0f, 0.0f};
+        for (const float *luv : luvmapvector) {
+          average_UV_coord[0] += luv[0];
+          average_UV_coord[1] += luv[1];
         }
-        cent[0] /= luvmap.size();
-        cent[1] /= luvmap.size();
+        average_UV_coord[0] /= luvmapsize;
+        average_UV_coord[1] /= luvmapsize;
 
-        /*Find the loop closest to the cent coordinate. This loop will be the base that all
+        /*Find the loop closest to the average_UV_coord . This loop will be the base that all
          * other loops' distances are calculated from.*/
 
-        float mindist = len_squared_v2v2(cent, luvmap[0]);
-        float *center = luvmap[0];
-        int centerindex = 0;
-        for (int i = 0; i < luvmap.size(); i++) {
-          float dist = len_squared_v2v2(cent, luvmap[i]);
-          if (dist < mindist) {
-            mindist = dist;
-            center = luvmap[i];
-            centerindex = i;
+        float mindist_sq = len_squared_v2v2(average_UV_coord, luvmapvector[0]);
+        float *uv_reference_point = luvmapvector[0];
+        int refpointindex = 0;
+        for (int i = 1; i < luvmapsize; i++) {
+          const float dist_sq = len_squared_v2v2(average_UV_coord, luvmapvector[i]);
+          if (dist_sq < mindist_sq) {
+            mindist_sq = dist_sq;
+            uv_reference_point = luvmapvector[i];
+            refpointindex = i;
           }
         }
-        float *tmp = center;
-        luvmap[centerindex] = luvmap[luvmap.size() - 1];
-        luvmap[luvmap.size() - 1] = tmp;
-        blender::float2 sum = {center[0], center[1]};
+        std::swap(luvmapvector[refpointindex], luvmapvector[luvmapsize - 1]);
 
-        /*Move all the UVs within threshold to the end of the array.*/
+        /*Move all the UVs within threshold to the end of the array. Sum of all UV coordinates
+         * within threshold is initialized with uv_reference_point coordinate data since while loop
+         * ends once it hits uv_reference_point luv */
 
+        const int luvmap_end = luvmapvector.size() - 1;
+        blender::float2 sumcoordinates = {uv_reference_point[0], uv_reference_point[1]};
         int i = 0;
-        int mergesection = 1;
-        while (luvmap[i] != center and i < luvmap.size() - mergesection) {
-          float dist = len_squared_v2v2(center, luvmap[i]);
-          if (dist < threshold_sq) {
-            sum[0] += luvmap[i][0];
-            sum[1] += luvmap[i][1];
-            float *tmp = luvmap[i];
-            luvmap[i] = luvmap[luvmap.size() - mergesection - 1];
-            luvmap[luvmap.size() - mergesection - 1] = tmp;
-            mergesection++;
+        int num_mergeloops = 1;
+        while (luvmapvector[i] != uv_reference_point && i < luvmapsize - num_mergeloops) {
+          const float dist_sq = len_squared_v2v2(uv_reference_point, luvmapvector[i]);
+          if (dist_sq < threshold_sq) {
+            sumcoordinates[0] += luvmapvector[i][0];
+            sumcoordinates[1] += luvmapvector[i][1];
+            std::swap(luvmapvector[i], luvmapvector[luvmap_end - num_mergeloops]);
+            num_mergeloops++;
+            if (dist_sq != 0.0f) {
+              changed = true;
+            }
           }
           else {
             i++;
           }
         }
 
-        /*Shift all uvs in threshold to newly calculated center and then remove those loops' data
-         * from luvmap.*/
+        /*Recalculate average_UV_coord so it only considers luvs that are being included in merge
+         * operation. Then Shift all loops to that position.*/
 
-        if (mergesection > 1) {
-          blender::float2 midpoint = {0.0f, 0.0f};
-          midpoint[0] = sum[0] / mergesection;
-          midpoint[1] = sum[1] / mergesection;
+        if (num_mergeloops > 1) {
+          blender::float2 average_UV_coord = sumcoordinates / num_mergeloops;
 
-          for (int j = luvmap.size() - mergesection; j < luvmap.size(); j++) {
-            float *luv = luvmap[j];
-            luv[0] = midpoint[0];
-            luv[1] = midpoint[1];
+          for (int j = luvmapsize - num_mergeloops; j < luvmapsize; j++) {
+            float *luv = luvmapvector[j];
+            luv[0] = average_UV_coord[0];
+            luv[1] = average_UV_coord[1];
           }
         }
 
-        luvmap.resize(luvmap.size() - mergesection);
+        luvmapvector.resize(luvmapsize - num_mergeloops);
+        luvmapsize -= num_mergeloops;
       }
     }
-    uvedit_live_unwrap_update(sima, scene, obedit);
-    DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
-    WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
+    if (changed) {
+      uvedit_live_unwrap_update(sima, scene, obedit);
+      DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
+      WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
+    }
   }
 
   return OPERATOR_FINISHED;
