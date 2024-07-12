@@ -83,7 +83,8 @@ static bool stroke_get_location(bContext * /*C*/,
   return true;
 }
 
-static GreasePencilStrokeOperation *get_stroke_operation(bContext &C, wmOperator *op)
+static std::unique_ptr<GreasePencilStrokeOperation> get_stroke_operation(bContext &C,
+                                                                         wmOperator *op)
 {
   const Paint *paint = BKE_paint_get_active_from_context(&C);
   const Brush &brush = *BKE_paint_brush_for_read(paint);
@@ -94,48 +95,48 @@ static GreasePencilStrokeOperation *get_stroke_operation(bContext &C, wmOperator
     /* FIXME: Somehow store the unique_ptr in the PaintStroke. */
     switch (eBrushGPaintTool(brush.gpencil_tool)) {
       case GPAINT_TOOL_DRAW:
-        return greasepencil::new_paint_operation().release();
+        return greasepencil::new_paint_operation();
       case GPAINT_TOOL_ERASE:
-        return greasepencil::new_erase_operation().release();
+        return greasepencil::new_erase_operation();
       case GPAINT_TOOL_FILL:
         /* Fill tool keymap uses the paint operator as alternative mode. */
-        return greasepencil::new_paint_operation().release();
+        return greasepencil::new_paint_operation();
       case GPAINT_TOOL_TINT:
-        return greasepencil::new_tint_operation().release();
+        return greasepencil::new_tint_operation();
     }
   }
   else if (mode == PaintMode::SculptGreasePencil) {
     switch (eBrushGPSculptTool(brush.gpencil_sculpt_tool)) {
       case GPSCULPT_TOOL_SMOOTH:
-        return greasepencil::new_smooth_operation(stroke_mode).release();
+        return greasepencil::new_smooth_operation(stroke_mode);
       case GPSCULPT_TOOL_THICKNESS:
-        return greasepencil::new_thickness_operation(stroke_mode).release();
+        return greasepencil::new_thickness_operation(stroke_mode);
       case GPSCULPT_TOOL_STRENGTH:
-        return greasepencil::new_strength_operation(stroke_mode).release();
+        return greasepencil::new_strength_operation(stroke_mode);
       case GPSCULPT_TOOL_GRAB:
-        return greasepencil::new_grab_operation(stroke_mode).release();
+        return greasepencil::new_grab_operation(stroke_mode);
       case GPSCULPT_TOOL_PUSH:
-        return greasepencil::new_push_operation(stroke_mode).release();
+        return greasepencil::new_push_operation(stroke_mode);
       case GPSCULPT_TOOL_TWIST:
-        return greasepencil::new_twist_operation(stroke_mode).release();
+        return greasepencil::new_twist_operation(stroke_mode);
       case GPSCULPT_TOOL_PINCH:
-        return greasepencil::new_pinch_operation(stroke_mode).release();
+        return greasepencil::new_pinch_operation(stroke_mode);
       case GPSCULPT_TOOL_RANDOMIZE:
-        return greasepencil::new_randomize_operation(stroke_mode).release();
+        return greasepencil::new_randomize_operation(stroke_mode);
       case GPSCULPT_TOOL_CLONE:
-        return greasepencil::new_clone_operation(stroke_mode).release();
+        return greasepencil::new_clone_operation(stroke_mode);
     }
   }
   else if (mode == PaintMode::WeightGPencil) {
     switch (eBrushGPWeightTool(brush.gpencil_weight_tool)) {
       case GPWEIGHT_TOOL_DRAW:
-        return greasepencil::new_weight_paint_draw_operation(stroke_mode).release();
+        return greasepencil::new_weight_paint_draw_operation(stroke_mode);
       case GPWEIGHT_TOOL_BLUR:
-        return greasepencil::new_weight_paint_blur_operation().release();
+        return greasepencil::new_weight_paint_blur_operation();
       case GPWEIGHT_TOOL_AVERAGE:
-        return greasepencil::new_weight_paint_average_operation().release();
+        return greasepencil::new_weight_paint_average_operation();
       case GPWEIGHT_TOOL_SMEAR:
-        return greasepencil::new_weight_paint_smear_operation().release();
+        return greasepencil::new_weight_paint_smear_operation();
     }
   }
   return nullptr;
@@ -160,10 +161,10 @@ static void stroke_update_step(bContext *C,
   sample.pressure = RNA_float_get(stroke_element, "pressure");
 
   if (!operation) {
-    GreasePencilStrokeOperation *new_operation = get_stroke_operation(*C, op);
+    std::unique_ptr<GreasePencilStrokeOperation> new_operation = get_stroke_operation(*C, op);
     BLI_assert(new_operation != nullptr);
-    paint_stroke_set_mode_data(stroke, new_operation);
     new_operation->on_stroke_begin(*C, sample);
+    paint_stroke_set_mode_data(stroke, std::move(new_operation));
   }
   else {
     operation->on_stroke_extended(*C, sample);
@@ -181,7 +182,6 @@ static void stroke_done(const bContext *C, PaintStroke *stroke)
       paint_stroke_mode_data(stroke));
   if (operation != nullptr) {
     operation->on_stroke_done(*C);
-    operation->~GreasePencilStrokeOperation();
   }
 }
 

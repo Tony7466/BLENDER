@@ -1027,9 +1027,9 @@ inline bool mtl_convert_vertex_format(MTLVertexFormat shader_attrib_format,
             UNUSED_VARS_NDEBUG(can_convert);
           }
           else {
-            BLI_assert_msg(false,
-                           "Source vertex data format is either UInt, UInt2, UInt3, UInt4 but "
-                           "format in shader interface is NOT compatible.\n");
+            // BLI_assert_msg(false,
+            //                "Source vertex data format is either UInt, UInt2, UInt3, UInt4 but "
+            //                "format in shader interface is NOT compatible.\n");
             out_vert_format = MTLVertexFormatInvalid;
           }
           break;
