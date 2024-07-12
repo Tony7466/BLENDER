@@ -682,6 +682,29 @@ int delete_keyframe(Main *bmain,
     }
   }
 
+  Action &action = act->wrap();
+  if (action.is_action_layered()) {
+    /* Just being defensive in the face of the NLA shenanigans above. This
+     * probably isn't necessary, but it doesn't hurt. */
+    BLI_assert(adt->action == act && action.slot_for_handle(adt->slot_handle) != nullptr);
+
+    ChannelBag *channelbag = channelbag_for_action_slot(action, adt->slot_handle);
+    if (channelbag == nullptr) {
+      return 0;
+    }
+
+    int key_count = 0;
+    for (; array_index < array_index_max; array_index++) {
+      FCurve *fcurve = channelbag->fcurve_find(rna_path, array_index);
+      if (fcurve == nullptr) {
+        continue;
+      }
+      key_count += fcurve_delete_keyframe_at_frame(fcurve, cfra);
+    }
+
+    return key_count;
+  }
+
   /* Will only loop once unless the array index was -1. */
   int key_count = 0;
   for (; array_index < array_index_max; array_index++) {
@@ -701,7 +724,7 @@ int delete_keyframe(Main *bmain,
       continue;
     }
 
-    key_count += delete_keyframe_fcurve(adt, fcu, cfra);
+    key_count += delete_keyframe_fcurve_legacy(adt, fcu, cfra);
   }
   if (key_count) {
     deg_tag_after_keyframe_delete(bmain, id, adt);

@@ -68,7 +68,7 @@ FCurve *create_fcurve_for_channel(const FCurveDescriptor fcurve_descriptor)
   return fcu;
 }
 
-bool delete_keyframe_fcurve(AnimData *adt, FCurve *fcu, float cfra)
+bool fcurve_delete_keyframe_at_frame(FCurve *fcu, float cfra)
 {
   bool found;
 
@@ -80,6 +80,15 @@ bool delete_keyframe_fcurve(AnimData *adt, FCurve *fcu, float cfra)
   /* Delete the key at the index (will sanity check + do recalc afterwards). */
   BKE_fcurve_delete_key(fcu, index);
   BKE_fcurve_handles_recalc(fcu);
+
+  return true;
+}
+
+bool delete_keyframe_fcurve_legacy(AnimData *adt, FCurve *fcu, float cfra)
+{
+  if (!fcurve_delete_keyframe_at_frame(fcu, cfra)) {
+    return false;
+  }
 
   /* Empty curves get automatically deleted. */
   if (BKE_fcurve_is_empty(fcu)) {

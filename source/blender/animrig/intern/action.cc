@@ -1181,12 +1181,18 @@ const FCurve *ChannelBag::fcurve_find(const StringRefNull rna_path, const int ar
   }
   return nullptr;
 }
+FCurve *ChannelBag::fcurve_find(const StringRefNull rna_path, const int array_index)
+{
+  const FCurve *fcurve = const_cast<const ChannelBag *>(this)->fcurve_find(rna_path, array_index);
+  return const_cast<FCurve *>(fcurve);
+}
 
 /* Utility function implementations. */
 
-static const animrig::ChannelBag *channelbag_for_action_slot(const Action &action,
-                                                             const slot_handle_t slot_handle)
+const animrig::ChannelBag *channelbag_for_action_slot(const Action &action,
+                                                      const slot_handle_t slot_handle)
 {
+  assert_baklava_phase_1_invariants(action);
   if (slot_handle == Slot::unassigned) {
     return nullptr;
   }
@@ -1208,9 +1214,9 @@ static const animrig::ChannelBag *channelbag_for_action_slot(const Action &actio
   return nullptr;
 }
 
-static animrig::ChannelBag *channelbag_for_action_slot(Action &action,
-                                                       const slot_handle_t slot_handle)
+animrig::ChannelBag *channelbag_for_action_slot(Action &action, const slot_handle_t slot_handle)
 {
+  assert_baklava_phase_1_invariants(action);
   const animrig::ChannelBag *const_bag = channelbag_for_action_slot(
       const_cast<const Action &>(action), slot_handle);
   return const_cast<animrig::ChannelBag *>(const_bag);
