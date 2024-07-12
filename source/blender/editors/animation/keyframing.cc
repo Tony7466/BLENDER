@@ -851,8 +851,8 @@ static int delete_key_fcurve(
     }
   }
 
-  /* delete keyframes on current frame
-   * WARNING: this can delete the next F-Curve, hence the "fcn" copying
+  /* Delete keyframes on current frame.
+   * WARNING: this can delete the F-Curve.
    */
   return blender::animrig::delete_keyframe_fcurve(adt, fcu, fcu_frame);
 }
