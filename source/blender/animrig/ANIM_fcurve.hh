@@ -79,6 +79,9 @@ void initialize_bezt(BezTriple *beztr,
 bool fcurve_delete_keyframe_at_time(FCurve *fcurve, float time);
 
 /**
+ * Deletes the keyframe at `cfra` on `fcu` if a key exists there, and deletes
+ * the fcurve if it was the only keyframe.
+ *
  * \note For fcurves on legacy actions only. More specifically, this assumes
  * that the fcurve lives on `adt->action` and that `adt->action` is a legacy
  * action.
