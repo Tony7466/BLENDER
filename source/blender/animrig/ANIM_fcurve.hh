@@ -50,8 +50,8 @@ KeyframeSettings get_keyframe_settings(bool from_userprefs);
  *
  * If no matching fcurve is found, returns nullptr.
  */
-const FCurve *fcurve_find(Span<const FCurve *> fcurves, const FCurveDescriptor fcurve_descriptor);
-FCurve *fcurve_find(Span<FCurve *> fcurves, const FCurveDescriptor fcurve_descriptor);
+const FCurve *fcurve_find(Span<const FCurve *> fcurves, FCurveDescriptor fcurve_descriptor);
+FCurve *fcurve_find(Span<FCurve *> fcurves, FCurveDescriptor fcurve_descriptor);
 
 /**
  * Create an fcurve for a specific channel, pre-set-up with default flags and
