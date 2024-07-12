@@ -699,7 +699,7 @@ int delete_keyframe(Main *bmain,
       if (fcurve == nullptr) {
         continue;
       }
-      key_count += fcurve_delete_keyframe_at_frame(fcurve, cfra);
+      key_count += fcurve_delete_keyframe_at_time(fcurve, cfra);
     }
 
     return key_count;

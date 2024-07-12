@@ -61,14 +61,14 @@ void initialize_bezt(BezTriple *beztr,
                      eFCurve_Flags fcu_flags);
 
 /**
- * Delete the keyframe at `cfra` on `fcu` if a key exists there.
+ * Delete the keyframe at `time` on `fcurve` if a key exists there.
  *
- * \note cfra is in fcurve time, not scene time.  Any time remapping must be
+ * \note `time` is in fcurve time, not scene time.  Any time remapping must be
  * done prior to calling this function.
  *
- * \return Whether a keyframe was found at `cfra` (and thus was deleted).
+ * \return True if a keyframe was found at `time` and deleted, false otherwise.
  */
-bool fcurve_delete_keyframe_at_frame(FCurve *fcu, float cfra);
+bool fcurve_delete_keyframe_at_time(FCurve *fcurve, float time);
 
 /**
  * \note For fcurves on legacy actions only. More specifically, this assumes
