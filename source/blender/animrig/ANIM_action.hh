@@ -673,7 +673,6 @@ class ChannelBag : public ::ActionChannelBag {
   FCurve *fcurve(int64_t index);
 
   const FCurve *fcurve_find(StringRefNull rna_path, int array_index) const;
-  FCurve *fcurve_find(StringRefNull rna_path, int array_index);
 };
 static_assert(sizeof(ChannelBag) == sizeof(::ActionChannelBag),
               "DNA struct and its C++ wrapper must have the same size");
@@ -738,20 +737,6 @@ Action *get_action(ID &animated_id);
  *    an animatable type, no Action assigned, or no Slot assigned.
  */
 std::optional<std::pair<Action *, Slot *>> get_action_slot_pair(ID &animated_id);
-
-/**
- * Return the ChannelBag for this specific slot handle if one exists.
- *
- * This is just a utility function, that's intended to become obsolete when multi-layer Actions
- * are introduced. However, since Blender currently only supports a single layer with a single
- * strip, of a single type, this function can be used.
- *
- * The use of this function is also an indicator for code that will have to be altered when
- * multi-layered Actions are getting implemented.
- */
-const animrig::ChannelBag *channelbag_for_action_slot(const Action &action,
-                                                      slot_handle_t slot_handle);
-animrig::ChannelBag *channelbag_for_action_slot(Action &action, slot_handle_t slot_handle);
 
 /**
  * Return the F-Curves for this specific slot handle.

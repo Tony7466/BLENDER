@@ -1173,26 +1173,14 @@ FCurve *ChannelBag::fcurve(const int64_t index)
 
 const FCurve *ChannelBag::fcurve_find(const StringRefNull rna_path, const int array_index) const
 {
-  for (const FCurve *fcu : this->fcurves()) {
-    /* Check indices first, much cheaper than a string comparison. */
-    if (fcu->array_index == array_index && fcu->rna_path && StringRef(fcu->rna_path) == rna_path) {
-      return fcu;
-    }
-  }
-  return nullptr;
-}
-FCurve *ChannelBag::fcurve_find(const StringRefNull rna_path, const int array_index)
-{
-  const FCurve *fcurve = const_cast<const ChannelBag *>(this)->fcurve_find(rna_path, array_index);
-  return const_cast<FCurve *>(fcurve);
+  return animrig::fcurve_find(this->fcurves(), {rna_path, array_index});
 }
 
 /* Utility function implementations. */
 
-const animrig::ChannelBag *channelbag_for_action_slot(const Action &action,
-                                                      const slot_handle_t slot_handle)
+static const animrig::ChannelBag *channelbag_for_action_slot(const Action &action,
+                                                             const slot_handle_t slot_handle)
 {
-  assert_baklava_phase_1_invariants(action);
   if (slot_handle == Slot::unassigned) {
     return nullptr;
   }
@@ -1214,9 +1202,9 @@ const animrig::ChannelBag *channelbag_for_action_slot(const Action &action,
   return nullptr;
 }
 
-animrig::ChannelBag *channelbag_for_action_slot(Action &action, const slot_handle_t slot_handle)
+static animrig::ChannelBag *channelbag_for_action_slot(Action &action,
+                                                       const slot_handle_t slot_handle)
 {
-  assert_baklava_phase_1_invariants(action);
   const animrig::ChannelBag *const_bag = channelbag_for_action_slot(
       const_cast<const Action &>(action), slot_handle);
   return const_cast<animrig::ChannelBag *>(const_bag);
@@ -1224,6 +1212,7 @@ animrig::ChannelBag *channelbag_for_action_slot(Action &action, const slot_handl
 
 Span<FCurve *> fcurves_for_action_slot(Action &action, const slot_handle_t slot_handle)
 {
+  assert_baklava_phase_1_invariants(action);
   animrig::ChannelBag *bag = channelbag_for_action_slot(action, slot_handle);
   if (!bag) {
     return {};
@@ -1233,6 +1222,7 @@ Span<FCurve *> fcurves_for_action_slot(Action &action, const slot_handle_t slot_
 
 Span<const FCurve *> fcurves_for_action_slot(const Action &action, const slot_handle_t slot_handle)
 {
+  assert_baklava_phase_1_invariants(action);
   const animrig::ChannelBag *bag = channelbag_for_action_slot(action, slot_handle);
   if (!bag) {
     return {};

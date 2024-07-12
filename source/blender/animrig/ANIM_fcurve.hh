@@ -46,6 +46,14 @@ struct KeyframeSettings {
 KeyframeSettings get_keyframe_settings(bool from_userprefs);
 
 /**
+ * Return the first fcurve in `fcurves` that matches `fcurve_descriptor`.
+ *
+ * If no matching fcurve is found, returns nullptr.
+ */
+const FCurve *fcurve_find(Span<const FCurve *> fcurves, const FCurveDescriptor fcurve_descriptor);
+FCurve *fcurve_find(Span<FCurve *> fcurves, const FCurveDescriptor fcurve_descriptor);
+
+/**
  * Create an fcurve for a specific channel, pre-set-up with default flags and
  * interpolation mode.
  *

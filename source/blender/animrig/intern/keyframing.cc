@@ -688,25 +688,21 @@ int delete_keyframe(Main *bmain,
      * probably isn't necessary, but it doesn't hurt. */
     BLI_assert(adt->action == act && action.slot_for_handle(adt->slot_handle) != nullptr);
 
-    ChannelBag *channelbag = channelbag_for_action_slot(action, adt->slot_handle);
-    if (channelbag == nullptr) {
-      return 0;
-    }
-
-    int key_count = 0;
+    Span<FCurve *> fcurves = fcurves_for_action_slot(action, adt->slot_handle);
+    int removed_key_count = 0;
     /* This loop's clause is copied from the pre-existing code for legacy
      * actions below, to ensure behavioral consistency between the two code
      * paths. In the future when legacy actions are removed, we can restructure
      * it to be clearer. */
     for (; array_index < array_index_max; array_index++) {
-      FCurve *fcurve = channelbag->fcurve_find(rna_path, array_index);
+      FCurve *fcurve = fcurve_find(fcurves, {rna_path, array_index});
       if (fcurve == nullptr) {
         continue;
       }
-      key_count += fcurve_delete_keyframe_at_time(fcurve, cfra);
+      removed_key_count += fcurve_delete_keyframe_at_time(fcurve, cfra);
     }
 
-    return key_count;
+    return removed_key_count;
   }
 
   /* Will only loop once unless the array index was -1. */

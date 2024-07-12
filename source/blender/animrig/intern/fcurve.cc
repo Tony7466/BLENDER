@@ -35,6 +35,24 @@ KeyframeSettings get_keyframe_settings(const bool from_userprefs)
   return settings;
 }
 
+const FCurve *fcurve_find(Span<const FCurve *> fcurves, const FCurveDescriptor fcurve_descriptor)
+{
+  for (const FCurve *fcurve : fcurves) {
+    /* Check indices first, much cheaper than a string comparison. */
+    if (fcurve->array_index == fcurve_descriptor.array_index && fcurve->rna_path &&
+        StringRef(fcurve->rna_path) == fcurve_descriptor.rna_path)
+    {
+      return fcurve;
+    }
+  }
+  return nullptr;
+}
+FCurve *fcurve_find(Span<FCurve *> fcurves, const FCurveDescriptor fcurve_descriptor)
+{
+  const FCurve *fcurve = fcurve_find(fcurves.cast<const FCurve *>(), fcurve_descriptor);
+  return const_cast<FCurve *>(fcurve);
+}
+
 FCurve *create_fcurve_for_channel(const FCurveDescriptor fcurve_descriptor)
 {
   FCurve *fcu = BKE_fcurve_create();
