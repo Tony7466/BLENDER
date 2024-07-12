@@ -5,6 +5,7 @@
 import bpy
 from bpy.types import Panel
 from rna_prop_ui import PropertyPanel
+from bl_ui.space_properties import PropertiesAnimationMixin
 
 
 class DataButtonsPanel:
@@ -77,10 +78,15 @@ class DATA_PT_custom_props_lattice(DataButtonsPanel, PropertyPanel, Panel):
     _property_type = bpy.types.Lattice
 
 
+class DATA_PT_lattice_animation(PropertiesAnimationMixin, Panel):
+    _animated_id_context_property = 'lattice'
+
+
 classes = (
     DATA_PT_context_lattice,
     DATA_PT_lattice,
     DATA_PT_custom_props_lattice,
+    DATA_PT_lattice_animation,
 )
 
 if __name__ == "__main__":  # only for live edit.

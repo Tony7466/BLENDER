@@ -7,6 +7,7 @@ from bpy.types import Panel
 from bpy.app.translations import contexts as i18n_contexts
 from rna_prop_ui import PropertyPanel
 from bl_ui.utils import PresetPanel
+from bl_ui.space_properties import PropertiesAnimationMixin
 
 
 class CameraButtonsPanel:
@@ -231,31 +232,8 @@ class DATA_PT_camera(CameraButtonsPanel, Panel):
             sub.prop(cam, "sensor_height", text="Height")
 
 
-class DATA_PT_camera_animation(CameraButtonsPanel, Panel):
-    bl_label = "Animation"
-    # bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {
-        'BLENDER_RENDER',
-        'BLENDER_EEVEE',
-        'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH',
-    }
-
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-
-        col = layout.column(align=True)
-        col.template_ID(context.space_data, 'action')
-        camera = context.camera
-        adt = camera.animation_data
-        if adt and adt.action and adt.action.is_action_layered:
-            col.template_search(
-                adt, "action_slot",
-                adt, "action_slots",
-                new="",
-                unlink="",
-            )
+class DATA_PT_camera_animation(PropertiesAnimationMixin, Panel):
+    _animated_id_context_property = 'camera'
 
 
 class DATA_PT_camera_dof(CameraButtonsPanel, Panel):

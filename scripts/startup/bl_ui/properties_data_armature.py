@@ -10,6 +10,7 @@ from bl_ui.properties_animviz import (
     MotionPathButtonsPanel,
     MotionPathButtonsPanel_display,
 )
+from bl_ui.space_properties import PropertiesAnimationMixin
 
 
 class ArmatureButtonsPanel:
@@ -130,6 +131,10 @@ class DATA_PT_bone_collections(ArmatureButtonsPanel, Panel):
         sub = row.row(align=True)
         sub.operator("armature.collection_select", text="Select")
         sub.operator("armature.collection_deselect", text="Deselect")
+
+
+class DATA_PT_armature_animation(PropertiesAnimationMixin, Panel):
+    _animated_id_context_property = 'armature'
 
 
 class ARMATURE_MT_collection_context_menu(Menu):
@@ -415,6 +420,7 @@ classes = (
     DATA_UL_bone_collections,
     ARMATURE_MT_collection_context_menu,
     ARMATURE_MT_collection_tree_context_menu,
+    DATA_PT_armature_animation,
     DATA_PT_motion_paths,
     DATA_PT_motion_paths_display,
     DATA_PT_display,

@@ -6,6 +6,7 @@ import bpy
 from bpy.types import Menu, Panel, UIList
 from rna_prop_ui import PropertyPanel
 
+from bl_ui.space_properties import PropertiesAnimationMixin
 from bl_ui.properties_grease_pencil_common import (
     GreasePencilLayerMasksPanel,
     GreasePencilLayerTransformPanel,
@@ -412,6 +413,14 @@ class DATA_PT_gpencil_canvas(DataButtonsPanel, Panel):
         col.prop(grid, "lines", text="Subdivisions")
 
 
+class DATA_PT_gpencil_animation(PropertiesAnimationMixin, Panel):
+    _animated_id_context_property = 'grease_pencil'
+
+
+class DATA_PT_gpencil_legacy_animation(PropertiesAnimationMixin, Panel):
+    _animated_id_context_property = 'gpencil'
+
+
 class DATA_PT_custom_props_gpencil(DataButtonsPanel, PropertyPanel, Panel):
     _context_path = "object.data"
     _property_type = bpy.types.GreasePencil
@@ -441,6 +450,9 @@ classes = (
 
     GPENCIL_MT_layer_context_menu,
     GPENCIL_MT_gpencil_vertex_group,
+
+    DATA_PT_gpencil_animation,
+    DATA_PT_gpencil_legacy_animation,
 )
 
 if __name__ == "__main__":  # only for live edit.

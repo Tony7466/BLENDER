@@ -6,6 +6,7 @@ import bpy
 from bpy.app.translations import contexts as i18n_contexts
 from bpy.types import Panel
 from rna_prop_ui import PropertyPanel
+from bl_ui.space_properties import PropertiesAnimationMixin
 
 
 class DataButtonsPanel:
@@ -67,6 +68,10 @@ class DATA_PT_light(DataButtonsPanel, Panel):
         else:
             layout.use_property_split = True
             layout.row().prop(light, "type")
+
+
+class DATA_PT_light_animation(PropertiesAnimationMixin, Panel):
+    _animated_id_context_property = 'light'
 
 
 class DATA_PT_EEVEE_light(DataButtonsPanel, Panel):
@@ -349,6 +354,7 @@ classes = (
     DATA_PT_EEVEE_shadow,
     DATA_PT_EEVEE_shadow_cascaded_shadow_map,
     DATA_PT_EEVEE_shadow_contact,
+    DATA_PT_light_animation,
     DATA_PT_custom_props_light,
 )
 

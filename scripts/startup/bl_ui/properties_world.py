@@ -7,6 +7,7 @@ from bpy.types import Panel
 from bpy.app.translations import contexts as i18n_contexts
 from rna_prop_ui import PropertyPanel
 from bpy_extras.node_utils import find_node_input
+from bl_ui.space_properties import PropertiesAnimationMixin
 
 
 class WorldButtonsPanel:
@@ -242,6 +243,12 @@ class WORLD_PT_viewport_display(WorldButtonsPanel, Panel):
         layout.prop(world, "color")
 
 
+class WORLD_PT_animation(PropertiesAnimationMixin, Panel):
+    # FIXME: For some reason this panel doesn't show up.
+    _animated_id_context_property = 'world'
+    _animated_id_type = 'WORLD'
+
+
 classes = (
     WORLD_PT_context_world,
     EEVEE_WORLD_PT_surface,
@@ -253,6 +260,7 @@ classes = (
     EEVEE_WORLD_PT_sun_shadow,
     WORLD_PT_viewport_display,
     WORLD_PT_custom_props,
+    WORLD_PT_animation,
 )
 
 if __name__ == "__main__":  # only for live edit.

@@ -7,6 +7,7 @@ from bpy.types import Menu, Panel, UIList
 from bpy.app.translations import contexts as i18n_contexts
 from rna_prop_ui import PropertyPanel
 from bpy_extras.node_utils import find_node_input
+from bl_ui.space_properties import PropertiesAnimationMixin
 
 
 class MATERIAL_MT_context_menu(Menu):
@@ -420,6 +421,11 @@ class MATERIAL_PT_lineart(MaterialButtonsPanel, Panel):
         subrow.prop(lineart, "intersection_priority", text="")
 
 
+class DATA_PT_material_animation(PropertiesAnimationMixin, Panel):
+    # FIXME: For some reason this doesn't show.
+    _animated_id_context_property = 'material'
+
+
 classes = (
     MATERIAL_MT_context_menu,
     MATERIAL_UL_matslots,
@@ -436,6 +442,7 @@ classes = (
     MATERIAL_PT_lineart,
     MATERIAL_PT_viewport,
     EEVEE_MATERIAL_PT_viewport_settings,
+    DATA_PT_material_animation,
     MATERIAL_PT_custom_props,
 )
 

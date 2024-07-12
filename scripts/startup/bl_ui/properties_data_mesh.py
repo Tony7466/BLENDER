@@ -5,6 +5,7 @@
 import bpy
 from bpy.types import Menu, Panel, UIList
 from rna_prop_ui import PropertyPanel
+from bl_ui.space_properties import PropertiesAnimationMixin
 
 from bpy.app.translations import (
     pgettext_iface as iface_,
@@ -698,6 +699,10 @@ class DATA_PT_vertex_colors(DATA_PT_mesh_attributes, Panel):
         draw_attribute_warnings(context, layout)
 
 
+class DATA_PT_mesh_animation(PropertiesAnimationMixin, Panel):
+    _animated_id_context_property = 'mesh'
+
+
 classes = (
     MESH_MT_vertex_group_context_menu,
     MESH_MT_shape_key_context_menu,
@@ -719,6 +724,7 @@ classes = (
     DATA_PT_custom_props_mesh,
     MESH_UL_color_attributes,
     MESH_UL_color_attributes_selector,
+    DATA_PT_mesh_animation,
 )
 
 if __name__ == "__main__":  # only for live edit.

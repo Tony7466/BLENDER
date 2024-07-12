@@ -5,6 +5,7 @@
 import bpy
 from bpy.types import Menu, Panel, UIList
 from rna_prop_ui import PropertyPanel
+from bl_ui.space_properties import PropertiesAnimationMixin
 
 
 class DataButtonsPanel:
@@ -181,6 +182,10 @@ class DATA_PT_custom_props_curves(DataButtonsPanel, PropertyPanel, Panel):
     _property_type = bpy.types.Curves if hasattr(bpy.types, "Curves") else None
 
 
+class DATA_PT_curves_animation(PropertiesAnimationMixin, Panel):
+    _animated_id_context_property = 'curves'
+
+
 classes = (
     DATA_PT_context_curves,
     DATA_PT_CURVES_attributes,
@@ -188,6 +193,7 @@ classes = (
     DATA_PT_custom_props_curves,
     CURVES_MT_add_attribute,
     CURVES_UL_attributes,
+    DATA_PT_curves_animation,
 )
 
 if __name__ == "__main__":  # only for live edit.
