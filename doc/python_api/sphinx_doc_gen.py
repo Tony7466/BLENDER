@@ -81,6 +81,9 @@ USE_ONLY_BUILTIN_RNA_TYPES = True
 # `source/blender/makesrna/RNA_enum_items.hh` so the enums can be linked to instead of being expanded everywhere.
 USE_SHARED_RNA_ENUM_ITEMS_STATIC = True
 
+# Other types are assumed to be `bpy.types.*`.
+PRIMITIVE_TYPE_NAMES = {"bool", "bytearray", "bytes", "dict", "float", "int", "list", "set", "str", "tuple"}
+
 if USE_SHARED_RNA_ENUM_ITEMS_STATIC:
     from _bpy import rna_enum_items_static
     rna_enum_dict = rna_enum_items_static()
@@ -1169,7 +1172,7 @@ def pymodule2sphinx(basepath, module_name, module, title, module_all_extra):
 
 # Changes In Blender will force errors here.
 context_type_map = {
-    # context_member: (RNA type, is_collection)
+    # context_member: [(RNA type, is_collection), ...]
     "active_action": [("Action", False)],
     "active_annotation_layer": [("GPencilLayer", False)],
     "active_bone": [("EditBone", False), ("Bone", False)],
@@ -1373,6 +1376,10 @@ def pycontext2sphinx(basepath):
 
             try:
                 member_types = context_type_map[member]
+                if len(member_types) == 0:
+                    raise ValueError(
+                        "Error: member_types with key {!r} must have more than 1 item; update {:s}".format(member,__file__)
+                    )
             except KeyError:
                 raise SystemExit(
                     "Error: context key {!r} not found in context_type_map; update {:s}".format(member, __file__)
@@ -1380,10 +1387,14 @@ def pycontext2sphinx(basepath):
 
             type_strs = []
             for member_type, is_seq in member_types:
-                if member_type in __builtins__.keys():
-                    type_strs.append("{:s}:class:`{:s}`".format("sequence of " if is_seq else "", member_type))
-                elif member_type.isidentifier():
-                    type_strs.append("{:s}:class:`bpy.types.{:s}`".format("sequence of " if is_seq else "", member_type))
+                if member_type.isidentifier():
+                    type_strs.append(
+                        "{:s}:class:`{:s}{:s}`".format(
+                            "sequence of " if is_seq else "",
+                            "bpy.types." if member_type not in PRIMITIVE_TYPE_NAMES else "",
+                            member_type
+                        )
+                    )
             if len(type_strs) == 1:
                 member_type_str = type_strs[0]
             else:
@@ -1785,9 +1796,8 @@ def pyrna2sphinx(basepath):
             # "active_object": [("Object", False)],
             for ref_attr, ref_types in sorted(context_type_map.items()):
                 for ref_type, _ in ref_types:
-                    if ref_type not in __builtins__.keys() and ref_type.isidentifier():
-                        if ref_type == struct_id:
-                            fw("   * :mod:`bpy.context.{:s}`\n".format(ref_attr))
+                    if ref_type == struct_id:
+                        fw("   * :mod:`bpy.context.{:s}`\n".format(ref_attr))
             del ref_attr, ref_types
 
             for ref in struct.references:
