@@ -13,6 +13,8 @@
 #  include "BLI_winstuff.h"
 #endif
 
+#include <fmt/format.h>
+
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -866,6 +868,21 @@ ScrArea *BKE_screen_find_area_from_space(const bScreen *screen, const SpaceLink 
   }
 
   return nullptr;
+}
+
+std::optional<std::string> BKE_screen_path_from_screen_to_space(const PointerRNA *ptr)
+{
+  bScreen *screen = (bScreen *)ptr->owner_id;
+  SpaceLink *link = (SpaceLink *)ptr->data;
+
+  int area_index;
+  LISTBASE_FOREACH_INDEX (ScrArea *, area, &screen->areabase, area_index) {
+    const int space_index = BLI_findindex(&area->spacedata, link);
+    if (space_index != -1) {
+      return fmt::format("areas[{}].spaces[{}]", area_index, space_index);
+    }
+  }
+  return std::nullopt;
 }
 
 ScrArea *BKE_screen_find_big_area(const bScreen *screen, const int spacetype, const short min)
