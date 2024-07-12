@@ -1009,8 +1009,6 @@ static void do_relax_face_sets_brush_bmesh(const Sculpt &sd,
 /** \name Topology Relax
  * \{ */
 BLI_NOINLINE static void calc_topology_relax_factors_faces(const Brush &brush,
-                                                           const Span<float3> positions_eval,
-                                                           const Span<float3> vert_normals,
                                                            const PBVHNode &node,
                                                            const float strength,
                                                            Object &object,
@@ -1077,8 +1075,6 @@ static void do_topology_relax_brush_mesh(const Sculpt &sd,
     MeshLocalData &tls = all_tls.local();
     for (const int i : range) {
       calc_topology_relax_factors_faces(brush,
-                                        positions_eval,
-                                        vert_normals,
                                         *nodes[i],
                                         strength,
                                         object,
@@ -1119,8 +1115,6 @@ static void do_topology_relax_brush_mesh(const Sculpt &sd,
 }
 
 BLI_NOINLINE static void calc_topology_relax_factors_grids(const Brush &brush,
-                                                           const Span<int> corner_verts,
-                                                           const OffsetIndices<int> faces,
                                                            const PBVHNode &node,
                                                            const float strength,
                                                            Object &object,
@@ -1192,8 +1186,6 @@ static void do_topology_relax_brush_grids(const Sculpt &sd,
     for (const int i : range) {
       calc_topology_relax_factors_grids(
           brush,
-          corner_verts,
-          faces,
           *nodes[i],
           strength,
           object,
@@ -1373,7 +1365,7 @@ void do_topology_relax_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> 
 
   SCULPT_boundary_info_ensure(object);
 
-  for (const int i : IndexRange(4)) {
+  for (int i = 0; i < 4; i++) {
     switch (BKE_pbvh_type(*ss.pbvh)) {
       case PBVH_FACES:
         do_topology_relax_brush_mesh(sd, brush, object, nodes, strength);
