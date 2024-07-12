@@ -89,6 +89,9 @@ def get_arguments(filepath, output_filepath):
     if spp_multiplier:
         args.extend(["--python-expr", f"import bpy; bpy.context.scene.cycles.samples *= {spp_multiplier}"])
 
+    if os.getenv('CYCLES_TEST_OSL') == "1":
+        args.extend(["--python-expr", "import bpy; bpy.context.scene.cycles.shading_system = True"])
+
     if subject == 'bake':
         args.extend(['--python', os.path.join(basedir, "util", "render_bake.py")])
     elif subject == 'denoise_animation':
@@ -107,6 +110,7 @@ def create_argparse():
     parser.add_argument("-oiiotool", nargs=1)
     parser.add_argument("-device", nargs=1)
     parser.add_argument("-blacklist", nargs="*")
+    parser.add_argument("-osl", default=False, action='store_true')
     parser.add_argument('--batch', default=False, action='store_true')
     return parser
 
@@ -132,7 +136,7 @@ def main():
         blacklist += BLACKLIST_METAL
 
     from modules import render_report
-    report = render_report.Report('Cycles', output_dir, oiiotool, device, blacklist)
+    report = render_report.Report('Cycles', output_dir, oiiotool, device, blacklist, args.osl)
     report.set_pixelated(True)
     report.set_reference_dir("cycles_renders")
     if device == 'CPU':

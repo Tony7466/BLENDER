@@ -93,9 +93,10 @@ class Report:
         'compare_engine',
         'device',
         'blacklist',
+        'osl',
     )
 
-    def __init__(self, title, output_dir, oiiotool, device=None, blacklist=[]):
+    def __init__(self, title, output_dir, oiiotool, device=None, blacklist=[], osl=False):
         self.title = title
         self.output_dir = output_dir
         self.global_dir = os.path.dirname(output_dir)
@@ -108,10 +109,14 @@ class Report:
         self.engine_name = self.title.lower().replace(" ", "_")
         self.device = device
         self.blacklist = blacklist
+        self.osl = osl
 
         if device:
             self.title = self._engine_title(title, device)
             self.output_dir = self._engine_path(self.output_dir, device.lower())
+        if osl:
+            self.title = self._engine_title(title, "osl")
+            self.output_dir = self._engine_path(self.output_dir, "osl")
 
         self.pixelated = False
         self.verbose = os.environ.get("BLENDER_VERBOSE") is not None
@@ -178,15 +183,15 @@ class Report:
         else:
             return """<li class="breadcrumb-item"><a href="%s">%s</a></li>""" % (href, title)
 
-    def _engine_title(self, engine, device):
-        if device:
-            return engine.title() + ' ' + device
+    def _engine_title(self, engine, extra):
+        if extra:
+            return engine.title() + ' ' + extra
         else:
             return engine.title()
 
-    def _engine_path(self, path, device):
-        if device:
-            return os.path.join(path, device.lower())
+    def _engine_path(self, path, extra):
+        if extra:
+            return os.path.join(path, extra.lower())
         else:
             return path
 
@@ -482,6 +487,8 @@ class Report:
                 if os.path.exists(output_filepath):
                     os.remove(output_filepath)
 
+                if self.osl:
+                    os.environ["CYCLES_TEST_OSL"] = "1"
                 command.extend(arguments_cb(filepath, base_output_filepath))
 
                 # Only chain multiple commands for batch

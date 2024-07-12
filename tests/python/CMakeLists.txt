@@ -702,6 +702,21 @@ if(WITH_CYCLES OR WITH_GPU_RENDER_TESTS)
             -blacklist ${_cycles_blacklist}
           )
 
+          if(WITH_CYCLES_OSL)
+            # OSL is only supported on the CPU and OptiX
+            if(("${_cycles_device_lower}" STREQUAL "cpu") OR ("${_cycles_device_lower}" STREQUAL "optix"))
+              add_render_test(
+                ${_cycles_test_name}_osl
+                ${CMAKE_CURRENT_LIST_DIR}/cycles_render_tests.py
+                -testdir "${TEST_SRC_DIR}/render/${render_test}"
+                -outdir "${TEST_OUT_DIR}/cycles_osl"
+                -device ${_cycles_device}
+                -blacklist ${_cycles_blacklist}
+                -osl
+              )
+            endif()
+          endif()
+
           if(NOT ("${_cycles_device_lower}" STREQUAL "cpu"))
             set_tests_properties(${_cycles_test_name} PROPERTIES RUN_SERIAL TRUE)
           endif()
