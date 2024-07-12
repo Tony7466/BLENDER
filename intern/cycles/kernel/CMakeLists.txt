@@ -498,17 +498,8 @@ if(WITH_CYCLES_CUDA_BINARIES)
   # build for each arch
   set(CYCLES_CUDA_BINARIES_ARCH_WITHOUT_PREFIX ${CYCLES_CUDA_BINARIES_ARCH})
   list(TRANSFORM CYCLES_CUDA_BINARIES_ARCH_WITHOUT_PREFIX REPLACE "sm_|compute_" "")
+  list(REMOVE_ITEM CYCLES_CUDA_BINARIES_ARCH_WITHOUT_PREFIX 30 35 37)
   list(REMOVE_DUPLICATES CYCLES_CUDA_BINARIES_ARCH_WITHOUT_PREFIX)
-
-  if("${CUDA_VERSION}" GREATER_EQUAL 110)
-    list(REMOVE_ITEM CYCLES_CUDA_BINARIES_ARCH_WITHOUT_PREFIX 30)
-  endif()
-  if("${CUDA_VERSION}" GREATER_EQUAL 120)
-    list(REMOVE_ITEM CYCLES_CUDA_BINARIES_ARCH_WITHOUT_PREFIX 35 37)
-  endif()
-  if("${CUDA_VERSION}" LESS 111)
-    list(REMOVE_ITEM CYCLES_CUDA_BINARIES_ARCH_WITHOUT_PREFIX 86 89)
-  endif()
 
   add_library(cycles_kernel_cuda STATIC
     ${SRC_KERNEL_DEVICE_CUDA}
@@ -543,7 +534,10 @@ if(WITH_CYCLES_CUDA_BINARIES)
       if(DEFINED CUDA10_NVCC_EXECUTABLE)
         set(cuda_nvcc_executable ${CUDA10_NVCC_EXECUTABLE})
         set(cuda_toolkit_root_dir ${CUDA10_TOOLKIT_ROOT_DIR})
-      elseif("${CUDA_VERSION}" GREATER_EQUAL 110) # Support for sm_30 was removed in CUDA 11
+      elseif("${CUDA_VERSION}" LESS 110) # Support for sm_30 was removed in CUDA 11
+        set(cuda_nvcc_executable ${CUDA_NVCC_EXECUTABLE})
+        set(cuda_toolkit_root_dir ${CUDA_TOOLKIT_ROOT_DIR})
+      else
         message(STATUS "CUDA binaries for ${arch} require CUDA 10 or earlier, skipped.")
         continue()
       endif()
@@ -551,14 +545,26 @@ if(WITH_CYCLES_CUDA_BINARIES)
       if(DEFINED CUDA11_NVCC_EXECUTABLE)
         set(cuda_nvcc_executable ${CUDA11_NVCC_EXECUTABLE})
         set(cuda_toolkit_root_dir ${CUDA11_TOOLKIT_ROOT_DIR})
-      elseif("${CUDA_VERSION}" GREATER_EQUAL 120) # Support for sm_35, sm_37 was removed in CUDA 12
+      elseif("${CUDA_VERSION}" LESS 120) # Support for sm_35, sm_37 was removed in CUDA 12
+        set(cuda_nvcc_executable ${CUDA_NVCC_EXECUTABLE})
+        set(cuda_toolkit_root_dir ${CUDA_TOOLKIT_ROOT_DIR})
+      else()
         message(STATUS "CUDA binaries for ${arch} require CUDA 11 or earlier, skipped.")
         continue()
       endif()
-    elseif(${arch} MATCHES ".*_7." AND "${CUDA_VERSION}" LESS 100)
-      message(STATUS "CUDA binaries for ${arch} require CUDA 10.0+, skipped.")
+    elseif(${arch} MATCHES ".*_7.")
+      if("${CUDA_VERSION}" GREATER_EQUAL 100)
+        # Support for sm_70 was introduced in CUDA 10
+      elseif(DEFINED CUDA10_NVCC_EXECUTABLE)
+        set(cuda_nvcc_executable ${CUDA10_NVCC_EXECUTABLE})
+        set(cuda_toolkit_root_dir ${CUDA10_TOOLKIT_ROOT_DIR})
+      else()
+        message(STATUS "CUDA binaries for ${arch} require CUDA 10.0+, skipped.")
+        continue()
+      endif()
     elseif(${arch} MATCHES ".*_8.")
-      if("${CUDA_VERSION}" GREATER_EQUAL 111) # Support for sm_86 was introduced in CUDA 11
+      if("${CUDA_VERSION}" GREATER_EQUAL 111)
+        # Support for sm_86 was introduced in CUDA 11
       elseif(DEFINED CUDA11_NVCC_EXECUTABLE)
         set(cuda_nvcc_executable ${CUDA11_NVCC_EXECUTABLE})
         set(cuda_toolkit_root_dir ${CUDA11_TOOLKIT_ROOT_DIR})
@@ -581,13 +587,15 @@ if(WITH_CYCLES_CUDA_BINARIES)
       set(cuda_nvcc_flags "$<JOIN:$<TARGET_PROPERTY:cycles_kernel_cuda,COMPILE_OPTIONS>, >"
         -I ${CMAKE_CURRENT_SOURCE_DIR}/..
         -I ${CMAKE_CURRENT_SOURCE_DIR}/device/cuda)
-      if(CUDA_HOST_COMPILER)
-        set(cuda_nvcc_flags ${cuda_nvcc_flags}
-          -ccbin="${CUDA_HOST_COMPILER}")
-      endif()
+
       if(WITH_NANOVDB)
         set(cuda_nvcc_flags ${cuda_nvcc_flags}
           -D WITH_NANOVDB)
+      endif()
+
+      if(CUDA_HOST_COMPILER)
+        set(cuda_nvcc_flags ${cuda_nvcc_flags}
+          -ccbin="${CUDA_HOST_COMPILER}")
       endif()
 
       add_custom_command(
