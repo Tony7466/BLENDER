@@ -210,7 +210,7 @@ static void calc_faces(const Sculpt &sd,
   calc_neighbor_influence(positions_eval, positions, vert_neighbors, translations);
   scale_translations(translations, factors);
 
-  write_translations(sd, object, orig_data.positions, verts, translations, positions_orig);
+  write_translations(sd, object, positions_eval, verts, translations, positions_orig);
 }
 
 static void calc_grids(

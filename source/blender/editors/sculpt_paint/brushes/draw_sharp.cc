@@ -78,7 +78,7 @@ static void calc_faces(const Sculpt &sd,
   const MutableSpan<float3> translations = tls.translations;
   translations_from_offset_and_factors(offset, factors, translations);
 
-  write_translations(sd, object, orig_data.positions, verts, translations, positions_orig);
+  write_translations(sd, object, positions_eval, verts, translations, positions_orig);
 }
 
 static void calc_grids(const Sculpt &sd,
