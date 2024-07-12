@@ -30,15 +30,29 @@ typedef unsigned long long uint64_t;
 
 /* Qualifiers */
 
-#define ccl_device inline __device__
+#ifdef __CUDACC_RDC__
+#  define ccl_device static __device__ __forceinline__
+#  define ccl_device_inline inline __device__ __forceinline__
+#  define ccl_device_inline_method ccl_device_inline
+#else
+#  define ccl_device inline __device__
+#  if __CUDA_ARCH__ < 500
+#    define ccl_device_inline ccl_device __forceinline__
+#  else
+#    define ccl_device_inline ccl_device
+#  endif
+#  define ccl_device_inline_method ccl_device
+#endif
 #define ccl_device_extern extern "C" __device__
-#define ccl_device_inline inline __device__
-#define ccl_device_inline_method ccl_device_inline
-#define ccl_device_forceinline __device__ __forceinline__
+#define ccl_device_forceinline inline __device__ __forceinline__
 #define ccl_device_noinline inline __device__ __noinline__
 #define ccl_device_noinline_cpu ccl_device
 #define ccl_global
-#define ccl_inline_constant inline __constant__
+#ifdef __CUDACC_RDC__
+#  define ccl_inline_constant inline __constant__
+#else
+#  define ccl_inline_constant static __constant__
+#endif
 #define ccl_device_constant __constant__
 #define ccl_static_constexpr static constexpr
 #define ccl_constant const

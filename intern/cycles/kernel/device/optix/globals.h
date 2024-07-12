@@ -37,18 +37,16 @@ struct KernelParamsOptiX {
   IntegratorStateGPU integrator_state;
 };
 
-#ifdef __NVCC__
-extern "C"
-#  ifndef __CUDACC_RDC__
-    static
-#  endif
-    __constant__ KernelParamsOptiX kernel_params;
-#endif
+#ifdef __KERNEL_GPU__
+
+ccl_inline_constant KernelParamsOptiX kernel_params;
 
 /* Abstraction macros */
-#define kernel_data kernel_params.data
-#define kernel_data_array(name) kernel_params.name
-#define kernel_data_fetch(name, index) kernel_params.name[(index)]
-#define kernel_integrator_state kernel_params.integrator_state
+#  define kernel_data kernel_params.data
+#  define kernel_data_array(name) kernel_params.name
+#  define kernel_data_fetch(name, index) kernel_params.name[(index)]
+#  define kernel_integrator_state kernel_params.integrator_state
+
+#endif /* __KERNEL_GPU__ */
 
 CCL_NAMESPACE_END
