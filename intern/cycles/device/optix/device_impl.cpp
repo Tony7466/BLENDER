@@ -187,6 +187,40 @@ string OptiXDevice::compile_kernel_get_common_cflags(const uint kernel_features)
   return common_cflags;
 }
 
+static string get_optix_module_name(int module_type)
+{
+  switch (module_type) {
+    case MOD_COMMON:
+      return "kernel_common";
+    case MOD_INTEGRATOR_INTERSECT_CLOSEST:
+      return "kernel_integrator_intersect_closest";
+    case MOD_INTEGRATOR_INTERSECT_DEDICATED_LIGHT:
+      return "kernel_integrator_intersect_dedicated_light";
+    case MOD_INTEGRATOR_INTERSECT_SHADOW:
+      return "kernel_integrator_intersect_shadow";
+    case MOD_INTEGRATOR_INTERSECT_SUBSURFACE:
+      return "kernel_integrator_intersect_subsurface";
+    case MOD_INTEGRATOR_INTERSECT_VOLUME_STACK:
+      return "kernel_integrator_intersect_volume_stack";
+    case MOD_INTEGRATOR_SHADE_BACKGROUND:
+      return "kernel_integrator_shade_background";
+    case MOD_INTEGRATOR_SHADE_DEDICATED_LIGHT:
+      return "kernel_integrator_shade_dedicated_light";
+    case MOD_INTEGRATOR_SHADE_LIGHT:
+      return "kernel_integrator_shade_light";
+    case MOD_INTEGRATOR_SHADE_SHADOW:
+      return "kernel_integrator_shade_shadow";
+    case MOD_INTEGRATOR_SHADE_SURFACE:
+      return "kernel_integrator_shade_surface";
+    case MOD_INTEGRATOR_SHADE_VOLUME:
+      return "kernel_integrator_shade_volume";
+    case MOD_BAKE:
+      return "kernel_bake";
+    default:
+      return string();
+  }
+}
+
 bool OptiXDevice::load_kernels(const uint kernel_features)
 {
   if (have_error()) {
@@ -207,7 +241,7 @@ bool OptiXDevice::load_kernels(const uint kernel_features)
   /* Detect existence of OptiX kernel and SDK here early. So we can error out
    * before compiling the CUDA kernels, to avoid failing right after when
    * compiling the OptiX kernel. */
-  string suffix = use_osl ? "_osl" : "";
+  string suffix = use_osl ? "_osl" : string();
   string ptx_filename;
   if (need_optix_kernels) {
     ptx_filename = path_get("lib/optix/kernel_common" + suffix + ".optixir.zst");
@@ -333,42 +367,41 @@ bool OptiXDevice::load_kernels(const uint kernel_features)
   }
 
   /* Load and compile modules with OptiX kernels. */
-  const char *module_names[NUM_MODULES] = {};
-  module_names[MOD_COMMON] = "kernel_common";
-  module_names[MOD_INTEGRATOR_INTERSECT_CLOSEST] = "kernel_integrator_intersect_closest";
-  module_names[MOD_INTEGRATOR_INTERSECT_DEDICATED_LIGHT] =
-      "kernel_integrator_intersect_dedicated_light";
-  module_names[MOD_INTEGRATOR_INTERSECT_SHADOW] = "kernel_integrator_intersect_shadow";
-  module_names[MOD_INTEGRATOR_INTERSECT_SUBSURFACE] = "kernel_integrator_intersect_subsurface";
-  module_names[MOD_INTEGRATOR_INTERSECT_VOLUME_STACK] = "kernel_integrator_intersect_volume_stack";
-  if (use_osl || (kernel_features & (KERNEL_FEATURE_NODE_RAYTRACE | KERNEL_FEATURE_MNEE))) {
-    module_names[MOD_INTEGRATOR_SHADE_SURFACE] = "kernel_integrator_shade_surface";
-  }
-  if (use_osl) {
-    module_names[MOD_INTEGRATOR_SHADE_BACKGROUND] = "kernel_integrator_shade_background";
-    module_names[MOD_INTEGRATOR_SHADE_DEDICATED_LIGHT] = "kernel_integrator_shade_dedicated_light";
-    module_names[MOD_INTEGRATOR_SHADE_LIGHT] = "kernel_integrator_shade_light";
-    module_names[MOD_INTEGRATOR_SHADE_SHADOW] = "kernel_integrator_shade_shadow";
-    module_names[MOD_INTEGRATOR_SHADE_VOLUME] = "kernel_integrator_shade_volume";
-    module_names[MOD_BAKE] = "kernel_bake";
-  }
-
   TaskPool pool;
   OptixResult results[NUM_MODULES] = {};
 
   for (int i = 0; i < NUM_MODULES; i++) {
-    if (module_names[i] == nullptr) {
+    string module_name = get_optix_module_name(i);
+    if (module_name.empty()) {
       continue;
     }
 
-    string module_name = module_names[i];
-    if (i < MOD_INTEGRATOR_INTERSECT_CLOSEST || i >= MOD_INTEGRATOR_SHADE_BACKGROUND)
+    if (i < MOD_INTEGRATOR_INTERSECT_CLOSEST || i > MOD_INTEGRATOR_INTERSECT_VOLUME_STACK) {
       module_name += suffix;
+
+	  switch (i) {
+        case MOD_INTEGRATOR_SHADE_SURFACE:
+          if (use_osl || (kernel_features & (KERNEL_FEATURE_NODE_RAYTRACE | KERNEL_FEATURE_MNEE)))
+            break;
+          else
+            continue;
+        case MOD_INTEGRATOR_SHADE_BACKGROUND:
+        case MOD_INTEGRATOR_SHADE_DEDICATED_LIGHT:
+        case MOD_INTEGRATOR_SHADE_LIGHT:
+        case MOD_INTEGRATOR_SHADE_SHADOW:
+        case MOD_INTEGRATOR_SHADE_VOLUME:
+        case MOD_BAKE:
+          if (use_osl)
+            break;
+          else
+            continue;
+      }
+    }
 
     ptx_filename = path_get("lib/optix/" + module_name + ".optixir.zst");
     string ptx_data;
     if (use_adaptive_compilation() || path_file_size(ptx_filename) == -1) {
-      string cflags = compile_kernel_get_common_cflags(kernel_features);
+      const string cflags = compile_kernel_get_common_cflags(kernel_features);
       ptx_filename = compile_kernel(cflags, module_name.c_str(), "optix", true);
     }
     if (ptx_filename.empty() || !path_read_compressed_text(ptx_filename, ptx_data)) {
@@ -421,13 +454,9 @@ bool OptiXDevice::load_kernels(const uint kernel_features)
   pool.wait_work();
 
   for (int i = 0; i < NUM_MODULES; i++) {
-    if (module_names[i] == nullptr) {
-      continue;
-    }
-
     if (results[i] != OPTIX_SUCCESS) {
       set_error(string_printf("Failed to load OptiX kernel '%s' (%s)",
-                              module_names[i],
+                              get_optix_module_name(i).c_str(),
                               optixGetErrorName(results[i])));
       return false;
     }
