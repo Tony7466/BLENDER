@@ -2803,114 +2803,121 @@ static void uvedit_uv_threshold_weld(bContext *C, wmOperator *op)
   ViewLayer *view_layer = CTX_data_view_layer(C);
   Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data_with_uvs(
       scene, view_layer, nullptr);
-  const float threshold = RNA_float_get(op->ptr, "threshold");
-  const float threshold_sq = threshold * threshold;
-  blender::Vector<blender::Vector<blender::Vector<BMLoop *>>> edgeloops;
-  blender::Vector<BMUVOffsets> offsetmap;
-  /*Constructs array of edgeloops*/
+
+  const float threshold_sq = pow(RNA_float_get(op->ptr, "threshold"), 2);
+  blender::Vector<blender::Vector<blender::Vector<BMLoop *>>> edgeloops_arr;
+  blender::Vector<BMUVOffsets> offsetmap_arr;
+
+  /*Constructs array of edgeloops. The data is nested in the following order
+   * structure edgeloops->UVcoordinates->BMloops.*/
+
   for (Object *objedit : objects) {
     BMEditMesh *em = BKE_editmesh_from_object(objedit);
-    UV_get_edgeloops(scene, em->bm, &edgeloops, uvedit_uv_select_test);
+    UV_get_edgeloops(scene, em->bm, &edgeloops_arr, uvedit_uv_select_test);
     BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
 
-    while (offsetmap.size() < edgeloops.size()) {
-      offsetmap.append(offsets);
+    while (offsetmap_arr.size() < edgeloops_arr.size()) {
+      offsetmap_arr.append(offsets);
     }
   }
 
-  /*Get the endpoints of each respective edgeloop.*/
+  /* This code block gets the endpoints of each respective edge loop and the data is nested with
+     the same heirarchy as edgeloops_arr. NOTE: This logic will intentionally only include 2
+     endpoints for each edge loop. In cases where internal loops are selected, this will not be
+     able to differentiate between an endpoint that is part of an internal boundary loop. Note that
+     any edgeloops that are cycles will not be included since they wont have any endpoints.*/
 
-  blender::Vector<blender::Vector<blender::Vector<BMLoop *>>> endpoints;
-  for (const auto &curredgeloop : edgeloops) {
-    blender::Vector<blender::Vector<BMLoop *>> curredgeloopendpoints;
-    for (const auto &UVcoordinate : curredgeloop) {
-      if (UVcoordinate[0]->head.index == -2) {
-        curredgeloopendpoints.append(UVcoordinate);
+  blender::Vector<blender::Vector<blender::Vector<BMLoop *>>> endpoints_arr;
+  for (blender::Vector<blender::Vector<BMLoop *>> &curredgeloop : edgeloops_arr) {
+    blender::Vector<blender::Vector<BMLoop *>> curredgeloopendpoints_arr;
+    for (blender::Vector<BMLoop *> &UVcoordinate_arr : curredgeloop) {
+      if (UVcoordinate_arr[0]->head.index == -2) {
+        curredgeloopendpoints_arr.append(UVcoordinate_arr);
       }
-      if (curredgeloopendpoints.size() == 2) {
+      if (curredgeloopendpoints_arr.size() == 2) {
         break;
       }
     }
-    if (curredgeloopendpoints.size() > 0) {
-      endpoints.append(curredgeloopendpoints);
+    if (curredgeloopendpoints_arr.size() > 0) {
+      endpoints_arr.append(curredgeloopendpoints_arr);
     }
   }
-  if (endpoints.size() < 2) {
+
+  /*This function requires there be at least 2 edgeloops selected.*/
+
+  if (endpoints_arr.size() != 2) {
     return;
   }
 
-  size_t min_size = edgeloops[0].size();
-
-  for (const auto &UVcoordinate : edgeloops) {
-    if (UVcoordinate.size() < min_size) {
-      min_size = UVcoordinate.size();
-    }
-  }
-
   /*Find correct pairing of endpoints between edgeloops
-  by searching for combination with smalled distance.*/
+  by searching for combination with smalled distance. This logic only runs in cases where both
+  edgeloops have more than 1 UV coordinate.*/
 
-  if (min_size > 1) {
-    for (size_t i = 0; i < endpoints.size() - 1; i++) {
-      const auto &curredgeloopendpoints = endpoints[i];
-      const auto &nextedgeloopendpoints = endpoints[i + 1];
-      float len_1 = len_squared_v2v2(
-                        BM_ELEM_CD_GET_FLOAT_P(curredgeloopendpoints[0][0], offsetmap[i].uv),
-                        BM_ELEM_CD_GET_FLOAT_P(nextedgeloopendpoints[0][0], offsetmap[i + 1].uv)) +
-                    len_squared_v2v2(
-                        BM_ELEM_CD_GET_FLOAT_P(curredgeloopendpoints[1][0], offsetmap[i].uv),
-                        BM_ELEM_CD_GET_FLOAT_P(nextedgeloopendpoints[1][0], offsetmap[i + 1].uv));
-      float len_2 = len_squared_v2v2(
-                        BM_ELEM_CD_GET_FLOAT_P(curredgeloopendpoints[0][0], offsetmap[i].uv),
-                        BM_ELEM_CD_GET_FLOAT_P(nextedgeloopendpoints[1][0], offsetmap[i + 1].uv)) +
-                    len_squared_v2v2(
-                        BM_ELEM_CD_GET_FLOAT_P(curredgeloopendpoints[1][0], offsetmap[i].uv),
-                        BM_ELEM_CD_GET_FLOAT_P(nextedgeloopendpoints[0][0], offsetmap[i + 1].uv));
-      if (len_1 > len_2) {
-        std::swap(endpoints[i + 1][0], endpoints[i + 1][1]);
-      }
+  if (edgeloops_arr[0].size() > 1 and edgeloops_arr[1].size() > 1) {
+    const auto &curredgeloopendpoints = endpoints_arr[0];
+    const auto &nextedgeloopendpoints = endpoints_arr[1];
+    float len_1 = len_squared_v2v2(
+                      BM_ELEM_CD_GET_FLOAT_P(curredgeloopendpoints[0][0], offsetmap_arr[0].uv),
+                      BM_ELEM_CD_GET_FLOAT_P(nextedgeloopendpoints[0][0], offsetmap_arr[1].uv)) +
+                  len_squared_v2v2(
+                      BM_ELEM_CD_GET_FLOAT_P(curredgeloopendpoints[1][0], offsetmap_arr[0].uv),
+                      BM_ELEM_CD_GET_FLOAT_P(nextedgeloopendpoints[1][0], offsetmap_arr[1].uv));
+    float len_2 = len_squared_v2v2(
+                      BM_ELEM_CD_GET_FLOAT_P(curredgeloopendpoints[0][0], offsetmap_arr[0].uv),
+                      BM_ELEM_CD_GET_FLOAT_P(nextedgeloopendpoints[1][0], offsetmap_arr[1].uv)) +
+                  len_squared_v2v2(
+                      BM_ELEM_CD_GET_FLOAT_P(curredgeloopendpoints[1][0], offsetmap_arr[0].uv),
+                      BM_ELEM_CD_GET_FLOAT_P(nextedgeloopendpoints[0][0], offsetmap_arr[1].uv));
+    if (len_1 > len_2) {
+      std::swap(endpoints_arr[1][0], endpoints_arr[1][1]);
     }
   }
 
-  /*Iterate through 2 selected edgeloops starting at endpoints.
+  /*Iterates through 2 selected edgeloops starting at endpoints.
   This logic uses pointers in BMLoop to traverse edgeloops.*/
 
-  blender::Vector<BMLoop *> line1UV = endpoints[0][0];
-  blender::Vector<BMLoop *> line2UV = endpoints[1][0];
-  blender::Vector<BMLoop *> prev1;
-  blender::Vector<BMLoop *> prev2;
-  while (line1UV != prev1 and line2UV != prev2) {
+  blender::Vector<BMLoop *> line1_iterator = endpoints_arr[0][0];
+  blender::Vector<BMLoop *> line2_iterator = endpoints_arr[1][0];
+  blender::Vector<BMLoop *> line1_prev;
+  blender::Vector<BMLoop *> line2_prev;
+  while (line1_iterator != line1_prev and line2_iterator != line2_prev) {
 
-    ED_uvedit_shift_pair_of_UV_coordinates(
-        offsetmap[0], offsetmap[1], &line1UV, &line2UV, threshold, mid_v2_v2v2);
+    ED_uvedit_shift_pair_of_UV_coordinates(offsetmap_arr[0],
+                                           offsetmap_arr[1],
+                                           &line1_iterator,
+                                           &line2_iterator,
+                                           threshold_sq,
+                                           mid_v2_v2v2);
     std::set<int> nextv1_set;
     std::set<int> nextv2_set;
-    for (BMLoop *loop : line1UV) {
+    for (BMLoop *loop : line1_iterator) {
       nextv1_set.insert(loop->next->v->head.index);
       nextv1_set.insert(loop->prev->v->head.index);
     }
-    for (BMLoop *loop : line2UV) {
+    for (BMLoop *loop : line2_iterator) {
       nextv2_set.insert(loop->next->v->head.index);
       nextv2_set.insert(loop->prev->v->head.index);
     }
 
-    blender::Vector<BMLoop *> tmp1 = line1UV;
-    blender::Vector<BMLoop *> tmp2 = line2UV;
+    blender::Vector<BMLoop *> tmp1 = line1_iterator;
+    blender::Vector<BMLoop *> tmp2 = line2_iterator;
 
-    for (blender::Vector<BMLoop *> UVcoord : edgeloops[0]) {
-      if (nextv1_set.find(UVcoord[0]->v->head.index) != nextv1_set.end() and UVcoord != prev1) {
-        line1UV = UVcoord;
+    for (blender::Vector<BMLoop *> &UVcoord : edgeloops_arr[0]) {
+      if (nextv1_set.find(UVcoord[0]->v->head.index) != nextv1_set.end() and UVcoord != line1_prev)
+      {
+        line1_iterator = UVcoord;
         break;
       }
     }
-    for (blender::Vector<BMLoop *> UVcoord : edgeloops[1]) {
-      if (nextv2_set.find(UVcoord[0]->v->head.index) != nextv2_set.end() and UVcoord != prev2) {
-        line2UV = UVcoord;
+    for (blender::Vector<BMLoop *> &UVcoord : edgeloops_arr[1]) {
+      if (nextv2_set.find(UVcoord[0]->v->head.index) != nextv2_set.end() and UVcoord != line2_prev)
+      {
+        line2_iterator = UVcoord;
         break;
       }
     }
-    prev1 = tmp1;
-    prev2 = tmp2;
+    line1_prev = tmp1;
+    line2_prev = tmp2;
   }
 
   for (int ob_index = 0; ob_index < objects.size(); ob_index++) {
@@ -2923,16 +2930,7 @@ static void uvedit_uv_threshold_weld(bContext *C, wmOperator *op)
 
 static int stitch_distance_exec(bContext *C, wmOperator *op)
 {
-  Scene *scene = CTX_data_scene(C);
-  SpaceImage *sima = CTX_wm_space_image(C);
-  ViewLayer *view_layer = CTX_data_view_layer(C);
-  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data_with_uvs(
-      scene, view_layer, nullptr);
-
-  const float threshold = RNA_float_get(op->ptr, "threshold");
-
   uvedit_uv_threshold_weld(C, op);
-
   return OPERATOR_FINISHED;
 }
 
