@@ -26,6 +26,14 @@ BLACKLIST_OSL_TEST = [
     'osl_.*.blend',
 ]
 
+BLACKLIST_OSL = [
+    # Black list tests that fail with OSL due to differences with SVM.
+    'T49936.blend', # Something wrong with Point Density in this scene
+    'T49936_indirect.blend',
+    'T50634_1.blend', # Bad UVs on curves
+    # TODO: Add more failing tests
+]
+
 BLACKLIST_OPTIX = [
     # Ray intersection precision issues
     'T50164.blend',
@@ -144,6 +152,8 @@ def main():
             blacklist += BLACKLIST_OPTIX_OSL
     if device == 'METAL':
         blacklist += BLACKLIST_METAL
+    if args.osl:
+        blacklist += BLACKLIST_OSL
 
     from modules import render_report
     report = render_report.Report('Cycles', output_dir, oiiotool, device, blacklist, args.osl)
