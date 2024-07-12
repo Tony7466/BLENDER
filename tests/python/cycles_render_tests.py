@@ -20,7 +20,7 @@ BLACKLIST_ALL = [
     "visibility_particles.blend",
 ]
 
-BLACKLIST_OSL = [
+BLACKLIST_OSL_TEST = [
     # OSL only supported on CPU.
     '.*_osl.blend',
     'osl_.*.blend',
@@ -137,7 +137,7 @@ def main():
     if device != 'CPU':
         blacklist += BLACKLIST_GPU
     if device != 'CPU' or 'OSL' in args.blacklist:
-        blacklist += BLACKLIST_OSL
+        blacklist += BLACKLIST_OSL_TEST
     if device == 'OPTIX':
         blacklist += BLACKLIST_OPTIX
         if args.osl:
