@@ -87,18 +87,9 @@ void VKCommandBuilder::build_node_group(VKRenderGraph &render_graph,
                                         Span<NodeHandle> node_group,
                                         std::optional<NodeHandle> &r_rendering_scope)
 {
-  if (node_group.first() == 189 && node_group.last() == 192) {
-    std::cout << "break;\n";
-  }
   bool is_rendering = false;
   for (NodeHandle node_handle : node_group) {
     VKRenderGraphNode &node = render_graph.nodes_[node_handle];
-#if 1
-    std::cout << "node_group: " << node_group.first() << "-" << node_group.last()
-              << ", node_handle: " << node_handle << ", node_type: " << node.type << "\n";
-#endif
-    std::cout << "layered_attachments: " << state_.layered_attachments.size()
-              << ", bindings: " << state_.layered_bindings.size() << "\n";
     build_pipeline_barriers(render_graph, command_buffer, node_handle, node.pipeline_stage_get());
     if (node.type == VKNodeType::BEGIN_RENDERING) {
       begin_subresource_tracking(render_graph, node_handle);
@@ -547,10 +538,7 @@ void VKCommandBuilder::begin_subresource_tracking(const VKRenderGraph &render_gr
     VKResourceStateTracker::Resource &resource = render_graph.resources_.resources_.lookup(
         link.resource.handle);
     if (resource.has_multiple_layers()) {
-      if (state_.layered_attachments.add(resource.image.vk_image)) {
-        std::cout << "subresource tracking activated for resource " << resource.image.vk_image
-                  << "\n";
-      }
+      state_.layered_attachments.add(resource.image.vk_image);
     }
   }
 }
@@ -571,12 +559,11 @@ void VKCommandBuilder::update_subresource_tracking(VkImage vk_image,
     }
   }
 
-  std::cout << "subresource layout transfer resource " << vk_image << " layer " << layer << "\n";
   state_.layered_bindings.append({vk_image, new_layout, layer});
 
   /* We should be able to do better. BOTTOM/TOP is really a worst case barrier. */
-  state_.src_stage_mask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-  state_.dst_stage_mask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+  state_.src_stage_mask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+  state_.dst_stage_mask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
   add_image_barrier(vk_image,
                     VK_ACCESS_TRANSFER_WRITE_BIT,
                     VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT |
@@ -593,11 +580,9 @@ void VKCommandBuilder::end_subresource_tracking(VKCommandBufferInterface &comman
   if (!state_.layered_bindings.is_empty()) {
     reset_barriers();
     /* We should be able to do better. BOTTOM/TOP is really a worst case barrier. */
-    state_.src_stage_mask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-    state_.dst_stage_mask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+    state_.src_stage_mask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+    state_.dst_stage_mask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
     for (const LayeredImageBinding &binding : state_.layered_bindings) {
-      std::cout << "subresource layout transfer resource " << binding.vk_image << " layer "
-                << binding.layer << "\n";
       add_image_barrier(
           binding.vk_image,
           VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT |
