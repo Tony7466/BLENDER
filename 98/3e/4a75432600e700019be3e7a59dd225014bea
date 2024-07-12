@@ -1,2 +1,2 @@
 Referenced by issue #124255, Eevee: Shadow mode versioning node setup causes Cycles discrepancy
-Referenced by issue #124593, Incorrect versioning for volumetric objects with shadows disabled in EEVEE
+Referenced by issue #124593, Incorrect versioning for volumetric materials with shadows disabled in EEVEE
