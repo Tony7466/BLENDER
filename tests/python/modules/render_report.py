@@ -112,10 +112,10 @@ class Report:
         self.osl = osl
 
         if device:
-            self.title = self._engine_title(title, device)
+            self.title = self._engine_title(self.title, device)
             self.output_dir = self._engine_path(self.output_dir, device.lower())
         if osl:
-            self.title = self._engine_title(title, "OSL")
+            self.title = self._engine_title(self.title, "OSL")
 
         self.pixelated = False
         self.verbose = os.environ.get("BLENDER_VERBOSE") is not None
