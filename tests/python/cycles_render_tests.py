@@ -32,6 +32,14 @@ BLACKLIST_OPTIX = [
     'T43865.blend',
 ]
 
+BLACKLIST_OPTIX_OSL = [
+    # OPTIX OSL doesn't support trace function needed for AO, bevel
+    'bake_bevel.blend',
+    'ambient_occlusion.*.blend',
+    'bevel.blend',
+    # TODO: Investigate each failing case and add them here.
+]
+
 BLACKLIST_METAL = [
     # MNEE only works on Metal with macOS >= 13
     "underwater_caustics.blend",
@@ -132,6 +140,8 @@ def main():
         blacklist += BLACKLIST_OSL
     if device == 'OPTIX':
         blacklist += BLACKLIST_OPTIX
+        if args.osl:
+            blacklist += BLACKLIST_OPTIX_OSL
     if device == 'METAL':
         blacklist += BLACKLIST_METAL
 
