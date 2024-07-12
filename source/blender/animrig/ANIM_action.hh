@@ -795,9 +795,22 @@ Vector<const FCurve *> fcurves_all(const Action &action);
 Vector<FCurve *> fcurves_all(Action &action);
 
 /**
- * Get (or add relevant data to be able to do so) an F-Curve from the given Action,
- * for the given animated data-block. This assumes that all the destinations are valid.
- * \param ptr: can be a null pointer.
+ * Get (or add relevant data to be able to do so) an F-Curve from the given
+ * Action. This assumes that all the destinations are valid.
+ *
+ * NOTE: this function is primarily intended for use with legacy actions, but
+ * for reasons of expedience it now also works with layered actions under the
+ * following limited circumstances: `ptr` must be non-null and must have an
+ * `owner_id` that already uses `act`. Otherwise this function will return
+ * nullptr for layered actions. See the comments in the implementation for more
+ * details.
+ *
+ * \param ptr: RNA pointer for the struct the fcurve is being looked up/created
+ * for. For legacy actions this is optional and may be null.
+ *
+ * \param fcurve_descriptor: description of the fcurve to lookup/create. Note
+ * that this is *not* relative to `ptr` (e.g. if `ptr` is not an ID). It should
+ * contain the exact data path of the fcurve to be looked up/created.
  */
 FCurve *action_fcurve_ensure(Main *bmain,
                              bAction *act,
@@ -843,6 +856,20 @@ ID *action_slot_get_id_for_keying(Main &bmain,
                                   Action &action,
                                   slot_handle_t slot_handle,
                                   ID *primary_id);
+
+/**
+ * Make a best-effort guess as to which ID* is animated by the given slot.
+ *
+ * This is only used in rare cases; ususally the ID* for which operations are
+ * performed is known.
+ *
+ * \note This function was specifically written because the 'display name' of an
+ * F-Curve can only be determined by resolving its RNA path, and for that an ID*
+ * is necessary. It would be better to cache that name on the F-Curve itself, so
+ * that this constant resolving (for drawing, filtering by name, etc.) isn't
+ * necessary any more.
+ */
+ID *action_slot_get_id_best_guess(Main &bmain, Slot &slot, ID *primary_id);
 
 /**
  * Assert the invariants of Project Baklava phase 1.
