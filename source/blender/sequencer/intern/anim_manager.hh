@@ -14,31 +14,16 @@ struct Sequence;
 
 #include "BLI_map.hh"
 
-class MemTracker {
- public:
-  std::string name = "No Name";
-  void track_as(std::string track_name)
-  {
-    name = track_name;
-  }
-
-  ~MemTracker()
-  {
-    printf("Freeing %s\n", name.c_str());
-  }
-};
-
 class ShareableAnim {
  public:
   blender::Vector<ImBufAnim *> anims; /* Ordered by view_id. */
   blender::Vector<Sequence *> users;
   bool multiview_loaded = false;
   std::unique_ptr<std::mutex> mutex = std::make_unique<std::mutex>();
-  MemTracker tracker;
 
   void release_from_strip(Sequence *seq);
   void release_from_all_strips(void);
-  void acquire_anims(const Scene *scene, Sequence *seq, bool openfile);
+  void acquire_anims(const Scene *scene, Sequence *seq);
   bool has_anim(const Scene *scene, Sequence *seq);
   bool try_lock();
   void unlock();

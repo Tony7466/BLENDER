@@ -84,24 +84,12 @@ static void index_dir_set(Editing *ed, Sequence *seq, ImBufAnim *anim)
   seq_proxy_index_dir_set(anim, proxy_dirpath);
 }
 
-static ImBufAnim *anim_get(Sequence *seq, const char *filepath, bool openfile)
+static ImBufAnim *anim_get(Sequence *seq, const char *filepath)
 {
-  ImBufAnim *anim = nullptr;
-
-  if (openfile) {
-    anim = openanim(filepath,
-                    IB_rect | ((seq->flag & SEQ_FILTERY) ? IB_animdeinterlace : 0),
-                    seq->streamindex,
-                    seq->strip->colorspace_settings.name);
-  }
-  else {
-    anim = openanim_noload(filepath,
-                           IB_rect | ((seq->flag & SEQ_FILTERY) ? IB_animdeinterlace : 0),
-                           seq->streamindex,
-                           seq->strip->colorspace_settings.name);
-  }
-
-  return anim;
+  return openanim(filepath,
+                  IB_rect | ((seq->flag & SEQ_FILTERY) ? IB_animdeinterlace : 0),
+                  seq->streamindex,
+                  seq->strip->colorspace_settings.name);
 }
 
 static bool is_multiview(const Scene *scene, Sequence *seq, const char *filepath)
@@ -130,7 +118,7 @@ static blender::Vector<ImBufAnim *> multiview_anims_get(const Scene *scene,
     SNPRINTF(filepath_view, "%s%s%s", prefix, suffix, ext);
 
     /* Multiview files must be loaded, otherwise it is not possible to detect failure. */
-    ImBufAnim *anim = anim_get(seq, filepath_view, true);
+    ImBufAnim *anim = anim_get(seq, filepath_view);
     if (anim != nullptr) {
       anims.append(anim);
     }
@@ -166,7 +154,7 @@ void ShareableAnim::release_from_all_strips(void)
   }
 }
 
-void ShareableAnim::acquire_anims(const Scene *scene, Sequence *seq, bool openfile)
+void ShareableAnim::acquire_anims(const Scene *scene, Sequence *seq)
 {
   char filepath[FILE_MAX];
   anim_filepath_get(scene, seq, sizeof(filepath), filepath);
@@ -177,7 +165,7 @@ void ShareableAnim::acquire_anims(const Scene *scene, Sequence *seq, bool openfi
     return;
   }
 
-  ImBufAnim *anim = anim_get(seq, filepath, openfile);
+  ImBufAnim *anim = anim_get(seq, filepath);
   if (anim != nullptr) {
     anims.append(anim);
   }
@@ -217,6 +205,8 @@ void ShareableAnim::unlock()
   mutex->unlock();
 }
 
+/* TODO: It would be simpler, and perhaps better for user to load n strips, instead of
+ * relying on distance from CFRA. */
 static blender::Vector<Sequence *> strips_to_prefetch_get(const Scene *scene)
 {
   Editing *ed = SEQ_editing_get(scene);
@@ -271,6 +261,13 @@ void AnimManager::free_unused_anims(blender::Vector<Sequence *> &strips)
   mutex.unlock();
 }
 
+// xxx this is the sole reason for try-locking. To prevent this, I need to have unique items to
+// prefetch. But the issue is, that each strip may request different multiview configuration.
+// To work around this, it may be possible to setup some fancy data structure which would represent
+// filepaths to load, but honestly, it's just better to not support multiview for initial
+// implementation.
+// Consider, that strip with single view would be loaded, and multiview setup would be skipped,
+// because try-lock nayway.
 void AnimManager::parallel_load_anims(const Scene *scene,
                                       blender::Vector<Sequence *> &strips,
                                       bool unlock)
@@ -296,7 +293,7 @@ void AnimManager::parallel_load_anims(const Scene *scene,
         continue;
       }
 
-      sh_anim.acquire_anims(scene, seq, true);
+      sh_anim.acquire_anims(scene, seq);
       if (unlock) {
         sh_anim.unlock();
       }
@@ -330,7 +327,6 @@ ShareableAnim &AnimManager::cache_entry_get(const Scene *scene, const Sequence *
   mutex.lock();
   ShareableAnim &sh_anim = *anims_map.lookup_or_add_cb(std::string(filepath), [&]() {
     std::unique_ptr<ShareableAnim> new_sh_anim = std::make_unique<ShareableAnim>();
-    new_sh_anim->tracker.track_as(std::string(filepath));
     return new_sh_anim;
   });
   mutex.unlock();
@@ -350,7 +346,7 @@ void AnimManager::strip_anims_acquire(const Scene *scene, Sequence *seq)
   }
 
   if (!sh_anim.has_anim(scene, seq)) {
-    sh_anim.acquire_anims(scene, seq, true);
+    sh_anim.acquire_anims(scene, seq);
   }
 }
 
