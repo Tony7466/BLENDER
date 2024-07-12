@@ -70,10 +70,10 @@ class PhysicsGeometry {
  public:
   static const struct BuiltinAttributes {
     /* Increment this when adding attributes! */
-    const int num_builtin_attributes = 35;
-    std::array<std::string, 35> all;
+    const int num_builtin_attributes = 36;
+    std::array<std::string, 36> all;
     /* Attributes that should not be copied when there is a physics world. */
-    std::array<std::string, 35> skip_copy;
+    std::array<std::string, 36> skip_copy;
 
     /* Body attributes. */
     std::string id;
