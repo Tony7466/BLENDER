@@ -28,7 +28,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   params.set_output("Projection", data.viewport_winmat * self_object.object_to_world());
   params.set_output("View", data.viewport_viewmat * self_object.object_to_world());
-  params.set_output("Is Orthographic", !data.viewport_is_persp);
+  params.set_output("Is Orthographic", !data.viewport_is_perspective);
 }
 
 static void node_register()

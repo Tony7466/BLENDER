@@ -199,7 +199,7 @@ struct GeoNodesOperatorData {
 
   float4x4 viewport_winmat;
   float4x4 viewport_viewmat;
-  bool viewport_is_persp;
+  bool viewport_is_perspective;
 
   int active_point_index = -1;
   int active_edge_index = -1;

@@ -548,7 +548,8 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
         op->ptr, "viewport_projection_matrix", operator_eval_data.viewport_winmat.base_ptr());
     RNA_float_get_array(
         op->ptr, "viewport_view_matrix", operator_eval_data.viewport_viewmat.base_ptr());
-    operator_eval_data.viewport_is_persp = RNA_boolean_get(op->ptr, "viewport_is_perspective");
+    operator_eval_data.viewport_is_perspective = RNA_boolean_get(op->ptr,
+                                                                 "viewport_is_perspective");
 
     nodes::GeoNodesCallData call_data{};
     call_data.operator_data = &operator_eval_data;
