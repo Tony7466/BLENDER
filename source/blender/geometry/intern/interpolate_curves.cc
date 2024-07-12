@@ -161,11 +161,6 @@ static void sample_curve_attribute(const bke::CurvesGeometry &src_curves,
   const VArray<int8_t> curve_types = src_curves.curve_types();
 
 #ifndef NDEBUG
-  const int curves_num = src_curves.curves_num();
-  BLI_assert(src_points_by_curve.size() == curves_num);
-  BLI_assert(dst_points_by_curve.size() == curves_num);
-  BLI_assert(curve_types.size() == curves_num);
-
   const int dst_points_num = dst_data.size();
   BLI_assert(sample_indices.size() == dst_points_num);
   BLI_assert(sample_factors.size() == dst_points_num);
@@ -276,9 +271,9 @@ void interpolate_curves(const CurvesGeometry &from_curves,
   const OffsetIndices dst_points_by_curve = dst_curves.points_by_curve();
 
   /* Gather uniform samples based on the accumulated lengths of the original curve. */
-  selection.foreach_index(GrainSize(32), [&](const int i, const int i_dst_curve) {
-    const int i_from_curve = from_curve_indices[i];
-    const int i_to_curve = to_curve_indices[i];
+  selection.foreach_index(GrainSize(32), [&](const int i_dst_curve, const int pos) {
+    const int i_from_curve = from_curve_indices[pos];
+    const int i_to_curve = to_curve_indices[pos];
     const IndexRange dst_points = dst_points_by_curve[i_dst_curve];
     const Span<float> from_lengths = from_curves.evaluated_lengths_for_curve(
         i_from_curve, from_curves_cyclic[i_from_curve]);

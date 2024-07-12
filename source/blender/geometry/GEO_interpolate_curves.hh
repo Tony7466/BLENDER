@@ -13,6 +13,7 @@ namespace blender::geometry {
 
 /**
  * Create new curves that are interpolated between "from" and "to" curves.
+ * \param selection: Selection of curves in \a dst_curves that are being filled.
  */
 void interpolate_curves(const bke::CurvesGeometry &from_curves,
                         const bke::CurvesGeometry &to_curves,
