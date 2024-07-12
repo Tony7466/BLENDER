@@ -507,6 +507,7 @@ set(GLSL_SRC
   
   engines/eevee_next/NPR/shaders/npr_nodetree_lib.glsl
   engines/eevee_next/NPR/shaders/npr_surface_frag.glsl
+  engines/eevee_next/NPR/shaders/npr_surface_vert.glsl
 
   engines/workbench/shaders/workbench_cavity_lib.glsl
   engines/workbench/shaders/workbench_common_lib.glsl

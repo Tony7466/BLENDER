@@ -6,6 +6,8 @@
 
 #include "NPR/npr_defines.hh"
 
+GPU_SHADER_INTERFACE_INFO(npr_surface_iface, "").smooth(Type::VEC4, "uvcoordsvar");
+
 GPU_SHADER_CREATE_INFO(npr_surface)
     .sampler(INDEX_TX_SLOT, ImageType::UINT_2D, "npr_index_tx")
     .sampler(DEPTH_TX_SLOT, ImageType::DEPTH_2D, "depth_tx")
@@ -25,8 +27,12 @@ GPU_SHADER_CREATE_INFO(npr_surface)
     .push_constant(Type::BOOL, "use_split_radiance")
     /* eevee_deferred_combine */
     .push_constant(Type::INT, "npr_index")
-    .fragment_out(0, Type::VEC3, "out_color")
-    .fragment_source("npr_surface_frag.glsl")
     .define("Closure", "int")
     .define("NPR_SHADER")
-    .additional_info("draw_fullscreen", "draw_view", "eevee_shared", "eevee_global_ubo");
+    .vertex_source("npr_surface_vert.glsl")
+    .vertex_out(npr_surface_iface)
+    .fragment_source("npr_surface_frag.glsl")
+    .fragment_out(0, Type::VEC3, "out_color")
+    .define("ModelMatrix", "mat4(1.0)")
+    .define("ModelMatrixInverse", "mat4(1.0)")
+    .additional_info("draw_view", "eevee_shared", "eevee_global_ubo");
