@@ -20,10 +20,17 @@ IndexMask body_selection_from_constraint(const Span<int> constraint_body1,
                                          const int bodies_num,
                                          IndexMaskMemory &memory)
 {
+  const IndexRange body_range = IndexRange(bodies_num);
   Array<bool> array(bodies_num, false);
   constraint_mask.foreach_index_optimized<int>(GrainSize(4096), [&](const int i) {
-    array[constraint_body1[i]] = true;
-    array[constraint_body2[i]] = true;
+    const int body1 = constraint_body1[i];
+    const int body2 = constraint_body2[i];
+    if (body_range.contains(body1)) {
+      array[body1] = true;
+    }
+    if (body_range.contains(body2)) {
+      array[body2] = true;
+    }
   });
   return IndexMask::from_bools(array, memory);
 }
@@ -31,13 +38,45 @@ IndexMask body_selection_from_constraint(const Span<int> constraint_body1,
 IndexMask constraint_selection_from_body(Span<int> constraint_body1,
                                          Span<int> constraint_body2,
                                          Span<bool> body_selection,
+                                         const int bodies_num,
                                          IndexMaskMemory &memory)
 {
+  const IndexRange body_range = IndexRange(bodies_num);
   return IndexMask::from_predicate(
       constraint_body1.index_range(), GrainSize(1024), memory, [&](const int64_t i) {
         const int body1 = constraint_body1[i];
         const int body2 = constraint_body2[i];
-        return body_selection[body1] && body_selection[body2];
+        return (body_range.contains(body1) ? body_selection[body1] : false) &&
+               (body_range.contains(body2) ? body_selection[body2] : false);
+      });
+}
+
+IndexMask shape_selection_from_body(Span<int> body_shapes,
+                                    const IndexMask &body_mask,
+                                    const int shapes_num,
+                                    IndexMaskMemory &memory)
+{
+  const IndexRange shape_range = IndexRange(shapes_num);
+  Array<bool> array(shapes_num, false);
+  body_mask.foreach_index_optimized<int>(GrainSize(4096), [&](const int i) {
+    const int shape = body_shapes[i];
+    if (shape_range.contains(shape)) {
+      array[shape] = true;
+    }
+  });
+  return IndexMask::from_bools(array, memory);
+}
+
+IndexMask body_selection_from_shape(Span<int> body_shapes,
+                                    Span<bool> shape_selection,
+                                    const int shapes_num,
+                                    IndexMaskMemory &memory)
+{
+  const IndexRange shape_range = IndexRange(shapes_num);
+  return IndexMask::from_predicate(
+      body_shapes.index_range(), GrainSize(1024), memory, [&](const int64_t i) {
+        const int shape = body_shapes[i];
+        return shape_range.contains(shape) ? shape_selection[shape] : false;
       });
 }
 
@@ -47,6 +86,7 @@ std::optional<bke::PhysicsGeometry *> physics_copy_selection(
     const bke::AttrDomain selection_domain,
     const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
+  const VArraySpan<int> src_body_shapes = src_physics.body_shapes();
   const VArraySpan<int> src_body1 = src_physics.constraint_body1();
   const VArraySpan<int> src_body2 = src_physics.constraint_body2();
 
@@ -60,15 +100,20 @@ std::optional<bke::PhysicsGeometry *> physics_copy_selection(
   threading::EnumerableThreadSpecific<IndexMaskMemory> memory;
   IndexMask body_mask;
   IndexMask constraint_mask;
+  IndexMask shape_mask;
   switch (selection_domain) {
     case bke::AttrDomain::Point: {
       const VArraySpan<bool> span(selection);
+      body_mask = IndexMask::from_bools(span, memory.local());
       threading::parallel_invoke(
           src_physics.bodies_num() > 1024,
-          [&]() { body_mask = IndexMask::from_bools(span, memory.local()); },
           [&]() {
             constraint_mask = constraint_selection_from_body(
-                src_body1, src_body2, span, memory.local());
+                src_body1, src_body2, span, src_physics.bodies_num(), memory.local());
+          },
+          [&]() {
+            shape_mask = shape_selection_from_body(
+                src_body_shapes, body_mask, src_physics.shapes_num(), memory.local());
           });
       break;
     }
@@ -77,9 +122,17 @@ std::optional<bke::PhysicsGeometry *> physics_copy_selection(
       constraint_mask = IndexMask::from_bools(span, memory.local());
       body_mask = body_selection_from_constraint(
           src_body1, src_body2, constraint_mask, src_physics.bodies_num(), memory.local());
+      shape_mask = shape_selection_from_body(
+          src_body_shapes, body_mask, src_physics.shapes_num(), memory.local());
       break;
     }
-    case bke::AttrDomain::Face: {
+    case bke::AttrDomain::Instance: {
+      const VArraySpan<bool> span(selection);
+      shape_mask = IndexMask::from_bools(span, memory.local());
+      body_mask = body_selection_from_shape(
+          src_body_shapes, span, src_physics.shapes_num(), memory.local());
+      constraint_mask = constraint_selection_from_body(
+          src_body1, src_body2, span, src_physics.bodies_num(), memory.local());
       break;
     }
     default:
@@ -96,11 +149,11 @@ std::optional<bke::PhysicsGeometry *> physics_copy_selection(
     return std::nullopt;
   }
 
-  bke::PhysicsGeometry *dst_physics = new bke::PhysicsGeometry(body_mask.size(),
-                                                               constraint_mask.size());
+  bke::PhysicsGeometry *dst_physics = new bke::PhysicsGeometry(
+      body_mask.size(), constraint_mask.size(), shape_mask.size());
 
   dst_physics->move_or_copy_selection(
-      src_physics, true, body_mask, constraint_mask, propagation_info);
+      src_physics, true, body_mask, constraint_mask, shape_mask, propagation_info);
 
   return dst_physics;
 }
@@ -111,6 +164,7 @@ std::optional<bke::PhysicsGeometry *> physics_copy_selection_keep_bodies(
     const bke::AttrDomain selection_domain,
     const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
+  const VArraySpan<int> src_body_shapes = src_physics.body_shapes();
   const VArraySpan<int> src_body1 = src_physics.constraint_body1();
   const VArraySpan<int> src_body2 = src_physics.constraint_body2();
 
@@ -119,16 +173,22 @@ std::optional<bke::PhysicsGeometry *> physics_copy_selection_keep_bodies(
   }
 
   threading::EnumerableThreadSpecific<IndexMaskMemory> memory;
+  const IndexRange body_mask = src_physics.bodies_range();
   IndexMask constraint_mask;
+  IndexMask shape_mask;
   switch (selection_domain) {
     case bke::AttrDomain::Point: {
       const VArraySpan<bool> span(selection);
-      constraint_mask = constraint_selection_from_body(src_body1, src_body2, span, memory.local());
+      constraint_mask = constraint_selection_from_body(
+          src_body1, src_body2, span, src_physics.bodies_num(), memory.local());
+      shape_mask = shape_selection_from_body(
+          src_body_shapes, body_mask, src_physics.shapes_num(), memory.local());
       break;
     }
     case bke::AttrDomain::Edge: {
       const VArraySpan<bool> span(selection);
       constraint_mask = IndexMask::from_bools(span, memory.local());
+      shape_mask = src_physics.shapes_range();
       break;
     }
     default:
@@ -141,11 +201,11 @@ std::optional<bke::PhysicsGeometry *> physics_copy_selection_keep_bodies(
     return std::nullopt;
   }
 
-  bke::PhysicsGeometry *dst_physics = new bke::PhysicsGeometry(src_physics.bodies_num(),
-                                                               constraint_mask.size());
+  bke::PhysicsGeometry *dst_physics = new bke::PhysicsGeometry(
+      src_physics.bodies_num(), constraint_mask.size(), src_physics.shapes_num());
 
   dst_physics->move_or_copy_selection(
-      src_physics, true, src_physics.bodies_range(), constraint_mask, propagation_info);
+      src_physics, true, body_mask, constraint_mask, shape_mask, propagation_info);
 
   return dst_physics;
 }

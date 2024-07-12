@@ -60,8 +60,6 @@ class PhysicsGeometry {
   };
 
  private:
-  Vector<CollisionShapePtr> shapes_;
-
   /* Implementation of the physics world and rigid bodies.
    * This is an implicit shared pointer, multiple users can read the physics data. Requesting write
    * access will move the data to a new component. This is somewhat different from other components
@@ -79,6 +77,7 @@ class PhysicsGeometry {
 
     /* Body attributes. */
     std::string id;
+    std::string collision_shape;
     std::string is_static;
     std::string is_kinematic;
     std::string mass;
@@ -117,7 +116,7 @@ class PhysicsGeometry {
   } builtin_attributes;
 
   PhysicsGeometry();
-  explicit PhysicsGeometry(int bodies_num, int constraints_num);
+  explicit PhysicsGeometry(int bodies_num, int constraints_num, int shapes_num);
   PhysicsGeometry(const PhysicsGeometry &other);
   ~PhysicsGeometry();
 
@@ -141,6 +140,7 @@ class PhysicsGeometry {
                               const bool use_world,
                               const IndexMask &body_mask,
                               const IndexMask &constraint_mask,
+                              const IndexMask &shape_mask,
                               const bke::AnonymousAttributePropagationInfo &propagation_info);
 
   void set_overlap_filter(OverlapFilterFn fn);
@@ -154,14 +154,15 @@ class PhysicsGeometry {
   void step_simulation(float delta_time);
 
   Span<CollisionShapePtr> shapes() const;
-  std::optional<int> find_shape_handle(const CollisionShape &shape);
-  int add_shape(const CollisionShapePtr &shape);
+  MutableSpan<CollisionShapePtr> shapes_for_write();
   void set_body_shapes(const IndexMask &selection,
                        Span<int> shape_handles,
                        bool update_local_inertia);
 
   VArray<int> body_ids() const;
   AttributeWriter<int> body_ids_for_write();
+
+  VArray<int> body_shapes() const;
 
   VArray<bool> body_is_static() const;
 

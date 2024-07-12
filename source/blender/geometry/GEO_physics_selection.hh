@@ -35,7 +35,18 @@ IndexMask body_selection_from_constraint(Span<int> constraint_body1,
 IndexMask constraint_selection_from_body(Span<int> constraint_body1,
                                          Span<int> constraint_body2,
                                          Span<bool> body_selection,
+                                         int bodies_num,
                                          IndexMaskMemory &memory);
+
+IndexMask shape_selection_from_body(Span<int> body_shapes,
+                                    const IndexMask &body_mask,
+                                    int shapes_num,
+                                    IndexMaskMemory &memory);
+
+IndexMask body_selection_from_shape(Span<int> body_shapes,
+                                    Span<bool> shape_selection,
+                                    int shapes_num,
+                                    IndexMaskMemory &memory);
 
 std::optional<bke::PhysicsGeometry *> physics_copy_selection(
     const bke::PhysicsGeometry &src_physics,

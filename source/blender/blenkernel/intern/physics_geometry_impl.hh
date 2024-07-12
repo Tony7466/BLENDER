@@ -76,6 +76,7 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
   btConstraintSolver *constraint_solver = nullptr;
   btOverlapFilterCallback *overlap_filter = nullptr;
 
+  Array<CollisionShapePtr> shapes;
   Array<btRigidBody *> rigid_bodies;
   Array<btMotionState *> motion_states;
   Array<btTypedConstraint *> constraints;
@@ -94,9 +95,11 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
   AttributeCache attribute_cache;
 
   PhysicsGeometryImpl();
-  PhysicsGeometryImpl(int bodies_num, int constraints_num);
+  PhysicsGeometryImpl(int bodies_num, int constraints_num, int shapes_num);
   PhysicsGeometryImpl(const PhysicsGeometryImpl &other);
   ~PhysicsGeometryImpl();
+
+  PhysicsGeometryImpl &operator=(const PhysicsGeometryImpl &other);
 
   void delete_self() override;
 

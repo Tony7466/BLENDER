@@ -191,9 +191,7 @@ static bke::CollisionShape::Ptr get_convex_collision_shape(const bke::GeometrySe
 
 /* Keep in sync with the type_items enum in node_rna. */
 static bke::CollisionShape *make_collision_shape_from_type(
-    const bke::CollisionShape::ShapeType type,
-    GeoNodeExecParams params,
-    bke::PhysicsGeometry *physics)
+    const bke::CollisionShape::ShapeType type, GeoNodeExecParams params)
 {
   using ShapeType = bke::CollisionShape::ShapeType;
 
@@ -257,8 +255,7 @@ static bke::CollisionShape *make_collision_shape_from_type(
       if (!child_shape) {
         return nullptr;
       }
-      physics->add_shape(child_shape);
-      return new bke::UniformScalingCollisionShape(child_shape.get(), scale);
+      return new bke::UniformScalingCollisionShape(child_shape, scale);
     }
     case ShapeType::MinkowskiSum: {
       return nullptr;
@@ -296,65 +293,47 @@ static bke::CollisionShape *make_collision_shape_from_type(
                                     geometry_set.get_instances()->instances_num() :
                                     0;
 
-      Vector<const bke::CollisionShape *> child_shapes;
+      Vector<bke::CollisionShapePtr> child_shapes;
       Vector<float4x4> child_transforms;
       child_shapes.reserve(num_shapes + num_instances);
       child_transforms.reserve(num_shapes + num_instances);
       if (geometry_set.has_physics()) {
         for (const bke::CollisionShapePtr &child_shape : geometry_set.get_physics()->shapes()) {
-          physics->add_shape(child_shape);
-          child_shapes.append(child_shape.get());
+          child_shapes.append(child_shape);
           child_transforms.append(float4x4::identity());
         }
       }
       if (geometry_set.has_instances()) {
         const bke::Instances &instances = *geometry_set.get_instances();
         const Span<bke::InstanceReference> references = instances.references();
-        instances.foreach_referenced_geometry([&](const GeometrySet &geometry_set) {
-          if (geometry_set.has_physics()) {
-            for (const bke::CollisionShapePtr &child_shape : geometry_set.get_physics()->shapes())
-            {
-              physics->add_shape(child_shape);
-            }
-          }
-        });
+        const Span<float4x4> transforms = instances.transforms();
         for (const int ref_index : instances.reference_handles()) {
           const GeometrySet &ref_geometry_set = references[ref_index].geometry_set();
+          const float4x4 &transform = transforms[ref_index];
           if (ref_geometry_set.has_physics()) {
             for (const bke::CollisionShapePtr &child_shape :
                  ref_geometry_set.get_physics()->shapes())
             {
-              child_shapes.append(child_shape.get());
-              child_transforms.append(float4x4::identity());
+              child_shapes.append(child_shape);
+              child_transforms.append(transform);
             }
           }
         }
       }
-      return new bke::CompoundCollisionShape(
-          VArray<const bke::CollisionShape *>::ForSpan(child_shapes),
-          VArray<float4x4>::ForSpan(child_transforms));
+      return new bke::CompoundCollisionShape(VArray<bke::CollisionShapePtr>::ForSpan(child_shapes),
+                                             VArray<float4x4>::ForSpan(child_transforms));
     }
   }
   return nullptr;
-}
-
-static bke::CollisionShape *make_collision_shape(const bke::CollisionShape::ShapeType type,
-                                                 GeoNodeExecParams params,
-                                                 bke::PhysicsGeometry *physics)
-{
-  bke::CollisionShape *shape = make_collision_shape_from_type(type, params, physics);
-  if (shape) {
-    physics->add_shape(bke::CollisionShape::Ptr(shape));
-  }
-  return shape;
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
   const auto shape_type = bke::CollisionShape::ShapeType(params.node().custom1);
 
-  bke::PhysicsGeometry *physics = new bke::PhysicsGeometry(0, 0);
-  make_collision_shape(shape_type, params, physics);
+  bke::PhysicsGeometry *physics = new bke::PhysicsGeometry(0, 0, 1);
+  physics->shapes_for_write().first() = bke::CollisionShapePtr(
+      make_collision_shape_from_type(shape_type, params));
 
   params.set_output("Shape", GeometrySet::from_physics(physics));
 }

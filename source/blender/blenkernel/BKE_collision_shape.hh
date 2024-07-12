@@ -159,7 +159,9 @@ class CylinderCollisionShape : public CollisionShape {
 
 class UniformScalingCollisionShape : public CollisionShape {
  public:
-  UniformScalingCollisionShape(const CollisionShape *child_shape, float scale);
+  CollisionShapePtr child_shape_;
+
+  UniformScalingCollisionShape(const CollisionShapePtr &child_shape, float scale);
 };
 
 class TriangleMeshCollisionShape : public CollisionShape {
@@ -185,7 +187,9 @@ class StaticPlaneCollisionShape : public CollisionShape {
 
 class CompoundCollisionShape : public CollisionShape {
  public:
-  CompoundCollisionShape(const VArray<const CollisionShape *> &child_shapes,
+  Array<CollisionShapePtr> child_shapes_;
+
+  CompoundCollisionShape(const VArray<CollisionShapePtr> &child_shapes,
                          const VArray<float4x4> &child_transforms);
 };
 

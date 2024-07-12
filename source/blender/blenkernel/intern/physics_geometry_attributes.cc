@@ -1027,12 +1027,14 @@ static AttributeAccessorFunctions get_physics_accessor_functions(const bool forc
         return impl.body_num_;
       case AttrDomain::Edge:
         return impl.constraint_num_;
+      case blender::bke::AttrDomain::Instance:
+        return int(impl.shapes.size());
       default:
         return 0;
     }
   };
   fn.domain_supported = [](const void * /*owner*/, const AttrDomain domain) {
-    return ELEM(domain, AttrDomain::Point, AttrDomain::Edge);
+    return ELEM(domain, AttrDomain::Point, AttrDomain::Edge, AttrDomain::Instance);
   };
   fn.adapt_domain = [](const void *owner,
                        const GVArray &varray,

@@ -2,15 +2,17 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BLI_math_quaternion_types.hh"
 #include "GEO_join_geometries.hh"
 #include "GEO_realize_instances.hh"
 
 #include "DNA_collection_types.h"
 
 #include "BLI_array_utils.hh"
+#include "BLI_math_quaternion_types.hh"
 #include "BLI_noise.hh"
 
+#include "BKE_attribute.hh"
+#include "BKE_collision_shape.hh"
 #include "BKE_curves.hh"
 #include "BKE_customdata.hh"
 #include "BKE_deform.hh"
@@ -217,6 +219,7 @@ struct RealizePhysicsInfo {
 struct PhysicsElementStartIndices {
   int body = 0;
   int constraint = 0;
+  int shape = 0;
 };
 
 struct RealizePhysicsTask {
@@ -769,6 +772,7 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
                                                     base_instance_context.physics});
           gather_info.r_offsets.physics_offsets.body += physics->bodies_num();
           gather_info.r_offsets.physics_offsets.constraint += physics->constraints_num();
+          gather_info.r_offsets.physics_offsets.shape += physics->shapes_num();
         }
         break;
       }
@@ -2298,6 +2302,7 @@ static void execute_realize_physics_task(const RealizeInstancesOptions &options,
                                          const RealizePhysicsTask &task,
                                          const OrderedAttributes &ordered_attributes,
                                          bke::PhysicsGeometry &dst_physics,
+                                         MutableSpan<bke::CollisionShapePtr> all_dst_shapes,
                                          MutableSpan<float3> all_dst_positions,
                                          MutableSpan<math::Quaternion> all_dst_rotations,
                                          MutableSpan<float3> all_dst_velocities,
@@ -2306,10 +2311,11 @@ static void execute_realize_physics_task(const RealizeInstancesOptions &options,
                                          MutableSpan<int> all_dst_constraint_bodies2)
 {
   const RealizePhysicsInfo &physics_info = *task.physics_info;
-  // const bke::PhysicsGeometry &physics = *physics_info.physics;
+  const bke::PhysicsGeometry &physics = *physics_info.physics;
 
   UNUSED_VARS(options, all_physics_info);
 
+  const Span<bke::CollisionShapePtr> src_shapes = physics.shapes();
   const VArray<float3> src_positions = physics_info.positions;
   const VArray<math::Quaternion> src_rotations = physics_info.rotations;
   const VArray<float3> src_velocities = physics_info.velocities;
@@ -2317,10 +2323,11 @@ static void execute_realize_physics_task(const RealizeInstancesOptions &options,
   const VArray<int> src_constraint_bodies1 = physics_info.constraint_bodies1;
   const VArray<int> src_constraint_bodies2 = physics_info.constraint_bodies2;
 
-  const IndexRange dst_body_range(task.start_indices.body, src_positions.size());
-  const IndexRange dst_constraint_range(task.start_indices.constraint,
-                                        src_constraint_bodies1.size());
+  const IndexRange dst_body_range(task.start_indices.body, physics.bodies_num());
+  const IndexRange dst_constraint_range(task.start_indices.constraint, physics.constraints_num());
+  const IndexRange dst_shape_range(task.start_indices.shape, physics.shapes_num());
 
+  MutableSpan<bke::CollisionShapePtr> dst_shapes = all_dst_shapes.slice(dst_shape_range);
   MutableSpan<float3> dst_positions = all_dst_positions.slice(dst_body_range);
   MutableSpan<math::Quaternion> dst_rotations = all_dst_rotations.slice(dst_body_range);
   MutableSpan<float3> dst_velocities = all_dst_velocities.slice(dst_body_range);
@@ -2328,6 +2335,7 @@ static void execute_realize_physics_task(const RealizeInstancesOptions &options,
   MutableSpan<int> dst_constraint_bodies1 = all_dst_constraint_bodies1.slice(dst_constraint_range);
   MutableSpan<int> dst_constraint_bodies2 = all_dst_constraint_bodies2.slice(dst_constraint_range);
 
+  dst_shapes.copy_from(src_shapes);
   threading::parallel_for(src_positions.index_range(), 1024, [&](const IndexRange range) {
     for (const int i : range) {
       dst_positions[i] = math::transform_point(task.transform, src_positions[i]);
@@ -2403,9 +2411,11 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
   const bke::PhysicsGeometry &last_physics = *last_task.physics_info->physics;
   const int bodies_num = last_task.start_indices.body + last_physics.bodies_num();
   const int constraints_num = last_task.start_indices.constraint + last_physics.constraints_num();
+  const int shapes_num = last_task.start_indices.shape + last_physics.shapes_num();
 
   /* Allocate new curves data-block. */
-  bke::PhysicsGeometry *dst_physics = new bke::PhysicsGeometry(bodies_num, constraints_num);
+  bke::PhysicsGeometry *dst_physics = new bke::PhysicsGeometry(
+      bodies_num, constraints_num, shapes_num);
   r_realized_geometry.replace_physics(dst_physics);
   bke::MutableAttributeAccessor dst_attributes = dst_physics->attributes_for_write();
 
@@ -2421,6 +2431,7 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
     //                                                                   bke::AttrDomain::Point);
   }
 
+  MutableSpan<bke::CollisionShapePtr> shapes = dst_physics->shapes_for_write();
   SpanAttributeWriter<float3> position = dst_attributes.lookup_or_add_for_write_only_span<float3>(
       bke::PhysicsGeometry::builtin_attributes.position, bke::AttrDomain::Point);
   SpanAttributeWriter<math::Quaternion> rotation =
@@ -2457,6 +2468,7 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
                                    task,
                                    ordered_attributes,
                                    *dst_physics,
+                                   shapes,
                                    position.span,
                                    rotation.span,
                                    velocity.span,
@@ -2470,6 +2482,7 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
   for (GSpanAttributeWriter &dst_attribute : dst_attribute_writers) {
     dst_attribute.finish();
   }
+  dst_physics->tag_collision_shapes_changed();
   position.finish();
   rotation.finish();
   velocity.finish();

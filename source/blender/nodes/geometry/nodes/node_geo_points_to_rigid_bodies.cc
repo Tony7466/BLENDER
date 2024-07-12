@@ -4,8 +4,7 @@
 
 #include "DNA_pointcloud_types.h"
 
-#include "BLI_array_utils.hh"
-
+#include "BKE_collision_shape.hh"
 #include "BKE_physics_geometry.hh"
 
 #include "FN_field.hh"
@@ -85,19 +84,13 @@ static void geometry_set_points_to_rigid_bodies(
                                              Span<CollisionShapePtr>{};
 
   const int num_bodies = selection.size();
-  auto *physics = new bke::PhysicsGeometry(num_bodies, 0);
+  auto *physics = new bke::PhysicsGeometry(num_bodies, 0, shapes.size());
+  physics->shapes_for_write().copy_from(shapes);
 
-  Array<int> shape_handles(shapes.size(), -1);
-  Array<int> body_shape_handles(num_bodies, -1);
+  Array<int> body_shape_handles(num_bodies);
   selection.foreach_index(GrainSize(512), [&](const int index, const int pos) {
     const int shape_index = src_shape_index[index];
-    if (!shape_handles.index_range().contains(shape_index)) {
-      return;
-    }
-    if (shape_handles[shape_index] < 0) {
-      shape_handles[shape_index] = physics->add_shape(shapes[shape_index]);
-    }
-    body_shape_handles[pos] = shape_handles[shape_index];
+    body_shape_handles[pos] = shapes.index_range().contains(shape_index) ? shape_index : -1;
   });
   physics->set_body_shapes(IndexRange(num_bodies), body_shape_handles, true);
 

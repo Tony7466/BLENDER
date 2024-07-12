@@ -174,10 +174,11 @@ static btCollisionShape *make_uniform_scaling_or_empty_shape(const CollisionShap
   return new btUniformScalingShape(const_cast<btConvexShape *>(convex_child_shape), scale);
 }
 
-UniformScalingCollisionShape::UniformScalingCollisionShape(const CollisionShape *child_shape,
+UniformScalingCollisionShape::UniformScalingCollisionShape(const CollisionShapePtr &child_shape,
                                                            const float scale)
     : CollisionShape(
-          CollisionShapeImpl::wrap(make_uniform_scaling_or_empty_shape(child_shape, scale)))
+          CollisionShapeImpl::wrap(make_uniform_scaling_or_empty_shape(child_shape.get(), scale))),
+      child_shape_(child_shape)
 {
 }
 
@@ -284,9 +285,10 @@ StaticPlaneCollisionShape::StaticPlaneCollisionShape(const float3 &plane_normal,
 {
 }
 
-static btCompoundShape *make_compound_shape(VArray<const CollisionShape *> child_shapes,
+static btCompoundShape *make_compound_shape(VArray<CollisionShapePtr> child_shapes,
                                             VArray<float4x4> child_transforms)
 {
+  BLI_assert(child_shapes.size() == child_transforms.size());
   btCompoundShape *shape = new btCompoundShape(true, child_shapes.size());
   for (const int i : child_shapes.index_range()) {
     const btCollisionShape *bt_child_shape = &child_shapes[i]->impl().as_bullet_shape();
@@ -296,10 +298,12 @@ static btCompoundShape *make_compound_shape(VArray<const CollisionShape *> child
   return shape;
 }
 
-CompoundCollisionShape::CompoundCollisionShape(const VArray<const CollisionShape *> &child_shapes,
+CompoundCollisionShape::CompoundCollisionShape(const VArray<CollisionShapePtr> &child_shapes,
                                                const VArray<float4x4> &child_transforms)
     : CollisionShape(CollisionShapeImpl::wrap(make_compound_shape(child_shapes, child_transforms)))
 {
+  child_shapes_.reinitialize(child_shapes.size());
+  child_shapes.materialize_to_uninitialized(child_shapes_);
 }
 
 #else

@@ -341,16 +341,20 @@ PhysicsGeometryImpl::PhysicsGeometryImpl()
   CustomData_reset(&constraint_data_);
 }
 
-PhysicsGeometryImpl::PhysicsGeometryImpl(int bodies_num, int constraints_num)
+PhysicsGeometryImpl::PhysicsGeometryImpl(int bodies_num, int constraints_num, int shapes_num)
     : body_num_(bodies_num), constraint_num_(constraints_num), body_data_({}), constraint_data_({})
 {
   CustomData_reset(&body_data_);
   CustomData_reset(&constraint_data_);
   CustomData_realloc(&body_data_, 0, body_num_);
   CustomData_realloc(&constraint_data_, 0, constraint_num_);
+  shapes.reinitialize(shapes_num);
 }
 
-PhysicsGeometryImpl::PhysicsGeometryImpl(const PhysicsGeometryImpl &other) {
+PhysicsGeometryImpl::PhysicsGeometryImpl(const PhysicsGeometryImpl &other)
+{
+  shapes = other.shapes;
+
   CustomData_reset(&body_data_);
   CustomData_reset(&constraint_data_);
   body_num_ = other.body_num_;
@@ -391,6 +395,12 @@ PhysicsGeometryImpl::~PhysicsGeometryImpl()
   for (const int i : this->constraints.index_range()) {
     delete this->constraints[i];
   }
+}
+
+PhysicsGeometryImpl &PhysicsGeometryImpl::operator=(const PhysicsGeometryImpl &other)
+{
+  *this = PhysicsGeometryImpl(other);
+  return *this;
 }
 
 void PhysicsGeometryImpl::delete_self()
@@ -663,6 +673,7 @@ const PhysicsGeometry::BuiltinAttributes PhysicsGeometry::builtin_attributes = [
   };
 
   attributes.id = register_attribute("id");
+  attributes.collision_shape = register_attribute("collision_shape");
   attributes.is_static = register_attribute("static");
   attributes.is_kinematic = register_attribute("kinematic");
   attributes.mass = register_attribute("mass");
@@ -706,9 +717,9 @@ PhysicsGeometry::PhysicsGeometry()
   impl_ = new PhysicsGeometryImpl();
 }
 
-PhysicsGeometry::PhysicsGeometry(int bodies_num, int constraints_num)
+PhysicsGeometry::PhysicsGeometry(int bodies_num, int constraints_num, int shapes_num)
 {
-  impl_ = new PhysicsGeometryImpl(bodies_num, constraints_num);
+  impl_ = new PhysicsGeometryImpl(bodies_num, constraints_num, shapes_num);
   this->tag_topology_changed();
 }
 
@@ -716,7 +727,6 @@ PhysicsGeometry::PhysicsGeometry(const PhysicsGeometry &other)
 {
   impl_ = other.impl_;
   impl_->add_user();
-  shapes_ = other.shapes_;
 }
 
 PhysicsGeometry::~PhysicsGeometry()
@@ -736,8 +746,8 @@ PhysicsGeometryImpl &PhysicsGeometry::impl_for_write()
     return *const_cast<PhysicsGeometryImpl *>(impl_);
   }
 
-  PhysicsGeometryImpl *new_impl = new PhysicsGeometryImpl(impl_->body_num_,
-                                                          impl_->constraint_num_);
+  PhysicsGeometryImpl *new_impl = new PhysicsGeometryImpl(
+      impl_->body_num_, impl_->constraint_num_, impl_->shapes.size());
 
   impl_->remove_user_and_delete_if_last();
   impl_ = new_impl;
@@ -818,7 +828,7 @@ int PhysicsGeometry::constraints_num() const
 
 int PhysicsGeometry::shapes_num() const
 {
-  return shapes_.size();
+  return impl_->shapes.size();
 }
 
 IndexRange PhysicsGeometry::bodies_range() const
@@ -833,7 +843,7 @@ IndexRange PhysicsGeometry::constraints_range() const
 
 IndexRange PhysicsGeometry::shapes_range() const
 {
-  return shapes_.index_range();
+  return impl_->shapes.index_range();
 }
 
 /* Returns an index mask of all constraints affecting the bodies. */
@@ -1025,6 +1035,7 @@ void PhysicsGeometry::move_or_copy_selection(
     const bool use_world,
     const IndexMask &body_mask,
     const IndexMask &constraint_mask,
+    const IndexMask &shape_mask,
     const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
   if (impl_->is_empty) {
@@ -1096,45 +1107,30 @@ void PhysicsGeometry::tag_physics_changed()
 
 Span<CollisionShape::Ptr> PhysicsGeometry::shapes() const
 {
-  return shapes_.as_span();
+  return impl_->shapes;
 }
 
-std::optional<int> PhysicsGeometry::find_shape_handle(const CollisionShape &shape)
+MutableSpan<CollisionShapePtr> PhysicsGeometry::shapes_for_write()
 {
-  for (const int i : shapes_.index_range()) {
-    const CollisionShapePtr &ptr = shapes_[i];
-    if (ptr.get() == &shape) {
-      return i;
-    }
-  }
-  return std::nullopt;
-}
-
-int PhysicsGeometry::add_shape(const CollisionShapePtr &shape)
-{
-  if (const std::optional<int> handle = find_shape_handle(*shape)) {
-    return *handle;
-  }
-
-  return shapes_.append_and_get_index(shape);
+  return impl_for_write().shapes;
 }
 
 void PhysicsGeometry::set_body_shapes(const IndexMask &selection,
                                       const Span<int> shape_handles,
                                       const bool update_local_inertia)
 {
-  BLI_assert(selection.bounds().intersect(impl_->rigid_bodies.index_range()) ==
-             selection.bounds());
+  PhysicsGeometryImpl &impl = impl_for_write();
+  BLI_assert(selection.bounds().intersect(impl.rigid_bodies.index_range()) == selection.bounds());
   selection.foreach_index([&](const int index) {
     const int handle = shape_handles[index];
-    if (!shapes_.index_range().contains(handle)) {
+    if (!impl.shapes.index_range().contains(handle)) {
       return;
     }
-    const CollisionShapePtr &shape_ptr = shapes_[handle];
+    const CollisionShapePtr &shape_ptr = impl.shapes[handle];
     const btCollisionShape *bt_shape = &shape_ptr->impl().as_bullet_shape();
     const bool is_moveable_shape = !bt_shape->isNonMoving();
 
-    btRigidBody *body = impl_->rigid_bodies[index];
+    btRigidBody *body = impl.rigid_bodies[index];
     if (body->getCollisionShape() == bt_shape) {
       /* Shape is correct, nothing to do. */
       return;
@@ -1142,9 +1138,9 @@ void PhysicsGeometry::set_body_shapes(const IndexMask &selection,
 
     // XXX is const_cast safe here? not sure why Bullet wants a mutable shape.
     body->setCollisionShape(const_cast<btCollisionShape *>(bt_shape));
-    if (impl_->broadphase && body->isInWorld()) {
-      impl_->broadphase->getOverlappingPairCache()->cleanProxyFromPairs(body->getBroadphaseProxy(),
-                                                                        impl_->dispatcher);
+    if (impl.broadphase && body->isInWorld()) {
+      impl.broadphase->getOverlappingPairCache()->cleanProxyFromPairs(body->getBroadphaseProxy(),
+                                                                      impl.dispatcher);
     }
     if (is_moveable_shape) {
       if (update_local_inertia) {
@@ -1169,6 +1165,11 @@ VArray<int> PhysicsGeometry::body_ids() const
 AttributeWriter<int> PhysicsGeometry::body_ids_for_write()
 {
   return attributes_for_write().lookup_for_write<int>(builtin_attributes.id);
+}
+
+VArray<int> PhysicsGeometry::body_shapes() const
+{
+  return attributes().lookup(builtin_attributes.collision_shape).varray.typed<int>();
 }
 
 VArray<bool> PhysicsGeometry::body_is_static() const
