@@ -5660,8 +5660,7 @@ static void sculpt_restore_mesh(const Sculpt &sd, Object &ob)
            SCULPT_TOOL_ELASTIC_DEFORM,
            SCULPT_TOOL_GRAB,
            SCULPT_TOOL_THUMB,
-           SCULPT_TOOL_ROTATE,
-           SCULPT_TOOL_SLIDE_RELAX))
+           SCULPT_TOOL_ROTATE))
   {
     undo::restore_from_undo_step(sd, ob);
     return;

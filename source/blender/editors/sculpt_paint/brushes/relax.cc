@@ -1023,15 +1023,15 @@ BLI_NOINLINE static void calc_topology_relax_factors_faces(const Brush &brush,
   const Span<int> verts = bke::pbvh::node_unique_verts(node);
 
   fill_factor_from_hide_and_mask(mesh, verts, factors);
-  filter_region_clip_factors(ss, orig_data.positions, verts, factors);
+  filter_region_clip_factors(ss, orig_data.positions, factors);
   if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal, orig_data.normals, verts, factors);
+    calc_front_face(cache.view_normal, orig_data.normals, factors);
   }
 
   tls.distances.reinitialize(verts.size());
   const MutableSpan<float> distances = tls.distances;
   calc_brush_distances(
-      ss, orig_data.positions, verts, eBrushFalloffShape(brush.falloff_shape), distances);
+      ss, orig_data.positions, eBrushFalloffShape(brush.falloff_shape), distances);
   filter_distances_with_radius(cache.radius, distances, factors);
   apply_hardness_to_distances(cache, distances);
   calc_brush_strength_factors(cache, brush, distances, factors);
@@ -1042,7 +1042,7 @@ BLI_NOINLINE static void calc_topology_relax_factors_faces(const Brush &brush,
 
   scale_factors(factors, strength);
 
-  calc_brush_texture_factors(ss, brush, orig_data.positions, verts, factors);
+  calc_brush_texture_factors(ss, brush, orig_data.positions, factors);
 }
 
 static void do_topology_relax_brush_mesh(const Sculpt &sd,
