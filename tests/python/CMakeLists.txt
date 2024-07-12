@@ -704,7 +704,8 @@ if(WITH_CYCLES OR WITH_GPU_RENDER_TESTS)
 
           if(WITH_CYCLES_OSL)
             # OSL is only supported on the CPU and OptiX
-            if(("${_cycles_device_lower}" STREQUAL "cpu") OR ("${_cycles_device_lower}" STREQUAL "optix"))
+            # Only test on CPU due to limitations in OptiX
+            if("${_cycles_device_lower}" STREQUAL "cpu")
               add_render_test(
                 ${_cycles_test_name}_osl
                 ${CMAKE_CURRENT_LIST_DIR}/cycles_render_tests.py
