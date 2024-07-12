@@ -409,7 +409,7 @@ static void brush_asset_metadata_ensure(void *asset_ptr, AssetMetaData *asset_da
       std::tuple{"use_paint_sculpt_curves", OB_MODE_SCULPT_CURVES, "curves_sculpt_brush_type"},
   };
 
-  for (const auto &[prop_name, mode, tool_name] : mode_map) {
+  for (const auto &[prop_name, mode, tool_prop_name] : mode_map) {
     /* Only add bools for supported modes. */
     if (!(brush->ob_mode & mode)) {
       continue;
@@ -418,7 +418,7 @@ static void brush_asset_metadata_ensure(void *asset_ptr, AssetMetaData *asset_da
     BKE_asset_metadata_idprop_ensure(asset_data, mode_property.release());
 
     if (std::optional<int> brush_tool = BKE_paint_get_brush_tool_from_obmode(brush, mode)) {
-      auto type_property = idprop::create(tool_name, *brush_tool);
+      auto type_property = idprop::create(tool_prop_name, *brush_tool);
       BKE_asset_metadata_idprop_ensure(asset_data, type_property.release());
     }
     else {
