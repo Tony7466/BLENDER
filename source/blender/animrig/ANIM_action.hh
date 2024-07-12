@@ -220,8 +220,8 @@ class Action : public ::bAction {
   /**
    * Set the active Slot, ensuring only one Slot is flagged as the Active one.
    *
-   * \param slot_handle if Slot::unassigned, there will not be any active slot. Passing an
-   * unknown/invalid slot handle results in undefined behaviour.
+   * \param slot_handle if Slot::unassigned, there will not be any active slot.
+   * Passing an unknown/invalid slot handle will result in no slot being active.
    */
   void slot_active_set(slot_handle_t slot_handle);
 
