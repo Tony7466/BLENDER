@@ -625,7 +625,7 @@ static void store_input_node_values_rna_props(const bContext &C,
   RNA_float_set_array(op.ptr,
                       "viewport_view_matrix",
                       rv3d ? float4x4(rv3d->viewmat).base_ptr() : float4x4::identity().base_ptr());
-  RNA_boolean_set(op.ptr, "viewport_is_perspective", rv3d ? !bool(rv3d->is_persp) : false);
+  RNA_boolean_set(op.ptr, "viewport_is_perspective", rv3d ? bool(rv3d->is_persp) : true);
 }
 
 static int run_node_group_invoke(bContext *C, wmOperator *op, const wmEvent *event)
