@@ -10,10 +10,10 @@ namespace blender::nodes::node_geo_viewport_transform_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
+  b.add_output<decl::Matrix>("View").description(
+      "The view direction and location of the 3D viewport in the local space of the self object");
   b.add_output<decl::Matrix>("Projection")
       .description("The 3D viewport's perspective or orthographic projection matrix");
-  b.add_output<decl::Matrix>("View").description(
-      "The view direction and location of the 3D viewport");
   b.add_output<decl::Bool>("Is Orthographic")
       .description("Whether the viewport is using orthographic projection");
 }
@@ -26,8 +26,8 @@ static void node_geo_exec(GeoNodeExecParams params)
   const Object &self_object = *params.self_object();
   const GeoNodesOperatorData &data = *params.user_data()->call_data->operator_data;
 
+  params.set_output("View", math::invert(data.viewport_viewmat * self_object.object_to_world()));
   params.set_output("Projection", data.viewport_winmat);
-  params.set_output("View", data.viewport_viewmat * self_object.object_to_world());
   params.set_output("Is Orthographic", !data.viewport_is_perspective);
 }
 
