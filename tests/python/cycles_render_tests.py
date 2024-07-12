@@ -62,7 +62,7 @@ BLACKLIST_GPU = [
 ]
 
 
-def get_arguments(filepath, output_filepath):
+def get_arguments(filepath, output_filepath, osl):
     dirname = os.path.dirname(filepath)
     basedir = os.path.dirname(dirname)
     subject = os.path.basename(dirname)
@@ -89,7 +89,7 @@ def get_arguments(filepath, output_filepath):
     if spp_multiplier:
         args.extend(["--python-expr", f"import bpy; bpy.context.scene.cycles.samples *= {spp_multiplier}"])
 
-    if os.getenv('CYCLES_TEST_OSL') == "1":
+    if osl:
         args.extend(["--python-expr", "import bpy; bpy.context.scene.cycles.shading_system = True"])
 
     if subject == 'bake':
