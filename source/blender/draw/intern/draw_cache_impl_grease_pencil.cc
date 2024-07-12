@@ -507,6 +507,53 @@ static IndexMask grease_pencil_get_visible_non_NURBS_curves(
   return IndexMask::from_intersection(visible_strokes, non_nurbs_curves, memory);
 }
 
+static void grease_pencil_cache_add_NURBS(Object &object,
+                                          const bke::greasepencil::Drawing &drawing,
+                                          const int layer_index,
+                                          IndexMaskMemory &memory,
+                                          const VArray<float> &selected_point,
+                                          const float4x4 &layer_space_to_object_space,
+                                          MutableSpan<float3> edit_line_points,
+                                          MutableSpan<float> edit_line_selection,
+                                          int *r_drawing_line_start_offset,
+                                          int *r_total_line_ids_num)
+{
+  const IndexMask nurbs_curves = grease_pencil_get_visible_NURBS_curves(
+      object, drawing, layer_index, memory);
+  if (nurbs_curves.is_empty()) {
+    return;
+  }
+
+  const bke::CurvesGeometry &curves = drawing.strokes();
+  const Span<float3> positions = curves.positions();
+
+  const IndexMask nurbs_points = grease_pencil_get_visible_NURBS_points(
+      object, drawing, layer_index, memory);
+  const IndexRange eval_slice = IndexRange(*r_drawing_line_start_offset, nurbs_points.size());
+
+  MutableSpan<float3> positions_eval_slice = edit_line_points.slice(eval_slice);
+
+  /* This will copy over the position but without the layer transform. */
+  array_utils::gather(positions, nurbs_points, positions_eval_slice);
+
+  /* Go through the position and apply the layer transform. */
+  threading::parallel_for(nurbs_points.index_range(), 1024, [&](const IndexRange range) {
+    copy_transformed_positions(
+        positions_eval_slice, range, layer_space_to_object_space, positions_eval_slice);
+  });
+
+  MutableSpan<float> selection_eval_slice = edit_line_selection.slice(eval_slice);
+
+  array_utils::gather(selected_point, nurbs_points, selection_eval_slice);
+
+  /* Add one point for each NURBS point. */
+  *r_drawing_line_start_offset += nurbs_points.size();
+  *r_total_line_ids_num += nurbs_points.size();
+
+  /* Add one id for the restart after every NURBS. */
+  *r_total_line_ids_num += nurbs_curves.size();
+}
+
 static void IndexBuf_add_line_points(Object &object,
                                      const bke::greasepencil::Drawing &drawing,
                                      int /*layer_index*/,
@@ -839,35 +886,16 @@ static void grease_pencil_edit_batch_ensure(Object &object,
     const VArray<float> selected_point = *curves.attributes().lookup_or_default<float>(
         ".selection", bke::AttrDomain::Point, true);
 
-    const IndexMask nurbs_curves = grease_pencil_get_visible_NURBS_curves(
-        object, info.drawing, info.layer_index, memory);
-    if (!nurbs_curves.is_empty()) {
-      const IndexMask nurbs_points = grease_pencil_get_visible_NURBS_points(
-          object, info.drawing, info.layer_index, memory);
-      const IndexRange eval_slice = IndexRange(drawing_line_start_offset, nurbs_points.size());
-
-      MutableSpan<float3> positions_eval_slice = edit_line_points.slice(eval_slice);
-
-      /* This will copy over the position but without the layer transform. */
-      array_utils::gather(positions, nurbs_points, positions_eval_slice);
-
-      /* Go through the position and apply the layer transform. */
-      threading::parallel_for(nurbs_points.index_range(), 1024, [&](const IndexRange range) {
-        copy_transformed_positions(
-            positions_eval_slice, range, layer_space_to_object_space, positions_eval_slice);
-      });
-
-      MutableSpan<float> selection_eval_slice = edit_line_selection.slice(eval_slice);
-
-      array_utils::gather(selected_point, nurbs_points, selection_eval_slice);
-
-      /* Add one point for each NURBS point. */
-      drawing_line_start_offset += nurbs_points.size();
-      total_line_ids_num += nurbs_points.size();
-
-      /* Add one id for the restart after every NURBS. */
-      total_line_ids_num += nurbs_curves.size();
-    }
+    grease_pencil_cache_add_NURBS(object,
+                                  info.drawing,
+                                  info.layer_index,
+                                  memory,
+                                  selected_point,
+                                  layer_space_to_object_space,
+                                  edit_line_points,
+                                  edit_line_selection,
+                                  &drawing_line_start_offset,
+                                  &total_line_ids_num);
 
     const IndexMask bezier_points = grease_pencil_get_visible_Bezier_points(
         object, info.drawing, info.layer_index, memory);
