@@ -29,6 +29,7 @@ import base64
 import zstandard
 import contextlib
 import json
+from collections import deque
 from typing import Iterable, Optional, Union, Any, TypeAlias, Iterator, cast, Callable
 
 import bpy
@@ -578,8 +579,32 @@ class OBJECT_OT_paste_transform(Operator):
             'BAKE': self._paste_bake,
         }[self.method]
 
-        depsgraph = context.view_layer.depsgraph
+        # Order the named matrices, so that they'll be applied first on the roots,
+        # and then breadth-first on the children.
+
+        ordered_matrices: list[tuple[str, Matrix]] = []
         if context.mode == 'POSE':
+            # Create a root-first queue of all selected bones in all armatures.
+            # This goes over more bones than necessary, but at least we're sure
+            # that if a bone has a parent, we'll visit that parent too.
+
+            arm_obs = {bone.id_data for bone in context.selected_pose_bones}
+            bones = deque()
+            for arm_ob in arm_obs:
+                bones.extend(bone for bone in arm_ob.pose.bones if not bone.parent)
+
+            # Walk the pose bones breadth-first.
+            while bones:
+                bone = bones.popleft()
+                bones.extend(bone.children)
+                try:
+                    bone_matrix = processed_matrices.pop(bone.name)
+                except KeyError:
+                    continue
+                ordered_matrices.append((bone.name, bone_matrix))
+
+        if context.mode == 'POSE':
+            matrix_setter = self._matrix_setter_posemode_named(context, ordered_matrices)
             selected_bones = {bone.name: bone for bone in context.selected_pose_bones}
 
             def matrix_setter(context: Context) -> None:
@@ -603,6 +628,35 @@ class OBJECT_OT_paste_transform(Operator):
 
         return applicator(context, matrix_setter)
 
+    @staticmethod
+    def _matrix_setter_posemode_named(context: Context, matrices: list[tuple[str, Matrix]]) -> MatrixSetter:
+        selected_bones = {bone.name: bone for bone in context.selected_pose_bones}
+        depsgraph = context.view_layer.depsgraph
+
+        def matrix_setter(context: Context) -> None:
+            for name, matrix in matrices:
+                bone = selected_bones.get(name, None)
+                if not bone:
+                    continue
+                arm_eval = bone.id_data.evaluated_get(depsgraph)
+                bone.matrix = arm_eval.matrix_world.inverted() @ matrix
+                AutoKeying.autokey_transformation(context, bone)
+        return matrix_setter
+
+    @staticmethod
+    def _matrix_setter_objectmode_named(context: Context, matrices: list[tuple[str, Matrix]]) -> MatrixSetter:
+        selected_objects = {ob.name: ob for ob in context.selected_objects}
+
+        def matrix_setter(context: Context) -> None:
+            for name, matrix in matrices:
+                ob = selected_objects.get(name, None)
+                if not ob:
+                    continue
+                ob.matrix_world = matrix
+                AutoKeying.autokey_transformation(context, ob)
+
+        return matrix_setter
+
     def _preprocess_matrix(self, context: Context, matrix: Matrix) -> Matrix:
         matrix = self._relative_to_world(context, matrix)
 
@@ -618,6 +672,8 @@ class OBJECT_OT_paste_transform(Operator):
         if not rel_ob:
             return matrix
 
+        # TODO: re-evaluate the relative object on every frame, so that things
+        # keep working when it's moving.
         rel_ob_eval = rel_ob.evaluated_get(context.view_layer.depsgraph)
         return rel_ob_eval.matrix_world @ matrix
 
