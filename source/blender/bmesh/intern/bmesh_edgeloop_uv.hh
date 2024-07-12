@@ -11,7 +11,7 @@ struct BMLoop;
 struct BMesh;
 struct Scene;
 
-void UV_get_edgeloops(
+bool UV_get_edgeloops(
     const Scene *scene,
     BMesh *bm,
     blender::Vector<blender::Vector<blender::Vector<BMLoop *>>> *edgeloops,

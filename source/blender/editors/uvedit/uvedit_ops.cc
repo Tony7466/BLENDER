@@ -224,7 +224,8 @@ void ED_uvedit_foreach_uv(const Scene *scene,
     }
   }
 }
-void ED_uvedit_shift_pair_of_UV_coordinates(
+
+bool ED_uvedit_shift_pair_of_UV_coordinates(
     BMUVOffsets offset1,
     BMUVOffsets offset2,
     blender::Vector<BMLoop *> *UVcoord1,
@@ -232,6 +233,7 @@ void ED_uvedit_shift_pair_of_UV_coordinates(
     float threshold,
     blender::FunctionRef<void(float[2], float[2], float[2])> user_fn)
 {
+  bool changed = false;
   float *luv1 = BM_ELEM_CD_GET_FLOAT_P((*UVcoord1)[0], offset1.uv);
   float *luv2 = BM_ELEM_CD_GET_FLOAT_P((*UVcoord2)[0], offset2.uv);
   float newloc[2];
@@ -239,6 +241,7 @@ void ED_uvedit_shift_pair_of_UV_coordinates(
   float dist = len_squared_v2v2(luv1, luv2);
 
   if (dist <= threshold) {
+    changed = true;
     for (BMLoop *loop : *UVcoord1) {
       float *currluv = BM_ELEM_CD_GET_FLOAT_P(loop, offset1.uv);
       currluv[0] = newloc[0];
@@ -250,6 +253,7 @@ void ED_uvedit_shift_pair_of_UV_coordinates(
       currluv[1] = newloc[1];
     }
   }
+  return changed;
 }
 
 void ED_uvedit_foreach_uv_multi(const Scene *scene,

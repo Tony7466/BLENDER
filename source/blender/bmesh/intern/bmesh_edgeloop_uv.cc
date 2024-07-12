@@ -6,7 +6,7 @@
 #include <queue>
 using namespace blender;
 
-void UV_get_edgeloops(
+bool UV_get_edgeloops(
     const Scene *scene,
     BMesh *bm,
     blender::Vector<blender::Vector<blender::Vector<BMLoop *>>> *edgeloops,
@@ -68,7 +68,10 @@ void UV_get_edgeloops(
             }
           }
         }
-        if (selectedconnections < 2) {
+        if (selectedconnections > 2 || selectedconnections < 1) {
+          return false;
+        }
+        else if (selectedconnections == 1) {
           for (BMLoop *endpointloop : uvcoord) {
             BM_elem_index_set(endpointloop, -2);
           }
@@ -80,5 +83,5 @@ void UV_get_edgeloops(
       }
     }
   }
-  return;
+  return true;
 }

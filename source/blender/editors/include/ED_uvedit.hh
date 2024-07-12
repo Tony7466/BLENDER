@@ -328,7 +328,7 @@ void getBMLoopPointers(
 bool construct_pairs_of_selected_UVCoordinates(
     std::unordered_map<std::pair<float, float>, loopData, pair_hash, pair_equal> *loopMapPtr,
     std::vector<std::pair<loopData *, loopData *>> *linesegmentsdata);
-void ED_uvedit_shift_pair_of_UV_coordinates(
+bool ED_uvedit_shift_pair_of_UV_coordinates(
     BMUVOffsets offset1,
     BMUVOffsets offset2,
     blender::Vector<BMLoop *> *UVcoord1,

@@ -2796,7 +2796,7 @@ scenarios that two distances caluclated will be mistakely considered the same
 value due to the precision of the float data type. In such a scenario the function may
 incorrectly pair up edgeloop endpoints. */
 
-static void uvedit_uv_threshold_weld(bContext *C, wmOperator *op)
+static bool uvedit_uv_threshold_weld(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
   SpaceImage *sima = CTX_wm_space_image(C);
@@ -2804,16 +2804,20 @@ static void uvedit_uv_threshold_weld(bContext *C, wmOperator *op)
   Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data_with_uvs(
       scene, view_layer, nullptr);
 
+  bool changed = false;
   const float threshold_sq = pow(RNA_float_get(op->ptr, "threshold"), 2);
   blender::Vector<blender::Vector<blender::Vector<BMLoop *>>> edgeloops_arr;
   blender::Vector<BMUVOffsets> offsetmap_arr;
 
   /*Constructs array of edgeloops. The data is nested in the following order
-   * structure edgeloops->UVcoordinates->BMloops.*/
+   * structure edgeloops->UVcoordinates->BMloops. If UV_get_edgeloops returns false it means one of
+   * the continuous selections was not an edgeloop*/
 
   for (Object *objedit : objects) {
     BMEditMesh *em = BKE_editmesh_from_object(objedit);
-    UV_get_edgeloops(scene, em->bm, &edgeloops_arr, uvedit_uv_select_test);
+    if (!UV_get_edgeloops(scene, em->bm, &edgeloops_arr, uvedit_uv_select_test)) {
+      return false;
+    }
     BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
 
     while (offsetmap_arr.size() < edgeloops_arr.size()) {
@@ -2846,31 +2850,26 @@ static void uvedit_uv_threshold_weld(bContext *C, wmOperator *op)
   /*This function requires there be at least 2 edgeloops selected.*/
 
   if (endpoints_arr.size() != 2) {
-    return;
+    return false;
   }
 
   /*Find correct pairing of endpoints between edgeloops
-  by searching for combination with smalled distance. This logic only runs in cases where both
-  edgeloops have more than 1 UV coordinate.*/
+  by searching for combination with smalled distance.*/
 
-  if (edgeloops_arr[0].size() > 1 and edgeloops_arr[1].size() > 1) {
-    const auto &curredgeloopendpoints = endpoints_arr[0];
-    const auto &nextedgeloopendpoints = endpoints_arr[1];
-    float len_1 = len_squared_v2v2(
-                      BM_ELEM_CD_GET_FLOAT_P(curredgeloopendpoints[0][0], offsetmap_arr[0].uv),
-                      BM_ELEM_CD_GET_FLOAT_P(nextedgeloopendpoints[0][0], offsetmap_arr[1].uv)) +
-                  len_squared_v2v2(
-                      BM_ELEM_CD_GET_FLOAT_P(curredgeloopendpoints[1][0], offsetmap_arr[0].uv),
-                      BM_ELEM_CD_GET_FLOAT_P(nextedgeloopendpoints[1][0], offsetmap_arr[1].uv));
-    float len_2 = len_squared_v2v2(
-                      BM_ELEM_CD_GET_FLOAT_P(curredgeloopendpoints[0][0], offsetmap_arr[0].uv),
-                      BM_ELEM_CD_GET_FLOAT_P(nextedgeloopendpoints[1][0], offsetmap_arr[1].uv)) +
-                  len_squared_v2v2(
-                      BM_ELEM_CD_GET_FLOAT_P(curredgeloopendpoints[1][0], offsetmap_arr[0].uv),
-                      BM_ELEM_CD_GET_FLOAT_P(nextedgeloopendpoints[0][0], offsetmap_arr[1].uv));
-    if (len_1 > len_2) {
-      std::swap(endpoints_arr[1][0], endpoints_arr[1][1]);
-    }
+  const auto &curredgeloopendpoints = endpoints_arr[0];
+  const auto &nextedgeloopendpoints = endpoints_arr[1];
+  float len_1 =
+      len_squared_v2v2(BM_ELEM_CD_GET_FLOAT_P(curredgeloopendpoints[0][0], offsetmap_arr[0].uv),
+                       BM_ELEM_CD_GET_FLOAT_P(nextedgeloopendpoints[0][0], offsetmap_arr[1].uv)) +
+      len_squared_v2v2(BM_ELEM_CD_GET_FLOAT_P(curredgeloopendpoints[1][0], offsetmap_arr[0].uv),
+                       BM_ELEM_CD_GET_FLOAT_P(nextedgeloopendpoints[1][0], offsetmap_arr[1].uv));
+  float len_2 =
+      len_squared_v2v2(BM_ELEM_CD_GET_FLOAT_P(curredgeloopendpoints[0][0], offsetmap_arr[0].uv),
+                       BM_ELEM_CD_GET_FLOAT_P(nextedgeloopendpoints[1][0], offsetmap_arr[1].uv)) +
+      len_squared_v2v2(BM_ELEM_CD_GET_FLOAT_P(curredgeloopendpoints[1][0], offsetmap_arr[0].uv),
+                       BM_ELEM_CD_GET_FLOAT_P(nextedgeloopendpoints[0][0], offsetmap_arr[1].uv));
+  if (len_1 > len_2) {
+    std::swap(endpoints_arr[1][0], endpoints_arr[1][1]);
   }
 
   /*Iterates through 2 selected edgeloops starting at endpoints.
@@ -2881,13 +2880,15 @@ static void uvedit_uv_threshold_weld(bContext *C, wmOperator *op)
   blender::Vector<BMLoop *> line1_prev;
   blender::Vector<BMLoop *> line2_prev;
   while (line1_iterator != line1_prev and line2_iterator != line2_prev) {
-
-    ED_uvedit_shift_pair_of_UV_coordinates(offsetmap_arr[0],
-                                           offsetmap_arr[1],
-                                           &line1_iterator,
-                                           &line2_iterator,
-                                           threshold_sq,
-                                           mid_v2_v2v2);
+    if (ED_uvedit_shift_pair_of_UV_coordinates(offsetmap_arr[0],
+                                               offsetmap_arr[1],
+                                               &line1_iterator,
+                                               &line2_iterator,
+                                               threshold_sq,
+                                               mid_v2_v2v2))
+    {
+      changed = true;
+    };
     std::set<int> nextv1_set;
     std::set<int> nextv2_set;
     for (BMLoop *loop : line1_iterator) {
@@ -2919,13 +2920,15 @@ static void uvedit_uv_threshold_weld(bContext *C, wmOperator *op)
     line1_prev = tmp1;
     line2_prev = tmp2;
   }
-
-  for (int ob_index = 0; ob_index < objects.size(); ob_index++) {
-    Object *obedit = objects[ob_index];
-    uvedit_live_unwrap_update(sima, scene, obedit);
-    DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
-    WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
+  if (changed) {
+    for (int ob_index = 0; ob_index < objects.size(); ob_index++) {
+      Object *obedit = objects[ob_index];
+      uvedit_live_unwrap_update(sima, scene, obedit);
+      DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
+      WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
+    }
   }
+  return true;
 }
 
 static int stitch_distance_exec(bContext *C, wmOperator *op)
