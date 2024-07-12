@@ -1,1 +1,2 @@
 Referenced by issue #124565, Environment pass is not rendered (or rendered black) with 4.2 EEVEE
+Referenced by issue #124566, Normal node's output is not computed if it is in a group node
