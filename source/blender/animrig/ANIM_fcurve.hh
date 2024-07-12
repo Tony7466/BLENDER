@@ -83,9 +83,8 @@ bool fcurve_delete_keyframe_at_time(FCurve *fcurve, float time);
  * that the fcurve lives on `adt->action` and that `adt->action` is a legacy
  * action.
  *
- * \note The caller needs to run #BKE_nla_tweakedit_remap to get NLA relative
- *       frame. The caller should also check #BKE_fcurve_is_protected before
- *       keying.
+ * \note The caller needs to run #BKE_nla_tweakedit_remap to get NLA relative frame.
+ *       The caller should also check #BKE_fcurve_is_protected before keying.
  */
 bool delete_keyframe_fcurve_legacy(AnimData *adt, FCurve *fcu, float cfra);
 
