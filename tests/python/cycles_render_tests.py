@@ -20,17 +20,23 @@ BLACKLIST_ALL = [
     "visibility_particles.blend",
 ]
 
-BLACKLIST_OSL_TEST = [
+BLACKLIST_OSL_TESTS = [
     # OSL only supported on CPU.
     '.*_osl.blend',
     'osl_.*.blend',
 ]
 
 BLACKLIST_OSL = [
-    # Black list tests that fail with OSL due to differences with SVM.
-    'T49936.blend', # Something wrong with Point Density in this scene
+    # Black list tests that fail with OSL due to differences from SVM.
+    # Point Density is disabled on surfaces in SVM.
+    # This was a performance optimization that wasn't carried over to OSL.
+    'T49936.blend',
     'T49936_indirect.blend',
-    'T50634_1.blend', # Bad UVs on curves
+    # Bad UVs on curves in this scene. This is a bug.
+    'T50634_1.blend',
+    # AOVs are not supported. See 73266
+    'aov_position.blend',
+    'render_passes_aov.*.blend',
     # TODO: Add more failing tests
 ]
 
@@ -45,6 +51,9 @@ BLACKLIST_OPTIX_OSL = [
     'bake_bevel.blend',
     'ambient_occlusion.*.blend',
     'bevel.blend',
+    'osl_trace_shader.blend',
+    # Volumetric noise is different for some reason
+    'principled_absorption.blend',
     # TODO: Investigate each failing case and add them here.
 ]
 
@@ -145,7 +154,7 @@ def main():
     if device != 'CPU':
         blacklist += BLACKLIST_GPU
     if device != 'CPU' or 'OSL' in args.blacklist:
-        blacklist += BLACKLIST_OSL_TEST
+        blacklist += BLACKLIST_OSL_TESTS
     if device == 'OPTIX':
         blacklist += BLACKLIST_OPTIX
         if args.osl:
