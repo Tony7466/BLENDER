@@ -13,6 +13,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <fmt/format.h>
 #include <thread>
 
 #include "CLG_log.h"
@@ -27,6 +28,7 @@
 #include "GHOST_C-api.h"
 
 #include "BLI_blenlib.h"
+#include "BLI_map.hh"
 #include "BLI_system.h"
 #include "BLI_time.h"
 #include "BLI_utildefines.h"
@@ -41,6 +43,7 @@
 #include "BKE_main.hh"
 #include "BKE_report.hh"
 #include "BKE_screen.hh"
+#include "BKE_undo_system.hh"
 #include "BKE_workspace.hh"
 
 #include "RNA_access.hh"
@@ -49,6 +52,7 @@
 #include "RNA_prototypes.h"
 
 #include "WM_api.hh"
+#include "WM_cancellable_worker.hh"
 #include "WM_types.hh"
 #include "wm.hh"
 #include "wm_draw.hh"
@@ -67,6 +71,8 @@
 #include "ED_scene.hh"
 #include "ED_screen.hh"
 
+#include "BPY_extern_run.h"
+
 #include "IMB_imbuf.hh"
 #include "IMB_imbuf_types.hh"
 
@@ -83,6 +89,8 @@
 #include "GPU_platform.hh"
 #include "GPU_state.hh"
 #include "GPU_texture.hh"
+
+#include "BLO_writefile.hh"
 
 #include "UI_resources.hh"
 
@@ -3016,3 +3024,74 @@ void WM_ghost_show_message_box(const char *title,
 }
 
 /** \} */
+
+namespace blender::cancellable_worker {
+
+void run_cancellable(bContext *C, FunctionRef<void()> fn)
+{
+  std::atomic<bool> done = false;
+
+  std::thread worker_thread{[&]() {
+    fn();
+    done = true;
+  }};
+
+  Map<wmWindow *, wmEvent *> last_checked_events;
+  while (true) {
+    if (done) {
+      worker_thread.join();
+      return;
+    }
+    std::this_thread::sleep_for(std::chrono::microseconds{100});
+
+    wmWindowManager *wm = CTX_wm_manager(C);
+    if (!wm) {
+      continue;
+    }
+
+    const bool has_event = GHOST_ProcessEvents(g_system, false);
+    if (has_event) {
+      GHOST_DispatchEvents(g_system);
+    }
+
+    auto check_event = [&](const wmEvent &event) {
+      if (event.type == EVT_ESCKEY && event.val == KM_PRESS) {
+        printf("cancel!\n");
+        BKE_undosys_step_undo(wm->undo_stack, C);
+
+        Main *bmain = CTX_data_main(C);
+        BlendFileWriteParams blend_write_params{};
+        const std::string path = "/home/jacques/Downloads/cancel_file_recover.blend";
+        const bool success = BLO_write_file(
+            bmain, path.c_str(), G_FILE_RECOVER_WRITE, &blend_write_params, nullptr);
+        if (success) {
+          printf("Success writing file!\n");
+          const char *imports[] = {"subprocess", "bpy", nullptr};
+          const std::string expr = fmt::format(
+              "subprocess.Popen([bpy.app.binary_path, \"{}\"], start_new_session=True)", path);
+          BPY_run_string_exec(nullptr, imports, expr.c_str());
+          std::terminate();
+        }
+      }
+    };
+
+    LISTBASE_FOREACH (wmWindow *, window, &wm->windows) {
+      wmEvent *last_checked = last_checked_events.lookup_default(window, nullptr);
+      if (last_checked) {
+        for (wmEvent *event = last_checked->next; event; event = event->next) {
+          check_event(*event);
+        }
+      }
+      else {
+        LISTBASE_FOREACH (wmEvent *, event, &window->event_queue) {
+          check_event(*event);
+        }
+      }
+      last_checked_events.add_overwrite(window, static_cast<wmEvent *>(window->event_queue.last));
+    }
+  }
+  worker_thread.join();
+  return;
+}
+
+}  // namespace blender::cancellable_worker

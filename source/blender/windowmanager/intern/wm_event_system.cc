@@ -66,6 +66,7 @@
 #include "UI_interface.hh"
 
 #include "WM_api.hh"
+#include "WM_cancellable_worker.hh"
 #include "WM_message.hh"
 #include "WM_toolsystem.hh"
 #include "WM_types.hh"
@@ -504,7 +505,8 @@ void wm_event_do_depsgraph(bContext *C, bool is_after_open_file)
       DEG_graph_tag_on_visible_update(depsgraph, true);
     }
     DEG_make_active(depsgraph);
-    BKE_scene_graph_update_tagged(depsgraph, bmain);
+    blender::cancellable_worker::run_cancellable(
+        C, [&]() { BKE_scene_graph_update_tagged(depsgraph, bmain); });
   }
 
   wm_surfaces_do_depsgraph(C);

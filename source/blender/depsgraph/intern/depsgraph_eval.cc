@@ -22,6 +22,8 @@
 #include "DEG_depsgraph_query.hh"
 #include "DEG_depsgraph_writeback_sync.hh"
 
+#include "WM_cancellable_worker.hh"
+
 #include "intern/eval/deg_eval.h"
 #include "intern/eval/deg_eval_flush.h"
 

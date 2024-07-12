@@ -995,6 +995,11 @@ static void file_read_reports_finalize(BlendFileReadReport *bf_reports)
 
 bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
 {
+  const bool is_recover = BLI_str_endswith(filepath, "recover.blend");
+  if (is_recover) {
+    G.fileflags |= G_FILE_RECOVER_READ;
+  }
+
   /* Assume automated tasks with background, don't write recent file list. */
   const bool do_history_file_update = (G.background == false) &&
                                       (CTX_wm_manager(C)->op_undo_depth == 0);
@@ -1121,6 +1126,10 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
   wm_read_callback_post_wrapper(C, filepath, success);
 
   BLI_assert(BKE_main_namemap_validate(CTX_data_main(C)));
+
+  if (is_recover) {
+    G.fileflags &= ~G_FILE_RECOVER_READ;
+  }
 
   return success;
 }
