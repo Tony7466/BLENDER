@@ -44,6 +44,7 @@
 #include "ED_object.hh"
 #include "ED_screen.hh"
 
+#include "ANIM_action.hh"
 #include "ANIM_animdata.hh"
 #include "ANIM_bone_collections.hh"
 #include "ANIM_driver.hh"
@@ -802,8 +803,63 @@ void ANIM_OT_keyframe_clear_v3d(wmOperatorType *ot)
   WM_operator_properties_confirm_or_exec(ot);
 }
 
+static int delete_key_fcurve(
+    FCurve *fcu, const float fcu_frame, Object *ob, AnimData *adt, ReportList *reports)
+{
+  /* don't touch protected F-Curves */
+  if (BKE_fcurve_is_protected(fcu)) {
+    BKE_reportf(reports,
+                RPT_WARNING,
+                "Not deleting keyframe for locked F-Curve '%s', object '%s'",
+                fcu->rna_path,
+                ob->id.name + 2);
+    return 0;
+  }
+
+  /* Special exception for bones, as this makes this operator more convenient to use
+   * NOTE: This is only done in pose mode.
+   * In object mode, we're dealing with the entire object.
+   */
+  if (ob->mode & OB_MODE_POSE) {
+    bPoseChannel *pchan = nullptr;
+
+    /* Get bone-name, and check if this bone is selected. */
+    char bone_name[sizeof(pchan->name)];
+    if (!BLI_str_quoted_substr(fcu->rna_path, "pose.bones[", bone_name, sizeof(bone_name))) {
+      return 0;
+    }
+    pchan = BKE_pose_channel_find_name(ob->pose, bone_name);
+
+    /* skip if bone is not selected */
+    if ((pchan) && (pchan->bone)) {
+      /* bones are only selected/editable if visible... */
+      bArmature *arm = (bArmature *)ob->data;
+
+      /* skipping - not visible on currently visible layers */
+      if (!ANIM_bonecoll_is_visible_pchan(arm, pchan)) {
+        return 0;
+      }
+      /* skipping - is currently hidden */
+      if (pchan->bone->flag & BONE_HIDDEN_P) {
+        return 0;
+      }
+
+      /* selection flag... */
+      if ((pchan->bone->flag & BONE_SELECTED) == 0) {
+        return 0;
+      }
+    }
+  }
+
+  /* delete keyframes on current frame
+   * WARNING: this can delete the next F-Curve, hence the "fcn" copying
+   */
+  return blender::animrig::delete_keyframe_fcurve(adt, fcu, fcu_frame);
+}
+
 static int delete_key_v3d_without_keying_set(bContext *C, wmOperator *op)
 {
+  using namespace blender::animrig;
   Scene *scene = CTX_data_scene(C);
   const float cfra = BKE_scene_frame_get(scene);
 
@@ -826,59 +882,19 @@ static int delete_key_v3d_without_keying_set(bContext *C, wmOperator *op)
       FCurve *fcu, *fcn;
       const float cfra_unmap = BKE_nla_tweakedit_remap(adt, cfra, NLATIME_CONVERT_UNMAP);
 
-      for (fcu = static_cast<FCurve *>(act->curves.first); fcu; fcu = fcn) {
-        fcn = fcu->next;
-
-        /* don't touch protected F-Curves */
-        if (BKE_fcurve_is_protected(fcu)) {
-          BKE_reportf(op->reports,
-                      RPT_WARNING,
-                      "Not deleting keyframe for locked F-Curve '%s', object '%s'",
-                      fcu->rna_path,
-                      id->name + 2);
-          continue;
+      Action &action = act->wrap();
+      if (action.is_action_layered()) {
+        for (FCurve *fcu : fcurves_for_action_slot(action, adt->slot_handle)) {
+          success += delete_key_fcurve(fcu, cfra_unmap, ob, adt, op->reports);
         }
-
-        /* Special exception for bones, as this makes this operator more convenient to use
-         * NOTE: This is only done in pose mode.
-         * In object mode, we're dealing with the entire object.
-         */
-        if (ob->mode & OB_MODE_POSE) {
-          bPoseChannel *pchan = nullptr;
-
-          /* Get bone-name, and check if this bone is selected. */
-          char bone_name[sizeof(pchan->name)];
-          if (!BLI_str_quoted_substr(fcu->rna_path, "pose.bones[", bone_name, sizeof(bone_name))) {
-            continue;
-          }
-          pchan = BKE_pose_channel_find_name(ob->pose, bone_name);
-
-          /* skip if bone is not selected */
-          if ((pchan) && (pchan->bone)) {
-            /* bones are only selected/editable if visible... */
-            bArmature *arm = (bArmature *)ob->data;
-
-            /* skipping - not visible on currently visible layers */
-            if (!ANIM_bonecoll_is_visible_pchan(arm, pchan)) {
-              continue;
-            }
-            /* skipping - is currently hidden */
-            if (pchan->bone->flag & BONE_HIDDEN_P) {
-              continue;
-            }
-
-            /* selection flag... */
-            if ((pchan->bone->flag & BONE_SELECTED) == 0) {
-              continue;
-            }
-          }
-        }
-
-        /* delete keyframes on current frame
-         * WARNING: this can delete the next F-Curve, hence the "fcn" copying
-         */
-        success += blender::animrig::delete_keyframe_fcurve(adt, fcu, cfra_unmap);
       }
+      else {
+        for (fcu = static_cast<FCurve *>(act->curves.first); fcu; fcu = fcn) {
+          fcn = fcu->next;
+          success += delete_key_fcurve(fcu, cfra_unmap, ob, adt, op->reports);
+        }
+      }
+
       DEG_id_tag_update(&ob->adt->action->id, ID_RECALC_ANIMATION_NO_FLUSH);
     }
 
