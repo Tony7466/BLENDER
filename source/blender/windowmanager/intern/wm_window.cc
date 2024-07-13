@@ -10,6 +10,7 @@
 
 #include <chrono>
 #include <cmath>
+#include <condition_variable>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -3090,6 +3091,11 @@ static void draw_dialog(const int2 window_size)
 
 static void on_wait_time_expired(bContext &C, wmWindow &window)
 {
+  /* Dispatch all events received so far, so that they can be ignored by the dialog. */
+  if (GHOST_ProcessEvents(g_system, false)) {
+    GHOST_DispatchEvents(g_system);
+  }
+
   wmWindowManager *wm = CTX_wm_manager(&C);
   /* Ignore all events received until the dialog opened. */
   const wmEvent *last_handled_event = static_cast<const wmEvent *>(window.event_queue.last);
@@ -3189,35 +3195,41 @@ void run_cancellable_if_possible(const FunctionRef<void()> fn)
   }
   bContext &C = *g_context;
 
-  std::atomic<bool> done = false;
+  std::mutex done_mutex;
+  std::condition_variable done_condition_variable;
+  bool done = false;
 
-  std::chrono::milliseconds wait_time{3000};
-  std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
+  const std::chrono::milliseconds wait_time{3000};
+  const std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
+  const std::chrono::steady_clock::time_point wait_expired_time = start_time + wait_time;
 
   std::thread worker_thread{[&]() {
     fn();
-    done = true;
+    {
+      std::lock_guard lock{done_mutex};
+      done = true;
+    }
+    done_condition_variable.notify_one();
   }};
 
-  while (true) {
-    if (done) {
-      worker_thread.join();
-      return;
-    }
-    std::this_thread::sleep_for(std::chrono::microseconds{100});
-
-    std::chrono::steady_clock::time_point current_time = std::chrono::steady_clock::now();
-    std::chrono::steady_clock::duration time_since_start = current_time - start_time;
-    if (time_since_start > wait_time) {
-      wmWindowManager *wm = CTX_wm_manager(&C);
-      on_wait_time_expired(C, *static_cast<wmWindow *>(wm->windows.first));
-    }
-
-    /* Keep processing events. */
-    if (GHOST_ProcessEvents(g_system, false)) {
-      GHOST_DispatchEvents(g_system);
-    }
+  /* Wait until done or wait time is up. */
+  bool was_done;
+  {
+    std::unique_lock lock{done_mutex};
+    was_done = done_condition_variable.wait_until(lock, wait_expired_time, [&]() { return done; });
   }
+
+  if (was_done) {
+    worker_thread.join();
+    return;
+  }
+
+  wmWindowManager *wm = CTX_wm_manager(&C);
+  wmWindow &window = *static_cast<wmWindow *>(wm->windows.first);
+
+  /* This call may never return if recovery is attempted. */
+  on_wait_time_expired(C, window);
+
   worker_thread.join();
   return;
 }
