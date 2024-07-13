@@ -131,6 +131,7 @@
 #include "UI_resources.hh"
 
 #include "object_intern.hh"
+#include "../io/io_utils.hh"
 
 const EnumPropertyItem rna_enum_light_type_items[] = {
     {LA_LOCAL, "POINT", ICON_LIGHT_POINT, "Point", "Omnidirectional point light source"},
@@ -1207,38 +1208,49 @@ void OBJECT_OT_empty_add(wmOperatorType *ot)
 }
 
 static int object_image_add_exec(bContext *C, wmOperator *op)
-{
-  Image *ima = nullptr;
+{  
+  Vector<Image *> images;
+  const Vector<std::string> paths = ed::io::paths_from_operator_properties(op->ptr);
+  for (const std::string &path : paths) {
+    RNA_string_set(op->ptr, "filepath", path.c_str());
+    Image *image = (Image *)WM_operator_drop_load_path(C, op, ID_IM);
 
-  ima = (Image *)WM_operator_drop_load_path(C, op, ID_IM);
-  if (!ima) {
-    return OPERATOR_CANCELLED;
-  }
-
-  /* Add new empty. */
-  ushort local_view_bits;
-  float loc[3], rot[3];
-
-  add_generic_get_opts(C, op, 'Z', loc, rot, nullptr, nullptr, &local_view_bits, nullptr);
-
-  Object *ob = add_type(C, OB_EMPTY, nullptr, loc, rot, false, local_view_bits);
-  ob->empty_drawsize = 5.0f;
-
-  if (RNA_boolean_get(op->ptr, "background")) {
-    /* When "background" has been set to "true", set image to render in the background. */
-    ob->empty_image_depth = OB_EMPTY_IMAGE_DEPTH_BACK;
-    ob->empty_image_visibility_flag = OB_EMPTY_IMAGE_HIDE_BACK;
-
-    RegionView3D *rv3d = CTX_wm_region_view3d(C);
-    if (rv3d->persp != RV3D_PERSP) {
-      ob->empty_image_visibility_flag |= OB_EMPTY_IMAGE_HIDE_PERSPECTIVE;
+    if(image){
+      images.append(image);
     }
   }
 
-  BKE_object_empty_draw_type_set(ob, OB_EMPTY_IMAGE);
+  /* If there are no paths, try to get one from the operator */
+  if (paths.is_empty()) {
+    Image *image = (Image *)WM_operator_drop_load_path(C, op, ID_IM);
+    if (image) {
+      images.append(image);
+    }
+  }
 
-  ob->data = ima;
+  for (Image *image : images) {
+    /* Add new empty. */
+    ushort local_view_bits;
+    float loc[3], rot[3];
 
+    add_generic_get_opts(C, op, 'Z', loc, rot, nullptr, nullptr, &local_view_bits, nullptr);
+    Object *ob = add_type(C, OB_EMPTY, nullptr, loc, rot, false, local_view_bits);
+    ob->empty_drawsize = 5.0f;
+
+    if (RNA_boolean_get(op->ptr, "background")) {
+      /* When "background" has been set to "true", set image to render in the background. */
+      ob->empty_image_depth = OB_EMPTY_IMAGE_DEPTH_BACK;
+      ob->empty_image_visibility_flag = OB_EMPTY_IMAGE_HIDE_BACK;
+
+      RegionView3D *rv3d = CTX_wm_region_view3d(C);
+      if (rv3d->persp != RV3D_PERSP) {
+        ob->empty_image_visibility_flag |= OB_EMPTY_IMAGE_HIDE_PERSPECTIVE;
+      }
+    }
+
+    BKE_object_empty_draw_type_set(ob, OB_EMPTY_IMAGE);
+    ob->data = image;
+  }
   return OPERATOR_FINISHED;
 }
 
@@ -1319,7 +1331,8 @@ void OBJECT_OT_empty_image_add(wmOperatorType *ot)
                                  FILE_TYPE_FOLDER | FILE_TYPE_IMAGE | FILE_TYPE_MOVIE,
                                  FILE_SPECIAL,
                                  FILE_OPENFILE,
-                                 WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH,
+                                 WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH | 
+                                 WM_FILESEL_DIRECTORY | WM_FILESEL_FILES,
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_DEFAULT);
 
@@ -1332,10 +1345,13 @@ void OBJECT_OT_empty_image_add(wmOperatorType *ot)
                          "Put in Background",
                          "Make the image render behind all objects");
   RNA_def_property_flag(prop, PropertyFlag(PROP_SKIP_SAVE));
-  /* Hide the filepath and relative path prop */
+
+  /* Hide the filepath, relative path, and directory prop */
   prop = RNA_struct_type_find_property(ot->srna, "filepath");
   RNA_def_property_flag(prop, PropertyFlag(PROP_HIDDEN | PROP_SKIP_PRESET));
   prop = RNA_struct_type_find_property(ot->srna, "relative_path");
+  RNA_def_property_flag(prop, PropertyFlag(PROP_HIDDEN));
+  prop = RNA_struct_type_find_property(ot->srna, "directory");
   RNA_def_property_flag(prop, PropertyFlag(PROP_HIDDEN));
 }
 
