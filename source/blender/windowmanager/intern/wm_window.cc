@@ -3031,6 +3031,10 @@ namespace blender::cancellable_worker {
 
 static void draw_window_background(wmWindow &window)
 {
+  /* Clearing looks better when the window is resized while the cancel dialog is open. */
+  GPU_clear_color(0, 0, 0, 1);
+
+  /* Draw the last Blender screen. */
   bScreen *screen = WM_window_get_active_screen(&window);
   ED_screen_areas_iter (&window, screen, area) {
     LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
@@ -3056,30 +3060,16 @@ static void draw_window_background(wmWindow &window)
 
 static void draw_dialog(const int2 window_size)
 {
-  uiFontStyle question_fstyle = *UI_FSTYLE_WIDGET_LABEL;
-  question_fstyle.points *= 3;
+  uiFontStyle fstyle = *UI_FSTYLE_WIDGET_LABEL;
 
-  uiFontStyle explanation_fstyle = *UI_FSTYLE_WIDGET_LABEL;
+  const StringRefNull message = IFACE_(
+      "Looks like it takes a while to finish this computation. You can just keep waiting or try "
+      "to recover the session by pressing enter.");
 
-  const StringRefNull cancel_question_msg = IFACE_("Cancel operation?");
-  const StringRefNull explanation_msg = IFACE_(
-      "This will save the previous state and starts a new Blender session.");
-
-  UI_fontstyle_set(&question_fstyle);
-  float cancel_question_width, cancel_question_height;
-  BLF_width_and_height(question_fstyle.uifont_id,
-                       cancel_question_msg.c_str(),
-                       cancel_question_msg.size(),
-                       &cancel_question_width,
-                       &cancel_question_height);
-
-  UI_fontstyle_set(&explanation_fstyle);
-  float explanation_width, explanation_height;
-  BLF_width_and_height(explanation_fstyle.uifont_id,
-                       explanation_msg.c_str(),
-                       explanation_msg.size(),
-                       &explanation_width,
-                       &explanation_height);
+  UI_fontstyle_set(&fstyle);
+  float message_width, message_height;
+  BLF_width_and_height(
+      fstyle.uifont_id, message.c_str(), message.size(), &message_width, &message_height);
 
   const int dialog_width = window_size.x / 2;
   const int dialog_height = window_size.y / 2;
@@ -3091,15 +3081,10 @@ static void draw_dialog(const int2 window_size)
   UI_draw_roundbox_4fv(&dialog_rect, true, 10, float4(0.2, 0.2, 0.2, 1.0));
 
   uchar font_color[4] = {255, 255, 255, 255};
-  UI_fontstyle_draw_simple(&question_fstyle,
-                           (window_size.x - cancel_question_width) / 2,
-                           (window_size.y - cancel_question_height) / 2,
-                           cancel_question_msg.c_str(),
-                           font_color);
-  UI_fontstyle_draw_simple(&explanation_fstyle,
-                           (window_size.x - explanation_width) / 2,
-                           (window_size.y - cancel_question_height - explanation_height) / 2,
-                           explanation_msg.c_str(),
+  UI_fontstyle_draw_simple(&fstyle,
+                           (window_size.x - message_width) / 2,
+                           (window_size.y - message_height) / 2,
+                           message.c_str(),
                            font_color);
 }
 
@@ -3157,8 +3142,6 @@ static void on_wait_time_expired(bContext *C, wmWindow &window)
       GPUContext *gpu_context = static_cast<GPUContext *>(window.gpuctx);
       GPU_context_begin_frame(gpu_context);
       GPU_bgl_end();
-      /* Redraw background. This is also necessary because an older background may show when
-       * swapping buffers. */
       draw_window_background(window);
       draw_dialog({window.sizex, window.sizey});
       GPU_context_end_frame(gpu_context);
