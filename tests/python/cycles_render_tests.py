@@ -65,6 +65,12 @@ BLACKLIST_OSL = [
     'bump_with_displacement.blend',
     'ray_portal.blend',
     # TODO: Add more failing tests
+    # Currently failing tests are that aren't in this list are:
+    # Some image color space tests - Likely due to differences in how textures are processed
+    # mesh_light.blend - This is a bug
+    # Blackbody - Subtle noise difference
+    # Various Principled BSDF test - Seems to be noise with mix and layering
+    # Some render pass tests - Seems to be noise
 ]
 
 BLACKLIST_OPTIX = [
