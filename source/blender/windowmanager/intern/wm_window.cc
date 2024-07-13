@@ -3038,6 +3038,7 @@ void run_cancellable(bContext *C, FunctionRef<void()> fn)
   }};
 
   Map<wmWindow *, wmEvent *> last_checked_events;
+  int cancel_trigger_count = 0;
   while (true) {
     if (done) {
       worker_thread.join();
@@ -3057,7 +3058,9 @@ void run_cancellable(bContext *C, FunctionRef<void()> fn)
 
     auto check_event = [&](const wmEvent &event) {
       if (event.type == EVT_ESCKEY && event.val == KM_PRESS) {
-        printf("cancel!\n");
+        cancel_trigger_count++;
+      }
+      if (cancel_trigger_count == 3) {
         BKE_undosys_step_undo(wm->undo_stack, C);
 
         Main *bmain = CTX_data_main(C);
@@ -3069,7 +3072,6 @@ void run_cancellable(bContext *C, FunctionRef<void()> fn)
         const bool success = BLO_write_file(
             bmain, filepath, G_FILE_RECOVER_WRITE, &blend_write_params, nullptr);
         if (success) {
-          printf("Success writing file!\n");
           const char *imports[] = {"subprocess", "bpy", nullptr};
           const std::string expr = fmt::format(
               "subprocess.Popen([bpy.app.binary_path, \"{}\"], start_new_session=True)", filepath);
