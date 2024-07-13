@@ -710,6 +710,42 @@ static GreasePencil *try_load_grease_pencil(const DictionaryValue &io_geometry,
     return cancel();
   }
 
+  const int layers_num = grease_pencil->layers().size();
+
+  const DictionaryValue *io_layer_opacities = io_grease_pencil->lookup_dict("opacities");
+  Array<float> layer_opacities(layers_num);
+  if (!io_layer_opacities ||
+      !read_blob_simple_gspan(blob_reader, *io_layer_opacities, layer_opacities.as_mutable_span()))
+  {
+    return cancel();
+  }
+
+  const DictionaryValue *io_layer_blend_modes = io_grease_pencil->lookup_dict("blend_modes");
+  Array<int8_t> layer_blend_modes(layers_num);
+  if (!io_layer_opacities || !read_blob_simple_gspan(blob_reader,
+                                                     *io_layer_blend_modes,
+                                                     layer_blend_modes.as_mutable_span()))
+  {
+    return cancel();
+  }
+
+  const DictionaryValue *io_layer_transforms = io_grease_pencil->lookup_dict("transforms");
+  Array<float4x4> layer_transforms(layers_num);
+  if (!io_layer_transforms || !read_blob_simple_gspan(blob_reader,
+                                                      *io_layer_transforms,
+                                                      layer_transforms.as_mutable_span()))
+  {
+    return cancel();
+  }
+
+  for (const int layer_i : IndexRange(layers_num)) {
+    greasepencil::Layer *layer = grease_pencil->layer(layer_i);
+    BLI_assert(layer);
+    layer->opacity = layer_opacities[layer_i];
+    layer->blend_mode = layer_blend_modes[layer_i];
+    layer->set_local_transform(layer_transforms[layer_i]);
+  }
+
   if (const io::serialize::ArrayValue *io_materials = io_grease_pencil->lookup_array("materials"))
   {
     if (!load_materials(*io_materials, grease_pencil->runtime->bake_materials)) {
@@ -1049,6 +1085,9 @@ static std::shared_ptr<DictionaryValue> serialize_geometry_set(const GeometrySet
     auto io_grease_pencil = io_geometry->append_dict("grease_pencil");
     auto io_layers = io_grease_pencil->append_array("layers");
 
+    Vector<float> layer_opacities;
+    Vector<int8_t> layer_blend_modes;
+    Vector<float4x4> layer_transforms;
     for (const greasepencil::Layer *layer : grease_pencil.layers()) {
       auto io_layer = io_layers->append_dict();
       io_layer->append_str("name", layer->name());
@@ -1060,7 +1099,21 @@ static std::shared_ptr<DictionaryValue> serialize_geometry_set(const GeometrySet
       else {
         serialize_curves_geometry(*io_strokes, CurvesGeometry(), blob_writer, blob_sharing);
       }
+
+      layer_opacities.append(layer->opacity);
+      layer_blend_modes.append(layer->blend_mode);
+      layer_transforms.append(layer->local_transform());
     }
+
+    io_grease_pencil->append(
+        "opacities",
+        write_blob_simple_gspan(blob_writer, blob_sharing, layer_opacities.as_span()));
+    io_grease_pencil->append(
+        "blend_modes",
+        write_blob_simple_gspan(blob_writer, blob_sharing, layer_blend_modes.as_span()));
+    io_grease_pencil->append(
+        "transforms",
+        write_blob_simple_gspan(blob_writer, blob_sharing, layer_transforms.as_span()));
 
     auto io_layer_attributes = serialize_attributes(
         grease_pencil.attributes(), blob_writer, blob_sharing, {});
