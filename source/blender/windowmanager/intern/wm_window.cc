@@ -3030,6 +3030,12 @@ void WM_ghost_show_message_box(const char *title,
 
 namespace blender::cancellable_worker {
 
+struct DoneInfo {
+  std::mutex mutex;
+  std::condition_variable cv;
+  bool done;
+};
+
 static void draw_window_background(wmWindow &window)
 {
   /* Clearing looks better when the window is resized while the cancel dialog is open. */
@@ -3089,7 +3095,7 @@ static void draw_dialog(const int2 window_size)
                            font_color);
 }
 
-static void on_wait_time_expired(bContext &C, wmWindow &window)
+static void on_wait_time_expired(bContext &C, wmWindow &window, DoneInfo &done)
 {
   /* Dispatch all events received so far, so that they can be ignored by the dialog. */
   if (GHOST_ProcessEvents(g_system, false)) {
@@ -3107,6 +3113,14 @@ static void on_wait_time_expired(bContext &C, wmWindow &window)
   std::optional<Action> action;
 
   while (true) {
+    {
+      std::lock_guard lock{done.mutex};
+      if (done.done) {
+        /* The task finished, no need to recover anymore. */
+        return;
+      }
+    }
+
     auto handle_event = [&](const wmEvent &event) {
       if (event.type == EVT_RETKEY && event.val == KM_PRESS) {
         action = Action::Recover;
@@ -3195,28 +3209,29 @@ void run_cancellable_if_possible(const FunctionRef<void()> fn)
   }
   bContext &C = *g_context;
 
-  std::mutex done_mutex;
-  std::condition_variable done_condition_variable;
-  bool done = false;
+  DoneInfo done;
 
+  using Clock = std::chrono::steady_clock;
   const std::chrono::milliseconds wait_time{3000};
-  const std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
-  const std::chrono::steady_clock::time_point wait_expired_time = start_time + wait_time;
+  const Clock::time_point start_time = Clock::now();
+  const Clock::time_point wait_expired_time = start_time +
+                                              std::chrono::duration_cast<Clock::duration>(
+                                                  wait_time);
 
   std::thread worker_thread{[&]() {
     fn();
     {
-      std::lock_guard lock{done_mutex};
-      done = true;
+      std::lock_guard lock{done.mutex};
+      done.done = true;
     }
-    done_condition_variable.notify_one();
+    done.cv.notify_one();
   }};
 
   /* Wait until done or wait time is up. */
   bool was_done;
   {
-    std::unique_lock lock{done_mutex};
-    was_done = done_condition_variable.wait_until(lock, wait_expired_time, [&]() { return done; });
+    std::unique_lock lock{done.mutex};
+    was_done = done.cv.wait_until(lock, wait_expired_time, [&]() { return done.done; });
   }
 
   if (was_done) {
@@ -3228,7 +3243,7 @@ void run_cancellable_if_possible(const FunctionRef<void()> fn)
   wmWindow &window = *static_cast<wmWindow *>(wm->windows.first);
 
   /* This call may never return if recovery is attempted. */
-  on_wait_time_expired(C, window);
+  on_wait_time_expired(C, window, done);
 
   worker_thread.join();
   return;
