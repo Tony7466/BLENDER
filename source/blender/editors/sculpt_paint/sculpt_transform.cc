@@ -635,6 +635,94 @@ static bool set_pivot_depends_on_cursor(bContext & /*C*/, wmOperatorType & /*ot*
   return mode == PivotPositionMode::CursorSurface;
 }
 
+static float3 average_unmasked_position(const Object &object,
+                                        const float3 &pivot,
+                                        const ePaintSymmetryFlags symm)
+{
+  const SculptSession &ss = *object.sculpt;
+  const PBVH &pbvh = *ss.pbvh;
+  struct Accumulation {
+    float3 position;
+    int count;
+  };
+  const auto combine = [](const Accumulation &a, const Accumulation &b) {
+    return Accumulation{a.position + b.position};
+  };
+  switch (BKE_pbvh_type(pbvh)) {
+    case PBVH_FACES: {
+      const Mesh &mesh = *static_cast<const Mesh *>(object.data);
+      const Span<float3> vert_positions = BKE_pbvh_get_vert_positions(pbvh);
+      const bke::AttributeAccessor attributes = mesh.attributes();
+      const VArraySpan hide_vert = *attributes.lookup<bool>(".hide_vert", bke::AttrDomain::Point);
+      const VArraySpan masks = *attributes.lookup_or_default<float>(
+          ".sculpt_mask", bke::AttrDomain::Point, 0.0f);
+      const Accumulation total = threading::parallel_reduce(
+          vert_positions.index_range(),
+          1024,
+          Accumulation{},
+          [&](const IndexRange range, Accumulation total) {
+            for (const int vert : range) {
+              if (!hide_vert.is_empty() && hide_vert[vert]) {
+                continue;
+              }
+              if (masks[vert] >= 1.0f) {
+                continue;
+              }
+              if (!SCULPT_check_vertex_pivot_symmetry(vert_positions[vert], pivot, symm)) {
+                continue;
+              }
+              total.position += vert_positions[vert];
+              total.count++;
+            }
+          },
+          combine);
+      return math::safe_divide(total.position, float(total.count));
+    }
+    case PBVH_GRIDS: {
+      const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+      const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
+      const Span<CCGElem *> elems = subdiv_ccg.grids;
+      const Accumulation total = threading::parallel_reduce(
+          elems.index_range(),
+          1024,
+          Accumulation{},
+          [&](const IndexRange range, Accumulation total) {
+            for (const int grid : range) {
+              BKE_subdiv_ccg_foreach_visible_grid_vert(key, grid_hidden, grid, [&]() {});
+              if (masks[vert] < 1.0f) {
+                if (SCULPT_check_vertex_pivot_symmetry(vert_positions[vert], pivot, symm)) {
+                  total.position += vert_positions[vert];
+                  total.count++;
+                }
+              }
+            }
+          },
+          combine);
+      return math::safe_divide(total.position, float(total.count));
+    }
+    case PBVH_BMESH: {
+      const Accumulation total = threading::parallel_reduce(
+          vert_positions.index_range(),
+          1024,
+          Accumulation{},
+          [&](const IndexRange range, Accumulation total) {
+            for (const int vert : range) {
+              if (masks[vert] < 1.0f) {
+                if (SCULPT_check_vertex_pivot_symmetry(vert_positions[vert], pivot, symm)) {
+                  total.position += vert_positions[vert];
+                  total.count++;
+                }
+              }
+            }
+          },
+          combine);
+      return math::safe_divide(total.position, float(total.count));
+    }
+  }
+  return float3(0);
+}
+
 static int set_pivot_position_exec(bContext *C, wmOperator *op)
 {
   Object &ob = *CTX_data_active_object(C);
