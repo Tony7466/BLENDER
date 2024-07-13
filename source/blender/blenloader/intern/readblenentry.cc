@@ -25,7 +25,6 @@
 #include "DNA_sdna_types.h"
 
 #include "BKE_asset.hh"
-#include "BKE_global.hh"
 #include "BKE_idtype.hh"
 #include "BKE_main.hh"
 #include "BKE_preview_image.hh"

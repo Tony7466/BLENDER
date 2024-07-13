@@ -35,6 +35,7 @@
 
 #include "BLT_translation.hh"
 
+#include "BKE_appdir.hh"
 #include "BKE_blender_version.h"
 #include "BKE_context.hh"
 #include "BKE_global.hh"
@@ -3060,15 +3061,18 @@ void run_cancellable(bContext *C, FunctionRef<void()> fn)
         BKE_undosys_step_undo(wm->undo_stack, C);
 
         Main *bmain = CTX_data_main(C);
+        const char *tempdir_base = BKE_tempdir_base();
+        char filepath[FILE_MAX];
+        BLI_path_join(filepath, FILE_MAX, tempdir_base, "cancel_recover.blend");
+
         BlendFileWriteParams blend_write_params{};
-        const std::string path = "/home/jacques/Downloads/cancel_file_recover.blend";
         const bool success = BLO_write_file(
-            bmain, path.c_str(), G_FILE_RECOVER_WRITE, &blend_write_params, nullptr);
+            bmain, filepath, G_FILE_RECOVER_WRITE, &blend_write_params, nullptr);
         if (success) {
           printf("Success writing file!\n");
           const char *imports[] = {"subprocess", "bpy", nullptr};
           const std::string expr = fmt::format(
-              "subprocess.Popen([bpy.app.binary_path, \"{}\"], start_new_session=True)", path);
+              "subprocess.Popen([bpy.app.binary_path, \"{}\"], start_new_session=True)", filepath);
           BPY_run_string_exec(nullptr, imports, expr.c_str());
           std::terminate();
         }
