@@ -3031,12 +3031,14 @@ void WM_ghost_show_message_box(const char *title,
 
 namespace blender::cancellable_worker {
 
-using Clock = std::chrono::steady_clock;
+/* Use system clock because that's also used internally generally.
+ * https://en.cppreference.com/w/cpp/thread/condition_variable/wait_until */
+using Clock = std::chrono::system_clock;
 
 struct DoneInfo {
   std::mutex mutex;
   std::condition_variable cv;
-  bool done;
+  bool done = false;
 };
 
 static void draw_window_background(wmWindow &window)
@@ -3199,6 +3201,11 @@ static void on_wait_time_expired(bContext &C,
     const std::string expr = fmt::format(
         "subprocess.Popen([bpy.app.binary_path, \"{}\"], start_new_session=True)", filepath);
     BPY_run_string_exec(nullptr, imports, expr.c_str());
+    /* Attempt to close window as soon as possible as this feels better. The OS may take a bit
+     * longer to clean up all the resources of the process. */
+    LISTBASE_FOREACH (wmWindow *, window_iter, &wm->windows) {
+      wm_ghostwindow_destroy(wm, window_iter);
+    }
     std::terminate();
   }
 }
@@ -3212,13 +3219,26 @@ void set_global_context(bContext &C)
 
 void run_cancellable_if_possible(const FunctionRef<void()> fn)
 {
-  const bool current_is_main = BLI_thread_is_main();
-  if (!g_context || !CTX_wm_manager(g_context) || !current_is_main) {
-    /* Cancelling is not supported in these cases. */
+  if (!BLI_thread_is_main()) {
+    fn();
+    return;
+  }
+  if (!g_context) {
     fn();
     return;
   }
   bContext &C = *g_context;
+  wmWindowManager *wm = CTX_wm_manager(&C);
+  if (!wm) {
+    fn();
+    return;
+  }
+  const bool can_undo = wm->undo_stack && wm->undo_stack->step_active &&
+                        wm->undo_stack->step_active->prev;
+  if (!can_undo) {
+    fn();
+    return;
+  }
 
   DoneInfo done;
 
@@ -3249,7 +3269,6 @@ void run_cancellable_if_possible(const FunctionRef<void()> fn)
     return;
   }
 
-  wmWindowManager *wm = CTX_wm_manager(&C);
   wmWindow &window = *static_cast<wmWindow *>(wm->windows.first);
 
   /* This call may never return if recovery is attempted. */
