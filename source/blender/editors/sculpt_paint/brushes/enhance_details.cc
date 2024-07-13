@@ -131,7 +131,7 @@ static void calc_grids(const Sculpt &sd,
 
   tls.translations.reinitialize(grid_verts_num);
   const MutableSpan<float3> translations = tls.translations;
-  gather_grids_data_from_array(subdiv_ccg, all_translations, grids, translations);
+  gather_data_grids(subdiv_ccg, all_translations, grids, translations);
   scale_translations(translations, factors);
 
   clip_and_lock_translations(sd, ss, positions, translations);
@@ -180,7 +180,7 @@ static void calc_bmesh(const Sculpt &sd,
 
   tls.translations.reinitialize(verts.size());
   const MutableSpan<float3> translations = tls.translations;
-  gather_bmesh_vert_data_from_array(all_translations, verts, translations);
+  gather_data_vert_bmesh(all_translations, verts, translations);
   scale_translations(translations, factors);
 
   clip_and_lock_translations(sd, ss, positions, translations);
@@ -193,7 +193,7 @@ static void calc_translations_faces(const Span<float3> vert_positions,
                                     const GroupedSpan<int> vert_to_face_map,
                                     const PBVHNode &node,
                                     LocalData &tls,
-                                    const MutableSpan<float3> translations)
+                                    const MutableSpan<float3> all_translations)
 {
   const Span<int> verts = bke::pbvh::node_unique_verts(node);
 
@@ -208,13 +208,13 @@ static void calc_translations_faces(const Span<float3> vert_positions,
   tls.translations.reinitialize(verts.size());
   const MutableSpan<float3> translations = tls.translations;
   translations_from_new_positions(new_positions, verts, vert_positions, translations);
-  array_utils::scatter(translations.as_span(), verts, translations);
+  array_utils::scatter(translations.as_span(), verts, all_translations);
 }
 
 static void calc_translations_grids(const SubdivCCG &subdiv_ccg,
                                     const PBVHNode &node,
                                     LocalData &tls,
-                                    const MutableSpan<float3> translations)
+                                    const MutableSpan<float3> all_translations)
 {
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
@@ -232,12 +232,12 @@ static void calc_translations_grids(const SubdivCCG &subdiv_ccg,
   tls.translations.reinitialize(grid_verts_num);
   const MutableSpan<float3> translations = tls.translations;
   translations_from_new_positions(new_positions, positions, translations);
-  scatter_grids_data_to_array(subdiv_ccg, translations, grids, translations);
+  scatter_data_grids(subdiv_ccg, translations, grids, all_translations);
 }
 
 static void calc_translations_bmesh(PBVHNode &node,
                                     LocalData &tls,
-                                    const MutableSpan<float3> translations)
+                                    const MutableSpan<float3> all_translations)
 {
   const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(&node);
 
@@ -252,7 +252,7 @@ static void calc_translations_bmesh(PBVHNode &node,
   tls.translations.reinitialize(verts.size());
   const MutableSpan<float3> translations = tls.translations;
   translations_from_new_positions(new_positions, positions, translations);
-  scatter_bmesh_vert_data_to_array(translations.as_span(), verts, translations);
+  scatter_data_vert_bmesh(translations.as_span(), verts, all_translations);
 }
 
 /**

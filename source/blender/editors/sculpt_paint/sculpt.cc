@@ -6729,10 +6729,10 @@ void gather_bmesh_normals(const Set<BMVert *, 0> &verts, const MutableSpan<float
   }
 }
 
-void gather_grids_data_from_array(const SubdivCCG &subdiv_ccg,
-                                  const Span<float3> array,
-                                  const Span<int> grids,
-                                  const MutableSpan<float3> node_data)
+void gather_data_grids(const SubdivCCG &subdiv_ccg,
+                       const Span<float3> src,
+                       const Span<int> grids,
+                       const MutableSpan<float3> node_data)
 {
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
   BLI_assert(grids.size() * key.grid_area == node_data.size());
@@ -6740,27 +6740,27 @@ void gather_grids_data_from_array(const SubdivCCG &subdiv_ccg,
   for (const int i : grids.index_range()) {
     const int node_start = i * key.grid_area;
     const int grids_start = grids[i] * key.grid_area;
-    node_data.slice(node_start, key.grid_area).copy_from(array.slice(grids_start, key.grid_area));
+    node_data.slice(node_start, key.grid_area).copy_from(src.slice(grids_start, key.grid_area));
   }
 }
 
-void gather_bmesh_vert_data_from_array(const Span<float3> array,
-                                       const Set<BMVert *, 0> &verts,
-                                       const MutableSpan<float3> node_data)
+void gather_data_vert_bmesh(const Span<float3> src,
+                            const Set<BMVert *, 0> &verts,
+                            const MutableSpan<float3> node_data)
 {
   BLI_assert(verts.size() == node_data.size());
 
   int i = 0;
   for (const BMVert *vert : verts) {
-    node_data[i] = array[BM_elem_index_get(vert)];
+    node_data[i] = src[BM_elem_index_get(vert)];
     i++;
   }
 }
 
-void scatter_grids_data_to_array(const SubdivCCG &subdiv_ccg,
-                                 const Span<float3> node_data,
-                                 const Span<int> grids,
-                                 const MutableSpan<float3> array)
+void scatter_data_grids(const SubdivCCG &subdiv_ccg,
+                        const Span<float3> node_data,
+                        const Span<int> grids,
+                        const MutableSpan<float3> dst)
 {
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
   BLI_assert(grids.size() * key.grid_area == node_data.size());
@@ -6768,19 +6768,19 @@ void scatter_grids_data_to_array(const SubdivCCG &subdiv_ccg,
   for (const int i : grids.index_range()) {
     const int node_start = i * key.grid_area;
     const int grids_start = grids[i] * key.grid_area;
-    array.slice(grids_start, key.grid_area).copy_from(node_data.slice(node_start, key.grid_area));
+    dst.slice(grids_start, key.grid_area).copy_from(node_data.slice(node_start, key.grid_area));
   }
 }
 
-void scatter_bmesh_vert_data_to_array(const Span<float3> node_data,
-                                      const Set<BMVert *, 0> &verts,
-                                      const MutableSpan<float3> array)
+void scatter_data_vert_bmesh(const Span<float3> node_data,
+                             const Set<BMVert *, 0> &verts,
+                             const MutableSpan<float3> dst)
 {
   BLI_assert(verts.size() == node_data.size());
 
   int i = 0;
   for (const BMVert *vert : verts) {
-    array[BM_elem_index_get(vert)] = node_data[i];
+    dst[BM_elem_index_get(vert)] = node_data[i];
     i++;
   }
 }
