@@ -76,6 +76,7 @@ void Instance::begin_sync()
   resources.begin_sync();
 
   background.begin_sync(resources, state);
+  bounds.begin_sync();
   prepass.begin_sync(resources, state);
   empties.begin_sync();
   metaballs.begin_sync();
@@ -122,6 +123,8 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
     }
   }
 
+  bounds.object_sync(ob_ref, resources, state);
+
   if (!state.hide_overlays) {
     switch (ob_ref.object->type) {
       case OB_EMPTY:
@@ -147,6 +150,7 @@ void Instance::end_sync()
 {
   resources.end_sync();
 
+  bounds.end_sync(resources, shapes, state);
   metaballs.end_sync(resources, shapes, state);
   empties.end_sync(resources, shapes, state);
   speakers.end_sync(resources, shapes, state);
@@ -213,13 +217,14 @@ void Instance::draw(Manager &manager)
   prepass.draw_in_front(resources, manager, view);
 
   background.draw(resources, manager);
-
+  bounds.draw(resources, manager, view);
   empties.draw(resources, manager, view);
   metaballs.draw(resources, manager, view);
   speakers.draw(resources, manager, view);
 
   grid.draw(resources, manager, view);
 
+  bounds.draw_in_front(resources, manager, view);
   empties.draw_in_front(resources, manager, view);
   metaballs.draw_in_front(resources, manager, view);
   speakers.draw_in_front(resources, manager, view);

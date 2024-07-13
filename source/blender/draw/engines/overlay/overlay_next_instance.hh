@@ -11,6 +11,7 @@
 #include "overlay_next_private.hh"
 
 #include "overlay_next_background.hh"
+#include "overlay_next_bounds.hh"
 #include "overlay_next_empty.hh"
 #include "overlay_next_grid.hh"
 #include "overlay_next_metaball.hh"
@@ -39,6 +40,7 @@ class Instance {
 
   /** Overlay types. */
   Background background;
+  Bounds bounds = {selection_type_};
   Prepass prepass;
   Metaballs metaballs = {selection_type_};
   Empties empties = {selection_type_};

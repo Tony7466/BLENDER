@@ -67,6 +67,18 @@ static constexpr std::array<uint, 24> bone_box_wire = {
     0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 5, 6, 6, 7, 7, 4, 0, 4, 1, 5, 2, 6, 3, 7,
 };
 
+static void append_as_lines_cyclic(
+    Vector<Vertex> &dest, Span<float2> verts, float z, int flag, bool dashed = false)
+{
+  const int step = dashed ? 2 : 1;
+  for (const int i : IndexRange(verts.size() / step)) {
+    for (const int j : IndexRange(2)) {
+      const float2 &cv = verts[(i * step + j) % (verts.size())];
+      dest.append({{cv[0], cv[1], z}, flag});
+    }
+  }
+}
+
 /* A single ring of vertices. */
 static Vector<float2> ring_vertices(const float radius, const int segments)
 {
@@ -218,6 +230,54 @@ ShapeCache::ShapeCache()
     }
 
     empty_cone = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* cylinder */
+  {
+    constexpr int n_segments = 12;
+    static const Vector<float2> ring = ring_vertices(1.0f, n_segments);
+    Vector<Vertex> verts;
+    /* top ring */
+    append_as_lines_cyclic(verts, ring, 1.0f, VCLASS_EMPTY_SCALED);
+    /* bottom ring */
+    append_as_lines_cyclic(verts, ring, -1.0f, VCLASS_EMPTY_SCALED);
+    /* cylinder sides */
+    for (const float2 &point : ring) {
+      verts.append({{point.x, point.y, 1.0f}, VCLASS_EMPTY_SCALED});
+      verts.append({{point.x, point.y, -1.0f}, VCLASS_EMPTY_SCALED});
+    }
+    cylinder = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* capsule body */
+  {
+    static const Vector<float2> diamond = ring_vertices(1.0f, 4);
+    Vector<Vertex> verts;
+    for (const float2 &point : diamond) {
+      verts.append({{point.x, point.y, 1.0f}, 0});
+      verts.append({{point.x, point.y, 0.0f}, 0});
+    }
+    capsule_body = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* capsule cap */
+  {
+    constexpr int n_segments = 24;
+    static const Vector<float2> ring = ring_vertices(1.0f, n_segments);
+    Vector<Vertex> verts;
+    /* Base circle */
+    append_as_lines_cyclic(verts, ring, 0.0f, 0);
+    for (const int i : IndexRange(n_segments / 2)) {
+      const float2 &point = ring[i];
+      const float2 &next_point = ring[i + 1];
+      /* Y half circle */
+      verts.append({{point.x, 0.0f, point.y}, 0});
+      verts.append({{next_point.x, 0.0f, next_point.y}, 0});
+      /* X half circle */
+      verts.append({{0.0f, point.x, point.y}, 0});
+      verts.append({{0.0f, next_point.x, next_point.y}, 0});
+    }
+    capsule_cap = BatchPtr(
         GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
   }
   /* arrows */
