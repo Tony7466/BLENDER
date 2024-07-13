@@ -31,6 +31,7 @@
 #include "BLI_blenlib.h"
 #include "BLI_map.hh"
 #include "BLI_system.h"
+#include "BLI_threads.h"
 #include "BLI_time.h"
 #include "BLI_utildefines.h"
 
