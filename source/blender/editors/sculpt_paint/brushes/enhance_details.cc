@@ -255,12 +255,18 @@ static void calc_translations_bmesh(PBVHNode &node,
   scatter_bmesh_vert_data_to_array(translations.as_span(), verts, translations);
 }
 
+/**
+ * The brush uses translations calculated at the beginning of the stroke. They can't be calculated
+ * dynamically because changing positions will influence neighboring translations. However we can
+ * reduce the cost in some cases by skipping initializing values for vertices in hidden or masked
+ * nodes.
+ */
 static void precalc_translations(Object &object, const MutableSpan<float3> translations)
 {
   SculptSession &ss = *object.sculpt;
   PBVH &pbvh = *ss.pbvh;
 
-  Vector<PBVHNode *> all_nodes = bke::pbvh::search_gather(
+  Vector<PBVHNode *> effective_nodes = bke::pbvh::search_gather(
       pbvh, [&](PBVHNode &node) { return !node_fully_masked_or_hidden(node); });
 
   threading::EnumerableThreadSpecific<LocalData> all_tls;
@@ -270,14 +276,14 @@ static void precalc_translations(Object &object, const MutableSpan<float3> trans
       const Span<float3> positions_eval = BKE_pbvh_get_vert_positions(pbvh);
       const OffsetIndices faces = mesh.faces();
       const Span<int> corner_verts = mesh.corner_verts();
-      threading::parallel_for(all_nodes.index_range(), 1, [&](const IndexRange range) {
+      threading::parallel_for(effective_nodes.index_range(), 1, [&](const IndexRange range) {
         LocalData &tls = all_tls.local();
         for (const int i : range) {
           calc_translations_faces(positions_eval,
                                   faces,
                                   corner_verts,
                                   ss.vert_to_face_map,
-                                  *all_nodes[i],
+                                  *effective_nodes[i],
                                   tls,
                                   translations);
         }
@@ -286,10 +292,10 @@ static void precalc_translations(Object &object, const MutableSpan<float3> trans
     }
     case PBVH_GRIDS: {
       SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
-      threading::parallel_for(all_nodes.index_range(), 1, [&](const IndexRange range) {
+      threading::parallel_for(effective_nodes.index_range(), 1, [&](const IndexRange range) {
         LocalData &tls = all_tls.local();
         for (const int i : range) {
-          calc_translations_grids(subdiv_ccg, *all_nodes[i], tls, translations);
+          calc_translations_grids(subdiv_ccg, *effective_nodes[i], tls, translations);
         }
       });
       break;
@@ -297,10 +303,10 @@ static void precalc_translations(Object &object, const MutableSpan<float3> trans
     case PBVH_BMESH:
       BM_mesh_elem_index_ensure(ss.bm, BM_VERT);
       BM_mesh_elem_table_ensure(ss.bm, BM_VERT);
-      threading::parallel_for(all_nodes.index_range(), 1, [&](const IndexRange range) {
+      threading::parallel_for(effective_nodes.index_range(), 1, [&](const IndexRange range) {
         LocalData &tls = all_tls.local();
         for (const int i : range) {
-          calc_translations_bmesh(*all_nodes[i], tls, translations);
+          calc_translations_bmesh(*effective_nodes[i], tls, translations);
         }
       });
       break;
