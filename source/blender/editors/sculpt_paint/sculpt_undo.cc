@@ -911,7 +911,7 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
     return;
   }
 
-  /* Switching to sculpt mode does not push a particular type
+  /* Switching to sculpt mode does not push a particular type.
    * See #124484. */
   if (step_data.type == Type::None && step_data.nodes.is_empty()) {
     return;
