@@ -663,6 +663,7 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
       bNode &node = params.add_node("GeometryNodeBake");
       params.connect_available_socket(node, "Geometry");
     });
+    return;
   }
   if (!BakeItemsAccessor::supports_socket_type(type)) {
     return;
