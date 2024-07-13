@@ -22,6 +22,8 @@
 #include "DEG_depsgraph_query.hh"
 #include "DEG_depsgraph_writeback_sync.hh"
 
+#include "WM_cancellable_worker.hh"
+
 #include "intern/eval/deg_eval.h"
 #include "intern/eval/deg_eval_flush.h"
 
@@ -44,7 +46,10 @@ static void deg_flush_updates_and_refresh(deg::Depsgraph *deg_graph,
 
   deg::graph_tag_ids_for_visible_update(deg_graph);
   deg::deg_graph_flush_updates(deg_graph);
-  deg::deg_evaluate_on_refresh(deg_graph);
+
+  blender::cancellable_worker::run_cancellable_if_possible([&]() {
+    deg::deg_evaluate_on_refresh(deg_graph);
+  });
 
   if (sync_writeback == DEG_EVALUATE_SYNC_WRITEBACK_YES) {
     if (deg_graph->is_active) {

@@ -3186,22 +3186,17 @@ void set_global_context(bContext &C)
   g_context = &C;
 }
 
-void run_cancellable(const FunctionRef<void()> fn)
+void run_cancellable_if_possible(const FunctionRef<void()> fn)
 {
-  if (!g_context) {
+  const bool current_is_main = BLI_thread_is_main();
+  if (!g_context || !CTX_wm_manager(g_context) || !current_is_main) {
+    /* Cancelling is not supported in these cases. */
     fn();
     return;
   }
   bContext &C = *g_context;
-  if (!CTX_wm_manager(&C)) {
-    /* Cancelling is only supported when not in background mode. */
-    fn();
-    return;
-  }
 
   std::atomic<bool> done = false;
-
-  const bool current_is_main = BLI_thread_is_main();
 
   std::chrono::milliseconds wait_time{3000};
   std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
