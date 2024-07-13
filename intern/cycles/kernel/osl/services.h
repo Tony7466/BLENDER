@@ -325,6 +325,7 @@ class OSLRenderServices : public OSL::RendererServices {
   static ustring u_geom_name;
   static ustring u_geom_undisplaced;
   static ustring u_is_smooth;
+  static ustring u_is_light;
   static ustring u_is_curve;
   static ustring u_curve_thickness;
   static ustring u_curve_length;
