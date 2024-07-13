@@ -54,6 +54,7 @@
 #include "ED_screen.hh"
 #include "ED_undo.hh"
 
+#include "UI_abstract_view.hh"
 #include "UI_interface.hh"
 #include "UI_interface_c.hh"
 #include "UI_string_search.hh"
@@ -528,7 +529,6 @@ static void button_activate_init(bContext *C,
                                  uiBut *but,
                                  uiButtonActivateType type);
 static void button_activate_state(bContext *C, uiBut *but, uiHandleButtonState state);
-static bool button_modal_state(uiHandleButtonState state);
 static void button_activate_exit(
     bContext *C, uiBut *but, uiHandleButtonData *data, const bool mousemove, const bool onfree);
 static int ui_handler_region_menu(bContext *C, const wmEvent *event, void *userdata);
@@ -878,9 +878,15 @@ static void ui_apply_but_func(bContext *C, uiBut *but)
     after->popup_op = block->handle->popup_op;
   }
 
-  after->optype = but->optype;
-  after->opcontext = but->opcontext;
-  after->opptr = but->opptr;
+  if (!but->operator_never_call) {
+    after->optype = but->optype;
+    after->opcontext = but->opcontext;
+    after->opptr = but->opptr;
+
+    but->optype = nullptr;
+    but->opcontext = wmOperatorCallContext(0);
+    but->opptr = nullptr;
+  }
 
   after->rnapoin = but->rnapoin;
   after->rnaprop = but->rnaprop;
@@ -919,10 +925,6 @@ static void ui_apply_but_func(bContext *C, uiBut *but)
   }
 
   after->drawstr = ui_but_drawstr_without_sep_char(but);
-
-  but->optype = nullptr;
-  but->opcontext = wmOperatorCallContext(0);
-  but->opptr = nullptr;
 }
 
 /* typically call ui_apply_but_undo(), ui_apply_but_autokey() */
@@ -4917,16 +4919,8 @@ static int ui_do_but_TOG(bContext *C, uiBut *but, uiHandleButtonData *data, cons
 
 static void force_activate_view_item_but(bContext *C, ARegion *region, uiButViewItem *but)
 {
-  if (but->active && button_modal_state(but->active->state)) {
-    /* Shouldn't change the button state here while it's modal. Probably the event should be
-     * consumed in that state (return #WM_UI_HANDLER_BREAK), but maybe there are valid reasons not
-     * to (remove the assert in that case). */
-    BLI_assert_unreachable();
-    return;
-  }
-
   if (but->active) {
-    button_activate_state(C, but, BUTTON_STATE_EXIT);
+    ui_apply_but(C, but->block, but, but->active, true);
   }
   else {
     UI_but_execute(C, region, but);
@@ -4964,7 +4958,10 @@ static int ui_do_but_VIEW_ITEM(bContext *C,
             force_activate_view_item_but(C, data->region, view_item_but);
           }
 
-          return WM_UI_HANDLER_BREAK;
+          /* Always continue for drag and drop handling. Also for cases where keymap items are
+           * registered to add custom activate or drag operators (the pose library does this for
+           * example). */
+          return WM_UI_HANDLER_CONTINUE;
         case KM_DBL_CLICK:
           data->cancel = true;
           UI_view_item_begin_rename(*view_item_but->view_item);
@@ -8138,12 +8135,11 @@ static int ui_do_button(bContext *C, uiBlock *block, uiBut *but, const wmEvent *
        * right-clicking to spawn the context menu should also activate the item. This makes it
        * clear which item will be operated on. Apply the button immediately, so context menu
        * polls get the right active item. */
-      uiBut *clicked_view_item_but = but->type == UI_BTYPE_VIEW_ITEM ?
-                                         but :
-                                         ui_view_item_find_mouse_over(data->region, event->xy);
+      uiButViewItem *clicked_view_item_but = static_cast<uiButViewItem *>(
+          but->type == UI_BTYPE_VIEW_ITEM ? but :
+                                            ui_view_item_find_mouse_over(data->region, event->xy));
       if (clicked_view_item_but) {
-        UI_but_execute(C, data->region, clicked_view_item_but);
-        ui_apply_but_funcs_after(C);
+        clicked_view_item_but->view_item->activate(*C);
       }
 
       /* RMB has two options now */
