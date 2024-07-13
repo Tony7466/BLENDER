@@ -3264,6 +3264,11 @@ void run_cancellable_if_possible(const FunctionRef<void()> fn)
     fn();
     return;
   }
+  wmWindow *window = pick_window_for_dialog(*wm);
+  if (!window) {
+    fn();
+    return;
+  }
 
   const std::chrono::milliseconds wait_time{3000};
   const Clock::time_point start_time = Clock::now();
@@ -3271,37 +3276,61 @@ void run_cancellable_if_possible(const FunctionRef<void()> fn)
                                               std::chrono::duration_cast<Clock::duration>(
                                                   wait_time);
 
-  DoneInfo done;
-  std::thread worker_thread{[&]() {
-    fn();
-    {
-      std::lock_guard lock{done.mutex};
-      done.done = true;
+  struct WorkerThreadTask {
+    std::mutex mutex;
+    std::condition_variable cv;
+    const FunctionRef<void()> *fn = nullptr;
+    DoneInfo *done_info = nullptr;
+  };
+
+  static WorkerThreadTask task;
+
+  /* Only use a single worker thread instead of creating a new one for every invocation. */
+  static std::thread worker_thread{[]() {
+    while (true) {
+      /* Wait until there is a task. */
+      {
+        std::unique_lock lock{task.mutex};
+        task.cv.wait(lock, [&]() { return task.fn; });
+      }
+
+      /* Actually run task. */
+      (*task.fn)();
+
+      /* Clear the task. */
+      {
+        std::unique_lock lock{task.mutex};
+        task.fn = nullptr;
+      }
+
+      /* Notify the main thread that the task is done. */
+      {
+        std::unique_lock lock{task.done_info->mutex};
+        task.done_info->done = true;
+      }
+      task.done_info->cv.notify_one();
     }
-    done.cv.notify_one();
   }};
 
+  /* Schedule the task on the worker thread. */
+  DoneInfo done;
+  {
+    std::lock_guard lock{task.mutex};
+    BLI_assert(task.fn == nullptr);
+    task.fn = &fn;
+    task.done_info = &done;
+  }
+  task.cv.notify_one();
+
   /* Wait until done or wait time is up. */
-  bool was_done;
   {
     std::unique_lock lock{done.mutex};
-    was_done = done.cv.wait_until(lock, wait_expired_time, [&]() { return done.done; });
+    if (done.cv.wait_until(lock, wait_expired_time, [&]() { return done.done; })) {
+      return;
+    }
   }
-
-  if (was_done) {
-    worker_thread.join();
-    return;
-  }
-  wmWindow *window = pick_window_for_dialog(*wm);
-  if (!window) {
-    worker_thread.join();
-    return;
-  }
-
   /* This call may never return if recovery is attempted. */
   on_wait_time_expired(C, *window, done, start_time);
-
-  worker_thread.join();
   return;
 }
 
