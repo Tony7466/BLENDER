@@ -133,7 +133,6 @@ static void add_index(SculptBoundary &boundary,
  */
 static bool is_vert_in_editable_boundary(SculptSession &ss, const PBVHVertRef initial_vert)
 {
-
   if (!hide::vert_visible_get(ss, initial_vert)) {
     return false;
   }
@@ -869,7 +868,7 @@ void do_boundary_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes)
     else {
       float location[3];
       flip_v3_v3(location, SCULPT_active_vertex_co_get(ss), symm_area);
-      initial_vert = SCULPT_nearest_vertex_get(ob, location, ss.cache->radius_squared, false);
+      initial_vert = nearest_vert_calc(ob, location, ss.cache->radius_squared, false);
     }
 
     ss.cache->boundaries[symm_area] = data_init(
