@@ -8,7 +8,6 @@
 #include <string>
 
 struct bNode;
-struct bNode;
 struct Image;
 struct Material;
 struct ReportList;

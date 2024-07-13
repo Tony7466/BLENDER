@@ -1494,9 +1494,8 @@ void export_texture(bNode *node,
   }
 
   std::string dest_dir = get_export_textures_dir(stage);
-
   if (dest_dir.empty()) {
-    CLOG_ERROR(&LOG, "%s: Couldn't determine textures directory path", __func__);
+    CLOG_ERROR(&LOG, "Couldn't determine textures directory path");
     return;
   }
 

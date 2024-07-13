@@ -160,7 +160,7 @@ bool copy_asset(const char *src,
     return false;
   }
 
-  pxr::ArResolver &ar = pxr::ArGetResolver();
+  const pxr::ArResolver &ar = pxr::ArGetResolver();
 
   if (name_collision_mode != USD_TEX_NAME_COLLISION_OVERWRITE) {
     if (!ar.Resolve(dst).IsEmpty()) {
@@ -359,14 +359,14 @@ std::string get_export_textures_dir(const pxr::UsdStageRefPtr stage)
     return "";
   }
 
-  pxr::ArResolvedPath stage_path = layer->GetResolvedPath();
+  const pxr::ArResolvedPath &stage_path = layer->GetResolvedPath();
 
   if (stage_path.empty()) {
     WM_reportf(RPT_WARNING, "%s: Can't get resolved path for stage", __func__);
     return "";
   }
 
-  pxr::ArResolver &ar = pxr::ArGetResolver();
+  const pxr::ArResolver &ar = pxr::ArGetResolver();
 
   /* Resolove the './textures' relative path, with the stage path as an anchor. */
   std::string textures_dir = ar.CreateIdentifierForNewAsset("./textures", stage_path);
@@ -405,7 +405,7 @@ bool paths_equal(const char *p1, const char *p2)
 {
   BLI_assert_msg(!BLI_path_is_rel(p1) && !BLI_path_is_rel(p2), "Paths arguments must be absolute");
 
-  pxr::ArResolver &ar = pxr::ArGetResolver();
+  const pxr::ArResolver &ar = pxr::ArGetResolver();
 
   std::string resolved_p1 = ar.ResolveForNewAsset(p1).GetPathString();
   std::string resolved_p2 = ar.ResolveForNewAsset(p2).GetPathString();
@@ -435,7 +435,7 @@ bool write_to_path(const void *data, size_t size, const char *path, ReportList *
     return false;
   }
 
-  pxr::ArResolver &ar = pxr::ArGetResolver();
+  const pxr::ArResolver &ar = pxr::ArGetResolver();
   pxr::ArResolvedPath resolved_path = ar.ResolveForNewAsset(path);
 
   if (resolved_path.IsEmpty()) {
@@ -524,16 +524,13 @@ std::string get_usd_source_path(ID *id)
     return "";
   }
 
-  IDProperty *idgroup = IDP_EnsureProperties(id);
-
+  const IDProperty *idgroup = IDP_EnsureProperties(id);
   if (!idgroup) {
     return "";
   }
 
   const char *prop_name = "usd_source_path";
-
-  IDProperty *prop = IDP_GetPropertyFromGroup(idgroup, prop_name);
-
+  const IDProperty *prop = IDP_GetPropertyFromGroup(idgroup, prop_name);
   if (!prop) {
     return "";
   }
@@ -581,7 +578,7 @@ std::string get_relative_path(const std::string &path, const std::string &anchor
    * currently.
    * TODO(makowalski): provide better utilities for this. */
 
-  pxr::ArResolver &ar = pxr::ArGetResolver();
+  const pxr::ArResolver &ar = pxr::ArGetResolver();
 
   std::string resolved_path = ar.Resolve(path);
   std::string resolved_anchor = ar.Resolve(anchor);
@@ -640,7 +637,7 @@ void USD_path_abs(char *path, const char *basepath, bool for_import)
     pxr::ArResolvedPath resolved_path = for_import ? pxr::ArGetResolver().Resolve(path) :
                                                      pxr::ArGetResolver().ResolveForNewAsset(path);
 
-    std::string path_str = resolved_path.GetPathString();
+    const std::string &path_str = resolved_path.GetPathString();
 
     if (!path_str.empty()) {
       if (path_str.length() < FILE_MAX) {

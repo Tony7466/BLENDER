@@ -1210,7 +1210,7 @@ void USDMaterialReader::load_tex_image(const pxr::UsdShadeShader &usd_shader,
        * the absolute path. */
       if (pxr::SdfLayerHandle layer_handle = get_layer_handle(file_input.GetAttr())) {
 
-        /* SdfLayer::ComputeAbsolutePath() doesn' work for context-dependent pathsz
+        /* SdfLayer::ComputeAbsolutePath() doesn't work for context-dependent paths
          * where the file name has a UDIM token (e.g., '0/foo.<UDIM>.png').
          * We therefore compute the absolube path of the parent directory of the
          * UDIM file. */
@@ -1241,7 +1241,7 @@ void USDMaterialReader::load_tex_image(const pxr::UsdShadeShader &usd_shader,
 
   if (file_path.empty()) {
     CLOG_WARN(&LOG,
-              " Couldn't resolve image asset '%s' for Texture Image node",
+              "Couldn't resolve image asset '%s' for Texture Image node",
               asset_path.GetAssetPath().c_str());
     return;
   }
