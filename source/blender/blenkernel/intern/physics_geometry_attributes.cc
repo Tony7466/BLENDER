@@ -107,6 +107,15 @@ static void id_set_fn(btRigidBody &body, int value)
 {
   body.setUserIndex(value);
 }
+static int body_collision_shape_get_fn(
+    const btRigidBody & /*body*/)
+{
+  return -1;
+}
+static Span<int> body_collision_shape_get_cache_fn(const PhysicsGeometryImpl &impl)
+{
+  return impl.body_collision_shapes;
+}
 static bool static_get_fn(const btRigidBody &body)
 {
   return body.isStaticObject();
@@ -648,6 +657,25 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
       BuiltinAttributeProvider::NonDeletable,
       physics_access,
       nullptr);
+  static BuiltinRigidBodyAttributeProvider<int,
+                                           force_cache,
+                                           body_collision_shape_get_fn,
+                                           nullptr,
+                                           body_collision_shape_get_cache_fn>
+      body_collision_shape(
+          PhysicsGeometry::builtin_attributes.collision_shape,
+          AttrDomain::Point,
+          BuiltinAttributeProvider::NonDeletable,
+          physics_access,
+          [](void *owner) {
+            PhysicsGeometryImpl *impl = static_cast<PhysicsGeometryImpl *>(owner);
+            impl->tag_body_collision_shape_changed();
+          },
+          {},
+          [](const void *owner) {
+            const PhysicsGeometryImpl *impl = static_cast<const PhysicsGeometryImpl *>(owner);
+            impl->ensure_body_collision_shapes();
+          });
   static BuiltinRigidBodyAttributeProvider<bool, force_cache, static_get_fn, static_set_fn>
       body_static(PhysicsGeometry::builtin_attributes.is_static,
                   AttrDomain::Point,
@@ -960,6 +988,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                                                             constraint_custom_data_access);
 
   return ComponentAttributeProviders({&body_id,
+                                      &body_collision_shape,
                                       &body_static,
                                       &body_kinematic,
                                       &body_mass,

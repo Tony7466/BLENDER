@@ -54,7 +54,10 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
   mutable std::shared_mutex data_mutex;
 
   /* Cache to ensure mapping from body and constraint pointers to indices. */
+  mutable CacheMutex shape_index_cache;
   mutable CacheMutex body_index_cache;
+  mutable CacheMutex body_collision_shape_cache;
+  mutable Array<int> body_collision_shapes;
   mutable CacheMutex constraint_index_cache;
   /* Cache for disable_collisions flags of constraints. These are stored indirectly by Bullet: a
    * constraint disables collisions by adding "constraint refs" to bodies, when adding a constraint
@@ -82,18 +85,6 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
   Array<btTypedConstraint *> constraints;
   Array<btJointFeedback> constraint_feedback;
 
-  /* Physics data can be moved while other components still have write access. The physics data is
-   * cached for read access, so that data can be moved without requiring locks. */
-  struct AttributeCache {
-    Array<float3> body_positions;
-    Array<math::Quaternion> body_rotations;
-    Array<float3> body_velocities;
-    Array<float3> body_angular_velocities;
-    Array<int> constraint_bodies_1;
-    Array<int> constraint_bodies_2;
-  };
-  AttributeCache attribute_cache;
-
   PhysicsGeometryImpl();
   PhysicsGeometryImpl(int bodies_num, int constraints_num, int shapes_num);
   PhysicsGeometryImpl(const PhysicsGeometryImpl &other);
@@ -104,9 +95,11 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
   void delete_self() override;
 
   void tag_body_topology_changed();
+  void tag_body_collision_shape_changed();
   void tag_constraint_disable_collision_changed();
 
   void ensure_body_indices() const;
+  void ensure_body_collision_shapes() const;
   void ensure_constraint_indices() const;
   void ensure_constraint_disable_collision() const;
 
@@ -114,6 +107,7 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
   bool try_copy_to_customdata(const PhysicsGeometryImpl &from,
                               const IndexMask &body_mask,
                               const IndexMask &constraint_mask);
+  void remove_attributes_from_customdata();
   bool try_move(const PhysicsGeometryImpl &from,
                 bool use_world,
                 const IndexMask &body_mask,

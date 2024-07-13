@@ -408,15 +408,20 @@ void PhysicsGeometryImpl::delete_self()
   delete this;
 }
 
-void PhysicsGeometryImpl::tag_constraint_disable_collision_changed()
-{
-  this->constraint_disable_collision_cache.tag_dirty();
-}
-
 void PhysicsGeometryImpl::tag_body_topology_changed()
 {
   this->body_index_cache.tag_dirty();
   this->tag_constraint_disable_collision_changed();
+}
+
+void PhysicsGeometryImpl::tag_body_collision_shape_changed()
+{
+  this->body_collision_shape_cache.tag_dirty();
+}
+
+void PhysicsGeometryImpl::tag_constraint_disable_collision_changed()
+{
+  this->constraint_disable_collision_cache.tag_dirty();
 }
 
 void PhysicsGeometryImpl::ensure_body_indices() const
@@ -427,6 +432,38 @@ void PhysicsGeometryImpl::ensure_body_indices() const
        * exclusive write access, so it's fine. */
       btRigidBody &body = const_cast<btRigidBody &>(*this->rigid_bodies[i]);
       set_body_index(body, i);
+    }
+  });
+}
+
+void PhysicsGeometryImpl::ensure_body_collision_shapes() const
+{
+  this->body_collision_shape_cache.ensure([&]() {
+    if (this->is_empty) {
+      /* Use cached collision shape indices directly. */
+      return;
+    }
+
+    /* Map shape pointers to indices in the local shapes array. */
+    Map<const btCollisionShape *, int> shapes_map;
+    shapes_map.reserve(this->shapes.size());
+    for (const int index : this->shapes.index_range()) {
+      const bke::CollisionShapePtr &shape_ptr = this->shapes[index];
+      if (!shape_ptr) {
+        continue;
+      }
+      const btCollisionShape *bt_shape = &shape_ptr->impl().as_bullet_shape();
+      /* Note: duplicates are possible here, nothing preventing a shape pointer to be in the shapes
+       * list twice, this is fine. */
+      shapes_map.add(bt_shape, index);
+    }
+
+    this->body_collision_shapes.reinitialize(this->rigid_bodies.size());
+    for (const int i : this->rigid_bodies.index_range()) {
+      const btRigidBody *bt_body = this->rigid_bodies[i];
+      const btCollisionShape *bt_shape = bt_body->getCollisionShape();
+      /* Every body's shape must be in the shapes list, can use asserting lookup here. */
+      this->body_collision_shapes[i] = shapes_map.lookup(bt_shape);
     }
   });
 }
@@ -470,9 +507,18 @@ void PhysicsGeometryImpl::realize()
 {
   using ConstraintType = PhysicsGeometry::ConstraintType;
 
-  BLI_assert(!this->is_empty);
+  if (!this->is_empty) {
+    return;
+  }
+  std::unique_lock lock(this->data_mutex);
+  if (!this->is_empty) {
+    return;
+  }
+  this->is_empty.store(false);
 
-  MutableAttributeAccessor to_attributes = this->attributes_for_write();
+  /* Force reading from cache, write to Bullet data. */
+  const AttributeAccessor from_attributes = this->attributes(true);
+  MutableAttributeAccessor to_attributes = this->attributes_for_write(false);
 
   const IndexRange body_range = this->rigid_bodies.index_range();
   const IndexRange constraint_range = this->constraints.index_range();
@@ -480,7 +526,6 @@ void PhysicsGeometryImpl::realize()
   create_bodies(this->rigid_bodies, this->motion_states, body_range);
   this->tag_body_topology_changed();
 
-  const AttributeAccessor from_attributes = this->attributes();
   const VArray<int> constraint_types = *from_attributes.lookup_or_default(
       PhysicsGeometry::builtin_attributes.constraint_type,
       AttrDomain::Edge,
@@ -505,6 +550,9 @@ void PhysicsGeometryImpl::realize()
       from_attributes, AttrDomain::Point, {}, skip_attributes, body_range, to_attributes);
   gather_attributes(
       from_attributes, AttrDomain::Edge, {}, skip_attributes, constraint_range, to_attributes);
+
+  /* Free attribute cache, redundant now. */
+  this->remove_attributes_from_customdata();
 
   /* Add all bodies and constraints to the world. */
   if (this->world == nullptr) {
@@ -539,9 +587,14 @@ bool PhysicsGeometryImpl::try_copy_to_customdata(const PhysicsGeometryImpl &from
             custom_data = &constraint_data_;
             totelem = constraint_num_;
             break;
+          case AttrDomain::Instance:
+            break;
           default:
             BLI_assert_unreachable();
             break;
+        }
+        if (custom_data == nullptr) {
+          return true;
         }
         const eCustomDataType data_type = meta_data.data_type;
         void *data = CustomData_add_layer_named(
@@ -554,6 +607,37 @@ bool PhysicsGeometryImpl::try_copy_to_customdata(const PhysicsGeometryImpl &from
       });
 
   return true;
+}
+
+void PhysicsGeometryImpl::remove_attributes_from_customdata()
+{
+  /* Force use of cache for writing. */
+  MutableAttributeAccessor attributes = this->attributes_for_write(true);
+  attributes.for_all(
+      [&](const AttributeIDRef &attribute_id, const AttributeMetaData &meta_data) -> bool {
+        CustomData *custom_data = nullptr;
+        int totelem = 0;
+        switch (meta_data.domain) {
+          case AttrDomain::Point:
+            custom_data = &body_data_;
+            totelem = body_num_;
+            break;
+          case AttrDomain::Edge:
+            custom_data = &constraint_data_;
+            totelem = constraint_num_;
+            break;
+          case AttrDomain::Instance:
+            break;
+          default:
+            BLI_assert_unreachable();
+            break;
+        }
+        if (custom_data == nullptr) {
+          return true;
+        }
+        CustomData_free_layer_named(custom_data, attribute_id.name(), totelem);
+        return true;
+      });
 }
 
 bool PhysicsGeometryImpl::try_move(const PhysicsGeometryImpl &from,
@@ -1120,6 +1204,12 @@ void PhysicsGeometry::set_body_shapes(const IndexMask &selection,
                                       const bool update_local_inertia)
 {
   PhysicsGeometryImpl &impl = impl_for_write();
+
+  if (impl.is_empty) {
+    impl.body_collision_shapes = shape_handles;
+    return;
+  }
+
   BLI_assert(selection.bounds().intersect(impl.rigid_bodies.index_range()) == selection.bounds());
   selection.foreach_index([&](const int index) {
     const int handle = shape_handles[index];

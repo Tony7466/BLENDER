@@ -362,7 +362,11 @@ class BuiltinPhysicsAttributeBase : public bke::BuiltinAttributeProvider {
 
     void *data = CustomData_get_layer_named_for_write(custom_data, data_type_, name_, element_num);
     if (data == nullptr) {
-      return {};
+      data = CustomData_add_layer_named(
+          custom_data, data_type_, CD_SET_DEFAULT, element_num, name_);
+      if (data == nullptr) {
+        return {};
+      }
     }
     return {
         GVMutableArray::ForSpan({type, data, element_num}), domain_, std::move(tag_modified_fn)};
@@ -372,22 +376,31 @@ class BuiltinPhysicsAttributeBase : public bke::BuiltinAttributeProvider {
 /**
  * Provider for builtin rigid body attributes.
  */
-template<typename T, bool force_cache, RigidBodyGetFn<T> GetFn, RigidBodySetFn<T> SetFn = nullptr>
+template<typename T,
+         bool force_cache,
+         RigidBodyGetFn<T> GetFn,
+         RigidBodySetFn<T> SetFn = nullptr,
+         PhysicsGetCacheFn<T> GetCacheFn = nullptr>
 class BuiltinRigidBodyAttributeProvider final : public BuiltinPhysicsAttributeBase {
  public:
+  using EnsureOnAccess = void (*)(const void *owner);
+  const EnsureOnAccess ensure_on_access_;
+
   BuiltinRigidBodyAttributeProvider(std::string attribute_name,
                                     const AttrDomain domain,
                                     const DeletableEnum deletable,
                                     const PhysicsAccessInfo physics_access,
                                     const UpdateOnChange update_on_change,
-                                    const AttributeValidator validator = {})
+                                    const AttributeValidator validator = {},
+                                    const EnsureOnAccess ensure_on_access = nullptr)
       : BuiltinPhysicsAttributeBase(std::move(attribute_name),
                                     domain,
                                     cpp_type_to_custom_data_type(CPPType::get<T>()),
                                     deletable,
                                     physics_access,
                                     update_on_change,
-                                    validator)
+                                    validator),
+        ensure_on_access_(ensure_on_access)
   {
   }
 
@@ -398,8 +411,16 @@ class BuiltinRigidBodyAttributeProvider final : public BuiltinPhysicsAttributeBa
       return {};
     }
 
+    if (ensure_on_access_) {
+      ensure_on_access_(owner);
+    }
+
     if (force_cache || impl->is_empty) {
       return try_get_cache_for_read(&impl->body_data_, impl->body_num_);
+    }
+    if constexpr (GetCacheFn) {
+      Span<T> cache = GetCacheFn(*impl);
+      return {VArray<T>::ForSpan(cache), domain_, nullptr};
     }
 
     GVArray varray = VArray<T>::template For<VArrayImpl_For_PhysicsBodies<T, GetFn>>(*impl);
@@ -414,6 +435,10 @@ class BuiltinRigidBodyAttributeProvider final : public BuiltinPhysicsAttributeBa
     PhysicsGeometryImpl *impl = physics_access_.get_physics(owner);
     if (impl == nullptr) {
       return {};
+    }
+
+    if (ensure_on_access_) {
+      ensure_on_access_(owner);
     }
 
     if (force_cache || impl->is_empty) {
