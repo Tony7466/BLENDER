@@ -193,7 +193,7 @@ static void calc_translations_faces(const Span<float3> vert_positions,
                                     const GroupedSpan<int> vert_to_face_map,
                                     const PBVHNode &node,
                                     LocalData &tls,
-                                    const MutableSpan<float3> directions)
+                                    const MutableSpan<float3> translations)
 {
   const Span<int> verts = bke::pbvh::node_unique_verts(node);
 
@@ -208,13 +208,13 @@ static void calc_translations_faces(const Span<float3> vert_positions,
   tls.translations.reinitialize(verts.size());
   const MutableSpan<float3> translations = tls.translations;
   translations_from_new_positions(new_positions, verts, vert_positions, translations);
-  array_utils::scatter(translations.as_span(), verts, directions);
+  array_utils::scatter(translations.as_span(), verts, translations);
 }
 
 static void calc_translations_grids(const SubdivCCG &subdiv_ccg,
                                     const PBVHNode &node,
                                     LocalData &tls,
-                                    const MutableSpan<float3> directions)
+                                    const MutableSpan<float3> translations)
 {
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
@@ -232,12 +232,12 @@ static void calc_translations_grids(const SubdivCCG &subdiv_ccg,
   tls.translations.reinitialize(grid_verts_num);
   const MutableSpan<float3> translations = tls.translations;
   translations_from_new_positions(new_positions, positions, translations);
-  scatter_grids_data_to_array(subdiv_ccg, translations, grids, directions);
+  scatter_grids_data_to_array(subdiv_ccg, translations, grids, translations);
 }
 
 static void calc_translations_bmesh(PBVHNode &node,
                                     LocalData &tls,
-                                    const MutableSpan<float3> directions)
+                                    const MutableSpan<float3> translations)
 {
   const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(&node);
 
@@ -252,7 +252,59 @@ static void calc_translations_bmesh(PBVHNode &node,
   tls.translations.reinitialize(verts.size());
   const MutableSpan<float3> translations = tls.translations;
   translations_from_new_positions(new_positions, positions, translations);
-  scatter_bmesh_vert_data_to_array(translations.as_span(), verts, directions);
+  scatter_bmesh_vert_data_to_array(translations.as_span(), verts, translations);
+}
+
+static void precalc_translations(Object &object, const MutableSpan<float3> translations)
+{
+  SculptSession &ss = *object.sculpt;
+  PBVH &pbvh = *ss.pbvh;
+
+  Vector<PBVHNode *> all_nodes = bke::pbvh::search_gather(
+      pbvh, [&](PBVHNode &node) { return !node_fully_masked_or_hidden(node); });
+
+  threading::EnumerableThreadSpecific<LocalData> all_tls;
+  switch (BKE_pbvh_type(pbvh)) {
+    case PBVH_FACES: {
+      Mesh &mesh = *static_cast<Mesh *>(object.data);
+      const Span<float3> positions_eval = BKE_pbvh_get_vert_positions(pbvh);
+      const OffsetIndices faces = mesh.faces();
+      const Span<int> corner_verts = mesh.corner_verts();
+      threading::parallel_for(all_nodes.index_range(), 1, [&](const IndexRange range) {
+        LocalData &tls = all_tls.local();
+        for (const int i : range) {
+          calc_translations_faces(positions_eval,
+                                  faces,
+                                  corner_verts,
+                                  ss.vert_to_face_map,
+                                  *all_nodes[i],
+                                  tls,
+                                  translations);
+        }
+      });
+      break;
+    }
+    case PBVH_GRIDS: {
+      SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      threading::parallel_for(all_nodes.index_range(), 1, [&](const IndexRange range) {
+        LocalData &tls = all_tls.local();
+        for (const int i : range) {
+          calc_translations_grids(subdiv_ccg, *all_nodes[i], tls, translations);
+        }
+      });
+      break;
+    }
+    case PBVH_BMESH:
+      BM_mesh_elem_index_ensure(ss.bm, BM_VERT);
+      BM_mesh_elem_table_ensure(ss.bm, BM_VERT);
+      threading::parallel_for(all_nodes.index_range(), 1, [&](const IndexRange range) {
+        LocalData &tls = all_tls.local();
+        for (const int i : range) {
+          calc_translations_bmesh(*all_nodes[i], tls, translations);
+        }
+      });
+      break;
+  }
 }
 
 }  // namespace enhance_details_cc
@@ -263,60 +315,15 @@ void do_enhance_details_brush(const Sculpt &sd, Object &object, Span<PBVHNode *>
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
   PBVH &pbvh = *ss.pbvh;
 
-  threading::EnumerableThreadSpecific<LocalData> all_tls;
   if (SCULPT_stroke_is_first_brush_step(*ss.cache)) {
-    Vector<PBVHNode *> all_nodes = bke::pbvh::search_gather(
-        pbvh, [&](PBVHNode &node) { return !node_fully_masked_or_hidden(node); });
-    const int totvert = SCULPT_vertex_count_get(ss);
-    ss.cache->detail_directions.reinitialize(totvert);
-    MutableSpan<float3> detail_directions = ss.cache->detail_directions;
-
-    switch (BKE_pbvh_type(pbvh)) {
-      case PBVH_FACES: {
-        Mesh &mesh = *static_cast<Mesh *>(object.data);
-        const Span<float3> positions_eval = BKE_pbvh_get_vert_positions(pbvh);
-        const OffsetIndices faces = mesh.faces();
-        const Span<int> corner_verts = mesh.corner_verts();
-        threading::parallel_for(all_nodes.index_range(), 1, [&](const IndexRange range) {
-          LocalData &tls = all_tls.local();
-          for (const int i : range) {
-            calc_translations_faces(positions_eval,
-                                    faces,
-                                    corner_verts,
-                                    ss.vert_to_face_map,
-                                    *all_nodes[i],
-                                    tls,
-                                    detail_directions);
-          }
-        });
-        break;
-      }
-      case PBVH_GRIDS: {
-        SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
-        threading::parallel_for(all_nodes.index_range(), 1, [&](const IndexRange range) {
-          LocalData &tls = all_tls.local();
-          for (const int i : range) {
-            calc_translations_grids(subdiv_ccg, *all_nodes[i], tls, detail_directions);
-          }
-        });
-        break;
-      }
-      case PBVH_BMESH:
-        BM_mesh_elem_index_ensure(ss.bm, BM_VERT);
-        BM_mesh_elem_table_ensure(ss.bm, BM_VERT);
-        threading::parallel_for(all_nodes.index_range(), 1, [&](const IndexRange range) {
-          LocalData &tls = all_tls.local();
-          for (const int i : range) {
-            calc_translations_bmesh(*all_nodes[i], tls, detail_directions);
-          }
-        });
-        break;
-    }
+    ss.cache->detail_directions.reinitialize(SCULPT_vertex_count_get(ss));
+    precalc_translations(object, ss.cache->detail_directions);
   }
 
   const float strength = std::clamp(ss.cache->bstrength, -1.0f, 1.0f);
-  MutableSpan<float3> detail_directions = ss.cache->detail_directions;
+  MutableSpan<float3> translations = ss.cache->detail_directions;
 
+  threading::EnumerableThreadSpecific<LocalData> all_tls;
   switch (BKE_pbvh_type(pbvh)) {
     case PBVH_FACES: {
       Mesh &mesh = *static_cast<Mesh *>(object.data);
@@ -330,7 +337,7 @@ void do_enhance_details_brush(const Sculpt &sd, Object &object, Span<PBVHNode *>
                      brush,
                      positions_eval,
                      vert_normals,
-                     detail_directions,
+                     translations,
                      strength,
                      *nodes[i],
                      object,
@@ -345,7 +352,7 @@ void do_enhance_details_brush(const Sculpt &sd, Object &object, Span<PBVHNode *>
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
         LocalData &tls = all_tls.local();
         for (const int i : range) {
-          calc_grids(sd, object, brush, detail_directions, strength, *nodes[i], tls);
+          calc_grids(sd, object, brush, translations, strength, *nodes[i], tls);
         }
       });
       break;
@@ -353,7 +360,7 @@ void do_enhance_details_brush(const Sculpt &sd, Object &object, Span<PBVHNode *>
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
         LocalData &tls = all_tls.local();
         for (const int i : range) {
-          calc_bmesh(sd, object, brush, detail_directions, strength, *nodes[i], tls);
+          calc_bmesh(sd, object, brush, translations, strength, *nodes[i], tls);
         }
       });
       break;
