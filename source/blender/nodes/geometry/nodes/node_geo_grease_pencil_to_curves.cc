@@ -16,8 +16,14 @@ static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Grease Pencil")
       .supported_type(bke::GeometryComponent::Type::GreasePencil);
-  b.add_input<decl::Bool>("Selection").default_value(true).hide_value().field_on_all();
-  b.add_input<decl::Bool>("Layers as Instances").default_value(true);
+  b.add_input<decl::Bool>("Selection")
+      .default_value(true)
+      .hide_value()
+      .field_on_all()
+      .description("Select the layers to convert");
+  b.add_input<decl::Bool>("Layers as Instances")
+      .default_value(true)
+      .description("Create a separate curve instance for every layer");
   b.add_output<decl::Geometry>("Curves").propagate_all();
 }
 
