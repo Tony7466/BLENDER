@@ -76,16 +76,12 @@ void realize_on_domain(Context &context,
   GPUShader *shader = context.get_shader(get_realization_shader(input, realization_options));
   GPU_shader_bind(shader);
 
-  /* Transform the input space into the domain space. */
-  const float3x3 local_transformation = math::invert(domain.transformation) * input_transformation;
-
-  /* Set the origin of the transformation to be the center of the domain. */
-  const float3x3 transformation = math::from_origin_transform<float3x3>(
-      local_transformation, float2(domain.size) / 2.0f);
-
-  /* Invert the transformation because the shader transforms the domain coordinates instead of the
-   * input image itself and thus expect the inverse. */
-  const float3x3 inverse_transformation = math::invert(transformation);
+  /* The transform is from input to output in virtual compositing space. Figure out
+   * transform from output space to input space, where both have 0,0 in the
+   * lower-left corner. */
+  const float3x3 inverse_transformation =
+    math::invert(math::translate(input_transformation, -float2(input_domain.size) / 2.0f)) *
+    math::translate(domain.transformation, -float2(domain.size) / 2.0f);
 
   GPU_shader_uniform_mat3_as_mat4(shader, "inverse_transformation", inverse_transformation.ptr());
 
