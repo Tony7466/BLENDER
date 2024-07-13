@@ -3030,6 +3030,8 @@ void WM_ghost_show_message_box(const char *title,
 
 namespace blender::cancellable_worker {
 
+using Clock = std::chrono::steady_clock;
+
 struct DoneInfo {
   std::mutex mutex;
   std::condition_variable cv;
@@ -3065,13 +3067,18 @@ static void draw_window_background(wmWindow &window)
   }
 }
 
-static void draw_dialog(const int2 window_size)
+static void draw_dialog(const int2 window_size, const Clock::time_point task_start_time)
 {
+  const Clock::time_point current_time = Clock::now();
+  const int seconds_since_start =
+      std::chrono::duration_cast<std::chrono::seconds>(current_time - task_start_time).count();
+
   uiFontStyle fstyle = *UI_FSTYLE_WIDGET_LABEL;
 
-  const StringRefNull message = IFACE_(
-      "Looks like it takes a while to finish this computation. You can just keep waiting or try "
-      "to recover the session by pressing enter.");
+  const std::string message = fmt::format(
+      IFACE_("Looks like it takes a while to finish this computation ({}s). You can just keep "
+             "waiting or try to recover the session by pressing enter."),
+      seconds_since_start);
 
   UI_fontstyle_set(&fstyle);
   float message_width, message_height;
@@ -3095,7 +3102,10 @@ static void draw_dialog(const int2 window_size)
                            font_color);
 }
 
-static void on_wait_time_expired(bContext &C, wmWindow &window, DoneInfo &done)
+static void on_wait_time_expired(bContext &C,
+                                 wmWindow &window,
+                                 DoneInfo &done,
+                                 const Clock::time_point task_start_time)
 {
   /* Dispatch all events received so far, so that they can be ignored by the dialog. */
   if (GHOST_ProcessEvents(g_system, false)) {
@@ -3163,7 +3173,7 @@ static void on_wait_time_expired(bContext &C, wmWindow &window, DoneInfo &done)
       GPU_context_begin_frame(gpu_context);
       GPU_bgl_end();
       draw_window_background(window);
-      draw_dialog({window.sizex, window.sizey});
+      draw_dialog({window.sizex, window.sizey}, task_start_time);
       GPU_context_end_frame(gpu_context);
     }
     wm_window_swap_buffers(&window);
@@ -3211,7 +3221,6 @@ void run_cancellable_if_possible(const FunctionRef<void()> fn)
 
   DoneInfo done;
 
-  using Clock = std::chrono::steady_clock;
   const std::chrono::milliseconds wait_time{3000};
   const Clock::time_point start_time = Clock::now();
   const Clock::time_point wait_expired_time = start_time +
@@ -3243,7 +3252,7 @@ void run_cancellable_if_possible(const FunctionRef<void()> fn)
   wmWindow &window = *static_cast<wmWindow *>(wm->windows.first);
 
   /* This call may never return if recovery is attempted. */
-  on_wait_time_expired(C, window, done);
+  on_wait_time_expired(C, window, done, start_time);
 
   worker_thread.join();
   return;
