@@ -32,8 +32,6 @@ BLACKLIST_OSL = [
     # This was a performance optimization that wasn't carried over to OSL.
     'T49936.blend',
     'T49936_indirect.blend',
-    # Bad UVs on curves in this scene. This is a bug.
-    'T50634_1.blend',
     # AOVs are not supported. See 73266
     'aov_position.blend',
     'render_passes_aov.*.blend',
