@@ -82,8 +82,14 @@ void realize_on_domain(Context &context,
   const float3x3 local_transformation = math::invert(domain.transformation) * input_transformation;
 
   /* Set the origin of the transformation to be the center of the domain. */
-  const float3x3 transformation = math::from_origin_transform<float3x3>(
+  float3x3 transformation = math::from_origin_transform<float3x3>(
       local_transformation, float2(domain.size) / 2.0f);
+
+  /* This produced a transform from the input domain with 0,0 at the lower-left corner,
+   * to a space where 0,0 is 1/2 the size of the input domain down and left of the
+   * origin of the output domain. Correct this so 0,0 is in the lower-left corner
+   * of the output domain. */
+  transformation = math::translate(transformation, float2(domain.size - input_domain.size) / 2.0f);
 
   /* Invert the transformation because the shader transforms the domain coordinates instead of the
    * input image itself and thus expect the inverse. */
