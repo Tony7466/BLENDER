@@ -3032,7 +3032,8 @@ namespace blender::cancellable_worker {
 static void on_wait_time_expired(bContext *C, wmWindow &window)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
-  const wmEvent *last_handled_event = nullptr;
+  /* Ignore all events received until the dialog opened. */
+  const wmEvent *last_handled_event = static_cast<const wmEvent *>(window.event_queue.last);
 
   uiFontStyle question_fstyle = *UI_FSTYLE_WIDGET_LABEL;
   question_fstyle.points *= 3;
@@ -3047,7 +3048,7 @@ static void on_wait_time_expired(bContext *C, wmWindow &window)
 
   while (true) {
     auto handle_event = [&](const wmEvent &event) {
-      if (event.type == EVT_ESCKEY && event.val == KM_PRESS) {
+      if (event.type == EVT_RETKEY && event.val == KM_PRESS) {
         action = Action::Recover;
       }
     };
@@ -3225,6 +3226,11 @@ void run_cancellable(bContext *C, FunctionRef<void()> fn)
     if (time_since_start > wait_time) {
       wmWindowManager *wm = CTX_wm_manager(C);
       on_wait_time_expired(C, *static_cast<wmWindow *>(wm->windows.first));
+    }
+
+    /* Keep processing events. */
+    if (GHOST_ProcessEvents(g_system, true)) {
+      GHOST_DispatchEvents(g_system);
     }
   }
   worker_thread.join();
