@@ -87,9 +87,9 @@ ccl_device_constant DeviceString u_geom_undisplaced = 12431586303019276305ull;
 /* "geom:is_smooth" */
 ccl_device_constant DeviceString u_is_smooth = 857544214094480123ull;
 /* "geom:is_light" */
-ccl_device_constant DeviceString u_is_light = 857544214094480123ull;
+ccl_device_constant DeviceString u_is_light = 14221453274114607468ull;
 /* "geom:is_curve" */
-ccl_device_constant DeviceString u_is_curve = 14221453274114607468ull;
+ccl_device_constant DeviceString u_is_curve = 129742495633653138ull;
 /* "geom:curve_thickness" */
 ccl_device_constant DeviceString u_curve_thickness = 10605802038397633852ull;
 /* "geom:curve_length" */
