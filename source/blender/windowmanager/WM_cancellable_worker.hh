@@ -15,4 +15,6 @@ namespace blender::cancellable_worker {
 
 void run_cancellable(bContext *C, FunctionRef<void()> fn);
 
+bool thread_is_cancellable_worker_of_main();
+
 }  // namespace blender::cancellable_worker

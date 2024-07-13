@@ -3180,11 +3180,21 @@ static void on_cancel_request(bContext *C, wmWindow &window, const wmEvent &trig
   }
 }
 
+thread_local bool worker_parent_is_main = false;
+
+bool thread_is_cancellable_worker_of_main()
+{
+  return worker_parent_is_main;
+}
+
 void run_cancellable(bContext *C, FunctionRef<void()> fn)
 {
   std::atomic<bool> done = false;
 
+  const bool current_is_main = BLI_thread_is_main();
+
   std::thread worker_thread{[&]() {
+    worker_parent_is_main = current_is_main;
     fn();
     done = true;
   }};
