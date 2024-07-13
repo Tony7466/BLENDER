@@ -221,9 +221,9 @@ TEST(obj_exporter_writer, format_handler_buffer_chunking)
   h.write_obj_object("abcdef");
   h.write_obj_object("012345678901234567890123456789abcd");
   h.write_obj_object("123");
-  h.write_obj_curve_begin();
+  h.write_obj_curve_begin(OB_CURVES_LEGACY);
   h.write_obj_newline();
-  h.write_obj_nurbs_parm_begin();
+  h.write_obj_nurbs_parm_begin(0);
   h.write_obj_newline();
 
   size_t got_blocks = h.get_block_count();
