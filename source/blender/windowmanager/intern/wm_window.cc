@@ -90,6 +90,7 @@
 #include "GPU_platform.hh"
 #include "GPU_state.hh"
 #include "GPU_texture.hh"
+#include "GPU_viewport.hh"
 
 #include "BLO_writefile.hh"
 
@@ -3028,6 +3029,157 @@ void WM_ghost_show_message_box(const char *title,
 
 namespace blender::cancellable_worker {
 
+static void on_cancel_request(bContext *C, wmWindow &window, const wmEvent &trigger_event)
+{
+  wmWindowManager *wm = CTX_wm_manager(C);
+  const wmEvent *last_handled_event = &trigger_event;
+
+  uiFontStyle question_fstyle = *UI_FSTYLE_WIDGET_LABEL;
+  question_fstyle.points *= 3;
+
+  uiFontStyle explanation_fstyle = *UI_FSTYLE_WIDGET_LABEL;
+
+  enum class Action {
+    ContinueWaiting,
+    Recover,
+  };
+  std::optional<Action> action;
+
+  while (true) {
+    auto handle_event = [&](const wmEvent &event) {
+      if (event.type == EVT_RETKEY && event.val == KM_PRESS) {
+        action = Action::Recover;
+      }
+    };
+
+    if (GHOST_ProcessEvents(g_system, true)) {
+      GHOST_DispatchEvents(g_system);
+      for (const wmEvent *event = last_handled_event->next; event; event = event->next) {
+        handle_event(*event);
+        if (action.has_value()) {
+          break;
+        }
+      }
+      last_handled_event = static_cast<wmEvent *>(window.event_queue.last);
+    }
+    if (action.has_value()) {
+      break;
+    }
+
+    GPU_context_main_lock();
+    BLI_SCOPED_DEFER([&]() { GPU_context_main_unlock(); });
+
+    GPU_render_begin();
+    GHOST_TWindowState state = GHOST_GetWindowState(
+        static_cast<GHOST_WindowHandle>(window.ghostwin));
+    if (state == GHOST_kWindowStateMinimized) {
+      continue;
+    }
+    const int window_width = window.sizex;
+    const int window_height = window.sizey;
+
+    const StringRefNull cancel_question_msg = IFACE_("Cancel operation?");
+    const StringRefNull explanation_msg = IFACE_(
+        "This will save the previous state and starts a new Blender session.");
+
+    UI_fontstyle_set(&question_fstyle);
+    float cancel_question_width, cancel_question_height;
+    BLF_width_and_height(question_fstyle.uifont_id,
+                         cancel_question_msg.c_str(),
+                         cancel_question_msg.size(),
+                         &cancel_question_width,
+                         &cancel_question_height);
+
+    UI_fontstyle_set(&explanation_fstyle);
+    float explanation_width, explanation_height;
+    BLF_width_and_height(explanation_fstyle.uifont_id,
+                         explanation_msg.c_str(),
+                         explanation_msg.size(),
+                         &explanation_width,
+                         &explanation_height);
+
+    wm_window_make_drawable(wm, &window);
+    wmWindowViewport(&window);
+    {
+      GPUContext *gpu_context = static_cast<GPUContext *>(window.gpuctx);
+      GPU_context_begin_frame(gpu_context);
+      GPU_bgl_end();
+      // GPU_clear_color(0.2, 0.2, 0.2, 1.0);
+
+      {
+        /* Redraw background. This is also necessary because an older background may show when
+         * swapping buffers. */
+        bScreen *screen = WM_window_get_active_screen(&window);
+        ED_screen_areas_iter (&window, screen, area) {
+          LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
+            if (!region->visible) {
+              continue;
+            }
+            if (region->overlap) {
+              continue;
+            }
+            if (!region->draw_buffer) {
+              continue;
+            }
+            if (region->draw_buffer->viewport) {
+              GPU_viewport_draw_to_screen(region->draw_buffer->viewport, 0, &region->winrct);
+            }
+            else {
+              GPU_offscreen_draw_to_screen(
+                  region->draw_buffer->offscreen, region->winrct.xmin, region->winrct.ymin);
+            }
+          }
+        }
+      }
+
+      const int dialog_width = window_width / 2;
+      const int dialog_height = window_height / 2;
+      rctf dialog_rect{};
+      dialog_rect.xmin = (window_width - dialog_width) / 2;
+      dialog_rect.xmax = dialog_rect.xmin + dialog_width;
+      dialog_rect.ymin = (window_height - dialog_height) / 2;
+      dialog_rect.ymax = dialog_rect.ymin + dialog_height;
+      UI_draw_roundbox_aa(&dialog_rect, true, 5, float4(0.2, 0.2, 0.2, 1.0));
+
+      uchar font_color[4] = {255, 255, 255, 255};
+      UI_fontstyle_draw_simple(&question_fstyle,
+                               (window_width - cancel_question_width) / 2,
+                               (window_height - cancel_question_height) / 2,
+                               cancel_question_msg.c_str(),
+                               font_color);
+      UI_fontstyle_draw_simple(&explanation_fstyle,
+                               (window_width - explanation_width) / 2,
+                               (window_height - cancel_question_height - explanation_height) / 2,
+                               explanation_msg.c_str(),
+                               font_color);
+      GPU_context_end_frame(gpu_context);
+    }
+    wm_window_swap_buffers(&window);
+
+    GPU_render_end();
+
+    std::this_thread::sleep_for(std::chrono::milliseconds{5});
+  }
+
+  BKE_undosys_step_undo(wm->undo_stack, C);
+
+  Main *bmain = CTX_data_main(C);
+  const char *tempdir_base = BKE_tempdir_base();
+  char filepath[FILE_MAX];
+  BLI_path_join(filepath, FILE_MAX, tempdir_base, "cancel_recover.blend");
+
+  BlendFileWriteParams blend_write_params{};
+  const bool success = BLO_write_file(
+      bmain, filepath, G_FILE_RECOVER_WRITE, &blend_write_params, nullptr);
+  if (success) {
+    const char *imports[] = {"subprocess", "bpy", nullptr};
+    const std::string expr = fmt::format(
+        "subprocess.Popen([bpy.app.binary_path, \"{}\"], start_new_session=True)", filepath);
+    BPY_run_string_exec(nullptr, imports, expr.c_str());
+    std::terminate();
+  }
+}
+
 void run_cancellable(bContext *C, FunctionRef<void()> fn)
 {
   std::atomic<bool> done = false;
@@ -3051,33 +3203,16 @@ void run_cancellable(bContext *C, FunctionRef<void()> fn)
       continue;
     }
 
-    const bool has_event = GHOST_ProcessEvents(g_system, false);
-    if (has_event) {
+    if (GHOST_ProcessEvents(g_system, false)) {
       GHOST_DispatchEvents(g_system);
     }
 
-    auto check_event = [&](const wmEvent &event) {
+    auto check_event = [&](wmWindow &window, const wmEvent &event) {
       if (event.type == EVT_ESCKEY && event.val == KM_PRESS) {
         cancel_trigger_count++;
       }
-      if (cancel_trigger_count == 3) {
-        BKE_undosys_step_undo(wm->undo_stack, C);
-
-        Main *bmain = CTX_data_main(C);
-        const char *tempdir_base = BKE_tempdir_base();
-        char filepath[FILE_MAX];
-        BLI_path_join(filepath, FILE_MAX, tempdir_base, "cancel_recover.blend");
-
-        BlendFileWriteParams blend_write_params{};
-        const bool success = BLO_write_file(
-            bmain, filepath, G_FILE_RECOVER_WRITE, &blend_write_params, nullptr);
-        if (success) {
-          const char *imports[] = {"subprocess", "bpy", nullptr};
-          const std::string expr = fmt::format(
-              "subprocess.Popen([bpy.app.binary_path, \"{}\"], start_new_session=True)", filepath);
-          BPY_run_string_exec(nullptr, imports, expr.c_str());
-          std::terminate();
-        }
+      if (cancel_trigger_count >= 3) {
+        on_cancel_request(C, window, event);
       }
     };
 
@@ -3085,12 +3220,12 @@ void run_cancellable(bContext *C, FunctionRef<void()> fn)
       wmEvent *last_checked = last_checked_events.lookup_default(window, nullptr);
       if (last_checked) {
         for (wmEvent *event = last_checked->next; event; event = event->next) {
-          check_event(*event);
+          check_event(*window, *event);
         }
       }
       else {
         LISTBASE_FOREACH (wmEvent *, event, &window->event_queue) {
-          check_event(*event);
+          check_event(*window, *event);
         }
       }
       last_checked_events.add_overwrite(window, static_cast<wmEvent *>(window->event_queue.last));
