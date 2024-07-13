@@ -156,7 +156,7 @@ const EnumPropertyItem prop_usdz_downscale_size[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-const EnumPropertyItem prop_textures[] = {
+const EnumPropertyItem rna_enum_usd_tex_export_mode_items[] = {
     {USD_TEX_EXPORT_KEEP, "KEEP", 0, "Keep", "Use original location of textures"},
     {USD_TEX_EXPORT_PRESERVE,
      "PRESERVE",
@@ -168,7 +168,7 @@ const EnumPropertyItem prop_textures[] = {
      "NEW",
      0,
      "New Path",
-     "Exports textures next to USD file in a ./textures folder"},
+     "Export textures to a 'textures' folder next to the USD file"},
     {0, nullptr, 0, nullptr, nullptr}};
 
 /* Stored in the wmOperator's customdata field to indicate it should run as a background job.
@@ -287,7 +287,8 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
    * became more involved, but it needs to stick around for API backwards
    * compatibility until Blender 5.0. */
 
-  const eUSDTexExportMode textures_mode = eUSDTexExportMode(RNA_enum_get(op->ptr, "textures"));
+  const eUSDTexExportMode textures_mode = eUSDTexExportMode(
+      RNA_enum_get(op->ptr, "export_textures_mode"));
   bool export_textures = RNA_boolean_get(op->ptr, "export_textures");
   bool use_original_paths = false;
 
@@ -300,6 +301,7 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
       case eUSDTexExportMode::USD_TEX_EXPORT_NEW_PATH:
         export_textures = true;
         use_original_paths = false;
+        break;
       default:
         use_original_paths = false;
     }
@@ -463,9 +465,10 @@ static void wm_usd_export_draw(bContext *C, wmOperator *op)
       col = uiLayoutColumn(panel.body, true);
       uiLayoutSetPropSep(col, true);
 
-      uiItemR(col, ptr, "textures", UI_ITEM_NONE, nullptr, ICON_NONE);
+      uiItemR(col, ptr, "export_textures_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
 
-      const eUSDTexExportMode textures_mode = eUSDTexExportMode(RNA_enum_get(op->ptr, "textures"));
+      const eUSDTexExportMode textures_mode = eUSDTexExportMode(
+          RNA_enum_get(op->ptr, "export_textures_mode"));
 
       uiLayout *col2 = uiLayoutColumn(col, true);
       uiLayoutSetPropSep(col2, true);
@@ -684,8 +687,8 @@ void WM_OT_usd_export(wmOperatorType *ot)
                   "to a 'textures' directory in the same directory as the USD file");
 
   RNA_def_enum(ot->srna,
-               "textures",
-               prop_textures,
+               "export_textures_mode",
+               rna_enum_usd_tex_export_mode_items,
                USD_TEX_EXPORT_NEW_PATH,
                "Export Textures",
                "Texture export method");
