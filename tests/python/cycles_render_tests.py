@@ -37,6 +37,29 @@ BLACKLIST_OSL = [
     # AOVs are not supported. See 73266
     'aov_position.blend',
     'render_passes_aov.*.blend',
+    # OSL uses mipmapping when loading from disk?
+    'image_byte1_16bit.blend',
+    'image_byte1.blend',
+    'image_byte3_16bit.blend',
+    'image_byte3.blend',
+    'image_byte4_16bit.blend',
+    'image_byte4.blend',
+    'image_float3.blend',
+    'image_float4.blend',
+    'image_half3.blend',
+    'image_half4.blend',
+    'image_mapping_clip_closest.blend',
+    'image_mapping_clip_cubic.blend',
+    'image_mapping_clip_linear.blend',
+    'image_mapping_extend_closest.blend',
+    'image_mapping_extend_cubic.blend',
+    'image_mapping_extend_linear.blend',
+    'image_mapping_mirror_closest.blend',
+    'image_mapping_mirror_cubic.blend',
+    'image_mapping_mirror_linear.blend',
+    'image_mapping_repeat_closest.blend',
+    'image_mapping_repeat_cubic.blend',
+    'image_mapping_repeat_linear.blend',
     # TODO: Add more failing tests
 ]
 
