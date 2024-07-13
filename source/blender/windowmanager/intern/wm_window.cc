@@ -3029,10 +3029,10 @@ void WM_ghost_show_message_box(const char *title,
 
 namespace blender::cancellable_worker {
 
-static void on_cancel_request(bContext *C, wmWindow &window, const wmEvent &trigger_event)
+static void on_wait_time_expired(bContext *C, wmWindow &window)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
-  const wmEvent *last_handled_event = &trigger_event;
+  const wmEvent *last_handled_event = nullptr;
 
   uiFontStyle question_fstyle = *UI_FSTYLE_WIDGET_LABEL;
   question_fstyle.points *= 3;
@@ -3047,14 +3047,19 @@ static void on_cancel_request(bContext *C, wmWindow &window, const wmEvent &trig
 
   while (true) {
     auto handle_event = [&](const wmEvent &event) {
-      if (event.type == EVT_RETKEY && event.val == KM_PRESS) {
+      if (event.type == EVT_ESCKEY && event.val == KM_PRESS) {
         action = Action::Recover;
       }
     };
 
     if (GHOST_ProcessEvents(g_system, true)) {
       GHOST_DispatchEvents(g_system);
-      for (const wmEvent *event = last_handled_event->next; event; event = event->next) {
+      for (const wmEvent *event = last_handled_event ?
+                                      last_handled_event->next :
+                                      static_cast<wmEvent *>(window.event_queue.first);
+           event;
+           event = event->next)
+      {
         handle_event(*event);
         if (action.has_value()) {
           break;
@@ -3189,9 +3194,18 @@ bool thread_is_cancellable_worker_of_main()
 
 void run_cancellable(bContext *C, FunctionRef<void()> fn)
 {
+  if (!CTX_wm_manager(C)) {
+    /* Cancelling is only supported when not in background mode. */
+    fn();
+    return;
+  }
+
   std::atomic<bool> done = false;
 
   const bool current_is_main = BLI_thread_is_main();
+
+  std::chrono::milliseconds wait_time{3000};
+  std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
 
   std::thread worker_thread{[&]() {
     worker_parent_is_main = current_is_main;
@@ -3199,8 +3213,6 @@ void run_cancellable(bContext *C, FunctionRef<void()> fn)
     done = true;
   }};
 
-  Map<wmWindow *, wmEvent *> last_checked_events;
-  int cancel_trigger_count = 0;
   while (true) {
     if (done) {
       worker_thread.join();
@@ -3208,37 +3220,11 @@ void run_cancellable(bContext *C, FunctionRef<void()> fn)
     }
     std::this_thread::sleep_for(std::chrono::microseconds{100});
 
-    wmWindowManager *wm = CTX_wm_manager(C);
-    if (!wm) {
-      continue;
-    }
-
-    if (GHOST_ProcessEvents(g_system, false)) {
-      GHOST_DispatchEvents(g_system);
-    }
-
-    auto check_event = [&](wmWindow &window, const wmEvent &event) {
-      if (event.type == EVT_ESCKEY && event.val == KM_PRESS) {
-        cancel_trigger_count++;
-      }
-      if (cancel_trigger_count >= 3) {
-        on_cancel_request(C, window, event);
-      }
-    };
-
-    LISTBASE_FOREACH (wmWindow *, window, &wm->windows) {
-      wmEvent *last_checked = last_checked_events.lookup_default(window, nullptr);
-      if (last_checked) {
-        for (wmEvent *event = last_checked->next; event; event = event->next) {
-          check_event(*window, *event);
-        }
-      }
-      else {
-        LISTBASE_FOREACH (wmEvent *, event, &window->event_queue) {
-          check_event(*window, *event);
-        }
-      }
-      last_checked_events.add_overwrite(window, static_cast<wmEvent *>(window->event_queue.last));
+    std::chrono::steady_clock::time_point current_time = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::duration time_since_start = current_time - start_time;
+    if (time_since_start > wait_time) {
+      wmWindowManager *wm = CTX_wm_manager(C);
+      on_wait_time_expired(C, *static_cast<wmWindow *>(wm->windows.first));
     }
   }
   worker_thread.join();
