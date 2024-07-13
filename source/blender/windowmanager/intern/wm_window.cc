@@ -3178,7 +3178,7 @@ static void on_wait_time_expired(bContext &C,
                                  const Clock::time_point task_start_time)
 {
   skip_events_own_main_loop = true;
-  BLI_SCOPED_DEFER([&]() {  skip_events_own_main_loop = false; });
+  BLI_SCOPED_DEFER([&]() { skip_events_own_main_loop = false; });
 
   /* Dispatch all events received so far, so that they can be ignored by the dialog. */
   if (GHOST_ProcessEvents(g_system, false)) {
