@@ -337,11 +337,11 @@ void create_keyframe_edit_data_selected_frames_list(KeyframeEditData *ked,
   }
 }
 
-bool ensure_active_keyframe(const bContext *C,
-                            const Scene &scene,
+bool ensure_active_keyframe(bContext *C,
                             GreasePencil &grease_pencil,
                             bool &r_inserted_keyframe)
 {
+  const Scene &scene = *CTX_data_scene(C);
   const int current_frame = scene.r.cfra;
   bke::greasepencil::Layer &active_layer = *grease_pencil.get_active_layer();
 
