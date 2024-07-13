@@ -59,6 +59,15 @@ static const char *get_realization_shader(Result &input,
   return nullptr;
 }
 
+/* true for ±1 and zero */
+static bool is_101(float v) {
+  return v == -1.0 || v == 0.0 || v == 1.0;
+}
+
+static bool is_int(float v) {
+  return v == floorf(v);
+}
+
 void realize_on_domain(Context &context,
                        Result &input,
                        Result &output,
@@ -85,10 +94,23 @@ void realize_on_domain(Context &context,
 
   GPU_shader_uniform_mat3_as_mat4(shader, "inverse_transformation", inverse_transformation.ptr());
 
+  /* Check if the transform maps pixels to pixels and has an integer translation in
+   * virtual space. If so use Nearest filtering. */
+  const bool nearest_works =
+    is_101(inverse_transformation[0][0]) &&
+    is_101(inverse_transformation[0][1]) &&
+    inverse_transformation[0][2] == 0.0 &&
+    is_101(inverse_transformation[1][0]) &&
+    is_101(inverse_transformation[1][1]) &&
+    inverse_transformation[1][2] == 0.0 &&
+    is_int(inverse_transformation[2][0]) &&
+    is_int(inverse_transformation[2][1]) &&
+    inverse_transformation[2][2] == 1.0;
+
   /* The texture sampler should use bilinear interpolation for both the bilinear and bicubic
    * cases, as the logic used by the bicubic realization shader expects textures to use bilinear
    * interpolation. */
-  const bool use_bilinear = ELEM(
+  const bool use_bilinear = !nearest_works && ELEM(
       realization_options.interpolation, Interpolation::Bilinear, Interpolation::Bicubic);
   GPU_texture_filter_mode(input.texture(), use_bilinear);
 
