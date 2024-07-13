@@ -87,7 +87,7 @@ BLACKLIST_GPU = [
 ]
 
 
-def get_arguments(filepath, output_filepath, osl):
+def get_arguments(filepath, output_filepath, osl=False):
     dirname = os.path.dirname(filepath)
     basedir = os.path.dirname(dirname)
     subject = os.path.basename(dirname)

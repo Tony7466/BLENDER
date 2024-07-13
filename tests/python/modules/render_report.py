@@ -486,10 +486,9 @@ class Report:
                 if os.path.exists(output_filepath):
                     os.remove(output_filepath)
 
-                try:
-                    extra_args = arguments_cb(filepath, base_output_filepath, self.osl)
-                    command.extend(extra_args)
-                except:
+                if 'Cycles' in self.title:
+                    command.extend(arguments_cb(filepath, base_output_filepath, self.osl))
+                else:
                     command.extend(arguments_cb(filepath, base_output_filepath))
 
                 # Only chain multiple commands for batch
