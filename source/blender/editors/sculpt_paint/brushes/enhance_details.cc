@@ -278,15 +278,17 @@ static void precalc_translations(Object &object, const MutableSpan<float3> trans
       const Span<int> corner_verts = mesh.corner_verts();
       threading::parallel_for(effective_nodes.index_range(), 1, [&](const IndexRange range) {
         LocalData &tls = all_tls.local();
-        for (const int i : range) {
-          calc_translations_faces(positions_eval,
-                                  faces,
-                                  corner_verts,
-                                  ss.vert_to_face_map,
-                                  *effective_nodes[i],
-                                  tls,
-                                  translations);
-        }
+        threading::isolate_task([&]() {
+          for (const int i : range) {
+            calc_translations_faces(positions_eval,
+                                    faces,
+                                    corner_verts,
+                                    ss.vert_to_face_map,
+                                    *effective_nodes[i],
+                                    tls,
+                                    translations);
+          }
+        });
       });
       break;
     }
@@ -338,19 +340,21 @@ void do_enhance_details_brush(const Sculpt &sd, Object &object, Span<PBVHNode *>
       MutableSpan<float3> positions_orig = mesh.vert_positions_for_write();
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
         LocalData &tls = all_tls.local();
-        for (const int i : range) {
-          calc_faces(sd,
-                     brush,
-                     positions_eval,
-                     vert_normals,
-                     translations,
-                     strength,
-                     *nodes[i],
-                     object,
-                     tls,
-                     positions_orig);
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
-        }
+        threading::isolate_task([&]() {
+          for (const int i : range) {
+            calc_faces(sd,
+                       brush,
+                       positions_eval,
+                       vert_normals,
+                       translations,
+                       strength,
+                       *nodes[i],
+                       object,
+                       tls,
+                       positions_orig);
+            BKE_pbvh_node_mark_positions_update(nodes[i]);
+          }
+        });
       });
       break;
     }
