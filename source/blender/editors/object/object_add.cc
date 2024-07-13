@@ -1235,7 +1235,9 @@ static int object_image_add_exec(bContext *C, wmOperator *op)
 
     add_generic_get_opts(C, op, 'Z', loc, rot, nullptr, nullptr, &local_view_bits, nullptr);
     Object *ob = add_type(C, OB_EMPTY, nullptr, loc, rot, false, local_view_bits);
-    ob->empty_drawsize = 5.0f;
+
+    const float size = RNA_float_get(op->ptr, "img_size");
+    ob->empty_drawsize = size;
 
     if (RNA_boolean_get(op->ptr, "background")) {
       /* When "background" has been set to "true", set image to render in the background. */
@@ -1344,6 +1346,18 @@ void OBJECT_OT_empty_image_add(wmOperatorType *ot)
                          false,
                          "Put in Background",
                          "Make the image render behind all objects");
+  RNA_def_property_flag(prop, PropertyFlag(PROP_SKIP_SAVE));
+
+  prop = RNA_def_float_distance(ot->srna,
+                     "img_size",
+                     5.0f,
+                     0.0,
+                     OBJECT_ADD_SIZE_MAXF,
+                     "Size",
+                     "Size to display the image at",
+                     0.001,
+                     100.00);
+
   RNA_def_property_flag(prop, PropertyFlag(PROP_SKIP_SAVE));
 
   /* Hide the filepath, relative path, and directory prop */
