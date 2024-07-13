@@ -40,7 +40,6 @@
 #include "BKE_workspace.hh"
 
 #include "WM_api.hh"
-#include "WM_cancellable_worker.hh"
 #include "WM_message.hh"
 #include "WM_types.hh"
 #include "wm.hh"
