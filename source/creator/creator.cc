@@ -68,6 +68,7 @@
 #include "ED_datafiles.h"
 
 #include "WM_api.hh"
+#include "WM_cancellable_worker.hh"
 
 #include "RNA_define.hh"
 
@@ -592,6 +593,7 @@ int main(int argc,
 
     /* Shows the splash as needed. */
     WM_init_splash_on_startup(C);
+    blender::cancellable_worker::set_global_context(*C);
 
     WM_main(C);
   }

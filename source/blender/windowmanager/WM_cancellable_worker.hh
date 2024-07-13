@@ -13,7 +13,9 @@ struct bContext;
 
 namespace blender::cancellable_worker {
 
-void run_cancellable(bContext *C, FunctionRef<void()> fn);
+void set_global_context(bContext &C);
+
+void run_cancellable(FunctionRef<void()> fn);
 
 bool thread_is_cancellable_worker_of_main();
 

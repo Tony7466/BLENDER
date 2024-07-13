@@ -3088,9 +3088,9 @@ static void draw_dialog(const int2 window_size)
                            font_color);
 }
 
-static void on_wait_time_expired(bContext *C, wmWindow &window)
+static void on_wait_time_expired(bContext &C, wmWindow &window)
 {
-  wmWindowManager *wm = CTX_wm_manager(C);
+  wmWindowManager *wm = CTX_wm_manager(&C);
   /* Ignore all events received until the dialog opened. */
   const wmEvent *last_handled_event = static_cast<const wmEvent *>(window.event_queue.last);
 
@@ -3153,9 +3153,9 @@ static void on_wait_time_expired(bContext *C, wmWindow &window)
     std::this_thread::sleep_for(std::chrono::milliseconds{5});
   }
 
-  BKE_undosys_step_undo(wm->undo_stack, C);
+  BKE_undosys_step_undo(wm->undo_stack, &C);
 
-  Main *bmain = CTX_data_main(C);
+  Main *bmain = CTX_data_main(&C);
   const char *tempdir_base = BKE_tempdir_base();
   char filepath[FILE_MAX];
   BLI_path_join(filepath, FILE_MAX, tempdir_base, "cancel_recover.blend");
@@ -3179,9 +3179,21 @@ bool thread_is_cancellable_worker_of_main()
   return worker_parent_is_main;
 }
 
-void run_cancellable(bContext *C, FunctionRef<void()> fn)
+static bContext *g_context = nullptr;
+
+void set_global_context(bContext &C)
 {
-  if (!CTX_wm_manager(C)) {
+  g_context = &C;
+}
+
+void run_cancellable(const FunctionRef<void()> fn)
+{
+  if (!g_context) {
+    fn();
+    return;
+  }
+  bContext &C = *g_context;
+  if (!CTX_wm_manager(&C)) {
     /* Cancelling is only supported when not in background mode. */
     fn();
     return;
@@ -3210,7 +3222,7 @@ void run_cancellable(bContext *C, FunctionRef<void()> fn)
     std::chrono::steady_clock::time_point current_time = std::chrono::steady_clock::now();
     std::chrono::steady_clock::duration time_since_start = current_time - start_time;
     if (time_since_start > wait_time) {
-      wmWindowManager *wm = CTX_wm_manager(C);
+      wmWindowManager *wm = CTX_wm_manager(&C);
       on_wait_time_expired(C, *static_cast<wmWindow *>(wm->windows.first));
     }
 

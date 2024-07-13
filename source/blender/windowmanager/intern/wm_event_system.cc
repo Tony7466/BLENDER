@@ -506,7 +506,7 @@ void wm_event_do_depsgraph(bContext *C, bool is_after_open_file)
     }
     DEG_make_active(depsgraph);
     blender::cancellable_worker::run_cancellable(
-        C, [&]() { BKE_scene_graph_update_tagged(depsgraph, bmain); });
+        [&]() { BKE_scene_graph_update_tagged(depsgraph, bmain); });
   }
 
   wm_surfaces_do_depsgraph(C);
