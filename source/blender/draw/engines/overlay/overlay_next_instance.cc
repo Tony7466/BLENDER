@@ -123,8 +123,6 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
     }
   }
 
-  bounds.object_sync(ob_ref, resources, state);
-
   if (!state.hide_overlays) {
     switch (ob_ref.object->type) {
       case OB_EMPTY:
@@ -143,6 +141,7 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
         speakers.object_sync(ob_ref, resources, state);
         break;
     }
+    bounds.object_sync(ob_ref, resources, state);
   }
 }
 
