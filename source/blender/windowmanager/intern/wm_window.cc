@@ -1399,6 +1399,8 @@ static void ghost_event_proc_timestamp_warning(GHOST_EventHandle ghost_event)
 }
 #endif /* !NDEBUG */
 
+static bool skip_events_own_main_loop = false;
+
 /**
  * Called by ghost, here we handle events for windows themselves or send to event system.
  *
@@ -1543,7 +1545,7 @@ static bool ghost_event_proc(GHOST_EventHandle ghost_event, GHOST_TUserDataPtr C
       WM_window_set_dpi(win);
 
       /* WIN32: gives undefined window size when minimized. */
-      if (state != GHOST_kWindowStateMinimized) {
+      if (state != GHOST_kWindowStateMinimized && !skip_events_own_main_loop) {
         /*
          * Ghost sometimes send size or move events when the window hasn't changed.
          * One case of this is using COMPIZ on Linux.
@@ -3157,7 +3159,7 @@ static void draw_window_with_dialog(wmWindowManager &wm,
    * standard libraries for this. */
   const char *imports[] = {"subprocess", "bpy", nullptr};
   const std::string expr = fmt::format(
-      "subprocess.Popen([bpy.app.binary_path, \"{}\"], start_new_session=True)", filepath);
+      "subprocess.Popen([bpy.app.binary_path, r\"{}\"], start_new_session=True)", filepath);
   BPY_run_string_exec(nullptr, imports, expr.c_str());
 
   /* Attempt to close window as soon as possible as this feels better. The OS may take a bit
@@ -3175,6 +3177,9 @@ static void on_wait_time_expired(bContext &C,
                                  DoneInfo &done,
                                  const Clock::time_point task_start_time)
 {
+  skip_events_own_main_loop = true;
+  BLI_SCOPED_DEFER([&]() {  skip_events_own_main_loop = false; });
+
   /* Dispatch all events received so far, so that they can be ignored by the dialog. */
   if (GHOST_ProcessEvents(g_system, false)) {
     GHOST_DispatchEvents(g_system);
