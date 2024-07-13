@@ -3070,11 +3070,16 @@ static void draw_window_background(wmWindow &window)
   }
 }
 
-static void draw_dialog(const int2 window_size, const Clock::time_point task_start_time)
+struct DialogState {
+  Clock::time_point task_start_time;
+};
+
+static void draw_dialog(const int2 window_size, DialogState &state)
 {
   const Clock::time_point current_time = Clock::now();
-  const int seconds_since_start =
-      std::chrono::duration_cast<std::chrono::seconds>(current_time - task_start_time).count();
+  const int seconds_since_start = std::chrono::duration_cast<std::chrono::seconds>(
+                                      current_time - state.task_start_time)
+                                      .count();
 
   uiFontStyle fstyle = *UI_FSTYLE_WIDGET_LABEL;
 
@@ -3105,6 +3110,66 @@ static void draw_dialog(const int2 window_size, const Clock::time_point task_sta
                            font_color);
 }
 
+static void draw_window_with_dialog(wmWindowManager &wm,
+                                    wmWindow &window,
+                                    DialogState &dialog_state)
+{
+  GPU_context_main_lock();
+  BLI_SCOPED_DEFER([&]() { GPU_context_main_unlock(); });
+
+  GPU_render_begin();
+
+  wm_window_make_drawable(&wm, &window);
+  wmWindowViewport(&window);
+  {
+    GPUContext *gpu_context = static_cast<GPUContext *>(window.gpuctx);
+    GPU_context_begin_frame(gpu_context);
+    GPU_bgl_end();
+    draw_window_background(window);
+    draw_dialog({window.sizex, window.sizey}, dialog_state);
+    GPU_context_end_frame(gpu_context);
+  }
+  wm_window_swap_buffers(&window);
+
+  GPU_render_end();
+}
+
+[[noreturn]] static void try_recover_file(bContext &C)
+{
+  wmWindowManager *wm = CTX_wm_manager(&C);
+
+  /* Undo one step. The idea here is that the last change "broke" the file. E.g. this could happen
+   * by accidentally setting the subdivision levels too high. This last change needs to be undone,
+   * before saving the file. */
+  BKE_undosys_step_undo(wm->undo_stack, &C);
+
+  /* Determine file path for the recovery file. */
+  Main *bmain = CTX_data_main(&C);
+  const char *tempdir_base = BKE_tempdir_base();
+  char filepath[FILE_MAX];
+  BLI_path_join(filepath, FILE_MAX, tempdir_base, "cancel_recover.blend");
+
+  /* Save the recovery file. */
+  BlendFileWriteParams blend_write_params{};
+  BLO_write_file(bmain, filepath, G_FILE_RECOVER_WRITE, &blend_write_params, nullptr);
+
+  /* Open new Blender session with the saved file. Uses Python because C++ does not have good
+   * standard libraries for this. */
+  const char *imports[] = {"subprocess", "bpy", nullptr};
+  const std::string expr = fmt::format(
+      "subprocess.Popen([bpy.app.binary_path, \"{}\"], start_new_session=True)", filepath);
+  BPY_run_string_exec(nullptr, imports, expr.c_str());
+
+  /* Attempt to close window as soon as possible as this feels better. The OS may take a bit
+   * longer to clean up all the resources of the process. */
+  LISTBASE_FOREACH (wmWindow *, window_iter, &wm->windows) {
+    wm_ghostwindow_destroy(wm, window_iter);
+  }
+
+  /* Terminate this process because it's in an invalid state now and may use up many resources. */
+  std::terminate();
+}
+
 static void on_wait_time_expired(bContext &C,
                                  wmWindow &window,
                                  DoneInfo &done,
@@ -3119,11 +3184,8 @@ static void on_wait_time_expired(bContext &C,
   /* Ignore all events received until the dialog opened. */
   const wmEvent *last_handled_event = static_cast<const wmEvent *>(window.event_queue.last);
 
-  enum class Action {
-    ContinueWaiting,
-    Recover,
-  };
-  std::optional<Action> action;
+  DialogState dialog_state;
+  dialog_state.task_start_time = task_start_time;
 
   while (true) {
     {
@@ -3136,77 +3198,27 @@ static void on_wait_time_expired(bContext &C,
 
     auto handle_event = [&](const wmEvent &event) {
       if (event.type == EVT_RETKEY && event.val == KM_PRESS) {
-        action = Action::Recover;
+        /* Actually try to recover the file. This function terminates the current process. */
+        try_recover_file(C);
       }
     };
 
     if (GHOST_ProcessEvents(g_system, false)) {
       GHOST_DispatchEvents(g_system);
-      for (const wmEvent *event = last_handled_event ?
-                                      last_handled_event->next :
-                                      static_cast<wmEvent *>(window.event_queue.first);
-           event;
-           event = event->next)
-      {
+      const wmEvent *first_event = last_handled_event ?
+                                       last_handled_event->next :
+                                       static_cast<wmEvent *>(window.event_queue.first);
+      for (const wmEvent *event = first_event; event; event = event->next) {
         handle_event(*event);
-        if (action.has_value()) {
-          break;
-        }
       }
       last_handled_event = static_cast<wmEvent *>(window.event_queue.last);
     }
-    if (action.has_value()) {
-      break;
-    }
 
-    GPU_context_main_lock();
-    BLI_SCOPED_DEFER([&]() { GPU_context_main_unlock(); });
+    draw_window_with_dialog(*wm, window, dialog_state);
 
-    GPU_render_begin();
-    GHOST_TWindowState state = GHOST_GetWindowState(
-        static_cast<GHOST_WindowHandle>(window.ghostwin));
-    if (state == GHOST_kWindowStateMinimized) {
-      continue;
-    }
-
-    wm_window_make_drawable(wm, &window);
-    wmWindowViewport(&window);
-    {
-      GPUContext *gpu_context = static_cast<GPUContext *>(window.gpuctx);
-      GPU_context_begin_frame(gpu_context);
-      GPU_bgl_end();
-      draw_window_background(window);
-      draw_dialog({window.sizex, window.sizey}, task_start_time);
-      GPU_context_end_frame(gpu_context);
-    }
-    wm_window_swap_buffers(&window);
-
-    GPU_render_end();
-
+    /* Sleep to avoid keeping the thread busy all the time, which takes up resources that could be
+     * used by the actual computation. */
     std::this_thread::sleep_for(std::chrono::milliseconds{5});
-  }
-
-  BKE_undosys_step_undo(wm->undo_stack, &C);
-
-  Main *bmain = CTX_data_main(&C);
-  const char *tempdir_base = BKE_tempdir_base();
-  char filepath[FILE_MAX];
-  BLI_path_join(filepath, FILE_MAX, tempdir_base, "cancel_recover.blend");
-
-  BlendFileWriteParams blend_write_params{};
-  const bool success = BLO_write_file(
-      bmain, filepath, G_FILE_RECOVER_WRITE, &blend_write_params, nullptr);
-  if (success) {
-    const char *imports[] = {"subprocess", "bpy", nullptr};
-    const std::string expr = fmt::format(
-        "subprocess.Popen([bpy.app.binary_path, \"{}\"], start_new_session=True)", filepath);
-    BPY_run_string_exec(nullptr, imports, expr.c_str());
-    /* Attempt to close window as soon as possible as this feels better. The OS may take a bit
-     * longer to clean up all the resources of the process. */
-    LISTBASE_FOREACH (wmWindow *, window_iter, &wm->windows) {
-      wm_ghostwindow_destroy(wm, window_iter);
-    }
-    std::terminate();
   }
 }
 
@@ -3215,6 +3227,19 @@ static bContext *g_context = nullptr;
 void set_global_context(bContext &C)
 {
   g_context = &C;
+}
+
+static wmWindow *pick_window_for_dialog(wmWindowManager &wm)
+{
+  LISTBASE_FOREACH (wmWindow *, window, &wm.windows) {
+    GHOST_TWindowState state = GHOST_GetWindowState(
+        static_cast<GHOST_WindowHandle>(window->ghostwin));
+    if (state == GHOST_kWindowStateMinimized) {
+      continue;
+    }
+    return window;
+  }
+  return nullptr;
 }
 
 void run_cancellable_if_possible(const FunctionRef<void()> fn)
@@ -3240,14 +3265,13 @@ void run_cancellable_if_possible(const FunctionRef<void()> fn)
     return;
   }
 
-  DoneInfo done;
-
   const std::chrono::milliseconds wait_time{3000};
   const Clock::time_point start_time = Clock::now();
   const Clock::time_point wait_expired_time = start_time +
                                               std::chrono::duration_cast<Clock::duration>(
                                                   wait_time);
 
+  DoneInfo done;
   std::thread worker_thread{[&]() {
     fn();
     {
@@ -3268,11 +3292,14 @@ void run_cancellable_if_possible(const FunctionRef<void()> fn)
     worker_thread.join();
     return;
   }
-
-  wmWindow &window = *static_cast<wmWindow *>(wm->windows.first);
+  wmWindow *window = pick_window_for_dialog(*wm);
+  if (!window) {
+    worker_thread.join();
+    return;
+  }
 
   /* This call may never return if recovery is attempted. */
-  on_wait_time_expired(C, window, done, start_time);
+  on_wait_time_expired(C, *window, done, start_time);
 
   worker_thread.join();
   return;

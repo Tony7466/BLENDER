@@ -49,7 +49,6 @@
 #include "DEG_depsgraph_query.hh"
 
 #include "WM_api.hh"
-#include "WM_cancellable_worker.hh"
 
 #include <cstdio>
 

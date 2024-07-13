@@ -995,8 +995,10 @@ static void file_read_reports_finalize(BlendFileReadReport *bf_reports)
 
 bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
 {
-  const bool is_recover = BLI_str_endswith(filepath, "recover.blend");
-  if (is_recover) {
+  /* TODO: Find cleaner solution for this. Maybe a separate command-line argument. */
+  const bool set_recover_flag = !(G.fileflags & G_FILE_RECOVER_READ) &&
+                                BLI_str_endswith(filepath, "recover.blend");
+  if (set_recover_flag) {
     G.fileflags |= G_FILE_RECOVER_READ;
   }
 
@@ -1127,7 +1129,7 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
 
   BLI_assert(BKE_main_namemap_validate(CTX_data_main(C)));
 
-  if (is_recover) {
+  if (set_recover_flag) {
     G.fileflags &= ~G_FILE_RECOVER_READ;
   }
 
