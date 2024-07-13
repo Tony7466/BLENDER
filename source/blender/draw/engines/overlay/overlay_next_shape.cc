@@ -119,6 +119,26 @@ static Vector<Vertex> sphere_axes_circles(const float radius,
   return verts;
 }
 
+static const Vector<Vertex> capsule_cap_verts()
+{
+  constexpr int n_segments = 24;
+  const Vector<float2> ring = ring_vertices(1.0f, n_segments);
+  Vector<Vertex> verts;
+  /* Base circle */
+  append_as_lines_cyclic(verts, ring, 0.0f, VCLASS_NONE);
+  for (const int i : IndexRange(n_segments / 2)) {
+    const float2 &point = ring[i];
+    const float2 &next_point = ring[i + 1];
+    /* Y half circle */
+    verts.append({{point.x, 0.0f, point.y}, VCLASS_NONE});
+    verts.append({{next_point.x, 0.0f, next_point.y}, VCLASS_NONE});
+    /* X half circle */
+    verts.append({{0.0f, point.x, point.y}, VCLASS_NONE});
+    verts.append({{0.0f, next_point.x, next_point.y}, VCLASS_NONE});
+  }
+  return verts;
+}
+
 ShapeCache::ShapeCache()
 {
   /* quad_wire */
@@ -264,21 +284,7 @@ ShapeCache::ShapeCache()
   }
   /* capsule cap */
   {
-    constexpr int n_segments = 24;
-    static const Vector<float2> ring = ring_vertices(1.0f, n_segments);
-    Vector<Vertex> verts;
-    /* Base circle */
-    append_as_lines_cyclic(verts, ring, 0.0f, VCLASS_NONE);
-    for (const int i : IndexRange(n_segments / 2)) {
-      const float2 &point = ring[i];
-      const float2 &next_point = ring[i + 1];
-      /* Y half circle */
-      verts.append({{point.x, 0.0f, point.y}, VCLASS_NONE});
-      verts.append({{next_point.x, 0.0f, next_point.y}, VCLASS_NONE});
-      /* X half circle */
-      verts.append({{0.0f, point.x, point.y}, VCLASS_NONE});
-      verts.append({{0.0f, next_point.x, next_point.y}, VCLASS_NONE});
-    }
+    static const Vector<Vertex> verts = capsule_cap_verts();
     capsule_cap = BatchPtr(
         GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
   }
