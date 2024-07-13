@@ -3172,13 +3172,6 @@ static void on_wait_time_expired(bContext &C, wmWindow &window)
   }
 }
 
-thread_local bool worker_parent_is_main = false;
-
-bool thread_is_cancellable_worker_of_main()
-{
-  return worker_parent_is_main;
-}
-
 static bContext *g_context = nullptr;
 
 void set_global_context(bContext &C)
@@ -3202,7 +3195,6 @@ void run_cancellable_if_possible(const FunctionRef<void()> fn)
   std::chrono::steady_clock::time_point start_time = std::chrono::steady_clock::now();
 
   std::thread worker_thread{[&]() {
-    worker_parent_is_main = current_is_main;
     fn();
     done = true;
   }};

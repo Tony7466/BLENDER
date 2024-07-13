@@ -121,9 +121,7 @@ void ED_render_scene_update(const DEGEditorUpdateContext *update_ctx, const bool
 
   /* don't do this render engine update if we're updating the scene from
    * other threads doing e.g. rendering or baking jobs */
-  if (!BLI_thread_is_main() &&
-      !blender::cancellable_worker::thread_is_cancellable_worker_of_main())
-  {
+  if (!BLI_thread_is_main()) {
     return;
   }
 
@@ -316,11 +314,7 @@ void ED_render_id_flush_update(const DEGEditorUpdateContext *update_ctx, ID *id)
   /* this can be called from render or baking thread when a python script makes
    * changes, in that case we don't want to do any editor updates, and making
    * GPU changes is not possible because OpenGL only works in the main thread */
-  /* TODO: Check if this actually does any GPU changes that need to run in the main thread,
-   * couldn't find any yet. */
-  if (!BLI_thread_is_main() &&
-      !blender::cancellable_worker::thread_is_cancellable_worker_of_main())
-  {
+  if (!BLI_thread_is_main()) {
     return;
   }
   Main *bmain = update_ctx->bmain;
