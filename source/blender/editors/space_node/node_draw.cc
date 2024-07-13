@@ -741,8 +741,6 @@ struct LocationUpdateState {
   ItemIterator item_iter;
   const ItemIterator item_end;
 
-  /* Checked at various places to avoid adding duplicate spacers without anything in between. */
-  bool need_spacer_after_item = false;
   /* Makes sure buttons are only drawn once. */
   bool buttons_drawn = false;
   /* Only true for the first item in the layout. */
@@ -784,8 +782,7 @@ static void add_panel_items_recursive(const bContext &C,
       /* Draw buttons before the first panel. */
       if (!state.buttons_drawn) {
         state.buttons_drawn = true;
-        state.need_spacer_after_item |= node_update_basis_buttons(
-            C, ntree, node, node.typeinfo->draw_buttons, block, locy);
+        node_update_basis_buttons(C, ntree, node, node.typeinfo->draw_buttons, block, locy);
       }
 
       /* Panel visible if any content is visible. */
@@ -829,8 +826,7 @@ static void add_panel_items_recursive(const bContext &C,
         /* Draw buttons before the first input. */
         if (!state.buttons_drawn) {
           state.buttons_drawn = true;
-          state.need_spacer_after_item |= node_update_basis_buttons(
-              C, ntree, node, node.typeinfo->draw_buttons, block, locy);
+          node_update_basis_buttons(C, ntree, node, node.typeinfo->draw_buttons, block, locy);
         }
 
         if (is_parent_collapsed) {
@@ -861,7 +857,6 @@ static void add_panel_items_recursive(const bContext &C,
               C, ntree, node, parent_label, item.input, item.output, block, locx, locy))
       {
         state.is_first = false;
-        state.need_spacer_after_item = true;
       }
     }
     else {
@@ -907,13 +902,10 @@ static void node_update_basis_from_declaration(
 
   /* Draw buttons at the bottom if no inputs exist. */
   if (!location_state.buttons_drawn) {
-    location_state.need_spacer_after_item |= node_update_basis_buttons(
-        C, ntree, node, node.typeinfo->draw_buttons, block, locy);
+    node_update_basis_buttons(C, ntree, node, node.typeinfo->draw_buttons, block, locy);
   }
 
-  if (location_state.need_spacer_after_item) {
-    locy -= NODE_DYS / 2;
-  }
+  locy -= NODE_DYS / 2;
 }
 
 /* Conventional drawing in outputs/buttons/inputs order. */
@@ -997,9 +989,6 @@ static void node_update_basis(const bContext &C,
   node.runtime->totr.xmax = loc.x + NODE_WIDTH(node);
   node.runtime->totr.ymax = loc.y;
   node.runtime->totr.ymin = min_ff(dy, loc.y - 2 * NODE_DY);
-
-  std::cout << "Update Node Rect: " << node.runtime->totr.xmin << ", " << node.runtime->totr.xmax
-            << ", " << node.runtime->totr.ymin << ", " << node.runtime->totr.ymax << ";\n";
 
   /* Set the block bounds to clip mouse events from underlying nodes.
    * Add a margin for sockets on each side. */
