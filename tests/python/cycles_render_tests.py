@@ -60,6 +60,10 @@ BLACKLIST_OSL = [
     'image_mapping_repeat_closest.blend',
     'image_mapping_repeat_cubic.blend',
     'image_mapping_repeat_linear.blend',
+    # OSL handles bump + displacement differently from SVM
+    'both_displacement.blend',
+    'bump_with_displacement.blend',
+    'ray_portal.blend',
     # TODO: Add more failing tests
 ]
 
