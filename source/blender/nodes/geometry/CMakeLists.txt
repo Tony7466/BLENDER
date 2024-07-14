@@ -275,18 +275,6 @@ if(WITH_BULLET)
   add_definitions(-DWITH_BULLET)
 endif()
 
-if(WITH_TBB)
-  list(APPEND INC_SYS
-    ${TBB_INCLUDE_DIRS}
-  )
-  add_definitions(-DWITH_TBB)
-  if(WIN32)
-    # TBB includes Windows.h which will define min/max macros
-    # that will collide with the stl versions.
-    add_definitions(-DNOMINMAX)
-  endif()
-endif()
-
 if(WITH_IMAGE_OPENEXR)
   add_definitions(-DWITH_OPENEXR)
 endif()

@@ -438,6 +438,10 @@ if(WITH_GMP)
   add_definitions(-DWITH_GMP)
 endif()
 
+if(WITH_TBB)
+  add_definitions(-DWITH_TBB)
+endif()
+
 # Build makesrna executable
 add_cc_flags_custom_test(makesrna)
 
