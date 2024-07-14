@@ -141,6 +141,65 @@ static void join_volumes(const Span<const GeometryComponent *> /*src_components*
    * of the grids. The cell size of the resulting volume has to be determined somehow. */
 }
 
+static void join_physics(const Span<const GeometryComponent *> src_components,
+                         GeometrySet & result)
+{
+  const bke::PhysicsGeometry *world_physics = nullptr;
+  Array<int> body_offsets_data(src_components.size() + 1);
+  Array<int> constraint_offsets_data(src_components.size() + 1);
+  Array<int> shape_offsets_data(src_components.size() + 1);
+  for (const int i : src_components.index_range()) {
+    const auto &src_component = static_cast<const bke::PhysicsComponent &>(*src_components[i]);
+    if (src_component.has_world()) {
+      world_physics = src_component.get();
+    }
+    body_offsets_data[i] = src_component.get()->bodies_num();
+    constraint_offsets_data[i] = src_component.get()->constraints_num();
+    shape_offsets_data[i] = src_component.get()->shapes_num();
+  }
+
+  const OffsetIndices body_offsets = offset_indices::accumulate_counts_to_offsets(
+      body_offsets_data);
+  const OffsetIndices constraint_offsets = offset_indices::accumulate_counts_to_offsets(
+      constraint_offsets_data);
+  const OffsetIndices shape_offsets = offset_indices::accumulate_counts_to_offsets(
+      shape_offsets_data);
+
+  std::unique_ptr<bke::PhysicsGeometry> dst_physics = std::make_unique<bke::PhysicsGeometry>();
+  dst_physics->resize(body_offsets.total_size(), constraint_offsets.total_size());
+  Array<StringRef> ignored_attributes = {};
+  if (world_physics != nullptr) {
+    dst_physics->realize_from_cache();
+
+    Span<std::string> skip_copy = bke::PhysicsGeometry::builtin_attributes.skip_copy;
+    ignored_attributes.reinitialize(skip_copy.size());
+    for (const int i : skip_copy.index_range()) {
+      ignored_attributes[i] = skip_copy[i];
+    }
+  }
+
+  for (const int i : src_components.index_range()) {
+    const auto &src_component = static_cast<const bke::PhysicsComponent &>(*src_components[i]);
+    const bke::PhysicsGeometry &src_physics = *src_component.get();
+
+    const bool use_world = (&src_physics == world_physics);
+    const IndexRange dst_body_range = body_offsets[i];
+    const IndexRange dst_constraint_range = constraint_offsets[i];
+    const IndexRange dst_shape_range = shape_offsets[i];
+
+    dst_physics->move_or_copy_selection(src_physics,
+                                        use_world,
+                                        src_physics.bodies_range(),
+                                        src_physics.constraints_range(),
+                                        src_physics.shapes_range(),
+                                        {});
+  }
+
+  result.replace_physics(dst_physics.release());
+  auto &dst_component = result.get_component_for_write<bke::PhysicsComponent>();
+  join_attributes(src_components, dst_component, ignored_attributes);
+}
+
 static void join_component_type(const bke::GeometryComponent::Type component_type,
                                 const Span<GeometrySet> src_geometry_sets,
                                 const bke::AnonymousAttributePropagationInfo &propagation_info,
@@ -168,6 +227,9 @@ static void join_component_type(const bke::GeometryComponent::Type component_typ
       return;
     case bke::GeometryComponent::Type::Volume:
       join_volumes(components, result);
+      return;
+    case bke::GeometryComponent::Type::Physics:
+      join_physics(components, result);
       return;
     default:
       break;

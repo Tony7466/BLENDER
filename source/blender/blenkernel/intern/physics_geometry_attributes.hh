@@ -416,7 +416,10 @@ class BuiltinRigidBodyAttributeProvider final : public BuiltinPhysicsAttributeBa
     }
 
     if (force_cache || impl->is_empty) {
-      return try_get_cache_for_read(&impl->body_data_, impl->body_num_);
+      GAttributeReader cache_reader = try_get_cache_for_read(&impl->body_data_, impl->body_num_);
+      /* Builtin attribute should always exist when cached. */
+      BLI_assert(cache_reader);
+      return cache_reader;
     }
     if constexpr (GetCacheFn) {
       Span<T> cache = GetCacheFn(*impl);
@@ -442,7 +445,10 @@ class BuiltinRigidBodyAttributeProvider final : public BuiltinPhysicsAttributeBa
     }
 
     if (force_cache || impl->is_empty) {
-      return try_get_cache_for_write(owner, &impl->body_data_, impl->body_num_);
+      GAttributeWriter cache_writer = try_get_cache_for_write(owner, &impl->body_data_, impl->body_num_);
+      /* Builtin attribute should always exist when cached. */
+      BLI_assert(cache_writer);
+      return cache_writer;
     }
 
     GVMutableArray varray =

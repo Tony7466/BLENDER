@@ -346,8 +346,7 @@ PhysicsGeometryImpl::PhysicsGeometryImpl(int bodies_num, int constraints_num, in
 {
   CustomData_reset(&body_data_);
   CustomData_reset(&constraint_data_);
-  CustomData_realloc(&body_data_, 0, body_num_);
-  CustomData_realloc(&constraint_data_, 0, constraint_num_);
+  resize(bodies_num, constraints_num);
   shapes.reinitialize(shapes_num);
 }
 
@@ -363,14 +362,7 @@ PhysicsGeometryImpl::PhysicsGeometryImpl(const PhysicsGeometryImpl &other)
   CustomData_copy(&other.constraint_data_, &constraint_data_, CD_MASK_ALL, other.constraint_num_);
 
   if (!other.is_empty) {
-    rigid_bodies.reinitialize(other.rigid_bodies.size());
-    motion_states.reinitialize(other.motion_states.size());
-    constraints.reinitialize(other.constraints.size());
-    constraint_feedback.reinitialize(other.constraints.size());
-    constraint_feedback.fill(
-        {btVector3(0, 0, 0), btVector3(0, 0, 0), btVector3(0, 0, 0), btVector3(0, 0, 0)});
-    constraints.fill(nullptr);
-    const IndexRange body_range(body_num_);
+    this->resize(other.body_num_, other.constraint_num_);
     if (try_move(other, true, IndexRange(body_num_), IndexRange(constraint_num_))) {
       is_empty.store(false);
     }
@@ -406,6 +398,61 @@ PhysicsGeometryImpl &PhysicsGeometryImpl::operator=(const PhysicsGeometryImpl &o
 void PhysicsGeometryImpl::delete_self()
 {
   delete this;
+}
+
+void PhysicsGeometryImpl::resize(const int body_num, const int constraint_num)
+{
+  body_num_ = body_num;
+  constraint_num_ = constraint_num;
+
+  CustomData_realloc(&body_data_, 0, body_num);
+  CustomData_realloc(&constraint_data_, 0, constraint_num);
+
+  if (!is_empty) {
+    rigid_bodies.reinitialize(body_num);
+    motion_states.reinitialize(body_num);
+    constraints.reinitialize(constraint_num);
+    constraints.fill(nullptr);
+    constraint_feedback.reinitialize(constraint_num);
+    constraint_feedback.fill(
+        {btVector3(0, 0, 0), btVector3(0, 0, 0), btVector3(0, 0, 0), btVector3(0, 0, 0)});
+  }
+  else {
+    /* Add default custom data for builtin attributes. */
+    MutableAttributeAccessor attributes = this->attributes_for_write();
+    attributes.for_all([&](const AttributeIDRef &attribute_id,
+                           const AttributeMetaData &meta_data) -> bool {
+      CustomData *custom_data = nullptr;
+      int totelem = 0;
+      switch (meta_data.domain) {
+        case AttrDomain::Point:
+          custom_data = &body_data_;
+          totelem = body_num_;
+          break;
+        case AttrDomain::Edge:
+          custom_data = &constraint_data_;
+          totelem = constraint_num_;
+          break;
+        case AttrDomain::Instance:
+          break;
+        default:
+          BLI_assert_unreachable();
+          break;
+      }
+      if (custom_data == nullptr) {
+        return true;
+      }
+      const eCustomDataType data_type = meta_data.data_type;
+      CustomData_add_layer_named(
+          custom_data, data_type, CD_SET_DEFAULT, totelem, attribute_id.name());
+      return true;
+    });
+  }
+}
+
+void PhysicsGeometryImpl::realloc()
+{
+  this->resize(this->body_num_, this->constraint_num_);
 }
 
 void PhysicsGeometryImpl::tag_body_topology_changed()
@@ -463,7 +510,7 @@ void PhysicsGeometryImpl::ensure_body_collision_shapes() const
       const btRigidBody *bt_body = this->rigid_bodies[i];
       const btCollisionShape *bt_shape = bt_body->getCollisionShape();
       /* Every body's shape must be in the shapes list, can use asserting lookup here. */
-      this->body_collision_shapes[i] = shapes_map.lookup(bt_shape);
+      this->body_collision_shapes[i] = (bt_shape != nullptr ? shapes_map.lookup(bt_shape) : -1);
     }
   });
 }
@@ -520,9 +567,10 @@ void PhysicsGeometryImpl::realize()
   const AttributeAccessor from_attributes = this->attributes(true);
   MutableAttributeAccessor to_attributes = this->attributes_for_write(false);
 
-  const IndexRange body_range = this->rigid_bodies.index_range();
-  const IndexRange constraint_range = this->constraints.index_range();
+  this->realloc();
 
+  const IndexRange body_range = IndexRange(this->body_num_);
+  const IndexRange constraint_range = IndexRange(this->constraint_num_);
   create_bodies(this->rigid_bodies, this->motion_states, body_range);
   this->tag_body_topology_changed();
 
@@ -917,12 +965,12 @@ int PhysicsGeometry::shapes_num() const
 
 IndexRange PhysicsGeometry::bodies_range() const
 {
-  return impl().rigid_bodies.index_range();
+  return IndexRange(impl_->body_num_);
 }
 
 IndexRange PhysicsGeometry::constraints_range() const
 {
-  return impl().constraints.index_range();
+  return IndexRange(impl_->constraint_num_);
 }
 
 IndexRange PhysicsGeometry::shapes_range() const
@@ -1129,7 +1177,7 @@ void PhysicsGeometry::move_or_copy_selection(
   PhysicsGeometryImpl &impl = this->impl_for_write();
   const bool was_moved = impl.try_move(from.impl(), use_world, body_mask, constraint_mask);
 
-  const Set<std::string> skip_attributes = was_moved ?
+  const Set<std::string> ignored_attributes = was_moved ?
                                                Set<std::string>{builtin_attributes.skip_copy} :
                                                Set<std::string>{};
 
@@ -1164,13 +1212,13 @@ void PhysicsGeometry::move_or_copy_selection(
   bke::gather_attributes(src_attributes,
                          bke::AttrDomain::Point,
                          propagation_info,
-                         skip_attributes,
+                         ignored_attributes,
                          body_mask,
                          dst_attributes);
   bke::gather_attributes(src_attributes,
                          bke::AttrDomain::Edge,
                          propagation_info,
-                         skip_attributes,
+                         ignored_attributes,
                          constraint_mask,
                          dst_attributes);
 }

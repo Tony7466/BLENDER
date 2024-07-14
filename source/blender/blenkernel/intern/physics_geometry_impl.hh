@@ -94,6 +94,9 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
 
   void delete_self() override;
 
+  void resize(int body_num, int constraint_num);
+  void realloc();
+
   void tag_body_topology_changed();
   void tag_body_collision_shape_changed();
   void tag_constraint_disable_collision_changed();
