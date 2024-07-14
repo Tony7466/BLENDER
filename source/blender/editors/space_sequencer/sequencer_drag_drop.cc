@@ -489,12 +489,6 @@ static void draw_seq_in_view(bContext *C, wmWindow * /*win*/, wmDrag *drag, cons
       text_array[len_text_arr++] = strip_duration_text;
     }
 
-    // if (sseq->timeline_overlay.flag & SEQ_TIMELINE_SHOW_STRIP_LINKS) {
-    //   // TODO
-    //   text_array[len_text_arr++] = text_sep;
-    //   text_array[len_text_arr++] = "L";
-    // }
-
     BLI_assert(len_text_arr <= ARRAY_SIZE(text_array));
 
     BLI_string_join_array(text_display, FILE_MAX, text_array, len_text_arr);
