@@ -524,16 +524,25 @@ int blf_font_draw_mono(
   return columns;
 }
 
-void blf_draw_svg_icon(
-    FontBLF *font, uint icon_id, float x, float y, float size, float color[4], float outline_alpha)
+void blf_draw_svg_icon(FontBLF *font,
+                       uint icon_id,
+                       float x,
+                       float y,
+                       float size,
+                       float color[4],
+                       float outline_alpha,
+                       std::function<void(std::string &)> edit_source_cb)
 {
   blf_font_size(font, size);
   font->pos[0] = int(x);
   font->pos[1] = int(y);
   font->pos[2] = 0;
-  rgba_float_to_uchar(font->color, color);
 
-  if (outline_alpha > 0) {
+  if (color != nullptr) {
+    rgba_float_to_uchar(font->color, color);
+  }
+
+  if (outline_alpha > 0.0f) {
     font->flags |= BLF_SHADOW;
     font->shadow = FontShadowType::Outline;
     font->shadow_x = 0;
@@ -547,7 +556,7 @@ void blf_draw_svg_icon(
   GlyphCacheBLF *gc = blf_glyph_cache_acquire(font);
   blf_batch_draw_begin(font);
 
-  GlyphBLF *g = blf_glyph_ensure_icon(gc, icon_id);
+  GlyphBLF *g = blf_glyph_ensure_icon(gc, icon_id, color == nullptr, edit_source_cb);
   if (g) {
     blf_glyph_draw(font, gc, g, 0, 0);
   }
@@ -565,7 +574,7 @@ blender::Array<uchar> blf_svg_icon_bitmap(
 {
   blf_font_size(font, size);
   GlyphCacheBLF *gc = blf_glyph_cache_acquire(font);
-  GlyphBLF *g = blf_glyph_ensure_icon(gc, icon_id);
+  GlyphBLF *g = blf_glyph_ensure_icon(gc, icon_id, false, nullptr);
 
   if (!g) {
     blf_glyph_cache_release(font);

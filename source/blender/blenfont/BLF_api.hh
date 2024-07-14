@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <functional>
+
 #include "BLI_array.hh"
 #include "BLI_bounds_types.hh"
 #include "BLI_compiler_attrs.h"
@@ -146,8 +148,13 @@ void BLF_draw(int fontid, const char *str, size_t str_len, ResultBLF *r_info = n
 int BLF_draw_mono(int fontid, const char *str, size_t str_len, int cwidth, int tab_columns)
     ATTR_NONNULL(2);
 
-void BLF_draw_svg_icon(
-    uint icon_id, float x, float y, float size, float color[4], float outline_alpha);
+void BLF_draw_svg_icon(uint icon_id,
+                       float x,
+                       float y,
+                       float size,
+                       float color[4] = nullptr,
+                       float outline_alpha = 1.0f,
+                       std::function<void(std::string &)> edit_source_cb = nullptr);
 
 blender::Array<uchar> BLF_svg_icon_bitmap(uint icon_id, float size, int *r_width, int *r_height);
 
