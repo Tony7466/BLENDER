@@ -131,7 +131,7 @@
 #include "UI_resources.hh"
 
 #include "object_intern.hh"
-#include "../io/io_utils.hh"
+#include "io_utils.hh"
 
 const EnumPropertyItem rna_enum_light_type_items[] = {
     {LA_LOCAL, "POINT", ICON_LIGHT_POINT, "Point", "Omnidirectional point light source"},
