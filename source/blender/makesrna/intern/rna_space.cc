@@ -5924,11 +5924,6 @@ static void rna_def_space_sequencer_timeline_overlay(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Show Duration", "");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_SEQUENCER, nullptr);
 
-  prop = RNA_def_property(srna, "show_strip_links", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flag", SEQ_TIMELINE_SHOW_STRIP_LINKS);
-  RNA_def_property_ui_text(prop, "Show Links", "");
-  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_SEQUENCER, nullptr);
-
   prop = RNA_def_property(srna, "show_grid", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", SEQ_TIMELINE_SHOW_GRID);
   RNA_def_property_ui_text(prop, "Show Grid", "Show vertical grid lines");
