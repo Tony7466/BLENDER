@@ -44,6 +44,9 @@ static void anim_filepath_get(const Scene *scene,
                               size_t filepath_size,
                               char *r_filepath)
 {
+  if (seq->strip == nullptr || seq->strip->stripdata == nullptr) {
+    return;
+  }
   BLI_path_join(r_filepath, filepath_size, seq->strip->dirpath, seq->strip->stripdata->filename);
   BLI_path_abs(r_filepath, ID_BLEND_PATH_FROM_GLOBAL(&scene->id));
 }
@@ -92,8 +95,10 @@ static ImBufAnim *anim_get(Sequence *seq, const char *filepath)
                   seq->strip->colorspace_settings.name);
 }
 
-static bool is_multiview(const Scene *scene, Sequence *seq, const char *filepath)
+static bool is_multiview(const Scene *scene, Sequence *seq)
 {
+  char filepath[FILE_MAX];
+  anim_filepath_get(scene, seq, sizeof(filepath), filepath);
   bool use_multiview = (seq->flag & SEQ_USE_VIEWS) != 0 && (scene->r.scemode & R_MULTIVIEW) != 0;
   char prefix[FILE_MAX];
   const char *ext = nullptr;
@@ -117,7 +122,6 @@ static blender::Vector<ImBufAnim *> multiview_anims_get(const Scene *scene,
     char filepath_view[FILE_MAX];
     SNPRINTF(filepath_view, "%s%s%s", prefix, suffix, ext);
 
-    /* Multiview files must be loaded, otherwise it is not possible to detect failure. */
     ImBufAnim *anim = anim_get(seq, filepath_view);
     if (anim != nullptr) {
       anims.append(anim);
@@ -159,22 +163,20 @@ void ShareableAnim::acquire_anims(const Scene *scene, Sequence *seq)
   char filepath[FILE_MAX];
   anim_filepath_get(scene, seq, sizeof(filepath), filepath);
 
-  if (is_multiview(scene, seq, filepath)) {
+  if (is_multiview(scene, seq)) {
     anims = multiview_anims_get(scene, seq, filepath);
     multiview_loaded = true;
-    return;
   }
-
-  ImBufAnim *anim = anim_get(seq, filepath);
-  if (anim != nullptr) {
-    anims.append(anim);
+  else {
+    ImBufAnim *anim = anim_get(seq, filepath);
+    if (anim != nullptr) {
+      anims.append(anim);
+    }
   }
 
   for (int i = 0; i < anims.size(); i++) {
     index_dir_set(SEQ_editing_get(scene), seq, anims[i]);
-    char filepath[FILE_MAX];
-    anim_filepath_get(scene, seq, sizeof(filepath), filepath);
-    if (is_multiview(scene, seq, filepath)) {
+    if (is_multiview(scene, seq)) {
       const char *suffix = BKE_scene_multiview_view_id_suffix_get(&scene->r, i);
       IMB_suffix_anim(anims[i], suffix);
     }
@@ -185,19 +187,11 @@ void ShareableAnim::acquire_anims(const Scene *scene, Sequence *seq)
 
 bool ShareableAnim::has_anim(const Scene *scene, Sequence *seq)
 {
-  char filepath[FILE_MAX];
-  anim_filepath_get(scene, seq, sizeof(filepath), filepath);
-
-  if (is_multiview(scene, seq, filepath) && !multiview_loaded) {
+  if (is_multiview(scene, seq) && !multiview_loaded) {
     return false;
   }
 
   return !anims.is_empty();
-}
-
-bool ShareableAnim::try_lock()
-{
-  return mutex->try_lock();
 }
 
 void ShareableAnim::unlock()
@@ -261,18 +255,57 @@ void AnimManager::free_unused_anims(blender::Vector<Sequence *> &strips)
   mutex.unlock();
 }
 
-// xxx this is the sole reason for try-locking. To prevent this, I need to have unique items to
-// prefetch. But the issue is, that each strip may request different multiview configuration.
-// To work around this, it may be possible to setup some fancy data structure which would represent
-// filepaths to load, but honestly, it's just better to not support multiview for initial
-// implementation.
-// Consider, that strip with single view would be loaded, and multiview setup would be skipped,
-// because try-lock nayway.
+/* Get set of strips that will be used for parallel loading of anims.
+ * The main purpose of this function is to create set of strips, which ensures, that all
+ * multiview anims will be loaded.
+ * The set does need to contain only one user(strip) of any particular anim, because of parallel
+ * loading.
+ */
+// XXX this is ugly, can this be optimized?
+blender::Vector<Sequence *> filter_duplicates_for_parallel_load(
+    const Scene *scene, blender::Vector<Sequence *> &strips)
+{
+  blender::Map<std::string, Sequence *> unique_strips_map;
+  blender::Vector<Sequence *> unique_strips;
+
+  for (Sequence *seq : strips) {
+    char filepath[FILE_MAX];
+    anim_filepath_get(scene, seq, sizeof(filepath), filepath);
+
+    if (unique_strips_map.contains(std::string(filepath))) {
+      continue;
+    }
+
+    if (is_multiview(scene, seq)) {
+      unique_strips_map.add(std::string(filepath), seq);
+    }
+  }
+
+  for (Sequence *seq : strips) {
+    char filepath[FILE_MAX];
+    anim_filepath_get(scene, seq, sizeof(filepath), filepath);
+
+    if (unique_strips_map.contains(std::string(filepath))) {
+      continue;
+    }
+
+    unique_strips_map.add(std::string(filepath), seq);
+  }
+
+  for (Sequence *seq : unique_strips_map.values()) {
+    unique_strips.append(seq);
+  }
+
+  return unique_strips;
+}
+
 void AnimManager::parallel_load_anims(const Scene *scene,
                                       blender::Vector<Sequence *> &strips,
                                       bool unlock)
 {
   using namespace blender;
+
+  strips = filter_duplicates_for_parallel_load(scene, strips);
 
   threading::parallel_for(strips.index_range(), 1, [&](const IndexRange range) {
     for (int i : range) {
@@ -282,9 +315,7 @@ void AnimManager::parallel_load_anims(const Scene *scene,
       }
 
       ShareableAnim &sh_anim = cache_entry_get(scene, seq);
-      if (!sh_anim.mutex->try_lock()) {
-        continue;
-      }
+      sh_anim.mutex->lock();
 
       if (sh_anim.has_anim(scene, seq)) {
         if (unlock) {

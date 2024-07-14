@@ -2173,7 +2173,10 @@ ImBuf *SEQ_render_give_ibuf(const SeqRenderData *context, float timeline_frame, 
     anim_manager->strip_anims_release(scene, strips);
   }
   seq_prefetch_start(context, timeline_frame);
-  anim_manager->manage_anims(scene);
+
+  if (!context->is_scrubbing) {
+    anim_manager->manage_anims(scene);
+  }
 
   return out;
 }
