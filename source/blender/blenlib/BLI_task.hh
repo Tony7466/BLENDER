@@ -30,6 +30,8 @@
 #      undef NOMINMAX
 #    endif
 #  endif
+#else
+static_assert(false, "TBB not used for BLI_task");
 #endif
 
 #include "BLI_function_ref.hh"

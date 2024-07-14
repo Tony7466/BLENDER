@@ -27,6 +27,7 @@
 #  include <mutex>
 
 #  include "BLI_map.hh"
+static_assert(false, "TBB not used for BLI_enumerable_thread_specific");
 #endif
 
 #include "BLI_utility_mixins.hh"
