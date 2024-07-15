@@ -129,17 +129,6 @@ class VKRenderGraph : public NonCopyable {
   VKRenderGraph(std::unique_ptr<VKCommandBufferInterface> command_buffer,
                 VKResourceStateTracker &resources);
 
-  /**
-   * Free all resources held by the render graph. After calling this function the render graph may
-   * not work as expected, leading to crashes.
-   *
-   * Freeing data of context resources cannot be done inside the destructor due to an issue when
-   * Blender (read window manager) exits. During this phase the backend is deallocated, device is
-   * destroyed, but window manager requires a context so it creates new one. We work around this
-   * issue by ensuring the VKDevice is always in control of releasing resources.
-   */
-  void free_data();
-
  private:
   /**
    * Add a node to the render graph.

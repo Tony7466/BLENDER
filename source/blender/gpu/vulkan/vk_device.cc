@@ -40,6 +40,14 @@ void VKDevice::deinit()
     return;
   }
 
+  {
+    std::scoped_lock mutex(resources.mutex);
+    for (render_graph::VKRenderGraph *rg : render_graphs_.values()) {
+      delete rg;
+    }
+    render_graphs_.clear();
+  }
+
   dummy_buffer_.free();
   samplers_.free();
   destroy_discarded_resources();
@@ -341,6 +349,22 @@ std::string VKDevice::driver_version() const
 /* -------------------------------------------------------------------- */
 /** \name Resource management
  * \{ */
+
+render_graph::VKRenderGraph &VKDevice::render_graph()
+{
+  std::scoped_lock mutex(resources.mutex);
+  pthread_t current_thread_id = pthread_self();
+
+  if (render_graphs_.contains(current_thread_id)) {
+    return *render_graphs_.lookup(current_thread_id);
+  }
+  else {
+    render_graph::VKRenderGraph *render_graph = new render_graph::VKRenderGraph(
+        std::make_unique<render_graph::VKCommandBufferWrapper>(), resources);
+    render_graphs_.add_new(current_thread_id, render_graph);
+    return *render_graph;
+  }
+}
 
 void VKDevice::context_register(VKContext &context)
 {
