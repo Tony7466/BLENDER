@@ -10,6 +10,15 @@
 #include "DNA_ID.h"
 #include "DNA_defs.h"
 
+#ifdef __cplusplus
+namespace blender::bke::sound::fft_cache {
+struct FFTCacheRuntime;
+}
+using FFTCacheRuntimeHandle = blender::bke::sound::fft_cache::FFTCacheRuntime;
+#else
+typedef struct FFTCacheRuntimeHandle FFTCacheRuntimeHandle;
+#endif
+
 struct Ipo;
 struct PackedFile;
 
@@ -78,7 +87,7 @@ typedef struct bSound {
   /**
    * Runtime FFT results.
    */
-  void *fft_results;
+  FFTCacheRuntimeHandle *fft_cache;
 
   void *_pad2;
 

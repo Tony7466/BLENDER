@@ -417,7 +417,6 @@ struct bNodeType {
 #define NODE_CLASS_SHADER 40
 #define NODE_CLASS_GEOMETRY 41
 #define NODE_CLASS_ATTRIBUTE 42
-#define NODE_CLASS_SOUND 64
 #define NODE_CLASS_LAYOUT 100
 
 /**

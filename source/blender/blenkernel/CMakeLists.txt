@@ -276,6 +276,7 @@ set(SRC
   intern/shrinkwrap.cc
   intern/softbody.cc
   intern/sound.cc
+  intern/sound_fft_cache.cc
   intern/speaker.cc
   intern/studiolight.cc
   intern/subdiv.cc
@@ -494,6 +495,7 @@ set(SRC
   BKE_shrinkwrap.hh
   BKE_softbody.h
   BKE_sound.h
+  BKE_sound_fft_cache.hh
   BKE_speaker.h
   BKE_studiolight.h
   BKE_subdiv.hh
