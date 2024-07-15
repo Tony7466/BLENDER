@@ -173,9 +173,7 @@ static GreasePencil *curve_instances_to_grease_pencil_layers(
   {
     /* Manually propagate "opacity" data, because it's not a layer attribute on grease pencil
      * yet. */
-    if (const AttributeReader<float> opacity_attribute = instances_attributes.lookup<float>(
-            "opacity"))
-    {
+    if (const AttributeReader opacity_attribute = instances_attributes.lookup<float>("opacity")) {
       instance_selection.foreach_index([&](const int instance_i, const int layer_i) {
         grease_pencil->layer(layer_i)->opacity = opacity_attribute.varray[instance_i];
       });
