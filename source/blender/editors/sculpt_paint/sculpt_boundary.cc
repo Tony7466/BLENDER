@@ -361,10 +361,9 @@ static void edit_data_init(SculptSession &ss,
           if (boundary.edit_info[from_v_i].original_vertex_i ==
               BKE_pbvh_vertex_to_index(*ss.pbvh, initial_vert))
           {
-            boundary.pivot_vertex = ni.vertex;
-            copy_v3_v3(boundary.initial_pivot_position, SCULPT_vertex_co_get(ss, ni.vertex));
-            accum_distance += len_v3v3(SCULPT_vertex_co_get(ss, from_v),
-                                       SCULPT_vertex_co_get(ss, ni.vertex));
+            boundary.pivot_vertex = SCULPT_vertex_co_get(ss, ni.vertex);
+            copy_v3_v3(boundary.initial_pivot_position, boundary.pivot_vertex);
+            accum_distance += len_v3v3(SCULPT_vertex_co_get(ss, from_v), boundary.pivot_vertex);
           }
         }
       }
@@ -572,7 +571,7 @@ static void twist_data_init(SculptSession &ss, SculptBoundary &boundary)
   }
   else {
     sub_v3_v3v3(boundary.twist.rotation_axis,
-                SCULPT_vertex_co_get(ss, boundary.pivot_vertex),
+                boundary.pivot_vertex,
                 SCULPT_vertex_co_get(ss, boundary.initial_vert));
     normalize_v3(boundary.twist.rotation_axis);
   }
@@ -972,7 +971,7 @@ void pivot_line_preview_draw(const uint gpuattr, SculptSession &ss)
   immUniformColor4f(1.0f, 1.0f, 1.0f, 0.8f);
   GPU_line_width(2.0f);
   immBegin(GPU_PRIM_LINES, 2);
-  immVertex3fv(gpuattr, SCULPT_vertex_co_get(ss, ss.boundary_preview->pivot_vertex));
+  immVertex3fv(gpuattr, ss.boundary_preview->pivot_vertex);
   immVertex3fv(gpuattr, SCULPT_vertex_co_get(ss, ss.boundary_preview->initial_vert));
   immEnd();
 }
