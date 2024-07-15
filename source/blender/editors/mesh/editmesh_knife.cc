@@ -3286,7 +3286,7 @@ static bool knife_find_closest_edge_of_face(KnifeTool_OpData *kcd,
     if ((kcd->is_angle_snapping || kcd->axis_constrained) && (kfe != kcd->prev.edge) &&
         (kcd->mode == MODE_DRAGGING))
     {
-      /* Check if we're close enough. */
+      /* Check if it is within the edges' bounds. */
       if (!knife_closest_constrain_to_edge(kcd, kfe->v1->cageco, kfe->v2->cageco, test_cagep)) {
         continue;
       }
