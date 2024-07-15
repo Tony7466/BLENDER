@@ -332,7 +332,7 @@ DefNode(GeometryNode, GEO_NODE_CURVE_TO_MESH, 0, "CURVE_TO_MESH", CurveToMesh, "
 DefNode(GeometryNode, GEO_NODE_CURVE_TO_POINTS, 0, "CURVE_TO_POINTS", CurveToPoints, "Curve to Points", "Generate a point cloud by sampling positions along curves")
 DefNode(GeometryNode, GEO_NODE_CURVE_TOPOLOGY_CURVE_OF_POINT, 0, "CURVE_OF_POINT", CurveOfPoint, "Curve of Point", "Retrieve the curve a control point is part of")
 DefNode(GeometryNode, GEO_NODE_CURVE_TOPOLOGY_POINTS_OF_CURVE, 0, "POINTS_OF_CURVE", PointsOfCurve, "Points of Curve", "Retrieve a point index within a curve")
-DefNode(GeometryNode, GEO_NODE_CURVES_TO_GREASE_PENCIL, 0, "CURVES_TO_GREASE_PENCIL", CurvesToGreasePencil, "Curves to Grease Pencil", "Convert the curves in each top-level instance into a grease pencil layer")
+DefNode(GeometryNode, GEO_NODE_CURVES_TO_GREASE_PENCIL, 0, "CURVES_TO_GREASE_PENCIL", CurvesToGreasePencil, "Curves to Grease Pencil", "Convert the curves in each top-level instance into Grease Pencil layer")
 DefNode(GeometryNode, GEO_NODE_DEFORM_CURVES_ON_SURFACE, 0, "DEFORM_CURVES_ON_SURFACE", DeformCurvesOnSurface, "Deform Curves on Surface", "Translate and rotate curves based on changes between the object's original and evaluated surface mesh")
 DefNode(GeometryNode, GEO_NODE_DELETE_GEOMETRY, 0, "DELETE_GEOMETRY", DeleteGeometry, "Delete Geometry", "Remove selected elements of a geometry")
 DefNode(GeometryNode, GEO_NODE_DISTRIBUTE_POINTS_IN_GRID, 0, "DISTRIBUTE_POINTS_IN_GRID", DistributePointsInGrid, "Distribute Points in Grid", "Generate points inside a volume grid")
