@@ -499,7 +499,7 @@ class DATA_PT_text_boxes(CurveButtonsPanelText, Panel):
 
 
 class DATA_PT_curve_animation(PropertiesAnimationMixin, Panel):
-    _animated_id_context_property='curve'
+    _animated_id_context_property = 'curve'
 
 
 class DATA_PT_custom_props_curve(CurveButtonsPanel, PropertyPanel, Panel):
