@@ -8,8 +8,6 @@
  * The shadow module manages shadow update tagging & shadow rendering.
  */
 
-#include "fmt/format.h"
-
 #include "BKE_global.hh"
 #include "BLI_math_matrix.hh"
 
@@ -613,7 +611,8 @@ void ShadowModule::init()
   /* Make allocation safe. Avoids crash later on. */
   if (!atlas_tx_.is_valid()) {
     atlas_tx_.ensure_2d_array(ShadowModule::atlas_type, int2(1), 1);
-    inst_.screen_info("Error: Could not allocate shadow atlas. Most likely out of GPU memory.");
+    inst_.info_append_i18n(
+        "Error: Could not allocate shadow atlas. Most likely out of GPU memory.");
   }
 
   /* Read end of the swap-chain to avoid stall. */
@@ -631,14 +630,14 @@ void ShadowModule::init()
     ShadowStatistics stats = statistics_buf_.current();
 
     if (stats.page_used_count > shadow_page_len_ && enabled_) {
-      inst_.screen_info(
-          fmt::format(RPT_("Error: Shadow buffer full, may result in missing shadows and lower "
-                           "performance. ({} / {})"),
-                      stats.page_used_count,
-                      shadow_page_len_));
+      inst_.info_append_i18n(
+          "Error: Shadow buffer full, may result in missing shadows and lower "
+          "performance. ({} / {})",
+          stats.page_used_count,
+          shadow_page_len_);
     }
     if (stats.view_needed_count > SHADOW_VIEW_MAX && enabled_) {
-      inst_.screen_info("Error: Too many shadow updates, some shadow might be incorrect.");
+      inst_.info_append_i18n("Error: Too many shadow updates, some shadow might be incorrect.");
     }
   }
 
@@ -1343,16 +1342,16 @@ void ShadowModule::debug_draw(View &view, GPUFrameBuffer *view_fb)
 
   switch (inst_.debug_mode) {
     case DEBUG_SHADOW_TILEMAPS:
-      inst_.screen_info("Debug Mode: Shadow Tilemap");
+      inst_.info_append("Debug Mode: Shadow Tilemap");
       break;
     case DEBUG_SHADOW_VALUES:
-      inst_.screen_info("Debug Mode: Shadow Values");
+      inst_.info_append("Debug Mode: Shadow Values");
       break;
     case DEBUG_SHADOW_TILE_RANDOM_COLOR:
-      inst_.screen_info("Debug Mode: Shadow Tile Random Color");
+      inst_.info_append("Debug Mode: Shadow Tile Random Color");
       break;
     case DEBUG_SHADOW_TILEMAP_RANDOM_COLOR:
-      inst_.screen_info("Debug Mode: Shadow Tilemap Random Color");
+      inst_.info_append("Debug Mode: Shadow Tilemap Random Color");
       break;
     default:
       break;

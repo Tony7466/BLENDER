@@ -65,7 +65,7 @@ void Instance::init(const int2 &output_res,
   manager = DRW_manager_get();
   update_eval_members();
 
-  info = "";
+  info_ = "";
 
   shaders_are_ready_ = shaders.is_ready(is_image_render());
   if (!shaders_are_ready_) {
@@ -134,7 +134,7 @@ void Instance::init_light_bake(Depsgraph *depsgraph, draw::Manager *manager)
 
   is_light_bake = true;
   debug_mode = (eDebugMode)G.debug_value;
-  info = "";
+  info_ = "";
 
   shaders.is_ready(true);
 
