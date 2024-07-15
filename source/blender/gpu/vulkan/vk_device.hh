@@ -8,8 +8,6 @@
 
 #pragma once
 
-#include <pthread.h>
-
 #include "BLI_utility_mixins.hh"
 #include "BLI_vector.hh"
 
@@ -106,7 +104,7 @@ class VKDevice : public NonCopyable {
   Vector<VkImageView> discarded_image_views_;
 
   std::string glsl_patch_;
-  Map<pthread_t, render_graph::VKRenderGraph *> render_graphs_;
+  Vector<render_graph::VKRenderGraph *> render_graphs_;
 
  public:
   render_graph::VKResourceStateTracker resources;
