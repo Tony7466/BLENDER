@@ -84,7 +84,19 @@ BLACKLIST_OPTIX_OSL = [
     'osl_trace_shader.blend',
     # The Volumetric noise texture is different for some reason
     'principled_absorption.blend',
+    # Dicing tests use wireframe node which doesn't appear to be supported in OptiX
+    'dicing_camera.blend',
+    'offscreen_dicing.blend',
+    'panorama_dicing.blend',
     # TODO: Investigate every other failing case and add them here.
+    # Currently failing tests that aren't in this list are:
+    # ray_portal*.blend - CUDA error
+    # compare_bump.blend - Bump "Displacement mode" doesn't appear to be working.
+    # image_mapping_udin*.blend - Can't load UDIM from disk? But can load UDIM if it's packed, but doesn't seem to use it properly.
+    # points_volume.blend - CUDA error
+    # principled_emission_alpha.blend - CUDA error related to connected inputs. Probably the same as #122779
+    # point_density_*_object - Object scale doesn't appear to be appplied to texture
+    # All the other tests mentioned in BLACKLIST_OSL (E.g. Principled BSDF tests having noise differences)
 ]
 
 BLACKLIST_METAL = [
