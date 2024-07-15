@@ -13,7 +13,7 @@ set(INC
   ../../windowmanager
   ../../../../intern/eigen
   ../../../../intern/slim
-  # RNA_prototypes.h
+  # RNA_prototypes.hh
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
@@ -49,5 +49,5 @@ set(LIB
 
 blender_add_lib(bf_editor_uvedit "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
-# RNA_prototypes.h
+# RNA_prototypes.hh
 add_dependencies(bf_editor_uvedit bf_rna)

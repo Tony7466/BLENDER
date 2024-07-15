@@ -36,7 +36,7 @@
 #include "RNA_access.hh"
 #include "RNA_enum_types.hh"
 #include "RNA_path.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -407,8 +407,9 @@ PyObject *pyrna_struct_keyframe_insert(BPy_StructRNA *self, PyObject *args, PyOb
     const std::optional<blender::StringRefNull> channel_group = group_name ?
                                                                     std::optional(group_name) :
                                                                     std::nullopt;
+    PointerRNA id_pointer = RNA_id_pointer_create(self->ptr.owner_id);
     CombinedKeyingResult combined_result = insert_keyframes(G_MAIN,
-                                                            &self->ptr,
+                                                            &id_pointer,
                                                             channel_group,
                                                             {{path_full, {}, index}},
                                                             std::nullopt,
