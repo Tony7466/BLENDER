@@ -36,6 +36,7 @@ class Batch;
 struct IconTextOverlay;
 struct ID;
 struct ImBuf;
+struct LayoutPanelHeader;
 struct Main;
 struct Scene;
 struct uiHandleButtonData;
@@ -210,6 +211,8 @@ struct uiBut {
 
   uiButHandleNFunc funcN = nullptr;
   void *func_argN = nullptr;
+  uiButArgNFree func_argN_free_fn;
+  uiButArgNCopy func_argN_copy_fn;
 
   const bContextStore *context = nullptr;
 
@@ -267,6 +270,11 @@ struct uiBut {
   wmOperatorType *optype = nullptr;
   PointerRNA *opptr = nullptr;
   wmOperatorCallContext opcontext = WM_OP_INVOKE_DEFAULT;
+  /**
+   * Keep an operator attached but never actually call it through the button. See
+   * #UI_but_operator_set_never_call().
+   */
+  bool operator_never_call = false;
 
   /** When non-zero, this is the key used to activate a menu items (`a-z` always lower case). */
   uchar menu_key = 0;
@@ -284,6 +292,18 @@ struct uiBut {
    * #UI_SELECT state mostly).
    */
   uiHandleButtonData *active = nullptr;
+  /**
+   * Event handling only supports one active button at a time, but there are cases where that's not
+   * enough. A common one is to keep some filter button active to receive text input, while other
+   * buttons remain active for interaction.
+   *
+   * Buttons that have #semi_modal_state set will be temporarily activated for event handling. If
+   * they don't consume the event (for example text input events) the event will be forwarded to
+   * other buttons.
+   *
+   * Currently only text buttons support this well.
+   */
+  uiHandleButtonData *semi_modal_state = nullptr;
 
   /** Custom button data (borrowed, not owned). */
   void *custom_data = nullptr;
@@ -560,6 +580,8 @@ struct uiBlock {
 
   uiButHandleNFunc funcN;
   void *func_argN;
+  uiButArgNFree func_argN_free_fn;
+  uiButArgNCopy func_argN_copy_fn;
 
   uiBlockHandleFunc handle_func;
   void *handle_func_arg;
@@ -868,7 +890,12 @@ struct uiPopupBlockHandle {
 
   /** Store data for refreshing popups. */
   uiPopupBlockCreate popup_create_vars;
-  /** True if we can re-create the popup using #uiPopupBlockHandle.popup_create_vars. */
+  /**
+   * True if we can re-create the popup using #uiPopupBlockHandle.popup_create_vars.
+   *
+   * \note Popups that can refresh are called with #bContext::wm::region_popup set
+   * to the #uiPopupBlockHandle::region both on initial creation and when refreshing.
+   */
   bool can_refresh;
   bool refresh;
 
@@ -985,16 +1012,19 @@ uiPopupBlockHandle *ui_popup_block_create(bContext *C,
                                           uiBlockCreateFunc create_func,
                                           uiBlockHandleCreateFunc handle_create_func,
                                           void *arg,
-                                          uiFreeArgFunc arg_free);
+                                          uiFreeArgFunc arg_free,
+                                          bool can_refresh);
 uiPopupBlockHandle *ui_popup_menu_create(
     bContext *C, ARegion *butregion, uiBut *but, uiMenuCreateFunc menu_func, void *arg);
 
 /* `interface_region_popover.cc` */
 
+using uiPopoverCreateFunc = std::function<void(bContext *, uiLayout *, PanelType *)>;
+
 uiPopupBlockHandle *ui_popover_panel_create(bContext *C,
                                             ARegion *butregion,
                                             uiBut *but,
-                                            uiMenuCreateFunc menu_func,
+                                            uiPopoverCreateFunc popover_func,
                                             const PanelType *panel_type);
 
 /* `interface_region_menu_pie.cc` */
@@ -1043,7 +1073,17 @@ void ui_draw_aligned_panel(const ARegion *region,
                            bool show_pin,
                            bool show_background,
                            bool region_search_filter_active);
+void ui_draw_layout_panels_backdrop(const ARegion *region,
+                                    const Panel *panel,
+                                    const float radius,
+                                    float subpanel_backcolor[4]);
+void ui_panel_drag_collapse_handler_add(const bContext *C, const bool was_open);
 void ui_panel_tag_search_filter_match(Panel *panel);
+/** Toggles layout panel open state and returns the new state. */
+bool ui_layout_panel_toggle_open(const bContext *C, LayoutPanelHeader *header);
+LayoutPanelHeader *ui_layout_panel_header_under_mouse(const Panel &panel, const int my);
+/** Apply scroll to layout panels when the main panel is used in popups. */
+void ui_layout_panel_popup_scroll_apply(Panel *panel, const float dy);
 
 /**
  * Draws in resolution of 48x4 colors.
@@ -1134,6 +1174,7 @@ void ui_but_activate_over(bContext *C, ARegion *region, uiBut *but);
 void ui_but_execute_begin(bContext *C, ARegion *region, uiBut *but, void **active_back);
 void ui_but_execute_end(bContext *C, ARegion *region, uiBut *but, void *active_back);
 void ui_but_active_free(const bContext *C, uiBut *but);
+void ui_but_semi_modal_state_free(const bContext *C, uiBut *but);
 /**
  * In some cases we may want to update the view (#View2D) in-between layout definition and drawing.
  * E.g. to make sure a button is visible while editing.
@@ -1298,8 +1339,14 @@ int ui_id_icon_get(const bContext *C, ID *id, bool big);
 
 /* interface_icons_event.cc */
 
-void icon_draw_rect_input(
-    float x, float y, int w, int h, float alpha, short event_type, short event_value);
+void icon_draw_rect_input(float x,
+                          float y,
+                          int w,
+                          int h,
+                          float alpha,
+                          short event_type,
+                          short event_value,
+                          bool inverted = false);
 
 /* resources.cc */
 
@@ -1420,6 +1467,7 @@ uiBut *ui_list_row_find_index(const ARegion *region,
                               uiBut *listbox) ATTR_WARN_UNUSED_RESULT;
 uiBut *ui_view_item_find_mouse_over(const ARegion *region, const int xy[2]) ATTR_NONNULL(1, 2);
 uiBut *ui_view_item_find_active(const ARegion *region);
+uiBut *ui_view_item_find_search_highlight(const ARegion *region);
 
 using uiButFindPollFn = bool (*)(const uiBut *but, const void *customdata);
 /**
@@ -1510,6 +1558,9 @@ void UI_OT_eyedropper_driver(wmOperatorType *ot);
 /* interface_eyedropper_gpencil_color.c */
 
 void UI_OT_eyedropper_gpencil_color(wmOperatorType *ot);
+
+/* interface_template_asset_shelf_popover.cc */
+std::optional<blender::StringRefNull> UI_asset_shelf_idname_from_button_context(const uiBut *but);
 
 /* interface_template_asset_view.cc */
 
@@ -1606,7 +1657,7 @@ blender::Vector<FCurve *> get_property_drivers(
  *
  * \param src_drivers: The span of drivers to paste.  If `is_array_prop` is
  * false, this must be a single element.  If `is_array_prop` is true then this
- * should have the same length as the the destination array property.  Nullptr
+ * should have the same length as the destination array property.  Nullptr
  * elements are skipped when pasting.
  * \param is_array_prop: Whether `src_drivers` are drivers for the elements
  * of an array property.

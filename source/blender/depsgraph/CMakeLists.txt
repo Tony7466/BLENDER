@@ -168,6 +168,22 @@ if(WITH_PYTHON)
   )
 endif()
 
+if(WITH_TBB)
+  add_definitions(-DWITH_TBB)
+
+  list(APPEND INC_SYS
+    ${TBB_INCLUDE_DIRS}
+  )
+
+  list(APPEND LIB
+    ${TBB_LIBRARIES}
+  )
+endif()
+
+if(WITH_EXPERIMENTAL_FEATURES)
+  add_definitions(-DWITH_ANIM_BAKLAVA)
+endif()
+
 blender_add_lib(bf_depsgraph "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 add_library(bf::depsgraph ALIAS bf_depsgraph)
 

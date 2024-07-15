@@ -306,7 +306,7 @@ option(WITH_IK_SOLVER "\
 Enable Legacy IK solver (only disable for development)"
   ON
 )
-option(WITH_FFTW3 "Enable FFTW3 support (Used for smoke, ocean sim, and audio effects)" ON)
+option(WITH_FFTW3 "Enable FFTW3 support (Used for smoke, ocean sim, glare, and audio effects)" ON)
 option(WITH_PUGIXML "Enable PugiXML support (Used for OpenImageIO, Grease Pencil SVG export)" ON)
 option(WITH_BULLET "Enable Bullet (Physics Engine)" ON)
 option(WITH_SYSTEM_BULLET "\
@@ -702,7 +702,7 @@ if(NOT APPLE AND NOT (WIN32 AND CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64"))
     gfx900 gfx90c gfx902
     gfx1010 gfx1011 gfx1012
     gfx1030 gfx1031 gfx1032 gfx1034 gfx1035 gfx1036
-    gfx1100 gfx1101 gfx1102 gfx1103
+    gfx1100 gfx1101 gfx1102 gfx1103 gfx1150 gfx1151
     CACHE STRING "AMD HIP architectures to build binaries for"
   )
   mark_as_advanced(WITH_CYCLES_DEVICE_HIP)
@@ -796,7 +796,7 @@ Enable multi-threading. TBB is also required for features such as Cycles, OpenVD
 )
 
 # TBB malloc is only supported on for windows currently
-if(WIN32)
+if(WIN32 AND NOT CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64")
   option(WITH_TBB_MALLOC_PROXY "Enable the TBB malloc replacement" ON)
 endif()
 
@@ -1232,6 +1232,9 @@ set_and_warn_dependency(WITH_IMAGE_OPENEXR WITH_CYCLES_OSL OFF)
 # Hydra requires USD.
 set_and_warn_dependency(WITH_USD WITH_HYDRA OFF)
 
+# The Ocean modifier requires FFTW3.
+set_and_warn_dependency(WITH_FFTW3 WITH_MOD_OCEANSIM OFF)
+
 if(NOT WITH_CYCLES)
   set(WITH_CYCLES_OSL OFF)
 endif()
@@ -1310,17 +1313,6 @@ if(WITH_PYTHON)
     message(
       FATAL_ERROR
       "At least Python 3.11 is required to build, but found Python ${PYTHON_VERSION}"
-    )
-  endif()
-
-  file(GLOB RESULT "${CMAKE_SOURCE_DIR}/scripts/addons")
-  list(LENGTH RESULT DIR_LEN)
-  if(DIR_LEN EQUAL 0)
-    message(
-      WARNING
-      "Addons path '${CMAKE_SOURCE_DIR}/scripts/addons' is missing. "
-      "This is an external repository which needs to be checked out. Use `make update` to do so. "
-      "* CONTINUING WITHOUT ADDONS *"
     )
   endif()
 endif()
@@ -1445,10 +1437,6 @@ endif()
 
 # -----------------------------------------------------------------------------
 # Common Checks for Compatible Options
-
-if(NOT WITH_FFTW3 AND WITH_MOD_OCEANSIM)
-  message(FATAL_ERROR "WITH_MOD_OCEANSIM requires WITH_FFTW3 to be ON")
-endif()
 
 if(WITH_INTERNATIONAL)
   if(NOT WITH_BOOST)
@@ -2598,6 +2586,7 @@ if(WITH_BLENDER)
   # internal and external library information first, for test linking
   add_subdirectory(source)
 elseif(WITH_CYCLES_STANDALONE OR WITH_CYCLES_HYDRA_RENDER_DELEGATE)
+  add_subdirectory(intern/atomic)
   add_subdirectory(intern/guardedalloc)
   add_subdirectory(intern/libc_compat)
   add_subdirectory(intern/sky)

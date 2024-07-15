@@ -100,8 +100,6 @@
 
 #include "BLO_read_write.hh"
 
-#include "engines/eevee/eevee_lightcache.h"
-
 #include "IMB_colormanagement.hh"
 #include "IMB_imbuf.hh"
 
@@ -109,7 +107,15 @@
 
 #include "bmesh.hh"
 
+using blender::bke::CompositorRuntime;
 using blender::bke::SceneRuntime;
+
+CompositorRuntime::~CompositorRuntime()
+{
+  if (preview_depsgraph) {
+    DEG_graph_free(preview_depsgraph);
+  }
+}
 
 CurveMapping *BKE_sculpt_default_cavity_curve()
 
@@ -197,7 +203,7 @@ static void scene_init_data(ID *id)
     pset->brush[PE_BRUSH_CUT].strength = 1.0f;
   }
 
-  STRNCPY(scene->r.engine, RE_engine_id_BLENDER_EEVEE);
+  STRNCPY(scene->r.engine, RE_engine_id_BLENDER_EEVEE_NEXT);
 
   STRNCPY(scene->r.pic, U.renderdir);
 
@@ -392,7 +398,7 @@ static void scene_free_data(ID *id)
 
   /* is no lib link block, but scene extension */
   if (scene->nodetree) {
-    ntreeFreeEmbeddedTree(scene->nodetree);
+    blender::bke::ntreeFreeEmbeddedTree(scene->nodetree);
     MEM_freeN(scene->nodetree);
     scene->nodetree = nullptr;
   }
@@ -441,11 +447,6 @@ static void scene_free_data(ID *id)
     BKE_libblock_free_data_py(&scene->master_collection->id);
     MEM_freeN(scene->master_collection);
     scene->master_collection = nullptr;
-  }
-
-  if (scene->eevee.light_cache_data) {
-    EEVEE_lightcache_free(scene->eevee.light_cache_data);
-    scene->eevee.light_cache_data = nullptr;
   }
 
   if (scene->display.shading.prop) {
@@ -590,27 +591,17 @@ static void scene_foreach_paint(LibraryForeachIDData *data,
                                                     SCENE_FOREACH_UNDO_RESTORE,
                                                     reader,
                                                     &paint_old->brush,
-                                                    IDWALK_CB_USER);
+                                                    IDWALK_CB_NOP);
 
-  for (int i = 0; i < paint_old->tool_slots_len; i++) {
-    /* This is a bit tricky.
-     *  - In case we do not do `undo_restore`, `paint` and `paint_old` pointers are the same, so
-     *    this is equivalent to simply looping over slots from `paint`.
-     *  - In case we do `undo_restore`, we only want to consider the slots from the old one, since
-     *    those are the one we keep in the end.
-     *    + In case the new data has less valid slots, we feed in a dummy null pointer.
-     *    + In case the new data has more valid slots, the extra ones are ignored.
-     */
-    brush_tmp = nullptr;
-    brush_p = (paint && i < paint->tool_slots_len) ? &paint->tool_slots[i].brush : &brush_tmp;
-    BKE_LIB_FOREACHID_UNDO_PRESERVE_PROCESS_IDSUPER_P(data,
-                                                      brush_p,
-                                                      do_undo_restore,
-                                                      SCENE_FOREACH_UNDO_RESTORE,
-                                                      reader,
-                                                      &paint_old->tool_slots[i].brush,
-                                                      IDWALK_CB_USER);
-  }
+  Brush *eraser_brush_tmp = nullptr;
+  Brush **eraser_brush_p = paint ? &paint->eraser_brush : &eraser_brush_tmp;
+  BKE_LIB_FOREACHID_UNDO_PRESERVE_PROCESS_IDSUPER_P(data,
+                                                    eraser_brush_p,
+                                                    do_undo_restore,
+                                                    SCENE_FOREACH_UNDO_RESTORE,
+                                                    reader,
+                                                    &paint_old->eraser_brush,
+                                                    IDWALK_CB_NOP);
 
   Palette *palette_tmp = nullptr;
   Palette **palette_p = paint ? &paint->palette : &palette_tmp;
@@ -945,22 +936,6 @@ static void scene_foreach_id(ID *id, LibraryForeachIDData *data)
   }
 }
 
-static void scene_foreach_cache(ID *id,
-                                IDTypeForeachCacheFunctionCallback function_callback,
-                                void *user_data)
-{
-  Scene *scene = (Scene *)id;
-  IDCacheKey key{};
-  key.id_session_uid = id->session_uid;
-  key.identifier = offsetof(Scene, eevee.light_cache_data);
-
-  function_callback(id,
-                    &key,
-                    (void **)&scene->eevee.light_cache_data,
-                    IDTYPE_CACHE_CB_FLAGS_PERSISTENT,
-                    user_data);
-}
-
 static bool seq_foreach_path_callback(Sequence *seq, void *user_data)
 {
   if (SEQ_HAS_PATH(seq)) {
@@ -1135,7 +1110,7 @@ static void scene_blend_write(BlendWriter *writer, ID *id, const void *id_addres
     /* Set deprecated chunksize for forward compatibility. */
     temp_nodetree->chunksize = 256;
     BLO_write_struct_at_address(writer, bNodeTree, sce->nodetree, temp_nodetree);
-    ntreeBlendWrite(writer, temp_nodetree);
+    blender::bke::ntreeBlendWrite(writer, temp_nodetree);
   }
 
   BKE_color_managed_view_settings_blend_write(writer, &sce->view_settings);
@@ -1174,12 +1149,6 @@ static void scene_blend_write(BlendWriter *writer, ID *id, const void *id_addres
     BKE_collection_blend_write_nolib(
         writer,
         reinterpret_cast<Collection *>(BLO_write_get_id_buffer_temp_id(temp_embedded_id_buffer)));
-  }
-
-  /* Eevee Light-cache */
-  if (sce->eevee.light_cache_data && !BLO_write_is_undo(writer)) {
-    BLO_write_struct(writer, LightCache, sce->eevee.light_cache_data);
-    EEVEE_lightcache_blend_write(writer, sce->eevee.light_cache_data);
   }
 
   BKE_screen_view3d_shading_blend_write(writer, &sce->display.shading);
@@ -1496,19 +1465,6 @@ static void scene_blend_read_data(BlendDataReader *reader, ID *id)
     BKE_view_layer_blend_read_data(reader, view_layer);
   }
 
-  if (BLO_read_data_is_undo(reader)) {
-    /* If it's undo do nothing here, caches are handled by higher-level generic calling code. */
-  }
-  else {
-    /* else try to read the cache from file. */
-    BLO_read_struct(reader, LightCache, &sce->eevee.light_cache_data);
-    if (sce->eevee.light_cache_data) {
-      EEVEE_lightcache_blend_read_data(reader, sce->eevee.light_cache_data);
-    }
-  }
-
-  EEVEE_lightcache_info_update(&sce->eevee);
-
   BKE_screen_view3d_shading_blend_read_data(reader, &sce->display.shading);
 
   BLO_read_struct(reader, IDProperty, &sce->layer_properties);
@@ -1594,7 +1550,7 @@ constexpr IDTypeInfo get_type_info()
   info.name = "Scene";
   info.name_plural = "scenes";
   info.translation_context = BLT_I18NCONTEXT_ID_SCENE;
-  info.flags = 0;
+  info.flags = IDTYPE_FLAGS_NEVER_UNUSED;
   info.asset_type_info = nullptr;
 
   info.init_data = scene_init_data;
@@ -1604,7 +1560,7 @@ constexpr IDTypeInfo get_type_info()
    * support all possible corner cases. */
   info.make_local = nullptr;
   info.foreach_id = scene_foreach_id;
-  info.foreach_cache = scene_foreach_cache;
+  info.foreach_cache = nullptr;
   info.foreach_path = scene_foreach_path;
   info.owner_pointer_get = nullptr;
 
@@ -1786,9 +1742,6 @@ void BKE_scene_copy_data_eevee(Scene *sce_dst, const Scene *sce_src)
 {
   /* Copy eevee data between scenes. */
   sce_dst->eevee = sce_src->eevee;
-  sce_dst->eevee.light_cache_data = nullptr;
-  sce_dst->eevee.light_cache_info[0] = '\0';
-  /* TODO: Copy the cache. */
 }
 
 Scene *BKE_scene_duplicate(Main *bmain, Scene *sce, eSceneCopyMethod type)
@@ -3331,7 +3284,7 @@ static Depsgraph **scene_get_depsgraph_p(Scene *scene,
   }
 
   /* Depsgraph was not found in the ghash, but the key still needs allocating. */
-  *key_ptr = MEM_new<DepsgraphKey>(__func__);
+  *key_ptr = MEM_cnew<DepsgraphKey>(__func__);
   **key_ptr = key;
 
   *depsgraph_ptr = nullptr;

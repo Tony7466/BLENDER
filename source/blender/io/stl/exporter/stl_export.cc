@@ -11,6 +11,7 @@
 
 #include "BKE_context.hh"
 #include "BKE_lib_id.hh"
+#include "BKE_mesh_wrapper.hh"
 #include "BKE_object.hh"
 #include "BKE_report.hh"
 #include "BKE_scene.hh"
@@ -105,6 +106,9 @@ void export_frame(Depsgraph *depsgraph,
     Mesh *mesh = export_params.apply_modifiers ? BKE_object_get_evaluated_mesh(obj_eval) :
                                                  BKE_object_get_pre_modified_mesh(obj_eval);
 
+    /* Ensure data exists if currently in edit mode. */
+    BKE_mesh_wrapper_ensure_mdata(mesh);
+
     /* Calculate transform. */
     float global_scale = export_params.global_scale * scene_unit_scale;
     float axes_transform[3][3];
@@ -118,13 +122,17 @@ void export_frame(Depsgraph *depsgraph,
     mul_v3_m3v3(xform[3], axes_transform, obj_eval->object_to_world().location());
     xform[3][3] = obj_eval->object_to_world()[3][3];
 
+    const bool mirrored = is_negative_m4(xform);
+
     /* Write triangles. */
     const Span<float3> positions = mesh->vert_positions();
     const Span<int> corner_verts = mesh->corner_verts();
     for (const int3 &tri : mesh->corner_tris()) {
       PackedTriangle data{};
       for (int i = 0; i < 3; i++) {
-        float3 pos = positions[corner_verts[tri[i]]];
+        /* Reverse face order for mirrored objects. */
+        int idx = mirrored ? 2 - i : i;
+        float3 pos = positions[corner_verts[tri[idx]]];
         mul_m4_v3(xform, pos);
         pos *= global_scale;
         data.vertices[i] = pos;

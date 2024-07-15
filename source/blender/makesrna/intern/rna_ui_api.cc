@@ -850,11 +850,10 @@ static void rna_uiLayout_template_node_operator_asset_menu_items(uiLayout *layou
 }
 
 static void rna_uiLayout_template_modifier_asset_menu_items(uiLayout *layout,
-                                                            bContext *C,
                                                             const char *catalog_path)
 {
   using namespace blender;
-  ed::object::ui_template_modifier_asset_menu_items(*layout, *C, StringRef(catalog_path));
+  ed::object::ui_template_modifier_asset_menu_items(*layout, StringRef(catalog_path));
 }
 
 static void rna_uiLayout_template_node_operator_root_items(uiLayout *layout, bContext *C)
@@ -961,6 +960,60 @@ static int rna_ui_get_enum_icon(bContext *C,
   }
 
   return icon;
+}
+
+void rna_uiTemplateAssetShelfPopover(uiLayout *layout,
+                                     bContext *C,
+                                     const char *asset_shelf_id,
+                                     const char *name,
+                                     BIFIconID icon,
+                                     int icon_value)
+{
+  if (icon_value && !icon) {
+    icon = icon_value;
+  }
+
+  blender::ui::template_asset_shelf_popover(*layout, *C, asset_shelf_id, name ? name : "", icon);
+}
+
+PointerRNA rna_uiTemplatePopupConfirm(uiLayout *layout,
+                                      ReportList *reports,
+                                      const char *opname,
+                                      const char *text,
+                                      const char *text_ctxt,
+                                      bool translate,
+                                      int icon,
+                                      const char *cancel_text,
+                                      bool cancel_default)
+{
+  PointerRNA opptr = PointerRNA_NULL;
+
+  /* This allows overriding buttons in `WM_operator_props_dialog_popup` and other popups. */
+  wmOperatorType *ot = nullptr;
+  if (opname[0]) {
+    /* Confirming is optional. */
+    ot = WM_operatortype_find(opname, false); /* print error next */
+  }
+  else {
+    text = "";
+  }
+
+  if (opname[0] ? (!ot || !ot->srna) : false) {
+    RNA_warning("%s '%s'", ot ? "operator missing srna" : "unknown operator", opname);
+  }
+  else if (!UI_popup_block_template_confirm_is_supported(uiLayoutGetBlock(layout))) {
+    BKE_reportf(reports, RPT_ERROR, "template_popup_confirm used outside of a popup");
+  }
+  else {
+    text = rna_translate_ui_text(text, text_ctxt, nullptr, nullptr, translate);
+    if (cancel_text && cancel_text[0]) {
+      cancel_text = rna_translate_ui_text(cancel_text, text_ctxt, nullptr, nullptr, translate);
+    }
+
+    UI_popup_block_template_confirm_op(
+        layout, ot, text, cancel_text, icon, cancel_default, &opptr);
+  }
+  return opptr;
 }
 
 #else
@@ -1573,6 +1626,12 @@ void RNA_api_ui_layout(StructRNA *srna)
   parm = RNA_def_pointer(func, "data", "AnyType", "", "Pointer to put in context");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED | PARM_RNAPTR);
 
+  func = RNA_def_function(srna, "context_string_set", "uiLayoutSetContextString");
+  parm = RNA_def_string(func, "name", nullptr, 0, "Name", "Name of entry in the context");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  parm = RNA_def_string(func, "value", nullptr, 0, "Value", "String to put in context");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED | PARM_RNAPTR);
+
   /* templates */
   func = RNA_def_function(srna, "template_header", "uiTemplateHeader");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT);
@@ -2065,7 +2124,6 @@ void RNA_api_ui_layout(StructRNA *srna)
   func = RNA_def_function(srna,
                           "template_modifier_asset_menu_items",
                           "rna_uiLayout_template_modifier_asset_menu_items");
-  RNA_def_function_flag(func, FUNC_USE_CONTEXT);
   parm = RNA_def_string(func, "catalog_path", nullptr, 0, "", "");
 
   func = RNA_def_function(srna,
@@ -2266,12 +2324,10 @@ void RNA_api_ui_layout(StructRNA *srna)
   RNA_def_function_ui_description(func, "Show bone collections tree");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT);
 
-#  ifdef WITH_GREASE_PENCIL_V3
   func = RNA_def_function(
       srna, "template_grease_pencil_layer_tree", "uiTemplateGreasePencilLayerTree");
   RNA_def_function_ui_description(func, "View of the active grease pencil layer tree");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT);
-#  endif
 
   func = RNA_def_function(srna, "template_node_tree_interface", "uiTemplateNodeTreeInterface");
   RNA_def_function_ui_description(func, "Show a node tree interface");
@@ -2287,6 +2343,44 @@ void RNA_api_ui_layout(StructRNA *srna)
   RNA_def_function_flag(func, FUNC_USE_CONTEXT);
   parm = RNA_def_pointer(func, "node", "Node", "Node", "Display inputs of this node");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
+
+  func = RNA_def_function(srna, "template_asset_shelf_popover", "rna_uiTemplateAssetShelfPopover");
+  RNA_def_function_ui_description(func, "Create a button to open an asset shelf in a popover");
+  RNA_def_function_flag(func, FUNC_USE_CONTEXT);
+  parm = RNA_def_string(func,
+                        "asset_shelf",
+                        nullptr,
+                        0,
+                        "",
+                        "Identifier of the asset shelf to display (`bl_idname`)");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  parm = RNA_def_string(
+      func, "name", nullptr, 0, "", "Optional name to indicate the active asset");
+  RNA_def_property_clear_flag(parm, PROP_NEVER_NULL);
+  parm = RNA_def_property(func, "icon", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(parm, rna_enum_icon_items);
+  RNA_def_property_ui_text(parm, "Icon", "Override automatic icon of the item");
+  parm = RNA_def_property(func, "icon_value", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_ui_text(parm, "Icon Value", "Override automatic icon of the item");
+
+  /* A version of `operator` that defines a [Cancel, Confirm] pair of buttons. */
+  func = RNA_def_function(srna, "template_popup_confirm", "rna_uiTemplatePopupConfirm");
+  api_ui_item_op_common(func);
+  parm = RNA_def_string(func,
+                        "cancel_text",
+                        nullptr,
+                        0,
+                        "",
+                        "Optional text to use for the cancel, not shown when an empty string");
+  RNA_def_boolean(func, "cancel_default", false, "", "Cancel button by default");
+  RNA_def_function_ui_description(
+      func, "Add confirm & cancel buttons into a popup which will close the popup when pressed");
+  RNA_def_function_flag(func, FUNC_USE_REPORTS);
+
+  parm = RNA_def_pointer(
+      func, "properties", "OperatorProperties", "", "Operator properties to fill in");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED | PARM_RNAPTR);
+  RNA_def_function_return(func, parm);
 }
 
 #endif

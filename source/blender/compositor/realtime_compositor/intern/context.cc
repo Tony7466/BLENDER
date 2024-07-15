@@ -13,6 +13,7 @@
 #include "BKE_node_runtime.hh"
 
 #include "COM_context.hh"
+#include "COM_profiler.hh"
 #include "COM_render_context.hh"
 #include "COM_static_cache_manager.hh"
 #include "COM_texture_pool.hh"
@@ -21,7 +22,19 @@ namespace blender::realtime_compositor {
 
 Context::Context(TexturePool &texture_pool) : texture_pool_(texture_pool) {}
 
+void Context::populate_meta_data_for_pass(const Scene * /* scene*/,
+                                          int /* view_layer_id */,
+                                          const char * /* pass_name */,
+                                          MetaData & /* meta_data */) const
+{
+}
+
 RenderContext *Context::render_context() const
+{
+  return nullptr;
+}
+
+Profiler *Context::profiler() const
 {
   return nullptr;
 }
@@ -34,6 +47,12 @@ bool Context::is_canceled() const
     return false;
   }
   return this->get_node_tree().runtime->test_break(get_node_tree().runtime->tbh);
+}
+
+void Context::reset()
+{
+  texture_pool_.reset();
+  cache_manager_.reset();
 }
 
 int2 Context::get_compositing_region_size() const

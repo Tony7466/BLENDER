@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 #include "usd_writer_abstract.hh"
+#include "usd_utils.hh"
 #include "usd_writer_material.hh"
 
 #include <pxr/base/tf/stringUtils.h>
@@ -213,7 +214,8 @@ pxr::UsdShadeMaterial USDAbstractWriter::ensure_usd_material(const HierarchyCont
   pxr::UsdStageRefPtr stage = usd_export_context_.stage;
 
   /* Construct the material. */
-  pxr::TfToken material_name(pxr::TfMakeValidIdentifier(material->id.name + 2));
+  pxr::TfToken material_name(
+      make_safe_name(material->id.name + 2, usd_export_context_.export_params.allow_unicode));
   pxr::SdfPath usd_path = pxr::UsdGeomScope::Define(stage, get_material_library_path())
                               .GetPath()
                               .AppendChild(material_name);
@@ -317,6 +319,9 @@ void USDAbstractWriter::write_user_properties(const pxr::UsdPrim &prim,
 
   const StringRef displayName_identifier = "displayName";
 
+  const std::string default_namespace(
+      usd_export_context_.export_params.custom_properties_namespace);
+
   for (IDProperty *prop = (IDProperty *)properties->data.group.first; prop; prop = prop->next) {
     if (displayName_identifier == prop->name) {
       if (prop->type == IDP_STRING && prop->data.pointer) {
@@ -325,9 +330,20 @@ void USDAbstractWriter::write_user_properties(const pxr::UsdPrim &prim,
       continue;
     }
 
-    std::string prop_name = pxr::TfMakeValidIdentifier(prop->name);
-    std::string full_prop_name = "userProperties:" + prop_name;
+    std::vector<std::string> path_names = pxr::TfStringTokenize(prop->name, ":");
 
+    /* If the path does not already have a namespace prefix, prepend the default namespace
+     * specified by the user, if any. */
+    if (!default_namespace.empty() && path_names.size() < 2) {
+      path_names.insert(path_names.begin(), default_namespace);
+    }
+
+    std::vector<std::string> safe_names;
+    for (const std::string &name : path_names) {
+      safe_names.push_back(make_safe_name(name, usd_export_context_.export_params.allow_unicode));
+    }
+
+    std::string full_prop_name = pxr::SdfPath::JoinIdentifier(safe_names);
     pxr::TfToken prop_token = pxr::TfToken(full_prop_name);
 
     if (prim.HasAttribute(prop_token)) {

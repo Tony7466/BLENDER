@@ -315,7 +315,7 @@ GPUMaterial *DRW_shader_from_material(
     bool deferred,
     GPUCodegenCallbackFn callback,
     void *thunk,
-    GPUMaterialCanUseDefaultCallbackFn can_use_default_cb = nullptr);
+    GPUMaterialPassReplacementCallbackFn pass_replacement_cb = nullptr);
 void DRW_shader_queue_optimize_material(GPUMaterial *mat);
 void DRW_shader_free(GPUShader *shader);
 #define DRW_SHADER_FREE_SAFE(shader) \
@@ -951,9 +951,13 @@ bool DRW_state_is_scene_render();
 bool DRW_state_is_viewport_image_render();
 bool DRW_state_is_playback();
 /**
- * Is the user navigating the region.
+ * Is the user navigating or painting the region.
  */
 bool DRW_state_is_navigating();
+/**
+ * Is the user painting?
+ */
+bool DRW_state_is_painting();
 /**
  * Should text draw in this mode?
  */

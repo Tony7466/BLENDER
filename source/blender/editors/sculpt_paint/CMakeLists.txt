@@ -3,9 +3,15 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
+  ../..
+
   ../include
+  ../asset
   ../uvedit
+  ../../asset_system
   ../../blenkernel
+  ../../blenlib
+  ../../blenloader
   ../../blentranslation
   ../../bmesh
   ../../draw
@@ -26,6 +32,7 @@ set(INC_SYS
 )
 
 set(SRC
+  brush_asset_ops.cc
   curves_sculpt_add.cc
   curves_sculpt_brush.cc
   curves_sculpt_comb.cc
@@ -42,6 +49,8 @@ set(SRC
   curves_sculpt_snake_hook.cc
   grease_pencil_draw_ops.cc
   grease_pencil_erase.cc
+  grease_pencil_fill.cc
+  grease_pencil_interpolate.cc
   grease_pencil_paint.cc
   grease_pencil_sculpt_clone.cc
   grease_pencil_sculpt_common.cc
@@ -93,7 +102,6 @@ set(SRC
   sculpt_geodesic.cc
   sculpt_gesture.cc
   sculpt_mask_init.cc
-  sculpt_multiplane_scrape.cc
   sculpt_ops.cc
   sculpt_paint_color.cc
   sculpt_paint_image.cc
@@ -107,9 +115,40 @@ set(SRC
 
   curves_sculpt_intern.hh
   grease_pencil_intern.hh
+  mesh_brush_common.hh
   grease_pencil_weight_paint.hh
   paint_intern.hh
   sculpt_intern.hh
+
+  brushes/bmesh_topology_rake.cc
+  brushes/clay.cc
+  brushes/clay_strips.cc
+  brushes/clay_thumb.cc
+  brushes/crease.cc
+  brushes/draw_face_sets.cc
+  brushes/draw_vector_displacement.cc
+  brushes/draw_sharp.cc
+  brushes/draw.cc
+  brushes/elastic_deform.cc
+  brushes/fill.cc
+  brushes/flatten.cc
+  brushes/grab.cc
+  brushes/inflate.cc
+  brushes/mask.cc
+  brushes/multiplane_scrape.cc
+  brushes/multires_displacement_eraser.cc
+  brushes/pinch.cc
+  brushes/multires_displacement_smear.cc
+  brushes/relax.cc
+  brushes/rotate.cc
+  brushes/scrape.cc
+  brushes/smooth.cc
+  brushes/smooth_mask.cc
+  brushes/snake_hook.cc
+  brushes/thumb.cc
+  brushes/topology_slide.cc
+
+  brushes/types.hh
 )
 
 set(LIB

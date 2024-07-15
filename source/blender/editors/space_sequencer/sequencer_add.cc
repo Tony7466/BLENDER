@@ -118,7 +118,7 @@ static void sequencer_generic_props__internal(wmOperatorType *ot, int flag)
       ot->srna, "channel", 1, 1, MAXSEQ, "Channel", "Channel to place this strip into", 1, MAXSEQ);
 
   RNA_def_boolean(
-      ot->srna, "replace_sel", true, "Replace Selection", "Replace the current selection");
+      ot->srna, "replace_sel", true, "Replace Selection", "Deselect previously selected strips");
 
   /* Only for python scripts which import strips and place them after. */
   prop = RNA_def_boolean(
@@ -1489,9 +1489,9 @@ static int sequencer_add_effect_strip_invoke(bContext *C,
   return sequencer_add_effect_strip_exec(C, op);
 }
 
-static std::string sequencer_add_effect_strip_desc(bContext * /*C*/,
-                                                   wmOperatorType * /*ot*/,
-                                                   PointerRNA *ptr)
+static std::string sequencer_add_effect_strip_get_description(bContext * /*C*/,
+                                                              wmOperatorType * /*ot*/,
+                                                              PointerRNA *ptr)
 {
   const int type = RNA_enum_get(ptr, "type");
 
@@ -1554,7 +1554,7 @@ void SEQUENCER_OT_effect_strip_add(wmOperatorType *ot)
   ot->exec = sequencer_add_effect_strip_exec;
   ot->poll = ED_operator_sequencer_active_editable;
   ot->poll_property = seq_effect_add_properties_poll;
-  ot->get_description = sequencer_add_effect_strip_desc;
+  ot->get_description = sequencer_add_effect_strip_get_description;
 
   /* Flags. */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;

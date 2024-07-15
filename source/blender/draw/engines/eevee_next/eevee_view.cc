@@ -139,9 +139,9 @@ void ShadingView::render()
 
   inst_.gbuffer.release();
 
-  inst_.volume.draw_compute(main_view_);
+  inst_.volume.draw_compute(main_view_, extent_);
 
-  // inst_.lookdev.render_overlay(view_fb_);
+  inst_.ambient_occlusion.render_pass(render_view_);
 
   inst_.pipelines.forward.render(render_view_, prepass_fb_, combined_fb_, extent_);
 
@@ -153,8 +153,6 @@ void ShadingView::render()
   inst_.volume_probes.viewport_draw(render_view_, combined_fb_);
   inst_.sphere_probes.viewport_draw(render_view_, combined_fb_);
   inst_.planar_probes.viewport_draw(render_view_, combined_fb_);
-
-  inst_.ambient_occlusion.render_pass(render_view_);
 
   GPUTexture *combined_final_tx = render_postfx(rbufs.combined_tx);
   inst_.film.accumulate(jitter_view_, combined_final_tx);
@@ -299,8 +297,8 @@ void CaptureView::render_probes()
   while (const auto update_info = inst_.sphere_probes.probe_update_info_pop()) {
     GPU_debug_group_begin("Probe.Capture");
 
-    if (!inst_.pipelines.data.is_probe_reflection) {
-      inst_.pipelines.data.is_probe_reflection = true;
+    if (!inst_.pipelines.data.is_sphere_probe) {
+      inst_.pipelines.data.is_sphere_probe = true;
       inst_.uniform_data.push_update();
     }
 
@@ -347,8 +345,8 @@ void CaptureView::render_probes()
     inst_.sphere_probes.remap_to_octahedral_projection(update_info->atlas_coord, false);
   }
 
-  if (inst_.pipelines.data.is_probe_reflection) {
-    inst_.pipelines.data.is_probe_reflection = false;
+  if (inst_.pipelines.data.is_sphere_probe) {
+    inst_.pipelines.data.is_sphere_probe = false;
     inst_.uniform_data.push_update();
   }
 }
@@ -366,15 +364,11 @@ void LookdevView::render()
   }
   GPU_debug_group_begin("Lookdev");
 
+  const float radius = inst_.lookdev.sphere_radius_;
+  const float clip = inst_.camera.data_get().clip_near;
+  const float4x4 win_m4 = math::projection::orthographic_infinite(
+      -radius, radius, -radius, radius, clip);
   const float4x4 &view_m4 = inst_.camera.data_get().viewmat;
-  const float sphere_scale = inst_.lookdev.sphere_scale;
-  const float clip_near = inst_.camera.data_get().clip_near;
-  float4x4 win_m4 = math::projection::orthographic(-sphere_scale,
-                                                   sphere_scale,
-                                                   -sphere_scale,
-                                                   sphere_scale,
-                                                   clip_near - sphere_scale,
-                                                   clip_near + sphere_scale);
   view_.sync(view_m4, win_m4);
 
   inst_.lookdev.draw(view_);

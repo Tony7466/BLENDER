@@ -309,7 +309,7 @@ short ANIM_animchannel_keyframes_loop(KeyframeEditData *ked,
                                       KeyframeEditFunc key_cb,
                                       FcuEditFunc fcu_cb);
 /**
- * Same as above, except bAnimListElem wrapper is not needed.
+ * Same as #ANIM_animchannel_keyframes_loop, except #bAnimListElem wrapper is not needed.
  * \param keytype: is #eAnim_KeyType.
  */
 short ANIM_animchanneldata_keyframes_loop(KeyframeEditData *ked,
@@ -417,7 +417,7 @@ bool keyframe_region_circle_test(const KeyframeEdit_CircleData *data_circle, con
 /* Destructive Editing API `keyframes_general.cc`. */
 
 bool duplicate_fcurve_keys(FCurve *fcu);
-float get_default_rna_value(FCurve *fcu, PropertyRNA *prop, PointerRNA *ptr);
+float get_default_rna_value(const FCurve *fcu, PropertyRNA *prop, PointerRNA *ptr);
 
 struct FCurveSegment {
   FCurveSegment *next, *prev;

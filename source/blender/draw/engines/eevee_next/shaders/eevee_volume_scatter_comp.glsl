@@ -39,8 +39,10 @@ vec3 volume_light_eval(const bool is_directional, vec3 P, vec3 V, uint l_idx, fl
 
   float visibility = attenuation;
   if (light.tilemap_index != LIGHT_NO_SHADOW) {
-    visibility *= shadow_sample(is_directional, shadow_atlas_tx, shadow_tilemaps_tx, light, P)
-                      .light_visibilty;
+    float delta = shadow_sample(is_directional, shadow_atlas_tx, shadow_tilemaps_tx, light, P);
+    if (delta > 0.0) {
+      return vec3(0);
+    }
   }
   visibility *= volume_phase_function(-V, lv.L, s_anisotropy);
   if (visibility < LIGHT_ATTENUATION_THRESHOLD) {
@@ -59,7 +61,7 @@ vec3 volume_light_eval(const bool is_directional, vec3 P, vec3 V, uint l_idx, fl
 vec3 volume_lightprobe_eval(vec3 P, vec3 V, float s_anisotropy)
 {
   SphericalHarmonicL1 phase_sh = volume_phase_function_as_sh_L1(V, s_anisotropy);
-  SphericalHarmonicL1 volume_radiance_sh = lightprobe_irradiance_sample(P);
+  SphericalHarmonicL1 volume_radiance_sh = lightprobe_volume_sample(P);
 
   float clamp_indirect = uniform_buf.clamp.volume_indirect;
   volume_radiance_sh = spherical_harmonics_clamp(volume_radiance_sh, clamp_indirect);

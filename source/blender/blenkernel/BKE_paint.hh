@@ -8,6 +8,8 @@
  * \ingroup bke
  */
 
+#include <optional>
+
 #include "BLI_array.hh"
 #include "BLI_bit_vector.hh"
 #include "BLI_math_matrix_types.hh"
@@ -175,34 +177,60 @@ PaintCurve *BKE_paint_curve_add(Main *bmain, const char *name);
  */
 bool BKE_paint_ensure(Main *bmain, ToolSettings *ts, Paint **r_paint);
 void BKE_paint_init(Main *bmain, Scene *sce, PaintMode mode, const uchar col[3]);
-void BKE_paint_free(Paint *p);
+void BKE_paint_free(Paint *paint);
 /**
  * Called when copying scene settings, so even if 'src' and 'tar' are the same still do a
  * #id_us_plus(), rather than if we were copying between 2 existing scenes where a matching
  * value should decrease the existing user count as with #paint_brush_set()
  */
-void BKE_paint_copy(const Paint *src, Paint *tar, int flag);
+void BKE_paint_copy(const Paint *src, Paint *dst, int flag);
 
-void BKE_paint_runtime_init(const ToolSettings *ts, Paint *paint);
-
-void BKE_paint_cavity_curve_preset(Paint *p, int preset);
+void BKE_paint_cavity_curve_preset(Paint *paint, int preset);
 
 eObjectMode BKE_paint_object_mode_from_paintmode(PaintMode mode);
 bool BKE_paint_ensure_from_paintmode(Main *bmain, Scene *sce, PaintMode mode);
 Paint *BKE_paint_get_active_from_paintmode(Scene *sce, PaintMode mode);
 const EnumPropertyItem *BKE_paint_get_tool_enum_from_paintmode(PaintMode mode);
-const char *BKE_paint_get_tool_enum_translation_context_from_paintmode(PaintMode mode);
-const char *BKE_paint_get_tool_prop_id_from_paintmode(PaintMode mode);
 uint BKE_paint_get_brush_tool_offset_from_paintmode(PaintMode mode);
 Paint *BKE_paint_get_active(Scene *sce, ViewLayer *view_layer);
 Paint *BKE_paint_get_active_from_context(const bContext *C);
 PaintMode BKE_paintmode_get_active_from_context(const bContext *C);
 PaintMode BKE_paintmode_get_from_tool(const bToolRef *tref);
+
+/* Paint brush retrieval and assignment. */
+
 Brush *BKE_paint_brush(Paint *paint);
-const Brush *BKE_paint_brush_for_read(const Paint *p);
-void BKE_paint_brush_set(Paint *paint, Brush *br);
+const Brush *BKE_paint_brush_for_read(const Paint *paint);
+Brush *BKE_paint_brush_from_essentials(Main *bmain, const char *name);
+
+/**
+ * Activates \a brush for painting, and updates #Paint.brush_asset_reference so the brush can be
+ * restored after file read.
+ *
+ * \return True on success. If \a brush is already active, this is considered a success (the brush
+ * asset reference will still be updated).
+ */
+bool BKE_paint_brush_set(Paint *paint, Brush *brush);
+bool BKE_paint_brush_set_default(Main *bmain, Paint *paint);
+bool BKE_paint_brush_set_essentials(Main *bmain, Paint *paint, const char *name);
+
+void BKE_paint_brushes_set_default_references(ToolSettings *ts);
+void BKE_paint_brushes_validate(Main *bmain, Paint *paint);
+
+/* Secondary eraser brush. */
+
+Brush *BKE_paint_eraser_brush(Paint *paint);
+const Brush *BKE_paint_eraser_brush_for_read(const Paint *paint);
+Brush *BKE_paint_eraser_brush_from_essentials(Main *bmain, const char *name);
+
+bool BKE_paint_eraser_brush_set(Paint *paint, Brush *brush);
+bool BKE_paint_eraser_brush_set_default(Main *bmain, Paint *paint);
+bool BKE_paint_eraser_brush_set_essentials(Main *bmain, Paint *paint, const char *name);
+
+/* Paint palette. */
+
 Palette *BKE_paint_palette(Paint *paint);
-void BKE_paint_palette_set(Paint *p, Palette *palette);
+void BKE_paint_palette_set(Paint *paint, Palette *palette);
 void BKE_paint_curve_clamp_endpoint_add_index(PaintCurve *pc, int add_index);
 
 /**
@@ -227,8 +255,7 @@ bool BKE_paint_always_hide_test(const Object *ob);
 /* Partial visibility. */
 
 /**
- * Returns non-zero if any of the corners of the grid
- * face whose inner corner is at (x, y) are hidden, zero otherwise.
+ * Returns whether any of the corners of the grid face whose inner corner is at (x, y) are hidden.
  */
 bool paint_is_grid_face_hidden(blender::BoundedBitSpan grid_hidden, int gridsize, int x, int y);
 /**
@@ -244,27 +271,16 @@ void BKE_paint_face_set_overlay_color_get(int face_set, int seed, uchar r_color[
 
 /* Stroke related. */
 
-bool paint_calculate_rake_rotation(UnifiedPaintSettings *ups,
-                                   Brush *brush,
+bool paint_calculate_rake_rotation(UnifiedPaintSettings &ups,
+                                   const Brush &brush,
                                    const float mouse_pos[2],
                                    PaintMode paint_mode,
                                    bool stroke_has_started);
-void paint_update_brush_rake_rotation(UnifiedPaintSettings *ups, Brush *brush, float rotation);
+void paint_update_brush_rake_rotation(UnifiedPaintSettings &ups,
+                                      const Brush &brush,
+                                      float rotation);
 
 void BKE_paint_stroke_get_average(const Scene *scene, const Object *ob, float stroke[3]);
-
-/* Tool slot API. */
-
-void BKE_paint_toolslots_init_from_main(Main *bmain);
-void BKE_paint_toolslots_len_ensure(Paint *paint, int len);
-void BKE_paint_toolslots_brush_update_ex(Paint *paint, Brush *brush);
-void BKE_paint_toolslots_brush_update(Paint *paint);
-/**
- * Run this to ensure brush types are set for each slot on entering modes
- * (for new scenes for example).
- */
-void BKE_paint_brush_validate(Main *bmain, Paint *paint);
-Brush *BKE_paint_toolslots_brush_get(Paint *paint, int slot_index);
 
 /* .blend I/O */
 
@@ -272,12 +288,6 @@ void BKE_paint_blend_write(BlendWriter *writer, Paint *paint);
 void BKE_paint_blend_read_data(BlendDataReader *reader, const Scene *scene, Paint *paint);
 
 #define SCULPT_FACE_SET_NONE 0
-
-/** Used for both vertex color and weight paint. */
-struct SculptVertexPaintGeomMap {
-  blender::GroupedSpan<int> vert_to_loop;
-  blender::GroupedSpan<int> vert_to_face;
-};
 
 /** Pose Brush IK Chain. */
 struct SculptPoseIKChainSegment {
@@ -327,26 +337,22 @@ struct SculptBoundaryPreviewEdge {
 
 struct SculptBoundary {
   /* Vertex indices of the active boundary. */
-  PBVHVertRef *verts;
-  int verts_capacity;
-  int verts_num;
+  blender::Vector<PBVHVertRef> verts;
 
   /* Distance from a vertex in the boundary to initial vertex indexed by vertex index, taking into
    * account the length of all edges between them. Any vertex that is not in the boundary will have
    * a distance of 0. */
-  float *distance;
+  blender::Array<float> distance;
 
   /* Data for drawing the preview. */
-  SculptBoundaryPreviewEdge *edges;
-  int edges_capacity;
-  int edges_num;
+  blender::Vector<SculptBoundaryPreviewEdge> edges;
 
   /* True if the boundary loops into itself. */
   bool forms_loop;
 
   /* Initial vertex in the boundary which is closest to the current sculpt active vertex. */
-  PBVHVertRef initial_vertex;
-  int initial_vertex_i;
+  PBVHVertRef initial_vert;
+  int initial_vert_i;
 
   /* Vertex that at max_propagation_steps from the boundary and closest to the original active
    * vertex that was used to initialize the boundary. This is used as a reference to check how much
@@ -356,7 +362,7 @@ struct SculptBoundary {
   /* Stores the initial positions of the pivot and boundary initial vertex as they may be deformed
    * during the brush action. This allows to use them as a reference positions and vectors for some
    * brush effects. */
-  blender::float3 initial_vertex_position;
+  blender::float3 initial_vert_position;
   blender::float3 initial_pivot_position;
 
   /* Maximum number of topology steps that were calculated from the boundary. */
@@ -364,17 +370,17 @@ struct SculptBoundary {
 
   /* Indexed by vertex index, contains the topology information needed for boundary deformations.
    */
-  SculptBoundaryEditInfo *edit_info;
+  blender::Array<SculptBoundaryEditInfo> edit_info;
 
   /* Bend Deform type. */
   struct {
-    float (*pivot_rotation_axis)[3];
-    float (*pivot_positions)[3];
+    blender::Array<blender::float3> pivot_rotation_axis;
+    blender::Array<blender::float3> pivot_positions;
   } bend;
 
   /* Slide Deform type. */
   struct {
-    float (*directions)[3];
+    blender::Array<blender::float3> directions;
   } slide;
 
   /* Twist Deform type. */
@@ -497,11 +503,6 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
   int faces_num = 0;
 
   KeyBlock *shapekey_active = nullptr;
-  MPropCol *vcol = nullptr;
-  MLoopCol *mcol = nullptr;
-
-  blender::bke::AttrDomain vcol_domain;
-  eCustomDataType vcol_type = CD_PROP_COLOR;
 
   /* Mesh connectivity maps. */
   /* Vertices to adjacent polys. */
@@ -589,31 +590,26 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
   std::unique_ptr<SculptPoseIKChain> pose_ik_chain_preview;
 
   /* Boundary Brush Preview */
-  SculptBoundary *boundary_preview = nullptr;
+  std::unique_ptr<SculptBoundary> boundary_preview;
 
   SculptVertexInfo vertex_info = {};
   SculptFakeNeighbors fake_neighbors = {};
 
   /* Transform operator */
-  blender::float3 pivot_pos;
-  float pivot_rot[4];
-  blender::float3 pivot_scale;
+  blender::float3 pivot_pos = {};
+  blender::float4 pivot_rot = {};
+  blender::float3 pivot_scale = {};
 
-  blender::float3 init_pivot_pos;
-  float init_pivot_rot[4];
-  blender::float3 init_pivot_scale;
+  blender::float3 init_pivot_pos = {};
+  blender::float4 init_pivot_rot = {};
+  blender::float3 init_pivot_scale = {};
 
-  blender::float3 prev_pivot_pos;
-  float prev_pivot_rot[4];
-  blender::float3 prev_pivot_scale;
+  blender::float3 prev_pivot_pos = {};
+  blender::float4 prev_pivot_rot = {};
+  blender::float3 prev_pivot_scale = {};
 
   struct {
     struct {
-      SculptVertexPaintGeomMap gmap;
-    } vpaint;
-
-    struct {
-      SculptVertexPaintGeomMap gmap;
       /* Keep track of how much each vertex has been painted (non-airbrush only). */
       float *alpha_weight;
 
@@ -736,8 +732,6 @@ void BKE_sculpt_toolsettings_data_ensure(Main *bmain, Scene *scene);
 
 PBVH *BKE_sculpt_object_pbvh_ensure(Depsgraph *depsgraph, Object *ob);
 
-void BKE_sculpt_bvh_update_from_ccg(PBVH &pbvh, SubdivCCG *subdiv_ccg);
-
 void BKE_sculpt_sync_face_visibility_to_grids(Mesh *mesh, SubdivCCG *subdiv_ccg);
 
 /**
@@ -745,19 +739,6 @@ void BKE_sculpt_sync_face_visibility_to_grids(Mesh *mesh, SubdivCCG *subdiv_ccg)
  * drawing the mesh and all updates that come with it.
  */
 bool BKE_sculptsession_use_pbvh_draw(const Object *ob, const RegionView3D *rv3d);
-
-/* paint_vertex.cc */
-
-/**
- * Fills the object's active color attribute layer with the fill color.
- *
- * \param only_selected: Limit the fill to selected faces or vertices.
- *
- * \return #true if successful.
- */
-bool BKE_object_attributes_active_color_fill(Object *ob,
-                                             const float fill_color[4],
-                                             bool only_selected);
 
 /** C accessor for #Object::sculpt::pbvh. */
 PBVH *BKE_object_sculpt_pbvh_get(Object *object);

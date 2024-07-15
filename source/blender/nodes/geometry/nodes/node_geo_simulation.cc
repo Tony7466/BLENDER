@@ -28,8 +28,10 @@
 #include "UI_interface.hh"
 
 #include "NOD_common.h"
+#include "NOD_geo_bake.hh"
 #include "NOD_geo_simulation.hh"
 #include "NOD_geometry.hh"
+#include "NOD_node_extra_info.hh"
 #include "NOD_socket.hh"
 #include "NOD_socket_items_ops.hh"
 
@@ -61,8 +63,8 @@ namespace blender::nodes::node_geo_simulation_cc {
 
 static const CPPType &get_simulation_item_cpp_type(const eNodeSocketDatatype socket_type)
 {
-  const char *socket_idname = nodeStaticSocketType(socket_type, 0);
-  const bNodeSocketType *typeinfo = nodeSocketTypeFind(socket_idname);
+  const char *socket_idname = bke::nodeStaticSocketType(socket_type, 0);
+  const bke::bNodeSocketType *typeinfo = bke::nodeSocketTypeFind(socket_idname);
   BLI_assert(typeinfo);
   BLI_assert(typeinfo->geometry_nodes_cpp_type);
   return *typeinfo->geometry_nodes_cpp_type;
@@ -366,7 +368,7 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *current_no
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
 
-  uiLayoutSetEnabled(layout, !ID_IS_LINKED(&object));
+  uiLayoutSetEnabled(layout, ID_IS_EDITABLE(&object));
 
   {
     uiLayout *col = uiLayoutColumn(layout, false);
@@ -424,10 +426,10 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *current_no
     {
       uiLayout *col = uiLayoutColumn(settings_col, true);
       uiLayoutSetActive(col, !is_baked);
-      uiItemR(col, &bake_rna, "use_custom_path", UI_ITEM_NONE, "Custom Path", ICON_NONE);
+      uiItemR(col, &bake_rna, "use_custom_path", UI_ITEM_NONE, IFACE_("Custom Path"), ICON_NONE);
       uiLayout *subcol = uiLayoutColumn(col, true);
       uiLayoutSetActive(subcol, bake->flag & NODES_MODIFIER_BAKE_CUSTOM_PATH);
-      uiItemR(subcol, &bake_rna, "directory", UI_ITEM_NONE, "Path", ICON_NONE);
+      uiItemR(subcol, &bake_rna, "directory", UI_ITEM_NONE, IFACE_("Path"), ICON_NONE);
     }
     {
       uiLayout *col = uiLayoutColumn(settings_col, true);
@@ -435,12 +437,12 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *current_no
               &bake_rna,
               "use_custom_simulation_frame_range",
               UI_ITEM_NONE,
-              "Custom Range",
+              IFACE_("Custom Range"),
               ICON_NONE);
       uiLayout *subcol = uiLayoutColumn(col, true);
       uiLayoutSetActive(subcol, bake->flag & NODES_MODIFIER_BAKE_CUSTOM_SIMULATION_FRAME_RANGE);
-      uiItemR(subcol, &bake_rna, "frame_start", UI_ITEM_NONE, "Start", ICON_NONE);
-      uiItemR(subcol, &bake_rna, "frame_end", UI_ITEM_NONE, "End", ICON_NONE);
+      uiItemR(subcol, &bake_rna, "frame_start", UI_ITEM_NONE, IFACE_("Start"), ICON_NONE);
+      uiItemR(subcol, &bake_rna, "frame_end", UI_ITEM_NONE, IFACE_("End"), ICON_NONE);
     }
   }
 
@@ -631,7 +633,9 @@ static void node_declare(NodeDeclarationBuilder &b)
     const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
     const StringRef name = item.name;
     const std::string identifier = SimulationItemsAccessor::socket_identifier_for_item(item);
-    auto &input_decl = b.add_input(socket_type, name, identifier);
+    auto &input_decl = b.add_input(socket_type, name, identifier)
+                           .socket_name_ptr(
+                               &node_tree->id, SimulationItemsAccessor::item_srna, &item, "name");
     auto &output_decl = b.add_output(socket_type, name, identifier).align_with_previous();
     if (socket_type_supports_fields(socket_type)) {
       input_decl.supports_field();
@@ -670,7 +674,7 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
   geo_node_type_base(&ntype, GEO_NODE_SIMULATION_INPUT, "Simulation Input", NODE_CLASS_INTERFACE);
   ntype.initfunc = node_init;
   ntype.declare = node_declare;
@@ -679,11 +683,11 @@ static void node_register()
   ntype.gather_link_search_ops = nullptr;
   ntype.no_muting = true;
   ntype.draw_buttons_ex = node_layout_ex;
-  node_type_storage(&ntype,
-                    "NodeGeometrySimulationInput",
-                    node_free_standard_storage,
-                    node_copy_standard_storage);
-  nodeRegisterType(&ntype);
+  blender::bke::node_type_storage(&ntype,
+                                  "NodeGeometrySimulationInput",
+                                  node_free_standard_storage,
+                                  node_copy_standard_storage);
+  blender::bke::nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 
@@ -958,6 +962,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       "Forward the output of the simulation input node directly to the output node and ignore "
       "the nodes in the simulation zone");
 
+  const bNodeTree *tree = b.tree_or_null();
   const bNode *node = b.node_or_null();
   if (node == nullptr) {
     return;
@@ -970,7 +975,9 @@ static void node_declare(NodeDeclarationBuilder &b)
     const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
     const StringRef name = item.name;
     const std::string identifier = SimulationItemsAccessor::socket_identifier_for_item(item);
-    auto &input_decl = b.add_input(socket_type, name, identifier);
+    auto &input_decl = b.add_input(socket_type, name, identifier)
+                           .socket_name_ptr(
+                               &tree->id, SimulationItemsAccessor::item_srna, &item, "name");
     auto &output_decl = b.add_output(socket_type, name, identifier).align_with_previous();
     if (socket_type_supports_fields(socket_type)) {
       input_decl.supports_field();
@@ -1005,7 +1012,7 @@ static void node_free_storage(bNode *node)
 static void node_copy_storage(bNodeTree * /*dst_tree*/, bNode *dst_node, const bNode *src_node)
 {
   const NodeGeometrySimulationOutput &src_storage = node_storage(*src_node);
-  auto *dst_storage = MEM_new<NodeGeometrySimulationOutput>(__func__, src_storage);
+  auto *dst_storage = MEM_cnew<NodeGeometrySimulationOutput>(__func__, src_storage);
   dst_node->storage = dst_storage;
 
   socket_items::copy_array<SimulationItemsAccessor>(*src_node, *dst_node);
@@ -1024,9 +1031,22 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
       *ntree, *node, *node, *link);
 }
 
+static void node_extra_info(NodeExtraInfoParams &params)
+{
+  BakeDrawContext ctx;
+  if (!get_bake_draw_context(&params.C, params.node, ctx)) {
+    return;
+  }
+  if (ctx.is_baked) {
+    NodeExtraInfoRow row;
+    row.text = get_baked_string(ctx);
+    params.rows.append(std::move(row));
+  }
+}
+
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   geo_node_type_base(
       &ntype, GEO_NODE_SIMULATION_OUTPUT, "Simulation Output", NODE_CLASS_INTERFACE);
@@ -1038,8 +1058,10 @@ static void node_register()
   ntype.draw_buttons_ex = node_layout_ex;
   ntype.no_muting = true;
   ntype.register_operators = node_operators;
-  node_type_storage(&ntype, "NodeGeometrySimulationOutput", node_free_storage, node_copy_storage);
-  nodeRegisterType(&ntype);
+  ntype.get_extra_info = node_extra_info;
+  blender::bke::node_type_storage(
+      &ntype, "NodeGeometrySimulationOutput", node_free_storage, node_copy_storage);
+  blender::bke::nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 
@@ -1088,7 +1110,7 @@ void mix_baked_data_item(const eNodeSocketDatatype socket_type,
     case SOCK_ROTATION:
     case SOCK_RGBA:
     case SOCK_MATRIX: {
-      const CPPType &type = node_geo_simulation_cc::get_simulation_item_cpp_type(socket_type);
+      const CPPType &type = *bke::socket_type_to_geo_nodes_base_cpp_type(socket_type);
       SocketValueVariant prev_value_variant = *static_cast<const SocketValueVariant *>(prev);
       SocketValueVariant next_value_variant = *static_cast<const SocketValueVariant *>(next);
       if (prev_value_variant.is_context_dependent_field() ||

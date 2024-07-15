@@ -13,7 +13,8 @@
 
 #include "DNA_curve_types.h"
 
-struct Animation;
+#include "ANIM_action.hh"
+
 struct AnimData;
 struct CacheFile;
 struct FCurve;
@@ -30,6 +31,11 @@ struct bAnimContext;
 struct bDopeSheet;
 struct bGPDlayer;
 struct bGPdata;
+
+namespace blender::animrig {
+class Action;
+class Slot;
+}  // namespace blender::animrig
 
 /* ****************************** Base Structs ****************************** */
 
@@ -162,12 +168,15 @@ void action_group_to_keylist(AnimData *adt,
                              AnimKeylist *keylist,
                              int saction_flag,
                              blender::float2 range);
-/* Animation */
-void animation_to_keylist(
-    AnimData *adt, Animation *anim, AnimKeylist *keylist, int saction_flag, blender::float2 range);
 /* Action */
 void action_to_keylist(
     AnimData *adt, bAction *act, AnimKeylist *keylist, int saction_flag, blender::float2 range);
+void action_slot_to_keylist(AnimData *adt,
+                            blender::animrig::Action &action,
+                            blender::animrig::slot_handle_t slot_handle,
+                            AnimKeylist *keylist,
+                            int saction_flag,
+                            blender::float2 range);
 /* Object */
 void ob_to_keylist(
     bDopeSheet *ads, Object *ob, AnimKeylist *keylist, int saction_flag, blender::float2 range);

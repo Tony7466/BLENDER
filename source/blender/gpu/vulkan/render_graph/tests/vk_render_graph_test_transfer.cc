@@ -16,7 +16,6 @@ TEST(vk_render_graph, fill_and_read_back)
   VkHandle<VkBuffer> buffer(1u);
 
   Vector<std::string> log;
-  VKCommandBufferWrapper wrapper;
   VKResourceStateTracker resources;
   VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log), resources);
   resources.add_buffer(buffer);
@@ -37,7 +36,6 @@ TEST(vk_render_graph, fill_transfer_and_read_back)
   VkHandle<VkBuffer> staging_buffer(2u);
 
   Vector<std::string> log;
-  VKCommandBufferWrapper wrapper;
   VKResourceStateTracker resources;
   VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log), resources);
   resources.add_buffer(buffer);
@@ -81,7 +79,6 @@ TEST(vk_render_graph, fill_fill_read_back)
   VkHandle<VkBuffer> buffer(1u);
 
   Vector<std::string> log;
-  VKCommandBufferWrapper wrapper;
   VKResourceStateTracker resources;
   VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log), resources);
   resources.add_buffer(buffer);
@@ -115,7 +112,6 @@ TEST(vk_render_graph, clear_clear_copy_and_read_back)
   VkHandle<VkBuffer> staging_buffer(3u);
 
   Vector<std::string> log;
-  VKCommandBufferWrapper wrapper;
   VKResourceStateTracker resources;
   VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log), resources);
   resources.add_image(src_image, VK_IMAGE_LAYOUT_UNDEFINED, ResourceOwner::APPLICATION);
@@ -140,10 +136,11 @@ TEST(vk_render_graph, clear_clear_copy_and_read_back)
   clear_color_image_dst.vk_clear_color_value = color_black;
 
   VKCopyImageNode::CreateInfo copy_image = {};
-  copy_image.src_image = src_image;
-  copy_image.dst_image = dst_image;
-  copy_image.region.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  copy_image.region.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  copy_image.node_data.src_image = src_image;
+  copy_image.node_data.dst_image = dst_image;
+  copy_image.node_data.region.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  copy_image.node_data.region.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  copy_image.vk_image_aspect = VK_IMAGE_ASPECT_COLOR_BIT;
   VKCopyImageToBufferNode::CreateInfo copy_dst_image_to_buffer = {};
   copy_dst_image_to_buffer.src_image = dst_image;
   copy_dst_image_to_buffer.dst_buffer = staging_buffer;
@@ -257,7 +254,6 @@ TEST(vk_render_graph, clear_blit_copy_and_read_back)
   VkHandle<VkBuffer> staging_buffer(3u);
 
   Vector<std::string> log;
-  VKCommandBufferWrapper wrapper;
   VKResourceStateTracker resources;
   VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log), resources);
   resources.add_image(src_image, VK_IMAGE_LAYOUT_UNDEFINED, ResourceOwner::APPLICATION);

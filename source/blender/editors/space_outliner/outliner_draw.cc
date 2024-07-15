@@ -858,7 +858,7 @@ static void namebutton_fn(bContext *C, void *tsep, char *oldname)
            * function. */
           std::string new_name(node.name());
           node.set_name(oldname);
-          grease_pencil.rename_node(node, new_name);
+          grease_pencil.rename_node(*bmain, node, new_name);
           DEG_id_tag_update(&grease_pencil.id, ID_RECALC_SYNC_TO_EVAL);
           WM_event_add_notifier(C, NC_ID | NA_RENAME, nullptr);
           break;
@@ -1479,7 +1479,6 @@ static void outliner_draw_restrictbuts(uiBlock *block,
           UI_but_flag_enable(bt, UI_BUT_DRAG_LOCK);
         }
       }
-#ifdef WITH_GREASE_PENCIL_V3
       else if (tselem->type == TSE_GREASE_PENCIL_NODE) {
         bke::greasepencil::TreeNode &node =
             tree_element_cast<TreeElementGreasePencilNode>(te)->node();
@@ -1515,7 +1514,6 @@ static void outliner_draw_restrictbuts(uiBlock *block,
           }
         }
       }
-#endif
       else if (outliner_is_collection_tree_element(te)) {
         PointerRNA collection_ptr;
         PointerRNA layer_collection_ptr;
@@ -2261,7 +2259,7 @@ static void outliner_draw_mode_column_toggle(uiBlock *block,
   /* Mode toggling handles its own undo state because undo steps need to be grouped. */
   UI_but_flag_disable(but, UI_BUT_UNDO);
 
-  if (ID_IS_LINKED(&ob->id) ||
+  if (!ID_IS_EDITABLE(&ob->id) ||
       (ID_IS_OVERRIDE_LIBRARY_REAL(ob) &&
        (ob->id.override_library->flag & LIBOVERRIDE_FLAG_SYSTEM_DEFINED) != 0))
   {
@@ -2485,8 +2483,6 @@ static BIFIconID tree_element_get_icon_from_id(const ID *id)
       return ICON_WORLD_DATA;
     case ID_AC:
       return ICON_ACTION;
-    case ID_AN:
-      return ICON_ACTION; /* TODO: give Animation its own icon. */
     case ID_NLA:
       return ICON_NLA;
     case ID_TXT: {
@@ -2542,7 +2538,7 @@ static BIFIconID tree_element_get_icon_from_id(const ID *id)
       return ICON_MOD_MASK;
     case ID_NT: {
       const bNodeTree *ntree = (bNodeTree *)id;
-      const bNodeTreeType *ntreetype = ntree->typeinfo;
+      const bke::bNodeTreeType *ntreetype = ntree->typeinfo;
       return ntreetype->ui_icon;
     }
     case ID_MC:
@@ -2975,11 +2971,11 @@ static bool tselem_draw_icon(uiBlock *block,
     float aspect = (0.8f * UI_UNIT_Y) / ICON_DEFAULT_HEIGHT;
     x += 2.0f * aspect;
     y += 2.0f * aspect;
+    bTheme *btheme = UI_GetTheme();
 
     if (is_collection) {
       Collection *collection = outliner_collection_from_tree_element(te);
       if (collection->color_tag != COLLECTION_COLOR_NONE) {
-        bTheme *btheme = UI_GetTheme();
         UI_icon_draw_ex(x,
                         y,
                         data.icon,
@@ -2987,7 +2983,7 @@ static bool tselem_draw_icon(uiBlock *block,
                         alpha,
                         0.0f,
                         btheme->collection_color[collection->color_tag].color,
-                        true,
+                        btheme->tui.icon_border_intensity > 0.0f,
                         &text_overlay);
         return true;
       }
@@ -2999,7 +2995,15 @@ static bool tselem_draw_icon(uiBlock *block,
     /* Restrict column clip. it has been coded by simply overdrawing, doesn't work for buttons. */
     uchar color[4];
     if (UI_icon_get_theme_color(data.icon, color)) {
-      UI_icon_draw_ex(x, y, data.icon, UI_INV_SCALE_FAC, alpha, 0.0f, color, true, &text_overlay);
+      UI_icon_draw_ex(x,
+                      y,
+                      data.icon,
+                      UI_INV_SCALE_FAC,
+                      alpha,
+                      0.0f,
+                      color,
+                      btheme->tui.icon_border_intensity > 0.0f,
+                      &text_overlay);
     }
     else {
       UI_icon_draw_ex(
@@ -3302,10 +3306,8 @@ static bool element_should_draw_faded(const TreeViewContext *tvc,
                                                   (ViewLayer *)tvc->view_layer, (Object *)ob);
         const bool is_visible = (base != nullptr) &&
                                 (base->flag & BASE_ENABLED_AND_VISIBLE_IN_DEFAULT_VIEWPORT);
-        if (!is_visible) {
-          return true;
-        }
-        break;
+
+        return !is_visible;
       }
       default: {
         if (te->parent) {
@@ -3436,9 +3438,7 @@ static void outliner_draw_tree_element(bContext *C,
     if (tselem->type == TSE_VIEW_COLLECTION_BASE) {
       /* Scene collection in view layer can't expand/collapse. */
     }
-    else if (te->subtree.first || ((tselem->type == TSE_SOME_ID) && (te->idcode == ID_SCE)) ||
-             (te->flag & TE_PRETEND_HAS_CHILDREN))
-    {
+    else if (te->subtree.first || (te->flag & TE_PRETEND_HAS_CHILDREN)) {
       /* Open/close icon, only when sub-levels, except for scene. */
       int icon_x = startx;
 
@@ -4130,3 +4130,8 @@ void draw_outliner(const bContext *C)
 /** \} */
 
 }  // namespace blender::ed::outliner
+
+int ED_outliner_icon_from_id(const ID &id)
+{
+  return blender::ed::outliner::tree_element_get_icon_from_id(&id);
+}

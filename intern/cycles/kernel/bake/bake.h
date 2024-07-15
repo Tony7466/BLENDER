@@ -65,8 +65,8 @@ ccl_device void kernel_background_evaluate(KernelGlobals kg,
   shader_setup_from_background(kg, &sd, ray_P, ray_D, ray_time);
 
   /* Setup RNG and wavelengths in integrator state. */
-  const uint rng_hash = path_rng_hash_init(kg, 0, offset, 0);
-  path_state_init_integrator(kg, state, 0, rng_hash);
+  const uint rng_pixel = path_rng_pixel_init(kg, 0, offset, 0);
+  path_state_init_integrator(kg, state, 0, rng_pixel);
 
   /* Evaluate shader.
    * This is being evaluated for all BSDFs, so path flag does not contain a specific type.

@@ -11,6 +11,7 @@
 #include <string>
 
 #include "BLI_compiler_attrs.h"
+#include "BLI_math_vector_types.hh"
 #include "BLI_vector.hh"
 
 #include "RNA_types.hh"
@@ -124,6 +125,11 @@ struct SpaceType {
   int (*space_subtype_get)(ScrArea *area);
   void (*space_subtype_set)(ScrArea *area, int value);
   void (*space_subtype_item_extend)(bContext *C, EnumPropertyItem **item, int *totitem);
+
+  /* Return a custom name, based on subtype or other reason. */
+  blender::StringRefNull (*space_name_get)(const ScrArea *area);
+  /* Return a custom icon, based on subtype or other reason. */
+  int (*space_icon_get)(const ScrArea *area);
 
   /**
    * Update pointers for all structs directly owned by this space.
@@ -290,10 +296,14 @@ struct PanelType {
   char parent_id[BKE_ST_MAXNAME]; /* parent idname for sub-panels */
   /** Boolean property identifier of the panel custom data. Used to draw a highlighted border. */
   char active_property[BKE_ST_MAXNAME];
+  char pin_to_last_property[BKE_ST_MAXNAME];
   short space_type;
   short region_type;
   /* For popovers, 0 for default. */
   int ui_units_x;
+  /** For popovers, position the popover at the given offset (multiplied by #UI_UNIT_X/#UI_UNIT_Y)
+   * relative to the top left corner, if it's not attached to a button. */
+  blender::float2 offset_units_xy;
   int order;
 
   int flag;
@@ -525,6 +535,8 @@ enum AssetShelfTypeFlag {
   ASSET_SHELF_TYPE_FLAG_MAX
 };
 ENUM_OPERATORS(AssetShelfTypeFlag, ASSET_SHELF_TYPE_FLAG_MAX);
+
+#define ASSET_SHELF_PREVIEW_SIZE_DEFAULT 64
 
 struct AssetShelfType {
   char idname[BKE_ST_MAXNAME]; /* unique name */

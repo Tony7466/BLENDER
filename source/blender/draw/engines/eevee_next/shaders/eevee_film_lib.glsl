@@ -20,7 +20,7 @@ float film_depth_convert_to_scene(float depth)
     /* TODO */
     return 1.0;
   }
-  return abs(drw_depth_screen_to_view(depth));
+  return -drw_depth_screen_to_view(depth);
 }
 
 /* Load a texture sample in a specific format. Combined pass needs to use this. */
@@ -178,8 +178,13 @@ void film_cryptomatte_layer_accum_and_store(
     FilmSample src = film_sample_get(i, texel_film);
     film_sample_cryptomatte_accum(src, layer_component, cryptomatte_tx, crypto_samples);
   }
+  vec4 display_color = vec4(0.0);
   for (int i = 0; i < 4; i++) {
-    cryptomatte_store_film_sample(dst, pass_id, crypto_samples[i], out_color);
+    cryptomatte_store_film_sample(dst, pass_id, crypto_samples[i], display_color);
+  }
+
+  if (uniform_buf.film.display_storage_type == PASS_STORAGE_CRYPTOMATTE) {
+    out_color = display_color;
   }
 }
 
@@ -520,6 +525,12 @@ void film_store_color(FilmSample dst, int pass_id, vec4 color, inout vec4 displa
     color = vec4(0.0, 0.0, 0.0, 1.0);
   }
 
+  /* Fix alpha not accumulating to 1 because of float imprecision. But here we cannot assume that
+   * the alpha contains actual transparency and not user data. Only bias if very close to 1. */
+  if (color.a > 0.9999 && color.a < 1.0) {
+    color.a = 1.0;
+  }
+
   if (display_id == pass_id) {
     display = color;
   }
@@ -581,7 +592,7 @@ void film_store_weight(ivec2 texel, float value)
   imageStore(out_weight_img, ivec3(texel, FILM_WEIGHT_LAYER_ACCUMULATION), vec4(value));
 }
 
-float film_display_depth_ammend(ivec2 texel, float depth)
+float film_display_depth_amend(ivec2 texel, float depth)
 {
   /* This effectively offsets the depth of the whole 2x2 region to the lowest value of the region
    * twice. One for X and one for Y direction. */

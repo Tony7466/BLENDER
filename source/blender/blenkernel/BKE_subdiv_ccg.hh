@@ -12,14 +12,15 @@
 
 #include "BLI_array.hh"
 #include "BLI_bit_group_vector.hh"
+#include "BLI_bit_span_ops.hh"
 #include "BLI_index_mask_fwd.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_sys_types.h"
+#include "BLI_utility_mixins.hh"
+#include "BLI_vector.hh"
 
-#include "BKE_DerivedMesh.hh"
+#include "BKE_ccg.hh"
 
-struct CCGElem;
-struct CCGKey;
 struct Mesh;
 namespace blender::bke::subdiv {
 struct Subdiv;
@@ -85,7 +86,7 @@ struct SubdivCCGAdjacentVertex {
 };
 
 /* Representation of subdivision surface which uses CCG grids. */
-struct SubdivCCG {
+struct SubdivCCG : blender::NonCopyable {
   /* This is a subdivision surface this CCG was created for.
    *
    * TODO(sergey): Make sure the whole descriptor is valid, including all the
@@ -222,7 +223,7 @@ void BKE_subdiv_ccg_topology_counters(const SubdivCCG &subdiv_ccg,
                                       int &r_num_loops);
 
 struct SubdivCCGNeighbors {
-  blender::Array<SubdivCCGCoord, 256> coords;
+  blender::Vector<SubdivCCGCoord, 256> coords;
   int num_duplicates;
 };
 
@@ -259,6 +260,10 @@ inline int BKE_subdiv_ccg_grid_to_face_index(const SubdivCCG &subdiv_ccg, const 
 void BKE_subdiv_ccg_eval_limit_point(const SubdivCCG &subdiv_ccg,
                                      const SubdivCCGCoord &coord,
                                      float r_point[3]);
+void BKE_subdiv_ccg_eval_limit_positions(const SubdivCCG &subdiv_ccg,
+                                         const CCGKey &key,
+                                         int grid_index,
+                                         blender::MutableSpan<blender::float3> r_limit_positions);
 
 enum SubdivCCGAdjacencyType {
   SUBDIV_CCG_ADJACENT_NONE,
@@ -277,6 +282,13 @@ SubdivCCGAdjacencyType BKE_subdiv_ccg_coarse_mesh_adjacency_info_get(
     int &r_v1,
     int &r_v2);
 
+/* Determines if a given grid coordinate is on a coarse mesh boundary. */
+bool BKE_subdiv_ccg_coord_is_mesh_boundary(blender::OffsetIndices<int> faces,
+                                           blender::Span<int> corner_verts,
+                                           blender::BitSpan boundary_verts,
+                                           const SubdivCCG &subdiv_ccg,
+                                           SubdivCCGCoord coord);
+
 /* Get array which is indexed by face index and contains index of a first grid of the face.
  *
  * The "ensure" version allocates the mapping if it's not known yet and stores it in the subdiv_ccg
@@ -288,3 +300,19 @@ const int *BKE_subdiv_ccg_start_face_grid_index_get(const SubdivCCG &subdiv_ccg)
 
 blender::BitGroupVector<> &BKE_subdiv_ccg_grid_hidden_ensure(SubdivCCG &subdiv_ccg);
 void BKE_subdiv_ccg_grid_hidden_free(SubdivCCG &subdiv_ccg);
+
+template<typename Fn>
+inline void BKE_subdiv_ccg_foreach_visible_grid_vert(const CCGKey &key,
+                                                     const blender::BitGroupVector<> &grid_hidden,
+                                                     const int grid,
+                                                     const Fn &fn)
+{
+  if (grid_hidden.is_empty()) {
+    for (const int i : blender::IndexRange(key.grid_area)) {
+      fn(i);
+    }
+  }
+  else {
+    blender::bits::foreach_0_index(grid_hidden[grid], fn);
+  }
+}

@@ -54,7 +54,10 @@ GPU_SHADER_CREATE_INFO(eevee_geom_mesh)
     .vertex_in(1, Type::VEC3, "nor")
     .vertex_source("eevee_geom_mesh_vert.glsl")
     .vertex_out(eevee_surf_iface)
-    .additional_info("draw_modelmat_new", "draw_resource_id_varying", "draw_view");
+    .additional_info("draw_modelmat_new",
+                     "draw_object_infos_new",
+                     "draw_resource_id_varying",
+                     "draw_view");
 
 GPU_SHADER_INTERFACE_INFO(eevee_surf_point_cloud_iface, "point_cloud_interp")
     .smooth(Type::FLOAT, "radius")
@@ -71,6 +74,7 @@ GPU_SHADER_CREATE_INFO(eevee_geom_point_cloud)
     .vertex_out(eevee_surf_point_cloud_flat_iface)
     .additional_info("draw_pointcloud_new",
                      "draw_modelmat_new",
+                     "draw_object_infos_new",
                      "draw_resource_id_varying",
                      "draw_view");
 
@@ -91,7 +95,10 @@ GPU_SHADER_CREATE_INFO(eevee_geom_gpencil)
     .define("MAT_GEOM_GPENCIL")
     .vertex_source("eevee_geom_gpencil_vert.glsl")
     .vertex_out(eevee_surf_iface)
-    .additional_info("draw_gpencil_new", "draw_resource_id_varying", "draw_resource_id_new");
+    .additional_info("draw_gpencil_new",
+                     "draw_object_infos_new",
+                     "draw_resource_id_varying",
+                     "draw_resource_id_new");
 
 GPU_SHADER_INTERFACE_INFO(eevee_surf_curve_iface, "curve_interp")
     .smooth(Type::VEC2, "barycentric_coords")
@@ -111,6 +118,7 @@ GPU_SHADER_CREATE_INFO(eevee_geom_curves)
     .vertex_out(eevee_surf_curve_iface)
     .vertex_out(eevee_surf_curve_flat_iface)
     .additional_info("draw_modelmat_new",
+                     "draw_object_infos_new",
                      "draw_resource_id_varying",
                      "draw_view",
                      "draw_hair_new",
@@ -122,7 +130,10 @@ GPU_SHADER_CREATE_INFO(eevee_geom_world)
     .builtins(BuiltinBits::VERTEX_ID)
     .vertex_source("eevee_geom_world_vert.glsl")
     .vertex_out(eevee_surf_iface)
-    .additional_info("draw_modelmat_new", "draw_resource_id_varying", "draw_view");
+    .additional_info("draw_modelmat_new",
+                     "draw_object_infos_new", /* Unused, but allow debug compilation. */
+                     "draw_resource_id_varying",
+                     "draw_view");
 
 /** \} */
 
@@ -220,7 +231,7 @@ GPU_SHADER_CREATE_INFO(eevee_surf_world)
     .fragment_out(0, Type::VEC4, "out_background")
     .fragment_source("eevee_surf_world_frag.glsl")
     .additional_info("eevee_global_ubo",
-                     "eevee_reflection_probe_data",
+                     "eevee_lightprobe_sphere_data",
                      "eevee_volume_probe_data",
                      "eevee_sampling_data",
                      /* Optionally added depending on the material. */
@@ -232,17 +243,14 @@ GPU_SHADER_INTERFACE_INFO(eevee_surf_shadow_atomic_iface, "shadow_iface")
     .flat(Type::INT, "shadow_view_id");
 
 GPU_SHADER_INTERFACE_INFO(eevee_surf_shadow_clipping_iface, "shadow_clip")
+    .smooth(Type::VEC3, "position")
     .smooth(Type::VEC3, "vector");
-
-GPU_SHADER_INTERFACE_INFO(eevee_surf_shadow_flat_iface, "shadow_flat")
-    .flat(Type::FLOAT, "filter_radius");
 
 GPU_SHADER_CREATE_INFO(eevee_surf_shadow)
     .define("DRW_VIEW_LEN", STRINGIFY(SHADOW_VIEW_MAX))
     .define("MAT_SHADOW")
     .builtins(BuiltinBits::VIEWPORT_INDEX)
     .vertex_out(eevee_surf_shadow_clipping_iface)
-    .vertex_out(eevee_surf_shadow_flat_iface)
     .storage_buf(SHADOW_RENDER_VIEW_BUF_SLOT,
                  Qualifier::READ,
                  "ShadowRenderView",

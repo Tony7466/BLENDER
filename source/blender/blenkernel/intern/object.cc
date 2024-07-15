@@ -65,7 +65,6 @@
 
 #include "BLT_translation.hh"
 
-#include "BKE_DerivedMesh.hh"
 #include "BKE_action.h"
 #include "BKE_anim_data.hh"
 #include "BKE_anim_path.h"
@@ -111,6 +110,7 @@
 #include "BKE_material.h"
 #include "BKE_mball.hh"
 #include "BKE_mesh.hh"
+#include "BKE_mesh_legacy_derived_mesh.hh"
 #include "BKE_mesh_wrapper.hh"
 #include "BKE_modifier.hh"
 #include "BKE_multires.hh"
@@ -1064,6 +1064,7 @@ static void object_asset_metadata_ensure(void *asset_ptr, AssetMetaData *asset_d
 static AssetTypeInfo AssetType_OB = {
     /*pre_save_fn*/ object_asset_metadata_ensure,
     /*on_mark_asset_fn*/ object_asset_metadata_ensure,
+    /*on_clear_asset_fn*/ nullptr,
 };
 
 IDTypeInfo IDType_ID_OB = {
@@ -1547,7 +1548,7 @@ static void object_update_from_subsurf_ccg(Object *object)
   }
   /* Object was never evaluated, so can not have CCG subdivision surface. If it were evaluated, do
    * not try to compute OpenSubDiv on the CPU as it is not needed here. */
-  Mesh *mesh_eval = BKE_object_get_evaluated_mesh_no_subsurf(object);
+  Mesh *mesh_eval = BKE_object_get_evaluated_mesh_no_subsurf_unchecked(object);
   if (mesh_eval == nullptr) {
     return;
   }
@@ -3568,7 +3569,7 @@ std::optional<blender::Bounds<blender::float3>> BKE_object_boundbox_get(const Ob
     case OB_LATTICE:
       return BKE_lattice_minmax(static_cast<const Lattice *>(ob->data));
     case OB_ARMATURE:
-      return BKE_armature_min_max(ob->pose);
+      return BKE_armature_min_max(ob);
     case OB_GPENCIL_LEGACY:
       return BKE_gpencil_data_minmax(static_cast<const bGPdata *>(ob->data));
     case OB_CURVES:
@@ -4135,7 +4136,7 @@ bool BKE_object_obdata_texspace_get(Object *ob,
   return true;
 }
 
-Mesh *BKE_object_get_evaluated_mesh_no_subsurf(const Object *object)
+Mesh *BKE_object_get_evaluated_mesh_no_subsurf_unchecked(const Object *object)
 {
   /* First attempt to retrieve the evaluated mesh from the evaluated geometry set. Most
    * object types either store it there or add a reference to it if it's owned elsewhere. */
@@ -4162,9 +4163,17 @@ Mesh *BKE_object_get_evaluated_mesh_no_subsurf(const Object *object)
   return nullptr;
 }
 
-Mesh *BKE_object_get_evaluated_mesh(const Object *object)
+Mesh *BKE_object_get_evaluated_mesh_no_subsurf(const Object *object)
 {
-  Mesh *mesh = BKE_object_get_evaluated_mesh_no_subsurf(object);
+  if (!DEG_object_geometry_is_evaluated(*object)) {
+    return nullptr;
+  }
+  return BKE_object_get_evaluated_mesh_no_subsurf_unchecked(object);
+}
+
+Mesh *BKE_object_get_evaluated_mesh_unchecked(const Object *object)
+{
+  Mesh *mesh = BKE_object_get_evaluated_mesh_no_subsurf_unchecked(object);
   if (!mesh) {
     return nullptr;
   }
@@ -4174,6 +4183,14 @@ Mesh *BKE_object_get_evaluated_mesh(const Object *object)
   }
 
   return mesh;
+}
+
+Mesh *BKE_object_get_evaluated_mesh(const Object *object)
+{
+  if (!DEG_object_geometry_is_evaluated(*object)) {
+    return nullptr;
+  }
+  return BKE_object_get_evaluated_mesh_unchecked(object);
 }
 
 Mesh *BKE_object_get_pre_modified_mesh(const Object *object)

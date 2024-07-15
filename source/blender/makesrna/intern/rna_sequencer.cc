@@ -2971,7 +2971,10 @@ static void rna_def_movieclip(BlenderRNA *brna)
       srna, "MovieClip Sequence", "Sequence strip to load a video from the clip editor");
   RNA_def_struct_sdna(srna, "Sequence");
 
-  /* TODO: add clip property? */
+  prop = RNA_def_property(srna, "clip", PROP_POINTER, PROP_NONE);
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Movie Clip", "Movie clip that this sequence uses");
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_invalidate_raw_update");
 
   prop = RNA_def_property(srna, "undistort", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "clip_flag", SEQ_MOVIECLIP_RENDER_UNDISTORTED);
@@ -3032,6 +3035,18 @@ static void rna_def_sound(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Pan", "Playback panning of the sound (only for Mono sources)");
   RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_SOUND);
   RNA_def_property_float_funcs(prop, nullptr, nullptr, "rna_Sequence_pan_range");
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_audio_update");
+
+  prop = RNA_def_property(srna, "sound_offset", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, nullptr, "sound_offset");
+  RNA_def_property_range(prop, -FLT_MAX, FLT_MAX);
+  RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 1, 3);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE); /* not meant to be animated */
+  RNA_def_property_ui_text(
+      prop,
+      "Sound Offset",
+      "Offset of the sound from the beginning of the strip, expressed in seconds");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_SOUND);
   RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_audio_update");
 
   prop = RNA_def_property(srna, "show_waveform", PROP_BOOLEAN, PROP_NONE);
@@ -3362,6 +3377,42 @@ static void rna_def_text(StructRNA *srna)
   RNA_def_property_ui_text(prop, "Shadow Color", "");
   RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_invalidate_raw_update");
 
+  prop = RNA_def_property(srna, "shadow_angle", PROP_FLOAT, PROP_ANGLE);
+  RNA_def_property_float_sdna(prop, nullptr, "shadow_angle");
+  RNA_def_property_range(prop, 0, M_PI * 2);
+  RNA_def_property_ui_text(prop, "Shadow Angle", "");
+  RNA_def_property_float_default(prop, DEG2RADF(65.0f));
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_invalidate_raw_update");
+
+  prop = RNA_def_property(srna, "shadow_offset", PROP_FLOAT, PROP_UNSIGNED);
+  RNA_def_property_float_sdna(prop, nullptr, "shadow_offset");
+  RNA_def_property_ui_text(prop, "Shadow Offset", "");
+  RNA_def_property_float_default(prop, 0.04f);
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 1.0f, 2);
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_invalidate_raw_update");
+
+  prop = RNA_def_property(srna, "shadow_blur", PROP_FLOAT, PROP_UNSIGNED);
+  RNA_def_property_float_sdna(prop, nullptr, "shadow_blur");
+  RNA_def_property_ui_text(prop, "Shadow Blur", "");
+  RNA_def_property_float_default(prop, 0.0f);
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 1.0f, 2);
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_invalidate_raw_update");
+
+  prop = RNA_def_property(srna, "outline_color", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_float_sdna(prop, nullptr, "outline_color");
+  RNA_def_property_ui_text(prop, "Outline Color", "");
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_invalidate_raw_update");
+
+  prop = RNA_def_property(srna, "outline_width", PROP_FLOAT, PROP_UNSIGNED);
+  RNA_def_property_float_sdna(prop, nullptr, "outline_width");
+  RNA_def_property_ui_text(prop, "Outline Width", "");
+  RNA_def_property_float_default(prop, 0.05f);
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 1.0f, 2);
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_invalidate_raw_update");
+
   prop = RNA_def_property(srna, "box_color", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_float_sdna(prop, nullptr, "box_color");
   RNA_def_property_ui_text(prop, "Box Color", "");
@@ -3411,6 +3462,11 @@ static void rna_def_text(StructRNA *srna)
   prop = RNA_def_property(srna, "use_shadow", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", SEQ_TEXT_SHADOW);
   RNA_def_property_ui_text(prop, "Shadow", "Display shadow behind text");
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_invalidate_raw_update");
+
+  prop = RNA_def_property(srna, "use_outline", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", SEQ_TEXT_OUTLINE);
+  RNA_def_property_ui_text(prop, "Outline", "Display outline around text");
   RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_invalidate_raw_update");
 
   prop = RNA_def_property(srna, "use_box", PROP_BOOLEAN, PROP_NONE);

@@ -11,6 +11,7 @@
 #include "GPU_texture.hh"
 
 #include "COM_domain.hh"
+#include "COM_meta_data.hh"
 #include "COM_texture_pool.hh"
 
 namespace blender::realtime_compositor {
@@ -127,6 +128,11 @@ class Result {
    * result. This is set up by a call to the wrap_external method. In that case, when the reference
    * count eventually reach zero, the texture will not be freed. */
   bool is_external_ = false;
+
+ public:
+  /* Stores extra information about the result such as image meta data that can eventually be
+   * written to file. */
+  MetaData meta_data;
 
  public:
   /* Construct a result of the given type and precision with the given texture pool that will be

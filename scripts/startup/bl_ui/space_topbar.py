@@ -244,14 +244,15 @@ class TOPBAR_MT_file(Menu):
         layout.operator_context = 'EXEC_AREA' if context.blend_data.is_saved else 'INVOKE_AREA'
         layout.operator("wm.save_mainfile", text="Save", icon='FILE_TICK')
 
-        sub = layout.row()
-        sub.enabled = context.blend_data.is_saved
-        sub.operator("wm.save_mainfile", text="Save Incremental").incremental = True
-
         layout.operator_context = 'INVOKE_AREA'
         layout.operator("wm.save_as_mainfile", text="Save As...")
         layout.operator_context = 'INVOKE_AREA'
         layout.operator("wm.save_as_mainfile", text="Save Copy...").copy = True
+
+        sub = layout.row()
+        sub.enabled = context.blend_data.is_saved
+        sub.operator_context = 'EXEC_AREA'
+        sub.operator("wm.save_mainfile", text="Save Incremental").incremental = True
 
         layout.separator()
 
@@ -426,7 +427,7 @@ class TOPBAR_MT_file_import(Menu):
 
     def draw(self, _context):
         if bpy.app.build_options.collada:
-            self.layout.operator("wm.collada_import", text="Collada (.dae)")
+            self.layout.operator("wm.collada_import", text="Collada (.dae) (Legacy)")
         if bpy.app.build_options.alembic:
             self.layout.operator("wm.alembic_import", text="Alembic (.abc)")
         if bpy.app.build_options.usd:
@@ -451,7 +452,7 @@ class TOPBAR_MT_file_export(Menu):
 
     def draw(self, _context):
         if bpy.app.build_options.collada:
-            self.layout.operator("wm.collada_export", text="Collada (.dae)")
+            self.layout.operator("wm.collada_export", text="Collada (.dae) (Legacy)")
         if bpy.app.build_options.alembic:
             self.layout.operator("wm.alembic_export", text="Alembic (.abc)")
         if bpy.app.build_options.usd:

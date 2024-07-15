@@ -116,9 +116,15 @@ class CommandBufferLog : public VKCommandBufferInterface {
             uint32_t first_vertex,
             uint32_t first_instance) override
   {
-    UNUSED_VARS(vertex_count, instance_count, first_vertex, first_instance);
     EXPECT_TRUE(is_recording_);
-    GTEST_FAIL() << __func__ << " not implemented!";
+    std::stringstream ss;
+    ss << "draw(";
+    ss << "vertex_count=" << vertex_count;
+    ss << ", instance_count=" << instance_count;
+    ss << ", first_vertex=" << first_vertex;
+    ss << ", first_instance=" << first_instance;
+    ss << ")";
+    log_.append(ss.str());
   }
 
   void draw_indexed(uint32_t index_count,
@@ -127,9 +133,16 @@ class CommandBufferLog : public VKCommandBufferInterface {
                     int32_t vertex_offset,
                     uint32_t first_instance) override
   {
-    UNUSED_VARS(index_count, instance_count, first_index, vertex_offset, first_instance);
     EXPECT_TRUE(is_recording_);
-    GTEST_FAIL() << __func__ << " not implemented!";
+    std::stringstream ss;
+    ss << "draw_indexed(";
+    ss << "index_count=" << index_count;
+    ss << ", instance_count=" << instance_count;
+    ss << ", first_index=" << first_index;
+    ss << ", vertex_offset=" << vertex_offset;
+    ss << ", first_instance=" << first_instance;
+    ss << ")";
+    log_.append(ss.str());
   }
 
   void draw_indirect(VkBuffer buffer,
@@ -332,7 +345,19 @@ class CommandBufferLog : public VKCommandBufferInterface {
   {
     UNUSED_VARS(attachment_count, p_attachments, rect_count, p_rects);
     EXPECT_TRUE(is_recording_);
-    GTEST_FAIL() << __func__ << " not implemented!";
+    std::stringstream ss;
+    ss << "clear_attachments(";
+    for (const VkClearAttachment &attachment :
+         Span<VkClearAttachment>(p_attachments, attachment_count))
+    {
+      ss << " - attachment(" << to_string(attachment, 1) << ")" << std::endl;
+    }
+    for (const VkClearRect &rect : Span<VkClearRect>(p_rects, rect_count)) {
+      ss << " - rect(" << to_string(rect, 1) << ")" << std::endl;
+    }
+    ss << ")";
+
+    log_.append(ss.str());
   }
 
   void pipeline_barrier(VkPipelineStageFlags src_stage_mask,
@@ -378,19 +403,26 @@ class CommandBufferLog : public VKCommandBufferInterface {
     GTEST_FAIL() << __func__ << " not implemented!";
   }
 
-  void begin_render_pass(const VkRenderPassBeginInfo *p_render_pass_begin,
-                         VkSubpassContents contents) override
+  void begin_rendering(const VkRenderingInfo *p_rendering_info) override
   {
-    UNUSED_VARS(p_render_pass_begin, contents);
     EXPECT_TRUE(is_recording_);
-    GTEST_FAIL() << __func__ << " not implemented!";
+    std::stringstream ss;
+    ss << "begin_rendering(";
+    ss << "p_rendering_info=" << to_string(*p_rendering_info);
+    ss << ")";
+    log_.append(ss.str());
   }
 
-  void end_render_pass() override
+  void end_rendering() override
   {
     EXPECT_TRUE(is_recording_);
-    GTEST_FAIL() << __func__ << " not implemented!";
+    std::stringstream ss;
+    ss << "end_rendering()";
+    log_.append(ss.str());
   }
+
+  void begin_debug_utils_label(const VkDebugUtilsLabelEXT * /*vk_debug_utils_label*/) override {}
+  void end_debug_utils_label() override {}
 };
 
 /**
