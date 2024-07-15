@@ -6,8 +6,12 @@ set(INC
   ../..
 
   ../include
+  ../asset
   ../uvedit
+  ../../asset_system
   ../../blenkernel
+  ../../blenlib
+  ../../blenloader
   ../../blentranslation
   ../../bmesh
   ../../draw
@@ -28,6 +32,7 @@ set(INC_SYS
 )
 
 set(SRC
+  brush_asset_ops.cc
   curves_sculpt_add.cc
   curves_sculpt_brush.cc
   curves_sculpt_comb.cc
@@ -45,6 +50,7 @@ set(SRC
   grease_pencil_draw_ops.cc
   grease_pencil_erase.cc
   grease_pencil_fill.cc
+  grease_pencil_interpolate.cc
   grease_pencil_paint.cc
   grease_pencil_sculpt_clone.cc
   grease_pencil_sculpt_common.cc
@@ -133,11 +139,14 @@ set(SRC
   brushes/multires_displacement_eraser.cc
   brushes/pinch.cc
   brushes/multires_displacement_smear.cc
+  brushes/relax.cc
   brushes/rotate.cc
   brushes/scrape.cc
   brushes/smooth.cc
   brushes/smooth_mask.cc
+  brushes/snake_hook.cc
   brushes/thumb.cc
+  brushes/topology_slide.cc
 
   brushes/types.hh
 )
