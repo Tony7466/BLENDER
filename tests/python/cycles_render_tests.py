@@ -63,11 +63,10 @@ BLACKLIST_OSL = [
     'bump_with_displacement.blend',
     'ray_portal.blend',
     # TODO: Add more failing tests
-    # Currently failing tests are that aren't in this list are:
+    # Currently failing tests that aren't in this list are:
     # Some image color space tests - Likely due to differences in how textures are processed
-    # mesh_light.blend - This is a bug
     # Blackbody - Subtle noise difference
-    # Various Principled BSDF test - Seems to be noise with mix and layering
+    # Various Principled BSDF tests - Seems to be noise from mixing and layering
     # Some render pass tests - Seems to be noise
 ]
 
@@ -78,14 +77,14 @@ BLACKLIST_OPTIX = [
 ]
 
 BLACKLIST_OPTIX_OSL = [
-    # OPTIX OSL doesn't support trace function needed for AO, bevel
+    # OPTIX OSL doesn't support trace function needed for AO and bevel
     'bake_bevel.blend',
     'ambient_occlusion.*.blend',
     'bevel.blend',
     'osl_trace_shader.blend',
-    # Volumetric noise is different for some reason
+    # The Volumetric noise texture is different for some reason
     'principled_absorption.blend',
-    # TODO: Investigate each failing case and add them here.
+    # TODO: Investigate every other failing case and add them here.
 ]
 
 BLACKLIST_METAL = [
