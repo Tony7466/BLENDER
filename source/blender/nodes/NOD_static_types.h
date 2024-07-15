@@ -354,7 +354,7 @@ DefNode(GeometryNode, GEO_NODE_GET_NAMED_GRID, 0, "GET_NAMED_GRID", GetNamedGrid
 DefNode(GeometryNode, GEO_NODE_GIZMO_LINEAR, 0, "GIZMO_LINEAR", GizmoLinear, "Linear Gizmo", "Show a linear gizmo in the viewport for a value")
 DefNode(GeometryNode, GEO_NODE_GIZMO_DIAL, 0, "GIZMO_DIAL", GizmoDial, "Dial Gizmo", "Show a dial gizmo in the viewport for a value")
 DefNode(GeometryNode, GEO_NODE_GIZMO_TRANSFORM, rna_def_geo_gizmo_transform, "GIZMO_TRANSFORM", GizmoTransform, "Transform Gizmo", "Show a transform gizmo in the viewport")
-DefNode(GeometryNode, GEO_NODE_GREASE_PENCIL_TO_CURVES, 0, "GREASE_PENCIL_TO_CURVES", GreasePencilToCurves, "Grease Pencil to Curves", "Convert grease pencil layers into curve instances")
+DefNode(GeometryNode, GEO_NODE_GREASE_PENCIL_TO_CURVES, 0, "GREASE_PENCIL_TO_CURVES", GreasePencilToCurves, "Grease Pencil to Curves", "Convert Grease Pencil layers into curve instances")
 DefNode(GeometryNode, GEO_NODE_GRID_TO_MESH, 0, "GRID_TO_MESH", GridToMesh, "Grid to Mesh", "Generate a mesh on the \"surface\" of a volume grid")
 DefNode(GeometryNode, GEO_NODE_IMAGE_INFO, 0, "IMAGE_INFO", ImageInfo, "Image Info", "Retrieve information about an image")
 DefNode(GeometryNode, GEO_NODE_IMAGE_TEXTURE, def_geo_image_texture, "IMAGE_TEXTURE", ImageTexture, "Image Texture", "Sample values from an image texture")
