@@ -114,6 +114,8 @@
 
 #include "DRW_engine.hh"
 
+#include "node_geometry_cache.hh"
+
 CLG_LOGREF_DECLARE_GLOBAL(WM_LOG_OPERATORS, "wm.operator");
 CLG_LOGREF_DECLARE_GLOBAL(WM_LOG_HANDLERS, "wm.handler");
 CLG_LOGREF_DECLARE_GLOBAL(WM_LOG_EVENTS, "wm.event");
@@ -467,6 +469,8 @@ void WM_exit_ex(bContext *C, const bool do_python_exit, const bool do_user_exit_
    * if automated scripts happen to write changes to the preferences for e.g.
    * Saving #BLENDER_QUIT_FILE is also not likely to be desired either. */
   BLI_assert(G.background ? (do_user_exit_actions == false) : true);
+
+  blender::geo_cache_clear_all();
 
   /* First wrap up running stuff, we assume only the active WM is running. */
   /* Modal handlers are on window level freed, others too? */

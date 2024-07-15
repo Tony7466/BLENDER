@@ -21,7 +21,7 @@ set(INC
   ../sequencer
   ../../../intern/memutil
   ../bmesh
-
+  ../nodes/geometry
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
