@@ -487,7 +487,7 @@ static float get_factor_from_draw_speed(const bke::CurvesGeometry &curves,
     for (const int point : points_by_curve[curve]) {
       times[point] = start_time + delta_times[point];
     }
-    const float this_delta_time = times[points_by_curve[curve].last()];
+    const float this_delta_time = delta_times[points_by_curve[curve].last()];
     previous_end_time = init_times[curve] + this_delta_time;
     accumulated_delta_time += this_delta_time;
   }
