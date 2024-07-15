@@ -125,7 +125,7 @@ class PaintModeData {
  public:
   virtual ~PaintModeData() = default;
 };
-void paint_stroke_set_mode_data(PaintStroke *stroke, std::unique_ptr<PaintModeData> &&mode_data);
+void paint_stroke_set_mode_data(PaintStroke *stroke, std::unique_ptr<PaintModeData> mode_data);
 
 bool paint_stroke_started(PaintStroke *stroke);
 

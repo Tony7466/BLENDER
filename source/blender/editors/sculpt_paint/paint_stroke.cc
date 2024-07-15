@@ -1688,7 +1688,7 @@ float paint_stroke_distance_get(PaintStroke *stroke)
   return stroke->stroke_distance;
 }
 
-void paint_stroke_set_mode_data(PaintStroke *stroke, std::unique_ptr<PaintModeData> &&mode_data)
+void paint_stroke_set_mode_data(PaintStroke *stroke, std::unique_ptr<PaintModeData> mode_data)
 {
   stroke->mode_data = std::move(mode_data);
 }
