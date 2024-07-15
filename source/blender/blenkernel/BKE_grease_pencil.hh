@@ -149,6 +149,7 @@ class Drawing : public ::GreasePencilDrawing {
   bool is_instanced() const;
   bool has_users() const;
 };
+static_assert(sizeof(Drawing) == sizeof(::GreasePencilDrawing));
 
 class DrawingReference : public ::GreasePencilDrawingReference {
  public:
@@ -156,6 +157,7 @@ class DrawingReference : public ::GreasePencilDrawingReference {
   DrawingReference(const DrawingReference &other);
   ~DrawingReference();
 };
+static_assert(sizeof(DrawingReference) == sizeof(::GreasePencilDrawingReference));
 
 /**
  * Copies the drawings from one array to another. Assumes that \a dst_drawings is allocated but not
@@ -294,6 +296,7 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
    */
   int64_t depth() const;
 };
+static_assert(sizeof(TreeNode) == sizeof(::GreasePencilLayerTreeNode));
 
 /**
  * A layer mask stores a reference to a layer that will mask other layers.
@@ -305,6 +308,7 @@ class LayerMask : public ::GreasePencilLayerMask {
   LayerMask(const LayerMask &other);
   ~LayerMask();
 };
+static_assert(sizeof(LayerMask) == sizeof(::GreasePencilLayerMask));
 
 /**
  * Structure used to transform frames in a grease pencil layer.
@@ -399,12 +403,13 @@ class LayerRuntime {
  */
 class Layer : public ::GreasePencilLayer {
  public:
+  using SortedKeysIterator = const int *;
+
   Layer();
   explicit Layer(StringRefNull name);
   Layer(const Layer &other);
   ~Layer();
 
- public:
   /* Define the common functions for #TreeNode. */
   TREENODE_COMMON_METHODS;
   /**
@@ -482,6 +487,11 @@ class Layer : public ::GreasePencilLayer {
    * exists.
    */
   int sorted_keys_index_at(int frame_number) const;
+  /**
+   * \returns an iterator into the `sorted_keys` span to the frame at \a frame_number or nullptr if
+   * no such frame exists.
+   */
+  SortedKeysIterator sorted_keys_iterator_at(int frame_number) const;
 
   /**
    * \returns a pointer to the active frame at \a frame_number or nullptr if there is no frame.
@@ -522,6 +532,13 @@ class Layer : public ::GreasePencilLayer {
   float4x4 local_transform() const;
 
   /**
+   * Updates the local transform of the layer based on the matrix.
+   *
+   * \note The matrix is decomposed into location, rotation and scale, so any skew is lost.
+   */
+  void set_local_transform(const float4x4 &transform);
+
+  /**
    * Returns the transformation from layer space to object space.
    */
   float4x4 to_object_space(const Object &object) const;
@@ -546,14 +563,6 @@ class Layer : public ::GreasePencilLayer {
   void set_view_layer_name(const char *new_name);
 
  private:
-  using SortedKeysIterator = const int *;
-
- private:
-  /**
-   * \returns an iterator into the `sorted_keys` span to the frame at \a frame_number or nullptr if
-   * no such frame exists.
-   */
-  SortedKeysIterator sorted_keys_iterator_at(int frame_number) const;
   /**
    * \returns the key of the active frame at \a frame_number or #std::nullopt if no such frame
    * exists.
@@ -576,6 +585,7 @@ class Layer : public ::GreasePencilLayer {
    */
   float4x4 parent_to_world(const Object &parent) const;
 };
+static_assert(sizeof(Layer) == sizeof(::GreasePencilLayer));
 
 class LayerGroupRuntime {
  public:
@@ -710,6 +720,7 @@ class LayerGroup : public ::GreasePencilLayerTreeGroup {
   void ensure_nodes_cache() const;
   void tag_nodes_cache_dirty() const;
 };
+static_assert(sizeof(LayerGroup) == sizeof(::GreasePencilLayerTreeGroup));
 
 inline void Drawing::add_user() const
 {
@@ -842,8 +853,19 @@ class GreasePencilRuntime {
    * Allocated and freed by the drawing code. See `DRW_grease_pencil_batch_cache_*` functions.
    */
   void *batch_cache = nullptr;
-  /* The frame on which the object was evaluated (only valid for evaluated object). */
+  /**
+   * The frame on which the object was evaluated (only valid for evaluated object).
+   */
   int eval_frame = 0;
+  /**
+   * Set to true while drawing a stroke (e.g. with the draw tool).
+   * Used for example to temporarily hide the paint cursor in the viewport.
+   */
+  bool is_drawing_stroke = false;
+  /**
+   * Temporarily enable the eraser. Used by the draw tool.
+   */
+  bool use_eraser_temp = false;
 
  public:
   GreasePencilRuntime() {}

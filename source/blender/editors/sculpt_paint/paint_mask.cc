@@ -101,6 +101,212 @@ Array<float> duplicate_mask(const Object &object)
   return {};
 }
 
+void mix_new_masks(const Span<float> new_masks,
+                   const Span<float> factors,
+                   const MutableSpan<float> masks)
+{
+  BLI_assert(new_masks.size() == factors.size());
+  BLI_assert(new_masks.size() == masks.size());
+
+  for (const int i : masks.index_range()) {
+    masks[i] += (new_masks[i] - masks[i]) * factors[i];
+  }
+}
+
+void clamp_mask(const MutableSpan<float> masks)
+{
+  for (float &mask : masks) {
+    mask = std::clamp(mask, 0.0f, 1.0f);
+  }
+}
+
+void gather_mask_bmesh(const BMesh &bm,
+                       const Set<BMVert *, 0> &verts,
+                       const MutableSpan<float> r_mask)
+{
+  BLI_assert(verts.size() == r_mask.size());
+
+  /* TODO: Avoid overhead of accessing attributes for every PBVH node. */
+  const int mask_offset = CustomData_get_offset_named(&bm.vdata, CD_PROP_FLOAT, ".sculpt_mask");
+  int i = 0;
+  for (const BMVert *vert : verts) {
+    r_mask[i] = (mask_offset == -1) ? 0.0f : BM_ELEM_CD_GET_FLOAT(vert, mask_offset);
+    i++;
+  }
+}
+
+void gather_mask_grids(const SubdivCCG &subdiv_ccg,
+                       const Span<int> grids,
+                       const MutableSpan<float> r_mask)
+{
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+  const Span<CCGElem *> elems = subdiv_ccg.grids;
+  BLI_assert(grids.size() * key.grid_area == r_mask.size());
+
+  if (key.has_mask) {
+    for (const int i : grids.index_range()) {
+      CCGElem *elem = elems[grids[i]];
+      const int start = i * key.grid_area;
+      for (const int offset : IndexRange(key.grid_area)) {
+        r_mask[start + offset] = CCG_elem_offset_mask(key, elem, offset);
+      }
+    }
+  }
+  else {
+    r_mask.fill(0.0f);
+  }
+}
+
+void scatter_mask_grids(const Span<float> mask, SubdivCCG &subdiv_ccg, const Span<int> grids)
+{
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+  const Span<CCGElem *> elems = subdiv_ccg.grids;
+  BLI_assert(key.has_mask);
+  BLI_assert(mask.size() == grids.size() * key.grid_area);
+  for (const int i : grids.index_range()) {
+    CCGElem *elem = elems[grids[i]];
+    const int start = i * key.grid_area;
+    for (const int offset : IndexRange(key.grid_area)) {
+      CCG_elem_offset_mask(key, elem, offset) = mask[start + offset];
+    }
+  }
+}
+
+void scatter_mask_bmesh(const Span<float> mask, const BMesh &bm, const Set<BMVert *, 0> &verts)
+{
+  BLI_assert(verts.size() == mask.size());
+
+  const int mask_offset = CustomData_get_offset_named(&bm.vdata, CD_PROP_FLOAT, ".sculpt_mask");
+  BLI_assert(mask_offset != -1);
+  int i = 0;
+  for (BMVert *vert : verts) {
+    BM_ELEM_CD_SET_FLOAT(vert, mask_offset, mask[i]);
+    i++;
+  }
+}
+
+static float average_masks(const Span<float> masks, const Span<int> indices)
+{
+  float sum = 0;
+  for (const int i : indices) {
+    sum += masks[i];
+  }
+  return sum / float(indices.size());
+}
+
+void average_neighbor_mask_mesh(const Span<float> masks,
+                                const Span<Vector<int>> vert_neighbors,
+                                const MutableSpan<float> new_masks)
+{
+  for (const int i : vert_neighbors.index_range()) {
+    new_masks[i] = average_masks(masks, vert_neighbors[i]);
+  }
+}
+
+static float average_masks(const CCGKey &key,
+                           const Span<CCGElem *> elems,
+                           const Span<SubdivCCGCoord> coords)
+{
+  float sum = 0;
+  for (const SubdivCCGCoord coord : coords) {
+    sum += CCG_grid_elem_mask(key, elems[coord.grid_index], coord.x, coord.y);
+  }
+  return sum / float(coords.size());
+}
+
+void average_neighbor_mask_grids(const SubdivCCG &subdiv_ccg,
+                                 const Span<int> grids,
+                                 const MutableSpan<float> new_masks)
+{
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+  const Span<CCGElem *> elems = subdiv_ccg.grids;
+
+  for (const int i : grids.index_range()) {
+    const int grid = grids[i];
+    const int node_verts_start = i * key.grid_area;
+
+    for (const int y : IndexRange(key.grid_size)) {
+      for (const int x : IndexRange(key.grid_size)) {
+        const int offset = CCG_grid_xy_to_index(key.grid_size, x, y);
+        const int node_vert_index = node_verts_start + offset;
+
+        SubdivCCGCoord coord{};
+        coord.grid_index = grid;
+        coord.x = x;
+        coord.y = y;
+
+        SubdivCCGNeighbors neighbors;
+        BKE_subdiv_ccg_neighbor_coords_get(subdiv_ccg, coord, false, neighbors);
+
+        new_masks[node_vert_index] = average_masks(key, elems, neighbors.coords);
+      }
+    }
+  }
+}
+
+static float average_masks(const int mask_offset, const Span<const BMVert *> verts)
+{
+  float sum = 0;
+  for (const BMVert *vert : verts) {
+    sum += BM_ELEM_CD_GET_FLOAT(vert, mask_offset);
+  }
+  return sum / float(verts.size());
+}
+
+void average_neighbor_mask_bmesh(const int mask_offset,
+                                 const Set<BMVert *, 0> &verts,
+                                 const MutableSpan<float> new_masks)
+{
+  Vector<BMVert *, 64> neighbors;
+  int i = 0;
+  for (BMVert *vert : verts) {
+    neighbors.clear();
+    new_masks[i] = average_masks(mask_offset, vert_neighbors_get_bmesh(*vert, neighbors));
+    i++;
+  }
+}
+
+void update_mask_mesh(Object &object,
+                      const Span<PBVHNode *> nodes,
+                      FunctionRef<void(MutableSpan<float>, Span<int>)> update_fn)
+{
+  Mesh &mesh = *static_cast<Mesh *>(object.data);
+  bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
+  const VArraySpan hide_vert = *attributes.lookup<bool>(".hide_vert", bke::AttrDomain::Point);
+  bke::SpanAttributeWriter<float> mask = attributes.lookup_or_add_for_write_span<float>(
+      ".sculpt_mask", bke::AttrDomain::Point);
+  if (!mask) {
+    return;
+  }
+
+  struct LocalData {
+    Vector<int> visible_verts;
+    Vector<float> mask;
+  };
+
+  threading::EnumerableThreadSpecific<LocalData> all_tls;
+  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    LocalData &tls = all_tls.local();
+    threading::isolate_task([&]() {
+      for (PBVHNode *node : nodes.slice(range)) {
+        const Span<int> verts = hide::node_visible_verts(*node, hide_vert, tls.visible_verts);
+        tls.mask.reinitialize(verts.size());
+        array_utils::gather<float>(mask.span, verts, tls.mask);
+        update_fn(tls.mask, verts);
+        if (array_utils::indexed_data_equal<float>(mask.span, verts, tls.mask)) {
+          continue;
+        }
+        undo::push_node(object, node, undo::Type::Mask);
+        array_utils::scatter<float>(tls.mask, verts, mask.span);
+        bke::pbvh::node_update_mask_mesh(mask.span, *node);
+        BKE_pbvh_node_mark_redraw(node);
+      }
+    });
+  });
+
+  mask.finish();
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -134,25 +340,6 @@ static const EnumPropertyItem mode_items[] = {
      "Set mask to the level specified by the inverted 'value' property"},
     {int(FloodFillMode::InverseMeshValue), "INVERT", 0, "Invert", "Invert the mask"},
     {0}};
-
-static Span<int> get_visible_verts(const PBVHNode &node,
-                                   const Span<bool> hide_vert,
-                                   Vector<int> &indices)
-{
-  if (BKE_pbvh_node_fully_hidden_get(&node)) {
-    return {};
-  }
-  const Span<int> verts = bke::pbvh::node_unique_verts(node);
-  if (hide_vert.is_empty()) {
-    return verts;
-  }
-  indices.resize(verts.size());
-  const int *end = std::copy_if(verts.begin(), verts.end(), indices.begin(), [&](const int vert) {
-    return !hide_vert[vert];
-  });
-  indices.resize(end - indices.begin());
-  return indices;
-}
 
 static Span<int> get_hidden_verts(const PBVHNode &node,
                                   const Span<bool> hide_vert,
@@ -243,7 +430,7 @@ static void fill_mask_mesh(Object &object, const float value, const Span<PBVHNod
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     Vector<int> &index_data = all_index_data.local();
     for (PBVHNode *node : nodes.slice(range)) {
-      const Span<int> verts = get_visible_verts(*node, hide_vert, index_data);
+      const Span<int> verts = hide::node_visible_verts(*node, hide_vert, index_data);
       if (std::all_of(verts.begin(), verts.end(), [&](int i) { return mask.span[i] == value; })) {
         continue;
       }
@@ -375,30 +562,6 @@ static void fill_mask(
   }
 }
 
-static void invert_mask_mesh(Object &object, const Span<PBVHNode *> nodes)
-{
-  Mesh &mesh = *static_cast<Mesh *>(object.data);
-  bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
-
-  const VArraySpan hide_vert = *attributes.lookup<bool>(".hide_vert", bke::AttrDomain::Point);
-  bke::SpanAttributeWriter<float> mask = attributes.lookup_or_add_for_write_span<float>(
-      ".sculpt_mask", bke::AttrDomain::Point);
-  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-    for (PBVHNode *node : nodes.slice(range)) {
-      undo::push_node(object, node, undo::Type::Mask);
-      for (const int vert : bke::pbvh::node_unique_verts(*node)) {
-        if (!hide_vert.is_empty() && hide_vert[vert]) {
-          continue;
-        }
-        mask.span[vert] = 1.0f - mask.span[vert];
-      }
-      BKE_pbvh_node_mark_redraw(node);
-      bke::pbvh::node_update_mask_mesh(mask.span, *node);
-    }
-  });
-  mask.finish();
-}
-
 static void invert_mask_grids(Main &bmain,
                               const Scene &scene,
                               Depsgraph &depsgraph,
@@ -471,7 +634,11 @@ static void invert_mask(Main &bmain, const Scene &scene, Depsgraph &depsgraph, O
   Vector<PBVHNode *> nodes = bke::pbvh::search_gather(*object.sculpt->pbvh, {});
   switch (BKE_pbvh_type(*object.sculpt->pbvh)) {
     case PBVH_FACES:
-      invert_mask_mesh(object, nodes);
+      write_mask_mesh(object, nodes, [&](MutableSpan<float> mask, const Span<int> verts) {
+        for (const int vert : verts) {
+          mask[vert] = 1.0f - mask[vert];
+        }
+      });
       break;
     case PBVH_GRIDS:
       invert_mask_grids(bmain, scene, depsgraph, object, nodes);
@@ -555,15 +722,14 @@ struct MaskOperation {
   float value;
 };
 
-static void gesture_begin(bContext &C, gesture::GestureData &gesture_data)
+static void gesture_begin(bContext &C, wmOperator &op, gesture::GestureData &gesture_data)
 {
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(&C);
   BKE_sculpt_update_object_for_edit(depsgraph, gesture_data.vc.obact, false);
+  undo::push_begin(*gesture_data.vc.obact, &op);
 }
 
-static float mask_flood_fill_get_new_value_for_elem(const float elem,
-                                                    FloodFillMode mode,
-                                                    float value)
+static float mask_gesture_get_new_value(const float elem, FloodFillMode mode, float value)
 {
   switch (mode) {
     case FloodFillMode::Value:
@@ -577,57 +743,78 @@ static float mask_flood_fill_get_new_value_for_elem(const float elem,
   return 0.0f;
 }
 
-static void gesture_apply_task(gesture::GestureData &gesture_data,
-                               const SculptMaskWriteInfo mask_write,
-                               PBVHNode *node)
-{
-  MaskOperation *mask_operation = (MaskOperation *)gesture_data.operation;
-  Object *ob = gesture_data.vc.obact;
-
-  const bool is_multires = BKE_pbvh_type(*gesture_data.ss->pbvh) == PBVH_GRIDS;
-
-  PBVHVertexIter vd;
-  bool any_masked = false;
-  bool redraw = false;
-
-  BKE_pbvh_vertex_iter_begin (*gesture_data.ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    const float *co = SCULPT_vertex_co_get(*gesture_data.ss, vd.vertex);
-    const float3 vertex_normal = SCULPT_vertex_normal_get(*gesture_data.ss, vd.vertex);
-
-    if (gesture::is_affected(gesture_data, co, vertex_normal)) {
-      float prevmask = vd.mask;
-      if (!any_masked) {
-        any_masked = true;
-
-        undo::push_node(*ob, node, undo::Type::Mask);
-
-        if (is_multires) {
-          BKE_pbvh_node_mark_positions_update(node);
-        }
-      }
-      const float new_mask = mask_flood_fill_get_new_value_for_elem(
-          prevmask, mask_operation->mode, mask_operation->value);
-      if (prevmask != new_mask) {
-        SCULPT_mask_vert_set(BKE_pbvh_type(*ob->sculpt->pbvh), mask_write, new_mask, vd);
-        redraw = true;
-      }
-    }
-  }
-  BKE_pbvh_vertex_iter_end;
-
-  if (redraw) {
-    BKE_pbvh_node_mark_update_mask(node);
-  }
-}
-
 static void gesture_apply_for_symmetry_pass(bContext & /*C*/, gesture::GestureData &gesture_data)
 {
-  const SculptMaskWriteInfo mask_write = SCULPT_mask_get_for_write(*gesture_data.ss);
-  threading::parallel_for(gesture_data.nodes.index_range(), 1, [&](const IndexRange range) {
-    for (const int i : range) {
-      gesture_apply_task(gesture_data, mask_write, gesture_data.nodes[i]);
+  const PBVH &pbvh = *gesture_data.ss->pbvh;
+  const Span<PBVHNode *> nodes = gesture_data.nodes;
+  const MaskOperation &op = *reinterpret_cast<const MaskOperation *>(gesture_data.operation);
+  Object &object = *gesture_data.vc.obact;
+  switch (BKE_pbvh_type(*gesture_data.ss->pbvh)) {
+    case PBVH_FACES: {
+      const Span<float3> positions = BKE_pbvh_get_vert_positions(pbvh);
+      const Span<float3> normals = BKE_pbvh_get_vert_normals(pbvh);
+      update_mask_mesh(object, nodes, [&](MutableSpan<float> node_mask, const Span<int> verts) {
+        for (const int i : verts.index_range()) {
+          const int vert = verts[i];
+          if (gesture::is_affected(gesture_data, positions[vert], normals[vert])) {
+            node_mask[i] = mask_gesture_get_new_value(node_mask[i], op.mode, op.value);
+          }
+        }
+      });
+      break;
     }
-  });
+    case PBVH_GRIDS: {
+      SubdivCCG &subdiv_ccg = *gesture_data.ss->subdiv_ccg;
+      const Span<CCGElem *> grids = subdiv_ccg.grids;
+      const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
+      const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+      threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+        for (PBVHNode *node : nodes.slice(range)) {
+          bool any_changed = false;
+          for (const int grid : bke::pbvh::node_grid_indices(*node)) {
+            CCGElem *elem = grids[grid];
+            BKE_subdiv_ccg_foreach_visible_grid_vert(key, grid_hidden, grid, [&](const int i) {
+              if (gesture::is_affected(gesture_data,
+                                       CCG_elem_offset_co(key, elem, i),
+                                       CCG_elem_offset_no(key, elem, i)))
+              {
+                float &mask = CCG_elem_offset_mask(key, elem, i);
+                if (!any_changed) {
+                  any_changed = true;
+                  undo::push_node(object, node, undo::Type::Mask);
+                }
+                mask = mask_gesture_get_new_value(mask, op.mode, op.value);
+              }
+            });
+            BKE_pbvh_node_mark_update_mask(node);
+          }
+        }
+      });
+      break;
+    }
+    case PBVH_BMESH: {
+      BMesh &bm = *gesture_data.ss->bm;
+      const int offset = CustomData_get_offset_named(&bm.vdata, CD_PROP_FLOAT, ".sculpt_mask");
+      threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+        for (PBVHNode *node : nodes.slice(range)) {
+          bool any_changed = false;
+          for (BMVert *vert : BKE_pbvh_bmesh_node_unique_verts(node)) {
+            if (gesture::is_affected(gesture_data, vert->co, vert->no)) {
+              const float old_mask = BM_ELEM_CD_GET_FLOAT(vert, offset);
+              if (!any_changed) {
+                any_changed = true;
+                undo::push_node(object, node, undo::Type::Mask);
+              }
+              const float new_mask = mask_gesture_get_new_value(old_mask, op.mode, op.value);
+              BM_ELEM_CD_SET_FLOAT(vert, offset, new_mask);
+            }
+          }
+          BKE_pbvh_node_mark_update_mask(node);
+        }
+      });
+      break;
+    }
+  }
 }
 
 static void gesture_end(bContext &C, gesture::GestureData &gesture_data)
@@ -637,6 +824,7 @@ static void gesture_end(bContext &C, gesture::GestureData &gesture_data)
     multires_mark_as_modified(depsgraph, gesture_data.vc.obact, MULTIRES_COORDS_MODIFIED);
   }
   blender::bke::pbvh::update_mask(*gesture_data.ss->pbvh);
+  undo::push_end(*gesture_data.vc.obact);
 }
 
 static void init_operation(bContext &C, gesture::GestureData &gesture_data, wmOperator &op)

@@ -48,6 +48,7 @@ set(DEFSRC
   rna_fluid.cc
   rna_gpencil_legacy.cc
   rna_gpencil_legacy_modifier.cc
+  rna_grease_pencil.cc
   rna_image.cc
   rna_key.cc
   rna_lattice.cc
@@ -109,11 +110,7 @@ endif()
 
 if(WITH_EXPERIMENTAL_FEATURES)
   add_definitions(-DWITH_SIMULATION_DATABLOCK)
-  add_definitions(-DWITH_GREASE_PENCIL_V3)
   add_definitions(-DWITH_ANIM_BAKLAVA)
-  list(APPEND DEFSRC
-    rna_grease_pencil.cc
-  )
 endif()
 
 set(APISRC
@@ -172,9 +169,9 @@ elseif(MSVC)
 endif()
 
 set(GENSRC_C ${GENSRC})
-list(FILTER GENSRC_C INCLUDE REGEX ".*\.c$")
+list(FILTER GENSRC_C INCLUDE REGEX "[a-zA-Z0-9_-]\.c$")
 set(GENSRC_CXX ${GENSRC})
-list(FILTER GENSRC_CXX INCLUDE REGEX ".*\.cc$")
+list(FILTER GENSRC_CXX INCLUDE REGEX "[a-zA-Z0-9_-]\.cc$")
 
 if(GENSRC_FLAGS)
   set_source_files_properties(${GENSRC} PROPERTIES COMPILE_FLAGS "${GENSRC_FLAGS}")

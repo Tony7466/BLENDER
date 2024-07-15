@@ -299,6 +299,7 @@ typedef struct ThemeSpace {
   unsigned char bone_solid[4], bone_pose[4], bone_pose_active[4], bone_locked_weight[4];
   unsigned char strip[4], strip_select[4];
   unsigned char cframe[4];
+  unsigned char before_current_frame[4], after_current_frame[4];
   unsigned char time_keyframe[4], time_gp_keyframe[4];
   unsigned char freestyle_edge_mark[4], freestyle_face_mark[4];
   unsigned char time_scrub_background[4];
@@ -750,13 +751,12 @@ typedef struct UserDef_Experimental {
   char use_sculpt_tools_tilt;
   char use_extended_asset_browser;
   char use_sculpt_texture_paint;
-  char use_grease_pencil_version3;
   char enable_overlay_next;
   char use_new_volume_nodes;
+  char use_new_file_import_nodes;
   char use_shader_node_previews;
-  char use_grease_pencil_version3_convert_on_load;
   char use_animation_baklava;
-  char _pad[2];
+  char _pad[3];
   /** `makesdna` does not allow empty structs. */
 } UserDef_Experimental;
 

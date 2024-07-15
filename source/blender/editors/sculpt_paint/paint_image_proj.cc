@@ -4667,7 +4667,7 @@ static void project_paint_end(ProjPaintState *ps)
 
   if (ps->blurkernel) {
     paint_delete_blur_kernel(ps->blurkernel);
-    MEM_freeN(ps->blurkernel);
+    MEM_delete(ps->blurkernel);
   }
 
   if (ps->vertFlags) {
@@ -5940,7 +5940,7 @@ void *paint_proj_new_stroke(bContext *C, Object *ob, const float mouse[2], int m
   ToolSettings *settings = scene->toolsettings;
   char symmetry_flag_views[BOUNDED_ARRAY_TYPE_SIZE<decltype(ps_handle->ps_views)>()] = {0};
 
-  ps_handle = MEM_new<ProjStrokeHandle>("ProjStrokeHandle");
+  ps_handle = MEM_cnew<ProjStrokeHandle>("ProjStrokeHandle");
   ps_handle->scene = scene;
   ps_handle->brush = BKE_paint_brush(&settings->imapaint.paint);
 
@@ -6075,10 +6075,10 @@ void paint_proj_stroke_done(void *ps_handle_p)
     ProjPaintState *ps;
     ps = ps_handle->ps_views[i];
     project_paint_end(ps);
-    MEM_freeN(ps);
+    MEM_delete(ps);
   }
 
-  MEM_freeN(ps_handle);
+  MEM_delete(ps_handle);
 }
 /* use project paint to re-apply an image */
 static int texture_paint_camera_project_exec(bContext *C, wmOperator *op)
@@ -6562,7 +6562,8 @@ static const char *proj_paint_color_attribute_create(wmOperator *op, Object &ob)
   }
 
   Mesh *mesh = static_cast<Mesh *>(ob.data);
-  const CustomDataLayer *layer = BKE_id_attribute_new(&mesh->id, name, type, domain, op->reports);
+  AttributeOwner owner = AttributeOwner::from_id(&mesh->id);
+  const CustomDataLayer *layer = BKE_attribute_new(owner, name, type, domain, op->reports);
   if (!layer) {
     return nullptr;
   }

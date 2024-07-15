@@ -8,7 +8,6 @@
  * An instance contains all structures needed to do a complete render.
  */
 
-#include <fmt/format.h>
 #include <sstream>
 
 #include "BKE_global.hh"
@@ -243,7 +242,7 @@ void Instance::object_sync(Object *ob)
 
   const bool is_renderable_type = ELEM(ob->type,
                                        OB_CURVES,
-                                       OB_GPENCIL_LEGACY,
+                                       OB_GREASE_PENCIL,
                                        OB_MESH,
                                        OB_POINTCLOUD,
                                        OB_VOLUME,
@@ -297,7 +296,7 @@ void Instance::object_sync(Object *ob)
       case OB_CURVES:
         sync.sync_curves(ob, ob_handle, res_handle, ob_ref);
         break;
-      case OB_GPENCIL_LEGACY:
+      case OB_GREASE_PENCIL:
         sync.sync_gpencil(ob, ob_handle, res_handle);
         break;
       case OB_LIGHTPROBE:
@@ -544,7 +543,7 @@ void Instance::draw_viewport()
   if (!shaders_are_ready_) {
     DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
     GPU_framebuffer_clear_color_depth(dfbl->default_fb, float4(0.0f), 1.0f);
-    screen_info("Compiling EEVEE engine shaders");
+    info_append_i18n("Compiling EEVEE engine shaders");
     DRW_viewport_request_redraw();
     return;
   }
@@ -560,23 +559,19 @@ void Instance::draw_viewport()
   }
 
   if (materials.queued_shaders_count > 0) {
-    screen_info(
-        fmt::format(RPT_("Compiling shaders ({} remaining)"), materials.queued_shaders_count),
-        false);
+    info_append_i18n("Compiling shaders ({} remaining)", materials.queued_shaders_count);
 
     if (!GPU_use_parallel_compilation() &&
         GPU_type_matches_ex(GPU_DEVICE_ANY, GPU_OS_ANY, GPU_DRIVER_ANY, GPU_BACKEND_OPENGL))
     {
-      screen_info(
+      info_append_i18n(
           "Increasing Preferences > System > Max Shader Compilation Subprocesses may improve "
           "compilation time.");
     }
     DRW_viewport_request_redraw();
   }
   else if (materials.queued_optimize_shaders_count > 0) {
-    screen_info(fmt::format(RPT_("Optimizing shaders ({} remaining)"),
-                            materials.queued_optimize_shaders_count),
-                false);
+    info_append_i18n("Optimizing shaders ({} remaining)", materials.queued_optimize_shaders_count);
   }
 }
 
@@ -744,12 +739,6 @@ void Instance::light_bake_irradiance(
       return;
     }
   }
-}
-
-void Instance::screen_info(StringRefNull msg, bool translate)
-{
-  info += translate ? RPT_(msg.c_str()) : msg;
-  info += "\n";
 }
 
 /** \} */

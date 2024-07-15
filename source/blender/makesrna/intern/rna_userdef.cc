@@ -174,6 +174,20 @@ static const EnumPropertyItem rna_enum_preference_gpu_backend_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+static const EnumPropertyItem rna_enum_preferences_extension_repo_source_type_items[] = {
+    {USER_EXTENSION_REPO_SOURCE_USER,
+     "USER",
+     0,
+     "User",
+     "Repository managed by the user, stored in user directories"},
+    {USER_EXTENSION_REPO_SOURCE_SYSTEM,
+     "SYSTEM",
+     0,
+     "System",
+     "Read-only repository provided by the system"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
 #ifdef RNA_RUNTIME
 
 #  include "BLI_math_vector.h"
@@ -276,9 +290,6 @@ static void rna_userdef_gizmo_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 
 static void rna_userdef_theme_update_icons(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
-  if (!G.background) {
-    UI_icons_reload_internal_textures();
-  }
   rna_userdef_theme_update(bmain, scene, ptr);
 }
 
@@ -317,6 +328,7 @@ static void rna_userdef_font_update(Main * /*bmain*/, Scene * /*scene*/, Pointer
 {
   BLF_cache_clear();
   UI_reinit_font();
+  UI_update_text_styles();
 }
 
 static void rna_userdef_language_update(Main *bmain, Scene * /*scene*/, PointerRNA * /*ptr*/)
@@ -604,7 +616,8 @@ static void rna_userdef_asset_library_remove(ReportList *reports, PointerRNA *pt
 static bUserExtensionRepo *rna_userdef_extension_repo_new(const char *name,
                                                           const char *module,
                                                           const char *custom_directory,
-                                                          const char *remote_url)
+                                                          const char *remote_url,
+                                                          const int source)
 {
   Main *bmain = G.main;
   BKE_callback_exec_null(bmain, BKE_CB_EVT_EXTENSION_REPOS_UPDATE_PRE);
@@ -622,6 +635,8 @@ static bUserExtensionRepo *rna_userdef_extension_repo_new(const char *name,
   if (repo->custom_dirpath[0]) {
     repo->flag |= USER_EXTENSION_REPO_FLAG_USE_CUSTOM_DIRECTORY;
   }
+
+  repo->source = source;
 
   BKE_callback_exec_null(bmain, BKE_CB_EVT_EXTENSION_REPOS_UPDATE_POST);
   USERDEF_TAG_DIRTY;
@@ -733,18 +748,6 @@ static void rna_userdef_keyconfig_reload_update(bContext *C,
 {
   WM_keyconfig_reload(C);
   USERDEF_TAG_DIRTY;
-}
-
-static void rna_userdef_use_grease_pencil_version3_update(bContext *C, PointerRNA *ptr)
-{
-  Main *bmain = CTX_data_main(C);
-  rna_userdef_keyconfig_reload_update(C, bmain, nullptr, ptr);
-  /* Update nodes because some sockets may only exist depending on whether grease pencil 3 is
-   * enabled. */
-  LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
-    BKE_ntree_update_tag_all(ntree);
-  }
-  ED_node_tree_propagate_change(C, bmain, nullptr);
 }
 
 static void rna_userdef_timecode_style_set(PointerRNA *ptr, int value)
@@ -2721,6 +2724,29 @@ static void rna_def_userdef_theme_space_view3d(BlenderRNA *brna)
       "Shade for bones corresponding to a locked weight group during painting");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
+  /* Time specific. */
+  prop = RNA_def_property(srna, "frame_current", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_float_sdna(prop, nullptr, "cframe");
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_ui_text(prop, "Current Frame", "");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "before_current_frame", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_ui_text(
+      prop,
+      "Before Current Frame",
+      "The color for things before the current frame (for onion skinning, motion paths, etc.)");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "after_current_frame", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_ui_text(
+      prop,
+      "After Current Frame",
+      "The color for things after the current frame (for onion skinning, motion paths, etc.)");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
   /* misc */
 
   prop = RNA_def_property(srna, "bundle_solid", PROP_FLOAT, PROP_COLOR_GAMMA);
@@ -2753,12 +2779,6 @@ static void rna_def_userdef_theme_space_view3d(BlenderRNA *brna)
   prop = RNA_def_property(srna, "transform", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_array(prop, 3);
   RNA_def_property_ui_text(prop, "Transform", "");
-  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
-
-  prop = RNA_def_property(srna, "frame_current", PROP_FLOAT, PROP_COLOR_GAMMA);
-  RNA_def_property_float_sdna(prop, nullptr, "cframe");
-  RNA_def_property_array(prop, 3);
-  RNA_def_property_ui_text(prop, "Current Frame", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
   rna_def_userdef_theme_spaces_paint_curves(srna);
@@ -5002,8 +5022,8 @@ static void rna_def_userdef_view(BlenderRNA *brna)
   prop = RNA_def_property(srna, "ui_scale", PROP_FLOAT, PROP_NONE);
   RNA_def_property_ui_text(
       prop, "UI Scale", "Changes the size of the fonts and widgets in the interface");
-  RNA_def_property_range(prop, 0.25f, 4.0f);
-  RNA_def_property_ui_range(prop, 0.5f, 2.0f, 1, 2);
+  RNA_def_property_range(prop, 0.25f, 6.0f);
+  RNA_def_property_ui_range(prop, 0.5f, 3.0f, 1, 2);
   RNA_def_property_update(prop, 0, "rna_userdef_gpu_update");
 
   prop = RNA_def_property(srna, "ui_line_width", PROP_ENUM, PROP_NONE);
@@ -6794,20 +6814,6 @@ static void rna_def_userdef_filepaths_extension_repo(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  static const EnumPropertyItem source_type_items[] = {
-      {USER_EXTENSION_REPO_SOURCE_USER,
-       "USER",
-       0,
-       "User",
-       "Repository managed by the user, stored in user directories"},
-      {USER_EXTENSION_REPO_SOURCE_SYSTEM,
-       "SYSTEM",
-       0,
-       "System",
-       "Read-only repository provided by the system"},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
   srna = RNA_def_struct(brna, "UserExtensionRepo", nullptr);
   RNA_def_struct_sdna(srna, "bUserExtensionRepo");
   RNA_def_struct_ui_text(
@@ -6861,7 +6867,7 @@ static void rna_def_userdef_filepaths_extension_repo(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_userdef_extension_sync_update");
 
   prop = RNA_def_property(srna, "source", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, source_type_items);
+  RNA_def_property_enum_items(prop, rna_enum_preferences_extension_repo_source_type_items);
   RNA_def_property_enum_funcs(prop, nullptr, "rna_userdef_extension_repo_source_set", nullptr);
   RNA_def_property_ui_text(
       prop,
@@ -7028,6 +7034,12 @@ static void rna_def_userdef_extension_repos_collection(BlenderRNA *brna, Propert
                  "");
   RNA_def_string(
       func, "remote_url", nullptr, sizeof(bUserExtensionRepo::remote_url), "Remote URL", "");
+  RNA_def_enum(func,
+               "source",
+               rna_enum_preferences_extension_repo_source_type_items,
+               USER_EXTENSION_REPO_SOURCE_USER,
+               "Source",
+               "How the repository is managed");
 
   /* return type */
   parm = RNA_def_pointer(func, "repo", "UserExtensionRepo", "", "Newly added repository");
@@ -7403,22 +7415,6 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
                            "completely reread assets from disk");
   RNA_def_property_update(prop, 0, "rna_userdef_ui_update");
 
-  prop = RNA_def_property(srna, "use_grease_pencil_version3", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "use_grease_pencil_version3", 1);
-  RNA_def_property_ui_text(prop, "Grease Pencil 3.0", "Enable the new grease pencil 3.0 codebase");
-  /* The key-map depends on this setting, it needs to be reloaded. */
-  RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);
-  RNA_def_property_update(prop, 0, "rna_userdef_use_grease_pencil_version3_update");
-
-  prop = RNA_def_property(
-      srna, "use_grease_pencil_version3_convert_on_load", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "use_grease_pencil_version3_convert_on_load", 1);
-  RNA_def_property_ui_text(prop,
-                           "Grease Pencil 3.0 Automatic Conversion",
-                           "Enable automatic conversion to grease pencil 3.0 data when opening a "
-                           "blendfile (only active if 'Grease Pencil 3.0' is enabled)");
-  RNA_def_property_update(prop, 0, "rna_userdef_ui_update");
-
   prop = RNA_def_property(srna, "use_viewport_debug", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "use_viewport_debug", 1);
   RNA_def_property_ui_text(prop,
@@ -7443,6 +7439,10 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "New Volume Nodes", "Enables visibility of the new Volume nodes in the UI");
 
+  prop = RNA_def_property(srna, "use_new_file_import_nodes", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_ui_text(
+      prop, "New File Import Nodes", "Enables visibility of the new File Import nodes in the UI");
+
   prop = RNA_def_property(srna, "use_shader_node_previews", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_ui_text(
       prop, "Shader Node Previews", "Enables previews in the shader node editor");
@@ -7466,8 +7466,8 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, nullptr, "use_animation_baklava", 1);
   RNA_def_property_ui_text(
       prop,
-      "New Animation Data-block",
-      "The new 'Animation' data-block can contain the animation for multiple data-blocks at once");
+      "Multi-Slot Actions",
+      "The new 'layered' Action can contain the animation for multiple data-blocks at once");
   RNA_def_property_update(prop, 0, "rna_userdef_update");
 }
 
