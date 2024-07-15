@@ -75,6 +75,7 @@ ustring OSLRenderServices::u_object_location("object:location");
 ustring OSLRenderServices::u_object_color("object:color");
 ustring OSLRenderServices::u_object_alpha("object:alpha");
 ustring OSLRenderServices::u_object_index("object:index");
+ustring OSLRenderServices::u_is_lamp("object:is_lamp");
 ustring OSLRenderServices::u_geom_dupli_generated("geom:dupli_generated");
 ustring OSLRenderServices::u_geom_dupli_uv("geom:dupli_uv");
 ustring OSLRenderServices::u_material_index("material:index");
@@ -94,7 +95,6 @@ ustring OSLRenderServices::u_geom_polyvertices("geom:polyvertices");
 ustring OSLRenderServices::u_geom_name("geom:name");
 ustring OSLRenderServices::u_geom_undisplaced("geom:undisplaced");
 ustring OSLRenderServices::u_is_smooth("geom:is_smooth");
-ustring OSLRenderServices::u_is_light("geom:is_light");
 ustring OSLRenderServices::u_is_curve("geom:is_curve");
 ustring OSLRenderServices::u_curve_thickness("geom:curve_thickness");
 ustring OSLRenderServices::u_curve_length("geom:curve_length");
@@ -871,6 +871,10 @@ bool OSLRenderServices::get_object_standard_attribute(const KernelGlobalsCPU *kg
     float f = object_pass_id(kg, sd->object);
     return set_attribute_float(f, type, derivatives, val);
   }
+  else if (name == u_is_lamp) {
+    float f = (sd->type & PRIMITIVE_LAMP) != 0;
+    return set_attribute_float(f, type, derivatives, val);
+  }
   else if (name == u_geom_dupli_generated) {
     float3 f = object_dupli_generated(kg, sd->object);
     return set_attribute_float3(f, type, derivatives, val);
@@ -968,10 +972,6 @@ bool OSLRenderServices::get_object_standard_attribute(const KernelGlobalsCPU *kg
   }
   else if (name == u_is_smooth) {
     float f = ((sd->shader & SHADER_SMOOTH_NORMAL) != 0);
-    return set_attribute_float(f, type, derivatives, val);
-  }
-  else if (name == u_is_light) {
-    float f = (sd->type & PRIMITIVE_LAMP) != 0;
     return set_attribute_float(f, type, derivatives, val);
   }
 #ifdef __HAIR__

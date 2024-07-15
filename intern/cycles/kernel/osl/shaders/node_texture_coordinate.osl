@@ -48,9 +48,9 @@ shader node_texture_coordinate(
       if (!getattribute("geom:generated", Generated)) {
         Generated = transform("object", P);
       }
-      float is_light;
-      getattribute("geom:is_light", is_light);
-      if (!getattribute("geom:uv", UV) && is_light) {
+      float is_lamp;
+      getattribute("object:is_lamp", is_lamp);
+      if (!getattribute("geom:uv", UV) && is_lamp) {
         UV = point(1.0 - u - v, u, 0.0);
       }
     }

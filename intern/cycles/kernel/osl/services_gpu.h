@@ -48,6 +48,8 @@ ccl_device_constant DeviceString u_object_color = 12695623857059169556ull;
 ccl_device_constant DeviceString u_object_alpha = 11165053919428293151ull;
 /* "object:index" */
 ccl_device_constant DeviceString u_object_index = 6588325838217472556ull;
+/* "object:is_lamp" */
+ccl_device_constant DeviceString u_is_lamp = 11124107448932545987ull;
 /* "geom:dupli_generated" */
 ccl_device_constant DeviceString u_geom_dupli_generated = 6715607178003388908ull;
 /* "geom:dupli_uv" */
@@ -86,8 +88,6 @@ ccl_device_constant DeviceString u_geom_name = 13606338128269760050ull;
 ccl_device_constant DeviceString u_geom_undisplaced = 12431586303019276305ull;
 /* "geom:is_smooth" */
 ccl_device_constant DeviceString u_is_smooth = 857544214094480123ull;
-/* "geom:is_light" */
-ccl_device_constant DeviceString u_is_light = 14221453274114607468ull;
 /* "geom:is_curve" */
 ccl_device_constant DeviceString u_is_curve = 129742495633653138ull;
 /* "geom:curve_thickness" */
@@ -1119,6 +1119,10 @@ ccl_device_inline bool get_object_standard_attribute(KernelGlobals kg,
     float f = object_pass_id(kg, sd->object);
     return set_attribute_float(f, type, derivatives, val);
   }
+  else if (name == DeviceStrings::u_is_lamp) {
+    float f = ((sd->type & PRIMITIVE_LAMP) != 0);
+    return set_attribute_float(f, type, derivatives, val);
+  }
   else if (name == DeviceStrings::u_geom_dupli_generated) {
     float3 f = object_dupli_generated(kg, sd->object);
     return set_attribute_float3(f, type, derivatives, val);
@@ -1201,10 +1205,6 @@ ccl_device_inline bool get_object_standard_attribute(KernelGlobals kg,
 #endif
   else if (name == DeviceStrings::u_is_smooth) {
     float f = ((sd->shader & SHADER_SMOOTH_NORMAL) != 0);
-    return set_attribute_float(f, type, derivatives, val);
-  }
-  else if (name == DeviceStrings::u_is_light) {
-    float f = ((sd->type & PRIMITIVE_LAMP) != 0);
     return set_attribute_float(f, type, derivatives, val);
   }
 
