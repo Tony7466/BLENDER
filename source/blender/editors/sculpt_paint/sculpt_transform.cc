@@ -635,31 +635,45 @@ static bool set_pivot_depends_on_cursor(bContext & /*C*/, wmOperatorType & /*ot*
   return mode == PivotPositionMode::CursorSurface;
 }
 
+struct AveragePositionAccumulation {
+  double3 position;
+  double weight_total;
+};
+
+static AveragePositionAccumulation combine_average_position_accumulation(
+    const AveragePositionAccumulation &a, const AveragePositionAccumulation &b)
+{
+  return AveragePositionAccumulation{a.position + b.position, a.weight_total + b.weight_total};
+}
+
+BLI_NOINLINE static void filter_positions_pivot_symmetry(const Span<float3> positions,
+                                                         const float3 &pivot,
+                                                         const ePaintSymmetryFlags symm,
+                                                         const MutableSpan<float> factors)
+{
+  for (const int i : positions.index_range()) {
+    if (!SCULPT_check_vertex_pivot_symmetry(positions[i], pivot, symm)) {
+      factors[i] = 0.0f;
+    }
+  }
+}
+
+BLI_NOINLINE static void accumulate_weighted_average_position(const Span<float3> positions,
+                                                              const Span<float> factors,
+                                                              AveragePositionAccumulation &total)
+{
+  for (const int i : positions.index_range()) {
+    total.position += double3(positions[i] * factors[i]);
+    total.weight_total += factors[i];
+  }
+}
+
 static float3 average_unmasked_position(const Object &object,
                                         const float3 &pivot,
                                         const ePaintSymmetryFlags symm)
 {
   const SculptSession &ss = *object.sculpt;
   PBVH &pbvh = *ss.pbvh;
-  struct Accumulation {
-    double3 position;
-    double weight_total;
-  };
-  const auto accumulate =
-      [&](const Span<float3> positions, const MutableSpan<float> factors, Accumulation &total) {
-        for (const int i : positions.index_range()) {
-          if (!SCULPT_check_vertex_pivot_symmetry(positions[i], pivot, symm)) {
-            factors[i] = 0.0f;
-          }
-        }
-        for (const int i : positions.index_range()) {
-          total.position += double3(positions[i] * factors[i]);
-          total.weight_total += factors[i];
-        }
-      };
-  const auto combine = [](const Accumulation &a, const Accumulation &b) {
-    return Accumulation{a.position + b.position, a.weight_total + b.weight_total};
-  };
 
   Vector<PBVHNode *> nodes = bke::pbvh::search_gather(
       pbvh, [&](PBVHNode &node) { return !node_fully_masked_or_hidden(node); });
@@ -674,11 +688,11 @@ static float3 average_unmasked_position(const Object &object,
     case PBVH_FACES: {
       const Mesh &mesh = *static_cast<const Mesh *>(object.data);
       const Span<float3> vert_positions = BKE_pbvh_get_vert_positions(pbvh);
-      const Accumulation total = threading::parallel_reduce(
+      const AveragePositionAccumulation total = threading::parallel_reduce(
           nodes.index_range(),
           1,
-          Accumulation{},
-          [&](const IndexRange range, Accumulation total) {
+          AveragePositionAccumulation{},
+          [&](const IndexRange range, AveragePositionAccumulation total) {
             LocalData &tls = all_tls.local();
             threading::isolate_task([&]() {
               for (const PBVHNode *node : nodes.as_span().slice(range)) {
@@ -691,23 +705,24 @@ static float3 average_unmasked_position(const Object &object,
                 tls.factors.reinitialize(verts.size());
                 const MutableSpan<float> factors = tls.factors;
                 fill_factor_from_hide_and_mask(mesh, verts, factors);
+                filter_positions_pivot_symmetry(positions, pivot, symm, factors);
 
-                accumulate(positions, factors, total);
+                accumulate_weighted_average_position(positions, factors, total);
               }
             });
             return total;
           },
-          combine);
+          combine_average_position_accumulation);
       return float3(math::safe_divide(total.position, total.weight_total));
     }
     case PBVH_GRIDS: {
       const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
       const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-      const Accumulation total = threading::parallel_reduce(
+      const AveragePositionAccumulation total = threading::parallel_reduce(
           nodes.index_range(),
           1,
-          Accumulation{},
-          [&](const IndexRange range, Accumulation total) {
+          AveragePositionAccumulation{},
+          [&](const IndexRange range, AveragePositionAccumulation total) {
             LocalData &tls = all_tls.local();
             for (const PBVHNode *node : nodes.as_span().slice(range)) {
               const Span<int> grids = bke::pbvh::node_grid_indices(*node);
@@ -720,20 +735,21 @@ static float3 average_unmasked_position(const Object &object,
               tls.factors.reinitialize(grid_verts_num);
               const MutableSpan<float> factors = tls.factors;
               fill_factor_from_hide_and_mask(subdiv_ccg, grids, factors);
+              filter_positions_pivot_symmetry(positions, pivot, symm, factors);
 
-              accumulate(positions, factors, total);
+              accumulate_weighted_average_position(positions, factors, total);
             }
             return total;
           },
-          combine);
+          combine_average_position_accumulation);
       return float3(math::safe_divide(total.position, total.weight_total));
     }
     case PBVH_BMESH: {
-      const Accumulation total = threading::parallel_reduce(
+      const AveragePositionAccumulation total = threading::parallel_reduce(
           nodes.index_range(),
           1,
-          Accumulation{},
-          [&](const IndexRange range, Accumulation total) {
+          AveragePositionAccumulation{},
+          [&](const IndexRange range, AveragePositionAccumulation total) {
             LocalData &tls = all_tls.local();
             for (PBVHNode *node : nodes.as_span().slice(range)) {
               const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(node);
@@ -745,12 +761,13 @@ static float3 average_unmasked_position(const Object &object,
               tls.factors.reinitialize(verts.size());
               const MutableSpan<float> factors = tls.factors;
               fill_factor_from_hide_and_mask(*ss.bm, verts, factors);
+              filter_positions_pivot_symmetry(positions, pivot, symm, factors);
 
-              accumulate(positions, factors, total);
+              accumulate_weighted_average_position(positions, factors, total);
             }
             return total;
           },
-          combine);
+          combine_average_position_accumulation);
       return float3(math::safe_divide(total.position, total.weight_total));
     }
   }
