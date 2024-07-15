@@ -702,7 +702,7 @@ if(WITH_CYCLES OR WITH_GPU_RENDER_TESTS)
             -blacklist ${_cycles_blacklist}
           )
 
-          if(WITH_CYCLES_OSL)
+          if(WITH_CYCLES_TEST_OSL AND WITH_CYCLES_OSL)
             # OSL is only supported on the CPU and OptiX
             # Only test on CPU due to limitations in OptiX
             if("${_cycles_device_lower}" STREQUAL "cpu")
