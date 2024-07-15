@@ -972,8 +972,7 @@ bool OSLRenderServices::get_object_standard_attribute(const KernelGlobalsCPU *kg
   }
   else if (name == u_is_light) {
     float f = (sd->type & PRIMITIVE_LAMP) != 0;
-    bool assignment_success = set_attribute_float(f, type, derivatives, val);
-    return ((sd->type & PRIMITIVE_LAMP) != 0) ? assignment_success : false;
+    return set_attribute_float(f, type, derivatives, val);
   }
 #ifdef __HAIR__
   /* Hair Attributes */
