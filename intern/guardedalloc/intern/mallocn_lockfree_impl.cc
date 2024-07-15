@@ -74,7 +74,11 @@ enum {
 #define MEMHEAD_IS_FROM_CPP_NEW(memhead) ((memhead)->len & size_t(MEMHEAD_FLAG_FROM_CPP_NEW))
 #define MEMHEAD_LEN(memhead) ((memhead)->len & ~size_t(MEMHEAD_FLAG_MASK))
 
-static void print_error(const char *message, va_list str_format_args)
+#ifdef __GNUC__
+__attribute__((format(printf, 1, 0)))
+#endif
+static void
+print_error(const char *message, va_list str_format_args)
 {
   char buf[512];
   vsnprintf(buf, sizeof(buf), message, str_format_args);

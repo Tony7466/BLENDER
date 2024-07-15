@@ -42,18 +42,6 @@ VkImageLayout VKImageAccess::to_vk_image_layout() const
   return VK_IMAGE_LAYOUT_UNDEFINED;
 }
 
-/** Which access flags are considered for read access. */
-static constexpr VkAccessFlags VK_ACCESS_READ_MASK = VK_ACCESS_INDIRECT_COMMAND_READ_BIT |
-                                                     VK_ACCESS_INDEX_READ_BIT |
-                                                     VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT |
-                                                     VK_ACCESS_UNIFORM_READ_BIT |
-                                                     VK_ACCESS_INPUT_ATTACHMENT_READ_BIT |
-                                                     VK_ACCESS_SHADER_READ_BIT |
-                                                     VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
-                                                     VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
-                                                     VK_ACCESS_TRANSFER_READ_BIT |
-                                                     VK_ACCESS_HOST_READ_BIT;
-
 /** Which access flags are considered for write access. */
 static constexpr VkAccessFlags VK_ACCESS_WRITE_MASK =
     VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
@@ -66,7 +54,7 @@ void VKResourceAccessInfo::build_links(VKResourceStateTracker &resources,
   for (const VKBufferAccess &buffer_access : buffers) {
     const bool writes_to_resource = bool(buffer_access.vk_access_flags & VK_ACCESS_WRITE_MASK);
     ResourceWithStamp versioned_resource = writes_to_resource ?
-                                               resources.get_buffer_and_increase_version(
+                                               resources.get_buffer_and_increase_stamp(
                                                    buffer_access.vk_buffer) :
                                                resources.get_buffer(buffer_access.vk_buffer);
     if (writes_to_resource) {

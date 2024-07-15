@@ -30,6 +30,11 @@ struct UserDef;
 struct WorkspaceConfigFileData;
 
 /**
+ * The suffix used for blend-files managed by the asset system.
+ */
+#define BLENDER_ASSET_FILE_SUFFIX ".asset.blend"
+
+/**
  * Check whether given path ends with a blend file compatible extension
  * (`.blend`, `.ble` or `.blend.gz`).
  *
@@ -148,7 +153,6 @@ WorkspaceConfigFileData *BKE_blendfile_workspace_config_read(const char *filepat
                                                              const void *file_buf,
                                                              int file_buf_size,
                                                              ReportList *reports);
-bool BKE_blendfile_workspace_config_write(Main *bmain, const char *filepath, ReportList *reports);
 void BKE_blendfile_workspace_config_data_free(WorkspaceConfigFileData *workspace_config);
 
 namespace blender::bke::blendfile {
@@ -183,9 +187,9 @@ class PartialWriteContext : NonCopyable, NonMovable {
    *
    * Typically, the current G_MAIN's filepath.
    *
-   * \note Currently always also copied into the temp bmain.filepath, as this simplifies remapping
-   * of relative filepaths. This may change in the future, if context can be loaded from external
-   * blendfiles.
+   * \note Currently always also copied into the temp `bmain.filepath`,
+   * as this simplifies remapping of relative file-paths.
+   * This may change in the future, if context can be loaded from external blend-files.
    */
   std::string reference_root_filepath_;
   /**
@@ -244,7 +248,7 @@ class PartialWriteContext : NonCopyable, NonMovable {
    * nor handled as a regular dependency. Instead, the library is _always_ added to the context
    * data, and never duplicated. Also, library matching always happens based on absolute filepath.
    *
-   * \warning Heterogenous usages of these operations flags during a same PartialWriteContext
+   * \warning Heterogeneous usages of these operations flags during a same PartialWriteContext
    * session may not generate expected results. Typically, once an ID has been added to the context
    * as 'matching' counterpart of the source Main (i.e. sharing the same session UID), it will not
    * be re-processed further if found again as dependency of another ID, or added explicitly as
