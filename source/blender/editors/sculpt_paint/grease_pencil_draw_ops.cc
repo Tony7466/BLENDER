@@ -28,7 +28,6 @@
 
 #include "DNA_brush_enums.h"
 #include "DNA_brush_types.h"
-#include "DNA_grease_pencil_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_view3d_types.h"
 #include "DNA_windowmanager_types.h"
@@ -91,6 +90,15 @@ static GreasePencilStrokeOperation *get_stroke_operation(bContext &C, wmOperator
   const BrushStrokeMode stroke_mode = BrushStrokeMode(RNA_enum_get(op->ptr, "mode"));
 
   if (mode == PaintMode::GPencil) {
+    if (eBrushGPaintTool(brush.gpencil_tool) == GPAINT_TOOL_DRAW &&
+        stroke_mode == BRUSH_STROKE_ERASE)
+    {
+      /* Special case: We're using the draw tool but with the eraser mode. */
+      Object *object = CTX_data_active_object(&C);
+      GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+      grease_pencil.runtime->use_eraser_temp = true;
+      return greasepencil::new_erase_operation().release();
+    }
     /* FIXME: Somehow store the unique_ptr in the PaintStroke. */
     switch (eBrushGPaintTool(brush.gpencil_tool)) {
       case GPAINT_TOOL_DRAW:
@@ -130,16 +138,12 @@ static GreasePencilStrokeOperation *get_stroke_operation(bContext &C, wmOperator
     switch (eBrushGPWeightTool(brush.gpencil_weight_tool)) {
       case GPWEIGHT_TOOL_DRAW:
         return greasepencil::new_weight_paint_draw_operation(stroke_mode).release();
-        break;
       case GPWEIGHT_TOOL_BLUR:
         return greasepencil::new_weight_paint_blur_operation().release();
-        break;
       case GPWEIGHT_TOOL_AVERAGE:
         return greasepencil::new_weight_paint_average_operation().release();
-        break;
       case GPWEIGHT_TOOL_SMEAR:
         return greasepencil::new_weight_paint_smear_operation().release();
-        break;
     }
   }
   return nullptr;
@@ -276,7 +280,6 @@ static bool grease_pencil_sculpt_paint_poll(bContext *C)
 
 static int grease_pencil_sculpt_paint_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  const Scene *scene = CTX_data_scene(C);
   const Object *object = CTX_data_active_object(C);
   if (!object || object->type != OB_GREASE_PENCIL) {
     return OPERATOR_CANCELLED;
@@ -303,7 +306,7 @@ static int grease_pencil_sculpt_paint_invoke(bContext *C, wmOperator *op, const 
 
   /* Ensure a drawing at the current keyframe. */
   bool inserted_keyframe = false;
-  if (!ed::greasepencil::ensure_active_keyframe(*scene, grease_pencil, inserted_keyframe)) {
+  if (!ed::greasepencil::ensure_active_keyframe(C, grease_pencil, inserted_keyframe)) {
     BKE_report(op->reports, RPT_ERROR, "No Grease Pencil frame to draw on");
     return OPERATOR_CANCELLED;
   }
@@ -641,7 +644,7 @@ static void grease_pencil_fill_extension_cut(const bContext &C,
         hit->no[0] = result.lambda;
       };
 
-  /* Store intersections first before applying to the data, so that subsequent raycasts use
+  /* Store intersections first before applying to the data, so that subsequent ray-casts use
    * original end points until all intersections are found. */
   Vector<float3> new_extension_ends(extension_data.lines.ends.size());
   for (const int i_line : extension_data.lines.starts.index_range()) {

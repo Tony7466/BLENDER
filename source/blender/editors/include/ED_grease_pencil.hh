@@ -58,10 +58,12 @@ void ED_operatortypes_grease_pencil_edit();
 void ED_operatortypes_grease_pencil_material();
 void ED_operatortypes_grease_pencil_primitives();
 void ED_operatortypes_grease_pencil_weight_paint();
+void ED_operatortypes_grease_pencil_interpolate();
 void ED_operatormacros_grease_pencil();
 void ED_keymap_grease_pencil(wmKeyConfig *keyconf);
 void ED_primitivetool_modal_keymap(wmKeyConfig *keyconf);
 void ED_filltool_modal_keymap(wmKeyConfig *keyconf);
+void ED_interpolatetool_modal_keymap(wmKeyConfig *keyconf);
 
 void GREASE_PENCIL_OT_stroke_cutter(wmOperatorType *ot);
 
@@ -225,9 +227,7 @@ bool has_any_frame_selected(const bke::greasepencil::Layer &layer);
  * create one when auto-key is on (taking additive drawing setting into account).
  * \return false when no keyframe could be found or created.
  */
-bool ensure_active_keyframe(const Scene &scene,
-                            GreasePencil &grease_pencil,
-                            bool &r_inserted_keyframe);
+bool ensure_active_keyframe(bContext *C, GreasePencil &grease_pencil, bool &r_inserted_keyframe);
 
 void create_keyframe_edit_data_selected_frames_list(KeyframeEditData *ked,
                                                     const bke::greasepencil::Layer &layer);
@@ -605,6 +605,22 @@ void draw_grease_pencil_strokes(const RegionView3D &rv3d,
                                 float radius_scale = 1.0f);
 
 }  // namespace image_render
+
+enum class InterpolateFlipMode : int8_t {
+  /* No flip. */
+  None = 0,
+  /* Flip always. */
+  Flip,
+  /* Flip if needed. */
+  FlipAuto,
+};
+
+enum class InterpolateLayerMode : int8_t {
+  /* Only interpolate on the active layer. */
+  Active = 0,
+  /* Interpolate strokes on every layer. */
+  All,
+};
 
 /**
  * Create new strokes tracing the rendered outline of existing strokes.
