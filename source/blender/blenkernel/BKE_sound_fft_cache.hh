@@ -20,9 +20,8 @@ namespace blender::bke::sound::fft_cache {
 struct Parameter {
   int fft_size;
   int window;
-  int64_t bin_index;
 
-  BLI_STRUCT_EQUALITY_OPERATORS_3(Parameter, fft_size, window, bin_index);
+  BLI_STRUCT_EQUALITY_OPERATORS_2(Parameter, fft_size, window);
 
   uint64_t hash() const;
 };

@@ -195,12 +195,12 @@ class SampleSoundFunction : public mf::MultiFunction {
 
         const int fft_size = 1 << fft_size_;
         const int bin_size = fft_size / 2;
-
         const int low = math::clamp(int(lows[i] * (bin_size - 1)), 0, bin_size - 1);
         const int high = math::clamp(int(highs[i] * (bin_size - 1)), 0, bin_size - 1);
 
         const int64_t aligned_sample_index = (sample_index / fft_size) * fft_size;
-        const int64_t bin_index = aligned_sample_index / 2;
+        const int64_t total_bins = math::ceil(length_ * sound_->samplerate / fft_size) * bin_size;
+        const int64_t bin_index = math::clamp(aligned_sample_index / 2, 0L, total_bins - bin_size);
 
         // TODO: temporal smoothing (interpolation)
         // double offset_factor = float(sample_index % (bin_size)) / float(bin_size);
@@ -208,7 +208,6 @@ class SampleSoundFunction : public mf::MultiFunction {
         Parameter parameter{};
         parameter.fft_size = fft_size;
         parameter.window = window_;
-        parameter.bin_index = bin_index;
 
         // Try to read from cache
         {
@@ -217,13 +216,15 @@ class SampleSoundFunction : public mf::MultiFunction {
           if (cache.map.contains(parameter)) {
             const Array<float> &bins = cache.map.lookup(parameter);
 
-            if (high == low) {
-              dst[i] = bins[high + 1] - bins[low];
+            if (bins[bin_index] == 0) {
+              if (high == low) {
+                dst[i] = bins[bin_index + high + 1] - bins[bin_index + low];
+              }
+              else {
+                dst[i] = bins[bin_index + high] - bins[bin_index + low];
+              }
+              return;
             }
-            else {
-              dst[i] = bins[high] - bins[low];
-            }
-            return;
           }
         }
 
@@ -265,29 +266,29 @@ class SampleSoundFunction : public mf::MultiFunction {
         fftwf_plan plan = fftwf_plan_dft_r2c_1d(fft_size, buf.data(), fft_buf, FFTW_ESTIMATE);
         fftwf_execute(plan);
 
-        Array<float> bins(bin_size);
+        // Update cache
+        {
+          std::unique_lock lock{cache.mutex};
+          Array<float> &bins = cache.map.lookup_or_add(std::move(parameter),
+                                                       std::move(Array<float>(total_bins, -1.0f)));
 
-        // TODO: parallel scan
-        bins[0] = 0;
-        for (int i = 1; i < bin_size; ++i) {
-          bins[i] = bins[i - 1] + math::abs(fft_buf[i - 1][0]) / bin_size;
+          // TODO: parallel scan
+          bins[bin_index] = 0;
+          for (int i = 1; i < bin_size; ++i) {
+            bins[bin_index + i] = bins[bin_index + i - 1] +
+                                  math::abs(fft_buf[i - 1][0]) / bin_size;
+          }
+
+          if (high == low) {
+            dst[i] = bins[bin_index + high + 1] - bins[bin_index + low];
+          }
+          else {
+            dst[i] = bins[bin_index + high] - bins[bin_index + low];
+          }
         }
 
         fftwf_destroy_plan(plan);
         fftwf_free(fft_buf);
-
-        if (high == low) {
-          dst[i] = bins[high + 1] - bins[low];
-        }
-        else {
-          dst[i] = bins[high] - bins[low];
-        }
-
-        // Write into cache
-        {
-          std::unique_lock lock{cache.mutex};
-          cache.map.add(std::move(parameter), std::move(bins));
-        }
 #  else  // WITH_FFTW3
         dst[i] = 0;
 #  endif
