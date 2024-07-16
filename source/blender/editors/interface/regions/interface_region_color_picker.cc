@@ -35,7 +35,6 @@
 enum ePickerType {
   PICKER_TYPE_RGB = 0,
   PICKER_TYPE_HSV = 1,
-  PICKER_TYPE_HEX = 2,
 };
 
 /* -------------------------------------------------------------------- */
@@ -195,7 +194,7 @@ static void ui_update_color_picker_buts_rgb(uiBut *from_but,
        * push, so disable it on RNA buttons in the color picker block */
       UI_but_flag_disable(bt, UI_BUT_UNDO);
     }
-    else if (bt->str == "Hex:") {
+    else if (bt->str == "Hex: ") {
       float rgb_hex[3];
       uchar rgb_hex_uchar[3];
       char col[16];
@@ -209,7 +208,7 @@ static void ui_update_color_picker_buts_rgb(uiBut *from_but,
       }
 
       rgb_float_to_uchar(rgb_hex_uchar, rgb_hex);
-      const int col_len = SNPRINTF_RLEN(col, "%02X%02X%02X", UNPACK3_EX((uint), rgb_hex_uchar, ));
+      const int col_len = SNPRINTF_RLEN(col, "#%02X%02X%02X", UNPACK3_EX((uint), rgb_hex_uchar, ));
       memcpy(bt->poin, col, col_len + 1);
     }
     else if (bt->str.find(' ', 1) == 1) {
@@ -324,10 +323,6 @@ static void ui_colorpicker_hide_reveal(uiBlock *block, ePickerType colormode)
     else if (bt->func == ui_colorpicker_hsv_update_cb) {
       /* HSV sliders */
       SET_FLAG_FROM_TEST(bt->flag, (colormode != PICKER_TYPE_HSV), UI_HIDDEN);
-    }
-    else if (bt->func == ui_colorpicker_hex_rna_cb || bt->type == UI_BTYPE_LABEL) {
-      /* HEX input or gamma correction status label */
-      SET_FLAG_FROM_TEST(bt->flag, (colormode != PICKER_TYPE_HEX), UI_HIDDEN);
     }
   }
 }
@@ -523,7 +518,7 @@ static void ui_block_colorpicker(uiBlock *block,
                  IFACE_("RGB"),
                  0,
                  yco,
-                 width / 3,
+                 width / 2,
                  UI_UNIT_Y,
                  &colormode,
                  0.0,
@@ -537,31 +532,15 @@ static void ui_block_colorpicker(uiBlock *block,
                  UI_BTYPE_ROW,
                  0,
                  IFACE_((U.color_picker_type == USER_CP_CIRCLE_HSL) ? "HSL" : "HSV"),
-                 width / 3,
+                 width / 2,
                  yco,
-                 width / 3,
+                 width / 2,
                  UI_UNIT_Y,
                  &colormode,
                  0.0,
                  PICKER_TYPE_HSV,
                  (U.color_picker_type == USER_CP_CIRCLE_HSL) ? TIP_("Hue, Saturation, Lightness") :
                                                                TIP_("Hue, Saturation, Value"));
-  UI_but_flag_disable(bt, UI_BUT_UNDO);
-  UI_but_drawflag_disable(bt, UI_BUT_TEXT_LEFT);
-  UI_but_func_set(bt, ui_colorpicker_create_mode_cb, bt, nullptr);
-  bt->custom_data = cpicker;
-  bt = uiDefButC(block,
-                 UI_BTYPE_ROW,
-                 0,
-                 IFACE_("Hex"),
-                 2 * width / 3,
-                 yco,
-                 width / 3,
-                 UI_UNIT_Y,
-                 &colormode,
-                 0.0,
-                 PICKER_TYPE_HEX,
-                 TIP_("Color as hexadecimal values"));
   UI_but_flag_disable(bt, UI_BUT_UNDO);
   UI_but_drawflag_disable(bt, UI_BUT_TEXT_LEFT);
   UI_but_func_set(bt, ui_colorpicker_create_mode_cb, bt, nullptr);
@@ -762,36 +741,31 @@ static void ui_block_colorpicker(uiBlock *block,
   }
 
   rgb_float_to_uchar(rgb_hex_uchar, rgb_hex);
-  SNPRINTF(hexcol, "%02X%02X%02X", UNPACK3_EX((uint), rgb_hex_uchar, ));
+  SNPRINTF(hexcol, "#%02X%02X%02X", UNPACK3_EX((uint), rgb_hex_uchar, ));
 
-  yco = -3.0f * UI_UNIT_Y;
   bt = uiDefBut(block,
                 UI_BTYPE_TEXT,
                 0,
-                IFACE_("Hex:"),
+                IFACE_("Hex: "),
                 0,
-                yco,
+                yco -= UI_UNIT_Y * 2,
                 butwidth,
                 UI_UNIT_Y,
                 hexcol,
                 0,
                 8,
-                TIP_("Hex triplet for color (#RRGGBB)"));
+                nullptr);
+
+  const auto bt_tooltip_func = [](bContext * /*C*/, uiTooltipData *tip, void * /*argN*/) {
+    UI_tooltip_text_field_add(
+        tip, "Hex triplet for color (#RRGGBB)", {}, UI_TIP_STYLE_HEADER, UI_TIP_LC_NORMAL, false);
+    UI_tooltip_text_field_add(
+        tip, "(Gamma Corrected)", {}, UI_TIP_STYLE_NORMAL, UI_TIP_LC_NORMAL, false);
+  };
+  UI_but_func_tooltip_custom_set(bt, bt_tooltip_func, nullptr, nullptr);
   UI_but_flag_disable(bt, UI_BUT_UNDO);
   UI_but_func_set(bt, ui_colorpicker_hex_rna_cb, bt, hexcol);
   bt->custom_data = cpicker;
-  uiDefBut(block,
-           UI_BTYPE_LABEL,
-           0,
-           IFACE_("(Gamma corrected)"),
-           0,
-           yco - UI_UNIT_Y,
-           butwidth,
-           UI_UNIT_Y,
-           nullptr,
-           0.0,
-           0.0,
-           "");
 
   ui_colorpicker_hide_reveal(block, (ePickerType)colormode);
 }
