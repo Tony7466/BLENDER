@@ -84,6 +84,7 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
   }
 
   const bool use_parallel_compilation = GPU_use_parallel_compilation();
+  const int batch_size = GPU_parallel_compilation_threads_count();
 
   WM_system_gpu_context_activate(system_gpu_context);
   GPU_context_active_set(blender_gpu_context);
@@ -96,17 +97,20 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
       break;
     }
 
-    BLI_spin_lock(&comp->list_lock);
-    /* Pop tail because it will be less likely to lock the main thread
-     * if all GPUMaterials are to be freed (see DRW_deferred_shader_remove()). */
-    LinkData *link = (LinkData *)BLI_poptail(&comp->queue);
-    GPUMaterial *mat = link ? (GPUMaterial *)link->data : nullptr;
-    if (mat) {
-      /* Avoid another thread freeing the material mid compilation. */
-      GPU_material_acquire(mat);
-      MEM_freeN(link);
+    GPUMaterial *mat = nullptr;
+    if (!use_parallel_compilation || next_batch.size() < batch_size) {
+      BLI_spin_lock(&comp->list_lock);
+      /* Pop tail because it will be less likely to lock the main thread
+       * if all GPUMaterials are to be freed (see DRW_deferred_shader_remove()). */
+      LinkData *link = (LinkData *)BLI_poptail(&comp->queue);
+      mat = link ? (GPUMaterial *)link->data : nullptr;
+      if (mat) {
+        /* Avoid another thread freeing the material mid compilation. */
+        GPU_material_acquire(mat);
+        MEM_freeN(link);
+      }
+      BLI_spin_unlock(&comp->list_lock);
     }
-    BLI_spin_unlock(&comp->list_lock);
 
     if (mat) {
       /* We have a new material that must be compiled,

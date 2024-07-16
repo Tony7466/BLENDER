@@ -136,6 +136,11 @@ bool GPU_use_parallel_compilation()
   return GCaps.max_parallel_compilations > 0;
 }
 
+int GPU_parallel_compilation_threads_count()
+{
+  return GCaps.max_parallel_compilations;
+}
+
 bool GPU_mip_render_workaround()
 {
   return GCaps.mip_render_workaround;
