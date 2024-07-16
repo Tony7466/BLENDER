@@ -1,3 +1,4 @@
 Referenced by commit fad031a3a9495387c6bfe16e61596598aff21c95, Fix (unreported) crash when setting current frame from the UI.
 Referenced by pull request #123130, Fix: VSE wrong mouse over assert
 Referenced by issue #124623, VSE misses strip auto-deselect with right click selection (Blender 2.7 x keymap)
+Referenced by issue #124589, VSE: Scene strips are drawn with a gap to strip start
