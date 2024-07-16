@@ -2,7 +2,10 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BKE_geometry_set.hh"
 #include "BKE_physics_geometry.hh"
+
+#include "GEO_join_geometries.hh"
 
 #include "testing/testing.h"
 
@@ -67,6 +70,14 @@ TEST_F(PhysicsGeometryTest, join_geometry)
   bke::PhysicsGeometry geo3 = bke::PhysicsGeometry(2, 1, 1);
   geo3.create_world();
   test_data(geo3, true, 2, 1, 1);
+
+  Array<bke::GeometrySet> geometry_sets = {bke::GeometrySet::from_physics(&geo1),
+                                           bke::GeometrySet::from_physics(&geo2),
+                                           bke::GeometrySet::from_physics(&geo3)};
+  GeometrySet result = geometry::join_geometries(geometry_sets, {});
+  EXPECT_TRUE(result.has_physics());
+  const bke::PhysicsGeometry &geo_result = *result.get_physics();
+  test_data(geo_result, true, 7, 3, 4);
 }
 
 }  // namespace blender::bke::tests
