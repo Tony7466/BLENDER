@@ -29,7 +29,7 @@
 
 #include "RNA_access.hh"
 #include "RNA_path.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "ED_keyframing.hh"
 
@@ -977,11 +977,11 @@ KeyframeStrip::KeyframeStrip(const KeyframeStrip &other)
 {
   memcpy(this, &other, sizeof(*this));
 
-  this->channelbags_array = MEM_cnew_array<ActionChannelBag *>(other.channelbags_array_num,
-                                                               __func__);
+  this->channelbag_array = MEM_cnew_array<ActionChannelBag *>(other.channelbag_array_num,
+                                                              __func__);
   Span<const ChannelBag *> channelbags_src = other.channelbags();
   for (int i : channelbags_src.index_range()) {
-    this->channelbags_array[i] = MEM_new<animrig::ChannelBag>(__func__, *other.channelbag(i));
+    this->channelbag_array[i] = MEM_new<animrig::ChannelBag>(__func__, *other.channelbag(i));
   }
 }
 
@@ -990,8 +990,8 @@ KeyframeStrip::~KeyframeStrip()
   for (ChannelBag *channelbag_for_slot : this->channelbags()) {
     MEM_delete(channelbag_for_slot);
   }
-  MEM_SAFE_FREE(this->channelbags_array);
-  this->channelbags_array_num = 0;
+  MEM_SAFE_FREE(this->channelbag_array);
+  this->channelbag_array_num = 0;
 }
 
 template<> bool Strip::is<KeyframeStrip>() const
@@ -1018,21 +1018,21 @@ KeyframeStrip::operator Strip &()
 
 blender::Span<const ChannelBag *> KeyframeStrip::channelbags() const
 {
-  return blender::Span<ChannelBag *>{reinterpret_cast<ChannelBag **>(this->channelbags_array),
-                                     this->channelbags_array_num};
+  return blender::Span<ChannelBag *>{reinterpret_cast<ChannelBag **>(this->channelbag_array),
+                                     this->channelbag_array_num};
 }
 blender::MutableSpan<ChannelBag *> KeyframeStrip::channelbags()
 {
   return blender::MutableSpan<ChannelBag *>{
-      reinterpret_cast<ChannelBag **>(this->channelbags_array), this->channelbags_array_num};
+      reinterpret_cast<ChannelBag **>(this->channelbag_array), this->channelbag_array_num};
 }
 const ChannelBag *KeyframeStrip::channelbag(const int64_t index) const
 {
-  return &this->channelbags_array[index]->wrap();
+  return &this->channelbag_array[index]->wrap();
 }
 ChannelBag *KeyframeStrip::channelbag(const int64_t index)
 {
-  return &this->channelbags_array[index]->wrap();
+  return &this->channelbag_array[index]->wrap();
 }
 const ChannelBag *KeyframeStrip::channelbag_for_slot(const slot_handle_t slot_handle) const
 {
@@ -1067,7 +1067,7 @@ ChannelBag &KeyframeStrip::channelbag_for_slot_add(const Slot &slot)
   channels.slot_handle = slot.handle;
 
   grow_array_and_append<ActionChannelBag *>(
-      &this->channelbags_array, &this->channelbags_array_num, &channels);
+      &this->channelbag_array, &this->channelbag_array_num, &channels);
 
   return channels;
 }
@@ -1204,13 +1204,7 @@ FCurve *ChannelBag::fcurve(const int64_t index)
 
 const FCurve *ChannelBag::fcurve_find(const StringRefNull rna_path, const int array_index) const
 {
-  for (const FCurve *fcu : this->fcurves()) {
-    /* Check indices first, much cheaper than a string comparison. */
-    if (fcu->array_index == array_index && fcu->rna_path && StringRef(fcu->rna_path) == rna_path) {
-      return fcu;
-    }
-  }
-  return nullptr;
+  return animrig::fcurve_find(this->fcurves(), {rna_path, array_index});
 }
 
 /* Utility function implementations. */
@@ -1249,6 +1243,7 @@ static animrig::ChannelBag *channelbag_for_action_slot(Action &action,
 
 Span<FCurve *> fcurves_for_action_slot(Action &action, const slot_handle_t slot_handle)
 {
+  assert_baklava_phase_1_invariants(action);
   animrig::ChannelBag *bag = channelbag_for_action_slot(action, slot_handle);
   if (!bag) {
     return {};
@@ -1258,6 +1253,7 @@ Span<FCurve *> fcurves_for_action_slot(Action &action, const slot_handle_t slot_
 
 Span<const FCurve *> fcurves_for_action_slot(const Action &action, const slot_handle_t slot_handle)
 {
+  assert_baklava_phase_1_invariants(action);
   const animrig::ChannelBag *bag = channelbag_for_action_slot(action, slot_handle);
   if (!bag) {
     return {};
@@ -1540,7 +1536,7 @@ Action *convert_to_layered_action(Main &bmain, const Action &legacy_action)
   Slot &slot = converted_action.slot_add();
   Layer &layer = converted_action.layer_add(legacy_action.id.name);
   KeyframeStrip &strip = layer.strip_add<KeyframeStrip>();
-  BLI_assert(strip.channelbags_array_num == 0);
+  BLI_assert(strip.channelbag_array_num == 0);
   ChannelBag *bag = &strip.channelbag_for_slot_add(slot);
 
   const int fcu_count = BLI_listbase_count(&legacy_action.curves);
