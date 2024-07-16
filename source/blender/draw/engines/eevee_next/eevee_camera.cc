@@ -10,6 +10,8 @@
 
 #include "DRW_render.hh"
 
+#include "BLI_bounds.hh"
+
 #include "DNA_camera_types.h"
 #include "DNA_view3d_types.h"
 
@@ -93,6 +95,8 @@ void Camera::sync()
   int2 display_extent = inst_.film.display_extent_get();
   int2 film_extent = inst_.film.film_extent_get();
   int2 film_offset = inst_.film.film_offset_get();
+  /* Overscan in film pixel. Not the same as `render_overscan_get`. */
+  int film_overscan = inst_.film.overscan_pixels_get(overscan_, film_extent);
 
   rcti film_rect;
   BLI_rcti_init(&film_rect,
@@ -101,24 +105,17 @@ void Camera::sync()
                 film_offset.y,
                 film_offset.y + film_extent.y);
 
-  float2 resolution = float2(display_extent);
-  float2 overscan_margin = float2(overscan_ * math::max(UNPACK2(resolution)));
-  float2 overscan_resolution = resolution + overscan_margin * 2.0f;
-  float2 camera_min = overscan_margin;
-  float2 camera_max = camera_min + resolution;
-
+  Bounds<float2> uv_region = {float2(0.0f), float2(display_extent)};
   if (inst_.drw_view) {
-    /* Viewport camera view. */
-    float2 camera_uv_scale = float2(inst_.rv3d->viewcamtexcofac);
-    float2 camera_uv_bias = float2(inst_.rv3d->viewcamtexcofac + 2);
-    float2 camera_region_min = (-camera_uv_bias * resolution) / camera_uv_scale;
-    float2 camera_region_size = resolution / camera_uv_scale;
-    camera_min = overscan_margin + camera_region_min;
-    camera_max = camera_min + camera_region_size;
+    float2 uv_scale = float4(inst_.rv3d->viewcamtexcofac).xy();
+    float2 uv_bias = float4(inst_.rv3d->viewcamtexcofac).zw();
+    /* UV region inside the display extent reference frame. */
+    uv_region.min = (-uv_bias * float2(display_extent)) / uv_scale;
+    uv_region.max = uv_region.min + (float2(display_extent) / uv_scale);
   }
 
-  data.uv_scale = overscan_resolution / (camera_max - camera_min);
-  data.uv_bias = -camera_min / (camera_max - camera_min);
+  data.uv_scale = float2(film_extent + film_overscan * 2) / uv_region.size();
+  data.uv_bias = (float2(film_offset - film_overscan) - uv_region.min) / uv_region.size();
 
   if (inst_.is_baking()) {
     /* Any view so that shadows and light culling works during irradiance bake. */
