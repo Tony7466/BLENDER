@@ -730,7 +730,7 @@ int BPY_context_member_get(bContext *C, const char *member, bContextDataResult *
 
   PyObject *pyctx;
   PyObject *item;
-  PointerRNA *ptr = nullptr;
+  PointerRNA ptr = {};
   bool done = false;
 
   if (use_gil) {
@@ -747,10 +747,9 @@ int BPY_context_member_get(bContext *C, const char *member, bContextDataResult *
     done = true;
   }
   else if (BPy_StructRNA_Check(item)) {
-    ptr = &(((BPy_StructRNA *)item)->ptr);
+    BPy_PyPointerRNA_to_PointerRNA(&ptr, &(reinterpret_cast<BPy_StructRNA *>(item)->ptr));
 
-    // result->ptr = ((BPy_StructRNA *)item)->ptr;
-    CTX_data_pointer_set_ptr(result, ptr);
+    CTX_data_pointer_set_ptr(result, &ptr);
     CTX_data_type_set(result, CTX_DATA_TYPE_POINTER);
     done = true;
   }
@@ -769,8 +768,9 @@ int BPY_context_member_get(bContext *C, const char *member, bContextDataResult *
         PyObject *list_item = seq_fast_items[i];
 
         if (BPy_StructRNA_Check(list_item)) {
-          ptr = &(((BPy_StructRNA *)list_item)->ptr);
-          CTX_data_list_add_ptr(result, ptr);
+          BPy_PyPointerRNA_to_PointerRNA(&ptr,
+                                         &(reinterpret_cast<BPy_StructRNA *>(list_item)->ptr));
+          CTX_data_list_add_ptr(result, &ptr);
         }
         else {
           CLOG_INFO(BPY_LOG_CONTEXT,

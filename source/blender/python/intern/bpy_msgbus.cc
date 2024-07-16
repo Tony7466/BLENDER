@@ -78,7 +78,7 @@ static int py_msgbus_rna_key_from_py(PyObject *py_sub,
     /* NOTE: this isn't typically used since we don't edit structs directly. */
     BPy_StructRNA *data_srna = (BPy_StructRNA *)py_sub;
     PYRNA_STRUCT_CHECK_INT(data_srna);
-    msg_key_params->ptr = data_srna->ptr;
+    BPy_PyPointerRNA_to_PointerRNA(&msg_key_params->ptr, &data_srna->ptr);
   }
   /* TODO: property / type, not instance. */
   else if (PyType_Check(py_sub)) {

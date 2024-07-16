@@ -53,10 +53,23 @@
 /* --- end bpy build options --- */
 
 struct ID;
+struct PointerRNA;
+struct StructRNA;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/* Python/BPY cannot use C++ allocation easily (would require some serious refactoring).
+ * For now, use a simplified version of PointerRNA for data managed the python way. */
+typedef struct PyPointerRNA {
+  ID *owner_id;
+  StructRNA *type;
+  void *data;
+} PyPointerRNA;
+
+void BPy_PyPointerRNA_to_PointerRNA(PointerRNA *dst, const PyPointerRNA *src);
+void BPy_PyPointerRNA_from_PointerRNA(PyPointerRNA *dst, const PointerRNA *src);
 
 /**
  * Sub-classes of #pyrna_struct_Type which support idprop definitions use this as a meta-class.
@@ -116,7 +129,7 @@ typedef struct {
 #ifdef USE_WEAKREFS
   PyObject *in_weakreflist;
 #endif
-  PointerRNA ptr;
+  PyPointerRNA ptr;
 } BPy_DummyPointerRNA;
 
 typedef struct BPy_StructRNA {
@@ -124,7 +137,7 @@ typedef struct BPy_StructRNA {
 #ifdef USE_WEAKREFS
   PyObject *in_weakreflist;
 #endif
-  PointerRNA ptr;
+  PyPointerRNA ptr;
 #ifdef USE_PYRNA_STRUCT_REFERENCE
   /* generic PyObject we hold a reference to, example use:
    * hold onto the collection iterator to prevent it from freeing allocated data we may use */
@@ -142,7 +155,7 @@ typedef struct {
 #ifdef USE_WEAKREFS
   PyObject *in_weakreflist;
 #endif
-  PointerRNA ptr;
+  PyPointerRNA ptr;
   PropertyRNA *prop;
 } BPy_PropertyRNA;
 
@@ -151,7 +164,7 @@ typedef struct {
 #ifdef USE_WEAKREFS
   PyObject *in_weakreflist;
 #endif
-  PointerRNA ptr;
+  PyPointerRNA ptr;
   PropertyRNA *prop;
 
   /* Arystan: this is a hack to allow sub-item r/w access like: face.uv[n][m] */
@@ -176,7 +189,7 @@ typedef struct {
 #ifdef USE_WEAKREFS
   PyObject *in_weakreflist;
 #endif
-  PointerRNA ptr;
+  PyPointerRNA ptr;
   FunctionRNA *func;
 } BPy_FunctionRNA;
 
