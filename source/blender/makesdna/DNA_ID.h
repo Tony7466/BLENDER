@@ -557,6 +557,10 @@ enum eLibrary_Tag {
   LIBRARY_IS_ASSET_EDIT_FILE = 1 << 3,
 };
 
+typedef struct IDHash {
+  char data[16];
+} IDHash;
+
 /**
  * A weak library/ID reference for local data that has been appended, to allow re-using that local
  * data instead of creating a new copy of it in future appends.
@@ -574,8 +578,16 @@ typedef struct LibraryWeakReference {
   /** MAX_ID_NAME. May be different from the current local ID name. */
   char library_id_name[66];
 
-  char _pad[2];
+  /** #LibraryWeakReferenceFlag. */
+  uint8_t flag;
+  char _pad[5];
+  /** Hash of the data block that identifies it in case it is embedded. */
+  IDHash embedded_deep_hash;
 } LibraryWeakReference;
+
+typedef enum LibraryWeakReferenceFlag {
+  LIBRARY_WEAK_REFERENCE_FLAG_IS_EMBEDDED = 1 << 0,
+} LibraryWeakReferenceFlag;
 
 /* PreviewImage.flag */
 enum ePreviewImage_Flag {
