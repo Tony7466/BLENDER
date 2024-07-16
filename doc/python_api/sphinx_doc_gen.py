@@ -1395,6 +1395,8 @@ def pycontext2sphinx(basepath):
                             member_type
                         )
                     )
+                else:
+                    type_strs.append(member_type)
             if len(type_strs) == 1:
                 member_type_str = type_strs[0]
             else:
