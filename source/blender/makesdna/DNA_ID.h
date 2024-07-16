@@ -413,6 +413,11 @@ typedef struct ID_Runtime {
 
 typedef struct IDHash {
   char data[16];
+#ifdef __cplusplus
+  bool is_valid() const;
+  friend bool operator==(const IDHash &a, const IDHash &b);
+  friend bool operator!=(const IDHash &a, const IDHash &b);
+#endif
 } IDHash;
 
 typedef struct ID {

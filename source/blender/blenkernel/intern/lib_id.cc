@@ -2492,3 +2492,23 @@ void BKE_id_blend_write(BlendWriter *writer, ID *id)
     }
   }
 }
+
+bool IDHash::is_valid() const
+{
+  for (const int i : blender::IndexRange(sizeof(*this))) {
+    if (this->data[i] != 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool operator==(const IDHash &a, const IDHash &b)
+{
+  return blender::Span(a.data, sizeof(a)) == blender::Span(b.data, sizeof(b));
+}
+
+bool operator!=(const IDHash &a, const IDHash &b)
+{
+  return !(a == b);
+}

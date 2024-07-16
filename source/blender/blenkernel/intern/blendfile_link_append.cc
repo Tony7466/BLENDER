@@ -1208,21 +1208,26 @@ static void blendfile_append_define_actions(BlendfileLinkAppendContext *lapp_con
 static void compute_locked_hash_for_data_block_recursive(
     Main &bmain,
     ID &id,
-    blender::Map<const ID *, IDHash> &r_locked_hashes,
+    blender::Map<const ID *, std::optional<IDHash>> &r_locked_hashes,
     blender::Set<const ID *> &current_stack)
 {
   if (r_locked_hashes.contains(&id)) {
     return;
   }
   if (ID_IS_LOCKED(&id)) {
-    r_locked_hashes.add(&id, id.library_weak_reference->locked_hash);
+    r_locked_hashes.add_new(&id, id.library_weak_reference->locked_hash);
     return;
+  }
+  if (!id.shallow_hash.is_valid()) {
+    r_locked_hashes.add_new(&id, std::nullopt);
   }
 
   current_stack.add(&id);
   XXH3_state_t *locked_hash_state = XXH3_createState();
   XXH3_128bits_reset(locked_hash_state);
   XXH3_128bits_update(locked_hash_state, &id.shallow_hash, sizeof(IDHash));
+
+  bool has_invalid_dependency = false;
   BKE_library_foreach_ID_link(
       &bmain,
       &id,
@@ -1239,13 +1244,22 @@ static void compute_locked_hash_for_data_block_recursive(
         /* TODO: Handle self-pointers, backlinks, cyclic dependencies. */
         compute_locked_hash_for_data_block_recursive(
             bmain, *referenced_id, r_locked_hashes, current_stack);
-        XXH3_128bits_update(
-            locked_hash_state, &r_locked_hashes.lookup(referenced_id), sizeof(IDHash));
+        const std::optional<IDHash> &referenced_id_hash = r_locked_hashes.lookup(referenced_id);
+        if (!referenced_id_hash.has_value()) {
+          has_invalid_dependency = true;
+          return IDWALK_RET_STOP_ITER;
+        }
+        XXH3_128bits_update(locked_hash_state, referenced_id_hash->data, sizeof(IDHash));
         return IDWALK_RET_NOP;
       },
       nullptr,
       IDWALK_READONLY | IDWALK_IGNORE_EMBEDDED_ID);
   current_stack.remove(&id);
+
+  if (has_invalid_dependency) {
+    r_locked_hashes.add_new(&id, std::nullopt);
+    return;
+  }
 
   IDHash locked_hash;
   const XXH128_hash_t hash = XXH3_128bits_digest(locked_hash_state);
@@ -1285,7 +1299,7 @@ void BKE_blendfile_append(BlendfileLinkAppendContext *lapp_context, ReportList *
    * applied to each of them. */
   blendfile_append_define_actions(lapp_context, reports);
 
-  blender::Map<const ID *, IDHash> locked_hashes;
+  blender::Map<const ID *, std::optional<IDHash>> deep_hashes;
 
   /* Effectively perform required operation on every linked ID. */
   for (BlendfileLinkAppendContextItem *item : lapp_context->items) {
@@ -1325,12 +1339,16 @@ void BKE_blendfile_append(BlendfileLinkAppendContext *lapp_context, ReportList *
       if (!local_appended_new_id->library_weak_reference) {
         blender::Set<const ID *> current_stack;
         compute_locked_hash_for_data_block_recursive(
-            *bmain, *local_appended_new_id, locked_hashes, current_stack);
+            *bmain, *local_appended_new_id, deep_hashes, current_stack);
+        const std::optional<IDHash> &id_hash = deep_hashes.lookup(local_appended_new_id);
 
         LibraryWeakReference *weak_reference = MEM_cnew<LibraryWeakReference>(__func__);
         STRNCPY(weak_reference->library_filepath, lib_filepath);
         STRNCPY(weak_reference->library_id_name, lib_id_name);
-        weak_reference->locked_hash = locked_hashes.lookup(local_appended_new_id);
+        if (id_hash.has_value()) {
+          weak_reference->locked_hash = *id_hash;
+          weak_reference->flag |= LIBRARY_WEAK_REFERENCE_FLAG_IS_LOCKED;
+        }
         local_appended_new_id->library_weak_reference = weak_reference;
       }
       if (set_fakeuser) {
