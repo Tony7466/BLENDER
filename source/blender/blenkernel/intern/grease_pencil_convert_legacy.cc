@@ -679,7 +679,10 @@ static Drawing legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gp
   int num_points = 0;
   bool has_bezier_stroke = false;
   LISTBASE_FOREACH (bGPDstroke *, gps, &gpf.strokes) {
-    if (gps->editcurve != nullptr) {
+    /* Check for a valid edit curve. This is only the case when the `editcurve` exists and wasn't
+     * tagged for a stroke update. This tag indicates that the stroke points have changed,
+     * invalidating the edit curve. */
+    if (gps->editcurve != nullptr && (gps->editcurve->flag & GP_CURVE_NEEDS_STROKE_UPDATE) == 0) {
       if (gps->editcurve->tot_curve_points == 0) {
         continue;
       }
@@ -1048,7 +1051,7 @@ static bNodeTree *offset_radius_node_tree_add(ConversionData &conversion_data, L
       &conversion_data.bmain, library, OFFSET_RADIUS_NODETREE_NAME, "GeometryNodeTree");
 
   if (!group->geometry_node_asset_traits) {
-    group->geometry_node_asset_traits = MEM_new<GeometryNodeAssetTraits>(__func__);
+    group->geometry_node_asset_traits = MEM_cnew<GeometryNodeAssetTraits>(__func__);
   }
   group->geometry_node_asset_traits->flag |= GEO_NODE_ASSET_MODIFIER;
 
