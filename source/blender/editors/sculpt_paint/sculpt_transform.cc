@@ -651,6 +651,8 @@ BLI_NOINLINE static void filter_positions_pivot_symmetry(const Span<float3> posi
                                                          const ePaintSymmetryFlags symm,
                                                          const MutableSpan<float> factors)
 {
+  BLI_assert(positions.size() == factors.size());
+
   for (const int i : positions.index_range()) {
     if (!SCULPT_check_vertex_pivot_symmetry(positions[i], pivot, symm)) {
       factors[i] = 0.0f;
@@ -662,6 +664,8 @@ BLI_NOINLINE static void accumulate_weighted_average_position(const Span<float3>
                                                               const Span<float> factors,
                                                               AveragePositionAccumulation &total)
 {
+  BLI_assert(positions.size() == factors.size());
+
   for (const int i : positions.index_range()) {
     total.position += double3(positions[i] * factors[i]);
     total.weight_total += factors[i];
