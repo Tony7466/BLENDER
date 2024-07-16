@@ -127,6 +127,25 @@ static bool validate_binary(void *binary)
 
 }  // namespace blender::gpu
 
+static std::string cache_dir_get()
+{
+  std::string tmp_dir;
+
+#  ifdef WIN32
+  static char tmp_dir_buffer[1024];
+  BLI_temp_directory_path_get(tmp_dir_buffer, sizeof(tmp_dir_buffer));
+  tmp_dir = tmp_dir_buffer;
+#  else
+  /* /var/tmp/ clears old files, but doesn't reset on every restart. */
+  tmp_dir = "/var/tmp/";
+#  endif
+
+  std::string cache_dir = tmp_dir + "BLENDER_SHADER_CACHE" + SEP_STR;
+  BLI_dir_create_recursive(cache_dir.c_str());
+
+  return cache_dir;
+}
+
 void GPU_compilation_subprocess_run(const char *subprocess_name)
 {
   using namespace blender;
@@ -165,10 +184,7 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
   GPUContext *gpu_context = GPU_context_create(nullptr, ghost_context);
   GPU_init();
 
-  static char tmp_dir[1024];
-  BLI_temp_directory_path_get(tmp_dir, sizeof(tmp_dir));
-  std::string cache_dir = std::string(tmp_dir) + "BLENDER_SHADER_CACHE" + SEP_STR;
-  BLI_dir_create_recursive(cache_dir.c_str());
+  std::string cache_dir = cache_dir_get();
 
   while (true) {
     /* Process events to avoid crashes on Wayland.
@@ -224,6 +240,8 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
 
     /* TODO: This should lock the files? */
     if (BLI_exists(cache_path.c_str())) {
+      /* Prevent old cache files from being deleted if they're still being used. */
+      BLI_file_touch(cache_path.c_str());
       /* Read cached binary. */
       fstream file(cache_path, std::ios::binary | std::ios::in | std::ios::ate);
       std::streamsize size = file.tellg();
