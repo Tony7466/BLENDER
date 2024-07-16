@@ -890,13 +890,14 @@ static void GREASE_PENCIL_OT_layer_duplicate_object(wmOperatorType *ot)
   ot->prop = RNA_def_enum(ot->srna, "mode", copy_mode, 0, "Mode", "");
 }
 
-void merge_layers(GreasePencil &grease_pencil,
-                  bke::greasepencil::Layer &source_layer,
+void merge_layers(Object &object,
+                  GreasePencil &grease_pencil,
+                  Span<const bke::greasepencil::Layer *> src_layers,
                   bke::greasepencil::Layer &target_layer)
 {
-  auto process_source_layer_drawing = [&](bke::greasepencil::Layer &source_layer,
-                                          bke::greasepencil::Drawing &source_drawing) {
-    CurvesGeometry &curves = source_drawing.geometry;
+  auto process_source_layer_drawing = [&](const bke::greasepencil::Layer &source_layer,
+                                          CurvesGeometry &curves,
+                                          const float4x4 bottom_layer_transform) {
     bke::MutableAttributeAccessor attributes = curves.wrap().attributes_for_write();
     bke::SpanAttributeWriter<float3> positions = attributes.lookup_or_add_for_write_span<float3>(
         "position", bke::AttrDomain::Point);
@@ -905,8 +906,7 @@ void merge_layers(GreasePencil &grease_pencil,
 
     BLI_assert(positions.span.size() == opacities.span.size());
 
-    float4x4 top_layer_transform = source_layer.local_transform();
-    float4x4 bottom_layer_transform = target_layer.local_transform();
+    float4x4 top_layer_transform = source_layer.to_object_space(object);
     float4x4 final_transform = math::invert(top_layer_transform) * bottom_layer_transform;
     threading::parallel_for(IndexRange(positions.span.size()), 65536, [&](const IndexRange range) {
       for (const int index : range) {
@@ -916,40 +916,70 @@ void merge_layers(GreasePencil &grease_pencil,
     });
     positions.finish();
     opacities.finish();
-    static_cast<float3>(source_layer.translation) = float3(0.0f);
-    static_cast<float3>(source_layer.rotation) = float3(0.0f);
-    static_cast<float3>(source_layer.scale) = float3(0.0f);
-    source_layer.opacity = 1.0f;
   };
 
-  source_layer.frames().foreach_item([&](const blender::bke::greasepencil::FramesMapKeyT &key,
-                                         const GreasePencilFrame &frame) {
-    if (frame.is_end()) {
-      return;
-    }
+  struct _CurvesRecord {
+    int frame;
+    blender::Vector<bke::GeometrySet> geometry_set;
+  };
+  blender::Vector<_CurvesRecord> curves_record;
 
-    bke::greasepencil::Drawing *source_drawing = grease_pencil.get_drawing_at(source_layer, key);
-    bke::greasepencil::Drawing *target_drawing = grease_pencil.get_drawing_at(target_layer, key);
+  auto add_to_curves_record = [&](int frame, bke::GeometrySet geometry_set) {
+    _CurvesRecord *found = nullptr;
+    for (const int record : curves_record.index_range()) {
+      if (curves_record[record].frame == frame) {
+        found = &curves_record[record];
+        break;
+      }
+    }
+    if (!found) {
+      _CurvesRecord rec = {frame, {geometry_set}};
+      curves_record.append(rec);
+    }
+    else {
+      found->geometry_set.append(geometry_set);
+    }
+  };
+
+  for (const int layer : src_layers.index_range()) {
+    bke::greasepencil::Layer source_layer = *src_layers[layer];
+    source_layer.frames().foreach_item([&](const blender::bke::greasepencil::FramesMapKeyT &key,
+                                           const GreasePencilFrame &frame) {
+      if (frame.is_end()) {
+        return;
+      }
+
+      bke::greasepencil::Drawing *source_drawing = grease_pencil.get_drawing_at(source_layer, key);
+      bke::CurvesGeometry source_geometry = source_drawing->strokes();
+      process_source_layer_drawing(source_layer, source_geometry, float4x4::identity());
+      
+      Curves *source_curves = bke::curves_new_nomain(std::move(source_geometry));
+      bke::GeometrySet source_geometry_set = bke::GeometrySet::from_curves(source_curves);
+
+      add_to_curves_record(key, source_geometry_set);
+    });
+  }
+
+  for (const int record : curves_record.index_range()) {
+    _CurvesRecord &rec = curves_record[record];
+
+    bke::greasepencil::Drawing *target_drawing = grease_pencil.get_drawing_at(target_layer,
+                                                                              rec.frame);
     if (!target_drawing) {
-      target_drawing = grease_pencil.insert_frame(target_layer, key);
+      target_drawing = grease_pencil.insert_frame(target_layer, rec.frame);
     }
 
-    process_source_layer_drawing(source_layer, *source_drawing);
-
-    bke::CurvesGeometry &source_geometry = source_drawing->strokes_for_write();
     bke::CurvesGeometry &target_geometry = target_drawing->strokes_for_write();
-    Curves *source_curves = bke::curves_new_nomain(std::move(source_geometry));
     Curves *target_curves = bke::curves_new_nomain(std::move(target_geometry));
+    rec.geometry_set.append(bke::GeometrySet::from_curves(target_curves));
 
-    Array<bke::GeometrySet, 2> geometries = {bke::GeometrySet::from_curves(target_curves),
-                                             bke::GeometrySet::from_curves(source_curves)};
-
-    bke::GeometrySet result_geometry_set = geometry::join_geometries(geometries, {});
+    bke::GeometrySet result_geometry_set = geometry::join_geometries(
+        rec.geometry_set.as_mutable_span(), {});
     target_drawing->strokes_for_write() = std::move(
         result_geometry_set.get_curves_for_write()->geometry.wrap());
     target_drawing->tag_topology_changed();
-  });
-  grease_pencil.remove_layer(source_layer);
+  }
+
   grease_pencil.update_drawing_users_for_layer(target_layer);
 }
 
@@ -958,44 +988,6 @@ enum {
   GREASE_PENCIL_LAYER_MERGE_GROUP = 1,
   GREASE_PENCIL_LAYER_MERGE_ALL = 2,
 };
-
-static void merge_layer_group(GreasePencil &grease_pencil,
-                              bke::greasepencil::LayerGroup *layer_group)
-{
-  Span<bke::greasepencil::LayerGroup *> groups = layer_group ?
-                                                     layer_group->groups_for_write() :
-                                                     grease_pencil.layer_groups_for_write();
-  while (groups.size() != 0) {
-    merge_layer_group(grease_pencil, groups[0]);
-    /* This would call ensure_nodes_cache(); since we changed layer node structure. */
-    groups = layer_group ? layer_group->groups_for_write() :
-                           grease_pencil.layer_groups_for_write();
-  }
-
-  Span<bke::greasepencil::Layer *> layers = layer_group ? layer_group->layers_for_write() :
-                                                          grease_pencil.layers_for_write();
-  while (layers.size() > 1) {
-    merge_layers(grease_pencil, *layers[1], *layers[0]);
-    /* This would call ensure_nodes_cache(); since we changed layer node structure. */
-    layers = layer_group ? layer_group->layers_for_write() : grease_pencil.layers_for_write();
-  }
-
-  /* If we are merging in a group, then delete the group and replace it with the merged layer. */
-  if (layer_group != nullptr) {
-    bke::greasepencil::LayerGroup *parent_group = layer_group->as_node().parent_group();
-    bke::greasepencil::TreeNode *pivot, &node = layer_group->layers_for_write()[0]->as_node();
-    if (pivot = layer_group->as_node().prev_node()) {
-      grease_pencil.move_node_after(node, *pivot);
-    }
-    else if (pivot = layer_group->as_node().next_node()) {
-      grease_pencil.move_node_after(node, *pivot);
-    }
-    else {
-      grease_pencil.move_node_into(node, *parent_group);
-    }
-    grease_pencil.remove_group(*layer_group);
-  }
-}
 
 static int grease_pencil_merge_layer_exec(bContext *C, wmOperator *op)
 {
@@ -1018,17 +1010,41 @@ static int grease_pencil_merge_layer_exec(bContext *C, wmOperator *op)
       return OPERATOR_CANCELLED;
     }
     bke::greasepencil::Layer &target_layer = prev_node->as_layer();
-    merge_layers(grease_pencil, *active_layer, target_layer);
+    merge_layers(*object, grease_pencil, {active_layer}, target_layer);
+      grease_pencil.remove_layer(*active_layer);
   }
-  else if (mode == GREASE_PENCIL_LAYER_MERGE_GROUP) {
-    bke::greasepencil::TreeNode *parent_node = grease_pencil.active_node->wrap().parent_node();
-    if (parent_node == &grease_pencil.root_group().as_node()) {
-      parent_node = nullptr;
+  else{
+    bke::greasepencil::TreeNode *parent_node=nullptr;
+    if (mode == GREASE_PENCIL_LAYER_MERGE_GROUP) {
+      bke::greasepencil::Layer* current_layer = grease_pencil.get_active_layer();
+      if(current_layer){ parent_node = current_layer->as_node().parent_node(); }
+      else{
+        bke::greasepencil::LayerGroup* current_group = grease_pencil.get_active_group();
+        if(!current_group){
+          BKE_report(op->reports, RPT_ERROR, "No layers to merge");
+          return OPERATOR_CANCELLED;
+        }
+        parent_node = &current_group->as_node();
+      }
+      if(UNLIKELY(!parent_node)){ parent_node = &grease_pencil.root_group().as_node(); }
     }
-    merge_layer_group(grease_pencil, &parent_node->as_group());
-  }
-  else if (mode == GREASE_PENCIL_LAYER_MERGE_ALL) {
-    merge_layer_group(grease_pencil, nullptr);
+    else if (mode == GREASE_PENCIL_LAYER_MERGE_ALL) {
+      parent_node = &grease_pencil.root_group().as_node();
+    }
+
+    blender::Span<const bke::greasepencil::Layer*> source_layers = parent_node->as_group().layers();
+
+    bke::greasepencil::Layer &target_layer = grease_pencil.add_layer("merged_layer");
+
+    merge_layers(*object, grease_pencil, source_layers, target_layer);
+
+    if(parent_node != &grease_pencil.root_group().as_node()){
+      grease_pencil.move_node_after(*parent_node,target_layer.as_node());
+      grease_pencil.remove_group(parent_node->as_group());
+    }else{
+      /* Need to remove stuff in source_layers... */
+    }
+
   }
 
   /* TODO: Clear any invalid mask. Some other layer could be using the merged layer. */
