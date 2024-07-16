@@ -49,7 +49,7 @@
 #include "UI_resources.hh"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 #include "ED_grease_pencil.hh"
 #include "DNA_customdata_types.h"
 
@@ -205,7 +205,7 @@ static void deformVert(void *__restrict userdata,
 {
   const SDefGPDeformData *const data = (SDefGPDeformData *)userdata;
   
-  int binds_idx = data->sdef_vert_idx_span->get(index, -1);
+  int binds_idx = data->sdef_vert_idx_span->data()[index];
   if (binds_idx == -1)
     return;
   /* const GVArray vert_binds_varray = *attributes.lookup(
