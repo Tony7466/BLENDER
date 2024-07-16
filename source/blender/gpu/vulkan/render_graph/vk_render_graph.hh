@@ -39,6 +39,7 @@
 
 #include <mutex>
 #include <optional>
+#include <pthread.h>
 
 #include "BKE_global.hh"
 
@@ -119,6 +120,12 @@ class VKRenderGraph : public NonCopyable {
 
  public:
   VKSubmissionID submission_id;
+  /**
+   * Thread this render graph belongs to.
+   *
+   * Contexts of the same thread will share the same render graph. See `VKDevice::render_graph()`.
+   */
+  pthread_t thread_id;
 
   /**
    * Construct a new render graph instance.
@@ -129,17 +136,6 @@ class VKRenderGraph : public NonCopyable {
   VKRenderGraph(std::unique_ptr<VKCommandBufferInterface> command_buffer,
                 VKResourceStateTracker &resources);
 
-  /**
-   * Free all resources held by the render graph. After calling this function the render graph may
-   * not work as expected, leading to crashes.
-   *
-   * Freeing data of context resources cannot be done inside the destructor due to an issue when
-   * Blender (read window manager) exits. During this phase the backend is deallocated, device is
-   * destroyed, but window manager requires a context so it creates new one. We work around this
-   * issue by ensuring the VKDevice is always in control of releasing resources.
-   */
-  void free_data();
-
  private:
   /**
    * Add a node to the render graph.
@@ -149,6 +145,15 @@ class VKRenderGraph : public NonCopyable {
     std::scoped_lock lock(resources_.mutex);
     static VKRenderGraphNode node_template = {};
     NodeHandle node_handle = nodes_.append_and_get_index(node_template);
+#if 0
+    /* Useful during debugging. When a validation error occurs during submission we know the node
+     * type and node handle, but we don't know when and by who that specific node was added to the
+     * render graph. By enabling this part of the code and set the correct node_handle and node
+     * type a debugger can break at the moment the node has been added to the render graph. */
+    if (node_handle == 267 && NodeInfo::node_type == VKNodeType::DRAW) {
+      std::cout << "break\n";
+    }
+#endif
     if (nodes_.size() > links_.size()) {
       links_.resize(nodes_.size());
     }
@@ -241,6 +246,20 @@ class VKRenderGraph : public NonCopyable {
    * group.
    */
   void debug_group_end();
+
+  /**
+   * Utility function that is used during debugging.
+   *
+   * When debugging most of the time know the node_handle that is needed after the node has been
+   * constructed. When haunting a bug it is more useful to query what the next node handle will be
+   * so you can step through the node building process.
+   */
+  NodeHandle next_node_handle()
+  {
+    return nodes_.size();
+  }
+
+  void debug_print(NodeHandle node_handle) const;
 
  private:
   void remove_nodes(Span<NodeHandle> node_handles);
