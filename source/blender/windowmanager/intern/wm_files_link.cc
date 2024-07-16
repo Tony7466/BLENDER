@@ -30,6 +30,7 @@
 #include "BLI_bitmap.h"
 #include "BLI_blenlib.h"
 #include "BLI_linklist.h"
+#include "BLI_map.hh"
 #include "BLI_memarena.h"
 #include "BLI_utildefines.h"
 
