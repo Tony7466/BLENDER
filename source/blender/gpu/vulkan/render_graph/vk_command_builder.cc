@@ -122,7 +122,6 @@ void VKCommandBuilder::build_node_group(VKRenderGraph &render_graph,
       BLI_assert(r_rendering_scope.has_value());
       if (!is_rendering) {
         // Resuming paused rendering scope.
-        layer_tracking_begin(render_graph, *r_rendering_scope);
         VKRenderGraphNode &rendering_node = render_graph.nodes_[*r_rendering_scope];
         rendering_node.begin_rendering.vk_rendering_info.flags = VK_RENDERING_RESUMING_BIT;
         rendering_node.build_commands(command_buffer, state_.active_pipelines);
