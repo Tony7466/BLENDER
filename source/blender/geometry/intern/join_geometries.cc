@@ -182,15 +182,14 @@ static void join_physics(const Span<const GeometryComponent *> src_components, G
     const bke::PhysicsGeometry &src_physics = *src_component.get();
 
     const bool use_world = (&src_physics == world_physics);
-    const IndexRange dst_body_range = body_offsets[i];
-    const IndexRange dst_constraint_range = constraint_offsets[i];
-    const IndexRange dst_shape_range = shape_offsets[i];
-
     dst_physics->move_or_copy_selection(src_physics,
                                         use_world,
                                         src_physics.bodies_range(),
                                         src_physics.constraints_range(),
                                         src_physics.shapes_range(),
+                                        body_offsets[i].start(),
+                                        constraint_offsets[i].start(),
+                                        shape_offsets[i].start(),
                                         {});
   }
 

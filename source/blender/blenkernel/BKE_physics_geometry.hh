@@ -142,6 +142,9 @@ class PhysicsGeometry {
                               const IndexMask &body_mask,
                               const IndexMask &constraint_mask,
                               const IndexMask &shape_mask,
+                              int body_offset,
+                              int constraint_offset,
+                              int shape_offset,
                               const bke::AnonymousAttributePropagationInfo &propagation_info);
 
   void set_overlap_filter(OverlapFilterFn fn);

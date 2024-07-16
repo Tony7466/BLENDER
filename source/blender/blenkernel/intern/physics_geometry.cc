@@ -14,6 +14,7 @@
 
 #include "BLI_array_utils.hh"
 #include "BLI_assert.h"
+#include "BLI_cpp_type.hh"
 #include "BLI_index_mask.hh"
 #include "BLI_math_matrix.hh"
 #include "BLI_math_quaternion_types.hh"
@@ -1134,6 +1135,94 @@ static void remap_bodies(const int src_bodies_num,
   });
 }
 
+/**
+ * An ordered set of attribute ids. Attributes are ordered to avoid name lookups in many places.
+ * Once the attributes are ordered, they can just be referred to by index.
+ */
+struct OrderedAttributes {
+  VectorSet<AttributeIDRef> ids;
+  Vector<AttributeKind> kinds;
+
+  int size() const
+  {
+    return this->kinds.size();
+  }
+
+  IndexRange index_range() const
+  {
+    return this->kinds.index_range();
+  }
+};
+
+struct AttributeFallbacksArray {
+  /**
+   * Instance attribute values used as fallback when the geometry does not have the
+   * corresponding attributes itself. The pointers point to attributes stored in the instances
+   * component or in #r_temporary_arrays. The order depends on the corresponding #OrderedAttributes
+   * instance.
+   */
+  Array<const void *> array;
+
+  AttributeFallbacksArray(int size) : array(size, nullptr) {}
+};
+
+static void threaded_copy(const IndexMask &mask, const GVArray src, GMutableSpan dst)
+{
+  BLI_assert(mask.size() == dst.size());
+  BLI_assert(mask.min_array_size() <= src.size());
+  BLI_assert(src.type() == dst.type());
+
+  const CPPType &type = src.type();
+  BUFFER_FOR_CPP_TYPE_VALUE(type, buffer);
+  mask.foreach_index_optimized<int>(GrainSize(1024), [&](const int index, const int pos) -> bool {
+    src.get(index, buffer);
+    type.copy_construct(buffer, dst[pos]);
+    return true;
+  });
+}
+
+static void threaded_fill(const GPointer value, GMutableSpan dst)
+{
+  BLI_assert(*value.type() == dst.type());
+  threading::parallel_for(IndexRange(dst.size()), 1024, [&](const IndexRange range) {
+    value.type()->fill_construct_n(value.get(), dst.slice(range).data(), range.size());
+  });
+}
+
+static void copy_generic_attributes_to_result(
+    const Span<std::optional<GVArray>> src_attributes,
+    const AttributeFallbacksArray &attribute_fallbacks,
+    const OrderedAttributes &ordered_attributes,
+    const FunctionRef<void(bke::AttrDomain, IndexMask const **, int *)> &mask_fn,
+    MutableSpan<GSpanAttributeWriter> dst_attribute_writers)
+{
+  threading::parallel_for(
+      dst_attribute_writers.index_range(), 10, [&](const IndexRange attribute_range) {
+        for (const int attribute_index : attribute_range) {
+          const bke::AttrDomain domain = ordered_attributes.kinds[attribute_index].domain;
+          const IndexMask *element_mask;
+          int element_offset;
+          mask_fn(domain, &element_mask, &element_offset);
+          if (element_mask->is_empty()) {
+            continue;
+          }
+          const IndexRange dst_mask = IndexRange(element_offset, element_mask->size());
+          GMutableSpan dst_span = dst_attribute_writers[attribute_index].span.slice(dst_mask);
+
+          if (src_attributes[attribute_index].has_value()) {
+            threaded_copy(*element_mask, *src_attributes[attribute_index], dst_span);
+          }
+          else {
+            const CPPType &cpp_type = dst_span.type();
+            const void *fallback = attribute_fallbacks.array[attribute_index] == nullptr ?
+                                       cpp_type.default_value() :
+                                       attribute_fallbacks.array[attribute_index];
+            threaded_fill({cpp_type, fallback}, dst_span);
+          }
+        }
+      });
+}
+
 // void PhysicsGeometry::cache_or_copy_selection(
 //     const PhysicsGeometry &from,
 //     const IndexMask &body_mask,
@@ -1202,6 +1291,9 @@ void PhysicsGeometry::move_or_copy_selection(
     const IndexMask &body_mask,
     const IndexMask &constraint_mask,
     const IndexMask &shape_mask,
+    const int body_offset,
+    const int constraint_offset,
+    const int shape_offset,
     const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
   if (impl_->is_empty) {
@@ -1243,12 +1335,14 @@ void PhysicsGeometry::move_or_copy_selection(
                            VArray<int>::ForSpan(dst_body1),
                            VArray<int>::ForSpan(dst_body2));
 
-  bke::gather_attributes(src_attributes,
-                         bke::AttrDomain::Point,
-                         propagation_info,
-                         ignored_attributes,
-                         body_mask,
-                         dst_attributes);
+  copy_generic_attributes_to_result(src_attributes)
+
+      bke::gather_attributes(src_attributes,
+                             bke::AttrDomain::Point,
+                             propagation_info,
+                             ignored_attributes,
+                             body_mask,
+                             dst_attributes);
   bke::gather_attributes(src_attributes,
                          bke::AttrDomain::Edge,
                          propagation_info,

@@ -153,7 +153,7 @@ std::optional<bke::PhysicsGeometry *> physics_copy_selection(
       body_mask.size(), constraint_mask.size(), shape_mask.size());
 
   dst_physics->move_or_copy_selection(
-      src_physics, true, body_mask, constraint_mask, shape_mask, propagation_info);
+      src_physics, true, body_mask, constraint_mask, shape_mask, 0, 0, 0, propagation_info);
 
   return dst_physics;
 }
@@ -205,7 +205,7 @@ std::optional<bke::PhysicsGeometry *> physics_copy_selection_keep_bodies(
       src_physics.bodies_num(), constraint_mask.size(), src_physics.shapes_num());
 
   dst_physics->move_or_copy_selection(
-      src_physics, true, body_mask, constraint_mask, shape_mask, propagation_info);
+      src_physics, true, body_mask, constraint_mask, shape_mask, 0, 0, 0, propagation_info);
 
   return dst_physics;
 }
