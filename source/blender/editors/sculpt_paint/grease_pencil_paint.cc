@@ -1336,7 +1336,8 @@ static void deselect_stroke(const bContext &C,
   selection.finish();
 }
 
-static void process_stroke_weights(const Object &object,
+static void process_stroke_weights(const Scene &scene,
+                                   const Object &object,
                                    bke::greasepencil::Drawing &drawing,
                                    const int active_curve)
 {
@@ -1355,7 +1356,11 @@ static void process_stroke_weights(const Object &object,
   const StringRef vertex_group_name = defgroup->name;
 
   blender::bke::greasepencil::assign_to_vertex_group_from_mask(
-      curves, IndexMask(points), vertex_group_name, 1.0f);
+      curves, IndexMask(points), vertex_group_name, scene.toolsettings->vgroup_weight);
+
+  if (scene.toolsettings->vgroup_weight == 0.0f) {
+    return;
+  }
 
   /* Loop through all modifiers trying to find the pose channel for the vertex group name. */
   bPoseChannel *channel = nullptr;
@@ -1463,7 +1468,7 @@ void PaintOperation::on_stroke_done(const bContext &C)
       trim_stroke_ends(drawing, active_curve, on_back);
     }
     if ((scene->toolsettings->gpencil_flags & GP_TOOL_FLAG_CREATE_WEIGHTS) != 0) {
-      process_stroke_weights(*object, drawing, active_curve);
+      process_stroke_weights(*scene, *object, drawing, active_curve);
     }
     if ((settings->flag & GP_BRUSH_OUTLINE_STROKE) != 0) {
       const float outline_radius = float(brush->unprojected_radius) * settings->outline_fac * 0.5f;
