@@ -1,2 +1,3 @@
 Referenced by issue #124686, Armature text outline artifacts
 Referenced by pull request #124774, Fix #124686: Armature wire width not working with curves
+Referenced by commit b2cedb891e4c71962ce1febe62afdecfa9376b8a, Fix #124686: Armature wire width not working with curves
