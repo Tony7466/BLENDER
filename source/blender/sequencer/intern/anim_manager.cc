@@ -255,11 +255,10 @@ void AnimManager::free_unused_anims(blender::Vector<Sequence *> &strips)
   mutex.unlock();
 }
 
-/* Get set of strips that will be used for parallel loading of anims.
- * The main purpose of this function is to create set of strips, which ensures, that all
+/* The main purpose of this function is to create set of strips, which ensures, that all
  * multiview anims will be loaded.
- * The set does need to contain only one user(strip) of any particular anim, because of parallel
- * loading.
+ * The set does need to contain only one user(strip) of any particular anim(filepath), because
+ * during parallel loading `ShareableAnim` is locked.
  */
 // XXX this is ugly, can this be optimized?
 blender::Vector<Sequence *> filter_duplicates_for_parallel_load(
