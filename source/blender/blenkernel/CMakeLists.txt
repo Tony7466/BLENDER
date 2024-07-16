@@ -864,7 +864,6 @@ if(WITH_GTESTS)
     intern/lib_remap_test.cc
     intern/main_test.cc
     intern/nla_test.cc
-    intern/physics_geometry_test.cc
     intern/tracking_test.cc
     intern/volume_test.cc
   )

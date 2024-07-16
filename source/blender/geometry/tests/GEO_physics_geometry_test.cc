@@ -55,4 +55,18 @@ TEST_F(PhysicsGeometryTest, create_and_remove_world)
   test_data(geo, false, 5, 2, 3);
 }
 
+TEST_F(PhysicsGeometryTest, join_geometry)
+{
+  bke::PhysicsGeometry geo1 = bke::PhysicsGeometry(5, 2, 3);
+  test_data(geo1, false, 5, 2, 3);
+
+  bke::PhysicsGeometry geo2 = bke::PhysicsGeometry(0, 0, 0);
+  geo2.create_world();
+  test_data(geo2, true, 0, 0, 0);
+
+  bke::PhysicsGeometry geo3 = bke::PhysicsGeometry(2, 1, 1);
+  geo3.create_world();
+  test_data(geo3, true, 2, 1, 1);
+}
+
 }  // namespace blender::bke::tests
