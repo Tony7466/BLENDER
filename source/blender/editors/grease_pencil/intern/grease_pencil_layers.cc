@@ -942,6 +942,7 @@ void merge_layers(Object &object,
   };
 
   for (const int layer : src_layers.index_range()) {
+    if(src_layers[layer] == &target_layer){ continue; }
     bke::greasepencil::Layer source_layer = *src_layers[layer];
     source_layer.frames().foreach_item([&](const blender::bke::greasepencil::FramesMapKeyT &key,
                                            const GreasePencilFrame &frame) {
@@ -1032,24 +1033,25 @@ static int grease_pencil_merge_layer_exec(bContext *C, wmOperator *op)
       parent_node = &grease_pencil.root_group().as_node();
     }
 
+    bke::greasepencil::Layer &target_layer = grease_pencil.add_layer("merged_layer");
+
     blender::Span<const bke::greasepencil::Layer*> source_layers = parent_node->as_group().layers();
-  
-    bke::greasepencil::Layer target_layer("merged_layer");
-    //bke::greasepencil::Layer &target_layer = grease_pencil.add_layer("merged_layer");
 
     merge_layers(*object, grease_pencil, source_layers, target_layer);
 
     if(parent_node != &grease_pencil.root_group().as_node()){
-      //grease_pencil.move_node_after(*parent_node,target_layer.as_node());
-      //grease_pencil.remove_group(parent_node->as_group());
+      grease_pencil.move_node_after(*parent_node,target_layer.as_node());
+      grease_pencil.remove_group(parent_node->as_group());
     }else{
-      blender::Span<bke::greasepencil::Layer *> removing_layers=grease_pencil.layers_for_write();
-      for(const int layer:removing_layers.index_range()){
-        grease_pencil.remove_layer(*removing_layers[layer]);
+      for(bke::greasepencil::Layer* layer:grease_pencil.layers_for_write()){
+        if(layer == &target_layer){continue;}
+        grease_pencil.remove_layer(*layer);
       }
-
-      bke::greasepencil::Layer &new_layer = grease_pencil.duplicate_layer(target_layer);
+      for(bke::greasepencil::LayerGroup* layer_group:grease_pencil.layer_groups_for_write()){
+        grease_pencil.remove_group(*layer_group);
+      }
     }
+
   }
 
   /* TODO: Clear any invalid mask. Some other layer could be using the merged layer. */
