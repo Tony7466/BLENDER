@@ -159,10 +159,8 @@ static int lib_id_generate_preview_exec(bContext *C, wmOperator * /*op*/)
 
   ED_preview_kill_jobs(CTX_wm_manager(C), CTX_data_main(C));
 
-  PreviewImage *preview = BKE_previewimg_id_get(id);
-  if (preview) {
-    BKE_previewimg_clear(preview);
-  }
+  BKE_previewimg_id_free(id);
+  PreviewImage *preview = BKE_previewimg_id_ensure(id);
 
   UI_icon_render_id(C, nullptr, id, ICON_SIZE_PREVIEW, true);
 
