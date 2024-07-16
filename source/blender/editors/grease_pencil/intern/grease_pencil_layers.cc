@@ -985,14 +985,15 @@ static void merge_layer_group(GreasePencil &grease_pencil,
     bke::greasepencil::LayerGroup *parent_group = layer_group->as_node().parent_group();
     bke::greasepencil::TreeNode *pivot, &node = layer_group->layers_for_write()[0]->as_node();
     if (pivot = layer_group->as_node().prev_node()) {
-      grease_pencil.move_node_after(*pivot, node);
+      grease_pencil.move_node_after(node, *pivot);
     }
     else if (pivot = layer_group->as_node().next_node()) {
-      grease_pencil.move_node_after(*pivot, node);
+      grease_pencil.move_node_after(node, *pivot);
     }
     else {
       grease_pencil.move_node_into(node, *parent_group);
     }
+    grease_pencil.remove_group(*layer_group);
   }
 }
 
@@ -1008,7 +1009,7 @@ static int grease_pencil_merge_layer_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  const bool mode = RNA_boolean_get(op->ptr, "mode");
+  const int mode = RNA_enum_get(op->ptr, "mode");
 
   if (mode == GREASE_PENCIL_LAYER_MERGE_ACTIVE) {
     bke::greasepencil::TreeNode *prev_node = grease_pencil.active_node->wrap().prev_node();
@@ -1021,7 +1022,10 @@ static int grease_pencil_merge_layer_exec(bContext *C, wmOperator *op)
   }
   else if (mode == GREASE_PENCIL_LAYER_MERGE_GROUP) {
     bke::greasepencil::TreeNode *parent_node = grease_pencil.active_node->wrap().parent_node();
-    merge_layer_group(grease_pencil, parent_node ? &parent_node->as_group() : nullptr);
+    if (parent_node == &grease_pencil.root_group().as_node()) {
+      parent_node = nullptr;
+    }
+    merge_layer_group(grease_pencil, &parent_node->as_group());
   }
   else if (mode == GREASE_PENCIL_LAYER_MERGE_ALL) {
     merge_layer_group(grease_pencil, nullptr);
