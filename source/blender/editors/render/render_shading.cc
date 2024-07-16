@@ -87,7 +87,7 @@
 #include "ED_screen.hh"
 
 #include "RNA_define.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "UI_interface.hh"
 
@@ -2906,7 +2906,7 @@ static void paste_mtex_copybuf(ID *id)
 
   if (mtex) {
     if (*mtex == nullptr) {
-      *mtex = MEM_new<MTex>("mtex copy");
+      *mtex = static_cast<MTex *>(MEM_callocN(sizeof(MTex), "mtex copy"));
     }
     else if ((*mtex)->tex) {
       id_us_min(&(*mtex)->tex->id);

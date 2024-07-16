@@ -44,9 +44,9 @@
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
 #include "RNA_path.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
-#include "rna_access_internal.h"
+#include "rna_access_internal.hh"
 #include "rna_internal.hh"
 
 static CLG_LogRef LOG = {"rna.access_compare_override"};
@@ -840,6 +840,11 @@ bool RNA_struct_override_matches(Main *bmain,
               const bool is_restored = rna_property_override_operation_apply(bmain, rnaapply_ctx);
 
               if (is_restored) {
+                CLOG_INFO(&LOG,
+                          5,
+                          "Restoreed forbidden liboverride `%s` for override data '%s'",
+                          rna_path->c_str(),
+                          ptr_local->owner_id->name);
                 if (r_report_flags) {
                   *r_report_flags |= RNA_OVERRIDE_MATCH_RESULT_RESTORED;
                 }
@@ -878,6 +883,12 @@ bool RNA_struct_override_matches(Main *bmain,
               opop_restore->tag |= LIBOVERRIDE_PROP_TAG_NEEDS_RETORE;
               liboverride->runtime->tag |= LIBOVERRIDE_TAG_NEEDS_RESTORE;
 
+              CLOG_INFO(
+                  &LOG,
+                  5,
+                  "Tagging for restoration forbidden liboverride `%s` for override data '%s'",
+                  rna_path->c_str(),
+                  ptr_local->owner_id->name);
               if (r_report_flags) {
                 *r_report_flags |= RNA_OVERRIDE_MATCH_RESULT_RESTORE_TAGGED;
               }

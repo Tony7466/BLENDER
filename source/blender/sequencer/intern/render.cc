@@ -47,7 +47,7 @@
 #include "IMB_imbuf_types.hh"
 #include "IMB_metadata.hh"
 
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "RE_engine.h"
 #include "RE_pipeline.h"
@@ -475,38 +475,22 @@ static void sequencer_image_crop_transform_matrix(const Sequence *seq,
                                                   const float preview_scale_factor,
                                                   float r_transform_matrix[4][4])
 {
-  /* Center the image and scale it to expected size (downscale original media if needed). */
+  const StripTransform *transform = seq->strip->transform;
+  const float scale_x = transform->scale_x * image_scale_factor;
+  const float scale_y = transform->scale_y * image_scale_factor;
   const float image_center_offs_x = (out->x - in->x) / 2;
   const float image_center_offs_y = (out->y - in->y) / 2;
-  float image_prescale_matrix[4][4];
-  float rotation_matrix[3][3];
-  unit_m3(rotation_matrix);
-  loc_rot_size_to_mat4(image_prescale_matrix,
-                       float3{image_center_offs_x, image_center_offs_y, 0.0f},
-                       rotation_matrix,
-                       float3{image_scale_factor, image_scale_factor, 1.0f});
-  const float3 preview_scale_pivot{in->x * 0.5f, in->y * 0.5f, 0.0f};
-  transform_pivot_set_m4(image_prescale_matrix, preview_scale_pivot);
+  const float translate_x = transform->xofs * preview_scale_factor + image_center_offs_x;
+  const float translate_y = transform->yofs * preview_scale_factor + image_center_offs_y;
+  const float pivot[3] = {in->x * transform->origin[0], in->y * transform->origin[1], 0.0f};
 
-  /* Apply rest of transformations. */
-  float transform_matrix[4][4];
-  const StripTransform *transform = seq->strip->transform;
-  const float translate_x = transform->xofs * preview_scale_factor;
-  const float translate_y = transform->yofs * preview_scale_factor;
+  float rotation_matrix[3][3];
   axis_angle_to_mat3_single(rotation_matrix, 'Z', transform->rotation);
-  loc_rot_size_to_mat4(transform_matrix,
+  loc_rot_size_to_mat4(r_transform_matrix,
                        float3{translate_x, translate_y, 0.0f},
                        rotation_matrix,
-                       float3{transform->scale_x, transform->scale_y, 1.0f});
-
-  /* Calculate pivot point: Center of output buffer +/- half of prescaled input image. */
-  const float2 image_size{in->x * image_scale_factor, in->y * image_scale_factor};
-  const float2 origin_fac{transform->origin[0] - 0.5f, transform->origin[1] - 0.5f};
-  const float2 origin_rel = image_size * origin_fac;
-  const float3 pivot{out->x / 2 + origin_rel.x, out->y / 2 + origin_rel.y, 0.0f};
-  transform_pivot_set_m4(transform_matrix, pivot);
-
-  mul_m4_m4m4_aligned_scale(r_transform_matrix, transform_matrix, image_prescale_matrix);
+                       float3{scale_x, scale_y, 1.0f});
+  transform_pivot_set_m4(r_transform_matrix, pivot);
   invert_m4(r_transform_matrix);
 }
 
@@ -939,7 +923,8 @@ static ImBuf *seq_render_effect_strip_impl(const SeqRenderData *context,
       for (i = 0; i < 3; i++) {
         /* Speed effect requires time remapping of `timeline_frame` for input(s). */
         if (input[0] && seq->type == SEQ_TYPE_SPEED) {
-          float target_frame = seq_speed_effect_target_frame_get(scene, seq, timeline_frame, i);
+          int target_frame = floor(
+              seq_speed_effect_target_frame_get(scene, seq, timeline_frame, i));
           ibuf[i] = seq_render_strip(context, state, input[0], target_frame);
         }
         else { /* Other effects. */
@@ -1050,7 +1035,7 @@ static bool seq_image_strip_is_multiview_render(Scene *scene,
   return (seq->flag & SEQ_USE_VIEWS) != 0 && (scene->r.scemode & R_MULTIVIEW) != 0;
 }
 
-static ImBuf *create_missing_media_image(const SeqRenderData *context, const StripElem *orig)
+static ImBuf *create_missing_media_image(const SeqRenderData *context, int width, int height)
 {
   if (context->ignore_missing_media) {
     return nullptr;
@@ -1061,8 +1046,7 @@ static ImBuf *create_missing_media_image(const SeqRenderData *context, const Str
     return nullptr;
   }
 
-  ImBuf *ibuf = IMB_allocImBuf(
-      max_ii(orig->orig_width, 1), max_ii(orig->orig_height, 1), 32, IB_rect);
+  ImBuf *ibuf = IMB_allocImBuf(max_ii(width, 1), max_ii(height, 1), 32, IB_rect);
   float col[4] = {0.85f, 0.0f, 0.75f, 1.0f};
   IMB_rectfill(ibuf, col);
   return ibuf;
@@ -1144,7 +1128,7 @@ static ImBuf *seq_render_image_strip(const SeqRenderData *context,
 
   blender::seq::media_presence_set_missing(context->scene, seq, ibuf == nullptr);
   if (ibuf == nullptr) {
-    return create_missing_media_image(context, s_elem);
+    return create_missing_media_image(context, s_elem->orig_width, s_elem->orig_height);
   }
 
   s_elem->orig_width = ibuf->x;
@@ -1308,7 +1292,8 @@ static ImBuf *seq_render_movie_strip(const SeqRenderData *context,
 
   blender::seq::media_presence_set_missing(context->scene, seq, ibuf == nullptr);
   if (ibuf == nullptr) {
-    return create_missing_media_image(context, seq->strip->stripdata);
+    return create_missing_media_image(
+        context, seq->strip->stripdata->orig_width, seq->strip->stripdata->orig_height);
   }
 
   if (*r_is_proxy_image == false) {
@@ -1548,7 +1533,7 @@ static ImBuf *seq_render_scene_strip(const SeqRenderData *context,
 
   /* don't refer to seq->scene above this point!, it can be nullptr */
   if (seq->scene == nullptr) {
-    return nullptr;
+    return create_missing_media_image(context, context->rectx, context->recty);
   }
 
   /* Prevent rendering scene recursively. */
