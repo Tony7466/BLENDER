@@ -21,6 +21,7 @@ struct LayeredImageBinding {
   VkImage vk_image;
   VkImageLayout vk_image_layout;
   uint32_t layer;
+  uint32_t layer_count;
 };
 
 /**
@@ -186,6 +187,7 @@ class VKCommandBuilder {
    */
   void update_subresource_tracking(VkImage vk_image,
                                    uint32_t layer,
+                                   uint32_t layer_count,
                                    VkImageLayout old_layout,
                                    VkImageLayout new_layout);
   void end_subresource_tracking(VKCommandBufferInterface &command_buffer
