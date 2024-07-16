@@ -96,7 +96,7 @@
 
 #include "RNA_access.hh"
 #include "RNA_path.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 #include "RNA_types.hh"
 
 #include "DEG_depsgraph.hh"
@@ -1399,6 +1399,9 @@ void DepsgraphNodeBuilder::build_driver_id_property(const PointerRNA &target_pro
   }
   if (!rna_prop_affects_parameters_node(&ptr, prop)) {
     return;
+  }
+  if (ptr.owner_id) {
+    build_id(ptr.owner_id);
   }
   const char *prop_identifier = RNA_property_identifier((PropertyRNA *)prop);
   /* Custom properties of bones are placed in their components to improve granularity. */

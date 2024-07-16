@@ -22,7 +22,8 @@ set(INC
   ../../windowmanager
   ../../io/common
   ../../io/stl
-  # RNA_prototypes.h
+  ../../io/wavefront_obj
+  # RNA_prototypes.hh
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
@@ -83,10 +84,14 @@ set(SRC
   nodes/node_geo_flip_faces.cc
   nodes/node_geo_geometry_to_instance.cc
   nodes/node_geo_get_named_grid.cc
+  nodes/node_geo_gizmo_dial.cc
+  nodes/node_geo_gizmo_linear.cc
+  nodes/node_geo_gizmo_transform.cc
   nodes/node_geo_grid_to_mesh.cc
   nodes/node_geo_image.cc
   nodes/node_geo_image_info.cc
   nodes/node_geo_image_texture.cc
+  nodes/node_geo_import_obj.cc
   nodes/node_geo_import_stl.cc
   nodes/node_geo_index_of_nearest.cc
   nodes/node_geo_index_switch.cc
@@ -183,6 +188,7 @@ set(SRC
   nodes/node_geo_set_curve_normal.cc
   nodes/node_geo_set_curve_radius.cc
   nodes/node_geo_set_curve_tilt.cc
+  nodes/node_geo_set_geometry_name.cc
   nodes/node_geo_set_id.cc
   nodes/node_geo_set_instance_transform.cc
   nodes/node_geo_set_material.cc
@@ -248,6 +254,14 @@ if(WITH_IO_STL)
     PRIVATE bf_io_stl
   )
   add_definitions(-DWITH_IO_STL)
+endif()
+
+if(WITH_IO_WAVEFRONT_OBJ)
+  list(APPEND LIB
+    PRIVATE bf_io_common
+    PRIVATE bf_io_wavefront_obj
+  )
+  add_definitions(-DWITH_IO_WAVEFRONT_OBJ)
 endif()
 
 if(WITH_BULLET)
@@ -326,5 +340,5 @@ target_link_libraries(bf_nodes_geometry_generated bf_nodes_geometry)
 
 blender_set_target_unity_build(bf_nodes_geometry 10)
 
-# RNA_prototypes.h
+# RNA_prototypes.hh
 add_dependencies(bf_nodes_geometry bf_rna)

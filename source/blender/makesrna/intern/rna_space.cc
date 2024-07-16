@@ -1065,7 +1065,7 @@ static void rna_RegionView3D_quadview_update(Main * /*main*/, Scene * /*scene*/,
   }
 }
 
-/* same as above but call clip==true */
+/** Same as #rna_RegionView3D_quadview_update but call `clip == true`. */
 static void rna_RegionView3D_quadview_clip_update(Main * /*main*/,
                                                   Scene * /*scene*/,
                                                   PointerRNA *ptr)
@@ -5154,6 +5154,11 @@ static void rna_def_space_view3d(BlenderRNA *brna)
   prop = RNA_def_property(srna, "show_gizmo_context", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_negative_sdna(prop, nullptr, "gizmo_flag", V3D_GIZMO_HIDE_CONTEXT);
   RNA_def_property_ui_text(prop, "Context Gizmo", "Context sensitive gizmos for the active item");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
+
+  prop = RNA_def_property(srna, "show_gizmo_modifier", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_negative_sdna(prop, nullptr, "gizmo_flag", V3D_GIZMO_HIDE_MODIFIER);
+  RNA_def_property_ui_text(prop, "Modifier Gizmo", "Gizmos for the active modifier");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
 
   prop = RNA_def_property(srna, "show_gizmo_tool", PROP_BOOLEAN, PROP_NONE);

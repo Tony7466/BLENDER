@@ -299,8 +299,10 @@ class GLShaderCompiler : public ShaderCompiler {
 
   struct SpecializationWork {
     GLShader *shader = nullptr;
-    GLuint program;
+    Vector<shader::SpecializationConstant> constants;
     GLSourcesBaked sources;
+
+    GLShader::GLProgram *program_get();
 
     GLCompilerWorker *worker = nullptr;
     bool do_async_compilation = false;
@@ -316,7 +318,7 @@ class GLShaderCompiler : public ShaderCompiler {
   SpecializationBatch current_specialization_batch;
   void prepare_next_specialization_batch();
 
-  /* Shared accross regular and specialization batches,
+  /* Shared across regular and specialization batches,
    * to prevent the use of a wrong handle type. */
   int64_t next_batch_handle = 1;
 
