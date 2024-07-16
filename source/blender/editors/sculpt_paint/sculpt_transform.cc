@@ -717,13 +717,10 @@ static float3 average_unmasked_position(const Object &object,
             LocalData &tls = all_tls.local();
             for (const PBVHNode *node : nodes.as_span().slice(range)) {
               const Span<int> grids = bke::pbvh::node_grid_indices(*node);
-              const int grid_verts_num = grids.size() * key.grid_area;
+              const MutableSpan positions = gather_grids_positions(
+                  subdiv_ccg, grids, tls.positions);
 
-              tls.positions.reinitialize(grid_verts_num);
-              const MutableSpan<float3> positions = tls.positions;
-              gather_grids_positions(subdiv_ccg, grids, positions);
-
-              tls.factors.reinitialize(grid_verts_num);
+              tls.factors.reinitialize(positions.size());
               const MutableSpan<float> factors = tls.factors;
               fill_factor_from_hide_and_mask(subdiv_ccg, grids, factors);
               filter_positions_pivot_symmetry(positions, pivot, symm, factors);
@@ -744,10 +741,7 @@ static float3 average_unmasked_position(const Object &object,
             LocalData &tls = all_tls.local();
             for (PBVHNode *node : nodes.as_span().slice(range)) {
               const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(node);
-
-              tls.positions.reinitialize(verts.size());
-              const MutableSpan<float3> positions = tls.positions;
-              gather_bmesh_positions(verts, positions);
+              const MutableSpan positions = gather_bmesh_positions(verts, tls.positions);
 
               tls.factors.reinitialize(verts.size());
               const MutableSpan<float> factors = tls.factors;
@@ -846,17 +840,14 @@ static float3 average_mask_border_position(const Object &object,
             LocalData &tls = all_tls.local();
             for (const PBVHNode *node : nodes.as_span().slice(range)) {
               const Span<int> grids = bke::pbvh::node_grid_indices(*node);
-              const int grid_verts_num = grids.size() * key.grid_area;
+              const MutableSpan positions = gather_grids_positions(
+                  subdiv_ccg, grids, tls.positions);
 
-              tls.positions.reinitialize(grid_verts_num);
-              const MutableSpan<float3> positions = tls.positions;
-              gather_grids_positions(subdiv_ccg, grids, positions);
-
-              tls.masks.reinitialize(grid_verts_num);
+              tls.masks.reinitialize(positions.size());
               const MutableSpan<float> masks = tls.masks;
               mask::gather_mask_grids(subdiv_ccg, grids, masks);
 
-              tls.factors.reinitialize(grid_verts_num);
+              tls.factors.reinitialize(positions.size());
               const MutableSpan<float> factors = tls.factors;
               fill_factor_from_hide(subdiv_ccg, grids, factors);
               mask_border_weight_calc(masks, factors);
@@ -878,10 +869,7 @@ static float3 average_mask_border_position(const Object &object,
             LocalData &tls = all_tls.local();
             for (PBVHNode *node : nodes.as_span().slice(range)) {
               const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(node);
-
-              tls.positions.reinitialize(verts.size());
-              const MutableSpan<float3> positions = tls.positions;
-              gather_bmesh_positions(verts, positions);
+              const MutableSpan positions = gather_bmesh_positions(verts, tls.positions);
 
               tls.masks.reinitialize(verts.size());
               const MutableSpan<float> masks = tls.masks;
