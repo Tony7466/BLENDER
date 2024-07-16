@@ -151,6 +151,10 @@ void operatortypes_object()
   WM_operatortype_append(OBJECT_OT_grease_pencil_time_modifier_segment_add);
   WM_operatortype_append(OBJECT_OT_grease_pencil_time_modifier_segment_remove);
   WM_operatortype_append(OBJECT_OT_grease_pencil_time_modifier_segment_move);
+  WM_operatortype_append(OBJECT_OT_gpencilsurdeform_bind);
+  WM_operatortype_append(OBJECT_OT_gpencilsurdeform_unbind);
+  WM_operatortype_append(OBJECT_OT_gpencilsurdeform_bake);
+  WM_operatortype_append(OBJECT_OT_gpencilsurdeform_fillrange);
 
   /* grease pencil modifiers */
   WM_operatortype_append(OBJECT_OT_gpencil_modifier_add);

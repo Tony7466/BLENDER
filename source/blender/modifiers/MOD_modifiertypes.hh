@@ -97,6 +97,7 @@ extern ModifierTypeInfo modifierType_GreasePencilSimplify;
 extern ModifierTypeInfo modifierType_GreasePencilEnvelope;
 extern ModifierTypeInfo modifierType_GreasePencilOutline;
 extern ModifierTypeInfo modifierType_GreasePencilShrinkwrap;
+extern ModifierTypeInfo modifierType_GPencilSurDeform;
 extern ModifierTypeInfo modifierType_GreasePencilBuild;
 extern ModifierTypeInfo modifierType_GreasePencilTexture;
 

@@ -1082,4 +1082,26 @@
     .mode = 0, \
   }
 
+
+#define _DNA_DEFAULT_GPencilSurDeformModifierData { \
+  .depsgraph = NULL, \
+  .target = NULL, \
+  .verts_array = NULL, \
+  .verts_array_tot = 0, \
+  .verts_array_occupied = 0, \
+  .bake_range_start = 0, \
+  .bake_range_end = 100, \
+  .falloff = 4.0f, \
+  .num_of_layers = 0, \
+  .target_verts_num = 0, \
+  .target_polys_num = 0, \
+  .flags = 0, \
+  .bound_flags = 0, \
+  .bind_modes = 5, \
+  .strength = 1.0f, \
+  .mat = _DNA_DEFAULT_UNIT_M4, \
+  .defgrp_name = "", \
+}
+
+
 /* clang-format off */

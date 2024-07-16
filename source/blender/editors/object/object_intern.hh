@@ -233,6 +233,10 @@ void OBJECT_OT_grease_pencil_dash_modifier_segment_move(wmOperatorType *ot);
 void OBJECT_OT_grease_pencil_time_modifier_segment_add(wmOperatorType *ot);
 void OBJECT_OT_grease_pencil_time_modifier_segment_remove(wmOperatorType *ot);
 void OBJECT_OT_grease_pencil_time_modifier_segment_move(wmOperatorType *ot);
+void OBJECT_OT_gpencilsurdeform_bind(wmOperatorType *ot);
+void OBJECT_OT_gpencilsurdeform_unbind(wmOperatorType *ot);
+void OBJECT_OT_gpencilsurdeform_bake(wmOperatorType *ot);
+void OBJECT_OT_gpencilsurdeform_fillrange(wmOperatorType *ot);
 
 /* object_gpencil_modifiers.c */
 

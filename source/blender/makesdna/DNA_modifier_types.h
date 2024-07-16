@@ -30,6 +30,8 @@ typedef struct NodesModifierRuntimeHandle NodesModifierRuntimeHandle;
  */
 
 struct Mesh;
+struct GreasePencil;
+struct Scene;
 
 typedef enum ModifierType {
   eModifierType_None = 0,
@@ -121,6 +123,7 @@ typedef enum ModifierType {
   eModifierType_GreasePencilBuild = 84,
   eModifierType_GreasePencilSimplify = 85,
   eModifierType_GreasePencilTexture = 86,
+  eModifierType_GPencilSurDeform = 87,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -3467,3 +3470,108 @@ typedef enum GreasePencilTextureModifierMode {
   MOD_GREASE_PENCIL_TEXTURE_FILL = 1,
   MOD_GREASE_PENCIL_TEXTURE_STROKE_AND_FILL = 2,
 } GreasePencilTextureModifierMode;
+
+
+/* SURFACE DEFORM GP MODIFIER */
+
+ typedef struct SDefGPBind {
+
+  unsigned int *vert_inds;  // target mesh vertices
+  unsigned int verts_num;   // num of vertices from target mesh that are bound to this GP vert
+  int mode;
+  float *vert_weights;
+  float normal_dist;
+  float influence;
+} SDefGPBind;
+
+typedef struct SDefGPVert {
+#ifdef __cplusplus
+  blender::Span<SDefGPBind> binds() const;
+  blender::MutableSpan<SDefGPBind> binds();
+#endif
+  SDefGPBind *binds_array;
+  int binds_num;
+  int vertex_idx;
+} SDefGPVert;
+
+typedef struct GPencilSurDeformModifierData {
+  ModifierData modifier;
+  GreasePencilModifierInfluenceData influence;
+
+  struct Depsgraph *depsgraph;
+  /** Bind target object. */
+  struct Object *target;
+  /** Vertex bind data. */
+  
+  #ifdef __cplusplus
+  blender::Span<SDefGPVert> verts() const;
+  blender::MutableSpan<SDefGPVert> verts();
+  bool bind_drawings(ModifierData *md, const Depsgraph *depsgraph, Scene *sc, Object *ob);
+  #endif
+  SDefGPVert *verts_array;
+  unsigned int verts_array_tot;
+  unsigned int verts_array_occupied;
+  
+  //char _pad2[4];
+
+  int bake_range_start;
+  int bake_range_end;
+  float falloff;
+
+  /* Number of layers in the `frames` array of this modifier. */
+  unsigned int num_of_layers;
+  /* Number of vertices and polygons on the target mesh upon bind process. */
+  unsigned int target_verts_num, target_polys_num;
+
+  int flags;
+
+  int bound_flags;
+  int bind_modes;
+  float strength;
+
+  char curr_frame_or_all_frames;
+  char curr_layer_or_all_layers;
+  char _pad3[6];
+
+  float mat[4][4];
+  char defgrp_name[64];
+} GPencilSurDeformModifierData;
+
+/** Surface Deform  Data mode (bind_modes)*/
+enum {
+  GP_MOD_SDEF_BIND_CURRENT_FRAME = (1 << 0),
+  GP_MOD_SDEF_BIND_ALL_FRAMES = (1 << 1),
+
+  GP_MOD_SDEF_BIND_CURRENT_LAYER = (1 << 2),
+  GP_MOD_SDEF_BIND_ALL_LAYERS = (1 << 3),
+
+  GP_MOD_SDEF_UNBIND_MODE = (1 << 4),
+};
+/*Frame-layer bound combination flags (bound_flags)*/
+enum {
+  GP_MOD_SDEF_ALL_LAYERS_AND_FRAMES_BOUND = (1 << 0),
+  GP_MOD_SDEF_ALL_LAYERS_CURRENT_FRAMES_BOUND = (1 << 1),
+  GP_MOD_SDEF_CURRENT_LAYER_ALL_FRAMES_BOUND = (1 << 2),
+  GP_MOD_SDEF_CURRENT_LAYER_CURRENT_FRAME_BOUND = (1 << 3),
+
+  /*So that bound_flags is not 0 and the data doesn't get freed if a frame is added*/
+  GP_MOD_SDEF_SOMETHING_BOUND = (1 << 4),
+};
+/** Surface Deform modifier flags. (flags) */
+enum {
+  /* This indicates "do bind on next modifier evaluation" as well as "is bound". */
+  GP_MOD_SDEF_DO_BIND = (1 << 0),
+  GP_MOD_SDEF_INVERT_VGROUP = (1 << 1),
+  /* Only store bind data for nonzero vgroup weights at the time of bind. */
+  GP_MOD_SDEF_SPARSE_BIND = (1 << 2),
+  GP_MOD_SDEF_WITHHOLD_EVALUATION = (1 << 3)
+
+};
+
+/** Surface Deform vertex bind modes. */
+enum {
+  GP_MOD_SDEF_MODE_LOOPTRI = 0,
+  GP_MOD_SDEF_MODE_NGON = 1,
+  GP_MOD_SDEF_MODE_CENTROID = 2,
+};
+

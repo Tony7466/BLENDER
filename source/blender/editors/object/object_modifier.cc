@@ -4393,6 +4393,257 @@ void OBJECT_OT_grease_pencil_time_modifier_segment_move(wmOperatorType *ot)
   ot->prop = RNA_def_enum(ot->srna, "type", segment_move, 0, "Type", "");
 }
 
+/*SURFACE DEFORM GP MODIFIER*/
+
+static int gpsurdef_fill_range(bContext *C, wmOperator *op)
+{
+  Scene *scene = CTX_data_scene(C);
+  Object *ob = context_active_object(C);
+  GPencilSurDeformModifierData *smd_orig = (GPencilSurDeformModifierData *)
+      edit_modifier_property_get(op, ob, eModifierType_GPencilSurDeform);
+
+  smd_orig->bake_range_start = scene->r.sfra;
+  smd_orig->bake_range_end = scene->r.efra;
+
+  return OPERATOR_FINISHED;
+}
+
+/* OPERATORS */
+
+static int gpencil_surfacedeform_bake_exec(bContext *C, wmOperator *op)
+{
+  Object *ob = context_active_object(C);
+  /* set notifiers */
+  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, ob);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
+
+  return 1; //bake_frames(C, op);
+}
+
+static int gpencil_surfacedeform_bind_exec(bContext *C, wmOperator *op)
+{
+  Object *ob = context_active_object(C);
+  ModifierData *md = edit_modifier_property_get(op, ob, eModifierType_GPencilSurDeform);
+  ModifierData *md_orig = BKE_modifier_get_original(ob, md);
+  GPencilSurDeformModifierData *smd_orig = (GPencilSurDeformModifierData *)md_orig;
+
+  const bool current_frame_only = (RNA_enum_get(op->ptr, "curr_frame_or_all_frames") ==
+                                   GP_MOD_SDEF_BIND_ALL_FRAMES);
+
+  if (smd_orig == NULL) {
+    return OPERATOR_CANCELLED;
+  }
+
+  if (smd_orig->target) {
+    smd_orig->flags |= GP_MOD_SDEF_DO_BIND;
+  }
+
+  if (current_frame_only) {
+    smd_orig->bind_modes |= GP_MOD_SDEF_BIND_CURRENT_FRAME;
+    smd_orig->bind_modes &= ~GP_MOD_SDEF_BIND_ALL_FRAMES;
+  }
+  else {
+    smd_orig->bind_modes &= ~GP_MOD_SDEF_BIND_CURRENT_FRAME;
+    smd_orig->bind_modes |= GP_MOD_SDEF_BIND_ALL_FRAMES;
+  }
+
+
+  smd_orig->bind_modes &= ~GP_MOD_SDEF_UNBIND_MODE;
+
+  
+
+  /* set notifier that keyframe properties have changed */
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME_PROP, nullptr);
+  Scene *scn = CTX_data_scene(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
+  bool ret = smd_orig->bind_drawings(md, depsgraph, scn, ob);
+  //CTX_data_ensure_evaluated_depsgraph(C);
+  if (!ret)
+    return OPERATOR_CANCELLED;
+  else
+    return OPERATOR_FINISHED;
+}
+
+static int gpencil_surfacedeform_unbind_exec(bContext *C, wmOperator *op)
+{
+  // TODO: move most stuff to a func in modifier page
+  bool ret = false;
+  Object *ob = context_active_object(C);
+  ModifierData *md = edit_modifier_property_get(op, ob, eModifierType_GPencilSurDeform);
+  ModifierData *md_orig = BKE_modifier_get_original(ob, md);
+  GPencilSurDeformModifierData *smd_orig = (GPencilSurDeformModifierData *)md_orig;
+  smd_orig->bind_modes |= GP_MOD_SDEF_UNBIND_MODE;
+  if (smd_orig == NULL) {
+    return OPERATOR_CANCELLED;
+  }
+  const bool current_frame_only = (RNA_enum_get(op->ptr, "curr_frame_or_all_frames") ==
+                                   GP_MOD_SDEF_BIND_ALL_FRAMES);
+  if (current_frame_only) {
+    smd_orig->bind_modes |= GP_MOD_SDEF_BIND_CURRENT_FRAME;
+    smd_orig->bind_modes &= ~GP_MOD_SDEF_BIND_ALL_FRAMES;
+  }
+  else {
+    smd_orig->bind_modes &= ~GP_MOD_SDEF_BIND_CURRENT_FRAME;
+    smd_orig->bind_modes |= GP_MOD_SDEF_BIND_ALL_FRAMES;
+  }
+  /* set notifier that keyframe properties have changed */
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME_PROP, nullptr);
+  Scene *scn = CTX_data_scene(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
+
+  ret = smd_orig->bind_drawings(md, depsgraph, scn, ob);
+
+  if (!ret)
+    return OPERATOR_CANCELLED;
+  else
+    return OPERATOR_FINISHED;
+}
+
+static int gpencil_surfacedeform_fillrange_exec(bContext *C, wmOperator *op)
+{
+  return gpsurdef_fill_range(C, op);
+}
+
+static int gpencil_surfacedeform_bind_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  if (edit_modifier_invoke_properties(C, op)) {
+    return gpencil_surfacedeform_bind_exec(C, op);
+  }
+  return OPERATOR_CANCELLED;
+}
+
+static int gpencil_surfacedeform_unbind_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  if (edit_modifier_invoke_properties(C, op)) {
+    return gpencil_surfacedeform_unbind_exec(C, op);
+  }
+  return OPERATOR_CANCELLED;
+}
+
+static int gpencil_surfacedeform_bake_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  if (edit_modifier_invoke_properties(C, op)) {
+    return gpencil_surfacedeform_bake_exec(C, op);
+  }
+  return OPERATOR_CANCELLED;
+}
+
+static int gpencil_surfacedeform_fillrange_invoke(bContext *C,
+                                                  wmOperator *op,
+                                                  const wmEvent *event)
+{
+  if (edit_modifier_invoke_properties(C, op)) {
+    return gpencil_surfacedeform_fillrange_exec(C, op);
+  }
+  return OPERATOR_CANCELLED;
+}
+
+static EnumPropertyItem gpsurdef_curr_frame_or_all_frames_items[] = {
+    {GP_MOD_SDEF_BIND_CURRENT_FRAME, "CURR_FRAME", 0, "Current Frame", "Bind the current frame"},
+    {GP_MOD_SDEF_BIND_ALL_FRAMES,
+     "ALL_FRAMES",
+     0,
+     "All Frames",
+     "Bind all the frames in the layer(s)"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
+static void bind_unbind_rna_props(wmOperatorType *ot)
+{
+  RNA_def_enum(ot->srna,
+               "curr_frame_or_all_frames",
+               static_cast<EnumPropertyItem(*)>(gpsurdef_curr_frame_or_all_frames_items),
+               0,
+               "",
+               "");
+  RNA_def_boolean(ot->srna, "unbind_mode", true, "Unbind", "");
+}
+
+void OBJECT_OT_gpencilsurdeform_bind(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Surface Deform Bind";
+  ot->description = "Bind grease pencil points to mesh target in surface deform modifier";
+  ot->idname = "OBJECT_OT_gpencilsurdeform_bind";
+
+  /* api callbacks */
+  // ot->poll = gpencil_surfacedeform_bind_poll;
+  ot->invoke = gpencil_surfacedeform_bind_invoke;
+  ot->exec = gpencil_surfacedeform_bind_exec;
+
+  /* parameters */
+  // RNA_def_boolean(ot->srna, "current_frame_only", true, "Only current frame", "");
+  bind_unbind_rna_props(ot);
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
+  edit_modifier_properties(ot);
+}
+
+void OBJECT_OT_gpencilsurdeform_unbind(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Surface Deform Unbind";
+  ot->description = "Unbind a GP with a surface deform modifier from its mesh";
+  ot->idname = "OBJECT_OT_gpencilsurdeform_unbind";
+
+  /* api callbacks */
+  // ot->poll = gpencil_surfacedeform_bind_poll;
+  ot->invoke = gpencil_surfacedeform_unbind_invoke;
+  ot->exec = gpencil_surfacedeform_unbind_exec;
+
+  /* parameters */
+  // RNA_def_boolean(ot->srna, "current_frame_only", true, "Only current frame", "");
+  // RNA_def_boolean(ot->srna, "current_layer_only", true, "Only current layer", "");
+  // RNA_def_boolean(ot->srna, "unbind_mode", true, "Unbind", "");
+  bind_unbind_rna_props(ot);
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
+  edit_modifier_properties(ot);
+}
+
+void OBJECT_OT_gpencilsurdeform_bake(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Surface Deform Bake";
+  ot->description =
+      "Bake the chosen frame range. The frames are removed from the modifier's memory";
+  ot->idname = "OBJECT_OT_gpencilsurdeform_bake";
+
+  /* api callbacks */
+  // ot->poll = gpencil_surfacedeform_bind_poll;
+  ot->invoke = gpencil_surfacedeform_bake_invoke;
+  ot->exec = gpencil_surfacedeform_bake_exec;
+
+  /* parameters */
+  RNA_def_int(ot->srna, "frame_start", 0, INT_MIN, INT_MAX, "Frame Start", "", INT_MIN, INT_MAX);
+  RNA_def_int(ot->srna, "frame_end", 0, INT_MIN, INT_MAX, "Frame End", "", INT_MIN, INT_MAX);
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
+  edit_modifier_properties(ot);
+}
+
+void OBJECT_OT_gpencilsurdeform_fillrange(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Fill with Current Timeline Range";
+  ot->description =
+      "Fill the start frame and end frame of the bake range of frames with the current Scene's "
+      "timeline start and end frames";
+  ot->idname = "OBJECT_OT_gpencilsurdeform_fillrange";
+
+  /* api callbacks */
+  // ot->poll = gpencil_surfacedeform_bind_poll;
+  ot->invoke = gpencil_surfacedeform_fillrange_invoke;
+  ot->exec = gpencil_surfacedeform_fillrange_exec;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
+  edit_modifier_properties(ot);
+}
+
 /** \} */
 
 }  // namespace blender::ed::object

@@ -62,6 +62,9 @@ void draw_keyframe_shape(const float x,
       size *= 0.85f;
       break;
 
+      case BEZT_KEYTYPE_SURDEFBOUND: /* surface defrom GP bound - full size */
+      break;
+
     case BEZT_KEYTYPE_MOVEHOLD:
       size *= 0.925f;
       break;
@@ -98,6 +101,9 @@ void draw_keyframe_shape(const float x,
         break;
       case BEZT_KEYTYPE_MOVEHOLD:
         UI_GetThemeColor3ubv(sel ? TH_KEYTYPE_MOVEHOLD_SELECT : TH_KEYTYPE_MOVEHOLD, fill_col);
+        break;
+      case BEZT_KEYTYPE_SURDEFBOUND: /* surface defrom GP bound */
+        UI_GetThemeColor4ubv(TH_TIME_SCRUB_BACKGROUND, fill_col);
         break;
       case BEZT_KEYTYPE_KEYFRAME:
         UI_GetThemeColor3ubv(sel ? TH_KEYTYPE_KEYFRAME_SELECT : TH_KEYTYPE_KEYFRAME, fill_col);

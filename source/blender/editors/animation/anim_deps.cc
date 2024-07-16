@@ -370,6 +370,7 @@ void ANIM_animdata_update(bAnimContext *ac, ListBase *anim_data)
       if (ale->update & ANIM_UPDATE_DEPS) {
         ale->update &= ~ANIM_UPDATE_DEPS;
         ANIM_list_elem_update(ac->bmain, ac->scene, ale);
+        ale->update = 0;
       }
     }
     else if (ale->update) {

@@ -409,6 +409,11 @@ const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
      ICON_MOD_SHRINKWRAP,
      "Shrinkwrap",
      "Project the shape onto another object"},
+    {eModifierType_GPencilSurDeform,
+     "GREASE_PENCIL_SURFACEDEFORM",
+     ICON_MOD_MESHDEFORM,
+     "Surface Deform",
+     "RNA description of gp surdef here"},
 
     RNA_ENUM_ITEM_HEADING(N_("Physics"), nullptr),
     {eModifierType_Cloth, "CLOTH", ICON_MOD_CLOTH, "Cloth", ""},
@@ -10940,6 +10945,117 @@ static void rna_def_modifier_grease_pencil_texture(BlenderRNA *brna)
   RNA_define_lib_overridable(false);
 }
 
+static void rna_def_modifier_grease_pencil_surdeform(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  static const EnumPropertyItem gpsurdef_curr_frame_or_all_frames_items[] = {
+      {GP_MOD_SDEF_BIND_CURRENT_FRAME, "CURR_FRAME", 0, "Current Frame", "Bind the current frame"},
+      {GP_MOD_SDEF_BIND_ALL_FRAMES,
+       "ALL_FRAMES",
+       0,
+       "All Frames",
+       "Bind all the frames in the layer(s)"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+
+  srna = RNA_def_struct(brna, "GPencilSurDeformModifier", "Modifier");
+  RNA_def_struct_ui_text(srna,
+                         "Surface Deform GP Modifier",
+                         "Surdeform RNA desc here");
+  RNA_def_struct_sdna(srna, "GPencilSurDeformModifierData");
+  RNA_def_struct_ui_icon(srna, ICON_MOD_MESHDEFORM);
+
+  /*Start influence stuff (TODO)*/
+  rna_def_modifier_grease_pencil_layer_filter(srna);
+  rna_def_modifier_grease_pencil_material_filter(
+      srna, "rna_GreasePencilShrinkwrapModifier_material_filter_set");
+  rna_def_modifier_grease_pencil_vertex_group(
+      srna, "rna_GreasePencilShrinkwrapModifier_vertex_group_name_set");
+
+  rna_def_modifier_panel_open_prop(srna, "open_influence_panel", 0);
+
+  RNA_define_lib_overridable(true);
+
+    /*End influence stuff*/
+  prop = RNA_def_property(srna, "target", PROP_POINTER, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Target", "Mesh object to deform with");
+  RNA_def_property_pointer_funcs(prop,
+                                 nullptr, nullptr,
+                                 nullptr,
+                                 "rna_Mesh_object_poll");
+  RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
+  RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
+
+  prop = RNA_def_property(srna, "falloff", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_range(prop, 2.0f, 16.0f);
+  RNA_def_property_ui_text(
+      prop, "Interpolation Falloff", "Controls how much nearby polygons influence deformation");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "bake_range_start", PROP_INT, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Range Start", "The first timeline frame to start baking");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "bake_range_end", PROP_INT, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Range End", "The last timeline frame to bake");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  /* prop = RNA_def_property(srna, "is_bound", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_funcs(prop, "rna_GPencilSurDeformModifier_is_bound_get", nullptr);
+  RNA_def_property_ui_text(prop, "Bound", "Whether geometry has been bound to target mesh");
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);*/
+
+  prop = RNA_def_property(srna, "use_sparse_bind", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flags", GP_MOD_SDEF_SPARSE_BIND);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_ui_text(
+      prop,
+      "Sparse Bind",
+      "Only record binding data for vertices matching the vertex group at the time of bind");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "strength", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_range(prop, -100, 100);
+  RNA_def_property_ui_range(prop, -100, 100, 10, 2);
+  RNA_def_property_ui_text(prop, "Strength", "Strength of modifier deformations");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "curr_frame_or_all_frames", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "curr_frame_or_all_frames");
+  RNA_def_property_enum_items(prop, gpsurdef_curr_frame_or_all_frames_items);
+  RNA_def_property_enum_default(prop, GP_MOD_SDEF_BIND_CURRENT_FRAME);
+  RNA_def_property_ui_text(prop, " ", "Current frame or all frames");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "unbind_mode", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "bound_flags", GP_MOD_SDEF_UNBIND_MODE);
+  RNA_def_property_ui_text(prop, "Unbind", "Unbind");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  /*Frame-layer bound combination flags (bound_flags)*/
+  prop = RNA_def_property(srna, "all_layers_and_frames_bound", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "bound_flags", GP_MOD_SDEF_ALL_LAYERS_AND_FRAMES_BOUND);
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+  prop = RNA_def_property(srna, "all_layers_current_frames_bound", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "bound_flags", GP_MOD_SDEF_ALL_LAYERS_CURRENT_FRAMES_BOUND);
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+  prop = RNA_def_property(srna, "current_layer_all_frames_bound", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "bound_flags", GP_MOD_SDEF_CURRENT_LAYER_ALL_FRAMES_BOUND);
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+  prop = RNA_def_property(srna, "current_layer_current_frame_bound", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "bound_flags", GP_MOD_SDEF_CURRENT_LAYER_CURRENT_FRAME_BOUND);
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  RNA_define_lib_overridable(false);
+}
+
 void RNA_def_modifier(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -11142,6 +11258,7 @@ void RNA_def_modifier(BlenderRNA *brna)
   rna_def_modifier_grease_pencil_envelope(brna);
   rna_def_modifier_grease_pencil_outline(brna);
   rna_def_modifier_grease_pencil_shrinkwrap(brna);
+  rna_def_modifier_grease_pencil_surdeform(brna);
   rna_def_modifier_grease_pencil_build(brna);
   rna_def_modifier_grease_pencil_texture(brna);
 }
