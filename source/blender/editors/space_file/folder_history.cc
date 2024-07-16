@@ -118,6 +118,7 @@ void folderlist_free(ListBase *folderlist)
       MEM_delete(folder);
     }
   }
+  BLI_listbase_clear(folderlist);
 }
 
 static ListBase folderlist_duplicate(ListBase *folderlist)
