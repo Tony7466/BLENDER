@@ -1703,7 +1703,7 @@ static void paint_cursor_preview_boundary_data_pivot_draw(PaintCursorContext *pc
   immUniformColor4f(1.0f, 1.0f, 1.0f, 0.8f);
   cursor_draw_point_screen_space(pcontext->pos,
                                  pcontext->region,
-                                 pcontext->ss->boundary_preview->pivot_vertex,
+                                 pcontext->ss->boundary_preview->pivot_position,
                                  pcontext->vc.obact->object_to_world().ptr(),
                                  3);
 }
