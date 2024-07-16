@@ -5,55 +5,32 @@
 # Note the utility apps may use png/tiff/gif system libraries, but the
 # library itself does not depend on them, so should give no problems.
 
-if(NOT (BUILD_MODE STREQUAL Release))
-  return()
-endif()
-
-set(HIPRT_CMAKE_FLAGS ${DEFAULT_CMAKE_FLAGS})
-
 get_filename_component(_hip_path ${HIP_HIPCC_EXECUTABLE} DIRECTORY)
 get_filename_component(_hip_path ${_hip_path} DIRECTORY)
 
 set(HIPRT_EXTRA_ARGS
   -DCMAKE_BUILD_TYPE=Release
   -DHIP_PATH=${_hip_path}
-  -DBITCODE=ON
+  -DBITCODE=OFF # revert back to ON once hiprt cmake is updated to skip bake kernel for BITCODE
   -DNO_UNITTEST=ON
-  -DPRECOMPILE=ON
   -DHIPRT_PREFER_HIP_5=ON
 )
 
 set(HIPRT_SOURCE_DIR ${BUILD_DIR}/hiprt/src/external_hiprt)
 set(HIPRT_BUILD_DIR ${BUILD_DIR}/hiprt/src/external_hiprt-build)
 
-# Work around relative paths in bake kernel script and missing
-# executable permission on encryption binary.
-if(WIN32)
-  set(HIPRT_WORKAROUND
-    cd ${HIPRT_SOURCE_DIR} &&
-  )
-else()
-  set(HIPRT_WORKAROUND
-    cd ${HIPRT_SOURCE_DIR} &&
-    chmod +x ./contrib/easy-encryption/bin/linux/ee64 &&
-  )
-endif()
-
 ExternalProject_Add(external_hiprt
   URL file://${PACKAGE_DIR}/${HIPRT_FILE}
   DOWNLOAD_DIR ${DOWNLOAD_DIR}
   URL_HASH ${HIPRT_HASH_TYPE}=${HIPRT_HASH}
+  CMAKE_GENERATOR ${PLATFORM_ALT_GENERATOR}
   PREFIX ${BUILD_DIR}/hiprt
-  INSTALL_DIR ${LIBDIR}/hiprt
 
-  CONFIGURE_COMMAND
-    ${HIPRT_WORKAROUND}
-    PYTHON_BIN=${PYTHON_BINARY}
-    ${CMAKE_COMMAND} -DCMAKE_INSTALL_PREFIX=${LIBDIR}/hiprt
-    -G ${PLATFORM_ALT_GENERATOR}
-    -S ${HIPRT_SOURCE_DIR}
-    -B ${HIPRT_BUILD_DIR}
-    ${DEFAULT_CMAKE_ARGS} ${HIPRT_EXTRA_ARGS}
+  CMAKE_ARGS
+    -DCMAKE_INSTALL_PREFIX=${LIBDIR}/hiprt
+    ${HIPRT_EXTRA_ARGS}
+
+  INSTALL_DIR ${LIBDIR}/hiprt
 )
 
 if(WIN32)
@@ -61,12 +38,23 @@ if(WIN32)
   ExternalProject_Add_Step(external_hiprt after_install
     COMMAND ${CMAKE_COMMAND} -E rename
       ${LIBDIR}/hiprt/bin/hiprt${HIPRT_LIBRARY_VERSION}64.dll ${LIBDIR}/hiprt/bin/hiprt64.dll
-    DEPENDEES install
-  )
-  ExternalProject_Add_Step(external_hiprt after_install
+
     COMMAND ${CMAKE_COMMAND} -E copy_directory
       ${LIBDIR}/hiprt
       ${HARVEST_TARGET}/hiprt
+
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+      ${HIPRT_SOURCE_DIR}/hiprt/impl
+      ${HARVEST_TARGET}/hiprt/include/hiprt/impl
+
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+      ${HIPRT_SOURCE_DIR}/contrib/Orochi/ParallelPrimitives
+      ${HARVEST_TARGET}/hiprt/include/Orochi/ParallelPrimitives
+
+	COMMAND ${CMAKE_COMMAND} -E copy
+      ${HIPRT_SOURCE_DIR}/version.txt
+      ${HARVEST_TARGET}/hiprt/version.txt
+
     DEPENDEES install
   )
 else()
@@ -74,6 +62,11 @@ else()
   ExternalProject_Add_Step(external_hiprt after_install
     COMMAND ${CMAKE_COMMAND} -E rename
       ${LIBDIR}/hiprt/bin/${LIBPREFIX}hiprt${HIPRT_LIBRARY_VERSION}64.so ${LIBDIR}/hiprt/bin/${LIBPREFIX}hiprt64.so
+
+    COMMAND ${CMAKE_COMMAND} -E copy
+      ${HIPRT_SOURCE_DIR}/version.txt
+      ${LIBDIR}/hiprt/version.txt
+
     DEPENDEES install
   )
 endif()

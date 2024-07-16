@@ -696,6 +696,13 @@ if(WITH_CYCLES_DEVICE_HIPRT AND WITH_CYCLES_HIP_BINARIES)
     ${SRC_KERNEL_DEVICE_GPU_HEADERS}
     ${SRC_KERNEL_DEVICE_HIPRT_HEADERS}
     ${SRC_UTIL_HEADERS})
+  # Get HIP-RT version
+  file(STRINGS ${HIPRT_INCLUDE_DIR}/../version.txt lines)
+  list(GET lines 0 HIPRT_MAJOR_VER)
+  list(GET lines 1 HIPRT_MINOR_VER)
+  math(EXPR HIPRT_VERSION "${HIPRT_MAJOR_VER} * 1000 + ${HIPRT_MINOR_VER}")
+  set(HIPRT_VERSION 0${HIPRT_VERSION})
+
   set(cycles_bitcode_file ${CMAKE_CURRENT_BINARY_DIR}/kernel_rt_gfx.bc)
   set(sdk_bitcode_file ${CMAKE_CURRENT_BINARY_DIR}/hiprt${HIPRT_VERSION}_${HIP_VERSION_SHORT}_amd_lib.bc)
   set(bvh_file ${CMAKE_CURRENT_BINARY_DIR}/hiprt${HIPRT_VERSION}_${HIP_VERSION_SHORT}_amd.hipfb)
@@ -747,7 +754,7 @@ if(WITH_CYCLES_DEVICE_HIPRT AND WITH_CYCLES_HIP_BINARIES)
     ${target_gpus}
     ${HIP_HIPCC_FLAGS}
     -x hip
-    ${HIPRT_INCLUDE_DIR}/orochi/ParallelPrimitives/RadixSortKernels.h
+    ${HIPRT_INCLUDE_DIR}/Orochi/ParallelPrimitives/RadixSortKernels.h
     ${flags}
     -D HIPRT_BITCODE_LINKING
     -std=c++17
@@ -756,7 +763,7 @@ if(WITH_CYCLES_DEVICE_HIPRT AND WITH_CYCLES_HIP_BINARIES)
     -mllvm
     -amdgpu-function-calls=true
     --genco
-    -I ${HIPRT_INCLUDE_DIR}/orochi
+    -I ${HIPRT_INCLUDE_DIR}/Orochi
     -include hip/hip_runtime.h
     -Wno-parentheses-equality
     -Wno-unused-value
@@ -778,7 +785,7 @@ if(WITH_CYCLES_DEVICE_HIPRT AND WITH_CYCLES_HIP_BINARIES)
     --gpu-bundle-output
     -emit-llvm
     -I ${HIPRT_INCLUDE_DIR}
-    -I ${HIPRT_INCLUDE_DIR}/orochi
+    -I ${HIPRT_INCLUDE_DIR}/Orochi
     -Wno-parentheses-equality
     -Wno-unused-value
     -ffast-math
@@ -825,33 +832,42 @@ if(WITH_CYCLES_DEVICE_HIPRT AND WITH_CYCLES_HIP_BINARIES)
   add_custom_command(
     OUTPUT  ${bvh_file_oro}
     COMMAND ${hiprt_compile_command} ${hiprt_compile_flags_bvh_oro}
-    DEPENDS ${HIPRT_INCLUDE_DIR}/orochi/ParallelPrimitives/RadixSortKernels.h)
+    DEPENDS ${HIPRT_INCLUDE_DIR}/Orochi/ParallelPrimitives/RadixSortKernels.h)
 
-
-
-  set(hiprt_link_command ${CMAKE_COMMAND})
-  set(hiprt_link_flags   -E env "HIP_PATH=${HIP_ROOT_DIR}"
-    ${HIP_LINKER_EXECUTABLE})
+  if(WIN32)
+    set(hiprt_link_command ${CMAKE_COMMAND})
+    set(hiprt_link_flags
+      -E env "HIP_PATH=${HIP_ROOT_DIR}"
+      ${HIP_LINKER_EXECUTABLE})
+  else()
+    set(hiprt_link_command ${HIP_LINKER_EXECUTABLE})
+    set(hiprt_link_flags)
+  endif()
 
   set(hiprt_link_flags
     ${hiprt_link_flags}
     ${target_gpus}
     -fgpu-rdc
-    -mcode-object-version=4
     --hip-link
     --cuda-device-only
     ${cycles_bitcode_file}
     ${sdk_bitcode_file}
     -o ${hiprt_file})
- add_custom_command(
-   OUTPUT  ${hiprt_file}
-   COMMAND ${hiprt_link_command} ${hiprt_link_flags}
-   DEPENDS ${cycles_bitcode_file} ${sdk_bitcode_file})
+  add_custom_command(
+    OUTPUT  ${hiprt_file}
+    COMMAND ${hiprt_link_command} ${hiprt_link_flags}
+    DEPENDS ${cycles_bitcode_file} ${sdk_bitcode_file})
+
+  if(WIN32)
+    set(BVH_INSTALL_PATH ${CMAKE_INSTALL_PREFIX}/blender.shared)
+  else()
+    set(BVH_INSTALL_PATH ${CMAKE_INSTALL_PREFIX}/lib)
+  endif()
+
 
  delayed_install("${CMAKE_CURRENT_BINARY_DIR}" "${hiprt_file}"  ${CYCLES_INSTALL_PATH}/lib)
- delayed_install("${CMAKE_CURRENT_BINARY_DIR}" "${bvh_file}"     ${CMAKE_INSTALL_PREFIX})
- delayed_install("${CMAKE_CURRENT_BINARY_DIR}" "${bvh_file_oro}" ${CMAKE_INSTALL_PREFIX})
- delayed_install("${HIPRT_INCLUDE_DIR}/bin"   "${HIPRT_DYNAMIC_LIB}"    ${CMAKE_INSTALL_PREFIX})
+ delayed_install("${CMAKE_CURRENT_BINARY_DIR}" "${bvh_file}"     ${BVH_INSTALL_PATH})
+ delayed_install("${CMAKE_CURRENT_BINARY_DIR}" "${bvh_file_oro}" ${BVH_INSTALL_PATH})
  add_custom_target(cycles_kernel_hiprt ALL DEPENDS ${hiprt_file} ${bvh_file} ${bvh_file_oro})
  cycles_set_solution_folder(cycles_kernel_hiprt)
   add_custom_command(
