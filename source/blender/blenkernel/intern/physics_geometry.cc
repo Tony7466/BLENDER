@@ -127,39 +127,6 @@ static void set_constraint_index(btTypedConstraint &constraint, const int index)
 /** \name Physics Geometry
  * \{ */
 
-static void create_world(PhysicsGeometryImpl &impl)
-{
-  impl.config = new btDefaultCollisionConfiguration();
-  impl.dispatcher = new btCollisionDispatcher(impl.config);
-  btGImpactCollisionAlgorithm::registerAlgorithm((btCollisionDispatcher *)impl.dispatcher);
-
-  impl.broadphase = new btDbvtBroadphase();
-  impl.overlap_filter = new DefaultOverlapFilter();
-  impl.broadphase->getOverlappingPairCache()->setOverlapFilterCallback(impl.overlap_filter);
-
-  impl.constraint_solver = new btSequentialImpulseConstraintSolver();
-
-  impl.world = new btDiscreteDynamicsWorld(
-      impl.dispatcher, impl.broadphase, impl.constraint_solver, impl.config);
-}
-
-static void destroy_world(PhysicsGeometryImpl &impl)
-{
-  delete impl.world;
-  delete impl.constraint_solver;
-  delete impl.broadphase;
-  delete impl.dispatcher;
-  delete impl.config;
-  delete impl.overlap_filter;
-
-  impl.world = nullptr;
-  impl.constraint_solver = nullptr;
-  impl.broadphase = nullptr;
-  impl.dispatcher = nullptr;
-  impl.config = nullptr;
-  impl.overlap_filter = nullptr;
-}
-
 static void move_world(PhysicsGeometryImpl &from, PhysicsGeometryImpl &to)
 {
   to.world = from.world;
@@ -375,8 +342,7 @@ PhysicsGeometryImpl::~PhysicsGeometryImpl()
   CustomData_free(&constraint_data_, constraint_num_);
 
   if (this->world) {
-    remove_from_world(this->world, this->rigid_bodies, this->constraints);
-    destroy_world(*this);
+    this->destroy_world();
   }
   for (const int i : this->rigid_bodies.index_range()) {
     delete this->rigid_bodies[i];
@@ -420,33 +386,33 @@ void PhysicsGeometryImpl::resize(const int body_num, const int constraint_num)
   else {
     /* Add default custom data for builtin attributes. */
     MutableAttributeAccessor attributes = this->attributes_for_write();
-    attributes.for_all([&](const AttributeIDRef &attribute_id,
-                           const AttributeMetaData &meta_data) -> bool {
-      CustomData *custom_data = nullptr;
-      int totelem = 0;
-      switch (meta_data.domain) {
-        case AttrDomain::Point:
-          custom_data = &body_data_;
-          totelem = body_num_;
-          break;
-        case AttrDomain::Edge:
-          custom_data = &constraint_data_;
-          totelem = constraint_num_;
-          break;
-        case AttrDomain::Instance:
-          break;
-        default:
-          BLI_assert_unreachable();
-          break;
-      }
-      if (custom_data == nullptr) {
-        return true;
-      }
-      const eCustomDataType data_type = meta_data.data_type;
-      CustomData_add_layer_named(
-          custom_data, data_type, CD_SET_DEFAULT, totelem, attribute_id.name());
-      return true;
-    });
+    attributes.for_all(
+        [&](const AttributeIDRef &attribute_id, const AttributeMetaData &meta_data) -> bool {
+          CustomData *custom_data = nullptr;
+          int totelem = 0;
+          switch (meta_data.domain) {
+            case AttrDomain::Point:
+              custom_data = &body_data_;
+              totelem = body_num_;
+              break;
+            case AttrDomain::Edge:
+              custom_data = &constraint_data_;
+              totelem = constraint_num_;
+              break;
+            case AttrDomain::Instance:
+              break;
+            default:
+              BLI_assert_unreachable();
+              break;
+          }
+          if (custom_data == nullptr) {
+            return true;
+          }
+          const eCustomDataType data_type = meta_data.data_type;
+          CustomData_add_layer_named(
+              custom_data, data_type, CD_SET_DEFAULT, totelem, attribute_id.name());
+          return true;
+        });
   }
 }
 
@@ -550,7 +516,7 @@ void PhysicsGeometryImpl::ensure_constraint_disable_collision() const
   });
 }
 
-void PhysicsGeometryImpl::realize()
+void PhysicsGeometryImpl::create_world()
 {
   using ConstraintType = PhysicsGeometry::ConstraintType;
 
@@ -565,7 +531,6 @@ void PhysicsGeometryImpl::realize()
 
   /* Force reading from cache, write to Bullet data. */
   const AttributeAccessor from_attributes = this->attributes(true);
-  MutableAttributeAccessor to_attributes = this->attributes_for_write(false);
 
   this->realloc();
 
@@ -590,6 +555,67 @@ void PhysicsGeometryImpl::realize()
                      constraint_bodies1,
                      constraint_bodies2);
 
+  /* Free attribute cache, redundant now. */
+  this->remove_attributes_from_customdata();
+
+  /* Add all bodies and constraints to the world. */
+  if (this->world == nullptr) {
+    this->config = new btDefaultCollisionConfiguration();
+    this->dispatcher = new btCollisionDispatcher(this->config);
+    btGImpactCollisionAlgorithm::registerAlgorithm((btCollisionDispatcher *)this->dispatcher);
+
+    this->broadphase = new btDbvtBroadphase();
+    this->overlap_filter = new DefaultOverlapFilter();
+    this->broadphase->getOverlappingPairCache()->setOverlapFilterCallback(this->overlap_filter);
+
+    this->constraint_solver = new btSequentialImpulseConstraintSolver();
+
+    this->world = new btDiscreteDynamicsWorld(
+        this->dispatcher, this->broadphase, this->constraint_solver, this->config);
+  }
+
+  /* Add all bodies and constraints to the world. */
+  add_to_world(this->world,
+               this->rigid_bodies.as_span().slice(body_range),
+               this->constraints.as_span().slice(constraint_range));
+}
+
+void PhysicsGeometryImpl::destroy_world()
+{
+  remove_from_world(this->world, this->rigid_bodies, this->constraints);
+
+  delete this->world;
+  delete this->constraint_solver;
+  delete this->broadphase;
+  delete this->dispatcher;
+  delete this->config;
+  delete this->overlap_filter;
+
+  this->world = nullptr;
+  this->constraint_solver = nullptr;
+  this->broadphase = nullptr;
+  this->dispatcher = nullptr;
+  this->config = nullptr;
+  this->overlap_filter = nullptr;
+}
+
+bool PhysicsGeometryImpl::try_copy_to_world_data(const PhysicsGeometryImpl &from,
+                                                 const IndexMask &body_mask,
+                                                 const IndexMask &constraint_mask,
+                                                 const Set<std::string> &ignored_attributes)
+{
+  if (!this->is_empty) {
+    return false;
+  }
+  BLI_assert(this->world != nullptr);
+
+  const IndexRange body_range = IndexRange(this->body_num_);
+  const IndexRange constraint_range = IndexRange(this->constraint_num_);
+
+  /* Force reading from cache, write to Bullet data. */
+  const AttributeAccessor from_attributes = this->attributes(true);
+  MutableAttributeAccessor to_attributes = this->attributes_for_write(false);
+
   Set<std::string> skip_attributes = {PhysicsGeometry::builtin_attributes.skip_copy};
   skip_attributes.add_multiple({PhysicsGeometry::builtin_attributes.constraint_type,
                                 PhysicsGeometry::builtin_attributes.constraint_body1,
@@ -599,21 +625,13 @@ void PhysicsGeometryImpl::realize()
   gather_attributes(
       from_attributes, AttrDomain::Edge, {}, skip_attributes, constraint_range, to_attributes);
 
-  /* Free attribute cache, redundant now. */
-  this->remove_attributes_from_customdata();
-
-  /* Add all bodies and constraints to the world. */
-  if (this->world == nullptr) {
-    create_world(*this);
-  }
-  add_to_world(this->world,
-               this->rigid_bodies.as_span().slice(body_range),
-               this->constraints.as_span().slice(constraint_range));
+  return true;
 }
 
-bool PhysicsGeometryImpl::try_copy_to_customdata(const PhysicsGeometryImpl &from,
-                                                 const IndexMask &body_mask,
-                                                 const IndexMask &constraint_mask)
+bool PhysicsGeometryImpl::try_copy_to_custom_data(const PhysicsGeometryImpl &from,
+                                                  const IndexMask &body_mask,
+                                                  const IndexMask &constraint_mask,
+                                                  const Set<std::string> &ignored_attributes)
 {
   if (this->is_empty) {
     return false;
@@ -708,12 +726,12 @@ bool PhysicsGeometryImpl::try_move(const PhysicsGeometryImpl &from,
   PhysicsGeometryImpl &from_mutable = const_cast<PhysicsGeometryImpl &>(from);
 
   /* Cache the source before moving physics data. */
-  from_mutable.try_copy_to_customdata(from, body_mask, constraint_mask);
+  from_mutable.try_copy_to_custom_data(from, body_mask, constraint_mask, {});
 
   btDynamicsWorld *from_world = from_mutable.world;
   if (use_world) {
     if (this->world) {
-      destroy_world(*this);
+      this->destroy_world();
     }
     move_world(from_mutable, *this);
   }
@@ -892,6 +910,34 @@ bool PhysicsGeometry::has_world() const
   return this->impl().world != nullptr;
 }
 
+void PhysicsGeometry::create_world(const bool copy_attributes)
+{
+  PhysicsGeometryImpl &impl = impl_for_write();
+  impl.create_world();
+
+  if (copy_attributes) {
+    const IndexRange body_range = IndexRange(impl.body_num_);
+    const IndexRange constraint_range = IndexRange(impl.constraint_num_);
+
+    impl.try_copy_to_world_data(
+        impl, body_range, constraint_range, {PhysicsGeometry::builtin_attributes.skip_copy});
+  }
+}
+
+void PhysicsGeometry::destroy_world(const bool copy_attributes)
+{
+  PhysicsGeometryImpl &impl = impl_for_write();
+
+  if (copy_attributes) {
+    const IndexRange body_range = IndexRange(impl.body_num_);
+    const IndexRange constraint_range = IndexRange(impl.constraint_num_);
+
+    impl.try_copy_to_custom_data(impl, body_range, constraint_range, {});
+  }
+
+  impl.destroy_world();
+}
+
 void PhysicsGeometry::set_overlap_filter(OverlapFilterFn fn)
 {
   PhysicsGeometryImpl &impl = this->impl_for_write();
@@ -1065,18 +1111,6 @@ void PhysicsGeometry::resize(int bodies_num, int constraints_num)
   this->tag_topology_changed();
 }
 
-void PhysicsGeometry::realize_from_cache()
-{
-  PhysicsGeometryImpl &impl = impl_for_write();
-  impl.realize();
-}
-
-void PhysicsGeometry::freeze_to_cache()
-{
-  impl_for_write().try_copy_to_customdata(
-      *impl_, impl_->rigid_bodies.index_range(), impl_->constraints.index_range());
-}
-
 static void remap_bodies(const int src_bodies_num,
                          const IndexMask &bodies_mask,
                          const IndexMask &constraints_mask,
@@ -1178,8 +1212,8 @@ void PhysicsGeometry::move_or_copy_selection(
   const bool was_moved = impl.try_move(from.impl(), use_world, body_mask, constraint_mask);
 
   const Set<std::string> ignored_attributes = was_moved ?
-                                               Set<std::string>{builtin_attributes.skip_copy} :
-                                               Set<std::string>{};
+                                                  Set<std::string>{builtin_attributes.skip_copy} :
+                                                  Set<std::string>{};
 
   /* Physics data is empty, copy attributes instead. */
 

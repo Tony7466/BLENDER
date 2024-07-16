@@ -55,13 +55,13 @@ TEST(PhysicsGeometryTest, create_and_remove_world)
   EXPECT_EQ(geo.shapes_num(), 3);
   EXPECT_EQ(geo.has_world(), false);
 
-  geo.realize_from_cache();
+  geo.create_world();
   EXPECT_EQ(geo.bodies_num(), 5);
   EXPECT_EQ(geo.constraints_num(), 2);
   EXPECT_EQ(geo.shapes_num(), 3);
   EXPECT_EQ(geo.has_world(), true);
 
-  geo.freeze_to_cache();
+  geo.destroy_world();
   EXPECT_EQ(geo.bodies_num(), 5);
   EXPECT_EQ(geo.constraints_num(), 2);
   EXPECT_EQ(geo.shapes_num(), 3);

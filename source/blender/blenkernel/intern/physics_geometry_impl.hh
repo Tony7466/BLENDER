@@ -106,10 +106,17 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
   void ensure_constraint_indices() const;
   void ensure_constraint_disable_collision() const;
 
-  void realize();
-  bool try_copy_to_customdata(const PhysicsGeometryImpl &from,
+  void create_world();
+  void destroy_world();
+
+  bool try_copy_to_world_data(const PhysicsGeometryImpl &from,
                               const IndexMask &body_mask,
-                              const IndexMask &constraint_mask);
+                              const IndexMask &constraint_mask,
+                              const Set<std::string> &ignored_attributes);
+  bool try_copy_to_custom_data(const PhysicsGeometryImpl &from,
+                               const IndexMask &body_mask,
+                               const IndexMask &constraint_mask,
+                               const Set<std::string> &ignored_attributes);
   void remove_attributes_from_customdata();
   bool try_move(const PhysicsGeometryImpl &from,
                 bool use_world,

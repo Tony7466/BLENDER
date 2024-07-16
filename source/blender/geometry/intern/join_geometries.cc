@@ -141,8 +141,7 @@ static void join_volumes(const Span<const GeometryComponent *> /*src_components*
    * of the grids. The cell size of the resulting volume has to be determined somehow. */
 }
 
-static void join_physics(const Span<const GeometryComponent *> src_components,
-                         GeometrySet & result)
+static void join_physics(const Span<const GeometryComponent *> src_components, GeometrySet &result)
 {
   const bke::PhysicsGeometry *world_physics = nullptr;
   Array<int> body_offsets_data(src_components.size() + 1);
@@ -169,7 +168,7 @@ static void join_physics(const Span<const GeometryComponent *> src_components,
   dst_physics->resize(body_offsets.total_size(), constraint_offsets.total_size());
   Array<StringRef> ignored_attributes = {};
   if (world_physics != nullptr) {
-    dst_physics->realize_from_cache();
+    dst_physics->create_world();
 
     Span<std::string> skip_copy = bke::PhysicsGeometry::builtin_attributes.skip_copy;
     ignored_attributes.reinitialize(skip_copy.size());

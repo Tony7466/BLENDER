@@ -124,6 +124,9 @@ class PhysicsGeometry {
   PhysicsGeometryImpl &impl_for_write();
 
   bool has_world() const;
+  void create_world(bool copy_attributes = true);
+  void destroy_world(bool copy_attributes = true);
+
   int bodies_num() const;
   int constraints_num() const;
   int shapes_num() const;
@@ -134,8 +137,6 @@ class PhysicsGeometry {
 
   void resize(int bodies_num, int constraints_num);
 
-  void realize_from_cache();
-  void freeze_to_cache();
   void move_or_copy_selection(const PhysicsGeometry &from,
                               const bool use_world,
                               const IndexMask &body_mask,
