@@ -48,8 +48,8 @@ ccl_device_constant DeviceString u_object_color = 12695623857059169556ull;
 ccl_device_constant DeviceString u_object_alpha = 11165053919428293151ull;
 /* "object:index" */
 ccl_device_constant DeviceString u_object_index = 6588325838217472556ull;
-/* "object:is_lamp" */
-ccl_device_constant DeviceString u_is_lamp = 11124107448932545987ull;
+/* "object:is_light" */
+ccl_device_constant DeviceString u_object_is_light = 13979755312845091842ull;
 /* "geom:dupli_generated" */
 ccl_device_constant DeviceString u_geom_dupli_generated = 6715607178003388908ull;
 /* "geom:dupli_uv" */
@@ -1119,7 +1119,7 @@ ccl_device_inline bool get_object_standard_attribute(KernelGlobals kg,
     float f = object_pass_id(kg, sd->object);
     return set_attribute_float(f, type, derivatives, val);
   }
-  else if (name == DeviceStrings::u_is_lamp) {
+  else if (name == DeviceStrings::u_object_is_light) {
     float f = ((sd->type & PRIMITIVE_LAMP) != 0);
     return set_attribute_float(f, type, derivatives, val);
   }
