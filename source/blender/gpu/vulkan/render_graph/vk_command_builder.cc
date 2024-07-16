@@ -92,7 +92,7 @@ void VKCommandBuilder::build_node_group(VKRenderGraph &render_graph,
     VKRenderGraphNode &node = render_graph.nodes_[node_handle];
     build_pipeline_barriers(render_graph, command_buffer, node_handle, node.pipeline_stage_get());
     if (node.type == VKNodeType::BEGIN_RENDERING) {
-      begin_subresource_tracking(render_graph, node_handle);
+      layer_tracking_begin(render_graph, node_handle);
     }
   }
 
@@ -122,12 +122,11 @@ void VKCommandBuilder::build_node_group(VKRenderGraph &render_graph,
       BLI_assert(r_rendering_scope.has_value());
       if (!is_rendering) {
         // Resuming paused rendering scope.
-        begin_subresource_tracking(render_graph, *r_rendering_scope);
+        layer_tracking_begin(render_graph, *r_rendering_scope);
         VKRenderGraphNode &rendering_node = render_graph.nodes_[*r_rendering_scope];
         rendering_node.begin_rendering.vk_rendering_info.flags = VK_RENDERING_RESUMING_BIT;
         rendering_node.build_commands(command_buffer, state_.active_pipelines);
         is_rendering = true;
-        // TODO: setup subresource tracking.
       }
     }
 #if 0
@@ -142,7 +141,7 @@ void VKCommandBuilder::build_node_group(VKRenderGraph &render_graph,
     /* When layered image has different layouts we reset the layouts to
      * VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL. */
     if (node.type == VKNodeType::END_RENDERING && state_.subresource_tracking_enabled()) {
-      end_subresource_tracking(command_buffer);
+      layer_tracking_end(command_buffer, false);
     }
   }
   if (is_rendering) {
@@ -150,7 +149,7 @@ void VKCommandBuilder::build_node_group(VKRenderGraph &render_graph,
     is_rendering = false;
     command_buffer.end_rendering();
     if (state_.subresource_tracking_enabled()) {
-      end_subresource_tracking(command_buffer);
+      layer_tracking_end(command_buffer, true);
     }
   }
 }
@@ -414,11 +413,11 @@ void VKCommandBuilder::add_image_read_barriers(VKRenderGraph &render_graph,
     if (state_.layered_attachments.contains(resource.image.vk_image) &&
         resource_state.image_layout != link.vk_image_layout)
     {
-      update_subresource_tracking(resource.image.vk_image,
-                                  link.layer_base,
-                                  link.layer_count,
-                                  resource_state.image_layout,
-                                  link.vk_image_layout);
+      layer_tracking_update(resource.image.vk_image,
+                            link.layer_base,
+                            link.layer_count,
+                            resource_state.image_layout,
+                            link.vk_image_layout);
       continue;
     }
 
@@ -465,11 +464,11 @@ void VKCommandBuilder::add_image_write_barriers(VKRenderGraph &render_graph,
     if (state_.layered_attachments.contains(resource.image.vk_image) &&
         resource_state.image_layout != link.vk_image_layout)
     {
-      update_subresource_tracking(resource.image.vk_image,
-                                  link.layer_base,
-                                  link.layer_count,
-                                  resource_state.image_layout,
-                                  link.vk_image_layout);
+      layer_tracking_update(resource.image.vk_image,
+                            link.layer_base,
+                            link.layer_count,
+                            resource_state.image_layout,
+                            link.vk_image_layout);
 
       continue;
     }
@@ -548,8 +547,8 @@ void VKCommandBuilder::add_image_barrier(VkImage vk_image,
 /** \name Sub-resource tracking
  * \{ */
 
-void VKCommandBuilder::begin_subresource_tracking(const VKRenderGraph &render_graph,
-                                                  NodeHandle node_handle)
+void VKCommandBuilder::layer_tracking_begin(const VKRenderGraph &render_graph,
+                                            NodeHandle node_handle)
 {
   BLI_assert(render_graph.nodes_[node_handle].type == VKNodeType::BEGIN_RENDERING);
   state_.layered_attachments.clear();
@@ -565,11 +564,11 @@ void VKCommandBuilder::begin_subresource_tracking(const VKRenderGraph &render_gr
   }
 }
 
-void VKCommandBuilder::update_subresource_tracking(VkImage vk_image,
-                                                   uint32_t layer,
-                                                   uint32_t layer_count,
-                                                   VkImageLayout old_layout,
-                                                   VkImageLayout new_layout)
+void VKCommandBuilder::layer_tracking_update(VkImage vk_image,
+                                             uint32_t layer,
+                                             uint32_t layer_count,
+                                             VkImageLayout old_layout,
+                                             VkImageLayout new_layout)
 {
   for (const LayeredImageBinding &binding : state_.layered_bindings) {
     if (binding.vk_image == vk_image && binding.layer == layer) {
@@ -600,7 +599,7 @@ void VKCommandBuilder::update_subresource_tracking(VkImage vk_image,
                     layer_count);
 }
 
-void VKCommandBuilder::end_subresource_tracking(VKCommandBufferInterface &command_buffer)
+void VKCommandBuilder::layer_tracking_end(VKCommandBufferInterface &command_buffer, bool suspend)
 {
   if (!state_.layered_bindings.is_empty()) {
     reset_barriers();
@@ -625,7 +624,9 @@ void VKCommandBuilder::end_subresource_tracking(VKCommandBufferInterface &comman
     send_pipeline_barriers(command_buffer);
   }
   state_.layered_bindings.clear();
-  state_.layered_attachments.clear();
+  if (!suspend) {
+    state_.layered_attachments.clear();
+  }
 }
 
 /** \} */

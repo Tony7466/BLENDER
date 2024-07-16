@@ -177,22 +177,30 @@ class VKCommandBuilder {
  private:
   /**
    * Update the layered attachments list when beginning a new render scope.
-   *
    */
-  void begin_subresource_tracking(const VKRenderGraph &render_graph, NodeHandle node_handle);
+  void layer_tracking_begin(const VKRenderGraph &render_graph, NodeHandle node_handle);
+
   /**
    * Ensure the layout of a layer.
    *
    * - `old_layout` should be the expected layout of the full image.
    */
-  void update_subresource_tracking(VkImage vk_image,
-                                   uint32_t layer,
-                                   uint32_t layer_count,
-                                   VkImageLayout old_layout,
-                                   VkImageLayout new_layout);
-  void end_subresource_tracking(VKCommandBufferInterface &command_buffer
+  void layer_tracking_update(VkImage vk_image,
+                             uint32_t layer,
+                             uint32_t layer_count,
+                             VkImageLayout old_layout,
+                             VkImageLayout new_layout);
 
-  );
+  /**
+   * End layer tracking.
+   *
+   * All modified layers (layer_tracking_update) will be changed back to the image layout of
+   * the texture (most likely a `VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL`).
+   *
+   * When rendering is suspended, the suspend parameter should be 'true'. This keeps the array
+   * textures to be kept for when the rendering is resumed.
+   */
+  void layer_tracking_end(VKCommandBufferInterface &command_buffer, bool suspend);
 };
 
 }  // namespace blender::gpu::render_graph
