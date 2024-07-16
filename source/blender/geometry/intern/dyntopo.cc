@@ -320,15 +320,22 @@ static void gather_edges_to_split(const Span<int> faces,
                                   Vector<int> &r_edges_to_split)
 {
   float max_length_iter = std::numeric_limits<float>::lowest();
+
+  bool ab_added = false;
+  bool bc_added = false;
+  bool ca_added = false;
+
   for (const int face_i : faces) {
     if (face_i == 0) {
       const float ab_length = math::distance_squared(real_verts_by_face_type[0][0],
                                                      real_verts_by_face_type[0][1]);
       if (max_length_iter == ab_length) {
+        ab_added = true;
         r_edges_to_split.append(0);
         // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
       }
       else if (max_length_iter < ab_length) {
+        ab_added = true;
         r_edges_to_split.clear();
         max_length_iter = ab_length;
         r_edges_to_split.append(0);
@@ -337,10 +344,12 @@ static void gather_edges_to_split(const Span<int> faces,
       const float bc_length = math::distance_squared(real_verts_by_face_type[0][1],
                                                      real_verts_by_face_type[0][2]);
       if (max_length_iter == bc_length) {
+        bc_added = true;
         r_edges_to_split.append(1);
         // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
       }
       else if (max_length_iter < bc_length) {
+        bc_added = true;
         r_edges_to_split.clear();
         max_length_iter = bc_length;
         r_edges_to_split.append(1);
@@ -349,10 +358,12 @@ static void gather_edges_to_split(const Span<int> faces,
       const float ca_length = math::distance_squared(real_verts_by_face_type[0][2],
                                                      real_verts_by_face_type[0][0]);
       if (max_length_iter == ca_length) {
+        ca_added = true;
         r_edges_to_split.append(2);
         // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
       }
       else if (max_length_iter < ca_length) {
+        ca_added = true;
         r_edges_to_split.clear();
         max_length_iter = ca_length;
         r_edges_to_split.append(2);
@@ -389,6 +400,22 @@ static void gather_edges_to_split(const Span<int> faces,
         r_edges_to_split.append(edge_offset + side_edges_offset + 1);
         // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
       }
+
+      if (!ab_added) {
+        ab_added = true;
+        const float ab_length = math::distance_squared(real_verts_by_face_type[0][0],
+                                                       real_verts_by_face_type[0][1]);
+        if (max_length_iter == ab_length) {
+          r_edges_to_split.append(0);
+          // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
+        }
+        else if (max_length_iter < ab_length) {
+          r_edges_to_split.clear();
+          max_length_iter = ab_length;
+          r_edges_to_split.append(0);
+          // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
+        }
+      }
     }
     offset += ab_faces.size();
     edge_offset += ab_faces.size() * 2;
@@ -419,6 +446,21 @@ static void gather_edges_to_split(const Span<int> faces,
         max_length_iter = ce_length;
         r_edges_to_split.append(edge_offset + side_edges_offset + 1);
         // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
+      }
+      if (!bc_added) {
+        bc_added = true;
+        const float bc_length = math::distance_squared(real_verts_by_face_type[0][1],
+                                                       real_verts_by_face_type[0][2]);
+        if (max_length_iter == bc_length) {
+          r_edges_to_split.append(1);
+          // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
+        }
+        else if (max_length_iter < bc_length) {
+          r_edges_to_split.clear();
+          max_length_iter = bc_length;
+          r_edges_to_split.append(1);
+          // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
+        }
       }
     }
     offset += bc_faces.size();
@@ -451,6 +493,22 @@ static void gather_edges_to_split(const Span<int> faces,
         r_edges_to_split.append(edge_offset + side_edges_offset + 1);
         // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
       }
+
+      if (!ca_added) {
+        ca_added = true;
+        const float ca_length = math::distance_squared(real_verts_by_face_type[0][2],
+                                                       real_verts_by_face_type[0][0]);
+        if (max_length_iter == ca_length) {
+          r_edges_to_split.append(2);
+          // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
+        }
+        else if (max_length_iter < ca_length) {
+          r_edges_to_split.clear();
+          max_length_iter = ca_length;
+          r_edges_to_split.append(2);
+          // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
+        }
+      }
     }
   }
 
@@ -479,7 +537,7 @@ static void face_subdivide(const std::array<int, 5> &vert_offsets,
   Vector<int3> tris = {face_verts};
 
   while (!offsets_stack.is_empty()) {
-    // std::cout << "Stack call." << std::endl;
+    std::cout << "Stack call." << std::endl;
     BLI_assert(offsets_stack.size() == verts_stack.size());
     BLI_assert(offsets_stack.size() == real_verts_stack.size());
     BLI_assert(offsets_stack.size() == tris.size());
@@ -489,10 +547,10 @@ static void face_subdivide(const std::array<int, 5> &vert_offsets,
     Vector<float3> real_verts = real_verts_stack.pop_last();
     const int3 face_verts = tris.pop_last();
 
-    // std::cout << " -" << offset_data << std::endl;
-    // std::cout << " -" << verts.as_span() << std::endl;
-    // std::cout << " -" << real_verts.as_span() << std::endl;
-    // std::cout << " -" << face_verts << std::endl;
+    std::cout << " -" << offset_data << std::endl;
+    std::cout << " -" << verts.as_span() << std::endl;
+    std::cout << " -" << real_verts.as_span() << std::endl;
+    std::cout << " -" << face_verts << std::endl;
 
     BLI_assert(offset_data[1] == 3);
 
@@ -502,12 +560,14 @@ static void face_subdivide(const std::array<int, 5> &vert_offsets,
 
     Vector<int> faces_to_split;
     gather_faces_to_split(verts_by_face_type, centre, radius, faces_to_split);
+    std::cout << "  - " << faces_to_split.as_span() << ";\n";
     if (faces_to_split.is_empty()) {
       continue;
     }
 
     Vector<int> edges_to_split;
     gather_edges_to_split(faces_to_split, real_verts_by_face_type, max_length, edges_to_split);
+    std::cout << "  - " << edges_to_split.as_span() << ";\n";
     if (edges_to_split.is_empty()) {
       continue;
     }
@@ -524,11 +584,15 @@ static void face_subdivide(const std::array<int, 5> &vert_offsets,
 
     const bool split_this_tris = ELEM(edge_i, 0, 1, 2);
     if (!split_this_tris) {
-      /*
-      const int face_side = edge_offset[1].contains(edge_i) ? 0 : (edge_offset[2].contains(edge_i)
-      ? 1 : 2); BLI_assert(edge_offset[face_side + 1].contains(edge_i)); const int split_face_i =
-      (edge_offset[face_side + 1].start() - edge_i) / 2; const int split_face_side_i =
-      (edge_offset[face_side + 1].start() - edge_i) % 2; BLI_assert(split_face_i > 0);
+      const int side_index = (edge_i - 3) / 2 + 3;
+
+      const int face_side = vert_offset[1].contains(side_index) ?
+                                0 :
+                                (vert_offset[2].contains(side_index) ? 1 : 2);
+      BLI_assert(vert_offset[face_side + 1].contains(side_index));
+      const int split_face_i = vert_offset[face_side + 1].start() - side_index;
+      const int split_face_side_i = (edge_i - 3) % 2;
+      BLI_assert(split_face_i >= 0);
       BLI_assert(ELEM(split_face_side_i, 0, 1));
 
       const int2 split_edge = edges[face_side];
@@ -536,17 +600,24 @@ static void face_subdivide(const std::array<int, 5> &vert_offsets,
       const int split_target_vert_i = split_face_i;
 
       const float2 mid = math::midpoint(verts_by_face_type[0][split_a_vert_i],
-      verts_by_face_type[face_side + 1][split_target_vert_i]); const float3 real_mid =
-      math::midpoint(real_verts_by_face_type[0][split_a_vert_i], real_verts_by_face_type[face_side
-      + 1][split_target_vert_i]);
+                                        verts_by_face_type[face_side + 1][split_target_vert_i]);
+      const float3 real_mid = math::midpoint(
+          real_verts_by_face_type[0][split_a_vert_i],
+          real_verts_by_face_type[face_side + 1][split_target_vert_i]);
 
-      verts[vert_offset[face_side + 1][split_target_vert_i]] = mid;
-      real_verts[vert_offset[face_side + 1][split_target_vert_i]] = real_mid;
+      const int3 next_face_verts = face_verts;
+      Vector<float2> next_verts = verts;
+      Vector<float3> next_real_verts = real_verts;
+      std::array<int, 5> next_offset_data;
+      MutableSpan(next_offset_data).copy_from(offset_data);
 
-      offsets_stack.append(offset_data);
-      verts_stack.append(std::move(verts));
-      real_verts_stack.append(std::move(real_verts));
-      tris.append(face_verts);*/
+      next_verts[vert_offset[face_side + 1][split_face_i]] = mid;
+      next_real_verts[vert_offset[face_side + 1][split_face_i]] = real_mid;
+
+      offsets_stack.append(next_offset_data);
+      verts_stack.append(next_verts);
+      real_verts_stack.append(next_real_verts);
+      tris.append(next_face_verts);
       continue;
     }
 
