@@ -87,6 +87,7 @@ struct FileData {
   /** Used to retrieve asset data from (bhead+1). NOTE: This may not be available in old files,
    * will be -1 then! */
   int id_asset_data_offset;
+  int id_weak_reference_offset;
   /** For do_versions patching. */
   int globalf, fileflags;
 

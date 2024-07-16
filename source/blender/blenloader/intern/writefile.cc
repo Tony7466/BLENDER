@@ -96,6 +96,7 @@
 #include "BLI_linklist.h"
 #include "BLI_math_base.h"
 #include "BLI_mempool.h"
+#include "BLI_rand.hh"
 #include "BLI_threads.h"
 
 #include "MEM_guardedalloc.h" /* MEM_freeN */
@@ -1376,6 +1377,10 @@ static bool write_file_handle(Main *mainvar,
         }
 
         mywrite_id_begin(wd, id);
+
+        /* TODO: Investigate whether this can be put in a better place. */
+        blender::RandomNumberGenerator rng = blender::RandomNumberGenerator::from_random_seed();
+        rng.get_bytes({id->shallow_hash.data, sizeof(id->shallow_hash.data)});
 
         id_buffer_init_from_id(id_buffer, id, wd->use_memfile);
 

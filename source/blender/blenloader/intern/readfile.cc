@@ -936,6 +936,15 @@ AssetMetaData *blo_bhead_id_asset_data_address(const FileData *fd, const BHead *
              nullptr;
 }
 
+static LibraryWeakReference *blo_bhead_id_weak_reference(const FileData *fd, const BHead *bhead)
+{
+  BLI_assert(blo_bhead_is_id_valid_type(bhead));
+  return (fd->id_weak_reference_offset >= 0) ?
+             *(LibraryWeakReference **)POINTER_OFFSET(
+                 bhead, sizeof(*bhead) + fd->id_weak_reference_offset) :
+             nullptr;
+}
+
 static void decode_blender_header(FileData *fd)
 {
   char header[SIZEOFBLENDERHEADER], num[4];
@@ -1020,6 +1029,8 @@ static bool read_file_dna(FileData *fd, const char **r_error_message)
         BLI_assert(fd->id_name_offset != -1);
         fd->id_asset_data_offset = DNA_struct_member_offset_by_name_with_alias(
             fd->filesdna, "ID", "AssetMetaData", "*asset_data");
+        fd->id_weak_reference_offset = DNA_struct_member_offset_by_name_with_alias(
+            fd->filesdna, "ID", "LibraryWeakReference", "*library_weak_reference");
 
         return true;
       }
@@ -3855,6 +3866,23 @@ static BHead *find_bhead_from_idname(FileData *fd, const char *idname)
 
 static ID *library_id_is_yet_read(FileData *fd, Main *mainvar, BHead *bhead)
 {
+  const LibraryWeakReference *weak_reference = blo_bhead_id_weak_reference(fd, bhead);
+  if (weak_reference && (weak_reference->flag & LIBRARY_WEAK_REFERENCE_FLAG_IS_READ_ONLY)) {
+    ID *id;
+    FOREACH_MAIN_ID_BEGIN (mainvar, id) {
+      if (id->library_weak_reference &&
+          (id->library_weak_reference->flag & LIBRARY_WEAK_REFERENCE_FLAG_IS_READ_ONLY))
+      {
+        if (memcmp(&weak_reference->deep_hash,
+                   &id->library_weak_reference->deep_hash,
+                   sizeof(IDHash)) == 0)
+        {
+          return id;
+        }
+      }
+    }
+    FOREACH_MAIN_ID_END;
+  }
   if (mainvar->id_map == nullptr) {
     mainvar->id_map = BKE_main_idmap_create(mainvar, false, nullptr, MAIN_IDMAP_TYPE_NAME);
   }

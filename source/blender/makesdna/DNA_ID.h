@@ -411,6 +411,10 @@ typedef struct ID_Runtime {
   void *_pad;
 } ID_Runtime;
 
+typedef struct IDHash {
+  char data[16];
+} IDHash;
+
 typedef struct ID {
   /* There's a nasty circular dependency here.... 'void *' to the rescue! I
    * really wonder why this is needed. */
@@ -490,6 +494,8 @@ typedef struct ID {
    */
   struct LibraryWeakReference *library_weak_reference;
 
+  IDHash shallow_hash;
+
   struct ID_Runtime runtime;
 } ID;
 
@@ -556,10 +562,6 @@ enum eLibrary_Tag {
    */
   LIBRARY_IS_ASSET_EDIT_FILE = 1 << 3,
 };
-
-typedef struct IDHash {
-  char data[16];
-} IDHash;
 
 /**
  * A weak library/ID reference for local data that has been appended, to allow re-using that local
