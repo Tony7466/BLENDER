@@ -105,6 +105,9 @@ typedef struct GreasePencilDrawing {
    * The stroke data for this drawing.
    */
   CurvesGeometry geometry;
+  /**
+   * Active attribute in the UI.
+   */
   int attributes_active_index;
   char _pad[4];
   /**

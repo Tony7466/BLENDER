@@ -182,10 +182,14 @@ const EnumPropertyItem rna_enum_attribute_curves_domain_items[] = {
 
 #  include "WM_api.hh"
 
+/* Attribute */
+
 static AttributeOwner owner_from_attribute_pointer_rna(PointerRNA *ptr)
 {
-  ID *owner_id = static_cast<ID *>(ptr->owner_id);
+  ID *owner_id = ptr->owner_id;
   const CustomDataLayer *layer = static_cast<const CustomDataLayer *>(ptr->data);
+  /* TODO: Because we don't know the path to the `ptr`, we need to look though all possible
+   * candidates and search for the `layer` currently. This should be just a simple lookup. */
   if (GS(owner_id->name) == ID_GP) {
     GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(owner_id);
     /* First check the layer attributes. */
@@ -214,33 +218,17 @@ static AttributeOwner owner_from_attribute_pointer_rna(PointerRNA *ptr)
       }
     }
   }
-  return AttributeOwner::from_id(ptr->owner_id);
+  return AttributeOwner::from_id(owner_id);
 }
 
 static AttributeOwner owner_from_pointer_rna(PointerRNA *ptr)
 {
+  /* For non-ID attribute owners, check the `ptr->type` to derive the `AttributeOwnerType`
+   * and construct an `AttributeOwner` from that type and `ptr->data`. */
   if (ptr->type == &RNA_GreasePencilDrawing) {
     return AttributeOwner(AttributeOwnerType::GreasePencilDrawing, ptr->data);
   }
   return AttributeOwner::from_id(ptr->owner_id);
-}
-
-/* Attribute */
-
-static AttributeOwner owner_from_attribute_pointer_rna(PointerRNA *ptr)
-{
-  ID *id = ptr->owner_id;
-  /* TODO: For non-ID attribute owners, iterate through the ID and find the owner that owns the
-   * `CustomDataLayer` that points to `ptr->data`. */
-  return AttributeOwner::from_id(id);
-}
-
-static AttributeOwner owner_from_pointer_rna(PointerRNA *ptr)
-{
-  ID *id = ptr->owner_id;
-  /* TODO: For non-ID attribute owners, check the `ptr->type` to derive the `AttributeOwnerType`
-   * and construct an `AttributeOwner` from that type and `ptr->data`. */
-  return AttributeOwner::from_id(id);
 }
 
 static std::optional<std::string> rna_Attribute_path(const PointerRNA *ptr)
@@ -500,7 +488,7 @@ static void rna_StringAttributeValue_s_set(PointerRNA *ptr, const char *value)
 
 /* Attribute Group */
 
-static PointerRNA rna_AttributeGroup_new(
+static PointerRNA rna_AttributeGroupID_new(
     ID *id, ReportList *reports, const char *name, const int type, const int domain)
 {
   AttributeOwner owner = AttributeOwner::from_id(id);
@@ -528,7 +516,7 @@ static PointerRNA rna_AttributeGroup_new(
   return ptr;
 }
 
-static void rna_AttributeGroup_remove(ID *id, ReportList *reports, PointerRNA *attribute_ptr)
+static void rna_AttributeGroupID_remove(ID *id, ReportList *reports, PointerRNA *attribute_ptr)
 {
   AttributeOwner owner = AttributeOwner::from_id(id);
   const CustomDataLayer *layer = (const CustomDataLayer *)attribute_ptr->data;
@@ -648,40 +636,40 @@ int rna_AttributeGroup_length(PointerRNA *ptr)
   return BKE_attributes_length(owner, ATTR_DOMAIN_MASK_ALL, CD_MASK_PROP_ALL);
 }
 
-static int rna_AttributeGroup_active_index_get(PointerRNA *ptr)
+static int rna_AttributeGroupID_active_index_get(PointerRNA *ptr)
 {
-  AttributeOwner owner = owner_from_pointer_rna(ptr);
+  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
   return *BKE_attributes_active_index_p(owner);
 }
 
-static PointerRNA rna_AttributeGroup_active_get(PointerRNA *ptr)
+static PointerRNA rna_AttributeGroupID_active_get(PointerRNA *ptr)
 {
-  AttributeOwner owner = owner_from_pointer_rna(ptr);
+  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
   CustomDataLayer *layer = BKE_attributes_active_get(owner);
 
   PointerRNA attribute_ptr = RNA_pointer_create(ptr->owner_id, &RNA_Attribute, layer);
   return attribute_ptr;
 }
 
-static void rna_AttributeGroup_active_set(PointerRNA *ptr,
-                                          PointerRNA attribute_ptr,
-                                          ReportList * /*reports*/)
+static void rna_AttributeGroupID_active_set(PointerRNA *ptr,
+                                            PointerRNA attribute_ptr,
+                                            ReportList * /*reports*/)
 {
-  AttributeOwner owner = owner_from_pointer_rna(ptr);
+  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
   CustomDataLayer *layer = static_cast<CustomDataLayer *>(attribute_ptr.data);
   BKE_attributes_active_set(owner, layer->name);
 }
 
-static void rna_AttributeGroup_active_index_set(PointerRNA *ptr, int value)
+static void rna_AttributeGroupID_active_index_set(PointerRNA *ptr, int value)
 {
-  AttributeOwner owner = owner_from_pointer_rna(ptr);
+  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
   *BKE_attributes_active_index_p(owner) = value;
 }
 
-static void rna_AttributeGroup_active_index_range(
+static void rna_AttributeGroupID_active_index_range(
     PointerRNA *ptr, int *min, int *max, int *softmin, int *softmax)
 {
-  AttributeOwner owner = owner_from_pointer_rna(ptr);
+  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
   *min = 0;
   *max = BKE_attributes_length(owner, ATTR_DOMAIN_MASK_ALL, CD_MASK_PROP_ALL);
 
@@ -689,12 +677,12 @@ static void rna_AttributeGroup_active_index_range(
   *softmax = *max;
 }
 
-static void rna_AttributeGroup_update_active(Main *bmain, Scene *scene, PointerRNA *ptr)
+static void rna_AttributeGroupID_update_active(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   rna_Attribute_update_data(bmain, scene, ptr);
 }
 
-static PointerRNA rna_AttributeGroup_active_color_get(PointerRNA *ptr)
+static PointerRNA rna_AttributeGroupMesh_active_color_get(PointerRNA *ptr)
 {
   AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
   CustomDataLayer *layer = BKE_attribute_search_for_write(
@@ -707,16 +695,16 @@ static PointerRNA rna_AttributeGroup_active_color_get(PointerRNA *ptr)
   return attribute_ptr;
 }
 
-static void rna_AttributeGroup_active_color_set(PointerRNA *ptr,
-                                                PointerRNA attribute_ptr,
-                                                ReportList * /*reports*/)
+static void rna_AttributeGroupMesh_active_color_set(PointerRNA *ptr,
+                                                    PointerRNA attribute_ptr,
+                                                    ReportList * /*reports*/)
 {
   ID *id = ptr->owner_id;
   CustomDataLayer *layer = static_cast<CustomDataLayer *>(attribute_ptr.data);
   BKE_id_attributes_active_color_set(id, layer->name);
 }
 
-static int rna_AttributeGroup_active_color_index_get(PointerRNA *ptr)
+static int rna_AttributeGroupMesh_active_color_index_get(PointerRNA *ptr)
 {
   AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
   const CustomDataLayer *layer = BKE_attribute_search(
@@ -728,7 +716,7 @@ static int rna_AttributeGroup_active_color_index_get(PointerRNA *ptr)
   return BKE_attribute_to_index(owner, layer, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
 }
 
-static void rna_AttributeGroup_active_color_index_set(PointerRNA *ptr, int value)
+static void rna_AttributeGroupMesh_active_color_index_set(PointerRNA *ptr, int value)
 {
   AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
   CustomDataLayer *layer = BKE_attribute_from_index(
@@ -742,7 +730,7 @@ static void rna_AttributeGroup_active_color_index_set(PointerRNA *ptr, int value
   BKE_id_attributes_active_color_set(ptr->owner_id, layer->name);
 }
 
-static void rna_AttributeGroup_active_color_index_range(
+static void rna_AttributeGroupMesh_active_color_index_range(
     PointerRNA *ptr, int *min, int *max, int *softmin, int *softmax)
 {
   AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
@@ -753,9 +741,9 @@ static void rna_AttributeGroup_active_color_index_range(
   *softmax = *max;
 }
 
-static void rna_AttributeGroup_update_active_color(Main * /*bmain*/,
-                                                   Scene * /*scene*/,
-                                                   PointerRNA *ptr)
+static void rna_AttributeGroupID_update_active_color(Main * /*bmain*/,
+                                                     Scene * /*scene*/,
+                                                     PointerRNA *ptr)
 {
   ID *id = ptr->owner_id;
 
@@ -766,7 +754,7 @@ static void rna_AttributeGroup_update_active_color(Main * /*bmain*/,
   }
 }
 
-static int rna_AttributeGroup_render_color_index_get(PointerRNA *ptr)
+static int rna_AttributeGroupMesh_render_color_index_get(PointerRNA *ptr)
 {
   AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
   const CustomDataLayer *layer = BKE_id_attributes_color_find(
@@ -775,7 +763,7 @@ static int rna_AttributeGroup_render_color_index_get(PointerRNA *ptr)
   return BKE_attribute_to_index(owner, layer, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
 }
 
-static void rna_AttributeGroup_render_color_index_set(PointerRNA *ptr, int value)
+static void rna_AttributeGroupMesh_render_color_index_set(PointerRNA *ptr, int value)
 {
   AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
   CustomDataLayer *layer = BKE_attribute_from_index(
@@ -789,7 +777,7 @@ static void rna_AttributeGroup_render_color_index_set(PointerRNA *ptr, int value
   BKE_id_attributes_default_color_set(ptr->owner_id, layer->name);
 }
 
-static void rna_AttributeGroup_render_color_index_range(
+static void rna_AttributeGroupMesh_render_color_index_range(
     PointerRNA *ptr, int *min, int *max, int *softmin, int *softmax)
 {
   AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
@@ -800,7 +788,7 @@ static void rna_AttributeGroup_render_color_index_range(
   *softmax = *max;
 }
 
-static void rna_AttributeGroup_default_color_name_get(PointerRNA *ptr, char *value)
+static void rna_AttributeGroupMesh_default_color_name_get(PointerRNA *ptr, char *value)
 {
   const ID *id = ptr->owner_id;
   const char *name = BKE_id_attributes_default_color_name(id);
@@ -811,14 +799,14 @@ static void rna_AttributeGroup_default_color_name_get(PointerRNA *ptr, char *val
   strcpy(value, name);
 }
 
-static int rna_AttributeGroup_default_color_name_length(PointerRNA *ptr)
+static int rna_AttributeGroupMesh_default_color_name_length(PointerRNA *ptr)
 {
   const ID *id = ptr->owner_id;
   const char *name = BKE_id_attributes_default_color_name(id);
   return name ? strlen(name) : 0;
 }
 
-static void rna_AttributeGroup_default_color_name_set(PointerRNA *ptr, const char *value)
+static void rna_AttributeGroupMesh_default_color_name_set(PointerRNA *ptr, const char *value)
 {
   ID *id = ptr->owner_id;
   if (GS(id->name) == ID_ME) {
@@ -830,7 +818,7 @@ static void rna_AttributeGroup_default_color_name_set(PointerRNA *ptr, const cha
   }
 }
 
-static void rna_AttributeGroup_active_color_name_get(PointerRNA *ptr, char *value)
+static void rna_AttributeGroupMesh_active_color_name_get(PointerRNA *ptr, char *value)
 {
   const ID *id = ptr->owner_id;
   const char *name = BKE_id_attributes_active_color_name(id);
@@ -841,14 +829,14 @@ static void rna_AttributeGroup_active_color_name_get(PointerRNA *ptr, char *valu
   strcpy(value, name);
 }
 
-static int rna_AttributeGroup_active_color_name_length(PointerRNA *ptr)
+static int rna_AttributeGroupMesh_active_color_name_length(PointerRNA *ptr)
 {
   const ID *id = ptr->owner_id;
   const char *name = BKE_id_attributes_active_color_name(id);
   return name ? strlen(name) : 0;
 }
 
-static void rna_AttributeGroup_active_color_name_set(PointerRNA *ptr, const char *value)
+static void rna_AttributeGroupMesh_active_color_name_set(PointerRNA *ptr, const char *value)
 {
   ID *id = ptr->owner_id;
   if (GS(id->name) == ID_ME) {
@@ -858,6 +846,88 @@ static void rna_AttributeGroup_active_color_name_set(PointerRNA *ptr, const char
       mesh->active_color_attribute = BLI_strdup(value);
     }
   }
+}
+
+static PointerRNA rna_AttributeGroupGreasePencilDrawing_new(ID *grease_pencil_id,
+                                                            GreasePencilDrawing *drawing,
+                                                            ReportList *reports,
+                                                            const char *name,
+                                                            const int type,
+                                                            const int domain)
+{
+  AttributeOwner owner = AttributeOwner(AttributeOwnerType::GreasePencilDrawing, drawing);
+  CustomDataLayer *layer = BKE_attribute_new(
+      owner, name, eCustomDataType(type), AttrDomain(domain), reports);
+
+  if (!layer) {
+    return PointerRNA_NULL;
+  }
+
+  DEG_id_tag_update(grease_pencil_id, ID_RECALC_GEOMETRY);
+  WM_main_add_notifier(NC_GEOM | ND_DATA, grease_pencil_id);
+
+  PointerRNA ptr = RNA_pointer_create(grease_pencil_id, &RNA_Attribute, layer);
+  return ptr;
+}
+
+static void rna_AttributeGroupGreasePencilDrawing_remove(ID *grease_pencil_id,
+                                                         GreasePencilDrawing *drawing,
+                                                         ReportList *reports,
+                                                         PointerRNA *attribute_ptr)
+{
+  AttributeOwner owner = AttributeOwner(AttributeOwnerType::GreasePencilDrawing, drawing);
+  const CustomDataLayer *layer = (const CustomDataLayer *)attribute_ptr->data;
+  BKE_attribute_remove(owner, layer->name, reports);
+  RNA_POINTER_INVALIDATE(attribute_ptr);
+
+  DEG_id_tag_update(grease_pencil_id, ID_RECALC_GEOMETRY);
+  WM_main_add_notifier(NC_GEOM | ND_DATA, grease_pencil_id);
+}
+
+static PointerRNA rna_AttributeGroupGreasePencilDrawing_active_get(PointerRNA *ptr)
+{
+  GreasePencilDrawing *drawing = static_cast<GreasePencilDrawing *>(ptr->data);
+  AttributeOwner owner = AttributeOwner(AttributeOwnerType::GreasePencilDrawing, drawing);
+  CustomDataLayer *layer = BKE_attributes_active_get(owner);
+
+  PointerRNA attribute_ptr = RNA_pointer_create(ptr->owner_id, &RNA_Attribute, layer);
+  return attribute_ptr;
+}
+
+static void rna_AttributeGroupGreasePencilDrawing_active_set(PointerRNA *ptr,
+                                                             PointerRNA attribute_ptr,
+                                                             ReportList * /*reports*/)
+{
+  GreasePencilDrawing *drawing = static_cast<GreasePencilDrawing *>(ptr->data);
+  AttributeOwner owner = AttributeOwner(AttributeOwnerType::GreasePencilDrawing, drawing);
+  CustomDataLayer *layer = static_cast<CustomDataLayer *>(attribute_ptr.data);
+  BKE_attributes_active_set(owner, layer->name);
+}
+
+static int rna_AttributeGroupGreasePencilDrawing_active_index_get(PointerRNA *ptr)
+{
+  GreasePencilDrawing *drawing = static_cast<GreasePencilDrawing *>(ptr->data);
+  AttributeOwner owner = AttributeOwner(AttributeOwnerType::GreasePencilDrawing, drawing);
+  return *BKE_attributes_active_index_p(owner);
+}
+
+static void rna_AttributeGroupGreasePencilDrawing_active_index_set(PointerRNA *ptr, int value)
+{
+  GreasePencilDrawing *drawing = static_cast<GreasePencilDrawing *>(ptr->data);
+  AttributeOwner owner = AttributeOwner(AttributeOwnerType::GreasePencilDrawing, drawing);
+  *BKE_attributes_active_index_p(owner) = value;
+}
+
+static void rna_AttributeGroupGreasePencilDrawing_active_index_range(
+    PointerRNA *ptr, int *min, int *max, int *softmin, int *softmax)
+{
+  GreasePencilDrawing *drawing = static_cast<GreasePencilDrawing *>(ptr->data);
+  AttributeOwner owner = AttributeOwner(AttributeOwnerType::GreasePencilDrawing, drawing);
+  *min = 0;
+  *max = BKE_attributes_length(owner, ATTR_DOMAIN_MASK_ALL, CD_MASK_PROP_ALL);
+
+  *softmin = *min;
+  *softmax = *max;
 }
 
 #else
@@ -1359,7 +1429,7 @@ static void rna_def_attribute_group_id_common(StructRNA *srna)
   PropertyRNA *parm;
 
   /* API */
-  func = RNA_def_function(srna, "new", "rna_AttributeGroup_new");
+  func = RNA_def_function(srna, "new", "rna_AttributeGroupID_new");
   RNA_def_function_ui_description(func, "Add attribute to geometry");
   RNA_def_function_flag(func, FUNC_USE_REPORTS);
   parm = RNA_def_string(func, "name", "Attribute", 0, "Name", "Name of geometry attribute");
@@ -1381,7 +1451,7 @@ static void rna_def_attribute_group_id_common(StructRNA *srna)
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_RNAPTR);
   RNA_def_function_return(func, parm);
 
-  func = RNA_def_function(srna, "remove", "rna_AttributeGroup_remove");
+  func = RNA_def_function(srna, "remove", "rna_AttributeGroupID_remove");
   RNA_def_function_ui_description(func, "Remove attribute from geometry");
   RNA_def_function_flag(func, FUNC_USE_REPORTS);
   parm = RNA_def_pointer(func, "attribute", "Attribute", "", "Geometry Attribute");
@@ -1392,19 +1462,22 @@ static void rna_def_attribute_group_id_common(StructRNA *srna)
   prop = RNA_def_property(srna, "active", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "Attribute");
   RNA_def_property_ui_text(prop, "Active Attribute", "Active attribute");
-  RNA_def_property_pointer_funcs(
-      prop, "rna_AttributeGroup_active_get", "rna_AttributeGroup_active_set", nullptr, nullptr);
+  RNA_def_property_pointer_funcs(prop,
+                                 "rna_AttributeGroupID_active_get",
+                                 "rna_AttributeGroupID_active_set",
+                                 nullptr,
+                                 nullptr);
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_NEVER_UNLINK);
-  RNA_def_property_update(prop, 0, "rna_AttributeGroup_update_active");
+  RNA_def_property_update(prop, 0, "rna_AttributeGroupID_update_active");
 
   prop = RNA_def_property(srna, "active_index", PROP_INT, PROP_NONE);
   RNA_def_property_ui_text(prop, "Active Attribute Index", "Active attribute index");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_int_funcs(prop,
-                             "rna_AttributeGroup_active_index_get",
-                             "rna_AttributeGroup_active_index_set",
-                             "rna_AttributeGroup_active_index_range");
-  RNA_def_property_update(prop, 0, "rna_AttributeGroup_update_active");
+                             "rna_AttributeGroupID_active_index_get",
+                             "rna_AttributeGroupID_active_index_set",
+                             "rna_AttributeGroupID_active_index_range");
+  RNA_def_property_update(prop, 0, "rna_AttributeGroupID_update_active");
 }
 
 static void rna_def_attribute_group_mesh(BlenderRNA *brna)
@@ -1424,21 +1497,21 @@ static void rna_def_attribute_group_mesh(BlenderRNA *brna)
   RNA_def_property_struct_type(prop, "Attribute");
   RNA_def_property_ui_text(prop, "Active Color", "Active color attribute for display and editing");
   RNA_def_property_pointer_funcs(prop,
-                                 "rna_AttributeGroup_active_color_get",
-                                 "rna_AttributeGroup_active_color_set",
+                                 "rna_AttributeGroupMesh_active_color_get",
+                                 "rna_AttributeGroupMesh_active_color_set",
                                  nullptr,
                                  nullptr);
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_NEVER_UNLINK);
-  RNA_def_property_update(prop, 0, "rna_AttributeGroup_update_active_color");
+  RNA_def_property_update(prop, 0, "rna_AttributeGroupID_update_active_color");
 
   prop = RNA_def_property(srna, "active_color_index", PROP_INT, PROP_NONE);
   RNA_def_property_ui_text(prop, "Active Color Index", "Active color attribute index");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_int_funcs(prop,
-                             "rna_AttributeGroup_active_color_index_get",
-                             "rna_AttributeGroup_active_color_index_set",
-                             "rna_AttributeGroup_active_color_index_range");
-  RNA_def_property_update(prop, 0, "rna_AttributeGroup_update_active_color");
+                             "rna_AttributeGroupMesh_active_color_index_get",
+                             "rna_AttributeGroupMesh_active_color_index_set",
+                             "rna_AttributeGroupMesh_active_color_index_range");
+  RNA_def_property_update(prop, 0, "rna_AttributeGroupID_update_active_color");
 
   prop = RNA_def_property(srna, "render_color_index", PROP_INT, PROP_NONE);
   RNA_def_property_ui_text(prop,
@@ -1446,17 +1519,17 @@ static void rna_def_attribute_group_mesh(BlenderRNA *brna)
                            "The index of the color attribute used as a fallback for rendering");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_int_funcs(prop,
-                             "rna_AttributeGroup_render_color_index_get",
-                             "rna_AttributeGroup_render_color_index_set",
-                             "rna_AttributeGroup_render_color_index_range");
-  RNA_def_property_update(prop, 0, "rna_AttributeGroup_update_active_color");
+                             "rna_AttributeGroupMesh_render_color_index_get",
+                             "rna_AttributeGroupMesh_render_color_index_set",
+                             "rna_AttributeGroupMesh_render_color_index_range");
+  RNA_def_property_update(prop, 0, "rna_AttributeGroupID_update_active_color");
 
   prop = RNA_def_property(srna, "default_color_name", PROP_STRING, PROP_NONE);
   RNA_def_property_string_maxlength(prop, MAX_CUSTOMDATA_LAYER_NAME_NO_PREFIX);
   RNA_def_property_string_funcs(prop,
-                                "rna_AttributeGroup_default_color_name_get",
-                                "rna_AttributeGroup_default_color_name_length",
-                                "rna_AttributeGroup_default_color_name_set");
+                                "rna_AttributeGroupMesh_default_color_name_get",
+                                "rna_AttributeGroupMesh_default_color_name_length",
+                                "rna_AttributeGroupMesh_default_color_name_set");
   RNA_def_property_ui_text(
       prop,
       "Default Color Attribute",
@@ -1465,9 +1538,9 @@ static void rna_def_attribute_group_mesh(BlenderRNA *brna)
   prop = RNA_def_property(srna, "active_color_name", PROP_STRING, PROP_NONE);
   RNA_def_property_string_maxlength(prop, MAX_CUSTOMDATA_LAYER_NAME_NO_PREFIX);
   RNA_def_property_string_funcs(prop,
-                                "rna_AttributeGroup_active_color_name_get",
-                                "rna_AttributeGroup_active_color_name_length",
-                                "rna_AttributeGroup_active_color_name_set");
+                                "rna_AttributeGroupMesh_active_color_name_get",
+                                "rna_AttributeGroupMesh_active_color_name_length",
+                                "rna_AttributeGroupMesh_active_color_name_set");
   RNA_def_property_ui_text(prop,
                            "Active Color Attribute",
                            "The name of the active color attribute for display and editing");
@@ -1506,6 +1579,69 @@ static void rna_def_attribute_group_grease_pencil(BlenderRNA *brna)
   rna_def_attribute_group_id_common(srna);
 }
 
+static void rna_def_attribute_group_grease_pencil_drawing(BlenderRNA *brna)
+{
+  PropertyRNA *prop;
+  FunctionRNA *func;
+  PropertyRNA *parm;
+  StructRNA *srna;
+
+  srna = RNA_def_struct(brna, "AttributeGroupGreasePencilDrawing", nullptr);
+  RNA_def_struct_ui_text(srna, "Attribute Group", "Group of geometry attributes");
+  RNA_def_struct_sdna(srna, "GreasePencilDrawing");
+
+  /* API */
+  func = RNA_def_function(srna, "new", "rna_AttributeGroupGreasePencilDrawing_new");
+  RNA_def_function_ui_description(func, "Add attribute to geometry");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_REPORTS);
+  parm = RNA_def_string(func, "name", "Attribute", 0, "Name", "Name of geometry attribute");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+
+  parm = RNA_def_enum(
+      func, "type", rna_enum_attribute_type_items, CD_PROP_FLOAT, "Type", "Attribute type");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+
+  parm = RNA_def_enum(func,
+                      "domain",
+                      rna_enum_attribute_domain_items,
+                      int(AttrDomain::Point),
+                      "Domain",
+                      "Type of element that attribute is stored on");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+
+  parm = RNA_def_pointer(func, "attribute", "Attribute", "", "New geometry attribute");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_RNAPTR);
+  RNA_def_function_return(func, parm);
+
+  func = RNA_def_function(srna, "remove", "rna_AttributeGroupGreasePencilDrawing_remove");
+  RNA_def_function_ui_description(func, "Remove attribute from geometry");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_REPORTS);
+  parm = RNA_def_pointer(func, "attribute", "Attribute", "", "Geometry Attribute");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
+  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, ParameterFlag(0));
+
+  /* Active */
+  prop = RNA_def_property(srna, "active", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "Attribute");
+  RNA_def_property_ui_text(prop, "Active Attribute", "Active attribute");
+  RNA_def_property_pointer_funcs(prop,
+                                 "rna_AttributeGroupGreasePencilDrawing_active_get",
+                                 "rna_AttributeGroupGreasePencilDrawing_active_set",
+                                 nullptr,
+                                 nullptr);
+  RNA_def_property_flag(prop, PROP_EDITABLE | PROP_NEVER_UNLINK);
+  RNA_def_property_update(prop, 0, "rna_AttributeGroupID_update_active");
+
+  prop = RNA_def_property(srna, "active_index", PROP_INT, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Active Attribute Index", "Active attribute index");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_int_funcs(prop,
+                             "rna_AttributeGroupGreasePencilDrawing_active_index_get",
+                             "rna_AttributeGroupGreasePencilDrawing_active_index_set",
+                             "rna_AttributeGroupGreasePencilDrawing_active_index_range");
+  RNA_def_property_update(prop, 0, "rna_AttributeGroupID_update_active");
+}
+
 void rna_def_attributes_common(StructRNA *srna, const AttributeOwnerType type)
 {
   PropertyRNA *prop;
@@ -1536,6 +1672,9 @@ void rna_def_attributes_common(StructRNA *srna, const AttributeOwnerType type)
     case AttributeOwnerType::GreasePencil:
       RNA_def_property_srna(prop, "AttributeGroupGreasePencil");
       break;
+    case AttributeOwnerType::GreasePencilDrawing:
+      RNA_def_property_srna(prop, "AttributeGroupGreasePencilDrawing");
+      break;
   }
 
   prop = RNA_def_property(srna, "color_attributes", PROP_COLLECTION, PROP_NONE);
@@ -1563,6 +1702,9 @@ void rna_def_attributes_common(StructRNA *srna, const AttributeOwnerType type)
     case AttributeOwnerType::GreasePencil:
       RNA_def_property_srna(prop, "AttributeGroupGreasePencil");
       break;
+    case AttributeOwnerType::GreasePencilDrawing:
+      RNA_def_property_srna(prop, "AttributeGroupGreasePencilDrawing");
+      break;
   }
 }
 
@@ -1573,5 +1715,6 @@ void RNA_def_attribute(BlenderRNA *brna)
   rna_def_attribute_group_point_cloud(brna);
   rna_def_attribute_group_curves(brna);
   rna_def_attribute_group_grease_pencil(brna);
+  rna_def_attribute_group_grease_pencil_drawing(brna);
 }
 #endif

@@ -741,7 +741,7 @@ static void rna_def_grease_pencil_drawing(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 
   /* Attributes. */
-  rna_def_attributes_common(srna);
+  rna_def_attributes_common(srna, AttributeOwnerType::GreasePencilDrawing);
 }
 
 static void rna_def_grease_pencil_frame(BlenderRNA *brna)
