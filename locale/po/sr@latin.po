@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.2.0 Beta (b'a2795852cd29')\n"
+"Project-Id-Version: Blender 4.2.0 Release Candidate (b'988bf2b88f3b')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-06-10 10:16+0000\n"
+"POT-Creation-Date: 2024-07-15 07:57+0000\n"
 "PO-Revision-Date: 2012-09-07 22:32+0100\n"
 "Last-Translator: Nikola Radovanovic <cobisimo@gmail.com>\n"
 "Language-Team: Nikola Radovanovic\n"
@@ -205,6 +205,22 @@ msgstr "Kompletno"
 
 msgid "Auto"
 msgstr "Auto"
+
+
+msgid "Always"
+msgstr "Uvek"
+
+
+msgid "Never"
+msgstr "Nikad"
+
+
+msgid "Center"
+msgstr "Središte"
+
+
+msgid "Bottom"
+msgstr "Odozdo"
 
 
 msgid "Fribidi Library"
@@ -1295,6 +1311,12 @@ msgid "Curve Radius"
 msgstr "Poluprečnik krive"
 
 
+msgctxt "Operator"
+msgid "Add"
+msgstr "Dodaj"
+
+
+msgctxt "Operator"
 msgid "Remove"
 msgstr "Ukloni"
 
@@ -1533,10 +1555,6 @@ msgstr "Levo"
 
 msgid "Right"
 msgstr "Desno"
-
-
-msgid "Center"
-msgstr "Središte"
 
 
 msgid "Child Particle"
@@ -2639,10 +2657,6 @@ msgstr "Ograničenja objekta"
 
 msgid "Rotate around a different point"
 msgstr "Rotiraj oko različitih tačaka"
-
-
-msgid "Always"
-msgstr "Uvek"
 
 
 msgid "Use Relative Offset"
@@ -4474,10 +4488,6 @@ msgid "Adaptive Domain"
 msgstr "Prilagodljivi domen"
 
 
-msgid "Bottom"
-msgstr "Odozdo"
-
-
 msgid "Top"
 msgstr "Odozgo"
 
@@ -4546,20 +4556,8 @@ msgid "Color of smoke"
 msgstr "Boja dima"
 
 
-msgid "Mapping"
-msgstr "Mapiranje"
-
-
 msgid "Texture mapping type"
 msgstr "Vrsta mapiranja teksture"
-
-
-msgid "Generated"
-msgstr "Generisano"
-
-
-msgid "UV"
-msgstr "UV"
 
 
 msgid "Use UV layer for texture coordinates"
@@ -4728,6 +4726,10 @@ msgstr "Ekstrem"
 
 msgid "Jitter"
 msgstr "Nervozno"
+
+
+msgid "Generated"
+msgstr "Generisano"
 
 
 msgid "Freehand curves defining the sketch on this frame"
@@ -6307,24 +6309,12 @@ msgid "Where the image comes from"
 msgstr "Odakle dolazi slika"
 
 
-msgid "Single Image"
-msgstr "Jedna slika"
-
-
-msgid "Movie"
-msgstr "Film"
-
-
 msgid "Movie file"
 msgstr "Datoteka filma"
 
 
 msgid "Generated image"
 msgstr "Generisana slika"
-
-
-msgid "Viewer"
-msgstr "Pogledač"
 
 
 msgid "Compositing node viewer"
@@ -6649,10 +6639,6 @@ msgstr "Veličina renderinga"
 
 msgid "Update"
 msgstr "Osveži"
-
-
-msgid "Never"
-msgstr "Nikad"
 
 
 msgid "Filename of the movie or sequence file"
@@ -8713,6 +8699,10 @@ msgid "Curve used for the curve mapping"
 msgstr "Kriva korišćena za mapiranje krive"
 
 
+msgid "Mapping"
+msgstr "Mapiranje"
+
+
 msgid "Select the mapping type"
 msgstr "Izaberi vrstu mapiranja"
 
@@ -8990,6 +8980,10 @@ msgid "Material slot name"
 msgstr "Naziv slota materijala"
 
 
+msgid "Basic"
+msgstr "Osnovno"
+
+
 msgctxt "MovieClip"
 msgid "Clip"
 msgstr "Isečak"
@@ -9047,6 +9041,10 @@ msgid "Select Linked"
 msgstr "Izaberi povezano"
 
 
+msgid "UV"
+msgstr "UV"
+
+
 msgid "Align"
 msgstr "Poravnaj"
 
@@ -9057,11 +9055,6 @@ msgstr "UV režim izbora"
 
 msgid "Show/Hide Faces"
 msgstr "Prikaži/sakrij stranice"
-
-
-msgctxt "Operator"
-msgid "Add"
-msgstr "Dodaj"
 
 
 msgid "Vertex Group Specials"
@@ -9198,6 +9191,11 @@ msgstr "Preimenuj marker"
 
 msgid "Names"
 msgstr "Imena"
+
+
+msgctxt "Operator"
+msgid "Parent"
+msgstr "Roditelj"
 
 
 msgid "Bone Roll"
@@ -11428,6 +11426,10 @@ msgid "Minimum speed for a pixel to be blurred (used to separate background from
 msgstr "Minimalna brzina piksela da bi bio zamućen (koristi se za razdvajanje prednjegi i zadnjeg plana)"
 
 
+msgid "Viewer"
+msgstr "Pogledač"
+
+
 msgid "Z Combine"
 msgstr "Z spajanje"
 
@@ -12499,6 +12501,10 @@ msgid "Reveal Hidden"
 msgstr "Otkriva sakriveno"
 
 
+msgid "(undocumented operator)"
+msgstr "(nepoznat operator)"
+
+
 msgctxt "Operator"
 msgid "(De)select All"
 msgstr "poništi/izaberi sve"
@@ -13013,10 +13019,6 @@ msgstr "Izaberi sve staze sa istom bojom kao aktivna staza"
 
 msgid "Select markers using lasso selection"
 msgstr "Bira markere lasom"
-
-
-msgid "(undocumented operator)"
-msgstr "(nepoznat operator)"
 
 
 msgctxt "Operator"
@@ -14684,6 +14686,10 @@ msgstr "Izaberi sve ključne kadrove na krivoj"
 msgctxt "Operator"
 msgid "Set Cursor"
 msgstr "Postavi kursor"
+
+
+msgid "Remove"
+msgstr "Ukloni"
 
 
 msgid "Flatten"
@@ -16439,6 +16445,18 @@ msgid "Tree Type"
 msgstr "Vrsta drveta"
 
 
+msgid "Current"
+msgstr "Tekuće"
+
+
+msgid "Exponent"
+msgstr "Eksponent"
+
+
+msgid "Wrap"
+msgstr "Prelom teksta"
+
+
 msgctxt "Operator"
 msgid "Toggle Node Options"
 msgstr "Manje/više informacija"
@@ -17033,6 +17051,11 @@ msgstr "Nasumično uvećavaj"
 
 msgid "Randomize the scale values"
 msgstr "Nasumične vrednosti za uvećavanje"
+
+
+msgctxt "Operator"
+msgid "New"
+msgstr "Novo"
 
 
 msgctxt "Operator"
@@ -17782,6 +17805,10 @@ msgstr "Ispred kadra"
 
 msgid "Before Last Keyframe"
 msgstr "Ispred poslednjeg ključnog kadra"
+
+
+msgid "Property Name"
+msgstr "Naziv osobine"
 
 
 msgctxt "Operator"
@@ -19198,39 +19225,6 @@ msgstr "Uredi izvorni kod aktivnog dugmeta"
 
 
 msgctxt "Operator"
-msgid "Edit Translation"
-msgstr "Uredi prevod"
-
-
-msgid "Label of the control"
-msgstr "Naslov kontrole"
-
-
-msgid "Tip of the control"
-msgstr "Savet kontrole"
-
-
-msgid "Original label of the control"
-msgstr "Originalna oznaka kontrole"
-
-
-msgid "Original tip of the control"
-msgstr "Originalni vrh kontrole"
-
-
-msgid "RNA-defined label of the control, if any"
-msgstr "Naslov kontrole definisan u RNK, ukoliko postoji"
-
-
-msgid "RNA-defined tip of the control, if any"
-msgstr "Savet kontrole definisan u RNK, ukoliko postoji"
-
-
-msgid "Edit i18n in current language for the active button"
-msgstr "Postavlja podrazumevani jezik konzole"
-
-
-msgctxt "Operator"
 msgid "Eyedropper"
 msgstr "Pipeta"
 
@@ -19876,10 +19870,6 @@ msgid "Cycle backwards"
 msgstr "Unazad"
 
 
-msgid "Wrap"
-msgstr "Prelom teksta"
-
-
 msgid "Header Text"
 msgstr "Tekst naslova"
 
@@ -19974,10 +19964,6 @@ msgstr "Kontekst"
 msgctxt "Operator"
 msgid "Edit Property"
 msgstr "Izmeni osobinu"
-
-
-msgid "Property Name"
-msgstr "Naziv osobine"
 
 
 msgid "Property name edit"
@@ -20192,6 +20178,10 @@ msgstr "Platno"
 
 msgid "Dither"
 msgstr "Međuton"
+
+
+msgid "Single Image"
+msgstr "Jedna slika"
 
 
 msgid "Stencil Layer"
@@ -22548,10 +22538,6 @@ msgid "Show red channel in the frame"
 msgstr "Prikaži crveni kanal u kadru"
 
 
-msgid "Show Seconds"
-msgstr "Prikaži sekunde"
-
-
 msgid "Show Stable"
 msgstr "Prikaži stabilizovano"
 
@@ -22809,10 +22795,6 @@ msgid "Show reference frame only"
 msgstr "Prikaži samo referentni kadar"
 
 
-msgid "Current"
-msgstr "Tekuće"
-
-
 msgid "Show current frame only"
 msgstr "Prikaži samo tekući kadar"
 
@@ -23019,10 +23001,6 @@ msgstr "Faktor difuzne boje"
 
 msgid "Amount texture affects diffuse color"
 msgstr "Vrednost za koju tekstura utiče na difuznu boju"
-
-
-msgid "Along stroke"
-msgstr "Duž poteza"
 
 
 msgid "Damp Factor"
@@ -24127,6 +24105,39 @@ msgid "Assign"
 msgstr "Pridruži"
 
 
+msgid "Description:"
+msgstr "Opis:"
+
+
+msgid "Internet:"
+msgstr "Internet:"
+
+
+msgid "Author:"
+msgstr "Autor:"
+
+
+msgid "Version:"
+msgstr "Verzija:"
+
+
+msgid "Warning:"
+msgstr "Upozorenje:"
+
+
+msgid "File:"
+msgstr "Datoteka:"
+
+
+msgctxt "Operator"
+msgid "Apply"
+msgstr "Primeni"
+
+
+msgid "Options:"
+msgstr "Opcije:"
+
+
 msgid "    RNA Path: bpy.types."
 msgstr "    RNK putanja: bpy.types."
 
@@ -24208,11 +24219,6 @@ msgid "Tracking"
 msgstr "Praćenje"
 
 
-msgctxt "Operator"
-msgid "New"
-msgstr "Novo"
-
-
 msgid "3D View"
 msgstr "3D pogled"
 
@@ -24281,11 +24287,6 @@ msgstr "Oblici"
 
 msgid "Axes"
 msgstr "Ose"
-
-
-msgctxt "Operator"
-msgid "Remove"
-msgstr "Ukloni"
 
 
 msgctxt "Operator"
@@ -24389,11 +24390,6 @@ msgstr "Transformacija:"
 
 
 msgctxt "Operator"
-msgid "Parent"
-msgstr "Roditelj"
-
-
-msgctxt "Operator"
 msgid "Clear"
 msgstr "Očisti"
 
@@ -24479,10 +24475,6 @@ msgstr "Boja sloja"
 
 msgid "Heat"
 msgstr "Toplota"
-
-
-msgid "Exponent"
-msgstr "Eksponent"
 
 
 msgid "Lower"
@@ -24595,10 +24587,6 @@ msgstr "Otključaj staze"
 msgctxt "Operator"
 msgid "Autocomplete"
 msgstr "Samodopunjavanje"
-
-
-msgid "Options:"
-msgstr "Opcije:"
 
 
 msgctxt "Operator"
@@ -24977,32 +24965,8 @@ msgid "Missing script files"
 msgstr "Nedostaje datoteka skripte"
 
 
-msgid "Description:"
-msgstr "Opis:"
-
-
 msgid "Location:"
 msgstr "Lokacija:"
-
-
-msgid "File:"
-msgstr "Datoteka:"
-
-
-msgid "Author:"
-msgstr "Autor:"
-
-
-msgid "Version:"
-msgstr "Verzija:"
-
-
-msgid "Warning:"
-msgstr "Upozorenje:"
-
-
-msgid "Internet:"
-msgstr "Internet:"
 
 
 msgctxt "Operator"
@@ -25444,11 +25408,6 @@ msgstr "Brza izmena"
 
 
 msgctxt "Operator"
-msgid "Apply"
-msgstr "Primeni"
-
-
-msgctxt "Operator"
 msgid "Apply Camera Image"
 msgstr "Primeni sliku kamere"
 
@@ -25565,10 +25524,6 @@ msgstr "Ne mogu da otvorim datoteku %s za upis: %s"
 
 msgid "Could not connect vertices"
 msgstr "Ne mogu da spojim temena"
-
-
-msgid "Basic"
-msgstr "Osnovno"
 
 
 msgid "Scene not found"
@@ -25739,6 +25694,14 @@ msgstr "%d stavki"
 
 msgid "Lightness"
 msgstr "Svetlina"
+
+
+msgid "OK"
+msgstr "U redu"
+
+
+msgid "Cancel"
+msgstr "Odustani"
 
 
 msgid "Menu \"%s\" not found"
@@ -26037,10 +26000,6 @@ msgid "Icosphere"
 msgstr "Ikosfera"
 
 
-msgid "Cancel"
-msgstr "Odustani"
-
-
 msgid "Outer"
 msgstr "Spoljašnje"
 
@@ -26329,10 +26288,6 @@ msgstr "Obrni ka dnu"
 
 msgid "No active camera set"
 msgstr "Nije postavljena aktivna kamera"
-
-
-msgid "OK"
-msgstr "U redu"
 
 
 msgid "Compiled without sound support"
@@ -26796,6 +26751,10 @@ msgstr "Loš mod pridruživanja"
 
 msgid "Bad vertex index in list"
 msgstr "Loš indeks temena u listi"
+
+
+msgid "Movie"
+msgstr "Film"
 
 
 msgid "Settings are inside the Physics tab"

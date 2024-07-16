@@ -103,8 +103,9 @@ static SpaceLink *sequencer_create(const ScrArea * /*area*/, const Scene *scene)
   sseq->timeline_overlay.flag = SEQ_TIMELINE_SHOW_STRIP_NAME | SEQ_TIMELINE_SHOW_STRIP_SOURCE |
                                 SEQ_TIMELINE_SHOW_STRIP_DURATION | SEQ_TIMELINE_SHOW_GRID |
                                 SEQ_TIMELINE_SHOW_FCURVES | SEQ_TIMELINE_SHOW_STRIP_COLOR_TAG |
-                                SEQ_TIMELINE_SHOW_STRIP_RETIMING | SEQ_TIMELINE_ALL_WAVEFORMS;
+                                SEQ_TIMELINE_SHOW_STRIP_RETIMING | SEQ_TIMELINE_WAVEFORMS_HALF;
   sseq->cache_overlay.flag = SEQ_CACHE_SHOW | SEQ_CACHE_SHOW_FINAL_OUT;
+  sseq->draw_flag |= SEQ_DRAW_TRANSFORM_PREVIEW;
 
   /* Header. */
   region = MEM_cnew<ARegion>("header for sequencer");
@@ -603,10 +604,10 @@ static void sequencer_main_region_message_subscribe(const wmRegionMessageSubscri
   {
     bool use_preview = (scene->r.flag & SCER_PRV_RANGE);
     const PropertyRNA *props[] = {
-        use_preview ? &rna_Scene_frame_preview_start : &rna_Scene_frame_start,
-        use_preview ? &rna_Scene_frame_preview_end : &rna_Scene_frame_end,
-        &rna_Scene_use_preview_range,
-        &rna_Scene_frame_current,
+        use_preview ? rna_Scene_frame_preview_start : rna_Scene_frame_start,
+        use_preview ? rna_Scene_frame_preview_end : rna_Scene_frame_end,
+        rna_Scene_use_preview_range,
+        rna_Scene_frame_current,
     };
 
     PointerRNA idptr = RNA_id_pointer_create(&scene->id);

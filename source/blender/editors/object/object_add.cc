@@ -1622,6 +1622,7 @@ static int object_grease_pencil_add_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
+  Object *original_active_object = CTX_data_active_object(C);
   /* TODO: For now, only support adding the 'Stroke' type. */
   const int type = RNA_enum_get(op->ptr, "type");
 
@@ -1687,8 +1688,6 @@ static int object_grease_pencil_add_exec(bContext *C, wmOperator *op)
     case GREASE_PENCIL_LINEART_OBJECT:
     case GREASE_PENCIL_LINEART_SCENE:
     case GREASE_PENCIL_LINEART_COLLECTION: {
-      Object *original_active_object = CTX_data_active_object(C);
-
       const int type = RNA_enum_get(op->ptr, "type");
       const bool use_in_front = RNA_boolean_get(op->ptr, "use_in_front");
       const bool use_lights = RNA_boolean_get(op->ptr, "use_lights");
@@ -2964,11 +2963,12 @@ void OBJECT_OT_duplicates_make_real(wmOperatorType *ot)
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  RNA_def_boolean(ot->srna,
-                  "use_base_parent",
-                  false,
-                  "Parent",
-                  "Parent newly created objects to the original instancer");
+  ot->prop = RNA_def_boolean(ot->srna,
+                             "use_base_parent",
+                             false,
+                             "Parent",
+                             "Parent newly created objects to the original instancer");
+  RNA_def_property_translation_context(ot->prop, BLT_I18NCONTEXT_OPERATOR_DEFAULT);
   RNA_def_boolean(
       ot->srna, "use_hierarchy", false, "Keep Hierarchy", "Maintain parent child relationships");
 }
@@ -2994,11 +2994,13 @@ static const EnumPropertyItem convert_target_items[] = {
 #else
      "Mesh from Curve, Surface, Metaball, or Text objects"},
 #endif
+#if 0
     {OB_GPENCIL_LEGACY,
      "GPENCIL",
      ICON_OUTLINER_OB_GREASEPENCIL,
      "Grease Pencil",
      "Grease Pencil from Curve or Mesh objects"},
+#endif
 #ifdef WITH_POINT_CLOUD
     {OB_POINTCLOUD,
      "POINTCLOUD",
@@ -3007,13 +3009,11 @@ static const EnumPropertyItem convert_target_items[] = {
      "Point Cloud from Mesh objects"},
 #endif
     {OB_CURVES, "CURVES", ICON_OUTLINER_OB_CURVES, "Curves", "Curves from evaluated curve data"},
-#ifdef WITH_GREASE_PENCIL_V3
     {OB_GREASE_PENCIL,
      "GREASEPENCIL",
      ICON_OUTLINER_OB_GREASEPENCIL,
-     "Grease Pencil v3",
-     "Grease Pencil v3 from Grease Pencil"},
-#endif
+     "Grease Pencil",
+     "Grease Pencil from Curve or Mesh objects"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -3035,12 +3035,7 @@ static const EnumPropertyItem *convert_target_itemf(bContext *C,
   if (U.experimental.use_new_point_cloud_type) {
     RNA_enum_items_add_value(&item, &totitem, convert_target_items, OB_POINTCLOUD);
   }
-  if (U.experimental.use_grease_pencil_version3) {
-    RNA_enum_items_add_value(&item, &totitem, convert_target_items, OB_GREASE_PENCIL);
-  }
-  else {
-    RNA_enum_items_add_value(&item, &totitem, convert_target_items, OB_GPENCIL_LEGACY);
-  }
+  RNA_enum_items_add_value(&item, &totitem, convert_target_items, OB_GREASE_PENCIL);
 
   RNA_enum_item_end(&item, &totitem);
 
@@ -3332,20 +3327,6 @@ static int object_convert_exec(bContext *C, wmOperator *op)
       }
       ob_gpencil->actcol = actcol;
     }
-    else if (U.experimental.use_grease_pencil_version3 && ob->type == OB_GPENCIL_LEGACY &&
-             target == OB_GREASE_PENCIL)
-    {
-      ob->flag |= OB_DONE;
-
-      if (keep_original) {
-        BLI_assert_unreachable();
-      }
-      else {
-        newob = ob;
-      }
-
-      bke::greasepencil::convert::legacy_gpencil_object(*bmain, *newob);
-    }
     else if (target == OB_CURVES) {
       ob->flag |= OB_DONE;
 
@@ -3474,7 +3455,6 @@ static int object_convert_exec(bContext *C, wmOperator *op)
       }
       else {
         newob = ob;
-        DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_ANIMATION);
       }
 
       /* make new mesh data from the original copy */
@@ -3496,6 +3476,10 @@ static int object_convert_exec(bContext *C, wmOperator *op)
       BKE_mesh_nomain_to_mesh(new_mesh, ob_data_mesh, newob);
 
       BKE_object_free_modifiers(newob, 0); /* after derivedmesh calls! */
+
+      if (!keep_original) {
+        DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_ANIMATION);
+      }
     }
     else if (ob->type == OB_FONT) {
       ob->flag |= OB_DONE;

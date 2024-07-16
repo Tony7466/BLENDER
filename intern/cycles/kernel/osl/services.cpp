@@ -19,10 +19,6 @@
 #include "scene/pointcloud.h"
 #include "scene/scene.h"
 
-#include "kernel/osl/globals.h"
-#include "kernel/osl/services.h"
-#include "kernel/osl/types.h"
-
 #include "util/foreach.h"
 #include "util/log.h"
 #include "util/string.h"
@@ -30,6 +26,10 @@
 #include "kernel/device/cpu/compat.h"
 #include "kernel/device/cpu/globals.h"
 #include "kernel/device/cpu/image.h"
+
+#include "kernel/osl/globals.h"
+#include "kernel/osl/services.h"
+#include "kernel/osl/types.h"
 
 #include "kernel/integrator/state.h"
 #include "kernel/integrator/state_flow.h"
@@ -1298,6 +1298,7 @@ bool OSLRenderServices::texture(OSLUStringHash filename,
 
   switch (texture_type) {
     case OSLTextureHandle::BEVEL: {
+#ifdef __SHADER_RAYTRACE__
       /* Bevel shader hack. */
       if (nchannels >= 3) {
         const IntegratorStateCPU *state = sd->osl_path_state;
@@ -1311,9 +1312,11 @@ bool OSLRenderServices::texture(OSLUStringHash filename,
           status = true;
         }
       }
+#endif
       break;
     }
     case OSLTextureHandle::AO: {
+#ifdef __SHADER_RAYTRACE__
       /* AO shader hack. */
       const IntegratorStateCPU *state = sd->osl_path_state;
       if (state) {
@@ -1333,6 +1336,7 @@ bool OSLRenderServices::texture(OSLUStringHash filename,
         result[0] = svm_ao(kernel_globals, state, sd, N, radius, num_samples, flags);
         status = true;
       }
+#endif
       break;
     }
     case OSLTextureHandle::SVM: {

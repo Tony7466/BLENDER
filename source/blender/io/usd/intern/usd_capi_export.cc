@@ -48,6 +48,9 @@
 #include "BLI_string.h"
 #include "BLI_timeit.hh"
 
+#include <IMB_imbuf.hh>
+#include <IMB_imbuf_types.hh>
+
 #include "WM_api.hh"
 #include "WM_types.hh"
 
@@ -329,6 +332,54 @@ static bool perform_usdz_conversion(const ExportJobData *data)
   return true;
 }
 
+std::string image_cache_file_path()
+{
+  char dir_path[FILE_MAX];
+  BLI_path_join(dir_path, sizeof(dir_path), BKE_tempdir_session(), "usd", "image_cache");
+  return dir_path;
+}
+
+std::string get_image_cache_file(const std::string &file_name, bool mkdir)
+{
+  std::string dir_path = image_cache_file_path();
+  if (mkdir) {
+    BLI_dir_create_recursive(dir_path.c_str());
+  }
+
+  char file_path[FILE_MAX];
+  BLI_path_join(file_path, sizeof(file_path), dir_path.c_str(), file_name.c_str());
+  return file_path;
+}
+
+std::string cache_image_color(float color[4])
+{
+  char name[128];
+  SNPRINTF(name,
+           "color_%02d%02d%02d.hdr",
+           int(color[0] * 255),
+           int(color[1] * 255),
+           int(color[2] * 255));
+  std::string file_path = get_image_cache_file(name);
+  if (BLI_exists(file_path.c_str())) {
+    return file_path;
+  }
+
+  ImBuf *ibuf = IMB_allocImBuf(4, 4, 32, IB_rectfloat);
+  IMB_rectfill(ibuf, color);
+  ibuf->ftype = IMB_FTYPE_RADHDR;
+
+  if (IMB_saveiff(ibuf, file_path.c_str(), IB_rectfloat)) {
+    CLOG_INFO(&LOG, 1, "%s", file_path.c_str());
+  }
+  else {
+    CLOG_ERROR(&LOG, "Can't save %s", file_path.c_str());
+    file_path = "";
+  }
+  IMB_freeImBuf(ibuf);
+
+  return file_path;
+}
+
 pxr::UsdStageRefPtr export_to_stage(const USDExportParams &params,
                                     Depsgraph *depsgraph,
                                     const char *filepath)
@@ -428,7 +479,7 @@ pxr::UsdStageRefPtr export_to_stage(const USDExportParams &params,
   /* Creating dome lights should be called after writers have
    * completed, to avoid a name collision when creating the light
    * prim. */
-  if (!params.selected_objects_only && params.convert_world_material) {
+  if (params.convert_world_material) {
     world_material_to_dome_light(params, scene, usd_stage);
   }
 
@@ -641,7 +692,7 @@ bool USD_export(bContext *C,
   bool export_ok = false;
   if (as_background_job) {
     wmJob *wm_job = WM_jobs_get(
-        job->wm, CTX_wm_window(C), scene, "USD Export", WM_JOB_PROGRESS, WM_JOB_TYPE_ALEMBIC);
+        job->wm, CTX_wm_window(C), scene, "USD Export", WM_JOB_PROGRESS, WM_JOB_TYPE_USD_EXPORT);
 
     /* setup job */
     WM_jobs_customdata_set(wm_job, job, MEM_freeN);

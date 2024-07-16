@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.2.0 Beta (b'a2795852cd29')\n"
+"Project-Id-Version: Blender 4.2.0 Release Candidate (b'988bf2b88f3b')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-06-10 10:16+0000\n"
+"POT-Creation-Date: 2024-07-15 07:57+0000\n"
 "PO-Revision-Date: 2019-12-08 17:40+0700\n"
 "Last-Translator: gongpha <gongpha@gmail.com>\n"
 "Language-Team: Thai Translation Team <gongpha@gmail.com>\n"
@@ -192,6 +192,10 @@ msgstr "เต็ม"
 
 msgid "Auto"
 msgstr "อัตโนมัติ"
+
+
+msgid "Bottom"
+msgstr "ล่าง"
 
 
 msgid "Action"
@@ -645,8 +649,9 @@ msgid "Connected"
 msgstr "เชื่อมต่อกัน"
 
 
-msgid "Remove"
-msgstr "ลบ"
+msgctxt "Operator"
+msgid "Add"
+msgstr "เพิ่ม"
 
 
 msgid "Angle"
@@ -1145,10 +1150,6 @@ msgid "Delete"
 msgstr "ลบ"
 
 
-msgid "Bottom"
-msgstr "ล่าง"
-
-
 msgid "Top"
 msgstr "บน"
 
@@ -1159,10 +1160,6 @@ msgstr "กลุ่มจุดยอด"
 
 msgid "Fire"
 msgstr "ไฟ"
-
-
-msgid "UV"
-msgstr "UV"
 
 
 msgid "Border"
@@ -1494,14 +1491,6 @@ msgstr "ตะแกรง UV"
 
 msgid "Pixels"
 msgstr "พิกเซล"
-
-
-msgid "Single Image"
-msgstr "ภาพเดี่ยว"
-
-
-msgid "Movie"
-msgstr "ภาพยนตร์"
 
 
 msgid "Render Result"
@@ -2000,9 +1989,8 @@ msgid "Files"
 msgstr "ไฟล์"
 
 
-msgctxt "Operator"
-msgid "Add"
-msgstr "เพิ่ม"
+msgid "UV"
+msgstr "UV"
 
 
 msgid "Math"
@@ -2092,6 +2080,11 @@ msgstr "บันทึกและโหลด"
 
 msgid "Names"
 msgstr "ชื่อ"
+
+
+msgctxt "Operator"
+msgid "Parent"
+msgstr "แม่"
 
 
 msgid "Face Data"
@@ -2679,6 +2672,10 @@ msgid "Join"
 msgstr "เชื่อมโยง"
 
 
+msgid "Remove"
+msgstr "ลบ"
+
+
 msgid "Replace Existing"
 msgstr "แทนที่ที่มีอยู่"
 
@@ -2971,6 +2968,11 @@ msgid "Edge Length"
 msgstr "ความยาวของเส้นขอบ"
 
 
+msgctxt "Operator"
+msgid "New"
+msgstr "ใหม่"
+
+
 msgctxt "ID"
 msgid "Blur"
 msgstr "เบลอ"
@@ -3202,15 +3204,6 @@ msgid "Randomize"
 msgstr "สุ่ม"
 
 
-msgctxt "Operator"
-msgid "Edit Translation"
-msgstr "แก้ไขการแปล"
-
-
-msgid "Path to the matching po file"
-msgstr "ตำแหน่งไปยังไฟล์ po ที่ตรงกัน"
-
-
 msgid "Reset UV projection"
 msgstr "ตั้งค่าการฉาย UV ใหม่"
 
@@ -3313,6 +3306,10 @@ msgstr "แถบเครื่องมือ"
 
 msgid "Show Brush"
 msgstr "แสดงแปรง"
+
+
+msgid "Single Image"
+msgstr "ภาพเดี่ยว"
 
 
 msgid "Mask Display"
@@ -3680,14 +3677,6 @@ msgid "Adjust Last Operation"
 msgstr "ปรับตัวดำเนินการล่าสุด"
 
 
-msgid "Show Seconds"
-msgstr "แสดงวินาที"
-
-
-msgid "Show timing in seconds not frames"
-msgstr "แสดงเวลาเป็นวินาที ไม่ใช่จำนวนเฟรม"
-
-
 msgctxt "MovieClip"
 msgid "View"
 msgstr "มุมมอง"
@@ -3932,13 +3921,51 @@ msgstr "แอนิเมชัน"
 
 
 msgctxt "Operator"
-msgid "Documentation"
-msgstr "เอกสาร"
+msgid "None"
+msgstr "ไม่มี"
+
+
+msgid ":"
+msgstr ":"
 
 
 msgctxt "Operator"
 msgid "Report a Bug"
 msgstr "รายงานข้อผิดพลาด"
+
+
+msgid "Description:"
+msgstr "คำอธิบาย:"
+
+
+msgid "Internet:"
+msgstr "อินเตอร์เน็ต:"
+
+
+msgid "Author:"
+msgstr "ผู้สร้าง:"
+
+
+msgid "Version:"
+msgstr "เวอร์ชัน:"
+
+
+msgid "Warning:"
+msgstr "ระวัง:"
+
+
+msgctxt "Operator"
+msgid "Documentation"
+msgstr "เอกสาร"
+
+
+msgid "File:"
+msgstr "ไฟล์:"
+
+
+msgctxt "Operator"
+msgid "Apply"
+msgstr "นำไปใช้"
 
 
 msgid "    RNA Path: bpy.types."
@@ -3947,11 +3974,6 @@ msgstr "    ตำแหน่ง RNA: bpy.types."
 
 msgid "    RNA Context: "
 msgstr "    บริบท RNA: "
-
-
-msgctxt "Operator"
-msgid "New"
-msgstr "ใหม่"
 
 
 msgid "3D View"
@@ -4044,18 +4066,8 @@ msgid "Transform:"
 msgstr "การปรับเปลี่ยน:"
 
 
-msgctxt "Operator"
-msgid "Parent"
-msgstr "แม่"
-
-
 msgid "Animation:"
 msgstr "แอนิเมชัน:"
-
-
-msgctxt "Operator"
-msgid "None"
-msgstr "ไม่มี"
 
 
 msgid "Date"
@@ -4507,36 +4519,8 @@ msgid "Error (see console)"
 msgstr "ข้อผิดพลาด (ดูที่คอนโซล)"
 
 
-msgid ":"
-msgstr ":"
-
-
 msgid "Missing script files"
 msgstr "ขาดไฟล์สคริปต์"
-
-
-msgid "Description:"
-msgstr "คำอธิบาย:"
-
-
-msgid "File:"
-msgstr "ไฟล์:"
-
-
-msgid "Author:"
-msgstr "ผู้สร้าง:"
-
-
-msgid "Version:"
-msgstr "เวอร์ชัน:"
-
-
-msgid "Warning:"
-msgstr "ระวัง:"
-
-
-msgid "Internet:"
-msgstr "อินเตอร์เน็ต:"
 
 
 msgctxt "Operator"
@@ -4850,11 +4834,6 @@ msgstr "ลบแผ่นผิว"
 
 
 msgctxt "Operator"
-msgid "Apply"
-msgstr "นำไปใช้"
-
-
-msgctxt "Operator"
 msgid "Apply Camera Image"
 msgstr "นำรูปของกล้องไปใช้"
 
@@ -4906,6 +4885,14 @@ msgstr "%s: %s"
 
 msgid "Redo"
 msgstr "ทำอีกครั้ง"
+
+
+msgid "OK"
+msgstr "ตกลง"
+
+
+msgid "Cancel"
+msgstr "ยกเลิก"
 
 
 msgctxt "Operator"
@@ -5100,10 +5087,6 @@ msgid "Icosphere"
 msgstr "ทรงกลม Ico"
 
 
-msgid "Cancel"
-msgstr "ยกเลิก"
-
-
 msgid "Vertex select - Shift-Click for multiple modes, Ctrl-Click contracts selection"
 msgstr "เลือกจุดยอด"
 
@@ -5122,10 +5105,6 @@ msgstr "ตัวเรนเดอร์ของ Blender"
 
 msgid "Blender Preferences"
 msgstr "การตั้งค่า Blender"
-
-
-msgid "OK"
-msgstr "ตกลง"
 
 
 msgid "%d x %d"
@@ -5320,6 +5299,10 @@ msgstr "เขียนทับ %s"
 msgctxt "Action"
 msgid "Group"
 msgstr "กลุ่ม"
+
+
+msgid "Movie"
+msgstr "ภาพยนตร์"
 
 
 msgid "%s '%s'"

@@ -87,7 +87,7 @@
 #include "ED_screen.hh"
 
 #include "RNA_define.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "UI_interface.hh"
 
@@ -391,29 +391,14 @@ static int material_slot_de_select(bContext *C, bool select)
 
   Vector<Object *> objects = object_array_for_shading_edit_mode_enabled(C);
   for (Object *ob : objects) {
-    short mat_nr_active = -1;
-
     if (ob->totcol == 0) {
       continue;
     }
-    if (obact && (mat_active == BKE_object_material_get(ob, obact->actcol))) {
-      /* Avoid searching since there may be multiple slots with the same material.
-       * For the active object or duplicates: match the material slot index first. */
-      mat_nr_active = obact->actcol - 1;
-    }
-    else {
-      /* Find the first matching material.
-       * NOTE: there may be multiple but that's not a common use case. */
-      for (int i = 0; i < ob->totcol; i++) {
-        const Material *mat = BKE_object_material_get(ob, i + 1);
-        if (mat_active == mat) {
-          mat_nr_active = i;
-          break;
-        }
-      }
-      if (mat_nr_active == -1) {
-        continue;
-      }
+
+    short mat_nr_active = BKE_object_material_index_get(ob, mat_active);
+
+    if (mat_nr_active == -1) {
+      continue;
     }
 
     bool changed = false;
@@ -554,6 +539,18 @@ static int material_slot_copy_exec(bContext *C, wmOperator * /*op*/)
       /* If we are using the same obdata, we only assign slots in ob_iter that are using object
        * materials, and not obdata ones. */
       const bool is_same_obdata = ob->data == ob_iter->data;
+
+      /* If we are using the same obdata, make the target object inherit the matbits of the active
+       * object. Without this, object material slots are not copied unless the target object
+       * already had its material slot link set to object. */
+      if (is_same_obdata) {
+        for (int i = ob->totcol; i--;) {
+          if (ob->matbits[i]) {
+            ob_iter->matbits[i] = ob->matbits[i];
+          }
+        }
+      }
+
       BKE_object_material_array_assign(bmain, ob_iter, &matar, ob->totcol, is_same_obdata);
 
       if (ob_iter->totcol == ob->totcol) {
@@ -2909,7 +2906,7 @@ static void paste_mtex_copybuf(ID *id)
 
   if (mtex) {
     if (*mtex == nullptr) {
-      *mtex = MEM_new<MTex>("mtex copy");
+      *mtex = static_cast<MTex *>(MEM_callocN(sizeof(MTex), "mtex copy"));
     }
     else if ((*mtex)->tex) {
       id_us_min(&(*mtex)->tex->id);

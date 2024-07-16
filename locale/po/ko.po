@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.2.0 Beta (b'a2795852cd29')\n"
+"Project-Id-Version: Blender 4.2.0 Release Candidate (b'988bf2b88f3b')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-06-10 10:16+0000\n"
+"POT-Creation-Date: 2024-07-15 07:57+0000\n"
 "PO-Revision-Date: 2023-11-14 19:14+0000\n"
 "Last-Translator: Lee YeonJoo <yzoo2@naver.com>\n"
 "Language-Team: Korean <https://translate.blender.org/projects/blender-ui/ui/ko/>\n"
@@ -301,6 +301,22 @@ msgstr "Full"
 
 msgid "Auto"
 msgstr "Auto"
+
+
+msgid "Always"
+msgstr "항상"
+
+
+msgid "Never"
+msgstr "않음"
+
+
+msgid "Center"
+msgstr "중심"
+
+
+msgid "Bottom"
+msgstr "Bottom"
 
 
 msgid "Fribidi Library"
@@ -3073,6 +3089,12 @@ msgid "Curve Radius"
 msgstr "커브 반경"
 
 
+msgctxt "Operator"
+msgid "Add"
+msgstr "추가"
+
+
+msgctxt "Operator"
 msgid "Remove"
 msgstr "제거"
 
@@ -3803,10 +3825,6 @@ msgstr "왼쪽"
 
 msgid "Right"
 msgstr "오른쪽"
-
-
-msgid "Center"
-msgstr "중심"
 
 
 msgid "Pole Merge Start Angle"
@@ -6333,10 +6351,6 @@ msgstr "활성화된 회전 범위"
 
 msgid "Rotation range on which pivoting should occur"
 msgstr "피벗팅하면 발생합 하는 회전 범위"
-
-
-msgid "Always"
-msgstr "항상"
 
 
 msgid "Use the pivot point in every rotation"
@@ -11282,10 +11296,6 @@ msgid "Create bubble particle system"
 msgstr "버블 파티클 시스템을 생성"
 
 
-msgid "Bottom"
-msgstr "Bottom"
-
-
 msgid "Top"
 msgstr "Top"
 
@@ -11598,24 +11608,12 @@ msgid "Temperature difference to ambient temperature"
 msgstr "주위 온도로 온도 차이"
 
 
-msgid "Mapping"
-msgstr "맵핑"
-
-
 msgid "Texture mapping type"
 msgstr "텍스처 맵핑 유형"
 
 
-msgid "Generated"
-msgstr "생성됨"
-
-
 msgid "Generated coordinates centered to flow object"
 msgstr "오브젝트를 흐르는 중심으로 생성된 좌표들"
-
-
-msgid "UV"
-msgstr "UV"
 
 
 msgid "Use UV layer for texture coordinates"
@@ -12196,6 +12194,10 @@ msgstr "지터"
 
 msgid "A filler or baked keyframe for keying on ones, or some other purpose as needed"
 msgstr "필렛이나 베이크된 키 프레임으로 키잉하거나 필요에 따라 다른 용도로 사용할 수 있습니다"
+
+
+msgid "Generated"
+msgstr "생성됨"
 
 
 msgid "Frame is selected for editing in the Dope Sheet"
@@ -14283,6 +14285,10 @@ msgid "Armature data-block containing a hierarchy of bones, usually used for rig
 msgstr "본의 계층 구조를 포함하는 아마튜어 데이터 블록, 일반적으로 케릭터를 리깅하는 데 사용됩니다"
 
 
+msgid "Feature Set"
+msgstr "특성 설정"
+
+
 msgid "Animation data for this data-block"
 msgstr "이 데이터 블록에 대한 애니메이션 데이터"
 
@@ -14353,6 +14359,10 @@ msgstr "휴식 위치"
 
 msgid "Show Armature in binding pose state (no posing possible)"
 msgstr "바인딩 포스 상태에서 아마튜어를 표시 (가능한 포즈 없음)"
+
+
+msgid "Theme"
+msgstr "테마"
 
 
 msgid "Display Axes"
@@ -17331,20 +17341,12 @@ msgid "Where the image comes from"
 msgstr "다음에서 어디에 이미지 제공"
 
 
-msgid "Single Image"
-msgstr "싱글 이미지"
-
-
 msgid "Single image file"
 msgstr "싱글 이미지 파일"
 
 
 msgid "Multiple image files, as a sequence"
 msgstr "다중의 이미지 파일, 시퀀스로"
-
-
-msgid "Movie"
-msgstr "무비"
 
 
 msgid "Movie file"
@@ -17355,16 +17357,8 @@ msgid "Generated image"
 msgstr "생성된 이미지"
 
 
-msgid "Viewer"
-msgstr "뷰어"
-
-
 msgid "Compositing node viewer"
 msgstr "컴포지팅 노드 뷰어"
-
-
-msgid "UDIM Tiles"
-msgstr "UDIM 타일"
 
 
 msgid "Stereo 3D Format"
@@ -18487,10 +18481,6 @@ msgstr "편집하는 동안, 절반 해상도의 메타볼을 업데이트"
 
 msgid "While editing, update metaball without polygonization"
 msgstr "편집하는 동안, 풀리고니제이션없이 메타볼을 업데이트"
-
-
-msgid "Never"
-msgstr "않음"
 
 
 msgid "While editing, don't update metaball at all"
@@ -24413,6 +24403,10 @@ msgid "Invert the fade-out direction of the linear mapping"
 msgstr "선형 맵핑의 페이드 아웃 방향을 반전"
 
 
+msgid "Mapping"
+msgstr "맵핑"
+
+
 msgid "Select the mapping type"
 msgstr "맵핑 유형을 선택"
 
@@ -25594,6 +25588,10 @@ msgid "Material slot name"
 msgstr "매테리얼 슬롯 이름"
 
 
+msgid "Basic"
+msgstr "기본"
+
+
 msgid "Asset"
 msgstr "에셋"
 
@@ -25699,6 +25697,10 @@ msgid "Select Linked"
 msgstr "연결된 선택"
 
 
+msgid "UV"
+msgstr "UV"
+
+
 msgid "Align"
 msgstr "정렬"
 
@@ -25709,11 +25711,6 @@ msgstr "UV 선택 모드"
 
 msgid "Show/Hide Faces"
 msgstr "페이스를 표시/숨기기"
-
-
-msgctxt "Operator"
-msgid "Add"
-msgstr "추가"
 
 
 msgid "Shape Key Specials"
@@ -25927,6 +25924,11 @@ msgstr "활성화된 모드"
 
 msgid "Names"
 msgstr "이름"
+
+
+msgctxt "Operator"
+msgid "Parent"
+msgstr "부모"
 
 
 msgid "Bone Roll"
@@ -33108,6 +33110,10 @@ msgid "Minimum speed for a pixel to be blurred (used to separate background from
 msgstr "픽셀을 블러하는 최소 속력 (배경을 전경에서 분리하는 데 사용)"
 
 
+msgid "Viewer"
+msgstr "뷰어"
+
+
 msgid "Z Combine"
 msgstr "Z 결합"
 
@@ -35942,6 +35948,10 @@ msgid "Reveal all bones hidden in Edit Mode"
 msgstr "에디트 모드에서 숨겨진 모든 본을 표시합니다"
 
 
+msgid "(undocumented operator)"
+msgstr "(문서화되지 않은 작업자)"
+
+
 msgctxt "Operator"
 msgid "Clear Roll"
 msgstr "롤을 지우기"
@@ -37078,10 +37088,6 @@ msgstr "올가미 선택을 사용하여 마커을 선택"
 msgctxt "Operator"
 msgid "Set Active Clip"
 msgstr "활성 클립을 설정"
-
-
-msgid "(undocumented operator)"
-msgstr "(문서화되지 않은 작업자)"
 
 
 msgctxt "Operator"
@@ -39304,11 +39310,6 @@ msgid "Remove existing add-ons with the same ID"
 msgstr "동일한 ID와 기존의 애드온을 제거"
 
 
-msgctxt "Operator"
-msgid "Refresh All"
-msgstr "모두 새로 고침"
-
-
 msgid "Automatically pack all external files into the .blend file"
 msgstr "자동으로 모든 외부 파일을 .blend 파일에 포장합니다"
 
@@ -41428,6 +41429,10 @@ msgstr "키 프레임을 결정"
 
 msgid "Decimate F-Curves by removing keyframes that influence the curve shape the least"
 msgstr "커브 셰이프에 가장 영향을 미치는 키 프레임을 제거하여 F-커브를 데시메이트"
+
+
+msgid "Remove"
+msgstr "제거"
 
 
 msgid "Which mode to use for decimation"
@@ -46013,6 +46018,30 @@ msgid "Copy color to all selected nodes"
 msgstr "컬러를 선택된 모든 노드에 복사"
 
 
+msgid "Option"
+msgstr "옵션"
+
+
+msgid "Overlay Mode"
+msgstr "오버레이 모드"
+
+
+msgid "Current"
+msgstr "현재"
+
+
+msgid "Exponent"
+msgstr "지수"
+
+
+msgid "Fraction"
+msgstr "분수"
+
+
+msgid "Wrap"
+msgstr "감싸기"
+
+
 msgctxt "Operator"
 msgid "Toggle Node Options"
 msgstr "노드 옵션을 토글"
@@ -47604,6 +47633,11 @@ msgstr "축적을 랜덤화"
 
 msgid "Randomize the scale values"
 msgstr "축적 값을 랜덤화"
+
+
+msgctxt "Operator"
+msgid "New"
+msgstr "새로운"
 
 
 msgctxt "Operator"
@@ -50201,6 +50235,10 @@ msgid "Reveal all bones hidden in Pose Mode"
 msgstr "포즈 모드에서 숨겨진 모든 본을 보이기"
 
 
+msgid "Property Name"
+msgstr "속성 이름"
+
+
 msgctxt "Operator"
 msgid "Clear Pose Rotation"
 msgstr "포즈 회전을 지우기"
@@ -51610,10 +51648,6 @@ msgid "Editing"
 msgstr "편집"
 
 
-msgid "Extensions"
-msgstr "확장자"
-
-
 msgid "Keymap"
 msgstr "키맵"
 
@@ -51722,10 +51756,6 @@ msgstr "마스크 필터"
 
 msgid "Applies a filter to modify the current mask"
 msgstr "현재 마스크를 수정하기 위해 필터를 적용합니다"
-
-
-msgid "Use a automatic number of iterations based on the number of vertices of the sculpt"
-msgstr "스컬프트의 버텍스 수에 따라 자동 반복 횟수를 사용"
 
 
 msgid "Filter that is going to be applied to the mask"
@@ -53738,139 +53768,6 @@ msgstr "활성 버튼의 UI 소스 코드를 편집"
 
 
 msgctxt "Operator"
-msgid "Edit Translation"
-msgstr "번역을 편집"
-
-
-msgid "Translate the label and tooltip of the given property"
-msgstr "해당 속성의 레이블 및 툴팁을 번역합니다"
-
-
-msgid "Label of the control"
-msgstr "컨트롤의 라벨"
-
-
-msgid "Flags about the label of the button"
-msgstr "버튼의 레이블에 대한 플래그"
-
-
-msgid "Message is marked as fuzzy in po file"
-msgstr "po 파일에서 메시지가 퍼지로 표시됨"
-
-
-msgid "Some error occurred with this message"
-msgstr "일부 오류 메시지가 발생했습니다"
-
-
-msgid "Tip of the control"
-msgstr "컨트롤의 팁"
-
-
-msgid "Flags about the tip of the button"
-msgstr "버튼의 팁에 대한 플래그들"
-
-
-msgid "Remove all local translation files, to be able to use the system ones again"
-msgstr "시스템을 다시 사용할 수있게하려면 모든 로컬 번역 파일을 제거하십시오"
-
-
-msgid "Label of the enum item of the control, if any"
-msgstr "컨트롤의 열거 항목에 레이블, 있는 경우"
-
-
-msgid "Flags about the RNA enum item label of the button"
-msgstr "버튼의 RNA 열거 항목에 대한 플래그들"
-
-
-msgid "Tip of the enum item of the control, if any"
-msgstr "컨트롤의 열거 항목에 팁, 있는 경우"
-
-
-msgid "Flags about the RNA enum item tip of the button"
-msgstr "버튼의 RNA 열거 항목에 대한 플레그들"
-
-
-msgid "Current (translated) language"
-msgstr "현재 (번역된) 언어"
-
-
-msgid "Original label of the control"
-msgstr "컨트롤의 원본 라벨"
-
-
-msgid "Original tip of the control"
-msgstr "컨트롤의 원본 팁"
-
-
-msgid "Original label of the enum item of the control, if any"
-msgstr "컨트롤의 열거 항목에 원본 라벨있는 경우"
-
-
-msgid "Original tip of the enum item of the control, if any"
-msgstr "컨트롤의 열거 항목의 원래 팁 (있는 경우)"
-
-
-msgid "Original RNA-defined label of the control, if any"
-msgstr "컨트롤의 원본 RNA 정의된 레이블 (있는 경우)"
-
-
-msgid "Original RNA-defined tip of the control, if any"
-msgstr "컨트롤의 원래 RNA 정의된 팁 (있는 경우)"
-
-
-msgid "Path to the matching po file"
-msgstr "일치하는 po 파일에 대한 경로"
-
-
-msgid "RNA context for label"
-msgstr "라벨의 RNA 컨텍스트"
-
-
-msgid "Identifier of the RNA enum item, if any"
-msgstr "RNA 열거의 식별자, 있는 경우"
-
-
-msgid "RNA-defined label of the control, if any"
-msgstr "컨트롤의 RNA 정의된 레이블, 있는 경우"
-
-
-msgid "Flags about the RNA-defined label of the button"
-msgstr "버튼의 RNA 정의된 레이블에 대한 플래그들"
-
-
-msgid "Identifier of the RNA property, if any"
-msgstr "RNA 속성의 식별자, 있는 경우"
-
-
-msgid "Identifier of the RNA struct, if any"
-msgstr "RNA 데이터 구조의 식별자, 있는 경우"
-
-
-msgid "RNA-defined tip of the control, if any"
-msgstr "컨트롤의 RNA 정의된 팁, 있는 경우"
-
-
-msgid "Flags about the RNA-defined tip of the button"
-msgstr "버튼의 RNA 정의된 팁에 대한 플레그들"
-
-
-msgid "Stats from opened po"
-msgstr "열린 po에서 통계"
-
-
-msgid "Try to rebuild mo file, and refresh Blender's UI"
-msgstr "mo 파일을 다시 작성하고 Blender의 UI를 새로 고칩니다"
-
-
-msgid "Update po file, try to rebuild mo file, and refresh Blender's UI"
-msgstr "po 파일을 업데이트하고, mo 파일을 다시 빌드하고, 블렌더의 UI를 새로 고칩니다"
-
-
-msgid "Edit i18n in current language for the active button"
-msgstr "활성 버튼에 대해 현재 언어에서 i18n을 편집"
-
-
-msgctxt "Operator"
 msgid "Eyedropper"
 msgstr "아이드라퍼"
 
@@ -54028,15 +53925,6 @@ msgstr "호출하는 작업자의 이름 (ID)"
 
 msgid "Update given add-on's translation data (found as a py tuple in the add-on's source code)"
 msgstr "주어진 애드온의 번역 데이터를 업데이트 (부가 기능 소스 코드에서 파이 튜플로 발견됨)"
-
-
-msgctxt "Operator"
-msgid "Edit Translation Update Mo"
-msgstr "편집 번역을 Mo 업데이트"
-
-
-msgid "Try to \"compile\" given po file into relevant blender.mo file"
-msgstr "주어진 po 파일을 관련 blender.mo 파일로 \"컴파일\"합니다"
 
 
 msgctxt "Operator"
@@ -54477,10 +54365,6 @@ msgstr "아일랜드를 포장"
 
 msgid "Space between islands"
 msgstr "아일랜드 사이 공간"
-
-
-msgid "Fraction"
-msgstr "분수"
 
 
 msgctxt "Operator"
@@ -56106,10 +55990,6 @@ msgid "Toggle a context value"
 msgstr "컨텍스트 값을 토글"
 
 
-msgid "Wrap"
-msgstr "감싸기"
-
-
 msgid "Wrap back to the first/last values"
 msgstr "첫 번째 / 마지막 값으로 다시 감싸기"
 
@@ -56585,10 +56465,6 @@ msgstr "컨텍스트"
 msgctxt "Operator"
 msgid "Edit Property"
 msgstr "속성을 편집"
-
-
-msgid "Property Name"
-msgstr "속성 이름"
 
 
 msgid "Property name edit"
@@ -57359,6 +57235,10 @@ msgid "Detect image slots from the material"
 msgstr "매테리얼에서 이미지 슬롯을 감지"
 
 
+msgid "Single Image"
+msgstr "싱글 이미지"
+
+
 msgid "Set image for texture painting directly"
 msgstr "텍스처 페인팅 직접에 대해 이미지를 설정"
 
@@ -58012,6 +57892,10 @@ msgid "Texture Mask"
 msgstr "텍스처 마스크"
 
 
+msgid "UDIM Tiles"
+msgstr "UDIM 타일"
+
+
 msgid "Histogram"
 msgstr "히스토그램"
 
@@ -58379,6 +58263,10 @@ msgid "New Objects"
 msgstr "새로운 오브젝트"
 
 
+msgid "Extensions"
+msgstr "확장자"
+
+
 msgid "Applications"
 msgstr "어플리케이션"
 
@@ -58505,10 +58393,6 @@ msgstr "번호 필드"
 
 msgid "Value Slider"
 msgstr "값 슬라이더"
-
-
-msgid "Option"
-msgstr "옵션"
 
 
 msgid "Pie Menu"
@@ -60018,10 +59902,6 @@ msgstr "전체 환경 설정"
 
 msgid "Active Section"
 msgstr "활성 섹션"
-
-
-msgid "Active section of the preferences shown in the user interface"
-msgstr "사용자 인터페이스에 표시된 환경 설정의 활성 섹션"
 
 
 msgid "Application Template"
@@ -62120,10 +62000,6 @@ msgid "Cull objects which are further away from camera than this distance"
 msgstr "이 거리보다 카메라에서 멀어지는 오브젝트를 추려냅니다"
 
 
-msgid "Feature Set"
-msgstr "특성 설정"
-
-
 msgid "Feature set to use for rendering"
 msgstr "렌더링하기 위해 사용하는 특성 설정"
 
@@ -62686,6 +62562,10 @@ msgstr "브러시 크기"
 
 msgid "Brush size in screen space"
 msgstr "스크린 공간에서 브러시 크기"
+
+
+msgid "Widget"
+msgstr "위젯"
 
 
 msgid "Selected UV Element"
@@ -64468,28 +64348,8 @@ msgid "Method of anti-aliasing when rendering 3d viewport"
 msgstr "3D 뷰포트를 렌더링 할 때 앨리어싱 제거 방법"
 
 
-msgid "Color applied to the bloom effect"
-msgstr "블룸 이펙트에 적용된 컬러"
-
-
-msgid "Blend factor"
-msgstr "혼합 팩터"
-
-
 msgid "Knee"
 msgstr "굽은 구조"
-
-
-msgid "Makes transition between under/over-threshold gradual"
-msgstr "점진적으로 언더/오버 스레숄드 사이 변환을 만들기"
-
-
-msgid "Bloom spread distance"
-msgstr "블룸 퍼짐 거리"
-
-
-msgid "Filters out pixels under this level of brightness"
-msgstr "이 밝기 레벨에서 픽셀을 필터링합니다"
 
 
 msgid "Max Size"
@@ -64608,16 +64468,8 @@ msgid "Directional Shadows Resolution"
 msgstr "방향성 섀도우 해상도"
 
 
-msgid "Size of sun light shadow maps"
-msgstr "태양 빛 섀도우 맵의 크기"
-
-
 msgid "Cube Shadows Resolution"
 msgstr "큐브 섀도우 해상도"
-
-
-msgid "Size of point and area light shadow maps"
-msgstr "포인트 및 영역 라이트 섀도우 맵의 크기"
 
 
 msgid "Edge Fading"
@@ -64658,10 +64510,6 @@ msgstr "렌더 샘플"
 
 msgid "Number of samples, unlimited if 0"
 msgstr "샘플 수, 0인 경우 무제한"
-
-
-msgid "High brightness pixels generate a glowing effect"
-msgstr "고휘도 픽셀로 빛나는 이팩트를 생성"
 
 
 msgid "Enable ambient occlusion to simulate medium scale indirect shadowing"
@@ -66662,10 +66510,6 @@ msgid "Display white edges"
 msgstr "화이트 에지 표시"
 
 
-msgid "Overlay Mode"
-msgstr "오버레이 모드"
-
-
 msgid "Overlay mode of rasterized mask"
 msgstr "래스터 마스크의 오버레이 모드"
 
@@ -66840,14 +66684,6 @@ msgstr "마지막 작업을 조정"
 
 msgid "Toolbar"
 msgstr "툴바"
-
-
-msgid "Show Seconds"
-msgstr "초 단위 표시"
-
-
-msgid "Show timing in seconds not frames"
-msgstr "프레임이 아닌 초 단위로 타이밍을 표시합니다"
 
 
 msgid "Show Stable"
@@ -67929,10 +67765,6 @@ msgid "Show reference frame only"
 msgstr "참조 프레임 만 표시"
 
 
-msgid "Current"
-msgstr "현재"
-
-
 msgid "Show current frame only"
 msgstr "현재 프레임 만 표시"
 
@@ -68809,10 +68641,6 @@ msgid "Use global coordinates for the texture coordinates"
 msgstr "텍스처 좌표에 대해 글로벌 좌표를 사용"
 
 
-msgid "Along stroke"
-msgstr "스트로크를 따라"
-
-
 msgid "Use stroke length for texture coordinates"
 msgstr "택스처 좌표에 대한 스트로크 길이를 사용"
 
@@ -68935,10 +68763,6 @@ msgstr "텍스처 좌표에 대해 연결된 오브젝트의 좌표를 사용"
 
 msgid "Use UV coordinates for texture coordinates"
 msgstr "텍스처 좌표에 대한 UV 좌표를 사용"
-
-
-msgid "Strand / Particle"
-msgstr "가닥 / 파티클"
 
 
 msgid "Use normalized strand texture coordinate (1D) or particle age (X) and trail position (Y)"
@@ -71690,10 +71514,6 @@ msgid "Make the lighting fixed and not follow the camera"
 msgstr "조명을 고정시키고 카메라를 따르지 않도록 만들기"
 
 
-msgid "Theme"
-msgstr "테마"
-
-
 msgid "X-Ray Alpha"
 msgstr "X-Ray 알파"
 
@@ -71856,10 +71676,6 @@ msgstr "작업 공간 도구"
 
 msgid "Tool Mode"
 msgstr "도구 모드"
-
-
-msgid "Widget"
-msgstr "위젯"
 
 
 msgid "Lighting for a World data-block"
@@ -72457,13 +72273,25 @@ msgid "Eyedropper ColorRamp PointSampling Map"
 msgstr "아이드라퍼 컬러램프 포인트샘플링 맵"
 
 
+msgid "Multiple add-ons with the same name found!"
+msgstr "동일한 이름을 가진 복수의 애드온이 있습니다!"
+
+
+msgid "Delete one of each pair to resolve:"
+msgstr "리솔브에 각 쌍 중 하나를 삭제:"
+
+
+msgctxt "Operator"
+msgid "None"
+msgstr "없음"
+
+
 msgid "Warning"
 msgstr "경고"
 
 
-msgctxt "Operator"
-msgid "Documentation"
-msgstr "문서"
+msgid ":"
+msgstr ":"
 
 
 msgctxt "Operator"
@@ -72629,6 +72457,44 @@ msgid "Couldn't open file %r (%s)"
 msgstr "파일 %r (%s)을 열 수 없습니다"
 
 
+msgid "Description:"
+msgstr "설명:"
+
+
+msgid "Internet:"
+msgstr "인터넷:"
+
+
+msgid "Author:"
+msgstr "작성자:"
+
+
+msgid "Version:"
+msgstr "버젼:"
+
+
+msgid "Warning:"
+msgstr "경고:"
+
+
+msgctxt "Operator"
+msgid "Documentation"
+msgstr "문서"
+
+
+msgid "File:"
+msgstr "파일:"
+
+
+msgctxt "Operator"
+msgid "Apply"
+msgstr "적용"
+
+
+msgid "Options:"
+msgstr "옵션:"
+
+
 msgid "Save to PO File"
 msgstr "PO 파일로 저장"
 
@@ -72769,11 +72635,6 @@ msgstr "선택을 반전"
 
 msgid "Tracking"
 msgstr "트래킹"
-
-
-msgctxt "Operator"
-msgid "New"
-msgstr "새로운"
 
 
 msgid "API Defined"
@@ -72920,11 +72781,6 @@ msgstr "셰이프"
 
 msgid "Axes"
 msgstr "축"
-
-
-msgctxt "Operator"
-msgid "Remove"
-msgstr "제거"
 
 
 msgid "Damping Max"
@@ -73361,11 +73217,6 @@ msgstr "부모 지정:"
 
 
 msgctxt "Operator"
-msgid "Parent"
-msgstr "부모"
-
-
-msgctxt "Operator"
 msgid "Clear"
 msgstr "지우기"
 
@@ -73401,11 +73252,6 @@ msgstr "페더 축적"
 msgctxt "Operator"
 msgid "Hide Unselected"
 msgstr "비 선택된 항목을 숨기기"
-
-
-msgctxt "Operator"
-msgid "None"
-msgstr "없음"
 
 
 msgctxt "Operator"
@@ -73965,10 +73811,6 @@ msgid "Particle Life Maximum"
 msgstr "파티클 수명 최대"
 
 
-msgid "Exponent"
-msgstr "지수"
-
-
 msgid "Surface Tension"
 msgstr "표면 장력"
 
@@ -74487,10 +74329,6 @@ msgstr "기록에서 앞으로"
 
 msgid "Filter by Type:"
 msgstr "유형별 필터:"
-
-
-msgid "Options:"
-msgstr "옵션:"
 
 
 msgctxt "Operator"
@@ -75164,6 +75002,11 @@ msgstr "활성 도구"
 msgctxt "Operator"
 msgid "Set Frame Range to Strips"
 msgstr "프레임 범위를 스트립으로 설정"
+
+
+msgctxt "Operator"
+msgid "Refresh All"
+msgstr "모두 새로 고침"
 
 
 msgctxt "Operator"
@@ -75893,52 +75736,16 @@ msgid "Invert Wheel Zoom Direction"
 msgstr "휠 줌 방향을 반전"
 
 
-msgid "Multiple add-ons with the same name found!"
-msgstr "동일한 이름을 가진 복수의 애드온이 있습니다!"
-
-
-msgid "Delete one of each pair to resolve:"
-msgstr "리솔브에 각 쌍 중 하나를 삭제:"
-
-
 msgid "Error (see console)"
 msgstr "오류 (콘솔 참조)"
-
-
-msgid ":"
-msgstr ":"
 
 
 msgid "Missing script files"
 msgstr "스크립트 파일이 누락 됨"
 
 
-msgid "Description:"
-msgstr "설명:"
-
-
 msgid "Location:"
 msgstr "위치:"
-
-
-msgid "File:"
-msgstr "파일:"
-
-
-msgid "Author:"
-msgstr "작성자:"
-
-
-msgid "Version:"
-msgstr "버젼:"
-
-
-msgid "Warning:"
-msgstr "경고:"
-
-
-msgid "Internet:"
-msgstr "인터넷:"
 
 
 msgctxt "Operator"
@@ -77179,11 +76986,6 @@ msgstr "빠르게 편집"
 
 
 msgctxt "Operator"
-msgid "Apply"
-msgstr "적용"
-
-
-msgctxt "Operator"
 msgid "Apply Camera Image"
 msgstr "카메라 이미지를 적용"
 
@@ -77842,10 +77644,6 @@ msgstr "연속되는 에지 링 쌍이 존재하지 않음"
 
 msgid "Edge-rings are not connected"
 msgstr "연속되는 에지 링이 존재하지 않음"
-
-
-msgid "Basic"
-msgstr "기본"
 
 
 msgid "GpencilMode"
@@ -78773,20 +78571,8 @@ msgid "Active button not found"
 msgstr "활성 버튼을 찾을 수 없습니다"
 
 
-msgid "Please set your Preferences' 'Translation Branches Directory' path to a valid directory"
-msgstr "환경 설정의 '번역 브랜치 디렉토리'경로를 유효한 디렉토리로 설정하십시오"
-
-
 msgid "Could not compute a valid data path"
 msgstr "유효한 데이터 경로를 계산할 수 없습니다"
-
-
-msgid "Could not find operator '%s'! Please enable ui_translate add-on in the User Preferences"
-msgstr "작업자 '%s'를 찾을 수 없습니다! 사용자 환경 설정에서 ui_translate 부가 기능을 활성화하십시오"
-
-
-msgid "No valid po found for language '%s' under %s"
-msgstr "언어 '%s'에 대한 %s에서 유효한 po를 찾을 수 없습니다"
 
 
 msgid "%d items"
@@ -78807,6 +78593,14 @@ msgstr "컬러의 핵스 코드 (#RRGGBB)"
 
 msgid "Redo"
 msgstr "다시 실행"
+
+
+msgid "OK"
+msgstr "OK"
+
+
+msgid "Cancel"
+msgstr "취소"
 
 
 msgid "Menu \"%s\" not found"
@@ -79300,10 +79094,6 @@ msgstr "구체"
 msgctxt "Mesh"
 msgid "Icosphere"
 msgstr "아이코스피어"
-
-
-msgid "Cancel"
-msgstr "취소"
 
 
 msgid "Outer"
@@ -80676,10 +80466,6 @@ msgstr "디테일을 설정하려면 메쉬를 클릭하십시오"
 
 msgid "Warning!"
 msgstr "경고!"
-
-
-msgid "OK"
-msgstr "OK"
 
 
 msgid "Generative Modifiers Detected!"
@@ -83040,6 +82826,10 @@ msgstr "비 볼록 충돌 셰이프가 함수에 전달되고 볼록 충돌 셰�
 
 msgid "Rigidbody world was not properly initialized, need to step the simulation first"
 msgstr "리지드 바디 월드가 제대로 초기화되지 않았으므로 시뮬레이션을 먼저 수행해야 합니다"
+
+
+msgid "Movie"
+msgstr "무비"
 
 
 msgid "Keying set could not be added"

@@ -20,7 +20,7 @@
 #include "DNA_object_types.h"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "BLI_listbase.h"
 #include "BLI_string.h"
@@ -77,24 +77,24 @@ class KeyframingTest : public testing::Test {
 
     bmain = BKE_main_new();
 
-    object = BKE_object_add_only_object(bmain, OB_EMPTY, "OBEmpty");
+    object = BKE_object_add_only_object(bmain, OB_EMPTY, "Empty");
     object_rna_pointer = RNA_id_pointer_create(&object->id);
 
     Bone *bone = static_cast<Bone *>(MEM_mallocN(sizeof(Bone), "BONE"));
     memset(bone, 0, sizeof(Bone));
     STRNCPY(bone->name, "Bone");
 
-    armature = BKE_armature_add(bmain, "ARArmature");
+    armature = BKE_armature_add(bmain, "Armature");
     BLI_addtail(&armature->bonebase, bone);
 
-    armature_object = BKE_object_add_only_object(bmain, OB_ARMATURE, "OBArmature");
+    armature_object = BKE_object_add_only_object(bmain, OB_ARMATURE, "Armature");
     armature_object->data = armature;
     BKE_pose_ensure(bmain, armature_object, armature, false);
     armature_object_rna_pointer = RNA_id_pointer_create(&armature_object->id);
 
-    object_with_nla = BKE_object_add_only_object(bmain, OB_EMPTY, "OBEmptyWithNLA");
+    object_with_nla = BKE_object_add_only_object(bmain, OB_EMPTY, "EmptyWithNLA");
     object_with_nla_rna_pointer = RNA_id_pointer_create(&object_with_nla->id);
-    nla_action = static_cast<bAction *>(BKE_id_new(bmain, ID_AC, "ACNLAAction"));
+    nla_action = static_cast<bAction *>(BKE_id_new(bmain, ID_AC, "NLAAction"));
 
     /* Set up an NLA system with a single NLA track with a single offset-in-time
      * NLA strip, and make that strip active and in tweak mode. */
@@ -134,7 +134,7 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__non_array_property)
   /* First time should create:
    * - AnimData
    * - Action
-   * - Binding
+   * - Slot
    * - Layer
    * - Infinite KeyframeStrip
    * - FCurve with a single key
@@ -153,13 +153,13 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__non_array_property)
   ASSERT_NE(nullptr, object->adt->action);
   Action &action = object->adt->action->wrap();
 
-  /* The action has a binding, it's named properly, and it's correctly assigned
+  /* The action has a slot, it's named properly, and it's correctly assigned
    * to the object. */
-  ASSERT_EQ(1, action.bindings().size());
-  Binding *binding = action.binding(0);
-  EXPECT_STREQ(object->id.name, binding->name);
-  EXPECT_STREQ(object->adt->binding_name, binding->name);
-  EXPECT_EQ(object->adt->binding_handle, binding->handle);
+  ASSERT_EQ(1, action.slots().size());
+  Slot *slot = action.slot(0);
+  EXPECT_STREQ(object->id.name, slot->name);
+  EXPECT_STREQ(object->adt->slot_name, slot->name);
+  EXPECT_EQ(object->adt->slot_handle, slot->handle);
 
   /* We have the default layer and strip. */
   ASSERT_TRUE(action.is_action_layered());
@@ -171,8 +171,8 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__non_array_property)
   ASSERT_EQ(Strip::Type::Keyframe, strip->type());
   KeyframeStrip *keyframe_strip = &strip->as<KeyframeStrip>();
 
-  /* We have a channel bag for the binding. */
-  ChannelBag *channel_bag = keyframe_strip->channelbag_for_binding(*binding);
+  /* We have a channel bag for the slot. */
+  ChannelBag *channel_bag = keyframe_strip->channelbag_for_slot(*slot);
   ASSERT_NE(nullptr, channel_bag);
 
   /* The fcurves in the channel bag are what we expect. */
@@ -240,7 +240,7 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__single_element)
   ASSERT_NE(nullptr, object->adt);
   ASSERT_NE(nullptr, object->adt->action);
   Action &action = object->adt->action->wrap();
-  ASSERT_EQ(1, action.bindings().size());
+  ASSERT_EQ(1, action.slots().size());
   ASSERT_EQ(1, action.layers().size());
   ASSERT_EQ(1, action.layer(0)->strips().size());
   KeyframeStrip *strip = &action.layer(0)->strip(0)->as<KeyframeStrip>();
@@ -273,7 +273,7 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__all_elements)
   ASSERT_NE(nullptr, object->adt);
   ASSERT_NE(nullptr, object->adt->action);
   Action &action = object->adt->action->wrap();
-  ASSERT_EQ(1, action.bindings().size());
+  ASSERT_EQ(1, action.slots().size());
   ASSERT_EQ(1, action.layers().size());
   ASSERT_EQ(1, action.layer(0)->strips().size());
   KeyframeStrip *strip = &action.layer(0)->strip(0)->as<KeyframeStrip>();
@@ -311,7 +311,7 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__pose_bone_rna_pointer)
   ASSERT_NE(nullptr, armature_object->adt);
   ASSERT_NE(nullptr, armature_object->adt->action);
   Action &action = armature_object->adt->action->wrap();
-  ASSERT_EQ(1, action.bindings().size());
+  ASSERT_EQ(1, action.slots().size());
   ASSERT_EQ(1, action.layers().size());
   ASSERT_EQ(1, action.layer(0)->strips().size());
   KeyframeStrip *strip = &action.layer(0)->strip(0)->as<KeyframeStrip>();
@@ -345,7 +345,7 @@ TEST_F(KeyframingTest, insert_keyframes__pose_bone_owner_id_pointer)
   ASSERT_NE(nullptr, armature_object->adt);
   ASSERT_NE(nullptr, armature_object->adt->action);
   Action &action = armature_object->adt->action->wrap();
-  ASSERT_EQ(1, action.bindings().size());
+  ASSERT_EQ(1, action.slots().size());
   ASSERT_EQ(1, action.layers().size());
   ASSERT_EQ(1, action.layer(0)->strips().size());
   KeyframeStrip *strip = &action.layer(0)->strip(0)->as<KeyframeStrip>();
@@ -383,7 +383,7 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__multiple_properties)
   ASSERT_NE(nullptr, object->adt);
   ASSERT_NE(nullptr, object->adt->action);
   Action &action = object->adt->action->wrap();
-  ASSERT_EQ(1, action.bindings().size());
+  ASSERT_EQ(1, action.slots().size());
   ASSERT_EQ(1, action.layers().size());
   ASSERT_EQ(1, action.layer(0)->strips().size());
   KeyframeStrip *strip = &action.layer(0)->strip(0)->as<KeyframeStrip>();
@@ -408,7 +408,7 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__multiple_ids)
 
   AnimationEvalContext anim_eval_context = {nullptr, 1.0};
 
-  /* First object should crate the action and get a binding and channel bag. */
+  /* First object should crate the action and get a slot and channel bag. */
   const CombinedKeyingResult result_1 = insert_keyframes(bmain,
                                                          &object_rna_pointer,
                                                          std::nullopt,
@@ -422,12 +422,12 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__multiple_ids)
   ASSERT_NE(nullptr, object->adt->action);
   Action &action = object->adt->action->wrap();
 
-  /* The action has a binding and it's assigned to the first object. */
-  ASSERT_EQ(1, action.bindings().size());
-  Binding *binding_1 = action.binding_for_handle(object->adt->binding_handle);
-  ASSERT_NE(nullptr, binding_1);
-  EXPECT_STREQ(object->id.name, binding_1->name);
-  EXPECT_STREQ(object->adt->binding_name, binding_1->name);
+  /* The action has a slot and it's assigned to the first object. */
+  ASSERT_EQ(1, action.slots().size());
+  Slot *slot_1 = action.slot_for_handle(object->adt->slot_handle);
+  ASSERT_NE(nullptr, slot_1);
+  EXPECT_STREQ(object->id.name, slot_1->name);
+  EXPECT_STREQ(object->adt->slot_name, slot_1->name);
 
   /* Get the keyframe strip. */
   ASSERT_TRUE(action.is_action_layered());
@@ -435,16 +435,16 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__multiple_ids)
   ASSERT_EQ(1, action.layer(0)->strips().size());
   KeyframeStrip *strip = &action.layer(0)->strip(0)->as<KeyframeStrip>();
 
-  /* We have a single channel bag, and it's for the first object's binding. */
+  /* We have a single channel bag, and it's for the first object's slot. */
   ASSERT_EQ(1, strip->channelbags().size());
-  ChannelBag *channel_bag_1 = strip->channelbag_for_binding(*binding_1);
+  ChannelBag *channel_bag_1 = strip->channelbag_for_slot(*slot_1);
   ASSERT_NE(nullptr, channel_bag_1);
 
-  /* Assign the action to the second object, with no binding. */
+  /* Assign the action to the second object, with no slot. */
   action.assign_id(nullptr, armature_object->id);
 
   /* Keying the second object should go into the same action, creating a new
-   * binding and channel bag. */
+   * slot and channel bag. */
   const CombinedKeyingResult result_2 = insert_keyframes(bmain,
                                                          &armature_object_rna_pointer,
                                                          std::nullopt,
@@ -455,14 +455,14 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__multiple_ids)
                                                          INSERTKEY_NOFLAGS);
   EXPECT_EQ(1, result_2.get_count(SingleKeyingResult::SUCCESS));
 
-  ASSERT_EQ(2, action.bindings().size());
-  Binding *binding_2 = action.binding_for_handle(armature_object->adt->binding_handle);
-  ASSERT_NE(nullptr, binding_2);
-  EXPECT_STREQ(armature_object->id.name, binding_2->name);
-  EXPECT_STREQ(armature_object->adt->binding_name, binding_2->name);
+  ASSERT_EQ(2, action.slots().size());
+  Slot *slot_2 = action.slot_for_handle(armature_object->adt->slot_handle);
+  ASSERT_NE(nullptr, slot_2);
+  EXPECT_STREQ(armature_object->id.name, slot_2->name);
+  EXPECT_STREQ(armature_object->adt->slot_name, slot_2->name);
 
   ASSERT_EQ(2, strip->channelbags().size());
-  ChannelBag *channel_bag_2 = strip->channelbag_for_binding(*binding_2);
+  ChannelBag *channel_bag_2 = strip->channelbag_for_slot(*slot_2);
   ASSERT_NE(nullptr, channel_bag_2);
 }
 
@@ -540,10 +540,10 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__only_available)
   /* If an action is created at all, it should be the default action with one
    * layer and an infinite keyframe strip. */
   Action &action = object->adt->action->wrap();
-  ASSERT_EQ(1, action.bindings().size());
+  ASSERT_EQ(1, action.slots().size());
   ASSERT_EQ(1, action.layers().size());
   ASSERT_EQ(1, action.layer(0)->strips().size());
-  EXPECT_EQ(object->adt->binding_handle, action.binding(0)->handle);
+  EXPECT_EQ(object->adt->slot_handle, action.slot(0)->handle);
   KeyframeStrip *strip = &action.layer(0)->strip(0)->as<KeyframeStrip>();
   ASSERT_EQ(0, strip->channelbags().size());
 
@@ -621,7 +621,7 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__only_replace)
   ASSERT_NE(nullptr, object->adt);
   ASSERT_NE(nullptr, object->adt->action);
   Action &action = object->adt->action->wrap();
-  ASSERT_EQ(1, action.bindings().size());
+  ASSERT_EQ(1, action.slots().size());
   ASSERT_EQ(1, action.layers().size());
   ASSERT_EQ(1, action.layer(0)->strips().size());
   KeyframeStrip *strip = &action.layer(0)->strip(0)->as<KeyframeStrip>();
@@ -702,7 +702,7 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__only_needed)
   ASSERT_NE(nullptr, object->adt);
   ASSERT_NE(nullptr, object->adt->action);
   Action &action = object->adt->action->wrap();
-  ASSERT_EQ(1, action.bindings().size());
+  ASSERT_EQ(1, action.slots().size());
   ASSERT_EQ(1, action.layers().size());
   ASSERT_EQ(1, action.layer(0)->strips().size());
   KeyframeStrip *strip = &action.layer(0)->strip(0)->as<KeyframeStrip>();
@@ -1316,7 +1316,7 @@ TEST_F(KeyframingTest, insert_keyframes__legacy_action__quaternion_on_nla__only_
   /* Create an fcurve and key for a single quaternion channel. */
   PointerRNA id_rna_ptr = RNA_id_pointer_create(&object_with_nla->id);
   FCurve *fcu = action_fcurve_ensure(
-      bmain, nla_action, nullptr, &id_rna_ptr, "rotation_quaternion", 0);
+      bmain, nla_action, nullptr, &id_rna_ptr, {"rotation_quaternion", 0});
   const KeyframeSettings keyframe_settings = {BEZT_KEYTYPE_KEYFRAME, HD_AUTO_ANIM, BEZT_IPO_BEZ};
   insert_vert_fcurve(fcu, {1.0, 1.0}, keyframe_settings, INSERTKEY_NOFLAGS);
 
@@ -1356,7 +1356,7 @@ TEST_F(KeyframingTest, insert_keyframes__legacy_action__quaternion_on_nla__only_
   /* Directly create an fcurve and key for a single quaternion channel. */
   PointerRNA id_rna_ptr = RNA_id_pointer_create(&object_with_nla->id);
   FCurve *fcu = action_fcurve_ensure(
-      bmain, nla_action, nullptr, &id_rna_ptr, "rotation_quaternion", 0);
+      bmain, nla_action, nullptr, &id_rna_ptr, {"rotation_quaternion", 0});
   const KeyframeSettings keyframe_settings = {BEZT_KEYTYPE_KEYFRAME, HD_AUTO_ANIM, BEZT_IPO_BEZ};
   insert_vert_fcurve(fcu, {11.0, 1.0}, keyframe_settings, INSERTKEY_NOFLAGS);
 

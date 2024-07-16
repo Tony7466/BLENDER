@@ -21,6 +21,7 @@
 #include "BKE_geometry_fields.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_idprop.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_node_enum.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_socket_value.hh"
@@ -526,7 +527,9 @@ static bool old_id_property_type_matches_socket_convert_to_new(
       }
       if (new_property) {
         BLI_assert(new_property->type == IDP_ID);
-        new_property->data.pointer = IDP_Id(&old_property);
+        ID *id = IDP_Id(&old_property);
+        new_property->data.pointer = id;
+        id_us_plus(id);
       }
       return true;
     case SOCK_CUSTOM:
@@ -1052,7 +1055,7 @@ void update_input_properties_from_node_tree(const bNodeTree &tree,
       continue;
     }
 
-    new_prop->flag |= IDP_FLAG_OVERRIDABLE_LIBRARY;
+    new_prop->flag |= IDP_FLAG_OVERRIDABLE_LIBRARY | IDP_FLAG_STATIC_TYPE;
     if (socket.description && socket.description[0] != '\0') {
       IDPropertyUIData *ui_data = IDP_ui_data_ensure(new_prop);
       ui_data->description = BLI_strdup(socket.description);

@@ -7,6 +7,7 @@
  */
 
 #include <algorithm>
+#include "BKE_lib_id.hh"
 
 #include "BKE_object.hh"
 
@@ -24,7 +25,27 @@ namespace blender::io::obj {
 
 static const std::string untitled = "Untitled";
 
-Object *CurveFromGeometry::create_curve(Main *bmain, const OBJImportParams &import_params)
+Curve *blender::io::obj::CurveFromGeometry::create_curve()
+{
+  BLI_assert(!curve_geometry_.nurbs_element_.curv_indices.is_empty());
+
+  Curve *curve = static_cast<Curve *>(BKE_id_new_nomain(ID_CU_LEGACY, nullptr));
+
+  BKE_curve_init(curve, OB_CURVES_LEGACY);
+
+  curve->flag = CU_3D;
+  curve->resolu = curve->resolv = 12;
+  /* Only one NURBS spline will be created in the curve object. */
+  curve->actnu = 0;
+
+  Nurb *nurb = static_cast<Nurb *>(MEM_callocN(sizeof(Nurb), __func__));
+  BLI_addtail(BKE_curve_nurbs_get(curve), nurb);
+  this->create_nurbs(curve);
+
+  return curve;
+}
+
+Object *CurveFromGeometry::create_curve_object(Main *bmain, const OBJImportParams &import_params)
 {
   std::string ob_name = get_geometry_name(curve_geometry_.geometry_name_,
                                           import_params.collection_separator);
@@ -44,9 +65,9 @@ Object *CurveFromGeometry::create_curve(Main *bmain, const OBJImportParams &impo
   /* Only one NURBS spline will be created in the curve object. */
   curve->actnu = 0;
 
-  Nurb *nurb = static_cast<Nurb *>(MEM_callocN(sizeof(Nurb), "OBJ import NURBS curve"));
+  Nurb *nurb = static_cast<Nurb *>(MEM_callocN(sizeof(Nurb), __func__));
   BLI_addtail(BKE_curve_nurbs_get(curve), nurb);
-  create_nurbs(curve);
+  this->create_nurbs(curve);
 
   obj->data = curve;
   transform_object(obj, import_params);

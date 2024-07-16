@@ -356,6 +356,8 @@ void blo_join_main(ListBase *mainlist)
   BKE_main_namemap_clear(mainl);
 
   while ((tojoin = mainl->next)) {
+    BLI_assert(((tojoin->curlib->runtime.tag & LIBRARY_IS_ASSET_EDIT_FILE) != 0) ==
+               tojoin->is_asset_edit_file);
     add_main_to_main(mainl, tojoin);
     BLI_remlink(mainlist, tojoin);
     tojoin->next = tojoin->prev = nullptr;
@@ -418,6 +420,7 @@ void blo_split_main(ListBase *mainlist, Main *main)
     libmain->subversionfile = lib->runtime.subversionfile;
     libmain->has_forward_compatibility_issues = !MAIN_VERSION_FILE_OLDER_OR_EQUAL(
         libmain, BLENDER_FILE_VERSION, BLENDER_FILE_SUBVERSION);
+    libmain->is_asset_edit_file = (lib->runtime.tag & LIBRARY_IS_ASSET_EDIT_FILE) != 0;
     BLI_addtail(mainlist, libmain);
     lib->runtime.temp_index = i;
     lib_main_array[i] = libmain;
@@ -448,6 +451,7 @@ static void read_file_version(FileData *fd, Main *main)
         main->subversionfile = fg->subversion;
         main->minversionfile = fg->minversion;
         main->minsubversionfile = fg->minsubversion;
+        main->is_asset_edit_file = (fg->fileflags & G_FILE_ASSET_EDIT_FILE) != 0;
         MEM_freeN(fg);
       }
       else if (bhead->code == BLO_CODE_ENDB) {
@@ -458,6 +462,8 @@ static void read_file_version(FileData *fd, Main *main)
   if (main->curlib) {
     main->curlib->runtime.versionfile = main->versionfile;
     main->curlib->runtime.subversionfile = main->subversionfile;
+    SET_FLAG_FROM_TEST(
+        main->curlib->runtime.tag, main->is_asset_edit_file, LIBRARY_IS_ASSET_EDIT_FILE);
   }
 }
 
@@ -1335,9 +1341,11 @@ void blo_filedata_free(FileData *fd)
 #else
   /* Sanity check we're not keeping memory we don't need. */
   LISTBASE_FOREACH_MUTABLE (BHeadN *, new_bhead, &fd->bhead_list) {
+#  ifdef USE_BHEAD_READ_ON_DEMAND
     if (fd->file->seek != nullptr && BHEAD_USE_READ_ON_DEMAND(&new_bhead->bhead)) {
       BLI_assert(new_bhead->has_data == 0);
     }
+#  endif
     MEM_freeN(new_bhead);
   }
 #endif
@@ -1358,9 +1366,6 @@ void blo_filedata_free(FileData *fd)
   }
   if (fd->globmap) {
     oldnewmap_free(fd->globmap);
-  }
-  if (fd->packedmap) {
-    oldnewmap_free(fd->packedmap);
   }
   if (fd->libmap && !(fd->flags & FD_FLAGS_NOT_MY_LIBMAP)) {
     oldnewmap_free(fd->libmap);
@@ -1452,16 +1457,6 @@ void *blo_read_get_new_globaldata_address(FileData *fd, const void *adr)
   return oldnewmap_lookup_and_inc(fd->globmap, adr, true);
 }
 
-/* Used to restore packed data after undo. */
-static void *newpackedadr(FileData *fd, const void *adr)
-{
-  if (fd->packedmap && adr) {
-    return oldnewmap_lookup_and_inc(fd->packedmap, adr, true);
-  }
-
-  return oldnewmap_lookup_and_inc(fd->datamap, adr, true);
-}
-
 /* only lib data */
 static void *newlibadr(FileData *fd, ID * /*self_id*/, const bool is_linked_only, const void *adr)
 {
@@ -1509,90 +1504,6 @@ static void change_link_placeholder_to_real_ID_pointer(ListBase *mainlist,
     if (fd) {
       change_link_placeholder_to_real_ID_pointer_fd(fd, old, newp);
     }
-  }
-}
-
-/* XXX disabled this feature - packed files also belong in temp saves and quit.blend,
- * to make restore work. */
-
-static void insert_packedmap(FileData *fd, PackedFile *pf)
-{
-  oldnewmap_insert(fd->packedmap, pf, pf, 0);
-  oldnewmap_insert(fd->packedmap, pf->data, pf->data, 0);
-}
-
-void blo_make_packed_pointer_map(FileData *fd, Main *oldmain)
-{
-  fd->packedmap = oldnewmap_new();
-
-  LISTBASE_FOREACH (Image *, ima, &oldmain->images) {
-    if (ima->packedfile) {
-      insert_packedmap(fd, ima->packedfile);
-    }
-
-    LISTBASE_FOREACH (ImagePackedFile *, imapf, &ima->packedfiles) {
-      if (imapf->packedfile) {
-        insert_packedmap(fd, imapf->packedfile);
-      }
-    }
-  }
-
-  LISTBASE_FOREACH (VFont *, vfont, &oldmain->fonts) {
-    if (vfont->packedfile) {
-      insert_packedmap(fd, vfont->packedfile);
-    }
-  }
-
-  LISTBASE_FOREACH (bSound *, sound, &oldmain->sounds) {
-    if (sound->packedfile) {
-      insert_packedmap(fd, sound->packedfile);
-    }
-  }
-
-  LISTBASE_FOREACH (Volume *, volume, &oldmain->volumes) {
-    if (volume->packedfile) {
-      insert_packedmap(fd, volume->packedfile);
-    }
-  }
-
-  LISTBASE_FOREACH (Library *, lib, &oldmain->libraries) {
-    if (lib->packedfile) {
-      insert_packedmap(fd, lib->packedfile);
-    }
-  }
-}
-
-void blo_end_packed_pointer_map(FileData *fd, Main *oldmain)
-{
-  /* used entries were restored, so we put them to zero */
-  for (NewAddress &entry : fd->packedmap->map.values()) {
-    if (entry.nr > 0) {
-      entry.newp = nullptr;
-    }
-  }
-
-  LISTBASE_FOREACH (Image *, ima, &oldmain->images) {
-    ima->packedfile = static_cast<PackedFile *>(newpackedadr(fd, ima->packedfile));
-
-    LISTBASE_FOREACH (ImagePackedFile *, imapf, &ima->packedfiles) {
-      imapf->packedfile = static_cast<PackedFile *>(newpackedadr(fd, imapf->packedfile));
-    }
-  }
-
-  LISTBASE_FOREACH (VFont *, vfont, &oldmain->fonts) {
-    vfont->packedfile = static_cast<PackedFile *>(newpackedadr(fd, vfont->packedfile));
-  }
-
-  LISTBASE_FOREACH (bSound *, sound, &oldmain->sounds) {
-    sound->packedfile = static_cast<PackedFile *>(newpackedadr(fd, sound->packedfile));
-  }
-
-  LISTBASE_FOREACH (Library *, lib, &oldmain->libraries) {
-    lib->packedfile = static_cast<PackedFile *>(newpackedadr(fd, lib->packedfile));
-  }
-
-  LISTBASE_FOREACH (Volume *, volume, &oldmain->volumes) {
-    volume->packedfile = static_cast<PackedFile *>(newpackedadr(fd, volume->packedfile));
   }
 }
 
@@ -1825,7 +1736,8 @@ static void *read_struct(FileData *fd, BHead *bh, const char *blockname)
       }
       else {
         /* SDNA_CMP_EQUAL */
-        temp = MEM_mallocN(bh->len, blockname);
+        const int alignment = DNA_struct_alignment(fd->filesdna, bh->SDNAnr);
+        temp = MEM_mallocN_aligned(bh->len, alignment, blockname);
 #ifdef USE_BHEAD_READ_ON_DEMAND
         if (BHEADN_FROM_BHEAD(bh)->has_data) {
           memcpy(temp, (bh + 1), bh->len);
@@ -2620,7 +2532,7 @@ static bool read_libblock_undo_restore_library(
   }
 
   Main *libmain = static_cast<Main *>(fd->old_mainlist->first);
-  /* Skip oldmain itself... */
+  /* Skip `oldmain` itself. */
   for (libmain = libmain->next; libmain; libmain = libmain->next) {
     if (&libmain->curlib->id == id_old) {
       Main *old_main = static_cast<Main *>(fd->old_mainlist->first);
@@ -3053,6 +2965,7 @@ static BHead *read_global(BlendFileData *bfd, FileData *fd, BHead *bhead)
 
   bfd->main->build_commit_timestamp = fg->build_commit_timestamp;
   STRNCPY(bfd->main->build_hash, fg->build_hash);
+  bfd->main->is_asset_edit_file = (fg->fileflags & G_FILE_ASSET_EDIT_FILE) != 0;
 
   bfd->fileflags = fg->fileflags;
   bfd->globalf = fg->globalf;
@@ -3289,7 +3202,7 @@ static void lib_link_all(FileData *fd, Main *bmain)
        * Handling of DNA deprecated data should never be needed in undo case. */
       const int flag = IDWALK_NO_ORIG_POINTERS_ACCESS | IDWALK_INCLUDE_UI |
                        ((fd->flags & FD_FLAGS_IS_MEMFILE) ? 0 : IDWALK_DO_DEPRECATED_POINTERS);
-      BKE_library_foreach_ID_link(nullptr, id, lib_link_cb, &reader, flag);
+      BKE_library_foreach_ID_link(bmain, id, lib_link_cb, &reader, flag);
 
       after_liblink_id_process(&reader, id);
 
@@ -4816,11 +4729,6 @@ void *BLO_read_get_new_data_address_no_us(BlendDataReader *reader,
 {
   void *new_address = newdataadr_no_us(reader->fd, old_address);
   return blo_verify_data_address(new_address, old_address, expected_size);
-}
-
-void *BLO_read_get_new_packed_address(BlendDataReader *reader, const void *old_address)
-{
-  return newpackedadr(reader->fd, old_address);
 }
 
 void *BLO_read_struct_array_with_size(BlendDataReader *reader,

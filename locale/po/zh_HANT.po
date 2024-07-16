@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.2.0 Beta (b'a2795852cd29')\n"
+"Project-Id-Version: Blender 4.2.0 Release Candidate (b'988bf2b88f3b')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-06-10 10:16+0000\n"
+"POT-Creation-Date: 2024-07-15 07:57+0000\n"
 "PO-Revision-Date: 2024-03-05 22:56+0000\n"
 "Last-Translator: 居樂行 <oscilloscope9705@gmail.com>\n"
 "Language-Team: Chinese (Traditional) <https://translate.blender.org/projects/blender-ui/ui/zh_Hant/>\n"
@@ -377,6 +377,22 @@ msgstr "顯示 glTF 使用介面以管理動畫"
 
 msgid "Displays glTF Material Output node in Shader Editor (Menu Add > Output)"
 msgstr "在著色器編輯器中顯示 glTF 設定節點 (選單 添加 > 輸出)"
+
+
+msgid "Always"
+msgstr "總是"
+
+
+msgid "Never"
+msgstr "永不"
+
+
+msgid "Center"
+msgstr "中心"
+
+
+msgid "Bottom"
+msgstr "底"
 
 
 msgid "Fribidi Library"
@@ -3713,10 +3729,12 @@ msgid "Curve Radius"
 msgstr "曲線半徑"
 
 
-msgid "Density Mode"
-msgstr "密度模式"
+msgctxt "Operator"
+msgid "Add"
+msgstr "添加"
 
 
+msgctxt "Operator"
 msgid "Remove"
 msgstr "移除"
 
@@ -4669,10 +4687,6 @@ msgstr "左"
 
 msgid "Right"
 msgstr "右"
-
-
-msgid "Center"
-msgstr "中心"
 
 
 msgid "Pole Merge Start Angle"
@@ -7043,10 +7057,6 @@ msgstr "啟用的旋轉範圍"
 
 msgid "Rotation range on which pivoting should occur"
 msgstr "樞紐應該發生的旋轉範圍"
-
-
-msgid "Always"
-msgstr "總是"
 
 
 msgid "Use the pivot point in every rotation"
@@ -11105,10 +11115,6 @@ msgid "Bubble"
 msgstr "氣泡"
 
 
-msgid "Bottom"
-msgstr "底"
-
-
 msgid "Top"
 msgstr "頂"
 
@@ -11281,24 +11287,12 @@ msgid "Temperature difference to ambient temperature"
 msgstr "與週遭溫度之間的溫度差異"
 
 
-msgid "Mapping"
-msgstr "映射方法"
-
-
 msgid "Texture mapping type"
 msgstr "紋理映射類型"
 
 
-msgid "Generated"
-msgstr "生成的"
-
-
 msgid "Generated coordinates centered to flow object"
 msgstr "將生成的座標系對流動物體置中"
-
-
-msgid "UV"
-msgstr "UV"
 
 
 msgid "Use UV layer for texture coordinates"
@@ -11827,6 +11821,10 @@ msgstr "極限"
 
 msgid "Jitter"
 msgstr "抖動"
+
+
+msgid "Generated"
+msgstr "生成的"
 
 
 msgid "Frame is selected for editing in the Dope Sheet"
@@ -13011,6 +13009,10 @@ msgid "Markers specific to this action, for labeling poses"
 msgstr "此動作的特定標註，用來為姿勢加上標籤"
 
 
+msgid "Feature Set"
+msgstr "功能設定"
+
+
 msgid "Octahedral"
 msgstr "八面體"
 
@@ -13077,6 +13079,10 @@ msgstr "靜止位置"
 
 msgid "Show Armature in binding pose state (no posing possible)"
 msgstr "於綁定姿勢狀態顯示骨架 (不可能姿勢處理)"
+
+
+msgid "Theme"
+msgstr "主題"
 
 
 msgid "X-Axis Mirror"
@@ -15364,10 +15370,6 @@ msgid "Where the image comes from"
 msgstr "影像來自的地方"
 
 
-msgid "Single Image"
-msgstr "單一影像"
-
-
 msgid "Single image file"
 msgstr "單一影像檔"
 
@@ -15376,20 +15378,12 @@ msgid "Multiple image files, as a sequence"
 msgstr "多個影像檔，為一序段"
 
 
-msgid "Movie"
-msgstr "影片"
-
-
 msgid "Movie file"
 msgstr "影片檔"
 
 
 msgid "Generated image"
 msgstr "生成的影像"
-
-
-msgid "Viewer"
-msgstr "檢視器"
 
 
 msgid "Compositing node viewer"
@@ -16082,10 +16076,6 @@ msgstr "當編輯時，以一半的解析度更新變幻球"
 
 msgid "While editing, update metaball without polygonization"
 msgstr "當編輯時，更新變幻球不使用多角形化"
-
-
-msgid "Never"
-msgstr "永不"
 
 
 msgid "While editing, don't update metaball at all"
@@ -20952,6 +20942,10 @@ msgid "Influence factor by which the modifier changes the property"
 msgstr "修改器變更屬性的影響係數"
 
 
+msgid "Mapping"
+msgstr "映射方法"
+
+
 msgid "Select the mapping type"
 msgstr "選取映射類型"
 
@@ -21665,6 +21659,10 @@ msgid "Material slot name"
 msgstr "材質槽名稱"
 
 
+msgid "Basic"
+msgstr "基本"
+
+
 msgctxt "MovieClip"
 msgid "Clip"
 msgstr "剪輯"
@@ -21738,6 +21736,10 @@ msgid "Select Linked"
 msgstr "選取連結項"
 
 
+msgid "UV"
+msgstr "UV"
+
+
 msgid "Align"
 msgstr "對齊"
 
@@ -21748,11 +21750,6 @@ msgstr "UV 選取模式"
 
 msgid "Show/Hide Faces"
 msgstr "顯示/隱藏面"
-
-
-msgctxt "Operator"
-msgid "Add"
-msgstr "添加"
 
 
 msgid "Shape Key Specials"
@@ -21937,6 +21934,11 @@ msgstr "已啟用模式"
 
 msgid "Names"
 msgstr "名稱"
+
+
+msgctxt "Operator"
+msgid "Parent"
+msgstr "親子"
 
 
 msgid "Bone Roll"
@@ -27646,6 +27648,10 @@ msgid "Minimum speed for a pixel to be blurred (used to separate background from
 msgstr "像素轉為模糊的最小速度 (用來將背景從前景分離出來)"
 
 
+msgid "Viewer"
+msgstr "檢視器"
+
+
 msgid "Z Combine"
 msgstr "Z 合成"
 
@@ -29963,6 +29969,10 @@ msgid "Reveal Hidden"
 msgstr "揭開隱藏項"
 
 
+msgid "(undocumented operator)"
+msgstr "(未紀錄的操作器)"
+
+
 msgctxt "Operator"
 msgid "(De)select All"
 msgstr "(取消)全選"
@@ -30976,10 +30986,6 @@ msgstr "使用套索選取標記"
 msgctxt "Operator"
 msgid "Set Active Clip"
 msgstr "設定作用中剪輯"
-
-
-msgid "(undocumented operator)"
-msgstr "(未紀錄的操作器)"
 
 
 msgctxt "Operator"
@@ -33686,6 +33692,10 @@ msgstr "削減鍵幀"
 
 msgid "Decimate F-Curves by removing keyframes that influence the curve shape the least"
 msgstr "使用對曲線形狀影響最小的關鍵幀來削減函數曲線"
+
+
+msgid "Remove"
+msgstr "移除"
 
 
 msgid "How much the new decimated curve is allowed to deviate from the original"
@@ -37021,6 +37031,30 @@ msgid "Copy color to all selected nodes"
 msgstr "複製色彩至所有選取的節點"
 
 
+msgid "Option"
+msgstr "選項"
+
+
+msgid "Overlay Mode"
+msgstr "疊層模式"
+
+
+msgid "Current"
+msgstr "目前"
+
+
+msgid "Exponent"
+msgstr "指數"
+
+
+msgid "Fraction"
+msgstr "分數( 小數點後數值 )"
+
+
+msgid "Wrap"
+msgstr "包覆"
+
+
 msgctxt "Operator"
 msgid "Toggle Node Options"
 msgstr "開啟節點選項"
@@ -38108,6 +38142,11 @@ msgstr "隨機化縮放"
 
 msgid "Randomize the scale values"
 msgstr "讓縮放值隨機化"
+
+
+msgctxt "Operator"
+msgid "New"
+msgstr "新增"
 
 
 msgctxt "Operator"
@@ -39885,6 +39924,10 @@ msgstr "揭開所選項"
 
 msgid "Reveal all bones hidden in Pose Mode"
 msgstr "揭開所有姿勢模式中隱藏的骨骼"
+
+
+msgid "Property Name"
+msgstr "屬性名稱"
 
 
 msgctxt "Operator"
@@ -42906,123 +42949,6 @@ msgstr "編輯作用中按鈕的使用者介面源碼"
 
 
 msgctxt "Operator"
-msgid "Edit Translation"
-msgstr "編輯翻譯"
-
-
-msgid "Label of the control"
-msgstr "控制項的標籤"
-
-
-msgid "Flags about the label of the button"
-msgstr "關於按鈕標籤的旗幟"
-
-
-msgid "Message is marked as fuzzy in po file"
-msgstr "訊息在 po 檔中被標記為模糊"
-
-
-msgid "Some error occurred with this message"
-msgstr "此訊息遭遇一些錯誤"
-
-
-msgid "Tip of the control"
-msgstr "控制項的提示"
-
-
-msgid "Flags about the tip of the button"
-msgstr "有關按鈕的提示旗幟"
-
-
-msgid "Label of the enum item of the control, if any"
-msgstr "控制項的枚舉項目標籤，如果有的話"
-
-
-msgid "Flags about the RNA enum item label of the button"
-msgstr "有關按鈕的 RNA 枚舉項目旗幟"
-
-
-msgid "Tip of the enum item of the control, if any"
-msgstr "控制項的枚舉項目提示，如果有的話"
-
-
-msgid "Flags about the RNA enum item tip of the button"
-msgstr "有關按鈕的 RNA 枚舉項目提示旗幟"
-
-
-msgid "Current (translated) language"
-msgstr "目前 (翻譯) 的語言"
-
-
-msgid "Original label of the control"
-msgstr "控制項的原始標籤"
-
-
-msgid "Original tip of the control"
-msgstr "控制項的原始提示"
-
-
-msgid "Original label of the enum item of the control, if any"
-msgstr "控制項枚舉項目的原始標籤，如果有的話"
-
-
-msgid "Original tip of the enum item of the control, if any"
-msgstr "控制樣的枚舉項目原始提示，如果有的話"
-
-
-msgid "Original RNA-defined label of the control, if any"
-msgstr "控制項的原始 RNA 定義標籤，如果有的話"
-
-
-msgid "Original RNA-defined tip of the control, if any"
-msgstr "控制項的原始 RNA 定義提示，如果有的話"
-
-
-msgid "Path to the matching po file"
-msgstr "配對 po 檔的路徑"
-
-
-msgid "RNA context for label"
-msgstr "標籤的 RNA 情境"
-
-
-msgid "Identifier of the RNA enum item, if any"
-msgstr "RNA 枚舉項目的辨識碼，如果有的話"
-
-
-msgid "RNA-defined label of the control, if any"
-msgstr "控制項的 RNA 定義標籤，如果有的話"
-
-
-msgid "Flags about the RNA-defined label of the button"
-msgstr "有關按鈕的 RNA 定義標籤旗幟"
-
-
-msgid "Identifier of the RNA property, if any"
-msgstr "RNA 屬性的辨識碼，如果有的話"
-
-
-msgid "Identifier of the RNA struct, if any"
-msgstr "RNA 結構的辨識碼，如果有的話"
-
-
-msgid "RNA-defined tip of the control, if any"
-msgstr "控制項的 RNA 定義提示，如果有的話"
-
-
-msgid "Flags about the RNA-defined tip of the button"
-msgstr "有關按鈕的 RNA 定義提示旗幟"
-
-
-msgid "Stats from opened po"
-msgstr "來自開啟的 po 的統計資訊"
-
-
-msgid "Edit i18n in current language for the active button"
-msgstr "為作用中按鈕編輯目前語言的 i18n"
-
-
-msgctxt "Operator"
 msgid "Eyedropper"
 msgstr "汲吸器"
 
@@ -43053,11 +42979,6 @@ msgstr "操作器名稱"
 
 msgid "Name (id) of the operator to invoke"
 msgstr "要喚起的操作器名稱 (id)"
-
-
-msgctxt "Operator"
-msgid "Edit Translation Update Mo"
-msgstr "編輯翻譯更新 Mo"
 
 
 msgctxt "Operator"
@@ -43438,10 +43359,6 @@ msgstr "打包島塊"
 
 msgid "Space between islands"
 msgstr "島塊間的空間"
-
-
-msgid "Fraction"
-msgstr "分數( 小數點後數值 )"
 
 
 msgctxt "Operator"
@@ -44406,10 +44323,6 @@ msgid "Toggle a context value"
 msgstr "切換情境值"
 
 
-msgid "Wrap"
-msgstr "包覆"
-
-
 msgctxt "Operator"
 msgid "Context Int Cycle"
 msgstr "情境整數循環"
@@ -44722,10 +44635,6 @@ msgstr "情境"
 msgctxt "Operator"
 msgid "Edit Property"
 msgstr "編輯屬性"
-
-
-msgid "Property Name"
-msgstr "屬性名稱"
 
 
 msgid "Property name edit"
@@ -45182,6 +45091,10 @@ msgstr "搖晃"
 
 msgid "Invert the stencil layer"
 msgstr "反轉油印蠟紙分層"
+
+
+msgid "Single Image"
+msgstr "單一影像"
 
 
 msgid "Size to capture the image for re-projecting"
@@ -45879,10 +45792,6 @@ msgstr "數字欄位"
 
 msgid "Value Slider"
 msgstr "數值滑桿"
-
-
-msgid "Option"
-msgstr "選項"
 
 
 msgid "Pie Menu"
@@ -47054,10 +46963,6 @@ msgstr "全域偏好設定"
 
 msgid "Active Section"
 msgstr "作用中區段"
-
-
-msgid "Active section of the preferences shown in the user interface"
-msgstr "在使用者介面中顯示的偏好設定的作用中區段"
 
 
 msgid "Apps"
@@ -48524,10 +48429,6 @@ msgid "Multiple Importance Sampling"
 msgstr "多重重要性取樣"
 
 
-msgid "Feature Set"
-msgstr "功能設定"
-
-
 msgid "Feature set to use for rendering"
 msgstr "用於算繪的功能設定"
 
@@ -48790,6 +48691,10 @@ msgstr "繪圖板壓力"
 
 msgid "Brush Size"
 msgstr "筆刷大小"
+
+
+msgid "Widget"
+msgstr "元件"
 
 
 msgid "Selected UV Element"
@@ -49964,10 +49869,6 @@ msgstr "取樣數"
 
 msgid "Shadow factor hardness"
 msgstr "陰影硬度係數"
-
-
-msgid "Blend factor"
-msgstr "混合係數"
 
 
 msgid "Over-blur"
@@ -51260,10 +51161,6 @@ msgid "Mask displayed and edited in this space"
 msgstr "遮罩此空間中顯示的與編輯的物體"
 
 
-msgid "Overlay Mode"
-msgstr "疊層模式"
-
-
 msgid "Overlay mode of rasterized mask"
 msgstr "光柵遮罩的疊層模式"
 
@@ -51414,14 +51311,6 @@ msgstr "調整最後的操作"
 
 msgid "Toolbar"
 msgstr "工具列"
-
-
-msgid "Show Seconds"
-msgstr "顯示秒數"
-
-
-msgid "Show timing in seconds not frames"
-msgstr "使用秒來計時，而不是正數"
 
 
 msgid "Show Stable"
@@ -52227,10 +52116,6 @@ msgid "Show reference frame only"
 msgstr "僅顯示參照框幀"
 
 
-msgid "Current"
-msgstr "目前"
-
-
 msgid "Show current frame only"
 msgstr "僅顯示目前框幀"
 
@@ -52904,10 +52789,6 @@ msgid "Use global coordinates for the texture coordinates"
 msgstr "為紋理座標使用全域座標"
 
 
-msgid "Along stroke"
-msgstr "沿筆觸"
-
-
 msgid "Use stroke length for texture coordinates"
 msgstr "紋理座標使用筆觸長度"
 
@@ -53018,10 +52899,6 @@ msgstr "為紋理座標使用連結物體的座標"
 
 msgid "Use UV coordinates for texture coordinates"
 msgstr "為紋理座標系使用 UV 座標"
-
-
-msgid "Strand / Particle"
-msgstr "線股 / 粒子"
 
 
 msgid "Use normalized strand texture coordinate (1D) or particle age (X) and trail position (Y)"
@@ -54902,10 +54779,6 @@ msgid "Method to display/shade objects in the 3D View"
 msgstr "3D 視圖中顯示/著色物體的方法"
 
 
-msgid "Theme"
-msgstr "主題"
-
-
 msgid "Alpha Threshold"
 msgstr "Alpha 閾值"
 
@@ -55018,10 +54891,6 @@ msgstr "步行與飛行的基礎速度"
 
 msgid "Multiplication factor when using the fast or slow modifiers"
 msgstr "當使用快速或慢速修改器時的相乘係數"
-
-
-msgid "Widget"
-msgstr "元件"
 
 
 msgid "Length of rays, defines how far away other faces give occlusion effect"
@@ -55691,13 +55560,12 @@ msgid "Resize"
 msgstr "調整大小"
 
 
+msgid "Multiple add-ons with the same name found!"
+msgstr "找到多個同名的附加元件！"
+
+
 msgid "Warning"
 msgstr "警告"
-
-
-msgctxt "Operator"
-msgid "Documentation"
-msgstr "文件"
 
 
 msgctxt "Operator"
@@ -55818,6 +55686,44 @@ msgstr "ASCII FBX 檔未支援 %r"
 
 msgid "Version %r unsupported, must be %r or later"
 msgstr "未支援 %r 版，至少需 %r 或後續版本"
+
+
+msgid "Description:"
+msgstr "描述："
+
+
+msgid "Internet:"
+msgstr "網際網路："
+
+
+msgid "Author:"
+msgstr "作者："
+
+
+msgid "Version:"
+msgstr "版本："
+
+
+msgid "Warning:"
+msgstr "警告："
+
+
+msgctxt "Operator"
+msgid "Documentation"
+msgstr "文件"
+
+
+msgid "File:"
+msgstr "檔案："
+
+
+msgctxt "Operator"
+msgid "Apply"
+msgstr "套用"
+
+
+msgid "Options:"
+msgstr "選項："
 
 
 msgid "Save to PO File"
@@ -55952,11 +55858,6 @@ msgid "Restore"
 msgstr "恢復"
 
 
-msgctxt "Operator"
-msgid "New"
-msgstr "新增"
-
-
 msgid "API Defined"
 msgstr "API 已定義"
 
@@ -56085,11 +55986,6 @@ msgstr "外形"
 
 msgid "Axes"
 msgstr "軸"
-
-
-msgctxt "Operator"
-msgid "Remove"
-msgstr "移除"
 
 
 msgid "Control Rotation"
@@ -56282,11 +56178,6 @@ msgstr "親代："
 
 msgid "Transform:"
 msgstr "變換："
-
-
-msgctxt "Operator"
-msgid "Parent"
-msgstr "親子"
 
 
 msgctxt "Operator"
@@ -56487,10 +56378,6 @@ msgid "Heat"
 msgstr "熱"
 
 
-msgid "Exponent"
-msgstr "指數"
-
-
 msgid "Concavity Upper"
 msgstr "坑腔凹谷上"
 
@@ -56666,10 +56553,6 @@ msgstr "解除軌道鎖定"
 msgctxt "Operator"
 msgid "Autocomplete"
 msgstr "自動補完"
-
-
-msgid "Options:"
-msgstr "選項："
 
 
 msgid "Snap To"
@@ -57294,10 +57177,6 @@ msgid "Invert Wheel Zoom Direction"
 msgstr "反轉滾輪遠近調焦方向"
 
 
-msgid "Multiple add-ons with the same name found!"
-msgstr "找到多個同名的附加元件！"
-
-
 msgid "Error (see console)"
 msgstr "錯誤 (查看主控臺)"
 
@@ -57306,32 +57185,8 @@ msgid "Missing script files"
 msgstr "遺失的命令稿檔案"
 
 
-msgid "Description:"
-msgstr "描述："
-
-
 msgid "Location:"
 msgstr "位置："
-
-
-msgid "File:"
-msgstr "檔案："
-
-
-msgid "Author:"
-msgstr "作者："
-
-
-msgid "Version:"
-msgstr "版本："
-
-
-msgid "Warning:"
-msgstr "警告："
-
-
-msgid "Internet:"
-msgstr "網際網路："
 
 
 msgctxt "Operator"
@@ -58184,11 +58039,6 @@ msgstr "快速編輯"
 
 
 msgctxt "Operator"
-msgid "Apply"
-msgstr "套用"
-
-
-msgctxt "Operator"
 msgid "Apply Camera Image"
 msgstr "套用攝影機影像"
 
@@ -58653,10 +58503,6 @@ msgstr "線環對並未連接"
 
 msgid "Edge-rings are not connected"
 msgstr "線環並未連接"
-
-
-msgid "Basic"
-msgstr "基本"
 
 
 msgid "Editability of keyframes for this channel"
@@ -59142,18 +58988,6 @@ msgid "Active button not found"
 msgstr "找不到作用中按鈕"
 
 
-msgid "Please set your Preferences' 'Translation Branches Directory' path to a valid directory"
-msgstr "請將您的偏好設定「翻譯分支目錄」路徑設定成有效的目錄"
-
-
-msgid "Could not find operator '%s'! Please enable ui_translate add-on in the User Preferences"
-msgstr "找不到「%s」操作器！請啟用使用者偏好設定中的 ui_translate 附加元件"
-
-
-msgid "No valid po found for language '%s' under %s"
-msgstr "找不到有效的「%s」語言 po 檔，尋找目標為 %s"
-
-
 msgid "%d items"
 msgstr "%d 項"
 
@@ -59168,6 +59002,14 @@ msgstr "亮度"
 
 msgid "Hex triplet for color (#RRGGBB)"
 msgstr "十六進位色彩三連子 (#RRGGBB)"
+
+
+msgid "OK"
+msgstr "確定"
+
+
+msgid "Cancel"
+msgstr "取消"
 
 
 msgid "Menu \"%s\" not found"
@@ -59567,10 +59409,6 @@ msgstr "球體"
 msgctxt "Mesh"
 msgid "Icosphere"
 msgstr "Ico 球體"
-
-
-msgid "Cancel"
-msgstr "取消"
 
 
 msgid "Outer"
@@ -60297,10 +60135,6 @@ msgstr "偵測到遺失%s%s%s%s！"
 
 msgid "Warning!"
 msgstr "警告！"
-
-
-msgid "OK"
-msgstr "確定"
 
 
 msgid "non-triangle face"
@@ -62021,6 +61855,10 @@ msgstr "網格沒有 VCol 資料"
 
 msgid "Constraint '%s' not found in pose bone '%s'"
 msgstr "姿勢骨骼「%s」中找不到約束「%s」"
+
+
+msgid "Movie"
+msgstr "影片"
 
 
 msgid "Keying set could not be added"
