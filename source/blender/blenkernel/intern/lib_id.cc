@@ -176,8 +176,11 @@ bool ID_IS_EDITABLE(const void *id_)
 bool ID_IS_LOCKED(const void *id_)
 {
   const ID *id = static_cast<const ID *>(id_);
-  return id->library_weak_reference &&
-         (id->library_weak_reference->flag & LIBRARY_WEAK_REFERENCE_FLAG_IS_LOCKED);
+  if (id->flag & LIB_LOCKED) {
+    BLI_assert(id->deep_hash.is_valid());
+    return true;
+  }
+  return false;
 }
 
 /**

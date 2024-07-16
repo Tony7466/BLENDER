@@ -1215,7 +1215,7 @@ static void compute_locked_hash_for_data_block_recursive(
     return;
   }
   if (ID_IS_LOCKED(&id)) {
-    r_locked_hashes.add_new(&id, id.library_weak_reference->locked_hash);
+    r_locked_hashes.add_new(&id, id.deep_hash);
     return;
   }
   if (!id.shallow_hash.is_valid()) {
@@ -1336,19 +1336,18 @@ void BKE_blendfile_append(BlendfileLinkAppendContext *lapp_context, ReportList *
     }
 
     if (local_appended_new_id != nullptr) {
-      if (!local_appended_new_id->library_weak_reference) {
+      if (!ID_IS_LOCKED(local_appended_new_id)) {
         blender::Set<const ID *> current_stack;
         compute_locked_hash_for_data_block_recursive(
             *bmain, *local_appended_new_id, deep_hashes, current_stack);
         const std::optional<IDHash> &id_hash = deep_hashes.lookup(local_appended_new_id);
-
+        local_appended_new_id->deep_hash = *id_hash;
+        local_appended_new_id->flag |= LIB_LOCKED;
+      }
+      if (!local_appended_new_id->library_weak_reference) {
         LibraryWeakReference *weak_reference = MEM_cnew<LibraryWeakReference>(__func__);
         STRNCPY(weak_reference->library_filepath, lib_filepath);
         STRNCPY(weak_reference->library_id_name, lib_id_name);
-        if (id_hash.has_value()) {
-          weak_reference->locked_hash = *id_hash;
-          weak_reference->flag |= LIBRARY_WEAK_REFERENCE_FLAG_IS_LOCKED;
-        }
         local_appended_new_id->library_weak_reference = weak_reference;
       }
       if (set_fakeuser) {

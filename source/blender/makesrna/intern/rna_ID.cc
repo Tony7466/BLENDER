@@ -2354,8 +2354,17 @@ static void rna_def_ID(BlenderRNA *brna)
   RNA_def_property_override_flag(prop, PROPOVERRIDE_NO_COMPARISON);
   RNA_def_property_pointer_funcs(prop, "rna_IDPreview_get", nullptr, nullptr, nullptr);
 
-  prop = RNA_def_property(srna, "hash", PROP_INT, PROP_NONE);
+  prop = RNA_def_property(srna, "shallow_hash_", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, nullptr, "shallow_hash.data");
+  RNA_def_property_array(prop, sizeof(IDHash));
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+
+  prop = RNA_def_property(srna, "is_locked", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", LIB_LOCKED);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+
+  prop = RNA_def_property(srna, "deep_hash_", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, nullptr, "deep_hash.data");
   RNA_def_property_array(prop, sizeof(IDHash));
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
@@ -2605,15 +2614,6 @@ static void rna_def_library_weak_reference(BlenderRNA *brna)
       prop,
       "ID name",
       "Full ID name in the library .blend file (including the two leading 'id type' chars)");
-
-  prop = RNA_def_property(srna, "is_locked", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flag", LIBRARY_WEAK_REFERENCE_FLAG_IS_LOCKED);
-  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-
-  prop = RNA_def_property(srna, "hash", PROP_INT, PROP_NONE);
-  RNA_def_property_int_sdna(prop, nullptr, "locked_hash.data");
-  RNA_def_property_array(prop, sizeof(IDHash));
-  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 }
 
 /**

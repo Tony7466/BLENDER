@@ -500,6 +500,7 @@ typedef struct ID {
   struct LibraryWeakReference *library_weak_reference;
 
   IDHash shallow_hash;
+  IDHash deep_hash;
 
   struct ID_Runtime runtime;
 } ID;
@@ -582,16 +583,8 @@ typedef struct LibraryWeakReference {
   /** MAX_ID_NAME. May be different from the current local ID name. */
   char library_id_name[66];
 
-  /** #LibraryWeakReferenceFlag. */
-  uint8_t flag;
-  char _pad[5];
-  /** Hash of the data block that identifies it in case it is fixed. */
-  IDHash locked_hash;
+  char _pad[2];
 } LibraryWeakReference;
-
-typedef enum LibraryWeakReferenceFlag {
-  LIBRARY_WEAK_REFERENCE_FLAG_IS_LOCKED = 1 << 0,
-} LibraryWeakReferenceFlag;
 
 /* PreviewImage.flag */
 enum ePreviewImage_Flag {
@@ -731,6 +724,7 @@ bool ID_IS_LOCKED(const void *id);
 
 /** id->flag (persistent). */
 enum {
+  LIB_LOCKED = 1 << 8,
   /** Don't delete the data-block even if unused. */
   LIB_FAKEUSER = 1 << 9,
   /**

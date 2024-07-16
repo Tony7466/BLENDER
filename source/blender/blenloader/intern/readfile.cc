@@ -936,13 +936,19 @@ AssetMetaData *blo_bhead_id_asset_data_address(const FileData *fd, const BHead *
              nullptr;
 }
 
-static LibraryWeakReference *blo_bhead_id_weak_reference(const FileData *fd, const BHead *bhead)
+static const IDHash *blo_bhead_id_locked_hash(const FileData *fd, const BHead *bhead)
 {
   BLI_assert(blo_bhead_is_id_valid_type(bhead));
-  return (fd->id_weak_reference_offset >= 0) ?
-             *(LibraryWeakReference **)POINTER_OFFSET(
-                 bhead, sizeof(*bhead) + fd->id_weak_reference_offset) :
-             nullptr;
+  if (fd->id_flag_offset < 0 || fd->id_deep_hash_offset < 0) {
+    return nullptr;
+  }
+  const short flag = *reinterpret_cast<const short *>(
+      POINTER_OFFSET(bhead, sizeof(*bhead) + fd->id_flag_offset));
+  if (!(flag & LIB_LOCKED)) {
+    return nullptr;
+  }
+  return reinterpret_cast<const IDHash *>(
+      POINTER_OFFSET(bhead, sizeof(*bhead) + fd->id_deep_hash_offset));
 }
 
 static void decode_blender_header(FileData *fd)
@@ -1029,8 +1035,10 @@ static bool read_file_dna(FileData *fd, const char **r_error_message)
         BLI_assert(fd->id_name_offset != -1);
         fd->id_asset_data_offset = DNA_struct_member_offset_by_name_with_alias(
             fd->filesdna, "ID", "AssetMetaData", "*asset_data");
-        fd->id_weak_reference_offset = DNA_struct_member_offset_by_name_with_alias(
-            fd->filesdna, "ID", "LibraryWeakReference", "*library_weak_reference");
+        fd->id_flag_offset = DNA_struct_member_offset_by_name_with_alias(
+            fd->filesdna, "ID", "short", "flag");
+        fd->id_deep_hash_offset = DNA_struct_member_offset_by_name_with_alias(
+            fd->filesdna, "ID", "IDHash", "deep_hash");
 
         return true;
       }
@@ -3866,26 +3874,25 @@ static BHead *find_bhead_from_idname(FileData *fd, const char *idname)
 
 static ID *library_id_is_yet_read(FileData *fd, Main *mainvar, BHead *bhead)
 {
-  const LibraryWeakReference *weak_reference = blo_bhead_id_weak_reference(fd, bhead);
-  if (weak_reference) {
-    if (weak_reference->flag & LIBRARY_WEAK_REFERENCE_FLAG_IS_LOCKED) {
-      ID *id;
-      FOREACH_MAIN_ID_BEGIN (mainvar, id) {
-        if (ID_IS_LOCKED(id)) {
-          if (weak_reference->locked_hash == id->library_weak_reference->locked_hash) {
-            return id;
-          }
+  const char *idname = blo_bhead_id_name(fd, bhead);
+
+  const IDHash *locked_hash = blo_bhead_id_locked_hash(fd, bhead);
+  if (locked_hash) {
+    ID *id;
+    FOREACH_MAIN_ID_BEGIN (mainvar, id) {
+      if (ID_IS_LOCKED(id)) {
+        if (*locked_hash == id->deep_hash) {
+          printf("Found\n");
+          return id;
         }
       }
-      FOREACH_MAIN_ID_END;
     }
+    FOREACH_MAIN_ID_END;
   }
   if (mainvar->id_map == nullptr) {
     mainvar->id_map = BKE_main_idmap_create(mainvar, false, nullptr, MAIN_IDMAP_TYPE_NAME);
   }
   BLI_assert(BKE_main_idmap_main_get(mainvar->id_map) == mainvar);
-
-  const char *idname = blo_bhead_id_name(fd, bhead);
 
   ID *id = BKE_main_idmap_lookup_name(mainvar->id_map, GS(idname), idname + 2, mainvar->curlib);
   BLI_assert(id == BLI_findstring(which_libbase(mainvar, GS(idname)), idname, offsetof(ID, name)));
