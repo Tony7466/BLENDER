@@ -1269,6 +1269,12 @@ void BKE_blendfile_append(BlendfileLinkAppendContext *lapp_context, ReportList *
     }
 
     if (local_appended_new_id != nullptr) {
+      if (!local_appended_new_id->library_weak_reference) {
+        LibraryWeakReference *weak_reference = MEM_cnew<LibraryWeakReference>(__func__);
+        STRNCPY(weak_reference->library_filepath, lib_filepath);
+        STRNCPY(weak_reference->library_id_name, lib_id_name);
+        local_appended_new_id->library_weak_reference = weak_reference;
+      }
       if (set_fakeuser) {
         if (!ELEM(GS(local_appended_new_id->name), ID_OB, ID_GR)) {
           /* Do not set fake user on objects nor collections (instancing). */
