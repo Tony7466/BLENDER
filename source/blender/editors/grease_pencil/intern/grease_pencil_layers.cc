@@ -955,8 +955,37 @@ void merge_layers(GreasePencil &grease_pencil,
 
 enum {
   GREASE_PENCIL_LAYER_MERGE_ACTIVE = 0,
-  GREASE_PENCIL_LAYER_MERGE_ALL = 1,
+  GREASE_PENCIL_LAYER_MERGE_GROUP = 1,
+  GREASE_PENCIL_LAYER_MERGE_ALL = 2,
 };
+
+static void merge_layer_group(GreasePencil &grease_pencil,
+                              bke::greasepencil::LayerGroup *layer_group)
+{
+  Span<bke::greasepencil::LayerGroup *> groups = layer_group ?
+                                                     layer_group->groups_for_write() :
+                                                     grease_pencil.layer_groups_for_write();
+  while (groups.size() != 0) {
+    merge_layer_group(grease_pencil, groups[0]);
+    /* This would call ensure_nodes_cache(); since we changed layer node structure. */
+    groups = layer_group ? layer_group->groups_for_write() :
+                           grease_pencil.layer_groups_for_write();
+  }
+
+  Span<bke::greasepencil::Layer *> layers = layer_group ? layer_group->layers_for_write() :
+                                                          grease_pencil.layers_for_write();
+  while (layers.size() > 1) {
+    merge_layers(grease_pencil, *layers[1], *layers[0]);
+    /* This would call ensure_nodes_cache(); since we changed layer node structure. */
+    layers = layer_group ? layer_group->layers_for_write() : grease_pencil.layers_for_write();
+  }
+
+  /* If we are merging in a group, then delete the group and replace it with the merged layer. */
+  if (layer_group != nullptr) {
+    bke::greasepencil::LayerGroup *parent_group = layer_group->as_node().parent_group();
+    /* TODO: Replace group with layer. */
+  }
+}
 
 static int grease_pencil_merge_layer_exec(bContext *C, wmOperator *op)
 {
@@ -970,17 +999,24 @@ static int grease_pencil_merge_layer_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  bke::greasepencil::TreeNode *prev_node = grease_pencil.active_node->wrap().prev_node();
-  if (!prev_node || !prev_node->is_layer()) {
-    BKE_report(op->reports, RPT_ERROR, "No layers to merge");
-    return OPERATOR_CANCELLED;
+  const bool mode = RNA_boolean_get(op->ptr, "mode");
+
+  if (mode == GREASE_PENCIL_LAYER_MERGE_ACTIVE) {
+    bke::greasepencil::TreeNode *prev_node = grease_pencil.active_node->wrap().prev_node();
+    if (!prev_node || !prev_node->is_layer()) {
+      BKE_report(op->reports, RPT_ERROR, "No layers to merge");
+      return OPERATOR_CANCELLED;
+    }
+    bke::greasepencil::Layer &target_layer = prev_node->as_layer();
+    merge_layers(grease_pencil, *active_layer, target_layer);
   }
-
-  bke::greasepencil::Layer &target_layer = prev_node->as_layer();
-
-  /* TODO: Use mode GREASE_PENCIL_LAYER_MERGE_ACTIVE/ALL, now just merge 1 layer per call.  */
-
-  merge_layers(grease_pencil, *active_layer, target_layer);
+  else if (mode == GREASE_PENCIL_LAYER_MERGE_GROUP) {
+    bke::greasepencil::TreeNode *parent_node = grease_pencil.active_node->wrap().parent_node();
+    merge_layer_group(grease_pencil, parent_node ? &parent_node->as_group() : nullptr);
+  }
+  else if (mode == GREASE_PENCIL_LAYER_MERGE_ALL) {
+    merge_layer_group(grease_pencil, nullptr);
+  }
 
   /* TODO: Clear any invalid mask. Some other layer could be using the merged layer. */
   // LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
@@ -1003,6 +1039,11 @@ static void GREASE_PENCIL_OT_layer_merge(wmOperatorType *ot)
        0,
        "Active",
        "Combine active layer into the layer below"},
+      {GREASE_PENCIL_LAYER_MERGE_GROUP,
+       "GROUP",
+       0,
+       "Group",
+       "Combine layers in the same group into the active layer"},
       {GREASE_PENCIL_LAYER_MERGE_ALL, "ALL", 0, "All", "Combine all layers into the active layer"},
       {0, nullptr, 0, nullptr, nullptr},
   };
