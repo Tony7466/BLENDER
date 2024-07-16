@@ -1033,18 +1033,23 @@ static int grease_pencil_merge_layer_exec(bContext *C, wmOperator *op)
     }
 
     blender::Span<const bke::greasepencil::Layer*> source_layers = parent_node->as_group().layers();
-
-    bke::greasepencil::Layer &target_layer = grease_pencil.add_layer("merged_layer");
+  
+    bke::greasepencil::Layer target_layer("merged_layer");
+    //bke::greasepencil::Layer &target_layer = grease_pencil.add_layer("merged_layer");
 
     merge_layers(*object, grease_pencil, source_layers, target_layer);
 
     if(parent_node != &grease_pencil.root_group().as_node()){
-      grease_pencil.move_node_after(*parent_node,target_layer.as_node());
-      grease_pencil.remove_group(parent_node->as_group());
+      //grease_pencil.move_node_after(*parent_node,target_layer.as_node());
+      //grease_pencil.remove_group(parent_node->as_group());
     }else{
-      /* Need to remove stuff in source_layers... */
-    }
+      blender::Span<bke::greasepencil::Layer *> removing_layers=grease_pencil.layers_for_write();
+      for(const int layer:removing_layers.index_range()){
+        grease_pencil.remove_layer(*removing_layers[layer]);
+      }
 
+      bke::greasepencil::Layer &new_layer = grease_pencil.duplicate_layer(target_layer);
+    }
   }
 
   /* TODO: Clear any invalid mask. Some other layer could be using the merged layer. */
