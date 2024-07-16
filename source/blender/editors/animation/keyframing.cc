@@ -854,8 +854,7 @@ static int delete_key_fcurve(
   /* Delete keyframes on current frame
     * WARNING: this can delete the next F-Curve, hence the "fcn" copying.
     */
-  return blender::animrig::delete_keyframe_fcurve_legacy(adt, fcu, cfra_unmap);
-
+  return blender::animrig::delete_keyframe_fcurve_legacy(adt, fcu, fcu_frame);
 }
 
 static int delete_key_v3d_without_keying_set(bContext *C, wmOperator *op)
@@ -871,7 +870,6 @@ static int delete_key_v3d_without_keying_set(bContext *C, wmOperator *op)
   const bool confirm = op->flag & OP_IS_INVOKE;
 
   CTX_DATA_BEGIN (C, Object *, ob, selected_objects) {
-    ID *id = &ob->id;
     int success = 0;
 
     selected_objects_len += 1;
