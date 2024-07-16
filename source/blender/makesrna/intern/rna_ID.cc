@@ -2600,6 +2600,10 @@ static void rna_def_library_weak_reference(BlenderRNA *brna)
       prop,
       "ID name",
       "Full ID name in the library .blend file (including the two leading 'id type' chars)");
+
+  prop = RNA_def_property(srna, "is_read_only", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", LIBRARY_WEAK_REFERENCE_FLAG_IS_READ_ONLY);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 }
 
 /**

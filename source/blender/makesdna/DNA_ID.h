@@ -567,9 +567,6 @@ typedef struct IDHash {
  *
  * NOTE: This is by design a week reference, in other words code should be totally fine and perform
  * a regular append if it cannot find a valid matching local ID.
- *
- * NOTE: There should always be only one single ID in current Main matching a given linked
- * reference.
  */
 typedef struct LibraryWeakReference {
   /**  Expected to match a `Library.filepath`. */
@@ -581,12 +578,12 @@ typedef struct LibraryWeakReference {
   /** #LibraryWeakReferenceFlag. */
   uint8_t flag;
   char _pad[5];
-  /** Hash of the data block that identifies it in case it is embedded. */
-  IDHash embedded_deep_hash;
+  /** Hash of the data block that identifies it in case it is read-only. */
+  IDHash deep_hash;
 } LibraryWeakReference;
 
 typedef enum LibraryWeakReferenceFlag {
-  LIBRARY_WEAK_REFERENCE_FLAG_IS_EMBEDDED = 1 << 0,
+  LIBRARY_WEAK_REFERENCE_FLAG_IS_READ_ONLY = 1 << 0,
 } LibraryWeakReferenceFlag;
 
 /* PreviewImage.flag */
@@ -668,10 +665,7 @@ typedef struct PreviewImage {
 
 #define ID_TYPE_SUPPORTS_ASSET_EDITABLE(id_type) ELEM(id_type, ID_BR, ID_TE, ID_NT, ID_IM)
 
-#define ID_IS_EDITABLE(_id) \
-  ((((const ID *)(_id))->lib == NULL) || \
-   ((((const ID *)(_id))->lib->runtime.tag & LIBRARY_ASSET_EDITABLE) && \
-    ID_TYPE_SUPPORTS_ASSET_EDITABLE(GS((((const ID *)(_id))->name)))))
+bool ID_IS_EDITABLE(const void *id);
 
 /* Note that these are fairly high-level checks, should be used at user interaction level, not in
  * BKE_library_override typically (especially due to the check on LIB_TAG_EXTERN). */

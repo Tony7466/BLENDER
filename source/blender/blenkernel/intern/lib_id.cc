@@ -156,6 +156,25 @@ static bool lib_id_library_local_paths_callback(BPathForeachPathData *bpath_data
   return false;
 }
 
+bool ID_IS_EDITABLE(const void *id_)
+{
+  const ID *id = static_cast<const ID *>(id_);
+  if (id->library_weak_reference) {
+    if (id->library_weak_reference->flag & LIBRARY_WEAK_REFERENCE_FLAG_IS_READ_ONLY) {
+      return false;
+    }
+  }
+  if (id->lib == nullptr) {
+    return true;
+  }
+  if (id->lib->runtime.tag & LIBRARY_ASSET_EDITABLE) {
+    if (ID_TYPE_SUPPORTS_ASSET_EDITABLE(GS(id->name))) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /**
  * This has to be called from each make_local_* func, we could call from BKE_lib_id_make_local()
  * but then the make local functions would not be self contained.
