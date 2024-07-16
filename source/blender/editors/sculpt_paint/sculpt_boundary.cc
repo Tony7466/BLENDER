@@ -368,7 +368,6 @@ static void edit_data_init(SculptSession &ss,
               BKE_pbvh_vertex_to_index(*ss.pbvh, initial_vert))
           {
             boundary.pivot_position = SCULPT_vertex_co_get(ss, ni.vertex);
-            copy_v3_v3(boundary.initial_pivot_position, boundary.pivot_position);
             accum_distance += len_v3v3(SCULPT_vertex_co_get(ss, from_v), boundary.pivot_position);
           }
         }
