@@ -409,12 +409,13 @@ class LayerRuntime {
  */
 class Layer : public ::GreasePencilLayer {
  public:
+  using SortedKeysIterator = const int *;
+
   Layer();
   explicit Layer(StringRefNull name);
   Layer(const Layer &other);
   ~Layer();
 
- public:
   /* Define the common functions for #TreeNode. */
   TREENODE_COMMON_METHODS;
   /**
@@ -492,6 +493,11 @@ class Layer : public ::GreasePencilLayer {
    * exists.
    */
   int sorted_keys_index_at(int frame_number) const;
+  /**
+   * \returns an iterator into the `sorted_keys` span to the frame at \a frame_number or nullptr if
+   * no such frame exists.
+   */
+  SortedKeysIterator sorted_keys_iterator_at(int frame_number) const;
 
   /**
    * \returns a pointer to the active frame at \a frame_number or nullptr if there is no frame.
@@ -532,6 +538,13 @@ class Layer : public ::GreasePencilLayer {
   float4x4 local_transform() const;
 
   /**
+   * Updates the local transform of the layer based on the matrix.
+   *
+   * \note The matrix is decomposed into location, rotation and scale, so any skew is lost.
+   */
+  void set_local_transform(const float4x4 &transform);
+
+  /**
    * Returns the transformation from layer space to object space.
    */
   float4x4 to_object_space(const Object &object) const;
@@ -556,14 +569,6 @@ class Layer : public ::GreasePencilLayer {
   void set_view_layer_name(const char *new_name);
 
  private:
-  using SortedKeysIterator = const int *;
-
- private:
-  /**
-   * \returns an iterator into the `sorted_keys` span to the frame at \a frame_number or nullptr if
-   * no such frame exists.
-   */
-  SortedKeysIterator sorted_keys_iterator_at(int frame_number) const;
   /**
    * \returns the key of the active frame at \a frame_number or #std::nullopt if no such frame
    * exists.
@@ -863,6 +868,10 @@ class GreasePencilRuntime {
    * Used for example to temporarily hide the paint cursor in the viewport.
    */
   bool is_drawing_stroke = false;
+  /**
+   * Temporarily enable the eraser. Used by the draw tool.
+   */
+  bool use_eraser_temp = false;
 
  public:
   GreasePencilRuntime() {}
