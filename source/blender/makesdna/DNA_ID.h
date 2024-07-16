@@ -580,12 +580,12 @@ typedef struct LibraryWeakReference {
   /** #LibraryWeakReferenceFlag. */
   uint8_t flag;
   char _pad[5];
-  /** Hash of the data block that identifies it in case it is read-only. */
-  IDHash deep_hash;
+  /** Hash of the data block that identifies it in case it is fixed. */
+  IDHash locked_hash;
 } LibraryWeakReference;
 
 typedef enum LibraryWeakReferenceFlag {
-  LIBRARY_WEAK_REFERENCE_FLAG_IS_READ_ONLY = 1 << 0,
+  LIBRARY_WEAK_REFERENCE_FLAG_IS_LOCKED = 1 << 0,
 } LibraryWeakReferenceFlag;
 
 /* PreviewImage.flag */
@@ -668,6 +668,7 @@ typedef struct PreviewImage {
 #define ID_TYPE_SUPPORTS_ASSET_EDITABLE(id_type) ELEM(id_type, ID_BR, ID_TE, ID_NT, ID_IM)
 
 bool ID_IS_EDITABLE(const void *id);
+bool ID_IS_LOCKED(const void *id);
 
 /* Note that these are fairly high-level checks, should be used at user interaction level, not in
  * BKE_library_override typically (especially due to the check on LIB_TAG_EXTERN). */

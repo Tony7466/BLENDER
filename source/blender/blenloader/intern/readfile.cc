@@ -3867,14 +3867,12 @@ static BHead *find_bhead_from_idname(FileData *fd, const char *idname)
 static ID *library_id_is_yet_read(FileData *fd, Main *mainvar, BHead *bhead)
 {
   const LibraryWeakReference *weak_reference = blo_bhead_id_weak_reference(fd, bhead);
-  if (weak_reference && (weak_reference->flag & LIBRARY_WEAK_REFERENCE_FLAG_IS_READ_ONLY)) {
+  if (weak_reference && (weak_reference->flag & LIBRARY_WEAK_REFERENCE_FLAG_IS_LOCKED)) {
     ID *id;
     FOREACH_MAIN_ID_BEGIN (mainvar, id) {
-      if (id->library_weak_reference &&
-          (id->library_weak_reference->flag & LIBRARY_WEAK_REFERENCE_FLAG_IS_READ_ONLY))
-      {
-        if (memcmp(&weak_reference->deep_hash,
-                   &id->library_weak_reference->deep_hash,
+      if (ID_IS_LOCKED(id)) {
+        if (memcmp(&weak_reference->locked_hash,
+                   &id->library_weak_reference->locked_hash,
                    sizeof(IDHash)) == 0)
         {
           return id;

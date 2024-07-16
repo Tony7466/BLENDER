@@ -159,10 +159,8 @@ static bool lib_id_library_local_paths_callback(BPathForeachPathData *bpath_data
 bool ID_IS_EDITABLE(const void *id_)
 {
   const ID *id = static_cast<const ID *>(id_);
-  if (id->library_weak_reference) {
-    if (id->library_weak_reference->flag & LIBRARY_WEAK_REFERENCE_FLAG_IS_READ_ONLY) {
-      return false;
-    }
+  if (ID_IS_LOCKED(id)) {
+    return false;
   }
   if (id->lib == nullptr) {
     return true;
@@ -173,6 +171,13 @@ bool ID_IS_EDITABLE(const void *id_)
     }
   }
   return false;
+}
+
+bool ID_IS_LOCKED(const void *id_)
+{
+  const ID *id = static_cast<const ID *>(id_);
+  return id->library_weak_reference &&
+         (id->library_weak_reference->flag & LIBRARY_WEAK_REFERENCE_FLAG_IS_LOCKED);
 }
 
 /**

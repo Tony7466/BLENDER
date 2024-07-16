@@ -2601,12 +2601,12 @@ static void rna_def_library_weak_reference(BlenderRNA *brna)
       "ID name",
       "Full ID name in the library .blend file (including the two leading 'id type' chars)");
 
-  prop = RNA_def_property(srna, "is_read_only", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flag", LIBRARY_WEAK_REFERENCE_FLAG_IS_READ_ONLY);
+  prop = RNA_def_property(srna, "is_locked", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", LIBRARY_WEAK_REFERENCE_FLAG_IS_LOCKED);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
-  prop = RNA_def_property(srna, "hash", PROP_INT, PROP_NONE);
-  RNA_def_property_int_sdna(prop, nullptr, "deep_hash.data");
+  prop = RNA_def_property(srna, "locked_hash", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, nullptr, "locked_hash.data");
   RNA_def_property_array(prop, sizeof(IDHash));
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 }
