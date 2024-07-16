@@ -167,12 +167,12 @@ template<typename V, typename E> class Result {
    *
    * Note that this moves the success value out of the result if there is one.
    */
-  V value_or(V &&default_value)
+  template<typename T> V value_or(T default_value)
   {
     if (this->is_value()) {
       return std::move(this->value());
     }
-    return std::forward<V>(default_value);
+    return std::forward<T>(default_value);
   }
 
   /**
@@ -198,12 +198,12 @@ template<typename V, typename E> class Result {
    *
    * Note that this moves the error out of the result if there is one.
    */
-  E error_or(E &&default_error)
+  template<typename T> E error_or(T &&default_error)
   {
     if (this->is_error()) {
       return std::move(this->error());
     }
-    return std::forward<E>(default_error);
+    return std::forward<T>(default_error);
   }
 };
 
