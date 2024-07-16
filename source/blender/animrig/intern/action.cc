@@ -1387,6 +1387,9 @@ FCurve *action_fcurve_find(bAction *act, FCurveDescriptor fcurve_descriptor)
   if (act == nullptr) {
     return nullptr;
   }
+#ifdef WITH_ANIM_BAKLAVA
+  BLI_assert(act->wrap().is_action_legacy());
+#endif
   return BKE_fcurve_find(
       &act->curves, fcurve_descriptor.rna_path.c_str(), fcurve_descriptor.array_index);
 }

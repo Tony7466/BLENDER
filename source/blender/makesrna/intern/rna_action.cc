@@ -92,6 +92,7 @@ const EnumPropertyItem rna_enum_strip_type_items[] = {
 
 #  include "DEG_depsgraph.hh"
 
+#  include "ANIM_action_legacy.hh"
 #  include "ANIM_keyframing.hh"
 
 #  include <fmt/format.h>
@@ -699,6 +700,16 @@ static void rna_Action_groups_remove(bAction *act, ReportList *reports, PointerR
   WM_main_add_notifier(NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
 }
 
+/* Use the backward-compatible API only when the experimental feature is
+ * enabled OR if the Action is already a layered Action. */
+static bool use_backward_compatible_api(animrig::Action &action)
+{
+  /* action.is_action_layered() returns 'true' on empty Actions, but that case must be protected by
+   * the experimental flag, hence the expression below uses !action.is_action_legacy(). */
+  return (USER_EXPERIMENTAL_TEST(&U, use_animation_baklava) && action.is_empty()) ||
+         !action.is_action_legacy();
+}
+
 static FCurve *rna_Action_fcurve_new(bAction *act,
                                      Main *bmain,
                                      ReportList *reports,
@@ -706,23 +717,33 @@ static FCurve *rna_Action_fcurve_new(bAction *act,
                                      int index,
                                      const char *group)
 {
-  if (!act->wrap().is_action_legacy()) {
-    BKE_reportf(reports,
-                RPT_ERROR,
-                "Cannot add legacy F-Curves to a layered Action '%s'. Convert it to a legacy "
-                "Action first.",
-                act->id.name + 2);
-    return nullptr;
-  }
-
-  if (group && group[0] == '\0') {
-    group = nullptr;
-  }
-
   BLI_assert(data_path != nullptr);
   if (data_path[0] == '\0') {
     BKE_report(reports, RPT_ERROR, "F-Curve data path empty, invalid argument");
     return nullptr;
+  }
+
+  animrig::Action &action = act->wrap();
+  if (use_backward_compatible_api(action)) {
+    /* Add the F-Curve to the channelbag for the first slot. */
+    animrig::ChannelBag &channelbag = animrig::legacy::channelbag_ensure(action);
+    FCurve *fcurve = channelbag.fcurve_create_unique({data_path, index});
+
+    /* TODO: handle the groups. */
+    if (!fcurve) {
+      BKE_reportf(reports,
+                  RPT_ERROR,
+                  "Cannot add legacy F-Curves to a layered Action '%s'. Convert it to a legacy "
+                  "Action first.",
+                  act->id.name + 2);
+      return nullptr;
+    }
+
+    return fcurve;
+  }
+
+  if (group && group[0] == '\0') {
+    group = nullptr;
   }
 
   /* Annoying, check if this exists. */
@@ -748,6 +769,15 @@ static FCurve *rna_Action_fcurve_find(bAction *act,
     return nullptr;
   }
 
+  animrig::Action &action = act->wrap();
+  if (use_backward_compatible_api(action)) {
+    animrig::ChannelBag *channelbag = animrig::legacy::channelbag_get(action);
+    if (!channelbag) {
+      return nullptr;
+    }
+    return channelbag->fcurve_find({data_path, index});
+  }
+
   /* Returns nullptr if not found. */
   return BKE_fcurve_find(&act->curves, data_path, index);
 }
@@ -755,6 +785,26 @@ static FCurve *rna_Action_fcurve_find(bAction *act,
 static void rna_Action_fcurve_remove(bAction *act, ReportList *reports, PointerRNA *fcu_ptr)
 {
   FCurve *fcu = static_cast<FCurve *>(fcu_ptr->data);
+
+  animrig::Action &action = act->wrap();
+  if (use_backward_compatible_api(action)) {
+    animrig::ChannelBag *channelbag = animrig::legacy::channelbag_get(action);
+    if (!channelbag) {
+      BKE_reportf(reports, RPT_ERROR, "F-Curve not found in action '%s'", act->id.name + 2);
+      return;
+    }
+    if (!channelbag->fcurve_remove(*fcu)) {
+      BKE_reportf(reports, RPT_ERROR, "F-Curve not found in action '%s'", act->id.name + 2);
+      return;
+    }
+    RNA_POINTER_INVALIDATE(fcu_ptr);
+
+    DEG_id_tag_update(&act->id, ID_RECALC_ANIMATION_NO_FLUSH);
+    WM_main_add_notifier(NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
+
+    return;
+  }
+
   if (fcu->grp) {
     if (BLI_findindex(&act->groups, fcu->grp) == -1) {
       BKE_reportf(reports,
@@ -786,7 +836,19 @@ static void rna_Action_fcurve_remove(bAction *act, ReportList *reports, PointerR
 
 static void rna_Action_fcurve_clear(bAction *act)
 {
-  BKE_action_fcurves_clear(act);
+  animrig::Action &action = act->wrap();
+  if (use_backward_compatible_api(action)) {
+    animrig::ChannelBag *channelbag = animrig::legacy::channelbag_get(action);
+    if (!channelbag) {
+      /* Nothing to clear, so the post-condition of not having F-Curves is fulfilled. */
+      return;
+    }
+    channelbag->fcurves_clear();
+  }
+  else {
+    BKE_action_fcurves_clear(act);
+  }
+
   WM_main_add_notifier(NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
 }
 
