@@ -144,7 +144,10 @@ class Domain {
   RealizationOptions realization_options;
 
  public:
-  /* A size only constructor that sets the transformation to identity. */
+  /* A size only constructor that sets the transformation to identity.  If a
+   * dimension of size is odd it translates the domain by 0.5. This is so pixels in
+   * an odd-sized domains line up with pixels in an even-sized one. If this
+   * translation is not wanted, pass float3x3::identity() as the transform. */
   Domain(const int2 &size);
 
   Domain(const int2 &size, const float3x3 &transformation);

@@ -9,7 +9,12 @@
 
 namespace blender::realtime_compositor {
 
-Domain::Domain(const int2 &size) : size(size), transformation(float3x3::identity()) {}
+Domain::Domain(const int2 &size) : size(size), transformation(float3x3::identity())
+{
+    float2 translate((size[0] & 1) && size[0] > 1 ? 0.5 : 0.0,
+                     (size[1] & 1) && size[1] > 1 ? 0.5 : 0.0);
+    transformation.location() = translate;
+}
 
 Domain::Domain(const int2 &size, const float3x3 &transformation)
     : size(size), transformation(transformation)
