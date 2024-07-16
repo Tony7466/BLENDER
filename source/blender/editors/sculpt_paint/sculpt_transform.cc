@@ -903,6 +903,7 @@ static float3 average_mask_border_position(const Object &object,
               tls.factors.reinitialize(verts.size());
               const MutableSpan<float> factors = tls.factors;
               fill_factor_from_hide(verts, factors);
+              mask_border_weight_calc(masks, factors);
               filter_positions_pivot_symmetry(positions, pivot, symm, factors);
 
               accumulate_weighted_average_position(positions, factors, total);
