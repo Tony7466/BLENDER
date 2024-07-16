@@ -205,8 +205,9 @@ static std::optional<Bounds<float2>> compute_drawing_bounds(
 
   BLI_assert(object.type == OB_GREASE_PENCIL);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
-
-  BLI_assert(grease_pencil.has_active_layer());
+  if (!grease_pencil.has_active_layer()) {
+    return drawing_bounds;
+  }
 
   const Layer &layer = *grease_pencil.layers()[layer_index];
   const float4x4 layer_to_world = layer.to_world_space(object);
@@ -242,7 +243,7 @@ static std::optional<Bounds<float2>> compute_drawing_bounds(
     }
   });
 
-  return *drawing_bounds;
+  return drawing_bounds;
 }
 
 static std::optional<Bounds<float2>> compute_objects_bounds(
