@@ -803,8 +803,7 @@ void ANIM_OT_keyframe_clear_v3d(wmOperatorType *ot)
   WM_operator_properties_confirm_or_exec(ot);
 }
 
-static int delete_key_fcurve(
-    FCurve *fcu, const float fcu_frame, Object *ob, AnimData *adt, ReportList *reports)
+static bool can_delete_key(FCurve *fcu, Object *ob, ReportList *reports)
 {
   /* don't touch protected F-Curves */
   if (BKE_fcurve_is_protected(fcu)) {
@@ -813,7 +812,7 @@ static int delete_key_fcurve(
                 "Not deleting keyframe for locked F-Curve '%s', object '%s'",
                 fcu->rna_path,
                 ob->id.name + 2);
-    return 0;
+    return false;
   }
 
   /* Special exception for bones, as this makes this operator more convenient to use
@@ -826,7 +825,7 @@ static int delete_key_fcurve(
     /* Get bone-name, and check if this bone is selected. */
     char bone_name[sizeof(pchan->name)];
     if (!BLI_str_quoted_substr(fcu->rna_path, "pose.bones[", bone_name, sizeof(bone_name))) {
-      return 0;
+      return false;
     }
     pchan = BKE_pose_channel_find_name(ob->pose, bone_name);
 
@@ -837,24 +836,21 @@ static int delete_key_fcurve(
 
       /* skipping - not visible on currently visible layers */
       if (!ANIM_bonecoll_is_visible_pchan(arm, pchan)) {
-        return 0;
+        return false;
       }
       /* skipping - is currently hidden */
       if (pchan->bone->flag & BONE_HIDDEN_P) {
-        return 0;
+        return false;
       }
 
       /* selection flag... */
       if ((pchan->bone->flag & BONE_SELECTED) == 0) {
-        return 0;
+        return false;
       }
     }
   }
 
-  /* Delete keyframes on current frame
-   * WARNING: this can delete the next F-Curve, hence the "fcn" copying.
-   */
-  return blender::animrig::delete_keyframe_fcurve_legacy(adt, fcu, fcu_frame);
+  return true;
 }
 
 static int delete_key_v3d_without_keying_set(bContext *C, wmOperator *op)
@@ -884,13 +880,22 @@ static int delete_key_v3d_without_keying_set(bContext *C, wmOperator *op)
       Action &action = act->wrap();
       if (action.is_action_layered()) {
         for (FCurve *fcu : fcurves_for_action_slot(action, adt->slot_handle)) {
-          success += delete_key_fcurve(fcu, cfra_unmap, ob, adt, op->reports);
+          if (!can_delete_key(fcu, ob, op->reports)) {
+            continue;
+          }
+          success += blender::animrig::fcurve_delete_keyframe_at_time(fcu, cfra_unmap);
         }
       }
       else {
         for (fcu = static_cast<FCurve *>(act->curves.first); fcu; fcu = fcn) {
           fcn = fcu->next;
-          success += delete_key_fcurve(fcu, cfra_unmap, ob, adt, op->reports);
+          if (!can_delete_key(fcu, ob, op->reports)) {
+            continue;
+          }
+          /* Delete keyframes on current frame
+           * WARNING: this can delete the next F-Curve, hence the "fcn" copying.
+           */
+          success += blender::animrig::delete_keyframe_fcurve_legacy(adt, fcu, cfra_unmap);
         }
       }
 
