@@ -63,7 +63,7 @@
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
 #include "RNA_path.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "anim_intern.hh"
 
@@ -851,10 +851,11 @@ static int delete_key_fcurve(
     }
   }
 
-  /* Delete keyframes on current frame.
-   * WARNING: this can delete the F-Curve.
-   */
-  return blender::animrig::delete_keyframe_fcurve(adt, fcu, fcu_frame);
+  /* Delete keyframes on current frame
+    * WARNING: this can delete the next F-Curve, hence the "fcn" copying.
+    */
+  return blender::animrig::delete_keyframe_fcurve_legacy(adt, fcu, cfra_unmap);
+
 }
 
 static int delete_key_v3d_without_keying_set(bContext *C, wmOperator *op)
