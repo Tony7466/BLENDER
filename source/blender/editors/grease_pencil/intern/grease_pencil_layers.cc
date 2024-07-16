@@ -983,7 +983,16 @@ static void merge_layer_group(GreasePencil &grease_pencil,
   /* If we are merging in a group, then delete the group and replace it with the merged layer. */
   if (layer_group != nullptr) {
     bke::greasepencil::LayerGroup *parent_group = layer_group->as_node().parent_group();
-    /* TODO: Replace group with layer. */
+    bke::greasepencil::TreeNode *pivot, &node = layer_group->layers_for_write()[0]->as_node();
+    if (pivot = layer_group->as_node().prev_node()) {
+      grease_pencil.move_node_after(*pivot, node);
+    }
+    else if (pivot = layer_group->as_node().next_node()) {
+      grease_pencil.move_node_after(*pivot, node);
+    }
+    else {
+      grease_pencil.move_node_into(node, *parent_group);
+    }
   }
 }
 
