@@ -135,7 +135,7 @@ template<typename V, typename E> class Result {
    */
   bool is_value() const
   {
-    return this->data.index() == 0;
+    return std::holds_alternative<V>(this->data);
   }
 
   /**
@@ -143,7 +143,7 @@ template<typename V, typename E> class Result {
    */
   bool is_error() const
   {
-    return this->data.index() == 1;
+    return std::holds_alternative<Err<E>>(this->data);
   }
 
   /**
@@ -155,12 +155,12 @@ template<typename V, typename E> class Result {
   V &value()
   {
     BLI_assert(this->is_value());
-    return *std::get_if<0>(&this->data);
+    return std::get<V>(this->data);
   }
   const V &value() const
   {
     BLI_assert(this->is_value());
-    return *std::get_if<0>(&this->data);
+    return std::get<V>(this->data);
   }
 
   /**
@@ -186,12 +186,12 @@ template<typename V, typename E> class Result {
   E &error()
   {
     BLI_assert(this->is_error());
-    return std::get_if<1>(&this->data)->error;
+    return std::get<Err<E>>(this->data).error;
   }
   const E &error() const
   {
     BLI_assert(this->is_error());
-    return std::get_if<1>(&this->data)->error;
+    return std::get<Err<E>>(this->data).error;
   }
 
   /**
