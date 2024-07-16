@@ -1987,6 +1987,11 @@ std::unique_ptr<SculptBoundary> data_init(Object &object,
                                           const Brush *brush,
                                           PBVHVertRef initial_vertex,
                                           float radius);
+std::unique_ptr<SculptBoundaryPreview> preview_data_init(Object &object,
+                                                         const Brush *brush,
+                                                         PBVHVertRef initial_vertex,
+                                                         float radius);
+
 /* Main Brush Function. */
 void do_boundary_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 
