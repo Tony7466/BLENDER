@@ -292,7 +292,7 @@ IDTypeInfo IDType_ID_MC = {
     /*name*/ "MovieClip",
     /*name_plural*/ N_("movieclips"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_MOVIECLIP,
-    /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
+    /*flags*/ 0,
     /*asset_type_info*/ nullptr,
 
     /*init_data*/ movie_clip_init_data,

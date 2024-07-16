@@ -371,8 +371,6 @@ enum eBLOLibLinkFlags {
    * always made local.
    */
   BLO_LIBLINK_APPEND_RECURSIVE = 1 << 20,
-  /** Try to re-use previously appended matching ID on new append. */
-  BLO_LIBLINK_APPEND_LOCAL_ID_REUSE = 1 << 21,
   /** Clear the asset data. */
   BLO_LIBLINK_APPEND_ASSET_DATA_CLEAR = 1 << 22,
   /** Instantiate object data IDs (i.e. create objects for them if needed). */

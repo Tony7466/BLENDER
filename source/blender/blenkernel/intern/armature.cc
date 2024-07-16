@@ -484,7 +484,7 @@ IDTypeInfo IDType_ID_AR = {
     /*name*/ "Armature",
     /*name_plural*/ N_("armatures"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_ARMATURE,
-    /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
+    /*flags*/ 0,
     /*asset_type_info*/ nullptr,
 
     /*init_data*/ armature_init_data,

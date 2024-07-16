@@ -59,7 +59,7 @@ IDTypeInfo IDType_ID_LP = {
     /*name*/ "LightProbe",
     /*name_plural*/ N_("lightprobes"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_LIGHTPROBE,
-    /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
+    /*flags*/ 0,
     /*asset_type_info*/ nullptr,
 
     /*init_data*/ lightprobe_init_data,

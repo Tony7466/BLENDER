@@ -200,7 +200,7 @@ IDTypeInfo IDType_ID_SO = {
     /*name*/ "Sound",
     /*name_plural*/ N_("sounds"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_SOUND,
-    /*flags*/ IDTYPE_FLAGS_NO_ANIMDATA | IDTYPE_FLAGS_APPEND_IS_REUSABLE,
+    /*flags*/ IDTYPE_FLAGS_NO_ANIMDATA,
     /*asset_type_info*/ nullptr,
 
     /* A fuzzy case, think NULLified content is OK here... */

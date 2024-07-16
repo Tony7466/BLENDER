@@ -217,18 +217,6 @@ bool BKE_idtype_idcode_is_only_appendable(const short idcode)
   return false;
 }
 
-bool BKE_idtype_idcode_append_is_reusable(const short idcode)
-{
-  const IDTypeInfo *id_type = BKE_idtype_get_info_from_idcode(idcode);
-  BLI_assert(id_type != nullptr);
-  if (id_type != nullptr && (id_type->flags & IDTYPE_FLAGS_APPEND_IS_REUSABLE) != 0) {
-    /* All appendable ID types should also always be linkable. */
-    BLI_assert((id_type->flags & IDTYPE_FLAGS_NO_LIBLINKING) == 0);
-    return true;
-  }
-  return false;
-}
-
 int BKE_idtype_idcode_to_index(const short idcode)
 {
 #define CASE_IDINDEX(_id) \

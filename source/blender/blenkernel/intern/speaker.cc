@@ -57,7 +57,7 @@ IDTypeInfo IDType_ID_SPK = {
     /*name*/ "Speaker",
     /*name_plural*/ N_("speakers"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_SPEAKER,
-    /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
+    /*flags*/ 0,
     /*asset_type_info*/ nullptr,
 
     /*init_data*/ speaker_init_data,

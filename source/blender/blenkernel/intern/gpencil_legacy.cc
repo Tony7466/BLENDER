@@ -274,7 +274,7 @@ IDTypeInfo IDType_ID_GD_LEGACY = {
     /*name*/ "GPencil",
     /*name_plural*/ N_("grease_pencils"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_GPENCIL,
-    /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
+    /*flags*/ 0,
     /*asset_type_info*/ nullptr,
 
     /*init_data*/ nullptr,

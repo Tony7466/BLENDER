@@ -271,7 +271,7 @@ IDTypeInfo IDType_ID_CU_LEGACY = {
     /*name*/ "Curve",
     /*name_plural*/ N_("curves"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_CURVE_LEGACY,
-    /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
+    /*flags*/ 0,
     /*asset_type_info*/ nullptr,
 
     /*init_data*/ curve_init_data,

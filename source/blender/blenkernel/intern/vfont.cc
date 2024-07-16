@@ -174,7 +174,7 @@ IDTypeInfo IDType_ID_VF = {
     /*name*/ "Font",
     /*name_plural*/ N_("fonts"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_VFONT,
-    /*flags*/ IDTYPE_FLAGS_NO_ANIMDATA | IDTYPE_FLAGS_APPEND_IS_REUSABLE,
+    /*flags*/ IDTYPE_FLAGS_NO_ANIMDATA,
     /*asset_type_info*/ nullptr,
 
     /*init_data*/ vfont_init_data,

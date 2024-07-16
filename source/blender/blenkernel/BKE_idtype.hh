@@ -34,9 +34,6 @@ enum {
    * appended.
    * NOTE: Mutually exclusive with `IDTYPE_FLAGS_NO_LIBLINKING`. */
   IDTYPE_FLAGS_ONLY_APPEND = 1 << 2,
-  /** Allow to re-use an existing local ID with matching weak library reference instead of creating
-   * a new copy of it, when appending. See also #LibraryWeakReference in `DNA_ID.h`. */
-  IDTYPE_FLAGS_APPEND_IS_REUSABLE = 1 << 3,
   /** Indicates that the given IDType does not have animation data. */
   IDTYPE_FLAGS_NO_ANIMDATA = 1 << 4,
   /**
@@ -353,13 +350,7 @@ bool BKE_idtype_idcode_is_linkable(short idcode);
  * \return Boolean, false when also linkable, true when only appendable.
  */
 bool BKE_idtype_idcode_is_only_appendable(short idcode);
-/**
- * Check if an ID type can try to reuse and existing matching local one when being appended again.
- *
- * \param idcode: The IDType code to check.
- * \return Boolean, false when it cannot be re-used, true otherwise.
- */
-bool BKE_idtype_idcode_append_is_reusable(short idcode);
+
 /* Macro currently, since any linkable IDtype should be localizable. */
 #define BKE_idtype_idcode_is_localizable BKE_idtype_idcode_is_linkable
 

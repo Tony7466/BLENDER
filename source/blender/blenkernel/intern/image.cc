@@ -454,7 +454,7 @@ constexpr IDTypeInfo get_type_info()
   info.name = "Image";
   info.name_plural = "images";
   info.translation_context = BLT_I18NCONTEXT_ID_IMAGE;
-  info.flags = IDTYPE_FLAGS_NO_ANIMDATA | IDTYPE_FLAGS_APPEND_IS_REUSABLE;
+  info.flags = IDTYPE_FLAGS_NO_ANIMDATA;
   info.asset_type_info = nullptr;
 
   info.init_data = image_init_data;

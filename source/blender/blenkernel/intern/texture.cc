@@ -202,7 +202,7 @@ IDTypeInfo IDType_ID_TE = {
     /*name*/ "Texture",
     /*name_plural*/ N_("textures"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_TEXTURE,
-    /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
+    /*flags*/ 0,
     /*asset_type_info*/ nullptr,
 
     /*init_data*/ texture_init_data,

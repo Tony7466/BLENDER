@@ -236,7 +236,7 @@ IDTypeInfo IDType_ID_GP = {
     /*name*/ "GreasePencil",
     /*name_plural*/ N_("grease_pencils_v3"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_GPENCIL,
-    /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
+    /*flags*/ 0,
     /*asset_type_info*/ nullptr,
 
     /*init_data*/ grease_pencil_init_data,

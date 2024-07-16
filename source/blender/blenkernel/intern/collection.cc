@@ -388,7 +388,7 @@ IDTypeInfo IDType_ID_GR = {
     /*name*/ "Collection",
     /*name_plural*/ N_("collections"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_COLLECTION,
-    /*flags*/ IDTYPE_FLAGS_NO_ANIMDATA | IDTYPE_FLAGS_APPEND_IS_REUSABLE,
+    /*flags*/ IDTYPE_FLAGS_NO_ANIMDATA,
     /*asset_type_info*/ nullptr,
 
     /*init_data*/ collection_init_data,

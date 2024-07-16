@@ -89,12 +89,6 @@ struct BlendfileLinkAppendContextItem {
   /** Liboverride of the linked ID (nullptr until it has been successfully created or an existing
    * one has been found). */
   ID *liboverride_id;
-  /**
-   * Whether the item has a matching local ID that was already appended from the same source
-   * before, and has not been modified. In 'Append & Reuse' case, this local ID _may_ be reused
-   * instead of making linked data local again.
-   */
-  ID *reusable_local_id;
 
   /** Opaque user data pointer. */
   void *userdata;
@@ -124,9 +118,6 @@ struct BlendfileLinkAppendContext {
 
   /** Allows to easily find an existing items from an ID pointer. */
   blender::Map<ID *, BlendfileLinkAppendContextItem *> new_id_to_item;
-
-  /** Runtime info used by append code to manage re-use of already appended matching IDs. */
-  MainLibraryWeakReferenceMap *library_weak_reference_mapping = nullptr;
 
   /** Embedded blendfile and its size, if needed. */
   const void *blendfile_mem = nullptr;
@@ -163,7 +154,6 @@ struct BlendfileLinkAppendContextCallBack {
 enum {
   LINK_APPEND_ACT_UNSET = 0,
   LINK_APPEND_ACT_KEEP_LINKED,
-  LINK_APPEND_ACT_REUSE_LOCAL,
   LINK_APPEND_ACT_MAKE_LOCAL,
   LINK_APPEND_ACT_COPY_LOCAL,
 };
@@ -238,8 +228,6 @@ void BKE_blendfile_link_append_context_free(BlendfileLinkAppendContext *lapp_con
   for (BlendfileLinkAppendContextLibrary *lib_context : lapp_context->libraries) {
     link_append_context_library_blohandle_release(lapp_context, lib_context);
   }
-
-  BLI_assert(lapp_context->library_weak_reference_mapping == nullptr);
 
   BLI_memarena_free(lapp_context->memarena);
 
@@ -1052,39 +1040,6 @@ static int foreach_libblock_append_add_dependencies_callback(LibraryIDLinkCallba
   return IDWALK_RET_NOP;
 }
 
-static int foreach_libblock_append_ensure_reusable_local_id_callback(
-    LibraryIDLinkCallbackData *cb_data)
-{
-  if (!foreach_libblock_link_append_common_processing(
-          cb_data, foreach_libblock_append_ensure_reusable_local_id_callback))
-  {
-    return IDWALK_RET_NOP;
-  }
-  ID *id = *cb_data->id_pointer;
-  const BlendfileLinkAppendContextCallBack *data =
-      static_cast<BlendfileLinkAppendContextCallBack *>(cb_data->user_data);
-
-  if (!data->item->reusable_local_id) {
-    return IDWALK_RET_NOP;
-  }
-
-  BlendfileLinkAppendContextItem *item = data->lapp_context->new_id_to_item.lookup(id);
-  BLI_assert(item != nullptr);
-
-  /* If the currently processed owner ID is not defined as being kept linked, and is using a
-   * dependency that cannot be reused form local data, then the owner ID should not reuse its
-   * local data either. */
-  if (item->action != LINK_APPEND_ACT_KEEP_LINKED && item->reusable_local_id == nullptr) {
-    BKE_main_library_weak_reference_remove_item(data->lapp_context->library_weak_reference_mapping,
-                                                cb_data->owner_id->lib->filepath,
-                                                cb_data->owner_id->name,
-                                                data->item->reusable_local_id);
-    data->item->reusable_local_id = nullptr;
-  }
-
-  return IDWALK_RET_NOP;
-}
-
 static int foreach_libblock_append_finalize_action_callback(LibraryIDLinkCallbackData *cb_data)
 {
   if (!foreach_libblock_link_append_common_processing(
@@ -1117,8 +1072,6 @@ static void blendfile_append_define_actions(BlendfileLinkAppendContext *lapp_con
   Main *bmain = lapp_context->params->bmain;
 
   const bool do_recursive = (lapp_context->params->flag & BLO_LIBLINK_APPEND_RECURSIVE) != 0;
-  const bool do_reuse_local_id = (lapp_context->params->flag &
-                                  BLO_LIBLINK_APPEND_LOCAL_ID_REUSE) != 0;
 
   /* In case of non-recursive appending, gather a set of all 'original' libraries (i.e. libraries
    * containing data that was explicitly selected by the user). */
@@ -1143,20 +1096,6 @@ static void blendfile_append_define_actions(BlendfileLinkAppendContext *lapp_con
     if (id == nullptr) {
       continue;
     }
-    BLI_assert(item->reusable_local_id == nullptr);
-
-    /* NOTE: handling of reusable local ID info is needed, even if their usage is not requested
-     * for that append operation:
-     *  - Newly appended data need to get their weak reference, such that it can be reused later
-     * if requested.
-     *  - Existing appended data may need to get this 'reuse' weak reference cleared, e.g. if a
-     * new version of it is made local. */
-    item->reusable_local_id = BKE_idtype_idcode_append_is_reusable(GS(id->name)) ?
-                                  BKE_main_library_weak_reference_search_item(
-                                      lapp_context->library_weak_reference_mapping,
-                                      id->lib->filepath,
-                                      id->name) :
-                                  nullptr;
 
     BlendfileLinkAppendContextCallBack cb_data{};
     cb_data.lapp_context = lapp_context;
@@ -1192,7 +1131,6 @@ static void blendfile_append_define_actions(BlendfileLinkAppendContext *lapp_con
           "Appended ID '%s' is only used as a liboverride linked dependency, keeping it linked.",
           id->name);
       item->action = LINK_APPEND_ACT_KEEP_LINKED;
-      item->reusable_local_id = nullptr;
     }
     /* In non-recursive append case, only IDs from the same libraries as the directly appended
      * ones are made local. All dependencies from other libraries are kept linked. */
@@ -1203,48 +1141,6 @@ static void blendfile_append_define_actions(BlendfileLinkAppendContext *lapp_con
                 "keeping it linked.",
                 id->name);
       item->action = LINK_APPEND_ACT_KEEP_LINKED;
-      item->reusable_local_id = nullptr;
-    }
-  }
-
-  /* The reusable local IDs can cause severe issues in hierarchies of appended data. If an ID
-   * user e.g. still has a local reusable ID found, but one of its dependencies does not (i.e.
-   * either there were some changes in the library data, or the previously appended local
-   * dependencies was modified in current file and therefore cannot be re-used anymore), then the
-   * user ID should not be considered as usable either. */
-  /* TODO: This process is currently fairly raw and inefficient. This is likely not a
-   * (significant) issue currently anyway. But would be good to refactor this whole code to use
-   * modern CPP containers (list of items could be an `std::deque` e.g., to be iterable in both
-   * directions). Being able to loop backward here (i.e. typically process the dependencies
-   * before the user IDs) could avoid a lot of iterations. */
-  for (bool keep_looping = do_reuse_local_id; keep_looping;) {
-    keep_looping = false;
-    for (BlendfileLinkAppendContextItem *item : lapp_context->items) {
-      ID *id = item->new_id;
-      if (id == nullptr) {
-        continue;
-      }
-      if (!item->reusable_local_id) {
-        continue;
-      }
-      BlendfileLinkAppendContextCallBack cb_data{};
-      cb_data.lapp_context = lapp_context;
-      cb_data.item = item;
-      cb_data.reports = reports;
-      cb_data.is_liboverride_dependency = (item->tag & LINK_APPEND_TAG_LIBOVERRIDE_DEPENDENCY) !=
-                                          0;
-      cb_data.is_liboverride_dependency_only = (item->tag &
-                                                LINK_APPEND_TAG_LIBOVERRIDE_DEPENDENCY_ONLY) != 0;
-      BKE_library_foreach_ID_link(bmain,
-                                  id,
-                                  foreach_libblock_append_ensure_reusable_local_id_callback,
-                                  &cb_data,
-                                  IDWALK_NOP);
-      if (!item->reusable_local_id) {
-        /* If some reusable ID was cleared, another loop over all items is needed to potentially
-         * propagate this change higher in the dependency hierarchy. */
-        keep_looping = true;
-      }
     }
   }
 
@@ -1261,11 +1157,7 @@ static void blendfile_append_define_actions(BlendfileLinkAppendContext *lapp_con
     }
     BLI_assert((item->tag & LINK_APPEND_TAG_LIBOVERRIDE_DEPENDENCY_ONLY) == 0);
 
-    if (do_reuse_local_id && item->reusable_local_id != nullptr) {
-      CLOG_INFO(&LOG, 3, "Appended ID '%s' as a matching local one, re-using it.", id->name);
-      item->action = LINK_APPEND_ACT_REUSE_LOCAL;
-    }
-    else if (id->tag & LIB_TAG_PRE_EXISTING) {
+    if (id->tag & LIB_TAG_PRE_EXISTING) {
       CLOG_INFO(&LOG, 3, "Appended ID '%s' was already linked, duplicating it.", id->name);
       item->action = LINK_APPEND_ACT_COPY_LOCAL;
     }
@@ -1309,21 +1201,6 @@ static void blendfile_append_define_actions(BlendfileLinkAppendContext *lapp_con
       BKE_library_foreach_ID_link(
           bmain, id, foreach_libblock_append_finalize_action_callback, &cb_data, IDWALK_NOP);
     }
-
-    /* If we found a matching existing local id but are not re-using it, we need to properly
-     * clear its weak reference to linked data. */
-    if (item->reusable_local_id != nullptr &&
-        !ELEM(item->action, LINK_APPEND_ACT_KEEP_LINKED, LINK_APPEND_ACT_REUSE_LOCAL))
-    {
-      BLI_assert_msg(!do_reuse_local_id,
-                     "This code should only be reached when the current append operation does not "
-                     "try to reuse local data.");
-      BKE_main_library_weak_reference_remove_item(lapp_context->library_weak_reference_mapping,
-                                                  id->lib->filepath,
-                                                  id->name,
-                                                  item->reusable_local_id);
-      item->reusable_local_id = nullptr;
-    }
   }
 }
 
@@ -1352,7 +1229,6 @@ void BKE_blendfile_append(BlendfileLinkAppendContext *lapp_context, ReportList *
            0);
 
   new_id_to_item_mapping_create(lapp_context);
-  lapp_context->library_weak_reference_mapping = BKE_main_library_weak_reference_create(bmain);
 
   /* Add missing items (the indirectly linked ones), and carefully define which action should be
    * applied to each of them. */
@@ -1384,12 +1260,6 @@ void BKE_blendfile_append(BlendfileLinkAppendContext *lapp_context, ReportList *
       case LINK_APPEND_ACT_KEEP_LINKED:
         /* Nothing to do here. */
         break;
-      case LINK_APPEND_ACT_REUSE_LOCAL:
-        BLI_assert(item->reusable_local_id != nullptr);
-        /* We only need to set `newid` to ID found in previous loop, for proper remapping. */
-        ID_NEW_SET(id, item->reusable_local_id);
-        /* This is not a 'new' local appended id, do not set `local_appended_new_id` here. */
-        break;
       case LINK_APPEND_ACT_UNSET:
         CLOG_ERROR(
             &LOG, "Unexpected unset append action for '%s' ID, assuming 'keep link'", id->name);
@@ -1399,13 +1269,6 @@ void BKE_blendfile_append(BlendfileLinkAppendContext *lapp_context, ReportList *
     }
 
     if (local_appended_new_id != nullptr) {
-      if (BKE_idtype_idcode_append_is_reusable(GS(local_appended_new_id->name))) {
-        BKE_main_library_weak_reference_add_item(lapp_context->library_weak_reference_mapping,
-                                                 lib_filepath,
-                                                 lib_id_name,
-                                                 local_appended_new_id);
-      }
-
       if (set_fakeuser) {
         if (!ELEM(GS(local_appended_new_id->name), ID_OB, ID_GR)) {
           /* Do not set fake user on objects nor collections (instancing). */
@@ -1414,9 +1277,6 @@ void BKE_blendfile_append(BlendfileLinkAppendContext *lapp_context, ReportList *
       }
     }
   }
-
-  BKE_main_library_weak_reference_destroy(lapp_context->library_weak_reference_mapping);
-  lapp_context->library_weak_reference_mapping = nullptr;
 
   /* Remap IDs as needed. */
   for (BlendfileLinkAppendContextItem *item : lapp_context->items) {
@@ -1428,7 +1288,7 @@ void BKE_blendfile_append(BlendfileLinkAppendContext *lapp_context, ReportList *
     if (id == nullptr) {
       continue;
     }
-    if (ELEM(item->action, LINK_APPEND_ACT_COPY_LOCAL, LINK_APPEND_ACT_REUSE_LOCAL)) {
+    if (ELEM(item->action, LINK_APPEND_ACT_COPY_LOCAL)) {
       BLI_assert(ID_IS_LINKED(id));
       id = id->newid;
       if (id == nullptr) {
@@ -1440,41 +1300,6 @@ void BKE_blendfile_append(BlendfileLinkAppendContext *lapp_context, ReportList *
 
     BKE_libblock_relink_to_newid(bmain, id, 0);
   }
-
-  /* Remove linked IDs when a local existing data has been reused instead. */
-  BKE_main_id_tag_all(bmain, LIB_TAG_DOIT, false);
-  for (BlendfileLinkAppendContextItem *item : lapp_context->items) {
-    if (!ELEM(item->action, LINK_APPEND_ACT_COPY_LOCAL, LINK_APPEND_ACT_REUSE_LOCAL)) {
-      continue;
-    }
-
-    ID *id = item->new_id;
-    if (id == nullptr) {
-      continue;
-    }
-    BLI_assert(ID_IS_LINKED(id));
-    BLI_assert(id->newid != nullptr);
-
-    /* Calling code may want to access newly appended IDs from the link/append context items. */
-    item->new_id = id->newid;
-
-    /* Only the 'reuse local' action should leave unused newly linked data behind. */
-    if (item->action != LINK_APPEND_ACT_REUSE_LOCAL) {
-      continue;
-    }
-    /* Do NOT delete a linked data that was already linked before this append. */
-    if (id->tag & LIB_TAG_PRE_EXISTING) {
-      continue;
-    }
-    /* Do NOT delete a linked data that is (also) used a liboverride dependency. */
-    BLI_assert((item->tag & LINK_APPEND_TAG_LIBOVERRIDE_DEPENDENCY_ONLY) == 0);
-    if (item->tag & LINK_APPEND_TAG_LIBOVERRIDE_DEPENDENCY) {
-      continue;
-    }
-
-    id->tag |= LIB_TAG_DOIT;
-  }
-  BKE_id_multi_tagged_delete(bmain);
 
   /* Instantiate newly created (duplicated) IDs as needed. */
   LooseDataInstantiateContext instantiate_context{};

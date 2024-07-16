@@ -1359,7 +1359,7 @@ IDTypeInfo IDType_ID_NT = {
     /*name*/ "NodeTree",
     /*name_plural*/ N_("node_groups"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_NODETREE,
-    /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
+    /*flags*/ 0,
     /*asset_type_info*/ &AssetType_NT,
 
     /*init_data*/ blender::bke::ntree_init_data,
