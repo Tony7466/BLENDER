@@ -117,25 +117,25 @@ template<typename> class Err;
  * A result that can either be a value on success or an error on failure.
  */
 template<typename V, typename E> class Result {
-  std::variant<V, Err<E>> data;
+  std::variant<V, Err<E>> data_;
 
  public:
   Result() = delete;
 
-  Result(V &value) : data{value} {}
-  Result(V &&value) : data{std::move(value)} {}
-  template<typename T> Result(T &&value) : data{std::forward<T>(value)} {}
+  Result(V &value) : data_{value} {}
+  Result(V &&value) : data_{std::move(value)} {}
+  template<typename T> Result(T &&value) : data_{std::forward<T>(value)} {}
 
-  Result(Err<E> &error) : data{error} {}
-  Result(Err<E> &&error) : data{std::move(error)} {}
-  template<typename T> Result(Err<T> &&error) : data{Err<E>{std::forward<Err<T>>(error)}} {}
+  Result(Err<E> &error) : data_{error} {}
+  Result(Err<E> &&error) : data_{std::move(error)} {}
+  template<typename T> Result(Err<T> &&error) : data_{Err<E>{std::forward<Err<T>>(error)}} {}
 
   /**
    * Return whether the result contains a successful value.
    */
   bool is_value() const
   {
-    return std::holds_alternative<V>(this->data);
+    return std::holds_alternative<V>(this->data_);
   }
 
   /**
@@ -143,7 +143,7 @@ template<typename V, typename E> class Result {
    */
   bool is_error() const
   {
-    return std::holds_alternative<Err<E>>(this->data);
+    return std::holds_alternative<Err<E>>(this->data_);
   }
 
   /**
@@ -155,12 +155,12 @@ template<typename V, typename E> class Result {
   V &value()
   {
     BLI_assert(this->is_value());
-    return std::get<V>(this->data);
+    return std::get<V>(this->data_);
   }
   const V &value() const
   {
     BLI_assert(this->is_value());
-    return std::get<V>(this->data);
+    return std::get<V>(this->data_);
   }
 
   /**
@@ -186,12 +186,12 @@ template<typename V, typename E> class Result {
   E &error()
   {
     BLI_assert(this->is_error());
-    return std::get<Err<E>>(this->data).error;
+    return std::get<Err<E>>(this->data_).error_;
   }
   const E &error() const
   {
     BLI_assert(this->is_error());
-    return std::get<Err<E>>(this->data).error;
+    return std::get<Err<E>>(this->data_).error_;
   }
 
   /**
@@ -216,14 +216,14 @@ template<typename E> class Err {
   template<typename X> friend class Err;
   template<typename X, typename Y> friend class Result;
 
-  E error;
+  E error_;
 
  public:
   Err() = delete;
 
-  explicit Err(E &error) : error{error} {}
-  explicit Err(E &&error) : error{std::move(error)} {}
-  template<typename T> explicit Err(T &&error) : error{std::forward<T>(error)} {}
+  explicit Err(E &error) : error_{error} {}
+  explicit Err(E &&error) : error_{std::move(error)} {}
+  template<typename T> explicit Err(T &&error) : error_{std::forward<T>(error)} {}
 
   /* Implicitly convert an `Err<A>` to an `Err<B>` if `A` can be implicitly
    * converted to a `B`.  This is needed for things like this to work:
@@ -232,7 +232,7 @@ template<typename E> class Err {
    * Result<int, std::string> r = Err{"bye"};
    * ```
    */
-  template<typename T> Err(Err<T> &&error) : error{std::forward<T>(error.error)} {}
+  template<typename T> Err(Err<T> &&error) : error_{std::forward<T>(error.error_)} {}
 };
 
 /* The compiler needs this deduction guide to properly coerce string literals to
