@@ -1049,7 +1049,21 @@ PBVHVertRef nearest_vert_calc(const Object &object,
                               const float3 &location,
                               float max_distance,
                               bool use_original);
-
+std::optional<int> nearest_vert_calc_mesh(const PBVH &pbvh,
+                                          const Span<float3> vert_positions,
+                                          const Span<bool> hide_vert,
+                                          const float3 &location,
+                                          const float max_distance,
+                                          const bool use_original);
+std::optional<SubdivCCGCoord> nearest_vert_calc_grids(PBVH &pbvh,
+                                                      const SubdivCCG &subdiv_ccg,
+                                                      const float3 &location,
+                                                      const float max_distance,
+                                                      const bool use_original);
+std::optional<BMVert *> nearest_vert_calc_bmesh(PBVH &pbvh,
+                                                const float3 &location,
+                                                const float max_distance,
+                                                const bool use_original);
 }
 
 int SCULPT_plane_point_side(const float co[3], const float plane[4]);
