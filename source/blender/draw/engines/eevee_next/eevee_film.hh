@@ -118,10 +118,14 @@ class Film {
     return data_.render_extent;
   }
 
-  /** Size of the film (taking into account render region). */
+  /** Size and offset of the film (taking into account render region). */
   int2 film_extent_get() const
   {
     return data_.extent;
+  }
+  int2 film_offset_get() const
+  {
+    return data_.offset;
   }
 
   /** Size of the whole viewport or the render, disregarding the render region. */

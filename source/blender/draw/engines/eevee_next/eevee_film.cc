@@ -265,7 +265,7 @@ void Film::init(const int2 &extent, const rcti *output_rect)
     data_.extent = int2(BLI_rcti_size_x(output_rect), BLI_rcti_size_y(output_rect));
     data_.offset = int2(output_rect->xmin, output_rect->ymin);
     data_.extent_inv = 1.0f / float2(data_.extent);
-    data_.render_extent = divide_ceil(extent, int2(data_.scaling_factor));
+    data_.render_extent = divide_ceil(data_.extent, int2(data_.scaling_factor));
     data_.overscan = overscan_pixels_get(inst_.camera.overscan(), data_.render_extent);
     data_.render_extent += data_.overscan * 2;
 

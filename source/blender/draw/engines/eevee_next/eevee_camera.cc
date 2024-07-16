@@ -90,7 +90,18 @@ void Camera::sync()
 
   CameraData &data = data_;
 
-  float2 resolution = float2(inst_.film.display_extent_get());
+  int2 display_extent = inst_.film.display_extent_get();
+  int2 film_extent = inst_.film.film_extent_get();
+  int2 film_offset = inst_.film.film_offset_get();
+
+  rcti film_rect;
+  BLI_rcti_init(&film_rect,
+                film_offset.x,
+                film_offset.x + film_extent.x,
+                film_offset.y,
+                film_offset.y + film_extent.y);
+
+  float2 resolution = float2(display_extent);
   float2 overscan_margin = float2(overscan_ * math::max(UNPACK2(resolution)));
   float2 overscan_resolution = resolution + overscan_margin * 2.0f;
   float2 camera_min = overscan_margin;
@@ -129,39 +140,46 @@ void Camera::sync()
   else if (inst_.drw_view) {
     DRW_view_viewmat_get(inst_.drw_view, data.viewmat.ptr(), false);
     DRW_view_viewmat_get(inst_.drw_view, data.viewinv.ptr(), true);
-    if (overscan_ == 0.0f) {
-      DRW_view_winmat_get(inst_.drw_view, data.winmat.ptr(), false);
+
+    CameraParams params;
+    BKE_camera_params_init(&params);
+
+    if (inst_.rv3d->persp == RV3D_CAMOB && DRW_state_is_viewport_image_render()) {
+      /* We are rendering camera view, no need for pan/zoom params from viewport.*/
+      BKE_camera_params_from_object(&params, camera_eval);
     }
     else {
-      CameraParams params;
-      BKE_camera_params_init(&params);
-
-      if (inst_.rv3d->persp == RV3D_CAMOB && DRW_state_is_viewport_image_render()) {
-        /* We are rendering camera view, no need for pan/zoom params from viewport.*/
-        BKE_camera_params_from_object(&params, camera_eval);
-      }
-      else {
-        BKE_camera_params_from_view3d(&params, inst_.depsgraph, inst_.v3d, inst_.rv3d);
-      }
-
-      BKE_camera_params_compute_viewplane(
-          &params, UNPACK2(inst_.film.display_extent_get()), 1.0f, 1.0f);
-
-      RE_GetWindowMatrixWithOverscan(params.is_ortho,
-                                     params.clip_start,
-                                     params.clip_end,
-                                     params.viewplane,
-                                     overscan_,
-                                     data.winmat.ptr());
+      BKE_camera_params_from_view3d(&params, inst_.depsgraph, inst_.v3d, inst_.rv3d);
     }
+
+    BKE_camera_params_compute_viewplane(&params, UNPACK2(display_extent), 1.0f, 1.0f);
+
+    BKE_camera_params_crop_viewplane(&params.viewplane, UNPACK2(display_extent), &film_rect);
+
+    RE_GetWindowMatrixWithOverscan(params.is_ortho,
+                                   params.clip_start,
+                                   params.clip_end,
+                                   params.viewplane,
+                                   overscan_,
+                                   data.winmat.ptr());
   }
   else if (inst_.render) {
-    RE_GetCameraModelMatrix(inst_.render->re, camera_eval, data.viewinv.ptr());
-    data.viewmat = math::invert(data.viewinv);
+    const Render *re = inst_.render->re;
+
     RE_GetCameraWindow(inst_.render->re, camera_eval, data.winmat.ptr());
-    if (overscan_ != 0.0f) {
-      RE_GetCameraWindowWithOverscan(inst_.render->re, overscan_, data.winmat.ptr());
-    }
+
+    RE_GetCameraModelMatrix(re, camera_eval, data.viewinv.ptr());
+    data.viewmat = math::invert(data.viewinv);
+
+    rctf viewplane = re->viewplane;
+    BKE_camera_params_crop_viewplane(&viewplane, UNPACK2(display_extent), &film_rect);
+
+    RE_GetWindowMatrixWithOverscan(this->is_orthographic(),
+                                   re->clip_start,
+                                   re->clip_end,
+                                   viewplane,
+                                   overscan_,
+                                   data.winmat.ptr());
   }
   else {
     data.viewmat = float4x4::identity();
