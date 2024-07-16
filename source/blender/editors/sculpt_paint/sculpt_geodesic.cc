@@ -20,7 +20,7 @@
 #include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
 
-#include "BKE_ccg.h"
+#include "BKE_ccg.hh"
 #include "BKE_context.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
@@ -281,7 +281,7 @@ Array<float> distances_create_from_vert_and_symm(Object &ob,
       else {
         float location[3];
         flip_v3_v3(location, SCULPT_vertex_co_get(ss, vertex), ePaintSymmetryFlags(i));
-        v = SCULPT_nearest_vertex_get(ob, location, FLT_MAX, false);
+        v = nearest_vert_calc(ob, location, FLT_MAX, false);
       }
       if (v.i != PBVH_REF_NONE) {
         initial_verts.add(BKE_pbvh_vertex_to_index(*ss.pbvh, v));

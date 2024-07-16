@@ -27,7 +27,7 @@ class VIEW3D_PT_animation_layers(Panel):
     def poll(cls, context):
         return context.preferences.experimental.use_animation_baklava and context.object
 
-    def draw(self, context) -> None:
+    def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
         layout.use_property_decorate = False
@@ -35,41 +35,42 @@ class VIEW3D_PT_animation_layers(Panel):
         # FIXME: this should be done in response to a message-bus callback, notifier, whatnot.
         adt = context.object.animation_data
         with _wm_selected_action_lock:
-            if adt:
-                context.window_manager.selected_action = adt.action
-            else:
-                context.window_manager.selected_action = None
+            selected_action = getattr(adt, "action", None)
+            # Only set if it has to change, to avoid unnecessary notifies (that cause
+            # a redraw, that cause this code to be called, etc.)
+            if context.window_manager.selected_action != selected_action:
+                context.window_manager.selected_action = selected_action
 
         col = layout.column()
         # This has to go via an auxiliary property, as assigning an Animation
         # data-block should be possible even when `context.object.animation_data`
         # is `None`, and thus its `animation` property does not exist.
-        col.template_ID(context.window_manager, 'selected_action')
+        col.template_ID(context.window_manager, "selected_action")
 
         col = layout.column(align=False)
         anim = adt and adt.action
         if anim:
-            binding_sub = col.column(align=True)
+            slot_sub = col.column(align=True)
 
-            # Binding selector.
-            row = binding_sub.row(align=True)
-            row.prop(adt, 'action_binding', text="Binding")
-            row.operator('anim.binding_unassign_object', text="", icon='X')
+            # Slot selector.
+            row = slot_sub.row(align=True)
+            row.prop(adt, "action_slot", text="Slot")
+            row.operator("anim.slot_unassign_object", text="", icon='X')
 
-            binding = anim.bindings.get(adt.action_binding, None)
-            if binding:
-                binding_sub.prop(binding, 'name_display', text="Name")
+            slot = anim.slots.get(adt.action_slot, None)
+            if slot:
+                slot_sub.prop(slot, "name_display", text="Name")
 
-            internal_sub = binding_sub.box().column(align=True)
+            internal_sub = slot_sub.box().column(align=True)
             internal_sub.active = False
-            internal_sub.prop(adt, 'action_binding_handle', text="handle")
-            if binding:
-                internal_sub.prop(binding, 'name', text="Internal Name")
+            internal_sub.prop(adt, "action_slot_handle", text="handle")
+            if slot:
+                internal_sub.prop(slot, "name", text="Internal Name")
 
         if adt:
-            col.prop(adt, 'action_binding_name', text="ADT Binding Name")
+            col.prop(adt, "action_slot_name", text="ADT Slot Name")
         else:
-            col.label(text="ADT Binding Name: -")
+            col.label(text="ADT Slot Name: -")
 
         layout.separator()
 
@@ -112,7 +113,7 @@ def _wm_selected_action_update(wm, context):
 
 def register_props():
     # Due to this hackyness, the WindowManager will increase the user count of
-    # the pointed-to Animation data-block.
+    # the pointed-to Action.
     WindowManager.selected_action = PointerProperty(
         type=bpy.types.Action,
         name="Action",

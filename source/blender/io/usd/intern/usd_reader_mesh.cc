@@ -11,6 +11,7 @@
 #include "usd_mesh_utils.hh"
 #include "usd_reader_material.hh"
 #include "usd_skel_convert.hh"
+#include "usd_utils.hh"
 
 #include "BKE_attribute.hh"
 #include "BKE_customdata.hh"
@@ -24,6 +25,7 @@
 #include "BLI_map.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_span.hh"
+#include "BLI_task.hh"
 
 #include "DNA_customdata_types.h"
 #include "DNA_material_types.h"
@@ -84,6 +86,7 @@ static void assign_materials(Main *bmain,
                              blender::Map<std::string, Material *> &mat_name_to_mat,
                              blender::Map<std::string, std::string> &usd_path_to_mat_name)
 {
+  using namespace blender::io::usd;
   if (!(stage && bmain && ob)) {
     return;
   }
@@ -92,7 +95,7 @@ static void assign_materials(Main *bmain,
     return;
   }
 
-  blender::io::usd::USDMaterialReader mat_reader(params, bmain);
+  USDMaterialReader mat_reader(params, bmain);
 
   for (const auto item : mat_index_map.items()) {
     Material *assigned_mat = blender::io::usd::find_existing_material(
@@ -120,10 +123,10 @@ static void assign_materials(Main *bmain,
         continue;
       }
 
-      const std::string mat_name = pxr::TfMakeValidIdentifier(assigned_mat->id.name + 2);
+      const std::string mat_name = make_safe_name(assigned_mat->id.name + 2, true);
       mat_name_to_mat.lookup_or_add_default(mat_name) = assigned_mat;
 
-      if (params.mtl_name_collision_mode == blender::io::usd::USD_MTL_NAME_COLLISION_MAKE_UNIQUE) {
+      if (params.mtl_name_collision_mode == USD_MTL_NAME_COLLISION_MAKE_UNIQUE) {
         /* Record the name of the Blender material we created for the USD material
          * with the given path. */
         usd_path_to_mat_name.lookup_or_add_default(item.key.GetAsString()) = mat_name;
@@ -266,6 +269,14 @@ bool USDMeshReader::topology_changed(const Mesh *existing_mesh, const double mot
     mesh_prim_.GetNormalsAttr().Get(&normals_, motionSampleTime);
     normal_interpolation_ = mesh_prim_.GetNormalsInterpolation();
   }
+
+  /* Blender expects mesh normals to actually be normalized. */
+  MutableSpan<pxr::GfVec3f> usd_data(normals_.data(), normals_.size());
+  threading::parallel_for(usd_data.index_range(), 4096, [&](const IndexRange range) {
+    for (const int normal_i : range) {
+      usd_data[normal_i].Normalize();
+    }
+  });
 
   return positions_.size() != existing_mesh->verts_num ||
          face_counts_.size() != existing_mesh->faces_num ||

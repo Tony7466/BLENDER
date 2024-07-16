@@ -38,6 +38,7 @@
 #include "BKE_scene.hh"
 
 #include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "ED_keyframing.hh"
 #include "ED_object.hh"
@@ -61,7 +62,7 @@
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
 #include "RNA_path.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "anim_intern.hh"
 
@@ -374,6 +375,9 @@ static int insert_key(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
+  /* The depsgraph needs to be in an evaluated state to ensure the values we get from the
+   * properties are actually the values of the current frame. */
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
   const float scene_frame = BKE_scene_frame_get(scene);
@@ -381,13 +385,14 @@ static int insert_key(bContext *C, wmOperator *op)
   const eInsertKeyFlags insert_key_flags = animrig::get_keyframing_flags(scene);
   const eBezTriple_KeyframeType key_type = eBezTriple_KeyframeType(
       scene->toolsettings->keyframe_type);
-  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
       depsgraph, BKE_scene_frame_get(scene));
 
   animrig::CombinedKeyingResult combined_result;
+  blender::Set<ID *> ids;
   for (PointerRNA &id_ptr : selection) {
     ID *selected_id = id_ptr.owner_id;
+    ids.add(selected_id);
     if (!id_can_have_animdata(selected_id)) {
       BKE_reportf(op->reports,
                   RPT_ERROR,
@@ -402,17 +407,22 @@ static int insert_key(bContext *C, wmOperator *op)
     }
     Vector<RNAPath> rna_paths = construct_rna_paths(&id_ptr);
 
-    combined_result.merge(animrig::insert_key_rna(&id_ptr,
-                                                  rna_paths.as_span(),
-                                                  scene_frame,
-                                                  insert_key_flags,
-                                                  key_type,
-                                                  bmain,
-                                                  anim_eval_context));
+    combined_result.merge(animrig::insert_keyframes(bmain,
+                                                    &id_ptr,
+                                                    std::nullopt,
+                                                    rna_paths.as_span(),
+                                                    scene_frame,
+                                                    anim_eval_context,
+                                                    key_type,
+                                                    insert_key_flags));
   }
 
   if (combined_result.get_count(animrig::SingleKeyingResult::SUCCESS) == 0) {
     combined_result.generate_reports(op->reports);
+  }
+
+  for (ID *id : ids) {
+    DEG_id_tag_update(id, ID_RECALC_ANIMATION_NO_FLUSH);
   }
 
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_ADDED, nullptr);
@@ -767,7 +777,7 @@ static int clear_anim_v3d_invoke(bContext *C, wmOperator *op, const wmEvent * /*
                                   op,
                                   IFACE_("Remove animation from selected objects?"),
                                   nullptr,
-                                  IFACE_("Remove"),
+                                  CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Remove"),
                                   ALERT_ICON_NONE,
                                   false);
   }
@@ -867,7 +877,7 @@ static int delete_key_v3d_without_keying_set(bContext *C, wmOperator *op)
         /* delete keyframes on current frame
          * WARNING: this can delete the next F-Curve, hence the "fcn" copying
          */
-        success += blender::animrig::delete_keyframe_fcurve(adt, fcu, cfra_unmap);
+        success += blender::animrig::delete_keyframe_fcurve_legacy(adt, fcu, cfra_unmap);
       }
       DEG_id_tag_update(&ob->adt->action->id, ID_RECALC_ANIMATION_NO_FLUSH);
     }
@@ -959,8 +969,12 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
   PointerRNA ptr = {nullptr};
   PropertyRNA *prop = nullptr;
   uiBut *but;
+
+  /* The depsgraph needs to be in an evaluated state to ensure the values we get from the
+   * properties are actually the values of the current frame. */
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
-      CTX_data_depsgraph_pointer(C), BKE_scene_frame_get(scene));
+      depsgraph, BKE_scene_frame_get(scene));
   bool changed = false;
   int index;
   const bool all = RNA_boolean_get(op->ptr, "all");
@@ -1025,21 +1039,22 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
       /* standard properties */
       if (const std::optional<std::string> path = RNA_path_from_ID_to_property(&ptr, prop)) {
         const char *identifier = RNA_property_identifier(prop);
-        const char *group = default_channel_group_for_path(&ptr, identifier);
+        const std::optional<blender::StringRefNull> group = default_channel_group_for_path(
+            &ptr, identifier);
 
-        if (all) {
-          /* -1 indicates operating on the entire array (or the property itself otherwise) */
-          index = -1;
-        }
-
-        CombinedKeyingResult result = insert_keyframe(bmain,
-                                                      *ptr.owner_id,
-                                                      group,
-                                                      path->c_str(),
-                                                      index,
-                                                      &anim_eval_context,
-                                                      eBezTriple_KeyframeType(ts->keyframe_type),
-                                                      flag);
+        /* NOTE: `index == -1` is a magic number, meaning either "operate on all
+         * elements" or "not an array property". */
+        const std::optional<int> array_index = (all || index < 0) ? std::nullopt :
+                                                                    std::optional(index);
+        PointerRNA owner_ptr = RNA_id_pointer_create(ptr.owner_id);
+        CombinedKeyingResult result = insert_keyframes(bmain,
+                                                       &owner_ptr,
+                                                       group,
+                                                       {{*path, {}, array_index}},
+                                                       std::nullopt,
+                                                       anim_eval_context,
+                                                       eBezTriple_KeyframeType(ts->keyframe_type),
+                                                       flag);
         changed = result.get_count(SingleKeyingResult::SUCCESS) != 0;
       }
       else {

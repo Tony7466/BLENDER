@@ -945,7 +945,11 @@ void WorkspaceStatus::opmodal(std::string text,
   if (keymap) {
     const wmKeyMapItem *kmi = WM_modalkeymap_find_propvalue(keymap, propvalue);
     if (kmi) {
+#ifdef WITH_HEADLESS
+      int icon = 0;
+#else
       int icon = UI_icon_from_event_type(kmi->type, kmi->val);
+#endif
       if (!ELEM(kmi->shift, KM_NOTHING, KM_ANY)) {
         ed_workspace_status_item(workspace_, {}, ICON_EVENT_SHIFT, 0.0f, inverted);
       }
@@ -2847,6 +2851,11 @@ void ED_area_newspace(bContext *C, ScrArea *area, int type, const bool skip_regi
     WM_event_add_notifier(C, NC_SPACE | ND_SPACE_CHANGED, area);
 
     ED_area_tag_refresh(area);
+  }
+
+  if (BLI_listbase_is_single(&CTX_wm_screen(C)->areabase)) {
+    /* If there is only one area update the window title. */
+    WM_window_title(CTX_wm_manager(C), CTX_wm_window(C));
   }
 
   /* also redraw when re-used */

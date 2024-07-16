@@ -274,7 +274,10 @@ class ExecutePreset(Operator):
 
         elif ext == ".xml":
             import rna_xml
-            rna_xml.xml_file_run(context, filepath, preset_class.preset_xml_map)
+            preset_xml_map = preset_class.preset_xml_map
+            preset_xml_secure_types = getattr(preset_class, "preset_xml_secure_types", None)
+
+            rna_xml.xml_file_run(context, filepath, preset_xml_map, secure_types=preset_xml_secure_types)
 
         _call_preset_cb(getattr(preset_class, "post_cb", None), context, filepath)
 
@@ -443,7 +446,7 @@ class AddPresetTextEditor(AddPresetBase, Operator):
 
     preset_values = [
         "filepaths.text_editor",
-        "filepaths.text_editor_args"
+        "filepaths.text_editor_args",
     ]
 
     preset_subdir = "text_editor"
@@ -539,7 +542,7 @@ class AddPresetEEVEERaytracing(AddPresetBase, Operator):
 
     preset_defines = [
         "eevee = bpy.context.scene.eevee",
-        "options = eevee.ray_tracing_options"
+        "options = eevee.ray_tracing_options",
     ]
 
     preset_values = [
@@ -552,9 +555,36 @@ class AddPresetEEVEERaytracing(AddPresetBase, Operator):
         "options.denoise_spatial",
         "options.denoise_temporal",
         "options.denoise_bilateral",
+        "eevee.fast_gi_method",
+        "eevee.fast_gi_resolution",
+        "eevee.fast_gi_ray_count",
+        "eevee.fast_gi_step_count",
+        "eevee.fast_gi_quality",
+        "eevee.fast_gi_distance",
+        "eevee.fast_gi_thickness_near",
+        "eevee.fast_gi_thickness_far",
+        "eevee.fast_gi_bias",
     ]
 
     preset_subdir = "eevee/raytracing"
+
+
+class AddPresetColorManagementWhiteBalance(AddPresetBase, Operator):
+    """Add or remove a white balance preset"""
+    bl_idname = "render.color_management_white_balance_preset_add"
+    bl_label = "Add White Balance Preset"
+    preset_menu = "RENDER_PT_color_management_white_balance_presets"
+
+    preset_defines = [
+        "view_settings = bpy.context.scene.view_settings",
+    ]
+
+    preset_values = [
+        "view_settings.white_balance_temperature",
+        "view_settings.white_balance_tint",
+    ]
+
+    preset_subdir = "color_management/white_balance"
 
 
 class AddPresetNodeColor(AddPresetBase, Operator):
@@ -600,6 +630,7 @@ class RemovePresetInterfaceTheme(AddPresetBase, Operator):
         from bpy.utils import is_path_builtin
         preset_menu_class = getattr(bpy.types, cls.preset_menu)
         name = preset_menu_class.bl_label
+        name = bpy.path.clean_name(name)
         filepath = bpy.utils.preset_find(name, cls.preset_subdir, ext=".xml")
         if not bool(filepath) or is_path_builtin(filepath):
             cls.poll_message_set("Built-in themes cannot be removed")
@@ -633,6 +664,7 @@ class SavePresetInterfaceTheme(AddPresetBase, Operator):
 
         preset_menu_class = getattr(bpy.types, cls.preset_menu)
         name = preset_menu_class.bl_label
+        name = bpy.path.clean_name(name)
         filepath = bpy.utils.preset_find(name, cls.preset_subdir, ext=".xml")
         if (not filepath) or is_path_builtin(filepath):
             cls.poll_message_set("Built-in themes cannot be overwritten")
@@ -644,6 +676,7 @@ class SavePresetInterfaceTheme(AddPresetBase, Operator):
         import rna_xml
         preset_menu_class = getattr(bpy.types, self.preset_menu)
         name = preset_menu_class.bl_label
+        name = bpy.path.clean_name(name)
         filepath = bpy.utils.preset_find(name, self.preset_subdir, ext=".xml")
         if not bool(filepath) or is_path_builtin(filepath):
             self.report({'ERROR'}, "Built-in themes cannot be overwritten")
@@ -865,7 +898,7 @@ class WM_OT_operator_presets_cleanup(Operator):
                 "filepath",
                 "directory",
                 "files",
-                "filename"
+                "filename",
             ]
 
         self._cleanup_operators_presets(operators, properties_exclude)
@@ -966,6 +999,7 @@ classes = (
     AddPresetGpencilBrush,
     AddPresetGpencilMaterial,
     AddPresetEEVEERaytracing,
+    AddPresetColorManagementWhiteBalance,
     ExecutePreset,
     WM_MT_operator_presets,
     WM_PT_operator_presets,

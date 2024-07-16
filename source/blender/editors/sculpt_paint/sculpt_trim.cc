@@ -19,6 +19,7 @@
 #include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
 #include "BKE_object.hh"
+#include "BKE_report.hh"
 
 #include "DNA_modifier_types.h"
 
@@ -89,8 +90,16 @@ enum class ExtrudeMode {
 };
 
 static EnumPropertyItem extrude_modes[] = {
-    {int(ExtrudeMode::Project), "PROJECT", 0, "Project", "Project back faces when extruding"},
-    {int(ExtrudeMode::Fixed), "FIXED", 0, "Fixed", "Extrude back faces by fixed amount"},
+    {int(ExtrudeMode::Project),
+     "PROJECT",
+     0,
+     "Project",
+     "Align trim geometry with the perspective of the current view for a tapered shape"},
+    {int(ExtrudeMode::Fixed),
+     "FIXED",
+     0,
+     "Fixed",
+     "Align trim geometry orthogonally for a shape with 90 degree angles"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -497,14 +506,14 @@ static void generate_geometry(gesture::GestureData &gesture_data)
   update_normals(gesture_data);
 }
 
-static void gesture_begin(bContext &C, gesture::GestureData &gesture_data)
+static void gesture_begin(bContext &C, wmOperator &op, gesture::GestureData &gesture_data)
 {
   Object *object = gesture_data.vc.obact;
   SculptSession &ss = *object->sculpt;
 
   switch (BKE_pbvh_type(*ss.pbvh)) {
     case PBVH_FACES:
-      face_set::ensure_face_sets_mesh(*object).finish();
+      face_set::create_face_sets_mesh(*object);
       break;
     default:
       BLI_assert_unreachable();
@@ -514,7 +523,7 @@ static void gesture_begin(bContext &C, gesture::GestureData &gesture_data)
   generate_geometry(gesture_data);
   SCULPT_topology_islands_invalidate(ss);
   BKE_sculpt_update_object_for_edit(depsgraph, gesture_data.vc.obact, false);
-  undo::push_node(*gesture_data.vc.obact, nullptr, undo::Type::Geometry);
+  undo::geometry_begin(*gesture_data.vc.obact, &op);
 }
 
 static int bm_face_isect_pair(BMFace *f, void * /*user_data*/)
@@ -649,7 +658,7 @@ static void gesture_end(bContext & /*C*/, gesture::GestureData &gesture_data)
 
   free_geometry(gesture_data);
 
-  undo::push_node(*gesture_data.vc.obact, nullptr, undo::Type::Geometry);
+  undo::geometry_end(*object);
   BKE_mesh_batch_cache_dirty_tag(mesh, BKE_MESH_BATCH_DIRTY_ALL);
   DEG_id_tag_update(&gesture_data.vc.obact->id, ID_RECALC_GEOMETRY);
 }
@@ -734,12 +743,26 @@ static bool can_invoke(const bContext &C)
   return true;
 }
 
-static bool can_exec(const bContext &C)
+static void report_invalid_mode(const PBVHType pbvh_type, ReportList &reports)
+{
+  if (pbvh_type == PBVH_BMESH) {
+    BKE_report(&reports, RPT_ERROR, "Not supported in dynamic topology mode");
+  }
+  else if (pbvh_type == PBVH_GRIDS) {
+    BKE_report(&reports, RPT_ERROR, "Not supported in multiresolution mode");
+  }
+  else {
+    BLI_assert_unreachable();
+  }
+}
+
+static bool can_exec(const bContext &C, ReportList &reports)
 {
   const Object &object = *CTX_data_active_object(&C);
   const SculptSession &ss = *object.sculpt;
   if (BKE_pbvh_type(*ss.pbvh) != PBVH_FACES) {
     /* Not supported in Multires and Dyntopo. */
+    report_invalid_mode(BKE_pbvh_type(*ss.pbvh), reports);
     return false;
   }
 
@@ -776,7 +799,7 @@ static void initialize_cursor_info(bContext &C,
 
 static int gesture_box_exec(bContext *C, wmOperator *op)
 {
-  if (!can_exec(*C)) {
+  if (!can_exec(*C, *op->reports)) {
     return OPERATOR_CANCELLED;
   }
 
@@ -807,7 +830,7 @@ static int gesture_box_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 
 static int gesture_lasso_exec(bContext *C, wmOperator *op)
 {
-  if (!can_exec(*C)) {
+  if (!can_exec(*C, *op->reports)) {
     return OPERATOR_CANCELLED;
   }
 
@@ -838,7 +861,7 @@ static int gesture_lasso_invoke(bContext *C, wmOperator *op, const wmEvent *even
 
 static int gesture_line_exec(bContext *C, wmOperator *op)
 {
-  if (!can_exec(*C)) {
+  if (!can_exec(*C, *op->reports)) {
     return OPERATOR_CANCELLED;
   }
 
@@ -865,6 +888,37 @@ static int gesture_line_invoke(bContext *C, wmOperator *op, const wmEvent *event
   RNA_int_set_array(op->ptr, "location", event->mval);
 
   return WM_gesture_straightline_active_side_invoke(C, op, event);
+}
+
+static int gesture_polyline_exec(bContext *C, wmOperator *op)
+{
+  if (!can_exec(*C, *op->reports)) {
+    return OPERATOR_CANCELLED;
+  }
+
+  std::unique_ptr<gesture::GestureData> gesture_data = gesture::init_from_polyline(C, op);
+  if (!gesture_data) {
+    return OPERATOR_CANCELLED;
+  }
+
+  gesture_data->operation = reinterpret_cast<gesture::Operation *>(
+      MEM_cnew<TrimOperation>(__func__));
+  initialize_cursor_info(*C, *op, *gesture_data);
+  init_operation(*gesture_data, *op);
+
+  gesture::apply(*C, *gesture_data, *op);
+  return OPERATOR_FINISHED;
+}
+
+static int gesture_polyline_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  if (!can_invoke(*C)) {
+    return OPERATOR_CANCELLED;
+  }
+
+  RNA_int_set_array(op->ptr, "location", event->mval);
+
+  return WM_gesture_polyline_invoke(C, op, event);
 }
 
 void SCULPT_OT_trim_lasso_gesture(wmOperatorType *ot)
@@ -927,6 +981,28 @@ void SCULPT_OT_trim_line_gesture(wmOperatorType *ot)
   /* Properties. */
   WM_operator_properties_gesture_straightline(ot, WM_CURSOR_EDIT);
   gesture::operator_properties(ot, gesture::ShapeType::Line);
+
+  operator_properties(ot);
+}
+
+void SCULPT_OT_trim_polyline_gesture(wmOperatorType *ot)
+{
+  ot->name = "Trim Polyline Gesture";
+  ot->idname = "SCULPT_OT_trim_polyline_gesture";
+  ot->description =
+      "Execute a boolean operation on the mesh and a polygonal shape defined by the cursor";
+
+  ot->invoke = gesture_polyline_invoke;
+  ot->modal = WM_gesture_polyline_modal;
+  ot->exec = gesture_polyline_exec;
+
+  ot->poll = SCULPT_mode_poll_view3d;
+
+  ot->flag = OPTYPE_REGISTER;
+
+  /* Properties. */
+  WM_operator_properties_gesture_polyline(ot);
+  gesture::operator_properties(ot, gesture::ShapeType::Lasso);
 
   operator_properties(ot);
 }

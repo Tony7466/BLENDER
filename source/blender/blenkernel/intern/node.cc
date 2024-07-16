@@ -79,16 +79,18 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "NOD_common.h"
 #include "NOD_composite.hh"
 #include "NOD_geo_bake.hh"
+#include "NOD_geo_capture_attribute.hh"
 #include "NOD_geo_index_switch.hh"
 #include "NOD_geo_menu_switch.hh"
 #include "NOD_geo_repeat.hh"
 #include "NOD_geo_simulation.hh"
 #include "NOD_geometry.hh"
+#include "NOD_geometry_nodes_gizmos.hh"
 #include "NOD_geometry_nodes_lazy_function.hh"
 #include "NOD_node_declaration.hh"
 #include "NOD_register.hh"
@@ -247,7 +249,7 @@ static void ntree_copy_data(Main * /*bmain*/,
   }
 
   if (ntree_src->geometry_node_asset_traits) {
-    ntree_dst->geometry_node_asset_traits = MEM_new<GeometryNodeAssetTraits>(
+    ntree_dst->geometry_node_asset_traits = MEM_cnew<GeometryNodeAssetTraits>(
         __func__, *ntree_src->geometry_node_asset_traits);
   }
 
@@ -308,7 +310,9 @@ static void ntree_free_data(ID *id)
     BKE_libblock_free_data(&ntree->id, true);
   }
 
-  MEM_delete(ntree->geometry_node_asset_traits);
+  if (ntree->geometry_node_asset_traits) {
+    MEM_freeN(ntree->geometry_node_asset_traits);
+  }
 
   if (ntree->nested_node_refs) {
     MEM_freeN(ntree->nested_node_refs);
@@ -540,6 +544,8 @@ static StringRef get_legacy_socket_subtype_idname(StringRef idname, const void *
         return "NodeSocketFloatDistance";
       case PROP_WAVELENGTH:
         return "NodeSocketFloatWavelength";
+      case PROP_COLOR_TEMPERATURE:
+        return "NodeSocketFloatColorTemperature";
     }
   }
   if (idname == "NodeSocketInt") {
@@ -842,6 +848,23 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
           BLO_write_string(writer, storage->string);
         }
         BLO_write_struct_by_name(writer, node->typeinfo->storagename, storage);
+      }
+      else if (node->type == GEO_NODE_CAPTURE_ATTRIBUTE) {
+        auto &storage = *static_cast<NodeGeometryAttributeCapture *>(node->storage);
+        /* Improve forward compatibility. */
+        storage.data_type_legacy = CD_PROP_FLOAT;
+        for (const NodeGeometryAttributeCaptureItem &item :
+             Span{storage.capture_items, storage.capture_items_num})
+        {
+          if (item.identifier == 0) {
+            /* The sockets of this item have the same identifiers that have been used by older
+             * Blender versions before the node supported capturing multiple attributes. */
+            storage.data_type_legacy = item.data_type;
+            break;
+          }
+        }
+        BLO_write_struct(writer, NodeGeometryAttributeCapture, node->storage);
+        nodes::CaptureAttributeItemsAccessor::blend_write(writer, *node);
       }
       else if (node->typeinfo != &NodeTypeUndefined) {
         BLO_write_struct_by_name(writer, node->typeinfo->storagename, node->storage);
@@ -1156,6 +1179,10 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
         }
         case GEO_NODE_MENU_SWITCH: {
           nodes::MenuSwitchItemsAccessor::blend_read_data(reader, *node);
+          break;
+        }
+        case GEO_NODE_CAPTURE_ATTRIBUTE: {
+          nodes::CaptureAttributeItemsAccessor::blend_read_data(reader, *node);
           break;
         }
 
@@ -2096,6 +2123,8 @@ const char *nodeStaticSocketType(const int type, const int subtype)
           return "NodeSocketFloatDistance";
         case PROP_WAVELENGTH:
           return "NodeSocketFloatWavelength";
+        case PROP_COLOR_TEMPERATURE:
+          return "NodeSocketFloatColorTemperature";
         case PROP_NONE:
         default:
           return "NodeSocketFloat";
@@ -2139,7 +2168,12 @@ const char *nodeStaticSocketType(const int type, const int subtype)
     case SOCK_RGBA:
       return "NodeSocketColor";
     case SOCK_STRING:
-      return "NodeSocketString";
+      switch (PropertySubType(subtype)) {
+        case PROP_FILEPATH:
+          return "NodeSocketStringFilePath";
+        default:
+          return "NodeSocketString";
+      }
     case SOCK_SHADER:
       return "NodeSocketShader";
     case SOCK_OBJECT:
@@ -2183,6 +2217,8 @@ const char *nodeStaticSocketInterfaceTypeNew(const int type, const int subtype)
           return "NodeTreeInterfaceSocketFloatDistance";
         case PROP_WAVELENGTH:
           return "NodeTreeInterfaceSocketFloatWavelength";
+        case PROP_COLOR_TEMPERATURE:
+          return "NodeTreeInterfaceSocketFloatColorTemperature";
         case PROP_NONE:
         default:
           return "NodeTreeInterfaceSocketFloat";
@@ -2226,7 +2262,12 @@ const char *nodeStaticSocketInterfaceTypeNew(const int type, const int subtype)
     case SOCK_RGBA:
       return "NodeTreeInterfaceSocketColor";
     case SOCK_STRING:
-      return "NodeTreeInterfaceSocketString";
+      switch (PropertySubType(subtype)) {
+        case PROP_FILEPATH:
+          return "NodeTreeInterfaceSocketVectorTranslation";
+        default:
+          return "NodeTreeInterfaceSocketString";
+      }
     case SOCK_SHADER:
       return "NodeTreeInterfaceSocketShader";
     case SOCK_OBJECT:

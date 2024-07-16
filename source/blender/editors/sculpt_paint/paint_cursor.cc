@@ -1473,7 +1473,7 @@ static void paint_draw_2D_view_brush_cursor_default(PaintCursorContext *pcontext
 
 static void grease_pencil_eraser_draw(PaintCursorContext *pcontext)
 {
-  float radius = float(BKE_brush_size_get(pcontext->scene, pcontext->brush));
+  float radius = float(pcontext->brush->size);
 
   /* Red-ish color with alpha. */
   immUniformColor4ub(255, 100, 100, 20);
@@ -1501,9 +1501,6 @@ static void grease_pencil_eraser_draw(PaintCursorContext *pcontext)
 static void grease_pencil_brush_cursor_draw(PaintCursorContext *pcontext)
 {
   using namespace blender;
-  if ((pcontext->region) && (pcontext->region->regiontype != RGN_TYPE_WINDOW)) {
-    return;
-  }
   if (pcontext->region && !BLI_rcti_isect_pt(&pcontext->region->winrct, pcontext->x, pcontext->y))
   {
     return;
@@ -1521,12 +1518,8 @@ static void grease_pencil_brush_cursor_draw(PaintCursorContext *pcontext)
     return;
   }
 
-  if ((paint->flags & PAINT_SHOW_BRUSH) == 0) {
-    return;
-  }
-
   /* default radius and color */
-  pcontext->pixel_radius = BKE_brush_size_get(pcontext->scene, brush);
+  pcontext->pixel_radius = brush->size;
 
   float3 color(1.0f);
   const int x = pcontext->x;
@@ -1534,19 +1527,24 @@ static void grease_pencil_brush_cursor_draw(PaintCursorContext *pcontext)
 
   /* for paint use paint brush size and color */
   if (pcontext->mode == PaintMode::GPencil) {
-    /* Eraser has a special shape and use a different shader program. */
-    if (brush->gpencil_tool == GPAINT_TOOL_ERASE) {
+    /* Eraser has a special shape and uses a different shader program. */
+    if (brush->gpencil_tool == GPAINT_TOOL_ERASE || grease_pencil->runtime->use_eraser_temp) {
       grease_pencil_eraser_draw(pcontext);
       return;
     }
 
-    if (BKE_brush_use_locked_size(pcontext->scene, brush)) {
+    /* Hide the cursor while drawing. */
+    if (grease_pencil->runtime->is_drawing_stroke) {
+      return;
+    }
+
+    if (brush->gpencil_tool == GPAINT_TOOL_DRAW && (brush->flag & BRUSH_LOCK_SIZE) != 0) {
       const bke::greasepencil::Layer *layer = grease_pencil->get_active_layer();
       const ed::greasepencil::DrawingPlacement placement(
           *pcontext->scene, *pcontext->region, *pcontext->vc.v3d, *object, layer);
-      const float radius = BKE_brush_unprojected_radius_get(pcontext->scene, brush);
       const float3 location = placement.project(float2(pcontext->x, pcontext->y));
-      pcontext->pixel_radius = project_brush_radius(&pcontext->vc, radius, location);
+      pcontext->pixel_radius = project_brush_radius(
+          &pcontext->vc, brush->unprojected_radius, location);
     }
 
     /* Get current drawing material. */
@@ -1557,8 +1555,7 @@ static void grease_pencil_brush_cursor_draw(PaintCursorContext *pcontext)
        * - Fixed size, or
        * - Brush size (i.e. stroke thickness)
        */
-      if ((gp_style) && ((brush->gpencil_settings->flag & GP_BRUSH_STABILIZE_MOUSE) == 0) &&
-          ((brush->gpencil_settings->flag & GP_BRUSH_STABILIZE_MOUSE_TEMP) == 0) &&
+      if ((gp_style) && ((brush->flag & BRUSH_SMOOTH_STROKE) == 0) &&
           (brush->gpencil_tool == GPAINT_TOOL_DRAW))
       {
 
@@ -1571,9 +1568,11 @@ static void grease_pencil_brush_cursor_draw(PaintCursorContext *pcontext)
         color = use_vertex_color_stroke ? float3(brush->rgb) : float4(gp_style->stroke_rgba).xyz();
       }
     }
-  }
-  else if (pcontext->mode == PaintMode::WeightGPencil) {
-    copy_v3_v3(color, brush->add_col);
+
+    if ((brush->flag & BRUSH_SMOOTH_STROKE) != 0) {
+      const float scale = 1.0f / 255.0f;
+      color = scale * float3(paint->paint_cursor_col);
+    }
   }
 
   GPU_line_width(1.0f);
@@ -1585,32 +1584,12 @@ static void grease_pencil_brush_cursor_draw(PaintCursorContext *pcontext)
   const float3 darkcolor = color * 0.40f;
   immUniformColor4f(darkcolor[0], darkcolor[1], darkcolor[2], 0.8f);
   imm_draw_circle_wire_2d(pcontext->pos, x, y, pcontext->pixel_radius + 1, 32);
-
-  /* Draw line for lazy mouse */
-  /* TODO: No stabilize mode yet. */
-  // if ((last_mouse_position) &&
-  //     (pcontext->xbrush->gpencil_settings->flag & GP_BRUSH_STABILIZE_MOUSE_TEMP))
-  // {
-  //   GPU_line_smooth(true);
-  //   GPU_blend(GPU_BLEND_ALPHA);
-
-  //   copy_v3_v3(color, pcontext->brush->add_col);
-  //   immUniformColor4f(color[0], color[1], color[2], 0.8f);
-
-  //   immBegin(GPU_PRIM_LINES, 2);
-  //   immVertex2f(pos, x, y);
-  //   immVertex2f(pos,
-  //               last_mouse_position[0] + pcontext->region->winrct.xmin,
-  //               last_mouse_position[1] + pcontext->region->winrct.ymin);
-  //   immEnd();
-  // }
 }
 
 static void paint_draw_2D_view_brush_cursor(PaintCursorContext *pcontext)
 {
   switch (pcontext->mode) {
-    case PaintMode::GPencil:
-    case PaintMode::WeightGPencil: {
+    case PaintMode::GPencil: {
       grease_pencil_brush_cursor_draw(pcontext);
       break;
     }
@@ -1722,30 +1701,20 @@ static void paint_cursor_preview_boundary_data_pivot_draw(PaintCursorContext *pc
     return;
   }
   immUniformColor4f(1.0f, 1.0f, 1.0f, 0.8f);
-  cursor_draw_point_screen_space(
-      pcontext->pos,
-      pcontext->region,
-      SCULPT_vertex_co_get(*pcontext->ss, pcontext->ss->boundary_preview->pivot_vertex),
-      pcontext->vc.obact->object_to_world().ptr(),
-      3);
+  cursor_draw_point_screen_space(pcontext->pos,
+                                 pcontext->region,
+                                 pcontext->ss->boundary_preview->pivot_position,
+                                 pcontext->vc.obact->object_to_world().ptr(),
+                                 3);
 }
 
-static void paint_cursor_preview_boundary_data_update(PaintCursorContext *pcontext,
-                                                      const bool update_previews)
+static void paint_cursor_preview_boundary_data_update(PaintCursorContext *pcontext)
 {
   using namespace blender::ed::sculpt_paint;
   SculptSession &ss = *pcontext->ss;
-  if (!(update_previews || !ss.boundary_preview)) {
-    return;
-  }
-
   /* Needed for updating the necessary SculptSession data in order to initialize the
    * boundary data for the preview. */
   BKE_sculpt_update_object_for_edit(pcontext->depsgraph, pcontext->vc.obact, false);
-
-  if (ss.boundary_preview) {
-    boundary::data_free(ss.boundary_preview);
-  }
 
   ss.boundary_preview = boundary::data_init(
       *pcontext->vc.obact, pcontext->brush, ss.active_vertex, pcontext->radius);
@@ -1840,7 +1809,7 @@ static void paint_cursor_draw_3d_view_brush_cursor_inactive(PaintCursorContext *
   }
 
   if (is_brush_tool && brush.sculpt_tool == SCULPT_TOOL_BOUNDARY) {
-    paint_cursor_preview_boundary_data_update(pcontext, update_previews);
+    paint_cursor_preview_boundary_data_update(pcontext);
     paint_cursor_preview_boundary_data_pivot_draw(pcontext);
   }
 
@@ -1863,7 +1832,7 @@ static void paint_cursor_draw_3d_view_brush_cursor_inactive(PaintCursorContext *
   if (is_brush_tool && brush.sculpt_tool == SCULPT_TOOL_GRAB &&
       (brush.flag & BRUSH_GRAB_ACTIVE_VERTEX))
   {
-    SCULPT_geometry_preview_lines_update(pcontext->C, *pcontext->ss, pcontext->radius);
+    geometry_preview_lines_update(pcontext->C, *pcontext->ss, pcontext->radius);
     sculpt_geometry_preview_lines_draw(
         pcontext->pos, *pcontext->brush, pcontext->is_multires, *pcontext->ss);
   }
@@ -1960,7 +1929,7 @@ static void paint_cursor_cursor_draw_3d_view_brush_cursor_active(PaintCursorCont
   }
 
   if (brush.sculpt_tool == SCULPT_TOOL_MULTIPLANE_SCRAPE) {
-    SCULPT_multiplane_scrape_preview_draw(
+    multiplane_scrape_preview_draw(
         pcontext->pos, brush, ss, pcontext->outline_col, pcontext->outline_alpha);
   }
 
@@ -2141,10 +2110,10 @@ static void paint_draw_cursor(bContext *C, int x, int y, void * /*unused*/)
 
 /* Public API */
 
-void ED_paint_cursor_start(Paint *p, bool (*poll)(bContext *C))
+void ED_paint_cursor_start(Paint *paint, bool (*poll)(bContext *C))
 {
-  if (p && !p->paint_cursor) {
-    p->paint_cursor = WM_paint_cursor_activate(
+  if (paint && !paint->paint_cursor) {
+    paint->paint_cursor = WM_paint_cursor_activate(
         SPACE_TYPE_ANY, RGN_TYPE_ANY, poll, paint_draw_cursor, nullptr);
   }
 

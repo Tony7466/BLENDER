@@ -447,8 +447,6 @@ class VolumePipeline {
 
   /* Combined bounds in Z. Allow tighter integration bounds. */
   std::optional<Bounds<float>> object_integration_range_;
-  /* True if any volume (any object type) creates a volume draw-call. Enables the volume module. */
-  bool enabled_ = false;
   /* Aggregated properties of all volume objects. */
   bool has_scatter_ = false;
   bool has_absorption_ = false;
@@ -467,10 +465,6 @@ class VolumePipeline {
 
   std::optional<Bounds<float>> object_integration_range() const;
 
-  bool is_enabled() const
-  {
-    return enabled_;
-  }
   bool has_scatter() const
   {
     for (auto &layer : layers_) {
@@ -704,7 +698,7 @@ class PipelineModule {
 
   void begin_sync()
   {
-    data.is_probe_reflection = false;
+    data.is_sphere_probe = false;
     probe.begin_sync();
     planar.begin_sync();
     deferred.begin_sync();

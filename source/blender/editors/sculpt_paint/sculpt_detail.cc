@@ -43,7 +43,7 @@
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "UI_interface.hh"
 
@@ -586,17 +586,14 @@ static void dyntopo_detail_size_sample_from_surface(Object &ob,
                                                     DyntopoDetailSizeEditCustomData *cd)
 {
   SculptSession &ss = *ob.sculpt;
-  const PBVHVertRef active_vertex = SCULPT_active_vertex_get(ss);
+  BMVert *active_vertex = reinterpret_cast<BMVert *>(SCULPT_active_vertex_get(ss).i);
 
   float len_accum = 0;
-  int num_neighbors = 0;
-  SculptVertexNeighborIter ni;
-  SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (ss, active_vertex, ni) {
-    len_accum += len_v3v3(SCULPT_vertex_co_get(ss, active_vertex),
-                          SCULPT_vertex_co_get(ss, ni.vertex));
-    num_neighbors++;
+  Vector<BMVert *, 64> neighbors;
+  for (BMVert *neighbor : vert_neighbors_get_bmesh(*active_vertex, neighbors)) {
+    len_accum += len_v3v3(active_vertex->co, neighbor->co);
   }
-  SCULPT_VERTEX_NEIGHBORS_ITER_END(ni);
+  const int num_neighbors = neighbors.size();
 
   if (num_neighbors > 0) {
     const float avg_edge_len = len_accum / num_neighbors;
@@ -677,6 +674,13 @@ static void dyntopo_detail_size_update_header(bContext *C,
   SNPRINTF(msg, format_string, ui_name, cd->current_value);
   ScrArea *area = CTX_wm_area(C);
   ED_area_status_text(area, msg);
+
+  WorkspaceStatus status(C);
+  status.item(IFACE_("Confirm"), ICON_EVENT_RETURN, ICON_MOUSE_LMB);
+  status.item(IFACE_("Cancel"), ICON_EVENT_ESC, ICON_MOUSE_RMB);
+  status.item(IFACE_("Change Size"), ICON_MOUSE_MOVE);
+  status.item_bool(IFACE_("Sample Mode"), cd->sample_mode, ICON_EVENT_CTRL);
+  status.item_bool(IFACE_("Precision Mode"), cd->accurate_mode, ICON_EVENT_SHIFT);
 }
 
 static int dyntopo_detail_size_edit_modal(bContext *C, wmOperator *op, const wmEvent *event)
@@ -737,6 +741,7 @@ static int dyntopo_detail_size_edit_modal(bContext *C, wmOperator *op, const wmE
   /* Sample mode sets the detail size sampling the average edge length under the surface. */
   if (cd->sample_mode) {
     dyntopo_detail_size_sample_from_surface(active_object, cd);
+    dyntopo_detail_size_update_header(C, cd);
     return OPERATOR_RUNNING_MODAL;
   }
   /* Regular mode, changes the detail size by moving the cursor. */

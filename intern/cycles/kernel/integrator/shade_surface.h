@@ -232,8 +232,8 @@ integrate_direct_light_shadow_init_common(KernelGlobals kg,
       state, path, render_pixel_index);
   INTEGRATOR_STATE_WRITE(shadow_state, shadow_path, rng_offset) = INTEGRATOR_STATE(
       state, path, rng_offset);
-  INTEGRATOR_STATE_WRITE(shadow_state, shadow_path, rng_hash) = INTEGRATOR_STATE(
-      state, path, rng_hash);
+  INTEGRATOR_STATE_WRITE(shadow_state, shadow_path, rng_pixel) = INTEGRATOR_STATE(
+      state, path, rng_pixel);
   INTEGRATOR_STATE_WRITE(shadow_state, shadow_path, sample) = INTEGRATOR_STATE(
       state, path, sample);
 
@@ -675,8 +675,8 @@ ccl_device_forceinline void integrate_surface_ao(KernelGlobals kg,
       state, path, render_pixel_index);
   INTEGRATOR_STATE_WRITE(shadow_state, shadow_path, rng_offset) = INTEGRATOR_STATE(
       state, path, rng_offset);
-  INTEGRATOR_STATE_WRITE(shadow_state, shadow_path, rng_hash) = INTEGRATOR_STATE(
-      state, path, rng_hash);
+  INTEGRATOR_STATE_WRITE(shadow_state, shadow_path, rng_pixel) = INTEGRATOR_STATE(
+      state, path, rng_pixel);
   INTEGRATOR_STATE_WRITE(shadow_state, shadow_path, sample) = INTEGRATOR_STATE(
       state, path, sample);
   INTEGRATOR_STATE_WRITE(shadow_state, shadow_path, flag) = shadow_flag;
@@ -724,7 +724,7 @@ ccl_device int integrate_surface(KernelGlobals kg,
 
       /* Initialize additional RNG for BSDFs. */
       if (sd.flag & SD_BSDF_NEEDS_LCG) {
-        sd.lcg_state = lcg_state_init(INTEGRATOR_STATE(state, path, rng_hash),
+        sd.lcg_state = lcg_state_init(INTEGRATOR_STATE(state, path, rng_pixel),
                                       INTEGRATOR_STATE(state, path, rng_offset),
                                       INTEGRATOR_STATE(state, path, sample),
                                       0xb4bc3953);
@@ -865,9 +865,11 @@ ccl_device_forceinline void integrator_shade_surface_raytrace(
 ccl_device_forceinline void integrator_shade_surface_mnee(
     KernelGlobals kg, IntegratorState state, ccl_global float *ccl_restrict render_buffer)
 {
+#ifdef __MNEE__
   integrator_shade_surface<(KERNEL_FEATURE_NODE_MASK_SURFACE & ~KERNEL_FEATURE_NODE_RAYTRACE) |
                                KERNEL_FEATURE_MNEE,
                            DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_MNEE>(kg, state, render_buffer);
+#endif
 }
 
 CCL_NAMESPACE_END

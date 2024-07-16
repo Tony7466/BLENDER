@@ -35,29 +35,78 @@ KeyframeSettings get_keyframe_settings(const bool from_userprefs)
   return settings;
 }
 
-FCurve *create_fcurve_for_channel(const StringRef rna_path, const int array_index)
+const FCurve *fcurve_find(Span<const FCurve *> fcurves, const FCurveDescriptor fcurve_descriptor)
+{
+  for (const FCurve *fcurve : fcurves) {
+    /* Check indices first, much cheaper than a string comparison. */
+    if (fcurve->array_index == fcurve_descriptor.array_index && fcurve->rna_path &&
+        StringRef(fcurve->rna_path) == fcurve_descriptor.rna_path)
+    {
+      return fcurve;
+    }
+  }
+  return nullptr;
+}
+FCurve *fcurve_find(Span<FCurve *> fcurves, const FCurveDescriptor fcurve_descriptor)
+{
+  const FCurve *fcurve = fcurve_find(fcurves.cast<const FCurve *>(), fcurve_descriptor);
+  return const_cast<FCurve *>(fcurve);
+}
+
+FCurve *create_fcurve_for_channel(const FCurveDescriptor fcurve_descriptor)
 {
   FCurve *fcu = BKE_fcurve_create();
-  fcu->rna_path = BLI_strdupn(rna_path.data(), rna_path.size());
-  fcu->array_index = array_index;
+  fcu->rna_path = BLI_strdupn(fcurve_descriptor.rna_path.data(),
+                              fcurve_descriptor.rna_path.size());
+  fcu->array_index = fcurve_descriptor.array_index;
   fcu->flag = (FCURVE_VISIBLE | FCURVE_SELECTED);
   fcu->auto_smoothing = U.auto_smoothing_new;
+
+  /* Set the fcurve's color mode if needed/able. */
+  if ((U.keying_flag & KEYING_FLAG_XYZ2RGB) != 0 && fcurve_descriptor.prop_subtype.has_value()) {
+    switch (*fcurve_descriptor.prop_subtype) {
+      case PROP_TRANSLATION:
+      case PROP_XYZ:
+      case PROP_EULER:
+      case PROP_COLOR:
+      case PROP_COORDS:
+        fcu->color_mode = FCURVE_COLOR_AUTO_RGB;
+        break;
+
+      case PROP_QUATERNION:
+        fcu->color_mode = FCURVE_COLOR_AUTO_YRGB;
+        break;
+
+      default:
+        /* Leave the color mode as default. */
+        break;
+    }
+  }
 
   return fcu;
 }
 
-bool delete_keyframe_fcurve(AnimData *adt, FCurve *fcu, float cfra)
+bool fcurve_delete_keyframe_at_time(FCurve *fcurve, const float time)
 {
   bool found;
 
-  const int index = BKE_fcurve_bezt_binarysearch_index(fcu->bezt, cfra, fcu->totvert, &found);
+  const int index = BKE_fcurve_bezt_binarysearch_index(
+      fcurve->bezt, time, fcurve->totvert, &found);
   if (!found) {
     return false;
   }
 
-  /* Delete the key at the index (will sanity check + do recalc afterwards). */
-  BKE_fcurve_delete_key(fcu, index);
-  BKE_fcurve_handles_recalc(fcu);
+  BKE_fcurve_delete_key(fcurve, index);
+  BKE_fcurve_handles_recalc(fcurve);
+
+  return true;
+}
+
+bool delete_keyframe_fcurve_legacy(AnimData *adt, FCurve *fcu, float cfra)
+{
+  if (!fcurve_delete_keyframe_at_time(fcu, cfra)) {
+    return false;
+  }
 
   /* Empty curves get automatically deleted. */
   if (BKE_fcurve_is_empty(fcu)) {
@@ -280,7 +329,7 @@ void initialize_bezt(BezTriple *beztr,
  * This is a helper function for determining whether to insert a keyframe or not
  * when "only insert needed" is enabled.
  *
- * Note: this does *not* determine whether inserting the keyframe would change
+ * NOTE: this does *not* determine whether inserting the keyframe would change
  * the fcurve at points other than the keyframe itself. For example, even if
  * inserting the key wouldn't change the fcurve's value at the time of the
  * keyframe, the resulting changes to bezier interpolation could change the

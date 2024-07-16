@@ -30,8 +30,6 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "IMB_colormanagement.hh"
-
 #include "GPU_shader.hh"
 #include "GPU_state.hh"
 #include "GPU_texture.hh"
@@ -182,9 +180,6 @@ class GlareOperation : public NodeOperation {
     GPUShader *shader = context().get_shader("compositor_glare_highlights");
     GPU_shader_bind(shader);
 
-    float luminance_coefficients[3];
-    IMB_colormanagement_get_luminance_coefficients(luminance_coefficients);
-    GPU_shader_uniform_3fv(shader, "luminance_coefficients", luminance_coefficients);
     GPU_shader_uniform_1f(shader, "threshold", node_storage(bnode()).threshold);
 
     const Result &input_image = get_input("Image");
@@ -745,6 +740,16 @@ class GlareOperation : public NodeOperation {
     const int smaller_glare_dimension = math::min(glare_size.x, glare_size.y);
     const int chain_length = int(std::log2(smaller_glare_dimension)) -
                              compute_bloom_size_halving_count();
+
+    /* If the chain length is less than 2, that means no down-sampling will happen, so we just
+     * return a copy of the highlights. This is a sanitization of a corner case, so no need to
+     * worry about optimizing the copy away. */
+    if (chain_length < 2) {
+      Result bloom_result = context().create_temporary_result(ResultType::Color);
+      bloom_result.allocate_texture(highlights_result.domain());
+      GPU_texture_copy(bloom_result.texture(), highlights_result.texture());
+      return bloom_result;
+    }
 
     Array<Result> downsample_chain = compute_bloom_downsample_chain(highlights_result,
                                                                     chain_length);

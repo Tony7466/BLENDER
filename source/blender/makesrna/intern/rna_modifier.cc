@@ -416,27 +416,45 @@ const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
      "RNA description of gp surdef here"},
 
     RNA_ENUM_ITEM_HEADING(N_("Physics"), nullptr),
-    {eModifierType_Cloth, "CLOTH", ICON_MOD_CLOTH, "Cloth", ""},
-    {eModifierType_Collision, "COLLISION", ICON_MOD_PHYSICS, "Collision", ""},
-    {eModifierType_DynamicPaint, "DYNAMIC_PAINT", ICON_MOD_DYNAMICPAINT, "Dynamic Paint", ""},
+    {eModifierType_Cloth, "CLOTH", ICON_MOD_CLOTH, "Cloth", "Physic simulation for cloth"},
+    {eModifierType_Collision,
+     "COLLISION",
+     ICON_MOD_PHYSICS,
+     "Collision",
+     "For colliders participating in physics simulation, control which level in the modifier "
+     "stack is used as the collision surface"},
+    {eModifierType_DynamicPaint,
+     "DYNAMIC_PAINT",
+     ICON_MOD_DYNAMICPAINT,
+     "Dynamic Paint",
+     "Turn objects into paint canvases and brushes, creating color attributes, image sequences, "
+     "or displacement"},
     {eModifierType_Explode,
      "EXPLODE",
      ICON_MOD_EXPLODE,
      "Explode",
      "Break apart the mesh faces and let them follow particles"},
-    {eModifierType_Fluid, "FLUID", ICON_MOD_FLUIDSIM, "Fluid", ""},
+    {eModifierType_Fluid,
+     "FLUID",
+     ICON_MOD_FLUIDSIM,
+     "Fluid",
+     "Physics simulation for fluids, like water, oil and smoke"},
     {eModifierType_Ocean, "OCEAN", ICON_MOD_OCEAN, "Ocean", "Generate a moving ocean surface"},
     {eModifierType_ParticleInstance,
      "PARTICLE_INSTANCE",
      ICON_MOD_PARTICLE_INSTANCE,
      "Particle Instance",
-     ""},
+     "Duplicate mesh at the location of particles"},
     {eModifierType_ParticleSystem,
      "PARTICLE_SYSTEM",
      ICON_MOD_PARTICLES,
      "Particle System",
      "Spawn particles from the shape"},
-    {eModifierType_Softbody, "SOFT_BODY", ICON_MOD_SOFT, "Soft Body", ""},
+    {eModifierType_Softbody,
+     "SOFT_BODY",
+     ICON_MOD_SOFT,
+     "Soft Body",
+     "Simulate soft deformable objects"},
     {eModifierType_Surface, "SURFACE", ICON_MODIFIER, "Surface", ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
@@ -2354,8 +2372,12 @@ static void rna_def_property_subdivision_common(StructRNA *srna)
 static void rna_def_modifier_subsurf(BlenderRNA *brna)
 {
   static const EnumPropertyItem prop_subdivision_type_items[] = {
-      {SUBSURF_TYPE_CATMULL_CLARK, "CATMULL_CLARK", 0, "Catmull-Clark", ""},
-      {SUBSURF_TYPE_SIMPLE, "SIMPLE", 0, "Simple", ""},
+      {SUBSURF_TYPE_CATMULL_CLARK,
+       "CATMULL_CLARK",
+       0,
+       "Catmull-Clark",
+       "Create a smooth curved surface using the Catmull-Clark subdivision scheme"},
+      {SUBSURF_TYPE_SIMPLE, "SIMPLE", 0, "Simple", "Subdivide faces without changing shape"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -2382,7 +2404,7 @@ static void rna_def_modifier_subsurf(BlenderRNA *brna)
   RNA_def_property_int_sdna(prop, nullptr, "levels");
   RNA_def_property_range(prop, 0, 11);
   RNA_def_property_ui_range(prop, 0, 6, 1, -1);
-  RNA_def_property_ui_text(prop, "Levels", "Number of subdivisions to perform");
+  RNA_def_property_ui_text(prop, "Levels", "Number of subdivisions to perform in the 3D viewport");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "render_levels", PROP_INT, PROP_UNSIGNED);
@@ -4577,9 +4599,13 @@ static void rna_def_modifier_fluid(BlenderRNA *brna)
 
   static const EnumPropertyItem prop_fluid_type_items[] = {
       {0, "NONE", 0, "None", ""},
-      {MOD_FLUID_TYPE_DOMAIN, "DOMAIN", 0, "Domain", ""},
-      {MOD_FLUID_TYPE_FLOW, "FLOW", 0, "Flow", "Inflow/Outflow"},
-      {MOD_FLUID_TYPE_EFFEC, "EFFECTOR", 0, "Effector", ""},
+      {MOD_FLUID_TYPE_DOMAIN, "DOMAIN", 0, "Domain", "Container of the fluid simulation"},
+      {MOD_FLUID_TYPE_FLOW, "FLOW", 0, "Flow", "Add or remove fluid to a domain object"},
+      {MOD_FLUID_TYPE_EFFEC,
+       "EFFECTOR",
+       0,
+       "Effector",
+       "Deflect fluids and influence the fluid flow"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -7796,6 +7822,7 @@ static void rna_def_modifier_nodes_bake(BlenderRNA *brna)
   RNA_def_property_struct_type(prop, "NodesModifierDataBlock");
   RNA_def_property_collection_sdna(prop, nullptr, "data_blocks", "data_blocks_num");
   RNA_def_property_srna(prop, "NodesModifierBakeDataBlocks");
+  RNA_def_property_override_clear_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
 
   RNA_define_lib_overridable(false);
 }
@@ -9831,7 +9858,7 @@ static void rna_def_modifier_grease_pencil_multiply(BlenderRNA *brna)
   RNA_def_property_int_sdna(prop, nullptr, "duplications");
   RNA_def_property_range(prop, 0, 999);
   RNA_def_property_ui_range(prop, 1, 10, 1, 1);
-  RNA_def_property_ui_text(prop, "duplicates", "How many copies of strokes be displayed");
+  RNA_def_property_ui_text(prop, "Duplicates", "How many copies of strokes be displayed");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "distance", PROP_FLOAT, PROP_DISTANCE);
@@ -11136,7 +11163,7 @@ void RNA_def_modifier(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
-  RNA_def_property_ui_text(prop, "Stick to Last", "Keep the modifier at the end of the list");
+  RNA_def_property_ui_text(prop, "Pin to Last", "Keep the modifier at the end of the list");
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, nullptr);
 
   prop = RNA_def_boolean(srna,

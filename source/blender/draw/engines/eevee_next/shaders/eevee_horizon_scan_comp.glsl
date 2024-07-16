@@ -43,15 +43,16 @@ void main()
   vec3 vP = drw_point_screen_to_view(vec3(uv, depth));
   vec3 vN = horizon_scan_sample_normal(uv);
 
-  vec2 noise = utility_tx_fetch(utility_tx, vec2(texel), UTIL_BLUE_NOISE_LAYER).rg;
-  noise = fract(noise + sampling_rng_2D_get(SAMPLING_AO_U));
+  vec4 noise = utility_tx_fetch(utility_tx, vec2(texel), UTIL_BLUE_NOISE_LAYER);
+  noise = fract(noise + sampling_rng_3D_get(SAMPLING_AO_U).xyzx);
 
   HorizonScanResult scan = horizon_scan_eval(vP,
                                              vN,
                                              noise,
                                              uniform_buf.ao.pixel_size,
                                              uniform_buf.ao.gi_distance,
-                                             uniform_buf.ao.thickness,
+                                             uniform_buf.ao.thickness_near,
+                                             uniform_buf.ao.thickness_far,
                                              uniform_buf.ao.angle_bias,
                                              fast_gi_slice_count,
                                              fast_gi_step_count,

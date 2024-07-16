@@ -117,9 +117,17 @@ enum {
 
 enum {
   IDWALK_RET_NOP = 0,
-  /** Completely stop iteration. */
+  /**
+   * Completely stop iteration.
+   *
+   * \note Should never be returned by a callback in case #IDWALK_READONLY is not set.
+   */
   IDWALK_RET_STOP_ITER = 1 << 0,
-  /** Stop recursion, that is, do not loop over ID used by current one. */
+  /**
+   * Stop recursion, that is, do not loop over ID used by current one.
+   *
+   * \note Should never be returned by a callback in case #IDWALK_READONLY is not set.
+   */
   IDWALK_RET_STOP_RECURSION = 1 << 1,
 };
 
@@ -229,6 +237,7 @@ enum {
 bool BKE_lib_query_foreachid_iter_stop(const LibraryForeachIDData *data);
 void BKE_lib_query_foreachid_process(LibraryForeachIDData *data, ID **id_pp, int cb_flag);
 int BKE_lib_query_foreachid_process_flags_get(const LibraryForeachIDData *data);
+Main *BKE_lib_query_foreachid_process_main_get(const LibraryForeachIDData *data);
 int BKE_lib_query_foreachid_process_callback_flag_override(LibraryForeachIDData *data,
                                                            int cb_flag,
                                                            bool do_replace);
@@ -287,12 +296,12 @@ void BKE_lib_query_idpropertiesForeachIDLink_callback(IDProperty *id_prop, void 
 /**
  * Loop over all of the ID's this data-block links to.
  *
- * \param bmain The Main data-base containing `owner_id`, may be null.
- * \param id The ID to process. Note that currently, embedded IDs may also be passed here.
- * \param callback The callback processing a given ID usage (i.e. a given ID pointer within the
+ * \param bmain: The Main data-base containing `owner_id`, may be null.
+ * \param id: The ID to process. Note that currently, embedded IDs may also be passed here.
+ * \param callback: The callback processing a given ID usage (i.e. a given ID pointer within the
  * given \a id data).
- * \param user_data Opaque user data for the callback processing a given ID usage.
- * \param flag Flags controlling how/which ID pointers are processed.
+ * \param user_data: Opaque user data for the callback processing a given ID usage.
+ * \param flag: Flags controlling how/which ID pointers are processed.
  */
 void BKE_library_foreach_ID_link(Main *bmain,
                                  ID *id,
@@ -315,17 +324,17 @@ void BKE_library_foreach_ID_link(Main *bmain,
  * initializes a #LibraryForeachIDData object with given parameters, and wraps a call to given
  * `subdata_foreach_id`.
  *
- * \param bmain The Main data-base containing `owner_id`, may be null.
- * \param owner_id The owner ID, i.e. the data-block owning the given sub-data (may differ from
+ * \param bmain: The Main data-base containing `owner_id`, may be null.
+ * \param owner_id: The owner ID, i.e. the data-block owning the given sub-data (may differ from
  * `self_id` in case the later is an embedded ID).
- * \param self_id Typically the same as `owner_id`, unless it is an embedded ID.
- * \param subdata_foreach_id The callback handling which data to process, and iterating over all ID
- * usages of this subdata. Typically a lambda capturing that subdata, see comments above for
+ * \param self_id: Typically the same as `owner_id`, unless it is an embedded ID.
+ * \param subdata_foreach_id: The callback handling which data to process, and iterating over all
+ * ID usages of this subdata. Typically a lambda capturing that subdata, see comments above for
  * details.
- * \param callback The callback processing a given ID usage, see #BKE_library_foreach_ID_link.
- * \param user_data Opaque user data for the callback processing a given ID usage, see
+ * \param callback: The callback processing a given ID usage, see #BKE_library_foreach_ID_link.
+ * \param user_data: Opaque user data for the callback processing a given ID usage, see
  * #BKE_library_foreach_ID_link.
- * \param flag Flags controlling the process, see #BKE_library_foreach_ID_link. Note that some
+ * \param flag: Flags controlling the process, see #BKE_library_foreach_ID_link. Note that some
  * flags are not accepted here (#IDWALK_RECURSE, #IDWALK_DO_INTERNAL_RUNTIME_POINTERS,
  * #IDWALK_DO_LIBRARY_POINTER, #IDWALK_INCLUDE_UI).
  */
