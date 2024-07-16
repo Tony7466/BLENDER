@@ -101,11 +101,8 @@ class ScaleOperation : public NodeOperation {
     Result &input = get_input("Image");
     Result &output = get_result("Image");
 
-    const float2 scale = get_scale();
-    const math::AngleRadian rotation = 0.0f;
-    const float2 translation = get_translation();
-    const float3x3 transformation = math::from_loc_rot_scale<float3x3>(
-        translation, rotation, scale);
+    const float3x3 transformation =
+        math::scale(math::from_location<float3x3>(get_translation()), get_scale());
 
     transform(context(), input, output, transformation, input.get_realization_options());
   }
@@ -234,13 +231,19 @@ class ScaleOperation : public NodeOperation {
   float2 get_translation()
   {
     /* Only the render size option supports offset translation. */
-    if (get_scale_method() != CMP_NODE_SCALE_RENDER_SIZE) {
-      return float2(0.0f);
+    if (get_scale_method() == CMP_NODE_SCALE_RENDER_SIZE) {
+      /* Translate by the offset factor relative to the new size. */
+      const float2 input_size = float2(get_input("Image").domain().size);
+      return get_offset() * input_size;
     }
-
-    /* Translate by the offset factor relative to the new size. */
-    const float2 input_size = float2(get_input("Image").domain().size);
-    return get_offset() * input_size * get_scale();
+    if (get_scale_method() == CMP_NODE_SCALE_ABSOLUTE) {
+      /* .5 offset so pixels line up with even-sized domains */
+      int w = int(ceil(get_input("X").get_float_value_default(1.0f)));
+      int h = int(ceil(get_input("Y").get_float_value_default(1.0f)));
+      return float2(w & 1 ? 0.5 : 0.0,
+                    h & 1 ? 0.5 : 0.0);
+    }
+    return float2(0.0f);
   }
 
   bool is_variable_size()
