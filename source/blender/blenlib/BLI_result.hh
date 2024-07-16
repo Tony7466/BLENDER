@@ -123,11 +123,9 @@ template<typename V, typename E> class Result {
   Result() = delete;
 
   Result(const V &value) : data_{value} {}
-  Result(V &&value) : data_{std::move(value)} {}
   template<typename T> Result(T &&value) : data_{std::forward<T>(value)} {}
 
   Result(const Err<E> &error) : data_{error} {}
-  Result(Err<E> &&error) : data_{std::move(error)} {}
   template<typename T> Result(Err<T> &&error) : data_{Err<E>{std::forward<Err<T>>(error)}} {}
 
   /**
@@ -222,7 +220,6 @@ template<typename E> class Err {
   Err() = delete;
 
   explicit Err(const E &error) : error_{error} {}
-  explicit Err(E &&error) : error_{std::move(error)} {}
   template<typename T> explicit Err(T &&error) : error_{std::forward<T>(error)} {}
 
   /* Implicitly convert an `Err<A>` to an `Err<B>` if `A` can be implicitly
