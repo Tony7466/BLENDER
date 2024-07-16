@@ -100,7 +100,14 @@ struct VKResourceBarrierState {
   VkPipelineStageFlags vk_pipeline_stages = VK_PIPELINE_STAGE_NONE;
   /** Last known image layout of an image resource. */
   VkImageLayout image_layout = VK_IMAGE_LAYOUT_UNDEFINED;
-  bool is_new_stamp = false;
+
+  bool is_new_stamp() const
+  {
+    return bool(vk_access &
+                (VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+                 VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT |
+                 VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_MEMORY_WRITE_BIT));
+  }
 };
 
 /**

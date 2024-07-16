@@ -292,7 +292,7 @@ void VKCommandBuilder::add_buffer_read_barriers(VKRenderGraph &render_graph,
       continue;
     }
     VKResourceBarrierState &resource_state = resource.barrier_state;
-    const bool is_first_read = resource_state.is_new_stamp;
+    const bool is_first_read = resource_state.is_new_stamp();
     if (!is_first_read &&
         (resource_state.vk_access & link.vk_access_flags) == link.vk_access_flags &&
         (resource_state.vk_pipeline_stages & node_stages) == node_stages)
@@ -309,7 +309,6 @@ void VKCommandBuilder::add_buffer_read_barriers(VKRenderGraph &render_graph,
     if (is_first_read) {
       resource_state.vk_access = link.vk_access_flags;
       resource_state.vk_pipeline_stages = node_stages;
-      resource_state.is_new_stamp = false;
     }
     else {
       resource_state.vk_access |= link.vk_access_flags;
@@ -340,7 +339,6 @@ void VKCommandBuilder::add_buffer_write_barriers(VKRenderGraph &render_graph,
 
     resource_state.vk_access = link.vk_access_flags;
     resource_state.vk_pipeline_stages = node_stages;
-    resource_state.is_new_stamp = true;
 
     if (wait_access != VK_ACCESS_NONE) {
       add_buffer_barrier(resource.buffer.vk_buffer, wait_access, link.vk_access_flags);
@@ -399,7 +397,7 @@ void VKCommandBuilder::add_image_read_barriers(VKRenderGraph &render_graph,
       continue;
     }
     VKResourceBarrierState &resource_state = resource.barrier_state;
-    const bool is_first_read = resource_state.is_new_stamp;
+    const bool is_first_read = resource_state.is_new_stamp();
     if ((!is_first_read) &&
         (resource_state.vk_access & link.vk_access_flags) == link.vk_access_flags &&
         (resource_state.vk_pipeline_stages & node_stages) == node_stages &&
@@ -428,7 +426,6 @@ void VKCommandBuilder::add_image_read_barriers(VKRenderGraph &render_graph,
     if (is_first_read) {
       resource_state.vk_access = link.vk_access_flags;
       resource_state.vk_pipeline_stages = node_stages;
-      resource_state.is_new_stamp = false;
     }
     else {
       resource_state.vk_access |= link.vk_access_flags;
@@ -477,7 +474,6 @@ void VKCommandBuilder::add_image_write_barriers(VKRenderGraph &render_graph,
 
     resource_state.vk_access = link.vk_access_flags;
     resource_state.vk_pipeline_stages = node_stages;
-    resource_state.is_new_stamp = true;
 
     if (wait_access != VK_ACCESS_NONE || link.vk_image_layout != resource_state.image_layout) {
       add_image_barrier(resource.image.vk_image,
