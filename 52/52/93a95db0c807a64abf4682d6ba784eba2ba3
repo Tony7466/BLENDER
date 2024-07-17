@@ -1,3 +1,4 @@
 Referenced by issue #124770, File Browser: Crash when going in and out of folders
 Referenced by pull request #124781, Fix #124770: File Browser: Crash when going in and out of folders
 Referenced by pull request #124828, Fix: File Browser Back Button Crash
+Referenced by commit 16f21e78e5f8e29618bcb824ab5c863dac8ed183, Fix #124770: File Browser: Crash when going in and out of folders
