@@ -1192,9 +1192,9 @@ struct FillDataMesh {
                                  const SculptSession &ss,
                                  int vertex,
                                  float radius);
-  void add_active(const Object &ob, const SculptSession &ss, float radius);
-  void execute(SculptSession &ss,
-               FillData &flood,
+  void add_active(const Object &object, const SculptSession &ss, float radius);
+  void execute(Object &object,
+               SculptSession &ss,
                FunctionRef<bool(int from_v, int to_v, bool is_duplicate)> func);
 };
 
@@ -1210,10 +1210,10 @@ struct FillDataGrids {
                                  const SculptSession &ss,
                                  SubdivCCGCoord vertex,
                                  float radius);
-  void add_active(const Object &ob, const SculptSession &ss, float radius);
+  void add_active(const Object &object, const SculptSession &ss, float radius);
   void execute(
+      Object &object,
       SculptSession &ss,
-      FillData &flood,
       FunctionRef<bool(SubdivCCGCoord from_v, SubdivCCGCoord to_v, bool is_duplicate)> func);
 };
 
@@ -1229,9 +1229,9 @@ struct FillDataBMesh {
                                  const SculptSession &ss,
                                  BMVert *vertex,
                                  float radius);
-  void add_active(const Object &ob, const SculptSession &ss, float radius);
-  void execute(SculptSession &ss,
-               FillData &flood,
+  void add_active(const Object &object, const SculptSession &ss, float radius);
+  void execute(Object &object,
+               SculptSession &ss,
                FunctionRef<bool(BMVert *from_v, BMVert *to_v, bool is_duplicate)> func);
 };
 

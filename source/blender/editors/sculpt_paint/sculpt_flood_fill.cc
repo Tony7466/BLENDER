@@ -1,3 +1,5 @@
+#include "BKE_mesh.hh"
+
 #include "DNA_mesh_types.h"
 
 #include "paint_intern.hh"
@@ -277,6 +279,119 @@ void execute(SculptSession &ss,
       }
     }
     SCULPT_VERTEX_NEIGHBORS_ITER_END(ni);
+  }
+}
+
+void FillDataMesh::execute(Object &object,
+                           SculptSession &ss,
+                           FunctionRef<bool(int from_v, int to_v, bool is_duplicate)> func)
+{
+  Mesh &mesh = *static_cast<Mesh *>(object.data);
+  const OffsetIndices faces = mesh.faces();
+  const Span<int> corner_verts = mesh.corner_verts();
+  const bke::AttributeAccessor attributes = mesh.attributes();
+  const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
+  const VArray hide_vert = *attributes.lookup_or_default<bool>(
+      ".hide_vert", bke::AttrDomain::Point, false);
+
+  while (!this->queue.empty()) {
+    const int from_v = this->queue.front();
+    this->queue.pop();
+
+    Vector<int> neighbors;
+
+    for (const int face : ss.vert_to_face_map[from_v]) {
+      if (!hide_poly.is_empty() && hide_poly[face]) {
+        continue;
+      }
+      const int2 verts = bke::mesh::face_find_adjacent_verts(faces[face], corner_verts, from_v);
+      neighbors.append_non_duplicates(verts[0]);
+      neighbors.append_non_duplicates(verts[1]);
+    }
+
+    for (const int neighbor : neighbors) {
+      if (this->visited_verts[neighbor]) {
+        continue;
+      }
+
+      if (hide_vert[neighbor]) {
+        continue;
+      }
+
+      this->visited_verts[neighbor].set();
+      if (func(from_v, neighbor, false)) {
+        this->queue.push(neighbor);
+      }
+    }
+  }
+}
+
+void FillDataGrids::execute(
+    Object & /* object */,
+    SculptSession &ss,
+    FunctionRef<bool(SubdivCCGCoord from_v, SubdivCCGCoord to_v, bool is_duplicate)> func)
+{
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(*ss.subdiv_ccg);
+  SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  while (!this->queue.empty()) {
+    SubdivCCGCoord from_v = this->queue.front();
+    this->queue.pop();
+
+    SubdivCCGNeighbors neighbors;
+    BKE_subdiv_ccg_neighbor_coords_get(*ss.subdiv_ccg, from_v, true, neighbors);
+    const int num_unique = neighbors.coords.size() - neighbors.num_duplicates;
+
+    /* Flood fill expects the duplicate entries to be passed to the per-neighbor lambda first, so
+     * iterate from the end of the vector to the beginning. */
+    for (int i = neighbors.coords.size() - 1; i >= 0; i++) {
+      SubdivCCGCoord neighbor = neighbors.coords[i];
+      const int index_in_grid = neighbor.y * key.grid_size + neighbor.x;
+      const int index = neighbor.grid_index * key.grid_area + index_in_grid;
+      if (this->visited_verts[index]) {
+        continue;
+      }
+
+      if (!subdiv_ccg.grid_hidden.is_empty() &&
+          subdiv_ccg.grid_hidden[neighbor.grid_index][index_in_grid])
+      {
+        continue;
+      }
+
+      this->visited_verts[index].set();
+      const bool is_duplicate = i >= num_unique;
+      if (func(from_v, neighbor, is_duplicate)) {
+        this->queue.push(neighbor);
+      }
+    }
+  }
+}
+
+void FillDataBMesh::execute(
+    Object & /* object */,
+    SculptSession & /* ss */,
+    FunctionRef<bool(BMVert *from_v, BMVert *to_v, bool is_duplicate)> func)
+{
+  while (!this->queue.empty()) {
+    BMVert *from_v = this->queue.front();
+    this->queue.pop();
+    Vector<BMVert *, 64> neighbors;
+    vert_neighbors_get_bmesh(*from_v, neighbors);
+
+    for (BMVert *neighbor : neighbors) {
+      const int neighbor_idx = BM_elem_index_get(neighbor);
+      if (this->visited_verts[neighbor_idx]) {
+        continue;
+      }
+
+      if (BM_elem_flag_test(neighbor, BM_ELEM_HIDDEN)) {
+        continue;
+      }
+
+      this->visited_verts[neighbor_idx].set();
+      if (func(from_v, neighbor, false)) {
+        this->queue.push(neighbor);
+      }
+    }
   }
 }
 
