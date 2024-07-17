@@ -56,6 +56,7 @@ class AnimManager {
    * Free anims used by `seq`.
    */
   void free_anims_by_seq(const Scene *scene, const Sequence *seq);
+  ~AnimManager();
 
  private:
   ShareableAnim &cache_entry_get(const Scene *scene, const Sequence *seq);
@@ -65,3 +66,4 @@ class AnimManager {
 };
 
 AnimManager *seq_anim_manager_ensure(Editing *ed);
+void seq_anim_manager_free(const Editing *ed);

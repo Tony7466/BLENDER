@@ -228,14 +228,6 @@ static blender::Vector<Sequence *> strips_to_prefetch_get(const Scene *scene)
   return strips_sorted;
 }
 
-AnimManager *seq_anim_manager_ensure(Editing *ed)
-{
-  if (ed->runtime.anim_lookup == nullptr) {
-    ed->runtime.anim_lookup = MEM_new<AnimManager>(__func__);
-  }
-  return ed->runtime.anim_lookup;
-}
-
 void AnimManager::free_unused_anims(blender::Vector<Sequence *> &strips)
 {
   mutex.lock();
@@ -261,7 +253,7 @@ void AnimManager::free_unused_anims(blender::Vector<Sequence *> &strips)
  * during parallel loading `ShareableAnim` is locked.
  */
 // XXX this is ugly, can this be optimized?
-blender::Vector<Sequence *> filter_duplicates_for_parallel_load(
+static blender::Vector<Sequence *> filter_duplicates_for_parallel_load(
     const Scene *scene, blender::Vector<Sequence *> &strips)
 {
   blender::Map<std::string, Sequence *> unique_strips_map;
@@ -406,4 +398,30 @@ void AnimManager::free_anims_by_seq(const Scene *scene, const Sequence *seq)
 {
   ShareableAnim &sh_anim = cache_entry_get(scene, seq);
   sh_anim.release_from_all_strips();
+}
+
+AnimManager::~AnimManager()
+{
+  if (prefetch_thread.joinable()) {
+    prefetch_thread.join();
+  }
+
+  for (std::unique_ptr<ShareableAnim> &sh_anim : anims_map.values()) {
+    sh_anim->release_from_all_strips();
+  }
+}
+
+AnimManager *seq_anim_manager_ensure(Editing *ed)
+{
+  if (ed->runtime.anim_lookup == nullptr) {
+    ed->runtime.anim_lookup = MEM_new<AnimManager>(__func__);
+  }
+  return ed->runtime.anim_lookup;
+}
+
+void seq_anim_manager_free(const Editing *ed)
+{
+  if (ed->runtime.anim_lookup != nullptr) {
+    MEM_delete(ed->runtime.anim_lookup);
+  }
 }
