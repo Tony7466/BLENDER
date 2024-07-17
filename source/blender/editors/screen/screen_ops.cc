@@ -1463,10 +1463,11 @@ static void area_dupli_fn(bScreen * /*screen*/, ScrArea *area, void *user_data)
 };
 
 /* operator callback */
-static bool area_dupli_open(bContext *C, ScrArea *area, const int x, const int y)
+static bool area_dupli_open(bContext *C, ScrArea *area, const blender::int2 position)
 {
   bScreen *screen = CTX_wm_screen(C);
-  const rcti window_rect = {x, x + area->winx, y, y + area->winy};
+  const rcti window_rect = {
+      position.x, position.x + area->winx, position.y, position.y + area->winy};
 
   /* Create new window. No need to set space_type since it will be copied over. */
   wmWindow *newwin = WM_window_open(C,
@@ -1503,7 +1504,7 @@ static int area_dupli_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     area = sad->sa1;
   }
 
-  bool newwin = area_dupli_open(C, area, area->totrct.xmin, area->totrct.ymin);
+  bool newwin = area_dupli_open(C, area, blender::int2(area->totrct.xmin, area->totrct.ymin));
 
   if (newwin) {
     /* screen, areas init */
@@ -4004,7 +4005,7 @@ static int area_join_modal(bContext *C, wmOperator *op, const wmEvent *event)
           {
             /* We have to clear handlers or we get an error in wm_gizmomap_modal_get. */
             WM_event_modal_handler_region_replace(jd->win1, CTX_wm_region(C), nullptr);
-            area_dupli_open(C, jd->sa1, event->xy[0], event->xy[1] - jd->sa1->winy);
+            area_dupli_open(C, jd->sa1, blender::int2(event->xy[0], event->xy[1] - jd->sa1->winy));
           }
         }
         else if (jd->sa1 && jd->sa1 == jd->sa2) {
