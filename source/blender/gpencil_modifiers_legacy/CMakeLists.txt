@@ -71,6 +71,14 @@ set(SRC
   intern/lineart/lineart_intern.h
 )
 
+if(WITH_TBB)
+  if(WIN32)
+    # TBB includes Windows.h which will define min/max macros
+    # that will collide with the stl versions.
+    add_definitions(-DNOMINMAX)
+  endif()
+endif()
+
 set(LIB
   PRIVATE bf::blenfont
   PRIVATE bf::blenlib

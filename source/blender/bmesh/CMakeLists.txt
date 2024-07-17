@@ -201,6 +201,14 @@ if(WITH_GMP)
   )
 endif()
 
+if(WITH_TBB)
+  if(WIN32)
+    # TBB includes Windows.h which will define min/max macros
+    # that will collide with the stl versions.
+    add_definitions(-DNOMINMAX)
+  endif()
+endif()
+
 blender_add_lib(bf_bmesh "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
 if(MSVC AND NOT MSVC_CLANG)

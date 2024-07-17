@@ -575,6 +575,14 @@ if(WITH_COMPOSITOR_CPU)
     PRIVATE bf::intern::atomic
   )
 
+  if(WITH_TBB)
+    if(WIN32)
+      # TBB includes Windows.h which will define min/max macros
+      # that will collide with the stl versions.
+      add_definitions(-DNOMINMAX)
+    endif()
+  endif()
+
   if(WITH_OPENIMAGEDENOISE)
     add_definitions(-DWITH_OPENIMAGEDENOISE)
     add_definitions(-DOIDN_STATIC_LIB)

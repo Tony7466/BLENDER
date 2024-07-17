@@ -213,6 +213,14 @@ if(WITH_GMP)
   )
 endif()
 
+if(WITH_TBB)
+  if(WIN32)
+    # TBB includes Windows.h which will define min/max macros
+    # that will collide with the stl versions.
+    add_definitions(-DNOMINMAX)
+  endif()
+endif()
+
 if(WITH_OPENVDB)
   list(APPEND INC
     ../../../intern/openvdb

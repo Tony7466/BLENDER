@@ -368,6 +368,14 @@ endforeach()
 set(shader_create_info_list_file "${CMAKE_CURRENT_BINARY_DIR}/compositor_shader_create_info_list.hh")
 file(GENERATE OUTPUT ${shader_create_info_list_file} CONTENT "${SHADER_CREATE_INFOS_CONTENT}")
 
+if(WITH_TBB)
+  if(WIN32)
+    # TBB includes Windows.h which will define min/max macros
+    # that will collide with the stl versions.
+    add_definitions(-DNOMINMAX)
+  endif()
+endif()
+
 if(WITH_OPENCOLORIO)
   add_definitions(
     -DWITH_OCIO
