@@ -60,11 +60,16 @@ BLOCKLIST_OSL = [
     'bump_with_displacement.blend',
     # Ray portal test uses bump + displacement
     'ray_portal.blend',
-    # TODO: Add more failing tests
-    # Currently failing tests that aren't in this list are:
-    # Blackbody - Subtle noise difference
-    # Various Principled BSDF tests - Seems to be noise from mixing and layering
-    # Some render pass tests - Seems to be noise from mixing and layering in the Principled BSDF used to test them
+    # TODO: Tests that need investigating into why they're failing, and how to fix that.
+    # Waiting for 124673
+    'T50634_1.blend',
+    'mesh_light.blend',
+    # OSL has it's own blackbody function which is slightly different, primarily near the end of the visible spectrum
+    'blackbody',
+    # Noise differences due to Principled BSDF mixing/layering used in some of these scenes
+    'render_passes.*.blend',
+    # Noise differences in Principled BSDF mixing/layering
+    'principled.*.blend',
 ]
 
 BLACKLIST_OPTIX = [
