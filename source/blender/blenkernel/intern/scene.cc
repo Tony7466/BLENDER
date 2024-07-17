@@ -3533,7 +3533,7 @@ void View3DCursor::set_matrix(const blender::float3x3 &mat, const bool use_compa
 
 void View3DCursor::set_rotation(const blender::math::Quaternion &quat, bool use_compat)
 {
-  BLI_ASSERT_UNIT_QUAT(quat);
+  BLI_ASSERT_UNIT_QUAT(&quat.w);
 
   switch (this->rotation_mode) {
     case ROT_MODE_QUAT: {
