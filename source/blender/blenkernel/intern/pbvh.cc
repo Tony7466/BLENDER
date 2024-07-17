@@ -1624,14 +1624,14 @@ Bounds<float3> bounds_get(const Tree &pbvh)
 
 int BKE_pbvh_get_grid_num_verts(const blender::bke::pbvh::Tree &pbvh)
 {
-  BLI_assert(pbvh.type() == Type::Grids);
+  BLI_assert(pbvh.type() == blender::bke::pbvh::Type::Grids);
   const CCGKey key = BKE_subdiv_ccg_key_top_level(*pbvh.subdiv_ccg_);
   return pbvh.subdiv_ccg_->grids.size() * key.grid_area;
 }
 
 int BKE_pbvh_get_grid_num_faces(const blender::bke::pbvh::Tree &pbvh)
 {
-  BLI_assert(pbvh.type() == Type::Grids);
+  BLI_assert(pbvh.type() == blender::bke::pbvh::Type::Grids);
   const CCGKey key = BKE_subdiv_ccg_key_top_level(*pbvh.subdiv_ccg_);
   return pbvh.subdiv_ccg_->grids.size() * square_i(key.grid_size - 1);
 }
@@ -2957,19 +2957,19 @@ Mesh *BKE_pbvh_get_mesh(blender::bke::pbvh::Tree &pbvh)
 
 Span<float3> BKE_pbvh_get_vert_positions(const blender::bke::pbvh::Tree &pbvh)
 {
-  BLI_assert(pbvh.type() == Type::Mesh);
+  BLI_assert(pbvh.type() == blender::bke::pbvh::Type::Mesh);
   return pbvh.vert_positions_;
 }
 
 MutableSpan<float3> BKE_pbvh_get_vert_positions(blender::bke::pbvh::Tree &pbvh)
 {
-  BLI_assert(pbvh.type() == Type::Mesh);
+  BLI_assert(pbvh.type() == blender::bke::pbvh::Type::Mesh);
   return pbvh.vert_positions_;
 }
 
 Span<float3> BKE_pbvh_get_vert_normals(const blender::bke::pbvh::Tree &pbvh)
 {
-  BLI_assert(pbvh.type() == Type::Mesh);
+  BLI_assert(pbvh.type() == blender::bke::pbvh::Type::Mesh);
   return pbvh.vert_normals_;
 }
 
@@ -2982,7 +2982,7 @@ void BKE_pbvh_ensure_node_loops(blender::bke::pbvh::Tree &pbvh,
                                 const Span<blender::int3> corner_tris)
 {
   using namespace blender;
-  BLI_assert(pbvh.type() == Type::Mesh);
+  BLI_assert(pbvh.type() == blender::bke::pbvh::Type::Mesh);
 
   int totloop = 0;
 

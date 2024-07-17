@@ -69,7 +69,7 @@ struct PBVHPixels {
    *
    * Contains #blender::bke::pbvh::pixels::PBVHData
    */
-  void *data;
+  void *data = nullptr;
 };
 
 struct PBVHPixelsNode {
@@ -197,7 +197,7 @@ class Tree {
   Type type_;
 
  public:
-  BMesh *bm_;
+  BMesh *bm_ = nullptr;
 
   Vector<Node> nodes_;
 
@@ -205,7 +205,7 @@ class Tree {
   Array<int> prim_indices_;
 
   /* Mesh data. The evaluated deform mesh for mesh sculpting, and the base mesh for grids. */
-  Mesh *mesh_;
+  Mesh *mesh_ = nullptr;
 
   /** Local array used when not sculpting base mesh positions directly. */
   Array<float3> vert_positions_deformed_;
@@ -219,21 +219,21 @@ class Tree {
   Span<float3> face_normals_;
 
   /* Grid Data */
-  SubdivCCG *subdiv_ccg_;
+  SubdivCCG *subdiv_ccg_ = nullptr;
 
   /* flag are verts/faces deformed */
-  bool deformed_;
+  bool deformed_ = false;
 
   /* Dynamic topology */
   float bm_max_edge_len_;
   float bm_min_edge_len_;
-  int cd_vert_node_offset_;
-  int cd_face_node_offset_;
+  int cd_vert_node_offset_ = -1;
+  int cd_face_node_offset_ = -1;
 
   float planes_[6][4];
   int num_planes_;
 
-  BMLog *bm_log_;
+  BMLog *bm_log_ = nullptr;
 
   PBVHPixels pixels_;
 
