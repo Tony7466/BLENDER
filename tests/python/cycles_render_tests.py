@@ -67,9 +67,9 @@ BLOCKLIST_OSL = [
     # OSL has it's own blackbody function which is slightly different, primarily near the end of the visible spectrum
     'blackbody',
     # Noise differences due to Principled BSDF mixing/layering used in some of these scenes
-    'render_passes.*.blend',
+    'render_passes_.*.blend',
     # Noise differences in Principled BSDF mixing/layering
-    'principled.*.blend',
+    'principled_.*.blend',
 ]
 
 BLACKLIST_OPTIX = [
