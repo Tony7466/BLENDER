@@ -72,7 +72,7 @@ static constexpr std::array<uint, 24> bone_box_wire = {
     0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 5, 6, 6, 7, 7, 4, 0, 4, 1, 5, 2, 6, 3, 7,
 };
 
-static void append_as_lines_cyclic(
+static void append_line_loop(
     Vector<Vertex> &dest, Span<float2> verts, float z, int flag, bool dashed = false)
 {
   const int step = dashed ? 2 : 1;
@@ -148,8 +148,8 @@ static void light_append_direction_line(Vector<Vertex> &verts)
   static const float zend = light_distance_z_get('z', false);
   verts.append({{0.0, 0.0, zsta}, VCLASS_LIGHT_DIST});
   verts.append({{0.0, 0.0, zend}, VCLASS_LIGHT_DIST});
-  append_as_lines_cyclic(verts, diamond, zsta, VCLASS_LIGHT_DIST | VCLASS_SCREENSPACE);
-  append_as_lines_cyclic(verts, diamond, zend, VCLASS_LIGHT_DIST | VCLASS_SCREENSPACE);
+  append_line_loop(verts, diamond, zsta, VCLASS_LIGHT_DIST | VCLASS_SCREENSPACE);
+  append_line_loop(verts, diamond, zend, VCLASS_LIGHT_DIST | VCLASS_SCREENSPACE);
 }
 
 ShapeCache::ShapeCache()
@@ -411,7 +411,7 @@ ShapeCache::ShapeCache()
 
     Vector<Vertex> verts;
     /* Ground Point */
-    append_as_lines_cyclic(verts, ring, 0.0f, 0);
+    append_line_loop(verts, ring, 0.0f, 0);
     /* Ground Line */
     verts.append({{0.0, 0.0, 1.0}, 0});
     verts.append({{0.0, 0.0, 0.0}, 0});
@@ -441,7 +441,7 @@ ShapeCache::ShapeCache()
     static const Vector<float2> ring = ring_vertices(r * 1.33f, OUTER_NSEGMENTS * 2);
 
     Vector<Vertex> verts;
-    append_as_lines_cyclic(verts, ring, 0.0f, VCLASS_SCREENSPACE, true);
+    append_line_loop(verts, ring, 0.0f, VCLASS_SCREENSPACE, true);
     light_icon_outer_lines = BatchPtr(
         GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
   }
@@ -452,8 +452,8 @@ ShapeCache::ShapeCache()
     static const Vector<float2> ring = ring_vertices(r, INNER_NSEGMENTS * 2);
 
     Vector<Vertex> verts;
-    append_as_lines_cyclic(verts, diamond, 0.0f, VCLASS_SCREENSPACE);
-    append_as_lines_cyclic(verts, ring, 0.0f, VCLASS_SCREENSPACE, true);
+    append_line_loop(verts, diamond, 0.0f, VCLASS_SCREENSPACE);
+    append_line_loop(verts, ring, 0.0f, VCLASS_SCREENSPACE, true);
 
     light_icon_inner_lines = BatchPtr(
         GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
@@ -480,7 +480,7 @@ ShapeCache::ShapeCache()
     static const Vector<float2> ring = ring_vertices(1.0f, CIRCLE_NSEGMENTS);
 
     Vector<Vertex> verts;
-    append_as_lines_cyclic(verts, ring, 0.0f, VCLASS_SCREENALIGNED | VCLASS_LIGHT_AREA_SHAPE);
+    append_line_loop(verts, ring, 0.0f, VCLASS_SCREENALIGNED | VCLASS_LIGHT_AREA_SHAPE);
     light_point_lines = BatchPtr(
         GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
   }
@@ -499,10 +499,10 @@ ShapeCache::ShapeCache()
 
     Vector<Vertex> verts;
     /* Light area */
-    append_as_lines_cyclic(verts, ring, 0.0f, VCLASS_SCREENALIGNED | VCLASS_LIGHT_AREA_SHAPE);
+    append_line_loop(verts, ring, 0.0f, VCLASS_SCREENALIGNED | VCLASS_LIGHT_AREA_SHAPE);
     /* Cone cap */
-    append_as_lines_cyclic(verts, ring, 0.0f, VCLASS_LIGHT_SPOT_SHAPE);
-    append_as_lines_cyclic(verts, ring, 0.0f, VCLASS_LIGHT_SPOT_SHAPE | VCLASS_LIGHT_SPOT_BLEND);
+    append_line_loop(verts, ring, 0.0f, VCLASS_LIGHT_SPOT_SHAPE);
+    append_line_loop(verts, ring, 0.0f, VCLASS_LIGHT_SPOT_SHAPE | VCLASS_LIGHT_SPOT_BLEND);
     /* Cone silhouette */
     for (const float2 &point : ring) {
       verts.append({{0.0f, 0.0f, 0.0f}, 0});
@@ -520,7 +520,7 @@ ShapeCache::ShapeCache()
 
     Vector<Vertex> verts;
     /* Light area */
-    append_as_lines_cyclic(verts, ring, 0.0f, VCLASS_LIGHT_AREA_SHAPE);
+    append_line_loop(verts, ring, 0.0f, VCLASS_LIGHT_AREA_SHAPE);
 
     light_append_direction_line(verts);
 
@@ -533,7 +533,7 @@ ShapeCache::ShapeCache()
 
     Vector<Vertex> verts;
     /* Light area */
-    append_as_lines_cyclic(verts, rect, 0.0f, VCLASS_LIGHT_AREA_SHAPE);
+    append_line_loop(verts, rect, 0.0f, VCLASS_LIGHT_AREA_SHAPE);
 
     light_append_direction_line(verts);
 
