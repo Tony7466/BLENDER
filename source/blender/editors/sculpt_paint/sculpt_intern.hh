@@ -1180,12 +1180,71 @@ struct FillData {
   blender::BitVector<> visited_verts;
 };
 
+struct FillDataMesh {
+  FillDataMesh(int size) : visited_verts(size) {}
+
+  std::queue<int> queue;
+  blender::BitVector<> visited_verts;
+
+  void add_initial(int vertex);
+  void add_and_skip_initial(int vertex, int index);
+  void add_initial_with_symmetry(const Object &object,
+                                 const SculptSession &ss,
+                                 int vertex,
+                                 float radius);
+  void add_active(const Object &ob, const SculptSession &ss, float radius);
+  void execute(SculptSession &ss,
+               FillData &flood,
+               FunctionRef<bool(int from_v, int to_v, bool is_duplicate)> func);
+};
+
+struct FillDataGrids {
+  FillDataGrids(int size) : visited_verts(size) {}
+
+  std::queue<SubdivCCGCoord> queue;
+  blender::BitVector<> visited_verts;
+
+  void add_initial(SubdivCCGCoord vertex);
+  void add_and_skip_initial(SubdivCCGCoord vertex, int index);
+  void add_initial_with_symmetry(const Object &object,
+                                 const SculptSession &ss,
+                                 SubdivCCGCoord vertex,
+                                 float radius);
+  void add_active(const Object &ob, const SculptSession &ss, float radius);
+  void execute(
+      SculptSession &ss,
+      FillData &flood,
+      FunctionRef<bool(SubdivCCGCoord from_v, SubdivCCGCoord to_v, bool is_duplicate)> func);
+};
+
+struct FillDataBMesh {
+  FillDataBMesh(int size) : visited_verts(size) {}
+
+  std::queue<BMVert *> queue;
+  blender::BitVector<> visited_verts;
+
+  void add_initial(BMVert *vertex);
+  void add_and_skip_initial(BMVert *vertex, int index);
+  void add_initial_with_symmetry(const Object &object,
+                                 const SculptSession &ss,
+                                 BMVert *vertex,
+                                 float radius);
+  void add_active(const Object &ob, const SculptSession &ss, float radius);
+  void execute(SculptSession &ss,
+               FillData &flood,
+               FunctionRef<bool(BMVert *from_v, BMVert *to_v, bool is_duplicate)> func);
+};
+
+/**
+ * \deprecated See the individual FillData constructors instead of this method.
+ */
 FillData init_fill(SculptSession &ss);
+
+void add_initial(FillData &flood, PBVHVertRef vertex);
+void add_and_skip_initial(FillData &flood, PBVHVertRef vertex);
 void add_active(const Object &ob, const SculptSession &ss, FillData &flood, float radius);
 void add_initial_with_symmetry(
     const Object &ob, const SculptSession &ss, FillData &flood, PBVHVertRef vertex, float radius);
-void add_initial(FillData &flood, PBVHVertRef vertex);
-void add_and_skip_initial(FillData &flood, PBVHVertRef vertex);
 void execute(SculptSession &ss,
              FillData &flood,
              FunctionRef<bool(PBVHVertRef from_v, PBVHVertRef to_v, bool is_duplicate)> func);
