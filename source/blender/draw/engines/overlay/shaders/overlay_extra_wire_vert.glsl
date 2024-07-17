@@ -18,7 +18,7 @@ void main()
   vec3 world_pos = point_object_to_world(pos);
   gl_Position = point_world_to_ndc(world_pos);
 
-#if defined(SELECT_EDGES) || defined(SELECT_ENABLE)
+#ifdef SELECT_EDGES
   /* HACK: to avoid losing sub-pixel object in selections, we add a bit of randomness to the
    * wire to at least create one fragment that will pass the occlusion query. */
   /* TODO(fclem): Limit this workaround to selection. It's not very noticeable but still... */
@@ -44,7 +44,7 @@ void main()
   }
 #endif
 
-#if defined(SELECT_EDGES) || defined(SELECT_ENABLE)
+#ifdef SELECT_EDGES
   finalColor.a = 0.0; /* No Stipple */
 #endif
 
