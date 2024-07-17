@@ -26,8 +26,8 @@ struct Mesh;
 struct MeshElemMap;
 struct MultiresModifierData;
 struct Object;
-namespace blender::bke::pbvh{
-  class Tree;
+namespace blender::bke::pbvh {
+class Tree;
 }
 struct SubsurfModifierData;
 
