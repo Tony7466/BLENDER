@@ -30,6 +30,9 @@ BLOCKLIST_EXPLICIT_OSL = [
 
 BLOCKLIST_OSL = [
     # Block tests that fail with OSL due to differences from SVM.
+    # Note: Most of the tests below are expected to be different between OSL and SVM
+    # As such many of these tests have both a SVM and OSL file. Blocking the SVM
+    # tests here doesn't loose any test permutations.
     # Point Density is disabled on surfaces in SVM.
     # This was a performance optimization that wasn't carried over to OSL.
     'T49936.blend',
@@ -37,25 +40,25 @@ BLOCKLIST_OSL = [
     # AOVs are not supported. See 73266
     'aov_position.blend',
     'render_passes_aov.*.blend',
-    # OSL uses mipmapping when loading from disk?
+    # Image sampling is different from SVM. There are OSL variants of these tests
     'image_byte.*.blend',
     'image_float.*.blend',
     'image_half.*.blend',
     'image_mapping_.*_closest.blend',
     'image_mapping_.*_cubic.blend',
     'image_mapping_.*_linear.blend',
-    # Along with mipmapping, OSL with UDIM doesn't respect extrapolation settings
-    # This has been reported in 124847 for further investigation
-    'image_mapping_udim.blend',
-    # Alpha is handled differenly in OSL. This is already tested with the OSL variants of these tests.
     'image_alpha_blend.blend',
     'image_alpha_channel_packed.blend',
     'image_alpha_ignore.blend',
     'image_log.blend',
     'image_non_color.blend',
-    # OSL handles bump + displacement differently from SVM
+    # Along with differences in image sampling, UDIM in OSL doesn't respect extrapolation settings
+    # This has been reported in 124847 for further investigation
+    'image_mapping_udim.blend',
+    # OSL handles bump + displacement differently from SVM. There are OSL variants of these tests
     'both_displacement.blend',
     'bump_with_displacement.blend',
+    # Ray portal test uses bump + displacement
     'ray_portal.blend',
     # TODO: Add more failing tests
     # Currently failing tests that aren't in this list are:
