@@ -602,7 +602,6 @@ static void partialvis_masked_update_grids(Depsgraph &depsgraph,
 }
 
 static void partialvis_masked_update_bmesh(Object &ob,
-                                           bke::pbvh::Tree *pbvh,
                                            const VisAction action,
                                            const Span<bke::pbvh::Node *> nodes)
 {
@@ -646,7 +645,7 @@ static int hide_show_masked_exec(bContext *C, wmOperator *op)
       partialvis_masked_update_grids(*depsgraph, ob, action, nodes);
       break;
     case bke::pbvh::Type::BMesh:
-      partialvis_masked_update_bmesh(ob, pbvh, action, nodes);
+      partialvis_masked_update_bmesh(ob, action, nodes);
       break;
   }
 

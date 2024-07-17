@@ -20,6 +20,7 @@
 #include "DNA_customdata_types.h"
 
 #include "BKE_ccg.hh"
+#include "BKE_pbvh.hh"
 
 namespace blender::gpu {
 class Batch;

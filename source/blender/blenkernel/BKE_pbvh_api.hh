@@ -12,6 +12,7 @@
 #include <optional>
 #include <string>
 
+#include "BLI_array.hh"
 #include "BLI_bit_group_vector.hh"
 #include "BLI_bounds_types.hh"
 #include "BLI_compiler_compat.h"
@@ -20,7 +21,9 @@
 #include "BLI_index_mask_fwd.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_offset_indices.hh"
+#include "BLI_set.hh"
 #include "BLI_span.hh"
+#include "BLI_utildefines.h"
 #include "BLI_vector.hh"
 
 #include "DNA_customdata_types.h"
@@ -42,13 +45,10 @@ struct SubdivCCG;
 struct Image;
 struct ImageUser;
 namespace blender {
-namespace bke {
-enum class AttrDomain : int8_t;
-namespace pbvh {
+namespace bke::pbvh {
 class Node;
 class Tree;
-}  // namespace pbvh
-}  // namespace bke
+}  // namespace bke::pbvh
 namespace draw::pbvh {
 struct PBVHBatches;
 struct PBVH_GPU_Args;
@@ -81,6 +81,177 @@ struct PBVHPixelsNode {
   void *node_data = nullptr;
 };
 
+namespace blender::bke::pbvh {
+
+class Tree;
+
+/**
+ * \todo Most data is public but should either be removed or become private in the future.
+ * The "_" suffix means that fields shouldn't be used by consumers of the `bke::pbvh` API.
+ */
+class Node {
+  friend Tree;
+
+ public:
+  /* Opaque handle for drawing code */
+  draw::pbvh::PBVHBatches *draw_batches_ = nullptr;
+
+  /** Axis aligned min and max of all vertex positions in the node. */
+  Bounds<float3> bounds_ = {};
+  /** Bounds from the start of current brush stroke. */
+  Bounds<float3> bounds_orig_ = {};
+
+  /* For internal nodes, the offset of the children in the blender::bke::pbvh::Tree
+   * 'nodes' array. */
+  int children_offset_ = 0;
+
+  /* List of primitives for this node. Semantics depends on
+   * blender::bke::pbvh::Tree type:
+   *
+   * - Type::Mesh: Indices into the #blender::bke::pbvh::Tree::corner_tris array.
+   * - Type::Grids: Multires grid indices.
+   * - Type::BMesh: Unused.  See Node.bm_faces.
+   *
+   * NOTE: This is a pointer inside of blender::bke::pbvh::Tree.prim_indices; it
+   * is not allocated separately per node.
+   */
+  Span<int> prim_indices_;
+
+  /* Array of indices into the mesh's vertex array. Contains the
+   * indices of all vertices used by faces that are within this
+   * node's bounding box.
+   *
+   * Note that a vertex might be used by a multiple faces, and
+   * these faces might be in different leaf nodes. Such a vertex
+   * will appear in the vert_indices array of each of those leaf
+   * nodes.
+   *
+   * In order to support cases where you want access to multiple
+   * nodes' vertices without duplication, the vert_indices array
+   * is ordered such that the first part of the array, up to
+   * index 'uniq_verts', contains "unique" vertex indices. These
+   * vertices might not be truly unique to this node, but if
+   * they appear in another node's vert_indices array, they will
+   * be above that node's 'uniq_verts' value.
+   *
+   * Used for leaf nodes in a mesh-based blender::bke::pbvh::Tree (not multires.)
+   */
+  Array<int, 0> vert_indices_;
+  /** The number of vertices in #vert_indices not shared with (owned by) another node. */
+  int uniq_verts_ = 0;
+
+  /* Array of indices into the Mesh's corner array.
+   * Type::Mesh only.
+   */
+  Array<int, 0> corner_indices_;
+
+  /* An array mapping face corners into the vert_indices
+   * array. The array is sized to match 'totprim', and each of
+   * the face's corners gets an index into the vert_indices
+   * array, in the same order as the corners in the original
+   * triangle.
+   *
+   * Used for leaf nodes in a mesh-based blender::bke::pbvh::Tree (not multires.)
+   */
+  Array<int3, 0> face_vert_indices_;
+
+  /* Indicates whether this node is a leaf or not; also used for
+   * marking various updates that need to be applied. */
+  PBVHNodeFlags flag_ = PBVHNodeFlags(0);
+
+  /* Used for ray-casting: how close the bounding-box is to the ray point. */
+  float tmin_ = 0.0f;
+
+  /* Dyntopo */
+
+  /* Set of pointers to the BMFaces used by this node.
+   * NOTE: Type::BMesh only. Faces are always triangles
+   * (dynamic topology forcibly triangulates the mesh).
+   */
+  Set<BMFace *, 0> bm_faces_;
+  Set<BMVert *, 0> bm_unique_verts_;
+  Set<BMVert *, 0> bm_other_verts_;
+
+  /* Deprecated. Stores original coordinates of triangles. */
+  float (*bm_orco_)[3] = nullptr;
+  int (*bm_ortri_)[3] = nullptr;
+  BMVert **bm_orvert_ = nullptr;
+  int bm_tot_ortri_ = 0;
+
+  /* Used to store the brush color during a stroke and composite it over the original color */
+  PBVHColorBufferNode color_buffer_;
+  PBVHPixelsNode pixels_;
+
+  /* Used to flash colors of updated node bounding boxes in
+   * debug draw mode (when G.debug_value / bpy.app.debug_value is 889).
+   */
+  int debug_draw_gen_ = 0;
+};
+
+/**
+ * \todo Most data is public but should either be removed or become private in the future.
+ * The "_" suffix means that fields shouldn't be used by consumers of the `bke::pbvh` API.
+ */
+class Tree {
+  friend Node;
+  Type type_;
+
+ public:
+  BMesh *bm_;
+
+  Vector<Node> nodes_;
+
+  /* Memory backing for Node.prim_indices. */
+  Array<int> prim_indices_;
+
+  /* Mesh data. The evaluated deform mesh for mesh sculpting, and the base mesh for grids. */
+  Mesh *mesh_;
+
+  /** Local array used when not sculpting base mesh positions directly. */
+  Array<float3> vert_positions_deformed_;
+  /** Local array used when not sculpting base mesh positions directly. */
+  Array<float3> vert_normals_deformed_;
+  /** Local array used when not sculpting base mesh positions directly. */
+  Array<float3> face_normals_deformed_;
+
+  MutableSpan<float3> vert_positions_;
+  Span<float3> vert_normals_;
+  Span<float3> face_normals_;
+
+  /* Grid Data */
+  SubdivCCG *subdiv_ccg_;
+
+  /* flag are verts/faces deformed */
+  bool deformed_;
+
+  /* Dynamic topology */
+  float bm_max_edge_len_;
+  float bm_min_edge_len_;
+  int cd_vert_node_offset_;
+  int cd_face_node_offset_;
+
+  float planes_[6][4];
+  int num_planes_;
+
+  BMLog *bm_log_;
+
+  PBVHPixels pixels_;
+
+ public:
+  Tree(const Type type)
+  {
+    type_ = type;
+  }
+  ~Tree();
+
+  Type type() const
+  {
+    return this->type_;
+  }
+};
+
+}  // namespace blender::bke::pbvh
+
 struct PBVHFrustumPlanes {
   float (*planes)[4];
   int num_planes;
@@ -88,7 +259,7 @@ struct PBVHFrustumPlanes {
 
 BLI_INLINE BMesh *BKE_pbvh_get_bmesh(blender::bke::pbvh::Tree &pbvh)
 {
-  return pbvh.bm;
+  return pbvh.bm_;
 }
 
 Mesh *BKE_pbvh_get_mesh(blender::bke::pbvh::Tree &pbvh);
