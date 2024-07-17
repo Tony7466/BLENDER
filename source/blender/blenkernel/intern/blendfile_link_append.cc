@@ -1220,6 +1220,7 @@ static void compute_locked_hash_for_data_block_recursive(
   }
   if (!id.shallow_hash.is_valid()) {
     r_locked_hashes.add_new(&id, std::nullopt);
+    return;
   }
 
   current_stack.add(&id);
@@ -1238,7 +1239,7 @@ static void compute_locked_hash_for_data_block_recursive(
           XXH3_128bits_update(locked_hash_state, &some_data, sizeof(some_data));
           return IDWALK_RET_NOP;
         }
-        if (current_stack.contains(&id)) {
+        if (current_stack.contains(referenced_id)) {
           return IDWALK_RET_NOP;
         }
         /* TODO: Handle self-pointers, backlinks, cyclic dependencies. */
