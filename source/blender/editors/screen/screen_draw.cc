@@ -249,7 +249,7 @@ static void screen_draw_area_icon(
   UI_icon_draw_ex(center_x - (icon_size / 2.0f),
                   center_y - (icon_size / 2.0f),
                   icon,
-                  (16.0f * UI_SCALE_FAC) / icon_size,
+                  16.0f / icon_size,
                   float(color[3]) / 255.0f,
                   0.0f,
                   color,
