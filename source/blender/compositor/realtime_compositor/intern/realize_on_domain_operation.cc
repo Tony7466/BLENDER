@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_math_matrix.hh"
+
 #include "COM_algorithm_realize_on_domain.hh"
 #include "COM_context.hh"
 #include "COM_domain.hh"
@@ -29,11 +31,20 @@ RealizeOnDomainOperation::RealizeOnDomainOperation(Context &context,
 
 void RealizeOnDomainOperation::execute()
 {
+  /* Conversion between even and odd domains must shift image by .5 pixel so
+   * that the input and output pixels align and there is no unexpected filtering. */
+  const Domain& in_domain = get_input().domain();
+  float2 translate(0.0);
+  if ((in_domain.size[0] ^ domain_.size[0]) & 1)
+    translate[0] = (in_domain.size[0] & 1) ? 0.5f : -0.5f;
+  if ((in_domain.size[1] ^ domain_.size[1]) & 1)
+    translate[1] = (in_domain.size[1] & 1) ? 0.5f : -0.5f;
+
   realize_on_domain(context(),
                     get_input(),
                     get_result(),
                     domain_,
-                    get_input().domain().transformation,
+                    math::translate(in_domain.transformation, translate),
                     get_input().get_realization_options());
 }
 
