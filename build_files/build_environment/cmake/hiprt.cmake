@@ -69,4 +69,6 @@ else()
 
     DEPENDEES install
   )
+  harvest(external_hiprt hiprt/include hiprt/include "*.h")
+  harvest(external_hiprt hiprt/bin hiprt/lib "*${SHAREDLIBEXT}*")
 endif()
