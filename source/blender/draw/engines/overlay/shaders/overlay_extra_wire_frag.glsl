@@ -26,7 +26,8 @@ void main()
 
 #ifndef SELECT_ENABLE
   /* Discarding inside the selection will create some undefined behavior.
-   * This is because we force the early depth test. */
+   * This is because we force the early depth test to only output the front most fragment.
+   * Discarding would expose us to race condition depending on rasterization order. */
   if (fract(dist / dash_width) > dash_factor) {
     discard;
   }
