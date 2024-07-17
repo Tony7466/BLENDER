@@ -162,7 +162,7 @@ static Vector<Vertex> sphere_axes_circles(const float radius,
   return verts;
 }
 
-static void append_as_lines_cyclic(
+static void append_line_loop(
     Vector<Vertex> &dest, Vector<float2> verts, float z, int flag, bool dashed = false)
 {
   const int step = dashed ? 2 : 1;
@@ -479,8 +479,8 @@ ShapeCache::ShapeCache()
     verts.append({{0.0f, 0.0f, 0.0f}, VCLASS_CAMERA_DIST});
     verts.append({{0.0f, 0.0f, 1.0f}, VCLASS_CAMERA_DIST});
 
-    append_as_lines_cyclic(verts, diamond, 0.0f, VCLASS_CAMERA_DIST | VCLASS_SCREENSPACE);
-    append_as_lines_cyclic(verts, diamond, 1.0f, VCLASS_CAMERA_DIST | VCLASS_SCREENSPACE);
+    append_line_loop(verts, diamond, 0.0f, VCLASS_CAMERA_DIST | VCLASS_SCREENSPACE);
+    append_line_loop(verts, diamond, 1.0f, VCLASS_CAMERA_DIST | VCLASS_SCREENSPACE);
 
     /* Focus cross */
     for (const float2 &point : cross) {
@@ -494,7 +494,7 @@ ShapeCache::ShapeCache()
     static const Vector<float2> rect{{-1.0f, -1.0f}, {-1.0f, 1.0f}, {1.0f, 1.0f}, {1.0f, -1.0f}};
     Vector<Vertex> verts;
     /* Frame */
-    append_as_lines_cyclic(verts, rect, 1.0f, VCLASS_CAMERA_FRAME);
+    append_line_loop(verts, rect, 1.0f, VCLASS_CAMERA_FRAME);
     /* Wires to origin. */
     for (const float2 &point : rect) {
       verts.append({{point.x, point.y, 1.0f}, VCLASS_CAMERA_FRAME});
@@ -508,7 +508,7 @@ ShapeCache::ShapeCache()
     static const Vector<float2> triangle = {{-1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 0.0f}};
     Vector<Vertex> verts(2 * 3);
     /* Wire */
-    append_as_lines_cyclic(verts, triangle, 1.0f, VCLASS_CAMERA_FRAME);
+    append_line_loop(verts, triangle, 1.0f, VCLASS_CAMERA_FRAME);
     camera_tria_wire = BatchPtr(
         GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
 
