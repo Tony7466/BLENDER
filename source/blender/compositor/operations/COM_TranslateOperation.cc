@@ -114,12 +114,21 @@ void TranslateOperation::update_memory_buffer_partial(MemoryBuffer *output,
     delta_y = round(delta_y);
   }
 
+  MemoryBufferExtend extend_x = x_extend_mode_;
+  if (extend_x == MemoryBufferExtend::Clip) {
+    extend_x = MemoryBufferExtend::Extend;
+  }
+  MemoryBufferExtend extend_y = y_extend_mode_;
+  if (extend_y == MemoryBufferExtend::Clip) {
+    extend_y = MemoryBufferExtend::Extend;
+  }
+
   for (int y = area.ymin; y < area.ymax; y++) {
     float *out = output->get_elem(area.xmin, y);
     for (int x = area.xmin; x < area.xmax; x++) {
       const float input_x = x - delta_x;
       const float input_y = y - delta_y;
-      input->read(out, input_x, input_y, sampler_, x_extend_mode_, y_extend_mode_);
+      input->read(out, input_x, input_y, sampler_, extend_x, extend_y);
       out += output->elem_stride;
     }
   }
