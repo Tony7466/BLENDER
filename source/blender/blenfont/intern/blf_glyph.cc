@@ -348,19 +348,13 @@ static GlyphBLF *blf_glyph_cache_add_blank(GlyphCacheBLF *gc, uint charcode)
   return result;
 }
 
-static GlyphBLF *blf_glyph_cache_add_svg(
-    GlyphCacheBLF *gc,
-    uint charcode,
-    bool color,
-    std::function<void(std::string &)> edit_source_cb = nullptr)
+static GlyphBLF *blf_glyph_cache_add_svg(GlyphCacheBLF *gc, uint charcode, bool color)
 {
-  std::string svg_source = blf_get_icon_svg(int(charcode) - BLF_ICON_OFFSET);
-  if (edit_source_cb) {
-    edit_source_cb(svg_source);
-  }
-
+  const char *svg_source = blf_get_icon_svg(int(charcode) - BLF_ICON_OFFSET);
   /* NanoSVG alters the source file while parsing. */
-  NSVGimage *image = nsvgParse(svg_source.data(), "px", 96.0f);
+  char *writeable = BLI_strdup(svg_source);
+  NSVGimage *image = nsvgParse(writeable, "px", 96.0f);
+  MEM_freeN(writeable);
 
   if (image == nullptr) {
     return blf_glyph_cache_add_blank(gc, charcode);
@@ -1390,16 +1384,13 @@ GlyphBLF *blf_glyph_ensure(FontBLF *font, GlyphCacheBLF *gc, const uint charcode
   return g;
 }
 
-GlyphBLF *blf_glyph_ensure_icon(GlyphCacheBLF *gc,
-                                const uint icon_id,
-                                bool color,
-                                std::function<void(std::string &)> edit_source_cb)
+GlyphBLF *blf_glyph_ensure_icon(GlyphCacheBLF *gc, const uint icon_id, bool color)
 {
   GlyphBLF *g = blf_glyph_cache_find_glyph(gc, icon_id + BLF_ICON_OFFSET, 0);
   if (g) {
     return g;
   }
-  return blf_glyph_cache_add_svg(gc, icon_id + BLF_ICON_OFFSET, color, edit_source_cb);
+  return blf_glyph_cache_add_svg(gc, icon_id + BLF_ICON_OFFSET, color);
 }
 
 #ifdef BLF_SUBPIXEL_AA

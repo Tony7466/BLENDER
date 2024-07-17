@@ -1389,7 +1389,7 @@ static void icon_draw_size(float x,
                                             0.0f;
     if (di->type == ICON_TYPE_SVG_COLOR) {
       BLF_draw_svg_icon(
-          uint(icon_id), x, y, float(draw_size) / aspect, nullptr, outline_intensity, nullptr);
+          uint(icon_id), x, y, float(draw_size) / aspect, nullptr, outline_intensity);
     }
     else {
       float color[4];
@@ -1400,8 +1400,7 @@ static void icon_draw_size(float x,
         UI_GetThemeColor4fv(TH_TEXT, color);
       }
       color[3] = alpha;
-      BLF_draw_svg_icon(
-          uint(icon_id), x, y, float(draw_size) / aspect, color, outline_intensity, nullptr);
+      BLF_draw_svg_icon(uint(icon_id), x, y, float(draw_size) / aspect, color, outline_intensity);
     }
 
     if (text_overlay && text_overlay->text[0] != '\0') {
