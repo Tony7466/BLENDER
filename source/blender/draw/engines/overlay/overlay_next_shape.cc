@@ -257,7 +257,7 @@ ShapeCache::ShapeCache()
   /* cylinder */
   {
     constexpr int n_segments = 12;
-    static const Vector<float2> ring = ring_vertices(1.0f, n_segments);
+    const Vector<float2> ring = ring_vertices(1.0f, n_segments);
     Vector<Vertex> verts;
     /* top ring */
     append_line_loop(verts, ring, 1.0f, VCLASS_EMPTY_SCALED);
@@ -273,7 +273,7 @@ ShapeCache::ShapeCache()
   }
   /* capsule body */
   {
-    static const Vector<float2> diamond = ring_vertices(1.0f, 4);
+    const Vector<float2> diamond = ring_vertices(1.0f, 4);
     Vector<Vertex> verts;
     for (const float2 &point : diamond) {
       verts.append({{point.x, point.y, 1.0f}, VCLASS_NONE});
