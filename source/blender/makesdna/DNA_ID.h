@@ -414,6 +414,10 @@ typedef struct ID_Runtime {
 typedef struct IDHash {
   char data[16];
 #ifdef __cplusplus
+  uint64_t hash() const
+  {
+    return *reinterpret_cast<const uint64_t *>(data);
+  }
   bool is_valid() const;
   friend bool operator==(const IDHash &a, const IDHash &b);
   friend bool operator!=(const IDHash &a, const IDHash &b);

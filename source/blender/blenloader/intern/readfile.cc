@@ -234,6 +234,10 @@ static const char *library_parent_filepath(Library *lib)
 
 /** \} */
 
+struct IDByHashMap {
+  blender::Map<IDHash, ID *> map;
+};
+
 /* -------------------------------------------------------------------- */
 /** \name OldNewMap API
  * \{ */
@@ -1111,6 +1115,7 @@ static FileData *filedata_new(BlendFileReadReport *reports)
   fd->datamap = oldnewmap_new();
   fd->globmap = oldnewmap_new();
   fd->libmap = oldnewmap_new();
+  fd->id_by_hash_map = MEM_new<IDByHashMap>(__func__);
 
   fd->reports = reports;
 
@@ -1398,6 +1403,9 @@ void blo_filedata_free(FileData *fd)
   blo_cache_storage_end(fd);
   if (fd->bheadmap) {
     MEM_freeN(fd->bheadmap);
+  }
+  if (!fd->id_by_hash_map_borrowed) {
+    MEM_delete(fd->id_by_hash_map);
   }
 
 #ifdef USE_GHASH_BHEAD
@@ -2935,6 +2943,9 @@ static BHead *read_libblock(FileData *fd,
     if (main->id_map != nullptr) {
       BKE_main_idmap_insert_id(main->id_map, id_target);
     }
+    if (ID_IS_LOCKED(id_target)) {
+      fd->id_by_hash_map->map.add(id_target->deep_hash, id_target);
+    }
   }
 
   return bhead;
@@ -3878,16 +3889,9 @@ static ID *library_id_is_yet_read(FileData *fd, Main *mainvar, BHead *bhead)
 
   const IDHash *locked_hash = blo_bhead_id_locked_hash(fd, bhead);
   if (locked_hash) {
-    ID *id;
-    FOREACH_MAIN_ID_BEGIN (mainvar, id) {
-      if (ID_IS_LOCKED(id)) {
-        if (*locked_hash == id->deep_hash) {
-          printf("Found\n");
-          return id;
-        }
-      }
+    if (ID *existing_id = fd->id_by_hash_map->map.lookup_default(*locked_hash, nullptr)) {
+      return existing_id;
     }
-    FOREACH_MAIN_ID_END;
   }
   if (mainvar->id_map == nullptr) {
     mainvar->id_map = BKE_main_idmap_create(mainvar, false, nullptr, MAIN_IDMAP_TYPE_NAME);
@@ -4609,6 +4613,9 @@ static FileData *read_library_file_data(FileData *basefd,
 
     mainptr->curlib->runtime.filedata = fd;
     mainptr->versionfile = fd->fileversion;
+
+    fd->id_by_hash_map = basefd->id_by_hash_map;
+    fd->id_by_hash_map_borrowed = true;
 
     /* subversion */
     read_file_version(fd, mainptr);

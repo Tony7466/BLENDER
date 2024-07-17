@@ -36,6 +36,7 @@ struct Object;
 struct OldNewMap;
 struct ReportList;
 struct UserDef;
+struct IDByHashMap;
 
 enum eFileDataFlag {
   FD_FLAGS_SWITCH_ENDIAN = 1 << 0,
@@ -110,6 +111,9 @@ struct FileData {
    * Used during library-linking process (see #lib_link_all).
    */
   OldNewMap *libmap;
+
+  IDByHashMap *id_by_hash_map;
+  bool id_by_hash_map_borrowed;
 
   BLOCacheStorage *cache_storage;
 
