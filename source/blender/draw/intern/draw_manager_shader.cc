@@ -62,17 +62,20 @@ struct DRWShaderCompiler {
   void *system_gpu_context;
   GPUContext *blender_gpu_context;
   bool own_context;
+
+  std::atomic<bool> stop;
 };
 
-static void drw_deferred_shader_compilation_exec(void *custom_data,
-                                                 wmJobWorkerStatus *worker_status)
+static ListBase compilation_threadpool = {};
+static DRWShaderCompiler compiler_data = {};
+
+static void *drw_deferred_shader_compilation_exec(void *)
 {
   using namespace blender;
 
   GPU_render_begin();
-  DRWShaderCompiler *comp = (DRWShaderCompiler *)custom_data;
-  void *system_gpu_context = comp->system_gpu_context;
-  GPUContext *blender_gpu_context = comp->blender_gpu_context;
+  void *system_gpu_context = compiler_data.system_gpu_context;
+  GPUContext *blender_gpu_context = compiler_data.blender_gpu_context;
 
   BLI_assert(system_gpu_context != nullptr);
   BLI_assert(blender_gpu_context != nullptr);
@@ -92,21 +95,21 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
   Map<BatchHandle, Vector<GPUMaterial *>> batches;
 
   while (true) {
-    if (worker_status->stop) {
+    if (compiler_data.stop) {
       break;
     }
 
-    BLI_spin_lock(&comp->list_lock);
+    BLI_spin_lock(&compiler_data.list_lock);
     /* Pop tail because it will be less likely to lock the main thread
      * if all GPUMaterials are to be freed (see DRW_deferred_shader_remove()). */
-    LinkData *link = (LinkData *)BLI_poptail(&comp->queue);
+    LinkData *link = (LinkData *)BLI_poptail(&compiler_data.queue);
     GPUMaterial *mat = link ? (GPUMaterial *)link->data : nullptr;
     if (mat) {
       /* Avoid another thread freeing the material mid compilation. */
       GPU_material_acquire(mat);
       MEM_freeN(link);
     }
-    BLI_spin_unlock(&comp->list_lock);
+    BLI_spin_unlock(&compiler_data.list_lock);
 
     if (mat) {
       /* We have a new material that must be compiled,
@@ -146,16 +149,16 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
     else {
       /* Check for Material Optimization job once there are no more
        * shaders to compile. */
-      BLI_spin_lock(&comp->list_lock);
+      BLI_spin_lock(&compiler_data.list_lock);
       /* Pop tail because it will be less likely to lock the main thread
        * if all GPUMaterials are to be freed (see DRW_deferred_shader_remove()). */
-      LinkData *link = (LinkData *)BLI_poptail(&comp->optimize_queue);
+      LinkData *link = (LinkData *)BLI_poptail(&compiler_data.optimize_queue);
       GPUMaterial *optimize_mat = link ? (GPUMaterial *)link->data : nullptr;
       if (optimize_mat) {
         /* Avoid another thread freeing the material during optimization. */
         GPU_material_acquire(optimize_mat);
       }
-      BLI_spin_unlock(&comp->list_lock);
+      BLI_spin_unlock(&compiler_data.list_lock);
 
       if (optimize_mat) {
         /* Compile optimized material shader. */
@@ -165,7 +168,7 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
       }
       else {
         /* No more materials to optimize, or shaders to compile. */
-        break;
+        BLI_time_sleep_ms(1);
       }
     }
 
@@ -175,7 +178,7 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
   }
 
   /* We have to wait until all the requested batches are ready,
-   * even if worker_status->stop is true. */
+   * even if compiler_data.stop is true. */
   for (BatchHandle handle : batches.keys()) {
     Vector<GPUMaterial *> &batch = batches.lookup(handle);
     GPU_material_batch_finalize(handle, batch);
@@ -190,35 +193,36 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
     GPU_context_main_unlock();
   }
   GPU_render_end();
+
+  return nullptr;
 }
 
-static void drw_deferred_shader_compilation_free(void *custom_data)
+void DRW_shader_exit()
 {
-  DRWShaderCompiler *comp = (DRWShaderCompiler *)custom_data;
+  compiler_data.stop = true;
+  BLI_threadpool_end(&compilation_threadpool);
 
-  BLI_spin_lock(&comp->list_lock);
-  LISTBASE_FOREACH (LinkData *, link, &comp->queue) {
+  BLI_spin_lock(&compiler_data.list_lock);
+  LISTBASE_FOREACH (LinkData *, link, &compiler_data.queue) {
     GPU_material_status_set(static_cast<GPUMaterial *>(link->data), GPU_MAT_CREATED);
   }
-  LISTBASE_FOREACH (LinkData *, link, &comp->optimize_queue) {
+  LISTBASE_FOREACH (LinkData *, link, &compiler_data.optimize_queue) {
     GPU_material_optimization_status_set(static_cast<GPUMaterial *>(link->data),
                                          GPU_MAT_OPTIMIZATION_READY);
   }
-  BLI_freelistN(&comp->queue);
-  BLI_freelistN(&comp->optimize_queue);
-  BLI_spin_unlock(&comp->list_lock);
+  BLI_freelistN(&compiler_data.queue);
+  BLI_freelistN(&compiler_data.optimize_queue);
+  BLI_spin_unlock(&compiler_data.list_lock);
 
-  if (comp->own_context) {
+  if (compiler_data.own_context) {
     /* Only destroy if the job owns the context. */
-    WM_system_gpu_context_activate(comp->system_gpu_context);
-    GPU_context_active_set(comp->blender_gpu_context);
-    GPU_context_discard(comp->blender_gpu_context);
-    WM_system_gpu_context_dispose(comp->system_gpu_context);
+    WM_system_gpu_context_activate(compiler_data.system_gpu_context);
+    GPU_context_active_set(compiler_data.blender_gpu_context);
+    GPU_context_discard(compiler_data.blender_gpu_context);
+    WM_system_gpu_context_dispose(compiler_data.system_gpu_context);
 
     wm_window_reset_drawable();
   }
-
-  MEM_freeN(comp);
 }
 
 /**
@@ -229,35 +233,32 @@ static void drw_deferred_shader_compilation_free(void *custom_data)
 static void drw_deferred_queue_append(GPUMaterial *mat, bool is_optimization_job)
 {
   const bool use_main_context = GPU_use_main_context_workaround();
-  const bool job_own_context = !use_main_context;
 
-  BLI_assert(DST.draw_ctx.evil_C);
-  wmWindowManager *wm = CTX_wm_manager(DST.draw_ctx.evil_C);
-  wmWindow *win = CTX_wm_window(DST.draw_ctx.evil_C);
+  static bool initialized = false;
+  if (!initialized) {
+    initialized = true;
 
-  /* Get the running job or a new one if none is running. Can only have one job per type & owner.
-   */
-  wmJob *wm_job = WM_jobs_get(
-      wm, win, wm, "Shaders Compilation", eWM_JobFlag(0), WM_JOB_TYPE_SHADER_COMPILATION);
+    BLI_spin_init(&compiler_data.list_lock);
+    compiler_data.stop = false;
 
-  DRWShaderCompiler *old_comp = (DRWShaderCompiler *)WM_jobs_customdata_get(wm_job);
-
-  DRWShaderCompiler *comp = static_cast<DRWShaderCompiler *>(
-      MEM_callocN(sizeof(DRWShaderCompiler), "DRWShaderCompiler"));
-  BLI_spin_init(&comp->list_lock);
-
-  if (old_comp) {
-    BLI_spin_lock(&old_comp->list_lock);
-    BLI_movelisttolist(&comp->queue, &old_comp->queue);
-    BLI_movelisttolist(&comp->optimize_queue, &old_comp->optimize_queue);
-    BLI_spin_unlock(&old_comp->list_lock);
-    /* Do not recreate context, just pass ownership. */
-    if (old_comp->system_gpu_context) {
-      comp->system_gpu_context = old_comp->system_gpu_context;
-      comp->blender_gpu_context = old_comp->blender_gpu_context;
-      old_comp->own_context = false;
-      comp->own_context = job_own_context;
+    /* Create only one context. */
+    compiler_data.own_context = !use_main_context;
+    if (use_main_context) {
+      compiler_data.system_gpu_context = DST.system_gpu_context;
+      compiler_data.blender_gpu_context = DST.blender_gpu_context;
     }
+    else {
+      compiler_data.system_gpu_context = WM_system_gpu_context_create();
+      compiler_data.blender_gpu_context = GPU_context_create(nullptr,
+                                                             compiler_data.system_gpu_context);
+      GPU_context_active_set(nullptr);
+
+      WM_system_gpu_context_activate(DST.system_gpu_context);
+      GPU_context_active_set(DST.blender_gpu_context);
+    }
+
+    BLI_threadpool_init(&compilation_threadpool, drw_deferred_shader_compilation_exec, 1);
+    BLI_threadpool_insert(&compilation_threadpool, nullptr);
   }
 
   /* Add to either compilation or optimization queue. */
@@ -265,51 +266,19 @@ static void drw_deferred_queue_append(GPUMaterial *mat, bool is_optimization_job
     BLI_assert(GPU_material_optimization_status(mat) != GPU_MAT_OPTIMIZATION_QUEUED);
     GPU_material_optimization_status_set(mat, GPU_MAT_OPTIMIZATION_QUEUED);
     LinkData *node = BLI_genericNodeN(mat);
-    BLI_addtail(&comp->optimize_queue, node);
+    BLI_addtail(&compiler_data.optimize_queue, node);
   }
   else {
     GPU_material_status_set(mat, GPU_MAT_QUEUED);
     LinkData *node = BLI_genericNodeN(mat);
-    BLI_addtail(&comp->queue, node);
+    BLI_addtail(&compiler_data.queue, node);
   }
-
-  /* Create only one context. */
-  if (comp->system_gpu_context == nullptr) {
-    if (use_main_context) {
-      comp->system_gpu_context = DST.system_gpu_context;
-      comp->blender_gpu_context = DST.blender_gpu_context;
-    }
-    else {
-      comp->system_gpu_context = WM_system_gpu_context_create();
-      comp->blender_gpu_context = GPU_context_create(nullptr, comp->system_gpu_context);
-      GPU_context_active_set(nullptr);
-
-      WM_system_gpu_context_activate(DST.system_gpu_context);
-      GPU_context_active_set(DST.blender_gpu_context);
-    }
-    comp->own_context = job_own_context;
-  }
-
-  WM_jobs_customdata_set(wm_job, comp, drw_deferred_shader_compilation_free);
-  WM_jobs_timer(wm_job, 0.1, NC_MATERIAL | ND_SHADING_DRAW, 0);
-  WM_jobs_delay_start(wm_job, 0.1);
-  WM_jobs_callbacks(wm_job, drw_deferred_shader_compilation_exec, nullptr, nullptr, nullptr);
-
-  G.is_break = false;
-
-  WM_jobs_start(wm, wm_job);
 }
 
 static void drw_deferred_shader_add(GPUMaterial *mat, bool deferred)
 {
   if (ELEM(GPU_material_status(mat), GPU_MAT_SUCCESS, GPU_MAT_FAILED)) {
     return;
-  }
-
-  /* Do not defer the compilation if we are rendering for image.
-   * deferred rendering is only possible when `evil_C` is available */
-  if (DST.draw_ctx.evil_C == nullptr || DRW_state_is_image_render() || !USE_DEFERRED_COMPILATION) {
-    deferred = false;
   }
 
   /* Avoid crashes with RenderDoc on Windows + Nvidia. */
@@ -378,60 +347,44 @@ static void drw_register_shader_vlattrs(GPUMaterial *mat)
 
 void DRW_deferred_shader_remove(GPUMaterial *mat)
 {
-  LISTBASE_FOREACH (wmWindowManager *, wm, &G_MAIN->wm) {
-    LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
-      DRWShaderCompiler *comp = (DRWShaderCompiler *)WM_jobs_customdata_from_type(
-          wm, wm, WM_JOB_TYPE_SHADER_COMPILATION);
-      if (comp != nullptr) {
-        BLI_spin_lock(&comp->list_lock);
+  BLI_spin_lock(&compiler_data.list_lock);
 
-        /* Search for compilation job in queue. */
-        LinkData *link = (LinkData *)BLI_findptr(&comp->queue, mat, offsetof(LinkData, data));
-        if (link) {
-          BLI_remlink(&comp->queue, link);
-          GPU_material_status_set(static_cast<GPUMaterial *>(link->data), GPU_MAT_CREATED);
-        }
-
-        MEM_SAFE_FREE(link);
-
-        /* Search for optimization job in queue. */
-        LinkData *opti_link = (LinkData *)BLI_findptr(
-            &comp->optimize_queue, mat, offsetof(LinkData, data));
-        if (opti_link) {
-          BLI_remlink(&comp->optimize_queue, opti_link);
-          GPU_material_optimization_status_set(static_cast<GPUMaterial *>(opti_link->data),
-                                               GPU_MAT_OPTIMIZATION_READY);
-        }
-        BLI_spin_unlock(&comp->list_lock);
-
-        MEM_SAFE_FREE(opti_link);
-      }
-    }
+  /* Search for compilation job in queue. */
+  LinkData *link = (LinkData *)BLI_findptr(&compiler_data.queue, mat, offsetof(LinkData, data));
+  if (link) {
+    BLI_remlink(&compiler_data.queue, link);
+    GPU_material_status_set(static_cast<GPUMaterial *>(link->data), GPU_MAT_CREATED);
   }
+
+  MEM_SAFE_FREE(link);
+
+  /* Search for optimization job in queue. */
+  LinkData *opti_link = (LinkData *)BLI_findptr(
+      &compiler_data.optimize_queue, mat, offsetof(LinkData, data));
+  if (opti_link) {
+    BLI_remlink(&compiler_data.optimize_queue, opti_link);
+    GPU_material_optimization_status_set(static_cast<GPUMaterial *>(opti_link->data),
+                                         GPU_MAT_OPTIMIZATION_READY);
+  }
+  BLI_spin_unlock(&compiler_data.list_lock);
+
+  MEM_SAFE_FREE(opti_link);
 }
 
 void DRW_deferred_shader_optimize_remove(GPUMaterial *mat)
 {
-  LISTBASE_FOREACH (wmWindowManager *, wm, &G_MAIN->wm) {
-    LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
-      DRWShaderCompiler *comp = (DRWShaderCompiler *)WM_jobs_customdata_from_type(
-          wm, wm, WM_JOB_TYPE_SHADER_COMPILATION);
-      if (comp != nullptr) {
-        BLI_spin_lock(&comp->list_lock);
-        /* Search for optimization job in queue. */
-        LinkData *opti_link = (LinkData *)BLI_findptr(
-            &comp->optimize_queue, mat, offsetof(LinkData, data));
-        if (opti_link) {
-          BLI_remlink(&comp->optimize_queue, opti_link);
-          GPU_material_optimization_status_set(static_cast<GPUMaterial *>(opti_link->data),
-                                               GPU_MAT_OPTIMIZATION_READY);
-        }
-        BLI_spin_unlock(&comp->list_lock);
-
-        MEM_SAFE_FREE(opti_link);
-      }
-    }
+  BLI_spin_lock(&compiler_data.list_lock);
+  /* Search for optimization job in queue. */
+  LinkData *opti_link = (LinkData *)BLI_findptr(
+      &compiler_data.optimize_queue, mat, offsetof(LinkData, data));
+  if (opti_link) {
+    BLI_remlink(&compiler_data.optimize_queue, opti_link);
+    GPU_material_optimization_status_set(static_cast<GPUMaterial *>(opti_link->data),
+                                         GPU_MAT_OPTIMIZATION_READY);
   }
+  BLI_spin_unlock(&compiler_data.list_lock);
+
+  MEM_SAFE_FREE(opti_link);
 }
 
 /** \} */
