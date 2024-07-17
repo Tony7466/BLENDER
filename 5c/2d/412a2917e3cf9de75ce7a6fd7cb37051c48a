@@ -1,1 +1,2 @@
 Referenced by issue #124832, VDB sequence gets imported multiple times and gets chopped up
+Referenced by pull request #124902, Fix #124832: Allow .vdb sequences to be detected with unfixed digit size again
