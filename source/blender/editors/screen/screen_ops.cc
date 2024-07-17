@@ -3952,6 +3952,7 @@ static void area_join_update_data(bContext *C, sAreaJoinData *jd, const wmEvent 
 
   if (U.experimental.use_docking) {
     jd->sa2 = area;
+    jd->win2 = WM_window_find_by_area(CTX_wm_manager(C), jd->sa2);
     jd->dir = area_getorientation(jd->sa1, jd->sa2);
     jd->dock_target = area_docking_target(jd, event);
   }
