@@ -47,13 +47,13 @@ enum eScreenAxis {
   SCREEN_AXIS_V = 'v',
 };
 
-enum eAreaDockTarget {
-  DOCKING_NONE = 0,
-  DOCKING_RIGHT,  /* Right diagonal quadrant of area. */
-  DOCKING_LEFT,   /* Left diagonal quadrant of area. */
-  DOCKING_TOP,    /* Top diagonal quadrant of area. */
-  DOCKING_BOTTOM, /* Bottom diagonal quadrant of area. */
-  DOCKING_CENTER, /* Middle portion of area. */
+enum class AreaDockTarget {
+  None,
+  Right,  /* Right diagonal quadrant of area. */
+  Left,   /* Left diagonal quadrant of area. */
+  Top,    /* Top diagonal quadrant of area. */
+  Bottom, /* Bottom diagonal quadrant of area. */
+  Center, /* Middle portion of area. */
 };
 
 #define AZONESPOTW UI_HEADER_OFFSET         /* width of corner #AZone - max */
@@ -92,7 +92,7 @@ void screen_draw_join_highlight(ScrArea *sa1, ScrArea *sa2, eScreenDir dir);
 void screen_draw_dock_preview(const wmWindow *win,
                               ScrArea *source,
                               ScrArea *target,
-                              eAreaDockTarget dock_target);
+                              AreaDockTarget dock_target);
 void screen_draw_split_preview(ScrArea *area, eScreenAxis dir_axis, float fac);
 
 /* `screen_edit.cc` */

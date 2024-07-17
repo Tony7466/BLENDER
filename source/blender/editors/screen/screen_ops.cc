@@ -3530,19 +3530,19 @@ static void SCREEN_OT_screen_full_area(wmOperatorType *ot)
  */
 
 struct sAreaJoinData {
-  ScrArea *sa1;                /* Potential source area (kept). */
-  ScrArea *sa2;                /* Potential target area (removed or reduced). */
-  eScreenDir dir;              /* Direction of potential join. */
-  eScreenAxis split_dir;       /* Direction of split within the source area. */
-  eAreaDockTarget dock_target; /* Position within target we are pointing to. */
-  int x, y;                    /* Starting mouse position. */
-  float split_fac;             /* Split factor in split_dir direction. */
-  wmWindow *win1;              /* Window of source area. */
-  wmWindow *win2;              /* Window of the target area. */
-  wmWindow *draw_dock_win;     /* Window getting docking highlight. */
-  bool close_win;              /* Close the source window when done. */
-  void *draw_callback;         /* call #screen_draw_join_highlight */
-  void *draw_dock_callback;    /* call #screen_draw_dock_highlight, overlay on draw_dock_win. */
+  ScrArea *sa1;               /* Potential source area (kept). */
+  ScrArea *sa2;               /* Potential target area (removed or reduced). */
+  eScreenDir dir;             /* Direction of potential join. */
+  eScreenAxis split_dir;      /* Direction of split within the source area. */
+  AreaDockTarget dock_target; /* Position within target we are pointing to. */
+  int x, y;                   /* Starting mouse position. */
+  float split_fac;            /* Split factor in split_dir direction. */
+  wmWindow *win1;             /* Window of source area. */
+  wmWindow *win2;             /* Window of the target area. */
+  wmWindow *draw_dock_win;    /* Window getting docking highlight. */
+  bool close_win;             /* Close the source window when done. */
+  void *draw_callback;        /* call #screen_draw_join_highlight */
+  void *draw_dock_callback;   /* call #screen_draw_dock_highlight, overlay on draw_dock_win. */
 };
 
 static void area_join_draw_cb(const wmWindow * /*win*/, void *userdata)
@@ -3728,10 +3728,12 @@ void static area_docking_apply(bContext *C, wmOperator *op)
   bool aligned_neighbors = (offset1 == 0 && offset2 == 0);
   bool same_area = (jd->sa1 == jd->sa2);
 
-  if (!(jd->dock_target == DOCKING_CENTER)) {
-    eScreenAxis dir = (ELEM(jd->dock_target, DOCKING_LEFT, DOCKING_RIGHT)) ? SCREEN_AXIS_V :
-                                                                             SCREEN_AXIS_H;
-    float fac = ELEM(jd->dock_target, DOCKING_LEFT, DOCKING_BOTTOM) ? 0.49999f : 0.50001f;
+  if (!(jd->dock_target == AreaDockTarget::Center)) {
+    eScreenAxis dir = (ELEM(jd->dock_target, AreaDockTarget::Left, AreaDockTarget::Right)) ?
+                          SCREEN_AXIS_V :
+                          SCREEN_AXIS_H;
+    float fac = ELEM(jd->dock_target, AreaDockTarget::Left, AreaDockTarget::Bottom) ? 0.49999f :
+                                                                                      0.50001f;
     ScrArea *newa = area_split(
         jd->win2, WM_window_get_active_screen(jd->win2), jd->sa2, dir, fac, true);
     jd->sa2 = newa;
@@ -3762,7 +3764,7 @@ void static area_docking_apply(bContext *C, wmOperator *op)
 
 static int area_join_cursor(sAreaJoinData *jd, const wmEvent *event)
 {
-  if (!jd->sa2 && jd->dock_target == DOCKING_NONE && U.experimental.use_docking) {
+  if (!jd->sa2 && jd->dock_target == AreaDockTarget::None && U.experimental.use_docking) {
     /* Mouse outside window, so can open new window. */
     if (event->xy[0] < 0 || event->xy[0] > jd->win1->sizex || event->xy[1] < 1 ||
         event->xy[1] > jd->win1->sizey)
@@ -3780,7 +3782,7 @@ static int area_join_cursor(sAreaJoinData *jd, const wmEvent *event)
     return WM_CURSOR_EDIT;
   }
 
-  if (jd->dock_target == DOCKING_NONE) {
+  if (jd->dock_target == AreaDockTarget::None) {
     if (jd->dir == SCREEN_DIR_N) {
       return WM_CURSOR_N_ARROW;
     }
@@ -3796,7 +3798,7 @@ static int area_join_cursor(sAreaJoinData *jd, const wmEvent *event)
   }
 
   if (U.experimental.use_docking &&
-      (jd->dir != SCREEN_DIR_NONE || jd->dock_target != DOCKING_NONE))
+      (jd->dir != SCREEN_DIR_NONE || jd->dock_target != AreaDockTarget::None))
   {
     return WM_CURSOR_PICK_AREA;
   }
@@ -3804,10 +3806,10 @@ static int area_join_cursor(sAreaJoinData *jd, const wmEvent *event)
   return U.experimental.use_docking ? WM_CURSOR_PICK_AREA : WM_CURSOR_STOP;
 }
 
-static eAreaDockTarget area_docking_target(sAreaJoinData *jd, const wmEvent *event)
+static AreaDockTarget area_docking_target(sAreaJoinData *jd, const wmEvent *event)
 {
   if (!U.experimental.use_docking || !jd->sa2 || !jd->win2) {
-    return DOCKING_NONE;
+    return AreaDockTarget::None;
   }
 
   /* Convert to local coordinates in sa2. */
@@ -3826,7 +3828,7 @@ static eAreaDockTarget area_docking_target(sAreaJoinData *jd, const wmEvent *eve
       if (jd->sa2->winy < min_y || (jd->dir == SCREEN_DIR_N && y < join_y) ||
           (jd->dir == SCREEN_DIR_S && (jd->sa2->winy - y) < join_y))
       {
-        return DOCKING_NONE;
+        return AreaDockTarget::None;
       }
     }
   }
@@ -3838,7 +3840,7 @@ static eAreaDockTarget area_docking_target(sAreaJoinData *jd, const wmEvent *eve
       if (jd->sa2->winx < min_x || (jd->dir == SCREEN_DIR_W && (jd->sa2->winx - x) < join_x) ||
           (jd->dir == SCREEN_DIR_E && x < join_x))
       {
-        return DOCKING_NONE;
+        return AreaDockTarget::None;
       }
     }
   }
@@ -3848,15 +3850,15 @@ static eAreaDockTarget area_docking_target(sAreaJoinData *jd, const wmEvent *eve
 
   /* if the area is narrow then there are only two docking targets. */
   if (jd->sa2->winx < min_x) {
-    return (y < jd->sa2->winy / 2) ? DOCKING_BOTTOM : DOCKING_TOP;
+    return (y < jd->sa2->winy / 2) ? AreaDockTarget::Bottom : AreaDockTarget::Top;
   }
   if (jd->sa2->winy < min_y) {
-    return (x < jd->sa2->winx / 2) ? DOCKING_LEFT : DOCKING_RIGHT;
+    return (x < jd->sa2->winx / 2) ? AreaDockTarget::Left : AreaDockTarget::Right;
   }
 
   /* Are we in the center? But not in same area! */
   if (jd->sa1 != jd->sa2 && fac_x > 0.4f && fac_x < 0.6f && fac_y > 0.4f && fac_y < 0.6f) {
-    return DOCKING_CENTER;
+    return AreaDockTarget::Center;
   }
 
   /* Area is large enough for four docking targets. */
@@ -3866,18 +3868,18 @@ static eAreaDockTarget area_docking_target(sAreaJoinData *jd, const wmEvent *eve
   /* Split the area diagonally from top-left to bottom-right. */
   const bool lower_left = float(x) / float(jd->sa2->winy - y + 1) < area_ratio;
   if (upper_left && !lower_left) {
-    return DOCKING_TOP;
+    return AreaDockTarget::Top;
   }
   if (!upper_left && lower_left) {
-    return DOCKING_BOTTOM;
+    return AreaDockTarget::Bottom;
   }
   if (upper_left && lower_left) {
-    return DOCKING_LEFT;
+    return AreaDockTarget::Left;
   }
   if (!upper_left && !lower_left) {
-    return DOCKING_RIGHT;
+    return AreaDockTarget::Right;
   }
-  return DOCKING_NONE;
+  return AreaDockTarget::None;
 }
 
 static float area_split_factor(bContext *C, sAreaJoinData *jd, const wmEvent *event)
@@ -3920,7 +3922,7 @@ static void area_join_update_data(bContext *C, sAreaJoinData *jd, const wmEvent 
 
   jd->win2 = WM_window_find_by_area(CTX_wm_manager(C), jd->sa2);
   jd->dir = SCREEN_DIR_NONE;
-  jd->dock_target = DOCKING_NONE;
+  jd->dock_target = AreaDockTarget::None;
   jd->dir = area_getorientation(jd->sa1, jd->sa2);
   jd->dock_target = area_docking_target(jd, event);
 
@@ -3959,7 +3961,7 @@ static void area_join_cancel(bContext *C, wmOperator *op)
   WM_event_add_notifier(C, NC_WINDOW, nullptr);
 
   sAreaJoinData *jd = static_cast<sAreaJoinData *>(op->customdata);
-  if (!jd || jd->dock_target != DOCKING_NONE || jd->dir != SCREEN_DIR_NONE) {
+  if (!jd || jd->dock_target != AreaDockTarget::None || jd->dir != SCREEN_DIR_NONE) {
     WM_cursor_set(CTX_wm_window(C), WM_CURSOR_DEFAULT);
   }
 
@@ -4018,7 +4020,7 @@ static int area_join_modal(bContext *C, wmOperator *op, const wmEvent *event)
           }
         }
         else if (U.experimental.use_docking && jd->sa1 && jd->sa2 &&
-                 jd->dock_target != DOCKING_NONE)
+                 jd->dock_target != AreaDockTarget::None)
         {
           /* Dock this to the new location. */
           area_docking_apply(C, op);

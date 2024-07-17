@@ -377,9 +377,9 @@ void screen_draw_join_highlight(ScrArea *sa1, ScrArea *sa2, eScreenDir dir)
 void screen_draw_dock_preview(const struct wmWindow * /* win */,
                               ScrArea *source,
                               ScrArea *target,
-                              eAreaDockTarget dock_target)
+                              AreaDockTarget dock_target)
 {
-  if (dock_target == DOCKING_NONE) {
+  if (dock_target == AreaDockTarget::None) {
     return;
   }
 
@@ -399,28 +399,28 @@ void screen_draw_dock_preview(const struct wmWindow * /* win */,
 
   float split;
 
-  if (dock_target == DOCKING_RIGHT) {
+  if (dock_target == AreaDockTarget::Right) {
     split = std::min(dest.xmin + target->winx * 0.501f, dest.xmax - AREAMINX * UI_SCALE_FAC);
     dest.xmin = split + half_line_width;
     remainder.xmax = split - half_line_width;
   }
-  else if (dock_target == DOCKING_LEFT) {
+  else if (dock_target == AreaDockTarget::Left) {
     split = std::max(dest.xmax - target->winx * 0.501f, dest.xmin + AREAMINX * UI_SCALE_FAC);
     dest.xmax = split - half_line_width;
     remainder.xmin = split + half_line_width;
   }
-  else if (dock_target == DOCKING_TOP) {
+  else if (dock_target == AreaDockTarget::Top) {
     split = std::min(dest.ymin + target->winy * 0.501f, dest.ymax - HEADERY * UI_SCALE_FAC);
     dest.ymin = split + half_line_width;
     remainder.ymax = split - half_line_width;
   }
-  else if (dock_target == DOCKING_BOTTOM) {
+  else if (dock_target == AreaDockTarget::Bottom) {
     split = std::max(dest.ymax - target->winy * 0.501f, dest.ymin + HEADERY * UI_SCALE_FAC);
     dest.ymax = split - half_line_width;
     remainder.ymin = split + half_line_width;
   }
 
-  if (dock_target == DOCKING_CENTER) {
+  if (dock_target == AreaDockTarget::Center) {
     UI_draw_roundbox_4fv_ex(&dest, inner, nullptr, 1.0f, outline, U.pixelsize, 6 * U.pixelsize);
     screen_draw_area_icon(&dest, ED_area_icon(source), icon_color, bg_color, outline);
   }
@@ -433,7 +433,7 @@ void screen_draw_dock_preview(const struct wmWindow * /* win */,
     screen_draw_area_icon(&remainder, ED_area_icon(target), icon_color, bg_color, nullptr);
 
     /* Darken the split position itself. */
-    if (ELEM(dock_target, DOCKING_RIGHT, DOCKING_LEFT)) {
+    if (ELEM(dock_target, AreaDockTarget::Right, AreaDockTarget::Left)) {
       dest.xmin = split - half_line_width;
       dest.xmax = split + half_line_width;
     }
