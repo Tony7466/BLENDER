@@ -1481,16 +1481,7 @@ static bool area_dupli_open(bContext *C, ScrArea *area, const blender::int2 posi
                                     /* Initialize area from callback. */
                                     area_dupli_fn,
                                     (void *)area);
-
-  if (newwin) {
-    /* copy area to new screen */
-    bScreen *newsc = WM_window_get_active_screen(newwin);
-    ED_area_data_copy((ScrArea *)newsc->areabase.first, area, true);
-    ED_area_tag_redraw((ScrArea *)newsc->areabase.first);
-    screen_area_close(C, screen, area);
-    return true;
-  }
-  return false;
+  return (newwin != nullptr);
 }
 
 static int area_dupli_invoke(bContext *C, wmOperator *op, const wmEvent *event)
@@ -4007,6 +3998,7 @@ static int area_join_modal(bContext *C, wmOperator *op, const wmEvent *event)
             /* We have to clear handlers or we get an error in wm_gizmomap_modal_get. */
             WM_event_modal_handler_region_replace(jd->win1, CTX_wm_region(C), nullptr);
             area_dupli_open(C, jd->sa1, blender::int2(event->xy[0], event->xy[1] - jd->sa1->winy));
+            screen_area_close(C, WM_window_get_active_screen(jd->win1), jd->sa1);
           }
         }
         else if (jd->sa1 && jd->sa1 == jd->sa2) {
