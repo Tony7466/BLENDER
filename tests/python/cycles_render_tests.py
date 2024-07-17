@@ -28,7 +28,7 @@ BLOCKLIST_EXPLICIT_OSL_TESTS = [
 ]
 
 BLOCKLIST_OSL = [
-    # Black list tests that fail with OSL due to differences from SVM.
+    # Block tests that fail with OSL due to differences from SVM.
     # Point Density is disabled on surfaces in SVM.
     # This was a performance optimization that wasn't carried over to OSL.
     'T49936.blend',
