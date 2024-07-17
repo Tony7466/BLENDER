@@ -43,6 +43,9 @@ BLOCKLIST_OSL = [
     'image_mapping_.*_closest.blend',
     'image_mapping_.*_cubic.blend',
     'image_mapping_.*_linear.blend',
+    # Along with mipmapping, OSL with UDIM doesn't respect extrapolation settings
+    # This is a bug, See 124847
+    'image_mapping_udim.blend',
     # OSL handles bump + displacement differently from SVM
     'both_displacement.blend',
     'bump_with_displacement.blend',
