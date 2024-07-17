@@ -69,7 +69,7 @@ static constexpr std::array<uint, 24> bone_box_wire = {
     0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 5, 6, 6, 7, 7, 4, 0, 4, 1, 5, 2, 6, 3, 7,
 };
 
-static void append_as_lines_cyclic(
+static void append_line_loop(
     Vector<Vertex> &dest, Span<float2> verts, float z, int flag, bool dashed = false)
 {
   const int step = dashed ? 2 : 1;
@@ -125,7 +125,7 @@ static const Vector<Vertex> capsule_cap_verts()
   const Vector<float2> ring = ring_vertices(1.0f, n_segments);
   Vector<Vertex> verts;
   /* Base circle */
-  append_as_lines_cyclic(verts, ring, 0.0f, VCLASS_NONE);
+  append_line_loop(verts, ring, 0.0f, VCLASS_NONE);
   for (const int i : IndexRange(n_segments / 2)) {
     const float2 &point = ring[i];
     const float2 &next_point = ring[i + 1];
@@ -260,9 +260,9 @@ ShapeCache::ShapeCache()
     static const Vector<float2> ring = ring_vertices(1.0f, n_segments);
     Vector<Vertex> verts;
     /* top ring */
-    append_as_lines_cyclic(verts, ring, 1.0f, VCLASS_EMPTY_SCALED);
+    append_line_loop(verts, ring, 1.0f, VCLASS_EMPTY_SCALED);
     /* bottom ring */
-    append_as_lines_cyclic(verts, ring, -1.0f, VCLASS_EMPTY_SCALED);
+    append_line_loop(verts, ring, -1.0f, VCLASS_EMPTY_SCALED);
     /* cylinder sides */
     for (const float2 &point : ring) {
       verts.append({{point.x, point.y, 1.0f}, VCLASS_EMPTY_SCALED});
@@ -284,7 +284,7 @@ ShapeCache::ShapeCache()
   }
   /* capsule cap */
   {
-    static const Vector<Vertex> verts = capsule_cap_verts();
+    const Vector<Vertex> verts = capsule_cap_verts();
     capsule_cap = BatchPtr(
         GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
   }
