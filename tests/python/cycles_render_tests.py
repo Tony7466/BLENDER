@@ -212,7 +212,7 @@ def main():
     if device != 'CPU':
         blacklist += BLACKLIST_GPU
     if device != 'CPU' or 'OSL' in args.blacklist:
-        blacklist += BLACKLIST_EXPLICIT_OSL_TESTS
+        blacklist += BLOCKLIST_EXPLICIT_OSL_TESTS
     if device == 'OPTIX':
         blacklist += BLACKLIST_OPTIX
         if args.osl:
