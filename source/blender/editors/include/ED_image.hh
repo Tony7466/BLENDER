@@ -211,8 +211,13 @@ struct ImageFrameRange {
 
 /**
  * Used for both images and volume file loading.
+ * \param use_unfixed_digit_size: Set when the file loader can use sequences files with non fixed
+ * digit size.
  */
-ListBase ED_image_filesel_detect_sequences(Main *bmain, wmOperator *op, bool detect_udim);
+ListBase ED_image_filesel_detect_sequences(Main *bmain,
+                                           wmOperator *op,
+                                           bool detect_udim,
+                                           const bool use_unfixed_digit_size = false);
 
 bool ED_image_tools_paint_poll(bContext *C);
 void ED_paint_cursor_start(Paint *paint, bool (*poll)(bContext *C));

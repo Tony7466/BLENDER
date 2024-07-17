@@ -38,7 +38,9 @@ struct ImageFrame {
  *
  * The output is a list of frame ranges, each containing a list of frames with matching names.
  */
-static void image_sequence_get_frame_ranges(wmOperator *op, ListBase *ranges)
+static void image_sequence_get_frame_ranges(wmOperator *op,
+                                            ListBase *ranges,
+                                            const bool use_unfixed_digit_size)
 {
   char dir[FILE_MAXDIR];
   const bool do_frame_range = RNA_boolean_get(op->ptr, "use_sequence_detection");
@@ -59,11 +61,11 @@ static void image_sequence_get_frame_ranges(wmOperator *op, ListBase *ranges)
     ImageFrameRange *range = nullptr;
     if (do_frame_range) {
       LISTBASE_FOREACH (ImageFrameRange *, range_test, ranges) {
-        if ((digits == range_test->filename_digits) &&
-            (STREQ(head, range_test->filename_head) && STREQ(tail, range_test->filename_tail)))
-        {
-          range = range_test;
-          break;
+        if (STREQ(head, range_test->filename_head) && STREQ(tail, range_test->filename_tail)) {
+          if (digits == range_test->filename_digits || use_unfixed_digit_size) {
+            range = range_test;
+            break;
+          }
         }
       }
     }
@@ -146,7 +148,10 @@ static void image_detect_frame_range(ImageFrameRange *range, const bool detect_u
   }
 }
 
-ListBase ED_image_filesel_detect_sequences(Main *bmain, wmOperator *op, const bool detect_udim)
+ListBase ED_image_filesel_detect_sequences(Main *bmain,
+                                           wmOperator *op,
+                                           const bool detect_udim,
+                                           const bool use_unfixed_digit_size)
 {
   ListBase ranges;
   BLI_listbase_clear(&ranges);
@@ -160,7 +165,7 @@ ListBase ED_image_filesel_detect_sequences(Main *bmain, wmOperator *op, const bo
   {
     const bool was_relative = BLI_path_is_rel(filepath);
 
-    image_sequence_get_frame_ranges(op, &ranges);
+    image_sequence_get_frame_ranges(op, &ranges, use_unfixed_digit_size);
     LISTBASE_FOREACH (ImageFrameRange *, range, &ranges) {
       image_detect_frame_range(range, detect_udim);
       BLI_freelistN(&range->frames);
