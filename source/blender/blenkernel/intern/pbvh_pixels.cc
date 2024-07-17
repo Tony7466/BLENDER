@@ -62,7 +62,7 @@ static float2 calc_barycentric_delta_x(const ImBuf *image_buffer,
   return calc_barycentric_delta(uvs, start_uv, end_uv);
 }
 
-static int count_node_pixels(PBVHNode &node)
+static int count_node_pixels(Node &node)
 {
   if (!node.pixels.node_data) {
     return 0;
@@ -85,7 +85,7 @@ struct SplitQueueData {
   ThreadQueue *new_nodes;
   TaskPool *pool;
 
-  PBVH *pbvh;
+  Tree *pbvh;
   Mesh *mesh;
   Image *image;
   ImageUser *image_user;
@@ -93,7 +93,7 @@ struct SplitQueueData {
 
 struct SplitNodePair {
   SplitNodePair *parent;
-  PBVHNode node;
+  Node node;
   int children_offset = 0;
   int depth = 0;
   int source_index = -1;
@@ -102,16 +102,16 @@ struct SplitNodePair {
 
   SplitNodePair(SplitNodePair *node_parent = nullptr) : parent(node_parent)
   {
-    memset(static_cast<void *>(&node), 0, sizeof(PBVHNode));
+    memset(static_cast<void *>(&node), 0, sizeof(Node));
   }
 };
 
 static void split_thread_job(TaskPool *__restrict pool, void *taskdata);
 
 static void split_pixel_node(
-    PBVH &pbvh, SplitNodePair *split, Image *image, ImageUser *image_user, SplitQueueData *tdata)
+    Tree &pbvh, SplitNodePair *split, Image *image, ImageUser *image_user, SplitQueueData *tdata)
 {
-  PBVHNode *node = &split->node;
+  Node *node = &split->node;
 
   const Bounds<float3> cb = node->bounds;
 
@@ -132,8 +132,8 @@ static void split_pixel_node(
   split1->depth = split->depth + 1;
   split2->depth = split->depth + 1;
 
-  PBVHNode *child1 = &split1->node;
-  PBVHNode *child2 = &split2->node;
+  Node *child1 = &split1->node;
+  Node *child2 = &split2->node;
 
   child1->flag = PBVH_TexLeaf;
   child2->flag = PBVH_TexLeaf;
@@ -267,7 +267,7 @@ static void split_pixel_node(
 
 static void split_flush_final_nodes(SplitQueueData *tdata)
 {
-  PBVH *pbvh = tdata->pbvh;
+  Tree *pbvh = tdata->pbvh;
   Vector<SplitNodePair *> splits;
 
   while (!BLI_thread_queue_is_empty(tdata->new_nodes)) {
@@ -311,7 +311,7 @@ static void split_thread_job(TaskPool *__restrict pool, void *taskdata)
   split_pixel_node(*tdata->pbvh, split, tdata->image, tdata->image_user, tdata);
 }
 
-static void split_pixel_nodes(PBVH &pbvh, Mesh *mesh, Image *image, ImageUser *image_user)
+static void split_pixel_nodes(Tree &pbvh, Mesh *mesh, Image *image, ImageUser *image_user)
 {
   if (G.debug_value == 891) {
     return;
@@ -354,7 +354,7 @@ static void split_pixel_nodes(PBVH &pbvh, Mesh *mesh, Image *image, ImageUser *i
 
 /**
  * During debugging this check could be enabled.
- * It will write to each image pixel that is covered by the PBVH.
+ * It will write to each image pixel that is covered by the Tree.
  */
 constexpr bool USE_WATERTIGHT_CHECK = false;
 
@@ -403,7 +403,7 @@ static void extract_barycentric_pixels(UDIMTilePixels &tile_data,
 }
 
 /** Update the geometry primitives of the pbvh. */
-static void update_geom_primitives(PBVH &pbvh, const uv_islands::MeshData &mesh_data)
+static void update_geom_primitives(Tree &pbvh, const uv_islands::MeshData &mesh_data)
 {
   PBVHData &pbvh_data = data_get(pbvh);
   pbvh_data.clear_data();
@@ -449,8 +449,8 @@ struct EncodePixelsUserData {
   const uv_islands::MeshData *mesh_data;
   Image *image;
   ImageUser *image_user;
-  PBVH *pbvh;
-  Vector<PBVHNode *> *nodes;
+  Tree *pbvh;
+  Vector<Node *> *nodes;
   const uv_islands::UVIslandsMask *uv_masks;
   /** Lookup to retrieve the UV primitives based on the primitive index. */
   const UVPrimitiveLookup *uv_primitive_lookup;
@@ -461,7 +461,7 @@ static void do_encode_pixels(EncodePixelsUserData *data, const int n)
   const uv_islands::MeshData &mesh_data = *data->mesh_data;
   Image *image = data->image;
   ImageUser image_user = *data->image_user;
-  PBVHNode *node = (*data->nodes)[n];
+  Node *node = (*data->nodes)[n];
   NodeData *node_data = static_cast<NodeData *>(node->pixels.node_data);
   const uv_islands::UVIslandsMask &uv_masks = *data->uv_masks;
 
@@ -529,7 +529,7 @@ static void do_encode_pixels(EncodePixelsUserData *data, const int n)
   }
 }
 
-static bool should_pixels_be_updated(const PBVHNode &node)
+static bool should_pixels_be_updated(const Node &node)
 {
   if ((node.flag & (PBVH_Leaf | PBVH_TexLeaf)) == 0) {
     return false;
@@ -547,10 +547,10 @@ static bool should_pixels_be_updated(const PBVHNode &node)
   return true;
 }
 
-static int64_t count_nodes_to_update(PBVH &pbvh)
+static int64_t count_nodes_to_update(Tree &pbvh)
 {
   int64_t result = 0;
-  for (PBVHNode &node : pbvh.nodes) {
+  for (Node &node : pbvh.nodes) {
     if (should_pixels_be_updated(node)) {
       result++;
     }
@@ -567,14 +567,14 @@ static int64_t count_nodes_to_update(PBVH &pbvh)
  *
  * returns if there were any nodes found (true).
  */
-static bool find_nodes_to_update(PBVH &pbvh, Vector<PBVHNode *> &r_nodes_to_update)
+static bool find_nodes_to_update(Tree &pbvh, Vector<Node *> &r_nodes_to_update)
 {
   int64_t nodes_to_update_len = count_nodes_to_update(pbvh);
   if (nodes_to_update_len == 0) {
     return false;
   }
 
-  /* Init or reset PBVH pixel data when changes detected. */
+  /* Init or reset Tree pixel data when changes detected. */
   if (pbvh.pixels.data == nullptr) {
     PBVHData *pbvh_data = MEM_new<PBVHData>(__func__);
     pbvh.pixels.data = pbvh_data;
@@ -586,7 +586,7 @@ static bool find_nodes_to_update(PBVH &pbvh, Vector<PBVHNode *> &r_nodes_to_upda
 
   r_nodes_to_update.reserve(nodes_to_update_len);
 
-  for (PBVHNode &node : pbvh.nodes) {
+  for (Node &node : pbvh.nodes) {
     if (!should_pixels_be_updated(node)) {
       continue;
     }
@@ -606,7 +606,7 @@ static bool find_nodes_to_update(PBVH &pbvh, Vector<PBVHNode *> &r_nodes_to_upda
   return true;
 }
 
-static void apply_watertight_check(PBVH &pbvh, Image *image, ImageUser *image_user)
+static void apply_watertight_check(Tree &pbvh, Image *image, ImageUser *image_user)
 {
   ImageUser watertight = *image_user;
   LISTBASE_FOREACH (ImageTile *, tile_data, &image->tiles) {
@@ -616,7 +616,7 @@ static void apply_watertight_check(PBVH &pbvh, Image *image, ImageUser *image_us
     if (image_buffer == nullptr) {
       continue;
     }
-    for (PBVHNode &node : pbvh.nodes) {
+    for (Node &node : pbvh.nodes) {
       if ((node.flag & PBVH_Leaf) == 0) {
         continue;
       }
@@ -646,9 +646,9 @@ static void apply_watertight_check(PBVH &pbvh, Image *image, ImageUser *image_us
   BKE_image_partial_update_mark_full_update(image);
 }
 
-static bool update_pixels(PBVH &pbvh, Mesh *mesh, Image *image, ImageUser *image_user)
+static bool update_pixels(Tree &pbvh, Mesh *mesh, Image *image, ImageUser *image_user)
 {
-  Vector<PBVHNode *> nodes_to_update;
+  Vector<Node *> nodes_to_update;
 
   if (!find_nodes_to_update(pbvh, nodes_to_update)) {
     return false;
@@ -711,18 +711,18 @@ static bool update_pixels(PBVH &pbvh, Mesh *mesh, Image *image, ImageUser *image
   copy_update(pbvh, *image, *image_user, mesh_data);
 
   /* Rebuild the undo regions. */
-  for (PBVHNode *node : nodes_to_update) {
+  for (Node *node : nodes_to_update) {
     NodeData *node_data = static_cast<NodeData *>(node->pixels.node_data);
     node_data->rebuild_undo_regions();
   }
 
   /* Clear the UpdatePixels flag. */
-  for (PBVHNode *node : nodes_to_update) {
+  for (Node *node : nodes_to_update) {
     node->flag = static_cast<PBVHNodeFlags>(node->flag & ~PBVH_RebuildPixels);
   }
 
   /* Add PBVH_TexLeaf flag */
-  for (PBVHNode &node : pbvh.nodes) {
+  for (Node &node : pbvh.nodes) {
     if (node.flag & PBVH_Leaf) {
       node.flag = (PBVHNodeFlags)(int(node.flag) | int(PBVH_TexLeaf));
     }
@@ -735,7 +735,7 @@ static bool update_pixels(PBVH &pbvh, Mesh *mesh, Image *image, ImageUser *image
     int64_t compressed_data_len = 0;
     int64_t num_pixels = 0;
     for (int n = 0; n < pbvh->totnode; n++) {
-      PBVHNode *node = &pbvh->nodes[n];
+      Node *node = &pbvh->nodes[n];
       if ((node->flag & PBVH_Leaf) == 0) {
         continue;
       }
@@ -757,21 +757,21 @@ static bool update_pixels(PBVH &pbvh, Mesh *mesh, Image *image, ImageUser *image
   return true;
 }
 
-NodeData &node_data_get(PBVHNode &node)
+NodeData &node_data_get(Node &node)
 {
   BLI_assert(node.pixels.node_data != nullptr);
   NodeData *node_data = static_cast<NodeData *>(node.pixels.node_data);
   return *node_data;
 }
 
-PBVHData &data_get(PBVH &pbvh)
+PBVHData &data_get(Tree &pbvh)
 {
   BLI_assert(pbvh.pixels.data != nullptr);
   PBVHData *data = static_cast<PBVHData *>(pbvh.pixels.data);
   return *data;
 }
 
-void mark_image_dirty(PBVHNode &node, Image &image, ImageUser &image_user)
+void mark_image_dirty(Node &node, Image &image, ImageUser &image_user)
 {
   BLI_assert(node.pixels.node_data != nullptr);
   NodeData *node_data = static_cast<NodeData *>(node.pixels.node_data);
@@ -792,7 +792,7 @@ void mark_image_dirty(PBVHNode &node, Image &image, ImageUser &image_user)
   }
 }
 
-void collect_dirty_tiles(PBVHNode &node, Vector<image::TileNumber> &r_dirty_tiles)
+void collect_dirty_tiles(Node &node, Vector<image::TileNumber> &r_dirty_tiles)
 {
   NodeData *node_data = static_cast<NodeData *>(node.pixels.node_data);
   node_data->collect_dirty_tiles(r_dirty_tiles);
@@ -802,7 +802,7 @@ void collect_dirty_tiles(PBVHNode &node, Vector<image::TileNumber> &r_dirty_tile
 
 namespace blender::bke::pbvh {
 
-void build_pixels(PBVH &pbvh, Mesh *mesh, Image *image, ImageUser *image_user)
+void build_pixels(Tree &pbvh, Mesh *mesh, Image *image, ImageUser *image_user)
 {
   if (pixels::update_pixels(pbvh, mesh, image, image_user) &&
       pixels::PBVH_PIXELS_SPLIT_NODES_ENABLED)
@@ -811,7 +811,7 @@ void build_pixels(PBVH &pbvh, Mesh *mesh, Image *image, ImageUser *image_user)
   }
 }
 
-void node_pixels_free(PBVHNode *node)
+void node_pixels_free(Node *node)
 {
   pixels::NodeData *node_data = static_cast<pixels::NodeData *>(node->pixels.node_data);
 
@@ -823,7 +823,7 @@ void node_pixels_free(PBVHNode *node)
   node->pixels.node_data = nullptr;
 }
 
-void pixels_free(PBVH *pbvh)
+void pixels_free(Tree *pbvh)
 {
   pixels::PBVHData *pbvh_data = static_cast<pixels::PBVHData *>(pbvh->pixels.data);
   MEM_delete(pbvh_data);

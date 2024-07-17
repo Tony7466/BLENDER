@@ -271,7 +271,7 @@ static void edit_data_init(SculptSession &ss,
 {
   const int totvert = SCULPT_vertex_count_get(ss);
 
-  const bool has_duplicates = BKE_pbvh_type(*ss.pbvh) == PBVH_GRIDS;
+  const bool has_duplicates = ss.pbvh->type() == bke::pbvh::Type::Grids;
 
   boundary.edit_info = Array<SculptBoundaryEditInfo>(totvert);
 
@@ -638,7 +638,7 @@ static float displacement_from_grab_delta_get(SculptSession &ss, SculptBoundary 
   return dist_signed_to_plane_v3(pos, plane);
 }
 
-static void boundary_brush_bend_task(Object &ob, const Brush &brush, PBVHNode *node)
+static void boundary_brush_bend_task(Object &ob, const Brush &brush, bke::pbvh::Node *node)
 {
   SculptSession &ss = *ob.sculpt;
   const int symm_area = ss.cache->mirror_symmetry_pass;
@@ -686,7 +686,7 @@ static void boundary_brush_bend_task(Object &ob, const Brush &brush, PBVHNode *n
   BKE_pbvh_vertex_iter_end;
 }
 
-static void brush_slide_task(Object &ob, const Brush &brush, PBVHNode *node)
+static void brush_slide_task(Object &ob, const Brush &brush, bke::pbvh::Node *node)
 {
   SculptSession &ss = *ob.sculpt;
   const int symm_area = ss.cache->mirror_symmetry_pass;
@@ -726,7 +726,7 @@ static void brush_slide_task(Object &ob, const Brush &brush, PBVHNode *node)
   BKE_pbvh_vertex_iter_end;
 }
 
-static void brush_inflate_task(Object &ob, const Brush &brush, PBVHNode *node)
+static void brush_inflate_task(Object &ob, const Brush &brush, bke::pbvh::Node *node)
 {
   SculptSession &ss = *ob.sculpt;
   const int symm_area = ss.cache->mirror_symmetry_pass;
@@ -766,7 +766,7 @@ static void brush_inflate_task(Object &ob, const Brush &brush, PBVHNode *node)
   BKE_pbvh_vertex_iter_end;
 }
 
-static void brush_grab_task(Object &ob, const Brush &brush, PBVHNode *node)
+static void brush_grab_task(Object &ob, const Brush &brush, bke::pbvh::Node *node)
 {
   SculptSession &ss = *ob.sculpt;
   const int symm_area = ss.cache->mirror_symmetry_pass;
@@ -803,7 +803,7 @@ static void brush_grab_task(Object &ob, const Brush &brush, PBVHNode *node)
   BKE_pbvh_vertex_iter_end;
 }
 
-static void brush_twist_task(Object &ob, const Brush &brush, PBVHNode *node)
+static void brush_twist_task(Object &ob, const Brush &brush, bke::pbvh::Node *node)
 {
   SculptSession &ss = *ob.sculpt;
   const int symm_area = ss.cache->mirror_symmetry_pass;
@@ -851,7 +851,7 @@ static void brush_twist_task(Object &ob, const Brush &brush, PBVHNode *node)
   BKE_pbvh_vertex_iter_end;
 }
 
-static void brush_smooth_task(Object &ob, const Brush &brush, PBVHNode *node)
+static void brush_smooth_task(Object &ob, const Brush &brush, bke::pbvh::Node *node)
 {
   SculptSession &ss = *ob.sculpt;
   const int symmetry_pass = ss.cache->mirror_symmetry_pass;
@@ -900,7 +900,7 @@ static void brush_smooth_task(Object &ob, const Brush &brush, PBVHNode *node)
   BKE_pbvh_vertex_iter_end;
 }
 
-void do_boundary_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes)
+void do_boundary_brush(const Sculpt &sd, Object &ob, Span<bke::pbvh::Node *> nodes)
 {
   SculptSession &ss = *ob.sculpt;
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);

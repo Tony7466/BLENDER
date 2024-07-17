@@ -24,7 +24,6 @@
 namespace blender::gpu {
 class Batch;
 }
-struct PBVHNode;
 struct Mesh;
 struct CustomData;
 struct SubdivCCG;
@@ -32,7 +31,10 @@ struct BMesh;
 struct BMFace;
 namespace blender::bke {
 enum class AttrDomain : int8_t;
+namespace pbvh {
+class Node;
 }
+}  // namespace blender::bke
 
 namespace blender::draw::pbvh {
 
@@ -60,7 +62,7 @@ using AttributeRequest = std::variant<CustomRequest, GenericRequest>;
 struct PBVHBatches;
 
 struct PBVH_GPU_Args {
-  int pbvh_type;
+  bke::pbvh::Type pbvh_type;
 
   BMesh *bm;
   const Mesh *mesh;
