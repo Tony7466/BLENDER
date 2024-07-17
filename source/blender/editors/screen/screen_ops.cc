@@ -1465,7 +1465,6 @@ static void area_dupli_fn(bScreen * /*screen*/, ScrArea *area, void *user_data)
 /* operator callback */
 static bool area_dupli_open(bContext *C, ScrArea *area, const blender::int2 position)
 {
-  bScreen *screen = CTX_wm_screen(C);
   const rcti window_rect = {
       position.x, position.x + area->winx, position.y, position.y + area->winy};
 
