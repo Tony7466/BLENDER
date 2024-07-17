@@ -46,6 +46,12 @@ BLOCKLIST_OSL = [
     # Along with mipmapping, OSL with UDIM doesn't respect extrapolation settings
     # This is a bug, See 124847
     'image_mapping_udim.blend',
+    # Alpha is handled differenly in OSL. This is already tested with the OSL variants of these tests.
+    'image_alpha_blend.blend',
+    'image_alpha_channel_packed.blend',
+    'image_alpha_ignore.blend',
+    'image_log.blend',
+    'image_non_color.blend',
     # OSL handles bump + displacement differently from SVM
     'both_displacement.blend',
     'bump_with_displacement.blend',
