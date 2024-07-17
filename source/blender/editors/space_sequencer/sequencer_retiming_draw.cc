@@ -309,8 +309,6 @@ void sequencer_retiming_draw_continuity(const TimelineDrawContext *timeline_ctx,
     return;
   }
 
-  wmOrtho2_region_pixelspace(timeline_ctx->region);
-
   const Sequence *seq = strip_ctx.seq;
   const View2D *v2d = timeline_ctx->v2d;
   const Scene *scene = timeline_ctx->scene;
