@@ -185,11 +185,11 @@ static VertShaded sphere_lat_lon_vert(const float2 &lat_pt, const float2 &lon_pt
 static void append_sphere(Vector<VertShaded> &dest, const eDRWLevelOfDetail level_of_detail)
 {
   BLI_assert(level_of_detail >= DRW_LOD_LOW && level_of_detail < DRW_LOD_MAX);
-  static const std::array<Vector<float2>, DRW_LOD_MAX> latitude_rings = {
+  const std::array<Vector<float2>, DRW_LOD_MAX> latitude_rings = {
       ring_vertices(1.0f, DRW_SPHERE_SHAPE_LATITUDE_LOW),
       ring_vertices(1.0f, DRW_SPHERE_SHAPE_LATITUDE_MEDIUM),
       ring_vertices(1.0f, DRW_SPHERE_SHAPE_LATITUDE_HIGH)};
-  static const std::array<Vector<float2>, DRW_LOD_MAX> longitude_half_rings = {
+  const std::array<Vector<float2>, DRW_LOD_MAX> longitude_half_rings = {
       ring_vertices(1.0f, DRW_SPHERE_SHAPE_LONGITUDE_LOW, true),
       ring_vertices(1.0f, DRW_SPHERE_SHAPE_LONGITUDE_MEDIUM, true),
       ring_vertices(1.0f, DRW_SPHERE_SHAPE_LONGITUDE_HIGH, true)};
@@ -472,8 +472,8 @@ ShapeCache::ShapeCache()
   }
   /* camera distances */
   {
-    static const Vector<float2> diamond = ring_vertices(1.5f, DIAMOND_NSEGMENTS);
-    static const Vector<float2> cross = {{1.0f, 0.0f}, {-1.0f, 0.0f}, {0.0f, 1.0f}, {0.0f, -1.0f}};
+    const Vector<float2> diamond = ring_vertices(1.5f, DIAMOND_NSEGMENTS);
+    const Vector<float2> cross = {{1.0f, 0.0f}, {-1.0f, 0.0f}, {0.0f, 1.0f}, {0.0f, -1.0f}};
 
     Vector<Vertex> verts;
     verts.append({{0.0f, 0.0f, 0.0f}, VCLASS_CAMERA_DIST});
@@ -491,7 +491,7 @@ ShapeCache::ShapeCache()
   }
   /* camera frame */
   {
-    static const Vector<float2> rect{{-1.0f, -1.0f}, {-1.0f, 1.0f}, {1.0f, 1.0f}, {1.0f, -1.0f}};
+    const Vector<float2> rect{{-1.0f, -1.0f}, {-1.0f, 1.0f}, {1.0f, 1.0f}, {1.0f, -1.0f}};
     Vector<Vertex> verts;
     /* Frame */
     append_line_loop(verts, rect, 1.0f, VCLASS_CAMERA_FRAME);
@@ -505,7 +505,7 @@ ShapeCache::ShapeCache()
   }
   /* camera tria */
   {
-    static const Vector<float2> triangle = {{-1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 0.0f}};
+    const Vector<float2> triangle = {{-1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 0.0f}};
     Vector<Vertex> verts(2 * 3);
     /* Wire */
     append_line_loop(verts, triangle, 1.0f, VCLASS_CAMERA_FRAME);
