@@ -457,6 +457,7 @@ void fileselect_refresh_params(SpaceFile *sfile)
   if (asset_params) {
     fileselect_refresh_asset_params(asset_params);
   }
+  ED_fileselect_set_params_from_userdef(sfile);
 }
 
 bool ED_fileselect_is_file_browser(const SpaceFile *sfile)
@@ -481,6 +482,10 @@ blender::asset_system::AssetLibrary *ED_fileselect_active_asset_library_get(cons
 ID *ED_fileselect_active_asset_get(const SpaceFile *sfile)
 {
   if (!ED_fileselect_is_asset_browser(sfile)) {
+    return nullptr;
+  }
+
+  if (sfile->files == nullptr) {
     return nullptr;
   }
 
@@ -1095,7 +1100,9 @@ void ED_fileselect_init_layout(SpaceFile *sfile, ARegion *region)
     file_attribute_columns_init(params, layout);
 
     layout->rows = std::max(rowcount, numfiles);
-    BLI_assert(layout->rows != 0);
+
+    /* layout->rows can be zero if a very small area is changed to a File Browser. #124168. */
+
     layout->height = sfile->layout->rows * (layout->tile_h + 2 * layout->tile_border_y) +
                      layout->tile_border_y * 2 + layout->offset_top;
     layout->flag = FILE_LAYOUT_VER;

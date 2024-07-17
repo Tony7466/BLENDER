@@ -12,6 +12,7 @@
 #include "BLI_compiler_compat.h"
 #include "BLI_function_ref.hh"
 #include "BLI_math_vector_types.hh"
+#include "BLI_set.hh"
 #include "BLI_span.hh"
 #include "BLI_vector.hh"
 
@@ -19,10 +20,14 @@
 #include "DNA_scene_enums.h"
 #include "DNA_vec_types.h"
 
+#include <memory>
+
 enum class PaintMode : int8_t;
 
 struct ARegion;
 struct bContext;
+struct BMesh;
+struct BMVert;
 struct Brush;
 struct ColorManagedDisplay;
 struct ColorSpace;
@@ -42,6 +47,7 @@ struct ReportList;
 struct Scene;
 struct SculptSession;
 struct SpaceImage;
+struct SubdivCCG;
 struct ToolSettings;
 struct VertProjHandle;
 struct ViewContext;
@@ -114,10 +120,24 @@ bool paint_stroke_inverted(PaintStroke *stroke);
 ViewContext *paint_stroke_view_context(PaintStroke *stroke);
 void *paint_stroke_mode_data(PaintStroke *stroke);
 float paint_stroke_distance_get(PaintStroke *stroke);
-void paint_stroke_set_mode_data(PaintStroke *stroke, void *mode_data);
+
+class PaintModeData {
+ public:
+  virtual ~PaintModeData() = default;
+};
+void paint_stroke_set_mode_data(PaintStroke *stroke, std::unique_ptr<PaintModeData> mode_data);
+
 bool paint_stroke_started(PaintStroke *stroke);
 
 bool paint_brush_tool_poll(bContext *C);
+
+void BRUSH_OT_asset_activate(wmOperatorType *ot);
+void BRUSH_OT_asset_save_as(wmOperatorType *ot);
+void BRUSH_OT_asset_edit_metadata(wmOperatorType *ot);
+void BRUSH_OT_asset_load_preview(wmOperatorType *ot);
+void BRUSH_OT_asset_delete(wmOperatorType *ot);
+void BRUSH_OT_asset_update(wmOperatorType *ot);
+void BRUSH_OT_asset_revert(wmOperatorType *ot);
 
 }  // namespace blender::ed::sculpt_paint
 
@@ -444,6 +464,7 @@ enum BrushStrokeMode {
   BRUSH_STROKE_NORMAL,
   BRUSH_STROKE_INVERT,
   BRUSH_STROKE_SMOOTH,
+  BRUSH_STROKE_ERASE,
 };
 
 /* paint_hide.cc */
@@ -470,6 +491,24 @@ void PAINT_OT_visibility_filter(wmOperatorType *ot);
 namespace blender::ed::sculpt_paint::mask {
 
 Array<float> duplicate_mask(const Object &object);
+void mix_new_masks(Span<float> new_masks, Span<float> factors, MutableSpan<float> masks);
+void clamp_mask(MutableSpan<float> masks);
+
+void gather_mask_grids(const SubdivCCG &subdiv_ccg, Span<int> grids, MutableSpan<float> r_mask);
+void gather_mask_bmesh(const BMesh &bm, const Set<BMVert *, 0> &verts, MutableSpan<float> r_mask);
+
+void scatter_mask_grids(Span<float> mask, SubdivCCG &subdiv_ccg, Span<int> grids);
+void scatter_mask_bmesh(Span<float> mask, const BMesh &bm, const Set<BMVert *, 0> &verts);
+
+void average_neighbor_mask_mesh(Span<float> masks,
+                                Span<Vector<int>> vert_neighbors,
+                                MutableSpan<float> new_masks);
+void average_neighbor_mask_grids(const SubdivCCG &subdiv_ccg,
+                                 Span<int> grids,
+                                 MutableSpan<float> new_masks);
+void average_neighbor_mask_bmesh(int mask_offset,
+                                 const Set<BMVert *, 0> &verts,
+                                 MutableSpan<float> new_masks);
 
 /** Write to the mask attribute for each node, storing undo data. */
 void write_mask_mesh(Object &object,

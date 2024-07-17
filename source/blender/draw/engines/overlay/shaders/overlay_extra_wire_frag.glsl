@@ -24,10 +24,14 @@ void main()
 
   fragColor.a = 1.0;
 
-#if !(defined(SELECT_EDGES) || defined(SELECT_ENABLE))
+#ifndef SELECT_ENABLE
+  /* Discarding inside the selection will create some undefined behavior.
+   * This is because we force the early depth test to only output the front most fragment.
+   * Discarding would expose us to race condition depending on rasterization order. */
   if (fract(dist / dash_width) > dash_factor) {
     discard;
   }
 #endif
+
   select_id_output(select_id);
 }

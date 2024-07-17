@@ -13,7 +13,8 @@ vec2 screen_position(vec4 p)
 
 void main()
 {
-  select_id_set(in_select_buf[gl_InstanceID]);
+  select_id_set(drw_CustomID);
+
   vec3 world_pos = point_object_to_world(pos);
   gl_Position = point_world_to_ndc(world_pos);
 

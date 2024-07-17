@@ -911,6 +911,12 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
     return;
   }
 
+  /* Switching to sculpt mode does not push a particular type.
+   * See #124484. */
+  if (step_data.type == Type::None && step_data.nodes.is_empty()) {
+    return;
+  }
+
   const bool tag_update = ID_REAL_USERS(object.data) > 1 ||
                           !BKE_sculptsession_use_pbvh_draw(&object, rv3d) || ss.shapekey_active ||
                           ss.deform_modifiers_active;
@@ -2114,3 +2120,42 @@ void push_multires_mesh_end(bContext *C, const char *str)
 /** \} */
 
 }  // namespace blender::ed::sculpt_paint::undo
+
+namespace blender::ed::sculpt_paint {
+
+OrigPositionData orig_position_data_get_mesh(const Object & /*object*/, const PBVHNode &node)
+{
+  const undo::Node *unode = undo::get_node(&node, undo::Type::Position);
+  return {unode->position.as_span().take_front(unode->unique_verts_num),
+          unode->normal.as_span().take_front(unode->unique_verts_num)};
+}
+
+OrigPositionData orig_position_data_get_grids(const Object & /*object*/, const PBVHNode &node)
+{
+  const undo::Node *unode = undo::get_node(&node, undo::Type::Position);
+  return {unode->position.as_span(), unode->normal.as_span()};
+}
+
+void orig_position_data_gather_bmesh(const BMLog &bm_log,
+                                     const Set<BMVert *, 0> &verts,
+                                     const MutableSpan<float3> positions,
+                                     const MutableSpan<float3> normals)
+{
+  int i = 0;
+  for (const BMVert *vert : verts) {
+    const float *co;
+    const float *no;
+    BM_log_original_vert_data(&const_cast<BMLog &>(bm_log), const_cast<BMVert *>(vert), &co, &no);
+    positions[i] = co;
+    normals[i] = no;
+    i++;
+  }
+}
+
+Span<float4> orig_color_data_get_mesh(const Object & /*object*/, const PBVHNode &node)
+{
+  const undo::Node *unode = undo::get_node(&node, undo::Type::Color);
+  return unode->col.as_span();
+}
+
+}  // namespace blender::ed::sculpt_paint
