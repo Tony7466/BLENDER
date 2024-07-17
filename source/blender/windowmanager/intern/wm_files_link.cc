@@ -29,8 +29,8 @@
 
 #include "BLI_bitmap.h"
 #include "BLI_blenlib.h"
-#include "BLI_ghash.h"
 #include "BLI_linklist.h"
+#include "BLI_map.hh"
 #include "BLI_memarena.h"
 #include "BLI_utildefines.h"
 
@@ -288,7 +288,7 @@ static int wm_link_append_exec(bContext *C, wmOperator *op)
       lapp_context, datatoc_startup_blend, datatoc_startup_blend_size);
 
   if (totfiles != 0) {
-    GHash *libraries = BLI_ghash_new(BLI_ghashutil_strhash_p, BLI_ghashutil_strcmp, __func__);
+    blender::Map<std::string, int> libraries;
     int lib_idx = 0;
 
     RNA_BEGIN (op->ptr, itemptr, "files") {
@@ -301,8 +301,7 @@ static int wm_link_append_exec(bContext *C, wmOperator *op)
           continue;
         }
 
-        if (!BLI_ghash_haskey(libraries, libname)) {
-          BLI_ghash_insert(libraries, BLI_strdup(libname), POINTER_FROM_INT(lib_idx));
+        if (libraries.add(libname, lib_idx)) {
           lib_idx++;
           BKE_blendfile_link_append_context_library_add(lapp_context, libname, nullptr);
         }
@@ -322,7 +321,7 @@ static int wm_link_append_exec(bContext *C, wmOperator *op)
           continue;
         }
 
-        lib_idx = POINTER_AS_INT(BLI_ghash_lookup(libraries, libname));
+        lib_idx = libraries.lookup(libname);
 
         item = BKE_blendfile_link_append_context_item_add(
             lapp_context, name, BKE_idtype_idcode_from_name(group), nullptr);
@@ -330,8 +329,6 @@ static int wm_link_append_exec(bContext *C, wmOperator *op)
       }
     }
     RNA_END;
-
-    BLI_ghash_free(libraries, MEM_freeN, nullptr);
   }
   else {
     BlendfileLinkAppendContextItem *item;
