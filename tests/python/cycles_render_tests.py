@@ -9,6 +9,7 @@ import os
 import shlex
 import sys
 from pathlib import Path
+from modules import render_report
 
 # List of .blend files that are known to be failing and are not ready to be
 # tested, or that only make sense on some devices. Accepts regular expressions.
@@ -132,6 +133,18 @@ BLACKLIST_GPU = [
 ]
 
 
+class Cycles_Report(render_report.Report):
+    def __init__(self, title, output_dir, oiiotool, device=None, blocklist=[], osl=False):
+        super().__init__(title, output_dir, oiiotool, device=device, blacklist=blocklist)
+        self.osl = osl
+
+        if osl:
+            self.title += " OSL"
+
+    def _command_arguments(self, arguments_cb, filepath, base_output_filepath):
+        return arguments_cb(filepath, base_output_filepath, self.osl)
+
+
 def get_arguments(filepath, output_filepath, osl=False):
     dirname = os.path.dirname(filepath)
     basedir = os.path.dirname(dirname)
@@ -209,8 +222,7 @@ def main():
     if args.osl:
         blacklist += BLOCKLIST_OSL
 
-    from modules import render_report
-    report = render_report.Report('Cycles', output_dir, oiiotool, device, blacklist, args.osl)
+    report = Cycles_Report('Cycles', output_dir, oiiotool, device, blacklist, args.osl)
     report.set_pixelated(True)
     report.set_reference_dir("cycles_renders")
     if device == 'CPU':

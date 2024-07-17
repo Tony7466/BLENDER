@@ -93,10 +93,9 @@ class Report:
         'compare_engine',
         'device',
         'blacklist',
-        'osl',
     )
 
-    def __init__(self, title, output_dir, oiiotool, device=None, blacklist=[], osl=False):
+    def __init__(self, title, output_dir, oiiotool, device=None, blacklist=[]):
         self.title = title
         self.output_dir = output_dir
         self.global_dir = os.path.dirname(output_dir)
@@ -109,13 +108,10 @@ class Report:
         self.engine_name = self.title.lower().replace(" ", "_")
         self.device = device
         self.blacklist = blacklist
-        self.osl = osl
 
         if device:
-            self.title = self._engine_title(self.title, device)
+            self.title = self._engine_title(title, device)
             self.output_dir = self._engine_path(self.output_dir, device.lower())
-        if osl:
-            self.title = self._engine_title(self.title, "OSL")
 
         self.pixelated = False
         self.verbose = os.environ.get("BLENDER_VERBOSE") is not None
@@ -182,15 +178,15 @@ class Report:
         else:
             return """<li class="breadcrumb-item"><a href="%s">%s</a></li>""" % (href, title)
 
-    def _engine_title(self, engine, extra):
-        if extra:
-            return engine.title() + ' ' + extra
+    def _engine_title(self, engine, device):
+        if device:
+            return engine.title() + ' ' + device
         else:
             return engine.title()
 
-    def _engine_path(self, path, extra):
-        if extra:
-            return os.path.join(path, extra.lower())
+    def _engine_path(self, path, device):
+        if device:
+            return os.path.join(path, device.lower())
         else:
             return path
 
@@ -462,6 +458,11 @@ class Report:
 
         return not failed
 
+    def _command_arguments(self, arguments_cb, filepath, base_output_filepath):
+        # Each render test can override this method to provide extra functionality.
+        # Do not delete.
+        return arguments_cb(filepath, base_output_filepath)
+
     def _run_tests(self, filepaths, blender, arguments_cb, batch):
         # Run multiple tests in a single Blender process since startup can be
         # a significant factor. In case of crashes, re-run the remaining tests.
@@ -486,10 +487,7 @@ class Report:
                 if os.path.exists(output_filepath):
                     os.remove(output_filepath)
 
-                if 'Cycles' in self.title:
-                    command.extend(arguments_cb(filepath, base_output_filepath, self.osl))
-                else:
-                    command.extend(arguments_cb(filepath, base_output_filepath))
+                command.extend(self._command_arguments(arguments_cb, filepath, base_output_filepath))
 
                 # Only chain multiple commands for batch
                 if not batch:
