@@ -24,7 +24,9 @@ void main()
 
   fragColor.a = 1.0;
 
-#ifndef SELECT_EDGES
+#ifndef SELECT_ENABLE
+  /* Discarding inside the selection will create some undefined behavior.
+   * This is because we force the early depth test. */
   if (fract(dist / dash_width) > dash_factor) {
     discard;
   }
