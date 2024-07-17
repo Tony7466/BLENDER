@@ -61,7 +61,7 @@ BLOCKLIST_OSL = [
     # Currently failing tests that aren't in this list are:
     # Blackbody - Subtle noise difference
     # Various Principled BSDF tests - Seems to be noise from mixing and layering
-    # Some render pass tests - Seems to be noise
+    # Some render pass tests - Seems to be noise from mixing and layering in the Principled BSDF used to test them
 ]
 
 BLACKLIST_OPTIX = [
