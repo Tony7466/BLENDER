@@ -22,8 +22,8 @@ RotateOperation::RotateOperation()
 
 void RotateOperation::get_rotation_center(const rcti &area, float &r_x, float &r_y)
 {
-  r_x = (BLI_rcti_size_x(&area) - 1) / 2.0;
-  r_y = (BLI_rcti_size_y(&area) - 1) / 2.0;
+  r_x = (BLI_rcti_size_x(&area)) / 2.0;
+  r_y = (BLI_rcti_size_y(&area)) / 2.0;
 }
 
 void RotateOperation::get_rotation_offset(const rcti &input_canvas,
@@ -60,10 +60,10 @@ void RotateOperation::get_area_rotation_bounds(const rcti &area,
   const float miny = std::min(y1, std::min(y2, std::min(y3, y4)));
   const float maxy = std::max(y1, std::max(y2, std::max(y3, y4)));
 
-  r_bounds.xmin = floor(minx);
-  r_bounds.xmax = ceil(maxx);
-  r_bounds.ymin = floor(miny);
-  r_bounds.ymax = ceil(maxy);
+  r_bounds.xmin = floor(minx + 0.1f);
+  r_bounds.xmax = ceil(maxx - 0.1f);
+  r_bounds.ymin = floor(miny + 0.1f);
+  r_bounds.ymax = ceil(maxy - 0.1f);
 }
 
 void RotateOperation::get_area_rotation_bounds_inverted(const rcti &area,
@@ -176,12 +176,14 @@ void RotateOperation::update_memory_buffer_partial(MemoryBuffer *output,
   float rotate_offset_x, rotate_offset_y;
   get_rotation_offset(
       image_op->get_canvas(), this->get_canvas(), rotate_offset_x, rotate_offset_y);
+  rotate_offset_x += canvas_.xmin + 0.5f;
+  rotate_offset_y += canvas_.ymin + 0.5f;
 
   for (BuffersIterator<float> it = output->iterate_with({}, area); !it.is_end(); ++it) {
-    float x = rotate_offset_x + it.x + canvas_.xmin;
-    float y = rotate_offset_y + it.y + canvas_.ymin;
+    float x = rotate_offset_x + it.x;
+    float y = rotate_offset_y + it.y;
     rotate_coords(x, y, center_x, center_y, sine_, cosine_);
-    input_img->read_elem_sampled(x - canvas_.xmin, y - canvas_.ymin, sampler_, it.out);
+    input_img->read_elem_sampled(x - canvas_.xmin - 0.5f, y - canvas_.ymin - 0.5f, sampler_, it.out);
   }
 }
 
