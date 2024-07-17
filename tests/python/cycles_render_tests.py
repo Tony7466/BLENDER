@@ -21,13 +21,13 @@ BLACKLIST_ALL = [
     "visibility_particles.blend",
 ]
 
-BLACKLIST_OSL_TESTS = [
+BLOCKLIST_EXPLICIT_OSL_TESTS = [
     # OSL only supported on CPU.
     '.*_osl.blend',
     'osl_.*.blend',
 ]
 
-BLACKLIST_OSL = [
+BLOCKLIST_OSL = [
     # Black list tests that fail with OSL due to differences from SVM.
     # Point Density is disabled on surfaces in SVM.
     # This was a performance optimization that wasn't carried over to OSL.
@@ -61,7 +61,7 @@ BLACKLIST_OPTIX = [
     'T43865.blend',
 ]
 
-BLACKLIST_OPTIX_OSL = [
+BLOCKLIST_OPTIX_OSL = [
     # OPTIX OSL doesn't support trace function needed for AO and bevel
     'bake_bevel.blend',
     'ambient_occlusion.*.blend',
@@ -85,7 +85,7 @@ BLACKLIST_OPTIX_OSL = [
     # points_volume.blend - CUDA error
     # principled_emission_alpha.blend - CUDA error related to connected inputs. Probably the same as 122779
     # point_density_*_object - Object scale doesn't appear to be appplied to texture
-    # All the other tests mentioned in BLACKLIST_OSL (E.g. Principled BSDF tests having noise differences)
+    # All the other tests mentioned in BLOCKLIST_OSL (E.g. Principled BSDF tests having noise differences)
 ]
 
 BLACKLIST_METAL = []
@@ -191,15 +191,15 @@ def main():
     if device != 'CPU':
         blacklist += BLACKLIST_GPU
     if device != 'CPU' or 'OSL' in args.blacklist:
-        blacklist += BLACKLIST_OSL_TESTS
+        blacklist += BLACKLIST_EXPLICIT_OSL_TESTS
     if device == 'OPTIX':
         blacklist += BLACKLIST_OPTIX
         if args.osl:
-            blacklist += BLACKLIST_OPTIX_OSL
+            blacklist += BLOCKLIST_OPTIX_OSL
     if device == 'METAL':
         blacklist += BLACKLIST_METAL
     if args.osl:
-        blacklist += BLACKLIST_OSL
+        blacklist += BLOCKLIST_OSL
 
     from modules import render_report
     report = render_report.Report('Cycles', output_dir, oiiotool, device, blacklist, args.osl)
