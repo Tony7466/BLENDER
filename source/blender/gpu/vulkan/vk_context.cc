@@ -23,8 +23,8 @@ namespace blender::gpu {
 
 VKContext::VKContext(void *ghost_window,
                      void *ghost_context,
-                     render_graph::VKResourceStateTracker &resources)
-    : render_graph(std::make_unique<render_graph::VKCommandBufferWrapper>(), resources)
+                     render_graph::VKRenderGraph &render_graph)
+    : render_graph(render_graph)
 {
   ghost_window_ = ghost_window;
   ghost_context_ = ghost_context;
@@ -46,7 +46,6 @@ VKContext::~VKContext()
     GPU_texture_free(surface_texture_);
     surface_texture_ = nullptr;
   }
-  render_graph.free_data();
   VKBackend::get().device.context_unregister(*this);
 
   delete imm;
@@ -115,9 +114,6 @@ void VKContext::activate()
 
 void VKContext::deactivate()
 {
-  /* Draw manager draws in a different context than the rest of the UI. Although run from the
-   * same thread. Commands inside the render-graph need to be submitted into the device queue. */
-  flush_render_graph();
   immDeactivate();
   is_active_ = false;
 }
@@ -255,6 +251,15 @@ void VKContext::update_pipeline_data(VKShader &vk_shader,
     r_pipeline_data.push_constants_data = vk_shader.push_constants.data();
   }
 
+  /* When using the push constant fallback we need to add a read access dependency to the uniform
+   * buffer after the buffer has been updated.
+   * NOTE: this alters the context instance variable `access_info_` which isn't clear from the API.
+   */
+  if (push_constants_layout.storage_type_get() == VKPushConstants::StorageType::UNIFORM_BUFFER) {
+    access_info_.buffers.append(
+        {vk_shader.push_constants.uniform_buffer_get()->vk_handle(), VK_ACCESS_UNIFORM_READ_BIT});
+  }
+
   /* Update descriptor set. */
   r_pipeline_data.vk_descriptor_set = VK_NULL_HANDLE;
   if (vk_shader.has_descriptor_set()) {
@@ -321,14 +326,19 @@ void VKContext::swap_buffers_pre_handler(const GHOST_VulkanSwapChainData &swap_c
    * to keep track of the swap chain image between frames. */
   VKDevice &device = VKBackend::get().device;
   device.resources.add_image(swap_chain_data.image,
+                             1,
                              VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-                             render_graph::ResourceOwner::SWAP_CHAIN);
+                             render_graph::ResourceOwner::SWAP_CHAIN,
+                             "SwapchainImage");
 
   framebuffer.rendering_end(*this);
   render_graph.add_node(blit_image);
   render_graph.submit_for_present(swap_chain_data.image);
 
   device.resources.remove_image(swap_chain_data.image);
+#if 0
+  device.debug_print();
+#endif
   device.destroy_discarded_resources();
 }
 
