@@ -1378,9 +1378,11 @@ static bool write_file_handle(Main *mainvar,
 
         mywrite_id_begin(wd, id);
 
-        /* TODO: Investigate whether this can be put in a better place. */
-        blender::RandomNumberGenerator rng = blender::RandomNumberGenerator::from_random_seed();
-        rng.get_bytes({id->shallow_hash.data, sizeof(id->shallow_hash.data)});
+        if (!ID_IS_LOCKED(id)) {
+          /* TODO: Investigate whether this can be put in a better place. */
+          blender::RandomNumberGenerator rng = blender::RandomNumberGenerator::from_random_seed();
+          rng.get_bytes({id->shallow_hash.data, sizeof(id->shallow_hash.data)});
+        }
 
         id_buffer_init_from_id(id_buffer, id, wd->use_memfile);
 

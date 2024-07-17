@@ -19,6 +19,7 @@
 #include "BLI_ghash.h"
 #include "BLI_map.hh"
 #include "BLI_mempool.h"
+#include "BLI_multi_value_map.hh"
 #include "BLI_threads.h"
 #include "BLI_vector.hh"
 
@@ -861,4 +862,36 @@ int set_listbasepointers(Main *bmain, ListBase *lb[/*INDEX_ID_MAX*/])
   lb[INDEX_ID_NULL] = nullptr;
 
   return (INDEX_ID_MAX - 1);
+}
+
+void BKE_main_deduplicate_locked_ids(Main &bmain)
+{
+  ID *id;
+  blender::MultiValueMap<IDHash, ID *> ids_with_hash;
+  FOREACH_MAIN_ID_BEGIN (&bmain, id) {
+    if (ID_IS_LOCKED(id)) {
+      ids_with_hash.add(id->deep_hash, id);
+    }
+  }
+  FOREACH_MAIN_ID_END;
+
+  for (const blender::Span<ID *> ids_with_same_hash : ids_with_hash.values()) {
+    if (ids_with_same_hash.size() <= 1) {
+      /* Nothing to do, because there are no duplicates. */
+      continue;
+    }
+    ID *id_to_keep = ids_with_same_hash[0];
+    for (ID *other_id : ids_with_same_hash.drop_front(1)) {
+      if (ID_IS_LINKED(id_to_keep) && !ID_IS_LINKED(other_id)) {
+        id_to_keep = other_id;
+      }
+    }
+    for (ID *id : ids_with_same_hash) {
+      if (id != id_to_keep) {
+        id->newid = id_to_keep;
+        BKE_libblock_relink_to_newid(&bmain, id, 0);
+      }
+    }
+  }
+  BKE_main_id_newptr_and_tag_clear(&bmain);
 }

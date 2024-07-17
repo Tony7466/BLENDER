@@ -1391,6 +1391,8 @@ void BKE_blendfile_append(BlendfileLinkAppendContext *lapp_context, ReportList *
 
   BKE_main_id_newptr_and_tag_clear(bmain);
 
+  BKE_main_deduplicate_locked_ids(*bmain);
+
   BlendFileReadReport bf_reports{};
   bf_reports.reports = reports;
   BLO_read_do_version_after_setup(bmain, &bf_reports);
