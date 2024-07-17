@@ -3777,9 +3777,7 @@ static int area_join_cursor(sAreaJoinData *jd, const wmEvent *event)
       /* Mouse inside source area, so allow splitting. */
       return (jd->split_dir == SCREEN_AXIS_V) ? WM_CURSOR_V_SPLIT : WM_CURSOR_H_SPLIT;
     }
-    else {
-      return WM_CURSOR_EDIT;
-    }
+    return WM_CURSOR_EDIT;
   }
 
   if (jd->dock_target == DOCKING_NONE) {
@@ -3863,20 +3861,23 @@ static eAreaDockTarget area_docking_target(sAreaJoinData *jd, const wmEvent *eve
 
   /* Area is large enough for four docking targets. */
   const float area_ratio = float(jd->sa2->winx) / float(jd->sa2->winy);
-  const bool TL = float(x) / float(y + 1) < area_ratio;
-  const bool BL = float(x) / float(jd->sa2->winy - y + 1) < area_ratio;
-  if (TL && !BL) {
+  /* Split the area diagonally from top-right to bottom-left. */
+  const bool upper_left = float(x) / float(y + 1) < area_ratio;
+  /* Split the area diagonally from top-left to bottom-right. */
+  const bool lower_left = float(x) / float(jd->sa2->winy - y + 1) < area_ratio;
+  if (upper_left && !lower_left) {
     return DOCKING_TOP;
   }
-  else if (!TL && BL) {
+  if (!upper_left && lower_left) {
     return DOCKING_BOTTOM;
   }
-  else if (TL && BL) {
+  if (upper_left && lower_left) {
     return DOCKING_LEFT;
   }
-  else {
+  if (!upper_left && !lower_left) {
     return DOCKING_RIGHT;
   }
+  return DOCKING_NONE;
 }
 
 static float area_split_factor(bContext *C, sAreaJoinData *jd, const wmEvent *event)
