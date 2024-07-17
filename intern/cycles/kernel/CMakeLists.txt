@@ -864,22 +864,19 @@ if(WITH_CYCLES_DEVICE_HIPRT AND WITH_CYCLES_HIP_BINARIES)
     set(BVH_INSTALL_PATH ${CMAKE_INSTALL_PREFIX}/lib)
   endif()
 
-
- delayed_install("${CMAKE_CURRENT_BINARY_DIR}" "${hiprt_file}"  ${CYCLES_INSTALL_PATH}/lib)
  delayed_install("${CMAKE_CURRENT_BINARY_DIR}" "${bvh_file}"     ${BVH_INSTALL_PATH})
  delayed_install("${CMAKE_CURRENT_BINARY_DIR}" "${bvh_file_oro}" ${BVH_INSTALL_PATH})
- add_custom_target(cycles_kernel_hiprt ALL DEPENDS ${hiprt_file} ${bvh_file} ${bvh_file_oro})
- cycles_set_solution_folder(cycles_kernel_hiprt)
+
   add_custom_command(
     OUTPUT  ${hiprt_file}
     COMMAND ${hiprt_link_command} ${hiprt_link_flags}
     DEPENDS ${bitcode_file})
-    add_custom_command(
-      OUTPUT ${hiprt_file_compressed}
-      COMMAND "$<TARGET_FILE:zstd_compress>" ${hiprt_file} ${hiprt_file_compressed}
-      DEPENDS ${hiprt_file})
+  add_custom_command(
+    OUTPUT ${hiprt_file_compressed}
+    COMMAND "$<TARGET_FILE:zstd_compress>" ${hiprt_file} ${hiprt_file_compressed}
+    DEPENDS ${hiprt_file})
   delayed_install("${CMAKE_CURRENT_BINARY_DIR}" "${hiprt_file_compressed}" ${CYCLES_INSTALL_PATH}/lib)
-  add_custom_target(cycles_kernel_hiprt ALL DEPENDS ${hiprt_file_compressed})
+  add_custom_target(cycles_kernel_hiprt ALL DEPENDS ${hiprt_file_compressed} ${bvh_file} ${bvh_file_oro})
   cycles_set_solution_folder(cycles_kernel_hiprt)
 endif()
 
