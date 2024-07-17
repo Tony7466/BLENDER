@@ -7,6 +7,8 @@
  * \ingroup wm
  */
 
+#include <optional>
+
 #include "BLI_compiler_attrs.h"
 
 struct IDProperty;
@@ -24,6 +26,11 @@ struct wmMsgSubscribeKey;
 struct wmMsgSubscribeValue;
 struct wmOperatorType;
 struct wmWindow;
+
+namespace blender {
+class StringRef;
+class StringRefNull;
+};  // namespace blender
 
 /* `wm_toolsystem.cc` */
 
@@ -95,6 +102,9 @@ void WM_toolsystem_update_from_context(
  * For paint modes to support non-brush tools.
  */
 bool WM_toolsystem_active_tool_is_brush(const bContext *C);
+
+std::optional<blender::StringRefNull> WM_toolsystem_find_id_from_data_block(
+    const bContext *C, blender::StringRef data_block);
 
 /** Follow #wmMsgNotifyFn spec. */
 void WM_toolsystem_do_msg_notify_tag_refresh(bContext *C,
