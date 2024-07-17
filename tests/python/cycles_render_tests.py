@@ -44,7 +44,7 @@ BLOCKLIST_OSL = [
     'image_mapping_.*_cubic.blend',
     'image_mapping_.*_linear.blend',
     # Along with mipmapping, OSL with UDIM doesn't respect extrapolation settings
-    # This is a bug, See 124847
+    # This has been reported in 124847 for further investigation
     'image_mapping_udim.blend',
     # Alpha is handled differenly in OSL. This is already tested with the OSL variants of these tests.
     'image_alpha_blend.blend',
@@ -58,7 +58,6 @@ BLOCKLIST_OSL = [
     'ray_portal.blend',
     # TODO: Add more failing tests
     # Currently failing tests that aren't in this list are:
-    # Some image color space tests - Likely due to differences in how textures are processed
     # Blackbody - Subtle noise difference
     # Various Principled BSDF tests - Seems to be noise from mixing and layering
     # Some render pass tests - Seems to be noise
