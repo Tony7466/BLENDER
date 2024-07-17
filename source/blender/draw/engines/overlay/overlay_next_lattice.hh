@@ -37,8 +37,7 @@ class Lattices {
         sub_pass.shader_set(shader);
         sub_pass.bind_ubo("globalsBlock", &res.globals_buf);
         if (add_weight_tex) {
-          /* TODO: Replace G_draw.weight_ramp with res.weight_ramp. */
-          sub_pass.bind_texture("weightTex", G_draw.weight_ramp);
+          sub_pass.bind_texture("weightTex", &res.weight_ramp_tx);
         }
         return &sub_pass;
       };

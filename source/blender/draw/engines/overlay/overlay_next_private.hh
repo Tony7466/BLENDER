@@ -162,6 +162,7 @@ struct Resources : public select::SelectMap {
   TextureRef depth_in_front_tx;
   TextureRef color_overlay_tx;
   TextureRef color_render_tx;
+  TextureRef weight_ramp_tx;
 
   Resources(const SelectionType selection_type_, ShaderModule &shader_module)
       : select::SelectMap(selection_type_), shaders(shader_module){};

@@ -66,6 +66,7 @@ void Instance::init()
   /* TODO(fclem): Remove DRW global usage. */
   resources.globals_buf = G_draw.block_ubo;
   resources.theme_settings = G_draw.block;
+  resources.weight_ramp_tx.wrap(G_draw.weight_ramp);
 }
 
 void Instance::begin_sync()
