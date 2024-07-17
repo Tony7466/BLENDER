@@ -3910,8 +3910,7 @@ static float area_split_factor(bContext *C, sAreaJoinData *jd, const wmEvent *ev
     fac = (fabs(near_fac - fac) < fabs(frac_fac - fac)) ? near_fac : frac_fac;
   }
 
-  CLAMP(fac, 0.001f, 0.999f);
-  return fac;
+  return std::clamp(fac, 0.001f, 0.999f);
 }
 
 static void area_join_update_data(bContext *C, sAreaJoinData *jd, const wmEvent *event)
