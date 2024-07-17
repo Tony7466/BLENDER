@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_math_matrix.hh"
+
 #include "COM_algorithm_realize_on_domain.hh"
 #include "COM_context.hh"
 #include "COM_domain.hh"
@@ -29,11 +31,23 @@ RealizeOnDomainOperation::RealizeOnDomainOperation(Context &context,
 
 void RealizeOnDomainOperation::execute()
 {
+  const Domain& in_domain = get_input().domain();
+
+  /* Even and odd-sized domains have different pixel locations, which produces
+   * unexpected filtering. If one is odd (detected by testing the low bit of the xor
+   * of the sizes), shift the input by 1/2 pixel so the pixels align. Shift is
+   * right/up if input is odd (detected by testing the low bit of it's size),
+   * down/left if input is even. Alternating the direction is so this adjustment
+   * does not accumulate over multiple operations. */
+  float2 translate(
+    ((in_domain.size[0] ^ domain_.size[0]) & 1) ? ((in_domain.size[0] & 1) ? 0.5f : -0.5f) : 0.0f,
+    ((in_domain.size[1] ^ domain_.size[1]) & 1) ? ((in_domain.size[1] & 1) ? 0.5f : -0.5f) : 0.0f);
+
   realize_on_domain(context(),
                     get_input(),
                     get_result(),
                     domain_,
-                    get_input().domain().transformation,
+                    math::translate(in_domain.transformation, translate),
                     get_input().get_realization_options());
 }
 
