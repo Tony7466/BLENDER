@@ -1527,18 +1527,18 @@ static void grease_pencil_brush_cursor_draw(PaintCursorContext *pcontext)
 
   /* for paint use paint brush size and color */
   if (pcontext->mode == PaintMode::GPencil) {
-    /* Eraser has a special shape and use a different shader program. */
-    if (brush->gpencil_tool == GPAINT_TOOL_ERASE) {
+    /* Eraser has a special shape and uses a different shader program. */
+    if (brush->gpencil_tool == GPAINT_TOOL_ERASE || grease_pencil->runtime->use_eraser_temp) {
       grease_pencil_eraser_draw(pcontext);
       return;
     }
 
-    /* Hide the cursor while drwaing. */
+    /* Hide the cursor while drawing. */
     if (grease_pencil->runtime->is_drawing_stroke) {
       return;
     }
 
-    if ((brush->flag & BRUSH_LOCK_SIZE) != 0) {
+    if (brush->gpencil_tool == GPAINT_TOOL_DRAW && (brush->flag & BRUSH_LOCK_SIZE) != 0) {
       const bke::greasepencil::Layer *layer = grease_pencil->get_active_layer();
       const ed::greasepencil::DrawingPlacement placement(
           *pcontext->scene, *pcontext->region, *pcontext->vc.v3d, *object, layer);
@@ -1574,9 +1574,6 @@ static void grease_pencil_brush_cursor_draw(PaintCursorContext *pcontext)
       color = scale * float3(paint->paint_cursor_col);
     }
   }
-  else if (pcontext->mode == PaintMode::WeightGPencil) {
-    copy_v3_v3(color, brush->add_col);
-  }
 
   GPU_line_width(1.0f);
   /* Inner Ring: Color from UI panel */
@@ -1592,8 +1589,7 @@ static void grease_pencil_brush_cursor_draw(PaintCursorContext *pcontext)
 static void paint_draw_2D_view_brush_cursor(PaintCursorContext *pcontext)
 {
   switch (pcontext->mode) {
-    case PaintMode::GPencil:
-    case PaintMode::WeightGPencil: {
+    case PaintMode::GPencil: {
       grease_pencil_brush_cursor_draw(pcontext);
       break;
     }
@@ -1705,28 +1701,22 @@ static void paint_cursor_preview_boundary_data_pivot_draw(PaintCursorContext *pc
     return;
   }
   immUniformColor4f(1.0f, 1.0f, 1.0f, 0.8f);
-  cursor_draw_point_screen_space(
-      pcontext->pos,
-      pcontext->region,
-      SCULPT_vertex_co_get(*pcontext->ss, pcontext->ss->boundary_preview->pivot_vertex),
-      pcontext->vc.obact->object_to_world().ptr(),
-      3);
+  cursor_draw_point_screen_space(pcontext->pos,
+                                 pcontext->region,
+                                 pcontext->ss->boundary_preview->pivot_position,
+                                 pcontext->vc.obact->object_to_world().ptr(),
+                                 3);
 }
 
-static void paint_cursor_preview_boundary_data_update(PaintCursorContext *pcontext,
-                                                      const bool update_previews)
+static void paint_cursor_preview_boundary_data_update(PaintCursorContext *pcontext)
 {
   using namespace blender::ed::sculpt_paint;
   SculptSession &ss = *pcontext->ss;
-  if (!(update_previews || !ss.boundary_preview)) {
-    return;
-  }
-
   /* Needed for updating the necessary SculptSession data in order to initialize the
    * boundary data for the preview. */
   BKE_sculpt_update_object_for_edit(pcontext->depsgraph, pcontext->vc.obact, false);
 
-  ss.boundary_preview = boundary::data_init(
+  ss.boundary_preview = boundary::preview_data_init(
       *pcontext->vc.obact, pcontext->brush, ss.active_vertex, pcontext->radius);
 }
 
@@ -1819,7 +1809,7 @@ static void paint_cursor_draw_3d_view_brush_cursor_inactive(PaintCursorContext *
   }
 
   if (is_brush_tool && brush.sculpt_tool == SCULPT_TOOL_BOUNDARY) {
-    paint_cursor_preview_boundary_data_update(pcontext, update_previews);
+    paint_cursor_preview_boundary_data_update(pcontext);
     paint_cursor_preview_boundary_data_pivot_draw(pcontext);
   }
 
