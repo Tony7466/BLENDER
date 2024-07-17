@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BKE_attribute.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_physics_geometry.hh"
 
@@ -25,6 +26,28 @@ class PhysicsGeometryTest : public testing::Test {
     EXPECT_EQ(physics.bodies_num(), bodies_num);
     EXPECT_EQ(physics.constraints_num(), constraints_num);
     EXPECT_EQ(physics.shapes_num(), shapes_num);
+  }
+
+  void add_value_attribute(bke::PhysicsGeometry &physics,
+                           const bke::AttrDomain domain,
+                           const int value)
+  {
+    bke::MutableAttributeAccessor attributes = physics.attributes_for_write();
+    const VArray<int> varray = VArray<int>::ForSingle(value, attributes.domain_size(domain));
+    attributes.add<int>("test_value", domain, AttributeInitVArray(varray));
+  }
+
+  void test_attribute(const bke::PhysicsGeometry &physics,
+                      const bke::AttrDomain domain,
+                      const VArray<int> &varray)
+  {
+    bke::AttributeAccessor attributes = physics.attributes();
+    const int size = attributes.domain_size(domain);
+    const VArray<int> data = *attributes.lookup<int>("test_value");
+    EXPECT_EQ(data.size(), varray.size());
+    for (const int i : IndexRange(size)) {
+      EXPECT_EQ(data[i], varray[i]);
+    }
   }
 };
 

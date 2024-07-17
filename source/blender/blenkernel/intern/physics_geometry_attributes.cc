@@ -107,12 +107,16 @@ static void id_set_fn(btRigidBody &body, int value)
 {
   body.setUserIndex(value);
 }
-static int body_collision_shape_get_fn(
-    const btRigidBody & /*body*/)
+static int body_collision_shape_get_fn(const btRigidBody & /*body*/)
 {
   return -1;
 }
+static void body_collision_shape_set_fn(btRigidBody & /*body*/, int /*value*/) {}
 static Span<int> body_collision_shape_get_cache_fn(const PhysicsGeometryImpl &impl)
+{
+  return impl.body_collision_shapes;
+}
+static MutableSpan<int> body_collision_shape_set_cache_fn(PhysicsGeometryImpl &impl)
 {
   return impl.body_collision_shapes;
 }
@@ -300,17 +304,20 @@ static float3 total_force_get_fn(const btRigidBody &body)
 {
   return to_blender(body.getTotalForce());
 }
+static void total_force_set_fn(btRigidBody & /*body*/, float3 /*value*/) {}
 
 static float3 total_torque_get_fn(const btRigidBody &body)
 {
   return to_blender(body.getTotalTorque());
 }
+static void total_torque_set_fn(btRigidBody & /*body*/, float3 /*value*/) {}
 
 static int constraint_type_get_fn(const btTypedConstraint *constraint)
 {
   return int(constraint ? to_blender(constraint->getConstraintType()) :
                           bke::PhysicsGeometry::ConstraintType::None);
 }
+static void constraint_type_set_fn(btTypedConstraint * /*constraint*/, int /*value*/) {}
 
 static bool constraint_enabled_get_fn(const btTypedConstraint *constraint)
 {
@@ -327,11 +334,13 @@ static int constraint_body1_get_fn(const btTypedConstraint *constraint)
 {
   return constraint ? get_body_index(constraint->getRigidBodyA()) : -1;
 }
+static void constraint_body1_set_fn(btTypedConstraint * /*constraint*/, int /*value*/) {}
 
 static int constraint_body2_get_fn(const btTypedConstraint *constraint)
 {
   return constraint ? get_body_index(constraint->getRigidBodyB()) : -1;
 }
+static void constraint_body2_set_fn(btTypedConstraint * /*constraint*/, int /*value*/) {}
 
 static float4x4 constraint_frame1_get_fn(const btTypedConstraint *constraint)
 {
@@ -553,6 +562,9 @@ static float constraint_applied_impulse_get_fn(const btTypedConstraint *constrai
   return constraint && constraint->needsFeedback() ? to_blender(constraint->getAppliedImpulse()) :
                                                      float(0.0f);
 }
+static void constraint_applied_impulse_set_fn(btTypedConstraint * /*constraint*/, float /*value*/)
+{
+}
 
 static float3 applied_force1_get_fn(const btTypedConstraint *constraint)
 {
@@ -566,6 +578,7 @@ static float3 applied_force1_get_fn(const btTypedConstraint *constraint)
   /* Note: applied transform requires that needsFeedback is set first. */
   return to_blender(feedback->m_appliedForceBodyA);
 }
+static void applied_force1_set_fn(btTypedConstraint * /*constraint*/, float3 /*value*/) {}
 
 static float3 applied_force2_get_fn(const btTypedConstraint *constraint)
 {
@@ -579,6 +592,7 @@ static float3 applied_force2_get_fn(const btTypedConstraint *constraint)
   /* Note: applied transform requires that needsFeedback is set first. */
   return to_blender(feedback->m_appliedForceBodyB);
 }
+static void applied_force2_set_fn(btTypedConstraint * /*constraint*/, float3 /*value*/) {}
 
 static float3 applied_torque1_get_fn(const btTypedConstraint *constraint)
 {
@@ -592,6 +606,7 @@ static float3 applied_torque1_get_fn(const btTypedConstraint *constraint)
   /* Note: applied transform requires that needsFeedback is set first. */
   return to_blender(feedback->m_appliedTorqueBodyA);
 }
+static void applied_torque1_set_fn(btTypedConstraint * /*constraint*/, float3 /*value*/) {}
 
 static float3 applied_torque2_get_fn(const btTypedConstraint *constraint)
 {
@@ -605,6 +620,7 @@ static float3 applied_torque2_get_fn(const btTypedConstraint *constraint)
   /* Note: applied transform requires that needsFeedback is set first. */
   return to_blender(feedback->m_appliedForceBodyA);
 }
+static void applied_torque2_set_fn(btTypedConstraint * /*constraint*/, float3 /*value*/) {}
 
 static float constraint_breaking_impulse_threshold_get_fn(const btTypedConstraint *constraint)
 {
@@ -660,8 +676,9 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
   static BuiltinRigidBodyAttributeProvider<int,
                                            force_cache,
                                            body_collision_shape_get_fn,
-                                           nullptr,
-                                           body_collision_shape_get_cache_fn>
+                                           body_collision_shape_set_fn,
+                                           body_collision_shape_get_cache_fn,
+                                           body_collision_shape_set_cache_fn>
       body_collision_shape(
           PhysicsGeometry::builtin_attributes.collision_shape,
           AttrDomain::Point,
@@ -818,19 +835,28 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
           BuiltinAttributeProvider::NonDeletable,
           physics_access,
           nullptr);
-  static BuiltinRigidBodyAttributeProvider<float3, force_cache, total_force_get_fn>
+  static BuiltinRigidBodyAttributeProvider<float3,
+                                           force_cache,
+                                           total_force_get_fn,
+                                           total_force_set_fn>
       body_total_force(PhysicsGeometry::builtin_attributes.total_force,
                        AttrDomain::Point,
                        BuiltinAttributeProvider::NonDeletable,
                        physics_access,
                        nullptr);
-  static BuiltinRigidBodyAttributeProvider<float3, force_cache, total_torque_get_fn>
+  static BuiltinRigidBodyAttributeProvider<float3,
+                                           force_cache,
+                                           total_torque_get_fn,
+                                           total_torque_set_fn>
       body_total_torque(PhysicsGeometry::builtin_attributes.total_torque,
                         AttrDomain::Point,
                         BuiltinAttributeProvider::NonDeletable,
                         physics_access,
                         nullptr);
-  static BuiltinConstraintAttributeProvider<int, force_cache, constraint_type_get_fn>
+  static BuiltinConstraintAttributeProvider<int,
+                                            force_cache,
+                                            constraint_type_get_fn,
+                                            constraint_type_set_fn>
       constraint_type(PhysicsGeometry::builtin_attributes.constraint_type,
                       AttrDomain::Edge,
                       BuiltinAttributeProvider::NonDeletable,
@@ -847,7 +873,10 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                          physics_access,
                          nullptr,
                          {});
-  static BuiltinConstraintAttributeProvider<int, force_cache, constraint_body1_get_fn>
+  static BuiltinConstraintAttributeProvider<int,
+                                            force_cache,
+                                            constraint_body1_get_fn,
+                                            constraint_body1_set_fn>
       constraint_body1(
           PhysicsGeometry::builtin_attributes.constraint_body1,
           AttrDomain::Edge,
@@ -859,7 +888,10 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
             const PhysicsGeometryImpl *impl = static_cast<const PhysicsGeometryImpl *>(owner);
             impl->ensure_body_indices();
           });
-  static BuiltinConstraintAttributeProvider<int, force_cache, constraint_body2_get_fn>
+  static BuiltinConstraintAttributeProvider<int,
+                                            force_cache,
+                                            constraint_body2_get_fn,
+                                            constraint_body2_set_fn>
       constraint_body2(
           PhysicsGeometry::builtin_attributes.constraint_body2,
           AttrDomain::Edge,
@@ -891,35 +923,50 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                         physics_access,
                         nullptr,
                         {});
-  static BuiltinConstraintAttributeProvider<float, force_cache, constraint_applied_impulse_get_fn>
+  static BuiltinConstraintAttributeProvider<float,
+                                            force_cache,
+                                            constraint_applied_impulse_get_fn,
+                                            constraint_applied_impulse_set_fn>
       constraint_applied_impulse(PhysicsGeometry::builtin_attributes.applied_impulse,
                                  AttrDomain::Edge,
                                  BuiltinAttributeProvider::NonDeletable,
                                  physics_access,
                                  nullptr,
                                  {});
-  static BuiltinConstraintAttributeProvider<float3, force_cache, applied_force1_get_fn>
+  static BuiltinConstraintAttributeProvider<float3,
+                                            force_cache,
+                                            applied_force1_get_fn,
+                                            applied_force1_set_fn>
       applied_force1(PhysicsGeometry::builtin_attributes.applied_force1,
                      AttrDomain::Edge,
                      BuiltinAttributeProvider::NonDeletable,
                      physics_access,
                      nullptr,
                      {});
-  static BuiltinConstraintAttributeProvider<float3, force_cache, applied_force2_get_fn>
+  static BuiltinConstraintAttributeProvider<float3,
+                                            force_cache,
+                                            applied_force2_get_fn,
+                                            applied_force2_set_fn>
       applied_force2(PhysicsGeometry::builtin_attributes.applied_force2,
                      AttrDomain::Edge,
                      BuiltinAttributeProvider::NonDeletable,
                      physics_access,
                      nullptr,
                      {});
-  static BuiltinConstraintAttributeProvider<float3, force_cache, applied_torque1_get_fn>
+  static BuiltinConstraintAttributeProvider<float3,
+                                            force_cache,
+                                            applied_torque1_get_fn,
+                                            applied_torque1_set_fn>
       applied_torque1(PhysicsGeometry::builtin_attributes.applied_torque1,
                       AttrDomain::Edge,
                       BuiltinAttributeProvider::NonDeletable,
                       physics_access,
                       nullptr,
                       {});
-  static BuiltinConstraintAttributeProvider<float3, force_cache, applied_torque2_get_fn>
+  static BuiltinConstraintAttributeProvider<float3,
+                                            force_cache,
+                                            applied_torque2_get_fn,
+                                            applied_torque2_set_fn>
       applied_torque2(PhysicsGeometry::builtin_attributes.applied_torque2,
                       AttrDomain::Edge,
                       BuiltinAttributeProvider::NonDeletable,

@@ -11,6 +11,7 @@
 #include "BKE_customdata.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_physics_geometry.hh"
+#include "BKE_type_conversions.hh"
 
 #include "BLI_array_utils.hh"
 #include "BLI_assert.h"
@@ -320,21 +321,7 @@ PhysicsGeometryImpl::PhysicsGeometryImpl(int bodies_num, int constraints_num, in
 
 PhysicsGeometryImpl::PhysicsGeometryImpl(const PhysicsGeometryImpl &other)
 {
-  shapes = other.shapes;
-
-  CustomData_reset(&body_data_);
-  CustomData_reset(&constraint_data_);
-  body_num_ = other.body_num_;
-  constraint_num_ = other.constraint_num_;
-  CustomData_copy(&other.body_data_, &body_data_, CD_MASK_ALL, other.body_num_);
-  CustomData_copy(&other.constraint_data_, &constraint_data_, CD_MASK_ALL, other.constraint_num_);
-
-  if (!other.is_empty) {
-    this->resize(other.body_num_, other.constraint_num_);
-    if (try_move(other, true, IndexRange(body_num_), IndexRange(constraint_num_))) {
-      is_empty.store(false);
-    }
-  }
+  *this = other;
 }
 
 PhysicsGeometryImpl::~PhysicsGeometryImpl()
@@ -358,7 +345,27 @@ PhysicsGeometryImpl::~PhysicsGeometryImpl()
 
 PhysicsGeometryImpl &PhysicsGeometryImpl::operator=(const PhysicsGeometryImpl &other)
 {
-  *this = PhysicsGeometryImpl(other);
+  CustomData_reset(&body_data_);
+  CustomData_reset(&constraint_data_);
+  body_num_ = other.body_num_;
+  constraint_num_ = other.constraint_num_;
+  CustomData_copy(&other.body_data_, &body_data_, CD_MASK_ALL, other.body_num_);
+  CustomData_copy(&other.constraint_data_, &constraint_data_, CD_MASK_ALL, other.constraint_num_);
+
+  if (!other.is_empty) {
+    this->resize(other.body_num_, other.constraint_num_);
+    if (try_move(other,
+                 IndexRange(body_num_),
+                 IndexRange(constraint_num_),
+                 shapes.index_range(),
+                 0,
+                 0,
+                 0))
+    {
+      is_empty.store(false);
+    }
+  }
+
   return *this;
 }
 
@@ -708,12 +715,14 @@ void PhysicsGeometryImpl::remove_attributes_from_customdata()
 }
 
 bool PhysicsGeometryImpl::try_move(const PhysicsGeometryImpl &from,
-                                   const bool use_world,
                                    const IndexMask &body_mask,
-                                   const IndexMask &constraint_mask)
+                                   const IndexMask &constraint_mask,
+                                   const IndexMask &shape_mask,
+                                   int body_offset,
+                                   int constraint_offset,
+                                   int shape_offset)
 {
   BLI_assert(this->is_mutable());
-  BLI_assert(!this->is_empty);
 
   /* Early check before locking. */
   if (from.is_empty) {
@@ -727,16 +736,14 @@ bool PhysicsGeometryImpl::try_move(const PhysicsGeometryImpl &from,
   PhysicsGeometryImpl &from_mutable = const_cast<PhysicsGeometryImpl &>(from);
 
   /* Cache the source before moving physics data. */
-  from_mutable.try_copy_to_custom_data(from, body_mask, constraint_mask, {});
+  // from_mutable.try_copy_to_custom_data(from, body_mask, constraint_mask, {});
 
   btDynamicsWorld *from_world = from_mutable.world;
-  if (use_world) {
-    if (this->world) {
-      this->destroy_world();
-    }
-    move_world(from_mutable, *this);
-  }
   btDynamicsWorld *to_world = this->world;
+
+  this->is_empty.store(false);
+  move_world(from_mutable, *this);
+  this->realloc();
 
   const IndexRange body_range = IndexRange(body_mask.size());
   const IndexRange constraint_range = IndexRange(constraint_mask.size());
@@ -800,12 +807,12 @@ bool PhysicsGeometryImpl::try_move(const PhysicsGeometryImpl &from,
 
 AttributeAccessor PhysicsGeometryImpl::attributes(const bool force_cache) const
 {
-  return AttributeAccessor(this, bke::get_physics_accessor_functions_ref(false));
+  return AttributeAccessor(this, bke::get_physics_accessor_functions_ref(force_cache));
 }
 
 MutableAttributeAccessor PhysicsGeometryImpl::attributes_for_write(const bool force_cache)
 {
-  return MutableAttributeAccessor(this, bke::get_physics_accessor_functions_ref(false));
+  return MutableAttributeAccessor(this, bke::get_physics_accessor_functions_ref(force_cache));
 }
 
 const PhysicsGeometry::BuiltinAttributes PhysicsGeometry::builtin_attributes = []() {
@@ -1135,93 +1142,148 @@ static void remap_bodies(const int src_bodies_num,
   });
 }
 
-/**
- * An ordered set of attribute ids. Attributes are ordered to avoid name lookups in many places.
- * Once the attributes are ordered, they can just be referred to by index.
- */
-struct OrderedAttributes {
-  VectorSet<AttributeIDRef> ids;
-  Vector<AttributeKind> kinds;
+// /**
+//  * An ordered set of attribute ids. Attributes are ordered to avoid name lookups in many places.
+//  * Once the attributes are ordered, they can just be referred to by index.
+//  */
+// struct OrderedAttributes {
+//   VectorSet<AttributeIDRef> ids;
+//   Vector<AttributeKind> kinds;
 
-  int size() const
-  {
-    return this->kinds.size();
-  }
+//   int size() const
+//   {
+//     return this->kinds.size();
+//   }
 
-  IndexRange index_range() const
-  {
-    return this->kinds.index_range();
-  }
-};
+//   IndexRange index_range() const
+//   {
+//     return this->kinds.index_range();
+//   }
+// };
 
-struct AttributeFallbacksArray {
-  /**
-   * Instance attribute values used as fallback when the geometry does not have the
-   * corresponding attributes itself. The pointers point to attributes stored in the instances
-   * component or in #r_temporary_arrays. The order depends on the corresponding #OrderedAttributes
-   * instance.
-   */
-  Array<const void *> array;
+// struct AttributeFallbacksArray {
+//   /**
+//    * Instance attribute values used as fallback when the geometry does not have the
+//    * corresponding attributes itself. The pointers point to attributes stored in the instances
+//    * component or in #r_temporary_arrays. The order depends on the corresponding
+//    #OrderedAttributes
+//    * instance.
+//    */
+//   Array<const void *> array;
 
-  AttributeFallbacksArray(int size) : array(size, nullptr) {}
-};
+//   AttributeFallbacksArray(int size) : array(size, nullptr) {}
+// };
 
-static void threaded_copy(const IndexMask &mask, const GVArray src, GMutableSpan dst)
-{
-  BLI_assert(mask.size() == dst.size());
-  BLI_assert(mask.min_array_size() <= src.size());
-  BLI_assert(src.type() == dst.type());
+// static void threaded_copy(const IndexMask &mask, const GVArray src, GMutableSpan dst)
+// {
+//   BLI_assert(mask.size() == dst.size());
+//   BLI_assert(mask.min_array_size() <= src.size());
+//   BLI_assert(src.type() == dst.type());
 
-  const CPPType &type = src.type();
-  BUFFER_FOR_CPP_TYPE_VALUE(type, buffer);
-  mask.foreach_index_optimized<int>(GrainSize(1024), [&](const int index, const int pos) -> bool {
-    src.get(index, buffer);
-    type.copy_construct(buffer, dst[pos]);
-    return true;
-  });
-}
+//   const CPPType &type = src.type();
+//   BUFFER_FOR_CPP_TYPE_VALUE(type, buffer);
+//   mask.foreach_index_optimized<int>(GrainSize(1024), [&](const int index, const int pos) -> bool
+//   {
+//     src.get(index, buffer);
+//     type.copy_construct(buffer, dst[pos]);
+//     return true;
+//   });
+// }
 
-static void threaded_fill(const GPointer value, GMutableSpan dst)
-{
-  BLI_assert(*value.type() == dst.type());
-  threading::parallel_for(IndexRange(dst.size()), 1024, [&](const IndexRange range) {
-    value.type()->fill_construct_n(value.get(), dst.slice(range).data(), range.size());
-  });
-}
+// static void threaded_fill(const GPointer value, GMutableSpan dst)
+// {
+//   BLI_assert(*value.type() == dst.type());
+//   threading::parallel_for(IndexRange(dst.size()), 1024, [&](const IndexRange range) {
+//     value.type()->fill_construct_n(value.get(), dst.slice(range).data(), range.size());
+//   });
+// }
 
-static void copy_generic_attributes_to_result(
-    const Span<std::optional<GVArray>> src_attributes,
-    const AttributeFallbacksArray &attribute_fallbacks,
-    const OrderedAttributes &ordered_attributes,
-    const FunctionRef<void(bke::AttrDomain, IndexMask const **, int *)> &mask_fn,
-    MutableSpan<GSpanAttributeWriter> dst_attribute_writers)
-{
-  threading::parallel_for(
-      dst_attribute_writers.index_range(), 10, [&](const IndexRange attribute_range) {
-        for (const int attribute_index : attribute_range) {
-          const bke::AttrDomain domain = ordered_attributes.kinds[attribute_index].domain;
-          const IndexMask *element_mask;
-          int element_offset;
-          mask_fn(domain, &element_mask, &element_offset);
-          if (element_mask->is_empty()) {
-            continue;
-          }
-          const IndexRange dst_mask = IndexRange(element_offset, element_mask->size());
-          GMutableSpan dst_span = dst_attribute_writers[attribute_index].span.slice(dst_mask);
+// /* Function that returns an IndexMask and an offset. */
+// using OffsetMaskFn = FunctionRef<void(bke::AttrDomain, IndexMask const **, int *)>;
 
-          if (src_attributes[attribute_index].has_value()) {
-            threaded_copy(*element_mask, *src_attributes[attribute_index], dst_span);
-          }
-          else {
-            const CPPType &cpp_type = dst_span.type();
-            const void *fallback = attribute_fallbacks.array[attribute_index] == nullptr ?
-                                       cpp_type.default_value() :
-                                       attribute_fallbacks.array[attribute_index];
-            threaded_fill({cpp_type, fallback}, dst_span);
-          }
-        }
-      });
-}
+// static void copy_generic_attributes_to_result(
+//     const Span<std::optional<GVArray>> src_attributes,
+//     const AttributeFallbacksArray &attribute_fallbacks,
+//     const OrderedAttributes &ordered_attributes,
+//     const OffsetMaskFn &mask_fn,
+//     MutableSpan<GSpanAttributeWriter> dst_attribute_writers)
+// {
+//   threading::parallel_for(
+//       dst_attribute_writers.index_range(), 10, [&](const IndexRange attribute_range) {
+//         for (const int attribute_index : attribute_range) {
+//           const bke::AttrDomain domain = ordered_attributes.kinds[attribute_index].domain;
+//           const IndexMask *element_mask;
+//           int element_offset;
+//           mask_fn(domain, &element_mask, &element_offset);
+//           if (element_mask->is_empty()) {
+//             continue;
+//           }
+//           const IndexRange dst_mask = IndexRange(element_offset, element_mask->size());
+//           GMutableSpan dst_span = dst_attribute_writers[attribute_index].span.slice(dst_mask);
+
+//           if (src_attributes[attribute_index].has_value()) {
+//             threaded_copy(*element_mask, *src_attributes[attribute_index], dst_span);
+//           }
+//           else {
+//             const CPPType &cpp_type = dst_span.type();
+//             const void *fallback = attribute_fallbacks.array[attribute_index] == nullptr ?
+//                                        cpp_type.default_value() :
+//                                        attribute_fallbacks.array[attribute_index];
+//             threaded_fill({cpp_type, fallback}, dst_span);
+//           }
+//         }
+//       });
+// }
+
+// /**
+//  * Checks which of the #ordered_attributes exist on the #instances_component. For each attribute
+//  * that exists on the instances, a pair is returned that contains the attribute index and the
+//  * corresponding attribute data.
+//  */
+// static Vector<std::pair<int, GSpan>> prepare_attribute_fallbacks(
+//     Vector<std::unique_ptr<GArray<>>> &temporary_arrays,
+//     const PhysicsGeometry &physics,
+//     const OrderedAttributes &ordered_attributes,
+//     const OffsetMaskFn &mask_fn)
+// {
+//   Vector<std::pair<int, GSpan>> attributes_to_override;
+//   const bke::AttributeAccessor attributes = physics.attributes();
+//   attributes.for_all([&](const AttributeIDRef &attribute_id, const AttributeMetaData &meta_data)
+//   {
+//     const int attribute_index = ordered_attributes.ids.index_of_try(attribute_id);
+//     if (attribute_index == -1) {
+//       /* The attribute is not propagated to the final geometry. */
+//       return true;
+//     }
+//     const bke::GAttributeReader attribute = attributes.lookup(attribute_id);
+//     if (!attribute || !attribute.varray.is_span()) {
+//       return true;
+//     }
+//     GSpan span = attribute.varray.get_internal_span();
+//     const eCustomDataType expected_type = ordered_attributes.kinds[attribute_index].data_type;
+//     if (meta_data.data_type != expected_type) {
+//       const CPPType &from_type = span.type();
+//       const CPPType &to_type = *bke::custom_data_type_to_cpp_type(expected_type);
+//       const bke::DataTypeConversions &conversions = bke::get_implicit_type_conversions();
+//       if (!conversions.is_convertible(from_type, to_type)) {
+//         /* Ignore the attribute because it can not be converted to the desired type. */
+//         return true;
+//       }
+//       const IndexMask *element_mask;
+//       int element_offset;
+//       mask_fn(meta_data.domain, &element_mask, &element_offset);
+//       /* Convert the attribute on the instances component to the expected attribute type. */
+//       std::unique_ptr<GArray<>> temporary_array = std::make_unique<GArray<>>(
+//           to_type, element_mask->min_array_size());
+//       conversions.convert_to_initialized_n(span, temporary_array->as_mutable_span());
+//       span = temporary_array->as_span();
+//       temporary_arrays.append(std::move(temporary_array));
+//     }
+//     attributes_to_override.append({attribute_index, span});
+//     return true;
+//   });
+//   return attributes_to_override;
+// }
 
 // void PhysicsGeometry::cache_or_copy_selection(
 //     const PhysicsGeometry &from,
@@ -1285,15 +1347,33 @@ static void copy_generic_attributes_to_result(
 //                          dst_attributes);
 // }
 
+void PhysicsGeometry::move_world(const PhysicsGeometry &from,
+                                 const IndexMask &body_mask,
+                                 const IndexMask &constraint_mask,
+                                 const IndexMask &shape_mask,
+                                 const int body_offset,
+                                 const int constraint_offset,
+                                 const int shape_offset)
+{
+  if (from.impl().is_empty) {
+    return;
+  }
+
+  PhysicsGeometryImpl &impl = this->impl_for_write();
+  impl.try_move(from.impl(),
+                body_mask,
+                constraint_mask,
+                shape_mask,
+                body_offset,
+                constraint_offset,
+                shape_offset);
+}
+
 void PhysicsGeometry::move_or_copy_selection(
     const PhysicsGeometry &from,
-    const bool use_world,
     const IndexMask &body_mask,
     const IndexMask &constraint_mask,
     const IndexMask &shape_mask,
-    const int body_offset,
-    const int constraint_offset,
-    const int shape_offset,
     const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
   if (impl_->is_empty) {
@@ -1301,7 +1381,8 @@ void PhysicsGeometry::move_or_copy_selection(
   }
 
   PhysicsGeometryImpl &impl = this->impl_for_write();
-  const bool was_moved = impl.try_move(from.impl(), use_world, body_mask, constraint_mask);
+  const bool was_moved = impl.try_move(
+      from.impl(), body_mask, constraint_mask, shape_mask, 0, 0, 0);
 
   const Set<std::string> ignored_attributes = was_moved ?
                                                   Set<std::string>{builtin_attributes.skip_copy} :
@@ -1335,14 +1416,14 @@ void PhysicsGeometry::move_or_copy_selection(
                            VArray<int>::ForSpan(dst_body1),
                            VArray<int>::ForSpan(dst_body2));
 
-  copy_generic_attributes_to_result(src_attributes)
+  // copy_generic_attributes_to_result(src_attributes)
 
-      bke::gather_attributes(src_attributes,
-                             bke::AttrDomain::Point,
-                             propagation_info,
-                             ignored_attributes,
-                             body_mask,
-                             dst_attributes);
+  bke::gather_attributes(src_attributes,
+                         bke::AttrDomain::Point,
+                         propagation_info,
+                         ignored_attributes,
+                         body_mask,
+                         dst_attributes);
   bke::gather_attributes(src_attributes,
                          bke::AttrDomain::Edge,
                          propagation_info,

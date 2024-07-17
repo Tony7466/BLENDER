@@ -119,9 +119,12 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
                                const Set<std::string> &ignored_attributes);
   void remove_attributes_from_customdata();
   bool try_move(const PhysicsGeometryImpl &from,
-                bool use_world,
                 const IndexMask &body_mask,
-                const IndexMask &constraint_mask);
+                const IndexMask &constraint_mask,
+                const IndexMask &shape_mask,
+                int body_offset,
+                int constraint_offset,
+                int shape_offset);
 
   bke::AttributeAccessor attributes(bool force_cache = false) const;
   bke::MutableAttributeAccessor attributes_for_write(bool force_cache = false);

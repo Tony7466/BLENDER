@@ -38,6 +38,7 @@ template<typename T> using ConstraintGetFn = T (*)(const btTypedConstraint *cons
 template<typename T> using ConstraintSetFn = void (*)(btTypedConstraint *constraint, T value);
 
 template<typename T> using PhysicsGetCacheFn = Span<T> (*)(const bke::PhysicsGeometryImpl &impl);
+template<typename T> using PhysicsSetCacheFn = MutableSpan<T> (*)(bke::PhysicsGeometryImpl &impl);
 
 template<typename ElemT, RigidBodyGetFn<ElemT> GetFn>
 class VArrayImpl_For_PhysicsBodies final : public VArrayImpl<ElemT> {
@@ -379,12 +380,16 @@ class BuiltinPhysicsAttributeBase : public bke::BuiltinAttributeProvider {
 template<typename T,
          bool force_cache,
          RigidBodyGetFn<T> GetFn,
-         RigidBodySetFn<T> SetFn = nullptr,
-         PhysicsGetCacheFn<T> GetCacheFn = nullptr>
+         RigidBodySetFn<T> SetFn,
+         PhysicsGetCacheFn<T> GetCacheFn = nullptr,
+         PhysicsSetCacheFn<T> SetCacheFn = nullptr>
 class BuiltinRigidBodyAttributeProvider final : public BuiltinPhysicsAttributeBase {
  public:
   using EnsureOnAccess = void (*)(const void *owner);
   const EnsureOnAccess ensure_on_access_;
+
+  BLI_STATIC_ASSERT(GetFn != nullptr, "Attribute must have a get function");
+  BLI_STATIC_ASSERT(SetFn != nullptr, "Attribute must have a set function");
 
   BuiltinRigidBodyAttributeProvider(std::string attribute_name,
                                     const AttrDomain domain,
@@ -432,9 +437,6 @@ class BuiltinRigidBodyAttributeProvider final : public BuiltinPhysicsAttributeBa
 
   GAttributeWriter try_get_for_write(void *owner) const final
   {
-    if constexpr (SetFn == nullptr) {
-      return {};
-    }
     PhysicsGeometryImpl *impl = physics_access_.get_physics(owner);
     if (impl == nullptr) {
       return {};
@@ -445,10 +447,15 @@ class BuiltinRigidBodyAttributeProvider final : public BuiltinPhysicsAttributeBa
     }
 
     if (force_cache || impl->is_empty) {
-      GAttributeWriter cache_writer = try_get_cache_for_write(owner, &impl->body_data_, impl->body_num_);
+      GAttributeWriter cache_writer = try_get_cache_for_write(
+          owner, &impl->body_data_, impl->body_num_);
       /* Builtin attribute should always exist when cached. */
       BLI_assert(cache_writer);
       return cache_writer;
+    }
+    if constexpr (SetCacheFn) {
+      MutableSpan<T> cache = SetCacheFn(*impl);
+      return {VMutableArray<T>::ForSpan(cache), domain_, nullptr};
     }
 
     GVMutableArray varray =
@@ -489,10 +496,13 @@ template<typename T,
          ConstraintSetFn<T> SetFn = nullptr,
          PhysicsGetCacheFn<T> GetCacheFn = nullptr>
 class BuiltinConstraintAttributeProvider final : public BuiltinPhysicsAttributeBase {
+ public:
   using EnsureOnAccess = void (*)(const void *owner);
   const EnsureOnAccess ensure_on_access_;
 
- public:
+  BLI_STATIC_ASSERT(GetFn != nullptr, "Attribute must have a get function");
+  BLI_STATIC_ASSERT(SetFn != nullptr, "Attribute must have a set function");
+
   BuiltinConstraintAttributeProvider(std::string attribute_name,
                                      const AttrDomain domain,
                                      const DeletableEnum deletable,
@@ -513,6 +523,8 @@ class BuiltinConstraintAttributeProvider final : public BuiltinPhysicsAttributeB
 
   GAttributeReader try_get_for_read(const void *owner) const final
   {
+    BLI_STATIC_ASSERT(GetFn != nullptr, "Attribute must have a get function");
+
     const PhysicsGeometryImpl *impl = physics_access_.get_const_physics(owner);
     if (impl == nullptr) {
       return {};
@@ -536,9 +548,6 @@ class BuiltinConstraintAttributeProvider final : public BuiltinPhysicsAttributeB
 
   GAttributeWriter try_get_for_write(void *owner) const final
   {
-    if constexpr (SetFn == nullptr) {
-      return {};
-    }
     PhysicsGeometryImpl *impl = physics_access_.get_physics(owner);
     if (impl == nullptr) {
       return {};

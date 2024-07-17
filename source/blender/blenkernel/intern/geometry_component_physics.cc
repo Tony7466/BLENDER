@@ -7,6 +7,8 @@
 #include "BKE_physics_geometry.hh"
 
 #include "attribute_access_intern.hh"
+#include <optional>
+#include <type_traits>
 
 namespace blender::bke {
 
@@ -130,12 +132,12 @@ namespace blender::bke {
 
 std::optional<AttributeAccessor> PhysicsComponent::attributes() const
 {
-  return physics_->attributes();
+  return physics_ ? std::make_optional(physics_->attributes()) : std::nullopt;
 }
 
 std::optional<MutableAttributeAccessor> PhysicsComponent::attributes_for_write()
 {
-  return physics_->attributes_for_write();
+  return physics_ ? std::make_optional(physics_->attributes_for_write()) : std::nullopt;
 }
 
 }  // namespace blender::bke
