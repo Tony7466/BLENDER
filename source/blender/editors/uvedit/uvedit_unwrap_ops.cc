@@ -1924,7 +1924,7 @@ static int average_islands_scale_exec(bContext *C, wmOperator *op)
   ToolSettings *ts = scene->toolsettings;
   const bool synced_selection = (ts->uv_flag & UV_SYNC_SELECTION) != 0;
 
-  UnwrapOptions options = unwrap_options_get(nullptr, nullptr, nullptr);
+  UnwrapOptions options = unwrap_options_get(nullptr, nullptr, ts);
   options.topology_from_uvs = true;
   options.only_selected_faces = true;
   options.only_selected_uvs = true;
