@@ -154,6 +154,9 @@ static bool keymap_grease_pencil_brush_stroke_poll(bContext *C)
   if (!WM_toolsystem_active_tool_is_brush(C)) {
     return false;
   }
+  if (WM_toolsystem_active_tool_has_custom_cursor(C)) {
+    return false;
+  }
   ToolSettings *ts = CTX_data_tool_settings(C);
   Brush *brush = BKE_paint_brush(&ts->gp_paint->paint);
   return brush && brush->gpencil_settings && brush->gpencil_tool != GPAINT_TOOL_FILL;
