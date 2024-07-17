@@ -685,19 +685,19 @@ if(WITH_CYCLES OR WITH_GPU_RENDER_TESTS)
     if(WITH_CYCLES)
       set(_cycles_blacklist "")
       if((NOT WITH_CYCLES_OSL) OR (WITH_CYCLES_TEST_OSL AND WITH_CYCLES_OSL))
-	# Disable OSL tests if built without OSL or
-	# Disable OSL tests during the "normal" test phase to avoid double
+        # Disable OSL tests if built without OSL or
+        # Disable OSL tests during the "normal" test phase to avoid double
         # testing during the OSL test phase.
         set(_cycles_blacklist OSL)
       endif()
       foreach(_cycles_device ${CYCLES_TEST_DEVICES})
         string(TOLOWER "${_cycles_device}" _cycles_device_lower)
         set(_cycles_render_tests bake;${render_tests})
-	if (NOT WITH_CYCLES_TEST_OSL)
-	  # Enable basic OSL tests for everyone
-	  # The case when WITH_CYCLES_TEST_OSL is true is handled later
-	  set(_cycles_render_tests ${_cycles_render_tests};osl)
-	endif()
+        if (NOT WITH_CYCLES_TEST_OSL)
+          # Enable basic OSL tests for everyone
+          # The case when WITH_CYCLES_TEST_OSL is true is handled later
+          set(_cycles_render_tests ${_cycles_render_tests};osl)
+        endif()
 
         foreach(render_test ${_cycles_render_tests})
           set(_cycles_test_name "cycles_${render_test}_${_cycles_device_lower}")
@@ -732,10 +732,10 @@ if(WITH_CYCLES OR WITH_GPU_RENDER_TESTS)
           unset(_cycles_test_name)
         endforeach()
 
-	if(WITH_CYCLES_TEST_OSL AND WITH_CYCLES_OSL)
-	  # Add OSL folder test as it wasn't tested previously with this
-	  # specific combination of variables
-	  set(_cycles_test_name "cycles_osl_${_cycles_device_lower}")
+        if(WITH_CYCLES_TEST_OSL AND WITH_CYCLES_OSL)
+          # Add OSL folder test as it wasn't tested previously with this
+          # specific combination of variables
+          set(_cycles_test_name "cycles_osl_${_cycles_device_lower}")
 
           # OSL is only supported with CPU and OptiX
           # TODO: Enable OptiX support once it's more stable
@@ -750,8 +750,8 @@ if(WITH_CYCLES OR WITH_GPU_RENDER_TESTS)
               -osl
             )
           endif()
-	  unset(_cycles_test_name)
-	endif()
+          unset(_cycles_test_name)
+        endif()
 
       endforeach()
       unset(_cycles_blacklist)
