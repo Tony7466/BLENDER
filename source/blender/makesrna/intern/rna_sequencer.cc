@@ -867,7 +867,7 @@ static PointerRNA rna_MovieSequence_metadata_get(ID *scene_id, Sequence *seq)
 
   return PointerRNA_NULL;
 
-  if (seq == nullptr || seq->anims.first == nullptr) {
+  if (seq == nullptr) {
     return PointerRNA_NULL;
   }
 
