@@ -62,7 +62,9 @@ class AnimManager {
   ShareableAnim &cache_entry_get(const Scene *scene, const Sequence *seq);
   void free_unused_anims(blender::Vector<Sequence *> &strips);
   void free_unused_and_prefetch_anims(const Scene *scene);
-  void parallel_load_anims(const Scene *scene, blender::Vector<Sequence *> &strips, bool unlock);
+  void parallel_load_anims(const Scene *scene,
+                           blender::Vector<Sequence *> &strips,
+                           bool keep_locked);
 };
 
 AnimManager *seq_anim_manager_ensure(Editing *ed);

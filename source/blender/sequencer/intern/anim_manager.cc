@@ -7,12 +7,8 @@
  */
 
 #include "BLI_blenlib.h"
-#include "BLI_hash_mm3.hh"
 #include "BLI_index_range.hh"
-#include "BLI_math_base.h"
 #include "BLI_task.hh"
-#include "BLI_threads.h"
-#include "BLI_timeit.hh"
 
 #include "BKE_image.h"
 #include "BKE_main.hh"
@@ -109,7 +105,8 @@ static bool is_multiview(const Scene *scene, Sequence *seq)
 
 static blender::Vector<ImBufAnim *> multiview_anims_get(const Scene *scene,
                                                         Sequence *seq,
-                                                        const char *filepath)
+                                                        const char *filepath,
+                                                        int start_file)
 {
   int totfiles = seq_num_files(scene, seq->views_format, true);
   char prefix[FILE_MAX];
@@ -117,7 +114,7 @@ static blender::Vector<ImBufAnim *> multiview_anims_get(const Scene *scene,
   BKE_scene_multiview_view_prefix_get(const_cast<Scene *>(scene), filepath, prefix, &ext);
   blender::Vector<ImBufAnim *> anims;
 
-  for (int i = 0; i < totfiles; i++) {
+  for (int i = start_file; i < totfiles; i++) {
     const char *suffix = BKE_scene_multiview_view_id_suffix_get(&scene->r, i);
     char filepath_view[FILE_MAX];
     SNPRINTF(filepath_view, "%s%s%s", prefix, suffix, ext);
@@ -133,28 +130,28 @@ static blender::Vector<ImBufAnim *> multiview_anims_get(const Scene *scene,
 
 void ShareableAnim::release_from_strip(Sequence *seq)
 {
-  if (anims.size() == 0) {
+  if (this->anims.size() == 0) {
     return;
   }
 
-  mutex->lock();
+  this->mutex->lock();
 
-  users.remove_if([seq](Sequence *seq_user) { return seq == seq_user; });
+  this->users.remove_if([seq](Sequence *seq_user) { return seq == seq_user; });
 
-  if (users.size() == 0) {
-    for (ImBufAnim *anim : anims) {
+  if (this->users.size() == 0) {
+    for (ImBufAnim *anim : this->anims) {
       IMB_free_anim(anim);
     }
-    anims.clear();
+    this->anims.clear();
   }
 
-  mutex->unlock();
+  this->mutex->unlock();
 };
 
 void ShareableAnim::release_from_all_strips(void)
 {
   for (Sequence *user : users) {
-    release_from_strip(user);
+    this->release_from_strip(user);
   }
 }
 
@@ -164,25 +161,33 @@ void ShareableAnim::acquire_anims(const Scene *scene, Sequence *seq)
   anim_filepath_get(scene, seq, sizeof(filepath), filepath);
 
   if (is_multiview(scene, seq)) {
-    anims = multiview_anims_get(scene, seq, filepath);
-    multiview_loaded = true;
+    const int files_loaded = this->anims.size();
+    blender::Vector<ImBufAnim *> new_anims = multiview_anims_get(
+        scene, seq, filepath, files_loaded);
+
+    if (new_anims.size() > 0) {
+      for (ImBufAnim *anim : new_anims) {
+        this->anims.append(anim);
+      }
+      multiview_loaded = true;
+    }
   }
   else {
     ImBufAnim *anim = anim_get(seq, filepath);
     if (anim != nullptr) {
-      anims.append(anim);
+      this->anims.append(anim);
     }
   }
 
-  for (int i = 0; i < anims.size(); i++) {
-    index_dir_set(SEQ_editing_get(scene), seq, anims[i]);
+  for (int i = 0; i < this->anims.size(); i++) {
+    index_dir_set(SEQ_editing_get(scene), seq, this->anims[i]);
     if (is_multiview(scene, seq)) {
       const char *suffix = BKE_scene_multiview_view_id_suffix_get(&scene->r, i);
-      IMB_suffix_anim(anims[i], suffix);
+      IMB_suffix_anim(this->anims[i], suffix);
     }
   }
 
-  users.append(seq);
+  this->users.append(seq);
 }
 
 bool ShareableAnim::has_anim(const Scene *scene, Sequence *seq)
@@ -191,12 +196,12 @@ bool ShareableAnim::has_anim(const Scene *scene, Sequence *seq)
     return false;
   }
 
-  return !anims.is_empty();
+  return !this->anims.is_empty();
 }
 
 void ShareableAnim::unlock()
 {
-  mutex->unlock();
+  this->mutex->unlock();
 }
 
 /* TODO: It would be simpler, and perhaps better for user to load n strips, instead of
@@ -230,8 +235,8 @@ static blender::Vector<Sequence *> strips_to_prefetch_get(const Scene *scene)
 
 void AnimManager::free_unused_anims(blender::Vector<Sequence *> &strips)
 {
-  mutex.lock();
-  for (std::unique_ptr<ShareableAnim> &sh_anim : anims_map.values()) {
+  this->mutex.lock();
+  for (std::unique_ptr<ShareableAnim> &sh_anim : this->anims_map.values()) {
     bool strips_use_anim = false;
     for (Sequence *user : sh_anim->users) {
       if (strips.contains(user)) {
@@ -244,7 +249,7 @@ void AnimManager::free_unused_anims(blender::Vector<Sequence *> &strips)
       sh_anim->release_from_all_strips();
     }
   }
-  mutex.unlock();
+  this->mutex.unlock();
 }
 
 /* The main purpose of this function is to create set of strips, which ensures, that all
@@ -252,13 +257,13 @@ void AnimManager::free_unused_anims(blender::Vector<Sequence *> &strips)
  * The set does need to contain only one user(strip) of any particular anim(filepath), because
  * during parallel loading `ShareableAnim` is locked.
  */
-// XXX this is ugly, can this be optimized?
-static blender::Vector<Sequence *> filter_duplicates_for_parallel_load(
+static blender::Vector<Sequence *> remove_duplicates_for_parallel_load(
     const Scene *scene, blender::Vector<Sequence *> &strips)
 {
   blender::Map<std::string, Sequence *> unique_strips_map;
   blender::Vector<Sequence *> unique_strips;
 
+  /* Add strips with multiview configuration first. */
   for (Sequence *seq : strips) {
     char filepath[FILE_MAX];
     anim_filepath_get(scene, seq, sizeof(filepath), filepath);
@@ -272,6 +277,7 @@ static blender::Vector<Sequence *> filter_duplicates_for_parallel_load(
     }
   }
 
+  /* Add all other strips. */
   for (Sequence *seq : strips) {
     char filepath[FILE_MAX];
     anim_filepath_get(scene, seq, sizeof(filepath), filepath);
@@ -292,31 +298,24 @@ static blender::Vector<Sequence *> filter_duplicates_for_parallel_load(
 
 void AnimManager::parallel_load_anims(const Scene *scene,
                                       blender::Vector<Sequence *> &strips,
-                                      bool unlock)
+                                      bool keep_locked)
 {
   using namespace blender;
 
-  strips = filter_duplicates_for_parallel_load(scene, strips);
+  strips.remove_if([](Sequence *seq) { return seq->type != SEQ_TYPE_MOVIE; });
+  strips = remove_duplicates_for_parallel_load(scene, strips);
 
   threading::parallel_for(strips.index_range(), 1, [&](const IndexRange range) {
     for (int i : range) {
       Sequence *seq = strips[i];
-      if (seq->type != SEQ_TYPE_MOVIE) {
-        continue;
-      }
-
-      ShareableAnim &sh_anim = cache_entry_get(scene, seq);
+      ShareableAnim &sh_anim = this->cache_entry_get(scene, seq);
       sh_anim.mutex->lock();
 
-      if (sh_anim.has_anim(scene, seq)) {
-        if (unlock) {
-          sh_anim.unlock();
-        }
-        continue;
+      if (!sh_anim.has_anim(scene, seq)) {
+        sh_anim.acquire_anims(scene, seq);
       }
 
-      sh_anim.acquire_anims(scene, seq);
-      if (unlock) {
+      if (!keep_locked) {
         sh_anim.unlock();
       }
     }
@@ -327,17 +326,18 @@ void AnimManager::free_unused_and_prefetch_anims(const Scene *scene)
 {
   blender::Vector<Sequence *> strips = strips_to_prefetch_get(scene);
 
-  free_unused_anims(strips);
-  parallel_load_anims(scene, strips, true);
+  /* Prefetch first, to avoid freeing anim and loading it again. */
+  this->parallel_load_anims(scene, strips, false);
+  this->free_unused_anims(strips);
 }
 
 void AnimManager::manage_anims(const Scene *scene)
 {
-  if (prefetch_thread.joinable()) {
-    prefetch_thread.join();
+  if (this->prefetch_thread.joinable()) {
+    this->prefetch_thread.join();
   }
   else {
-    prefetch_thread = std::thread(&AnimManager::free_unused_and_prefetch_anims, this, scene);
+    this->prefetch_thread = std::thread(&AnimManager::free_unused_and_prefetch_anims, this, scene);
   }
 }
 
@@ -346,26 +346,24 @@ ShareableAnim &AnimManager::cache_entry_get(const Scene *scene, const Sequence *
   char filepath[FILE_MAX];
   anim_filepath_get(scene, seq, sizeof(filepath), filepath);
 
-  mutex.lock();
-  ShareableAnim &sh_anim = *anims_map.lookup_or_add_cb(std::string(filepath), [&]() {
+  this->mutex.lock();
+  ShareableAnim &sh_anim = *this->anims_map.lookup_or_add_cb(std::string(filepath), [&]() {
     std::unique_ptr<ShareableAnim> new_sh_anim = std::make_unique<ShareableAnim>();
     return new_sh_anim;
   });
-  mutex.unlock();
+  this->mutex.unlock();
   return sh_anim;
 }
 
 void AnimManager::strip_anims_acquire(const Scene *scene, blender::Vector<Sequence *> &strips)
 {
-  parallel_load_anims(scene, strips, false);
+  this->parallel_load_anims(scene, strips, true);
 }
 
 void AnimManager::strip_anims_acquire(const Scene *scene, Sequence *seq)
 {
-  ShareableAnim &sh_anim = cache_entry_get(scene, seq);
-  if (!sh_anim.mutex->try_lock()) {
-    return;
-  }
+  ShareableAnim &sh_anim = this->cache_entry_get(scene, seq);
+  sh_anim.mutex->lock();
 
   if (!sh_anim.has_anim(scene, seq)) {
     sh_anim.acquire_anims(scene, seq);
@@ -376,7 +374,7 @@ void AnimManager::strip_anims_release(const Scene *scene, blender::Vector<Sequen
 {
   for (Sequence *seq : strips) {
     if (seq->type == SEQ_TYPE_MOVIE) {
-      ShareableAnim &sh_anim = cache_entry_get(scene, seq);
+      ShareableAnim &sh_anim = this->cache_entry_get(scene, seq);
       sh_anim.unlock();
     }
   }
@@ -384,29 +382,29 @@ void AnimManager::strip_anims_release(const Scene *scene, blender::Vector<Sequen
 
 void AnimManager::strip_anims_release(const Scene *scene, Sequence *seq)
 {
-  ShareableAnim &sh_anim = cache_entry_get(scene, seq);
+  ShareableAnim &sh_anim = this->cache_entry_get(scene, seq);
   sh_anim.unlock();
 }
 
 blender::Vector<ImBufAnim *> &AnimManager::strip_anims_get(const Scene *scene, const Sequence *seq)
 {
-  ShareableAnim &sh_anim = cache_entry_get(scene, seq);
+  ShareableAnim &sh_anim = this->cache_entry_get(scene, seq);
   return sh_anim.anims;
 }
 
 void AnimManager::free_anims_by_seq(const Scene *scene, const Sequence *seq)
 {
-  ShareableAnim &sh_anim = cache_entry_get(scene, seq);
+  ShareableAnim &sh_anim = this->cache_entry_get(scene, seq);
   sh_anim.release_from_all_strips();
 }
 
 AnimManager::~AnimManager()
 {
-  if (prefetch_thread.joinable()) {
-    prefetch_thread.join();
+  if (this->prefetch_thread.joinable()) {
+    this->prefetch_thread.join();
   }
 
-  for (std::unique_ptr<ShareableAnim> &sh_anim : anims_map.values()) {
+  for (std::unique_ptr<ShareableAnim> &sh_anim : this->anims_map.values()) {
     sh_anim->release_from_all_strips();
   }
 }
