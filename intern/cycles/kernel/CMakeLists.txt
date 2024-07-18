@@ -59,8 +59,7 @@ if(WITH_CYCLES_OSL)
   add_compile_options("$<$<COMPILE_LANGUAGE:CUDA>:-DOSL_LIBRARY_VERSION_CODE=${OSL_LIBRARY_VERSION_CODE}>")
 
   if(OSL_LIBRARY_VERSION_CODE GREATER_EQUAL 11300)
-    set(SRC_KERNEL_DEVICE_OPTIX
-      ${SRC_KERNEL_DEVICE_OPTIX}
+    set(SRC_KERNEL_DEVICE_OPTIX_OSL
       osl/services_optix.cu
       device/optix/kernel_bake_osl.cu
       device/optix/kernel_integrator_shade_background_osl.cu
@@ -69,6 +68,10 @@ if(WITH_CYCLES_OSL)
       device/optix/kernel_integrator_shade_shadow_osl.cu
       device/optix/kernel_integrator_shade_surface_osl.cu
       device/optix/kernel_integrator_shade_volume_osl.cu
+    )
+    set(SRC_KERNEL_DEVICE_OPTIX
+      ${SRC_KERNEL_DEVICE_OPTIX}
+      ${SRC_KERNEL_DEVICE_OPTIX_OSL}
     )
   endif()
 endif()
@@ -675,8 +678,11 @@ if(WITH_CYCLES_DEVICE_OPTIX AND WITH_CYCLES_CUDA_BINARIES)
 
   target_compile_options(cycles_kernel_optix PRIVATE
     -use_fast_math
-    -keep-device-functions
     -split-compile=0)
+  set_source_files_properties(device/optix/kernel_integrator_shade_surface.cu PROPERTIES COMPILE_OPTIONS
+    -keep-device-functions)
+  set_source_files_properties(${SRC_KERNEL_DEVICE_OPTIX_OSL} PROPERTIES COMPILE_OPTIONS
+    -rdc=true)
 
   cycles_set_solution_folder(cycles_kernel_optix)
 
