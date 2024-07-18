@@ -142,6 +142,9 @@ endif()
 
 if(WITH_PYTHON_MODULE)
   add_definitions(-DWITH_PYTHON_MODULE)
+  list(APPEND INC
+    ${AUDASPACE_C_INCLUDE_DIRS}
+  )
 endif()
 
 

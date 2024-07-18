@@ -23,6 +23,9 @@
 #include "BKE_blender_version.h"
 #include "BKE_bpath.hh"
 #include "BKE_global.hh" /* XXX, G_MAIN only */
+#ifdef WITH_PYTHON_MODULE
+#  include "BKE_sound.h"
+#endif
 
 #include "RNA_access.hh"
 #include "RNA_enum_types.hh"
@@ -731,6 +734,10 @@ void BPy_init_modules(bContext *C)
   IDPropertyUIData_Init_Types();
 #ifdef WITH_FREESTYLE
   Freestyle_Init();
+#endif
+#ifdef WITH_PYTHON_MODULE
+  /* disable sound device when built as a standalone python module */
+  BKE_sound_force_device("None");
 #endif
 
   mod = PyModule_New("_bpy");

@@ -180,6 +180,16 @@ def main() -> None:
     # Get Blender version.
     blender_version_str = str(make_utils.parse_blender_version())
 
+    # Get numpy version
+    numpy_path = cmake_cache_var_or_exit(filepath_cmake_cache, "PYTHON_NUMPY_PATH").split(":")
+    sys_path = sys.path
+    sys.path = numpy_path + sys_path
+    import numpy
+    sys.path = sys_path
+    numpy_version = numpy.version.full_version
+    numpy_major_version = numpy_version.split(".")[0]
+    numpy_version_constraint = "numpy >=%s, ==%s.*" % (numpy_version, numpy_major_version)
+
     # Set platform tag following conventions.
     if sys.platform == "darwin":
         target = cmake_cache_var_or_exit(filepath_cmake_cache, "CMAKE_OSX_DEPLOYMENT_TARGET").split(".")
@@ -226,7 +236,7 @@ def main() -> None:
     setuptools.setup(
         name="bpy",
         version=blender_version_str,
-        install_requires=["cython", "numpy", "requests", "zstandard"],
+        install_requires=["cython", numpy_version_constraint, "requests", "zstandard"],
         python_requires="==%d.%d.*" % (python_version_number[0], python_version_number[1]),
         packages=["bpy"],
         package_data={"": package_files("bpy")},

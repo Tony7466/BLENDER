@@ -8,3 +8,4 @@ sys.path.append(sys.argv[1])
 
 # Just import bpy and see if there are any dynamic loader errors.
 import bpy
+import aud
