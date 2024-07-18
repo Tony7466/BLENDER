@@ -145,7 +145,6 @@ class Cycles_Report(render_report.Report):
     def __init__(self, title, output_dir, oiiotool, device=None, blocklist=[], osl=False):
         super().__init__(title, output_dir, oiiotool, device=device, blacklist=blocklist)
         self.osl = osl
-
         if osl:
             self.title += " OSL"
 
