@@ -26,7 +26,6 @@ class ShareableAnim {
   void release_from_strip(Sequence *seq);
   void release_from_all_strips(void);
   void acquire_anims(const Scene *scene, Sequence *seq);
-  bool has_anim(const Scene *scene, Sequence *seq);
   void unlock();
 };
 
