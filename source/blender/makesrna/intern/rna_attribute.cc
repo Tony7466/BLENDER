@@ -682,6 +682,19 @@ static void rna_AttributeGroupID_update_active(Main *bmain, Scene *scene, Pointe
   rna_Attribute_update_data(bmain, scene, ptr);
 }
 
+static void rna_AttributeGroupID_update_active_color(Main * /*bmain*/,
+                                                     Scene * /*scene*/,
+                                                     PointerRNA *ptr)
+{
+  ID *id = ptr->owner_id;
+
+  /* Cheating way for importers to avoid slow updates. */
+  if (id->us > 0) {
+    DEG_id_tag_update(id, 0);
+    WM_main_add_notifier(NC_GEOM | ND_DATA, id);
+  }
+}
+
 static PointerRNA rna_AttributeGroupMesh_active_color_get(PointerRNA *ptr)
 {
   AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
@@ -739,19 +752,6 @@ static void rna_AttributeGroupMesh_active_color_index_range(
 
   *softmin = *min;
   *softmax = *max;
-}
-
-static void rna_AttributeGroupID_update_active_color(Main * /*bmain*/,
-                                                     Scene * /*scene*/,
-                                                     PointerRNA *ptr)
-{
-  ID *id = ptr->owner_id;
-
-  /* Cheating way for importers to avoid slow updates. */
-  if (id->us > 0) {
-    DEG_id_tag_update(id, 0);
-    WM_main_add_notifier(NC_GEOM | ND_DATA, id);
-  }
 }
 
 static int rna_AttributeGroupMesh_render_color_index_get(PointerRNA *ptr)
