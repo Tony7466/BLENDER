@@ -692,25 +692,23 @@ if(WITH_CYCLES OR WITH_GPU_RENDER_TESTS)
       endif()
       foreach(_cycles_device ${CYCLES_TEST_DEVICES})
         string(TOLOWER "${_cycles_device}" _cycles_device_lower)
-        set(_cycles_render_tests bake;${render_tests})
-        if (NOT WITH_CYCLES_TEST_OSL)
-          # Enable basic OSL tests for everyone
-          # The case when WITH_CYCLES_TEST_OSL is true is handled later
-          set(_cycles_render_tests ${_cycles_render_tests};osl)
-        endif()
+        set(_cycles_render_tests bake;${render_tests};osl)
 
         foreach(render_test ${_cycles_render_tests})
           set(_cycles_test_name "cycles_${render_test}_${_cycles_device_lower}")
-          add_render_test(
-            ${_cycles_test_name}
-            ${CMAKE_CURRENT_LIST_DIR}/cycles_render_tests.py
-            -testdir "${TEST_SRC_DIR}/render/${render_test}"
-            -outdir "${TEST_OUT_DIR}/cycles"
-            -device ${_cycles_device}
-            -blacklist ${_cycles_blacklist}
-          )
+          if (NOT(WITH_CYCLES_TEST_OSL AND WITH_CYCLES_OSL AND ("${render_test}" STREQUAL "osl")))
+            # Only run OSL basic tests during this phase if WITH_CYCLES_TEST_OSL isn't enabled
+            add_render_test(
+              ${_cycles_test_name}
+              ${CMAKE_CURRENT_LIST_DIR}/cycles_render_tests.py
+              -testdir "${TEST_SRC_DIR}/render/${render_test}"
+              -outdir "${TEST_OUT_DIR}/cycles"
+              -device ${_cycles_device}
+              -blacklist ${_cycles_blacklist}
+            )
+          endif()
 
-          if(WITH_CYCLES_TEST_OSL AND WITH_CYCLES_OSL)
+          if (WITH_CYCLES_TEST_OSL AND WITH_CYCLES_OSL)
             # OSL is only supported with CPU and OptiX
             # TODO: Enable OptiX support once it's more stable
             if("${_cycles_device_lower}" STREQUAL "cpu")
@@ -731,28 +729,6 @@ if(WITH_CYCLES OR WITH_GPU_RENDER_TESTS)
           endif()
           unset(_cycles_test_name)
         endforeach()
-
-        if(WITH_CYCLES_TEST_OSL AND WITH_CYCLES_OSL)
-          # Add OSL folder test as it wasn't tested previously with this
-          # specific combination of variables
-          set(_cycles_test_name "cycles_osl_${_cycles_device_lower}")
-
-          # OSL is only supported with CPU and OptiX
-          # TODO: Enable OptiX support once it's more stable
-          if("${_cycles_device_lower}" STREQUAL "cpu")
-            add_render_test(
-              ${_cycles_test_name}_osl
-              ${CMAKE_CURRENT_LIST_DIR}/cycles_render_tests.py
-              -testdir "${TEST_SRC_DIR}/render/osl"
-              -outdir "${TEST_OUT_DIR}/cycles_osl"
-              -device ${_cycles_device}
-              -blacklist ""
-              -osl
-            )
-          endif()
-          unset(_cycles_test_name)
-        endif()
-
       endforeach()
       unset(_cycles_blacklist)
     endif()
