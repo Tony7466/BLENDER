@@ -284,7 +284,7 @@ void execute(SculptSession &ss,
 
 void FillDataMesh::execute(Object &object,
                            SculptSession &ss,
-                           FunctionRef<bool(int from_v, int to_v, bool is_duplicate)> func)
+                           FunctionRef<bool(int from_v, int to_v)> func)
 {
   Mesh &mesh = *static_cast<Mesh *>(object.data);
   const OffsetIndices faces = mesh.faces();
@@ -319,7 +319,7 @@ void FillDataMesh::execute(Object &object,
       }
 
       this->visited_verts[neighbor].set();
-      if (func(from_v, neighbor, false)) {
+      if (func(from_v, neighbor)) {
         this->queue.push(neighbor);
       }
     }
@@ -366,18 +366,17 @@ void FillDataGrids::execute(
   }
 }
 
-void FillDataBMesh::execute(
-    Object & /* object */,
-    SculptSession & /* ss */,
-    FunctionRef<bool(BMVert *from_v, BMVert *to_v, bool is_duplicate)> func)
+void FillDataBMesh::execute(Object & /* object */,
+                            SculptSession & /* ss */,
+                            FunctionRef<bool(BMVert *from_v, BMVert *to_v)> func)
 {
+  Vector<BMVert *, 64> neighbors;
   while (!this->queue.empty()) {
     BMVert *from_v = this->queue.front();
     this->queue.pop();
-    Vector<BMVert *, 64> neighbors;
-    vert_neighbors_get_bmesh(*from_v, neighbors);
 
-    for (BMVert *neighbor : neighbors) {
+    neighbors.clear();
+    for (BMVert *neighbor : vert_neighbors_get_bmesh(*from_v, neighbors)) {
       const int neighbor_idx = BM_elem_index_get(neighbor);
       if (this->visited_verts[neighbor_idx]) {
         continue;
@@ -388,7 +387,7 @@ void FillDataBMesh::execute(
       }
 
       this->visited_verts[neighbor_idx].set();
-      if (func(from_v, neighbor, false)) {
+      if (func(from_v, neighbor)) {
         this->queue.push(neighbor);
       }
     }

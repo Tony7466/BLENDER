@@ -1195,7 +1195,7 @@ struct FillDataMesh {
   void add_active(const Object &object, const SculptSession &ss, float radius);
   void execute(Object &object,
                SculptSession &ss,
-               FunctionRef<bool(int from_v, int to_v, bool is_duplicate)> func);
+               FunctionRef<bool(int from_v, int to_v> func);
 };
 
 struct FillDataGrids {
@@ -1232,7 +1232,7 @@ struct FillDataBMesh {
   void add_active(const Object &object, const SculptSession &ss, float radius);
   void execute(Object &object,
                SculptSession &ss,
-               FunctionRef<bool(BMVert *from_v, BMVert *to_v, bool is_duplicate)> func);
+               FunctionRef<bool(BMVert *from_v, BMVert *to_v)> func);
 };
 
 /**
