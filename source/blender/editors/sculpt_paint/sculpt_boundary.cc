@@ -1043,9 +1043,6 @@ std::unique_ptr<SculptBoundaryPreview> preview_data_init(Object &object,
 
   indices_init(ss, boundary, init_boundary_distances, boundary_initial_vert);
 
-  const float boundary_radius = brush ? radius * (1.0f + brush->boundary_offset) : radius;
-  edit_data_init(ss, boundary, boundary_initial_vert, boundary_radius);
-
   std::unique_ptr<SculptBoundaryPreview> preview = std::make_unique<SculptBoundaryPreview>();
   preview->edges = boundary.edges;
   preview->pivot_position = boundary.pivot_position;
