@@ -342,6 +342,7 @@ class NODE_MT_node(Menu):
         layout = self.layout
         snode = context.space_data
         is_compositor = snode.tree_type == 'CompositorNodeTree'
+        is_geometrynodes = snode.tree_type == 'GeometryNodeTree'
 
         layout.operator("transform.translate").view2d_edge_pan = True
         layout.operator("transform.rotate")
@@ -360,6 +361,9 @@ class NODE_MT_node(Menu):
         layout.separator()
         layout.operator("node.delete", icon='X')
         layout.operator("node.delete_reconnect")
+
+        if context.preferences.experimental.use_new_file_import_nodes and is_geometrynodes:
+            layout.operator("node.clear_geometry_cache")
 
         layout.separator()
         layout.operator("node.join", text="Join in New Frame")
@@ -635,6 +639,9 @@ class NODE_MT_context_menu(Menu):
         layout.operator("node.delete", icon='X')
         layout.operator_context = 'EXEC_REGION_WIN'
         layout.operator("node.delete_reconnect", text="Dissolve")
+
+        if context.preferences.experimental.use_new_file_import_nodes and is_geometrynodes:
+            layout.operator("node.clear_geometry_cache")
 
         if selected_nodes_len > 1:
             layout.separator()

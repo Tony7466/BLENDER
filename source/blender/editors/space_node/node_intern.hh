@@ -382,6 +382,8 @@ void NODE_OT_shader_script_update(wmOperatorType *ot);
 void NODE_OT_viewer_border(wmOperatorType *ot);
 void NODE_OT_clear_viewer_border(wmOperatorType *ot);
 
+void NODE_OT_clear_geometry_cache(wmOperatorType *ot);
+
 void NODE_OT_cryptomatte_layer_add(wmOperatorType *ot);
 void NODE_OT_cryptomatte_layer_remove(wmOperatorType *ot);
 

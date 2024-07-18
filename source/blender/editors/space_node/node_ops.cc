@@ -101,6 +101,7 @@ void node_operatortypes()
 
   WM_operatortype_append(NODE_OT_viewer_border);
   WM_operatortype_append(NODE_OT_clear_viewer_border);
+  WM_operatortype_append(NODE_OT_clear_geometry_cache);
 
   WM_operatortype_append(NODE_OT_cryptomatte_layer_add);
   WM_operatortype_append(NODE_OT_cryptomatte_layer_remove);

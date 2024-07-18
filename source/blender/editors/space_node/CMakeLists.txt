@@ -20,6 +20,7 @@ set(INC
   ../../nodes
   ../../render
   ../../windowmanager
+  ../../nodes/geometry
 
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
