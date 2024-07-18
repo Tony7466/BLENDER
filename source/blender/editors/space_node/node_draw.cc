@@ -1309,6 +1309,18 @@ void node_socket_color_get(const bContext &C,
   sock.typeinfo->draw_color((bContext *)&C, &ptr, &node_ptr, r_color);
 }
 
+static geo_log::GeoTreeLog *geo_tree_log_for_socket(const bNodeTree &ntree,
+                                                    const bNodeSocket &socket,
+                                                    TreeDrawContext &tree_draw_ctx)
+{
+  const bNodeTreeZones *zones = ntree.zones();
+  if (!zones) {
+    return nullptr;
+  }
+  const bNodeTreeZone *zone = zones->get_zone_by_socket(socket);
+  return tree_draw_ctx.geo_log_by_zone.lookup_default(zone, nullptr);
+}
+
 static void create_inspection_string_for_generic_value(const bNodeSocket &socket,
                                                        const GPointer value,
                                                        fmt::memory_buffer &buf)
@@ -1673,22 +1685,13 @@ static std::optional<std::string> create_description_inspection_string(const bNo
   return TIP_(description.c_str());
 }
 
-static std::optional<std::string> create_data_type_inspection_string(const bNodeSocket &socket)
-{
-  if (socket.runtime->declaration == nullptr) {
-    return std::nullopt;
-  }
-  const blender::nodes::SocketDeclaration &socket_decl = *socket.runtime->declaration;
-  if (socket_decl.is_volume_grid) {
-    return "Volume Grid";
-  }
-  return std::nullopt;
-}
-
-static std::optional<std::string> create_log_inspection_string(geo_log::GeoTreeLog *geo_tree_log,
-                                                               const bNodeSocket &socket)
+static std::optional<std::string> create_log_inspection_string(const bNodeTree &ntree,
+                                                               const bNodeSocket &socket,
+                                                               TreeDrawContext &tree_draw_ctx)
 {
   using namespace blender::nodes::geo_eval_log;
+
+  geo_log::GeoTreeLog *geo_tree_log = geo_tree_log_for_socket(ntree, socket, tree_draw_ctx);
 
   if (geo_tree_log == nullptr) {
     return std::nullopt;
@@ -1723,7 +1726,8 @@ static std::optional<std::string> create_log_inspection_string(geo_log::GeoTreeL
   return str;
 }
 
-static std::optional<std::string> create_declaration_inspection_string(const bNodeSocket &socket)
+static std::optional<std::string> create_supported_types_inspection_string(
+    const bNodeSocket &socket)
 {
   fmt::memory_buffer buf;
   if (const nodes::decl::Geometry *socket_decl = dynamic_cast<const nodes::decl::Geometry *>(
@@ -1737,18 +1741,6 @@ static std::optional<std::string> create_declaration_inspection_string(const bNo
     return std::nullopt;
   }
   return str;
-}
-
-static geo_log::GeoTreeLog *geo_tree_log_for_socket(const bNodeTree &ntree,
-                                                    const bNodeSocket &socket,
-                                                    TreeDrawContext &tree_draw_ctx)
-{
-  const bNodeTreeZones *zones = ntree.zones();
-  if (!zones) {
-    return nullptr;
-  }
-  const bNodeTreeZone *zone = zones->get_zone_by_socket(socket);
-  return tree_draw_ctx.geo_log_by_zone.lookup_default(zone, nullptr);
 }
 
 static Vector<std::string> lines_of_text(std::string text)
@@ -1784,10 +1776,8 @@ static std::optional<std::string> create_multi_input_log_inspection_string(
       continue;
     }
     const bNodeSocket &connected_socket = *link->fromsock;
-    geo_log::GeoTreeLog *geo_tree_log = geo_tree_log_for_socket(
+    const std::optional<std::string> input_log = create_log_inspection_string(
         ntree, connected_socket, tree_draw_ctx);
-    const std::optional<std::string> input_log = create_log_inspection_string(geo_tree_log,
-                                                                              connected_socket);
     if (!input_log.has_value()) {
       continue;
     }
@@ -1830,6 +1820,29 @@ static std::optional<std::string> create_default_value_inspection_string(const b
     return std::nullopt;
   }
   return str;
+}
+
+static std::optional<std::string> create_last_value_inspection_string(
+    const bNodeTree &ntree, const bNodeSocket &socket, TreeDrawContext &tree_draw_ctx)
+{
+  if (std::optional<std::string> info = create_log_inspection_string(ntree, socket, tree_draw_ctx))
+  {
+    return info;
+  }
+  if (std::optional<std::string> info = create_default_value_inspection_string(socket)) {
+    return info;
+  }
+  if (std::optional<std::string> info = create_multi_input_log_inspection_string(
+          ntree, socket, tree_draw_ctx))
+  {
+    return info;
+  }
+  if (ntree.type == NTREE_GEOMETRY) {
+    return TIP_(
+        "Unknown socket value. Either the socket was not used or its value was not logged "
+        "during the last evaluation");
+  }
+  return std::nullopt;
 }
 
 static const bNodeSocket *target_for_reroute(const bNodeSocket &reroute_output)
@@ -1905,8 +1918,6 @@ static std::string node_socket_get_tooltip(const SpaceNode *snode,
     }
   }
 
-  geo_log::GeoTreeLog *geo_tree_log = geo_tree_log_for_socket(ntree, socket, tree_draw_ctx);
-
   /* Handle reroute nodes as a special case. */
   if (node.is_reroute()) {
     if (const std::optional<std::string> info = create_dangling_reroute_inspection_string(ntree,
@@ -1914,7 +1925,9 @@ static std::string node_socket_get_tooltip(const SpaceNode *snode,
     {
       return *info;
     }
-    if (std::optional<std::string> info = create_log_inspection_string(geo_tree_log, socket)) {
+    if (std::optional<std::string> info = create_log_inspection_string(
+            ntree, socket, tree_draw_ctx))
+    {
       return *info;
     }
     char reroute_name[MAX_NAME];
@@ -1936,31 +1949,17 @@ static std::string node_socket_get_tooltip(const SpaceNode *snode,
   }
 
   /* Last value. */
-  if (std::optional<std::string> info = create_log_inspection_string(geo_tree_log, socket)) {
-    inspection_strings.append(std::move(*info));
-  }
-  else if (std::optional<std::string> info = create_default_value_inspection_string(socket)) {
-    inspection_strings.append(std::move(*info));
-  }
-  else if (std::optional<std::string> info = create_multi_input_log_inspection_string(
-               ntree, socket, tree_draw_ctx))
+  if (std::optional<std::string> info = create_last_value_inspection_string(
+          ntree, socket, tree_draw_ctx))
   {
     inspection_strings.append(std::move(*info));
-  }
-  else if (ntree.type == NTREE_GEOMETRY) {
-    inspection_strings.append(
-        TIP_("Unknown socket value. Either the socket was not used or its value was not logged "
-             "during the last evaluation"));
   }
 
   /* Socket type. */
   inspection_strings.append(fmt::format(TIP_("Socket type: {}"), TIP_(socket.typeinfo->label)));
 
   /* Supported types. */
-  if (std::optional<std::string> info = create_data_type_inspection_string(socket)) {
-    inspection_strings.append(std::move(*info));
-  }
-  else if (std::optional<std::string> info = create_declaration_inspection_string(socket)) {
+  if (std::optional<std::string> info = create_supported_types_inspection_string(socket)) {
     inspection_strings.append(std::move(*info));
   }
 
