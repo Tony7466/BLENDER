@@ -13,7 +13,7 @@ from pathlib import Path
 # List of .blend files that are known to be failing and are not ready to be
 # tested, or that only make sense on some devices. Accepts regular expressions.
 BLOCKLIST_ALL = [
-    # Blocked due overlapping object differences between platforms.
+    # Blocked due to overlapping object differences between platforms.
     "hair_geom_reflection.blend",
     "hair_geom_transmission.blend",
     "hair_instancer_uv.blend",
