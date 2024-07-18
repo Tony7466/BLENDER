@@ -45,7 +45,6 @@ set(SRC_KERNEL_DEVICE_CUDA
 )
 
 set(SRC_KERNEL_DEVICE_OPTIX
-  device/optix/kernel_common.cu
   device/optix/kernel_integrator_intersect_closest.cu
   device/optix/kernel_integrator_intersect_dedicated_light.cu
   device/optix/kernel_integrator_intersect_shadow.cu
@@ -64,7 +63,6 @@ if(WITH_CYCLES_OSL)
       ${SRC_KERNEL_DEVICE_OPTIX}
       osl/services_optix.cu
       device/optix/kernel_bake_osl.cu
-      device/optix/kernel_common_osl.cu
       device/optix/kernel_integrator_shade_background_osl.cu
       device/optix/kernel_integrator_shade_dedicated_light_osl.cu
       device/optix/kernel_integrator_shade_light_osl.cu

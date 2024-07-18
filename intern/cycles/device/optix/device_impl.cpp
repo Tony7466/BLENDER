@@ -190,8 +190,6 @@ string OptiXDevice::compile_kernel_get_common_cflags(const uint kernel_features)
 static string get_optix_module_name(int module_type)
 {
   switch (module_type) {
-    case MOD_COMMON:
-      return "kernel_common";
     case MOD_INTEGRATOR_INTERSECT_CLOSEST:
       return "kernel_integrator_intersect_closest";
     case MOD_INTEGRATOR_INTERSECT_DEDICATED_LIGHT:
@@ -241,13 +239,12 @@ bool OptiXDevice::load_kernels(const uint kernel_features)
   /* Detect existence of OptiX kernel and SDK here early. So we can error out
    * before compiling the CUDA kernels, to avoid failing right after when
    * compiling the OptiX kernel. */
-  string suffix = use_osl ? "_osl" : string();
   string ptx_filename;
   if (need_optix_kernels) {
-    ptx_filename = path_get("lib/optix/kernel_common" + suffix + ".optixir");
+    ptx_filename = path_get("lib/optix/kernel_integrator_intersect_closest.optixir");
     if (!path_exists(ptx_filename)) {
-      ptx_filename = path_get("lib/optix/kernel_common" + suffix + ".ptx");
-	}
+      ptx_filename = path_get("lib/optix/kernel_integrator_intersect_closest.ptx");
+    }
     if (use_adaptive_compilation() || path_file_size(ptx_filename) == -1) {
       std::string optix_include_dir = get_optix_include_dir();
       if (optix_include_dir.empty()) {
@@ -379,10 +376,12 @@ bool OptiXDevice::load_kernels(const uint kernel_features)
       continue;
     }
 
-    if (i < MOD_INTEGRATOR_INTERSECT_CLOSEST || i > MOD_INTEGRATOR_INTERSECT_VOLUME_STACK) {
-      module_name += suffix;
+    if (i >= MOD_INTEGRATOR_SHADE_BACKGROUND) {
+      if (use_osl) {
+        module_name += "_osl";
+      }
 
-	  switch (i) {
+      switch (i) {
         case MOD_INTEGRATOR_SHADE_SURFACE:
           if (use_osl || (kernel_features & (KERNEL_FEATURE_NODE_RAYTRACE | KERNEL_FEATURE_MNEE)))
             break;
@@ -404,7 +403,7 @@ bool OptiXDevice::load_kernels(const uint kernel_features)
     ptx_filename = path_get("lib/optix/" + module_name + ".optixir");
     if (!path_exists(ptx_filename)) {
       ptx_filename = path_get("lib/optix/" + module_name + ".ptx");
-	}
+    }
     string ptx_data;
     if (use_adaptive_compilation() || path_file_size(ptx_filename) == -1) {
       const string cflags = compile_kernel_get_common_cflags(kernel_features);
@@ -495,20 +494,20 @@ bool OptiXDevice::load_kernels(const uint kernel_features)
   group_descs[PG_RGEN_INTERSECT_DEDICATED_LIGHT].raygen.entryFunctionName =
       "__raygen__kernel_optix_integrator_intersect_dedicated_light";
   group_descs[PG_MISS].kind = OPTIX_PROGRAM_GROUP_KIND_MISS;
-  group_descs[PG_MISS].miss.module = modules[MOD_COMMON];
+  group_descs[PG_MISS].miss.module = modules[MOD_INTEGRATOR_INTERSECT_CLOSEST];
   group_descs[PG_MISS].miss.entryFunctionName = "__miss__kernel_optix_miss";
   group_descs[PG_HITD].kind = OPTIX_PROGRAM_GROUP_KIND_HITGROUP;
-  group_descs[PG_HITD].hitgroup.moduleCH = modules[MOD_COMMON];
+  group_descs[PG_HITD].hitgroup.moduleCH = modules[MOD_INTEGRATOR_INTERSECT_CLOSEST];
   group_descs[PG_HITD].hitgroup.entryFunctionNameCH = "__closesthit__kernel_optix_hit";
-  group_descs[PG_HITD].hitgroup.moduleAH = modules[MOD_COMMON];
+  group_descs[PG_HITD].hitgroup.moduleAH = modules[MOD_INTEGRATOR_INTERSECT_CLOSEST];
   group_descs[PG_HITD].hitgroup.entryFunctionNameAH = "__anyhit__kernel_optix_visibility_test";
   group_descs[PG_HITS].kind = OPTIX_PROGRAM_GROUP_KIND_HITGROUP;
-  group_descs[PG_HITS].hitgroup.moduleAH = modules[MOD_COMMON];
+  group_descs[PG_HITS].hitgroup.moduleAH = modules[MOD_INTEGRATOR_INTERSECT_CLOSEST];
   group_descs[PG_HITS].hitgroup.entryFunctionNameAH = "__anyhit__kernel_optix_shadow_all_hit";
   group_descs[PG_HITV].kind = OPTIX_PROGRAM_GROUP_KIND_HITGROUP;
-  group_descs[PG_HITV].hitgroup.moduleCH = modules[MOD_COMMON];
+  group_descs[PG_HITV].hitgroup.moduleCH = modules[MOD_INTEGRATOR_INTERSECT_CLOSEST];
   group_descs[PG_HITV].hitgroup.entryFunctionNameCH = "__closesthit__kernel_optix_hit";
-  group_descs[PG_HITV].hitgroup.moduleAH = modules[MOD_COMMON];
+  group_descs[PG_HITV].hitgroup.moduleAH = modules[MOD_INTEGRATOR_INTERSECT_CLOSEST];
   group_descs[PG_HITV].hitgroup.entryFunctionNameAH = "__anyhit__kernel_optix_volume_test";
 
   if (kernel_features & KERNEL_FEATURE_HAIR) {
@@ -553,8 +552,8 @@ bool OptiXDevice::load_kernels(const uint kernel_features)
     }
     else {
       /* Custom ribbon intersection. */
-      group_descs[PG_HITD].hitgroup.moduleIS = modules[MOD_COMMON];
-      group_descs[PG_HITS].hitgroup.moduleIS = modules[MOD_COMMON];
+      group_descs[PG_HITD].hitgroup.moduleIS = modules[MOD_INTEGRATOR_INTERSECT_CLOSEST];
+      group_descs[PG_HITS].hitgroup.moduleIS = modules[MOD_INTEGRATOR_INTERSECT_CLOSEST];
       group_descs[PG_HITD].hitgroup.entryFunctionNameIS = "__intersection__curve_ribbon";
       group_descs[PG_HITS].hitgroup.entryFunctionNameIS = "__intersection__curve_ribbon";
     }
@@ -563,18 +562,18 @@ bool OptiXDevice::load_kernels(const uint kernel_features)
   if (kernel_features & KERNEL_FEATURE_POINTCLOUD) {
     group_descs[PG_HITD_POINTCLOUD] = group_descs[PG_HITD];
     group_descs[PG_HITD_POINTCLOUD].kind = OPTIX_PROGRAM_GROUP_KIND_HITGROUP;
-    group_descs[PG_HITD_POINTCLOUD].hitgroup.moduleIS = modules[MOD_COMMON];
+    group_descs[PG_HITD_POINTCLOUD].hitgroup.moduleIS = modules[MOD_INTEGRATOR_INTERSECT_CLOSEST];
     group_descs[PG_HITD_POINTCLOUD].hitgroup.entryFunctionNameIS = "__intersection__point";
     group_descs[PG_HITS_POINTCLOUD] = group_descs[PG_HITS];
     group_descs[PG_HITS_POINTCLOUD].kind = OPTIX_PROGRAM_GROUP_KIND_HITGROUP;
-    group_descs[PG_HITS_POINTCLOUD].hitgroup.moduleIS = modules[MOD_COMMON];
+    group_descs[PG_HITS_POINTCLOUD].hitgroup.moduleIS = modules[MOD_INTEGRATOR_INTERSECT_CLOSEST];
     group_descs[PG_HITS_POINTCLOUD].hitgroup.entryFunctionNameIS = "__intersection__point";
   }
 
   /* Add hit group for local intersections. */
   if (kernel_features & (KERNEL_FEATURE_SUBSURFACE | KERNEL_FEATURE_NODE_RAYTRACE)) {
     group_descs[PG_HITL].kind = OPTIX_PROGRAM_GROUP_KIND_HITGROUP;
-    group_descs[PG_HITL].hitgroup.moduleAH = modules[MOD_COMMON];
+    group_descs[PG_HITL].hitgroup.moduleAH = modules[MOD_INTEGRATOR_INTERSECT_CLOSEST];
     group_descs[PG_HITL].hitgroup.entryFunctionNameAH = "__anyhit__kernel_optix_local_hit";
   }
 
@@ -589,10 +588,10 @@ bool OptiXDevice::load_kernels(const uint kernel_features)
     /* Kernels with OSL support are built without SVM, so can skip those direct callables there. */
     if (!use_osl) {
       group_descs[PG_CALL_SVM_AO].kind = OPTIX_PROGRAM_GROUP_KIND_CALLABLES;
-      group_descs[PG_CALL_SVM_AO].callables.moduleDC = modules[MOD_COMMON];
+      group_descs[PG_CALL_SVM_AO].callables.moduleDC = modules[MOD_INTEGRATOR_SHADE_SURFACE];
       group_descs[PG_CALL_SVM_AO].callables.entryFunctionNameDC = "__direct_callable__svm_node_ao";
       group_descs[PG_CALL_SVM_BEVEL].kind = OPTIX_PROGRAM_GROUP_KIND_CALLABLES;
-      group_descs[PG_CALL_SVM_BEVEL].callables.moduleDC = modules[MOD_COMMON];
+      group_descs[PG_CALL_SVM_BEVEL].callables.moduleDC = modules[MOD_INTEGRATOR_SHADE_SURFACE];
       group_descs[PG_CALL_SVM_BEVEL].callables.entryFunctionNameDC =
           "__direct_callable__svm_node_bevel";
     }
