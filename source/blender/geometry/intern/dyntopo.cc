@@ -178,6 +178,10 @@ static constexpr const int8_t ab_is_real_edge = 1 << 0;
 static constexpr const int8_t bc_is_real_edge = 1 << 1;
 static constexpr const int8_t ca_is_real_edge = 1 << 2;
 
+static constexpr const int8_t ab_is_splitable_edge = 1 << 3;
+static constexpr const int8_t bc_is_splitable_edge = 1 << 4;
+static constexpr const int8_t ca_is_splitable_edge = 1 << 5;
+
 static const std::array<int8_t, 3> edge_state_for_vert = {
     bc_is_real_edge, ca_is_real_edge, ab_is_real_edge};
 }  // namespace EdgeState
@@ -212,18 +216,18 @@ static void split_edge_for_state(const int8_t state, const int2 split_edge, Vect
 {
   switch (exclusive_one(FaceVerts::abc, split_edge)) {
     case FaceVerts::a: {
-      r_list.append(state & ~EdgeState::ca_is_real_edge);
-      r_list.append(state & ~EdgeState::ab_is_real_edge);
+      r_list.append(state & (~EdgeState::ca_is_real_edge));
+      r_list.append(state & (~EdgeState::ab_is_real_edge) & (~EdgeState::ab_is_splitable_edge));
       break;
     }
     case FaceVerts::b: {
-      r_list.append(state & ~EdgeState::bc_is_real_edge);
-      r_list.append(state & ~EdgeState::ab_is_real_edge);
+      r_list.append(state & (~EdgeState::bc_is_real_edge) & (~EdgeState::bc_is_splitable_edge));
+      r_list.append(state & (~EdgeState::ab_is_real_edge));
       break;
     }
     case FaceVerts::c: {
-      r_list.append(state & ~EdgeState::bc_is_real_edge);
-      r_list.append(state & ~EdgeState::ca_is_real_edge);
+      r_list.append(state & (~EdgeState::ca_is_real_edge) & (~EdgeState::ca_is_splitable_edge));
+      r_list.append(state & (~EdgeState::bc_is_real_edge));
       break;
     }
   }
@@ -521,6 +525,7 @@ static void gather_edges_to_split(const Span<int> faces,
   // std::cout << "\t\t" << r_edges_to_split.as_span() << ";\n";
 }
 
+template<typename VertFunc, typename FaceFunc>
 static void face_subdivide(const std::array<int, 5> &vert_offsets,
                            const Span<float2> verts,
                            const Span<float3> real_verts,
@@ -528,6 +533,8 @@ static void face_subdivide(const std::array<int, 5> &vert_offsets,
                            const float radius,
                            const float max_length,
                            const int3 face_verts,
+                           VertFunc vert_func,
+                           FaceFunc face_func,
                            VectorSet<OrderedEdge> &r_all_edges,
                            VectorSet<OrderedEdge> &r_unique_edges)
 {
@@ -535,22 +542,33 @@ static void face_subdivide(const std::array<int, 5> &vert_offsets,
   Vector<Vector<float2>> verts_stack = {verts};
   Vector<Vector<float3>> real_verts_stack = {real_verts};
   Vector<int3> tris = {face_verts};
+  Vector<int8_t> edge_states = {EdgeState::ab_is_real_edge | EdgeState::bc_is_real_edge |
+                                EdgeState::ca_is_real_edge | EdgeState::ab_is_splitable_edge |
+                                EdgeState::bc_is_splitable_edge | EdgeState::ca_is_splitable_edge};
 
   while (!offsets_stack.is_empty()) {
     std::cout << "Stack call." << std::endl;
     BLI_assert(offsets_stack.size() == verts_stack.size());
     BLI_assert(offsets_stack.size() == real_verts_stack.size());
     BLI_assert(offsets_stack.size() == tris.size());
+    BLI_assert(offsets_stack.size() == edge_states.size());
 
     const std::array<int, 5> offset_data = offsets_stack.pop_last();
     Vector<float2> verts = verts_stack.pop_last();
     Vector<float3> real_verts = real_verts_stack.pop_last();
     const int3 face_verts = tris.pop_last();
+    const int8_t states = edge_states.pop_last();
 
     std::cout << " -" << offset_data << std::endl;
     std::cout << " -" << verts.as_span() << std::endl;
     std::cout << " -" << real_verts.as_span() << std::endl;
     std::cout << " -" << face_verts << std::endl;
+    std::cout << " - States: " << (states & EdgeState::ab_is_real_edge ? "A" : "0")
+              << (states & EdgeState::bc_is_real_edge ? "B" : "0")
+              << (states & EdgeState::ca_is_real_edge ? "C" : "0") << std::endl;
+    std::cout << " - Is Subdivideble: " << (states & EdgeState::ab_is_splitable_edge ? "A" : "0")
+              << (states & EdgeState::bc_is_splitable_edge ? "B" : "0")
+              << (states & EdgeState::ca_is_splitable_edge ? "C" : "0") << std::endl;
 
     BLI_assert(offset_data[1] == 3);
 
@@ -562,6 +580,7 @@ static void face_subdivide(const std::array<int, 5> &vert_offsets,
     gather_faces_to_split(verts_by_face_type, centre, radius, faces_to_split);
     std::cout << "  - " << faces_to_split.as_span() << ";\n";
     if (faces_to_split.is_empty()) {
+      face_func(face_verts);
       continue;
     }
 
@@ -569,6 +588,7 @@ static void face_subdivide(const std::array<int, 5> &vert_offsets,
     gather_edges_to_split(faces_to_split, real_verts_by_face_type, max_length, edges_to_split);
     std::cout << "  - " << edges_to_split.as_span() << ";\n";
     if (edges_to_split.is_empty()) {
+      face_func(face_verts);
       continue;
     }
 
@@ -618,11 +638,26 @@ static void face_subdivide(const std::array<int, 5> &vert_offsets,
       verts_stack.append(next_verts);
       real_verts_stack.append(next_real_verts);
       tris.append(next_face_verts);
+      edge_states.append(states);
       continue;
     }
 
     const int2 edge = edges[edge_i];
-    const int new_vert_i = r_all_edges.index_of_or_add({face_verts[edge[0]], face_verts[edge[1]]});
+
+    const float2 mid = math::midpoint(verts_by_face_type[0][edge[0]],
+                                      verts_by_face_type[0][edge[1]]);
+    const float3 real_mid = math::midpoint(real_verts_by_face_type[0][edge[0]],
+                                           real_verts_by_face_type[0][edge[1]]);
+
+    if (r_all_edges.add({face_verts[edge[0]], face_verts[edge[1]]})) {
+      const int8_t split_mask =
+          EdgeState::edge_state_for_vert[exclusive_one(FaceVerts::abc, edge)];
+      const bool is_edge_vert = bool(states & split_mask);
+      const bool is_this_tris_vert = !bool(states & (split_mask << 3));
+      vert_func(mid, real_mid, is_edge_vert, is_this_tris_vert);
+    }
+
+    const int new_vert_i = r_all_edges.index_of({face_verts[edge[0]], face_verts[edge[1]]});
 
     int3 left_face_verts = face_verts;
     int3 right_face_verts = face_verts;
@@ -639,11 +674,6 @@ static void face_subdivide(const std::array<int, 5> &vert_offsets,
     std::array<int, 5> right_offset_data;
     left_offset_data[0] = 3;
     right_offset_data[0] = 3;
-
-    const float2 mid = math::midpoint(verts_by_face_type[0][edge[0]],
-                                      verts_by_face_type[0][edge[1]]);
-    const float3 real_mid = math::midpoint(real_verts_by_face_type[0][edge[0]],
-                                           real_verts_by_face_type[0][edge[1]]);
 
     switch (edge_i) {
       case 0: {
@@ -761,6 +791,8 @@ static void face_subdivide(const std::array<int, 5> &vert_offsets,
         break;
       }
     }
+
+    split_edge_for_state(states, edge, edge_states);
 
     // std::cout << "\t left_offset_data" << left_offset_data << ";\n";
     // std::cout << "\t right_offset_data" << right_offset_data << ";\n";
@@ -1341,23 +1373,44 @@ Mesh *subdivide(const Mesh &src_mesh,
       }
     }
 
-    VectorSet<OrderedEdge> face_edges_set;
-    VectorSet<OrderedEdge> result_face_edges_set;
-    face_subdivide(vert_offsets,
-                   uv_verts,
-                   verts,
-                   centre,
-                   squared_radius,
-                   squared_max_length,
-                   face_verts,
-                   face_edges_set,
-                   result_face_edges_set);
-
     int total_verts_in = 0;
     int total_edges_in = 0;
+    int total_faces_in = 0;
 
-    face_total_verts[face_i] = total_verts_in;
-    face_total_edges[face_i] = total_edges_in;
+    VectorSet<OrderedEdge> face_edges_set;
+    VectorSet<OrderedEdge> result_face_edges_set;
+    face_subdivide(
+        vert_offsets,
+        uv_verts,
+        verts,
+        centre,
+        squared_radius,
+        squared_max_length,
+        face_verts,
+        [&](const float2 pos,
+            const float3 real_pos,
+            const bool is_edge_vert,
+            const bool is_this_tris_vert) {
+          total_edges_in++;
+          std::cout << "edge++\n";
+          if ((!is_edge_vert) && (!is_this_tris_vert)) {
+            total_verts_in++;
+            std::cout << "vert++\n";
+            total_edges_in++;
+            std::cout << "edge++\n";
+          }
+        },
+        [&](const int3 verts_of) { total_faces_in++; },
+        face_edges_set,
+        result_face_edges_set);
+
+    std::cout << " Result:\n";
+    std::cout << "\t total_verts_in: " << total_verts_in << ";\n";
+    std::cout << "\t total_edges_in: " << total_edges_in << ";\n";
+    std::cout << "\t total_faces_in: " << total_faces_in << ";\n";
+
+    face_total_verts[face_i] = 0;
+    face_total_edges[face_i] = 0;
   }
 
   // std::cout << ">> Edges: " << edge_total_verts.as_span() << ";\n";
