@@ -608,11 +608,6 @@ static void rna_ChannelBag_fcurve_remove(ID *dna_action_id,
   animrig::ChannelBag &self = dna_channelbag->wrap();
   FCurve *fcurve = static_cast<FCurve *>(fcurve_ptr->data);
 
-  if (!fcurve) {
-    BKE_reportf(reports, RPT_ERROR, "Cannot remove nil F-Curve");
-    return;
-  }
-
   if (!self.fcurve_remove(*fcurve)) {
     BKE_reportf(reports, RPT_ERROR, "F-Curve not found");
     return;
