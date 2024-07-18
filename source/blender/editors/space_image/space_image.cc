@@ -415,12 +415,6 @@ static void image_listener(const wmSpaceTypeListenerParams *params)
       }
       break;
     }
-    case NC_WM:
-      if (wmn->data == ND_UNDO) {
-        ED_area_tag_redraw(area);
-        ED_area_tag_refresh(area);
-      }
-      break;
   }
 }
 

@@ -613,14 +613,6 @@ static void node_area_listener(const wmSpaceTypeListenerParams *params)
           break;
       }
       break;
-    case NC_MASK:
-      if (wmn->action == NA_EDITED) {
-        if (snode->nodetree && snode->nodetree->type == NTREE_COMPOSIT) {
-          node_area_tag_tree_recalc(snode, area);
-        }
-      }
-      break;
-
     case NC_IMAGE:
       if (wmn->action == NA_EDITED) {
         if (ED_node_is_compositor(snode)) {
@@ -645,11 +637,6 @@ static void node_area_listener(const wmSpaceTypeListenerParams *params)
 
     case NC_LINESTYLE:
       if (ED_node_is_shader(snode) && shader_type == SNODE_SHADER_LINESTYLE) {
-        node_area_tag_tree_recalc(snode, area);
-      }
-      break;
-    case NC_WM:
-      if (wmn->data == ND_UNDO) {
         node_area_tag_tree_recalc(snode, area);
       }
       break;

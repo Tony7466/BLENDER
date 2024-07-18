@@ -308,6 +308,11 @@ static void scene_changed(Main *bmain, Scene *scene)
   }
 }
 
+static void node_tree_changed(bNodeTree *node_tree)
+{
+  WM_main_add_notifier(NC_NODE | NA_EDITED, node_tree);
+}
+
 void ED_render_id_flush_update(const DEGEditorUpdateContext *update_ctx, ID *id)
 {
   /* this can be called from render or baking thread when a python script makes
@@ -336,6 +341,9 @@ void ED_render_id_flush_update(const DEGEditorUpdateContext *update_ctx, ID *id)
       break;
     case ID_SCE:
       scene_changed(bmain, (Scene *)id);
+      break;
+    case ID_NT:
+      node_tree_changed(reinterpret_cast<bNodeTree *>(id));
       break;
     default:
       break;
