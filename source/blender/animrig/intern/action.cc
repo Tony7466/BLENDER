@@ -1123,7 +1123,7 @@ FCurve *ChannelBag::fcurve_find(const FCurveDescriptor fcurve_descriptor)
   return animrig::fcurve_find(fcurves, fcurve_descriptor);
 }
 
-FCurve &ChannelBag::fcurve_find_or_create(const FCurveDescriptor fcurve_descriptor)
+FCurve &ChannelBag::fcurve_ensure(const FCurveDescriptor fcurve_descriptor)
 {
   if (FCurve *existing_fcurve = this->fcurve_find(fcurve_descriptor)) {
     return *existing_fcurve;
@@ -1149,7 +1149,7 @@ SingleKeyingResult KeyframeStrip::keyframe_insert(const Slot &slot,
    * allow. */
   FCurve *fcurve = nullptr;
   if (key_insertion_may_create_fcurve(insert_key_flags)) {
-    fcurve = &this->channelbag_for_slot_ensure(slot).fcurve_find_or_create(fcurve_descriptor);
+    fcurve = &this->channelbag_for_slot_ensure(slot).fcurve_ensure(fcurve_descriptor);
   }
   else {
     ChannelBag *channels = this->channelbag_for_slot(slot);
@@ -1402,7 +1402,7 @@ FCurve *action_fcurve_ensure(Main *bmain,
     assert_baklava_phase_1_invariants(action);
     KeyframeStrip &strip = action.layer(0)->strip(0)->as<KeyframeStrip>();
 
-    return &strip.channelbag_for_slot_ensure(slot).fcurve_find_or_create(fcurve_descriptor);
+    return &strip.channelbag_for_slot_ensure(slot).fcurve_ensure(fcurve_descriptor);
   }
 
   /* Try to find f-curve matching for this setting.

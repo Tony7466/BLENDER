@@ -714,7 +714,7 @@ class ChannelBag : public ::ActionChannelBag {
    * Find an FCurve matching the fcurve descriptor, or create one if it doesn't
    * exist.
    */
-  FCurve &fcurve_find_or_create(FCurveDescriptor fcurve_descriptor);
+  FCurve &fcurve_ensure(FCurveDescriptor fcurve_descriptor);
 };
 static_assert(sizeof(ChannelBag) == sizeof(::ActionChannelBag),
               "DNA struct and its C++ wrapper must have the same size");
