@@ -155,6 +155,11 @@ class _ArgsDefaultOverride:
 ARG_DEFAULTS_OVERRIDE = _ArgsDefaultOverride()
 del _ArgsDefaultOverride
 
+
+if sys.platform == "win32":
+    __import__("ssl").SSLContext._windows_cert_stores = ()
+
+
 # Standard out may be communicating with a parent process,
 # arbitrary prints are NOT acceptable.
 
