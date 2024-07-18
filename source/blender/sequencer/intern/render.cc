@@ -52,6 +52,7 @@
 #include "RE_engine.h"
 #include "RE_pipeline.h"
 
+#include "SEQ_anim_manager.hh"
 #include "SEQ_channels.hh"
 #include "SEQ_effects.hh"
 #include "SEQ_iterator.hh"
@@ -64,7 +65,6 @@
 #include "SEQ_transform.hh"
 #include "SEQ_utils.hh"
 
-#include "anim_manager.hh"
 #include "effects.hh"
 #include "image_cache.hh"
 #include "multiview.hh"

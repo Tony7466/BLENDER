@@ -127,6 +127,7 @@ const EnumPropertyItem rna_enum_strip_color_items[] = {
 
 #  include "IMB_imbuf.hh"
 
+#  include "SEQ_anim_manager.hh"
 #  include "SEQ_edit.hh"
 
 struct SequenceSearchData {
@@ -862,25 +863,30 @@ static bool rna_MovieSequence_reload_if_needed(ID *scene_id, Sequence *seq, Main
 
 static PointerRNA rna_MovieSequence_metadata_get(ID *scene_id, Sequence *seq)
 {
+  using namespace blender::seq;
+
   return PointerRNA_NULL;
 
-  // XXXXX
-  /*if (seq == nullptr || seq->anims.first == nullptr) {
+  if (seq == nullptr || seq->anims.first == nullptr) {
     return PointerRNA_NULL;
   }
 
-    StripAnim *sanim = static_cast<StripAnim *>(seq->anims.first);
-    if (sanim->anim == nullptr) {
-      return PointerRNA_NULL;
-    }
+  Scene *scene = reinterpret_cast<Scene *>(scene_id);
 
-    IDProperty *metadata = IMB_anim_load_metadata(sanim->anim);
-    if (metadata == nullptr) {
-      return PointerRNA_NULL;
-    }
+  AnimManager *manager = seq_anim_manager_ensure(SEQ_editing_get(scene));
+  blender::Vector<ImBufAnim *> anims = manager->strip_anims_get(scene, seq);
+
+  if (anims.is_empty()) {
+    return PointerRNA_NULL;
+  }
+
+  IDProperty *metadata = IMB_anim_load_metadata(anims[0]);
+  if (metadata == nullptr) {
+    return PointerRNA_NULL;
+  }
 
   PointerRNA ptr = RNA_pointer_create(scene_id, &RNA_IDPropertyWrapPtr, metadata);
-  return ptr;*/
+  return ptr;
 }
 
 static PointerRNA rna_SequenceEditor_meta_stack_get(CollectionPropertyIterator *iter)

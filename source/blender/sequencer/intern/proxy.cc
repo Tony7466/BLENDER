@@ -36,13 +36,13 @@
 #include "IMB_imbuf_types.hh"
 #include "IMB_metadata.hh"
 
+#include "SEQ_anim_manager.hh"
 #include "SEQ_proxy.hh"
 #include "SEQ_relations.hh"
 #include "SEQ_render.hh"
 #include "SEQ_sequencer.hh"
 #include "SEQ_time.hh"
 
-#include "anim_manager.hh"
 #include "multiview.hh"
 #include "proxy.hh"
 #include "render.hh"

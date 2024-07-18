@@ -31,6 +31,7 @@
 
 #include "IMB_imbuf.hh"
 
+#include "SEQ_anim_manager.hh"
 #include "SEQ_channels.hh"
 #include "SEQ_edit.hh"
 #include "SEQ_effects.hh"
@@ -47,7 +48,6 @@
 
 #include "BLO_read_write.hh"
 
-#include "anim_manager.hh"
 #include "image_cache.hh"
 #include "prefetch.hh"
 #include "sequencer.hh"

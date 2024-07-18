@@ -20,12 +20,12 @@
 #include "IMB_imbuf.hh"
 #include "IMB_imbuf_types.hh"
 
+#include "SEQ_anim_manager.hh"
 #include "SEQ_iterator.hh"
 #include "SEQ_relations.hh"
 #include "SEQ_sequencer.hh"
 #include "SEQ_utils.hh"
 
-#include "anim_manager.hh"
 #include "multiview.hh"
 #include "proxy.hh"
 #include "render.hh"

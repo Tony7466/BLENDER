@@ -23,6 +23,7 @@
 
 #include "IMB_imbuf.hh"
 
+#include "SEQ_anim_manager.hh"
 #include "SEQ_channels.hh"
 #include "SEQ_iterator.hh"
 #include "SEQ_render.hh"
@@ -31,7 +32,6 @@
 #include "SEQ_time.hh"
 #include "SEQ_transform.hh"
 
-#include "anim_manager.hh"
 #include "sequencer.hh"
 #include "strip_time.hh"
 

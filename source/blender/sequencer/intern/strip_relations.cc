@@ -23,6 +23,7 @@
 
 #include "IMB_imbuf.hh"
 
+#include "SEQ_anim_manager.hh"
 #include "SEQ_iterator.hh"
 #include "SEQ_prefetch.hh"
 #include "SEQ_relations.hh"
@@ -30,7 +31,6 @@
 #include "SEQ_time.hh"
 #include "SEQ_utils.hh"
 
-#include "anim_manager.hh"
 #include "effects.hh"
 #include "image_cache.hh"
 #include "utils.hh"

@@ -39,6 +39,7 @@
 #include "IMB_metadata.hh"
 
 #include "SEQ_add.hh"
+#include "SEQ_anim_manager.hh"
 #include "SEQ_edit.hh"
 #include "SEQ_effects.hh"
 #include "SEQ_relations.hh"
@@ -48,7 +49,6 @@
 #include "SEQ_transform.hh"
 #include "SEQ_utils.hh"
 
-#include "anim_manager.hh"
 #include "multiview.hh"
 #include "proxy.hh"
 #include "sequencer.hh"
