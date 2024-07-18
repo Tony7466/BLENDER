@@ -5141,9 +5141,9 @@ void ui_draw_but(const bContext *C, ARegion *region, uiStyle *style, uiBut *but,
   }
 
   if (wt->text) {
-    // if (use_alpha_blend) {
-    GPU_blend(GPU_BLEND_ALPHA);
-    //}
+    if (use_alpha_blend) {
+      GPU_blend(GPU_BLEND_ALPHA);
+    }
 
     wt->text(fstyle, &wt->wcol, but, rect);
     if (use_alpha_blend) {
