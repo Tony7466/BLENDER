@@ -73,24 +73,39 @@ static void *drw_deferred_shader_compilation_exec(void *)
 {
   using namespace blender;
 
-  GPU_render_begin();
   void *system_gpu_context = compiler_data.system_gpu_context;
   GPUContext *blender_gpu_context = compiler_data.blender_gpu_context;
-
   BLI_assert(system_gpu_context != nullptr);
   BLI_assert(blender_gpu_context != nullptr);
 
   const bool use_main_context_workaround = GPU_use_main_context_workaround();
-  if (use_main_context_workaround) {
-    BLI_assert(system_gpu_context == DST.system_gpu_context);
-    GPU_context_main_lock();
-  }
+  auto acquire_context = [&](bool force = false) {
+    if (!use_main_context_workaround && !force) {
+      return;
+    }
+    GPU_render_begin();
+    if (use_main_context_workaround) {
+      BLI_assert(system_gpu_context == DST.system_gpu_context);
+      GPU_context_main_lock();
+    }
+    WM_system_gpu_context_activate(system_gpu_context);
+    GPU_context_active_set(blender_gpu_context);
+  };
+  auto release_context = [&](bool force = false) {
+    if (!use_main_context_workaround && !force) {
+      return;
+    }
+    GPU_context_active_set(nullptr);
+    WM_system_gpu_context_release(system_gpu_context);
+    if (use_main_context_workaround) {
+      GPU_context_main_unlock();
+    }
+    GPU_render_end();
+  };
+
+  acquire_context(true);
 
   const bool use_parallel_compilation = GPU_use_parallel_compilation();
-
-  WM_system_gpu_context_activate(system_gpu_context);
-  GPU_context_active_set(blender_gpu_context);
-
   Vector<GPUMaterial *> next_batch;
   Map<BatchHandle, Vector<GPUMaterial *>> batches;
 
@@ -168,7 +183,9 @@ static void *drw_deferred_shader_compilation_exec(void *)
       }
       else {
         /* No more materials to optimize, or shaders to compile. */
+        release_context();
         BLI_time_sleep_ms(1);
+        acquire_context();
       }
     }
 
@@ -187,12 +204,7 @@ static void *drw_deferred_shader_compilation_exec(void *)
     }
   }
 
-  GPU_context_active_set(nullptr);
-  WM_system_gpu_context_release(system_gpu_context);
-  if (use_main_context_workaround) {
-    GPU_context_main_unlock();
-  }
-  GPU_render_end();
+  release_context(true);
 
   return nullptr;
 }
