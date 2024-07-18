@@ -501,7 +501,6 @@ bool ED_outliner_give_rna_under_cursor(bContext *C, const int mval[2], PointerRN
   TreeStoreElem *tselem = TREESTORE(te);
   switch (tselem->type) {
     case TSE_BONE: {
-      BKE_view_layer_synced_ensure(scene, view_layer);
       Bone *bone = (Bone *)te->directdata;
       *r_ptr = RNA_pointer_create(tselem->id, &RNA_Bone, bone);
       break;

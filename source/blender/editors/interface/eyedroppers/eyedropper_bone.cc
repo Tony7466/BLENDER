@@ -126,12 +126,12 @@ static void bonedropper_exit(bContext *C, wmOperator *op)
     if (bdr->area_region_type) {
       ED_region_draw_cb_exit(bdr->area_region_type, bdr->draw_handle_pixel);
     }
+    ED_area_tag_redraw(bdr->cursor_area);
 
     MEM_freeN(op->customdata);
 
     op->customdata = nullptr;
   }
-
   WM_event_add_mousemove(win);
 }
 
