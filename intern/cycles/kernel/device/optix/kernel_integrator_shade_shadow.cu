@@ -2,8 +2,6 @@
  *
  * SPDX-License-Identifier: Apache-2.0 */
 
-#define CCL_NOINLINE
-
 #include "kernel/device/optix/compat.h"
 #include "kernel/device/optix/globals.h"
 
@@ -16,7 +14,7 @@
 
 #include "kernel/integrator/shade_shadow.h"
 
-extern "C" __device__ void __raygen__kernel_optix_integrator_shade_shadow()
+extern "C" __global__ void __raygen__kernel_optix_integrator_shade_shadow()
 {
   const int global_index = optixGetLaunchIndex().x;
   const int path_index = (kernel_params.path_index_array) ?
