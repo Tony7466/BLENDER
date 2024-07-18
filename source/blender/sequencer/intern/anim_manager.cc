@@ -31,6 +31,8 @@
 #include "render.hh"
 #include "strip_time.hh"
 
+// namespace blender::seq {
+
 /* This is arbitrary, it is possible to prefetch n strips ahead, but if strips are too short, but
  * it may be better to prefetch frame range. */
 #define PREFETCH_DIST 512
@@ -155,21 +157,27 @@ void ShareableAnim::release_from_all_strips(void)
   }
 }
 
+/* This function must check if all anims are loaded and possibly skip actual loading.
+ * However it must always append users. */
 void ShareableAnim::acquire_anims(const Scene *scene, Sequence *seq)
 {
   char filepath[FILE_MAX];
   anim_filepath_get(scene, seq, sizeof(filepath), filepath);
 
-  if (is_multiview(scene, seq)) {
-    const int files_loaded = this->anims.size();
-    blender::Vector<ImBufAnim *> new_anims = multiview_anims_get(
-        scene, seq, filepath, files_loaded);
+  const int anims_needed = seq_num_files(scene, seq->views_format, is_multiview(scene, seq));
+  const int anims_loaded = this->anims.size();
 
-    if (new_anims.size() > 0) {
-      for (ImBufAnim *anim : new_anims) {
-        this->anims.append(anim);
-      }
-      multiview_loaded = true;
+  if (anims_loaded >= anims_needed) {
+    this->users.add(seq);
+    return;
+  }
+
+  if (is_multiview(scene, seq)) {
+    blender::Vector<ImBufAnim *> new_anims = multiview_anims_get(
+        scene, seq, filepath, anims_loaded);
+
+    for (ImBufAnim *anim : new_anims) {
+      this->anims.append(anim);
     }
   }
   else {
@@ -187,16 +195,7 @@ void ShareableAnim::acquire_anims(const Scene *scene, Sequence *seq)
     }
   }
 
-  this->users.append(seq);
-}
-
-bool ShareableAnim::has_anim(const Scene *scene, Sequence *seq)
-{
-  if (is_multiview(scene, seq) && !multiview_loaded) {
-    return false;
-  }
-
-  return !this->anims.is_empty();
+  this->users.add(seq);
 }
 
 void ShareableAnim::unlock()
@@ -311,9 +310,7 @@ void AnimManager::parallel_load_anims(const Scene *scene,
       ShareableAnim &sh_anim = this->cache_entry_get(scene, seq);
       sh_anim.mutex->lock();
 
-      if (!sh_anim.has_anim(scene, seq)) {
-        sh_anim.acquire_anims(scene, seq);
-      }
+      sh_anim.acquire_anims(scene, seq);
 
       if (!keep_locked) {
         sh_anim.unlock();
@@ -364,10 +361,7 @@ void AnimManager::strip_anims_acquire(const Scene *scene, Sequence *seq)
 {
   ShareableAnim &sh_anim = this->cache_entry_get(scene, seq);
   sh_anim.mutex->lock();
-
-  if (!sh_anim.has_anim(scene, seq)) {
-    sh_anim.acquire_anims(scene, seq);
-  }
+  sh_anim.acquire_anims(scene, seq);
 }
 
 void AnimManager::strip_anims_release(const Scene *scene, blender::Vector<Sequence *> &strips)
@@ -423,3 +417,5 @@ void seq_anim_manager_free(const Editing *ed)
     MEM_delete(ed->runtime.anim_lookup);
   }
 }
+
+//}  // namespace blender::seq

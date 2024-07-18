@@ -13,12 +13,12 @@ struct Sequence;
 #include <thread>
 
 #include "BLI_map.hh"
+#include "BLI_set.hh"
 
 class ShareableAnim {
  public:
   blender::Vector<ImBufAnim *> anims; /* Ordered by view_id. */
-  blender::Vector<Sequence *> users;
-  bool multiview_loaded = false;
+  blender::Set<Sequence *> users;
   std::unique_ptr<std::mutex> mutex = std::make_unique<std::mutex>();
 
   void release_from_strip(Sequence *seq);
