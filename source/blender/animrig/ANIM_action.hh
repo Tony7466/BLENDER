@@ -657,22 +657,8 @@ class KeyframeStrip : public ::KeyframeActionStrip {
    * Should only be called when there is no `ChannelBag` for this slot yet.
    */
   ChannelBag &channelbag_for_slot_add(const Slot &slot);
-  /**
-   * Find an FCurve for this slot + RNA path + array index combination.
-   *
-   * If it cannot be found, `nullptr` is returned.
-   */
-  FCurve *fcurve_find(const Slot &slot, FCurveDescriptor fcurve_descriptor);
 
-  /**
-   * Find an FCurve for this slot + RNA path + array index combination.
-   *
-   * If it cannot be found, a new one is created.
-   *
-   * \param `prop_subtype` The subtype of the property this fcurve is for, if
-   * available.
-   */
-  FCurve &fcurve_find_or_create(const Slot &slot, FCurveDescriptor fcurve_descriptor);
+  ChannelBag &ensure_channelbag_for_slot(const Slot &slot);
 
   SingleKeyingResult keyframe_insert(const Slot &slot,
                                      FCurveDescriptor fcurve_descriptor,
@@ -701,7 +687,20 @@ class ChannelBag : public ::ActionChannelBag {
   const FCurve *fcurve(int64_t index) const;
   FCurve *fcurve(int64_t index);
 
-  const FCurve *fcurve_find(StringRefNull rna_path, int array_index) const;
+  /**
+   * Find an FCurve matching the fcurve descriptor in this channel bag.
+   *
+   * If it cannot be found, `nullptr` is returned.
+   */
+  const FCurve *fcurve_find(FCurveDescriptor fcurve_descriptor) const;
+  FCurve *fcurve_find(FCurveDescriptor fcurve_descriptor);
+
+  /**
+   * Find an FCurve for this slot + RNA path + array index combination.
+   *
+   * If it cannot be found, a new one is created.
+   */
+  FCurve &fcurve_find_or_create(FCurveDescriptor fcurve_descriptor);
 };
 static_assert(sizeof(ChannelBag) == sizeof(::ActionChannelBag),
               "DNA struct and its C++ wrapper must have the same size");
