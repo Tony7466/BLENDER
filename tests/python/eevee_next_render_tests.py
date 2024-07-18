@@ -15,7 +15,7 @@ from pathlib import Path
 BLOCKLIST = [
     # Blocked due to point cloud volume differences between platforms (to be fixed).
     "points_volume.blend",
-    # Blocked dues to GBuffer encoding of small IOR difference between platforms (to be fixed).
+    # Blocked due to GBuffer encoding of small IOR difference between platforms (to be fixed).
     "principled_thinfilm_transmission.blend",
 ]
 
