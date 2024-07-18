@@ -683,12 +683,12 @@ if(WITH_CYCLES OR WITH_GPU_RENDER_TESTS)
 
     # Cycles
     if(WITH_CYCLES)
-      set(_cycles_blacklist "")
+      set(_cycles_blocklist "")
       if((NOT WITH_CYCLES_OSL) OR (WITH_CYCLES_TEST_OSL AND WITH_CYCLES_OSL))
         # Disable OSL tests if built without OSL or
         # Disable OSL tests during the "normal" test phase to avoid double
         # testing during the OSL test phase.
-        set(_cycles_blacklist OSL)
+        set(_cycles_blocklist OSL)
       endif()
       foreach(_cycles_device ${CYCLES_TEST_DEVICES})
         string(TOLOWER "${_cycles_device}" _cycles_device_lower)
@@ -704,7 +704,7 @@ if(WITH_CYCLES OR WITH_GPU_RENDER_TESTS)
               -testdir "${TEST_SRC_DIR}/render/${render_test}"
               -outdir "${TEST_OUT_DIR}/cycles"
               -device ${_cycles_device}
-              -blacklist ${_cycles_blacklist}
+              -blocklist ${_cycles_blocklist}
             )
           endif()
 
@@ -718,7 +718,7 @@ if(WITH_CYCLES OR WITH_GPU_RENDER_TESTS)
                 -testdir "${TEST_SRC_DIR}/render/${render_test}"
                 -outdir "${TEST_OUT_DIR}/cycles_osl"
                 -device ${_cycles_device}
-                -blacklist ""
+                -blocklist ""
                 -osl
               )
             endif()
@@ -730,7 +730,7 @@ if(WITH_CYCLES OR WITH_GPU_RENDER_TESTS)
           unset(_cycles_test_name)
         endforeach()
       endforeach()
-      unset(_cycles_blacklist)
+      unset(_cycles_blocklist)
     endif()
 
     if(WITH_GPU_RENDER_TESTS)
