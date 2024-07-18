@@ -1365,7 +1365,7 @@ static void widget_draw_icon(
       UI_icon_draw_ex(xs, ys, icon, aspect, alpha, 0.0f, color, outline, &but->icon_overlay_text);
     }
     else if (!((but->icon != ICON_NONE) && UI_but_is_tool(but))) {
-      if (outline) {
+      if (has_theme) {
         alpha *= 0.8f;
       }
       UI_icon_draw_ex(xs,
@@ -5141,9 +5141,9 @@ void ui_draw_but(const bContext *C, ARegion *region, uiStyle *style, uiBut *but,
   }
 
   if (wt->text) {
-    if (use_alpha_blend) {
-      GPU_blend(GPU_BLEND_ALPHA);
-    }
+    // if (use_alpha_blend) {
+    GPU_blend(GPU_BLEND_ALPHA);
+    //}
 
     wt->text(fstyle, &wt->wcol, but, rect);
     if (use_alpha_blend) {
