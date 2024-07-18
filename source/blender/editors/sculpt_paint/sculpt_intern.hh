@@ -1193,9 +1193,7 @@ struct FillDataMesh {
                                  int vertex,
                                  float radius);
   void add_active(const Object &object, const SculptSession &ss, float radius);
-  void execute(Object &object,
-               SculptSession &ss,
-               FunctionRef<bool(int from_v, int to_v> func);
+  void execute(Object &object, SculptSession &ss, FunctionRef<bool(int from_v, int to_v)> func);
 };
 
 struct FillDataGrids {
