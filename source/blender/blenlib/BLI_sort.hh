@@ -12,7 +12,6 @@
 #  include <tbb/parallel_sort.h>
 #else
 #  include <algorithm>
-static_assert(false, "TBB not used for BLI_sort");
 #endif
 
 namespace blender {
