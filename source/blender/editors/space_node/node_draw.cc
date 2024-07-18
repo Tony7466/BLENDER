@@ -1907,6 +1907,7 @@ static std::string node_socket_get_tooltip(const SpaceNode *snode,
 
   geo_log::GeoTreeLog *geo_tree_log = geo_tree_log_for_socket(ntree, socket, tree_draw_ctx);
 
+  /* Handle reroute nodes as a special case. */
   if (node.is_reroute()) {
     if (const std::optional<std::string> info = create_dangling_reroute_inspection_string(ntree,
                                                                                           socket))
@@ -1921,14 +1922,20 @@ static std::string node_socket_get_tooltip(const SpaceNode *snode,
     return reroute_name;
   }
 
+  /* Handle extend sockets as a special case. */
+  const bool is_extend_socket = StringRef(socket.idname) == "NodeSocketVirtual";
+  if (is_extend_socket) {
+    return TIP_("Connect a link to create a new socket");
+  }
+
   Vector<std::string> inspection_strings;
 
+  /* Description. */
   if (std::optional<std::string> info = create_description_inspection_string(socket)) {
     inspection_strings.append(std::move(*info));
   }
-  if (std::optional<std::string> info = create_data_type_inspection_string(socket)) {
-    inspection_strings.append(std::move(*info));
-  }
+
+  /* Last value. */
   if (std::optional<std::string> info = create_log_inspection_string(geo_tree_log, socket)) {
     inspection_strings.append(std::move(*info));
   }
@@ -1940,7 +1947,20 @@ static std::string node_socket_get_tooltip(const SpaceNode *snode,
   {
     inspection_strings.append(std::move(*info));
   }
-  if (std::optional<std::string> info = create_declaration_inspection_string(socket)) {
+  else if (ntree.type == NTREE_GEOMETRY) {
+    inspection_strings.append(
+        TIP_("Unknown socket value. Either the socket was not used or its value was not logged "
+             "during the last evaluation"));
+  }
+
+  /* Socket type. */
+  inspection_strings.append(fmt::format(TIP_("Socket type: {}"), TIP_(socket.typeinfo->label)));
+
+  /* Supported types. */
+  if (std::optional<std::string> info = create_data_type_inspection_string(socket)) {
+    inspection_strings.append(std::move(*info));
+  }
+  else if (std::optional<std::string> info = create_declaration_inspection_string(socket)) {
     inspection_strings.append(std::move(*info));
   }
 
@@ -1949,23 +1969,6 @@ static std::string node_socket_get_tooltip(const SpaceNode *snode,
     output << info;
     if (&info != &inspection_strings.last()) {
       output << ".\n\n";
-    }
-  }
-
-  if (inspection_strings.is_empty()) {
-    const bool is_extend = StringRef(socket.idname) == "NodeSocketVirtual";
-    if (is_extend) {
-      output << TIP_("Connect a link to create a new socket");
-    }
-    else {
-      output << bke::nodeSocketLabel(&socket);
-    }
-
-    if (ntree.type == NTREE_GEOMETRY && !is_extend) {
-      output << ".\n\n";
-      output << TIP_(
-          "Unknown socket value. Either the socket was not used or its value was not logged "
-          "during the last evaluation");
     }
   }
 
