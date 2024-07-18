@@ -1895,6 +1895,8 @@ static std::string node_socket_get_tooltip(const SpaceNode *snode,
                                            const bNodeTree &ntree,
                                            const bNodeSocket &socket)
 {
+  const bNode &node = socket.owner_node();
+
   TreeDrawContext tree_draw_ctx;
   if (snode != nullptr) {
     if (ntree.type == NTREE_GEOMETRY) {
@@ -1905,6 +1907,20 @@ static std::string node_socket_get_tooltip(const SpaceNode *snode,
 
   geo_log::GeoTreeLog *geo_tree_log = geo_tree_log_for_socket(ntree, socket, tree_draw_ctx);
 
+  if (node.is_reroute()) {
+    if (const std::optional<std::string> info = create_dangling_reroute_inspection_string(ntree,
+                                                                                          socket))
+    {
+      return *info;
+    }
+    if (std::optional<std::string> info = create_log_inspection_string(geo_tree_log, socket)) {
+      return *info;
+    }
+    char reroute_name[MAX_NAME];
+    bke::nodeLabel(&ntree, &node, reroute_name, sizeof(reroute_name));
+    return reroute_name;
+  }
+
   Vector<std::string> inspection_strings;
 
   if (std::optional<std::string> info = create_description_inspection_string(socket)) {
@@ -1914,11 +1930,6 @@ static std::string node_socket_get_tooltip(const SpaceNode *snode,
     inspection_strings.append(std::move(*info));
   }
   if (std::optional<std::string> info = create_log_inspection_string(geo_tree_log, socket)) {
-    inspection_strings.append(std::move(*info));
-  }
-  else if (std::optional<std::string> info = create_dangling_reroute_inspection_string(ntree,
-                                                                                       socket))
-  {
     inspection_strings.append(std::move(*info));
   }
   else if (std::optional<std::string> info = create_default_value_inspection_string(socket)) {
@@ -1943,13 +1954,7 @@ static std::string node_socket_get_tooltip(const SpaceNode *snode,
 
   if (inspection_strings.is_empty()) {
     const bool is_extend = StringRef(socket.idname) == "NodeSocketVirtual";
-    const bNode &node = socket.owner_node();
-    if (node.is_reroute()) {
-      char reroute_name[MAX_NAME];
-      bke::nodeLabel(&ntree, &node, reroute_name, sizeof(reroute_name));
-      output << reroute_name;
-    }
-    else if (is_extend) {
+    if (is_extend) {
       output << TIP_("Connect a link to create a new socket");
     }
     else {
