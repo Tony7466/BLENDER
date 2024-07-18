@@ -575,6 +575,7 @@ if(WITH_GTESTS)
     tests/BLI_multi_value_map_test.cc
     tests/BLI_path_util_test.cc
     tests/BLI_polyfill_2d_test.cc
+    tests/BLI_polygon_clipping_2d_test.cc
     tests/BLI_pool_test.cc
     tests/BLI_random_access_iterator_mixin_test.cc
     tests/BLI_ressource_strings.h
