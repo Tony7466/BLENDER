@@ -385,6 +385,8 @@ void PhysicsGeometryImpl::resize(const int body_num, const int constraint_num)
   if (!is_empty) {
     rigid_bodies.reinitialize(body_num);
     motion_states.reinitialize(body_num);
+    create_bodies(rigid_bodies, motion_states);
+
     constraints.reinitialize(constraint_num);
     constraints.fill(nullptr);
     constraint_feedback.reinitialize(constraint_num);
@@ -1355,18 +1357,20 @@ void PhysicsGeometry::move_world(const PhysicsGeometry &from,
                                  const int constraint_offset,
                                  const int shape_offset)
 {
-  if (from.impl().is_empty) {
-    return;
-  }
-
   PhysicsGeometryImpl &impl = this->impl_for_write();
-  impl.try_move(from.impl(),
-                body_mask,
-                constraint_mask,
-                shape_mask,
-                body_offset,
-                constraint_offset,
-                shape_offset);
+  const bool was_moved = impl.try_move(from.impl(),
+                                       body_mask,
+                                       constraint_mask,
+                                       shape_mask,
+                                       body_offset,
+                                       constraint_offset,
+                                       shape_offset);
+  if (!was_moved) {
+    /* Create empty bodies. */
+    const IndexRange body_range{body_offset, body_mask.size()};
+    create_bodies(impl.rigid_bodies.as_mutable_span().slice(body_range),
+                  impl.motion_states.as_mutable_span().slice(body_range));
+  }
 }
 
 void PhysicsGeometry::move_or_copy_selection(

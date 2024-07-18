@@ -2450,22 +2450,22 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
   bke::PhysicsGeometry *dst_physics = new bke::PhysicsGeometry(
       bodies_num, constraints_num, shapes_num);
 
-  /* If a world is to be moved it should happen in advance before merging other data. */
+  /* If world data is moved it must happen in advance before accessing attributes. */
   if (all_physics_info.move_world) {
-    for (const RealizePhysicsTask &task : tasks) {
-      /* First input world gets moved. */
-      if (task.start_indices.move_world) {
-        const bke::PhysicsGeometry &world_physics = *task.physics_info->physics;
-        dst_physics->move_world(world_physics,
-                                world_physics.bodies_range(),
-                                world_physics.constraints_range(),
-                                world_physics.shapes_range(),
+    dst_physics->create_world(false);
+    threading::parallel_for(tasks.index_range(), 100, [&](const IndexRange task_range) {
+      for (const int task_index : task_range) {
+        const RealizePhysicsTask &task = tasks[task_index];
+        const bke::PhysicsGeometry &src_physics = *task.physics_info->physics;
+        dst_physics->move_world(src_physics,
+                                src_physics.bodies_range(),
+                                src_physics.constraints_range(),
+                                src_physics.shapes_range(),
                                 task.start_indices.body,
                                 task.start_indices.constraint,
                                 task.start_indices.shape);
-        break;
       }
-    }
+    });
   }
 
   r_realized_geometry.replace_physics(dst_physics);
