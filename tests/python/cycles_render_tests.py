@@ -64,7 +64,7 @@ BLOCKLIST_OSL = [
     # Waiting for 124673
     'T50634_1.blend',
     'mesh_light.blend',
-    # OSL has it's own blackbody function which is slightly different, primarily near the end of the visible spectrum
+    # OSL has it's own blackbody function which is slightly different at low and high temperatures
     'blackbody',
     # Noise differences due to Principled BSDF mixing/layering used in some of these scenes
     'render_passes_.*.blend',
