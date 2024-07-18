@@ -1081,7 +1081,7 @@ ChannelBag &KeyframeStrip::channelbag_for_slot_add(const Slot &slot)
   return channels;
 }
 
-ChannelBag &KeyframeStrip::ensure_channelbag_for_slot(const Slot &slot)
+ChannelBag &KeyframeStrip::channelbag_for_slot_ensure(const Slot &slot)
 {
   ChannelBag *channel_bag = this->channelbag_for_slot(slot);
   if (channel_bag != nullptr) {
@@ -1149,7 +1149,7 @@ SingleKeyingResult KeyframeStrip::keyframe_insert(const Slot &slot,
    * allow. */
   FCurve *fcurve = nullptr;
   if (key_insertion_may_create_fcurve(insert_key_flags)) {
-    fcurve = &this->ensure_channelbag_for_slot(slot).fcurve_find_or_create(fcurve_descriptor);
+    fcurve = &this->channelbag_for_slot_ensure(slot).fcurve_find_or_create(fcurve_descriptor);
   }
   else {
     ChannelBag *channels = this->channelbag_for_slot(slot);
@@ -1402,7 +1402,7 @@ FCurve *action_fcurve_ensure(Main *bmain,
     assert_baklava_phase_1_invariants(action);
     KeyframeStrip &strip = action.layer(0)->strip(0)->as<KeyframeStrip>();
 
-    return &strip.ensure_channelbag_for_slot(slot).fcurve_find_or_create(fcurve_descriptor);
+    return &strip.channelbag_for_slot_ensure(slot).fcurve_find_or_create(fcurve_descriptor);
   }
 
   /* Try to find f-curve matching for this setting.
