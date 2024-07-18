@@ -197,6 +197,39 @@ static void *drw_deferred_shader_compilation_exec(void *)
   return nullptr;
 }
 
+void DRW_shader_init()
+{
+  static bool initialized = false;
+  if (initialized) {
+    return;
+  }
+  initialized = true;
+
+  const bool use_main_context = GPU_use_main_context_workaround();
+
+  BLI_spin_init(&compiler_data.list_lock);
+  compiler_data.stop = false;
+
+  /* Create only one context. */
+  compiler_data.own_context = !use_main_context;
+  if (use_main_context) {
+    compiler_data.system_gpu_context = DST.system_gpu_context;
+    compiler_data.blender_gpu_context = DST.blender_gpu_context;
+  }
+  else {
+    compiler_data.system_gpu_context = WM_system_gpu_context_create();
+    compiler_data.blender_gpu_context = GPU_context_create(nullptr,
+                                                           compiler_data.system_gpu_context);
+    GPU_context_active_set(nullptr);
+
+    WM_system_gpu_context_activate(DST.system_gpu_context);
+    GPU_context_active_set(DST.blender_gpu_context);
+  }
+
+  BLI_threadpool_init(&compilation_threadpool, drw_deferred_shader_compilation_exec, 1);
+  BLI_threadpool_insert(&compilation_threadpool, nullptr);
+}
+
 void DRW_shader_exit()
 {
   compiler_data.stop = true;
@@ -232,34 +265,7 @@ void DRW_shader_exit()
  */
 static void drw_deferred_queue_append(GPUMaterial *mat, bool is_optimization_job)
 {
-  const bool use_main_context = GPU_use_main_context_workaround();
-
-  static bool initialized = false;
-  if (!initialized) {
-    initialized = true;
-
-    BLI_spin_init(&compiler_data.list_lock);
-    compiler_data.stop = false;
-
-    /* Create only one context. */
-    compiler_data.own_context = !use_main_context;
-    if (use_main_context) {
-      compiler_data.system_gpu_context = DST.system_gpu_context;
-      compiler_data.blender_gpu_context = DST.blender_gpu_context;
-    }
-    else {
-      compiler_data.system_gpu_context = WM_system_gpu_context_create();
-      compiler_data.blender_gpu_context = GPU_context_create(nullptr,
-                                                             compiler_data.system_gpu_context);
-      GPU_context_active_set(nullptr);
-
-      WM_system_gpu_context_activate(DST.system_gpu_context);
-      GPU_context_active_set(DST.blender_gpu_context);
-    }
-
-    BLI_threadpool_init(&compilation_threadpool, drw_deferred_shader_compilation_exec, 1);
-    BLI_threadpool_insert(&compilation_threadpool, nullptr);
-  }
+  DRW_shader_init();
 
   /* Add to either compilation or optimization queue. */
   if (is_optimization_job) {
