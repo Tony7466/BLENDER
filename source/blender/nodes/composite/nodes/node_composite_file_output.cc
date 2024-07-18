@@ -32,7 +32,7 @@
 #include "BKE_scene.hh"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -641,7 +641,12 @@ class FileOutputOperation : public NodeOperation {
         }
         break;
       case ResultType::Vector:
-        file_output.add_pass(pass_name, view_name, "XYZ", float4_to_float3_image(size, buffer));
+        if (result.meta_data.is_4d_vector) {
+          file_output.add_pass(pass_name, view_name, "XYZW", buffer);
+        }
+        else {
+          file_output.add_pass(pass_name, view_name, "XYZ", float4_to_float3_image(size, buffer));
+        }
         break;
       case ResultType::Float:
         file_output.add_pass(pass_name, view_name, "V", buffer);
@@ -703,7 +708,7 @@ class FileOutputOperation : public NodeOperation {
   }
 
   /* Add Cryptomatte meta data to the file if they exist for the given result of the given layer
-   * name. We do not write any other other meta data for now. */
+   * name. We do not write any other meta data for now. */
   void add_meta_data_for_result(FileOutput &file_output, const Result &result, const char *name)
   {
     StringRef cryptomatte_layer_name = bke::cryptomatte::BKE_cryptomatte_extract_layer_name(name);

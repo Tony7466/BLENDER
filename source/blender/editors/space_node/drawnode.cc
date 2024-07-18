@@ -48,7 +48,7 @@
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "ED_node.hh"
 #include "ED_space_api.hh"
@@ -1327,7 +1327,7 @@ static void std_node_socket_draw(
                                          FN_NODE_INPUT_ROTATION,
                                          NODE_GROUP_INPUT))
     {
-      if (node->is_group_output()) {
+      if (node->is_group_input()) {
         uiLayout *row = uiLayoutRow(layout, false);
         uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
         node_socket_button_label(C, row, ptr, node_ptr, text);
@@ -2050,7 +2050,7 @@ static void nodelink_batch_init()
   g_batch_link.dash_params_id = GPU_vertformat_attr_add(
       &format_inst, "dash_params", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
   g_batch_link.has_back_link_id = GPU_vertformat_attr_add(
-      &format_inst, "has_back_link", GPU_COMP_U32, 1, GPU_FETCH_INT);
+      &format_inst, "has_back_link", GPU_COMP_I32, 1, GPU_FETCH_INT);
   g_batch_link.inst_vbo = GPU_vertbuf_create_with_format_ex(format_inst, GPU_USAGE_STREAM);
   /* Alloc max count but only draw the range we need. */
   GPU_vertbuf_data_alloc(*g_batch_link.inst_vbo, NODELINK_GROUP_SIZE);
