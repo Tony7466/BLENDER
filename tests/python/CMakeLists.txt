@@ -706,6 +706,9 @@ if(WITH_CYCLES OR WITH_GPU_RENDER_TESTS)
               -device ${_cycles_device}
               -blocklist ${_cycles_blocklist}
             )
+            if(NOT ("${_cycles_device_lower}" STREQUAL "cpu"))
+              set_tests_properties(${_cycles_test_name} PROPERTIES RUN_SERIAL TRUE)
+            endif()
           endif()
 
           if (WITH_CYCLES_TEST_OSL AND WITH_CYCLES_OSL)
@@ -721,12 +724,13 @@ if(WITH_CYCLES OR WITH_GPU_RENDER_TESTS)
                 -blocklist ""
                 -osl
               )
+              # Doesn't do anything until OptiX is enabled
+              if(NOT ("${_cycles_device_lower}" STREQUAL "cpu"))
+                set_tests_properties(${_cycles_test_name}_osl PROPERTIES RUN_SERIAL TRUE)
+              endif()
             endif()
           endif()
 
-          if(NOT ("${_cycles_device_lower}" STREQUAL "cpu"))
-            set_tests_properties(${_cycles_test_name} PROPERTIES RUN_SERIAL TRUE)
-          endif()
           unset(_cycles_test_name)
         endforeach()
       endforeach()
