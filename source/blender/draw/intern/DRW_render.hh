@@ -259,6 +259,9 @@ void DRW_texture_free(GPUTexture *tex);
   } while (0)
 
 /* Shaders */
+void DRW_shader_init();
+void DRW_shader_exit();
+
 GPUShader *DRW_shader_create_from_info_name(const char *info_name);
 GPUShader *DRW_shader_create_ex(
     const char *vert, const char *geom, const char *frag, const char *defines, const char *name);

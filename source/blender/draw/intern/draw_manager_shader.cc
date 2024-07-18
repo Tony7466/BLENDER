@@ -201,6 +201,7 @@ void DRW_shader_init()
 {
   static bool initialized = false;
   if (initialized) {
+    BLI_assert_unreachable();
     return;
   }
   initialized = true;
@@ -221,7 +222,6 @@ void DRW_shader_init()
     compiler_data.blender_gpu_context = GPU_context_create(nullptr,
                                                            compiler_data.system_gpu_context);
     GPU_context_active_set(nullptr);
-
     WM_system_gpu_context_activate(DST.system_gpu_context);
     GPU_context_active_set(DST.blender_gpu_context);
   }
@@ -253,8 +253,6 @@ void DRW_shader_exit()
     GPU_context_active_set(compiler_data.blender_gpu_context);
     GPU_context_discard(compiler_data.blender_gpu_context);
     WM_system_gpu_context_dispose(compiler_data.system_gpu_context);
-
-    wm_window_reset_drawable();
   }
 }
 
@@ -265,8 +263,6 @@ void DRW_shader_exit()
  */
 static void drw_deferred_queue_append(GPUMaterial *mat, bool is_optimization_job)
 {
-  DRW_shader_init();
-
   /* Add to either compilation or optimization queue. */
   if (is_optimization_job) {
     BLI_assert(GPU_material_optimization_status(mat) != GPU_MAT_OPTIMIZATION_QUEUED);

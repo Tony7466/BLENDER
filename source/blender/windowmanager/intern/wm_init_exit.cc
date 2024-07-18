@@ -489,7 +489,6 @@ void WM_exit_ex(bContext *C, const bool do_python_exit, const bool do_user_exit_
     }
 
     WM_jobs_kill_all(wm);
-    DRW_shader_exit();
 
     LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
       CTX_wm_window_set(C, win); /* Needed by operator close callbacks. */

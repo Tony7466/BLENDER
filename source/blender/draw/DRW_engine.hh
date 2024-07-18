@@ -226,5 +226,3 @@ void DRW_cdlayer_attr_aliases_add(GPUVertFormat *format,
                                   const char *layer_name,
                                   bool is_active_render,
                                   bool is_active_layer);
-
-void DRW_shader_exit();
