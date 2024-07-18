@@ -1177,14 +1177,14 @@ namespace blender::ed::sculpt_paint::flood_fill {
 
 struct FillData {
   std::queue<PBVHVertRef> queue;
-  blender::BitVector<> visited_verts;
+  BitVector<> visited_verts;
 };
 
 struct FillDataMesh {
   FillDataMesh(int size) : visited_verts(size) {}
 
   std::queue<int> queue;
-  blender::BitVector<> visited_verts;
+  BitVector<> visited_verts;
 
   void add_initial(int vertex);
   void add_and_skip_initial(int vertex, int index);
@@ -1200,7 +1200,7 @@ struct FillDataGrids {
   FillDataGrids(int size) : visited_verts(size) {}
 
   std::queue<SubdivCCGCoord> queue;
-  blender::BitVector<> visited_verts;
+  BitVector<> visited_verts;
 
   void add_initial(SubdivCCGCoord vertex);
   void add_and_skip_initial(SubdivCCGCoord vertex, int index);
@@ -1219,7 +1219,7 @@ struct FillDataBMesh {
   FillDataBMesh(int size) : visited_verts(size) {}
 
   std::queue<BMVert *> queue;
-  blender::BitVector<> visited_verts;
+  BitVector<> visited_verts;
 
   void add_initial(BMVert *vertex);
   void add_and_skip_initial(BMVert *vertex, int index);

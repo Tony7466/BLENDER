@@ -252,7 +252,7 @@ void FillDataGrids::add_active(const Object &object, const SculptSession &ss, fl
 void FillDataBMesh::add_active(const Object &object, const SculptSession &ss, float radius)
 {
   PBVHVertRef active_vert = SCULPT_active_vertex_get(ss);
-  this->add_initial_with_symmetry(object, ss, (BMVert *)active_vert.i, radius);
+  this->add_initial_with_symmetry(object, ss, reinterpret_cast<BMVert *>(active_vert.i), radius);
 }
 
 void execute(SculptSession &ss,
@@ -298,12 +298,12 @@ void FillDataMesh::execute(Object &object,
   const VArray hide_vert = *attributes.lookup_or_default<bool>(
       ".hide_vert", bke::AttrDomain::Point, false);
 
+  Vector<int> neighbors;
   while (!this->queue.empty()) {
     const int from_v = this->queue.front();
     this->queue.pop();
 
-    Vector<int> neighbors;
-
+    neighbors.clear();
     for (const int face : ss.vert_to_face_map[from_v]) {
       if (!hide_poly.is_empty() && hide_poly[face]) {
         continue;
@@ -331,7 +331,7 @@ void FillDataMesh::execute(Object &object,
 }
 
 void FillDataGrids::execute(
-    Object & /* object */,
+    Object & /*object*/,
     SculptSession &ss,
     FunctionRef<bool(SubdivCCGCoord from_v, SubdivCCGCoord to_v, bool is_duplicate)> func)
 {
@@ -370,8 +370,8 @@ void FillDataGrids::execute(
   }
 }
 
-void FillDataBMesh::execute(Object & /* object */,
-                            SculptSession & /* ss */,
+void FillDataBMesh::execute(Object & /*object*/,
+                            SculptSession & /*ss*/,
                             FunctionRef<bool(BMVert *from_v, BMVert *to_v)> func)
 {
   Vector<BMVert *, 64> neighbors;
