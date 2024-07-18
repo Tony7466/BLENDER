@@ -28,6 +28,40 @@ const EnumPropertyItem rna_enum_tree_node_move_type_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+static const EnumPropertyItem rna_enum_keyframe_type_items[] = {
+    {BEZT_KEYTYPE_KEYFRAME,
+     "KEYFRAME",
+     ICON_KEYTYPE_KEYFRAME_VEC,
+     "Keyframe",
+     "Normal keyframe, e.g. for key poses"},
+    {BEZT_KEYTYPE_BREAKDOWN,
+     "BREAKDOWN",
+     ICON_KEYTYPE_BREAKDOWN_VEC,
+     "Breakdown",
+     "A breakdown pose, e.g. for transitions between key poses"},
+    {BEZT_KEYTYPE_MOVEHOLD,
+     "MOVING_HOLD",
+     ICON_KEYTYPE_MOVING_HOLD_VEC,
+     "Moving Hold",
+     "A keyframe that is part of a moving hold"},
+    {BEZT_KEYTYPE_EXTREME,
+     "EXTREME",
+     ICON_KEYTYPE_EXTREME_VEC,
+     "Extreme",
+     "An 'extreme' pose, or some other purpose as needed"},
+    {BEZT_KEYTYPE_JITTER,
+     "JITTER",
+     ICON_KEYTYPE_JITTER_VEC,
+     "Jitter",
+     "A filler or baked keyframe for keying on ones, or some other purpose as needed"},
+    {BEZT_KEYTYPE_GENERATED,
+     "GENERATED",
+     ICON_KEYTYPE_GENERATED_VEC,
+     "Generated",
+     "A key generated automatically by a tool, not manually created"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
 #ifdef RNA_RUNTIME
 
 #  include <fmt/format.h>
@@ -774,6 +808,14 @@ static void rna_def_grease_pencil_frame(BlenderRNA *brna)
   prop = RNA_def_property(srna, "select", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", GP_FRAME_SELECTED);
   RNA_def_property_ui_text(prop, "Select", "Frame Selection in the Dope Sheet");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  /* Keyframe type. */
+  prop = RNA_def_property(srna, "keyframe_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "type");
+  RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, ParameterFlag(0));
+  RNA_def_property_enum_items(prop, rna_enum_keyframe_type_items);
+  RNA_def_property_ui_text(prop, "Keyframe Type", "Type of keyframe");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 }
 
