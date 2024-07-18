@@ -473,7 +473,6 @@ void ANIM_OT_keyframe_insert(wmOperatorType *ot)
 static int keyframe_insert_with_keyingset_exec(bContext *C, wmOperator *op)
 {
   ANIM_deselect_keys_in_animation_editors(C);
-  // deselect_keys_of_selection(C);
 
   Scene *scene = CTX_data_scene(C);
   KeyingSet *ks = keyingset_get_from_op_with_error(op, op->type->prop, scene);
