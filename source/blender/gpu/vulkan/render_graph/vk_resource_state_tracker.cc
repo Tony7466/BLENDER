@@ -31,6 +31,7 @@ ResourceHandle VKResourceStateTracker::create_resource_slot()
 }
 
 void VKResourceStateTracker::add_image(VkImage vk_image,
+                                       uint32_t layer_count,
                                        VkImageLayout vk_image_layout,
                                        ResourceOwner owner,
                                        const char *name)
@@ -46,6 +47,7 @@ void VKResourceStateTracker::add_image(VkImage vk_image,
   resource.type = VKResourceType::IMAGE;
   resource.owner = owner;
   resource.image.vk_image = vk_image;
+  resource.image.layer_count = layer_count;
   resource.image.vk_image_layout = vk_image_layout;
   resource.stamp = 0;
 #ifndef NDEBUG
@@ -136,7 +138,7 @@ ResourceWithStamp VKResourceStateTracker::get_image_and_increase_stamp(VkImage v
   return get_and_increase_stamp(handle, resource);
 }
 
-ResourceWithStamp VKResourceStateTracker::get_buffer_and_increase_version(VkBuffer vk_buffer)
+ResourceWithStamp VKResourceStateTracker::get_buffer_and_increase_stamp(VkBuffer vk_buffer)
 {
   ResourceHandle handle = buffer_resources_.lookup(vk_buffer);
   Resource &resource = resources_.lookup(handle);

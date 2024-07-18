@@ -20,7 +20,7 @@
 #include "DNA_object_types.h"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "BLI_listbase.h"
 #include "BLI_string.h"
@@ -134,7 +134,7 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__non_array_property)
   /* First time should create:
    * - AnimData
    * - Action
-   * - Binding
+   * - Slot
    * - Layer
    * - Infinite KeyframeStrip
    * - FCurve with a single key
@@ -153,13 +153,13 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__non_array_property)
   ASSERT_NE(nullptr, object->adt->action);
   Action &action = object->adt->action->wrap();
 
-  /* The action has a binding, it's named properly, and it's correctly assigned
+  /* The action has a slot, it's named properly, and it's correctly assigned
    * to the object. */
-  ASSERT_EQ(1, action.bindings().size());
-  Binding *binding = action.binding(0);
-  EXPECT_STREQ(object->id.name, binding->name);
-  EXPECT_STREQ(object->adt->binding_name, binding->name);
-  EXPECT_EQ(object->adt->binding_handle, binding->handle);
+  ASSERT_EQ(1, action.slots().size());
+  Slot *slot = action.slot(0);
+  EXPECT_STREQ(object->id.name, slot->name);
+  EXPECT_STREQ(object->adt->slot_name, slot->name);
+  EXPECT_EQ(object->adt->slot_handle, slot->handle);
 
   /* We have the default layer and strip. */
   ASSERT_TRUE(action.is_action_layered());
@@ -171,13 +171,13 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__non_array_property)
   ASSERT_EQ(Strip::Type::Keyframe, strip->type());
   KeyframeStrip *keyframe_strip = &strip->as<KeyframeStrip>();
 
-  /* We have a channel bag for the binding. */
-  ChannelBag *channel_bag = keyframe_strip->channelbag_for_binding(*binding);
+  /* We have a channel bag for the slot. */
+  ChannelBag *channel_bag = keyframe_strip->channelbag_for_slot(*slot);
   ASSERT_NE(nullptr, channel_bag);
 
   /* The fcurves in the channel bag are what we expect. */
   EXPECT_EQ(1, channel_bag->fcurves().size());
-  const FCurve *fcurve = channel_bag->fcurve_find("empty_display_size", 0);
+  const FCurve *fcurve = channel_bag->fcurve_find({"empty_display_size", 0});
   ASSERT_NE(nullptr, fcurve);
   ASSERT_NE(nullptr, fcurve->bezt);
   EXPECT_EQ(1, fcurve->totvert);
@@ -240,7 +240,7 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__single_element)
   ASSERT_NE(nullptr, object->adt);
   ASSERT_NE(nullptr, object->adt->action);
   Action &action = object->adt->action->wrap();
-  ASSERT_EQ(1, action.bindings().size());
+  ASSERT_EQ(1, action.slots().size());
   ASSERT_EQ(1, action.layers().size());
   ASSERT_EQ(1, action.layer(0)->strips().size());
   KeyframeStrip *strip = &action.layer(0)->strip(0)->as<KeyframeStrip>();
@@ -248,7 +248,7 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__single_element)
   ChannelBag *channel_bag = strip->channelbag(0);
 
   EXPECT_EQ(1, channel_bag->fcurves().size());
-  EXPECT_NE(nullptr, channel_bag->fcurve_find("rotation_euler", 0));
+  EXPECT_NE(nullptr, channel_bag->fcurve_find({"rotation_euler", 0}));
 }
 
 /* Keying all elements of an array property. */
@@ -273,7 +273,7 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__all_elements)
   ASSERT_NE(nullptr, object->adt);
   ASSERT_NE(nullptr, object->adt->action);
   Action &action = object->adt->action->wrap();
-  ASSERT_EQ(1, action.bindings().size());
+  ASSERT_EQ(1, action.slots().size());
   ASSERT_EQ(1, action.layers().size());
   ASSERT_EQ(1, action.layer(0)->strips().size());
   KeyframeStrip *strip = &action.layer(0)->strip(0)->as<KeyframeStrip>();
@@ -281,9 +281,9 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__all_elements)
   ChannelBag *channel_bag = strip->channelbag(0);
 
   EXPECT_EQ(3, channel_bag->fcurves().size());
-  EXPECT_NE(nullptr, channel_bag->fcurve_find("rotation_euler", 0));
-  EXPECT_NE(nullptr, channel_bag->fcurve_find("rotation_euler", 1));
-  EXPECT_NE(nullptr, channel_bag->fcurve_find("rotation_euler", 2));
+  EXPECT_NE(nullptr, channel_bag->fcurve_find({"rotation_euler", 0}));
+  EXPECT_NE(nullptr, channel_bag->fcurve_find({"rotation_euler", 1}));
+  EXPECT_NE(nullptr, channel_bag->fcurve_find({"rotation_euler", 2}));
 }
 
 /* Keying a pose bone from its own RNA pointer. */
@@ -311,7 +311,7 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__pose_bone_rna_pointer)
   ASSERT_NE(nullptr, armature_object->adt);
   ASSERT_NE(nullptr, armature_object->adt->action);
   Action &action = armature_object->adt->action->wrap();
-  ASSERT_EQ(1, action.bindings().size());
+  ASSERT_EQ(1, action.slots().size());
   ASSERT_EQ(1, action.layers().size());
   ASSERT_EQ(1, action.layer(0)->strips().size());
   KeyframeStrip *strip = &action.layer(0)->strip(0)->as<KeyframeStrip>();
@@ -319,7 +319,7 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__pose_bone_rna_pointer)
   ChannelBag *channel_bag = strip->channelbag(0);
 
   EXPECT_EQ(1, channel_bag->fcurves().size());
-  EXPECT_NE(nullptr, channel_bag->fcurve_find("pose.bones[\"Bone\"].rotation_euler", 0));
+  EXPECT_NE(nullptr, channel_bag->fcurve_find({"pose.bones[\"Bone\"].rotation_euler", 0}));
 }
 
 /* Keying a pose bone from its owning ID's RNA pointer. */
@@ -345,7 +345,7 @@ TEST_F(KeyframingTest, insert_keyframes__pose_bone_owner_id_pointer)
   ASSERT_NE(nullptr, armature_object->adt);
   ASSERT_NE(nullptr, armature_object->adt->action);
   Action &action = armature_object->adt->action->wrap();
-  ASSERT_EQ(1, action.bindings().size());
+  ASSERT_EQ(1, action.slots().size());
   ASSERT_EQ(1, action.layers().size());
   ASSERT_EQ(1, action.layer(0)->strips().size());
   KeyframeStrip *strip = &action.layer(0)->strip(0)->as<KeyframeStrip>();
@@ -353,7 +353,7 @@ TEST_F(KeyframingTest, insert_keyframes__pose_bone_owner_id_pointer)
   ChannelBag *channel_bag = strip->channelbag(0);
 
   EXPECT_EQ(1, channel_bag->fcurves().size());
-  EXPECT_NE(nullptr, channel_bag->fcurve_find("pose.bones[\"Bone\"].rotation_euler", 0));
+  EXPECT_NE(nullptr, channel_bag->fcurve_find({"pose.bones[\"Bone\"].rotation_euler", 0}));
 }
 
 /* Keying multiple elements of multiple properties at once. */
@@ -383,7 +383,7 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__multiple_properties)
   ASSERT_NE(nullptr, object->adt);
   ASSERT_NE(nullptr, object->adt->action);
   Action &action = object->adt->action->wrap();
-  ASSERT_EQ(1, action.bindings().size());
+  ASSERT_EQ(1, action.slots().size());
   ASSERT_EQ(1, action.layers().size());
   ASSERT_EQ(1, action.layer(0)->strips().size());
   KeyframeStrip *strip = &action.layer(0)->strip(0)->as<KeyframeStrip>();
@@ -391,12 +391,12 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__multiple_properties)
   ChannelBag *channel_bag = strip->channelbag(0);
 
   EXPECT_EQ(6, channel_bag->fcurves().size());
-  EXPECT_NE(nullptr, channel_bag->fcurve_find("empty_display_size", 0));
-  EXPECT_NE(nullptr, channel_bag->fcurve_find("location", 0));
-  EXPECT_NE(nullptr, channel_bag->fcurve_find("location", 1));
-  EXPECT_NE(nullptr, channel_bag->fcurve_find("location", 2));
-  EXPECT_NE(nullptr, channel_bag->fcurve_find("rotation_euler", 0));
-  EXPECT_NE(nullptr, channel_bag->fcurve_find("rotation_euler", 2));
+  EXPECT_NE(nullptr, channel_bag->fcurve_find({"empty_display_size", 0}));
+  EXPECT_NE(nullptr, channel_bag->fcurve_find({"location", 0}));
+  EXPECT_NE(nullptr, channel_bag->fcurve_find({"location", 1}));
+  EXPECT_NE(nullptr, channel_bag->fcurve_find({"location", 2}));
+  EXPECT_NE(nullptr, channel_bag->fcurve_find({"rotation_euler", 0}));
+  EXPECT_NE(nullptr, channel_bag->fcurve_find({"rotation_euler", 2}));
 }
 
 /* Keying more than one ID on the same action. */
@@ -408,7 +408,7 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__multiple_ids)
 
   AnimationEvalContext anim_eval_context = {nullptr, 1.0};
 
-  /* First object should crate the action and get a binding and channel bag. */
+  /* First object should crate the action and get a slot and channel bag. */
   const CombinedKeyingResult result_1 = insert_keyframes(bmain,
                                                          &object_rna_pointer,
                                                          std::nullopt,
@@ -422,12 +422,12 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__multiple_ids)
   ASSERT_NE(nullptr, object->adt->action);
   Action &action = object->adt->action->wrap();
 
-  /* The action has a binding and it's assigned to the first object. */
-  ASSERT_EQ(1, action.bindings().size());
-  Binding *binding_1 = action.binding_for_handle(object->adt->binding_handle);
-  ASSERT_NE(nullptr, binding_1);
-  EXPECT_STREQ(object->id.name, binding_1->name);
-  EXPECT_STREQ(object->adt->binding_name, binding_1->name);
+  /* The action has a slot and it's assigned to the first object. */
+  ASSERT_EQ(1, action.slots().size());
+  Slot *slot_1 = action.slot_for_handle(object->adt->slot_handle);
+  ASSERT_NE(nullptr, slot_1);
+  EXPECT_STREQ(object->id.name, slot_1->name);
+  EXPECT_STREQ(object->adt->slot_name, slot_1->name);
 
   /* Get the keyframe strip. */
   ASSERT_TRUE(action.is_action_layered());
@@ -435,16 +435,16 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__multiple_ids)
   ASSERT_EQ(1, action.layer(0)->strips().size());
   KeyframeStrip *strip = &action.layer(0)->strip(0)->as<KeyframeStrip>();
 
-  /* We have a single channel bag, and it's for the first object's binding. */
+  /* We have a single channel bag, and it's for the first object's slot. */
   ASSERT_EQ(1, strip->channelbags().size());
-  ChannelBag *channel_bag_1 = strip->channelbag_for_binding(*binding_1);
+  ChannelBag *channel_bag_1 = strip->channelbag_for_slot(*slot_1);
   ASSERT_NE(nullptr, channel_bag_1);
 
-  /* Assign the action to the second object, with no binding. */
+  /* Assign the action to the second object, with no slot. */
   action.assign_id(nullptr, armature_object->id);
 
   /* Keying the second object should go into the same action, creating a new
-   * binding and channel bag. */
+   * slot and channel bag. */
   const CombinedKeyingResult result_2 = insert_keyframes(bmain,
                                                          &armature_object_rna_pointer,
                                                          std::nullopt,
@@ -455,14 +455,14 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__multiple_ids)
                                                          INSERTKEY_NOFLAGS);
   EXPECT_EQ(1, result_2.get_count(SingleKeyingResult::SUCCESS));
 
-  ASSERT_EQ(2, action.bindings().size());
-  Binding *binding_2 = action.binding_for_handle(armature_object->adt->binding_handle);
-  ASSERT_NE(nullptr, binding_2);
-  EXPECT_STREQ(armature_object->id.name, binding_2->name);
-  EXPECT_STREQ(armature_object->adt->binding_name, binding_2->name);
+  ASSERT_EQ(2, action.slots().size());
+  Slot *slot_2 = action.slot_for_handle(armature_object->adt->slot_handle);
+  ASSERT_NE(nullptr, slot_2);
+  EXPECT_STREQ(armature_object->id.name, slot_2->name);
+  EXPECT_STREQ(armature_object->adt->slot_name, slot_2->name);
 
   ASSERT_EQ(2, strip->channelbags().size());
-  ChannelBag *channel_bag_2 = strip->channelbag_for_binding(*binding_2);
+  ChannelBag *channel_bag_2 = strip->channelbag_for_slot(*slot_2);
   ASSERT_NE(nullptr, channel_bag_2);
 }
 
@@ -540,10 +540,10 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__only_available)
   /* If an action is created at all, it should be the default action with one
    * layer and an infinite keyframe strip. */
   Action &action = object->adt->action->wrap();
-  ASSERT_EQ(1, action.bindings().size());
+  ASSERT_EQ(1, action.slots().size());
   ASSERT_EQ(1, action.layers().size());
   ASSERT_EQ(1, action.layer(0)->strips().size());
-  EXPECT_EQ(object->adt->binding_handle, action.binding(0)->handle);
+  EXPECT_EQ(object->adt->slot_handle, action.slot(0)->handle);
   KeyframeStrip *strip = &action.layer(0)->strip(0)->as<KeyframeStrip>();
   ASSERT_EQ(0, strip->channelbags().size());
 
@@ -577,8 +577,8 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__only_available)
 
   EXPECT_EQ(2, result_3.get_count(SingleKeyingResult::SUCCESS));
   EXPECT_EQ(2, channel_bag->fcurves().size());
-  EXPECT_NE(nullptr, channel_bag->fcurve_find("rotation_euler", 0));
-  EXPECT_NE(nullptr, channel_bag->fcurve_find("rotation_euler", 2));
+  EXPECT_NE(nullptr, channel_bag->fcurve_find({"rotation_euler", 0}));
+  EXPECT_NE(nullptr, channel_bag->fcurve_find({"rotation_euler", 2}));
 }
 
 /* Keying with the "Only Replace" flag. */
@@ -621,7 +621,7 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__only_replace)
   ASSERT_NE(nullptr, object->adt);
   ASSERT_NE(nullptr, object->adt->action);
   Action &action = object->adt->action->wrap();
-  ASSERT_EQ(1, action.bindings().size());
+  ASSERT_EQ(1, action.slots().size());
   ASSERT_EQ(1, action.layers().size());
   ASSERT_EQ(1, action.layer(0)->strips().size());
   KeyframeStrip *strip = &action.layer(0)->strip(0)->as<KeyframeStrip>();
@@ -629,8 +629,8 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__only_replace)
   ChannelBag *channel_bag = strip->channelbag(0);
 
   ASSERT_EQ(2, channel_bag->fcurves().size());
-  const FCurve *fcurve_x = channel_bag->fcurve_find("rotation_euler", 0);
-  const FCurve *fcurve_z = channel_bag->fcurve_find("rotation_euler", 2);
+  const FCurve *fcurve_x = channel_bag->fcurve_find({"rotation_euler", 0});
+  const FCurve *fcurve_z = channel_bag->fcurve_find({"rotation_euler", 2});
   EXPECT_EQ(1, fcurve_x->totvert);
   EXPECT_EQ(1, fcurve_z->totvert);
   EXPECT_EQ(1.0, fcurve_x->bezt[0].vec[1][0]);
@@ -702,7 +702,7 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__only_needed)
   ASSERT_NE(nullptr, object->adt);
   ASSERT_NE(nullptr, object->adt->action);
   Action &action = object->adt->action->wrap();
-  ASSERT_EQ(1, action.bindings().size());
+  ASSERT_EQ(1, action.slots().size());
   ASSERT_EQ(1, action.layers().size());
   ASSERT_EQ(1, action.layer(0)->strips().size());
   KeyframeStrip *strip = &action.layer(0)->strip(0)->as<KeyframeStrip>();
@@ -710,9 +710,9 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__only_needed)
   ChannelBag *channel_bag = strip->channelbag(0);
 
   ASSERT_EQ(3, channel_bag->fcurves().size());
-  const FCurve *fcurve_x = channel_bag->fcurve_find("rotation_euler", 0);
-  const FCurve *fcurve_y = channel_bag->fcurve_find("rotation_euler", 1);
-  const FCurve *fcurve_z = channel_bag->fcurve_find("rotation_euler", 2);
+  const FCurve *fcurve_x = channel_bag->fcurve_find({"rotation_euler", 0});
+  const FCurve *fcurve_y = channel_bag->fcurve_find({"rotation_euler", 1});
+  const FCurve *fcurve_z = channel_bag->fcurve_find({"rotation_euler", 2});
   EXPECT_EQ(1, fcurve_x->totvert);
   EXPECT_EQ(1, fcurve_y->totvert);
   EXPECT_EQ(1, fcurve_z->totvert);
