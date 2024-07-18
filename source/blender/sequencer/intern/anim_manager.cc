@@ -132,7 +132,7 @@ static blender::Vector<ImBufAnim *> multiview_anims_get(const Scene *scene,
 
 void ShareableAnim::release_from_strip(Sequence *seq)
 {
-  if (this->anims.size() == 0) {
+  if (this->anims.is_empty()) {
     return;
   }
 
@@ -140,7 +140,7 @@ void ShareableAnim::release_from_strip(Sequence *seq)
 
   this->users.remove_if([seq](Sequence *seq_user) { return seq == seq_user; });
 
-  if (this->users.size() == 0) {
+  if (this->users.is_empty()) {
     for (ImBufAnim *anim : this->anims) {
       IMB_free_anim(anim);
     }
@@ -352,7 +352,7 @@ ShareableAnim &AnimManager::cache_entry_get(const Scene *scene, const Sequence *
   return sh_anim;
 }
 
-void AnimManager::strip_anims_acquire(const Scene *scene, blender::Vector<Sequence *> &strips)
+void AnimManager::strip_anims_acquire(const Scene *scene, blender::Vector<Sequence *> strips)
 {
   this->parallel_load_anims(scene, strips, true);
 }
