@@ -176,12 +176,13 @@ static void sample_data_from_3d_view(bContext *C,
   Base *base = nullptr;
   switch (CTX_data_mode_enum(C)) {
     case CTX_MODE_POSE: {
-      Bone *bone = ED_armature_pick_bone(C, mval, true, &base);
+      bPoseChannel *bone = ED_armature_pick_pchan(C, mval, true, &base);
       if (!bone) {
         return;
       }
       r_sample_data.name = bone->name;
-      r_sample_data.bone_rna = RNA_pointer_create(bdr.search_ptr.owner_id, &RNA_Bone, bone);
+      /* Not using the search pointer owner ID because pose bones are part of the object. */
+      r_sample_data.bone_rna = RNA_pointer_create(&base->object->id, &RNA_PoseBone, bone);
       break;
     }
     case CTX_MODE_EDIT_ARMATURE: {
@@ -208,21 +209,30 @@ static void sample_data_from_outliner(bContext *C,
   if (!success) {
     return;
   }
-  if (r_sample_data.bone_rna.owner_id != bdr.search_ptr.owner_id) {
-    return;
-  }
+  ID *bone_id = r_sample_data.bone_rna.owner_id;
+  ID *search_id = bdr.search_ptr.owner_id;
 
-  if (r_sample_data.bone_rna.type == &RNA_Bone) {
+  /* By comparing the ID of the RNA returned by the outliner with the ID we are searching in, we
+   * can determine if the Bone is for the correct armature. */
+  if (r_sample_data.bone_rna.type == &RNA_Bone && bone_id == search_id) {
     Bone *bone = (Bone *)r_sample_data.bone_rna.data;
     r_sample_data.name = bone->name;
   }
-  else if (r_sample_data.bone_rna.type == &RNA_EditBone) {
+  else if (r_sample_data.bone_rna.type == &RNA_EditBone && bone_id == search_id) {
     EditBone *bone = (EditBone *)r_sample_data.bone_rna.data;
     r_sample_data.name = bone->name;
   }
   else if (r_sample_data.bone_rna.type == &RNA_PoseBone) {
-    bPoseChannel *bone = (bPoseChannel *)r_sample_data.bone_rna.data;
-    r_sample_data.name = bone->name;
+    bPoseChannel *pose_bone = (bPoseChannel *)r_sample_data.bone_rna.data;
+    /* Special case for pose bones. Because they are not stored in the Armature, the IDs of the
+     * search property and the picked result might not match since the comparison would be between
+     * armature and object. As a result it is possible to "pick" bones from a different armature.*/
+    if (bdr.search_ptr.type == &RNA_Object) {
+      if (bone_id != search_id) {
+        return;
+      }
+    }
+    r_sample_data.name = pose_bone->name;
   }
 }
 
@@ -295,9 +305,22 @@ static bool bonedropper_sample(bContext *C, BoneDropper &bdr, const int event_xy
     return false;
   }
 
-  const BoneSampleData sample_data = bonedropper_sample_pt(C, *win, *area, bdr, event_xy_win);
+  BoneSampleData sample_data = bonedropper_sample_pt(C, *win, *area, bdr, event_xy_win);
   if (!sample_data.name) {
     return false;
+  }
+
+  StructRNA *search_type = RNA_property_pointer_type(&bdr.search_ptr, bdr.search_prop);
+  /* In case we are searching for a bone, convert the pointer from bPoseChannel. */
+  if (search_type == &RNA_Bone && sample_data.bone_rna.type == &RNA_PoseBone &&
+      bdr.search_ptr.type == &RNA_Armature)
+  {
+    /* We are searching for something in the armature but got a pose bone on the object, so we
+     * need to do a conversion. We will just assume the ID under the cursor is the one we are
+     * searching for since there is no way to get the armature ID from the object ID that we
+     * have. */
+    bPoseChannel *pose_bone = (bPoseChannel *)sample_data.bone_rna.data;
+    sample_data.bone_rna = RNA_pointer_create(bdr.search_ptr.owner_id, &RNA_Bone, pose_bone->bone);
   }
 
   PropertyType type = RNA_property_type(bdr.prop);
@@ -344,7 +367,7 @@ static int bonedropper_modal(bContext *C, wmOperator *op, const wmEvent *event)
         if (area->spacetype == SPACE_VIEW3D) {
           BKE_report(op->reports,
                      RPT_WARNING,
-                     "Armature needs to be in Pose Mode to pick in the 3D Viewport");
+                     "Armature needs to be in Pose Mode or Edit Mode to pick in the 3D Viewport");
         }
         else {
           BKE_report(op->reports, RPT_WARNING, "Failed to set value");
