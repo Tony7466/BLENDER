@@ -677,8 +677,8 @@ if(WITH_CYCLES_DEVICE_OPTIX AND WITH_CYCLES_CUDA_BINARIES)
 
   target_compile_options(cycles_kernel_optix PRIVATE
     -use_fast_math
-    -split-compile=0
-    -rdc=true)
+    -keep-device-functions
+    -split-compile=0)
 
   cycles_set_solution_folder(cycles_kernel_optix)
 
