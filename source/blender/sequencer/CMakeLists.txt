@@ -23,6 +23,7 @@ set(INC_SYS
 
 set(SRC
   SEQ_add.hh
+  SEQ_anim_manager.hh
   SEQ_animation.hh
   SEQ_channels.hh
   SEQ_edit.hh
@@ -41,7 +42,6 @@ set(SRC
   SEQ_transform.hh
   SEQ_utils.hh
 
-  intern/anim_manager.hh
   intern/anim_manager.cc
   intern/animation.cc
   intern/channels.cc
