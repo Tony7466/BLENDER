@@ -1512,13 +1512,12 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
 
   Span<bke::GeometryComponent::Type> component_types = value_log.component_types;
   if (component_types.is_empty()) {
-    fmt::format_to(fmt::appender(buf), TIP_("Empty Geometry"));
+    fmt::format_to(fmt::appender(buf), TIP_("Empty"));
     return;
   }
 
-  fmt::format_to(fmt::appender(buf), TIP_("Geometry:"));
   if (!value_log.name.empty()) {
-    fmt::format_to(fmt::appender(buf), " \"{}\"", value_log.name);
+    fmt::format_to(fmt::appender(buf), "\"{}\"", value_log.name);
   }
   fmt::format_to(fmt::appender(buf), "\n");
   for (bke::GeometryComponent::Type type : component_types) {
@@ -1838,9 +1837,7 @@ static std::optional<std::string> create_last_value_inspection_string(
     return info;
   }
   if (ntree.type == NTREE_GEOMETRY) {
-    return TIP_(
-        "Unknown socket value. Either the socket was not used or its value was not logged "
-        "during the last evaluation");
+    return TIP_("Unknown");
   }
   return std::nullopt;
 }
@@ -1952,7 +1949,7 @@ static std::string node_socket_get_tooltip(const SpaceNode *snode,
   if (std::optional<std::string> info = create_last_value_inspection_string(
           ntree, socket, tree_draw_ctx))
   {
-    inspection_strings.append(std::move(*info));
+    inspection_strings.append(fmt::format("Last value: {}", *info));
   }
 
   /* Socket type. */
