@@ -703,7 +703,7 @@ class ChannelBag : public ::ActionChannelBag {
   FCurve *fcurve(int64_t index);
 
   /**
-   * Find an FCurve matching the fcurve descriptor in this channel bag.
+   * Find an FCurve matching the fcurve descriptor.
    *
    * If it cannot be found, `nullptr` is returned.
    */
@@ -711,9 +711,8 @@ class ChannelBag : public ::ActionChannelBag {
   FCurve *fcurve_find(FCurveDescriptor fcurve_descriptor);
 
   /**
-   * Find an FCurve for this slot + RNA path + array index combination.
-   *
-   * If it cannot be found, a new one is created.
+   * Find an FCurve matching the fcurve descriptor, or create one if it doesn't
+   * exist.
    */
   FCurve &fcurve_find_or_create(FCurveDescriptor fcurve_descriptor);
 };
