@@ -58,7 +58,6 @@
 #include "BKE_subdiv.hh"
 #include "BKE_tracking.h" /* Free tracking clipboard. */
 
-#include "DRW_engine.hh"
 #include "RE_engine.h"
 #include "RE_pipeline.h" /* `RE_` free stuff. */
 
