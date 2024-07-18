@@ -556,11 +556,6 @@ GPUMaterial *DRW_shader_from_material(Material *ma,
 
   drw_register_shader_vlattrs(mat);
 
-  if (DRW_state_is_image_render()) {
-    /* Do not deferred if doing render. */
-    deferred = false;
-  }
-
   drw_deferred_shader_add(mat, deferred);
   DRW_shader_queue_optimize_material(mat);
   return mat;
