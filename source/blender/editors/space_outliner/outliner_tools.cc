@@ -3112,13 +3112,13 @@ static int outliner_lib_operation_exec(bContext *C, wmOperator *op)
       break;
   }
 
+  ED_node_tree_propagate_change(C, bmain, nullptr);
+
   /* wrong notifier still... */
   WM_event_add_notifier(C, NC_ID | NA_EDITED, nullptr);
 
   /* XXX: this is just so that outliner is always up to date */
   WM_event_add_notifier(C, NC_SPACE | ND_SPACE_OUTLINER, nullptr);
-
-  ED_node_tree_propagate_change(C, bmain, nullptr);
 
   return OPERATOR_FINISHED;
 }
