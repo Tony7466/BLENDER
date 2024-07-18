@@ -460,6 +460,7 @@ class Report:
 
     def _command_arguments(self, arguments_cb, filepath, base_output_filepath):
         # Each render test can override this method to provide extra functionality.
+        # See Cycles render tests for an example.
         # Do not delete.
         return arguments_cb(filepath, base_output_filepath)
 
