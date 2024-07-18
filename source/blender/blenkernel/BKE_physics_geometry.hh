@@ -12,6 +12,7 @@
 #include "BLI_index_range.hh"
 #include "BLI_math_quaternion_types.hh"
 #include "BLI_math_vector_types.hh"
+#include "BLI_utility_mixins.hh"
 #include "BLI_virtual_array_fwd.hh"
 
 #include "BKE_attribute.hh"
@@ -246,5 +247,36 @@ class PhysicsGeometry {
 
   friend class BuiltinPhysicsAttributeBase;
 };
+
+// XXX Below: possible separation of world data and cache.
+
+// struct PhysicsWorldData;
+
+// class PhysicsWorldState {
+//  private:
+//   CustomData body_data_;
+//   CustomData constraint_data_;
+
+//  public:
+//   bke::AttributeAccessor attributes() const;
+//   bke::MutableAttributeAccessor attributes_for_write();
+// };
+
+// class PhysicsWorld : NonCopyable, NonMovable {
+//  private:
+//   std::unique_ptr<PhysicsWorldData> data_;
+
+//  public:
+//   PhysicsWorldState copy_state() const;
+//   PhysicsWorldState copy_state(const IndexMask &body_mask, const IndexMask &constraint_mask)
+//   const;
+
+//   void apply_state(const PhysicsWorldState &state);
+//   void apply_state(const PhysicsWorldState &state, const IndexMask &body_mask, const IndexMask
+//   &constraint_mask);
+
+//   bke::AttributeAccessor attributes() const;
+//   bke::MutableAttributeAccessor attributes_for_write();
+// };
 
 }  // namespace blender::bke

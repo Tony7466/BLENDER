@@ -2456,6 +2456,10 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
     threading::parallel_for(tasks.index_range(), 100, [&](const IndexRange task_range) {
       for (const int task_index : task_range) {
         const RealizePhysicsTask &task = tasks[task_index];
+        if (!task.start_indices.move_world) {
+          continue;
+        }
+
         const bke::PhysicsGeometry &src_physics = *task.physics_info->physics;
         dst_physics->move_world(src_physics,
                                 src_physics.bodies_range(),
@@ -2509,6 +2513,10 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
   threading::parallel_for(tasks.index_range(), 100, [&](const IndexRange task_range) {
     for (const int task_index : task_range) {
       const RealizePhysicsTask &task = tasks[task_index];
+      /* Skip physics whose data has already been moved. */
+      if (task.start_indices.move_world) {
+        continue;
+      }
       execute_realize_physics_task(options,
                                    all_physics_info,
                                    task,

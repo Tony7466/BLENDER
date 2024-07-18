@@ -83,20 +83,20 @@ TEST_F(PhysicsGeometryTest, create_and_remove_world)
 
 TEST_F(PhysicsGeometryTest, join_geometry)
 {
-  bke::PhysicsGeometry geo1 = bke::PhysicsGeometry(5, 2, 3);
-  test_data(geo1, false, 5, 2, 3);
+  bke::PhysicsGeometry *geo1 = new bke::PhysicsGeometry(5, 2, 3);
+  test_data(*geo1, false, 5, 2, 3);
 
-  bke::PhysicsGeometry geo2 = bke::PhysicsGeometry(0, 0, 0);
-  geo2.create_world();
-  test_data(geo2, true, 0, 0, 0);
+  bke::PhysicsGeometry *geo2 = new bke::PhysicsGeometry(0, 0, 0);
+  geo2->create_world();
+  test_data(*geo2, true, 0, 0, 0);
 
-  bke::PhysicsGeometry geo3 = bke::PhysicsGeometry(2, 1, 1);
-  geo3.create_world();
-  test_data(geo3, true, 2, 1, 1);
+  bke::PhysicsGeometry *geo3 = new bke::PhysicsGeometry(2, 1, 1);
+  geo3->create_world();
+  test_data(*geo3, true, 2, 1, 1);
 
-  Array<bke::GeometrySet> geometry_sets = {bke::GeometrySet::from_physics(&geo1),
-                                           bke::GeometrySet::from_physics(&geo2),
-                                           bke::GeometrySet::from_physics(&geo3)};
+  Array<bke::GeometrySet> geometry_sets = {bke::GeometrySet::from_physics(geo1),
+                                           bke::GeometrySet::from_physics(geo2),
+                                           bke::GeometrySet::from_physics(geo3)};
   GeometrySet result = geometry::join_geometries(geometry_sets, {});
   EXPECT_TRUE(result.has_physics());
   const bke::PhysicsGeometry &geo_result = *result.get_physics();
