@@ -33,6 +33,7 @@ const EnumPropertyItem rna_enum_tree_node_move_type_items[] = {
 #  include <fmt/format.h>
 
 #  include "BKE_attribute.hh"
+#  include "BKE_curves.hh"
 #  include "BKE_grease_pencil.hh"
 
 #  include "BLI_math_matrix.hh"
@@ -73,6 +74,38 @@ static void rna_grease_pencil_dependency_update(Main *bmain, Scene * /*scene*/, 
   DEG_id_tag_update(&rna_grease_pencil(ptr)->id, ID_RECALC_GEOMETRY);
   DEG_relations_tag_update(bmain);
   WM_main_add_notifier(NC_GPENCIL | NA_EDITED, rna_grease_pencil(ptr));
+}
+
+static int rna_GreasePencilDrawing_curve_offset_data_length(PointerRNA *ptr)
+{
+  const GreasePencilDrawing *drawing = static_cast<GreasePencilDrawing *>(ptr->data);
+  return drawing->geometry.curve_num + 1;
+}
+
+static void rna_GreasePencilDrawing_curve_offset_data_begin(CollectionPropertyIterator *iter,
+                                                            PointerRNA *ptr)
+{
+  GreasePencilDrawing *drawing = static_cast<GreasePencilDrawing *>(ptr->data);
+  rna_iterator_array_begin(iter,
+                           drawing->geometry.wrap().offsets_for_write().data(),
+                           sizeof(int),
+                           drawing->geometry.curve_num + 1,
+                           false,
+                           nullptr);
+}
+
+static bool rna_GreasePencilDrawing_curve_offset_data_lookup_int(PointerRNA *ptr,
+                                                                 int index,
+                                                                 PointerRNA *r_ptr)
+{
+  GreasePencilDrawing *drawing = static_cast<GreasePencilDrawing *>(ptr->data);
+  if (index < 0 || index >= drawing->geometry.curve_num + 1) {
+    return false;
+  }
+  r_ptr->owner_id = ptr->owner_id;
+  r_ptr->type = &RNA_IntAttributeValue;
+  r_ptr->data = &drawing->geometry.wrap().offsets_for_write()[index];
+  return true;
 }
 
 static void rna_GreasePencilLayer_frames_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
@@ -739,6 +772,21 @@ static void rna_def_grease_pencil_drawing(BlenderRNA *brna)
   RNA_def_parameter_clear_flags(prop, PROP_EDITABLE, ParameterFlag(0));
   RNA_def_property_ui_text(prop, "Type", "Drawing type");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  /* Curve offsets. */
+  prop = RNA_def_property(srna, "curve_offset_data", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_struct_type(prop, "IntAttributeValue");
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_IGNORE);
+  RNA_def_property_collection_funcs(prop,
+                                    "rna_GreasePencilDrawing_curve_offset_data_begin",
+                                    "rna_iterator_array_next",
+                                    "rna_iterator_array_end",
+                                    "rna_iterator_array_get",
+                                    "rna_GreasePencilDrawing_curve_offset_data_length",
+                                    "rna_GreasePencilDrawing_curve_offset_data_lookup_int",
+                                    nullptr,
+                                    nullptr);
+  RNA_def_property_update(prop, 0, "rna_grease_pencil_update");
 
   /* Attributes. */
   rna_def_attributes_common(srna, AttributeOwnerType::GreasePencilDrawing);
