@@ -507,6 +507,9 @@ Bone *ED_outliner_give_bone_under_cursor(bContext *C, const int mval[2])
       bone = pchan->bone;
       break;
     }
+    case TSE_EBONE: {
+      break;
+    }
 
     default:
       break;

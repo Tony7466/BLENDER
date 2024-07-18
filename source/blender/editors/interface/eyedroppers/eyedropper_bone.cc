@@ -7,11 +7,13 @@
  *
  * Eyedropper (bones)
  */
+
+#include "BKE_armature.hh"
 #include "BKE_context.hh"
 #include "BKE_idtype.hh"
+#include "BKE_object.hh"
 #include "BKE_report.hh"
 #include "BKE_screen.hh"
-#include <iostream>
 
 #include "BLT_translation.hh"
 
@@ -47,11 +49,10 @@ struct BoneDropper {
 
   bool is_undo;
 
-  ScrArea *cursor_area; /* Area under the cursor */
+  ScrArea *cursor_area; /* Area under the cursor. */
   ARegionType *area_region_type;
   void *draw_handle_pixel;
   int name_pos[2];
-  /* Bone max char count. */
   char name[64];
 };
 
@@ -69,12 +70,11 @@ static bool is_bone_dropper_valid(BoneDropper *bone_dropper)
   if (!RNA_property_editable(&bone_dropper->ptr, bone_dropper->prop)) {
     return false;
   }
-  if (RNA_property_pointer_type(&bone_dropper->search_ptr, bone_dropper->search_prop) != &RNA_Bone)
-  {
+
+  PointerRNA owner_ptr = RNA_id_pointer_create(bone_dropper->search_ptr.owner_id);
+  if (RNA_type_to_ID_code(owner_ptr.type) != ID_AR) {
     return false;
   }
-  PointerRNA owner_ptr = RNA_id_pointer_create(bone_dropper->search_ptr.owner_id);
-  BLI_assert(RNA_type_to_ID_code(owner_ptr.type) == ID_AR);
 
   return true;
 }
@@ -150,11 +150,10 @@ static void bonedropper_set_draw_callback_region(ScrArea &area, BoneDropper &bdr
   /* If the spacetype changed remove the old callback. */
   ED_region_draw_cb_exit(bdr.area_region_type, bdr.draw_handle_pixel);
 
-  /* Redraw old area */
   ARegion *region = BKE_area_find_region_type(bdr.cursor_area, RGN_TYPE_WINDOW);
   ED_region_tag_redraw(region);
 
-  /* Set draw callback in new region */
+  /* Set draw callback in new region. */
   ARegionType *art = BKE_regiontype_from_id(area.type, RGN_TYPE_WINDOW);
 
   bdr.cursor_area = &area;
@@ -163,17 +162,25 @@ static void bonedropper_set_draw_callback_region(ScrArea &area, BoneDropper &bdr
       art, datadropper_draw_cb, &bdr, REGION_DRAW_POST_PIXEL);
 }
 
-static Bone *bonedropper_sample_pt(
+struct BoneSampleData {
+  /* Either EditBone or Bone. */
+  PointerRNA bone_rna;
+  char *name;
+};
+
+static BoneSampleData bonedropper_sample_pt(
     bContext *C, wmWindow &win, ScrArea &area, BoneDropper &bdr, const int event_xy[2])
 {
+  BoneSampleData sample_data;
+  sample_data.name = nullptr;
   if (!ELEM(area.spacetype, SPACE_VIEW3D, SPACE_OUTLINER)) {
-    return nullptr;
+    return sample_data;
   }
 
   ARegion *region = BKE_area_find_region_xy(&area, RGN_TYPE_WINDOW, event_xy);
 
   if (!region) {
-    return nullptr;
+    return sample_data;
   }
 
   wmWindow *win_prev = CTX_wm_window(C);
@@ -189,16 +196,32 @@ static Bone *bonedropper_sample_pt(
   /* Unfortunately it's necessary to always draw else we leave stale text. */
   ED_region_tag_redraw(region);
 
-  Bone *bone = nullptr;
-
   switch (area.spacetype) {
     case SPACE_VIEW3D: {
       Base *base = nullptr;
-      bone = ED_armature_pick_bone(C, mval, true, &base);
+      if (CTX_data_mode_enum(C) == CTX_MODE_POSE) {
+        Bone *bone = ED_armature_pick_bone(C, mval, true, &base);
+        if (bone) {
+          sample_data.name = bone->name;
+          sample_data.bone_rna = RNA_pointer_create(bdr.search_ptr.owner_id, &RNA_Bone, bone);
+        }
+      }
+      else {
+        BLI_assert(CTX_data_mode_enum(C) == CTX_MODE_EDIT_ARMATURE);
+        EditBone *ebone = ED_armature_pick_ebone(C, mval, true, &base);
+        if (ebone) {
+          sample_data.name = ebone->name;
+          sample_data.bone_rna = RNA_pointer_create(bdr.search_ptr.owner_id, &RNA_EditBone, ebone);
+        }
+      }
       break;
     }
     case SPACE_OUTLINER: {
-      bone = ED_outliner_give_bone_under_cursor(C, mval);
+      Bone *bone = ED_outliner_give_bone_under_cursor(C, mval);
+      if (bone) {
+        sample_data.name = bone->name;
+        sample_data.bone_rna = RNA_pointer_create(bdr.search_ptr.owner_id, &RNA_Bone, bone);
+      }
       break;
     }
 
@@ -207,8 +230,8 @@ static Bone *bonedropper_sample_pt(
       break;
   }
 
-  if (bone) {
-    SNPRINTF(bdr.name, "%s", bone->name);
+  if (sample_data.name) {
+    SNPRINTF(bdr.name, "%s", sample_data.name);
     copy_v2_v2_int(bdr.name_pos, mval);
   }
 
@@ -216,7 +239,7 @@ static Bone *bonedropper_sample_pt(
   CTX_wm_area_set(C, area_prev);
   CTX_wm_region_set(C, region_prev);
 
-  return bone;
+  return sample_data;
 }
 
 static bool bonedropper_sample(bContext *C, BoneDropper &bdr, const int event_xy[2])
@@ -233,18 +256,30 @@ static bool bonedropper_sample(bContext *C, BoneDropper &bdr, const int event_xy
     return false;
   }
 
-  Bone *bone = bonedropper_sample_pt(C, *win, *area, bdr, event_xy_win);
-  if (!bone) {
+  const BoneSampleData sample_data = bonedropper_sample_pt(C, *win, *area, bdr, event_xy_win);
+  if (!sample_data.name) {
     return false;
   }
 
-  RNA_property_string_set(&bdr.ptr, bdr.prop, bone->name);
+  PropertyType type = RNA_property_type(bdr.prop);
+  switch (type) {
+    case PROP_STRING:
+      RNA_property_string_set(&bdr.ptr, bdr.prop, sample_data.name);
+      break;
+    case PROP_POINTER:
+      RNA_property_pointer_set(&bdr.ptr, bdr.prop, sample_data.bone_rna, CTX_wm_reports(C));
+      break;
+
+    default:
+      BLI_assert_unreachable();
+      break;
+  }
+
   RNA_property_update(C, &bdr.ptr, bdr.prop);
 
   return true;
 }
 
-/* main modal status check */
 static int bonedropper_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
   BoneDropper *bdr = (BoneDropper *)op->customdata;
@@ -252,7 +287,6 @@ static int bonedropper_modal(bContext *C, wmOperator *op, const wmEvent *event)
     return OPERATOR_CANCELLED;
   }
 
-  /* handle modal keymap */
   if (event->type == EVT_MODAL_MAP) {
     switch (event->val) {
       case EYE_MODAL_CANCEL:
@@ -298,14 +332,15 @@ static int bonedropper_modal(bContext *C, wmOperator *op, const wmEvent *event)
 }
 static int bonedropper_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
-  /* init */
+  /* This is needed to ensure viewport picking works. */
+  BKE_object_update_select_id(CTX_data_main(C));
+
   if (bonedropper_init(C, op)) {
     wmWindow *win = CTX_wm_window(C);
     /* Workaround for de-activating the button clearing the cursor, see #76794 */
     UI_context_active_but_clear(C, win, CTX_wm_region(C));
     WM_cursor_modal_set(win, WM_CURSOR_EYEDROPPER);
 
-    /* add temp handler */
     WM_event_add_modal_handler(C, op);
     return OPERATOR_RUNNING_MODAL;
   }
@@ -314,9 +349,7 @@ static int bonedropper_invoke(bContext *C, wmOperator *op, const wmEvent * /*eve
 
 static int bonedropper_exec(bContext *C, wmOperator *op)
 {
-  /* init */
   if (bonedropper_init(C, op)) {
-    /* cleanup */
     bonedropper_exit(C, op);
 
     return OPERATOR_FINISHED;
@@ -345,27 +378,32 @@ static bool bonedropper_poll(bContext *C)
   }
 
   uiButSearch *search_but = (uiButSearch *)but;
+
+  if (!ELEM(RNA_property_type(prop), PROP_STRING, PROP_POINTER)) {
+    return false;
+  }
+
   StructRNA *type = RNA_property_pointer_type(&search_but->rnasearchpoin,
                                               search_but->rnasearchprop);
 
-  return type == &RNA_Bone;
+  return type == &RNA_Bone || type == &RNA_EditBone;
 }
 
 void UI_OT_eyedropper_bone(wmOperatorType *ot)
 {
-  /* identifiers */
+  /* Identifiers. */
   ot->name = "Eyedropper Bone";
   ot->idname = "UI_OT_eyedropper_bone";
   ot->description = "Sample a bone from the 3D View or the Outliner to store in a property";
 
-  /* api callbacks */
+  /* API callbacks. */
   ot->invoke = bonedropper_invoke;
   ot->modal = bonedropper_modal;
   ot->cancel = bonedropper_cancel;
   ot->exec = bonedropper_exec;
   ot->poll = bonedropper_poll;
 
-  /* flags */
+  /* Flags. */
   ot->flag = OPTYPE_UNDO | OPTYPE_BLOCKING | OPTYPE_INTERNAL;
 }
 

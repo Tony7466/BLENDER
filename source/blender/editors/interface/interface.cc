@@ -1717,10 +1717,13 @@ static bool ui_but_icon_extra_is_visible_bone_eyedropper(uiBut *but)
   if (but->editstr != nullptr) {
     return false;
   }
+  if (!ELEM(RNA_property_type(but->rnaprop), PROP_STRING, PROP_POINTER)) {
+    return false;
+  }
   uiButSearch *search_but = (uiButSearch *)but;
   StructRNA *type = RNA_property_pointer_type(&search_but->rnasearchpoin,
                                               search_but->rnasearchprop);
-  return type == &RNA_Bone;
+  return type == &RNA_Bone || type == &RNA_EditBone;
 }
 
 static PredefinedExtraOpIconType ui_but_icon_extra_get(uiBut *but)
