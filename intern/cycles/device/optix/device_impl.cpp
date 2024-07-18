@@ -444,7 +444,7 @@ bool OptiXDevice::load_kernels(const uint kernel_features)
       execute_optix_task(pool, task, results[i]);
     }
 #  else
-    pool.push([this, &results, i, &module_options, &ptx_data]() {
+    pool.push([this, &results, i, &module_options, ptx_data]() {
       results[i] = optixModuleCreateFromPTX(context,
                                             &module_options,
                                             &pipeline_options,
