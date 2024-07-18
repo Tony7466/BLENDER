@@ -31,7 +31,7 @@
 #include "render.hh"
 #include "strip_time.hh"
 
-// namespace blender::seq {
+namespace blender::seq {
 
 /* This is arbitrary, it is possible to prefetch n strips ahead, but if strips are too short, but
  * it may be better to prefetch frame range. */
@@ -418,4 +418,4 @@ void seq_anim_manager_free(const Editing *ed)
   }
 }
 
-//}  // namespace blender::seq
+}  // namespace blender::seq

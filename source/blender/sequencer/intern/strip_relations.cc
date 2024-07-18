@@ -423,6 +423,7 @@ bool SEQ_exists_in_seqbase(const Sequence *seq, const ListBase *seqbase)
 /* This function frees anim from `seq`. */
 void SEQ_relations_sequence_free_anim(const Scene *scene, const Sequence *seq)
 {
+  using namespace blender::seq;
   AnimManager *manager = seq_anim_manager_ensure(SEQ_editing_get(scene));
   manager->free_anims_by_seq(scene, seq);
 }

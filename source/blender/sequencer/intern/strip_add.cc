@@ -390,6 +390,7 @@ Sequence *SEQ_add_movie_strip(Main * /*bmain*/,
                               SeqLoadData *load_data)
 {
 
+  using namespace blender::seq;
   Sequence *seq = SEQ_sequence_alloc(
       seqbase, load_data->start_frame, load_data->channel, SEQ_TYPE_MOVIE);
   Strip *strip = seq->strip;
@@ -478,6 +479,7 @@ Sequence *SEQ_add_movie_strip(Main * /*bmain*/,
 
 void SEQ_add_reload_new_file(Main *bmain, Scene *scene, Sequence *seq, const bool lock_range)
 {
+  using namespace blender::seq;
   int prev_startdisp = 0, prev_enddisp = 0;
   /* NOTE: don't rename the strip, will break animation curves. */
 
@@ -602,6 +604,7 @@ void SEQ_add_reload_new_file(Main *bmain, Scene *scene, Sequence *seq, const boo
 void SEQ_add_movie_reload_if_needed(
     Main *bmain, Scene *scene, Sequence *seq, bool *r_was_reloaded, bool *r_can_produce_frames)
 {
+  using namespace blender::seq;
   BLI_assert_msg(seq->type == SEQ_TYPE_MOVIE,
                  "This function is only implemented for movie strips.");
 

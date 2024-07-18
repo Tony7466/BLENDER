@@ -1234,6 +1234,7 @@ static ImBuf *seq_render_movie_strip(const SeqRenderData *context,
                                      float timeline_frame,
                                      bool *r_is_proxy_image)
 {
+  using namespace blender::seq;
   ImBuf *ibuf = nullptr;
 
   Scene *scene = context->scene;
@@ -2120,6 +2121,7 @@ static ImBuf *seq_render_strip_stack(const SeqRenderData *context,
 
 ImBuf *SEQ_render_give_ibuf(const SeqRenderData *context, float timeline_frame, int chanshown)
 {
+  using namespace blender::seq;
   Scene *scene = context->scene;
   Editing *ed = SEQ_editing_get(scene);
   ListBase *seqbasep;

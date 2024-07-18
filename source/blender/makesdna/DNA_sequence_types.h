@@ -31,10 +31,13 @@ struct bSound;
 #ifdef __cplusplus
 namespace blender::seq {
 struct MediaPresence;
+struct AnimManager;
 }  // namespace blender::seq
 using MediaPresence = blender::seq::MediaPresence;
+using AnimManager = blender::seq::AnimManager;
 #else
 typedef struct MediaPresence MediaPresence;
+typedef struct AnimManager AnimManager;
 #endif
 
 /* -------------------------------------------------------------------- */
@@ -308,7 +311,7 @@ typedef struct SeqTimelineChannel {
 typedef struct EditingRuntime {
   struct SequenceLookup *sequence_lookup;
   MediaPresence *media_presence;
-  struct AnimManager *anim_lookup;
+  AnimManager *anim_lookup;
   void *_pad0;
 } EditingRuntime;
 

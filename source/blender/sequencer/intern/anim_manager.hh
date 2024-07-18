@@ -15,6 +15,8 @@ struct Sequence;
 #include "BLI_map.hh"
 #include "BLI_set.hh"
 
+namespace blender::seq {
+
 class ShareableAnim {
  public:
   blender::Vector<ImBufAnim *> anims; /* Ordered by view_id. */
@@ -69,3 +71,5 @@ class AnimManager {
 
 AnimManager *seq_anim_manager_ensure(Editing *ed);
 void seq_anim_manager_free(const Editing *ed);
+
+}  // namespace blender::seq

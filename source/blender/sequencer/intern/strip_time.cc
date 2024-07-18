@@ -326,6 +326,7 @@ int SEQ_time_find_next_prev_edit(Scene *scene,
 
 float SEQ_time_sequence_get_fps(Scene *scene, Sequence *seq)
 {
+  using namespace blender::seq;
   switch (seq->type) {
     case SEQ_TYPE_MOVIE: {
 

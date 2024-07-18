@@ -196,6 +196,7 @@ bool SEQ_can_use_proxy(const SeqRenderData *context, Sequence *seq, int psize)
 
 ImBuf *seq_proxy_fetch(const SeqRenderData *context, Sequence *seq, int timeline_frame)
 {
+  using namespace blender::seq;
   char filepath[PROXY_MAXFILE];
   StripProxy *proxy = seq->strip->proxy;
   const eSpaceSeq_Proxy_RenderSize psize = eSpaceSeq_Proxy_RenderSize(
@@ -373,6 +374,7 @@ static bool seq_proxy_multiview_context_invalid(Sequence *seq,
 
 static int seq_anims_count(const Scene *scene, Sequence *seq)
 {
+  using namespace blender::seq;
   AnimManager *manager = seq_anim_manager_ensure(SEQ_editing_get(scene));
   manager->strip_anims_acquire(scene, seq);
   blender::Vector<ImBufAnim *> anims = manager->strip_anims_get(scene, seq);
@@ -437,6 +439,7 @@ bool SEQ_proxy_rebuild_context(Main *bmain,
                                ListBase *queue,
                                bool build_only_on_bad_performance)
 {
+  using namespace blender::seq;
   SeqIndexBuildContext *context;
   Sequence *nseq;
   LinkData *link;
@@ -589,6 +592,7 @@ void SEQ_proxy_rebuild(SeqIndexBuildContext *context, wmJobWorkerStatus *worker_
 
 void SEQ_proxy_rebuild_finish(SeqIndexBuildContext *context, bool stop)
 {
+  using namespace blender::seq;
   AnimManager *manager = seq_anim_manager_ensure(SEQ_editing_get(context->scene));
   manager->strip_anims_acquire(context->scene, context->seq);
 
