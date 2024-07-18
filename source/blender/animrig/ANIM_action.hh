@@ -660,6 +660,18 @@ class KeyframeStrip : public ::KeyframeActionStrip {
 
   ChannelBag &ensure_channelbag_for_slot(const Slot &slot);
 
+  /**
+   * Remove the ChannelBag from this slot.
+   *
+   * After this call the reference is no longer valid, as the memory will have been freed.
+   *
+   * \return true when the ChannelBag was found & removed, false if it wasn't found.
+   */
+  bool channelbag_remove(ChannelBag &channelbag_to_remove);
+
+  /** Return the channelbag's index, or -1 if there is none for this slot handle. */
+  int64_t find_channelbag_index(const ChannelBag &channelbag) const;
+
   SingleKeyingResult keyframe_insert(const Slot &slot,
                                      FCurveDescriptor fcurve_descriptor,
                                      float2 time_value,

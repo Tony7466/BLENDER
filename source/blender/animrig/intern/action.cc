@@ -1043,6 +1043,15 @@ const ChannelBag *KeyframeStrip::channelbag_for_slot(const slot_handle_t slot_ha
   }
   return nullptr;
 }
+int64_t KeyframeStrip::find_channelbag_index(const ChannelBag &channelbag_to_remove) const
+{
+  for (int64_t index = 0; index < this->channelbag_array_num; index++) {
+    if (this->channelbag(index) == &channelbag_to_remove) {
+      return index;
+    }
+  }
+  return -1;
+}
 ChannelBag *KeyframeStrip::channelbag_for_slot(const slot_handle_t slot_handle)
 {
   const auto *const_this = const_cast<const KeyframeStrip *>(this);
@@ -1079,6 +1088,28 @@ ChannelBag &KeyframeStrip::ensure_channelbag_for_slot(const Slot &slot)
     return *channel_bag;
   }
   return this->channelbag_for_slot_add(slot);
+}
+
+static void channelbag_ptr_destructor(ActionChannelBag **dna_channelbag_ptr)
+{
+  ChannelBag &channelbag = (*dna_channelbag_ptr)->wrap();
+  MEM_delete(&channelbag);
+};
+
+bool KeyframeStrip::channelbag_remove(ChannelBag &channelbag_to_remove)
+{
+  const int64_t channelbag_index = this->find_channelbag_index(channelbag_to_remove);
+  if (channelbag_index < 0) {
+    return false;
+  }
+
+  dna::array::remove_index(&this->channelbag_array,
+                           &this->channelbag_array_num,
+                           nullptr,
+                           channelbag_index,
+                           channelbag_ptr_destructor);
+
+  return true;
 }
 
 const FCurve *ChannelBag::fcurve_find(const FCurveDescriptor fcurve_descriptor) const
