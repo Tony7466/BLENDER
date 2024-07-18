@@ -1119,6 +1119,7 @@ const FCurve *ChannelBag::fcurve_find(const FCurveDescriptor fcurve_descriptor) 
 
 FCurve *ChannelBag::fcurve_find(const FCurveDescriptor fcurve_descriptor)
 {
+  /* Intermediate variable needed to disambiguate const/non-const overloads. */
   Span<FCurve *> fcurves = this->fcurves();
   return animrig::fcurve_find(fcurves, fcurve_descriptor);
 }
