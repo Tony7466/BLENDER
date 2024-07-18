@@ -1398,6 +1398,10 @@ class HydraRenderEngine(RenderEngine):
 
 
 class GreasePencilStrokePoint:
+    """
+    A helper class to get easy access to stroke point data.
+    """
+
     def __init__(self, drawing, point_index):
         self.drawing = drawing
         self.point_index = point_index
@@ -1478,6 +1482,10 @@ class GreasePencilStrokePoint:
 
 
 class GreasePencilStroke:
+    """
+    A helper class to get easy access to stroke data.
+    """
+
     def __init__(self, drawing, curve_index, points_start_index, points_end_index):
         self.drawing = drawing
         self.curve_index = curve_index
@@ -1604,8 +1612,29 @@ class GreasePencilDrawing(StructRNA):
     __slots__ = ()
 
     @property
+    def num_strokes(self):
+        """
+        The number of strokes in the drawing.
+        """
+        return self.attributes.domain_size('CURVE')
+    
+    @property
+    def num_points(self):
+        """
+        The number of points in the drawing.
+        """
+        return self.attributes.domain_size('POINT')
+
+    @property
     def strokes(self):
-        num_curves = self.attributes.domain_size('CURVE')
+        """
+        Return a list of all the Grease Pencil strokes in this drawing.
+
+        .. note:: This API should *not* be used for performance critical operations.
+        Use the :class:`GreasePencilDrawing.attributes` API instead.
+        """
         offsets = self.curve_offset_data
         return [GreasePencilStroke(self, curve_i, offsets[curve_i].value, offsets[curve_i + 1].value)
-                for curve_i in range(num_curves)]
+                for curve_i in range(self.num_strokes)]
+    
+
