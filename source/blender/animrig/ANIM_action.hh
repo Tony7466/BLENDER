@@ -659,7 +659,7 @@ class KeyframeStrip : public ::KeyframeActionStrip {
   ChannelBag &channelbag_for_slot_add(const Slot &slot);
 
   /**
-   * Find a channel bag for `slot`, or if none exists, create it.
+   * Find the ChannelBag for `slot`, or if none exists, create it.
    */
   ChannelBag &channelbag_for_slot_ensure(const Slot &slot);
 
