@@ -9,6 +9,7 @@
 #include <climits>
 #include <cstddef>
 #include <cstdlib>
+#include <sstream>
 
 #include "MEM_guardedalloc.h"
 
@@ -23,6 +24,7 @@
 #include "BLI_math_vector.hh"
 #include "BLI_rand.h"
 #include "BLI_span.hh"
+#include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
 
 #include "DNA_collection_types.h"
@@ -205,7 +207,20 @@ static bool copy_dupli_context(DupliContext *r_ctx,
   ++r_ctx->level;
 
   if (r_ctx->level == MAX_DUPLI_RECUR - 1) {
-    std::cerr << "Warning: Maximum instance recursion level reached.\n";
+    const blender::StringRef object_name = ob ? ob->id.name + 2 : "";
+    const blender::StringRef geometry_name = geometry ? blender::StringRef(geometry->name) : "";
+    std::stringstream error_message;
+    error_message << "Warning: Maximum instance recursion level reached";
+    if (!geometry_name.is_empty()) {
+      error_message << " at " << geometry_name;
+      if (!object_name.is_empty()) {
+        error_message << " in " << object_name;
+      }
+    }
+    else if (!object_name.is_empty()) {
+      error_message << " at " << object_name;
+    }
+    std::cerr << error_message.str() << ".\n";
     return false;
   }
 
