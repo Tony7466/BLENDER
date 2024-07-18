@@ -673,7 +673,7 @@ Build cubins one after another (useful on machines with limited RAM)"
   )
   option(WITH_CYCLES_CUDA_BUILD_WHOLE_PROGRAM "\
 Build cubins using whole program compilation mode (slower to compile, but can generate more optimal code)"
-    OFF
+    ON
   )
   option(WITH_CUDA_DYNLOAD "\
 Dynamically load CUDA libraries at runtime (for developers, makes cuda-gdb work)"
