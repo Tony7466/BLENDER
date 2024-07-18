@@ -174,10 +174,16 @@ static void sample_data_from_3d_view(bContext *C,
                                      BoneSampleData &r_sample_data)
 {
   Base *base = nullptr;
+
   switch (CTX_data_mode_enum(C)) {
     case CTX_MODE_POSE: {
       bPoseChannel *bone = ED_armature_pick_pchan(C, mval, true, &base);
-      if (!bone) {
+      if (!bone || !base) {
+        return;
+      }
+      Object *ob = base->object;
+      bArmature *armature = (bArmature *)ob->data;
+      if (!armature || &armature->id != bdr.search_ptr.owner_id) {
         return;
       }
       r_sample_data.name = bone->name;
@@ -187,11 +193,16 @@ static void sample_data_from_3d_view(bContext *C,
     }
     case CTX_MODE_EDIT_ARMATURE: {
       EditBone *ebone = ED_armature_pick_ebone(C, mval, true, &base);
-      if (!ebone) {
+      if (!ebone || !base) {
+        return;
+      }
+      Object *ob = base->object;
+      bArmature *armature = (bArmature *)ob->data;
+      if (!armature || &armature->id != bdr.search_ptr.owner_id) {
         return;
       }
       r_sample_data.name = ebone->name;
-      r_sample_data.bone_rna = RNA_pointer_create(bdr.search_ptr.owner_id, &RNA_EditBone, ebone);
+      r_sample_data.bone_rna = RNA_pointer_create(&armature->id, &RNA_EditBone, ebone);
       break;
     }
 
