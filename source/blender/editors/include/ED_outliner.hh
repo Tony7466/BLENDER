@@ -14,6 +14,7 @@ struct SpaceOutliner;
 struct bContext;
 struct ID;
 struct Bone;
+struct PointerRNA;
 
 bool ED_outliner_collections_editor_poll(bContext *C);
 
@@ -30,10 +31,10 @@ void ED_outliner_selected_objects_get(const bContext *C, ListBase *objects);
 Base *ED_outliner_give_base_under_cursor(bContext *C, const int mval[2]);
 
 /**
- * Get the bone at the given coordinates. Works for pose bones as well and will just return the
- * `Bone` that is represented by it. Doesn't work for EditBone yet.
+ * Get the PointerRNA at the given coordinates. ONLY works for bone structs at the moment. Can be
+ * extended to work with other structs if the need arises.
  */
-Bone *ED_outliner_give_bone_under_cursor(bContext *C, const int mval[2]);
+bool ED_outliner_give_rna_under_cursor(bContext *C, const int mval[2], PointerRNA *r_ptr);
 
 /**
  * Functions for tagging outliner selection syncing is dirty from operators.

@@ -163,10 +163,68 @@ static void bonedropper_set_draw_callback_region(ScrArea &area, BoneDropper &bdr
 }
 
 struct BoneSampleData {
-  /* Either EditBone or Bone. */
+  /* Either EditBone, bPoseChannel or Bone. */
   PointerRNA bone_rna;
   char *name;
 };
+
+static void sample_data_from_3d_view(bContext *C,
+                                     const int mval[2],
+                                     const BoneDropper &bdr,
+                                     BoneSampleData &r_sample_data)
+{
+  Base *base = nullptr;
+  switch (CTX_data_mode_enum(C)) {
+    case CTX_MODE_POSE: {
+      Bone *bone = ED_armature_pick_bone(C, mval, true, &base);
+      if (!bone) {
+        return;
+      }
+      r_sample_data.name = bone->name;
+      r_sample_data.bone_rna = RNA_pointer_create(bdr.search_ptr.owner_id, &RNA_Bone, bone);
+      break;
+    }
+    case CTX_MODE_EDIT_ARMATURE: {
+      EditBone *ebone = ED_armature_pick_ebone(C, mval, true, &base);
+      if (!ebone) {
+        return;
+      }
+      r_sample_data.name = ebone->name;
+      r_sample_data.bone_rna = RNA_pointer_create(bdr.search_ptr.owner_id, &RNA_EditBone, ebone);
+      break;
+    }
+
+    default:
+      break;
+  }
+}
+
+static void sample_data_from_outliner(bContext *C,
+                                      const int mval[2],
+                                      const BoneDropper &bdr,
+                                      BoneSampleData &r_sample_data)
+{
+  const bool success = ED_outliner_give_rna_under_cursor(C, mval, &r_sample_data.bone_rna);
+  if (!success) {
+    return;
+  }
+  if (r_sample_data.bone_rna.owner_id != bdr.search_ptr.owner_id) {
+    return;
+  }
+
+  if (r_sample_data.bone_rna.type == &RNA_Bone) {
+    Bone *bone = (Bone *)r_sample_data.bone_rna.data;
+    r_sample_data.name = bone->name;
+  }
+  else if (r_sample_data.bone_rna.type == &RNA_EditBone) {
+    EditBone *bone = (EditBone *)r_sample_data.bone_rna.data;
+    r_sample_data.name = bone->name;
+  }
+  else if (r_sample_data.bone_rna.type == &RNA_PoseBone) {
+    bPoseChannel *bone = (bPoseChannel *)r_sample_data.bone_rna.data;
+    r_sample_data.name = bone->name;
+  }
+}
 
 static BoneSampleData bonedropper_sample_pt(
     bContext *C, wmWindow &win, ScrArea &area, BoneDropper &bdr, const int event_xy[2])
@@ -198,30 +256,11 @@ static BoneSampleData bonedropper_sample_pt(
 
   switch (area.spacetype) {
     case SPACE_VIEW3D: {
-      Base *base = nullptr;
-      if (CTX_data_mode_enum(C) == CTX_MODE_POSE) {
-        Bone *bone = ED_armature_pick_bone(C, mval, true, &base);
-        if (bone) {
-          sample_data.name = bone->name;
-          sample_data.bone_rna = RNA_pointer_create(bdr.search_ptr.owner_id, &RNA_Bone, bone);
-        }
-      }
-      else {
-        BLI_assert(CTX_data_mode_enum(C) == CTX_MODE_EDIT_ARMATURE);
-        EditBone *ebone = ED_armature_pick_ebone(C, mval, true, &base);
-        if (ebone) {
-          sample_data.name = ebone->name;
-          sample_data.bone_rna = RNA_pointer_create(bdr.search_ptr.owner_id, &RNA_EditBone, ebone);
-        }
-      }
+      sample_data_from_3d_view(C, mval, bdr, sample_data);
       break;
     }
     case SPACE_OUTLINER: {
-      Bone *bone = ED_outliner_give_bone_under_cursor(C, mval);
-      if (bone) {
-        sample_data.name = bone->name;
-        sample_data.bone_rna = RNA_pointer_create(bdr.search_ptr.owner_id, &RNA_Bone, bone);
-      }
+      sample_data_from_outliner(C, mval, bdr, sample_data);
       break;
     }
 

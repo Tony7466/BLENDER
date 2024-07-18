@@ -16,6 +16,9 @@
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
 
+#include "RNA_access.hh"
+#include "RNA_prototypes.h"
+
 #include "BKE_context.hh"
 #include "BKE_layer.hh"
 #include "BKE_object.hh"
@@ -479,7 +482,7 @@ Base *ED_outliner_give_base_under_cursor(bContext *C, const int mval[2])
   return base;
 }
 
-Bone *ED_outliner_give_bone_under_cursor(bContext *C, const int mval[2])
+bool ED_outliner_give_rna_under_cursor(bContext *C, const int mval[2], PointerRNA *r_ptr)
 {
   ARegion *region = CTX_wm_region(C);
   const Scene *scene = CTX_data_scene(C);
@@ -491,29 +494,32 @@ Bone *ED_outliner_give_bone_under_cursor(bContext *C, const int mval[2])
 
   TreeElement *te = outliner_find_item_at_y(space_outliner, &space_outliner->tree, view_mval[1]);
   if (!te) {
-    return nullptr;
+    return false;
   }
 
-  Bone *bone = nullptr;
+  bool success = true;
   TreeStoreElem *tselem = TREESTORE(te);
   switch (tselem->type) {
     case TSE_BONE: {
       BKE_view_layer_synced_ensure(scene, view_layer);
-      bone = (Bone *)te->directdata;
+      Bone *bone = (Bone *)te->directdata;
+      *r_ptr = RNA_pointer_create(tselem->id, &RNA_Bone, bone);
       break;
     }
     case TSE_POSE_CHANNEL: {
       bPoseChannel *pchan = (bPoseChannel *)te->directdata;
-      bone = pchan->bone;
+      *r_ptr = RNA_pointer_create(tselem->id, &RNA_PoseBone, pchan);
       break;
     }
     case TSE_EBONE: {
+      EditBone *bone = (EditBone *)te->directdata;
+      *r_ptr = RNA_pointer_create(tselem->id, &RNA_EditBone, bone);
       break;
     }
 
     default:
+      success = false;
       break;
   }
-
-  return bone;
+  return success;
 }
