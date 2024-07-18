@@ -1,3 +1,7 @@
+/* SPDX-FileCopyrightText: 2024 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
 #include "BKE_mesh.hh"
 
 #include "DNA_mesh_types.h"
