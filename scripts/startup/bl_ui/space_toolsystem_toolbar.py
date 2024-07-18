@@ -1750,6 +1750,7 @@ class _defs_sculpt:
             label="Line Project",
             icon="ops.sculpt.line_project",
             widget=None,
+            cursor='PAINT_CROSS',
             keymap=(),
             draw_settings=draw_settings,
         )
@@ -1835,6 +1836,7 @@ class _defs_sculpt:
             label="Mask by Color",
             icon="ops.sculpt.mask_by_color",
             widget=None,
+            cursor='PAINT_CROSS',
             keymap=(),
             draw_settings=draw_settings,
         )
@@ -1851,6 +1853,7 @@ class _defs_sculpt:
             label="Edit Face Set",
             icon="ops.sculpt.face_set_edit",
             widget=None,
+            cursor='PAINT_CROSS',
             keymap="3D View Tool: Sculpt, Face Set Edit",
             draw_settings=draw_settings,
         )
