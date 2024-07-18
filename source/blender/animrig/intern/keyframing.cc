@@ -41,7 +41,7 @@
 #include "MEM_guardedalloc.h"
 #include "RNA_access.hh"
 #include "RNA_path.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "WM_types.hh"
 
@@ -682,6 +682,29 @@ int delete_keyframe(Main *bmain,
     }
   }
 
+  Action &action = act->wrap();
+  if (action.is_action_layered()) {
+    /* Just being defensive in the face of the NLA shenanigans above. This
+     * probably isn't necessary, but it doesn't hurt. */
+    BLI_assert(adt->action == act && action.slot_for_handle(adt->slot_handle) != nullptr);
+
+    Span<FCurve *> fcurves = fcurves_for_action_slot(action, adt->slot_handle);
+    int removed_key_count = 0;
+    /* This loop's clause is copied from the pre-existing code for legacy
+     * actions below, to ensure behavioral consistency between the two code
+     * paths. In the future when legacy actions are removed, we can restructure
+     * it to be clearer. */
+    for (; array_index < array_index_max; array_index++) {
+      FCurve *fcurve = fcurve_find(fcurves, {rna_path, array_index});
+      if (fcurve == nullptr) {
+        continue;
+      }
+      removed_key_count += fcurve_delete_keyframe_at_time(fcurve, cfra);
+    }
+
+    return removed_key_count;
+  }
+
   /* Will only loop once unless the array index was -1. */
   int key_count = 0;
   for (; array_index < array_index_max; array_index++) {
@@ -701,7 +724,7 @@ int delete_keyframe(Main *bmain,
       continue;
     }
 
-    key_count += delete_keyframe_fcurve(adt, fcu, cfra);
+    key_count += delete_keyframe_fcurve_legacy(adt, fcu, cfra);
   }
   if (key_count) {
     deg_tag_after_keyframe_delete(bmain, id, adt);
@@ -1095,7 +1118,7 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
      * be tagged for a depsgraph update regardless. This code is here because it
      * was part of the function this one was refactored from, but at some point
      * this should be investigated and either documented or removed. */
-    if (adt->action != nullptr && adt->action != action) {
+    if (!ELEM(adt->action, nullptr, action)) {
       DEG_id_tag_update(&adt->action->id, ID_RECALC_ANIMATION_NO_FLUSH);
     }
   }

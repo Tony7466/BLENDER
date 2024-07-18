@@ -29,7 +29,7 @@
 
 #include "RNA_access.hh"
 #include "RNA_path.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "ED_keyframing.hh"
 
@@ -40,6 +40,7 @@
 #include "DEG_depsgraph_build.hh"
 
 #include "ANIM_action.hh"
+#include "ANIM_animdata.hh"
 #include "ANIM_fcurve.hh"
 #include "action_runtime.hh"
 
@@ -412,6 +413,23 @@ Slot &Action::slot_ensure_for_id(const ID &animated_id)
   return this->slot_add_for_id(animated_id);
 }
 
+void Action::slot_active_set(const slot_handle_t slot_handle)
+{
+  for (Slot *slot : slots()) {
+    slot->set_active(slot->handle == slot_handle);
+  }
+}
+
+Slot *Action::slot_active_get()
+{
+  for (Slot *slot : slots()) {
+    if (slot->is_active()) {
+      return slot;
+    }
+  }
+  return nullptr;
+}
+
 Slot *Action::find_suitable_slot_for(const ID &animated_id)
 {
   AnimData *adt = BKE_animdata_from_id(&animated_id);
@@ -710,6 +728,20 @@ void Slot::set_selected(const bool selected)
   }
 }
 
+bool Slot::is_active() const
+{
+  return this->slot_flags & uint8_t(Flags::Active);
+}
+void Slot::set_active(const bool active)
+{
+  if (active) {
+    this->slot_flags |= uint8_t(Flags::Active);
+  }
+  else {
+    this->slot_flags &= ~(uint8_t(Flags::Active));
+  }
+}
+
 Span<ID *> Slot::users(Main &bmain) const
 {
   if (bmain.is_action_slot_to_id_map_dirty) {
@@ -747,6 +779,48 @@ void Slot::users_remove(ID &animated_id)
 void Slot::users_invalidate(Main &bmain)
 {
   bmain.is_action_slot_to_id_map_dirty = true;
+}
+
+std::string Slot::name_prefix_for_idtype() const
+{
+  if (!this->has_idtype()) {
+    return slot_unbound_prefix;
+  }
+
+  char name[3] = {0};
+  *reinterpret_cast<short *>(name) = this->idtype;
+  return name;
+}
+
+StringRefNull Slot::name_without_prefix() const
+{
+  BLI_assert(StringRef(this->name).size() >= name_length_min);
+
+  /* Avoid accessing an uninitialized part of the string accidentally. */
+  if (this->name[0] == '\0' || this->name[1] == '\0') {
+    return "";
+  }
+  return this->name + 2;
+}
+
+void Slot::name_ensure_prefix()
+{
+  BLI_assert(StringRef(this->name).size() >= name_length_min);
+
+  if (StringRef(this->name).size() < 2) {
+    /* The code below would overwrite the trailing 0-byte. */
+    this->name[2] = '\0';
+  }
+
+  if (!this->has_idtype()) {
+    /* A zero idtype is not going to convert to a two-character string, so we
+     * need to explicitly assign the default prefix. */
+    this->name[0] = slot_unbound_prefix[0];
+    this->name[1] = slot_unbound_prefix[1];
+    return;
+  }
+
+  *reinterpret_cast<short *>(this->name) = this->idtype;
 }
 
 /* ----- Functions  ----------- */
@@ -843,48 +917,6 @@ std::optional<std::pair<Action *, Slot *>> get_action_slot_pair(ID &animated_id)
   return std::make_pair(&action, slot);
 }
 
-std::string Slot::name_prefix_for_idtype() const
-{
-  if (!this->has_idtype()) {
-    return slot_unbound_prefix;
-  }
-
-  char name[3] = {0};
-  *reinterpret_cast<short *>(name) = this->idtype;
-  return name;
-}
-
-StringRefNull Slot::name_without_prefix() const
-{
-  BLI_assert(StringRef(this->name).size() >= name_length_min);
-
-  /* Avoid accessing an uninitialized part of the string accidentally. */
-  if (this->name[0] == '\0' || this->name[1] == '\0') {
-    return "";
-  }
-  return this->name + 2;
-}
-
-void Slot::name_ensure_prefix()
-{
-  BLI_assert(StringRef(this->name).size() >= name_length_min);
-
-  if (StringRef(this->name).size() < 2) {
-    /* The code below would overwrite the trailing 0-byte. */
-    this->name[2] = '\0';
-  }
-
-  if (!this->has_idtype()) {
-    /* A zero idtype is not going to convert to a two-character string, so we
-     * need to explicitly assign the default prefix. */
-    this->name[0] = slot_unbound_prefix[0];
-    this->name[1] = slot_unbound_prefix[1];
-    return;
-  }
-
-  *reinterpret_cast<short *>(this->name) = this->idtype;
-}
-
 /* ----- ActionStrip implementation ----------- */
 
 Strip *Strip::duplicate(const StringRefNull allocation_name) const
@@ -945,11 +977,11 @@ KeyframeStrip::KeyframeStrip(const KeyframeStrip &other)
 {
   memcpy(this, &other, sizeof(*this));
 
-  this->channelbags_array = MEM_cnew_array<ActionChannelBag *>(other.channelbags_array_num,
-                                                               __func__);
+  this->channelbag_array = MEM_cnew_array<ActionChannelBag *>(other.channelbag_array_num,
+                                                              __func__);
   Span<const ChannelBag *> channelbags_src = other.channelbags();
   for (int i : channelbags_src.index_range()) {
-    this->channelbags_array[i] = MEM_new<animrig::ChannelBag>(__func__, *other.channelbag(i));
+    this->channelbag_array[i] = MEM_new<animrig::ChannelBag>(__func__, *other.channelbag(i));
   }
 }
 
@@ -958,8 +990,8 @@ KeyframeStrip::~KeyframeStrip()
   for (ChannelBag *channelbag_for_slot : this->channelbags()) {
     MEM_delete(channelbag_for_slot);
   }
-  MEM_SAFE_FREE(this->channelbags_array);
-  this->channelbags_array_num = 0;
+  MEM_SAFE_FREE(this->channelbag_array);
+  this->channelbag_array_num = 0;
 }
 
 template<> bool Strip::is<KeyframeStrip>() const
@@ -986,21 +1018,21 @@ KeyframeStrip::operator Strip &()
 
 blender::Span<const ChannelBag *> KeyframeStrip::channelbags() const
 {
-  return blender::Span<ChannelBag *>{reinterpret_cast<ChannelBag **>(this->channelbags_array),
-                                     this->channelbags_array_num};
+  return blender::Span<ChannelBag *>{reinterpret_cast<ChannelBag **>(this->channelbag_array),
+                                     this->channelbag_array_num};
 }
 blender::MutableSpan<ChannelBag *> KeyframeStrip::channelbags()
 {
   return blender::MutableSpan<ChannelBag *>{
-      reinterpret_cast<ChannelBag **>(this->channelbags_array), this->channelbags_array_num};
+      reinterpret_cast<ChannelBag **>(this->channelbag_array), this->channelbag_array_num};
 }
 const ChannelBag *KeyframeStrip::channelbag(const int64_t index) const
 {
-  return &this->channelbags_array[index]->wrap();
+  return &this->channelbag_array[index]->wrap();
 }
 ChannelBag *KeyframeStrip::channelbag(const int64_t index)
 {
-  return &this->channelbags_array[index]->wrap();
+  return &this->channelbag_array[index]->wrap();
 }
 const ChannelBag *KeyframeStrip::channelbag_for_slot(const slot_handle_t slot_handle) const
 {
@@ -1035,7 +1067,7 @@ ChannelBag &KeyframeStrip::channelbag_for_slot_add(const Slot &slot)
   channels.slot_handle = slot.handle;
 
   grow_array_and_append<ActionChannelBag *>(
-      &this->channelbags_array, &this->channelbags_array_num, &channels);
+      &this->channelbag_array, &this->channelbag_array_num, &channels);
 
   return channels;
 }
@@ -1172,13 +1204,7 @@ FCurve *ChannelBag::fcurve(const int64_t index)
 
 const FCurve *ChannelBag::fcurve_find(const StringRefNull rna_path, const int array_index) const
 {
-  for (const FCurve *fcu : this->fcurves()) {
-    /* Check indices first, much cheaper than a string comparison. */
-    if (fcu->array_index == array_index && fcu->rna_path && StringRef(fcu->rna_path) == rna_path) {
-      return fcu;
-    }
-  }
-  return nullptr;
+  return animrig::fcurve_find(this->fcurves(), {rna_path, array_index});
 }
 
 /* Utility function implementations. */
@@ -1217,6 +1243,7 @@ static animrig::ChannelBag *channelbag_for_action_slot(Action &action,
 
 Span<FCurve *> fcurves_for_action_slot(Action &action, const slot_handle_t slot_handle)
 {
+  assert_baklava_phase_1_invariants(action);
   animrig::ChannelBag *bag = channelbag_for_action_slot(action, slot_handle);
   if (!bag) {
     return {};
@@ -1226,6 +1253,7 @@ Span<FCurve *> fcurves_for_action_slot(Action &action, const slot_handle_t slot_
 
 Span<const FCurve *> fcurves_for_action_slot(const Action &action, const slot_handle_t slot_handle)
 {
+  assert_baklava_phase_1_invariants(action);
   const animrig::ChannelBag *bag = channelbag_for_action_slot(action, slot_handle);
   if (!bag) {
     return {};
@@ -1310,6 +1338,46 @@ FCurve *action_fcurve_ensure(Main *bmain,
   if (act == nullptr) {
     return nullptr;
   }
+  Action &action = act->wrap();
+
+  if (USER_EXPERIMENTAL_TEST(&U, use_animation_baklava) && action.is_action_layered()) {
+    /* NOTE: for layered actions we require the following:
+     *
+     * - `ptr` is non-null.
+     * - `ptr` has an `owner_id` that already uses `act`.
+     *
+     * This isn't for any principled reason, but rather is because adding
+     * support for layered actions to this function was a fix to make Follow
+     * Path animation work properly with layered actions (see PR #124353), and
+     * those are the requirements the Follow Path code conveniently met.
+     * Moreover those requirements were also already met by the other call sites
+     * that potentially call this function with layered actions.
+     *
+     * Trying to puzzle out what "should" happen when these requirements don't
+     * hold, or if this is even the best place to handle the layered action
+     * cases at all, was leading to discussion of larger changes than made sense
+     * to tackle at that point. */
+    BLI_assert(ptr != nullptr);
+    if (ptr == nullptr) {
+      return nullptr;
+    }
+    AnimData *adt = BKE_animdata_from_id(ptr->owner_id);
+    BLI_assert(adt != nullptr && adt->action == act);
+    if (adt == nullptr || adt->action != act) {
+      return nullptr;
+    }
+
+    /* Ensure the id has an assigned slot. */
+    Slot &slot = action.slot_ensure_for_id(*ptr->owner_id);
+    action.assign_id(&slot, *ptr->owner_id);
+
+    action.layer_ensure_at_least_one();
+
+    assert_baklava_phase_1_invariants(action);
+    KeyframeStrip &strip = action.layer(0)->strip(0)->as<KeyframeStrip>();
+
+    return &strip.fcurve_find_or_create(slot, fcurve_descriptor);
+  }
 
   /* Try to find f-curve matching for this setting.
    * - add if not found and allowed to add one
@@ -1372,6 +1440,52 @@ FCurve *action_fcurve_ensure(Main *bmain,
   return fcu;
 }
 
+ID *action_slot_get_id_for_keying(Main &bmain,
+                                  Action &action,
+                                  const slot_handle_t slot_handle,
+                                  ID *primary_id)
+{
+  if (action.is_action_legacy()) {
+    if (primary_id && get_action(*primary_id) == &action) {
+      return primary_id;
+    }
+    return nullptr;
+  }
+
+  Slot *slot = action.slot_for_handle(slot_handle);
+  if (slot == nullptr) {
+    return nullptr;
+  }
+
+  blender::Span<ID *> users = slot->users(bmain);
+  if (users.size() == 1) {
+    /* We only do this for `users.size() == 1` and not `users.size() >= 1`
+     * because when there's more than one user it's ambiguous which user we
+     * should return, and that would be unpredictable for end users of Blender.
+     * We also expect that to be a corner case anyway.  So instead we let that
+     * case either get disambiguated by the primary ID in the case below, or
+     * return null. */
+    return users[0];
+  }
+  if (users.contains(primary_id)) {
+    return primary_id;
+  }
+
+  return nullptr;
+}
+
+ID *action_slot_get_id_best_guess(Main &bmain, Slot &slot, ID *primary_id)
+{
+  blender::Span<ID *> users = slot.users(bmain);
+  if (users.is_empty()) {
+    return 0;
+  }
+  if (users.contains(primary_id)) {
+    return primary_id;
+  }
+  return users[0];
+}
+
 void assert_baklava_phase_1_invariants(const Action &action)
 {
   if (action.is_action_legacy()) {
@@ -1401,6 +1515,40 @@ void assert_baklava_phase_1_invariants(const Strip &strip)
   BLI_assert(strip.type() == Strip::Type::Keyframe);
   BLI_assert(strip.is_infinite());
   BLI_assert(strip.frame_offset == 0.0);
+}
+
+Action *convert_to_layered_action(Main &bmain, const Action &legacy_action)
+{
+  if (!legacy_action.is_action_legacy()) {
+    return nullptr;
+  }
+
+  std::string suffix = "_layered";
+  /* In case the legacy action has a long name it is shortened to make space for the suffix. */
+  char legacy_name[MAX_ID_NAME - 10];
+  /* Offsetting the id.name to remove the ID prefix (AC) which gets added back later. */
+  STRNCPY_UTF8(legacy_name, legacy_action.id.name + 2);
+
+  const std::string layered_action_name = std::string(legacy_name) + suffix;
+  bAction *dna_action = BKE_action_add(&bmain, layered_action_name.c_str());
+
+  Action &converted_action = dna_action->wrap();
+  Slot &slot = converted_action.slot_add();
+  Layer &layer = converted_action.layer_add(legacy_action.id.name);
+  KeyframeStrip &strip = layer.strip_add<KeyframeStrip>();
+  BLI_assert(strip.channelbag_array_num == 0);
+  ChannelBag *bag = &strip.channelbag_for_slot_add(slot);
+
+  const int fcu_count = BLI_listbase_count(&legacy_action.curves);
+  bag->fcurve_array = MEM_cnew_array<FCurve *>(fcu_count, "Convert to layered action");
+  bag->fcurve_array_num = fcu_count;
+
+  int i = 0;
+  LISTBASE_FOREACH_INDEX (FCurve *, fcu, &legacy_action.curves, i) {
+    bag->fcurve_array[i] = BKE_fcurve_copy(fcu);
+  }
+
+  return &converted_action;
 }
 
 }  // namespace blender::animrig

@@ -29,6 +29,7 @@
 #include "DNA_brush_enums.h"
 #include "DNA_material_types.h"
 
+#include "DNA_scene_types.h"
 #include "ED_curves.hh"
 #include "ED_grease_pencil.hh"
 #include "ED_view3d.hh"
@@ -590,11 +591,13 @@ struct PaintOperationExecutor {
 
     bke::SpanAttributeWriter<float> init_times = attributes.lookup_or_add_for_write_span<float>(
         "init_time", bke::AttrDomain::Curve);
-    init_times.span[active_curve] = self.start_time_;
+    /* Truncating time in ms to uint32 then we don't lose precision in lower bits. */
+    init_times.span[active_curve] = float(uint64_t(self.start_time_ * double(1e3))) / float(1e3);
     curve_attributes_to_skip.add("init_time");
     init_times.finish();
 
     curves.curve_types_for_write()[active_curve] = CURVE_TYPE_POLY;
+    curve_attributes_to_skip.add("curve_type");
     curves.update_curve_types();
 
     /* Initialize the rest of the attributes with default values. */
@@ -759,7 +762,7 @@ struct PaintOperationExecutor {
     const bool is_first_sample = (curve_points.size() == 1);
 
     /* Use the vector from the previous to the next point. Set the direction based on the first two
-     * samples. For subsuquent samples, interpolate with the previous direction to get a smoothed
+     * samples. For subsequent samples, interpolate with the previous direction to get a smoothed
      * value over time. */
     if (is_first_sample) {
       self.smoothed_pen_direction_ = self.screen_space_coords_orig_.last() - coords;
@@ -842,7 +845,7 @@ struct PaintOperationExecutor {
     MutableSpan<float> new_radii = drawing_->radii_for_write().slice(new_points);
     MutableSpan<float> new_opacities = drawing_->opacities_for_write().slice(new_points);
 
-    /* Interploate the screen space positions. */
+    /* Interpolate the screen space positions. */
     linear_interpolation<float2>(prev_coords, coords, new_screen_space_coords, is_first_sample);
     point_attributes_to_skip.add_multiple({"position", "radius", "opacity"});
 
@@ -1158,7 +1161,7 @@ static void trim_stroke_ends(bke::greasepencil::Drawing &drawing,
   BLI_assert(screen_space_positions_attribute.is_span());
   const Span<float2> screen_space_positions =
       screen_space_positions_attribute.get_internal_span().slice(points);
-  /* Extract the drawn stroke into a seperate geometry, so we can trim the ends for just this
+  /* Extract the drawn stroke into a separate geometry, so we can trim the ends for just this
    * stroke. */
   bke::CurvesGeometry stroke = bke::curves_copy_curve_selection(
       drawing.strokes(), IndexRange::from_single(active_curve), {});
@@ -1265,6 +1268,11 @@ static int trim_end_points(bke::greasepencil::Drawing &drawing,
     return 0;
   }
 
+  /* Don't remove the entire stroke. Leave at least one point. */
+  if (points.size() - num_points_to_remove < 1) {
+    num_points_to_remove = points.size() - 1;
+  }
+
   if (!on_back) {
     curves.resize(curves.points_num() - num_points_to_remove, curves.curves_num());
     curves.offsets_for_write().last() = curves.points_num();
@@ -1338,6 +1346,7 @@ void PaintOperation::on_stroke_done(const bContext &C)
   Scene *scene = CTX_data_scene(&C);
   Object *object = CTX_data_active_object(&C);
   RegionView3D *rv3d = CTX_wm_region_view3d(&C);
+  const ARegion *region = CTX_wm_region(&C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
   Paint *paint = &scene->toolsettings->gp_paint->paint;
@@ -1345,6 +1354,8 @@ void PaintOperation::on_stroke_done(const bContext &C)
   BrushGpencilSettings *settings = brush->gpencil_settings;
   const bool on_back = (scene->toolsettings->gpencil_flags & GP_TOOL_FLAG_PAINT_ONBACK) != 0;
   const bool do_post_processing = (settings->flag & GP_BRUSH_GROUP_SETTINGS) != 0;
+  const bool do_automerge_endpoints = (scene->toolsettings->gpencil_flags &
+                                       GP_TOOL_FLAG_AUTOMERGE_STROKE) != 0;
 
   /* Grease Pencil should have an active layer. */
   BLI_assert(grease_pencil.has_active_layer());
@@ -1407,6 +1418,15 @@ void PaintOperation::on_stroke_done(const bContext &C)
   attributes.remove(".draw_tool_screen_space_positions");
 
   drawing.set_texture_matrices({texture_space_}, IndexRange::from_single(active_curve));
+
+  if (do_automerge_endpoints) {
+    constexpr float merge_distance = 20.0f;
+    const float4x4 layer_to_world = active_layer.to_world_space(*object);
+    const IndexMask selection = IndexRange::from_single(active_curve);
+    drawing.strokes_for_write() = ed::greasepencil::curves_merge_endpoints_by_distance(
+        *region, drawing.strokes(), layer_to_world, merge_distance, selection, {});
+  }
+
   drawing.tag_topology_changed();
 
   /* Now we're done drawing. */
