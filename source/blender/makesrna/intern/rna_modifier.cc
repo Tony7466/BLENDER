@@ -7790,6 +7790,14 @@ static void rna_def_modifier_nodes_bake(BlenderRNA *brna)
       prop, "Custom Path", "Specify a path where the baked data should be stored manually");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
+  prop = RNA_def_property(srna, "bake_to_disk", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", NODES_MODIFIER_BAKE_TO_DISK);
+  RNA_def_property_ui_text(
+      prop,
+      "Bake to Disk",
+      "The next bake is baked to disk instead of storing it in the .blend file directly");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
   prop = RNA_def_property(srna, "bake_mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, bake_mode_items);
   RNA_def_property_ui_text(prop, "Bake Mode", "");

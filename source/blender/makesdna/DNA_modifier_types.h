@@ -2461,6 +2461,8 @@ typedef enum NodesModifierPanelFlag {
 typedef enum NodesModifierBakeFlag {
   NODES_MODIFIER_BAKE_CUSTOM_SIMULATION_FRAME_RANGE = 1 << 0,
   NODES_MODIFIER_BAKE_CUSTOM_PATH = 1 << 1,
+  /** Determines if the a new bake should be stored on disk or packed. */
+  NODES_MODIFIER_BAKE_TO_DISK = 1 << 2,
 } NodesModifierBakeFlag;
 
 typedef enum NodesModifierBakeMode {
