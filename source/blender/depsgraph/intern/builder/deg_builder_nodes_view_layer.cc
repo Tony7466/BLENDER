@@ -115,6 +115,7 @@ void DepsgraphNodeBuilder::build_view_layer(Scene *scene,
   }
   build_layer_collections(&view_layer->layer_collections);
   build_scene_camera(scene);
+  build_scene_effectors(scene);
   /* Rigidbody. */
   if (scene->rigidbody_world != nullptr) {
     build_rigidbody(scene);

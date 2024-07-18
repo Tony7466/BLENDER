@@ -443,6 +443,11 @@ void DepsgraphRelationBuilder::add_particle_forcefield_relations(const Operation
                                                                  bool add_absorption,
                                                                  const char *name)
 {
+  /* Add dependency on general effector changes, regardless of current relations. */
+  const OperationKey effectors_changed_key(
+      &graph_->scene->id, NodeType::EFFECTORS, OperationCode::EFFECTORS_CHANGED);
+  add_relation(effectors_changed_key, key, "Effectors -> Particle", 0);
+
   ListBase *relations = build_effector_relations(graph_, eff->group);
 
   /* Make sure physics effects like wind are properly re-evaluating the modifier stack. */
@@ -3438,6 +3443,7 @@ void DepsgraphRelationBuilder::build_scene_sequencer(Scene *scene)
   /* TODO(sergey): Trace as a scene sequencer. */
 
   build_scene_audio(scene);
+  build_scene_effectors(scene);
   ComponentKey scene_audio_key(&scene->id, NodeType::AUDIO);
   /* Make sure dependencies from sequences data goes to the sequencer evaluation. */
   ComponentKey sequencer_key(&scene->id, NodeType::SEQUENCER);

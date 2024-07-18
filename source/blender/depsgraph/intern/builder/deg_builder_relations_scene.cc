@@ -19,6 +19,7 @@ void DepsgraphRelationBuilder::build_scene_render(Scene *scene, ViewLayer *view_
   const bool build_sequencer = (scene->r.scemode & R_DOSEQ);
   build_scene_parameters(scene);
   build_animdata(&scene->id);
+  build_scene_effectors(scene);
   build_scene_audio(scene);
   if (build_compositor) {
     build_scene_compositor(scene);
@@ -42,6 +43,13 @@ void DepsgraphRelationBuilder::build_scene_camera(Scene *scene)
       build_object(marker->camera);
     }
   }
+}
+
+void DepsgraphRelationBuilder::build_scene_effectors(Scene *scene)
+{
+  ComponentKey hierarchy_key(&scene->id, NodeType::HIERARCHY);
+  ComponentKey effectors_key(&scene->id, NodeType::EFFECTORS);
+  add_relation(hierarchy_key, effectors_key, "Hierarchy -> Effectors");
 }
 
 void DepsgraphRelationBuilder::build_scene_parameters(Scene *scene)

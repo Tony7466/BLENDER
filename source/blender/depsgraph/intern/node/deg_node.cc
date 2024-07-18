@@ -68,6 +68,8 @@ const char *nodeTypeAsString(NodeType type)
       return "OBJECT_FROM_LAYER";
     case NodeType::HIERARCHY:
       return "HIERARCHY";
+    case NodeType::EFFECTORS:
+      return "EFFECTORS";
     /* **** Evaluation-Related Outer Types (with Sub-data) **** */
     case NodeType::EVAL_POSE:
       return "EVAL_POSE";
@@ -165,6 +167,7 @@ eDepsSceneComponentType nodeTypeToSceneComponent(NodeType type)
     case NodeType::CACHE:
     case NodeType::NTREE_OUTPUT:
     case NodeType::NTREE_GEOMETRY_PREPROCESS:
+    case NodeType::EFFECTORS:
       return DEG_SCENE_COMP_PARAMETERS;
 
     case NodeType::VISIBILITY:
@@ -228,6 +231,7 @@ eDepsObjectComponentType nodeTypeToObjectComponent(NodeType type)
     case NodeType::COPY_ON_EVAL:
     case NodeType::OBJECT_FROM_LAYER:
     case NodeType::HIERARCHY:
+    case NodeType::EFFECTORS:
     case NodeType::AUDIO:
     case NodeType::ARMATURE:
     case NodeType::GENERIC_DATABLOCK:

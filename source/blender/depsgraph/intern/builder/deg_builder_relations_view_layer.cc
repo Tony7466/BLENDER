@@ -164,6 +164,7 @@ void DepsgraphRelationBuilder::build_view_layer(Scene *scene,
   if (linked_state == DEG_ID_LINKED_DIRECTLY) {
     build_scene_audio(scene);
     build_scene_sequencer(scene);
+    build_scene_effectors(scene);
   }
   /* Build all set scenes. */
   if (scene->set != nullptr) {

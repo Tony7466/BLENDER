@@ -32,6 +32,7 @@ void DepsgraphNodeBuilder::build_scene_render(Scene *scene, ViewLayer *view_laye
     build_scene_speakers(scene, view_layer);
   }
   build_scene_camera(scene);
+  build_scene_effectors(scene);
 }
 
 void DepsgraphNodeBuilder::build_scene_camera(Scene *scene)
@@ -44,6 +45,11 @@ void DepsgraphNodeBuilder::build_scene_camera(Scene *scene)
       build_object(-1, marker->camera, DEG_ID_LINKED_INDIRECTLY, true);
     }
   }
+}
+
+void DepsgraphNodeBuilder::build_scene_effectors(Scene *scene)
+{
+  add_operation_node(&scene->id, NodeType::EFFECTORS, OperationCode::EFFECTORS_CHANGED);
 }
 
 void DepsgraphNodeBuilder::build_scene_parameters(Scene *scene)

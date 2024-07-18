@@ -14,6 +14,7 @@
 #include <cstring>
 #include <ctime>
 
+#include "DNA_ID.h"
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
@@ -1126,6 +1127,7 @@ void check_force_modifiers(Main *bmain, Scene *scene, Object *object)
 
 static int forcefield_toggle_exec(bContext *C, wmOperator * /*op*/)
 {
+  Scene *scene = CTX_data_scene(C);
   Object *ob = CTX_data_active_object(C);
 
   if (ob->pd == nullptr) {
@@ -1140,11 +1142,12 @@ static int forcefield_toggle_exec(bContext *C, wmOperator * /*op*/)
     ob->pd->forcefield = 0;
   }
 
-  check_force_modifiers(CTX_data_main(C), CTX_data_scene(C), ob);
+  check_force_modifiers(CTX_data_main(C), scene, ob);
   WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
   WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
 
   DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM);
+  DEG_id_tag_update(&scene->id, ID_RECALC_SCENE_EFFECTORS);
 
   return OPERATOR_FINISHED;
 }

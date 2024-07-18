@@ -19,6 +19,7 @@
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
 
+#include "DNA_ID.h"
 #include "DNA_anim_types.h"
 #include "DNA_curve_types.h"
 #include "DNA_key_types.h"
@@ -219,13 +220,15 @@ void depsgraph_tag_to_component_opcode(const ID *id,
       *component_type = NodeType::NTREE_OUTPUT;
       *operation_code = OperationCode::NTREE_OUTPUT;
       break;
-
     case ID_RECALC_HIERARCHY:
       *component_type = NodeType::HIERARCHY;
       *operation_code = OperationCode::HIERARCHY;
       break;
+    case ID_RECALC_SCENE_EFFECTORS:
+      *component_type = NodeType::EFFECTORS;
+      *operation_code = OperationCode::EFFECTORS_CHANGED;
+      break;
 
-    case ID_RECALC_PROVISION_27:
     case ID_RECALC_PROVISION_28:
     case ID_RECALC_PROVISION_29:
     case ID_RECALC_PROVISION_30:
@@ -811,11 +814,11 @@ const char *DEG_update_tag_as_string(IDRecalcFlag flag)
       return "TAG_FOR_UNDO";
     case ID_RECALC_NTREE_OUTPUT:
       return "ID_RECALC_NTREE_OUTPUT";
-
     case ID_RECALC_HIERARCHY:
       return "ID_RECALC_HIERARCHY";
+    case ID_RECALC_SCENE_EFFECTORS:
+      return "ID_RECALC_SCENE_EFFECTORS";
 
-    case ID_RECALC_PROVISION_27:
     case ID_RECALC_PROVISION_28:
     case ID_RECALC_PROVISION_29:
     case ID_RECALC_PROVISION_30:

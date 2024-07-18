@@ -162,6 +162,8 @@ const char *operationCodeAsString(OperationCode opcode)
     /* Collections. */
     case OperationCode::VIEW_LAYER_EVAL:
       return "VIEW_LAYER_EVAL";
+    case OperationCode::EFFECTORS_CHANGED:
+      return "EFFECTORS_CHANGED";
     /* Copy on eval. */
     case OperationCode::COPY_ON_EVAL:
       return "COPY_ON_EVAL";

@@ -80,6 +80,8 @@ enum class NodeType {
   OBJECT_FROM_LAYER,
   /* Hierarchy of objects and collections */
   HIERARCHY,
+  /* Effectors in a scene. */
+  EFFECTORS,
   /* Audio-related evaluation. */
   AUDIO,
   ARMATURE,
