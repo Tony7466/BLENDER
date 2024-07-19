@@ -123,10 +123,10 @@ def get_arguments(filepath, output_filepath, use_hwrt=False):
     cycles_pref = "bpy.context.preferences.addons['cycles'].preferences"
     if use_hwrt:
         args.extend(
-            ["--python-expr", f"import bpy; {cycles_pref}.use_hiprt = True; {cycles_pref}.use_oneapirt = True; {cycles_pref}.metlrt = 'ON'"])
+            ["--python-expr", f"import bpy; {cycles_pref}.use_hiprt = True; {cycles_pref}.use_oneapirt = True; {cycles_pref}.metalrt = 'ON'"])
     else:
         args.extend(
-            ["--python-expr", f"import bpy; {cycles_pref}.use_hiprt = False; {cycles_pref}.use_oneapirt = False; {cycles_pref}.metlrt = 'OFF'"])
+            ["--python-expr", f"import bpy; {cycles_pref}.use_hiprt = False; {cycles_pref}.use_oneapirt = False; {cycles_pref}.metalrt = 'OFF'"])
 
     if subject == 'bake':
         args.extend(['--python', os.path.join(basedir, "util", "render_bake.py")])
