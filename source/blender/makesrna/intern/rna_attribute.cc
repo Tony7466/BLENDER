@@ -907,7 +907,7 @@ static void rna_AttributeGroupGreasePencilDrawing_active_set(PointerRNA *ptr,
 static bool rna_AttributeGroupGreasePencilDrawing_active_poll(PointerRNA *ptr,
                                                               const PointerRNA value)
 {
-  AttributeOwner owner = owner_from_attribute_pointer_rna(&value);
+  AttributeOwner owner = owner_from_attribute_pointer_rna(const_cast<PointerRNA *>(&value));
   return owner.is_valid() && owner.type() == AttributeOwnerType::GreasePencilDrawing &&
          owner.get_grease_pencil_drawing() == static_cast<GreasePencilDrawing *>(ptr->data);
 }
