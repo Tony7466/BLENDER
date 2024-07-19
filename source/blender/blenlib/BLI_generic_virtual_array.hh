@@ -75,15 +75,6 @@ class GVMutableArrayImpl : public GVArrayImpl {
 /** \name #GVArray and #GVMutableArray
  * \{ */
 
-namespace detail {
-struct GVArrayAnyExtraInfo {
-  const GVArrayImpl *(*get_varray)(const void *buffer) =
-      [](const void * /*buffer*/) -> const GVArrayImpl * { return nullptr; };
-
-  template<typename StorageT> static constexpr GVArrayAnyExtraInfo get();
-};
-}  // namespace detail
-
 class GVMutableArray;
 
 /**
@@ -92,29 +83,7 @@ class GVMutableArray;
  */
 class GVArrayCommon {
  protected:
-  /**
-   * See #VArrayCommon for more information. The inline buffer is a bit larger here, because
-   * generic virtual array implementations often require a bit more space than typed ones.
-   */
-  using Storage = Any<detail::GVArrayAnyExtraInfo, 40, 8>;
-
-  const GVArrayImpl *impl_ = nullptr;
-  Storage storage_;
-
- protected:
-  GVArrayCommon() = default;
-  GVArrayCommon(const GVArrayCommon &other);
-  GVArrayCommon(GVArrayCommon &&other) noexcept;
-  GVArrayCommon(const GVArrayImpl *impl);
-  GVArrayCommon(std::shared_ptr<const GVArrayImpl> impl);
-  ~GVArrayCommon();
-
-  template<typename ImplT, typename... Args> void emplace(Args &&...args);
-
-  void copy_from(const GVArrayCommon &other);
-  void move_from(GVArrayCommon &&other) noexcept;
-
-  const GVArrayImpl *impl_from_storage() const;
+  PolymorphicValue<GVArrayImpl> impl_;
 
  public:
   const CPPType &type() const;
@@ -180,8 +149,6 @@ class GVArray : public GVArrayCommon {
  public:
   GVArray() = default;
 
-  GVArray(const GVArray &other);
-  GVArray(GVArray &&other) noexcept;
   GVArray(const GVArrayImpl *impl);
   GVArray(std::shared_ptr<const GVArrayImpl> impl);
 
@@ -204,12 +171,9 @@ class GVArray : public GVArrayCommon {
 
   GVArray slice(IndexRange slice) const;
 
-  GVArray &operator=(const GVArray &other);
-  GVArray &operator=(GVArray &&other) noexcept;
-
   const GVArrayImpl *get_implementation() const
   {
-    return impl_;
+    return impl_.ptr();
   }
 };
 
@@ -217,8 +181,6 @@ class GVArray : public GVArrayCommon {
 class GVMutableArray : public GVArrayCommon {
  public:
   GVMutableArray() = default;
-  GVMutableArray(const GVMutableArray &other);
-  GVMutableArray(GVMutableArray &&other) noexcept;
   GVMutableArray(GVMutableArrayImpl *impl);
   GVMutableArray(std::shared_ptr<GVMutableArrayImpl> impl);
 
@@ -231,9 +193,6 @@ class GVMutableArray : public GVArrayCommon {
 
   operator GVArray() const &;
   operator GVArray() && noexcept;
-
-  GVMutableArray &operator=(const GVMutableArray &other);
-  GVMutableArray &operator=(GVMutableArray &&other) noexcept;
 
   GMutableSpan get_internal_span() const;
 
@@ -712,7 +671,7 @@ inline bool GVMutableArray::try_assign_VMutableArray(VMutableArray<T> &varray) c
 
 inline GVMutableArrayImpl *GVMutableArray::get_impl() const
 {
-  return const_cast<GVMutableArrayImpl *>(static_cast<const GVMutableArrayImpl *>(impl_));
+  return const_cast<GVMutableArrayImpl *>(static_cast<const GVMutableArrayImpl *>(impl_.ptr()));
 }
 
 /** \} */
@@ -720,19 +679,6 @@ inline GVMutableArrayImpl *GVMutableArray::get_impl() const
 /* -------------------------------------------------------------------- */
 /** \name Inline methods for #GVArrayCommon.
  * \{ */
-
-template<typename ImplT, typename... Args> inline void GVArrayCommon::emplace(Args &&...args)
-{
-  static_assert(std::is_base_of_v<GVArrayImpl, ImplT>);
-  if constexpr (std::is_copy_constructible_v<ImplT> && Storage::template is_inline_v<ImplT>) {
-    impl_ = &storage_.template emplace<ImplT>(std::forward<Args>(args)...);
-  }
-  else {
-    std::shared_ptr<const GVArrayImpl> ptr = std::make_shared<ImplT>(std::forward<Args>(args)...);
-    impl_ = &*ptr;
-    storage_ = std::move(ptr);
-  }
-}
 
 /* Copies the value at the given index into the provided storage. The `r_value` pointer is
  * expected to point to initialized memory. */
@@ -774,7 +720,7 @@ inline const CPPType &GVArrayCommon::type() const
 
 inline GVArrayCommon::operator bool() const
 {
-  return impl_ != nullptr;
+  return impl_;
 }
 
 inline CommonVArrayInfo GVArrayCommon::common_info() const
@@ -784,7 +730,7 @@ inline CommonVArrayInfo GVArrayCommon::common_info() const
 
 inline int64_t GVArrayCommon::size() const
 {
-  if (impl_ == nullptr) {
+  if (!impl_) {
     return 0;
   }
   return impl_->size();
@@ -828,7 +774,7 @@ inline GVArray::GVArray(varray_tag::span /*tag*/, const GSpan span)
   /* Use const-cast because the underlying virtual array implementation is shared between const
    * and non const data. */
   GMutableSpan mutable_span{span.type(), const_cast<void *>(span.data()), span.size()};
-  this->emplace<GVArrayImpl_For_GSpan_final>(mutable_span);
+  this->impl_.emplace<GVArrayImpl_For_GSpan_final>(mutable_span);
 }
 
 inline GVArray::GVArray(varray_tag::single_ref /*tag*/,
@@ -836,38 +782,14 @@ inline GVArray::GVArray(varray_tag::single_ref /*tag*/,
                         const int64_t size,
                         const void *value)
 {
-  this->emplace<GVArrayImpl_For_SingleValueRef_final>(type, size, value);
+  this->impl_.emplace<GVArrayImpl_For_SingleValueRef_final>(type, size, value);
 }
-
-namespace detail {
-template<typename StorageT> constexpr GVArrayAnyExtraInfo GVArrayAnyExtraInfo::get()
-{
-  static_assert(std::is_base_of_v<GVArrayImpl, StorageT> ||
-                is_same_any_v<StorageT, const GVArrayImpl *, std::shared_ptr<const GVArrayImpl>>);
-
-  if constexpr (std::is_base_of_v<GVArrayImpl, StorageT>) {
-    return {[](const void *buffer) {
-      return static_cast<const GVArrayImpl *>((const StorageT *)buffer);
-    }};
-  }
-  else if constexpr (std::is_same_v<StorageT, const GVArrayImpl *>) {
-    return {[](const void *buffer) { return *(const StorageT *)buffer; }};
-  }
-  else if constexpr (std::is_same_v<StorageT, std::shared_ptr<const GVArrayImpl>>) {
-    return {[](const void *buffer) { return ((const StorageT *)buffer)->get(); }};
-  }
-  else {
-    BLI_assert_unreachable();
-    return {};
-  }
-}
-}  // namespace detail
 
 template<typename ImplT, typename... Args> inline GVArray GVArray::For(Args &&...args)
 {
   static_assert(std::is_base_of_v<GVArrayImpl, ImplT>);
   GVArray varray;
-  varray.template emplace<ImplT>(std::forward<Args>(args)...);
+  varray.impl_.template emplace<ImplT>(std::forward<Args>(args)...);
   return varray;
 }
 
@@ -930,7 +852,7 @@ inline GVMutableArray GVMutableArray::For(Args &&...args)
 {
   static_assert(std::is_base_of_v<GVMutableArrayImpl, ImplT>);
   GVMutableArray varray;
-  varray.emplace<ImplT>(std::forward<Args>(args)...);
+  varray.impl_.emplace<ImplT>(std::forward<Args>(args)...);
   return varray;
 }
 
