@@ -69,8 +69,8 @@ struct PBVHNode {
    * Used for leaf nodes in a mesh-based PBVH (not multires.)
    */
   blender::Array<int, 0> vert_indices;
+  /** The number of vertices in #vert_indices not shared with (owned by) another node. */
   int uniq_verts = 0;
-  int face_verts = 0;
 
   /* Array of indices into the Mesh's corner array.
    * PBVH_FACES only.
@@ -93,8 +93,6 @@ struct PBVHNode {
 
   /* Used for ray-casting: how close the bounding-box is to the ray point. */
   float tmin = 0.0f;
-
-  blender::Vector<PBVHProxyNode> proxies;
 
   /* Dyntopo */
 
@@ -144,17 +142,8 @@ struct PBVH {
   blender::Span<blender::float3> vert_normals;
   blender::Span<blender::float3> face_normals;
 
-  /** Only valid for polygon meshes. */
-  blender::OffsetIndices<int> faces;
-  blender::Span<int> corner_verts;
-
   /* Grid Data */
-  CCGKey gridkey;
   SubdivCCG *subdiv_ccg;
-
-#ifdef PERFCNTRS
-  int perf_modified;
-#endif
 
   /* flag are verts/faces deformed */
   bool deformed;
@@ -169,9 +158,6 @@ struct PBVH {
   int num_planes;
 
   BMLog *bm_log;
-
-  CustomDataLayer *color_layer;
-  blender::bke::AttrDomain color_domain;
 
   PBVHPixels pixels;
 

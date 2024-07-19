@@ -225,23 +225,29 @@ float3 DrawingPlacement::reproject(const float3 pos) const
     proj_point = this->project_depth(co);
   }
   else {
-    if (plane_ != DrawingPlacementPlane::View) {
-      /* Reproject the point onto the `placement_plane_` from the current view. */
-      RegionView3D *rv3d = static_cast<RegionView3D *>(region_->regiondata);
+    /* Reproject the point onto the `placement_plane_` from the current view. */
+    RegionView3D *rv3d = static_cast<RegionView3D *>(region_->regiondata);
 
-      float3 ray_co, ray_no;
-      if (rv3d->is_persp) {
-        ray_co = float3(rv3d->viewinv[3]);
-        ray_no = math::normalize(ray_co - math::transform_point(layer_space_to_world_space_, pos));
-      }
-      else {
-        ray_co = math::transform_point(layer_space_to_world_space_, pos);
-        ray_no = -float3(rv3d->viewinv[2]);
-      }
-      float lambda;
-      if (isect_ray_plane_v3(ray_co, ray_no, placement_plane_, &lambda, false)) {
-        proj_point = ray_co + ray_no * lambda;
-      }
+    float3 ray_co, ray_no;
+    if (rv3d->is_persp) {
+      ray_co = float3(rv3d->viewinv[3]);
+      ray_no = math::normalize(ray_co - math::transform_point(layer_space_to_world_space_, pos));
+    }
+    else {
+      ray_co = math::transform_point(layer_space_to_world_space_, pos);
+      ray_no = -float3(rv3d->viewinv[2]);
+    }
+    float4 plane;
+    if (plane_ == DrawingPlacementPlane::View) {
+      plane = float4(rv3d->viewinv[2]);
+    }
+    else {
+      plane = placement_plane_;
+    }
+
+    float lambda;
+    if (isect_ray_plane_v3(ray_co, ray_no, plane, &lambda, false)) {
+      proj_point = ray_co + ray_no * lambda;
     }
   }
   return math::transform_point(world_space_to_layer_space_, proj_point);
@@ -1233,7 +1239,6 @@ float opacity_from_input_sample(const float pressure,
 
 int grease_pencil_draw_operator_invoke(bContext *C, wmOperator *op)
 {
-  const Scene *scene = CTX_data_scene(C);
   const Object *object = CTX_data_active_object(C);
   if (!object || object->type != OB_GREASE_PENCIL) {
     return OPERATOR_CANCELLED;
@@ -1260,7 +1265,7 @@ int grease_pencil_draw_operator_invoke(bContext *C, wmOperator *op)
 
   /* Ensure a drawing at the current keyframe. */
   bool inserted_keyframe = false;
-  if (!ed::greasepencil::ensure_active_keyframe(*scene, grease_pencil, inserted_keyframe)) {
+  if (!ed::greasepencil::ensure_active_keyframe(C, grease_pencil, inserted_keyframe)) {
     BKE_report(op->reports, RPT_ERROR, "No Grease Pencil frame to draw on");
     return OPERATOR_CANCELLED;
   }

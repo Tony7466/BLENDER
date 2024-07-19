@@ -13,6 +13,7 @@
 #include "overlay_next_background.hh"
 #include "overlay_next_empty.hh"
 #include "overlay_next_grid.hh"
+#include "overlay_next_lattice.hh"
 #include "overlay_next_light.hh"
 #include "overlay_next_metaball.hh"
 #include "overlay_next_prepass.hh"
@@ -44,6 +45,7 @@ class Instance {
   Lights lights = {selection_type_};
   Metaballs metaballs = {selection_type_};
   Empties empties = {selection_type_};
+  Lattices lattices;
   Speakers speakers = {selection_type_};
   Grid grid;
 
