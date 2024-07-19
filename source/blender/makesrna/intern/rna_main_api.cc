@@ -2081,7 +2081,7 @@ void RNA_def_main_grease_pencil(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   /* return type */
   parm = RNA_def_pointer(
-      func, "grease_pencil", "GreasePencil", "", "New grease pencil data-block");
+      func, "grease_pencil", "GreasePencilv3", "", "New grease pencil data-block");
   RNA_def_function_return(func, parm);
 
   func = RNA_def_function(srna, "remove", "rna_Main_ID_remove");
