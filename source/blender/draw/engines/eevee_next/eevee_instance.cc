@@ -527,8 +527,9 @@ void Instance::render_frame(RenderEngine *engine, RenderLayer *render_layer, con
       RE_engine_update_stats(engine, nullptr, re_info.c_str());
     }
 
-    /* TODO(fclem) print progression. */
 #if 0
+    /* TODO(fclem) print progression. */
+    RE_engine_update_progress(engine, float(sampling.sample_index()) / float(sampling.sample_count()));
     /* TODO(fclem): Does not currently work. But would be better to just display to 2D view like
      * cycles does. */
     if (G.background == false && first_read) {
