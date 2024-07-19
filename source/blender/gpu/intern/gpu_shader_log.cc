@@ -337,7 +337,7 @@ void printf_begin(Context *ctx)
     return;
   }
   BLI_assert(ctx->printf_buf == nullptr);
-  ctx->printf_buf = GPU_storagebuf_create(GPU_PRINT_MAX_CAPACITY * sizeof(uint32_t));
+  ctx->printf_buf = GPU_storagebuf_create(GPU_SHADER_PRINTF_MAX_CAPACITY * sizeof(uint32_t));
   GPU_storagebuf_clear_to_zero(ctx->printf_buf);
 }
 
@@ -350,7 +350,7 @@ void printf_end(Context *ctx)
     return;
   }
 
-  Vector<uint32_t> data(GPU_PRINT_MAX_CAPACITY);
+  Vector<uint32_t> data(GPU_SHADER_PRINTF_MAX_CAPACITY);
   GPU_storagebuf_read(ctx->printf_buf, data.data());
   GPU_storagebuf_free(ctx->printf_buf);
   ctx->printf_buf = nullptr;
@@ -359,7 +359,7 @@ void printf_end(Context *ctx)
   if (data_len == 0) {
     return;
   }
-  if (data_len >= GPU_PRINT_MAX_CAPACITY) {
+  if (data_len >= GPU_SHADER_PRINTF_MAX_CAPACITY) {
     printf("Printf buffer overflow.\n");
     /* TODO(fclem): We can still read the uncorrupted part. */
     return;

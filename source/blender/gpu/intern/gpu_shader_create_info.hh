@@ -23,14 +23,15 @@
 #include <iostream>
 
 /* Force enable printf support in release build. */
-#define GPU_FORCE_ENABLE_PRINT 0
-#if !defined(NDEBUG) || GPU_FORCE_ENABLE_PRINT
-#  define GPU_PRINT_ENABLE 1
+#define GPU_FORCE_ENABLE_SHADER_PRINTF 0
+
+#if !defined(NDEBUG) || GPU_FORCE_ENABLE_SHADER_PRINTF
+#  define GPU_SHADER_PRINTF_ENABLE 1
 #else
-#  define GPU_PRINT_ENABLE 0
+#  define GPU_SHADER_PRINTF_ENABLE 0
 #endif
-#define GPU_PRINT_SLOT 13
-#define GPU_PRINT_MAX_CAPACITY 1024 * 4
+#define GPU_SHADER_PRINTF_SLOT 13
+#define GPU_SHADER_PRINTF_MAX_CAPACITY (1024 * 4)
 
 namespace blender::gpu::shader {
 

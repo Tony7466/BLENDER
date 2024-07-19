@@ -9,6 +9,7 @@
 #include "gpu_shader_create_info.hh"
 
 GPU_SHADER_CREATE_INFO(gpu_print)
-    .storage_buf(GPU_PRINT_SLOT, Qualifier::READ_WRITE, "uint", "gpu_print_buf[]", Frequency::PASS)
-    .define("GPU_PRINT_MAX_CAPACITY", STRINGIFY(GPU_PRINT_MAX_CAPACITY))
+    .storage_buf(
+        GPU_SHADER_PRINTF_SLOT, Qualifier::READ_WRITE, "uint", "gpu_print_buf[]", Frequency::PASS)
+    .define("GPU_SHADER_PRINTF_MAX_CAPACITY", STRINGIFY(GPU_SHADER_PRINTF_MAX_CAPACITY))
     .define("GPU_PRINT");

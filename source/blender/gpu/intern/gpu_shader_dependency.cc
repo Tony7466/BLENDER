@@ -125,7 +125,7 @@ struct GPUSource {
         builtins |= shader::BuiltinBits::USE_DEBUG_DRAW;
       }
 #endif
-#if GPU_PRINT_ENABLE
+#if GPU_SHADER_PRINTF_ENABLE
       if (source.find("printf") != StringRef::not_found) {
         printf_preprocess(g_formats);
         builtins |= shader::BuiltinBits::USE_PRINTF;

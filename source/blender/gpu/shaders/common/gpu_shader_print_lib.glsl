@@ -4,7 +4,7 @@
 
 uint print_data(uint offset, uint data)
 {
-  if (offset < GPU_PRINT_MAX_CAPACITY) {
+  if (offset < GPU_SHADER_PRINTF_MAX_CAPACITY) {
     gpu_print_buf[offset] = data;
   }
   return offset + 1u;
