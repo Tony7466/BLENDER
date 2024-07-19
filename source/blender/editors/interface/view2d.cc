@@ -27,9 +27,9 @@
 #include "BKE_global.hh"
 #include "BKE_screen.hh"
 
-#include "GPU_immediate.h"
-#include "GPU_matrix.h"
-#include "GPU_state.h"
+#include "GPU_immediate.hh"
+#include "GPU_matrix.hh"
+#include "GPU_state.hh"
 
 #include "WM_api.hh"
 
@@ -2156,7 +2156,7 @@ void UI_view2d_text_cache_draw(ARegion *region)
     }
 
     if (col_pack_prev != v2s->col.pack) {
-      BLF_color3ubv(font_id, v2s->col.ub);
+      BLF_color4ubv(font_id, v2s->col.ub);
       col_pack_prev = v2s->col.pack;
     }
 

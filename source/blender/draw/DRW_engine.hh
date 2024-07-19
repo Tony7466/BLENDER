@@ -106,7 +106,7 @@ void DRW_draw_render_loop_2d_ex(Depsgraph *depsgraph,
                                 GPUViewport *viewport,
                                 const bContext *evil_C);
 /**
- * object mode select-loop, see: #ED_view3d_draw_select_loop (legacy drawing).
+ * Object mode select-loop.
  */
 void DRW_draw_select_loop(Depsgraph *depsgraph,
                           ARegion *region,
@@ -121,7 +121,7 @@ void DRW_draw_select_loop(Depsgraph *depsgraph,
                           DRW_ObjectFilterFn object_filter_fn,
                           void *object_filter_user_data);
 /**
- * Object mode select-loop, see: #ED_view3d_draw_depth_loop (legacy drawing).
+ * Object mode select-loop.
  */
 void DRW_draw_depth_loop(Depsgraph *depsgraph,
                          ARegion *region,
@@ -129,7 +129,8 @@ void DRW_draw_depth_loop(Depsgraph *depsgraph,
                          GPUViewport *viewport,
                          const bool use_gpencil,
                          const bool use_basic,
-                         const bool use_overlay);
+                         const bool use_overlay,
+                         const bool use_only_selected);
 /**
  * Clears the Depth Buffer and draws only the specified object.
  */

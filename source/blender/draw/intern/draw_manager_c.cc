@@ -8,6 +8,8 @@
 
 #include <cstdio>
 
+#include "CLG_log.h"
+
 #include "BLI_alloca.h"
 #include "BLI_listbase.h"
 #include "BLI_memblock.h"
@@ -55,15 +57,15 @@
 #include "ED_space_api.hh"
 #include "ED_view3d.hh"
 
-#include "GPU_capabilities.h"
-#include "GPU_framebuffer.h"
-#include "GPU_immediate.h"
-#include "GPU_matrix.h"
-#include "GPU_platform.h"
-#include "GPU_shader_shared.h"
-#include "GPU_state.h"
-#include "GPU_uniform_buffer.h"
-#include "GPU_viewport.h"
+#include "GPU_capabilities.hh"
+#include "GPU_framebuffer.hh"
+#include "GPU_immediate.hh"
+#include "GPU_matrix.hh"
+#include "GPU_platform.hh"
+#include "GPU_shader_shared.hh"
+#include "GPU_state.hh"
+#include "GPU_uniform_buffer.hh"
+#include "GPU_viewport.hh"
 
 #include "RE_engine.h"
 #include "RE_pipeline.h"
@@ -74,21 +76,20 @@
 #include "WM_api.hh"
 #include "wm_window.hh"
 
-#include "draw_color_management.h"
-#include "draw_manager.h"
+#include "draw_color_management.hh"
+#include "draw_manager_c.hh"
 #include "draw_manager_profiling.hh"
-#include "draw_manager_testing.h"
+#include "draw_manager_testing.hh"
 #include "draw_manager_text.hh"
 #include "draw_shader.hh"
 #include "draw_subdivision.hh"
-#include "draw_texture_pool.h"
+#include "draw_texture_pool.hh"
 
 /* only for callbacks */
 #include "draw_cache_impl.hh"
 
 #include "engines/basic/basic_engine.h"
 #include "engines/compositor/compositor_engine.h"
-#include "engines/eevee/eevee_engine.h"
 #include "engines/eevee_next/eevee_engine.h"
 #include "engines/external/external_engine.h"
 #include "engines/gpencil/gpencil_engine.h"
@@ -97,12 +98,14 @@
 #include "engines/select/select_engine.hh"
 #include "engines/workbench/workbench_engine.h"
 
-#include "GPU_context.h"
+#include "GPU_context.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
 #include "DRW_select_buffer.hh"
+
+static CLG_LogRef LOG = {"draw.manager"};
 
 /** Render State: No persistent data between draw calls. */
 DRWManager DST = {nullptr};
@@ -1146,15 +1149,13 @@ void DRW_draw_region_engine_info(int xoffset, int *yoffset, int line_height)
 {
   DRW_ENABLED_ENGINE_ITER (DST.view_data_active, engine, data) {
     if (data->info[0] != '\0') {
-      const int font_id = BLF_default();
-      UI_FontThemeColor(font_id, TH_TEXT_HI);
       const char *buf_step = IFACE_(data->info);
       do {
         const char *buf = buf_step;
         buf_step = BLI_strchr_or_end(buf, '\n');
         const int buf_len = buf_step - buf;
         *yoffset -= line_height;
-        BLF_draw_default_shadowed(xoffset, *yoffset, 0.0f, buf, buf_len);
+        BLF_draw_default(xoffset, *yoffset, 0.0f, buf, buf_len);
       } while (*buf_step ? ((void)buf_step++, true) : false);
     }
   }
@@ -1271,8 +1272,7 @@ static void drw_engines_enable(ViewLayer * /*view_layer*/,
 
   drw_engines_enable_from_engine(engine_type, drawtype);
   if (gpencil_engine_needed && ((drawtype >= OB_SOLID) || !use_xray)) {
-    use_drw_engine(U.experimental.use_grease_pencil_version3 ? &draw_engine_gpencil_next_type :
-                                                               &draw_engine_gpencil_type);
+    use_drw_engine(&draw_engine_gpencil_type);
   }
 
   if (is_compositor_enabled()) {
@@ -1302,16 +1302,12 @@ static void drw_engines_data_validate()
  * For slow exact check use `DRW_render_check_grease_pencil` */
 static bool drw_gpencil_engine_needed(Depsgraph *depsgraph, View3D *v3d)
 {
-  if (U.experimental.use_grease_pencil_version3) {
-    const bool exclude_gpencil_rendering = v3d ? (v3d->object_type_exclude_viewport &
-                                                  (1 << OB_GREASE_PENCIL)) != 0 :
-                                                 false;
-    return (!exclude_gpencil_rendering) && DEG_id_type_any_exists(depsgraph, ID_GP);
-  }
-  const bool exclude_gpencil_rendering = v3d ? (v3d->object_type_exclude_viewport &
-                                                (1 << OB_GPENCIL_LEGACY)) != 0 :
-                                               false;
-  return (!exclude_gpencil_rendering) && DEG_id_type_any_exists(depsgraph, ID_GD_LEGACY);
+  const bool exclude_gpencil_rendering =
+      v3d ? ((v3d->object_type_exclude_viewport & (1 << OB_GPENCIL_LEGACY)) != 0) ||
+                ((v3d->object_type_exclude_viewport & (1 << OB_GREASE_PENCIL)) != 0) :
+            false;
+  return (!exclude_gpencil_rendering) && (DEG_id_type_any_exists(depsgraph, ID_GD_LEGACY) ||
+                                          DEG_id_type_any_exists(depsgraph, ID_GP));
 }
 
 /* -------------------------------------------------------------------- */
@@ -1335,10 +1331,17 @@ void DRW_notify_view_update(const DRWUpdateContext *update_ctx)
 
   const bool gpencil_engine_needed = drw_gpencil_engine_needed(depsgraph, v3d);
 
-  /* XXX Really nasty locking. But else this could
-   * be executed by the material previews thread
-   * while rendering a viewport. */
-  BLI_ticket_mutex_lock(DST.system_gpu_context_mutex);
+  /* XXX Really nasty locking. But else this could be executed by the
+   * material previews thread while rendering a viewport.
+   *
+   * Check for recursive lock which can deadlock. This should not
+   * happen, but in case there is a bug where depsgraph update is called
+   * during drawing we try not to hang Blender. */
+  if (!BLI_ticket_mutex_lock_check_recursive(DST.system_gpu_context_mutex)) {
+    CLOG_ERROR(&LOG, "GPU context already bound");
+    BLI_assert_unreachable();
+    return;
+  }
 
   /* Reset before using it. */
   drw_state_prepare_clean_for_draw(&DST);
@@ -1870,9 +1873,7 @@ bool DRW_render_check_grease_pencil(Depsgraph *depsgraph)
   deg_iter_settings.depsgraph = depsgraph;
   deg_iter_settings.flags = DEG_OBJECT_ITER_FOR_RENDER_ENGINE_FLAGS;
   DEG_OBJECT_ITER_BEGIN (&deg_iter_settings, ob) {
-    if (ob->type == OB_GPENCIL_LEGACY ||
-        (U.experimental.use_grease_pencil_version3 && ob->type == OB_GREASE_PENCIL))
-    {
+    if (ELEM(ob->type, OB_GPENCIL_LEGACY, OB_GREASE_PENCIL)) {
       if (DRW_object_visibility_in_active_context(ob) & OB_VISIBLE_SELF) {
         return true;
       }
@@ -1887,9 +1888,7 @@ static void DRW_render_gpencil_to_image(RenderEngine *engine,
                                         RenderLayer *render_layer,
                                         const rcti *rect)
 {
-  DrawEngineType *draw_engine = U.experimental.use_grease_pencil_version3 ?
-                                    &draw_engine_gpencil_next_type :
-                                    &draw_engine_gpencil_type;
+  DrawEngineType *draw_engine = &draw_engine_gpencil_type;
   if (draw_engine->render_to_image) {
     ViewportEngineData *gpdata = DRW_view_data_engine_data_get_ensure(DST.view_data_active,
                                                                       draw_engine);
@@ -1905,6 +1904,12 @@ void DRW_render_gpencil(RenderEngine *engine, Depsgraph *depsgraph)
 
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
   ViewLayer *view_layer = DEG_get_evaluated_view_layer(depsgraph);
+  RenderResult *render_result = RE_engine_get_result(engine);
+  RenderLayer *render_layer = RE_GetRenderLayer(render_result, view_layer->name);
+  if (render_layer == nullptr) {
+    return;
+  }
+
   RenderEngineType *engine_type = engine->type;
   Render *render = engine->re;
 
@@ -1938,8 +1943,6 @@ void DRW_render_gpencil(RenderEngine *engine, Depsgraph *depsgraph)
     BLI_rcti_init(&render_rect, 0, size[0], 0, size[1]);
   }
 
-  RenderResult *render_result = RE_engine_get_result(engine);
-  RenderLayer *render_layer = RE_GetRenderLayer(render_result, view_layer->name);
   for (RenderView *render_view = static_cast<RenderView *>(render_result->views.first);
        render_view != nullptr;
        render_view = render_view->next)
@@ -2482,8 +2485,7 @@ void DRW_draw_select_loop(Depsgraph *depsgraph,
   else if (!draw_surface) {
     /* grease pencil selection */
     if (drw_gpencil_engine_needed(depsgraph, v3d)) {
-      use_drw_engine(U.experimental.use_grease_pencil_version3 ? &draw_engine_gpencil_next_type :
-                                                                 &draw_engine_gpencil_type);
+      use_drw_engine(&draw_engine_gpencil_type);
     }
 
     drw_engines_enable_overlays();
@@ -2493,8 +2495,7 @@ void DRW_draw_select_loop(Depsgraph *depsgraph,
     drw_engines_enable_basic();
     /* grease pencil selection */
     if (drw_gpencil_engine_needed(depsgraph, v3d)) {
-      use_drw_engine(U.experimental.use_grease_pencil_version3 ? &draw_engine_gpencil_next_type :
-                                                                 &draw_engine_gpencil_type);
+      use_drw_engine(&draw_engine_gpencil_type);
     }
 
     drw_engines_enable_overlays();
@@ -2638,7 +2639,8 @@ void DRW_draw_depth_loop(Depsgraph *depsgraph,
                          GPUViewport *viewport,
                          const bool use_gpencil,
                          const bool use_basic,
-                         const bool use_overlay)
+                         const bool use_overlay,
+                         const bool use_only_selected)
 {
   using namespace blender::draw;
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
@@ -2667,8 +2669,7 @@ void DRW_draw_depth_loop(Depsgraph *depsgraph,
   drw_manager_init(&DST, viewport, nullptr);
 
   if (use_gpencil) {
-    use_drw_engine(U.experimental.use_grease_pencil_version3 ? &draw_engine_gpencil_next_type :
-                                                               &draw_engine_gpencil_type);
+    use_drw_engine(&draw_engine_gpencil_type);
   }
   if (use_basic) {
     drw_engines_enable_basic();
@@ -2720,6 +2721,9 @@ void DRW_draw_depth_loop(Depsgraph *depsgraph,
         continue;
       }
       if (!BKE_object_is_visible_in_viewport(v3d, ob)) {
+        continue;
+      }
+      if (use_only_selected && !(ob->base_flag & BASE_SELECTED)) {
         continue;
       }
       DST.dupli_parent = data_.dupli_parent;
@@ -2888,9 +2892,9 @@ void DRW_draw_depth_object(
 
   switch (object->type) {
     case OB_MESH: {
-      GPUBatch *batch;
+      blender::gpu::Batch *batch;
 
-      Mesh *mesh = static_cast<Mesh *>(object->data);
+      Mesh &mesh = *static_cast<Mesh *>(object->data);
 
       if (object->mode & OB_MODE_EDIT) {
         batch = DRW_mesh_batch_cache_get_edit_triangles(mesh);
@@ -2899,7 +2903,7 @@ void DRW_draw_depth_object(
         batch = DRW_mesh_batch_cache_get_surface(mesh);
       }
       TaskGraph *task_graph = BLI_task_graph_create();
-      DRW_mesh_batch_cache_create_requested(task_graph, object, mesh, scene, false, true);
+      DRW_mesh_batch_cache_create_requested(*task_graph, *object, mesh, *scene, false, true);
       BLI_task_graph_work_and_wait(task_graph);
       BLI_task_graph_free(task_graph);
 
@@ -2996,6 +3000,12 @@ bool DRW_state_is_navigating()
   return (rv3d) && (rv3d->rflag & (RV3D_NAVIGATING | RV3D_PAINTING));
 }
 
+bool DRW_state_is_painting()
+{
+  const RegionView3D *rv3d = DST.draw_ctx.rv3d;
+  return (rv3d) && (rv3d->rflag & (RV3D_PAINTING));
+}
+
 bool DRW_state_show_text()
 {
   return (DST.options.is_select) == 0 && (DST.options.is_depth) == 0 &&
@@ -3050,15 +3060,11 @@ void DRW_engine_register(DrawEngineType *draw_engine_type)
 void DRW_engines_register()
 {
   using namespace blender::draw;
-  RE_engines_register(&DRW_engine_viewport_eevee_type);
-  /* Always register EEVEE Next so it can be used in background mode with `--factory-startup`.
-   * (Needed for tests). */
   RE_engines_register(&DRW_engine_viewport_eevee_next_type);
 
   RE_engines_register(&DRW_engine_viewport_workbench_type);
 
   DRW_engine_register(&draw_engine_gpencil_type);
-  DRW_engine_register(&draw_engine_gpencil_next_type);
 
   DRW_engine_register(&draw_engine_overlay_type);
   DRW_engine_register(&draw_engine_overlay_next_type);
@@ -3268,14 +3274,6 @@ void DRW_gpu_context_enable_ex(bool /*restore*/)
 void DRW_gpu_context_disable_ex(bool restore)
 {
   if (DST.system_gpu_context != nullptr) {
-#ifdef __APPLE__
-    /* Need to flush before disabling draw context, otherwise it does not
-     * always finish drawing and viewport can be empty or partially drawn */
-    if (GPU_type_matches_ex(GPU_DEVICE_ANY, GPU_OS_MAC, GPU_DRIVER_ANY, GPU_BACKEND_OPENGL)) {
-      GPU_flush();
-    }
-#endif
-
     if (BLI_thread_is_main() && restore) {
       wm_window_reset_drawable();
     }

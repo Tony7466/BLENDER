@@ -24,6 +24,8 @@
 #include "BKE_nla.h"
 #include "BKE_report.hh"
 
+#include "ANIM_action.hh"
+
 #include "ED_anim_api.hh"
 #include "ED_keyframes_edit.hh"
 #include "ED_object.hh"
@@ -114,7 +116,7 @@ static int mouse_nla_tracks(bContext *C, bAnimContext *ac, int track_index, shor
         /* set selection status */
         if (selectmode == SELECT_INVERT) {
           /* swap select */
-          ED_object_base_select(base, BA_INVERT);
+          blender::ed::object::base_select(base, blender::ed::object::BA_INVERT);
 
           if (adt) {
             adt->flag ^= ADT_UI_SELECTED;
@@ -125,21 +127,21 @@ static int mouse_nla_tracks(bContext *C, bAnimContext *ac, int track_index, shor
           /* TODO: should this deselect all other types of tracks too? */
           BKE_view_layer_synced_ensure(ac->scene, view_layer);
           LISTBASE_FOREACH (Base *, b, BKE_view_layer_object_bases_get(view_layer)) {
-            ED_object_base_select(b, BA_DESELECT);
+            blender::ed::object::base_select(b, blender::ed::object::BA_DESELECT);
             if (b->object->adt) {
               b->object->adt->flag &= ~(ADT_UI_SELECTED | ADT_UI_ACTIVE);
             }
           }
 
           /* select object now */
-          ED_object_base_select(base, BA_SELECT);
+          blender::ed::object::base_select(base, blender::ed::object::BA_SELECT);
           if (adt) {
             adt->flag |= ADT_UI_SELECTED;
           }
         }
 
         /* change active object - regardless of whether it is now selected [#37883] */
-        ED_object_base_activate_with_mode_exit_if_needed(C, base); /* adds notifier */
+        blender::ed::object::base_activate_with_mode_exit_if_needed(C, base); /* adds notifier */
 
         if ((adt) && (adt->flag & ADT_UI_SELECTED)) {
           adt->flag |= ADT_UI_ACTIVE;
@@ -261,6 +263,10 @@ static int mouse_nla_tracks(bContext *C, bAnimContext *ac, int track_index, shor
       }
       break;
     }
+    case ANIMTYPE_FILLACT_LAYERED:
+    case ANIMTYPE_ACTION_SLOT:
+      /* The NLA doesn't support layered Actions. */
+      break;
     default:
       if (G.debug & G_DEBUG) {
         printf("Error: Invalid track type in mouse_nla_tracks()\n");
@@ -430,6 +436,16 @@ static int nlatracks_pushdown_exec(bContext *C, wmOperator *op)
     BKE_report(op->reports, RPT_WARNING, "No active action to push down");
     return OPERATOR_CANCELLED;
   }
+
+#ifdef WITH_ANIM_BAKLAVA
+  /* Reject layered Actions, until the NLA knows how to handle them.
+   * Ideally this would happen in the poll function, but the way it's determined which Action to
+   * push down is a bit convoluted (see code above). */
+  if (!adt->action->wrap().is_action_legacy()) {
+    BKE_report(op->reports, RPT_ERROR, "Layered Actions cannot be used as NLA strips");
+    return OPERATOR_CANCELLED;
+  }
+#endif  // WITH_ANIM_BAKLAVA
 
   /* 'push-down' action - only usable when not in Tweak-mode. */
   BKE_nla_action_pushdown(adt, ID_IS_OVERRIDE_LIBRARY(id));

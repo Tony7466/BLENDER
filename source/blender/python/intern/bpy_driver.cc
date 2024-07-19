@@ -24,7 +24,7 @@
 #include "BKE_idtype.hh"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "bpy_rna_driver.h" /* For #pyrna_driver_get_variable_value. */
 
@@ -633,7 +633,7 @@ float BPY_driver_exec(PathResolvedRNA *anim_rna,
           dvar->curval = float(PyLong_AsLong(driver_arg));
         }
         else if (PyBool_Check(driver_arg)) {
-          dvar->curval = (driver_arg == Py_True);
+          dvar->curval = float(driver_arg == Py_True);
         }
         else {
           dvar->curval = 0.0f;
@@ -689,6 +689,7 @@ float BPY_driver_exec(PathResolvedRNA *anim_rna,
         Py_DECREF(expr_code);
         expr_code = nullptr;
         PyTuple_SET_ITEM(((PyObject *)driver_orig->expr_comp), 0, nullptr);
+        driver_orig->flag |= DRIVER_FLAG_PYTHON_BLOCKED;
       }
     }
   }

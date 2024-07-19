@@ -39,7 +39,7 @@
 
 #include "RNA_access.hh"
 #include "RNA_enum_types.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "MOD_grease_pencil_util.hh"
 #include "MOD_modifiertypes.hh"
@@ -124,6 +124,10 @@ static void modify_curves(ModifierData &md, const ModifierEvalContext &ctx, Draw
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
   const MutableSpan<float3> positions = curves.positions_for_write();
   const Span<MDeformVert> dverts = curves.deform_verts();
+
+  if (dverts.is_empty()) {
+    return;
+  }
 
   curves_mask.foreach_index(blender::GrainSize(128), [&](const int curve_i) {
     const IndexRange points = points_by_curve[curve_i];

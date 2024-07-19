@@ -312,14 +312,16 @@ if(WITH_CODEC_FFMPEG)
       theora theoradec theoraenc
       vorbis vorbisenc vorbisfile ogg
       vpx
-      x264)
-    if(DEFINED LIBDIR)
-      if(EXISTS ${LIBDIR}/ffmpeg/lib/libaom.a)
-        list(APPEND FFMPEG_FIND_COMPONENTS aom)
-      endif()
-      if(EXISTS ${LIBDIR}/ffmpeg/lib/libxvidcore.a)
-        list(APPEND FFMPEG_FIND_COMPONENTS xvidcore)
-      endif()
+      x264
+    )
+    if(EXISTS ${LIBDIR}/ffmpeg/lib/libx265.a)
+      list(APPEND FFMPEG_FIND_COMPONENTS x265)
+    endif()
+    if(EXISTS ${LIBDIR}/ffmpeg/lib/libaom.a)
+      list(APPEND FFMPEG_FIND_COMPONENTS aom)
+    endif()
+    if(EXISTS ${LIBDIR}/ffmpeg/lib/libxvidcore.a)
+      list(APPEND FFMPEG_FIND_COMPONENTS xvidcore)
     endif()
   elseif(FFMPEG)
     # Old cache variable used for root dir, convert to new standard.
@@ -341,7 +343,13 @@ if(WITH_OPENCOLLADA)
     if(WITH_STATIC_LIBS)
       # PCRE is bundled with OpenCollada without headers, so can't use
       # find_package reliably to detect it.
-      set(PCRE_LIBRARIES ${LIBDIR}/opencollada/lib/libpcre.a)
+      # NOTE: newer fork no longer depends on PCRE: see !122270.
+      if(EXISTS ${LIBDIR}/opencollada/lib/libpcre.a)
+        set(PCRE_LIBRARIES ${LIBDIR}/opencollada/lib/libpcre.a)
+      else()
+        # Quiet warnings.
+        set(PCRE_LIBRARIES)
+      endif()
     else()
       find_package_wrapper(PCRE)
     endif()
@@ -391,7 +399,7 @@ if(WITH_CYCLES AND WITH_CYCLES_OSL)
 endif()
 add_bundled_libraries(osl/lib)
 
-if(WITH_CYCLES AND WITH_CYCLES_DEVICE_ONEAPI AND DEFINED LIBDIR)
+if(WITH_CYCLES AND DEFINED LIBDIR)
   set(CYCLES_LEVEL_ZERO ${LIBDIR}/level-zero CACHE PATH "Path to Level Zero installation")
   mark_as_advanced(CYCLES_LEVEL_ZERO)
   if(EXISTS ${CYCLES_LEVEL_ZERO} AND NOT LEVEL_ZERO_ROOT_DIR)
@@ -414,6 +422,7 @@ if(DEFINED LIBDIR)
     ${SYCL_ROOT_DIR}/lib/libsycl.so
     ${SYCL_ROOT_DIR}/lib/libsycl.so.*
     ${SYCL_ROOT_DIR}/lib/libpi_*.so
+    ${SYCL_ROOT_DIR}/lib/libur_*.so
   )
   list(FILTER _sycl_runtime_libraries EXCLUDE REGEX ".*\.py")
   list(REMOVE_ITEM _sycl_runtime_libraries "${SYCL_ROOT_DIR}/lib/libpi_opencl.so")
@@ -649,7 +658,7 @@ if(CMAKE_DL_LIBS)
   list(APPEND PLATFORM_LINKLIBS ${CMAKE_DL_LIBS})
 endif()
 
-if(CMAKE_SYSTEM_NAME MATCHES "Linux")
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   if(NOT WITH_PYTHON_MODULE)
     # binreloc is linux only
     set(BINRELOC_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/extern/binreloc/include)
@@ -755,7 +764,7 @@ if(WITH_GHOST_WAYLAND)
     find_path(WAYLAND_PROTOCOLS_DIR
       NAMES ${_wayland_protocols_reference_file}
       PATH_SUFFIXES share/wayland-protocols
-      PATHS ${LIBDIR}/wayland-protocols
+      HINTS ${LIBDIR}/wayland-protocols
     )
     unset(_wayland_protocols_reference_file)
 
@@ -1043,7 +1052,7 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
   endif()
 
 # Intel C++ Compiler
-elseif(CMAKE_C_COMPILER_ID MATCHES "Intel")
+elseif(CMAKE_C_COMPILER_ID STREQUAL "Intel")
   # think these next two are broken
   find_program(XIAR xiar)
   if(XIAR)
@@ -1136,8 +1145,12 @@ if(PLATFORM_BUNDLED_LIBRARIES)
 
   # Environment variables to run precompiled executables that needed libraries.
   list(JOIN PLATFORM_BUNDLED_LIBRARY_DIRS ":" _library_paths)
-  set(PLATFORM_ENV_BUILD "LD_LIBRARY_PATH=\"${_library_paths}:$LD_LIBRARY_PATH\"")
-  set(PLATFORM_ENV_INSTALL "LD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX_WITH_CONFIG}/lib/;$LD_LIBRARY_PATH")
+  set(PLATFORM_ENV_BUILD
+    "LD_LIBRARY_PATH=\"${_library_paths}:$LD_LIBRARY_PATH\""
+  )
+  set(PLATFORM_ENV_INSTALL
+    "LD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX_WITH_CONFIG}/lib/;$LD_LIBRARY_PATH"
+  )
   unset(_library_paths)
 else()
   # Quiet unused variable warnings, unfortunately this can't be empty.

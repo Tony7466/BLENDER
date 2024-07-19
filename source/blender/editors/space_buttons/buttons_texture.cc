@@ -39,7 +39,7 @@
 #include "BKE_particle.h"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -52,7 +52,7 @@
 
 #include "../interface/interface_intern.hh"
 
-#include "buttons_intern.h" /* own include */
+#include "buttons_intern.hh" /* own include */
 
 static ScrArea *find_area_properties(const bContext *C);
 static SpaceProperties *find_space_properties(const bContext *C);
@@ -438,9 +438,9 @@ static void template_texture_select(bContext *C, void *user_p, void * /*arg*/)
 
     /* Not totally sure if we should also change selection? */
     for (bNode *node : user->ntree->all_nodes()) {
-      nodeSetSelected(node, false);
+      blender::bke::nodeSetSelected(node, false);
     }
-    nodeSetSelected(user->node, true);
+    blender::bke::nodeSetSelected(user->node, true);
     WM_event_add_notifier(C, NC_NODE | NA_SELECTED, nullptr);
   }
   if (user->ptr.data) {

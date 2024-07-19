@@ -32,6 +32,7 @@
 #include "DEG_depsgraph_query.hh"
 
 #include "ED_curves.hh"
+#include "ED_outliner.hh"
 #include "ED_spreadsheet.hh"
 
 #include "NOD_geometry_nodes_lazy_function.hh"
@@ -41,6 +42,8 @@
 
 #include "RNA_access.hh"
 #include "RNA_enum_types.hh"
+
+#include "UI_resources.hh"
 
 #include "bmesh.hh"
 
@@ -387,7 +390,7 @@ IndexMask GeometryDataSource::apply_selection_filter(IndexMaskMemory &memory) co
       const Mesh *mesh_eval = geometry_set_.get_mesh();
       const bke::AttributeAccessor attributes_eval = mesh_eval->attributes();
       Mesh *mesh_orig = (Mesh *)object_orig->data;
-      BMesh *bm = mesh_orig->edit_mesh->bm;
+      BMesh *bm = mesh_orig->runtime->edit_mesh->bm;
       BM_mesh_elem_table_ensure(bm, BM_VERT);
 
       const int *orig_indices = (const int *)CustomData_get_layer(&mesh_eval->vert_data,
@@ -466,8 +469,8 @@ std::optional<const bke::AttributeAccessor> GeometryDataSource::get_component_at
     return grease_pencil->attributes();
   }
   if (layer_index_ >= 0 && layer_index_ < grease_pencil->layers().size()) {
-    if (const bke::greasepencil::Drawing *drawing =
-            bke::greasepencil::get_eval_grease_pencil_layer_drawing(*grease_pencil, layer_index_))
+    if (const bke::greasepencil::Drawing *drawing = grease_pencil->get_eval_drawing(
+            *grease_pencil->layer(layer_index_)))
     {
       return drawing->strokes().attributes();
     }
@@ -545,6 +548,26 @@ int VolumeDataSource::tot_rows() const
   return BKE_volume_num_grids(volume);
 }
 
+int get_instance_reference_icon(const bke::InstanceReference &reference)
+{
+  switch (reference.type()) {
+    case bke::InstanceReference::Type::Object: {
+      const Object &object = reference.object();
+      return ED_outliner_icon_from_id(object.id);
+    }
+    case bke::InstanceReference::Type::Collection: {
+      return ICON_OUTLINER_COLLECTION;
+    }
+    case bke::InstanceReference::Type::GeometrySet: {
+      return ICON_EMPTY_AXIS;
+    }
+    case bke::InstanceReference::Type::None: {
+      break;
+    }
+  }
+  return ICON_NONE;
+}
+
 bke::GeometrySet spreadsheet_get_display_geometry_set(const SpaceSpreadsheet *sspreadsheet,
                                                       Object *object_eval)
 {
@@ -554,7 +577,7 @@ bke::GeometrySet spreadsheet_get_display_geometry_set(const SpaceSpreadsheet *ss
     if (object_orig->type == OB_MESH) {
       const Mesh *mesh = static_cast<const Mesh *>(object_orig->data);
       if (object_orig->mode == OB_MODE_EDIT) {
-        if (const BMEditMesh *em = mesh->edit_mesh) {
+        if (const BMEditMesh *em = mesh->runtime->edit_mesh.get()) {
           Mesh *new_mesh = (Mesh *)BKE_id_new_nomain(ID_ME, nullptr);
           /* This is a potentially heavy operation to do on every redraw. The best solution here is
            * to display the data directly from the bmesh without a conversion, which can be

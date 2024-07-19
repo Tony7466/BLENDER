@@ -13,7 +13,7 @@
 #include "BKE_volume.hh"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "UI_interface.hh"
 #include "UI_tree_view.hh"
@@ -83,14 +83,11 @@ class GeometryDataSetTreeView : public ui::AbstractTreeView {
 
   void build_grease_pencil()
   {
-    if (!U.experimental.use_grease_pencil_version3) {
-      return;
-    }
-
     GeometryDataSetTreeViewItem &grease_pencil = this->add_tree_item<GeometryDataSetTreeViewItem>(
         bke::GeometryComponent::Type::GreasePencil,
         IFACE_("Grease Pencil"),
         ICON_OUTLINER_DATA_GREASEPENCIL);
+    grease_pencil.uncollapse_by_default();
     GeometryDataSetTreeViewItem &grease_pencil_layers =
         grease_pencil.add_tree_item<GeometryDataSetTreeViewItem>(
             bke::GeometryComponent::Type::GreasePencil,
@@ -126,6 +123,7 @@ class GeometryDataSetTreeView : public ui::AbstractTreeView {
   {
     GeometryDataSetTreeViewItem &mesh = this->add_tree_item<GeometryDataSetTreeViewItem>(
         bke::GeometryComponent::Type::Mesh, IFACE_("Mesh"), ICON_MESH_DATA);
+    mesh.uncollapse_by_default();
     mesh.add_tree_item<GeometryDataSetTreeViewItem>(bke::GeometryComponent::Type::Mesh,
                                                     bke::AttrDomain::Point,
                                                     IFACE_("Vertex"),
@@ -141,6 +139,7 @@ class GeometryDataSetTreeView : public ui::AbstractTreeView {
 
     GeometryDataSetTreeViewItem &curve = this->add_tree_item<GeometryDataSetTreeViewItem>(
         bke::GeometryComponent::Type::Curve, IFACE_("Curve"), ICON_CURVE_DATA);
+    curve.uncollapse_by_default();
     curve.add_tree_item<GeometryDataSetTreeViewItem>(bke::GeometryComponent::Type::Curve,
                                                      bke::AttrDomain::Point,
                                                      IFACE_("Control Point"),
@@ -154,6 +153,7 @@ class GeometryDataSetTreeView : public ui::AbstractTreeView {
 
     GeometryDataSetTreeViewItem &pointcloud = this->add_tree_item<GeometryDataSetTreeViewItem>(
         bke::GeometryComponent::Type::PointCloud, IFACE_("Point Cloud"), ICON_POINTCLOUD_DATA);
+    pointcloud.uncollapse_by_default();
     pointcloud.add_tree_item<GeometryDataSetTreeViewItem>(bke::GeometryComponent::Type::PointCloud,
                                                           bke::AttrDomain::Point,
                                                           IFACE_("Point"),
@@ -174,7 +174,6 @@ GeometryDataSetTreeViewItem::GeometryDataSetTreeViewItem(
     : component_type_(component_type), domain_(std::nullopt), icon_(icon)
 {
   label_ = label;
-  this->set_collapsed(false);
 }
 GeometryDataSetTreeViewItem::GeometryDataSetTreeViewItem(
     bke::GeometryComponent::Type component_type, int layer_index, StringRef label, BIFIconID icon)
@@ -282,9 +281,9 @@ std::optional<int> GeometryDataSetTreeViewItem::count() const
   }
 
   if (component_type_ == bke::GeometryComponent::Type::GreasePencil && layer_index_) {
-    if (const bke::greasepencil::Drawing *drawing =
-            bke::greasepencil::get_eval_grease_pencil_layer_drawing(*geometry.get_grease_pencil(),
-                                                                    *layer_index_))
+    const GreasePencil *grease_pencil = geometry.get_grease_pencil();
+    if (const bke::greasepencil::Drawing *drawing = grease_pencil->get_eval_drawing(
+            *grease_pencil->layer(*layer_index_)))
     {
       return drawing->strokes().attributes().domain_size(*domain_);
     }
@@ -315,7 +314,7 @@ void spreadsheet_data_set_panel_draw(const bContext *C, Panel *panel)
       "Data Set Tree View",
       std::make_unique<GeometryDataSetTreeView>(
           spreadsheet_get_display_geometry_set(sspreadsheet, object), *C));
-
+  tree_view->set_context_menu_title("Spreadsheet");
   ui::TreeViewBuilder::build_tree_view(*tree_view, *layout);
 }
 

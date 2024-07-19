@@ -25,7 +25,7 @@
 
 #include "BKE_context.hh"
 #include "BKE_global.hh"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_screen.hh"
 
@@ -380,7 +380,7 @@ static bool add_collection_search_item(CollItemSearch &cis,
                                        uiSearchItems *items)
 {
 
-  /* If no item has an own icon to display, libraries can use the library icons rather than the
+  /* If no item has its own icon to display, libraries can use the library icons rather than the
    * name prefix for showing the library status. */
   int name_prefix_offset = cis.name_prefix_offset;
   if (!has_id_icon && cis.is_id && !requires_exact_data_name) {
@@ -504,7 +504,7 @@ void ui_rna_collection_search_update_fn(
                                  }
 
                                  cis->index = items_list.size();
-                                 cis->iconid = ICON_NONE;
+                                 cis->iconid = visit_params.icon_id.value_or(ICON_NONE);
                                  cis->is_id = false;
                                  cis->name_prefix_offset = 0;
                                  cis->has_sep_char = visit_params.info.has_value();
@@ -516,7 +516,7 @@ void ui_rna_collection_search_update_fn(
           items_list.begin(),
           items_list.end(),
           [](const std::unique_ptr<CollItemSearch> &a, const std::unique_ptr<CollItemSearch> &b) {
-            return BLI_strcasecmp_natural(a->name.c_str(), b->name.c_str()) <= 0;
+            return BLI_strcasecmp_natural(a->name.c_str(), b->name.c_str()) < 0;
           });
       for (const int i : items_list.index_range()) {
         items_list[i]->index = i;

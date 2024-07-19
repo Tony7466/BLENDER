@@ -87,6 +87,11 @@ add_dependencies(
 )
 
 if(WIN32)
+  if(BLENDER_PLATFORM_ARM)
+    set(OPENVDB_ARCH arm64)
+  else()
+    set(OPENVDB_ARCH amd64)
+  endif()
   if(BUILD_MODE STREQUAL Release)
     ExternalProject_Add_Step(openvdb after_install
       COMMAND ${CMAKE_COMMAND} -E copy_directory
@@ -99,8 +104,8 @@ if(WIN32)
         ${LIBDIR}/openvdb/bin/openvdb.dll
         ${HARVEST_TARGET}/openvdb/bin/openvdb.dll
       COMMAND ${CMAKE_COMMAND} -E copy
-        ${LIBDIR}/openvdb/lib/python${PYTHON_SHORT_VERSION}/site-packages/pyopenvdb.cp${PYTHON_SHORT_VERSION_NO_DOTS}-win_amd64.pyd
-        ${HARVEST_TARGET}openvdb/python/pyopenvdb.cp${PYTHON_SHORT_VERSION_NO_DOTS}-win_amd64.pyd
+        ${LIBDIR}/openvdb/lib/python${PYTHON_SHORT_VERSION}/site-packages/pyopenvdb.cp${PYTHON_SHORT_VERSION_NO_DOTS}-win_${OPENVDB_ARCH}.pyd
+        ${HARVEST_TARGET}openvdb/python/pyopenvdb.cp${PYTHON_SHORT_VERSION_NO_DOTS}-win_${OPENVDB_ARCH}.pyd
 
       DEPENDEES install
     )
@@ -114,10 +119,20 @@ if(WIN32)
         ${LIBDIR}/openvdb/bin/openvdb_d.dll
         ${HARVEST_TARGET}/openvdb/bin/openvdb_d.dll
       COMMAND ${CMAKE_COMMAND} -E copy
-        ${LIBDIR}/openvdb/lib/python${PYTHON_SHORT_VERSION}/site-packages/pyopenvdb_d.cp${PYTHON_SHORT_VERSION_NO_DOTS}-win_amd64.pyd
-        ${HARVEST_TARGET}openvdb/python/pyopenvdb_d.cp${PYTHON_SHORT_VERSION_NO_DOTS}-win_amd64.pyd
+        ${LIBDIR}/openvdb/lib/python${PYTHON_SHORT_VERSION}/site-packages/pyopenvdb_d.cp${PYTHON_SHORT_VERSION_NO_DOTS}-win_${OPENVDB_ARCH}.pyd
+        ${HARVEST_TARGET}openvdb/python/pyopenvdb_d.cp${PYTHON_SHORT_VERSION_NO_DOTS}-win_${OPENVDB_ARCH}.pyd
 
       DEPENDEES install
     )
   endif()
+else()
+  harvest(openvdb openvdb/include/openvdb openvdb/include/openvdb "*.h")
+  harvest(openvdb openvdb/include/nanovdb openvdb/include/nanovdb "*.h")
+  harvest_rpath_lib(openvdb openvdb/lib openvdb/lib "*${SHAREDLIBEXT}*")
+  harvest_rpath_python(
+    openvdb
+    openvdb/lib/python${PYTHON_SHORT_VERSION}
+    python/lib/python${PYTHON_SHORT_VERSION}
+    "*pyopenvdb*"
+  )
 endif()

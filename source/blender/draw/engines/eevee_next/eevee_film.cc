@@ -15,8 +15,9 @@
 #include "BLI_hash.h"
 #include "BLI_rect.h"
 
-#include "GPU_framebuffer.h"
-#include "GPU_texture.h"
+#include "GPU_debug.hh"
+#include "GPU_framebuffer.hh"
+#include "GPU_texture.hh"
 
 #include "DRW_render.hh"
 #include "RE_pipeline.h"
@@ -151,7 +152,7 @@ void Film::sync_mist()
 inline bool operator==(const FilmData &a, const FilmData &b)
 {
   return (a.extent == b.extent) && (a.offset == b.offset) &&
-         (a.render_extent == b.render_extent) && (a.render_offset == b.render_offset) &&
+         (a.render_extent == b.render_extent) && (a.overscan == b.overscan) &&
          (a.filter_radius == b.filter_radius) && (a.scaling_factor == b.scaling_factor) &&
          (a.background_opacity == b.background_opacity);
 }
@@ -171,12 +172,14 @@ static eViewLayerEEVEEPassType enabled_passes(const ViewLayer *view_layer)
 {
   eViewLayerEEVEEPassType result = eViewLayerEEVEEPassType(view_layer->eevee.render_passes);
 
+  /* We enforce the use of combined pass to be compliant with Cycles and EEVEE-Legacy (#122188). */
+  result |= EEVEE_RENDER_PASS_COMBINED;
+
 #define ENABLE_FROM_LEGACY(name_legacy, name_eevee) \
   SET_FLAG_FROM_TEST(result, \
                      (view_layer->passflag & SCE_PASS_##name_legacy) != 0, \
                      EEVEE_RENDER_PASS_##name_eevee);
 
-  ENABLE_FROM_LEGACY(COMBINED, COMBINED)
   ENABLE_FROM_LEGACY(Z, Z)
   ENABLE_FROM_LEGACY(MIST, MIST)
   ENABLE_FROM_LEGACY(NORMAL, NORMAL)
@@ -209,9 +212,10 @@ static eViewLayerEEVEEPassType enabled_passes(const ViewLayer *view_layer)
 
 void Film::init(const int2 &extent, const rcti *output_rect)
 {
+  using namespace math;
+
   Sampling &sampling = inst_.sampling;
   Scene &scene = *inst_.scene;
-  SceneEEVEE &scene_eevee = scene.eevee;
 
   enabled_categories_ = PassCategory(0);
   init_aovs();
@@ -234,12 +238,20 @@ void Film::init(const int2 &extent, const rcti *output_rect)
     }
 
     /* Filter obsolete passes. */
-    enabled_passes_ &= ~(EEVEE_RENDER_PASS_UNUSED_8 | EEVEE_RENDER_PASS_BLOOM);
+    enabled_passes_ &= ~(EEVEE_RENDER_PASS_UNUSED_8 | EEVEE_RENDER_PASS_UNUSED_14);
 
     if (scene.r.mode & R_MBLUR) {
       /* Disable motion vector pass if motion blur is enabled. */
       enabled_passes_ &= ~EEVEE_RENDER_PASS_VECTOR;
     }
+  }
+  {
+    data_.scaling_factor = 1;
+    if (inst_.is_viewport()) {
+      data_.scaling_factor = BKE_render_preview_pixel_size(&inst_.scene->r);
+    }
+    /* Sharpen the LODs (1.5x) to avoid TAA filtering causing over-blur (see #122941). */
+    data_.texture_lod_bias = 1.0f / (data_.scaling_factor * 1.5f);
   }
   {
     rcti fallback_rect;
@@ -253,17 +265,9 @@ void Film::init(const int2 &extent, const rcti *output_rect)
     data_.extent = int2(BLI_rcti_size_x(output_rect), BLI_rcti_size_y(output_rect));
     data_.offset = int2(output_rect->xmin, output_rect->ymin);
     data_.extent_inv = 1.0f / float2(data_.extent);
-    /* TODO(fclem): parameter hidden in experimental.
-     * We need to figure out LOD bias first in order to preserve texture crispiness. */
-    data_.scaling_factor = 1;
-    data_.render_extent = math::divide_ceil(extent, int2(data_.scaling_factor));
-    data_.render_offset = data_.offset;
-
-    if (inst_.camera.overscan() != 0.0f) {
-      int2 overscan = int2(inst_.camera.overscan() * math::max(UNPACK2(data_.render_extent)));
-      data_.render_extent += overscan * 2;
-      data_.render_offset += overscan;
-    }
+    data_.render_extent = divide_ceil(data_.extent, int2(data_.scaling_factor));
+    data_.overscan = overscan_pixels_get(inst_.camera.overscan(), data_.render_extent);
+    data_.render_extent += data_.overscan * 2;
 
     /* Disable filtering if sample count is 1. */
     data_.filter_radius = (sampling.sample_count() == 1) ? 0.0f :
@@ -380,7 +384,9 @@ void Film::init(const int2 &extent, const rcti *output_rect)
     }
   }
   {
-    int2 weight_extent = inst_.camera.is_panoramic() ? data_.extent : int2(data_.scaling_factor);
+    int2 weight_extent = (inst_.camera.is_panoramic() || (data_.scaling_factor > 1)) ?
+                             data_.extent :
+                             int2(1);
 
     eGPUTextureFormat color_format = GPU_RGBA16F;
     eGPUTextureFormat float_format = GPU_R16F;
@@ -421,63 +427,38 @@ void Film::init(const int2 &extent, const rcti *output_rect)
       cryptomatte_tx_.clear(float4(0.0f));
     }
   }
-
-  force_disable_reprojection_ = (scene_eevee.flag & SCE_EEVEE_TAA_REPROJECTION) == 0;
 }
 
 void Film::sync()
 {
-  /* We use a fragment shader for viewport because we need to output the depth. */
-  bool use_compute = (inst_.is_viewport() == false);
+  /* We use a fragment shader for viewport because we need to output the depth.
+   *
+   * Compute shader is also used to work around Metal/Intel iGPU issues concerning
+   * read write support for array textures. In this case the copy_ps_ is used to
+   * copy the right color/value to the framebuffer. */
+  use_compute_ = !inst_.is_viewport() ||
+                 GPU_type_matches(GPU_DEVICE_INTEL, GPU_OS_MAC, GPU_DRIVER_ANY);
 
-  eShaderType shader = use_compute ? FILM_COMP : FILM_FRAG;
+  eShaderType shader = use_compute_ ? FILM_COMP : FILM_FRAG;
 
   /* TODO(fclem): Shader variation for panoramic & scaled resolution. */
 
-  RenderBuffers &rbuffers = inst_.render_buffers;
-  VelocityModule &velocity = inst_.velocity;
-
-  GPUSamplerState filter = {GPU_SAMPLER_FILTERING_LINEAR};
-
-  /* For viewport, only previous motion is supported.
-   * Still bind previous step to avoid undefined behavior. */
-  eVelocityStep step_next = inst_.is_viewport() ? STEP_PREVIOUS : STEP_NEXT;
-
   GPUShader *sh = inst_.shaders.static_shader_get(shader);
   accumulate_ps_.init();
-  accumulate_ps_.specialize_constant(sh, "enabled_categories", uint(enabled_categories_));
-  accumulate_ps_.specialize_constant(sh, "samples_len", &data_.samples_len);
-  accumulate_ps_.specialize_constant(sh, "use_reprojection", &use_reprojection_);
-  accumulate_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_ALWAYS);
-  accumulate_ps_.shader_set(sh);
-  accumulate_ps_.bind_resources(inst_.uniform_data);
-  accumulate_ps_.bind_ubo("camera_prev", &(*velocity.camera_steps[STEP_PREVIOUS]));
-  accumulate_ps_.bind_ubo("camera_curr", &(*velocity.camera_steps[STEP_CURRENT]));
-  accumulate_ps_.bind_ubo("camera_next", &(*velocity.camera_steps[step_next]));
-  accumulate_ps_.bind_texture("depth_tx", &rbuffers.depth_tx);
-  accumulate_ps_.bind_texture("combined_tx", &combined_final_tx_);
-  accumulate_ps_.bind_texture("vector_tx", &rbuffers.vector_tx);
-  accumulate_ps_.bind_texture("rp_color_tx", &rbuffers.rp_color_tx);
-  accumulate_ps_.bind_texture("rp_value_tx", &rbuffers.rp_value_tx);
-  accumulate_ps_.bind_texture("cryptomatte_tx", &rbuffers.cryptomatte_tx);
-  /* NOTE(@fclem): 16 is the max number of sampled texture in many implementations.
-   * If we need more, we need to pack more of the similar passes in the same textures as arrays or
-   * use image binding instead. */
-  accumulate_ps_.bind_image("in_weight_img", &weight_tx_.current());
-  accumulate_ps_.bind_image("out_weight_img", &weight_tx_.next());
-  accumulate_ps_.bind_texture("in_combined_tx", &combined_tx_.current(), filter);
-  accumulate_ps_.bind_image("out_combined_img", &combined_tx_.next());
-  accumulate_ps_.bind_image("depth_img", &depth_tx_);
-  accumulate_ps_.bind_image("color_accum_img", &color_accum_tx_);
-  accumulate_ps_.bind_image("value_accum_img", &value_accum_tx_);
-  accumulate_ps_.bind_image("cryptomatte_img", &cryptomatte_tx_);
+  init_pass(accumulate_ps_, sh);
   /* Sync with rendering passes. */
   accumulate_ps_.barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
-  if (use_compute) {
+  if (use_compute_) {
     accumulate_ps_.dispatch(int3(math::divide_ceil(data_.extent, int2(FILM_GROUP_SIZE)), 1));
   }
   else {
     accumulate_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
+  }
+
+  copy_ps_.init();
+  if (use_compute_ && inst_.is_viewport()) {
+    init_pass(copy_ps_, inst_.shaders.static_shader_get(FILM_COPY));
+    copy_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
   }
 
   const int cryptomatte_layer_count = cryptomatte_layer_len_get();
@@ -493,8 +474,52 @@ void Film::sync()
     cryptomatte_post_ps_.push_constant("cryptomatte_samples_per_layer",
                                        inst_.view_layer->cryptomatte_levels);
     int2 dispatch_size = math::divide_ceil(int2(cryptomatte_tx_.size()), int2(FILM_GROUP_SIZE));
+    cryptomatte_post_ps_.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
     cryptomatte_post_ps_.dispatch(int3(UNPACK2(dispatch_size), 1));
   }
+}
+
+void Film::init_pass(PassSimple &pass, GPUShader *sh)
+{
+  GPUSamplerState filter = {GPU_SAMPLER_FILTERING_LINEAR};
+  RenderBuffers &rbuffers = inst_.render_buffers;
+  VelocityModule &velocity = inst_.velocity;
+
+  pass.specialize_constant(sh, "enabled_categories", uint(enabled_categories_));
+  pass.specialize_constant(sh, "samples_len", &data_.samples_len);
+  pass.specialize_constant(sh, "use_reprojection", &use_reprojection_);
+  pass.specialize_constant(sh, "scaling_factor", data_.scaling_factor);
+  pass.specialize_constant(sh, "combined_id", &data_.combined_id);
+  pass.specialize_constant(sh, "display_id", &data_.display_id);
+  pass.specialize_constant(sh, "normal_id", &data_.normal_id);
+  pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_ALWAYS);
+  pass.shader_set(sh);
+  /* For viewport, only previous motion is supported.
+   * Still bind previous step to avoid undefined behavior. */
+  eVelocityStep step_next = inst_.is_viewport() ? STEP_PREVIOUS : STEP_NEXT;
+
+  pass.bind_resources(inst_.uniform_data);
+  pass.bind_ubo("camera_prev", &(*velocity.camera_steps[STEP_PREVIOUS]));
+  pass.bind_ubo("camera_curr", &(*velocity.camera_steps[STEP_CURRENT]));
+  pass.bind_ubo("camera_next", &(*velocity.camera_steps[step_next]));
+  pass.bind_texture("depth_tx", &rbuffers.depth_tx);
+  pass.bind_texture("combined_tx", &combined_final_tx_);
+  pass.bind_texture("vector_tx", &rbuffers.vector_tx);
+  pass.bind_texture("rp_color_tx", &rbuffers.rp_color_tx);
+  pass.bind_texture("rp_value_tx", &rbuffers.rp_value_tx);
+  pass.bind_texture("cryptomatte_tx", &rbuffers.cryptomatte_tx);
+  /* NOTE(@fclem): 16 is the max number of sampled texture in many implementations.
+   * If we need more, we need to pack more of the similar passes in the same textures as arrays or
+   * use image binding instead. */
+  pass.bind_image("in_weight_img", &weight_tx_.current());
+  pass.bind_image("out_weight_img", &weight_tx_.next());
+  pass.bind_texture("in_combined_tx", &combined_tx_.current(), filter);
+  pass.bind_image("out_combined_img", &combined_tx_.next());
+  pass.bind_image("depth_img", &depth_tx_);
+  pass.bind_image("color_accum_img", &color_accum_tx_);
+  pass.bind_image("value_accum_img", &value_accum_tx_);
+  pass.bind_image("cryptomatte_img", &cryptomatte_tx_);
+  copy_ps_.bind_resources(inst_.uniform_data);
 }
 
 void Film::end_sync()
@@ -502,7 +527,7 @@ void Film::end_sync()
   use_reprojection_ = inst_.sampling.interactive_mode();
 
   /* Just bypass the reprojection and reset the accumulation. */
-  if (inst_.is_viewport() && force_disable_reprojection_ && inst_.sampling.is_reset()) {
+  if (!use_reprojection_ && inst_.sampling.is_reset()) {
     use_reprojection_ = false;
     data_.use_history = false;
   }
@@ -521,15 +546,34 @@ float2 Film::pixel_jitter_get() const
      * distribution covering the filter shape. This avoids putting samples in areas without any
      * weights. */
     /* TODO(fclem): Importance sampling could be a better option here. */
-    jitter = Sampling::sample_disk(jitter) * data_.filter_radius;
+    /* NOTE: We bias the disk to encompass most of the energy of the filter to avoid energy issues
+     * with motion blur at low sample. */
+    const float bias = 0.5f;
+    jitter = Sampling::sample_disk(jitter) * bias * data_.filter_radius;
   }
   else {
     /* Jitter the size of a whole pixel. [-0.5..0.5] */
     jitter -= 0.5f;
   }
-  /* TODO(fclem): Mixed-resolution rendering: We need to offset to each of the target pixel covered
-   * by a render pixel, ideally, by choosing one randomly using another sampling dimension, or by
-   * repeating the same sample RNG sequence for each pixel offset. */
+
+  if (data_.scaling_factor > 1) {
+    /* In this case, the jitter sequence is the same for the number of film pixel a render pixel
+     * covers. This allows to add a manual offset to the different film pixels to ensure they get
+     * appropriate coverage instead of waiting that random sampling covers all the area. This
+     * ensures a much faster convergence. */
+    const int scale = data_.scaling_factor;
+    const int render_pixel_per_final_pixel = square_i(scale);
+    /* TODO(fclem): Random in Z-order curve. */
+    /* Works great for the scaling factor we have. */
+    int prime = (render_pixel_per_final_pixel / 2) - 1;
+    /* For now just randomize in scan-lines using a prime number. */
+    uint64_t index = (inst_.sampling.sample_index() * prime) % render_pixel_per_final_pixel;
+    int2 pixel_co = int2(index % scale, index / scale);
+    /* The jitter is applied on render target pixels. Make it proportional to film pixel. */
+    jitter /= float(scale);
+    /* Offset from the render pixel center to the center of film pixel. */
+    jitter += ((float2(pixel_co) + 0.5f) / scale) - 0.5f;
+  }
   return jitter;
 }
 
@@ -567,13 +611,29 @@ int Film::cryptomatte_layer_max_get() const
 
 void Film::update_sample_table()
 {
+  /* Offset in render target pixels. */
   data_.subpixel_offset = pixel_jitter_get();
 
   int filter_radius_ceil = ceilf(data_.filter_radius);
   float filter_radius_sqr = square_f(data_.filter_radius);
 
   data_.samples_len = 0;
-  if (use_box_filter || data_.filter_radius < 0.01f) {
+  if (data_.scaling_factor > 1) {
+    /* For this case there might be no valid samples for some pixels.
+     * Still visit all four neighbors to have the best weight available.
+     * Note that weight is computed on the GPU as it is different for each sample. */
+    /* TODO(fclem): Make it work for filters larger than then scaling_factor. */
+    for (int y = 0; y <= 1; y++) {
+      for (int x = 0; x <= 1; x++) {
+        FilmSample &sample = data_.samples[data_.samples_len];
+        sample.texel = int2(x, y);
+        sample.weight = -1.0f; /* Computed on GPU. */
+        data_.samples_len++;
+      }
+    }
+    data_.samples_weight_total = -1.0f; /* Computed on GPU. */
+  }
+  else if (use_box_filter || data_.filter_radius < 0.01f) {
     /* Disable gather filtering. */
     data_.samples[0].texel = int2(0, 0);
     data_.samples[0].weight = 1.0f;
@@ -664,6 +724,7 @@ void Film::accumulate(View &view, GPUTexture *combined_final_tx)
   inst_.uniform_data.push_update();
 
   inst_.manager->submit(accumulate_ps_, view);
+  inst_.manager->submit(copy_ps_, view);
 
   combined_tx_.swap();
   weight_tx_.swap();

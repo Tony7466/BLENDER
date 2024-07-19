@@ -26,6 +26,7 @@
 #include "DNA_object_types.h"
 #include "DNA_windowmanager_types.h"
 
+#include "BKE_brush.hh"
 #include "BKE_context.hh"
 #include "BKE_deform.hh"
 #include "BKE_gpencil_geom_legacy.h"
@@ -50,10 +51,10 @@
 #include "IMB_imbuf.hh"
 #include "IMB_imbuf_types.hh"
 
-#include "GPU_framebuffer.h"
-#include "GPU_immediate.h"
-#include "GPU_matrix.h"
-#include "GPU_state.h"
+#include "GPU_framebuffer.hh"
+#include "GPU_immediate.hh"
+#include "GPU_matrix.hh"
+#include "GPU_state.hh"
 
 #include "UI_interface.hh"
 
@@ -62,7 +63,7 @@
 
 #include "DEG_depsgraph.hh"
 
-#include "gpencil_intern.h"
+#include "gpencil_intern.hh"
 
 #define LEAK_HORZ 0
 #define LEAK_VERT 1
@@ -258,8 +259,11 @@ static void gpencil_delete_temp_stroke_extension(tGPDfill *tgpf, const bool all_
   }
 }
 
-static bool extended_bbox_overlap(
-    float min1[3], float max1[3], float min2[3], float max2[3], float extend)
+static bool extended_bbox_overlap(const float min1[3],
+                                  const float max1[3],
+                                  const float min2[3],
+                                  const float max2[3],
+                                  float extend)
 {
   for (int axis = 0; axis < 3; axis++) {
     float intersection_min = max_ff(min1[axis], min2[axis]) - extend;
@@ -2402,6 +2406,9 @@ static tGPDfill *gpencil_session_init_fill(bContext *C, wmOperator *op)
 
   /* save filling parameters */
   Brush *brush = BKE_paint_brush(&ts->gp_paint->paint);
+  if (!brush->gpencil_settings) {
+    BKE_brush_init_gpencil_settings(brush);
+  }
   tgpf->brush = brush;
   tgpf->flag = brush->gpencil_settings->flag;
   tgpf->fill_threshold = brush->gpencil_settings->fill_threshold;

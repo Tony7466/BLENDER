@@ -187,6 +187,8 @@ class AbstractTreeViewItem : public AbstractViewItem, public TreeViewItemContain
 
   virtual void build_row(uiLayout &row) = 0;
 
+  /* virtual */ std::optional<std::string> debug_name() const override;
+
   std::unique_ptr<DropTargetInterface> create_item_drop_target() final;
   virtual std::unique_ptr<TreeViewItemDropTarget> create_drop_target();
 
@@ -213,6 +215,13 @@ class AbstractTreeViewItem : public AbstractViewItem, public TreeViewItemContain
    * \returns true when the collapsed state was changed, false otherwise.
    */
   virtual bool set_collapsed(bool collapsed);
+  /**
+   * Make this item be uncollapsed on first draw (may later be overridden by
+   * #should_be_collapsed()). Must only be done during tree building.
+   *
+   * \note this does not call #on_collapse_change() or #set_collapsed() overrides.
+   */
+  void uncollapse_by_default();
 
   /**
    * Requires the tree to have completed reconstruction, see #is_reconstructed(). Otherwise we
@@ -220,6 +229,8 @@ class AbstractTreeViewItem : public AbstractViewItem, public TreeViewItemContain
    */
   bool is_collapsed() const;
   bool is_collapsible() const;
+
+  int count_parents() const;
 
   /**
    * Called when the view changes an item's state from expanded to collapsed, or vice versa. Will
@@ -297,7 +308,6 @@ class AbstractTreeViewItem : public AbstractViewItem, public TreeViewItemContain
   void add_rename_button(uiLayout &row);
 
   bool has_active_child() const;
-  int count_parents() const;
 };
 
 /** \} */
@@ -383,7 +393,9 @@ class TreeViewItemDropTarget : public DropTargetInterface {
 
 class TreeViewBuilder {
  public:
-  static void build_tree_view(AbstractTreeView &tree_view, uiLayout &layout);
+  static void build_tree_view(AbstractTreeView &tree_view,
+                              uiLayout &layout,
+                              std::optional<StringRef> search_string = {});
 
  private:
   static void ensure_min_rows_items(AbstractTreeView &tree_view);

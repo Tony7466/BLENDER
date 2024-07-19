@@ -110,23 +110,6 @@
 
 namespace blender::compositor {
 
-bool COM_bnode_is_fast_node(const bNode &b_node)
-{
-  return !ELEM(b_node.type,
-               CMP_NODE_BLUR,
-               CMP_NODE_VECBLUR,
-               CMP_NODE_BILATERALBLUR,
-               CMP_NODE_DEFOCUS,
-               CMP_NODE_BOKEHBLUR,
-               CMP_NODE_GLARE,
-               CMP_NODE_DBLUR,
-               CMP_NODE_MOVIEDISTORTION,
-               CMP_NODE_LENSDIST,
-               CMP_NODE_DOUBLEEDGEMASK,
-               CMP_NODE_DILATEERODE,
-               CMP_NODE_DENOISE);
-}
-
 Node *COM_convert_bnode(bNode *b_node)
 {
   Node *node = nullptr;
@@ -477,7 +460,7 @@ void COM_convert_canvas(NodeOperationBuilder &builder,
                         NodeOperationInput *to_socket)
 {
   /* Data type conversions are executed before resolutions to ensure convert operations have
-   * resolution. This method have to ensure same datatypes are linked for new operations. */
+   * resolution. This method have to ensure same data-types are linked for new operations. */
   BLI_assert(from_socket->get_data_type() == to_socket->get_data_type());
 
   ResizeMode mode = to_socket->get_resize_mode();

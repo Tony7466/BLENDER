@@ -54,38 +54,6 @@ void RenderLayersProg::init_execution()
   }
 }
 
-void RenderLayersProg::do_interpolation(float output[4], float x, float y, PixelSampler sampler)
-{
-  int width = this->get_width(), height = this->get_height();
-
-  int ix = x, iy = y;
-  if (ix < 0 || iy < 0 || ix >= width || iy >= height) {
-    if (elementsize_ == 1) {
-      output[0] = 0.0f;
-    }
-    else if (elementsize_ == 3) {
-      zero_v3(output);
-    }
-    else {
-      zero_v4(output);
-    }
-    return;
-  }
-
-  switch (sampler) {
-    case PixelSampler::Nearest:
-      math::interpolate_nearest_fl(input_buffer_, output, width, height, elementsize_, x, y);
-      break;
-    case PixelSampler::Bilinear:
-      math::interpolate_bilinear_border_fl(
-          input_buffer_, output, width, height, elementsize_, x, y);
-      break;
-    case PixelSampler::Bicubic:
-      math::interpolate_cubic_bspline_fl(input_buffer_, output, width, height, elementsize_, x, y);
-      break;
-  }
-}
-
 void RenderLayersProg::deinit_execution()
 {
   input_buffer_ = nullptr;
@@ -127,7 +95,7 @@ std::unique_ptr<MetaData> RenderLayersProg::get_meta_data()
   Scene *scene = this->get_scene();
   Render *re = (scene) ? RE_GetSceneRender(scene) : nullptr;
   RenderResult *render_result = nullptr;
-  MetaDataExtractCallbackData callback_data = {nullptr};
+  MetaDataExtractCallbackData callback_data = {std::make_unique<MetaData>()};
 
   if (re) {
     render_result = RE_AcquireResultRead(re);
@@ -148,6 +116,17 @@ std::unique_ptr<MetaData> RenderLayersProg::get_meta_data()
                               render_result->stamp_data,
                               MetaDataExtractCallbackData::extract_cryptomatte_meta_data,
                               false);
+
+      RenderLayer *render_layer = RE_GetRenderLayer(render_result, view_layer->name);
+      if (render_layer) {
+        RenderPass *render_pass = RE_pass_find_by_name(
+            render_layer, pass_name_.c_str(), view_name_);
+        if (render_pass) {
+          if (StringRef(render_pass->chan_id) == "XYZW") {
+            callback_data.meta_data->is_4d_vector = true;
+          }
+        }
+      }
     }
   }
 

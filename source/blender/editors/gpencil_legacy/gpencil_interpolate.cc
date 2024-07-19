@@ -47,14 +47,14 @@
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "ED_gpencil_legacy.hh"
 #include "ED_screen.hh"
 
 #include "DEG_depsgraph.hh"
 
-#include "gpencil_intern.h"
+#include "gpencil_intern.hh"
 
 /* Temporary interpolate operation data */
 struct tGPDinterpolate_layer {
