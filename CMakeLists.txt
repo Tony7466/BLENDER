@@ -1680,7 +1680,7 @@ if(WITH_LIBMV OR WITH_GTESTS OR (WITH_CYCLES AND WITH_CYCLES_LOGGING))
 endif()
 
 # -----------------------------------------------------------------------------
-# Common optional dependency targets
+# Common dependency targets
 
 include(dependency_targets)
 
