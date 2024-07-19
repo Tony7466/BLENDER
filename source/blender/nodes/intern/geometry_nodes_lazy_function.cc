@@ -44,6 +44,8 @@
 #include "BKE_node_tree_anonymous_attributes.hh"
 #include "BKE_node_tree_zones.hh"
 #include "BKE_type_conversions.hh"
+#include "BKE_volume_grid.hh"
+#include "BKE_volume_openvdb.hh"
 
 #include "FN_lazy_function_execute.hh"
 #include "FN_lazy_function_graph_executor.hh"
@@ -51,6 +53,9 @@
 #include "DEG_depsgraph_query.hh"
 
 #include <fmt/format.h>
+#include <openvdb/Grid.h>
+#include <openvdb/math/Transform.h>
+#include <openvdb/tools/Merge.h>
 #include <sstream>
 
 namespace blender::nodes {
@@ -578,6 +583,182 @@ static void execute_multi_function_on_value_variant__field(
   }
 }
 
+struct MaskGridUnionFn {
+  openvdb::MaskTree &mask;
+  const openvdb::TreeBase &input_vdb_tree;
+
+  template<typename GridT> void operator()()
+  {
+    using TreeT = typename GridT::TreeType;
+    const TreeT &typed_input_vdb_tree = static_cast<const TreeT &>(this->input_vdb_tree);
+    this->mask.topologyUnion(typed_input_vdb_tree);
+  }
+};
+
+struct BuildOutputGridFn {
+  const openvdb::MaskTree &mask;
+  openvdb::GridBase::Ptr vdb_grid;
+
+  template<typename GridT> void operator()()
+  {
+    using TreeT = typename GridT::TreeType;
+    using ValueType = typename TreeT::ValueType;
+    const ValueType background{};
+    typename TreeT::Ptr tree = std::make_shared<TreeT>(mask, background, openvdb::TopologyCopy{});
+    this->vdb_grid = openvdb::createGrid(std::move(tree));
+  }
+};
+
+struct GetGridValueFn {
+  openvdb::math::Coord coord;
+  const openvdb::TreeBase &tree;
+  mf::ParamsBuilder &params;
+
+  template<typename GridT> void operator()()
+  {
+    using TreeT = typename GridT::TreeType;
+    if constexpr (std::is_same_v<GridT, openvdb::FloatGrid>) {
+      const TreeT &typed_tree = static_cast<const TreeT &>(this->tree);
+      const auto vdb_value = typed_tree.getValue(this->coord);
+      const float blender_value = vdb_value;
+      params.add_readonly_single_input_value(blender_value);
+    }
+  }
+};
+
+static void execute_multi_function_on_value_variant__volume_grid(
+    const MultiFunction &fn,
+    const Span<SocketValueVariant *> input_values,
+    const Span<SocketValueVariant *> output_values)
+{
+  SCOPED_TIMER(__func__);
+  Vector<bke::GVolumeGrid> input_grids;
+  for (const SocketValueVariant *value : input_values) {
+    if (value->is_volume_grid()) {
+      input_grids.append(value->get<bke::GVolumeGrid>());
+    }
+  }
+  BLI_assert(!input_grids.is_empty());
+  bool has_incompatible_transforms = false;
+  const openvdb::math::Transform &transform = input_grids[0]->transform();
+  for (const bke::GVolumeGrid &grid : input_grids.as_span().drop_front(1)) {
+    const openvdb::math::Transform &other_transform = grid->transform();
+    if (transform != other_transform) {
+      has_incompatible_transforms = true;
+      break;
+    }
+  }
+
+  if (has_incompatible_transforms) {
+    /* TODO */
+    BLI_assert_unreachable();
+    return;
+  }
+
+  openvdb::MaskTree mask_tree;
+  for (const bke::GVolumeGrid &input_grid : input_grids) {
+    const VolumeGridType grid_type = input_grid->grid_type();
+    bke::VolumeTreeAccessToken token;
+    const openvdb::TreeBase &input_vdb_tree = input_grid->grid(token).constBaseTree();
+    MaskGridUnionFn fn{mask_tree, input_vdb_tree};
+    BKE_volume_grid_type_operation(grid_type, fn);
+  }
+
+  Vector<bke::GVolumeGrid> output_grids;
+  for (const int i : output_values.index_range()) {
+    const int param_index = input_values.size() + i;
+    const CPPType &cpp_type = fn.param_type(param_index).data_type().single_type();
+    /* TODO: Cleanup and error handling. */
+    const VolumeGridType grid_type = *bke::socket_type_to_grid_type(
+        *bke::geo_nodes_base_cpp_type_to_socket_type(cpp_type));
+
+    BuildOutputGridFn build_grid_fn{mask_tree};
+    BKE_volume_grid_type_operation(grid_type, build_grid_fn);
+
+    openvdb::GridBase::Ptr vdb_grid = std::move(build_grid_fn.vdb_grid);
+    vdb_grid->setTransform(transform.copy());
+
+    bke::GVolumeGrid output_grid{std::move(vdb_grid)};
+    output_grids.append(std::move(output_grid));
+  }
+
+  for (auto iter = mask_tree.cbeginValueOn(); iter.test(); ++iter) {
+    const IndexMask mask(1);
+    mf::ParamsBuilder params{fn, &mask};
+    mf::ContextBuilder context;
+
+    const openvdb::math::Coord coord = iter.getCoord();
+
+    for (const int i : input_values.index_range()) {
+      const SocketValueVariant &value = *input_values[i];
+      if (value.is_volume_grid()) {
+        const bke::GVolumeGrid input_grid = value.get<bke::GVolumeGrid>();
+        const VolumeGridType grid_type = input_grid->grid_type();
+        bke::VolumeTreeAccessToken token;
+        const openvdb::TreeBase &input_tree = input_grid->grid(token).baseTree();
+
+        GetGridValueFn fn{coord, input_tree, params};
+        BKE_volume_grid_type_operation(grid_type, fn);
+      }
+      else if (value.is_context_dependent_field()) {
+        BLI_assert_unreachable();
+      }
+      else {
+        /* TODO */
+        const float single_value = value.get<float>();
+        params.add_readonly_single_input_value(single_value);
+      }
+    }
+
+    /* TODO */
+    Array<float> output_floats(output_values.size());
+    for (const int i : output_values.index_range()) {
+      params.add_uninitialized_single_output({CPPType::get<float>(), &output_floats[i], 1});
+    }
+
+    fn.call(mask, params, context);
+
+    for (const int i : output_values.index_range()) {
+      bke::VolumeTreeAccessToken token;
+      openvdb::TreeBase &output_tree =
+          output_grids[i].get_for_write().grid_for_write(token).baseTree();
+      openvdb::FloatTree &float_output_tree = static_cast<openvdb::FloatTree &>(output_tree);
+      const float new_value = output_floats[i];
+      if (iter.isVoxelValue()) {
+        float_output_tree.setValue(coord, new_value);
+      }
+      else {
+        using InternalNodeType1 = typename openvdb::FloatTree::RootNodeType::ChildNodeType;
+        using InternalNodeType2 = typename InternalNodeType1::ChildNodeType;
+        static_assert(
+            std::is_same_v<InternalNodeType2::ChildNodeType, openvdb::FloatTree::LeafNodeType>);
+        const auto set_tile_value = [&](auto &node) {
+          const openvdb::Index n = node.coordToOffset(coord);
+          BLI_assert(node.isChildMaskOff(n));
+          /* TODO: Figure out how to do this without const_cast, although the same is done in
+           * `openvdb_ax/openvdb_ax/compiler/VolumeExecutable.cc` which has a similar purpose. */
+          using UnionType = typename std::decay_t<decltype(node)>::UnionType;
+          auto *table = const_cast<UnionType *>(node.getTable());
+          table[n].setValue(new_value);
+        };
+
+        if (InternalNodeType2 *node = float_output_tree.probeNode<InternalNodeType2>(coord)) {
+          set_tile_value(*node);
+        }
+        else if (InternalNodeType1 *node = float_output_tree.probeNode<InternalNodeType1>(coord)) {
+          set_tile_value(*node);
+        }
+      }
+    }
+  }
+
+  for (const int i : output_values.index_range()) {
+    SocketValueVariant &output_value = *output_values[i];
+    bke::GVolumeGrid &output_grid = output_grids[i];
+    output_value.set(std::move(output_grid));
+  }
+}
+
 /**
  * Executes a multi-function. If all inputs are single values, the results will also be single
  * values. If any input is a field, the outputs will also be fields.
@@ -589,14 +770,21 @@ static void execute_multi_function_on_value_variant(const MultiFunction &fn,
 {
   /* Check input types which determine how the function is evaluated. */
   bool any_input_is_field = false;
+  bool any_input_is_volume_grid = false;
   for (const int i : input_values.index_range()) {
     const SocketValueVariant &value = *input_values[i];
     if (value.is_context_dependent_field()) {
       any_input_is_field = true;
     }
+    else if (value.is_volume_grid()) {
+      any_input_is_volume_grid = true;
+    }
   }
 
-  if (any_input_is_field) {
+  if (any_input_is_volume_grid) {
+    execute_multi_function_on_value_variant__volume_grid(fn, input_values, output_values);
+  }
+  else if (any_input_is_field) {
     execute_multi_function_on_value_variant__field(fn, owned_fn, input_values, output_values);
   }
   else {
