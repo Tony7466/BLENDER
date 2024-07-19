@@ -115,6 +115,7 @@ GPUContext *GPU_context_create(void *ghost_window, void *ghost_context)
 void GPU_context_discard(GPUContext *ctx_)
 {
   Context *ctx = unwrap(ctx_);
+  printf_end(ctx);
   delete ctx;
   active_ctx = nullptr;
 
