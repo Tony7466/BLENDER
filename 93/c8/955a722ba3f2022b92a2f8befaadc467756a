@@ -7,3 +7,4 @@ Referenced by issue #121831, Custom split normal data on negative or non-uniform
 Referenced by pull request #121871, Fix #103562: preserve custom normals in BM_mesh_triangulate
 Referenced by commit f3c32a36bcfcad4fb948fb1eb205a2790967b1de, Fix #103562: preserve custom normals in BM_mesh_triangulate
 Referenced by pull request #124970, Modeling: remove unused Knife cut operator
+Referenced by commit 61b8397174c709981044fda62a8ec371f1533c78, Modeling: remove unused Knife cut operator
