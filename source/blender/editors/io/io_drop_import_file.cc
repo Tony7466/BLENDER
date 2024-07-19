@@ -193,28 +193,38 @@ static void drop_import_file_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *dro
   }
 }
 
+static std::string drop_import_file_tooltip;
+
 static bool drop_import_file_poll(bContext *C, wmDrag *drag, const wmEvent * /*event*/)
 {
   if (drag->type != WM_DRAG_PATH) {
     return false;
   }
   const auto paths = WM_drag_get_paths(drag);
-  return !drop_import_file_poll_file_handlers(C, paths, true).is_empty();
-}
 
-static std::string drop_import_file_tooltip(bContext *C,
-                                            wmDrag *drag,
-                                            const int /*xy*/[2],
-                                            wmDropBox * /*drop*/)
-{
-  const auto paths = WM_drag_get_paths(drag);
   const auto file_handlers = drop_import_file_poll_file_handlers(C, paths, true);
-  if (file_handlers.size() == 1) {
+  /* Get tooltip now, `drop_import_file_tooltip_fn` may run in a different context. */
+  if (file_handlers.is_empty()) {
+    drop_import_file_tooltip = "";
+  }
+  else if (file_handlers.size() == 1) {
     wmOperatorType *ot = WM_operatortype_find(file_handlers[0]->import_operator, false);
-    return TIP_(ot->name);
+    drop_import_file_tooltip = TIP_(ot->name);
+  }
+  else {
+    drop_import_file_tooltip = TIP_(
+        "Multiple file handlers can be used, drop to pick which to use");
   }
 
-  return TIP_("Multiple file handlers can be used, drop to pick which to use");
+  return !file_handlers.is_empty();
+}
+
+static std::string drop_import_file_tooltip_fn(bContext * /*C*/,
+                                               wmDrag * /*drag*/,
+                                               const int /*xy*/[2],
+                                               wmDropBox * /*drop*/)
+{
+  return drop_import_file_tooltip;
 }
 
 void ED_dropbox_drop_import_file()
@@ -225,5 +235,5 @@ void ED_dropbox_drop_import_file()
                  drop_import_file_poll,
                  drop_import_file_copy,
                  nullptr,
-                 drop_import_file_tooltip);
+                 drop_import_file_tooltip_fn);
 }
