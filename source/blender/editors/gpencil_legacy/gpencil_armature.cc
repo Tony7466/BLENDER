@@ -474,7 +474,10 @@ static void gpencil_object_vgroup_calc_from_armature(const bContext *C,
   DEG_relations_tag_update(CTX_data_main(C));
 }
 
-bool ED_gpencil_add_armature(const bContext */*C*/, ReportList */*reports*/, Object */*ob*/, Object */*ob_arm*/)
+bool ED_gpencil_add_armature(const bContext * /*C*/,
+                             ReportList * /*reports*/,
+                             Object * /*ob*/,
+                             Object * /*ob_arm*/)
 {
   /* pass */
   return true;
