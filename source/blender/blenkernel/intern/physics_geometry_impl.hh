@@ -108,23 +108,25 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
 
   void create_world();
   void destroy_world();
+  void move_world(PhysicsGeometryImpl &src);
 
-  bool try_copy_to_world_data(const PhysicsGeometryImpl &from,
-                              const IndexMask &body_mask,
-                              const IndexMask &constraint_mask,
+  bool try_copy_to_world_data(const PhysicsGeometryImpl &src,
+                              const IndexMask &src_body_mask,
+                              const IndexMask &src_constraint_mask,
                               const Set<std::string> &ignored_attributes);
-  bool try_copy_to_custom_data(const PhysicsGeometryImpl &from,
-                               const IndexMask &body_mask,
-                               const IndexMask &constraint_mask,
+  bool try_copy_to_custom_data(const PhysicsGeometryImpl &src,
+                               const IndexMask &src_body_mask,
+                               const IndexMask &src_constraint_mask,
                                const Set<std::string> &ignored_attributes);
   void remove_attributes_from_customdata();
-  bool try_move(const PhysicsGeometryImpl &from,
-                const IndexMask &body_mask,
-                const IndexMask &constraint_mask,
-                const IndexMask &shape_mask,
-                int body_offset,
-                int constraint_offset,
-                int shape_offset);
+  bool try_move_data(const PhysicsGeometryImpl &src,
+                     bool move_world,
+                     const IndexMask &src_body_mask,
+                     const IndexMask &src_constraint_mask,
+                     const IndexMask &src_shape_mask,
+                     int dst_body_offset,
+                     int dst_constraint_offset,
+                     int dst_shape_offset);
 
   bke::AttributeAccessor attributes(bool force_cache = false) const;
   bke::MutableAttributeAccessor attributes_for_write(bool force_cache = false);

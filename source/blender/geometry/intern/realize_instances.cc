@@ -218,7 +218,7 @@ struct RealizePhysicsInfo {
 
 /** Start indices in the final output curves data-block. */
 struct PhysicsElementStartIndices {
-  bool move_world = false;
+  bool has_world = false;
   int body = 0;
   int constraint = 0;
   int shape = 0;
@@ -774,8 +774,7 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
                                                     base_transform,
                                                     base_instance_context.physics});
           /* Move data from the first input world. */
-          const bool has_world = gather_info.r_offsets.physics_offsets.move_world;
-          gather_info.r_offsets.physics_offsets.move_world = !has_world && physics->has_world();
+          gather_info.r_offsets.physics_offsets.has_world |= physics->has_world();
           gather_info.r_offsets.physics_offsets.body += physics->bodies_num();
           gather_info.r_offsets.physics_offsets.constraint += physics->constraints_num();
           gather_info.r_offsets.physics_offsets.shape += physics->shapes_num();
@@ -2369,7 +2368,7 @@ static void execute_realize_physics_task(const RealizeInstancesOptions &options,
   const VArray<int> src_constraint_bodies1 = physics_info.constraint_bodies1;
   const VArray<int> src_constraint_bodies2 = physics_info.constraint_bodies2;
 
-  // const bool move_world = !task.start_indices.move_world && physics.has_world();
+  // const bool move_world = !task.start_indices.has_world && physics.has_world();
   const IndexRange dst_body_range(task.start_indices.body, physics.bodies_num());
   const IndexRange dst_constraint_range(task.start_indices.constraint, physics.constraints_num());
   const IndexRange dst_shape_range(task.start_indices.shape, physics.shapes_num());
@@ -2456,18 +2455,16 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
     threading::parallel_for(tasks.index_range(), 100, [&](const IndexRange task_range) {
       for (const int task_index : task_range) {
         const RealizePhysicsTask &task = tasks[task_index];
-        if (!task.start_indices.move_world) {
-          continue;
-        }
-
         const bke::PhysicsGeometry &src_physics = *task.physics_info->physics;
-        dst_physics->move_world(src_physics,
-                                src_physics.bodies_range(),
-                                src_physics.constraints_range(),
-                                src_physics.shapes_range(),
-                                task.start_indices.body,
-                                task.start_indices.constraint,
-                                task.start_indices.shape);
+        const bool move_world = !task.start_indices.has_world && src_physics.has_world();
+        dst_physics->move_world_data(src_physics,
+                                     move_world,
+                                     src_physics.bodies_range(),
+                                     src_physics.constraints_range(),
+                                     src_physics.shapes_range(),
+                                     task.start_indices.body,
+                                     task.start_indices.constraint,
+                                     task.start_indices.shape);
       }
     });
   }
@@ -2513,10 +2510,6 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
   threading::parallel_for(tasks.index_range(), 100, [&](const IndexRange task_range) {
     for (const int task_index : task_range) {
       const RealizePhysicsTask &task = tasks[task_index];
-      /* Skip physics whose data has already been moved. */
-      if (task.start_indices.move_world) {
-        continue;
-      }
       execute_realize_physics_task(options,
                                    all_physics_info,
                                    task,

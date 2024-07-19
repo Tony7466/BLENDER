@@ -129,23 +129,6 @@ static void set_constraint_index(btTypedConstraint &constraint, const int index)
 /** \name Physics Geometry
  * \{ */
 
-static void move_world(PhysicsGeometryImpl &from, PhysicsGeometryImpl &to)
-{
-  to.world = from.world;
-  to.constraint_solver = from.constraint_solver;
-  to.broadphase = from.broadphase;
-  to.dispatcher = from.dispatcher;
-  to.config = from.config;
-  to.overlap_filter = from.overlap_filter;
-
-  from.world = nullptr;
-  from.constraint_solver = nullptr;
-  from.broadphase = nullptr;
-  from.dispatcher = nullptr;
-  from.config = nullptr;
-  from.overlap_filter = nullptr;
-}
-
 static void create_bodies(MutableSpan<btRigidBody *> rigid_bodies,
                           MutableSpan<btMotionState *> motion_states,
                           const IndexMask &mask)
@@ -354,13 +337,14 @@ PhysicsGeometryImpl &PhysicsGeometryImpl::operator=(const PhysicsGeometryImpl &o
 
   if (!other.is_empty) {
     this->resize(other.body_num_, other.constraint_num_);
-    if (try_move(other,
-                 IndexRange(body_num_),
-                 IndexRange(constraint_num_),
-                 shapes.index_range(),
-                 0,
-                 0,
-                 0))
+    if (try_move_data(other,
+                      true,
+                      IndexRange(body_num_),
+                      IndexRange(constraint_num_),
+                      shapes.index_range(),
+                      0,
+                      0,
+                      0))
     {
       is_empty.store(false);
     }
@@ -609,9 +593,26 @@ void PhysicsGeometryImpl::destroy_world()
   this->overlap_filter = nullptr;
 }
 
-bool PhysicsGeometryImpl::try_copy_to_world_data(const PhysicsGeometryImpl &from,
-                                                 const IndexMask &body_mask,
-                                                 const IndexMask &constraint_mask,
+void PhysicsGeometryImpl::move_world(PhysicsGeometryImpl &src)
+{
+  this->world = src.world;
+  this->constraint_solver = src.constraint_solver;
+  this->broadphase = src.broadphase;
+  this->dispatcher = src.dispatcher;
+  this->config = src.config;
+  this->overlap_filter = src.overlap_filter;
+
+  src.world = nullptr;
+  src.constraint_solver = nullptr;
+  src.broadphase = nullptr;
+  src.dispatcher = nullptr;
+  src.config = nullptr;
+  src.overlap_filter = nullptr;
+}
+
+bool PhysicsGeometryImpl::try_copy_to_world_data(const PhysicsGeometryImpl &src,
+                                                 const IndexMask &src_body_mask,
+                                                 const IndexMask &src_constraint_mask,
                                                  const Set<std::string> &ignored_attributes)
 {
   if (!this->is_empty) {
@@ -638,16 +639,16 @@ bool PhysicsGeometryImpl::try_copy_to_world_data(const PhysicsGeometryImpl &from
   return true;
 }
 
-bool PhysicsGeometryImpl::try_copy_to_custom_data(const PhysicsGeometryImpl &from,
-                                                  const IndexMask &body_mask,
-                                                  const IndexMask &constraint_mask,
+bool PhysicsGeometryImpl::try_copy_to_custom_data(const PhysicsGeometryImpl &src,
+                                                  const IndexMask &src_body_mask,
+                                                  const IndexMask &src_constraint_mask,
                                                   const Set<std::string> &ignored_attributes)
 {
   if (this->is_empty) {
     return false;
   }
 
-  const AttributeAccessor from_attributes = from.attributes();
+  const AttributeAccessor from_attributes = src.attributes();
   /* Force use of cache for writing. */
   MutableAttributeAccessor to_attributes = this->attributes_for_write(true);
   from_attributes.for_all(
@@ -716,93 +717,101 @@ void PhysicsGeometryImpl::remove_attributes_from_customdata()
       });
 }
 
-bool PhysicsGeometryImpl::try_move(const PhysicsGeometryImpl &from,
-                                   const IndexMask &body_mask,
-                                   const IndexMask &constraint_mask,
-                                   const IndexMask &shape_mask,
-                                   int body_offset,
-                                   int constraint_offset,
-                                   int shape_offset)
+bool PhysicsGeometryImpl::try_move_data(const PhysicsGeometryImpl &src,
+                                        const bool move_world,
+                                        const IndexMask &src_body_mask,
+                                        const IndexMask &src_constraint_mask,
+                                        const IndexMask &src_shape_mask,
+                                        int dst_body_offset,
+                                        int dst_constraint_offset,
+                                        int dst_shape_offset)
 {
   BLI_assert(this->is_mutable());
 
   /* Early check before locking. */
-  if (from.is_empty) {
+  if (src.is_empty) {
     return false;
   }
-  std::unique_lock lock(from.data_mutex);
-  if (from.is_empty) {
+  std::unique_lock lock(src.data_mutex);
+  if (src.is_empty) {
     /* This may have changed before locking the mutex. */
     return false;
   }
-  PhysicsGeometryImpl &from_mutable = const_cast<PhysicsGeometryImpl &>(from);
+  PhysicsGeometryImpl &src_mutable = const_cast<PhysicsGeometryImpl &>(src);
 
   /* Cache the source before moving physics data. */
   // from_mutable.try_copy_to_custom_data(from, body_mask, constraint_mask, {});
 
-  btDynamicsWorld *from_world = from_mutable.world;
-  btDynamicsWorld *to_world = this->world;
-
   this->is_empty.store(false);
-  move_world(from_mutable, *this);
   this->realloc();
 
-  const IndexRange body_range = IndexRange(body_mask.size());
-  const IndexRange constraint_range = IndexRange(constraint_mask.size());
+  if (move_world) {
+    this->move_world(src_mutable);
+  }
+  else {
+    src_mutable.destroy_world();
+  }
+
+  const IndexRange dst_body_range = IndexRange(dst_body_offset, src_body_mask.size());
+  const IndexRange dst_constraint_range = IndexRange(dst_constraint_offset,
+                                                     src_constraint_mask.size());
+  const IndexRange dst_shape_range = IndexRange(dst_shape_offset, src_shape_mask.size());
   /* Make sure target has enough space. */
-  BLI_assert(body_range.intersect(this->rigid_bodies.index_range()) == body_range);
-  BLI_assert(constraint_range.intersect(this->constraints.index_range()) == constraint_range);
+  BLI_assert(dst_body_range.intersect(this->rigid_bodies.index_range()) == dst_body_range);
+  BLI_assert(dst_constraint_range.intersect(this->constraints.index_range()) ==
+             dst_constraint_range);
 
   /* No need to update topology caches on full copy.
    * Note: empty index ranges will always compare equal! */
-  if (!body_range.is_empty() && body_range == from_mutable.rigid_bodies.index_range()) {
-    this->rigid_bodies.as_mutable_span().slice(body_range).copy_from(from_mutable.rigid_bodies);
-    this->motion_states.as_mutable_span().slice(body_range).copy_from(from_mutable.motion_states);
+  if (!dst_body_range.is_empty() && dst_body_range == src_mutable.rigid_bodies.index_range()) {
+    this->rigid_bodies.as_mutable_span().slice(dst_body_range).copy_from(src_mutable.rigid_bodies);
+    this->motion_states.as_mutable_span()
+        .slice(dst_body_range)
+        .copy_from(src_mutable.motion_states);
   }
   else {
-    body_mask.foreach_index([&](const int src_i, const int dst_i) {
-      this->rigid_bodies[body_range[dst_i]] = from_mutable.rigid_bodies[src_i];
-      this->motion_states[body_range[dst_i]] = from_mutable.motion_states[src_i];
-      from_mutable.rigid_bodies[src_i] = nullptr;
-      from_mutable.motion_states[src_i] = nullptr;
+    src_body_mask.foreach_index([&](const int src_i, const int dst_i) {
+      this->rigid_bodies[dst_body_range[dst_i]] = src_mutable.rigid_bodies[src_i];
+      this->motion_states[dst_body_range[dst_i]] = src_mutable.motion_states[src_i];
+      src_mutable.rigid_bodies[src_i] = nullptr;
+      src_mutable.motion_states[src_i] = nullptr;
     });
-    for (const int src_i : from_mutable.rigid_bodies.index_range()) {
-      delete from_mutable.rigid_bodies[src_i];
-      delete from_mutable.motion_states[src_i];
+    for (const int src_i : src_mutable.rigid_bodies.index_range()) {
+      delete src_mutable.rigid_bodies[src_i];
+      delete src_mutable.motion_states[src_i];
     }
     this->tag_body_topology_changed();
   }
-  if (!constraint_range.is_empty() && constraint_range == from_mutable.constraints.index_range()) {
+  if (!dst_constraint_range.is_empty() &&
+      dst_constraint_range == src_mutable.constraints.index_range())
+  {
     this->constraints.as_mutable_span()
-        .slice(constraint_range)
-        .copy_from(from_mutable.constraints);
+        .slice(dst_constraint_range)
+        .copy_from(src_mutable.constraints);
   }
   else {
-    constraint_mask.foreach_index([&](const int src_i, const int dst_i) {
-      this->constraints[constraint_range[dst_i]] = from_mutable.constraints[src_i];
+    src_constraint_mask.foreach_index([&](const int src_i, const int dst_i) {
+      this->constraints[dst_constraint_range[dst_i]] = src_mutable.constraints[src_i];
     });
-    for (const int src_i : from_mutable.constraints.index_range()) {
-      delete from_mutable.constraints[src_i];
+    for (const int src_i : src_mutable.constraints.index_range()) {
+      delete src_mutable.constraints[src_i];
     }
   }
 
   /* Move all bodies and constraints to the new world. */
-  if (to_world != from_world) {
-    remove_from_world(from_world,
-                      this->rigid_bodies.as_span().slice(body_range),
-                      this->constraints.as_span().slice(constraint_range));
-    add_to_world(to_world,
-                 this->rigid_bodies.as_span().slice(body_range),
-                 this->constraints.as_span().slice(constraint_range));
+  if (!move_world) {
+    add_to_world(this->world,
+                 this->rigid_bodies.as_span().slice(dst_body_range),
+                 this->constraints.as_span().slice(dst_constraint_range));
   }
 
   /* Clear source pointers. */
-  from_mutable.world = nullptr;
-  from_mutable.rigid_bodies.reinitialize(0);
-  from_mutable.motion_states.reinitialize(0);
-  from_mutable.constraints.reinitialize(0);
-  from_mutable.constraint_feedback.reinitialize(0);
-  from_mutable.is_empty.store(true);
+  src_mutable.world = nullptr;
+  src_mutable.rigid_bodies.reinitialize(0);
+  src_mutable.motion_states.reinitialize(0);
+  src_mutable.constraints.reinitialize(0);
+  src_mutable.constraint_feedback.reinitialize(0);
+  src_mutable.is_empty.store(true);
 
   return true;
 }
@@ -1349,27 +1358,29 @@ static void remap_bodies(const int src_bodies_num,
 //                          dst_attributes);
 // }
 
-void PhysicsGeometry::move_world(const PhysicsGeometry &from,
-                                 const IndexMask &body_mask,
-                                 const IndexMask &constraint_mask,
-                                 const IndexMask &shape_mask,
-                                 const int body_offset,
-                                 const int constraint_offset,
-                                 const int shape_offset)
+void PhysicsGeometry::move_world_data(const PhysicsGeometry &from,
+                                      const bool move_world,
+                                      const IndexMask &body_mask,
+                                      const IndexMask &constraint_mask,
+                                      const IndexMask &shape_mask,
+                                      const int body_offset,
+                                      const int constraint_offset,
+                                      const int shape_offset)
 {
   PhysicsGeometryImpl &impl = this->impl_for_write();
-  const bool was_moved = impl.try_move(from.impl(),
-                                       body_mask,
-                                       constraint_mask,
-                                       shape_mask,
-                                       body_offset,
-                                       constraint_offset,
-                                       shape_offset);
+  const bool was_moved = impl.try_move_data(from.impl(),
+                                            move_world,
+                                            body_mask,
+                                            constraint_mask,
+                                            shape_mask,
+                                            body_offset,
+                                            constraint_offset,
+                                            shape_offset);
   if (!was_moved) {
     /* Create empty bodies. */
-    const IndexRange body_range{body_offset, body_mask.size()};
-    create_bodies(impl.rigid_bodies.as_mutable_span().slice(body_range),
-                  impl.motion_states.as_mutable_span().slice(body_range));
+    const IndexRange dst_body_range{body_offset, body_mask.size()};
+    create_bodies(impl.rigid_bodies.as_mutable_span().slice(dst_body_range),
+                  impl.motion_states.as_mutable_span().slice(dst_body_range));
   }
 }
 
@@ -1385,8 +1396,8 @@ void PhysicsGeometry::move_or_copy_selection(
   }
 
   PhysicsGeometryImpl &impl = this->impl_for_write();
-  const bool was_moved = impl.try_move(
-      from.impl(), body_mask, constraint_mask, shape_mask, 0, 0, 0);
+  const bool was_moved = impl.try_move_data(
+      from.impl(), true, body_mask, constraint_mask, shape_mask, 0, 0, 0);
 
   const Set<std::string> ignored_attributes = was_moved ?
                                                   Set<std::string>{builtin_attributes.skip_copy} :
