@@ -510,11 +510,18 @@ void Instance::render_read_result(RenderLayer *render_layer, const char *view_na
 /** \name Interface
  * \{ */
 
-void Instance::render_frame(RenderLayer *render_layer, const char *view_name)
+void Instance::render_frame(RenderEngine *engine, RenderLayer *render_layer, const char *view_name)
 {
 
   while (!sampling.finished()) {
     this->render_sample();
+
+    if (sampling.sample_index() == 1 || sampling.sample_index() % 25 == 0 || sampling.finished()) {
+      /* TODO: Use fmt. */
+      std::string re_info = "Rendering " + std::to_string(sampling.sample_index()) + " / " +
+                            std::to_string(sampling.sample_count()) + " samples";
+      RE_engine_update_stats(engine, nullptr, re_info.c_str());
+    }
 
     /* TODO(fclem) print progression. */
 #if 0
