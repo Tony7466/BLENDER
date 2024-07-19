@@ -458,7 +458,7 @@ hiprtGeometryBuildInput HIPRTDevice::prepare_triangle_blas(BVHHIPRT *bvh, Mesh *
     bvh->custom_prim_aabb.aabbs = (void *)bvh->custom_primitive_bound.device_pointer;
 
     geom_input.type = hiprtPrimitiveTypeAABBList;
-    geom_input.primitive.aabbList.aabbs = &bvh->custom_prim_aabb;
+    geom_input.primitive.aabbList = bvh->custom_prim_aabb;
     geom_input.geomType = Motion_Triangle;
   }
   else {
@@ -613,7 +613,7 @@ hiprtGeometryBuildInput HIPRTDevice::prepare_curve_blas(BVHHIPRT *bvh, Hair *hai
   bvh->custom_prim_aabb.aabbs = (void *)bvh->custom_primitive_bound.device_pointer;
 
   geom_input.type = hiprtPrimitiveTypeAABBList;
-  geom_input.primitive.aabbList.aabbs = &bvh->custom_prim_aabb;
+  geom_input.primitive.aabbList = bvh->custom_prim_aabb;
   geom_input.geomType = Curve;
 
   return geom_input;
@@ -714,7 +714,7 @@ hiprtGeometryBuildInput HIPRTDevice::prepare_point_blas(BVHHIPRT *bvh, PointClou
   bvh->custom_prim_aabb.aabbs = (void *)bvh->custom_primitive_bound.device_pointer;
 
   geom_input.type = hiprtPrimitiveTypeAABBList;
-  geom_input.primitive.aabbList.aabbs = &bvh->custom_prim_aabb;
+  geom_input.primitive.aabbList = bvh->custom_prim_aabb;
   geom_input.geomType = Point;
 
   return geom_input;
