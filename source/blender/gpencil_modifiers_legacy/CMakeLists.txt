@@ -25,41 +25,6 @@ set(INC_SYS
 )
 
 set(SRC
-  intern/MOD_gpencil_legacy_ui_common.cc
-
-  intern/MOD_gpencil_legacy_armature.cc
-  intern/MOD_gpencil_legacy_array.cc
-  intern/MOD_gpencil_legacy_build.cc
-  intern/MOD_gpencil_legacy_color.cc
-  intern/MOD_gpencil_legacy_dash.cc
-  intern/MOD_gpencil_legacy_envelope.cc
-  intern/MOD_gpencil_legacy_hook.cc
-  intern/MOD_gpencil_legacy_lattice.cc
-  intern/MOD_gpencil_legacy_length.cc
-  intern/MOD_gpencil_legacy_lineart.cc
-  intern/MOD_gpencil_legacy_mirror.cc
-  intern/MOD_gpencil_legacy_multiply.cc
-  intern/MOD_gpencil_legacy_noise.cc
-  intern/MOD_gpencil_legacy_offset.cc
-  intern/MOD_gpencil_legacy_opacity.cc
-  intern/MOD_gpencil_legacy_outline.cc
-  intern/MOD_gpencil_legacy_shrinkwrap.cc
-  intern/MOD_gpencil_legacy_simplify.cc
-  intern/MOD_gpencil_legacy_smooth.cc
-  intern/MOD_gpencil_legacy_subdiv.cc
-  intern/MOD_gpencil_legacy_texture.cc
-  intern/MOD_gpencil_legacy_thick.cc
-  intern/MOD_gpencil_legacy_time.cc
-  intern/MOD_gpencil_legacy_tint.cc
-  intern/MOD_gpencil_legacy_util.cc
-  intern/MOD_gpencil_legacy_weight_angle.cc
-  intern/MOD_gpencil_legacy_weight_proximity.cc
-
-  MOD_gpencil_legacy_lineart.h
-  MOD_gpencil_legacy_modifiertypes.h
-  intern/MOD_gpencil_legacy_ui_common.h
-  intern/MOD_gpencil_legacy_util.h
-
   # Lineart code
   intern/lineart/lineart_chain.cc
   intern/lineart/lineart_cpu.cc

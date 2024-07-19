@@ -30,7 +30,6 @@
 #include "BKE_context.hh"
 #include "BKE_deform.hh"
 #include "BKE_gpencil_legacy.h"
-#include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_layer.hh"
 #include "BKE_object_deform.h"
 #include "BKE_report.hh"
@@ -475,40 +474,9 @@ static void gpencil_object_vgroup_calc_from_armature(const bContext *C,
   DEG_relations_tag_update(CTX_data_main(C));
 }
 
-bool ED_gpencil_add_armature(const bContext *C, ReportList *reports, Object *ob, Object *ob_arm)
+bool ED_gpencil_add_armature(const bContext */*C*/, ReportList */*reports*/, Object */*ob*/, Object */*ob_arm*/)
 {
-  Main *bmain = CTX_data_main(C);
-  Scene *scene = CTX_data_scene(C);
-
-  if (ob == nullptr) {
-    return false;
-  }
-
-  /* if no armature modifier, add a new one */
-  GpencilModifierData *md = BKE_gpencil_modifiers_findby_type(ob, eGpencilModifierType_Armature);
-  if (md == nullptr) {
-    md = blender::ed::object::gpencil_modifier_add(
-        reports, bmain, scene, ob, "Armature", eGpencilModifierType_Armature);
-    if (md == nullptr) {
-      BKE_report(reports, RPT_ERROR, "Unable to add a new Armature modifier to object");
-      return false;
-    }
-    DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
-  }
-
-  /* verify armature */
-  ArmatureGpencilModifierData *mmd = (ArmatureGpencilModifierData *)md;
-  if (mmd->object == nullptr) {
-    mmd->object = ob_arm;
-  }
-  else {
-    if (ob_arm != mmd->object) {
-      BKE_report(reports,
-                 RPT_ERROR,
-                 "The existing Armature modifier is already using a different Armature object");
-      return false;
-    }
-  }
+  /* pass */
   return true;
 }
 
@@ -586,23 +554,6 @@ static int gpencil_generate_weights_exec(bContext *C, wmOperator *op)
     Base *base = static_cast<Base *>(
         BLI_findlink(BKE_view_layer_object_bases_get(view_layer), arm_idx - 1));
     ob_arm = base->object;
-  }
-  else {
-    /* get armature from modifier */
-    GpencilModifierData *md = BKE_gpencil_modifiers_findby_type(ob_eval,
-                                                                eGpencilModifierType_Armature);
-    if (md == nullptr) {
-      BKE_report(op->reports, RPT_ERROR, "The grease pencil object needs an Armature modifier");
-      return OPERATOR_CANCELLED;
-    }
-
-    ArmatureGpencilModifierData *mmd = (ArmatureGpencilModifierData *)md;
-    if (mmd->object == nullptr) {
-      BKE_report(op->reports, RPT_ERROR, "The Armature modifier is invalid");
-      return OPERATOR_CANCELLED;
-    }
-
-    ob_arm = mmd->object;
   }
 
   if (ob_arm == nullptr) {

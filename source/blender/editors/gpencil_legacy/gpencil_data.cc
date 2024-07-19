@@ -44,7 +44,6 @@
 #include "BKE_deform.hh"
 #include "BKE_fcurve_driver.h"
 #include "BKE_gpencil_legacy.h"
-#include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_material.h"
@@ -2634,6 +2633,7 @@ int ED_gpencil_join_objects_exec(bContext *C, wmOperator *op)
         Object *ob_src = ob_iter;
         bGPdata *gpd_src = static_cast<bGPdata *>(ob_iter->data);
 
+#if 0
         /* Apply all GP modifiers before */
         LISTBASE_FOREACH (GpencilModifierData *, md, &ob_iter->greasepencil_modifiers) {
           const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(
@@ -2642,6 +2642,7 @@ int ED_gpencil_join_objects_exec(bContext *C, wmOperator *op)
             mti->bake_modifier(bmain, depsgraph, md, ob_iter);
           }
         }
+#endif
 
         /* copy vertex groups to the base one's */
         int old_idx = 0;
@@ -3472,11 +3473,12 @@ void GPENCIL_OT_materials_copy_to_object(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
 
-bool ED_gpencil_add_lattice_modifier(const bContext *C,
-                                     ReportList *reports,
-                                     Object *ob,
-                                     Object *ob_latt)
+bool ED_gpencil_add_lattice_modifier(const bContext * /*C*/,
+                                     ReportList * /*reports*/,
+                                     Object * /*ob*/,
+                                     Object * /*ob_latt*/)
 {
+#if 0
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
 
@@ -3509,7 +3511,7 @@ bool ED_gpencil_add_lattice_modifier(const bContext *C,
       return false;
     }
   }
-
+#endif
   return true;
 }
 

@@ -49,7 +49,6 @@
 #include "DEG_depsgraph_query.hh"
 
 #include "MOD_gpencil_legacy_lineart.h"
-#include "MOD_gpencil_legacy_modifiertypes.h"
 
 #include "BLO_read_write.hh"
 
@@ -343,10 +342,10 @@ void BKE_gpencil_frame_active_set(Depsgraph *depsgraph, bGPdata *gpd)
 
 void BKE_gpencil_modifier_init()
 {
+#if 0
   /* Initialize modifier types */
   gpencil_modifier_type_init(modifier_gpencil_types); /* `MOD_gpencil_legacy_util.cc`. */
 
-#if 0
   /* Note that GPencil actually does not support these at the moment,
    * but might do in the future. */
   /* Initialize global common storage used for virtual modifier list. */

@@ -2602,6 +2602,7 @@ void DepsgraphRelationBuilder::build_object_data_geometry(Object *object)
   add_relation(ComponentKey(&object->id, NodeType::GEOMETRY),
                OperationKey(&object->id, NodeType::INSTANCING, OperationCode::INSTANCE),
                "Transform -> Instance");
+#if 0
   /* Grease Pencil Modifiers. */
   if (object->greasepencil_modifiers.first != nullptr) {
     ModifierUpdateDepsgraphContext ctx = {};
@@ -2621,6 +2622,7 @@ void DepsgraphRelationBuilder::build_object_data_geometry(Object *object)
       }
     }
   }
+#endif
   /* Shader FX. */
   if (object->shader_fx.first != nullptr) {
     ModifierUpdateDepsgraphContext ctx = {};

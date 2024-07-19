@@ -30,7 +30,6 @@
 #include "DNA_windowmanager_types.h"
 
 #include "BKE_context.hh"
-#include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_layer.hh"
 #include "BKE_linestyle.h"
 #include "BKE_modifier.hh"
@@ -220,6 +219,7 @@ static void buttons_texture_modifier_foreach(void *user_data,
   }
 }
 
+#if 0
 static void buttons_texture_modifier_gpencil_foreach(void *user_data,
                                                      Object *ob,
                                                      GpencilModifierData *md,
@@ -239,6 +239,7 @@ static void buttons_texture_modifier_gpencil_foreach(void *user_data,
                                     RNA_struct_ui_icon(ptr.type),
                                     md->name);
 }
+#endif
 
 static void buttons_texture_users_from_context(ListBase *users,
                                                const bContext *C,
@@ -299,8 +300,10 @@ static void buttons_texture_users_from_context(ListBase *users,
     /* modifiers */
     BKE_modifiers_foreach_tex_link(ob, buttons_texture_modifier_foreach, users);
 
+#if 0
     /* grease pencil modifiers */
     BKE_gpencil_modifiers_foreach_tex_link(ob, buttons_texture_modifier_gpencil_foreach, users);
+#endif
 
     /* particle systems */
     if (psys && !limited_mode) {
