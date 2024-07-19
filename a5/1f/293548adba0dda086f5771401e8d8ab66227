@@ -1,1 +1,2 @@
 Referenced by issue #125006, Purge Unused crashes if mouse not moved away from popup before confirm delete with enter key
+Referenced by issue #117399, Adding assets (modifiers, such as Smooth by Angle) not working in background Python script because Asset list might not be fully loaded yet
