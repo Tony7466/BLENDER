@@ -257,7 +257,7 @@ static StripDrawContext strip_draw_context_get(TimelineDrawContext *ctx, Sequenc
   /* Determine if strip (or contents of meta strip) has missing data/media. */
   strip_ctx.missing_data_block = !SEQ_sequence_has_valid_data(seq);
   strip_ctx.missing_media = media_presence_is_missing(scene, seq);
-  strip_ctx.is_connected = true;
+  strip_ctx.is_connected = !BLI_listbase_is_empty(&seq->connected);
   if (seq->type == SEQ_TYPE_META) {
     const ListBase *seqbase = &seq->seqbase;
     LISTBASE_FOREACH (const Sequence *, sub, seqbase) {

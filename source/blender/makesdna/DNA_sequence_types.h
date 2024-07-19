@@ -234,6 +234,9 @@ typedef struct Sequence {
   ListBase seqbase;
   ListBase channels; /* SeqTimelineChannel */
 
+  /* List of connected strips. */
+  ListBase connected;
+
   /** The linked "bSound" object. */
   struct bSound *sound;
   /** Handle to #AUD_SequenceEntry. */

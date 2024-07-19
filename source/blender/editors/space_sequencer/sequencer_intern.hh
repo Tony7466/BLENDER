@@ -189,6 +189,8 @@ void SEQUENCER_OT_mute(wmOperatorType *ot);
 void SEQUENCER_OT_unmute(wmOperatorType *ot);
 void SEQUENCER_OT_lock(wmOperatorType *ot);
 void SEQUENCER_OT_unlock(wmOperatorType *ot);
+void SEQUENCER_OT_connect(wmOperatorType *ot);
+void SEQUENCER_OT_disconnect(wmOperatorType *ot);
 void SEQUENCER_OT_reload(wmOperatorType *ot);
 void SEQUENCER_OT_refresh_all(wmOperatorType *ot);
 void SEQUENCER_OT_reassign_inputs(wmOperatorType *ot);
