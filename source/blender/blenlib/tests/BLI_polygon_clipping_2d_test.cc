@@ -166,18 +166,16 @@ void draw_curve(const std::string &label,
 #undef SY
 }
 
-void expect_coord_near(const float2 &testco, const float2 &refco)
-{
-  EXPECT_NEAR(testco[0], refco[0], 1e-5);
-  EXPECT_NEAR(testco[1], refco[1], 1e-5);
-}
-
 void squares_A_AND_B_test()
 {
   const Array<float2> points_a = {{0, 0}, {2, 0}, {2, 2}, {0, 2}};
   const Array<float2> points_b = {{1, 1}, {3, 1}, {3, 3}, {1, 3}};
   const BooleanMode mode = BooleanMode::A_AND_B;
   BooleanResult result = polygonboolean::curve_boolean_calc(mode, points_a, points_b);
+  EXPECT_TRUE(result.valid_geometry);
+  EXPECT_EQ(result.verts.size(), 4);
+  EXPECT_EQ(result.intersections_data.size(), 2);
+  EXPECT_EQ(result.offsets.size(), 2);
 
   if (DO_DRAW) {
     draw_curve("Squares A*B", points_a, points_b, result);
@@ -190,6 +188,10 @@ void squares_A_OR_B_test()
   const Array<float2> points_b = {{1, 1}, {3, 1}, {3, 3}, {1, 3}};
   const BooleanMode mode = BooleanMode::A_OR_B;
   BooleanResult result = polygonboolean::curve_boolean_calc(mode, points_a, points_b);
+  EXPECT_TRUE(result.valid_geometry);
+  EXPECT_EQ(result.verts.size(), 8);
+  EXPECT_EQ(result.intersections_data.size(), 2);
+  EXPECT_EQ(result.offsets.size(), 2);
 
   if (DO_DRAW) {
     draw_curve("Squares A+B", points_a, points_b, result);
@@ -202,6 +204,10 @@ void squares_A_NOT_B_test()
   const Array<float2> points_b = {{1, 1}, {3, 1}, {3, 3}, {1, 3}};
   const BooleanMode mode = BooleanMode::A_NOT_B;
   BooleanResult result = polygonboolean::curve_boolean_calc(mode, points_a, points_b);
+  EXPECT_TRUE(result.valid_geometry);
+  EXPECT_EQ(result.verts.size(), 6);
+  EXPECT_EQ(result.intersections_data.size(), 2);
+  EXPECT_EQ(result.offsets.size(), 2);
 
   if (DO_DRAW) {
     draw_curve("Squares A-B", points_a, points_b, result);
@@ -214,6 +220,10 @@ void squares_B_NOT_A_test()
   const Array<float2> points_b = {{1, 1}, {3, 1}, {3, 3}, {1, 3}};
   const BooleanMode mode = BooleanMode::B_NOT_A;
   BooleanResult result = polygonboolean::curve_boolean_calc(mode, points_a, points_b);
+  EXPECT_TRUE(result.valid_geometry);
+  EXPECT_EQ(result.verts.size(), 6);
+  EXPECT_EQ(result.intersections_data.size(), 2);
+  EXPECT_EQ(result.offsets.size(), 2);
 
   if (DO_DRAW) {
     draw_curve("Squares B-A", points_a, points_b, result);
