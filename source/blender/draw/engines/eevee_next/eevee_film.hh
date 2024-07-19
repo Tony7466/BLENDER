@@ -28,6 +28,8 @@
 
 #pragma once
 
+#include "BLI_math_vector.hh"
+
 #include "DRW_render.hh"
 
 #include "eevee_shader_shared.hh"
@@ -55,6 +57,9 @@ class Film {
   /** Incoming combined buffer with post FX applied (motion blur + depth of field). */
   GPUTexture *combined_final_tx_ = nullptr;
 
+  /** Are we using the compute shader/pipeline. */
+  bool use_compute_;
+
   /**
    * Main accumulation textures containing every render-pass except depth, cryptomatte and
    * combined.
@@ -71,6 +76,7 @@ class Film {
   SwapChain<Texture, 2> weight_tx_;
 
   PassSimple accumulate_ps_ = {"Film.Accumulate"};
+  PassSimple copy_ps_ = {"Film.Copy"};
   PassSimple cryptomatte_post_ps_ = {"Film.Cryptomatte.Post"};
 
   FilmData &data_;
@@ -106,16 +112,38 @@ class Film {
   float *read_pass(eViewLayerEEVEEPassType pass_type, int layer_offset);
   float *read_aov(ViewLayerAOV *aov);
 
-  /** Returns shading views internal resolution. */
+  /** Returns shading views internal resolution. Includes overscan pixels. */
   int2 render_extent_get() const
   {
     return data_.render_extent;
   }
 
-  /** Returns final output resolution. */
+  /** Size and offset of the film (taking into account render region). */
+  int2 film_extent_get() const
+  {
+    return data_.extent;
+  }
+  int2 film_offset_get() const
+  {
+    return data_.offset;
+  }
+
+  /** Size of the whole viewport or the render, disregarding the render region. */
   int2 display_extent_get() const
   {
     return display_extent;
+  }
+
+  /** Number of padding pixels around the render target. Included inside `render_extent_get`. */
+  int render_overscan_get() const
+  {
+    return data_.overscan;
+  }
+
+  /** Returns number of overscan pixels for the given parameters. */
+  static int overscan_pixels_get(float overscan, int2 extent)
+  {
+    return math::ceil(max_ff(0.0f, overscan) * math::reduce_max(extent));
   }
 
   int scaling_factor_get() const
@@ -296,6 +324,8 @@ class Film {
    * Precompute sample weights if they are uniform across the whole film extent.
    */
   void update_sample_table();
+
+  void init_pass(PassSimple &pass, GPUShader *sh);
 };
 
 /** \} */

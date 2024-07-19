@@ -13,7 +13,6 @@
 #include "GHOST_Types.h"
 
 #include "render_graph/vk_render_graph.hh"
-#include "vk_command_buffers.hh"
 #include "vk_common.hh"
 #include "vk_debug.hh"
 #include "vk_descriptor_pools.hh"
@@ -27,7 +26,6 @@ class VKShader;
 
 class VKContext : public Context, NonCopyable {
  private:
-  VKCommandBuffers command_buffers_;
   VKDescriptorPools descriptor_pools_;
   VKDescriptorSetTracker descriptor_set_;
 
@@ -39,12 +37,12 @@ class VKContext : public Context, NonCopyable {
   /* Reusable data. Stored inside context to limit reallocations. */
   render_graph::VKResourceAccessInfo access_info_ = {};
 
- public:
-  render_graph::VKRenderGraph render_graph;
+  bool is_init_ = false;
 
-  VKContext(void *ghost_window,
-            void *ghost_context,
-            render_graph::VKResourceStateTracker &resources);
+ public:
+  render_graph::VKRenderGraph &render_graph;
+
+  VKContext(void *ghost_window, void *ghost_context, render_graph::VKRenderGraph &render_graph);
   virtual ~VKContext();
 
   void activate() override;
@@ -83,7 +81,6 @@ class VKContext : public Context, NonCopyable {
    */
   void rendering_end();
 
-  void bind_compute_pipeline();
   render_graph::VKResourceAccessInfo &update_and_get_access_info();
 
   /**
@@ -94,18 +91,11 @@ class VKContext : public Context, NonCopyable {
                             VKVertexAttributeObject &vao,
                             render_graph::VKPipelineData &r_pipeline_data);
 
-  void bind_graphics_pipeline(const GPUPrimType prim_type,
-                              const VKVertexAttributeObject &vertex_attribute_object);
   void sync_backbuffer();
 
   static VKContext *get()
   {
     return static_cast<VKContext *>(Context::get());
-  }
-
-  VKCommandBuffers &command_buffers_get()
-  {
-    return command_buffers_;
   }
 
   VKDescriptorPools &descriptor_pools_get()

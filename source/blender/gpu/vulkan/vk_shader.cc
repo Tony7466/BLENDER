@@ -554,9 +554,9 @@ void VKShader::build_shader_module(Span<uint32_t> spirv_module, VkShaderModule *
   create_info.codeSize = spirv_module.size() * sizeof(uint32_t);
   create_info.pCode = spirv_module.data();
 
-  const VKDevice &device = VKBackend::get().device_get();
+  const VKDevice &device = VKBackend::get().device;
   VkResult result = vkCreateShaderModule(
-      device.device_get(), &create_info, vk_allocation_callbacks, r_shader_module);
+      device.vk_handle(), &create_info, vk_allocation_callbacks, r_shader_module);
   if (result == VK_SUCCESS) {
     debug::object_label(*r_shader_module, name);
   }
@@ -581,25 +581,25 @@ void VKShader::init(const shader::ShaderCreateInfo &info, bool /*is_batch_compil
 VKShader::~VKShader()
 {
   VK_ALLOCATION_CALLBACKS
-  const VKDevice &device = VKBackend::get().device_get();
+  const VKDevice &device = VKBackend::get().device;
   if (vertex_module_ != VK_NULL_HANDLE) {
-    vkDestroyShaderModule(device.device_get(), vertex_module_, vk_allocation_callbacks);
+    vkDestroyShaderModule(device.vk_handle(), vertex_module_, vk_allocation_callbacks);
     vertex_module_ = VK_NULL_HANDLE;
   }
   if (geometry_module_ != VK_NULL_HANDLE) {
-    vkDestroyShaderModule(device.device_get(), geometry_module_, vk_allocation_callbacks);
+    vkDestroyShaderModule(device.vk_handle(), geometry_module_, vk_allocation_callbacks);
     geometry_module_ = VK_NULL_HANDLE;
   }
   if (fragment_module_ != VK_NULL_HANDLE) {
-    vkDestroyShaderModule(device.device_get(), fragment_module_, vk_allocation_callbacks);
+    vkDestroyShaderModule(device.vk_handle(), fragment_module_, vk_allocation_callbacks);
     fragment_module_ = VK_NULL_HANDLE;
   }
   if (compute_module_ != VK_NULL_HANDLE) {
-    vkDestroyShaderModule(device.device_get(), compute_module_, vk_allocation_callbacks);
+    vkDestroyShaderModule(device.vk_handle(), compute_module_, vk_allocation_callbacks);
     compute_module_ = VK_NULL_HANDLE;
   }
   if (vk_pipeline_layout != VK_NULL_HANDLE) {
-    vkDestroyPipelineLayout(device.device_get(), vk_pipeline_layout, vk_allocation_callbacks);
+    vkDestroyPipelineLayout(device.vk_handle(), vk_pipeline_layout, vk_allocation_callbacks);
     vk_pipeline_layout = VK_NULL_HANDLE;
   }
   /* Reset not owning handles. */
@@ -616,7 +616,7 @@ void VKShader::build_shader_module(MutableSpan<const char *> sources,
                       shaderc_fragment_shader,
                       shaderc_compute_shader),
                  "Only forced ShaderC shader kinds are supported.");
-  const VKDevice &device = VKBackend::get().device_get();
+  const VKDevice &device = VKBackend::get().device;
   sources[SOURCES_INDEX_VERSION] = device.glsl_patch_get();
   Vector<uint32_t> spirv_module = compile_glsl_to_spirv(sources, stage);
   build_shader_module(spirv_module, r_shader_module);
@@ -662,11 +662,11 @@ bool VKShader::finalize(const shader::ShaderCreateInfo *info)
   }
 
   const VKShaderInterface &vk_interface = interface_get();
-  VKDevice &device = VKBackend::get().device_get();
+  VKDevice &device = VKBackend::get().device;
   if (!finalize_descriptor_set_layouts(device, vk_interface)) {
     return false;
   }
-  if (!finalize_pipeline_layout(device.device_get(), vk_interface)) {
+  if (!finalize_pipeline_layout(device.vk_handle(), vk_interface)) {
     return false;
   }
 
@@ -727,36 +727,30 @@ bool VKShader::finalize_descriptor_set_layouts(VKDevice &vk_device,
   return vk_descriptor_set_layout_ != VK_NULL_HANDLE;
 }
 
+/* -------------------------------------------------------------------- */
+/** \name Transform feedback
+ *
+ * Not supported in the vulkan backend.
+ *
+ * \{ */
+
 void VKShader::transform_feedback_names_set(Span<const char *> /*name_list*/,
                                             eGPUShaderTFBType /*geom_type*/)
 {
-  NOT_YET_IMPLEMENTED
+  BLI_assert_unreachable();
 }
 
 bool VKShader::transform_feedback_enable(VertBuf *)
 {
-  NOT_YET_IMPLEMENTED
   return false;
 }
 
 void VKShader::transform_feedback_disable()
 {
-  NOT_YET_IMPLEMENTED
+  BLI_assert_unreachable();
 }
 
-void VKShader::update_graphics_pipeline(VKContext &context,
-                                        const GPUPrimType prim_type,
-                                        const VKVertexAttributeObject &vertex_attribute_object)
-{
-  BLI_assert(is_graphics_shader());
-  pipeline_get().finalize(context,
-                          vertex_module_,
-                          geometry_module_,
-                          fragment_module_,
-                          vk_pipeline_layout,
-                          prim_type,
-                          vertex_attribute_object);
-}
+/** \} */
 
 void VKShader::bind()
 {
@@ -852,7 +846,7 @@ std::string VKShader::vertex_interface_declare(const shader::ShaderCreateInfo &i
 {
   std::stringstream ss;
   std::string post_main;
-  const VKWorkarounds &workarounds = VKBackend::get().device_get().workarounds_get();
+  const VKWorkarounds &workarounds = VKBackend::get().device.workarounds_get();
 
   ss << "\n/* Inputs. */\n";
   for (const ShaderCreateInfo::VertIn &attr : info.vertex_inputs_) {
@@ -874,8 +868,8 @@ std::string VKShader::vertex_interface_declare(const shader::ShaderCreateInfo &i
   }
   if (bool(info.builtins_ & BuiltinBits::BARYCENTRIC_COORD)) {
     /* Need this for stable barycentric. */
-    ss << "flat out vec4 gpu_pos_flat;\n";
-    ss << "out vec4 gpu_pos;\n";
+    ss << "layout(location=" << (location++) << ") flat out vec4 gpu_pos_flat;\n";
+    ss << "layout(location=" << (location++) << ") out vec4 gpu_pos;\n";
 
     post_main += "  gpu_pos = gpu_pos_flat = gl_Position;\n";
   }
@@ -948,7 +942,7 @@ std::string VKShader::fragment_interface_declare(const shader::ShaderCreateInfo 
 {
   std::stringstream ss;
   std::string pre_main;
-  const VKWorkarounds &workarounds = VKBackend::get().device_get().workarounds_get();
+  const VKWorkarounds &workarounds = VKBackend::get().device.workarounds_get();
 
   ss << "\n/* Interfaces. */\n";
   const Span<StageInterfaceInfo *> in_interfaces = info.geometry_source_.is_empty() ?
@@ -968,6 +962,16 @@ std::string VKShader::fragment_interface_declare(const shader::ShaderCreateInfo 
   }
 
   if (bool(info.builtins_ & BuiltinBits::BARYCENTRIC_COORD)) {
+    /* TODO: add support for
+     * https://docs.vulkan.org/features/latest/features/proposals/VK_KHR_fragment_shader_barycentric.html
+     */
+    ss << "layout(location=" << (location) << ") flat in vec4 gpu_pos[3];\n";
+    location += 3;
+    ss << "layout(location=" << (location++) << ") smooth in vec3 gpu_BaryCoord;\n";
+    ss << "layout(location=" << (location++) << ") noperspective in vec3 gpu_BaryCoordNoPersp;\n";
+    ss << "#define gpu_position_at_vertex(v) gpu_pos[v]\n";
+
+#if 0
     std::cout << "native" << std::endl;
     /* NOTE(fclem): This won't work with geometry shader. Hopefully, we don't need geometry
      * shader workaround if this extension/feature is detected. */
@@ -993,6 +997,7 @@ std::string VKShader::fragment_interface_declare(const shader::ShaderCreateInfo 
 
     pre_main += "  gpu_BaryCoord = stable_bary_(gl_BaryCoordSmoothAMD);\n";
     pre_main += "  gpu_BaryCoordNoPersp = stable_bary_(gl_BaryCoordNoPerspAMD);\n";
+#endif
   }
   if (info.early_fragment_test_) {
     ss << "layout(early_fragment_tests) in;\n";
@@ -1166,7 +1171,7 @@ std::string VKShader::workaround_geometry_shader_source_create(
     const shader::ShaderCreateInfo &info)
 {
   std::stringstream ss;
-  const VKWorkarounds &workarounds = VKBackend::get().device_get().workarounds_get();
+  const VKWorkarounds &workarounds = VKBackend::get().device.workarounds_get();
 
   const bool do_layer_workaround = workarounds.shader_output_layer &&
                                    bool(info.builtins_ & BuiltinBits::LAYER);
@@ -1198,9 +1203,10 @@ std::string VKShader::workaround_geometry_shader_source_create(
     ss << "layout(location=" << (location++) << ") in int gpu_ViewportIndex[];\n";
   }
   if (do_barycentric_workaround) {
-    ss << "flat out vec4 gpu_pos[3];\n";
-    ss << "smooth out vec3 gpu_BaryCoord;\n";
-    ss << "noperspective out vec3 gpu_BaryCoordNoPersp;\n";
+    ss << "layout(location=" << (location) << ") flat out vec4 gpu_pos[3];\n";
+    location += 3;
+    ss << "layout(location=" << (location++) << ") smooth out vec3 gpu_BaryCoord;\n";
+    ss << "layout(location=" << (location++) << ") noperspective out vec3 gpu_BaryCoordNoPersp;\n";
   }
   ss << "\n";
 
@@ -1229,7 +1235,7 @@ std::string VKShader::workaround_geometry_shader_source_create(
       ss << " vec3(" << int(i == 0) << ", " << int(i == 1) << ", " << int(i == 2) << ");\n";
     }
     ss << "  gl_Position = gl_in[" << i << "].gl_Position;\n";
-    ss << "  EmitVertex();\n";
+    ss << "  gpu_EmitVertex();\n";
   }
   ss << "}\n";
   return ss.str();
@@ -1237,7 +1243,7 @@ std::string VKShader::workaround_geometry_shader_source_create(
 
 bool VKShader::do_geometry_shader_injection(const shader::ShaderCreateInfo *info)
 {
-  const VKWorkarounds &workarounds = VKBackend::get().device_get().workarounds_get();
+  const VKWorkarounds &workarounds = VKBackend::get().device.workarounds_get();
   BuiltinBits builtins = info->builtins_;
   if (bool(builtins & BuiltinBits::BARYCENTRIC_COORD)) {
     return true;
@@ -1269,7 +1275,7 @@ VkPipeline VKShader::ensure_and_get_compute_pipeline()
   compute_info.vk_shader_module = compute_module_;
   compute_info.vk_pipeline_layout = vk_pipeline_layout;
 
-  VKDevice &device = VKBackend::get().device_get();
+  VKDevice &device = VKBackend::get().device;
   /* Store result in local variable to ensure thread safety. */
   VkPipeline vk_pipeline = device.pipelines.get_or_create_compute_pipeline(compute_info,
                                                                            vk_pipeline_);
@@ -1315,7 +1321,7 @@ VkPipeline VKShader::ensure_and_get_graphics_pipeline(GPUPrimType primitive,
   graphics_info.fragment_out.color_attachment_formats.extend(
       framebuffer.color_attachment_formats_get());
 
-  VKDevice &device = VKBackend::get().device_get();
+  VKDevice &device = VKBackend::get().device;
   /* Store result in local variable to ensure thread safety. */
   VkPipeline vk_pipeline = device.pipelines.get_or_create_graphics_pipeline(graphics_info,
                                                                             vk_pipeline_);
@@ -1326,11 +1332,6 @@ VkPipeline VKShader::ensure_and_get_graphics_pipeline(GPUPrimType primitive,
 int VKShader::program_handle_get() const
 {
   return -1;
-}
-
-VKPipeline &VKShader::pipeline_get()
-{
-  return pipeline_;
 }
 
 const VKShaderInterface &VKShader::interface_get() const
