@@ -238,6 +238,18 @@ ARegionType *ED_area_type_hud(int space_type)
   return art;
 }
 
+static void set_runtime_offsets(ARegion *region_hud, ARegion *region_win)
+{
+  if (!region_win) {
+    return;
+  }
+  float x, y;
+
+  UI_view2d_scroller_size_get(&region_win->v2d, true, &x, &y);
+  region_hud->runtime.offset_x = x;
+  region_hud->runtime.offset_y = y;
+}
+
 static ARegion *hud_region_add(ScrArea *area)
 {
   ARegion *region = MEM_cnew<ARegion>(__func__);
@@ -253,13 +265,7 @@ static ARegion *hud_region_add(ScrArea *area)
   region->overlap = true;
   region->flag |= RGN_FLAG_DYNAMIC_SIZE;
 
-  if (region_win) {
-    float x, y;
-
-    UI_view2d_scroller_size_get(&region_win->v2d, true, &x, &y);
-    region->runtime.offset_x = x;
-    region->runtime.offset_y = y;
-  }
+  set_runtime_offsets(region, region_win);
 
   return region;
 }
@@ -318,6 +324,11 @@ void ED_area_type_hud_ensure(bContext *C, ScrArea *area)
     init = true;
     region = hud_region_add(area);
     region->type = art;
+  }
+  else {
+    /* We need to update the runtime offsets. */
+    ARegion *region_win = BKE_area_find_region_type(area, RGN_TYPE_WINDOW);
+    set_runtime_offsets(region, region_win);
   }
 
   /* Let 'ED_area_update_region_sizes' do the work of placing the region.
