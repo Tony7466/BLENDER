@@ -351,9 +351,64 @@ static void write_slots(BlendWriter *writer, Span<animrig::Slot *> slots)
   }
 }
 
+/**
+ * Create a listbase from a Span of values.
+ *
+ * This requires that T can be stored in a ListBase (i.e. can be safely cast to
+ * a Link) and that the values are not yet stored in one.
+ *
+ * This function is intended to construct a ListBase from an array of values.
+ *
+ * \note this does NOT transfer ownership of the pointers. The ListBase should
+ * not be freed, but given to `clear_listbase()` below.
+ */
+static void make_listbase(ListBase &listbase, const Span<FCurve *> fcurves)
+{
+  if (fcurves.is_empty()) {
+    BLI_listbase_clear(&listbase);
+    return;
+  }
+
+  /* Determine the prev/next pointers on the elements. */
+  const int last_index = fcurves.size() - 1;
+  for (int index : fcurves.index_range()) {
+    fcurves[index]->prev = (index > 0) ? fcurves[index - 1] : nullptr;
+    fcurves[index]->next = (index < last_index) ? fcurves[index + 1] : nullptr;
+  }
+
+  listbase.first = fcurves[0];
+  listbase.last = fcurves[last_index];
+}
+
+static void clear_listbase(ListBase &listbase)
+{
+  LISTBASE_FOREACH (FCurve *, fcurve, &listbase) {
+    fcurve->prev = nullptr;
+    fcurve->next = nullptr;
+  }
+
+  BLI_listbase_clear(&listbase);
+}
+
 static void action_blend_write(BlendWriter *writer, ID *id, const void *id_address)
 {
   animrig::Action &action = reinterpret_cast<bAction *>(id)->wrap();
+
+  /* Create legacy data for Layered Actions: the F-Curves from the first Slot,
+   * bottom layer, first Keyframe strip. */
+  const bool do_write_forward_compat = !BLO_write_is_undo(writer) && action.slot_array_num > 0 &&
+                                       action.is_action_layered();
+  if (do_write_forward_compat) {
+    animrig::assert_baklava_phase_1_invariants(action);
+    BLI_assert_msg(BLI_listbase_is_empty(&action.curves),
+                   "Layered Action should not have legacy data");
+    BLI_assert_msg(BLI_listbase_is_empty(&action.groups),
+                   "Layered Action should not have legacy data");
+
+    const animrig::Slot &first_slot = *action.slot(0);
+    Span<FCurve *> fcurves = fcurves_for_action_slot(action, first_slot.handle);
+    make_listbase(action.curves, fcurves);
+  }
 
   BLO_write_id_struct(writer, bAction, id_address, &action.id);
   BKE_id_blend_write(writer, &action.id);
@@ -362,10 +417,19 @@ static void action_blend_write(BlendWriter *writer, ID *id, const void *id_addre
   write_layers(writer, action.layers());
   write_slots(writer, action.slots());
 
-  /* Write legacy F-Curves & groups. */
-  BKE_fcurve_blend_write_listbase(writer, &action.curves);
+  /* Write legacy F-Curves & Groups. */
+  if (!do_write_forward_compat) {
+    /* If the forward-compatible data is written, the F-Curves are already
+     * written to the blend file. No need to also write the listbase here, as
+     * that will cause memory leaks when reading the blend file (the structs
+     * will have been written twice, but are only handled once on read). */
+    BKE_fcurve_blend_write_listbase(writer, &action.curves);
+  }
   LISTBASE_FOREACH (bActionGroup *, grp, &action.groups) {
     BLO_write_struct(writer, bActionGroup, grp);
+  }
+  if (do_write_forward_compat) {
+    clear_listbase(action.curves);
   }
 
   LISTBASE_FOREACH (TimeMarker *, marker, &action.markers) {
@@ -381,7 +445,14 @@ static void read_channelbag(BlendDataReader *reader, animrig::ChannelBag &channe
 
   for (int i = 0; i < channelbag.fcurve_array_num; i++) {
     BLO_read_struct(reader, FCurve, &channelbag.fcurve_array[i]);
-    BKE_fcurve_blend_read_data(reader, channelbag.fcurve_array[i]);
+    FCurve *fcurve = channelbag.fcurve_array[i];
+
+    /* Clear the prev/next pointers set by the forward compatibility code in
+     * action_blend_write(). */
+    fcurve->prev = nullptr;
+    fcurve->next = nullptr;
+
+    BKE_fcurve_blend_read_data(reader, fcurve);
   }
 }
 
@@ -436,10 +507,24 @@ static void action_blend_read_data(BlendDataReader *reader, ID *id)
   read_layers(reader, action);
   read_slots(reader, action);
 
-  /* Read legacy data. */
-  BLO_read_struct_list(reader, FCurve, &action.curves);
-  BLO_read_struct_list(reader, bActionChannel, &action.chanbase);
-  BLO_read_struct_list(reader, bActionGroup, &action.groups);
+  /* Read legacy data, but only if we need to. */
+  if (action.is_action_layered()) {
+    BLI_listbase_clear(&action.curves);
+    BLI_assert(BLI_listbase_is_empty(&action.groups));
+  }
+  else {
+    BLO_read_struct_list(reader, bActionChannel, &action.chanbase);
+    BLO_read_struct_list(reader, FCurve, &action.curves);
+    BLO_read_struct_list(reader, bActionGroup, &action.groups);
+
+    BKE_fcurve_blend_read_data_listbase(reader, &action.curves);
+
+    LISTBASE_FOREACH (bActionGroup *, agrp, &action.groups) {
+      BLO_read_struct(reader, FCurve, &agrp->channels.first);
+      BLO_read_struct(reader, FCurve, &agrp->channels.last);
+    }
+  }
+
   BLO_read_struct_list(reader, TimeMarker, &action.markers);
 
   LISTBASE_FOREACH (bActionChannel *, achan, &action.chanbase) {
@@ -447,12 +532,6 @@ static void action_blend_read_data(BlendDataReader *reader, ID *id)
     BLO_read_struct_list(reader, bConstraintChannel, &achan->constraintChannels);
   }
 
-  BKE_fcurve_blend_read_data_listbase(reader, &action.curves);
-
-  LISTBASE_FOREACH (bActionGroup *, agrp, &action.groups) {
-    BLO_read_struct(reader, FCurve, &agrp->channels.first);
-    BLO_read_struct(reader, FCurve, &agrp->channels.last);
-  }
   /* End of reading legacy data. */
 
   BLO_read_struct(reader, PreviewImage, &action.preview);
