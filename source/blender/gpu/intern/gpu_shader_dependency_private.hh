@@ -27,6 +27,8 @@ BuiltinBits gpu_shader_dependency_get_builtins(const StringRefNull source_name);
 /* Returns true is any shader code has a printf statement. */
 bool gpu_shader_dependency_has_printf();
 
+bool gpu_shader_dependency_force_gpu_print_injection();
+
 struct PrintfFormat {
   struct Block {
     enum ArgumentType {

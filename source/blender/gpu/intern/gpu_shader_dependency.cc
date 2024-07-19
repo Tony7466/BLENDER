@@ -1097,6 +1097,7 @@ using namespace blender::gpu;
 static GPUPrintFormatMap *g_formats = nullptr;
 static GPUSourceDictionnary *g_sources = nullptr;
 static GPUFunctionDictionnary *g_functions = nullptr;
+static bool force_printf_injection = false;
 
 void gpu_shader_dependency_init()
 {
@@ -1120,6 +1121,21 @@ void gpu_shader_dependency_init()
   }
   BLI_assert_msg(errors == 0, "Dependency errors detected: Aborting");
   UNUSED_VARS_NDEBUG(errors);
+
+#if GPU_SHADER_PRINTF_ENABLE
+  if (!g_formats->is_empty()) {
+    /* Detect if there is any printf in node lib files.
+     * See gpu_shader_dependency_force_gpu_print_injection(). */
+    for (auto *value : g_sources->values()) {
+      if ((value->builtins & shader::BuiltinBits::USE_PRINTF) != shader::BuiltinBits::USE_PRINTF) {
+        if (value->filename.startswith("gpu_shader_material_")) {
+          force_printf_injection = true;
+          break;
+        }
+      }
+    }
+  }
+#endif
 }
 
 void gpu_shader_dependency_exit()
@@ -1145,6 +1161,13 @@ GPUFunction *gpu_material_library_use_function(GSet *used_libraries, const char 
 }
 
 namespace blender::gpu::shader {
+
+bool gpu_shader_dependency_force_gpu_print_injection()
+{
+  /* WORKAROUND: We cannot know what shader will require printing if the printf is inside shader
+   * node code. In this case, we just force injection inside all shaders. */
+  return force_printf_injection;
+}
 
 bool gpu_shader_dependency_has_printf()
 {
