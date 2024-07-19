@@ -858,11 +858,26 @@ bool try_capture_fields_on_geometry(MutableAttributeAccessor attributes,
   };
   Vector<AddResult> results_to_add;
 
+  bool success = true;
+
   for (const int input_index : attribute_ids.index_range()) {
     const AttributeIDRef &id = attribute_ids[input_index];
-    const AttributeValidator validator = attributes.lookup_validator(id);
-    const fn::GField field = validator.validate_field_if_necessary(fields[input_index]);
+    fn::GField field = fields[input_index];
     const CPPType &type = field.cpp_type();
+
+    if (const std::optional<AttributeMetaData> built_in_meta_data =
+            attributes.lookup_built_in_meta_data(id))
+    {
+      if (built_in_meta_data->domain != domain ||
+          custom_data_type_to_cpp_type(built_in_meta_data->data_type) != &type)
+      {
+        success = false;
+        continue;
+      }
+    }
+
+    const AttributeValidator validator = attributes.lookup_validator(id);
+    field = validator.validate_field_if_necessary(field);
 
     /* We are writing to an attribute that exists already with the correct domain and type. */
     if (const GAttributeReader dst = attributes.lookup(id)) {
@@ -905,7 +920,6 @@ bool try_capture_fields_on_geometry(MutableAttributeAccessor attributes,
     }
   }
 
-  bool success = true;
   for (const AddResult &result : results_to_add) {
     const AttributeIDRef &id = attribute_ids[result.input_index];
     attributes.remove(id);

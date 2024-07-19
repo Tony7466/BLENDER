@@ -365,6 +365,18 @@ inline std::optional<AttributeMetaData> lookup_meta_data(const void *owner,
 }
 
 template<const ComponentAttributeProviders &providers>
+inline std::optional<AttributeMetaData> lookup_built_in_meta_data(
+    const void * /*owner*/, const AttributeIDRef &attribute_id)
+{
+  if (const BuiltinAttributeProvider *provider =
+          providers.builtin_attribute_providers().lookup_default_as(attribute_id.name(), nullptr))
+  {
+    return AttributeMetaData{provider->domain(), provider->data_type()};
+  }
+  return std::nullopt;
+}
+
+template<const ComponentAttributeProviders &providers>
 inline GAttributeWriter lookup_for_write(void *owner, const AttributeIDRef &attribute_id)
 {
   if (!attribute_id.is_anonymous()) {
@@ -440,6 +452,7 @@ inline AttributeAccessorFunctions accessor_functions_for_providers()
 {
   return AttributeAccessorFunctions{contains<providers>,
                                     lookup_meta_data<providers>,
+                                    lookup_built_in_meta_data<providers>,
                                     nullptr,
                                     nullptr,
                                     is_builtin<providers>,

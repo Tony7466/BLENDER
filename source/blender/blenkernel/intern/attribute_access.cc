@@ -817,6 +817,7 @@ bool MutableAttributeAccessor::rename(const AttributeIDRef &old_attribute_id,
 fn::GField AttributeValidator::validate_field_if_necessary(const fn::GField &field) const
 {
   if (function) {
+    BLI_assert(field.cpp_type() == this->function->param_type(0).data_type().single_type());
     auto validate_op = fn::FieldOperation::Create(*function, {field});
     return fn::GField(validate_op);
   }

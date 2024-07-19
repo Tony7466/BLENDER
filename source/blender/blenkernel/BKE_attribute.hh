@@ -427,6 +427,8 @@ struct AttributeAccessorFunctions {
   bool (*contains)(const void *owner, const AttributeIDRef &attribute_id);
   std::optional<AttributeMetaData> (*lookup_meta_data)(const void *owner,
                                                        const AttributeIDRef &attribute_id);
+  std::optional<AttributeMetaData> (*lookup_built_in_meta_data)(
+      const void *owner, const AttributeIDRef &attribute_id);
   bool (*domain_supported)(const void *owner, AttrDomain domain);
   int (*domain_size)(const void *owner, AttrDomain domain);
   bool (*is_builtin)(const void *owner, const AttributeIDRef &attribute_id);
@@ -496,6 +498,16 @@ class AttributeAccessor {
   std::optional<AttributeMetaData> lookup_meta_data(const AttributeIDRef &attribute_id) const
   {
     return fn_->lookup_meta_data(owner_, attribute_id);
+  }
+
+  /**
+   * \return Information about the built-in attribute. This also works if the built-in attribute
+   * does not exist currently.
+   */
+  std::optional<AttributeMetaData> lookup_built_in_meta_data(
+      const AttributeIDRef &attribute_id) const
+  {
+    return fn_->lookup_built_in_meta_data(owner_, attribute_id);
   }
 
   /**
