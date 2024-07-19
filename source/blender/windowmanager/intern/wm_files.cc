@@ -76,6 +76,8 @@
 #include "BKE_lib_remap.hh"
 #include "BKE_main.hh"
 #include "BKE_main_namemap.hh"
+#include "BKE_node.hh"
+#include "BKE_node_tree_update.hh"
 #include "BKE_packedFile.h"
 #include "BKE_report.hh"
 #include "BKE_scene.hh"
@@ -784,6 +786,18 @@ static void wm_file_read_post(bContext *C,
     wm_event_do_depsgraph(C, true);
 
     ED_editors_init(C);
+
+    /* Add-ons are disabled when loading the startup file, so the Render Layer node in compositor
+     * node trees might be wrong due to missing render engines that are available as add-ons, like
+     * Cycles. So we need to update compositor node trees after reading the file when add-ons are
+     * now loaded. */
+    FOREACH_NODETREE_BEGIN (bmain, ntree, owner_id) {
+      if (ntree->type = NTREE_COMPOSIT) {
+        BKE_ntree_update_tag_all(ntree);
+      }
+    }
+    FOREACH_NODETREE_END;
+    BKE_ntree_update_main(bmain, nullptr);
 
 #if 1
     WM_event_add_notifier(C, NC_WM | ND_FILEREAD, nullptr);
