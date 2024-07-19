@@ -482,7 +482,6 @@ bool vert_all_faces_visible_get(const Span<bool> hide_poly,
                                 const SubdivCCG &subdiv_ccg,
                                 const SubdivCCGCoord vert)
 {
-  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
   const int face_index = BKE_subdiv_ccg_grid_to_face_index(subdiv_ccg, vert.grid_index);
   return hide_poly[face_index];
 }
