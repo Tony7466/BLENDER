@@ -698,14 +698,14 @@ void PathTraceWorkGPU::compact_shadow_paths()
 
   /* Compact if we can reduce the space used by half. Not always since
    * compaction has a cost. */
-  const float shadow_compact_ratio = 0.5f;
+  const float shadow_compact_ratio = 2.0f;
   const int min_compact_paths = 32;
   if (integrator_next_shadow_path_index_.data()[0] < num_active_paths * shadow_compact_ratio ||
       integrator_next_shadow_path_index_.data()[0] < min_compact_paths)
   {
     return;
   }
-
+  //LOG(INFO) << "COMPACT SHADOWS";
   /* Compact. */
   compact_paths(num_active_paths,
                 integrator_next_shadow_path_index_.data()[0],
