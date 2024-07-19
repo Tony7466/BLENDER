@@ -22,6 +22,16 @@
 
 #include <iostream>
 
+/* Force enable printf support in release build. */
+#define GPU_FORCE_ENABLE_PRINT 0
+#if !defined(NDEBUG) || GPU_FORCE_ENABLE_PRINT
+#  define GPU_PRINT_ENABLE 1
+#else
+#  define GPU_PRINT_ENABLE 0
+#endif
+#define GPU_PRINT_SLOT 13
+#define GPU_PRINT_MAX_CAPACITY 1024 * 4
+
 namespace blender::gpu::shader {
 
 /* Helps intellisense / auto-completion. */
@@ -174,6 +184,7 @@ enum class BuiltinBits {
   TEXTURE_ATOMIC = (1 << 18),
 
   /* Not a builtin but a flag we use to tag shaders that use the debug features. */
+  USE_PRINTF = (1 << 28),
   USE_DEBUG_DRAW = (1 << 29),
   USE_DEBUG_PRINT = (1 << 30),
 };

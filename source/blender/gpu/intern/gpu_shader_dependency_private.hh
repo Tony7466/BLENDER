@@ -24,6 +24,26 @@ namespace blender::gpu::shader {
 
 BuiltinBits gpu_shader_dependency_get_builtins(const StringRefNull source_name);
 
+/* Returns true is any shader code has a printf statement. */
+bool gpu_shader_dependency_has_printf();
+
+struct PrintfFormat {
+  struct Block {
+    enum ArgumentType {
+      NONE = 0,
+      UINT,
+      INT,
+      FLOAT,
+    } type = NONE;
+    std::string fmt;
+  };
+
+  Vector<Block> format_blocks;
+  std::string format_str;
+};
+
+const PrintfFormat &gpu_shader_dependency_get_printf_format(uint32_t format_hash);
+
 Vector<const char *> gpu_shader_dependency_get_resolved_source(const StringRefNull source_name);
 StringRefNull gpu_shader_dependency_get_source(const StringRefNull source_name);
 
