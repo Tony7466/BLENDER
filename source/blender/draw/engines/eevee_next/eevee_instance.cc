@@ -517,7 +517,7 @@ void Instance::render_read_result(RenderLayer *render_layer, const char *view_na
 void Instance::render_frame(RenderEngine *engine, RenderLayer *render_layer, const char *view_name)
 {
 
-  while (!sampling.finished()) {
+  while (!sampling.finished() && !RE_engine_test_break(engine)) {
     this->render_sample();
 
     if (sampling.sample_index() == 1 || sampling.sample_index() % 25 == 0 || sampling.finished()) {
