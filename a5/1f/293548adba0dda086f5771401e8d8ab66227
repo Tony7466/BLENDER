@@ -1,1 +1,1 @@
-Referenced by issue #125006, Purge Unused crashes if mouse not moved before confirm delete with enter key
+Referenced by issue #125006, Purge Unused crashes if mouse not moved away from popup before confirm delete with enter key
