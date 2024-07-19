@@ -1,1 +1,2 @@
 Referenced by issue #124990, Palette editing not working in Color Attribute Paint Mode in Draw Mode
+Referenced by pull request #125062, Fix #124990: GP Draw mode always adds black color to a palette
