@@ -520,7 +520,9 @@ void Instance::render_frame(RenderEngine *engine, RenderLayer *render_layer, con
   while (!sampling.finished()) {
     this->render_sample();
 
-    if (sampling.sample_index() == 1 || sampling.sample_index() % 25 == 0 || sampling.finished()) {
+    if ((sampling.sample_index() == 1) || ((sampling.sample_index() % 25) == 0) ||
+        sampling.finished())
+    {
       /* TODO: Use fmt. */
       std::string re_info = "Rendering " + std::to_string(sampling.sample_index()) + " / " +
                             std::to_string(sampling.sample_count()) + " samples";
