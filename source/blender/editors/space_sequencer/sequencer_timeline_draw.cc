@@ -34,7 +34,9 @@
 #include "ED_space_api.hh"
 #include "ED_time_scrub_ui.hh"
 
-#include "RNA_prototypes.h"
+#include "GPU_matrix.hh"
+
+#include "RNA_prototypes.hh"
 
 #include "SEQ_channels.hh"
 #include "SEQ_effects.hh"
@@ -192,21 +194,22 @@ static StripDrawContext strip_draw_context_get(TimelineDrawContext *ctx, Sequenc
   strip_ctx.seq = seq;
   strip_ctx.bottom = seq->machine + SEQ_STRIP_OFSBOTTOM;
   strip_ctx.top = seq->machine + SEQ_STRIP_OFSTOP;
-  strip_ctx.content_start = SEQ_time_left_handle_frame_get(scene, seq);
-  strip_ctx.content_end = SEQ_time_right_handle_frame_get(scene, seq);
-  if (SEQ_time_has_left_still_frames(scene, seq)) {
-    strip_ctx.content_start = SEQ_time_start_frame_get(seq);
-  }
-  if (SEQ_time_has_right_still_frames(scene, seq)) {
-    strip_ctx.content_end = SEQ_time_content_end_frame_get(scene, seq);
-  }
-  /* Limit body to strip bounds. Meta strip can end up with content outside of strip range. */
-  strip_ctx.content_start = min_ff(strip_ctx.content_start,
-                                   SEQ_time_right_handle_frame_get(scene, seq));
-  strip_ctx.content_end = max_ff(strip_ctx.content_end,
-                                 SEQ_time_left_handle_frame_get(scene, seq));
   strip_ctx.left_handle = SEQ_time_left_handle_frame_get(scene, seq);
   strip_ctx.right_handle = SEQ_time_right_handle_frame_get(scene, seq);
+  strip_ctx.content_start = SEQ_time_start_frame_get(seq);
+  strip_ctx.content_end = SEQ_time_content_end_frame_get(scene, seq);
+
+  if (seq->type == SEQ_TYPE_SOUND_RAM && seq->sound != nullptr) {
+    /* Visualize sub-frame sound offsets. */
+    const double sound_offset = (seq->sound->offset_time + seq->sound_offset) * FPS;
+    strip_ctx.content_start += sound_offset;
+    strip_ctx.content_end += sound_offset;
+  }
+
+  /* Limit body to strip bounds. */
+  strip_ctx.content_start = min_ff(strip_ctx.content_start, strip_ctx.right_handle);
+  strip_ctx.content_end = max_ff(strip_ctx.content_end, strip_ctx.left_handle);
+
   strip_ctx.strip_length = strip_ctx.right_handle - strip_ctx.left_handle;
 
   strip_draw_context_set_text_overlay_visibility(ctx, &strip_ctx);
@@ -456,7 +459,8 @@ static void draw_seq_waveform_overlay(TimelineDrawContext *timeline_ctx,
   const float draw_end_frame = min_ff(v2d->cur.xmax,
                                       strip_ctx->right_handle - timeline_ctx->pixelx * 3.0f);
   /* Offset must be also aligned, otherwise waveform flickers when moving left handle. */
-  float sample_start_frame = draw_start_frame + seq->sound->offset_time / FPS;
+  float sample_start_frame = draw_start_frame -
+                             (seq->sound->offset_time + seq->sound_offset) * FPS;
 
   const int pixels_to_draw = round_fl_to_int((draw_end_frame - draw_start_frame) /
                                              frames_per_pixel);
@@ -603,7 +607,15 @@ static void drawmeta_contents(TimelineDrawContext *timeline_ctx,
   int chan_min = MAXSEQ;
   int chan_max = 0;
   int chan_range = 0;
-  float draw_range = strip_ctx->strip_content_top - strip_ctx->bottom;
+  /* Some vertical margin to account for rounded corners, so that contents do
+   * not draw outside them. Can be removed when meta contents are drawn with
+   * full rounded corners masking shader. */
+  const float bottom = strip_ctx->bottom + corner_radius * 0.8f * timeline_ctx->pixely;
+  const float top = strip_ctx->strip_content_top - corner_radius * 0.8f * timeline_ctx->pixely;
+  const float draw_range = top - bottom;
+  if (draw_range < timeline_ctx->pixely) {
+    return;
+  }
   float draw_height;
 
   Editing *ed = SEQ_editing_get(scene);
@@ -635,8 +647,8 @@ static void drawmeta_contents(TimelineDrawContext *timeline_ctx,
 
   col[3] = 196; /* Alpha, used for all meta children. */
 
-  const float meta_x1 = strip_ctx->left_handle + corner_radius * 0.8f * timeline_ctx->pixelx;
-  const float meta_x2 = strip_ctx->right_handle - corner_radius * 0.8f * timeline_ctx->pixelx;
+  const float meta_x1 = strip_ctx->left_handle;
+  const float meta_x2 = strip_ctx->right_handle;
 
   /* Draw only immediate children (1 level depth). */
   LISTBASE_FOREACH (Sequence *, seq, meta_seqbase) {
@@ -673,8 +685,8 @@ static void drawmeta_contents(TimelineDrawContext *timeline_ctx,
       x1_chan = max_ff(x1_chan, meta_x1);
       x2_chan = min_ff(x2_chan, meta_x2);
 
-      y1_chan = strip_ctx->bottom + y_chan + (draw_height * SEQ_STRIP_OFSBOTTOM);
-      y2_chan = strip_ctx->bottom + y_chan + (draw_height * SEQ_STRIP_OFSTOP);
+      y1_chan = bottom + y_chan + (draw_height * SEQ_STRIP_OFSBOTTOM);
+      y2_chan = bottom + y_chan + (draw_height * SEQ_STRIP_OFSTOP);
 
       timeline_ctx->quads->add_quad(x1_chan, y1_chan, x2_chan, y2_chan, col);
     }
@@ -713,7 +725,7 @@ static void draw_handle_transform_text(const TimelineDrawContext *timeline_ctx,
   const float text_y = strip_ctx->bottom + 0.09f;
   float text_x = strip_ctx->left_handle;
 
-  if (handle == SEQ_HANDLE_RIGHT) {
+  if (handle == SEQ_HANDLE_LEFT) {
     numstr_len = SNPRINTF_RLEN(numstr, "%d", int(strip_ctx->left_handle));
     text_x += text_margin;
   }
@@ -876,8 +888,10 @@ static void draw_icon_centered(TimelineDrawContext &ctx,
   UI_view2d_view_ortho(ctx.v2d);
   wmOrtho2_region_pixelspace(ctx.region);
 
-  const float icon_size = 16 * UI_SCALE_FAC;
-  if (BLI_rctf_size_x(&ctx.v2d->cur) < icon_size) {
+  const float icon_size = MISSING_ICON_SIZE * UI_SCALE_FAC;
+  if (BLI_rctf_size_x(&rect) * 1.1f < icon_size * ctx.pixelx ||
+      BLI_rctf_size_y(&rect) * 1.1f < icon_size * ctx.pixely)
+  {
     UI_view2d_view_restore(ctx.C);
     return;
   }
@@ -889,10 +903,12 @@ static void draw_icon_centered(TimelineDrawContext &ctx,
   const float x_offset = (right - left - icon_size) * 0.5f;
   const float y_offset = (top - bottom - icon_size) * 0.5f;
 
+  const float inv_scale_fac = (ICON_DEFAULT_HEIGHT / MISSING_ICON_SIZE) * UI_INV_SCALE_FAC;
+
   UI_icon_draw_ex(left + x_offset,
                   bottom + y_offset,
                   icon_id,
-                  UI_INV_SCALE_FAC,
+                  inv_scale_fac,
                   1.0f,
                   0.0f,
                   color,
@@ -1035,30 +1051,27 @@ static void draw_strip_offsets(TimelineDrawContext *timeline_ctx,
   UI_GetColorPtrShade3ubv(col, blend_col, 10);
   blend_col[3] = 255;
 
-  const int strip_start = SEQ_time_start_frame_get(seq);
-  const int strip_end = SEQ_time_content_end_frame_get(scene, seq);
-
-  if (strip_ctx->left_handle > strip_start) {
-    timeline_ctx->quads->add_quad(strip_start,
+  if (strip_ctx->left_handle > strip_ctx->content_start) {
+    timeline_ctx->quads->add_quad(strip_ctx->left_handle,
                                   strip_ctx->bottom - timeline_ctx->pixely,
                                   strip_ctx->content_start,
                                   strip_ctx->bottom - SEQ_STRIP_OFSBOTTOM,
                                   col);
-    timeline_ctx->quads->add_wire_quad(strip_start,
+    timeline_ctx->quads->add_wire_quad(strip_ctx->left_handle,
                                        strip_ctx->bottom - timeline_ctx->pixely,
                                        strip_ctx->content_start,
                                        strip_ctx->bottom - SEQ_STRIP_OFSBOTTOM,
                                        blend_col);
   }
-  if (strip_ctx->right_handle < strip_end) {
+  if (strip_ctx->right_handle < strip_ctx->content_end) {
     timeline_ctx->quads->add_quad(strip_ctx->right_handle,
                                   strip_ctx->top + timeline_ctx->pixely,
-                                  strip_end,
+                                  strip_ctx->content_end,
                                   strip_ctx->top + SEQ_STRIP_OFSBOTTOM,
                                   col);
     timeline_ctx->quads->add_wire_quad(strip_ctx->right_handle,
                                        strip_ctx->top + timeline_ctx->pixely,
-                                       strip_end,
+                                       strip_ctx->content_end,
                                        strip_ctx->top + SEQ_STRIP_OFSBOTTOM,
                                        blend_col);
   }
@@ -1460,6 +1473,20 @@ static void draw_strips_foreground(TimelineDrawContext *timeline_ctx,
   GPU_blend(GPU_BLEND_ALPHA);
 }
 
+static void draw_retiming_continuity_ranges(TimelineDrawContext *timeline_ctx,
+                                            const Vector<StripDrawContext> &strips)
+{
+  GPU_matrix_push_projection();
+  wmOrtho2_region_pixelspace(timeline_ctx->region);
+
+  for (const StripDrawContext &strip_ctx : strips) {
+    sequencer_retiming_draw_continuity(timeline_ctx, strip_ctx);
+  }
+  timeline_ctx->quads->draw();
+
+  GPU_matrix_pop_projection();
+}
+
 static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
                             StripsDrawBatch &strips_batch,
                             const Vector<StripDrawContext> &strips)
@@ -1494,9 +1521,9 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
                              timeline_ctx->pixelx,
                              timeline_ctx->pixely,
                              round_radius);
-    sequencer_retiming_draw_continuity(timeline_ctx, strip_ctx);
   }
-  timeline_ctx->quads->draw();
+  /* Draw retiming continuity ranges. */
+  draw_retiming_continuity_ranges(timeline_ctx, strips);
 
   /* Draw parts of strips above thumbnails. */
   GPU_blend(GPU_BLEND_ALPHA);
