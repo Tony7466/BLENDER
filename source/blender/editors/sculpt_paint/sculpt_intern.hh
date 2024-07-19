@@ -2102,6 +2102,18 @@ std::unique_ptr<SculptBoundary> data_init(Object &object,
                                           const Brush *brush,
                                           PBVHVertRef initial_vertex,
                                           float radius);
+std::unique_ptr<SculptBoundary> data_init(Object &object,
+                                          const Brush *brush,
+                                          int initial_vertex,
+                                          float radius);
+std::unique_ptr<SculptBoundary> data_init(Object &object,
+                                          const Brush *brush,
+                                          SubdivCCGCoord initial_vertex,
+                                          float radius);
+std::unique_ptr<SculptBoundary> data_init(Object &object,
+                                          const Brush *brush,
+                                          BMVert *initial_vertex,
+                                          float radius);
 std::unique_ptr<SculptBoundaryPreview> preview_data_init(Object &object,
                                                          const Brush *brush,
                                                          PBVHVertRef initial_vertex,
