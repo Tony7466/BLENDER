@@ -25,10 +25,11 @@ class IDRemapper;
 namespace blender::asset_system {
 
 class AssetIdentifier;
+class AssetLibrary;
 class AssetRepresentation;
 
 class AssetStorage {
-  using StorageT = Set<std::unique_ptr<AssetRepresentation>>;
+  using StorageT = Set<std::shared_ptr<AssetRepresentation>>;
 
   StorageT external_assets_;
   /* Store local ID assets separately for efficient lookups.
@@ -38,15 +39,15 @@ class AssetStorage {
 
  public:
   /** See #AssetLibrary::add_external_asset(). */
-  AssetRepresentation &add_external_asset(AssetIdentifier &&identifier,
-                                          StringRef name,
-                                          int id_type,
-                                          std::unique_ptr<AssetMetaData> metadata,
-                                          const AssetLibrary &owner_asset_library);
+  std::weak_ptr<AssetRepresentation> add_external_asset(AssetIdentifier &&identifier,
+                                                        StringRef name,
+                                                        int id_type,
+                                                        std::unique_ptr<AssetMetaData> metadata,
+                                                        const AssetLibrary &owner_asset_library);
   /** See #AssetLibrary::add_external_asset(). */
-  AssetRepresentation &add_local_id_asset(AssetIdentifier &&identifier,
-                                          ID &id,
-                                          const AssetLibrary &owner_asset_library);
+  std::weak_ptr<AssetRepresentation> add_local_id_asset(AssetIdentifier &&identifier,
+                                                        ID &id,
+                                                        const AssetLibrary &owner_asset_library);
 
   /** See #AssetLibrary::remove_asset(). */
   bool remove_asset(AssetRepresentation &asset);
