@@ -31,7 +31,7 @@
 #include "BLI_array.hh"
 #include "BLI_devirtualize_parameters.hh"
 #include "BLI_index_mask.hh"
-#include "BLI_polymorphic_value.hh"
+#include "BLI_inline_or_shared_polymorphic_value.hh"
 #include "BLI_span.hh"
 
 namespace blender {
@@ -455,7 +455,7 @@ inline constexpr bool
  */
 template<typename T> class VArrayCommon {
  protected:
-  PolymorphicValue<VArrayImpl<T>> impl_;
+  InlineOrSharedPolymorphicValue<VArrayImpl<T>> impl_;
 
  public:
   /** Return false when there is no virtual array implementation currently. */

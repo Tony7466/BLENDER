@@ -83,7 +83,7 @@ class GVMutableArray;
  */
 class GVArrayCommon {
  protected:
-  PolymorphicValue<GVArrayImpl> impl_;
+  InlineOrSharedPolymorphicValue<GVArrayImpl> impl_;
 
  public:
   const CPPType &type() const;

@@ -10,10 +10,10 @@ namespace blender {
 
 namespace detail {
 
-template<typename BaseT> struct PolymorphicValueAnyExtraInfo {
+template<typename BaseT> struct InlineOrSharedPolymorphicValueAnyExtraInfo {
   const BaseT *(*get_ptr)(const void *buffer);
 
-  template<typename StorageT> static constexpr PolymorphicValueAnyExtraInfo get()
+  template<typename StorageT> static constexpr InlineOrSharedPolymorphicValueAnyExtraInfo get()
   {
     static_assert(std::is_base_of_v<BaseT, StorageT> ||
                   is_same_any_v<StorageT, const BaseT *, std::shared_ptr<const BaseT>>);
@@ -36,51 +36,53 @@ template<typename BaseT> struct PolymorphicValueAnyExtraInfo {
 };
 }  // namespace detail
 
-template<typename BaseT> class PolymorphicValue {
+template<typename BaseT> class InlineOrSharedPolymorphicValue {
  private:
-  using Storage = Any<blender::detail::PolymorphicValueAnyExtraInfo<BaseT>, 24, 8>;
+  using Storage = Any<blender::detail::InlineOrSharedPolymorphicValueAnyExtraInfo<BaseT>, 24, 8>;
 
   const BaseT *ptr_ = nullptr;
   Storage storage_;
 
  public:
-  PolymorphicValue() = default;
+  InlineOrSharedPolymorphicValue() = default;
 
-  PolymorphicValue(const PolymorphicValue &other) : storage_(other.storage_)
+  InlineOrSharedPolymorphicValue(const InlineOrSharedPolymorphicValue &other)
+      : storage_(other.storage_)
   {
     ptr_ = this->ptr_from_storage();
   }
 
-  PolymorphicValue(PolymorphicValue &&other) noexcept : storage_(std::move(other.storage_))
+  InlineOrSharedPolymorphicValue(InlineOrSharedPolymorphicValue &&other) noexcept
+      : storage_(std::move(other.storage_))
   {
     ptr_ = this->ptr_from_storage();
     other.storage_.reset();
     other.ptr_ = nullptr;
   }
 
-  PolymorphicValue(const BaseT *ptr) : ptr_(ptr), storage_(ptr) {}
+  InlineOrSharedPolymorphicValue(const BaseT *ptr) : ptr_(ptr), storage_(ptr) {}
 
-  PolymorphicValue(std::shared_ptr<const BaseT> ptr) : ptr_(ptr.get())
+  InlineOrSharedPolymorphicValue(std::shared_ptr<const BaseT> ptr) : ptr_(ptr.get())
   {
     if (ptr) {
       storage_ = std::move(ptr);
     }
   }
 
-  PolymorphicValue &operator=(const PolymorphicValue &other)
+  InlineOrSharedPolymorphicValue &operator=(const InlineOrSharedPolymorphicValue &other)
   {
     if (this != &other) {
       std::destroy_at(this);
-      new (this) PolymorphicValue(other);
+      new (this) InlineOrSharedPolymorphicValue(other);
     }
     return *this;
   }
 
-  PolymorphicValue &operator=(PolymorphicValue &&other)
+  InlineOrSharedPolymorphicValue &operator=(InlineOrSharedPolymorphicValue &&other)
   {
     if (this != &other) {
       std::destroy_at(this);
-      new (this) PolymorphicValue(std::move(other));
+      new (this) InlineOrSharedPolymorphicValue(std::move(other));
     }
     return *this;
   }

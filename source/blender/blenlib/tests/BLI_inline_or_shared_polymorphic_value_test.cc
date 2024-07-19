@@ -2,7 +2,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0 */
 
-#include "BLI_polymorphic_value.hh"
+#include "BLI_inline_or_shared_polymorphic_value.hh"
 #include "testing/testing.h"
 
 #include "BLI_strict_flags.h" /* Keep last. */
@@ -38,7 +38,7 @@ class GetDynamic : public BaseIntGetter {
   }
 };
 
-using IntGetter = PolymorphicValue<BaseIntGetter>;
+using IntGetter = InlineOrSharedPolymorphicValue<BaseIntGetter>;
 
 TEST(polymorphic_value, Test)
 {
