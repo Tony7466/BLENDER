@@ -1500,9 +1500,6 @@ static bool transinfo_show_overlay(TransInfo *t, ARegion *region)
   /* Don't show overlays when not the active view and when overlay is disabled: #57139 */
   bool ok = false;
   if (region == t->region) {
-    ok = true;
-  }
-  else {
     if (t->spacetype == SPACE_VIEW3D) {
       View3D *v3d = static_cast<View3D *>(t->view);
       if ((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0) {
