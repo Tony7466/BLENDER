@@ -361,7 +361,9 @@ bool ensure_active_keyframe(bContext *C, GreasePencil &grease_pencil, bool &r_in
                                        GP_TOOL_FLAG_RETAIN_LAST) != 0;
     /* Eraser tool makes no sense on empty drawings, don't insert new frames. */
     const bool allow_empty_frame = (brush->gpencil_tool != GPAINT_TOOL_ERASE);
-    if (current_start_frame && (use_additive_drawing || !allow_empty_frame)) {
+    if (current_start_frame &&
+        (use_additive_drawing || !allow_empty_frame || (brush->gpencil_sculpt_tool != 0)))
+    {
       /* For additive drawing, we duplicate the frame that's currently visible and insert it at the
        * current frame.
        * NOTE: Also duplicate the frame when erasing, Otherwise empty drawing is added, see
