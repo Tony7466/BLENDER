@@ -252,6 +252,7 @@ static void action_foreach_id(ID *id, LibraryForeachIDData *data)
   }
 }
 
+#ifdef WITH_ANIM_BAKLAVA
 static void write_channelbag(BlendWriter *writer, animrig::ChannelBag &channelbag)
 {
   BLO_write_struct(writer, ActionChannelBag, &channelbag);
@@ -308,6 +309,7 @@ static void write_bindings(BlendWriter *writer, Span<animrig::Binding *> binding
     BLO_write_struct(writer, ActionBinding, binding);
   }
 }
+#endif /* WITH_ANIM_BAKLAVA */
 
 static void action_blend_write(BlendWriter *writer, ID *id, const void *id_address)
 {
@@ -316,9 +318,11 @@ static void action_blend_write(BlendWriter *writer, ID *id, const void *id_addre
   BLO_write_id_struct(writer, bAction, id_address, &action.id);
   BKE_id_blend_write(writer, &action.id);
 
+#ifdef WITH_ANIM_BAKLAVA
   /* Write layered Action data. */
   write_layers(writer, action.layers());
   write_bindings(writer, action.bindings());
+#endif
 
   /* Write legacy F-Curves & groups. */
   BKE_fcurve_blend_write_listbase(writer, &action.curves);
@@ -333,6 +337,7 @@ static void action_blend_write(BlendWriter *writer, ID *id, const void *id_addre
   BKE_previewimg_blend_write(writer, action.preview);
 }
 
+#ifdef WITH_ANIM_BAKLAVA
 static void read_channelbag(BlendDataReader *reader, animrig::ChannelBag &channelbag)
 {
   BLO_read_pointer_array(reader, reinterpret_cast<void **>(&channelbag.fcurve_array));
@@ -385,13 +390,24 @@ static void read_bindings(BlendDataReader *reader, animrig::Action &anim)
     BLO_read_struct(reader, ActionBinding, &anim.binding_array[i]);
   }
 }
+#endif /* WITH_ANIM_BAKLAVA */
 
 static void action_blend_read_data(BlendDataReader *reader, ID *id)
 {
   animrig::Action &action = reinterpret_cast<bAction *>(id)->wrap();
 
+#ifdef WITH_ANIM_BAKLAVA
   read_layers(reader, action);
   read_bindings(reader, action);
+#else
+  /* Built without Baklava, so do not read the layers, strips, bindings, etc.
+   * This ensures the F-Curves in the legacy `curves` ListBase are read & used
+   * (these are written by future Blender versions for forward compatibility). */
+  action.layer_array = nullptr;
+  action.layer_array_num = 0;
+  action.binding_array = nullptr;
+  action.binding_array_num = 0;
+#endif /* WITH_ANIM_BAKLAVA */
 
   /* Read legacy data. */
   BLO_read_struct_list(reader, FCurve, &action.curves);
