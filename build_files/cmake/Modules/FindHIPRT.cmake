@@ -39,6 +39,10 @@ include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(HIPRT DEFAULT_MSG
   HIPRT_INCLUDE_DIR)
 
+find_package_handle_standard_args(HIPRT
+    REQUIRED_VARS HIP_LINKER_EXECUTABLE)
+
+
 mark_as_advanced(
   HIPRT_INCLUDE_DIR
 )

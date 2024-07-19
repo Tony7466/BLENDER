@@ -11,7 +11,8 @@ get_filename_component(_hip_path ${_hip_path} DIRECTORY)
 set(HIPRT_EXTRA_ARGS
   -DCMAKE_BUILD_TYPE=Release
   -DHIP_PATH=${_hip_path}
-  -DBITCODE=OFF # revert back to ON once hiprt cmake is updated to skip bake kernel for BITCODE
+  -DBITCODE=ON
+  -DGENERATE_BAKE_KERNEL=OFF
   -DNO_UNITTEST=ON
   -DHIPRT_PREFER_HIP_5=ON
 )
