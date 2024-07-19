@@ -9,6 +9,7 @@ import os
 import shlex
 import sys
 from pathlib import Path
+from modules import render_report
 
 # List of .blend files that are known to be failing and are not ready to be
 # tested, or that only make sense on some devices. Accepts regular expressions.
@@ -69,7 +70,30 @@ BLOCKLIST_GPU = [
 ]
 
 
-def get_arguments(filepath, output_filepath):
+class Cycles_report(render_report.Report):
+    def __init__(self, title, output_dir, oiiotool, device=None, blocklist=[]):
+        self.use_hwrt = False
+        if device == "HIP-HWRT":
+            device = "HIP"
+            self.use_hwrt = True
+        if device == "ONEAPI-HWRT":
+            device = "ONEAPI"
+            self.use_hwrt = True
+        if device == "METAL-HWRT":
+            device = "METAL"
+            self.use_hwrt = True
+
+        super().__init__(title, output_dir, oiiotool, device, blocklist)
+
+        if self.use_hwrt:
+            self.title = self.title + " HWRT"
+            self.output_dir = self.output_dir + "_hwrt"
+
+    def _get_arguments(self, arguments_cb, filepath, base_output_filepath):
+        return arguments_cb(filepath, base_output_filepath, self.use_hwrt)
+
+
+def get_arguments(filepath, output_filepath, use_hwrt=False):
     dirname = os.path.dirname(filepath)
     basedir = os.path.dirname(dirname)
     subject = os.path.basename(dirname)
@@ -95,6 +119,14 @@ def get_arguments(filepath, output_filepath):
     spp_multiplier = os.getenv('CYCLESTEST_SPP_MULTIPLIER')
     if spp_multiplier:
         args.extend(["--python-expr", f"import bpy; bpy.context.scene.cycles.samples *= {spp_multiplier}"])
+
+    cycles_pref = "bpy.context.preferences.addons['cycles'].preferences"
+    if use_hwrt:
+        args.extend(
+            ["--python-expr", f"import bpy; {cycles_pref}.use_hiprt = True; {cycles_pref}.use_oneapirt = True; {cycles_pref}.metlrt = 'ON'"])
+    else:
+        args.extend(
+            ["--python-expr", f"import bpy; {cycles_pref}.use_hiprt = False; {cycles_pref}.use_oneapirt = False; {cycles_pref}.metlrt = 'OFF'"])
 
     if subject == 'bake':
         args.extend(['--python', os.path.join(basedir, "util", "render_bake.py")])
@@ -138,8 +170,7 @@ def main():
     if device == 'METAL':
         blocklist += BLOCKLIST_METAL
 
-    from modules import render_report
-    report = render_report.Report('Cycles', output_dir, oiiotool, device, blocklist)
+    report = Cycles_report('Cycles', output_dir, oiiotool, device, blocklist)
     report.set_pixelated(True)
     report.set_reference_dir("cycles_renders")
     if device == 'CPU':
