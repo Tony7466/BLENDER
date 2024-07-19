@@ -79,8 +79,9 @@ static void *drw_deferred_shader_compilation_exec(void *)
   BLI_assert(blender_gpu_context != nullptr);
 
   const bool use_main_context_workaround = GPU_use_main_context_workaround();
+  bool is_context_acquired = false;
   auto acquire_context = [&](bool force = false) {
-    if (!use_main_context_workaround && !force) {
+    if ((!use_main_context_workaround && !force) || is_context_acquired) {
       return;
     }
     GPU_render_begin();
@@ -90,9 +91,10 @@ static void *drw_deferred_shader_compilation_exec(void *)
     }
     WM_system_gpu_context_activate(system_gpu_context);
     GPU_context_active_set(blender_gpu_context);
+    is_context_acquired = true;
   };
   auto release_context = [&](bool force = false) {
-    if (!use_main_context_workaround && !force) {
+    if ((!use_main_context_workaround && !force) || !is_context_acquired) {
       return;
     }
     GPU_context_active_set(nullptr);
@@ -101,6 +103,7 @@ static void *drw_deferred_shader_compilation_exec(void *)
       GPU_context_main_unlock();
     }
     GPU_render_end();
+    is_context_acquired = false;
   };
 
   acquire_context(true);
@@ -127,6 +130,7 @@ static void *drw_deferred_shader_compilation_exec(void *)
     BLI_spin_unlock(&compiler_data.list_lock);
 
     if (mat) {
+      acquire_context();
       /* We have a new material that must be compiled,
        * we either compile it directly or add it to a parallel compilation batch. */
       if (use_parallel_compilation) {
@@ -176,6 +180,7 @@ static void *drw_deferred_shader_compilation_exec(void *)
       BLI_spin_unlock(&compiler_data.list_lock);
 
       if (optimize_mat) {
+        acquire_context();
         /* Compile optimized material shader. */
         GPU_material_optimize(optimize_mat);
         GPU_material_release(optimize_mat);
@@ -185,11 +190,12 @@ static void *drw_deferred_shader_compilation_exec(void *)
         /* No more materials to optimize, or shaders to compile. */
         release_context();
         BLI_time_sleep_ms(1);
-        acquire_context();
       }
     }
 
-    if (GPU_type_matches_ex(GPU_DEVICE_ANY, GPU_OS_ANY, GPU_DRIVER_ANY, GPU_BACKEND_OPENGL)) {
+    if (is_context_acquired &&
+        GPU_type_matches_ex(GPU_DEVICE_ANY, GPU_OS_ANY, GPU_DRIVER_ANY, GPU_BACKEND_OPENGL))
+    {
       GPU_flush();
     }
   }
@@ -299,6 +305,10 @@ static void drw_deferred_shader_add(GPUMaterial *mat, bool deferred)
   if (G.debug & G_DEBUG_GPU_RENDERDOC &&
       GPU_type_matches(GPU_DEVICE_NVIDIA, GPU_OS_ANY, GPU_DRIVER_OFFICIAL))
   {
+    deferred = false;
+  }
+
+  if (GPU_use_main_context_workaround() && !BLI_thread_is_main()) {
     deferred = false;
   }
 
