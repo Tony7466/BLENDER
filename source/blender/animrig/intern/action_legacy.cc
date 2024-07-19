@@ -7,8 +7,6 @@
 
 namespace blender::animrig::legacy {
 
-constexpr const char *layer_default_name = "Layer";
-
 static KeyframeStrip *first_keyframe_strip(Action &action)
 {
   for (Layer *layer : action.layers()) {
@@ -38,6 +36,9 @@ ChannelBag *channelbag_get(Action &action)
 
 ChannelBag &channelbag_ensure(Action &action)
 {
+  assert_baklava_phase_1_invariants(action);
+
+  /* Ensure a Slot. */
   Slot *slot;
   if (action.slots().is_empty()) {
     slot = &action.slot_add();
@@ -46,26 +47,18 @@ ChannelBag &channelbag_ensure(Action &action)
     slot = action.slot(0);
   }
 
-  KeyframeStrip *keystrip = first_keyframe_strip(action);
-  if (!keystrip) {
-    /* There are two scenarios now: there are no layers, or there are layers but
-     * none have a keyframe strip. The good thing is that we can just add a
-     * KeyframeStrip to the bottom-most empty layer without trouble, as that'll be
-     * reliably found by first_keyframe_strip(). */
-    for (Layer *layer : action.layers()) {
-      if (layer->strips().is_empty()) {
-        keystrip = &layer->strip_add<KeyframeStrip>();
-        break;
-      }
-    }
-  }
-  if (!keystrip) {
-    /* Either there were no layers, or none of them had space for a KeyframeStrip. */
-    Layer &layer = action.layer_add(layer_default_name);
-    keystrip = &layer.strip_add<KeyframeStrip>();
-  }
+  /* Ensure a Layer. */
+  action.layer_ensure_at_least_one();
+  Layer *layer = action.layer(0);
 
-  return keystrip->channelbag_for_slot_ensure(*slot);
+  /* Ensure a Strip. */
+  if (layer->strips().is_empty()) {
+    layer->strip_add<KeyframeStrip>();
+  }
+  KeyframeStrip &keystrip = layer->strip(0)->as<KeyframeStrip>();
+
+  /* Ensure a ChannelBag. */
+  return keystrip.channelbag_for_slot_ensure(*slot);
 }
 
 }  // namespace blender::animrig::legacy
