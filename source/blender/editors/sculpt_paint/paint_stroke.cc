@@ -1495,7 +1495,7 @@ int paint_stroke_modal(bContext *C, wmOperator *op, const wmEvent *event, PaintS
 
     if (paint_supports_smooth_stroke(stroke, *br, mode)) {
       stroke->stroke_cursor = WM_paint_cursor_activate(
-          SPACE_TYPE_ANY, RGN_TYPE_ANY, paint_brush_tool_poll, paint_draw_smooth_cursor, stroke);
+          SPACE_TYPE_ANY, RGN_TYPE_ANY, paint_brush_cursor_poll, paint_draw_smooth_cursor, stroke);
     }
 
     stroke->stroke_init = true;
@@ -1521,7 +1521,7 @@ int paint_stroke_modal(bContext *C, wmOperator *op, const wmEvent *event, PaintS
 
       if (br->flag & BRUSH_LINE) {
         stroke->stroke_cursor = WM_paint_cursor_activate(
-            SPACE_TYPE_ANY, RGN_TYPE_ANY, paint_brush_tool_poll, paint_draw_line_cursor, stroke);
+            SPACE_TYPE_ANY, RGN_TYPE_ANY, paint_brush_cursor_poll, paint_draw_line_cursor, stroke);
       }
 
       first_dab = true;
@@ -1698,7 +1698,7 @@ bool paint_stroke_started(PaintStroke *stroke)
   return stroke->stroke_started;
 }
 
-bool paint_brush_tool_poll(bContext *C)
+static const bToolRef *brush_tool_get(const bContext *C)
 {
   Paint *paint = BKE_paint_get_active_from_context(C);
   Object *ob = CTX_data_active_object(C);
@@ -1709,13 +1709,27 @@ bool paint_brush_tool_poll(bContext *C)
       (area && ELEM(area->spacetype, SPACE_VIEW3D, SPACE_IMAGE)) &&
       (region && region->regiontype == RGN_TYPE_WINDOW))
   {
-    /* Check the current tool is a brush. */
-    bToolRef *tref = area->runtime.tool;
-    if (tref && tref->runtime && tref->runtime->data_block[0]) {
-      return true;
-    }
+    return area->runtime.tool;
   }
-  return false;
+  return nullptr;
+}
+
+bool paint_brush_tool_poll(bContext *C)
+{
+  /* Check the current tool is a brush. */
+  const bToolRef *tref = brush_tool_get(C);
+  return tref && tref->runtime && tref->runtime->data_block[0];
+}
+
+bool paint_brush_cursor_poll(bContext *C)
+{
+  const bToolRef *tref = brush_tool_get(C);
+  if (!(tref && tref->runtime)) {
+    return false;
+  }
+
+  const bool tool_defines_cursor = tref->runtime->cursor != WM_CURSOR_DEFAULT;
+  return tref->runtime->data_block[0] && !tool_defines_cursor;
 }
 
 }  // namespace blender::ed::sculpt_paint

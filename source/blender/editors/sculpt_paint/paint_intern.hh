@@ -135,7 +135,10 @@ void paint_stroke_set_mode_data(PaintStroke *stroke, std::unique_ptr<PaintModeDa
 
 bool paint_stroke_started(PaintStroke *stroke);
 
+/** Returns true if the active tool uses brushes. */
 bool paint_brush_tool_poll(bContext *C);
+/** Returns true if the brush cursor should be activated. */
+bool paint_brush_cursor_poll(bContext *C);
 
 void BRUSH_OT_asset_activate(wmOperatorType *ot);
 void BRUSH_OT_asset_save_as(wmOperatorType *ot);
