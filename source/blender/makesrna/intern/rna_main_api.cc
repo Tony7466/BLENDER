@@ -758,7 +758,8 @@ static GreasePencil *rna_Main_grease_pencils_new(Main *bmain, const char *name)
   char safe_name[MAX_ID_NAME - 2];
   rna_idname_validate(name, safe_name);
 
-  GreasePencil *grease_pencil = static_cast<GreasePencil *>(BKE_grease_pencil_add(bmain, safe_name));
+  GreasePencil *grease_pencil = static_cast<GreasePencil *>(
+      BKE_grease_pencil_add(bmain, safe_name));
   id_us_min(&grease_pencil->id);
 
   WM_main_add_notifier(NC_ID | NA_ADDED, nullptr);
