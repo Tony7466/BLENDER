@@ -36,9 +36,11 @@ template<typename BaseT> struct InlineOrSharedPolymorphicValueAnyExtraInfo {
 };
 }  // namespace detail
 
-template<typename BaseT> class InlineOrSharedPolymorphicValue {
+template<typename BaseT, int64_t InlineBufferCapacity = 24> class InlineOrSharedPolymorphicValue {
  private:
-  using Storage = Any<blender::detail::InlineOrSharedPolymorphicValueAnyExtraInfo<BaseT>, 24, 8>;
+  using Storage = Any<blender::detail::InlineOrSharedPolymorphicValueAnyExtraInfo<BaseT>,
+                      InlineBufferCapacity,
+                      8>;
 
   const BaseT *ptr_ = nullptr;
   Storage storage_;
@@ -117,12 +119,26 @@ template<typename BaseT> class InlineOrSharedPolymorphicValue {
 
   const BaseT *operator->() const
   {
+    BLI_assert(*this);
     return this->ptr();
   }
 
   BaseT *operator->()
   {
+    BLI_assert(*this);
     return this->ptr();
+  }
+
+  const BaseT &operator*() const
+  {
+    BLI_assert(*this);
+    return *this->ptr();
+  }
+
+  BaseT &operator*()
+  {
+    BLI_assert(*this);
+    return *this->ptr();
   }
 
  private:
