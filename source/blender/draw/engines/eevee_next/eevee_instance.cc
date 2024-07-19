@@ -515,10 +515,8 @@ void Instance::render_frame(RenderLayer *render_layer, const char *view_name)
 
   while (!sampling.finished()) {
     if (materials.queued_shaders_count > 0) {
+      BLI_time_sleep_ms(1);
       this->render_sync();
-      DRW_render_context_disable(render->re);
-      /* Allow the viewport to grab the ticket mutex. */
-      DRW_render_context_enable(render->re);
       continue;
     }
 
