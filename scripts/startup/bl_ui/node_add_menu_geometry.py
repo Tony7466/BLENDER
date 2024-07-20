@@ -302,6 +302,8 @@ class NODE_MT_geometry_node_GEO_INPUT_SCENE(Menu):
             node_add_menu.add_node_type(layout, "GeometryNodeToolMousePosition")
         node_add_menu.add_node_type(layout, "GeometryNodeObjectInfo")
         node_add_menu.add_node_type(layout, "GeometryNodeInputSceneTime")
+        if context.space_data.geometry_nodes_type == 'TOOL':
+            node_add_menu.add_node_type(layout, "GeometryNodeToolRandomSeed")
         node_add_menu.add_node_type(layout, "GeometryNodeSelfObject")
         if context.space_data.geometry_nodes_type == 'TOOL':
             node_add_menu.add_node_type(layout, "GeometryNodeViewportTransform")
