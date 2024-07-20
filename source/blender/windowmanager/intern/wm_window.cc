@@ -1005,16 +1005,18 @@ wmWindow *WM_window_open(bContext *C,
     /* Positioned absolutely within parent bounds. */
   }
 
-  /* When position is saved in user preferences, restore the window position and size. */
-  if (stored_position) {
-    wm_window_restore_position(stored_position, &rect.xmin, &rect.ymin, &sizex, &sizey);
-  }
-
   rect.xmax = rect.xmin + sizex;
   rect.ymax = rect.ymin + sizey;
 
   /* Changes rect to fit within desktop. */
   wm_window_check_size(&rect);
+
+  /* When position is saved in user preferences, restore the window position and size. */
+  if (stored_position) {
+    wm_window_restore_position(stored_position, &rect.xmin, &rect.ymin, &sizex, &sizey);
+    rect.xmax = rect.xmin + sizex;
+    rect.ymax = rect.ymin + sizey;
+  }
 
   /* Reuse temporary windows when they share the same single area. */
   wmWindow *win = nullptr;
