@@ -626,6 +626,93 @@ struct GetGridValueFn {
   }
 };
 
+using ProcessLeafFn =
+    FunctionRef<void(const IndexMask &mask, const openvdb::CoordBBox &leaf_bbox)>;
+using ProcessTilesFn = FunctionRef<void(Span<openvdb::CoordBBox> tiles)>;
+using ProcessVoxelsFn = FunctionRef<void(Span<openvdb::Coord> voxels)>;
+
+template<typename LeafNodeT>
+static void parallel_grid_topology_tasks_leaf_node(const LeafNodeT &node,
+                                                   const ProcessLeafFn process_leaf_fn,
+                                                   const ProcessVoxelsFn process_voxels_fn)
+{
+  using NodeMaskT = typename LeafNodeT::NodeMaskType;
+
+  const bool use_leaf_processing = false;
+  if (use_leaf_processing) {
+    const NodeMaskT &value_mask = node.getValueMask();
+    IndexMaskMemory memory;
+    /* TODO: Build directly from bits. */
+    const IndexMask index_mask = IndexMask::from_predicate(
+        IndexRange(NodeMaskT::SIZE), GrainSize(NodeMaskT::SIZE), memory, [&](const int64_t i) {
+          return value_mask.isOn(i);
+        });
+    const openvdb::CoordBBox bbox = node.getNodeBoundingBox();
+    process_leaf_fn(index_mask, bbox);
+  }
+  else {
+    Vector<openvdb::Coord> voxels;
+    for (auto value_iter = node.cbeginValueOn(); value_iter.test(); ++value_iter) {
+      const openvdb::Coord coord = value_iter.getCoord();
+      voxels.append(coord);
+    }
+    process_voxels_fn(voxels);
+  }
+}
+
+template<typename InternalNodeT>
+static void parallel_grid_topology_tasks_internal_node(const InternalNodeT &node,
+                                                       const ProcessLeafFn process_leaf_fn,
+                                                       const ProcessVoxelsFn process_voxels_fn,
+                                                       const ProcessTilesFn process_tiles_fn)
+{
+  using ChildNodeT = typename InternalNodeT::ChildNodeType;
+  using LeafNodeT = typename InternalNodeT::LeafNodeType;
+  using NodeMaskT = typename InternalNodeT::NodeMaskType;
+  using UnionT = typename InternalNodeT::UnionType;
+
+  const NodeMaskT &child_mask = node.getChildMask();
+  const UnionT *table = node.getTable();
+  for (auto child_mask_iter = child_mask.beginOn(); child_mask_iter.test(); ++child_mask_iter) {
+    const openvdb::Index32 index = child_mask_iter.pos();
+    const ChildNodeT &child = *table[index].getChild();
+    if constexpr (std::is_same_v<ChildNodeT, LeafNodeT>) {
+      parallel_grid_topology_tasks_leaf_node(child, process_leaf_fn, process_voxels_fn);
+    }
+    else {
+      parallel_grid_topology_tasks_internal_node(
+          child, process_leaf_fn, process_voxels_fn, process_tiles_fn);
+    }
+  }
+
+  const NodeMaskT &value_mask = node.getValueMask();
+  Vector<openvdb::CoordBBox> tile_bboxes;
+  for (auto value_mask_iter = value_mask.beginOn(); value_mask_iter.test(); ++value_mask_iter) {
+    const openvdb::Index32 index = value_mask_iter.pos();
+    const openvdb::Coord tile_origin = node.offsetToGlobalCoord(index);
+    const openvdb::CoordBBox tile_bbox = openvdb::CoordBBox::createCube(tile_origin,
+                                                                        ChildNodeT::DIM);
+    tile_bboxes.append(tile_bbox);
+  }
+  if (!tile_bboxes.is_empty()) {
+    process_tiles_fn(tile_bboxes);
+  }
+}
+
+static void parallel_grid_topology_tasks(const openvdb::MaskTree &mask_tree,
+                                         const ProcessLeafFn process_leaf_fn,
+                                         const ProcessVoxelsFn process_voxels_fn,
+                                         const ProcessTilesFn process_tiles_fn)
+{
+  for (auto root_child_iter = mask_tree.cbeginRootChildren(); root_child_iter.test();
+       ++root_child_iter)
+  {
+    const auto &internal_node = *root_child_iter;
+    parallel_grid_topology_tasks_internal_node(
+        internal_node, process_leaf_fn, process_voxels_fn, process_tiles_fn);
+  }
+}
+
 static void execute_multi_function_on_value_variant__volume_grid(
     const MultiFunction &fn,
     const Span<SocketValueVariant *> input_values,
@@ -681,6 +768,24 @@ static void execute_multi_function_on_value_variant__volume_grid(
     bke::GVolumeGrid output_grid{std::move(vdb_grid)};
     output_grids.append(std::move(output_grid));
   }
+
+  parallel_grid_topology_tasks(
+      mask_tree,
+      [&](const IndexMask &mask, const openvdb::CoordBBox &leaf_bbox) {
+        // std::cout << "Process Leaf: " << leaf_bbox << " - " << mask << "\n";
+      },
+      [&](const Span<openvdb::Coord> voxels) {
+        // std::cout << "Process Voxels:\n";
+        // for (const openvdb::Coord &coord : voxels) {
+        //   std::cout << "  " << coord << "\n";
+        // }
+      },
+      [&](const Span<openvdb::CoordBBox> tiles) {
+        // std::cout << "Process Tiles:\n";
+        // for (const openvdb::CoordBBox &bbox : tiles) {
+        //   std::cout << "  " << bbox << "\n";
+        // }
+      });
 
   for (auto iter = mask_tree.cbeginValueOn(); iter.test(); ++iter) {
     const IndexMask mask(1);
