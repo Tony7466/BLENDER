@@ -102,13 +102,36 @@ void draw_curve(const std::string &label,
   if (!draw_append) {
     f << "<!DOCTYPE html>\n";
 
-    f << "<style>\n"
-         "div\n"
+    f << "<style>\n";
+
+    f << "div\n"
          "{\n"
          "  border: 5px solid black;\n"
          "  text-align: center;\n"
-         "}\n"
-         "</style>\n";
+         "}\n";
+
+    f << ".polygon-A {\n"
+         "  fill: none;\n"
+         "  stroke: red;\n"
+         "  stroke-width: "
+      << stroke_width
+      << ";\n"
+         "}\n";
+
+    f << ".polygon-B {\n"
+         "  fill: none;\n"
+         "  stroke: blue;\n"
+         "  stroke-width: "
+      << stroke_width
+      << ";\n"
+         "}\n";
+
+    f << ".polygon-C {\n"
+         "  fill: green;\n"
+         "  stroke: none;\n"
+         "}\n";
+
+    f << "</style>\n";
   }
 
   f << "<div>\n";
@@ -116,7 +139,7 @@ void draw_curve(const std::string &label,
 
   f << "<svg width=\"" << view_width << "\" height=\"" << view_height << "\">\n";
 
-  f << "<polygon fill = \"green\" stroke =\"none\" "
+  f << "<polygon class = \"polygon-C\" "
        "points =\"";
   for (const int i : result.verts.index_range()) {
     const Vertex &vert = result.verts[i];
@@ -146,10 +169,7 @@ void draw_curve(const std::string &label,
   }
   f << "\"/>\n";
 
-  f << "<polygon fill = \"none\" stroke =\"red\" "
-       "stroke-width=\""
-    << stroke_width
-    << "\" "
+  f << "<polygon class = \"polygon-A\" "
        "points =\"";
   for (const int i : curve_a.index_range()) {
     const float2 &point = curve_a[i];
@@ -160,10 +180,7 @@ void draw_curve(const std::string &label,
   }
   f << "\"/>\n";
 
-  f << "<polygon fill = \"none\" stroke =\"blue\" "
-       "stroke-width=\""
-    << stroke_width
-    << "\" "
+  f << "<polygon class = \"polygon-B\" "
        "points =\"";
   for (const int i : curve_b.index_range()) {
     const float2 &point = curve_b[i];
