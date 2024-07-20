@@ -620,8 +620,10 @@ template<typename Fn> static void to_typed_grid(openvdb::GridBase &grid_base, Fn
 }
 
 using LeafNodeMask = openvdb::util::NodeMask<3u>;
-using ProcessLeafFn =
-    FunctionRef<void(const LeafNodeMask &leaf_node_mask, const openvdb::CoordBBox &leaf_bbox)>;
+using GetVoxelsFn = FunctionRef<void(MutableSpan<openvdb::Coord> r_voxels)>;
+using ProcessLeafFn = FunctionRef<void(const LeafNodeMask &leaf_node_mask,
+                                       const openvdb::CoordBBox &leaf_bbox,
+                                       GetVoxelsFn get_voxels_fn)>;
 using ProcessTilesFn = FunctionRef<void(Span<openvdb::CoordBBox> tiles)>;
 using ProcessVoxelsFn = FunctionRef<void(Span<openvdb::Coord> voxels)>;
 
@@ -707,10 +709,14 @@ static void parallel_grid_topology_tasks_leaf_node(const LeafNodeT &node,
 
   const int on_count = node.onVoxelCount();
   const int on_count_threshold = 50;
-  if (on_count >= on_count_threshold && false) {
+  if (on_count >= on_count_threshold) {
     const NodeMaskT &value_mask = node.getValueMask();
     const openvdb::CoordBBox bbox = node.getNodeBoundingBox();
-    process_leaf_fn(value_mask, bbox);
+    process_leaf_fn(value_mask, bbox, [&](MutableSpan<openvdb::Coord> r_voxels) {
+      for (auto value_iter = node.cbeginValueOn(); value_iter.test(); ++value_iter) {
+        r_voxels[value_iter.pos()] = value_iter.getCoord();
+      }
+    });
   }
   else {
     for (auto value_iter = node.cbeginValueOn(); value_iter.test(); ++value_iter) {
@@ -795,8 +801,10 @@ BLI_NOINLINE static void process_leaf_node(const MultiFunction &fn,
                                            const Span<SocketValueVariant *> output_values,
                                            const Span<const openvdb::GridBase *> input_grids,
                                            MutableSpan<openvdb::GridBase::Ptr> output_grids,
+                                           const openvdb::math::Transform &transform,
                                            const LeafNodeMask &leaf_node_mask,
-                                           const openvdb::CoordBBox &leaf_bbox)
+                                           const openvdb::CoordBBox &leaf_bbox,
+                                           const GetVoxelsFn get_voxels_fn)
 {
   IndexMaskMemory memory;
   const IndexMask index_mask = IndexMask::from_predicate(
@@ -850,7 +858,15 @@ BLI_NOINLINE static void process_leaf_node(const MultiFunction &fn,
       });
     }
     else if (value_variant.is_context_dependent_field()) {
-      /* TODO */
+      const GField field = value_variant.get<GField>();
+      Array<openvdb::Coord> voxels(index_mask.min_array_size());
+      get_voxels_fn(voxels);
+      VoxelFieldContext field_context{transform, voxels};
+      FieldEvaluator evaluator{field_context, &index_mask};
+      MutableSpan<float3> values = scope.linear_allocator().allocate_array<float3>(voxels.size());
+      evaluator.add_with_destination(field, values);
+      evaluator.evaluate();
+      params.add_readonly_single_input(values.as_span());
     }
     else {
       params.add_readonly_single_input(value_variant.get_single_ptr());
@@ -1142,9 +1158,18 @@ static void execute_multi_function_on_value_variant__volume_grid(
 
   parallel_grid_topology_tasks(
       mask_tree,
-      [&](const LeafNodeMask &leaf_node_mask, const openvdb::CoordBBox &leaf_bbox) {
-        process_leaf_node(
-            fn, input_values, output_values, input_grids, output_grids, leaf_node_mask, leaf_bbox);
+      [&](const LeafNodeMask &leaf_node_mask,
+          const openvdb::CoordBBox &leaf_bbox,
+          const GetVoxelsFn get_voxels_fn) {
+        process_leaf_node(fn,
+                          input_values,
+                          output_values,
+                          input_grids,
+                          output_grids,
+                          *transform,
+                          leaf_node_mask,
+                          leaf_bbox,
+                          get_voxels_fn);
       },
       [&](const Span<openvdb::Coord> voxels) {
         process_voxels(
