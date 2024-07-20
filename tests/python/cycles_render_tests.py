@@ -148,7 +148,7 @@ class Cycles_Report(render_report.Report):
         if osl:
             self.title += " OSL"
 
-    def _command_arguments(self, arguments_cb, filepath, base_output_filepath):
+    def _get_render_arguments(self, arguments_cb, filepath, base_output_filepath):
         return arguments_cb(filepath, base_output_filepath, self.osl)
 
 

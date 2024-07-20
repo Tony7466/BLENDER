@@ -458,7 +458,7 @@ class Report:
 
         return not failed
 
-    def _command_arguments(self, arguments_cb, filepath, base_output_filepath):
+    def _get_render_arguments(self, arguments_cb, filepath, base_output_filepath):
         # Each render test can override this method to provide extra functionality.
         # See Cycles render tests for an example.
         # Do not delete.
@@ -488,7 +488,7 @@ class Report:
                 if os.path.exists(output_filepath):
                     os.remove(output_filepath)
 
-                command.extend(self._command_arguments(arguments_cb, filepath, base_output_filepath))
+                command.extend(self._get_render_arguments(arguments_cb, filepath, base_output_filepath))
 
                 # Only chain multiple commands for batch
                 if not batch:
