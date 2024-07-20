@@ -114,10 +114,7 @@ void draw_curve(const std::string &label,
   f << "<div>\n";
   f << "<h1>" << label << "</h1>\n";
 
-  f << "<svg version=\"1.1\" "
-       "xmlns=\"http://www.w3.org/2000/svg\" "
-       "xmlns:xlink=\"http://www.w3.org/1999/xlink\" "
-    << "width=\"" << view_width << "\" height=\"" << view_height << "\">\n";
+  f << "<svg width=\"" << view_width << "\" height=\"" << view_height << "\">\n";
 
   f << "<polygon fill = \"green\" stroke =\"none\" "
        "points =\"";
