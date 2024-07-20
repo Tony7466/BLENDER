@@ -41,6 +41,7 @@ void draw_curve(const std::string &label,
 #endif
   constexpr int max_draw_width = 800;
   constexpr int max_draw_height = 600;
+  constexpr int border_width = 5;
   constexpr int stroke_width = 3;
 
   float2 vmin(1e10, 1e10);
@@ -106,7 +107,9 @@ void draw_curve(const std::string &label,
 
     f << "div\n"
          "{\n"
-         "  border: 5px solid black;\n"
+         "  border: "
+      << border_width
+      << "px solid black;\n"
          "  text-align: center;\n"
          "}\n";
 
@@ -115,7 +118,7 @@ void draw_curve(const std::string &label,
          "  stroke: red;\n"
          "  stroke-width: "
       << stroke_width
-      << ";\n"
+      << "px;\n"
          "}\n";
 
     f << ".polygon-B {\n"
@@ -123,7 +126,7 @@ void draw_curve(const std::string &label,
          "  stroke: blue;\n"
          "  stroke-width: "
       << stroke_width
-      << ";\n"
+      << "px;\n"
          "}\n";
 
     f << ".polygon-C {\n"
