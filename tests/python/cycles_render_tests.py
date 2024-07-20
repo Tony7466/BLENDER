@@ -91,7 +91,7 @@ class Cycles_report(render_report.Report):
             self.title = self.title + " HWRT"
             self.output_dir = self.output_dir + "_hwrt"
 
-    def _get_arguments(self, arguments_cb, filepath, base_output_filepath):
+    def _get_render_arguments(self, arguments_cb, filepath, base_output_filepath):
         return arguments_cb(filepath, base_output_filepath, self.use_hwrt)
 
 
