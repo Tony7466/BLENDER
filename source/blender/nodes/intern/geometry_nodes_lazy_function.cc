@@ -583,54 +583,120 @@ static void execute_multi_function_on_value_variant__field(
   }
 }
 
-struct MaskGridUnionFn {
-  openvdb::MaskTree &mask;
-  const openvdb::TreeBase &input_vdb_tree;
+template<typename GridT>
+static constexpr bool is_supported_grid_type = is_same_any_v<GridT,
+                                                             openvdb::FloatGrid,
+                                                             openvdb::Vec3fGrid,
+                                                             openvdb::BoolGrid,
+                                                             openvdb::Int32Grid,
+                                                             openvdb::Vec4fGrid>;
 
-  template<typename GridT> void operator()()
-  {
-    using TreeT = typename GridT::TreeType;
-    const TreeT &typed_input_vdb_tree = static_cast<const TreeT &>(this->input_vdb_tree);
-    this->mask.topologyUnion(typed_input_vdb_tree);
-  }
-};
-
-struct BuildOutputGridFn {
-  const openvdb::MaskTree &mask;
-  openvdb::GridBase::Ptr vdb_grid;
-
-  template<typename GridT> void operator()()
-  {
-    using TreeT = typename GridT::TreeType;
-    using ValueType = typename TreeT::ValueType;
-    const ValueType background{};
-    typename TreeT::Ptr tree = std::make_shared<TreeT>(mask, background, openvdb::TopologyCopy{});
-    this->vdb_grid = openvdb::createGrid(std::move(tree));
-  }
-};
-
-struct GetGridValueFn {
-  openvdb::math::Coord coord;
-  const openvdb::TreeBase &tree;
-  mf::ParamsBuilder &params;
-
-  template<typename GridT> void operator()()
-  {
-    using TreeT = typename GridT::TreeType;
-    if constexpr (std::is_same_v<GridT, openvdb::FloatGrid>) {
-      const TreeT &typed_tree = static_cast<const TreeT &>(this->tree);
-      const auto vdb_value = typed_tree.getValue(this->coord);
-      const float blender_value = vdb_value;
-      params.add_readonly_single_input_value(blender_value);
+template<typename Fn> static void to_typed_grid(const openvdb::GridBase &grid_base, Fn &&fn)
+{
+  const VolumeGridType grid_type = bke::volume_grid::get_type(grid_base);
+  BKE_volume_grid_type_to_static_type(grid_type, [&](auto type_tag) {
+    using GridT = typename decltype(type_tag)::type;
+    if constexpr (is_supported_grid_type<GridT>) {
+      fn(static_cast<const GridT &>(grid_base));
     }
-  }
-};
+    else {
+      BLI_assert_unreachable();
+    }
+  });
+}
 
-using LeafNodeMask = openvdb::FloatTree::LeafNodeType::NodeMaskType;
+template<typename Fn> static void to_typed_grid(openvdb::GridBase &grid_base, Fn &&fn)
+{
+  const VolumeGridType grid_type = bke::volume_grid::get_type(grid_base);
+  BKE_volume_grid_type_to_static_type(grid_type, [&](auto type_tag) {
+    using GridT = typename decltype(type_tag)::type;
+    if constexpr (is_supported_grid_type<GridT>) {
+      fn(static_cast<GridT &>(grid_base));
+    }
+    else {
+      BLI_assert_unreachable();
+    }
+  });
+}
+
+using LeafNodeMask = openvdb::util::NodeMask<3u>;
 using ProcessLeafFn =
     FunctionRef<void(const LeafNodeMask &leaf_node_mask, const openvdb::CoordBBox &leaf_bbox)>;
 using ProcessTilesFn = FunctionRef<void(Span<openvdb::CoordBBox> tiles)>;
 using ProcessVoxelsFn = FunctionRef<void(Span<openvdb::Coord> voxels)>;
+
+class VoxelFieldContext : public FieldContext {
+ private:
+  const openvdb::math::Transform &transform_;
+  Span<openvdb::Coord> voxels_;
+
+ public:
+  VoxelFieldContext(const openvdb::math::Transform &transform, const Span<openvdb::Coord> voxels)
+      : transform_(transform), voxels_(voxels)
+  {
+  }
+
+  GVArray get_varray_for_input(const FieldInput &field_input,
+                               const IndexMask & /*mask*/,
+                               ResourceScope & /*scope*/) const override
+  {
+    const bke::AttributeFieldInput *attribute_field_input =
+        dynamic_cast<const bke::AttributeFieldInput *>(&field_input);
+    if (attribute_field_input == nullptr) {
+      return {};
+    }
+    if (attribute_field_input->attribute_name() != "position") {
+      return {};
+    }
+
+    Array<float3> positions(voxels_.size());
+    threading::parallel_for(positions.index_range(), 1024, [&](const IndexRange range) {
+      for (const int64_t i : range) {
+        const openvdb::Coord &voxel = voxels_[i];
+        const openvdb::Vec3d center = transform_.indexToWorld(voxel);
+        positions[i] = float3(center.x(), center.y(), center.z());
+      }
+    });
+    return VArray<float3>::ForContainer(std::move(positions));
+  }
+};
+
+class TilesFieldContext : public FieldContext {
+ private:
+  const openvdb::math::Transform &transform_;
+  Span<openvdb::CoordBBox> tiles_;
+
+ public:
+  TilesFieldContext(const openvdb::math::Transform &transform,
+                    const Span<openvdb::CoordBBox> tiles)
+      : transform_(transform), tiles_(tiles)
+  {
+  }
+
+  GVArray get_varray_for_input(const FieldInput &field_input,
+                               const IndexMask & /*mask*/,
+                               ResourceScope & /*scope*/) const override
+  {
+    const bke::AttributeFieldInput *attribute_field_input =
+        dynamic_cast<const bke::AttributeFieldInput *>(&field_input);
+    if (attribute_field_input == nullptr) {
+      return {};
+    }
+    if (attribute_field_input->attribute_name() != "position") {
+      return {};
+    }
+
+    Array<float3> positions(tiles_.size());
+    threading::parallel_for(positions.index_range(), 1024, [&](const IndexRange range) {
+      for (const int64_t i : range) {
+        const openvdb::CoordBBox &tile = tiles_[i];
+        const openvdb::Vec3d center = transform_.indexToWorld(tile.getCenter());
+        positions[i] = float3(center.x(), center.y(), center.z());
+      }
+    });
+    return VArray<float3>::ForContainer(std::move(positions));
+  }
+};
 
 template<typename LeafNodeT>
 static void parallel_grid_topology_tasks_leaf_node(const LeafNodeT &node,
@@ -641,7 +707,7 @@ static void parallel_grid_topology_tasks_leaf_node(const LeafNodeT &node,
 
   const int on_count = node.onVoxelCount();
   const int on_count_threshold = 50;
-  if (on_count >= on_count_threshold) {
+  if (on_count >= on_count_threshold && false) {
     const NodeMaskT &value_mask = node.getValueMask();
     const openvdb::CoordBBox bbox = node.getNodeBoundingBox();
     process_leaf_fn(value_mask, bbox);
@@ -749,52 +815,62 @@ BLI_NOINLINE static void process_leaf_node(const MultiFunction &fn,
   for (const int input_i : input_values.index_range()) {
     const SocketValueVariant &value_variant = *input_values[input_i];
     if (const openvdb::GridBase *grid_base = input_grids[input_i]) {
-      const openvdb::TreeBase &tree_base = grid_base->baseTree();
-      const openvdb::FloatTree &tree = static_cast<const openvdb::FloatTree &>(tree_base);
+      to_typed_grid(*grid_base, [&](const auto &grid) {
+        using GridT = typename std::decay_t<decltype(grid)>;
+        using ValueT = typename GridT::ValueType;
+        using BlenderValueT = typename bke::BlenderTypeByOpenvdb<ValueT>;
+        const auto &tree = grid.tree();
 
-      if (const auto *leaf_node = tree.probeLeaf(any_voxel_in_leaf)) {
-        const Span values = {leaf_node->buffer().data(), LeafNodeMask::SIZE};
-        const LeafNodeMask &input_leaf_mask = leaf_node->valueMask();
-        const LeafNodeMask missing_mask = leaf_node_mask & !input_leaf_mask;
-        if (missing_mask.isOff()) {
-          /* All values availables. */
-          params.add_readonly_single_input(values);
+        if (const auto *leaf_node = tree.probeLeaf(any_voxel_in_leaf)) {
+          const Span values = {leaf_node->buffer().data(), LeafNodeMask::SIZE};
+          const LeafNodeMask &input_leaf_mask = leaf_node->valueMask();
+          const LeafNodeMask missing_mask = leaf_node_mask & !input_leaf_mask;
+          if (missing_mask.isOff()) {
+            /* All values availables. */
+            params.add_readonly_single_input(values.template cast<BlenderValueT>());
+          }
+          else {
+            /* TODO: Sometimes it may be guaranteed that the background values are set
+             * correctly. */
+            MutableSpan copied_values = scope.linear_allocator().construct_array_copy(values);
+            const auto &background = tree.background();
+            for (auto missing_it = missing_mask.beginOn(); missing_it.test(); ++missing_it) {
+              const int index = missing_it.pos();
+              copied_values[index] = background;
+            }
+            params.add_readonly_single_input(
+                copied_values.as_span().template cast<BlenderValueT>());
+          }
         }
         else {
-          /* TODO: Sometimes it may be guaranteed that the background values are set
-           * correctly. */
-          MutableSpan<float> copied_values = scope.linear_allocator().construct_array_copy(values);
-          const auto &background = tree.background();
-          for (auto missing_it = missing_mask.beginOn(); missing_it.test(); ++missing_it) {
-            const int index = missing_it.pos();
-            copied_values[index] = background;
-          }
-          params.add_readonly_single_input(Span<float>(copied_values));
+          const auto &single_value = *reinterpret_cast<const BlenderValueT *>(
+              &tree.getValue(any_voxel_in_leaf));
+          params.add_readonly_single_input_value(single_value);
         }
-      }
-      else {
-        const auto &single_value = tree.getValue(any_voxel_in_leaf);
-        params.add_readonly_single_input_value(single_value);
-      }
+      });
     }
     else if (value_variant.is_context_dependent_field()) {
       /* TODO */
     }
     else {
-      const float value = value_variant.get<float>();
-      params.add_readonly_single_input_value(value);
+      params.add_readonly_single_input(value_variant.get_single_ptr());
     }
   }
 
   for (const int output_i : output_values.index_range()) {
     openvdb::GridBase &grid_base = *output_grids[output_i];
-    openvdb::TreeBase &tree_base = grid_base.baseTree();
-    openvdb::FloatTree &tree = static_cast<openvdb::FloatTree &>(tree_base);
-    auto *leaf_node = tree.probeLeaf(any_voxel_in_leaf);
-    /* Should have been added before. */
-    BLI_assert(leaf_node);
-    MutableSpan<float> values = {leaf_node->buffer().data(), LeafNodeMask::SIZE};
-    params.add_uninitialized_single_output(values);
+    to_typed_grid(grid_base, [&](auto &grid) {
+      using GridT = typename std::decay_t<decltype(grid)>;
+      using ValueT = typename GridT::ValueType;
+      using BlenderValueT = typename bke::BlenderTypeByOpenvdb<ValueT>;
+
+      auto &tree = grid.tree();
+      auto *leaf_node = tree.probeLeaf(any_voxel_in_leaf);
+      /* Should have been added before. */
+      BLI_assert(leaf_node);
+      MutableSpan values = {leaf_node->buffer().data(), LeafNodeMask::SIZE};
+      params.add_uninitialized_single_output(values.template cast<BlenderValueT>());
+    });
   }
 
   fn.call_auto(index_mask, params, context);
@@ -805,6 +881,7 @@ BLI_NOINLINE static void process_voxels(const MultiFunction &fn,
                                         const Span<SocketValueVariant *> output_values,
                                         const Span<const openvdb::GridBase *> input_grids,
                                         MutableSpan<openvdb::GridBase::Ptr> output_grids,
+                                        const openvdb::math::Transform &transform,
                                         const Span<openvdb::Coord> voxels)
 {
   const int64_t voxels_num = voxels.size();
@@ -818,48 +895,60 @@ BLI_NOINLINE static void process_voxels(const MultiFunction &fn,
   for (const int input_i : input_values.index_range()) {
     const SocketValueVariant &value_variant = *input_values[input_i];
     if (const openvdb::GridBase *grid_base = input_grids[input_i]) {
-      const openvdb::FloatGrid &grid = *static_cast<const openvdb::FloatGrid *>(grid_base);
-      const openvdb::FloatTree &tree = grid.tree();
+      to_typed_grid(*grid_base, [&](const auto &grid) {
+        using ValueType = typename std::decay_t<decltype(grid)>::ValueType;
+        const auto &tree = grid.tree();
+        auto accessor = grid.getConstUnsafeAccessor();
 
-      openvdb::FloatGrid::ConstUnsafeAccessor accessor = grid.getConstUnsafeAccessor();
-
-      MutableSpan<float> values = scope.linear_allocator().allocate_array<float>(voxels_num);
-      for (const int64_t i : IndexRange(voxels_num)) {
-        const openvdb::Coord &coord = voxels[i];
-        values[i] = tree.getValue(coord, accessor);
-      }
-      params.add_readonly_single_input(Span<float>(values));
+        MutableSpan<ValueType> values = scope.linear_allocator().allocate_array<ValueType>(
+            voxels_num);
+        for (const int64_t i : IndexRange(voxels_num)) {
+          const openvdb::Coord &coord = voxels[i];
+          values[i] = tree.getValue(coord, accessor);
+        }
+        params.add_readonly_single_input(
+            Span<ValueType>(values).template cast<bke::BlenderTypeByOpenvdb<ValueType>>());
+      });
     }
     else if (value_variant.is_context_dependent_field()) {
-      /* TODO */
+      const GField field = value_variant.get<GField>();
+      VoxelFieldContext field_context{transform, voxels};
+      FieldEvaluator evaluator{field_context, voxels_num};
+      MutableSpan<float3> values = scope.linear_allocator().allocate_array<float3>(voxels_num);
+      evaluator.add_with_destination(field, values);
+      evaluator.evaluate();
+      params.add_readonly_single_input(values.as_span());
     }
     else {
-      const float value = value_variant.get<float>();
-      params.add_readonly_single_input_value(value);
+      params.add_readonly_single_input(value_variant.get_single_ptr());
     }
   }
 
   for ([[maybe_unused]] const int output_i : output_values.index_range()) {
-    MutableSpan<float> values = scope.linear_allocator().allocate_array<float>(voxels_num);
-    params.add_uninitialized_single_output(values);
+    const int param_index = input_values.size() + output_i;
+    const CPPType &type = fn.param_type(param_index).data_type().single_type();
+    void *buffer = scope.linear_allocator().allocate(voxels_num * type.size(), type.alignment());
+    params.add_uninitialized_single_output(GMutableSpan{type, buffer, voxels_num});
   }
 
   fn.call_auto(index_mask, params, context);
 
   for (const int output_i : output_values.index_range()) {
     openvdb::GridBase &grid_base = *output_grids[output_i];
-    openvdb::FloatGrid &grid = static_cast<openvdb::FloatGrid &>(grid_base);
+    to_typed_grid(grid_base, [&](auto &grid) {
+      using GridT = std::decay_t<decltype(grid)>;
+      using ValueType = typename GridT::ValueType;
+      const int param_index = input_values.size() + output_i;
+      const ValueType *computed_values = static_cast<const ValueType *>(
+          params.computed_array(param_index).data());
 
-    const int param_index = input_values.size() + output_i;
-    const Span<float> computed_values = params.computed_array(param_index).typed<float>();
-
-    openvdb::FloatGrid::UnsafeAccessor accessor = grid.getUnsafeAccessor();
-
-    for (const int64_t i : IndexRange(voxels_num)) {
-      const openvdb::Coord &coord = voxels[i];
-      const float value = computed_values[i];
-      accessor.setValue(coord, value);
-    }
+      auto accessor = grid.getUnsafeAccessor();
+      for (const int64_t i : IndexRange(voxels_num)) {
+        const openvdb::Coord &coord = voxels[i];
+        const ValueType &value = computed_values[i];
+        accessor.setValue(coord, value);
+      }
+    });
   }
 }
 
@@ -868,6 +957,7 @@ BLI_NOINLINE static void process_tiles(const MultiFunction &fn,
                                        const Span<SocketValueVariant *> output_values,
                                        const Span<const openvdb::GridBase *> input_grids,
                                        MutableSpan<openvdb::GridBase::Ptr> output_grids,
+                                       const openvdb::math::Transform &transform,
                                        const Span<openvdb::CoordBBox> tiles)
 {
   const int64_t tiles_num = tiles.size();
@@ -882,68 +972,86 @@ BLI_NOINLINE static void process_tiles(const MultiFunction &fn,
   for (const int input_i : input_values.index_range()) {
     const SocketValueVariant &value_variant = *input_values[input_i];
     if (const openvdb::GridBase *grid_base = input_grids[input_i]) {
-      const openvdb::FloatGrid &grid = *static_cast<const openvdb::FloatGrid *>(grid_base);
-      const openvdb::FloatTree &tree = grid.tree();
+      to_typed_grid(*grid_base, [&](const auto &grid) {
+        using GridT = std::decay_t<decltype(grid)>;
+        using ValueType = typename GridT::ValueType;
+        const auto &tree = grid.tree();
+        auto accessor = grid.getConstUnsafeAccessor();
 
-      openvdb::FloatGrid::ConstUnsafeAccessor accessor = grid.getConstUnsafeAccessor();
-
-      MutableSpan<float> values = scope.linear_allocator().allocate_array<float>(tiles_num);
-      for (const int64_t i : IndexRange(tiles_num)) {
-        const openvdb::CoordBBox &tile = tiles[i];
-        const openvdb::Coord coord_in_tile = tile.min();
-        values[i] = tree.getValue(coord_in_tile, accessor);
-      }
-      params.add_readonly_single_input(Span<float>(values));
+        MutableSpan<ValueType> values = scope.linear_allocator().allocate_array<ValueType>(
+            tiles_num);
+        for (const int64_t i : IndexRange(tiles_num)) {
+          const openvdb::CoordBBox &tile = tiles[i];
+          const openvdb::Coord coord_in_tile = tile.min();
+          values[i] = tree.getValue(coord_in_tile, accessor);
+        }
+        params.add_readonly_single_input(
+            values.template cast<bke::BlenderTypeByOpenvdb<ValueType>>().as_span());
+      });
     }
     else if (value_variant.is_context_dependent_field()) {
-      /* TODO */
+      const GField field = value_variant.get<GField>();
+      TilesFieldContext field_context{transform, tiles};
+      FieldEvaluator evaluator{field_context, tiles_num};
+      MutableSpan<float3> values = scope.linear_allocator().allocate_array<float3>(tiles_num);
+      evaluator.add_with_destination(field, values);
+      evaluator.evaluate();
+      params.add_readonly_single_input(values.as_span());
     }
     else {
-      const float value = value_variant.get<float>();
-      params.add_readonly_single_input_value(value);
+      params.add_readonly_single_input(value_variant.get_single_ptr());
     }
   }
 
-  for ([[maybe_unused]] const int i : output_values.index_range()) {
-    MutableSpan<float> values = scope.linear_allocator().allocate_array<float>(tiles_num);
-    params.add_uninitialized_single_output(values);
+  for ([[maybe_unused]] const int output_i : output_values.index_range()) {
+    const int param_index = input_values.size() + output_i;
+    const CPPType &type = fn.param_type(param_index).data_type().single_type();
+    void *buffer = scope.linear_allocator().allocate(tiles_num * type.size(), type.alignment());
+    params.add_uninitialized_single_output(GMutableSpan{type, buffer, tiles_num});
   }
 
   fn.call_auto(index_mask, params, context);
 
   for (const int output_i : output_values.index_range()) {
-    openvdb::GridBase &grid_base = *output_grids[output_i];
-    openvdb::FloatGrid &grid = static_cast<openvdb::FloatGrid &>(grid_base);
-    openvdb::FloatTree &tree = grid.tree();
-
     const int param_index = input_values.size() + output_i;
-    const Span<float> computed_values = params.computed_array(param_index).typed<float>();
+    openvdb::GridBase &grid_base = *output_grids[output_i];
+    to_typed_grid(grid_base, [&](auto &grid) {
+      using GridT = typename std::decay_t<decltype(grid)>;
+      using TreeT = typename GridT::TreeType;
+      using ValueType = typename GridT::ValueType;
+      auto &tree = grid.tree();
 
-    const auto set_tile_value = [&](auto &node, const openvdb::Coord &coord_in_tile, auto value) {
-      const openvdb::Index n = node.coordToOffset(coord_in_tile);
-      BLI_assert(node.isChildMaskOff(n));
-      /* TODO: Figure out how to do this without const_cast, although the same is done
-      in
-       * `openvdb_ax/openvdb_ax/compiler/VolumeExecutable.cc` which has a similar
-       * purpose. */
-      using UnionType = typename std::decay_t<decltype(node)>::UnionType;
-      auto *table = const_cast<UnionType *>(node.getTable());
-      table[n].setValue(value);
-    };
+      const ValueType *computed_values = static_cast<const ValueType *>(
+          params.computed_array(param_index).data());
 
-    for (const int i : IndexRange(tiles_num)) {
-      const openvdb::CoordBBox tile = tiles[i];
-      const openvdb::Coord coord_in_tile = tile.min();
-      const float computed_value = computed_values[i];
-      using InternalNode1 = openvdb::FloatTree::RootNodeType::ChildNodeType;
-      using InternalNode2 = InternalNode1::ChildNodeType;
-      if (auto *node = tree.probeNode<InternalNode2>(coord_in_tile)) {
-        set_tile_value(*node, coord_in_tile, computed_value);
+      const auto set_tile_value =
+          [&](auto &node, const openvdb::Coord &coord_in_tile, auto value) {
+            const openvdb::Index n = node.coordToOffset(coord_in_tile);
+            BLI_assert(node.isChildMaskOff(n));
+            /* TODO: Figure out how to do this without const_cast, although the same is done in
+             * `openvdb_ax/openvdb_ax/compiler/VolumeExecutable.cc` which has a similar purpose. */
+            using UnionType = typename std::decay_t<decltype(node)>::UnionType;
+            auto *table = const_cast<UnionType *>(node.getTable());
+            table[n].setValue(value);
+          };
+
+      for (const int i : IndexRange(tiles_num)) {
+        const openvdb::CoordBBox tile = tiles[i];
+        const openvdb::Coord coord_in_tile = tile.min();
+        const auto &computed_value = computed_values[i];
+        using InternalNode1 = typename TreeT::RootNodeType::ChildNodeType;
+        using InternalNode2 = typename InternalNode1::ChildNodeType;
+        if (auto *node = tree.template probeNode<InternalNode2>(coord_in_tile)) {
+          set_tile_value(*node, coord_in_tile, computed_value);
+        }
+        else if (auto *node = tree.template probeNode<InternalNode1>(coord_in_tile)) {
+          set_tile_value(*node, coord_in_tile, computed_value);
+        }
+        else {
+          BLI_assert_unreachable();
+        }
       }
-      else if (auto *node = tree.probeNode<InternalNode1>(coord_in_tile)) {
-        set_tile_value(*node, coord_in_tile, computed_value);
-      }
-    }
+    });
   }
 }
 
@@ -955,13 +1063,20 @@ static void execute_multi_function_on_value_variant__volume_grid(
   SCOPED_TIMER(__func__);
   const int inputs_num = input_values.size();
   Array<bke::VolumeTreeAccessToken> input_volume_tokens(inputs_num);
-  Array<const openvdb::GridBase *> input_grids(inputs_num);
+  Array<const openvdb::GridBase *> input_grids(inputs_num, nullptr);
 
   for (const int input_i : IndexRange(inputs_num)) {
-    const SocketValueVariant &value_variant = *input_values[input_i];
+    SocketValueVariant &value_variant = *input_values[input_i];
     if (value_variant.is_volume_grid()) {
-      input_grids[input_i] = &value_variant.get<bke::GVolumeGrid>()->grid(
-          input_volume_tokens[input_i]);
+      const bke::GVolumeGrid g_volume_grid = value_variant.get<bke::GVolumeGrid>();
+      const openvdb::GridBase &grid_base = g_volume_grid->grid(input_volume_tokens[input_i]);
+      input_grids[input_i] = &grid_base;
+    }
+    else if (value_variant.is_context_dependent_field()) {
+      /* Nothing to do here. */
+    }
+    else {
+      value_variant.convert_to_single();
     }
   }
 
@@ -996,10 +1111,7 @@ static void execute_multi_function_on_value_variant__volume_grid(
       if (!grid) {
         continue;
       }
-      const VolumeGridType grid_type = bke::volume_grid::get_type(*grid);
-      const openvdb::TreeBase &tree = grid->constBaseTree();
-      MaskGridUnionFn fn{mask_tree, tree};
-      BKE_volume_grid_type_operation(grid_type, fn);
+      to_typed_grid(*grid, [&](const auto &grid) { mask_tree.topologyUnion(grid.tree()); });
     }
   }
 
@@ -1013,12 +1125,18 @@ static void execute_multi_function_on_value_variant__volume_grid(
       const VolumeGridType grid_type = *bke::socket_type_to_grid_type(
           *bke::geo_nodes_base_cpp_type_to_socket_type(cpp_type));
 
-      BuildOutputGridFn build_grid_fn{mask_tree};
-      BKE_volume_grid_type_operation(grid_type, build_grid_fn);
+      openvdb::GridBase::Ptr grid;
+      BKE_volume_grid_type_to_static_type(grid_type, [&](auto type_tag) {
+        using GridT = typename decltype(type_tag)::type;
+        using TreeT = typename GridT::TreeType;
+        using ValueType = typename TreeT::ValueType;
+        const ValueType background{};
+        auto tree = std::make_shared<TreeT>(mask_tree, background, openvdb::TopologyCopy());
+        grid = openvdb::createGrid(std::move(tree));
+      });
 
-      openvdb::GridBase::Ptr vdb_grid = std::move(build_grid_fn.vdb_grid);
-      vdb_grid->setTransform(transform->copy());
-      output_grids.append(std::move(vdb_grid));
+      grid->setTransform(transform->copy());
+      output_grids.append(std::move(grid));
     }
   }
 
@@ -1029,15 +1147,19 @@ static void execute_multi_function_on_value_variant__volume_grid(
             fn, input_values, output_values, input_grids, output_grids, leaf_node_mask, leaf_bbox);
       },
       [&](const Span<openvdb::Coord> voxels) {
-        process_voxels(fn, input_values, output_values, input_grids, output_grids, voxels);
+        process_voxels(
+            fn, input_values, output_values, input_grids, output_grids, *transform, voxels);
       },
       [&](const Span<openvdb::CoordBBox> tiles) {
-        process_tiles(fn, input_values, output_values, input_grids, output_grids, tiles);
+        process_tiles(
+            fn, input_values, output_values, input_grids, output_grids, *transform, tiles);
       });
 
   for (const int i : output_values.index_range()) {
-    SocketValueVariant &output_value = *output_values[i];
-    output_value.set(bke::GVolumeGrid(std::move(output_grids[i])));
+    /* TODO: Don't compute unused outputs. */
+    if (SocketValueVariant *output_value = output_values[i]) {
+      output_value->set(bke::GVolumeGrid(std::move(output_grids[i])));
+    }
   }
 }
 

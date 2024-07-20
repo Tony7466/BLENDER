@@ -172,6 +172,9 @@ template<typename Fn> void convert_to_static_type(const VolumeGridType type, con
     case VOLUME_GRID_VECTOR_FLOAT:
       fn(float3());
       break;
+    case VOLUME_GRID_COLOR_FLOAT4:
+      fn(ColorGeometry4f());
+      break;
     default:
       break;
   }

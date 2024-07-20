@@ -10,6 +10,7 @@
 
 #ifdef WITH_OPENVDB
 
+#  include "BLI_color.hh"
 #  include "BLI_math_quaternion_types.hh"
 #  include "BLI_math_vector_types.hh"
 
@@ -45,6 +46,10 @@ template<typename T> struct VolumeGridTraits {
    * The corresponding #VolumeGridType for the type.
    */
   static constexpr VolumeGridType EnumType = VOLUME_GRID_UNKNOWN;
+};
+
+template<typename T> struct TraitsByOpenVDBValueType {
+  using Traits = VolumeGridTraits<T>;
 };
 
 template<> struct VolumeGridTraits<bool> {
@@ -110,9 +115,33 @@ template<> struct VolumeGridTraits<float3> {
     return float3(value.asV());
   }
 };
+template<> struct TraitsByOpenVDBValueType<openvdb::Vec3f> {
+  using Traits = VolumeGridTraits<float3>;
+};
+
+template<> struct VolumeGridTraits<ColorGeometry4f> {
+  using BlenderType = ColorGeometry4f;
+  using PrimitiveType = openvdb::Vec4f;
+  using TreeType = openvdb::Vec4STree;
+  static constexpr VolumeGridType EnumType = VOLUME_GRID_COLOR_FLOAT4;
+
+  static openvdb::Vec4f to_openvdb(const ColorGeometry4f &value)
+  {
+    return openvdb::Vec4f(*value);
+  }
+  static ColorGeometry4f to_blender(const openvdb::Vec4f &value)
+  {
+    return ColorGeometry4f(value.asV());
+  }
+};
+template<> struct TraitsByOpenVDBValueType<openvdb::Vec4f> {
+  using Traits = VolumeGridTraits<ColorGeometry4f>;
+};
 
 template<typename T> using OpenvdbTreeType = typename VolumeGridTraits<T>::TreeType;
 template<typename T> using OpenvdbGridType = openvdb::Grid<OpenvdbTreeType<T>>;
+template<typename T>
+using BlenderTypeByOpenvdb = typename TraitsByOpenVDBValueType<T>::Traits::BlenderType;
 
 }  // namespace blender::bke
 
