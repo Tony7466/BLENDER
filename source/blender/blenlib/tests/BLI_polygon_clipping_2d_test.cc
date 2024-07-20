@@ -139,7 +139,10 @@ void draw_curve(const std::string &label,
       point = (1.0 - alpha_a) * point_a0 + alpha_a * point_a1;
     }
 
-    f << SX(point[0]) << "," << SY(point[1]) << ", ";
+    if (i != 0) {
+      f << ", ";
+    }
+    f << SX(point[0]) << "," << SY(point[1]);
   }
   f << "\"/>\n";
 
@@ -148,8 +151,12 @@ void draw_curve(const std::string &label,
     << stroke_width
     << "\" "
        "points =\"";
-  for (const float2 &point : curve_a) {
-    f << SX(point[0]) << "," << SY(point[1]) << ", ";
+  for (const int i : curve_a.index_range()) {
+    const float2 &point = curve_a[i];
+    if (i != 0) {
+      f << ", ";
+    }
+    f << SX(point[0]) << "," << SY(point[1]);
   }
   f << "\"/>\n";
 
@@ -158,8 +165,12 @@ void draw_curve(const std::string &label,
     << stroke_width
     << "\" "
        "points =\"";
-  for (const float2 &point : curve_b) {
-    f << SX(point[0]) << "," << SY(point[1]) << ", ";
+  for (const int i : curve_b.index_range()) {
+    const float2 &point = curve_b[i];
+    if (i != 0) {
+      f << ", ";
+    }
+    f << SX(point[0]) << "," << SY(point[1]);
   }
   f << "\"/>\n";
 
