@@ -119,6 +119,7 @@ void draw_curve(const std::string &label,
          "  stroke-width: "
       << stroke_width
       << "px;\n"
+         "  stroke-dasharray: 15;\n"
          "}\n";
 
     f << ".polygon-B {\n"
@@ -127,11 +128,14 @@ void draw_curve(const std::string &label,
          "  stroke-width: "
       << stroke_width
       << "px;\n"
+         "  stroke-dasharray: 15;\n"
          "}\n";
 
     f << ".polygon-C {\n"
          "  fill: green;\n"
-         "  stroke: none;\n"
+         "  stroke: black;\n"
+         "  stroke-width: 4;\n"
+         "  fill-opacity: 0.75;\n"
          "}\n";
 
     f << "</style>\n";
@@ -141,6 +145,28 @@ void draw_curve(const std::string &label,
   f << "<h1>" << label << "</h1>\n";
 
   f << "<svg width=\"" << view_width << "\" height=\"" << view_height << "\">\n";
+
+  f << "<polygon class = \"polygon-A\" "
+       "points =\"";
+  for (const int i : curve_a.index_range()) {
+    const float2 &point = curve_a[i];
+    if (i != 0) {
+      f << ", ";
+    }
+    f << SX(point[0]) << "," << SY(point[1]);
+  }
+  f << "\"/>\n";
+
+  f << "<polygon class = \"polygon-B\" "
+       "points =\"";
+  for (const int i : curve_b.index_range()) {
+    const float2 &point = curve_b[i];
+    if (i != 0) {
+      f << ", ";
+    }
+    f << SX(point[0]) << "," << SY(point[1]);
+  }
+  f << "\"/>\n";
 
   f << "<polygon class = \"polygon-C\" "
        "points =\"";
@@ -165,28 +191,6 @@ void draw_curve(const std::string &label,
       point = (1.0 - alpha_a) * point_a0 + alpha_a * point_a1;
     }
 
-    if (i != 0) {
-      f << ", ";
-    }
-    f << SX(point[0]) << "," << SY(point[1]);
-  }
-  f << "\"/>\n";
-
-  f << "<polygon class = \"polygon-A\" "
-       "points =\"";
-  for (const int i : curve_a.index_range()) {
-    const float2 &point = curve_a[i];
-    if (i != 0) {
-      f << ", ";
-    }
-    f << SX(point[0]) << "," << SY(point[1]);
-  }
-  f << "\"/>\n";
-
-  f << "<polygon class = \"polygon-B\" "
-       "points =\"";
-  for (const int i : curve_b.index_range()) {
-    const float2 &point = curve_b[i];
     if (i != 0) {
       f << ", ";
     }
