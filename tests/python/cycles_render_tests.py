@@ -82,6 +82,8 @@ class Cycles_report(render_report.Report):
         if device == "METAL-HWRT":
             device = "METAL"
             self.use_hwrt = True
+        if device == "CUDA-HWRT":
+            device = "OPTIX"
 
         super().__init__(title, output_dir, oiiotool, device, blocklist)
 
