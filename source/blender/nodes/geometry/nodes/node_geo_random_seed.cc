@@ -22,11 +22,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   if (!check_tool_context_and_error(params)) {
     return;
   }
-  const double time = BLI_time_now_seconds();
-  /* We have to truncate the timestamp to fit into 32-bits. */
-  const uint32_t truncated_time_ms = uint32_t(std::fmod((time * 1e3), double(INT_MAX)));
-  const uint32_t hash = BLI_hash_int(truncated_time_ms);
-  params.set_output("Random Seed", int(hash));
+  params.set_output("Random Seed", params.user_data()->call_data->operator_data->random_seed);
 }
 
 static void node_register()

@@ -6,9 +6,13 @@
  * \ingroup edcurves
  */
 
+#include <cmath>
+
+#include "BLI_hash.h"
 #include "BLI_path_util.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
+#include "BLI_time.h"
 
 #include "ED_curves.hh"
 #include "ED_object.hh"
@@ -550,6 +554,7 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
         op->ptr, "viewport_view_matrix", operator_eval_data.viewport_viewmat.base_ptr());
     operator_eval_data.viewport_is_perspective = RNA_boolean_get(op->ptr,
                                                                  "viewport_is_perspective");
+    operator_eval_data.random_seed = RNA_int_get(op->ptr, "random_seed");
 
     nodes::GeoNodesCallData call_data{};
     call_data.operator_data = &operator_eval_data;
@@ -626,6 +631,13 @@ static void store_input_node_values_rna_props(const bContext &C,
                       "viewport_view_matrix",
                       rv3d ? float4x4(rv3d->viewmat).base_ptr() : float4x4::identity().base_ptr());
   RNA_boolean_set(op.ptr, "viewport_is_perspective", rv3d ? bool(rv3d->is_persp) : true);
+
+  /* Random Seed input. */
+  const double time = BLI_time_now_seconds();
+  /* We have to truncate the timestamp to fit into 32-bits. */
+  const uint32_t truncated_time_ms = uint32_t(std::fmod((time * 1e3), double(INT_MAX)));
+  const uint32_t hash = BLI_hash_int(truncated_time_ms);
+  RNA_int_set(op.ptr, "random_seed", int(hash));
 }
 
 static int run_node_group_invoke(bContext *C, wmOperator *op, const wmEvent *event)
@@ -930,6 +942,9 @@ void GEOMETRY_OT_execute_node_group(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_HIDDEN);
   prop = RNA_def_boolean(
       ot->srna, "viewport_is_perspective", false, "Viewport Is Perspective", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN);
+  prop = RNA_def_int(
+      ot->srna, "random_seed", 0, INT_MIN, INT_MAX, "Random Seed", "", INT_MIN, INT_MAX);
   RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
