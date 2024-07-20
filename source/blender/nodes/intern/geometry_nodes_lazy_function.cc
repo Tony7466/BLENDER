@@ -726,22 +726,35 @@ static void execute_multi_function_on_value_variant__volume_grid(
     const Span<SocketValueVariant *> output_values)
 {
   SCOPED_TIMER(__func__);
-  Vector<bke::GVolumeGrid> input_grids;
-  for (const SocketValueVariant *value : input_values) {
-    if (value->is_volume_grid()) {
-      input_grids.append(value->get<bke::GVolumeGrid>());
+  const int inputs_num = input_values.size();
+  Array<bke::VolumeTreeAccessToken> input_volume_tokens(inputs_num);
+  Array<const openvdb::GridBase *> input_grids(inputs_num);
+
+  for (const int input_i : IndexRange(inputs_num)) {
+    const SocketValueVariant &value_variant = *input_values[input_i];
+    if (value_variant.is_volume_grid()) {
+      input_grids[input_i] = &value_variant.get<bke::GVolumeGrid>()->grid(
+          input_volume_tokens[input_i]);
     }
   }
-  BLI_assert(!input_grids.is_empty());
+
   bool has_incompatible_transforms = false;
-  const openvdb::math::Transform &transform = input_grids[0]->transform();
-  for (const bke::GVolumeGrid &grid : input_grids.as_span().drop_front(1)) {
+  const openvdb::math::Transform *transform = nullptr;
+  for (const openvdb::GridBase *grid : input_grids) {
+    if (!grid) {
+      continue;
+    }
     const openvdb::math::Transform &other_transform = grid->transform();
-    if (transform != other_transform) {
+    if (!transform) {
+      transform = &other_transform;
+      continue;
+    }
+    if (*transform != other_transform) {
       has_incompatible_transforms = true;
       break;
     }
   }
+  BLI_assert(transform != nullptr);
 
   if (has_incompatible_transforms) {
     /* TODO */
@@ -752,16 +765,18 @@ static void execute_multi_function_on_value_variant__volume_grid(
   openvdb::MaskTree mask_tree;
   {
     SCOPED_TIMER("create mask");
-    for (const bke::GVolumeGrid &input_grid : input_grids) {
-      const VolumeGridType grid_type = input_grid->grid_type();
-      bke::VolumeTreeAccessToken token;
-      const openvdb::TreeBase &input_vdb_tree = input_grid->grid(token).constBaseTree();
-      MaskGridUnionFn fn{mask_tree, input_vdb_tree};
+    for (const openvdb::GridBase *grid : input_grids) {
+      if (!grid) {
+        continue;
+      }
+      const VolumeGridType grid_type = bke::volume_grid::get_type(*grid);
+      const openvdb::TreeBase &tree = grid->constBaseTree();
+      MaskGridUnionFn fn{mask_tree, tree};
       BKE_volume_grid_type_operation(grid_type, fn);
     }
   }
 
-  Vector<bke::GVolumeGrid> output_grids;
+  Vector<openvdb::GridBase::Ptr> output_grids;
   {
     SCOPED_TIMER("allocate output grids");
     for (const int i : output_values.index_range()) {
@@ -775,10 +790,8 @@ static void execute_multi_function_on_value_variant__volume_grid(
       BKE_volume_grid_type_operation(grid_type, build_grid_fn);
 
       openvdb::GridBase::Ptr vdb_grid = std::move(build_grid_fn.vdb_grid);
-      vdb_grid->setTransform(transform.copy());
-
-      bke::GVolumeGrid output_grid{std::move(vdb_grid)};
-      output_grids.append(std::move(output_grid));
+      vdb_grid->setTransform(transform->copy());
+      output_grids.append(std::move(vdb_grid));
     }
   }
 
@@ -800,14 +813,11 @@ static void execute_multi_function_on_value_variant__volume_grid(
 
         for (const int input_i : input_values.index_range()) {
           const SocketValueVariant &value_variant = *input_values[input_i];
-          if (value_variant.is_volume_grid()) {
-            bke::VolumeTreeAccessToken &token = scope.construct<bke::VolumeTreeAccessToken>();
-            const bke::GVolumeGrid input_grid = value_variant.get<bke::GVolumeGrid>();
-            const openvdb::TreeBase &input_tree_base = input_grid->grid(token).baseTree();
-            const openvdb::FloatTree &input_tree = static_cast<const openvdb::FloatTree &>(
-                input_tree_base);
+          if (const openvdb::GridBase *grid_base = input_grids[input_i]) {
+            const openvdb::TreeBase &tree_base = grid_base->baseTree();
+            const openvdb::FloatTree &tree = static_cast<const openvdb::FloatTree &>(tree_base);
 
-            if (const auto *leaf_node = input_tree.probeLeaf(any_voxel_in_leaf)) {
+            if (const auto *leaf_node = tree.probeLeaf(any_voxel_in_leaf)) {
               const Span values = {leaf_node->buffer().data(), LeafNodeMask::SIZE};
               const LeafNodeMask &input_leaf_mask = leaf_node->valueMask();
               const LeafNodeMask missing_mask = leaf_node_mask & !input_leaf_mask;
@@ -819,7 +829,7 @@ static void execute_multi_function_on_value_variant__volume_grid(
                 /* TODO: Sometimes it may be guaranteed that the background values are set
                  * correctly. */
                 MutableSpan<float> copied_values = scope.construct<Array<float>>(values);
-                const auto &background = input_tree.background();
+                const auto &background = tree.background();
                 for (auto missing_it = missing_mask.beginOn(); missing_it.test(); ++missing_it) {
                   const int index = missing_it.pos();
                   copied_values[index] = background;
@@ -828,7 +838,7 @@ static void execute_multi_function_on_value_variant__volume_grid(
               }
             }
             else {
-              const auto &single_value = input_tree.getValue(any_voxel_in_leaf);
+              const auto &single_value = tree.getValue(any_voxel_in_leaf);
               params.add_readonly_single_input_value(single_value);
             }
           }
@@ -841,13 +851,11 @@ static void execute_multi_function_on_value_variant__volume_grid(
           }
         }
 
-        for (const int i : output_values.index_range()) {
-          bke::GVolumeGrid &output_grid = output_grids[i];
-          bke::VolumeTreeAccessToken &token = scope.construct<bke::VolumeTreeAccessToken>();
-          openvdb::TreeBase &output_tree_base =
-              output_grid.get_for_write().grid_for_write(token).baseTree();
-          openvdb::FloatTree &output_tree = static_cast<openvdb::FloatTree &>(output_tree_base);
-          auto *leaf_node = output_tree.probeLeaf(any_voxel_in_leaf);
+        for (const int output_i : output_values.index_range()) {
+          openvdb::GridBase &grid_base = *output_grids[output_i];
+          openvdb::TreeBase &tree_base = grid_base.baseTree();
+          openvdb::FloatTree &tree = static_cast<openvdb::FloatTree &>(tree_base);
+          auto *leaf_node = tree.probeLeaf(any_voxel_in_leaf);
           /* Should have been added before. */
           BLI_assert(leaf_node);
           MutableSpan<float> values = {leaf_node->buffer().data(), LeafNodeMask::SIZE};
@@ -865,20 +873,16 @@ static void execute_multi_function_on_value_variant__volume_grid(
 
         for (const int input_i : input_values.index_range()) {
           const SocketValueVariant &value_variant = *input_values[input_i];
-          if (value_variant.is_volume_grid()) {
-            bke::VolumeTreeAccessToken token;
-            const bke::GVolumeGrid g_input_grid = value_variant.get<bke::GVolumeGrid>();
-            const openvdb::GridBase &input_grid_base = g_input_grid->grid(token);
-            const openvdb::FloatGrid &input_grid = static_cast<const openvdb::FloatGrid &>(
-                input_grid_base);
-            const openvdb::FloatTree &input_tree = input_grid.tree();
+          if (const openvdb::GridBase *grid_base = input_grids[input_i]) {
+            const openvdb::FloatGrid &grid = *static_cast<const openvdb::FloatGrid *>(grid_base);
+            const openvdb::FloatTree &tree = grid.tree();
 
-            openvdb::FloatGrid::ConstAccessor accessor = input_grid.getConstAccessor();
+            openvdb::FloatGrid::ConstAccessor accessor = grid.getConstAccessor();
 
             MutableSpan<float> values = scope.construct<Array<float>>(voxels_num);
             for (const int64_t i : IndexRange(voxels_num)) {
               const openvdb::Coord &coord = voxels[i];
-              values[i] = input_tree.getValue(coord, accessor);
+              values[i] = tree.getValue(coord, accessor);
             }
             params.add_readonly_single_input(Span<float>(values));
           }
@@ -891,7 +895,7 @@ static void execute_multi_function_on_value_variant__volume_grid(
           }
         }
 
-        for ([[maybe_unused]] const int i : output_values.index_range()) {
+        for ([[maybe_unused]] const int output_i : output_values.index_range()) {
           MutableSpan<float> values = scope.construct<Array<float>>(voxels_num,
                                                                     NoInitialization{});
           params.add_uninitialized_single_output(values);
@@ -900,16 +904,14 @@ static void execute_multi_function_on_value_variant__volume_grid(
         fn.call_auto(index_mask, params, context);
 
         for (const int output_i : output_values.index_range()) {
-          bke::GVolumeGrid &g_output_grid = output_grids[output_i];
-          bke::VolumeTreeAccessToken &token = scope.construct<bke::VolumeTreeAccessToken>();
-          openvdb::GridBase &output_grid_base = g_output_grid.get_for_write().grid_for_write(
-              token);
-          openvdb::FloatGrid &output_grid = static_cast<openvdb::FloatGrid &>(output_grid_base);
+          openvdb::GridBase &grid_base = *output_grids[output_i];
+          openvdb::FloatGrid &grid = static_cast<openvdb::FloatGrid &>(grid_base);
+          openvdb::FloatTree &tree = grid.tree();
 
           const int param_index = input_values.size() + output_i;
           const Span<float> computed_values = params.computed_array(param_index).typed<float>();
 
-          openvdb::FloatGrid::Accessor accessor = output_grid.getAccessor();
+          openvdb::FloatGrid::Accessor accessor = grid.getAccessor();
 
           for (const int64_t i : IndexRange(voxels_num)) {
             const openvdb::Coord &coord = voxels[i];
@@ -928,21 +930,17 @@ static void execute_multi_function_on_value_variant__volume_grid(
 
         for (const int input_i : input_values.index_range()) {
           const SocketValueVariant &value_variant = *input_values[input_i];
-          if (value_variant.is_volume_grid()) {
-            bke::VolumeTreeAccessToken token;
-            const bke::GVolumeGrid g_input_grid = value_variant.get<bke::GVolumeGrid>();
-            const openvdb::GridBase &input_grid_base = g_input_grid->grid(token);
-            const openvdb::FloatGrid &input_grid = static_cast<const openvdb::FloatGrid &>(
-                input_grid_base);
-            const openvdb::FloatTree &input_tree = input_grid.tree();
+          if (const openvdb::GridBase *grid_base = input_grids[input_i]) {
+            const openvdb::FloatGrid &grid = *static_cast<const openvdb::FloatGrid *>(grid_base);
+            const openvdb::FloatTree &tree = grid.tree();
 
-            openvdb::FloatGrid::ConstAccessor accessor = input_grid.getConstAccessor();
+            openvdb::FloatGrid::ConstAccessor accessor = grid.getConstAccessor();
 
             MutableSpan<float> values = scope.construct<Array<float>>(tiles_num);
             for (const int64_t i : IndexRange(tiles_num)) {
               const openvdb::CoordBBox &tile = tiles[i];
               const openvdb::Coord coord_in_tile = tile.min();
-              values[i] = input_tree.getValue(coord_in_tile, accessor);
+              values[i] = tree.getValue(coord_in_tile, accessor);
             }
             params.add_readonly_single_input(Span<float>(values));
           }
@@ -963,12 +961,9 @@ static void execute_multi_function_on_value_variant__volume_grid(
         fn.call_auto(index_mask, params, context);
 
         for (const int output_i : output_values.index_range()) {
-          bke::GVolumeGrid &g_output_grid = output_grids[output_i];
-          bke::VolumeTreeAccessToken &token = scope.construct<bke::VolumeTreeAccessToken>();
-          openvdb::GridBase &output_grid_base = g_output_grid.get_for_write().grid_for_write(
-              token);
-          openvdb::FloatGrid &output_grid = static_cast<openvdb::FloatGrid &>(output_grid_base);
-          openvdb::FloatTree &output_tree = output_grid.tree();
+          openvdb::GridBase &grid_base = *output_grids[output_i];
+          openvdb::FloatGrid &grid = static_cast<openvdb::FloatGrid &>(grid_base);
+          openvdb::FloatTree &tree = grid.tree();
 
           const int param_index = input_values.size() + output_i;
           const Span<float> computed_values = params.computed_array(param_index).typed<float>();
@@ -992,10 +987,10 @@ static void execute_multi_function_on_value_variant__volume_grid(
             const float computed_value = computed_values[i];
             using InternalNode1 = openvdb::FloatTree::RootNodeType::ChildNodeType;
             using InternalNode2 = InternalNode1::ChildNodeType;
-            if (auto *node = output_tree.probeNode<InternalNode2>(coord_in_tile)) {
+            if (auto *node = tree.probeNode<InternalNode2>(coord_in_tile)) {
               set_tile_value(*node, coord_in_tile, computed_value);
             }
-            else if (auto *node = output_tree.probeNode<InternalNode1>(coord_in_tile)) {
+            else if (auto *node = tree.probeNode<InternalNode1>(coord_in_tile)) {
               set_tile_value(*node, coord_in_tile, computed_value);
             }
           }
@@ -1004,8 +999,7 @@ static void execute_multi_function_on_value_variant__volume_grid(
 
   for (const int i : output_values.index_range()) {
     SocketValueVariant &output_value = *output_values[i];
-    bke::GVolumeGrid &output_grid = output_grids[i];
-    output_value.set(std::move(output_grid));
+    output_value.set(bke::GVolumeGrid(std::move(output_grids[i])));
   }
 }
 
