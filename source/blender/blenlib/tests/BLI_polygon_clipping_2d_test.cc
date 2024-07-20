@@ -269,6 +269,27 @@ void squares_B_NOT_A_test()
   }
 }
 
+void simple_intersection_test()
+{
+  /**
+   * This is a replica of Fig. 10 from
+   * Greiner, Günther; Kai Hormann (1998). "Efficient clipping of arbitrary polygons". ACM
+   * Transactions on Graphics. 17 (2): 71–83.
+   */
+  const Array<float2> points_a = {{0, 6}, {8, 6}, {8, 3}, {0, 3}};
+  const Array<float2> points_b = {{6, 0}, {6, 4}, {4, 2}, {2, 4}, {2, 0}};
+  const BooleanMode mode = BooleanMode::A_AND_B;
+  BooleanResult result = polygonboolean::curve_boolean_calc(mode, points_a, points_b);
+  EXPECT_TRUE(result.valid_geometry);
+  EXPECT_EQ(result.verts.size(), 6);
+  EXPECT_EQ(result.intersections_data.size(), 4);
+  EXPECT_EQ(result.offsets.size(), 3);
+
+  if (DO_DRAW) {
+    draw_curve("Simple Intersection", points_a, points_b, result);
+  }
+}
+
 TEST(polygonboolean, Squares_A_AND_B)
 {
   squares_A_AND_B_test();
@@ -287,6 +308,11 @@ TEST(polygonboolean, Squares_A_NOT_B)
 TEST(polygonboolean, Squares_B_NOT_A)
 {
   squares_B_NOT_A_test();
+}
+
+TEST(polygonboolean, Simple_Intersection)
+{
+  simple_intersection_test();
 }
 
 }  // namespace blender::polygonboolean
