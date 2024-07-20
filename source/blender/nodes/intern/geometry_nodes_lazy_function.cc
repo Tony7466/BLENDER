@@ -859,14 +859,18 @@ BLI_NOINLINE static void process_leaf_node(const MultiFunction &fn,
     }
     else if (value_variant.is_context_dependent_field()) {
       const GField field = value_variant.get<GField>();
+      const CPPType &type = field.cpp_type();
       Array<openvdb::Coord> voxels(index_mask.min_array_size());
       get_voxels_fn(voxels);
       VoxelFieldContext field_context{transform, voxels};
       FieldEvaluator evaluator{field_context, &index_mask};
-      MutableSpan<float3> values = scope.linear_allocator().allocate_array<float3>(voxels.size());
+      GMutableSpan values{
+          type,
+          scope.linear_allocator().allocate(voxels.size() * type.size(), type.alignment()),
+          voxels.size()};
       evaluator.add_with_destination(field, values);
       evaluator.evaluate();
-      params.add_readonly_single_input(values.as_span());
+      params.add_readonly_single_input(values);
     }
     else {
       params.add_readonly_single_input(value_variant.get_single_ptr());
@@ -928,12 +932,16 @@ BLI_NOINLINE static void process_voxels(const MultiFunction &fn,
     }
     else if (value_variant.is_context_dependent_field()) {
       const GField field = value_variant.get<GField>();
+      const CPPType &type = field.cpp_type();
       VoxelFieldContext field_context{transform, voxels};
       FieldEvaluator evaluator{field_context, voxels_num};
-      MutableSpan<float3> values = scope.linear_allocator().allocate_array<float3>(voxels_num);
+      GMutableSpan values{
+          type,
+          scope.linear_allocator().allocate(voxels_num * type.size(), type.alignment()),
+          voxels_num};
       evaluator.add_with_destination(field, values);
       evaluator.evaluate();
-      params.add_readonly_single_input(values.as_span());
+      params.add_readonly_single_input(values);
     }
     else {
       params.add_readonly_single_input(value_variant.get_single_ptr());
@@ -1007,12 +1015,16 @@ BLI_NOINLINE static void process_tiles(const MultiFunction &fn,
     }
     else if (value_variant.is_context_dependent_field()) {
       const GField field = value_variant.get<GField>();
+      const CPPType &type = field.cpp_type();
       TilesFieldContext field_context{transform, tiles};
       FieldEvaluator evaluator{field_context, tiles_num};
-      MutableSpan<float3> values = scope.linear_allocator().allocate_array<float3>(tiles_num);
+      GMutableSpan values{
+          type,
+          scope.linear_allocator().allocate(tiles_num * type.size(), type.alignment()),
+          tiles_num};
       evaluator.add_with_destination(field, values);
       evaluator.evaluate();
-      params.add_readonly_single_input(values.as_span());
+      params.add_readonly_single_input(values);
     }
     else {
       params.add_readonly_single_input(value_variant.get_single_ptr());
