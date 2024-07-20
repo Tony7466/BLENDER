@@ -101,15 +101,22 @@ void draw_curve(const std::string &label,
 
   if (!draw_append) {
     f << "<!DOCTYPE html>\n";
+
+    f << "<style>\n"
+         "div\n"
+         "{\n"
+         "  border: 5px solid black;\n"
+         "  text-align: center;\n"
+         "}\n"
+         "</style>\n";
   }
 
-  f << "<div style=\"border: 5px solid black; text-align: center;\" >\n";
+  f << "<div>\n";
   f << "<h1>" << label << "</h1>\n";
 
   f << "<svg version=\"1.1\" "
        "xmlns=\"http://www.w3.org/2000/svg\" "
        "xmlns:xlink=\"http://www.w3.org/1999/xlink\" "
-       "xml:space=\"preserve\"\n"
     << "width=\"" << view_width << "\" height=\"" << view_height << "\">\n";
 
   f << "<polygon fill = \"green\" stroke =\"none\" "
