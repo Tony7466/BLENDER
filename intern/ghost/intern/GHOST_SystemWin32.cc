@@ -230,7 +230,9 @@ void GHOST_SystemWin32::getMainDisplayDimensions(uint32_t &width, uint32_t &heig
   height = ::GetSystemMetrics(SM_CYSCREEN);
 }
 
-void GHOST_SystemWin32::getAllDisplayDimensions(uint32_t &width, uint32_t &height) const
+void GHOST_SystemWin32::getAllDisplayDimensions(uint32_t &width,
+                                                uint32_t &height,
+                                                int8_t /*display*/) const
 {
   width = ::GetSystemMetrics(SM_CXVIRTUALSCREEN);
   height = ::GetSystemMetrics(SM_CYVIRTUALSCREEN);
@@ -244,8 +246,8 @@ GHOST_IWindow *GHOST_SystemWin32::createWindow(const char *title,
                                                GHOST_TWindowState state,
                                                GHOST_GPUSettings gpuSettings,
                                                const bool /*exclusive*/,
-                                               const int16_t /*display*/,
                                                const bool is_dialog,
+                                               const int8_t /*display*/,
                                                const GHOST_IWindow *parentWindow)
 {
   GHOST_WindowWin32 *window = new GHOST_WindowWin32(

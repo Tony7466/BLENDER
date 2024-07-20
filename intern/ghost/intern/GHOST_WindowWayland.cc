@@ -2245,7 +2245,7 @@ GHOST_TSuccess GHOST_WindowWayland::setWindowCursorVisibility(bool visible)
   return ok;
 }
 
-int16_t GHOST_WindowWayland::getDisplay() const
+int8_t GHOST_WindowWayland::getDisplay() const
 {
   return -1;
 }

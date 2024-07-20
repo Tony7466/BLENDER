@@ -702,10 +702,32 @@ void GHOST_SystemCocoa::getMainDisplayDimensions(uint32_t &width, uint32_t &heig
   }
 }
 
-void GHOST_SystemCocoa::getAllDisplayDimensions(uint32_t &width, uint32_t &height) const
+void GHOST_SystemCocoa::getAllDisplayDimensions(uint32_t &width, uint32_t &height, int8_t display) const
 {
-  /* TODO! */
-  getMainDisplayDimensions(width, height);
+  /* MacOS doesn't use a global coordinate system, windows are positioned per display.
+   * So we retrieve the dimensions of the requested display. */
+  @autoreleasepool {
+    /* Get the requested display (monitor). -1 means active display. */
+    NSScreen *screen = [NSScreen mainScreen];
+    if (display != -1) {
+      NSArray *screens = [NSScreen screens];
+      if (display < [screens count]) {
+        screen = [screens objectAtIndex:display];
+      }
+    }
+
+    /* Get visible frame, that is the frame excluding dock and top menu bar. */
+    NSRect frame = [screen visibleFrame];
+
+    /* Returns max window contents (excluding title bar). */
+    NSRect contentRect = [NSWindow
+        contentRectForFrameRect:frame
+                      styleMask:(NSWindowStyleMaskTitled | NSWindowStyleMaskClosable |
+                                 NSWindowStyleMaskMiniaturizable)];
+
+    width = contentRect.size.width;
+    height = contentRect.size.height;
+  }
 }
 
 GHOST_IWindow *GHOST_SystemCocoa::createWindow(const char *title,
@@ -716,34 +738,38 @@ GHOST_IWindow *GHOST_SystemCocoa::createWindow(const char *title,
                                                GHOST_TWindowState state,
                                                GHOST_GPUSettings gpuSettings,
                                                const bool /*exclusive*/,
-                                               const int16_t display,
                                                const bool is_dialog,
+                                               const int8_t display,
                                                const GHOST_IWindow *parentWindow)
 {
   GHOST_IWindow *window = nullptr;
   @autoreleasepool {
-    /* Get the display (monitor) for the new window. */
+    /* Get the display (monitor) for the new window. -1 means active display. */
     NSScreen *screen = [NSScreen mainScreen];
+    NSArray *screens = [NSScreen screens];
     if (display != -1) {
-      NSArray *screens = [NSScreen screens];
       if (display < [screens count]) {
         screen = [screens objectAtIndex:display];
       }
     }
 
     /* Get the available rect for including window contents. */
-    NSRect frame = [screen visibleFrame];
+    NSRect visibleFrame = [screen visibleFrame];
     NSRect contentRect = [NSWindow
-        contentRectForFrameRect:frame
+        contentRectForFrameRect:visibleFrame
                       styleMask:(NSWindowStyleMaskTitled | NSWindowStyleMaskClosable |
                                  NSWindowStyleMaskMiniaturizable)];
 
     int32_t bottom = (contentRect.size.height - 1) - height - top;
 
-    /* Ensures window top left is inside this available rect. */
-    left = left > contentRect.origin.x ? left : contentRect.origin.x;
-    /* Add `contentRect.origin.y` to respect dock-size. */
-    bottom = bottom > contentRect.origin.y ? bottom + contentRect.origin.y : contentRect.origin.y;
+    /* Compensate for dock height (when dock is at the bottom) and dock width (when dock is at
+     * the left). */
+    NSRect frame = [screen frame];
+    const int dockWidth = frame.origin.x - visibleFrame.origin.x;
+    left = std::max(0, left);
+    left -= dockWidth;
+    const int dockHeight = frame.origin.y - visibleFrame.origin.y;
+    bottom -= dockHeight;
 
     window = new GHOST_WindowCocoa(this,
                                    title,
@@ -755,8 +781,8 @@ GHOST_IWindow *GHOST_SystemCocoa::createWindow(const char *title,
                                    gpuSettings.context_type,
                                    gpuSettings.flags & GHOST_gpuStereoVisual,
                                    gpuSettings.flags & GHOST_gpuDebugContext,
-                                   display,
                                    is_dialog,
+                                   display,
                                    (GHOST_WindowCocoa *)parentWindow);
 
     if (window->getValid()) {

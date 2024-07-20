@@ -46,8 +46,8 @@ GHOST_IWindow *GHOST_SystemSDL::createWindow(const char *title,
                                              GHOST_TWindowState state,
                                              GHOST_GPUSettings gpuSettings,
                                              const bool exclusive,
-                                             const int16_t /* display */,
                                              const bool /* is_dialog */,
+                                             const int8_t /* display */,
                                              const GHOST_IWindow *parentWindow)
 {
   GHOST_WindowSDL *window = nullptr;
@@ -107,7 +107,9 @@ GHOST_TSuccess GHOST_SystemSDL::init()
  * Returns the dimensions of the main display on this system.
  * \return The dimension of the main display.
  */
-void GHOST_SystemSDL::getAllDisplayDimensions(uint32_t &width, uint32_t &height) const
+void GHOST_SystemSDL::getAllDisplayDimensions(uint32_t &width,
+                                              uint32_t &height,
+                                              int8_t /*display*/) const
 {
   SDL_DisplayMode mode;
   const int display_index = 0; /* NOTE: always 0 display. */

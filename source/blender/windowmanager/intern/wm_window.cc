@@ -179,10 +179,10 @@ bool wm_get_screensize(int *r_width, int *r_height)
   return true;
 }
 
-bool wm_get_desktopsize(int *r_width, int *r_height)
+bool wm_get_desktopsize(int *r_width, int *r_height, int8_t display)
 {
   uint32_t uiwidth, uiheight;
-  if (GHOST_GetAllDisplayDimensions(g_system, &uiwidth, &uiheight) == GHOST_kFailure) {
+  if (GHOST_GetAllDisplayDimensions(g_system, &uiwidth, &uiheight, display) == GHOST_kFailure) {
     return false;
   }
   *r_width = uiwidth;
@@ -747,19 +747,21 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
   eGPUBackendType gpu_backend = GPU_backend_type_selection_get();
   gpuSettings.context_type = wm_ghost_drawing_context_type(gpu_backend);
 
+  /* Get the display (monitor) the window should be on (for macOS). */
+  const int8_t display = (win->stored_position && win->stored_position->size_x != 0) ?
+                             win->stored_position->display :
+                             -1;
+
   int posx = 0;
   int posy = 0;
 
   if (WM_capabilities_flag() & WM_CAPABILITY_WINDOW_POSITION) {
     int scr_w, scr_h;
-    if (wm_get_desktopsize(&scr_w, &scr_h)) {
+    if (wm_get_desktopsize(&scr_w, &scr_h, display)) {
       posx = win->posx;
       posy = (scr_h - win->posy - win->sizey);
     }
   }
-
-  /* Get the display (monitor) the window should be on (for macOS). */
-  const int16_t display = win->stored_position ? win->stored_position->display : -1;
 
   /* Clear drawable so we can set the new window. */
   wmWindow *prev_windrawable = wm->windrawable;
@@ -774,8 +776,8 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
       win->sizex,
       win->sizey,
       (GHOST_TWindowState)win->windowstate,
-      display,
       is_dialog,
+      display,
       gpuSettings);
 
   if (ghostwin) {
@@ -932,7 +934,7 @@ void wm_window_ghostwindows_remove_invalid(bContext *C, wmWindowManager *wm)
 }
 
 /* Update window size and position based on data from GHOST window. */
-static bool wm_window_update_size_position(wmWindow *win)
+static bool wm_window_update_size_position(wmWindow *win, const int8_t display = -1)
 {
   GHOST_RectangleHandle client_rect = GHOST_GetClientBounds(
       static_cast<GHOST_WindowHandle>(win->ghostwin));
@@ -949,7 +951,7 @@ static bool wm_window_update_size_position(wmWindow *win)
 
   if (WM_capabilities_flag() & WM_CAPABILITY_WINDOW_POSITION) {
     int scr_w, scr_h;
-    if (wm_get_desktopsize(&scr_w, &scr_h)) {
+    if (wm_get_desktopsize(&scr_w, &scr_h, display)) {
       posx = l;
       posy = scr_h - t - win->sizey;
     }
@@ -2526,10 +2528,6 @@ void wm_window_store_position(wmWindow *win)
     return;
   }
 
-  wm_window_update_size_position(win);
-  int pos_x = win->posx;
-  int pos_y = win->posy;
-
   /* For some platforms we have to correct the position for window extents (the size of decorations
    * such as the title bar). Without this correction the window would make a jump every time the
    * user opens it. */
@@ -2544,11 +2542,14 @@ void wm_window_store_position(wmWindow *win)
      * then we don't store the position. */
     return;
   }
-  pos_x -= extent_left;
-  pos_y += extent_top;
 
   /* Get the display (monitor) the window is on (for macOS). */
-  const int16_t display = GHOST_GetWindowDisplay(static_cast<GHOST_WindowHandle>(win->ghostwin));
+  const int8_t display = GHOST_GetWindowDisplay(static_cast<GHOST_WindowHandle>(win->ghostwin));
+
+  /* Get the current position of the window. */
+  wm_window_update_size_position(win, display);
+  const int pos_x = win->posx - extent_left;
+  const int pos_y = win->posy + extent_top;
 
   /* Store position and size in user preferences. But neglect differences of 1 pixel (due to
    * rounding), otherwise a window can crawl by a pixel every time you open it. */

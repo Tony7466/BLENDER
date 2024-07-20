@@ -609,7 +609,7 @@ void GHOST_WindowX11::clientToScreen(int32_t inX, int32_t inY, int32_t &outX, in
   outY = ay;
 }
 
-int16_t GHOST_WindowX11::getDisplay() const
+int8_t GHOST_WindowX11::getDisplay() const
 {
   return -1;
 }

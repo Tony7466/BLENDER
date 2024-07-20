@@ -126,7 +126,7 @@ class GHOST_WindowNULL : public GHOST_Window {
   {
     return GHOST_kSuccess;
   }
-  int16_t getDisplay() const override
+  int8_t getDisplay() const override
   {
     return -1;
   }

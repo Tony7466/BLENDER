@@ -131,12 +131,13 @@ GHOST_TSuccess GHOST_GetMainDisplayDimensions(GHOST_SystemHandle systemhandle,
 
 GHOST_TSuccess GHOST_GetAllDisplayDimensions(GHOST_SystemHandle systemhandle,
                                              uint32_t *r_width,
-                                             uint32_t *r_height)
+                                             uint32_t *r_height,
+                                             int8_t display)
 {
   const GHOST_ISystem *system = (const GHOST_ISystem *)systemhandle;
   *r_width = 0;
   *r_height = 0;
-  system->getAllDisplayDimensions(*r_width, *r_height);
+  system->getAllDisplayDimensions(*r_width, *r_height, display);
   return (*r_width == 0 && *r_height == 0) ? GHOST_kFailure : GHOST_kSuccess;
 }
 
@@ -165,8 +166,8 @@ GHOST_WindowHandle GHOST_CreateWindow(GHOST_SystemHandle systemhandle,
                                       uint32_t width,
                                       uint32_t height,
                                       GHOST_TWindowState state,
-                                      int16_t display,
                                       bool is_dialog,
+                                      int8_t display,
                                       GHOST_GPUSettings gpuSettings)
 {
   GHOST_ISystem *system = (GHOST_ISystem *)systemhandle;
@@ -179,8 +180,8 @@ GHOST_WindowHandle GHOST_CreateWindow(GHOST_SystemHandle systemhandle,
                                                   state,
                                                   gpuSettings,
                                                   false,
-                                                  display,
                                                   is_dialog,
+                                                  display,
                                                   (GHOST_IWindow *)parent_windowhandle);
 }
 
@@ -693,7 +694,7 @@ void GHOST_ClientToScreen(
   window->clientToScreen(inX, inY, *outX, *outY);
 }
 
-int16_t GHOST_GetWindowDisplay(GHOST_WindowHandle windowhandle)
+int8_t GHOST_GetWindowDisplay(GHOST_WindowHandle windowhandle)
 {
   const GHOST_IWindow *window = (const GHOST_IWindow *)windowhandle;
 

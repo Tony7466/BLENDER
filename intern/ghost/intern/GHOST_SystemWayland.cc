@@ -8050,7 +8050,9 @@ void GHOST_SystemWayland::getMainDisplayDimensions(uint32_t &width, uint32_t &he
   }
 }
 
-void GHOST_SystemWayland::getAllDisplayDimensions(uint32_t &width, uint32_t &height) const
+void GHOST_SystemWayland::getAllDisplayDimensions(uint32_t &width,
+                                                  uint32_t &height,
+                                                  int8_t /*display*/) const
 {
 #ifdef USE_EVENT_BACKGROUND_THREAD
   std::lock_guard lock_server_guard{*server_mutex};
@@ -8214,8 +8216,8 @@ GHOST_IWindow *GHOST_SystemWayland::createWindow(const char *title,
                                                  const GHOST_TWindowState state,
                                                  const GHOST_GPUSettings gpuSettings,
                                                  const bool exclusive,
-                                                 const int16_t /*display*/,
                                                  const bool is_dialog,
+                                                 const int8_t /*display*/,
                                                  const GHOST_IWindow *parentWindow)
 {
   /* Globally store pointer to window manager. */

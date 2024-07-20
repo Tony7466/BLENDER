@@ -127,7 +127,7 @@ GHOST_TSuccess GHOST_WindowSDL::setState(GHOST_TWindowState state)
   return GHOST_kSuccess;
 }
 
-int16_t GHOST_WindowSDL::getDisplay() const
+int8_t GHOST_WindowSDL::getDisplay() const
 {
   return -1;
 }

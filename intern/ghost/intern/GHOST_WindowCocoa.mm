@@ -296,10 +296,10 @@ GHOST_WindowCocoa::GHOST_WindowCocoa(GHOST_SystemCocoa *systemCocoa,
                                      uint32_t height,
                                      GHOST_TWindowState state,
                                      GHOST_TDrawingContextType type,
-                                     const int16_t display,
                                      const bool stereoVisual,
                                      bool is_debug,
                                      bool is_dialog,
+                                     int8_t display,
                                      GHOST_WindowCocoa *parentWindow)
     : GHOST_Window(width, height, state, stereoVisual, false),
       m_openGLView(nil),
@@ -315,7 +315,7 @@ GHOST_WindowCocoa::GHOST_WindowCocoa(GHOST_SystemCocoa *systemCocoa,
 
   NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 
-  /* Get the display (monitor) for the new window. */
+  /* Get the display (monitor) for the new window. -1 means active display. */
   NSScreen *screen = [NSScreen mainScreen];
   if (display != -1) {
     NSArray *screens = [NSScreen screens];
@@ -323,7 +323,7 @@ GHOST_WindowCocoa::GHOST_WindowCocoa(GHOST_SystemCocoa *systemCocoa,
       screen = [screens objectAtIndex:display];
     }
   }
-  
+
   /* Creates the window. */
   NSRect rect;
   NSSize minSize;
@@ -351,6 +351,16 @@ GHOST_WindowCocoa::GHOST_WindowCocoa(GHOST_SystemCocoa *systemCocoa,
   minSize.width = 320;
   minSize.height = 240;
   [m_window setContentMinSize:minSize];
+
+  /* When the window is opened on a different display then the active one, we have to adjust
+   * for the display origin. Otherwise the window will end up in the wrong position. */
+  if (display != -1) {
+    NSRect displayFrame = [[m_window screen] frame];
+    NSPoint windowOrigin;
+    windowOrigin.x = left + displayFrame.origin.x;
+    windowOrigin.y = bottom + displayFrame.origin.y;
+    [m_window setFrameOrigin:windowOrigin];
+  }
 
   /* Create NSView inside the window. */
   id<MTLDevice> metalDevice = MTLCreateSystemDefaultDevice();
@@ -559,14 +569,7 @@ GHOST_TSuccess GHOST_WindowCocoa::setPath(const char *filepath)
 
 GHOST_TSuccess GHOST_WindowCocoa::getWindowExtents(GHOST_Rect &bounds)
 {
-  NSRect window_rect = [m_window frame];
-  NSRect client_rect = [m_window contentRectForFrameRect:[m_window frame]];
-  
-  bounds.m_l = window_rect.origin.x - client_rect.origin.x;
-  bounds.m_r = window_rect.size.width - client_rect.size.width;
-  bounds.m_t = window_rect.size.height - client_rect.size.height;
-  bounds.m_b = window_rect.origin.y - client_rect.origin.y;
-
+  bounds.set(0, 0, 0, 0);
   return GHOST_kSuccess;
 }
 
@@ -659,11 +662,11 @@ GHOST_TSuccess GHOST_WindowCocoa::setClientSize(uint32_t width, uint32_t height)
   return GHOST_kSuccess;
 }
 
-int16_t GHOST_WindowCocoa::getDisplay() const
+int8_t GHOST_WindowCocoa::getDisplay() const
 {
-  int16_t display = -1;
+  int8_t display = -1;
   NSArray *screens = [NSScreen screens];
-  for (int16_t index = 0; index < [screens count]; index++) {
+  for (int8_t index = 0; index < [screens count]; index++) {
     NSScreen *screen = [screens objectAtIndex:index];
     if (screen == m_window.screen) {
       display = index;

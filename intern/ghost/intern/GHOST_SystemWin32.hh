@@ -88,7 +88,7 @@ class GHOST_SystemWin32 : public GHOST_System {
    * Returns the dimensions of all displays on this system.
    * \return The dimension of the main display.
    */
-  void getAllDisplayDimensions(uint32_t &width, uint32_t &height) const;
+  void getAllDisplayDimensions(uint32_t &width, uint32_t &height, int8_t display) const;
 
   /**
    * Create a new window.
@@ -114,8 +114,8 @@ class GHOST_SystemWin32 : public GHOST_System {
                               GHOST_TWindowState state,
                               GHOST_GPUSettings gpuSettings,
                               const bool exclusive = false,
-                              const int16_t display = -1,
                               const bool is_dialog = false,
+                              const int8_t display = -1,
                               const GHOST_IWindow *parentWindow = 0);
 
   /**

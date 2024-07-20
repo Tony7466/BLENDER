@@ -503,7 +503,7 @@ GHOST_TSuccess GHOST_WindowWin32::setClientSize(uint32_t width, uint32_t height)
   return success;
 }
 
-int16_t GHOST_WindowWin32::getDisplay() const
+int8_t GHOST_WindowWin32::getDisplay() const
 {
   return -1;
 }

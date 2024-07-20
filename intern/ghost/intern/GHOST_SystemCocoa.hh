@@ -65,7 +65,7 @@ class GHOST_SystemCocoa : public GHOST_System {
   /** Returns the combine dimensions of all monitors.
    * \return The dimension of the workspace.
    */
-  void getAllDisplayDimensions(uint32_t &width, uint32_t &height) const;
+  void getAllDisplayDimensions(uint32_t &width, uint32_t &height, int8_t display = -1) const;
 
   /**
    * Create a new window.
@@ -80,8 +80,8 @@ class GHOST_SystemCocoa : public GHOST_System {
    * \param state: The state of the window when opened.
    * \param gpuSettings: Misc GPU settings.
    * \param exclusive: Use to show the window on top and ignore others (used full-screen).
-   * \param parentWindow: Parent (embedder) window.
    * \param display: Index of the display (monitor) to create the window on.
+   * \param parentWindow: Parent (embedder) window.
    * \return The new window (or 0 if creation failed).
    */
   GHOST_IWindow *createWindow(const char *title,
@@ -92,8 +92,8 @@ class GHOST_SystemCocoa : public GHOST_System {
                               GHOST_TWindowState state,
                               GHOST_GPUSettings gpuSettings,
                               const bool exclusive = false,
-                              const int16_t display = -1,
                               const bool is_dialog = false,
+                              const int8_t display = -1,
                               const GHOST_IWindow *parentWindow = nullptr);
 
   /**

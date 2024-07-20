@@ -58,7 +58,7 @@ class GHOST_SystemSDL : public GHOST_System {
 
   GHOST_TSuccess setCursorPosition(int32_t x, int32_t y) override;
 
-  void getAllDisplayDimensions(uint32_t &width, uint32_t &height) const override;
+  void getAllDisplayDimensions(uint32_t &width, uint32_t &height, int8_t display) const override;
 
   void getMainDisplayDimensions(uint32_t &width, uint32_t &height) const override;
 
@@ -77,8 +77,8 @@ class GHOST_SystemSDL : public GHOST_System {
                               GHOST_TWindowState state,
                               GHOST_GPUSettings gpuSettings,
                               const bool exclusive = false,
-                              const int16_t display = -1,
                               const bool is_dialog = false,
+                              const int8_t display = -1,
                               const GHOST_IWindow *parentWindow = nullptr) override;
 
   /* SDL specific */

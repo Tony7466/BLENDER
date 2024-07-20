@@ -40,7 +40,8 @@ bool wm_get_screensize(int *r_width, int *r_height) ATTR_NONNULL(1, 2) ATTR_WARN
  * Size of all screens (desktop), useful since the mouse is bound by this.
  * \return true on success.
  */
-bool wm_get_desktopsize(int *r_width, int *r_height) ATTR_NONNULL(1, 2) ATTR_WARN_UNUSED_RESULT;
+bool wm_get_desktopsize(int *r_width, int *r_height, int8_t display)
+    ATTR_NONNULL(1, 2) ATTR_WARN_UNUSED_RESULT;
 
 /**
  * Don't change context itself.
@@ -99,7 +100,7 @@ void wm_window_lower(wmWindow *win);
 void wm_window_set_size(wmWindow *win, int width, int height);
 void wm_window_get_position(wmWindow *win, int *r_pos_x, int *r_pos_y);
 /**
- * Store the size and position of a window (so it can be restored in the same state when
+ * Store the size and position of a window (so that it can be restored in the same state when
  * reopening).
  */
 void wm_window_store_position(wmWindow *win);

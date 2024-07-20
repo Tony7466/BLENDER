@@ -346,7 +346,9 @@ void GHOST_SystemX11::getMainDisplayDimensions(uint32_t &width, uint32_t &height
   }
 }
 
-void GHOST_SystemX11::getAllDisplayDimensions(uint32_t &width, uint32_t &height) const
+void GHOST_SystemX11::getAllDisplayDimensions(uint32_t &width,
+                                              uint32_t &height,
+                                              int8_t /*display*/) const
 {
   if (m_display) {
     width = DisplayWidth(m_display, DefaultScreen(m_display));
@@ -362,8 +364,8 @@ GHOST_IWindow *GHOST_SystemX11::createWindow(const char *title,
                                              GHOST_TWindowState state,
                                              GHOST_GPUSettings gpuSettings,
                                              const bool exclusive,
-                                             const int16_t /*display*/,
                                              const bool is_dialog,
+                                             const int8_t /*display*/,
                                              const GHOST_IWindow *parentWindow)
 {
   GHOST_WindowX11 *window = nullptr;

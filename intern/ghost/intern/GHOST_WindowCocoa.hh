@@ -41,8 +41,8 @@ class GHOST_WindowCocoa : public GHOST_Window {
    * \param height: The height the window.
    * \param state: The state the window is initially opened with.
    * \param type: The type of drawing context installed in this window.
-   * \param display: The index of the display (monitor) to create the window on.
    * \param stereoVisual: Stereo visual for quad buffered stereo.
+   * \param display: The index of the display (monitor) to create the window on.
    */
   GHOST_WindowCocoa(GHOST_SystemCocoa *systemCocoa,
                     const char *title,
@@ -52,10 +52,10 @@ class GHOST_WindowCocoa : public GHOST_Window {
                     uint32_t height,
                     GHOST_TWindowState state,
                     GHOST_TDrawingContextType type = GHOST_kDrawingContextTypeNone,
-                    const int16_t display = -1,
                     const bool stereoVisual = false,
                     bool is_debug = false,
                     bool dialog = false,
+                    int8_t display = -1,
                     GHOST_WindowCocoa *parentWindow = 0);
 
   /**
@@ -138,7 +138,7 @@ class GHOST_WindowCocoa : public GHOST_Window {
    * Returns the index of the display (monitor) the window is on.
    * \return The index of the display.
    */
-  int16_t getDisplay() const;
+  int8_t getDisplay() const;
 
   /**
    * Returns the state of the window (normal, minimized, maximized).

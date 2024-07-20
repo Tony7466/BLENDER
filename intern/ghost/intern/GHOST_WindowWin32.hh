@@ -170,7 +170,7 @@ class GHOST_WindowWin32 : public GHOST_Window {
    * Returns the index of the display (monitor) the window is on.
    * \return The index of the display (for macOS, otherwise defaults to -1).
    */
-  int16_t getDisplay() const;
+  int8_t getDisplay() const;
 
   /**
    * Returns the state of the window (normal, minimized, maximized).
