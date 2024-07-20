@@ -635,23 +635,22 @@ using ProcessVoxelsFn = FunctionRef<void(Span<openvdb::Coord> voxels)>;
 template<typename LeafNodeT>
 static void parallel_grid_topology_tasks_leaf_node(const LeafNodeT &node,
                                                    const ProcessLeafFn process_leaf_fn,
-                                                   const ProcessVoxelsFn process_voxels_fn)
+                                                   Vector<openvdb::Coord, 1024> &r_coords)
 {
   using NodeMaskT = typename LeafNodeT::NodeMaskType;
 
-  const bool use_leaf_processing = false;
-  if (use_leaf_processing) {
+  const int on_count = node.onVoxelCount();
+  const int on_count_threshold = 50;
+  if (on_count >= on_count_threshold) {
     const NodeMaskT &value_mask = node.getValueMask();
     const openvdb::CoordBBox bbox = node.getNodeBoundingBox();
     process_leaf_fn(value_mask, bbox);
   }
   else {
-    Vector<openvdb::Coord> voxels;
     for (auto value_iter = node.cbeginValueOn(); value_iter.test(); ++value_iter) {
       const openvdb::Coord coord = value_iter.getCoord();
-      voxels.append(coord);
+      r_coords.append(coord);
     }
-    process_voxels_fn(voxels);
   }
 }
 
@@ -668,16 +667,28 @@ static void parallel_grid_topology_tasks_internal_node(const InternalNodeT &node
 
   const NodeMaskT &child_mask = node.getChildMask();
   const UnionT *table = node.getTable();
+
+  Vector<openvdb::Coord, 1024> gathered_voxels;
+
   for (auto child_mask_iter = child_mask.beginOn(); child_mask_iter.test(); ++child_mask_iter) {
     const openvdb::Index32 index = child_mask_iter.pos();
     const ChildNodeT &child = *table[index].getChild();
     if constexpr (std::is_same_v<ChildNodeT, LeafNodeT>) {
-      parallel_grid_topology_tasks_leaf_node(child, process_leaf_fn, process_voxels_fn);
+      parallel_grid_topology_tasks_leaf_node(child, process_leaf_fn, gathered_voxels);
+      if (gathered_voxels.size() >= 512) {
+        process_voxels_fn(gathered_voxels);
+        gathered_voxels.clear();
+      }
     }
     else {
       parallel_grid_topology_tasks_internal_node(
           child, process_leaf_fn, process_voxels_fn, process_tiles_fn);
     }
+  }
+
+  if (!gathered_voxels.is_empty()) {
+    process_voxels_fn(gathered_voxels);
+    gathered_voxels.clear();
   }
 
   const NodeMaskT &value_mask = node.getValueMask();
@@ -699,6 +710,7 @@ static void parallel_grid_topology_tasks(const openvdb::MaskTree &mask_tree,
                                          const ProcessVoxelsFn process_voxels_fn,
                                          const ProcessTilesFn process_tiles_fn)
 {
+  SCOPED_TIMER(__func__);
   for (auto root_child_iter = mask_tree.cbeginRootChildren(); root_child_iter.test();
        ++root_child_iter)
   {
@@ -738,30 +750,36 @@ static void execute_multi_function_on_value_variant__volume_grid(
   }
 
   openvdb::MaskTree mask_tree;
-  for (const bke::GVolumeGrid &input_grid : input_grids) {
-    const VolumeGridType grid_type = input_grid->grid_type();
-    bke::VolumeTreeAccessToken token;
-    const openvdb::TreeBase &input_vdb_tree = input_grid->grid(token).constBaseTree();
-    MaskGridUnionFn fn{mask_tree, input_vdb_tree};
-    BKE_volume_grid_type_operation(grid_type, fn);
+  {
+    SCOPED_TIMER("create mask");
+    for (const bke::GVolumeGrid &input_grid : input_grids) {
+      const VolumeGridType grid_type = input_grid->grid_type();
+      bke::VolumeTreeAccessToken token;
+      const openvdb::TreeBase &input_vdb_tree = input_grid->grid(token).constBaseTree();
+      MaskGridUnionFn fn{mask_tree, input_vdb_tree};
+      BKE_volume_grid_type_operation(grid_type, fn);
+    }
   }
 
   Vector<bke::GVolumeGrid> output_grids;
-  for (const int i : output_values.index_range()) {
-    const int param_index = input_values.size() + i;
-    const CPPType &cpp_type = fn.param_type(param_index).data_type().single_type();
-    /* TODO: Cleanup and error handling. */
-    const VolumeGridType grid_type = *bke::socket_type_to_grid_type(
-        *bke::geo_nodes_base_cpp_type_to_socket_type(cpp_type));
+  {
+    SCOPED_TIMER("allocate output grids");
+    for (const int i : output_values.index_range()) {
+      const int param_index = input_values.size() + i;
+      const CPPType &cpp_type = fn.param_type(param_index).data_type().single_type();
+      /* TODO: Cleanup and error handling. */
+      const VolumeGridType grid_type = *bke::socket_type_to_grid_type(
+          *bke::geo_nodes_base_cpp_type_to_socket_type(cpp_type));
 
-    BuildOutputGridFn build_grid_fn{mask_tree};
-    BKE_volume_grid_type_operation(grid_type, build_grid_fn);
+      BuildOutputGridFn build_grid_fn{mask_tree};
+      BKE_volume_grid_type_operation(grid_type, build_grid_fn);
 
-    openvdb::GridBase::Ptr vdb_grid = std::move(build_grid_fn.vdb_grid);
-    vdb_grid->setTransform(transform.copy());
+      openvdb::GridBase::Ptr vdb_grid = std::move(build_grid_fn.vdb_grid);
+      vdb_grid->setTransform(transform.copy());
 
-    bke::GVolumeGrid output_grid{std::move(vdb_grid)};
-    output_grids.append(std::move(output_grid));
+      bke::GVolumeGrid output_grid{std::move(vdb_grid)};
+      output_grids.append(std::move(output_grid));
+    }
   }
 
   parallel_grid_topology_tasks(
@@ -887,7 +905,6 @@ static void execute_multi_function_on_value_variant__volume_grid(
           openvdb::GridBase &output_grid_base = g_output_grid.get_for_write().grid_for_write(
               token);
           openvdb::FloatGrid &output_grid = static_cast<openvdb::FloatGrid &>(output_grid_base);
-          openvdb::FloatTree &output_tree = output_grid.tree();
 
           const int param_index = input_values.size() + output_i;
           const Span<float> computed_values = params.computed_array(param_index).typed<float>();
