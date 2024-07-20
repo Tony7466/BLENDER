@@ -668,28 +668,32 @@ static void parallel_grid_topology_tasks_internal_node(const InternalNodeT &node
   const NodeMaskT &child_mask = node.getChildMask();
   const UnionT *table = node.getTable();
 
-  Vector<openvdb::Coord, 1024> gathered_voxels;
-
+  Vector<int, 512> child_indices;
   for (auto child_mask_iter = child_mask.beginOn(); child_mask_iter.test(); ++child_mask_iter) {
-    const openvdb::Index32 index = child_mask_iter.pos();
-    const ChildNodeT &child = *table[index].getChild();
-    if constexpr (std::is_same_v<ChildNodeT, LeafNodeT>) {
-      parallel_grid_topology_tasks_leaf_node(child, process_leaf_fn, gathered_voxels);
-      if (gathered_voxels.size() >= 512) {
-        process_voxels_fn(gathered_voxels);
-        gathered_voxels.clear();
+    child_indices.append(child_mask_iter.pos());
+  }
+
+  threading::parallel_for(child_indices.index_range(), 8, [&](const IndexRange range) {
+    Vector<openvdb::Coord, 1024> gathered_voxels;
+    for (const int child_index : child_indices.as_span().slice(range)) {
+      const ChildNodeT &child = *table[child_index].getChild();
+      if constexpr (std::is_same_v<ChildNodeT, LeafNodeT>) {
+        parallel_grid_topology_tasks_leaf_node(child, process_leaf_fn, gathered_voxels);
+        if (gathered_voxels.size() >= 512) {
+          process_voxels_fn(gathered_voxels);
+          gathered_voxels.clear();
+        }
+      }
+      else {
+        parallel_grid_topology_tasks_internal_node(
+            child, process_leaf_fn, process_voxels_fn, process_tiles_fn);
       }
     }
-    else {
-      parallel_grid_topology_tasks_internal_node(
-          child, process_leaf_fn, process_voxels_fn, process_tiles_fn);
+    if (!gathered_voxels.is_empty()) {
+      process_voxels_fn(gathered_voxels);
+      gathered_voxels.clear();
     }
-  }
-
-  if (!gathered_voxels.is_empty()) {
-    process_voxels_fn(gathered_voxels);
-    gathered_voxels.clear();
-  }
+  });
 
   const NodeMaskT &value_mask = node.getValueMask();
   Vector<openvdb::CoordBBox> tile_bboxes;
@@ -877,7 +881,7 @@ static void execute_multi_function_on_value_variant__volume_grid(
             const openvdb::FloatGrid &grid = *static_cast<const openvdb::FloatGrid *>(grid_base);
             const openvdb::FloatTree &tree = grid.tree();
 
-            openvdb::FloatGrid::ConstAccessor accessor = grid.getConstAccessor();
+            openvdb::FloatGrid::ConstUnsafeAccessor accessor = grid.getConstUnsafeAccessor();
 
             MutableSpan<float> values = scope.construct<Array<float>>(voxels_num);
             for (const int64_t i : IndexRange(voxels_num)) {
@@ -911,7 +915,7 @@ static void execute_multi_function_on_value_variant__volume_grid(
           const int param_index = input_values.size() + output_i;
           const Span<float> computed_values = params.computed_array(param_index).typed<float>();
 
-          openvdb::FloatGrid::Accessor accessor = grid.getAccessor();
+          openvdb::FloatGrid::UnsafeAccessor accessor = grid.getUnsafeAccessor();
 
           for (const int64_t i : IndexRange(voxels_num)) {
             const openvdb::Coord &coord = voxels[i];
@@ -934,7 +938,7 @@ static void execute_multi_function_on_value_variant__volume_grid(
             const openvdb::FloatGrid &grid = *static_cast<const openvdb::FloatGrid *>(grid_base);
             const openvdb::FloatTree &tree = grid.tree();
 
-            openvdb::FloatGrid::ConstAccessor accessor = grid.getConstAccessor();
+            openvdb::FloatGrid::ConstUnsafeAccessor accessor = grid.getConstUnsafeAccessor();
 
             MutableSpan<float> values = scope.construct<Array<float>>(tiles_num);
             for (const int64_t i : IndexRange(tiles_num)) {
