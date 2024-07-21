@@ -217,7 +217,14 @@ void draw_curve(const std::string &label,
     }
     f << " Z";
   }
-  f << "\"/>\n";
+
+  f << "\"";
+
+  if (points_by_polygon.size() > 1) {
+    f << " fill-rule=\"evenodd\"";
+  }
+
+  f << "/>\n";
 
   f << "</div>\n";
 
