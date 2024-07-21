@@ -25,7 +25,50 @@
 
 namespace blender::polygonboolean {
 
-static bool draw_append = false; /* Will be set to true after first call. */
+static void CSS_setup_style(std::ofstream &f)
+{
+  constexpr int border_width = 5;
+  constexpr int stroke_width = 3;
+  constexpr int stroke_dasharray = 15;
+
+  f << "div {\n"
+       "  border: "
+    << border_width
+    << "px solid black;\n"
+       "  text-align: center;\n"
+       "}\n";
+
+  f << ".polygon-A {\n"
+       "  fill: none;\n"
+       "  stroke: red;\n"
+       "  stroke-width: "
+    << stroke_width
+    << "px;\n"
+       "  stroke-dasharray: "
+    << stroke_dasharray
+    << "px;\n"
+       "}\n";
+
+  f << ".polygon-B {\n"
+       "  fill: none;\n"
+       "  stroke: blue;\n"
+       "  stroke-width: "
+    << stroke_width
+    << "px;\n"
+       "  stroke-dasharray: "
+    << stroke_dasharray
+    << "px;\n"
+       "}\n";
+
+  f << ".polygon-C {\n"
+       "  fill: green;\n"
+       "  stroke: black;\n"
+       "  stroke-width: "
+    << stroke_width + 1
+    << "px;\n"
+       "  fill-opacity: 0.75;\n"
+       "}\n";
+}
 
 #define SX(x) ((x - topleft[0]) * scale)
 #define SY(y) ((topleft[1] - y) * scale)
@@ -84,6 +127,8 @@ static void SVG_add_polygons_as_path(std::ofstream &f,
   f << "/>\n";
 }
 
+static bool draw_append = false; /* Will be set to true after first call. */
+
 void draw_curve(const std::string &label,
                 const Span<float2> curve_a,
                 const Span<float2> curve_b,
@@ -99,9 +144,6 @@ void draw_curve(const std::string &label,
 #endif
   constexpr int max_draw_width = 800;
   constexpr int max_draw_height = 600;
-  constexpr int border_width = 5;
-  constexpr int stroke_width = 3;
-  constexpr int stroke_dasharray = 15;
 
   float2 vmin(1e10, 1e10);
   float2 vmax(-1e10, -1e10);
@@ -163,43 +205,7 @@ void draw_curve(const std::string &label,
 
     f << "<style>\n";
 
-    f << "div {\n"
-         "  border: "
-      << border_width
-      << "px solid black;\n"
-         "  text-align: center;\n"
-         "}\n";
-
-    f << ".polygon-A {\n"
-         "  fill: none;\n"
-         "  stroke: red;\n"
-         "  stroke-width: "
-      << stroke_width
-      << "px;\n"
-         "  stroke-dasharray: "
-      << stroke_dasharray
-      << "px;\n"
-         "}\n";
-
-    f << ".polygon-B {\n"
-         "  fill: none;\n"
-         "  stroke: blue;\n"
-         "  stroke-width: "
-      << stroke_width
-      << "px;\n"
-         "  stroke-dasharray: "
-      << stroke_dasharray
-      << "px;\n"
-         "}\n";
-
-    f << ".polygon-C {\n"
-         "  fill: green;\n"
-         "  stroke: black;\n"
-         "  stroke-width: "
-      << stroke_width + 1
-      << "px;\n"
-         "  fill-opacity: 0.75;\n"
-         "}\n";
+    CSS_setup_style(f);
 
     f << "</style>\n";
   }
