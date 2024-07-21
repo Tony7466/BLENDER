@@ -12,6 +12,7 @@
 #include "BLI_array_utils.hh"
 #include "BLI_math_geom.h"
 #include "BLI_math_vector_types.hh"
+#include "BLI_offset_indices.hh"
 #include "BLI_vector.hh"
 
 #include "BLI_polygon_clipping_2d.hh"
@@ -283,6 +284,71 @@ std::pair<bool, bool> get_AB_mode(const BooleanMode mode)
   return {false, false};
 }
 
+static int result_find_base_id(const BooleanResult &results)
+{
+  // const OffsetIndices<int> points_by_polygon = OffsetIndices<int>(results.offsets);
+
+  int base_id = 0; /* TODO */
+
+  // for (const int polygon_a : points_by_polygon.index_range()) {
+  //   points = points_by_polygon[polygon_a];
+  // }
+
+  return base_id;
+}
+
+static BooleanResult result_remove_holes(const BooleanResult &in_results)
+{
+  BooleanResult result;
+
+  const int base_id = result_find_base_id(in_results);
+
+  const int base_start = in_results.offsets[base_id];
+  const int base_end = in_results.offsets[base_id + 1];
+  const int base_size = base_end - base_start;
+
+  Array<Vertex> verts(base_size);
+  const Array<int> offsets = {0, base_size};
+
+  const int og_intersection_size = in_results.intersections_data.size();
+  Array<int> reverse_map(og_intersection_size, -1);
+  int new_intersection_size = 0;
+
+  for (const int i : IndexRange(base_size)) {
+    const Vertex &vert = in_results.verts[i + base_start];
+    if (vert.type != VertexType::Intersection) {
+      verts[i] = vert;
+      continue;
+    }
+
+    if (reverse_map[vert.point_id] == -1) {
+      reverse_map[vert.point_id] = new_intersection_size;
+      new_intersection_size++;
+    }
+    verts[i] = {VertexType::Intersection, reverse_map[vert.point_id]};
+  }
+
+  Array<IntersectionPoint> intersections(new_intersection_size);
+  for (const int i : IndexRange(og_intersection_size)) {
+    if (reverse_map[i] != -1) {
+      intersections[reverse_map[i]] = in_results.intersections_data[i];
+    }
+  }
+
+  result.verts = verts;
+  result.offsets = offsets;
+  result.intersections_data = intersections;
+  result.valid_geometry = true;
+
+  return result;
+}
+
+static BooleanResult result_sort_holes(const BooleanResult &in_results)
+{
+  /* TODO. */
+  return in_results;
+}
+
 /**
  * Utility class to avoid passing large number of parameters between functions.
  */
@@ -516,6 +582,13 @@ struct CurveBooleanExecutor {
     result.offsets = offsets;
     result.intersections_data = intersections_data;
     result.valid_geometry = true;
+
+    if (input_mode.hole_mode == WITHOUT_HOLES) {
+      result = result_remove_holes(result);
+    }
+    else if (input_mode.hole_mode == WITH_ORDERED_HOLES) {
+      result = result_sort_holes(result);
+    }
 
     return result;
   }
