@@ -398,6 +398,29 @@ void complex_A_OR_B_test()
   }
 }
 
+void complex_A_OR_B_without_holes_test()
+{
+  /**
+   * This is a replica of Fig. 16 from
+   * Greiner, Günther; Kai Hormann (1998). "Efficient clipping of arbitrary polygons". ACM
+   * Transactions on Graphics. 17 (2): 71–83.
+   */
+  const Array<float2> points_a = {{14, 1}, {0, 5}, {14, 10}, {5, 6}, {14, 6}, {5, 5}};
+  const Array<float2> points_b = {{9, 13}, {13, 0}, {9, 9}, {6, 0}};
+  InputMode input_mode;
+  input_mode.boolean_mode = BooleanMode::A_OR_B;
+  input_mode.hole_mode = HoleMode::WITHOUT_HOLES;
+  BooleanResult result = polygonboolean::curve_boolean_calc(input_mode, points_a, points_b);
+  EXPECT_TRUE(result.valid_geometry);
+  EXPECT_EQ(result.verts.size(), 17);
+  EXPECT_EQ(result.intersections_data.size(), 10);
+  EXPECT_EQ(result.offsets.size(), 2);
+
+  if (DO_DRAW) {
+    draw_curve("Complex A Union B without holes", points_a, points_b, result);
+  }
+}
+
 void complex_A_NOT_B_test()
 {
   /**
@@ -507,6 +530,11 @@ TEST(polygonboolean, Complex_A_AND_B)
 TEST(polygonboolean, Complex_A_OR_B)
 {
   complex_A_OR_B_test();
+}
+
+TEST(polygonboolean, Complex_A_OR_B_Without_Holes)
+{
+  complex_A_OR_B_without_holes_test();
 }
 
 TEST(polygonboolean, Complex_A_NOT_B)
