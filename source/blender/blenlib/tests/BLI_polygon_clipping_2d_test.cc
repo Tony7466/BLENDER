@@ -444,6 +444,31 @@ void complex_B_NOT_A_test()
   }
 }
 
+void last_segment_interection_test()
+{
+  /**
+   * These shapes are designed to test the following:
+   *   1: Intersection with the last segment to others.
+   *   2: Getting the next intersection point through a full loop from last segment to the first.
+   *   3: Sorting multiple intersection points on the same segment.
+   *   4: Self intersection in one of the shapes.
+   */
+  const Array<float2> points_a = {{0, 5}, {0, 0}, {7, 0}, {7, 5}};
+  const Array<float2> points_b = {{2, 3}, {0, 7}, {3, 7}, {5, 4}, {6, 6}, {3, 4}, {2, 6}};
+  InputMode input_mode;
+  input_mode.boolean_mode = BooleanMode::A_NOT_B;
+  input_mode.hole_mode = HoleMode::WITH_HOLES;
+  BooleanResult result = polygonboolean::curve_boolean_calc(input_mode, points_a, points_b);
+  EXPECT_TRUE(result.valid_geometry);
+  EXPECT_EQ(result.verts.size(), 13);
+  EXPECT_EQ(result.intersections_data.size(), 6);
+  EXPECT_EQ(result.offsets.size(), 2);
+
+  if (DO_DRAW) {
+    draw_curve("Last segment loop", points_a, points_b, result);
+  }
+}
+
 TEST(polygonboolean, Squares_A_AND_B)
 {
   squares_A_AND_B_test();
@@ -492,6 +517,11 @@ TEST(polygonboolean, Complex_A_NOT_B)
 TEST(polygonboolean, Complex_B_NOT_A)
 {
   complex_B_NOT_A_test();
+}
+
+TEST(polygonboolean, Last_Segment_Interection)
+{
+  last_segment_interection_test();
 }
 
 }  // namespace blender::polygonboolean
