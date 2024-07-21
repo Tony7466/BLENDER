@@ -74,7 +74,7 @@ BooleanResult result_None(Span<float2> /*curve_a*/, Span<float2> /*curve_b*/)
   BooleanResult result;
 
   const Array<Vertex> verts(0);
-  const Array<int> offsets(1, 0);
+  const Array<int> offsets = {0};
   const Array<IntersectionPoint> intersections(0);
 
   result.verts = verts;
@@ -92,15 +92,12 @@ BooleanResult result_A(Span<float2> curve_a, Span<float2> /*curve_b*/)
   const int len_a = curve_a.size();
 
   Array<Vertex> verts(len_a);
-  Array<int> offsets(2);
+  const Array<int> offsets = {0, len_a};
   const Array<IntersectionPoint> intersections(0);
 
   for (const int i : IndexRange(len_a)) {
     verts[i] = {VertexType::PointA, i};
   }
-
-  offsets[0] = 0;
-  offsets[1] = len_a;
 
   result.verts = verts;
   result.offsets = offsets;
@@ -117,15 +114,12 @@ BooleanResult result_B(Span<float2> /*curve_a*/, Span<float2> curve_b)
   const int len_b = curve_b.size();
 
   Array<Vertex> verts(len_b);
-  Array<int> offsets(2);
+  const Array<int> offsets = {0, len_b};
   const Array<IntersectionPoint> intersections(0);
 
   for (const int i : IndexRange(len_b)) {
     verts[i] = {VertexType::PointB, i};
   }
-
-  offsets[0] = 0;
-  offsets[1] = len_b;
 
   result.verts = verts;
   result.offsets = offsets;
@@ -143,7 +137,7 @@ BooleanResult result_AB(Span<float2> curve_a, Span<float2> curve_b)
   const int len_b = curve_b.size();
 
   Array<Vertex> verts(len_a + len_b);
-  Array<int> offsets(3);
+  const Array<int> offsets = {0, len_a, len_a + len_b};
   const Array<IntersectionPoint> intersections(0);
 
   for (const int i : IndexRange(len_a)) {
@@ -153,10 +147,6 @@ BooleanResult result_AB(Span<float2> curve_a, Span<float2> curve_b)
   for (const int i : IndexRange(len_b)) {
     verts[i + len_a] = {VertexType::PointB, i};
   }
-
-  offsets[0] = 0;
-  offsets[1] = len_a;
-  offsets[2] = len_a + len_b;
 
   result.verts = verts;
   result.offsets = offsets;
@@ -174,7 +164,7 @@ BooleanResult result_BA(Span<float2> curve_a, Span<float2> curve_b)
   const int len_b = curve_b.size();
 
   Array<Vertex> verts(len_b + len_a);
-  Array<int> offsets(3);
+  const Array<int> offsets = {0, len_b, len_b + len_a};
   const Array<IntersectionPoint> intersections(0);
 
   for (const int i : IndexRange(len_b)) {
@@ -184,10 +174,6 @@ BooleanResult result_BA(Span<float2> curve_a, Span<float2> curve_b)
   for (const int i : IndexRange(len_a)) {
     verts[i + len_b] = {VertexType::PointA, i};
   }
-
-  offsets[0] = 0;
-  offsets[1] = len_b;
-  offsets[2] = len_b + len_a;
 
   result.verts = verts;
   result.offsets = offsets;
