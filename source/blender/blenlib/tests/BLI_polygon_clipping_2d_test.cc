@@ -145,24 +145,24 @@ void draw_curve(const std::string &label,
   const Bounds<float2> bound = *bounds::merge(bounds::min_max(curve_a), bounds::min_max(curve_b));
   const float2 vmin = bound.min;
   const float2 vmax = bound.max;
-  float draw_margin = ((vmax.x - vmin.x) + (vmax.y - vmin.y)) * 0.05;
-  float minx = vmin.x - draw_margin;
-  float maxx = vmax.x + draw_margin;
-  float miny = vmin.y - draw_margin;
-  float maxy = vmax.y + draw_margin;
+  const float draw_margin = ((vmax.x - vmin.x) + (vmax.y - vmin.y)) * 0.05;
+  const float minx = vmin.x - draw_margin;
+  const float maxx = vmax.x + draw_margin;
+  const float miny = vmin.y - draw_margin;
+  const float maxy = vmax.y + draw_margin;
 
   const float2 topleft = float2(minx, maxy);
 
-  float width = maxx - minx;
-  float height = maxy - miny;
-  float aspect = height / width;
+  const float width = maxx - minx;
+  const float height = maxy - miny;
+  const float aspect = height / width;
   int view_width = max_draw_width;
   int view_height = int(view_width * aspect);
   if (view_height > max_draw_height) {
     view_height = max_draw_height;
     view_width = int(view_height / aspect);
   }
-  float scale = view_width / width;
+  const float scale = view_width / width;
 
   std::ofstream f;
   if (draw_append) {
