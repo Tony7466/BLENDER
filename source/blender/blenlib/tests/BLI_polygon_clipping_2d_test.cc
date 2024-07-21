@@ -123,7 +123,7 @@ void draw_curve(const std::string &label,
       << "px;\n"
          "  stroke-dasharray: "
       << stroke_dasharray
-      << ";\n"
+      << "px;\n"
          "}\n";
 
     f << ".polygon-B {\n"
@@ -134,13 +134,15 @@ void draw_curve(const std::string &label,
       << "px;\n"
          "  stroke-dasharray: "
       << stroke_dasharray
-      << ";\n"
+      << "px;\n"
          "}\n";
 
     f << ".polygon-C {\n"
          "  fill: green;\n"
          "  stroke: black;\n"
-         "  stroke-width: 4;\n"
+         "  stroke-width: "
+      << stroke_width + 1
+      << "px;\n"
          "  fill-opacity: 0.75;\n"
          "}\n";
 
