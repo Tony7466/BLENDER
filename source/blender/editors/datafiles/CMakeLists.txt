@@ -207,6 +207,7 @@ if(WITH_BLENDER)
       checkbox_dehlt
       checkbox_hlt
       checkmark
+      checkmark_overlay
       clipuv_dehlt
       clipuv_hlt
       collapsemenu
@@ -291,6 +292,7 @@ if(WITH_BLENDER)
       empty_data
       empty_single_arrow
       error
+      error_overlay
       experimental
       export
       external_drive
@@ -402,6 +404,7 @@ if(WITH_BLENDER)
       indirect_only_on
       info
       info_large
+      info_overlay
       internet
       internet_offline
       inversesquarecurve
@@ -675,6 +678,7 @@ if(WITH_BLENDER)
       prop_projected
       question
       question_large
+      question_overlay
       quit
       radiobut_off
       radiobut_on
@@ -683,6 +687,7 @@ if(WITH_BLENDER)
       record_on
       recover_last
       remove
+      remove_overlay
       renderlayers
       render_animation
       render_result
@@ -847,6 +852,7 @@ if(WITH_BLENDER)
       volume_data
       vpaint_hlt
       warning_large
+      warning_overlay
       window
       wordwrap_off
       wordwrap_on

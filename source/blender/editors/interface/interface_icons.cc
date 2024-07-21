@@ -1403,6 +1403,15 @@ static void icon_draw_size(float x,
       BLF_draw_svg_icon(uint(icon_id), x, y, float(draw_size) / aspect, color, outline_intensity);
     }
 
+    if (text_overlay && text_overlay->icon) {
+      BLF_draw_svg_icon(uint(ICON_CHECKMARK_OVERLAY),
+                        x + (float(draw_size) * 0.35f / aspect),
+                        y + (float(draw_size) * 0.35f / aspect),
+                        float(draw_size) * 0.75f / aspect,
+                        nullptr,
+                        outline_intensity);
+    }
+
     if (text_overlay && text_overlay->text[0] != '\0') {
       /* Handle the little numbers on top of the icon. */
       uchar text_color[4];

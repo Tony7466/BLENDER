@@ -804,6 +804,15 @@ DEF_ICON(NETWORK_DRIVE_LARGE)
 DEF_ICON(QUESTION_LARGE)
 DEF_ICON(WARNING_LARGE)
 
+
+DEF_ICON_COLOR(WARNING_OVERLAY)
+DEF_ICON_COLOR(ERROR_OVERLAY)
+DEF_ICON_COLOR(INFO_OVERLAY)
+DEF_ICON_COLOR(QUESTION_OVERLAY)
+DEF_ICON_COLOR(CHECKMARK_OVERLAY)
+DEF_ICON_COLOR(REMOVE_OVERLAY)
+
+
 /* The items above are initiated sequentially while the ones that
  * follow are initiated individually. Therefore this item marks
  * the boundary. Add regular SVG icons above this one.*/

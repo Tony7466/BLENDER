@@ -25,6 +25,7 @@ struct bContext;
 struct IconTextOverlay {
   char text[5];
   uchar color[4] = {0};
+  int icon = 0;
 };
 
 #define UI_NO_ICON_OVERLAY_TEXT NULL

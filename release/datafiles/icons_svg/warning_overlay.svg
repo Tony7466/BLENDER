@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   height="1600"
+   viewBox="0 0 1600 1600"
+   width="1600"
+   version="1.1"
+   id="svg2"
+   sodipodi:docname="warning_overlay.svg"
+   inkscape:version="1.3.2 (091e20e, 2023-11-25, custom)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs2" />
+  <sodipodi:namedview
+     pagecolor="#3eabbe"
+     showgrid="true"
+     id="namedview1"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="0.25"
+     inkscape:cx="724"
+     inkscape:cy="1202"
+     inkscape:window-width="1920"
+     inkscape:window-height="1009"
+     inkscape:window-x="1912"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg2"
+     showguides="true">
+    <inkscape:grid
+       id="grid5"
+       units="px"
+       spacingx="133.33333"
+       spacingy="133.33333"
+       color="#4772b3"
+       opacity="0.2"
+       visible="true"
+       originx="0"
+       originy="0"
+       empspacing="5" />
+  </sodipodi:namedview>
+  <g
+     enable-background="new"
+     transform="matrix(112.71229,0,0,102.58595,-5319.0293,-63522.593)"
+     id="g2-9">
+    <path
+       d="m 54.294259,619.87957 c -0.623148,-0.004 -1.191101,0.50231 -1.470221,1.11913 l -4.844968,10.3711 c -0.536716,1.18749 0.264718,2.6506 1.464147,2.65132 h 9.693465 c 1.198765,-7.2e-4 1.999084,-1.46225 1.464147,-2.64937 L 55.75586,620.9987 c -0.275746,-0.60937 -0.845982,-1.11453 -1.461601,-1.11913 z"
+       fill="#ffffff"
+       fill-rule="evenodd"
+       id="path2-3"
+       sodipodi:nodetypes="cccccccc"
+       style="opacity:0.7;fill:#000000;stroke-width:0.95036" />
+  </g>
+  <g
+     enable-background="new"
+     transform="matrix(98.116288,0,0,98.614945,-4595.0437,-61032.223)"
+     id="g2"
+     style="fill:#fbdd0b;fill-opacity:1">
+    <path
+       d="m 54.122468,620.70038 -5.692658,11.12531 c -0.402347,0.8064 0.132029,1.722 1.119249,1.66129 l 10.86111,0.005 c 0.82383,-0.006 1.68579,-0.6457 1.11925,-1.66426 l -5.68817,-11.13303 c -0.402806,-0.60561 -1.348223,-0.58955 -1.718781,0.006 z m 0.154722,2.25324 1.365871,8.3e-4 0.0012,5.40674 -1.349713,-0.004 c -0.02719,-1.81007 -0.0254,-3.52775 -0.01736,-5.40382 z m -0.237872,7.19572 c 0.447947,-0.44281 1.448462,-0.43587 1.894337,0.009 0.432851,0.43188 0.436683,1.39807 0.0036,1.82972 -0.447695,0.44621 -1.453411,0.44585 -1.90107,-4e-4 -0.435083,-0.43371 -0.433773,-1.40643 0.0031,-1.83832 z"
+       fill="#ffffff"
+       fill-rule="evenodd"
+       id="path2"
+       sodipodi:nodetypes="ccccccccaccccaaaaaa"
+       style="fill:#fbdd0b;fill-opacity:1" />
+  </g>
+</svg>
