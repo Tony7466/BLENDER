@@ -145,7 +145,7 @@ extern GHOST_TSuccess GHOST_GetMainDisplayDimensions(GHOST_SystemHandle systemha
  * \param systemhandle: The handle to the system.
  * \param r_width: A pointer the width gets put in.
  * \param r_height: A pointer the height gets put in.
- * \param dissplay: Index of a specific display (for macOS).
+ * \param display: Index of a specific display (for macOS).
  * \return success.
  */
 extern GHOST_TSuccess GHOST_GetAllDisplayDimensions(GHOST_SystemHandle systemhandle,
