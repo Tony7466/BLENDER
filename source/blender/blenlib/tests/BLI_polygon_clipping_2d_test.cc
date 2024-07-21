@@ -6,9 +6,9 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_array.hh"
+#include "BLI_bounds.hh"
 #include "BLI_offset_indices.hh"
-#include "BLI_rand.h"
-#include "BLI_time.h"
 
 #include <fstream>
 #include <iostream>
@@ -17,9 +17,6 @@
 
 /* Should tests draw their output to an HTML file? */
 #define DO_DRAW 1
-
-#include "BLI_array.hh"
-#include "BLI_vector.hh"
 
 #include "BLI_polygon_clipping_2d.hh"
 
@@ -145,30 +142,9 @@ void draw_curve(const std::string &label,
   constexpr int max_draw_width = 800;
   constexpr int max_draw_height = 600;
 
-  float2 vmin(1e10, 1e10);
-  float2 vmax(-1e10, -1e10);
-  for (const float2 &v : curve_a) {
-    for (int i = 0; i < 2; ++i) {
-      float vi = v[i];
-      if (vi < vmin[i]) {
-        vmin[i] = vi;
-      }
-      if (vi > vmax[i]) {
-        vmax[i] = vi;
-      }
-    }
-  }
-  for (const float2 &v : curve_b) {
-    for (int i = 0; i < 2; ++i) {
-      float vi = v[i];
-      if (vi < vmin[i]) {
-        vmin[i] = vi;
-      }
-      if (vi > vmax[i]) {
-        vmax[i] = vi;
-      }
-    }
-  }
+  const Bounds<float2> bound = *bounds::merge(bounds::min_max(curve_a), bounds::min_max(curve_b));
+  const float2 vmin = bound.min;
+  const float2 vmax = bound.max;
   float draw_margin = ((vmax.x - vmin.x) + (vmax.y - vmin.y)) * 0.05;
   float minx = vmin.x - draw_margin;
   float maxx = vmax.x + draw_margin;
