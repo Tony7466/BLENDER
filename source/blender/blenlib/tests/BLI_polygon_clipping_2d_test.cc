@@ -79,9 +79,7 @@ static void SVG_add_polygons_as_path(std::ofstream &f,
 
   f << "\"";
 
-  if (points_by_polygon.size() > 1) {
-    f << " fill-rule=\"evenodd\"";
-  }
+  f << " fill-rule=\"evenodd\"";
 
   f << "/>\n";
 }
@@ -245,7 +243,12 @@ void draw_curve(const std::string &label,
     }
   }
 
-  SVG_add_polygons_as_path(f, "polygon-C", points, points_by_polygon, topleft, scale);
+  if (points_by_polygon.size() == 1) {
+    SVG_add_polygon(f, "polygon-C", points, topleft, scale);
+  }
+  else {
+    SVG_add_polygons_as_path(f, "polygon-C", points, points_by_polygon, topleft, scale);
+  }
 
   f << "</div>\n";
 
