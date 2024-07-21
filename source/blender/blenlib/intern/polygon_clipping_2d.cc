@@ -349,6 +349,37 @@ static BooleanResult result_sort_holes(const BooleanResult &in_results)
   return in_results;
 }
 
+Array<float2> calculate_positions_from_result(const Span<float2> curve_a,
+                                              const Span<float2> curve_b,
+                                              const BooleanResult &result)
+{
+  const OffsetIndices<int> points_by_polygon = OffsetIndices<int>(result.offsets);
+  Array<float2> points(result.verts.size());
+
+  for (const int i : result.verts.index_range()) {
+    const Vertex &vert = result.verts[i];
+    const VertexType &type = vert.type;
+
+    if (type == VertexType::PointA) {
+      points[i] = curve_a[vert.point_id];
+    }
+    else if (type == VertexType::PointB) {
+      points[i] = curve_b[vert.point_id];
+    }
+    else if (type == VertexType::Intersection) {
+      const IntersectionPoint &inter_point = result.intersections_data[vert.point_id];
+
+      const float2 point_a0 = curve_a[inter_point.point_a];
+      const float2 point_a1 = curve_a[(inter_point.point_a + 1) % curve_a.size()];
+      const float alpha_a = inter_point.alpha_a;
+
+      points[i] = (1.0 - alpha_a) * point_a0 + alpha_a * point_a1;
+    }
+  }
+
+  return points;
+}
+
 /**
  * Utility class to avoid passing large number of parameters between functions.
  */

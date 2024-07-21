@@ -218,36 +218,8 @@ void draw_curve(const std::string &label,
   SVG_add_polygon(f, "polygon-A", curve_a, topleft, scale);
   SVG_add_polygon(f, "polygon-B", curve_b, topleft, scale);
 
+  const Span<float2> points = calculate_positions_from_result(curve_a, curve_b, result);
   const OffsetIndices<int> points_by_polygon = OffsetIndices<int>(result.offsets);
-  Array<float2> points(result.verts.size());
-
-  for (const int polygon_id : points_by_polygon.index_range()) {
-    const IndexRange vert_ids = points_by_polygon[polygon_id];
-
-    for (const int i : vert_ids) {
-      const Vertex &vert = result.verts[i];
-      const VertexType &type = vert.type;
-
-      float2 point;
-      if (type == VertexType::PointA) {
-        point = curve_a[vert.point_id];
-      }
-      else if (type == VertexType::PointB) {
-        point = curve_b[vert.point_id];
-      }
-      else if (type == VertexType::Intersection) {
-        const IntersectionPoint &inter_point = result.intersections_data[vert.point_id];
-
-        const float2 point_a0 = curve_a[inter_point.point_a];
-        const float2 point_a1 = curve_a[(inter_point.point_a + 1) % curve_a.size()];
-        const float alpha_a = inter_point.alpha_a;
-
-        point = (1.0 - alpha_a) * point_a0 + alpha_a * point_a1;
-      }
-
-      points[i] = point;
-    }
-  }
 
   if (points_by_polygon.size() == 1) {
     SVG_add_polygon(f, "polygon-C", points, topleft, scale);

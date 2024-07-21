@@ -70,6 +70,9 @@ struct BooleanResult {
   Array<IntersectionPoint> intersections_data;
 };
 
+Array<float2> calculate_positions_from_result(const Span<float2> curve_a,
+                                              const Span<float2> curve_b,
+                                              const BooleanResult &result);
 BooleanResult curve_boolean_calc(const InputMode input_mode,
                                  Span<float2> curve_a,
                                  Span<float2> curve_b);
