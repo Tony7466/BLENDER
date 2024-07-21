@@ -305,13 +305,15 @@ static Sequence *rna_Sequences_new_movie(ID *id,
                                          const char *file,
                                          int channel,
                                          int frame_start,
-                                         int fit_method)
+                                         int fit_method,
+                                         bool adjust_playback_rate)
 {
   Scene *scene = (Scene *)id;
   SeqLoadData load_data;
   SEQ_add_load_data_init(&load_data, name, file, frame_start, channel);
   load_data.fit_method = eSeqImageFitMethod(fit_method);
   load_data.allow_invalid_file = true;
+  load_data.adjust_playback_rate = adjust_playback_rate;
   Sequence *seq = SEQ_add_movie_strip(bmain, scene, seqbase, &load_data);
 
   DEG_relations_tag_update(bmain);
@@ -328,10 +330,11 @@ static Sequence *rna_Sequences_editing_new_movie(ID *id,
                                                  const char *file,
                                                  int channel,
                                                  int frame_start,
-                                                 int fit_method)
+                                                 int fit_method,
+                                                 bool adjust_playback_rate)
 {
   return rna_Sequences_new_movie(
-      id, &ed->seqbase, bmain, name, file, channel, frame_start, fit_method);
+      id, &ed->seqbase, bmain, name, file, channel, frame_start, fit_method, adjust_playback_rate);
 }
 
 static Sequence *rna_Sequences_meta_new_movie(ID *id,
@@ -341,10 +344,11 @@ static Sequence *rna_Sequences_meta_new_movie(ID *id,
                                               const char *file,
                                               int channel,
                                               int frame_start,
-                                              int fit_method)
+                                              int fit_method,
+                                              bool adjust_playback_rate)
 {
   return rna_Sequences_new_movie(
-      id, &seq->seqbase, bmain, name, file, channel, frame_start, fit_method);
+      id, &seq->seqbase, bmain, name, file, channel, frame_start, fit_method, adjust_playback_rate);
 }
 
 #  ifdef WITH_AUDASPACE
@@ -355,12 +359,14 @@ static Sequence *rna_Sequences_new_sound(ID *id,
                                          const char *name,
                                          const char *file,
                                          int channel,
-                                         int frame_start)
+                                         int frame_start,
+                                         bool adjust_playback_rate)
 {
   Scene *scene = (Scene *)id;
   SeqLoadData load_data;
   SEQ_add_load_data_init(&load_data, name, file, frame_start, channel);
   load_data.allow_invalid_file = true;
+  load_data.adjust_playback_rate = adjust_playback_rate;
   Sequence *seq = SEQ_add_sound_strip(bmain, scene, seqbase, &load_data);
 
   if (seq == nullptr) {
@@ -382,7 +388,8 @@ static Sequence *rna_Sequences_new_sound(ID * /*id*/,
                                          const char * /*name*/,
                                          const char * /*file*/,
                                          int /*channel*/,
-                                         int /*frame_start*/)
+                                         int /*frame_start*/
+                                         bool /*adjust_playback_rate*/)
 {
   BKE_report(reports, RPT_ERROR, "Blender compiled without Audaspace support");
   return nullptr;
@@ -396,10 +403,11 @@ static Sequence *rna_Sequences_editing_new_sound(ID *id,
                                                  const char *name,
                                                  const char *file,
                                                  int channel,
-                                                 int frame_start)
+                                                 int frame_start,
+                                                 bool adjust_playback_rate)
 {
   return rna_Sequences_new_sound(
-      id, &ed->seqbase, bmain, reports, name, file, channel, frame_start);
+      id, &ed->seqbase, bmain, reports, name, file, channel, frame_start, adjust_playback_rate);
 }
 
 static Sequence *rna_Sequences_meta_new_sound(ID *id,
@@ -409,10 +417,11 @@ static Sequence *rna_Sequences_meta_new_sound(ID *id,
                                               const char *name,
                                               const char *file,
                                               int channel,
-                                              int frame_start)
+                                              int frame_start,
+                                              bool adjust_playback_rate)
 {
   return rna_Sequences_new_sound(
-      id, &seq->seqbase, bmain, reports, name, file, channel, frame_start);
+      id, &seq->seqbase, bmain, reports, name, file, channel, frame_start, adjust_playback_rate);
 }
 
 /* Meta sequence
@@ -993,6 +1002,12 @@ void RNA_api_sequences(BlenderRNA *brna, PropertyRNA *cprop, const bool metastri
   parm = RNA_def_enum(
       func, "fit_method", scale_fit_methods, SEQ_USE_ORIGINAL_SIZE, "Image Fit Method", nullptr);
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_PYFUNC_OPTIONAL);
+  parm = RNA_def_boolean(func,
+                         "adjust_playback_rate",
+                         false,
+                         "Adjust Playback Rate",
+                         "Play at normal speed regardless of scene FPS");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_PYFUNC_OPTIONAL);
   /* return type */
   parm = RNA_def_pointer(func, "sequence", "Sequence", "", "New Sequence");
   RNA_def_function_return(func, parm);
@@ -1017,6 +1032,12 @@ void RNA_api_sequences(BlenderRNA *brna, PropertyRNA *cprop, const bool metastri
                      -MAXFRAME,
                      MAXFRAME);
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  parm = RNA_def_boolean(func,
+                         "adjust_playback_rate",
+                         false,
+                         "Adjust Playback Rate",
+                         "Play at normal speed regardless of scene FPS");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_PYFUNC_OPTIONAL);
   /* return type */
   parm = RNA_def_pointer(func, "sequence", "Sequence", "", "New Sequence");
   RNA_def_function_return(func, parm);
