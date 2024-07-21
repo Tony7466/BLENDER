@@ -374,20 +374,12 @@ struct CurveBooleanExecutor {
       start = i0 + 1;
     }
 
-    if (i0 > i1 && direction == ENTRY) {
+    if (i0 >= i1 && direction == ENTRY) {
       end = i1 + curve_len;
-    }
-    if (i0 < i1 && direction == EXIT) {
-      start = i0 + curve_len;
     }
 
-    if (i0 == i1 && direction == ENTRY) {
-      start = i0 + 1;
-      end = i1 + curve_len;
-    }
-    if (i0 == i1 && direction == EXIT) {
+    if (i0 <= i1 && direction == EXIT) {
       start = i0 + curve_len;
-      end = i1;
     }
 
     if (direction == ENTRY) {
