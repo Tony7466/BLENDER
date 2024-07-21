@@ -352,6 +352,98 @@ void simple_union_with_hole_test()
   }
 }
 
+void complex_A_AND_B_test()
+{
+  /**
+   * This is a replica of Fig. 16 from
+   * Greiner, Günther; Kai Hormann (1998). "Efficient clipping of arbitrary polygons". ACM
+   * Transactions on Graphics. 17 (2): 71–83.
+   */
+  const Array<float2> points_a = {{14, 1}, {0, 5}, {14, 10}, {5, 6}, {14, 6}, {5, 5}};
+  const Array<float2> points_b = {{9, 13}, {13, 0}, {9, 9}, {6, 0}};
+  InputMode input_mode;
+  input_mode.boolean_mode = BooleanMode::A_AND_B;
+  input_mode.hole_mode = HoleMode::WITH_HOLES;
+  BooleanResult result = polygonboolean::curve_boolean_calc(input_mode, points_a, points_b);
+  EXPECT_TRUE(result.valid_geometry);
+  EXPECT_EQ(result.verts.size(), 24);
+  EXPECT_EQ(result.intersections_data.size(), 24);
+  EXPECT_EQ(result.offsets.size(), 7);
+
+  if (DO_DRAW) {
+    draw_curve("Complex A Intersection B", points_a, points_b, result);
+  }
+}
+
+void complex_A_OR_B_test()
+{
+  /**
+   * This is a replica of Fig. 16 from
+   * Greiner, Günther; Kai Hormann (1998). "Efficient clipping of arbitrary polygons". ACM
+   * Transactions on Graphics. 17 (2): 71–83.
+   */
+  const Array<float2> points_a = {{14, 1}, {0, 5}, {14, 10}, {5, 6}, {14, 6}, {5, 5}};
+  const Array<float2> points_b = {{9, 13}, {13, 0}, {9, 9}, {6, 0}};
+  InputMode input_mode;
+  input_mode.boolean_mode = BooleanMode::A_OR_B;
+  input_mode.hole_mode = HoleMode::WITH_HOLES;
+  BooleanResult result = polygonboolean::curve_boolean_calc(input_mode, points_a, points_b);
+  EXPECT_TRUE(result.valid_geometry);
+  EXPECT_EQ(result.verts.size(), 34);
+  EXPECT_EQ(result.intersections_data.size(), 24);
+  EXPECT_EQ(result.offsets.size(), 7);
+
+  if (DO_DRAW) {
+    draw_curve("Complex A Union B", points_a, points_b, result);
+  }
+}
+
+void complex_A_NOT_B_test()
+{
+  /**
+   * This is a replica of Fig. 16 from
+   * Greiner, Günther; Kai Hormann (1998). "Efficient clipping of arbitrary polygons". ACM
+   * Transactions on Graphics. 17 (2): 71–83.
+   */
+  const Array<float2> points_a = {{14, 1}, {0, 5}, {14, 10}, {5, 6}, {14, 6}, {5, 5}};
+  const Array<float2> points_b = {{9, 13}, {13, 0}, {9, 9}, {6, 0}};
+  InputMode input_mode;
+  input_mode.boolean_mode = BooleanMode::A_NOT_B;
+  input_mode.hole_mode = HoleMode::WITH_HOLES;
+  BooleanResult result = polygonboolean::curve_boolean_calc(input_mode, points_a, points_b);
+  EXPECT_TRUE(result.valid_geometry);
+  EXPECT_EQ(result.verts.size(), 30);
+  EXPECT_EQ(result.intersections_data.size(), 24);
+  EXPECT_EQ(result.offsets.size(), 8);
+
+  if (DO_DRAW) {
+    draw_curve("Complex A without B", points_a, points_b, result);
+  }
+}
+
+void complex_B_NOT_A_test()
+{
+  /**
+   * This is a replica of Fig. 16 from
+   * Greiner, Günther; Kai Hormann (1998). "Efficient clipping of arbitrary polygons". ACM
+   * Transactions on Graphics. 17 (2): 71–83.
+   */
+  const Array<float2> points_a = {{14, 1}, {0, 5}, {14, 10}, {5, 6}, {14, 6}, {5, 5}};
+  const Array<float2> points_b = {{9, 13}, {13, 0}, {9, 9}, {6, 0}};
+  InputMode input_mode;
+  input_mode.boolean_mode = BooleanMode::B_NOT_A;
+  input_mode.hole_mode = HoleMode::WITH_HOLES;
+  BooleanResult result = polygonboolean::curve_boolean_calc(input_mode, points_a, points_b);
+  EXPECT_TRUE(result.valid_geometry);
+  EXPECT_EQ(result.verts.size(), 28);
+  EXPECT_EQ(result.intersections_data.size(), 24);
+  EXPECT_EQ(result.offsets.size(), 8);
+
+  if (DO_DRAW) {
+    draw_curve("Complex B without A", points_a, points_b, result);
+  }
+}
+
 TEST(polygonboolean, Squares_A_AND_B)
 {
   squares_A_AND_B_test();
@@ -380,6 +472,26 @@ TEST(polygonboolean, Simple_Intersection)
 TEST(polygonboolean, Simple_Union_With_Hole)
 {
   simple_union_with_hole_test();
+}
+
+TEST(polygonboolean, Complex_A_AND_B)
+{
+  complex_A_AND_B_test();
+}
+
+TEST(polygonboolean, Complex_A_OR_B)
+{
+  complex_A_OR_B_test();
+}
+
+TEST(polygonboolean, Complex_A_NOT_B)
+{
+  complex_A_NOT_B_test();
+}
+
+TEST(polygonboolean, Complex_B_NOT_A)
+{
+  complex_B_NOT_A_test();
 }
 
 }  // namespace blender::polygonboolean
