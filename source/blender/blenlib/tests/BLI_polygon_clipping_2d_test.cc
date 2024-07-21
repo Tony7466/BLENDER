@@ -33,7 +33,8 @@ static void CSS_setup_style(std::ofstream &f)
     << border_width
     << "px solid black;\n"
        "  text-align: center;\n"
-       "}\n";
+       "}\n"
+       "\n";
 
   f << ".polygon-A {\n"
        "  fill: none;\n"
@@ -45,7 +46,6 @@ static void CSS_setup_style(std::ofstream &f)
     << stroke_dasharray
     << "px;\n"
        "}\n";
-
   f << ".polygon-B {\n"
        "  fill: none;\n"
        "  stroke: blue;\n"
@@ -56,7 +56,6 @@ static void CSS_setup_style(std::ofstream &f)
     << stroke_dasharray
     << "px;\n"
        "}\n";
-
   f << ".polygon-C {\n"
        "  fill: green;\n"
        "  stroke: black;\n"
@@ -64,6 +63,36 @@ static void CSS_setup_style(std::ofstream &f)
     << stroke_width + 1
     << "px;\n"
        "  fill-opacity: 0.75;\n"
+       "}\n"
+       "\n";
+
+  f << ".cut-A {\n"
+       "  fill: none;\n"
+       "  stroke: blue;\n"
+       "  stroke-width: "
+    << stroke_width
+    << "px;\n"
+       "  stroke-dasharray: "
+    << stroke_dasharray
+    << "px;\n"
+       "}\n";
+  f << ".cut-B {\n"
+       "  fill: red;\n"
+       "  stroke: red;\n"
+       "  fill-opacity: 0.25;\n"
+       "  stroke-width: "
+    << stroke_width
+    << "px;\n"
+       "  stroke-dasharray: "
+    << stroke_dasharray
+    << "px;\n"
+       "}\n";
+  f << ".cut-C {\n"
+       "  fill: none;\n"
+       "  stroke: black;\n"
+       "  stroke-width: "
+    << stroke_width + 1
+    << "px;\n"
        "}\n";
 }
 
@@ -124,12 +153,72 @@ static void SVG_add_polygons_as_path(std::ofstream &f,
   f << "/>\n";
 }
 
+static void SVG_add_line(std::ofstream &f,
+                         const std::string &class_name,
+                         const Span<float2> points,
+                         const float2 &topleft,
+                         const float scale)
+{
+  f << "<path class = \"" << class_name << "\" d = \"";
+
+  f << "M ";
+  for (const int i : points.index_range()) {
+    const float2 &point = points[i];
+
+    if (i == 1) {
+      f << " L ";
+    }
+    else if (i != 0) {
+      f << ", ";
+    }
+    f << SX(point[0]) << "," << SY(point[1]);
+  }
+
+  f << "\"";
+
+  f << "/>\n";
+}
+
+static void SVG_add_lines(std::ofstream &f,
+                          const std::string &class_name,
+                          const Span<float2> points,
+                          const OffsetIndices<int> points_by_polygon,
+                          const float2 &topleft,
+                          const float scale)
+{
+  f << "<path class = \"" << class_name << "\" d = \"";
+  for (const int polygon_id : points_by_polygon.index_range()) {
+    const IndexRange vert_ids = points_by_polygon[polygon_id];
+    if (polygon_id != 0) {
+      f << " ";
+    }
+
+    f << "M ";
+    for (const int i : vert_ids) {
+      const float2 &point = points[i];
+      const int j = i - vert_ids.first();
+
+      if (j == 1) {
+        f << " L ";
+      }
+      else if (j != 0) {
+        f << ", ";
+      }
+      f << SX(point[0]) << "," << SY(point[1]);
+    }
+  }
+
+  f << "\"";
+
+  f << "/>\n";
+}
+
 static bool draw_append = false; /* Will be set to true after first call. */
 
-void draw_curve(const std::string &label,
-                const Span<float2> curve_a,
-                const Span<float2> curve_b,
-                const BooleanResult &result)
+void draw_polygons(const std::string &label,
+                   const Span<float2> curve_a,
+                   const Span<float2> curve_b,
+                   const BooleanResult &result)
 {
   /* Would like to use BKE_tempdir_base() here, but that brings in dependence on kernel library.
    * This is just for developer debugging anyway, and should never be called in production Blender.
@@ -209,6 +298,89 @@ void draw_curve(const std::string &label,
   draw_append = true;
 }
 
+void draw_cut(const std::string &label,
+              const Span<float2> curve_a,
+              const Span<float2> curve_b,
+              const BooleanResult &result)
+{
+  /* Would like to use BKE_tempdir_base() here, but that brings in dependence on kernel library.
+   * This is just for developer debugging anyway, and should never be called in production Blender.
+   */
+#ifdef WIN32
+  constexpr const char *drawfile = "./polygon_clipping_test_draw.html";
+#else
+  constexpr const char *drawfile = "/tmp/polygon_clipping_test_draw.html";
+#endif
+  constexpr int max_draw_width = 800;
+  constexpr int max_draw_height = 600;
+
+  const Bounds<float2> bound = *bounds::merge(bounds::min_max(curve_a), bounds::min_max(curve_b));
+  const float2 vmin = bound.min;
+  const float2 vmax = bound.max;
+  const float draw_margin = ((vmax.x - vmin.x) + (vmax.y - vmin.y)) * 0.05;
+  const float minx = vmin.x - draw_margin;
+  const float maxx = vmax.x + draw_margin;
+  const float miny = vmin.y - draw_margin;
+  const float maxy = vmax.y + draw_margin;
+
+  const float2 topleft = float2(minx, maxy);
+
+  const float width = maxx - minx;
+  const float height = maxy - miny;
+  const float aspect = height / width;
+  int view_width = max_draw_width;
+  int view_height = int(view_width * aspect);
+  if (view_height > max_draw_height) {
+    view_height = max_draw_height;
+    view_width = int(view_height / aspect);
+  }
+  const float scale = view_width / width;
+
+  std::ofstream f;
+  if (draw_append) {
+    f.open(drawfile, std::ios_base::app);
+  }
+  else {
+    f.open(drawfile);
+  }
+  if (!f) {
+    std::cout << "Could not open file " << drawfile << "\n";
+    return;
+  }
+
+  if (!draw_append) {
+    f << "<!DOCTYPE html>\n";
+
+    f << "<style>\n";
+
+    CSS_setup_style(f);
+
+    f << "</style>\n";
+  }
+
+  f << "<div>\n";
+  f << "<h1>" << label << "</h1>\n";
+
+  f << "<svg width=\"" << view_width << "\" height=\"" << view_height << "\">\n";
+
+  SVG_add_line(f, "cut-A", curve_a, topleft, scale);
+  SVG_add_polygon(f, "cut-B", curve_b, topleft, scale);
+
+  const Span<float2> points = calculate_positions_from_result(curve_a, curve_b, result);
+  const OffsetIndices<int> points_by_polygon = OffsetIndices<int>(result.offsets);
+
+  if (points_by_polygon.size() == 1) {
+    SVG_add_line(f, "cut-C", curve_a, topleft, scale);
+  }
+  else {
+    SVG_add_lines(f, "cut-C", points, points_by_polygon, topleft, scale);
+  }
+
+  f << "</div>\n";
+
+  draw_append = true;
+}
+
 #undef SX
 #undef SY
 
@@ -227,7 +399,7 @@ void squares_A_AND_B_test()
   EXPECT_EQ(result.offsets.size(), 2);
 
   if (DO_DRAW) {
-    draw_curve("Squares A intersection B", points_a, points_b, result);
+    draw_polygons("Squares A intersection B", points_a, points_b, result);
   }
 }
 
@@ -245,7 +417,7 @@ void squares_A_OR_B_test()
   EXPECT_EQ(result.offsets.size(), 2);
 
   if (DO_DRAW) {
-    draw_curve("Squares A union B", points_a, points_b, result);
+    draw_polygons("Squares A union B", points_a, points_b, result);
   }
 }
 
@@ -263,7 +435,7 @@ void squares_A_NOT_B_test()
   EXPECT_EQ(result.offsets.size(), 2);
 
   if (DO_DRAW) {
-    draw_curve("Squares A without B", points_a, points_b, result);
+    draw_polygons("Squares A without B", points_a, points_b, result);
   }
 }
 
@@ -281,7 +453,7 @@ void squares_B_NOT_A_test()
   EXPECT_EQ(result.offsets.size(), 2);
 
   if (DO_DRAW) {
-    draw_curve("Squares B without A", points_a, points_b, result);
+    draw_polygons("Squares B without A", points_a, points_b, result);
   }
 }
 
@@ -304,7 +476,7 @@ void simple_intersection_test()
   EXPECT_EQ(result.offsets.size(), 3);
 
   if (DO_DRAW) {
-    draw_curve("Simple Intersection", points_a, points_b, result);
+    draw_polygons("Simple Intersection", points_a, points_b, result);
   }
 }
 
@@ -327,7 +499,7 @@ void simple_union_with_hole_test()
   EXPECT_EQ(result.offsets.size(), 3);
 
   if (DO_DRAW) {
-    draw_curve("Simple Union With Hole", points_a, points_b, result);
+    draw_polygons("Simple Union With Hole", points_a, points_b, result);
   }
 }
 
@@ -350,7 +522,7 @@ void simple_union_without_hole_test()
   EXPECT_EQ(result.offsets.size(), 2);
 
   if (DO_DRAW) {
-    draw_curve("Simple Union Without Hole", points_a, points_b, result);
+    draw_polygons("Simple Union Without Hole", points_a, points_b, result);
   }
 }
 
@@ -373,7 +545,7 @@ void complex_A_AND_B_test()
   EXPECT_EQ(result.offsets.size(), 7);
 
   if (DO_DRAW) {
-    draw_curve("Complex A Intersection B", points_a, points_b, result);
+    draw_polygons("Complex A Intersection B", points_a, points_b, result);
   }
 }
 
@@ -396,7 +568,7 @@ void complex_A_OR_B_test()
   EXPECT_EQ(result.offsets.size(), 7);
 
   if (DO_DRAW) {
-    draw_curve("Complex A Union B", points_a, points_b, result);
+    draw_polygons("Complex A Union B", points_a, points_b, result);
   }
 }
 
@@ -419,7 +591,7 @@ void complex_A_OR_B_without_holes_test()
   EXPECT_EQ(result.offsets.size(), 2);
 
   if (DO_DRAW) {
-    draw_curve("Complex A Union B without holes", points_a, points_b, result);
+    draw_polygons("Complex A Union B without holes", points_a, points_b, result);
   }
 }
 
@@ -442,7 +614,7 @@ void complex_A_NOT_B_test()
   EXPECT_EQ(result.offsets.size(), 8);
 
   if (DO_DRAW) {
-    draw_curve("Complex A without B", points_a, points_b, result);
+    draw_polygons("Complex A without B", points_a, points_b, result);
   }
 }
 
@@ -465,7 +637,7 @@ void complex_B_NOT_A_test()
   EXPECT_EQ(result.offsets.size(), 8);
 
   if (DO_DRAW) {
-    draw_curve("Complex B without A", points_a, points_b, result);
+    draw_polygons("Complex B without A", points_a, points_b, result);
   }
 }
 
@@ -490,7 +662,25 @@ void last_segment_interection_test()
   EXPECT_EQ(result.offsets.size(), 2);
 
   if (DO_DRAW) {
-    draw_curve("Last segment loop", points_a, points_b, result);
+    draw_polygons("Last segment loop", points_a, points_b, result);
+  }
+}
+
+void simple_cut_test()
+{
+  /**
+   * With cut the first curve A does not loop.
+   */
+  const Array<float2> points_a = {{5, 7}, {3, 6}, {0, 2}, {0, 0}};
+  const Array<float2> points_b = {{1, 6}, {3, 4}, {3, 1}, {0, 4}, {2, 3}};
+  BooleanResult result = polygonboolean::curve_boolean_cut(points_a, points_b);
+  EXPECT_TRUE(result.valid_geometry);
+  EXPECT_EQ(result.verts.size(), 8);
+  EXPECT_EQ(result.intersections_data.size(), 4);
+  EXPECT_EQ(result.offsets.size(), 4);
+
+  if (DO_DRAW) {
+    draw_cut("Simple cut", points_a, points_b, result);
   }
 }
 
@@ -557,6 +747,11 @@ TEST(polygonboolean, Complex_B_NOT_A)
 TEST(polygonboolean, Last_Segment_Interection)
 {
   last_segment_interection_test();
+}
+
+TEST(polygonboolean, Simple_Cut)
+{
+  simple_cut_test();
 }
 
 }  // namespace blender::polygonboolean
