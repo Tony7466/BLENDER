@@ -36,7 +36,7 @@ static void SVG_add_polygon(std::ofstream &f,
                             const float2 &topleft,
                             const float scale)
 {
-  f << "<polygon class = \"" << class_name << "\" points =\"";
+  f << "<polygon class = \"" << class_name << "\" points = \"";
   for (const int i : points.index_range()) {
     const float2 &point = points[i];
     if (i != 0) {
@@ -45,6 +45,45 @@ static void SVG_add_polygon(std::ofstream &f,
     f << SX(point[0]) << "," << SY(point[1]);
   }
   f << "\"/>\n";
+}
+
+static void SVG_add_polygons_as_path(std::ofstream &f,
+                                     const std::string &class_name,
+                                     const Span<float2> points,
+                                     const OffsetIndices<int> points_by_polygon,
+                                     const float2 &topleft,
+                                     const float scale)
+{
+  f << "<path class = \"" << class_name << "\" d = \"";
+  for (const int polygon_id : points_by_polygon.index_range()) {
+    const IndexRange vert_ids = points_by_polygon[polygon_id];
+    if (polygon_id != 0) {
+      f << " ";
+    }
+
+    f << "M ";
+    for (const int i : vert_ids) {
+      const float2 &point = points[i];
+      const int j = i - vert_ids.first();
+
+      if (j == 1) {
+        f << " L ";
+      }
+      else if (j != 0) {
+        f << ", ";
+      }
+      f << SX(point[0]) << "," << SY(point[1]);
+    }
+    f << " Z";
+  }
+
+  f << "\"";
+
+  if (points_by_polygon.size() > 1) {
+    f << " fill-rule=\"evenodd\"";
+  }
+
+  f << "/>\n";
 }
 
 void draw_curve(const std::string &label,
@@ -176,18 +215,13 @@ void draw_curve(const std::string &label,
   SVG_add_polygon(f, "polygon-B", curve_b, topleft, scale);
 
   const OffsetIndices<int> points_by_polygon = OffsetIndices<int>(result.offsets);
+  Array<float2> points(result.verts.size());
 
-  f << "<path class = \"polygon-C\" d = \"";
   for (const int polygon_id : points_by_polygon.index_range()) {
     const IndexRange vert_ids = points_by_polygon[polygon_id];
-    const Span<Vertex> verts = result.verts.as_span().slice(vert_ids);
-    if (polygon_id != 0) {
-      f << " ";
-    }
 
-    f << "M ";
-    for (const int i : verts.index_range()) {
-      const Vertex &vert = verts[i];
+    for (const int i : vert_ids) {
+      const Vertex &vert = result.verts[i];
       const VertexType &type = vert.type;
 
       float2 point;
@@ -207,24 +241,11 @@ void draw_curve(const std::string &label,
         point = (1.0 - alpha_a) * point_a0 + alpha_a * point_a1;
       }
 
-      if (i == 1) {
-        f << " L ";
-      }
-      else if (i != 0) {
-        f << ", ";
-      }
-      f << SX(point[0]) << "," << SY(point[1]);
+      points[i] = point;
     }
-    f << " Z";
   }
 
-  f << "\"";
-
-  if (points_by_polygon.size() > 1) {
-    f << " fill-rule=\"evenodd\"";
-  }
-
-  f << "/>\n";
+  SVG_add_polygons_as_path(f, "polygon-C", points, points_by_polygon, topleft, scale);
 
   f << "</div>\n";
 
