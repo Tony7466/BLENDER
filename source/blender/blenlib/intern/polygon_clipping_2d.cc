@@ -353,7 +353,6 @@ struct CurveBooleanExecutor {
     const int i0 = is_curve_A ? vertex0.point_a : vertex0.point_b;
     const int i1 = is_curve_A ? vertex1.point_a : vertex1.point_b;
 
-    const int int_sorted = is_curve_A ? vertex0.sorted_id_a : vertex0.sorted_id_b;
     const int curve_len = is_curve_A ? len_a : len_b;
 
     if (i0 == i1) {
@@ -366,46 +365,40 @@ struct CurveBooleanExecutor {
       if (direction == EXIT && a0 > a1) {
         return;
       }
-
-      if (direction == EXIT && a0 < a1) {
-        for (int i = i0 + curve_len; i > i1; i--) {
-          newVertexID(i % curve_len, is_curve_A);
-        }
-        return;
-      }
-      if (direction == ENTRY && a0 > a1) {
-        for (int i = i0 + 1; i <= i1 + curve_len; i++) {
-          newVertexID(i % curve_len, is_curve_A);
-        }
-        return;
-      }
     }
 
-    if (i0 < i1 && direction == ENTRY) {
-      for (int i = i0 + 1; i <= i1; i++) {
-        newVertexID(i, is_curve_A);
-      }
-      return;
+    int start = i0;
+    int end = i1;
+
+    if (direction == ENTRY) {
+      start = i0 + 1;
     }
+
     if (i0 > i1 && direction == ENTRY) {
-      for (int i = i0 + 1; i <= i1 + curve_len; i++) {
-        newVertexID(i % curve_len, is_curve_A);
-      }
-      return;
+      end = i1 + curve_len;
     }
-
-    if (i0 > i1 && direction == EXIT) {
-      for (int i = i0; i > i1; i--) {
-        newVertexID(i, is_curve_A);
-      }
-      return;
-    }
-
     if (i0 < i1 && direction == EXIT) {
-      for (int i = i0 + curve_len; i > i1; i--) {
+      start = i0 + curve_len;
+    }
+
+    if (i0 == i1 && direction == ENTRY) {
+      start = i0 + 1;
+      end = i1 + curve_len;
+    }
+    if (i0 == i1 && direction == EXIT) {
+      start = i0 + curve_len;
+      end = i1;
+    }
+
+    if (direction == ENTRY) {
+      for (int i = start; i <= end; i++) {
         newVertexID(i % curve_len, is_curve_A);
       }
-      return;
+    }
+    else { /* direction == EXIT */
+      for (int i = start; i > end; i--) {
+        newVertexID(i % curve_len, is_curve_A);
+      }
     }
   }
 
