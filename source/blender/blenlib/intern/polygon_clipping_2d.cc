@@ -367,11 +367,15 @@ struct CurveBooleanExecutor {
       }
     }
 
+    /* Both start and end are included. */
     int start = i0;
     int end = i1;
 
     if (direction == ENTRY) {
       start = i0 + 1;
+    }
+    else { /* direction == EXIT */
+      end = i1 + 1;
     }
 
     if (i0 >= i1 && direction == ENTRY) {
@@ -388,7 +392,7 @@ struct CurveBooleanExecutor {
       }
     }
     else { /* direction == EXIT */
-      for (int i = start; i > end; i--) {
+      for (int i = start; i >= end; i--) {
         newVertexID(i % curve_len, is_curve_A);
       }
     }
