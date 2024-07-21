@@ -27,6 +27,26 @@ namespace blender::polygonboolean {
 
 static bool draw_append = false; /* Will be set to true after first call. */
 
+#define SX(x) ((x - topleft[0]) * scale)
+#define SY(y) ((topleft[1] - y) * scale)
+
+static void SVG_add_polygon(std::ofstream &f,
+                            const std::string &class_name,
+                            const Span<float2> points,
+                            const float2 &topleft,
+                            const float scale)
+{
+  f << "<polygon class = \"" << class_name << "\" points =\"";
+  for (const int i : points.index_range()) {
+    const float2 &point = points[i];
+    if (i != 0) {
+      f << ", ";
+    }
+    f << SX(point[0]) << "," << SY(point[1]);
+  }
+  f << "\"/>\n";
+}
+
 void draw_curve(const std::string &label,
                 const Span<float2> curve_a,
                 const Span<float2> curve_b,
@@ -76,6 +96,8 @@ void draw_curve(const std::string &label,
   float miny = vmin.y - draw_margin;
   float maxy = vmax.y + draw_margin;
 
+  const float2 topleft = float2(minx, maxy);
+
   float width = maxx - minx;
   float height = maxy - miny;
   float aspect = height / width;
@@ -86,9 +108,6 @@ void draw_curve(const std::string &label,
     view_width = int(view_height / aspect);
   }
   float scale = view_width / width;
-
-#define SX(x) ((x - minx) * scale)
-#define SY(y) ((maxy - y) * scale)
 
   std::ofstream f;
   if (draw_append) {
@@ -153,27 +172,8 @@ void draw_curve(const std::string &label,
 
   f << "<svg width=\"" << view_width << "\" height=\"" << view_height << "\">\n";
 
-  f << "<polygon class = \"polygon-A\" "
-       "points =\"";
-  for (const int i : curve_a.index_range()) {
-    const float2 &point = curve_a[i];
-    if (i != 0) {
-      f << ", ";
-    }
-    f << SX(point[0]) << "," << SY(point[1]);
-  }
-  f << "\"/>\n";
-
-  f << "<polygon class = \"polygon-B\" "
-       "points =\"";
-  for (const int i : curve_b.index_range()) {
-    const float2 &point = curve_b[i];
-    if (i != 0) {
-      f << ", ";
-    }
-    f << SX(point[0]) << "," << SY(point[1]);
-  }
-  f << "\"/>\n";
+  SVG_add_polygon(f, "polygon-A", curve_a, topleft, scale);
+  SVG_add_polygon(f, "polygon-B", curve_b, topleft, scale);
 
   const OffsetIndices<int> points_by_polygon = OffsetIndices<int>(result.offsets);
 
@@ -229,9 +229,10 @@ void draw_curve(const std::string &label,
   f << "</div>\n";
 
   draw_append = true;
+}
+
 #undef SX
 #undef SY
-}
 
 void squares_A_AND_B_test()
 {
