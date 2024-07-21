@@ -248,7 +248,7 @@ void squares_A_AND_B_test()
   EXPECT_EQ(result.offsets.size(), 2);
 
   if (DO_DRAW) {
-    draw_curve("Squares A*B", points_a, points_b, result);
+    draw_curve("Squares A intersection B", points_a, points_b, result);
   }
 }
 
@@ -266,7 +266,7 @@ void squares_A_OR_B_test()
   EXPECT_EQ(result.offsets.size(), 2);
 
   if (DO_DRAW) {
-    draw_curve("Squares A+B", points_a, points_b, result);
+    draw_curve("Squares A union B", points_a, points_b, result);
   }
 }
 
@@ -284,7 +284,7 @@ void squares_A_NOT_B_test()
   EXPECT_EQ(result.offsets.size(), 2);
 
   if (DO_DRAW) {
-    draw_curve("Squares A-B", points_a, points_b, result);
+    draw_curve("Squares A without B", points_a, points_b, result);
   }
 }
 
@@ -302,7 +302,7 @@ void squares_B_NOT_A_test()
   EXPECT_EQ(result.offsets.size(), 2);
 
   if (DO_DRAW) {
-    draw_curve("Squares B-A", points_a, points_b, result);
+    draw_curve("Squares B without A", points_a, points_b, result);
   }
 }
 
