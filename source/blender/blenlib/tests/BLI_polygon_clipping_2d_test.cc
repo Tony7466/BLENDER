@@ -6,6 +6,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_offset_indices.hh"
 #include "BLI_rand.h"
 #include "BLI_time.h"
 
@@ -168,35 +169,41 @@ void draw_curve(const std::string &label,
   }
   f << "\"/>\n";
 
-  f << "<polygon class = \"polygon-C\" "
-       "points =\"";
-  for (const int i : result.verts.index_range()) {
-    const Vertex &vert = result.verts[i];
-    const VertexType &type = vert.type;
+  const OffsetIndices<int> points_by_polygon = OffsetIndices<int>(result.offsets);
 
-    float2 point;
-    if (type == VertexType::PointA) {
-      point = curve_a[vert.point_id];
-    }
-    else if (type == VertexType::PointB) {
-      point = curve_b[vert.point_id];
-    }
-    else if (type == VertexType::Intersection) {
-      const IntersectionPoint &inter_point = result.intersections_data[vert.point_id];
+  for (const int polygon_id : points_by_polygon.index_range()) {
+    const IndexRange vert_ids = points_by_polygon[polygon_id];
+    const Span<Vertex> verts = result.verts.as_span().slice(vert_ids);
 
-      const float2 point_a0 = curve_a[inter_point.point_a];
-      const float2 point_a1 = curve_a[(inter_point.point_a + 1) % curve_a.size()];
-      const float alpha_a = inter_point.alpha_a;
+    f << "<polygon class = \"polygon-C\" points =\"";
+    for (const int i : verts.index_range()) {
+      const Vertex &vert = verts[i];
+      const VertexType &type = vert.type;
 
-      point = (1.0 - alpha_a) * point_a0 + alpha_a * point_a1;
-    }
+      float2 point;
+      if (type == VertexType::PointA) {
+        point = curve_a[vert.point_id];
+      }
+      else if (type == VertexType::PointB) {
+        point = curve_b[vert.point_id];
+      }
+      else if (type == VertexType::Intersection) {
+        const IntersectionPoint &inter_point = result.intersections_data[vert.point_id];
 
-    if (i != 0) {
-      f << ", ";
+        const float2 point_a0 = curve_a[inter_point.point_a];
+        const float2 point_a1 = curve_a[(inter_point.point_a + 1) % curve_a.size()];
+        const float alpha_a = inter_point.alpha_a;
+
+        point = (1.0 - alpha_a) * point_a0 + alpha_a * point_a1;
+      }
+
+      if (i != 0) {
+        f << ", ";
+      }
+      f << SX(point[0]) << "," << SY(point[1]);
     }
-    f << SX(point[0]) << "," << SY(point[1]);
+    f << "\"/>\n";
   }
-  f << "\"/>\n";
 
   f << "</div>\n";
 
