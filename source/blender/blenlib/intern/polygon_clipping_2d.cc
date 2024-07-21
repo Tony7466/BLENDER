@@ -197,7 +197,7 @@ BooleanResult result_BA(Span<float2> curve_a, Span<float2> curve_b)
   return result;
 }
 
-BooleanResult non_intersecting_result(const BooleanMode mode,
+BooleanResult non_intersecting_result(const InputMode input_mode,
                                       Span<float2> curve_a,
                                       Span<float2> curve_b)
 {
@@ -205,44 +205,44 @@ BooleanResult non_intersecting_result(const BooleanMode mode,
   const bool is_b_in_a = inside(curve_b.first(), curve_a);
 
   if (is_a_in_b) {
-    if (mode == A_AND_B) {
+    if (input_mode.boolean_mode == A_AND_B) {
       return result_A(curve_a, curve_b);
     }
-    else if (mode == A_NOT_B) {
+    else if (input_mode.boolean_mode == A_NOT_B) {
       return result_None(curve_a, curve_b);
     }
-    else if (mode == B_NOT_A) {
+    else if (input_mode.boolean_mode == B_NOT_A) {
       return result_BA(curve_a, curve_b);
     }
-    else if (mode == A_OR_B) {
+    else if (input_mode.boolean_mode == A_OR_B) {
       return result_B(curve_a, curve_b);
     }
   }
   else if (is_b_in_a) {
-    if (mode == A_AND_B) {
+    if (input_mode.boolean_mode == A_AND_B) {
       return result_B(curve_a, curve_b);
     }
-    else if (mode == A_NOT_B) {
+    else if (input_mode.boolean_mode == A_NOT_B) {
       return result_AB(curve_a, curve_b);
     }
-    else if (mode == B_NOT_A) {
+    else if (input_mode.boolean_mode == B_NOT_A) {
       return result_None(curve_a, curve_b);
     }
-    else if (mode == A_OR_B) {
+    else if (input_mode.boolean_mode == A_OR_B) {
       return result_A(curve_a, curve_b);
     }
   }
   else if (!is_a_in_b && !is_b_in_a) {
-    if (mode == A_AND_B) {
+    if (input_mode.boolean_mode == A_AND_B) {
       return result_None(curve_a, curve_b);
     }
-    else if (mode == A_NOT_B) {
+    else if (input_mode.boolean_mode == A_NOT_B) {
       return result_A(curve_a, curve_b);
     }
-    else if (mode == B_NOT_A) {
+    else if (input_mode.boolean_mode == B_NOT_A) {
       return result_B(curve_a, curve_b);
     }
-    else if (mode == A_OR_B) {
+    else if (input_mode.boolean_mode == A_OR_B) {
       return result_AB(curve_a, curve_b);
     }
   }
@@ -434,7 +434,7 @@ struct CurveBooleanExecutor {
     }
   }
 
-  BooleanResult execute(const BooleanMode mode, Span<float2> curve_a, Span<float2> curve_b)
+  BooleanResult execute(const InputMode input_mode, Span<float2> curve_a, Span<float2> curve_b)
   {
     len_a = curve_a.size();
     len_b = curve_b.size();
@@ -454,7 +454,7 @@ struct CurveBooleanExecutor {
           intersections.append(CreateIntersection(i, j, alpha_a, alpha_b));
         }
         else if (val == ISECT_LINE_LINE_EXACT) {
-          return invalided_result(mode, curve_a, curve_b);
+          return invalided_result(input_mode.boolean_mode, curve_a, curve_b);
         }
       }
     }
@@ -464,7 +464,7 @@ struct CurveBooleanExecutor {
     /* ---- ---- ---- Phase Two ---- ---- ---- */
 
     if (intersections.is_empty()) {
-      return non_intersecting_result(mode, curve_a, curve_b);
+      return non_intersecting_result(input_mode, curve_a, curve_b);
     }
 
     A_inter_sorted_ids = Array<int>(num_intersects);
@@ -489,7 +489,7 @@ struct CurveBooleanExecutor {
 
     /* ---- ---- ---- Phase Three ---- ---- ---- */
 
-    const auto [A_mode, B_mode] = get_AB_mode(mode);
+    const auto [A_mode, B_mode] = get_AB_mode(input_mode.boolean_mode);
 
     const bool is_a_in_b = inside(curve_a.first(), curve_b);
     const bool is_b_in_a = inside(curve_b.first(), curve_a);
@@ -744,12 +744,12 @@ struct CurveBooleanExecutor {
   }
 };
 
-BooleanResult curve_boolean_calc(const BooleanMode mode,
+BooleanResult curve_boolean_calc(const InputMode input_mode,
                                  Span<float2> curve_a,
                                  Span<float2> curve_b)
 {
   CurveBooleanExecutor executor;
-  return executor.execute(mode, curve_a, curve_b);
+  return executor.execute(input_mode, curve_a, curve_b);
 }
 
 BooleanResult curve_boolean_cut(Span<float2> curve_a, Span<float2> curve_b)

@@ -31,6 +31,20 @@ enum BooleanMode {
   B_NOT_A,
 };
 
+enum HoleMode {
+  /* Generates the base polygons and holes in an arbitrary order. */
+  WITH_HOLES,
+  /* Generates holes with the base polygon being the first and all others being holes. */
+  WITH_ORDERED_HOLES,
+  /* Generates only the base polygon without any holes.*/
+  WITHOUT_HOLES,
+};
+
+struct InputMode {
+  BooleanMode boolean_mode;
+  HoleMode hole_mode;
+};
+
 enum VertexType {
   PointA,
   PointB,
@@ -56,7 +70,7 @@ struct BooleanResult {
   Array<IntersectionPoint> intersections_data;
 };
 
-BooleanResult curve_boolean_calc(const BooleanMode mode,
+BooleanResult curve_boolean_calc(const InputMode input_mode,
                                  Span<float2> curve_a,
                                  Span<float2> curve_b);
 BooleanResult curve_boolean_cut(Span<float2> curve_a, Span<float2> curve_b);

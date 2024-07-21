@@ -103,7 +103,9 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
   }
 
   const OffsetIndices<int> src_points_by_curve = src.points_by_curve();
-  const polygonboolean::BooleanMode mode = polygonboolean::BooleanMode::A_NOT_B;
+  polygonboolean::InputMode input_mode;
+  input_mode.boolean_mode = polygonboolean::BooleanMode::A_NOT_B;
+  input_mode.hole_mode = polygonboolean::HoleMode::WITHOUT_HOLES;
 
   bke::CurvesGeometry dst = bke::CurvesGeometry();
 
@@ -117,7 +119,7 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
 
     polygonboolean::BooleanResult result;
     if (is_fill) {
-      result = polygonboolean::curve_boolean_calc(mode, pos_2d_a, pos_2d_b);
+      result = polygonboolean::curve_boolean_calc(input_mode, pos_2d_a, pos_2d_b);
     }
     else {
       result = polygonboolean::curve_boolean_cut(pos_2d_a, pos_2d_b);
