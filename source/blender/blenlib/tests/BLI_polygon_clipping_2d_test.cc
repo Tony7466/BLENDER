@@ -171,11 +171,15 @@ void draw_curve(const std::string &label,
 
   const OffsetIndices<int> points_by_polygon = OffsetIndices<int>(result.offsets);
 
+  f << "<path class = \"polygon-C\" d = \"";
   for (const int polygon_id : points_by_polygon.index_range()) {
     const IndexRange vert_ids = points_by_polygon[polygon_id];
     const Span<Vertex> verts = result.verts.as_span().slice(vert_ids);
+    if (polygon_id != 0) {
+      f << " ";
+    }
 
-    f << "<polygon class = \"polygon-C\" points =\"";
+    f << "M ";
     for (const int i : verts.index_range()) {
       const Vertex &vert = verts[i];
       const VertexType &type = vert.type;
@@ -197,13 +201,17 @@ void draw_curve(const std::string &label,
         point = (1.0 - alpha_a) * point_a0 + alpha_a * point_a1;
       }
 
-      if (i != 0) {
+      if (i == 1) {
+        f << " L ";
+      }
+      else if (i != 0) {
         f << ", ";
       }
       f << SX(point[0]) << "," << SY(point[1]);
     }
-    f << "\"/>\n";
+    f << " Z";
   }
+  f << "\"/>\n";
 
   f << "</div>\n";
 
