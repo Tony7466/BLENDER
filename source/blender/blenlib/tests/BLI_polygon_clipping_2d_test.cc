@@ -107,8 +107,7 @@ void draw_curve(const std::string &label,
 
     f << "<style>\n";
 
-    f << "div\n"
-         "{\n"
+    f << "div {\n"
          "  border: "
       << border_width
       << "px solid black;\n"
