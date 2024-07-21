@@ -44,6 +44,7 @@ void draw_curve(const std::string &label,
   constexpr int max_draw_height = 600;
   constexpr int border_width = 5;
   constexpr int stroke_width = 3;
+  constexpr int stroke_dasharray = 15;
 
   float2 vmin(1e10, 1e10);
   float2 vmax(-1e10, -1e10);
@@ -120,7 +121,9 @@ void draw_curve(const std::string &label,
          "  stroke-width: "
       << stroke_width
       << "px;\n"
-         "  stroke-dasharray: 15;\n"
+         "  stroke-dasharray: "
+      << stroke_dasharray
+      << ";\n"
          "}\n";
 
     f << ".polygon-B {\n"
@@ -129,7 +132,9 @@ void draw_curve(const std::string &label,
          "  stroke-width: "
       << stroke_width
       << "px;\n"
-         "  stroke-dasharray: 15;\n"
+         "  stroke-dasharray: "
+      << stroke_dasharray
+      << ";\n"
          "}\n";
 
     f << ".polygon-C {\n"
