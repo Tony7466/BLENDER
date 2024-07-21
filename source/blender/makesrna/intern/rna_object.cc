@@ -619,10 +619,8 @@ static StructRNA *rna_Object_data_typef(PointerRNA *ptr)
       return &RNA_LightProbe;
     case OB_GPENCIL_LEGACY:
       return &RNA_GreasePencil;
-#  ifdef WITH_GREASE_PENCIL_V3
     case OB_GREASE_PENCIL:
       return &RNA_GreasePencilv3;
-#  endif
     case OB_CURVES:
       return &RNA_Curves;
     case OB_POINTCLOUD:
@@ -1170,10 +1168,10 @@ static int rna_Object_active_material_editable(const PointerRNA *ptr, const char
   bool is_editable;
 
   if ((ob->matbits == nullptr) || (ob->actcol == 0) || ob->matbits[ob->actcol - 1]) {
-    is_editable = !ID_IS_LINKED(ob);
+    is_editable = ID_IS_EDITABLE(ob);
   }
   else {
-    is_editable = ob->data ? !ID_IS_LINKED(ob->data) : false;
+    is_editable = ob->data ? ID_IS_EDITABLE(ob->data) : false;
   }
 
   return is_editable ? int(PROP_EDITABLE) : 0;
@@ -1356,10 +1354,10 @@ static int rna_MaterialSlot_material_editable(const PointerRNA *ptr, const char 
   bool is_editable;
 
   if ((ob->matbits == nullptr) || ob->matbits[index]) {
-    is_editable = !ID_IS_LINKED(ob);
+    is_editable = ID_IS_EDITABLE(ob);
   }
   else {
-    is_editable = ob->data ? !ID_IS_LINKED(ob->data) : false;
+    is_editable = ob->data ? ID_IS_EDITABLE(ob->data) : false;
   }
 
   return is_editable ? int(PROP_EDITABLE) : 0;
@@ -1624,6 +1622,9 @@ static bConstraint *rna_Object_constraints_new(Object *object, Main *bmain, int 
   blender::ed::object::constraint_tag_update(bmain, object, new_con);
   WM_main_add_notifier(NC_OBJECT | ND_CONSTRAINT | NA_ADDED, object);
 
+  /* The Depsgraph needs to be updated to reflect the new relationship that was added. */
+  DEG_relations_tag_update(bmain);
+
   return new_con;
 }
 
@@ -1766,7 +1767,7 @@ static void rna_Object_modifier_remove(Object *object,
 
 static void rna_Object_modifier_clear(Object *object, bContext *C)
 {
-  blender::ed::object::modifier_clear(CTX_data_main(C), CTX_data_scene(C), object);
+  blender::ed::object::modifiers_clear(CTX_data_main(C), CTX_data_scene(C), object);
 
   WM_main_add_notifier(NC_OBJECT | ND_MODIFIER | NA_REMOVED, object);
 }

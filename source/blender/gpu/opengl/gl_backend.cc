@@ -10,6 +10,9 @@
 #if defined(WIN32)
 #  include "BLI_winstuff.h"
 #endif
+#include "BLI_subprocess.hh"
+#include "BLI_threads.h"
+#include "DNA_userdef_types.h"
 
 #include "gpu_capabilities_private.hh"
 #include "gpu_platform_private.hh"
@@ -298,7 +301,6 @@ static void detect_workarounds()
     GCaps.depth_blitting_workaround = true;
     GCaps.mip_render_workaround = true;
     GLContext::debug_layer_workaround = true;
-    GLContext::unused_fb_slot_workaround = true;
     /* Turn off Blender features. */
     GCaps.hdr_viewport_support = false;
     /* Turn off OpenGL 4.4 features. */
@@ -320,6 +322,7 @@ static void detect_workarounds()
     GLContext::native_barycentric_support = false;
     GLContext::framebuffer_fetch_support = false;
     GLContext::texture_barrier_support = false;
+    GCaps.stencil_export_support = false;
 
 #if 0
     /* Do not alter OpenGL 4.3 features.
@@ -465,6 +468,13 @@ static void detect_workarounds()
     GLContext::multi_bind_image_support = false;
   }
 
+  /* #107642, #120273 Windows Intel iGPU (multiple generations) incorrectly report that
+   * they support image binding. But when used it results into `GL_INVALID_OPERATION` with
+   * `internal format of texture N is not supported`. */
+  if (GPU_type_matches(GPU_DEVICE_INTEL, GPU_OS_WIN, GPU_DRIVER_OFFICIAL)) {
+    GLContext::multi_bind_image_support = false;
+  }
+
   /* Metal-related Workarounds. */
 
   /* Minimum Per-Vertex stride is 1 byte for OpenGL. */
@@ -586,6 +596,19 @@ void GLBackend::capabilities_init()
   GLContext::framebuffer_fetch_support = false;
 
   detect_workarounds();
+
+#if BLI_SUBPROCESS_SUPPORT
+  if (GCaps.max_parallel_compilations == -1) {
+    GCaps.max_parallel_compilations = std::min(int(U.max_shader_compilation_subprocesses),
+                                               BLI_system_thread_count());
+  }
+  if (G.debug & G_DEBUG_GPU_RENDERDOC) {
+    /* Avoid crashes on RenderDoc sessions. */
+    GCaps.max_parallel_compilations = 0;
+  }
+#else
+  GCaps.max_parallel_compilations = 0;
+#endif
 
   /* Disable this feature entirely when not debugging. */
   if ((G.debug & G_DEBUG_GPU) == 0) {

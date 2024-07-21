@@ -20,6 +20,8 @@
 #include "UI_interface_icons.hh"
 #include "WM_types.hh"
 
+#include "MEM_guardedalloc.h"
+
 /* Struct Declarations */
 
 struct ARegion;
@@ -128,7 +130,7 @@ enum eUIEmbossType {
   /** Pull-down menu style */
   UI_EMBOSS_PULLDOWN = 2,
   /** Pie Menu */
-  UI_EMBOSS_RADIAL = 3,
+  UI_EMBOSS_PIE_MENU = 3,
   /**
    * The same as #UI_EMBOSS_NONE, unless the button has
    * a coloring status like an animation state or red alert.
@@ -171,7 +173,7 @@ enum {
 
   UI_BLOCK_POPUP_HOLD = 1 << 18,
   UI_BLOCK_LIST_ITEM = 1 << 19,
-  UI_BLOCK_RADIAL = 1 << 20,
+  UI_BLOCK_PIE_MENU = 1 << 20,
   UI_BLOCK_POPOVER = 1 << 21,
   UI_BLOCK_POPOVER_ONCE = 1 << 22,
   /** Always show key-maps, even for non-menus. */
@@ -264,6 +266,12 @@ enum {
    * However, sometimes this behavior is not desired, so it can be disabled with this flag.
    */
   UI_BUT2_ACTIVATE_ON_INIT_NO_SELECT = 1 << 0,
+  /**
+   * Force the button as active in a semi-modal state. For example, text buttons can continuously
+   * capture text input, while leaving the remaining UI interactive. Only supported well for text
+   * buttons currently.
+   */
+  UI_BUT2_FORCE_SEMI_MODAL_ACTIVE = 1 << 1,
 };
 
 /** #uiBut.dragflag */
@@ -285,7 +293,7 @@ enum {
 
 #define UI_PANEL_WIDTH 340
 #define UI_COMPACT_PANEL_WIDTH 160
-#define UI_SIDEBAR_PANEL_WIDTH 220
+#define UI_SIDEBAR_PANEL_WIDTH 280
 #define UI_NAVIGATION_REGION_WIDTH UI_COMPACT_PANEL_WIDTH
 #define UI_NARROW_NAVIGATION_REGION_WIDTH 100
 
@@ -362,6 +370,9 @@ enum {
 
   /** Drawn in a way that indicates that the state/value is unknown. */
   UI_BUT_INDETERMINATE = 1 << 26,
+
+  /** Draw icon inverted to indicate a special state. */
+  UI_BUT_ICON_INVERT = 1 << 27,
 };
 
 /**
@@ -568,6 +579,13 @@ using uiButHandleHoldFunc = void (*)(bContext *C, ARegion *butregion, uiBut *but
 using uiButCompleteFunc = int (*)(bContext *C, char *str, void *arg);
 
 /**
+ * Signatures of callbacks used to free or copy some 'owned' void pointer data (like e.g.
+ * #func_argN in #uiBut or #uiBlock).
+ */
+using uiButArgNFree = void (*)(void *argN);
+using uiButArgNCopy = void *(*)(const void *argN);
+
+/**
  * Function to compare the identity of two buttons over redraws, to check if they represent the
  * same data, and thus should be considered the same button over redraws.
  */
@@ -671,6 +689,11 @@ bool UI_but_is_utf8(const uiBut *but);
 bool UI_block_is_empty_ex(const uiBlock *block, bool skip_title);
 bool UI_block_is_empty(const uiBlock *block);
 bool UI_block_can_add_separator(const uiBlock *block);
+/**
+ * Return true when the block has a default button.
+ * Use this for popups to detect when pressing "Return" will run an action.
+ */
+bool UI_block_has_active_default_button(const uiBlock *block);
 
 uiList *UI_list_find_mouse_over(const ARegion *region, const wmEvent *event);
 
@@ -708,6 +731,18 @@ void UI_popup_menu_reports(bContext *C, ReportList *reports) ATTR_NONNULL();
 int UI_popup_menu_invoke(bContext *C, const char *idname, ReportList *reports) ATTR_NONNULL(1, 2);
 
 /**
+ * If \a block is displayed in a popup menu, tag it for closing.
+ * \param is_cancel: If set to true, the popup will be closed as being cancelled (e.g. when
+ *                   pressing escape) as opposed to being handled successfully.
+ */
+void UI_popup_menu_close(const uiBlock *block, bool is_cancel = false);
+/**
+ * Version of #UI_popup_menu_close() that can be called on a button contained in a popup menu
+ * block. Convenience since the block may not be available.
+ */
+void UI_popup_menu_close_from_but(const uiBut *but, bool is_cancel = false);
+
+/**
  * Allow setting menu return value from externals.
  * E.g. WM might need to do this for exiting files correctly.
  */
@@ -717,16 +752,6 @@ void UI_popup_menu_retval_set(const uiBlock *block, int retval, bool enable);
  * to the popup `region` so layout panels state can be persistent until the popup is closed.
  */
 void UI_popup_dummy_panel_set(ARegion *region, uiBlock *block);
-/** Toggles layout panel open state and returns the new state. */
-bool UI_layout_panel_toggle_open(const bContext *C, struct LayoutPanelHeader *header);
-void UI_panel_drag_collapse_handler_add(const bContext *C, const bool was_open);
-LayoutPanelHeader *UI_layout_panel_header_under_mouse(const Panel &panel, const int my);
-/** Apply scroll to layout panels when the main panel is used in popups. */
-void UI_layout_panel_popup_scroll_apply(Panel *panel, const float dy);
-void UI_draw_layout_panels_backdrop(const ARegion *region,
-                                    const Panel *panel,
-                                    const float radius,
-                                    float subpanel_backcolor[4]);
 /**
  * Setting the button makes the popup open from the button instead of the cursor.
  */
@@ -783,6 +808,11 @@ using uiBlockCreateFunc = uiBlock *(*)(bContext *C, ARegion *region, void *arg1)
 using uiBlockCancelFunc = void (*)(bContext *C, void *arg1);
 
 void UI_popup_block_invoke(bContext *C, uiBlockCreateFunc func, void *arg, uiFreeArgFunc arg_free);
+/**
+ * \param can_refresh: When true, the popup may be refreshed (updated after creation).
+ * \note It can be useful to disable refresh (even though it will work)
+ * as this exits text fields which can be disruptive if refresh isn't needed.
+ */
 void UI_popup_block_invoke_ex(
     bContext *C, uiBlockCreateFunc func, void *arg, uiFreeArgFunc arg_free, bool can_refresh);
 void UI_popup_block_ex(bContext *C,
@@ -791,6 +821,33 @@ void UI_popup_block_ex(bContext *C,
                        uiBlockCancelFunc cancel_func,
                        void *arg,
                        wmOperator *op);
+
+/**
+ * Return true when #UI_popup_block_template_confirm and related functions are supported.
+ */
+bool UI_popup_block_template_confirm_is_supported(const uiBlock *block);
+/**
+ * Create confirm & cancel buttons in a popup using callback functions.
+ */
+void UI_popup_block_template_confirm(uiBlock *block,
+                                     bool cancel_default,
+                                     blender::FunctionRef<uiBut *()> confirm_fn,
+                                     blender::FunctionRef<uiBut *()> cancel_fn);
+/**
+ * Create confirm & cancel buttons in a popup using an operator.
+ *
+ * \param confirm_text: The text to confirm, null for default text or an empty string to hide.
+ * \param cancel_text: The text to cancel, null for default text or an empty string to hide.
+ * \param r_ptr: The pointer for operator properties, set a "confirm" button has been created.
+ */
+void UI_popup_block_template_confirm_op(uiLayout *layout,
+                                        wmOperatorType *ot,
+                                        const char *confirm_text,
+                                        const char *cancel_text,
+                                        const int icon,
+                                        bool cancel_default,
+                                        PointerRNA *r_ptr);
+
 #if 0 /* UNUSED */
 void uiPupBlockOperator(bContext *C,
                         uiBlockCreateFunc func,
@@ -1358,6 +1415,17 @@ uiBut *uiDefIconTextButO_ptr(uiBlock *block,
                              short height,
                              const char *tip);
 
+void UI_but_operator_set(uiBut *but,
+                         wmOperatorType *optype,
+                         wmOperatorCallContext opcontext,
+                         const PointerRNA *opptr = nullptr);
+/**
+ * Disable calling operators from \a but in button handling. Useful to attach an operator to a
+ * button for tooltips, "Assign Shortcut", etc. without actually making the button execute the
+ * operator.
+ */
+void UI_but_operator_set_never_call(uiBut *but);
+
 /** For passing inputs to ButO buttons. */
 PointerRNA *UI_but_operator_ptr_ensure(uiBut *but);
 
@@ -1365,6 +1433,8 @@ void UI_but_context_ptr_set(uiBlock *block, uiBut *but, const char *name, const 
 const PointerRNA *UI_but_context_ptr_get(const uiBut *but,
                                          const char *name,
                                          const StructRNA *type = nullptr);
+std::optional<blender::StringRefNull> UI_but_context_string_get(const uiBut *but,
+                                                                const char *name);
 const bContextStore *UI_but_context_get(const uiBut *but);
 
 void UI_but_unit_type_set(uiBut *but, int unit_type);
@@ -1375,6 +1445,7 @@ std::optional<EnumPropertyItem> UI_but_rna_enum_item_get(bContext &C, uiBut &but
 std::string UI_but_string_get_rna_property_identifier(const uiBut &but);
 std::string UI_but_string_get_rna_struct_identifier(const uiBut &but);
 std::string UI_but_string_get_label(uiBut &but);
+std::string UI_but_context_menu_title_from_button(uiBut &but);
 /**
  * Query the result of #uiBut::tip_label_func().
  * Meant to allow overriding the label to be displayed in the tool-tip.
@@ -1394,10 +1465,6 @@ std::string UI_but_extra_icon_string_get_label(const uiButExtraOpIcon &extra_ico
 std::string UI_but_extra_icon_string_get_tooltip(bContext &C, const uiButExtraOpIcon &extra_icon);
 std::string UI_but_extra_icon_string_get_operator_keymap(const bContext &C,
                                                          const uiButExtraOpIcon &extra_icon);
-
-/* Edit i18n stuff. */
-/* Name of the main py op from i18n addon. */
-#define EDTSRC_I18N_OP_NAME "UI_OT_edittranslation"
 
 /**
  * Special Buttons
@@ -1505,7 +1572,9 @@ uiBut *uiDefBlockButN(uiBlock *block,
                       int y,
                       short width,
                       short height,
-                      const char *tip);
+                      const char *tip,
+                      uiButArgNFree func_argN_free_fn = MEM_freeN,
+                      uiButArgNCopy func_argN_copy_fn = MEM_dupallocN);
 
 /**
  * Block button containing icon.
@@ -1679,7 +1748,7 @@ int UI_searchbox_size_x();
 /**
  * Check if a string is in an existing search box.
  */
-int UI_search_items_find_index(uiSearchItems *items, const char *name);
+int UI_search_items_find_index(const uiSearchItems *items, const char *name);
 
 /**
  * Adds a hint to the button which draws right aligned, grayed out and never clipped.
@@ -1703,11 +1772,21 @@ void UI_but_search_preview_grid_size_set(uiBut *but, int rows, int cols);
 
 void UI_block_func_handle_set(uiBlock *block, uiBlockHandleFunc func, void *arg);
 void UI_block_func_set(uiBlock *block, uiButHandleFunc func, void *arg1, void *arg2);
-void UI_block_funcN_set(uiBlock *block, uiButHandleNFunc funcN, void *argN, void *arg2);
+void UI_block_funcN_set(uiBlock *block,
+                        uiButHandleNFunc funcN,
+                        void *argN,
+                        void *arg2,
+                        uiButArgNFree func_argN_free_fn = MEM_freeN,
+                        uiButArgNCopy func_argN_copy_fn = MEM_dupallocN);
 
 void UI_but_func_rename_set(uiBut *but, uiButHandleRenameFunc func, void *arg1);
 void UI_but_func_set(uiBut *but, uiButHandleFunc func, void *arg1, void *arg2);
-void UI_but_funcN_set(uiBut *but, uiButHandleNFunc funcN, void *argN, void *arg2);
+void UI_but_funcN_set(uiBut *but,
+                      uiButHandleNFunc funcN,
+                      void *argN,
+                      void *arg2,
+                      uiButArgNFree func_argN_free_fn = MEM_freeN,
+                      uiButArgNCopy func_argN_copy_fn = MEM_dupallocN);
 
 void UI_but_func_complete_set(uiBut *but, uiButCompleteFunc func, void *arg);
 
@@ -2019,6 +2098,10 @@ void UI_init_userdef();
 void UI_reinit_font();
 void UI_exit();
 
+/* When changing UI font, update text style weights with default font weight
+ * if non-variable. Therefore fixed weight bold font will look bold. */
+void UI_update_text_styles();
+
 /* Layout
  *
  * More automated layout of buttons. Has three levels:
@@ -2084,8 +2167,13 @@ enum eUI_Item_Flag {
   UI_ITEM_R_FORCE_BLANK_DECORATE = 1 << 13,
   /* Even create the property split layout if there's no name to show there. */
   UI_ITEM_R_SPLIT_EMPTY_NAME = 1 << 14,
+  /**
+   * Only for text buttons (for now): Force the button as active in a semi-modal state (capturing
+   * text input while leaving the remaining UI interactive).
+   */
+  UI_ITEM_R_TEXT_BUT_FORCE_SEMI_MODAL_ACTIVE = 1 << 15,
 };
-ENUM_OPERATORS(eUI_Item_Flag, UI_ITEM_R_SPLIT_EMPTY_NAME)
+ENUM_OPERATORS(eUI_Item_Flag, UI_ITEM_R_TEXT_BUT_FORCE_SEMI_MODAL_ACTIVE)
 #define UI_ITEM_NONE eUI_Item_Flag(0)
 
 #define UI_HEADER_OFFSET ((void)0, 0.4f * UI_UNIT_X)
@@ -2154,6 +2242,7 @@ uiBlock *uiLayoutGetBlock(uiLayout *layout);
 
 void uiLayoutSetFunc(uiLayout *layout, uiMenuHandleFunc handlefunc, void *argv);
 void uiLayoutSetContextPointer(uiLayout *layout, const char *name, PointerRNA *ptr);
+void uiLayoutSetContextString(uiLayout *layout, const char *name, blender::StringRef value);
 bContextStore *uiLayoutGetContextStore(uiLayout *layout);
 void uiLayoutContextCopy(uiLayout *layout, const bContextStore *context);
 
@@ -2186,6 +2275,10 @@ MenuType *UI_but_menutype_get(const uiBut *but);
  * This is a bit of a hack but best keep it in one place at least.
  */
 PanelType *UI_but_paneltype_get(const uiBut *but);
+/**
+ * This is a bit of a hack but best keep it in one place at least.
+ */
+std::optional<blender::StringRefNull> UI_but_asset_shelf_type_idname_get(const uiBut *but);
 void UI_menutype_draw(bContext *C, MenuType *mt, uiLayout *layout);
 /**
  * Used for popup panels only.
@@ -2337,6 +2430,7 @@ uiLayout *uiLayoutAbsolute(uiLayout *layout, bool align);
 uiLayout *uiLayoutSplit(uiLayout *layout, float percentage, bool align);
 uiLayout *uiLayoutOverlap(uiLayout *layout);
 uiBlock *uiLayoutAbsoluteBlock(uiLayout *layout);
+/** Pie menu layout: Buttons are arranged around a center. */
 uiLayout *uiLayoutRadial(uiLayout *layout);
 
 /* templates */
@@ -2703,16 +2797,23 @@ void uiTemplateAssetView(uiLayout *layout,
                          const char *drag_opname,
                          PointerRNA *r_drag_op_properties);
 
+namespace blender::ui {
+
+void template_asset_shelf_popover(uiLayout &layout,
+                                  const bContext &C,
+                                  StringRefNull asset_shelf_id,
+                                  StringRefNull name,
+                                  int icon);
+
+}
+
 void uiTemplateLightLinkingCollection(uiLayout *layout,
                                       uiLayout *context_layout,
                                       PointerRNA *ptr,
                                       const char *propname);
 
 void uiTemplateBoneCollectionTree(uiLayout *layout, bContext *C);
-
-#ifdef WITH_GREASE_PENCIL_V3
 void uiTemplateGreasePencilLayerTree(uiLayout *layout, bContext *C);
-#endif
 
 void uiTemplateNodeTreeInterface(uiLayout *layout, PointerRNA *ptr);
 /**
@@ -3086,11 +3187,10 @@ bool UI_context_copy_to_selected_check(PointerRNA *ptr,
 /* Helpers for Operators */
 uiBut *UI_context_active_but_get(const bContext *C);
 /**
- * Version of #UI_context_active_get() that uses the result of #CTX_wm_menu()
- * if set. Does not traverse into parent menus, which may be wanted in some
- * cases.
+ * Version of #UI_context_active_get() that uses the result of #CTX_wm_region_popup() if set.
+ * Does not traverse into parent menus, which may be wanted in some cases.
  */
-uiBut *UI_context_active_but_get_respect_menu(const bContext *C);
+uiBut *UI_context_active_but_get_respect_popup(const bContext *C);
 /**
  * Version of #UI_context_active_but_get that also returns RNA property info.
  * Helper function for insert keyframe, reset to default, etc operators.
@@ -3174,7 +3274,7 @@ void UI_fontstyle_draw(const uiFontStyle *fs,
                        const uchar col[4],
                        const uiFontStyleDraw_Params *fs_params);
 /**
- * Drawn same as above, but at 90 degree angle.
+ * Drawn same as #UI_fontstyle_draw, but at 90 degree angle.
  */
 void UI_fontstyle_draw_rotated(const uiFontStyle *fs,
                                const rcti *rect,
@@ -3301,15 +3401,6 @@ ARegion *UI_tooltip_create_from_button_or_extra_icon(
 ARegion *UI_tooltip_create_from_gizmo(bContext *C, wmGizmo *gz);
 void UI_tooltip_free(bContext *C, bScreen *screen, ARegion *region);
 
-struct uiSearchItemTooltipData {
-  /** A description for the item, e.g. what happens when selecting it. */
-  char description[UI_MAX_DRAW_STR];
-  /* The full name of the item, without prefixes or suffixes (e.g. hint with UI_SEP_CHARP). */
-  const char *name;
-  /** Additional info about the item (e.g. library name of a linked data-block). */
-  char hint[UI_MAX_DRAW_STR];
-};
-
 /**
  * Create a tooltip from search-item tooltip data \a item_tooltip data.
  * To be called from a callback set with #UI_but_func_search_set_tooltip().
@@ -3317,11 +3408,10 @@ struct uiSearchItemTooltipData {
  * \param item_rect: Rectangle of the search item in search region space (#ui_searchbox_butrect())
  *                   which is passed to the tooltip callback.
  */
-ARegion *UI_tooltip_create_from_search_item_generic(
-    bContext *C,
-    const ARegion *searchbox_region,
-    const rcti *item_rect,
-    const uiSearchItemTooltipData *item_tooltip_data);
+ARegion *UI_tooltip_create_from_search_item_generic(bContext *C,
+                                                    const ARegion *searchbox_region,
+                                                    const rcti *item_rect,
+                                                    ID *id);
 
 /* How long before a tool-tip shows. */
 #define UI_TOOLTIP_DELAY 0.5
@@ -3376,6 +3466,8 @@ bool UI_view_item_can_rename(const blender::ui::AbstractViewItem &item);
 void UI_view_item_begin_rename(blender::ui::AbstractViewItem &item);
 
 bool UI_view_item_supports_drag(const blender::ui::AbstractViewItem &item);
+/** If this view is displayed in a popup, don't close it when clicking to activate items. */
+bool UI_view_item_popup_keep_open(const blender::ui::AbstractViewItem &item);
 /**
  * Attempt to start dragging \a item_. This will not work if the view item doesn't
  * support dragging, i.e. if it won't create a drag-controller upon request.
@@ -3395,3 +3487,4 @@ blender::ui::AbstractViewItem *UI_region_views_find_item_at(const ARegion &regio
                                                             const int xy[2]);
 blender::ui::AbstractViewItem *UI_region_views_find_active_item(const ARegion *region);
 uiBut *UI_region_views_find_active_item_but(const ARegion *region);
+void UI_region_views_clear_search_highlight(const ARegion *region);

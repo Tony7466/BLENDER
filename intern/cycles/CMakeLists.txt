@@ -11,9 +11,9 @@ else()
   # be started with --env-system-scripts pointing to the release folder, which will
   # lack the cycles addon, and we don't want to write into it.
   if(NOT WINDOWS_PYTHON_DEBUG)
-    set(CYCLES_INSTALL_PATH "scripts/addons/cycles")
+    set(CYCLES_INSTALL_PATH "scripts/addons_core/cycles")
   else()
-    set(CYCLES_INSTALL_PATH "$ENV{appdata}/blender foundation/blender/${BLENDER_VERSION}/scripts/addons/cycles")
+    set(CYCLES_INSTALL_PATH "$ENV{appdata}/blender foundation/blender/${BLENDER_VERSION}/scripts/addons_core/cycles")
   endif()
 endif()
 
@@ -395,7 +395,7 @@ if(WITH_CYCLES_DEBUG_NAN)
   add_definitions(-DWITH_CYCLES_DEBUG_NAN)
 endif()
 
-if(NOT OPENIMAGEIO_PUGIXML_FOUND)
+if((NOT OPENIMAGEIO_PUGIXML_FOUND) OR WIN32)
   add_definitions(-DWITH_SYSTEM_PUGIXML)
 endif()
 
@@ -473,5 +473,9 @@ if(WITH_CYCLES_HYDRA_RENDER_DELEGATE OR (WITH_CYCLES_STANDALONE AND WITH_USD))
 endif()
 
 if(NOT WITH_BLENDER)
-  delayed_do_install(${CMAKE_BINARY_DIR}/bin)
+  if(CYCLES_STANDALONE_REPOSITORY)
+    delayed_do_install()
+  else()
+    delayed_do_install(${CMAKE_BINARY_DIR}/bin)
+  endif()
 endif()

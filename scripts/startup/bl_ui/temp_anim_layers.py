@@ -27,38 +27,50 @@ class VIEW3D_PT_animation_layers(Panel):
     def poll(cls, context):
         return context.preferences.experimental.use_animation_baklava and context.object
 
-    def draw(self, context) -> None:
+    def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
         layout.use_property_decorate = False
 
         # FIXME: this should be done in response to a message-bus callback, notifier, whatnot.
         adt = context.object.animation_data
-        with _wm_selected_animation_lock:
-            if adt:
-                context.window_manager.selected_animation = adt.animation
-            else:
-                context.window_manager.selected_animation = None
+        with _wm_selected_action_lock:
+            selected_action = getattr(adt, "action", None)
+            # Only set if it has to change, to avoid unnecessary notifies (that cause
+            # a redraw, that cause this code to be called, etc.)
+            if context.window_manager.selected_action != selected_action:
+                context.window_manager.selected_action = selected_action
 
         col = layout.column()
         # This has to go via an auxiliary property, as assigning an Animation
         # data-block should be possible even when `context.object.animation_data`
         # is `None`, and thus its `animation` property does not exist.
-        col.template_ID(context.window_manager, 'selected_animation')
+        col.template_ID(context.window_manager, "selected_action")
 
-        col = layout.column(align=True)
-        anim = adt and adt.animation
+        col = layout.column(align=False)
+        anim = adt and adt.action
         if anim:
-            col.prop(adt, 'animation_binding_handle', text="Binding")
-            binding = [o for o in anim.bindings if o.handle == adt.animation_binding_handle]
-            if binding:
-                col.prop(binding[0], 'name', text="Anim Binding Name")
-            else:
-                col.label(text="AN Binding Name: -")
+            slot_sub = col.column(align=True)
+
+            # Slot selector.
+            row = slot_sub.row(align=True)
+            row.prop(adt, "action_slot", text="Slot")
+            row.operator("anim.slot_unassign_object", text="", icon='X')
+
+            slot = anim.slots.get(adt.action_slot, None)
+            if slot:
+                slot_sub.prop(slot, "name_display", text="Name")
+
+            internal_sub = slot_sub.box().column(align=True)
+            internal_sub.active = False
+            internal_sub.prop(adt, "action_slot_handle", text="handle")
+            if slot:
+                internal_sub.prop(slot, "name", text="Internal Name")
+
         if adt:
-            col.prop(adt, 'animation_binding_name', text="ADT Binding Name")
+            col.prop(adt, "action_slot_name", text="ADT Slot Name")
         else:
-            col.label(text="ADT Binding Name: -")
+            col.label(text="ADT Slot Name: -")
 
         layout.separator()
 
@@ -69,7 +81,7 @@ class VIEW3D_PT_animation_layers(Panel):
         for layer_idx, layer in reversed(list(enumerate(anim.layers))):
             layerbox = layout.box()
             col = layerbox.column(align=True)
-            col.prop(layer, "name", text="Layer %d:" % (layer_idx + 1))
+            col.prop(layer, "name", text="Layer {:d}:".format(layer_idx + 1))
             col.prop(layer, "influence")
             col.prop(layer, "mix_mode")
 
@@ -78,42 +90,35 @@ classes = (
     VIEW3D_PT_animation_layers,
 )
 
-_wm_selected_animation_lock = threading.Lock()
+_wm_selected_action_lock = threading.Lock()
 
 
-def _wm_selected_animation_update(wm, context):
+def _wm_selected_action_update(wm, context):
     # Avoid responding to changes written by the panel above.
-    lock_ok = _wm_selected_animation_lock.acquire(blocking=False)
+    lock_ok = _wm_selected_action_lock.acquire(blocking=False)
     if not lock_ok:
         return
     try:
-        if wm.selected_animation is None and context.object.animation_data is None:
+        if wm.selected_action is None and context.object.animation_data is None:
             return
 
         adt = context.object.animation_data_create()
-        if adt.animation == wm.selected_animation:
+        if adt.action == wm.selected_action:
             # Avoid writing to the property when the new value hasn't changed.
             return
-        adt.animation = wm.selected_animation
+        adt.action = wm.selected_action
     finally:
-        _wm_selected_animation_lock.release()
+        _wm_selected_action_lock.release()
 
 
 def register_props():
-    # Put behind a `try` because it won't exist when Blender is built without
-    # experimental features.
-    try:
-        from bpy.types import Animation
-    except ImportError:
-        return
-
     # Due to this hackyness, the WindowManager will increase the user count of
-    # the pointed-to Animation data-block.
-    WindowManager.selected_animation = PointerProperty(
-        type=Animation,
-        name="Animation",
-        description="Animation assigned to the active Object",
-        update=_wm_selected_animation_update,
+    # the pointed-to Action.
+    WindowManager.selected_action = PointerProperty(
+        type=bpy.types.Action,
+        name="Action",
+        description="Action assigned to the active Object",
+        update=_wm_selected_action_update,
     )
 
 

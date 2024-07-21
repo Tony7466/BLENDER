@@ -67,7 +67,7 @@ void TreeViewItemContainer::foreach_item_recursive(ItemIterFn iter_fn, IterOptio
 {
   for (const auto &child : children_) {
     bool skip = false;
-    if (bool(options & IterOptions::SkipFiltered) && !child->is_filtered_visible_cached()) {
+    if (bool(options & IterOptions::SkipFiltered) && !child->is_filtered_visible()) {
       skip = true;
     }
 
@@ -350,7 +350,7 @@ void AbstractTreeViewItem::collapse_chevron_click_fn(bContext *C,
    * lookup the hovered item via context here. */
 
   const wmWindow *win = CTX_wm_window(C);
-  const ARegion *region = CTX_wm_menu(C) ? CTX_wm_menu(C) : CTX_wm_region(C);
+  const ARegion *region = CTX_wm_region_popup(C) ? CTX_wm_region_popup(C) : CTX_wm_region(C);
   AbstractViewItem *hovered_abstract_item = UI_region_views_find_item_at(*region,
                                                                          win->eventstate->xy);
 
@@ -454,6 +454,11 @@ std::unique_ptr<DropTargetInterface> AbstractTreeViewItem::create_item_drop_targ
 std::unique_ptr<TreeViewItemDropTarget> AbstractTreeViewItem::create_drop_target()
 {
   return nullptr;
+}
+
+std::optional<std::string> AbstractTreeViewItem::debug_name() const
+{
+  return label_;
 }
 
 AbstractTreeView &AbstractTreeViewItem::get_tree_view() const
@@ -720,13 +725,16 @@ void TreeViewBuilder::ensure_min_rows_items(AbstractTreeView &tree_view)
   }
 }
 
-void TreeViewBuilder::build_tree_view(AbstractTreeView &tree_view, uiLayout &layout)
+void TreeViewBuilder::build_tree_view(AbstractTreeView &tree_view,
+                                      uiLayout &layout,
+                                      std::optional<StringRef> search_string)
 {
   uiBlock &block = *uiLayoutGetBlock(&layout);
 
   tree_view.build_tree();
   tree_view.update_from_old(block);
   tree_view.change_state_delayed();
+  tree_view.filter(search_string);
 
   ensure_min_rows_items(tree_view);
 

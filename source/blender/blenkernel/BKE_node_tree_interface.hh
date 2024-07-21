@@ -106,7 +106,7 @@ struct bNodeSocketStaticTypeInfo {
   const char *label;
 };
 
-/* Note: Socket and interface subtypes could be defined from a single central list,
+/* NOTE: Socket and interface subtypes could be defined from a single central list,
  * but makesrna cannot have a dependency on BKE, so this list would have to live in RNA itself,
  * with BKE etc. accessing the RNA API to get the subtypes info. */
 static const bNodeSocketStaticTypeInfo node_socket_subtypes[] = {
@@ -128,6 +128,10 @@ static const bNodeSocketStaticTypeInfo node_socket_subtypes[] = {
      "NodeTreeInterfaceSocketFloatWavelength",
      SOCK_FLOAT,
      PROP_WAVELENGTH},
+    {"NodeSocketFloatColorTemperature",
+     "NodeTreeInterfaceSocketFloatColorTemperature",
+     SOCK_FLOAT,
+     PROP_COLOR_TEMPERATURE},
     {"NodeSocketInt", "NodeTreeInterfaceSocketInt", SOCK_INT, PROP_NONE},
     {"NodeSocketIntUnsigned", "NodeTreeInterfaceSocketIntUnsigned", SOCK_INT, PROP_UNSIGNED},
     {"NodeSocketIntPercentage", "NodeTreeInterfaceSocketIntPercentage", SOCK_INT, PROP_PERCENTAGE},
@@ -156,6 +160,10 @@ static const bNodeSocketStaticTypeInfo node_socket_subtypes[] = {
     {"NodeSocketVectorXYZ", "NodeTreeInterfaceSocketVectorXYZ", SOCK_VECTOR, PROP_XYZ},
     {"NodeSocketColor", "NodeTreeInterfaceSocketColor", SOCK_RGBA, PROP_NONE},
     {"NodeSocketString", "NodeTreeInterfaceSocketString", SOCK_STRING, PROP_NONE},
+    {"NodeSocketStringFilePath",
+     "NodeTreeInterfaceSocketStringFilePath",
+     SOCK_STRING,
+     PROP_FILEPATH},
     {"NodeSocketShader", "NodeTreeInterfaceSocketShader", SOCK_SHADER, PROP_NONE},
     {"NodeSocketObject", "NodeTreeInterfaceSocketObject", SOCK_OBJECT, PROP_NONE},
     {"NodeSocketImage", "NodeTreeInterfaceSocketImage", SOCK_IMAGE, PROP_NONE},

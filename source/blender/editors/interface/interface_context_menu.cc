@@ -38,7 +38,7 @@
 
 #include "RNA_access.hh"
 #include "RNA_path.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #ifdef WITH_PYTHON
 #  include "BPY_extern.h"
@@ -112,6 +112,13 @@ static const char *shortcut_get_operator_property(bContext *C, uiBut *but, IDPro
     IDP_AddToGroup(prop, bke::idprop::create("name", mt->idname).release());
     *r_prop = prop;
     return "WM_OT_call_menu";
+  }
+
+  if (std::optional asset_shelf_idname = UI_but_asset_shelf_type_idname_get(but)) {
+    IDProperty *prop = blender::bke::idprop::create_group(__func__).release();
+    IDP_AddToGroup(prop, bke::idprop::create("name", *asset_shelf_idname).release());
+    *r_prop = prop;
+    return "WM_OT_call_asset_shelf_popover";
   }
 
   if (PanelType *pt = UI_but_paneltype_get(but)) {
@@ -415,6 +422,10 @@ static void ui_but_user_menu_add(bContext *C, uiBut *but, bUserMenu *um)
         STRNCPY(drawstr, idname);
 #endif
       }
+      else if (but->tip_label_func) {
+        /* The "quick tooltip" often contains a short string that can be used as a fallback. */
+        drawstr = but->tip_label_func(but);
+      }
     }
     ED_screen_user_menu_item_add_operator(
         &um->items,
@@ -527,7 +538,7 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
   uiLayout *layout;
   const bContextStore *previous_ctx = CTX_store_get(C);
   {
-    pup = UI_popup_menu_begin(C, UI_but_string_get_label(*but).c_str(), ICON_NONE);
+    pup = UI_popup_menu_begin(C, UI_but_context_menu_title_from_button(*but).c_str(), ICON_NONE);
     layout = UI_popup_menu_layout(pup);
 
     set_layout_context_from_button(C, layout, but);
@@ -744,7 +755,15 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
                        1);
       }
 
-      if (!is_whole_array) {
+      if (is_whole_array) {
+        uiItemBooleanO(layout,
+                       CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Copy Drivers to Selected"),
+                       ICON_NONE,
+                       "UI_OT_copy_driver_to_selected_button",
+                       "all",
+                       true);
+      }
+      else {
         uiItemO(layout,
                 CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Copy Driver"),
                 ICON_NONE,
@@ -754,6 +773,21 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
                   CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Paste Driver"),
                   ICON_NONE,
                   "ANIM_OT_paste_driver_button");
+        }
+        uiItemBooleanO(layout,
+                       CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Copy Driver to Selected"),
+                       ICON_NONE,
+                       "UI_OT_copy_driver_to_selected_button",
+                       "all",
+                       false);
+        if (is_array_component) {
+          uiItemBooleanO(
+              layout,
+              CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Copy All Drivers to Selected"),
+              ICON_NONE,
+              "UI_OT_copy_driver_to_selected_button",
+              "all",
+              true);
         }
 
         uiItemO(layout,
@@ -794,7 +828,7 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
     }
 
     /* Keying Sets */
-    /* TODO: check on modifyability of Keying Set when doing this */
+    /* TODO: check on modifiability of Keying Set when doing this. */
     if (is_anim) {
       uiItemS(layout);
 
@@ -1042,9 +1076,11 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
   }
 
   {
-    const ARegion *region = CTX_wm_menu(C) ? CTX_wm_menu(C) : CTX_wm_region(C);
-    uiButViewItem *view_item_but = (uiButViewItem *)ui_view_item_find_mouse_over(region,
-                                                                                 event->xy);
+    const ARegion *region = CTX_wm_region_popup(C) ? CTX_wm_region_popup(C) : CTX_wm_region(C);
+    uiButViewItem *view_item_but = (but->type == UI_BTYPE_VIEW_ITEM) ?
+                                       static_cast<uiButViewItem *>(but) :
+                                       static_cast<uiButViewItem *>(
+                                           ui_view_item_find_mouse_over(region, event->xy));
     if (view_item_but) {
       BLI_assert(view_item_but->type == UI_BTYPE_VIEW_ITEM);
 
@@ -1160,7 +1196,7 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
           nullptr,
           0,
           0,
-          "Add to a user defined context menu (stored in the user preferences)");
+          TIP_("Add to a user defined context menu (stored in the user preferences)"));
       UI_but_func_set(but2, [but](bContext &C) {
         bUserMenu *um = ED_screen_user_menu_ensure(&C);
         U.runtime.is_dirty = true;
@@ -1319,17 +1355,6 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
     }
   }
 
-  if (BKE_addon_find(&U.addons, "ui_translate")) {
-    uiItemFullO(layout,
-                "UI_OT_edittranslation_init",
-                nullptr,
-                ICON_NONE,
-                nullptr,
-                WM_OP_INVOKE_DEFAULT,
-                UI_ITEM_NONE,
-                nullptr);
-  }
-
   /* Show header tools for header buttons. */
   if (ui_block_is_popup_any(but->block) == false) {
     const ARegion *region = CTX_wm_region(C);
@@ -1355,7 +1380,7 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
   }
 
   /* UI List item context menu. Scripts can add items to it, by default there's nothing shown. */
-  const ARegion *region = CTX_wm_menu(C) ? CTX_wm_menu(C) : CTX_wm_region(C);
+  const ARegion *region = CTX_wm_region_popup(C) ? CTX_wm_region_popup(C) : CTX_wm_region(C);
   const bool is_inside_listbox = ui_list_find_mouse_over(region, event) != nullptr;
   const bool is_inside_listrow = is_inside_listbox ?
                                      ui_list_row_find_mouse_over(region, event->xy) != nullptr :

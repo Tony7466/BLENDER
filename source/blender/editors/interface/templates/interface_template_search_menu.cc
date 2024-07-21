@@ -39,7 +39,7 @@
 #include "ED_screen.hh"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -382,11 +382,7 @@ static void menu_items_from_all_operators(bContext *C, MenuSearch_Data *data)
   ListBase operator_items = {nullptr, nullptr};
 
   MemArena *memarena = data->memarena;
-  GHashIterator iter;
-  for (WM_operatortype_iter(&iter); !BLI_ghashIterator_done(&iter); BLI_ghashIterator_step(&iter))
-  {
-    wmOperatorType *ot = (wmOperatorType *)BLI_ghashIterator_getValue(&iter);
-
+  for (wmOperatorType *ot : WM_operatortype_map().values()) {
     if ((ot->flag & OPTYPE_INTERNAL) && (G.debug & G_DEBUG_WM) == 0) {
       continue;
     }
@@ -933,7 +929,7 @@ static void menu_search_arg_free_fn(void *data_v)
 
   BLI_memarena_free(data->memarena);
 
-  MEM_freeN(data);
+  MEM_delete(data);
 }
 
 static void menu_search_exec_fn(bContext *C, void * /*arg1*/, void *arg2)

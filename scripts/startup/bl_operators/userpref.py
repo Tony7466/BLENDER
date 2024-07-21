@@ -231,7 +231,7 @@ class PREFERENCES_OT_keyconfig_import(Operator):
             else:
                 shutil.move(self.filepath, path)
         except BaseException as ex:
-            self.report({'ERROR'}, rpt_("Installing keymap failed: %s") % ex)
+            self.report({'ERROR'}, rpt_("Installing keymap failed: {:s}").format(str(ex)))
             return {'CANCELLED'}
 
         # sneaky way to check we're actually running the code.
@@ -451,7 +451,14 @@ class PREFERENCES_OT_addon_enable(Operator):
             nonlocal err_str
             err_str = str(ex)
 
-        mod = addon_utils.enable(self.module, default_set=True, handle_error=err_cb)
+        module_name = self.module
+
+        # Ensure any wheels are setup before enabling.
+        is_extension = addon_utils.check_extension(module_name)
+        if is_extension:
+            addon_utils.extensions_refresh(ensure_wheels=True, addon_modules_pending=[module_name])
+
+        mod = addon_utils.enable(module_name, default_set=True, handle_error=err_cb)
 
         if mod:
             bl_info = addon_utils.module_bl_info(mod)
@@ -461,17 +468,22 @@ class PREFERENCES_OT_addon_enable(Operator):
             if info_ver > bpy.app.version:
                 self.report(
                     {'WARNING'},
-                    rpt_("This script was written Blender "
-                         "version %d.%d.%d and might not "
-                         "function (correctly), "
-                         "though it is enabled")
-                    % info_ver
+                    rpt_(
+                        "This script was written Blender "
+                        "version {:d}.{:d}.{:d} and might not "
+                        "function (correctly), "
+                        "though it is enabled"
+                    ).format(info_ver)
                 )
             return {'FINISHED'}
         else:
 
             if err_str:
                 self.report({'ERROR'}, err_str)
+
+            if is_extension:
+                # Since the add-on didn't work, remove any wheels it may have installed.
+                addon_utils.extensions_refresh(ensure_wheels=True)
 
             return {'CANCELLED'}
 
@@ -497,7 +509,11 @@ class PREFERENCES_OT_addon_disable(Operator):
             err_str = traceback.format_exc()
             print(err_str)
 
-        addon_utils.disable(self.module, default_set=True, handle_error=err_cb)
+        module_name = self.module
+        is_extension = addon_utils.check_extension(module_name)
+        addon_utils.disable(module_name, default_set=True, handle_error=err_cb)
+        if is_extension:
+            addon_utils.extensions_refresh(ensure_wheels=True)
 
         if err_str:
             self.report({'ERROR'}, err_str)
@@ -549,7 +565,7 @@ class PREFERENCES_OT_theme_install(Operator):
 
         if not self.overwrite:
             if os.path.exists(path_dest):
-                self.report({'WARNING'}, rpt_("File already installed to %r\n") % path_dest)
+                self.report({'WARNING'}, rpt_("File already installed to {!r}").format(path_dest))
                 return {'CANCELLED'}
 
         try:
@@ -596,6 +612,12 @@ class PREFERENCES_OT_addon_install(Operator):
         default=True,
     )
 
+    enable_on_install: BoolProperty(
+        name="Enable on Install",
+        description="Enable after installing",
+        default=False,
+    )
+
     def _target_path_items(_self, context):
         default_item = ('DEFAULT', "Default", "")
         if context is None:
@@ -604,10 +626,13 @@ class PREFERENCES_OT_addon_install(Operator):
             )
 
         paths = context.preferences.filepaths
+        script_directories_items = [
+            (item.name, item.name, "") for index, item in enumerate(paths.script_directories)
+            if item.directory
+        ]
         return (
-            default_item,
-            None,
-            *[(item.name, item.name, "") for index, item in enumerate(paths.script_directories) if item.directory],
+            (default_item, None, *script_directories_items) if script_directories_items else
+            (default_item,)
         )
 
     target: EnumProperty(
@@ -669,7 +694,7 @@ class PREFERENCES_OT_addon_install(Operator):
         pyfile_dir = os.path.dirname(pyfile)
         for addon_path in addon_utils.paths():
             if os.path.samefile(pyfile_dir, addon_path):
-                self.report({'ERROR'}, rpt_("Source file is in the add-on search path: %r") % addon_path)
+                self.report({'ERROR'}, rpt_("Source file is in the add-on search path: {!r}").format(addon_path))
                 return {'CANCELLED'}
         del addon_path
         del pyfile_dir
@@ -700,7 +725,7 @@ class PREFERENCES_OT_addon_install(Operator):
                 for f in file_to_extract_root:
                     path_dest = os.path.join(path_addons, os.path.basename(f))
                     if os.path.exists(path_dest):
-                        self.report({'WARNING'}, rpt_("File already installed to %r\n") % path_dest)
+                        self.report({'WARNING'}, rpt_("File already installed to {!r}").format(path_dest))
                         return {'CANCELLED'}
 
             try:  # extract the file to "addons"
@@ -715,7 +740,7 @@ class PREFERENCES_OT_addon_install(Operator):
             if self.overwrite:
                 _module_filesystem_remove(path_addons, os.path.basename(pyfile))
             elif os.path.exists(path_dest):
-                self.report({'WARNING'}, rpt_("File already installed to %r\n") % path_dest)
+                self.report({'WARNING'}, rpt_("File already installed to {!r}").format(path_dest))
                 return {'CANCELLED'}
 
             # if not compressed file just copy into the addon path
@@ -748,11 +773,17 @@ class PREFERENCES_OT_addon_install(Operator):
         # in case a new module path was created to install this addon.
         bpy.utils.refresh_script_paths()
 
+        # Auto enable if needed.
+        if self.enable_on_install:
+            for mod in addon_utils.modules(refresh=False):
+                if mod.__name__ in addons_new:
+                    bpy.ops.preferences.addon_enable(module=mod.__name__)
+
         # print message
-        msg = (
-            rpt_("Modules Installed (%s) from %r into %r") %
-            (", ".join(sorted(addons_new)), pyfile, path_addons)
+        msg = rpt_("Modules Installed ({:s}) from {!r} into {!r}").format(
+            ", ".join(sorted(addons_new)), pyfile, path_addons,
         )
+
         print(msg)
         self.report({'INFO'}, msg)
 
@@ -795,7 +826,7 @@ class PREFERENCES_OT_addon_remove(Operator):
 
         path, isdir = PREFERENCES_OT_addon_remove.path_from_addon(self.module)
         if path is None:
-            self.report({'WARNING'}, rpt_("Add-on path %r could not be found") % path)
+            self.report({'WARNING'}, rpt_("Add-on path {!r} could not be found").format(path))
             return {'CANCELLED'}
 
         # in case its enabled
@@ -814,9 +845,9 @@ class PREFERENCES_OT_addon_remove(Operator):
 
     # lame confirmation check
     def draw(self, _context):
-        self.layout.label(text=iface_("Remove Add-on: %r?") % self.module, translate=False)
+        self.layout.label(text=iface_("Remove Add-on: {!r}?").format(self.module), translate=False)
         path, _isdir = PREFERENCES_OT_addon_remove.path_from_addon(self.module)
-        self.layout.label(text=iface_("Path: %r") % path, translate=False)
+        self.layout.label(text=iface_("Path: {!r}").format(path), translate=False)
 
     def invoke(self, context, _event):
         wm = context.window_manager
@@ -839,6 +870,8 @@ class PREFERENCES_OT_addon_expand(Operator):
 
         addon_module_name = self.module
 
+        # Ensure `addons_fake_modules` is set.
+        _modules = addon_utils.modules(refresh=False)
         mod = addon_utils.addons_fake_modules.get(addon_module_name)
         if mod is not None:
             bl_info = addon_utils.module_bl_info(mod)
@@ -863,6 +896,7 @@ class PREFERENCES_OT_addon_show(Operator):
 
         addon_module_name = self.module
 
+        # Ensure `addons_fake_modules` is set.
         _modules = addon_utils.modules(refresh=False)
         mod = addon_utils.addons_fake_modules.get(addon_module_name)
         if mod is not None:
@@ -945,7 +979,7 @@ class PREFERENCES_OT_app_template_install(Operator):
                 for f in file_to_extract_root:
                     path_dest = os.path.join(path_app_templates, os.path.basename(f))
                     if os.path.exists(path_dest):
-                        self.report({'WARNING'}, rpt_("File already installed to %r\n") % path_dest)
+                        self.report({'WARNING'}, rpt_("File already installed to {!r}").format(path_dest))
                         return {'CANCELLED'}
 
             try:  # extract the file to "bl_app_templates_user"
@@ -956,7 +990,7 @@ class PREFERENCES_OT_app_template_install(Operator):
 
         else:
             # Only support installing zip-files.
-            self.report({'WARNING'}, rpt_("Expected a zip-file %r\n") % filepath)
+            self.report({'WARNING'}, rpt_("Expected a zip-file {!r}").format(filepath))
             return {'CANCELLED'}
 
         app_templates_new = set(os.listdir(path_app_templates)) - app_templates_old
@@ -965,10 +999,12 @@ class PREFERENCES_OT_app_template_install(Operator):
         bpy.utils.refresh_script_paths()
 
         # print message
-        msg = (
-            rpt_("Template Installed (%s) from %r into %r") %
-            (", ".join(sorted(app_templates_new)), filepath, path_app_templates)
+        msg = rpt_("Template Installed ({:s}) from {!r} into {!r}").format(
+            ", ".join(sorted(app_templates_new)),
+            filepath,
+            path_app_templates,
         )
+
         print(msg)
         self.report({'INFO'}, msg)
 
@@ -1029,9 +1065,9 @@ class PREFERENCES_OT_studiolight_install(Operator):
             prefs.studio_lights.load(os.path.join(path_studiolights, e.name), self.type)
 
         # print message
-        msg = (
-            rpt_("StudioLight Installed %r into %r") %
-            (", ".join(e.name for e in self.files), path_studiolights)
+        msg = rpt_("StudioLight Installed {!r} into {!r}").format(
+            ", ".join(e.name for e in self.files),
+            path_studiolights,
         )
         print(msg)
         self.report({'INFO'}, msg)
@@ -1087,10 +1123,7 @@ class PREFERENCES_OT_studiolight_new(Operator):
         prefs.studio_lights.new(path=filepath_final)
 
         # print message
-        msg = (
-            rpt_("StudioLight Installed %r into %r") %
-            (self.filename, str(path_studiolights))
-        )
+        msg = rpt_("StudioLight Installed {!r} into {!r}").format(self.filename, str(path_studiolights))
         print(msg)
         self.report({'INFO'}, msg)
         return {'FINISHED'}
@@ -1146,22 +1179,6 @@ class PREFERENCES_OT_studiolight_copy_settings(Operator):
                     sys_light.direction = light.direction
                 return {'FINISHED'}
         return {'CANCELLED'}
-
-
-class PREFERENCES_OT_studiolight_show(Operator):
-    """Show light preferences"""
-    bl_idname = "preferences.studiolight_show"
-    bl_label = ""
-    bl_options = {'INTERNAL'}
-
-    @classmethod
-    def poll(cls, _context):
-        return bpy.ops.screen.userpref_show.poll()
-
-    def execute(self, context):
-        context.preferences.active_section = 'LIGHTS'
-        bpy.ops.screen.userpref_show('INVOKE_DEFAULT')
-        return {'FINISHED'}
 
 
 class PREFERENCES_OT_script_directory_new(Operator):
@@ -1243,7 +1260,6 @@ classes = (
     PREFERENCES_OT_studiolight_new,
     PREFERENCES_OT_studiolight_uninstall,
     PREFERENCES_OT_studiolight_copy_settings,
-    PREFERENCES_OT_studiolight_show,
     PREFERENCES_OT_script_directory_new,
     PREFERENCES_OT_script_directory_remove,
 )

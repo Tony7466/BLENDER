@@ -791,8 +791,6 @@ typedef struct RenderData {
   float simplify_particles;
   float simplify_particles_render;
   float simplify_volumes;
-  float simplify_shadows;
-  float simplify_shadows_render;
 
   /** Freestyle line thickness options. */
   int line_thickness_mode;
@@ -827,6 +825,12 @@ typedef struct RenderData {
   float motion_blur_shutter;
   int motion_blur_position;
   struct CurveMapping mblur_shutter_curve;
+
+  /** Device to use for compositor engine. */
+  int compositor_device; /* eCompositorDevice */
+
+  /** Precision used by the GPU execution of the compositor tree. */
+  int compositor_precision; /* eCompositorPrecision */
 } RenderData;
 
 /** #RenderData::quality_flag */
@@ -847,6 +851,18 @@ enum {
   SCE_MB_END = 2,
 };
 
+/** #RenderData::compositor_device */
+typedef enum eCompositorDevice {
+  SCE_COMPOSITOR_DEVICE_CPU = 0,
+  SCE_COMPOSITOR_DEVICE_GPU = 1,
+} eCompositorDevice;
+
+/** #RenderData::compositor_precision */
+typedef enum eCompositorPrecision {
+  SCE_COMPOSITOR_PRECISION_AUTO = 0,
+  SCE_COMPOSITOR_PRECISION_FULL = 1,
+} eCompositorPrecision;
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -858,13 +874,6 @@ enum {
 enum {
   UV_SCULPT_LOCK_BORDERS = 1,
   UV_SCULPT_ALL_ISLANDS = 2,
-};
-
-/** #ToolSettings::uv_relax_method */
-enum {
-  UV_SCULPT_TOOL_RELAX_LAPLACIAN = 1,
-  UV_SCULPT_TOOL_RELAX_HC = 2,
-  UV_SCULPT_TOOL_RELAX_COTAN = 3,
 };
 
 /* Stereo Flags. */
@@ -906,27 +915,29 @@ typedef struct TimeMarker {
 
 typedef struct Paint_Runtime {
   /** Avoid having to compare with scene pointer everywhere. */
-  unsigned int tool_offset;
+  unsigned int initialized;
   unsigned short ob_mode;
   char _pad[2];
 } Paint_Runtime;
 
-/** We might want to store other things here. */
-typedef struct PaintToolSlot {
-  struct Brush *brush;
-} PaintToolSlot;
-
 /** Paint Tool Base. */
 typedef struct Paint {
+  /**
+   * The active brush. Possibly null. Possibly stored in a separate #Main data-base and not user-
+   * counted.
+   */
   struct Brush *brush;
 
   /**
-   * Each tool has its own active brush,
-   * The currently active tool is defined by the current 'brush'.
+   * A weak asset reference to the #brush, if not NULL.
+   * Used to attempt restoring the active brush from the AssetLibrary system, typically on
+   * file load.
    */
-  struct PaintToolSlot *tool_slots;
-  int tool_slots_len;
-  char _pad1[4];
+  struct AssetWeakReference *brush_asset_reference;
+
+  /** Default eraser brush and associated weak reference. */
+  struct Brush *eraser_brush;
+  struct AssetWeakReference *eraser_brush_asset_reference;
 
   struct Palette *palette;
   /** Cavity curve. */
@@ -1100,7 +1111,11 @@ typedef struct CurvesSculpt {
 } CurvesSculpt;
 
 typedef struct UvSculpt {
-  Paint paint;
+  struct CurveMapping *strength_curve;
+  int size;
+  float strength;
+  int8_t curve_preset; /* #eBrushCurvePreset. */
+  char _pad[7];
 } UvSculpt;
 
 /** Grease pencil drawing brushes. */
@@ -1419,6 +1434,7 @@ enum {
   CURVE_PAINT_FLAG_PRESSURE_RADIUS = (1 << 1),
   CURVE_PAINT_FLAG_DEPTH_STROKE_ENDPOINTS = (1 << 2),
   CURVE_PAINT_FLAG_DEPTH_STROKE_OFFSET_ABS = (1 << 3),
+  CURVE_PAINT_FLAG_DEPTH_ONLY_SELECTED = (1 << 4),
 };
 
 /** #CurvePaintSettings::fit_method */
@@ -1513,7 +1529,7 @@ typedef struct ToolSettings {
   VPaint *wpaint;
   Sculpt *sculpt;
   /** UV smooth. */
-  UvSculpt *uvsculpt;
+  UvSculpt uvsculpt;
   /** Gpencil paint. */
   GpPaint *gp_paint;
   /** Gpencil vertex paint. */
@@ -1665,9 +1681,10 @@ typedef struct ToolSettings {
 
   /* UV painting. */
   char uv_sculpt_settings;
-  char uv_relax_method;
 
   char workspace_tool_type;
+
+  char _pad5[1];
 
   /**
    * XXX: these `sculpt_paint_*` fields are deprecated, use the
@@ -1849,6 +1866,14 @@ typedef struct SceneEEVEE {
   float gtao_focus;
   int gtao_resolution;
 
+  int fast_gi_step_count;
+  int fast_gi_ray_count;
+  float fast_gi_distance;
+  float fast_gi_thickness_near;
+  float fast_gi_thickness_far;
+  char fast_gi_method;
+  char _pad0[3];
+
   float bokeh_overblur;
   float bokeh_max_size;
   float bokeh_threshold;
@@ -1875,7 +1900,7 @@ typedef struct SceneEEVEE {
   int shadow_pool_size;
   int shadow_ray_count;
   int shadow_step_count;
-  float shadow_normal_bias;
+  float shadow_resolution_scale;
 
   float clamp_surface_direct;
   float clamp_surface_indirect;
@@ -1885,11 +1910,6 @@ typedef struct SceneEEVEE {
   int ray_tracing_method;
 
   struct RaytraceEEVEE ray_tracing_options;
-
-  struct LightCache *light_cache DNA_DEPRECATED;
-  struct LightCache *light_cache_data;
-  /* Need a 128 byte string for some translations of some messages. */
-  char light_cache_info[128];
 
   float overscan;
   float light_threshold;
@@ -2028,7 +2048,7 @@ typedef struct Scene {
    * only used by #BKE_object_handle_update()
    */
   struct CustomData_MeshMasks customdata_mask;
-  /** XXX: same as above but for temp operator use (viewport renders). */
+  /** XXX: same as `customdata_mask` but for temp operator use (viewport renders). */
   struct CustomData_MeshMasks customdata_mask_modal;
 
   /* Color Management. */
@@ -2276,7 +2296,7 @@ extern const char *RE_engine_id_CYCLES;
    (((base)->flag & BASE_SELECTABLE) != 0))
 #define BASE_SELECTED(v3d, base) (BASE_VISIBLE(v3d, base) && (((base)->flag & BASE_SELECTED) != 0))
 #define BASE_EDITABLE(v3d, base) \
-  (BASE_VISIBLE(v3d, base) && !ID_IS_LINKED((base)->object) && \
+  (BASE_VISIBLE(v3d, base) && ID_IS_EDITABLE((base)->object) && \
    (!ID_IS_OVERRIDE_LIBRARY_REAL((base)->object) || \
     ((base)->object->id.override_library->flag & LIBOVERRIDE_FLAG_SYSTEM_DEFINED) == 0))
 #define BASE_SELECTED_EDITABLE(v3d, base) \
@@ -2418,6 +2438,11 @@ enum {
   SEQ_SNAP_TO_CURRENT_FRAME = 1 << 1,
   SEQ_SNAP_TO_STRIP_HOLD = 1 << 2,
   SEQ_SNAP_TO_MARKERS = 1 << 3,
+
+  /* Preview snapping. */
+  SEQ_SNAP_TO_PREVIEW_BORDERS = 1 << 4,
+  SEQ_SNAP_TO_PREVIEW_CENTER = 1 << 5,
+  SEQ_SNAP_TO_STRIPS_PREVIEW = 1 << 6,
 };
 
 /** #SequencerToolSettings::snap_flag */
@@ -2536,31 +2561,6 @@ typedef enum ePaintFlags {
   PAINT_USE_CAVITY_MASK = (1 << 3),
   PAINT_SCULPT_DELAY_UPDATES = (1 << 4),
 } ePaintFlags;
-
-/**
- * #Paint::symmetry_flags
- * (for now just a duplicate of sculpt symmetry flags).
- */
-typedef enum ePaintSymmetryFlags {
-  PAINT_SYMM_NONE = 0,
-  PAINT_SYMM_X = (1 << 0),
-  PAINT_SYMM_Y = (1 << 1),
-  PAINT_SYMM_Z = (1 << 2),
-  PAINT_SYMMETRY_FEATHER = (1 << 3),
-  PAINT_TILE_X = (1 << 4),
-  PAINT_TILE_Y = (1 << 5),
-  PAINT_TILE_Z = (1 << 6),
-} ePaintSymmetryFlags;
-ENUM_OPERATORS(ePaintSymmetryFlags, PAINT_TILE_Z);
-#define PAINT_SYMM_AXIS_ALL (PAINT_SYMM_X | PAINT_SYMM_Y | PAINT_SYMM_Z)
-
-#ifdef __cplusplus
-inline ePaintSymmetryFlags operator++(ePaintSymmetryFlags &flags, int)
-{
-  flags = ePaintSymmetryFlags(char(flags) + 1);
-  return flags;
-}
-#endif
 
 /**
  * #Sculpt::flags
@@ -2736,6 +2736,9 @@ typedef enum eGPencil_Placement_Flags {
   GP_PROJECT_DEPTH_STROKE_ENDPOINTS = (1 << 4),
   GP_PROJECT_CURSOR = (1 << 5),
   GP_PROJECT_DEPTH_STROKE_FIRST = (1 << 6),
+
+  /** Surface project, "Only project on selected objects". */
+  GP_PROJECT_DEPTH_ONLY_SELECTED = (1 << 7),
 } eGPencil_Placement_Flags;
 
 /** #ToolSettings::gpencil_selectmode */
@@ -2827,7 +2830,7 @@ enum {
   SCE_EEVEE_GTAO_BENT_NORMALS = (1 << 5),
   SCE_EEVEE_GTAO_BOUNCE = (1 << 6),
   // SCE_EEVEE_DOF_ENABLED = (1 << 7), /* Moved to camera->dof.flag */
-  SCE_EEVEE_BLOOM_ENABLED = (1 << 8),
+  // SCE_EEVEE_BLOOM_ENABLED = (1 << 8), /* Unused */
   SCE_EEVEE_MOTION_BLUR_ENABLED_DEPRECATED = (1 << 9), /* Moved to scene->r.mode */
   SCE_EEVEE_SHADOW_HIGH_BITDEPTH = (1 << 10),
   SCE_EEVEE_TAA_REPROJECTION = (1 << 11),
@@ -2866,6 +2869,11 @@ typedef enum RaytraceEEVEE_Method {
   /* TODO(fclem): Hardware ray-tracing. */
   // RAYTRACE_EEVEE_METHOD_HARDWARE = 2,
 } RaytraceEEVEE_Method;
+
+typedef enum FastGI_Method {
+  FAST_GI_FULL = 0,
+  FAST_GI_AO_ONLY = 1,
+} FastGI_Method;
 
 /** #SceneEEVEE::shadow_method */
 enum {

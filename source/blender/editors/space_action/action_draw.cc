@@ -28,6 +28,8 @@
 #include "BKE_bake_geometry_nodes_modifier.hh"
 #include "BKE_pointcache.h"
 
+#include "ANIM_action.hh"
+
 /* Everything from source (BIF, BDR, BSE) ------------------------------ */
 
 #include "GPU_immediate.hh"
@@ -44,6 +46,8 @@
 #include "MOD_nodes.hh"
 
 #include "action_intern.hh"
+
+using namespace blender;
 
 /* -------------------------------------------------------------------- */
 /** \name Channel List
@@ -222,7 +226,7 @@ static void draw_backdrops(bAnimContext *ac, ListBase &anim_data, View2D *v2d, u
           break;
         }
         case ANIMTYPE_FILLACTD:
-        case ANIMTYPE_FILLANIM:
+        case ANIMTYPE_FILLACT_LAYERED:
         case ANIMTYPE_DSSKEY:
         case ANIMTYPE_DSWOR: {
           immUniformColor3ubvAlpha(col2b, sel ? col1[3] : col2b[3]);
@@ -368,13 +372,22 @@ static void draw_keyframes(bAnimContext *ac,
                               scale_factor,
                               action_flag);
         break;
-      case ALE_ANIM:
-        ED_add_animation_channel(draw_list,
-                                 adt,
-                                 static_cast<Animation *>(ale->key_data),
-                                 ycenter,
-                                 scale_factor,
-                                 action_flag);
+      case ALE_ACTION_LAYERED:
+        ED_add_action_layered_channel(draw_list,
+                                      adt,
+                                      static_cast<bAction *>(ale->key_data),
+                                      ycenter,
+                                      scale_factor,
+                                      action_flag);
+        break;
+      case ALE_ACTION_SLOT:
+        ED_add_action_slot_channel(draw_list,
+                                   adt,
+                                   static_cast<bAction *>(ale->key_data)->wrap(),
+                                   *static_cast<animrig::Slot *>(ale->data),
+                                   ycenter,
+                                   scale_factor,
+                                   action_flag);
         break;
       case ALE_ACT:
         ED_add_action_channel(draw_list,
@@ -440,6 +453,9 @@ static void draw_keyframes(bAnimContext *ac,
                                   ycenter,
                                   scale_factor,
                                   action_flag);
+        break;
+      case ALE_NONE:
+      case ALE_NLASTRIP:
         break;
     }
   }

@@ -14,8 +14,9 @@ set(INC
   ../render/intern
   ../windowmanager
   ../../../intern/eigen
+  ../geometry
 
-  # RNA_prototypes.h
+  # RNA_prototypes.hh
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
@@ -96,5 +97,5 @@ set(LIB
 
 blender_add_lib(bf_gpencil_modifiers_legacy "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
-# RNA_prototypes.h
+# RNA_prototypes.hh
 add_dependencies(bf_gpencil_modifiers_legacy bf_rna)

@@ -71,6 +71,8 @@
 
 #include "RNA_define.hh"
 
+#include "GPU_compilation_subprocess.hh"
+
 #ifdef WITH_FREESTYLE
 #  include "FRS_freestyle.h"
 #endif
@@ -328,6 +330,14 @@ int main(int argc,
 #  endif /* USE_WIN32_UNICODE_ARGS */
 #endif   /* WIN32 */
 
+#if defined(WITH_OPENGL_BACKEND) && BLI_SUBPROCESS_SUPPORT
+  if (STREQ(argv[0], "--compilation-subprocess")) {
+    BLI_assert(argc == 2);
+    GPU_compilation_subprocess_run(argv[1]);
+    return 0;
+  }
+#endif
+
   /* NOTE: Special exception for guarded allocator type switch:
    *       we need to perform switch from lock-free to fully
    *       guarded allocator before any allocation happened.
@@ -493,13 +503,15 @@ int main(int argc,
   RNA_init();
 
   RE_engines_init();
-  BKE_node_system_init();
+  blender::bke::BKE_node_system_init();
   BKE_particle_init_rng();
   /* End second initialization. */
 
 #if defined(WITH_PYTHON_MODULE) || defined(WITH_HEADLESS)
   /* Python module mode ALWAYS runs in background-mode (for now). */
   G.background = true;
+  /* Manually using `--background` also forces the audio device. */
+  BKE_sound_force_device("None");
 #else
   if (G.background) {
     main_signal_setup_background();

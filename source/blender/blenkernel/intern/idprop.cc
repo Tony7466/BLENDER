@@ -354,7 +354,10 @@ static IDProperty *IDP_CopyArray(const IDProperty *prop, const int flag)
 /** \name String Functions (IDProperty String API)
  * \{ */
 
-IDProperty *IDP_NewStringMaxSize(const char *st, const size_t st_maxncpy, const char *name)
+IDProperty *IDP_NewStringMaxSize(const char *st,
+                                 const size_t st_maxncpy,
+                                 const char *name,
+                                 const eIDPropertyFlag flags)
 {
   IDProperty *prop = static_cast<IDProperty *>(
       MEM_callocN(sizeof(IDProperty), "IDProperty string"));
@@ -382,13 +385,14 @@ IDProperty *IDP_NewStringMaxSize(const char *st, const size_t st_maxncpy, const 
 
   prop->type = IDP_STRING;
   STRNCPY(prop->name, name);
+  prop->flag = short(flags);
 
   return prop;
 }
 
-IDProperty *IDP_NewString(const char *st, const char *name)
+IDProperty *IDP_NewString(const char *st, const char *name, const eIDPropertyFlag flags)
 {
-  return IDP_NewStringMaxSize(st, 0, name);
+  return IDP_NewStringMaxSize(st, 0, name, flags);
 }
 
 static IDProperty *IDP_CopyString(const IDProperty *prop, const int flag)
@@ -406,6 +410,8 @@ static IDProperty *IDP_CopyString(const IDProperty *prop, const int flag)
   return newp;
 }
 
+/* FIXME: This function is broken for bytes (in case there are null chars in it), needs a
+ * dedicated function which takes directly the size of the byte buffer. */
 void IDP_AssignStringMaxSize(IDProperty *prop, const char *st, const size_t st_maxncpy)
 {
   BLI_assert(prop->type == IDP_STRING);
@@ -421,6 +427,7 @@ void IDP_AssignStringMaxSize(IDProperty *prop, const char *st, const size_t st_m
   }
 }
 
+/* FIXME: Should never be called for `byte` subtype, needs an assert. */
 void IDP_AssignString(IDProperty *prop, const char *st)
 {
   IDP_AssignStringMaxSize(prop, st, 0);
@@ -975,7 +982,10 @@ bool IDP_EqualsProperties(const IDProperty *prop1, const IDProperty *prop2)
   return IDP_EqualsProperties_ex(prop1, prop2, true);
 }
 
-IDProperty *IDP_New(const char type, const IDPropertyTemplate *val, const char *name)
+IDProperty *IDP_New(const char type,
+                    const IDPropertyTemplate *val,
+                    const char *name,
+                    const eIDPropertyFlag flags)
 {
   IDProperty *prop = nullptr;
 
@@ -997,6 +1007,9 @@ IDProperty *IDP_New(const char type, const IDPropertyTemplate *val, const char *
       prop->data.val = bool(val->i);
       break;
     case IDP_ARRAY: {
+      /* FIXME: This seems to be the only place in code allowing `IDP_GROUP` as subtype of an
+       * `IDP_ARRAY`. This is most likely a mistake. `IDP_GROUP` array should be of type
+       * `IDP_IDPARRAY`, as done e.g. in #idp_from_PySequence_Buffer in bpy API. */
       if (ELEM(val->array.type, IDP_FLOAT, IDP_INT, IDP_DOUBLE, IDP_GROUP, IDP_BOOLEAN)) {
         prop = static_cast<IDProperty *>(MEM_callocN(sizeof(IDProperty), "IDProperty array"));
         prop->subtype = val->array.type;
@@ -1068,6 +1081,7 @@ IDProperty *IDP_New(const char type, const IDPropertyTemplate *val, const char *
 
   prop->type = type;
   STRNCPY(prop->name, name);
+  prop->flag = short(flags);
 
   return prop;
 }
@@ -1400,7 +1414,7 @@ static void IDP_DirectLinkProperty(IDProperty *prop, BlendDataReader *reader);
 
 static void read_ui_data(IDProperty *prop, BlendDataReader *reader)
 {
-  /* Note: null UI data can happen when opening more recent files with unknown types of
+  /* NOTE: null UI data can happen when opening more recent files with unknown types of
    * IDProperties. */
 
   switch (IDP_ui_data_type(prop)) {

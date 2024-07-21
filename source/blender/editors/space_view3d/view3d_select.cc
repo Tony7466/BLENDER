@@ -1195,14 +1195,14 @@ static bool do_lasso_select_grease_pencil(const ViewContext *vc,
   const Vector<ed::greasepencil::MutableDrawingInfo> drawings =
       ed::greasepencil::retrieve_editable_drawings(*vc->scene, grease_pencil);
   for (const ed::greasepencil::MutableDrawingInfo info : drawings) {
-    const bke::greasepencil::Layer &layer = *grease_pencil.layers()[info.layer_index];
+    const bke::greasepencil::Layer &layer = *grease_pencil.layer(info.layer_index);
     bke::crazyspace::GeometryDeformation deformation =
         bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
             ob_eval, *vc->obedit, info.layer_index, info.frame_number);
 
     IndexMaskMemory memory;
     const IndexMask elements = ed::greasepencil::retrieve_editable_elements(
-        *vc->obedit, info.drawing, selection_domain, memory);
+        *vc->obedit, info, selection_domain, memory);
     if (elements.is_empty()) {
       continue;
     }
@@ -1726,7 +1726,7 @@ static bool object_mouse_select_menu(bContext *C,
 
     if (ok) {
       base_count++;
-      BaseRefWithDepth *base_ref = MEM_new<BaseRefWithDepth>(__func__);
+      BaseRefWithDepth *base_ref = MEM_cnew<BaseRefWithDepth>(__func__);
       base_ref->base = base;
       base_ref->depth_id = depth_id;
       BLI_addtail(&base_ref_list, (void *)base_ref);
@@ -1966,7 +1966,7 @@ static bool bone_mouse_select_menu(bContext *C,
 
     if (!is_duplicate_bone) {
       bone_count++;
-      BoneRefWithDepth *bone_ref = MEM_new<BoneRefWithDepth>(__func__);
+      BoneRefWithDepth *bone_ref = MEM_cnew<BoneRefWithDepth>(__func__);
       bone_ref->base = bone_base;
       bone_ref->bone_ptr = bone_ptr;
       bone_ref->depth_id = hit_result.depth;
@@ -2983,7 +2983,7 @@ static bool ed_object_select_pick(bContext *C,
   }
 
   if (gpu != nullptr) {
-    MEM_freeN(gpu);
+    MEM_delete(gpu);
   }
 
   return (changed_object || changed_pose || changed_track);
@@ -3238,7 +3238,7 @@ static bool ed_grease_pencil_select_pick(bContext *C,
         ClosestGreasePencilDrawing new_closest = init;
         for (const int i : range) {
           ed::greasepencil::MutableDrawingInfo info = drawings[i];
-          const bke::greasepencil::Layer &layer = *grease_pencil.layers()[info.layer_index];
+          const bke::greasepencil::Layer &layer = *grease_pencil.layer(info.layer_index);
           /* Get deformation by modifiers. */
           bke::crazyspace::GeometryDeformation deformation =
               bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
@@ -3246,7 +3246,7 @@ static bool ed_grease_pencil_select_pick(bContext *C,
 
           IndexMaskMemory memory;
           const IndexMask elements = ed::greasepencil::retrieve_editable_elements(
-              *vc.obedit, info.drawing, selection_domain, memory);
+              *vc.obedit, info, selection_domain, memory);
           if (elements.is_empty()) {
             continue;
           }
@@ -3280,7 +3280,7 @@ static bool ed_grease_pencil_select_pick(bContext *C,
         ed::greasepencil::MutableDrawingInfo info = drawings[i];
         IndexMaskMemory memory;
         const IndexMask elements = ed::greasepencil::retrieve_editable_elements(
-            *vc.obedit, info.drawing, selection_domain, memory);
+            *vc.obedit, info, selection_domain, memory);
         if (elements.is_empty()) {
           continue;
         }
@@ -4254,13 +4254,13 @@ static bool do_grease_pencil_box_select(const ViewContext *vc,
   const Vector<ed::greasepencil::MutableDrawingInfo> drawings =
       ed::greasepencil::retrieve_editable_drawings(*scene, grease_pencil);
   for (const ed::greasepencil::MutableDrawingInfo info : drawings) {
-    const bke::greasepencil::Layer &layer = *grease_pencil.layers()[info.layer_index];
+    const bke::greasepencil::Layer &layer = *grease_pencil.layer(info.layer_index);
     bke::crazyspace::GeometryDeformation deformation =
         bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
             ob_eval, *vc->obedit, info.layer_index, info.frame_number);
     IndexMaskMemory memory;
     const IndexMask elements = ed::greasepencil::retrieve_editable_elements(
-        *vc->obedit, info.drawing, selection_domain, memory);
+        *vc->obedit, info, selection_domain, memory);
     if (elements.is_empty()) {
       continue;
     }
@@ -5054,7 +5054,6 @@ static bool armature_circle_select(const ViewContext *vc,
 
   if (data.is_changed) {
     ED_armature_edit_sync_selection(arm->edbo);
-    ED_armature_edit_validate_active(arm);
     WM_main_add_notifier(NC_OBJECT | ND_BONE_SELECT, vc->obedit);
   }
   return data.is_changed;
@@ -5116,13 +5115,13 @@ static bool grease_pencil_circle_select(const ViewContext *vc,
   const Vector<ed::greasepencil::MutableDrawingInfo> drawings =
       ed::greasepencil::retrieve_editable_drawings(*vc->scene, grease_pencil);
   for (const ed::greasepencil::MutableDrawingInfo info : drawings) {
-    const bke::greasepencil::Layer &layer = *grease_pencil.layers()[info.layer_index];
+    const bke::greasepencil::Layer &layer = *grease_pencil.layer(info.layer_index);
     bke::crazyspace::GeometryDeformation deformation =
         bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
             ob_eval, *vc->obedit, info.layer_index, info.frame_number);
     IndexMaskMemory memory;
     const IndexMask elements = ed::greasepencil::retrieve_editable_elements(
-        *vc->obedit, info.drawing, selection_domain, memory);
+        *vc->obedit, info, selection_domain, memory);
     if (elements.is_empty()) {
       continue;
     }

@@ -44,7 +44,7 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh" /* RNA_def_property_free_identifier */
 #include "RNA_enum_types.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "CLG_log.h"
 
@@ -2897,7 +2897,7 @@ static int pyrna_prop_collection_ass_subscript(BPy_PropertyRNA *self,
 
   PyErr_Format(PyExc_TypeError,
                "bpy_prop_collection[key]: invalid key, "
-               "must be a string or an int, not %.200s",
+               "must be an int, not %.200s",
                Py_TYPE(key)->tp_name);
   return -1;
 }
@@ -4138,9 +4138,9 @@ static PyObject *pyrna_struct_bl_rna_get_subclass(PyObject *cls, PyObject *args)
 
   if (srna_base == &RNA_Node) {
     /* If the given idname is an alias, translate it to the proper idname. */
-    id = nodeTypeFindAlias(id);
+    id = blender::bke::nodeTypeFindAlias(id);
 
-    bNodeType *nt = nodeTypeFind(id);
+    blender::bke::bNodeType *nt = blender::bke::nodeTypeFind(id);
     if (nt) {
       PointerRNA ptr = RNA_pointer_create(nullptr, &RNA_Struct, nt->rna_ext.srna);
       return pyrna_struct_CreatePyObject(&ptr);
@@ -4438,6 +4438,7 @@ static PyObject *pyrna_struct_getattro(BPy_StructRNA *self, PyObject *pyname)
       blender::Vector<PointerRNA> newlb;
       PropertyRNA *newprop;
       int newindex;
+      blender::StringRef newstr;
       short newtype;
 
       /* An empty string is used to implement #CTX_data_dir_get,
@@ -4445,7 +4446,7 @@ static PyObject *pyrna_struct_getattro(BPy_StructRNA *self, PyObject *pyname)
       eContextResult done;
       if (name[0]) {
         done = eContextResult(
-            CTX_data_get(C, name, &newptr, &newlb, &newprop, &newindex, &newtype));
+            CTX_data_get(C, name, &newptr, &newlb, &newprop, &newindex, &newstr, &newtype));
       }
       else {
         /* Fall through to built-in `getattr`. */
@@ -4463,6 +4464,16 @@ static PyObject *pyrna_struct_getattro(BPy_StructRNA *self, PyObject *pyname)
               ret = pyrna_struct_CreatePyObject(&newptr);
             }
             break;
+          case CTX_DATA_TYPE_STRING: {
+            if (newstr.is_empty()) {
+              ret = Py_None;
+              Py_INCREF(ret);
+            }
+            else {
+              ret = PyUnicode_FromStringAndSize(newstr.data(), newstr.size());
+            }
+            break;
+          }
           case CTX_DATA_TYPE_COLLECTION: {
             ret = PyList_New(0);
             for (PointerRNA &ptr : newlb) {
@@ -4702,10 +4713,11 @@ static int pyrna_struct_setattro(BPy_StructRNA *self, PyObject *pyname, PyObject
     blender::Vector<PointerRNA> newlb;
     PropertyRNA *newprop;
     int newindex;
+    blender::StringRef newstr;
     short newtype;
 
     const eContextResult done = eContextResult(
-        CTX_data_get(C, name, &newptr, &newlb, &newprop, &newindex, &newtype));
+        CTX_data_get(C, name, &newptr, &newlb, &newprop, &newindex, &newstr, &newtype));
 
     if (done == CTX_RESULT_OK) {
       PyErr_Format(

@@ -152,22 +152,29 @@ class DATA_PT_EEVEE_light_shadow(DataButtonsPanel, Panel):
         layout.use_property_split = True
         layout.active = context.scene.eevee.use_shadows and light.use_shadow
 
+        col = layout.column(align=False, heading="Jitter")
+        row = col.row(align=True)
+        sub = row.row(align=True)
+        sub.prop(light, "use_shadow_jitter", text="")
+        sub = sub.row(align=True)
+        sub.active = light.use_shadow_jitter
+        sub.prop(light, "shadow_jitter_overblur", text="Overblur")
+
         col = layout.column()
-        col.prop(light, "shadow_softness_factor", text="Softness")
-        if light.type == 'SUN':
-            col.prop(light, "shadow_trace_distance", text="Distance")
-
-        col.separator()
-
         col.prop(light, "shadow_filter_radius", text="Filter")
-        col.prop(light, "shadow_resolution_scale", text="Resolution")
+
+        sub = col.column(align=True)
+        row = sub.row(align=True)
+        row.prop(light, "shadow_maximum_resolution", text="Resolution Limit")
+        if light.type != 'SUN':
+            row.prop(light, "use_absolute_resolution", text="", icon='DRIVER_DISTANCE')
 
 
 class DATA_PT_EEVEE_light_influence(DataButtonsPanel, Panel):
     bl_label = "Influence"
     bl_parent_id = "DATA_PT_EEVEE_light"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_EEVEE_NEXT'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE_NEXT', 'BLENDER_EEVEE'}
 
     def draw(self, context):
         layout = self.layout
@@ -178,19 +185,19 @@ class DATA_PT_EEVEE_light_influence(DataButtonsPanel, Panel):
         col = layout.column(align=True)
 
         sub = col.column(align=True)
-        sub.active = ob.visible_diffuse
+        sub.active = ob is None or ob.visible_diffuse
         sub.prop(light, "diffuse_factor", text="Diffuse")
 
         sub = col.column(align=True)
-        sub.active = ob.visible_glossy
+        sub.active = ob is None or ob.visible_glossy
         sub.prop(light, "specular_factor", text="Glossy")
 
         sub = col.column(align=True)
-        sub.active = ob.visible_transmission
+        sub.active = ob is None or ob.visible_transmission
         sub.prop(light, "transmission_factor", text="Transmission")
 
         sub = col.column(align=True)
-        sub.active = ob.visible_volume_scatter
+        sub.active = ob is None or ob.visible_volume_scatter
         sub.prop(light, "volume_factor", text="Volume Scatter", text_ctxt=i18n_contexts.id_id)
 
 

@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include "BLI_array.hh"
+#include "BLI_bounds_types.hh"
 #include "BLI_compiler_attrs.h"
 #include "BLI_string_ref.hh"
 #include "BLI_sys_types.h"
@@ -22,13 +24,17 @@
 /* File name of the default fixed-pitch font. */
 #define BLF_DEFAULT_MONOSPACED_FONT "DejaVuSansMono.woff2"
 
-/* enable this only if needed (unused circa 2016) */
-#define BLF_BLUR_ENABLE 0
-
 struct ColorManagedDisplay;
 struct ListBase;
 struct ResultBLF;
 struct rcti;
+
+enum class FontShadowType {
+  None = 0,
+  Blur3x3 = 3,
+  Blur5x5 = 5,
+  Outline = 6,
+};
 
 int BLF_init();
 void BLF_exit();
@@ -104,6 +110,12 @@ void BLF_size(int fontid, float size);
  */
 void BLF_character_weight(int fontid, int weight);
 
+/* Return the font's default design weight (100-900). */
+int BLF_default_weight(int fontid) ATTR_WARN_UNUSED_RESULT;
+
+/* Return true if the font has a variable (multiple master) weight axis. */
+bool BLF_has_variable_weight(int fontid) ATTR_WARN_UNUSED_RESULT;
+
 /* Goal: small but useful color API. */
 
 void BLF_color4ubv(int fontid, const unsigned char rgba[4]);
@@ -117,21 +129,6 @@ void BLF_color4fv(int fontid, const float rgba[4]);
 void BLF_color3f(int fontid, float r, float g, float b);
 void BLF_color3fv_alpha(int fontid, const float rgb[3], float alpha);
 /* Also available: `UI_FontThemeColor(fontid, colorid)`. */
-
-/**
- * Set a 4x4 matrix to be multiplied before draw the text.
- * Remember that you need call `BLF_enable(BLF_MATRIX)`
- * to enable this.
- *
- * The order of the matrix is column major (following the GPU module):
- * \code{.unparsed}
- *  | m[0]  m[4]  m[8]  m[12] |
- *  | m[1]  m[5]  m[9]  m[13] |
- *  | m[2]  m[6]  m[10] m[14] |
- *  | m[3]  m[7]  m[11] m[15] |
- * \endcode
- */
-void BLF_matrix(int fontid, const float m[16]);
 
 /**
  * Batch draw-calls together as long as
@@ -148,6 +145,15 @@ void BLF_draw(int fontid, const char *str, size_t str_len, ResultBLF *r_info = n
     ATTR_NONNULL(2);
 int BLF_draw_mono(int fontid, const char *str, size_t str_len, int cwidth, int tab_columns)
     ATTR_NONNULL(2);
+
+void BLF_draw_svg_icon(uint icon_id,
+                       float x,
+                       float y,
+                       float size,
+                       float color[4] = nullptr,
+                       float outline_alpha = 1.0f);
+
+blender::Array<uchar> BLF_svg_icon_bitmap(uint icon_id, float size, int *r_width, int *r_height);
 
 typedef bool (*BLF_GlyphBoundsFn)(const char *str,
                                   size_t str_step_ofs,
@@ -189,6 +195,13 @@ bool BLF_str_offset_to_glyph_bounds(int fontid,
  */
 int BLF_str_offset_to_cursor(
     int fontid, const char *str, size_t str_len, size_t str_offset, float cursor_width);
+
+/**
+ * Return bounds of selection boxes. There is just one normally but there could
+ * be more for multi-line and when containing text of differing directions.
+ */
+blender::Vector<blender::Bounds<int>> BLF_str_selection_boxes(
+    int fontid, const char *str, size_t str_len, size_t sel_start, size_t sel_length);
 
 /**
  * Get the string byte offset that fits within a given width.
@@ -260,19 +273,13 @@ blender::Vector<blender::StringRef> BLF_string_wrap(int fontid,
                                                     blender::StringRef str,
                                                     const int max_pixel_width);
 
-#if BLF_BLUR_ENABLE
-void BLF_blur(int fontid, int size);
-#endif
-
 void BLF_enable(int fontid, int option);
 void BLF_disable(int fontid, int option);
 
 /**
- * Shadow options, level is the blur level, can be 3, 5 or 0 and
- * the other argument are the RGBA color.
- * Take care that shadow need to be enable using #BLF_enable!
+ * Note that shadow needs to be enabled with #BLF_enable.
  */
-void BLF_shadow(int fontid, int level, const float rgba[4]) ATTR_NONNULL(3);
+void BLF_shadow(int fontid, FontShadowType type, const float rgba[4] = nullptr);
 
 /**
  * Set the offset for shadow text, this is the current cursor
@@ -283,23 +290,12 @@ void BLF_shadow(int fontid, int level, const float rgba[4]) ATTR_NONNULL(3);
 void BLF_shadow_offset(int fontid, int x, int y);
 
 /**
- * Set the buffer, size and number of channels to draw, one thing to take care is call
- * this function with NULL pointer when we finish, for example:
- * \code{.c}
- * BLF_buffer(my_fbuf, my_cbuf, 100, 100, 4, true, NULL);
- *
- * ... set color, position and draw ...
- *
- * BLF_buffer(NULL, NULL, NULL, 0, 0, false, NULL);
- * \endcode
+ * Make font be rasterized into a given memory image/buffer.
+ * The image is assumed to have 4 color channels (RGBA) per pixel.
+ * When done, call this function with null buffer pointers.
  */
-void BLF_buffer(int fontid,
-                float *fbuf,
-                unsigned char *cbuf,
-                int w,
-                int h,
-                int nch,
-                ColorManagedDisplay *display);
+void BLF_buffer(
+    int fontid, float *fbuf, unsigned char *cbuf, int w, int h, ColorManagedDisplay *display);
 
 /**
  * Set the color to be used for text.
@@ -320,7 +316,7 @@ void BLF_draw_buffer(int fontid, const char *str, size_t str_len, ResultBLF *r_i
  *
  * \note called from a thread, so it bypasses the normal BLF_* api (which isn't thread-safe).
  */
-bool BLF_thumb_preview(const char *filename, unsigned char *buf, int w, int h, int channels)
+bool BLF_thumb_preview(const char *filepath, unsigned char *buf, int w, int h, int channels)
     ATTR_NONNULL();
 
 /* `blf_default.cc` */
@@ -335,11 +331,6 @@ int BLF_default();
  * Draw the string using the default font, size and DPI.
  */
 void BLF_draw_default(float x, float y, float z, const char *str, size_t str_len) ATTR_NONNULL();
-/**
- * As above but with a very contrasting dark shadow.
- */
-void BLF_draw_default_shadowed(float x, float y, float z, const char *str, size_t str_len)
-    ATTR_NONNULL();
 /**
  * Set size and DPI, and return default font ID.
  */
@@ -361,7 +352,7 @@ enum {
   BLF_CLIPPING = 1 << 1,
   BLF_SHADOW = 1 << 2,
   // BLF_FLAG_UNUSED_3 = 1 << 3, /* dirty */
-  BLF_MATRIX = 1 << 4,
+  // BLF_MATRIX = 1 << 4,
   BLF_ASPECT = 1 << 5,
   BLF_WORD_WRAP = 1 << 6,
   /** No anti-aliasing. */

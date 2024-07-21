@@ -33,6 +33,8 @@
 
 #include "DEG_depsgraph.hh"
 
+#include "UI_resources.hh"
+
 /* -------------------------------------------------------------------- */
 /** \name Object
  * \{ */
@@ -239,9 +241,17 @@ static void gpencil_layer_final_tint_and_alpha_get(const GPENCIL_PrivateData *pd
     const bool use_onion_fade = (gpd->onion_flag & GP_ONION_FADE) != 0;
     const bool use_next_col = gpf->runtime.onion_id > 0.0f;
 
-    const float *onion_col_custom = (use_onion_custom_col) ?
-                                        (use_next_col ? gpd->gcolor_next : gpd->gcolor_prev) :
-                                        U.gpencil_new_layer_col;
+    float color_next[3];
+    float color_prev[3];
+    if (use_onion_custom_col) {
+      copy_v3_v3(color_next, gpd->gcolor_next);
+      copy_v3_v3(color_prev, gpd->gcolor_prev);
+    }
+    else {
+      UI_GetThemeColor3fv(TH_FRAME_AFTER, color_next);
+      UI_GetThemeColor3fv(TH_FRAME_BEFORE, color_prev);
+    }
+    const float *onion_col_custom = use_next_col ? color_next : color_prev;
 
     copy_v4_fl4(r_tint, UNPACK3(onion_col_custom), 1.0f);
 
@@ -275,13 +285,19 @@ static float4 grease_pencil_layer_final_tint_and_alpha_get(const GPENCIL_Private
     const bool use_next_col = onion_id > 0;
 
     const float onion_factor = grease_pencil.onion_skinning_settings.opacity;
-    const float3 color_next(grease_pencil.onion_skinning_settings.color_after);
-    const float3 color_prev(grease_pencil.onion_skinning_settings.color_before);
 
-    const float4 onion_col_custom = (use_onion_custom_col) ?
-                                        (use_next_col ? float4(color_next, 1.0f) :
-                                                        float4(color_prev, 1.0f)) :
-                                        float4(U.gpencil_new_layer_col);
+    float3 color_next, color_prev;
+    if (use_onion_custom_col) {
+      color_next = float3(grease_pencil.onion_skinning_settings.color_after);
+      color_prev = float3(grease_pencil.onion_skinning_settings.color_before);
+    }
+    else {
+      UI_GetThemeColor3fv(TH_FRAME_AFTER, color_next);
+      UI_GetThemeColor3fv(TH_FRAME_BEFORE, color_prev);
+    }
+
+    const float4 onion_col_custom = use_next_col ? float4(color_next, 1.0f) :
+                                                   float4(color_prev, 1.0f);
 
     *r_alpha = use_onion_fade ? (1.0f / abs(onion_id)) : 0.5f;
     *r_alpha *= onion_factor;
@@ -525,8 +541,7 @@ GPENCIL_tLayer *grease_pencil_layer_cache_add(GPENCIL_PrivateData *pd,
   const GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob->data);
 
   const bool is_in_front = (ob->dtx & OB_DRAW_IN_FRONT);
-  /* Grease Pencil 3 doesn't have this. */
-  const bool is_screenspace = false;
+
   const bool override_vertcol = (pd->v3d_color_type != -1);
   const bool is_vert_col_mode = (pd->v3d_color_type == V3D_SHADING_VERTEX_COLOR) ||
                                 (ob->mode == OB_MODE_VERTEX_PAINT) || pd->is_render;
@@ -541,9 +556,9 @@ GPENCIL_tLayer *grease_pencil_layer_cache_add(GPENCIL_PrivateData *pd,
   const float vert_col_opacity = (override_vertcol) ?
                                      (is_vert_col_mode ? pd->vertex_paint_opacity : 0.0f) :
                                      (pd->is_render ? 1.0f : pd->vertex_paint_opacity);
-  /* Negate thickness sign to tag that strokes are in screen space.
-   * Convert to world units (by default, 1 meter = 1000 pixels). */
-  const float thickness_scale = (is_screenspace) ? -1.0f : 1.0f / 1000.0f;
+  /* Negate thickness sign to tag that strokes are in screen space (this is no longer used in
+   * GPv3). Convert to world units (by default, 1 meter = 1000 pixels). */
+  const float thickness_scale = blender::bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
   /* If the layer is used as a mask (but is otherwise not visible in the render), render it with a
    * opacity of 0 so that it can still mask other layers. */
   const float layer_opacity = !is_used_as_mask ? grease_pencil_layer_final_opacity_get(

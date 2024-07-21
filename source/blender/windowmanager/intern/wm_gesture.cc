@@ -72,12 +72,23 @@ wmGesture *WM_gesture_new(wmWindow *window, const ARegion *region, const wmEvent
     }
   }
   else if (ELEM(type, WM_GESTURE_LINES, WM_GESTURE_LASSO)) {
-    short *lasso;
+    float *lasso;
     gesture->points_alloc = 1024;
-    gesture->customdata = lasso = static_cast<short int *>(
-        MEM_mallocN(sizeof(short[2]) * gesture->points_alloc, "lasso points"));
+    gesture->customdata = lasso = static_cast<float *>(
+        MEM_mallocN(sizeof(float[2]) * gesture->points_alloc, "lasso points"));
     lasso[0] = xy[0] - gesture->winrct.xmin;
     lasso[1] = xy[1] - gesture->winrct.ymin;
+    gesture->points = 1;
+  }
+  else if (ELEM(type, WM_GESTURE_POLYLINE)) {
+    gesture->points_alloc = 64;
+    short *border = static_cast<short int *>(
+        MEM_mallocN(sizeof(short[2]) * gesture->points_alloc, "polyline points"));
+    gesture->customdata = border;
+    border[0] = xy[0] - gesture->winrct.xmin;
+    border[1] = xy[1] - gesture->winrct.ymin;
+    gesture->mval.x = border[0];
+    gesture->mval.y = border[1];
     gesture->points = 1;
   }
 
@@ -289,7 +300,7 @@ static void draw_filled_lasso_px_cb(int x, int x_end, int y, void *user_data)
 
 static void draw_filled_lasso(wmGesture *gt)
 {
-  const short *lasso = (short *)gt->customdata;
+  const float *lasso = (float *)gt->customdata;
   const int mcoords_len = gt->points;
   Array<int2> mcoords(mcoords_len);
   int i;
@@ -340,9 +351,48 @@ static void draw_filled_lasso(wmGesture *gt)
   }
 }
 
+/* TODO: Extract this common functionality so it can be shared between Sculpt brushes, the annotate
+ * tool, and this common logic. */
+static void draw_lasso_smooth_stroke_indicator(wmGesture *gt, const uint shdr_pos)
+{
+  float(*lasso)[2] = static_cast<float(*)[2]>(gt->customdata);
+  float last_x = lasso[gt->points - 1][0];
+  float last_y = lasso[gt->points - 1][1];
+
+  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+  GPU_line_smooth(true);
+  GPU_blend(GPU_BLEND_ALPHA);
+
+  GPU_line_width(1.25f);
+  const float color[3] = {1.0f, 0.39f, 0.39f};
+
+  const float radius = 4.0f;
+
+  /* Draw Inner Ring */
+  immUniformColor4f(color[0], color[1], color[2], 0.8f);
+  imm_draw_circle_wire_2d(shdr_pos, gt->mval.x, gt->mval.y, radius, 40);
+
+  /* Draw Outer Ring: Dark color for contrast on light backgrounds (e.g. gray on white) */
+  float darkcolor[3];
+  mul_v3_v3fl(darkcolor, color, 0.40f);
+  immUniformColor4f(darkcolor[0], darkcolor[1], darkcolor[2], 0.8f);
+  imm_draw_circle_wire_2d(shdr_pos, gt->mval.x, gt->mval.y, radius + 1, 40);
+
+  /* Draw line from the last saved position to the current mouse position. */
+  immUniformColor4f(color[0], color[1], color[2], 0.8f);
+  immBegin(GPU_PRIM_LINES, 2);
+  immVertex2f(shdr_pos, gt->mval.x, gt->mval.y);
+  immVertex2f(shdr_pos, last_x, last_y);
+  immEnd();
+
+  GPU_blend(GPU_BLEND_NONE);
+  GPU_line_smooth(false);
+  immUnbindProgram();
+}
+
 static void wm_gesture_draw_lasso(wmGesture *gt, bool filled)
 {
-  const short *lasso = (short *)gt->customdata;
+  const float *lasso = (float *)gt->customdata;
   int i;
 
   if (filled) {
@@ -374,12 +424,78 @@ static void wm_gesture_draw_lasso(wmGesture *gt, bool filled)
   immBegin((gt->type == WM_GESTURE_LASSO) ? GPU_PRIM_LINE_LOOP : GPU_PRIM_LINE_STRIP, numverts);
 
   for (i = 0; i < gt->points; i++, lasso += 2) {
-    immVertex2f(shdr_pos, float(lasso[0]), float(lasso[1]));
+    immVertex2f(shdr_pos, lasso[0], lasso[1]);
   }
+
+  immEnd();
+  immUnbindProgram();
+
+  if (gt->use_smooth) {
+    draw_lasso_smooth_stroke_indicator(gt, shdr_pos);
+  }
+}
+
+static void draw_start_vertex_circle(const wmGesture &gt, const uint shdr_pos)
+{
+  const int numverts = gt.points;
+
+  /* Draw the circle around the starting vertex. */
+  const short(*border)[2] = static_cast<short int(*)[2]>(gt.customdata);
+
+  const float start_pos[2] = {float(border[0][0]), float(border[0][1])};
+  const float current_pos[2] = {float(gt.mval.x), float(gt.mval.y)};
+
+  const float dist = len_v2v2(start_pos, current_pos);
+  const float limit = pow2f(blender::wm::gesture::POLYLINE_CLICK_RADIUS * UI_SCALE_FAC);
+
+  if (dist < limit && numverts > 2) {
+    const float u = smoothstep(0.0f, limit, dist);
+    const float radius = interpf(
+        1.0f * UI_SCALE_FAC, blender::wm::gesture::POLYLINE_CLICK_RADIUS * UI_SCALE_FAC, u);
+
+    immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+    imm_draw_circle_wire_2d(shdr_pos, start_pos[0], start_pos[1], radius, 15.0f);
+    immUnbindProgram();
+  }
+}
+
+static void wm_gesture_draw_polyline(wmGesture *gt)
+{
+  draw_filled_lasso(gt);
+
+  const int numverts = gt->points + 1;
+  if (numverts < 2) {
+    return;
+  }
+
+  const uint shdr_pos = GPU_vertformat_attr_add(
+      immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+
+  immBindBuiltinProgram(GPU_SHADER_3D_LINE_DASHED_UNIFORM_COLOR);
+
+  float viewport_size[4];
+  GPU_viewport_size_get_f(viewport_size);
+  immUniform2f("viewport_size", viewport_size[2], viewport_size[3]);
+
+  immUniform1i("colors_len", 2); /* "advanced" mode */
+  immUniform4f("color", 0.4f, 0.4f, 0.4f, 1.0f);
+  immUniform4f("color2", 1.0f, 1.0f, 1.0f, 1.0f);
+  immUniform1f("dash_width", 2.0f);
+  immUniform1f("udash_factor", 0.5f);
+
+  immBegin(GPU_PRIM_LINE_LOOP, numverts);
+
+  const short *border = (short *)gt->customdata;
+  for (int i = 0; i < gt->points; i++, border += 2) {
+    immVertex2f(shdr_pos, float(border[0]), float(border[1]));
+  }
+  immVertex2f(shdr_pos, float(gt->mval.x), float(gt->mval.y));
 
   immEnd();
 
   immUnbindProgram();
+
+  draw_start_vertex_circle(*gt, shdr_pos);
 }
 
 static void wm_gesture_draw_cross(wmWindow *win, wmGesture *gt)
@@ -459,6 +575,9 @@ void wm_gesture_draw(wmWindow *win)
     }
     else if (gt->type == WM_GESTURE_STRAIGHTLINE) {
       wm_gesture_draw_line(gt);
+    }
+    else if (gt->type == WM_GESTURE_POLYLINE) {
+      wm_gesture_draw_polyline(gt);
     }
   }
 }

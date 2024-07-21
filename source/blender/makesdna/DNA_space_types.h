@@ -646,6 +646,20 @@ typedef enum eSpaceSeq_SequencerTimelineOverlay_Flag {
   SEQ_TIMELINE_SHOW_GRID = (1 << 18),
 } eSpaceSeq_SequencerTimelineOverlay_Flag;
 
+typedef struct SequencerCacheOverlay {
+  int flag;
+  char _pad0[4];
+} SequencerCacheOverlay;
+
+/** #SequencerCacheOverlay.flag */
+typedef enum eSpaceSeq_SequencerCacheOverlay_Flag {
+  SEQ_CACHE_SHOW = (1 << 1),
+  SEQ_CACHE_SHOW_RAW = (1 << 2),
+  SEQ_CACHE_SHOW_PREPROCESSED = (1 << 3),
+  SEQ_CACHE_SHOW_COMPOSITE = (1 << 4),
+  SEQ_CACHE_SHOW_FINAL_OUT = (1 << 5),
+} eSpaceSeq_SequencerCacheOverlay_Flag;
+
 /** Sequencer. */
 typedef struct SpaceSeq {
   SpaceLink *next, *prev;
@@ -686,6 +700,7 @@ typedef struct SpaceSeq {
 
   struct SequencerPreviewOverlay preview_overlay;
   struct SequencerTimelineOverlay timeline_overlay;
+  struct SequencerCacheOverlay cache_overlay;
 
   /** Multi-view current eye - for internal use. */
   char multiview_eye;
@@ -716,7 +731,7 @@ typedef enum eSpaceSeq_Flag {
   SEQ_MARKER_TRANS = (1 << 1),
   SEQ_DRAW_COLOR_SEPARATED_UNUSED_2 = (1 << 2),
   SEQ_CLAMP_VIEW = (1 << 3),
-  SPACE_SEQ_FLAG_UNUSED_4 = (1 << 4),
+  SPACE_SEQ_DESELECT_STRIP_HANDLE = (1 << 4),
   SPACE_SEQ_FLAG_UNUSED_5 = (1 << 5),
   SEQ_USE_ALPHA = (1 << 6), /* use RGBA display mode for preview */
   SPACE_SEQ_FLAG_UNUSED_10 = (1 << 10),
@@ -985,6 +1000,8 @@ enum eFileSortType {
   FILE_SORT_EXTENSION = 2,
   FILE_SORT_TIME = 3,
   FILE_SORT_SIZE = 4,
+  /* Assets: Sort by catalog. Within each catalog, assets will be sorted by name. */
+  FILE_SORT_ASSET_CATALOG = 5,
 };
 
 /** #SpaceFile.tags */
@@ -1538,6 +1555,11 @@ typedef enum eSpaceNodeOverlay_Flag {
   SN_OVERLAY_SHOW_PATH = (1 << 4),
   SN_OVERLAY_SHOW_NAMED_ATTRIBUTES = (1 << 5),
   SN_OVERLAY_SHOW_PREVIEWS = (1 << 6),
+  /**
+   * Display an automatic label on reroute nodes based on the user-defined labels
+   * of connected reroute nodes.
+   */
+  SN_OVERLAY_SHOW_REROUTE_AUTO_LABELS = (1 << 7),
 } eSpaceNodeOverlay_Flag;
 
 typedef enum eSpaceNodeOverlay_preview_shape {
@@ -1624,7 +1646,7 @@ typedef enum eSpaceNode_Flag {
   SNODE_SHOW_R = (1 << 7),
   SNODE_SHOW_G = (1 << 8),
   SNODE_SHOW_B = (1 << 9),
-  SNODE_AUTO_RENDER = (1 << 5),
+  SNODE_FLAG_UNUSED_5 = (1 << 5),   /* cleared */
   SNODE_FLAG_UNUSED_6 = (1 << 6),   /* cleared */
   SNODE_FLAG_UNUSED_10 = (1 << 10), /* cleared */
   SNODE_FLAG_UNUSED_11 = (1 << 11), /* cleared */

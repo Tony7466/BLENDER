@@ -1,18 +1,18 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.2.0 Alpha (b'7b7e9f224c89')\n"
+"Project-Id-Version: Blender 4.2.0 Release Candidate (b'988bf2b88f3b')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-04-22 07:36+0000\n"
-"PO-Revision-Date: 2023-11-30 20:00+0000\n"
-"Last-Translator: \"M. Amin Taheri\" <amintaheri2001@gmail.com>\n"
+"POT-Creation-Date: 2024-07-15 07:57+0000\n"
+"PO-Revision-Date: 2024-05-03 12:13+0000\n"
+"Last-Translator: Nooby Noober <iamanoobynoober@gmail.com>\n"
 "Language-Team: Persian <https://translate.blender.org/projects/blender-ui/ui/fa/>\n"
 "Language: fa\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n > 1;\n"
-"X-Generator: Weblate 5.0.1\n"
+"X-Generator: Weblate 5.5.2\n"
 "X-Poedit-Country: IRAN, ISLAMIC REPUBLIC OF\n"
 "X-Poedit-Language: Persian\n"
 "X-Poedit-SourceCharset: utf-8"
@@ -290,22 +290,6 @@ msgid "Add-on Preferences"
 msgstr "ﻪﻧﻭﺰﻓﺍ ﺕﺎﻤﯿﻈﻨﺗ"
 
 
-msgid "Password"
-msgstr "ﺰﻣﺭ"
-
-
-msgid "E-mail address"
-msgstr "ﯽﮑﯿﻧﻭﺮﺘﮑﻟﺍ ﺖﺴﭘ ﺱﺭﺩﺁ"
-
-
-msgid "Error Message"
-msgstr "ﺎﻄﺧ ﻡﺎﻐﯿﭘ"
-
-
-msgid "Message"
-msgstr "ﻡﺎﯿﭘ"
-
-
 msgid "Compute Device Type"
 msgstr "ﻩﺎﮕﺘﺳﺩ ﻉﻮﻧ ﻪﺒﺳﺎﺤﻣ"
 
@@ -412,6 +396,18 @@ msgstr "ﺎﻫ‌ﻦﺸﯿﻤﯿﻧﺍ ﺖﯾﺮﯾﺪﻣ ﯼﺍﺮﺑ glTF ﯼ�
 
 msgid "Displays glTF Material Output node in Shader Editor (Menu Add > Output)"
 msgstr "ﺪﻫﺩ ﯽﻣ ﻥﺎﺸﻧ (ﯽﺟﻭﺮﺧ <ﻥﺩﻭﺰﻓﺍ ﯼﻮﻨﻣ)ﻥﺯ‌ﻪﯾﺎﺳ ﺮﮕﺸﯾﺍﺮﯾﻭ ﺭﺩ ﺍﺭ glTF ﯼﺎﻫ‌ﺲﻨﺟ ﯽﺟﻭﺮﺧ ﻩﺮﮔ"
+
+
+msgid "Always"
+msgstr "ﻪﺸﯿﻤﻫ"
+
+
+msgid "Center"
+msgstr "ﺰﮐﺮﻣ"
+
+
+msgid "Bottom"
+msgstr "ﻦﯿﯾﺎﭘ"
 
 
 msgid "Fribidi Library"
@@ -590,10 +586,6 @@ msgid "Slot to temporarily hold the main action while in tweak mode"
 msgstr "ﺖﺳﺍ ﯼﺯﺎﺳ ﻪﻨﯿﻬﺑ ﺖﻟﺎﺣ ﺭﺩ ﻪﮐ ﯽﻟﺎﺣ ﺭﺩ ﯽﻠﺻﺍ ﻡﺍﺪﻗﺍ ﺖﻗﻮﻣ ﻦﺘﺷﺍﺩ ﻪﮕﻧ ﯼﺍﺮﺑ ﯽﯾﺎﻀﻓ"
 
 
-msgid "Animation"
-msgstr "ﻦﺸﯿﻤﯿﻧﺍ"
-
-
 msgid "Drivers"
 msgstr "ﺎﻫﺭﻮﯾﺍﺭﺩ"
 
@@ -680,6 +672,10 @@ msgstr "ﺎﻫ‌ﻡﺩ ﺯﺍ ﻥﺍﻮﺨﺘﺳﺍ ﯼﺎﻫﺮﯿﺴﻣ ﻪ�
 
 msgid "After Current"
 msgstr "ﯽﻠﻌﻓ ﺯﺍ ﺲﭘ"
+
+
+msgid "Number of frames to show after the current frame (only for 'Around Frame' Onion-skinning method)"
+msgstr "(’ﻢﯾﺮﻓ ﺭﻭﺩ‘ ﯼﺯﺎﯿﭘ‌ﺖﺳﻮﭘ ﺵﻭﺭ ﯼﺍﺮﺑ ﻂﻘﻓ) ﺪﻧﻮﺷ ﻩﺩﺍﺩ ﺶﯾﺎﻤﻧ ﯼﺭﺎﺟ ﻢﯾﺮﻓ ﺯﺍ ﺲﭘ ﺪﯾﺎﺑ ﻪﮐ ﯽﯾﺎﻫ‌ﻢﯾﺮﻓ ﺩﺍﺪﻌﺗ"
 
 
 msgid "Before Current"
@@ -804,18 +800,6 @@ msgstr "ﻩﺯﺎﺑ ﺭﺩ"
 
 msgid "Display Paths of poses within specified range"
 msgstr "ﻩﺪﺷ ﺺﺨﺸﻣ ﻩﺯﺎﺑ ﺭﺩ ﺎﻫ‌ﺖﺳﮊ ﯼﺎﻫﺮﯿﺴﻣ ﺶﯾﺎﻤﻧ"
-
-
-msgid "Influence"
-msgstr "ﺫﻮﻔﻧ"
-
-
-msgid "Mix Mode"
-msgstr "ﯽﺒﯿﮐﺮﺗ ﺖﻟﺎﺣ"
-
-
-msgid "Offset"
-msgstr "ﺖﺴﻓﺍ"
 
 
 msgid "Any Type"
@@ -996,6 +980,10 @@ msgstr "ﻦﮐ ﺶﯾﺍﺮﯾﻭ ﺍﺭ ﻂﺒﺗﺮﻣ ﻩﺩﺍﺩ ﯼﺎﻫ 
 
 msgid "File Browser"
 msgstr "ﻞﯾﺎﻓ ﺮﮔﺭﻭﺮﻣ"
+
+
+msgid "Browse for files and assets"
+msgstr "ﻦﺘﺸﮔ ﺎﻫ asset  ﻭ ﺎﻫ ﻞﯾﺎﻓ ﻝﺎﺒﻧﺩ"
 
 
 msgid "Width"
@@ -1259,10 +1247,6 @@ msgid "Use Custom Color"
 msgstr "ﻩﺍﻮﺨﻟﺩ ﮓﻧﺭ ﺯﺍ ﻩﺩﺎﻔﺘﺳﺍ"
 
 
-msgid "Remove"
-msgstr "ﻑﺬﺣ"
-
-
 msgid "Mode"
 msgstr "ﺖﻟﺎﺣ"
 
@@ -1369,6 +1353,10 @@ msgid "Image"
 msgstr "ﺮﯾﻮﺼﺗ"
 
 
+msgid "Offset"
+msgstr "ﺖﺴﻓﺍ"
+
+
 msgid "Rotation"
 msgstr "ﻥﺍﺭﻭﺩ"
 
@@ -1387,10 +1375,6 @@ msgstr "ﭗﭼ"
 
 msgid "Right"
 msgstr "ﺖﺳﺍﺭ"
-
-
-msgid "Center"
-msgstr "ﺰﮐﺮﻣ"
 
 
 msgid "Child Particle"
@@ -1733,6 +1717,10 @@ msgid "Input"
 msgstr "ﯼﺩﻭﺭﻭ"
 
 
+msgid "Influence"
+msgstr "ﺫﻮﻔﻧ"
+
+
 msgid "Disable"
 msgstr "ﻝﺎﻌﻓﺮﯿﻏ"
 
@@ -1787,6 +1775,10 @@ msgstr "ﺮﭽﯿﻣﺭﺁ"
 
 msgid "Follow Path"
 msgstr "ﺮﯿﺴﻣ ﻩﺪﻨﻨﮐ ﻝﺎﺒﻧﺩ"
+
+
+msgid "Mix Mode"
+msgstr "ﯽﺒﯿﮐﺮﺗ ﺖﻟﺎﺣ"
 
 
 msgid "X Location"
@@ -1951,10 +1943,6 @@ msgstr "Z ﻪﻨﯿﻤﮐ"
 
 msgid "Uniform"
 msgstr "ﻥﺎﺴﮑﯾ"
-
-
-msgid "Always"
-msgstr "ﻪﺸﯿﻤﻫ"
 
 
 msgid "Script"
@@ -2309,16 +2297,8 @@ msgid "Delete"
 msgstr "ﻑﺬﺣ"
 
 
-msgid "Bottom"
-msgstr "ﻦﯿﯾﺎﭘ"
-
-
 msgid "Top"
 msgstr "ﻻ﻿ﺎﺑ"
-
-
-msgid "UV"
-msgstr "UV"
 
 
 msgid "Visibility"
@@ -2464,8 +2444,8 @@ msgid "World"
 msgstr "ﻥﺎﻬﺟ"
 
 
-msgid "Layers"
-msgstr "ﺎﻫ‌ﻪﯾﻻ﻿"
+msgid "Feature Set"
+msgstr "ﯽﮔﮋﯾﻭ ﻪﻋﻮﻤﺠﻣ"
 
 
 msgid "B-Bone"
@@ -2641,10 +2621,6 @@ msgid "Paint"
 msgstr "ﮓﻧﺭ"
 
 
-msgid "Relax"
-msgstr "ﻥﺩﺮﮐ‌ﻞﺷ"
-
-
 msgctxt "Unit"
 msgid "Velocity Unit"
 msgstr "ﺖﻋﺮﺳ ﯼﺎﮑﯾ"
@@ -2695,6 +2671,10 @@ msgid "Max"
 msgstr "ﻪﻨﯿﺸﯿﺑ"
 
 
+msgid "Layers"
+msgstr "ﺎﻫ‌ﻪﯾﻻ﻿"
+
+
 msgid "U"
 msgstr "U"
 
@@ -2723,6 +2703,14 @@ msgstr "ﺐﻌﮑﻣ"
 
 msgid "Cube"
 msgstr "ﺐﻌﮑﻣ"
+
+
+msgid "Distort"
+msgstr "ﻥﺩﺮﮐ‌ﺞﮐ"
+
+
+msgid "Filter"
+msgstr "ﯽﻓﺎﺻ"
 
 
 msgid "Interface"
@@ -2936,12 +2924,16 @@ msgid "Grayscale"
 msgstr "ﯼﺮﺘﺴﮐﺎﺧ ﺱﺎﯿﻘﻣ"
 
 
-msgid "Filter"
-msgstr "ﯽﻓﺎﺻ"
-
-
 msgid "Weight 1"
 msgstr "ﯽﻨﯿﮕﻨﺳ"
+
+
+msgid "Themes"
+msgstr "ﺎﻫ ﻢﺗ"
+
+
+msgid "Animation"
+msgstr "ﻦﺸﯿﻤﯿﻧﺍ"
 
 
 msgid "Simulation"
@@ -3055,16 +3047,16 @@ msgid "Pivot Point"
 msgstr "ﺶﺧﺮﭼ ﻪﻄﻘﻧ"
 
 
+msgid "UV"
+msgstr "UV"
+
+
 msgid "Math"
 msgstr "ﯽﺿﺎﯾﺭ"
 
 
 msgid "Layout"
 msgstr "ﺡﺮﻃ"
-
-
-msgid "Distort"
-msgstr "ﻥﺩﺮﮐ‌ﺞﮐ"
 
 
 msgctxt "NodeTree"
@@ -3701,13 +3693,13 @@ msgid "Flip Names"
 msgstr "ﺎﻫ‌ﻢﺳﺍ ﯼﺯﺎﺳ‌ﻪﻨﯾﺮﻗ"
 
 
+msgid "(undocumented operator)"
+msgstr "(ﻩﺪﺸﻧ ﺪﻨﺘﺴﻣ ﺭﻮﺗﺍﺮﭘﺍ)"
+
+
 msgctxt "Operator"
 msgid "Select Similar"
 msgstr "ﻪﺑﺎﺸﻣ ﺏﺎﺨﺘﻧﺍ"
-
-
-msgid "(undocumented operator)"
-msgstr "(ﻩﺪﺸﻧ ﺪﻨﺘﺴﻣ ﺭﻮﺗﺍﺮﭘﺍ)"
 
 
 msgctxt "Operator"
@@ -3904,14 +3896,6 @@ msgid "Toggle Type Active"
 msgstr "ﻝﺎﻌﻓ ﻉﻮﻧ ﭻﯾﻮﺳ"
 
 
-msgid "End frame for export"
-msgstr "ﺝﻭﺮﺧ ﯼﺍﺮﺑ ﻢﯾﺮﻓ ﻥﺎﯾﺎﭘ"
-
-
-msgid "Start frame for export"
-msgstr "ﺝﻭﺮﺧ ﯼﺍﺮﺑ ﻢﯾﺮﻓ ﻉﻭﺮﺷ"
-
-
 msgid "Lamp"
 msgstr "ﭗﻣﻻ﻿"
 
@@ -3920,8 +3904,8 @@ msgid "Custom Properties"
 msgstr "ﯽﺷﺭﺎﻔﺳ ﺕﺎﯿﺻﻮﺼﺧ"
 
 
-msgid "Name decorations"
-msgstr "ﻥﻮﯿﺳﺍﺭﻮﮐﺩ ﻡﺎﻧ"
+msgid "URL"
+msgstr "ﯽﺘﻧﺮﺘﻨﯾﺍ ﺱﺭﺩﺁ"
 
 
 msgid "Open"
@@ -3941,6 +3925,11 @@ msgid "Linear"
 msgstr "ﯽﻄﺧ"
 
 
+msgctxt "Operator"
+msgid "Rotate"
+msgstr "ﺶﺧﺮﭼ"
+
+
 msgid "Mouse location"
 msgstr "ﺱﻭﺎﻣ ﻥﺎﮑﻣ"
 
@@ -3951,6 +3940,10 @@ msgstr "ﻭﺩ ﺮﻫ"
 
 msgid "Join"
 msgstr "ﻦﺘﺳﻮﯿﭘ"
+
+
+msgid "Remove"
+msgstr "ﻑﺬﺣ"
 
 
 msgid "Flat"
@@ -4156,8 +4149,8 @@ msgid "Copy Pose"
 msgstr "ﺖﺳﮊ ﯽﭙﮐ"
 
 
-msgid "URL"
-msgstr "ﯽﺘﻧﺮﺘﻨﯾﺍ ﺱﺭﺩﺁ"
+msgid "Property Name"
+msgstr "ﯽﮔﮋﯾﻭ ﻡﺎﻧ"
 
 
 msgctxt "Operator"
@@ -4182,10 +4175,6 @@ msgid "Repeat last action"
 msgstr "ﺖﯿﻟﺎﻌﻓ ﻦﯾﺮﺧﺁ ﺭﺍﺮﮑﺗ"
 
 
-msgid "Themes"
-msgstr "ﺎﻫ ﻢﺗ"
-
-
 msgid "Editing"
 msgstr "ﺶﯾﺍﺮﯾﻭ"
 
@@ -4201,11 +4190,6 @@ msgstr "ﯽﺸﯾﺎﻣﺯﺁ"
 msgctxt "Operator"
 msgid "Sculpt Mode"
 msgstr "ﯼﺭﺎﺠﺣ ﺖﻟﺎﺣ"
-
-
-msgctxt "Operator"
-msgid "Sculpt UVs"
-msgstr "ﺎﻫ UV ﯼﺭﺎﺠﺣ"
 
 
 msgctxt "Operator"
@@ -4234,11 +4218,6 @@ msgstr "ﺖﭙﯾﺮﮑﺳﺍ ﯼﺍﺮﺟﺍ"
 msgctxt "Operator"
 msgid "Save"
 msgstr "ﻩﺮﯿﺧﺫ"
-
-
-msgctxt "Operator"
-msgid "Rotate"
-msgstr "ﺶﺧﺮﭼ"
 
 
 msgctxt "Operator"
@@ -4292,49 +4271,6 @@ msgstr "ءﯽﺷ ﻡﺎﻧ"
 
 
 msgctxt "Operator"
-msgid "Export COLLADA"
-msgstr "COLLADA ﻥﺩﺮﮐ ﺭﺩﺎﺻ"
-
-
-msgctxt "Operator"
-msgid "Import COLLADA"
-msgstr "COLLADA ﻥﺩﺮﮐ ﺩﺭﺍﻭ"
-
-
-msgctxt "Operator"
-msgid "Control"
-msgstr "ﻝﺮﺘﻨﮐ"
-
-
-msgid "Prev"
-msgstr "ﻞﺒﻗ"
-
-
-msgid "Pause"
-msgstr "Pause"
-
-
-msgid "Render Anim"
-msgstr "ﻦﺸﯿﻤﯿﻧﺍ ﺭﺪﻧﺭ"
-
-
-msgid "Time Max"
-msgstr "ﻪﻨﯿﺸﯿﺑ ﻥﺎﻣﺯ"
-
-
-msgid "Time Min"
-msgstr "ﻪﻨﯿﻤﮐ ﻥﺎﻣﺯ"
-
-
-msgid "Render Delay"
-msgstr "ﺭﺪﻧﺭ ﺮﯿﺧﺎﺗ"
-
-
-msgid "Random Order"
-msgstr "ﯽﻓﺩﺎﺼﺗ ﺕﺭﻮﺻ"
-
-
-msgctxt "Operator"
 msgid "View Manual"
 msgstr "ﺎﻤﻨﻫﺍﺭ ﻩﺪﻫﺎﺸﻣ"
 
@@ -4346,10 +4282,6 @@ msgstr "ﺖﯿﻌﺿﻭ"
 msgctxt "Operator"
 msgid "Operator Cheat Sheet"
 msgstr "ﺮﺑﺭﺎﮐ ﺐﻠﻘﺗ ﻪﮔﺮﺑ"
-
-
-msgid "Property Name"
-msgstr "ﯽﮔﮋﯾﻭ ﻡﺎﻧ"
 
 
 msgid "Primary Data Path"
@@ -4561,6 +4493,10 @@ msgid "New Window"
 msgstr "ﺪﯾﺪﺟ ﻩﺮﺠﻨﭘ"
 
 
+msgid "Password"
+msgstr "ﺰﻣﺭ"
+
+
 msgid "Dynamic BVH"
 msgstr "BVH ﺎﯾﻮﭘ"
 
@@ -4575,10 +4511,6 @@ msgstr "ﺭﺪﻧﺭ ﯼﺍﺮﺑ CPU ﺯﺍ ﻩﺩﺎﻔﺘﺳﺍ"
 
 msgid "GPU Compute"
 msgstr "GPU ﺎﺑ ﻪﺒﺳﺎﺤﻣ"
-
-
-msgid "Feature Set"
-msgstr "ﯽﮔﮋﯾﻭ ﻪﻋﻮﻤﺠﻣ"
 
 
 msgid "Supported"
@@ -4722,10 +4654,6 @@ msgid "Length Factor"
 msgstr "ﻝﻮﻃ ﺭﻮﺘﮐﺎﻓ"
 
 
-msgid "Strand / Particle"
-msgstr "ﻩﺭﺫ/ﻪﺘﺷﺭ"
-
-
 msgid "Theme Clip Editor"
 msgstr "ﻢﺗ ﭗﯿﻠﮐ ﺮﮕﺸﯾﺍﺮﯾﻭ"
 
@@ -4764,10 +4692,6 @@ msgstr "ﻦﯿﺑﺭﻭﺩ ﺮﯿﺴﻣ"
 
 msgid "Unified Paint Settings"
 msgstr "ﺪﺤﺘﻣ ﯽﺷﺎﻘﻧ ﺕﺎﻤﯿﻈﻨﺗ"
-
-
-msgid "Relaxation Method"
-msgstr "ﯼﺯﺎﺳ‌ﻡﺍﺭﺁ ﺵﻭﺭ"
 
 
 msgid "UV Sculpt"
@@ -4811,6 +4735,10 @@ msgid "Float"
 msgstr "ﺭﻭﺎﻨﺷ"
 
 
+msgid "Error Message"
+msgstr "ﺎﻄﺧ ﻡﺎﻐﯿﭘ"
+
+
 msgid "Use linear progression"
 msgstr "ﯽﻄﺧ ﺖﻓﺮﺸﯿﭘ ﺯﺍ ﻩﺩﺎﻔﺘﺳﺍ"
 
@@ -4824,8 +4752,28 @@ msgid "Rotate"
 msgstr "ﺶﺧﺮﭼ"
 
 
-msgid "Render Settings:"
-msgstr ":ﺭﺪﻧﺭ ﺕﺎﻤﯿﻈﻨﺗ"
+msgid "Description:"
+msgstr ":ﺢﯿﺿﻮﺗ"
+
+
+msgid "Internet:"
+msgstr ":ﺖﻧﺮﺘﻨﯾﺍ"
+
+
+msgid "Author:"
+msgstr ":ﻩﺪﻨﺴﯾﻮﻧ"
+
+
+msgid "Version:"
+msgstr ":ﻪﺨﺴﻧ"
+
+
+msgid "Warning:"
+msgstr ":ﺭﺍﺪﺸﻫ"
+
+
+msgid "File:"
+msgstr ":ﻩﺪﻧﻭﺮﭘ"
 
 
 msgid "Tracking"
@@ -4899,6 +4847,10 @@ msgid "Roughness End"
 msgstr "ﯼﺮﺑﺯ ﻥﺎﯾﺎﭘ"
 
 
+msgid "Random Order"
+msgstr "ﯽﻓﺩﺎﺼﺗ ﺕﺭﻮﺻ"
+
+
 msgid "Use Particle's Radius"
 msgstr "ﻩﺭﺫ ﻉﺎﻌﺷ ﺯﺍ ﻩﺩﺎﻔﺘﺳﺍ"
 
@@ -4964,32 +4916,8 @@ msgid "B"
 msgstr "B"
 
 
-msgid "Description:"
-msgstr ":ﺢﯿﺿﻮﺗ"
-
-
 msgid "Location:"
 msgstr ":ﻥﺎﮑﻣ"
-
-
-msgid "File:"
-msgstr ":ﻩﺪﻧﻭﺮﭘ"
-
-
-msgid "Author:"
-msgstr ":ﻩﺪﻨﺴﯾﻮﻧ"
-
-
-msgid "Version:"
-msgstr ":ﻪﺨﺴﻧ"
-
-
-msgid "Warning:"
-msgstr ":ﺭﺍﺪﺸﻫ"
-
-
-msgid "Internet:"
-msgstr ":ﺖﻧﺮﺘﻨﯾﺍ"
 
 
 msgctxt "Operator"
@@ -5107,6 +5035,14 @@ msgstr "(#RRGGBB) ﮓﻧﺭ ﯼﺍﺮﺑ ﻪﻧﺎﮔ ﻪﺳ ﺰﮕﻫ"
 msgctxt "Color"
 msgid "Value:"
 msgstr ":ﺭﺍﺪﻘﻣ"
+
+
+msgid "OK"
+msgstr "ﺪﯿﯾﺄﺗ"
+
+
+msgid "Cancel"
+msgstr "ﻑﺍﺮﺼﻧﺍ"
 
 
 msgid "No Properties"
@@ -5273,20 +5209,12 @@ msgid " Materials,"
 msgstr "ﻩﺩﺎﻣ "
 
 
-msgid "OK"
-msgstr "ﺪﯿﯾﺄﺗ"
-
-
 msgid "Compiled without sound support"
 msgstr "ﺍﺪﺻ ﺯﺍ ﯽﻧﺎﺒﯿﺘﺸﭘ ﻥﻭﺪﺑ ﻩﺪﺷ ﻞﯾﺎﭙﻣﺎﮐ"
 
 
 msgid "File path"
 msgstr "ﻞﯾﺎﻓ ﺮﯿﺴﻣ"
-
-
-msgid "Cancel"
-msgstr "ﻑﺍﺮﺼﻧﺍ"
 
 
 msgid "File name, overwrite existing"

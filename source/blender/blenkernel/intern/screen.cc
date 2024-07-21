@@ -168,7 +168,7 @@ IDTypeInfo IDType_ID_SCR = {
     /*name_plural*/ N_("screens"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_SCREEN,
     /*flags*/ IDTYPE_FLAGS_NO_COPY | IDTYPE_FLAGS_ONLY_APPEND | IDTYPE_FLAGS_NO_ANIMDATA |
-        IDTYPE_FLAGS_NO_MEMFILE_UNDO,
+        IDTYPE_FLAGS_NO_MEMFILE_UNDO | IDTYPE_FLAGS_NEVER_UNUSED,
     /*asset_type_info*/ nullptr,
 
     /*init_data*/ nullptr,
@@ -320,7 +320,7 @@ static void panel_list_copy(ListBase *newlb, const ListBase *lb)
 
     BLI_listbase_clear(&new_panel->layout_panel_states);
     LISTBASE_FOREACH (LayoutPanelState *, src_state, &old_panel->layout_panel_states) {
-      LayoutPanelState *new_state = MEM_new<LayoutPanelState>(__func__, *src_state);
+      LayoutPanelState *new_state = MEM_cnew<LayoutPanelState>(__func__, *src_state);
       new_state->idname = BLI_strdup(src_state->idname);
       BLI_addtail(&new_panel->layout_panel_states, new_state);
     }

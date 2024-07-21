@@ -27,7 +27,7 @@
 #include "UI_resources.hh"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -216,7 +216,7 @@ PointerRNA *gpencil_modifier_panel_get_property_pointers(Panel *panel, PointerRN
 
   uiBlock *block = uiLayoutGetBlock(panel->layout);
   UI_block_lock_clear(block);
-  UI_block_lock_set(block, ID_IS_LINKED((Object *)ptr->owner_id), ERROR_LIBDATA_MESSAGE);
+  UI_block_lock_set(block, !ID_IS_EDITABLE((Object *)ptr->owner_id), ERROR_LIBDATA_MESSAGE);
 
   UI_panel_context_pointer_set(panel, "modifier", ptr);
 

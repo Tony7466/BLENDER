@@ -306,14 +306,16 @@ GPUMaterial *DRW_shader_from_world(World *wo,
                                    bool deferred,
                                    GPUCodegenCallbackFn callback,
                                    void *thunk);
-GPUMaterial *DRW_shader_from_material(Material *ma,
-                                      bNodeTree *ntree,
-                                      eGPUMaterialEngine engine,
-                                      const uint64_t shader_id,
-                                      const bool is_volume_shader,
-                                      bool deferred,
-                                      GPUCodegenCallbackFn callback,
-                                      void *thunk);
+GPUMaterial *DRW_shader_from_material(
+    Material *ma,
+    bNodeTree *ntree,
+    eGPUMaterialEngine engine,
+    const uint64_t shader_id,
+    const bool is_volume_shader,
+    bool deferred,
+    GPUCodegenCallbackFn callback,
+    void *thunk,
+    GPUMaterialPassReplacementCallbackFn pass_replacement_cb = nullptr);
 void DRW_shader_queue_optimize_material(GPUMaterial *mat);
 void DRW_shader_free(GPUShader *shader);
 #define DRW_SHADER_FREE_SAFE(shader) \
@@ -949,9 +951,13 @@ bool DRW_state_is_scene_render();
 bool DRW_state_is_viewport_image_render();
 bool DRW_state_is_playback();
 /**
- * Is the user navigating the region.
+ * Is the user navigating or painting the region.
  */
 bool DRW_state_is_navigating();
+/**
+ * Is the user painting?
+ */
+bool DRW_state_is_painting();
 /**
  * Should text draw in this mode?
  */

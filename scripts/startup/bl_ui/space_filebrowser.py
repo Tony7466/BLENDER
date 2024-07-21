@@ -680,7 +680,7 @@ class ASSETBROWSER_MT_select(AssetBrowserMenu, Menu):
 
         layout.operator("file.select_all", text="All").action = 'SELECT'
         layout.operator("file.select_all", text="None").action = 'DESELECT'
-        layout.operator("file.select_all", text="Inverse").action = 'INVERT'
+        layout.operator("file.select_all", text="Invert").action = 'INVERT'
 
         layout.separator()
 
@@ -792,11 +792,14 @@ class ASSETBROWSER_PT_metadata_tags(asset_utils.AssetMetaDataPanel, Panel):
 
     def draw(self, context):
         layout = self.layout
-        asset_data = asset_utils.SpaceAssetInfo.get_active_asset(context)
+        active_asset = context.asset
+        asset_metadata = active_asset.metadata
 
         row = layout.row()
-        row.template_list("ASSETBROWSER_UL_metadata_tags", "asset_tags", asset_data, "tags",
-                          asset_data, "active_tag", rows=4)
+        row.template_list(
+            "ASSETBROWSER_UL_metadata_tags", "asset_tags", asset_metadata, "tags",
+            asset_metadata, "active_tag", rows=4,
+        )
 
         col = row.column(align=True)
         col.operator("asset.tag_add", icon='ADD', text="")

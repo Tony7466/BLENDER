@@ -67,8 +67,10 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
+#include "ANIM_action.hh"
 #include "ANIM_keyframing.hh"
 
+#include "ED_anim_api.hh"
 #include "ED_armature.hh"
 #include "ED_keyframing.hh"
 #include "ED_mesh.hh"
@@ -340,6 +342,10 @@ static int object_clear_transform_generic_exec(bContext *C,
 
   /* get KeyingSet to use */
   ks = ANIM_get_keyingset_for_autokeying(scene, default_ksName);
+
+  if (blender::animrig::is_autokey_on(scene)) {
+    ANIM_deselect_keys_in_animation_editors(C);
+  }
 
   for (Object *ob : objects) {
     if (use_transform_data_origin) {
@@ -724,7 +730,7 @@ static int apply_objects_internal(bContext *C,
         changed = false;
       }
 
-      if (ID_IS_LINKED(obdata) || ID_IS_OVERRIDE_LIBRARY(obdata)) {
+      if (!ID_IS_EDITABLE(obdata) || ID_IS_OVERRIDE_LIBRARY(obdata)) {
         BKE_reportf(reports,
                     RPT_ERROR,
                     R"(Cannot apply to library or override data: Object "%s", %s "%s", aborting)",
@@ -1424,7 +1430,7 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
         }
       }
     }
-    else if (ID_IS_LINKED(ob->data) || ID_IS_OVERRIDE_LIBRARY(ob->data)) {
+    else if (!ID_IS_EDITABLE(ob->data) || ID_IS_OVERRIDE_LIBRARY(ob->data)) {
       tot_lib_error++;
     }
     else if (ob->type == OB_MESH) {

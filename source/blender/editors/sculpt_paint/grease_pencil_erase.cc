@@ -17,6 +17,7 @@
 #include "BKE_crazyspace.hh"
 #include "BKE_curves.hh"
 #include "BKE_grease_pencil.hh"
+#include "BKE_paint.hh"
 
 #include "DEG_depsgraph_query.hh"
 #include "DNA_brush_enums.h"
@@ -40,10 +41,13 @@ class EraseOperation : public GreasePencilStrokeOperation {
   void on_stroke_extended(const bContext &C, const InputSample &extension_sample) override;
   void on_stroke_done(const bContext &C) override;
 
-  bool keep_caps = false;
-  float radius = 50.0f;
-  eGP_BrushEraserMode eraser_mode = GP_BRUSH_ERASER_HARD;
-  bool active_layer_only = false;
+  friend struct EraseOperationExecutor;
+
+ private:
+  bool keep_caps_ = false;
+  float radius_ = 50.0f;
+  eGP_BrushEraserMode eraser_mode_ = GP_BRUSH_ERASER_HARD;
+  bool active_layer_only_ = false;
 };
 
 /**
@@ -290,7 +294,7 @@ struct EraseOperationExecutor {
           const int64_t squared_distance = math::distance_squared(
               this->mouse_position_pixels, screen_space_positions_pixel[src_point]);
 
-          /* Note: We don't account for boundaries here, since we are not going to split any
+          /* NOTE: We don't account for boundaries here, since we are not going to split any
            * curve. */
           r_point_side[src_point] = (squared_distance <= this->eraser_squared_radius_pixels) ?
                                         PointCircleSide::Inside :
@@ -453,7 +457,7 @@ struct EraseOperationExecutor {
           if (src_curve_points.size() == 1) {
             const float2 &point_pos = screen_space_positions[src_curve_points.first()];
             const float dist_to_eraser = math::distance(point_pos, this->mouse_position);
-            return !(dist_to_eraser < eraser_radius);
+            return !(dist_to_eraser < this->eraser_radius);
           }
 
           /* If any segment of the stroke is closer to the eraser than its radius, then remove
@@ -501,17 +505,21 @@ struct EraseOperationExecutor {
     Paint *paint = &scene->toolsettings->gp_paint->paint;
     Brush *brush = BKE_paint_brush(paint);
 
+    if (brush->gpencil_tool == GPAINT_TOOL_DRAW) {
+      brush = BKE_paint_eraser_brush(paint);
+    }
+
     /* Get the tool's data. */
     this->mouse_position = extension_sample.mouse_position;
-    this->eraser_radius = self.radius;
+    this->eraser_radius = self.radius_;
     if (BKE_brush_use_size_pressure(brush)) {
       this->eraser_radius *= BKE_curvemapping_evaluateF(
           brush->gpencil_settings->curve_strength, 0, extension_sample.pressure);
     }
 
-    this->mouse_position_pixels = int2(round_fl_to_int(mouse_position[0]),
-                                       round_fl_to_int(mouse_position[1]));
-    const int64_t eraser_radius_pixels = round_fl_to_int(eraser_radius);
+    this->mouse_position_pixels = int2(round_fl_to_int(this->mouse_position.x),
+                                       round_fl_to_int(this->mouse_position.y));
+    const int64_t eraser_radius_pixels = round_fl_to_int(this->eraser_radius);
     this->eraser_squared_radius_pixels = eraser_radius_pixels * eraser_radius_pixels;
 
     /* Get the grease pencil drawing. */
@@ -521,7 +529,7 @@ struct EraseOperationExecutor {
     const auto execute_eraser_on_drawing = [&](const int layer_index,
                                                const int frame_number,
                                                Drawing &drawing) {
-      const Layer &layer = *grease_pencil.layers()[layer_index];
+      const Layer &layer = *grease_pencil.layer(layer_index);
       const bke::CurvesGeometry &src = drawing.strokes();
 
       /* Evaluated geometry. */
@@ -544,16 +552,17 @@ struct EraseOperationExecutor {
       /* Erasing operator. */
       bke::CurvesGeometry dst;
       bool erased = false;
-      switch (self.eraser_mode) {
+      switch (self.eraser_mode_) {
         case GP_BRUSH_ERASER_STROKE:
           erased = stroke_eraser(src, screen_space_positions, dst);
           break;
         case GP_BRUSH_ERASER_HARD:
-          erased = hard_eraser(src, screen_space_positions, dst, self.keep_caps);
+          erased = hard_eraser(src, screen_space_positions, dst, self.keep_caps_);
           break;
         case GP_BRUSH_ERASER_SOFT:
-          /* To be implemented. */
-          return;
+          /* TODO: Implement the soft eraser mode. */
+          erased = hard_eraser(src, screen_space_positions, dst, self.keep_caps_);
+          break;
       }
 
       if (erased) {
@@ -564,7 +573,7 @@ struct EraseOperationExecutor {
       }
     };
 
-    if (self.active_layer_only) {
+    if (self.active_layer_only_) {
       /* Erase only on the drawing at the current frame of the active layer. */
       if (!grease_pencil.has_active_layer()) {
         return;
@@ -598,9 +607,13 @@ struct EraseOperationExecutor {
 
 void EraseOperation::on_stroke_begin(const bContext &C, const InputSample & /*start_sample*/)
 {
-  Scene *scene = CTX_data_scene(&C);
   Paint *paint = BKE_paint_get_active_from_context(&C);
   Brush *brush = BKE_paint_brush(paint);
+  if (brush->gpencil_tool == GPAINT_TOOL_DRAW) {
+    /* If we're using the draw tool to erase (e.g. while holding ctrl), then we should use the
+     * eraser brush instead. */
+    brush = BKE_paint_eraser_brush(paint);
+  }
 
   if (brush->gpencil_settings == nullptr) {
     BKE_brush_init_gpencil_settings(brush);
@@ -609,10 +622,10 @@ void EraseOperation::on_stroke_begin(const bContext &C, const InputSample & /*st
 
   BKE_curvemapping_init(brush->gpencil_settings->curve_strength);
 
-  this->radius = BKE_brush_size_get(scene, brush);
-  this->eraser_mode = eGP_BrushEraserMode(brush->gpencil_settings->eraser_mode);
-  this->keep_caps = ((brush->gpencil_settings->flag & GP_BRUSH_ERASER_KEEP_CAPS) != 0);
-  this->active_layer_only = ((brush->gpencil_settings->flag & GP_BRUSH_ACTIVE_LAYER_ONLY) != 0);
+  radius_ = brush->size;
+  eraser_mode_ = eGP_BrushEraserMode(brush->gpencil_settings->eraser_mode);
+  keep_caps_ = ((brush->gpencil_settings->flag & GP_BRUSH_ERASER_KEEP_CAPS) != 0);
+  active_layer_only_ = ((brush->gpencil_settings->flag & GP_BRUSH_ACTIVE_LAYER_ONLY) != 0);
 }
 
 void EraseOperation::on_stroke_extended(const bContext &C, const InputSample &extension_sample)
@@ -621,7 +634,16 @@ void EraseOperation::on_stroke_extended(const bContext &C, const InputSample &ex
   executor.execute(*this, C, extension_sample);
 }
 
-void EraseOperation::on_stroke_done(const bContext & /*C*/) {}
+void EraseOperation::on_stroke_done(const bContext &C)
+{
+  Object *object = CTX_data_active_object(&C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+  if (grease_pencil.runtime->use_eraser_temp) {
+    /* If we're using the draw tool to temporarily erase, then we need to reset the
+     * `use_eraser_temp` flag here. */
+    grease_pencil.runtime->use_eraser_temp = false;
+  }
+}
 
 std::unique_ptr<GreasePencilStrokeOperation> new_erase_operation()
 {

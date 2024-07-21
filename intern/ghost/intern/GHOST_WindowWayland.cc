@@ -1594,6 +1594,8 @@ static void surface_handle_leave(void *data, wl_surface * /*wl_surface*/, wl_out
   }
 }
 
+#if defined(WL_SURFACE_PREFERRED_BUFFER_SCALE_SINCE_VERSION) && \
+    defined(WL_SURFACE_PREFERRED_BUFFER_TRANSFORM_SINCE_VERSION)
 static void surface_handle_preferred_buffer_scale(void * /*data*/,
                                                   wl_surface * /*wl_surface*/,
                                                   int32_t factor)
@@ -1609,12 +1611,17 @@ static void surface_handle_preferred_buffer_transform(void * /*data*/,
   /* Only available in interface version 6. */
   CLOG_INFO(LOG, 2, "handle_preferred_buffer_transform (transform=%u)", transform);
 }
+#endif /* WL_SURFACE_PREFERRED_BUFFER_SCALE_SINCE_VERSION && \
+        * WL_SURFACE_PREFERRED_BUFFER_TRANSFORM_SINCE_VERSION */
 
 static const wl_surface_listener wl_surface_listener = {
     /*enter*/ surface_handle_enter,
     /*leave*/ surface_handle_leave,
+#if defined(WL_SURFACE_PREFERRED_BUFFER_SCALE_SINCE_VERSION) && \
+    defined(WL_SURFACE_PREFERRED_BUFFER_TRANSFORM_SINCE_VERSION)
     /*preferred_buffer_scale*/ surface_handle_preferred_buffer_scale,
     /*preferred_buffer_transform*/ surface_handle_preferred_buffer_transform,
+#endif
 };
 
 #undef LOG
@@ -1643,6 +1650,7 @@ GHOST_WindowWayland::GHOST_WindowWayland(GHOST_SystemWayland *system,
     : GHOST_Window(width, height, state, stereoVisual, exclusive),
       system_(system),
       window_(new GWL_Window),
+      valid_setup_(false),
       is_debug_context_(is_debug)
 {
 #ifdef USE_EVENT_BACKGROUND_THREAD
@@ -1652,6 +1660,8 @@ GHOST_WindowWayland::GHOST_WindowWayland(GHOST_SystemWayland *system,
   window_->ghost_window = this;
   window_->ghost_system = system;
   window_->ghost_context_type = type;
+
+  wl_display *display = system->wl_display_get();
 
   /* NOTE(@ideasman42): The scale set here to avoid flickering on startup.
    * When all monitors use the same scale (which is quite common) there aren't any problems.
@@ -1710,7 +1720,6 @@ GHOST_WindowWayland::GHOST_WindowWayland(GHOST_SystemWayland *system,
     /* create window decorations */
     decor.frame = libdecor_decorate(
         system_->libdecor_context_get(), window_->wl.surface, &libdecor_frame_iface, window_);
-    libdecor_frame_map(window_->libdecor->frame);
 
     libdecor_frame_set_min_content_size(decor.frame, UNPACK2(size_min));
     libdecor_frame_set_app_id(decor.frame, xdg_app_id);
@@ -1745,6 +1754,14 @@ GHOST_WindowWayland::GHOST_WindowWayland(GHOST_SystemWayland *system,
 
   gwl_window_title_set(window_, title);
 
+#ifdef WITH_GHOST_WAYLAND_LIBDECOR
+  if (use_libdecor) {
+    /* Postpone mapping the window until after the app-id & title have been set.
+     * While this doesn't seem to be a requirement, LIBDECOR example code does this. */
+    libdecor_frame_map(window_->libdecor->frame);
+  }
+#endif
+
   wl_surface_set_user_data(window_->wl.surface, this);
 
   /* NOTE: the method used for XDG & LIBDECOR initialization (using `initial_configure_seen`)
@@ -1771,9 +1788,11 @@ GHOST_WindowWayland::GHOST_WindowWayland(GHOST_SystemWayland *system,
 
     /* Commit needed to so configure callback runs. */
     wl_surface_commit(window_->wl.surface);
-    while (!decor.initial_configure_seen) {
-      wl_display_flush(system->wl_display_get());
-      wl_display_dispatch(system->wl_display_get());
+
+    /* Failure exits with an error, simply prevent an eternal loop. */
+    while (!decor.initial_configure_seen && !ghost_wl_display_report_error_if_set(display)) {
+      wl_display_flush(display);
+      wl_display_dispatch(display);
     }
   }
 
@@ -1888,17 +1907,28 @@ GHOST_WindowWayland::GHOST_WindowWayland(GHOST_SystemWayland *system,
 
   /* Drawing context. */
   if (setDrawingContextType(type) == GHOST_kFailure) {
+    /* This can happen when repeatedly creating windows, see #123096.
+     * In this case #GHOST_WindowWayland::getValid will return false. */
     GHOST_PRINT("Failed to create drawing context" << std::endl);
   }
+  else {
+    valid_setup_ = true;
+  }
 
+  if (valid_setup_ == false) {
+    /* Don't attempt to setup the window if there is no context.
+     * This window is considered invalid and will be removed. */
+  }
+  else
 #ifdef WITH_GHOST_WAYLAND_LIBDECOR
-  if (use_libdecor) {
+      if (use_libdecor)
+  {
     /* Commit needed so the top-level callbacks run (and `toplevel` can be accessed). */
     wl_surface_commit(window_->wl.surface);
     GWL_LibDecor_Window &decor = *window_->libdecor;
 
     /* Additional round-trip is needed to ensure `xdg_toplevel` is set. */
-    wl_display_roundtrip(system_->wl_display_get());
+    wl_display_roundtrip(display);
 
     /* NOTE: LIBDECOR requires the window to be created & configured before the state can be set.
      * Workaround this by using the underlying `xdg_toplevel` */
@@ -1928,11 +1958,12 @@ GHOST_WindowWayland::GHOST_WindowWayland(GHOST_SystemWayland *system,
       wl_surface_commit(window_->wl.surface);
       ::close(fd);
     }
-#  endif /* WITH_GHOST_WAYLAND_LIBDECOR */
+#  endif /* WITH_VULKAN_BACKEND */
 
-    while (!decor.initial_configure_seen) {
-      wl_display_flush(system->wl_display_get());
-      wl_display_dispatch(system->wl_display_get());
+    /* Failure exits with an error, simply prevent an eternal loop. */
+    while (!decor.initial_configure_seen && !ghost_wl_display_report_error_if_set(display)) {
+      wl_display_flush(display);
+      wl_display_dispatch(display);
     }
 
 #  ifdef WITH_VULKAN_BACKEND
@@ -1961,7 +1992,7 @@ GHOST_WindowWayland::GHOST_WindowWayland(GHOST_SystemWayland *system,
      * In principle this could be used with XDG too however it causes problems with KDE
      * and some WLROOTS based compositors.
      */
-    wl_display_roundtrip(system_->wl_display_get());
+    wl_display_roundtrip(display);
   }
   else
 #endif /* WITH_GHOST_WAYLAND_LIBDECOR */
@@ -2122,6 +2153,11 @@ GHOST_TSuccess GHOST_WindowWayland::getCursorBitmap(GHOST_CursorBitmapRef *bitma
   std::lock_guard lock_server_guard{*system_->server_mutex};
 #endif
   return system_->cursor_bitmap_get(bitmap);
+}
+
+bool GHOST_WindowWayland::getValid() const
+{
+  return GHOST_Window::getValid() && valid_setup_;
 }
 
 void GHOST_WindowWayland::setTitle(const char *title)
@@ -2586,7 +2622,7 @@ bool GHOST_WindowWayland::outputs_changed_update_scale()
        * each with different fractional scale, see: #109194.
        *
        * Note that the window will show larger, then resize to be smaller soon
-       * after opening. This would be nice to avoid but but would require DPI
+       * after opening. This would be nice to avoid but would require DPI
        * to be stored in the window (as noted above). */
       int size_next[2] = {0, 0};
       int size_orig[2] = {0, 0};

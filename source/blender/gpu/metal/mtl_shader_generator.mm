@@ -187,7 +187,7 @@ static bool is_program_word(const char *chr, int *len)
   int numchars = 0;
   for (const char *c = chr; *c != '\0'; c++) {
     char ch = *c;
-    /* Note: Hash (`#`) is not valid in var names, but is used by Closure macro patterns. */
+    /* NOTE: Hash (`#`) is not valid in var names, but is used by Closure macro patterns. */
     if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
         (numchars > 0 && ch >= '0' && ch <= '9') || ch == '_' || ch == '#')
     {
@@ -876,7 +876,7 @@ static void generate_specialization_constant_declarations(const shader::ShaderCr
                                                           std::stringstream &ss)
 {
   uint index = MTL_SHADER_SPECIALIZATION_CONSTANT_BASE_ID;
-  for (const ShaderCreateInfo::SpecializationConstant &sc : info->specialization_constants_) {
+  for (const SpecializationConstant &sc : info->specialization_constants_) {
     /* TODO(Metal): Output specialization constant chain. */
     ss << "constant " << sc.type << " " << sc.name << " [[function_constant(" << index << ")]];\n";
     index++;
@@ -2212,7 +2212,7 @@ uint32_t MSLGeneratorInterface::max_sampler_index_for_stage(ShaderStage /*stage*
 
 uint32_t MSLGeneratorInterface::get_sampler_argument_buffer_bind_index(ShaderStage stage)
 {
-  /* Note: Shader stage must be a singular index. Compound shader masks are not valid for this
+  /* NOTE: Shader stage must be a singular index. Compound shader masks are not valid for this
    * function. */
   BLI_assert(stage == ShaderStage::VERTEX || stage == ShaderStage::FRAGMENT ||
              stage == ShaderStage::COMPUTE);
@@ -2506,7 +2506,7 @@ void MSLGeneratorInterface::generate_msl_textures_input_string(std::stringstream
                                                                ShaderStage stage,
                                                                bool &is_first_parameter)
 {
-  /* Note: Shader stage must be specified as the singular stage index for which the input
+  /* NOTE: Shader stage must be specified as the singular stage index for which the input
    * is generating. Compound stages are not valid inputs. */
   BLI_assert(stage == ShaderStage::VERTEX || stage == ShaderStage::FRAGMENT ||
              stage == ShaderStage::COMPUTE);

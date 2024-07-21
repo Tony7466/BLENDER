@@ -31,7 +31,7 @@ set(INC
   ../../../intern/mikktspace
   ../../../intern/opensubdiv
 
-  # RNA_prototypes.h
+  # RNA_prototypes.hh
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
@@ -47,7 +47,6 @@ set(SRC
   intern/CCGSubSurf.cc
   intern/CCGSubSurf_legacy.cc
   intern/CCGSubSurf_util.cc
-  intern/DerivedMesh.cc
   intern/action.cc
   intern/action_bones.cc
   intern/action_mirror.cc
@@ -56,7 +55,6 @@ set(SRC
   intern/anim_path.cc
   intern/anim_sys.cc
   intern/anim_visualization.cc
-  intern/animation.cc
   intern/anonymous_attribute_id.cc
   intern/appdir.cc
   intern/armature.cc
@@ -66,6 +64,7 @@ set(SRC
   intern/armature_update.cc
   intern/asset.cc
   intern/asset_weak_reference.cc
+  intern/asset_edit.cc
   intern/attribute.cc
   intern/attribute_access.cc
   intern/attribute_math.cc
@@ -90,7 +89,6 @@ set(SRC
   intern/cachefile.cc
   intern/callbacks.cc
   intern/camera.cc
-  intern/cdderivedmesh.cc
   intern/cloth.cc
   intern/collection.cc
   intern/collision.cc
@@ -202,12 +200,14 @@ set(SRC
   intern/mesh_calc_edges.cc
   intern/mesh_compare.cc
   intern/mesh_convert.cc
+  intern/mesh_data_update.cc
   intern/mesh_debug.cc
   intern/mesh_evaluate.cc
   intern/mesh_fair.cc
   intern/mesh_flip_faces.cc
   intern/mesh_iterators.cc
   intern/mesh_legacy_convert.cc
+  intern/mesh_legacy_derived_mesh.cc
   intern/mesh_mapping.cc
   intern/mesh_merge_customdata.cc
   intern/mesh_mirror.cc
@@ -254,14 +254,12 @@ set(SRC
   intern/packedFile.cc
   intern/paint.cc
   intern/paint_canvas.cc
-  intern/paint_toolslots.cc
   intern/particle.cc
   intern/particle_child.cc
   intern/particle_distribute.cc
   intern/particle_system.cc
   intern/pbvh.cc
   intern/pbvh_bmesh.cc
-  intern/pbvh_colors.cc
   intern/pbvh_pixels.cc
   intern/pbvh_pixels_copy.cc
   intern/pbvh_uv_islands.cc
@@ -322,19 +320,18 @@ set(SRC
   intern/world.cc
   intern/writemovie.cc
 
-  BKE_DerivedMesh.hh
   BKE_action.h
   BKE_action.hh
   BKE_addon.h
   BKE_anim_data.hh
   BKE_anim_path.h
   BKE_anim_visualization.h
-  BKE_animation.hh
   BKE_animsys.h
   BKE_anonymous_attribute_id.hh
   BKE_appdir.hh
   BKE_armature.hh
   BKE_asset.hh
+  BKE_asset_edit.hh
   BKE_attribute.h
   BKE_attribute.hh
   BKE_attribute_math.hh
@@ -360,8 +357,7 @@ set(SRC
   BKE_cachefile.hh
   BKE_callbacks.hh
   BKE_camera.h
-  BKE_ccg.h
-  BKE_cdderivedmesh.h
+  BKE_ccg.hh
   BKE_cloth.hh
   BKE_collection.hh
   BKE_collision.h
@@ -449,6 +445,7 @@ set(SRC
   BKE_mesh_fair.hh
   BKE_mesh_iterators.hh
   BKE_mesh_legacy_convert.hh
+  BKE_mesh_legacy_derived_mesh.hh
   BKE_mesh_mapping.hh
   BKE_mesh_mirror.hh
   BKE_mesh_remap.hh
@@ -821,6 +818,10 @@ if(WITH_TBB)
   )
 endif()
 
+if(WITH_EXPERIMENTAL_FEATURES)
+  add_definitions(-DWITH_ANIM_BAKLAVA)
+endif()
+
 # # Warnings as errors, this is too strict!
 # if(MSVC)
 #    string(APPEND CMAKE_C_FLAGS " /WX")
@@ -828,7 +829,7 @@ endif()
 
 blender_add_lib(bf_blenkernel "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
-# RNA_prototypes.h
+# RNA_prototypes.hh
 add_dependencies(bf_blenkernel bf_rna)
 
 
@@ -850,6 +851,7 @@ if(WITH_GTESTS)
     intern/layer_test.cc
     intern/lib_id_remapper_test.cc
     intern/lib_id_test.cc
+    intern/lib_query_test.cc
     intern/lib_remap_test.cc
     intern/main_test.cc
     intern/nla_test.cc
@@ -861,7 +863,7 @@ if(WITH_GTESTS)
   )
   set(TEST_LIB
     ${LIB}
-    bf_rna  # RNA_prototypes.h
+    bf_rna  # RNA_prototypes.hh
   )
   blender_add_test_suite_lib(blenkernel "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${TEST_LIB}")
 endif()

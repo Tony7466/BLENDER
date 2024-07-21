@@ -24,9 +24,8 @@ struct InputSample {
   float pressure;
 };
 
-class GreasePencilStrokeOperation {
+class GreasePencilStrokeOperation : public PaintModeData {
  public:
-  virtual ~GreasePencilStrokeOperation() = default;
   virtual void on_stroke_begin(const bContext &C, const InputSample &start_sample) = 0;
   virtual void on_stroke_extended(const bContext &C, const InputSample &extension_sample) = 0;
   virtual void on_stroke_done(const bContext &C) = 0;
@@ -71,19 +70,19 @@ struct GreasePencilStrokeParams {
   int layer_index;
   int frame_number;
   float multi_frame_falloff;
-  ed::greasepencil::DrawingPlacement placement;
+  const ed::greasepencil::DrawingPlacement &placement;
   bke::greasepencil::Drawing &drawing;
 
-  /* Note: accessing region in worker threads will return null,
+  /* NOTE: accessing region in worker threads will return null,
    * this has to be done on the main thread and passed explicitly. */
   static GreasePencilStrokeParams from_context(const Scene &scene,
-                                               const Depsgraph &depsgraph,
-                                               const ARegion &region,
-                                               const View3D &view3d,
+                                               Depsgraph &depsgraph,
+                                               ARegion &region,
                                                Object &object,
                                                int layer_index,
                                                int frame_number,
                                                float multi_frame_falloff,
+                                               const ed::greasepencil::DrawingPlacement &placement,
                                                bke::greasepencil::Drawing &drawing);
 };
 
@@ -105,7 +104,9 @@ class GreasePencilStrokeOperationCommon : public GreasePencilStrokeOperation {
 
   BrushStrokeMode stroke_mode;
 
-  /* Previous mouse position for computing the direction. */
+  /** Initial mouse sample position, used for placement origin. */
+  float2 start_mouse_position;
+  /** Previous mouse position for computing the direction. */
   float2 prev_mouse_position;
 
   GreasePencilStrokeOperationCommon(const BrushStrokeMode stroke_mode) : stroke_mode(stroke_mode)

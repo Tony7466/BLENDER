@@ -9,8 +9,8 @@ set(INC
   ../intern
   ../../editors/include
   ../../blenkernel
-  ../../blentranslation
   ../../blenloader
+  ../../blentranslation
   ../../bmesh
   ../../functions
   ../../geometry
@@ -20,7 +20,10 @@ set(INC
   ../../modifiers
   ../../render
   ../../windowmanager
-  # RNA_prototypes.h
+  ../../io/common
+  ../../io/stl
+  ../../io/wavefront_obj
+  # RNA_prototypes.hh
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
@@ -81,10 +84,15 @@ set(SRC
   nodes/node_geo_flip_faces.cc
   nodes/node_geo_geometry_to_instance.cc
   nodes/node_geo_get_named_grid.cc
+  nodes/node_geo_gizmo_dial.cc
+  nodes/node_geo_gizmo_linear.cc
+  nodes/node_geo_gizmo_transform.cc
   nodes/node_geo_grid_to_mesh.cc
   nodes/node_geo_image.cc
   nodes/node_geo_image_info.cc
   nodes/node_geo_image_texture.cc
+  nodes/node_geo_import_obj.cc
+  nodes/node_geo_import_stl.cc
   nodes/node_geo_index_of_nearest.cc
   nodes/node_geo_index_switch.cc
   nodes/node_geo_input_active_camera.cc
@@ -96,6 +104,7 @@ set(SRC
   nodes/node_geo_input_index.cc
   nodes/node_geo_input_instance_rotation.cc
   nodes/node_geo_input_instance_scale.cc
+  nodes/node_geo_input_instance_transform.cc
   nodes/node_geo_input_material.cc
   nodes/node_geo_input_material_index.cc
   nodes/node_geo_input_mesh_edge_angle.cc
@@ -149,6 +158,7 @@ set(SRC
   nodes/node_geo_mesh_topology_face_of_corner.cc
   nodes/node_geo_mesh_topology_offset_corner_in_face.cc
   nodes/node_geo_mesh_topology_vertex_of_corner.cc
+  nodes/node_geo_mouse_position.cc
   nodes/node_geo_object_info.cc
   nodes/node_geo_offset_point_in_curve.cc
   nodes/node_geo_points.cc
@@ -163,6 +173,7 @@ set(SRC
   nodes/node_geo_repeat.cc
   nodes/node_geo_rotate_instances.cc
   nodes/node_geo_sample_grid.cc
+  nodes/node_geo_sample_grid_index.cc
   nodes/node_geo_sample_index.cc
   nodes/node_geo_sample_nearest.cc
   nodes/node_geo_sample_nearest_surface.cc
@@ -177,7 +188,9 @@ set(SRC
   nodes/node_geo_set_curve_normal.cc
   nodes/node_geo_set_curve_radius.cc
   nodes/node_geo_set_curve_tilt.cc
+  nodes/node_geo_set_geometry_name.cc
   nodes/node_geo_set_id.cc
+  nodes/node_geo_set_instance_transform.cc
   nodes/node_geo_set_material.cc
   nodes/node_geo_set_material_index.cc
   nodes/node_geo_set_point_radius.cc
@@ -195,6 +208,7 @@ set(SRC
   nodes/node_geo_subdivision_surface.cc
   nodes/node_geo_switch.cc
   nodes/node_geo_tool_3d_cursor.cc
+  nodes/node_geo_tool_active_element.cc
   nodes/node_geo_tool_face_set.cc
   nodes/node_geo_tool_selection.cc
   nodes/node_geo_tool_set_face_set.cc
@@ -205,11 +219,13 @@ set(SRC
   nodes/node_geo_uv_pack_islands.cc
   nodes/node_geo_uv_unwrap.cc
   nodes/node_geo_viewer.cc
+  nodes/node_geo_viewport_transform.cc
   nodes/node_geo_volume_cube.cc
   nodes/node_geo_volume_to_mesh.cc
 
   include/NOD_geo_bake.hh
   include/NOD_geo_index_switch.hh
+  include/NOD_geo_menu_switch.hh
   include/NOD_geo_repeat.hh
   include/NOD_geo_simulation.hh
 
@@ -231,6 +247,22 @@ set(LIB
   PRIVATE bf::intern::atomic
   PRIVATE bf::extern::fmtlib
 )
+
+if(WITH_IO_STL)
+  list(APPEND LIB
+    PRIVATE bf_io_common
+    PRIVATE bf_io_stl
+  )
+  add_definitions(-DWITH_IO_STL)
+endif()
+
+if(WITH_IO_WAVEFRONT_OBJ)
+  list(APPEND LIB
+    PRIVATE bf_io_common
+    PRIVATE bf_io_wavefront_obj
+  )
+  add_definitions(-DWITH_IO_WAVEFRONT_OBJ)
+endif()
 
 if(WITH_BULLET)
   list(APPEND INC_SYS
@@ -308,5 +340,5 @@ target_link_libraries(bf_nodes_geometry_generated bf_nodes_geometry)
 
 blender_set_target_unity_build(bf_nodes_geometry 10)
 
-# RNA_prototypes.h
+# RNA_prototypes.hh
 add_dependencies(bf_nodes_geometry bf_rna)

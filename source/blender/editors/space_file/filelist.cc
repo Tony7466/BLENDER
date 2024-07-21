@@ -567,6 +567,60 @@ static int compare_extension(void *user_data, const void *a1, const void *a2)
   return compare_apply_inverted(compare_tiebreaker(entry1, entry2), sort_data);
 }
 
+static int compare_asset_catalog(void *user_data, const void *a1, const void *a2)
+{
+  const FileListInternEntry *entry1 = static_cast<const FileListInternEntry *>(a1);
+  const FileListInternEntry *entry2 = static_cast<const FileListInternEntry *>(a2);
+  const FileSortData *sort_data = static_cast<const FileSortData *>(user_data);
+
+  /* Order non-assets. */
+  if (entry1->asset && !entry2->asset) {
+    return 1;
+  }
+  else if (!entry1->asset && entry2->asset) {
+    return -1;
+  }
+  else if (!entry1->asset && !entry2->asset) {
+    if (int order = compare_direntry_generic(entry1, entry2); order) {
+      return compare_apply_inverted(order, sort_data);
+    }
+
+    return compare_apply_inverted(compare_tiebreaker(entry1, entry2), sort_data);
+  }
+
+  const asset_system::AssetLibrary &asset_library1 = entry1->asset->owner_asset_library();
+  const asset_system::AssetLibrary &asset_library2 = entry2->asset->owner_asset_library();
+
+  const asset_system::AssetCatalog *catalog1 = asset_library1.catalog_service().find_catalog(
+      entry1->asset->get_metadata().catalog_id);
+  const asset_system::AssetCatalog *catalog2 = asset_library2.catalog_service().find_catalog(
+      entry2->asset->get_metadata().catalog_id);
+
+  /* Order by catalog. Always keep assets without catalog last. */
+  int order = 0;
+
+  if (catalog1 && !catalog2) {
+    order = 1;
+  }
+  else if (!catalog1 && catalog2) {
+    order = -1;
+  }
+  else if (catalog1 && catalog2) {
+    order = BLI_strcasecmp_natural(catalog1->path.name().c_str(), catalog2->path.name().c_str());
+  }
+
+  if (!order) {
+    /* Order by name. */
+    order = compare_tiebreaker(entry1, entry2);
+    if (!order) {
+      /* Order by library name. */
+      order = BLI_strcasecmp_natural(asset_library1.name().c_str(), asset_library2.name().c_str());
+    }
+  }
+
+  return compare_apply_inverted(order, sort_data);
+}
+
 void filelist_sort(FileList *filelist)
 {
   if (filelist->flags & FL_NEED_SORTING) {
@@ -584,6 +638,9 @@ void filelist_sort(FileList *filelist)
         break;
       case FILE_SORT_EXTENSION:
         sort_cb = compare_extension;
+        break;
+      case FILE_SORT_ASSET_CATALOG:
+        sort_cb = compare_asset_catalog;
         break;
       case FILE_SORT_DEFAULT:
       default:
@@ -1036,7 +1093,7 @@ void filelist_setlibrary(FileList *filelist, const AssetLibraryReference *asset_
   }
 
   if (!filelist->asset_library_ref) {
-    filelist->asset_library_ref = MEM_new<AssetLibraryReference>("filelist asset library");
+    filelist->asset_library_ref = MEM_cnew<AssetLibraryReference>("filelist asset library");
     *filelist->asset_library_ref = *asset_library_ref;
 
     filelist->flags |= FL_FORCE_RESET;
@@ -1049,43 +1106,31 @@ void filelist_setlibrary(FileList *filelist, const AssetLibraryReference *asset_
 
 /* ********** Icon/image helpers ********** */
 
+static ImBuf *fileimage_from_icon(int icon_id)
+{
+  int width;
+  int height;
+  blender::Array<uchar> bitmap = BLF_svg_icon_bitmap(icon_id, 256.0f, &width, &height);
+  if (bitmap.is_empty()) {
+    return nullptr;
+  }
+  ImBuf *ibuf = IMB_allocFromBuffer(bitmap.data(), nullptr, width, height, 4);
+  IMB_flipy(ibuf);
+  return ibuf;
+}
+
 void filelist_init_icons()
 {
-  short x, y, k;
-  ImBuf *bbuf;
-  ImBuf *ibuf;
-
   BLI_assert(G.background == false);
-
-#ifdef WITH_HEADLESS
-  bbuf = nullptr;
-#else
-  bbuf = IMB_ibImageFromMemory((const uchar *)datatoc_prvicons_png,
-                               datatoc_prvicons_png_size,
-                               IB_rect,
-                               nullptr,
-                               "<splash>");
+#ifndef WITH_HEADLESS
+  gSpecialFileImages[SPECIAL_IMG_DOCUMENT] = fileimage_from_icon(ICON_FILE_LARGE);
+  gSpecialFileImages[SPECIAL_IMG_DRIVE_DISC] = fileimage_from_icon(ICON_DISC_LARGE);
+  gSpecialFileImages[SPECIAL_IMG_FOLDER] = fileimage_from_icon(ICON_FILE_FOLDER_LARGE);
+  gSpecialFileImages[SPECIAL_IMG_PARENT] = fileimage_from_icon(ICON_FILE_PARENT_LARGE);
+  gSpecialFileImages[SPECIAL_IMG_DRIVE_FIXED] = fileimage_from_icon(ICON_DISK_DRIVE_LARGE);
+  gSpecialFileImages[SPECIAL_IMG_DRIVE_ATTACHED] = fileimage_from_icon(ICON_EXTERNAL_DRIVE_LARGE);
+  gSpecialFileImages[SPECIAL_IMG_DRIVE_REMOTE] = fileimage_from_icon(ICON_NETWORK_DRIVE_LARGE);
 #endif
-  if (bbuf) {
-    for (y = 0; y < SPECIAL_IMG_ROWS; y++) {
-      for (x = 0; x < SPECIAL_IMG_COLS; x++) {
-        int tile = SPECIAL_IMG_COLS * y + x;
-        if (tile < SPECIAL_IMG_MAX) {
-          ibuf = IMB_allocImBuf(SPECIAL_IMG_SIZE, SPECIAL_IMG_SIZE, 32, IB_rect);
-          for (k = 0; k < SPECIAL_IMG_SIZE; k++) {
-            memcpy(
-                &ibuf->byte_buffer.data[4 * (k * SPECIAL_IMG_SIZE)],
-                &bbuf->byte_buffer
-                     .data[4 * ((k + y * SPECIAL_IMG_SIZE) * SPECIAL_IMG_SIZE * SPECIAL_IMG_COLS +
-                                x * SPECIAL_IMG_SIZE)],
-                SPECIAL_IMG_SIZE * sizeof(uint8_t) * 4);
-          }
-          gSpecialFileImages[tile] = ibuf;
-        }
-      }
-    }
-    IMB_freeImBuf(bbuf);
-  }
 }
 
 void filelist_free_icons()
@@ -1399,7 +1444,9 @@ static void filelist_direntryarr_free(FileDirEntryArr *array)
 
 static void filelist_intern_entry_free(FileList *filelist, FileListInternEntry *entry)
 {
-  if (entry->asset) {
+  /* Asset system storage might be cleared already on file exit. Asset library
+   * pointers are dangling then, so don't access (#120466). */
+  if (AS_asset_libraries_available() && entry->asset) {
     BLI_assert(filelist->asset_library);
     filelist->asset_library->remove_asset(*entry->asset);
   }
@@ -1614,7 +1661,7 @@ static void filelist_cache_previews_push(FileList *filelist, FileDirEntry *entry
   filelist_cache_preview_ensure_running(cache);
   entry->flags |= FILE_ENTRY_PREVIEW_LOADING;
 
-  FileListEntryPreview *preview = MEM_new<FileListEntryPreview>(__func__);
+  FileListEntryPreview *preview = MEM_cnew<FileListEntryPreview>(__func__);
   preview->index = index;
   preview->flags = entry->typeflag;
   preview->icon_id = 0;
@@ -1638,7 +1685,7 @@ static void filelist_cache_previews_push(FileList *filelist, FileDirEntry *entry
     }
     // printf("%s: %d - %s\n", __func__, preview->index, preview->filepath);
 
-    FileListEntryPreviewTaskData *preview_taskdata = MEM_new<FileListEntryPreviewTaskData>(
+    FileListEntryPreviewTaskData *preview_taskdata = MEM_cnew<FileListEntryPreviewTaskData>(
         __func__);
     preview_taskdata->preview = preview;
     BLI_task_pool_push(cache->previews_pool,
@@ -3163,8 +3210,9 @@ static void filelist_readjob_list_lib_add_datablock(FileListReadJob *job_params,
       if (job_params->load_asset_library) {
         /* Take ownership over the asset data (shallow copies into unique_ptr managed memory) to
          * pass it on to the asset system. */
-        std::unique_ptr metadata = std::make_unique<AssetMetaData>(*datablock_info->asset_data);
-        MEM_freeN(datablock_info->asset_data);
+        std::unique_ptr metadata = std::make_unique<AssetMetaData>(
+            std::move(*datablock_info->asset_data));
+        MEM_delete(datablock_info->asset_data);
         /* Give back a non-owning pointer, because the data-block info is still needed (e.g. to
          * update the asset index). */
         datablock_info->asset_data = metadata.get();
@@ -4128,6 +4176,21 @@ static void filelist_readjob_free(void *flrjv)
   MEM_freeN(flrj);
 }
 
+static eWM_JobType filelist_jobtype_get(const FileList *filelist)
+{
+  if (filelist->asset_library_ref) {
+    return WM_JOB_TYPE_ASSET_LIBRARY_LOAD;
+  }
+  return WM_JOB_TYPE_FILESEL_READDIR;
+}
+
+/* TODO(Julian): This is temporary, because currently the job system identifies jobs to suspend by
+ * the startjob callback, rather than the type. See PR #123033. */
+static void assetlibrary_readjob_startjob(void *flrjv, wmJobWorkerStatus *worker_status)
+{
+  filelist_readjob_startjob(flrjv, worker_status);
+}
+
 void filelist_readjob_start(FileList *filelist, const int space_notifier, const bContext *C)
 {
   Main *bmain = CTX_data_main(C);
@@ -4176,11 +4239,12 @@ void filelist_readjob_start(FileList *filelist, const int space_notifier, const 
                        filelist,
                        "Listing Dirs...",
                        WM_JOB_PROGRESS,
-                       WM_JOB_TYPE_FILESEL_READDIR);
+                       filelist_jobtype_get(filelist));
   WM_jobs_customdata_set(wm_job, flrj, filelist_readjob_free);
   WM_jobs_timer(wm_job, 0.01, space_notifier, space_notifier | NA_JOB_FINISHED);
   WM_jobs_callbacks(wm_job,
-                    filelist_readjob_startjob,
+                    filelist->asset_library_ref ? assetlibrary_readjob_startjob :
+                                                  filelist_readjob_startjob,
                     nullptr,
                     filelist_readjob_update,
                     filelist_readjob_endjob);
@@ -4191,10 +4255,10 @@ void filelist_readjob_start(FileList *filelist, const int space_notifier, const 
 
 void filelist_readjob_stop(FileList *filelist, wmWindowManager *wm)
 {
-  WM_jobs_kill_type(wm, filelist, WM_JOB_TYPE_FILESEL_READDIR);
+  WM_jobs_kill_type(wm, filelist, filelist_jobtype_get(filelist));
 }
 
 int filelist_readjob_running(FileList *filelist, wmWindowManager *wm)
 {
-  return WM_jobs_test(wm, filelist, WM_JOB_TYPE_FILESEL_READDIR);
+  return WM_jobs_test(wm, filelist, filelist_jobtype_get(filelist));
 }

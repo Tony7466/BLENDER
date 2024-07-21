@@ -2091,6 +2091,11 @@ template<typename T> int findMSB(T x)
   return int(sizeof(T) * 8) - 1 - int(clz(x));
 }
 
+#define unpackUnorm4x8 unpack_unorm4x8_to_float
+#define unpackSnorm4x8 unpack_snorm4x8_to_float
+#define unpackUnorm2x16 unpack_unorm2x16_to_float
+#define unpackSnorm2x16 unpack_snorm2x16_to_float
+
 /* Texture size functions. Add texture types as needed. */
 #define imageSize(image) textureSize(image, 0)
 
@@ -2461,6 +2466,25 @@ mat4 MAT4x4(mat3 m)
 mat4 MAT4x4(mat3x4 m)
 {
   return mat4(m[0], m[1], m[2], vec4(0.0, 0.0, 0.0, 1.0));
+}
+mat4 MAT4x4(mat4x3 m)
+{
+  return mat4(m[0][0],
+              m[0][1],
+              m[0][2],
+              0.0,
+              m[1][0],
+              m[1][1],
+              m[1][2],
+              0.0,
+              m[2][0],
+              m[2][1],
+              m[2][2],
+              0.0,
+              m[3][0],
+              m[3][1],
+              m[3][2],
+              0.0);
 }
 mat4 MAT4x4(mat2 m)
 {

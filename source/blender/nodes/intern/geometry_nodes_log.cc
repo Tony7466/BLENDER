@@ -7,10 +7,14 @@
 
 #include "BKE_compute_contexts.hh"
 #include "BKE_curves.hh"
-#include "BKE_node_enum.hh"
+#include "BKE_geometry_nodes_gizmos_transforms.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_socket_value.hh"
+#include "BKE_type_conversions.hh"
+#include "BKE_volume.hh"
+#include "BKE_volume_openvdb.hh"
 
+#include "DNA_grease_pencil_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_space_types.h"
 
@@ -60,6 +64,8 @@ FieldInfoLog::FieldInfoLog(const GField &field) : type(field.cpp_type())
 
 GeometryInfoLog::GeometryInfoLog(const bke::GeometrySet &geometry_set)
 {
+  this->name = geometry_set.name;
+
   static std::array all_component_types = {bke::GeometryComponent::Type::Curve,
                                            bke::GeometryComponent::Type::Instance,
                                            bke::GeometryComponent::Type::Mesh,
@@ -117,26 +123,73 @@ GeometryInfoLog::GeometryInfoLog(const bke::GeometrySet &geometry_set)
       case bke::GeometryComponent::Type::Edit: {
         const auto &edit_component = *static_cast<const bke::GeometryComponentEditData *>(
             component);
+        if (!this->edit_data_info) {
+          this->edit_data_info.emplace(EditDataInfo());
+        }
+        EditDataInfo &info = *this->edit_data_info;
         if (const bke::CurvesEditHints *curve_edit_hints = edit_component.curves_edit_hints_.get())
         {
-          EditDataInfo &info = this->edit_data_info.emplace();
           info.has_deform_matrices = curve_edit_hints->deform_mats.has_value();
           info.has_deformed_positions = curve_edit_hints->positions().has_value();
+        }
+        if (const bke::GizmoEditHints *gizmo_edit_hints = edit_component.gizmo_edit_hints_.get()) {
+          info.gizmo_transforms_num = gizmo_edit_hints->gizmo_transforms.size();
         }
         break;
       }
       case bke::GeometryComponent::Type::Volume: {
+        const auto &volume_component = *static_cast<const bke::VolumeComponent *>(component);
+        if (const Volume *volume = volume_component.get()) {
+          VolumeInfo &info = this->volume_info.emplace();
+          info.grids_num = BKE_volume_num_grids(volume);
+        }
         break;
       }
       case bke::GeometryComponent::Type::GreasePencil: {
         const auto &grease_pencil_component = *static_cast<const bke::GreasePencilComponent *>(
             component);
-        GreasePencilInfo &info = this->grease_pencil_info.emplace();
-        info.layers_num = grease_pencil_component.attribute_domain_size(bke::AttrDomain::Layer);
+        if (const GreasePencil *grease_pencil = grease_pencil_component.get()) {
+          GreasePencilInfo &info = this->grease_pencil_info.emplace(GreasePencilInfo());
+          info.layers_num = grease_pencil->layers().size();
+        }
         break;
       }
     }
   }
+}
+
+#ifdef WITH_OPENVDB
+struct GridIsEmptyOp {
+  const openvdb::GridBase &base_grid;
+  bool result = false;
+
+  template<typename GridType> bool operator()()
+  {
+    result = static_cast<const GridType &>(base_grid).empty();
+    return true;
+  }
+};
+#endif /* WITH_OPENVDB */
+
+GeometryInfoLog::GeometryInfoLog(const bke::GVolumeGrid &grid)
+{
+  GridInfo &info = this->grid_info.emplace();
+#ifdef WITH_OPENVDB
+  bke::VolumeTreeAccessToken token;
+  const openvdb::GridBase &vdb_grid = grid->grid(token);
+  const VolumeGridType grid_type = bke::volume_grid::get_type(vdb_grid);
+
+  GridIsEmptyOp is_empty_op{vdb_grid};
+  if (BKE_volume_grid_type_operation(grid_type, is_empty_op)) {
+    info.is_empty = is_empty_op.result;
+  }
+  else {
+    info.is_empty = true;
+  }
+#else
+  UNUSED_VARS(grid);
+  info.is_empty = true;
+#endif
 }
 
 /* Avoid generating these in every translation unit. */
@@ -178,16 +231,6 @@ void GeoTreeLogger::log_value(const bNode &node, const bNodeSocket &socket, cons
     store_logged_value(this->allocator->construct<GenericValueLog>(GMutablePointer{type, buffer}));
   };
 
-  auto log_menu_value = [&](Span<bke::RuntimeNodeEnumItem> enum_items, const int identifier) {
-    for (const bke::RuntimeNodeEnumItem &item : enum_items) {
-      if (item.identifier == identifier) {
-        log_generic_value(CPPType::get<std::string>(), &item.name);
-        return;
-      }
-    }
-    log_generic_value(CPPType::get<int>(), &identifier);
-  };
-
   if (type.is<bke::GeometrySet>()) {
     const bke::GeometrySet &geometry = *value.get<bke::GeometrySet>();
     store_logged_value(this->allocator->construct<GeometryInfoLog>(geometry));
@@ -198,23 +241,16 @@ void GeoTreeLogger::log_value(const bNode &node, const bNodeSocket &socket, cons
       const GField field = value_variant.extract<GField>();
       store_logged_value(this->allocator->construct<FieldInfoLog>(field));
     }
+#ifdef WITH_OPENVDB
+    else if (value_variant.is_volume_grid()) {
+      const bke::GVolumeGrid grid = value_variant.extract<bke::GVolumeGrid>();
+      store_logged_value(this->allocator->construct<GeometryInfoLog>(grid));
+    }
+#endif
     else {
       value_variant.convert_to_single();
       const GPointer value = value_variant.get_single_ptr();
-      if (socket.type == SOCK_MENU) {
-        const bNodeSocketValueMenu &default_value =
-            *socket.default_value_typed<bNodeSocketValueMenu>();
-        if (default_value.enum_items) {
-          const int identifier = *value.get<int>();
-          log_menu_value(default_value.enum_items->items, identifier);
-        }
-        else {
-          log_generic_value(*value.type(), value.get());
-        }
-      }
-      else {
-        log_generic_value(*value.type(), value.get());
-      }
+      log_generic_value(*value.type(), value.get());
     }
   }
   else {
@@ -247,9 +283,9 @@ void GeoTreeLog::ensure_node_warnings()
       continue;
     }
     child_log.ensure_node_warnings();
-    const std::optional<int32_t> &group_node_id = child_log.tree_loggers_[0]->group_node_id;
-    if (group_node_id.has_value()) {
-      this->nodes.lookup_or_add_default(*group_node_id).warnings.extend(child_log.all_warnings);
+    const std::optional<int32_t> &parent_node_id = child_log.tree_loggers_[0]->parent_node_id;
+    if (parent_node_id.has_value()) {
+      this->nodes.lookup_or_add_default(*parent_node_id).warnings.extend(child_log.all_warnings);
     }
     this->all_warnings.extend(child_log.all_warnings);
   }
@@ -274,9 +310,9 @@ void GeoTreeLog::ensure_node_run_time()
       continue;
     }
     child_log.ensure_node_run_time();
-    const std::optional<int32_t> &group_node_id = child_log.tree_loggers_[0]->group_node_id;
-    if (group_node_id.has_value()) {
-      this->nodes.lookup_or_add_default(*group_node_id).run_time += child_log.run_time_sum;
+    const std::optional<int32_t> &parent_node_id = child_log.tree_loggers_[0]->parent_node_id;
+    if (parent_node_id.has_value()) {
+      this->nodes.lookup_or_add_default(*parent_node_id).run_time += child_log.run_time_sum;
     }
     this->run_time_sum += child_log.run_time_sum;
   }
@@ -367,9 +403,10 @@ void GeoTreeLog::ensure_used_named_attributes()
       continue;
     }
     child_log.ensure_used_named_attributes();
-    if (const std::optional<int32_t> &group_node_id = child_log.tree_loggers_[0]->group_node_id) {
+    if (const std::optional<int32_t> &parent_node_id = child_log.tree_loggers_[0]->parent_node_id)
+    {
       for (const auto item : child_log.used_named_attributes.items()) {
-        add_attribute(*group_node_id, item.key, item.value);
+        add_attribute(*parent_node_id, item.key, item.value);
       }
     }
   }
@@ -388,6 +425,20 @@ void GeoTreeLog::ensure_debug_messages()
     }
   }
   reduced_debug_messages_ = true;
+}
+
+void GeoTreeLog::ensure_evaluated_gizmo_nodes()
+{
+  if (reduced_evaluated_gizmo_nodes_) {
+    return;
+  }
+  for (const GeoTreeLogger *tree_logger : tree_loggers_) {
+    for (const GeoTreeLogger::EvaluatedGizmoNode &evaluated_gizmo :
+         tree_logger->evaluated_gizmo_nodes)
+    {
+      this->evaluated_gizmo_nodes.add(evaluated_gizmo.node_id);
+    }
+  }
 }
 
 ValueLog *GeoTreeLog::find_socket_value_log(const bNodeSocket &query_socket)
@@ -464,6 +515,24 @@ ValueLog *GeoTreeLog::find_socket_value_log(const bNodeSocket &query_socket)
   return nullptr;
 }
 
+bool GeoTreeLog::try_convert_primitive_socket_value(const GenericValueLog &value_log,
+                                                    const CPPType &dst_type,
+                                                    void *dst)
+{
+  const void *src_value = value_log.value.get();
+  if (!src_value) {
+    return false;
+  }
+  const bke::DataTypeConversions &conversions = bke::get_implicit_type_conversions();
+  const CPPType &src_type = *value_log.value.type();
+  if (!conversions.is_convertible(src_type, dst_type) && src_type != dst_type) {
+    return false;
+  }
+  dst_type.destruct(dst);
+  conversions.convert_to_uninitialized(src_type, dst_type, src_value, dst);
+  return true;
+}
+
 GeoTreeLogger &GeoModifierLog::get_local_tree_logger(const ComputeContext &compute_context)
 {
   LocalData &local_data = data_per_thread_.local();
@@ -486,7 +555,17 @@ GeoTreeLogger &GeoModifierLog::get_local_tree_logger(const ComputeContext &compu
   if (const bke::GroupNodeComputeContext *node_group_compute_context =
           dynamic_cast<const bke::GroupNodeComputeContext *>(&compute_context))
   {
-    tree_logger.group_node_id.emplace(node_group_compute_context->node_id());
+    tree_logger.parent_node_id.emplace(node_group_compute_context->node_id());
+  }
+  else if (const bke::RepeatZoneComputeContext *node_group_compute_context =
+               dynamic_cast<const bke::RepeatZoneComputeContext *>(&compute_context))
+  {
+    tree_logger.parent_node_id.emplace(node_group_compute_context->output_node_id());
+  }
+  else if (const bke::SimulationZoneComputeContext *node_group_compute_context =
+               dynamic_cast<const bke::SimulationZoneComputeContext *>(&compute_context))
+  {
+    tree_logger.parent_node_id.emplace(node_group_compute_context->output_node_id());
   }
   return tree_logger;
 }

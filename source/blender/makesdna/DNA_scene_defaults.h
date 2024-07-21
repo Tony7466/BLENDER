@@ -184,6 +184,7 @@
     .gi_irradiance_smoothing = 0.1f, \
     .gi_filter_quality = 3.0f, \
     .gi_irradiance_pool_size = 16, \
+    .shadow_pool_size = 512, \
  \
     .taa_samples = 16, \
     .taa_render_samples = 64, \
@@ -213,6 +214,13 @@
     .gtao_focus = 0.05f, \
     .gtao_resolution = 2, \
  \
+    .fast_gi_step_count = 8, \
+    .fast_gi_ray_count = 2, \
+    .fast_gi_distance = 0.0f, \
+    .fast_gi_thickness_near = 0.25f, \
+    .fast_gi_thickness_far = DEG2RAD(45), \
+    .fast_gi_method = FAST_GI_FULL, \
+ \
     .bokeh_overblur = 5.0f, \
     .bokeh_max_size = 100.0f, \
     .bokeh_threshold = 1.0f, \
@@ -236,13 +244,12 @@
     .shadow_cascade_size = 1024, \
     .shadow_ray_count = 1, \
     .shadow_step_count = 6, \
-    .shadow_normal_bias = 0.02f, \
+    .shadow_resolution_scale = 1.0f, \
  \
     .ray_tracing_method = RAYTRACE_EEVEE_METHOD_SCREEN, \
  \
     .ray_tracing_options = _DNA_DEFAULT_RaytraceEEVEE, \
  \
-    .light_cache_data = NULL, \
     .light_threshold = 0.01f, \
  \
     .overscan = 3.0f, \
@@ -408,8 +415,7 @@
  \
     /* UV painting */ \
     .uv_sculpt_settings = 0, \
-    .uv_relax_method = UV_SCULPT_TOOL_RELAX_LAPLACIAN, \
-\
+ \
     /* Placement */ \
     .snap_mode_tools = SCE_SNAP_TO_GEOM,\
     .plane_axis = 2,\

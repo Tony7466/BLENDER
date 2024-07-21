@@ -67,7 +67,6 @@
 #endif
 
 #include "GHOST_C-api.h"
-#include "GHOST_Path-api.hh"
 
 #include "RNA_define.hh"
 
@@ -203,12 +202,9 @@ void WM_init(bContext *C, int argc, const char **argv)
     BKE_sound_jack_sync_callback_set(sound_jack_sync_callback);
   }
 
-  GHOST_CreateSystemPaths();
-
   BKE_addon_pref_type_init();
   BKE_keyconfig_pref_type_init();
 
-  wm_operatortype_init();
   wm_operatortypes_register();
 
   WM_paneltype_init(); /* Lookup table only. */
@@ -277,6 +273,7 @@ void WM_init(bContext *C, int argc, const char **argv)
   read_homefile_params.use_empty_data = false;
   read_homefile_params.filepath_startup_override = nullptr;
   read_homefile_params.app_template_override = WM_init_state_app_template_get();
+  read_homefile_params.is_first_time = true;
 
   wm_homefile_read_ex(C, &read_homefile_params, nullptr, &params_file_read_post);
 
@@ -674,8 +671,6 @@ void WM_exit_ex(bContext *C, const bool do_python_exit, const bool do_user_exit_
   if (C) {
     CTX_free(C);
   }
-
-  GHOST_DisposeSystemPaths();
 
   DNA_sdna_current_free();
 

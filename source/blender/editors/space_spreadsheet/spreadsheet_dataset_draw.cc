@@ -13,7 +13,7 @@
 #include "BKE_volume.hh"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "UI_interface.hh"
 #include "UI_tree_view.hh"
@@ -83,10 +83,6 @@ class GeometryDataSetTreeView : public ui::AbstractTreeView {
 
   void build_grease_pencil()
   {
-    if (!U.experimental.use_grease_pencil_version3) {
-      return;
-    }
-
     GeometryDataSetTreeViewItem &grease_pencil = this->add_tree_item<GeometryDataSetTreeViewItem>(
         bke::GeometryComponent::Type::GreasePencil,
         IFACE_("Grease Pencil"),
@@ -285,9 +281,9 @@ std::optional<int> GeometryDataSetTreeViewItem::count() const
   }
 
   if (component_type_ == bke::GeometryComponent::Type::GreasePencil && layer_index_) {
-    if (const bke::greasepencil::Drawing *drawing =
-            bke::greasepencil::get_eval_grease_pencil_layer_drawing(*geometry.get_grease_pencil(),
-                                                                    *layer_index_))
+    const GreasePencil *grease_pencil = geometry.get_grease_pencil();
+    if (const bke::greasepencil::Drawing *drawing = grease_pencil->get_eval_drawing(
+            *grease_pencil->layer(*layer_index_)))
     {
       return drawing->strokes().attributes().domain_size(*domain_);
     }
@@ -318,7 +314,7 @@ void spreadsheet_data_set_panel_draw(const bContext *C, Panel *panel)
       "Data Set Tree View",
       std::make_unique<GeometryDataSetTreeView>(
           spreadsheet_get_display_geometry_set(sspreadsheet, object), *C));
-
+  tree_view->set_context_menu_title("Spreadsheet");
   ui::TreeViewBuilder::build_tree_view(*tree_view, *layout);
 }
 
