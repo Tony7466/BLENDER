@@ -354,6 +354,7 @@ struct CurveBooleanExecutor {
     const int i1 = is_curve_A ? vertex1.point_a : vertex1.point_b;
 
     const int int_sorted = is_curve_A ? vertex0.sorted_id_a : vertex0.sorted_id_b;
+    const int curve_len = is_curve_A ? len_a : len_b;
 
     if (i0 == i1) {
       const float a0 = is_curve_A ? vertex0.alpha_a : vertex0.alpha_b;
@@ -365,78 +366,46 @@ struct CurveBooleanExecutor {
       if (direction == EXIT && a0 > a1) {
         return;
       }
+
+      if (direction == EXIT && a0 < a1) {
+        for (int i = i0 + curve_len; i > i1; i--) {
+          newVertexID(i % curve_len, is_curve_A);
+        }
+        return;
+      }
+      if (direction == ENTRY && a0 > a1) {
+        for (int i = i0 + 1; i <= i1 + curve_len; i++) {
+          newVertexID(i % curve_len, is_curve_A);
+        }
+        return;
+      }
     }
 
-    int offset = 0;
-    if (direction == EXIT) {
-      offset = 1;
+    if (i0 < i1 && direction == ENTRY) {
+      for (int i = i0 + 1; i <= i1; i++) {
+        newVertexID(i, is_curve_A);
+      }
+      return;
     }
-    int current_id = i0;
-
-    bool is_cycle = false;
-    int cycle_start = -1;
-
-    const int curve_len = is_curve_A ? len_a : len_b;
-
-    while (true) {
-      if (direction == ENTRY) {
-        offset++;
+    if (i0 > i1 && direction == ENTRY) {
+      for (int i = i0 + 1; i <= i1 + curve_len; i++) {
+        newVertexID(i % curve_len, is_curve_A);
       }
-      else {
-        offset--;
-      }
-
-      current_id = i0 + offset;
-
-      if (direction == ENTRY && int_sorted == num_intersects - 1) {
-        if (current_id >= curve_len) {
-          cycle_start = 0;
-          is_cycle = true;
-          break;
-        }
-      }
-
-      if (direction == EXIT && int_sorted == 0) {
-        if (current_id < 0) {
-          cycle_start = curve_len;
-          is_cycle = true;
-          break;
-        }
-      }
-
-      if (current_id == i1 + (direction == ENTRY ? 1 : 0)) {
-        if (i0 != i1) {
-          break;
-        }
-      }
-
-      newVertexID(current_id, is_curve_A);
+      return;
     }
 
-    if (is_cycle) {
-      offset = 0;
-
-      while (true) {
-        if (cycle_start + offset == i1 + 1) {
-          break;
-        }
-
-        if (direction == ENTRY) {
-          current_id = cycle_start + offset;
-        }
-        else {
-          current_id = cycle_start + offset - 1;
-        }
-
-        newVertexID(current_id, is_curve_A);
-
-        if (direction == ENTRY) {
-          offset++;
-        }
-        else {
-          offset--;
-        }
+    if (i0 > i1 && direction == EXIT) {
+      for (int i = i0; i > i1; i--) {
+        newVertexID(i, is_curve_A);
       }
+      return;
+    }
+
+    if (i0 < i1 && direction == EXIT) {
+      for (int i = i0 + curve_len; i > i1; i--) {
+        newVertexID(i % curve_len, is_curve_A);
+      }
+      return;
     }
   }
 
