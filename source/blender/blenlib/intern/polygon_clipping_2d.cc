@@ -212,6 +212,9 @@ BooleanResult non_intersecting_result(const InputMode input_mode,
       return result_None(curve_a, curve_b);
     }
     else if (input_mode.boolean_mode == B_NOT_A) {
+      if (input_mode.hole_mode == WITHOUT_HOLES) {
+        return result_B(curve_a, curve_b);
+      }
       return result_BA(curve_a, curve_b);
     }
     else if (input_mode.boolean_mode == A_OR_B) {
@@ -223,6 +226,9 @@ BooleanResult non_intersecting_result(const InputMode input_mode,
       return result_B(curve_a, curve_b);
     }
     else if (input_mode.boolean_mode == A_NOT_B) {
+      if (input_mode.hole_mode == WITHOUT_HOLES) {
+        return result_A(curve_a, curve_b);
+      }
       return result_AB(curve_a, curve_b);
     }
     else if (input_mode.boolean_mode == B_NOT_A) {
