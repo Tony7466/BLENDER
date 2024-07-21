@@ -68,6 +68,11 @@ void cryptomatte_store_samples(ivec2 texel, int layer, vec2 samples[CRYPTOMATTE_
 void main()
 {
   ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
+
+  if (any(greaterThanEqual(texel, uniform_buf.film.extent))) {
+    return;
+  }
+
   for (int layer = 0; layer < cryptomatte_layer_len; layer++) {
     vec2 samples[CRYPTOMATTE_LEVELS_MAX];
     cryptomatte_load_samples(texel, layer, samples);
