@@ -355,6 +355,8 @@ struct CurveBooleanExecutor {
 
     const int curve_len = is_curve_A ? len_a : len_b;
 
+    /* If both intersection points are on the same segment, there's ether no points between or all
+     * of the points. */
     if (i0 == i1) {
       const float a0 = is_curve_A ? vertex0.alpha_a : vertex0.alpha_b;
       const float a1 = is_curve_A ? vertex1.alpha_a : vertex1.alpha_b;
@@ -371,6 +373,7 @@ struct CurveBooleanExecutor {
     int start = i0;
     int end = i1;
 
+    /* Add one to not include the point past the segment. */
     if (direction == ENTRY) {
       start = i0 + 1;
     }
@@ -378,10 +381,10 @@ struct CurveBooleanExecutor {
       end = i1 + 1;
     }
 
+    /* When a full loop is need. */
     if (i0 >= i1 && direction == ENTRY) {
       end = i1 + curve_len;
     }
-
     if (i0 <= i1 && direction == EXIT) {
       start = i0 + curve_len;
     }
