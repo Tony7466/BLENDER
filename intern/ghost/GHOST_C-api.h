@@ -167,7 +167,7 @@ extern GHOST_TSuccess GHOST_GetAllDisplayDimensions(GHOST_SystemHandle systemhan
  * \param state: The state of the window when opened.
  * \param is_dialog: Stay on top of parent window, no icon in taskbar, can't be minimized.
  * \param display: The index of the display (monitor) the window should be on.
- * (display == -1 means active display).
+ * (currently macOS only) (display == -1 means active display).
  * \param gpuSettings: Misc GPU options.
  * \return A handle to the new window ( == nullptr if creation failed).
  */
