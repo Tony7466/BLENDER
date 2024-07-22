@@ -10,6 +10,7 @@ from bpy.types import (
 
 from rna_prop_ui import PropertyPanel
 
+from bl_ui.space_properties import PropertiesAnimationMixin
 from bl_ui.properties_physics_common import (
     point_cache_ui,
     effector_weights_ui,
@@ -81,6 +82,11 @@ class SCENE_PT_unit(SceneButtonsPanel, Panel):
         subcol.prop(unit, "temperature_unit", text="Temperature")
 
 
+class SCENE_PT_animation(SceneButtonsPanel, PropertiesAnimationMixin, Panel):
+    _animated_id_context_property = 'scene'
+    _animated_id_type = 'SCENE'
+
+
 class SceneKeyingSetsPanel:
 
     @staticmethod
@@ -135,6 +141,7 @@ class SceneKeyingSetsPanel:
 class SCENE_PT_keying_sets(SceneButtonsPanel, SceneKeyingSetsPanel, Panel):
     bl_label = "Keying Sets"
     bl_options = {'DEFAULT_CLOSED'}
+    bl_parent_id = "SCENE_PT_animation"
 
     def draw(self, context):
         layout = self.layout
@@ -451,6 +458,7 @@ classes = (
     SCENE_PT_unit,
     SCENE_PT_physics,
     SCENE_PT_simulation,
+    SCENE_PT_animation,
     SCENE_PT_keying_sets,
     SCENE_PT_keying_set_paths,
     SCENE_PT_keyframing_settings,

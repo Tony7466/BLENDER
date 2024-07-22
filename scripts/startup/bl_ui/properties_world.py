@@ -244,7 +244,7 @@ class WORLD_PT_viewport_display(WorldButtonsPanel, Panel):
 
 
 class WORLD_PT_animation(PropertiesAnimationMixin, Panel):
-    # FIXME: For some reason this panel doesn't show up.
+    bl_context = "world"
     _animated_id_context_property = 'world'
     _animated_id_type = 'WORLD'
 

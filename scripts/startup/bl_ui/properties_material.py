@@ -422,7 +422,7 @@ class MATERIAL_PT_lineart(MaterialButtonsPanel, Panel):
 
 
 class DATA_PT_material_animation(PropertiesAnimationMixin, Panel):
-    # FIXME: For some reason this doesn't show.
+    bl_context = "material"
     _animated_id_context_property = 'material'
 
 
