@@ -825,13 +825,13 @@ int *BKE_attributes_active_index_p(AttributeOwner &owner)
       return &(owner.get_mesh())->attributes_active_index;
     }
     case AttributeOwnerType::Curves: {
-      return &(owner.get_curves())->attributes_active_index;
+      return &owner.get_curves()->geometry.attributes_active_index;
     }
     case AttributeOwnerType::GreasePencil: {
       return &(owner.get_grease_pencil())->attributes_active_index;
     }
     case AttributeOwnerType::GreasePencilDrawing: {
-      return &(owner.get_grease_pencil_drawing())->attributes_active_index;
+      return &(owner.get_grease_pencil_drawing())->geometry.attributes_active_index;
     }
   }
   return nullptr;

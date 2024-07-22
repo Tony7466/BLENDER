@@ -106,11 +106,6 @@ typedef struct GreasePencilDrawing {
    */
   CurvesGeometry geometry;
   /**
-   * Active attribute in the UI.
-   */
-  int attributes_active_index;
-  char _pad[4];
-  /**
    * Runtime data on the drawing.
    */
   GreasePencilDrawingRuntimeHandle *runtime;
