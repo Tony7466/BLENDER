@@ -170,6 +170,8 @@ class LegacyAPIOnLayeredActionTest(unittest.TestCase):
             self.assertIn("F-Curve 'scale[2]' already exists in action 'LayeredAction'", str(ex))
         else:
             self.fail("expected RuntimeError not thrown")
+        self.assertEqual([fcurve1, fcurve2], channelbag.fcurves[:],
+                         "Expected two F-Curves after failing to create a third")
 
         # Remove a single F-Curve.
         self.action.fcurves.remove(fcurve1)
