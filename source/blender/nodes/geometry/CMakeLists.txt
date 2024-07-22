@@ -210,6 +210,7 @@ set(SRC
   nodes/node_geo_string_join.cc
   nodes/node_geo_string_to_curves.cc
   nodes/node_geo_subdivision_surface.cc
+  nodes/node_geo_sound_info.cc
   nodes/node_geo_switch.cc
   nodes/node_geo_tool_3d_cursor.cc
   nodes/node_geo_tool_active_element.cc

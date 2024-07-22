@@ -48,39 +48,33 @@ static void node_declare(NodeDeclarationBuilder &b)
     return;
   }
 
-  // TODO: complete all functionalities.
   // TODO: make descriptions more concise.
   b.add_input<decl::Sound>("Sound");
   b.add_input<decl::Float>("Time")
-      .min(0)
       .subtype(PropertySubType::PROP_TIME_ABSOLUTE)
+      .min(0)
       .supports_field()
       .description("Sample time of the sound");
   b.add_input<decl::Float>("Smoothness")
+      .subtype(PropertySubType::PROP_TIME_ABSOLUTE)
       .min(0)
       .max(1)
-      .subtype(PropertySubType::PROP_TIME_ABSOLUTE)
       .default_value(0.1)
       .description("Temporal smoothness");
-  // b.add_input<decl::Int>("Channel Index")
-  //     .min(1)
-  //     .max(7)
-  //     .default_value(1)
-  //     .supports_field()
-  //     .description("Selected channel of the sound");
+  b.add_input<decl::Int>("Channel").min(0).max(7).default_value(0).supports_field().description(
+      "Selected audio channel of the sound");
   b.add_input<decl::Float>("Low")
+      .subtype(PropertySubType::PROP_FREQUENCY)
       .min(0)
-      .max(1)
-      .subtype(PropertySubType::PROP_FACTOR)
       .supports_field()
-      .description("The lower bound of frequency (in percentage) to be sampled");
+      .description("The lower bound of frequency to be sampled");
   b.add_input<decl::Float>("High")
+      .subtype(PropertySubType::PROP_FREQUENCY)
       .min(0)
-      .max(1)
-      .subtype(PropertySubType::PROP_FACTOR)
+      .default_value(1000)
       .supports_field()
-      .description("The upper bound of frequency (in percentage) to be sampled");
-  b.add_output<decl::Float>("Amplitude").dependent_field({1, 3, 4}).description("Sample result");
+      .description("The upper bound of frequency to be sampled");
+  b.add_output<decl::Float>("Amplitude").dependent_field({1, 3, 4, 5});
 
 #ifdef WITH_FFTW3
   // Make FFTW routines thread-safe.
@@ -90,14 +84,14 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiItemR(layout, ptr, "specify_channel", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(layout, ptr, "specify_frequency", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "downmix", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "mode", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
 }
 
 static void node_layout_ex(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiItemR(layout, ptr, "specify_channel", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(layout, ptr, "specify_frequency", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "downmix", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "mode", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
 
   uiItemR(layout, ptr, "window", UI_ITEM_NONE, IFACE_("Window"), ICON_NONE);
   uiItemR(layout, ptr, "fft_size", UI_ITEM_NONE, IFACE_("FFT Size"), ICON_NONE);
@@ -106,8 +100,8 @@ static void node_layout_ex(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   NodeGeometrySampleSound *data = MEM_cnew<NodeGeometrySampleSound>(__func__);
-  data->specify_channel = false;
-  data->specify_frequency = true;
+  data->downmix = true;
+  data->mode = GEO_NODE_SAMPLE_SOUND_MODE_RANGE;
   data->window = GEO_NODE_SAMPLE_SOUND_WINDOW_HANN;
   data->fft_size = GEO_NODE_SAMPLE_SOUND_FFT_SIZE_2048;
   node->storage = data;
@@ -118,8 +112,8 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 class SampleSoundFunction : public mf::MultiFunction {
   bSound *sound_;
   const float smoothness_;
-  const bool specify_channel_;
-  const bool specify_frequency_;
+  const bool downmix_;
+  const NodeGeometrySampleSoundMode mode_;
   const NodeGeometrySampleSoundWindow window_;
   const NodeGeometrySampleSoundFFTSize fft_size_;
   const double frame_rate_;
@@ -131,16 +125,16 @@ class SampleSoundFunction : public mf::MultiFunction {
  public:
   SampleSoundFunction(bSound *sound,
                       const float smoothness,
-                      const bool specify_channel,
-                      const bool specify_frequency,
+                      const bool downmix,
+                      const NodeGeometrySampleSoundMode mode,
                       const NodeGeometrySampleSoundWindow window,
                       const NodeGeometrySampleSoundFFTSize fft_size,
                       const double frame_rate,
                       const float length)
       : sound_(sound),
         smoothness_(smoothness),
-        specify_channel_(specify_channel),
-        specify_frequency_(specify_frequency),
+        downmix_(downmix),
+        mode_(mode),
         window_(window),
         fft_size_(fft_size),
         frame_rate_(frame_rate),
@@ -150,6 +144,7 @@ class SampleSoundFunction : public mf::MultiFunction {
       mf::Signature signature;
       mf::SignatureBuilder builder{"Sample Sound", signature};
       builder.single_input<float>("Time");
+      builder.single_input<int>("Channel");
       builder.single_input<float>("Low");
       builder.single_input<float>("High");
       builder.single_output<float>("Amplitude");
@@ -172,6 +167,7 @@ class SampleSoundFunction : public mf::MultiFunction {
     device_specs.format = AUD_FORMAT_FLOAT32;
     device_specs.rate = sound_->samplerate;
     // TODO: support specifying channels.
+    // device_specs.channels = downmix_ ? AUD_Channels(sound_->audio_channels) : AUD_CHANNELS_MONO;
     device_specs.channels = AUD_CHANNELS_MONO;
 
     device_ = AUD_Device_open("read", device_specs, 1024, "Sample Sound");
@@ -181,22 +177,26 @@ class SampleSoundFunction : public mf::MultiFunction {
   void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
   {
     const VArray<float> &times = params.readonly_single_input<float>(0, "Time");
-    const VArray<float> &lows = params.readonly_single_input<float>(1, "Low");
-    const VArray<float> &highs = params.readonly_single_input<float>(2, "High");
-    MutableSpan<float> dst = params.uninitialized_single_output<float>(3, "Amplitude");
+    const VArray<int> &channels = params.readonly_single_input<int>(1, "Channel");
+    const VArray<float> &lows = params.readonly_single_input<float>(2, "Low");
+    const VArray<float> &highs = params.readonly_single_input<float>(3, "High");
+    MutableSpan<float> dst = params.uninitialized_single_output<float>(4, "Amplitude");
 
     mask.foreach_index([&](int64_t i) {
       const int64_t sample_index = times[i] * sound_->samplerate;
+      const int channel = math::clamp(channels[i], 0, sound_->audio_channels - 1);
 
-      if (specify_frequency_) {
+      if (mode_ == GEO_NODE_SAMPLE_SOUND_MODE_RANGE) {
 #  ifdef WITH_FFTW3
         using namespace bke::sound::fft_cache;
         FFTCache &cache = *sound_->fft_cache->cache;
 
         const int fft_size = 1 << fft_size_;
         const int bin_size = fft_size / 2;
-        const int low = math::clamp(int(lows[i] * (bin_size - 1)), 0, bin_size - 1);
-        const int high = math::clamp(int(highs[i] * (bin_size - 1)), 0, bin_size - 1);
+        const int low = math::clamp(
+            int(lows[i] / (sound_->samplerate / 2) * bin_size), 0, bin_size - 1);
+        const int high = math::clamp(
+            int(highs[i] / (sound_->samplerate / 2) * bin_size), 0, bin_size - 1);
 
         const int64_t aligned_sample_index = (sample_index / fft_size) * fft_size;
         const int64_t total_bins = math::ceil(length_ * sound_->samplerate / fft_size) * bin_size;
@@ -206,8 +206,10 @@ class SampleSoundFunction : public mf::MultiFunction {
         // double offset_factor = float(sample_index % (bin_size)) / float(bin_size);
 
         Parameter parameter{};
+        parameter.downmix = downmix_;
         parameter.fft_size = fft_size;
         parameter.window = window_;
+        parameter.channel = channel;
 
         // Try to read from cache
         {
@@ -233,37 +235,34 @@ class SampleSoundFunction : public mf::MultiFunction {
           return;
         }
 
-        Array<float> buf(fft_size);
+        Array<float> buffer(fft_size);
 
         AUD_Device_lock(device_);
         AUD_Handle_setPosition(handle_, double(aligned_sample_index) / double(sound_->samplerate));
-        AUD_Device_read(device_, reinterpret_cast<unsigned char *>(buf.data()), buf.size());
-        AUD_Device_unlock(device_);
 
-        switch (window_) {
-          case GEO_NODE_SAMPLE_SOUND_WINDOW_NONE:
-            break;
-          case GEO_NODE_SAMPLE_SOUND_WINDOW_HANN:
-            for (size_t i = 0; i < buf.size(); ++i) {
-              buf[i] *= 0.5 - 0.5 * math::cos((2 * math::numbers::pi * i) / buf.size());
-            }
-            break;
-          case GEO_NODE_SAMPLE_SOUND_WINDOW_HAMMING:
-            for (size_t i = 0; i < buf.size(); ++i) {
-              buf[i] *= 0.54 - 0.46 * math::cos((2 * math::numbers::pi * i) / buf.size());
-            }
-            break;
-          case GEO_NODE_SAMPLE_SOUND_WINDOW_BLACKMAN:
-            for (size_t i = 0; i < buf.size(); ++i) {
-              buf[i] *= 0.42 - 0.5 * math::cos((2 * math::numbers::pi * i) / buf.size()) +
-                        0.08 * math::cos((4 * math::numbers::pi * i) / buf.size());
-            }
-            break;
+        if (downmix_) {
+          AUD_Device_read(
+              device_, reinterpret_cast<unsigned char *>(buffer.data()), buffer.size());
+        } else {
+          // TODO: make cache for reading samples from audio
+          Array<float> raw_buffer(fft_size * sound_->audio_channels);
+
+          AUD_Device_read(
+              device_, reinterpret_cast<unsigned char *>(raw_buffer.data()), raw_buffer.size());
+
+          for (int j = 0; j < fft_size; ++j) {
+            buffer[j] = raw_buffer[j * sound_->audio_channels + channel];
+          }
         }
 
-        fftwf_complex *fft_buf = static_cast<fftwf_complex *>(
-            fftwf_malloc(sizeof(*fft_buf) * fft_size / 2 + 1));
-        fftwf_plan plan = fftwf_plan_dft_r2c_1d(fft_size, buf.data(), fft_buf, FFTW_ESTIMATE);
+        AUD_Device_unlock(device_);
+
+        apply_window_function(buffer);
+
+        fftwf_complex *fftwf_buffer = static_cast<fftwf_complex *>(
+            fftwf_malloc(sizeof(*fftwf_buffer) * fft_size / 2 + 1));
+        fftwf_plan plan = fftwf_plan_dft_r2c_1d(
+            fft_size, buffer.data(), fftwf_buffer, FFTW_ESTIMATE);
         fftwf_execute(plan);
 
         // Update cache
@@ -274,9 +273,9 @@ class SampleSoundFunction : public mf::MultiFunction {
 
           // TODO: parallel scan
           bins[bin_index] = 0;
-          for (int i = 1; i < bin_size; ++i) {
-            bins[bin_index + i] = bins[bin_index + i - 1] +
-                                  math::abs(fft_buf[i - 1][0]) / bin_size;
+          for (int j = 1; j < bin_size; ++j) {
+            bins[bin_index + j] = bins[bin_index + j - 1] +
+                                  math::abs(fftwf_buffer[j - 1][0]) / bin_size;
           }
 
           if (high == low) {
@@ -288,42 +287,68 @@ class SampleSoundFunction : public mf::MultiFunction {
         }
 
         fftwf_destroy_plan(plan);
-        fftwf_free(fft_buf);
+        fftwf_free(fftwf_buffer);
 #  else  // WITH_FFTW3
         dst[i] = 0;
 #  endif
       }
       else {
         const int sample_length = sound_->samplerate * smoothness_ + 1;
-        Array<float> buf(sample_length);
-
-        AUD_Device_lock(device_);
+        Array<float> buffer(sample_length);
 
         // FIXME: eliminate floating-point errors
         const double position = double(sample_index) / double(sound_->samplerate) - smoothness_;
-        if (position < 0) {
-          const int empty_n = (-position * sound_->samplerate);
-          const int read_n = sample_length - empty_n;
 
-          buf.fill(0);
-          AUD_Handle_setPosition(handle_, 0);
+        AUD_Device_lock(device_);
+        AUD_Handle_setPosition(handle_, position);
+
+        if (downmix_) {
           AUD_Device_read(
-              device_, reinterpret_cast<unsigned char *>(buf.data() + empty_n), read_n);
-        }
-        else {
-          AUD_Handle_setPosition(handle_, position);
-          AUD_Device_read(device_, reinterpret_cast<unsigned char *>(buf.data()), sample_length);
+              device_, reinterpret_cast<unsigned char *>(buffer.data()), sample_length);
+        } else {
+          Array<float> raw_buffer(sample_length * sound_->audio_channels);
+
+          AUD_Device_read(
+              device_, reinterpret_cast<unsigned char *>(raw_buffer.data()), raw_buffer.size());
+
+          for (int j = 0; j < sample_length; ++j) {
+            buffer[j] = raw_buffer[j * sound_->audio_channels + channel];
+          }
         }
 
         AUD_Device_unlock(device_);
 
         float result = 0;
-        for (float sample : buf) {
+        for (float sample : buffer) {
           result += math::abs(sample) / sample_length;
         }
         dst[i] = result;
       }
     });
+  }
+
+  void apply_window_function(Array<float> &buf) const
+  {
+    switch (window_) {
+      case GEO_NODE_SAMPLE_SOUND_WINDOW_NONE:
+        break;
+      case GEO_NODE_SAMPLE_SOUND_WINDOW_HANN:
+        for (size_t i = 0; i < buf.size(); ++i) {
+          buf[i] *= 0.5 - 0.5 * math::cos((2 * math::numbers::pi * i) / buf.size());
+        }
+        break;
+      case GEO_NODE_SAMPLE_SOUND_WINDOW_HAMMING:
+        for (size_t i = 0; i < buf.size(); ++i) {
+          buf[i] *= 0.54 - 0.46 * math::cos((2 * math::numbers::pi * i) / buf.size());
+        }
+        break;
+      case GEO_NODE_SAMPLE_SOUND_WINDOW_BLACKMAN:
+        for (size_t i = 0; i < buf.size(); ++i) {
+          buf[i] *= 0.42 - 0.5 * math::cos((2 * math::numbers::pi * i) / buf.size()) +
+                    0.08 * math::cos((4 * math::numbers::pi * i) / buf.size());
+        }
+        break;
+    }
   }
 };
 
@@ -336,15 +361,15 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
 
   const NodeGeometrySampleSound &storage = node_storage(params.node());
-  const bool specify_channel = bool(storage.specify_channel);
-  const bool specify_frequency = bool(storage.specify_frequency);
+  const bool downmix = storage.downmix;
+  const NodeGeometrySampleSoundMode mode = NodeGeometrySampleSoundMode(storage.mode);
   const NodeGeometrySampleSoundWindow window = NodeGeometrySampleSoundWindow(storage.window);
   const NodeGeometrySampleSoundFFTSize fft_size = NodeGeometrySampleSoundFFTSize(storage.fft_size);
 
 #  ifdef WITH_FFTW3
   static std::mutex mutex;
 
-  if (specify_frequency) {
+  if (mode == GEO_NODE_SAMPLE_SOUND_MODE_RANGE) {
     std::lock_guard lock{mutex};
     if (!sound->fft_cache) {
       BKE_sound_fft_cache_new(sound);
@@ -359,13 +384,14 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   const float smoothness = params.extract_input<float>("Smoothness");
   Field<float> times = params.extract_input<Field<float>>("Time");
+  Field<int> channels = params.extract_input<Field<int>>("Channel");
   Field<float> lows = params.extract_input<Field<float>>("Low");
   Field<float> highs = params.extract_input<Field<float>>("High");
 
   auto fn = std::make_shared<SampleSoundFunction>(
-      sound, smoothness, specify_channel, specify_frequency, window, fft_size, frame_rate, length);
-  auto op = FieldOperation::Create(std::move(fn),
-                                   {std::move(times), std::move(lows), std::move(highs)});
+      sound, smoothness, downmix, mode, window, fft_size, frame_rate, length);
+  auto op = FieldOperation::Create(
+      std::move(fn), {std::move(times), std::move(channels), std::move(lows), std::move(highs)});
   params.set_output("Amplitude", std::move(Field<float>(op)));
 }
 

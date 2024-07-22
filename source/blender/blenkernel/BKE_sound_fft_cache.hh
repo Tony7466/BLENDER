@@ -18,10 +18,12 @@ void BKE_sound_fft_cache_delete(struct bSound *sound);
 namespace blender::bke::sound::fft_cache {
 
 struct Parameter {
+  bool downmix;
   int fft_size;
   int window;
+  int channel;
 
-  BLI_STRUCT_EQUALITY_OPERATORS_2(Parameter, fft_size, window);
+  BLI_STRUCT_EQUALITY_OPERATORS_4(Parameter, downmix, fft_size, window, channel);
 
   uint64_t hash() const;
 };

@@ -1375,6 +1375,7 @@ void BKE_nodetree_remove_layer_n(bNodeTree *ntree, Scene *scene, int layer_index
 #define GEO_NODE_GREASE_PENCIL_TO_CURVES 2145
 #define GEO_NODE_INPUT_SOUND 2200
 #define GEO_NODE_SAMPLE_SOUND 2201
+#define GEO_NODE_SOUND_INFO 2202
 
 /** \} */
 

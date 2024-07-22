@@ -26,7 +26,7 @@ namespace blender::bke::sound::fft_cache {
 
 uint64_t Parameter::hash() const
 {
-  return get_default_hash(fft_size, window);
+  return get_default_hash(downmix, fft_size, window, channel);
 }
 
 }  // namespace blender::bke::sound::fft_cache

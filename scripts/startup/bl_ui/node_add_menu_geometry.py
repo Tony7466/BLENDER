@@ -796,6 +796,7 @@ class NODE_MT_category_sound(Menu):
     def draw(self, _context):
         layout = self.layout
         node_add_menu.add_node_type(layout, "GeometryNodeSampleSound")
+        node_add_menu.add_node_type(layout, "GeometryNodeSoundInfo")
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 

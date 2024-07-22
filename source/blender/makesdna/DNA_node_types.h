@@ -1795,8 +1795,9 @@ typedef struct NodeGeometrySampleIndex {
 } NodeGeometrySampleIndex;
 
 typedef struct NodeGeometrySampleSound {
-  int8_t specify_channel;
-  int8_t specify_frequency;
+  int8_t downmix;
+  /** #NodeGeometrySampleSoundMode. */
+  int8_t mode;
   /** #NodeGeometrySampleSoundWindow. */
   int8_t window;
   /** #NodeGeometrySampleSoundFFTSize. */
@@ -3003,3 +3004,8 @@ typedef enum NodeGeometrySampleSoundFFTSize {
   GEO_NODE_SAMPLE_SOUND_FFT_SIZE_16384 = 14,
   GEO_NODE_SAMPLE_SOUND_FFT_SIZE_32768 = 15,
 } NodeGeometrySampleSoundFFTSize;
+
+typedef enum NodeGeometrySamplSoundMode {
+  GEO_NODE_SAMPLE_SOUND_MODE_FULL = 0,
+  GEO_NODE_SAMPLE_SOUND_MODE_RANGE = 1,
+} NodeGeometrySampleSoundMode;
