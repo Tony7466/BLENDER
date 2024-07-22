@@ -67,10 +67,10 @@ void ScaleOperation::scale_area(rcti &area, float relative_scale_x, float relati
   const rcti src_area = area;
   const float center_x = BLI_rcti_size_x(&area) / 2.0f;
   const float center_y = BLI_rcti_size_y(&area) / 2.0f;
-  area.xmin = floorf(scale_coord(area.xmin, center_x, relative_scale_x));
-  area.xmax = ceilf(scale_coord(area.xmax, center_x, relative_scale_x));
-  area.ymin = floorf(scale_coord(area.ymin, center_y, relative_scale_y));
-  area.ymax = ceilf(scale_coord(area.ymax, center_y, relative_scale_y));
+  area.xmin = floorf(scale_coord(area.xmin, center_x, relative_scale_x) + 0.1f);
+  area.xmax = ceilf(scale_coord(area.xmax, center_x, relative_scale_x) - 0.1f);
+  area.ymin = floorf(scale_coord(area.ymin, center_y, relative_scale_y) + 0.1f);
+  area.ymax = ceilf(scale_coord(area.ymax, center_y, relative_scale_y) - 0.1f);
 
   float scale_offset_x, scale_offset_y;
   ScaleOperation::get_scale_offset(src_area, area, scale_offset_x, scale_offset_y);
