@@ -47,15 +47,9 @@ ChannelBag &channelbag_ensure(Action &action)
     slot = action.slot(0);
   }
 
-  /* Ensure a Layer. */
-  action.layer_ensure_at_least_one();
-  Layer *layer = action.layer(0);
-
-  /* Ensure a Strip. */
-  if (layer->strips().is_empty()) {
-    layer->strip_add<KeyframeStrip>();
-  }
-  KeyframeStrip &keystrip = layer->strip(0)->as<KeyframeStrip>();
+  /* Ensure a Layer + KeyframeStrip. */
+  action.layer_keystrip_ensure();
+  KeyframeStrip &keystrip = action.layer(0)->strip(0)->as<KeyframeStrip>();
 
   /* Ensure a ChannelBag. */
   return keystrip.channelbag_for_slot_ensure(*slot);
