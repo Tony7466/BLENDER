@@ -84,6 +84,7 @@ void forward_lighting_eval(float thickness, out vec3 radiance, out vec3 transmit
       vec3 direct_light = closure_light_get(stack, i).light_shadowed;
       vec3 indirect_light = lightprobe_eval(samp, cl, g_data.P, V, thickness);
 
+      float closure_color_weight = average(abs(cl.color));
       if ((cl.type == CLOSURE_BSDF_TRANSLUCENT_ID ||
            cl.type == CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID) &&
           (thickness != 0.0))
@@ -91,7 +92,8 @@ void forward_lighting_eval(float thickness, out vec3 radiance, out vec3 transmit
         /* We model two transmission event, so the surface color need to be applied twice. */
         cl.color *= cl.color;
       }
-      cl.color *= cl.weight;
+      /* Divide by the pdf of sampling the closure. */
+      cl.color *= cl.weight / closure_color_weight;
 
       radiance_direct += direct_light * cl.color;
       radiance_indirect += indirect_light * cl.color;

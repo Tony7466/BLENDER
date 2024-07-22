@@ -53,7 +53,11 @@ ClosureUndetermined g_closure_get(int i)
 ClosureUndetermined g_closure_get_resolved(int i, float weight_fac)
 {
   ClosureUndetermined cl = g_closure_get(i);
-  cl.color *= cl.weight * weight_fac;
+
+  /* Divide by the pdf of sampling the closure. */
+  cl.color *= cl.weight / average(abs(cl.color));
+
+  cl.color *= weight_fac;
   return cl;
 }
 
@@ -111,7 +115,6 @@ void closure_select(inout ClosureUndetermined destination,
   {
     float total_weight = destination.weight;
     destination = candidate;
-    destination.color /= candidate_color_weight;
     destination.weight = total_weight;
   }
 }
