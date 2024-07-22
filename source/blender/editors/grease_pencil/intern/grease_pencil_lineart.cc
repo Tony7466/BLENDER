@@ -137,7 +137,7 @@ static bool clear_strokes(Object *ob, ModifierData *md, int frame)
     if (!drawing) {
       return false;
     }
-    drawing->strokes_for_write() = blender::bke::CurvesGeometry(0, 0);
+    drawing->strokes_for_write() = {};
   }
 
   return true;
@@ -296,7 +296,7 @@ static void guard_modifiers(LineartBakeJob &bj)
 
 static void lineart_bake_startjob(void *customdata, wmJobWorkerStatus *worker_status)
 {
-  LineartBakeJob *bj = (LineartBakeJob *)customdata;
+  LineartBakeJob *bj = static_cast<LineartBakeJob *>(customdata);
   bj->stop = &worker_status->stop;
   bj->do_update = &worker_status->do_update;
   bj->progress = &worker_status->progress;
@@ -317,7 +317,7 @@ static void lineart_bake_startjob(void *customdata, wmJobWorkerStatus *worker_st
     for (const int object : bj->objects.index_range()) {
       Object *ob = bj->objects[object];
       if (bake_single_target(bj, ob, frame)) {
-        DEG_id_tag_update((ID *)ob->data, ID_RECALC_GEOMETRY);
+        DEG_id_tag_update(static_cast<ID *>(ob->data), ID_RECALC_GEOMETRY);
         WM_event_add_notifier(bj->C, NC_GPENCIL | ND_DATA | NA_EDITED, ob);
       }
     }
@@ -435,10 +435,10 @@ static int lineart_bake_strokes_common_modal(bContext *C,
                                              wmOperator *op,
                                              const wmEvent * /*event*/)
 {
-  Scene *scene = (Scene *)op->customdata;
+  Scene *scene = static_cast<Scene *>(op->customdata);
 
   /* no running blender, remove handler and pass through. */
-  if (0 == WM_jobs_test(CTX_wm_manager(C), scene, WM_JOB_TYPE_LINEART)) {
+  if (WM_jobs_test(CTX_wm_manager(C), scene, WM_JOB_TYPE_LINEART) == 0) {
     return OPERATOR_FINISHED | OPERATOR_PASS_THROUGH;
   }
 
@@ -461,6 +461,7 @@ static void lineart_gpencil_clear_strokes_exec_common(Object *ob)
     }
     blender::bke::greasepencil::Layer &layer = node->as_layer();
 
+    /* Remove all the keyframes in this layer. */
     grease_pencil->remove_frames(layer, layer.sorted_keys());
     grease_pencil->insert_frame(layer, 0);
 
@@ -468,7 +469,7 @@ static void lineart_gpencil_clear_strokes_exec_common(Object *ob)
 
     lmd->flags &= (~MOD_LINEART_IS_BAKED);
   }
-  DEG_id_tag_update((ID *)ob->data, ID_RECALC_GEOMETRY);
+  DEG_id_tag_update(static_cast<ID *>(ob->data), ID_RECALC_GEOMETRY);
 }
 
 static int lineart_gpencil_clear_strokes_exec(bContext *C, wmOperator *op)
