@@ -12,6 +12,7 @@
 #include "BKE_report.hh"
 
 #include "BLI_math_vector.h"
+#include "BLI_math_vector.hh"
 
 #include "BLT_translation.hh"
 
@@ -19,8 +20,10 @@
 #include "DEG_depsgraph_build.hh"
 
 #include "DNA_grease_pencil_types.h"
-
 #include "DNA_object_types.h"
+
+#include "IMB_imbuf_types.hh"
+
 #include "ED_grease_pencil.hh"
 #include "ED_numinput.hh"
 #include "ED_object.hh"
@@ -111,6 +114,27 @@ struct TraceJob {
   void ensure_output_object();
 };
 
+static int to_potrace(const TurnPolicy turn_policy) {
+  switch (turn_policy) {
+    case TurnPolicy ::Foreground:
+      return POTRACE_TURNPOLICY_BLACK;
+    case TurnPolicy ::Background:
+      return POTRACE_TURNPOLICY_WHITE;
+    case TurnPolicy ::Left:
+      return POTRACE_TURNPOLICY_LEFT;
+    case TurnPolicy ::Right:
+      return POTRACE_TURNPOLICY_RIGHT;
+    case TurnPolicy ::Minority:
+      return POTRACE_TURNPOLICY_MINORITY;
+    case TurnPolicy ::Majority:
+      return POTRACE_TURNPOLICY_MAJORITY;
+    case TurnPolicy ::Random:
+      return POTRACE_TURNPOLICY_RANDOM;
+  }
+  BLI_assert_unreachable();
+  return POTRACE_TURNPOLICY_MINORITY;
+}
+
 void TraceJob::ensure_output_object()
 {
   using namespace blender::bke::greasepencil;
@@ -150,35 +174,323 @@ void TraceJob::ensure_output_object()
   }
 }
 
+/* Potrace utilities for writing individual bitmap pixels. */
+constexpr int BM_WORDSIZE = int(sizeof(potrace_word));
+constexpr int BM_WORDBITS = 8 * BM_WORDSIZE;
+constexpr potrace_word BM_HIBIT = potrace_word(1) << (BM_WORDBITS - 1);
+constexpr potrace_word BM_ALLBITS = ~potrace_word(0);
+
+inline potrace_word *bm_scanline(potrace_bitmap_t *bm, const int y)
+{
+  return bm->map + y * bm->dy;
+}
+inline const potrace_word *bm_scanline(const potrace_bitmap_t *bm, const int y)
+{
+  return bm->map + y * bm->dy;
+}
+inline potrace_word *bm_index(potrace_bitmap_t *bm, const int x, const int y)
+{
+  return &bm_scanline(bm, y)[x / BM_WORDBITS];
+}
+inline const potrace_word *bm_index(const potrace_bitmap_t *bm, const int x, const int y)
+{
+  return &bm_scanline(bm, y)[x / BM_WORDBITS];
+}
+inline potrace_word bm_mask(const int x)
+{
+  return BM_HIBIT >> (x & (BM_WORDBITS - 1));
+}
+inline bool bm_range(const int x, const int a)
+{
+  return x >= 0 && x < a;
+}
+inline bool bm_safe(const potrace_bitmap_t *bm, const int x, const int y)
+{
+  return bm_range(x, bm->w) && bm_range(y, bm->h);
+}
+
+// #  define bm_scanline(bm, y) ((bm)->map + (y) * (bm)->dy)
+//#  define bm_index(bm, x, y) (&bm_scanline(bm, y)[(x) / BM_WORDBITS])
+//#  define bm_mask(x) (BM_HIBIT >> ((x) & (BM_WORDBITS - 1)))
+//#  define bm_range(x, a) ((int)(x) >= 0 && (int)(x) < (a))
+//#  define bm_safe(bm, x, y) (bm_range(x, (bm)->w) && bm_range(y, (bm)->h))
+
+inline bool BM_UGET(const potrace_bitmap_t *bm, const int x, const int y)
+{
+  return (*bm_index(bm, x, y) & bm_mask(x)) != 0;
+}
+inline void BM_USET(potrace_bitmap_t *bm, const int x, const int y)
+{
+  *bm_index(bm, x, y) |= bm_mask(x);
+}
+inline void BM_UCLR(potrace_bitmap_t *bm, const int x, const int y)
+{
+  *bm_index(bm, x, y) &= ~bm_mask(x);
+}
+inline void BM_UINV(potrace_bitmap_t *bm, const int x, const int y)
+{
+  *bm_index(bm, x, y) ^= bm_mask(x);
+}
+inline void BM_UPUT(potrace_bitmap_t *bm, const int x, const int y, const bool b)
+{
+  if (b) {
+    BM_USET(bm, x, y);
+  }
+  else {
+    BM_UCLR(bm, x, y);
+  }
+}
+inline bool BM_GET(const potrace_bitmap_t *bm, const int x, const int y)
+{
+  return bm_safe(bm, x, y) ? BM_UGET(bm, x, y) : 0;
+}
+inline void BM_SET(potrace_bitmap_t *bm, const int x, const int y)
+{
+  if (bm_safe(bm, x, y)) {
+    BM_USET(bm, x, y);
+  }
+}
+inline void BM_CLR(potrace_bitmap_t *bm, const int x, const int y)
+{
+  if (bm_safe(bm, x, y)) {
+    BM_UCLR(bm, x, y);
+  }
+}
+inline void BM_INV(potrace_bitmap_t *bm, const int x, const int y)
+{
+  if (bm_safe(bm, x, y)) {
+    BM_UINV(bm, x, y);
+  }
+}
+inline void BM_PUT(potrace_bitmap_t *bm, const int x, const int y, const bool b)
+{
+  if (bm_safe(bm, x, y)) {
+    BM_UPUT(bm, x, y, b);
+  }
+}
+
+static potrace_bitmap_t *create_bitmap(const int2 &size)
+{
+  potrace_bitmap_t *bm;
+  int32_t dy = (size.x + BM_WORDBITS - 1) / BM_WORDBITS;
+
+  bm = (potrace_bitmap_t *)MEM_mallocN(sizeof(potrace_bitmap_t), __func__);
+  if (!bm) {
+    return nullptr;
+  }
+  bm->w = size.x;
+  bm->h = size.y;
+  bm->dy = dy;
+  bm->map = (potrace_word *)calloc(size.y, dy * BM_WORDSIZE);
+  if (!bm->map) {
+    free(bm);
+    return nullptr;
+  }
+
+  return bm;
+}
+
+static void free_bitmap(potrace_bitmap_t *bm)
+{
+  if (bm != nullptr) {
+    free(bm->map);
+  }
+  MEM_SAFE_FREE(bm);
+}
+
+static ColorGeometry4f pixel_at_index(const ImBuf &ibuf, const int32_t idx)
+{
+  BLI_assert(idx < (ibuf.x * ibuf.y));
+
+  if (ibuf.float_buffer.data) {
+    const float4 &frgba = reinterpret_cast<float4 *>(ibuf.float_buffer.data)[idx];
+    return ColorGeometry4f(frgba);
+  }
+  else {
+    const uchar4 &col = reinterpret_cast<const uchar4 *>(ibuf.byte_buffer.data)[idx];
+    return ColorGeometry4f(float4(col) / 255.0f);
+  }
+}
+
+static void image_to_bitmap(const ImBuf &ibuf, potrace_bitmap_t &bm, const float threshold)
+{
+  for (uint32_t y = 0; y < ibuf.y; y++) {
+    for (uint32_t x = 0; x < ibuf.x; x++) {
+      const int32_t pixel = (ibuf.x * y) + x;
+      const ColorGeometry4f color = pixel_at_index(ibuf, pixel);
+      const float value = math::average(float3(color.r, color.g, color.b)) * color.a;
+      BM_PUT(&bm, x, y, value > threshold);
+    }
+  }
+}
+
+static void trace_data_to_strokes(Main &bmain,
+                                  const potrace_state_t &st,
+                                  Object &ob,
+                                  bke::greasepencil::Drawing &drawing,
+                                  const int2 &offset,
+                                  const float scale,
+                                  const float sample,
+                                  const int resolution,
+                                  const int radius)
+{
+  constexpr float MAX_LENGTH = 100.0f;
+
+  /* Find materials and create them if not found. */
+  BKE_object_material
+  int32_t mat_fill_idx = BKE_gpencil_material_find_index_by_name_prefix(ob, "Stroke");
+  int32_t mat_mask_idx = BKE_gpencil_material_find_index_by_name_prefix(ob, "Holdout");
+
+  const float default_color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+  /* Stroke and Fill material. */
+  if (mat_fill_idx == -1) {
+    int32_t new_idx;
+    Material *mat_gp = BKE_gpencil_object_material_new(bmain, ob, "Stroke", &new_idx);
+    MaterialGPencilStyle *gp_style = mat_gp->gp_style;
+
+    copy_v4_v4(gp_style->stroke_rgba, default_color);
+    gp_style->flag |= GP_MATERIAL_STROKE_SHOW;
+    gp_style->flag |= GP_MATERIAL_FILL_SHOW;
+    mat_fill_idx = ob->totcol - 1;
+  }
+  /* Holdout material. */
+  if (mat_mask_idx == -1) {
+    int32_t new_idx;
+    Material *mat_gp = BKE_gpencil_object_material_new(bmain, ob, "Holdout", &new_idx);
+    MaterialGPencilStyle *gp_style = mat_gp->gp_style;
+
+    copy_v4_v4(gp_style->stroke_rgba, default_color);
+    copy_v4_v4(gp_style->fill_rgba, default_color);
+    gp_style->flag |= GP_MATERIAL_STROKE_SHOW;
+    gp_style->flag |= GP_MATERIAL_FILL_SHOW;
+    gp_style->flag |= GP_MATERIAL_IS_STROKE_HOLDOUT;
+    gp_style->flag |= GP_MATERIAL_IS_FILL_HOLDOUT;
+    mat_mask_idx = ob->totcol - 1;
+  }
+
+  int n, *tag;
+  potrace_dpoint_t(*c)[3];
+
+  /* There isn't any rule here, only the result of lots of testing to get a value that gets
+   * good results using the Potrace data. */
+  const float scalef = 0.008f * scale;
+  /* Draw each curve. */
+  potrace_path_t *path = st->plist;
+  while (path != nullptr) {
+    n = path->curve.n;
+    tag = path->curve.tag;
+    c = path->curve.c;
+    int mat_idx = path->sign == '+' ? mat_fill_idx : mat_mask_idx;
+    /* Create a new stroke. */
+    bGPDstroke *gps = BKE_gpencil_stroke_add(gpf, mat_idx, 0, thickness, false);
+    /* Last point that is equals to start point. */
+    float start_point[2], last[2];
+    start_point[0] = c[n - 1][2].x;
+    start_point[1] = c[n - 1][2].y;
+    zero_v2(last);
+
+    for (int32_t i = 0; i < n; i++) {
+      switch (tag[i]) {
+        case POTRACE_CORNER: {
+          if (gps->totpoints == 0) {
+            add_point(gps, scalef, offset, c[n - 1][2].x, c[n - 1][2].y);
+          }
+          else {
+            add_point(gps, scalef, offset, last[0], last[1]);
+          }
+
+          add_point(gps, scalef, offset, c[i][1].x, c[i][1].y);
+
+          add_point(gps, scalef, offset, c[i][2].x, c[i][2].y);
+
+          last[0] = c[i][2].x;
+          last[1] = c[i][2].y;
+          break;
+        }
+        case POTRACE_CURVETO: {
+          float cp1[2], cp2[2], cp3[2], cp4[2];
+          if (gps->totpoints == 0) {
+            cp1[0] = start_point[0];
+            cp1[1] = start_point[1];
+          }
+          else {
+            copy_v2_v2(cp1, last);
+          }
+
+          cp2[0] = c[i][0].x;
+          cp2[1] = c[i][0].y;
+
+          cp3[0] = c[i][1].x;
+          cp3[1] = c[i][1].y;
+
+          cp4[0] = c[i][2].x;
+          cp4[1] = c[i][2].y;
+
+          add_bezier(gps,
+                     scalef,
+                     offset,
+                     resolution,
+                     cp1,
+                     cp2,
+                     cp3,
+                     cp4,
+                     (gps->totpoints == 0) ? false : true);
+          copy_v2_v2(last, cp4);
+          break;
+        }
+        default:
+          break;
+      }
+    }
+    /* In some situations, Potrace can produce a wrong data and generate a very
+     * long stroke. Here the length is checked and removed if the length is too big. */
+    float length = BKE_gpencil_stroke_length(gps, true);
+    if (length <= MAX_LENGTH) {
+      bGPdata *gpd = static_cast<bGPdata *>(ob->data);
+      if (sample > 0.0f) {
+        /* Resample stroke. Don't need to call to BKE_gpencil_stroke_geometry_update() because
+         * the sample function already call that. */
+        BKE_gpencil_stroke_sample(gpd, gps, sample, false, 0);
+      }
+      else {
+        BKE_gpencil_stroke_geometry_update(gpd, gps);
+      }
+    }
+    else {
+      /* Remove too long strokes. */
+      BLI_remlink(&gpf->strokes, gps);
+      BKE_gpencil_free_stroke(gps);
+    }
+
+    path = path->next;
+  }
+}
+
 static bool grease_pencil_trace_image(TraceJob &trace_job,
-                                      ImBuf *ibuf,
+                                      const ImBuf &ibuf,
                                       bke::greasepencil::Drawing &drawing)
 {
-  potrace_bitmap_t *bm = nullptr;
-  potrace_param_t *param = nullptr;
-  potrace_state_t *st = nullptr;
-
   /* Create an empty BW bitmap. */
-  bm = ED_gpencil_trace_bitmap_new(ibuf->x, ibuf->y);
+  potrace_bitmap_t *bm = create_bitmap({ibuf.x, ibuf.y});
   if (!bm) {
     return false;
   }
 
   /* Set tracing parameters, starting from defaults */
-  param = potrace_param_default();
+  potrace_param_t *param = potrace_param_default();
   if (!param) {
     return false;
   }
   param->turdsize = 0;
-  param->turnpolicy = trace_job->turnpolicy;
+  param->turnpolicy = to_potrace(trace_job.turnpolicy);
 
   /* Load BW bitmap with image. */
-  ED_gpencil_trace_image_to_bitmap(ibuf, bm, trace_job->threshold);
+  image_to_bitmap(ibuf, *bm, trace_job.threshold);
 
   /* Trace the bitmap. */
-  st = potrace_trace(param, bm);
+  potrace_state_t *st = potrace_trace(param, bm);
   if (!st || st->status != POTRACE_STATUS_OK) {
-    ED_gpencil_trace_bitmap_free(bm);
+    free_bitmap(bm);
     if (st) {
       potrace_state_free(st);
     }
@@ -186,32 +498,27 @@ static bool grease_pencil_trace_image(TraceJob &trace_job,
     return false;
   }
   /* Free BW bitmap. */
-  ED_gpencil_trace_bitmap_free(bm);
+  free_bitmap(bm);
 
   /* Convert the trace to strokes. */
-  int32_t offset[2];
-  offset[0] = ibuf->x / 2;
-  offset[1] = ibuf->y / 2;
+  const int2 offset = int2{ibuf.x, ibuf.y} / 2;
 
   /* Scale correction for Potrace.
    * Really, there isn't documented in Potrace about how the scale is calculated,
    * but after doing a lot of tests, it looks is using a VGA resolution (640) as a base.
    * Maybe there are others ways to get the right scale conversion, but this solution works. */
-  float scale_potrace = trace_job->scale * (640.0f / float(ibuf->x)) *
-                        (float(ibuf->x) / float(ibuf->y));
-  if (ibuf->x > ibuf->y) {
-    scale_potrace *= float(ibuf->y) / float(ibuf->x);
-  }
+  const int max_dim = std::max(ibuf.x, ibuf.y);
+  const float scale_potrace = trace_job.scale * 640.0f / float(max_dim);
 
-  ED_gpencil_trace_data_to_strokes(trace_job->bmain,
-                                   st,
-                                   trace_job->ob_gpencil,
-                                   gpf,
-                                   offset,
-                                   scale_potrace,
-                                   trace_job->sample,
-                                   trace_job->resolution,
-                                   trace_job->thickness);
+  trace_data_to_strokes(*trace_job.bmain,
+                        *st,
+                        *trace_job.ob_grease_pencil,
+                        drawing,
+                        offset,
+                        scale_potrace,
+                        trace_job.sample,
+                        trace_job.resolution,
+                        trace_job.radius);
 
   /* Free memory. */
   potrace_state_free(st);
@@ -249,7 +556,7 @@ static void trace_start_job(void *customdata, wmJobWorkerStatus *worker_status)
       if (drawing == nullptr) {
         drawing = grease_pencil.insert_frame(*trace_job.layer, trace_job.frame_target);
       }
-      grease_pencil_trace_image(trace_job, ibuf, *drawing);
+      grease_pencil_trace_image(trace_job, *ibuf, *drawing);
       BKE_image_release_ibuf(trace_job.image, ibuf, lock);
       *(trace_job.progress) = 1.0f;
     }
@@ -278,7 +585,7 @@ static void trace_start_job(void *customdata, wmJobWorkerStatus *worker_status)
         if (drawing == nullptr) {
           drawing = grease_pencil.insert_frame(*trace_job.layer, frame_number);
         }
-        grease_pencil_trace_image(trace_job, ibuf, *drawing);
+        grease_pencil_trace_image(trace_job, *ibuf, *drawing);
 
         BKE_image_release_ibuf(trace_job.image, ibuf, lock);
       }
