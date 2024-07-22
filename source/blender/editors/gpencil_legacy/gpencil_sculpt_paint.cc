@@ -1188,7 +1188,7 @@ static bool gpencil_sculpt_brush_init(bContext *C, wmOperator *op)
       gso->vrgroup = -1;
     }
     /* Check if some modifier can transform the stroke. */
-    gso->is_transformed = false; /*BKE_gpencil_has_transform_modifiers(ob);*/
+    gso->is_transformed = false;
 
     gso->ob_eval = (Object *)DEG_get_evaluated_id(gso->depsgraph, &ob->id);
   }

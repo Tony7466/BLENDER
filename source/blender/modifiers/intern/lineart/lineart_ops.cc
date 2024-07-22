@@ -17,6 +17,7 @@
 #include "BKE_global.hh"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_modifier_legacy.h"
+#include "BKE_object.hh"
 #include "BKE_report.hh"
 #include "BKE_scene.hh"
 
@@ -49,6 +50,60 @@ static bool lineart_mod_is_disabled(GpencilModifierData *md)
   lmd->flags |= MOD_LINEART_IS_BAKED;
 
   return disabled;
+}
+
+/* Stores the maximum calculation range in the whole modifier stack for line art so the cache can
+ * cover everything that will be visible. */
+typedef struct GpencilLineartLimitInfo {
+  char min_level;
+  char max_level;
+  short edge_types;
+  char shadow_selection;
+  char silhouette_selection;
+} GpencilLineartLimitInfo;
+
+static GpencilLineartLimitInfo lineart_get_modifier_limits(const Object *ob)
+{
+  GpencilLineartLimitInfo info = {0};
+  bool is_first = true;
+  LISTBASE_FOREACH (GpencilModifierData *, md, &ob->greasepencil_modifiers) {
+    if (md->type == eGpencilModifierType_Lineart) {
+      LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
+      if (is_first || (lmd->flags & MOD_LINEART_USE_CACHE)) {
+        info.min_level = std::min<char>(info.min_level, lmd->level_start);
+        info.max_level = std::max<char>(
+            info.max_level, (lmd->use_multiple_levels ? lmd->level_end : lmd->level_start));
+        info.edge_types |= lmd->edge_types;
+        info.shadow_selection = std::max<char>(lmd->shadow_selection, info.shadow_selection);
+        info.silhouette_selection = std::max<char>(lmd->silhouette_selection,
+                                                   info.silhouette_selection);
+        is_first = false;
+      }
+    }
+  }
+  return info;
+}
+
+static void lineart_set_modifier_limits(GpencilModifierData *md,
+                                        const GpencilLineartLimitInfo *info,
+                                        const bool is_first_lineart)
+{
+  BLI_assert(md->type == eGpencilModifierType_Lineart);
+  LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
+  if (is_first_lineart || lmd->flags & MOD_LINEART_USE_CACHE) {
+    lmd->level_start_override = info->min_level;
+    lmd->level_end_override = info->max_level;
+    lmd->edge_types_override = info->edge_types;
+    lmd->shadow_selection_override = info->shadow_selection;
+    lmd->shadow_use_silhouette_override = info->silhouette_selection;
+  }
+  else {
+    lmd->level_start_override = lmd->level_start;
+    lmd->level_end_override = lmd->level_end;
+    lmd->edge_types_override = lmd->edge_types;
+    lmd->shadow_selection_override = lmd->shadow_selection;
+    lmd->shadow_use_silhouette_override = lmd->silhouette_selection;
+  }
 }
 
 static bool clear_strokes(Object *ob, GpencilModifierData *md, int frame)
@@ -190,7 +245,7 @@ static bool lineart_gpencil_bake_single_target(LineartBakeJob *bj, Object *ob, i
     }
   }
 
-  GpencilLineartLimitInfo info = BKE_gpencil_get_lineart_modifier_limits(ob);
+  GpencilLineartLimitInfo info = lineart_get_modifier_limits(ob);
 
   LineartCache *lc = nullptr;
   bool is_first = true;
@@ -198,7 +253,7 @@ static bool lineart_gpencil_bake_single_target(LineartBakeJob *bj, Object *ob, i
     if (md->type != eGpencilModifierType_Lineart) {
       continue;
     }
-    BKE_gpencil_set_lineart_modifier_limits(md, &info, is_first);
+    lineart_set_modifier_limits(md, &info, is_first);
     if (bake_strokes(ob, bj->dg, &lc, md, frame, is_first)) {
       touched = true;
       is_first = false;
@@ -433,7 +488,7 @@ static int lineart_gpencil_clear_strokes_all_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static void OBJECT_OT_lineart_bake_strokes(wmOperatorType *ot)
+void OBJECT_OT_lineart_bake_strokes(wmOperatorType *ot)
 {
   ot->name = "Bake Line Art";
   ot->description = "Bake Line Art for current Grease Pencil object";
@@ -444,7 +499,7 @@ static void OBJECT_OT_lineart_bake_strokes(wmOperatorType *ot)
   ot->modal = lineart_gpencil_bake_strokes_common_modal;
 }
 
-static void OBJECT_OT_lineart_bake_strokes_all(wmOperatorType *ot)
+void OBJECT_OT_lineart_bake_strokes_all(wmOperatorType *ot)
 {
   ot->name = "Bake Line Art (All)";
   ot->description = "Bake all Grease Pencil objects that have a Line Art modifier";
@@ -455,7 +510,7 @@ static void OBJECT_OT_lineart_bake_strokes_all(wmOperatorType *ot)
   ot->modal = lineart_gpencil_bake_strokes_common_modal;
 }
 
-static void OBJECT_OT_lineart_clear(wmOperatorType *ot)
+void OBJECT_OT_lineart_clear(wmOperatorType *ot)
 {
   ot->name = "Clear Baked Line Art";
   ot->description = "Clear all strokes in current Grease Pencil object";
@@ -464,19 +519,11 @@ static void OBJECT_OT_lineart_clear(wmOperatorType *ot)
   ot->exec = lineart_gpencil_clear_strokes_exec;
 }
 
-static void OBJECT_OT_lineart_clear_all(wmOperatorType *ot)
+void OBJECT_OT_lineart_clear_all(wmOperatorType *ot)
 {
   ot->name = "Clear Baked Line Art (All)";
   ot->description = "Clear all strokes in all Grease Pencil objects that have a Line Art modifier";
   ot->idname = "OBJECT_OT_lineart_clear_all";
 
   ot->exec = lineart_gpencil_clear_strokes_all_exec;
-}
-
-void ED_operatortypes_lineart()
-{
-  WM_operatortype_append(OBJECT_OT_lineart_bake_strokes);
-  WM_operatortype_append(OBJECT_OT_lineart_bake_strokes_all);
-  WM_operatortype_append(OBJECT_OT_lineart_clear);
-  WM_operatortype_append(OBJECT_OT_lineart_clear_all);
 }

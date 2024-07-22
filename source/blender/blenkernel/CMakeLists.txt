@@ -10,7 +10,6 @@ set(INC
   ../bmesh
   ../draw
   ../functions
-  ../gpencil_modifiers_legacy
   ../gpu
   ../ikplugin
   ../imbuf

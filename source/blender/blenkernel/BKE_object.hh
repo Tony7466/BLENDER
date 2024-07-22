@@ -108,13 +108,6 @@ ModifierData *BKE_object_active_modifier(const Object *ob);
 bool BKE_object_copy_modifier(
     Main *bmain, const Scene *scene, Object *ob_dst, const Object *ob_src, const ModifierData *md);
 /**
- * Copy a single GPencil modifier.
- *
- * \note *Do not* use this function to copy a whole modifier stack. Use
- * `BKE_object_modifier_stack_copy` instead.
- */
-bool BKE_object_copy_gpencil_modifier(Object *ob_dst, GpencilModifierData *gmd_src);
-/**
  * Copy the whole stack of modifiers from one object into another.
  *
  * \warning *Does not* clear modifier stack and related data (particle systems, soft-body,
@@ -708,3 +701,12 @@ void BKE_object_replace_data_on_shallow_copy(Object *ob, ID *new_data);
 PartEff *BKE_object_do_version_give_parteff_245(Object *ob);
 
 bool BKE_object_supports_material_slots(Object *ob);
+
+/**
+ * Lineart modifier operators.
+ * XXX These will be removed, keeping them around here for API cleanup.
+ */
+void OBJECT_OT_lineart_bake_strokes(struct wmOperatorType *ot);
+void OBJECT_OT_lineart_bake_strokes_all(struct wmOperatorType *ot);
+void OBJECT_OT_lineart_clear(struct wmOperatorType *ot);
+void OBJECT_OT_lineart_clear_all(struct wmOperatorType *ot);
