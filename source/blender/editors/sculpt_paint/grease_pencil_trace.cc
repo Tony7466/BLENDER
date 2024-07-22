@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_context.hh"
+#include "BKE_curves.hh"
 #include "BKE_global.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_image.h"
@@ -328,83 +329,106 @@ static void trace_data_to_strokes(Main &bmain,
                                   const potrace_state_t &st,
                                   Object &ob,
                                   bke::greasepencil::Drawing &drawing,
+                                  const ed::greasepencil::DrawingPlacement &placement,
                                   const int2 &offset,
                                   const float scale,
                                   const float sample,
                                   const int resolution,
-                                  const int radius)
+                                  const float radius)
 {
   constexpr float MAX_LENGTH = 100.0f;
 
-  /* Find materials and create them if not found. */
-  BKE_object_material
-  int32_t mat_fill_idx = BKE_gpencil_material_find_index_by_name_prefix(ob, "Stroke");
-  int32_t mat_mask_idx = BKE_gpencil_material_find_index_by_name_prefix(ob, "Holdout");
+  ///* Find materials and create them if not found. */
+  //BKE_object_material
+  //int32_t mat_fill_idx = BKE_gpencil_material_find_index_by_name_prefix(ob, "Stroke");
+  //int32_t mat_mask_idx = BKE_gpencil_material_find_index_by_name_prefix(ob, "Holdout");
 
-  const float default_color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
-  /* Stroke and Fill material. */
-  if (mat_fill_idx == -1) {
-    int32_t new_idx;
-    Material *mat_gp = BKE_gpencil_object_material_new(bmain, ob, "Stroke", &new_idx);
-    MaterialGPencilStyle *gp_style = mat_gp->gp_style;
+  //const float default_color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+  ///* Stroke and Fill material. */
+  //if (mat_fill_idx == -1) {
+  //  int32_t new_idx;
+  //  Material *mat_gp = BKE_gpencil_object_material_new(bmain, ob, "Stroke", &new_idx);
+  //  MaterialGPencilStyle *gp_style = mat_gp->gp_style;
 
-    copy_v4_v4(gp_style->stroke_rgba, default_color);
-    gp_style->flag |= GP_MATERIAL_STROKE_SHOW;
-    gp_style->flag |= GP_MATERIAL_FILL_SHOW;
-    mat_fill_idx = ob->totcol - 1;
+  //  copy_v4_v4(gp_style->stroke_rgba, default_color);
+  //  gp_style->flag |= GP_MATERIAL_STROKE_SHOW;
+  //  gp_style->flag |= GP_MATERIAL_FILL_SHOW;
+  //  mat_fill_idx = ob->totcol - 1;
+  //}
+  ///* Holdout material. */
+  //if (mat_mask_idx == -1) {
+  //  int32_t new_idx;
+  //  Material *mat_gp = BKE_gpencil_object_material_new(bmain, ob, "Holdout", &new_idx);
+  //  MaterialGPencilStyle *gp_style = mat_gp->gp_style;
+
+  //  copy_v4_v4(gp_style->stroke_rgba, default_color);
+  //  copy_v4_v4(gp_style->fill_rgba, default_color);
+  //  gp_style->flag |= GP_MATERIAL_STROKE_SHOW;
+  //  gp_style->flag |= GP_MATERIAL_FILL_SHOW;
+  //  gp_style->flag |= GP_MATERIAL_IS_STROKE_HOLDOUT;
+  //  gp_style->flag |= GP_MATERIAL_IS_FILL_HOLDOUT;
+  //  mat_mask_idx = ob->totcol - 1;
+  //}
+
+  /* Count paths and points. */
+  Vector<int> offsets;
+  for (const potrace_path_t *path = st.plist; path != nullptr; path = path->next) {
+    const Span<int> path_tags = {path->curve.tag, path->curve.n};
+    int point_num = 0;
+    for (const int segment_i : IndexRange(path->curve.n)) {
+      switch (path_tags[segment_i]) {
+        case POTRACE_CORNER:
+          point_num += 2;
+          break;
+        case POTRACE_CURVETO:
+          point_num += 1;
+          break;
+      }
+    }
+    offsets.append(point_num);
   }
-  /* Holdout material. */
-  if (mat_mask_idx == -1) {
-    int32_t new_idx;
-    Material *mat_gp = BKE_gpencil_object_material_new(bmain, ob, "Holdout", &new_idx);
-    MaterialGPencilStyle *gp_style = mat_gp->gp_style;
+  const OffsetIndices points_by_curve = offset_indices::accumulate_counts_to_offsets(offsets);
 
-    copy_v4_v4(gp_style->stroke_rgba, default_color);
-    copy_v4_v4(gp_style->fill_rgba, default_color);
-    gp_style->flag |= GP_MATERIAL_STROKE_SHOW;
-    gp_style->flag |= GP_MATERIAL_FILL_SHOW;
-    gp_style->flag |= GP_MATERIAL_IS_STROKE_HOLDOUT;
-    gp_style->flag |= GP_MATERIAL_IS_FILL_HOLDOUT;
-    mat_mask_idx = ob->totcol - 1;
-  }
+  bke::CurvesGeometry curves(points_by_curve.total_size(), points_by_curve.size());
+  curves.offsets_for_write().copy_from(offsets);
 
-  int n, *tag;
-  potrace_dpoint_t(*c)[3];
+  bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+  MutableSpan<float> radii = drawing.radii_for_write();
+  bke::SpanAttributeWriter<int> material_indices = attributes.lookup_or_add_for_write_span<int>(
+      "material_index", bke::AttrDomain::Curve);
+  MutableSpan<float3> positions = curves.positions_for_write();
 
   /* There isn't any rule here, only the result of lots of testing to get a value that gets
    * good results using the Potrace data. */
   const float scalef = 0.008f * scale;
   /* Draw each curve. */
-  potrace_path_t *path = st->plist;
-  while (path != nullptr) {
-    n = path->curve.n;
-    tag = path->curve.tag;
-    c = path->curve.c;
-    int mat_idx = path->sign == '+' ? mat_fill_idx : mat_mask_idx;
-    /* Create a new stroke. */
-    bGPDstroke *gps = BKE_gpencil_stroke_add(gpf, mat_idx, 0, thickness, false);
-    /* Last point that is equals to start point. */
-    float start_point[2], last[2];
-    start_point[0] = c[n - 1][2].x;
-    start_point[1] = c[n - 1][2].y;
-    zero_v2(last);
+  for (const potrace_path_t *path = st.plist, int curve_i = 0; path != nullptr;
+       path = path->next, ++curve_i)
+  {
+    const Span<int> path_tags = {path->curve.tag, path->curve.n};
+    using PathSegment = potrace_dpoint_t[3];
+    const Span<PathSegment> path_segments = {path->curve.c, path->curve.n};
 
-    for (int32_t i = 0; i < n; i++) {
-      switch (tag[i]) {
+    const IndexRange points = points_by_curve[curve_i];
+
+    material_indices.span[curve_i] = 0 /*path->sign == '+' ? mat_fill_idx : mat_mask_idx*/;
+    radii.slice(points).fill(radius);
+
+    /* Potrace stores the last 3 points of a bezier segment.
+     * The start point is the last segment's end point. */
+    int point_index = 0;
+    auto add_point = [&](float scale, const int2 offset, const potrace_dpoint_t &point) -> int {
+      const float2 co = (float2(point.x, point.y) - float2(offset)) * scale;
+      positions[points[point_index]] = placement.project(co);
+      point_index += 1;
+    };
+
+    for (const int segment_i : path_segments.index_range()) {
+      const PathSegment &segment = path_segments[segment_i];
+      switch (path_tags[segment_i]) {
         case POTRACE_CORNER: {
-          if (gps->totpoints == 0) {
-            add_point(gps, scalef, offset, c[n - 1][2].x, c[n - 1][2].y);
-          }
-          else {
-            add_point(gps, scalef, offset, last[0], last[1]);
-          }
-
-          add_point(gps, scalef, offset, c[i][1].x, c[i][1].y);
-
-          add_point(gps, scalef, offset, c[i][2].x, c[i][2].y);
-
-          last[0] = c[i][2].x;
-          last[1] = c[i][2].y;
+          add_point(scalef, offset, segment[1]);
+          add_point(scalef, offset, segment[2]);
           break;
         }
         case POTRACE_CURVETO: {
