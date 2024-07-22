@@ -99,8 +99,7 @@ void main()
       (thickness != 0.0))
   {
     /* We model two transmission event, so the surface color need to be applied twice.
-    Transmissive
-     * closures are always in the first bin. */
+     * Transmissive closures are always in the first bin. */
     gbuf_data.closure[0].color *= g_closure_get(0).color;
   }
 

@@ -110,9 +110,9 @@ void closure_select(inout ClosureUndetermined destination,
                     inout float random,
                     ClosureUndetermined candidate)
 {
+  candidate.color *= candidate.weight;
   float candidate_color_weight = average(abs(candidate.color));
-  if (closure_select_check(candidate.weight * candidate_color_weight, destination.weight, random))
-  {
+  if (closure_select_check(candidate_color_weight, destination.weight, random)) {
     float total_weight = destination.weight;
     destination = candidate;
     destination.weight = total_weight;
