@@ -731,17 +731,21 @@ static FCurve *rna_Action_fcurve_new(bAction *act,
     /* Add the F-Curve to the channelbag for the first slot. */
     animrig::ChannelBag &channelbag = animrig::legacy::channelbag_ensure(action);
     FCurve *fcurve = channelbag.fcurve_create_unique({data_path, index});
-
-    /* TODO: handle the groups. */
     if (!fcurve) {
+      /* The only reason fcurve_create_unique() returns nullptr is when the curve
+       * already exists. */
+
+      /* This is using the same error as below, as this is mimicking the legacy API. */
       BKE_reportf(reports,
                   RPT_ERROR,
-                  "Cannot add legacy F-Curves to a layered Action '%s'. Convert it to a legacy "
-                  "Action first.",
+                  "F-Curve '%s[%d]' already exists in action '%s'",
+                  data_path,
+                  index,
                   act->id.name + 2);
       return nullptr;
     }
 
+    /* TODO: handle the groups. */
     return fcurve;
   }
 
