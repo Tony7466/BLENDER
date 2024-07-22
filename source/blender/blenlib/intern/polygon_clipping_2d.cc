@@ -764,30 +764,9 @@ struct CurveBooleanExecutor {
 
     for (const int j : IndexRange(int(num_intersects / 2))) {
       if (num_intersects > (j + 1) * 2) {
-        const int i0 = A_inter_sorted_ids[int_sorted];
-        const int i1 = A_inter_sorted_ids[int_sorted + 1];
-
-        const ExtendedIntersectionPoint &vertex0 = intersections[i0];
-        const ExtendedIntersectionPoint &vertex1 = intersections[i1];
+        cut_add_between_points(int_sorted);
 
         int_sorted += 2;
-
-        if (vertex0.A_entry_exit == ENTRY) {
-          /* Start line. */
-          newPolygon();
-
-          newVertexIntersection(i0);
-
-          if (vertex0.point_a != vertex1.point_a) {
-            for (const int i :
-                 IndexRange::from_begin_end_inclusive(vertex0.point_a + 1, vertex1.point_a))
-            {
-              newVertexID(i, true);
-            }
-          }
-
-          newVertexIntersection(i1);
-        }
       }
     }
 
