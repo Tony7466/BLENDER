@@ -19,12 +19,12 @@
 
 namespace blender::polygonboolean {
 
-int intersect(const float2 &P1,
-              const float2 &P2,
-              const float2 &Q1,
-              const float2 &Q2,
-              float *r_alpha_P,
-              float *r_alpha_Q)
+static int intersect(const float2 &P1,
+                     const float2 &P2,
+                     const float2 &Q1,
+                     const float2 &Q2,
+                     float *r_alpha_P,
+                     float *r_alpha_Q)
 {
   double r_lambda;
   double r_mu;
@@ -37,12 +37,12 @@ int intersect(const float2 &P1,
   return val;
 }
 
-bool inside(const float2 &point, Span<float2> poly)
+static bool inside(const float2 &point, Span<float2> poly)
 {
   return isect_point_poly_v2(point, reinterpret_cast<const float(*)[2]>(poly.data()), poly.size());
 }
 
-struct ExtendedIntersectionPoint {
+static struct ExtendedIntersectionPoint {
   int point_a;
   int point_b;
   float alpha_a;
@@ -53,10 +53,10 @@ struct ExtendedIntersectionPoint {
   bool B_entry_exit;
 };
 
-ExtendedIntersectionPoint CreateIntersection(const int point_a,
-                                             const int point_b,
-                                             const float alpha_a,
-                                             const float alpha_b)
+static ExtendedIntersectionPoint CreateIntersection(const int point_a,
+                                                    const int point_b,
+                                                    const float alpha_a,
+                                                    const float alpha_b)
 {
   ExtendedIntersectionPoint inter_point;
   inter_point.point_a = point_a;
@@ -70,7 +70,7 @@ ExtendedIntersectionPoint CreateIntersection(const int point_a,
 #define EXIT false
 #define ENTRY true
 
-BooleanResult result_None(Span<float2> /*curve_a*/, Span<float2> /*curve_b*/)
+static BooleanResult result_None(Span<float2> /*curve_a*/, Span<float2> /*curve_b*/)
 {
   BooleanResult result;
 
@@ -86,7 +86,7 @@ BooleanResult result_None(Span<float2> /*curve_a*/, Span<float2> /*curve_b*/)
   return result;
 }
 
-BooleanResult result_A(Span<float2> curve_a, Span<float2> /*curve_b*/)
+static BooleanResult result_A(Span<float2> curve_a, Span<float2> /*curve_b*/)
 {
   BooleanResult result;
 
@@ -108,7 +108,7 @@ BooleanResult result_A(Span<float2> curve_a, Span<float2> /*curve_b*/)
   return result;
 }
 
-BooleanResult result_B(Span<float2> /*curve_a*/, Span<float2> curve_b)
+static BooleanResult result_B(Span<float2> /*curve_a*/, Span<float2> curve_b)
 {
   BooleanResult result;
 
@@ -130,7 +130,7 @@ BooleanResult result_B(Span<float2> /*curve_a*/, Span<float2> curve_b)
   return result;
 }
 
-BooleanResult result_AB(Span<float2> curve_a, Span<float2> curve_b)
+static BooleanResult result_AB(Span<float2> curve_a, Span<float2> curve_b)
 {
   BooleanResult result;
 
@@ -157,7 +157,7 @@ BooleanResult result_AB(Span<float2> curve_a, Span<float2> curve_b)
   return result;
 }
 
-BooleanResult result_BA(Span<float2> curve_a, Span<float2> curve_b)
+static BooleanResult result_BA(Span<float2> curve_a, Span<float2> curve_b)
 {
   BooleanResult result;
 
@@ -184,9 +184,9 @@ BooleanResult result_BA(Span<float2> curve_a, Span<float2> curve_b)
   return result;
 }
 
-BooleanResult non_intersecting_result(const InputMode input_mode,
-                                      Span<float2> curve_a,
-                                      Span<float2> curve_b)
+static BooleanResult non_intersecting_result(const InputMode input_mode,
+                                             Span<float2> curve_a,
+                                             Span<float2> curve_b)
 {
   const bool is_a_in_b = inside(curve_a.first(), curve_b);
   const bool is_b_in_a = inside(curve_b.first(), curve_a);
@@ -244,7 +244,9 @@ BooleanResult non_intersecting_result(const InputMode input_mode,
   return result_None(curve_a, curve_b);
 }
 
-BooleanResult invalided_result(const BooleanMode mode, Span<float2> curve_a, Span<float2> curve_b)
+static BooleanResult invalided_result(const BooleanMode mode,
+                                      Span<float2> curve_a,
+                                      Span<float2> curve_b)
 {
   BooleanResult result;
 
@@ -265,7 +267,7 @@ BooleanResult invalided_result(const BooleanMode mode, Span<float2> curve_a, Spa
   return result;
 }
 
-std::pair<bool, bool> get_AB_mode(const BooleanMode mode)
+static std::pair<bool, bool> get_AB_mode(const BooleanMode mode)
 {
   if (mode == A_AND_B) {
     return {false, false};
@@ -383,7 +385,7 @@ Array<float2> calculate_positions_from_result(const Span<float2> curve_a,
 /**
  * Utility class to avoid passing large number of parameters between functions.
  */
-struct CurveBooleanExecutor {
+static struct CurveBooleanExecutor {
   int len_a;
   int len_b;
 
