@@ -14,7 +14,7 @@
 #include "NOD_socket_search_link.hh"
 
 #include "RNA_enum_types.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "BLO_read_write.hh"
 
@@ -71,7 +71,7 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
   bNode &node = *static_cast<bNode *>(ptr->data);
   NodeIndexSwitch &storage = node_storage(node);
   if (uiLayout *panel = uiLayoutPanel(C, layout, "index_switch_items", false, TIP_("Items"))) {
-    uiItemO(panel, "Add Item", ICON_ADD, "node.index_switch_item_add");
+    uiItemO(panel, IFACE_("Add Item"), ICON_ADD, "node.index_switch_item_add");
     uiLayout *col = uiLayoutColumn(panel, false);
     for (const int i : IndexRange(storage.items_num)) {
       uiLayout *row = uiLayoutRow(col, false);
