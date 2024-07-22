@@ -29,6 +29,8 @@ class AssetLibrary;
 class AssetRepresentation;
 
 class AssetStorage {
+  /* Uses shared pointers so the UI can aquire weak pointers. It can then ensure pointers are not
+   * danling before accessing. */
   using StorageT = Set<std::shared_ptr<AssetRepresentation>>;
 
   StorageT external_assets_;

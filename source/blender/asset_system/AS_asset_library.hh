@@ -127,6 +127,9 @@ class AssetLibrary {
    * \param relative_asset_path: The path of the asset relative to the asset library root. With
    *                             this the asset must be uniquely identifiable within the asset
    *                             library.
+   * \return A weak pointer to the new asset representation. The caller needs to keep some
+   *         reference stored to be able to call #remove_asset(). This would be dangling once the
+   *         asset library is destructed, so a weak pointer should be used to reference it.
    */
   std::weak_ptr<AssetRepresentation> add_external_asset(StringRef relative_asset_path,
                                                         StringRef name,
