@@ -31,6 +31,9 @@
 #include "DNA_curves_types.h"
 #include "DNA_modifier_types.h"
 
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+
 #include "ED_grease_pencil.hh"
 #include "ED_view3d.hh"
 
@@ -418,21 +421,15 @@ static int lineart_bake_common(bContext *C,
   return OPERATOR_FINISHED;
 }
 
-static int lineart_bake_strokes_all_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
-{
-  return lineart_bake_common(C, op, true, true);
-}
-static int lineart_bake_strokes_all_exec(bContext *C, wmOperator *op)
-{
-  return lineart_bake_common(C, op, true, false);
-}
 static int lineart_bake_strokes_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
-  return lineart_bake_common(C, op, false, true);
+  bool bake_all = RNA_boolean_get(op->ptr, "bake_all");
+  return lineart_bake_common(C, op, bake_all, true);
 }
 static int lineart_bake_strokes_exec(bContext *C, wmOperator *op)
 {
-  return lineart_bake_common(C, op, false, false);
+  bool bake_all = RNA_boolean_get(op->ptr, "bake_all");
+  return lineart_bake_common(C, op, bake_all, false);
 }
 static int lineart_bake_strokes_common_modal(bContext *C,
                                              wmOperator *op,
@@ -450,10 +447,6 @@ static int lineart_bake_strokes_common_modal(bContext *C,
 
 static void lineart_gpencil_clear_strokes_exec_common(Object *ob)
 {
-  /* TODO: move these checks to an operator poll function. */
-  if ((ob == nullptr) || ob->type != OB_GREASE_PENCIL) {
-    return;
-  }
   LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
     if (md->type != eModifierType_GreasePencilLineart) {
       continue;
@@ -478,25 +471,30 @@ static void lineart_gpencil_clear_strokes_exec_common(Object *ob)
   DEG_id_tag_update((ID *)ob->data, ID_RECALC_GEOMETRY);
 }
 
-static int lineart_gpencil_clear_strokes_exec(bContext *C, wmOperator * /*op*/)
+static int lineart_gpencil_clear_strokes_exec(bContext *C, wmOperator *op)
 {
-  Object *ob = CTX_data_active_object(C);
+  bool clear_all = RNA_boolean_get(op->ptr, "clear_all");
 
-  lineart_gpencil_clear_strokes_exec_common(ob);
-
-  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, ob);
-
-  return OPERATOR_FINISHED;
-}
-static int lineart_gpencil_clear_strokes_all_exec(bContext *C, wmOperator *op)
-{
-  CTX_DATA_BEGIN (C, Object *, ob, visible_objects) {
+  if (clear_all) {
+    CTX_DATA_BEGIN (C, Object *, ob, visible_objects) {
+      if (ob->type != OB_GREASE_PENCIL) {
+        continue;
+      }
+      lineart_gpencil_clear_strokes_exec_common(ob);
+      WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, ob);
+    }
+    CTX_DATA_END;
+    BKE_report(op->reports, RPT_INFO, "All Line Art objects are now cleared of bakes");
+  }
+  else {
+    Object *ob = CTX_data_active_object(C);
+    if (ob->type != OB_GREASE_PENCIL) {
+      return OPERATOR_FINISHED;
+    }
     lineart_gpencil_clear_strokes_exec_common(ob);
     WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, ob);
+    BKE_report(op->reports, RPT_INFO, "Baked strokes are cleared");
   }
-  CTX_DATA_END;
-
-  BKE_report(op->reports, RPT_INFO, "All Line Art objects are now cleared");
 
   return OPERATOR_FINISHED;
 }
@@ -507,20 +505,12 @@ static void OBJECT_OT_lineart_bake_strokes(wmOperatorType *ot)
   ot->description = "Bake Line Art for current Grease Pencil object";
   ot->idname = "OBJECT_OT_lineart_bake_strokes";
 
+  ot->poll = blender::ed::greasepencil::active_grease_pencil_poll;
   ot->invoke = lineart_bake_strokes_invoke;
   ot->exec = lineart_bake_strokes_exec;
   ot->modal = lineart_bake_strokes_common_modal;
-}
 
-static void OBJECT_OT_lineart_bake_strokes_all(wmOperatorType *ot)
-{
-  ot->name = "Bake Line Art (All)";
-  ot->description = "Bake all Grease Pencil objects that have a Line Art modifier";
-  ot->idname = "OBJECT_OT_lineart_bake_strokes_all";
-
-  ot->invoke = lineart_bake_strokes_all_invoke;
-  ot->exec = lineart_bake_strokes_all_exec;
-  ot->modal = lineart_bake_strokes_common_modal;
+  RNA_def_boolean(ot->srna, "bake_all", false, "Bake All", "Bake all line art modifiers");
 }
 
 static void OBJECT_OT_lineart_clear(wmOperatorType *ot)
@@ -529,22 +519,14 @@ static void OBJECT_OT_lineart_clear(wmOperatorType *ot)
   ot->description = "Clear all strokes in current Grease Pencil object";
   ot->idname = "OBJECT_OT_lineart_clear";
 
+  ot->poll = blender::ed::greasepencil::active_grease_pencil_poll;
   ot->exec = lineart_gpencil_clear_strokes_exec;
-}
 
-static void OBJECT_OT_lineart_clear_all(wmOperatorType *ot)
-{
-  ot->name = "Clear Baked Line Art (All)";
-  ot->description = "Clear all strokes in all Grease Pencil objects that have a Line Art modifier";
-  ot->idname = "OBJECT_OT_lineart_clear_all";
-
-  ot->exec = lineart_gpencil_clear_strokes_all_exec;
+  RNA_def_boolean(ot->srna, "clear_all", false, "Clear All", "Clear all line art modifier bakes");
 }
 
 void ED_operatortypes_grease_pencil_lineart()
 {
   WM_operatortype_append(OBJECT_OT_lineart_bake_strokes);
-  WM_operatortype_append(OBJECT_OT_lineart_bake_strokes_all);
   WM_operatortype_append(OBJECT_OT_lineart_clear);
-  WM_operatortype_append(OBJECT_OT_lineart_clear_all);
 }
