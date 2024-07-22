@@ -100,7 +100,7 @@ class LightsPassHandler {
         call_bufs.icon_sun_rays_buf.append(show_light_colors ? data.with_color(light_color) : data,
                                            select_id);
         break;
-      case LA_SPOT:
+      case LA_SPOT: {
         /* Previous implementation was using the clip-end distance as cone size.
          * We cannot do this anymore so we use a fixed size of 10. (see #72871) */
         rescale_m4(matrix.ptr(), float3{10.0f, 10.0f, 10.0f});
@@ -110,16 +110,14 @@ class LightsPassHandler {
          * cone. We solve the case where spot attenuation y = 1 and y = 0 root for y = 1 is
          * `sqrt(1/c^2 - 1)`. root for y = 0 is `sqrt(1/a^2 - 1)` and use that to position the
          * blend circle. */
-        {
-          const float a = cosf(la.spotsize * 0.5f);
-          const float b = la.spotblend;
-          const float c = a * b - a - b;
-          const float a2 = a * a;
-          const float c2 = c * c;
-          /* Optimized version or root1 / root0 */
-          spot_blend = sqrtf((a2 - a2 * c2) / (c2 - a2 * c2));
-          spot_cosine = a;
-        }
+        const float a = cosf(la.spotsize * 0.5f);
+        const float b = la.spotblend;
+        const float c = a * b - a - b;
+        const float a2 = a * a;
+        const float c2 = c * c;
+        /* Optimized version or root1 / root0 */
+        spot_blend = sqrtf((a2 - a2 * c2) / (c2 - a2 * c2));
+        spot_cosine = a;
         /* HACK: We pack the area size in alpha color. This is decoded by the shader. */
         theme_color[3] = -max_ff(la.radius, FLT_MIN);
         call_bufs.spot_buf.append(data, select_id);
@@ -130,6 +128,7 @@ class LightsPassHandler {
           call_bufs.spot_cone_back_buf.append(data.with_color(color_outside), select_id);
         }
         break;
+      }
       case LA_AREA:
         const bool uniform_scale = !ELEM(la.area_shape, LA_AREA_RECT, LA_AREA_ELLIPSE);
         LightInstanceBuf &area_buf = ELEM(la.area_shape, LA_AREA_SQUARE, LA_AREA_RECT) ?
