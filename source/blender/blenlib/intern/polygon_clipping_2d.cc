@@ -286,24 +286,49 @@ static std::pair<bool, bool> get_AB_mode(const BooleanMode mode)
   return {false, false};
 }
 
-static int result_find_base_id(const BooleanResult & /*results*/)
+static bool is_point_in_others(const int polygon_a,
+                               const OffsetIndices<int> points_by_polygon,
+                               const Span<float2> points)
 {
-  // const OffsetIndices<int> points_by_polygon = OffsetIndices<int>(results.offsets);
-
-  int base_id = 0; /* TODO */
-
-  // for (const int polygon_a : points_by_polygon.index_range()) {
-  //   points = points_by_polygon[polygon_a];
-  // }
-
-  return base_id;
+  const float2 &point = points[points_by_polygon[polygon_a].first()];
+  for (const int polygon_b : points_by_polygon.index_range()) {
+    if (polygon_b == polygon_a) {
+      continue;
+    }
+    if (inside(point, points.slice(points_by_polygon[polygon_b]))) {
+      return true;
+    }
+  }
+  return false;
 }
 
-static BooleanResult result_remove_holes(const BooleanResult &in_results)
+static int result_find_base_id(const BooleanResult &results,
+                               const Span<float2> curve_a,
+                               const Span<float2> curve_b)
+{
+  const OffsetIndices<int> points_by_polygon = OffsetIndices<int>(results.offsets);
+  const Array<float2> points = calculate_positions_from_result(curve_a, curve_b, results);
+
+  /**
+   * The base is the polygon that all others are inside of, and therefor it is not in any others.
+   */
+  for (const int polygon_a : points_by_polygon.index_range()) {
+    if (!is_point_in_others(polygon_a, points_by_polygon, points)) {
+      return polygon_a;
+    }
+  }
+
+  BLI_assert_unreachable();
+  return -1;
+}
+
+static BooleanResult result_remove_holes(const BooleanResult &in_results,
+                                         const Span<float2> curve_a,
+                                         const Span<float2> curve_b)
 {
   BooleanResult result;
 
-  const int base_id = result_find_base_id(in_results);
+  const int base_id = result_find_base_id(in_results, curve_a, curve_b);
 
   const int base_start = in_results.offsets[base_id];
   const int base_end = in_results.offsets[base_id + 1];
@@ -345,7 +370,9 @@ static BooleanResult result_remove_holes(const BooleanResult &in_results)
   return result;
 }
 
-static BooleanResult result_sort_holes(const BooleanResult &in_results)
+static BooleanResult result_sort_holes(const BooleanResult &in_results,
+                                       const Span<float2> /*curve_a*/,
+                                       const Span<float2> /*curve_b*/)
 {
   /* TODO. */
   return in_results;
@@ -619,10 +646,10 @@ struct CurveBooleanExecutor {
     result.valid_geometry = true;
 
     if (input_mode.hole_mode == WITHOUT_HOLES) {
-      result = result_remove_holes(result);
+      result = result_remove_holes(result, curve_a, curve_b);
     }
     else if (input_mode.hole_mode == WITH_ORDERED_HOLES) {
-      result = result_sort_holes(result);
+      result = result_sort_holes(result, curve_a, curve_b);
     }
 
     return result;
