@@ -34,8 +34,17 @@ ccl_device_inline float3 texco_remap_square(float3 co)
   return (co - make_float3(0.5f, 0.5f, 0.5f)) * 2.0f;
 }
 
-ccl_device_noinline int svm_node_tex_image(
-    KernelGlobals kg, ccl_private ShaderData *sd, ccl_private float *stack, uint4 node, int offset)
+#if !defined(__KERNEL_CUDA__)
+ccl_device_noinline
+#else
+ccl_device
+#endif
+    int
+    svm_node_tex_image(KernelGlobals kg,
+                       ccl_private ShaderData *sd,
+                       ccl_private float *stack,
+                       uint4 node,
+                       int offset)
 {
   uint co_offset, out_offset, alpha_offset, flags;
 
@@ -107,10 +116,16 @@ ccl_device_noinline int svm_node_tex_image(
   return offset;
 }
 
-ccl_device_noinline void svm_node_tex_image_box(KernelGlobals kg,
-                                                ccl_private ShaderData *sd,
-                                                ccl_private float *stack,
-                                                uint4 node)
+#if !defined(__KERNEL_CUDA__)
+ccl_device_noinline
+#else
+ccl_device
+#endif
+    void
+    svm_node_tex_image_box(KernelGlobals kg,
+                           ccl_private ShaderData *sd,
+                           ccl_private float *stack,
+                           uint4 node)
 {
   /* get object space normal */
   float3 N = sd->N;
@@ -209,10 +224,16 @@ ccl_device_noinline void svm_node_tex_image_box(KernelGlobals kg,
     stack_store_float(stack, alpha_offset, f.w);
 }
 
-ccl_device_noinline void svm_node_tex_environment(KernelGlobals kg,
-                                                  ccl_private ShaderData *sd,
-                                                  ccl_private float *stack,
-                                                  uint4 node)
+#if !defined(__KERNEL_CUDA__)
+ccl_device_noinline
+#else
+ccl_device
+#endif
+    void
+    svm_node_tex_environment(KernelGlobals kg,
+                             ccl_private ShaderData *sd,
+                             ccl_private float *stack,
+                             uint4 node)
 {
   uint id = node.y;
   uint co_offset, out_offset, alpha_offset, flags;

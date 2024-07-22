@@ -10,11 +10,17 @@ CCL_NAMESPACE_BEGIN
 
 /* Geometry Node */
 
-ccl_device_noinline void svm_node_geometry(KernelGlobals kg,
-                                           ccl_private ShaderData *sd,
-                                           ccl_private float *stack,
-                                           uint type,
-                                           uint out_offset)
+#if !defined(__KERNEL_CUDA__)
+ccl_device_noinline
+#else
+ccl_device
+#endif
+    void
+    svm_node_geometry(KernelGlobals kg,
+                      ccl_private ShaderData *sd,
+                      ccl_private float *stack,
+                      uint type,
+                      uint out_offset)
 {
   float3 data;
 

@@ -175,16 +175,22 @@ ccl_device_inline bool light_sample(KernelGlobals kg,
 /* Sample a point on the chosen emitter. */
 
 template<bool in_volume_segment>
-ccl_device_noinline bool light_sample(KernelGlobals kg,
-                                      const float3 rand_light,
-                                      const float time,
-                                      const float3 P,
-                                      const float3 N,
-                                      const int object_receiver,
-                                      const int shader_flags,
-                                      const int bounce,
-                                      const uint32_t path_flag,
-                                      ccl_private LightSample *ls)
+#if !defined(__KERNEL_CUDA__)
+ccl_device_noinline
+#else
+ccl_device
+#endif
+    bool
+    light_sample(KernelGlobals kg,
+                 const float3 rand_light,
+                 const float time,
+                 const float3 P,
+                 const float3 N,
+                 const int object_receiver,
+                 const int shader_flags,
+                 const int bounce,
+                 const uint32_t path_flag,
+                 ccl_private LightSample *ls)
 {
   /* The first two dimensions of the Sobol sequence have better stratification, use them to sample
    * position on the light. */

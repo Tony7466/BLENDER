@@ -40,10 +40,16 @@ ccl_device AttributeDescriptor svm_node_attr_init(KernelGlobals kg,
 }
 
 template<uint node_feature_mask>
-ccl_device_noinline void svm_node_attr(KernelGlobals kg,
-                                       ccl_private ShaderData *sd,
-                                       ccl_private float *stack,
-                                       uint4 node)
+#if !defined(__KERNEL_CUDA__)
+ccl_device_noinline
+#else
+ccl_device
+#endif
+    void
+    svm_node_attr(KernelGlobals kg,
+                  ccl_private ShaderData *sd,
+                  ccl_private float *stack,
+                  uint4 node)
 {
   NodeAttributeOutputType type = NODE_ATTR_OUTPUT_FLOAT;
   uint out_offset = 0;
