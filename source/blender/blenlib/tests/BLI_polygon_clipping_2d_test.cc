@@ -702,6 +702,25 @@ void simple_cut_2_test()
   }
 }
 
+void simple_cut_3_test()
+{
+  /**
+   * With cut the first curve A does not loop.
+   */
+  const Array<float2> points_a = {{6, 8}, {4, 7}, {1, 3}, {1, 1}};
+  const Array<float2> points_b = {
+      {3, 7}, {5, 5}, {1, 0}, {0, 4}, {2, 3}, {1, 5}, {3, 4}, {2, 6}, {4, 5}};
+  BooleanResult result = polygonboolean::curve_boolean_cut(points_a, points_b);
+  EXPECT_TRUE(result.valid_geometry);
+  EXPECT_EQ(result.verts.size(), 9);
+  EXPECT_EQ(result.intersections_data.size(), 7);
+  EXPECT_EQ(result.offsets.size(), 5);
+
+  if (DO_DRAW) {
+    draw_cut("Simple cut 3", points_a, points_b, result);
+  }
+}
+
 TEST(polygonboolean, Squares_A_AND_B)
 {
   squares_A_AND_B_test();
@@ -775,6 +794,11 @@ TEST(polygonboolean, Simple_Cut)
 TEST(polygonboolean, Simple_Cut_2)
 {
   simple_cut_2_test();
+}
+
+TEST(polygonboolean, Simple_Cut_3)
+{
+  simple_cut_3_test();
 }
 
 }  // namespace blender::polygonboolean
