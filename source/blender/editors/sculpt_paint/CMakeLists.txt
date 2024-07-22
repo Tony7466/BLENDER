@@ -63,6 +63,7 @@ set(SRC
   grease_pencil_sculpt_thickness.cc
   grease_pencil_sculpt_twist.cc
   grease_pencil_tint.cc
+  grease_pencil_trace.cc
   grease_pencil_weight_average.cc
   grease_pencil_weight_blur.cc
   grease_pencil_weight_draw.cc
@@ -165,6 +166,16 @@ set(LIB
   PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
 )
+
+if(WITH_POTRACE)
+  list(APPEND INC
+    ${POTRACE_INCLUDE_DIRS}
+  )
+  list(APPEND LIB
+    ${POTRACE_LIBRARIES}
+  )
+  add_definitions(-DWITH_POTRACE)
+endif()
 
 if(WIN32)
   add_definitions(-DNOMINMAX)

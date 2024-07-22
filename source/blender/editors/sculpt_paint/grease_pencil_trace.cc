@@ -1,0 +1,567 @@
+/* SPDX-FileCopyrightText: 2024 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
+#include "BKE_context.hh"
+#include "BKE_global.hh"
+#include "BKE_grease_pencil.hh"
+#include "BKE_image.h"
+#include "BKE_layer.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_object.hh"
+#include "BKE_report.hh"
+
+#include "BLI_math_vector.h"
+
+#include "BLT_translation.hh"
+
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
+
+#include "DNA_grease_pencil_types.h"
+
+#include "DNA_object_types.h"
+#include "ED_grease_pencil.hh"
+#include "ED_numinput.hh"
+#include "ED_object.hh"
+#include "ED_screen.hh"
+
+#include "MEM_guardedalloc.h"
+
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+
+#ifdef WITH_POTRACE
+#  include "potracelib.h"
+#endif
+
+namespace blender::ed::sculpt_paint::greasepencil {
+
+/* -------------------------------------------------------------------- */
+/** \name Trace Image Operator
+ * \{ */
+
+/* Target object modes. */
+enum class TargetObjectMode : int8_t {
+  New = 0,
+  Selected = 1,
+};
+
+enum class TraceMode : int8_t {
+  Single = 0,
+  Sequence = 1,
+};
+
+/* Policy for resolving ambiguity during decomposition of bitmaps into paths. */
+enum class TurnPolicy : int8_t {
+  /* Prefers to connect foreground pixels. */
+  Foreground = 0,
+  /* Prefers to connect background pixels. */
+  Background = 1,
+  /* Always take a left turn. */
+  Left = 2,
+  /* Always take a right turn. */
+  Right = 3,
+  /* Prefers to connect minority color in the neighborhood. */
+  Minority = 4,
+  /* Prefers to connect majority color in the neighborhood. */
+  Majority = 5,
+  /* Chose direction randomly. */
+  Random = 6,
+};
+
+#ifdef WITH_POTRACE
+
+struct TraceJob {
+  /* from wmJob */
+  Object *owner;
+  bool *stop, *do_update;
+  float *progress;
+
+  bContext *C;
+  wmWindowManager *wm;
+  Main *bmain;
+  Scene *scene;
+  View3D *v3d;
+  Base *base_active;
+  Object *ob_active;
+  Image *image;
+  Object *ob_grease_pencil;
+  bke::greasepencil::Layer *layer;
+
+  bool was_ob_created;
+  bool use_current_frame;
+
+  /* Frame number where the output frame is generated. */
+  int frame_target;
+  float threshold;
+  float scale;
+  float sample;
+  int resolution;
+  float radius;
+  TurnPolicy turnpolicy;
+  TraceMode mode;
+  /** Frame to render to be used by python API. Not exposed in UI.
+   * This feature is only used in Studios to run custom video trace for selected frames. */
+  int frame_number;
+
+  bool success;
+  bool was_canceled;
+
+  void ensure_output_object();
+};
+
+void TraceJob::ensure_output_object()
+{
+  using namespace blender::bke::greasepencil;
+
+  /* Create a new grease pencil object. */
+  if (this->ob_grease_pencil == nullptr) {
+    const ushort local_view_bits = (this->v3d && this->v3d->localvd) ? this->v3d->local_view_uid :
+                                                                       0;
+    this->ob_grease_pencil = ed::object::add_type(this->C,
+                                                  OB_GREASE_PENCIL,
+                                                  nullptr,
+                                                  this->ob_active->loc,
+                                                  this->ob_active->rot,
+                                                  false,
+                                                  local_view_bits);
+    copy_v3_v3(this->ob_grease_pencil->scale, this->ob_active->scale);
+
+    // ED_grease_pencil_add_object(this->C, this->ob_active->loc, local_view_bits);
+    // /* Apply image rotation. */
+    // copy_v3_v3(this->ob_grease_pencil->rot, this->ob_active->rot);
+    // /* Grease pencil is rotated 90 degrees in X axis by default. */
+    // this->ob_grease_pencil->rot[0] -= DEG2RADF(90.0f);
+    this->was_ob_created = true;
+    // /* Apply image Scale. */
+    // copy_v3_v3(this->ob_grease_pencil->scale, this->ob_active->scale);
+    /* The default display size of the image is 5.0 and this is used as scale = 1.0. */
+    // mul_v3_fl(this->ob_grease_pencil->scale, this->ob_active->empty_drawsize / 5.0f);
+  }
+
+  /* Create Layer. */
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(this->ob_grease_pencil->data);
+  this->layer = grease_pencil.get_active_layer();
+  if (this->layer == nullptr) {
+    Layer &new_layer = grease_pencil.add_layer(DATA_("Trace"));
+    grease_pencil.set_active_layer(&new_layer);
+    this->layer = &new_layer;
+  }
+}
+
+static bool grease_pencil_trace_image(TraceJob &trace_job,
+                                      ImBuf *ibuf,
+                                      bke::greasepencil::Drawing &drawing)
+{
+  potrace_bitmap_t *bm = nullptr;
+  potrace_param_t *param = nullptr;
+  potrace_state_t *st = nullptr;
+
+  /* Create an empty BW bitmap. */
+  bm = ED_gpencil_trace_bitmap_new(ibuf->x, ibuf->y);
+  if (!bm) {
+    return false;
+  }
+
+  /* Set tracing parameters, starting from defaults */
+  param = potrace_param_default();
+  if (!param) {
+    return false;
+  }
+  param->turdsize = 0;
+  param->turnpolicy = trace_job->turnpolicy;
+
+  /* Load BW bitmap with image. */
+  ED_gpencil_trace_image_to_bitmap(ibuf, bm, trace_job->threshold);
+
+  /* Trace the bitmap. */
+  st = potrace_trace(param, bm);
+  if (!st || st->status != POTRACE_STATUS_OK) {
+    ED_gpencil_trace_bitmap_free(bm);
+    if (st) {
+      potrace_state_free(st);
+    }
+    potrace_param_free(param);
+    return false;
+  }
+  /* Free BW bitmap. */
+  ED_gpencil_trace_bitmap_free(bm);
+
+  /* Convert the trace to strokes. */
+  int32_t offset[2];
+  offset[0] = ibuf->x / 2;
+  offset[1] = ibuf->y / 2;
+
+  /* Scale correction for Potrace.
+   * Really, there isn't documented in Potrace about how the scale is calculated,
+   * but after doing a lot of tests, it looks is using a VGA resolution (640) as a base.
+   * Maybe there are others ways to get the right scale conversion, but this solution works. */
+  float scale_potrace = trace_job->scale * (640.0f / float(ibuf->x)) *
+                        (float(ibuf->x) / float(ibuf->y));
+  if (ibuf->x > ibuf->y) {
+    scale_potrace *= float(ibuf->y) / float(ibuf->x);
+  }
+
+  ED_gpencil_trace_data_to_strokes(trace_job->bmain,
+                                   st,
+                                   trace_job->ob_gpencil,
+                                   gpf,
+                                   offset,
+                                   scale_potrace,
+                                   trace_job->sample,
+                                   trace_job->resolution,
+                                   trace_job->thickness);
+
+  /* Free memory. */
+  potrace_state_free(st);
+  potrace_param_free(param);
+
+  return true;
+}
+
+static void trace_start_job(void *customdata, wmJobWorkerStatus *worker_status)
+{
+  TraceJob &trace_job = *static_cast<TraceJob *>(customdata);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(trace_job.ob_grease_pencil->data);
+
+  trace_job.stop = &worker_status->stop;
+  trace_job.do_update = &worker_status->do_update;
+  trace_job.progress = &worker_status->progress;
+  trace_job.was_canceled = false;
+  const int init_frame = max_ii((trace_job.use_current_frame) ? trace_job.frame_target : 0, 0);
+
+  G.is_break = false;
+
+  /* Single Image. */
+  if (trace_job.image->source == IMA_SRC_FILE || trace_job.mode == TraceMode::Single) {
+    void *lock;
+    ImageUser &iuser = *trace_job.ob_active->iuser;
+
+    iuser.framenr = ((trace_job.frame_number == 0) || (trace_job.frame_number > iuser.frames)) ?
+                        init_frame :
+                        trace_job.frame_number;
+    ImBuf *ibuf = BKE_image_acquire_ibuf(trace_job.image, &iuser, &lock);
+    if (ibuf) {
+      /* Create frame. */
+      bke::greasepencil::Drawing *drawing = grease_pencil.get_drawing_at(*trace_job.layer,
+                                                                         trace_job.frame_target);
+      if (drawing == nullptr) {
+        drawing = grease_pencil.insert_frame(*trace_job.layer, trace_job.frame_target);
+      }
+      grease_pencil_trace_image(trace_job, ibuf, *drawing);
+      BKE_image_release_ibuf(trace_job.image, ibuf, lock);
+      *(trace_job.progress) = 1.0f;
+    }
+  }
+  /* Image sequence. */
+  else if (trace_job.image->type == IMA_TYPE_IMAGE) {
+    ImageUser &iuser = *trace_job.ob_active->iuser;
+    for (int frame_number = init_frame; frame_number <= iuser.frames; frame_number++) {
+      if (G.is_break) {
+        trace_job.was_canceled = true;
+        break;
+      }
+
+      *(trace_job.progress) = float(frame_number) / float(iuser.frames);
+      worker_status->do_update = true;
+
+      iuser.framenr = frame_number;
+
+      void *lock;
+      ImBuf *ibuf = BKE_image_acquire_ibuf(trace_job.image, &iuser, &lock);
+      if (ibuf) {
+        /* Create frame. */
+        // bGPDframe *gpf = BKE_gpencil_layer_frame_get(trace_job.gpl, i, GP_GETFRAME_ADD_NEW);
+        bke::greasepencil::Drawing *drawing = grease_pencil.get_drawing_at(*trace_job.layer,
+                                                                           frame_number);
+        if (drawing == nullptr) {
+          drawing = grease_pencil.insert_frame(*trace_job.layer, frame_number);
+        }
+        grease_pencil_trace_image(trace_job, ibuf, *drawing);
+
+        BKE_image_release_ibuf(trace_job.image, ibuf, lock);
+      }
+    }
+  }
+
+  trace_job.success = !trace_job.was_canceled;
+  worker_status->do_update = true;
+  worker_status->stop = false;
+}
+
+static void trace_end_job(void *customdata)
+{
+  TraceJob &trace_job = *static_cast<TraceJob *>(customdata);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(trace_job.ob_grease_pencil->data);
+
+  /* If canceled, delete all previously created object and data-block. */
+  if ((trace_job.was_canceled) && (trace_job.was_ob_created) && (trace_job.ob_grease_pencil)) {
+    BKE_id_delete(trace_job.bmain, &trace_job.ob_grease_pencil->id);
+    BKE_id_delete(trace_job.bmain, &grease_pencil.id);
+  }
+
+  if (trace_job.success) {
+    DEG_relations_tag_update(trace_job.bmain);
+
+    DEG_id_tag_update(&trace_job.scene->id, ID_RECALC_SELECT);
+    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY | ID_RECALC_SYNC_TO_EVAL);
+
+    WM_main_add_notifier(NC_OBJECT | NA_ADDED, nullptr);
+    WM_main_add_notifier(NC_SCENE | ND_OB_ACTIVE, trace_job.scene);
+  }
+}
+
+static void trace_free_job(void *customdata)
+{
+  TraceJob *tj = static_cast<TraceJob *>(customdata);
+  MEM_freeN(tj);
+}
+
+/* Trace Image to Grease Pencil. */
+static bool grease_pencil_trace_image_poll(bContext *C)
+{
+  Object *ob = CTX_data_active_object(C);
+  if ((ob == nullptr) || (ob->type != OB_EMPTY) || (ob->data == nullptr)) {
+    CTX_wm_operator_poll_msg_set(C, "No image empty selected");
+    return false;
+  }
+
+  Image *image = (Image *)ob->data;
+  if (!ELEM(image->source, IMA_SRC_FILE, IMA_SRC_SEQUENCE, IMA_SRC_MOVIE)) {
+    CTX_wm_operator_poll_msg_set(C, "No valid image format selected");
+    return false;
+  }
+
+  return true;
+}
+
+static int grease_pencil_trace_image_exec(bContext *C, wmOperator *op)
+{
+  TraceJob *job = static_cast<TraceJob *>(MEM_mallocN(sizeof(TraceJob), "TraceJob"));
+  job->C = C;
+  job->owner = CTX_data_active_object(C);
+  job->wm = CTX_wm_manager(C);
+  job->bmain = CTX_data_main(C);
+  Scene *scene = CTX_data_scene(C);
+  job->scene = scene;
+  job->v3d = CTX_wm_view3d(C);
+  job->base_active = CTX_data_active_base(C);
+  job->ob_active = job->base_active->object;
+  job->image = (Image *)job->ob_active->data;
+  job->frame_target = scene->r.cfra;
+  job->use_current_frame = RNA_boolean_get(op->ptr, "use_current_frame");
+
+  /* Create a new grease pencil object or reuse selected. */
+  const TargetObjectMode target = TargetObjectMode(RNA_enum_get(op->ptr, "target"));
+  job->ob_grease_pencil = (target == TargetObjectMode::Selected) ?
+                              BKE_view_layer_non_active_selected_object(
+                                  scene, CTX_data_view_layer(C), job->v3d) :
+                              nullptr;
+
+  if (job->ob_grease_pencil != nullptr) {
+    if (job->ob_grease_pencil->type != OB_GREASE_PENCIL) {
+      BKE_report(op->reports, RPT_WARNING, "Target object not a grease pencil, ignoring!");
+      job->ob_grease_pencil = nullptr;
+    }
+    else if (BKE_object_obdata_is_libdata(job->ob_grease_pencil)) {
+      BKE_report(op->reports, RPT_WARNING, "Target object library-data, ignoring!");
+      job->ob_grease_pencil = nullptr;
+    }
+  }
+
+  job->was_ob_created = false;
+
+  job->threshold = RNA_float_get(op->ptr, "threshold");
+  job->scale = RNA_float_get(op->ptr, "scale");
+  job->sample = RNA_float_get(op->ptr, "sample");
+  job->resolution = RNA_int_get(op->ptr, "resolution");
+  job->radius = RNA_float_get(op->ptr, "radius");
+  job->turnpolicy = TurnPolicy(RNA_enum_get(op->ptr, "turnpolicy"));
+  job->mode = TraceMode(RNA_enum_get(op->ptr, "mode"));
+  job->frame_number = RNA_int_get(op->ptr, "frame_number");
+
+  job->ensure_output_object();
+
+  /* Back to active base. */
+  blender::ed::object::base_activate(job->C, job->base_active);
+
+  if ((job->image->source == IMA_SRC_FILE) || (job->frame_number > 0)) {
+    wmJobWorkerStatus worker_status = {};
+    trace_start_job(job, &worker_status);
+    trace_end_job(job);
+    trace_free_job(job);
+  }
+  else {
+    wmJob *wm_job = WM_jobs_get(job->wm,
+                                CTX_wm_window(C),
+                                job->scene,
+                                "Trace Image",
+                                WM_JOB_PROGRESS,
+                                WM_JOB_TYPE_TRACE_IMAGE);
+
+    WM_jobs_customdata_set(wm_job, job, trace_free_job);
+    WM_jobs_timer(wm_job, 0.1, NC_GEOM | ND_DATA, NC_GEOM | ND_DATA);
+    WM_jobs_callbacks(wm_job, trace_start_job, nullptr, nullptr, trace_end_job);
+
+    WM_jobs_start(CTX_wm_manager(C), wm_job);
+  }
+
+  return OPERATOR_FINISHED;
+}
+
+static int grease_pencil_trace_image_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+{
+  /* Show popup dialog to allow editing. */
+  /* FIXME: hard-coded dimensions here are just arbitrary. */
+  return WM_operator_props_dialog_popup(C, op, 250);
+}
+
+static void GREASE_PENCIL_OT_trace_image(wmOperatorType *ot)
+{
+  PropertyRNA *prop;
+
+  static const EnumPropertyItem turnpolicy_type[] = {
+      {int(TurnPolicy::Foreground),
+       "FOREGROUND",
+       0,
+       "Foreground",
+       "Prefers to connect foreground components"},
+      {int(TurnPolicy::Background),
+       "BACKGROUND",
+       0,
+       "Background",
+       "Prefers to connect background components"},
+      {int(TurnPolicy::Left), "LEFT", 0, "Left", "Always take a left turn"},
+      {int(TurnPolicy::Right), "RIGHT", 0, "Right", "Always take a right turn"},
+      {int(TurnPolicy::Minority),
+       "MINORITY",
+       0,
+       "Minority",
+       "Prefers to connect the color that occurs least frequently in the local "
+       "neighborhood of the current position"},
+      {int(TurnPolicy::Majority),
+       "MAJORITY",
+       0,
+       "Majority",
+       "Prefers to connect the color that occurs most frequently in the local "
+       "neighborhood of the current position"},
+      {int(TurnPolicy::Random), "RANDOM", 0, "Random", "Choose pseudo-randomly"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem trace_modes[] = {
+      {int(TraceMode::Single), "SINGLE", 0, "Single", "Trace the current frame of the image"},
+      {int(TraceMode::Sequence), "SEQUENCE", 0, "Sequence", "Trace full sequence"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem target_object_modes[] = {
+      {int(TargetObjectMode::New), "NEW", 0, "New Object", ""},
+      {int(TargetObjectMode::Selected), "SELECTED", 0, "Selected Object", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  /* identifiers */
+  ot->name = "Trace Image to Grease Pencil";
+  ot->idname = "GREASE_PENCIL_OT_trace_image";
+  ot->description = "Extract Grease Pencil strokes from image";
+
+  /* callbacks */
+  ot->invoke = grease_pencil_trace_image_invoke;
+  ot->exec = grease_pencil_trace_image_exec;
+  ot->poll = grease_pencil_trace_image_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* properties */
+  ot->prop = RNA_def_enum(ot->srna,
+                          "target",
+                          target_object_modes,
+                          int(TargetObjectMode::New),
+                          "Target Object",
+                          "Target grease pencil");
+  RNA_def_property_flag(ot->prop, PROP_SKIP_SAVE);
+
+  RNA_def_float(ot->srna, "radius", 0.01f, 0.001f, 1.0f, "Radius", "", 0.001, 1.0f);
+  RNA_def_int(
+      ot->srna, "resolution", 5, 1, 20, "Resolution", "Resolution of the generated curves", 1, 20);
+
+  RNA_def_float(ot->srna,
+                "scale",
+                1.0f,
+                0.001f,
+                100.0f,
+                "Scale",
+                "Scale of the final stroke",
+                0.001f,
+                100.0f);
+  RNA_def_float(ot->srna,
+                "sample",
+                0.0f,
+                0.0f,
+                100.0f,
+                "Sample",
+                "Distance to sample points, zero to disable",
+                0.0f,
+                100.0f);
+  RNA_def_float_factor(ot->srna,
+                       "threshold",
+                       0.5f,
+                       0.0f,
+                       1.0f,
+                       "Color Threshold",
+                       "Determine the lightness threshold above which strokes are generated",
+                       0.0f,
+                       1.0f);
+  RNA_def_enum(ot->srna,
+               "turnpolicy",
+               turnpolicy_type,
+               int(TurnPolicy::Minority),
+               "Turn Policy",
+               "Determines how to resolve ambiguities during decomposition of bitmaps into paths");
+  RNA_def_enum(ot->srna,
+               "mode",
+               trace_modes,
+               int(TraceMode::Single),
+               "Mode",
+               "Determines if trace simple image or full sequence");
+  RNA_def_boolean(ot->srna,
+                  "use_current_frame",
+                  true,
+                  "Start At Current Frame",
+                  "Trace Image starting in current image frame");
+  prop = RNA_def_int(
+      ot->srna,
+      "frame_number",
+      0,
+      0,
+      9999,
+      "Trace Frame",
+      "Used to trace only one frame of the image sequence, set to zero to trace all",
+      0,
+      9999);
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+}
+
+#endif
+
+/** \} */
+
+}  // namespace blender::ed::sculpt_paint::greasepencil
+
+/* -------------------------------------------------------------------- */
+/** \name Registration
+ * \{ */
+
+void ED_operatortypes_grease_pencil_trace()
+{
+  using namespace blender::ed::sculpt_paint::greasepencil;
+
+#ifdef WITH_POTRACE
+  WM_operatortype_append(GREASE_PENCIL_OT_trace_image);
+#endif
+}
+
+/** \} */
