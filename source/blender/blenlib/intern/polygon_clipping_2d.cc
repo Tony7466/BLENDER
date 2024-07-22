@@ -624,6 +624,26 @@ struct CurveBooleanExecutor {
     return result;
   }
 
+  bool cut_add_start_cap()
+  {
+    const int inter_id = A_inter_sorted_ids.first();
+    const ExtendedIntersectionPoint &vertex_first = intersections[inter_id];
+
+    if (vertex_first.A_entry_exit == ENTRY) {
+      return false;
+    }
+
+    /* Start line. */
+    newPolygon();
+
+    for (const int i : IndexRange::from_begin_end_inclusive(0, vertex_first.point_a)) {
+      newVertexID(i, true);
+    }
+
+    newVertexIntersection(inter_id);
+    return true;
+  }
+
   /* Curve `A` does not loop. */
   BooleanResult curve_boolean_cut(Span<float2> curve_a, Span<float2> curve_b)
   {
@@ -687,19 +707,9 @@ struct CurveBooleanExecutor {
 
     int int_sorted = 0;
 
-    const ExtendedIntersectionPoint &vertex_first = intersections[A_inter_sorted_ids[int_sorted]];
-
-    if (vertex_first.A_entry_exit == EXIT) {
-      /* Start line. */
-      newPolygon();
-
-      for (const int i : IndexRange::from_begin_end_inclusive(0, vertex_first.point_a)) {
-        newVertexID(i, true);
-      }
-
-      newVertexIntersection(A_inter_sorted_ids[int_sorted]);
-
-      int_sorted += 1;
+    const bool is_start = cut_add_start_cap();
+    if (is_start) {
+      int_sorted++;
     }
 
     if (num_intersects == 2 && int_sorted == 0) {
