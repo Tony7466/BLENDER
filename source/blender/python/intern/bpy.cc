@@ -492,7 +492,7 @@ PyDoc_STRVAR(
     bpy_icon_reset_doc,
     ".. function:: icon_reset(icon)\n"
     "\n"
-    "   Reset a icon to it default glyph.\n"
+    "   Reset an icon to its default glyph.\n"
     "\n"
     "   :arg icon: Icon to reset.\n"
     "   :type icon: string\n");

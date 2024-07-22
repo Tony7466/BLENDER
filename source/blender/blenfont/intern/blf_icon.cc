@@ -3,12 +3,9 @@
 #  include <algorithm>
 #  include <fstream>
 #  include <sstream>
-#  include <string>
-
-#  include "BLI_string_ref.hh"
-#  include "BLI_vector.hh"
 
 #  include "BLF_api.hh"
+#  include "blf_internal.hh"
 
 #  include "svg_icons.h"
 
@@ -22,16 +19,16 @@ static blender::Vector<SVG_Icon> &icons_storage()
 
 const char *get_icon_svg(int icon)
 {
-
-  if (icons_storage().size() < icon) {
+  blender::Span<SVG_Icon> icons = icons_storage();
+  if (icons.size() < icon) {
     return datatoc_none_svg;
   }
-  return icons_storage()[icon].svg.c_str();
+  return icons[icon].svg.c_str();
 }
 
 void set(blender::StringRefNull name, blender::StringRefNull filepath)
 {
-  auto &icons = icons_storage();
+  blender::Vector<SVG_Icon> &icons = icons_storage();
   SVG_Icon *icon = std::find_if(
       icons.begin(), icons.end(), [name](const SVG_Icon &icon) { return name == icon.name; });
   if (icon == icons.end()) {
@@ -49,7 +46,7 @@ void set(blender::StringRefNull name, blender::StringRefNull filepath)
 
 void reset(blender::StringRefNull name)
 {
-  auto &icons = icons_storage();
+  blender::Vector<SVG_Icon> &icons = icons_storage();
   SVG_Icon *icon = std::find_if(
       icons.begin(), icons.end(), [name](const SVG_Icon &icon) { return name == icon.name; });
   if (icon == icons.end()) {

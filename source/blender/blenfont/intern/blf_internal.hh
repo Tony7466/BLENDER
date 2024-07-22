@@ -206,3 +206,11 @@ extern FT_Error FT_New_Face__win32_compat(FT_Library library,
                                           FT_Face *aface);
 #  endif
 #endif
+
+#ifndef WITH_HEADLESS
+namespace blender::blf::icon {
+
+const char *get_icon_svg(int icon);
+
+}
+#endif

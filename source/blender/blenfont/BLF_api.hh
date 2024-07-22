@@ -403,10 +403,10 @@ struct ResultBLF {
 #ifndef WITH_HEADLESS
 namespace blender::blf::icon {
 
-const char *get_icon_svg(int icon);
-
+/** Overwrites the icon svg source. */
 void set(StringRefNull icon_name, StringRefNull filepath);
 
+/** Reset the icon svg source. */
 void reset(StringRefNull icon_name);
 
 }  // namespace blender::blf::icon
