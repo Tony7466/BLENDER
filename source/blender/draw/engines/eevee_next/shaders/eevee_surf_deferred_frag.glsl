@@ -94,6 +94,16 @@ void main()
   gbuf_data.thickness = thickness;
   gbuf_data.object_id = resource_id;
 
+  if ((gbuf_data.closure[0].type == CLOSURE_BSDF_TRANSLUCENT_ID ||
+       gbuf_data.closure[0].type == CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID) &&
+      (thickness != 0.0))
+  {
+    /* We model two transmission event, so the surface color need to be applied twice.
+    Transmissive
+     * closures are always in the first bin. */
+    gbuf_data.closure[0].color *= g_closure_get(0).color;
+  }
+
   GBufferWriter gbuf = gbuffer_pack(gbuf_data);
 
   /* Output header and first closure using frame-buffer attachment. */
