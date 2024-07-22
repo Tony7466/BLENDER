@@ -43,7 +43,7 @@
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -942,7 +942,7 @@ static int sculpt_mesh_filter_start(bContext *C, wmOperator *op)
 
   SCULPT_vertex_random_access_ensure(ss);
   if (needs_topology_info) {
-    SCULPT_boundary_info_ensure(ob);
+    boundary::ensure_boundary_info(ob);
   }
 
   undo::push_begin(ob, op);
