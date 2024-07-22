@@ -23,13 +23,7 @@
 // Needed to make the scoped mock log tests work without modification.
 namespace ceres {
 namespace internal {
-// clang-cl on Windows ARM64 has "WARNING" as a define, which necessitates
-// using GLOG_NO_ABBREVIATED_SEVERITIES, which uses GLOG_WARNING instead
-#if GLOG_NO_ABBREVIATED_SEVERITIES
-using google::GLOG_WARNING;
-#else
 using google::WARNING;
-#endif
 }  // namespace internal
 }  // namespace ceres
 

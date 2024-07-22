@@ -195,21 +195,11 @@ class RenderGraph : public testing::Test {
 
 #define EXPECT_ANY_MESSAGE(log) EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
 
-// clang-cl on Windows ARM64 has "WARNING" as a define, which necessitates
-// using GLOG_NO_ABBREVIATED_SEVERITIES, which uses GLOG_WARNING instead
-#if GLOG_NO_ABBREVIATED_SEVERITIES
-#define CORRECT_INFO_MESSAGE(log, message) \
-  EXPECT_CALL(log, Log(google::GLOG_INFO, _, HasSubstr(message)));
-
-#define INVALID_INFO_MESSAGE(log, message) \
-  EXPECT_CALL(log, Log(google::GLOG_INFO, _, HasSubstr(message))).Times(0);
-#else
 #define CORRECT_INFO_MESSAGE(log, message) \
   EXPECT_CALL(log, Log(google::INFO, _, HasSubstr(message)));
 
 #define INVALID_INFO_MESSAGE(log, message) \
   EXPECT_CALL(log, Log(google::INFO, _, HasSubstr(message))).Times(0);
-#endif
 
 /*
  * Test deduplication of nodes that have inputs, some of them folded.
