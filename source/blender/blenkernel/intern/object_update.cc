@@ -177,14 +177,6 @@ void BKE_object_handle_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
     case OB_LATTICE:
       BKE_lattice_modifiers_calc(depsgraph, scene, ob);
       break;
-#if 0
-    case OB_GPENCIL_LEGACY: {
-      BKE_gpencil_prepare_eval_data(depsgraph, scene, ob);
-      BKE_gpencil_modifiers_calc(depsgraph, scene, ob);
-      BKE_gpencil_update_layer_transforms(depsgraph, ob);
-      break;
-    }
-#endif
     case OB_CURVES:
       BKE_curves_data_update(depsgraph, scene, ob);
       break;

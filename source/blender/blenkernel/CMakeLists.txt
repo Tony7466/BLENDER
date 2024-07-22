@@ -561,7 +561,6 @@ set(LIB
   bf_draw
   PRIVATE bf::extern::curve_fit_nd
   bf_functions
-  bf_gpencil_modifiers_legacy
   bf_gpu
   bf_ikplugin
   bf_imbuf

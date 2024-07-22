@@ -6,7 +6,6 @@
  * \ingroup modifiers
  */
 
-#include "MOD_gpencil_legacy_lineart.h"
 #include "MOD_lineart.h"
 
 #include "lineart_intern.h"

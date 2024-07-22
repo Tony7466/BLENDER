@@ -48,8 +48,6 @@
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
-#include "MOD_gpencil_legacy_lineart.h"
-
 #include "BLO_read_write.hh"
 
 #include "CLG_log.h"
@@ -460,17 +458,6 @@ const GpencilModifierTypeInfo *BKE_gpencil_modifier_get_info(GpencilModifierType
   return nullptr;
 }
 
-void BKE_gpencil_modifierType_panel_id(GpencilModifierType type, char *r_idname)
-{
-  const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(type);
-  BLI_string_join(r_idname, BKE_ST_MAXNAME, GPENCIL_MODIFIER_TYPE_PANEL_PREFIX, mti->name);
-}
-
-void BKE_gpencil_modifier_panel_expand(GpencilModifierData *md)
-{
-  md->ui_expand_flag |= UI_PANEL_DATA_EXPAND_ROOT;
-}
-
 void BKE_gpencil_modifier_copydata_generic(const GpencilModifierData *md_src,
                                            GpencilModifierData *md_dst)
 {
@@ -794,71 +781,6 @@ void BKE_gpencil_prepare_eval_data(Depsgraph *depsgraph, Scene *scene, Object *o
   BLI_assert(ob->data != nullptr);
   /* Only copy strokes from visible frames to evaluated data. */
   gpencil_copy_visible_frames_to_eval(depsgraph, scene, ob);
-}
-
-void BKE_gpencil_modifiers_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
-{
-  bGPdata *gpd = (bGPdata *)ob->data;
-  const bool is_edit = GPENCIL_ANY_EDIT_MODE(gpd);
-  const bool is_render = bool(DEG_get_mode(depsgraph) == DAG_EVAL_RENDER);
-  const bool is_curve_edit = bool(GPENCIL_CURVE_EDIT_SESSIONS_ON(gpd) && !is_render);
-  const bool is_multiedit = bool(GPENCIL_MULTIEDIT_SESSIONS_ON(gpd) && !is_render);
-  const bool do_modifiers = bool((!is_multiedit) && (!is_curve_edit) &&
-                                 (ob->greasepencil_modifiers.first != nullptr) &&
-                                 !GPENCIL_SIMPLIFY_MODIF(scene));
-  if (!do_modifiers) {
-    return;
-  }
-
-  /* Init general modifiers data. */
-  BKE_gpencil_cache_data_init(depsgraph, ob);
-
-  const bool time_remap = BKE_gpencil_has_time_modifiers(ob);
-  bool is_first_lineart = true;
-  GpencilLineartLimitInfo info = BKE_gpencil_get_lineart_modifier_limits(ob);
-
-  LISTBASE_FOREACH (GpencilModifierData *, md, &ob->greasepencil_modifiers) {
-
-    if (GPENCIL_MODIFIER_ACTIVE(md, is_render)) {
-      const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(
-          GpencilModifierType(md->type));
-
-      if (GPENCIL_MODIFIER_EDIT(md, is_edit) && (!is_render)) {
-        continue;
-      }
-
-      if (md->type == eGpencilModifierType_Lineart) {
-        BKE_gpencil_set_lineart_modifier_limits(md, &info, is_first_lineart);
-        is_first_lineart = false;
-      }
-
-      /* Apply geometry modifiers (add new geometry). */
-      if (mti && mti->generate_strokes) {
-        mti->generate_strokes(md, depsgraph, ob);
-      }
-
-      /* Apply deform modifiers and Time remap (only change geometry). */
-      if ((time_remap) || (mti && mti->deform_stroke)) {
-        LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
-          bGPDframe *gpf = BKE_gpencil_frame_retime_get(depsgraph, scene, ob, gpl);
-          if (gpf == nullptr) {
-            continue;
-          }
-
-          if (mti->deform_stroke) {
-            LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
-              mti->deform_stroke(md, depsgraph, ob, gpl, gpf, gps);
-            }
-          }
-        }
-      }
-    }
-  }
-
-  /* Clear any cache data. */
-  BKE_gpencil_cache_data_clear(ob);
-
-  MOD_lineart_clear_cache(&gpd->runtime.lineart_cache);
 }
 
 void BKE_gpencil_modifier_blend_write(BlendWriter *writer, ListBase *modbase)

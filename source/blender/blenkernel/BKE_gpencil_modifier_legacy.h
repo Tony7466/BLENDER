@@ -234,21 +234,6 @@ typedef struct GpencilModifierTypeInfo {
   void (*panel_register)(struct ARegionType *region_type);
 } GpencilModifierTypeInfo;
 
-#define GPENCIL_MODIFIER_TYPE_PANEL_PREFIX "MOD_PT_gpencil_"
-
-/**
- * Initialize modifier's global data (type info and some common global storage).
- */
-void BKE_gpencil_modifier_init(void);
-
-/**
- * Get the idname of the modifier type's panel, which was defined in the #panel_register callback.
- *
- * \param type: Type of modifier.
- * \param r_idname: ID name.
- */
-void BKE_gpencil_modifierType_panel_id(GpencilModifierType type, char *r_idname);
-void BKE_gpencil_modifier_panel_expand(struct GpencilModifierData *md);
 /**
  * Get grease pencil modifier information.
  * \param type: Type of modifier.
@@ -408,16 +393,6 @@ void BKE_gpencil_cache_data_init(struct Depsgraph *depsgraph, struct Object *ob)
 void BKE_gpencil_cache_data_clear(struct Object *ob);
 
 /**
- * Calculate grease-pencil modifiers.
- * \param depsgraph: Current depsgraph.
- * \param scene: Current scene.
- * \param ob: Grease pencil object.
- */
-void BKE_gpencil_modifiers_calc(struct Depsgraph *depsgraph,
-                                struct Scene *scene,
-                                struct Object *ob);
-
-/**
  * Prepare grease pencil eval data for modifiers
  * \param depsgraph: Current depsgraph.
  * \param scene: Current scene.
@@ -453,6 +428,8 @@ void BKE_gpencil_modifier_blend_write(struct BlendWriter *writer, struct ListBas
 void BKE_gpencil_modifier_blend_read_data(struct BlendDataReader *reader,
                                           struct ListBase *lb,
                                           struct Object *ob);
+
+void WM_operatortypes_lineart(void);
 
 #ifdef __cplusplus
 }

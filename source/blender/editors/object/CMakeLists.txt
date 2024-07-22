@@ -10,7 +10,6 @@ set(INC
   ../../bmesh
   ../../functions
   ../../geometry
-  ../../gpencil_modifiers_legacy
   ../../gpu
   ../../ikplugin
   ../../imbuf

@@ -30,7 +30,6 @@
 #include "DNA_modifier_types.h"
 #include "DNA_scene_types.h"
 
-#include "MOD_gpencil_legacy_lineart.h"
 #include "MOD_lineart.h"
 
 static bool lineart_mod_is_disabled(GpencilModifierData *md)
@@ -434,7 +433,7 @@ static int lineart_gpencil_clear_strokes_all_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void OBJECT_OT_lineart_bake_strokes(wmOperatorType *ot)
+static void OBJECT_OT_lineart_bake_strokes(wmOperatorType *ot)
 {
   ot->name = "Bake Line Art";
   ot->description = "Bake Line Art for current Grease Pencil object";
@@ -445,7 +444,7 @@ void OBJECT_OT_lineart_bake_strokes(wmOperatorType *ot)
   ot->modal = lineart_gpencil_bake_strokes_common_modal;
 }
 
-void OBJECT_OT_lineart_bake_strokes_all(wmOperatorType *ot)
+static void OBJECT_OT_lineart_bake_strokes_all(wmOperatorType *ot)
 {
   ot->name = "Bake Line Art (All)";
   ot->description = "Bake all Grease Pencil objects that have a Line Art modifier";
@@ -456,7 +455,7 @@ void OBJECT_OT_lineart_bake_strokes_all(wmOperatorType *ot)
   ot->modal = lineart_gpencil_bake_strokes_common_modal;
 }
 
-void OBJECT_OT_lineart_clear(wmOperatorType *ot)
+static void OBJECT_OT_lineart_clear(wmOperatorType *ot)
 {
   ot->name = "Clear Baked Line Art";
   ot->description = "Clear all strokes in current Grease Pencil object";
@@ -465,7 +464,7 @@ void OBJECT_OT_lineart_clear(wmOperatorType *ot)
   ot->exec = lineart_gpencil_clear_strokes_exec;
 }
 
-void OBJECT_OT_lineart_clear_all(wmOperatorType *ot)
+static void OBJECT_OT_lineart_clear_all(wmOperatorType *ot)
 {
   ot->name = "Clear Baked Line Art (All)";
   ot->description = "Clear all strokes in all Grease Pencil objects that have a Line Art modifier";
@@ -474,7 +473,7 @@ void OBJECT_OT_lineart_clear_all(wmOperatorType *ot)
   ot->exec = lineart_gpencil_clear_strokes_all_exec;
 }
 
-void WM_operatortypes_lineart()
+void ED_operatortypes_lineart()
 {
   WM_operatortype_append(OBJECT_OT_lineart_bake_strokes);
   WM_operatortype_append(OBJECT_OT_lineart_bake_strokes_all);

@@ -8,7 +8,6 @@
 
 #include <algorithm>
 
-#include "MOD_gpencil_legacy_lineart.h"
 #include "MOD_lineart.h"
 
 #include "BLI_listbase.h"
