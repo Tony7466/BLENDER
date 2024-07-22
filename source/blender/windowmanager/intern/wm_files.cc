@@ -108,6 +108,8 @@
 #include "ED_view3d.hh"
 #include "ED_view3d_offscreen.hh"
 
+#include "NOD_composite.hh"
+
 #include "GHOST_C-api.h"
 #include "GHOST_Path-api.hh"
 
@@ -791,13 +793,14 @@ static void wm_file_read_post(bContext *C,
      * node trees might be wrong due to missing render engines that are available as add-ons, like
      * Cycles. So we need to update compositor node trees after reading the file when add-ons are
      * now loaded. */
-    FOREACH_NODETREE_BEGIN (bmain, ntree, owner_id) {
-      if (ntree->type = NTREE_COMPOSIT) {
-        BKE_ntree_update_tag_all(ntree);
+    if (is_startup_file) {
+      FOREACH_NODETREE_BEGIN (bmain, node_tree, owner_id) {
+        if (node_tree->type == NTREE_COMPOSIT) {
+          ntreeCompositUpdateRLayers(node_tree);
+        }
       }
+      FOREACH_NODETREE_END;
     }
-    FOREACH_NODETREE_END;
-    BKE_ntree_update_main(bmain, nullptr);
 
 #if 1
     WM_event_add_notifier(C, NC_WM | ND_FILEREAD, nullptr);
