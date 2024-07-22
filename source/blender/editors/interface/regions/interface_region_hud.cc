@@ -265,8 +265,6 @@ static ARegion *hud_region_add(ScrArea *area)
   region->overlap = true;
   region->flag |= RGN_FLAG_DYNAMIC_SIZE;
 
-  set_runtime_offsets(region, region_win);
-
   return region;
 }
 
@@ -325,11 +323,6 @@ void ED_area_type_hud_ensure(bContext *C, ScrArea *area)
     region = hud_region_add(area);
     region->type = art;
   }
-  else {
-    /* We need to update the runtime offsets. */
-    ARegion *region_win = BKE_area_find_region_type(area, RGN_TYPE_WINDOW);
-    set_runtime_offsets(region, region_win);
-  }
 
   /* Let 'ED_area_update_region_sizes' do the work of placing the region.
    * Otherwise we could set the 'region->winrct' & 'region->winx/winy' here. */
@@ -366,6 +359,10 @@ void ED_area_type_hud_ensure(bContext *C, ScrArea *area)
 
   ED_region_floating_init(region);
   ED_region_tag_redraw(region);
+
+  /* We need to update/initialize the runtime offsets. */
+  ARegion *region_win = BKE_area_find_region_type(area, RGN_TYPE_WINDOW);
+  set_runtime_offsets(region, region_win);
 
   /* Reset zoom level (not well supported). */
   rctf reset_rect = {};
