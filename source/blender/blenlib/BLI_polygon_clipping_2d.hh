@@ -15,7 +15,17 @@
  */
 
 /**
- * Greiner-Hormann clipping algorithm 2D.
+ * Interface for Polygon Clipping in 2D use the Greiner-Hormann clipping algorithm.
+ *
+ * The input is two lists of positions describing the point in each polygon.
+ *
+ * The output is the following:
+ * 	1: Whether the algorithm can generate valid polygons, (the input geometry will be outputted if
+ * not valid)
+ *  2: List of Vertex describing how to interpolate any attribute.
+ *  3: Offsets to determent the start and end of each polygon of the output.
+ *  4: List of Intersection points.
+ *
  */
 
 namespace blender::polygonboolean {
@@ -51,6 +61,9 @@ enum VertexType {
   Intersection,
 };
 
+/**
+ * `type` determent which array the `point_id` refers to.
+ */
 struct Vertex {
   VertexType type;
   int point_id;
@@ -59,6 +72,9 @@ struct Vertex {
 struct IntersectionPoint {
   int point_a;
   int point_b;
+  /**
+   * `alpha_a` is the factor between point_a and point_a + 1 (same for b)
+   */
   float alpha_a;
   float alpha_b;
 };
@@ -73,9 +89,14 @@ struct BooleanResult {
 Array<float2> calculate_positions_from_result(const Span<float2> curve_a,
                                               const Span<float2> curve_b,
                                               const BooleanResult &result);
+
 BooleanResult curve_boolean_calc(const InputMode input_mode,
                                  Span<float2> curve_a,
                                  Span<float2> curve_b);
+/**
+ * `Cut` behaves like `A_NOT_B` but with `A` not looping, and so no part of `B` is left in the
+ * result.
+ */
 BooleanResult curve_boolean_cut(Span<float2> curve_a, Span<float2> curve_b);
 
 }  // namespace blender::polygonboolean
