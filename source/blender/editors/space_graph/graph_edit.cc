@@ -2162,10 +2162,12 @@ static KeyframeEditData sum_selected_keyframes(bAnimContext *ac)
           &current_ked, static_cast<FCurve *>(ale->key_data), nullptr, bezt_calc_average, nullptr);
     }
 
-    ked.f1 += current_ked.f1;
-    ked.i1 += current_ked.i1;
-    ked.f2 += (current_ked.f2 + offset) * unit_scale;
-    ked.i2 += current_ked.i2;
+    if (current_ked.i1 > 0) {
+      ked.f1 += current_ked.f1;
+      ked.i1 += current_ked.i1;
+      ked.f2 += (current_ked.f2 + offset * current_ked.i1) * unit_scale;
+      ked.i2 += current_ked.i2;
+    }
   }
 
   ANIM_animdata_freelist(&anim_data);
