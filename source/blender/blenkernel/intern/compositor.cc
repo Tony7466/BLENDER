@@ -53,7 +53,7 @@ static void add_passes_used_by_cryptomatte_node(const bNode *node,
   }
 
   cryptomatte::CryptomatteSessionPtr session = cryptomatte::CryptomatteSessionPtr(
-      BKE_cryptomatte_init_from_scene(scene));
+      BKE_cryptomatte_init_from_scene(scene, false));
 
   const Vector<std::string> &layer_names = cryptomatte::BKE_cryptomatte_layer_names_get(*session);
   if (layer_names.is_empty()) {
