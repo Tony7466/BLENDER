@@ -873,23 +873,23 @@ static eShaderType get_write_pass_shader_type(eViewLayerEEVEEPassType pass_type)
 {
   switch (pass_type) {
     case EEVEE_RENDER_PASS_COMBINED:
-      return FILM_WRITE_VIEWPORT_COMPOSITOR_PASS_COMBINED;
+      return FILM_PASS_CONVERT_COMBINED;
     case EEVEE_RENDER_PASS_Z:
-      return FILM_WRITE_VIEWPORT_COMPOSITOR_PASS_DEPTH;
+      return FILM_PASS_CONVERT_DEPTH;
     default:
       break;
   }
 
   switch (Film::pass_storage_type(pass_type)) {
     case PASS_STORAGE_VALUE:
-      return FILM_WRITE_VIEWPORT_COMPOSITOR_PASS_VALUE;
+      return FILM_PASS_CONVERT_VALUE;
     case PASS_STORAGE_COLOR:
-      return FILM_WRITE_VIEWPORT_COMPOSITOR_PASS_COLOR;
+      return FILM_PASS_CONVERT_COLOR;
     case PASS_STORAGE_CRYPTOMATTE:
-      return FILM_WRITE_VIEWPORT_COMPOSITOR_PASS_CRYPTOMATTE;
+      return FILM_PASS_CONVERT_CRYPTOMATTE;
   }
 
-  return FILM_WRITE_VIEWPORT_COMPOSITOR_PASS_VALUE;
+  return FILM_PASS_CONVERT_VALUE;
 }
 
 /* Gets the appropriate shader to write the given AOV pass. */
@@ -897,12 +897,12 @@ static eShaderType get_aov_write_pass_shader_type(ViewLayerAOV *aov)
 {
   switch (aov->type) {
     case AOV_TYPE_VALUE:
-      return FILM_WRITE_VIEWPORT_COMPOSITOR_PASS_VALUE;
+      return FILM_PASS_CONVERT_VALUE;
     case AOV_TYPE_COLOR:
-      return FILM_WRITE_VIEWPORT_COMPOSITOR_PASS_COLOR;
+      return FILM_PASS_CONVERT_COLOR;
   }
 
-  return FILM_WRITE_VIEWPORT_COMPOSITOR_PASS_VALUE;
+  return FILM_PASS_CONVERT_VALUE;
 }
 
 void Film::write_viewport_compositor_passes()

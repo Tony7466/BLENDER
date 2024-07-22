@@ -2,6 +2,10 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+/* Used by the Viewport Compositor to copy EEVEE passes to the compositor DRW passes textures. The
+ * output passes covert the entire display extent even when border rendering because that's what
+ * the compositor expects, so areas outside of the border are zeroed. */
+
 void main()
 {
   ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
