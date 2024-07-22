@@ -260,8 +260,6 @@ void BKE_gpencil_modifier_blend_read_data(struct BlendDataReader *reader,
                                           struct ListBase *lb,
                                           struct Object *ob);
 
-void WM_operatortypes_lineart(void);
-
 #ifdef __cplusplus
 }
 #endif
