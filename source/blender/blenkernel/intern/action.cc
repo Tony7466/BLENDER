@@ -507,12 +507,13 @@ static void action_blend_read_data(BlendDataReader *reader, ID *id)
   read_layers(reader, action);
   read_slots(reader, action);
 
-  /* Read legacy data, but only if we need to. */
   if (action.is_action_layered()) {
+    /* Clear the forward-compatible storage (see action_blend_write_data()). */
     BLI_listbase_clear(&action.curves);
     BLI_assert(BLI_listbase_is_empty(&action.groups));
   }
   else {
+    /* Read legacy data. */
     BLO_read_struct_list(reader, bActionChannel, &action.chanbase);
     BLO_read_struct_list(reader, FCurve, &action.curves);
     BLO_read_struct_list(reader, bActionGroup, &action.groups);
