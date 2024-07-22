@@ -751,25 +751,10 @@ struct CurveBooleanExecutor {
 
     /* ---- ---- ---- Phase Four ---- ---- ---- */
 
-    int int_sorted = 0;
-
     const bool is_start = cut_add_start_cap();
-    if (is_start) {
-      int_sorted++;
+    for (int i = is_start ? 1 : 0; i < num_intersects - 1; i += 2) {
+      cut_add_between_points(i);
     }
-
-    if (num_intersects == 2 && !is_start) {
-      cut_add_between_points(0);
-    }
-
-    for (const int j : IndexRange(int(num_intersects / 2))) {
-      if (num_intersects > (j + 1) * 2) {
-        cut_add_between_points(int_sorted);
-
-        int_sorted += 2;
-      }
-    }
-
     cut_add_end_cap();
 
     /* Add one for the end. */
