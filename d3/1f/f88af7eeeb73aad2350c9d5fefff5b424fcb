@@ -3,3 +3,4 @@ Referenced by issue #120523, Glare filter produces color clipping
 Referenced by issue #121025, Edge slide its not picking the right reference edge
 Referenced by issue #121459, Invalid mesh from `BKE_object_get_pre_modified_mesh` and `BKE_object_get_evaluated_mesh` during export.
 Referenced by issue #123943, "page_up"and"page_down" no longer sorts key frame channels in the dope sheet.
+Referenced by issue #125011, Error scrubbing on Video Sequencer
