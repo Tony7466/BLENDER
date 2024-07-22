@@ -352,12 +352,7 @@ static void write_slots(BlendWriter *writer, Span<animrig::Slot *> slots)
 }
 
 /**
- * Create a listbase from a Span of values.
- *
- * This requires that T can be stored in a ListBase (i.e. can be safely cast to
- * a Link) and that the values are not yet stored in one.
- *
- * This function is intended to construct a ListBase from an array of values.
+ * Create a listbase from a Span of F-Curves.
  *
  * \note this does NOT transfer ownership of the pointers. The ListBase should
  * not be freed, but given to `clear_listbase()` below.
