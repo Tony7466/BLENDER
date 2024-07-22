@@ -86,7 +86,7 @@ static int wm_collada_export_exec(bContext *C, wmOperator *op)
   int export_count;
   int sample_animations;
 
-  if (!RNA_struct_property_is_set_ex(op->ptr, "filepath", false)) {
+  if (!RNA_struct_property_is_set_or_remembered(op->ptr, "filepath")) {
     BKE_report(op->reports, RPT_ERROR, "No filepath given");
     return OPERATOR_CANCELLED;
   }
@@ -723,7 +723,7 @@ static int wm_collada_import_exec(bContext *C, wmOperator *op)
   int custom_normals;
   ImportSettings import_settings{};
 
-  if (!RNA_struct_property_is_set_ex(op->ptr, "filepath", false)) {
+  if (!RNA_struct_property_is_set_or_remembered(op->ptr, "filepath")) {
     BKE_report(op->reports, RPT_ERROR, "No filepath given");
     return OPERATOR_CANCELLED;
   }

@@ -3633,10 +3633,11 @@ PyDoc_STRVAR(
     "   Check if a property is set, use for testing operator properties.\n"
     "\n"
     "   :arg ghost: Used for operators that re-run with previous settings.\n"
-    "      In this case the property is not marked as set,\n"
-    "      yet the value from the previous execution is used.\n"
+    "      Properties that keep values from a previous run are not considered set, unless\n"
+    "      this is set to true.\n"
     "\n"
-    "      In rare cases you may want to set this option to false.\n"
+    "      This option is deprecated, `is_property_set_or_remembered()` should be used\n"
+    "      instead.\n"
     "\n"
     "   :type ghost: boolean\n"
     "   :return: True when the property has been set.\n"
@@ -3671,7 +3672,41 @@ static PyObject *pyrna_struct_is_property_set(BPy_StructRNA *self, PyObject *arg
     return nullptr;
   }
 
-  return PyBool_FromLong(RNA_property_is_set_ex(&self->ptr, prop, use_ghost));
+  return PyBool_FromLong(use_ghost ? RNA_property_is_set(&self->ptr, prop) :
+                                     RNA_property_is_set_or_remembered(&self->ptr, prop));
+}
+
+PyDoc_STRVAR(
+    /* Wrap. */
+    pyrna_struct_is_property_set_or_remembered_doc,
+    ".. method:: is_property_set_or_remembered(property)\n"
+    "\n"
+    "   Check if a property is set or remembered from a previous operator call, use for\n"
+    "   testing operator properties.\n"
+    "\n"
+    "   :return: True when the property has been set or is remembered from a previous\n"
+    "      operator call.\n"
+    "   :rtype: boolean\n");
+static PyObject *pyrna_struct_is_property_set_or_remembered(BPy_StructRNA *self, PyObject *args)
+{
+  PropertyRNA *prop;
+  const char *name;
+
+  PYRNA_STRUCT_CHECK_OBJ(self);
+
+  if (!PyArg_ParseTuple(args, "s:is_property_set_or_remembered", &name)) {
+    return nullptr;
+  }
+
+  if ((prop = RNA_struct_find_property(&self->ptr, name)) == nullptr) {
+    PyErr_Format(PyExc_TypeError,
+                 "%.200s.is_property_set_or_remembered(\"%.200s\") not found",
+                 RNA_struct_identifier(self->ptr.type),
+                 name);
+    return nullptr;
+  }
+
+  return PyBool_FromLong(RNA_property_is_set_or_remembered(&self->ptr, prop));
 }
 
 PyDoc_STRVAR(
@@ -6031,6 +6066,10 @@ static PyMethodDef pyrna_struct_methods[] = {
      (PyCFunction)pyrna_struct_is_property_set,
      METH_VARARGS | METH_KEYWORDS,
      pyrna_struct_is_property_set_doc},
+    {"is_property_set_or_remembered",
+     (PyCFunction)pyrna_struct_is_property_set_or_remembered,
+     METH_VARARGS,
+     pyrna_struct_is_property_set_or_remembered_doc},
     {"property_unset",
      (PyCFunction)pyrna_struct_property_unset,
      METH_VARARGS,

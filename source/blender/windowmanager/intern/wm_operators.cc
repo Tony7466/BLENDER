@@ -875,7 +875,7 @@ static bool operator_last_properties_init_impl(wmOperator *op, IDProperty *last_
 
           /* NOTE: in the future this may need to be done recursively,
            * but for now RNA doesn't access nested operators. */
-          idp_dst->flag |= IDP_FLAG_GHOST;
+          idp_dst->flag |= IDP_FLAG_VALUE_FROM_LAST_OP_CALL;
 
           /* Add to temporary group instead of immediate replace,
            * because we are iterating over this group. */
@@ -1053,7 +1053,7 @@ void WM_operator_view3d_unit_defaults(bContext *C, wmOperator *op)
           /* We don't support arrays yet. */
           BLI_assert(RNA_property_array_check(prop) == false);
           /* Initialize. */
-          if (!RNA_property_is_set_ex(op->ptr, prop, false)) {
+          if (!RNA_property_is_set_or_remembered(op->ptr, prop)) {
             const float value = RNA_property_float_get_default(op->ptr, prop) * dia;
             RNA_property_float_set(op->ptr, prop, value);
           }

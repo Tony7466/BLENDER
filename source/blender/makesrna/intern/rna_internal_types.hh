@@ -173,8 +173,8 @@ struct PropertyRNAOrID {
    * For runtime RNA properties (i.e. when #is_rna_storage_idprop is true), whether it is set,
    * defined, or not.
    *
-   * \warning This DOES take into account the `IDP_FLAG_GHOST` flag, i.e. it matches result of
-   * `RNA_property_is_set`.
+   * \warning This DOES take into account the `IDP_FLAG_VALUE_FROM_LAST_OP_CALL` flag, i.e. it
+   * matches result of `RNA_property_is_set`.
    */
   bool is_set;
 

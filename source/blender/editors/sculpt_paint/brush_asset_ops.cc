@@ -300,7 +300,7 @@ static int brush_asset_save_as_invoke(bContext *C, wmOperator *op, const wmEvent
 
   /* If the library isn't saved from the operator's last execution, find the current library or the
    * first library if the current library isn't editable. */
-  if (!RNA_struct_property_is_set_ex(op->ptr, "asset_library_reference", false)) {
+  if (!RNA_struct_property_is_set_or_remembered(op->ptr, "asset_library_reference")) {
     if (library_is_editable(*library_ref)) {
       RNA_enum_set(op->ptr,
                    "asset_library_reference",

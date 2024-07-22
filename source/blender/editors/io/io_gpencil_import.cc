@@ -53,7 +53,7 @@ static int wm_gpencil_import_svg_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
 
-  if (!RNA_struct_property_is_set_ex(op->ptr, "filepath", false) ||
+  if (!RNA_struct_property_is_set_or_remembered(op->ptr, "filepath") ||
       !RNA_struct_find_property(op->ptr, "directory"))
   {
     BKE_report(op->reports, RPT_ERROR, "No filepath given");

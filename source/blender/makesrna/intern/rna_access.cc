@@ -256,7 +256,7 @@ PointerRNA RNA_pointer_recast(PointerRNA *ptr)
 void rna_idproperty_touch(IDProperty *idprop)
 {
   /* so the property is seen as 'set' by rna */
-  idprop->flag &= ~IDP_FLAG_GHOST;
+  idprop->flag &= ~IDP_FLAG_VALUE_FROM_LAST_OP_CALL;
 }
 
 IDProperty **RNA_struct_idprops_p(PointerRNA *ptr)
@@ -500,7 +500,8 @@ void rna_property_rna_or_id_get(PropertyRNA *prop,
 
       r_prop_rna_or_id->idprop = idprop;
       r_prop_rna_or_id->is_rna_storage_idprop = true;
-      r_prop_rna_or_id->is_set = idprop != nullptr && (idprop->flag & IDP_FLAG_GHOST) == 0;
+      r_prop_rna_or_id->is_set = idprop != nullptr &&
+                                 (idprop->flag & IDP_FLAG_VALUE_FROM_LAST_OP_CALL) == 0;
     }
     else {
       /* Full static RNA properties are always set. */
@@ -5686,12 +5687,13 @@ bool RNA_collection_is_empty(PointerRNA *ptr, const char *name)
   return false;
 }
 
-bool RNA_property_is_set_ex(PointerRNA *ptr, PropertyRNA *prop, bool use_ghost)
+bool RNA_property_is_set_or_remembered(PointerRNA *ptr, PropertyRNA *prop)
 {
   prop = rna_ensure_property(prop);
   if (prop->flag & PROP_IDPROPERTY) {
     IDProperty *idprop = rna_idproperty_find(ptr, prop->identifier);
-    return ((idprop != nullptr) && (use_ghost == false || !(idprop->flag & IDP_FLAG_GHOST)));
+    /* Don't check for #IDP_FLAG_VALUE_FROM_LAST_OP_CALL like #RNA_property_is_set() does. */
+    return (idprop != nullptr);
   }
   return true;
 }
@@ -5701,7 +5703,7 @@ bool RNA_property_is_set(PointerRNA *ptr, PropertyRNA *prop)
   prop = rna_ensure_property(prop);
   if (prop->flag & PROP_IDPROPERTY) {
     IDProperty *idprop = rna_idproperty_find(ptr, prop->identifier);
-    return ((idprop != nullptr) && !(idprop->flag & IDP_FLAG_GHOST));
+    return ((idprop != nullptr) && !(idprop->flag & IDP_FLAG_VALUE_FROM_LAST_OP_CALL));
   }
   return true;
 }
@@ -5714,12 +5716,12 @@ void RNA_property_unset(PointerRNA *ptr, PropertyRNA *prop)
   }
 }
 
-bool RNA_struct_property_is_set_ex(PointerRNA *ptr, const char *identifier, bool use_ghost)
+bool RNA_struct_property_is_set_or_remembered(PointerRNA *ptr, const char *identifier)
 {
   PropertyRNA *prop = RNA_struct_find_property(ptr, identifier);
 
   if (prop) {
-    return RNA_property_is_set_ex(ptr, prop, use_ghost);
+    return RNA_property_is_set_or_remembered(ptr, prop);
   }
   /* python raises an error */
   // printf("%s: %s.%s not found.\n", __func__, ptr->type->identifier, name);

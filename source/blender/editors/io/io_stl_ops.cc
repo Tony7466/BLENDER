@@ -44,7 +44,7 @@ static int wm_stl_export_invoke(bContext *C, wmOperator *op, const wmEvent * /*e
 
 static int wm_stl_export_execute(bContext *C, wmOperator *op)
 {
-  if (!RNA_struct_property_is_set_ex(op->ptr, "filepath", false)) {
+  if (!RNA_struct_property_is_set_or_remembered(op->ptr, "filepath")) {
     BKE_report(op->reports, RPT_ERROR, "No filename given");
     return OPERATOR_CANCELLED;
   }

@@ -158,7 +158,7 @@ typedef struct IDProperty {
    * #eIDPropertyType for all other types.
    */
   char subtype;
-  /** #IDP_FLAG_GHOST and others. */
+  /** #IDP_FLAG_VALUE_FROM_LAST_OP_CALL and others. */
   short flag;
   /** Size matches #MAX_IDPROP_NAME. */
   char name[64];

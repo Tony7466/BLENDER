@@ -88,7 +88,7 @@ static int wm_alembic_export_invoke(bContext *C, wmOperator *op, const wmEvent *
 
 static int wm_alembic_export_exec(bContext *C, wmOperator *op)
 {
-  if (!RNA_struct_property_is_set_ex(op->ptr, "filepath", false)) {
+  if (!RNA_struct_property_is_set_or_remembered(op->ptr, "filepath")) {
     BKE_report(op->reports, RPT_ERROR, "No filepath given");
     return OPERATOR_CANCELLED;
   }

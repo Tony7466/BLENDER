@@ -132,7 +132,7 @@ static void fileselect_ensure_updated_asset_params(SpaceFile *sfile)
 }
 
 /**
- * \note #RNA_struct_property_is_set_ex is used here because we want
+ * \note #RNA_struct_property_is_set_or_remembered is used here because we want
  * the previously used settings to be used here rather than overriding them.
  */
 static FileSelectParams *fileselect_ensure_updated_file_params(SpaceFile *sfile)
@@ -181,7 +181,7 @@ static FileSelectParams *fileselect_ensure_updated_file_params(SpaceFile *sfile)
       params->type = FILE_SPECIAL;
     }
 
-    if (is_filepath && RNA_struct_property_is_set_ex(op->ptr, "filepath", false)) {
+    if (is_filepath && RNA_struct_property_is_set_or_remembered(op->ptr, "filepath")) {
       char filepath[FILE_MAX];
       RNA_string_get(op->ptr, "filepath", filepath);
       if (params->type == FILE_LOADLIB) {
@@ -194,12 +194,12 @@ static FileSelectParams *fileselect_ensure_updated_file_params(SpaceFile *sfile)
       }
     }
     else {
-      if (is_directory && RNA_struct_property_is_set_ex(op->ptr, "directory", false)) {
+      if (is_directory && RNA_struct_property_is_set_or_remembered(op->ptr, "directory")) {
         RNA_string_get(op->ptr, "directory", params->dir);
         params->file[0] = '\0';
       }
 
-      if (is_filename && RNA_struct_property_is_set_ex(op->ptr, "filename", false)) {
+      if (is_filename && RNA_struct_property_is_set_or_remembered(op->ptr, "filename")) {
         RNA_string_get(op->ptr, "filename", params->file);
       }
     }
@@ -336,7 +336,7 @@ static FileSelectParams *fileselect_ensure_updated_file_params(SpaceFile *sfile)
 
     if (is_relative_path) {
       if ((prop = RNA_struct_find_property(op->ptr, "relative_path"))) {
-        if (!RNA_property_is_set_ex(op->ptr, prop, false)) {
+        if (!RNA_property_is_set_or_remembered(op->ptr, prop)) {
           RNA_property_boolean_set(op->ptr, prop, (U.flag & USER_RELPATHS) != 0);
         }
       }
@@ -1464,7 +1464,7 @@ ScrArea *ED_fileselect_handler_area_find_any_with_op(const wmWindow *win)
 
 void ED_fileselect_ensure_default_filepath(bContext *C, wmOperator *op, const char *extension)
 {
-  if (!RNA_struct_property_is_set_ex(op->ptr, "filepath", false)) {
+  if (!RNA_struct_property_is_set_or_remembered(op->ptr, "filepath")) {
     Main *bmain = CTX_data_main(C);
     char filepath[FILE_MAX];
     const char *blendfile_path = BKE_main_blendfile_path(bmain);

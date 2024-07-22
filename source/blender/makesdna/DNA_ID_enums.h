@@ -85,10 +85,12 @@ typedef enum eIDPropertyFlag {
    */
   IDP_FLAG_STATIC_TYPE = 1 << 4,
   /**
-   * This means the property is set but RNA will return false when checking
-   * #RNA_property_is_set, currently this is a runtime flag.
+   * The current value was remembered from the last operator call and wasn't touched otherwise.
+   *
+   * This means the property is not considered "set" (#RNA_property_is_set() returns false, however
+   * also see #RNA_property_is_set_or_remembered()).
    */
-  IDP_FLAG_GHOST = 1 << 7,
+  IDP_FLAG_VALUE_FROM_LAST_OP_CALL = 1 << 7,
 } eIDPropertyFlag;
 
 /**

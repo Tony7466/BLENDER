@@ -655,23 +655,30 @@ void RNA_collection_clear(PointerRNA *ptr, const char *name);
   ((void)0)
 
 /**
- * Check if the #IDproperty exists, for operators.
+ * For operator properties: Check if the #IDProperty was touched, or if it remembers the value from
+ * the previous operator call (#PROP_SKIP_SAVE not set). Use this to prevent overriding a value
+ * that was passed directly to an operator call or should be remembered over repeated operator
+ * calls.
  *
- * \param use_ghost: Internally an #IDProperty may exist,
- * without the RNA considering it to be "set", see #IDP_FLAG_GHOST.
- * This is used for operators, where executing an operator that has run previously
- * will re-use the last value (unless #PROP_SKIP_SAVE property is set).
- * In this case, the presence of the an existing value shouldn't prevent it being initialized
- * from the context. Even though the this value will be returned if it's requested,
- * it's not considered to be set (as it would if the menu item or key-map defined it's value).
- * Set `use_ghost` to true for default behavior, otherwise false to check if there is a value
- * exists internally and would be returned on request.
+ * \returns True if the value was touched or is remembered from previous operator call. False
+ * otherwise.
  */
-bool RNA_property_is_set_ex(PointerRNA *ptr, PropertyRNA *prop, bool use_ghost);
+bool RNA_property_is_set_or_remembered(PointerRNA *ptr, PropertyRNA *prop);
+/**
+ * For operator properties: Check if the #IDProperty was touched. Use this to prevent overriding a
+ * value that was passed directly to an operator call.
+ *
+ * Properties that remember their value from a previous operator call and were not otherwise
+ * touched are _not_ considered to be set. See #RNA_property_is_set_or_remembered() for alternative
+ * behavior.
+ *
+ * \returns False if the property is in its default state or remembers the value from a previous
+ *          operator call. True if the value was touched.
+ */
 bool RNA_property_is_set(PointerRNA *ptr, PropertyRNA *prop);
 void RNA_property_unset(PointerRNA *ptr, PropertyRNA *prop);
-/** See #RNA_property_is_set_ex documentation. */
-bool RNA_struct_property_is_set_ex(PointerRNA *ptr, const char *identifier, bool use_ghost);
+/** See #RNA_property_is_set_or_remembered documentation. */
+bool RNA_struct_property_is_set_or_remembered(PointerRNA *ptr, const char *identifier);
 bool RNA_struct_property_is_set(PointerRNA *ptr, const char *identifier);
 bool RNA_property_is_idprop(const PropertyRNA *prop);
 /**
