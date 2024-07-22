@@ -21,7 +21,7 @@ if(CMAKE_GENERATOR MATCHES ".*Unix Makefiles")
   add_definitions(-DUSE_MAKEFILE_WORKAROUND)
 endif()
 
-# files rna_access.cc rna_define.cc makesrna.cc intentionally excluded.
+# Files `rna_access.cc`, `rna_define.cc`, `makesrna.cc` intentionally excluded.
 set(DEFSRC
   rna_ID.cc
   rna_action.cc
@@ -141,12 +141,18 @@ set(APISRC
   rna_workspace_api.cc
 )
 
-string(REGEX REPLACE "rna_([a-zA-Z0-9_-]*).c" "${CMAKE_CURRENT_BINARY_DIR}/rna_\\1_gen.c" GENSRC "${DEFSRC}")
+string(
+  REGEX REPLACE
+  "rna_([a-zA-Z0-9_-]*).cc" "${CMAKE_CURRENT_BINARY_DIR}/rna_\\1_gen.cc"
+  GENSRC "${DEFSRC}"
+)
 list(APPEND GENSRC
-  "${CMAKE_CURRENT_BINARY_DIR}/rna_prototypes_gen.h"
-  "${CMAKE_CURRENT_BINARY_DIR}/../RNA_prototypes.h"
+  "${CMAKE_CURRENT_BINARY_DIR}/rna_prototypes_gen.hh"
+  "${CMAKE_CURRENT_BINARY_DIR}/../RNA_prototypes.hh"
 )
 set_source_files_properties(${GENSRC} PROPERTIES GENERATED TRUE)
+
+# TODO: Remove the `GENSRC_C` flags and data, there are no C files anymore here.
 
 # --------------------------
 # CFLAGS for Generated Files
@@ -169,9 +175,9 @@ elseif(MSVC)
 endif()
 
 set(GENSRC_C ${GENSRC})
-list(FILTER GENSRC_C INCLUDE REGEX ".*\.c$")
+list(FILTER GENSRC_C INCLUDE REGEX "[a-zA-Z0-9_-]\.c$")
 set(GENSRC_CXX ${GENSRC})
-list(FILTER GENSRC_CXX INCLUDE REGEX ".*\.cc$")
+list(FILTER GENSRC_CXX INCLUDE REGEX "[a-zA-Z0-9_-]\.cc$")
 
 if(GENSRC_FLAGS)
   set_source_files_properties(${GENSRC} PROPERTIES COMPILE_FLAGS "${GENSRC_FLAGS}")
@@ -256,7 +262,7 @@ set(INC
   ../../../../intern/mantaflow/extern
 
 
-  # RNA_prototypes.h
+  # RNA_prototypes.hh
   ${CMAKE_CURRENT_BINARY_DIR}/../../makesrna/
 )
 
@@ -449,6 +455,7 @@ target_link_libraries(makesrna PRIVATE bf_dna)
 target_link_libraries(makesrna PRIVATE bf::intern::atomic)
 target_link_libraries(makesrna PRIVATE bf::intern::guardedalloc)
 target_link_libraries(makesrna PRIVATE bf_dna_blenlib)
+target_link_libraries(makesrna PRIVATE bf::dependencies::optional::tbb)
 
 if(WIN32 AND NOT UNIX)
   if(DEFINED PTHREADS_LIBRARIES)
@@ -456,12 +463,14 @@ if(WIN32 AND NOT UNIX)
   endif()
 endif()
 
-# Output `rna_*_gen.c`.
+# Output `rna_*_gen.cc`.
 # NOTE: (Linux only): with crashes try add this after COMMAND:
 # `valgrind --leak-check=full --track-origins=yes`
 add_custom_command(
   OUTPUT ${GENSRC}
-  COMMAND "$<TARGET_FILE:makesrna>" ${CMAKE_CURRENT_BINARY_DIR}/ ${CMAKE_CURRENT_BINARY_DIR}/../
+  COMMAND
+    ${CMAKE_COMMAND} -E env ${PLATFORM_ENV_BUILD}
+    "$<TARGET_FILE:makesrna>" ${CMAKE_CURRENT_BINARY_DIR}/ ${CMAKE_CURRENT_BINARY_DIR}/../
   DEPENDS makesrna
 )
 
@@ -473,7 +482,7 @@ set(SRC
   ${GENSRC}
 
   ${SRC_RNA_INC}
-  rna_access_internal.h
+  rna_access_internal.hh
   rna_internal.hh
   rna_internal_types.hh
   rna_mesh_utils.hh
@@ -482,6 +491,7 @@ set(SRC
 set(LIB
   PRIVATE bf::animrig
   PRIVATE bf::dna
+  PRIVATE bf::dependencies::optional::tbb
   PRIVATE extern_fmtlib
   bf_editor_space_api
 
