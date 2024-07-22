@@ -359,14 +359,12 @@ static Sequence *rna_Sequences_new_sound(ID *id,
                                          const char *name,
                                          const char *file,
                                          int channel,
-                                         int frame_start,
-                                         bool adjust_playback_rate)
+                                         int frame_start)
 {
   Scene *scene = (Scene *)id;
   SeqLoadData load_data;
   SEQ_add_load_data_init(&load_data, name, file, frame_start, channel);
   load_data.allow_invalid_file = true;
-  load_data.adjust_playback_rate = adjust_playback_rate;
   Sequence *seq = SEQ_add_sound_strip(bmain, scene, seqbase, &load_data);
 
   if (seq == nullptr) {
@@ -388,8 +386,7 @@ static Sequence *rna_Sequences_new_sound(ID * /*id*/,
                                          const char * /*name*/,
                                          const char * /*file*/,
                                          int /*channel*/,
-                                         int /*frame_start*/
-                                         bool /*adjust_playback_rate*/)
+                                         int /*frame_start*/)
 {
   BKE_report(reports, RPT_ERROR, "Blender compiled without Audaspace support");
   return nullptr;
@@ -403,11 +400,10 @@ static Sequence *rna_Sequences_editing_new_sound(ID *id,
                                                  const char *name,
                                                  const char *file,
                                                  int channel,
-                                                 int frame_start,
-                                                 bool adjust_playback_rate)
+                                                 int frame_start)
 {
   return rna_Sequences_new_sound(
-      id, &ed->seqbase, bmain, reports, name, file, channel, frame_start, adjust_playback_rate);
+      id, &ed->seqbase, bmain, reports, name, file, channel, frame_start);
 }
 
 static Sequence *rna_Sequences_meta_new_sound(ID *id,
@@ -417,11 +413,10 @@ static Sequence *rna_Sequences_meta_new_sound(ID *id,
                                               const char *name,
                                               const char *file,
                                               int channel,
-                                              int frame_start,
-                                              bool adjust_playback_rate)
+                                              int frame_start)
 {
   return rna_Sequences_new_sound(
-      id, &seq->seqbase, bmain, reports, name, file, channel, frame_start, adjust_playback_rate);
+      id, &seq->seqbase, bmain, reports, name, file, channel, frame_start);
 }
 
 /* Meta sequence
@@ -1032,12 +1027,6 @@ void RNA_api_sequences(BlenderRNA *brna, PropertyRNA *cprop, const bool metastri
                      -MAXFRAME,
                      MAXFRAME);
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
-  parm = RNA_def_boolean(func,
-                         "adjust_playback_rate",
-                         false,
-                         "Adjust Playback Rate",
-                         "Play at normal speed regardless of scene FPS");
-  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_PYFUNC_OPTIONAL);
   /* return type */
   parm = RNA_def_pointer(func, "sequence", "Sequence", "", "New Sequence");
   RNA_def_function_return(func, parm);
