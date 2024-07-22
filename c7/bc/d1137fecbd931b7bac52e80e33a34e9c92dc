@@ -1,2 +1,2 @@
 Referenced by issue #124706, EEVEE rendering with Third-Party colorspaces crashes in Blender 4.2 RC
-Referenced by issue #125011, Error scrubbing on Video Sequencer
+Referenced by issue #125011, Scrubbing on Video Sequencer does not produce sound if scrbbing spans only a few frames
