@@ -357,10 +357,8 @@ void mode_enter_generic(
 
   /* Create vertex/weight paint mode session data */
   if (ob.sculpt) {
-    if (ob.sculpt->cache) {
-      SCULPT_cache_free(ob.sculpt->cache);
-      ob.sculpt->cache = nullptr;
-    }
+    MEM_delete(ob.sculpt->cache);
+    ob.sculpt->cache = nullptr;
     BKE_sculptsession_free(&ob);
   }
 
@@ -397,8 +395,8 @@ void mode_exit_generic(Object &ob, const eObjectMode mode_flag)
   }
 
   /* If the cache is not released by a cancel or a done, free it now. */
-  if (ob.sculpt && ob.sculpt->cache) {
-    SCULPT_cache_free(ob.sculpt->cache);
+  if (ob.sculpt) {
+    MEM_delete(ob.sculpt->cache);
     ob.sculpt->cache = nullptr;
   }
 
@@ -432,19 +430,17 @@ bool mode_toggle_poll_test(bContext *C)
 
 void smooth_brush_toggle_off(const bContext *C, Paint *paint, StrokeCache *cache)
 {
-  Main *bmain = CTX_data_main(C);
   Brush *brush = BKE_paint_brush(paint);
   /* The current brush should match with what we have stored in the cache. */
   BLI_assert(brush == cache->brush);
 
-  /* If saved_active_brush_name is not set, brush was not switched/affected in
+  /* If saved_active_brush is not set, brush was not switched/affected in
    * smooth_brush_toggle_on(). */
-  Brush *saved_active_brush = (Brush *)BKE_libblock_find_name(
-      bmain, ID_BR, cache->saved_active_brush_name);
-  if (saved_active_brush) {
+  if (cache->saved_active_brush) {
     Scene *scene = CTX_data_scene(C);
     BKE_brush_size_set(scene, brush, cache->saved_smooth_size);
-    BKE_paint_brush_set(paint, saved_active_brush);
+    BKE_paint_brush_set(paint, cache->saved_active_brush);
+    cache->saved_active_brush = nullptr;
   }
 }
 /* Initialize the stroke cache invariants from operator properties */
@@ -589,24 +585,27 @@ void last_stroke_update(Scene &scene, const float location[3])
 /* -------------------------------------------------------------------- */
 void smooth_brush_toggle_on(const bContext *C, Paint *paint, StrokeCache *cache)
 {
+  Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
+  Brush *cur_brush = BKE_paint_brush(paint);
 
   /* Switch to the blur (smooth) brush if possible. */
-  /* NOTE: used for both vertexpaint and weightpaint, VPAINT_TOOL_BLUR & WPAINT_TOOL_BLUR are the
-   * same, see comments for eBrushVertexPaintTool & eBrushWeightPaintTool. */
-  Brush *smooth_brush = BKE_paint_toolslots_brush_get(paint, WPAINT_TOOL_BLUR);
+  BKE_paint_brush_set_essentials(bmain,
+                                 paint,
+                                 paint->runtime.ob_mode == OB_MODE_WEIGHT_PAINT ? "Blur Weight" :
+                                                                                  "Blur Vertex");
+  Brush *smooth_brush = BKE_paint_brush(paint);
+
   if (!smooth_brush) {
+    BKE_paint_brush_set(paint, cur_brush);
     CLOG_WARN(&LOG, "Switching to the blur (smooth) brush not possible, corresponding brush not");
-    cache->saved_active_brush_name[0] = '\0';
+    cache->saved_active_brush = nullptr;
     return;
   }
 
-  Brush *cur_brush = paint->brush;
   int cur_brush_size = BKE_brush_size_get(scene, cur_brush);
 
-  STRNCPY(cache->saved_active_brush_name, cur_brush->id.name + 2);
-
-  BKE_paint_brush_set(paint, smooth_brush);
+  cache->saved_active_brush = cur_brush;
   cache->saved_smooth_size = BKE_brush_size_get(scene, smooth_brush);
   BKE_brush_size_set(scene, smooth_brush, cur_brush_size);
   BKE_curvemapping_init(smooth_brush->curve);
@@ -834,7 +833,7 @@ static int vpaint_mode_toggle_exec(bContext *C, wmOperator *op)
       depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
     }
     ED_object_vpaintmode_enter_ex(bmain, *depsgraph, scene, ob);
-    BKE_paint_brush_validate(&bmain, &ts.vpaint->paint);
+    BKE_paint_brushes_validate(&bmain, &ts.vpaint->paint);
   }
 
   BKE_mesh_batch_cache_dirty_tag((Mesh *)ob.data, BKE_MESH_BATCH_DIRTY_ALL);
@@ -902,7 +901,7 @@ static void to_static_color_type(const eCustomDataType type, const Func &func)
   }
 }
 
-struct VPaintData {
+struct VPaintData : public PaintModeData {
   ViewContext vc;
   AttrDomain domain;
   eCustomDataType type;
@@ -921,20 +920,28 @@ struct VPaintData {
     GArray<> color_prev;
     GArray<> color_curr;
   } smear;
+
+  ~VPaintData()
+  {
+    if (vp_handle) {
+      ED_vpaint_proj_handle_free(vp_handle);
+    }
+  }
 };
 
-static VPaintData *vpaint_init_vpaint(bContext *C,
-                                      wmOperator *op,
-                                      Scene &scene,
-                                      Depsgraph &depsgraph,
-                                      VPaint &vp,
-                                      Object &ob,
-                                      Mesh &mesh,
-                                      const AttrDomain domain,
-                                      const eCustomDataType type,
-                                      const Brush &brush)
+static std::unique_ptr<VPaintData> vpaint_init_vpaint(bContext *C,
+                                                      wmOperator *op,
+                                                      Scene &scene,
+                                                      Depsgraph &depsgraph,
+                                                      VPaint &vp,
+                                                      Object &ob,
+                                                      Mesh &mesh,
+                                                      const AttrDomain domain,
+                                                      const eCustomDataType type,
+                                                      const Brush &brush)
 {
-  VPaintData *vpd = MEM_new<VPaintData>(__func__);
+  std::unique_ptr<VPaintData> vpd = std::make_unique<VPaintData>();
+
   vpd->type = type;
   vpd->domain = domain;
 
@@ -992,10 +999,10 @@ static bool vpaint_stroke_test_start(bContext *C, wmOperator *op, const float mo
     return false;
   }
 
-  VPaintData *vpd = vpaint_init_vpaint(
+  std::unique_ptr<VPaintData> vpd = vpaint_init_vpaint(
       C, op, scene, depsgraph, vp, ob, *mesh, meta_data->domain, meta_data->data_type, brush);
 
-  paint_stroke_set_mode_data(stroke, vpd);
+  paint_stroke_set_mode_data(stroke, std::move(vpd));
 
   /* If not previously created, create vertex/weight paint mode session data */
   vertex_paint_init_stroke(depsgraph, ob);
@@ -1815,6 +1822,11 @@ static void vpaint_do_paint(bContext *C,
       mesh.active_color_attribute);
   BLI_assert(attribute.domain == vpd.domain);
 
+  if (attribute.domain == bke::AttrDomain::Corner) {
+    /* The sculpt undo system needs PBVH node corner indices for corner domain color attributes. */
+    BKE_pbvh_ensure_node_loops(*ss.pbvh, mesh.corner_tris());
+  }
+
   /* Paint those leaves. */
   vpaint_paint_leaves(C, vp, vpd, ob, mesh, attribute.span, nodes);
 
@@ -1938,12 +1950,6 @@ static void vpaint_stroke_done(const bContext *C, PaintStroke *stroke)
   VPaintData *vpd = static_cast<VPaintData *>(paint_stroke_mode_data(stroke));
   Object &ob = *vpd->vc.obact;
 
-  if (vpd->is_texbrush) {
-    ED_vpaint_proj_handle_free(vpd->vp_handle);
-  }
-
-  MEM_delete(vpd);
-
   SculptSession &ss = *ob.sculpt;
 
   if (ss.cache && ss.cache->alt_smooth) {
@@ -1956,7 +1962,7 @@ static void vpaint_stroke_done(const bContext *C, PaintStroke *stroke)
 
   undo::push_end(ob);
 
-  SCULPT_cache_free(ob.sculpt->cache);
+  MEM_delete(ob.sculpt->cache);
   ob.sculpt->cache = nullptr;
 }
 
@@ -1974,11 +1980,6 @@ static int vpaint_invoke(bContext *C, wmOperator *op, const wmEvent *event)
                                     event->type);
 
   Object &ob = *CTX_data_active_object(C);
-  const Mesh &mesh = *static_cast<const Mesh *>(ob.data);
-
-  if (SCULPT_has_loop_colors(ob) && ob.sculpt->pbvh) {
-    BKE_pbvh_ensure_node_loops(*ob.sculpt->pbvh, mesh.corner_tris());
-  }
 
   undo::push_begin_ex(ob, "Vertex Paint");
 
@@ -2014,10 +2015,8 @@ static int vpaint_exec(bContext *C, wmOperator *op)
 static void vpaint_cancel(bContext *C, wmOperator *op)
 {
   Object &ob = *CTX_data_active_object(C);
-  if (ob.sculpt->cache) {
-    SCULPT_cache_free(ob.sculpt->cache);
-    ob.sculpt->cache = nullptr;
-  }
+  MEM_delete(ob.sculpt->cache);
+  ob.sculpt->cache = nullptr;
 
   paint_stroke_cancel(C, op, (PaintStroke *)op->customdata);
 }
@@ -2217,6 +2216,11 @@ static int vertex_color_set_exec(bContext *C, wmOperator *op)
 
   undo::push_begin(obact, op);
   Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(*obact.sculpt->pbvh, {});
+
+  const Mesh &mesh = *static_cast<const Mesh *>(obact.data);
+  /* The sculpt undo system needs PBVH node corner indices for corner domain color attributes. */
+  BKE_pbvh_ensure_node_loops(*obact.sculpt->pbvh, mesh.corner_tris());
+
   for (PBVHNode *node : nodes) {
     undo::push_node(obact, node, undo::Type::Color);
   }
