@@ -399,3 +399,15 @@ struct ResultBLF {
    */
   int width;
 };
+
+#ifndef WITH_HEADLESS
+namespace blender::blf::icon {
+
+const char *get_icon_svg(int icon);
+
+void set(StringRefNull icon_name, StringRefNull filepath);
+
+void reset(StringRefNull icon_name);
+
+}  // namespace blender::blf::icon
+#endif

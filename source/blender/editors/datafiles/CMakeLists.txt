@@ -18,6 +18,7 @@ set(SRC
 
 set(LIB
   PRIVATE bf::blenlib
+  PRIVATE bf::intern::guardedalloc
 )
 
 # This section is maintained by the updating script, keep BEGIN/END comments.
@@ -868,7 +869,7 @@ if(WITH_BLENDER)
       data_to_c_simple(../../../../release/datafiles/icons_svg/${svg}.svg SRC)
       string(TOUPPER ${svg} svg_name_upper)
       set(SVGHCONTENTS "${SVGHCONTENTS}extern const char datatoc_${svg}_svg[];\n")
-      set(SVGCCCONTENTS "${SVGCCCONTENTS}case ICON_${svg_name_upper}: return datatoc_${svg}_svg;\n")
+      set(SVGCCCONTENTS "${SVGCCCONTENTS}      {ICON_${svg_name_upper}, ICON_NAME(${svg_name_upper}), datatoc_${svg}_svg},\n")
     endforeach()
     configure_file(
       "svg_icons.h.in"

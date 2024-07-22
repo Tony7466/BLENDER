@@ -15,6 +15,8 @@
 
 #include <Python.h>
 
+#include "BLF_api.hh"
+
 #include "BLI_string.h"
 #include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
@@ -445,6 +447,72 @@ static PyObject *bpy_escape_identifier(PyObject * /*self*/, PyObject *value)
 
   return value_escape;
 }
+#ifndef WITH_HEADLESS
+PyDoc_STRVAR(
+    /* Wrap. */
+    bpy_icon_set_doc,
+    ".. function:: icon_set(icon, filepath)\n"
+    "\n"
+    "   Sets a custom svg file as icon glyph.\n"
+    "\n"
+    "   :arg icon: Icon to overwrite glyph.\n"
+    "   :type icon: string\n"
+    "   :arg filepath: Path to svg file.\n"
+    "   :type filepath: string\n");
+static PyObject *bpy_icon_set(PyObject * /*self*/, PyObject *args, PyObject *kw)
+{
+  const char *icon = nullptr;
+  const char *filepath = nullptr;
+
+  static const char *_keywords[] = {"icon", "filepath", nullptr};
+  static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
+      "s" /* `icon` */
+      "s" /* `filepath` */
+      ":icon_set",
+      _keywords,
+      nullptr,
+  };
+  if (!_PyArg_ParseTupleAndKeywordsFast(args, kw, &_parser, &icon, &filepath)) {
+    return nullptr;
+  }
+  if (!icon || !filepath) {
+    PyErr_SetString(PyExc_TypeError, "expected a string");
+    return nullptr;
+  }
+  blender::blf::icon::set(icon, filepath);
+  BLF_cache_clear();
+  WM_main_add_notifier(NC_WINDOW, nullptr);             /* full redraw */
+  WM_main_add_notifier(NC_SCREEN | NA_EDITED, nullptr); /* refresh region sizes */
+  Py_RETURN_NONE;
+}
+
+PyDoc_STRVAR(
+    /* Wrap. */
+    bpy_icon_reset_doc,
+    ".. function:: icon_reset(icon)\n"
+    "\n"
+    "   Reset a icon to it default glyph.\n"
+    "\n"
+    "   :arg icon: Icon to reset.\n"
+    "   :type icon: string\n");
+
+static PyObject *bpy_icon_reset(PyObject * /*self*/, PyObject *value)
+{
+  Py_ssize_t value_str_len;
+  const char *icon = PyUnicode_AsUTF8AndSize(value, &value_str_len);
+
+  if (icon == nullptr) {
+    PyErr_SetString(PyExc_TypeError, "expected a string");
+    return nullptr;
+  }
+  blender::blf::icon::reset(icon);
+  BLF_cache_clear();
+  WM_main_add_notifier(NC_WINDOW, nullptr);             /* full redraw */
+  WM_main_add_notifier(NC_SCREEN | NA_EDITED, nullptr); /* refresh region sizes */
+  Py_RETURN_NONE;
+}
+#endif
 
 PyDoc_STRVAR(
     /* Wrap. */
@@ -684,7 +752,10 @@ static PyMethodDef bpy_methods[] = {
      bpy_driver_secure_code_test_doc},
     {"_ghost_backend", (PyCFunction)bpy_ghost_backend, METH_NOARGS, bpy_ghost_backend_doc},
     {"_wm_capabilities", (PyCFunction)bpy_wm_capabilities, METH_NOARGS, bpy_wm_capabilities_doc},
-
+#ifndef WITH_HEADLESS
+    {"icon_set", (PyCFunction)bpy_icon_set, METH_VARARGS | METH_KEYWORDS, bpy_icon_set_doc},
+    {"icon_reset", (PyCFunction)bpy_icon_reset, METH_O, bpy_icon_reset_doc},
+#endif
     {nullptr, nullptr, 0, nullptr},
 };
 

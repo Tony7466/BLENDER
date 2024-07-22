@@ -44,6 +44,8 @@ __all__ = (
     "unregister_tool",
     "user_resource",
     "execfile",
+    "icon_set",
+    "icon_reset",
 )
 
 from _bpy import (
@@ -60,6 +62,8 @@ from _bpy import (
     unregister_cli_command,
     user_resource as _user_resource,
     system_resource,
+    icon_set,
+    icon_reset,
 )
 
 import bpy as _bpy

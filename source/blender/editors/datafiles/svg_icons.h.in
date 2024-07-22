@@ -4,10 +4,19 @@
 extern "C" {
 #endif
 
-const char *blf_get_icon_svg(int icon);
-
 @SVGHCONTENTS@
 
 #ifdef __cplusplus
 }
 #endif
+
+#include "BLI_span.hh"
+#include <string>
+
+struct SVG_Icon {
+  int icon;
+  std::string name;
+  std::string svg;
+};
+
+blender::Span<SVG_Icon> blender_default_icons();

@@ -1,12 +1,30 @@
 #include "svg_icons.h"
 #include "UI_resources.hh"
 
-const char *blf_get_icon_svg(int icon)
+#include <algorithm>
+#include <vector>
+
+#define ICON_NAME(icon) #icon
+
+blender::Span<SVG_Icon> blender_default_icons()
 {
-	switch (icon) 
-	{
-		@SVGCCCONTENTS@
-	default:
-		return datatoc_none_svg;
-	}
+  static const std::vector<SVG_Icon> icons = [] {
+    std::vector<SVG_Icon> icons
+    {
+      // clang-format off
+@SVGCCCONTENTS@
+      // clang-format on
+    };
+    std::sort(icons.begin(), icons.end(), [](const SVG_Icon &a, const SVG_Icon &b) {
+      return a.icon < b.icon;
+    });
+    return icons;
+  }();
+  auto is_sequential = [](blender::Span<SVG_Icon> icons) {
+    int x = 0;
+    return std::all_of(
+        icons.begin(), icons.end(), [&x](const SVG_Icon &icon) { return x++ == icon.icon; });
+  };
+  BLI_assert(is_sequential(icons));
+  return icons;
 }

@@ -121,6 +121,7 @@ set(SRC
 
 set(LIB
   PRIVATE bf::blenlib
+  PRIVATE bf::blenfont
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
   bf_editor_animation
@@ -144,6 +145,9 @@ if(WITH_PYTHON_MODULE)
   add_definitions(-DWITH_PYTHON_MODULE)
 endif()
 
+if(WITH_HEADLESS)
+  add_definitions(-DWITH_HEADLESS)
+endif()
 
 # Find the SSL certificate for the portable Blender installation.
 # Without this, the absolute path on the builder is used, causing HTTPS access to fail.
