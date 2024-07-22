@@ -486,7 +486,9 @@ static struct CurveBooleanExecutor {
     }
   }
 
-  BooleanResult execute(const InputMode input_mode, Span<float2> curve_a, Span<float2> curve_b)
+  BooleanResult execute_boolean(const InputMode input_mode,
+                                Span<float2> curve_a,
+                                Span<float2> curve_b)
   {
     len_a = curve_a.size();
     len_b = curve_b.size();
@@ -693,7 +695,7 @@ static struct CurveBooleanExecutor {
   }
 
   /* Curve `A` does not loop. */
-  BooleanResult curve_boolean_cut(Span<float2> curve_a, Span<float2> curve_b)
+  BooleanResult execute_cut(Span<float2> curve_a, Span<float2> curve_b)
   {
     len_a = curve_a.size();
     len_b = curve_b.size();
@@ -792,13 +794,13 @@ BooleanResult curve_boolean_calc(const InputMode input_mode,
                                  Span<float2> curve_b)
 {
   CurveBooleanExecutor executor;
-  return executor.execute(input_mode, curve_a, curve_b);
+  return executor.execute_boolean(input_mode, curve_a, curve_b);
 }
 
 BooleanResult curve_boolean_cut(Span<float2> curve_a, Span<float2> curve_b)
 {
   CurveBooleanExecutor executor;
-  return executor.curve_boolean_cut(curve_a, curve_b);
+  return executor.execute_cut(curve_a, curve_b);
 }
 
 }  // namespace blender::polygonboolean
