@@ -188,22 +188,6 @@ static std::optional<blender::bke::MutableAttributeAccessor> get_attribute_acces
 
 }  // namespace blender::bke
 
-bool BKE_attributes_supported(const AttributeOwner &owner)
-{
-  const std::array<DomainInfo, ATTR_DOMAIN_NUM> info = get_domains(owner);
-  for (const int domain : IndexRange(ATTR_DOMAIN_NUM)) {
-    if (info[domain].customdata) {
-      return true;
-    }
-  }
-  return false;
-}
-
-bool BKE_attribute_allow_procedural_access(const char *attribute_name)
-{
-  return blender::bke::allow_procedural_attribute_access(attribute_name);
-}
-
 static bool bke_attribute_rename_if_exists(AttributeOwner &owner,
                                            const char *old_name,
                                            const char *new_name,
@@ -787,7 +771,7 @@ CustomDataLayer *BKE_attributes_active_get(AttributeOwner &owner)
       CustomDataLayer *layer = &customdata->layers[i];
       if (CD_MASK_PROP_ALL & CD_TYPE_AS_MASK(layer->type)) {
         if (index == active_index) {
-          if (BKE_attribute_allow_procedural_access(layer->name)) {
+          if (blender::bke::allow_procedural_attribute_access(layer->name)) {
             return layer;
           }
           return nullptr;
@@ -820,7 +804,7 @@ int *BKE_attributes_active_index_p(AttributeOwner &owner)
       return &(owner.get_mesh())->attributes_active_index;
     }
     case AttributeOwnerType::Curves: {
-      return &(owner.get_curves())->attributes_active_index;
+      return &owner.get_curves()->geometry.attributes_active_index;
     }
     case AttributeOwnerType::GreasePencil: {
       return &(owner.get_grease_pencil())->attributes_active_index;

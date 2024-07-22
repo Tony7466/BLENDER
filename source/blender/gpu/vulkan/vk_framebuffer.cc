@@ -185,11 +185,6 @@ void VKFrameBuffer::clear(const eGPUFrameBufferBits buffers,
     else {
       VKTexture *depth_texture = unwrap(unwrap(depth_tex()));
       if (depth_texture != nullptr) {
-        if (G.debug & G_DEBUG_GPU) {
-          std::cout
-              << "PERFORMANCE: impact clearing depth texture in render pass that doesn't allow "
-                 "depth writes.\n";
-        }
         depth_texture->clear_depth_stencil(buffers, clear_depth, clear_stencil);
       }
     }
@@ -552,14 +547,16 @@ void VKFrameBuffer::rendering_ensure(VKContext &context)
     attachment_info.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
 
     VkImageView vk_image_view = VK_NULL_HANDLE;
+    uint32_t layer_base = max_ii(attachment.layer, 0);
     GPUAttachmentState attachment_state = attachment_states_[color_attachment_index];
     if (attachment_state == GPU_ATTACHMENT_WRITE) {
       VKImageViewInfo image_view_info = {eImageViewUsage::Attachment,
-                                         IndexRange(max_ii(attachment.layer, 0), 1),
+                                         IndexRange(layer_base, 1),
                                          IndexRange(attachment.mip, 1),
                                          {{'r', 'g', 'b', 'a'}},
                                          false,
-                                         srgb_ && enabled_srgb_};
+                                         srgb_ && enabled_srgb_,
+                                         VKImageViewArrayed::DONT_CARE};
       vk_image_view = color_texture.image_view_get(image_view_info).vk_handle();
     }
     attachment_info.imageView = vk_image_view;
@@ -569,7 +566,8 @@ void VKFrameBuffer::rendering_ensure(VKContext &context)
     access_info.images.append(
         {color_texture.vk_image_handle(),
          VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-         VK_IMAGE_ASPECT_COLOR_BIT});
+         VK_IMAGE_ASPECT_COLOR_BIT,
+         layer_base});
     color_attachment_formats_.append(to_vk_format(color_texture.device_format_get()));
 
     begin_rendering.node_data.vk_rendering_info.pColorAttachments =
@@ -599,7 +597,8 @@ void VKFrameBuffer::rendering_ensure(VKContext &context)
                                          IndexRange(attachment.mip, 1),
                                          {{'r', 'g', 'b', 'a'}},
                                          is_stencil_attachment,
-                                         false};
+                                         false,
+                                         VKImageViewArrayed::DONT_CARE};
       depth_image_view = depth_texture.image_view_get(image_view_info).vk_handle();
     }
 
@@ -636,7 +635,8 @@ void VKFrameBuffer::rendering_ensure(VKContext &context)
                                is_stencil_attachment ?
                                    static_cast<VkImageAspectFlags>(VK_IMAGE_ASPECT_DEPTH_BIT |
                                                                    VK_IMAGE_ASPECT_STENCIL_BIT) :
-                                   static_cast<VkImageAspectFlags>(VK_IMAGE_ASPECT_DEPTH_BIT)});
+                                   static_cast<VkImageAspectFlags>(VK_IMAGE_ASPECT_DEPTH_BIT),
+                               0});
     break;
   }
 

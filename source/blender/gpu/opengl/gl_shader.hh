@@ -299,8 +299,10 @@ class GLShaderCompiler : public ShaderCompiler {
 
   struct SpecializationWork {
     GLShader *shader = nullptr;
-    GLuint program;
+    Vector<shader::SpecializationConstant> constants;
     GLSourcesBaked sources;
+
+    GLShader::GLProgram *program_get();
 
     GLCompilerWorker *worker = nullptr;
     bool do_async_compilation = false;

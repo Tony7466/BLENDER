@@ -1299,6 +1299,11 @@ static int object_image_add_invoke(bContext *C, wmOperator *op, const wmEvent *e
   return OPERATOR_FINISHED;
 }
 
+static bool object_image_add_poll(bContext *C)
+{
+  return ED_operator_objectmode(C) && CTX_wm_region_view3d(C);
+}
+
 void OBJECT_OT_empty_image_add(wmOperatorType *ot)
 {
   /* identifiers */
@@ -1309,7 +1314,7 @@ void OBJECT_OT_empty_image_add(wmOperatorType *ot)
   /* api callbacks */
   ot->invoke = object_image_add_invoke;
   ot->exec = object_image_add_exec;
-  ot->poll = ED_operator_objectmode;
+  ot->poll = object_image_add_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -1622,6 +1627,7 @@ static int object_grease_pencil_add_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
+  Object *original_active_object = CTX_data_active_object(C);
   /* TODO: For now, only support adding the 'Stroke' type. */
   const int type = RNA_enum_get(op->ptr, "type");
 
@@ -1687,8 +1693,6 @@ static int object_grease_pencil_add_exec(bContext *C, wmOperator *op)
     case GREASE_PENCIL_LINEART_OBJECT:
     case GREASE_PENCIL_LINEART_SCENE:
     case GREASE_PENCIL_LINEART_COLLECTION: {
-      Object *original_active_object = CTX_data_active_object(C);
-
       const int type = RNA_enum_get(op->ptr, "type");
       const bool use_in_front = RNA_boolean_get(op->ptr, "use_in_front");
       const bool use_lights = RNA_boolean_get(op->ptr, "use_lights");
@@ -3456,7 +3460,6 @@ static int object_convert_exec(bContext *C, wmOperator *op)
       }
       else {
         newob = ob;
-        DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_ANIMATION);
       }
 
       /* make new mesh data from the original copy */
@@ -3478,6 +3481,10 @@ static int object_convert_exec(bContext *C, wmOperator *op)
       BKE_mesh_nomain_to_mesh(new_mesh, ob_data_mesh, newob);
 
       BKE_object_free_modifiers(newob, 0); /* after derivedmesh calls! */
+
+      if (!keep_original) {
+        DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_ANIMATION);
+      }
     }
     else if (ob->type == OB_FONT) {
       ob->flag |= OB_DONE;
