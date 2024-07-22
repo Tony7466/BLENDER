@@ -151,7 +151,14 @@ class Drawing : public ::GreasePencilDrawing {
    * Returns true for when this drawing has more than one user.
    */
   bool is_instanced() const;
+  /**
+   * Return true if this drawing has at least one user.
+   */
   bool has_users() const;
+  /**
+   * Return the number of users (keyframes) of this drawing.
+   */
+  int user_count() const;
 };
 static_assert(sizeof(Drawing) == sizeof(::GreasePencilDrawing));
 
@@ -741,6 +748,10 @@ inline bool Drawing::is_instanced() const
 inline bool Drawing::has_users() const
 {
   return this->runtime->user_count.load(std::memory_order_relaxed) > 0;
+}
+inline int Drawing::user_count() const
+{
+  return this->runtime->user_count.load(std::memory_order_relaxed);
 }
 
 inline bool TreeNode::is_group() const

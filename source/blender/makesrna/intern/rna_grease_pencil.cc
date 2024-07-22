@@ -109,6 +109,13 @@ static void rna_grease_pencil_dependency_update(Main *bmain, Scene * /*scene*/, 
   WM_main_add_notifier(NC_GPENCIL | NA_EDITED, rna_grease_pencil(ptr));
 }
 
+static int rna_Drawing_user_count_get(PointerRNA *ptr)
+{
+  using namespace blender::bke::greasepencil;
+  const GreasePencilDrawing *drawing = static_cast<const GreasePencilDrawing *>(ptr->data);
+  return drawing->wrap().user_count();
+}
+
 static void rna_GreasePencilLayer_frames_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   using namespace blender::bke::greasepencil;
@@ -772,6 +779,13 @@ static void rna_def_grease_pencil_drawing(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, rna_enum_drawing_type_items);
   RNA_def_parameter_clear_flags(prop, PROP_EDITABLE, ParameterFlag(0));
   RNA_def_property_ui_text(prop, "Type", "Drawing type");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  /* User Count. */
+  prop = RNA_def_property(srna, "user_count", PROP_INT, PROP_NONE);
+  RNA_def_property_int_funcs(prop, "rna_Drawing_user_count_get", nullptr, nullptr);
+  RNA_def_parameter_clear_flags(prop, PROP_EDITABLE, ParameterFlag(0));
+  RNA_def_property_ui_text(prop, "User Count", "The number of keyframes this drawing is used by");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 
   /* Attributes. */
