@@ -370,7 +370,7 @@ void draw_cut(const std::string &label,
   const OffsetIndices<int> points_by_polygon = OffsetIndices<int>(result.offsets);
 
   if (points_by_polygon.size() == 1) {
-    SVG_add_line(f, "cut-C", curve_a, topleft, scale);
+    SVG_add_line(f, "cut-C", points, topleft, scale);
   }
   else {
     SVG_add_lines(f, "cut-C", points, points_by_polygon, topleft, scale);
@@ -684,6 +684,24 @@ void simple_cut_test()
   }
 }
 
+void simple_cut_2_test()
+{
+  /**
+   * With cut the first curve A does not loop.
+   */
+  const Array<float2> points_a = {{5, 5}, {3, 5}, {1, 3}, {1, 1}};
+  const Array<float2> points_b = {{5, 6}, {6, 5}, {1, 0}, {0, 1}};
+  BooleanResult result = polygonboolean::curve_boolean_cut(points_a, points_b);
+  EXPECT_TRUE(result.valid_geometry);
+  EXPECT_EQ(result.verts.size(), 4);
+  EXPECT_EQ(result.intersections_data.size(), 2);
+  EXPECT_EQ(result.offsets.size(), 2);
+
+  if (DO_DRAW) {
+    draw_cut("Simple cut 2", points_a, points_b, result);
+  }
+}
+
 TEST(polygonboolean, Squares_A_AND_B)
 {
   squares_A_AND_B_test();
@@ -752,6 +770,11 @@ TEST(polygonboolean, Last_Segment_Interection)
 TEST(polygonboolean, Simple_Cut)
 {
   simple_cut_test();
+}
+
+TEST(polygonboolean, Simple_Cut_2)
+{
+  simple_cut_2_test();
 }
 
 }  // namespace blender::polygonboolean
