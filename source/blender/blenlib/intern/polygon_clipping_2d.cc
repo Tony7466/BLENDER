@@ -42,7 +42,7 @@ static bool inside(const float2 &point, Span<float2> poly)
   return isect_point_poly_v2(point, reinterpret_cast<const float(*)[2]>(poly.data()), poly.size());
 }
 
-static struct ExtendedIntersectionPoint {
+struct ExtendedIntersectionPoint {
   int point_a;
   int point_b;
   float alpha_a;
@@ -286,7 +286,7 @@ static std::pair<bool, bool> get_AB_mode(const BooleanMode mode)
   return {false, false};
 }
 
-static int result_find_base_id(const BooleanResult &results)
+static int result_find_base_id(const BooleanResult & /*results*/)
 {
   // const OffsetIndices<int> points_by_polygon = OffsetIndices<int>(results.offsets);
 
@@ -385,7 +385,7 @@ Array<float2> calculate_positions_from_result(const Span<float2> curve_a,
 /**
  * Utility class to avoid passing large number of parameters between functions.
  */
-static struct CurveBooleanExecutor {
+struct CurveBooleanExecutor {
   int len_a;
   int len_b;
 
