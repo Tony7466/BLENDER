@@ -1,3 +1,7 @@
+/* SPDX-FileCopyrightText: 2024 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
 #ifndef WITH_HEADLESS
 
 #  include <algorithm>
@@ -20,7 +24,7 @@ static blender::Vector<SVG_Icon> &icons_storage()
 const char *get_icon_svg(int icon)
 {
   blender::Span<SVG_Icon> icons = icons_storage();
-  if (icons.size() < icon) {
+  if (icons.size() <= icon) {
     return datatoc_none_svg;
   }
   return icons[icon].svg.c_str();
