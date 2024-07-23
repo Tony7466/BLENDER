@@ -91,6 +91,8 @@
 #include "ANIM_action.hh"
 #include "ANIM_bone_collections.hh"
 
+#include "anim_intern.hh"
+
 using namespace blender;
 
 /* ************************************************************ */
@@ -481,8 +483,8 @@ bool ANIM_animdata_can_have_greasepencil(const eAnimCont_Types type)
  * - nlaOk: line or block of code to execute for NLA tracks+strips case
  * - driversOk: line or block of code to execute for Drivers case
  * - nlaKeysOk: line or block of code for NLA Strip Keyframes case
- * - keysOk: line or block of code for Keyframes case
- * - animOk: line or block of code for Keyframes from Animation data blocks case
+ * - legacyActionOk: line or block of code for Keyframes from legacy Actions
+ * - layeredActionOk: line or block of code for Keyframes from layered Actions
  *
  * The checks for the various cases are as follows:
  * 0) top level: checks for animdata and also that all the F-Curves for the block will be visible
@@ -674,14 +676,14 @@ static bAnimListElem *make_new_animlistelem(
       ale->datatype = ALE_ACTION_LAYERED;
       break;
     }
-    case ANIMTYPE_ACTION_BINDING: {
-      animrig::Binding *binding = static_cast<animrig::Binding *>(data);
-      ale->flag = binding->binding_flags;
+    case ANIMTYPE_ACTION_SLOT: {
+      animrig::Slot *slot = static_cast<animrig::Slot *>(data);
+      ale->flag = slot->slot_flags;
 
       BLI_assert_msg(GS(fcurve_owner_id->name) == ID_AC, "fcurve_owner_id should be an Action");
-      /* ale->data = the binding itself, key_data = the Action. */
+      /* ale->data = the slot itself, key_data = the Action. */
       ale->key_data = fcurve_owner_id;
-      ale->datatype = ALE_ACTION_BINDING;
+      ale->datatype = ALE_ACTION_SLOT;
       break;
     }
     case ANIMTYPE_FILLACTD: {
@@ -1080,7 +1082,7 @@ static bool skip_fcurve_selected_data(bAnimContext *ac,
 }
 
 /* Helper for name-based filtering - Perform "partial/fuzzy matches" (as in 80a7efd) */
-static bool name_matches_dopesheet_filter(bDopeSheet *ads, const char *name)
+static bool name_matches_dopesheet_filter(const bDopeSheet *ads, const char *name)
 {
   if (ads->flag & ADS_FLAG_FUZZY_NAMES) {
     /* full fuzzy, multi-word, case insensitive matches */
@@ -1139,6 +1141,20 @@ static bool skip_fcurve_with_name(
 
   /* just let this go... */
   return true;
+}
+
+static bool ale_name_matches_dopesheet_filter(const bDopeSheet &ads, bAnimListElem &ale)
+{
+  const bAnimChannelType *acf = ANIM_channel_get_typeinfo(&ale);
+  if (!acf) {
+    BLI_assert_unreachable();
+    /* Do not filter out stuff unless we know it can be filtered out. */
+    return true;
+  }
+
+  char name[ANIM_CHAN_NAME_SIZE];
+  acf->name(&ale, name);
+  return name_matches_dopesheet_filter(&ads, name);
 }
 
 /**
@@ -1311,13 +1327,13 @@ static size_t animfilter_fcurves(bAnimContext *ac,
 /**
  * Add `bAnimListElem`s to `anim_data` for each F-Curve in `fcurves`.
  *
- * \param binding_handle The binding handle that these F-Curves animate. This is
- *    used later to look up the ID* of the user of the binding, which in turn is
+ * \param slot_handle The slot handle that these F-Curves animate. This is
+ *    used later to look up the ID* of the user of the slot, which in turn is
  *    used to construct a suitable F-Curve label for in the channels list.
  *
  * \param owner_id The ID whose 'animdata->action' pointer was followed to get to
- *    these F-Curves. This ID may be animated by a different binding than referenced by
- *    `binding_handle`, so do _not_ treat this as "the ID animated by these F-Curves".
+ *    these F-Curves. This ID may be animated by a different slot than referenced by
+ *    `slot_handle`, so do _not_ treat this as "the ID animated by these F-Curves".
  *
  * \param fcurve_owner_id The ID that holds these F-Curves. Typically an Action, but can be any ID,
  *    for example in the case of drivers.
@@ -1325,51 +1341,65 @@ static size_t animfilter_fcurves(bAnimContext *ac,
 static size_t animfilter_fcurves_span(bAnimContext *ac,
                                       ListBase * /*bAnimListElem*/ anim_data,
                                       Span<FCurve *> fcurves,
-                                      const animrig::binding_handle_t binding_handle,
+                                      const animrig::slot_handle_t slot_handle,
                                       const eAnimFilter_Flags filter_mode,
-                                      ID *owner_id,
+                                      ID *animated_id,
                                       ID *fcurve_owner_id)
 {
   size_t num_items = 0;
-  BLI_assert(owner_id);
+  BLI_assert(animated_id);
 
   const bool active_matters = filter_mode & ANIMFILTER_ACTIVE;
   const bool selection_matters = filter_mode & (ANIMFILTER_SEL | ANIMFILTER_UNSEL);
   const bool must_be_selected = filter_mode & ANIMFILTER_SEL;
+  const bool visibility_matters = filter_mode & ANIMFILTER_CURVE_VISIBLE;
+  const bool show_only_errors = ac->ads && (ac->ads->filterflag & ADS_FILTER_ONLY_ERRORS);
+  const bool filter_by_name = ac->ads && (ac->ads->searchstr[0] != '\0');
 
   for (FCurve *fcu : fcurves) {
     /* make_new_animlistelem will return nullptr when fcu == nullptr, and that's
      * going to cause problems. */
     BLI_assert(fcu);
 
-    /* TODO: deal with `filter_mode` and `ac->ads->filterflag`.
-     * See `animfilter_fcurve_next()`. */
-
-    if (filter_mode & ANIMFILTER_TMP_PEEK) {
-      /* Found an animation channel, which is good enough for the 'TMP_PEEK' mode. */
-      return 1;
-    }
     if (selection_matters && bool(fcu->flag & FCURVE_SELECTED) != must_be_selected) {
       continue;
     }
     if (active_matters && !(fcu->flag & FCURVE_ACTIVE)) {
       continue;
     }
+    if (visibility_matters && !(fcu->flag & FCURVE_VISIBLE)) {
+      continue;
+    }
+    if (show_only_errors && !fcurve_has_errors(ac, fcu)) {
+      continue;
+    }
+
+    if (filter_mode & ANIMFILTER_TMP_PEEK) {
+      /* Found an animation channel, which is good enough for the 'TMP_PEEK' mode. */
+      return 1;
+    }
 
     bAnimListElem *ale = make_new_animlistelem(
-        ac->bmain, fcu, ANIMTYPE_FCURVE, owner_id, fcurve_owner_id);
+        ac->bmain, fcu, ANIMTYPE_FCURVE, animated_id, fcurve_owner_id);
 
-    /* bAnimListElem::binding_handle is exposed as int32_t and not as binding_handle_t, so better
+    /* Filtering by name needs a way to look up the name, which is easiest if
+     * there is already an #bAnimListElem. */
+    if (filter_by_name && !ale_name_matches_dopesheet_filter(*ac->ads, *ale)) {
+      MEM_freeN(ale);
+      continue;
+    }
+
+    /* bAnimListElem::slot_handle is exposed as int32_t and not as slot_handle_t, so better
      * ensure that these are still equivalent.
      * TODO: move to another part of the code. */
     static_assert(
-        std::is_same_v<decltype(ActionBinding::handle), decltype(bAnimListElem::binding_handle)>);
+        std::is_same_v<decltype(ActionSlot::handle), decltype(bAnimListElem::slot_handle)>);
 
-    /* Note that this might not be the same as ale->adt->binding_handle. The reason this F-Curve is
+    /* Note that this might not be the same as ale->adt->slot_handle. The reason this F-Curve is
      * shown could be because it's in the Action editor, showing ale->adt->action with _all_
-     * bindings, and this F-Curve could be from a different binding than what's used by the owner
+     * slots, and this F-Curve could be from a different slot than what's used by the owner
      * of `ale->adt`.  */
-    ale->binding_handle = binding_handle;
+    ale->slot_handle = slot_handle;
 
     BLI_addtail(anim_data, ale);
     num_items++;
@@ -1473,14 +1503,14 @@ static size_t animfilter_act_group(bAnimContext *ac,
 }
 
 /**
- * Add a channel for each Binding, with their FCurves when the Binding is expanded.
+ * Add a channel for each Slot, with their FCurves when the Slot is expanded.
  */
-static size_t animfilter_action_binding(bAnimContext *ac,
-                                        ListBase *anim_data,
-                                        animrig::Action &action,
-                                        animrig::Binding &binding,
-                                        const eAnimFilter_Flags filter_mode,
-                                        ID *owner_id)
+static size_t animfilter_action_slot(bAnimContext *ac,
+                                     ListBase *anim_data,
+                                     animrig::Action &action,
+                                     animrig::Slot &slot,
+                                     const eAnimFilter_Flags filter_mode,
+                                     ID *animated_id)
 {
   /* Don't include anything from this animation if it is linked in from another
    * file, and we're getting stuff for editing... */
@@ -1492,44 +1522,43 @@ static size_t animfilter_action_binding(bAnimContext *ac,
 
   const bool selection_matters = filter_mode & (ANIMFILTER_SEL | ANIMFILTER_UNSEL);
   const bool must_be_selected = filter_mode & ANIMFILTER_SEL;
-  const bool selection_ok_for_binding = !selection_matters ||
-                                        binding.is_selected() == must_be_selected;
+  const bool selection_ok_for_slot = !selection_matters || slot.is_selected() == must_be_selected;
 
   int items = 0;
 
-  /* Add a list element for the Binding itself, but only if in Action mode. The Dopesheet mode
-   * shouldn't display Bindings, as F-Curves are always shown in the context of the animated ID
+  /* Add a list element for the Slot itself, but only if in Action mode. The Dopesheet mode
+   * shouldn't display Slots, as F-Curves are always shown in the context of the animated ID
    * anyway. */
   const bool is_action_mode = (ac->mode == SACTCONT_ACTION);
   const bool show_fcurves_only = (filter_mode & ANIMFILTER_FCURVESONLY);
   const bool include_summary_channels = (filter_mode & ANIMFILTER_LIST_CHANNELS);
-  const bool show_binding_channel = (is_action_mode && selection_ok_for_binding &&
-                                     !show_fcurves_only && include_summary_channels);
-  if (show_binding_channel) {
-    ANIMCHANNEL_NEW_CHANNEL(ac->bmain, &binding, ANIMTYPE_ACTION_BINDING, owner_id, &action.id);
+  const bool show_slot_channel = (is_action_mode && selection_ok_for_slot && !show_fcurves_only &&
+                                  include_summary_channels);
+  if (show_slot_channel) {
+    ANIMCHANNEL_NEW_CHANNEL(ac->bmain, &slot, ANIMTYPE_ACTION_SLOT, animated_id, &action.id);
     items++;
   }
 
-  /* If the 'list visible' flag is used, the expansion state of the Binding
+  /* If the 'list visible' flag is used, the expansion state of the Slot
    * matters. Otherwise the sub-channels can always be listed. */
   const bool visible_only = (filter_mode & ANIMFILTER_LIST_VISIBLE);
-  const bool expansion_is_ok = !visible_only || !show_binding_channel || binding.is_expanded();
+  const bool expansion_is_ok = !visible_only || !show_slot_channel || slot.is_expanded();
 
   if (show_fcurves_only || expansion_is_ok) {
-    /* Add list elements for the F-Curves for this Binding. */
-    Span<FCurve *> fcurves = animrig::fcurves_for_animation(action, binding.handle);
+    /* Add list elements for the F-Curves for this Slot. */
+    Span<FCurve *> fcurves = animrig::fcurves_for_action_slot(action, slot.handle);
     items += animfilter_fcurves_span(
-        ac, anim_data, fcurves, binding.handle, filter_mode, owner_id, &action.id);
+        ac, anim_data, fcurves, slot.handle, filter_mode, animated_id, &action.id);
   }
 
   return items;
 }
 
-static size_t animfilter_action_bindings(bAnimContext *ac,
-                                         ListBase *anim_data,
-                                         animrig::Action &action,
-                                         const eAnimFilter_Flags filter_mode,
-                                         ID *owner_id)
+static size_t animfilter_action_slots(bAnimContext *ac,
+                                      ListBase *anim_data,
+                                      animrig::Action &action,
+                                      const eAnimFilter_Flags filter_mode,
+                                      ID *owner_id)
 {
   /* Don't include anything from this animation if it is linked in from another
    * file, and we're getting stuff for editing... */
@@ -1540,9 +1569,25 @@ static size_t animfilter_action_bindings(bAnimContext *ac,
   }
 
   int num_items = 0;
-  for (animrig::Binding *binding : action.bindings()) {
-    BLI_assert(binding);
-    num_items += animfilter_action_binding(ac, anim_data, action, *binding, filter_mode, owner_id);
+  for (animrig::Slot *slot : action.slots()) {
+    BLI_assert(slot);
+
+    /* In some cases (see `ob_to_keylist()` and friends) fake bDopeSheet and fake bAnimContext are
+     * created. These are mostly null-initialised, and so do not have a bmain. This means that
+     * lookup of the animated ID is not possible, which can result in failure to look up the proper
+     * F-Curve display name. For the `..._to_keylist` functions that doens't matter, as those are
+     * only interested in the key data anyway. So rather than trying to get a reliable `bmain`
+     * through the maze, this code just treats it as optional (even though ideally it should always
+     * be known). */
+    ID *animated_id = nullptr;
+    if (ac->bmain) {
+      animated_id = animrig::action_slot_get_id_best_guess(*ac->bmain, *slot, owner_id);
+    }
+    if (!animated_id) {
+      /* This is not necessarily correct, but at least it prevents nullptr dereference. */
+      animated_id = owner_id;
+    }
+    num_items += animfilter_action_slot(ac, anim_data, action, *slot, filter_mode, animated_id);
   }
 
   return num_items;
@@ -1551,7 +1596,7 @@ static size_t animfilter_action_bindings(bAnimContext *ac,
 static size_t animfilter_action(bAnimContext *ac,
                                 ListBase *anim_data,
                                 animrig::Action &action,
-                                const animrig::binding_handle_t binding_handle,
+                                const animrig::slot_handle_t slot_handle,
                                 const eAnimFilter_Flags filter_mode,
                                 ID *owner_id)
 {
@@ -1595,20 +1640,20 @@ static size_t animfilter_action(bAnimContext *ac,
 
   /* For now we don't show layers anywhere, just the contained F-Curves. */
 
-  /* Only show all Bindings in Action editor mode. Otherwise the F-Curves ought to be displayed
+  /* Only show all Slots in Action editor mode. Otherwise the F-Curves ought to be displayed
    * underneath their animated ID anyway. */
   const bool is_action_mode = (ac->mode == SACTCONT_ACTION);
-  const bool show_all_bindings = (ac->ads->filterflag & ADS_FILTER_ALL_BINDINGS);
-  if (is_action_mode && show_all_bindings) {
-    return animfilter_action_bindings(ac, anim_data, action, filter_mode, owner_id);
+  const bool show_all_slots = (ac->ads->filterflag & ADS_FILTER_ALL_SLOTS);
+  if (is_action_mode && show_all_slots) {
+    return animfilter_action_slots(ac, anim_data, action, filter_mode, owner_id);
   }
 
-  animrig::Binding *binding = action.binding_for_handle(binding_handle);
-  if (!binding) {
-    /* Can happen when an Action is assigned, but not a Binding. */
+  animrig::Slot *slot = action.slot_for_handle(slot_handle);
+  if (!slot) {
+    /* Can happen when an Action is assigned, but not a Slot. */
     return 0;
   }
-  return animfilter_action_binding(ac, anim_data, action, *binding, filter_mode, owner_id);
+  return animfilter_action_slot(ac, anim_data, action, *slot, filter_mode, owner_id);
 }
 
 /* Include NLA-Data for NLA-Editor:
@@ -1810,7 +1855,7 @@ static size_t animfilter_block_data(bAnimContext *ac,
           items += animfilter_action(ac,
                                      anim_data,
                                      adt->action->wrap(),
-                                     adt->binding_handle,
+                                     adt->slot_handle,
                                      eAnimFilter_Flags(filter_mode),
                                      id);
         },
@@ -1818,7 +1863,7 @@ static size_t animfilter_block_data(bAnimContext *ac,
           items += animfilter_action(ac,
                                      anim_data,
                                      adt->action->wrap(),
-                                     adt->binding_handle,
+                                     adt->slot_handle,
                                      eAnimFilter_Flags(filter_mode),
                                      id);
         });
@@ -1903,7 +1948,7 @@ static size_t animdata_filter_shapekey(bAnimContext *ac,
         items = animfilter_action(ac,
                                   anim_data,
                                   key->adt->action->wrap(),
-                                  key->adt->binding_handle,
+                                  key->adt->slot_handle,
                                   eAnimFilter_Flags(filter_mode),
                                   (ID *)key);
       }
@@ -3783,9 +3828,8 @@ size_t ANIM_animdata_filter(bAnimContext *ac,
               "This code assumes the Action editor shows the Action of the active object");
 
           animrig::Action &action = static_cast<bAction *>(data)->wrap();
-          const animrig::binding_handle_t binding_handle = obact->adt->binding_handle;
-          items += animfilter_action(
-              ac, anim_data, action, binding_handle, filter_mode, (ID *)obact);
+          const animrig::slot_handle_t slot_handle = obact->adt->slot_handle;
+          items += animfilter_action(ac, anim_data, action, slot_handle, filter_mode, (ID *)obact);
         }
       }
 

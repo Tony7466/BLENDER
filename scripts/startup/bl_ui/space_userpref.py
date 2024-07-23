@@ -1241,11 +1241,6 @@ class USERPREF_PT_theme_text_style(ThemePanel, CenterAlignMixIn, Panel):
 
         layout.separator()
 
-        layout.label(text="Widget Label")
-        self._ui_font_style(layout, style.widget_label)
-
-        layout.separator()
-
         layout.label(text="Widget")
         self._ui_font_style(layout, style.widget)
 
@@ -2617,7 +2612,6 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
         if filter in {"All", "Enabled"}:
             # Append missing scripts
             # First collect scripts that are used but have no script file.
-            module_names = {mod.__name__ for mod in addon_modules}
             missing_modules = {
                 addon_module_name for addon_module_name in used_addon_module_name_map
                 if addon_module_name not in module_names
@@ -2855,6 +2849,7 @@ class USERPREF_PT_experimental_new_features(ExperimentalPanel, Panel):
                 ({"property": "use_new_volume_nodes"}, ("blender/blender/issues/103248", "#103248")),
                 ({"property": "use_new_file_import_nodes"}, ("blender/blender/issues/122846", "#122846")),
                 ({"property": "use_shader_node_previews"}, ("blender/blender/issues/110353", "#110353")),
+                ({"property": "use_docking"}, ("blender/blender/issues/124915", "#124915")),
             ),
         )
 

@@ -30,7 +30,7 @@
 #include "BKE_node_tree_update.hh"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "NOD_node_declaration.hh"
 #include "NOD_socket.hh"
@@ -717,6 +717,8 @@ void uiTemplateNodeLink(
 
   but->poin = (char *)but;
   but->func_argN = arg;
+  but->func_argN_free_fn = MEM_freeN;
+  but->func_argN_copy_fn = MEM_dupallocN;
 
   if (input->link && input->link->fromnode) {
     if (input->link->fromnode->flag & NODE_ACTIVE_TEXTURE) {

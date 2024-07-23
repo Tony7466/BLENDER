@@ -22,6 +22,7 @@
 
 #include "ED_view3d.hh"
 
+#include "DRW_gpu_wrapper.hh"
 #include "DRW_render.hh"
 
 #include "COM_context.hh"
@@ -145,18 +146,20 @@ class Context : public realtime_compositor::Context {
       return nullptr;
     }
 
+    GPUTexture *pass_texture = DRW_viewport_pass_texture_get(pass_name).gpu_texture();
+    if (pass_texture) {
+      return pass_texture;
+    }
+
     if (STREQ(pass_name, RE_PASSNAME_COMBINED)) {
       return get_output_texture();
-    }
-    else if (STREQ(pass_name, RE_PASSNAME_Z)) {
-      return DRW_viewport_texture_list_get()->depth;
     }
     else {
       return nullptr;
     }
   }
 
-  StringRef get_view_name() override
+  StringRef get_view_name() const override
   {
     const SceneRenderView *view = static_cast<SceneRenderView *>(
         BLI_findlink(&get_render_data().views, DRW_context_state_get()->v3d->multiview_eye));
