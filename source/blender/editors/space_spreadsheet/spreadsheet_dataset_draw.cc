@@ -539,37 +539,25 @@ class GeometryDataSetTreeView : public ui::AbstractTreeView {
 
   void build_tree() override
   {
-    this->build_tree_for_geometry(geometry_set_, *this, true);
-  }
+    ui::TreeViewItemContainer &parent = *this;
 
-  void build_tree_for_geometry(const bke::GeometrySet &geometry,
-                               ui::TreeViewItemContainer &parent,
-                               const bool all_components)
-  {
-    const Mesh *mesh = geometry.get_mesh();
-    if (mesh || all_components) {
-      this->build_tree_for_mesh(mesh, parent);
-    }
-    const Curves *curves = geometry.get_curves();
-    if (curves || all_components) {
-      this->build_tree_for_curves(curves, parent);
-    }
-    const GreasePencil *grease_pencil = geometry.get_grease_pencil();
-    if (grease_pencil || all_components) {
-      this->build_tree_for_grease_pencil(grease_pencil, parent);
-    }
-    const PointCloud *pointcloud = geometry.get_pointcloud();
-    if (pointcloud || all_components) {
-      this->build_tree_for_pointcloud(pointcloud, parent);
-    }
-    const Volume *volume = geometry.get_volume();
-    if (volume || all_components) {
-      this->build_tree_for_volume(volume, parent);
-    }
-    const bke::Instances *instances = geometry.get_instances();
-    if (instances || all_components) {
-      this->build_tree_for_instances(instances, parent);
-    }
+    const Mesh *mesh = geometry_set_.get_mesh();
+    this->build_tree_for_mesh(mesh, parent);
+
+    const Curves *curves = geometry_set_.get_curves();
+    this->build_tree_for_curves(curves, parent);
+
+    const GreasePencil *grease_pencil = geometry_set_.get_grease_pencil();
+    this->build_tree_for_grease_pencil(grease_pencil, parent);
+
+    const PointCloud *pointcloud = geometry_set_.get_pointcloud();
+    this->build_tree_for_pointcloud(pointcloud, parent);
+
+    const Volume *volume = geometry_set_.get_volume();
+    this->build_tree_for_volume(volume, parent);
+
+    const bke::Instances *instances = geometry_set_.get_instances();
+    this->build_tree_for_instances(instances, parent);
   }
 
   void build_tree_for_mesh(const Mesh *mesh, ui::TreeViewItemContainer &parent)
