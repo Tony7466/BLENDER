@@ -905,11 +905,22 @@ static int id_relink_to_newid_looper(LibraryIDLinkCallbackData *cb_data)
   return IDWALK_RET_NOP;
 }
 
+static bool ids_are_identical(const ID *a, const ID *b)
+{
+  if (!a || !b) {
+    return false;
+  }
+  if (!ID_IS_LOCKED(a) || !ID_IS_LOCKED(b)) {
+    return false;
+  }
+  return a->deep_hash == b->deep_hash;
+}
+
 static void libblock_relink_to_newid_prepare_data(Main *bmain,
                                                   ID *id,
                                                   RelinkToNewIDData *relink_data)
 {
-  if (ID_IS_LINKED(id)) {
+  if (ID_IS_LINKED(id) && !ids_are_identical(id, id->newid)) {
     return;
   }
 
@@ -920,7 +931,7 @@ static void libblock_relink_to_newid_prepare_data(Main *bmain,
 
 void BKE_libblock_relink_to_newid(Main *bmain, ID *id, const int remap_flag)
 {
-  if (ID_IS_LINKED(id)) {
+  if (ID_IS_LINKED(id) && !ids_are_identical(id, id->newid)) {
     return;
   }
   /* We do not want to have those cached relationship data here. */
