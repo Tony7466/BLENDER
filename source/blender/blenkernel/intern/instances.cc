@@ -128,7 +128,8 @@ Instances::Instances(Instances &&other)
     : references_(std::move(other.references_)),
       instances_num_(other.instances_num_),
       attributes_(other.attributes_),
-      almost_unique_ids_cache_(std::move(other.almost_unique_ids_cache_))
+      almost_unique_ids_cache_(std::move(other.almost_unique_ids_cache_)),
+      reference_user_counts_(std::move(other.reference_user_counts_))
 {
   CustomData_reset(&other.attributes_);
 }
@@ -136,7 +137,8 @@ Instances::Instances(Instances &&other)
 Instances::Instances(const Instances &other)
     : references_(other.references_),
       instances_num_(other.instances_num_),
-      almost_unique_ids_cache_(other.almost_unique_ids_cache_)
+      almost_unique_ids_cache_(other.almost_unique_ids_cache_),
+      reference_user_counts_(std::move(other.reference_user_counts_))
 {
   CustomData_copy(&other.attributes_, &attributes_, CD_MASK_ALL, other.instances_num_);
 }
@@ -441,6 +443,24 @@ static Array<int> generate_unique_instance_ids(Span<int> original_ids)
   }
 
   return unique_ids;
+}
+
+Span<int> Instances::reference_user_counts() const
+{
+  reference_user_counts_.ensure([&](Array<int> &r_data) {
+    const int references_num = references_.size();
+    r_data.reinitialize(references_num);
+    r_data.fill(0);
+
+    const Span<int> handles = this->reference_handles();
+    for (const int i : IndexRange(instances_num_)) {
+      const int handle = handles[i];
+      if (handle >= 0 && handle < references_num) {
+        r_data[handle]++;
+      }
+    }
+  });
+  return reference_user_counts_.data();
 }
 
 Span<int> Instances::almost_unique_ids() const

@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include <fmt/format.h>
+
 #include "BLI_string.h"
 
 #include "DNA_collection_types.h"
@@ -46,13 +48,18 @@ struct GeometryDataIdentifier {
   std::optional<bke::AttrDomain> domain;
 };
 
-static void draw_count(ui::AbstractTreeViewItem &view_item, const int count)
+static void draw_row_suffix(ui::AbstractTreeViewItem &view_item, const StringRefNull str)
 {
   /* Using the tree row button instead of a separate right aligned button gives padding
    * to the right side of the number, which it didn't have with the button. */
+  UI_but_hint_drawstr_set(reinterpret_cast<uiBut *>(view_item.view_item_button()), str.c_str());
+}
+
+static void draw_count(ui::AbstractTreeViewItem &view_item, const int count)
+{
   char element_count[BLI_STR_FORMAT_INT32_DECIMAL_UNIT_SIZE];
   BLI_str_format_decimal_unit(element_count, count);
-  UI_but_hint_drawstr_set(reinterpret_cast<uiBut *>(view_item.view_item_button()), element_count);
+  draw_row_suffix(view_item, element_count);
 }
 
 static StringRefNull mesh_domain_to_label(const bke::AttrDomain domain)
@@ -143,12 +150,14 @@ class InstanceReferenceViewItem : public InstancesTreeViewItem {
  private:
   const bke::InstanceReference &reference_;
   int reference_index_;
+  int user_count_;
 
  public:
   InstanceReferenceViewItem(const bke::Instances &instances, const int reference_index)
       : reference_(instances.references()[reference_index]), reference_index_(reference_index)
   {
     label_ = std::to_string(reference_index);
+    user_count_ = instances.reference_user_counts()[reference_index];
   }
 
   void build_row(uiLayout &row) override
@@ -159,6 +168,7 @@ class InstanceReferenceViewItem : public InstancesTreeViewItem {
       name = IFACE_("Geometry");
     }
     uiItemL(&row, name.c_str(), icon);
+    draw_count(*this, user_count_);
   }
 
   int reference_index() const
