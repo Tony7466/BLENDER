@@ -716,15 +716,23 @@ void spreadsheet_data_set_panel_draw(const bContext *C, Panel *panel)
   UI_block_layout_set_current(block, layout);
   const bke::GeometrySet root_geometry = spreadsheet_get_display_geometry_set(sspreadsheet,
                                                                               object);
+  const bke::Instances *instances = root_geometry.get_instances();
 
-  {
-    ui::AbstractTreeView *tree_view = UI_block_add_view(
-        *block,
-        "Instances Tree View",
-        std::make_unique<GeometryInstancesTreeView>(root_geometry, *C));
-    tree_view->set_context_menu_title("Spreadsheet");
-    ui::TreeViewBuilder::build_tree_view(*tree_view, *layout);
+  if (instances && instances->instances_num() > 0) {
+
+    if (uiLayout *panel = uiLayoutPanel(
+            C, layout, "instances_tree_view", false, IFACE_("Instances")))
+    {
+      ui::AbstractTreeView *tree_view = UI_block_add_view(
+          *block,
+          "Instances Tree View",
+          std::make_unique<GeometryInstancesTreeView>(root_geometry, *C));
+      tree_view->set_context_menu_title("Instance");
+      ui::TreeViewBuilder::build_tree_view(*tree_view, *panel, {}, false);
+    }
   }
+  if (uiLayout *panel = uiLayoutPanel(
+          C, layout, "geometry_domain_tree_view", false, IFACE_("Domain")))
   {
     bke::GeometrySet instance_geometry = get_geometry_set_for_instance_ids(
         root_geometry, {sspreadsheet->instance_ids, sspreadsheet->instance_ids_num});
@@ -732,8 +740,8 @@ void spreadsheet_data_set_panel_draw(const bContext *C, Panel *panel)
         *block,
         "Data Set Tree View",
         std::make_unique<GeometryDataSetTreeView>(std::move(instance_geometry), *C));
-    tree_view->set_context_menu_title("Spreadsheet");
-    ui::TreeViewBuilder::build_tree_view(*tree_view, *layout);
+    tree_view->set_context_menu_title("Domain");
+    ui::TreeViewBuilder::build_tree_view(*tree_view, *panel, {}, false);
   }
 }
 
