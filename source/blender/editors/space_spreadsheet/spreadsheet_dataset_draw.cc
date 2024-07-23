@@ -393,6 +393,19 @@ class InstancesViewItem : public DataSetViewItem {
   }
 };
 
+class RootGeometryViewItem : public InstancesTreeViewItem {
+ public:
+  RootGeometryViewItem(const bke::GeometrySet &geometry)
+  {
+    label_ = geometry.name.empty() ? IFACE_("Geometry") : geometry.name;
+  }
+
+  void build_row(uiLayout &row) override
+  {
+    uiItemL(&row, label_.c_str(), ICON_GEOMETRY_NODES);
+  }
+};
+
 class InstanceReferenceViewItem : public InstancesTreeViewItem {
  private:
   const bke::InstanceReference &reference_;
@@ -418,66 +431,6 @@ class InstanceReferenceViewItem : public InstancesTreeViewItem {
   int reference_index() const
   {
     return reference_index_;
-  }
-};
-
-class CollectionChildViewItem : public InstancesTreeViewItem {
- private:
-  const CollectionChild *collection_child_;
-  int child_index_;
-
- public:
-  CollectionChildViewItem(const CollectionChild &collection_child, const int child_index)
-      : collection_child_(&collection_child), child_index_(child_index)
-  {
-    label_ = std::to_string(child_index);
-  }
-
-  void build_row(uiLayout &row) override
-  {
-    uiItemL(&row, collection_child_->collection->id.name + 2, ICON_OUTLINER_COLLECTION);
-  }
-
-  int child_index() const
-  {
-    return child_index_;
-  }
-};
-
-class CollectionObjectViewItem : public InstancesTreeViewItem {
- private:
-  const CollectionObject *collection_object_;
-  int child_index_;
-
- public:
-  CollectionObjectViewItem(const CollectionObject &collection_object, const int child_index)
-      : collection_object_(&collection_object), child_index_(child_index)
-  {
-    label_ = std::to_string(child_index);
-  }
-
-  void build_row(uiLayout &row) override
-  {
-    const int icon = ED_outliner_icon_from_id(collection_object_->ob->id);
-    uiItemL(&row, collection_object_->ob->id.name + 2, icon);
-  }
-
-  int child_index() const
-  {
-    return child_index_;
-  }
-};
-
-class RootGeometryViewItem : public InstancesTreeViewItem {
- public:
-  RootGeometryViewItem(const bke::GeometrySet &geometry)
-  {
-    label_ = geometry.name.empty() ? IFACE_("Geometry") : geometry.name;
-  }
-
-  void build_row(uiLayout &row) override
-  {
-    uiItemL(&row, label_.c_str(), ICON_GEOMETRY_NODES);
   }
 };
 
