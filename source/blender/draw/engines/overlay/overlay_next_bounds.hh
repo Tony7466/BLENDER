@@ -125,21 +125,23 @@ class Bounds {
       add_bounds(false, ob->boundtype);
     }
     if (!from_dupli && ob->rigidbody_object != nullptr) {
-      const char bound_type = [&]() {
-        switch (ob->rigidbody_object->shape) {
-          case RB_SHAPE_BOX:
-            return OB_BOUND_BOX;
-          case RB_SHAPE_SPHERE:
-            return OB_BOUND_SPHERE;
-          case RB_SHAPE_CONE:
-            return OB_BOUND_CONE;
-          case RB_SHAPE_CYLINDER:
-            return OB_BOUND_CYLINDER;
-          case RB_SHAPE_CAPSULE:
-            return OB_BOUND_CAPSULE;
-        }
-      }();
-      add_bounds(true, bound_type);
+      switch (ob->rigidbody_object->shape) {
+        case RB_SHAPE_BOX:
+          add_bounds(true, OB_BOUND_BOX);
+          break;
+        case RB_SHAPE_SPHERE:
+          add_bounds(true, OB_BOUND_SPHERE);
+          break;
+        case RB_SHAPE_CONE:
+          add_bounds(true, OB_BOUND_CONE);
+          break;
+        case RB_SHAPE_CYLINDER:
+          add_bounds(true, OB_BOUND_CYLINDER);
+          break;
+        case RB_SHAPE_CAPSULE:
+          add_bounds(true, OB_BOUND_CAPSULE);
+          break;
+      };
     }
   }
 
