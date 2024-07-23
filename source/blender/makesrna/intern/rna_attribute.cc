@@ -682,6 +682,19 @@ static void rna_AttributeGroupID_update_active(Main *bmain, Scene *scene, Pointe
   rna_Attribute_update_data(bmain, scene, ptr);
 }
 
+static void rna_AttributeGroupID_update_active_color(Main * /*bmain*/,
+                                                     Scene * /*scene*/,
+                                                     PointerRNA *ptr)
+{
+  ID *id = ptr->owner_id;
+
+  /* Cheating way for importers to avoid slow updates. */
+  if (id->us > 0) {
+    DEG_id_tag_update(id, 0);
+    WM_main_add_notifier(NC_GEOM | ND_DATA, id);
+  }
+}
+
 static int rna_AttributeGroupID_domain_size(ID *id, const int domain)
 {
   AttributeOwner owner = AttributeOwner::from_id(id);
@@ -745,19 +758,6 @@ static void rna_AttributeGroupMesh_active_color_index_range(
 
   *softmin = *min;
   *softmax = *max;
-}
-
-static void rna_AttributeGroupID_update_active_color(Main * /*bmain*/,
-                                                     Scene * /*scene*/,
-                                                     PointerRNA *ptr)
-{
-  ID *id = ptr->owner_id;
-
-  /* Cheating way for importers to avoid slow updates. */
-  if (id->us > 0) {
-    DEG_id_tag_update(id, 0);
-    WM_main_add_notifier(NC_GEOM | ND_DATA, id);
-  }
 }
 
 static int rna_AttributeGroupMesh_render_color_index_get(PointerRNA *ptr)
@@ -908,6 +908,14 @@ static void rna_AttributeGroupGreasePencilDrawing_active_set(PointerRNA *ptr,
   AttributeOwner owner = AttributeOwner(AttributeOwnerType::GreasePencilDrawing, drawing);
   CustomDataLayer *layer = static_cast<CustomDataLayer *>(attribute_ptr.data);
   BKE_attributes_active_set(owner, layer->name);
+}
+
+static bool rna_AttributeGroupGreasePencilDrawing_active_poll(PointerRNA *ptr,
+                                                              const PointerRNA value)
+{
+  AttributeOwner owner = owner_from_attribute_pointer_rna(const_cast<PointerRNA *>(&value));
+  return owner.is_valid() && owner.type() == AttributeOwnerType::GreasePencilDrawing &&
+         owner.get_grease_pencil_drawing() == static_cast<GreasePencilDrawing *>(ptr->data);
 }
 
 static int rna_AttributeGroupGreasePencilDrawing_active_index_get(PointerRNA *ptr)
@@ -1654,7 +1662,7 @@ static void rna_def_attribute_group_grease_pencil_drawing(BlenderRNA *brna)
                                  "rna_AttributeGroupGreasePencilDrawing_active_get",
                                  "rna_AttributeGroupGreasePencilDrawing_active_set",
                                  nullptr,
-                                 nullptr);
+                                 "rna_AttributeGroupGreasePencilDrawing_active_poll");
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_NEVER_UNLINK);
   RNA_def_property_update(prop, 0, "rna_AttributeGroupID_update_active");
 

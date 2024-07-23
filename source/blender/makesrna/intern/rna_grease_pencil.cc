@@ -78,6 +78,13 @@ static void rna_grease_pencil_dependency_update(Main *bmain, Scene * /*scene*/, 
   WM_main_add_notifier(NC_GPENCIL | NA_EDITED, rna_grease_pencil(ptr));
 }
 
+static int rna_Drawing_user_count_get(PointerRNA *ptr)
+{
+  using namespace blender::bke::greasepencil;
+  const GreasePencilDrawing *drawing = static_cast<const GreasePencilDrawing *>(ptr->data);
+  return drawing->wrap().user_count();
+}
+
 static int rna_GreasePencilDrawing_curve_offset_data_length(PointerRNA *ptr)
 {
   const GreasePencilDrawing *drawing = static_cast<GreasePencilDrawing *>(ptr->data);
@@ -1056,6 +1063,13 @@ static void rna_def_grease_pencil_drawing(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Type", "Drawing type");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 
+  /* User Count. */
+  prop = RNA_def_property(srna, "user_count", PROP_INT, PROP_NONE);
+  RNA_def_property_int_funcs(prop, "rna_Drawing_user_count_get", nullptr, nullptr);
+  RNA_def_parameter_clear_flags(prop, PROP_EDITABLE, ParameterFlag(0));
+  RNA_def_property_ui_text(prop, "User Count", "The number of keyframes this drawing is used by");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
   /* Curve offsets. */
   prop = RNA_def_property(srna, "curve_offset_data", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "IntAttributeValue");
@@ -1082,6 +1096,40 @@ static void rna_def_grease_pencil_frame(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
+  static const EnumPropertyItem rna_enum_keyframe_type_items[] = {
+      {BEZT_KEYTYPE_KEYFRAME,
+       "KEYFRAME",
+       ICON_KEYTYPE_KEYFRAME_VEC,
+       "Keyframe",
+       "Normal keyframe, e.g. for key poses"},
+      {BEZT_KEYTYPE_BREAKDOWN,
+       "BREAKDOWN",
+       ICON_KEYTYPE_BREAKDOWN_VEC,
+       "Breakdown",
+       "A breakdown pose, e.g. for transitions between key poses"},
+      {BEZT_KEYTYPE_MOVEHOLD,
+       "MOVING_HOLD",
+       ICON_KEYTYPE_MOVING_HOLD_VEC,
+       "Moving Hold",
+       "A keyframe that is part of a moving hold"},
+      {BEZT_KEYTYPE_EXTREME,
+       "EXTREME",
+       ICON_KEYTYPE_EXTREME_VEC,
+       "Extreme",
+       "An 'extreme' pose, or some other purpose as needed"},
+      {BEZT_KEYTYPE_JITTER,
+       "JITTER",
+       ICON_KEYTYPE_JITTER_VEC,
+       "Jitter",
+       "A filler or baked keyframe for keying on ones, or some other purpose as needed"},
+      {BEZT_KEYTYPE_GENERATED,
+       "GENERATED",
+       ICON_KEYTYPE_GENERATED_VEC,
+       "Generated",
+       "A key generated automatically by a tool, not manually created"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   srna = RNA_def_struct(brna, "GreasePencilFrame", nullptr);
   RNA_def_struct_sdna(srna, "GreasePencilFrame");
   RNA_def_struct_ui_text(srna, "Grease Pencil Frame", "A Grease Pencil keyframe");
@@ -1107,6 +1155,14 @@ static void rna_def_grease_pencil_frame(BlenderRNA *brna)
   prop = RNA_def_property(srna, "select", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", GP_FRAME_SELECTED);
   RNA_def_property_ui_text(prop, "Select", "Frame Selection in the Dope Sheet");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  /* Keyframe type. */
+  prop = RNA_def_property(srna, "keyframe_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "type");
+  RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, ParameterFlag(0));
+  RNA_def_property_enum_items(prop, rna_enum_keyframe_type_items);
+  RNA_def_property_ui_text(prop, "Keyframe Type", "Type of keyframe");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 }
 
@@ -1697,7 +1753,7 @@ static void rna_def_grease_pencil_layer_group_api(BlenderRNA *brna, PropertyRNA 
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED | PARM_RNAPTR);
   RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, ParameterFlag(0));
 
-  prop = RNA_def_property(srna, "active_group", PROP_POINTER, PROP_NONE);
+  prop = RNA_def_property(srna, "active", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "GreasePencilLayerGroup");
   RNA_def_property_pointer_funcs(prop,
                                  "rna_GreasePencil_active_group_get",
