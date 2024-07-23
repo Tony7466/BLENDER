@@ -363,6 +363,8 @@ static int wm_link_append_exec(bContext *C, wmOperator *op)
     BKE_blendfile_append(lapp_context, op->reports);
   }
 
+  BKE_main_deduplicate_locked_ids(*bmain);
+
   BKE_blendfile_link_append_context_free(lapp_context);
 
   /* Important we unset, otherwise these object won't

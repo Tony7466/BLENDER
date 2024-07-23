@@ -1342,8 +1342,13 @@ void BKE_blendfile_append(BlendfileLinkAppendContext *lapp_context, ReportList *
         compute_locked_hash_for_data_block_recursive(
             *bmain, *local_appended_new_id, deep_hashes, current_stack);
         const std::optional<IDHash> &id_hash = deep_hashes.lookup(local_appended_new_id);
-        local_appended_new_id->deep_hash = *id_hash;
-        local_appended_new_id->flag |= LIB_LOCKED;
+        if (id_hash.has_value()) {
+          local_appended_new_id->deep_hash = *id_hash;
+          local_appended_new_id->flag |= LIB_LOCKED;
+        }
+        else {
+          local_appended_new_id->deep_hash = {};
+        }
       }
       if (!local_appended_new_id->library_weak_reference) {
         LibraryWeakReference *weak_reference = MEM_cnew<LibraryWeakReference>(__func__);
@@ -1390,8 +1395,6 @@ void BKE_blendfile_append(BlendfileLinkAppendContext *lapp_context, ReportList *
   loose_data_instantiate(&instantiate_context);
 
   BKE_main_id_newptr_and_tag_clear(bmain);
-
-  BKE_main_deduplicate_locked_ids(*bmain);
 
   BlendFileReadReport bf_reports{};
   bf_reports.reports = reports;
