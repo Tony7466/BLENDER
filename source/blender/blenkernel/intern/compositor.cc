@@ -6,8 +6,10 @@
 
 #include <fmt/format.h>
 
+#include "BLI_index_range.hh"
 #include "BLI_math_base.hh"
 #include "BLI_set.hh"
+#include "BLI_string_ref.hh"
 
 #include "BKE_cryptomatte.hh"
 #include "BKE_node.hh"
@@ -27,7 +29,7 @@ static void add_passes_used_by_render_layer_node(const bNode *node, Set<std::str
 {
   for (const bNodeSocket *output : node->output_sockets()) {
     if (output->is_logically_linked()) {
-      if (std::string(output->identifier) == "Image") {
+      if (StringRef(output->identifier) == "Image") {
         used_passes.add(RE_PASSNAME_COMBINED);
       }
       else {
@@ -96,7 +98,7 @@ static void add_passes_used_by_cryptomatte_node(const bNode *node,
 
   /* Each layer stores two ranks/levels, so do ceiling division by two. */
   const int cryptomatte_layers_count = int(math::ceil(view_layer->cryptomatte_levels / 2.0f));
-  for (int i = 0; i < cryptomatte_layers_count; i++) {
+  for (const int i : IndexRange(cryptomatte_layers_count)) {
     used_passes.add(fmt::format("{}{:02}", cryptomatte_type_name, i));
   }
 }
@@ -105,6 +107,7 @@ static void add_passes_used_by_cryptomatte_node(const bNode *node,
  * passes. This is called recursively for node groups. */
 static void add_used_passes_recursive(const bNodeTree *node_tree,
                                       const ViewLayer *view_layer,
+                                      Set<const bNodeTree *> &node_trees_already_searched,
                                       Set<std::string> &used_passes)
 {
   if (node_tree == nullptr) {
@@ -119,10 +122,14 @@ static void add_used_passes_recursive(const bNodeTree *node_tree,
 
     switch (node->type) {
       case NODE_GROUP:
-      case NODE_CUSTOM_GROUP:
-        add_used_passes_recursive(
-            reinterpret_cast<const bNodeTree *>(node->id), view_layer, used_passes);
+      case NODE_CUSTOM_GROUP: {
+        const bNodeTree *node_group_tree = reinterpret_cast<const bNodeTree *>(node->id);
+        if (node_trees_already_searched.add(node_group_tree)) {
+          add_used_passes_recursive(
+              node_group_tree, view_layer, node_trees_already_searched, used_passes);
+        }
         break;
+      }
       case CMP_NODE_R_LAYERS:
         add_passes_used_by_render_layer_node(node, used_passes);
         break;
@@ -138,7 +145,8 @@ static void add_used_passes_recursive(const bNodeTree *node_tree,
 Set<std::string> get_used_passes(const Scene &scene, const ViewLayer *view_layer)
 {
   Set<std::string> used_passes;
-  add_used_passes_recursive(scene.nodetree, view_layer, used_passes);
+  Set<const bNodeTree *> node_trees_already_searched;
+  add_used_passes_recursive(scene.nodetree, view_layer, node_trees_already_searched, used_passes);
   return used_passes;
 }
 

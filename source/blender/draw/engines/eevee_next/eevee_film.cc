@@ -239,7 +239,7 @@ static eViewLayerEEVEEPassType get_viewport_compositor_enabled_passes(
   /* Go over all possible pass types, check if their possible pass names exist in the viewport
    * compositor needed passes, and if true, mark them as needed. */
   eViewLayerEEVEEPassType viewport_compositor_enabled_passes = eViewLayerEEVEEPassType(0);
-  for (auto i : IndexRange(EEVEE_RENDER_PASS_MAX_BIT + 1)) {
+  for (const int i : IndexRange(EEVEE_RENDER_PASS_MAX_BIT + 1)) {
     /* Mask by the scene enabled passes, because some pass types like EEVEE_RENDER_PASS_UNUSED_8
      * have no corresponding pass names, so they will assert later. */
     eViewLayerEEVEEPassType pass_type = eViewLayerEEVEEPassType(scene_enabled_passes & (1 << i));
@@ -832,7 +832,7 @@ float *Film::read_pass(eViewLayerEEVEEPassType pass_type, int layer_offset)
 
   if (pass_is_float3(pass_type)) {
     /* Convert result in place as we cannot do this conversion on GPU. */
-    for (auto px : IndexRange(GPU_texture_width(pass_tx) * GPU_texture_height(pass_tx))) {
+    for (const int px : IndexRange(GPU_texture_width(pass_tx) * GPU_texture_height(pass_tx))) {
       *(reinterpret_cast<float3 *>(result) + px) = *(reinterpret_cast<float3 *>(result + px * 4));
     }
   }
@@ -910,7 +910,7 @@ void Film::write_viewport_compositor_passes()
   this->cryptomatte_sort();
 
   /* Write standard passes. */
-  for (auto i : IndexRange(EEVEE_RENDER_PASS_MAX_BIT + 1)) {
+  for (const int i : IndexRange(EEVEE_RENDER_PASS_MAX_BIT + 1)) {
     const eViewLayerEEVEEPassType pass_type = eViewLayerEEVEEPassType(
         viewport_compositor_enabled_passes_ & (1 << i));
     if (pass_type == 0) {
@@ -918,7 +918,7 @@ void Film::write_viewport_compositor_passes()
     }
 
     Vector<std::string> pass_names = Film::pass_to_render_pass_names(pass_type, inst_.view_layer);
-    for (int64_t pass_offset : IndexRange(pass_names.size())) {
+    for (const int64_t pass_offset : IndexRange(pass_names.size())) {
       GPUTexture *pass_texture = this->get_pass_texture(pass_type, pass_offset);
       if (!pass_texture) {
         continue;
