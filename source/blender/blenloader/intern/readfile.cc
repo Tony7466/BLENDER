@@ -3486,6 +3486,13 @@ BlendFileData *blo_read_file_internal(FileData *fd, const char *filepath)
     CLOG_INFO(&LOG_UNDO, 2, "UNDO: read step");
   }
 
+  /* Prevent any run of layer collections rebuild during readfile process, and the do_versions
+   * calls.
+   *
+   * NOTE: Typically readfile code should not trigger such updates anyway. But some calls to
+   * non-BLO functions (e.g. ID deletion) can indirectly trigger it. */
+  BKE_layer_collection_resync_forbid();
+
   bfd = static_cast<BlendFileData *>(MEM_callocN(sizeof(BlendFileData), "blendfiledata"));
 
   bfd->main = BKE_main_new();
@@ -3654,6 +3661,9 @@ BlendFileData *blo_read_file_internal(FileData *fd, const char *filepath)
        * So not worth it. */
       BKE_main_id_refcount_recompute(bfd->main, false);
 
+      /* Necessary to allow 2.80 layer collections conversion code to work. */
+      BKE_layer_collection_resync_allow();
+
       /* Yep, second splitting... but this is a very cheap operation, so no big deal. */
       blo_split_main(&mainlist, bfd->main);
       LISTBASE_FOREACH (Main *, mainvar, &mainlist) {
@@ -3664,6 +3674,8 @@ BlendFileData *blo_read_file_internal(FileData *fd, const char *filepath)
                                   mainvar);
       }
       blo_join_main(&mainlist);
+
+      BKE_layer_collection_resync_forbid();
 
       /* And we have to compute those user-reference-counts again, as `do_versions_after_linking()`
        * does not always properly handle user counts, and/or that function does not take into
@@ -3725,10 +3737,15 @@ BlendFileData *blo_read_file_internal(FileData *fd, const char *filepath)
                                             fd->reports->duration.lib_overrides;
     }
 
+    BKE_layer_collection_resync_allow();
+
     BKE_collections_after_lib_link(bfd->main);
 
     /* Make all relative paths, relative to the open blend file. */
     fix_relpaths_library(fd->relabase, bfd->main);
+  }
+  else {
+    BKE_layer_collection_resync_allow();
   }
 
   fd->mainlist = nullptr; /* Safety, this is local variable, shall not be used afterward. */
@@ -4308,6 +4325,11 @@ static void library_link_end(Main *mainl, FileData **fd, const int flag)
    * it. */
   BKE_main_id_refcount_recompute(mainvar, false);
 
+  /* FIXME: This is suspiciously early call compared to similar process in
+   * #blo_read_file_internal, where it is called towards the very end, after all do_version,
+   * liboverride updates etc. have been done. */
+  /* FIXME: Probably also need to forbid layer collections updates until this call, as done in
+   * #blo_read_file_internal? */
   BKE_collections_after_lib_link(mainvar);
 
   /* Yep, second splitting... but this is a very cheap operation, so no big deal. */
@@ -4991,7 +5013,7 @@ blender::ImplicitSharingInfoAndData blo_read_shared_impl(
   if (BLO_read_data_is_undo(reader)) {
     if (reader->fd->flags & FD_FLAGS_IS_MEMFILE) {
       UndoReader *undo_reader = reinterpret_cast<UndoReader *>(reader->fd->file);
-      MemFile &memfile = *undo_reader->memfile;
+      const MemFile &memfile = *undo_reader->memfile;
       if (memfile.shared_storage) {
         /* Check if the data was saved with sharing-info. */
         if (const blender::ImplicitSharingInfo *sharing_info =
