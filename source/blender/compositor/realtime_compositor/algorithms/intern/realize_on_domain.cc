@@ -85,15 +85,25 @@ void realize_on_domain(Context &context,
 
   /* Invert the transformation because the shader transforms the domain coordinates instead of the
    * input image itself and thus expect the inverse. */
-  const float3x3 inverse_transformation = math::invert(transformation);
-
-  GPU_shader_uniform_mat3_as_mat4(shader, "inverse_transformation", inverse_transformation.ptr());
+  float3x3 inverse_transformation = math::invert(transformation);
 
   /* The texture sampler should use bilinear interpolation for both the bilinear and bicubic
    * cases, as the logic used by the bicubic realization shader expects textures to use bilinear
    * interpolation. */
   const bool use_bilinear = ELEM(
       realization_options.interpolation, Interpolation::Bilinear, Interpolation::Bicubic);
+
+  /* Fix #124339: Add a slight offset to Nearest sampling to make 1/2 indexes less
+   * likely. Avoids the round-to-even behavior of (at least some) GPUs.  This is
+   * certainly not a proper fix, that will require rewriting the sampling functions,
+   * most likely to use texelFetch() instead of texture(). */
+  if (!use_bilinear) {
+    inverse_transformation[2][0] -= 1.0f/4096;
+    inverse_transformation[2][1] -= 1.0f/4096;
+  }
+
+  GPU_shader_uniform_mat3_as_mat4(shader, "inverse_transformation", inverse_transformation.ptr());
+
   GPU_texture_filter_mode(input.texture(), use_bilinear);
 
   /* If the input wraps, set a repeating wrap mode for out-of-bound texture access. Otherwise,
