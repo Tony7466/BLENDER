@@ -6,6 +6,8 @@
  * \ingroup creator
  */
 
+/* Line added to force rebuild! */
+
 #include <cstdlib>
 #include <cstring>
 
