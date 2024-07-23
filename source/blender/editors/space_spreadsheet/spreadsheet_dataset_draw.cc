@@ -196,6 +196,7 @@ class GeometryInstancesTreeView : public ui::AbstractTreeView {
   void build_tree() override
   {
     auto &root_item = this->add_tree_item<RootGeometryViewItem>(root_geometry_set_);
+    root_item.uncollapse_by_default();
     if (const bke::Instances *instances = root_geometry_set_.get_instances()) {
       this->build_tree_for_instances(root_item, *instances);
     }
