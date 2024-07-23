@@ -421,8 +421,6 @@ struct uiButViewItem : public uiBut {
    * (e.g. so highlights are drawn smaller). */
   int draw_width = 0;
   int draw_height = 0;
-
-  bool activateable = true;
 };
 
 /** Derived struct for #UI_BTYPE_HSVCUBE. */

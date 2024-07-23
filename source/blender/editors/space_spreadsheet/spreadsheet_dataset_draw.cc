@@ -734,7 +734,6 @@ std::optional<bool> DataSetViewItem::should_be_active() const
       return false;
     }
   }
-
   return true;
 }
 

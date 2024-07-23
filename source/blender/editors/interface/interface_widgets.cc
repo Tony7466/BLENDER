@@ -4205,10 +4205,8 @@ static void widget_list_itembut(uiBut *but,
 {
   rcti draw_rect = *rect;
 
-  bool activateable = true;
   if (but->type == UI_BTYPE_VIEW_ITEM) {
     uiButViewItem *item_but = static_cast<uiButViewItem *>(but);
-    activateable = item_but->activateable;
     if (item_but->draw_width > 0) {
       BLI_rcti_resize_x(&draw_rect, zoom * item_but->draw_width);
     }
@@ -4225,11 +4223,9 @@ static void widget_list_itembut(uiBut *but,
   const float rad = widget_radius_from_zoom(zoom, wcol);
   round_box_edges(&wtb, UI_CNR_ALL, &draw_rect, rad);
 
-  if (activateable) {
-    if (state->but_flag & UI_HOVER && !(state->but_flag & UI_SELECT)) {
-      copy_v3_v3_uchar(wcol->inner, wcol->text);
-      wcol->inner[3] = 20;
-    }
+  if (state->but_flag & UI_HOVER && !(state->but_flag & UI_SELECT)) {
+    copy_v3_v3_uchar(wcol->inner, wcol->text);
+    wcol->inner[3] = 20;
   }
 
   widgetbase_draw(&wtb, wcol);
