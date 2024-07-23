@@ -1401,6 +1401,38 @@ FCurve *action_fcurve_find(bAction *act, FCurveDescriptor fcurve_descriptor)
       &act->curves, fcurve_descriptor.rna_path.c_str(), fcurve_descriptor.array_index);
 }
 
+Vector<FCurve *> action_fcurves_find(Action &action,
+                                     slot_handle_t handle,
+                                     FCurveDescriptor fcurve_descriptor)
+{
+  Vector<FCurve *> fcurves;
+  for (Layer *layer : action.layers()) {
+    for (Strip *strip : layer->strips()) {
+      if (!(strip->type() == Strip::Type::Keyframe)) {
+        continue;
+      }
+      KeyframeStrip &key_strip = strip->template as<KeyframeStrip>();
+      for (ChannelBag *bag : key_strip.channelbags()) {
+        if (bag->slot_handle != handle) {
+          continue;
+        }
+        for (FCurve *fcu : bag->fcurves()) {
+          if (fcurve_descriptor.array_index != -1 &&
+              fcurve_descriptor.array_index != fcu->array_index)
+          {
+            continue;
+          }
+          if (!STREQ(fcurve_descriptor.rna_path.c_str(), fcu->rna_path)) {
+            continue;
+          }
+          fcurves.append(fcu);
+        }
+      }
+    }
+  }
+  return fcurves;
+}
+
 FCurve *action_fcurve_ensure(Main *bmain,
                              bAction *act,
                              const char group[],
@@ -1510,6 +1542,26 @@ FCurve *action_fcurve_ensure(Main *bmain,
   DEG_relations_tag_update(bmain);
 
   return fcu;
+}
+
+bool action_fcurve_remove(Action &action, FCurve &fcu)
+{
+  for (Layer *layer : action.layers()) {
+    for (Strip *strip : layer->strips()) {
+      if (!(strip->type() == Strip::Type::Keyframe)) {
+        continue;
+      }
+      KeyframeStrip &key_strip = strip->template as<KeyframeStrip>();
+      for (ChannelBag *bag : key_strip.channelbags()) {
+        const bool removed = bag->fcurve_remove(fcu);
+        /* This assumes that an FCurve can only exist in an action once. */
+        if (removed) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
 }
 
 ID *action_slot_get_id_for_keying(Main &bmain,

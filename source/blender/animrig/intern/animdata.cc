@@ -127,8 +127,7 @@ void animdata_fcurve_delete(bAnimContext *ac, AnimData *adt, FCurve *fcu)
       animdata_remove_empty_action(adt);
     }
     else {
-      /* TODO: support deleting FCurves from layered Actions. */
-      return;
+      action_fcurve_remove(action, *fcu);
     }
   }
   else {

@@ -776,42 +776,57 @@ int clear_keyframe(Main *bmain,
     }
   }
 
-  int array_index_max = array_index + 1;
-  if (array_index == -1) {
-    array_index = 0;
-    array_index_max = RNA_property_array_length(&ptr, prop);
-
-    /* For single properties, increase max_index so that the property itself gets included,
-     * but don't do this for standard arrays since that can cause corruption issues
-     * (extra unused curves).
-     */
-    if (array_index_max == array_index) {
-      array_index_max++;
+  Action &action = act->wrap();
+  int key_count = 0;
+  if (action.is_action_layered()) {
+    Slot *slot = action.find_suitable_slot_for(*id);
+    if (slot) {
+      Vector<FCurve *> fcurves = action_fcurves_find(
+          action, slot->handle, {rna_path, array_index});
+      for (FCurve *fcu : fcurves) {
+        if (action_fcurve_remove(action, *fcu)) {
+          key_count++;
+        }
+      }
     }
   }
+  else {
+    int array_index_max = array_index + 1;
+    if (array_index == -1) {
+      array_index = 0;
+      array_index_max = RNA_property_array_length(&ptr, prop);
 
-  int key_count = 0;
-  /* Will only loop once unless the array index was -1. */
-  for (; array_index < array_index_max; array_index++) {
-    FCurve *fcu = action_fcurve_find(act, {rna_path, array_index});
-
-    if (fcu == nullptr) {
-      continue;
+      /* For single properties, increase max_index so that the property itself gets included,
+       * but don't do this for standard arrays since that can cause corruption issues
+       * (extra unused curves).
+       */
+      if (array_index_max == array_index) {
+        array_index_max++;
+      }
     }
 
-    if (BKE_fcurve_is_protected(fcu)) {
-      BKE_reportf(reports,
-                  RPT_WARNING,
-                  "Not clearing all keyframes from locked F-Curve '%s' for %s '%s'",
-                  fcu->rna_path,
-                  BKE_idtype_idcode_to_name(GS(id->name)),
-                  id->name + 2);
-      continue;
+    /* Will only loop once unless the array index was -1. */
+    for (; array_index < array_index_max; array_index++) {
+      FCurve *fcu = action_fcurve_find(act, {rna_path, array_index});
+
+      if (fcu == nullptr) {
+        continue;
+      }
+
+      if (BKE_fcurve_is_protected(fcu)) {
+        BKE_reportf(reports,
+                    RPT_WARNING,
+                    "Not clearing all keyframes from locked F-Curve '%s' for %s '%s'",
+                    fcu->rna_path,
+                    BKE_idtype_idcode_to_name(GS(id->name)),
+                    id->name + 2);
+        continue;
+      }
+
+      animdata_fcurve_delete(nullptr, adt, fcu);
+
+      key_count++;
     }
-
-    animdata_fcurve_delete(nullptr, adt, fcu);
-
-    key_count++;
   }
   if (key_count) {
     deg_tag_after_keyframe_delete(bmain, id, adt);
