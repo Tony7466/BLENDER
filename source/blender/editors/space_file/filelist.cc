@@ -133,12 +133,17 @@ struct FileListInternEntry {
   BLI_stat_t st = {0};
 
   /**
-   * Be careful not to use the asset pointer in a context where it might be dangling, e.g. because
-   * the file list or the asset library were destroyed.
+   * Be careful not to use the returned asset pointer in a context where it might be dangling, e.g.
+   * because the file list or the asset library were destroyed.
    */
   asset_system::AssetRepresentation *get_asset() const
   {
     if (std::shared_ptr<asset_system::AssetRepresentation> asset_ptr = asset.lock()) {
+      /* Returning a raw pointer from a shared pointer and destructing the shared pointer
+       * immediately afterwards isn't entirely clean. But it's just a way to get the raw pointer
+       * from the weak pointer. Nothing should free the asset in the asset library meanwhile, so
+       * this should be fine really. */
+      BLI_assert(asset_ptr.use_count() > 1);
       return asset_ptr.get();
     }
     return nullptr;
