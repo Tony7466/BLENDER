@@ -1,1 +1,2 @@
 Referenced by issue #124437, Separated object doesn't inherit the material (if material is linked to the object instead of its mesh)
+Referenced by pull request #125268, Revert "Fix #122947: Curve stroke on duplicate object doesn't update normals"
