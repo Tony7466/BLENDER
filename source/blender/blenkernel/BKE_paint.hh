@@ -338,7 +338,7 @@ struct SculptBoundaryPreview {
 
 struct SculptBoundary {
   /* Vertex indices of the active boundary. */
-  blender::Vector<PBVHVertRef> verts;
+  blender::Vector<int> verts;
 
   /* Distance from a vertex in the boundary to initial vertex indexed by vertex index, taking into
    * account the length of all edges between them. Any vertex that is not in the boundary will have
