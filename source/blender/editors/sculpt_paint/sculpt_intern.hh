@@ -924,18 +924,46 @@ void SCULPT_fake_neighbors_enable(Object &ob);
 void SCULPT_fake_neighbors_disable(Object &ob);
 void SCULPT_fake_neighbors_free(Object &ob);
 
-/* Vertex Info. */
-void SCULPT_boundary_info_ensure(Object &object);
-/* Boundary Info needs to be initialized in order to use this function. */
-bool SCULPT_vertex_is_boundary(const SculptSession &ss, PBVHVertRef vertex);
+namespace blender::ed::sculpt_paint {
+
+namespace boundary {
+
+/**
+ * Populates boundary information for a mesh.
+ *
+ * \see SculptVertexInfo
+ */
+void ensure_boundary_info(Object &object);
+
+/**
+ * Determine if a vertex is a boundary vertex.
+ *
+ * Requires #ensure_boundary_info to have been called.
+ */
+bool vert_is_boundary(const SculptSession &ss, PBVHVertRef vertex);
+bool vert_is_boundary(const Span<bool> hide_poly,
+                      const SubdivCCG &subdiv_ccg,
+                      const Span<int> corner_verts,
+                      const OffsetIndices<int> faces,
+                      const BitSpan boundary,
+                      const SubdivCCGCoord vert);
+bool vert_is_boundary(Span<bool> hide_poly,
+                      GroupedSpan<int> vert_to_face_map,
+                      BitSpan boundary,
+                      int vert);
+bool vert_is_boundary(Span<bool> hide_poly,
+                      const SubdivCCG &subdiv_ccg,
+                      BitSpan boundary,
+                      SubdivCCGCoord vert);
+bool vert_is_boundary(BMVert *vert);
+
+}
 
 /** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Sculpt Visibility API
  * \{ */
-
-namespace blender::ed::sculpt_paint {
 
 namespace hide {
 
@@ -944,7 +972,15 @@ Span<int> node_visible_verts(const bke::pbvh::Node &node,
                              Vector<int> &indices);
 
 bool vert_visible_get(const SculptSession &ss, PBVHVertRef vertex);
+
+/* Determines if all faces attached to a given vertex are visible. */
 bool vert_all_faces_visible_get(const SculptSession &ss, PBVHVertRef vertex);
+bool vert_all_faces_visible_get(Span<bool> hide_poly, GroupedSpan<int> vert_to_face_map, int vert);
+bool vert_all_faces_visible_get(Span<bool> hide_poly,
+                                const SubdivCCG &subdiv_ccg,
+                                SubdivCCGCoord vert);
+bool vert_all_faces_visible_get(BMVert *vert);
+
 bool vert_any_face_visible_get(const SculptSession &ss, PBVHVertRef vertex);
 
 }
@@ -1184,15 +1220,72 @@ namespace blender::ed::sculpt_paint::flood_fill {
 
 struct FillData {
   std::queue<PBVHVertRef> queue;
-  blender::BitVector<> visited_verts;
+  BitVector<> visited_verts;
 };
 
+struct FillDataMesh {
+  FillDataMesh(int size) : visited_verts(size) {}
+
+  std::queue<int> queue;
+  BitVector<> visited_verts;
+
+  void add_initial(int vertex);
+  void add_and_skip_initial(int vertex, int index);
+  void add_initial_with_symmetry(const Object &object,
+                                 const SculptSession &ss,
+                                 int vertex,
+                                 float radius);
+  void add_active(const Object &object, const SculptSession &ss, float radius);
+  void execute(Object &object, SculptSession &ss, FunctionRef<bool(int from_v, int to_v)> func);
+};
+
+struct FillDataGrids {
+  FillDataGrids(int size) : visited_verts(size) {}
+
+  std::queue<SubdivCCGCoord> queue;
+  BitVector<> visited_verts;
+
+  void add_initial(SubdivCCGCoord vertex);
+  void add_and_skip_initial(SubdivCCGCoord vertex, int index);
+  void add_initial_with_symmetry(const Object &object,
+                                 const SculptSession &ss,
+                                 SubdivCCGCoord vertex,
+                                 float radius);
+  void add_active(const Object &object, const SculptSession &ss, float radius);
+  void execute(
+      Object &object,
+      SculptSession &ss,
+      FunctionRef<bool(SubdivCCGCoord from_v, SubdivCCGCoord to_v, bool is_duplicate)> func);
+};
+
+struct FillDataBMesh {
+  FillDataBMesh(int size) : visited_verts(size) {}
+
+  std::queue<BMVert *> queue;
+  BitVector<> visited_verts;
+
+  void add_initial(BMVert *vertex);
+  void add_and_skip_initial(BMVert *vertex, int index);
+  void add_initial_with_symmetry(const Object &object,
+                                 const SculptSession &ss,
+                                 BMVert *vertex,
+                                 float radius);
+  void add_active(const Object &object, const SculptSession &ss, float radius);
+  void execute(Object &object,
+               SculptSession &ss,
+               FunctionRef<bool(BMVert *from_v, BMVert *to_v)> func);
+};
+
+/**
+ * \deprecated See the individual FillData constructors instead of this method.
+ */
 FillData init_fill(SculptSession &ss);
+
+void add_initial(FillData &flood, PBVHVertRef vertex);
+void add_and_skip_initial(FillData &flood, PBVHVertRef vertex);
 void add_active(const Object &ob, const SculptSession &ss, FillData &flood, float radius);
 void add_initial_with_symmetry(
     const Object &ob, const SculptSession &ss, FillData &flood, PBVHVertRef vertex, float radius);
-void add_initial(FillData &flood, PBVHVertRef vertex);
-void add_and_skip_initial(FillData &flood, PBVHVertRef vertex);
 void execute(SculptSession &ss,
              FillData &flood,
              FunctionRef<bool(PBVHVertRef from_v, PBVHVertRef to_v, bool is_duplicate)> func);

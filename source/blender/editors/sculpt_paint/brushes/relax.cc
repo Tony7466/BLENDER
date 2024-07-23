@@ -1321,7 +1321,7 @@ void do_relax_face_sets_brush(const Sculpt &sd, Object &object, Span<bke::pbvh::
 {
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
 
-  SCULPT_boundary_info_ensure(object);
+  boundary::ensure_boundary_info(object);
 
   const SculptSession &ss = *object.sculpt;
   const std::array<float, 4> strengths = iteration_strengths(ss.cache->bstrength,
@@ -1359,7 +1359,7 @@ void do_topology_relax_brush(const Sculpt &sd, Object &object, Span<bke::pbvh::N
 
   const float strength = ss.cache->bstrength;
 
-  SCULPT_boundary_info_ensure(object);
+  boundary::ensure_boundary_info(object);
 
   for (int i = 0; i < 4; i++) {
     switch (ss.pbvh->type()) {

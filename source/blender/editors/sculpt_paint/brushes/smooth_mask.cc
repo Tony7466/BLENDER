@@ -289,8 +289,8 @@ void do_smooth_mask_brush(const Sculpt &sd,
 {
   SculptSession &ss = *object.sculpt;
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
-  SCULPT_boundary_info_ensure(object);
-  switch (object.sculpt->pbvh->type()) {
+  boundary::ensure_boundary_info(object);
+  switch (ss.pbvh->type()) {
     case bke::pbvh::Type::Mesh: {
       do_smooth_brush_mesh(brush, object, nodes, brush_strength);
       break;
