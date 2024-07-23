@@ -721,7 +721,7 @@ void spreadsheet_data_set_panel_draw(const bContext *C, Panel *panel)
   if (instances && instances->instances_num() > 0) {
 
     if (uiLayout *panel = uiLayoutPanel(
-            C, layout, "instances_tree_view", false, IFACE_("Instances")))
+            C, layout, "instances_tree_view", false, IFACE_("Instance")))
     {
       ui::AbstractTreeView *tree_view = UI_block_add_view(
           *block,
