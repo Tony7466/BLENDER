@@ -438,6 +438,7 @@ static void trace_data_to_strokes(const potrace_state_t &st,
 
           next_point();
           positions[point_i] = project_pixel(segment[1]);
+          handle_types_left[point_i] = BEZIER_HANDLE_VECTOR;
           handle_types_right[point_i] = BEZIER_HANDLE_VECTOR;
 
           next_point();
