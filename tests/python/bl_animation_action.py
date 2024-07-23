@@ -159,6 +159,8 @@ class LegacyAPIOnLayeredActionTest(unittest.TestCase):
         fcurve1 = self.action.fcurves.new("scale", index=1)
         fcurve2 = self.action.fcurves.new("scale", index=2)
         self.assertEqual([fcurve1, fcurve2], channelbag.fcurves[:], "Expected two F-Curves after creating them")
+        self.assertEqual([fcurve1, fcurve2], self.action.fcurves[:],
+                         "Expected the same F-Curves on the legacy API")
 
         # Find an F-Curve.
         self.assertEqual(fcurve2, self.action.fcurves.find("scale", index=2))
@@ -172,15 +174,18 @@ class LegacyAPIOnLayeredActionTest(unittest.TestCase):
             self.fail("expected RuntimeError not thrown")
         self.assertEqual([fcurve1, fcurve2], channelbag.fcurves[:],
                          "Expected two F-Curves after failing to create a third")
+        self.assertEqual([fcurve1, fcurve2], self.action.fcurves[:])
 
         # Remove a single F-Curve.
         self.action.fcurves.remove(fcurve1)
         self.assertEqual([fcurve2], channelbag.fcurves[:], "Expected single F-Curve after removing one")
+        self.assertEqual([fcurve2], self.action.fcurves[:])
 
         # Clear all F-Curves (with multiple F-Curves to avoid the trivial case).
         self.action.fcurves.new("scale", index=3)
         self.action.fcurves.clear()
         self.assertEqual([], channelbag.fcurves[:], "Expected empty fcurves list after clearing")
+        self.assertEqual([], self.action.fcurves[:])
 
     def test_fcurves_clear_should_not_create_layers(self):
         self.action.fcurves.clear()
