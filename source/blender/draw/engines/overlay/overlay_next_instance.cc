@@ -216,14 +216,13 @@ void Instance::draw(Manager &manager)
   prepass.draw_in_front(resources, manager, view);
 
   background.draw(resources, manager);
-  bounds.draw(resources, manager, view);
+  bounds.draw(resources.overlay_line_fb, manager, view);
   empties.draw(resources, manager, view);
   metaballs.draw(resources, manager, view);
   speakers.draw(resources, manager, view);
 
   grid.draw(resources, manager, view);
 
-  bounds.draw_in_front(resources, manager, view);
   empties.draw_in_front(resources, manager, view);
   metaballs.draw_in_front(resources, manager, view);
   speakers.draw_in_front(resources, manager, view);
