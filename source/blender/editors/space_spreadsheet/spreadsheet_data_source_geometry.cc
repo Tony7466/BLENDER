@@ -640,11 +640,13 @@ bke::GeometrySet get_geometry_set_for_instance_ids(const bke::GeometrySet &root_
   for (const SpreadsheetInstanceID &instance_id : instance_ids) {
     const bke::Instances *instances = geometry.get_instances();
     if (!instances) {
-      return {};
+      /* Return the best available geometry. */
+      return geometry;
     }
     const Span<bke::InstanceReference> references = instances->references();
     if (instance_id.reference_index < 0 || instance_id.reference_index >= references.size()) {
-      return {};
+      /* Return the best available geometry. */
+      return geometry;
     }
     const bke::InstanceReference &reference = references[instance_id.reference_index];
     bke::GeometrySet reference_geometry;
