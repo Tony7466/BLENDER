@@ -102,7 +102,6 @@ struct TraceJob {
   /* Frame number where the output frame is generated. */
   int frame_target;
   float threshold;
-  int resolution;
   float radius;
   TurnPolicy turnpolicy;
   TraceMode mode;
@@ -318,17 +317,14 @@ static void image_to_bitmap(const ImBuf &ibuf, potrace_bitmap_t &bm, const float
   }
 }
 
-static void trace_data_to_strokes(Main &bmain,
-                                  const potrace_state_t &st,
-                                  Object &ob,
+using PathSegment = potrace_dpoint_t[3];
+
+static void trace_data_to_strokes(const potrace_state_t &st,
+                                  Object & /*ob*/,
                                   bke::greasepencil::Drawing &drawing,
                                   const float4x4 &transform,
-                                  const int resolution,
                                   const float radius)
 {
-  using PathSegment = potrace_dpoint_t[3];
-  constexpr float MAX_LENGTH = 100.0f;
-
   auto project_pixel = [&](const potrace_dpoint_t &point) -> float3 {
     return math::transform_point(transform, float3(point.x, point.y, 0));
   };
@@ -370,6 +366,7 @@ static void trace_data_to_strokes(Main &bmain,
   for (const potrace_path_t *path = st.plist; path != nullptr; path = path->next) {
     const Span<int> path_tags = {path->curve.tag, path->curve.n};
     const Span<PathSegment> path_segments = {path->curve.c, path->curve.n};
+
     int point_num = 0;
     for (const int segment_i : path_segments.index_range()) {
       switch (path_tags[segment_i]) {
@@ -386,6 +383,8 @@ static void trace_data_to_strokes(Main &bmain,
     }
     offsets.append(point_num);
   }
+  /* Last element stores total size. */
+  offsets.append(0);
   const OffsetIndices points_by_curve = offset_indices::accumulate_counts_to_offsets(offsets);
 
   bke::CurvesGeometry curves(points_by_curve.total_size(), points_by_curve.size());
@@ -461,8 +460,10 @@ static void trace_data_to_strokes(Main &bmain,
           break;
       }
     }
+
     // /* In some situations, Potrace can produce a wrong data and generate a very
     //  * long stroke. Here the length is checked and removed if the length is too big. */
+    // constexpr float MAX_LENGTH = 100.0f;
     // float length = BKE_gpencil_stroke_length(gps, true);
     // if (length <= MAX_LENGTH) {
     //   bGPdata *gpd = static_cast<bGPdata *>(ob->data);
@@ -480,8 +481,6 @@ static void trace_data_to_strokes(Main &bmain,
     //   BLI_remlink(&gpf->strokes, gps);
     //   BKE_gpencil_free_stroke(gps);
     // }
-
-    path = path->next;
   }
 
   material_indices.finish();
@@ -555,13 +554,7 @@ static bool grease_pencil_trace_image(TraceJob &trace_job,
   /* Transform from bitmap index space to local image object space. */
   const float4x4 transform = pixel_to_object_transform(*trace_job.ob_grease_pencil, ibuf);
 
-  trace_data_to_strokes(*trace_job.bmain,
-                        *st,
-                        *trace_job.ob_grease_pencil,
-                        drawing,
-                        transform,
-                        trace_job.resolution,
-                        trace_job.radius);
+  trace_data_to_strokes(*st, *trace_job.ob_grease_pencil, drawing, transform, trace_job.radius);
 
   /* Free memory. */
   potrace_state_free(st);
@@ -723,7 +716,6 @@ static int grease_pencil_trace_image_exec(bContext *C, wmOperator *op)
   job->was_ob_created = false;
 
   job->threshold = RNA_float_get(op->ptr, "threshold");
-  job->resolution = RNA_int_get(op->ptr, "resolution");
   job->radius = RNA_float_get(op->ptr, "radius");
   job->turnpolicy = TurnPolicy(RNA_enum_get(op->ptr, "turnpolicy"));
   job->mode = TraceMode(RNA_enum_get(op->ptr, "mode"));
@@ -833,8 +825,6 @@ static void GREASE_PENCIL_OT_trace_image(wmOperatorType *ot)
   RNA_def_property_flag(ot->prop, PROP_SKIP_SAVE);
 
   RNA_def_float(ot->srna, "radius", 0.01f, 0.001f, 1.0f, "Radius", "", 0.001, 1.0f);
-  RNA_def_int(
-      ot->srna, "resolution", 5, 1, 20, "Resolution", "Resolution of the generated curves", 1, 20);
 
   RNA_def_float_factor(ot->srna,
                        "threshold",
