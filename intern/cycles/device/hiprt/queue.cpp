@@ -44,7 +44,7 @@ bool HIPRTDeviceQueue::enqueue(DeviceKernel kernel,
                                                         hiprt_device_->global_stack_buffer);
 
     if (rt_result != hiprtSuccess) {
-      string_printf("Failed to create hiprt Global Stack Buffer");
+      LOG(ERROR) << "Failed to create hiprt Global Stack Buffer";
       return false;
     }
   }

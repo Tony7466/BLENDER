@@ -23,7 +23,13 @@ struct KernelWorkTile;
 /* Container for device kernel arguments with type correctness ensured by API. */
 struct DeviceKernelArguments {
 
-  enum Type { POINTER, INT32, FLOAT32, KERNEL_FILM_CONVERT, HIPRT_GLOBAL_STACK };
+  enum Type {
+    POINTER,
+    INT32,
+    FLOAT32,
+    KERNEL_FILM_CONVERT,
+    HIPRT_GLOBAL_STACK,
+  };
 
   static const int MAX_ARGS = 18;
   Type types[MAX_ARGS];

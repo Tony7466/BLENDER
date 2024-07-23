@@ -719,7 +719,6 @@ if(WITH_CYCLES_DEVICE_HIPRT AND WITH_CYCLES_HIP_BINARIES)
   else()
     set(hiprt_compile_command ${HIP_HIPCC_EXECUTABLE})
     set(hiprt_compile_flags)
-    #set(hiprt_compile_flags -mcode-object-version=4)
   endif()
   set(target_gpus)
   foreach(arch ${CYCLES_HIP_BINARIES_ARCH})
@@ -836,8 +835,7 @@ if(WITH_CYCLES_DEVICE_HIPRT AND WITH_CYCLES_HIP_BINARIES)
 
   if(WIN32)
     set(hiprt_link_command ${CMAKE_COMMAND})
-    set(hiprt_link_flags
-      -E env "HIP_PATH=${HIP_ROOT_DIR}"
+    set(hiprt_link_flags   -E env "HIP_PATH=${HIP_ROOT_DIR}"
       ${HIP_LINKER_EXECUTABLE})
   else()
     set(hiprt_link_command ${HIP_LINKER_EXECUTABLE})
