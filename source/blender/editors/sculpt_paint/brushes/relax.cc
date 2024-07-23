@@ -802,7 +802,7 @@ BLI_NOINLINE static void calc_factors_grids(const Brush &brush,
   const Span<int> grids = bke::pbvh::node_grid_indices(node);
   const int grid_verts_num = grids.size() * key.grid_area;
 
-  gather_grids_positions(subdiv_ccg, grids, positions);
+  gather_grids_positions(key, subdiv_ccg.grids, grids, positions);
 
   fill_factor_from_hide_and_mask(subdiv_ccg, grids, factors);
   filter_region_clip_factors(ss, positions, factors);
@@ -1126,7 +1126,7 @@ BLI_NOINLINE static void calc_topology_relax_factors_grids(const Brush &brush,
   const Span<int> grids = bke::pbvh::node_grid_indices(node);
   const int grid_verts_num = grids.size() * key.grid_area;
 
-  gather_grids_positions(subdiv_ccg, grids, positions);
+  gather_grids_positions(key, subdiv_ccg.grids, grids, positions);
   const OrigPositionData orig_data = orig_position_data_get_grids(object, node);
 
   fill_factor_from_hide_and_mask(subdiv_ccg, grids, factors);
@@ -1321,7 +1321,7 @@ void do_relax_face_sets_brush(const Sculpt &sd, Object &object, Span<PBVHNode *>
 {
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
 
-  SCULPT_boundary_info_ensure(object);
+  boundary::ensure_boundary_info(object);
 
   const SculptSession &ss = *object.sculpt;
   const std::array<float, 4> strengths = iteration_strengths(ss.cache->bstrength,
@@ -1359,7 +1359,7 @@ void do_topology_relax_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> 
 
   const float strength = ss.cache->bstrength;
 
-  SCULPT_boundary_info_ensure(object);
+  boundary::ensure_boundary_info(object);
 
   for (int i = 0; i < 4; i++) {
     switch (BKE_pbvh_type(*ss.pbvh)) {

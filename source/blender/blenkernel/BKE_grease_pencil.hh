@@ -31,6 +31,10 @@ struct Scene;
 struct Object;
 struct Material;
 
+namespace blender::bke::bake {
+struct BakeMaterialsList;
+}
+
 namespace blender::bke {
 
 namespace greasepencil {
@@ -865,11 +869,14 @@ class GreasePencilRuntime {
   /**
    * Temporarily enable the eraser. Used by the draw tool.
    */
-  bool use_eraser_temp = false;
+  bool temp_use_eraser = false;
+  float temp_eraser_size = 0.0f;
+
+  std::unique_ptr<bake::BakeMaterialsList> bake_materials;
 
  public:
-  GreasePencilRuntime() {}
-  ~GreasePencilRuntime() {}
+  GreasePencilRuntime();
+  ~GreasePencilRuntime();
 };
 
 class GreasePencilDrawingEditHints {
