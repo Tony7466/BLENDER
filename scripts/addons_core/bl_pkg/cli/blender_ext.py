@@ -142,6 +142,41 @@ ${body}
 '''
 
 
+# -----------------------------------------------------------------------------
+# Workarounds
+
+def _worlaround_win32_ssl_cert_failure() -> None:
+    import ssl
+
+    class SSLContext_DUMMY(ssl.SSLContext):
+        def _load_windows_store_certs(self, storename: str, purpose: ssl.Purpose) -> bytearray:
+            # WIN32 only.
+            enum_certificates = getattr(ssl, "enum_certificates", None)
+            assert callable(enum_certificates)
+            certs = bytearray()
+            try:
+                for cert, encoding, trust in enum_certificates(storename):
+                    try:
+                        self.load_verify_locations(cadata=cert)
+                    except ssl.SSLError:
+                        # warnings.warn("Bad certificate in Windows certificate store")
+                        pass
+                    else:
+                        # CA certs are never PKCS#7 encoded
+                        if encoding == "x509_asn":
+                            if trust is True or purpose.oid in trust:
+                                certs.extend(cert)
+            except PermissionError:
+                # warnings.warn("unable to enumerate Windows certificate store")
+                pass
+            return certs
+
+    ssl.SSLContext._load_windows_store_certs = SSLContext_DUMMY._load_windows_store_certs  # type: ignore
+
+
+# -----------------------------------------------------------------------------
+# Argument Overrides
+
 class _ArgsDefaultOverride:
     __slots__ = (
         "build_valid_tags",
@@ -154,10 +189,6 @@ class _ArgsDefaultOverride:
 # Support overriding this value so Blender can default to a different tags file.
 ARG_DEFAULTS_OVERRIDE = _ArgsDefaultOverride()
 del _ArgsDefaultOverride
-
-
-if sys.platform == "win32":
-    __import__("ssl").SSLContext._windows_cert_stores = ()
 
 
 # Standard out may be communicating with a parent process,
@@ -4846,6 +4877,9 @@ def msglog_from_args(args: argparse.Namespace) -> MessageLogger:
     raise Exception("Unknown output!")
 
 
+# -----------------------------------------------------------------------------
+# Main Function
+
 def main(
         argv: Optional[List[str]] = None,
         args_internal: bool = True,
@@ -4866,6 +4900,9 @@ def main(
     if "--version" in sys.argv:
         sys.stdout.write("{:s}\n".format(VERSION))
         return 0
+
+    if sys.platform == "win32":
+        _worlaround_win32_ssl_cert_failure()
 
     parser = argparse_create(
         args_internal=args_internal,
