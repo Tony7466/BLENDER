@@ -115,6 +115,17 @@ static BIFIconID curves_domain_to_icon(const bke::AttrDomain domain)
   }
 }
 
+class InstancesTreeViewItem : public ui::AbstractTreeViewItem {
+ public:
+  GeometryInstancesTreeView &get_tree() const;
+
+  void get_parent_instance_ids(Vector<SpreadsheetInstanceID> &r_instance_ids) const;
+
+  void on_activate(bContext &C) override;
+
+  std::optional<bool> should_be_active() const override;
+};
+
 class RootGeometryViewItem : public InstancesTreeViewItem {
  public:
   RootGeometryViewItem(const bke::GeometrySet &geometry)
@@ -209,17 +220,6 @@ class DataSetViewItem : public ui::AbstractTreeViewItem {
   {
     return std::nullopt;
   }
-};
-
-class InstancesTreeViewItem : public ui::AbstractTreeViewItem {
- public:
-  GeometryInstancesTreeView &get_tree() const;
-
-  void get_parent_instance_ids(Vector<SpreadsheetInstanceID> &r_instance_ids) const;
-
-  void on_activate(bContext &C) override;
-
-  std::optional<bool> should_be_active() const override;
 };
 
 class MeshViewItem : public DataSetViewItem {
@@ -492,24 +492,27 @@ class GeometryDataSetTreeView : public ui::AbstractTreeView {
 
   void build_tree() override
   {
-    ui::TreeViewItemContainer &parent = *this;
+    this->build_tree_for_geometry(geometry_set_, *this);
+  }
 
-    const Mesh *mesh = geometry_set_.get_mesh();
+  void build_tree_for_geometry(const bke::GeometrySet &geometry, ui::TreeViewItemContainer &parent)
+  {
+    const Mesh *mesh = geometry.get_mesh();
     this->build_tree_for_mesh(mesh, parent);
 
-    const Curves *curves = geometry_set_.get_curves();
+    const Curves *curves = geometry.get_curves();
     this->build_tree_for_curves(curves, parent);
 
-    const GreasePencil *grease_pencil = geometry_set_.get_grease_pencil();
+    const GreasePencil *grease_pencil = geometry.get_grease_pencil();
     this->build_tree_for_grease_pencil(grease_pencil, parent);
 
-    const PointCloud *pointcloud = geometry_set_.get_pointcloud();
+    const PointCloud *pointcloud = geometry.get_pointcloud();
     this->build_tree_for_pointcloud(pointcloud, parent);
 
-    const Volume *volume = geometry_set_.get_volume();
+    const Volume *volume = geometry.get_volume();
     this->build_tree_for_volume(volume, parent);
 
-    const bke::Instances *instances = geometry_set_.get_instances();
+    const bke::Instances *instances = geometry.get_instances();
     this->build_tree_for_instances(instances, parent);
   }
 
@@ -702,7 +705,8 @@ void spreadsheet_data_set_panel_draw(const bContext *C, Panel *panel)
   uiBlock *block = uiLayoutGetBlock(layout);
 
   UI_block_layout_set_current(block, layout);
-  bke::GeometrySet root_geometry = spreadsheet_get_display_geometry_set(sspreadsheet, object);
+  const bke::GeometrySet root_geometry = spreadsheet_get_display_geometry_set(sspreadsheet,
+                                                                              object);
 
   {
     ui::AbstractTreeView *tree_view = UI_block_add_view(
