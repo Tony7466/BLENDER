@@ -848,7 +848,6 @@ float SCULPT_mask_get_at_grids_vert_index(const SubdivCCG &subdiv_ccg,
 bool SCULPT_vertex_is_occluded(SculptSession &ss, PBVHVertRef vertex, bool original);
 
 const float *SCULPT_vertex_persistent_co_get(const SculptSession &ss, PBVHVertRef vertex);
-blender::float3 SCULPT_vertex_persistent_normal_get(const SculptSession &ss, PBVHVertRef vertex);
 
 /**
  * Coordinates used for manipulating the base mesh when Grab Active Vertex is enabled.
@@ -925,10 +924,40 @@ void SCULPT_fake_neighbors_enable(Object &ob);
 void SCULPT_fake_neighbors_disable(Object &ob);
 void SCULPT_fake_neighbors_free(Object &ob);
 
-/* Vertex Info. */
-void SCULPT_boundary_info_ensure(Object &object);
-/* Boundary Info needs to be initialized in order to use this function. */
-bool SCULPT_vertex_is_boundary(const SculptSession &ss, PBVHVertRef vertex);
+namespace blender::ed::sculpt_paint {
+
+namespace boundary {
+
+/**
+ * Populates boundary information for a mesh.
+ *
+ * \see SculptVertexInfo
+ */
+void ensure_boundary_info(Object &object);
+
+/**
+ * Determine if a vertex is a boundary vertex.
+ *
+ * Requires #ensure_boundary_info to have been called.
+ */
+bool vert_is_boundary(const SculptSession &ss, PBVHVertRef vertex);
+bool vert_is_boundary(const Span<bool> hide_poly,
+                      const SubdivCCG &subdiv_ccg,
+                      const Span<int> corner_verts,
+                      const OffsetIndices<int> faces,
+                      const BitSpan boundary,
+                      const SubdivCCGCoord vert);
+bool vert_is_boundary(Span<bool> hide_poly,
+                      GroupedSpan<int> vert_to_face_map,
+                      BitSpan boundary,
+                      int vert);
+bool vert_is_boundary(Span<bool> hide_poly,
+                      const SubdivCCG &subdiv_ccg,
+                      BitSpan boundary,
+                      SubdivCCGCoord vert);
+bool vert_is_boundary(BMVert *vert);
+
+}
 
 /** \} */
 
@@ -936,14 +965,20 @@ bool SCULPT_vertex_is_boundary(const SculptSession &ss, PBVHVertRef vertex);
 /** \name Sculpt Visibility API
  * \{ */
 
-namespace blender::ed::sculpt_paint {
-
 namespace hide {
 
 Span<int> node_visible_verts(const PBVHNode &node, Span<bool> hide_vert, Vector<int> &indices);
 
 bool vert_visible_get(const SculptSession &ss, PBVHVertRef vertex);
+
+/* Determines if all faces attached to a given vertex are visible. */
 bool vert_all_faces_visible_get(const SculptSession &ss, PBVHVertRef vertex);
+bool vert_all_faces_visible_get(Span<bool> hide_poly, GroupedSpan<int> vert_to_face_map, int vert);
+bool vert_all_faces_visible_get(Span<bool> hide_poly,
+                                const SubdivCCG &subdiv_ccg,
+                                SubdivCCGCoord vert);
+bool vert_all_faces_visible_get(BMVert *vert);
+
 bool vert_any_face_visible_get(const SculptSession &ss, PBVHVertRef vertex);
 
 }
@@ -1049,17 +1084,22 @@ PBVHVertRef nearest_vert_calc(const Object &object,
                               const float3 &location,
                               float max_distance,
                               bool use_original);
-
+std::optional<int> nearest_vert_calc_mesh(const PBVH &pbvh,
+                                          const Span<float3> vert_positions,
+                                          const Span<bool> hide_vert,
+                                          const float3 &location,
+                                          const float max_distance,
+                                          const bool use_original);
+std::optional<SubdivCCGCoord> nearest_vert_calc_grids(PBVH &pbvh,
+                                                      const SubdivCCG &subdiv_ccg,
+                                                      const float3 &location,
+                                                      const float max_distance,
+                                                      const bool use_original);
+std::optional<BMVert *> nearest_vert_calc_bmesh(PBVH &pbvh,
+                                                const float3 &location,
+                                                const float max_distance,
+                                                const bool use_original);
 }
-
-int SCULPT_plane_point_side(const float co[3], const float plane[4]);
-int SCULPT_plane_trim(const blender::ed::sculpt_paint::StrokeCache &cache,
-                      const Brush &brush,
-                      const float val[3]);
-/**
- * Handles clipping against a mirror modifier and #SCULPT_LOCK_X/Y/Z axis flags.
- */
-void SCULPT_clip(const Sculpt &sd, const SculptSession &ss, float co[3], const float val[3]);
 
 float SCULPT_brush_plane_offset_get(const Sculpt &sd, const SculptSession &ss);
 
@@ -1173,15 +1213,72 @@ namespace blender::ed::sculpt_paint::flood_fill {
 
 struct FillData {
   std::queue<PBVHVertRef> queue;
-  blender::BitVector<> visited_verts;
+  BitVector<> visited_verts;
 };
 
+struct FillDataMesh {
+  FillDataMesh(int size) : visited_verts(size) {}
+
+  std::queue<int> queue;
+  BitVector<> visited_verts;
+
+  void add_initial(int vertex);
+  void add_and_skip_initial(int vertex, int index);
+  void add_initial_with_symmetry(const Object &object,
+                                 const SculptSession &ss,
+                                 int vertex,
+                                 float radius);
+  void add_active(const Object &object, const SculptSession &ss, float radius);
+  void execute(Object &object, SculptSession &ss, FunctionRef<bool(int from_v, int to_v)> func);
+};
+
+struct FillDataGrids {
+  FillDataGrids(int size) : visited_verts(size) {}
+
+  std::queue<SubdivCCGCoord> queue;
+  BitVector<> visited_verts;
+
+  void add_initial(SubdivCCGCoord vertex);
+  void add_and_skip_initial(SubdivCCGCoord vertex, int index);
+  void add_initial_with_symmetry(const Object &object,
+                                 const SculptSession &ss,
+                                 SubdivCCGCoord vertex,
+                                 float radius);
+  void add_active(const Object &object, const SculptSession &ss, float radius);
+  void execute(
+      Object &object,
+      SculptSession &ss,
+      FunctionRef<bool(SubdivCCGCoord from_v, SubdivCCGCoord to_v, bool is_duplicate)> func);
+};
+
+struct FillDataBMesh {
+  FillDataBMesh(int size) : visited_verts(size) {}
+
+  std::queue<BMVert *> queue;
+  BitVector<> visited_verts;
+
+  void add_initial(BMVert *vertex);
+  void add_and_skip_initial(BMVert *vertex, int index);
+  void add_initial_with_symmetry(const Object &object,
+                                 const SculptSession &ss,
+                                 BMVert *vertex,
+                                 float radius);
+  void add_active(const Object &object, const SculptSession &ss, float radius);
+  void execute(Object &object,
+               SculptSession &ss,
+               FunctionRef<bool(BMVert *from_v, BMVert *to_v)> func);
+};
+
+/**
+ * \deprecated See the individual FillData constructors instead of this method.
+ */
 FillData init_fill(SculptSession &ss);
+
+void add_initial(FillData &flood, PBVHVertRef vertex);
+void add_and_skip_initial(FillData &flood, PBVHVertRef vertex);
 void add_active(const Object &ob, const SculptSession &ss, FillData &flood, float radius);
 void add_initial_with_symmetry(
     const Object &ob, const SculptSession &ss, FillData &flood, PBVHVertRef vertex, float radius);
-void add_initial(FillData &flood, PBVHVertRef vertex);
-void add_and_skip_initial(FillData &flood, PBVHVertRef vertex);
 void execute(SculptSession &ss,
              FillData &flood,
              FunctionRef<bool(PBVHVertRef from_v, PBVHVertRef to_v, bool is_duplicate)> func);
@@ -1987,6 +2084,11 @@ std::unique_ptr<SculptBoundary> data_init(Object &object,
                                           const Brush *brush,
                                           PBVHVertRef initial_vertex,
                                           float radius);
+std::unique_ptr<SculptBoundaryPreview> preview_data_init(Object &object,
+                                                         const Brush *brush,
+                                                         PBVHVertRef initial_vertex,
+                                                         float radius);
+
 /* Main Brush Function. */
 void do_boundary_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 
@@ -2073,18 +2175,6 @@ bool SCULPT_use_image_paint_brush(PaintModeSettings &settings, Object &ob);
 namespace blender::ed::sculpt_paint {
 
 float clay_thumb_get_stabilized_pressure(const blender::ed::sculpt_paint::StrokeCache &cache);
-
-}
-
-void SCULPT_do_layer_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
-
-/** \} */
-
-/* end sculpt_brush_types.cc */
-
-/* sculpt_ops.cc */
-
-namespace blender::ed::sculpt_paint {
 
 void SCULPT_OT_brush_stroke(wmOperatorType *ot);
 
