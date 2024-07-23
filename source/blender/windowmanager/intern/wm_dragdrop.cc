@@ -23,6 +23,7 @@
 
 #include "BLI_bitmap.h"
 #include "BLI_blenlib.h"
+#include "BLI_linear_allocator.hh"
 #include "BLI_math_color.h"
 
 #include "BIF_glutil.hh"
@@ -367,20 +368,18 @@ void WM_event_drag_space_file_paths(const bContext *C, wmDrag *drag)
   char dirpath[FILE_MAX];
   BLI_path_split_dir_part(WM_drag_get_single_path(drag), dirpath, FILE_MAX);
 
-  blender::Vector<char *> paths;
+  blender::LinearAllocator<> allocator;
+  blender::Vector<const char *> paths;
   const blender::Vector<PointerRNA> files = CTX_data_collection_get(C, "selected_files");
   for (const PointerRNA &file_ptr : files) {
     const FileDirEntry *file = static_cast<const FileDirEntry *>(file_ptr.data);
     char filepath[FILE_MAX];
     BLI_path_join(filepath, sizeof(filepath), dirpath, file->name);
 
-    paths.append(BLI_strdup(filepath));
+    paths.append(allocator.copy_string(filepath).c_str());
   }
   WM_drag_data_free(drag->type, drag->poin);
   drag->poin = WM_drag_create_path_data(paths);
-  for (char *path : paths) {
-    MEM_freeN(path);
-  }
 }
 
 void WM_drag_data_free(eWM_DragDataType dragtype, void *poin)
