@@ -1,2 +1,3 @@
 Referenced by issue #124437, Separated object doesn't inherit the material (if material is linked to the object instead of its mesh)
 Referenced by pull request #125268, Fix #125157: Sculpt multires crashes on box mask and duplicated stroke
+Referenced by commit 338140f1e68612ba6756a016296ddc93ffc973dd, Fix #125157: Sculpt multires crashes on box mask and duplicated stroke
