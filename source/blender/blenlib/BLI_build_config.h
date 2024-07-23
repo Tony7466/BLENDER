@@ -348,6 +348,9 @@
 #  define ARCH_CPU_BIG_ENDIAN 0
 #endif
 
+#if !defined(ARCH_CPU_31_BITS)
+#  define ARCH_CPU_31_BITS 0
+#endif
 #if !defined(ARCH_CPU_32_BITS)
 #  define ARCH_CPU_32_BITS 0
 #endif
@@ -369,6 +372,40 @@
 #endif
 #if !defined(ARCH_CPU_S390_FAMILY)
 #  define ARCH_CPU_S390_FAMILY 0
+#endif
+
+#if !defined(ARCH_CPU_ARM64)
+#  define ARCH_CPU_ARM64 0
+#endif
+#if !defined(ARCH_CPU_ARMEL)
+#  define ARCH_CPU_ARMEL 0
+#endif
+#if !defined(ARCH_CPU_MIPS)
+#  define ARCH_CPU_MIPS 0
+#endif
+#if !defined(ARCH_CPU_MIPS64)
+#  define ARCH_CPU_MIPS64 0
+#endif
+#if !defined(ARCH_CPU_MIPS64EL)
+#  define ARCH_CPU_MIPS64EL 0
+#endif
+#if !defined(ARCH_CPU_MIPSEL)
+#  define ARCH_CPU_MIPSEL 0
+#endif
+#if !defined(ARCH_CPU_PPC64)
+#  define ARCH_CPU_PPC64 0
+#endif
+#if !defined(ARCH_CPU_S390)
+#  define ARCH_CPU_S390 0
+#endif
+#if !defined(ARCH_CPU_S390X)
+#  define ARCH_CPU_S390X 0
+#endif
+#if !defined(ARCH_CPU_X86)
+#  define ARCH_CPU_X86 0
+#endif
+#if !defined(ARCH_CPU_X86_64)
+#  define ARCH_CPU_X86_64 0
 #endif
 
 /** \} */
