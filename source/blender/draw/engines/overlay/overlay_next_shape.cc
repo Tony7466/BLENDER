@@ -52,10 +52,10 @@ enum VertexClass {
   VCLASS_EMPTY_SIZE = 1 << 14,
 };
 
-#define DIAMOND_NSEGMENTS 4
-#define INNER_NSEGMENTS 8
-#define OUTER_NSEGMENTS 10
-#define CIRCLE_NSEGMENTS 32
+static constexpr int DIAMOND_NSEGMENTS = 4;
+static constexpr int INNER_NSEGMENTS = 8;
+static constexpr int OUTER_NSEGMENTS = 10;
+static constexpr int CIRCLE_NSEGMENTS = 32;
 
 static constexpr float bone_box_verts[8][3] = {
     {1.0f, 0.0f, 1.0f},
@@ -108,7 +108,7 @@ static Vector<float2> ring_vertices(const float radius, const int segments)
 {
   Vector<float2> verts;
   for (int i : IndexRange(segments)) {
-    float angle = (2 * M_PI * i) / segments;
+    float angle = (2 * math::numbers::pi * i) / segments;
     verts.append(radius * float2(math::cos(angle), math::sin(angle)));
   }
   return verts;
@@ -365,7 +365,7 @@ ShapeCache::ShapeCache()
   };
   /* speaker */
   {
-    const int segments = 16;
+    constexpr int segments = 16;
     Vector<Vertex> verts;
 
     for (int j = 0; j < 3; j++) {
@@ -375,8 +375,8 @@ ShapeCache::ShapeCache()
       verts.append({{r, 0.0f, z}});
 
       for (int i = 1; i < segments; i++) {
-        float x = cosf(2.0f * float(M_PI) * i / segments) * r;
-        float y = sinf(2.0f * float(M_PI) * i / segments) * r;
+        float x = cosf(2.0f * math::numbers::pi * i / segments) * r;
+        float y = sinf(2.0f * math::numbers::pi * i / segments) * r;
         Vertex v{{x, y, z}};
         verts.append(v);
         verts.append(v);
@@ -426,10 +426,10 @@ ShapeCache::ShapeCache()
     /* Cone apex */
     verts.append({{0.0f, 0.0f, 0.0f}, 0});
     /* Cone silhouette */
-    for (int a : IndexRange(CIRCLE_NSEGMENTS + 1)) {
-      float angle = (2.0f * M_PI * a) / CIRCLE_NSEGMENTS;
-      float s = sinf(-angle);
-      float c = cosf(-angle);
+    for (const int segment : IndexRange(CIRCLE_NSEGMENTS + 1)) {
+      const float angle = (2.0f * math::numbers::pi * segment) / CIRCLE_NSEGMENTS;
+      const float s = sinf(-angle);
+      const float c = cosf(-angle);
       verts.append({{s, c, -1.0f}, VCLASS_LIGHT_SPOT_SHAPE});
     }
     light_spot_volume = BatchPtr(GPU_batch_create_ex(
