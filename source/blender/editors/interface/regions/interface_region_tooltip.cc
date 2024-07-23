@@ -28,6 +28,7 @@
 
 #include "DNA_userdef_types.h"
 
+#include "BLI_fileops.h"
 #include "BLI_listbase.h"
 #include "BLI_math_color.h"
 #include "BLI_math_vector.h"
@@ -59,7 +60,7 @@
 
 #include "RNA_access.hh"
 #include "RNA_path.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "UI_interface.hh"
 
@@ -578,43 +579,12 @@ static uiTooltipData *ui_tooltip_data_from_tool(bContext *C, uiBut *but, bool is
     /* There are different kinds of shortcuts:
      *
      * - Direct access to the tool (as if the toolbar button is pressed).
-     * - The key is bound to a brush type (not the exact brush name).
      * - The key is assigned to the operator itself
      *   (bypassing the tool, executing the operator).
      *
      * Either way case it's useful to show the shortcut.
      */
     std::string shortcut = UI_but_string_get_operator_keymap(*C, *but);
-
-    if (shortcut.empty()) {
-      const PaintMode paint_mode = BKE_paintmode_get_active_from_context(C);
-      const char *tool_attr = BKE_paint_get_tool_prop_id_from_paintmode(paint_mode);
-      if (tool_attr != nullptr) {
-        const EnumPropertyItem *items = BKE_paint_get_tool_enum_from_paintmode(paint_mode);
-        const char *tool_id_lstrip = strrchr(tool_id, '.');
-        const int tool_id_offset = tool_id_lstrip ? ((tool_id_lstrip - tool_id) + 1) : 0;
-        const int i = RNA_enum_from_name(items, tool_id + tool_id_offset);
-
-        if (i != -1) {
-          wmOperatorType *ot = WM_operatortype_find("paint.brush_select", true);
-          PointerRNA op_props;
-          WM_operator_properties_create_ptr(&op_props, ot);
-          RNA_enum_set(&op_props, tool_attr, items[i].value);
-
-          /* Check for direct access to the tool. */
-          if (std::optional<std::string> shortcut_brush = WM_key_event_operator_string(
-                  C,
-                  ot->idname,
-                  WM_OP_INVOKE_REGION_WIN,
-                  static_cast<IDProperty *>(op_props.data),
-                  true))
-          {
-            shortcut = *shortcut_brush;
-          }
-          WM_operator_properties_free(&op_props);
-        }
-      }
-    }
 
     if (shortcut.empty()) {
       /* Check for direct access to the tool. */
@@ -1089,9 +1059,8 @@ static uiTooltipData *ui_tooltip_data_from_button_or_extra_icon(bContext *C,
     const std::string hsva_st = fmt::format(
         "{}:  {:.3f}  {:.3f}  {:.3f}  {:.3f}", TIP_("HSVA"), hsva[0], hsva[1], hsva[2], hsva[3]);
 
-    const float aspect = min_ff(1.0f, but->block->aspect);
     const uiFontStyle *fs = UI_FSTYLE_WIDGET;
-    BLF_size(blf_mono_font, fs->points * UI_SCALE_FAC / aspect);
+    BLF_size(blf_mono_font, fs->points * UI_SCALE_FAC);
     float w = BLF_width(blf_mono_font, hsva_st.c_str(), hsva_st.size());
 
     uiTooltipImage image_data;
@@ -1244,8 +1213,7 @@ static uiTooltipData *ui_tooltip_data_from_custom_func(bContext *C, uiBut *but)
 static ARegion *ui_tooltip_create_with_data(bContext *C,
                                             uiTooltipData *data,
                                             const float init_position[2],
-                                            const rcti *init_rect_overlap,
-                                            const float aspect)
+                                            const rcti *init_rect_overlap)
 {
   const float pad_px = UI_TIP_PADDING;
   wmWindow *win = CTX_wm_window(C);
@@ -1267,11 +1235,10 @@ static ARegion *ui_tooltip_create_with_data(bContext *C,
 
   /* Set font, get bounding-box. */
   data->fstyle = style->widget; /* copy struct */
-  ui_fontscale(&data->fstyle.points, aspect);
 
   UI_fontstyle_set(&data->fstyle);
 
-  data->wrap_width = min_ii(UI_TIP_MAXWIDTH * U.pixelsize / aspect, winx - (UI_TIP_PADDING * 2));
+  data->wrap_width = min_ii(UI_TIP_MAXWIDTH * U.pixelsize, winx - (UI_TIP_PADDING * 2));
 
   font_flag |= BLF_WORD_WRAP;
   BLF_enable(data->fstyle.uifont_id, font_flag);
@@ -1280,8 +1247,8 @@ static ARegion *ui_tooltip_create_with_data(bContext *C,
   BLF_wordwrap(blf_mono_font, data->wrap_width);
 
   /* These defines tweaked depending on font. */
-#define TIP_BORDER_X (16.0f / aspect)
-#define TIP_BORDER_Y (6.0f / aspect)
+#define TIP_BORDER_X (16.0f)
+#define TIP_BORDER_Y (6.0f)
 
   int h = BLF_height_max(data->fstyle.uifont_id);
 
@@ -1328,8 +1295,6 @@ static ARegion *ui_tooltip_create_with_data(bContext *C,
     field->geom.lines = info.lines;
     field->geom.x_pos = x_pos;
   }
-
-  // fontw *= aspect;
 
   BLF_disable(data->fstyle.uifont_id, font_flag);
   BLF_disable(blf_mono_font, font_flag);
@@ -1503,8 +1468,6 @@ ARegion *UI_tooltip_create_from_button_or_extra_icon(
     bContext *C, ARegion *butregion, uiBut *but, uiButExtraOpIcon *extra_icon, bool is_label)
 {
   wmWindow *win = CTX_wm_window(C);
-  /* Aspect values that shrink text are likely unreadable. */
-  const float aspect = min_ff(1.0f, but->block->aspect);
   float init_position[2];
 
   if (but->drawflag & UI_BUT_NO_TOOLTIP) {
@@ -1562,7 +1525,7 @@ ARegion *UI_tooltip_create_from_button_or_extra_icon(
   }
 
   ARegion *region = ui_tooltip_create_with_data(
-      C, data, init_position, is_no_overlap ? &init_rect : nullptr, aspect);
+      C, data, init_position, is_no_overlap ? &init_rect : nullptr);
 
   return region;
 }
@@ -1575,7 +1538,6 @@ ARegion *UI_tooltip_create_from_button(bContext *C, ARegion *butregion, uiBut *b
 ARegion *UI_tooltip_create_from_gizmo(bContext *C, wmGizmo *gz)
 {
   wmWindow *win = CTX_wm_window(C);
-  const float aspect = 1.0f;
   float init_position[2] = {float(win->eventstate->xy[0]), float(win->eventstate->xy[1])};
 
   uiTooltipData *data = ui_tooltip_data_from_gizmo(C, gz);
@@ -1593,7 +1555,7 @@ ARegion *UI_tooltip_create_from_gizmo(bContext *C, wmGizmo *gz)
     }
   }
 
-  return ui_tooltip_create_with_data(C, data, init_position, nullptr, aspect);
+  return ui_tooltip_create_with_data(C, data, init_position, nullptr);
 }
 
 static void ui_tooltip_from_image(Image &ima, uiTooltipData &data)
@@ -1662,6 +1624,7 @@ static void ui_tooltip_from_image(Image &ima, uiTooltipData &data)
     UI_tooltip_text_field_add(&data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
     UI_tooltip_text_field_add(&data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
     UI_tooltip_image_field_add(&data, image_data);
+    IMB_freeImBuf(ibuf);
   }
 }
 
@@ -1729,6 +1692,12 @@ static void ui_tooltip_from_vfont(VFont &font, uiTooltipData &data)
 {
   if (!font.filepath[0]) {
     /* Let's not bother with packed files _for now_.*/
+    return;
+  }
+
+  if (!BLI_exists(font.filepath)) {
+    UI_tooltip_text_field_add(
+        &data, TIP_("File not found"), {}, UI_TIP_STYLE_NORMAL, UI_TIP_LC_ALERT);
     return;
   }
 
@@ -1802,13 +1771,12 @@ ARegion *UI_tooltip_create_from_search_item_generic(bContext *C,
     return nullptr;
   }
 
-  const float aspect = 1.0f;
   const wmWindow *win = CTX_wm_window(C);
   float init_position[2];
   init_position[0] = win->eventstate->xy[0];
   init_position[1] = item_rect->ymin + searchbox_region->winrct.ymin - (UI_POPUP_MARGIN / 2);
 
-  return ui_tooltip_create_with_data(C, data, init_position, nullptr, aspect);
+  return ui_tooltip_create_with_data(C, data, init_position, nullptr);
 }
 
 void UI_tooltip_free(bContext *C, bScreen *screen, ARegion *region)

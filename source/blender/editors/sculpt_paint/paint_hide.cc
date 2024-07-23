@@ -55,6 +55,25 @@ namespace blender::ed::sculpt_paint::hide {
 /** \name Public API
  * \{ */
 
+Span<int> node_visible_verts(const PBVHNode &node,
+                             const Span<bool> hide_vert,
+                             Vector<int> &indices)
+{
+  if (BKE_pbvh_node_fully_hidden_get(&node)) {
+    return {};
+  }
+  const Span<int> verts = bke::pbvh::node_unique_verts(node);
+  if (hide_vert.is_empty()) {
+    return verts;
+  }
+  indices.resize(verts.size());
+  const int *end = std::copy_if(verts.begin(), verts.end(), indices.begin(), [&](const int vert) {
+    return !hide_vert[vert];
+  });
+  indices.resize(end - indices.begin());
+  return indices;
+}
+
 void sync_all_from_faces(Object &object)
 {
   SculptSession &ss = *object.sculpt;
@@ -132,7 +151,7 @@ void mesh_show_all(Object &object, const Span<PBVHNode *> nodes)
     const VArraySpan hide_vert(attribute);
     threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
       for (PBVHNode *node : nodes.slice(range)) {
-        const Span<int> verts = bke::pbvh::node_verts(*node);
+        const Span<int> verts = bke::pbvh::node_unique_verts(*node);
         if (std::any_of(verts.begin(), verts.end(), [&](const int i) { return hide_vert[i]; })) {
           undo::push_node(object, node, undo::Type::HideVert);
           BKE_pbvh_node_mark_rebuild_draw(node);
@@ -555,11 +574,10 @@ static void partialvis_masked_update_grids(Depsgraph &depsgraph,
                                            const VisAction action,
                                            const Span<PBVHNode *> nodes)
 {
-  PBVH &pbvh = *object.sculpt->pbvh;
   SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
 
   const bool value = action_to_hide(action);
-  const CCGKey key = *BKE_pbvh_get_grid_key(pbvh);
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
   const Span<CCGElem *> grids = subdiv_ccg.grids;
   if (!key.has_mask) {
     grid_hide_update(depsgraph,
@@ -710,6 +728,7 @@ static void invert_visibility_mesh(Object &object, const Span<PBVHNode *> nodes)
 
   hide_poly.finish();
   bke::mesh_hide_face_flush(mesh);
+  bke::pbvh::update_visibility(*object.sculpt->pbvh);
 }
 
 static void invert_visibility_grids(Depsgraph &depsgraph,
@@ -985,7 +1004,7 @@ static void grow_shrink_visibility_grid(Depsgraph &depsgraph,
   BitGroupVector<> &grid_hidden = BKE_subdiv_ccg_grid_hidden_ensure(subdiv_ccg);
 
   const bool desired_state = action_to_hide(action);
-  const CCGKey key = *BKE_pbvh_get_grid_key(pbvh);
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
   DualBitBuffer buffers;
   buffers.front = grid_hidden;
@@ -1225,12 +1244,11 @@ static void partialvis_gesture_update_grids(Depsgraph &depsgraph,
   const VisAction action = operation->action;
   const Span<PBVHNode *> nodes = gesture_data.nodes;
 
-  PBVH &pbvh = *object->sculpt->pbvh;
-  SubdivCCG *subdiv_ccg = object->sculpt->subdiv_ccg;
+  SubdivCCG &subdiv_ccg = *object->sculpt->subdiv_ccg;
 
   const bool value = action_to_hide(action);
-  const CCGKey key = *BKE_pbvh_get_grid_key(pbvh);
-  const Span<CCGElem *> grids = subdiv_ccg->grids;
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+  const Span<CCGElem *> grids = subdiv_ccg.grids;
   grid_hide_update(
       depsgraph, *object, nodes, [&](const int grid_index, MutableBoundedBitSpan hide) {
         CCGElem *grid = grids[grid_index];
@@ -1258,11 +1276,12 @@ static void partialvis_gesture_update_bmesh(gesture::GestureData &gesture_data)
       *gesture_data.vc.obact, gesture_data.nodes, operation->action, selection_test_fn);
 }
 
-static void hide_show_begin(bContext &C, gesture::GestureData & /*gesture_data*/)
+static void hide_show_begin(bContext &C, wmOperator &op, gesture::GestureData & /*gesture_data*/)
 {
   Object *ob = CTX_data_active_object(&C);
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(&C);
 
+  undo::push_begin(*ob, &op);
   BKE_sculpt_object_pbvh_ensure(depsgraph, ob);
 }
 
@@ -1286,6 +1305,7 @@ static void hide_show_end(bContext &C, gesture::GestureData &gesture_data)
 {
   SCULPT_topology_islands_invalidate(*gesture_data.vc.obact->sculpt);
   tag_update_visibility(C);
+  undo::push_end(*gesture_data.vc.obact);
 }
 
 static void hide_show_init_properties(bContext & /*C*/,

@@ -155,8 +155,7 @@ static bool is_face_in_active_component(const SculptSession &ss,
       vertex.i = corner_verts[faces[f].start()];
       break;
     case PBVH_GRIDS: {
-      const CCGKey *key = BKE_pbvh_get_grid_key(*ss.pbvh);
-      vertex.i = faces[f].start() * key->grid_area;
+      vertex.i = faces[f].start() * BKE_subdiv_ccg_key_top_level(*ss.subdiv_ccg).grid_area;
       break;
     }
     case PBVH_BMESH: {
@@ -200,7 +199,7 @@ static float falloff_value_vertex_get(const SculptSession &ss,
  * Returns the maximum valid falloff value stored in the falloff array, taking the maximum possible
  * texture distortion into account.
  */
-static float max_vert_falloff_get(Cache *expand_cache)
+static float max_vert_falloff_get(const Cache *expand_cache)
 {
   if (expand_cache->texture_distortion_strength == 0.0f) {
     return expand_cache->max_vert_falloff;
@@ -219,7 +218,7 @@ static float max_vert_falloff_get(Cache *expand_cache)
  * Main function to get the state of a vertex for the current state and settings of a
  * #Cache. Returns true when the target data should be modified by expand.
  */
-static bool vert_state_get(SculptSession &ss, Cache *expand_cache, const PBVHVertRef v)
+static bool vert_state_get(const SculptSession &ss, const Cache *expand_cache, const PBVHVertRef v)
 {
   if (!hide::vert_visible_get(ss, v)) {
     return false;
@@ -322,7 +321,9 @@ static bool face_state_get(SculptSession &ss,
  * For target modes that support gradients (such as sculpt masks or colors), this function returns
  * the corresponding gradient value for an enabled vertex.
  */
-static float gradient_value_get(SculptSession &ss, Cache *expand_cache, const PBVHVertRef v)
+static float gradient_value_get(const SculptSession &ss,
+                                const Cache *expand_cache,
+                                const PBVHVertRef v)
 {
   if (!expand_cache->falloff_gradient) {
     return 1.0f;
@@ -399,7 +400,7 @@ static BitVector<> boundary_from_enabled(SculptSession &ss,
     }
     SCULPT_VERTEX_NEIGHBORS_ITER_END(ni);
 
-    if (use_mesh_boundary && SCULPT_vertex_is_boundary(ss, vertex)) {
+    if (use_mesh_boundary && boundary::vert_is_boundary(ss, vertex)) {
       is_expand_boundary = true;
     }
 
@@ -444,7 +445,7 @@ static PBVHVertRef get_vert_index_for_symmetry_pass(Object &ob,
   else {
     float location[3];
     flip_v3_v3(location, SCULPT_vertex_co_get(ss, original_vertex), ePaintSymmetryFlags(symm_it));
-    symm_vertex = SCULPT_nearest_vertex_get(ob, location, FLT_MAX, false);
+    symm_vertex = nearest_vert_calc(ob, location, FLT_MAX, false);
   }
   return symm_vertex;
 }
@@ -798,17 +799,17 @@ static void update_max_face_falloff_factor(SculptSession &ss, Mesh &mesh, Cache 
 static void vert_to_face_falloff_grids(SculptSession &ss, Mesh *mesh, Cache *expand_cache)
 {
   const OffsetIndices faces = mesh->faces();
-  const CCGKey *key = BKE_pbvh_get_grid_key(*ss.pbvh);
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(*ss.subdiv_ccg);
 
   for (const int i : faces.index_range()) {
     float accum = 0.0f;
     for (const int corner : faces[i]) {
-      const int grid_loop_index = corner * key->grid_area;
-      for (int g = 0; g < key->grid_area; g++) {
+      const int grid_loop_index = corner * key.grid_area;
+      for (int g = 0; g < key.grid_area; g++) {
         accum += expand_cache->vert_falloff[grid_loop_index + g];
       }
     }
-    expand_cache->face_falloff[i] = accum / (faces[i].size() * key->grid_area);
+    expand_cache->face_falloff[i] = accum / (faces[i].size() * key.grid_area);
   }
 }
 
@@ -1146,18 +1147,29 @@ static void restore_face_set_data(Object &object, Cache *expand_cache)
   }
 }
 
-static void restore_color_data(SculptSession &ss, Cache *expand_cache)
+static void restore_color_data(Object &ob, Cache *expand_cache)
 {
+  SculptSession &ss = *ob.sculpt;
+  Mesh &mesh = *static_cast<Mesh *>(ob.data);
   Vector<PBVHNode *> nodes = bke::pbvh::search_gather(*ss.pbvh, {});
 
+  const OffsetIndices<int> faces = mesh.faces();
+  const Span<int> corner_verts = mesh.corner_verts();
+  const GroupedSpan<int> vert_to_face_map = ss.vert_to_face_map;
+  bke::GSpanAttributeWriter color_attribute = color::active_color_attribute_for_write(mesh);
   for (PBVHNode *node : nodes) {
-    PBVHVertexIter vd;
-    BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
-      SCULPT_vertex_color_set(ss, vd.vertex, expand_cache->original_colors[vd.index]);
+    for (const int vert : bke::pbvh::node_unique_verts(*node)) {
+      color::color_vert_set(faces,
+                            corner_verts,
+                            vert_to_face_map,
+                            color_attribute.domain,
+                            vert,
+                            expand_cache->original_colors[vert],
+                            color_attribute.span);
     }
-    BKE_pbvh_vertex_iter_end;
     BKE_pbvh_node_mark_redraw(node);
   }
+  color_attribute.finish();
 }
 
 static void write_mask_data(SculptSession &ss, const Span<float> mask)
@@ -1223,7 +1235,7 @@ static void restore_original_state(bContext *C, Object &ob, Cache *expand_cache)
       SCULPT_tag_update_overlays(C);
       break;
     case SCULPT_EXPAND_TARGET_COLORS:
-      restore_color_data(ss, expand_cache);
+      restore_color_data(ob, expand_cache);
       flush_update_step(C, UpdateType::Color);
       flush_update_done(C, ob, UpdateType::Color);
       break;
@@ -1246,30 +1258,30 @@ static void sculpt_expand_cancel(bContext *C, wmOperator * /*op*/)
 
 /* Functions to update the sculpt mesh data. */
 
-/**
- * Callback to update mask data per PBVH node.
- */
-static void mask_update_task(SculptSession &ss,
-                             const SculptMaskWriteInfo mask_write,
-                             PBVHNode *node)
+static void update_mask_mesh(const SculptSession &ss,
+                             PBVHNode *node,
+                             const MutableSpan<float> mask)
 {
-  Cache *expand_cache = ss.expand_cache;
+  const Cache *expand_cache = ss.expand_cache;
 
   bool any_changed = false;
 
-  PBVHVertexIter vd;
-  BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_ALL) {
-    const float initial_mask = vd.mask;
-    const bool enabled = vert_state_get(ss, expand_cache, vd.vertex);
+  const Span<int> verts = bke::pbvh::node_unique_verts(*node);
+  for (const int i : verts.index_range()) {
+    const int vert = verts[i];
+    const float initial_mask = mask[vert];
+    const bool enabled = vert_state_get(ss, expand_cache, PBVHVertRef{vert});
 
-    if (expand_cache->check_islands && !is_vert_in_active_component(ss, expand_cache, vd.vertex)) {
+    if (expand_cache->check_islands &&
+        !is_vert_in_active_component(ss, expand_cache, PBVHVertRef{vert}))
+    {
       continue;
     }
 
     float new_mask;
 
     if (enabled) {
-      new_mask = gradient_value_get(ss, expand_cache, vd.vertex);
+      new_mask = gradient_value_get(ss, expand_cache, PBVHVertRef{vert});
     }
     else {
       new_mask = 0.0f;
@@ -1277,10 +1289,10 @@ static void mask_update_task(SculptSession &ss,
 
     if (expand_cache->preserve) {
       if (expand_cache->invert) {
-        new_mask = min_ff(new_mask, expand_cache->original_mask[vd.index]);
+        new_mask = min_ff(new_mask, expand_cache->original_mask[vert]);
       }
       else {
-        new_mask = max_ff(new_mask, expand_cache->original_mask[vd.index]);
+        new_mask = max_ff(new_mask, expand_cache->original_mask[vert]);
       }
     }
 
@@ -1288,11 +1300,110 @@ static void mask_update_task(SculptSession &ss,
       continue;
     }
 
-    new_mask = clamp_f(new_mask, 0.0f, 1.0f);
-    SCULPT_mask_vert_set(BKE_pbvh_type(*ss.pbvh), mask_write, new_mask, vd);
+    mask[vert] = clamp_f(new_mask, 0.0f, 1.0f);
     any_changed = true;
   }
-  BKE_pbvh_vertex_iter_end;
+  if (any_changed) {
+    BKE_pbvh_node_mark_update_mask(node);
+  }
+}
+
+static void update_mask_grids(const SculptSession &ss, PBVHNode *node)
+{
+  const Cache *expand_cache = ss.expand_cache;
+  SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+  const Span<CCGElem *> elems = subdiv_ccg.grids;
+
+  bool any_changed = false;
+
+  const Span<int> grids = bke::pbvh::node_grid_indices(*node);
+  for (const int i : grids.index_range()) {
+    const int grid_start = grids[i] * key.grid_area;
+    CCGElem *elem = elems[grids[i]];
+    for (const int offset : IndexRange(key.grid_area)) {
+      const int grids_vert_index = grid_start + offset;
+      const float initial_mask = CCG_elem_offset_mask(key, elem, offset);
+      const bool enabled = vert_state_get(ss, expand_cache, PBVHVertRef{grids_vert_index});
+
+      if (expand_cache->check_islands &&
+          !is_vert_in_active_component(ss, expand_cache, PBVHVertRef{grids_vert_index}))
+      {
+        continue;
+      }
+
+      float new_mask;
+
+      if (enabled) {
+        new_mask = gradient_value_get(ss, expand_cache, PBVHVertRef{grids_vert_index});
+      }
+      else {
+        new_mask = 0.0f;
+      }
+
+      if (expand_cache->preserve) {
+        if (expand_cache->invert) {
+          new_mask = min_ff(new_mask, expand_cache->original_mask[grids_vert_index]);
+        }
+        else {
+          new_mask = max_ff(new_mask, expand_cache->original_mask[grids_vert_index]);
+        }
+      }
+
+      if (new_mask == initial_mask) {
+        continue;
+      }
+
+      CCG_elem_offset_mask(key, elem, offset) = clamp_f(new_mask, 0.0f, 1.0f);
+      any_changed = true;
+    }
+  }
+  if (any_changed) {
+    BKE_pbvh_node_mark_update_mask(node);
+  }
+}
+
+static void update_mask_bmesh(SculptSession &ss, const int mask_offset, PBVHNode *node)
+{
+  const Cache *expand_cache = ss.expand_cache;
+
+  bool any_changed = false;
+
+  for (BMVert *vert : BKE_pbvh_bmesh_node_unique_verts(node)) {
+    const float initial_mask = BM_ELEM_CD_GET_FLOAT(vert, mask_offset);
+    const bool enabled = vert_state_get(ss, expand_cache, PBVHVertRef{intptr_t(vert)});
+
+    if (expand_cache->check_islands &&
+        !is_vert_in_active_component(ss, expand_cache, PBVHVertRef{intptr_t(vert)}))
+    {
+      continue;
+    }
+
+    float new_mask;
+
+    if (enabled) {
+      new_mask = gradient_value_get(ss, expand_cache, PBVHVertRef{intptr_t(vert)});
+    }
+    else {
+      new_mask = 0.0f;
+    }
+
+    if (expand_cache->preserve) {
+      if (expand_cache->invert) {
+        new_mask = min_ff(new_mask, expand_cache->original_mask[BM_elem_index_get(vert)]);
+      }
+      else {
+        new_mask = max_ff(new_mask, expand_cache->original_mask[BM_elem_index_get(vert)]);
+      }
+    }
+
+    if (new_mask == initial_mask) {
+      continue;
+    }
+
+    BM_ELEM_CD_SET_FLOAT(vert, mask_offset, clamp_f(new_mask, 0.0f, 1.0f));
+    any_changed = true;
+  }
   if (any_changed) {
     BKE_pbvh_node_mark_update_mask(node);
   }
@@ -1333,46 +1444,66 @@ static void face_sets_update(Object &object, Cache *expand_cache)
 /**
  * Callback to update vertex colors per PBVH node.
  */
-static void colors_update_task(SculptSession &ss, PBVHNode *node)
+static void colors_update_task(SculptSession &ss,
+                               const OffsetIndices<int> faces,
+                               const Span<int> corner_verts,
+                               const GroupedSpan<int> vert_to_face_map,
+                               const Span<bool> hide_vert,
+                               const Span<float> mask,
+                               PBVHNode *node,
+                               bke::GSpanAttributeWriter &color_attribute)
 {
   Cache *expand_cache = ss.expand_cache;
 
   bool any_changed = false;
 
-  PBVHVertexIter vd;
-  BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_ALL) {
-    float4 initial_color = SCULPT_vertex_color_get(ss, vd.vertex);
+  const Span<int> verts = bke::pbvh::node_unique_verts(*node);
+  for (const int i : verts.index_range()) {
+    const int vert = verts[i];
+    if (!hide_vert.is_empty() && hide_vert[vert]) {
+      continue;
+    }
 
-    const bool enabled = vert_state_get(ss, expand_cache, vd.vertex);
+    float4 initial_color = color::color_vert_get(
+        faces, corner_verts, vert_to_face_map, color_attribute.span, color_attribute.domain, vert);
+
+    const bool enabled = vert_state_get(ss, expand_cache, PBVHVertRef{vert});
     float fade;
 
     if (enabled) {
-      fade = gradient_value_get(ss, expand_cache, vd.vertex);
+      fade = gradient_value_get(ss, expand_cache, PBVHVertRef{vert});
     }
     else {
       fade = 0.0f;
     }
 
-    fade *= 1.0f - vd.mask;
+    if (!mask.is_empty()) {
+      fade *= 1.0f - mask[vert];
+    }
     fade = clamp_f(fade, 0.0f, 1.0f);
 
-    float final_color[4];
-    float final_fill_color[4];
+    float4 final_color;
+    float4 final_fill_color;
     mul_v4_v4fl(final_fill_color, expand_cache->fill_color, fade);
     IMB_blend_color_float(final_color,
-                          expand_cache->original_colors[vd.index],
+                          expand_cache->original_colors[vert],
                           final_fill_color,
                           IMB_BlendMode(expand_cache->blend_mode));
 
-    if (equals_v4v4(initial_color, final_color)) {
+    if (initial_color == final_color) {
       continue;
     }
 
-    SCULPT_vertex_color_set(ss, vd.vertex, final_color);
+    color::color_vert_set(faces,
+                          corner_verts,
+                          vert_to_face_map,
+                          color_attribute.domain,
+                          vert,
+                          final_color,
+                          color_attribute.span);
 
     any_changed = true;
   }
-  BKE_pbvh_vertex_iter_end;
   if (any_changed) {
     BKE_pbvh_node_mark_update_color(node);
   }
@@ -1385,6 +1516,8 @@ static void original_state_store(Object &ob, Cache *expand_cache)
   Mesh &mesh = *static_cast<Mesh *>(ob.data);
   const int totvert = SCULPT_vertex_count_get(ss);
 
+  face_set::create_face_sets_mesh(ob);
+
   /* Face Sets are always stored as they are needed for snapping. */
   expand_cache->initial_face_sets = face_set::duplicate_face_sets(mesh);
   expand_cache->original_face_sets = face_set::duplicate_face_sets(mesh);
@@ -1394,10 +1527,17 @@ static void original_state_store(Object &ob, Cache *expand_cache)
   }
 
   if (expand_cache->target == SCULPT_EXPAND_TARGET_COLORS) {
+    const Mesh &mesh = *static_cast<const Mesh *>(ob.data);
+    const OffsetIndices<int> faces = mesh.faces();
+    const Span<int> corner_verts = mesh.corner_verts();
+    const GroupedSpan<int> vert_to_face_map = ss.vert_to_face_map;
+    const bke::GAttributeReader color_attribute = color::active_color_attribute(mesh);
+    const GVArraySpan colors = *color_attribute;
+
     expand_cache->original_colors = Array<float4>(totvert);
     for (int i = 0; i < totvert; i++) {
-      PBVHVertRef vertex = BKE_pbvh_index_to_vertex(*ss.pbvh, i);
-      expand_cache->original_colors[i] = SCULPT_vertex_color_get(ss, vertex);
+      expand_cache->original_colors[i] = color::color_vert_get(
+          faces, corner_verts, vert_to_face_map, colors, color_attribute.domain, i);
     }
   }
 }
@@ -1452,14 +1592,45 @@ static void update_for_vert(bContext *C, Object &ob, const PBVHVertRef vertex)
     face_sets_restore(ob, expand_cache);
   }
 
+  const Span<PBVHNode *> nodes = expand_cache->nodes;
+
   switch (expand_cache->target) {
     case SCULPT_EXPAND_TARGET_MASK: {
-      const SculptMaskWriteInfo mask_write = SCULPT_mask_get_for_write(ss);
-      threading::parallel_for(expand_cache->nodes.index_range(), 1, [&](const IndexRange range) {
-        for (const int i : range) {
-          mask_update_task(ss, mask_write, expand_cache->nodes[i]);
+      switch (BKE_pbvh_type(*ss.pbvh)) {
+        case PBVH_FACES: {
+          Mesh &mesh = *static_cast<Mesh *>(ob.data);
+          bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
+          bke::SpanAttributeWriter mask = attributes.lookup_for_write_span<float>(".sculpt_mask");
+          if (!mask || mask.domain != bke::AttrDomain::Point) {
+            return;
+          }
+          threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+            for (const int i : range) {
+              update_mask_mesh(ss, nodes[i], mask.span);
+            }
+          });
+          mask.finish();
+          break;
         }
-      });
+        case PBVH_GRIDS: {
+          threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+            for (const int i : range) {
+              update_mask_grids(ss, nodes[i]);
+            }
+          });
+          break;
+        }
+        case PBVH_BMESH: {
+          const int mask_offset = CustomData_get_offset_named(
+              &ss.bm->vdata, CD_PROP_FLOAT, ".sculpt_mask");
+          threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+            for (const int i : range) {
+              update_mask_bmesh(ss, mask_offset, nodes[i]);
+            }
+          });
+          break;
+        }
+      }
       flush_update_step(C, UpdateType::Mask);
       break;
     }
@@ -1467,14 +1638,32 @@ static void update_for_vert(bContext *C, Object &ob, const PBVHVertRef vertex)
       face_sets_update(ob, expand_cache);
       flush_update_step(C, UpdateType::FaceSet);
       break;
-    case SCULPT_EXPAND_TARGET_COLORS:
-      threading::parallel_for(expand_cache->nodes.index_range(), 1, [&](const IndexRange range) {
+    case SCULPT_EXPAND_TARGET_COLORS: {
+      Mesh &mesh = *static_cast<Mesh *>(ob.data);
+      const OffsetIndices<int> faces = mesh.faces();
+      const Span<int> corner_verts = mesh.corner_verts();
+      const GroupedSpan<int> vert_to_face_map = ss.vert_to_face_map;
+      const bke::AttributeAccessor attributes = mesh.attributes();
+      const VArraySpan hide_vert = *attributes.lookup<bool>(".hide_vert", bke::AttrDomain::Point);
+      const VArraySpan mask = *attributes.lookup<float>(".sculpt_mask", bke::AttrDomain::Point);
+      bke::GSpanAttributeWriter color_attribute = color::active_color_attribute_for_write(mesh);
+
+      threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
         for (const int i : range) {
-          colors_update_task(ss, expand_cache->nodes[i]);
+          colors_update_task(ss,
+                             faces,
+                             corner_verts,
+                             vert_to_face_map,
+                             hide_vert,
+                             mask,
+                             nodes[i],
+                             color_attribute);
         }
       });
+      color_attribute.finish();
       flush_update_step(C, UpdateType::Color);
       break;
+    }
   }
 }
 
@@ -1679,7 +1868,7 @@ static void ensure_sculptsession_data(Object &ob)
   SculptSession &ss = *ob.sculpt;
   SCULPT_topology_islands_ensure(ob);
   SCULPT_vertex_random_access_ensure(ss);
-  SCULPT_boundary_info_ensure(ob);
+  boundary::ensure_boundary_info(ob);
   if (!ss.tex_pool) {
     ss.tex_pool = BKE_image_pool_new();
   }
@@ -2025,11 +2214,16 @@ static void undo_push(Object &ob, Cache *expand_cache)
         undo::push_node(ob, node, undo::Type::FaceSet);
       }
       break;
-    case SCULPT_EXPAND_TARGET_COLORS:
+    case SCULPT_EXPAND_TARGET_COLORS: {
+      const Mesh &mesh = *static_cast<const Mesh *>(ob.data);
+      /* The sculpt undo system needs corner indices for corner domain color attributes. */
+      BKE_pbvh_ensure_node_loops(*ss.pbvh, mesh.corner_tris());
+
       for (PBVHNode *node : nodes) {
         undo::push_node(ob, node, undo::Type::Color);
       }
       break;
+    }
   }
 }
 
@@ -2167,7 +2361,7 @@ static int sculpt_expand_invoke(bContext *C, wmOperator *op, const wmEvent *even
       RNA_enum_get(op->ptr, "falloff_type"));
 
   /* When starting from a boundary vertex, set the initial falloff to boundary. */
-  if (SCULPT_vertex_is_boundary(ss, ss.expand_cache->initial_active_vertex)) {
+  if (boundary::vert_is_boundary(ss, ss.expand_cache->initial_active_vertex)) {
     falloff_type = SCULPT_EXPAND_FALLOFF_BOUNDARY_TOPOLOGY;
   }
 

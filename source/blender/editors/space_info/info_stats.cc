@@ -362,9 +362,7 @@ static bool stats_is_object_dynamic_topology_sculpt(const Object *ob)
 
 static void stats_object_sculpt(const Object *ob, SceneStats *stats)
 {
-
   SculptSession *ss = ob->sculpt;
-
   if (ss == nullptr || ss->pbvh == nullptr) {
     return;
   }
@@ -828,7 +826,7 @@ void ED_info_draw_stats(
   }
   else if (!(object_mode & OB_MODE_SCULPT)) {
     /* No objects in scene. */
-    stats_row(col1, labels[OBJ], col2, 0, nullptr, y, height);
+    stats_row(col1, labels[OBJ], col2, stats_fmt.totobj, nullptr, y, height);
     return;
   }
 

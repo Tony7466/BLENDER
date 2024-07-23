@@ -1726,7 +1726,7 @@ static bool object_mouse_select_menu(bContext *C,
 
     if (ok) {
       base_count++;
-      BaseRefWithDepth *base_ref = MEM_new<BaseRefWithDepth>(__func__);
+      BaseRefWithDepth *base_ref = MEM_cnew<BaseRefWithDepth>(__func__);
       base_ref->base = base;
       base_ref->depth_id = depth_id;
       BLI_addtail(&base_ref_list, (void *)base_ref);
@@ -1966,7 +1966,7 @@ static bool bone_mouse_select_menu(bContext *C,
 
     if (!is_duplicate_bone) {
       bone_count++;
-      BoneRefWithDepth *bone_ref = MEM_new<BoneRefWithDepth>(__func__);
+      BoneRefWithDepth *bone_ref = MEM_cnew<BoneRefWithDepth>(__func__);
       bone_ref->base = bone_base;
       bone_ref->bone_ptr = bone_ptr;
       bone_ref->depth_id = hit_result.depth;
@@ -2661,7 +2661,7 @@ static bool ed_object_select_pick(bContext *C,
     /* Let the menu handle any further actions. */
     if (has_menu) {
       if (gpu != nullptr) {
-        MEM_freeN(gpu);
+        MEM_delete(gpu);
       }
       return false;
     }
@@ -2983,7 +2983,7 @@ static bool ed_object_select_pick(bContext *C,
   }
 
   if (gpu != nullptr) {
-    MEM_freeN(gpu);
+    MEM_delete(gpu);
   }
 
   return (changed_object || changed_pose || changed_track);
@@ -5054,7 +5054,6 @@ static bool armature_circle_select(const ViewContext *vc,
 
   if (data.is_changed) {
     ED_armature_edit_sync_selection(arm->edbo);
-    ED_armature_edit_validate_active(arm);
     WM_main_add_notifier(NC_OBJECT | ND_BONE_SELECT, vc->obedit);
   }
   return data.is_changed;

@@ -55,9 +55,8 @@ AttributeOwner AttributeOwner::from_id(ID *id)
     case ID_GP:
       return AttributeOwner(AttributeOwnerType::GreasePencil, id);
     default:
-      BLI_assert_unreachable();
+      return {};
   }
-  return {};
 }
 
 AttributeOwnerType AttributeOwner::type() const
@@ -67,33 +66,33 @@ AttributeOwnerType AttributeOwner::type() const
 
 bool AttributeOwner::is_valid() const
 {
-  return ptr_ != nullptr && type_ != AttributeOwnerType::None;
+  return ptr_ != nullptr;
 }
 
 Mesh *AttributeOwner::get_mesh() const
 {
-  BLI_assert(ptr_ != nullptr);
+  BLI_assert(this->is_valid());
   BLI_assert(type_ == AttributeOwnerType::Mesh);
   return reinterpret_cast<Mesh *>(ptr_);
 }
 
 PointCloud *AttributeOwner::get_pointcloud() const
 {
-  BLI_assert(ptr_ != nullptr);
+  BLI_assert(this->is_valid());
   BLI_assert(type_ == AttributeOwnerType::PointCloud);
   return reinterpret_cast<PointCloud *>(ptr_);
 }
 
 Curves *AttributeOwner::get_curves() const
 {
-  BLI_assert(ptr_ != nullptr);
+  BLI_assert(this->is_valid());
   BLI_assert(type_ == AttributeOwnerType::Curves);
   return reinterpret_cast<Curves *>(ptr_);
 }
 
 GreasePencil *AttributeOwner::get_grease_pencil() const
 {
-  BLI_assert(ptr_ != nullptr);
+  BLI_assert(this->is_valid());
   BLI_assert(type_ == AttributeOwnerType::GreasePencil);
   return reinterpret_cast<GreasePencil *>(ptr_);
 }
@@ -153,9 +152,6 @@ static std::array<DomainInfo, ATTR_DOMAIN_NUM> get_domains(const AttributeOwner 
       info[int(AttrDomain::Layer)].length = grease_pencil->layers().size();
       break;
     }
-    case AttributeOwnerType::None: {
-      break;
-    }
   }
 
   return info;
@@ -186,30 +182,11 @@ static std::optional<blender::bke::MutableAttributeAccessor> get_attribute_acces
       GreasePencil &grease_pencil = *owner.get_grease_pencil();
       return grease_pencil.attributes_for_write();
     }
-    case AttributeOwnerType::None: {
-      break;
-    }
   }
   return {};
 }
 
 }  // namespace blender::bke
-
-bool BKE_attributes_supported(const AttributeOwner &owner)
-{
-  const std::array<DomainInfo, ATTR_DOMAIN_NUM> info = get_domains(owner);
-  for (const int domain : IndexRange(ATTR_DOMAIN_NUM)) {
-    if (info[domain].customdata) {
-      return true;
-    }
-  }
-  return false;
-}
-
-bool BKE_attribute_allow_procedural_access(const char *attribute_name)
-{
-  return blender::bke::allow_procedural_attribute_access(attribute_name);
-}
 
 static bool bke_attribute_rename_if_exists(AttributeOwner &owner,
                                            const char *old_name,
@@ -770,8 +747,6 @@ bool BKE_attribute_required(const AttributeOwner &owner, const char *name)
       return BKE_mesh_attribute_required(name);
     case AttributeOwnerType::GreasePencil:
       return false;
-    case AttributeOwnerType::None:
-      break;
   }
   return false;
 }
@@ -796,7 +771,7 @@ CustomDataLayer *BKE_attributes_active_get(AttributeOwner &owner)
       CustomDataLayer *layer = &customdata->layers[i];
       if (CD_MASK_PROP_ALL & CD_TYPE_AS_MASK(layer->type)) {
         if (index == active_index) {
-          if (BKE_attribute_allow_procedural_access(layer->name)) {
+          if (blender::bke::allow_procedural_attribute_access(layer->name)) {
             return layer;
           }
           return nullptr;
@@ -829,13 +804,10 @@ int *BKE_attributes_active_index_p(AttributeOwner &owner)
       return &(owner.get_mesh())->attributes_active_index;
     }
     case AttributeOwnerType::Curves: {
-      return &(owner.get_curves())->attributes_active_index;
+      return &owner.get_curves()->geometry.attributes_active_index;
     }
     case AttributeOwnerType::GreasePencil: {
       return &(owner.get_grease_pencil())->attributes_active_index;
-    }
-    case AttributeOwnerType::None: {
-      break;
     }
   }
   return nullptr;

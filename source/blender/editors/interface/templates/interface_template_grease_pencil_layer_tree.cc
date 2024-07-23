@@ -17,7 +17,7 @@
 #include "UI_tree_view.hh"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "ED_undo.hh"
 
@@ -162,7 +162,7 @@ class LayerViewItemDragController : public AbstractViewItemDragController {
 
   void *create_drag_data() const override
   {
-    wmDragGreasePencilLayer *drag_data = MEM_new<wmDragGreasePencilLayer>(__func__);
+    wmDragGreasePencilLayer *drag_data = MEM_cnew<wmDragGreasePencilLayer>(__func__);
     drag_data->node = &dragged_node_;
     drag_data->grease_pencil = &grease_pencil_;
     return drag_data;
@@ -383,7 +383,13 @@ class LayerGroupViewItem : public AbstractTreeViewItem {
   void build_layer_group_name(uiLayout &row)
   {
     uiItemS_ex(&row, 0.8f);
-    uiBut *but = uiItemL_ex(&row, group_.name().c_str(), ICON_FILE_FOLDER, false, false);
+
+    short icon = ICON_FILE_FOLDER;
+    if (group_.color_tag != LAYERGROUP_COLOR_NONE) {
+      icon = ICON_LAYERGROUP_COLOR_01 + group_.color_tag;
+    }
+
+    uiBut *but = uiItemL_ex(&row, group_.name().c_str(), icon, false, false);
     if (!group_.is_editable()) {
       UI_but_disable(but, "Layer Group is locked or not visible");
     }

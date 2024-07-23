@@ -6,10 +6,10 @@
 
 #if BLI_SUBPROCESS_SUPPORT
 
-#  include "BKE_appdir.hh"
 #  include "BLI_fileops.hh"
 #  include "BLI_hash.hh"
 #  include "BLI_path_util.h"
+#  include "BLI_tempfile.h"
 #  include "CLG_log.h"
 #  include "GHOST_C-api.h"
 #  include "GPU_context.hh"
@@ -102,9 +102,11 @@ class SubprocessShader {
 
     if (success_) {
       glGetProgramiv(program_, GL_PROGRAM_BINARY_LENGTH, &bin->size);
-      if (bin->size <= sizeof(ShaderBinaryHeader::data)) {
-        glGetProgramBinary(program_, bin->size, nullptr, &bin->format, bin->data);
+      if (bin->size > sizeof(ShaderBinaryHeader::data)) {
+        bin->size = 0;
+        return nullptr;
       }
+      glGetProgramBinary(program_, bin->size, nullptr, &bin->format, bin->data);
     }
 
     return bin;
@@ -163,8 +165,9 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
   GPUContext *gpu_context = GPU_context_create(nullptr, ghost_context);
   GPU_init();
 
-  BKE_tempdir_init(nullptr);
-  std::string cache_dir = std::string(BKE_tempdir_base()) + "BLENDER_SHADER_CACHE" + SEP_STR;
+  static char tmp_dir[1024];
+  BLI_temp_directory_path_get(tmp_dir, sizeof(tmp_dir));
+  std::string cache_dir = std::string(tmp_dir) + "BLENDER_SHADER_CACHE" + SEP_STR;
   BLI_dir_create_recursive(cache_dir.c_str());
 
   while (true) {
@@ -228,14 +231,16 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
         file.seekg(0, std::ios::beg);
         file.read(reinterpret_cast<char *>(shared_mem.get_data()), size);
         /* Ensure it's valid. */
-        if (validate_binary(shared_mem.get_data())) {
-          end_semaphore.increment();
-          continue;
-        }
-        else {
+        if (!validate_binary(shared_mem.get_data())) {
           std::cout << "Compilation Subprocess: Failed to load cached shader binary " << hash_str
                     << "\n";
+          /* We can't compile the shader anymore since we have written over the source code,
+           * but we delete the cache for the next time this shader is requested. */
+          file.close();
+          BLI_delete(cache_path.c_str(), false, false);
         }
+        end_semaphore.increment();
+        continue;
       }
       else {
         /* This should never happen, since shaders larger than the pool size should be discarded
@@ -251,9 +256,11 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
 
     end_semaphore.increment();
 
-    fstream file(cache_path, std::ios::binary | std::ios::out);
-    file.write(reinterpret_cast<char *>(shared_mem.get_data()),
-               binary->size + offsetof(ShaderBinaryHeader, data));
+    if (binary) {
+      fstream file(cache_path, std::ios::binary | std::ios::out);
+      file.write(reinterpret_cast<char *>(shared_mem.get_data()),
+                 binary->size + offsetof(ShaderBinaryHeader, data));
+    }
   }
 
   GPU_exit();
