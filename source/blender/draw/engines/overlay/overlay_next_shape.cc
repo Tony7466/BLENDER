@@ -426,8 +426,8 @@ ShapeCache::ShapeCache()
     /* Cone apex */
     verts.append({{0.0f, 0.0f, 0.0f}, 0});
     /* Cone silhouette */
-    for (const int segment : IndexRange(CIRCLE_NSEGMENTS + 1)) {
-      const float angle = (2.0f * math::numbers::pi * segment) / CIRCLE_NSEGMENTS;
+    for (const int angle_i : IndexRange(CIRCLE_NSEGMENTS + 1)) {
+      const float angle = (2.0f * math::numbers::pi * angle_i) / CIRCLE_NSEGMENTS;
       const float s = sinf(-angle);
       const float c = cosf(-angle);
       verts.append({{s, c, -1.0f}, VCLASS_LIGHT_SPOT_SHAPE});
