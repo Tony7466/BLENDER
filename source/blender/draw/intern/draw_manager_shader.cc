@@ -147,7 +147,7 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
     }
     else if (!cached_materials.is_empty()) {
       /* (only if use_parallel_compilation == true)
-       * Now that all batches are compiled, finalize cached materials. */
+       * Since all batches are compiled, request finalize cached materials. */
       GPU_material_finalize_cached(cached_materials);
     }
     else {

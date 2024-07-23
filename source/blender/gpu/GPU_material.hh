@@ -259,11 +259,11 @@ void GPU_material_free(ListBase *gpumaterial);
  * Returns a handle that can be used to poll if all materials have been
  * compiled, and to retrieve the compiled result.
  * Materials whose pass is already being compiled are removed from the batch and will be appended
- * to `cached_mats`. The `cached mats` must be be passed to `GPU_material_finalize_cached` after
- * the current and all the previous batches have finalized.
+ * to `cached_mats` and must be be passed to `GPU_material_finalize_cached` once all batches have
+ * finalized.
  * NOTE: This function is asynchronous on OpenGL, but it's blocking on Vulkan and Metal.
- * WARNING: The material pointers and their pass->create_info should be valid
- * until `GPU_material_batch_finalize` has returned.
+ * WARNING: The material pointers and their pass->create_info should be valid until
+ * `GPU_material_batch_finalize` has returned.
  */
 BatchHandle GPU_material_batch_compile(blender::Vector<GPUMaterial *> &mats,
                                        blender::Vector<GPUMaterial *> &cached_mats);
@@ -280,10 +280,6 @@ bool GPU_material_batch_is_ready(BatchHandle handle);
  * WARNING: The handle will be invalidated by this call, you can't process the same batch twice.
  */
 void GPU_material_batch_finalize(BatchHandle &handle, blender::Span<GPUMaterial *> mats);
-/**
- * Finalize the cached materials from `GPU_material_batch_compile`.
- * See `GPU_material_batch_compile` for details on the correct usage.
- */
 void GPU_material_finalize_cached(blender::Vector<GPUMaterial *> &cached_materials);
 
 void GPU_material_acquire(GPUMaterial *mat);
