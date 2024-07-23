@@ -1029,8 +1029,7 @@ void GPU_material_compile(GPUMaterial *mat)
   gpu_material_finalize(mat, success);
 }
 
-BatchHandle GPU_material_batch_compile(blender::Vector<GPUMaterial *> &mats,
-                                       blender::Vector<GPUMaterial *> &cached_mats)
+BatchHandle GPU_material_batch_compile(blender::Span<GPUMaterial *> mats)
 {
   blender::Vector<GPUShaderCreateInfo *> infos;
   infos.reserve(mats.size());
@@ -1043,17 +1042,12 @@ BatchHandle GPU_material_batch_compile(blender::Vector<GPUMaterial *> &mats,
 #else
     const char *name = __func__;
 #endif
+    mat->do_batch_compilation = false;
     if (GPUShaderCreateInfo *info = GPU_pass_begin_compilation(mat->pass, name)) {
       infos.append(info);
       mat->do_batch_compilation = true;
     }
-    else {
-      mat->do_batch_compilation = false;
-      cached_mats.append(mat);
-    }
   }
-
-  mats.remove_if([](GPUMaterial *mat) { return !mat->do_batch_compilation; });
 
   return GPU_shader_batch_create_from_infos(infos);
 }
@@ -1068,18 +1062,12 @@ void GPU_material_batch_finalize(BatchHandle &handle, blender::Span<GPUMaterial 
   blender::Vector<GPUShader *> shaders = GPU_shader_batch_finalize(handle);
   int i = 0;
   for (GPUMaterial *mat : mats) {
-    bool success = GPU_pass_finalize_compilation(mat->pass, shaders[i++]);
+    bool success = true;
+    if (mat->do_batch_compilation) {
+      success = GPU_pass_finalize_compilation(mat->pass, shaders[i++]);
+    }
     gpu_material_finalize(mat, success);
-    GPU_material_release(mat);
   }
-}
-
-void GPU_material_finalize_cached(blender::Vector<GPUMaterial *> &cached_materials)
-{
-  for (GPUMaterial *mat : cached_materials) {
-    gpu_material_finalize(mat, GPU_pass_shader_get(mat->pass) != nullptr);
-  }
-  cached_materials.clear();
 }
 
 void GPU_material_optimize(GPUMaterial *mat)

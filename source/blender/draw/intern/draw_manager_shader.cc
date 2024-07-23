@@ -91,7 +91,6 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
 
   Vector<GPUMaterial *> next_batch;
   Map<BatchHandle, Vector<GPUMaterial *>> batches;
-  Vector<GPUMaterial *> cached_materials;
 
   while (true) {
     if (worker_status->stop) {
@@ -127,7 +126,7 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
     else if (!next_batch.is_empty()) {
       /* (only if use_parallel_compilation == true)
        * We ran out of pending materials. Request the compilation of the current batch. */
-      BatchHandle batch_handle = GPU_material_batch_compile(next_batch, cached_materials);
+      BatchHandle batch_handle = GPU_material_batch_compile(next_batch);
       batches.add(batch_handle, next_batch);
       next_batch.clear();
     }
@@ -143,12 +142,10 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
       for (BatchHandle handle : ready_handles) {
         Vector<GPUMaterial *> batch = batches.pop(handle);
         GPU_material_batch_finalize(handle, batch);
+        for (GPUMaterial *mat : batch) {
+          GPU_material_release(mat);
+        }
       }
-    }
-    else if (!cached_materials.is_empty()) {
-      /* (only if use_parallel_compilation == true)
-       * Since all batches are compiled, request finalize cached materials. */
-      GPU_material_finalize_cached(cached_materials);
     }
     else {
       /* Check for Material Optimization job once there are no more
@@ -186,8 +183,10 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
   for (BatchHandle handle : batches.keys()) {
     Vector<GPUMaterial *> &batch = batches.lookup(handle);
     GPU_material_batch_finalize(handle, batch);
+    for (GPUMaterial *mat : batch) {
+      GPU_material_release(mat);
+    }
   }
-  GPU_material_finalize_cached(cached_materials);
 
   GPU_context_active_set(nullptr);
   WM_system_gpu_context_release(system_gpu_context);
