@@ -875,6 +875,7 @@ void BKE_main_deduplicate_locked_ids(Main &bmain)
   }
   FOREACH_MAIN_ID_END;
 
+  blender::Set<ID *> ids_to_delete;
   for (const blender::Span<ID *> ids_with_same_hash : ids_with_hash.values()) {
     if (ids_with_same_hash.size() <= 1) {
       /* Nothing to do, because there are no duplicates. */
@@ -890,8 +891,10 @@ void BKE_main_deduplicate_locked_ids(Main &bmain)
       if (id != id_to_keep) {
         ID_NEW_SET(id, id_to_keep);
         BKE_libblock_relink_to_newid(&bmain, id, 0);
+        ids_to_delete.add(id);
       }
     }
   }
   BKE_main_id_newptr_and_tag_clear(&bmain);
+  BKE_id_multi_delete(&bmain, ids_to_delete);
 }
