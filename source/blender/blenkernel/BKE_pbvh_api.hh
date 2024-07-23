@@ -238,10 +238,7 @@ class Tree {
   PBVHPixels pixels_;
 
  public:
-  Tree(const Type type)
-  {
-    type_ = type;
-  }
+  Tree(const Type type) : type_(type) {}
   ~Tree();
 
   Type type() const
