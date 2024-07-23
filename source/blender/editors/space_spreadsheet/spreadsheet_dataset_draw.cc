@@ -523,7 +523,7 @@ class GeometryInstancesTreeView : public ui::AbstractTreeView {
 
 class GeometryDataSetTreeView : public ui::AbstractTreeView {
  private:
-  bke::GeometrySet root_geometry_set_;
+  bke::GeometrySet geometry_set_;
   SpaceSpreadsheet &sspreadsheet_;
   bScreen &screen_;
 
@@ -531,7 +531,7 @@ class GeometryDataSetTreeView : public ui::AbstractTreeView {
 
  public:
   GeometryDataSetTreeView(bke::GeometrySet geometry_set, const bContext &C)
-      : root_geometry_set_(std::move(geometry_set)),
+      : geometry_set_(std::move(geometry_set)),
         sspreadsheet_(*CTX_wm_space_spreadsheet(&C)),
         screen_(*CTX_wm_screen(&C))
   {
@@ -539,7 +539,7 @@ class GeometryDataSetTreeView : public ui::AbstractTreeView {
 
   void build_tree() override
   {
-    this->build_tree_for_geometry(root_geometry_set_, *this, true);
+    this->build_tree_for_geometry(geometry_set_, *this, true);
   }
 
   void build_tree_for_geometry(const bke::GeometrySet &geometry,
@@ -762,22 +762,23 @@ void spreadsheet_data_set_panel_draw(const bContext *C, Panel *panel)
   uiBlock *block = uiLayoutGetBlock(layout);
 
   UI_block_layout_set_current(block, layout);
+  bke::GeometrySet root_geometry = spreadsheet_get_display_geometry_set(sspreadsheet, object);
 
   {
     ui::AbstractTreeView *tree_view = UI_block_add_view(
         *block,
         "Instances Tree View",
-        std::make_unique<GeometryInstancesTreeView>(
-            spreadsheet_get_display_geometry_set(sspreadsheet, object), *C));
+        std::make_unique<GeometryInstancesTreeView>(root_geometry, *C));
     tree_view->set_context_menu_title("Spreadsheet");
     ui::TreeViewBuilder::build_tree_view(*tree_view, *layout);
   }
   {
+    bke::GeometrySet instance_geometry = get_geometry_set_for_instance_ids(
+        root_geometry, {sspreadsheet->instance_ids, sspreadsheet->instance_ids_num});
     ui::AbstractTreeView *tree_view = UI_block_add_view(
         *block,
         "Data Set Tree View",
-        std::make_unique<GeometryDataSetTreeView>(
-            spreadsheet_get_display_geometry_set(sspreadsheet, object), *C));
+        std::make_unique<GeometryDataSetTreeView>(std::move(instance_geometry), *C));
     tree_view->set_context_menu_title("Spreadsheet");
     ui::TreeViewBuilder::build_tree_view(*tree_view, *layout);
   }

@@ -633,8 +633,8 @@ bke::GeometrySet spreadsheet_get_display_geometry_set(const SpaceSpreadsheet *ss
   return geometry_set;
 }
 
-static bke::GeometrySet get_geometry_set_for_instance_ids(
-    const bke::GeometrySet &root_geometry, const Span<SpreadsheetInstanceID> instance_ids)
+bke::GeometrySet get_geometry_set_for_instance_ids(const bke::GeometrySet &root_geometry,
+                                                   const Span<SpreadsheetInstanceID> instance_ids)
 {
   bke::GeometrySet geometry = root_geometry;
   for (const SpreadsheetInstanceID &instance_id : instance_ids) {
