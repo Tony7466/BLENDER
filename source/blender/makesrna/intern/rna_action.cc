@@ -795,7 +795,7 @@ static FCurve *rna_Action_fcurve_new(bAction *act,
   if (use_backward_compatible_api(action)) {
     /* Add the F-Curve to the channelbag for the first slot. */
     animrig::ChannelBag &channelbag = animrig::legacy::channelbag_ensure(action);
-    FCurve *fcurve = channelbag.fcurve_create_unique({data_path, index});
+    FCurve *fcurve = channelbag.fcurve_create_unique(bmain, {data_path, index});
     if (!fcurve) {
       /* The only reason fcurve_create_unique() returns nullptr is when the curve
        * already exists. */
