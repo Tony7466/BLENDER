@@ -4,6 +4,7 @@
 
 set(INC
   ../blender/blenkernel
+  ../blender/blenloader
   ../blender/editors/include
   ../blender/gpu
   ../blender/imbuf

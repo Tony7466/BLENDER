@@ -54,6 +54,8 @@
 #include "BKE_vfont.hh"
 #include "BKE_volume.hh"
 
+#include "BLO_readfile.hh"
+
 #ifndef WITH_PYTHON_MODULE
 #  include "BLI_args.h"
 #endif
@@ -337,6 +339,11 @@ int main(int argc,
     return 0;
   }
 #endif
+
+  /* Initialize storage for allocation info from readfile code before calling
+   * #MEM_init_memleak_detection, to ensure that these strings are not freed before the destruction
+   * of the #MemLeakPrinter. */
+  BLO_init_readfile_alloc_info_storage();
 
   /* NOTE: Special exception for guarded allocator type switch:
    *       we need to perform switch from lock-free to fully
