@@ -666,11 +666,17 @@ if(WITH_CYCLES_DEVICE_OPTIX AND WITH_CYCLES_CUDA_BINARIES)
     ${SRC_KERNEL_DEVICE_OPTIX_HEADERS})
 
   # OptiX IR support was added to the compiler in CUDA 11.7 and CUDA_OPTIX_COMPILATION was added in CMake 3.27
-  if(OPTIX_VERSION VERSION_LESS 7.5 OR CUDA_VERSION VERSION_LESS 11.7 OR CMAKE_VERSION VERSION_LESS 3.27)
+  if(WITH_CYCLES_OPTIX_BUILD_OPTIX_IR AND (OPTIX_VERSION VERSION_LESS 7.5 OR CUDA_VERSION VERSION_LESS 11.7 OR CMAKE_VERSION VERSION_LESS 3.27))
+    message(STATUS "OptiX 7.5+, CUDA 11.7+ or CMake 3.27+ not found, disabling WITH_CYCLES_OPTIX_BUILD_OPTIX_IR")
+    set(WITH_CYCLES_OPTIX_BUILD_OPTIX_IR OFF)
+  endif()
+  if(NOT WITH_CYCLES_OPTIX_BUILD_OPTIX_IR)
+    set(format "ptx")
     set_target_properties(cycles_kernel_optix PROPERTIES
       CUDA_ARCHITECTURES 50
       CUDA_PTX_COMPILATION ON) # Fall back to PTX when OptiX IR is not available
   else()
+    set(format "optixir")
     set_target_properties(cycles_kernel_optix PROPERTIES
       CUDA_ARCHITECTURES 50
       CUDA_OPTIX_COMPILATION ON)
@@ -686,8 +692,31 @@ if(WITH_CYCLES_DEVICE_OPTIX AND WITH_CYCLES_CUDA_BINARIES)
 
   cycles_set_solution_folder(cycles_kernel_optix)
 
-  # OptiX IR does not compress further, so install it as-is
-  delayed_install("" "$<TARGET_OBJECTS:cycles_kernel_optix>" ${CYCLES_INSTALL_PATH}/lib/optix)
+  if(${format} STREQUAL "ptx")
+    foreach(optix_source_file ${SRC_KERNEL_DEVICE_OPTIX})
+      # Get object file name
+      get_filename_component(optix_file ${optix_source_file} NAME_WE)
+      set(optix_file ${optix_file}.${format})
+      set(optix_file_compressed ${optix_file}.zst)
+      # Get full path to object file (this is a hack since CMake provides no way to query those paths from the cycles_kernel_optix target)
+      list(FIND SRC_KERNEL_DEVICE_OPTIX ${optix_source_file} optix_source_file_index)
+      set(optix_file $<LIST:GET,$<TARGET_OBJECTS:cycles_kernel_optix>,${optix_source_file_index}>)
+
+      add_custom_command(
+        OUTPUT ${optix_file_compressed}
+        DEPENDS cycles_kernel_optix
+        COMMAND "$<TARGET_FILE:zstd_compress>" ${optix_file} ${optix_file_compressed})
+
+      list(APPEND optix_link ${optix_file_compressed})
+      delayed_install("${CMAKE_CURRENT_BINARY_DIR}" ${optix_file_compressed} ${CYCLES_INSTALL_PATH}/lib/optix)
+    endforeach()
+
+    add_custom_target(cycles_kernel_optix_link ALL DEPENDS ${optix_link})
+    cycles_set_solution_folder(cycles_kernel_optix_link)
+  else()
+    # OptiX IR does not compress further, so install it as-is
+    delayed_install("" "$<TARGET_OBJECTS:cycles_kernel_optix>" ${CYCLES_INSTALL_PATH}/lib/optix)
+  endif()
 endif()
 
 # HIP module
