@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.1.0 Alpha (b'0b00b360f7ae')\n"
+"Project-Id-Version: Blender 4.3.0 Alpha (b'de443e038c4e')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-12-18 13:45:58\n"
+"POT-Creation-Date: 2024-07-22 07:23+0000\n"
 "PO-Revision-Date: 2023-10-06 09:54+0000\n"
 "Last-Translator: Eitan Traurig <eitant13@gmail.com>\n"
 "Language-Team: Hebrew <https://translate.blender.org/projects/blender-ui/ui/he/>\n"
@@ -59,38 +59,6 @@ msgid "Select"
 msgstr "רחוב"
 
 
-msgid "Module"
-msgstr "לודומ"
-
-
-msgid "Module name"
-msgstr "לודומה םש"
-
-
-msgid "Password"
-msgstr "המסיס"
-
-
-msgid "Error Message"
-msgstr "האיגש תעדוה"
-
-
-msgid "Message"
-msgstr "העדוה"
-
-
-msgid "Off"
-msgstr "יובכ"
-
-
-msgid "Full"
-msgstr "אלמ"
-
-
-msgid "Animation Data"
-msgstr "היצמינא ינותנ"
-
-
 msgid "Replace"
 msgstr "ףלחה"
 
@@ -105,6 +73,30 @@ msgstr "ריסחהל"
 
 msgid "Multiply"
 msgstr "ליפכהל"
+
+
+msgid "Module"
+msgstr "לודומ"
+
+
+msgid "Module name"
+msgstr "לודומה םש"
+
+
+msgid "Off"
+msgstr "יובכ"
+
+
+msgid "Full"
+msgstr "אלמ"
+
+
+msgid "Center"
+msgstr "זכרמ"
+
+
+msgid "Animation Data"
+msgstr "היצמינא ינותנ"
 
 
 msgid "Hold"
@@ -252,30 +244,8 @@ msgid "Tail"
 msgstr "בנז"
 
 
-msgid "Remove"
-msgstr "רסה"
-
-
 msgid "Vertex Color"
 msgstr "דוקדוק עבצ"
-
-
-msgid "Pencil"
-msgstr "ןורפע"
-
-
-msgid "Pen"
-msgstr "טע"
-
-
-msgctxt "GPencil"
-msgid "Smooth"
-msgstr "קלח"
-
-
-msgctxt "GPencil"
-msgid "Strength"
-msgstr "המצוע"
 
 
 msgctxt "Amount"
@@ -301,10 +271,6 @@ msgstr "לאמש"
 
 msgid "Right"
 msgstr "ןימי"
-
-
-msgid "Center"
-msgstr "זכרמ"
 
 
 msgid "Gamma"
@@ -437,12 +403,12 @@ msgid "Vertex Group"
 msgstr "דוקדוק תצובק"
 
 
-msgid "Generated"
-msgstr "רצוימ"
-
-
 msgid "Collection"
 msgstr "ףסוא"
+
+
+msgid "Generated"
+msgstr "רצוימ"
 
 
 msgid "Window"
@@ -510,18 +476,19 @@ msgid "Smooth"
 msgstr "קלח"
 
 
-msgctxt "Mask"
+msgctxt "GPencil"
 msgid "Smooth"
 msgstr "קלח"
 
 
-msgctxt "Brush"
-msgid "Sculpt Tool"
-msgstr "לוסיפ ילכ"
+msgctxt "GPencil"
+msgid "Strength"
+msgstr "המצוע"
 
 
-msgid "Sculpt Tool"
-msgstr "לוסיפ ילכ"
+msgctxt "Mask"
+msgid "Smooth"
+msgstr "קלח"
 
 
 msgid "Up"
@@ -534,10 +501,6 @@ msgstr "ביתנ"
 
 msgid "Mean"
 msgstr "עצוממ"
-
-
-msgid "Movie"
-msgstr "טרס"
 
 
 msgctxt "Material"
@@ -767,6 +730,10 @@ msgid "Select Vertex Group"
 msgstr "דוקדוק תצובק רחב"
 
 
+msgid "Remove"
+msgstr "רסה"
+
+
 msgid "Image Name"
 msgstr "הנומת םש"
 
@@ -835,16 +802,16 @@ msgid "Language"
 msgstr "הפש"
 
 
+msgid "Password"
+msgstr "המסיס"
+
+
 msgid "Language Name"
 msgstr "הפשה םש"
 
 
 msgid "Languages"
 msgstr "תופש"
-
-
-msgid "Hide Names"
-msgstr "תומש רתסה"
 
 
 msgctxt "Sequence"
@@ -867,6 +834,10 @@ msgstr "םש יפל ןיימ"
 
 msgid "AOV"
 msgstr "AOV"
+
+
+msgid "Error Message"
+msgstr "האיגש תעדוה"
 
 
 msgctxt "WindowManager"
@@ -933,11 +904,6 @@ msgid "Location:"
 msgstr "‏:םוקימ"
 
 
-msgctxt "Operator"
-msgid "Grease Pencil"
-msgstr "Grease Pencil"
-
-
 msgid "Nothing selected"
 msgstr "רבד רחבנ אל"
 
@@ -957,6 +923,10 @@ msgid "Remove Shortcut"
 msgstr "ךרד־רוציק רסה"
 
 
+msgid "%d items"
+msgstr "‪%d‬ םיטירפ"
+
+
 msgid "Red:"
 msgstr ":םודא"
 
@@ -973,32 +943,12 @@ msgid "Saturation:"
 msgstr ":היוור"
 
 
-msgid "Shortcut: %s"
-msgstr "‬%s‪ :ךרד־רוציק"
+msgid "Cancel"
+msgstr "לוטיב"
 
 
-msgid "Python: %s"
-msgstr "Python: ‪%s‬"
-
-
-msgid "Radians: %f"
-msgstr "‬%f‪ :םינאידר"
-
-
-msgid "Expression: %s"
-msgstr "‬%s‪ :יוטיב"
-
-
-msgid "Library: %s"
-msgstr "‬%s‪ :היירפס"
-
-
-msgid "Disabled: %s"
-msgstr "‬%s‪ :תבשומ"
-
-
-msgid "Python: %s.%s"
-msgstr "Python: ‪%s‬.‪%s‬"
+msgid "Movie"
+msgstr "טרס"
 
 
 msgid "No Properties"
@@ -1015,10 +965,6 @@ msgstr "תודוקנ קחמ"
 
 msgid "Stop this job"
 msgstr "וז הדובע רוצע"
-
-
-msgid "%d items"
-msgstr "‪%d‬ םיטירפ"
 
 
 msgid "vertex data"
@@ -1043,10 +989,6 @@ msgstr ":ץבוק ביתנ"
 
 msgid "File path"
 msgstr "ץבוק ביתנ"
-
-
-msgid "Cancel"
-msgstr "לוטיב"
 
 
 msgid "File name"

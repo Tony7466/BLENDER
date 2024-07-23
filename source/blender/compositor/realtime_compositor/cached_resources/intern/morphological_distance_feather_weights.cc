@@ -14,8 +14,8 @@
 
 #include "DNA_scene_types.h"
 
-#include "GPU_shader.h"
-#include "GPU_texture.h"
+#include "GPU_shader.hh"
+#include "GPU_texture.hh"
 
 #include "COM_context.hh"
 #include "COM_morphological_distance_feather_weights.hh"
@@ -35,7 +35,7 @@ MorphologicalDistanceFeatherWeightsKey::MorphologicalDistanceFeatherWeightsKey(i
 
 uint64_t MorphologicalDistanceFeatherWeightsKey::hash() const
 {
-  return get_default_hash_2(type, radius);
+  return get_default_hash(type, radius);
 }
 
 bool operator==(const MorphologicalDistanceFeatherWeightsKey &a,

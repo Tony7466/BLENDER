@@ -27,7 +27,7 @@ class Context(StructRNA):
         :type coerce: boolean
         """
         # This is a convenience wrapper around `StructRNA.path_resolve` which doesn't support accessing context members.
-        # Without this wrapper many users were writing `exec("context.%s" % data_path)` which is a security
+        # Without this wrapper many users were writing `exec("context.{:s}".format(data_path))` which is a security
         # concern if the `data_path` comes from an unknown source.
         # This function performs the initial lookup, after that the regular `path_resolve` function is used.
 
@@ -53,7 +53,7 @@ class Context(StructRNA):
         # to simplify exception handling for the caller.
         value = getattr(self, attr, _sentinel)
         if value is _sentinel:
-            raise ValueError("Path could not be resolved: %r" % attr)
+            raise ValueError("Path could not be resolved: {!r}".format(attr))
 
         if value is None:
             return value
@@ -62,22 +62,22 @@ class Context(StructRNA):
         if isinstance(value, list) and path_rest.startswith("["):
             index_str, div, index_tail = path_rest[1:].partition("]")
             if not div:
-                raise ValueError("Path index is not terminated: %s%s" % (attr, path_rest))
+                raise ValueError("Path index is not terminated: {:s}{:s}".format(attr, path_rest))
             try:
                 index = int(index_str)
             except ValueError:
-                raise ValueError("Path index is invalid: %s[%s]" % (attr, index_str))
+                raise ValueError("Path index is invalid: {:s}[{:s}]".format(attr, index_str))
             if 0 <= index < len(value):
                 path_rest = index_tail
                 value = value[index]
             else:
-                raise IndexError("Path index out of range: %s[%s]" % (attr, index_str))
+                raise IndexError("Path index out of range: {:s}[{:s}]".format(attr, index_str))
 
         # Resolve the rest of the path if necessary.
         if path_rest:
             path_resolve_fn = getattr(value, "path_resolve", None)
             if path_resolve_fn is None:
-                raise ValueError("Path %s resolves to a non RNA value" % attr)
+                raise ValueError("Path {:s} resolves to a non RNA value".format(attr))
             return path_resolve_fn(path_rest, coerce)
 
         return value
@@ -468,7 +468,7 @@ class _GenericBone:
             return id_data.edit_bones
         if isinstance(self, Bone):
             return id_data.bones
-        raise RuntimeError("Invalid type %r" % self)
+        raise RuntimeError("Invalid type {!r}".format(self))
 
 
 class PoseBone(StructRNA, _GenericBone, metaclass=StructMetaPropGroup):
@@ -510,7 +510,7 @@ class EditBone(StructRNA, _GenericBone, metaclass=StructMetaPropGroup):
 
     def transform(self, matrix, *, scale=True, roll=True):
         """
-        Transform the the bones head, tail, roll and envelope
+        Transform the bones head, tail, roll and envelope
         (when the matrix has a scale component).
 
         :arg matrix: 3x3 or 4x4 transformation matrix.
@@ -536,6 +536,22 @@ class EditBone(StructRNA, _GenericBone, metaclass=StructMetaPropGroup):
 
         if roll:
             self.align_roll(matrix @ z_vec)
+
+
+class BoneCollection(StructRNA, metaclass=StructMetaPropGroup):
+    __slots__ = ()
+
+    @property
+    def bones_recursive(self):
+        """A set of all bones assigned to this bone collection and its child collections."""
+        bones = set()
+        collections = [self]
+
+        while collections:
+            visit = collections.pop()
+            bones.update(visit.bones)
+            collections.extend(visit.children)
+        return bones
 
 
 def ord_ind(i1, i2):
@@ -879,7 +895,7 @@ class Gizmo(StructRNA):
         :arg type: The type of shape to create in (POINTS, LINES, TRIS, LINE_STRIP).
         :type type: string
         :arg verts: Coordinates.
-        :type verts: sequence of of 2D or 3D coordinates.
+        :type verts: sequence of 2D or 3D coordinates.
         :arg display_name: Optional callback that takes the full path, returns the name to display.
         :type display_name: Callable that takes a string and returns a string.
         :return: The newly created shape.
@@ -950,9 +966,17 @@ class Macro(StructRNA):
     __slots__ = ()
 
     @classmethod
-    def define(cls, opname):
+    def define(cls, operator):
+        """
+        Append an operator to a registered macro class.
+
+        :arg operator: Identifier of the operator. This does not have to be defined when this function is called.
+        :type operator: string
+        :return: The operator macro for property access.
+        :rtype: :class:`OperatorMacro`
+        """
         from _bpy import ops
-        return ops.macro_define(cls, opname)
+        return ops.macro_define(cls, operator)
 
 
 class PropertyGroup(StructRNA, metaclass=RNAMetaPropGroup):
@@ -1028,7 +1052,12 @@ class _GenericUI:
 
     @classmethod
     def is_extended(cls):
-        return bool(getattr(cls.draw, "_draw_funcs", None))
+        draw_funcs = getattr(cls.draw, "_draw_funcs", None)
+        if draw_funcs is None:
+            return False
+        # Ignore the first item (the original draw function).
+        # This can happen when enabling then disabling add-ons.
+        return len(draw_funcs) > 1
 
     @classmethod
     def append(cls, draw_func):
@@ -1078,7 +1107,7 @@ class Menu(StructRNA, _GenericUI, metaclass=RNAMeta):
     def path_menu(self, searchpaths, operator, *,
                   props_default=None, prop_filepath="filepath",
                   filter_ext=None, filter_path=None, display_name=None,
-                  add_operator=None):
+                  add_operator=None, add_operator_props=None):
         """
         Populate a menu from a list of paths.
 
@@ -1155,6 +1184,9 @@ class Menu(StructRNA, _GenericUI, metaclass=RNAMeta):
                 props = row.operator(add_operator, text="", icon='REMOVE')
                 props.name = name
                 props.remove_name = True
+                if add_operator_props is not None:
+                    for attr, value in add_operator_props.items():
+                        setattr(props, attr, value)
 
         if add_operator:
             wm = bpy.data.window_managers[0]
@@ -1168,6 +1200,9 @@ class Menu(StructRNA, _GenericUI, metaclass=RNAMeta):
 
             props = row.operator(add_operator, text="", icon='ADD')
             props.name = wm.preset_name
+            if add_operator_props is not None:
+                for attr, value in add_operator_props.items():
+                    setattr(props, attr, value)
 
     def draw_preset(self, _context):
         """
@@ -1184,12 +1219,14 @@ class Menu(StructRNA, _GenericUI, metaclass=RNAMeta):
         ext_valid = getattr(self, "preset_extensions", {".py", ".xml"})
         props_default = getattr(self, "preset_operator_defaults", None)
         add_operator = getattr(self, "preset_add_operator", None)
+        add_operator_props = getattr(self, "preset_add_operator_properties", None)
         self.path_menu(
             bpy.utils.preset_paths(self.preset_subdir),
             self.preset_operator,
             props_default=props_default,
             filter_ext=lambda ext: ext.lower() in ext_valid,
             add_operator=add_operator,
+            add_operator_props=add_operator_props,
             display_name=lambda name: bpy.path.display_name(name, title_case=False)
         )
 
@@ -1237,10 +1274,15 @@ class NodeSocket(StructRNA, metaclass=RNAMetaPropGroup):
         List of node links from or to this socket.
 
         .. note:: Takes ``O(len(nodetree.links))`` time."""
-        return tuple(
-            link for link in self.id_data.links
-            if (link.from_socket == self or
-                link.to_socket == self))
+        links = (link for link in self.id_data.links
+                 if self in (link.from_socket, link.to_socket))
+
+        if not self.is_output:
+            links = sorted(links,
+                           key=lambda link: link.multi_input_sort_id,
+                           reverse=True)
+
+        return tuple(links)
 
 
 class NodeTreeInterfaceItem(StructRNA):

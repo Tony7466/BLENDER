@@ -6,11 +6,9 @@
 
 /** \file
  * \ingroup bke
- * \brief External data structures for PBVH. Does not include data structures internal to the draw
- * code.
+ * \brief External data structures for PBVH. Does not include internal data structures.
  */
 
-#include "BLI_compiler_compat.h"
 #include "BLI_utildefines.h"
 
 struct PBVHNode;
@@ -22,13 +20,12 @@ enum PBVHType {
   PBVH_BMESH,
 };
 
-/* #PBVHNodeFlags is needed by `DRW_render.h` and `draw_cache.cc`. */
+/* #PBVHNodeFlags is needed by `DRW_render.hh` and `draw_cache.cc`. */
 enum PBVHNodeFlags {
   PBVH_Leaf = 1 << 0,
 
   PBVH_UpdateNormals = 1 << 1,
   PBVH_UpdateBB = 1 << 2,
-  PBVH_UpdateOriginalBB = 1 << 3,
   PBVH_UpdateDrawBuffers = 1 << 4,
   PBVH_UpdateRedraw = 1 << 5,
   PBVH_UpdateMask = 1 << 6,
@@ -76,14 +73,12 @@ struct PBVHPublic {
 struct PBVH;
 struct PBVHNode;
 
-BLI_INLINE PBVHType BKE_pbvh_type(const PBVH *pbvh)
+inline PBVHType BKE_pbvh_type(const PBVH &pbvh)
 {
-  return ((const PBVHPublic *)pbvh)->type;
+  return ((const PBVHPublic &)pbvh).type;
 }
 
-/* Needed for the render engines integration. */
-void BKE_pbvh_is_drawing_set(PBVH *pbvh, bool val);
-void BKE_pbvh_draw_debug_cb(PBVH *pbvh,
+void BKE_pbvh_draw_debug_cb(PBVH &pbvh,
                             void (*draw_fn)(PBVHNode *node,
                                             void *user_data,
                                             const float bmin[3],

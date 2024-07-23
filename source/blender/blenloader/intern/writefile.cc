@@ -91,6 +91,7 @@
 #include "BLI_blenlib.h"
 #include "BLI_endian_defines.h"
 #include "BLI_endian_switch.h"
+#include "BLI_implicit_sharing.hh"
 #include "BLI_link_utils.h"
 #include "BLI_linklist.h"
 #include "BLI_math_base.h"
@@ -99,26 +100,28 @@
 
 #include "MEM_guardedalloc.h" /* MEM_freeN */
 
+#include "BKE_asset.hh"
 #include "BKE_blender_version.h"
-#include "BKE_bpath.h"
-#include "BKE_global.h" /* For #Global `G`. */
-#include "BKE_idprop.h"
-#include "BKE_idtype.h"
-#include "BKE_layer.h"
-#include "BKE_lib_id.h"
+#include "BKE_bpath.hh"
+#include "BKE_global.hh" /* For #Global `G`. */
+#include "BKE_idprop.hh"
+#include "BKE_idtype.hh"
+#include "BKE_layer.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_lib_override.hh"
-#include "BKE_lib_query.h"
+#include "BKE_lib_query.hh"
 #include "BKE_main.hh"
 #include "BKE_main_namemap.hh"
 #include "BKE_node.hh"
 #include "BKE_packedFile.h"
-#include "BKE_report.h"
-#include "BKE_workspace.h"
+#include "BKE_preferences.h"
+#include "BKE_report.hh"
+#include "BKE_workspace.hh"
 
 #include "BLO_blend_defs.hh"
 #include "BLO_blend_validate.hh"
 #include "BLO_read_write.hh"
-#include "BLO_readfile.h"
+#include "BLO_readfile.hh"
 #include "BLO_undofile.hh"
 #include "BLO_writefile.hh"
 
@@ -435,7 +438,7 @@ struct BlendWriter {
 
 static WriteData *writedata_new(WriteWrap *ww)
 {
-  WriteData *wd = static_cast<WriteData *>(MEM_callocN(sizeof(*wd), "writedata"));
+  WriteData *wd = MEM_new<WriteData>(__func__);
 
   wd->sdna = DNA_sdna_current_get();
 
@@ -487,7 +490,7 @@ static void writedata_free(WriteData *wd)
   if (wd->buffer.buf) {
     MEM_freeN(wd->buffer.buf);
   }
-  MEM_freeN(wd);
+  MEM_delete(wd);
 }
 
 /** \} */
@@ -612,28 +615,27 @@ static bool mywrite_end(WriteData *wd)
 static void mywrite_id_begin(WriteData *wd, ID *id)
 {
   if (wd->use_memfile) {
-    wd->mem.current_id_session_uuid = id->session_uuid;
+    wd->mem.current_id_session_uid = id->session_uid;
 
     /* If current next memchunk does not match the ID we are about to write, or is not the _first_
-     * one for said ID, try to find the correct memchunk in the mapping using ID's session_uuid. */
-    MemFileChunk *curr_memchunk = wd->mem.reference_current_chunk;
-    MemFileChunk *prev_memchunk = curr_memchunk != nullptr ?
-                                      static_cast<MemFileChunk *>(curr_memchunk->prev) :
-                                      nullptr;
-    if (wd->mem.id_session_uuid_mapping != nullptr &&
-        (curr_memchunk == nullptr || curr_memchunk->id_session_uuid != id->session_uuid ||
-         (prev_memchunk != nullptr &&
-          (prev_memchunk->id_session_uuid == curr_memchunk->id_session_uuid))))
+     * one for said ID, try to find the correct memchunk in the mapping using ID's session_uid. */
+    const MemFileChunk *curr_memchunk = wd->mem.reference_current_chunk;
+    const MemFileChunk *prev_memchunk = curr_memchunk != nullptr ?
+                                            static_cast<MemFileChunk *>(curr_memchunk->prev) :
+                                            nullptr;
+    if (curr_memchunk == nullptr || curr_memchunk->id_session_uid != id->session_uid ||
+        (prev_memchunk != nullptr &&
+         (prev_memchunk->id_session_uid == curr_memchunk->id_session_uid)))
     {
-      void *ref = BLI_ghash_lookup(wd->mem.id_session_uuid_mapping,
-                                   POINTER_FROM_UINT(id->session_uuid));
-      if (ref != nullptr) {
+      if (MemFileChunk *ref = wd->mem.id_session_uid_mapping.lookup_default(id->session_uid,
+                                                                            nullptr))
+      {
         wd->mem.reference_current_chunk = static_cast<MemFileChunk *>(ref);
       }
       /* Else, no existing memchunk found, i.e. this is supposed to be a new ID. */
     }
     /* Otherwise, we try with the current memchunk in any case, whether it is matching current
-     * ID's session_uuid or not. */
+     * ID's session_uid or not. */
   }
 }
 
@@ -648,7 +650,7 @@ static void mywrite_id_end(WriteData *wd, ID * /*id*/)
     /* Very important to do it after every ID write now, otherwise we cannot know whether a
      * specific ID changed or not. */
     mywrite_flush(wd);
-    wd->mem.current_id_session_uuid = MAIN_ID_SESSION_UUID_UNSET;
+    wd->mem.current_id_session_uid = MAIN_ID_SESSION_UID_UNSET;
   }
 }
 
@@ -933,6 +935,13 @@ static void write_userdef(BlendWriter *writer, const UserDef *userdef)
 
   LISTBASE_FOREACH (const bUserExtensionRepo *, repo_ref, &userdef->extension_repos) {
     BLO_write_struct(writer, bUserExtensionRepo, repo_ref);
+    BKE_preferences_extension_repo_write_data(writer, repo_ref);
+  }
+  LISTBASE_FOREACH (
+      const bUserAssetShelfSettings *, shelf_settings, &userdef->asset_shelves_settings)
+  {
+    BLO_write_struct(writer, bUserAssetShelfSettings, shelf_settings);
+    BKE_asset_catalog_path_list_blend_write(writer, shelf_settings->enabled_catalog_paths);
   }
 
   LISTBASE_FOREACH (const uiStyle *, style, &userdef->uistyles) {
@@ -1008,7 +1017,7 @@ static void write_libraries(WriteData *wd, Main *main)
                          "Data-block '%s' from lib '%s' is not linkable, but is flagged as "
                          "directly linked",
                          id->name,
-                         main->curlib->filepath_abs);
+                         main->curlib->runtime.filepath_abs);
             }
             writestruct(wd, ID_LINK_PLACEHOLDER, ID, 1, id);
           }
@@ -1185,6 +1194,14 @@ static int write_id_direct_linked_data_process_cb(LibraryIDLinkCallbackData *cb_
     return IDWALK_RET_NOP;
   }
 
+  if (!BKE_idtype_idcode_is_linkable(GS(id->name))) {
+    /* Usages of unlinkable IDs (aka ShapeKeys and some UI IDs) should never cause them to be
+     * considered as directly linked. This can often happen e.g. from UI data (the Outliner will
+     * have links to most IDs).
+     */
+    return IDWALK_RET_NOP;
+  }
+
   if (cb_flag & IDWALK_CB_DIRECT_WEAK_LINK) {
     id_lib_indirect_weak_link(id);
   }
@@ -1254,6 +1271,14 @@ static bool write_file_handle(Main *mainvar,
     FOREACH_MAIN_ID_END;
   }
 
+  /* Recompute all ID user-counts if requested. Allows to avoid skipping writing of IDs wrongly
+   * detected as unused due to invalid user-count. */
+  if (!wd->use_memfile) {
+    if (USER_EXPERIMENTAL_TEST(&U, use_recompute_usercount_on_save_debug)) {
+      BKE_main_id_refcount_recompute(mainvar, false);
+    }
+  }
+
   blo_split_main(&mainlist, mainvar);
 
   SNPRINTF(buf,
@@ -1302,10 +1327,18 @@ static bool write_file_handle(Main *mainvar,
 
         /* We only write unused IDs in undo case. */
         if (!wd->use_memfile) {
-          /* NOTE: All Scenes, WindowManagers and WorkSpaces should always be written to disk, so
-           * their user-count should never be zero currently. */
+          /* NOTE: All 'never unused' local IDs (Scenes, WindowManagers, ...) should always be
+           * written to disk, so their user-count should never be zero currently. Note that
+           * libraries have already been skipped above, as they need a specific handling. */
           if (id->us == 0) {
-            BLI_assert(!ELEM(GS(id->name), ID_SCE, ID_WM, ID_WS));
+            /* FIXME: #124857: Some old files seem to cause incorrect handling of their temp
+             * screens.
+             *
+             * See e.g. file attached to #124777 (from 2.79.1).
+             *
+             * For now ignore, issue is not obvious to track down (`temp` bScreen ID from read data
+             * _does_ have the proper `temp` tag), and seems anecdotal at worst. */
+            BLI_assert((id_type->flags & IDTYPE_FLAGS_NEVER_UNUSED) == 0);
             continue;
           }
 
@@ -1338,8 +1371,11 @@ static bool write_file_handle(Main *mainvar,
 
         /* If not writing undo data, properly set directly linked IDs as `LIB_TAG_EXTERN`. */
         if (!wd->use_memfile) {
-          BKE_library_foreach_ID_link(
-              bmain, id, write_id_direct_linked_data_process_cb, nullptr, IDWALK_READONLY);
+          BKE_library_foreach_ID_link(bmain,
+                                      id,
+                                      write_id_direct_linked_data_process_cb,
+                                      nullptr,
+                                      IDWALK_READONLY | IDWALK_INCLUDE_UI);
         }
 
         if (do_override) {
@@ -1498,6 +1534,14 @@ static bool BLO_write_file_impl(Main *mainvar,
   const bool use_userdef = params->use_userdef;
   const BlendThumbnail *thumb = params->thumb;
   const bool relbase_valid = (mainvar->filepath[0] != '\0');
+
+  /* Extra protection: Never save a non asset file as asset file. Otherwise a normal file is turned
+   * into an asset file, which can result in data loss because the asset system will allow editing
+   * this file from the UI, regenerating its content with just the asset and it dependencies. */
+  if ((write_flags & G_FILE_ASSET_EDIT_FILE) && !mainvar->is_asset_edit_file) {
+    BKE_reportf(reports, RPT_ERROR, "Cannot save normal file (%s) as asset system file", tempname);
+    return false;
+  }
 
   /* Path backup/restore. */
   void *path_list_backup = nullptr;
@@ -1783,9 +1827,19 @@ int BLO_get_struct_id_by_name(BlendWriter *writer, const char *struct_name)
   return struct_id;
 }
 
+void BLO_write_char_array(BlendWriter *writer, uint num, const char *data_ptr)
+{
+  BLO_write_raw(writer, sizeof(char) * size_t(num), data_ptr);
+}
+
 void BLO_write_int8_array(BlendWriter *writer, uint num, const int8_t *data_ptr)
 {
   BLO_write_raw(writer, sizeof(int8_t) * size_t(num), data_ptr);
+}
+
+void BLO_write_uint8_array(BlendWriter *writer, uint num, const uint8_t *data_ptr)
+{
+  BLO_write_raw(writer, sizeof(uint8_t) * size_t(num), data_ptr);
 }
 
 void BLO_write_int32_array(BlendWriter *writer, uint num, const int32_t *data_ptr)
@@ -1823,6 +1877,33 @@ void BLO_write_string(BlendWriter *writer, const char *data_ptr)
   if (data_ptr != nullptr) {
     BLO_write_raw(writer, strlen(data_ptr) + 1, data_ptr);
   }
+}
+
+void BLO_write_shared(BlendWriter *writer,
+                      const void *data,
+                      const size_t approximate_size_in_bytes,
+                      const blender::ImplicitSharingInfo *sharing_info,
+                      const blender::FunctionRef<void()> write_fn)
+{
+  if (data == nullptr) {
+    return;
+  }
+  if (BLO_write_is_undo(writer)) {
+    MemFile &memfile = *writer->wd->mem.written_memfile;
+    if (sharing_info != nullptr) {
+      if (memfile.shared_storage == nullptr) {
+        memfile.shared_storage = MEM_new<MemFileSharedStorage>(__func__);
+      }
+      if (memfile.shared_storage->map.add(data, sharing_info)) {
+        /* The undo-step takes (shared) ownership of the data, which also makes it immutable. */
+        sharing_info->add_user();
+        /* This size is an estimate, but good enough to count data with many users less. */
+        memfile.size += approximate_size_in_bytes / sharing_info->strong_users();
+        return;
+      }
+    }
+  }
+  write_fn();
 }
 
 bool BLO_write_is_undo(BlendWriter *writer)

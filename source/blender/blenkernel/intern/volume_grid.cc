@@ -16,7 +16,7 @@ namespace blender::bke::volume_grid {
 #ifdef WITH_OPENVDB
 
 /**
- * Multiple #VolumeDataGrid can implictly share the same underlying tree with different
+ * Multiple #VolumeDataGrid can implicitly share the same underlying tree with different
  * meta-data/transforms.
  */
 class OpenvdbTreeSharingInfo : public ImplicitSharingInfo {
@@ -28,7 +28,7 @@ class OpenvdbTreeSharingInfo : public ImplicitSharingInfo {
 
   void delete_self_with_data() override
   {
-    MEM_freeN(this);
+    MEM_delete(this);
   }
 
   void delete_data_only() override
@@ -93,41 +93,32 @@ void VolumeGridData::delete_self()
   MEM_delete(this);
 }
 
-VolumeTreeAccessToken VolumeGridData::tree_access_token() const
+const openvdb::GridBase &VolumeGridData::grid(VolumeTreeAccessToken &r_token) const
 {
-  VolumeTreeAccessToken user;
-  user.token_ = tree_access_token_;
-  return user;
+  return *this->grid_ptr(r_token);
 }
 
-const openvdb::GridBase &VolumeGridData::grid(const VolumeTreeAccessToken &access_token) const
+openvdb::GridBase &VolumeGridData::grid_for_write(VolumeTreeAccessToken &r_token)
 {
-  return *this->grid_ptr(access_token);
-}
-
-openvdb::GridBase &VolumeGridData::grid_for_write(const VolumeTreeAccessToken &access_token)
-{
-  return *this->grid_ptr_for_write(access_token);
+  return *this->grid_ptr_for_write(r_token);
 }
 
 std::shared_ptr<const openvdb::GridBase> VolumeGridData::grid_ptr(
-    const VolumeTreeAccessToken &access_token) const
+    VolumeTreeAccessToken &r_token) const
 {
-  BLI_assert(access_token.valid_for(*this));
-  UNUSED_VARS_NDEBUG(access_token);
   std::lock_guard lock{mutex_};
   this->ensure_grid_loaded();
+  r_token.token_ = tree_access_token_;
   return grid_;
 }
 
 std::shared_ptr<openvdb::GridBase> VolumeGridData::grid_ptr_for_write(
-    const VolumeTreeAccessToken &access_token)
+    VolumeTreeAccessToken &r_token)
 {
-  BLI_assert(access_token.valid_for(*this));
-  UNUSED_VARS_NDEBUG(access_token);
   BLI_assert(this->is_mutable());
   std::lock_guard lock{mutex_};
   this->ensure_grid_loaded();
+  r_token.token_ = tree_access_token_;
   if (tree_sharing_info_->is_mutable()) {
     tree_sharing_info_->tag_ensured_mutable();
   }
@@ -247,7 +238,7 @@ GVolumeGrid VolumeGridData::copy() const
 {
   std::lock_guard lock{mutex_};
   this->ensure_grid_loaded();
-  /* Can't use #MEM_new because the default construtor is private. */
+  /* Can't use #MEM_new because the default constructor is private. */
   VolumeGridData *new_copy = new (MEM_mallocN(sizeof(VolumeGridData), __func__)) VolumeGridData();
   /* Makes a deep copy of the meta-data but shares the tree. */
   new_copy->grid_ = grid_->copyGrid();
@@ -284,13 +275,16 @@ void VolumeGridData::ensure_grid_loaded() const
   });
   if (!loaded_grid) {
     if (grid_) {
-      /* Create a dummy grid of the expected type. */
-      loaded_grid = grid_->createGrid("");
+      const openvdb::Name &grid_type = grid_->type();
+      if (openvdb::GridBase::isRegistered(grid_type)) {
+        /* Create a dummy grid of the expected type. */
+        loaded_grid = openvdb::GridBase::createGrid(grid_type);
+      }
     }
-    else {
-      /* Create a dummy grid. We can't really know the expected data type here. */
-      loaded_grid = openvdb::FloatGrid::create();
-    }
+  }
+  if (!loaded_grid) {
+    /* Create a dummy grid. We can't really know the expected data type here. */
+    loaded_grid = openvdb::FloatGrid::create();
   }
   BLI_assert(loaded_grid);
   BLI_assert(loaded_grid.unique());
@@ -392,8 +386,8 @@ VolumeGridType get_type(const VolumeGridData &volume_grid)
   return volume_grid.grid_type();
 #else
   UNUSED_VARS(volume_grid);
-#endif
   return VOLUME_GRID_UNKNOWN;
+#endif
 }
 
 int get_channels_num(const VolumeGridType type)
@@ -468,8 +462,8 @@ void set_transform_matrix(VolumeGridData &grid, const float4x4 &matrix)
 void clear_tree(VolumeGridData &grid)
 {
 #ifdef WITH_OPENVDB
-  VolumeTreeAccessToken access_token = grid.tree_access_token();
-  grid.grid_for_write(access_token).clear();
+  VolumeTreeAccessToken tree_token;
+  grid.grid_for_write(tree_token).clear();
 #else
   UNUSED_VARS(grid);
 #endif
@@ -488,9 +482,9 @@ bool is_loaded(const VolumeGridData &grid)
 void load(const VolumeGridData &grid)
 {
 #ifdef WITH_OPENVDB
-  VolumeTreeAccessToken access_token = grid.tree_access_token();
+  VolumeTreeAccessToken tree_token;
   /* Just "touch" the grid, so that it is loaded. */
-  grid.grid(access_token);
+  grid.grid(tree_token);
 #else
   UNUSED_VARS(grid);
 #endif

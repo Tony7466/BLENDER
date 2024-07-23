@@ -18,36 +18,31 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "IMB_imbuf.h"
-#include "IMB_moviecache.h"
+#include "IMB_imbuf.hh"
+#include "IMB_moviecache.hh"
 
 #include "BKE_addon.h"
-#include "BKE_blender.h" /* own include */
-#include "BKE_blender_user_menu.h"
-#include "BKE_blender_version.h" /* own include */
-#include "BKE_blendfile.hh"
+#include "BKE_asset.hh"
+#include "BKE_blender.hh"           /* own include */
+#include "BKE_blender_user_menu.hh" /* own include */
+#include "BKE_blender_version.h"    /* own include */
 #include "BKE_brush.hh"
-#include "BKE_cachefile.h"
-#include "BKE_callbacks.h"
-#include "BKE_global.h"
-#include "BKE_idprop.h"
-#include "BKE_image.h"
-#include "BKE_layer.h"
+#include "BKE_cachefile.hh"
+#include "BKE_callbacks.hh"
+#include "BKE_global.hh"
+#include "BKE_idprop.hh"
 #include "BKE_main.hh"
-#include "BKE_node.h"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_node.hh"
+#include "BKE_report.hh"
 #include "BKE_screen.hh"
 #include "BKE_studiolight.h"
+#include "BKE_writeffmpeg.hh"
 
 #include "DEG_depsgraph.hh"
 
-#include "RE_pipeline.h"
 #include "RE_texture.h"
 
-#include "SEQ_sequencer.hh"
-
-#include "BLF_api.h"
+#include "BLF_api.hh"
 
 Global G;
 UserDef U;
@@ -81,8 +76,11 @@ void BKE_blender_free()
   BKE_callback_global_finalize();
 
   IMB_moviecache_destruct();
+#ifdef WITH_FFMPEG
+  BKE_ffmpeg_exit();
+#endif
 
-  BKE_node_system_exit();
+  blender::bke::BKE_node_system_exit();
 }
 
 /** \} */
@@ -342,7 +340,19 @@ void BKE_blender_userdef_data_free(UserDef *userdef, bool clear_fonts)
   BLI_freelistN(&userdef->autoexec_paths);
   BLI_freelistN(&userdef->script_directories);
   BLI_freelistN(&userdef->asset_libraries);
-  BLI_freelistN(&userdef->extension_repos);
+
+  LISTBASE_FOREACH_MUTABLE (bUserExtensionRepo *, repo_ref, &userdef->extension_repos) {
+    MEM_SAFE_FREE(repo_ref->access_token);
+    MEM_freeN(repo_ref);
+  }
+  BLI_listbase_clear(&userdef->extension_repos);
+
+  LISTBASE_FOREACH_MUTABLE (bUserAssetShelfSettings *, settings, &userdef->asset_shelves_settings)
+  {
+    BKE_asset_catalog_path_list_free(settings->enabled_catalog_paths);
+    MEM_freeN(settings);
+  }
+  BLI_listbase_clear(&userdef->asset_shelves_settings);
 
   BLI_freelistN(&userdef->uistyles);
   BLI_freelistN(&userdef->uifonts);
@@ -363,18 +373,17 @@ void BKE_blender_userdef_app_template_data_swap(UserDef *userdef_a, UserDef *use
    * - various minor settings (add as needed).
    */
 
+#define VALUE_SWAP(id) \
+  { \
+    std::swap(userdef_a->id, userdef_b->id); \
+  }
+
 #define DATA_SWAP(id) \
   { \
     UserDef userdef_tmp; \
     memcpy(&(userdef_tmp.id), &(userdef_a->id), sizeof(userdef_tmp.id)); \
     memcpy(&(userdef_a->id), &(userdef_b->id), sizeof(userdef_tmp.id)); \
     memcpy(&(userdef_b->id), &(userdef_tmp.id), sizeof(userdef_tmp.id)); \
-  } \
-  ((void)0)
-
-#define LISTBASE_SWAP(id) \
-  { \
-    SWAP(ListBase, userdef_a->id, userdef_b->id); \
   } \
   ((void)0)
 
@@ -389,12 +398,12 @@ void BKE_blender_userdef_app_template_data_swap(UserDef *userdef_a, UserDef *use
   } \
   ((void)0)
 
-  LISTBASE_SWAP(uistyles);
-  LISTBASE_SWAP(uifonts);
-  LISTBASE_SWAP(themes);
-  LISTBASE_SWAP(addons);
-  LISTBASE_SWAP(user_keymaps);
-  LISTBASE_SWAP(user_keyconfig_prefs);
+  VALUE_SWAP(uistyles);
+  VALUE_SWAP(uifonts);
+  VALUE_SWAP(themes);
+  VALUE_SWAP(addons);
+  VALUE_SWAP(user_keymaps);
+  VALUE_SWAP(user_keyconfig_prefs);
 
   DATA_SWAP(font_path_ui);
   DATA_SWAP(font_path_ui_mono);
@@ -408,9 +417,8 @@ void BKE_blender_userdef_app_template_data_swap(UserDef *userdef_a, UserDef *use
 
   DATA_SWAP(ui_scale);
 
-#undef SWAP_TYPELESS
+#undef VALUE_SWAP
 #undef DATA_SWAP
-#undef LISTBASE_SWAP
 #undef FLAG_SWAP
 }
 

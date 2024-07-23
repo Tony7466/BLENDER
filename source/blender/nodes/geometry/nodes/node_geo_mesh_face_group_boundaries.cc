@@ -87,7 +87,8 @@ class BoundaryFieldInput final : public bke::MeshFieldInput {
                   break;
                 }
                 if (edge_state.compare_exchange_weak(
-                        edge_state_value, is_boundary, std::memory_order_release)) {
+                        edge_state_value, is_boundary, std::memory_order_release))
+                {
                   boundary[edge_i] = true;
                   break;
                 }
@@ -123,13 +124,13 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
   geo_node_type_base(
       &ntype, GEO_NODE_MESH_FACE_GROUP_BOUNDARIES, "Face Group Boundaries", NODE_CLASS_INPUT);
-  bke::node_type_size_preset(&ntype, bke::eNodeSizePreset::MIDDLE);
+  bke::node_type_size_preset(&ntype, bke::eNodeSizePreset::Middle);
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 

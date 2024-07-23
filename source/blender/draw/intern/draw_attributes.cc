@@ -5,8 +5,11 @@
 #include "BLI_string.h"
 
 #include "BKE_attribute.hh"
+#include "BKE_customdata.hh"
 
 #include "draw_attributes.hh"
+
+namespace blender::draw {
 
 /* Return true if the given DRW_AttributeRequest is already in the requests. */
 static bool drw_attributes_has_request(const DRW_Attributes *requests,
@@ -82,7 +85,7 @@ void drw_attributes_add_request(DRW_Attributes *attrs,
   attrs->num_requests += 1;
 }
 
-bool drw_custom_data_match_attribute(const CustomData *custom_data,
+bool drw_custom_data_match_attribute(const CustomData &custom_data,
                                      const char *name,
                                      int *r_layer_index,
                                      eCustomDataType *r_type)
@@ -102,7 +105,7 @@ bool drw_custom_data_match_attribute(const CustomData *custom_data,
 
   for (int i = 0; i < ARRAY_SIZE(possible_attribute_types); i++) {
     const eCustomDataType attr_type = possible_attribute_types[i];
-    int layer_index = CustomData_get_named_layer(custom_data, attr_type, name);
+    int layer_index = CustomData_get_named_layer(&custom_data, attr_type, name);
     if (layer_index == -1) {
       continue;
     }
@@ -114,3 +117,5 @@ bool drw_custom_data_match_attribute(const CustomData *custom_data,
 
   return false;
 }
+
+}  // namespace blender::draw

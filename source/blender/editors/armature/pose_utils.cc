@@ -15,12 +15,11 @@
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
 #include "DNA_object_types.h"
-#include "DNA_scene_types.h"
 
 #include "BKE_action.h"
-#include "BKE_anim_data.h"
-#include "BKE_idprop.h"
-#include "BKE_layer.h"
+#include "BKE_anim_data.hh"
+#include "BKE_idprop.hh"
+#include "BKE_layer.hh"
 #include "BKE_object.hh"
 
 #include "BKE_context.hh"
@@ -29,7 +28,7 @@
 
 #include "RNA_access.hh"
 #include "RNA_path.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -38,8 +37,9 @@
 #include "ED_keyframing.hh"
 
 #include "ANIM_keyframing.hh"
+#include "ANIM_keyingsets.hh"
 
-#include "armature_intern.h"
+#include "armature_intern.hh"
 
 /* *********************************************** */
 /* Contents of this File:
@@ -76,7 +76,7 @@ static void fcurves_to_pchan_links_get(ListBase *pfLinks,
 
     /* get the RNA path to this pchan - this needs to be freed! */
     PointerRNA ptr = RNA_pointer_create((ID *)ob, &RNA_PoseBone, pchan);
-    pfl->pchan_path = RNA_path_from_ID_to_struct(&ptr);
+    pfl->pchan_path = BLI_strdup(RNA_path_from_ID_to_struct(&ptr).value_or("").c_str());
 
     /* add linkage data to operator data */
     BLI_addtail(pfLinks, pfl);
@@ -294,7 +294,7 @@ void poseAnim_mapping_autoKeyframe(bContext *C, Scene *scene, ListBase *pfLinks,
   }
 
   /* insert keyframes for all relevant bones in one go */
-  ANIM_apply_keyingset(C, &sources, ks, MODIFYKEY_MODE_INSERT, cframe);
+  ANIM_apply_keyingset(C, &sources, ks, blender::animrig::ModifyKeyMode::INSERT, cframe);
 
   /* do the bone paths
    * - only do this if keyframes should have been added
@@ -323,7 +323,7 @@ LinkData *poseAnim_mapping_getNextFCurve(ListBase *fcuLinks, LinkData *prev, con
 
   /* check each link to see if the linked F-Curve has a matching path */
   for (ld = first; ld; ld = ld->next) {
-    FCurve *fcu = (FCurve *)ld->data;
+    const FCurve *fcu = (const FCurve *)ld->data;
 
     /* check if paths match */
     if (STREQ(path, fcu->rna_path)) {

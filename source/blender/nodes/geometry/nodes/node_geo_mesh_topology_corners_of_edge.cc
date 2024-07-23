@@ -53,7 +53,7 @@ class CornersOfEdgeInput final : public bke::MeshFieldInput {
     Array<int> map_offsets;
     Array<int> map_indices;
     const Span<int> corner_edges = mesh.corner_edges();
-    const GroupedSpan<int> edge_to_loop_map = bke::mesh::build_edge_to_loop_map(
+    const GroupedSpan<int> edge_to_loop_map = bke::mesh::build_edge_to_corner_map(
         mesh.corner_edges(), mesh.edges_num, map_offsets, map_indices);
 
     const bke::MeshFieldContext context{mesh, domain};
@@ -173,7 +173,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   const Field<int> edge_index = params.extract_input<Field<int>>("Edge Index");
   if (params.output_is_required("Total")) {
     params.set_output("Total",
-                      Field<int>(std::make_shared<EvaluateAtIndexInput>(
+                      Field<int>(std::make_shared<bke::EvaluateAtIndexInput>(
                           edge_index,
                           Field<int>(std::make_shared<CornersOfEdgeCountInput>()),
                           AttrDomain::Edge)));
@@ -189,12 +189,12 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
   geo_node_type_base(
       &ntype, GEO_NODE_MESH_TOPOLOGY_CORNERS_OF_EDGE, "Corners of Edge", NODE_CLASS_INPUT);
   ntype.geometry_node_execute = node_geo_exec;
   ntype.declare = node_declare;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 

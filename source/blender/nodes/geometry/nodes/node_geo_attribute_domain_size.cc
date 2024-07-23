@@ -132,7 +132,8 @@ static void node_geo_exec(GeoNodeExecParams params)
     }
     case GeometryComponent::Type::GreasePencil: {
       if (const GreasePencilComponent *component =
-              geometry_set.get_component<GreasePencilComponent>()) {
+              geometry_set.get_component<GreasePencilComponent>())
+      {
         const AttributeAccessor attributes = *component->attributes();
         params.set_output("Layer Count", attributes.domain_size(AttrDomain::Layer));
       }
@@ -159,7 +160,7 @@ static void node_rna(StructRNA *srna)
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
   geo_node_type_base(&ntype, GEO_NODE_ATTRIBUTE_DOMAIN_SIZE, "Domain Size", NODE_CLASS_ATTRIBUTE);
   ntype.geometry_node_execute = node_geo_exec;
   ntype.declare = node_declare;
@@ -167,7 +168,7 @@ static void node_register()
   ntype.initfunc = node_init;
   ntype.updatefunc = node_update;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }

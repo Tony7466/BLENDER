@@ -15,25 +15,25 @@
 #include "BLI_string.h"
 #include "BLI_vector.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_image_types.h"
 
 #include "MEM_guardedalloc.h"
 
-#include "IMB_colormanagement.h"
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
-#include "IMB_openexr.h"
+#include "IMB_colormanagement.hh"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
+#include "IMB_openexr.hh"
 
 #include "BKE_colortools.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_image.h"
 #include "BKE_image_format.h"
 #include "BKE_image_save.h"
 #include "BKE_main.hh"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 
 #include "RE_pipeline.h"
 
@@ -105,7 +105,6 @@ bool BKE_image_save_options_init(ImageSaveOptions *opts,
   ImBuf *ibuf = BKE_image_acquire_ibuf(ima, iuser, &lock);
 
   if (ibuf) {
-    Scene *scene = opts->scene;
     bool is_depth_set = false;
     const char *ima_colorspace = ima->colorspace_settings.name;
 
@@ -123,7 +122,8 @@ bool BKE_image_save_options_init(ImageSaveOptions *opts,
     else {
       BKE_image_format_from_imbuf(&opts->im_format, ibuf);
       if (ima->source == IMA_SRC_GENERATED &&
-          !IMB_colormanagement_space_name_is_data(ima_colorspace)) {
+          !IMB_colormanagement_space_name_is_data(ima_colorspace))
+      {
         ima_colorspace = IMB_colormanagement_role_colorspace_name_get(COLOR_ROLE_DEFAULT_BYTE);
       }
 
@@ -414,7 +414,7 @@ static bool image_save_single(ReportList *reports,
                     STEREO_LEFT_NAME,
                     STEREO_RIGHT_NAME);
         BKE_image_release_ibuf(ima, ibuf, lock);
-        BKE_image_release_renderresult(opts->scene, ima);
+        BKE_image_release_renderresult(opts->scene, ima, rr);
         return ok;
       }
 
@@ -428,7 +428,7 @@ static bool image_save_single(ReportList *reports,
                     STEREO_LEFT_NAME,
                     STEREO_RIGHT_NAME);
         BKE_image_release_ibuf(ima, ibuf, lock);
-        BKE_image_release_renderresult(opts->scene, ima);
+        BKE_image_release_renderresult(opts->scene, ima, rr);
         return ok;
       }
     }
@@ -606,7 +606,7 @@ static bool image_save_single(ReportList *reports,
   }
 
   if (rr) {
-    BKE_image_release_renderresult(opts->scene, ima);
+    BKE_image_release_renderresult(opts->scene, ima, rr);
   }
 
   return ok;
@@ -812,7 +812,7 @@ bool BKE_image_render_write_exr(ReportList *reports,
 
       /* We only store RGBA passes as half float, for
        * others precision loss can be problematic. */
-      const bool pass_RGBA = STR_ELEM(rp->chan_id, "RGB", "RGBA", "R", "G", "B", "A");
+      const bool pass_RGBA = RE_RenderPassIsColor(rp);
       const bool pass_half_float = half_float && pass_RGBA;
 
       /* Color-space conversion only happens on RGBA passes. */
@@ -895,7 +895,9 @@ static void image_render_print_save_message(ReportList *reports,
 {
   if (ok) {
     /* no need to report, just some helpful console info */
-    printf("Saved: '%s'\n", filepath);
+    if (!G.quiet) {
+      printf("Saved: '%s'\n", filepath);
+    }
   }
   else {
     /* report on error since users will want to know what failed */

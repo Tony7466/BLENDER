@@ -14,8 +14,9 @@ set(INC
   ../render/intern
   ../windowmanager
   ../../../intern/eigen
+  ../geometry
 
-  # RNA_prototypes.h
+  # RNA_prototypes.hh
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
@@ -71,19 +72,11 @@ set(SRC
 )
 
 if(WITH_TBB)
-add_definitions(-DWITH_TBB)
-if(WIN32)
-  # TBB includes Windows.h which will define min/max macros
-  # that will collide with the stl versions.
-  add_definitions(-DNOMINMAX)
-endif()
-list(APPEND INC_SYS
-  ${TBB_INCLUDE_DIRS}
-)
-
-list(APPEND LIB
-  ${TBB_LIBRARIES}
-)
+  if(WIN32)
+    # TBB includes Windows.h which will define min/max macros
+    # that will collide with the stl versions.
+    add_definitions(-DNOMINMAX)
+  endif()
 endif()
 
 set(LIB
@@ -96,5 +89,5 @@ set(LIB
 
 blender_add_lib(bf_gpencil_modifiers_legacy "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
-# RNA_prototypes.h
+# RNA_prototypes.hh
 add_dependencies(bf_gpencil_modifiers_legacy bf_rna)

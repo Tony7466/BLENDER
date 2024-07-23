@@ -62,7 +62,7 @@ typedef struct RegionView3D {
 
   /** Transform gizmo matrix. */
   float twmat[4][4];
-  /** min/max dot product on twmat xyz axis. */
+  /** min/max dot product on `twmat` XYZ axis. */
   float tw_axis_min[3], tw_axis_max[3];
   float tw_axis_matrix[3][3];
 
@@ -192,7 +192,6 @@ typedef struct View3DOverlay {
   int edit_flag;
   float normals_length;
   float normals_constant_screen_size;
-  float backwire_opacity;
 
   /** Paint mode settings. */
   int paint_flag;
@@ -232,7 +231,6 @@ typedef struct View3DOverlay {
 
   /** Curves sculpt mode settings. */
   float sculpt_curves_cage_opacity;
-  char _pad[4];
 } View3DOverlay;
 
 /** #View3DOverlay.handle_display */
@@ -299,10 +297,10 @@ typedef struct View3D {
   /** Optional string for armature bone to define center, MAXBONENAME. */
   char ob_center_bone[64];
 
-  unsigned short local_view_uuid;
+  unsigned short local_view_uid;
   char _pad6[2];
   int layact DNA_DEPRECATED;
-  unsigned short local_collections_uuid;
+  unsigned short local_collections_uid;
   short _pad7[2];
 
   short debug_flag;
@@ -481,6 +479,9 @@ enum {
   V3D_FLAG2_UNUSED_15 = 1 << 15, /* cleared */
   V3D_XR_SHOW_CONTROLLERS = 1 << 16,
   V3D_XR_SHOW_CUSTOM_OVERLAYS = 1 << 17,
+  V3D_SHOW_CAMERA_GUIDES = (1 << 18),
+  V3D_SHOW_CAMERA_PASSEPARTOUT = (1 << 19),
+  V3D_XR_SHOW_PASSTHROUGH = 1 << 20,
 };
 
 /** #View3D::gp_flag (short) */
@@ -668,6 +669,7 @@ enum {
   V3D_GIZMO_HIDE_NAVIGATE = (1 << 1),
   V3D_GIZMO_HIDE_CONTEXT = (1 << 2),
   V3D_GIZMO_HIDE_TOOL = (1 << 3),
+  V3D_GIZMO_HIDE_MODIFIER = (1 << 4),
 };
 
 /** #View3d.gizmo_show_object */

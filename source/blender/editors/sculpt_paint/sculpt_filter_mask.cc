@@ -6,23 +6,15 @@
  * \ingroup edsculpt
  */
 
-#include "MEM_guardedalloc.h"
-
-#include "BLI_task.h"
-
-#include "DNA_mesh_types.h"
-#include "DNA_modifier_types.h"
-
 #include "BKE_context.hh"
+#include "BKE_layer.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
-#include "BKE_scene.h"
-
-#include "DEG_depsgraph.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
+#include "paint_intern.hh"
 #include "sculpt_intern.hh"
 
 #include "RNA_access.hh"
@@ -35,36 +27,28 @@
 
 namespace blender::ed::sculpt_paint::mask {
 
-enum eSculptMaskFilterTypes {
-  MASK_FILTER_SMOOTH = 0,
-  MASK_FILTER_SHARPEN = 1,
-  MASK_FILTER_GROW = 2,
-  MASK_FILTER_SHRINK = 3,
-  MASK_FILTER_CONTRAST_INCREASE = 5,
-  MASK_FILTER_CONTRAST_DECREASE = 6,
+enum class FilterType {
+  Smooth = 0,
+  Sharpen = 1,
+  Grow = 2,
+  Shrink = 3,
+  ContrastIncrease = 5,
+  ContrastDecrease = 6,
 };
 
 static EnumPropertyItem prop_mask_filter_types[] = {
-    {MASK_FILTER_SMOOTH, "SMOOTH", 0, "Smooth Mask", "Smooth mask"},
-    {MASK_FILTER_SHARPEN, "SHARPEN", 0, "Sharpen Mask", "Sharpen mask"},
-    {MASK_FILTER_GROW, "GROW", 0, "Grow Mask", "Grow mask"},
-    {MASK_FILTER_SHRINK, "SHRINK", 0, "Shrink Mask", "Shrink mask"},
-    {MASK_FILTER_CONTRAST_INCREASE,
-     "CONTRAST_INCREASE",
-     0,
-     "Increase Contrast",
-     "Increase the contrast of the paint mask"},
-    {MASK_FILTER_CONTRAST_DECREASE,
-     "CONTRAST_DECREASE",
-     0,
-     "Decrease Contrast",
-     "Decrease the contrast of the paint mask"},
+    {int(FilterType::Smooth), "SMOOTH", 0, "Smooth Mask", ""},
+    {int(FilterType::Sharpen), "SHARPEN", 0, "Sharpen Mask", ""},
+    {int(FilterType::Grow), "GROW", 0, "Grow Mask", ""},
+    {int(FilterType::Shrink), "SHRINK", 0, "Shrink Mask", ""},
+    {int(FilterType::ContrastIncrease), "CONTRAST_INCREASE", 0, "Increase Contrast", ""},
+    {int(FilterType::ContrastDecrease), "CONTRAST_DECREASE", 0, "Decrease Contrast", ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-static void mask_filter_task(SculptSession *ss,
-                             const int mode,
-                             float *prev_mask,
+static void mask_filter_task(SculptSession &ss,
+                             const FilterType mode,
+                             const Span<float> prev_mask,
                              const SculptMaskWriteInfo mask_write,
                              PBVHNode *node)
 {
@@ -74,30 +58,30 @@ static void mask_filter_task(SculptSession *ss,
 
   PBVHVertexIter vd;
 
-  if (mode == MASK_FILTER_CONTRAST_INCREASE) {
+  if (mode == FilterType::ContrastIncrease) {
     contrast = 0.1f;
   }
 
-  if (mode == MASK_FILTER_CONTRAST_DECREASE) {
+  if (mode == FilterType::ContrastDecrease) {
     contrast = -0.1f;
   }
 
-  BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
+  BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
     float delta, gain, offset, max, min;
 
     float mask = vd.mask;
     SculptVertexNeighborIter ni;
     switch (mode) {
-      case MASK_FILTER_SMOOTH:
-      case MASK_FILTER_SHARPEN: {
-        float val = smooth::neighbor_mask_average(ss, vd.vertex);
+      case FilterType::Smooth:
+      case FilterType::Sharpen: {
+        float val = smooth::neighbor_mask_average(ss, mask_write, vd.vertex);
 
         val -= mask;
 
-        if (mode == MASK_FILTER_SMOOTH) {
+        if (mode == FilterType::Smooth) {
           mask += val;
         }
-        else if (mode == MASK_FILTER_SHARPEN) {
+        else if (mode == FilterType::Sharpen) {
           if (mask > 0.5f) {
             mask += 0.05f;
           }
@@ -108,7 +92,7 @@ static void mask_filter_task(SculptSession *ss,
         }
         break;
       }
-      case MASK_FILTER_GROW:
+      case FilterType::Grow:
         max = 0.0f;
         SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (ss, vd.vertex, ni) {
           float vmask_f = prev_mask[ni.index];
@@ -119,7 +103,7 @@ static void mask_filter_task(SculptSession *ss,
         SCULPT_VERTEX_NEIGHBORS_ITER_END(ni);
         mask = max;
         break;
-      case MASK_FILTER_SHRINK:
+      case FilterType::Shrink:
         min = 1.0f;
         SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (ss, vd.vertex, ni) {
           float vmask_f = prev_mask[ni.index];
@@ -130,8 +114,8 @@ static void mask_filter_task(SculptSession *ss,
         SCULPT_VERTEX_NEIGHBORS_ITER_END(ni);
         mask = min;
         break;
-      case MASK_FILTER_CONTRAST_INCREASE:
-      case MASK_FILTER_CONTRAST_DECREASE:
+      case FilterType::ContrastIncrease:
+      case FilterType::ContrastDecrease:
         delta = contrast / 2.0f;
         gain = 1.0f - delta * 2.0f;
         if (contrast > 0) {
@@ -147,7 +131,7 @@ static void mask_filter_task(SculptSession *ss,
     }
     mask = clamp_f(mask, 0.0f, 1.0f);
     if (mask != vd.mask) {
-      SCULPT_mask_vert_set(BKE_pbvh_type(ss->pbvh), mask_write, mask, vd);
+      SCULPT_mask_vert_set(BKE_pbvh_type(*ss.pbvh), mask_write, mask, vd);
       update = true;
     }
   }
@@ -160,18 +144,24 @@ static void mask_filter_task(SculptSession *ss,
 
 static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
 {
-  Object *ob = CTX_data_active_object(C);
+  Object &ob = *CTX_data_active_object(C);
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   const Scene *scene = CTX_data_scene(C);
-  int filter_type = RNA_enum_get(op->ptr, "filter_type");
+  const FilterType filter_type = FilterType(RNA_enum_get(op->ptr, "filter_type"));
 
-  MultiresModifierData *mmd = BKE_sculpt_multires_active(scene, ob);
-  BKE_sculpt_mask_layers_ensure(CTX_data_depsgraph_pointer(C), CTX_data_main(C), ob, mmd);
+  const View3D *v3d = CTX_wm_view3d(C);
+  const Base *base = CTX_data_active_base(C);
+  if (!BKE_base_is_visible(v3d, base)) {
+    return OPERATOR_CANCELLED;
+  }
 
-  BKE_sculpt_update_object_for_edit(depsgraph, ob, false);
+  MultiresModifierData *mmd = BKE_sculpt_multires_active(scene, &ob);
+  BKE_sculpt_mask_layers_ensure(CTX_data_depsgraph_pointer(C), CTX_data_main(C), &ob, mmd);
 
-  SculptSession *ss = ob->sculpt;
-  PBVH *pbvh = ob->sculpt->pbvh;
+  BKE_sculpt_update_object_for_edit(depsgraph, &ob, false);
+
+  SculptSession &ss = *ob.sculpt;
+  PBVH &pbvh = *ob.sculpt->pbvh;
 
   SCULPT_vertex_random_access_ensure(ss);
 
@@ -184,7 +174,7 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
     undo::push_node(ob, node, undo::Type::Mask);
   }
 
-  float *prev_mask = nullptr;
+  Array<float> prev_mask;
   int iterations = RNA_int_get(op->ptr, "iterations");
 
   /* Auto iteration count calculates the number of iteration based on the vertices of the mesh to
@@ -195,15 +185,11 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
     iterations = int(num_verts / 50000.0f) + 1;
   }
 
-  const SculptMaskWriteInfo mask_write = SCULPT_mask_get_for_write(ob->sculpt);
+  const SculptMaskWriteInfo mask_write = SCULPT_mask_get_for_write(ss);
 
   for (int i = 0; i < iterations; i++) {
-    if (ELEM(filter_type, MASK_FILTER_GROW, MASK_FILTER_SHRINK)) {
-      prev_mask = static_cast<float *>(MEM_mallocN(num_verts * sizeof(float), __func__));
-      for (int j = 0; j < num_verts; j++) {
-        PBVHVertRef vertex = BKE_pbvh_index_to_vertex(ss->pbvh, j);
-        prev_mask[j] = SCULPT_vertex_mask_get(ss, vertex);
-      }
+    if (ELEM(filter_type, FilterType::Grow, FilterType::Shrink)) {
+      prev_mask = duplicate_mask(ob);
     }
 
     threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
@@ -211,10 +197,6 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
         mask_filter_task(ss, filter_type, prev_mask, mask_write, nodes[i]);
       }
     });
-
-    if (ELEM(filter_type, MASK_FILTER_GROW, MASK_FILTER_SHRINK)) {
-      MEM_freeN(prev_mask);
-    }
   }
 
   undo::push_end(ob);
@@ -226,22 +208,19 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
 
 void SCULPT_OT_mask_filter(wmOperatorType *ot)
 {
-  /* Identifiers. */
   ot->name = "Mask Filter";
   ot->idname = "SCULPT_OT_mask_filter";
   ot->description = "Applies a filter to modify the current mask";
 
-  /* API callbacks. */
   ot->exec = sculpt_mask_filter_exec;
   ot->poll = SCULPT_mode_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  /* RNA. */
   RNA_def_enum(ot->srna,
                "filter_type",
                prop_mask_filter_types,
-               MASK_FILTER_SMOOTH,
+               int(FilterType::Smooth),
                "Type",
                "Filter that is going to be applied to the mask");
   RNA_def_int(ot->srna,
@@ -258,7 +237,7 @@ void SCULPT_OT_mask_filter(wmOperatorType *ot)
       "auto_iteration_count",
       true,
       "Auto Iteration Count",
-      "Use a automatic number of iterations based on the number of vertices of the sculpt");
+      "Use an automatic number of iterations based on the number of vertices of the sculpt");
 }
 
 }  // namespace blender::ed::sculpt_paint::mask

@@ -13,7 +13,7 @@ set(INC
   ../../makesrna
   ../../windowmanager
 
-  # RNA_prototypes.h
+  # RNA_prototypes.hh
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
@@ -26,6 +26,7 @@ set(SRC
   intern/curves_data.cc
   intern/curves_draw.cc
   intern/curves_edit.cc
+  intern/curves_extrude.cc
   intern/curves_masks.cc
   intern/curves_ops.cc
   intern/curves_selection.cc
@@ -43,10 +44,6 @@ set(LIB
 )
 
 if(WITH_TBB)
-  list(APPEND INC_SYS
-    ${TBB_INCLUDE_DIRS}
-  )
-  add_definitions(-DWITH_TBB)
   if(WIN32)
     # TBB includes Windows.h which will define min/max macros
     # that will collide with the stl versions.

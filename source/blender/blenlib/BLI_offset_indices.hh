@@ -6,17 +6,14 @@
 
 #include <algorithm>
 
-namespace blender {
-namespace index_mask {
-class IndexMask;
-}
-using index_mask::IndexMask;
-}  // namespace blender
-
+#include "BLI_index_mask_fwd.hh"
 #include "BLI_index_range.hh"
 #include "BLI_span.hh"
 
 namespace blender::offset_indices {
+
+/** Utility struct that can be passed into a function to skip a check for sorted indices. */
+struct NoSortCheck {};
 
 /**
  * References an array of ascending indices. A pair of consecutive indices encode an index range.
@@ -40,6 +37,13 @@ template<typename T> class OffsetIndices {
   {
     BLI_assert(offsets_.size() < 2 || std::is_sorted(offsets_.begin(), offsets_.end()));
   }
+
+  /**
+   * Same as above, but skips the debug check that indices are sorted, because that can have a
+   * high performance impact making debug builds unusable for files that would be fine otherwise.
+   * This can be used when it is known that the indices are sorted already.
+   */
+  OffsetIndices(const Span<T> offsets, NoSortCheck) : offsets_(offsets) {}
 
   /** Return the total number of elements in the referenced arrays. */
   T total_size() const
@@ -72,16 +76,14 @@ template<typename T> class OffsetIndices {
     BLI_assert(index < offsets_.size() - 1);
     const int64_t begin = offsets_[index];
     const int64_t end = offsets_[index + 1];
-    const int64_t size = end - begin;
-    return IndexRange(begin, size);
+    return IndexRange::from_begin_end(begin, end);
   }
 
   IndexRange operator[](const IndexRange indices) const
   {
     const int64_t begin = offsets_[indices.start()];
     const int64_t end = offsets_[indices.one_after_last()];
-    const int64_t size = end - begin;
-    return IndexRange(begin, size);
+    return IndexRange::from_begin_end(begin, end);
   }
 
   /**
@@ -155,6 +157,8 @@ void copy_group_sizes(OffsetIndices<int> offsets, const IndexMask &mask, Mutable
 /** Gather the number of indices in each indexed group to sizes. */
 void gather_group_sizes(OffsetIndices<int> offsets, const IndexMask &mask, MutableSpan<int> sizes);
 
+void gather_group_sizes(OffsetIndices<int> offsets, Span<int> indices, MutableSpan<int> sizes);
+
 /** Build new offsets that contains only the groups chosen by \a selection. */
 OffsetIndices<int> gather_selected_offsets(OffsetIndices<int> src_offsets,
                                            const IndexMask &selection,
@@ -175,7 +179,7 @@ void build_reverse_map(OffsetIndices<int> offsets, MutableSpan<int> r_map);
 /**
  * Build offsets to group the elements of \a indices pointing to the same index.
  */
-void build_reverse_offsets(Span<int> indices, MutableSpan<int> r_map);
+void build_reverse_offsets(Span<int> indices, MutableSpan<int> offsets);
 
 }  // namespace blender::offset_indices
 

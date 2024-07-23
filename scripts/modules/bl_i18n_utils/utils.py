@@ -9,12 +9,13 @@ import os
 import re
 import struct
 import tempfile
-# import time
+import time
 
 from bl_i18n_utils import (
     settings,
     utils_rtl,
 )
+from typing import Dict
 
 
 ##### Misc Utils #####
@@ -212,7 +213,7 @@ def enable_addons(addons=None, support=None, disable=False, check_only=False):
         support = {}
 
     prefs = bpy.context.preferences
-    used_ext = {ext.module for ext in prefs.addons}
+    used_addon_module_names = {addon.module for addon in prefs.addons}
     # In case we need to blacklist some add-ons...
     black_list = {}
 
@@ -226,17 +227,17 @@ def enable_addons(addons=None, support=None, disable=False, check_only=False):
     if not check_only:
         for mod in ret:
             try:
-                module_name = mod.__name__
+                addon_module_name = mod.__name__
                 if disable:
-                    if module_name not in used_ext:
+                    if addon_module_name not in used_addon_module_names:
                         continue
-                    print("    Disabling module ", module_name)
-                    bpy.ops.preferences.addon_disable(module=module_name)
+                    print("    Disabling module ", addon_module_name)
+                    bpy.ops.preferences.addon_disable(module=addon_module_name)
                 else:
-                    if module_name in used_ext:
+                    if addon_module_name in used_addon_module_names:
                         continue
-                    print("    Enabling module ", module_name)
-                    bpy.ops.preferences.addon_enable(module=module_name)
+                    print("    Enabling module ", addon_module_name)
+                    bpy.ops.preferences.addon_enable(module=addon_module_name)
             except BaseException as ex:  # XXX TEMP WORKAROUND
                 print(ex)
 
@@ -478,13 +479,17 @@ class I18nMessages:
         return getattr(collections, "OrderedDict", dict)()
 
     @classmethod
-    def gen_empty_messages(cls, uid, blender_ver, blender_hash, time, year, default_copyright=True, settings=settings):
+    def gen_empty_messages(cls, uid, blender_ver, blender_hash, bl_time, default_copyright=True, settings=settings):
         """Generate an empty I18nMessages object (only header is present!)."""
         fmt = settings.PO_HEADER_MSGSTR
-        msgstr = fmt.format(blender_ver=str(blender_ver), blender_hash=blender_hash, time=str(time), uid=str(uid))
+        msgstr = fmt.format(
+            blender_ver=str(blender_ver),
+            blender_hash=blender_hash,
+            time=time.strftime("%Y-%m-%d %H:%M%z", bl_time),
+            uid=str(uid))
         comment = ""
         if default_copyright:
-            comment = settings.PO_HEADER_COMMENT_COPYRIGHT.format(year=str(year))
+            comment = settings.PO_HEADER_COMMENT_COPYRIGHT.format(year=str(time.gmtime().tm_year))
         comment = comment + settings.PO_HEADER_COMMENT
 
         msgs = cls(uid=uid, settings=settings)
@@ -581,6 +586,7 @@ class I18nMessages:
             if (not sm.msgstr or replace or (sm.is_fuzzy and (not m.is_fuzzy or replace))):
                 sm.msgstr = m.msgstr
                 sm.is_fuzzy = m.is_fuzzy
+                sm.comment_lines = m.comment_lines
 
     def update(self, ref, use_similar=None, keep_old_commented=True):
         """
@@ -621,7 +627,7 @@ class I18nMessages:
                     if skey not in similar_pool[msgid]:
                         skey = tuple(similar_pool[msgid])[0]
                     # We keep org translation and comments, and mark message as fuzzy.
-                    msg, refmsg = self.msgs[skey].copy(), ref.msgs[key]
+                    msg, refmsg = self.msgs[skey].copy(), ref.msgs[key].copy()
                     msg.msgctxt = refmsg.msgctxt
                     msg.msgid = refmsg.msgid
                     msg.sources = refmsg.sources
@@ -629,10 +635,10 @@ class I18nMessages:
                     msg.is_commented = refmsg.is_commented
                     msgs[key] = msg
                 else:
-                    msgs[key] = ref.msgs[key]
+                    msgs[key] = ref.msgs[key].copy()
         else:
             for key in new_keys:
-                msgs[key] = ref.msgs[key]
+                msgs[key] = ref.msgs[key].copy()
 
         # Add back all "old" and already commented messages as commented ones, if required
         # (and translation was not void!).
@@ -733,6 +739,7 @@ class I18nMessages:
         self._reverse_cache = None
         if rebuild_now:
             src_to_msg, ctxt_to_msg, msgid_to_msg, msgstr_to_msg = {}, {}, {}, {}
+            ctxt_to_msg.setdefault(self.settings.DEFAULT_CONTEXT, set())
             for key, msg in self.msgs.items():
                 if msg.is_commented:
                     continue
@@ -795,7 +802,7 @@ class I18nMessages:
         rlbl = getattr(msgs, msgmap["rna_label"]["msgstr"])
         # print("rna label: " + rlbl, rlbl in msgid_to_msg, rlbl in msgstr_to_msg)
         if rlbl:
-            k = ctxt_to_msg[rna_ctxt].copy()
+            k = ctxt_to_msg.get(rna_ctxt, set()).copy()
             if k and rlbl in msgid_to_msg:
                 k &= msgid_to_msg[rlbl]
             elif k and rlbl in msgstr_to_msg:
@@ -1249,7 +1256,7 @@ class I18n:
 
     def __init__(self, kind=None, src=None, langs=set(), settings=settings):
         self.settings = settings
-        self.trans = {}
+        self.trans: Dict[str, I18nMessages] = {}
         self.src = {}  # Should have the same keys as self.trans (plus PARSER_PY_ID for py file)!
         self.dst = self._dst  # A callable that transforms src_path into dst_path!
         if kind and src:
@@ -1480,8 +1487,9 @@ class I18n:
             translations = self.trans.keys() - {self.settings.PARSER_TEMPLATE_ID, self.settings.PARSER_PY_ID}
             if langs:
                 translations &= langs
-            translations = [('"' + lng + '"', " " * (len(lng) + 6), self.trans[lng]) for lng in sorted(translations)]
-            print(*(k for k in keys.keys()))
+            translations = [('"' + lng + '"', self.trans[lng]) for lng in sorted(translations)]
+            print(f"Translated {len(keys)} keys saved to .py file:")
+            print(*(k for k in keys.keys()), sep="\n")
             for key in keys.keys():
                 if ref.msgs[key].is_commented:
                     continue
@@ -1516,7 +1524,9 @@ class I18n:
                     else:
                         ret.append(tab + "  (" + ('"' + gen_comments[0] + '",' if gen_comments else "") + ")),")
                 # All languages
-                for lngstr, lngsp, trans in translations:
+                for lngstr, trans in translations:
+                    if key not in trans.msgs:
+                        continue  # Happens if no language is enabled in translation UI, and new messages are generated.
                     if trans.msgs[key].is_commented:
                         continue
                     # Language code and translation.
@@ -1526,15 +1536,15 @@ class I18n:
                     for comment in trans.msgs[key].comment_lines:
                         if comment.startswith(self.settings.PO_COMMENT_PREFIX):
                             comments.append(comment[_lencomm:])
-                    ret.append(tab + lngsp + "(" + ("True" if trans.msgs[key].is_fuzzy else "False") + ",")
+                    ret.append(tab + "  (" + ("True" if trans.msgs[key].is_fuzzy else "False") + ",")
                     if len(comments) > 1:
-                        ret.append(tab + lngsp + ' ("' + comments[0] + '",')
-                        ret += [tab + lngsp + '  "' + s + '",' for s in comments[1:-1]]
-                        ret.append(tab + lngsp + '  "' + comments[-1] + '"))),')
+                        ret.append(tab + '   ("' + comments[0] + '",')
+                        ret += [tab * 2 + '"' + s + '",' for s in comments[1:-1]]
+                        ret.append(tab * 2 + '"' + comments[-1] + '"))),')
                     else:
                         ret[-1] = ret[-1] + " (" + (('"' + comments[0] + '",') if comments else "") + "))),"
 
-                ret.append(tab + "),")
+                ret.append("     " + "),")
             ret += [
                 ")",
                 "",

@@ -37,7 +37,6 @@ if(WITH_OPENSUBDIV)
     # Base.
     internal/base/memory.h
     internal/base/opensubdiv_capi.cc
-    internal/base/type.h
     internal/base/type_convert.cc
     internal/base/type_convert.h
     internal/base/util.cc
@@ -105,10 +104,8 @@ blender_add_lib(bf_intern_opensubdiv "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 # Tests.
 
 if(WITH_GTESTS AND WITH_OPENSUBDIV)
-  include(GTestTesting)
-
   add_definitions(${GFLAGS_DEFINES})
   add_definitions(${GLOG_DEFINES})
 
-  blender_add_test_executable(opensubdiv_mesh_topology_test "internal/topology/mesh_topology_test.cc" "${INC}" "${INC_SYS}" "${LIB};bf_intern_opensubdiv")
+  blender_add_test_executable(opensubdiv_mesh_topology "internal/topology/mesh_topology_test.cc" "${INC}" "${INC_SYS}" "${LIB};bf_intern_opensubdiv")
 endif()

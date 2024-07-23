@@ -8,12 +8,11 @@
 #include "DNA_curve_types.h"
 
 #include "BKE_attribute_math.hh"
-#include "BKE_curve.hh"
 #include "BKE_curves.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_geometry_fields.hh"
 #include "BKE_geometry_set.hh"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 
 #include "FN_multi_function_builder.hh"
 
@@ -26,6 +25,11 @@ namespace blender::bke {
  * \{ */
 
 CurveComponent::CurveComponent() : GeometryComponent(Type::Curve) {}
+
+CurveComponent::CurveComponent(Curves *curve, GeometryOwnershipType ownership)
+    : GeometryComponent(Type::Curve), curves_(curve), ownership_(ownership)
+{
+}
 
 CurveComponent::~CurveComponent()
 {
@@ -142,14 +146,14 @@ const Curve *CurveComponent::get_curve_for_render() const
 /** \name Curve Normals Access
  * \{ */
 
-static Array<float3> curve_normal_point_domain(const bke::CurvesGeometry &curves)
+static Array<float3> curve_normal_point_domain(const CurvesGeometry &curves)
 {
   const OffsetIndices points_by_curve = curves.points_by_curve();
   const OffsetIndices evaluated_points_by_curve = curves.evaluated_points_by_curve();
   const VArray<int8_t> types = curves.curve_types();
   const VArray<int> resolutions = curves.resolution();
   const VArray<bool> curves_cyclic = curves.cyclic();
-  const bke::AttributeAccessor attributes = curves.attributes();
+  const AttributeAccessor attributes = curves.attributes();
   const VArray<float3> custom_normals = *attributes.lookup_or_default<float3>(
       "custom_normal", AttrDomain::Point, float3(0, 0, 1));
 
@@ -197,13 +201,13 @@ static Array<float3> curve_normal_point_domain(const bke::CurvesGeometry &curves
           nurbs_tangents.resize(points.size());
           const bool cyclic = curves_cyclic[i_curve];
           const Span<float3> curve_positions = positions.slice(points);
-          bke::curves::poly::calculate_tangents(curve_positions, cyclic, nurbs_tangents);
+          curves::poly::calculate_tangents(curve_positions, cyclic, nurbs_tangents);
           switch (NormalMode(normal_modes[i_curve])) {
             case NORMAL_MODE_Z_UP:
-              bke::curves::poly::calculate_normals_z_up(nurbs_tangents, curve_normals);
+              curves::poly::calculate_normals_z_up(nurbs_tangents, curve_normals);
               break;
             case NORMAL_MODE_MINIMUM_TWIST:
-              bke::curves::poly::calculate_normals_minimum(nurbs_tangents, cyclic, curve_normals);
+              curves::poly::calculate_normals_minimum(nurbs_tangents, cyclic, curve_normals);
               break;
             case NORMAL_MODE_FREE:
               custom_normals.materialize(points, curve_normals);
@@ -250,7 +254,7 @@ static VArray<float> construct_curve_length_gvarray(const CurvesGeometry &curves
 {
   curves.ensure_evaluated_lengths();
 
-  const VArray<bool> cyclic = curves.cyclic();
+  VArray<bool> cyclic = curves.cyclic();
   VArray<float> lengths = VArray<float>::ForFunc(
       curves.curves_num(), [&curves, cyclic = std::move(cyclic)](int64_t index) {
         return curves.evaluated_length_total_for_curve(index, cyclic[index]);
@@ -292,7 +296,7 @@ bool CurveLengthFieldInput::is_equal_to(const fn::FieldNode &other) const
 }
 
 std::optional<AttrDomain> CurveLengthFieldInput::preferred_domain(
-    const bke::CurvesGeometry & /*curves*/) const
+    const CurvesGeometry & /*curves*/) const
 {
   return AttrDomain::Curve;
 }
@@ -363,10 +367,9 @@ class CurvesVertexGroupsAttributeProvider final : public DynamicAttributesProvid
     }
     const Span<MDeformVert> dverts = curves->deform_verts();
     if (dverts.is_empty()) {
-      static const float default_value = 0.0f;
-      return {VArray<float>::ForSingle(default_value, curves->points_num()), AttrDomain::Point};
+      return {VArray<float>::ForSingle(0.0f, curves->points_num()), AttrDomain::Point};
     }
-    return {bke::varray_for_deform_verts(dverts, vertex_group_index), AttrDomain::Point};
+    return {varray_for_deform_verts(dverts, vertex_group_index), AttrDomain::Point};
   }
 
   GAttributeWriter try_get_for_write(void *owner, const AttributeIDRef &attribute_id) const final
@@ -385,7 +388,7 @@ class CurvesVertexGroupsAttributeProvider final : public DynamicAttributesProvid
       return {};
     }
     MutableSpan<MDeformVert> dverts = curves->deform_verts_for_write();
-    return {bke::varray_for_mutable_deform_verts(dverts, vertex_group_index), AttrDomain::Point};
+    return {varray_for_mutable_deform_verts(dverts, vertex_group_index), AttrDomain::Point};
   }
 
   bool try_delete(void *owner, const AttributeIDRef &attribute_id) const final
@@ -402,7 +405,8 @@ class CurvesVertexGroupsAttributeProvider final : public DynamicAttributesProvid
     int index;
     bDeformGroup *group;
     if (!BKE_defgroup_listbase_name_find(
-            &curves->vertex_group_names, name.c_str(), &index, &group)) {
+            &curves->vertex_group_names, name.c_str(), &index, &group))
+    {
       return false;
     }
     BLI_remlink(&curves->vertex_group_names, group);
@@ -412,7 +416,7 @@ class CurvesVertexGroupsAttributeProvider final : public DynamicAttributesProvid
     }
 
     MutableSpan<MDeformVert> dverts = curves->deform_verts_for_write();
-    bke::remove_defgroup_index(dverts, index);
+    remove_defgroup_index(dverts, index);
     return true;
   }
 
@@ -472,8 +476,6 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
   static BuiltinCustomDataLayerProvider position("position",
                                                  AttrDomain::Point,
                                                  CD_PROP_FLOAT3,
-                                                 CD_PROP_FLOAT3,
-                                                 BuiltinAttributeProvider::Creatable,
                                                  BuiltinAttributeProvider::NonDeletable,
                                                  point_access,
                                                  tag_component_positions_changed);
@@ -481,8 +483,6 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
   static BuiltinCustomDataLayerProvider radius("radius",
                                                AttrDomain::Point,
                                                CD_PROP_FLOAT,
-                                               CD_PROP_FLOAT,
-                                               BuiltinAttributeProvider::Creatable,
                                                BuiltinAttributeProvider::Deletable,
                                                point_access,
                                                tag_component_radii_changed);
@@ -490,8 +490,6 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
   static BuiltinCustomDataLayerProvider id("id",
                                            AttrDomain::Point,
                                            CD_PROP_INT32,
-                                           CD_PROP_INT32,
-                                           BuiltinAttributeProvider::Creatable,
                                            BuiltinAttributeProvider::Deletable,
                                            point_access,
                                            nullptr);
@@ -499,8 +497,6 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
   static BuiltinCustomDataLayerProvider tilt("tilt",
                                              AttrDomain::Point,
                                              CD_PROP_FLOAT,
-                                             CD_PROP_FLOAT,
-                                             BuiltinAttributeProvider::Creatable,
                                              BuiltinAttributeProvider::Deletable,
                                              point_access,
                                              tag_component_normals_changed);
@@ -508,8 +504,6 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
   static BuiltinCustomDataLayerProvider handle_right("handle_right",
                                                      AttrDomain::Point,
                                                      CD_PROP_FLOAT3,
-                                                     CD_PROP_FLOAT3,
-                                                     BuiltinAttributeProvider::Creatable,
                                                      BuiltinAttributeProvider::Deletable,
                                                      point_access,
                                                      tag_component_positions_changed);
@@ -517,8 +511,6 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
   static BuiltinCustomDataLayerProvider handle_left("handle_left",
                                                     AttrDomain::Point,
                                                     CD_PROP_FLOAT3,
-                                                    CD_PROP_FLOAT3,
-                                                    BuiltinAttributeProvider::Creatable,
                                                     BuiltinAttributeProvider::Deletable,
                                                     point_access,
                                                     tag_component_positions_changed);
@@ -532,8 +524,6 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
   static BuiltinCustomDataLayerProvider handle_type_right("handle_type_right",
                                                           AttrDomain::Point,
                                                           CD_PROP_INT8,
-                                                          CD_PROP_INT8,
-                                                          BuiltinAttributeProvider::Creatable,
                                                           BuiltinAttributeProvider::Deletable,
                                                           point_access,
                                                           tag_component_topology_changed,
@@ -542,8 +532,6 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
   static BuiltinCustomDataLayerProvider handle_type_left("handle_type_left",
                                                          AttrDomain::Point,
                                                          CD_PROP_INT8,
-                                                         CD_PROP_INT8,
-                                                         BuiltinAttributeProvider::Creatable,
                                                          BuiltinAttributeProvider::Deletable,
                                                          point_access,
                                                          tag_component_topology_changed,
@@ -552,25 +540,23 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
   static BuiltinCustomDataLayerProvider nurbs_weight("nurbs_weight",
                                                      AttrDomain::Point,
                                                      CD_PROP_FLOAT,
-                                                     CD_PROP_FLOAT,
-                                                     BuiltinAttributeProvider::Creatable,
                                                      BuiltinAttributeProvider::Deletable,
                                                      point_access,
                                                      tag_component_positions_changed);
 
   static const auto nurbs_order_clamp = mf::build::SI1_SO<int8_t, int8_t>(
       "NURBS Order Validate",
-      [](int8_t value) { return std::max<int8_t>(value, 0); },
+      [](int8_t value) { return std::max<int8_t>(value, 1); },
       mf::build::exec_presets::AllSpanOrSingle());
+  static int nurbs_order_default = 4;
   static BuiltinCustomDataLayerProvider nurbs_order("nurbs_order",
                                                     AttrDomain::Curve,
                                                     CD_PROP_INT8,
-                                                    CD_PROP_INT8,
-                                                    BuiltinAttributeProvider::Creatable,
                                                     BuiltinAttributeProvider::Deletable,
                                                     curve_access,
                                                     tag_component_topology_changed,
-                                                    AttributeValidator{&nurbs_order_clamp});
+                                                    AttributeValidator{&nurbs_order_clamp},
+                                                    &nurbs_order_default);
 
   static const auto normal_mode_clamp = mf::build::SI1_SO<int8_t, int8_t>(
       "Normal Mode Validate",
@@ -581,8 +567,6 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
   static BuiltinCustomDataLayerProvider normal_mode("normal_mode",
                                                     AttrDomain::Curve,
                                                     CD_PROP_INT8,
-                                                    CD_PROP_INT8,
-                                                    BuiltinAttributeProvider::Creatable,
                                                     BuiltinAttributeProvider::Deletable,
                                                     curve_access,
                                                     tag_component_normals_changed,
@@ -591,8 +575,6 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
   static BuiltinCustomDataLayerProvider custom_normal("custom_normal",
                                                       AttrDomain::Point,
                                                       CD_PROP_FLOAT3,
-                                                      CD_PROP_FLOAT3,
-                                                      BuiltinAttributeProvider::Creatable,
                                                       BuiltinAttributeProvider::Deletable,
                                                       point_access,
                                                       tag_component_normals_changed);
@@ -606,8 +588,6 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
   static BuiltinCustomDataLayerProvider nurbs_knots_mode("knots_mode",
                                                          AttrDomain::Curve,
                                                          CD_PROP_INT8,
-                                                         CD_PROP_INT8,
-                                                         BuiltinAttributeProvider::Creatable,
                                                          BuiltinAttributeProvider::Deletable,
                                                          curve_access,
                                                          tag_component_topology_changed,
@@ -622,8 +602,6 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
   static BuiltinCustomDataLayerProvider curve_type("curve_type",
                                                    AttrDomain::Curve,
                                                    CD_PROP_INT8,
-                                                   CD_PROP_INT8,
-                                                   BuiltinAttributeProvider::Creatable,
                                                    BuiltinAttributeProvider::Deletable,
                                                    curve_access,
                                                    tag_component_curve_types_changed,
@@ -633,21 +611,19 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
       "Resolution Validate",
       [](int value) { return std::max<int>(value, 1); },
       mf::build::exec_presets::AllSpanOrSingle());
+  static int resolution_default = 12;
   static BuiltinCustomDataLayerProvider resolution("resolution",
                                                    AttrDomain::Curve,
                                                    CD_PROP_INT32,
-                                                   CD_PROP_INT32,
-                                                   BuiltinAttributeProvider::Creatable,
                                                    BuiltinAttributeProvider::Deletable,
                                                    curve_access,
                                                    tag_component_topology_changed,
-                                                   AttributeValidator{&resolution_clamp});
+                                                   AttributeValidator{&resolution_clamp},
+                                                   &resolution_default);
 
   static BuiltinCustomDataLayerProvider cyclic("cyclic",
                                                AttrDomain::Curve,
                                                CD_PROP_BOOL,
-                                               CD_PROP_BOOL,
-                                               BuiltinAttributeProvider::Creatable,
                                                BuiltinAttributeProvider::Deletable,
                                                curve_access,
                                                tag_component_topology_changed);

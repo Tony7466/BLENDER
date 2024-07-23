@@ -6,6 +6,7 @@
  * \ingroup edinterface
  */
 
+#include <algorithm>
 #include <cfloat>
 #include <climits>
 #include <cmath>
@@ -22,18 +23,16 @@
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
 
-#include "GPU_immediate.h"
-#include "GPU_matrix.h"
-#include "GPU_state.h"
+#include "GPU_immediate.hh"
+#include "GPU_matrix.hh"
+#include "GPU_state.hh"
 
 #include "WM_api.hh"
 
-#include "BLF_api.h"
+#include "BLF_api.hh"
 
 #include "UI_interface.hh"
 #include "UI_view2d.hh"
-
-#include "interface_intern.hh"
 
 /* Compute display grid resolution
  ********************************************************/
@@ -148,7 +147,7 @@ static void get_parallel_lines_draw_steps(const ParallelLinesSet *lines,
              lines->offset;
 
   if (region_start <= *r_first && region_end >= *r_first) {
-    *r_steps = MAX2(0, floorf((region_end - *r_first) / lines->distance)) + 1;
+    *r_steps = std::max(0.0f, floorf((region_end - *r_first) / lines->distance)) + 1;
   }
   else {
     *r_steps = 0;
@@ -378,8 +377,9 @@ static void draw_vertical_scale_indicators(const ARegion *region,
   BLF_batch_draw_begin();
 
   BLF_enable(font_id, BLF_SHADOW);
-  const float shadow_color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
-  BLF_shadow(font_id, 5, shadow_color);
+  float shadow_color[4];
+  UI_GetThemeColor4fv(TH_BACK, shadow_color);
+  BLF_shadow(font_id, FontShadowType::Blur5x5, shadow_color);
   BLF_shadow_offset(font_id, 1, -1);
 
   const float x_offset = 8.0f;
@@ -417,7 +417,7 @@ static void view_to_string__time(
 {
   const Scene *scene = (const Scene *)user_data;
 
-  int brevity_level = 0;
+  int brevity_level = -1;
   if (U.timecode_style == USER_TIMECODE_MINIMAL && v2d_step >= FPS) {
     brevity_level = 1;
   }

@@ -12,7 +12,7 @@ struct OpenSubdiv_EvaluatorCacheImpl;
 struct OpenSubdiv_EvaluatorImpl;
 struct OpenSubdiv_EvaluatorInternal;
 struct OpenSubdiv_PatchCoord;
-struct OpenSubdiv_TopologyRefiner;
+class OpenSubdiv_TopologyRefiner;
 
 struct OpenSubdiv_EvaluatorSettings {
   // Number of smoothly interpolated vertex data channels.
@@ -237,4 +237,4 @@ void openSubdiv_deleteEvaluatorCache(OpenSubdiv_EvaluatorCache *evaluator_cache)
 
 // Return the GLSL source code from the OpenSubDiv library used for patch evaluation.
 // This function is not thread-safe.
-const char *openSubdiv_getGLSLPatchBasisSource(void);
+const char *openSubdiv_getGLSLPatchBasisSource();

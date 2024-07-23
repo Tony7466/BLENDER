@@ -9,17 +9,25 @@
 #include "abc_customdata.h"
 #include "abc_axis_conversion.h"
 
-#include <Alembic/AbcGeom/All.h>
-#include <algorithm>
-#include <unordered_map>
+#include <Alembic/Abc/ICompoundProperty.h>
+#include <Alembic/Abc/ISampleSelector.h>
+#include <Alembic/Abc/OCompoundProperty.h>
+#include <Alembic/Abc/TypedArraySample.h>
+#include <Alembic/AbcCoreAbstract/PropertyHeader.h>
+#include <Alembic/AbcGeom/GeometryScope.h>
+#include <Alembic/AbcGeom/IGeomParam.h>
+#include <Alembic/AbcGeom/OGeomParam.h>
 
 #include "DNA_customdata_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 
 #include "BLI_math_base.h"
+#include "BLI_math_vector.h"
+#include "BLI_math_vector_types.hh"
 #include "BLI_utildefines.h"
 
+#include "BKE_attribute.hh"
 #include "BKE_customdata.hh"
 #include "BKE_mesh.hh"
 
@@ -501,6 +509,29 @@ static void read_custom_data_uvs(const ICompoundProperty &prop,
       config.mesh, prop_header.getName().c_str(), CD_PROP_FLOAT2);
 
   read_uvs(config, cd_data, uv_scope, sample.getVals(), uvs_indices);
+}
+
+void read_velocity(const V3fArraySamplePtr &velocities,
+                   const CDStreamConfig &config,
+                   const float velocity_scale)
+{
+  const int num_velocity_vectors = int(velocities->size());
+  if (num_velocity_vectors != config.mesh->verts_num) {
+    /* Files containing videogrammetry data may be malformed and export velocity data on missing
+     * frames (most likely by copying the last valid data). */
+    return;
+  }
+
+  AttributeOwner owner = AttributeOwner::from_id(&config.mesh->id);
+  CustomDataLayer *velocity_layer = BKE_attribute_new(
+      owner, "velocity", CD_PROP_FLOAT3, bke::AttrDomain::Point, nullptr);
+  float(*velocity)[3] = (float(*)[3])velocity_layer->data;
+
+  for (int i = 0; i < num_velocity_vectors; i++) {
+    const Imath::V3f &vel_in = (*velocities)[i];
+    copy_zup_from_yup(velocity[i], vel_in.getValue());
+    mul_v3_fl(velocity[i], velocity_scale);
+  }
 }
 
 void read_generated_coordinates(const ICompoundProperty &prop,

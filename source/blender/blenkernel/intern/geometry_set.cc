@@ -6,7 +6,7 @@
 #include "BLI_map.hh"
 #include "BLI_task.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_attribute.hh"
 #include "BKE_curves.hh"
@@ -14,12 +14,12 @@
 #include "BKE_geometry_set_instances.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_instances.hh"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_wrapper.hh"
 #include "BKE_modifier.hh"
 #include "BKE_object_types.hh"
-#include "BKE_pointcloud.h"
+#include "BKE_pointcloud.hh"
 #include "BKE_volume.hh"
 
 #include "DNA_collection_types.h"
@@ -344,6 +344,12 @@ const CurvesEditHints *GeometrySet::get_curve_edit_hints() const
   return (component == nullptr) ? nullptr : component->curves_edit_hints_.get();
 }
 
+const GizmoEditHints *GeometrySet::get_gizmo_edit_hints() const
+{
+  const GeometryComponentEditData *component = this->get_component<GeometryComponentEditData>();
+  return (component == nullptr) ? nullptr : component->gizmo_edit_hints_.get();
+}
+
 const GreasePencil *GeometrySet::get_grease_pencil() const
 {
   const GreasePencilComponent *component = this->get_component<GreasePencilComponent>();
@@ -565,6 +571,16 @@ CurvesEditHints *GeometrySet::get_curve_edit_hints_for_write()
   GeometryComponentEditData &component =
       this->get_component_for_write<GeometryComponentEditData>();
   return component.curves_edit_hints_.get();
+}
+
+GizmoEditHints *GeometrySet::get_gizmo_edit_hints_for_write()
+{
+  if (!this->has<GeometryComponentEditData>()) {
+    return nullptr;
+  }
+  GeometryComponentEditData &component =
+      this->get_component_for_write<GeometryComponentEditData>();
+  return component.gizmo_edit_hints_.get();
 }
 
 GreasePencil *GeometrySet::get_grease_pencil_for_write()

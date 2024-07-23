@@ -13,12 +13,25 @@
 
 #pragma once
 
+#include "BLI_hash.hh"
 #include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
-#include "GPU_material.h"
-#include "GPU_texture.h"
+#include "GPU_common_types.hh"
+#include "GPU_material.hh"
+#include "GPU_texture.hh"
 
 #include <iostream>
+
+/* Force enable `printf` support in release build. */
+#define GPU_FORCE_ENABLE_SHADER_PRINTF 0
+
+#if !defined(NDEBUG) || GPU_FORCE_ENABLE_SHADER_PRINTF
+#  define GPU_SHADER_PRINTF_ENABLE 1
+#else
+#  define GPU_SHADER_PRINTF_ENABLE 0
+#endif
+#define GPU_SHADER_PRINTF_SLOT 13
+#define GPU_SHADER_PRINTF_MAX_CAPACITY (1024 * 4)
 
 namespace blender::gpu::shader {
 
@@ -31,48 +44,6 @@ namespace blender::gpu::shader {
     ShaderCreateInfo _info(#_info); \
     _info
 #endif
-
-enum class Type {
-  /* Types supported natively across all GPU back-ends. */
-  FLOAT = 0,
-  VEC2,
-  VEC3,
-  VEC4,
-  MAT3,
-  MAT4,
-  UINT,
-  UVEC2,
-  UVEC3,
-  UVEC4,
-  INT,
-  IVEC2,
-  IVEC3,
-  IVEC4,
-  BOOL,
-  /* Additionally supported types to enable data optimization and native
-   * support in some GPU back-ends.
-   * NOTE: These types must be representable in all APIs. E.g. `VEC3_101010I2` is aliased as vec3
-   * in the GL back-end, as implicit type conversions from packed normal attribute data to vec3 is
-   * supported. UCHAR/CHAR types are natively supported in Metal and can be used to avoid
-   * additional data conversions for `GPU_COMP_U8` vertex attributes. */
-  VEC3_101010I2,
-  UCHAR,
-  UCHAR2,
-  UCHAR3,
-  UCHAR4,
-  CHAR,
-  CHAR2,
-  CHAR3,
-  CHAR4,
-  USHORT,
-  USHORT2,
-  USHORT3,
-  USHORT4,
-  SHORT,
-  SHORT2,
-  SHORT3,
-  SHORT4
-};
 
 /* All of these functions is a bit out of place */
 static inline Type to_type(const eGPUType type)
@@ -161,6 +132,8 @@ static inline std::ostream &operator<<(std::ostream &stream, const Type type)
       return stream << "short3";
     case Type::SHORT4:
       return stream << "short4";
+    case Type::BOOL:
+      return stream << "bool";
     default:
       BLI_assert(0);
       return stream;
@@ -212,6 +185,7 @@ enum class BuiltinBits {
   TEXTURE_ATOMIC = (1 << 18),
 
   /* Not a builtin but a flag we use to tag shaders that use the debug features. */
+  USE_PRINTF = (1 << 28),
   USE_DEBUG_DRAW = (1 << 29),
   USE_DEBUG_PRINT = (1 << 30),
 };
@@ -477,7 +451,7 @@ struct ShaderCreateInfo {
     Type type;
     DualBlend blend;
     StringRefNull name;
-    /* Note: Currently only supported by Metal. */
+    /* NOTE: Currently only supported by Metal. */
     int raster_order_group;
 
     bool operator==(const FragOut &b) const
@@ -494,6 +468,8 @@ struct ShaderCreateInfo {
 
   using SubpassIn = FragOut;
   Vector<SubpassIn> subpass_inputs_;
+
+  Vector<SpecializationConstant> specialization_constants_;
 
   struct Sampler {
     ImageType type;
@@ -610,6 +586,11 @@ struct ShaderCreateInfo {
   eGPUShaderTFBType tf_type_ = GPU_SHADER_TFB_NONE;
   Vector<const char *> tf_names_;
 
+  /* Api-specific parameters. */
+#ifdef WITH_METAL_BACKEND
+  ushort mtl_max_threads_per_threadgroup_ = 0;
+#endif
+
  public:
   ShaderCreateInfo(const char *name) : name_(name){};
   ~ShaderCreateInfo(){};
@@ -633,12 +614,6 @@ struct ShaderCreateInfo {
     return *(Self *)this;
   }
 
-  /**
-   * IMPORTANT: invocations count is only used if GL_ARB_gpu_shader5 is supported. On
-   * implementations that do not supports it, the max_vertices will be multiplied by invocations.
-   * Your shader needs to account for this fact. Use `#ifdef GPU_ARB_gpu_shader5` and make a code
-   * path that does not rely on #gl_InvocationID.
-   */
   Self &geometry_layout(PrimitiveIn prim_in,
                         PrimitiveOut prim_out,
                         int max_vertices,
@@ -710,6 +685,63 @@ struct ShaderCreateInfo {
     subpass_inputs_.append({slot, type, DualBlend::NONE, name, raster_order_group});
     return *(Self *)this;
   }
+
+  /** \} */
+
+  /* -------------------------------------------------------------------- */
+  /** \name Shader specialization constants
+   * \{ */
+
+  /* Adds a specialization constant which is a dynamically modifiable value, which will be
+   * statically compiled into a PSO configuration to provide optimal runtime performance,
+   * with a reduced re-compilation cost vs Macro's with easier generation of unique permutations
+   * based on run-time values.
+   *
+   * Tip: To evaluate use-cases of where specialization constants can provide a performance
+   * gain, benchmark a given shader in its default case. Attempt to statically disable branches or
+   * conditions which rely on uniform look-ups and measure if there is a marked improvement in
+   * performance and/or reduction in memory bandwidth/register pressure.
+   *
+   * NOTE: Specialization constants will incur new compilation of PSOs and thus can incur an
+   * unexpected cost. Specialization constants should be reserved for infrequently changing
+   * parameters (e.g. user setting parameters such as toggling of features or quality level
+   * presets), or those with a low set of possible runtime permutations.
+   *
+   * Specialization constants are assigned at runtime using:
+   *  - `GPU_shader_constant_*(shader, name, value)`
+   * or
+   *  - `DrawPass::specialize_constant(shader, name, value)`
+   *
+   * All constants **MUST** be specified before binding a shader.
+   */
+  Self &specialization_constant(Type type, StringRefNull name, double default_value)
+  {
+    SpecializationConstant constant;
+    constant.type = type;
+    constant.name = name;
+    switch (type) {
+      case Type::INT:
+        constant.value.i = static_cast<int>(default_value);
+        break;
+      case Type::BOOL:
+      case Type::UINT:
+        constant.value.u = static_cast<uint>(default_value);
+        break;
+      case Type::FLOAT:
+        constant.value.f = static_cast<float>(default_value);
+        break;
+      default:
+        BLI_assert_msg(0, "Only scalar types can be used as constants");
+        break;
+    }
+    specialization_constants_.append(constant);
+    interface_names_size_ += name.size() + 1;
+    return *(Self *)this;
+  }
+
+  /* TODO: Add API to specify unique specialization config permutations in CreateInfo, allowing
+   * specialized compilation to be primed and handled in the background at start-up, rather than
+   * waiting for a given permutation to occur dynamically. */
 
   /** \} */
 
@@ -819,7 +851,7 @@ struct ShaderCreateInfo {
 
   Self &push_constant(Type type, StringRefNull name, int array_size = 0)
   {
-    /* We don't have support for UINT push constants yet, use INT instead.*/
+    /* We don't have support for UINT push constants yet, use INT instead. */
     BLI_assert(type != Type::UINT);
     BLI_assert_msg(name.find("[") == -1,
                    "Array syntax is forbidden for push constants."
@@ -945,6 +977,29 @@ struct ShaderCreateInfo {
   /** \} */
 
   /* -------------------------------------------------------------------- */
+  /** \name API-Specific Parameters
+   *
+   * Optional parameters exposed by specific back-ends to enable additional features and
+   * performance tuning.
+   * NOTE: These functions can be exposed as a pass-through on unsupported configurations.
+   * \{ */
+
+  /* \name mtl_max_total_threads_per_threadgroup
+   * \a  max_total_threads_per_threadgroup - Provides compiler hint for maximum threadgroup size up
+   * front. Maximum value is 1024. */
+  Self &mtl_max_total_threads_per_threadgroup(ushort max_total_threads_per_threadgroup)
+  {
+#ifdef WITH_METAL_BACKEND
+    mtl_max_threads_per_threadgroup_ = max_total_threads_per_threadgroup;
+#else
+    UNUSED_VARS(max_total_threads_per_threadgroup);
+#endif
+    return *(Self *)this;
+  }
+
+  /** \} */
+
+  /* -------------------------------------------------------------------- */
   /** \name Recursive evaluation.
    *
    * Flatten all dependency so that this descriptor contains all the data from the additional
@@ -1058,3 +1113,16 @@ struct ShaderCreateInfo {
 };
 
 }  // namespace blender::gpu::shader
+
+namespace blender {
+template<> struct DefaultHash<Vector<blender::gpu::shader::SpecializationConstant::Value>> {
+  uint64_t operator()(const Vector<blender::gpu::shader::SpecializationConstant::Value> &key) const
+  {
+    uint64_t hash = 0;
+    for (const blender::gpu::shader::SpecializationConstant::Value &value : key) {
+      hash = hash * 33 ^ uint64_t(value.u);
+    }
+    return hash;
+  }
+};
+}  // namespace blender

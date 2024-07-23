@@ -741,7 +741,8 @@ ccl_device_intersect bool kernel_embree_intersect(KernelGlobals kg,
   rtcIntersect1(kernel_data.device_bvh, &ctx, &ray_hit);
 #endif
   if (ray_hit.hit.geomID == RTC_INVALID_GEOMETRY_ID ||
-      ray_hit.hit.primID == RTC_INVALID_GEOMETRY_ID) {
+      ray_hit.hit.primID == RTC_INVALID_GEOMETRY_ID)
+  {
     return false;
   }
 
@@ -801,7 +802,11 @@ ccl_device_intersect bool kernel_embree_intersect_local(KernelGlobals kg,
     float3 P = ray->P;
     float3 dir = ray->D;
     float3 idir = ray->D;
+#  ifdef __OBJECT_MOTION__
     bvh_instance_motion_push(kg, local_object, ray, &P, &dir, &idir);
+#  else
+    bvh_instance_push(kg, local_object, ray, &P, &dir, &idir);
+#  endif
 
     rtc_ray.org_x = P.x;
     rtc_ray.org_y = P.y;

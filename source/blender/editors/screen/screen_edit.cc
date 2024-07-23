@@ -14,22 +14,21 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_userdef_types.h"
-#include "DNA_workspace_types.h"
 
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_context.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_icons.h"
 #include "BKE_image.h"
-#include "BKE_layer.h"
-#include "BKE_lib_id.h"
+#include "BKE_layer.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_main.hh"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 #include "BKE_screen.hh"
 #include "BKE_sound.h"
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -39,14 +38,17 @@
 #include "ED_screen.hh"
 #include "ED_screen_types.hh"
 
+#include "RNA_access.hh"
+#include "RNA_enum_types.hh"
+
 #include "UI_interface.hh"
 
 #include "WM_message.hh"
-#include "WM_toolsystem.h"
+#include "WM_toolsystem.hh"
 
 #include "DEG_depsgraph_query.hh"
 
-#include "screen_intern.h" /* own module include */
+#include "screen_intern.hh" /* own module include */
 
 /* adds no space data */
 static ScrArea *screen_addarea_ex(ScrAreaMap *area_map,
@@ -224,7 +226,8 @@ void screen_data_copy(bScreen *to, bScreen *from)
 
   ScrVert *s2 = static_cast<ScrVert *>(to->vertbase.first);
   for (ScrVert *s1 = static_cast<ScrVert *>(from->vertbase.first); s1;
-       s1 = s1->next, s2 = s2->next) {
+       s1 = s1->next, s2 = s2->next)
+  {
     s1->newv = s2;
   }
 
@@ -285,8 +288,8 @@ eScreenDir area_getorientation(ScrArea *sa_a, ScrArea *sa_b)
   short overlapy = std::min(top_a, top_b) - std::max(bottom_a, bottom_b);
 
   /* Minimum overlap required. */
-  const short minx = MIN3(AREAJOINTOLERANCEX, right_a - left_a, right_b - left_b);
-  const short miny = MIN3(AREAJOINTOLERANCEY, top_a - bottom_a, top_b - bottom_b);
+  const short minx = std::min({int(AREAJOINTOLERANCEX), right_a - left_a, right_b - left_b});
+  const short miny = std::min({int(AREAJOINTOLERANCEY), top_a - bottom_a, top_b - bottom_b});
 
   if (top_a == bottom_b && overlapx >= minx) {
     return eScreenDir(1); /* sa_a to bottom of sa_b = N */
@@ -755,6 +758,9 @@ static void screen_regions_poll(bContext *C, const wmWindow *win, bScreen *scree
       if (region_poll(C, screen, area, region) == false) {
         region->flag |= RGN_FLAG_POLL_FAILED;
       }
+      else if (region->type && region->type->on_poll_success) {
+        region->type->on_poll_success(C, region);
+      }
 
       if (old_region_flag != region->flag) {
         any_changed = true;
@@ -805,6 +811,18 @@ void ED_region_exit(bContext *C, ARegion *region)
 
   WM_event_remove_handlers(C, &region->handlers);
   WM_event_modal_handler_region_replace(win, region, nullptr);
+
+  if (region->regiontype == RGN_TYPE_TEMPORARY) {
+    /* This may be a popup region such as a popover or splash screen.
+     * In the case of popups which spawn popups it's possible for
+     * the parent popup to be freed *before* a popup which created it.
+     * The child may have a reference to the freed parent unless cleared here, see: #122132.
+     *
+     * Having parent popups freed before the popups they spawn could be investigated although
+     * they're not technically nested as they're both stored in #Screen::regionbase. */
+    WM_event_ui_handler_region_popup_replace(win, region, nullptr);
+  }
+
   WM_draw_region_free(region);
   /* The region is not in a state that it can be visible in anymore. Reinitializing is needed. */
   region->visible = false;
@@ -885,6 +903,28 @@ void ED_screen_exit(bContext *C, wmWindow *window, bScreen *screen)
     /* none otherwise */
     CTX_wm_window_set(C, nullptr);
   }
+}
+
+blender::StringRefNull ED_area_name(const ScrArea *area)
+{
+  if (area->type && area->type->space_name_get) {
+    return area->type->space_name_get(area);
+  }
+
+  const int index = RNA_enum_from_value(rna_enum_space_type_items, area->spacetype);
+  const EnumPropertyItem item = rna_enum_space_type_items[index];
+  return item.name;
+}
+
+int ED_area_icon(const ScrArea *area)
+{
+  if (area->type && area->type->space_icon_get) {
+    return area->type->space_icon_get(area);
+  }
+
+  const int index = RNA_enum_from_value(rna_enum_space_type_items, area->spacetype);
+  const EnumPropertyItem item = rna_enum_space_type_items[index];
+  return item.icon;
 }
 
 /* *********************************** */
@@ -1795,7 +1835,7 @@ void ED_update_for_newframe(Main *bmain, Depsgraph *depsgraph)
     LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
       BKE_screen_view3d_scene_sync(screen, scene);
     }
-    DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
   }
 #endif
 
@@ -1838,7 +1878,8 @@ bool ED_screen_stereo3d_required(const bScreen *screen, const Scene *scene)
          * the file doesn't have views enabled */
         sima = static_cast<SpaceImage *>(area->spacedata.first);
         if (sima->image && BKE_image_is_stereo(sima->image) &&
-            (sima->iuser.flag & IMA_SHOW_STEREO)) {
+            (sima->iuser.flag & IMA_SHOW_STEREO))
+        {
           return true;
         }
         break;

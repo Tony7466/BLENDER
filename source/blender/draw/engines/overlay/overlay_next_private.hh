@@ -8,8 +8,10 @@
 
 #pragma once
 
+#include "BLI_function_ref.hh"
+
 #include "DRW_gpu_wrapper.hh"
-#include "DRW_render.h"
+#include "DRW_render.hh"
 #include "UI_resources.hh"
 #include "draw_manager.hh"
 #include "draw_pass.hh"
@@ -62,12 +64,12 @@ struct State {
 class ShapeCache {
  private:
   struct BatchDeleter {
-    void operator()(GPUBatch *shader)
+    void operator()(gpu::Batch *shader)
     {
       GPU_BATCH_DISCARD_SAFE(shader);
     }
   };
-  using BatchPtr = std::unique_ptr<GPUBatch, BatchDeleter>;
+  using BatchPtr = std::unique_ptr<gpu::Batch, BatchDeleter>;
 
  public:
   BatchPtr quad_wire;
@@ -79,6 +81,8 @@ class ShapeCache {
   BatchPtr empty_cone;
   BatchPtr arrows;
   BatchPtr metaball_wire_circle;
+
+  BatchPtr speaker;
 
   ShapeCache();
 };
@@ -114,6 +118,9 @@ class ShaderModule {
   ShaderPtr armature_sphere_outline;
   ShaderPtr depth_mesh;
   ShaderPtr extra_shape;
+  ShaderPtr extra_wire_object;
+  ShaderPtr lattice_points;
+  ShaderPtr lattice_wire;
 
   ShaderModule(const SelectionType selection_type, const bool clipping_enabled);
 
@@ -129,7 +136,7 @@ class ShaderModule {
   }
   ShaderPtr selectable_shader(const char *create_info_name);
   ShaderPtr selectable_shader(const char *create_info_name,
-                              std::function<void(gpu::shader::ShaderCreateInfo &info)> patch);
+                              FunctionRef<void(gpu::shader::ShaderCreateInfo &info)> patch);
 };
 
 struct Resources : public select::SelectMap {
@@ -155,6 +162,7 @@ struct Resources : public select::SelectMap {
   TextureRef depth_in_front_tx;
   TextureRef color_overlay_tx;
   TextureRef color_render_tx;
+  TextureRef weight_ramp_tx;
 
   Resources(const SelectionType selection_type_, ShaderModule &shader_module)
       : select::SelectMap(selection_type_), shaders(shader_module){};
@@ -254,7 +262,7 @@ template<typename InstanceDataT> struct ShapeInstanceBuf : private select::Selec
     data_buf.append(data);
   }
 
-  void end_sync(PassSimple &pass, GPUBatch *shape)
+  void end_sync(PassSimple &pass, gpu::Batch *shape)
   {
     if (data_buf.is_empty()) {
       return;

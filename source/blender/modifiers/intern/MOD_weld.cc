@@ -21,7 +21,7 @@
 #include "BLI_span.hh"
 #include "BLI_vector.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_defaults.h"
 #include "DNA_mesh_types.h"
@@ -30,7 +30,8 @@
 #include "DNA_screen_types.h"
 
 #include "BKE_context.hh"
-#include "BKE_deform.h"
+#include "BKE_customdata.hh"
+#include "BKE_deform.hh"
 #include "BKE_modifier.hh"
 #include "BKE_screen.hh"
 
@@ -38,7 +39,7 @@
 #include "UI_resources.hh"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "DEG_depsgraph.hh"
 
@@ -213,4 +214,5 @@ ModifierTypeInfo modifierType_Weld = {
     /*panel_register*/ panel_register,
     /*blend_write*/ nullptr,
     /*blend_read*/ nullptr,
+    /*foreach_cache*/ nullptr,
 };

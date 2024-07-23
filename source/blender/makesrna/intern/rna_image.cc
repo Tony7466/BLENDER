@@ -18,6 +18,7 @@
 #include "BKE_image_format.h"
 #include "BKE_node_tree_update.hh"
 
+#include "BLT_translation.hh"
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
 
@@ -25,7 +26,7 @@
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
 
-#include "rna_internal.h"
+#include "rna_internal.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -53,15 +54,17 @@ static const EnumPropertyItem image_source_items[] = {
 
 #ifdef RNA_RUNTIME
 
+#  include <algorithm>
+
 #  include "BLI_math_base.h"
 #  include "BLI_math_vector.h"
 
-#  include "BKE_global.h"
+#  include "BKE_global.hh"
 
-#  include "GPU_texture.h"
+#  include "GPU_texture.hh"
 
-#  include "IMB_imbuf.h"
-#  include "IMB_imbuf_types.h"
+#  include "IMB_imbuf.hh"
+#  include "IMB_imbuf_types.hh"
 
 #  include "ED_node.hh"
 
@@ -93,7 +96,7 @@ static void rna_Image_source_set(PointerRNA *ptr, int value)
     }
 
     DEG_id_tag_update(&ima->id, 0);
-    DEG_id_tag_update(&ima->id, ID_RECALC_EDITORS);
+    DEG_id_tag_update(&ima->id, ID_RECALC_EDITORS | ID_RECALC_SOURCE);
     DEG_relations_tag_update(G_MAIN);
   }
 }
@@ -104,7 +107,7 @@ static void rna_Image_reload_update(Main *bmain, Scene * /*scene*/, PointerRNA *
   BKE_image_signal(bmain, ima, nullptr, IMA_SIGNAL_RELOAD);
   WM_main_add_notifier(NC_IMAGE | NA_EDITED, &ima->id);
   DEG_id_tag_update(&ima->id, 0);
-  DEG_id_tag_update(&ima->id, ID_RECALC_EDITORS);
+  DEG_id_tag_update(&ima->id, ID_RECALC_EDITORS | ID_RECALC_SOURCE);
 }
 
 static int rna_Image_generated_type_get(PointerRNA *ptr)
@@ -132,7 +135,7 @@ static void rna_Image_generated_width_set(PointerRNA *ptr, int value)
 {
   Image *ima = (Image *)ptr->data;
   ImageTile *base_tile = BKE_image_get_tile(ima, 0);
-  base_tile->gen_x = CLAMPIS(value, 1, 65536);
+  base_tile->gen_x = std::clamp(value, 1, 65536);
 }
 
 static int rna_Image_generated_height_get(PointerRNA *ptr)
@@ -146,7 +149,7 @@ static void rna_Image_generated_height_set(PointerRNA *ptr, int value)
 {
   Image *ima = (Image *)ptr->data;
   ImageTile *base_tile = BKE_image_get_tile(ima, 0);
-  base_tile->gen_y = CLAMPIS(value, 1, 65536);
+  base_tile->gen_y = std::clamp(value, 1, 65536);
 }
 
 static bool rna_Image_generated_float_get(PointerRNA *ptr)
@@ -180,7 +183,7 @@ void rna_Image_generated_color_set(PointerRNA *ptr, const float values[4])
   Image *ima = (Image *)(ptr->data);
   ImageTile *base_tile = BKE_image_get_tile(ima, 0);
   for (uint i = 0; i < 4; i++) {
-    base_tile->gen_color[i] = CLAMPIS(values[i], 0.0f, FLT_MAX);
+    base_tile->gen_color[i] = std::clamp(values[i], 0.0f, FLT_MAX);
   }
 }
 
@@ -189,6 +192,7 @@ static void rna_Image_generated_update(Main *bmain, Scene * /*scene*/, PointerRN
   Image *ima = (Image *)ptr->owner_id;
   BKE_image_signal(bmain, ima, nullptr, IMA_SIGNAL_FREE);
   BKE_image_partial_update_mark_full_update(ima);
+  DEG_id_tag_update(&ima->id, ID_RECALC_EDITORS | ID_RECALC_SOURCE);
 }
 
 static void rna_Image_colormanage_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
@@ -228,6 +232,7 @@ static void rna_Image_views_format_update(Main *bmain, Scene *scene, PointerRNA 
 
   BKE_image_release_ibuf(ima, ibuf, lock);
   BKE_image_partial_update_mark_full_update(ima);
+  DEG_id_tag_update(&ima->id, ID_RECALC_EDITORS | ID_RECALC_SOURCE);
 }
 
 static void rna_ImageUser_update(Main *bmain, Scene *scene, PointerRNA *ptr)
@@ -259,7 +264,7 @@ static void rna_ImageUser_relations_update(Main *bmain, Scene *scene, PointerRNA
   DEG_relations_tag_update(bmain);
 }
 
-static char *rna_ImageUser_path(const PointerRNA *ptr)
+static std::optional<std::string> rna_ImageUser_path(const PointerRNA *ptr)
 {
   if (ptr->owner_id) {
     // ImageUser *iuser = ptr->data;
@@ -267,17 +272,19 @@ static char *rna_ImageUser_path(const PointerRNA *ptr)
     switch (GS(ptr->owner_id->name)) {
       case ID_OB:
       case ID_TE:
-        return BLI_strdup("image_user");
+        return "image_user";
       case ID_NT:
         return rna_Node_ImageUser_path(ptr);
       case ID_CA:
         return rna_CameraBackgroundImage_image_or_movieclip_user_path(ptr);
+      case ID_SCR:
+        return " ... image_user";
       default:
         break;
     }
   }
 
-  return BLI_strdup("");
+  return "";
 }
 
 static void rna_Image_gpu_texture_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
@@ -575,7 +582,7 @@ static int rna_Image_frame_duration_get(PointerRNA *ptr)
   }
 
   if (BKE_image_has_anim(ima)) {
-    anim *anim = ((ImageAnim *)ima->anims.first)->anim;
+    ImBufAnim *anim = ((ImageAnim *)ima->anims.first)->anim;
     if (anim) {
       duration = IMB_anim_get_duration(anim, IMB_TC_RECORD_RUN);
     }
@@ -1148,6 +1155,7 @@ static void rna_def_image(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "source", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, image_source_items);
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_IMAGE);
   RNA_def_property_enum_funcs(prop, nullptr, "rna_Image_source_set", "rna_Image_source_itemf");
   RNA_def_property_ui_text(prop, "Source", "Where the image comes from");
   RNA_def_property_update(prop, NC_IMAGE | ND_DISPLAY, nullptr);
