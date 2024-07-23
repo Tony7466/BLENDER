@@ -12,6 +12,8 @@
 #include "BKE_object.hh"
 #include "BKE_report.hh"
 
+#include "BLI_assert.h"
+#include "BLI_math_matrix.hh"
 #include "BLI_math_vector.h"
 #include "BLI_math_vector.hh"
 
@@ -20,6 +22,7 @@
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
 
+#include "DNA_curves_types.h"
 #include "DNA_grease_pencil_types.h"
 #include "DNA_object_types.h"
 
@@ -99,8 +102,6 @@ struct TraceJob {
   /* Frame number where the output frame is generated. */
   int frame_target;
   float threshold;
-  float scale;
-  float sample;
   int resolution;
   float radius;
   TurnPolicy turnpolicy;
@@ -115,7 +116,8 @@ struct TraceJob {
   void ensure_output_object();
 };
 
-static int to_potrace(const TurnPolicy turn_policy) {
+static int to_potrace(const TurnPolicy turn_policy)
+{
   switch (turn_policy) {
     case TurnPolicy ::Foreground:
       return POTRACE_TURNPOLICY_BLACK;
@@ -144,6 +146,8 @@ void TraceJob::ensure_output_object()
   if (this->ob_grease_pencil == nullptr) {
     const ushort local_view_bits = (this->v3d && this->v3d->localvd) ? this->v3d->local_view_uid :
                                                                        0;
+
+    /* Copy transform from the active object. */
     this->ob_grease_pencil = ed::object::add_type(this->C,
                                                   OB_GREASE_PENCIL,
                                                   nullptr,
@@ -152,17 +156,7 @@ void TraceJob::ensure_output_object()
                                                   false,
                                                   local_view_bits);
     copy_v3_v3(this->ob_grease_pencil->scale, this->ob_active->scale);
-
-    // ED_grease_pencil_add_object(this->C, this->ob_active->loc, local_view_bits);
-    // /* Apply image rotation. */
-    // copy_v3_v3(this->ob_grease_pencil->rot, this->ob_active->rot);
-    // /* Grease pencil is rotated 90 degrees in X axis by default. */
-    // this->ob_grease_pencil->rot[0] -= DEG2RADF(90.0f);
     this->was_ob_created = true;
-    // /* Apply image Scale. */
-    // copy_v3_v3(this->ob_grease_pencil->scale, this->ob_active->scale);
-    /* The default display size of the image is 5.0 and this is used as scale = 1.0. */
-    // mul_v3_fl(this->ob_grease_pencil->scale, this->ob_active->empty_drawsize / 5.0f);
   }
 
   /* Create Layer. */
@@ -211,10 +205,10 @@ inline bool bm_safe(const potrace_bitmap_t *bm, const int x, const int y)
 }
 
 // #  define bm_scanline(bm, y) ((bm)->map + (y) * (bm)->dy)
-//#  define bm_index(bm, x, y) (&bm_scanline(bm, y)[(x) / BM_WORDBITS])
-//#  define bm_mask(x) (BM_HIBIT >> ((x) & (BM_WORDBITS - 1)))
-//#  define bm_range(x, a) ((int)(x) >= 0 && (int)(x) < (a))
-//#  define bm_safe(bm, x, y) (bm_range(x, (bm)->w) && bm_range(y, (bm)->h))
+// #  define bm_index(bm, x, y) (&bm_scanline(bm, y)[(x) / BM_WORDBITS])
+// #  define bm_mask(x) (BM_HIBIT >> ((x) & (BM_WORDBITS - 1)))
+// #  define bm_range(x, a) ((int)(x) >= 0 && (int)(x) < (a))
+// #  define bm_safe(bm, x, y) (bm_range(x, (bm)->w) && bm_range(y, (bm)->h))
 
 inline bool BM_UGET(const potrace_bitmap_t *bm, const int x, const int y)
 {
@@ -307,10 +301,9 @@ static ColorGeometry4f pixel_at_index(const ImBuf &ibuf, const int32_t idx)
     const float4 &frgba = reinterpret_cast<float4 *>(ibuf.float_buffer.data)[idx];
     return ColorGeometry4f(frgba);
   }
-  else {
-    const uchar4 &col = reinterpret_cast<const uchar4 *>(ibuf.byte_buffer.data)[idx];
-    return ColorGeometry4f(float4(col) / 255.0f);
-  }
+
+  const uchar4 &col = reinterpret_cast<const uchar4 *>(ibuf.byte_buffer.data)[idx];
+  return ColorGeometry4f(float4(col) / 255.0f);
 }
 
 static void image_to_bitmap(const ImBuf &ibuf, potrace_bitmap_t &bm, const float threshold)
@@ -329,26 +322,28 @@ static void trace_data_to_strokes(Main &bmain,
                                   const potrace_state_t &st,
                                   Object &ob,
                                   bke::greasepencil::Drawing &drawing,
-                                  const ed::greasepencil::DrawingPlacement &placement,
-                                  const int2 &offset,
-                                  const float scale,
-                                  const float sample,
+                                  const float4x4 &transform,
                                   const int resolution,
                                   const float radius)
 {
+  using PathSegment = potrace_dpoint_t[3];
   constexpr float MAX_LENGTH = 100.0f;
 
-  ///* Find materials and create them if not found. */
-  //BKE_object_material
-  //int32_t mat_fill_idx = BKE_gpencil_material_find_index_by_name_prefix(ob, "Stroke");
-  //int32_t mat_mask_idx = BKE_gpencil_material_find_index_by_name_prefix(ob, "Holdout");
+  auto project_pixel = [&](const potrace_dpoint_t &point) -> float3 {
+    return math::transform_point(transform, float3(point.x, point.y, 0));
+  };
 
-  //const float default_color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+  ///* Find materials and create them if not found. */
+  // BKE_object_material
+  // int32_t mat_fill_idx = BKE_gpencil_material_find_index_by_name_prefix(ob, "Stroke");
+  // int32_t mat_mask_idx = BKE_gpencil_material_find_index_by_name_prefix(ob, "Holdout");
+
+  // const float default_color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
   ///* Stroke and Fill material. */
-  //if (mat_fill_idx == -1) {
-  //  int32_t new_idx;
-  //  Material *mat_gp = BKE_gpencil_object_material_new(bmain, ob, "Stroke", &new_idx);
-  //  MaterialGPencilStyle *gp_style = mat_gp->gp_style;
+  // if (mat_fill_idx == -1) {
+  //   int32_t new_idx;
+  //   Material *mat_gp = BKE_gpencil_object_material_new(bmain, ob, "Stroke", &new_idx);
+  //   MaterialGPencilStyle *gp_style = mat_gp->gp_style;
 
   //  copy_v4_v4(gp_style->stroke_rgba, default_color);
   //  gp_style->flag |= GP_MATERIAL_STROKE_SHOW;
@@ -356,10 +351,10 @@ static void trace_data_to_strokes(Main &bmain,
   //  mat_fill_idx = ob->totcol - 1;
   //}
   ///* Holdout material. */
-  //if (mat_mask_idx == -1) {
-  //  int32_t new_idx;
-  //  Material *mat_gp = BKE_gpencil_object_material_new(bmain, ob, "Holdout", &new_idx);
-  //  MaterialGPencilStyle *gp_style = mat_gp->gp_style;
+  // if (mat_mask_idx == -1) {
+  //   int32_t new_idx;
+  //   Material *mat_gp = BKE_gpencil_object_material_new(bmain, ob, "Holdout", &new_idx);
+  //   MaterialGPencilStyle *gp_style = mat_gp->gp_style;
 
   //  copy_v4_v4(gp_style->stroke_rgba, default_color);
   //  copy_v4_v4(gp_style->fill_rgba, default_color);
@@ -374,14 +369,18 @@ static void trace_data_to_strokes(Main &bmain,
   Vector<int> offsets;
   for (const potrace_path_t *path = st.plist; path != nullptr; path = path->next) {
     const Span<int> path_tags = {path->curve.tag, path->curve.n};
+    const Span<PathSegment> path_segments = {path->curve.c, path->curve.n};
     int point_num = 0;
-    for (const int segment_i : IndexRange(path->curve.n)) {
+    for (const int segment_i : path_segments.index_range()) {
       switch (path_tags[segment_i]) {
         case POTRACE_CORNER:
           point_num += 2;
           break;
         case POTRACE_CURVETO:
           point_num += 1;
+          break;
+        default:
+          BLI_assert_unreachable();
           break;
       }
     }
@@ -392,102 +391,131 @@ static void trace_data_to_strokes(Main &bmain,
   bke::CurvesGeometry curves(points_by_curve.total_size(), points_by_curve.size());
   curves.offsets_for_write().copy_from(offsets);
 
+  /* Construct all curves as Bezier curves. */
+  curves.curve_types_for_write().fill(CURVE_TYPE_BEZIER);
+  curves.update_curve_types();
+  /* All trace curves are cyclic. */
+  curves.cyclic_for_write().fill(true);
+  /* Uniform radius for all curves. */
+  drawing.radii_for_write().fill(radius);
+
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
-  MutableSpan<float> radii = drawing.radii_for_write();
   bke::SpanAttributeWriter<int> material_indices = attributes.lookup_or_add_for_write_span<int>(
       "material_index", bke::AttrDomain::Curve);
+  MutableSpan<int8_t> handle_types_left = curves.handle_types_left_for_write();
+  MutableSpan<int8_t> handle_types_right = curves.handle_types_right_for_write();
+  MutableSpan<float3> handle_positions_left = curves.handle_positions_left_for_write();
+  MutableSpan<float3> handle_positions_right = curves.handle_positions_right_for_write();
   MutableSpan<float3> positions = curves.positions_for_write();
 
-  /* There isn't any rule here, only the result of lots of testing to get a value that gets
-   * good results using the Potrace data. */
-  const float scalef = 0.008f * scale;
   /* Draw each curve. */
-  for (const potrace_path_t *path = st.plist, int curve_i = 0; path != nullptr;
-       path = path->next, ++curve_i)
-  {
+  int curve_i = 0;
+  for (const potrace_path_t *path = st.plist; path != nullptr; path = path->next, ++curve_i) {
     const Span<int> path_tags = {path->curve.tag, path->curve.n};
-    using PathSegment = potrace_dpoint_t[3];
     const Span<PathSegment> path_segments = {path->curve.c, path->curve.n};
 
     const IndexRange points = points_by_curve[curve_i];
+    if (points.is_empty()) {
+      continue;
+    }
 
     material_indices.span[curve_i] = 0 /*path->sign == '+' ? mat_fill_idx : mat_mask_idx*/;
-    radii.slice(points).fill(radius);
 
     /* Potrace stores the last 3 points of a bezier segment.
      * The start point is the last segment's end point. */
-    int point_index = 0;
-    auto add_point = [&](float scale, const int2 offset, const potrace_dpoint_t &point) -> int {
-      const float2 co = (float2(point.x, point.y) - float2(offset)) * scale;
-      positions[points[point_index]] = placement.project(co);
-      point_index += 1;
+    int point_i = points.last();
+    auto next_point = [&]() {
+      point_i = (point_i == points.last() ? points.first() : point_i + 1);
     };
 
     for (const int segment_i : path_segments.index_range()) {
       const PathSegment &segment = path_segments[segment_i];
       switch (path_tags[segment_i]) {
-        case POTRACE_CORNER: {
-          add_point(scalef, offset, segment[1]);
-          add_point(scalef, offset, segment[2]);
+        case POTRACE_CORNER:
+          /* Potrace corners are formed by straight lines from the previous/next point.
+           * segment[0] is unused, segment[1] is the corner position, segment[2] is the next point.
+           */
+          handle_types_right[point_i] = BEZIER_HANDLE_VECTOR;
+
+          next_point();
+          positions[point_i] = project_pixel(segment[1]);
+          handle_types_right[point_i] = BEZIER_HANDLE_VECTOR;
+
+          next_point();
+          positions[point_i] = project_pixel(segment[2]);
+          handle_types_left[point_i] = BEZIER_HANDLE_VECTOR;
           break;
-        }
-        case POTRACE_CURVETO: {
-          float cp1[2], cp2[2], cp3[2], cp4[2];
-          if (gps->totpoints == 0) {
-            cp1[0] = start_point[0];
-            cp1[1] = start_point[1];
-          }
-          else {
-            copy_v2_v2(cp1, last);
-          }
+        case POTRACE_CURVETO:
+          /* segment[0] is the previous point's right-side handle, segment[1] is the next point's
+           * left-side handle, segment[2] is the next point. */
+          handle_types_right[point_i] = BEZIER_HANDLE_FREE;
+          handle_positions_right[point_i] = project_pixel(segment[0]);
 
-          cp2[0] = c[i][0].x;
-          cp2[1] = c[i][0].y;
-
-          cp3[0] = c[i][1].x;
-          cp3[1] = c[i][1].y;
-
-          cp4[0] = c[i][2].x;
-          cp4[1] = c[i][2].y;
-
-          add_bezier(gps,
-                     scalef,
-                     offset,
-                     resolution,
-                     cp1,
-                     cp2,
-                     cp3,
-                     cp4,
-                     (gps->totpoints == 0) ? false : true);
-          copy_v2_v2(last, cp4);
+          next_point();
+          positions[point_i] = project_pixel(segment[2]);
+          handle_types_left[point_i] = BEZIER_HANDLE_FREE;
+          handle_positions_left[point_i] = project_pixel(segment[1]);
           break;
-        }
         default:
+          BLI_assert_unreachable();
           break;
       }
     }
-    /* In some situations, Potrace can produce a wrong data and generate a very
-     * long stroke. Here the length is checked and removed if the length is too big. */
-    float length = BKE_gpencil_stroke_length(gps, true);
-    if (length <= MAX_LENGTH) {
-      bGPdata *gpd = static_cast<bGPdata *>(ob->data);
-      if (sample > 0.0f) {
-        /* Resample stroke. Don't need to call to BKE_gpencil_stroke_geometry_update() because
-         * the sample function already call that. */
-        BKE_gpencil_stroke_sample(gpd, gps, sample, false, 0);
-      }
-      else {
-        BKE_gpencil_stroke_geometry_update(gpd, gps);
-      }
-    }
-    else {
-      /* Remove too long strokes. */
-      BLI_remlink(&gpf->strokes, gps);
-      BKE_gpencil_free_stroke(gps);
-    }
+    // /* In some situations, Potrace can produce a wrong data and generate a very
+    //  * long stroke. Here the length is checked and removed if the length is too big. */
+    // float length = BKE_gpencil_stroke_length(gps, true);
+    // if (length <= MAX_LENGTH) {
+    //   bGPdata *gpd = static_cast<bGPdata *>(ob->data);
+    //   if (sample > 0.0f) {
+    //     /* Resample stroke. Don't need to call to BKE_gpencil_stroke_geometry_update() because
+    //      * the sample function already call that. */
+    //     BKE_gpencil_stroke_sample(gpd, gps, sample, false, 0);
+    //   }
+    //   else {
+    //     BKE_gpencil_stroke_geometry_update(gpd, gps);
+    //   }
+    // }
+    // else {
+    //   /* Remove too long strokes. */
+    //   BLI_remlink(&gpf->strokes, gps);
+    //   BKE_gpencil_free_stroke(gps);
+    // }
 
     path = path->next;
   }
+
+  material_indices.finish();
+  drawing.tag_topology_changed();
+  drawing.tag_positions_changed();
+  curves.tag_radii_changed();
+
+  /* Calculate handles for all corner points (vector handle type). */
+  bke::curves::bezier::calculate_auto_handles(true,
+                                              handle_types_left,
+                                              handle_types_right,
+                                              positions,
+                                              handle_positions_left,
+                                              handle_positions_right);
+
+  drawing.strokes_for_write() = curves;
+}
+
+static float4x4 pixel_to_object_transform(const Object &image_object,
+                                          const ImBuf &ibuf,
+                                          const float2 pixel_center = float2(0.5f))
+{
+  const float3 pixel_center_3d = float3(pixel_center.x, pixel_center.y, 0);
+  const float3 pixel_size_3d = math::safe_rcp(float3(ibuf.x, ibuf.y, 0));
+  const float3 image_offset_3d = float3(image_object.ima_ofs[0], image_object.ima_ofs[1], 0);
+  const float max_image_scale = image_object.empty_drawsize;
+  const float3 image_aspect_3d = (ibuf.x > ibuf.y ? float3(1, float(ibuf.y) / float(ibuf.x), 1) :
+                                                    float3(float(ibuf.x) / float(ibuf.y), 1, 1));
+
+  const float4x4 to_normalized = math::scale(math::from_location<float4x4>(pixel_center_3d),
+                                             pixel_size_3d);
+  const float4x4 to_image = math::scale(math::translate(to_normalized, image_offset_3d),
+                                        image_aspect_3d * max_image_scale);
+  return to_image;
 }
 
 static bool grease_pencil_trace_image(TraceJob &trace_job,
@@ -524,23 +552,14 @@ static bool grease_pencil_trace_image(TraceJob &trace_job,
   /* Free BW bitmap. */
   free_bitmap(bm);
 
-  /* Convert the trace to strokes. */
-  const int2 offset = int2{ibuf.x, ibuf.y} / 2;
-
-  /* Scale correction for Potrace.
-   * Really, there isn't documented in Potrace about how the scale is calculated,
-   * but after doing a lot of tests, it looks is using a VGA resolution (640) as a base.
-   * Maybe there are others ways to get the right scale conversion, but this solution works. */
-  const int max_dim = std::max(ibuf.x, ibuf.y);
-  const float scale_potrace = trace_job.scale * 640.0f / float(max_dim);
+  /* Transform from bitmap index space to local image object space. */
+  const float4x4 transform = pixel_to_object_transform(*trace_job.ob_grease_pencil, ibuf);
 
   trace_data_to_strokes(*trace_job.bmain,
                         *st,
                         *trace_job.ob_grease_pencil,
                         drawing,
-                        offset,
-                        scale_potrace,
-                        trace_job.sample,
+                        transform,
                         trace_job.resolution,
                         trace_job.radius);
 
@@ -704,8 +723,6 @@ static int grease_pencil_trace_image_exec(bContext *C, wmOperator *op)
   job->was_ob_created = false;
 
   job->threshold = RNA_float_get(op->ptr, "threshold");
-  job->scale = RNA_float_get(op->ptr, "scale");
-  job->sample = RNA_float_get(op->ptr, "sample");
   job->resolution = RNA_int_get(op->ptr, "resolution");
   job->radius = RNA_float_get(op->ptr, "radius");
   job->turnpolicy = TurnPolicy(RNA_enum_get(op->ptr, "turnpolicy"));
@@ -819,24 +836,6 @@ static void GREASE_PENCIL_OT_trace_image(wmOperatorType *ot)
   RNA_def_int(
       ot->srna, "resolution", 5, 1, 20, "Resolution", "Resolution of the generated curves", 1, 20);
 
-  RNA_def_float(ot->srna,
-                "scale",
-                1.0f,
-                0.001f,
-                100.0f,
-                "Scale",
-                "Scale of the final stroke",
-                0.001f,
-                100.0f);
-  RNA_def_float(ot->srna,
-                "sample",
-                0.0f,
-                0.0f,
-                100.0f,
-                "Sample",
-                "Distance to sample points, zero to disable",
-                0.0f,
-                100.0f);
   RNA_def_float_factor(ot->srna,
                        "threshold",
                        0.5f,
