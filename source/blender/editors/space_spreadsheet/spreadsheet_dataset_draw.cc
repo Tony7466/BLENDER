@@ -37,6 +37,7 @@
 namespace blender::ed::spreadsheet {
 
 class GeometryDataSetTreeView;
+class GeometryInstancesTreeView;
 
 struct GeometryDataIdentifier {
   bke::GeometryComponent::Type component_type;
@@ -130,12 +131,22 @@ class DataSetViewItem : public ui::AbstractTreeViewItem {
   }
 };
 
+class InstancesTreeViewItem : public ui::AbstractTreeViewItem {
+ public:
+  // GeometryInstancesTreeView &get_tree() const;
+
+  // void get_parent_instance_ids(Vector<SpreadsheetInstanceID> &r_instance_ids) const;
+
+  // void on_activate(bContext &C) override;
+
+  // std::optional<bool> should_be_active() const override;
+};
+
 class MeshViewItem : public DataSetViewItem {
  public:
   MeshViewItem()
   {
     label_ = IFACE_("Mesh");
-    this->disable_activatable();
   }
 
   void build_row(uiLayout &row) override
@@ -175,7 +186,6 @@ class CurvesViewItem : public DataSetViewItem {
   CurvesViewItem()
   {
     label_ = IFACE_("Curve");
-    this->disable_activatable();
   }
 
   void build_row(uiLayout &row) override
@@ -216,7 +226,6 @@ class GreasePencilViewItem : public DataSetViewItem {
   GreasePencilViewItem()
   {
     label_ = IFACE_("Grease Pencil");
-    this->disable_activatable();
   }
 
   void build_row(uiLayout &row) override
@@ -259,7 +268,6 @@ class GreasePencilLayerViewItem : public DataSetViewItem {
       : layer_(layer), layer_index_(layer_index)
   {
     label_ = layer_.name();
-    this->disable_activatable();
   }
 
   void build_row(uiLayout &row) override
@@ -306,7 +314,6 @@ class PointCloudViewItem : public DataSetViewItem {
   PointCloudViewItem()
   {
     label_ = IFACE_("Point Cloud");
-    this->disable_activatable();
   }
 
   void build_row(uiLayout &row) override
@@ -387,7 +394,7 @@ class InstancesViewItem : public DataSetViewItem {
   }
 };
 
-class InstanceReferenceViewItem : public DataSetViewItem {
+class InstanceReferenceViewItem : public InstancesTreeViewItem {
  private:
   const bke::InstanceReference &reference_;
   int reference_index_;
@@ -397,14 +404,13 @@ class InstanceReferenceViewItem : public DataSetViewItem {
       : reference_(instances.references()[reference_index]), reference_index_(reference_index)
   {
     label_ = std::to_string(reference_index);
-    this->disable_activatable();
   }
 
   void build_row(uiLayout &row) override
   {
     const int icon = get_instance_reference_icon(reference_);
-    std::string name = reference_.name();
-    if (name.empty()) {
+    StringRefNull name = reference_.name();
+    if (name.is_empty()) {
       name = IFACE_("Geometry");
     }
     uiItemL(&row, name.c_str(), icon);
@@ -416,7 +422,7 @@ class InstanceReferenceViewItem : public DataSetViewItem {
   }
 };
 
-class CollectionChildViewItem : public DataSetViewItem {
+class CollectionChildViewItem : public InstancesTreeViewItem {
  private:
   const CollectionChild *collection_child_;
   int child_index_;
@@ -426,7 +432,6 @@ class CollectionChildViewItem : public DataSetViewItem {
       : collection_child_(&collection_child), child_index_(child_index)
   {
     label_ = std::to_string(child_index);
-    this->disable_activatable();
   }
 
   void build_row(uiLayout &row) override
@@ -440,7 +445,7 @@ class CollectionChildViewItem : public DataSetViewItem {
   }
 };
 
-class CollectionObjectViewItem : public DataSetViewItem {
+class CollectionObjectViewItem : public InstancesTreeViewItem {
  private:
   const CollectionObject *collection_object_;
   int child_index_;
@@ -450,7 +455,6 @@ class CollectionObjectViewItem : public DataSetViewItem {
       : collection_object_(&collection_object), child_index_(child_index)
   {
     label_ = std::to_string(child_index);
-    this->disable_activatable();
   }
 
   void build_row(uiLayout &row) override
@@ -462,6 +466,57 @@ class CollectionObjectViewItem : public DataSetViewItem {
   int child_index() const
   {
     return child_index_;
+  }
+};
+
+class RootGeometryViewItem : public InstancesTreeViewItem {
+ public:
+  RootGeometryViewItem(const bke::GeometrySet &geometry)
+  {
+    label_ = geometry.name.empty() ? IFACE_("Geometry") : geometry.name;
+  }
+
+  void build_row(uiLayout &row) override
+  {
+    uiItemL(&row, label_.c_str(), ICON_THREE_DOTS);
+  }
+};
+
+class GeometryInstancesTreeView : public ui::AbstractTreeView {
+ private:
+  bke::GeometrySet root_geometry_set_;
+  SpaceSpreadsheet &sspreadsheet_;
+  bScreen &screen_;
+
+ public:
+  GeometryInstancesTreeView(bke::GeometrySet geometry_set, const bContext &C)
+      : root_geometry_set_(std::move(geometry_set)),
+        sspreadsheet_(*CTX_wm_space_spreadsheet(&C)),
+        screen_(*CTX_wm_screen(&C))
+  {
+  }
+
+  void build_tree() override
+  {
+    auto &root_item = this->add_tree_item<RootGeometryViewItem>(root_geometry_set_);
+    if (const bke::Instances *instances = root_geometry_set_.get_instances()) {
+      this->build_tree_for_instances(root_item, *instances);
+    }
+  }
+
+  void build_tree_for_instances(ui::TreeViewItemContainer &parent, const bke::Instances &instances)
+  {
+    const Span<bke::InstanceReference> references = instances.references();
+    for (const int reference_i : references.index_range()) {
+      auto &reference_item = parent.add_tree_item<InstanceReferenceViewItem>(instances,
+                                                                             reference_i);
+      const bke::InstanceReference &reference = references[reference_i];
+      bke::GeometrySet reference_geometry;
+      reference.to_geometry_set(reference_geometry);
+      if (const bke::Instances *child_instances = reference_geometry.get_instances()) {
+        this->build_tree_for_instances(reference_item, *child_instances);
+      }
+    }
   }
 };
 
@@ -712,13 +767,24 @@ void spreadsheet_data_set_panel_draw(const bContext *C, Panel *panel)
 
   UI_block_layout_set_current(block, layout);
 
-  ui::AbstractTreeView *tree_view = UI_block_add_view(
-      *block,
-      "Data Set Tree View",
-      std::make_unique<GeometryDataSetTreeView>(
-          spreadsheet_get_display_geometry_set(sspreadsheet, object), *C));
-  tree_view->set_context_menu_title("Spreadsheet");
-  ui::TreeViewBuilder::build_tree_view(*tree_view, *layout);
+  {
+    ui::AbstractTreeView *tree_view = UI_block_add_view(
+        *block,
+        "Instances Tree View",
+        std::make_unique<GeometryInstancesTreeView>(
+            spreadsheet_get_display_geometry_set(sspreadsheet, object), *C));
+    tree_view->set_context_menu_title("Spreadsheet");
+    ui::TreeViewBuilder::build_tree_view(*tree_view, *layout);
+  }
+  {
+    ui::AbstractTreeView *tree_view = UI_block_add_view(
+        *block,
+        "Data Set Tree View",
+        std::make_unique<GeometryDataSetTreeView>(
+            spreadsheet_get_display_geometry_set(sspreadsheet, object), *C));
+    tree_view->set_context_menu_title("Spreadsheet");
+    ui::TreeViewBuilder::build_tree_view(*tree_view, *layout);
+  }
 }
 
 }  // namespace blender::ed::spreadsheet
