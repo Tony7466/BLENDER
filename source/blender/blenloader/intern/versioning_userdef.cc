@@ -28,7 +28,7 @@
 #include "BKE_addon.h"
 #include "BKE_blender_version.h"
 #include "BKE_colorband.hh"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_keyconfig.h"
 #include "BKE_main.hh"
 #include "BKE_preferences.h"
@@ -38,7 +38,7 @@
 
 #include "BLT_translation.hh"
 
-#include "GPU_platform.h"
+#include "GPU_platform.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -67,7 +67,7 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
 #define FROM_DEFAULT_V4_UCHAR(member) copy_v4_v4_uchar(btheme->member, U_theme_default.member)
 
   if (!USER_VERSION_ATLEAST(300, 41)) {
-    memcpy(btheme, &U_theme_default, sizeof(*btheme));
+    MEMCPY_STRUCT_AFTER(btheme, &U_theme_default, name);
   }
 
   /* Again reset the theme, but only if stored with an early 3.1 alpha version. Some changes were
@@ -76,7 +76,7 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
    * don't want to reset theme changes stored in the eventual 3.0 release once opened in a 3.1
    * build. */
   if (userdef->versionfile > 300 && !USER_VERSION_ATLEAST(301, 1)) {
-    memcpy(btheme, &U_theme_default, sizeof(*btheme));
+    MEMCPY_STRUCT_AFTER(btheme, &U_theme_default, name);
   }
 
   if (!USER_VERSION_ATLEAST(301, 2)) {
@@ -140,6 +140,56 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
     FROM_DEFAULT_V4_UCHAR(space_view3d.face_mode_select);
   }
 
+  if (!USER_VERSION_ATLEAST(402, 13)) {
+    FROM_DEFAULT_V4_UCHAR(space_text.hilite);
+    FROM_DEFAULT_V4_UCHAR(space_console.console_cursor);
+  }
+
+  if (!USER_VERSION_ATLEAST(402, 16)) {
+    BLI_uniquename(
+        &userdef->themes, btheme, "Theme", '.', offsetof(bTheme, name), sizeof(btheme->name));
+  }
+
+  if (!USER_VERSION_ATLEAST(402, 17)) {
+    FROM_DEFAULT_V4_UCHAR(space_action.keytype_generated);
+    FROM_DEFAULT_V4_UCHAR(space_action.keytype_generated_select);
+  }
+
+  if (!USER_VERSION_ATLEAST(402, 21)) {
+    FROM_DEFAULT_V4_UCHAR(space_image.asset_shelf.back);
+    FROM_DEFAULT_V4_UCHAR(space_image.asset_shelf.header_back);
+  }
+
+  if (!USER_VERSION_ATLEAST(402, 47)) {
+    FROM_DEFAULT_V4_UCHAR(space_view3d.time_gp_keyframe);
+  }
+
+  if (!USER_VERSION_ATLEAST(403, 1)) {
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_generated);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_generated_select);
+  }
+
+  if (!USER_VERSION_ATLEAST(402, 62)) {
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.audio);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.color_strip);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.effect);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.image);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.mask);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.meta);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.movie);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.movieclip);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.scene);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.text_strip);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.transition);
+  }
+
+  if (!USER_VERSION_ATLEAST(403, 5)) {
+    FROM_DEFAULT_V4_UCHAR(space_view3d.before_current_frame);
+    FROM_DEFAULT_V4_UCHAR(space_view3d.after_current_frame);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.before_current_frame);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.after_current_frame);
+  }
+
   /**
    * Always bump subversion in BKE_blender_version.h when adding versioning
    * code here, and wrap it inside a USER_VERSION_ATLEAST check.
@@ -155,7 +205,7 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
 /** #UserDef.flag */
 #define USER_LMOUSESELECT (1 << 14) /* deprecated */
 
-static void do_version_select_mouse(UserDef *userdef, wmKeyMapItem *kmi)
+static void do_version_select_mouse(const UserDef *userdef, wmKeyMapItem *kmi)
 {
   /* Remove select/action mouse from user defined keymaps. */
   enum {
@@ -481,7 +531,7 @@ void blo_do_versions_userdef(UserDef *userdef)
   }
 
   if (!USER_VERSION_ATLEAST(275, 2)) {
-    userdef->ndof_deadzone = 0.1;
+    userdef->ndof_deadzone = 0.0;
   }
 
   if (!USER_VERSION_ATLEAST(275, 4)) {
@@ -491,7 +541,7 @@ void blo_do_versions_userdef(UserDef *userdef)
   if (!USER_VERSION_ATLEAST(278, 6)) {
     /* Clear preference flags for re-use. */
     userdef->flag &= ~(USER_FLAG_NUMINPUT_ADVANCED | (1 << 2) | USER_FLAG_UNUSED_3 |
-                       USER_FLAG_UNUSED_6 | USER_FLAG_UNUSED_7 | USER_FLAG_UNUSED_9 |
+                       USER_FLAG_UNUSED_6 | USER_FLAG_UNUSED_7 | USER_INTERNET_ALLOW |
                        USER_DEVELOPER_UI);
     userdef->uiflag &= ~(USER_HEADER_BOTTOM);
     userdef->transopts &= ~(USER_TR_UNUSED_3 | USER_TR_UNUSED_4 | USER_TR_UNUSED_6 |
@@ -505,7 +555,7 @@ void blo_do_versions_userdef(UserDef *userdef)
 
     /* Reset theme, old themes will not be compatible with minor version updates from now on. */
     LISTBASE_FOREACH (bTheme *, btheme, &userdef->themes) {
-      memcpy(btheme, &U_theme_default, sizeof(*btheme));
+      MEMCPY_STRUCT_AFTER(btheme, &U_theme_default, name);
     }
 
     /* Annotations - new layer color
@@ -897,7 +947,6 @@ void blo_do_versions_userdef(UserDef *userdef)
     LISTBASE_FOREACH (uiStyle *, style, &userdef->uistyles) {
       style->paneltitle.character_weight = 400;
       style->grouplabel.character_weight = 400;
-      style->widgetlabel.character_weight = 400;
       style->widget.character_weight = 400;
     }
   }
@@ -923,11 +972,68 @@ void blo_do_versions_userdef(UserDef *userdef)
     }
   }
 
-  if (!USER_VERSION_ATLEAST(402, 6)) {
-    if (BLI_listbase_is_empty(&userdef->extension_repos)) {
-      BKE_preferences_extension_repo_add_default(userdef);
-      BKE_preferences_extension_repo_add_default_user(userdef);
+  if (!USER_VERSION_ATLEAST(402, 36)) {
+    /* Reset repositories. */
+    while (!BLI_listbase_is_empty(&userdef->extension_repos)) {
+      BKE_preferences_extension_repo_remove(
+          userdef, static_cast<bUserExtensionRepo *>(userdef->extension_repos.first));
     }
+
+    BKE_preferences_extension_repo_add_default_remote(userdef);
+    BKE_preferences_extension_repo_add_default_user(userdef);
+  }
+
+  if (!USER_VERSION_ATLEAST(402, 42)) {
+    /* 80 was the old default. */
+    if (userdef->node_margin == 80) {
+      userdef->node_margin = 40;
+    }
+  }
+
+  if (!USER_VERSION_ATLEAST(402, 51)) {
+    userdef->sequencer_editor_flag |= USER_SEQ_ED_SIMPLE_TWEAKING;
+  }
+
+  if (!USER_VERSION_ATLEAST(402, 56)) {
+    BKE_preferences_extension_repo_add_default_system(userdef);
+  }
+
+  if (!USER_VERSION_ATLEAST(402, 58)) {
+    /* Remove add-ons which are no longer bundled by default
+     * and have no upgrade path to extensions in the UI. */
+    const char *addon_modules[] = {
+        "depsgraph_debug",
+        "io_coat3D",
+        "io_import_images_as_planes",
+        "io_mesh_stl",
+        "io_scene_x3d",
+    };
+    for (int i = 0; i < ARRAY_SIZE(addon_modules); i++) {
+      BKE_addon_remove_safe(&userdef->addons, addon_modules[i]);
+    }
+  }
+
+  if (!USER_VERSION_ATLEAST(402, 59)) {
+    userdef->network_timeout = 10;
+    userdef->network_connection_limit = 5;
+  }
+
+  if (!USER_VERSION_ATLEAST(402, 63)) {
+    userdef->statusbar_flag |= STATUSBAR_SHOW_EXTENSIONS_UPDATES;
+  }
+
+  if (!USER_VERSION_ATLEAST(402, 65)) {
+    /* Bone Selection Sets is no longer an add-on, but core functionality. */
+    BKE_addon_remove_safe(&userdef->addons, "bone_selection_sets");
+  }
+
+  if (!USER_VERSION_ATLEAST(403, 3)) {
+    BKE_preferences_asset_shelf_settings_ensure_catalog_path_enabled(
+        userdef, "VIEW3D_AST_brush_sculpt", "Brushes/Mesh Sculpt/Cloth");
+    BKE_preferences_asset_shelf_settings_ensure_catalog_path_enabled(
+        userdef, "VIEW3D_AST_brush_sculpt", "Brushes/Mesh Sculpt/General");
+    BKE_preferences_asset_shelf_settings_ensure_catalog_path_enabled(
+        userdef, "VIEW3D_AST_brush_sculpt", "Brushes/Mesh Sculpt/Paint");
   }
 
   /**

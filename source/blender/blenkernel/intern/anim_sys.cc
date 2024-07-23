@@ -15,6 +15,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_alloca.h"
+#include "BLI_bit_vector.hh"
 #include "BLI_blenlib.h"
 #include "BLI_dynstr.h"
 #include "BLI_listbase.h"
@@ -39,7 +40,7 @@
 #include "BKE_anim_data.hh"
 #include "BKE_animsys.h"
 #include "BKE_context.hh"
-#include "BKE_fcurve.h"
+#include "BKE_fcurve.hh"
 #include "BKE_global.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_query.hh"
@@ -50,12 +51,14 @@
 #include "BKE_report.hh"
 #include "BKE_texture.h"
 
+#include "ANIM_evaluation.hh"
+
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
 #include "RNA_access.hh"
 #include "RNA_path.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "BLO_read_write.hh"
 
@@ -312,11 +315,11 @@ void BKE_keyingsets_blend_read_data(BlendDataReader *reader, ListBase *list)
 {
   LISTBASE_FOREACH (KeyingSet *, ks, list) {
     /* paths */
-    BLO_read_list(reader, &ks->paths);
+    BLO_read_struct_list(reader, KS_Path, &ks->paths);
 
     LISTBASE_FOREACH (KS_Path *, ksp, &ks->paths) {
       /* rna path */
-      BLO_read_data_address(reader, &ksp->rna_path);
+      BLO_read_string(reader, &ksp->rna_path);
     }
   }
 }
@@ -324,7 +327,7 @@ void BKE_keyingsets_blend_read_data(BlendDataReader *reader, ListBase *list)
 /* ***************************************** */
 /* Evaluation Data-Setting Backend */
 
-static bool is_fcurve_evaluatable(FCurve *fcu)
+static bool is_fcurve_evaluatable(const FCurve *fcu)
 {
   if (fcu->flag & (FCURVE_MUTED | FCURVE_DISABLED)) {
     return false;
@@ -796,6 +799,17 @@ static void action_idcode_patch_check(ID *id, bAction *act)
   if (ELEM(nullptr, id, act)) {
     return;
   }
+
+#ifdef WITH_ANIM_BAKLAVA
+  if (act->wrap().is_action_layered()) {
+    /* Layered Actions can always be assigned to any ID. It's actually the Slot that is limited
+     * to an ID type (similar to legacy Actions). Layered Actions are evaluated differently,
+     * though, and their evaluation shouldn't end up here. At the moment of writing it can still
+     * happen through NLA evaluation, though, so there's no assert here to prevent this. */
+    /* TODO: when possible, add a BLI_assert_unreachable() here. */
+    return;
+  }
+#endif
 
   idcode = GS(id->name);
 
@@ -1961,16 +1975,17 @@ static bool nla_combine_quaternion_get_inverted_strip_values(const float lower_v
 /* ---------------------- */
 
 /* Assert necs and necs->channel is nonNull. */
-static void nlaevalchan_assert_nonNull(NlaEvalChannelSnapshot *necs)
+static void nlaevalchan_assert_nonNull(const NlaEvalChannelSnapshot *necs)
 {
   UNUSED_VARS_NDEBUG(necs);
   BLI_assert(necs != nullptr && necs->channel != nullptr);
 }
 
 /* Assert that the channels given can be blended or combined together. */
-static void nlaevalchan_assert_blendOrcombine_compatible(NlaEvalChannelSnapshot *lower_necs,
-                                                         NlaEvalChannelSnapshot *upper_necs,
-                                                         NlaEvalChannelSnapshot *blended_necs)
+static void nlaevalchan_assert_blendOrcombine_compatible(
+    const NlaEvalChannelSnapshot *lower_necs,
+    const NlaEvalChannelSnapshot *upper_necs,
+    const NlaEvalChannelSnapshot *blended_necs)
 {
   UNUSED_VARS_NDEBUG(lower_necs, upper_necs, blended_necs);
   BLI_assert(!ELEM(nullptr, lower_necs, blended_necs));
@@ -2008,7 +2023,7 @@ static void nlaevalchan_assert_blendOrcombine_compatible_quaternion(
   BLI_assert(lower_necs->length == 4);
 }
 
-static void nlaevalchan_copy_values(NlaEvalChannelSnapshot *dst, NlaEvalChannelSnapshot *src)
+static void nlaevalchan_copy_values(NlaEvalChannelSnapshot *dst, const NlaEvalChannelSnapshot *src)
 {
   memcpy(dst->values, src->values, src->length * sizeof(float));
 }
@@ -2017,10 +2032,11 @@ static void nlaevalchan_copy_values(NlaEvalChannelSnapshot *dst, NlaEvalChannelS
  * Copies from lower necs to blended necs if upper necs is nullptr or has zero influence.
  * \return true if copied.
  */
-static bool nlaevalchan_blendOrcombine_try_copy_from_lower(NlaEvalChannelSnapshot *lower_necs,
-                                                           NlaEvalChannelSnapshot *upper_necs,
-                                                           const float upper_influence,
-                                                           NlaEvalChannelSnapshot *r_blended_necs)
+static bool nlaevalchan_blendOrcombine_try_copy_from_lower(
+    const NlaEvalChannelSnapshot *lower_necs,
+    const NlaEvalChannelSnapshot *upper_necs,
+    const float upper_influence,
+    NlaEvalChannelSnapshot *r_blended_necs)
 {
   const bool has_influence = !IS_EQF(upper_influence, 0.0f);
   if (upper_necs != nullptr && has_influence) {
@@ -2610,7 +2626,7 @@ static void nlasnapshot_from_action(PointerRNA *ptr,
   const float modified_evaltime = evaluate_time_fmodifiers(
       &storage, modifiers, nullptr, 0.0f, evaltime);
 
-  LISTBASE_FOREACH (FCurve *, fcu, &action->curves) {
+  LISTBASE_FOREACH (const FCurve *, fcu, &action->curves) {
     if (!is_fcurve_evaluatable(fcu)) {
       continue;
     }
@@ -2849,8 +2865,9 @@ static void nlastrip_evaluate_transition(const int evaluation_mode,
       break;
     }
     case STRIP_EVAL_NOBLEND: {
-      BLI_assert( !"This case shouldn't occur. Transitions assumed to not reference other "
-"transitions. ");
+      BLI_assert_msg(false,
+                     "This case shouldn't occur. "
+                     "Transitions assumed to not reference other transitions.");
       break;
     }
   }
@@ -3081,7 +3098,7 @@ static void nla_eval_domain_action(PointerRNA *ptr,
     return;
   }
 
-  LISTBASE_FOREACH (FCurve *, fcu, &act->curves) {
+  LISTBASE_FOREACH (const FCurve *, fcu, &act->curves) {
     /* check if this curve should be skipped */
     if (!is_fcurve_evaluatable(fcu)) {
       continue;
@@ -3195,12 +3212,10 @@ static void animsys_create_tweak_strip(const AnimData *adt,
     r_tweak_strip->flag |= NLASTRIP_FLAG_NO_TIME_MAP;
   }
 
-  /** Controls whether able to keyframe outside range of tweaked strip. */
   if (keyframing_to_strip) {
-    r_tweak_strip->extendmode = (is_inplace_tweak &&
-                                 !(r_tweak_strip->flag & NLASTRIP_FLAG_SYNC_LENGTH)) ?
-                                    NLASTRIP_EXTEND_NOTHING :
-                                    NLASTRIP_EXTEND_HOLD;
+    /* Since keying cannot happen when there is no NLA influence, this is a workaround to get keys
+     * onto the strip in tweak mode while keyframing. */
+    r_tweak_strip->extendmode = NLASTRIP_EXTEND_HOLD;
   }
 }
 
@@ -3672,6 +3687,11 @@ void nlasnapshot_blend_get_inverted_lower_snapshot(NlaEvalData *eval_data,
 NlaKeyframingContext *BKE_animsys_get_nla_keyframing_context(
     ListBase *cache, PointerRNA *ptr, AnimData *adt, const AnimationEvalContext *anim_eval_context)
 {
+  /* The PointerRNA needs to point to an ID because animsys_evaluate_nla_for_keyframing uses
+   * F-Curve paths to resolve properties. Since F-Curve paths are always relative to the ID this
+   * would fail if the PointerRNA was e.g. a bone. */
+  BLI_assert(RNA_struct_is_ID(ptr->type));
+
   /* No remapping needed if NLA is off or no action. */
   if ((adt == nullptr) || (adt->action == nullptr) || (adt->nla_tracks.first == nullptr) ||
       (adt->flag & ADT_NLA_EVAL_OFF))
@@ -3714,34 +3734,32 @@ void BKE_animsys_nla_remap_keyframe_values(NlaKeyframingContext *context,
                                            int index,
                                            const AnimationEvalContext *anim_eval_context,
                                            bool *r_force_all,
-                                           BLI_bitmap *r_successful_remaps)
+                                           blender::BitVector<> &r_values_mask)
 {
   const int count = values.size();
-  BLI_bitmap_set_all(r_successful_remaps, false, count);
+  r_values_mask.fill(false);
 
   if (r_force_all != nullptr) {
     *r_force_all = false;
   }
 
-  BLI_bitmap *remap_domain = BLI_BITMAP_NEW(count, __func__);
+  blender::BitVector remap_domain(count, false);
   for (int i = 0; i < count; i++) {
     if (!ELEM(index, i, -1)) {
       continue;
     }
 
-    BLI_BITMAP_ENABLE(remap_domain, i);
+    remap_domain[i].set();
   }
 
   /* No context means no correction. */
   if (context == nullptr || context->strip.act == nullptr) {
-    BLI_bitmap_copy_all(r_successful_remaps, remap_domain, count);
-    MEM_freeN(remap_domain);
+    r_values_mask = remap_domain;
     return;
   }
 
   /* If the strip is not evaluated, it is the same as zero influence. */
   if (context->eval_strip == nullptr) {
-    MEM_freeN(remap_domain);
     return;
   }
 
@@ -3753,14 +3771,12 @@ void BKE_animsys_nla_remap_keyframe_values(NlaKeyframingContext *context,
   if (blend_mode == NLASTRIP_MODE_REPLACE && influence == 1.0f &&
       BLI_listbase_is_empty(&context->upper_estrips))
   {
-    BLI_bitmap_copy_all(r_successful_remaps, remap_domain, count);
-    MEM_freeN(remap_domain);
+    r_values_mask = remap_domain;
     return;
   }
 
   /* Zero influence is division by zero. */
   if (influence <= 0.0f) {
-    MEM_freeN(remap_domain);
     return;
   }
 
@@ -3778,7 +3794,6 @@ void BKE_animsys_nla_remap_keyframe_values(NlaKeyframingContext *context,
   if (nec->base_snapshot.length != count) {
     BLI_assert_msg(0, "invalid value count");
     nlaeval_snapshot_free_data(&blended_snapshot);
-    MEM_freeN(remap_domain);
     return;
   }
 
@@ -3795,10 +3810,12 @@ void BKE_animsys_nla_remap_keyframe_values(NlaKeyframingContext *context,
 
     *r_force_all = true;
     index = -1;
-    BLI_bitmap_set_all(remap_domain, true, 4);
+    remap_domain.fill(true);
   }
 
-  BLI_bitmap_copy_all(blended_necs->remap_domain.ptr, remap_domain, count);
+  for (const int i : remap_domain.index_range()) {
+    BLI_BITMAP_SET(blended_necs->remap_domain.ptr, i, remap_domain[i]);
+  }
 
   /* Need to send id_ptr instead of prop_ptr so fcurve RNA paths resolve properly. */
   PointerRNA id_ptr = RNA_id_pointer_create(prop_ptr->owner_id);
@@ -3827,10 +3844,11 @@ void BKE_animsys_nla_remap_keyframe_values(NlaKeyframingContext *context,
     values[i] = blended_necs->values[i];
   }
 
-  BLI_bitmap_copy_all(r_successful_remaps, blended_necs->remap_domain.ptr, blended_necs->length);
+  for (int i = 0; i < blended_necs->length; i++) {
+    r_values_mask[i].set(BLI_BITMAP_TEST_BOOL(blended_necs->remap_domain.ptr, i));
+  }
 
   nlaeval_snapshot_free_data(&blended_snapshot);
-  MEM_freeN(remap_domain);
 }
 
 void BKE_animsys_free_nla_keyframing_context_cache(ListBase *cache)
@@ -3927,7 +3945,14 @@ void BKE_animsys_evaluate_animdata(ID *id,
     }
     /* evaluate Active Action only */
     else if (adt->action) {
-      animsys_evaluate_action(&id_ptr, adt->action, anim_eval_context, flush_to_original);
+      blender::animrig::Action &action = adt->action->wrap();
+      if (action.is_action_layered()) {
+        blender::animrig::evaluate_and_apply_action(
+            id_ptr, action, adt->slot_handle, *anim_eval_context, flush_to_original);
+      }
+      else {
+        animsys_evaluate_action(&id_ptr, adt->action, anim_eval_context, flush_to_original);
+      }
     }
   }
 

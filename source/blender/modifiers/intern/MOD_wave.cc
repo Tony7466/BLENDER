@@ -26,7 +26,7 @@
 #include "UI_resources.hh"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -108,13 +108,6 @@ static void required_data_mask(ModifierData *md, CustomData_MeshMasks *r_cddata_
   if (wmd->defgrp_name[0] != '\0') {
     r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
   }
-}
-
-static bool depends_on_normals(ModifierData *md)
-{
-  WaveModifierData *wmd = (WaveModifierData *)md;
-
-  return (wmd->flag & MOD_WAVE_NORM) != 0;
 }
 
 static void waveModifier_do(WaveModifierData *md,
@@ -437,7 +430,7 @@ ModifierTypeInfo modifierType_Wave = {
     /*is_disabled*/ nullptr,
     /*update_depsgraph*/ update_depsgraph,
     /*depends_on_time*/ depends_on_time,
-    /*depends_on_normals*/ depends_on_normals,
+    /*depends_on_normals*/ nullptr,
     /*foreach_ID_link*/ foreach_ID_link,
     /*foreach_tex_link*/ foreach_tex_link,
     /*free_runtime_data*/ nullptr,

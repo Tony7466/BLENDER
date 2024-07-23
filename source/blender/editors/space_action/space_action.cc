@@ -43,7 +43,7 @@
 
 #include "BLO_read_write.hh"
 
-#include "GPU_matrix.h"
+#include "GPU_matrix.hh"
 
 #include "action_intern.hh" /* own include */
 
@@ -280,14 +280,16 @@ static void action_channel_region_draw(const bContext *C, ARegion *region)
 {
   /* draw entirely, view changes should be handled here */
   bAnimContext ac;
-  if (!ANIM_animdata_get_context(C, &ac)) {
+  const bool has_valid_animcontext = ANIM_animdata_get_context(C, &ac);
+
+  /* clear and setup matrix */
+  UI_ThemeClearColor(TH_BACK);
+
+  if (!has_valid_animcontext) {
     return;
   }
 
   View2D *v2d = &region->v2d;
-
-  /* clear and setup matrix */
-  UI_ThemeClearColor(TH_BACK);
 
   ListBase anim_data = {nullptr, nullptr};
   /* Build list of channels to draw. */
@@ -389,7 +391,7 @@ static void saction_channel_region_message_subscribe(const wmRegionMessageSubscr
   msg_sub_value_region_tag_redraw.notify = ED_region_do_msg_notify_tag_redraw;
 
   /* All dopesheet filter settings, etc. affect the drawing of this editor,
-   * also same applies for all animation-related datatypes that may appear here,
+   * also same applies for all animation-related data-types that may appear here,
    * so just whitelist the entire structs for updates
    */
   {
@@ -808,8 +810,8 @@ static void action_id_remap(ScrArea * /*area*/,
 {
   SpaceAction *sact = (SpaceAction *)slink;
 
-  mappings.apply((ID **)&sact->action, ID_REMAP_APPLY_DEFAULT);
-  mappings.apply((ID **)&sact->ads.filter_grp, ID_REMAP_APPLY_DEFAULT);
+  mappings.apply(reinterpret_cast<ID **>(&sact->action), ID_REMAP_APPLY_DEFAULT);
+  mappings.apply(reinterpret_cast<ID **>(&sact->ads.filter_grp), ID_REMAP_APPLY_DEFAULT);
   mappings.apply(&sact->ads.source, ID_REMAP_APPLY_DEFAULT);
 }
 
@@ -819,11 +821,11 @@ static void action_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data)
   const int data_flags = BKE_lib_query_foreachid_process_flags_get(data);
   const bool is_readonly = (data_flags & IDWALK_READONLY) != 0;
 
-  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, sact->action, IDWALK_CB_NOP);
+  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, sact->action, IDWALK_CB_DIRECT_WEAK_LINK);
 
   /* NOTE: Could be deduplicated with the #bDopeSheet handling of #SpaceNla and #SpaceGraph. */
-  BKE_LIB_FOREACHID_PROCESS_ID(data, sact->ads.source, IDWALK_CB_NOP);
-  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, sact->ads.filter_grp, IDWALK_CB_NOP);
+  BKE_LIB_FOREACHID_PROCESS_ID(data, sact->ads.source, IDWALK_CB_DIRECT_WEAK_LINK);
+  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, sact->ads.filter_grp, IDWALK_CB_DIRECT_WEAK_LINK);
 
   if (!is_readonly) {
     /* Force recalc of list of channels, potentially updating the active action while we're
@@ -864,6 +866,22 @@ static void action_space_subtype_item_extend(bContext * /*C*/,
   RNA_enum_items_add(item, totitem, rna_enum_space_action_mode_items);
 }
 
+static blender::StringRefNull action_space_name_get(const ScrArea *area)
+{
+  SpaceAction *sact = static_cast<SpaceAction *>(area->spacedata.first);
+  const int index = RNA_enum_from_value(rna_enum_space_action_mode_items, sact->mode);
+  const EnumPropertyItem item = rna_enum_space_action_mode_items[index];
+  return item.name;
+}
+
+static int action_space_icon_get(const ScrArea *area)
+{
+  SpaceAction *sact = static_cast<SpaceAction *>(area->spacedata.first);
+  const int index = RNA_enum_from_value(rna_enum_space_action_mode_items, sact->mode);
+  const EnumPropertyItem item = rna_enum_space_action_mode_items[index];
+  return item.icon;
+}
+
 static void action_space_blend_read_data(BlendDataReader * /*reader*/, SpaceLink *sl)
 {
   SpaceAction *saction = (SpaceAction *)sl;
@@ -896,6 +914,8 @@ void ED_spacetype_action()
   st->space_subtype_item_extend = action_space_subtype_item_extend;
   st->space_subtype_get = action_space_subtype_get;
   st->space_subtype_set = action_space_subtype_set;
+  st->space_name_get = action_space_name_get;
+  st->space_icon_get = action_space_icon_get;
   st->blend_read_data = action_space_blend_read_data;
   st->blend_read_after_liblink = nullptr;
   st->blend_write = action_space_blend_write;

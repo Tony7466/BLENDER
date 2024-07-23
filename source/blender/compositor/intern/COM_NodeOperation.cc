@@ -6,6 +6,7 @@
 
 #include "COM_ExecutionSystem.h"
 
+#include "COM_ConstantOperation.h"
 #include "COM_NodeOperation.h" /* own include */
 
 namespace blender::compositor {
@@ -297,9 +298,6 @@ std::ostream &operator<<(std::ostream &os, const NodeOperationFlags &node_operat
   }
   if (node_operation_flags.is_canvas_set) {
     os << "canvas_set,";
-  }
-  if (node_operation_flags.is_set_operation) {
-    os << "set_operation,";
   }
   if (node_operation_flags.is_proxy_operation) {
     os << "proxy,";

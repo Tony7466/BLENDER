@@ -26,7 +26,7 @@
 #include "BKE_armature.hh"
 #include "BKE_blender_copybuffer.hh"
 #include "BKE_context.hh"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_layer.hh"
 #include "BKE_main.hh"
 #include "BKE_object.hh"
@@ -37,7 +37,7 @@
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -48,6 +48,7 @@
 
 #include "ANIM_bone_collections.hh"
 #include "ANIM_keyframing.hh"
+#include "ANIM_keyingsets.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -209,7 +210,7 @@ static void applyarmature_process_selected_recursive(bArmature *arm,
                                                      bPose *pose,
                                                      bPose *pose_eval,
                                                      Bone *bone,
-                                                     ListBase *selected,
+                                                     blender::Span<PointerRNA> selected,
                                                      ApplyArmature_ParentState *pstate)
 {
   bPoseChannel *pchan = BKE_pose_channel_find_name(pose, bone->name);
@@ -222,7 +223,10 @@ static void applyarmature_process_selected_recursive(bArmature *arm,
   ApplyArmature_ParentState new_pstate{};
   new_pstate.bone = bone;
 
-  if (BLI_findptr(selected, pchan, offsetof(CollectionPointerLink, ptr.data))) {
+  if (std::find_if(selected.begin(), selected.end(), [&](const PointerRNA &ptr) {
+        return ptr.data == pchan;
+      }) != selected.end())
+  {
     /* SELECTED BONE: Snap to final pose transform minus un-applied parent effects.
      *
      * I.e. bone position with accumulated parent effects but no local
@@ -388,7 +392,7 @@ static int apply_armature_pose2bones_exec(bContext *C, wmOperator *op)
   const Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
   bArmature *arm = BKE_armature_from_object(ob);
   bPose *pose;
-  ListBase selected_bones;
+  blender::Vector<PointerRNA> selected_bones;
 
   const bool use_selected = RNA_boolean_get(op->ptr, "selected");
 
@@ -414,7 +418,7 @@ static int apply_armature_pose2bones_exec(bContext *C, wmOperator *op)
   if (use_selected) {
     CTX_data_selected_pose_bones(C, &selected_bones);
 
-    if (!selected_bones.first) {
+    if (selected_bones.is_empty()) {
       return OPERATOR_CANCELLED;
     }
   }
@@ -429,10 +433,8 @@ static int apply_armature_pose2bones_exec(bContext *C, wmOperator *op)
     /* The selected only mode requires a recursive walk to handle parent-child relations. */
     LISTBASE_FOREACH (Bone *, bone, &arm->bonebase) {
       applyarmature_process_selected_recursive(
-          arm, pose, ob_eval->pose, bone, &selected_bones, nullptr);
+          arm, pose, ob_eval->pose, bone, selected_bones, nullptr);
     }
-
-    BLI_freelistN(&selected_bones);
   }
   else {
     LISTBASE_FOREACH (bPoseChannel *, pchan, &pose->chanbase) {
@@ -1227,7 +1229,8 @@ static int pose_clear_transform_generic_exec(bContext *C,
         KeyingSet *ks = ANIM_get_keyingset_for_autokeying(scene, default_ksName);
 
         /* insert keyframes */
-        ANIM_apply_keyingset(C, &sources, ks, MODIFYKEY_MODE_INSERT, float(scene->r.cfra));
+        ANIM_apply_keyingset(
+            C, &sources, ks, blender::animrig::ModifyKeyMode::INSERT, float(scene->r.cfra));
 
         /* now recalculate paths */
         if (ob_iter->pose->avs.path_bakeflag & MOTIONPATH_BAKE_HAS_PATHS) {

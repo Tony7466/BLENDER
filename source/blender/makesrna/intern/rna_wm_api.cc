@@ -236,6 +236,7 @@ static int rna_Operator_props_dialog_popup(bContext *C,
                                            const int width,
                                            const char *title,
                                            const char *confirm_text,
+                                           const bool cancel_default,
                                            const char *text_ctxt,
                                            const bool translate)
 {
@@ -246,7 +247,8 @@ static int rna_Operator_props_dialog_popup(bContext *C,
       op,
       width,
       title ? std::make_optional<std::string>(title) : std::nullopt,
-      confirm_text ? std::make_optional<std::string>(confirm_text) : std::nullopt);
+      confirm_text ? std::make_optional<std::string>(confirm_text) : std::nullopt,
+      cancel_default);
 }
 
 static int keymap_item_modifier_flag_from_args(bool any, int shift, int ctrl, int alt, int oskey)
@@ -913,6 +915,7 @@ void RNA_api_wm(StructRNA *srna)
       parm,
       "Confirm Text",
       "Optional text to show instead to the default \"OK\" confirmation button text");
+  RNA_def_property(func, "cancel_default", PROP_BOOLEAN, PROP_NONE);
   api_ui_item_common_translation(func);
 
   /* invoke enum */
@@ -952,6 +955,7 @@ void RNA_api_wm(StructRNA *srna)
 
   parm = RNA_def_property(func, "icon", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(parm, rna_operator_popup_icon_items);
+  RNA_def_property_enum_default(parm, ALERT_ICON_NONE);
   RNA_def_property_ui_text(parm, "Icon", "Optional icon displayed in the dialog");
 
   api_ui_item_common_translation(func);

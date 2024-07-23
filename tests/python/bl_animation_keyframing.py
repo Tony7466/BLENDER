@@ -141,6 +141,56 @@ class InsertKeyTest(AbstractKeyframingTest, unittest.TestCase):
         _insert_from_user_preference_test({"SCALE"}, ["scale"])
         _insert_from_user_preference_test({"LOCATION", "ROTATION", "SCALE"}, ["location", "rotation_euler", "scale"])
 
+    def test_insert_custom_properties(self):
+        # Used to create a datablock reference property.
+        ref_object = bpy.data.objects.new("ref_object", None)
+        bpy.context.scene.collection.objects.link(ref_object)
+
+        bpy.context.preferences.edit.key_insert_channels = {"CUSTOM_PROPS"}
+        keyed_object = _create_animation_object()
+
+        keyed_properties = {
+            "int": 1,
+            "float": 1.0,
+            "bool": True,
+            "int_array": [1, 2, 3],
+            "float_array": [1.0, 2.0, 3.0],
+            "bool_array": [True, False, True],
+            "'escaped'": 1,
+            '"escaped"': 1
+        }
+
+        unkeyed_properties = {
+            "str": "unkeyed",
+            "reference": ref_object,
+        }
+
+        for path, value in keyed_properties.items():
+            keyed_object[path] = value
+
+        for path, value in unkeyed_properties.items():
+            keyed_object[path] = value
+
+        with bpy.context.temp_override(**_get_view3d_context()):
+            bpy.ops.anim.keyframe_insert()
+
+        keyed_rna_paths = [f"[\"{bpy.utils.escape_identifier(path)}\"]" for path in keyed_properties.keys()]
+        _fcurve_paths_match(keyed_object.animation_data.action.fcurves, keyed_rna_paths)
+        bpy.data.objects.remove(keyed_object, do_unlink=True)
+
+    def test_key_selection_state(self):
+        keyed_object = _create_animation_object()
+        bpy.context.preferences.edit.key_insert_channels = {"LOCATION"}
+        with bpy.context.temp_override(**_get_view3d_context()):
+            bpy.ops.anim.keyframe_insert()
+            bpy.context.scene.frame_set(5)
+            bpy.ops.anim.keyframe_insert()
+
+        for fcurve in keyed_object.animation_data.action.fcurves:
+            self.assertEqual(len(fcurve.keyframe_points), 2)
+            self.assertFalse(fcurve.keyframe_points[0].select_control_point)
+            self.assertTrue(fcurve.keyframe_points[1].select_control_point)
+
 
 class VisualKeyingTest(AbstractKeyframingTest, unittest.TestCase):
     """ Check if visual keying produces the correct keyframe values. """
@@ -331,6 +381,20 @@ class AutoKeyframingTest(AbstractKeyframingTest, unittest.TestCase):
         expected_paths = [f"{bone_path}.location", f"{bone_path}.rotation_euler", f"{bone_path}.scale"]
         _fcurve_paths_match(action.fcurves, expected_paths)
 
+    def test_key_selection_state(self):
+        armature_obj = _create_armature()
+        bpy.ops.object.mode_set(mode='POSE')
+        bpy.ops.transform.translate(value=(1, 0, 0))
+        bpy.context.scene.frame_set(5)
+        bpy.ops.transform.translate(value=(0, 1, 0))
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+        action = armature_obj.animation_data.action
+        for fcurve in action.fcurves:
+            self.assertEqual(len(fcurve.keyframe_points), 2)
+            self.assertFalse(fcurve.keyframe_points[0].select_control_point)
+            self.assertTrue(fcurve.keyframe_points[1].select_control_point)
+
 
 class InsertAvailableTest(AbstractKeyframingTest, unittest.TestCase):
 
@@ -426,6 +490,13 @@ class InsertAvailableTest(AbstractKeyframingTest, unittest.TestCase):
 
         for fcurve in action.fcurves:
             self.assertEqual(len(fcurve.keyframe_points), 2)
+
+    def test_insert_available(self):
+        keyed_object = _create_animation_object()
+        self.assertIsNone(keyed_object.animation_data, "Precondition check: test object should not have animdata yet")
+
+        keyed_ok = keyed_object.keyframe_insert("location", options={'INSERTKEY_AVAILABLE'})
+        self.assertFalse(keyed_ok, "Should not key with INSERTKEY_AVAILABLE when no F-Curves are available")
 
 
 class InsertNeededTest(AbstractKeyframingTest, unittest.TestCase):

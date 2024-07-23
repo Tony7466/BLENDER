@@ -40,6 +40,7 @@ set(SRC
   intern/BLI_memiter.c
   intern/BLI_mempool.c
   intern/BLI_mmap.c
+  intern/BLI_subprocess.cc
   intern/BLI_timer.c
   intern/DLRB_tree.c
   intern/array_store.cc
@@ -51,7 +52,7 @@ set(SRC
   intern/bit_ref.cc
   intern/bit_span.cc
   intern/bitmap.c
-  intern/bitmap_draw_2d.c
+  intern/bitmap_draw_2d.cc
   intern/boxpack_2d.c
   intern/buffer.c
   intern/cache_mutex.cc
@@ -65,6 +66,7 @@ set(SRC
   intern/easing.c
   intern/endian_switch.c
   intern/expr_pylike_eval.c
+  intern/fftw.cc
   intern/fileops.cc
   intern/fileops_c.cc
   intern/filereader_file.c
@@ -82,13 +84,14 @@ set(SRC
   intern/hash_tables.cc
   intern/implicit_sharing.cc
   intern/index_mask.cc
+  intern/index_mask_expression.cc
   intern/index_range.cc
   intern/jitter_2d.c
   intern/kdtree_1d.c
   intern/kdtree_2d.c
   intern/kdtree_3d.c
   intern/kdtree_4d.c
-  intern/lasso_2d.c
+  intern/lasso_2d.cc
   intern/lazy_threading.cc
   intern/length_parameterize.cc
   intern/listbase.cc
@@ -98,14 +101,14 @@ set(SRC
   intern/math_basis_types.cc
   intern/math_bits_inline.c
   intern/math_boolean.cc
-  intern/math_color.c
+  intern/math_color.cc
   intern/math_color_blend_inline.c
   intern/math_color_inline.c
   intern/math_geom.cc
   intern/math_geom_inline.c
   intern/math_interp.cc
-  intern/math_matrix.c
   intern/math_matrix.cc
+  intern/math_matrix_c.cc
   intern/math_rotation.c
   intern/math_rotation.cc
   intern/math_solvers.c
@@ -225,10 +228,13 @@ set(SRC
   BLI_endian_switch_inline.h
   BLI_enumerable_thread_specific.hh
   BLI_expr_pylike_eval.h
+  BLI_fftw.hh
   BLI_fileops.h
   BLI_fileops.hh
   BLI_fileops_types.h
   BLI_filereader.h
+  BLI_fixed_width_int.hh
+  BLI_fixed_width_int_str.hh
   BLI_fnmatch.h
   BLI_function_ref.hh
   BLI_generic_array.hh
@@ -252,6 +258,7 @@ set(SRC
   BLI_implicit_sharing.hh
   BLI_implicit_sharing_ptr.hh
   BLI_index_mask.hh
+  BLI_index_mask_expression.hh
   BLI_index_mask_fwd.hh
   BLI_index_range.hh
   BLI_inplace_priority_queue.hh
@@ -260,7 +267,7 @@ set(SRC
   BLI_kdopbvh.h
   BLI_kdtree.h
   BLI_kdtree_impl.h
-  BLI_lasso_2d.h
+  BLI_lasso_2d.hh
   BLI_lazy_threading.hh
   BLI_length_parameterize.hh
   BLI_linear_allocator.hh
@@ -342,7 +349,7 @@ set(SRC
   BLI_set.hh
   BLI_set_slots.hh
   BLI_shared_cache.hh
-  BLI_simd.h
+  BLI_simd.hh
   BLI_smaa_textures.h
   BLI_sort.h
   BLI_sort.hh
@@ -360,10 +367,12 @@ set(SRC
   BLI_string_utils.hh
   BLI_struct_equality_utils.hh
   BLI_sub_frame.hh
+  BLI_subprocess.hh
   BLI_sys_types.h
   BLI_system.h
   BLI_task.h
   BLI_task.hh
+  BLI_task_size_hints.hh
   BLI_tempfile.h
   BLI_threads.h
   BLI_time.h
@@ -372,6 +381,7 @@ set(SRC
   BLI_timeit.hh
   BLI_timer.h
   BLI_unique_sorted_indices.hh
+  BLI_unroll.hh
   BLI_utildefines.h
   BLI_utildefines_iter.h
   BLI_utildefines_stack.h
@@ -397,11 +407,13 @@ set(SRC
 set(LIB
   PUBLIC bf::dna
   PRIVATE bf::extern::fmtlib
+  PRIVATE bf::extern::xxhash
   bf_intern_eigen
   PRIVATE bf::intern::guardedalloc
   extern_wcwidth
   PRIVATE bf::intern::atomic
   PRIVATE extern_fmtlib
+  PUBLIC bf::dependencies::optional::tbb
   ${ZLIB_LIBRARIES}
   ${ZSTD_LIBRARIES}
 )
@@ -418,18 +430,6 @@ if(WITH_MEM_VALGRIND)
   add_definitions(-DWITH_MEM_VALGRIND)
 endif()
 
-if(WITH_TBB)
-  add_definitions(-DWITH_TBB)
-
-  list(APPEND INC_SYS
-    ${TBB_INCLUDE_DIRS}
-  )
-
-  list(APPEND LIB
-    ${TBB_LIBRARIES}
-  )
-endif()
-
 if(WITH_GMP)
   add_definitions(-DWITH_GMP)
 
@@ -440,6 +440,19 @@ if(WITH_GMP)
   list(APPEND LIB
     ${GMP_LIBRARIES}
   )
+endif()
+
+if(WITH_FFTW3)
+  list(APPEND INC_SYS
+    ${FFTW3_INCLUDE_DIRS}
+  )
+  list(APPEND LIB
+    ${FFTW3_LIBRARIES}
+  )
+  add_definitions(-DWITH_FFTW3)
+  if (WITH_FFTW3_THREADS_F_SUPPORT)
+    add_definitions(-DWITH_FFTW3_THREADS_F_SUPPORT)
+  endif()
 endif()
 
 if(WIN32)
@@ -507,6 +520,7 @@ if(WITH_GTESTS)
     tests/BLI_disjoint_set_test.cc
     tests/BLI_expr_pylike_eval_test.cc
     tests/BLI_fileops_test.cc
+    tests/BLI_fixed_width_int_test.cc
     tests/BLI_function_ref_test.cc
     tests/BLI_generic_array_test.cc
     tests/BLI_generic_span_test.cc
@@ -516,14 +530,15 @@ if(WITH_GTESTS)
     tests/BLI_heap_simple_test.cc
     tests/BLI_heap_test.cc
     tests/BLI_implicit_sharing_test.cc
+    tests/BLI_index_mask_expression_test.cc
     tests/BLI_index_mask_test.cc
     tests/BLI_index_range_test.cc
     tests/BLI_inplace_priority_queue_test.cc
     tests/BLI_kdopbvh_test.cc
     tests/BLI_kdtree_test.cc
     tests/BLI_length_parameterize_test.cc
-    tests/BLI_linear_allocator_test.cc
     tests/BLI_linear_allocator_chunked_list_test.cc
+    tests/BLI_linear_allocator_test.cc
     tests/BLI_linklist_lockfree_test.cc
     tests/BLI_listbase_test.cc
     tests/BLI_map_test.cc

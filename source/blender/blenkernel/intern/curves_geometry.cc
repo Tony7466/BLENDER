@@ -58,6 +58,8 @@ CurvesGeometry::CurvesGeometry() : CurvesGeometry(0, 0) {}
 
 CurvesGeometry::CurvesGeometry(const int point_num, const int curve_num)
 {
+  this->runtime = MEM_new<CurvesGeometryRuntime>(__func__);
+
   this->point_num = point_num;
   this->curve_num = curve_num;
   CustomData_reset(&this->point_data);
@@ -66,8 +68,6 @@ CurvesGeometry::CurvesGeometry(const int point_num, const int curve_num)
 
   this->attributes_for_write().add<float3>(
       "position", AttrDomain::Point, AttributeInitConstruct());
-
-  this->runtime = MEM_new<CurvesGeometryRuntime>(__func__);
 
   if (curve_num > 0) {
     this->curve_offsets = static_cast<int *>(
@@ -105,6 +105,8 @@ CurvesGeometry::CurvesGeometry(const CurvesGeometry &other)
   BKE_defgroup_copy_list(&this->vertex_group_names, &other.vertex_group_names);
   this->vertex_group_active_index = other.vertex_group_active_index;
 
+  this->attributes_active_index = other.attributes_active_index;
+
   this->runtime = MEM_new<CurvesGeometryRuntime>(
       __func__,
       CurvesGeometryRuntime{other.runtime->curve_offsets_sharing_info,
@@ -116,7 +118,8 @@ CurvesGeometry::CurvesGeometry(const CurvesGeometry &other)
                             other.runtime->evaluated_length_cache,
                             other.runtime->evaluated_tangent_cache,
                             other.runtime->evaluated_normal_cache,
-                            {}});
+                            {},
+                            true});
 
   if (other.runtime->bake_materials) {
     this->runtime->bake_materials = std::make_unique<bake::BakeMaterialsList>(
@@ -156,6 +159,9 @@ CurvesGeometry::CurvesGeometry(CurvesGeometry &&other)
 
   this->vertex_group_active_index = other.vertex_group_active_index;
   other.vertex_group_active_index = 0;
+
+  this->attributes_active_index = other.attributes_active_index;
+  other.attributes_active_index = 0;
 
   this->runtime = other.runtime;
   other.runtime = nullptr;
@@ -244,6 +250,9 @@ static MutableSpan<T> get_mutable_attribute(CurvesGeometry &curves,
                                             const T default_value = T())
 {
   const int num = domain_num(curves, domain);
+  if (num <= 0) {
+    return {};
+  }
   const eCustomDataType type = cpp_type_to_custom_data_type(CPPType::get<T>());
   CustomData &custom_data = domain_custom_data(curves, domain);
 
@@ -351,6 +360,9 @@ MutableSpan<float3> CurvesGeometry::positions_for_write()
 
 Span<int> CurvesGeometry::offsets() const
 {
+  if (this->curve_num == 0) {
+    return {};
+  }
   return {this->curve_offsets, this->curve_num + 1};
 }
 MutableSpan<int> CurvesGeometry::offsets_for_write()
@@ -792,7 +804,11 @@ static void rotate_directions_around_axes(MutableSpan<float3> directions,
                                           const Span<float> angles)
 {
   for (const int i : directions.index_range()) {
-    directions[i] = math::rotate_direction_around_axis(directions[i], axes[i], angles[i]);
+    const float3 axis = axes[i];
+    if (UNLIKELY(math::is_zero(axis))) {
+      continue;
+    }
+    directions[i] = math::rotate_direction_around_axis(directions[i], axis, angles[i]);
   }
 }
 
@@ -1058,6 +1074,7 @@ void CurvesGeometry::tag_topology_changed()
   this->tag_positions_changed();
   this->runtime->evaluated_offsets_cache.tag_dirty();
   this->runtime->nurbs_basis_cache.tag_dirty();
+  this->runtime->check_type_counts = true;
 }
 void CurvesGeometry::tag_normals_changed()
 {
@@ -1197,9 +1214,14 @@ CurvesGeometry curves_copy_point_selection(
 
   CurvesGeometry dst_curves(points_to_copy.size(), curves_to_copy.size());
 
+  BKE_defgroup_copy_list(&dst_curves.vertex_group_names, &curves.vertex_group_names);
+
   threading::parallel_invoke(
       dst_curves.curves_num() > 1024,
       [&]() {
+        if (curves_to_copy.is_empty()) {
+          return;
+        }
         MutableSpan<int> new_curve_offsets = dst_curves.offsets_for_write();
         array_utils::gather(
             curve_point_counts.as_span(), curves_to_copy, new_curve_offsets.drop_back(1));
@@ -1255,6 +1277,8 @@ CurvesGeometry curves_copy_curve_selection(
   const OffsetIndices dst_points_by_curve = offset_indices::gather_selected_offsets(
       points_by_curve, curves_to_copy, dst_curves.offsets_for_write());
   dst_curves.resize(dst_points_by_curve.total_size(), dst_curves.curves_num());
+
+  BKE_defgroup_copy_list(&dst_curves.vertex_group_names, &curves.vertex_group_names);
 
   const AttributeAccessor src_attributes = curves.attributes();
   MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
@@ -1541,12 +1565,14 @@ void CurvesGeometry::blend_read(BlendDataReader &reader)
   CustomData_blend_read(&reader, &this->curve_data, this->curve_num);
 
   if (this->curve_offsets) {
-    BLO_read_int32_array(&reader, this->curve_num + 1, &this->curve_offsets);
-    this->runtime->curve_offsets_sharing_info = implicit_sharing::info_for_mem_free(
-        this->curve_offsets);
+    this->runtime->curve_offsets_sharing_info = BLO_read_shared(
+        &reader, &this->curve_offsets, [&]() {
+          BLO_read_int32_array(&reader, this->curve_num + 1, &this->curve_offsets);
+          return implicit_sharing::info_for_mem_free(this->curve_offsets);
+        });
   }
 
-  BLO_read_list(&reader, &this->vertex_group_names);
+  BLO_read_struct_list(&reader, bDeformGroup, &this->vertex_group_names);
 
   /* Recalculate curve type count cache that isn't saved in files. */
   this->update_curve_types();
@@ -1569,7 +1595,14 @@ void CurvesGeometry::blend_write(BlendWriter &writer,
   CustomData_blend_write(
       &writer, &this->curve_data, write_data.curve_layers, this->curve_num, CD_MASK_ALL, &id);
 
-  BLO_write_int32_array(&writer, this->curve_num + 1, this->curve_offsets);
+  if (this->curve_offsets) {
+    BLO_write_shared(
+        &writer,
+        this->curve_offsets,
+        sizeof(int) * (this->curve_num + 1),
+        this->runtime->curve_offsets_sharing_info,
+        [&]() { BLO_write_int32_array(&writer, this->curve_num + 1, this->curve_offsets); });
+  }
 
   BKE_defbase_blend_write(&writer, &this->vertex_group_names);
 }

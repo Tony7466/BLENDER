@@ -22,6 +22,7 @@
 
 #include "ED_view3d.hh"
 
+#include "DRW_gpu_wrapper.hh"
 #include "DRW_render.hh"
 
 #include "COM_context.hh"
@@ -30,8 +31,8 @@
 #include "COM_result.hh"
 #include "COM_texture_pool.hh"
 
-#include "GPU_context.h"
-#include "GPU_texture.h"
+#include "GPU_context.hh"
+#include "GPU_texture.hh"
 
 #include "compositor_engine.h" /* Own include. */
 
@@ -92,13 +93,15 @@ class Context : public realtime_compositor::Context {
   }
 
   /* We limit the compositing region to the camera region if in camera view, while we use the
-   * entire viewport otherwise. */
+   * entire viewport otherwise. We also use the entire viewport when doing viewport rendering since
+   * the viewport is already the camera region in that case. */
   rcti get_compositing_region() const override
   {
     const int2 viewport_size = int2(float2(DRW_viewport_size_get()));
     const rcti render_region = rcti{0, viewport_size.x, 0, viewport_size.y};
 
-    if (DRW_context_state_get()->rv3d->persp != RV3D_CAMOB) {
+    if (DRW_context_state_get()->rv3d->persp != RV3D_CAMOB || DRW_state_is_viewport_image_render())
+    {
       return render_region;
     }
 
@@ -125,7 +128,8 @@ class Context : public realtime_compositor::Context {
     return DRW_viewport_texture_list_get()->color;
   }
 
-  GPUTexture *get_viewer_output_texture(realtime_compositor::Domain /* domain */) override
+  GPUTexture *get_viewer_output_texture(realtime_compositor::Domain /* domain */,
+                                        bool /*is_data*/) override
   {
     return DRW_viewport_texture_list_get()->color;
   }
@@ -142,18 +146,20 @@ class Context : public realtime_compositor::Context {
       return nullptr;
     }
 
+    GPUTexture *pass_texture = DRW_viewport_pass_texture_get(pass_name).gpu_texture();
+    if (pass_texture) {
+      return pass_texture;
+    }
+
     if (STREQ(pass_name, RE_PASSNAME_COMBINED)) {
       return get_output_texture();
-    }
-    else if (STREQ(pass_name, RE_PASSNAME_Z)) {
-      return DRW_viewport_texture_list_get()->depth;
     }
     else {
       return nullptr;
     }
   }
 
-  StringRef get_view_name() override
+  StringRef get_view_name() const override
   {
     const SceneRenderView *view = static_cast<SceneRenderView *>(
         BLI_findlink(&get_render_data().views, DRW_context_state_get()->v3d->multiview_eye));
@@ -162,10 +168,10 @@ class Context : public realtime_compositor::Context {
 
   realtime_compositor::ResultPrecision get_precision() const override
   {
-    switch (get_node_tree().precision) {
-      case NODE_TREE_COMPOSITOR_PRECISION_AUTO:
+    switch (get_scene().r.compositor_precision) {
+      case SCE_COMPOSITOR_PRECISION_AUTO:
         return realtime_compositor::ResultPrecision::Half;
-      case NODE_TREE_COMPOSITOR_PRECISION_FULL:
+      case SCE_COMPOSITOR_PRECISION_FULL:
         return realtime_compositor::ResultPrecision::Full;
     }
 
@@ -275,12 +281,6 @@ static void compositor_engine_draw(void *data)
      * workload scheduling. When expensive compositor nodes are in the graph, these can stall out
      * the GPU for extended periods of time and sub-optimally schedule work for execution. */
     GPU_flush();
-  }
-  else {
-    /* Realtime Compositor is not supported on macOS with the OpenGL backend. */
-    blender::StringRef("Viewport compositor is only supported on MacOS with the Metal Backend.")
-        .copy(compositor_data->info, GPU_INFO_SIZE);
-    return;
   }
 #endif
 

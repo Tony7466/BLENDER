@@ -58,13 +58,16 @@ if(WIN32)
       COMMAND ${CMAKE_COMMAND} -E copy
         ${LIBDIR}/opensubdiv/lib/osdCPU.lib
         ${HARVEST_TARGET}/opensubdiv/lib/osdCPU_d.lib
-      COMMAND ${CMAKE_COMMAND} -E copy $
-        {LIBDIR}/opensubdiv/lib/osdGPU.lib
+      COMMAND ${CMAKE_COMMAND} -E copy
+        ${LIBDIR}/opensubdiv/lib/osdGPU.lib
         ${HARVEST_TARGET}/opensubdiv/lib/osdGPU_d.lib
 
       DEPENDEES install
     )
   endif()
+else()
+  harvest(external_opensubdiv opensubdiv/include opensubdiv/include "*.h")
+  harvest_rpath_lib(external_opensubdiv opensubdiv/lib opensubdiv/lib "*${SHAREDLIBEXT}*")
 endif()
 
 add_dependencies(

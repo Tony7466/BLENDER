@@ -31,7 +31,7 @@
 #include "BLO_read_write.hh"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "DEG_depsgraph.hh"
 
@@ -1681,11 +1681,11 @@ static void blend_read(BlendDataReader *reader, ModifierData *md)
 {
   SurfaceDeformModifierData *smd = (SurfaceDeformModifierData *)md;
 
-  BLO_read_data_address(reader, &smd->verts);
+  BLO_read_struct_array(reader, SDefVert, smd->bind_verts_num, &smd->verts);
 
   if (smd->verts) {
     for (int i = 0; i < smd->bind_verts_num; i++) {
-      BLO_read_data_address(reader, &smd->verts[i].binds);
+      BLO_read_struct_array(reader, SDefBind, smd->verts[i].binds_num, &smd->verts[i].binds);
 
       if (smd->verts[i].binds) {
         for (int j = 0; j < smd->verts[i].binds_num; j++) {

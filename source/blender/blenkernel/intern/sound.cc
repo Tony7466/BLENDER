@@ -8,6 +8,7 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <optional>
 
 #include "MEM_guardedalloc.h"
 
@@ -58,7 +59,11 @@
 
 static void sound_free_audio(bSound *sound);
 
-static void sound_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, const int /*flag*/)
+static void sound_copy_data(Main * /*bmain*/,
+                            std::optional<Library *> /*owner_library*/,
+                            ID *id_dst,
+                            const ID *id_src,
+                            const int /*flag*/)
 {
   bSound *sound_dst = (bSound *)id_dst;
   const bSound *sound_src = (const bSound *)id_src;
@@ -731,11 +736,20 @@ void *BKE_sound_add_scene_sound(
   }
   sound_verify_evaluated_id(&sequence->sound->id);
   const double fps = FPS;
+  const double offset_time = sequence->sound->offset_time + sequence->sound_offset -
+                             frameskip / fps;
+  if (offset_time >= 0.0f) {
+    return AUD_Sequence_add(scene->sound_scene,
+                            sequence->sound->playback_handle,
+                            startframe / fps + offset_time,
+                            endframe / fps,
+                            0.0f);
+  }
   return AUD_Sequence_add(scene->sound_scene,
                           sequence->sound->playback_handle,
                           startframe / fps,
                           endframe / fps,
-                          frameskip / fps + sequence->sound->offset_time);
+                          -offset_time);
 }
 
 void *BKE_sound_add_scene_sound_defaults(Scene *scene, Sequence *sequence)
@@ -766,19 +780,29 @@ void BKE_sound_move_scene_sound(const Scene *scene,
 {
   sound_verify_evaluated_id(&scene->id);
   const double fps = FPS;
-  AUD_SequenceEntry_move(handle, startframe / fps, endframe / fps, frameskip / fps + audio_offset);
+  const double offset_time = audio_offset - frameskip / fps;
+  if (offset_time >= 0.0f) {
+    AUD_SequenceEntry_move(handle, startframe / fps + offset_time, endframe / fps, 0.0f);
+  }
+  else {
+    AUD_SequenceEntry_move(handle, startframe / fps, endframe / fps, -offset_time);
+  }
 }
 
 void BKE_sound_move_scene_sound_defaults(Scene *scene, Sequence *sequence)
 {
   sound_verify_evaluated_id(&scene->id);
   if (sequence->scene_sound) {
+    double offset_time = 0.0f;
+    if (sequence->sound != nullptr) {
+      offset_time = sequence->sound->offset_time + sequence->sound_offset;
+    }
     BKE_sound_move_scene_sound(scene,
                                sequence->scene_sound,
                                SEQ_time_left_handle_frame_get(scene, sequence),
                                SEQ_time_right_handle_frame_get(scene, sequence),
                                sequence->startofs + sequence->anim_startofs,
-                               0.0);
+                               offset_time);
   }
 }
 
@@ -830,10 +854,12 @@ void BKE_sound_set_scene_sound_pitch_at_frame(void *handle,
 }
 
 void BKE_sound_set_scene_sound_pitch_constant_range(void *handle,
-                                                    const int frame_start,
-                                                    const int frame_end,
+                                                    int frame_start,
+                                                    int frame_end,
                                                     float pitch)
 {
+  frame_start = max_ii(0, frame_start);
+  frame_end = max_ii(0, frame_end);
   AUD_SequenceEntry_setConstantRangeAnimationData(
       handle, AUD_AP_PITCH, frame_start, frame_end, &pitch);
 }
