@@ -5,7 +5,6 @@
 #pragma once
 
 #include "kernel/util/color.h"
-#include "util/atomic.h"
 
 #ifdef __KERNEL_GPU__
 #  define __ATOMIC_PASS_WRITE__

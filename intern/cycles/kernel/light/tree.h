@@ -15,7 +15,11 @@
 
 #pragma once
 
+#include "kernel/light/area.h"
+#include "kernel/light/common.h"
 #include "kernel/light/light.h"
+#include "kernel/light/spot.h"
+#include "kernel/light/triangle.h"
 
 CCL_NAMESPACE_BEGIN
 

@@ -15,7 +15,6 @@
 #include "kernel/osl/types.h"
 
 #include "kernel/osl/closures_setup.h"
-#include "kernel/util/differential.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -188,9 +187,9 @@ ccl_device_inline void osl_eval_nodes(KernelGlobals kg,
   ShaderGlobals globals;
   shaderdata_to_shaderglobals(kg, sd, path_flag, &globals);
 
-#  ifdef __KERNEL_OPTIX__
   const int shader = sd->shader & SHADER_MASK;
 
+#  ifdef __KERNEL_OPTIX__
   uint8_t group_data[2048];
   uint8_t closure_pool[1024];
   sd->osl_closure_pool = closure_pool;

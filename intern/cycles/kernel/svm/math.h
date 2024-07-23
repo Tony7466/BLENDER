@@ -4,8 +4,6 @@
 
 #pragma once
 
-#include "kernel/svm/math_util.h"
-
 CCL_NAMESPACE_BEGIN
 
 ccl_device_noinline void svm_node_math(KernelGlobals kg,

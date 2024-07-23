@@ -4,9 +4,10 @@
 
 #pragma once
 
+#include "kernel/film/adaptive_sampling.h"
 #include "kernel/film/write.h"
 
-#include "kernel/sample/pattern.h"
+#include "kernel/integrator/shadow_catcher.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -197,16 +198,6 @@ ccl_device void film_write_adaptive_buffer(KernelGlobals kg,
  */
 
 #ifdef __SHADOW_CATCHER__
-
-ccl_device_forceinline bool kernel_shadow_catcher_is_matte_path(const uint32_t path_flag)
-{
-  return (path_flag & PATH_RAY_SHADOW_CATCHER_HIT) == 0;
-}
-
-ccl_device_forceinline bool kernel_shadow_catcher_is_object_pass(const uint32_t path_flag)
-{
-  return path_flag & PATH_RAY_SHADOW_CATCHER_PASS;
-}
 
 /* Accumulate contribution to the Shadow Catcher pass.
  *

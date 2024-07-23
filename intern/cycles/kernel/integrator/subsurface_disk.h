@@ -2,8 +2,6 @@
  *
  * SPDX-License-Identifier: Apache-2.0 */
 
-#pragma once
-
 #include "kernel/integrator/guiding.h"
 
 CCL_NAMESPACE_BEGIN

@@ -46,5 +46,4 @@ ccl_device void svm_node_aov_value(KernelGlobals kg,
     film_write_aov_pass_value(kg, state, render_buffer, node.z, val);
   }
 }
-
 CCL_NAMESPACE_END

@@ -4,8 +4,6 @@
 
 #pragma once
 
-#include "kernel/geom/geom.h"
-
 CCL_NAMESPACE_BEGIN
 
 /* Attribute Node */

@@ -5,9 +5,8 @@
 #pragma once
 
 #include "kernel/integrator/guiding.h"
-#include "kernel/integrator/path_state.h"
+#include "kernel/integrator/shade_volume.h"
 #include "kernel/integrator/surface_shader.h"
-#include "kernel/integrator/volume_shader.h"
 #include "kernel/integrator/volume_stack.h"
 
 CCL_NAMESPACE_BEGIN
@@ -62,119 +61,6 @@ ccl_device_inline Spectrum integrate_transparent_surface_shadow(KernelGlobals kg
 }
 
 #  ifdef __VOLUME__
-
-/* Evaluate shader to get extinction coefficient at P. */
-ccl_device_inline bool shadow_volume_shader_sample(KernelGlobals kg,
-                                                   IntegratorShadowState state,
-                                                   ccl_private ShaderData *ccl_restrict sd,
-                                                   ccl_private Spectrum *ccl_restrict extinction)
-{
-  VOLUME_READ_LAMBDA(integrator_state_read_shadow_volume_stack(state, i))
-  volume_shader_eval<true>(kg, state, sd, PATH_RAY_SHADOW, volume_read_lambda_pass);
-
-  if (!(sd->flag & SD_EXTINCTION)) {
-    return false;
-  }
-
-  *extinction = sd->closure_transparent_extinction;
-  return true;
-}
-
-/* Volume Shadows
- *
- * These functions are used to attenuate shadow rays to lights. Both absorption
- * and scattering will block light, represented by the extinction coefficient. */
-
-#    if 0
-/* homogeneous volume: assume shader evaluation at the starts gives
- * the extinction coefficient for the entire line segment */
-ccl_device void volume_shadow_homogeneous(KernelGlobals kg, IntegratorState state,
-                                          ccl_private Ray *ccl_restrict ray,
-                                          ccl_private ShaderData *ccl_restrict sd,
-                                          ccl_global Spectrum *ccl_restrict throughput)
-{
-  Spectrum sigma_t = zero_spectrum();
-
-  if (shadow_volume_shader_sample(kg, state, sd, &sigma_t)) {
-    *throughput *= volume_color_transmittance(sigma_t, ray->tmax - ray->tmin);
-  }
-}
-#    endif
-
-/* heterogeneous volume: integrate stepping through the volume until we
- * reach the end, get absorbed entirely, or run out of iterations */
-ccl_device void volume_shadow_heterogeneous(KernelGlobals kg,
-                                            IntegratorShadowState state,
-                                            ccl_private Ray *ccl_restrict ray,
-                                            ccl_private ShaderData *ccl_restrict sd,
-                                            ccl_private Spectrum *ccl_restrict throughput,
-                                            const float object_step_size)
-{
-  /* Load random number state. */
-  RNGState rng_state;
-  shadow_path_state_rng_load(state, &rng_state);
-
-  Spectrum tp = *throughput;
-
-  /* Prepare for stepping.
-   * For shadows we do not offset all segments, since the starting point is
-   * already a random distance inside the volume. It also appears to create
-   * banding artifacts for unknown reasons. */
-  int max_steps;
-  float step_size, step_shade_offset, unused;
-  volume_step_init(kg,
-                   &rng_state,
-                   object_step_size,
-                   ray->tmin,
-                   ray->tmax,
-                   &step_size,
-                   &step_shade_offset,
-                   &unused,
-                   &max_steps);
-  const float steps_offset = 1.0f;
-
-  /* compute extinction at the start */
-  float t = ray->tmin;
-
-  Spectrum sum = zero_spectrum();
-
-  for (int i = 0; i < max_steps; i++) {
-    /* advance to new position */
-    float new_t = min(ray->tmax, ray->tmin + (i + steps_offset) * step_size);
-    float dt = new_t - t;
-
-    float3 new_P = ray->P + ray->D * (t + dt * step_shade_offset);
-    Spectrum sigma_t = zero_spectrum();
-
-    /* compute attenuation over segment */
-    sd->P = new_P;
-    if (shadow_volume_shader_sample(kg, state, sd, &sigma_t)) {
-      /* Compute `expf()` only for every Nth step, to save some calculations
-       * because `exp(a)*exp(b) = exp(a+b)`, also do a quick #VOLUME_THROUGHPUT_EPSILON
-       * check then. */
-      sum += (-sigma_t * dt);
-      if ((i & 0x07) == 0) { /* TODO: Other interval? */
-        tp = *throughput * exp(sum);
-
-        /* stop if nearly all light is blocked */
-        if (reduce_max(tp) < VOLUME_THROUGHPUT_EPSILON) {
-          break;
-        }
-      }
-    }
-
-    /* stop if at the end of the volume */
-    t = new_t;
-    if (t == ray->tmax) {
-      /* Update throughput in case we haven't done it above */
-      tp = *throughput * exp(sum);
-      break;
-    }
-  }
-
-  *throughput = tp;
-}
-
 ccl_device_inline void integrate_transparent_volume_shadow(KernelGlobals kg,
                                                            IntegratorShadowState state,
                                                            const int hit,
@@ -209,7 +95,6 @@ ccl_device_inline void integrate_transparent_volume_shadow(KernelGlobals kg,
 
   volume_shadow_heterogeneous(kg, state, &ray, shadow_sd, throughput, step_size);
 }
-
 #  endif
 
 ccl_device_inline bool integrate_transparent_shadow(KernelGlobals kg,

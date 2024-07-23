@@ -4,8 +4,6 @@
 
 #pragma once
 
-#include "kernel/film/write.h"
-
 CCL_NAMESPACE_BEGIN
 
 /* Element of ID pass stored in the render buffers.

@@ -8,9 +8,9 @@
 #include "kernel/film/light_passes.h"
 
 #include "kernel/integrator/guiding.h"
-#include "kernel/integrator/path_state.h"
-#include "kernel/integrator/shadow_catcher.h"
 #include "kernel/integrator/surface_shader.h"
+
+#include "kernel/light/light.h"
 #include "kernel/light/sample.h"
 
 CCL_NAMESPACE_BEGIN

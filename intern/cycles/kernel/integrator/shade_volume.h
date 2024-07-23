@@ -9,12 +9,13 @@
 #include "kernel/film/light_passes.h"
 
 #include "kernel/integrator/guiding.h"
+#include "kernel/integrator/intersect_closest.h"
 #include "kernel/integrator/path_state.h"
-#include "kernel/integrator/shadow_catcher.h"
 #include "kernel/integrator/shadow_linking.h"
 #include "kernel/integrator/volume_shader.h"
 #include "kernel/integrator/volume_stack.h"
 
+#include "kernel/light/light.h"
 #include "kernel/light/sample.h"
 
 CCL_NAMESPACE_BEGIN
@@ -68,6 +69,23 @@ typedef struct EquiangularCoefficients {
   float2 t_range;
 } EquiangularCoefficients;
 
+/* Evaluate shader to get extinction coefficient at P. */
+ccl_device_inline bool shadow_volume_shader_sample(KernelGlobals kg,
+                                                   IntegratorShadowState state,
+                                                   ccl_private ShaderData *ccl_restrict sd,
+                                                   ccl_private Spectrum *ccl_restrict extinction)
+{
+  VOLUME_READ_LAMBDA(integrator_state_read_shadow_volume_stack(state, i))
+  volume_shader_eval<true>(kg, state, sd, PATH_RAY_SHADOW, volume_read_lambda_pass);
+
+  if (!(sd->flag & SD_EXTINCTION)) {
+    return false;
+  }
+
+  *extinction = sd->closure_transparent_extinction;
+  return true;
+}
+
 /* Evaluate shader to get absorption, scattering and emission at P. */
 ccl_device_inline bool volume_shader_sample(KernelGlobals kg,
                                             IntegratorState state,
@@ -98,6 +116,141 @@ ccl_device_inline bool volume_shader_sample(KernelGlobals kg,
   }
 
   return true;
+}
+
+ccl_device_forceinline void volume_step_init(KernelGlobals kg,
+                                             ccl_private const RNGState *rng_state,
+                                             const float object_step_size,
+                                             const float tmin,
+                                             const float tmax,
+                                             ccl_private float *step_size,
+                                             ccl_private float *step_shade_offset,
+                                             ccl_private float *steps_offset,
+                                             ccl_private int *max_steps)
+{
+  if (object_step_size == FLT_MAX) {
+    /* Homogeneous volume. */
+    *step_size = tmax - tmin;
+    *step_shade_offset = 0.0f;
+    *steps_offset = 1.0f;
+    *max_steps = 1;
+  }
+  else {
+    /* Heterogeneous volume. */
+    *max_steps = kernel_data.integrator.volume_max_steps;
+    const float t = tmax - tmin;
+    float step = min(object_step_size, t);
+
+    /* compute exact steps in advance for malloc */
+    if (t > *max_steps * step) {
+      step = t / (float)*max_steps;
+    }
+
+    *step_size = step;
+
+    /* Perform shading at this offset within a step, to integrate over
+     * over the entire step segment. */
+    *step_shade_offset = path_state_rng_1D(kg, rng_state, PRNG_VOLUME_SHADE_OFFSET);
+
+    /* Shift starting point of all segment by this random amount to avoid
+     * banding artifacts from the volume bounding shape. */
+    *steps_offset = path_state_rng_1D(kg, rng_state, PRNG_VOLUME_OFFSET);
+  }
+}
+
+/* Volume Shadows
+ *
+ * These functions are used to attenuate shadow rays to lights. Both absorption
+ * and scattering will block light, represented by the extinction coefficient. */
+
+#  if 0
+/* homogeneous volume: assume shader evaluation at the starts gives
+ * the extinction coefficient for the entire line segment */
+ccl_device void volume_shadow_homogeneous(KernelGlobals kg, IntegratorState state,
+                                          ccl_private Ray *ccl_restrict ray,
+                                          ccl_private ShaderData *ccl_restrict sd,
+                                          ccl_global Spectrum *ccl_restrict throughput)
+{
+  Spectrum sigma_t = zero_spectrum();
+
+  if (shadow_volume_shader_sample(kg, state, sd, &sigma_t)) {
+    *throughput *= volume_color_transmittance(sigma_t, ray->tmax - ray->tmin);
+  }
+}
+#  endif
+
+/* heterogeneous volume: integrate stepping through the volume until we
+ * reach the end, get absorbed entirely, or run out of iterations */
+ccl_device void volume_shadow_heterogeneous(KernelGlobals kg,
+                                            IntegratorShadowState state,
+                                            ccl_private Ray *ccl_restrict ray,
+                                            ccl_private ShaderData *ccl_restrict sd,
+                                            ccl_private Spectrum *ccl_restrict throughput,
+                                            const float object_step_size)
+{
+  /* Load random number state. */
+  RNGState rng_state;
+  shadow_path_state_rng_load(state, &rng_state);
+
+  Spectrum tp = *throughput;
+
+  /* Prepare for stepping.
+   * For shadows we do not offset all segments, since the starting point is
+   * already a random distance inside the volume. It also appears to create
+   * banding artifacts for unknown reasons. */
+  int max_steps;
+  float step_size, step_shade_offset, unused;
+  volume_step_init(kg,
+                   &rng_state,
+                   object_step_size,
+                   ray->tmin,
+                   ray->tmax,
+                   &step_size,
+                   &step_shade_offset,
+                   &unused,
+                   &max_steps);
+  const float steps_offset = 1.0f;
+
+  /* compute extinction at the start */
+  float t = ray->tmin;
+
+  Spectrum sum = zero_spectrum();
+
+  for (int i = 0; i < max_steps; i++) {
+    /* advance to new position */
+    float new_t = min(ray->tmax, ray->tmin + (i + steps_offset) * step_size);
+    float dt = new_t - t;
+
+    float3 new_P = ray->P + ray->D * (t + dt * step_shade_offset);
+    Spectrum sigma_t = zero_spectrum();
+
+    /* compute attenuation over segment */
+    sd->P = new_P;
+    if (shadow_volume_shader_sample(kg, state, sd, &sigma_t)) {
+      /* Compute `expf()` only for every Nth step, to save some calculations
+       * because `exp(a)*exp(b) = exp(a+b)`, also do a quick #VOLUME_THROUGHPUT_EPSILON
+       * check then. */
+      sum += (-sigma_t * dt);
+      if ((i & 0x07) == 0) { /* TODO: Other interval? */
+        tp = *throughput * exp(sum);
+
+        /* stop if nearly all light is blocked */
+        if (reduce_max(tp) < VOLUME_THROUGHPUT_EPSILON) {
+          break;
+        }
+      }
+    }
+
+    /* stop if at the end of the volume */
+    t = new_t;
+    if (t == ray->tmax) {
+      /* Update throughput in case we haven't done it above */
+      tp = *throughput * exp(sum);
+      break;
+    }
+  }
+
+  *throughput = tp;
 }
 
 /* Equi-angular sampling as in:
@@ -1011,63 +1164,6 @@ ccl_device VolumeIntegrateEvent volume_integrate(KernelGlobals kg,
 }
 
 #endif
-
-/* Schedule next kernel to be executed after shade volume.
- *
- * The logic here matches integrator_intersect_next_kernel, except that
- * volume shading and termination testing have already been done. */
-template<DeviceKernel current_kernel>
-ccl_device_forceinline void integrator_intersect_next_kernel_after_volume(
-    KernelGlobals kg,
-    IntegratorState state,
-    ccl_private const Intersection *ccl_restrict isect,
-    ccl_global float *ccl_restrict render_buffer)
-{
-  if (isect->prim != PRIM_NONE) {
-    /* Hit a surface, continue with light or surface kernel. */
-    if (isect->type & PRIMITIVE_LAMP) {
-      integrator_path_next(kg, state, current_kernel, DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT);
-      return;
-    }
-    else {
-      /* Hit a surface, continue with surface kernel unless terminated. */
-      const int shader = intersection_get_shader(kg, isect);
-      const int flags = kernel_data_fetch(shaders, shader).flags;
-      const int object_flags = intersection_get_object_flags(kg, isect);
-      const bool use_caustics = kernel_data.integrator.use_caustics &&
-                                (object_flags & SD_OBJECT_CAUSTICS);
-      const bool use_raytrace_kernel = (flags & SD_HAS_RAYTRACE);
-
-      if (use_caustics) {
-        integrator_path_next_sorted(
-            kg, state, current_kernel, DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_MNEE, shader);
-      }
-      else if (use_raytrace_kernel) {
-        integrator_path_next_sorted(
-            kg, state, current_kernel, DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE, shader);
-      }
-      else {
-        integrator_path_next_sorted(
-            kg, state, current_kernel, DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE, shader);
-      }
-
-#ifdef __SHADOW_CATCHER__
-      /* Handle shadow catcher. */
-      integrator_split_shadow_catcher(kg, state, isect, render_buffer);
-#endif
-      return;
-    }
-  }
-  else {
-    /* Nothing hit, continue with background kernel. */
-    if (integrator_intersect_skip_lights(kg, state)) {
-      integrator_path_terminate(kg, state, current_kernel);
-    }
-    else {
-      integrator_path_next(kg, state, current_kernel, DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND);
-    }
-  }
-}
 
 ccl_device void integrator_shade_volume(KernelGlobals kg,
                                         IntegratorState state,

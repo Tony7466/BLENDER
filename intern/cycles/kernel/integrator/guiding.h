@@ -4,9 +4,9 @@
 
 #pragma once
 
-#include "kernel/film/write.h"
-
+#include "kernel/closure/alloc.h"
 #include "kernel/closure/bsdf.h"
+#include "kernel/film/write.h"
 
 CCL_NAMESPACE_BEGIN
 

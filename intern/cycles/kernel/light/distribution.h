@@ -5,6 +5,7 @@
 #pragma once
 
 #include "kernel/light/light.h"
+#include "kernel/light/triangle.h"
 
 CCL_NAMESPACE_BEGIN
 

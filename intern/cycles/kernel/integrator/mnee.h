@@ -2,11 +2,8 @@
  *
  * SPDX-License-Identifier: Apache-2.0 */
 
-#pragma once
-
 #ifdef __MNEE__
 
-#  include "kernel/bvh/bvh.h"
 #  include "kernel/light/sample.h"
 
 /*

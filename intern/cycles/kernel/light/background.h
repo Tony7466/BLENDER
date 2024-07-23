@@ -4,8 +4,6 @@
 
 #pragma once
 
-#include "kernel/camera/projection.h"
-
 #include "kernel/light/area.h"
 #include "kernel/light/common.h"
 

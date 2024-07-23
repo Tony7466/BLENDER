@@ -4,8 +4,6 @@
 
 #pragma once
 
-#include "kernel/bvh/bvh.h"
-
 CCL_NAMESPACE_BEGIN
 
 /* Visibility for the shadow ray. */

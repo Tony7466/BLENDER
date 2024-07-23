@@ -2,11 +2,10 @@
  *
  * SPDX-License-Identifier: Apache-2.0 */
 
-#pragma once
-
 #include "kernel/sample/util.h"
 #include "util/hash.h"
 
+#pragma once
 CCL_NAMESPACE_BEGIN
 
 ccl_device uint tabulated_sobol_shuffled_sample_index(KernelGlobals kg,

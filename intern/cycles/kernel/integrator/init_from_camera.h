@@ -12,6 +12,8 @@
 #include "kernel/integrator/path_state.h"
 #include "kernel/integrator/shadow_catcher.h"
 
+#include "kernel/sample/pattern.h"
+
 CCL_NAMESPACE_BEGIN
 
 ccl_device_inline void integrate_camera_sample(KernelGlobals kg,

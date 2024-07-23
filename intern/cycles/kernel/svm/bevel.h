@@ -5,8 +5,8 @@
 #pragma once
 
 #include "kernel/bvh/bvh.h"
-#include "kernel/integrator/path_state.h"
 #include "kernel/sample/mapping.h"
+#include "kernel/sample/pattern.h"
 
 CCL_NAMESPACE_BEGIN
 

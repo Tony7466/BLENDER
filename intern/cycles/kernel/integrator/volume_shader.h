@@ -6,9 +6,10 @@
 
 #pragma once
 
+#include "kernel/closure/alloc.h"
 #include "kernel/closure/bsdf.h"
-#include "kernel/film/light_passes.h"
-#include "kernel/geom/geom.h"
+#include "kernel/closure/bsdf_util.h"
+#include "kernel/closure/emissive.h"
 
 #ifdef __SVM__
 #  include "kernel/svm/svm.h"

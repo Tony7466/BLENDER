@@ -4,19 +4,21 @@
 
 #pragma once
 
+#include "kernel/integrator/path_state.h"
+#include "kernel/integrator/surface_shader.h"
+
 #include "kernel/film/data_passes.h"
 #include "kernel/film/denoising_passes.h"
 #include "kernel/film/light_passes.h"
 
-#include "kernel/integrator/guiding.h"
+#include "kernel/light/sample.h"
+
 #include "kernel/integrator/mnee.h"
-#include "kernel/integrator/path_state.h"
+
+#include "kernel/integrator/guiding.h"
 #include "kernel/integrator/shadow_linking.h"
 #include "kernel/integrator/subsurface.h"
-#include "kernel/integrator/surface_shader.h"
 #include "kernel/integrator/volume_stack.h"
-
-#include "kernel/light/sample.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -600,7 +602,7 @@ ccl_device_forceinline bool integrate_surface_terminate(IntegratorState state,
   return false;
 }
 
-#ifdef __AO__
+#if defined(__AO__)
 ccl_device_forceinline void integrate_surface_ao(KernelGlobals kg,
                                                  IntegratorState state,
                                                  ccl_private const ShaderData *ccl_restrict sd,
@@ -686,7 +688,7 @@ ccl_device_forceinline void integrate_surface_ao(KernelGlobals kg,
     INTEGRATOR_STATE_WRITE(shadow_state, shadow_path, unshadowed_throughput) = ao_weight;
   }
 }
-#endif /* __AO__ */
+#endif /* defined(__AO__) */
 
 template<uint node_feature_mask>
 ccl_device int integrate_surface(KernelGlobals kg,

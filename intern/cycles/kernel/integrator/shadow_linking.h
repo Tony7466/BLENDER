@@ -4,7 +4,8 @@
 
 #pragma once
 
-#include "kernel/light/light.h"
+#include "kernel/integrator/path_state.h"
+#include "kernel/integrator/state_util.h"
 
 CCL_NAMESPACE_BEGIN
 

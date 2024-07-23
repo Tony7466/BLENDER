@@ -10,8 +10,9 @@
 #include "kernel/light/point.h"
 #include "kernel/light/spot.h"
 #include "kernel/light/triangle.h"
-
 #include "kernel/sample/lcg.h"
+
+#include "kernel/sample/mapping.h"
 
 CCL_NAMESPACE_BEGIN
 

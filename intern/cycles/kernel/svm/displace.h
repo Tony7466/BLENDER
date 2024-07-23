@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "kernel/sample/mapping.h"
+
 CCL_NAMESPACE_BEGIN
 
 /* Bump Node */
