@@ -59,3 +59,9 @@ GPU_SHADER_CREATE_INFO(select_id_patch)
     .storage_buf(SELECT_ID_OUT, Qualifier::READ_WRITE, "uint", "out_select_buf[]");
 
 /** \} */
+
+GPU_SHADER_CREATE_INFO(select_debug_fullscreen)
+    .sampler(0, ImageType::FLOAT_2D, "image")
+    .vertex_source("common_fullscreen_vert.glsl")
+    .fragment_source("select_debug_frag.glsl")
+    .do_static_compilation(true);
