@@ -2049,7 +2049,7 @@ void BKE_sculpt_update_object_before_eval(Object *ob_eval)
 
   if (ss && ss->building_vp_handle == false) {
     if (!ss->cache && !ss->filter_cache && !ss->expand_cache) {
-      if (ss->pbvh) {
+      if (ss->pbvh && BKE_pbvh_type(*ss->pbvh) != PBVH_GRIDS) {
         /* PBVH nodes may contain dirty normal tags. To avoid losing that information when the PBVH
          * is deleted, make sure all tagged geometry normals are up to date.
          * See #122947 for more information. */
