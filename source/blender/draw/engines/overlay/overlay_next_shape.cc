@@ -52,10 +52,10 @@ enum VertexClass {
   VCLASS_EMPTY_SIZE = 1 << 14,
 };
 
-static constexpr int DIAMOND_NSEGMENTS = 4;
-static constexpr int INNER_NSEGMENTS = 8;
-static constexpr int OUTER_NSEGMENTS = 10;
-static constexpr int CIRCLE_NSEGMENTS = 32;
+static constexpr int diamond_nsegments = 4;
+static constexpr int inner_nsegments = 8;
+static constexpr int outer_nsegments = 10;
+static constexpr int circle_nsegments = 32;
 
 static constexpr float bone_box_verts[8][3] = {
     {1.0f, 0.0f, 1.0f},
@@ -143,7 +143,7 @@ static Vector<Vertex> sphere_axes_circles(const float radius,
 
 static void light_append_direction_line(Vector<Vertex> &verts)
 {
-  const Vector<float2> diamond = ring_vertices(1.2f, DIAMOND_NSEGMENTS);
+  const Vector<float2> diamond = ring_vertices(1.2f, diamond_nsegments);
   const float zsta = light_distance_z_get('z', true);
   const float zend = light_distance_z_get('z', false);
   verts.append({{0.0, 0.0, zsta}, VCLASS_LIGHT_DIST});
@@ -407,7 +407,7 @@ ShapeCache::ShapeCache()
   }
   /* ground line */
   {
-    const Vector<float2> ring = ring_vertices(1.35f, DIAMOND_NSEGMENTS);
+    const Vector<float2> ring = ring_vertices(1.35f, diamond_nsegments);
 
     Vector<Vertex> verts;
     /* Ground Point */
@@ -426,8 +426,8 @@ ShapeCache::ShapeCache()
     /* Cone apex */
     verts.append({{0.0f, 0.0f, 0.0f}, 0});
     /* Cone silhouette */
-    for (const int angle_i : IndexRange(CIRCLE_NSEGMENTS + 1)) {
-      const float angle = (2.0f * math::numbers::pi * angle_i) / CIRCLE_NSEGMENTS;
+    for (const int angle_i : IndexRange(circle_nsegments + 1)) {
+      const float angle = (2.0f * math::numbers::pi * angle_i) / circle_nsegments;
       const float s = sinf(-angle);
       const float c = cosf(-angle);
       verts.append({{s, c, -1.0f}, VCLASS_LIGHT_SPOT_SHAPE});
@@ -438,7 +438,7 @@ ShapeCache::ShapeCache()
   /* light icon outer lines */
   {
     constexpr float r = 9.0f;
-    const Vector<float2> ring = ring_vertices(r * 1.33f, OUTER_NSEGMENTS * 2);
+    const Vector<float2> ring = ring_vertices(r * 1.33f, outer_nsegments * 2);
 
     Vector<Vertex> verts;
     append_line_loop(verts, ring, 0.0f, VCLASS_SCREENSPACE, true);
@@ -448,8 +448,8 @@ ShapeCache::ShapeCache()
   /* light icon inner lines */
   {
     constexpr float r = 9.0f;
-    const Vector<float2> diamond = ring_vertices(r * 0.3f, DIAMOND_NSEGMENTS);
-    const Vector<float2> ring = ring_vertices(r, INNER_NSEGMENTS * 2);
+    const Vector<float2> diamond = ring_vertices(r * 0.3f, diamond_nsegments);
+    const Vector<float2> ring = ring_vertices(r, inner_nsegments * 2);
 
     Vector<Vertex> verts;
     append_line_loop(verts, diamond, 0.0f, VCLASS_SCREENSPACE);
@@ -477,7 +477,7 @@ ShapeCache::ShapeCache()
   }
   /* light point lines */
   {
-    const Vector<float2> ring = ring_vertices(1.0f, CIRCLE_NSEGMENTS);
+    const Vector<float2> ring = ring_vertices(1.0f, circle_nsegments);
 
     Vector<Vertex> verts;
     append_line_loop(verts, ring, 0.0f, VCLASS_SCREENALIGNED | VCLASS_LIGHT_AREA_SHAPE);
@@ -495,7 +495,7 @@ ShapeCache::ShapeCache()
   }
   /* light spot lines */
   {
-    const Vector<float2> ring = ring_vertices(1.0f, CIRCLE_NSEGMENTS);
+    const Vector<float2> ring = ring_vertices(1.0f, circle_nsegments);
 
     Vector<Vertex> verts;
     /* Light area */
@@ -516,7 +516,7 @@ ShapeCache::ShapeCache()
   }
   /* light area disk lines */
   {
-    const Vector<float2> ring = ring_vertices(0.5f, CIRCLE_NSEGMENTS);
+    const Vector<float2> ring = ring_vertices(0.5f, circle_nsegments);
 
     Vector<Vertex> verts;
     /* Light area */
