@@ -447,7 +447,7 @@ static PyObject *bpy_escape_identifier(PyObject * /*self*/, PyObject *value)
 
   return value_escape;
 }
-#ifndef WITH_HEADLESS
+
 PyDoc_STRVAR(
     /* Wrap. */
     bpy_icon_set_doc,
@@ -476,6 +476,7 @@ static PyObject *bpy_icon_set(PyObject * /*self*/, PyObject *args, PyObject *kw)
   if (!_PyArg_ParseTupleAndKeywordsFast(args, kw, &_parser, &icon, &filepath)) {
     return nullptr;
   }
+#ifndef WITH_HEADLESS
   if (!icon || !filepath) {
     PyErr_SetString(PyExc_TypeError, "expected a string");
     return nullptr;
@@ -484,6 +485,7 @@ static PyObject *bpy_icon_set(PyObject * /*self*/, PyObject *args, PyObject *kw)
   BLF_cache_clear();
   WM_main_add_notifier(NC_WINDOW, nullptr);             /* full redraw */
   WM_main_add_notifier(NC_SCREEN | NA_EDITED, nullptr); /* refresh region sizes */
+#endif
   Py_RETURN_NONE;
 }
 
@@ -506,13 +508,14 @@ static PyObject *bpy_icon_reset(PyObject * /*self*/, PyObject *value)
     PyErr_SetString(PyExc_TypeError, "expected a string");
     return nullptr;
   }
+#ifndef WITH_HEADLESS
   blender::blf::icon::reset(icon);
   BLF_cache_clear();
   WM_main_add_notifier(NC_WINDOW, nullptr);             /* full redraw */
   WM_main_add_notifier(NC_SCREEN | NA_EDITED, nullptr); /* refresh region sizes */
+#endif
   Py_RETURN_NONE;
 }
-#endif
 
 PyDoc_STRVAR(
     /* Wrap. */
@@ -752,10 +755,8 @@ static PyMethodDef bpy_methods[] = {
      bpy_driver_secure_code_test_doc},
     {"_ghost_backend", (PyCFunction)bpy_ghost_backend, METH_NOARGS, bpy_ghost_backend_doc},
     {"_wm_capabilities", (PyCFunction)bpy_wm_capabilities, METH_NOARGS, bpy_wm_capabilities_doc},
-#ifndef WITH_HEADLESS
     {"icon_set", (PyCFunction)bpy_icon_set, METH_VARARGS | METH_KEYWORDS, bpy_icon_set_doc},
     {"icon_reset", (PyCFunction)bpy_icon_reset, METH_O, bpy_icon_reset_doc},
-#endif
     {nullptr, nullptr, 0, nullptr},
 };
 
