@@ -33,7 +33,7 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
   const bool use_proportional_edit = (t->flag & T_PROP_EDIT_ALL) != 0;
   const bool use_connected_only = (t->flag & T_PROP_CONNECTED) != 0;
 
-  Vector<int> must_be_selected;
+  Vector<int> handle_selection;
 
   int total_number_of_drawings = 0;
   Vector<Vector<ed::greasepencil::MutableDrawingInfo>> all_drawings;
@@ -93,7 +93,7 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
         const VArray<int8_t> handle_types_left = curves.handle_types_left();
         const VArray<int8_t> handle_types_right = curves.handle_types_right();
 
-        must_be_selected.clear();
+        handle_selection.clear();
         bezier_curves[layer_offset].foreach_index([&](const int bezier_index) {
           for (const int point_i : points_by_curve[bezier_index]) {
             if (selection_per_attribute[0].contains(point_i)) {
@@ -102,20 +102,20 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
               if (ELEM(type_left, BEZIER_HANDLE_AUTO, BEZIER_HANDLE_ALIGN) &&
                   ELEM(type_right, BEZIER_HANDLE_AUTO, BEZIER_HANDLE_ALIGN))
               {
-                must_be_selected.append(point_i);
+                handle_selection.append(point_i);
               }
             }
           }
         });
 
         /* Select bezier handles that must be transformed if the main control point is selected. */
-        IndexMask must_be_selected_mask = IndexMask::from_indices(must_be_selected.as_span(),
+        IndexMask handle_selection_mask = IndexMask::from_indices(handle_selection.as_span(),
                                                                   curves_transform_data->memory);
-        if (!must_be_selected.is_empty()) {
+        if (!handle_selection.is_empty()) {
           selection_per_attribute[1] = IndexMask::from_union(
-              selection_per_attribute[1], must_be_selected_mask, curves_transform_data->memory);
+              selection_per_attribute[1], handle_selection_mask, curves_transform_data->memory);
           selection_per_attribute[2] = IndexMask::from_union(
-              selection_per_attribute[2], must_be_selected_mask, curves_transform_data->memory);
+              selection_per_attribute[2], handle_selection_mask, curves_transform_data->memory);
         }
       }
 
