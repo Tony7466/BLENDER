@@ -115,6 +115,87 @@ static BIFIconID curves_domain_to_icon(const bke::AttrDomain domain)
   }
 }
 
+class RootGeometryViewItem : public InstancesTreeViewItem {
+ public:
+  RootGeometryViewItem(const bke::GeometrySet &geometry)
+  {
+    label_ = geometry.name.empty() ? IFACE_("Geometry") : geometry.name;
+  }
+
+  void build_row(uiLayout &row) override
+  {
+    uiItemL(&row, label_.c_str(), ICON_GEOMETRY_NODES);
+  }
+};
+
+class InstanceReferenceViewItem : public InstancesTreeViewItem {
+ private:
+  const bke::InstanceReference &reference_;
+  int reference_index_;
+
+ public:
+  InstanceReferenceViewItem(const bke::Instances &instances, const int reference_index)
+      : reference_(instances.references()[reference_index]), reference_index_(reference_index)
+  {
+    label_ = std::to_string(reference_index);
+  }
+
+  void build_row(uiLayout &row) override
+  {
+    const int icon = get_instance_reference_icon(reference_);
+    StringRefNull name = reference_.name();
+    if (name.is_empty()) {
+      name = IFACE_("Geometry");
+    }
+    uiItemL(&row, name.c_str(), icon);
+  }
+
+  int reference_index() const
+  {
+    return reference_index_;
+  }
+};
+
+class GeometryInstancesTreeView : public ui::AbstractTreeView {
+ private:
+  bke::GeometrySet root_geometry_set_;
+  SpaceSpreadsheet &sspreadsheet_;
+  bScreen &screen_;
+
+  friend class InstancesTreeViewItem;
+
+ public:
+  GeometryInstancesTreeView(bke::GeometrySet geometry_set, const bContext &C)
+      : root_geometry_set_(std::move(geometry_set)),
+        sspreadsheet_(*CTX_wm_space_spreadsheet(&C)),
+        screen_(*CTX_wm_screen(&C))
+  {
+  }
+
+  void build_tree() override
+  {
+    auto &root_item = this->add_tree_item<RootGeometryViewItem>(root_geometry_set_);
+    if (const bke::Instances *instances = root_geometry_set_.get_instances()) {
+      this->build_tree_for_instances(root_item, *instances);
+    }
+  }
+
+  void build_tree_for_instances(ui::TreeViewItemContainer &parent, const bke::Instances &instances)
+  {
+    const Span<bke::InstanceReference> references = instances.references();
+    for (const int reference_i : references.index_range()) {
+      auto &reference_item = parent.add_tree_item<InstanceReferenceViewItem>(instances,
+                                                                             reference_i);
+      const bke::InstanceReference &reference = references[reference_i];
+      bke::GeometrySet reference_geometry;
+      reference.to_geometry_set(reference_geometry);
+      if (const bke::Instances *child_instances = reference_geometry.get_instances()) {
+        this->build_tree_for_instances(reference_item, *child_instances);
+      }
+    }
+  }
+};
+
 class DataSetViewItem : public ui::AbstractTreeViewItem {
  public:
   GeometryDataSetTreeView &get_tree() const;
@@ -390,87 +471,6 @@ class InstancesViewItem : public DataSetViewItem {
     uiItemL(&row, label_.c_str(), ICON_EMPTY_AXIS);
     const int count = instances_ ? instances_->instances_num() : 0;
     draw_count(*this, count);
-  }
-};
-
-class RootGeometryViewItem : public InstancesTreeViewItem {
- public:
-  RootGeometryViewItem(const bke::GeometrySet &geometry)
-  {
-    label_ = geometry.name.empty() ? IFACE_("Geometry") : geometry.name;
-  }
-
-  void build_row(uiLayout &row) override
-  {
-    uiItemL(&row, label_.c_str(), ICON_GEOMETRY_NODES);
-  }
-};
-
-class InstanceReferenceViewItem : public InstancesTreeViewItem {
- private:
-  const bke::InstanceReference &reference_;
-  int reference_index_;
-
- public:
-  InstanceReferenceViewItem(const bke::Instances &instances, const int reference_index)
-      : reference_(instances.references()[reference_index]), reference_index_(reference_index)
-  {
-    label_ = std::to_string(reference_index);
-  }
-
-  void build_row(uiLayout &row) override
-  {
-    const int icon = get_instance_reference_icon(reference_);
-    StringRefNull name = reference_.name();
-    if (name.is_empty()) {
-      name = IFACE_("Geometry");
-    }
-    uiItemL(&row, name.c_str(), icon);
-  }
-
-  int reference_index() const
-  {
-    return reference_index_;
-  }
-};
-
-class GeometryInstancesTreeView : public ui::AbstractTreeView {
- private:
-  bke::GeometrySet root_geometry_set_;
-  SpaceSpreadsheet &sspreadsheet_;
-  bScreen &screen_;
-
-  friend class InstancesTreeViewItem;
-
- public:
-  GeometryInstancesTreeView(bke::GeometrySet geometry_set, const bContext &C)
-      : root_geometry_set_(std::move(geometry_set)),
-        sspreadsheet_(*CTX_wm_space_spreadsheet(&C)),
-        screen_(*CTX_wm_screen(&C))
-  {
-  }
-
-  void build_tree() override
-  {
-    auto &root_item = this->add_tree_item<RootGeometryViewItem>(root_geometry_set_);
-    if (const bke::Instances *instances = root_geometry_set_.get_instances()) {
-      this->build_tree_for_instances(root_item, *instances);
-    }
-  }
-
-  void build_tree_for_instances(ui::TreeViewItemContainer &parent, const bke::Instances &instances)
-  {
-    const Span<bke::InstanceReference> references = instances.references();
-    for (const int reference_i : references.index_range()) {
-      auto &reference_item = parent.add_tree_item<InstanceReferenceViewItem>(instances,
-                                                                             reference_i);
-      const bke::InstanceReference &reference = references[reference_i];
-      bke::GeometrySet reference_geometry;
-      reference.to_geometry_set(reference_geometry);
-      if (const bke::Instances *child_instances = reference_geometry.get_instances()) {
-        this->build_tree_for_instances(reference_item, *child_instances);
-      }
-    }
   }
 };
 
