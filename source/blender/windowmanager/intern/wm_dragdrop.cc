@@ -367,21 +367,20 @@ void WM_event_drag_space_file_paths(const bContext *C, wmDrag *drag)
   char dirpath[FILE_MAX];
   BLI_path_split_dir_part(WM_drag_get_single_path(drag), dirpath, FILE_MAX);
 
-  blender::Vector<std::string> paths;
-  blender::Vector<const char *> c_paths;
-
-  ListBase file_links = CTX_data_collection_get(C, "selected_files");
-  LISTBASE_FOREACH (const CollectionPointerLink *, link, &file_links) {
-    const FileDirEntry *file = static_cast<const FileDirEntry *>(link->ptr.data);
+  blender::Vector<char *> paths;
+  const blender::Vector<PointerRNA> files = CTX_data_collection_get(C, "selected_files");
+  for (const PointerRNA &file_ptr : files) {
+    const FileDirEntry *file = static_cast<const FileDirEntry *>(file_ptr.data);
     char filepath[FILE_MAX];
     BLI_path_join(filepath, sizeof(filepath), dirpath, file->name);
 
-    paths.append(filepath);
-    c_paths.append(paths.last().c_str());
+    paths.append(BLI_strdup(filepath));
   }
-  BLI_freelistN(&file_links);
   WM_drag_data_free(drag->type, drag->poin);
-  drag->poin = WM_drag_create_path_data(c_paths);
+  drag->poin = WM_drag_create_path_data(paths);
+  for (char *path : paths) {
+    MEM_freeN(path);
+  }
 }
 
 void WM_drag_data_free(eWM_DragDataType dragtype, void *poin)
