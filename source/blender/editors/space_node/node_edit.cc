@@ -2490,7 +2490,7 @@ void NODE_OT_clear_viewer_border(wmOperatorType *ot)
 
 static int clear_geometry_cache_exec(bContext * /*c*/, wmOperator *op)
 {
-  geo_cache_clear_all();
+  nodes::geo_cache_clear_all();
   BKE_report(op->reports, RPT_INFO, "Geometry Cache Cleared");
   return OPERATOR_FINISHED;
 }

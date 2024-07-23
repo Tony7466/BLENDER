@@ -470,7 +470,7 @@ void WM_exit_ex(bContext *C, const bool do_python_exit, const bool do_user_exit_
    * Saving #BLENDER_QUIT_FILE is also not likely to be desired either. */
   BLI_assert(G.background ? (do_user_exit_actions == false) : true);
 
-  blender::geo_cache_clear_all();
+  blender::nodes::geo_cache_clear_all();
 
   /* First wrap up running stuff, we assume only the active WM is running. */
   /* Modal handlers are on window level freed, others too? */

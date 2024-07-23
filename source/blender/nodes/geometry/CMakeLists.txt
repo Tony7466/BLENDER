@@ -248,16 +248,6 @@ set(LIB
   PRIVATE bf_io_wavefront_obj
 )
 
-if(WITH_BOOST)
-  list(APPEND INC_SYS
-    ${BOOST_INCLUDE_DIR}
-  )
-  list(APPEND LIB
-    ${BOOST_LIBRARIES}
-  )
-  add_definitions(-DWITH_BOOST)
-endif()
-
 if(WITH_IO_STL)
   list(APPEND LIB
     PRIVATE bf_io_common
