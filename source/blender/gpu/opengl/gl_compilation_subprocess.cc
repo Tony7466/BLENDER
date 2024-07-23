@@ -127,6 +127,23 @@ static bool validate_binary(void *binary)
 
 }  // namespace blender::gpu
 
+#  if defined(__linux__) || defined(__APPLE__)
+static std::string path_xdg_cache_get()
+{
+  const char *home = getenv("XDG_CACHE_HOME");
+  if (home) {
+    return std::string(home);
+  }
+  else {
+    home = getenv("HOME");
+    if (home == NULL) {
+      home = getpwuid(getuid())->pw_dir;
+    }
+    return path_join(std::string(home), ".cache");
+  }
+}
+#  endif
+
 static std::string cache_dir_get()
 {
   std::string tmp_dir;
@@ -136,8 +153,7 @@ static std::string cache_dir_get()
   BLI_temp_directory_path_get(tmp_dir_buffer, sizeof(tmp_dir_buffer));
   tmp_dir = tmp_dir_buffer;
 #  else
-  /* /var/tmp/ clears old files, but doesn't reset on every restart. */
-  tmp_dir = "/var/tmp/";
+  tmp_dir = path_xdg_cache_get();
 #  endif
 
   std::string cache_dir = tmp_dir + "BLENDER_SHADER_CACHE" + SEP_STR;
