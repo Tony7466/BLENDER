@@ -189,10 +189,6 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
         MutableSpan<float> opacities = info.drawing.opacities_for_write();
         value_attribute = opacities;
       }
-      else if (t->mode == TFM_TILT) {
-        MutableSpan<float> tilt = curves.tilt_for_write();
-        value_attribute = tilt;
-      }
 
       const IndexMask affected_strokes = use_proportional_edit ?
                                              ed::greasepencil::retrieve_editable_strokes(
