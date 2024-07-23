@@ -24,6 +24,7 @@
 #include "UI_interface.hh"
 #include "UI_tree_view.hh"
 
+#include "WM_api.hh"
 #include "WM_types.hh"
 
 #include "BLT_translation.hh"
@@ -118,8 +119,6 @@ class DataSetViewItem : public ui::AbstractTreeViewItem {
  public:
   GeometryDataSetTreeView &get_tree() const;
 
-  void get_parent_instance_ids(Vector<SpreadsheetInstanceID> &r_instance_ids) const;
-
   void on_activate(bContext &C) override;
 
   std::optional<bool> should_be_active() const override;
@@ -133,13 +132,13 @@ class DataSetViewItem : public ui::AbstractTreeViewItem {
 
 class InstancesTreeViewItem : public ui::AbstractTreeViewItem {
  public:
-  // GeometryInstancesTreeView &get_tree() const;
+  GeometryInstancesTreeView &get_tree() const;
 
-  // void get_parent_instance_ids(Vector<SpreadsheetInstanceID> &r_instance_ids) const;
+  void get_parent_instance_ids(Vector<SpreadsheetInstanceID> &r_instance_ids) const;
 
-  // void on_activate(bContext &C) override;
+  void on_activate(bContext &C) override;
 
-  // std::optional<bool> should_be_active() const override;
+  std::optional<bool> should_be_active() const override;
 };
 
 class MeshViewItem : public DataSetViewItem {
@@ -478,7 +477,7 @@ class RootGeometryViewItem : public InstancesTreeViewItem {
 
   void build_row(uiLayout &row) override
   {
-    uiItemL(&row, label_.c_str(), ICON_THREE_DOTS);
+    uiItemL(&row, label_.c_str(), ICON_GEOMETRY_NODES);
   }
 };
 
@@ -487,6 +486,8 @@ class GeometryInstancesTreeView : public ui::AbstractTreeView {
   bke::GeometrySet root_geometry_set_;
   SpaceSpreadsheet &sspreadsheet_;
   bScreen &screen_;
+
+  friend class InstancesTreeViewItem;
 
  public:
   GeometryInstancesTreeView(bke::GeometrySet geometry_set, const bContext &C)
@@ -624,41 +625,7 @@ class GeometryDataSetTreeView : public ui::AbstractTreeView {
 
   void build_tree_for_instances(const bke::Instances *instances, ui::TreeViewItemContainer &parent)
   {
-    auto &instances_view = parent.add_tree_item<InstancesViewItem>(instances);
-    if (!instances) {
-      return;
-    }
-    const Span<bke::InstanceReference> references = instances->references();
-    for (const int reference_i : references.index_range()) {
-      auto &reference_item = instances_view.add_tree_item<InstanceReferenceViewItem>(*instances,
-                                                                                     reference_i);
-      const bke::InstanceReference &reference = references[reference_i];
-      if (reference.type() == bke::InstanceReference::Type::Collection) {
-        this->build_tree_for_collection(reference.collection(), reference_item);
-      }
-      else {
-        bke::GeometrySet reference_geometry;
-        reference.to_geometry_set(reference_geometry);
-        this->build_tree_for_geometry(reference_geometry, reference_item, false);
-      }
-    }
-  }
-
-  void build_tree_for_collection(const Collection &collection, ui::TreeViewItemContainer &parent)
-  {
-    int child_index = 0;
-    LISTBASE_FOREACH (CollectionChild *, collection_child, &collection.children) {
-      auto &collection_child_item = parent.add_tree_item<CollectionChildViewItem>(
-          *collection_child, child_index++);
-      this->build_tree_for_collection(*collection_child->collection, collection_child_item);
-    }
-    LISTBASE_FOREACH (CollectionObject *, collection_object, &collection.gobject) {
-      auto &collection_object_item = parent.add_tree_item<CollectionObjectViewItem>(
-          *collection_object, child_index++);
-      const bke::GeometrySet geometry = bke::object_get_evaluated_geometry_set(
-          *collection_object->ob);
-      this->build_tree_for_geometry(geometry, collection_object_item, false);
-    }
+    parent.add_tree_item<InstancesViewItem>(instances);
   }
 };
 
@@ -667,39 +634,79 @@ GeometryDataSetTreeView &DataSetViewItem::get_tree() const
   return static_cast<GeometryDataSetTreeView &>(this->get_tree_view());
 }
 
-void DataSetViewItem::get_parent_instance_ids(Vector<SpreadsheetInstanceID> &r_instance_ids) const
+GeometryInstancesTreeView &InstancesTreeViewItem::get_tree() const
 {
+  return static_cast<GeometryInstancesTreeView &>(this->get_tree_view());
+}
+
+void InstancesTreeViewItem::get_parent_instance_ids(
+    Vector<SpreadsheetInstanceID> &r_instance_ids) const
+{
+  if (auto *reference_item = dynamic_cast<const InstanceReferenceViewItem *>(this)) {
+    r_instance_ids.append({reference_item->reference_index()});
+  }
   this->foreach_parent([&](const ui::AbstractTreeViewItem &item) {
     if (auto *reference_item = dynamic_cast<const InstanceReferenceViewItem *>(&item)) {
       r_instance_ids.append({reference_item->reference_index()});
-    }
-    else if (auto *collection_object_item = dynamic_cast<const CollectionObjectViewItem *>(&item))
-    {
-      r_instance_ids.append({collection_object_item->child_index()});
-    }
-    else if (auto *collection_child_item = dynamic_cast<const CollectionChildViewItem *>(&item)) {
-      r_instance_ids.append({collection_child_item->child_index()});
     }
   });
   std::reverse(r_instance_ids.begin(), r_instance_ids.end());
 }
 
-void DataSetViewItem::on_activate(bContext &C)
+std::optional<bool> InstancesTreeViewItem::should_be_active() const
 {
-  std::optional<GeometryDataIdentifier> data_id = this->get_geometry_data_id();
-  if (!data_id) {
-    return;
+  GeometryInstancesTreeView &tree_view = this->get_tree();
+  SpaceSpreadsheet &sspreadsheet = tree_view.sspreadsheet_;
+
+  Vector<SpreadsheetInstanceID> instance_ids;
+  this->get_parent_instance_ids(instance_ids);
+  if (sspreadsheet.instance_ids_num != instance_ids.size()) {
+    return false;
   }
+  for (const int i : instance_ids.index_range()) {
+    const SpreadsheetInstanceID &a = sspreadsheet.instance_ids[i];
+    const SpreadsheetInstanceID &b = instance_ids[i];
+    if (a.reference_index != b.reference_index) {
+      return false;
+    }
+  }
+  return true;
+}
+
+void InstancesTreeViewItem::on_activate(bContext &C)
+{
   Vector<SpreadsheetInstanceID> instance_ids;
   this->get_parent_instance_ids(instance_ids);
 
-  bScreen &screen = *CTX_wm_screen(&C);
   SpaceSpreadsheet &sspreadsheet = *CTX_wm_space_spreadsheet(&C);
 
   MEM_SAFE_FREE(sspreadsheet.instance_ids);
   sspreadsheet.instance_ids = MEM_cnew_array<SpreadsheetInstanceID>(instance_ids.size(), __func__);
   sspreadsheet.instance_ids_num = instance_ids.size();
   initialized_copy_n(instance_ids.data(), instance_ids.size(), sspreadsheet.instance_ids);
+
+  WM_main_add_notifier(NC_SPACE | ND_SPACE_SPREADSHEET, nullptr);
+}
+
+void DataSetViewItem::on_activate(bContext &C)
+{
+  std::optional<GeometryDataIdentifier> data_id = this->get_geometry_data_id();
+  if (!data_id) {
+    this->foreach_item_recursive([&](const ui::AbstractTreeViewItem &item) {
+      if (data_id) {
+        return;
+      }
+      if (auto *data_set_view_item = dynamic_cast<const DataSetViewItem *>(&item)) {
+        data_id = data_set_view_item->get_geometry_data_id();
+      }
+    });
+    if (!data_id) {
+      return;
+    }
+  }
+
+  bScreen &screen = *CTX_wm_screen(&C);
+  SpaceSpreadsheet &sspreadsheet = *CTX_wm_space_spreadsheet(&C);
 
   sspreadsheet.geometry_component_type = uint8_t(data_id->component_type);
   if (data_id->domain) {
@@ -739,18 +746,7 @@ std::optional<bool> DataSetViewItem::should_be_active() const
       return false;
     }
   }
-  Vector<SpreadsheetInstanceID> instance_ids;
-  this->get_parent_instance_ids(instance_ids);
-  if (sspreadsheet.instance_ids_num != instance_ids.size()) {
-    return false;
-  }
-  for (const int i : instance_ids.index_range()) {
-    const SpreadsheetInstanceID &a = sspreadsheet.instance_ids[i];
-    const SpreadsheetInstanceID &b = instance_ids[i];
-    if (a.reference_index != b.reference_index) {
-      return false;
-    }
-  }
+
   return true;
 }
 
