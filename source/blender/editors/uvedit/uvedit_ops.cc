@@ -812,13 +812,11 @@ static int uv_remove_doubles_to_unselected(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-/*NOTE:
-  The calculation for the centerpoint of loops belonging to a vertex will be skewed if one UV
-  coordinate holds more loops than the others.
-*/
-
 static int uvedit_uv_threshold_weld_underlying_geometry(bContext *C, wmOperator *op)
 {
+  /* NOTE: The calculation for the center-point of loops belonging to a vertex will be skewed
+   * if one UV coordinate holds more loops than the others. */
+
   Scene *scene = CTX_data_scene(C);
   SpaceImage *sima = CTX_wm_space_image(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
@@ -836,7 +834,7 @@ static int uvedit_uv_threshold_weld_underlying_geometry(bContext *C, wmOperator 
     BMLoop *l;
     BMIter viter, liter;
 
-    /*The Changed varaible keeps track if any loops from the current object are merged*/
+    /* The Changed variable keeps track if any loops from the current object are merged. */
     blender::Vector<float *> luvmapvector;
     luvmapvector.reserve(32);
     bool changed = false;
@@ -862,8 +860,8 @@ static int uvedit_uv_threshold_weld_underlying_geometry(bContext *C, wmOperator 
         average_UV_coord[0] /= luvmapsize;
         average_UV_coord[1] /= luvmapsize;
 
-        /*Find the loop closest to the average_UV_coord . This loop will be the base that all
-         * other loops' distances are calculated from.*/
+        /* Find the loop closest to the average_UV_coord. This loop will be the base that all
+         * other loop's distances are calculated from. */
 
         float mindist_sq = len_squared_v2v2(average_UV_coord, luvmapvector[0]);
         float *uv_reference_point = luvmapvector[0];
@@ -878,7 +876,7 @@ static int uvedit_uv_threshold_weld_underlying_geometry(bContext *C, wmOperator 
         }
         std::swap(luvmapvector[refpointindex], luvmapvector[luvmapsize - 1]);
 
-        /*Move all the UVs within threshold to the end of the array. Sum of all UV coordinates
+        /* Move all the UVs within threshold to the end of the array. Sum of all UV coordinates
          * within threshold is initialized with uv_reference_point coordinate data since while loop
          * ends once it hits uv_reference_point luv */
 
@@ -902,8 +900,8 @@ static int uvedit_uv_threshold_weld_underlying_geometry(bContext *C, wmOperator 
           }
         }
 
-        /*Recalculate average_UV_coord so it only considers luvs that are being included in merge
-         * operation. Then Shift all loops to that position.*/
+        /* Recalculate average_UV_coord so it only considers luvs that are being included in merge
+         * operation. Then Shift all loops to that position. */
 
         if (num_mergeloops > 1) {
           blender::float2 average_UV_coord = sumcoordinates / num_mergeloops;
@@ -1473,8 +1471,8 @@ static int uv_hide_exec(bContext *C, wmOperator *op)
           }
         }
         else if (em->selectmode == SCE_SELECT_FACE) {
-          /* Deselect BMesh face depending on the type of UV selectmode and the type of UV
-           * element being considered. */
+          /* Deselect BMesh face depending on the type of UV selectmode and the type of UV element
+           * being considered. */
           BM_ITER_ELEM (l, &liter, efa, BM_LOOPS_OF_FACE) {
             if (UV_EDGE_SEL_TEST(l, !swap) && (ts->uv_selectmode == UV_SELECT_EDGE)) {
               BM_face_select_set(em->bm, efa, false);
@@ -1603,10 +1601,9 @@ static int uv_reveal_exec(bContext *C, wmOperator *op)
       continue;
     }
 
-    /* NOTE(@sidd017): Supporting selections in all cases is quite difficult considering there
-     * are at least 12 cases to look into (3 mesh select-modes + 4 uv select-modes + sticky
-     * modes). For now we select all UV faces as sticky disabled to ensure proper UV selection
-     * states (vert
+    /* NOTE(@sidd017): Supporting selections in all cases is quite difficult considering there are
+     * at least 12 cases to look into (3 mesh select-modes + 4 uv select-modes + sticky modes).
+     * For now we select all UV faces as sticky disabled to ensure proper UV selection states (vert
      * + edge flags) */
     if (use_face_center) {
       if (em->selectmode == SCE_SELECT_FACE) {
