@@ -511,11 +511,11 @@ static float4x4 pixel_to_object_transform(const Object &image_object,
   const float3 image_aspect_3d = (ibuf.x > ibuf.y ? float3(1, float(ibuf.y) / float(ibuf.x), 1) :
                                                     float3(float(ibuf.x) / float(ibuf.y), 1, 1));
 
-  const float4x4 to_normalized = math::scale(math::from_location<float4x4>(pixel_center_3d),
-                                             pixel_size_3d);
-  const float4x4 to_image = math::scale(math::translate(to_normalized, image_offset_3d),
-                                        image_aspect_3d * max_image_scale);
-  return to_image;
+  const float4x4 to_object = math::translate(
+      math::from_scale<float4x4>(image_aspect_3d * max_image_scale), image_offset_3d);
+  const float4x4 to_normalized = math::translate(math::scale(to_object, pixel_size_3d),
+                                                 pixel_center_3d);
+  return to_normalized;
 }
 
 static bool grease_pencil_trace_image(TraceJob &trace_job,
@@ -553,7 +553,7 @@ static bool grease_pencil_trace_image(TraceJob &trace_job,
   free_bitmap(bm);
 
   /* Transform from bitmap index space to local image object space. */
-  const float4x4 transform = pixel_to_object_transform(*trace_job.ob_grease_pencil, ibuf);
+  const float4x4 transform = pixel_to_object_transform(*trace_job.ob_active, ibuf);
 
   trace_data_to_strokes(*st, *trace_job.ob_grease_pencil, drawing, transform, trace_job.radius);
 
