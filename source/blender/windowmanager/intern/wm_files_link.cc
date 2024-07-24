@@ -142,6 +142,9 @@ static int wm_link_append_flag(wmOperator *op)
     if (RNA_boolean_get(op->ptr, "clear_asset_data")) {
       flag |= BLO_LIBLINK_APPEND_ASSET_DATA_CLEAR;
     }
+    if (RNA_boolean_get(op->ptr, "lock")) {
+      flag |= BLO_LIBLINK_APPEND_LOCK;
+    }
   }
   if (RNA_boolean_get(op->ptr, "instance_collections")) {
     flag |= BLO_LIBLINK_COLLECTION_INSTANCE;
@@ -497,6 +500,12 @@ void WM_OT_append(wmOperatorType *ot)
       true,
       "Localize All",
       "Localize all appended data, including those indirectly linked from other libraries");
+  RNA_def_boolean(ot->srna,
+                  "lock",
+                  false,
+                  "Lock",
+                  "Lock appended data-blocks so they can't be changed and may be reused when the "
+                  "same data-block is appended again later");
 }
 
 /** \} */

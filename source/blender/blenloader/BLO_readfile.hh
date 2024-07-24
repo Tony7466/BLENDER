@@ -373,6 +373,11 @@ enum eBLOLibLinkFlags {
   BLO_LIBLINK_APPEND_RECURSIVE = 1 << 20,
   /** Clear the asset data. */
   BLO_LIBLINK_APPEND_ASSET_DATA_CLEAR = 1 << 22,
+  /**
+   * Lock newly appended data blocks. This requires #BLO_LIBLINK_APPEND_RECURSIVE.
+   * Data blocks that were already locked, stay locked anyway.
+   */
+  BLO_LIBLINK_APPEND_LOCK = 1 << 23,
   /** Instantiate object data IDs (i.e. create objects for them if needed). */
   BLO_LIBLINK_OBDATA_INSTANCE = 1 << 24,
   /** Instantiate collections as empties, instead of linking them into current view layer. */

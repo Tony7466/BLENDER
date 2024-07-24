@@ -1282,6 +1282,8 @@ void BKE_blendfile_append(BlendfileLinkAppendContext *lapp_context, ReportList *
   BLI_assert((lapp_context->params->flag & FILE_LINK) == 0);
 
   const bool set_fakeuser = (lapp_context->params->flag & BLO_LIBLINK_APPEND_SET_FAKEUSER) != 0;
+  const bool lock_new_data_blocks = (lapp_context->params->flag & BLO_LIBLINK_APPEND_RECURSIVE) &&
+                                    (lapp_context->params->flag & BLO_LIBLINK_APPEND_LOCK);
 
   const int make_local_common_flags =
       LIB_ID_MAKELOCAL_FULL_LIBRARY |
@@ -1338,16 +1340,18 @@ void BKE_blendfile_append(BlendfileLinkAppendContext *lapp_context, ReportList *
 
     if (local_appended_new_id != nullptr) {
       if (!ID_IS_LOCKED(local_appended_new_id)) {
-        blender::Set<const ID *> current_stack;
-        compute_locked_hash_for_data_block_recursive(
-            *bmain, *local_appended_new_id, deep_hashes, current_stack);
-        const std::optional<IDHash> &id_hash = deep_hashes.lookup(local_appended_new_id);
-        if (id_hash.has_value()) {
-          local_appended_new_id->deep_hash = *id_hash;
-          local_appended_new_id->flag |= LIB_LOCKED;
-        }
-        else {
-          local_appended_new_id->deep_hash = {};
+        if (lock_new_data_blocks) {
+          blender::Set<const ID *> current_stack;
+          compute_locked_hash_for_data_block_recursive(
+              *bmain, *local_appended_new_id, deep_hashes, current_stack);
+          const std::optional<IDHash> &id_hash = deep_hashes.lookup(local_appended_new_id);
+          if (id_hash.has_value()) {
+            local_appended_new_id->deep_hash = *id_hash;
+            local_appended_new_id->flag |= LIB_LOCKED;
+          }
+          else {
+            local_appended_new_id->deep_hash = {};
+          }
         }
       }
       if (!local_appended_new_id->library_weak_reference) {

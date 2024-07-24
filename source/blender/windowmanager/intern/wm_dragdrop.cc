@@ -727,7 +727,8 @@ ID *WM_drag_asset_id_import(const bContext *C, wmDragAsset *asset_drag, const in
                                       idtype,
                                       name,
                                       flag | BLO_LIBLINK_APPEND_RECURSIVE |
-                                          BLO_LIBLINK_APPEND_ASSET_DATA_CLEAR);
+                                          BLO_LIBLINK_APPEND_ASSET_DATA_CLEAR |
+                                          BLO_LIBLINK_APPEND_LOCK);
   }
 
   BLI_assert_unreachable();

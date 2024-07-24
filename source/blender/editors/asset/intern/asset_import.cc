@@ -40,16 +40,16 @@ ID *asset_local_id_ensure_imported(Main &bmain, const asset_system::AssetReprese
                                     asset.get_name().c_str(),
                                     (asset.get_use_relative_path() ? FILE_RELPATH : 0));
     case ASSET_IMPORT_APPEND:
-      return WM_file_append_datablock(&bmain,
-                                      nullptr,
-                                      nullptr,
-                                      nullptr,
-                                      blend_path.c_str(),
-                                      asset.get_id_type(),
-                                      asset.get_name().c_str(),
-                                      BLO_LIBLINK_APPEND_RECURSIVE |
-                                          BLO_LIBLINK_APPEND_ASSET_DATA_CLEAR |
-                                          (asset.get_use_relative_path() ? FILE_RELPATH : 0));
+      return WM_file_append_datablock(
+          &bmain,
+          nullptr,
+          nullptr,
+          nullptr,
+          blend_path.c_str(),
+          asset.get_id_type(),
+          asset.get_name().c_str(),
+          BLO_LIBLINK_APPEND_RECURSIVE | BLO_LIBLINK_APPEND_ASSET_DATA_CLEAR |
+              BLO_LIBLINK_APPEND_LOCK | (asset.get_use_relative_path() ? FILE_RELPATH : 0));
   }
   BLI_assert_unreachable();
   return nullptr;
