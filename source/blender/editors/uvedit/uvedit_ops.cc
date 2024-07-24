@@ -24,6 +24,7 @@
 #include "BLI_math_base.hh"
 #include "BLI_math_geom.h"
 #include "BLI_math_vector.h"
+#include "BLI_math_vector.hh"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.hh"
@@ -835,63 +836,62 @@ static int uvedit_uv_threshold_weld_underlying_geometry(bContext *C, wmOperator 
     BMIter viter, liter;
 
     /* The Changed variable keeps track if any loops from the current object are merged. */
-    blender::Vector<float *> luvmapvector;
-    luvmapvector.reserve(32);
+    blender::Vector<float *> uvs;
+    uvs.reserve(32);
     bool changed = false;
+
     BM_ITER_MESH (v, &viter, em->bm, BM_VERTS_OF_MESH) {
 
+      BLI_assert(uvs.size() == 0);
       BM_ITER_ELEM (l, &liter, v, BM_LOOPS_OF_VERT) {
         if (uvedit_uv_select_test(scene, l, offsets)) {
-          luvmapvector.append(BM_ELEM_CD_GET_FLOAT_P(l, offsets.uv));
+          uvs.append(BM_ELEM_CD_GET_FLOAT_P(l, offsets.uv));
         }
       }
-      int luvmapsize = luvmapvector.size();
-      if (luvmapsize <= 1) {
-        luvmapvector.clear();
+      int uvs_num = uvs.size();
+      if (uvs_num <= 1) {
+        uvs.clear();
         continue;
       }
 
-      while (luvmapvector.size() > 1) {
-        float2 average_UV_coord = {0.0f, 0.0f};
-        for (const float *luv : luvmapvector) {
-          average_UV_coord[0] += luv[0];
-          average_UV_coord[1] += luv[1];
+      while (uvs.size() > 1) {
+        float2 uv_average = {0.0f, 0.0f};
+        for (const float *luv : uvs) {
+          uv_average += float2(luv);
         }
-        average_UV_coord[0] /= luvmapsize;
-        average_UV_coord[1] /= luvmapsize;
+        uv_average /= uvs_num;
 
-        /* Find the loop closest to the average_UV_coord. This loop will be the base that all
+        /* Find the loop closest to the uv_average. This loop will be the base that all
          * other loop's distances are calculated from. */
 
-        float mindist_sq = len_squared_v2v2(average_UV_coord, luvmapvector[0]);
-        float *uv_reference_point = luvmapvector[0];
-        int refpointindex = 0;
-        for (int i = 1; i < luvmapsize; i++) {
-          const float dist_sq = len_squared_v2v2(average_UV_coord, luvmapvector[i]);
-          if (dist_sq < mindist_sq) {
-            mindist_sq = dist_sq;
-            uv_reference_point = luvmapvector[i];
-            refpointindex = i;
+        float dist_best_sq = math::distance_squared(uv_average, float2(uvs[0]));
+        float *uv_ref = uvs[0];
+        int uv_ref_index = 0;
+        for (int i = 1; i < uvs_num; i++) {
+          const float dist_test_sq = math::distance_squared(uv_average, float2(uvs[i]));
+          if (dist_test_sq < dist_best_sq) {
+            dist_best_sq = dist_test_sq;
+            uv_ref = uvs[i];
+            uv_ref_index = i;
           }
         }
-        std::swap(luvmapvector[refpointindex], luvmapvector[luvmapsize - 1]);
+
+        const int uvs_end = uvs_num - 1;
+        std::swap(uvs[uv_ref_index], uvs[uvs_end]);
 
         /* Move all the UVs within threshold to the end of the array. Sum of all UV coordinates
-         * within threshold is initialized with uv_reference_point coordinate data since while loop
-         * ends once it hits uv_reference_point luv */
-
-        const int luvmap_end = luvmapvector.size() - 1;
-        float2 sumcoordinates = {uv_reference_point[0], uv_reference_point[1]};
+         * within threshold is initialized with uv_ref coordinate data since while loop
+         * ends once it hits `uv_ref` UV. */
+        float2 uv_merged_average = {uv_ref[0], uv_ref[1]};
         int i = 0;
-        int num_mergeloops = 1;
-        while (luvmapvector[i] != uv_reference_point && i < luvmapsize - num_mergeloops) {
-          const float dist_sq = len_squared_v2v2(uv_reference_point, luvmapvector[i]);
-          if (dist_sq < threshold_sq) {
-            sumcoordinates[0] += luvmapvector[i][0];
-            sumcoordinates[1] += luvmapvector[i][1];
-            std::swap(luvmapvector[i], luvmapvector[luvmap_end - num_mergeloops]);
-            num_mergeloops++;
-            if (dist_sq != 0.0f) {
+        int uvs_num_merged = 1;
+        while (uvs[i] != uv_ref && i < uvs_num - uvs_num_merged) {
+          const float dist_test_sq = len_squared_v2v2(uv_ref, uvs[i]);
+          if (dist_test_sq < threshold_sq) {
+            uv_merged_average += float2(uvs[i]);
+            std::swap(uvs[i], uvs[uvs_end - uvs_num_merged]);
+            uvs_num_merged++;
+            if (dist_test_sq != 0.0f) {
               changed = true;
             }
           }
@@ -900,23 +900,20 @@ static int uvedit_uv_threshold_weld_underlying_geometry(bContext *C, wmOperator 
           }
         }
 
-        /* Recalculate average_UV_coord so it only considers luvs that are being included in merge
+        /* Recalculate `uv_average` so it only considers UV's that are being included in merge
          * operation. Then Shift all loops to that position. */
+        if (uvs_num_merged > 1) {
+          uv_merged_average /= uvs_num_merged;
 
-        if (num_mergeloops > 1) {
-          float2 average_UV_coord = sumcoordinates / num_mergeloops;
-
-          for (int j = luvmapsize - num_mergeloops; j < luvmapsize; j++) {
-            float *luv = luvmapvector[j];
-            luv[0] = average_UV_coord[0];
-            luv[1] = average_UV_coord[1];
+          for (int j = uvs_num - uvs_num_merged; j < uvs_num; j++) {
+            copy_v2_v2(uvs[j], uv_merged_average);
           }
         }
 
-        luvmapvector.resize(luvmapsize - num_mergeloops);
-        luvmapsize -= num_mergeloops;
+        uvs.resize(uvs_num - uvs_num_merged);
+        uvs_num -= uvs_num_merged;
       }
-      luvmapvector.clear();
+      uvs.clear();
     }
     if (changed) {
       uvedit_live_unwrap_update(sima, scene, obedit);
