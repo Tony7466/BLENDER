@@ -20,6 +20,7 @@
 
 #  ifndef _WIN32
 #    include <unistd.h>
+#    include <pwd.h>
 #  else
 #    include "BLI_winstuff.h"
 #  endif
@@ -134,14 +135,14 @@ static std::string path_xdg_cache_get()
 {
   const char *home = getenv("XDG_CACHE_HOME");
   if (home) {
-    return std::string(home);
+    return std::string(home) + SEP_STR;
   }
   else {
     home = getenv("HOME");
     if (home == NULL) {
       home = getpwuid(getuid())->pw_dir;
     }
-    return path_join(std::string(home), ".cache");
+    return std::string(home) + SEP_STR + ".cache" + SEP_STR;
   }
 }
 #  endif
