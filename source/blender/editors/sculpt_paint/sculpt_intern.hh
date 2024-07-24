@@ -1707,7 +1707,6 @@ void surface_smooth_displace_step(SculptSession &ss,
                                   PBVHVertRef vertex,
                                   float beta,
                                   float fade);
-void do_surface_smooth_brush(const Sculpt &sd, Object &ob, Span<blender::bke::pbvh::Node *> nodes);
 
 /* Slide/Relax */
 void relax_vertex(SculptSession &ss,

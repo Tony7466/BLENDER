@@ -3874,7 +3874,7 @@ static void do_brush_action(const Scene &scene,
         }
       }
       else if (brush.smooth_deform_type == BRUSH_SMOOTH_DEFORM_SURFACE) {
-        smooth::do_surface_smooth_brush(sd, ob, nodes);
+        do_surface_smooth_brush(sd, ob, nodes);
       }
       break;
     case SCULPT_TOOL_CREASE:

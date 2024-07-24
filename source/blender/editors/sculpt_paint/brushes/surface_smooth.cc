@@ -57,11 +57,29 @@ BLI_NOINLINE static void surface_smooth_laplacian_step(const Span<float3> positi
   }
 }
 
+BLI_NOINLINE static void calc_displace_step(const Span<float3> laplacian_disp,
+                                            const Span<float3> average_laplacian_disp,
+                                            const float beta,
+                                            MutableSpan<float3> translations)
+{
+  for (const int i : laplacian_disp.index_range()) {
+    float3 b_current_vert = average_laplacian_disp[i] * (1.0f - beta);
+    b_current_vert += laplacian_disp[i] * beta;
+    translations[i] = -b_current_vert;
+  }
+}
+
+BLI_NOINLINE static void clamp_factors(const MutableSpan<float> factors)
+{
+  for (float &factor : factors) {
+    factor = std::clamp(factor, 0.0f, 1.0f);
+  }
+}
+
 BLI_NOINLINE static void do_surface_smooth_brush_mesh(const Sculpt &sd,
                                                       const Brush &brush,
                                                       Object &object,
-                                                      Span<PBVHNode *> nodes,
-                                                      const float brush_strength)
+                                                      Span<bke::pbvh::Node *> nodes)
 {
   const SculptSession &ss = *object.sculpt;
   StrokeCache &cache = *ss.cache;  // TODO
@@ -74,7 +92,7 @@ BLI_NOINLINE static void do_surface_smooth_brush_mesh(const Sculpt &sd,
   const bke::AttributeAccessor attributes = mesh.attributes();
   const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
 
-  const PBVH &pbvh = *ss.pbvh;
+  const bke::pbvh::Tree &pbvh = *ss.pbvh;
 
   const Span<float3> positions_eval = BKE_pbvh_get_vert_positions(pbvh);
   const Span<float3> vert_normals = BKE_pbvh_get_vert_normals(pbvh);
@@ -113,7 +131,7 @@ BLI_NOINLINE static void do_surface_smooth_brush_mesh(const Sculpt &sd,
         calc_brush_texture_factors(ss, brush, positions_eval, verts, factors);
 
         scale_factors(factors, cache.bstrength);
-        // TODO: clamp factors between 0 and 1.
+        clamp_factors(factors);
 
         tls.laplacian_disp.reinitialize(verts.size());
         const MutableSpan<float3> laplacian_disp = tls.laplacian_disp;
@@ -155,15 +173,14 @@ BLI_NOINLINE static void do_surface_smooth_brush_mesh(const Sculpt &sd,
         tls.factors.reinitialize(verts.size());
         const MutableSpan<float> factors = tls.factors;
         fill_factor_from_hide_and_mask(mesh, verts, factors);
-        filter_region_clip_factors(ss, positions_eval, verts, factors);
+        filter_region_clip_factors(ss, positions, factors);
         if (brush.flag & BRUSH_FRONTFACE) {
           calc_front_face(cache.view_normal, vert_normals, verts, factors);
         }
 
         tls.distances.reinitialize(verts.size());
         const MutableSpan<float> distances = tls.distances;
-        calc_brush_distances(
-            ss, positions_eval, verts, eBrushFalloffShape(brush.falloff_shape), distances);
+        calc_brush_distances(ss, positions, eBrushFalloffShape(brush.falloff_shape), distances);
         filter_distances_with_radius(cache.radius, distances, factors);
         apply_hardness_to_distances(cache, distances);
         calc_brush_strength_factors(cache, brush, distances, factors);
@@ -172,10 +189,10 @@ BLI_NOINLINE static void do_surface_smooth_brush_mesh(const Sculpt &sd,
           auto_mask::calc_vert_factors(object, *cache.automasking, *nodes[i], verts, factors);
         }
 
-        calc_brush_texture_factors(ss, brush, positions_eval, verts, factors);
+        calc_brush_texture_factors(ss, brush, positions, factors);
 
         scale_factors(factors, cache.bstrength);
-        // TODO: clamp factors between 0 and 1.
+        clamp_factors(factors);
 
         tls.laplacian_disp.reinitialize(verts.size());
         const MutableSpan<float3> laplacian_disp = tls.laplacian_disp;
@@ -194,12 +211,8 @@ BLI_NOINLINE static void do_surface_smooth_brush_mesh(const Sculpt &sd,
 
         tls.translations.reinitialize(verts.size());
         const MutableSpan<float3> translations = tls.translations;
-        for (const int i : verts.index_range()) {
-          float3 b_current_vert = average_laplacian_disps[i] * (1.0f - beta);
-          b_current_vert += laplacian_disp[i] * beta;
-          b_current_vert *= factors[i];
-          translations[i] = -b_current_vert;
-        }
+        calc_displace_step(laplacian_disp, average_laplacian_disps, beta, translations);
+        scale_translations(translations, factors);
 
         write_translations(sd, object, positions_eval, verts, translations, positions_orig);
       }
@@ -209,19 +222,16 @@ BLI_NOINLINE static void do_surface_smooth_brush_mesh(const Sculpt &sd,
 
 }  // namespace surface_smooth_cc
 
-void do_surface_smooth_brush(const Sculpt &sd,
-                             Object &object,
-                             const Span<PBVHNode *> nodes,
-                             const float brush_strength)
+void do_surface_smooth_brush(const Sculpt &sd, Object &object, const Span<bke::pbvh::Node *> nodes)
 {
   SculptSession &ss = *object.sculpt;
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
 
-  switch (BKE_pbvh_type(*object.sculpt->pbvh)) {
-    case PBVH_FACES:
-      do_surface_smooth_brush_mesh(sd, brush, object, nodes, brush_strength);
+  switch (ss.pbvh->type()) {
+    case bke::pbvh::Type::Mesh:
+      do_surface_smooth_brush_mesh(sd, brush, object, nodes);
       break;
-    case PBVH_GRIDS: {
+    case bke::pbvh::Type::Grids: {
       //   const Mesh &base_mesh = *static_cast<const Mesh *>(object.data);
       //   const OffsetIndices faces = base_mesh.faces();
       //   const Span<int> corner_verts = base_mesh.corner_verts();
@@ -245,7 +255,7 @@ void do_surface_smooth_brush(const Sculpt &sd,
       //   }
       break;
     }
-    case PBVH_BMESH: {
+    case bke::pbvh::Type::BMesh: {
       //   BM_mesh_elem_index_ensure(ss.bm, BM_VERT);
       //   BM_mesh_elem_table_ensure(ss.bm, BM_VERT);
       //   threading::EnumerableThreadSpecific<LocalData> all_tls;
