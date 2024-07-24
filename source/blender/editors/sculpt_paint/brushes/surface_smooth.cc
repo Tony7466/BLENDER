@@ -100,6 +100,43 @@ BLI_NOINLINE static void do_surface_smooth_brush_mesh(const Sculpt &sd,
 
   threading::EnumerableThreadSpecific<LocalData> all_tls;
 
+  Array<int> node_offset_data;
+  const OffsetIndices node_offsets = create_node_vert_offsets(nodes, node_offset_data);
+  Array<float> all_factors(node_offsets.total_size());
+
+  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    LocalData &tls = all_tls.local();
+    for (const int i : range) {
+      const Span<int> verts = bke::pbvh::node_unique_verts(*nodes[i]);
+      const MutableSpan positions = gather_mesh_positions(positions_eval, verts, tls.positions);
+      const OrigPositionData orig_data = orig_position_data_get_mesh(object, *nodes[i]);
+
+      const MutableSpan<float> factors = all_factors.as_mutable_span().slice(node_offsets[i]);
+      fill_factor_from_hide_and_mask(mesh, verts, factors);
+      filter_region_clip_factors(ss, positions_eval, verts, factors);
+      if (brush.flag & BRUSH_FRONTFACE) {
+        calc_front_face(cache.view_normal, vert_normals, verts, factors);
+      }
+
+      tls.distances.reinitialize(verts.size());
+      const MutableSpan<float> distances = tls.distances;
+      calc_brush_distances(
+          ss, positions_eval, verts, eBrushFalloffShape(brush.falloff_shape), distances);
+      filter_distances_with_radius(cache.radius, distances, factors);
+      apply_hardness_to_distances(cache, distances);
+      calc_brush_strength_factors(cache, brush, distances, factors);
+
+      if (cache.automasking) {
+        auto_mask::calc_vert_factors(object, *cache.automasking, *nodes[i], verts, factors);
+      }
+
+      calc_brush_texture_factors(ss, brush, positions_eval, verts, factors);
+
+      scale_factors(factors, cache.bstrength);
+      clamp_factors(factors);
+    }
+  });
+
   for (const int iteration : IndexRange(brush.surface_smooth_iterations)) {
     threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
       LocalData &tls = all_tls.local();
@@ -107,31 +144,7 @@ BLI_NOINLINE static void do_surface_smooth_brush_mesh(const Sculpt &sd,
         const Span<int> verts = bke::pbvh::node_unique_verts(*nodes[i]);
         const MutableSpan positions = gather_mesh_positions(positions_eval, verts, tls.positions);
         const OrigPositionData orig_data = orig_position_data_get_mesh(object, *nodes[i]);
-
-        tls.factors.reinitialize(verts.size());
-        const MutableSpan<float> factors = tls.factors;
-        fill_factor_from_hide_and_mask(mesh, verts, factors);
-        filter_region_clip_factors(ss, positions_eval, verts, factors);
-        if (brush.flag & BRUSH_FRONTFACE) {
-          calc_front_face(cache.view_normal, vert_normals, verts, factors);
-        }
-
-        tls.distances.reinitialize(verts.size());
-        const MutableSpan<float> distances = tls.distances;
-        calc_brush_distances(
-            ss, positions_eval, verts, eBrushFalloffShape(brush.falloff_shape), distances);
-        filter_distances_with_radius(cache.radius, distances, factors);
-        apply_hardness_to_distances(cache, distances);
-        calc_brush_strength_factors(cache, brush, distances, factors);
-
-        if (cache.automasking) {
-          auto_mask::calc_vert_factors(object, *cache.automasking, *nodes[i], verts, factors);
-        }
-
-        calc_brush_texture_factors(ss, brush, positions_eval, verts, factors);
-
-        scale_factors(factors, cache.bstrength);
-        clamp_factors(factors);
+        const Span<float> factors = all_factors.as_span().slice(node_offsets[i]);
 
         tls.laplacian_disp.reinitialize(verts.size());
         const MutableSpan<float3> laplacian_disp = tls.laplacian_disp;
@@ -154,12 +167,12 @@ BLI_NOINLINE static void do_surface_smooth_brush_mesh(const Sculpt &sd,
                                       alpha,
                                       laplacian_disp,
                                       translations);
+        scale_translations(translations, factors);
 
         array_utils::scatter(laplacian_disp.as_span(),
                              verts,
                              cache.surface_smooth_laplacian_disp.as_mutable_span());
 
-        scale_translations(translations, factors);
         write_translations(sd, object, positions_eval, verts, translations, positions_orig);
       }
     });
@@ -168,31 +181,7 @@ BLI_NOINLINE static void do_surface_smooth_brush_mesh(const Sculpt &sd,
       LocalData &tls = all_tls.local();
       for (const int i : range) {
         const Span<int> verts = bke::pbvh::node_unique_verts(*nodes[i]);
-        const MutableSpan positions = gather_mesh_positions(positions_eval, verts, tls.positions);
-
-        tls.factors.reinitialize(verts.size());
-        const MutableSpan<float> factors = tls.factors;
-        fill_factor_from_hide_and_mask(mesh, verts, factors);
-        filter_region_clip_factors(ss, positions, factors);
-        if (brush.flag & BRUSH_FRONTFACE) {
-          calc_front_face(cache.view_normal, vert_normals, verts, factors);
-        }
-
-        tls.distances.reinitialize(verts.size());
-        const MutableSpan<float> distances = tls.distances;
-        calc_brush_distances(ss, positions, eBrushFalloffShape(brush.falloff_shape), distances);
-        filter_distances_with_radius(cache.radius, distances, factors);
-        apply_hardness_to_distances(cache, distances);
-        calc_brush_strength_factors(cache, brush, distances, factors);
-
-        if (cache.automasking) {
-          auto_mask::calc_vert_factors(object, *cache.automasking, *nodes[i], verts, factors);
-        }
-
-        calc_brush_texture_factors(ss, brush, positions, factors);
-
-        scale_factors(factors, cache.bstrength);
-        clamp_factors(factors);
+        const Span<float> factors = all_factors.as_span().slice(node_offsets[i]);
 
         tls.laplacian_disp.reinitialize(verts.size());
         const MutableSpan<float3> laplacian_disp = tls.laplacian_disp;
