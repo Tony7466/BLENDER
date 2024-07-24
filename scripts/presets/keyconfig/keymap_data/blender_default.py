@@ -6655,6 +6655,7 @@ def km_gesture_polyline(_params):
 
     items.extend([
         ("CONFIRM", {"type": 'RET', "value": 'PRESS', "any": True}, None),
+        ("CONFIRM", {"type": 'LEFTMOUSE', "value": 'DOUBLE_CLICK', "any": True}, None),
         ("CANCEL", {"type": 'ESC', "value": 'PRESS', "any": True}, None),
         ("CANCEL", {"type": 'RIGHTMOUSE', "value": 'ANY', "any": True}, None),
         ("SELECT", {"type": 'LEFTMOUSE', "value": 'PRESS', "any": True}, None),
