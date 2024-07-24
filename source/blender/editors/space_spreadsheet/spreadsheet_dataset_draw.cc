@@ -142,7 +142,7 @@ class RootGeometryViewItem : public InstancesTreeViewItem {
 
   void build_row(uiLayout &row) override
   {
-    uiItemL(&row, label_.c_str(), ICON_GEOMETRY_NODES);
+    uiItemL(&row, label_.c_str(), ICON_EMPTY_AXIS);
   }
 };
 
@@ -716,15 +716,14 @@ void spreadsheet_data_set_panel_draw(const bContext *C, Panel *panel)
   UI_block_layout_set_current(block, layout);
   const bke::GeometrySet root_geometry = spreadsheet_get_display_geometry_set(sspreadsheet,
                                                                               object);
-  const bke::Instances *instances = root_geometry.get_instances();
 
-  if (instances && instances->instances_num() > 0) {
+  if (uiLayout *panel = uiLayoutPanel(C, layout, "instance tree", false, IFACE_("Geometry"))) {
     ui::AbstractTreeView *tree_view = UI_block_add_view(
         *block,
         "Instances Tree View",
         std::make_unique<GeometryInstancesTreeView>(root_geometry, *C));
     tree_view->set_context_menu_title("Instance");
-    ui::TreeViewBuilder::build_tree_view(*tree_view, *layout);
+    ui::TreeViewBuilder::build_tree_view(*tree_view, *panel, {}, false);
   }
   if (uiLayout *panel = uiLayoutPanel(
           C, layout, "geometry_domain_tree_view", false, IFACE_("Domain")))
