@@ -230,6 +230,7 @@ template<typename ThresholdFn> Bitmap *image_to_bitmap(const ImBuf &ibuf, Thresh
   });
   return bm;
 #else
+  UNUSED_VARS(ibuf, fn);
   return nullptr;
 #endif
 }
