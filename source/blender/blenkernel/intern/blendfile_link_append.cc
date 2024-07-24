@@ -1419,10 +1419,10 @@ void BKE_blendfile_append(BlendfileLinkAppendContext *lapp_context, ReportList *
   }
 
   /* Instantiate newly created (duplicated) IDs as needed. */
-  LooseDataInstantiateContext instantiate_context{};
-  instantiate_context.lapp_context = lapp_context;
-  instantiate_context.active_collection = nullptr;
-  loose_data_instantiate(&instantiate_context);
+  // LooseDataInstantiateContext instantiate_context{};
+  // instantiate_context.lapp_context = lapp_context;
+  // instantiate_context.active_collection = nullptr;
+  // loose_data_instantiate(&instantiate_context);
 
   BKE_main_id_newptr_and_tag_clear(bmain);
 
