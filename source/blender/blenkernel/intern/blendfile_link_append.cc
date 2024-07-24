@@ -1418,12 +1418,6 @@ void BKE_blendfile_append(BlendfileLinkAppendContext *lapp_context, ReportList *
     item->new_id = id->newid;
   }
 
-  /* Instantiate newly created (duplicated) IDs as needed. */
-  // LooseDataInstantiateContext instantiate_context{};
-  // instantiate_context.lapp_context = lapp_context;
-  // instantiate_context.active_collection = nullptr;
-  // loose_data_instantiate(&instantiate_context);
-
   BKE_main_id_newptr_and_tag_clear(bmain);
 
   BlendFileReadReport bf_reports{};
@@ -1477,12 +1471,13 @@ static int foreach_libblock_link_finalize_cb(LibraryIDLinkCallbackData *cb_data)
   return IDWALK_RET_NOP;
 }
 
-static void blendfile_link_finalize(BlendfileLinkAppendContext *lapp_context, ReportList *reports)
+void BKE_blendfile_link_append_instantiate_loose(BlendfileLinkAppendContext *lapp_context,
+                                                 ReportList *reports)
 {
-  BLI_assert((lapp_context->params->flag & FILE_LINK) != 0);
-
-  /* Instantiate newly linked IDs as needed. */
-  if (lapp_context->params->context.scene != nullptr) {
+  if (!lapp_context->params->context.scene) {
+    return;
+  }
+  if (lapp_context->params->flag & FILE_LINK) {
     new_id_to_item_mapping_create(lapp_context);
     /* Add items for all not yet known IDs (i.e. implicitly linked indirect dependencies) to the
      * list.
@@ -1506,16 +1501,12 @@ static void blendfile_link_finalize(BlendfileLinkAppendContext *lapp_context, Re
                                   &cb_data,
                                   IDWALK_NOP);
     }
-
-    LooseDataInstantiateContext instantiate_context{};
-    instantiate_context.lapp_context = lapp_context;
-    instantiate_context.active_collection = nullptr;
-    loose_data_instantiate(&instantiate_context);
   }
 
-  BlendFileReadReport bf_reports{};
-  bf_reports.reports = reports;
-  BLO_read_do_version_after_setup(lapp_context->params->bmain, &bf_reports);
+  LooseDataInstantiateContext instantiate_context{};
+  instantiate_context.lapp_context = lapp_context;
+  instantiate_context.active_collection = nullptr;
+  loose_data_instantiate(&instantiate_context);
 }
 
 void BKE_blendfile_link(BlendfileLinkAppendContext *lapp_context, ReportList *reports)
@@ -1588,8 +1579,10 @@ void BKE_blendfile_link(BlendfileLinkAppendContext *lapp_context, ReportList *re
    *
    * In append case, the finalizing process is much more complex and requires and additional call
    * to #BKE_blendfile_append for caller code. */
-  if ((lapp_context->params->flag & FILE_LINK) != 0) {
-    blendfile_link_finalize(lapp_context, reports);
+  if (lapp_context->params->flag & FILE_LINK) {
+    BlendFileReadReport bf_reports{};
+    bf_reports.reports = reports;
+    BLO_read_do_version_after_setup(lapp_context->params->bmain, &bf_reports);
   }
 }
 

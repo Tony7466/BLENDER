@@ -366,6 +366,9 @@ static int wm_link_append_exec(bContext *C, wmOperator *op)
     BKE_blendfile_append(lapp_context, op->reports);
   }
 
+  /* Instantiate loose objects in the scene (e.g. add object to the active collection). */
+  BKE_blendfile_link_append_instantiate_loose(lapp_context, op->reports);
+
   BKE_locked_id_duplicates_remove(*bmain);
 
   BKE_blendfile_link_append_context_free(lapp_context);
