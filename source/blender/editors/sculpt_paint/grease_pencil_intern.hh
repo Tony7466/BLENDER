@@ -4,9 +4,9 @@
 
 #pragma once
 
-#include "BLI_bit_ref.hh"
 #include "BLI_color.hh"
-#include "BLI_math_color.h"
+#include "BLI_task.hh"
+
 #include "DNA_scene_types.h"
 
 #include "ED_grease_pencil.hh"
@@ -172,38 +172,62 @@ template<typename ThresholdFn> Bitmap *image_to_bitmap(const ImBuf &ibuf, Thresh
 #ifdef WITH_POTRACE
   constexpr int BM_WORDSIZE = int(sizeof(potrace_word));
   constexpr int BM_WORDBITS = 8 * BM_WORDSIZE;
+  constexpr potrace_word BM_HIBIT = potrace_word(1) << (BM_WORDBITS - 1);
 
   potrace_bitmap_t *bm = create_bitmap({ibuf.x, ibuf.y});
-  const int num_bits = bm->dy * bm->h;
-  MutableBitSpan bits = MutableBitSpan(reinterpret_cast<bits::BitInt *>(bm->map),
-                                       BM_WORDBITS * num_bits);
+  const int num_words = bm->dy * bm->h;
+  const int words_per_scanline = bm->dy;
+  /* Note: bitmap stores one bit per pixel, but can't easily use a BitSpan, because the bit order
+   * is reversed in each word (most-significant bit is on the left). */
+  MutableSpan<potrace_word> words = {reinterpret_cast<potrace_word *>(bm->map), num_words};
 
   if (ibuf.float_buffer.data) {
     const Span<ColorGeometry4f> colors = {
         reinterpret_cast<ColorGeometry4f *>(ibuf.float_buffer.data), ibuf.x * ibuf.y};
-    for (uint32_t y = 0; y < ibuf.y; y++) {
-      MutableBitSpan scanline_bits = bits.slice(IndexRange(bm->dy * y, bm->dy));
-      const Span<ColorGeometry4f> scanline_colors = colors.slice(IndexRange(y * ibuf.x, ibuf.x));
-      for (uint32_t x = 0; x < ibuf.x; x++) {
-        scanline_bits[x].set_branchless(fn(scanline_colors[x]));
+    threading::parallel_for(IndexRange(ibuf.y), 4096, [&](const IndexRange range) {
+      for (const int y : range) {
+        MutableSpan<potrace_word> scanline_words = words.slice(
+            IndexRange(words_per_scanline * y, words_per_scanline));
+        const Span<ColorGeometry4f> scanline_colors = colors.slice(IndexRange(y * ibuf.x, ibuf.x));
+        for (int x = 0; x < ibuf.x; x++) {
+          potrace_word &word = scanline_words[x / BM_WORDBITS];
+          const potrace_word mask = BM_HIBIT >> (x & (BM_WORDBITS - 1));
+          if (fn(scanline_colors[x])) {
+            word |= mask;
+          }
+          else {
+            word &= ~mask;
+          }
+        }
       }
-    }
+    });
+    return bm;
   }
 
   const Span<ColorGeometry4b> colors = {reinterpret_cast<ColorGeometry4b *>(ibuf.byte_buffer.data),
                                         ibuf.x * ibuf.y};
-  for (uint32_t y = 0; y < ibuf.y; y++) {
-    MutableBitSpan scanline_bits = bits.slice(IndexRange(bm->dy * y, bm->dy));
-    const Span<ColorGeometry4b> scanline_colors = colors.slice(IndexRange(y * ibuf.x, ibuf.x));
-    for (uint32_t x = 0; x < ibuf.x; x++) {
-      const ColorGeometry4b &col = scanline_colors[x];
-      scanline_bits[x].set_branchless(fn(ColorGeometry4f(float(col.r) / 255.0f,
-                                                         float(col.g) / 255.0f,
-                                                         float(col.b) / 255.0f,
-                                                         float(col.a) / 255.0f)));
+  threading::parallel_for(IndexRange(ibuf.y), 4096, [&](const IndexRange range) {
+    for (const int y : range) {
+      MutableSpan<potrace_word> scanline_words = words.slice(
+          IndexRange(words_per_scanline * y, words_per_scanline));
+      const Span<ColorGeometry4b> scanline_colors = colors.slice(IndexRange(y * ibuf.x, ibuf.x));
+      for (uint32_t x = 0; x < ibuf.x; x++) {
+        potrace_word &word = scanline_words[x / BM_WORDBITS];
+        const potrace_word mask = BM_HIBIT >> (x & (BM_WORDBITS - 1));
+        const ColorGeometry4b &col = scanline_colors[x];
+        if (fn(ColorGeometry4f(float(col.r) / 255.0f,
+                               float(col.g) / 255.0f,
+                               float(col.b) / 255.0f,
+                               float(col.a) / 255.0f)))
+        {
+          word |= mask;
+        }
+        else {
+          word &= ~mask;
+        }
+      }
     }
-  }
-
+  });
   return bm;
 #else
   return nullptr;

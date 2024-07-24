@@ -52,6 +52,7 @@ Bitmap *create_bitmap(const int2 &size)
   constexpr int BM_WORDSIZE = int(sizeof(potrace_word));
   constexpr int BM_WORDBITS = 8 * BM_WORDSIZE;
 
+  /* Number of words per scanline. */
   const int32_t dy = (size.x + BM_WORDBITS - 1) / BM_WORDBITS;
 
   potrace_bitmap_t *bm = (potrace_bitmap_t *)MEM_mallocN(sizeof(potrace_bitmap_t), __func__);
