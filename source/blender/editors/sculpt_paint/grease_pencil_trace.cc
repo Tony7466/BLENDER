@@ -13,6 +13,7 @@
 #include "BKE_report.hh"
 
 #include "BLI_assert.h"
+#include "BLI_color.hh"
 #include "BLI_math_matrix.hh"
 #include "BLI_math_vector.h"
 #include "BLI_math_vector.hh"
@@ -37,10 +38,55 @@
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
+#include "editors/sculpt_paint/grease_pencil_intern.hh"
 
 #ifdef WITH_POTRACE
 #  include "potracelib.h"
 #endif
+
+namespace blender::ed::sculpt_paint::image_trace {
+
+Bitmap *create_bitmap(const int2 &size)
+{
+#ifdef WITH_POTRACE
+  constexpr int BM_WORDSIZE = int(sizeof(potrace_word));
+  constexpr int BM_WORDBITS = 8 * BM_WORDSIZE;
+
+  const int32_t dy = (size.x + BM_WORDBITS - 1) / BM_WORDBITS;
+
+  potrace_bitmap_t *bm = (potrace_bitmap_t *)MEM_mallocN(sizeof(potrace_bitmap_t), __func__);
+  if (!bm) {
+    return nullptr;
+  }
+  bm->w = size.x;
+  bm->h = size.y;
+  bm->dy = dy;
+  bm->map = (potrace_word *)calloc(size.y, dy * BM_WORDSIZE);
+  if (!bm->map) {
+    free(bm);
+    return nullptr;
+  }
+
+  return bm;
+#else
+  UNUSED_VARS(size);
+  return nullptr;
+#endif
+}
+
+void free_bitmap(Bitmap *bm)
+{
+#ifdef WITH_POTRACE
+  if (bm != nullptr) {
+    free(bm->map);
+  }
+  MEM_SAFE_FREE(bm);
+#else
+  UNUSED_VARS(bm);
+#endif
+}
+
+}  // namespace blender::ed::sculpt_paint::image_trace
 
 namespace blender::ed::sculpt_paint::greasepencil {
 
@@ -165,155 +211,6 @@ void TraceJob::ensure_output_object()
     Layer &new_layer = grease_pencil.add_layer(DATA_("Trace"));
     grease_pencil.set_active_layer(&new_layer);
     this->layer = &new_layer;
-  }
-}
-
-/* Potrace utilities for writing individual bitmap pixels. */
-constexpr int BM_WORDSIZE = int(sizeof(potrace_word));
-constexpr int BM_WORDBITS = 8 * BM_WORDSIZE;
-constexpr potrace_word BM_HIBIT = potrace_word(1) << (BM_WORDBITS - 1);
-constexpr potrace_word BM_ALLBITS = ~potrace_word(0);
-
-inline potrace_word *bm_scanline(potrace_bitmap_t *bm, const int y)
-{
-  return bm->map + y * bm->dy;
-}
-inline const potrace_word *bm_scanline(const potrace_bitmap_t *bm, const int y)
-{
-  return bm->map + y * bm->dy;
-}
-inline potrace_word *bm_index(potrace_bitmap_t *bm, const int x, const int y)
-{
-  return &bm_scanline(bm, y)[x / BM_WORDBITS];
-}
-inline const potrace_word *bm_index(const potrace_bitmap_t *bm, const int x, const int y)
-{
-  return &bm_scanline(bm, y)[x / BM_WORDBITS];
-}
-inline potrace_word bm_mask(const int x)
-{
-  return BM_HIBIT >> (x & (BM_WORDBITS - 1));
-}
-inline bool bm_range(const int x, const int a)
-{
-  return x >= 0 && x < a;
-}
-inline bool bm_safe(const potrace_bitmap_t *bm, const int x, const int y)
-{
-  return bm_range(x, bm->w) && bm_range(y, bm->h);
-}
-
-// #  define bm_scanline(bm, y) ((bm)->map + (y) * (bm)->dy)
-// #  define bm_index(bm, x, y) (&bm_scanline(bm, y)[(x) / BM_WORDBITS])
-// #  define bm_mask(x) (BM_HIBIT >> ((x) & (BM_WORDBITS - 1)))
-// #  define bm_range(x, a) ((int)(x) >= 0 && (int)(x) < (a))
-// #  define bm_safe(bm, x, y) (bm_range(x, (bm)->w) && bm_range(y, (bm)->h))
-
-inline bool BM_UGET(const potrace_bitmap_t *bm, const int x, const int y)
-{
-  return (*bm_index(bm, x, y) & bm_mask(x)) != 0;
-}
-inline void BM_USET(potrace_bitmap_t *bm, const int x, const int y)
-{
-  *bm_index(bm, x, y) |= bm_mask(x);
-}
-inline void BM_UCLR(potrace_bitmap_t *bm, const int x, const int y)
-{
-  *bm_index(bm, x, y) &= ~bm_mask(x);
-}
-inline void BM_UINV(potrace_bitmap_t *bm, const int x, const int y)
-{
-  *bm_index(bm, x, y) ^= bm_mask(x);
-}
-inline void BM_UPUT(potrace_bitmap_t *bm, const int x, const int y, const bool b)
-{
-  if (b) {
-    BM_USET(bm, x, y);
-  }
-  else {
-    BM_UCLR(bm, x, y);
-  }
-}
-inline bool BM_GET(const potrace_bitmap_t *bm, const int x, const int y)
-{
-  return bm_safe(bm, x, y) ? BM_UGET(bm, x, y) : 0;
-}
-inline void BM_SET(potrace_bitmap_t *bm, const int x, const int y)
-{
-  if (bm_safe(bm, x, y)) {
-    BM_USET(bm, x, y);
-  }
-}
-inline void BM_CLR(potrace_bitmap_t *bm, const int x, const int y)
-{
-  if (bm_safe(bm, x, y)) {
-    BM_UCLR(bm, x, y);
-  }
-}
-inline void BM_INV(potrace_bitmap_t *bm, const int x, const int y)
-{
-  if (bm_safe(bm, x, y)) {
-    BM_UINV(bm, x, y);
-  }
-}
-inline void BM_PUT(potrace_bitmap_t *bm, const int x, const int y, const bool b)
-{
-  if (bm_safe(bm, x, y)) {
-    BM_UPUT(bm, x, y, b);
-  }
-}
-
-static potrace_bitmap_t *create_bitmap(const int2 &size)
-{
-  potrace_bitmap_t *bm;
-  int32_t dy = (size.x + BM_WORDBITS - 1) / BM_WORDBITS;
-
-  bm = (potrace_bitmap_t *)MEM_mallocN(sizeof(potrace_bitmap_t), __func__);
-  if (!bm) {
-    return nullptr;
-  }
-  bm->w = size.x;
-  bm->h = size.y;
-  bm->dy = dy;
-  bm->map = (potrace_word *)calloc(size.y, dy * BM_WORDSIZE);
-  if (!bm->map) {
-    free(bm);
-    return nullptr;
-  }
-
-  return bm;
-}
-
-static void free_bitmap(potrace_bitmap_t *bm)
-{
-  if (bm != nullptr) {
-    free(bm->map);
-  }
-  MEM_SAFE_FREE(bm);
-}
-
-static ColorGeometry4f pixel_at_index(const ImBuf &ibuf, const int32_t idx)
-{
-  BLI_assert(idx < (ibuf.x * ibuf.y));
-
-  if (ibuf.float_buffer.data) {
-    const float4 &frgba = reinterpret_cast<float4 *>(ibuf.float_buffer.data)[idx];
-    return ColorGeometry4f(frgba);
-  }
-
-  const uchar4 &col = reinterpret_cast<const uchar4 *>(ibuf.byte_buffer.data)[idx];
-  return ColorGeometry4f(float4(col) / 255.0f);
-}
-
-static void image_to_bitmap(const ImBuf &ibuf, potrace_bitmap_t &bm, const float threshold)
-{
-  for (uint32_t y = 0; y < ibuf.y; y++) {
-    for (uint32_t x = 0; x < ibuf.x; x++) {
-      const int32_t pixel = (ibuf.x * y) + x;
-      const ColorGeometry4f color = pixel_at_index(ibuf, pixel);
-      const float value = math::average(float3(color.r, color.g, color.b)) * color.a;
-      BM_PUT(&bm, x, y, value > threshold);
-    }
   }
 }
 
@@ -501,12 +398,6 @@ static bool grease_pencil_trace_image(TraceJob &trace_job,
                                       const ImBuf &ibuf,
                                       bke::greasepencil::Drawing &drawing)
 {
-  /* Create an empty BW bitmap. */
-  potrace_bitmap_t *bm = create_bitmap({ibuf.x, ibuf.y});
-  if (!bm) {
-    return false;
-  }
-
   /* Set tracing parameters, starting from defaults */
   potrace_param_t *param = potrace_param_default();
   if (!param) {
@@ -515,21 +406,20 @@ static bool grease_pencil_trace_image(TraceJob &trace_job,
   param->turdsize = 0;
   param->turnpolicy = to_potrace(trace_job.turnpolicy);
 
-  /* Load BW bitmap with image. */
-  image_to_bitmap(ibuf, *bm, trace_job.threshold);
-
-  /* Trace the bitmap. */
+  /* Trace the image. */
+  potrace_bitmap_t *bm = image_trace::image_to_bitmap(ibuf, [&](const ColorGeometry4f &color) {
+    return math::average(float3(color.r, color.g, color.b)) * color.a > trace_job.threshold;
+  });
   potrace_state_t *st = potrace_trace(param, bm);
+  image_trace::free_bitmap(bm);
+
   if (!st || st->status != POTRACE_STATUS_OK) {
-    free_bitmap(bm);
     if (st) {
       potrace_state_free(st);
     }
     potrace_param_free(param);
     return false;
   }
-  /* Free BW bitmap. */
-  free_bitmap(bm);
 
   /* Transform from bitmap index space to local image object space. */
   const float4x4 transform = pixel_to_object_transform(*trace_job.ob_active, ibuf);

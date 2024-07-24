@@ -4,10 +4,17 @@
 
 #pragma once
 
+#include "BLI_bit_ref.hh"
+#include "BLI_color.hh"
+#include "BLI_math_color.h"
 #include "DNA_scene_types.h"
+
 #include "ED_grease_pencil.hh"
 
+#include "IMB_imbuf_types.hh"
+
 #include "paint_intern.hh"
+#include "potracelib.h"
 
 namespace blender::bke::greasepencil {
 class Drawing;
@@ -142,5 +149,67 @@ std::unique_ptr<GreasePencilStrokeOperation> new_twist_operation(BrushStrokeMode
 std::unique_ptr<GreasePencilStrokeOperation> new_clone_operation(BrushStrokeMode stroke_mode);
 
 }  // namespace greasepencil
+
+namespace image_trace {
+
+#ifdef WITH_POTRACE
+using Bitmap = potrace_bitmap_t;
+using Trace = potrace_state_t;
+#else
+struct Bitmap;
+struct Trace;
+#endif
+
+Bitmap *create_bitmap(const int2 &size);
+void free_bitmap(Bitmap *bm);
+
+/**
+ * ThresholdFn separates foreground/background pixels by turning a color value into a bool.
+ *     bool fn(const ColorGeometry4f &color);
+ */
+template<typename ThresholdFn> Bitmap *image_to_bitmap(const ImBuf &ibuf, ThresholdFn fn)
+{
+#ifdef WITH_POTRACE
+  constexpr int BM_WORDSIZE = int(sizeof(potrace_word));
+  constexpr int BM_WORDBITS = 8 * BM_WORDSIZE;
+
+  potrace_bitmap_t *bm = create_bitmap({ibuf.x, ibuf.y});
+  const int num_bits = bm->dy * bm->h;
+  MutableBitSpan bits = MutableBitSpan(reinterpret_cast<bits::BitInt *>(bm->map),
+                                       BM_WORDBITS * num_bits);
+
+  if (ibuf.float_buffer.data) {
+    const Span<ColorGeometry4f> colors = {
+        reinterpret_cast<ColorGeometry4f *>(ibuf.float_buffer.data), ibuf.x * ibuf.y};
+    for (uint32_t y = 0; y < ibuf.y; y++) {
+      MutableBitSpan scanline_bits = bits.slice(IndexRange(bm->dy * y, bm->dy));
+      const Span<ColorGeometry4f> scanline_colors = colors.slice(IndexRange(y * ibuf.x, ibuf.x));
+      for (uint32_t x = 0; x < ibuf.x; x++) {
+        scanline_bits[x].set_branchless(fn(scanline_colors[x]));
+      }
+    }
+  }
+
+  const Span<ColorGeometry4b> colors = {reinterpret_cast<ColorGeometry4b *>(ibuf.byte_buffer.data),
+                                        ibuf.x * ibuf.y};
+  for (uint32_t y = 0; y < ibuf.y; y++) {
+    MutableBitSpan scanline_bits = bits.slice(IndexRange(bm->dy * y, bm->dy));
+    const Span<ColorGeometry4b> scanline_colors = colors.slice(IndexRange(y * ibuf.x, ibuf.x));
+    for (uint32_t x = 0; x < ibuf.x; x++) {
+      const ColorGeometry4b &col = scanline_colors[x];
+      scanline_bits[x].set_branchless(fn(ColorGeometry4f(float(col.r) / 255.0f,
+                                                         float(col.g) / 255.0f,
+                                                         float(col.b) / 255.0f,
+                                                         float(col.a) / 255.0f)));
+    }
+  }
+
+  return bm;
+#else
+  return nullptr;
+#endif
+}
+
+}  // namespace image_trace
 
 }  // namespace blender::ed::sculpt_paint
