@@ -78,11 +78,12 @@ BLI_NOINLINE static void clamp_factors(const MutableSpan<float> factors)
 
 BLI_NOINLINE static void do_surface_smooth_brush_mesh(const Sculpt &sd,
                                                       const Brush &brush,
+                                                      const Span<bke::pbvh::Node *> nodes,
                                                       Object &object,
-                                                      Span<bke::pbvh::Node *> nodes)
+                                                      const MutableSpan<float3> all_laplacian_disp)
 {
   const SculptSession &ss = *object.sculpt;
-  StrokeCache &cache = *ss.cache;  // TODO
+  const StrokeCache &cache = *ss.cache;
   const float alpha = brush.surface_smooth_shape_preservation;
   const float beta = brush.surface_smooth_current_vertex;
 
@@ -148,7 +149,7 @@ BLI_NOINLINE static void do_surface_smooth_brush_mesh(const Sculpt &sd,
 
         tls.laplacian_disp.reinitialize(verts.size());
         const MutableSpan<float3> laplacian_disp = tls.laplacian_disp;
-        array_utils::gather(cache.surface_smooth_laplacian_disp.as_span(), verts, laplacian_disp);
+        array_utils::gather(all_laplacian_disp.as_span(), verts, laplacian_disp);
 
         tls.vert_neighbors.reinitialize(verts.size());
         calc_vert_neighbors(
@@ -169,9 +170,7 @@ BLI_NOINLINE static void do_surface_smooth_brush_mesh(const Sculpt &sd,
                                       translations);
         scale_translations(translations, factors);
 
-        array_utils::scatter(laplacian_disp.as_span(),
-                             verts,
-                             cache.surface_smooth_laplacian_disp.as_mutable_span());
+        array_utils::scatter(laplacian_disp.as_span(), verts, all_laplacian_disp);
 
         write_translations(sd, object, positions_eval, verts, translations, positions_orig);
       }
@@ -185,7 +184,7 @@ BLI_NOINLINE static void do_surface_smooth_brush_mesh(const Sculpt &sd,
 
         tls.laplacian_disp.reinitialize(verts.size());
         const MutableSpan<float3> laplacian_disp = tls.laplacian_disp;
-        array_utils::gather(cache.surface_smooth_laplacian_disp.as_span(), verts, laplacian_disp);
+        array_utils::gather(all_laplacian_disp.as_span(), verts, laplacian_disp);
 
         tls.vert_neighbors.reinitialize(verts.size());
         calc_vert_neighbors(
@@ -193,10 +192,8 @@ BLI_NOINLINE static void do_surface_smooth_brush_mesh(const Sculpt &sd,
 
         tls.average_positions.reinitialize(verts.size());
         const MutableSpan<float3> average_laplacian_disps = tls.average_positions;
-        smooth::neighbor_position_average_mesh(cache.surface_smooth_laplacian_disp,
-                                               verts,
-                                               tls.vert_neighbors,
-                                               average_laplacian_disps);
+        smooth::neighbor_position_average_mesh(
+            all_laplacian_disp, verts, tls.vert_neighbors, average_laplacian_disps);
 
         tls.translations.reinitialize(verts.size());
         const MutableSpan<float3> translations = tls.translations;
@@ -218,7 +215,8 @@ void do_surface_smooth_brush(const Sculpt &sd, Object &object, const Span<bke::p
 
   switch (ss.pbvh->type()) {
     case bke::pbvh::Type::Mesh:
-      do_surface_smooth_brush_mesh(sd, brush, object, nodes);
+      do_surface_smooth_brush_mesh(
+          sd, brush, nodes, object, ss.cache->surface_smooth_laplacian_disp);
       break;
     case bke::pbvh::Type::Grids: {
       //   const Mesh &base_mesh = *static_cast<const Mesh *>(object.data);
