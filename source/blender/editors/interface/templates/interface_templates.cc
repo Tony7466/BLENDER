@@ -1817,6 +1817,18 @@ void uiTemplateID(uiLayout *layout,
                  false);
 }
 
+void uiTemplateAction(uiLayout *layout,
+                      const bContext *C,
+                      ID *id,
+                      const char *newop,
+                      const char *openop,
+                      const char *unlinkop,
+                      const char *text)
+{
+  uiTemplateListAction(
+      layout, C, id, 3, 10, UILST_LAYOUT_DEFAULT, 1, UI_TEMPLATE_LIST_FLAG_NONE, nullptr);
+}
+
 void uiTemplateIDBrowse(uiLayout *layout,
                         bContext *C,
                         PointerRNA *ptr,

@@ -18,7 +18,11 @@
 #include "BLI_string_ref.hh"
 #include "BLI_utildefines.h"
 
+#include "BKE_anim_data.hh"
+#include "BKE_main.hh"
 #include "BKE_screen.hh"
+
+#include "DNA_anim_types.h"
 
 #include "BLT_translation.hh"
 
@@ -1306,6 +1310,85 @@ void uiTemplateList(uiLayout *layout,
                     columns,
                     flags,
                     nullptr);
+}
+uiList *uiTemplateListAction(uiLayout *layout,
+                             const bContext *C,
+                             ID *id,
+                             const int rows,
+                             const int maxrows,
+                             const int layout_type,
+                             const int columns,
+                             const enum uiTemplateListFlags flags,
+                             void *customdata)
+{
+  /* Register the list type on first use. */
+  static const uiListType *ui_ul_actions = []() {
+    uiListType *lt = MEM_cnew<uiListType>(__func__);
+    STRNCPY(lt->idname, "UI_UL_actions");
+    lt->draw_item = uilist_draw_item_default;
+    lt->draw_filter = uilist_draw_filter_default;
+    lt->filter_items = uilist_filter_items_default;
+    WM_uilisttype_add(lt);
+    return lt;
+  }();
+
+  /* Get the list of available Actions. */
+  Main *bmain = CTX_data_main(C);
+  PointerRNA bmain_ptr = RNA_main_pointer_create(bmain);
+
+  /* Get the active Action from the ID. */
+  BLI_assert(id_can_have_animdata(id));
+  PointerRNA active_action_ptr;
+  PropertyRNA *active_action_prop = RNA_struct_type_find_property(&RNA_AnimData, "action");
+  if (AnimData *adt = BKE_animdata_from_id(id)) {
+    active_action_ptr = RNA_pointer_create(id, &RNA_Action, adt->action);
+  }
+  else {
+    active_action_ptr = PointerRNA_NULL;
+  }
+
+  TemplateListInputData input_data = {{nullptr}};
+  input_data.dataptr = bmain_ptr;
+  input_data.prop = RNA_struct_find_property(&bmain_ptr, "actions");
+  input_data.active_dataptr = active_action_ptr;
+  input_data.activeprop = active_action_prop;
+  input_data.item_dyntip_propname = nullptr;
+  input_data.active_item_idx = active_action_ptr.data ?
+                                   BLI_findindex(&bmain->actions, active_action_ptr.data) :
+                                   -1;
+
+  uiList *ui_list = ui_list_ensure(C,
+                                   const_cast<uiListType *>(ui_ul_actions),
+                                   ui_ul_actions->idname, /* Is this right? */
+                                   layout_type,
+                                   flags & UI_TEMPLATE_LIST_SORT_REVERSE,
+                                   flags & UI_TEMPLATE_LIST_SORT_LOCK);
+  uiListDyn *dyn_data = ui_list->dyn_data;
+
+  MEM_SAFE_FREE(dyn_data->customdata);
+  dyn_data->customdata = customdata;
+
+  /* When active item changed since last draw, scroll to it. */
+  if (input_data.active_item_idx != ui_list->list_last_activei) {
+    ui_list->flag |= UILST_SCROLL_TO_ACTIVE_ITEM;
+    ui_list->list_last_activei = input_data.active_item_idx;
+  }
+
+  TemplateListItems items;
+  ui_template_list_collect_display_items(
+      C, ui_list, &input_data, uilist_filter_items_default, &items);
+
+  TemplateListLayoutDrawData layout_data;
+  layout_data.draw_item = ui_ul_actions->draw_item;
+  layout_data.draw_filter = ui_ul_actions->draw_filter;
+  layout_data.rows = rows;
+  layout_data.maxrows = maxrows;
+  layout_data.columns = columns;
+
+  ui_template_list_layout_draw(C, ui_list, layout, &input_data, &items, &layout_data, flags);
+  ui_template_list_free_items(&items);
+
+  return ui_list;
 }
 
 PointerRNA *UI_list_custom_activate_operator_set(uiList *ui_list,

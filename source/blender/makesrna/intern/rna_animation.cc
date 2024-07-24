@@ -34,6 +34,8 @@
 
 #include "ANIM_action.hh"
 
+using namespace blender;
+
 /* exported for use in API */
 const EnumPropertyItem rna_enum_keyingset_path_grouping_items[] = {
     {KSP_GROUP_NAMED, "NAMED", 0, "Named Group", ""},
@@ -170,8 +172,26 @@ static void rna_AnimData_dependency_update(Main *bmain, Scene *scene, PointerRNA
 static int rna_AnimData_action_editable(const PointerRNA *ptr, const char ** /*r_info*/)
 {
   AnimData *adt = (AnimData *)ptr->data;
+#  ifdef WITH_ANIM_BAKLAVA
+  if (!adt) {
+    return PROP_EDITABLE;
+  }
+#  endif
   return BKE_animdata_action_editable(adt) ? PROP_EDITABLE : PropertyFlag(0);
 }
+
+#  ifdef WITH_ANIM_BAKLAVA
+static PointerRNA rna_AnimData_action_get(PointerRNA *ptr)
+{
+  BLI_assert(ptr->owner_id);
+  ID &animated_id = *ptr->owner_id;
+  animrig::Action *action = animrig::get_action(animated_id);
+  if (!action) {
+    return PointerRNA_NULL;
+  };
+  return RNA_id_pointer_create(&action->id);
+}
+#  endif /* WITH_ANIM_BAKLAVA */
 
 static void rna_AnimData_action_set(PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
 {
@@ -1696,10 +1716,18 @@ static void rna_def_animdata(BlenderRNA *brna)
 
   /* Active Action */
   prop = RNA_def_property(srna, "action", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "Action");
   /* this flag as well as the dynamic test must be defined for this to be editable... */
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_REFCOUNT);
   RNA_def_property_pointer_funcs(
-      prop, nullptr, "rna_AnimData_action_set", nullptr, "rna_Action_id_poll");
+      prop,
+      /* Define a getter that is NULL-safe, so that an RNA_AnimData prop with `ptr->data = nullptr`
+       * can still be used to get the property. In that case it will always return nullptr, of
+       * course, but it won't crash Blender. */
+      "rna_AnimData_action_get",
+      "rna_AnimData_action_set",
+      nullptr,
+      "rna_Action_id_poll");
   RNA_def_property_editable_func(prop, "rna_AnimData_action_editable");
   RNA_def_property_ui_text(prop, "Action", "Active Action for this data-block");
   RNA_def_property_update(prop, NC_ANIMATION | ND_NLA_ACTCHANGE, "rna_AnimData_dependency_update");

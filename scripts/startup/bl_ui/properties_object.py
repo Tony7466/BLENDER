@@ -42,6 +42,9 @@ class OBJECT_PT_transform(ObjectButtonsPanel, Panel):
         ob = context.object
 
         col = layout.column()
+
+        col.template_action(ob, new="", open="", unlink="")
+
         row = col.row(align=True)
         row.prop(ob, "location")
         row.use_property_decorate = False

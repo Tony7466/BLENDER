@@ -2488,6 +2488,15 @@ void uiTemplateAnyID(uiLayout *layout,
                      const char *propname,
                      const char *proptypename,
                      const char *text);
+
+void uiTemplateAction(uiLayout *layout,
+                      const bContext *C,
+                      ID *id,
+                      const char *newop,
+                      const char *openop,
+                      const char *unlinkop,
+                      const char *text);
+
 /**
  * Search menu to pick an item from a collection.
  * A version of uiTemplateID that works for non-ID types.
@@ -2739,6 +2748,16 @@ uiList *uiTemplateList_ex(uiLayout *layout,
                           int columns,
                           enum uiTemplateListFlags flags,
                           void *customdata);
+
+uiList *uiTemplateListAction(uiLayout *layout,
+                             const bContext *C,
+                             ID *id,
+                             const int rows,
+                             const int maxrows,
+                             const int layout_type,
+                             const int columns,
+                             const enum uiTemplateListFlags flags,
+                             void *customdata);
 
 void uiTemplateNodeLink(
     uiLayout *layout, bContext *C, bNodeTree *ntree, bNode *node, bNodeSocket *input);

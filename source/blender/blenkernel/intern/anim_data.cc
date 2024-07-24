@@ -217,6 +217,7 @@ bool BKE_animdata_set_action(ReportList *reports, ID *id, bAction *act)
 
 bool BKE_animdata_action_editable(const AnimData *adt)
 {
+  BLI_assert(adt);
   /* Active action is only editable when it is not a tweaking strip. */
   const bool is_tweaking_strip = (adt->flag & ADT_NLA_EDIT_ON) || adt->actstrip != nullptr ||
                                  adt->tmpact != nullptr;
