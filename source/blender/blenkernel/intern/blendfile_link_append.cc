@@ -1386,7 +1386,9 @@ void BKE_blendfile_append(BlendfileLinkAppendContext *lapp_context, ReportList *
     BLI_assert(!ID_IS_LINKED(id));
 
     BKE_libblock_relink_to_newid(bmain, id, 0);
-    /* TODO: Free now-unused linked data-blocks. */
+    /* TODO: Free now-unused linked data-blocks. This can still happen even without
+     * append-and-reuse when appending an overridden object. The unnecessary data-block is freed
+     * gone when reopening the file though. This issue exists in `main` too. */
   }
 
   for (BlendfileLinkAppendContextItem *item : lapp_context->items) {
