@@ -24,9 +24,8 @@ struct InputSample {
   float pressure;
 };
 
-class GreasePencilStrokeOperation {
+class GreasePencilStrokeOperation : public PaintModeData {
  public:
-  virtual ~GreasePencilStrokeOperation() = default;
   virtual void on_stroke_begin(const bContext &C, const InputSample &start_sample) = 0;
   virtual void on_stroke_extended(const bContext &C, const InputSample &extension_sample) = 0;
   virtual void on_stroke_done(const bContext &C) = 0;
@@ -125,7 +124,7 @@ class GreasePencilStrokeOperationCommon : public GreasePencilStrokeOperation {
 };
 
 std::unique_ptr<GreasePencilStrokeOperation> new_paint_operation();
-std::unique_ptr<GreasePencilStrokeOperation> new_erase_operation();
+std::unique_ptr<GreasePencilStrokeOperation> new_erase_operation(bool temp_eraser);
 std::unique_ptr<GreasePencilStrokeOperation> new_tint_operation();
 std::unique_ptr<GreasePencilStrokeOperation> new_weight_paint_draw_operation(
     const BrushStrokeMode &brush_mode);

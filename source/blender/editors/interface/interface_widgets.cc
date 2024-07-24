@@ -1353,7 +1353,7 @@ static void widget_draw_icon(
 
     /* Get theme color. */
     uchar color[4] = {mono_color[0], mono_color[1], mono_color[2], mono_color[3]};
-    bTheme *btheme = UI_GetTheme();
+    const bTheme *btheme = UI_GetTheme();
     const bool has_theme = UI_icon_get_theme_color(int(icon), color);
     const bool outline = btheme->tui.icon_border_intensity > 0.0f && has_theme;
 
@@ -1365,7 +1365,7 @@ static void widget_draw_icon(
       UI_icon_draw_ex(xs, ys, icon, aspect, alpha, 0.0f, color, outline, &but->icon_overlay_text);
     }
     else if (!((but->icon != ICON_NONE) && UI_but_is_tool(but))) {
-      if (outline) {
+      if (has_theme) {
         alpha *= 0.8f;
       }
       UI_icon_draw_ex(xs,
@@ -1380,7 +1380,6 @@ static void widget_draw_icon(
                       but->drawflag & UI_BUT_ICON_INVERT);
     }
     else {
-      const bTheme *btheme = UI_GetTheme();
       const float desaturate = 1.0 - btheme->tui.icon_saturation;
       UI_icon_draw_ex(
           xs, ys, icon, aspect, alpha, desaturate, color, outline, &but->icon_overlay_text);
@@ -4808,7 +4807,7 @@ void ui_draw_but(const bContext *C, ARegion *region, uiStyle *style, uiBut *but,
   if (but->emboss == UI_EMBOSS_PULLDOWN) {
     switch (but->type) {
       case UI_BTYPE_LABEL:
-        widget_draw_text_icon(&style->widgetlabel, &tui->wcol_menu_back, but, rect);
+        widget_draw_text_icon(&style->widget, &tui->wcol_menu_back, but, rect);
         break;
       case UI_BTYPE_SEPR:
         break;
@@ -4853,7 +4852,6 @@ void ui_draw_but(const bContext *C, ARegion *region, uiStyle *style, uiBut *but,
     switch (but->type) {
       case UI_BTYPE_LABEL:
         wt = widget_type(UI_WTYPE_LABEL);
-        fstyle = &style->widgetlabel;
         if (but->drawflag & UI_BUT_BOX_ITEM) {
           wt->wcol_theme = &tui->wcol_box;
           wt->state = widget_state;
@@ -5052,12 +5050,10 @@ void ui_draw_but(const bContext *C, ARegion *region, uiStyle *style, uiBut *but,
 
       case UI_BTYPE_PROGRESS:
         wt = widget_type(UI_WTYPE_PROGRESS);
-        fstyle = &style->widgetlabel;
         break;
 
       case UI_BTYPE_VIEW_ITEM:
         wt = widget_type(UI_WTYPE_VIEW_ITEM);
-        fstyle = &style->widgetlabel;
         break;
 
       case UI_BTYPE_SCROLL:

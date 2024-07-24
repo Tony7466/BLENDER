@@ -754,7 +754,8 @@ int WM_operator_props_popup_confirm_ex(bContext *C,
                                        wmOperator *op,
                                        const wmEvent *event,
                                        std::optional<std::string> title = std::nullopt,
-                                       std::optional<std::string> confirm_text = std::nullopt);
+                                       std::optional<std::string> confirm_text = std::nullopt,
+                                       bool cancel_default = false);
 
 /**
  * Same as #WM_operator_props_popup but call the operator first,
@@ -768,7 +769,8 @@ int WM_operator_props_dialog_popup(bContext *C,
                                    wmOperator *op,
                                    int width,
                                    std::optional<std::string> title = std::nullopt,
-                                   std::optional<std::string> confirm_text = std::nullopt);
+                                   std::optional<std::string> confirm_text = std::nullopt,
+                                   bool cancel_default = false);
 
 int WM_operator_redo_popup(bContext *C, wmOperator *op);
 int WM_operator_ui_popup(bContext *C, wmOperator *op, int width);
@@ -902,7 +904,7 @@ void WM_operator_properties_sanitize(PointerRNA *ptr, bool no_context);
  */
 bool WM_operator_properties_default(PointerRNA *ptr, bool do_update);
 /**
- * Remove all props without #PROP_SKIP_SAVE.
+ * Remove all props without #PROP_SKIP_SAVE or #PROP_SKIP_PRESET.
  */
 void WM_operator_properties_reset(wmOperator *op);
 void WM_operator_properties_create(PointerRNA *ptr, const char *opstring);
