@@ -293,7 +293,9 @@ struct TileChangeset {
 /** \brief Changeset keeping track of changes for an image */
 struct Changeset {
  private:
-  Vector<TileChangeset> tiles;
+  /* This is explicitly a unique_ptr to work around an issue in clang-cl on
+   * Windows ARM64, where an invalid pointer would be (re)used */
+  Vector<std::unique_ptr<TileChangeset>> tiles;
 
  public:
   /** \brief Keep track if any of the tiles have dirty chunks. */
@@ -306,24 +308,24 @@ struct Changeset {
    */
   TileChangeset &operator[](const ImageTile *image_tile)
   {
-    for (TileChangeset &tile_changeset : tiles) {
-      if (tile_changeset.tile_number == image_tile->tile_number) {
-        return tile_changeset;
+    for (std::unique_ptr<TileChangeset> &tile_changeset : tiles) {
+      if (tile_changeset->tile_number == image_tile->tile_number) {
+        return *tile_changeset;
       }
     }
 
-    TileChangeset tile_changeset;
-    tile_changeset.tile_number = image_tile->tile_number;
-    tiles.append_as(tile_changeset);
+    auto tile_changeset = std::make_unique<TileChangeset>();
+    tile_changeset->tile_number = image_tile->tile_number;
+    tiles.append_as(std::move(tile_changeset));
 
-    return tiles.last();
+    return *tiles.last();
   }
 
   /** \brief Does this changeset contain data for the given tile. */
   bool has_tile(const ImageTile *image_tile)
   {
-    for (TileChangeset &tile_changeset : tiles) {
-      if (tile_changeset.tile_number == image_tile->tile_number) {
+    for (std::unique_ptr<TileChangeset> &tile_changeset : tiles) {
+      if (tile_changeset->tile_number == image_tile->tile_number) {
         return true;
       }
     }
