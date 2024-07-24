@@ -109,8 +109,7 @@ static void *drw_deferred_shader_compilation_exec(void *)
   acquire_context(true);
 
   const bool use_parallel_compilation = GPU_use_parallel_compilation();
-  Vector<GPUMaterial *> next_batch;
-  Map<BatchHandle, Vector<GPUMaterial *>> batches;
+  Vector<GPUMaterial *> async_mats;
 
   while (true) {
     if (compiler_data.stop) {
@@ -132,38 +131,26 @@ static void *drw_deferred_shader_compilation_exec(void *)
     if (mat) {
       acquire_context();
       /* We have a new material that must be compiled,
-       * we either compile it directly or add it to a parallel compilation batch. */
+       * we either compile it directly or add it to the async compilation list. */
       if (use_parallel_compilation) {
-        next_batch.append(mat);
+        GPU_material_async_compile(mat);
+        async_mats.append(mat);
       }
       else {
         GPU_material_compile(mat);
         GPU_material_release(mat);
       }
     }
-    else if (!next_batch.is_empty()) {
+    else if (!async_mats.is_empty()) {
       /* (only if use_parallel_compilation == true)
-       * We ran out of pending materials. Request the compilation of the current batch. */
-      BatchHandle batch_handle = GPU_material_batch_compile(next_batch);
-      batches.add(batch_handle, next_batch);
-      next_batch.clear();
-    }
-    else if (!batches.is_empty()) {
-      /* (only if use_parallel_compilation == true)
-       * Keep querying the requested batches until all of them are ready. */
-      Vector<BatchHandle> ready_handles;
-      for (BatchHandle handle : batches.keys()) {
-        if (GPU_material_batch_is_ready(handle)) {
-          ready_handles.append(handle);
-        }
-      }
-      for (BatchHandle handle : ready_handles) {
-        Vector<GPUMaterial *> batch = batches.pop(handle);
-        GPU_material_batch_finalize(handle, batch);
-        for (GPUMaterial *mat : batch) {
+       * Keep querying the requested materials until all of them are ready. */
+      async_mats.remove_if([](GPUMaterial *mat) {
+        if (GPU_material_async_try_finalize(mat)) {
           GPU_material_release(mat);
+          return true;
         }
-      }
+        return false;
+      });
     }
     else {
       /* Check for Material Optimization job once there are no more
@@ -202,12 +189,14 @@ static void *drw_deferred_shader_compilation_exec(void *)
 
   /* We have to wait until all the requested batches are ready,
    * even if compiler_data.stop is true. */
-  for (BatchHandle handle : batches.keys()) {
-    Vector<GPUMaterial *> &batch = batches.lookup(handle);
-    GPU_material_batch_finalize(handle, batch);
-    for (GPUMaterial *mat : batch) {
-      GPU_material_release(mat);
-    }
+  while (!async_mats.is_empty()) {
+    async_mats.remove_if([](GPUMaterial *mat) {
+      if (GPU_material_async_try_finalize(mat)) {
+        GPU_material_release(mat);
+        return true;
+      }
+      return false;
+    });
   }
 
   release_context(true);
