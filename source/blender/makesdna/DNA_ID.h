@@ -22,10 +22,6 @@ using PreviewImageRuntimeHandle = blender::bke::PreviewImageRuntime;
 typedef struct PreviewImageRuntimeHandle PreviewImageRuntimeHandle;
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct FileData;
 struct GHash;
 struct GPUTexture;
@@ -1339,7 +1335,3 @@ typedef enum eID_Index {
 } eID_Index;
 
 #define INDEX_ID_MAX (INDEX_ID_NULL + 1)
-
-#ifdef __cplusplus
-}
-#endif
