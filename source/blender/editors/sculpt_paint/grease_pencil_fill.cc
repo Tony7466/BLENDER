@@ -40,32 +40,14 @@
 
 #include "GPU_state.hh"
 
+#ifdef WITH_POTRACE
+#  include "potracelib.h"
+#endif
+
 #include <list>
 #include <optional>
 
 namespace blender::ed::greasepencil {
-
-/* -------------------------------------------------------------------- */
-/** \name Color Values and Flags
- * \{ */
-
-const ColorGeometry4f draw_boundary_color = {1, 0, 0, 1};
-const ColorGeometry4f draw_seed_color = {0, 1, 0, 1};
-
-enum ColorFlag {
-  Border = (1 << 0),
-  Stroke = (1 << 1),
-  Fill = (1 << 2),
-  Seed = (1 << 3),
-  Debug = (1 << 7),
-};
-ENUM_OPERATORS(ColorFlag, ColorFlag::Seed)
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Boundary from Pixel Buffer
- * \{ */
 
 /* Utility class for access to pixel buffer data. */
 class ImageBufferAccessor {
@@ -160,6 +142,22 @@ class ImageBufferAccessor {
   }
 };
 
+/* -------------------------------------------------------------------- */
+/** \name Color Values and Flags
+ * \{ */
+
+const ColorGeometry4f draw_boundary_color = {1, 0, 0, 1};
+const ColorGeometry4f draw_seed_color = {0, 1, 0, 1};
+
+enum ColorFlag {
+  Border = (1 << 0),
+  Stroke = (1 << 1),
+  Fill = (1 << 2),
+  Seed = (1 << 3),
+  Debug = (1 << 7),
+};
+ENUM_OPERATORS(ColorFlag, ColorFlag::Seed)
+
 static bool get_flag(const ColorGeometry4b &color, const ColorFlag flag)
 {
   return (color.r & flag) != 0;
@@ -170,195 +168,10 @@ static void set_flag(ColorGeometry4b &color, const ColorFlag flag, bool value)
   color.r = value ? (color.r | flag) : (color.r & (~flag));
 }
 
-/* Set a border to create image limits. */
-/* TODO this shouldn't be necessary if drawing could accurately save flag values. */
-static void convert_colors_to_flags(ImageBufferAccessor &buffer)
-{
-  for (ColorGeometry4b &color : buffer.pixels()) {
-    const bool is_stroke = color.r > 0.0f;
-    const bool is_seed = color.g > 0.0f;
-    color.r = (is_stroke ? ColorFlag::Stroke : 0) | (is_seed ? ColorFlag::Seed : 0);
-    color.g = 0;
-    color.b = 0;
-    color.a = 0;
-  }
-}
+/** \} */
 
-/* Set a border to create image limits. */
-static void convert_flags_to_colors(ImageBufferAccessor &buffer)
-{
-  constexpr const ColorGeometry4b output_stroke_color = {255, 0, 0, 255};
-  constexpr const ColorGeometry4b output_seed_color = {127, 127, 0, 255};
-  constexpr const ColorGeometry4b output_border_color = {0, 0, 255, 255};
-  constexpr const ColorGeometry4b output_fill_color = {127, 255, 0, 255};
-  // constexpr const ColorGeometry4b output_extend_color = {25, 255, 0, 255};
-  // constexpr const ColorGeometry4b output_helper_color = {255, 0, 127, 255};
-  constexpr const ColorGeometry4b output_debug_color = {255, 127, 0, 255};
-
-  auto add_colors = [](const ColorGeometry4b &a, const ColorGeometry4b &b) -> ColorGeometry4b {
-    return ColorGeometry4b(std::min(int(a.r) + int(b.r), 255),
-                           std::min(int(a.g) + int(b.g), 255),
-                           std::min(int(a.b) + int(b.b), 255),
-                           std::min(int(a.a) + int(b.a), 255));
-  };
-
-  for (ColorGeometry4b &color : buffer.pixels()) {
-    ColorGeometry4b output_color = ColorGeometry4b(0, 0, 0, 0);
-    if (color.r & ColorFlag::Debug) {
-      output_color = add_colors(output_color, output_debug_color);
-    }
-    if (color.r & ColorFlag::Fill) {
-      output_color = add_colors(output_color, output_fill_color);
-    }
-    if (color.r & ColorFlag::Stroke) {
-      output_color = add_colors(output_color, output_stroke_color);
-    }
-    if (color.r & ColorFlag::Border) {
-      output_color = add_colors(output_color, output_border_color);
-    }
-    if (color.r & ColorFlag::Seed) {
-      output_color = add_colors(output_color, output_seed_color);
-    }
-    color = std::move(output_color);
-  }
-}
-
-/* Set a border to create image limits. */
-static void mark_borders(ImageBufferAccessor &buffer)
-{
-  int row_start = 0;
-  /* Fill first row */
-  for (const int i : IndexRange(buffer.width())) {
-    set_flag(buffer.pixels()[row_start + i], ColorFlag::Border, true);
-  }
-  row_start += buffer.width();
-  /* Fill first and last pixel of middle rows. */
-  for ([[maybe_unused]] const int i : IndexRange(buffer.height()).drop_front(1).drop_back(1)) {
-    set_flag(buffer.pixels()[row_start], ColorFlag::Border, true);
-    set_flag(buffer.pixels()[row_start + buffer.width() - 1], ColorFlag::Border, true);
-    row_start += buffer.width();
-  }
-  /* Fill last row */
-  for (const int i : IndexRange(buffer.width())) {
-    set_flag(buffer.pixels()[row_start + i], ColorFlag::Border, true);
-  }
-}
-
-enum class FillResult {
-  Success,
-  BorderContact,
-};
-
-enum FillBorderMode {
-  /* Cancel when hitting the border, fill failed. */
-  Cancel,
-  /* Allow border contact, continue with other pixels. */
-  Ignore,
-};
-
-template<FillBorderMode border_mode>
-FillResult flood_fill(ImageBufferAccessor &buffer, const int leak_filter_width = 0)
-{
-  const MutableSpan<ColorGeometry4b> pixels = buffer.pixels();
-  const int width = buffer.width();
-  const int height = buffer.height();
-
-  blender::Stack<int> active_pixels;
-  /* Initialize the stack with filled pixels (dot at mouse position). */
-  for (const int i : pixels.index_range()) {
-    if (get_flag(pixels[i], ColorFlag::Seed)) {
-      active_pixels.push(i);
-    }
-  }
-
-  enum FilterDirection {
-    Horizontal = 1,
-    Vertical = 2,
-  };
-
-  bool border_contact = false;
-  while (!active_pixels.is_empty()) {
-    const int index = active_pixels.pop();
-    const int2 coord = buffer.coord_from_index(index);
-    ColorGeometry4b pixel_value = buffer.pixels()[index];
-
-    if constexpr (border_mode == FillBorderMode::Cancel) {
-      if (get_flag(pixel_value, ColorFlag::Border)) {
-        border_contact = true;
-        break;
-      }
-    }
-    else if constexpr (border_mode == FillBorderMode::Ignore) {
-      if (get_flag(pixel_value, ColorFlag::Border)) {
-        border_contact = true;
-      }
-    }
-
-    if (get_flag(pixel_value, ColorFlag::Fill)) {
-      /* Pixel already filled. */
-      continue;
-    }
-
-    if (get_flag(pixel_value, ColorFlag::Stroke)) {
-      /* Boundary pixel, ignore. */
-      continue;
-    }
-
-    /* Mark as filled. */
-    set_flag(pixels[index], ColorFlag::Fill, true);
-
-    /* Directional box filtering for gap detection. */
-    const IndexRange filter_x_neg = IndexRange(1, std::min(coord.x, leak_filter_width));
-    const IndexRange filter_x_pos = IndexRange(1,
-                                               std::min(width - 1 - coord.x, leak_filter_width));
-    const IndexRange filter_y_neg = IndexRange(1, std::min(coord.y, leak_filter_width));
-    const IndexRange filter_y_pos = IndexRange(1,
-                                               std::min(height - 1 - coord.y, leak_filter_width));
-    bool is_boundary_horizontal = false;
-    bool is_boundary_vertical = false;
-    for (const int filter_i : filter_y_neg) {
-      is_boundary_horizontal |= get_flag(buffer.pixel_from_coord(coord - int2(0, filter_i)),
-                                         ColorFlag::Stroke);
-    }
-    for (const int filter_i : filter_y_pos) {
-      is_boundary_horizontal |= get_flag(buffer.pixel_from_coord(coord + int2(0, filter_i)),
-                                         ColorFlag::Stroke);
-    }
-    for (const int filter_i : filter_x_neg) {
-      is_boundary_vertical |= get_flag(buffer.pixel_from_coord(coord - int2(filter_i, 0)),
-                                       ColorFlag::Stroke);
-    }
-    for (const int filter_i : filter_x_pos) {
-      is_boundary_vertical |= get_flag(buffer.pixel_from_coord(coord + int2(filter_i, 0)),
-                                       ColorFlag::Stroke);
-    }
-
-    /* Activate neighbors */
-    if (coord.x > 0 && !is_boundary_horizontal) {
-      active_pixels.push(buffer.index_from_coord(coord - int2{1, 0}));
-    }
-    if (coord.x < width - 1 && !is_boundary_horizontal) {
-      active_pixels.push(buffer.index_from_coord(coord + int2{1, 0}));
-    }
-    if (coord.y > 0 && !is_boundary_vertical) {
-      active_pixels.push(buffer.index_from_coord(coord - int2{0, 1}));
-    }
-    if (coord.y < height - 1 && !is_boundary_vertical) {
-      active_pixels.push(buffer.index_from_coord(coord + int2{0, 1}));
-    }
-  }
-
-  return border_contact ? FillResult::BorderContact : FillResult::Success;
-}
-
-/* Turn unfilled areas into filled and vice versa. */
-static void invert_fill(ImageBufferAccessor &buffer)
-{
-  for (ColorGeometry4b &color : buffer.pixels()) {
-    const bool is_filled = get_flag(color, ColorFlag::Fill);
-    set_flag(color, ColorFlag::Fill, !is_filled);
-  }
-}
+/* Custom implementation of boundary tracing. */
+namespace trace_blender {
 
 constexpr const int num_directions = 8;
 static const int2 offset_by_direction[num_directions] = {
@@ -371,66 +184,6 @@ static const int2 offset_by_direction[num_directions] = {
     {-1, 1},
     {-1, 0},
 };
-
-static void dilate(ImageBufferAccessor &buffer, int iterations = 1)
-{
-  const MutableSpan<ColorGeometry4b> pixels = buffer.pixels();
-
-  blender::Stack<int> active_pixels;
-  for ([[maybe_unused]] const int iter : IndexRange(iterations)) {
-    for (const int i : pixels.index_range()) {
-      /* Ignore already filled pixels */
-      if (get_flag(pixels[i], ColorFlag::Fill)) {
-        continue;
-      }
-      const int2 coord = buffer.coord_from_index(i);
-
-      /* Add to stack if any neighbor is filled. */
-      for (const int2 offset : offset_by_direction) {
-        if (buffer.is_valid_coord(coord + offset) &&
-            get_flag(buffer.pixel_from_coord(coord + offset), ColorFlag::Fill))
-        {
-          active_pixels.push(i);
-        }
-      }
-    }
-
-    while (!active_pixels.is_empty()) {
-      const int index = active_pixels.pop();
-      set_flag(buffer.pixels()[index], ColorFlag::Fill, true);
-    }
-  }
-}
-
-static void erode(ImageBufferAccessor &buffer, int iterations = 1)
-{
-  const MutableSpan<ColorGeometry4b> pixels = buffer.pixels();
-
-  blender::Stack<int> active_pixels;
-  for ([[maybe_unused]] const int iter : IndexRange(iterations)) {
-    for (const int i : pixels.index_range()) {
-      /* Ignore empty pixels */
-      if (!get_flag(pixels[i], ColorFlag::Fill)) {
-        continue;
-      }
-      const int2 coord = buffer.coord_from_index(i);
-
-      /* Add to stack if any neighbor is empty. */
-      for (const int2 offset : offset_by_direction) {
-        if (buffer.is_valid_coord(coord + offset) &&
-            !get_flag(buffer.pixel_from_coord(coord + offset), ColorFlag::Fill))
-        {
-          active_pixels.push(i);
-        }
-      }
-    }
-
-    while (!active_pixels.is_empty()) {
-      const int index = active_pixels.pop();
-      set_flag(buffer.pixels()[index], ColorFlag::Fill, false);
-    }
-  }
-}
 
 /* Wrap to valid direction, must be less than 3 * num_directions. */
 static int wrap_dir_3n(const int dir)
@@ -676,6 +429,278 @@ static bke::CurvesGeometry boundary_to_curves(const Scene &scene,
   return curves;
 }
 
+}  // namespace trace_blender
+
+namespace trace_potrace {
+
+// static potrace_state_t *build_fill_boundary(const ImageBufferAccessor &buffer, bool
+// include_holes)
+// {
+// }
+
+}  // namespace trace_potrace
+
+/* -------------------------------------------------------------------- */
+/** \name Boundary from Pixel Buffer
+ * \{ */
+
+/* Set a border to create image limits. */
+/* TODO this shouldn't be necessary if drawing could accurately save flag values. */
+static void convert_colors_to_flags(ImageBufferAccessor &buffer)
+{
+  for (ColorGeometry4b &color : buffer.pixels()) {
+    const bool is_stroke = color.r > 0.0f;
+    const bool is_seed = color.g > 0.0f;
+    color.r = (is_stroke ? ColorFlag::Stroke : 0) | (is_seed ? ColorFlag::Seed : 0);
+    color.g = 0;
+    color.b = 0;
+    color.a = 0;
+  }
+}
+
+/* Set a border to create image limits. */
+static void convert_flags_to_colors(ImageBufferAccessor &buffer)
+{
+  constexpr const ColorGeometry4b output_stroke_color = {255, 0, 0, 255};
+  constexpr const ColorGeometry4b output_seed_color = {127, 127, 0, 255};
+  constexpr const ColorGeometry4b output_border_color = {0, 0, 255, 255};
+  constexpr const ColorGeometry4b output_fill_color = {127, 255, 0, 255};
+  // constexpr const ColorGeometry4b output_extend_color = {25, 255, 0, 255};
+  // constexpr const ColorGeometry4b output_helper_color = {255, 0, 127, 255};
+  constexpr const ColorGeometry4b output_debug_color = {255, 127, 0, 255};
+
+  auto add_colors = [](const ColorGeometry4b &a, const ColorGeometry4b &b) -> ColorGeometry4b {
+    return ColorGeometry4b(std::min(int(a.r) + int(b.r), 255),
+                           std::min(int(a.g) + int(b.g), 255),
+                           std::min(int(a.b) + int(b.b), 255),
+                           std::min(int(a.a) + int(b.a), 255));
+  };
+
+  for (ColorGeometry4b &color : buffer.pixels()) {
+    ColorGeometry4b output_color = ColorGeometry4b(0, 0, 0, 0);
+    if (color.r & ColorFlag::Debug) {
+      output_color = add_colors(output_color, output_debug_color);
+    }
+    if (color.r & ColorFlag::Fill) {
+      output_color = add_colors(output_color, output_fill_color);
+    }
+    if (color.r & ColorFlag::Stroke) {
+      output_color = add_colors(output_color, output_stroke_color);
+    }
+    if (color.r & ColorFlag::Border) {
+      output_color = add_colors(output_color, output_border_color);
+    }
+    if (color.r & ColorFlag::Seed) {
+      output_color = add_colors(output_color, output_seed_color);
+    }
+    color = std::move(output_color);
+  }
+}
+
+/* Set a border to create image limits. */
+static void mark_borders(ImageBufferAccessor &buffer)
+{
+  int row_start = 0;
+  /* Fill first row */
+  for (const int i : IndexRange(buffer.width())) {
+    set_flag(buffer.pixels()[row_start + i], ColorFlag::Border, true);
+  }
+  row_start += buffer.width();
+  /* Fill first and last pixel of middle rows. */
+  for ([[maybe_unused]] const int i : IndexRange(buffer.height()).drop_front(1).drop_back(1)) {
+    set_flag(buffer.pixels()[row_start], ColorFlag::Border, true);
+    set_flag(buffer.pixels()[row_start + buffer.width() - 1], ColorFlag::Border, true);
+    row_start += buffer.width();
+  }
+  /* Fill last row */
+  for (const int i : IndexRange(buffer.width())) {
+    set_flag(buffer.pixels()[row_start + i], ColorFlag::Border, true);
+  }
+}
+
+enum class FillResult {
+  Success,
+  BorderContact,
+};
+
+enum FillBorderMode {
+  /* Cancel when hitting the border, fill failed. */
+  Cancel,
+  /* Allow border contact, continue with other pixels. */
+  Ignore,
+};
+
+template<FillBorderMode border_mode>
+FillResult flood_fill(ImageBufferAccessor &buffer, const int leak_filter_width = 0)
+{
+  const MutableSpan<ColorGeometry4b> pixels = buffer.pixels();
+  const int width = buffer.width();
+  const int height = buffer.height();
+
+  blender::Stack<int> active_pixels;
+  /* Initialize the stack with filled pixels (dot at mouse position). */
+  for (const int i : pixels.index_range()) {
+    if (get_flag(pixels[i], ColorFlag::Seed)) {
+      active_pixels.push(i);
+    }
+  }
+
+  enum FilterDirection {
+    Horizontal = 1,
+    Vertical = 2,
+  };
+
+  bool border_contact = false;
+  while (!active_pixels.is_empty()) {
+    const int index = active_pixels.pop();
+    const int2 coord = buffer.coord_from_index(index);
+    ColorGeometry4b pixel_value = buffer.pixels()[index];
+
+    if constexpr (border_mode == FillBorderMode::Cancel) {
+      if (get_flag(pixel_value, ColorFlag::Border)) {
+        border_contact = true;
+        break;
+      }
+    }
+    else if constexpr (border_mode == FillBorderMode::Ignore) {
+      if (get_flag(pixel_value, ColorFlag::Border)) {
+        border_contact = true;
+      }
+    }
+
+    if (get_flag(pixel_value, ColorFlag::Fill)) {
+      /* Pixel already filled. */
+      continue;
+    }
+
+    if (get_flag(pixel_value, ColorFlag::Stroke)) {
+      /* Boundary pixel, ignore. */
+      continue;
+    }
+
+    /* Mark as filled. */
+    set_flag(pixels[index], ColorFlag::Fill, true);
+
+    /* Directional box filtering for gap detection. */
+    const IndexRange filter_x_neg = IndexRange(1, std::min(coord.x, leak_filter_width));
+    const IndexRange filter_x_pos = IndexRange(1,
+                                               std::min(width - 1 - coord.x, leak_filter_width));
+    const IndexRange filter_y_neg = IndexRange(1, std::min(coord.y, leak_filter_width));
+    const IndexRange filter_y_pos = IndexRange(1,
+                                               std::min(height - 1 - coord.y, leak_filter_width));
+    bool is_boundary_horizontal = false;
+    bool is_boundary_vertical = false;
+    for (const int filter_i : filter_y_neg) {
+      is_boundary_horizontal |= get_flag(buffer.pixel_from_coord(coord - int2(0, filter_i)),
+                                         ColorFlag::Stroke);
+    }
+    for (const int filter_i : filter_y_pos) {
+      is_boundary_horizontal |= get_flag(buffer.pixel_from_coord(coord + int2(0, filter_i)),
+                                         ColorFlag::Stroke);
+    }
+    for (const int filter_i : filter_x_neg) {
+      is_boundary_vertical |= get_flag(buffer.pixel_from_coord(coord - int2(filter_i, 0)),
+                                       ColorFlag::Stroke);
+    }
+    for (const int filter_i : filter_x_pos) {
+      is_boundary_vertical |= get_flag(buffer.pixel_from_coord(coord + int2(filter_i, 0)),
+                                       ColorFlag::Stroke);
+    }
+
+    /* Activate neighbors */
+    if (coord.x > 0 && !is_boundary_horizontal) {
+      active_pixels.push(buffer.index_from_coord(coord - int2{1, 0}));
+    }
+    if (coord.x < width - 1 && !is_boundary_horizontal) {
+      active_pixels.push(buffer.index_from_coord(coord + int2{1, 0}));
+    }
+    if (coord.y > 0 && !is_boundary_vertical) {
+      active_pixels.push(buffer.index_from_coord(coord - int2{0, 1}));
+    }
+    if (coord.y < height - 1 && !is_boundary_vertical) {
+      active_pixels.push(buffer.index_from_coord(coord + int2{0, 1}));
+    }
+  }
+
+  return border_contact ? FillResult::BorderContact : FillResult::Success;
+}
+
+/* Turn unfilled areas into filled and vice versa. */
+static void invert_fill(ImageBufferAccessor &buffer)
+{
+  for (ColorGeometry4b &color : buffer.pixels()) {
+    const bool is_filled = get_flag(color, ColorFlag::Fill);
+    set_flag(color, ColorFlag::Fill, !is_filled);
+  }
+}
+
+static void dilate(ImageBufferAccessor &buffer, int iterations = 1)
+{
+  const MutableSpan<ColorGeometry4b> pixels = buffer.pixels();
+
+  blender::Stack<int> active_pixels;
+  for ([[maybe_unused]] const int iter : IndexRange(iterations)) {
+    for (const int i : pixels.index_range()) {
+      /* Ignore already filled pixels */
+      if (get_flag(pixels[i], ColorFlag::Fill)) {
+        continue;
+      }
+      const int2 coord = buffer.coord_from_index(i);
+      auto is_neighbor_filled = [&](const int2 &offset) {
+        return buffer.is_valid_coord(coord + offset) &&
+               get_flag(buffer.pixel_from_coord(coord + offset), ColorFlag::Fill);
+      };
+
+      /* Add to stack if any neighbor is filled. */
+      if (is_neighbor_filled({-1, -1}) || is_neighbor_filled({0, -1}) ||
+          is_neighbor_filled({1, -1}) || is_neighbor_filled({1, 0}) ||
+          is_neighbor_filled({1, 1}) || is_neighbor_filled({0, 1}) ||
+          is_neighbor_filled({-1, 1}) || is_neighbor_filled({-1, 0}))
+      {
+        active_pixels.push(i);
+      }
+    }
+
+    while (!active_pixels.is_empty()) {
+      const int index = active_pixels.pop();
+      set_flag(buffer.pixels()[index], ColorFlag::Fill, true);
+    }
+  }
+}
+
+static void erode(ImageBufferAccessor &buffer, int iterations = 1)
+{
+  const MutableSpan<ColorGeometry4b> pixels = buffer.pixels();
+
+  blender::Stack<int> active_pixels;
+  for ([[maybe_unused]] const int iter : IndexRange(iterations)) {
+    for (const int i : pixels.index_range()) {
+      /* Ignore empty pixels */
+      if (!get_flag(pixels[i], ColorFlag::Fill)) {
+        continue;
+      }
+      const int2 coord = buffer.coord_from_index(i);
+      auto is_neighbor_empty = [&](const int2 &offset) {
+        return buffer.is_valid_coord(coord + offset) &&
+               !get_flag(buffer.pixel_from_coord(coord + offset), ColorFlag::Fill);
+      };
+
+      /* Add to stack if any neighbor is empty. */
+      if (is_neighbor_empty({-1, -1}) || is_neighbor_empty({0, -1}) ||
+          is_neighbor_empty({1, -1}) || is_neighbor_empty({1, 0}) || is_neighbor_empty({1, 1}) ||
+          is_neighbor_empty({0, 1}) || is_neighbor_empty({-1, 1}) || is_neighbor_empty({-1, 0}))
+      {
+        active_pixels.push(i);
+      }
+    }
+
+    while (!active_pixels.is_empty()) {
+      const int index = active_pixels.pop();
+      set_flag(buffer.pixels()[index], ColorFlag::Fill, false);
+    }
+  }
+}
+
 static bke::CurvesGeometry process_image(Image &ima,
                                          const Scene &scene,
                                          const ViewContext &view_context,
@@ -732,16 +757,17 @@ static bke::CurvesGeometry process_image(Image &ima,
   /* In regular mode create only the outline of the filled area.
    * In inverted mode create a boundary for every filled area. */
   const bool fill_holes = invert;
-  const FillBoundary boundary = build_fill_boundary(buffer, fill_holes);
+  const trace_blender::FillBoundary boundary = trace_blender::build_fill_boundary(buffer,
+                                                                                  fill_holes);
 
-  return boundary_to_curves(scene,
-                            view_context,
-                            brush,
-                            boundary,
-                            buffer,
-                            placement,
-                            stroke_material_index,
-                            stroke_hardness);
+  return trace_blender::boundary_to_curves(scene,
+                                           view_context,
+                                           brush,
+                                           boundary,
+                                           buffer,
+                                           placement,
+                                           stroke_material_index,
+                                           stroke_hardness);
 }
 
 /** \} */
