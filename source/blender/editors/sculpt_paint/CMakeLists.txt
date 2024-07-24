@@ -64,6 +64,7 @@ set(SRC
   grease_pencil_sculpt_twist.cc
   grease_pencil_tint.cc
   grease_pencil_trace.cc
+  grease_pencil_trace_util.cc
   grease_pencil_weight_average.cc
   grease_pencil_weight_blur.cc
   grease_pencil_weight_draw.cc
@@ -118,6 +119,7 @@ set(SRC
   curves_sculpt_intern.hh
   grease_pencil_intern.hh
   mesh_brush_common.hh
+  grease_pencil_trace_util.hh
   grease_pencil_weight_paint.hh
   paint_intern.hh
   sculpt_intern.hh

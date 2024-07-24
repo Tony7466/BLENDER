@@ -38,15 +38,15 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 
-#ifdef WITH_POTRACE
-#  include "potracelib.h"
-#endif
+#include "grease_pencil_trace_util.hh"
 
 namespace blender::ed::sculpt_paint::greasepencil {
 
 /* -------------------------------------------------------------------- */
 /** \name Trace Image Operator
  * \{ */
+
+using image_trace::TurnPolicy;
 
 /* Target object modes. */
 enum class TargetObjectMode : int8_t {
@@ -57,24 +57,6 @@ enum class TargetObjectMode : int8_t {
 enum class TraceMode : int8_t {
   Single = 0,
   Sequence = 1,
-};
-
-/* Policy for resolving ambiguity during decomposition of bitmaps into paths. */
-enum class TurnPolicy : int8_t {
-  /* Prefers to connect foreground pixels. */
-  Foreground = 0,
-  /* Prefers to connect background pixels. */
-  Background = 1,
-  /* Always take a left turn. */
-  Left = 2,
-  /* Always take a right turn. */
-  Right = 3,
-  /* Prefers to connect minority color in the neighborhood. */
-  Minority = 4,
-  /* Prefers to connect majority color in the neighborhood. */
-  Majority = 5,
-  /* Chose direction randomly. */
-  Random = 6,
 };
 
 #ifdef WITH_POTRACE
@@ -115,28 +97,6 @@ struct TraceJob {
   void ensure_output_object();
 };
 
-static int to_potrace(const TurnPolicy turn_policy)
-{
-  switch (turn_policy) {
-    case TurnPolicy ::Foreground:
-      return POTRACE_TURNPOLICY_BLACK;
-    case TurnPolicy ::Background:
-      return POTRACE_TURNPOLICY_WHITE;
-    case TurnPolicy ::Left:
-      return POTRACE_TURNPOLICY_LEFT;
-    case TurnPolicy ::Right:
-      return POTRACE_TURNPOLICY_RIGHT;
-    case TurnPolicy ::Minority:
-      return POTRACE_TURNPOLICY_MINORITY;
-    case TurnPolicy ::Majority:
-      return POTRACE_TURNPOLICY_MAJORITY;
-    case TurnPolicy ::Random:
-      return POTRACE_TURNPOLICY_RANDOM;
-  }
-  BLI_assert_unreachable();
-  return POTRACE_TURNPOLICY_MINORITY;
-}
-
 void TraceJob::ensure_output_object()
 {
   using namespace blender::bke::greasepencil;
@@ -168,317 +128,6 @@ void TraceJob::ensure_output_object()
   }
 }
 
-/* Potrace utilities for writing individual bitmap pixels. */
-constexpr int BM_WORDSIZE = int(sizeof(potrace_word));
-constexpr int BM_WORDBITS = 8 * BM_WORDSIZE;
-constexpr potrace_word BM_HIBIT = potrace_word(1) << (BM_WORDBITS - 1);
-constexpr potrace_word BM_ALLBITS = ~potrace_word(0);
-
-inline potrace_word *bm_scanline(potrace_bitmap_t *bm, const int y)
-{
-  return bm->map + y * bm->dy;
-}
-inline const potrace_word *bm_scanline(const potrace_bitmap_t *bm, const int y)
-{
-  return bm->map + y * bm->dy;
-}
-inline potrace_word *bm_index(potrace_bitmap_t *bm, const int x, const int y)
-{
-  return &bm_scanline(bm, y)[x / BM_WORDBITS];
-}
-inline const potrace_word *bm_index(const potrace_bitmap_t *bm, const int x, const int y)
-{
-  return &bm_scanline(bm, y)[x / BM_WORDBITS];
-}
-inline potrace_word bm_mask(const int x)
-{
-  return BM_HIBIT >> (x & (BM_WORDBITS - 1));
-}
-inline bool bm_range(const int x, const int a)
-{
-  return x >= 0 && x < a;
-}
-inline bool bm_safe(const potrace_bitmap_t *bm, const int x, const int y)
-{
-  return bm_range(x, bm->w) && bm_range(y, bm->h);
-}
-
-// #  define bm_scanline(bm, y) ((bm)->map + (y) * (bm)->dy)
-// #  define bm_index(bm, x, y) (&bm_scanline(bm, y)[(x) / BM_WORDBITS])
-// #  define bm_mask(x) (BM_HIBIT >> ((x) & (BM_WORDBITS - 1)))
-// #  define bm_range(x, a) ((int)(x) >= 0 && (int)(x) < (a))
-// #  define bm_safe(bm, x, y) (bm_range(x, (bm)->w) && bm_range(y, (bm)->h))
-
-inline bool BM_UGET(const potrace_bitmap_t *bm, const int x, const int y)
-{
-  return (*bm_index(bm, x, y) & bm_mask(x)) != 0;
-}
-inline void BM_USET(potrace_bitmap_t *bm, const int x, const int y)
-{
-  *bm_index(bm, x, y) |= bm_mask(x);
-}
-inline void BM_UCLR(potrace_bitmap_t *bm, const int x, const int y)
-{
-  *bm_index(bm, x, y) &= ~bm_mask(x);
-}
-inline void BM_UINV(potrace_bitmap_t *bm, const int x, const int y)
-{
-  *bm_index(bm, x, y) ^= bm_mask(x);
-}
-inline void BM_UPUT(potrace_bitmap_t *bm, const int x, const int y, const bool b)
-{
-  if (b) {
-    BM_USET(bm, x, y);
-  }
-  else {
-    BM_UCLR(bm, x, y);
-  }
-}
-inline bool BM_GET(const potrace_bitmap_t *bm, const int x, const int y)
-{
-  return bm_safe(bm, x, y) ? BM_UGET(bm, x, y) : 0;
-}
-inline void BM_SET(potrace_bitmap_t *bm, const int x, const int y)
-{
-  if (bm_safe(bm, x, y)) {
-    BM_USET(bm, x, y);
-  }
-}
-inline void BM_CLR(potrace_bitmap_t *bm, const int x, const int y)
-{
-  if (bm_safe(bm, x, y)) {
-    BM_UCLR(bm, x, y);
-  }
-}
-inline void BM_INV(potrace_bitmap_t *bm, const int x, const int y)
-{
-  if (bm_safe(bm, x, y)) {
-    BM_UINV(bm, x, y);
-  }
-}
-inline void BM_PUT(potrace_bitmap_t *bm, const int x, const int y, const bool b)
-{
-  if (bm_safe(bm, x, y)) {
-    BM_UPUT(bm, x, y, b);
-  }
-}
-
-static potrace_bitmap_t *create_bitmap(const int2 &size)
-{
-  potrace_bitmap_t *bm;
-  int32_t dy = (size.x + BM_WORDBITS - 1) / BM_WORDBITS;
-
-  bm = (potrace_bitmap_t *)MEM_mallocN(sizeof(potrace_bitmap_t), __func__);
-  if (!bm) {
-    return nullptr;
-  }
-  bm->w = size.x;
-  bm->h = size.y;
-  bm->dy = dy;
-  bm->map = (potrace_word *)calloc(size.y, dy * BM_WORDSIZE);
-  if (!bm->map) {
-    free(bm);
-    return nullptr;
-  }
-
-  return bm;
-}
-
-static void free_bitmap(potrace_bitmap_t *bm)
-{
-  if (bm != nullptr) {
-    free(bm->map);
-  }
-  MEM_SAFE_FREE(bm);
-}
-
-static ColorGeometry4f pixel_at_index(const ImBuf &ibuf, const int32_t idx)
-{
-  BLI_assert(idx < (ibuf.x * ibuf.y));
-
-  if (ibuf.float_buffer.data) {
-    const float4 &frgba = reinterpret_cast<float4 *>(ibuf.float_buffer.data)[idx];
-    return ColorGeometry4f(frgba);
-  }
-
-  const uchar4 &col = reinterpret_cast<const uchar4 *>(ibuf.byte_buffer.data)[idx];
-  return ColorGeometry4f(float4(col) / 255.0f);
-}
-
-static void image_to_bitmap(const ImBuf &ibuf, potrace_bitmap_t &bm, const float threshold)
-{
-  for (uint32_t y = 0; y < ibuf.y; y++) {
-    for (uint32_t x = 0; x < ibuf.x; x++) {
-      const int32_t pixel = (ibuf.x * y) + x;
-      const ColorGeometry4f color = pixel_at_index(ibuf, pixel);
-      const float value = math::average(float3(color.r, color.g, color.b)) * color.a;
-      BM_PUT(&bm, x, y, value > threshold);
-    }
-  }
-}
-
-using PathSegment = potrace_dpoint_t[3];
-
-static void trace_data_to_strokes(const potrace_state_t &st,
-                                  Object & /*ob*/,
-                                  bke::greasepencil::Drawing &drawing,
-                                  const float4x4 &transform,
-                                  const float radius)
-{
-  auto project_pixel = [&](const potrace_dpoint_t &point) -> float3 {
-    return math::transform_point(transform, float3(point.x, point.y, 0));
-  };
-
-  ///* Find materials and create them if not found. */
-  // BKE_object_material
-  // int32_t mat_fill_idx = BKE_gpencil_material_find_index_by_name_prefix(ob, "Stroke");
-  // int32_t mat_mask_idx = BKE_gpencil_material_find_index_by_name_prefix(ob, "Holdout");
-
-  // const float default_color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
-  ///* Stroke and Fill material. */
-  // if (mat_fill_idx == -1) {
-  //   int32_t new_idx;
-  //   Material *mat_gp = BKE_gpencil_object_material_new(bmain, ob, "Stroke", &new_idx);
-  //   MaterialGPencilStyle *gp_style = mat_gp->gp_style;
-
-  //  copy_v4_v4(gp_style->stroke_rgba, default_color);
-  //  gp_style->flag |= GP_MATERIAL_STROKE_SHOW;
-  //  gp_style->flag |= GP_MATERIAL_FILL_SHOW;
-  //  mat_fill_idx = ob->totcol - 1;
-  //}
-  ///* Holdout material. */
-  // if (mat_mask_idx == -1) {
-  //   int32_t new_idx;
-  //   Material *mat_gp = BKE_gpencil_object_material_new(bmain, ob, "Holdout", &new_idx);
-  //   MaterialGPencilStyle *gp_style = mat_gp->gp_style;
-
-  //  copy_v4_v4(gp_style->stroke_rgba, default_color);
-  //  copy_v4_v4(gp_style->fill_rgba, default_color);
-  //  gp_style->flag |= GP_MATERIAL_STROKE_SHOW;
-  //  gp_style->flag |= GP_MATERIAL_FILL_SHOW;
-  //  gp_style->flag |= GP_MATERIAL_IS_STROKE_HOLDOUT;
-  //  gp_style->flag |= GP_MATERIAL_IS_FILL_HOLDOUT;
-  //  mat_mask_idx = ob->totcol - 1;
-  //}
-
-  /* Count paths and points. */
-  Vector<int> offsets;
-  for (const potrace_path_t *path = st.plist; path != nullptr; path = path->next) {
-    const Span<int> path_tags = {path->curve.tag, path->curve.n};
-    const Span<PathSegment> path_segments = {path->curve.c, path->curve.n};
-
-    int point_num = 0;
-    for (const int segment_i : path_segments.index_range()) {
-      switch (path_tags[segment_i]) {
-        case POTRACE_CORNER:
-          point_num += 2;
-          break;
-        case POTRACE_CURVETO:
-          point_num += 1;
-          break;
-        default:
-          BLI_assert_unreachable();
-          break;
-      }
-    }
-    offsets.append(point_num);
-  }
-  /* Last element stores total size. */
-  offsets.append(0);
-  const OffsetIndices points_by_curve = offset_indices::accumulate_counts_to_offsets(offsets);
-
-  bke::CurvesGeometry curves(points_by_curve.total_size(), points_by_curve.size());
-  curves.offsets_for_write().copy_from(offsets);
-
-  /* Construct all curves as Bezier curves. */
-  curves.curve_types_for_write().fill(CURVE_TYPE_BEZIER);
-  curves.update_curve_types();
-  /* All trace curves are cyclic. */
-  curves.cyclic_for_write().fill(true);
-  /* Uniform radius for all curves. */
-  drawing.radii_for_write().fill(radius);
-
-  bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
-  bke::SpanAttributeWriter<int> material_indices = attributes.lookup_or_add_for_write_span<int>(
-      "material_index", bke::AttrDomain::Curve);
-  MutableSpan<int8_t> handle_types_left = curves.handle_types_left_for_write();
-  MutableSpan<int8_t> handle_types_right = curves.handle_types_right_for_write();
-  MutableSpan<float3> handle_positions_left = curves.handle_positions_left_for_write();
-  MutableSpan<float3> handle_positions_right = curves.handle_positions_right_for_write();
-  MutableSpan<float3> positions = curves.positions_for_write();
-
-  /* Draw each curve. */
-  int curve_i = 0;
-  for (const potrace_path_t *path = st.plist; path != nullptr; path = path->next, ++curve_i) {
-    const Span<int> path_tags = {path->curve.tag, path->curve.n};
-    const Span<PathSegment> path_segments = {path->curve.c, path->curve.n};
-
-    const IndexRange points = points_by_curve[curve_i];
-    if (points.is_empty()) {
-      continue;
-    }
-
-    material_indices.span[curve_i] = 0 /*path->sign == '+' ? mat_fill_idx : mat_mask_idx*/;
-
-    /* Potrace stores the last 3 points of a bezier segment.
-     * The start point is the last segment's end point. */
-    int point_i = points.last();
-    auto next_point = [&]() {
-      point_i = (point_i == points.last() ? points.first() : point_i + 1);
-    };
-
-    for (const int segment_i : path_segments.index_range()) {
-      const PathSegment &segment = path_segments[segment_i];
-      switch (path_tags[segment_i]) {
-        case POTRACE_CORNER:
-          /* Potrace corners are formed by straight lines from the previous/next point.
-           * segment[0] is unused, segment[1] is the corner position, segment[2] is the next point.
-           */
-          handle_types_right[point_i] = BEZIER_HANDLE_VECTOR;
-
-          next_point();
-          positions[point_i] = project_pixel(segment[1]);
-          handle_types_left[point_i] = BEZIER_HANDLE_VECTOR;
-          handle_types_right[point_i] = BEZIER_HANDLE_VECTOR;
-
-          next_point();
-          positions[point_i] = project_pixel(segment[2]);
-          handle_types_left[point_i] = BEZIER_HANDLE_VECTOR;
-          break;
-        case POTRACE_CURVETO:
-          /* segment[0] is the previous point's right-side handle, segment[1] is the next point's
-           * left-side handle, segment[2] is the next point. */
-          handle_types_right[point_i] = BEZIER_HANDLE_FREE;
-          handle_positions_right[point_i] = project_pixel(segment[0]);
-
-          next_point();
-          positions[point_i] = project_pixel(segment[2]);
-          handle_types_left[point_i] = BEZIER_HANDLE_FREE;
-          handle_positions_left[point_i] = project_pixel(segment[1]);
-          break;
-        default:
-          BLI_assert_unreachable();
-          break;
-      }
-    }
-  }
-
-  material_indices.finish();
-  drawing.tag_topology_changed();
-  drawing.tag_positions_changed();
-  curves.tag_radii_changed();
-
-  /* Calculate handles for all corner points (vector handle type). */
-  bke::curves::bezier::calculate_auto_handles(true,
-                                              handle_types_left,
-                                              handle_types_right,
-                                              positions,
-                                              handle_positions_left,
-                                              handle_positions_right);
-
-  drawing.strokes_for_write() = curves;
-}
-
 static float4x4 pixel_to_object_transform(const Object &image_object,
                                           const ImBuf &ibuf,
                                           const float2 pixel_center = float2(0.5f))
@@ -501,44 +150,25 @@ static bool grease_pencil_trace_image(TraceJob &trace_job,
                                       const ImBuf &ibuf,
                                       bke::greasepencil::Drawing &drawing)
 {
-  /* Create an empty BW bitmap. */
-  potrace_bitmap_t *bm = create_bitmap({ibuf.x, ibuf.y});
-  if (!bm) {
-    return false;
-  }
+  /* Trace the image. */
+  potrace_bitmap_t *bm = image_trace::image_to_bitmap(ibuf, [&](const ColorGeometry4f &color) {
+    return math::average(float3(color.r, color.g, color.b)) * color.a > trace_job.threshold;
+  });
 
-  /* Set tracing parameters, starting from defaults */
-  potrace_param_t *param = potrace_param_default();
-  if (!param) {
-    return false;
-  }
-  param->turdsize = 0;
-  param->turnpolicy = to_potrace(trace_job.turnpolicy);
-
-  /* Load BW bitmap with image. */
-  image_to_bitmap(ibuf, *bm, trace_job.threshold);
-
-  /* Trace the bitmap. */
-  potrace_state_t *st = potrace_trace(param, bm);
-  if (!st || st->status != POTRACE_STATUS_OK) {
-    free_bitmap(bm);
-    if (st) {
-      potrace_state_free(st);
-    }
-    potrace_param_free(param);
-    return false;
-  }
-  /* Free BW bitmap. */
-  free_bitmap(bm);
+  image_trace::TraceParams params;
+  params.size_threshold = 0;
+  params.turn_policy = trace_job.turnpolicy;
+  image_trace::Trace *trace = image_trace::trace_bitmap(params, *bm);
+  image_trace::free_bitmap(bm);
 
   /* Transform from bitmap index space to local image object space. */
   const float4x4 transform = pixel_to_object_transform(*trace_job.ob_active, ibuf);
+  bke::CurvesGeometry trace_curves = image_trace::trace_to_curves(*trace, transform);
+  image_trace::free_trace(trace);
 
-  trace_data_to_strokes(*st, *trace_job.ob_grease_pencil, drawing, transform, trace_job.radius);
-
-  /* Free memory. */
-  potrace_state_free(st);
-  potrace_param_free(param);
+  drawing.strokes_for_write() = trace_curves;
+  /* Uniform radius for all trace curves. */
+  drawing.radii_for_write().fill(trace_job.radius);
 
   return true;
 }
