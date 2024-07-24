@@ -21,6 +21,7 @@
 #include "DNA_space_types.h"
 
 #include "BLI_kdtree.h"
+#include "BLI_math_base.hh"
 #include "BLI_math_geom.h"
 #include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
@@ -823,10 +824,9 @@ static int uvedit_uv_threshold_weld_underlying_geometry(bContext *C, wmOperator 
   Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data_with_uvs(
       scene, view_layer, nullptr);
 
-  /* Since we are using len_squared_v2v2 to calculate distance, we need to square the
-   * user-defined threshold*/
+  /* Only use the squared distance, to avoid a square-root. */
+  const float threshold_sq = math::square(RNA_float_get(op->ptr, "threshold"));
 
-  float threshold_sq = pow(RNA_float_get(op->ptr, "threshold"), 2);
   for (Object *obedit : objects) {
     BMEditMesh *em = BKE_editmesh_from_object(obedit);
     BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
