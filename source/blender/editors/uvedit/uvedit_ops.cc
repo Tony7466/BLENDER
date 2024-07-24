@@ -814,7 +814,7 @@ static int uv_remove_doubles_to_unselected(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static int uvedit_uv_threshold_weld_underlying_geometry(bContext *C, wmOperator *op)
+static int uv_remove_doubles_shared_vertex(bContext *C, wmOperator *op)
 {
   /* NOTE: The calculation for the center-point of loops belonging to a vertex will be skewed
    * if one UV coordinate holds more loops than the others. */
@@ -930,8 +930,8 @@ static int uv_remove_doubles_exec(bContext *C, wmOperator *op)
   if (RNA_boolean_get(op->ptr, "use_unselected")) {
     return uv_remove_doubles_to_unselected(C, op);
   }
-  else if (RNA_boolean_get(op->ptr, "underlying_geometry")) {
-    return uvedit_uv_threshold_weld_underlying_geometry(C, op);
+  if (RNA_boolean_get(op->ptr, "use_shared_vertex")) {
+    return uv_remove_doubles_shared_vertex(C, op);
   }
   return uv_remove_doubles_to_selected(C, op);
 }
@@ -964,10 +964,10 @@ static void UV_OT_remove_doubles(wmOperatorType *ot)
                   "Unselected",
                   "Merge selected to other unselected vertices");
   RNA_def_boolean(ot->srna,
-                  "underlying_geometry",
+                  "use_shared_vertex",
                   false,
-                  "Underlying Geometry",
-                  "Weld UVs based on underlying geometry");
+                  "Shared Vertex",
+                  "Weld UVs based on shared vertices");
 }
 
 /** \} */
