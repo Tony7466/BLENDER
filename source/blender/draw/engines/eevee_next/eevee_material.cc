@@ -255,7 +255,10 @@ Material &MaterialModule::material_sync(Object *ob,
                                         eMaterialGeometry geometry_type,
                                         bool has_motion)
 {
-  bool hide_on_camera = ob->visibility_flag & OB_HIDE_CAMERA;
+  /* Don't hide from camera in material preview mode as this behaviour is unexpected
+   * for some boolean modelling add-ons. */
+  bool hide_on_camera = (ob->visibility_flag & OB_HIDE_CAMERA) &&
+                        !(inst_.is_viewport() && inst_.v3d->shading.type != OB_RENDER);
 
   if (geometry_type == MAT_GEOM_VOLUME) {
     MaterialKey material_key(
