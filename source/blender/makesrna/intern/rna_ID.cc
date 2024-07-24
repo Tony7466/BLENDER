@@ -2183,6 +2183,18 @@ static void rna_def_ID_override_library(BlenderRNA *brna)
   rna_def_ID_override_library_property(brna);
 }
 
+static void rna_def_ID_hash(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "IDHash", nullptr);
+  RNA_def_struct_ui_text(srna, "ID Hash", "Hash used to deduplicate locked data-blocks");
+
+  prop = RNA_def_property(srna, "data", PROP_INT, PROP_NONE);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+}
+
 static void rna_def_ID(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -2362,18 +2374,28 @@ static void rna_def_ID(BlenderRNA *brna)
   RNA_def_property_override_flag(prop, PROPOVERRIDE_NO_COMPARISON);
   RNA_def_property_pointer_funcs(prop, "rna_IDPreview_get", nullptr, nullptr, nullptr);
 
-  prop = RNA_def_property(srna, "shallow_hash_", PROP_INT, PROP_NONE);
-  RNA_def_property_int_sdna(prop, nullptr, "shallow_hash.data");
-  RNA_def_property_array(prop, sizeof(IDHash));
+  prop = RNA_def_property(srna, "shallow_hash", PROP_POINTER, PROP_NONE);
+  RNA_def_property_ui_text(prop,
+                           "Shallow Hash",
+                           "Hash identifying the contents of this data-block (excluding any of "
+                           "the dependent data-blocks). Note that this is mainly for internal "
+                           "usage and may not be valid at most times");
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+
+  prop = RNA_def_property(srna, "deep_hash", PROP_POINTER, PROP_NONE);
+  RNA_def_property_ui_text(
+      prop,
+      "Deep Hash",
+      "Hash identifying the contents of this data-block and all its dependencies. This can be "
+      "used to check if two locked data-blocks are considered to be interchangeable");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
   prop = RNA_def_property(srna, "is_locked", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_ui_text(
+      prop,
+      "Is Locked",
+      "Locked data-blocks can be deduplicated automatically if their deep hash is the same");
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", LIB_LOCKED);
-  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-
-  prop = RNA_def_property(srna, "deep_hash_", PROP_INT, PROP_NONE);
-  RNA_def_property_int_sdna(prop, nullptr, "deep_hash.data");
-  RNA_def_property_array(prop, sizeof(IDHash));
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
   /* functions */
@@ -2649,6 +2671,8 @@ void RNA_def_ID(BlenderRNA *brna)
   /* built-in any type */
   srna = RNA_def_struct(brna, "AnyType", nullptr);
   RNA_def_struct_ui_text(srna, "Any Type", "RNA type used for pointers to any possible data");
+
+  rna_def_ID_hash(brna);
 
   rna_def_ID(brna);
   rna_def_ID_override_library(brna);
