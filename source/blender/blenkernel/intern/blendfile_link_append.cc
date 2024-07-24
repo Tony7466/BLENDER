@@ -1386,6 +1386,7 @@ void BKE_blendfile_append(BlendfileLinkAppendContext *lapp_context, ReportList *
     BLI_assert(!ID_IS_LINKED(id));
 
     BKE_libblock_relink_to_newid(bmain, id, 0);
+    /* TODO: Free now-unused linked data-blocks. */
   }
 
   for (BlendfileLinkAppendContextItem *item : lapp_context->items) {
