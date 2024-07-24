@@ -4646,6 +4646,7 @@ static FileData *read_library_file_data(FileData *basefd,
     mainptr->curlib->runtime.filedata = fd;
     mainptr->versionfile = fd->fileversion;
 
+    MEM_delete(fd->id_by_hash_map);
     fd->id_by_hash_map = basefd->id_by_hash_map;
     fd->id_by_hash_map_borrowed = true;
 
