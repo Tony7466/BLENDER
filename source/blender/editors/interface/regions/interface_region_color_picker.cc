@@ -464,7 +464,7 @@ static void ui_block_colorpicker(uiBlock *block,
   /* ePickerType */
   static char colormode = 1;
   uiBut *bt;
-  int width, butwidth;
+  int width;
   static char hexcol[128];
   float softmin, softmax, hardmin, hardmax, step, precision;
   int yco;
@@ -473,7 +473,6 @@ static void ui_block_colorpicker(uiBlock *block,
   PropertyRNA *prop = from_but->rnaprop;
 
   width = PICKER_TOTAL_W;
-  butwidth = width - 1.5f * UI_UNIT_X;
 
   /* sneaky way to check for alpha */
   rgba_scene_linear[3] = FLT_MAX;
@@ -548,22 +547,6 @@ static void ui_block_colorpicker(uiBlock *block,
   UI_block_align_end(block);
 
   yco = -3.0f * UI_UNIT_Y;
-  if (show_picker) {
-    bt = uiDefIconButO(block,
-                       UI_BTYPE_BUT,
-                       "UI_OT_eyedropper_color",
-                       WM_OP_INVOKE_DEFAULT,
-                       ICON_EYEDROPPER,
-                       butwidth + 10,
-                       yco,
-                       UI_UNIT_X,
-                       UI_UNIT_Y,
-                       nullptr);
-    UI_but_flag_disable(bt, UI_BUT_UNDO);
-    UI_but_drawflag_disable(bt, UI_BUT_ICON_LEFT);
-    UI_but_func_set(bt, ui_popup_close_cb, bt, nullptr);
-    bt->custom_data = cpicker;
-  }
 
   /* NOTE: don't disable UI_BUT_UNDO for RGBA values, since these don't add undo steps. */
 
@@ -575,7 +558,7 @@ static void ui_block_colorpicker(uiBlock *block,
                       IFACE_("Red:"),
                       0,
                       yco,
-                      butwidth,
+                      width,
                       UI_UNIT_Y,
                       ptr,
                       prop,
@@ -593,7 +576,7 @@ static void ui_block_colorpicker(uiBlock *block,
                       IFACE_("Green:"),
                       0,
                       yco -= UI_UNIT_Y,
-                      butwidth,
+                      width,
                       UI_UNIT_Y,
                       ptr,
                       prop,
@@ -611,7 +594,7 @@ static void ui_block_colorpicker(uiBlock *block,
                       IFACE_("Blue:"),
                       0,
                       yco -= UI_UNIT_Y,
-                      butwidth,
+                      width,
                       UI_UNIT_Y,
                       ptr,
                       prop,
@@ -637,7 +620,7 @@ static void ui_block_colorpicker(uiBlock *block,
                  IFACE_("Hue:"),
                  0,
                  yco,
-                 butwidth,
+                 width,
                  UI_UNIT_Y,
                  cpicker->hsv_scene_linear,
                  0.0,
@@ -654,7 +637,7 @@ static void ui_block_colorpicker(uiBlock *block,
                  IFACE_("Saturation:"),
                  0,
                  yco -= UI_UNIT_Y,
-                 butwidth,
+                 width,
                  UI_UNIT_Y,
                  cpicker->hsv_scene_linear + 1,
                  0.0,
@@ -672,7 +655,7 @@ static void ui_block_colorpicker(uiBlock *block,
                    IFACE_("Lightness:"),
                    0,
                    yco -= UI_UNIT_Y,
-                   butwidth,
+                   width,
                    UI_UNIT_Y,
                    cpicker->hsv_scene_linear + 2,
                    0.0,
@@ -688,7 +671,7 @@ static void ui_block_colorpicker(uiBlock *block,
                    CTX_IFACE_(BLT_I18NCONTEXT_COLOR, "Value:"),
                    0,
                    yco -= UI_UNIT_Y,
-                   butwidth,
+                   width,
                    UI_UNIT_Y,
                    cpicker->hsv_scene_linear + 2,
                    0.0,
@@ -712,7 +695,7 @@ static void ui_block_colorpicker(uiBlock *block,
                         IFACE_("Alpha:"),
                         0,
                         yco -= UI_UNIT_Y,
-                        butwidth,
+                        width,
                         UI_UNIT_Y,
                         ptr,
                         prop,
@@ -743,13 +726,28 @@ static void ui_block_colorpicker(uiBlock *block,
   rgb_float_to_uchar(rgb_hex_uchar, rgb_hex);
   SNPRINTF(hexcol, "#%02X%02X%02X", UNPACK3_EX((uint), rgb_hex_uchar, ));
 
+  uiDefBut(block,
+           UI_BTYPE_SEPR_LINE,
+           0,
+           "",
+           0,
+           yco -= UI_UNIT_Y,
+           width,
+           UI_UNIT_Y,
+           nullptr,
+           0.0,
+           0.0,
+           "");
+
+  const int butwidth = width - 1.5f * UI_UNIT_X;
+
   bt = uiDefBut(block,
                 UI_BTYPE_TEXT,
                 0,
                 IFACE_("Hex: "),
                 0,
-                yco -= UI_UNIT_Y * 2,
-                butwidth,
+                yco -= UI_UNIT_Y,
+                show_picker ? butwidth : width,
                 UI_UNIT_Y,
                 hexcol,
                 0,
@@ -758,14 +756,31 @@ static void ui_block_colorpicker(uiBlock *block,
 
   const auto bt_tooltip_func = [](bContext * /*C*/, uiTooltipData *tip, void * /*argN*/) {
     UI_tooltip_text_field_add(
-        tip, "Hex triplet for color (#RRGGBB)", {}, UI_TIP_STYLE_HEADER, UI_TIP_LC_NORMAL, false);
+        tip, "Hex triplet for color (#RRGGBB).", {}, UI_TIP_STYLE_HEADER, UI_TIP_LC_NORMAL, false);
     UI_tooltip_text_field_add(
-        tip, "(Gamma Corrected)", {}, UI_TIP_STYLE_NORMAL, UI_TIP_LC_NORMAL, false);
+        tip, "Gamma corrected", {}, UI_TIP_STYLE_NORMAL, UI_TIP_LC_NORMAL, false);
   };
   UI_but_func_tooltip_custom_set(bt, bt_tooltip_func, nullptr, nullptr);
   UI_but_flag_disable(bt, UI_BUT_UNDO);
   UI_but_func_set(bt, ui_colorpicker_hex_rna_cb, bt, hexcol);
   bt->custom_data = cpicker;
+
+  if (show_picker) {
+    bt = uiDefIconButO(block,
+                       UI_BTYPE_BUT,
+                       "UI_OT_eyedropper_color",
+                       WM_OP_INVOKE_DEFAULT,
+                       ICON_EYEDROPPER,
+                       butwidth + 10,
+                       yco,
+                       UI_UNIT_X,
+                       UI_UNIT_Y,
+                       nullptr);
+    UI_but_flag_disable(bt, UI_BUT_UNDO);
+    UI_but_drawflag_disable(bt, UI_BUT_ICON_LEFT);
+    UI_but_func_set(bt, ui_popup_close_cb, bt, nullptr);
+    bt->custom_data = cpicker;
+  }
 
   ui_colorpicker_hide_reveal(block, (ePickerType)colormode);
 }
