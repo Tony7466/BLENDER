@@ -160,6 +160,53 @@ void neighbor_position_average_interior_grids(const OffsetIndices<int> faces,
   }
 }
 
+template<typename T>
+void average_data_grids(const SubdivCCG &subdiv_ccg,
+                        const Span<T> src,
+                        const Span<int> grids,
+                        const MutableSpan<T> dst)
+{
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+  const Span<CCGElem *> elems = subdiv_ccg.grids;
+
+  BLI_assert(grids.size() * key.grid_area == new_positions.size());
+
+  for (const int i : grids.index_range()) {
+    const int grid = grids[i];
+    const int node_verts_start = i * key.grid_area;
+
+    /* TODO: This loop could be optimized in the future by skipping unnecessary logic for
+     * non-boundary grid vertices. */
+    for (const int y : IndexRange(key.grid_size)) {
+      for (const int x : IndexRange(key.grid_size)) {
+        const int offset = CCG_grid_xy_to_index(key.grid_size, x, y);
+        const int node_vert_index = node_verts_start + offset;
+
+        SubdivCCGCoord coord{};
+        coord.grid_index = grid;
+        coord.x = x;
+        coord.y = y;
+
+        SubdivCCGNeighbors neighbors;
+        BKE_subdiv_ccg_neighbor_coords_get(subdiv_ccg, coord, false, neighbors);
+
+        T sum{};
+        for (const SubdivCCGCoord neighbor : neighbors.coords) {
+          const int index = neighbor.grid_index * key.grid_area +
+                            CCG_grid_xy_to_index(key.grid_size, neighbor.x, neighbor.y);
+          sum += src[index];
+        }
+        dst[node_vert_index] = sum /= neighbors.coords.size();
+      }
+    }
+  }
+}
+
+template void average_data_grids<float3>(const SubdivCCG &,
+                                         Span<float3>,
+                                         Span<int>,
+                                         MutableSpan<float3>);
+
 static float3 average_positions(const Span<const BMVert *> verts)
 {
   const float factor = math::rcp(float(verts.size()));
