@@ -62,6 +62,18 @@ class ImageBufferAccessor {
     return ibuf_ != nullptr;
   }
 
+  ImBuf &get()
+  {
+    BLI_assert(ibuf_ != nullptr);
+    return *ibuf_;
+  }
+
+  const ImBuf &get() const
+  {
+    BLI_assert(ibuf_ != nullptr);
+    return *ibuf_;
+  }
+
   ~ImageBufferAccessor()
   {
     BLI_assert(!this->has_buffer());
@@ -429,38 +441,6 @@ static bke::CurvesGeometry boundary_to_curves(const Scene &scene,
 
 }  // namespace trace_blender
 
-namespace trace_potrace {
-
-using ed::image_trace::Bitmap;
-using ed::image_trace::Trace;
-
-static Trace *build_fill_boundary(const ImBuf &ibuf, bool include_holes)
-{
-  // potrace_param_t *param = potrace_param_default();
-  // if (!param) {
-  //   return nullptr;
-  // }
-  // param->turdsize = 0;
-  // param->turnpolicy = POTRACE_TURNPOLICY_MINORITY;
-
-  // Bitmap *bm = ed::sculpt_paint::image_trace::image_to_bitmap(
-  //     ibuf, [&](const ColorGeometry4b &color) { return get_flag(color, ColorFlag::Fill); });
-  // potrace_state_t *st = potrace_trace(param, bm);
-  // ed::sculpt_paint::image_trace::free_bitmap(bm);
-
-  // if (!st || st->status != POTRACE_STATUS_OK) {
-  //   if (st) {
-  //     potrace_state_free(st);
-  //   }
-  //   potrace_param_free(param);
-  //   return false;
-  // }
-
-  return nullptr;
-}
-
-}  // namespace trace_potrace
-
 /* -------------------------------------------------------------------- */
 /** \name Boundary from Pixel Buffer
  * \{ */
@@ -773,6 +753,37 @@ static bke::CurvesGeometry process_image(Image &ima,
   }
   else if (dilate_pixels < 0) {
     erode(buffer, -dilate_pixels);
+  }
+
+  constexpr bool use_potrace = true;
+  if (use_potrace) {
+    using image_trace::Bitmap;
+    using image_trace::Trace;
+
+    Bitmap *bm = image_trace::image_to_bitmap(buffer.get(), [&](const ColorGeometry4b &color) {
+      return get_flag(color, ColorFlag::Fill);
+    });
+
+    image_trace::TraceParams params;
+    params.size_threshold = 0;
+    params.turn_policy = image_trace::TurnPolicy::Minority;
+    Trace *trace = image_trace::trace_bitmap(params, *bm);
+
+    constexpr bool output_debug_image = true;
+    if constexpr (output_debug_image) {
+      ImBuf *debug_ibuf = image_trace::bitmap_to_image(*bm);
+      Image *debug_ima = BKE_image_add_from_imbuf(
+          view_context.bmain, debug_ibuf, "Grease Pencil Bitmap");
+      debug_ima->id.tag |= LIB_TAG_DOIT;
+      BKE_image_release_ibuf(debug_ima, debug_ibuf, nullptr);
+    }
+
+    image_trace::free_bitmap(bm);
+
+    bke::CurvesGeometry curves = image_trace::trace_to_curves(
+        *trace, [&](const int2 &pixel) { return placement.project(float2(pixel)); });
+    image_trace::free_trace(trace);
+    return curves;
   }
 
   /* In regular mode create only the outline of the filled area.

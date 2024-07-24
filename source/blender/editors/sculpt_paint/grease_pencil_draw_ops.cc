@@ -4,6 +4,7 @@
 
 #include "ANIM_keyframing.hh"
 
+#include "BKE_attribute.hh"
 #include "BKE_brush.hh"
 #include "BKE_colortools.hh"
 #include "BKE_context.hh"
@@ -1017,35 +1018,6 @@ static Vector<FillToolTargetInfo> ensure_editable_drawings(const Scene &scene,
   return drawings;
 }
 
-static void smooth_fill_strokes(bke::CurvesGeometry &curves, const IndexMask &stroke_mask)
-{
-  const int iterations = 20;
-  if (curves.points_num() == 0) {
-    return;
-  }
-  if (stroke_mask.is_empty()) {
-    return;
-  }
-
-  bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
-  const OffsetIndices points_by_curve = curves.points_by_curve();
-  const VArray<bool> cyclic = curves.cyclic();
-  const VArray<bool> point_selection = VArray<bool>::ForSingle(true, curves.points_num());
-
-  bke::GSpanAttributeWriter positions = attributes.lookup_for_write_span("position");
-  geometry::smooth_curve_attribute(stroke_mask,
-                                   points_by_curve,
-                                   point_selection,
-                                   cyclic,
-                                   iterations,
-                                   1.0f,
-                                   false,
-                                   true,
-                                   positions.span);
-  positions.finish();
-  curves.tag_positions_changed();
-}
-
 static bke::CurvesGeometry simplify_fixed(bke::CurvesGeometry &curves, const int step)
 {
   const OffsetIndices points_by_curve = curves.points_by_curve();
@@ -1075,7 +1047,7 @@ static bool grease_pencil_apply_fill(bContext &C, wmOperator &op, const wmEvent 
   constexpr const ed::greasepencil::FillToolFitMethod fit_method =
       ed::greasepencil::FillToolFitMethod::FitToView;
   /* Debug setting: keep image data blocks for inspection. */
-  constexpr const bool keep_images = false;
+  constexpr const bool keep_images = true;
 
   ARegion &region = *CTX_wm_region(&C);
   /* Perform bounds check. */
@@ -1128,8 +1100,6 @@ static bool grease_pencil_apply_fill(bContext &C, wmOperator &op, const wmEvent 
                                                    fit_method,
                                                    op_data.material_index,
                                                    keep_images);
-
-    smooth_fill_strokes(fill_curves, fill_curves.curves_range());
 
     if (simplify_levels > 0) {
       fill_curves = simplify_fixed(fill_curves, brush.gpencil_settings->fill_simplylvl);

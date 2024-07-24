@@ -128,168 +128,6 @@ void TraceJob::ensure_output_object()
   }
 }
 
-using PathSegment = potrace_dpoint_t[3];
-
-static void trace_data_to_strokes(const potrace_state_t &st,
-                                  Object & /*ob*/,
-                                  bke::greasepencil::Drawing &drawing,
-                                  const float4x4 &transform,
-                                  const float radius)
-{
-  auto project_pixel = [&](const potrace_dpoint_t &point) -> float3 {
-    return math::transform_point(transform, float3(point.x, point.y, 0));
-  };
-
-  ///* Find materials and create them if not found. */
-  // BKE_object_material
-  // int32_t mat_fill_idx = BKE_gpencil_material_find_index_by_name_prefix(ob, "Stroke");
-  // int32_t mat_mask_idx = BKE_gpencil_material_find_index_by_name_prefix(ob, "Holdout");
-
-  // const float default_color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
-  ///* Stroke and Fill material. */
-  // if (mat_fill_idx == -1) {
-  //   int32_t new_idx;
-  //   Material *mat_gp = BKE_gpencil_object_material_new(bmain, ob, "Stroke", &new_idx);
-  //   MaterialGPencilStyle *gp_style = mat_gp->gp_style;
-
-  //  copy_v4_v4(gp_style->stroke_rgba, default_color);
-  //  gp_style->flag |= GP_MATERIAL_STROKE_SHOW;
-  //  gp_style->flag |= GP_MATERIAL_FILL_SHOW;
-  //  mat_fill_idx = ob->totcol - 1;
-  //}
-  ///* Holdout material. */
-  // if (mat_mask_idx == -1) {
-  //   int32_t new_idx;
-  //   Material *mat_gp = BKE_gpencil_object_material_new(bmain, ob, "Holdout", &new_idx);
-  //   MaterialGPencilStyle *gp_style = mat_gp->gp_style;
-
-  //  copy_v4_v4(gp_style->stroke_rgba, default_color);
-  //  copy_v4_v4(gp_style->fill_rgba, default_color);
-  //  gp_style->flag |= GP_MATERIAL_STROKE_SHOW;
-  //  gp_style->flag |= GP_MATERIAL_FILL_SHOW;
-  //  gp_style->flag |= GP_MATERIAL_IS_STROKE_HOLDOUT;
-  //  gp_style->flag |= GP_MATERIAL_IS_FILL_HOLDOUT;
-  //  mat_mask_idx = ob->totcol - 1;
-  //}
-
-  /* Count paths and points. */
-  Vector<int> offsets;
-  for (const potrace_path_t *path = st.plist; path != nullptr; path = path->next) {
-    const Span<int> path_tags = {path->curve.tag, path->curve.n};
-    const Span<PathSegment> path_segments = {path->curve.c, path->curve.n};
-
-    int point_num = 0;
-    for (const int segment_i : path_segments.index_range()) {
-      switch (path_tags[segment_i]) {
-        case POTRACE_CORNER:
-          point_num += 2;
-          break;
-        case POTRACE_CURVETO:
-          point_num += 1;
-          break;
-        default:
-          BLI_assert_unreachable();
-          break;
-      }
-    }
-    offsets.append(point_num);
-  }
-  /* Last element stores total size. */
-  offsets.append(0);
-  const OffsetIndices points_by_curve = offset_indices::accumulate_counts_to_offsets(offsets);
-
-  bke::CurvesGeometry curves(points_by_curve.total_size(), points_by_curve.size());
-  curves.offsets_for_write().copy_from(offsets);
-
-  /* Construct all curves as Bezier curves. */
-  curves.curve_types_for_write().fill(CURVE_TYPE_BEZIER);
-  curves.update_curve_types();
-  /* All trace curves are cyclic. */
-  curves.cyclic_for_write().fill(true);
-  /* Uniform radius for all curves. */
-  drawing.radii_for_write().fill(radius);
-
-  bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
-  bke::SpanAttributeWriter<int> material_indices = attributes.lookup_or_add_for_write_span<int>(
-      "material_index", bke::AttrDomain::Curve);
-  MutableSpan<int8_t> handle_types_left = curves.handle_types_left_for_write();
-  MutableSpan<int8_t> handle_types_right = curves.handle_types_right_for_write();
-  MutableSpan<float3> handle_positions_left = curves.handle_positions_left_for_write();
-  MutableSpan<float3> handle_positions_right = curves.handle_positions_right_for_write();
-  MutableSpan<float3> positions = curves.positions_for_write();
-
-  /* Draw each curve. */
-  int curve_i = 0;
-  for (const potrace_path_t *path = st.plist; path != nullptr; path = path->next, ++curve_i) {
-    const Span<int> path_tags = {path->curve.tag, path->curve.n};
-    const Span<PathSegment> path_segments = {path->curve.c, path->curve.n};
-
-    const IndexRange points = points_by_curve[curve_i];
-    if (points.is_empty()) {
-      continue;
-    }
-
-    material_indices.span[curve_i] = 0 /*path->sign == '+' ? mat_fill_idx : mat_mask_idx*/;
-
-    /* Potrace stores the last 3 points of a bezier segment.
-     * The start point is the last segment's end point. */
-    int point_i = points.last();
-    auto next_point = [&]() {
-      point_i = (point_i == points.last() ? points.first() : point_i + 1);
-    };
-
-    for (const int segment_i : path_segments.index_range()) {
-      const PathSegment &segment = path_segments[segment_i];
-      switch (path_tags[segment_i]) {
-        case POTRACE_CORNER:
-          /* Potrace corners are formed by straight lines from the previous/next point.
-           * segment[0] is unused, segment[1] is the corner position, segment[2] is the next point.
-           */
-          handle_types_right[point_i] = BEZIER_HANDLE_VECTOR;
-
-          next_point();
-          positions[point_i] = project_pixel(segment[1]);
-          handle_types_left[point_i] = BEZIER_HANDLE_VECTOR;
-          handle_types_right[point_i] = BEZIER_HANDLE_VECTOR;
-
-          next_point();
-          positions[point_i] = project_pixel(segment[2]);
-          handle_types_left[point_i] = BEZIER_HANDLE_VECTOR;
-          break;
-        case POTRACE_CURVETO:
-          /* segment[0] is the previous point's right-side handle, segment[1] is the next point's
-           * left-side handle, segment[2] is the next point. */
-          handle_types_right[point_i] = BEZIER_HANDLE_FREE;
-          handle_positions_right[point_i] = project_pixel(segment[0]);
-
-          next_point();
-          positions[point_i] = project_pixel(segment[2]);
-          handle_types_left[point_i] = BEZIER_HANDLE_FREE;
-          handle_positions_left[point_i] = project_pixel(segment[1]);
-          break;
-        default:
-          BLI_assert_unreachable();
-          break;
-      }
-    }
-  }
-
-  material_indices.finish();
-  drawing.tag_topology_changed();
-  drawing.tag_positions_changed();
-  curves.tag_radii_changed();
-
-  /* Calculate handles for all corner points (vector handle type). */
-  bke::curves::bezier::calculate_auto_handles(true,
-                                              handle_types_left,
-                                              handle_types_right,
-                                              positions,
-                                              handle_positions_left,
-                                              handle_positions_right);
-
-  drawing.strokes_for_write() = curves;
-}
-
 static float4x4 pixel_to_object_transform(const Object &image_object,
                                           const ImBuf &ibuf,
                                           const float2 pixel_center = float2(0.5f))
@@ -325,11 +163,12 @@ static bool grease_pencil_trace_image(TraceJob &trace_job,
 
   /* Transform from bitmap index space to local image object space. */
   const float4x4 transform = pixel_to_object_transform(*trace_job.ob_active, ibuf);
+  bke::CurvesGeometry trace_curves = image_trace::trace_to_curves(*trace, transform);
+  image_trace::free_trace(trace);
 
-  trace_data_to_strokes(*trace, *trace_job.ob_grease_pencil, drawing, transform, trace_job.radius);
-
-  /* Free memory. */
-  potrace_state_free(trace);
+  drawing.strokes_for_write() = trace_curves;
+  /* Uniform radius for all trace curves. */
+  drawing.radii_for_write().fill(trace_job.radius);
 
   return true;
 }

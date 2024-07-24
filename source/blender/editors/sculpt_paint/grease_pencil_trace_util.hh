@@ -4,7 +4,9 @@
 
 #pragma once
 
+#include "BKE_curves.hh"
 #include "BLI_color.hh"
+#include "BLI_math_matrix_types.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_span.hh"
 #include "BLI_task.hh"
@@ -14,6 +16,10 @@
 #ifdef WITH_POTRACE
 #  include "potracelib.h"
 #endif
+
+namespace blender::bke {
+class CurvesGeometry;
+}
 
 namespace blender::ed::image_trace {
 
@@ -34,6 +40,60 @@ void free_bitmap(Bitmap *bm);
  *     bool fn(const ColorGeometry4f &color);
  *     bool fn(const ColorGeometry4b &color);
  */
+template<typename ThresholdFn> Bitmap *image_to_bitmap(const ImBuf &ibuf, ThresholdFn fn);
+ImBuf *bitmap_to_image(const Bitmap &bm);
+
+/* Policy for resolving ambiguity during decomposition of bitmaps into paths. */
+enum class TurnPolicy : int8_t {
+  /* Prefers to connect foreground pixels. */
+  Foreground = 0,
+  /* Prefers to connect background pixels. */
+  Background = 1,
+  /* Always take a left turn. */
+  Left = 2,
+  /* Always take a right turn. */
+  Right = 3,
+  /* Prefers to connect minority color in the neighborhood. */
+  Minority = 4,
+  /* Prefers to connect majority color in the neighborhood. */
+  Majority = 5,
+  /* Chose direction randomly. */
+  Random = 6,
+};
+
+struct TraceParams {
+  /* Area of the largest path to be ignored. */
+  int size_threshold = 2;
+  /* Resolves ambiguous turns in path decomposition. */
+  TurnPolicy turn_policy = TurnPolicy::Minority;
+  /* Corner threshold. */
+  float alpha_max = 1.0f;
+  /* True to enable curve optimization. */
+  bool optimize_curves = true;
+  /* Curve optimization tolerance. */
+  float optimize_tolerance = 0.2f;
+};
+
+/**
+ * Trace boundaries in the bitmap.
+ */
+Trace *trace_bitmap(const TraceParams &params, Bitmap &bm);
+void free_trace(Trace *trace);
+
+/**
+ * Create curves from trace data.
+ * Pixels are interpreted as (x, y, 0) coordinates and transformed.
+ */
+bke::CurvesGeometry trace_to_curves(const Trace &trace, const float4x4 &transform);
+/**
+ * Create curves from trace data.
+ * Pixels are transformed by the \a pixel_to_position function.
+ */
+bke::CurvesGeometry trace_to_curves(const Trace &trace,
+                                    FunctionRef<float3(const int2 &)> pixel_to_position);
+
+/* Inline functions. */
+
 template<typename ThresholdFn> Bitmap *image_to_bitmap(const ImBuf &ibuf, ThresholdFn fn)
 {
 #ifdef WITH_POTRACE
@@ -46,7 +106,7 @@ template<typename ThresholdFn> Bitmap *image_to_bitmap(const ImBuf &ibuf, Thresh
   const int words_per_scanline = bm->dy;
   /* Note: bitmap stores one bit per pixel, but can't easily use a BitSpan, because the bit order
    * is reversed in each word (most-significant bit is on the left). */
-  MutableSpan<potrace_word> words = {reinterpret_cast<potrace_word *>(bm->map), num_words};
+  MutableSpan<potrace_word> words = {bm->map, num_words};
 
   /* Use callback with the correct color conversion. */
   constexpr bool is_float_color_fn =
@@ -117,41 +177,5 @@ template<typename ThresholdFn> Bitmap *image_to_bitmap(const ImBuf &ibuf, Thresh
   return nullptr;
 #endif
 }
-
-/* Policy for resolving ambiguity during decomposition of bitmaps into paths. */
-enum class TurnPolicy : int8_t {
-  /* Prefers to connect foreground pixels. */
-  Foreground = 0,
-  /* Prefers to connect background pixels. */
-  Background = 1,
-  /* Always take a left turn. */
-  Left = 2,
-  /* Always take a right turn. */
-  Right = 3,
-  /* Prefers to connect minority color in the neighborhood. */
-  Minority = 4,
-  /* Prefers to connect majority color in the neighborhood. */
-  Majority = 5,
-  /* Chose direction randomly. */
-  Random = 6,
-};
-
-struct TraceParams {
-  /* Area of the largest path to be ignored. */
-  int size_threshold = 2;
-  /* Resolves ambiguous turns in path decomposition. */
-  TurnPolicy turn_policy = TurnPolicy::Minority;
-  /* Corner threshold. */
-  float alpha_max = 1.0f;
-  /* True to enable curve optimization. */
-  bool optimize_curves = true;
-  /* Curve optimization tolerance. */
-  float optimize_tolerance = 0.2f;
-};
-
-/**
- * Trace boundaries in the bitmap.
- */
-Trace *trace_bitmap(const TraceParams &params, Bitmap &bm);
 
 }  // namespace blender::ed::image_trace
