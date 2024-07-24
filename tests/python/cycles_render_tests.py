@@ -61,8 +61,6 @@ BLOCKLIST_OSL = [
     # Ray portal test uses bump + displacement
     'ray_portal.blend',
     # TODO: Tests that need investigating into why they're failing, and how to fix that.
-    # OSL has it's own blackbody function which is slightly different at low and high temperatures
-    'blackbody',
     # Noise differences due to Principled BSDF mixing/layering used in some of these scenes
     'render_passes_.*.blend',
     # Noise differences in Principled BSDF mixing/layering
@@ -241,6 +239,11 @@ def main():
     test_dir_name = Path(test_dir).name
     if test_dir_name in {'motion_blur', 'integrator'}:
         report.set_fail_threshold(0.032)
+
+    # Blackbody is slightly different between SVM and OSL.
+    # Increase the threshold to allow the test to pass.
+    if args.osl and (test_dir_name in {'shader'}):
+        report.set_fail_threshold(0.020)
 
     ok = report.run(test_dir, blender, get_arguments, batch=args.batch)
 
