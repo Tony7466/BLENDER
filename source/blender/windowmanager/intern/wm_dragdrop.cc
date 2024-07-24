@@ -727,8 +727,18 @@ ID *WM_drag_asset_id_import(const bContext *C, wmDragAsset *asset_drag, const in
                                       idtype,
                                       name,
                                       flag | BLO_LIBLINK_APPEND_RECURSIVE |
-                                          BLO_LIBLINK_APPEND_ASSET_DATA_CLEAR |
-                                          BLO_LIBLINK_APPEND_LOCK);
+                                          BLO_LIBLINK_APPEND_ASSET_DATA_CLEAR);
+    case ASSET_IMPORT_APPEND_REUSE:
+      return WM_file_append_datablock(
+          G_MAIN,
+          scene,
+          view_layer,
+          view3d,
+          blend_path.c_str(),
+          idtype,
+          name,
+          flag | BLO_LIBLINK_APPEND_RECURSIVE | BLO_LIBLINK_APPEND_ASSET_DATA_CLEAR |
+              BLO_LIBLINK_APPEND_LOCK | (use_relative_path ? FILE_RELPATH : 0));
   }
 
   BLI_assert_unreachable();

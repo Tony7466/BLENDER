@@ -112,6 +112,11 @@ typedef enum eAssetImportMethod {
   ASSET_IMPORT_LINK = 0,
   /** Regular data-block appending (basically linking + "Make Local"). */
   ASSET_IMPORT_APPEND = 1,
+  /**
+   * Append while also locking the new data-blocks, allowing them to be reused and deduplicated
+   * automatically.
+   */
+  ASSET_IMPORT_APPEND_REUSE = 2,
 } eAssetImportMethod;
 
 typedef enum eAssetLibrary_Flag {

@@ -54,7 +54,7 @@ static void asset_view_item_but_drag_set(uiBut *but, AssetHandle *asset_handle)
   }
 
   const eAssetImportMethod import_method = asset->get_import_method().value_or(
-      ASSET_IMPORT_APPEND);
+      ASSET_IMPORT_APPEND_REUSE);
 
   ImBuf *imbuf = asset::list::asset_image_get(asset_handle);
   UI_but_drag_set_asset(

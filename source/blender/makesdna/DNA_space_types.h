@@ -877,7 +877,11 @@ typedef enum eFileAssetImportMethod {
   FILE_ASSET_IMPORT_LINK = 0,
   /** Regular data-block appending (basically linking + "Make Local"). */
   FILE_ASSET_IMPORT_APPEND = 1,
-  FILE_ASSET_IMPORT_APPEND_REUSE_LEGACY = 2,
+  /**
+   * This appends the assets recursively and locks them so that they can't be edited unless
+   * explicitely made local.
+   */
+  FILE_ASSET_IMPORT_APPEND_REUSE = 2,
   /** Default: Follow the preference setting for this asset library. */
   FILE_ASSET_IMPORT_FOLLOW_PREFS = 3,
 } eFileAssetImportMethod;

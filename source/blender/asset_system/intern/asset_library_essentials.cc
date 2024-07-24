@@ -20,7 +20,7 @@ EssentialsAssetLibrary::EssentialsAssetLibrary()
                          {},
                          utils::normalize_directory_path(essentials_directory_path()))
 {
-  import_method_ = ASSET_IMPORT_APPEND;
+  import_method_ = ASSET_IMPORT_APPEND_REUSE;
 }
 
 StringRefNull essentials_directory_path()

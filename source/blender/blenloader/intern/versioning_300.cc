@@ -3030,9 +3030,9 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
                                          FILE_PARAMS_FLAG_UNUSED_3 | FILE_PATH_TOKENS_ALLOW);
               }
 
-              /* New default import method: Follow preferences. */
+              /* New default import method: Append with reuse. */
               if (sfile->asset_params) {
-                sfile->asset_params->import_method = FILE_ASSET_IMPORT_FOLLOW_PREFS;
+                sfile->asset_params->import_method = ASSET_IMPORT_APPEND_REUSE;
               }
               break;
             }
@@ -4314,7 +4314,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
 
           /* When an asset browser uses the default import method, make it follow the new
            * preference setting. This means no effective default behavior change. */
-          if (sfile->asset_params->import_method == FILE_ASSET_IMPORT_APPEND_REUSE_LEGACY) {
+          if (sfile->asset_params->import_method == FILE_ASSET_IMPORT_APPEND_REUSE) {
             sfile->asset_params->import_method = FILE_ASSET_IMPORT_FOLLOW_PREFS;
           }
         }

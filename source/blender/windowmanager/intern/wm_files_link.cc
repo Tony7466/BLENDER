@@ -139,11 +139,11 @@ static int wm_link_append_flag(wmOperator *op)
     if (RNA_boolean_get(op->ptr, "set_fake")) {
       flag |= BLO_LIBLINK_APPEND_SET_FAKEUSER;
     }
-    if (RNA_boolean_get(op->ptr, "clear_asset_data")) {
-      flag |= BLO_LIBLINK_APPEND_ASSET_DATA_CLEAR;
-    }
     if (RNA_boolean_get(op->ptr, "lock")) {
       flag |= BLO_LIBLINK_APPEND_LOCK;
+    }
+    if (RNA_boolean_get(op->ptr, "clear_asset_data")) {
+      flag |= BLO_LIBLINK_APPEND_ASSET_DATA_CLEAR;
     }
   }
   if (RNA_boolean_get(op->ptr, "instance_collections")) {

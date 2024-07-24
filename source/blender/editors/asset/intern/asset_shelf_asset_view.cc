@@ -368,7 +368,7 @@ void *AssetDragController::create_drag_data() const
   }
 
   const eAssetImportMethod import_method = asset_.get_import_method().value_or(
-      ASSET_IMPORT_APPEND);
+      ASSET_IMPORT_APPEND_REUSE);
 
   return WM_drag_create_asset_data(&asset_, import_method);
 }
