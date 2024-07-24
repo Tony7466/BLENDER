@@ -20,6 +20,8 @@
 
 #  ifndef _WIN32
 #    include <unistd.h>
+#  else
+#    include "BLI_winstuff.h"
 #  endif
 
 namespace blender::gpu {
@@ -301,6 +303,26 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
   GPU_context_discard(gpu_context);
   GHOST_DisposeGPUContext(ghost_system, ghost_context);
   GHOST_DisposeSystem(ghost_system);
+}
+
+void GPU_shader_cache_dir_clear_old()
+{
+  std::string cache_dir = cache_dir_get();
+
+  direntry *entries = nullptr;
+  uint32_t dir_len = BLI_filelist_dir_contents(cache_dir.c_str(), &entries);
+  for (int i : blender::IndexRange(dir_len)) {
+    direntry entry = entries[i];
+    if (S_ISDIR(entry.s.st_mode)) {
+      continue;
+    }
+    const time_t ts_now = time(nullptr);
+    const time_t delete_threshold = 60 /*seconds*/ * 60 /*minutes*/ * 24 /*hours*/ * 30 /*days*/;
+    if (entry.s.st_mtime + delete_threshold < ts_now) {
+      BLI_delete(entry.path, false, false);
+    }
+  }
+  BLI_filelist_free(entries, dir_len);
 }
 
 #endif
