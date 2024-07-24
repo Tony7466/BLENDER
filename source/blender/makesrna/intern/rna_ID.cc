@@ -302,6 +302,14 @@ static int rna_ID_name_editable(const PointerRNA *ptr, const char **r_info)
 {
   ID *id = (ID *)ptr->data;
 
+  if (ID_IS_LOCKED(id)) {
+    if (r_info) {
+      /* Actually, technically their name is allowed to change, but maybe the user shouldn't be
+       * able to change it? */
+      *r_info = N_("Locked data-blocks cannot be renamed");
+    }
+    return 0;
+  }
   /* NOTE: For the time being, allow rename of local liboverrides from the RNA API.
    *       While this is not allowed from the UI, this should work with modern liboverride code,
    *       and could be useful in some cases. */
