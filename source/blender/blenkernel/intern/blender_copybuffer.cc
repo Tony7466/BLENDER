@@ -77,7 +77,7 @@ static void copybuffer_append(BlendfileLinkAppendContext *lapp_context,
    * file. */
   BKE_main_id_tag_all(bmain, LIB_TAG_PRE_EXISTING, false);
 
-  BKE_main_deduplicate_locked_ids(*bmain);
+  BKE_locked_id_duplicates_remove(*bmain);
 
   /* Recreate dependency graph to include new objects. */
   DEG_relations_tag_update(bmain);

@@ -864,7 +864,7 @@ int set_listbasepointers(Main *bmain, ListBase *lb[/*INDEX_ID_MAX*/])
   return (INDEX_ID_MAX - 1);
 }
 
-void BKE_main_deduplicate_locked_ids(Main &bmain)
+blender::Map<ID *, ID *> BKE_main_locked_id_duplicates_find_representative(Main &bmain)
 {
   ID *id;
   blender::MultiValueMap<IDHash, ID *> ids_with_hash;
@@ -875,7 +875,7 @@ void BKE_main_deduplicate_locked_ids(Main &bmain)
   }
   FOREACH_MAIN_ID_END;
 
-  blender::Set<ID *> ids_to_delete;
+  blender::Map<ID *, ID *> representatives;
   for (const blender::Span<ID *> ids_with_same_hash : ids_with_hash.values()) {
     if (ids_with_same_hash.size() <= 1) {
       /* Nothing to do, because there are no duplicates. */
@@ -889,11 +889,23 @@ void BKE_main_deduplicate_locked_ids(Main &bmain)
     }
     for (ID *id : ids_with_same_hash) {
       if (id != id_to_keep) {
-        BKE_libblock_remap(&bmain, id, id_to_keep, 0);
-        ids_to_delete.add(id);
+        representatives.add(id, id_to_keep);
       }
     }
   }
-  BKE_main_id_newptr_and_tag_clear(&bmain);
+  return representatives;
+}
+
+void BKE_locked_id_duplicates_remove(Main &bmain)
+{
+  blender::Map<ID *, ID *> representatives = BKE_main_locked_id_duplicates_find_representative(
+      bmain);
+
+  blender::Set<ID *> ids_to_delete;
+  for (auto &&[id, representative] : representatives.items()) {
+    BLI_assert(id != representative);
+    BKE_libblock_remap(&bmain, id, representative, 0);
+    ids_to_delete.add(id);
+  }
   BKE_id_multi_delete(&bmain, ids_to_delete);
 }

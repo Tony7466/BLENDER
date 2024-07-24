@@ -1239,6 +1239,9 @@ static void compute_locked_hash_for_data_block_recursive(
           XXH3_128bits_update(locked_hash_state, &some_data, sizeof(some_data));
           return IDWALK_RET_NOP;
         }
+        if (referenced_id->flag & LIB_EMBEDDED_DATA) {
+          return IDWALK_RET_NOP;
+        }
         if (current_stack.contains(referenced_id)) {
           return IDWALK_RET_NOP;
         }
@@ -1254,7 +1257,7 @@ static void compute_locked_hash_for_data_block_recursive(
         return IDWALK_RET_NOP;
       },
       nullptr,
-      IDWALK_READONLY | IDWALK_IGNORE_EMBEDDED_ID);
+      IDWALK_READONLY);
   current_stack.remove(&id);
 
   if (has_invalid_dependency) {
@@ -1351,6 +1354,11 @@ void BKE_blendfile_append(BlendfileLinkAppendContext *lapp_context, ReportList *
           }
           else {
             local_appended_new_id->deep_hash = {};
+            CLOG_INFO(&LOG,
+                      3,
+                      "Appended ID '%s' can not be locked because not all of its dependencies "
+                      "have a hash. Try resaving the dependencies in a new version of Blender.",
+                      id->name);
           }
         }
       }
@@ -1807,7 +1815,7 @@ void BKE_blendfile_library_relocate(BlendfileLinkAppendContext *lapp_context,
   /* We do not want any instantiation here! */
   BKE_blendfile_link(lapp_context, reports);
 
-  BKE_main_deduplicate_locked_ids(*bmain);
+  BKE_locked_id_duplicates_remove(*bmain);
 
   BKE_main_lock(bmain);
 

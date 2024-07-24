@@ -23,6 +23,7 @@
 #include "DNA_listBase.h"
 
 #include "BLI_compiler_attrs.h"
+#include "BLI_map.hh"
 #include "BLI_sys_types.h"
 
 struct BLI_mempool;
@@ -458,7 +459,8 @@ const char *BKE_main_blendfile_path(const Main *bmain) ATTR_NONNULL();
  */
 const char *BKE_main_blendfile_path_from_global();
 
-void BKE_main_deduplicate_locked_ids(Main &bmain);
+blender::Map<ID *, ID *> BKE_main_locked_id_duplicates_find_representative(Main &bmain);
+void BKE_locked_id_duplicates_remove(Main &bmain);
 
 /**
  * \return A pointer to the \a ListBase of given \a bmain for requested \a type ID type.

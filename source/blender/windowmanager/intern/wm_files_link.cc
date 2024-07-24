@@ -366,7 +366,7 @@ static int wm_link_append_exec(bContext *C, wmOperator *op)
     BKE_blendfile_append(lapp_context, op->reports);
   }
 
-  BKE_main_deduplicate_locked_ids(*bmain);
+  BKE_locked_id_duplicates_remove(*bmain);
 
   BKE_blendfile_link_append_context_free(lapp_context);
 
@@ -548,10 +548,13 @@ static ID *wm_file_link_append_datablock_ex(Main *bmain,
     BKE_blendfile_append(lapp_context, nullptr);
   }
 
-  BKE_main_deduplicate_locked_ids(*bmain);
-
-  /* Get linked datablock and free working data. */
+  blender::Map<ID *, ID *> representatives = BKE_main_locked_id_duplicates_find_representative(
+      *bmain);
+  /* Get loaded data block. */
   ID *id = BKE_blendfile_link_append_context_item_newid_get(lapp_context, item);
+  id = representatives.lookup_default(id, id);
+
+  BKE_locked_id_duplicates_remove(*bmain);
 
   BKE_blendfile_link_append_context_free(lapp_context);
 
