@@ -14,7 +14,6 @@
 #include <cstdlib> /* for atoi. */
 #include <ctime>   /* for gmtime. */
 #include <fcntl.h> /* for open flags (O_BINARY, O_RDONLY). */
-#include <unordered_map>
 
 #include "BLI_utildefines.h"
 #ifndef WIN32
@@ -48,6 +47,7 @@
 #include "DNA_volume_types.h"
 #include "DNA_workspace_types.h"
 
+#include "MEM_alloc_string_storage.hh"
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
@@ -1706,98 +1706,83 @@ static void switch_endian_structs(const SDNA *filesdna, BHead *bhead)
 }
 
 /**
- * Global data storing the allocation message for all read blocks from a blendfile.
+ * Generate the final allocation string reference for read blocks of data. If \a blockname is
+ * given, use it as 'owner block' info, otherwise use the id type index to get that info.
  *
- * For regular release builds, this is only storing generic per-ID types messages.
- * For 'Debug' builds (and release ones with `WITH_ASSERT_ABORT` enabled), it will generate
- * messages including the 'main owner block' info (e.g. the ID type), the read DNA struct name, and
- * its array size if meaningful.
- *
- * This is stored as a static global variable, to ensure that it is freed last when the executable
- * terminates, after checks for unfreed memory blocks in MEM_guardedalloc code. Otherwise, these
- * checks will access freed memory (and even abort before printing anything in ASAN builds).
+ * \note: These strings are stored until Blender exits
  */
-class BLOAllocationInfoStorage {
-  /* NOTE: Using STL containers only here, to avoid `blender::` ones using MEM_guardedalloc
-   * internally, which would trigger the "Freeing memory after the leak detector has run" error,
-   * since these are global static data. */
+static const char *get_alloc_name(FileData *fd,
+                                  BHead *bh,
+                                  const char *blockname,
+                                  int id_type_index = INDEX_ID_NULL)
+{
 #ifndef NDEBUG
-  using key_type = const std::pair<const std::string, const int>;
-  using value_type = std::string;
-  std::unordered_map<key_type, value_type, blender::DefaultHash<key_type>> full_alloc_names_;
+  /* Storage key is a pair of (string , int), where the first is the concatenation of the 'owner
+   * block' string and DNA struct type name, and the second the length of the array, as defined by
+   * the #BHead.nr value. */
+  using keyT = const std::pair<const std::string, const int>;
+#else
+  /* Storage key is simple int, which is the ID type index. */
+  using keyT = int;
 #endif
-  std::array<std::string, INDEX_ID_MAX> id_alloc_names_ = {};
+  constexpr std::string_view STORAGE_ID = "readfile";
 
-  void id_alloc_names_ensure()
-  {
-    if (LIKELY(!id_alloc_names_[0].empty())) {
-      return;
-    }
+  if (!fd->storage_handle) {
+    fd->storage_handle = &intern::memutil::alloc_string_storage_get<keyT, blender::DefaultHash>(
+        std::string(STORAGE_ID));
+  }
+  intern::memutil::AllocStringStorage<keyT, blender::DefaultHash> &storage =
+      *static_cast<intern::memutil::AllocStringStorage<keyT, blender::DefaultHash> *>(
+          fd->storage_handle);
+
+  const bool is_id_data = !blockname && (id_type_index >= 0 && id_type_index < INDEX_ID_MAX);
+
+#ifndef NDEBUG
+  /* Local storage of id type names, for fast access to this info. */
+  static const std::array<std::string, INDEX_ID_MAX> id_alloc_names = [] {
+    auto n = decltype(id_alloc_names)();
     for (int idtype_index = 0; idtype_index < INDEX_ID_MAX; idtype_index++) {
+      const IDTypeInfo *idtype_info = BKE_idtype_get_info_from_idtype_index(idtype_index);
+      BLI_assert(idtype_info);
       if (idtype_index == INDEX_ID_NULL) {
         /* #INDEX_ID_NULL returns the #IDType_ID_LINK_PLACEHOLDER type info, here we will rather
          * use it for unknown/invalid ID types. */
-#ifndef NDEBUG
-        id_alloc_names_[size_t(idtype_index)] = std::string("UNKNOWN");
-#else
-        id_alloc_names_[size_t(idtype_index)] = "Data from UNKNOWN ID type";
-#endif
+        n[size_t(idtype_index)] = "UNKNWOWN";
       }
       else {
-        const IDTypeInfo *idtype_info = BKE_idtype_get_info_from_idtype_index(idtype_index);
-        BLI_assert(idtype_info);
-#ifndef NDEBUG
-        id_alloc_names_[size_t(idtype_index)] = std::string(idtype_info->name);
-#else
-        id_alloc_names_[size_t(idtype_index)] = std::string("Data from '") + idtype_info->name +
-                                                "' ID type";
-#endif
+        n[size_t(idtype_index)] = idtype_info->name;
       }
     }
-  }
+    return n;
+  }();
 
- public:
-  /**
-   * Generate the final allocation string reference for read blocks of data. If \a blockname is
-   * given, use as 'owner block' info, otherwise use the id type index to get that info.
-   */
-  const char *get_alloc_name(FileData *fd,
-                             BHead *bh,
-                             const char *blockname,
-                             const int id_type_index = INDEX_ID_NULL)
-  {
-    this->id_alloc_names_ensure();
-    const bool is_id_data = !blockname && (id_type_index >= 0 && id_type_index < INDEX_ID_MAX);
-#ifndef NDEBUG
-    const std::string block_alloc_name = is_id_data ? id_alloc_names_[id_type_index] :
-                                                      (blockname ? blockname : "UNKNOWN");
-    const std::string struct_name = DNA_struct_identifier(fd->filesdna, bh->SDNAnr);
-    key_type key{block_alloc_name + struct_name, bh->nr};
-    if (full_alloc_names_.count(key) == 0) {
-      const std::string alloc_name = fmt::format(
-          (is_id_data ? "{}{} (for ID type '{}')" : "{}{} (for block '{}')"),
-          struct_name,
-          bh->nr > 1 ? fmt::format("[{}]", bh->nr) : "",
-          block_alloc_name);
-      full_alloc_names_[key] = alloc_name;
-    }
-    const std::string &alloc_name = full_alloc_names_.find(key)->second;
-    return alloc_name.c_str();
-#else
-    UNUSED_VARS_NDEBUG(fd, bh);
-    return is_id_data ? id_alloc_names_[id_type_index].c_str() :
-                        (blockname ? blockname : "UNKNOWN");
-#endif
+  const std::string block_alloc_name = is_id_data ? id_alloc_names[id_type_index] : blockname;
+  const std::string struct_name = DNA_struct_identifier(fd->filesdna, bh->SDNAnr);
+  keyT key{block_alloc_name + struct_name, bh->nr};
+  if (!storage.contains(key)) {
+    const std::string alloc_string = fmt::format(
+        (is_id_data ? "{}{} (for ID type '{}')" : "{}{} (for block '{}')"),
+        struct_name,
+        bh->nr > 1 ? fmt::format("[{}]", bh->nr) : "",
+        block_alloc_name);
+    return storage.insert(key, alloc_string);
   }
-};
-static BLOAllocationInfoStorage &mem_allocation_info_get()
-{
-  static BLOAllocationInfoStorage mem_allocation_info{};
-  return mem_allocation_info;
-}
-void BLO_init_readfile_alloc_info_storage()
-{
-  mem_allocation_info_get();
+  return storage.find(key);
+#else
+  /* Simple storage for pure release builds, using integer as key, one entry for each ID type. */
+  UNUSED_VARS_NDEBUG(bh);
+  if (is_id_data) {
+    if (UNLIKELY(!storage.contains(id_type_index))) {
+      if (id_type_index == INDEX_ID_NULL) {
+        return storage.insert(id_type_index, "UNKNOWN");
+      }
+      const IDTypeInfo *id_type = BKE_idtype_get_info_from_idtype_index(id_type_index);
+      return storage.insert(id_type_index, id_type->name);
+    }
+    return storage.find(id_type_index);
+  }
+  return blockname;
+#endif
 }
 
 static void *read_struct(FileData *fd, BHead *bh, const char *blockname, const int id_type_index)
@@ -1824,8 +1809,7 @@ static void *read_struct(FileData *fd, BHead *bh, const char *blockname, const i
     }
 
     if (fd->compflags[bh->SDNAnr] != SDNA_CMP_REMOVED) {
-      const char *alloc_name = mem_allocation_info_get().get_alloc_name(
-          fd, bh, blockname, id_type_index);
+      const char *alloc_name = get_alloc_name(fd, bh, blockname, id_type_index);
       if (fd->compflags[bh->SDNAnr] == SDNA_CMP_NOT_EQUAL) {
 #ifdef USE_BHEAD_READ_ON_DEMAND
         if (BHEADN_FROM_BHEAD(bh)->has_data == false) {

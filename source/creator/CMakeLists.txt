@@ -4,7 +4,6 @@
 
 set(INC
   ../blender/blenkernel
-  ../blender/blenloader
   ../blender/editors/include
   ../blender/gpu
   ../blender/imbuf
@@ -21,6 +20,7 @@ set(LIB
   PRIVATE bf::dna
   PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::intern::memutil
   bf_windowmanager
 )
 

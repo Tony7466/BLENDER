@@ -4,6 +4,7 @@
 
 #include "testing/testing.h"
 
+#include "MEM_alloc_string_storage.hh"
 #include "MEM_guardedalloc.h"
 
 DEFINE_string(test_assets_dir, "", "tests/data directory containing the test assets.");
@@ -32,6 +33,10 @@ const std::string &flags_test_release_dir()
 
 int main(int argc, char **argv)
 {
+  /* Initialize storage for memory allocation info before calling #MEM_init_memleak_detection, to
+   * ensure that these strings are not freed before the destruction of the #MemLeakPrinter. */
+  intern::memutil::alloc_string_storage_init();
+
   MEM_use_guarded_allocator();
   MEM_init_memleak_detection();
   MEM_enable_fail_on_memleak();

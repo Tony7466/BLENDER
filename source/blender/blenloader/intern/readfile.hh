@@ -136,6 +136,8 @@ struct FileData {
   IDNameLib_Map *new_idmap_uid;
 
   BlendFileReadReport *reports;
+
+  void *storage_handle;
 };
 
 #define SIZEOFBLENDERHEADER 12
