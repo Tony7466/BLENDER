@@ -10,6 +10,7 @@
 
 /* Needed for BKE_ccg.hh. */
 #include "BLI_assert.h"
+#include "BLI_index_mask.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_set.hh"
@@ -20,7 +21,6 @@
 #include "DNA_customdata_types.h"
 
 #include "BKE_ccg.hh"
-#include "BKE_pbvh.hh"
 
 namespace blender::gpu {
 class Batch;
@@ -30,11 +30,13 @@ struct CustomData;
 struct SubdivCCG;
 struct BMesh;
 struct BMFace;
+struct RegionView3D;
 namespace blender::bke {
 enum class AttrDomain : int8_t;
 namespace pbvh {
 class Node;
-}
+class DrawCache;
+}  // namespace pbvh
 }  // namespace blender::bke
 
 namespace blender::draw::pbvh {
@@ -60,16 +62,24 @@ enum class CustomRequest : int8_t {
 
 using AttributeRequest = std::variant<CustomRequest, GenericRequest>;
 
-struct PBVHDrawData;
+class DrawCache;
 
 struct ViewportRequest {
   Set<AttributeRequest> attributes;
   bool use_coarse_grids;
 };
 
-Span<gpu::Batch *> ensure_tris_batches(const ViewportRequest &request,
-                                       const Object &object,
+Span<gpu::Batch *> ensure_tris_batches(const Object &object,
+                                       const ViewportRequest &request,
                                        const IndexMask &nodes_to_update,
-                                       PBVHDrawData &draw_data);
+                                       DrawCache &draw_data);
+Span<gpu::Batch *> ensure_lines_batches(const Object &object,
+                                        const ViewportRequest &request,
+                                        const IndexMask &nodes_to_update,
+                                        DrawCache &draw_data);
+
+IndexMask calc_visible_nodes(const bke::pbvh::Tree &pbvh,
+                             const RegionView3D &rv3d,
+                             IndexMaskMemory &memory);
 
 }  // namespace blender::draw::pbvh

@@ -216,6 +216,8 @@ class Tree {
 
   pixels::PBVHData *pixels_ = nullptr;
 
+  std::unique_ptr<DrawCache> draw_data;
+
  public:
   Tree(const Type type) : type_(type) {}
   ~Tree();
