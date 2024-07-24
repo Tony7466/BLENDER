@@ -1051,7 +1051,7 @@ static void lib_override_linked_group_tag_recursive(LibOverrideGroupTagData *dat
       continue;
     }
     ID *to_id = *to_id_entry->id_pointer.to;
-    BLI_assert(ID_IS_LINKED(to_id));
+    BLI_assert(ID_IS_LINKED(to_id) || ID_IS_LOCKED(to_id));
     if (lib_override_hierarchy_dependencies_skip_check(id_owner, to_id, false)) {
       continue;
     }

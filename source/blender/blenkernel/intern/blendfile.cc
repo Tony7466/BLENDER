@@ -714,7 +714,7 @@ static int reuse_bmain_data_invalid_local_usages_fix_cb(LibraryIDLinkCallbackDat
     return IDWALK_RET_NOP;
   }
 
-  if (!ID_IS_LINKED(id)) {
+  if (!ID_IS_LINKED(id) && !ID_IS_LOCKED(id)) {
     ID *owner_id = cb_data->owner_id;
 
     /* Do not allow linked data to use local data. */

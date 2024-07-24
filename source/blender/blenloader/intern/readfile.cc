@@ -304,7 +304,7 @@ static void *oldnewmap_liblookup(OldNewMap *onm, const void *addr, const bool is
   if (id == nullptr) {
     return nullptr;
   }
-  if (!is_linked_only || ID_IS_LINKED(id)) {
+  if (!is_linked_only || ID_IS_LINKED(id) || ID_IS_LOCKED(id)) {
     return id;
   }
   return nullptr;
