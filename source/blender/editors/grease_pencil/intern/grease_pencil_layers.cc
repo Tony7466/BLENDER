@@ -942,7 +942,7 @@ void merge_layers(Object &object,
   };
 
   for (const int layer : src_layers.index_range()) {
-    if(src_layers[layer] == &target_layer){ continue; }
+    //if(src_layers[layer] == &target_layer){ continue; }
     bke::greasepencil::Layer source_layer = *src_layers[layer];
     source_layer.frames().foreach_item([&](const blender::bke::greasepencil::FramesMapKeyT &key,
                                            const GreasePencilFrame &frame) {
@@ -1012,7 +1012,7 @@ static int grease_pencil_merge_layer_exec(bContext *C, wmOperator *op)
     }
     bke::greasepencil::Layer &target_layer = prev_node->as_layer();
     merge_layers(*object, grease_pencil, {active_layer}, target_layer);
-      grease_pencil.remove_layer(*active_layer);
+    grease_pencil.remove_layer(*active_layer);
   }
   else{
     bke::greasepencil::TreeNode *parent_node=nullptr;
@@ -1040,7 +1040,7 @@ static int grease_pencil_merge_layer_exec(bContext *C, wmOperator *op)
     merge_layers(*object, grease_pencil, source_layers, target_layer);
 
     if(parent_node != &grease_pencil.root_group().as_node()){
-      grease_pencil.move_node_after(*parent_node,target_layer.as_node());
+      grease_pencil.move_node_after(target_layer.as_node(),*parent_node);
       grease_pencil.remove_group(parent_node->as_group());
     }else{
       for(bke::greasepencil::Layer* layer:grease_pencil.layers_for_write()){

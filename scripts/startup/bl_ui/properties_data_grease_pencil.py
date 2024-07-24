@@ -193,6 +193,11 @@ class GREASE_PENCIL_MT_grease_pencil_add_layer_extra(Menu):
         layout.operator("grease_pencil.layer_lock_all", icon='UNLOCKED', text="Unlock All").lock = False
 
         layout.separator()
+        layout.operator("grease_pencil.layer_merge", icon='TRIA_DOWN').mode='ACTIVE'
+        layout.operator("grease_pencil.layer_merge", text='Merge In Group', icon='TRIA_DOWN_BAR').mode='GROUP'
+        layout.operator("grease_pencil.layer_merge", text='Merge All Layers', icon='TRIA_DOWN_BAR').mode='ALL'
+
+        layout.separator()
         layout.prop(grease_pencil, "use_autolock_layers", text="Autolock Inactive Layers")
 
         if layer:
