@@ -504,6 +504,22 @@ const EnumPropertyItem rna_enum_node_geometry_mesh_circle_fill_type_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+const EnumPropertyItem rna_enum_geometry_nodes_gizmo_color_items[] = {
+    {GEO_NODE_GIZMO_COLOR_PRIMARY, "PRIMARY", 0, "Primary", ""},
+    {GEO_NODE_GIZMO_COLOR_SECONDARY, "SECONDARY", 0, "Secondary", ""},
+    {GEO_NODE_GIZMO_COLOR_X, "X", 0, "X", ""},
+    {GEO_NODE_GIZMO_COLOR_Y, "Y", 0, "Y", ""},
+    {GEO_NODE_GIZMO_COLOR_Z, "Z", 0, "Z", ""},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
+const EnumPropertyItem rna_enum_geometry_nodes_linear_gizmo_draw_style_items[] = {
+    {GEO_NODE_LINEAR_GIZMO_DRAW_STYLE_ARROW, "ARROW", 0, "Arrow", ""},
+    {GEO_NODE_LINEAR_GIZMO_DRAW_STYLE_CROSS, "CROSS", 0, "Cross", ""},
+    {GEO_NODE_LINEAR_GIZMO_DRAW_STYLE_BOX, "BOX", 0, "Box", ""},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
 #ifndef RNA_RUNTIME
 static const EnumPropertyItem node_sampler_type_items[] = {
     {0, "NEAREST", 0, "Nearest", ""},
@@ -1829,7 +1845,7 @@ static void geometry_node_asset_trait_flag_set(PointerRNA *ptr,
 {
   bNodeTree *ntree = static_cast<bNodeTree *>(ptr->data);
   if (!ntree->geometry_node_asset_traits) {
-    ntree->geometry_node_asset_traits = MEM_new<GeometryNodeAssetTraits>(__func__);
+    ntree->geometry_node_asset_traits = MEM_cnew<GeometryNodeAssetTraits>(__func__);
   }
   SET_FLAG_FROM_TEST(ntree->geometry_node_asset_traits->flag, value, flag);
 }
@@ -3038,7 +3054,7 @@ static const EnumPropertyItem *rna_Node_view_layer_itemf(bContext * /*C*/,
 
 static void rna_Node_view_layer_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
-  rna_Node_update(bmain, scene, ptr);
+  rna_Node_update_relations(bmain, scene, ptr);
   if (scene != nullptr && scene->nodetree != nullptr) {
     ntreeCompositUpdateRLayers(scene->nodetree);
   }
@@ -3126,7 +3142,7 @@ static void rna_Image_Node_update_id(Main *bmain, Scene *scene, PointerRNA *ptr)
   bNode *node = static_cast<bNode *>(ptr->data);
 
   blender::bke::nodeTagUpdateID(node);
-  rna_Node_update(bmain, scene, ptr);
+  rna_Node_update_relations(bmain, scene, ptr);
 }
 
 static void rna_NodeOutputFile_slots_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
@@ -3155,6 +3171,34 @@ static void rna_NodeColorBalance_update_cdl(Main *bmain, Scene *scene, PointerRN
   ntreeCompositColorBalanceSyncFromCDL(reinterpret_cast<bNodeTree *>(ptr->owner_id),
                                        static_cast<bNode *>(ptr->data));
   rna_Node_update(bmain, scene, ptr);
+}
+
+static void rna_NodeColorBalance_input_whitepoint_get(PointerRNA *ptr, float value[3])
+{
+  bNode *node = static_cast<bNode *>(ptr->data);
+  NodeColorBalance *n = static_cast<NodeColorBalance *>(node->storage);
+  IMB_colormanagement_get_whitepoint(n->input_temperature, n->input_tint, value);
+}
+
+static void rna_NodeColorBalance_input_whitepoint_set(PointerRNA *ptr, const float value[3])
+{
+  bNode *node = static_cast<bNode *>(ptr->data);
+  NodeColorBalance *n = static_cast<NodeColorBalance *>(node->storage);
+  IMB_colormanagement_set_whitepoint(value, n->input_temperature, n->input_tint);
+}
+
+static void rna_NodeColorBalance_output_whitepoint_get(PointerRNA *ptr, float value[3])
+{
+  bNode *node = static_cast<bNode *>(ptr->data);
+  NodeColorBalance *n = static_cast<NodeColorBalance *>(node->storage);
+  IMB_colormanagement_get_whitepoint(n->output_temperature, n->output_tint, value);
+}
+
+static void rna_NodeColorBalance_output_whitepoint_set(PointerRNA *ptr, const float value[3])
+{
+  bNode *node = static_cast<bNode *>(ptr->data);
+  NodeColorBalance *n = static_cast<NodeColorBalance *>(node->storage);
+  IMB_colormanagement_set_whitepoint(value, n->output_temperature, n->output_tint);
 }
 
 static void rna_NodeCryptomatte_source_set(PointerRNA *ptr, int value)
@@ -3192,7 +3236,7 @@ static void rna_NodeCryptomatte_layer_name_set(PointerRNA *ptr, int new_value)
   }
 }
 
-static const EnumPropertyItem *rna_NodeCryptomatte_layer_name_itemf(bContext *C,
+static const EnumPropertyItem *rna_NodeCryptomatte_layer_name_itemf(bContext * /* C */,
                                                                     PointerRNA *ptr,
                                                                     PropertyRNA * /*prop*/,
                                                                     bool *r_free)
@@ -3203,7 +3247,6 @@ static const EnumPropertyItem *rna_NodeCryptomatte_layer_name_itemf(bContext *C,
   EnumPropertyItem temp = {0, "", 0, "", ""};
   int totitem = 0;
 
-  ntreeCompositCryptomatteUpdateLayerNames(CTX_data_scene(C), node);
   int layer_index;
   LISTBASE_FOREACH_INDEX (CryptomatteLayer *, layer, &storage->runtime.layers, layer_index) {
     temp.value = layer_index;
@@ -3297,7 +3340,7 @@ static void rna_NodeCryptomatte_matte_set(PointerRNA *ptr, const char *value)
 
 static void rna_NodeCryptomatte_update_add(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
-  ntreeCompositCryptomatteSyncFromAdd(scene, static_cast<bNode *>(ptr->data));
+  ntreeCompositCryptomatteSyncFromAdd(static_cast<bNode *>(ptr->data));
   rna_Node_update(bmain, scene, ptr);
 }
 
@@ -4509,7 +4552,7 @@ static void def_texture(StructRNA *srna)
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(prop, "Texture", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update_relations");
 
   prop = RNA_def_property(srna, "node_output", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, nullptr, "custom1");
@@ -5003,6 +5046,58 @@ static void def_geo_image_texture(StructRNA *srna)
   RNA_def_property_ui_text(
       prop, "Extension", "How the image is extrapolated past its original bounds");
   RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_IMAGE);
+  RNA_def_property_update(prop, 0, "rna_Node_update");
+}
+
+static void rna_def_geo_gizmo_transform(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  RNA_def_struct_sdna_from(srna, "NodeGeometryTransformGizmo", "storage");
+
+  prop = RNA_def_property(srna, "use_translation_x", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", GEO_NODE_TRANSFORM_GIZMO_USE_TRANSLATION_X);
+  RNA_def_property_ui_text(prop, "Use Translation X", nullptr);
+  RNA_def_property_update(prop, 0, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "use_translation_y", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", GEO_NODE_TRANSFORM_GIZMO_USE_TRANSLATION_Y);
+  RNA_def_property_ui_text(prop, "Use Translation Y", nullptr);
+  RNA_def_property_update(prop, 0, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "use_translation_z", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", GEO_NODE_TRANSFORM_GIZMO_USE_TRANSLATION_Z);
+  RNA_def_property_ui_text(prop, "Use Translation Z", nullptr);
+  RNA_def_property_update(prop, 0, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "use_rotation_x", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", GEO_NODE_TRANSFORM_GIZMO_USE_ROTATION_X);
+  RNA_def_property_ui_text(prop, "Use Rotation X", nullptr);
+  RNA_def_property_update(prop, 0, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "use_rotation_y", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", GEO_NODE_TRANSFORM_GIZMO_USE_ROTATION_Y);
+  RNA_def_property_ui_text(prop, "Use Rotation Y", nullptr);
+  RNA_def_property_update(prop, 0, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "use_rotation_z", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", GEO_NODE_TRANSFORM_GIZMO_USE_ROTATION_Z);
+  RNA_def_property_ui_text(prop, "Use Rotation Z", nullptr);
+  RNA_def_property_update(prop, 0, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "use_scale_x", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", GEO_NODE_TRANSFORM_GIZMO_USE_SCALE_X);
+  RNA_def_property_ui_text(prop, "Use Scale X", nullptr);
+  RNA_def_property_update(prop, 0, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "use_scale_y", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", GEO_NODE_TRANSFORM_GIZMO_USE_SCALE_Y);
+  RNA_def_property_ui_text(prop, "Use Scale Y", nullptr);
+  RNA_def_property_update(prop, 0, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "use_scale_z", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", GEO_NODE_TRANSFORM_GIZMO_USE_SCALE_Z);
+  RNA_def_property_ui_text(prop, "Use Scale Z", nullptr);
   RNA_def_property_update(prop, 0, "rna_Node_update");
 }
 
@@ -7133,7 +7228,7 @@ static void def_cmp_defocus(StructRNA *srna)
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(
       prop, "Scene", "Scene from which to select the active camera (render scene if undefined)");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update_relations");
 
   RNA_def_struct_sdna_from(srna, "NodeDefocus", "storage");
 
@@ -7472,7 +7567,7 @@ static void def_cmp_glare(StructRNA *srna)
 
   prop = RNA_def_property(srna, "size", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, nullptr, "size");
-  RNA_def_property_range(prop, 6, 9);
+  RNA_def_property_range(prop, 1, 9);
   RNA_def_property_ui_text(
       prop,
       "Size",
@@ -7587,12 +7682,17 @@ static void def_cmp_colorbalance(StructRNA *srna)
   static float default_1[3] = {1.0f, 1.0f, 1.0f};
 
   static const EnumPropertyItem type_items[] = {
-      {0, "LIFT_GAMMA_GAIN", 0, "Lift/Gamma/Gain", ""},
-      {1,
+      {CMP_NODE_COLOR_BALANCE_LGG, "LIFT_GAMMA_GAIN", 0, "Lift/Gamma/Gain", ""},
+      {CMP_NODE_COLOR_BALANCE_ASC_CDL,
        "OFFSET_POWER_SLOPE",
        0,
        "Offset/Power/Slope (ASC-CDL)",
        "ASC-CDL standard color correction"},
+      {CMP_NODE_COLOR_BALANCE_WHITEPOINT,
+       "WHITEPOINT",
+       0,
+       "White Point",
+       "Chromatic adaption from a different white point"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -7658,6 +7758,70 @@ static void def_cmp_colorbalance(StructRNA *srna)
   RNA_def_property_ui_range(prop, -1.0, 1.0, 1.0, 2);
   RNA_def_property_ui_text(prop, "Basis", "Support negative color by using this as the RGB basis");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeColorBalance_update_cdl");
+
+  prop = RNA_def_property(srna, "input_temperature", PROP_FLOAT, PROP_COLOR_TEMPERATURE);
+  RNA_def_property_float_sdna(prop, nullptr, "input_temperature");
+  RNA_def_property_float_default(prop, 6500.0f);
+  RNA_def_property_range(prop, 1800.0f, 100000.0f);
+  RNA_def_property_ui_range(prop, 2000.0f, 11000.0f, 100, 0);
+  RNA_def_property_ui_text(
+      prop, "Input Temperature", "Color temperature of the input's white point");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "input_tint", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_float_sdna(prop, nullptr, "input_tint");
+  RNA_def_property_float_default(prop, 10.0f);
+  RNA_def_property_range(prop, -500.0f, 500.0f);
+  RNA_def_property_ui_range(prop, -150.0f, 150.0f, 1, 1);
+  RNA_def_property_ui_text(
+      prop,
+      "Input Tint",
+      "Color tint of the input's white point (the default of 10 matches daylight)");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "input_whitepoint", PROP_FLOAT, PROP_COLOR);
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_float_funcs(prop,
+                               "rna_NodeColorBalance_input_whitepoint_get",
+                               "rna_NodeColorBalance_input_whitepoint_set",
+                               nullptr);
+  RNA_def_property_ui_text(prop,
+                           "Input White Point",
+                           "The color which gets mapped to white "
+                           "(automatically converted to/from temperature and tint)");
+  RNA_def_property_update(prop, NC_WINDOW, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "output_temperature", PROP_FLOAT, PROP_COLOR_TEMPERATURE);
+  RNA_def_property_float_sdna(prop, nullptr, "output_temperature");
+  RNA_def_property_float_default(prop, 6500.0f);
+  RNA_def_property_range(prop, 1800.0f, 100000.0f);
+  RNA_def_property_ui_range(prop, 2000.0f, 11000.0f, 100, 0);
+  RNA_def_property_ui_text(
+      prop, "Output Temperature", "Color temperature of the output's white point");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "output_tint", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_float_sdna(prop, nullptr, "output_tint");
+  RNA_def_property_float_default(prop, 10.0f);
+  RNA_def_property_range(prop, -500.0f, 500.0f);
+  RNA_def_property_ui_range(prop, -150.0f, 150.0f, 1, 1);
+  RNA_def_property_ui_text(
+      prop,
+      "Output Tint",
+      "Color tint of the output's white point (the default of 10 matches daylight)");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "output_whitepoint", PROP_FLOAT, PROP_COLOR);
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_float_funcs(prop,
+                               "rna_NodeColorBalance_output_whitepoint_get",
+                               "rna_NodeColorBalance_output_whitepoint_set",
+                               nullptr);
+  RNA_def_property_ui_text(prop,
+                           "Output White Point",
+                           "The color which gets white gets mapped to "
+                           "(automatically converted to/from temperature and tint)");
+  RNA_def_property_update(prop, NC_WINDOW, "rna_Node_update");
 }
 
 static void def_cmp_huecorrect(StructRNA *srna)
@@ -7737,7 +7901,7 @@ static void def_cmp_movieclip(StructRNA *srna)
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(prop, "Movie Clip", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update_relations");
 
   RNA_def_struct_sdna_from(srna, "MovieClipUser", "storage");
 }
@@ -7752,7 +7916,7 @@ static void def_cmp_stabilize2d(StructRNA *srna)
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(prop, "Movie Clip", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update_relations");
 
   prop = RNA_def_property(srna, "filter_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "custom1");
@@ -7783,7 +7947,7 @@ static void def_cmp_moviedistortion(StructRNA *srna)
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(prop, "Movie Clip", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update_relations");
 
   prop = RNA_def_property(srna, "distortion_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "custom1");
@@ -7813,6 +7977,7 @@ static void def_cmp_mask(StructRNA *srna)
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(prop, "Mask", "");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update_relations");
 
   prop = RNA_def_property(srna, "use_feather", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_negative_sdna(prop, nullptr, "custom1", CMP_NODE_MASK_FLAG_NO_FEATHER);
@@ -8277,7 +8442,7 @@ static void def_cmp_keyingscreen(StructRNA *srna)
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(prop, "Movie Clip", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update_relations");
 
   RNA_def_struct_sdna_from(srna, "NodeKeyingScreenData", "storage");
 
@@ -8426,7 +8591,7 @@ static void def_cmp_trackpos(StructRNA *srna)
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(prop, "Movie Clip", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update_relations");
 
   prop = RNA_def_property(srna, "position", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "custom1");
@@ -8520,7 +8685,7 @@ static void def_cmp_planetrackdeform(StructRNA *srna)
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(prop, "Movie Clip", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update_relations");
 
   RNA_def_struct_sdna_from(srna, "NodePlaneTrackDeformData", "storage");
 
@@ -8654,6 +8819,7 @@ static void def_cmp_cryptomatte(StructRNA *srna)
   RNA_def_property_enum_items(prop, cryptomatte_source_items);
   RNA_def_property_enum_funcs(prop, nullptr, "rna_NodeCryptomatte_source_set", nullptr);
   RNA_def_property_ui_text(prop, "Source", "Where the Cryptomatte passes are loaded from");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update_relations");
 
   prop = RNA_def_property(srna, "scene", PROP_POINTER, PROP_NONE);
   RNA_def_property_pointer_funcs(
@@ -8662,7 +8828,7 @@ static void def_cmp_cryptomatte(StructRNA *srna)
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_REFCOUNT);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(prop, "Scene", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update_relations");
 
   prop = RNA_def_property(srna, "image", PROP_POINTER, PROP_NONE);
   RNA_def_property_pointer_funcs(prop,
@@ -8674,7 +8840,7 @@ static void def_cmp_cryptomatte(StructRNA *srna)
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(prop, "Image", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update_relations");
 
   RNA_def_struct_sdna_from(srna, "NodeCryptomatte", "storage");
   def_cmp_cryptomatte_common(srna);
@@ -9836,6 +10002,7 @@ static void def_geo_menu_switch(StructRNA *srna)
   RNA_def_property_struct_type(prop, "Node");
   RNA_def_property_pointer_funcs(
       prop, "rna_NodeMenuSwitch_enum_definition_get", nullptr, nullptr, nullptr);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_NO_COMPARISON);
   RNA_def_property_ui_text(prop,
                            "Enum Definition (deprecated)",
                            "The enum definition can now be accessed directly on the node. This "

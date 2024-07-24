@@ -11,6 +11,7 @@
 #include "BLI_array.hh"
 #include "BLI_hash.h"
 #include "BLI_index_range.hh"
+#include "BLI_math_base.hh"
 #include "BLI_math_base_safe.h"
 #include "BLI_math_vector.h"
 #include "BLI_math_vector_types.hh"
@@ -561,7 +562,7 @@ float factor_get(const Cache *automasking,
   }
 
   if (automasking->settings.flags & BRUSH_AUTOMASKING_BOUNDARY_EDGES) {
-    if (SCULPT_vertex_is_boundary(ss, vert)) {
+    if (boundary::vert_is_boundary(ss, vert)) {
       return 0.0f;
     }
   }
@@ -597,7 +598,7 @@ static void mesh_orig_vert_data_update(SculptOrigVertData &orig_data, const int 
 
 void calc_vert_factors(const Object &object,
                        const Cache &cache,
-                       const PBVHNode &node,
+                       const bke::pbvh::Node &node,
                        const Span<int> verts,
                        const MutableSpan<float> factors)
 {
@@ -613,9 +614,37 @@ void calc_vert_factors(const Object &object,
   }
 }
 
+void calc_face_factors(const Object &object,
+                       const OffsetIndices<int> faces,
+                       const Span<int> corner_verts,
+                       const Cache &cache,
+                       const bke::pbvh::Node &node,
+                       const Span<int> face_indices,
+                       const MutableSpan<float> factors)
+{
+  SculptSession &ss = *object.sculpt;
+
+  NodeData data = node_begin(object, &cache, node);
+  /* NOTE: We explicitly nullify data.orig_data here as we currently cannot go from mesh vert index
+   * to the undo node array index. The only brush this method is currently used for is the Draw
+   * Face Set brush, which never modifies the position of the vertices in a brush stroke. This
+   * needs to be implemented in the future if brushes that iterate over faces need original
+   * position and normal data. */
+  data.orig_data = std::nullopt;
+
+  for (const int i : face_indices.index_range()) {
+    const Span<int> face_verts = corner_verts.slice(faces[face_indices[i]]);
+    float sum = 0.0f;
+    for (const int vert : face_verts) {
+      sum += factor_get(&cache, ss, BKE_pbvh_make_vref(vert), &data);
+    }
+    factors[i] *= sum * math::rcp(float(face_verts.size()));
+  }
+}
+
 void calc_grids_factors(const Object &object,
                         const Cache &cache,
-                        const PBVHNode &node,
+                        const bke::pbvh::Node &node,
                         const Span<int> grids,
                         const MutableSpan<float> factors)
 {
@@ -639,7 +668,7 @@ void calc_grids_factors(const Object &object,
 
 void calc_vert_factors(const Object &object,
                        const Cache &cache,
-                       const PBVHNode &node,
+                       const bke::pbvh::Node &node,
                        const Set<BMVert *, 0> &verts,
                        const MutableSpan<float> factors)
 {
@@ -658,7 +687,7 @@ void calc_vert_factors(const Object &object,
   }
 }
 
-NodeData node_begin(const Object &object, const Cache *automasking, const PBVHNode &node)
+NodeData node_begin(const Object &object, const Cache *automasking, const bke::pbvh::Node &node)
 {
   if (!automasking) {
     return {};
@@ -778,7 +807,7 @@ static void init_boundary_masking(Object &ob, eBoundaryAutomaskMode mode, int pr
     edge_distance[i] = EDGE_DISTANCE_INF;
     switch (mode) {
       case AUTOMASK_INIT_BOUNDARY_EDGES:
-        if (SCULPT_vertex_is_boundary(ss, vertex)) {
+        if (boundary::vert_is_boundary(ss, vertex)) {
           edge_distance[i] = 0;
         }
         break;
@@ -915,7 +944,7 @@ std::unique_ptr<Cache> cache_init(const Sculpt &sd, const Brush *brush, Object &
 
   std::unique_ptr<Cache> automasking = std::make_unique<Cache>();
   cache_settings_update(*automasking, ss, sd, brush);
-  SCULPT_boundary_info_ensure(ob);
+  boundary::ensure_boundary_info(ob);
 
   automasking->current_stroke_id = ss.stroke_id;
 
