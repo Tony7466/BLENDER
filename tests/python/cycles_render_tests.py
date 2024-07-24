@@ -61,9 +61,6 @@ BLOCKLIST_OSL = [
     # Ray portal test uses bump + displacement
     'ray_portal.blend',
     # TODO: Tests that need investigating into why they're failing, and how to fix that.
-    # Waiting for 124673
-    'T50634_1.blend',
-    'mesh_light.blend',
     # OSL has it's own blackbody function which is slightly different at low and high temperatures
     'blackbody',
     # Noise differences due to Principled BSDF mixing/layering used in some of these scenes
