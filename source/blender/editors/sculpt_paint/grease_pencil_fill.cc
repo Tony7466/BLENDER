@@ -39,6 +39,7 @@
 #include "IMB_imbuf_types.hh"
 
 #include "GPU_state.hh"
+#include "editors/sculpt_paint/grease_pencil_intern.hh"
 
 #ifdef WITH_POTRACE
 #  include "potracelib.h"
@@ -433,10 +434,33 @@ static bke::CurvesGeometry boundary_to_curves(const Scene &scene,
 
 namespace trace_potrace {
 
-// static potrace_state_t *build_fill_boundary(const ImageBufferAccessor &buffer, bool
-// include_holes)
-// {
-// }
+using ed::sculpt_paint::image_trace::Bitmap;
+using ed::sculpt_paint::image_trace::Trace;
+
+static Trace *build_fill_boundary(const ImBuf &ibuf, bool include_holes)
+{
+  // potrace_param_t *param = potrace_param_default();
+  // if (!param) {
+  //   return nullptr;
+  // }
+  // param->turdsize = 0;
+  // param->turnpolicy = POTRACE_TURNPOLICY_MINORITY;
+
+  // Bitmap *bm = ed::sculpt_paint::image_trace::image_to_bitmap(
+  //     ibuf, [&](const ColorGeometry4b &color) { return get_flag(color, ColorFlag::Fill); });
+  // potrace_state_t *st = potrace_trace(param, bm);
+  // ed::sculpt_paint::image_trace::free_bitmap(bm);
+
+  // if (!st || st->status != POTRACE_STATUS_OK) {
+  //   if (st) {
+  //     potrace_state_free(st);
+  //   }
+  //   potrace_param_free(param);
+  //   return false;
+  // }
+
+  return nullptr;
+}
 
 }  // namespace trace_potrace
 

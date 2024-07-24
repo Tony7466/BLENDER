@@ -46,6 +46,28 @@
 
 namespace blender::ed::sculpt_paint::image_trace {
 
+static int to_potrace(const TurnPolicy turn_policy)
+{
+  switch (turn_policy) {
+    case TurnPolicy ::Foreground:
+      return POTRACE_TURNPOLICY_BLACK;
+    case TurnPolicy ::Background:
+      return POTRACE_TURNPOLICY_WHITE;
+    case TurnPolicy ::Left:
+      return POTRACE_TURNPOLICY_LEFT;
+    case TurnPolicy ::Right:
+      return POTRACE_TURNPOLICY_RIGHT;
+    case TurnPolicy ::Minority:
+      return POTRACE_TURNPOLICY_MINORITY;
+    case TurnPolicy ::Majority:
+      return POTRACE_TURNPOLICY_MAJORITY;
+    case TurnPolicy ::Random:
+      return POTRACE_TURNPOLICY_RANDOM;
+  }
+  BLI_assert_unreachable();
+  return POTRACE_TURNPOLICY_MINORITY;
+}
+
 Bitmap *create_bitmap(const int2 &size)
 {
 #ifdef WITH_POTRACE
@@ -87,6 +109,30 @@ void free_bitmap(Bitmap *bm)
 #endif
 }
 
+Trace *trace_bitmap(const TraceParams &params, Bitmap &bm)
+{
+  potrace_param_t *po_params = potrace_param_default();
+  if (!po_params) {
+    return nullptr;
+  }
+  po_params->turdsize = params.size_threshold;
+  po_params->turnpolicy = to_potrace(params.turn_policy);
+  po_params->alphamax = params.alpha_max;
+  po_params->opticurve = params.optimize_curves;
+  po_params->opttolerance = params.optimize_tolerance;
+
+  potrace_state_t *st = potrace_trace(po_params, &bm);
+  potrace_param_free(po_params);
+
+  if (!st || st->status != POTRACE_STATUS_OK) {
+    if (st) {
+      potrace_state_free(st);
+    }
+    return nullptr;
+  }
+  return st;
+}
+
 }  // namespace blender::ed::sculpt_paint::image_trace
 
 namespace blender::ed::sculpt_paint::greasepencil {
@@ -94,6 +140,8 @@ namespace blender::ed::sculpt_paint::greasepencil {
 /* -------------------------------------------------------------------- */
 /** \name Trace Image Operator
  * \{ */
+
+using image_trace::TurnPolicy;
 
 /* Target object modes. */
 enum class TargetObjectMode : int8_t {
@@ -104,24 +152,6 @@ enum class TargetObjectMode : int8_t {
 enum class TraceMode : int8_t {
   Single = 0,
   Sequence = 1,
-};
-
-/* Policy for resolving ambiguity during decomposition of bitmaps into paths. */
-enum class TurnPolicy : int8_t {
-  /* Prefers to connect foreground pixels. */
-  Foreground = 0,
-  /* Prefers to connect background pixels. */
-  Background = 1,
-  /* Always take a left turn. */
-  Left = 2,
-  /* Always take a right turn. */
-  Right = 3,
-  /* Prefers to connect minority color in the neighborhood. */
-  Minority = 4,
-  /* Prefers to connect majority color in the neighborhood. */
-  Majority = 5,
-  /* Chose direction randomly. */
-  Random = 6,
 };
 
 #ifdef WITH_POTRACE
@@ -161,28 +191,6 @@ struct TraceJob {
 
   void ensure_output_object();
 };
-
-static int to_potrace(const TurnPolicy turn_policy)
-{
-  switch (turn_policy) {
-    case TurnPolicy ::Foreground:
-      return POTRACE_TURNPOLICY_BLACK;
-    case TurnPolicy ::Background:
-      return POTRACE_TURNPOLICY_WHITE;
-    case TurnPolicy ::Left:
-      return POTRACE_TURNPOLICY_LEFT;
-    case TurnPolicy ::Right:
-      return POTRACE_TURNPOLICY_RIGHT;
-    case TurnPolicy ::Minority:
-      return POTRACE_TURNPOLICY_MINORITY;
-    case TurnPolicy ::Majority:
-      return POTRACE_TURNPOLICY_MAJORITY;
-    case TurnPolicy ::Random:
-      return POTRACE_TURNPOLICY_RANDOM;
-  }
-  BLI_assert_unreachable();
-  return POTRACE_TURNPOLICY_MINORITY;
-}
 
 void TraceJob::ensure_output_object()
 {
@@ -411,24 +419,18 @@ static bool grease_pencil_trace_image(TraceJob &trace_job,
   potrace_bitmap_t *bm = image_trace::image_to_bitmap(ibuf, [&](const ColorGeometry4f &color) {
     return math::average(float3(color.r, color.g, color.b)) * color.a > trace_job.threshold;
   });
-  potrace_state_t *st = potrace_trace(param, bm);
-  image_trace::free_bitmap(bm);
 
-  if (!st || st->status != POTRACE_STATUS_OK) {
-    if (st) {
-      potrace_state_free(st);
-    }
-    potrace_param_free(param);
-    return false;
-  }
+  image_trace::TraceParams params;
+  image_trace::Trace *trace = image_trace::trace_bitmap(params, *bm);
+  image_trace::free_bitmap(bm);
 
   /* Transform from bitmap index space to local image object space. */
   const float4x4 transform = pixel_to_object_transform(*trace_job.ob_active, ibuf);
 
-  trace_data_to_strokes(*st, *trace_job.ob_grease_pencil, drawing, transform, trace_job.radius);
+  trace_data_to_strokes(*trace, *trace_job.ob_grease_pencil, drawing, transform, trace_job.radius);
 
   /* Free memory. */
-  potrace_state_free(st);
+  potrace_state_free(trace);
   potrace_param_free(param);
 
   return true;

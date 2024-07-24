@@ -165,7 +165,9 @@ void free_bitmap(Bitmap *bm);
 
 /**
  * ThresholdFn separates foreground/background pixels by turning a color value into a bool.
+ * Must accept either a ColorGeometry4f or a ColorGeometry4b.
  *     bool fn(const ColorGeometry4f &color);
+ *     bool fn(const ColorGeometry4b &color);
  */
 template<typename ThresholdFn> Bitmap *image_to_bitmap(const ImBuf &ibuf, ThresholdFn fn)
 {
@@ -181,6 +183,27 @@ template<typename ThresholdFn> Bitmap *image_to_bitmap(const ImBuf &ibuf, Thresh
    * is reversed in each word (most-significant bit is on the left). */
   MutableSpan<potrace_word> words = {reinterpret_cast<potrace_word *>(bm->map), num_words};
 
+  /* Use callback with the correct color conversion. */
+  constexpr bool is_float_color_fn =
+      std::is_invocable_r_v<void, ThresholdFn, const ColorGeometry4f &>;
+  auto is_foreground_float = [&](const ColorGeometry4f &fcolor) {
+    if constexpr (!is_float_color_fn) {
+      return fn(ColorGeometry4b(fcolor.r * 255, fcolor.g * 255, fcolor.b * 255, fcolor.a * 255));
+    }
+    else {
+      return fn(fcolor);
+    }
+  };
+  auto is_foreground_byte = [&](const ColorGeometry4b &bcolor) {
+    if constexpr (is_float_color_fn) {
+      return fn(ColorGeometry4f(
+          bcolor.r / 255.0f, bcolor.r / 255.0f, bcolor.r / 255.0f, bcolor.r / 255.0f));
+    }
+    else {
+      return fn(bcolor);
+    }
+  };
+
   if (ibuf.float_buffer.data) {
     const Span<ColorGeometry4f> colors = {
         reinterpret_cast<ColorGeometry4f *>(ibuf.float_buffer.data), ibuf.x * ibuf.y};
@@ -192,7 +215,7 @@ template<typename ThresholdFn> Bitmap *image_to_bitmap(const ImBuf &ibuf, Thresh
         for (int x = 0; x < ibuf.x; x++) {
           potrace_word &word = scanline_words[x / BM_WORDBITS];
           const potrace_word mask = BM_HIBIT >> (x & (BM_WORDBITS - 1));
-          if (fn(scanline_colors[x])) {
+          if (is_foreground_float(scanline_colors[x])) {
             word |= mask;
           }
           else {
@@ -214,12 +237,7 @@ template<typename ThresholdFn> Bitmap *image_to_bitmap(const ImBuf &ibuf, Thresh
       for (uint32_t x = 0; x < ibuf.x; x++) {
         potrace_word &word = scanline_words[x / BM_WORDBITS];
         const potrace_word mask = BM_HIBIT >> (x & (BM_WORDBITS - 1));
-        const ColorGeometry4b &col = scanline_colors[x];
-        if (fn(ColorGeometry4f(float(col.r) / 255.0f,
-                               float(col.g) / 255.0f,
-                               float(col.b) / 255.0f,
-                               float(col.a) / 255.0f)))
-        {
+        if (is_foreground_byte(scanline_colors[x])) {
           word |= mask;
         }
         else {
@@ -234,6 +252,42 @@ template<typename ThresholdFn> Bitmap *image_to_bitmap(const ImBuf &ibuf, Thresh
   return nullptr;
 #endif
 }
+
+/* Policy for resolving ambiguity during decomposition of bitmaps into paths. */
+enum class TurnPolicy : int8_t {
+  /* Prefers to connect foreground pixels. */
+  Foreground = 0,
+  /* Prefers to connect background pixels. */
+  Background = 1,
+  /* Always take a left turn. */
+  Left = 2,
+  /* Always take a right turn. */
+  Right = 3,
+  /* Prefers to connect minority color in the neighborhood. */
+  Minority = 4,
+  /* Prefers to connect majority color in the neighborhood. */
+  Majority = 5,
+  /* Chose direction randomly. */
+  Random = 6,
+};
+
+struct TraceParams {
+  /* Area of the largest path to be ignored. */
+  int size_threshold = 2;
+  /* Resolves ambiguous turns in path decomposition. */
+  TurnPolicy turn_policy = TurnPolicy::Minority;
+  /* Corner threshold. */
+  float alpha_max = 1.0f;
+  /* True to enable curve optimization. */
+  bool optimize_curves = true;
+  /* Curve optimization tolerance. */
+  float optimize_tolerance = 0.2f;
+};
+
+/**
+ * Trace boundaries in the bitmap.
+ */
+Trace *trace_bitmap(const TraceParams &params, Bitmap &bm);
 
 }  // namespace image_trace
 
