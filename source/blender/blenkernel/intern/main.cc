@@ -889,8 +889,7 @@ void BKE_main_deduplicate_locked_ids(Main &bmain)
     }
     for (ID *id : ids_with_same_hash) {
       if (id != id_to_keep) {
-        ID_NEW_SET(id, id_to_keep);
-        BKE_libblock_relink_to_newid(&bmain, id, 0);
+        BKE_libblock_remap(&bmain, id, id_to_keep, 0);
         ids_to_delete.add(id);
       }
     }

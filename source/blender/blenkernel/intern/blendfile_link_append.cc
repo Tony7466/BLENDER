@@ -1388,6 +1388,21 @@ void BKE_blendfile_append(BlendfileLinkAppendContext *lapp_context, ReportList *
     BKE_libblock_relink_to_newid(bmain, id, 0);
   }
 
+  for (BlendfileLinkAppendContextItem *item : lapp_context->items) {
+    if (!ELEM(item->action, LINK_APPEND_ACT_COPY_LOCAL)) {
+      continue;
+    }
+
+    ID *id = item->new_id;
+    if (id == nullptr) {
+      continue;
+    }
+    BLI_assert(ID_IS_LINKED(id));
+    BLI_assert(id->newid != nullptr);
+
+    item->new_id = id->newid;
+  }
+
   /* Instantiate newly created (duplicated) IDs as needed. */
   LooseDataInstantiateContext instantiate_context{};
   instantiate_context.lapp_context = lapp_context;
