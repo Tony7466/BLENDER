@@ -109,7 +109,6 @@ BLI_NOINLINE static void do_surface_smooth_brush_mesh(const Sculpt &sd,
     LocalData &tls = all_tls.local();
     for (const int i : range) {
       const Span<int> verts = bke::pbvh::node_unique_verts(*nodes[i]);
-      const MutableSpan positions = gather_mesh_positions(positions_eval, verts, tls.positions);
       const OrigPositionData orig_data = orig_position_data_get_mesh(object, *nodes[i]);
 
       const MutableSpan<float> factors = all_factors.as_mutable_span().slice(node_offsets[i]);
@@ -205,6 +204,123 @@ BLI_NOINLINE static void do_surface_smooth_brush_mesh(const Sculpt &sd,
     });
   }
 }
+
+// BLI_NOINLINE static void do_surface_smooth_brush_grids(
+//     const Sculpt &sd,
+//     const Brush &brush,
+//     const Span<bke::pbvh::Node *> nodes,
+//     Object &object,
+//     const MutableSpan<float3> all_laplacian_disp)
+// {
+//   const SculptSession &ss = *object.sculpt;
+//   const StrokeCache &cache = *ss.cache;
+//   const float alpha = brush.surface_smooth_shape_preservation;
+//   const float beta = brush.surface_smooth_current_vertex;
+
+//   SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+
+//   const bke::pbvh::Tree &pbvh = *ss.pbvh;
+
+//   threading::EnumerableThreadSpecific<LocalData> all_tls;
+
+//   Array<int> node_offset_data;
+//   const OffsetIndices node_offsets = create_node_vert_offsets(nodes, node_offset_data);
+//   Array<float> all_factors(node_offsets.total_size());
+
+//   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+//     LocalData &tls = all_tls.local();
+//     for (const int i : range) {
+//       const Span<int> grids = bke::pbvh::node_grid_indices(*nodes[i]);
+//       const MutableSpan positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
+//       const OrigPositionData orig_data = orig_position_data_get_mesh(object, *nodes[i]);
+
+//       const MutableSpan<float> factors = all_factors.as_mutable_span().slice(node_offsets[i]);
+//       fill_factor_from_hide_and_mask(subdiv_ccg, grids, factors);
+//       filter_region_clip_factors(ss, positions, factors);
+//       if (brush.flag & BRUSH_FRONTFACE) {
+//         calc_front_face(cache.view_normal, subdiv_ccg, grids, factors);
+//       }
+
+//       tls.distances.reinitialize(positions.size());
+//       const MutableSpan<float> distances = tls.distances;
+//       calc_brush_distances(ss, positions, eBrushFalloffShape(brush.falloff_shape), distances);
+//       filter_distances_with_radius(cache.radius, distances, factors);
+//       apply_hardness_to_distances(cache, distances);
+//       calc_brush_strength_factors(cache, brush, distances, factors);
+
+//       if (cache.automasking) {
+//         auto_mask::calc_grids_factors(object, *cache.automasking, *nodes[i], grids, factors);
+//       }
+
+//       calc_brush_texture_factors(ss, brush, positions, factors);
+
+//       scale_factors(factors, cache.bstrength);
+//       clamp_factors(factors);
+//     }
+//   });
+
+//   for (const int iteration : IndexRange(brush.surface_smooth_iterations)) {
+//     threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+//       LocalData &tls = all_tls.local();
+//       for (const int i : range) {
+//         const Span<int> grids = bke::pbvh::node_grid_indices(*nodes[i]);
+//         const MutableSpan positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
+//         const OrigPositionData orig_data = orig_position_data_get_mesh(object, *nodes[i]);
+//         const Span<float> factors = all_factors.as_span().slice(node_offsets[i]);
+
+//         tls.laplacian_disp.reinitialize(positions.size());
+//         const MutableSpan<float3> laplacian_disp = tls.laplacian_disp;
+//         gather_data_grids(subdiv_ccg, all_laplacian_disp.as_span(), grids, laplacian_disp);
+
+//         tls.average_positions.reinitialize(positions.size());
+//         const MutableSpan<float3> average_positions = tls.average_positions;
+//         smooth::neighbor_position_average_grids(subdiv_ccg, grids, average_positions);
+
+//         tls.translations.reinitialize(positions.size());
+//         const MutableSpan<float3> translations = tls.translations;
+//         surface_smooth_laplacian_step(positions,
+//                                       orig_data.positions,
+//                                       average_positions,
+//                                       alpha,
+//                                       laplacian_disp,
+//                                       translations);
+//         scale_translations(translations, factors);
+
+//         scatter_data_grids(subdiv_ccg, laplacian_disp.as_span(), verts, all_laplacian_disp);
+
+//         write_translations(sd, object, positions_eval, verts, translations, positions_orig);
+//       }
+//     });
+
+//     threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+//       LocalData &tls = all_tls.local();
+//       for (const int i : range) {
+//         const Span<int> grids = bke::pbvh::node_grid_indices(*nodes[i]);
+//         const Span<float> factors = all_factors.as_span().slice(node_offsets[i]);
+
+//         tls.laplacian_disp.reinitialize(verts.size());
+//         const MutableSpan<float3> laplacian_disp = tls.laplacian_disp;
+//         array_utils::gather(all_laplacian_disp.as_span(), verts, laplacian_disp);
+
+//         tls.vert_neighbors.reinitialize(verts.size());
+//         calc_vert_neighbors(
+//             faces, corner_verts, ss.vert_to_face_map, hide_poly, verts, tls.vert_neighbors);
+
+//         tls.average_positions.reinitialize(verts.size());
+//         const MutableSpan<float3> average_laplacian_disps = tls.average_positions;
+//         smooth::neighbor_position_average_mesh(
+//             all_laplacian_disp, verts, tls.vert_neighbors, average_laplacian_disps);
+
+//         tls.translations.reinitialize(verts.size());
+//         const MutableSpan<float3> translations = tls.translations;
+//         calc_displace_step(laplacian_disp, average_laplacian_disps, beta, translations);
+//         scale_translations(translations, factors);
+
+//         write_translations(sd, object, positions_eval, verts, translations, positions_orig);
+//       }
+//     });
+//   }
+// }
 
 }  // namespace surface_smooth_cc
 
