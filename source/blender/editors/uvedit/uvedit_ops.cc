@@ -852,7 +852,7 @@ static int uvedit_uv_threshold_weld_underlying_geometry(bContext *C, wmOperator 
       }
 
       while (luvmapvector.size() > 1) {
-        blender::float2 average_UV_coord = {0.0f, 0.0f};
+        float2 average_UV_coord = {0.0f, 0.0f};
         for (const float *luv : luvmapvector) {
           average_UV_coord[0] += luv[0];
           average_UV_coord[1] += luv[1];
@@ -881,7 +881,7 @@ static int uvedit_uv_threshold_weld_underlying_geometry(bContext *C, wmOperator 
          * ends once it hits uv_reference_point luv */
 
         const int luvmap_end = luvmapvector.size() - 1;
-        blender::float2 sumcoordinates = {uv_reference_point[0], uv_reference_point[1]};
+        float2 sumcoordinates = {uv_reference_point[0], uv_reference_point[1]};
         int i = 0;
         int num_mergeloops = 1;
         while (luvmapvector[i] != uv_reference_point && i < luvmapsize - num_mergeloops) {
@@ -904,7 +904,7 @@ static int uvedit_uv_threshold_weld_underlying_geometry(bContext *C, wmOperator 
          * operation. Then Shift all loops to that position. */
 
         if (num_mergeloops > 1) {
-          blender::float2 average_UV_coord = sumcoordinates / num_mergeloops;
+          float2 average_UV_coord = sumcoordinates / num_mergeloops;
 
           for (int j = luvmapsize - num_mergeloops; j < luvmapsize; j++) {
             float *luv = luvmapvector[j];
