@@ -52,10 +52,6 @@ if(WIN32)
       ${HIPRT_SOURCE_DIR}/contrib/Orochi/ParallelPrimitives
       ${HARVEST_TARGET}/hiprt/include/Orochi/ParallelPrimitives
 
-	COMMAND ${CMAKE_COMMAND} -E copy
-      ${HIPRT_SOURCE_DIR}/version.txt
-      ${HARVEST_TARGET}/hiprt/version.txt
-
     DEPENDEES install
   )
 else()
@@ -63,10 +59,6 @@ else()
   ExternalProject_Add_Step(external_hiprt after_install
     COMMAND ${CMAKE_COMMAND} -E rename
       ${LIBDIR}/hiprt/bin/${LIBPREFIX}hiprt${HIPRT_LIBRARY_VERSION}64.so ${LIBDIR}/hiprt/bin/${LIBPREFIX}hiprt64.so
-
-    COMMAND ${CMAKE_COMMAND} -E copy
-      ${HIPRT_SOURCE_DIR}/version.txt
-      ${LIBDIR}/hiprt/version.txt
 
     DEPENDEES install
   )
