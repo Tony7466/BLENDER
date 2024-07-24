@@ -1598,6 +1598,9 @@ int UI_icon_from_library(const ID *id)
   if (ID_IS_ASSET(id)) {
     return ICON_ASSET_MANAGER;
   }
+  if (ID_IS_LOCKED(id)) {
+    return ICON_LOCKED;
+  }
 
   return ICON_NONE;
 }
