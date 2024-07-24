@@ -1324,6 +1324,9 @@ void BKE_blendfile_append(BlendfileLinkAppendContext *lapp_context, ReportList *
       case LINK_APPEND_ACT_COPY_LOCAL:
         BKE_lib_id_make_local(bmain, id, make_local_common_flags | LIB_ID_MAKELOCAL_FORCE_COPY);
         local_appended_new_id = id->newid;
+        /* Remain locked if data was locked before. */
+        local_appended_new_id->deep_hash = id->deep_hash;
+        SET_FLAG_FROM_TEST(local_appended_new_id->flag, ID_IS_LOCKED(id), LIB_LOCKED);
         break;
       case LINK_APPEND_ACT_MAKE_LOCAL:
         BKE_lib_id_make_local(bmain, id, make_local_common_flags | LIB_ID_MAKELOCAL_FORCE_LOCAL);
