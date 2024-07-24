@@ -536,6 +536,7 @@ static PyObject *bpy_lib_exit(BPy_Library *self, PyObject * /*args*/)
   else if (create_liboverrides) {
     BKE_blendfile_override(lapp_context, self->liboverride_flags, nullptr);
   }
+  BKE_main_deduplicate_locked_ids(*bmain);
 
 /* If enabled, replace named items in given lists by the final matching new ID pointer. */
 #ifdef USE_RNA_DATABLOCKS

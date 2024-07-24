@@ -1801,6 +1801,8 @@ void BKE_blendfile_library_relocate(BlendfileLinkAppendContext *lapp_context,
   /* We do not want any instantiation here! */
   BKE_blendfile_link(lapp_context, reports);
 
+  BKE_main_deduplicate_locked_ids(*bmain);
+
   BKE_main_lock(bmain);
 
   /* We add back old id to bmain.

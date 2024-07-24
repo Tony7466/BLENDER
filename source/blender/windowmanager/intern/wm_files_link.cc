@@ -539,6 +539,8 @@ static ID *wm_file_link_append_datablock_ex(Main *bmain,
     BKE_blendfile_append(lapp_context, nullptr);
   }
 
+  BKE_main_deduplicate_locked_ids(*bmain);
+
   /* Get linked datablock and free working data. */
   ID *id = BKE_blendfile_link_append_context_item_newid_get(lapp_context, item);
 
