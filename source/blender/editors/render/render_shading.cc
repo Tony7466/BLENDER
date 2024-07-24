@@ -396,7 +396,15 @@ static int material_slot_de_select(bContext *C, bool select)
       continue;
     }
 
-    short mat_nr_active = BKE_object_material_index_get(ob, mat_active);
+    short mat_nr_active = -1;
+    if (obact && (mat_active == BKE_object_material_get_no_clamp(ob, obact->actcol))) {
+      /* Avoid searching since there may be multiple slots with the same material.
+       * For the active object or duplicates: match the material slot index first. */
+      mat_nr_active = obact->actcol - 1;
+    }
+    else {
+      mat_nr_active = BKE_object_material_index_get(ob, mat_active);
+    }
 
     if (mat_nr_active == -1) {
       continue;
@@ -777,7 +785,7 @@ static int new_material_exec(bContext *C, wmOperator * /*op*/)
     if (ob != nullptr) {
       /* Add slot follows user-preferences for creating new slots,
        * RNA pointer assignment doesn't, see: #60014. */
-      if (BKE_object_material_get_p(ob, ob->actcol) == nullptr) {
+      if (BKE_object_material_get_p(ob, ob->actcol, true) == nullptr) {
         BKE_object_material_slot_add(bmain, ob);
       }
     }

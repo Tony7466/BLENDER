@@ -84,8 +84,12 @@ enum {
   BKE_MAT_ASSIGN_OBJECT,
 };
 
-struct Material **BKE_object_material_get_p(struct Object *ob, short act);
+struct Material **BKE_object_material_get_p(struct Object *ob, short act, bool clamp_slot_index);
 struct Material *BKE_object_material_get(struct Object *ob, short act);
+/**
+ * \note Same as #BKE_object_material_get but not clamping slot index.
+ */
+struct Material *BKE_object_material_get_no_clamp(struct Object *ob, short act);
 void BKE_id_material_assign(struct Main *bmain, struct ID *id, struct Material *ma, short act);
 void BKE_object_material_assign(
     struct Main *bmain, struct Object *ob, struct Material *ma, short act, int assign_type);

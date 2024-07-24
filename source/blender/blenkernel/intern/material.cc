@@ -679,7 +679,7 @@ void BKE_id_material_clear(Main *bmain, ID *id)
   }
 }
 
-Material **BKE_object_material_get_p(Object *ob, short act)
+Material **BKE_object_material_get_p(Object *ob, short act, bool clamp_slot_index)
 {
   Material ***matarar, **ma_p;
   const short *totcolp;
@@ -695,7 +695,7 @@ Material **BKE_object_material_get_p(Object *ob, short act)
   }
 
   /* Clamp to number of slots if index is out of range, same convention as used for rendering. */
-  const int slot_index = clamp_i(act - 1, 0, *totcolp - 1);
+  const int slot_index = clamp_slot_index ? clamp_i(act - 1, 0, *totcolp - 1) : act - 1;
 
   /* Fix inconsistency which may happen when library linked data reduces the number of
    * slots but object was not updated. Ideally should be fixed elsewhere. */
@@ -724,7 +724,13 @@ Material **BKE_object_material_get_p(Object *ob, short act)
 
 Material *BKE_object_material_get(Object *ob, short act)
 {
-  Material **ma_p = BKE_object_material_get_p(ob, act);
+  Material **ma_p = BKE_object_material_get_p(ob, act, true);
+  return ma_p ? *ma_p : nullptr;
+}
+
+Material *BKE_object_material_get_no_clamp(Object *ob, short act)
+{
+  Material **ma_p = BKE_object_material_get_p(ob, act, false);
   return ma_p ? *ma_p : nullptr;
 }
 
