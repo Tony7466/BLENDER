@@ -1694,9 +1694,12 @@ void neighbor_position_average_mesh(Span<float3> positions,
 
 template<typename T>
 void average_data_grids(const SubdivCCG &subdiv_ccg,
-                        const Span<T> src,
-                        const Span<int> grids,
-                        const MutableSpan<T> dst);
+                        Span<T> src,
+                        Span<int> grids,
+                        MutableSpan<T> dst);
+
+template<typename T>
+void average_data_bmesh(Span<T> src, const Set<BMVert *, 0> &verts, MutableSpan<T> dst);
 
 /* Surface Smooth Brush. */
 

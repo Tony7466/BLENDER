@@ -202,9 +202,30 @@ void average_data_grids(const SubdivCCG &subdiv_ccg,
   }
 }
 
+template<typename T>
+void average_data_bmesh(const Span<T> src, const Set<BMVert *, 0> &verts, const MutableSpan<T> dst)
+{
+  Vector<BMVert *, 64> neighbor_data;
+
+  int i = 0;
+  for (BMVert *vert : verts) {
+    T sum{};
+    neighbor_data.clear();
+    const Span<BMVert *> neighbors = vert_neighbors_get_bmesh(*vert, neighbor_data);
+    for (const BMVert *neighbor : neighbors) {
+      sum += src[BM_elem_index_get(neighbor)];
+    }
+    dst[i] = sum / neighbors.size();
+    i++;
+  }
+}
+
 template void average_data_grids<float3>(const SubdivCCG &,
                                          Span<float3>,
                                          Span<int>,
+                                         MutableSpan<float3>);
+template void average_data_bmesh<float3>(Span<float3> src,
+                                         const Set<BMVert *, 0> &,
                                          MutableSpan<float3>);
 
 static float3 average_positions(const Span<const BMVert *> verts)
