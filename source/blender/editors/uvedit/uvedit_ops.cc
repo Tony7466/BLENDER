@@ -847,7 +847,7 @@ static int uvedit_uv_threshold_weld_underlying_geometry(bContext *C, wmOperator 
       }
       int luvmapsize = luvmapvector.size();
       if (luvmapsize <= 1) {
-        luvmapvector.resize(0);
+        luvmapvector.clear();
         continue;
       }
 
@@ -916,6 +916,7 @@ static int uvedit_uv_threshold_weld_underlying_geometry(bContext *C, wmOperator 
         luvmapvector.resize(luvmapsize - num_mergeloops);
         luvmapsize -= num_mergeloops;
       }
+      luvmapvector.clear();
     }
     if (changed) {
       uvedit_live_unwrap_update(sima, scene, obedit);
