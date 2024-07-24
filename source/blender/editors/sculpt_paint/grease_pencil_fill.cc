@@ -39,11 +39,8 @@
 #include "IMB_imbuf_types.hh"
 
 #include "GPU_state.hh"
-#include "editors/sculpt_paint/grease_pencil_intern.hh"
 
-#ifdef WITH_POTRACE
-#  include "potracelib.h"
-#endif
+#include "grease_pencil_trace_util.hh"
 
 #include <list>
 #include <optional>
@@ -434,8 +431,8 @@ static bke::CurvesGeometry boundary_to_curves(const Scene &scene,
 
 namespace trace_potrace {
 
-using ed::sculpt_paint::image_trace::Bitmap;
-using ed::sculpt_paint::image_trace::Trace;
+using ed::image_trace::Bitmap;
+using ed::image_trace::Trace;
 
 static Trace *build_fill_boundary(const ImBuf &ibuf, bool include_holes)
 {
