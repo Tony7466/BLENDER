@@ -14,3 +14,4 @@ Referenced by issue #62480, Closing files takes about 5 times longer
 Referenced by issue #61531, can't select the same material in multi edit mode
 Referenced by pull request #123718, Fix #123560: Select by active material fails in multi-object-edit mode
 Referenced by commit 296d05060d22714a5fe46af7206aa7066982e9c8, Fix #123560: Select by active material fails in multi-object-edit mode
+Referenced by pull request #125370, Fix #125353: Select by active material fails to select the selected slot
