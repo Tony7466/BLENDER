@@ -167,9 +167,8 @@ void average_data_grids(const SubdivCCG &subdiv_ccg,
                         const MutableSpan<T> dst)
 {
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-  const Span<CCGElem *> elems = subdiv_ccg.grids;
 
-  BLI_assert(grids.size() * key.grid_area == new_positions.size());
+  BLI_assert(grids.size() * key.grid_area == src.size());
 
   for (const int i : grids.index_range()) {
     const int grid = grids[i];
