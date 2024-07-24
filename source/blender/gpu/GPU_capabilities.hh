@@ -41,7 +41,6 @@ const char *GPU_extension_get(int i);
 int GPU_texture_size_with_limit(int res);
 
 bool GPU_use_parallel_compilation();
-int GPU_parallel_compilation_threads_count();
 
 bool GPU_mip_render_workaround();
 bool GPU_depth_blitting_workaround();
