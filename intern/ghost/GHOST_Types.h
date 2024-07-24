@@ -127,6 +127,10 @@ typedef enum {
    * Support detecting the physical trackpad direction.
    */
   GHOST_kCapabilityTrackpadPhysicalDirection = (1 << 7),
+  /**
+   * Support for custom client-side window decorations (CSD).
+   */
+  GHOST_kCapabilityClientSideWindowDecorations = (1 << 8),
 } GHOST_TCapabilityFlag;
 
 /**
@@ -137,7 +141,8 @@ typedef enum {
   (GHOST_kCapabilityCursorWarp | GHOST_kCapabilityWindowPosition | \
    GHOST_kCapabilityPrimaryClipboard | GHOST_kCapabilityGPUReadFrontBuffer | \
    GHOST_kCapabilityClipboardImages | GHOST_kCapabilityDesktopSample | \
-   GHOST_kCapabilityInputIME | GHOST_kCapabilityTrackpadPhysicalDirection)
+   GHOST_kCapabilityInputIME | GHOST_kCapabilityTrackpadPhysicalDirection | \
+   GHOST_kCapabilityClientSideWindowDecorations)
 
 /* Xtilt and Ytilt represent how much the pen is tilted away from
  * vertically upright in either the X or Y direction, with X and Y the

@@ -8457,6 +8457,8 @@ GHOST_TCapabilityFlag GHOST_SystemWayland::getCapabilities() const
           GHOST_kCapabilityGPUReadFrontBuffer |
           /* This WAYLAND back-end has not yet implemented desktop color sample. */
           GHOST_kCapabilityDesktopSample |
+          /* This WAYLAND backend has not yet implemented custom client-side window decorations. */
+          GHOST_kCapabilityClientSideWindowDecorations |
           /* This flag will eventually be removed. */
           (has_wl_trackpad_physical_direction ? 0 : GHOST_kCapabilityTrackpadPhysicalDirection)));
 }

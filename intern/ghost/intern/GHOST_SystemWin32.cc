@@ -584,7 +584,10 @@ GHOST_TCapabilityFlag GHOST_SystemWin32::getCapabilities() const
   return GHOST_TCapabilityFlag(GHOST_CAPABILITY_FLAG_ALL &
                                ~(
                                    /* WIN32 has no support for a primary selection clipboard. */
-                                   GHOST_kCapabilityPrimaryClipboard));
+                                   GHOST_kCapabilityPrimaryClipboard |
+                                   /* This WIN32 backend has not yet implemented custom client-side
+                                    * window decorations. */
+                                   GHOST_kCapabilityClientSideWindowDecorations));
 }
 
 GHOST_TSuccess GHOST_SystemWin32::init()

@@ -2111,6 +2111,9 @@ eWM_CapabilitiesFlag WM_capabilities_flag()
   if (ghost_flag & GHOST_kCapabilityTrackpadPhysicalDirection) {
     flag |= WM_CAPABILITY_TRACKPAD_PHYSICAL_DIRECTION;
   }
+  if (ghost_flag & GHOST_kCapabilityClientSideWindowDecorations) {
+    flag |= WM_CAPABILITY_CLIENT_SIDE_WINDOW_DECORATIONS;
+  }
 
   return flag;
 }

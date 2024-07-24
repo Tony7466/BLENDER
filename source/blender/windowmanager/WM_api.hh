@@ -189,6 +189,8 @@ enum eWM_CapabilitiesFlag {
   WM_CAPABILITY_INPUT_IME = (1 << 6),
   /** Trackpad physical scroll detection. */
   WM_CAPABILITY_TRACKPAD_PHYSICAL_DIRECTION = (1 << 7),
+  /** Support for custom client-side window decorations (CSD). */
+  WM_CAPABILITY_CLIENT_SIDE_WINDOW_DECORATIONS = (1 << 8),
   /** The initial value, indicates the value needs to be set by inspecting GHOST. */
   WM_CAPABILITY_INITIALIZED = (1u << 31),
 };
