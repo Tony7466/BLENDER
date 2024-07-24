@@ -804,8 +804,6 @@ static void view3d_ob_drop_copy_external_asset(bContext *C, wmDrag *drag, wmDrop
   LayerCollection *lc = BKE_layer_collection_get_active(view_layer);
   Collection *collection = BKE_collection_parent_editable_find_recursive(view_layer,
                                                                          lc->collection);
-  /* TODO: This should probably be elsewhere. */
-  object->mode = OB_MODE_OBJECT;
   object->visibility_flag &= ~(OB_HIDE_VIEWPORT | OB_HIDE_SELECT);
 
   BKE_collection_object_add(bmain, collection, object);
