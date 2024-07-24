@@ -461,27 +461,6 @@ static void trace_data_to_strokes(const potrace_state_t &st,
           break;
       }
     }
-
-    // /* In some situations, Potrace can produce a wrong data and generate a very
-    //  * long stroke. Here the length is checked and removed if the length is too big. */
-    // constexpr float MAX_LENGTH = 100.0f;
-    // float length = BKE_gpencil_stroke_length(gps, true);
-    // if (length <= MAX_LENGTH) {
-    //   bGPdata *gpd = static_cast<bGPdata *>(ob->data);
-    //   if (sample > 0.0f) {
-    //     /* Resample stroke. Don't need to call to BKE_gpencil_stroke_geometry_update() because
-    //      * the sample function already call that. */
-    //     BKE_gpencil_stroke_sample(gpd, gps, sample, false, 0);
-    //   }
-    //   else {
-    //     BKE_gpencil_stroke_geometry_update(gpd, gps);
-    //   }
-    // }
-    // else {
-    //   /* Remove too long strokes. */
-    //   BLI_remlink(&gpf->strokes, gps);
-    //   BKE_gpencil_free_stroke(gps);
-    // }
   }
 
   material_indices.finish();
