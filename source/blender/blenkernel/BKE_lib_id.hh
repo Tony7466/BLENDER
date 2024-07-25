@@ -678,7 +678,7 @@ void BKE_main_id_repair_duplicate_names_listbase(Main *bmain, ListBase *lb);
 /**
  * Generate full name of the data-block (without ID code, but with library if any).
  *
- * \note Result is unique to a given ID type in a given Main database.
+ * \note Result is unique to a given ID type in a given Main database (not for locked data-blocks).
  *
  * \param name: An allocated string of minimal length #MAX_ID_FULL_NAME,
  * will be filled with generated string.
@@ -691,7 +691,7 @@ void BKE_id_full_name_get(char name[MAX_ID_FULL_NAME], const ID *id, char separa
  * with a 2 to 3 character prefix prepended indicating whether it comes from a library,
  * is overriding, has a fake or no user, etc.
  *
- * \note Result is unique to a given ID type in a given Main database.
+ * \note Result is unique to a given ID type in a given Main database (not for locked data-blocks).
  *
  * \param name: An allocated string of minimal length #MAX_ID_FULL_NAME_UI,
  * will be filled with generated string.

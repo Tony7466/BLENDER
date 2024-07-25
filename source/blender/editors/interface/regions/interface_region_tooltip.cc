@@ -40,6 +40,7 @@
 #include "BKE_context.hh"
 #include "BKE_idtype.hh"
 #include "BKE_image.h"
+#include "BKE_lib_id.hh"
 #include "BKE_paint.hh"
 #include "BKE_screen.hh"
 
@@ -1724,7 +1725,8 @@ static uiTooltipData *ui_tooltip_data_from_search_item_tooltip_data(ID *id)
   uiTooltipData *data = MEM_new<uiTooltipData>(__func__);
   const ID_Type type_id = GS(id->name);
 
-  UI_tooltip_text_field_add(data, id->name + 2, {}, UI_TIP_STYLE_HEADER, UI_TIP_LC_MAIN);
+  UI_tooltip_text_field_add(
+      data, BKE_id_ui_name_get(*id), {}, UI_TIP_STYLE_HEADER, UI_TIP_LC_MAIN);
 
   if (type_id == ID_IM) {
     ui_tooltip_from_image(*reinterpret_cast<Image *>(id), *data);

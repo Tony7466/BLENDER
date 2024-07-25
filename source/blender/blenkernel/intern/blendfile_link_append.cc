@@ -1355,7 +1355,7 @@ void BKE_blendfile_append(BlendfileLinkAppendContext *lapp_context, ReportList *
           if (id_hash.has_value()) {
             local_appended_new_id->deep_hash = *id_hash;
             std::stringstream ss;
-            ss << blender::StringRef(local_appended_new_id->name, 2) << "LOCKED_";
+            ss << "LOCKED_";
             for (const char c : blender::Span{id_hash->data, sizeof(IDHash)}) {
               ss << std::hex << int(c);
             }

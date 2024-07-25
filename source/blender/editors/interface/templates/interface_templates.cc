@@ -420,7 +420,7 @@ static void id_search_cb(const bContext *C,
   /* ID listbase */
   LISTBASE_FOREACH (ID *, id, lb) {
     if (id_search_allows_id(template_ui, flag, id, str)) {
-      search.add(id->name + 2, id);
+      search.add(BKE_id_ui_name_get(*id), id);
     }
   }
 
@@ -452,7 +452,7 @@ static void id_search_cb_tagged(const bContext *C,
   LISTBASE_FOREACH (ID *, id, lb) {
     if (id->tag & LIB_TAG_DOIT) {
       if (id_search_allows_id(template_ui, flag, id, str)) {
-        search.add(id->name + 2, id);
+        search.add(BKE_id_ui_name_get(*id), id);
       }
       id->tag &= ~LIB_TAG_DOIT;
     }

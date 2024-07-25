@@ -2803,7 +2803,7 @@ void ui_but_string_get_ex(uiBut *but,
       /* uiBut.custom_data points to data this tab represents (e.g. workspace).
        * uiBut.rnapoin/prop store an active value (e.g. active workspace). */
       PointerRNA ptr = RNA_pointer_create(but->rnapoin.owner_id, ptr_type, but->custom_data);
-      buf = RNA_struct_name_get_alloc(&ptr, str, str_maxncpy, &buf_len);
+      buf = RNA_struct_ui_name_get_alloc(&ptr, str, str_maxncpy, &buf_len);
     }
     else if (type == PROP_STRING) {
       /* RNA string */
@@ -2825,7 +2825,7 @@ void ui_but_string_get_ex(uiBut *but,
     else if (type == PROP_POINTER) {
       /* RNA pointer */
       PointerRNA ptr = RNA_property_pointer_get(&but->rnapoin, but->rnaprop);
-      buf = RNA_struct_name_get_alloc(&ptr, str, str_maxncpy, &buf_len);
+      buf = RNA_struct_ui_name_get_alloc(&ptr, str, str_maxncpy, &buf_len);
     }
     else {
       BLI_assert(0);
@@ -2948,7 +2948,7 @@ char *ui_but_string_get_dynamic(uiBut *but, int *r_str_size)
     else if (type == PROP_POINTER) {
       /* RNA pointer */
       PointerRNA ptr = RNA_property_pointer_get(&but->rnapoin, but->rnaprop);
-      str = RNA_struct_name_get_alloc(&ptr, nullptr, 0, r_str_size);
+      str = RNA_struct_ui_name_get_alloc(&ptr, nullptr, 0, r_str_size);
       (*r_str_size) += 1;
     }
     else {

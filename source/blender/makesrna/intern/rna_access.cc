@@ -1035,7 +1035,7 @@ char *RNA_struct_name_get_alloc(PointerRNA *ptr, char *fixedbuf, int fixedlen, i
 
 char *RNA_struct_ui_name_get_alloc(PointerRNA *ptr, char *fixedbuf, int fixedlen, int *r_len)
 {
-  if (RNA_struct_is_ID(ptr->type)) {
+  if (ptr->data && RNA_struct_is_ID(ptr->type)) {
     const ID *id = static_cast<const ID *>(ptr->data);
     const char *ui_name = BKE_id_ui_name_get(*id);
     const int length = strlen(ui_name);

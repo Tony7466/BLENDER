@@ -240,7 +240,7 @@ void UI_list_filter_and_sort_items(uiList *ui_list,
         namebuf = BLI_strdup(get_name_fn(itemptr, i).c_str());
       }
       else {
-        namebuf = RNA_struct_name_get_alloc(&itemptr, nullptr, 0, nullptr);
+        namebuf = RNA_struct_ui_name_get_alloc(&itemptr, nullptr, 0, nullptr);
       }
 
       const char *name = namebuf ? namebuf : "";

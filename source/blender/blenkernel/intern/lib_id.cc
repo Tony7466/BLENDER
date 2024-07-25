@@ -2274,7 +2274,10 @@ void BKE_id_full_name_get(char name[MAX_ID_FULL_NAME], const ID *id, char separa
 {
   BLI_strncpy(name, id->name + 2, MAX_ID_FULL_NAME);
 
-  if (ID_IS_LINKED(id)) {
+  if (ID_IS_LOCKED(id)) {
+    BLI_strncpy(name, BKE_id_ui_name_get(*id), MAX_ID_FULL_NAME - 2);
+  }
+  else if (ID_IS_LINKED(id)) {
     const size_t idname_len = strlen(id->name + 2);
     const size_t libname_len = strlen(id->lib->id.name + 2);
 
