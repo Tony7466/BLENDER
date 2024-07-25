@@ -1036,7 +1036,7 @@ void blo_do_versions_userdef(UserDef *userdef)
         userdef, "VIEW3D_AST_brush_sculpt", "Brushes/Mesh Sculpt/Paint");
   }
 
-  if (!USER_VERSION_ATLEAST(403, 11)) {
+  if (!USER_VERSION_ATLEAST(403, 12)) {
     LISTBASE_FOREACH (uiStyle *, style, &userdef->uistyles) {
       style->tooltip.points = 11.0f; /* UI_DEFAULT_TOOLTIP_POINTS */
       style->tooltip.character_weight = 400;
