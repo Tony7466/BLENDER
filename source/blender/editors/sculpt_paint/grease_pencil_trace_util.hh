@@ -115,7 +115,7 @@ template<typename ThresholdFn> Bitmap *image_to_bitmap(const ImBuf &ibuf, Thresh
   /* Use callback with the correct color conversion. */
   constexpr bool is_float_color_fn =
       std::is_invocable_r_v<void, ThresholdFn, const ColorGeometry4f &>;
-  auto is_foreground_float = [&](const ColorGeometry4f &fcolor) {
+  static auto is_foreground_float = [&](const ColorGeometry4f &fcolor) {
     if constexpr (!is_float_color_fn) {
       return fn(ColorGeometry4b(fcolor.r * 255, fcolor.g * 255, fcolor.b * 255, fcolor.a * 255));
     }
@@ -123,7 +123,7 @@ template<typename ThresholdFn> Bitmap *image_to_bitmap(const ImBuf &ibuf, Thresh
       return fn(fcolor);
     }
   };
-  auto is_foreground_byte = [&](const ColorGeometry4b &bcolor) {
+  static auto is_foreground_byte = [&](const ColorGeometry4b &bcolor) {
     if constexpr (is_float_color_fn) {
       return fn(ColorGeometry4f(
           bcolor.r / 255.0f, bcolor.r / 255.0f, bcolor.r / 255.0f, bcolor.r / 255.0f));
