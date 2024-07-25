@@ -301,11 +301,9 @@ static void retime_key_draw(const TimelineDrawContext *timeline_ctx,
 void sequencer_retiming_draw_continuity(const TimelineDrawContext *timeline_ctx,
                                         const StripDrawContext &strip_ctx)
 {
-  if (!can_draw_retiming(timeline_ctx, strip_ctx)) {
+  if (!can_draw_retiming(timeline_ctx, strip_ctx) || SEQ_retiming_keys_count(strip_ctx.seq) == 0) {
     return;
   }
-
-  wmOrtho2_region_pixelspace(timeline_ctx->region);
 
   const Sequence *seq = strip_ctx.seq;
   const View2D *v2d = timeline_ctx->v2d;
