@@ -997,7 +997,7 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
   }
 
   if ((adt->action == nullptr) && (insert_key_flags & INSERTKEY_AVAILABLE)) {
-    combined_result.add(SingleKeyingResult::NO_KEY_NEEDED);
+    combined_result.add(SingleKeyingResult::CANNOT_CREATE_FCURVE, rna_paths.size());
     return combined_result;
   }
 
