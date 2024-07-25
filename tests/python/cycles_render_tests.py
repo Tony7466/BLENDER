@@ -93,6 +93,8 @@ BLOCKLIST_OPTIX_OSL = [
     'bump_with_displacement.blend',
     'ray_portal.blend',
     # TODO: Investigate every other failing case and add them here.
+    # Note: Many tests are failing due to CUDA errors. Some are these are driver issues that NVIDIA is currently looking into.
+    #
     # Currently failing tests that aren't in this list are:
     # ray_portal*.blend - CUDA error
     # image_mapping_udim*.blend - Can't load UDIM from disk? But can load UDIM if it's packed, but doesn't seem to use it properly.
@@ -241,7 +243,7 @@ def main():
     #
     # OSL tests:
     # Blackbody is slightly different between SVM and OSL.
-    # Microfacet hair renders slightly differently, and on Windows and Linux with OSL
+    # Microfacet hair renders slightly differently, and fails on Windows and Linux with OSL
 
     test_dir_name = Path(test_dir).name
     if (test_dir_name in {'motion_blur', 'integrator'}) or ((args.osl) and (test_dir_name in {'shader', 'hair'})):
