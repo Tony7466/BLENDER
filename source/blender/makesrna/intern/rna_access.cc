@@ -1033,6 +1033,24 @@ char *RNA_struct_name_get_alloc(PointerRNA *ptr, char *fixedbuf, int fixedlen, i
   return nullptr;
 }
 
+char *RNA_struct_ui_name_get_alloc(PointerRNA *ptr, char *fixedbuf, int fixedlen, int *r_len)
+{
+  if (RNA_struct_is_ID(ptr->type)) {
+    const ID *id = static_cast<const ID *>(ptr->data);
+    const char *ui_name = BKE_id_ui_name_get(*id);
+    const int length = strlen(ui_name);
+    if (r_len) {
+      *r_len = length;
+    }
+    if (length + 1 <= fixedlen) {
+      strcpy(fixedbuf, ui_name);
+      return fixedbuf;
+    }
+    return BLI_strdup(ui_name);
+  }
+  return RNA_struct_name_get_alloc(ptr, fixedbuf, fixedlen, r_len);
+}
+
 bool RNA_struct_available_or_report(ReportList *reports, const char *identifier)
 {
   const StructRNA *srna_exists = RNA_struct_find(identifier);

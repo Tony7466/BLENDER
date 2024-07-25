@@ -76,12 +76,8 @@ TreeElementRNAStruct::TreeElementRNAStruct(TreeElement &legacy_te, PointerRNA &r
   if (!is_rna_valid()) {
     return;
   }
-  if (rna_ptr.owner_id && rna_ptr.owner_id == rna_ptr.data) {
-    legacy_te_.name = BLI_strdup(BKE_id_ui_name_get(*rna_ptr.owner_id));
-  }
-  else {
-    legacy_te_.name = RNA_struct_name_get_alloc(&rna_ptr, nullptr, 0, nullptr);
-  }
+
+  legacy_te_.name = RNA_struct_ui_name_get_alloc(&rna_ptr, nullptr, 0, nullptr);
   if (legacy_te_.name) {
     legacy_te_.flag |= TE_FREE_NAME;
   }

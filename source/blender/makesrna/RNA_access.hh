@@ -149,6 +149,12 @@ const ListBase *RNA_struct_type_functions(StructRNA *srna);
 
 char *RNA_struct_name_get_alloc(PointerRNA *ptr, char *fixedbuf, int fixedlen, int *r_len)
     ATTR_WARN_UNUSED_RESULT;
+/**
+ * Same as #RNA_struct_name_get_alloc but may give a display-name that is is sometimes not unique
+ * even if the actual name way be unique. The name returned here also can't be used as identifier.
+ */
+char *RNA_struct_ui_name_get_alloc(PointerRNA *ptr, char *fixedbuf, int fixedlen, int *r_len)
+    ATTR_WARN_UNUSED_RESULT;
 
 /**
  * Use when registering structs with the #STRUCT_PUBLIC_NAMESPACE flag.
