@@ -2334,6 +2334,12 @@ float uiLayoutGetSearchWeight(uiLayout *layout);
 
 uiLayout *uiLayoutRow(uiLayout *layout, bool align);
 
+/**
+ * Variant of #uiLayoutRow that adds a bit of padding on the sides.
+ * This can be used to add margins when stacking items in overlapping layouts.
+ */
+uiLayout *uiLayoutRowPadded(uiLayout *layout, bool align);
+
 struct PanelLayout {
   uiLayout *header;
   uiLayout *body;

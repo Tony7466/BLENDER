@@ -164,9 +164,12 @@ void AbstractTreeView::draw_hierarchy_lines_recursive(const ARegion &region,
     rcti last_child_rect;
     ui_but_to_pixelrect(&last_child_rect, &region, block, &last_child_but);
 
-    const float x = first_child_rect.xmin + ((first_descendant->indent_width() -
-                                              (0.5f * UI_ICON_SIZE) + U.pixelsize + UI_SCALE_FAC) /
-                                             aspect);
+    /* Account for the padding added by the layout. */
+    const int padding = 5 * UI_SCALE_FAC;
+    const float x = first_child_rect.xmin +
+                    ((first_descendant->indent_width() + padding -
+                      (0.5f * UI_ICON_SIZE) + U.pixelsize) /
+                     aspect);
     const int first_child_top = first_child_rect.ymax - (2.0f * UI_SCALE_FAC / aspect);
     const int last_child_bottom = last_child_rect.ymin + (4.0f * UI_SCALE_FAC / aspect);
     immBegin(GPU_PRIM_LINES, 2);
@@ -681,7 +684,8 @@ void TreeViewLayoutBuilder::build_row(AbstractTreeViewItem &item) const
   if (margin_top > 0) {
     uiDefBut(&block_, UI_BTYPE_LABEL, 0, "", 0, 0, UI_UNIT_X, margin_top, nullptr, 0, 0, "");
   }
-  row = uiLayoutRow(content_col, true);
+  row = uiLayoutRowPadded(content_col, true);
+
   item.add_indent(*row);
   item.add_collapse_chevron(block_);
 

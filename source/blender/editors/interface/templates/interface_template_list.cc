@@ -794,7 +794,7 @@ static void ui_template_list_layout_draw(const bContext *C,
             UI_but_func_tooltip_set(but, uilist_item_tooltip_func, dyntip_data, MEM_freeN);
           }
 
-          sub = uiLayoutRow(overlap, false);
+          sub = uiLayoutRowPadded(overlap, false);
 
           icon = UI_icon_from_rnaptr(C, itemptr, rnaicon, false);
           if (icon == ICON_DOT) {
