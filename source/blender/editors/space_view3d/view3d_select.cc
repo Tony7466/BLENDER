@@ -3258,7 +3258,7 @@ static bool ed_grease_pencil_select_pick(bContext *C,
           const auto range_consumer = [&](const IndexRange range,
                                           const Span<float3> positions,
                                           const StringRef selection_attribute_name) {
-            IndexMask mask = elements.slice_content(range);
+            const IndexMask mask = elements.slice_content(range);
 
             std::optional<ed::curves::FindClosestData> new_closest_elem =
                 ed::curves::closest_elem_find_screen_space(vc,
