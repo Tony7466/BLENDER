@@ -453,7 +453,8 @@ static void read_file_version(FileData *fd, Main *main)
 
   for (bhead = blo_bhead_first(fd); bhead; bhead = blo_bhead_next(fd, bhead)) {
     if (bhead->code == BLO_CODE_GLOB) {
-      FileGlobal *fg = static_cast<FileGlobal *>(read_struct(fd, bhead, "Global", INDEX_ID_NULL));
+      FileGlobal *fg = static_cast<FileGlobal *>(
+          read_struct(fd, bhead, "Data from Global block", INDEX_ID_NULL));
       if (fg) {
         main->subversionfile = fg->subversion;
         main->minversionfile = fg->minversion;
@@ -1118,7 +1119,8 @@ static bool is_minversion_older_than_blender(FileData *fd, ReportList *reports)
       continue;
     }
 
-    FileGlobal *fg = static_cast<FileGlobal *>(read_struct(fd, bhead, "Global", INDEX_ID_NULL));
+    FileGlobal *fg = static_cast<FileGlobal *>(
+        read_struct(fd, bhead, "Data from Global block", INDEX_ID_NULL));
     if ((fg->minversion > BLENDER_FILE_VERSION) ||
         (fg->minversion == BLENDER_FILE_VERSION && fg->minsubversion > BLENDER_FILE_SUBVERSION))
     {
@@ -1774,10 +1776,11 @@ static const char *get_alloc_name(FileData *fd,
   if (is_id_data) {
     if (UNLIKELY(!storage.contains(id_type_index))) {
       if (id_type_index == INDEX_ID_NULL) {
-        return storage.insert(id_type_index, "UNKNOWN");
+        return storage.insert(id_type_index, "Data from UNKNOWN");
       }
       const IDTypeInfo *id_type = BKE_idtype_get_info_from_idtype_index(id_type_index);
-      return storage.insert(id_type_index, id_type->name);
+      const std::string alloc_string = fmt::format("Data from '{}' ID type", id_type->name);
+      return storage.insert(id_type_index, alloc_string);
     }
     return storage.find(id_type_index);
   }
@@ -2899,8 +2902,15 @@ static BHead *read_libblock(FileData *fd,
   }
 
   /* Read libblock struct. */
-  ID *id = static_cast<ID *>(
-      read_struct(fd, bhead, nullptr, BKE_idtype_idcode_to_index(bhead->code)));
+  const int id_type_index = BKE_idtype_idcode_to_index(bhead->code);
+#ifndef NDEBUG
+  const char *blockname = nullptr;
+#else
+  /* Avoid looking up in the mapping for all read BHead, since this only contains the ID type name
+   * in release builds. */
+  const char *blockname = get_alloc_name(fd, bhead, nullptr, id_type_index);
+#endif
+  ID *id = static_cast<ID *>(read_struct(fd, bhead, blockname, id_type_index));
   if (id == nullptr) {
     if (r_id) {
       *r_id = nullptr;
@@ -2963,7 +2973,7 @@ static BHead *read_libblock(FileData *fd,
 
   /* Read datablock contents.
    * Use convenient malloc name for debugging and better memory link prints. */
-  bhead = read_data_into_datamap(fd, bhead, nullptr, BKE_idtype_idcode_to_index(idcode));
+  bhead = read_data_into_datamap(fd, bhead, blockname, id_type_index);
   const bool success = direct_link_id(fd, main, id_tag, id, id_old);
   oldnewmap_clear(fd->datamap);
 
@@ -3003,7 +3013,7 @@ BHead *blo_read_asset_data_block(FileData *fd, BHead *bhead, AssetMetaData **r_a
 {
   BLI_assert(blo_bhead_is_id_valid_type(bhead));
 
-  bhead = read_data_into_datamap(fd, bhead, "asset-data", INDEX_ID_NULL);
+  bhead = read_data_into_datamap(fd, bhead, "Data for Asset meta-data", INDEX_ID_NULL);
 
   BlendDataReader reader = {fd};
   BLO_read_struct(&reader, AssetMetaData, r_asset_data);
@@ -3024,7 +3034,8 @@ BHead *blo_read_asset_data_block(FileData *fd, BHead *bhead, AssetMetaData **r_a
 /* also version info is written here */
 static BHead *read_global(BlendFileData *bfd, FileData *fd, BHead *bhead)
 {
-  FileGlobal *fg = static_cast<FileGlobal *>(read_struct(fd, bhead, "Global", INDEX_ID_NULL));
+  FileGlobal *fg = static_cast<FileGlobal *>(
+      read_struct(fd, bhead, "Data from Global block", INDEX_ID_NULL));
 
   /* NOTE: `bfd->main->versionfile` is supposed to have already been set from `fd->fileversion`
    * beforehand by calling code. */
@@ -3356,14 +3367,15 @@ static void direct_link_keymapitem(BlendDataReader *reader, wmKeyMapItem *kmi)
 static BHead *read_userdef(BlendFileData *bfd, FileData *fd, BHead *bhead)
 {
   UserDef *user;
-  bfd->user = user = static_cast<UserDef *>(read_struct(fd, bhead, "user def", INDEX_ID_NULL));
+  bfd->user = user = static_cast<UserDef *>(
+      read_struct(fd, bhead, "Data for User Def", INDEX_ID_NULL));
 
   /* User struct has separate do-version handling */
   user->versionfile = bfd->main->versionfile;
   user->subversionfile = bfd->main->subversionfile;
 
   /* read all data into fd->datamap */
-  bhead = read_data_into_datamap(fd, bhead, "user def", INDEX_ID_NULL);
+  bhead = read_data_into_datamap(fd, bhead, "Data for User Def", INDEX_ID_NULL);
 
   BlendDataReader reader_ = {fd};
   BlendDataReader *reader = &reader_;
@@ -3988,7 +4000,8 @@ static void expand_doit_library(void *fdhandle, Main *mainvar, void *old)
       return;
     }
 
-    Library *lib = static_cast<Library *>(read_struct(fd, bheadlib, "Library", INDEX_ID_NULL));
+    Library *lib = static_cast<Library *>(
+        read_struct(fd, bheadlib, "Data for Library ID type", INDEX_ID_NULL));
     Main *libmain = blo_find_main(fd, lib->filepath, fd->relabase);
 
     if (libmain->curlib == nullptr) {
