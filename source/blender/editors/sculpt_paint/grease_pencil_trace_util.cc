@@ -9,11 +9,14 @@
 #include "BKE_curves.hh"
 
 #include "IMB_imbuf.hh"
-#include "potracelib.h"
+
+#include "MEM_guardedalloc.h"
+
+#ifdef WITH_POTRACE
+#  include "potracelib.h"
+#endif
 
 #include "grease_pencil_trace_util.hh"
-
-#include <iostream>
 
 namespace blender::ed::image_trace {
 
@@ -58,11 +61,7 @@ Bitmap *create_bitmap(const int2 &size)
   bm->w = size.x;
   bm->h = size.y;
   bm->dy = dy;
-  bm->map = static_cast<potrace_word *>(calloc(size.y, dy * BM_WORDSIZE));
-  if (!bm->map) {
-    free(bm);
-    return nullptr;
-  }
+  bm->map = static_cast<potrace_word *>(MEM_mallocN(size.y * dy * sizeof(potrace_word), __func__));
 
   return bm;
 #else
@@ -75,7 +74,7 @@ void free_bitmap(Bitmap *bm)
 {
 #ifdef WITH_POTRACE
   if (bm != nullptr) {
-    free(bm->map);
+    MEM_freeN(bm->map);
   }
   MEM_SAFE_FREE(bm);
 #else
