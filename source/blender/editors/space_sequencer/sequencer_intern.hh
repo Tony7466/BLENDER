@@ -104,6 +104,7 @@ struct StripDrawContext {
   bool show_strip_color_tag;
   bool missing_data_block;
   bool missing_media;
+  bool is_connected;
 };
 
 struct TimelineDrawContext {

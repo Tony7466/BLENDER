@@ -904,7 +904,7 @@ static void draw_icon_centered(TimelineDrawContext &ctx,
   const float x_offset = (right - left - icon_size) * 0.5f;
   const float y_offset = (top - bottom - icon_size) * 0.5f;
 
-  const float inv_scale_fac = (ICON_DEFAULT_HEIGHT / MISSING_ICON_SIZE) * UI_INV_SCALE_FAC;
+  const float inv_scale_fac = (ICON_DEFAULT_HEIGHT / ICON_SIZE) * UI_INV_SCALE_FAC;
 
   UI_icon_draw_ex(left + x_offset,
                   bottom + y_offset,
