@@ -50,14 +50,15 @@ Bitmap *create_bitmap(const int2 &size)
   /* Number of words per scanline. */
   const int32_t dy = (size.x + BM_WORDBITS - 1) / BM_WORDBITS;
 
-  potrace_bitmap_t *bm = (potrace_bitmap_t *)MEM_mallocN(sizeof(potrace_bitmap_t), __func__);
+  potrace_bitmap_t *bm = static_cast<potrace_bitmap_t *>(
+      MEM_mallocN(sizeof(potrace_bitmap_t), __func__));
   if (!bm) {
     return nullptr;
   }
   bm->w = size.x;
   bm->h = size.y;
   bm->dy = dy;
-  bm->map = (potrace_word *)calloc(size.y, dy * BM_WORDSIZE);
+  bm->map = static_cast<potrace_word *>(calloc(size.y, dy * BM_WORDSIZE));
   if (!bm->map) {
     free(bm);
     return nullptr;

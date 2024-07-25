@@ -332,7 +332,7 @@ static bool grease_pencil_trace_image_poll(bContext *C)
     return false;
   }
 
-  Image *image = (Image *)ob->data;
+  Image *image = static_cast<Image *>(ob->data);
   if (!ELEM(image->source, IMA_SRC_FILE, IMA_SRC_SEQUENCE, IMA_SRC_MOVIE)) {
     CTX_wm_operator_poll_msg_set(C, "No valid image format selected");
     return false;
@@ -353,7 +353,7 @@ static int grease_pencil_trace_image_exec(bContext *C, wmOperator *op)
   job->v3d = CTX_wm_view3d(C);
   job->base_active = CTX_data_active_base(C);
   job->ob_active = job->base_active->object;
-  job->image = (Image *)job->ob_active->data;
+  job->image = static_cast<Image *>(job->ob_active->data);
   job->frame_target = scene->r.cfra;
   job->use_current_frame = RNA_boolean_get(op->ptr, "use_current_frame");
 
