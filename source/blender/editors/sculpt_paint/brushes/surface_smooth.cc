@@ -219,7 +219,8 @@ BLI_NOINLINE static void do_surface_smooth_brush_grids(
   threading::EnumerableThreadSpecific<LocalData> all_tls;
 
   Array<int> node_offset_data;
-  const OffsetIndices node_offsets = create_node_vert_offsets(nodes, node_offset_data);
+  const OffsetIndices node_offsets = create_node_vert_offsets(
+      nodes, BKE_subdiv_ccg_key_top_level(subdiv_ccg), node_offset_data);
   Array<float> all_factors(node_offsets.total_size());
 
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
