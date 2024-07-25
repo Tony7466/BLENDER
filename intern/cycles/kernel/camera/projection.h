@@ -63,7 +63,7 @@ ccl_device float2 direction_to_central_cylindrical(float3 dir, float4 range)
 {
   const float z = dir.z / len(make_float2(dir.x, dir.y));
   const float theta = atan2f(dir.y, dir.x);
-  const float u = inverse_lerp(theta, range.x, range.y);
+  const float u = inverse_lerp(range.x, range.y, theta);
   const float v = inverse_lerp(range.z, range.w, z);
   return make_float2(u, v);
 }
