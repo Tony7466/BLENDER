@@ -137,7 +137,7 @@ BLI_NOINLINE static void do_surface_smooth_brush_mesh(const Sculpt &sd,
       LocalData &tls = all_tls.local();
       for (const int i : range) {
         const Span<int> verts = bke::pbvh::node_unique_verts(*nodes[i]);
-        const MutableSpan positions = gather_mesh_positions(positions_eval, verts, tls.positions);
+        const MutableSpan positions = gather_data_mesh(positions_eval, verts, tls.positions);
         const OrigPositionData orig_data = orig_position_data_get_mesh(object, *nodes[i]);
         const Span<float> factors = all_factors.as_span().slice(node_offsets[i]);
 
@@ -147,8 +147,7 @@ BLI_NOINLINE static void do_surface_smooth_brush_mesh(const Sculpt &sd,
 
         tls.average_positions.reinitialize(verts.size());
         const MutableSpan<float3> average_positions = tls.average_positions;
-        smooth::neighbor_position_average_mesh(
-            positions_eval, verts, tls.vert_neighbors, average_positions);
+        smooth::neighbor_data_average_mesh(positions_eval, tls.vert_neighbors, average_positions);
 
         tls.laplacian_disp.reinitialize(verts.size());
         const MutableSpan<float3> laplacian_disp = tls.laplacian_disp;
@@ -162,7 +161,7 @@ BLI_NOINLINE static void do_surface_smooth_brush_mesh(const Sculpt &sd,
                                       translations);
         scale_translations(translations, factors);
 
-        array_utils::scatter(laplacian_disp.as_span(), verts, all_laplacian_disp);
+        scatter_data_mesh(laplacian_disp.as_span(), verts, all_laplacian_disp);
 
         write_translations(sd, object, positions_eval, verts, translations, positions_orig);
       }
@@ -176,7 +175,7 @@ BLI_NOINLINE static void do_surface_smooth_brush_mesh(const Sculpt &sd,
 
         tls.laplacian_disp.reinitialize(verts.size());
         const MutableSpan<float3> laplacian_disp = tls.laplacian_disp;
-        array_utils::gather(all_laplacian_disp.as_span(), verts, laplacian_disp);
+        gather_data_mesh(all_laplacian_disp.as_span(), verts, laplacian_disp);
 
         tls.vert_neighbors.reinitialize(verts.size());
         calc_vert_neighbors(
@@ -184,8 +183,8 @@ BLI_NOINLINE static void do_surface_smooth_brush_mesh(const Sculpt &sd,
 
         tls.average_positions.reinitialize(verts.size());
         const MutableSpan<float3> average_laplacian_disps = tls.average_positions;
-        smooth::neighbor_position_average_mesh(
-            all_laplacian_disp, verts, tls.vert_neighbors, average_laplacian_disps);
+        smooth::neighbor_data_average_mesh(
+            all_laplacian_disp.as_span(), tls.vert_neighbors, average_laplacian_disps);
 
         tls.translations.reinitialize(verts.size());
         const MutableSpan<float3> translations = tls.translations;
