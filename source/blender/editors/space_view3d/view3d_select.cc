@@ -3075,7 +3075,7 @@ static bool ed_wpaint_vertex_select_pick(bContext *C,
 }
 
 struct ClosestCurveDataBlock {
-  blender::StringRef selection_name;
+  blender::StringRef selection_attribute_name;
   Curves *curves_id = nullptr;
   blender::ed::curves::FindClosestData elem = {};
 };
@@ -3126,7 +3126,7 @@ static bool ed_curves_select_pick(bContext &C, const int mval[2], const SelectPi
                                                                mval,
                                                                new_closest.elem);
                 if (new_closest_elem) {
-                  new_closest.selection_name = selection_attribute_name;
+                  new_closest.selection_attribute_name = selection_attribute_name;
                   new_closest.elem = *new_closest_elem;
                   new_closest.curves_id = &curves_id;
                 }
@@ -3178,7 +3178,7 @@ static bool ed_curves_select_pick(bContext &C, const int mval[2], const SelectPi
         closest.curves_id->geometry.wrap(),
         bke::AttrDomain::Point,
         CD_PROP_BOOL,
-        closest.selection_name);
+        closest.selection_attribute_name);
     ed::curves::apply_selection_operation_at_index(
         selection.span, closest.elem.index, params.sel_op);
     selection.finish();
