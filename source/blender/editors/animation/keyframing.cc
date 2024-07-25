@@ -882,12 +882,17 @@ static int delete_key_v3d_without_keying_set(bContext *C, wmOperator *op)
       const float cfra_unmap = BKE_nla_tweakedit_remap(adt, cfra, NLATIME_CONVERT_UNMAP);
 
       Action &action = act->wrap();
+      blender::Vector<FCurve *> modified_fcurves;
       if (action.is_action_layered()) {
         for (FCurve *fcu : fcurves_for_action_slot(action, adt->slot_handle)) {
           if (!can_delete_key(fcu, ob, op->reports)) {
             continue;
           }
-          success += blender::animrig::fcurve_delete_keyframe_at_time(fcu, cfra_unmap);
+          const bool deleted = fcurve_delete_keyframe_at_time(fcu, cfra_unmap);
+          if (deleted) {
+            success += 1;
+            modified_fcurves.append(fcu);
+          }
         }
       }
       else {
@@ -900,7 +905,7 @@ static int delete_key_v3d_without_keying_set(bContext *C, wmOperator *op)
           /* Delete keyframes on current frame
            * WARNING: this can delete the next F-Curve, hence the "fcn" copying.
            */
-          success += blender::animrig::delete_keyframe_fcurve_legacy(adt, fcu, cfra_unmap);
+          success += delete_keyframe_fcurve_legacy(adt, fcu, cfra_unmap);
         }
       }
 
@@ -1211,7 +1216,8 @@ static int delete_key_button_exec(bContext *C, wmOperator *op)
         }
 
         changed = blender::animrig::delete_keyframe(
-                      bmain, op->reports, ptr.owner_id, nullptr, path->c_str(), index, cfra) != 0;
+                      bmain, op->reports, ptr.owner_id, {path->c_str(), nullptr, index}, cfra) !=
+                  0;
       }
       else if (G.debug & G_DEBUG) {
         printf("Button Delete-Key: no path to property\n");

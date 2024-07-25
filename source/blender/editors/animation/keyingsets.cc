@@ -1105,9 +1105,7 @@ static int insert_key_to_keying_set_path(bContext *C,
       keyed_channels += delete_keyframe(bmain,
                                         reports,
                                         keyingset_path->id,
-                                        nullptr,
-                                        keyingset_path->rna_path,
-                                        array_index,
+                                        {keyingset_path->rna_path, nullptr, array_index},
                                         frame);
     }
   }

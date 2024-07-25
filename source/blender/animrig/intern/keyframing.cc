@@ -627,15 +627,8 @@ static void deg_tag_after_keyframe_delete(Main *bmain, ID *id, AnimData *adt)
   }
 }
 
-int delete_keyframe(Main *bmain,
-                    ReportList *reports,
-                    ID *id,
-                    bAction *act,
-                    const char rna_path[],
-                    int array_index,
-                    float cfra)
+int delete_keyframe(Main *bmain, ReportList *reports, ID *id, const RNAPath &rna_path, float cfra)
 {
-  BLI_assert(rna_path != nullptr);
   AnimData *adt = BKE_animdata_from_id(id);
 
   if (ELEM(nullptr, id, adt)) {
@@ -646,31 +639,28 @@ int delete_keyframe(Main *bmain,
   PointerRNA ptr;
   PropertyRNA *prop;
   PointerRNA id_ptr = RNA_id_pointer_create(id);
-  if (RNA_path_resolve_property(&id_ptr, rna_path, &ptr, &prop) == false) {
+  if (RNA_path_resolve_property(&id_ptr, rna_path.path.c_str(), &ptr, &prop) == false) {
     BKE_reportf(
         reports,
         RPT_ERROR,
         "Could not delete keyframe, as RNA path is invalid for the given ID (ID = %s, path = %s)",
         id->name,
-        rna_path);
+        rna_path.path.c_str());
     return 0;
   }
 
-  if (act == nullptr) {
-    if (adt->action) {
-      act = adt->action;
-      cfra = BKE_nla_tweakedit_remap(adt, cfra, NLATIME_CONVERT_UNMAP);
-    }
-    else {
-      BKE_reportf(reports, RPT_ERROR, "No action to delete keyframes from for ID = %s", id->name);
-      return 0;
-    }
+  bAction *act;
+  if (!adt->action) {
+    BKE_reportf(reports, RPT_ERROR, "No action to delete keyframes from for ID = %s", id->name);
+    return 0;
   }
 
-  int array_index_max = array_index + 1;
+  act = adt->action;
+  cfra = BKE_nla_tweakedit_remap(adt, cfra, NLATIME_CONVERT_UNMAP);
 
-  if (array_index == -1) {
-    array_index = 0;
+  int array_index = rna_path.index.value_or(0);
+  int array_index_max = array_index + 1;
+  if (!rna_path.index.has_value()) {
     array_index_max = RNA_property_array_length(&ptr, prop);
 
     /* For single properties, increase max_index so that the property itself gets included,
@@ -683,54 +673,62 @@ int delete_keyframe(Main *bmain,
   }
 
   Action &action = act->wrap();
+  Vector<FCurve *> modified_fcurves;
   if (action.is_action_layered()) {
     /* Just being defensive in the face of the NLA shenanigans above. This
      * probably isn't necessary, but it doesn't hurt. */
     BLI_assert(adt->action == act && action.slot_for_handle(adt->slot_handle) != nullptr);
 
     Span<FCurve *> fcurves = fcurves_for_action_slot(action, adt->slot_handle);
-    int removed_key_count = 0;
     /* This loop's clause is copied from the pre-existing code for legacy
      * actions below, to ensure behavioral consistency between the two code
      * paths. In the future when legacy actions are removed, we can restructure
      * it to be clearer. */
     for (; array_index < array_index_max; array_index++) {
-      FCurve *fcurve = fcurve_find(fcurves, {rna_path, array_index});
+      FCurve *fcurve = fcurve_find(fcurves, {rna_path.path, array_index});
       if (fcurve == nullptr) {
         continue;
       }
-      removed_key_count += fcurve_delete_keyframe_at_time(fcurve, cfra);
+      if (fcurve_delete_keyframe_at_time(fcurve, cfra)) {
+        modified_fcurves.append(fcurve);
+      }
     }
+  }
+  else {
+    /* Will only loop once unless the array index was -1. */
+    for (; array_index < array_index_max; array_index++) {
+      FCurve *fcu = action_fcurve_find(act, {rna_path.path, array_index});
 
-    return removed_key_count;
+      if (fcu == nullptr) {
+        continue;
+      }
+
+      if (BKE_fcurve_is_protected(fcu)) {
+        BKE_reportf(reports,
+                    RPT_WARNING,
+                    "Not deleting keyframe for locked F-Curve '%s' for %s '%s'",
+                    fcu->rna_path,
+                    BKE_idtype_idcode_to_name(GS(id->name)),
+                    id->name + 2);
+        continue;
+      }
+
+      if (fcurve_delete_keyframe_at_time(fcu, cfra)) {
+        modified_fcurves.append(fcu);
+      }
+    }
   }
 
-  /* Will only loop once unless the array index was -1. */
-  int key_count = 0;
-  for (; array_index < array_index_max; array_index++) {
-    FCurve *fcu = action_fcurve_find(act, {rna_path, array_index});
-
-    if (fcu == nullptr) {
-      continue;
-    }
-
-    if (BKE_fcurve_is_protected(fcu)) {
-      BKE_reportf(reports,
-                  RPT_WARNING,
-                  "Not deleting keyframe for locked F-Curve '%s' for %s '%s'",
-                  fcu->rna_path,
-                  BKE_idtype_idcode_to_name(GS(id->name)),
-                  id->name + 2);
-      continue;
-    }
-
-    key_count += delete_keyframe_fcurve_legacy(adt, fcu, cfra);
-  }
-  if (key_count) {
+  if (!modified_fcurves.is_empty()) {
     deg_tag_after_keyframe_delete(bmain, id, adt);
+    for (FCurve *fcurve : modified_fcurves) {
+      if (BKE_fcurve_is_empty(fcurve)) {
+        animdata_fcurve_delete(nullptr, adt, fcurve);
+      }
+    }
   }
 
-  return key_count;
+  return modified_fcurves.size();
 }
 
 /* ************************************************** */
