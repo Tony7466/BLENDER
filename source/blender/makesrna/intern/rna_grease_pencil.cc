@@ -243,13 +243,6 @@ static int rna_Frame_frame_number_get(PointerRNA *ptr)
   return frame_number;
 }
 
-static void rna_Frame_frame_number_index_range(
-    PointerRNA * /*ptr*/, int *min, int *max, int * /*softmin*/, int * /*softmax*/)
-{
-  *min = MINAFRAME;
-  *max = MAXFRAME;
-}
-
 static void rna_grease_pencil_layer_mask_name_get(PointerRNA *ptr, char *dst)
 {
   using namespace blender;
@@ -812,8 +805,7 @@ static void rna_def_grease_pencil_frame(BlenderRNA *brna)
   prop = RNA_def_property(srna, "frame_number", PROP_INT, PROP_NONE);
   /* TODO: Make property editable, ensure frame number isn't already in use. */
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_int_funcs(
-      prop, "rna_Frame_frame_number_get", nullptr, "rna_Frame_frame_number_index_range");
+  RNA_def_property_int_funcs(prop, "rna_Frame_frame_number_get", nullptr, nullptr);
   RNA_def_property_range(prop, MINAFRAME, MAXFRAME);
   RNA_def_property_ui_text(prop, "Frame Number", "The frame number in the scene");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
