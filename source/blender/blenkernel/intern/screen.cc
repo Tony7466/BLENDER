@@ -872,8 +872,13 @@ ScrArea *BKE_screen_find_area_from_space(const bScreen *screen, const SpaceLink 
 
 std::optional<std::string> BKE_screen_path_from_screen_to_space(const PointerRNA *ptr)
 {
-  bScreen *screen = (bScreen *)ptr->owner_id;
-  SpaceLink *link = (SpaceLink *)ptr->data;
+  if (GS(ptr->owner_id->name) != ID_SCR) {
+    BLI_assert_unreachable();
+    return std::nullopt;
+  }
+
+  bScreen *screen = reinterpret_cast<bScreen *>(ptr->owner_id);
+  SpaceLink *link = static_cast<SpaceLink *>(ptr->data);
 
   int area_index;
   LISTBASE_FOREACH_INDEX (ScrArea *, area, &screen->areabase, area_index) {
