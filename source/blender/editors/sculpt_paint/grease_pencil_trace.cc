@@ -90,8 +90,7 @@ struct TraceJob {
   float radius;
   TurnPolicy turnpolicy;
   TraceMode mode;
-  /** Frame to render to be used by python API. Not exposed in UI.
-   * This feature is only used in Studios to run custom video trace for selected frames. */
+  /* Custom source frame, allows overriding the default scene frame. */
   int frame_number;
 
   bool success;
@@ -192,7 +191,7 @@ static bool grease_pencil_trace_image(TraceJob &trace_job,
   image_trace::free_bitmap(bm);
 
   /* Attribute ID for which curves are "holes" with a negative trace sign. */
-  const bke::AttributeIDRef hole_attribute_id = "hole";
+  const bke::AttributeIDRef hole_attribute_id = "is_hole";
 
   /* Transform from bitmap index space to local image object space. */
   const float4x4 transform = pixel_to_object_transform(*trace_job.ob_active, ibuf);
@@ -235,7 +234,7 @@ static void trace_start_job(void *customdata, wmJobWorkerStatus *worker_status)
   trace_job.do_update = &worker_status->do_update;
   trace_job.progress = &worker_status->progress;
   trace_job.was_canceled = false;
-  const int init_frame = max_ii((trace_job.use_current_frame) ? trace_job.frame_target : 0, 0);
+  const int init_frame = std::max((trace_job.use_current_frame) ? trace_job.frame_target : 0, 0);
 
   G.is_break = false;
 
@@ -333,7 +332,7 @@ static bool grease_pencil_trace_image_poll(bContext *C)
     return false;
   }
 
-  Image *image = (Image *)ob->data;
+  Image *image = static_cast<Image *>(ob->data);
   if (!ELEM(image->source, IMA_SRC_FILE, IMA_SRC_SEQUENCE, IMA_SRC_MOVIE)) {
     CTX_wm_operator_poll_msg_set(C, "No valid image format selected");
     return false;
@@ -354,7 +353,7 @@ static int grease_pencil_trace_image_exec(bContext *C, wmOperator *op)
   job->v3d = CTX_wm_view3d(C);
   job->base_active = CTX_data_active_base(C);
   job->ob_active = job->base_active->object;
-  job->image = (Image *)job->ob_active->data;
+  job->image = static_cast<Image *>(job->ob_active->data);
   job->frame_target = scene->r.cfra;
   job->use_current_frame = RNA_boolean_get(op->ptr, "use_current_frame");
 
