@@ -315,6 +315,24 @@ static void action_blend_write(BlendWriter *writer, ID *id, const void *id_addre
 {
   animrig::Action &action = reinterpret_cast<bAction *>(id)->wrap();
 
+#ifndef WITH_ANIM_BAKLAVA
+  /* Built without Baklava, so ensure that the written data is clean. This should not change
+   * anything, as the reading code below also ensures these fields are empty, and the APIs to add
+   * those should be unavailable. */
+  BLI_assert_msg(action.layer_array == nullptr,
+                 "Action should not have layers, built without Baklava experimental feature");
+  BLI_assert_msg(action.layer_array_num == 0,
+                 "Action should not have layers, built without Baklava experimental feature");
+  BLI_assert_msg(action.binding_array == nullptr,
+                 "Action should not have bindings, built without Baklava experimental feature");
+  BLI_assert_msg(action.binding_array_num == 0,
+                 "Action should not have bindings, built without Baklava experimental feature");
+  action.layer_array = nullptr;
+  action.layer_array_num = 0;
+  action.binding_array = nullptr;
+  action.binding_array_num = 0;
+#endif /* WITH_ANIM_BAKLAVA */
+
   BLO_write_id_struct(writer, bAction, id_address, &action.id);
   BKE_id_blend_write(writer, &action.id);
 
@@ -322,7 +340,7 @@ static void action_blend_write(BlendWriter *writer, ID *id, const void *id_addre
   /* Write layered Action data. */
   write_layers(writer, action.layers());
   write_bindings(writer, action.bindings());
-#endif
+#endif /* WITH_ANIM_BAKLAVA */
 
   /* Write legacy F-Curves & groups. */
   BKE_fcurve_blend_write_listbase(writer, &action.curves);
