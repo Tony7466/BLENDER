@@ -51,9 +51,9 @@ BLI_NOINLINE static void surface_smooth_laplacian_step(const Span<float3> positi
   BLI_assert(positions.size() == translations.size());
 
   for (const int i : average_positions.index_range()) {
-    const float3 weigthed_o = orig_positions[i] * alpha;
-    const float3 weigthed_q = positions[i] * (1.0f - alpha);
-    const float3 d = weigthed_o + weigthed_q;
+    const float3 weighted_o = orig_positions[i] * alpha;
+    const float3 weighted_q = positions[i] * (1.0f - alpha);
+    const float3 d = weighted_o + weighted_q;
     laplacian_disp[i] = average_positions[i] - d;
     translations[i] = average_positions[i] - positions[i];
   }
