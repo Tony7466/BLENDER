@@ -877,7 +877,8 @@ struct KeyInsertData {
   int array_index;
 };
 
-static SingleKeyingResult insert_key_layer(Layer &layer,
+static SingleKeyingResult insert_key_layer(Main *bmain,
+                                           Layer &layer,
                                            const Slot &slot,
                                            const std::string &rna_path,
                                            const std::optional<PropertySubType> prop_subtype,
@@ -889,14 +890,16 @@ static SingleKeyingResult insert_key_layer(Layer &layer,
   BLI_assert(layer.strips().size() == 1);
 
   Strip *strip = layer.strip(0);
-  return strip->as<KeyframeStrip>().keyframe_insert(slot,
+  return strip->as<KeyframeStrip>().keyframe_insert(bmain,
+                                                    slot,
                                                     {rna_path, key_data.array_index, prop_subtype},
                                                     key_data.position,
                                                     key_settings,
                                                     insert_key_flags);
 }
 
-static CombinedKeyingResult insert_key_layered_action(Action &action,
+static CombinedKeyingResult insert_key_layered_action(Main *bmain,
+                                                      Action &action,
                                                       PointerRNA *rna_pointer,
                                                       const blender::Span<RNAPath> rna_paths,
                                                       const float scene_frame,
@@ -913,9 +916,7 @@ static CombinedKeyingResult insert_key_layered_action(Action &action,
       "The conditions that would cause this Slot assigment to fail (such as the ID not being "
       "animatible) should have been caught and handled by higher-level functions.");
 
-  /* Ensure that at least one layer exists. If not, create the default layer
-   * with the default infinite keyframe strip. */
-  action.layer_ensure_at_least_one();
+  action.layer_keystrip_ensure();
 
   /* TODO: we currently assume this will always successfully find a layer.
    * However, that may not be true in the future when we implement features like
@@ -955,7 +956,8 @@ static CombinedKeyingResult insert_key_layered_action(Action &action,
       }
 
       const KeyInsertData key_data = {{scene_frame, rna_values[property_index]}, property_index};
-      const SingleKeyingResult result = insert_key_layer(*layer,
+      const SingleKeyingResult result = insert_key_layer(bmain,
+                                                         *layer,
                                                          slot,
                                                          *rna_path_id_to_prop,
                                                          prop_subtype,
@@ -992,6 +994,11 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
     return combined_result;
   }
 
+  if ((adt->action == nullptr) && (insert_key_flags & INSERTKEY_AVAILABLE)) {
+    combined_result.add(SingleKeyingResult::CANNOT_CREATE_FCURVE, rna_paths.size());
+    return combined_result;
+  }
+
   bAction *dna_action = id_action_ensure(bmain, id);
   BLI_assert(dna_action != nullptr);
 
@@ -1002,7 +1009,8 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
     KeyframeSettings key_settings = get_keyframe_settings(
         (insert_key_flags & INSERTKEY_NO_USERPREF) == 0);
     key_settings.keyframe_type = key_type;
-    return insert_key_layered_action(action,
+    return insert_key_layered_action(bmain,
+                                     action,
                                      struct_pointer,
                                      rna_paths,
                                      scene_frame.value_or(anim_eval_context.eval_time),
