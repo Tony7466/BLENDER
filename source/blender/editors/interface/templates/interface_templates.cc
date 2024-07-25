@@ -1056,6 +1056,7 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
       if (!id && !ID_IS_LOCKED(id)) {
         break;
       }
+
       Main *bmain = CTX_data_main(C);
       const char *name = BKE_id_ui_name_get(*id);
       ID *new_id = BKE_id_copy(bmain, id);
@@ -1063,6 +1064,7 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
       BKE_libblock_rename(bmain, new_id, name);
 
       PointerRNA new_id_ptr = RNA_id_pointer_create(new_id);
+      BLI_assert(ID_IS_EDITABLE(template_ui->ptr.owner_id));
       RNA_property_pointer_set(&template_ui->ptr, template_ui->prop, new_id_ptr, nullptr);
       RNA_property_update(C, &template_ui->ptr, template_ui->prop);
 
@@ -1392,7 +1394,23 @@ static void template_ID(const bContext *C,
 
     if (!hide_buttons && !(idfrom && ID_IS_LINKED(idfrom))) {
       if (ID_IS_LOCKED(id)) {
-        const bool disabled = !ID_IS_EDITABLE(idfrom);
+        bool disabled = !ID_IS_EDITABLE(idfrom);
+        if (!disabled) {
+          /* This property is annoying, because it's stored on the object, but when setting it, it
+           * may change object->data. */
+          if (GS(idfrom->name) == ID_OB &&
+              RNA_property_identifier(template_ui->prop) == StringRef("active_material"))
+          {
+            Object *object = reinterpret_cast<Object *>(idfrom);
+            const int slot_index = object->actcol - 1;
+            if (slot_index >= object->totcol || !object->matbits[slot_index]) {
+              ID *data_id = static_cast<ID *>(object->data);
+              if (!ID_IS_EDITABLE(data_id)) {
+                disabled = true;
+              }
+            }
+          }
+        }
         but = uiDefIconBut(
             block,
             UI_BTYPE_BUT,

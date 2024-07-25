@@ -1362,6 +1362,20 @@ void BKE_blendfile_append(BlendfileLinkAppendContext *lapp_context, ReportList *
             ss << (local_appended_new_id->name + 2);
             BKE_libblock_rename(bmain, local_appended_new_id, ss.str().c_str());
             local_appended_new_id->flag |= LIB_LOCKED;
+            BKE_library_foreach_ID_link(
+                bmain,
+                local_appended_new_id,
+                [](LibraryIDLinkCallbackData *cb_data) {
+                  if (cb_data->cb_flag & IDWALK_CB_EMBEDDED) {
+                    ID *id = *cb_data->id_pointer;
+                    if (id) {
+                      id->flag |= LIB_LOCKED;
+                    }
+                  }
+                  return IDWALK_RET_NOP;
+                },
+                nullptr,
+                0);
           }
           else {
             local_appended_new_id->deep_hash = {};

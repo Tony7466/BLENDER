@@ -177,7 +177,8 @@ bool ID_IS_LOCKED(const void *id_)
 {
   const ID *id = static_cast<const ID *>(id_);
   if (id->flag & LIB_LOCKED) {
-    BLI_assert(id->deep_hash.is_valid());
+    BLI_assert(id->deep_hash.is_valid() || ((id->flag & LIB_EMBEDDED_DATA) &&
+                                            ID_IS_LOCKED(BKE_id_owner_get(const_cast<ID *>(id)))));
     return true;
   }
   return false;
