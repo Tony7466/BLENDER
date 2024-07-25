@@ -3662,6 +3662,7 @@ static void sculpt_topology_update(const Scene & /*scene*/,
   }
 
   bke::pbvh::bmesh_update_topology(*ss.pbvh,
+                                   *ss.bm_log,
                                    mode,
                                    ss.cache->location,
                                    ss.cache->view_normal,
@@ -7458,6 +7459,9 @@ void scale_translations(const MutableSpan<float3> translations, const Span<float
 
 void scale_translations(const MutableSpan<float3> translations, const float factor)
 {
+  if (factor == 1.0f) {
+    return;
+  }
   for (const int i : translations.index_range()) {
     translations[i] *= factor;
   }
