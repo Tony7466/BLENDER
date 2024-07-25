@@ -354,10 +354,19 @@ static void write_slots(BlendWriter *writer, Span<animrig::Slot *> slots)
 /**
  * Create a listbase from a Span of F-Curves.
  *
- * \note this does NOT transfer ownership of the pointers. The ListBase should
- * not be freed, but given to `clear_listbase()` below.
+ * \note this does NOT transfer ownership of the pointers. The ListBase should not be freed,
+ * but given to `action_blend_write_clear_legacy_fcurves_listbase()` below.
+ *
+ * \warning This code is modifying actual '`Main`' data in-place, which is
+ * usually not acceptable (due to risks of unsafe concurrent accesses mainly).
+ * The reasons why this is currently seen as 'reasonably safe' are:
+ *   - Current blender code is _not_ expected to access the affected FCurve data
+ *     (`prev`/`next` listbase pointers) in any way, as they are stored in an array.
+ *   - The `action.curves` listbase modification is safe/valid, as this is a member of
+ *     the Action ID, which is a shallow copy of the actual ID data from Main.
  */
-static void make_listbase(ListBase &listbase, const Span<FCurve *> fcurves)
+static void action_blend_write_make_legacy_fcurves_listbase(ListBase &listbase,
+                                                            const Span<FCurve *> fcurves)
 {
   if (fcurves.is_empty()) {
     BLI_listbase_clear(&listbase);
@@ -375,7 +384,7 @@ static void make_listbase(ListBase &listbase, const Span<FCurve *> fcurves)
   listbase.last = fcurves[last_index];
 }
 
-static void clear_listbase(ListBase &listbase)
+static void action_blend_write_clear_legacy_fcurves_listbase(ListBase &listbase)
 {
   LISTBASE_FOREACH (FCurve *, fcurve, &listbase) {
     fcurve->prev = nullptr;
@@ -402,7 +411,7 @@ static void action_blend_write(BlendWriter *writer, ID *id, const void *id_addre
 
     const animrig::Slot &first_slot = *action.slot(0);
     Span<FCurve *> fcurves = fcurves_for_action_slot(action, first_slot.handle);
-    make_listbase(action.curves, fcurves);
+    action_blend_write_make_legacy_fcurves_listbase(action.curves, fcurves);
   }
 
   BLO_write_id_struct(writer, bAction, id_address, &action.id);
@@ -413,18 +422,26 @@ static void action_blend_write(BlendWriter *writer, ID *id, const void *id_addre
   write_slots(writer, action.slots());
 
   /* Write legacy F-Curves & Groups. */
-  if (!do_write_forward_compat) {
-    /* If the forward-compatible data is written, the F-Curves are already
-     * written to the blend file. No need to also write the listbase here, as
-     * that will cause memory leaks when reading the blend file (the structs
-     * will have been written twice, but are only handled once on read). */
+  if (do_write_forward_compat) {
+    /* The pointers to the first/last FCurve in the `action.curves` have already
+     * been written as part of the Action struct data, so they can be cleared
+     * here, such that the code writing legacy fcurves below does nothing (as
+     * expected).
+     *
+     * Note that the FCurves themselves have been written as part of the layered
+     * animation writing code called above. Writing them again as part of the
+     * handling of the legacy `action.fcurves` ListBase would corrupt the
+     * blendfile by generating two `BHead` `DATA` blocks with the same old
+     * address for the same ID.
+     */
+    action_blend_write_clear_legacy_fcurves_listbase(action.curves);
+  }
+  else {
     BKE_fcurve_blend_write_listbase(writer, &action.curves);
   }
+
   LISTBASE_FOREACH (bActionGroup *, grp, &action.groups) {
     BLO_write_struct(writer, bActionGroup, grp);
-  }
-  if (do_write_forward_compat) {
-    clear_listbase(action.curves);
   }
 
   LISTBASE_FOREACH (TimeMarker *, marker, &action.markers) {
