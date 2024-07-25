@@ -1011,14 +1011,13 @@ static void update_normals_faces(Tree &pbvh, Span<Node *> nodes, Mesh &mesh)
   }
 
   /* In certain cases when undoing strokes on a duplicate object, the cached data may be marked
-   * dirty before this code is run, leaving the relevant spans empty. We force reinitialize the
-   * spans to prevent crashes here.
+   * dirty before this code is run, leaving the relevant vectors empty. We force reinitialize the
+   * vectors to prevent crashes here.
    * See #125375 for more detail. */
   if (!pbvh.deformed_) {
     if (mesh.runtime->face_normals_cache.is_dirty()) {
       mesh.face_normals();
     }
-
     if (mesh.runtime->vert_normals_cache.is_dirty()) {
       mesh.vert_normals();
     }
