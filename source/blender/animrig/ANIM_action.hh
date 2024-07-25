@@ -893,12 +893,14 @@ FCurve *action_fcurve_find(bAction *act, FCurveDescriptor fcurve_descriptor);
 /**
  * Remove the given FCurve from the action by searching for it in all channelbags.
  *
- *  \returns True if the given FCurve was removed.
+ *  \returns true if the given FCurve was removed.
  */
 bool action_fcurve_remove(Action &action, FCurve &fcu);
 
-/* Find all FCurves for that match the given fcurve_descriptor for the given slot handle. Since
- * there can be multiple layers, there may be multiple FCurves matching the description. */
+/**
+ * Find all FCurves for that match the given fcurve_descriptor for the given slot handle. Since
+ * there can be multiple layers, there may be multiple FCurves matching the description.
+ */
 Vector<FCurve *> action_fcurves_find(Action &action,
                                      slot_handle_t slot,
                                      FCurveDescriptor fcurve_descriptor);
