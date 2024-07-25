@@ -723,7 +723,7 @@ static void grease_pencil_fill_extension_lines_from_circles(
       ed::greasepencil::retrieve_visible_drawings(scene, grease_pencil, false);
 
   const IndexRange circles_range = extension_data.circles.centers.index_range();
-  /* TODO include high-curvature feature points. */
+  /* TODO Include high-curvature feature points. */
   const IndexRange feature_points_range = circles_range.after(0);
   const IndexRange kd_points_range = IndexRange(circles_range.size() +
                                                 feature_points_range.size());
@@ -751,7 +751,7 @@ static void grease_pencil_fill_extension_lines_from_circles(
     BLI_kdtree_2d_insert(kdtree, kd_index, center);
   }
   for (const int i_point : feature_points_range.index_range()) {
-    /* TODO */
+    /* TODO Insert feature points into the KDTree. */
     UNUSED_VARS(i_point);
   }
   BLI_kdtree_2d_balance(kdtree);
@@ -779,7 +779,7 @@ static void grease_pencil_fill_extension_lines_from_circles(
             connection_lines.ends.append(extension_data.circles.centers[other_point_i]);
           }
           else if (feature_points_range.contains(other_point_i)) {
-            /* TODO */
+            /* TODO copy feature point to connection_lines (beware of start index!). */
             connection_lines.ends.append(float3(0));
           }
           return true;
