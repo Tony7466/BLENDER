@@ -226,7 +226,7 @@ void average_data_grids(const SubdivCCG &subdiv_ccg,
                             CCG_grid_xy_to_index(key.grid_size, neighbor.x, neighbor.y);
           sum += src[index];
         }
-        dst[node_vert_index] = sum /= neighbors.coords.size();
+        dst[node_vert_index] = sum / neighbors.coords.size();
       }
     }
   }
