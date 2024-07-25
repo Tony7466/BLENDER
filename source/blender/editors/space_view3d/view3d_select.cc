@@ -3202,6 +3202,7 @@ static bool ed_curves_select_pick(bContext &C, const int mval[2], const SelectPi
 }
 
 struct ClosestGreasePencilDrawing {
+  blender::StringRef selection_name;
   blender::bke::greasepencil::Drawing *drawing = nullptr;
   blender::ed::curves::FindClosestData elem = {};
 };
@@ -3250,22 +3251,36 @@ static bool ed_grease_pencil_select_pick(bContext *C,
           if (elements.is_empty()) {
             continue;
           }
+          const bke::CurvesGeometry &curves = info.drawing.strokes();
           const float4x4 layer_to_world = layer.to_world_space(*ob_eval);
           const float4x4 projection = ED_view3d_ob_project_mat_get_from_obmat(vc.rv3d,
                                                                               layer_to_world);
-          std::optional<ed::curves::FindClosestData> new_closest_elem =
-              ed::curves::closest_elem_find_screen_space(vc,
-                                                         info.drawing.strokes().points_by_curve(),
-                                                         deformation.positions,
-                                                         projection,
-                                                         elements,
-                                                         selection_domain,
-                                                         mval,
-                                                         new_closest.elem);
-          if (new_closest_elem) {
-            new_closest.elem = *new_closest_elem;
-            new_closest.drawing = &info.drawing;
+          const auto range_consumer =
+              [&](IndexRange range, Span<float3> positions, StringRef selection_attribute_name) {
+                IndexMask mask = elements.slice_content(range);
+
+                std::optional<ed::curves::FindClosestData> new_closest_elem =
+                    ed::curves::closest_elem_find_screen_space(vc,
+                                                               curves.points_by_curve(),
+                                                               positions,
+                                                               projection,
+                                                               mask,
+                                                               selection_domain,
+                                                               mval,
+                                                               new_closest.elem);
+                if (new_closest_elem) {
+                  new_closest.selection_name = selection_attribute_name;
+                  new_closest.elem = *new_closest_elem;
+                  new_closest.drawing = &info.drawing;
+                }
+              };
+
+          if (selection_domain == bke::AttrDomain::Point) {
+            ed::curves::foreach_selectable_point_range(curves, deformation, range_consumer);
           }
+          else if (selection_domain == bke::AttrDomain::Curve) {
+            ed::curves::foreach_selectable_curve_range(curves, deformation, range_consumer);
+          };
         }
         return new_closest;
       },
@@ -3308,11 +3323,25 @@ static bool ed_grease_pencil_select_pick(bContext *C,
     return deselected;
   }
 
-  bke::GSpanAttributeWriter selection = ed::curves::ensure_selection_attribute(
-      closest.drawing->strokes_for_write(), selection_domain, CD_PROP_BOOL);
-  ed::curves::apply_selection_operation_at_index(
-      selection.span, closest.elem.index, params.sel_op);
-  selection.finish();
+  if (selection_domain == bke::AttrDomain::Point) {
+    bke::GSpanAttributeWriter selection = ed::curves::ensure_selection_attribute(
+        closest.drawing->strokes_for_write(),
+        bke::AttrDomain::Point,
+        CD_PROP_BOOL,
+        closest.selection_name);
+    ed::curves::apply_selection_operation_at_index(
+        selection.span, closest.elem.index, params.sel_op);
+    selection.finish();
+  }
+  else if (selection_domain == bke::AttrDomain::Curve) {
+    ed::curves::foreach_selection_attribute_writer(
+        closest.drawing->strokes_for_write(),
+        bke::AttrDomain::Curve,
+        [&](bke::GSpanAttributeWriter &selection) {
+          ed::curves::apply_selection_operation_at_index(
+              selection.span, closest.elem.index, params.sel_op);
+        });
+  }
 
   /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a
    * generic attribute for now. */
