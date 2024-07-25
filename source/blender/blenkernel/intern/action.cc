@@ -351,7 +351,6 @@ static void write_slots(BlendWriter *writer, Span<animrig::Slot *> slots)
     BLO_write_struct_at_address(writer, ActionSlot, slot, &shallow_copy);
   }
 }
-#endif /* WITH_ANIM_BAKLAVA */
 
 /**
  * Create a listbase from a Span of F-Curves.
@@ -395,6 +394,7 @@ static void action_blend_write_clear_legacy_fcurves_listbase(ListBase &listbase)
 
   BLI_listbase_clear(&listbase);
 }
+#endif /* WITH_ANIM_BAKLAVA */
 
 static void action_blend_write(BlendWriter *writer, ID *id, const void *id_address)
 {
@@ -417,8 +417,6 @@ static void action_blend_write(BlendWriter *writer, ID *id, const void *id_addre
     action_blend_write_make_legacy_fcurves_listbase(action.curves, fcurves);
   }
 #else
-  constexpr bool do_write_forward_compat = false;
-
   /* Built without Baklava, so ensure that the written data is clean. This should not change
    * anything, as the reading code below also ensures these fields are empty, and the APIs to add
    * those should be unavailable. */
@@ -446,6 +444,7 @@ static void action_blend_write(BlendWriter *writer, ID *id, const void *id_addre
 #endif /* WITH_ANIM_BAKLAVA */
 
   /* Write legacy F-Curves & Groups. */
+#ifdef WITH_ANIM_BAKLAVA
   if (do_write_forward_compat) {
     /* The pointers to the first/last FCurve in the `action.curves` have already
      * been written as part of the Action struct data, so they can be cleared
@@ -461,8 +460,11 @@ static void action_blend_write(BlendWriter *writer, ID *id, const void *id_addre
     action_blend_write_clear_legacy_fcurves_listbase(action.curves);
   }
   else {
+#endif /* WITH_ANIM_BAKLAVA */
     BKE_fcurve_blend_write_listbase(writer, &action.curves);
+#ifdef WITH_ANIM_BAKLAVA
   }
+#endif /* WITH_ANIM_BAKLAVA */
 
   LISTBASE_FOREACH (bActionGroup *, grp, &action.groups) {
     BLO_write_struct(writer, bActionGroup, grp);
