@@ -27,33 +27,64 @@
 
 namespace blender::ed::sculpt_paint::smooth {
 
-static float3 average_positions(const Span<float3> positions, const Span<int> indices)
+template<typename T> T calc_average(const Span<T> positions, const Span<int> indices)
 {
   const float factor = math::rcp(float(indices.size()));
-  float3 result(0);
+  T result{};
   for (const int i : indices) {
     result += positions[i] * factor;
   }
   return result;
 }
 
-void neighbor_position_average_mesh(const Span<float3> positions,
-                                    const Span<int> verts,
-                                    const Span<Vector<int>> vert_neighbors,
-                                    const MutableSpan<float3> new_positions)
+template<typename T>
+void neighbor_data_average_mesh_check_loose(const Span<T> src,
+                                            const Span<int> verts,
+                                            const Span<Vector<int>> vert_neighbors,
+                                            const MutableSpan<T> dst)
 {
-  BLI_assert(vert_neighbors.size() == new_positions.size());
+  BLI_assert(verts.size() == dst.size());
+  BLI_assert(vert_neighbors.size() == dst.size());
 
   for (const int i : vert_neighbors.index_range()) {
     const Span<int> neighbors = vert_neighbors[i];
     if (neighbors.is_empty()) {
-      new_positions[i] = positions[verts[i]];
+      dst[i] = src[verts[i]];
     }
     else {
-      new_positions[i] = average_positions(positions, neighbors);
+      dst[i] = calc_average(src, neighbors);
     }
   }
 }
+
+template void neighbor_data_average_mesh_check_loose<float>(Span<float>,
+                                                            Span<int>,
+                                                            Span<Vector<int>>,
+                                                            MutableSpan<float>);
+template void neighbor_data_average_mesh_check_loose<float3>(Span<float3>,
+                                                             Span<int>,
+                                                             Span<Vector<int>>,
+                                                             MutableSpan<float3>);
+
+template<typename T>
+void neighbor_data_average_mesh(const Span<T> src,
+                                const Span<Vector<int>> vert_neighbors,
+                                const MutableSpan<T> dst)
+{
+  BLI_assert(vert_neighbors.size() == dst.size());
+
+  for (const int i : vert_neighbors.index_range()) {
+    BLI_assert(!vert_neighbors[i].is_empty());
+    dst[i] = calc_average(src, vert_neighbors[i]);
+  }
+}
+
+template void neighbor_data_average_mesh<float>(Span<float>,
+                                                Span<Vector<int>>,
+                                                MutableSpan<float>);
+template void neighbor_data_average_mesh<float3>(Span<float3>,
+                                                 Span<Vector<int>>,
+                                                 MutableSpan<float3>);
 
 static float3 average_positions(const CCGKey &key,
                                 const Span<CCGElem *> elems,
@@ -210,14 +241,14 @@ float3 neighbor_coords_average_interior(const SculptSession &ss, PBVHVertRef ver
   float3 avg(0);
   int total = 0;
   int neighbor_count = 0;
-  const bool is_boundary = SCULPT_vertex_is_boundary(ss, vertex);
+  const bool is_boundary = boundary::vert_is_boundary(ss, vertex);
 
   SculptVertexNeighborIter ni;
   SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (ss, vertex, ni) {
     neighbor_count++;
     if (is_boundary) {
       /* Boundary vertices use only other boundary vertices. */
-      if (SCULPT_vertex_is_boundary(ss, ni.vertex)) {
+      if (boundary::vert_is_boundary(ss, ni.vertex)) {
         avg += SCULPT_vertex_co_get(ss, ni.vertex);
         total++;
       }
@@ -315,8 +346,8 @@ float neighbor_mask_average(SculptSession &ss,
   float avg = 0.0f;
   int total = 0;
   SculptVertexNeighborIter ni;
-  switch (BKE_pbvh_type(*ss.pbvh)) {
-    case PBVH_FACES: {
+  switch (ss.pbvh->type()) {
+    case bke::pbvh::Type::Mesh: {
       SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (ss, vertex, ni) {
         avg += write_info.layer[ni.vertex.i];
         total++;
@@ -324,7 +355,7 @@ float neighbor_mask_average(SculptSession &ss,
       SCULPT_VERTEX_NEIGHBORS_ITER_END(ni);
       return avg / total;
     }
-    case PBVH_GRIDS: {
+    case bke::pbvh::Type::Grids: {
       SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (ss, vertex, ni) {
         avg += SCULPT_mask_get_at_grids_vert_index(
             *ss.subdiv_ccg, BKE_subdiv_ccg_key_top_level(*ss.subdiv_ccg), ni.vertex.i);
@@ -333,7 +364,7 @@ float neighbor_mask_average(SculptSession &ss,
       SCULPT_VERTEX_NEIGHBORS_ITER_END(ni);
       return avg / total;
     }
-    case PBVH_BMESH: {
+    case bke::pbvh::Type::BMesh: {
       Vector<BMVert *, 64> neighbors;
       for (BMVert *neighbor :
            vert_neighbors_get_bmesh(*reinterpret_cast<BMVert *>(vertex.i), neighbors))
@@ -426,7 +457,9 @@ void surface_smooth_displace_step(SculptSession &ss,
   }
 }
 
-static void do_surface_smooth_brush_laplacian_task(Object &ob, const Brush &brush, PBVHNode *node)
+static void do_surface_smooth_brush_laplacian_task(Object &ob,
+                                                   const Brush &brush,
+                                                   bke::pbvh::Node *node)
 {
   SculptSession &ss = *ob.sculpt;
   const float bstrength = ss.cache->bstrength;
@@ -470,7 +503,9 @@ static void do_surface_smooth_brush_laplacian_task(Object &ob, const Brush &brus
   BKE_pbvh_vertex_iter_end;
 }
 
-static void do_surface_smooth_brush_displace_task(Object &ob, const Brush &brush, PBVHNode *node)
+static void do_surface_smooth_brush_displace_task(Object &ob,
+                                                  const Brush &brush,
+                                                  bke::pbvh::Node *node)
 {
   SculptSession &ss = *ob.sculpt;
   const float bstrength = ss.cache->bstrength;
@@ -508,7 +543,7 @@ static void do_surface_smooth_brush_displace_task(Object &ob, const Brush &brush
   BKE_pbvh_vertex_iter_end;
 }
 
-void do_surface_smooth_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes)
+void do_surface_smooth_brush(const Sculpt &sd, Object &ob, Span<bke::pbvh::Node *> nodes)
 {
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
 

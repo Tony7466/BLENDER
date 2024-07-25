@@ -21,7 +21,9 @@ set(INC_SYS
 
 set(SRC
   intern/action.cc
+  intern/action_legacy.cc
   intern/action_runtime.cc
+  intern/action_selection.cc
   intern/anim_rna.cc
   intern/animdata.cc
   intern/bone_collections.cc
@@ -34,6 +36,7 @@ set(SRC
   intern/visualkey.cc
 
   ANIM_action.hh
+  ANIM_action_legacy.hh
   ANIM_animdata.hh
   ANIM_armature_iter.hh
   ANIM_bone_collections.hh

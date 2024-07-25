@@ -5,8 +5,8 @@
 set(INC
   ../..
 
-  ../include
   ../asset
+  ../include
   ../uvedit
   ../../asset_system
   ../../blenkernel
@@ -99,6 +99,7 @@ set(SRC
   sculpt_filter_color.cc
   sculpt_filter_mask.cc
   sculpt_filter_mesh.cc
+  sculpt_flood_fill.cc
   sculpt_geodesic.cc
   sculpt_gesture.cc
   sculpt_mask_init.cc
@@ -115,8 +116,8 @@ set(SRC
 
   curves_sculpt_intern.hh
   grease_pencil_intern.hh
-  mesh_brush_common.hh
   grease_pencil_weight_paint.hh
+  mesh_brush_common.hh
   paint_intern.hh
   sculpt_intern.hh
 
@@ -125,21 +126,22 @@ set(SRC
   brushes/clay_strips.cc
   brushes/clay_thumb.cc
   brushes/crease.cc
-  brushes/draw_face_sets.cc
-  brushes/draw_vector_displacement.cc
-  brushes/draw_sharp.cc
   brushes/draw.cc
+  brushes/draw_face_sets.cc
+  brushes/draw_sharp.cc
+  brushes/draw_vector_displacement.cc
   brushes/elastic_deform.cc
   brushes/enhance_details.cc
   brushes/fill.cc
   brushes/flatten.cc
   brushes/grab.cc
   brushes/inflate.cc
+  brushes/layer.cc
   brushes/mask.cc
   brushes/multiplane_scrape.cc
   brushes/multires_displacement_eraser.cc
-  brushes/pinch.cc
   brushes/multires_displacement_smear.cc
+  brushes/pinch.cc
   brushes/relax.cc
   brushes/rotate.cc
   brushes/scrape.cc
@@ -163,13 +165,6 @@ set(LIB
   PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
 )
-
-if(WITH_TBB)
-  list(APPEND INC_SYS
-    ${TBB_INCLUDE_DIRS}
-  )
-  add_definitions(-DWITH_TBB)
-endif()
 
 if(WIN32)
   add_definitions(-DNOMINMAX)
