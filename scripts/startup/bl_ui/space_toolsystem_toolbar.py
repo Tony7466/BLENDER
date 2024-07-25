@@ -2074,35 +2074,8 @@ class _defs_grease_pencil_paint:
             draw_settings=draw_settings,
         )
 
-    @staticmethod
-    def grease_pencil_primitive_toolbar(context, layout, _tool, props):
-        paint = context.tool_settings.gpencil_paint
-        brush = paint.brush
-
-        if brush is None:
-            return False
-
-        gp_settings = brush.gpencil_settings
-
-        row = layout.row(align=True)
-
-        BrushAssetShelf.draw_popup_selector(row, context, brush)
-
-        from bl_ui.properties_paint_common import (
-            brush_basic_grease_pencil_paint_settings,
-            brush_basic__draw_color_selector,
-        )
-
-        brush_basic__draw_color_selector(context, layout, brush, gp_settings, props)
-        brush_basic_grease_pencil_paint_settings(layout, context, brush, compact=True)
-        return True
-
     @ToolDef.from_fn
     def line():
-        def draw_settings(context, layout, tool):
-            props = tool.operator_properties("grease_pencil.primitive_line")
-            _defs_grease_pencil_paint.grease_pencil_primitive_toolbar(context, layout, tool, props)
-
         return dict(
             idname="builtin.line",
             label="Line",
@@ -2112,15 +2085,10 @@ class _defs_grease_pencil_paint:
             keymap=(),
             # Only allow draw brushes, no eraser, fill or tint.
             data_block='DRAW',
-            draw_settings=draw_settings,
         )
 
     @ToolDef.from_fn
     def polyline():
-        def draw_settings(context, layout, tool):
-            props = tool.operator_properties("grease_pencil.primitive_polyline")
-            _defs_grease_pencil_paint.grease_pencil_primitive_toolbar(context, layout, tool, props)
-
         return dict(
             idname="builtin.polyline",
             label="Polyline",
@@ -2130,15 +2098,10 @@ class _defs_grease_pencil_paint:
             keymap=(),
             # Only allow draw brushes, no eraser, fill or tint.
             data_block='DRAW',
-            draw_settings=draw_settings,
         )
 
     @ToolDef.from_fn
     def arc():
-        def draw_settings(context, layout, tool):
-            props = tool.operator_properties("grease_pencil.primitive_arc")
-            _defs_grease_pencil_paint.grease_pencil_primitive_toolbar(context, layout, tool, props)
-
         return dict(
             idname="builtin.arc",
             label="Arc",
@@ -2148,15 +2111,10 @@ class _defs_grease_pencil_paint:
             keymap=(),
             # Only allow draw brushes, no eraser, fill or tint.
             data_block='DRAW',
-            draw_settings=draw_settings,
         )
 
     @ToolDef.from_fn
     def curve():
-        def draw_settings(context, layout, tool):
-            props = tool.operator_properties("grease_pencil.primitive_curve")
-            _defs_grease_pencil_paint.grease_pencil_primitive_toolbar(context, layout, tool, props)
-
         return dict(
             idname="builtin.curve",
             label="Curve",
@@ -2166,15 +2124,10 @@ class _defs_grease_pencil_paint:
             keymap=(),
             # Only allow draw brushes, no eraser, fill or tint.
             data_block='DRAW',
-            draw_settings=draw_settings,
         )
 
     @ToolDef.from_fn
     def box():
-        def draw_settings(context, layout, tool):
-            props = tool.operator_properties("grease_pencil.primitive_box")
-            _defs_grease_pencil_paint.grease_pencil_primitive_toolbar(context, layout, tool, props)
-
         return dict(
             idname="builtin.box",
             label="Box",
@@ -2184,15 +2137,10 @@ class _defs_grease_pencil_paint:
             keymap=(),
             # Only allow draw brushes, no eraser, fill or tint.
             data_block='DRAW',
-            draw_settings=draw_settings,
         )
 
     @ToolDef.from_fn
     def circle():
-        def draw_settings(context, layout, tool):
-            props = tool.operator_properties("grease_pencil.primitive_circle")
-            _defs_grease_pencil_paint.grease_pencil_primitive_toolbar(context, layout, tool, props)
-
         return dict(
             idname="builtin.circle",
             label="Circle",
@@ -2202,7 +2150,6 @@ class _defs_grease_pencil_paint:
             keymap=(),
             # Only allow draw brushes, no eraser, fill or tint.
             data_block='DRAW',
-            draw_settings=draw_settings,
         )
 
     @ToolDef.from_fn
