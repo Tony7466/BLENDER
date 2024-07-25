@@ -68,6 +68,13 @@ struct SubdivCCGCoord {
 
   /* Coordinate within the grid. */
   short x, y;
+
+  /* Returns the computed index within a grids sized array for this SubdivCCGCoord. */
+  inline int to_index(const CCGKey &key) const
+  {
+    return key.grid_area * this->grid_index +
+           CCG_grid_xy_to_index(key.grid_size, this->x, this->y);
+  }
 };
 
 /* Definition of an edge which is adjacent to at least one of the faces. */
