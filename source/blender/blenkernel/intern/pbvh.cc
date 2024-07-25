@@ -1014,17 +1014,15 @@ static void update_normals_faces(Tree &pbvh, Span<Node *> nodes, Mesh &mesh)
    * dirty before this code is run, leaving the relevant spans empty. We force reinitialize the
    * spans to prevent crashes here.
    * See #125375 for more detail. */
-  mesh.runtime->face_normals_cache.update([&](Vector<float3> &r_data) {
-    if (r_data.is_empty()) {
-      r_data.reinitialize(faces.size());
+  if (!pbvh.deformed_) {
+    if (mesh.runtime->face_normals_cache.is_dirty()) {
+      mesh.face_normals();
     }
-  });
 
-  mesh.runtime->vert_normals_cache.update([&](Vector<float3> &r_data) {
-    if (r_data.is_empty()) {
-      r_data.reinitialize(positions.size());
+    if (mesh.runtime->vert_normals_cache.is_dirty()) {
+      mesh.vert_normals();
     }
-  });
+  }
 
   VectorSet<int> boundary_verts;
   threading::parallel_invoke(
