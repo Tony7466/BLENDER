@@ -3288,10 +3288,10 @@ static bool ed_grease_pencil_select_pick(bContext *C,
         if (!ed::curves::has_anything_selected(curves, elements)) {
           continue;
         }
-        bke::GSpanAttributeWriter selection = ed::curves::ensure_selection_attribute(
-            curves, selection_domain, CD_PROP_BOOL);
-        ed::curves::fill_selection_false(selection.span, elements);
-        selection.finish();
+        ed::curves::foreach_selection_attribute_writer(
+            curves, selection_domain, [](bke::GSpanAttributeWriter &selection) {
+              ed::curves::fill_selection_false(selection.span);
+            });
 
         deselected = true;
       }
