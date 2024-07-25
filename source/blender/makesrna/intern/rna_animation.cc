@@ -316,10 +316,19 @@ static void rna_AnimData_action_slot_set(PointerRNA *ptr, PointerRNA value, Repo
   Action &action = adt.action->wrap();
   Slot &slot = dna_slot->wrap();
 
+  if (!action.slots().as_span().contains(&slot)) {
+    BKE_reportf(reports,
+                RPT_ERROR,
+                "This slot (%s) does not belong to the assigned Action (%s)",
+                slot.name,
+                action.id.name + 2);
+    return;
+  }
+
   if (!action.assign_id(&slot, *animated_id)) {
     /* TODO: make assign_id() return a different type that gives us more info about what went
      * wrong. */
-    BKE_reportf(reports, RPT_ERROR, "Cannot assign slot %s to %s,", slot.name, animated_id->name);
+    BKE_reportf(reports, RPT_ERROR, "Cannot assign slot %s to %s.", slot.name, animated_id->name);
     return;
   }
 }
