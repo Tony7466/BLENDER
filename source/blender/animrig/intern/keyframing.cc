@@ -41,7 +41,7 @@
 #include "MEM_guardedalloc.h"
 #include "RNA_access.hh"
 #include "RNA_path.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "WM_types.hh"
 
@@ -160,10 +160,10 @@ void CombinedKeyingResult::generate_reports(ReportList *reports, const eReportTy
                               error_count));
   }
 
-  if (this->get_count(SingleKeyingResult::NO_VALID_BINDING) > 0) {
-    const int error_count = this->get_count(SingleKeyingResult::NO_VALID_BINDING);
+  if (this->get_count(SingleKeyingResult::NO_VALID_SLOT) > 0) {
+    const int error_count = this->get_count(SingleKeyingResult::NO_VALID_SLOT);
     errors.append(fmt::format(RPT_("Inserting keys on {:d} data-block(s) has been skipped because "
-                                   "of missing animation bindings."),
+                                   "of missing action slots."),
                               error_count));
   }
 
@@ -682,6 +682,29 @@ int delete_keyframe(Main *bmain,
     }
   }
 
+  Action &action = act->wrap();
+  if (action.is_action_layered()) {
+    /* Just being defensive in the face of the NLA shenanigans above. This
+     * probably isn't necessary, but it doesn't hurt. */
+    BLI_assert(adt->action == act && action.slot_for_handle(adt->slot_handle) != nullptr);
+
+    Span<FCurve *> fcurves = fcurves_for_action_slot(action, adt->slot_handle);
+    int removed_key_count = 0;
+    /* This loop's clause is copied from the pre-existing code for legacy
+     * actions below, to ensure behavioral consistency between the two code
+     * paths. In the future when legacy actions are removed, we can restructure
+     * it to be clearer. */
+    for (; array_index < array_index_max; array_index++) {
+      FCurve *fcurve = fcurve_find(fcurves, {rna_path, array_index});
+      if (fcurve == nullptr) {
+        continue;
+      }
+      removed_key_count += fcurve_delete_keyframe_at_time(fcurve, cfra);
+    }
+
+    return removed_key_count;
+  }
+
   /* Will only loop once unless the array index was -1. */
   int key_count = 0;
   for (; array_index < array_index_max; array_index++) {
@@ -701,7 +724,7 @@ int delete_keyframe(Main *bmain,
       continue;
     }
 
-    key_count += delete_keyframe_fcurve(adt, fcu, cfra);
+    key_count += delete_keyframe_fcurve_legacy(adt, fcu, cfra);
   }
   if (key_count) {
     deg_tag_after_keyframe_delete(bmain, id, adt);
@@ -854,8 +877,9 @@ struct KeyInsertData {
   int array_index;
 };
 
-static SingleKeyingResult insert_key_layer(Layer &layer,
-                                           Binding &binding,
+static SingleKeyingResult insert_key_layer(Main *bmain,
+                                           Layer &layer,
+                                           const Slot &slot,
                                            const std::string &rna_path,
                                            const std::optional<PropertySubType> prop_subtype,
                                            const KeyInsertData &key_data,
@@ -866,15 +890,16 @@ static SingleKeyingResult insert_key_layer(Layer &layer,
   BLI_assert(layer.strips().size() == 1);
 
   Strip *strip = layer.strip(0);
-  return strip->as<KeyframeStrip>().keyframe_insert(binding,
+  return strip->as<KeyframeStrip>().keyframe_insert(bmain,
+                                                    slot,
                                                     {rna_path, key_data.array_index, prop_subtype},
                                                     key_data.position,
                                                     key_settings,
                                                     insert_key_flags);
 }
 
-static CombinedKeyingResult insert_key_layered_action(Action &action,
-                                                      const int32_t binding_handle,
+static CombinedKeyingResult insert_key_layered_action(Main *bmain,
+                                                      Action &action,
                                                       PointerRNA *rna_pointer,
                                                       const blender::Span<RNAPath> rna_paths,
                                                       const float scene_frame,
@@ -883,23 +908,15 @@ static CombinedKeyingResult insert_key_layered_action(Action &action,
 {
   BLI_assert(action.is_action_layered());
 
-  ID *id = rna_pointer->owner_id;
-  CombinedKeyingResult combined_result;
+  Slot &slot = action.slot_ensure_for_id(*rna_pointer->owner_id);
+  const bool success = action.assign_id(&slot, *rna_pointer->owner_id);
+  UNUSED_VARS_NDEBUG(success);
+  BLI_assert_msg(
+      success,
+      "The conditions that would cause this Slot assigment to fail (such as the ID not being "
+      "animatible) should have been caught and handled by higher-level functions.");
 
-  Binding *binding = action.binding_for_handle(binding_handle);
-  if (binding == nullptr) {
-    binding = &action.binding_add_for_id(*id);
-    const bool success = action.assign_id(binding, *id);
-    UNUSED_VARS_NDEBUG(success);
-    BLI_assert_msg(
-        success,
-        "With a new Binding, the only reason this could fail is that the ID itself cannot be "
-        "animated, which should have been caught and handled by higher-level functions.");
-  }
-
-  /* Ensure that at least one layer exists. If not, create the default layer
-   * with the default infinite keyframe strip. */
-  action.layer_ensure_at_least_one();
+  action.layer_keystrip_ensure();
 
   /* TODO: we currently assume this will always successfully find a layer.
    * However, that may not be true in the future when we implement features like
@@ -911,6 +928,7 @@ static CombinedKeyingResult insert_key_layered_action(Action &action,
 
   const bool use_visual_keyframing = insert_key_flags & INSERTKEY_MATRIX;
 
+  CombinedKeyingResult combined_result;
   for (const RNAPath &rna_path : rna_paths) {
     PointerRNA ptr;
     PropertyRNA *prop = nullptr;
@@ -918,8 +936,8 @@ static CombinedKeyingResult insert_key_layered_action(Action &action,
         rna_pointer, rna_path.path.c_str(), &ptr, &prop);
     if (!path_resolved) {
       std::fprintf(stderr,
-                   "Failed to insert key on binding %s due to unresolved RNA path: %s\n",
-                   binding->name,
+                   "Failed to insert key on slot %s due to unresolved RNA path: %s\n",
+                   slot.name,
                    rna_path.path.c_str());
       combined_result.add(SingleKeyingResult::CANNOT_RESOLVE_PATH);
       continue;
@@ -938,8 +956,9 @@ static CombinedKeyingResult insert_key_layered_action(Action &action,
       }
 
       const KeyInsertData key_data = {{scene_frame, rna_values[property_index]}, property_index};
-      const SingleKeyingResult result = insert_key_layer(*layer,
-                                                         *binding,
+      const SingleKeyingResult result = insert_key_layer(bmain,
+                                                         *layer,
+                                                         slot,
                                                          *rna_path_id_to_prop,
                                                          prop_subtype,
                                                          key_data,
@@ -975,15 +994,23 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
     return combined_result;
   }
 
-  bAction *action = id_action_ensure(bmain, id);
-  BLI_assert(action != nullptr);
+  if ((adt->action == nullptr) && (insert_key_flags & INSERTKEY_AVAILABLE)) {
+    combined_result.add(SingleKeyingResult::CANNOT_CREATE_FCURVE, rna_paths.size());
+    return combined_result;
+  }
 
-  if (USER_EXPERIMENTAL_TEST(&U, use_animation_baklava) && action->wrap().is_action_layered()) {
+  bAction *dna_action = id_action_ensure(bmain, id);
+  BLI_assert(dna_action != nullptr);
+
+  Action &action = dna_action->wrap();
+  if (!action.is_action_legacy() ||
+      (action.is_empty() && USER_EXPERIMENTAL_TEST(&U, use_animation_baklava)))
+  {
     KeyframeSettings key_settings = get_keyframe_settings(
         (insert_key_flags & INSERTKEY_NO_USERPREF) == 0);
     key_settings.keyframe_type = key_type;
-    return insert_key_layered_action(action->wrap(),
-                                     adt->binding_handle,
+    return insert_key_layered_action(bmain,
+                                     action,
                                      struct_pointer,
                                      rna_paths,
                                      scene_frame.value_or(anim_eval_context.eval_time),
@@ -998,7 +1025,7 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
                                          &anim_eval_context,
                                          &id_pointer,
                                          adt,
-                                         action,
+                                         dna_action,
                                          &nla_cache,
                                          &nla_context);
   const bool visual_keyframing = insert_key_flags & INSERTKEY_MATRIX;
@@ -1049,7 +1076,7 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
       /* Determine if at least one element would succeed getting keyed. */
       bool at_least_one_would_succeed = false;
       for (int i = 0; i < rna_values.size(); i++) {
-        const FCurve *fcu = action_fcurve_find(action, {*rna_path_id_to_prop, i});
+        const FCurve *fcu = action_fcurve_find(dna_action, {*rna_path_id_to_prop, i});
         if (!fcu) {
           continue;
         }
@@ -1079,7 +1106,7 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
     }
 
     const CombinedKeyingResult result = insert_key_legacy_action(bmain,
-                                                                 action,
+                                                                 dna_action,
                                                                  struct_pointer,
                                                                  prop,
                                                                  channel_group,
@@ -1095,14 +1122,14 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
   BKE_animsys_free_nla_keyframing_context_cache(&nla_cache);
 
   if (combined_result.get_count(SingleKeyingResult::SUCCESS) > 0) {
-    DEG_id_tag_update(&action->id, ID_RECALC_ANIMATION_NO_FLUSH);
+    DEG_id_tag_update(&dna_action->id, ID_RECALC_ANIMATION_NO_FLUSH);
 
     /* TODO: it's not entirely clear why the action we got wouldn't be the same
      * as the action in AnimData. Further, it's not clear why it would need to
      * be tagged for a depsgraph update regardless. This code is here because it
      * was part of the function this one was refactored from, but at some point
      * this should be investigated and either documented or removed. */
-    if (adt->action != nullptr && adt->action != action) {
+    if (!ELEM(adt->action, nullptr, dna_action)) {
       DEG_id_tag_update(&adt->action->id, ID_RECALC_ANIMATION_NO_FLUSH);
     }
   }

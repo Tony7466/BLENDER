@@ -47,7 +47,7 @@
 #include "DNA_windowmanager_types.h"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "ED_fileselect.hh"
 #include "ED_screen.hh"
@@ -643,14 +643,15 @@ static void file_draw_preview(const FileList *files,
     /* Don't show outer document image if loading - too flashy. */
     if (is_icon) {
       /* Draw large folder or document icon. */
-      const int icon = (file->typeflag & FILE_TYPE_DIR) ? ICON_FILE_FOLDER_LARGE : ICON_FILE_LARGE;
+      const int icon_large = (file->typeflag & FILE_TYPE_DIR) ? ICON_FILE_FOLDER_LARGE :
+                                                                ICON_FILE_LARGE;
       uchar icon_col[4];
       rgba_float_to_uchar(icon_col, document_img_col);
       float icon_x = float(xco) + (file->typeflag & FILE_TYPE_DIR ? 0.0f : ex * -0.142f);
       float icon_y = float(yco) + (file->typeflag & FILE_TYPE_DIR ? ex * -0.11f : 0.0f);
       UI_icon_draw_ex(icon_x,
                       icon_y,
-                      icon,
+                      icon_large,
                       icon_aspect / 4.0f / UI_SCALE_FAC,
                       document_img_col[3],
                       0.0f,
@@ -1385,10 +1386,10 @@ void file_draw_list(const bContext *C, ARegion *region)
 
     const bool is_filtered = params->filter_search[0] != '\0';
 
-    uchar text_col[4];
-    UI_GetThemeColor4ubv(TH_TEXT, text_col);
+    uchar text_col_mod[4];
+    copy_v4_v4_uchar(text_col_mod, text_col);
     if (!is_filtered) {
-      text_col[3] /= 2;
+      text_col_mod[3] /= 2;
     }
 
     const char *message = [&]() {
@@ -1405,7 +1406,7 @@ void file_draw_list(const bContext *C, ARegion *region)
                              tile_draw_rect.xmin + UI_UNIT_X,
                              tile_draw_rect.ymax - UI_UNIT_Y,
                              message,
-                             text_col);
+                             text_col_mod);
   }
 
   BLF_batch_draw_end();

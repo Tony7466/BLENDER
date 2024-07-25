@@ -188,17 +188,6 @@ static std::optional<blender::bke::MutableAttributeAccessor> get_attribute_acces
 
 }  // namespace blender::bke
 
-bool BKE_attributes_supported(const AttributeOwner &owner)
-{
-  const std::array<DomainInfo, ATTR_DOMAIN_NUM> info = get_domains(owner);
-  for (const int domain : IndexRange(ATTR_DOMAIN_NUM)) {
-    if (info[domain].customdata) {
-      return true;
-    }
-  }
-  return false;
-}
-
 static bool bke_attribute_rename_if_exists(AttributeOwner &owner,
                                            const char *old_name,
                                            const char *new_name,
@@ -815,7 +804,7 @@ int *BKE_attributes_active_index_p(AttributeOwner &owner)
       return &(owner.get_mesh())->attributes_active_index;
     }
     case AttributeOwnerType::Curves: {
-      return &(owner.get_curves())->attributes_active_index;
+      return &owner.get_curves()->geometry.attributes_active_index;
     }
     case AttributeOwnerType::GreasePencil: {
       return &(owner.get_grease_pencil())->attributes_active_index;
