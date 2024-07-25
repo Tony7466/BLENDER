@@ -6,8 +6,8 @@
  * \ingroup obj
  */
 
-#include <algorithm>
 #include "BKE_lib_id.hh"
+#include <algorithm>
 
 #include "BKE_object.hh"
 
