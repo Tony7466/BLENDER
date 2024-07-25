@@ -45,6 +45,11 @@ BLI_NOINLINE static void surface_smooth_laplacian_step(const Span<float3> positi
                                                        MutableSpan<float3> laplacian_disp,
                                                        MutableSpan<float3> translations)
 {
+  BLI_assert(positions.size() == orig_positions.size());
+  BLI_assert(positions.size() == average_positions.size());
+  BLI_assert(positions.size() == laplacian_disp.size());
+  BLI_assert(positions.size() == translations.size());
+
   for (const int i : average_positions.index_range()) {
     const float3 weigthed_o = orig_positions[i] * alpha;
     const float3 weigthed_q = positions[i] * (1.0f - alpha);
@@ -59,6 +64,9 @@ BLI_NOINLINE static void calc_displace_step(const Span<float3> laplacian_disp,
                                             const float beta,
                                             MutableSpan<float3> translations)
 {
+  BLI_assert(laplacian_disp.size() == average_laplacian_disp.size());
+  BLI_assert(laplacian_disp.size() == translations.size());
+
   for (const int i : laplacian_disp.index_range()) {
     float3 b_current_vert = average_laplacian_disp[i] * (1.0f - beta);
     b_current_vert += laplacian_disp[i] * beta;
