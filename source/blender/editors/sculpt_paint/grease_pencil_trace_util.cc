@@ -299,12 +299,7 @@ bke::CurvesGeometry trace_to_curves(const Trace &trace,
   curves.tag_radii_changed();
 
   /* Calculate handles for all corner points (vector handle type). */
-  bke::curves::bezier::calculate_auto_handles(true,
-                                              handle_types_left,
-                                              handle_types_right,
-                                              positions,
-                                              handle_positions_left,
-                                              handle_positions_right);
+  curves.calculate_bezier_auto_handles();
 
   return curves;
 }
