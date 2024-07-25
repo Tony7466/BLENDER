@@ -1006,6 +1006,37 @@ std::optional<int> BKE_paint_get_brush_tool_from_obmode(const Brush *brush,
   }
 }
 
+std::optional<int> BKE_paint_get_brush_tool_from_paintmode(const Brush *brush,
+                                                           const PaintMode mode)
+{
+  switch (mode) {
+    case PaintMode::Texture2D:
+    case PaintMode::Texture3D:
+      return brush->imagepaint_tool;
+    case PaintMode::Sculpt:
+      return brush->sculpt_tool;
+    case PaintMode::Vertex:
+      return brush->vertexpaint_tool;
+    case PaintMode::Weight:
+      return brush->weightpaint_tool;
+    case PaintMode::GPencil:
+      return brush->gpencil_tool;
+    case PaintMode::VertexGPencil:
+      return brush->gpencil_vertex_tool;
+    case PaintMode::SculptGPencil:
+      return brush->gpencil_sculpt_tool;
+    case PaintMode::WeightGPencil:
+      return brush->gpencil_weight_tool;
+    case PaintMode::SculptCurves:
+      return brush->curves_sculpt_tool;
+    case PaintMode::SculptGreasePencil:
+      return brush->gpencil_sculpt_tool;
+    case PaintMode::Invalid:
+    default:
+      return {};
+  }
+}
+
 PaintCurve *BKE_paint_curve_add(Main *bmain, const char *name)
 {
   PaintCurve *pc = static_cast<PaintCurve *>(BKE_id_new(bmain, ID_PC, name));

@@ -777,6 +777,18 @@ bool WM_toolsystem_active_tool_is_brush(const bContext *C)
   return tref_rt && (tref_rt->data_block[0] != '\0');
 }
 
+std::optional<blender::StringRefNull> WM_toolsystem_find_id_from_data_block(
+    const bContext *C, blender::StringRef data_block)
+{
+  const WorkSpace *workspace = CTX_wm_workspace(C);
+  LISTBASE_FOREACH (const bToolRef *, tref, &workspace->tools) {
+    if (tref->runtime && tref->runtime->data_block[0] && tref->runtime->data_block == data_block) {
+      return tref->idname;
+    }
+  }
+  return {};
+}
+
 bool WM_toolsystem_active_tool_has_custom_cursor(const bContext *C)
 {
   bToolRef_Runtime *tref_rt = WM_toolsystem_runtime_from_context((bContext *)C);
