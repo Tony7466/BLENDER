@@ -55,7 +55,7 @@ BLI_NOINLINE static void mask_increase_contrast(const Span<float> src,
     dst[i] = gain * src[i] + offset;
   }
 
-  mask::clamp_mask(new_mask);
+  mask::clamp_mask(dst);
 }
 
 BLI_NOINLINE static void mask_decrease_contrast(const Span<float> src,
@@ -101,7 +101,7 @@ struct FilterLocalData {
 
 static void apply_new_mask_mesh(Object &object,
                                 const Span<bool> hide_vert,
-                                const Span<PBVHNode *> nodes,
+                                const Span<bke::pbvh::Node *> nodes,
                                 const OffsetIndices<int> node_verts,
                                 const Span<float> new_mask,
                                 MutableSpan<float> mask)
@@ -129,7 +129,7 @@ static void smooth_mask_mesh(const OffsetIndices<int> faces,
                              const GroupedSpan<int> vert_to_face_map,
                              const Span<bool> hide_poly,
                              const Span<float> mask,
-                             const PBVHNode &node,
+                             const bke::pbvh::Node &node,
                              FilterLocalData &tls,
                              MutableSpan<float> new_mask)
 {
@@ -139,7 +139,7 @@ static void smooth_mask_mesh(const OffsetIndices<int> faces,
   const MutableSpan<Vector<int>> neighbors = tls.vert_neighbors;
   calc_vert_neighbors(faces, corner_verts, vert_to_face_map, hide_poly, verts, neighbors);
 
-  average_neighbor_mask_mesh(mask, neighbors, new_mask);
+  smooth::neighbor_data_average_mesh(mask, neighbors, new_mask);
 }
 
 static void sharpen_mask_mesh(const OffsetIndices<int> faces,
@@ -147,7 +147,7 @@ static void sharpen_mask_mesh(const OffsetIndices<int> faces,
                               const GroupedSpan<int> vert_to_face_map,
                               const Span<bool> hide_poly,
                               const Span<float> mask,
-                              const PBVHNode &node,
+                              const bke::pbvh::Node &node,
                               FilterLocalData &tls,
                               MutableSpan<float> new_mask)
 {
@@ -161,7 +161,7 @@ static void sharpen_mask_mesh(const OffsetIndices<int> faces,
   const MutableSpan<Vector<int>> neighbors = tls.vert_neighbors;
   calc_vert_neighbors(faces, corner_verts, vert_to_face_map, hide_poly, verts, neighbors);
 
-  average_neighbor_mask_mesh(mask, neighbors, new_mask);
+  smooth::neighbor_data_average_mesh(mask, neighbors, new_mask);
 
   sharpen_masks(node_mask, new_mask);
 }
@@ -171,7 +171,7 @@ static void grow_mask_mesh(const OffsetIndices<int> faces,
                            const GroupedSpan<int> vert_to_face_map,
                            const Span<bool> hide_poly,
                            const Span<float> mask,
-                           const PBVHNode &node,
+                           const bke::pbvh::Node &node,
                            FilterLocalData &tls,
                            MutableSpan<float> new_mask)
 {
@@ -194,7 +194,7 @@ static void shrink_mask_mesh(const OffsetIndices<int> faces,
                              const GroupedSpan<int> vert_to_face_map,
                              const Span<bool> hide_poly,
                              const Span<float> mask,
-                             const PBVHNode &node,
+                             const bke::pbvh::Node &node,
                              FilterLocalData &tls,
                              MutableSpan<float> new_mask)
 {
@@ -214,7 +214,7 @@ static void shrink_mask_mesh(const OffsetIndices<int> faces,
 
 static void increase_contrast_mask_mesh(const Object &object,
                                         const Span<bool> hide_vert,
-                                        PBVHNode &node,
+                                        bke::pbvh::Node &node,
                                         FilterLocalData &tls,
                                         MutableSpan<float> mask)
 {
@@ -239,7 +239,7 @@ static void increase_contrast_mask_mesh(const Object &object,
 
 static void decrease_contrast_mask_mesh(const Object &object,
                                         const Span<bool> hide_vert,
-                                        PBVHNode &node,
+                                        bke::pbvh::Node &node,
                                         FilterLocalData &tls,
                                         MutableSpan<float> mask)
 {
@@ -264,7 +264,7 @@ static void decrease_contrast_mask_mesh(const Object &object,
 
 static void apply_new_mask_grids(Object &object,
                                  const Span<bool> hide_vert,
-                                 const Span<PBVHNode *> nodes,
+                                 const Span<bke::pbvh::Node *> nodes,
                                  const OffsetIndices<int> node_verts,
                                  const Span<float> new_mask,
                                  MutableSpan<float> mask)
@@ -278,7 +278,7 @@ static void apply_new_mask_grids(Object &object,
     Vector<int> &tls = all_tls.local();
     threading::isolate_task([&]() {
       for (const int i : range) {
-        const Span<int> verts = hide::node_visible_verts(*nodes[i], hide_vert, tls);
+        const Span<int> grids = hide::node_visible_verts(*nodes[i], hide_vert, tls);
         const Span<float> new_node_mask = new_mask.slice(node_verts[i]);
         if (array_utils::indexed_data_equal<float>(mask, verts, new_node_mask)) {
           return;
@@ -292,7 +292,7 @@ static void apply_new_mask_grids(Object &object,
 }
 
 static void smooth_mask_grids(const SubdivCCG &subdiv_ccg,
-                              const PBVHNode &node,
+                              const bke::pbvh::Node &node,
                               FilterLocalData &tls,
                               MutableSpan<float> new_mask)
 {
@@ -301,7 +301,7 @@ static void smooth_mask_grids(const SubdivCCG &subdiv_ccg,
 }
 
 static void sharpen_mask_grids(const SubdivCCG &subdiv_ccg,
-                               const PBVHNode &node,
+                               const bke::pbvh::Node &node,
                                FilterLocalData &tls,
                                MutableSpan<float> new_mask)
 {
@@ -320,7 +320,7 @@ static void sharpen_mask_grids(const SubdivCCG &subdiv_ccg,
 }
 
 static void grow_mask_grids(const SubdivCCG &subdiv_ccg,
-                            const PBVHNode &node,
+                            const bke::pbvh::Node &node,
                             FilterLocalData &tls,
                             MutableSpan<float> new_mask)
 {
@@ -329,7 +329,7 @@ static void grow_mask_grids(const SubdivCCG &subdiv_ccg,
   const Span<int> grids = bke::pbvh::node_grid_indices(node);
   const int grid_verts_num = grids.size() * key.grid_area;
 
-  for (const int i : verts.index_range()) {
+  for (const int i : grids.index_range()) {
     new_mask[i] = 0.0f;
     for (const int neighbor : neighbors[i]) {
       new_mask[i] = std::max(mask[neighbor], new_mask[i]);
@@ -338,7 +338,7 @@ static void grow_mask_grids(const SubdivCCG &subdiv_ccg,
 }
 
 static void shrink_mask_grids(const SubdivCCG &subdiv_ccg,
-                              const PBVHNode &node,
+                              const bke::pbvh::Node &node,
                               FilterLocalData &tls,
                               MutableSpan<float> new_mask)
 {
@@ -347,7 +347,7 @@ static void shrink_mask_grids(const SubdivCCG &subdiv_ccg,
   const Span<int> grids = bke::pbvh::node_grid_indices(node);
   const int grid_verts_num = grids.size() * key.grid_area;
 
-  for (const int i : verts.index_range()) {
+  for (const int i : grids.index_range()) {
     new_mask[i] = 1.0f;
     for (const int neighbor : neighbors[i]) {
       new_mask[i] = std::min(mask[neighbor], new_mask[i]);
@@ -357,7 +357,7 @@ static void shrink_mask_grids(const SubdivCCG &subdiv_ccg,
 
 static void increase_contrast_mask_grids(const Object &object,
                                          const Span<bool> hide_vert,
-                                         PBVHNode &node,
+                                         bke::pbvh::Node &node,
                                          FilterLocalData &tls,
                                          MutableSpan<float> mask)
 {
@@ -387,7 +387,7 @@ static void increase_contrast_mask_grids(const Object &object,
 
 static void decrease_contrast_mask_grids(const Object &object,
                                          const Span<bool> hide_vert,
-                                         PBVHNode &node,
+                                         bke::pbvh::Node &node,
                                          FilterLocalData &tls,
                                          MutableSpan<float> mask)
 {
@@ -455,8 +455,8 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
   }
 
   threading::EnumerableThreadSpecific<FilterLocalData> all_tls;
-  switch (BKE_pbvh_type(pbvh)) {
-    case PBVH_FACES: {
+  switch (pbvh.type()) {
+    case bke::pbvh::Type::Mesh: {
       Mesh &mesh = *static_cast<Mesh *>(ob.data);
       const OffsetIndices<int> faces = mesh.faces();
       const Span<int> corner_verts = mesh.corner_verts();
@@ -571,7 +571,7 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
       mask.finish();
       break;
     }
-    case PBVH_GRIDS: {
+    case bke::pbvh::Type::Grids: {
       Mesh &mesh = *static_cast<Mesh *>(ob.data);
       const OffsetIndices<int> faces = mesh.faces();
       const Span<int> corner_verts = mesh.corner_verts();
@@ -658,7 +658,7 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
       }
       break;
     }
-    case PBVH_BMESH: {
+    case bke::pbvh::Type::BMesh: {
       for (int i = 0; i < iterations; i++) {
       }
       break;
