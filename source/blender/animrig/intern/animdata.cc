@@ -128,6 +128,9 @@ void animdata_fcurve_delete(bAnimContext *ac, AnimData *adt, FCurve *fcu)
     }
     else {
       action_fcurve_remove(action, *fcu);
+      /* Return ealy to avoid the call to BKE_fcurve_free because the fcu has already been freed by
+       * action_fcurve_remove. */
+      return;
     }
   }
   else {
