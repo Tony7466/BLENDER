@@ -1540,6 +1540,20 @@ static int rna_ID_locked_ui_name_length(PointerRNA *ptr)
   return strlen(ui_name);
 }
 
+static void rna_ID_ui_name_property_get(PointerRNA *ptr, char *value)
+{
+  const ID *id = static_cast<const ID *>(ptr->data);
+  const char *ui_name_prop = BKE_id_ui_name_prop_name_get(*id);
+  strcpy(value, ui_name_prop);
+}
+
+static int rna_ID_ui_name_property_length(PointerRNA *ptr)
+{
+  const ID *id = static_cast<const ID *>(ptr->data);
+  const char *ui_name_prop = BKE_id_ui_name_prop_name_get(*id);
+  return strlen(ui_name_prop);
+}
+
 static IDProperty **rna_IDPropertyWrapPtr_idprops(PointerRNA *ptr)
 {
   if (ptr == nullptr) {
@@ -2419,6 +2433,15 @@ static void rna_def_ID(BlenderRNA *brna)
                            "internal name is something else");
   RNA_def_property_string_funcs(
       prop, "rna_ID_locked_ui_name_get", "rna_ID_locked_ui_name_length", nullptr);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+
+  prop = RNA_def_property(srna, "ui_name_property", PROP_STRING, PROP_NONE);
+  RNA_def_property_ui_text(
+      prop,
+      "UI Name Property",
+      "Name of the property that should be displayed when displaying the name of the data-block");
+  RNA_def_property_string_funcs(
+      prop, "rna_ID_ui_name_property_get", "rna_ID_ui_name_property_length", nullptr);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
   /* functions */

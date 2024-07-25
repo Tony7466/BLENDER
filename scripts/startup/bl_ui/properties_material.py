@@ -34,7 +34,7 @@ class MATERIAL_UL_matslots(UIList):
 
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             if ma:
-                layout.prop(ma, "locked_ui_name" if ma.is_locked else "name", text="", emboss=False, icon_value=icon)
+                layout.prop(ma, ma.ui_name_property, text="", emboss=False, icon_value=icon)
             else:
                 layout.label(text="", icon_value=icon)
         elif self.layout_type == 'GRID':
