@@ -234,7 +234,7 @@ static void trace_start_job(void *customdata, wmJobWorkerStatus *worker_status)
   trace_job.do_update = &worker_status->do_update;
   trace_job.progress = &worker_status->progress;
   trace_job.was_canceled = false;
-  const int init_frame = max_ii((trace_job.use_current_frame) ? trace_job.frame_target : 0, 0);
+  const int init_frame = std::max((trace_job.use_current_frame) ? trace_job.frame_target : 0, 0);
 
   G.is_break = false;
 
