@@ -1052,6 +1052,26 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
         undo_push_label = "Make Single User";
       }
       break;
+    case UI_ID_REALIZE_LOCKED: {
+      if (!id && !ID_IS_LOCKED(id)) {
+        break;
+      }
+      Main *bmain = CTX_data_main(C);
+      const char *name = BKE_id_ui_name_get(*id);
+      ID *new_id = BKE_id_copy(bmain, id);
+      BLI_assert(!ID_IS_LOCKED(new_id));
+      BKE_libblock_rename(bmain, new_id, name);
+
+      PointerRNA new_id_ptr = RNA_id_pointer_create(new_id);
+      RNA_property_pointer_set(&template_ui->ptr, template_ui->prop, new_id_ptr, nullptr);
+      RNA_property_update(C, &template_ui->ptr, template_ui->prop);
+
+      /* #BKE_id_copy added a user count. */
+      id_us_min(new_id);
+
+      undo_push_label = "Unlock";
+      break;
+    }
 #if 0
     case UI_ID_AUTO_NAME:
       break;
@@ -1335,7 +1355,9 @@ static void template_ID(const bContext *C,
     char name[UI_MAX_NAME_STR];
     const bool user_alert = (id->us <= 0);
 
-    int width = template_search_textbut_width(&idptr, RNA_struct_find_property(&idptr, "name"));
+    const char *ui_name_prop = BKE_id_ui_name_prop_name_get(*id);
+    int width = template_search_textbut_width(&idptr,
+                                              RNA_struct_find_property(&idptr, ui_name_prop));
 
     if ((template_ui->idcode == ID_SCE) && (template_ui->ptr.type == &RNA_Window)) {
       /* More room needed for "pin" icon. */
@@ -1355,7 +1377,7 @@ static void template_ID(const bContext *C,
                     width,
                     height,
                     &idptr,
-                    "name",
+                    ui_name_prop,
                     -1,
                     0,
                     0,
@@ -1369,7 +1391,26 @@ static void template_ID(const bContext *C,
     template_id_workspace_pin_extra_icon(template_ui, but);
 
     if (!hide_buttons && !(idfrom && ID_IS_LINKED(idfrom))) {
-      if (ID_IS_LINKED(id)) {
+      if (ID_IS_LOCKED(id)) {
+        but = uiDefIconBut(
+            block,
+            UI_BTYPE_BUT,
+            0,
+            ICON_LOCKED,
+            0,
+            0,
+            UI_UNIT_X,
+            UI_UNIT_Y,
+            nullptr,
+            0,
+            0,
+            TIP_("Make a local copy of the locked data-block to be able to edit it"));
+        UI_but_funcN_set(but,
+                         template_id_cb,
+                         MEM_dupallocN(template_ui),
+                         POINTER_FROM_INT(UI_ID_REALIZE_LOCKED));
+      }
+      else if (ID_IS_LINKED(id)) {
         const bool disabled = !BKE_idtype_idcode_is_localizable(GS(id->name));
         if (id->tag & LIB_TAG_INDIRECT) {
           but = uiDefIconBut(block,
@@ -1429,7 +1470,7 @@ static void template_ID(const bContext *C,
       }
     }
 
-    if ((ID_REAL_USERS(id) > 1) && (hide_buttons == false)) {
+    if ((ID_REAL_USERS(id) > 1) && (hide_buttons == false) && !ID_IS_LOCKED(id)) {
       char numstr[32];
       short numstr_len;
 

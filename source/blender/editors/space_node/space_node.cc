@@ -79,7 +79,7 @@ void ED_node_tree_start(SpaceNode *snode, bNodeTree *ntree, ID *id, ID *from)
     copy_v2_v2(path->view_center, ntree->view_center);
 
     if (id) {
-      STRNCPY(path->display_name, id->name + 2);
+      STRNCPY(path->display_name, BKE_id_ui_name_get(*id));
     }
 
     BLI_addtail(&snode->treepath, path);

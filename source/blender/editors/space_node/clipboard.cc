@@ -394,7 +394,7 @@ static int node_clipboard_paste_exec(bContext *C, wmOperator *op)
                     RPT_ERROR,
                     "Cannot add node %s into node tree %s: %s",
                     node.name,
-                    tree.id.name + 2,
+                    BKE_id_ui_name_get(tree.id),
                     disabled_hint);
       }
       else {
@@ -402,7 +402,7 @@ static int node_clipboard_paste_exec(bContext *C, wmOperator *op)
                     RPT_ERROR,
                     "Cannot add node %s into node tree %s",
                     node.name,
-                    tree.id.name + 2);
+                    BKE_id_ui_name_get(tree.id));
       }
     }
   }

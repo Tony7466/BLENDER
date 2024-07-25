@@ -705,6 +705,7 @@ void BKE_id_full_name_ui_prefix_get(char name[MAX_ID_FULL_NAME_UI],
                                     char separator_char,
                                     int *r_prefix_len);
 
+const char *BKE_id_ui_name_prop_name_get(const ID &id);
 const char *BKE_id_ui_name_get(const ID &id);
 
 /**

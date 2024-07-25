@@ -1314,7 +1314,7 @@ static void create_inspection_string_for_generic_value(const bNodeSocket &socket
                                                        fmt::memory_buffer &buf)
 {
   auto id_to_inspection_string = [&](const ID *id, const short idcode) {
-    fmt::format_to(fmt::appender(buf), (id ? id->name + 2 : TIP_("None")));
+    fmt::format_to(fmt::appender(buf), (id ? BKE_id_ui_name_get(*id) : TIP_("None")));
     fmt::format_to(fmt::appender(buf), " (");
     fmt::format_to(fmt::appender(buf), TIP_(BKE_idtype_idcode_to_name(idcode)));
     fmt::format_to(fmt::appender(buf), ")");
@@ -4852,8 +4852,11 @@ void node_draw_space(const bContext &C, ARegion &region)
     ID *name_id = (path->nodetree && path->nodetree != snode.nodetree) ? &path->nodetree->id :
                                                                          snode.id;
 
-    if (name_id && UNLIKELY(!STREQ(path->display_name, name_id->name + 2))) {
-      STRNCPY(path->display_name, name_id->name + 2);
+    if (name_id) {
+      const char *ui_name = BKE_id_ui_name_get(*name_id);
+      if (UNLIKELY(!STREQ(path->display_name, ui_name))) {
+        STRNCPY(path->display_name, ui_name);
+      }
     }
 
     /* Current View2D center, will be set temporarily for parent node trees. */

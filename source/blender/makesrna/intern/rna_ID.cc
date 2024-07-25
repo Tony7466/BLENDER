@@ -1526,6 +1526,20 @@ static PointerRNA rna_IDPreview_get(PointerRNA *ptr)
   return rna_pointer_inherit_refine(ptr, &RNA_ImagePreview, prv_img);
 }
 
+static void rna_ID_locked_ui_name_get(PointerRNA *ptr, char *value)
+{
+  const ID *id = static_cast<const ID *>(ptr->data);
+  const char *ui_name = BKE_id_ui_name_get(*id);
+  strcpy(value, ui_name);
+}
+
+static int rna_ID_locked_ui_name_length(PointerRNA *ptr)
+{
+  const ID *id = static_cast<const ID *>(ptr->data);
+  const char *ui_name = BKE_id_ui_name_get(*id);
+  return strlen(ui_name);
+}
+
 static IDProperty **rna_IDPropertyWrapPtr_idprops(PointerRNA *ptr)
 {
   if (ptr == nullptr) {
@@ -2396,6 +2410,15 @@ static void rna_def_ID(BlenderRNA *brna)
       "Is Locked",
       "Locked data-blocks can be deduplicated automatically if their deep hash is the same");
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", LIB_LOCKED);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+
+  prop = RNA_def_property(srna, "locked_ui_name", PROP_STRING, PROP_NONE);
+  RNA_def_property_ui_text(prop,
+                           "Locked UI Name",
+                           "Displayed name used for locked data-blocks, even if the actual "
+                           "internal name is something else");
+  RNA_def_property_string_funcs(
+      prop, "rna_ID_locked_ui_name_get", "rna_ID_locked_ui_name_length", nullptr);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
   /* functions */

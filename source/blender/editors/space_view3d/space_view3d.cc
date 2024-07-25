@@ -792,15 +792,15 @@ static void view3d_ob_drop_copy_external_asset(bContext *C, wmDrag *drag, wmDrop
       WM_drag_asset_id_import(C, asset_drag, FILE_AUTOSELECT));
 
   if (ID_IS_LOCKED(object)) {
+    const char *name = BKE_id_ui_name_get(object->id);
     if (object->id.us == 0) {
-      const char *name = BKE_id_ui_name_get(object->id);
       object->id.flag &= ~LIB_LOCKED;
-      BKE_libblock_rename(bmain, &object->id, name);
     }
     else {
       object = reinterpret_cast<Object *>(BKE_id_copy(bmain, &object->id));
       BLI_assert(!ID_IS_LOCKED(object));
     }
+    BKE_libblock_rename(bmain, &object->id, name);
   }
 
   LayerCollection *lc = BKE_layer_collection_get_active(view_layer);

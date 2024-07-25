@@ -271,16 +271,16 @@ static bool node_group_add_poll(const bNodeTree &node_tree,
       BKE_reportf(&reports,
                   RPT_ERROR,
                   "Cannot add node group '%s' to '%s':\n  %s",
-                  node_group.id.name + 2,
-                  node_tree.id.name + 2,
+                  BKE_id_ui_name_get(node_group.id),
+                  BKE_id_ui_name_get(node_tree.id),
                   disabled_hint);
     }
     else {
       BKE_reportf(&reports,
                   RPT_ERROR,
                   "Cannot add node group '%s' to '%s'",
-                  node_group.id.name + 2,
-                  node_tree.id.name + 2);
+                  BKE_id_ui_name_get(node_group.id),
+                  BKE_id_ui_name_get(node_tree.id));
     }
 
     return false;

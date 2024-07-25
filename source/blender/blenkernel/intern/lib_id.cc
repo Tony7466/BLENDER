@@ -2317,6 +2317,14 @@ const char *BKE_id_ui_name_get(const ID &id)
   return id.name + 2;
 }
 
+const char *BKE_id_ui_name_prop_name_get(const ID &id)
+{
+  if (ID_IS_LOCKED(&id)) {
+    return "locked_ui_name";
+  }
+  return "name";
+}
+
 char *BKE_id_to_unique_string_key(const ID *id)
 {
   if (!ID_IS_LINKED(id)) {

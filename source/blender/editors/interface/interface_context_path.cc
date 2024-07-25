@@ -6,12 +6,15 @@
  * \ingroup edinterface
  */
 
+#include "BLI_string.h"
 #include "BLI_vector.hh"
 
 #include "RNA_access.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
+
+#include "BKE_lib_id.hh"
 
 #include "RNA_prototypes.hh"
 
@@ -29,7 +32,12 @@ void context_path_add_generic(Vector<ContextPathItem> &path,
 
   PointerRNA rna_ptr = RNA_pointer_create(nullptr, &rna_type, ptr);
   char name_buf[128], *name;
-  name = RNA_struct_name_get_alloc(&rna_ptr, name_buf, sizeof(name_buf), nullptr);
+  if (RNA_struct_is_ID(&rna_type)) {
+    name = BLI_strdup(BKE_id_ui_name_get(*static_cast<const ID *>(ptr)));
+  }
+  else {
+    name = RNA_struct_name_get_alloc(&rna_ptr, name_buf, sizeof(name_buf), nullptr);
+  }
 
   /* Use a blank icon by default to check whether to retrieve it automatically from the type. */
   const BIFIconID icon = icon_override == ICON_NONE ? RNA_struct_ui_icon(rna_ptr.type) :
