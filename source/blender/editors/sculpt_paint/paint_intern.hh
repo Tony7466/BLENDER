@@ -509,13 +509,13 @@ void scatter_mask_bmesh(Span<float> mask, const BMesh &bm, const Set<BMVert *, 0
 void average_neighbor_mask_grids(const SubdivCCG &subdiv_ccg,
                                  Span<int> grids,
                                  MutableSpan<float> new_masks);
-void average_neighbor_mask_bmesh(int mask_offset,
-                                 const Set<BMVert *, 0> &verts,
-                                 MutableSpan<float> new_masks);
+s void average_neighbor_mask_bmesh(int mask_offset,
+                                   const Set<BMVert *, 0> &verts,
+                                   MutableSpan<float> new_masks);
 
 /** Write to the mask attribute for each node, storing undo data. */
 void write_mask_mesh(Object &object,
-                     const Span<bke::pbvh::Node *> nodes,
+                     Span<bke::pbvh::Node *> nodes,
                      FunctionRef<void(MutableSpan<float>, Span<int>)> write_fn);
 
 /**
@@ -523,8 +523,13 @@ void write_mask_mesh(Object &object,
  * if the data is actually changed.
  */
 void update_mask_mesh(Object &object,
-                      const Span<bke::pbvh::Node *> nodes,
+                      Span<bke::pbvh::Node *> nodes,
                       FunctionRef<void(MutableSpan<float>, Span<int>)> update_fn);
+
+bool grid_mask_equals_array(Span<CCGElem *> elems,
+                            const CCGKey &key,
+                            Span<int> grids,
+                            Span<float> values);
 
 void PAINT_OT_mask_flood_fill(wmOperatorType *ot);
 void PAINT_OT_mask_lasso_gesture(wmOperatorType *ot);

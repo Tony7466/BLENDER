@@ -289,6 +289,26 @@ void update_mask_mesh(Object &object,
   mask.finish();
 }
 
+bool grid_mask_equals_array(const Span<CCGElem *> elems,
+                            const CCGKey &key,
+                            const Span<int> grids,
+                            const Span<float> values)
+{
+  const IndexRange range = grids.index_range();
+  return std::all_of(range.begin(), range.end(), [&](const int i) {
+    const int grid = grids[i];
+    const int node_verts_start = i * key.grid_area;
+
+    CCGElem *elem = elems[grid];
+    for (const int offset : IndexRange(key.grid_area)) {
+      if (CCG_elem_offset_mask(key, elem, i) != values[node_verts_start + offset]) {
+        return false;
+      }
+    }
+    return true;
+  });
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
