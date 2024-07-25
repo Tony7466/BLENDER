@@ -227,17 +227,16 @@ void Instance::draw(Manager &manager)
 
   background.draw(resources, manager);
 
-  empties.draw(resources, manager, view);
+  empties.draw(resources.overlay_line_fb, manager, view);
   lattices.draw(resources, manager, view);
-  cameras.draw(resources, manager, view);
+  cameras.draw(resources.overlay_line_fb, manager, view);
   metaballs.draw(resources, manager, view);
   speakers.draw(resources, manager, view);
 
   grid.draw(resources, manager, view);
 
-  empties.draw_in_front(resources, manager, view);
-  lattices.draw_in_front(resources, manager, view);
-  cameras.draw_in_front(resources, manager, view);
+  /* TODO: Breaks selection on M1 Max. */
+  // lattices.draw_in_front(resources, manager, view);
   metaballs.draw_in_front(resources, manager, view);
   speakers.draw_in_front(resources, manager, view);
 

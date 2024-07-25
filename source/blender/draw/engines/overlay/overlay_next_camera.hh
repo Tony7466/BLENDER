@@ -20,6 +20,7 @@
 #include "ED_view3d.hh"
 
 #include "draw_manager_text.hh"
+#include "overlay_next_empty.hh"
 #include "overlay_next_private.hh"
 
 static float camera_offaxis_shiftx_get(const Scene *scene,
@@ -66,14 +67,11 @@ struct CameraInstanceData : public ExtraInstanceData {
       : ExtraInstanceData(p_matrix, color, 1.0f){};
 };
 
-using CameraInstanceBuf = ShapeInstanceBuf<ExtraInstanceData>;
-
 class Cameras {
- private:
-  const SelectionType selection_type_;
+  using CameraInstanceBuf = ShapeInstanceBuf<ExtraInstanceData>;
 
-  PassSimple camera_ps_ = {"Cameras"};
-  PassSimple camera_in_front_ps_ = {"Cameras_In_front"};
+ private:
+  PassSimple ps_ = {"Cameras"};
   struct CallBuffers {
     const SelectionType selection_type_;
     CameraInstanceBuf distances_buf = {selection_type_, "camera_distances_buf"};
@@ -85,17 +83,20 @@ class Cameras {
     CameraInstanceBuf sphere_solid_buf = {selection_type_, "camera_sphere_solid_buf"};
     LineInstanceBuf stereo_connect_lines = {selection_type_, "camera_dashed_lines_buf"};
     LineInstanceBuf tracking_path = {selection_type_, "camera_tracking_path_buf"};
-  } call_buffers_[2] = {{selection_type_}, {selection_type_}};
+    Empties::CallBuffers empties{selection_type_};
+  } call_buffers_;
 
   static void view3d_reconstruction(const select::ID select_id,
                                     const Scene *scene,
                                     const View3D *v3d,
                                     const float4 &color,
-                                    Object *ob,
+                                    const ObjectRef &ob_ref,
+                                    Resources &res,
                                     CallBuffers &call_buffers)
   {
     const DRWContextState *draw_ctx = DRW_context_state_get();
     const bool is_select = DRW_state_is_select();
+    Object *ob = ob_ref.object;
 
     MovieClip *clip = BKE_object_movieclip_get((Scene *)scene, ob, false);
     if (clip == nullptr) {
@@ -166,23 +167,29 @@ class Cameras {
           bundle_color = bundle_color_unselected;
         }
 
-        if (is_select) {
-          DRW_select_load_id(ob->runtime->select_id | (track_index << 16));
-          track_index++;
-        }
-
+        const select::ID track_select_id = is_select ? res.select_id(ob_ref, track_index++ << 16) :
+                                                       select_id;
         if (is_solid_bundle) {
           if (is_selected) {
-            // OVERLAY_empty_shape(cb, bundle_mat, v3d->bundle_size, v3d->bundle_drawtype, color);
+            Empties::object_sync(track_select_id,
+                                 bundle_mat,
+                                 v3d->bundle_size,
+                                 v3d->bundle_drawtype,
+                                 color,
+                                 call_buffers.empties);
           }
 
           call_buffers.sphere_solid_buf.append(
               ExtraInstanceData{bundle_mat, {float3{bundle_color}, 1.0f}, v3d->bundle_size},
-              select_id);
+              track_select_id);
         }
         else {
-          // OVERLAY_empty_shape(
-          // cb, bundle_mat, v3d->bundle_size, v3d->bundle_drawtype, bundle_color);
+          Empties::object_sync(track_select_id,
+                               bundle_mat,
+                               v3d->bundle_size,
+                               v3d->bundle_drawtype,
+                               bundle_color,
+                               call_buffers.empties);
         }
 
         if ((v3d->flag2 & V3D_SHOW_BUNDLENAME) && !is_select) {
@@ -225,13 +232,13 @@ class Cameras {
    * Draw the stereo 3d support elements (cameras, plane, volume).
    * They are only visible when not looking through the camera:
    */
-  void stereoscopy_extra(const CameraInstanceData &instdata,
-                         const select::ID select_id,
-                         const Scene *scene,
-                         const View3D *v3d,
-                         Resources &res,
-                         Object *ob,
-                         CallBuffers &call_buffers)
+  static void stereoscopy_extra(const CameraInstanceData &instdata,
+                                const select::ID select_id,
+                                const Scene *scene,
+                                const View3D *v3d,
+                                Resources &res,
+                                Object *ob,
+                                CallBuffers &call_buffers)
   {
     CameraInstanceData stereodata = instdata;
 
@@ -334,27 +341,25 @@ class Cameras {
   }
 
  public:
-  Cameras(const SelectionType selection_type) : selection_type_(selection_type){};
+  Cameras(const SelectionType selection_type) : call_buffers_{selection_type} {};
 
   void begin_sync()
   {
-    for (int i = 0; i < 2; i++) {
-      call_buffers_[i].distances_buf.clear();
-      call_buffers_[i].frame_buf.clear();
-      call_buffers_[i].tria_buf.clear();
-      call_buffers_[i].tria_wire_buf.clear();
-      call_buffers_[i].volume_buf.clear();
-      call_buffers_[i].volume_wire_buf.clear();
-      call_buffers_[i].sphere_solid_buf.clear();
-      call_buffers_[i].stereo_connect_lines.clear();
-      call_buffers_[i].tracking_path.clear();
-    }
+    call_buffers_.distances_buf.clear();
+    call_buffers_.frame_buf.clear();
+    call_buffers_.tria_buf.clear();
+    call_buffers_.tria_wire_buf.clear();
+    call_buffers_.volume_buf.clear();
+    call_buffers_.volume_wire_buf.clear();
+    call_buffers_.sphere_solid_buf.clear();
+    call_buffers_.stereo_connect_lines.clear();
+    call_buffers_.tracking_path.clear();
+    Empties::begin_sync(call_buffers_.empties);
   }
 
   void object_sync(const ObjectRef &ob_ref, Resources &res, State &state)
   {
     Object *ob = ob_ref.object;
-    CallBuffers &call_buffers = call_buffers_[(ob->dtx & OB_DRAW_IN_FRONT) != 0 ? 1 : 0];
     const select::ID select_id = res.select_id(ob_ref);
     CameraInstanceData data(ob->object_to_world(), res.object_wire_color(ob_ref, state));
 
@@ -431,16 +436,16 @@ class Cameras {
           }
         }
         data.depth *= -1.0f; /* Hides the back of the camera wires (see shader). */
-        call_buffers.frame_buf.append(data, select_id);
+        call_buffers_.frame_buf.append(data, select_id);
       }
     }
     else {
       /* Stereo cameras, volumes, plane drawing. */
       if (is_stereo3d_display_extra) {
-        stereoscopy_extra(data, select_id, scene, v3d, res, ob, call_buffers);
+        stereoscopy_extra(data, select_id, scene, v3d, res, ob, call_buffers_);
       }
       else {
-        call_buffers.frame_buf.append(data, select_id);
+        call_buffers_.frame_buf.append(data, select_id);
       }
     }
 
@@ -451,7 +456,7 @@ class Cameras {
       data.center_x = center.x;
       data.center_y = center.y + data.corner_y + tria_margin + tria_size;
       data.corner_x = data.corner_y = -tria_size;
-      (is_active ? call_buffers.tria_buf : call_buffers.tria_wire_buf).append(data, select_id);
+      (is_active ? call_buffers_.tria_buf : call_buffers_.tria_wire_buf).append(data, select_id);
     }
 
     if (cam->flag & CAM_SHOWLIMITS) {
@@ -463,7 +468,7 @@ class Cameras {
       data.focus = -BKE_camera_object_dof_distance(ob);
       data.clip_start = cam->clip_start;
       data.clip_end = cam->clip_end;
-      call_buffers.distances_buf.append(data, select_id);
+      call_buffers_.distances_buf.append(data, select_id);
     }
 
     if (cam->flag & CAM_SHOWMIST) {
@@ -473,17 +478,17 @@ class Cameras {
         data.focus = 1.0f; /* Disable */
         data.mist_start = world->miststa;
         data.mist_end = world->miststa + world->mistdist;
-        call_buffers.distances_buf.append(data, select_id);
+        call_buffers_.distances_buf.append(data, select_id);
       }
     }
 
     /* Motion Tracking. */
     if ((v3d->flag2 & V3D_SHOW_RECONSTRUCTION) != 0) {
       view3d_reconstruction(
-          select_id, scene, v3d, res.object_wire_color(ob_ref, state), ob, call_buffers);
+          select_id, scene, v3d, res.object_wire_color(ob_ref, state), ob_ref, res, call_buffers_);
     }
 
-    // /* Background images. */
+    // TODO: /* Background images. */
     // if (look_through && (cam->flag & CAM_SHOW_BG_IMAGE) &&
     // !BLI_listbase_is_empty(&cam->bg_images))
     // {
@@ -493,66 +498,57 @@ class Cameras {
 
   void end_sync(Resources &res, ShapeCache &shapes, const State &state)
   {
-    auto init_pass = [&](PassSimple &pass, CallBuffers &call_bufs, bool in_front) {
-      pass.init();
-      res.select_bind(pass);
+    ps_.init();
+    res.select_bind(ps_);
 
-      if (!in_front) {
-        {
-          PassSimple::Sub &sub_pass = pass.sub("volume");
-          sub_pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA |
-                             DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_CULL_BACK |
-                             state.clipping_state);
-          sub_pass.shader_set(res.shaders.extra_shape.get());
-          sub_pass.bind_ubo("globalsBlock", &res.globals_buf);
-          call_bufs.volume_buf.end_sync(sub_pass, shapes.camera_volume.get());
-        }
-        {
-          PassSimple::Sub &sub_pass = pass.sub("volume_wire");
-          sub_pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA |
-                             DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_CULL_BACK |
-                             state.clipping_state);
-          sub_pass.shader_set(res.shaders.extra_shape.get());
-          sub_pass.bind_ubo("globalsBlock", &res.globals_buf);
-          call_bufs.volume_wire_buf.end_sync(sub_pass, shapes.camera_volume_wire.get());
-        }
-      }
-      {
-        PassSimple::Sub &sub_pass = pass.sub("camera_shapes");
-        sub_pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |
-                           DRW_STATE_DEPTH_LESS_EQUAL | state.clipping_state);
-        sub_pass.shader_set(res.shaders.extra_shape.get());
-        sub_pass.bind_ubo("globalsBlock", &res.globals_buf);
-        call_bufs.distances_buf.end_sync(sub_pass, shapes.camera_distances.get());
-        call_bufs.frame_buf.end_sync(sub_pass, shapes.camera_frame.get());
-        call_bufs.tria_buf.end_sync(sub_pass, shapes.camera_tria.get());
-        call_bufs.tria_wire_buf.end_sync(sub_pass, shapes.camera_tria_wire.get());
-        call_bufs.sphere_solid_buf.end_sync(sub_pass, shapes.sphere_low_detail.get());
-      }
-      {
-        PassSimple::Sub &sub_pass = pass.sub("camera_extra_wire");
-        sub_pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |
-                           DRW_STATE_DEPTH_LESS_EQUAL | state.clipping_state);
-        sub_pass.shader_set(res.shaders.extra_wire.get());
-        sub_pass.bind_ubo("globalsBlock", &res.globals_buf);
-        call_bufs.stereo_connect_lines.end_sync(sub_pass);
-        call_bufs.tracking_path.end_sync(sub_pass);
-      }
-    };
-    init_pass(camera_ps_, call_buffers_[0], false);
-    init_pass(camera_in_front_ps_, call_buffers_[1], true);
+    {
+      PassSimple::Sub &sub_pass = ps_.sub("volume");
+      sub_pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA |
+                         DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_CULL_BACK | state.clipping_state);
+      sub_pass.shader_set(res.shaders.extra_shape.get());
+      sub_pass.bind_ubo("globalsBlock", &res.globals_buf);
+      call_buffers_.volume_buf.end_sync(sub_pass, shapes.camera_volume.get());
+    }
+    {
+      PassSimple::Sub &sub_pass = ps_.sub("volume_wire");
+      sub_pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA |
+                         DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_CULL_BACK | state.clipping_state);
+      sub_pass.shader_set(res.shaders.extra_shape.get());
+      sub_pass.bind_ubo("globalsBlock", &res.globals_buf);
+      call_buffers_.volume_wire_buf.end_sync(sub_pass, shapes.camera_volume_wire.get());
+    }
+
+    {
+      PassSimple::Sub &sub_pass = ps_.sub("camera_shapes");
+      sub_pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |
+                         DRW_STATE_DEPTH_LESS_EQUAL | state.clipping_state);
+      sub_pass.shader_set(res.shaders.extra_shape.get());
+      sub_pass.bind_ubo("globalsBlock", &res.globals_buf);
+      call_buffers_.distances_buf.end_sync(sub_pass, shapes.camera_distances.get());
+      call_buffers_.frame_buf.end_sync(sub_pass, shapes.camera_frame.get());
+      call_buffers_.tria_buf.end_sync(sub_pass, shapes.camera_tria.get());
+      call_buffers_.tria_wire_buf.end_sync(sub_pass, shapes.camera_tria_wire.get());
+      call_buffers_.sphere_solid_buf.end_sync(sub_pass, shapes.sphere_low_detail.get());
+    }
+    {
+      PassSimple::Sub &sub_pass = ps_.sub("camera_extra_wire");
+      sub_pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |
+                         DRW_STATE_DEPTH_LESS_EQUAL | state.clipping_state);
+      sub_pass.shader_set(res.shaders.extra_wire.get());
+      sub_pass.bind_ubo("globalsBlock", &res.globals_buf);
+      call_buffers_.stereo_connect_lines.end_sync(sub_pass);
+      call_buffers_.tracking_path.end_sync(sub_pass);
+    }
+    {
+      PassSimple::Sub &sub_pass = ps_.sub("empties");
+      Empties::end_sync(res, shapes, state, sub_pass, call_buffers_.empties);
+    }
   }
 
-  void draw(Resources &res, Manager &manager, View &view)
+  void draw(Framebuffer &framebuffer, Manager &manager, View &view)
   {
-    GPU_framebuffer_bind(res.overlay_line_fb);
-    manager.submit(camera_ps_, view);
-  }
-
-  void draw_in_front(Resources &res, Manager &manager, View &view)
-  {
-    GPU_framebuffer_bind(res.overlay_line_in_front_fb);
-    manager.submit(camera_in_front_ps_, view);
+    GPU_framebuffer_bind(framebuffer);
+    manager.submit(ps_, view);
   }
 };
 
