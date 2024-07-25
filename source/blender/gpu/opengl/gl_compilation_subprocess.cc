@@ -6,10 +6,10 @@
 
 #if BLI_SUBPROCESS_SUPPORT
 
+#  include "BKE_appdir.hh"
 #  include "BLI_fileops.hh"
 #  include "BLI_hash.hh"
 #  include "BLI_path_util.h"
-#  include "BLI_tempfile.h"
 #  include "CLG_log.h"
 #  include "GHOST_C-api.h"
 #  include "GPU_context.hh"
@@ -20,7 +20,6 @@
 
 #  ifndef _WIN32
 #    include <unistd.h>
-#    include <pwd.h>
 #  else
 #    include "BLI_winstuff.h"
 #  endif
@@ -130,36 +129,12 @@ static bool validate_binary(void *binary)
 
 }  // namespace blender::gpu
 
-#  if defined(__linux__) || defined(__APPLE__)
-static std::string path_xdg_cache_get()
-{
-  const char *home = getenv("XDG_CACHE_HOME");
-  if (home) {
-    return std::string(home) + SEP_STR;
-  }
-  else {
-    home = getenv("HOME");
-    if (home == NULL) {
-      home = getpwuid(getuid())->pw_dir;
-    }
-    return std::string(home) + SEP_STR + ".cache" + SEP_STR;
-  }
-}
-#  endif
-
 static std::string cache_dir_get()
 {
-  std::string tmp_dir;
-
-#  ifdef WIN32
   static char tmp_dir_buffer[1024];
-  BLI_temp_directory_path_get(tmp_dir_buffer, sizeof(tmp_dir_buffer));
-  tmp_dir = tmp_dir_buffer;
-#  else
-  tmp_dir = path_xdg_cache_get();
-#  endif
+  BKE_appdir_folder_caches(tmp_dir_buffer, sizeof(tmp_dir_buffer));
 
-  std::string cache_dir = tmp_dir + "BLENDER_SHADER_CACHE" + SEP_STR;
+  std::string cache_dir = std::string(tmp_dir_buffer) + "gl-shader-cache" + SEP_STR;
   BLI_dir_create_recursive(cache_dir.c_str());
 
   return cache_dir;
