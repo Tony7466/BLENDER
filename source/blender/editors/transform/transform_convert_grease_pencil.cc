@@ -228,7 +228,7 @@ static void recalcData_grease_pencil(TransInfo *t)
         /* No cache to update currently. */
       }
       else if (t->mode == TFM_TILT) {
-        curves.tag_normals_changed();
+        /* No cache to update currently. */
       }
       else {
         const std::array<MutableSpan<float3>, 3> positions_per_selection_attr = {
