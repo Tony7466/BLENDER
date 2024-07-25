@@ -12,6 +12,7 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_anim_data.hh"
+#include "BKE_lib_id.hh"
 
 #include "../outliner_intern.hh"
 #include "common.hh"
@@ -110,7 +111,7 @@ TreeElementID::TreeElementID(TreeElement &legacy_te, ID &id)
   BLI_assert(TSE_IS_REAL_ID(legacy_te_.store_elem));
 
   /* Default, some specific types override this. */
-  legacy_te_.name = id.name + 2;
+  legacy_te_.name = BKE_id_ui_name_get(id);
   legacy_te_.idcode = GS(id.name);
 }
 

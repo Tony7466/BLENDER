@@ -14,6 +14,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <list>
+#include <sstream>
 #include <xxhash.h>
 
 #include "CLG_log.h"
@@ -1353,6 +1354,13 @@ void BKE_blendfile_append(BlendfileLinkAppendContext *lapp_context, ReportList *
           const std::optional<IDHash> &id_hash = deep_hashes.lookup(local_appended_new_id);
           if (id_hash.has_value()) {
             local_appended_new_id->deep_hash = *id_hash;
+            std::stringstream ss;
+            ss << blender::StringRef(local_appended_new_id->name, 2) << "LOCKED_";
+            for (const char c : blender::Span{id_hash->data, sizeof(IDHash)}) {
+              ss << std::hex << int(c);
+            }
+            ss << (local_appended_new_id->name + 2);
+            BKE_libblock_rename(bmain, local_appended_new_id, ss.str().c_str());
             local_appended_new_id->flag |= LIB_LOCKED;
           }
           else {
