@@ -72,12 +72,10 @@ static Device *find_best_device(Device *device, const DenoiserType type)
   return best_device;
 }
 
-unique_ptr<Denoiser> Denoiser::create(Device *denoiser_device,
-                                      Device *cpu_fallback_device,
-                                      const DenoiseParams &params)
+static Device *get_single_denoising_device(Device *denoiser_device,
+                                           Device *cpu_fallback_device,
+                                           const DenoiseParams &params)
 {
-  DCHECK(params.use);
-
   Device *single_denoiser_device = nullptr;
   if (is_single_device(denoiser_device)) {
     /* Simple case: denoising happens on a single device. */
@@ -94,34 +92,90 @@ unique_ptr<Denoiser> Denoiser::create(Device *denoiser_device,
     single_denoiser_device = cpu_fallback_device;
   }
 
+  return single_denoiser_device;
+}
+
+#ifdef WITH_OPTIX
+bool use_optix_denoiser(Device *denoiser_device, const DenoiseParams &params)
+{
+  return (params.type == DENOISER_OPTIX &&
+          OptiXDenoiser::is_device_supported(denoiser_device->info));
+}
+#endif
+
+#ifdef WITH_OPENIMAGEDENOISE
+bool use_oidn_denoiser(Device *denoiser_device, const DenoiseParams &params)
+{
+  return (params.type == DENOISER_OPENIMAGEDENOISE && params.use_gpu &&
+          OIDNDenoiserGPU::is_device_supported(denoiser_device->info));
+}
+#endif
+
+DenoiseParams get_expected_denoise_params(Device *denoiser_device,
+                                          Device *cpu_fallback_device,
+                                          const DenoiseParams &params)
+{
+  /* Keep logic in `get_expected_denoise_params` and `Denoiser::create` in sync. */
+
+  DenoiseParams expected_denoise_params = params;
+
+  DCHECK(params.use);
+
+  Device *single_denoiser_device = get_single_denoising_device(
+      denoiser_device, cpu_fallback_device, expected_denoise_params);
+
   bool is_cpu_denoiser_device = single_denoiser_device->info.type == DEVICE_CPU;
   if (is_cpu_denoiser_device == false) {
 #ifdef WITH_OPTIX
-    if (params.type == DENOISER_OPTIX &&
-        OptiXDenoiser::is_device_supported(single_denoiser_device->info))
-    {
+    if (use_optix_denoiser(single_denoiser_device, expected_denoise_params)) {
+      return expected_denoise_params;
+    }
+#endif
+
+#ifdef WITH_OPENIMAGEDENOISE
+    /* If available and allowed, then we will use OpenImageDenoise on GPU, otherwise on CPU. */
+    if (use_oidn_denoiser(single_denoiser_device, expected_denoise_params)) {
+      return expected_denoise_params;
+    }
+#endif
+  }
+
+  /* Always fallback to OIDN on CPU. */
+  expected_denoise_params.type = DENOISER_OPENIMAGEDENOISE;
+  expected_denoise_params.use_gpu = false;
+
+  return expected_denoise_params;
+}
+
+unique_ptr<Denoiser> Denoiser::create(Device *denoiser_device,
+                                      Device *cpu_fallback_device,
+                                      const DenoiseParams &params)
+{
+  /* Keep logic in `get_expected_denoise_params` and `Denoiser::create` in sync. */
+  DCHECK(params.use);
+
+  Device *single_denoiser_device = get_single_denoising_device(
+      denoiser_device, cpu_fallback_device, params);
+
+  bool is_cpu_denoiser_device = single_denoiser_device->info.type == DEVICE_CPU;
+  if (is_cpu_denoiser_device == false) {
+#ifdef WITH_OPTIX
+    if (use_optix_denoiser(single_denoiser_device, params)) {
       return make_unique<OptiXDenoiser>(single_denoiser_device, params);
     }
 #endif
 
 #ifdef WITH_OPENIMAGEDENOISE
     /* If available and allowed, then we will use OpenImageDenoise on GPU, otherwise on CPU. */
-    if (params.type == DENOISER_OPENIMAGEDENOISE && params.use_gpu &&
-        OIDNDenoiserGPU::is_device_supported(single_denoiser_device->info))
-    {
+    if (use_oidn_denoiser(single_denoiser_device, params)) {
       return make_unique<OIDNDenoiserGPU>(single_denoiser_device, params);
     }
 #endif
   }
 
-  /* Always fallback to OIDN on CPU. */
-  DenoiseParams oidn_params = params;
-  oidn_params.type = DENOISER_OPENIMAGEDENOISE;
-  oidn_params.use_gpu = false;
-
   /* Used preference CPU when possible, and fallback on CPU fallback device otherwise. */
   return make_unique<OIDNDenoiser>(
-      is_cpu_denoiser_device ? single_denoiser_device : cpu_fallback_device, oidn_params);
+      is_cpu_denoiser_device ? single_denoiser_device : cpu_fallback_device, params);
 }
 
 DenoiserType Denoiser::automatic_viewport_denoiser_type(const DeviceInfo &denoise_device_info)
