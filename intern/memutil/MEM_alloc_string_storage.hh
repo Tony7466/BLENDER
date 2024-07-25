@@ -101,17 +101,11 @@ AllocStringStorageContainer &ensure_storage_container();
 }  // namespace internal
 
 /**
- * Initialize the static storage for MEM_guardedalloc allocation strings.
- *
- * Must be called before #MEM_init_memleak_detection, to ensure that it is destroyed after the
- * memkleak has run and been destroyed. Otherwise, printing allocation strings of unfreed (leaking)
- * memblocks could access freed memory.
- */
-void alloc_string_storage_init();
-
-/**
  * Return a reference to the AllocStringStorage static data matching the given \a
  * storage_identifier, creating it if needed.
+ *
+ * \note The storage it `thread_local` data, so access to it is thread-safe as long as it is not
+ * shared between threads by the user code.
  */
 template<typename keyT, template<typename> typename hashT>
 AllocStringStorage<keyT, hashT> &alloc_string_storage_get(const std::string &storage_identifier)

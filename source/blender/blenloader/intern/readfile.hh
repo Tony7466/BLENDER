@@ -137,6 +137,7 @@ struct FileData {
 
   BlendFileReadReport *reports;
 
+  /** Opaque hanlde to the storage system used for non-static allocation strings. */
   void *storage_handle;
 };
 

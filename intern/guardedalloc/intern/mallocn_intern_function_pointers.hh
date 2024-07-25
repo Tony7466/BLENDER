@@ -27,4 +27,15 @@ extern void *(*mem_mallocN_aligned_ex)(size_t len,
                                        const char *str,
                                        AllocationType allocation_type);
 
+/**
+ * Store a std::any into the #Local thread-local data also used for memory usage tracking.
+ *
+ * Typically, this `any` should contain a `shared_ptr` to the actual data, to ensure that the data
+ * itself is not duplicated, and that the the memory usage system does become an owner of it.
+ *
+ * That way, the memleak data does not get destructed before the memory usage data is, which
+ * happens after the execution and destruction of the memleak detector.
+ */
+void memory_usage_store_memleak_data(std::any &memleak_data);
+
 }  // namespace mem_guarded::internal

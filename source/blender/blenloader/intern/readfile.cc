@@ -1729,6 +1729,8 @@ static const char *get_alloc_name(FileData *fd,
 #endif
   constexpr std::string_view STORAGE_ID = "readfile";
 
+  /* NOTE: This is thread_local storage, so as long as the handling of a same FileData is not
+   * spread accross threads (which is not supported at all currently), this is thread-safe. */
   if (!fd->storage_handle) {
     fd->storage_handle = &intern::memutil::alloc_string_storage_get<keyT, blender::DefaultHash>(
         std::string(STORAGE_ID));
@@ -2463,6 +2465,9 @@ static BHead *read_data_into_datamap(FileData *fd,
 {
   bhead = blo_bhead_next(fd, bhead);
 
+  /* FIXME part of testing, to be removed before final comits. */
+  bool is_first = true;
+
   while (bhead && bhead->code == BLO_CODE_DATA) {
     /* The code below is useful for debugging leaks in data read from the blend file.
      * Without this the messages only tell us what ID-type the memory came from,
@@ -2485,6 +2490,12 @@ static BHead *read_data_into_datamap(FileData *fd,
 #endif
 
     void *data = read_struct(fd, bhead, allocname, id_type_index);
+  /* FIXME part of testing, to be removed before final comits. */
+    if (is_first) {
+      /* Artificial memleak! */
+      data = MEM_dupallocN(data);
+      is_first = false;
+    }
     if (data) {
       const bool is_new = oldnewmap_insert(fd->datamap, bhead->old, data, 0);
       if (!is_new) {
@@ -3013,7 +3024,9 @@ BHead *blo_read_asset_data_block(FileData *fd, BHead *bhead, AssetMetaData **r_a
 {
   BLI_assert(blo_bhead_is_id_valid_type(bhead));
 
-  bhead = read_data_into_datamap(fd, bhead, "Data for Asset meta-data", INDEX_ID_NULL);
+  /* FIXME part of testing, to be removed before final comits. */
+  bhead = read_data_into_datamap(
+      fd, bhead, nullptr /*"Data for Asset meta-data"*/, BKE_idtype_idcode_to_index(bhead->code));
 
   BlendDataReader reader = {fd};
   BLO_read_struct(&reader, AssetMetaData, r_asset_data);

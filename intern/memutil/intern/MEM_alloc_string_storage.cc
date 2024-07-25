@@ -7,22 +7,15 @@
  */
 
 #include "MEM_alloc_string_storage.hh"
+#include "MEM_guardedalloc.h"
 
-namespace intern::memutil {
-
-void alloc_string_storage_init()
-{
-  internal::ensure_storage_container();
-}
-
-namespace internal {
+namespace intern::memutil::internal {
 
 AllocStringStorageContainer &ensure_storage_container()
 {
-  static AllocStringStorageContainer storage;
+  static thread_local AllocStringStorageContainer &storage =
+      MEM_construct_leak_detection_data<AllocStringStorageContainer>();
   return storage;
 }
 
-}  // namespace internal
-
-}  // namespace intern::memutil
+}  // namespace intern::memutil::internal

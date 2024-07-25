@@ -20,7 +20,6 @@ set(LIB
   PRIVATE bf::dna
   PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
-  PRIVATE bf::intern::memutil
   bf_windowmanager
 )
 

@@ -22,7 +22,6 @@
 #  pragma comment(linker, "/include:__TBB_malloc_proxy")
 #endif
 
-#include "MEM_alloc_string_storage.hh"
 #include "MEM_guardedalloc.h"
 
 #include "CLG_log.h"
@@ -338,10 +337,6 @@ int main(int argc,
     return 0;
   }
 #endif
-
-  /* Initialize storage for memory allocation info before calling #MEM_init_memleak_detection, to
-   * ensure that these strings are not freed before the destruction of the #MemLeakPrinter. */
-  intern::memutil::alloc_string_storage_init();
 
   /* NOTE: Special exception for guarded allocator type switch:
    *       we need to perform switch from lock-free to fully

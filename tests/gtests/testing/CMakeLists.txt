@@ -25,7 +25,6 @@ set(SRC
 
 set(LIB
   PRIVATE bf::intern::guardedalloc
-  PRIVATE bf::intern::memutil
 )
 
 blender_add_lib(bf_testing_main "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
