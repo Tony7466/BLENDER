@@ -17,15 +17,19 @@
 
 namespace intern::memutil {
 
+/**
+ * A 'static' storage of allocation strings, with a simple API to set and retrieve them.
+ *
+ * This is a templated wrapper around a std::unordered_map, to allow custom key types.
+ */
 template<typename keyT, template<typename> typename hashT> class AllocStringStorage {
   std::unordered_map<keyT, std::string, hashT<keyT>> storage_;
 
  public:
   /**
-   * Check whether the given key exists in the specified storage.
+   * Check whether the given key exists in the storage.
    *
-   * \param storage_identifier: String identifier for a given storage.
-   * \return `true` if the \a key is found in specified storage, false otherwise.
+   * \return `true` if the \a key is found in storage, false otherwise.
    */
   bool contains(keyT &key)
   {
@@ -33,9 +37,8 @@ template<typename keyT, template<typename> typename hashT> class AllocStringStor
   }
 
   /**
-   * Return the alloc string for the given key in the specified storage.
+   * Return the alloc string for the given key in the storage.
    *
-   * \param storage_identifier: String identifier for a given storage.
    * \return A pointer to the stored string if \a key is found, `nullptr` otherwise.
    */
   const char *find(keyT &key)
@@ -47,10 +50,9 @@ template<typename keyT, template<typename> typename hashT> class AllocStringStor
   }
 
   /**
-   * Insert the given alloc string in the specified storage, at the given key, and return a pointer
+   * Insert the given alloc string in the storage, at the given key, and return a pointer
    * to the stored string.
    *
-   * \param storage_identifier: String identifier for a given storage.
    * \param alloc_string: The alloc string to store at \a key.
    * \return A pointer to the inserted stored string.
    */
@@ -64,14 +66,20 @@ template<typename keyT, template<typename> typename hashT> class AllocStringStor
 };
 
 namespace internal {
+
 /**
- * @brief The AllocStringStorage class
+ * The main container for all #AllocStringStorage.
  */
 class AllocStringStorageContainer {
   std::unordered_map<std::string, std::any> storage_;
 
  public:
-  /** Create or return an existing mapping for the given storage identifier. */
+  /**
+   * Create if necessary, and return the #AllocStringStorage for the given \a storage_identifier.
+   *
+   * The template arguments allow to define the type of key used for the mapping to allocation
+   * strings.
+   */
   template<typename keyT, template<typename> typename hashT>
   std::any &ensure_storage(const std::string &storage_identifier)
   {
@@ -84,6 +92,10 @@ class AllocStringStorageContainer {
   }
 };
 
+/**
+ * Ensure that the static AllocStringStorageContainer is defined and created, and return a
+ * reference to it.
+ */
 AllocStringStorageContainer &ensure_storage_container();
 
 }  // namespace internal
@@ -98,7 +110,8 @@ AllocStringStorageContainer &ensure_storage_container();
 void alloc_string_storage_init();
 
 /**
- * Get a reference to the AllocStringStorage static data.
+ * Return a reference to the AllocStringStorage static data matching the given \a
+ * storage_identifier, creating it if needed.
  */
 template<typename keyT, template<typename> typename hashT>
 AllocStringStorage<keyT, hashT> &alloc_string_storage_get(const std::string &storage_identifier)

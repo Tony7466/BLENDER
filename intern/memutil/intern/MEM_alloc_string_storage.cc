@@ -10,6 +10,11 @@
 
 namespace intern::memutil {
 
+void alloc_string_storage_init()
+{
+  internal::ensure_storage_container();
+}
+
 namespace internal {
 
 AllocStringStorageContainer &ensure_storage_container()
@@ -19,10 +24,5 @@ AllocStringStorageContainer &ensure_storage_container()
 }
 
 }  // namespace internal
-
-void alloc_string_storage_init()
-{
-  internal::ensure_storage_container();
-}
 
 }  // namespace intern::memutil
