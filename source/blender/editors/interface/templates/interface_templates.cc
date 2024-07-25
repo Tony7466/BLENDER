@@ -1392,6 +1392,7 @@ static void template_ID(const bContext *C,
 
     if (!hide_buttons && !(idfrom && ID_IS_LINKED(idfrom))) {
       if (ID_IS_LOCKED(id)) {
+        const bool disabled = !ID_IS_EDITABLE(idfrom);
         but = uiDefIconBut(
             block,
             UI_BTYPE_BUT,
@@ -1405,10 +1406,15 @@ static void template_ID(const bContext *C,
             0,
             0,
             TIP_("Make a local copy of the locked data-block to be able to edit it"));
-        UI_but_funcN_set(but,
-                         template_id_cb,
-                         MEM_dupallocN(template_ui),
-                         POINTER_FROM_INT(UI_ID_REALIZE_LOCKED));
+        if (disabled) {
+          UI_but_flag_enable(but, UI_BUT_DISABLED);
+        }
+        else {
+          UI_but_funcN_set(but,
+                           template_id_cb,
+                           MEM_dupallocN(template_ui),
+                           POINTER_FROM_INT(UI_ID_REALIZE_LOCKED));
+        }
       }
       else if (ID_IS_LINKED(id)) {
         const bool disabled = !BKE_idtype_idcode_is_localizable(GS(id->name));
