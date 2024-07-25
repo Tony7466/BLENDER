@@ -1010,6 +1010,22 @@ static void update_normals_faces(Tree &pbvh, Span<Node *> nodes, Mesh &mesh)
     }
   }
 
+  /* In certain cases when undoing strokes on a duplicate object, the cached data may be marked
+   * dirty before this code is run, leaving the relevant spans empty. We force reinitialize the
+   * spans to prevent crashes here.
+   * See #125375 for more detail. */
+  mesh.runtime->face_normals_cache.update([&](Vector<float3> &r_data) {
+    if (r_data.is_empty()) {
+      r_data.reinitialize(faces.size());
+    }
+  });
+
+  mesh.runtime->vert_normals_cache.update([&](Vector<float3> &r_data) {
+    if (r_data.is_empty()) {
+      r_data.reinitialize(positions.size());
+    }
+  });
+
   VectorSet<int> boundary_verts;
   threading::parallel_invoke(
       [&]() {
