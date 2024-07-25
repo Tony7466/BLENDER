@@ -996,6 +996,11 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
     return combined_result;
   }
 
+  if ((adt->action == nullptr) && (insert_key_flags & INSERTKEY_AVAILABLE)) {
+    combined_result.add(SingleKeyingResult::NO_KEY_NEEDED);
+    return combined_result;
+  }
+
   bAction *dna_action = id_action_ensure(bmain, id);
   BLI_assert(dna_action != nullptr);
 
