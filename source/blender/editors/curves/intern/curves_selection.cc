@@ -416,8 +416,12 @@ bool has_anything_selected(const bke::CurvesGeometry &curves, bke::AttrDomain se
 
 bool has_anything_selected(const bke::CurvesGeometry &curves, const IndexMask &mask)
 {
-  const VArray<bool> selection = *curves.attributes().lookup<bool>(".selection");
-  return !selection || contains(selection, mask, true);
+  for (const StringRef selection_name : get_curves_selection_attribute_names(curves)) {
+    const VArray<bool> selection = *curves.attributes().lookup<bool>(selection_name);
+    if (!selection || contains(selection, mask, true))
+      return true;
+  }
+  return false;
 }
 
 bool has_anything_selected(const GSpan selection)
