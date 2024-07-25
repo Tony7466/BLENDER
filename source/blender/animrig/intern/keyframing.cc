@@ -720,12 +720,12 @@ int delete_keyframe(Main *bmain, ReportList *reports, ID *id, const RNAPath &rna
   }
 
   if (!modified_fcurves.is_empty()) {
-    deg_tag_after_keyframe_delete(bmain, id, adt);
     for (FCurve *fcurve : modified_fcurves) {
       if (BKE_fcurve_is_empty(fcurve)) {
         animdata_fcurve_delete(nullptr, adt, fcurve);
       }
     }
+    deg_tag_after_keyframe_delete(bmain, id, adt);
   }
 
   return modified_fcurves.size();

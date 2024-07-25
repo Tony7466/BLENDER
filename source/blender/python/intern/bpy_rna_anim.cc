@@ -551,7 +551,10 @@ PyObject *pyrna_struct_keyframe_delete(BPy_StructRNA *self, PyObject *args, PyOb
     }
   }
   else {
-    RNAPath rna_path = {path_full, nullptr, index};
+    RNAPath rna_path = {path_full, std::nullopt, index};
+    if (index < 0) {
+      rna_path.index = std::nullopt;
+    }
     result = (blender::animrig::delete_keyframe(
                   G.main, &reports, self->ptr.owner_id, rna_path, cfra) != 0);
   }
