@@ -1966,7 +1966,7 @@ static int collection_instance_add_exec(bContext *C, wmOperator *op)
 
   Object *ob = add_type(C,
                         OB_EMPTY,
-                        add_info->collection->id.name + 2,
+                        BKE_id_ui_name_get(add_info->collection->id),
                         add_info->loc,
                         add_info->rot,
                         false,
@@ -2060,7 +2060,7 @@ static int collection_drop_exec(bContext *C, wmOperator *op)
 
     Object *ob = add_type(C,
                           OB_EMPTY,
-                          add_info->collection->id.name + 2,
+                          BKE_id_ui_name_get(add_info->collection->id),
                           add_info->loc,
                           add_info->rot,
                           false,
@@ -2171,7 +2171,8 @@ static int object_data_instance_add_exec(bContext *C, wmOperator *op)
 
   add_generic_get_opts(C, op, 'Z', loc, rot, nullptr, nullptr, &local_view_bits, nullptr);
 
-  add_type_with_obdata(C, object_type, id->name + 2, loc, rot, false, local_view_bits, id);
+  add_type_with_obdata(
+      C, object_type, BKE_id_ui_name_get(*id), loc, rot, false, local_view_bits, id);
 
   return OPERATOR_FINISHED;
 }
@@ -2419,7 +2420,7 @@ void base_free_and_unlink(Main *bmain, Scene *scene, Object *ob)
     printf(
         "WARNING, undeletable object '%s', should have been caught before reaching this "
         "function!",
-        ob->id.name + 2);
+        BKE_id_ui_name_get(ob->id));
     return;
   }
   if (!BKE_lib_override_library_id_is_user_deletable(bmain, &ob->id)) {
@@ -2461,7 +2462,7 @@ static int object_delete_exec(bContext *C, wmOperator *op)
       BKE_reportf(op->reports,
                   RPT_WARNING,
                   "Cannot delete indirectly linked object '%s'",
-                  ob->id.name + 2);
+                  BKE_id_ui_name_get(ob->id));
       continue;
     }
 
@@ -2469,7 +2470,7 @@ static int object_delete_exec(bContext *C, wmOperator *op)
       BKE_reportf(op->reports,
                   RPT_WARNING,
                   "Cannot delete object '%s' as it is used by override collections",
-                  ob->id.name + 2);
+                  BKE_id_ui_name_get(ob->id));
       continue;
     }
 
@@ -2480,8 +2481,8 @@ static int object_delete_exec(bContext *C, wmOperator *op)
                   RPT_WARNING,
                   "Cannot delete object '%s' from scene '%s', indirectly used objects need at "
                   "least one user",
-                  ob->id.name + 2,
-                  scene->id.name + 2);
+                  BKE_id_ui_name_get(ob->id),
+                  BKE_id_ui_name_get(scene->id));
       continue;
     }
 
@@ -3358,7 +3359,8 @@ static int object_convert_exec(bContext *C, wmOperator *op)
         }
 
         const Curves *curves_eval = geometry.get_curves();
-        Curves *new_curves = static_cast<Curves *>(BKE_id_new(bmain, ID_CV, newob->id.name + 2));
+        Curves *new_curves = static_cast<Curves *>(
+            BKE_id_new(bmain, ID_CV, BKE_id_ui_name_get(newob->id)));
 
         newob->data = new_curves;
         newob->type = OB_CURVES;
@@ -3385,7 +3387,8 @@ static int object_convert_exec(bContext *C, wmOperator *op)
           newob = ob;
         }
 
-        Curves *new_curves = static_cast<Curves *>(BKE_id_new(bmain, ID_CV, newob->id.name + 2));
+        Curves *new_curves = static_cast<Curves *>(
+            BKE_id_new(bmain, ID_CV, BKE_id_ui_name_get(newob->id)));
         newob->data = new_curves;
         newob->type = OB_CURVES;
 
@@ -3415,8 +3418,10 @@ static int object_convert_exec(bContext *C, wmOperator *op)
         BKE_object_free_modifiers(newob, 0);
       }
       else {
-        BKE_reportf(
-            op->reports, RPT_WARNING, "Object '%s' has no evaluated curves data", ob->id.name + 2);
+        BKE_reportf(op->reports,
+                    RPT_WARNING,
+                    "Object '%s' has no evaluated curves data",
+                    BKE_id_ui_name_get(ob->id));
       }
     }
     else if (ob->type == OB_MESH && target == OB_POINTCLOUD) {
@@ -3700,7 +3705,8 @@ static int object_convert_exec(bContext *C, wmOperator *op)
         newob = ob;
       }
 
-      Mesh *new_mesh = static_cast<Mesh *>(BKE_id_new(bmain, ID_ME, newob->id.name + 2));
+      Mesh *new_mesh = static_cast<Mesh *>(
+          BKE_id_new(bmain, ID_ME, BKE_id_ui_name_get(newob->id)));
       newob->data = new_mesh;
       newob->type = OB_MESH;
 
@@ -3723,7 +3729,7 @@ static int object_convert_exec(bContext *C, wmOperator *op)
         BKE_reportf(op->reports,
                     RPT_WARNING,
                     "Object '%s' has no evaluated mesh or curves data",
-                    ob->id.name + 2);
+                    BKE_id_ui_name_get(ob->id));
       }
 
       BKE_object_free_derived_caches(newob);
@@ -3752,7 +3758,7 @@ static int object_convert_exec(bContext *C, wmOperator *op)
       }
 
       GreasePencil *new_grease_pencil = static_cast<GreasePencil *>(
-          BKE_id_new(bmain, ID_GP, newob->id.name + 2));
+          BKE_id_new(bmain, ID_GP, BKE_id_ui_name_get(newob->id)));
       newob->data = new_grease_pencil;
       newob->type = OB_GREASE_PENCIL;
 
@@ -3779,7 +3785,7 @@ static int object_convert_exec(bContext *C, wmOperator *op)
         BKE_reportf(op->reports,
                     RPT_WARNING,
                     "Object '%s' has no evaluated grease pencil or curves data",
-                    ob->id.name + 2);
+                    BKE_id_ui_name_get(ob->id));
       }
 
       BKE_object_free_derived_caches(newob);
@@ -4506,7 +4512,7 @@ static int object_join_exec(bContext *C, wmOperator *op)
     BKE_reportf(op->reports,
                 RPT_WARNING,
                 "Cannot edit object '%s' as it is used by override collections",
-                ob->id.name + 2);
+                BKE_id_ui_name_get(ob->id));
     return OPERATOR_CANCELLED;
   }
 
@@ -4614,7 +4620,7 @@ static int join_shapes_exec(bContext *C, wmOperator *op)
     BKE_reportf(op->reports,
                 RPT_WARNING,
                 "Cannot edit object '%s' as it is used by override collections",
-                ob->id.name + 2);
+                BKE_id_ui_name_get(ob->id));
     return OPERATOR_CANCELLED;
   }
 
