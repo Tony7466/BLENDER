@@ -2346,7 +2346,7 @@ static int make_override_library_exec(bContext *C, wmOperator *op)
       BKE_reportf(op->reports,
                   RPT_ERROR_INVALID_INPUT,
                   "Collection '%s' (instantiated by the active object) is not overridable",
-                  obact->instance_collection->id.name + 2);
+                  BKE_id_ui_name_get(obact->instance_collection->id));
       return OPERATOR_CANCELLED;
     }
 
@@ -2361,7 +2361,7 @@ static int make_override_library_exec(bContext *C, wmOperator *op)
       BKE_reportf(op->reports,
                   RPT_ERROR_INVALID_INPUT,
                   "Could not find an overridable root hierarchy for object '%s'",
-                  obact->id.name + 2);
+                  BKE_id_ui_name_get(obact->id));
       return OPERATOR_CANCELLED;
     }
     Collection *collection = static_cast<Collection *>(
@@ -2932,11 +2932,11 @@ std::string drop_named_material_tooltip(bContext *C, const char *name, const int
   if (prev_mat) {
     return fmt::format(TIP_("Drop {} on {} (slot {}, replacing {})"),
                        name,
-                       ob->id.name + 2,
+                       BKE_id_ui_name_get(ob->id),
                        mat_slot,
-                       prev_mat->id.name + 2);
+                       BKE_id_ui_name_get(prev_mat->id));
   }
-  return fmt::format(TIP_("Drop {} on {} (slot {})"), name, ob->id.name + 2, mat_slot);
+  return fmt::format(TIP_("Drop {} on {} (slot {})"), name, BKE_id_ui_name_get(ob->id), mat_slot);
 }
 
 static int drop_named_material_invoke(bContext *C, wmOperator *op, const wmEvent *event)
@@ -3048,7 +3048,7 @@ static int drop_geometry_nodes_invoke(bContext *C, wmOperator *op, const wmEvent
   }
 
   NodesModifierData *nmd = (NodesModifierData *)modifier_add(
-      op->reports, bmain, scene, ob, node_tree->id.name + 2, eModifierType_Nodes);
+      op->reports, bmain, scene, ob, BKE_id_ui_name_get(node_tree->id), eModifierType_Nodes);
   if (!nmd) {
     BKE_report(op->reports, RPT_ERROR, "Could not add geometry nodes modifier");
     return OPERATOR_CANCELLED;
