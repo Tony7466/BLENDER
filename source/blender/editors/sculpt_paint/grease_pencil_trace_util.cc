@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BKE_attribute.hh"
 #include "BLI_color.hh"
 #include "BLI_math_matrix.hh"
 
@@ -143,52 +144,23 @@ void free_trace(Trace *trace)
 {
   potrace_state_free(trace);
 }
-bke::CurvesGeometry trace_to_curves(const Trace &trace, const float4x4 &transform)
+bke::CurvesGeometry trace_to_curves(const Trace &trace,
+                                    const bke::AttributeIDRef &hole_attribute_id,
+                                    const float4x4 &transform)
 {
 
-  return trace_to_curves(trace, [=](const int2 &pixel) {
+  return trace_to_curves(trace, hole_attribute_id, [=](const int2 &pixel) {
     return math::transform_point(transform, float3(pixel.x, pixel.y, 0));
   });
 }
 
 bke::CurvesGeometry trace_to_curves(const Trace &trace,
+                                    const bke::AttributeIDRef &hole_attribute_id,
                                     FunctionRef<float3(const int2 &)> pixel_to_position)
 {
   auto project_pixel = [&](const potrace_dpoint_t &point) -> float3 {
     return pixel_to_position(int2(point.x, point.y));
   };
-
-  ///* Find materials and create them if not found. */
-  // BKE_object_material
-  // int32_t mat_fill_idx = BKE_gpencil_material_find_index_by_name_prefix(ob, "Stroke");
-  // int32_t mat_mask_idx = BKE_gpencil_material_find_index_by_name_prefix(ob, "Holdout");
-
-  // const float default_color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
-  ///* Stroke and Fill material. */
-  // if (mat_fill_idx == -1) {
-  //   int32_t new_idx;
-  //   Material *mat_gp = BKE_gpencil_object_material_new(bmain, ob, "Stroke", &new_idx);
-  //   MaterialGPencilStyle *gp_style = mat_gp->gp_style;
-
-  //  copy_v4_v4(gp_style->stroke_rgba, default_color);
-  //  gp_style->flag |= GP_MATERIAL_STROKE_SHOW;
-  //  gp_style->flag |= GP_MATERIAL_FILL_SHOW;
-  //  mat_fill_idx = ob->totcol - 1;
-  //}
-  ///* Holdout material. */
-  // if (mat_mask_idx == -1) {
-  //   int32_t new_idx;
-  //   Material *mat_gp = BKE_gpencil_object_material_new(bmain, ob, "Holdout", &new_idx);
-  //   MaterialGPencilStyle *gp_style = mat_gp->gp_style;
-
-  //  copy_v4_v4(gp_style->stroke_rgba, default_color);
-  //  copy_v4_v4(gp_style->fill_rgba, default_color);
-  //  gp_style->flag |= GP_MATERIAL_STROKE_SHOW;
-  //  gp_style->flag |= GP_MATERIAL_FILL_SHOW;
-  //  gp_style->flag |= GP_MATERIAL_IS_STROKE_HOLDOUT;
-  //  gp_style->flag |= GP_MATERIAL_IS_FILL_HOLDOUT;
-  //  mat_mask_idx = ob->totcol - 1;
-  //}
 
   /* Count paths and points. */
   Vector<int> offsets;
@@ -229,13 +201,13 @@ bke::CurvesGeometry trace_to_curves(const Trace &trace,
   curves.cyclic_for_write().fill(true);
 
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
-  bke::SpanAttributeWriter<int> material_indices = attributes.lookup_or_add_for_write_span<int>(
-      "material_index", bke::AttrDomain::Curve);
   MutableSpan<int8_t> handle_types_left = curves.handle_types_left_for_write();
   MutableSpan<int8_t> handle_types_right = curves.handle_types_right_for_write();
   MutableSpan<float3> handle_positions_left = curves.handle_positions_left_for_write();
   MutableSpan<float3> handle_positions_right = curves.handle_positions_right_for_write();
   MutableSpan<float3> positions = curves.positions_for_write();
+  bke::SpanAttributeWriter<bool> holes = attributes.lookup_or_add_for_write_span<bool>(
+      hole_attribute_id, bke::AttrDomain::Curve);
 
   /* Draw each curve. */
   int curve_i = 0;
@@ -248,7 +220,10 @@ bke::CurvesGeometry trace_to_curves(const Trace &trace,
       continue;
     }
 
-    material_indices.span[curve_i] = 0 /*path->sign == '+' ? mat_fill_idx : mat_mask_idx*/;
+    /* Mark paths with negative sign as "holes". */
+    if (holes) {
+      holes.span[curve_i] = (path->sign == '-');
+    }
 
     /* Potrace stores the last 3 points of a bezier segment.
      * The start point is the last segment's end point. */
@@ -293,7 +268,7 @@ bke::CurvesGeometry trace_to_curves(const Trace &trace,
     }
   }
 
-  material_indices.finish();
+  holes.finish();
   curves.tag_topology_changed();
   curves.tag_positions_changed();
   curves.tag_radii_changed();

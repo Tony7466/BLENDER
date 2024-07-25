@@ -805,7 +805,7 @@ static bke::CurvesGeometry process_image(Image &ima,
     image_trace::free_bitmap(bm);
 
     curves = image_trace::trace_to_curves(
-        *trace, [&](const int2 &pixel) { return placement.project(float2(pixel)); });
+        *trace, {}, [&](const int2 &pixel) { return placement.project(float2(pixel)); });
     image_trace::free_trace(trace);
   }
   else {
