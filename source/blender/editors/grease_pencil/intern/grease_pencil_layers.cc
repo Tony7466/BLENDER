@@ -942,7 +942,7 @@ void merge_layers(Object &object,
   };
 
   for (const int layer : src_layers.index_range()) {
-    //if(src_layers[layer] == &target_layer){ continue; }
+    // if(src_layers[layer] == &target_layer){ continue; }
     bke::greasepencil::Layer source_layer = *src_layers[layer];
     source_layer.frames().foreach_item([&](const blender::bke::greasepencil::FramesMapKeyT &key,
                                            const GreasePencilFrame &frame) {
@@ -953,7 +953,7 @@ void merge_layers(Object &object,
       bke::greasepencil::Drawing *source_drawing = grease_pencil.get_drawing_at(source_layer, key);
       bke::CurvesGeometry source_geometry = source_drawing->strokes();
       process_source_layer_drawing(source_layer, source_geometry, float4x4::identity());
-      
+
       Curves *source_curves = bke::curves_new_nomain(std::move(source_geometry));
       bke::GeometrySet source_geometry_set = bke::GeometrySet::from_curves(source_curves);
 
@@ -1014,20 +1014,24 @@ static int grease_pencil_merge_layer_exec(bContext *C, wmOperator *op)
     merge_layers(*object, grease_pencil, {active_layer}, target_layer);
     grease_pencil.remove_layer(*active_layer);
   }
-  else{
-    bke::greasepencil::TreeNode *parent_node=nullptr;
+  else {
+    bke::greasepencil::TreeNode *parent_node = nullptr;
     if (mode == GREASE_PENCIL_LAYER_MERGE_GROUP) {
-      bke::greasepencil::Layer* current_layer = grease_pencil.get_active_layer();
-      if(current_layer){ parent_node = current_layer->as_node().parent_node(); }
-      else{
-        bke::greasepencil::LayerGroup* current_group = grease_pencil.get_active_group();
-        if(!current_group){
+      bke::greasepencil::Layer *current_layer = grease_pencil.get_active_layer();
+      if (current_layer) {
+        parent_node = current_layer->as_node().parent_node();
+      }
+      else {
+        bke::greasepencil::LayerGroup *current_group = grease_pencil.get_active_group();
+        if (!current_group) {
           BKE_report(op->reports, RPT_ERROR, "No layers to merge");
           return OPERATOR_CANCELLED;
         }
         parent_node = &current_group->as_node();
       }
-      if(UNLIKELY(!parent_node)){ parent_node = &grease_pencil.root_group().as_node(); }
+      if (UNLIKELY(!parent_node)) {
+        parent_node = &grease_pencil.root_group().as_node();
+      }
     }
     else if (mode == GREASE_PENCIL_LAYER_MERGE_ALL) {
       parent_node = &grease_pencil.root_group().as_node();
@@ -1035,23 +1039,30 @@ static int grease_pencil_merge_layer_exec(bContext *C, wmOperator *op)
 
     bke::greasepencil::Layer &target_layer = grease_pencil.add_layer("merged_layer");
 
-    blender::Span<const bke::greasepencil::Layer*> source_layers = parent_node->as_group().layers();
+    blender::Span<const bke::greasepencil::Layer *> source_layers =
+        parent_node->as_group().layers();
 
     merge_layers(*object, grease_pencil, source_layers, target_layer);
 
-    if(parent_node != &grease_pencil.root_group().as_node()){
-      grease_pencil.move_node_after(target_layer.as_node(),*parent_node);
+    if (parent_node != &grease_pencil.root_group().as_node()) {
+      grease_pencil.move_node_after(target_layer.as_node(), *parent_node);
       grease_pencil.remove_group(parent_node->as_group());
-    }else{
-      for(bke::greasepencil::Layer* layer:grease_pencil.layers_for_write()){
-        if(layer == &target_layer){continue;}
+    }
+    else {
+      bke::greasepencil::Layer *layer;
+      while (grease_pencil.layers_for_write().size() > 1) {
+        layer = grease_pencil.layers_for_write().first();
+        if (layer == &target_layer) {
+          continue;
+        }
         grease_pencil.remove_layer(*layer);
       }
-      for(bke::greasepencil::LayerGroup* layer_group:grease_pencil.layer_groups_for_write()){
+      bke::greasepencil::LayerGroup *layer_group;
+      while (grease_pencil.layer_groups_for_write().size()) {
+        layer_group = grease_pencil.layer_groups_for_write().first();
         grease_pencil.remove_group(*layer_group);
       }
     }
-
   }
 
   /* TODO: Clear any invalid mask. Some other layer could be using the merged layer. */

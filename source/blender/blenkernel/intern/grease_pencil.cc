@@ -3390,12 +3390,16 @@ void GreasePencil::remove_group(blender::bke::greasepencil::LayerGroup &group,
 
   if (!keep_children) {
     /* Recursively remove sub groups. */
-    for (LayerGroup *sub_group : group.groups_for_write()) {
+    LayerGroup *sub_group;
+    while (group.groups_for_write().size()) {
+      sub_group = group.groups_for_write().first();
       this->remove_group(*sub_group, false);
     }
 
     /* Remove all the layers. */
-    for (Layer *layer : group.layers_for_write()) {
+    Layer *layer;
+    while(group.layers_for_write().size()){
+      layer = group.layers_for_write().first();
       this->remove_layer(*layer);
     }
   }
