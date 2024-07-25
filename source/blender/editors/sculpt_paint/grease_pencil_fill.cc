@@ -787,6 +787,10 @@ static bke::CurvesGeometry process_image(Image &ima,
     image_trace::TraceParams params;
     params.size_threshold = 0;
     params.turn_policy = image_trace::TurnPolicy::Minority;
+    /* Disable corner threshold and optimization to get the most accurate fill, at the expense of
+     * smoothness which is not important here. */
+    params.alpha_max = 0.0f;
+    params.optimize_curves = false;
     Trace *trace = image_trace::trace_bitmap(params, *bm);
 
     constexpr bool output_debug_image = true;
