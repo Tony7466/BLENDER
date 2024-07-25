@@ -44,6 +44,8 @@ float hash_float_to_float(float3 k);
 float hash_float_to_float(float4 k);
 
 float2 hash_float_to_float2(float2 k);
+float2 hash_float_to_float2(float3 k);
+float2 hash_float_to_float2(float4 k);
 
 float3 hash_float_to_float3(float k);
 float3 hash_float_to_float3(float2 k);

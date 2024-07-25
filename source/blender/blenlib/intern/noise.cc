@@ -202,6 +202,18 @@ float2 hash_float_to_float2(float2 k)
   return float2(hash_float_to_float(k), hash_float_to_float(float3(k.x, k.y, 1.0)));
 }
 
+float2 hash_float_to_float2(float3 k)
+{
+  return float2(hash_float_to_float(float3(k.x, k.y, k.z)),
+                hash_float_to_float(float3(k.z, k.x, k.y)));
+}
+
+float2 hash_float_to_float2(float4 k)
+{
+  return float2(hash_float_to_float(float4(k.x, k.y, k.z, k.w)),
+                hash_float_to_float(float4(k.z, k.x, k.w, k.y)));
+}
+
 float3 hash_float_to_float3(float k)
 {
   return float3(hash_float_to_float(k),
