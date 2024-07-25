@@ -99,12 +99,11 @@ BLI_NOINLINE static void do_surface_smooth_brush_mesh(const Sculpt &sd,
   const Span<float3> vert_normals = BKE_pbvh_get_vert_normals(pbvh);
   MutableSpan<float3> positions_orig = mesh.vert_positions_for_write();
 
-  threading::EnumerableThreadSpecific<LocalData> all_tls;
-
   Array<int> node_offset_data;
   const OffsetIndices node_offsets = create_node_vert_offsets(nodes, node_offset_data);
   Array<float> all_factors(node_offsets.total_size());
 
+  threading::EnumerableThreadSpecific<LocalData> all_tls;
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     LocalData &tls = all_tls.local();
     for (const int i : range) {
@@ -216,13 +215,12 @@ BLI_NOINLINE static void do_surface_smooth_brush_grids(
 
   SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
 
-  threading::EnumerableThreadSpecific<LocalData> all_tls;
-
   Array<int> node_offset_data;
   const OffsetIndices node_offsets = create_node_vert_offsets(
       nodes, BKE_subdiv_ccg_key_top_level(subdiv_ccg), node_offset_data);
   Array<float> all_factors(node_offsets.total_size());
 
+  threading::EnumerableThreadSpecific<LocalData> all_tls;
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     LocalData &tls = all_tls.local();
     for (const int i : range) {
@@ -326,12 +324,11 @@ BLI_NOINLINE static void do_surface_smooth_brush_bmesh(
   const float alpha = brush.surface_smooth_shape_preservation;
   const float beta = brush.surface_smooth_current_vertex;
 
-  threading::EnumerableThreadSpecific<LocalData> all_tls;
-
   Array<int> node_offset_data;
   const OffsetIndices node_offsets = create_node_vert_offsets_bmesh(nodes, node_offset_data);
   Array<float> all_factors(node_offsets.total_size());
 
+  threading::EnumerableThreadSpecific<LocalData> all_tls;
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     LocalData &tls = all_tls.local();
     for (const int i : range) {
