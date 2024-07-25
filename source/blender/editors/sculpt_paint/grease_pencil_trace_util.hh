@@ -115,23 +115,6 @@ template<typename ThresholdFn> Bitmap *image_to_bitmap(const ImBuf &ibuf, Thresh
   /* Use callback with the correct color conversion. */
   constexpr bool is_float_color_fn =
       std::is_invocable_r_v<void, ThresholdFn, const ColorGeometry4f &>;
-  static auto is_foreground_float = [&](const ColorGeometry4f &fcolor) {
-    if constexpr (!is_float_color_fn) {
-      return fn(ColorGeometry4b(fcolor.r * 255, fcolor.g * 255, fcolor.b * 255, fcolor.a * 255));
-    }
-    else {
-      return fn(fcolor);
-    }
-  };
-  static auto is_foreground_byte = [&](const ColorGeometry4b &bcolor) {
-    if constexpr (is_float_color_fn) {
-      return fn(ColorGeometry4f(
-          bcolor.r / 255.0f, bcolor.r / 255.0f, bcolor.r / 255.0f, bcolor.r / 255.0f));
-    }
-    else {
-      return fn(bcolor);
-    }
-  };
 
   if (ibuf.float_buffer.data) {
     const Span<ColorGeometry4f> colors = {
@@ -144,7 +127,18 @@ template<typename ThresholdFn> Bitmap *image_to_bitmap(const ImBuf &ibuf, Thresh
         for (int x = 0; x < ibuf.x; x++) {
           potrace_word &word = scanline_words[x / BM_WORDBITS];
           const potrace_word mask = BM_HIBIT >> (x & (BM_WORDBITS - 1));
-          if (is_foreground_float(scanline_colors[x])) {
+
+          const ColorGeometry4f &fcolor = scanline_colors[x];
+          bool is_foreground;
+          if constexpr (!is_float_color_fn) {
+            is_foreground = fn(
+                ColorGeometry4b(fcolor.r * 255, fcolor.g * 255, fcolor.b * 255, fcolor.a * 255));
+          }
+          else {
+            is_foreground = fn(fcolor);
+          }
+
+          if (is_foreground) {
             word |= mask;
           }
           else {
@@ -166,7 +160,18 @@ template<typename ThresholdFn> Bitmap *image_to_bitmap(const ImBuf &ibuf, Thresh
       for (uint32_t x = 0; x < ibuf.x; x++) {
         potrace_word &word = scanline_words[x / BM_WORDBITS];
         const potrace_word mask = BM_HIBIT >> (x & (BM_WORDBITS - 1));
-        if (is_foreground_byte(scanline_colors[x])) {
+
+        const ColorGeometry4b bcolor = scanline_colors[x];
+        bool is_foreground;
+        if constexpr (is_float_color_fn) {
+          is_foreground = fn(ColorGeometry4f(
+              bcolor.r / 255.0f, bcolor.r / 255.0f, bcolor.r / 255.0f, bcolor.r / 255.0f));
+        }
+        else {
+          is_foreground = fn(bcolor);
+        }
+
+        if (is_foreground) {
           word |= mask;
         }
         else {
