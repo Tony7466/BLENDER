@@ -116,10 +116,9 @@ DenoiseParams get_expected_denoise_params(Device *denoiser_device,
                                           const DenoiseParams &params)
 {
   /* Keep logic in `get_expected_denoise_params` and `Denoiser::create` in sync. */
+  DCHECK(params.use);
 
   DenoiseParams expected_denoise_params = params;
-
-  DCHECK(params.use);
 
   Device *single_denoiser_device = get_single_denoising_device(
       denoiser_device, cpu_fallback_device, expected_denoise_params);
