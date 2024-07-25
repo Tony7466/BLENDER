@@ -289,6 +289,7 @@ static void action_foreach_id(ID *id, LibraryForeachIDData *data)
   }
 }
 
+#ifdef WITH_ANIM_BAKLAVA
 static void write_channelbag(BlendWriter *writer, animrig::ChannelBag &channelbag)
 {
   BLO_write_struct(writer, ActionChannelBag, &channelbag);
@@ -350,6 +351,7 @@ static void write_slots(BlendWriter *writer, Span<animrig::Slot *> slots)
     BLO_write_struct_at_address(writer, ActionSlot, slot, &shallow_copy);
   }
 }
+#endif /* WITH_ANIM_BAKLAVA */
 
 /**
  * Create a listbase from a Span of F-Curves.
@@ -398,6 +400,7 @@ static void action_blend_write(BlendWriter *writer, ID *id, const void *id_addre
 {
   animrig::Action &action = reinterpret_cast<bAction *>(id)->wrap();
 
+#ifdef WITH_ANIM_BAKLAVA
   /* Create legacy data for Layered Actions: the F-Curves from the first Slot,
    * bottom layer, first Keyframe strip. */
   const bool do_write_forward_compat = !BLO_write_is_undo(writer) && action.slot_array_num > 0 &&
@@ -413,13 +416,34 @@ static void action_blend_write(BlendWriter *writer, ID *id, const void *id_addre
     Span<FCurve *> fcurves = fcurves_for_action_slot(action, first_slot.handle);
     action_blend_write_make_legacy_fcurves_listbase(action.curves, fcurves);
   }
+#else
+  constexpr bool do_write_forward_compat = false;
+
+  /* Built without Baklava, so ensure that the written data is clean. This should not change
+   * anything, as the reading code below also ensures these fields are empty, and the APIs to add
+   * those should be unavailable. */
+  BLI_assert_msg(action.layer_array == nullptr,
+                 "Action should not have layers, built without Baklava experimental feature");
+  BLI_assert_msg(action.layer_array_num == 0,
+                 "Action should not have layers, built without Baklava experimental feature");
+  BLI_assert_msg(action.slot_array == nullptr,
+                 "Action should not have slots, built without Baklava experimental feature");
+  BLI_assert_msg(action.slot_array_num == 0,
+                 "Action should not have slots, built without Baklava experimental feature");
+  action.layer_array = nullptr;
+  action.layer_array_num = 0;
+  action.slot_array = nullptr;
+  action.slot_array_num = 0;
+#endif /* WITH_ANIM_BAKLAVA */
 
   BLO_write_id_struct(writer, bAction, id_address, &action.id);
   BKE_id_blend_write(writer, &action.id);
 
+#ifdef WITH_ANIM_BAKLAVA
   /* Write layered Action data. */
   write_layers(writer, action.layers());
   write_slots(writer, action.slots());
+#endif /* WITH_ANIM_BAKLAVA */
 
   /* Write legacy F-Curves & Groups. */
   if (do_write_forward_compat) {
@@ -451,6 +475,7 @@ static void action_blend_write(BlendWriter *writer, ID *id, const void *id_addre
   BKE_previewimg_blend_write(writer, action.preview);
 }
 
+#ifdef WITH_ANIM_BAKLAVA
 static void read_channelbag(BlendDataReader *reader, animrig::ChannelBag &channelbag)
 {
   BLO_read_pointer_array(reader, reinterpret_cast<void **>(&channelbag.fcurve_array));
@@ -511,13 +536,24 @@ static void read_slots(BlendDataReader *reader, animrig::Action &action)
     action.slot_array[i]->wrap().blend_read_post();
   }
 }
+#endif /* WITH_ANIM_BAKLAVA */
 
 static void action_blend_read_data(BlendDataReader *reader, ID *id)
 {
   animrig::Action &action = reinterpret_cast<bAction *>(id)->wrap();
 
+#ifdef WITH_ANIM_BAKLAVA
   read_layers(reader, action);
   read_slots(reader, action);
+#else
+  /* Built without Baklava, so do not read the layers, strips, slots, etc.
+   * This ensures the F-Curves in the legacy `curves` ListBase are read & used
+   * (these are written by future Blender versions for forward compatibility). */
+  action.layer_array = nullptr;
+  action.layer_array_num = 0;
+  action.slot_array = nullptr;
+  action.slot_array_num = 0;
+#endif /* WITH_ANIM_BAKLAVA */
 
   if (action.is_action_layered()) {
     /* Clear the forward-compatible storage (see action_blend_write_data()). */
@@ -580,7 +616,7 @@ IDTypeInfo IDType_ID_AC = {
     /*id_filter*/ FILTER_ID_AC,
 
     /* This value will be set dynamically in `BKE_idtype_init()` to only include
-     * animatable ID types (see `animrig::Binding::users()`). */
+     * animatable ID types (see `animrig::Slot::users()`). */
     /*dependencies_id_types*/ FILTER_ID_ALL,
 
     /*main_listbase_index*/ INDEX_ID_AC,
