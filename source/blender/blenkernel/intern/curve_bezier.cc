@@ -116,7 +116,7 @@ static void calculate_point_handles(const HandleType type_left,
     const float3 dir = next_diff / next_len + prev_diff / prev_len;
 
     /* The magic number 2.5614 is derived from approximating a circular arc at the control
-     * point. Given the contraints
+     * point. Given the constraints
      *   - P0=(0,1),P1=(c,1),P2=(1,c),P3=(1,0).
      *   - The first derivative of the curve must agree with the circular arc derivative at the
      * endpoints.
