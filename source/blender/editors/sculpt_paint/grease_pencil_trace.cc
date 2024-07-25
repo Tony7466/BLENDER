@@ -90,8 +90,7 @@ struct TraceJob {
   float radius;
   TurnPolicy turnpolicy;
   TraceMode mode;
-  /** Frame to render to be used by python API. Not exposed in UI.
-   * This feature is only used in Studios to run custom video trace for selected frames. */
+  /* Custom source frame, allows overriding the default scene frame. */
   int frame_number;
 
   bool success;
