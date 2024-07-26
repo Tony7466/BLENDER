@@ -1440,6 +1440,11 @@ TEST_F(KeyframingTest, delete_keyframes__layered_action)
   fcurves = fcurves_for_action_slot(action, object->adt->slot_handle);
   /* Since the last key was deleted, all FCurves should have been deleted. */
   ASSERT_EQ(fcurves.size(), 0);
+  /* Deleting all FCurves off the slot should not delete the slot. */
+  ASSERT_EQ(action.slots().size(), 1);
+
+  deleted_count = action_delete_keyframe(action, object->adt->slot_handle, scene_frame);
+  ASSERT_EQ(deleted_count, 0);
 }
 
 }  // namespace blender::animrig::tests
