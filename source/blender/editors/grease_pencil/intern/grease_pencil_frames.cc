@@ -814,16 +814,23 @@ static int grease_pencil_frame_duplicate_exec(bContext *C, wmOperator *op)
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
   const bool only_active = !RNA_boolean_get(op->ptr, "all");
-  const Layer *active_layer = grease_pencil.get_active_layer();
   const int current_frame = scene->r.cfra;
 
-  for (Layer *layer : grease_pencil.layers_for_write()) {
-    if (only_active && layer != active_layer) {
-      continue;
+  if (only_active) {
+    if (!grease_pencil.has_active_layer()) {
+      return OPERATOR_CANCELLED;
     }
-    const std::optional<int> active_frame_number = layer->start_frame_at(current_frame);
+    Layer &active_layer = *grease_pencil.get_active_layer();
+    const std::optional<int> active_frame_number = active_layer.start_frame_at(current_frame);
     grease_pencil.insert_duplicate_frame(
-        *layer, active_frame_number.value(), current_frame, false);
+        active_layer, active_frame_number.value(), current_frame, false);
+  }
+  else {
+    for (Layer *layer : grease_pencil.layers_for_write()) {
+      const std::optional<int> active_frame_number = layer->start_frame_at(current_frame);
+      grease_pencil.insert_duplicate_frame(
+          *layer, active_frame_number.value(), current_frame, false);
+    }
   }
 
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
@@ -835,9 +842,9 @@ static int grease_pencil_frame_duplicate_exec(bContext *C, wmOperator *op)
 static void GREASE_PENCIL_OT_frame_duplicate(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Duplicate active Frames";
+  ot->name = "Duplicate active Frame(s)";
   ot->idname = "GREASE_PENCIL_OT_frame_duplicate";
-  ot->description = "Make a copy of the active Grease Pencil Frame";
+  ot->description = "Make a copy of the active Grease Pencil frame(s)";
 
   /* callback */
   ot->exec = grease_pencil_frame_duplicate_exec;
