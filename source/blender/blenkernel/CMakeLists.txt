@@ -63,8 +63,8 @@ set(SRC
   intern/armature_selection.cc
   intern/armature_update.cc
   intern/asset.cc
-  intern/asset_weak_reference.cc
   intern/asset_edit.cc
+  intern/asset_weak_reference.cc
   intern/attribute.cc
   intern/attribute_access.cc
   intern/attribute_math.cc
@@ -95,6 +95,7 @@ set(SRC
   intern/collision_shape.cc
   intern/colorband.cc
   intern/colortools.cc
+  intern/compositor.cc
   intern/compute_contexts.cc
   intern/constraint.cc
   intern/context.cc
@@ -340,6 +341,7 @@ set(SRC
   BKE_attribute.hh
   BKE_attribute_math.hh
   BKE_autoexec.hh
+  BKE_bake_data_block_id.hh
   BKE_bake_data_block_map.hh
   BKE_bake_geometry_nodes_modifier.hh
   BKE_bake_items.hh
@@ -368,6 +370,7 @@ set(SRC
   BKE_collision_shape.hh
   BKE_colorband.hh
   BKE_colortools.hh
+  BKE_compositor.hh
   BKE_compute_contexts.hh
   BKE_constraint.h
   BKE_context.hh
@@ -401,6 +404,7 @@ set(SRC
   BKE_fluid.h
   BKE_freestyle.h
   BKE_geometry_fields.hh
+  BKE_geometry_nodes_gizmos_transforms.hh
   BKE_geometry_set.hh
   BKE_geometry_set_instances.hh
   BKE_global.hh
@@ -525,6 +529,8 @@ set(SRC
   BKE_volume_enums.hh
   BKE_volume_grid.hh
   BKE_volume_grid_file_cache.hh
+  BKE_volume_grid_fwd.hh
+  BKE_volume_grid_type_traits.hh
   BKE_volume_openvdb.hh
   BKE_volume_render.hh
   BKE_volume_to_mesh.hh
@@ -815,18 +821,6 @@ if(WITH_XR_OPENXR)
   add_definitions(-DWITH_XR_OPENXR)
 endif()
 
-if(WITH_TBB)
-  add_definitions(-DWITH_TBB)
-
-  list(APPEND INC_SYS
-    ${TBB_INCLUDE_DIRS}
-  )
-
-  list(APPEND LIB
-    ${TBB_LIBRARIES}
-  )
-endif()
-
 if(WITH_EXPERIMENTAL_FEATURES)
   add_definitions(-DWITH_ANIM_BAKLAVA)
 endif()
@@ -864,6 +858,7 @@ if(WITH_GTESTS)
     intern/lib_remap_test.cc
     intern/main_test.cc
     intern/nla_test.cc
+    intern/subdiv_ccg_test.cc
     intern/tracking_test.cc
     intern/volume_test.cc
   )
