@@ -95,21 +95,27 @@ static Device *get_single_denoising_device(Device *denoiser_device,
   return single_denoiser_device;
 }
 
-#ifdef WITH_OPTIX
 bool use_optix_denoiser(Device *denoiser_device, const DenoiseParams &params)
 {
+#ifdef WITH_OPTIX
   return (params.type == DENOISER_OPTIX &&
           OptiXDenoiser::is_device_supported(denoiser_device->info));
-}
 #endif
+  (void)denoiser_device;
+  (void)params;
+  return false;
+}
 
-#ifdef WITH_OPENIMAGEDENOISE
 bool use_gpu_oidn_denoiser(Device *denoiser_device, const DenoiseParams &params)
 {
+#ifdef WITH_OPENIMAGEDENOISE
   return (params.type == DENOISER_OPENIMAGEDENOISE && params.use_gpu &&
           OIDNDenoiserGPU::is_device_supported(denoiser_device->info));
-}
 #endif
+  (void)denoiser_device;
+  (void)params;
+  return false;
+}
 
 DenoiseParams get_expected_denoise_params(Device *denoiser_device,
                                           Device *cpu_fallback_device,
@@ -125,18 +131,12 @@ DenoiseParams get_expected_denoise_params(Device *denoiser_device,
 
   bool is_cpu_denoiser_device = single_denoiser_device->info.type == DEVICE_CPU;
   if (is_cpu_denoiser_device == false) {
-#ifdef WITH_OPTIX
-    if (use_optix_denoiser(single_denoiser_device, expected_denoise_params)) {
+    if (use_optix_denoiser(single_denoiser_device, expected_denoise_params) ||
+        use_gpu_oidn_denoiser(single_denoiser_device, expected_denoise_params))
+    {
+      /* Denoising Parameters are correct and there will be need to falling back to CPU OIDN. */
       return expected_denoise_params;
     }
-#endif
-
-#ifdef WITH_OPENIMAGEDENOISE
-    /* If available and allowed, then we will use OpenImageDenoise on GPU, otherwise on CPU. */
-    if (use_gpu_oidn_denoiser(single_denoiser_device, expected_denoise_params)) {
-      return expected_denoise_params;
-    }
-#endif
   }
 
   /* Always fallback to OIDN on CPU. */

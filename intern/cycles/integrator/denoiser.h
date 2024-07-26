@@ -19,13 +19,9 @@ class Device;
 class RenderBuffers;
 class Progress;
 
-#ifdef WITH_OPTIX
 bool use_optix_denoiser(Device *denoiser_device, const DenoiseParams &params);
-#endif
 
-#ifdef WITH_OPENIMAGEDENOISE
 bool use_gpu_oidn_denoiser(Device *denoiser_device, const DenoiseParams &params);
-#endif
 
 DenoiseParams get_expected_denoise_params(Device *denoiser_device,
                                           Device *cpu_fallback_device,
