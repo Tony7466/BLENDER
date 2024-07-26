@@ -911,7 +911,7 @@ Span<int> vert_neighbors_get_mesh(int vert,
                                   Span<int> corner_verts,
                                   GroupedSpan<int> vert_to_face,
                                   Span<bool> hide_poly,
-                                  Vector<int, 64> &r_neighbors);
+                                  Vector<int> &r_neighbors);
 }
 
 PBVHVertRef SCULPT_active_vertex_get(const SculptSession &ss);
