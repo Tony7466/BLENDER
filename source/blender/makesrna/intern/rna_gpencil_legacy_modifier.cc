@@ -254,12 +254,12 @@ static const EnumPropertyItem gpencil_envelope_mode_items[] = {
      "SEGMENTS",
      0,
      "Segments",
-     "Add segments to create the envelope. Keep the original stroke"},
+     "Add segments to create the envelope. Keep the original stroke."},
     {GP_ENVELOPE_FILLS,
      "FILLS",
      0,
      "Fills",
-     "Add fill segments to create the envelope. Don't keep the original stroke"},
+     "Add fill segments to create the envelope. Don't keep the original stroke."},
     {0, nullptr, 0, nullptr, nullptr},
 };
 static const EnumPropertyItem modifier_noise_random_mode_items[] = {
@@ -3131,7 +3131,7 @@ static void rna_def_modifier_gpencilmultiply(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "offset", PROP_FLOAT, PROP_NONE);
   RNA_def_property_ui_range(prop, -1, 1, 0.01, 3);
-  RNA_def_property_ui_text(prop, "Offset", "Offset of duplicates. -1 to 1: inner to outer");
+  RNA_def_property_ui_text(prop, "Offset", "Offset of duplicates, -1 to 1 (inner to outer)");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "fading_thickness", PROP_FLOAT, PROP_NONE);
@@ -3643,7 +3643,7 @@ static void rna_def_modifier_gpencillineart(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop,
       "Handle Overlapping Edges",
-      "Allow edges in the same location (i.e. from edge split) to show properly. May run slower");
+      "Allow edges in the same location (i.e. from edge split) to show properly. May run slower.");
   RNA_def_property_update(prop, NC_SCENE, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "use_clip_plane_boundaries", PROP_BOOLEAN, PROP_NONE);
@@ -3661,7 +3661,7 @@ static void rna_def_modifier_gpencillineart(BlenderRNA *brna)
                            "Crease Threshold",
                            "Angles smaller than this will be treated as creases. Crease angle "
                            "priority: object Line Art crease override > mesh auto smooth angle > "
-                           "Line Art default crease");
+                           "Line Art default crease.");
   RNA_def_property_update(prop, NC_SCENE, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "split_angle", PROP_FLOAT, PROP_ANGLE);
@@ -3757,7 +3757,7 @@ static void rna_def_modifier_gpencillineart(BlenderRNA *brna)
   RNA_def_property_ui_text(prop,
                            "Overlapping Edge Types",
                            "Allow an edge to have multiple overlapping types. This will create a "
-                           "separate stroke for each overlapping type");
+                           "separate stroke for each overlapping type.");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "stroke_depth_offset", PROP_FLOAT, PROP_DISTANCE);
@@ -3862,7 +3862,7 @@ static void rna_def_modifier_gpencillineart(BlenderRNA *brna)
   RNA_def_property_ui_text(prop,
                            "Shadow Region Filtering",
                            "Select feature lines that comes from lit or shaded regions. Will not "
-                           "affect cast shadow and light contour since they are at the border");
+                           "affect cast shadow and light contour since they are at the border.");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_dependency_update");
 
   prop = RNA_def_property(srna, "silhouette_filtering", PROP_ENUM, PROP_NONE);
@@ -3931,7 +3931,7 @@ static void rna_def_modifier_gpencillineart(BlenderRNA *brna)
   RNA_def_property_ui_text(prop,
                            "Use Cache",
                            "Use cached scene data from the first Line Art modifier in the stack. "
-                           "Certain settings will be unavailable");
+                           "Certain settings will be unavailable.");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "overscan", PROP_FLOAT, PROP_NONE);
@@ -4034,7 +4034,7 @@ static void rna_def_modifier_gpencillineart(BlenderRNA *brna)
       "Shadow Camera Size",
       "Represents the \"Orthographic Scale\" of an orthographic camera. "
       "If the camera is positioned at the light's location with this scale, it will "
-      "represent the coverage of the shadow \"camera\"");
+      "represent the coverage of the shadow \"camera\".");
   RNA_def_property_ui_range(prop, 0.0f, 500.0f, 0.1f, 2);
   RNA_def_property_range(prop, 0.0f, 10000.0f);
 
@@ -4169,7 +4169,7 @@ static void rna_def_modifier_gpencillength(BlenderRNA *brna)
                            "Segment Influence",
                            "Factor to determine how much the length of the individual segments "
                            "should influence the final computed curvature. Higher factors makes "
-                           "small segments influence the overall curvature less");
+                           "small segments influence the overall curvature less.");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "max_angle", PROP_FLOAT, PROP_ANGLE);
@@ -4274,7 +4274,7 @@ static void rna_def_modifier_gpencildash(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop,
       "Material Index",
-      "Use this index on generated segment. -1 means using the existing material");
+      "Use this index on generated segment. -1 means using the existing material.");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "use_cyclic", PROP_BOOLEAN, PROP_NONE);
