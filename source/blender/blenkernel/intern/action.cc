@@ -441,15 +441,13 @@ static void action_blend_write(BlendWriter *writer, ID *id, const void *id_addre
   /* Write layered Action data. */
   write_layers(writer, action.layers());
   write_slots(writer, action.slots());
-#endif /* WITH_ANIM_BAKLAVA */
 
-  /* Write legacy F-Curves & Groups. */
-#ifdef WITH_ANIM_BAKLAVA
   if (do_write_forward_compat) {
     /* The pointers to the first/last FCurve in the `action.curves` have already
      * been written as part of the Action struct data, so they can be cleared
      * here, such that the code writing legacy fcurves below does nothing (as
-     * expected).
+     * expected). And to leave the Action in a consistent state (it shouldn't
+     * have F-Curves in both legacy and layered storage).
      *
      * Note that the FCurves themselves have been written as part of the layered
      * animation writing code called above. Writing them again as part of the
@@ -459,13 +457,10 @@ static void action_blend_write(BlendWriter *writer, ID *id, const void *id_addre
      */
     action_blend_write_clear_legacy_fcurves_listbase(action.curves);
   }
-  else {
-#endif /* WITH_ANIM_BAKLAVA */
-    BKE_fcurve_blend_write_listbase(writer, &action.curves);
-#ifdef WITH_ANIM_BAKLAVA
-  }
 #endif /* WITH_ANIM_BAKLAVA */
 
+  /* Write legacy F-Curves & Groups. */
+  BKE_fcurve_blend_write_listbase(writer, &action.curves);
   LISTBASE_FOREACH (bActionGroup *, grp, &action.groups) {
     BLO_write_struct(writer, bActionGroup, grp);
   }
