@@ -20,6 +20,16 @@
 
 namespace blender::animrig {
 
+/* Identifies the property that an evaluated animation value is for.
+ *
+ * This could be replaced with either `FCurveIdentifier` or `RNAPath`.  However,
+ * `FCurveIdentifier` is semantically meant to represent an fcurve itself rather
+ * than the property an fcurve might be for, and moreover not all animation will
+ * necessarily come from fcurves in the future anyway.  `RNAPath` would be more
+ * semantically appropriate, but it stores a full copy of the string component
+ * of the path, and here we want to be lighter than that and use a string
+ * reference.
+ */
 class PropIdentifier {
  public:
   /**
@@ -52,6 +62,9 @@ class PropIdentifier {
   }
 };
 
+/**
+ * The evaluated value for an animated property, along with its RNA pointer.
+ */
 class AnimatedProperty {
  public:
   float value;
@@ -63,7 +76,7 @@ class AnimatedProperty {
   }
 };
 
-/* Evaluated FCurves for some action slot.
+/* Result of FCurve evaluation for an action slot.
  * Mapping from property identifier to its float value.
  *
  * Can be fed to the evaluation of the next layer, mixed with another strip, or
