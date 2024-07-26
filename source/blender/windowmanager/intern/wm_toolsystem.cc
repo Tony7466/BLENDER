@@ -19,12 +19,14 @@
 #include "BLI_utildefines.h"
 
 #include "DNA_ID.h"
+#include "DNA_brush_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_space_types.h"
 #include "DNA_windowmanager_types.h"
 #include "DNA_workspace_types.h"
 
+#include "BKE_asset_edit.hh"
 #include "BKE_brush.hh"
 #include "BKE_context.hh"
 #include "BKE_idprop.hh"
@@ -170,6 +172,80 @@ static void toolsystem_ref_link(bContext *C, WorkSpace *workspace, bToolRef *tre
             Scene *scene = WM_window_get_active_scene(win);
             ToolSettings *ts = scene->toolsettings;
             ts->particle.brushtype = value;
+          }
+        }
+      }
+    }
+    else if ((tref->space_type == SPACE_VIEW3D) &&
+             ELEM(tref->mode, CTX_MODE_PAINT_GPENCIL_LEGACY, CTX_MODE_PAINT_GREASE_PENCIL))
+    {
+      blender::StringRef brush_type_name = tref->runtime->data_block;
+      wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first);
+      LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
+        if (workspace == WM_window_get_active_workspace(win)) {
+          Scene *scene = WM_window_get_active_scene(win);
+          ToolSettings *ts = scene->toolsettings;
+
+          if (ELEM(brush_type_name, "FILL", "ERASE")) {
+            BrushLink *brush_link = [&]() {
+              LISTBASE_FOREACH (BrushLink *, saved_link, &ts->gp_paint->brush_assets_for_type) {
+                if (brush_type_name == saved_link->brush_type_name) {
+                  return saved_link;
+                }
+              }
+              BrushLink *new_link = static_cast<BrushLink *>(
+                  MEM_mallocN(sizeof(*new_link), "BrushLink"));
+              new_link->brush_type_name = BLI_strdupn(brush_type_name.data(),
+                                                      brush_type_name.size());
+              new_link->brush = nullptr;
+              {
+                AssetWeakReference *weak_ref = MEM_new<AssetWeakReference>(
+                    "toolsystem_ref_link brush asset weak reference");
+                weak_ref->asset_library_type = eAssetLibraryType::ASSET_LIBRARY_ESSENTIALS;
+
+                const char *default_brush = [&brush_type_name]() -> const char * {
+                  if (brush_type_name == "ERASE") {
+                    return "Eraser Hard";
+                  }
+                  if (brush_type_name == "FILL") {
+                    return "Fill Area";
+                  }
+                  BLI_assert_unreachable();
+                  return nullptr;
+                }();
+
+                weak_ref->relative_asset_identifier = BLI_sprintfN(
+                    "brushes/essentials_brushes.blend/Brush/%s", default_brush);
+                new_link->brush_asset_reference = weak_ref;
+              }
+              BLI_addtail(&ts->gp_paint->brush_assets_for_type, new_link);
+              return new_link;
+            }();
+
+            if (!ts->gp_paint->restore_brush_asset_reference) {
+              AssetWeakReference *weak_ref = MEM_new<AssetWeakReference>(
+                  "toolsystem_ref_link brush asset weak reference");
+              weak_ref->asset_library_type =
+                  ts->gp_paint->paint.brush_asset_reference->asset_library_type;
+              weak_ref->relative_asset_identifier =
+                  ts->gp_paint->paint.brush_asset_reference->relative_asset_identifier;
+              ts->gp_paint->restore_brush_asset_reference = weak_ref;
+            }
+
+            Brush *brush = reinterpret_cast<Brush *>(
+                blender::bke::asset_edit_id_from_weak_reference(
+                    *bmain, ID_BR, *brush_link->brush_asset_reference));
+            BLI_assert(brush == nullptr || blender::bke::asset_edit_id_is_editable(brush->id));
+            BKE_paint_brush_set(&ts->gp_paint->paint, brush);
+          }
+          else {
+            if (ts->gp_paint->restore_brush_asset_reference) {
+              Brush *restore_brush = reinterpret_cast<Brush *>(
+                  blender::bke::asset_edit_id_from_weak_reference(
+                      *bmain, ID_BR, *ts->gp_paint->restore_brush_asset_reference));
+              BKE_paint_brush_set(&ts->gp_paint->paint, restore_brush);
+            }
+            MEM_SAFE_FREE(ts->gp_paint->restore_brush_asset_reference);
           }
         }
       }
