@@ -556,7 +556,8 @@ class GeometryDataSetTreeView : public ui::AbstractTreeView {
     auto &physics_item = parent.add_tree_item<PhysicsViewItem>();
     physics_item.uncollapse_by_default();
     physics_item.add_tree_item<PhysicsDomainViewItem>(physics, bke::AttrDomain::Point);
-    physics_item.add_tree_item<PhysicsDomainViewItem>(physics, bke::AttrDomain::Curve);
+    physics_item.add_tree_item<PhysicsDomainViewItem>(physics, bke::AttrDomain::Edge);
+    physics_item.add_tree_item<PhysicsDomainViewItem>(physics, bke::AttrDomain::Instance);
   }
 };
 
