@@ -15,6 +15,7 @@
 #include "BKE_main.hh"
 #include "BKE_nla.h"
 #include "BKE_object.hh"
+#include "BKE_scene.hh"
 
 #include "DNA_anim_types.h"
 #include "DNA_object_types.h"
@@ -1389,6 +1390,56 @@ TEST_F(KeyframingTest, insert_keyframes__legacy_action__quaternion_on_nla__only_
       BEZT_KEYTYPE_KEYFRAME,
       INSERTKEY_REPLACE);
   EXPECT_EQ(4, result_3.get_count(SingleKeyingResult::SUCCESS));
+}
+
+TEST_F(KeyframingTest, delete_keyframes__layered_action)
+{
+  /* Turn on Baklava experimental flag. */
+  U.flag |= USER_DEVELOPER_UI;
+  U.experimental.use_animation_baklava = 1;
+
+  AnimationEvalContext anim_eval_context = {nullptr, 1.0};
+  const float scene_frame = 1.0;
+
+  CombinedKeyingResult result = insert_keyframes(bmain,
+                                                 &object_rna_pointer,
+                                                 std::nullopt,
+                                                 {{"location"}},
+                                                 scene_frame,
+                                                 anim_eval_context,
+                                                 BEZT_KEYTYPE_KEYFRAME,
+                                                 INSERTKEY_NOFLAGS);
+
+  EXPECT_EQ(3, result.get_count(SingleKeyingResult::SUCCESS));
+  ASSERT_NE(nullptr, object->adt);
+  ASSERT_NE(nullptr, object->adt->action);
+  Action &action = object->adt->action->wrap();
+  ASSERT_TRUE(action.is_action_layered());
+
+  result = insert_keyframes(bmain,
+                            &object_rna_pointer,
+                            std::nullopt,
+                            {{"location"}},
+                            scene_frame + 1,
+                            anim_eval_context,
+                            BEZT_KEYTYPE_KEYFRAME,
+                            INSERTKEY_NOFLAGS);
+  EXPECT_EQ(3, result.get_count(SingleKeyingResult::SUCCESS));
+
+  int deleted_count = action_delete_keyframe(action, object->adt->slot_handle, scene_frame + 1);
+  ASSERT_EQ(deleted_count, 3);
+  Span<FCurve *> fcurves = fcurves_for_action_slot(action, object->adt->slot_handle);
+  ASSERT_EQ(fcurves.size(), 3);
+  for (FCurve *fcu : fcurves) {
+    /* All those FCurves should have 1 key left. */
+    ASSERT_EQ(fcu->totvert, 1);
+  }
+
+  deleted_count = action_delete_keyframe(action, object->adt->slot_handle, scene_frame);
+  ASSERT_EQ(deleted_count, 3);
+  fcurves = fcurves_for_action_slot(action, object->adt->slot_handle);
+  /* Since the last key was deleted, all FCurves should have been deleted. */
+  ASSERT_EQ(fcurves.size(), 0);
 }
 
 }  // namespace blender::animrig::tests
