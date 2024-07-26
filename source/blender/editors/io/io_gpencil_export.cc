@@ -189,6 +189,7 @@ static void wm_gpencil_export_svg_draw(bContext * /*C*/, wmOperator *op)
 static bool wm_gpencil_export_svg_poll(bContext *C)
 {
   if ((CTX_wm_window(C) == nullptr) || (CTX_data_mode_enum(C) != CTX_MODE_OBJECT)) {
+    CTX_wm_operator_poll_msg_set(C, "Exporter only works in Object Mode");
     return false;
   }
 
@@ -348,6 +349,7 @@ static void wm_gpencil_export_pdf_draw(bContext * /*C*/, wmOperator *op)
 static bool wm_gpencil_export_pdf_poll(bContext *C)
 {
   if ((CTX_wm_window(C) == nullptr) || (CTX_data_mode_enum(C) != CTX_MODE_OBJECT)) {
+    CTX_wm_operator_poll_msg_set(C, "Exporter only works in Object Mode");
     return false;
   }
 

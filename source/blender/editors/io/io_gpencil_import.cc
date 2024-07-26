@@ -123,7 +123,7 @@ static void wm_gpencil_import_svg_draw(bContext * /*C*/, wmOperator *op)
 
 static bool wm_gpencil_import_svg_poll(bContext *C)
 {
-  if ((CTX_wm_window(C) == nullptr) || (CTX_data_mode_enum(C) != CTX_MODE_OBJECT)) {
+  if (CTX_wm_window(C) == nullptr) {
     return false;
   }
 
