@@ -1045,11 +1045,11 @@ NSCursor *GHOST_WindowCocoa::getStandardCursor(GHOST_TStandardCursor shape) cons
     case GHOST_kStandardCursorCrosshairC:
       return getImageCursor(shape, @"crossc.pdf", NSMakePoint(16, 16));
     case GHOST_kStandardCursorLeftHandle:
-      return getImageCursor(shape, @"handle_left.pdf", NSMakePoint(16, 16));
+      return getImageCursor(shape, @"handle_left.pdf", NSMakePoint(12, 14));
     case GHOST_kStandardCursorRightHandle:
-      return getImageCursor(shape, @"handle_right.pdf", NSMakePoint(16, 16));
+      return getImageCursor(shape, @"handle_right.pdf", NSMakePoint(10, 14));
     case GHOST_kStandardCursorBothHandles:
-      return getImageCursor(shape, @"handle_both.pdf", NSMakePoint(16, 16));
+      return getImageCursor(shape, @"handle_both.pdf", NSMakePoint(11, 14));
     default:
       return nullptr;
   }
