@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "BLI_kdopbvh.h"
 #include "BLI_span.hh"
 
 struct BMBVHTree;
@@ -64,6 +65,7 @@ struct BMFace *BKE_bmbvh_ray_cast_filter(BMBVHTree *tree,
  */
 struct BMVert *BKE_bmbvh_find_vert_closest(BMBVHTree *tree, const float co[3], float dist_max);
 struct BMFace *BKE_bmbvh_find_face_closest(BMBVHTree *tree, const float co[3], float dist_max);
+void bmbvh_find_vert_closest_cb(void *userdata, int index, const float co[3], BVHTreeNearest *hit);
 
 /**
  * Overlap indices reference the looptris.

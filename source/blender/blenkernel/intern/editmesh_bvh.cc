@@ -8,7 +8,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_kdopbvh.h"
 #include "BLI_math_geom.h"
 #include "BLI_math_vector.h"
 
@@ -396,10 +395,7 @@ struct VertSearchUserData {
   int index_tri;
 };
 
-static void bmbvh_find_vert_closest_cb(void *userdata,
-                                       int index,
-                                       const float co[3],
-                                       BVHTreeNearest *hit)
+void bmbvh_find_vert_closest_cb(void *userdata, int index, const float co[3], BVHTreeNearest *hit)
 {
   VertSearchUserData *bmcb_data = static_cast<VertSearchUserData *>(userdata);
   const std::array<BMLoop *, 3> &ltri = bmcb_data->looptris[index];

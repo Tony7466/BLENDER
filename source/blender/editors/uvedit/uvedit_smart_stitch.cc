@@ -10,6 +10,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
+#include <queue>
 #include <span>
 
 #include "MEM_guardedalloc.h"
@@ -22,6 +23,7 @@
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
+#include "BLI_math_vector_types.hh"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
@@ -30,6 +32,7 @@
 #include "BKE_context.hh"
 #include "BKE_customdata.hh"
 #include "BKE_editmesh.hh"
+#include "BKE_editmesh_bvh.h"
 #include "BKE_layer.hh"
 #include "BKE_mesh_mapping.hh"
 #include "BKE_report.hh"
@@ -57,6 +60,7 @@
 #include "UI_view2d.hh"
 
 #include "bmesh.hh"
+// #include "bmesh_iterators.hh"
 #include "uvedit_intern.hh"
 
 using blender::Vector;
@@ -2791,6 +2795,180 @@ void UV_OT_stitch(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
+struct pair_hash {
+  template<class T1, class T2> std::size_t operator()(const std::pair<T1, T2> &p) const
+  {
+    auto h1 = std::hash<T1>{}(p.first);
+    auto h2 = std::hash<T2>{}(p.second);
+    return h1 ^ h2;
+  }
+};
+
+static bool uvedit_uv_loops_softselect(
+    bContext *C,
+    wmOperator *op,
+    blender::Vector<blender::Vector<blender::Vector<BMLoop *>>> edgeloops_arr,
+    blender::Vector<BMUVOffsets> offsetmap_arr)
+{
+  Scene *scene = CTX_data_scene(C);
+  SpaceImage *sima = CTX_wm_space_image(C);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data_with_uvs(
+      scene, view_layer, nullptr);
+
+  /*Get all the edges in edgeloops*/
+  std::unordered_map<std::pair<BMLoop *, BMLoop *>,
+                     blender::Vector<blender::Vector<BMLoop *>>,
+                     pair_hash>
+      SoftselectMapping;
+
+  for (Object *obedit : objects) {
+    BMEditMesh *em = BKE_editmesh_from_object(obedit);
+    BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
+
+    /*Tag all the faces with the island index*/
+    ListBase island_list = {nullptr};
+    int islandcounter = -1;
+    const float aspect_y = ED_uvedit_get_aspect_y(obedit);
+    bm_mesh_calc_uv_islands(scene, em->bm, &island_list, false, false, true, aspect_y, offsets);
+    LISTBASE_FOREACH_MUTABLE (FaceIsland *, island, &island_list) {
+      BLI_remlink(&island_list, island);
+      for (int i = 0; i < island->faces_len; i++) {
+        BM_elem_index_set(island->faces[i], islandcounter);
+      }
+      islandcounter--;
+    }
+    if (edgeloops_arr[0][0][0]->f->head.index == edgeloops_arr[1][0][0]->f->head.index) {
+      for (int j = 0; j < edgeloops_arr[1].size(); j++) {
+        edgeloops_arr[0].append(edgeloops_arr[1][j]);
+      }
+      edgeloops_arr.remove_and_reorder(1);
+      edgeloops_arr.resize(1);
+    }
+
+    for (int i = 0; i < edgeloops_arr.size(); i++) {
+      // get the island of the current edgeloop and iterate over all the loops of the current
+      // island only look at the unselected loops and calc min distance to all of the edges in
+      // edgeloop store the edge in hashmap with key is the edge in edgeloops its closes to and
+      // value is arr containing edge.
+
+      // if the current edgeloops face index is not negative continue
+      if (edgeloops_arr[i][0][0]->f->head.index >= 0) {
+        continue;
+      }
+      std::set<std::pair<BMLoop *, BMLoop *>> edges;
+      /* Get all the edges of the current edgeloop */
+      for (int j = 0; j < edgeloops_arr[i].size(); j++) {
+        for (int k = 0; k < edgeloops_arr[i][j].size(); k++) {
+          BMLoop *loop = edgeloops_arr[i][j][k];
+          if (uvedit_uv_select_test(scene, loop->next, offsetmap_arr[i])) {
+            if (loop < loop->next) {
+              edges.insert(std::make_pair(loop, loop->next));
+            }
+            else {
+              edges.insert(std::make_pair(loop->next, loop));
+            }
+          }
+          if (uvedit_uv_select_test(scene, loop->prev, offsetmap_arr[i])) {
+            if (loop < loop->prev) {
+              edges.insert(std::make_pair(loop, loop->prev));
+            }
+            else {
+              edges.insert(std::make_pair(loop->prev, loop));
+            }
+          }
+        }
+      }
+
+      islandcounter = -1;
+      LISTBASE_FOREACH_MUTABLE (FaceIsland *, island, &island_list) {
+        BLI_remlink(&island_list, island);
+        if (islandcounter == edgeloops_arr[i][0][0]->f->head.index) {
+          for (int i = 0; i < island->faces_len; i++) {
+            BMLoop *l;
+            BMIter liter;
+            BM_ITER_ELEM (l, &liter, island->faces[i], BM_LOOPS_OF_FACE) {
+
+              if (!uvedit_uv_select_test(scene, l, offsets) ||
+                  !uvedit_uv_select_test(scene, l->next, offsets))
+              {
+                blender::Vector<BMLoop *> edge = {l, l->next};
+                float mindist = 0.0f;
+                std::pair<BMLoop *, BMLoop *> *closestedge;
+                for (auto seamedge : edges) {
+                  const float *seamedgeluv1 = BM_ELEM_CD_GET_FLOAT_P(seamedge.first, offsets.uv);
+                  const float *seamedgeluv2 = BM_ELEM_CD_GET_FLOAT_P(seamedge.second, offsets.uv);
+                  const float *luv1 = BM_ELEM_CD_GET_FLOAT_P(l, offsets.uv);
+                  const float *luv2 = BM_ELEM_CD_GET_FLOAT_P(l->next, offsets.uv);
+                  // get the distnace between the edge and the seam edge
+                  float *closest_on_seamedge;
+                  float *closest_on_loopedge;
+                  float *lambda_on_seamedge;
+                  float *lambda_on_loopedge;
+                  float dist_sq = closest_seg_seg_v2(closest_on_seamedge,
+                                                     closest_on_loopedge,
+                                                     lambda_on_seamedge,
+                                                     lambda_on_loopedge,
+                                                     seamedgeluv1,
+                                                     seamedgeluv2,
+                                                     luv1,
+                                                     luv2);
+                  if (dist_sq < mindist) {
+                    mindist = dist_sq;
+                    closestedge = &seamedge;
+                  }
+                }
+                SoftselectMapping[*closestedge].append(edge);
+              }
+              BM_elem_index_set(l, -3);
+            }
+          }
+        }
+
+        islandcounter--;
+      }
+
+      std::queue<BMLoop *> queue;
+      queue.push(edgeloops_arr[i][0][0]);
+      while (!queue.empty()) {
+        BMLoop *loop = queue.front();
+        // tag the current loop
+        // TODO::ENMERATE
+        BM_elem_index_set(loop, -3);
+        queue.pop();
+        float mindist;
+
+        for (auto value : edges) {
+        }
+        if (!uvedit_edge_select_test(scene, loop, offsetmap_arr[i])) {
+
+          // This edge needs to be stored with the data for the edge in the edgeloop it is closes
+          // to How to do this if two edgeloops are in the same island
+        }
+        // add the next and the prev loops to the queue if they aren't tagged
+      }
+      return true;
+    }
+    // TODO
+    //  delete the current edgeloop
+  }
+
+  // BVHTree *bvhtree = BLI_bvhtree_new(edgeloops_arr[0].size(), 1e-4f, 8, 8);
+  // for (int i = 0; i < edgeloops_arr[0].size(); i++) {
+  //   BMLoop *loop = edgeloops_arr[0][i][0];
+  //   const float co[3] = {UNPACK2(BM_ELEM_CD_GET_FLOAT_P(loop, offsetmap_arr[0].uv)), 0.0f};
+  //   BLI_bvhtree_insert(bvhtree, i, co, 1);
+  // };
+  // BLI_bvhtree_balance(bvhtree);
+  // BVHTreeNearest *nearest = nullptr;
+  // float co[3] = {0.0f, 0.0f, 0.0f};
+  // int y = BLI_bvhtree_find_nearest(bvhtree, co, nearest, bmbvh_find_vert_closest_cb, nullptr);
+  //
+
+  BMEdge *e;
+  BMIter iter;
+}
+
 /* Note: Since we are using len squared for distance its possible that in certain
 scenarios that two distances caluclated will be mistakely considered the same
 value due to the precision of the float data type. In such a scenario the function may
@@ -2810,8 +2988,8 @@ static bool uvedit_uv_threshold_weld(bContext *C, wmOperator *op)
   blender::Vector<BMUVOffsets> offsetmap_arr;
 
   /*Constructs array of edgeloops. The data is nested in the following order
-   * structure edgeloops->UVcoordinates->BMloops. If UV_get_edgeloops returns false it means one of
-   * the continuous selections was not an edgeloop*/
+   * structure edgeloops->UVcoordinates->BMloops. If UV_get_edgeloops returns false it means one
+   * of the continuous selections was not an edgeloop*/
 
   for (Object *objedit : objects) {
     BMEditMesh *em = BKE_editmesh_from_object(objedit);
@@ -2833,7 +3011,8 @@ static bool uvedit_uv_threshold_weld(bContext *C, wmOperator *op)
     blender::Vector<blender::Vector<BMLoop *>> curredgeloopendpoints_arr;
     for (int j = 0; j < edgeloops_arr[i].size(); j++) {
 
-      /*If any of the loops for the current UV coordinate have an index of -1 they are a endpoint*/
+      /*If any of the loops for the current UV coordinate have an index of -1 they are a
+       * endpoint*/
 
       if (edgeloops_arr[i][j][0]->head.index == -1) {
         curredgeloopendpoints_arr.append(edgeloops_arr[i][j]);
@@ -2877,6 +3056,7 @@ static bool uvedit_uv_threshold_weld(bContext *C, wmOperator *op)
     std::swap(endpoints_arr[1][0], endpoints_arr[1][1]);
   }
 
+  uvedit_uv_loops_softselect(C, op, edgeloops_arr, offsetmap_arr);
   /*Iterates through 2 selected edgeloops starting at endpoints.
   This logic uses pointers in BMLoop to traverse edgeloops.*/
 
