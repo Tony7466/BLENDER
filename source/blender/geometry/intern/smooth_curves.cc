@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_attribute_math.hh"
+#include "BKE_curves.hh"
 
 #include "BLI_array.hh"
 #include "BLI_generic_span.hh"
@@ -230,6 +231,147 @@ void smooth_curve_attribute(const IndexMask &curves_to_smooth,
                          smooth_ends,
                          keep_shape,
                          attribute_data);
+}
+
+void smooth_curve_positions(bke::CurvesGeometry &curves,
+                            const IndexMask &curves_to_smooth,
+                            const int iterations,
+                            const VArray<float> &influence_by_point,
+                            const bool smooth_ends,
+                            const bool keep_shape)
+{
+  bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+  const OffsetIndices points_by_curve = curves.points_by_curve();
+  const VArray<bool> cyclic = curves.cyclic();
+  const VArray<bool> point_selection = *curves.attributes().lookup_or_default<bool>(
+      ".selection", bke::AttrDomain::Point, true);
+  if (!curves.has_curve_with_type(CURVE_TYPE_BEZIER)) {
+    bke::GSpanAttributeWriter positions = attributes.lookup_for_write_span("position");
+    smooth_curve_attribute(curves_to_smooth,
+                           points_by_curve,
+                           point_selection,
+                           cyclic,
+                           iterations,
+                           influence_by_point,
+                           smooth_ends,
+                           keep_shape,
+                           positions.span);
+    positions.finish();
+  }
+  else {
+    IndexMaskMemory memory;
+    const IndexMask bezier_curves_to_smooth = curves.indices_for_curve_type(
+        CURVE_TYPE_BEZIER, curves_to_smooth, memory);
+
+    MutableSpan<float3> positions = curves.positions_for_write();
+    MutableSpan<float3> handle_positions_left = curves.handle_positions_left_for_write();
+    MutableSpan<float3> handle_positions_right = curves.handle_positions_right_for_write();
+
+    /* Write the positions of the handles and the control points into a flat array.
+     * This will smooth the handle positions together with the control point positions, because the
+     * smoothing algorithm takes neighboring values to apply the gaussian smoothing to. */
+    Array<float3> all_positions(positions.size() * 3, float3(0));
+    bezier_curves_to_smooth.foreach_index(GrainSize(512), [&](const int curve_i) {
+      const IndexRange points = points_by_curve[curve_i];
+      for (const int point_i : points) {
+        const int index = point_i * 3;
+        all_positions[index] = handle_positions_left[point_i];
+        all_positions[index + 1] = positions[point_i];
+        all_positions[index + 2] = handle_positions_right[point_i];
+      }
+    });
+
+    VArraySpan<float> influences(influence_by_point);
+    bezier_curves_to_smooth.foreach_index(GrainSize(512), [&](const int curve_i) {
+      Vector<float3> orig_data;
+      const IndexRange points = points_by_curve[curve_i];
+
+      IndexMaskMemory memory;
+      const IndexMask selection_mask = IndexMask::from_bools(points, point_selection, memory);
+      if (selection_mask.is_empty()) {
+        return;
+      }
+
+      selection_mask.foreach_range([&](const IndexRange range) {
+        IndexRange positions_range(range.start() * 3, range.size() * 3);
+        /* Ignore the left handle of the first point and the right handle of the last point. */
+        if (!smooth_ends && !cyclic[curve_i]) {
+          positions_range = positions_range.drop_front(1).drop_back(1);
+        }
+        MutableSpan<float3> dst_data = all_positions.as_mutable_span().slice(positions_range);
+
+        orig_data.resize(dst_data.size());
+        orig_data.as_mutable_span().copy_from(dst_data);
+
+        const Span<float3> src_data = orig_data.as_span();
+        /* The influence is mapped from handle+control point index to only control point index. */
+        const VArray<float> point_influence = VArray<float>::ForFunc(
+            positions_range.size(), [&](const int index) {
+              if (!smooth_ends && !cyclic[curve_i]) {
+                /* Account for the left handle of the first
+                 * point being ignored. */
+                return influences.slice(range)[(index + 1) / 3];
+              }
+              return influences.slice(range)[index / 3];
+            });
+        gaussian_blur_1D(src_data,
+                         iterations,
+                         point_influence,
+                         smooth_ends,
+                         keep_shape,
+                         cyclic[curve_i],
+                         dst_data);
+      });
+    });
+
+    /* Copy the resulting values from the flat array back into the three posititon attributes for
+     * the left and right handles as well as the control points. */
+    bezier_curves_to_smooth.foreach_index(GrainSize(512), [&](const int curve_i) {
+      const IndexRange points = points_by_curve[curve_i];
+      for (const int point_i : points) {
+        const int index = point_i * 3;
+        handle_positions_left[point_i] = all_positions[index];
+        positions[point_i] = all_positions[index + 1];
+        handle_positions_right[point_i] = all_positions[index + 2];
+      }
+    });
+
+    /* Smooth the other curve positions. */
+    const IndexMask other_curves_to_smooth = bezier_curves_to_smooth.complement(
+        curves.curves_range(), memory);
+    if (!other_curves_to_smooth.is_empty()) {
+      bke::GSpanAttributeWriter positions = attributes.lookup_for_write_span("position");
+      smooth_curve_attribute(other_curves_to_smooth,
+                             points_by_curve,
+                             point_selection,
+                             cyclic,
+                             iterations,
+                             influence_by_point,
+                             smooth_ends,
+                             keep_shape,
+                             positions.span);
+      positions.finish();
+    }
+
+    curves.calculate_bezier_auto_handles();
+  }
+
+  curves.tag_positions_changed();
+}
+
+void smooth_curve_positions(bke::CurvesGeometry &curves,
+                            const IndexMask &curves_to_smooth,
+                            const int iterations,
+                            const float influence,
+                            const bool smooth_ends,
+                            const bool keep_shape)
+{
+  smooth_curve_positions(curves,
+                         curves_to_smooth,
+                         iterations,
+                         VArray<float>::ForSingle(influence, curves.points_num()),
+                         smooth_ends,
+                         keep_shape);
 }
 
 }  // namespace blender::geometry
