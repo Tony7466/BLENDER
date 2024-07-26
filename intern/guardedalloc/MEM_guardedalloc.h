@@ -435,9 +435,9 @@ template<typename T> inline T *MEM_cnew(const char *allocation_name, const T &ot
  */
 template<typename T, typename... Args> T &MEM_construct_leak_detection_data(Args &&...args)
 {
-  std::shared_ptr<T> data = std::make_shared<T>(args...);
+  std::shared_ptr<T> data = std::make_shared<T>(std::forward<Args>(args)...);
   std::any any_data = std::make_any<std::shared_ptr<T>>(data);
-  mem_guarded::internal::memory_usage_store_memleak_data(any_data);
+  mem_guarded::internal::add_memleak_data(any_data);
   return *data;
 }
 

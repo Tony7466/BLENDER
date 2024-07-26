@@ -36,6 +36,6 @@ extern void *(*mem_mallocN_aligned_ex)(size_t len,
  * That way, the memleak data does not get destructed before the memory usage data is, which
  * happens after the execution and destruction of the memleak detector.
  */
-void memory_usage_store_memleak_data(std::any &memleak_data);
+void add_memleak_data(std::any &data);
 
 }  // namespace mem_guarded::internal

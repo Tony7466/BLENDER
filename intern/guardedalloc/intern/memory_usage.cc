@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <algorithm>
-#include <any>
 #include <atomic>
 #include <cassert>
 #include <iostream>
@@ -13,8 +12,6 @@
 
 #include "MEM_guardedalloc.h"
 #include "mallocn_intern.hh"
-
-#include "mallocn_intern_function_pointers.hh"
 
 #include "../../source/blender/blenlib/BLI_strict_flags.h"
 
@@ -58,19 +55,6 @@ struct alignas(128) Local {
    */
   std::atomic<int64_t> mem_in_use_during_peak_update = 0;
 
-  /**
-   * An opaque container storing data that should not be destructed before the memleak detector has
-   * run and has been destructed.
-   *
-   * \note Nothing is ever expected to be retrieved from this storage. Its only purpose is to
-   * manage the life time of the data it contains.
-   *
-   * \note When the thread exits, this data is moved into the
-   * #Global.memleak_data_storage_outside_local matching storage, to ensure that it remains
-   * available.
-   */
-  std::vector<std::any> memleak_data_storage;
-
   Local();
   ~Local();
 };
@@ -110,14 +94,6 @@ struct Global {
    * Peak memory usage since the last reset.
    */
   std::atomic<size_t> peak = 0;
-
-  /**
-   * Contains memleak data created in threads once the thread has exited and its matching #Local
-   * data has been destructed.
-   *
-   * See #Local.memleak_data_storage documentation for more info.
-   */
-  std::vector<std::any> memleak_data_storage_outside_local;
 };
 
 }  // namespace
@@ -176,13 +152,6 @@ Local::~Local()
   /* Don't forget the memory counts stored locally. */
   this->global->blocks_num_outside_locals.fetch_add(this->blocks_num, std::memory_order_relaxed);
   this->global->mem_in_use_outside_locals.fetch_add(this->mem_in_use, std::memory_order_relaxed);
-
-  /* Move the memleak data owned by this Local into the Gloabl memleak data storage. */
-  this->global->memleak_data_storage_outside_local.insert(
-      this->global->memleak_data_storage_outside_local.end(),
-      std::make_move_iterator(this->memleak_data_storage.begin()),
-      std::make_move_iterator(this->memleak_data_storage.end()));
-  this->memleak_data_storage.clear();
 
   if (this->is_main) {
     /* The main thread started shutting down. Use global counters from now on to avoid accessing
@@ -303,10 +272,4 @@ void memory_usage_peak_reset()
 {
   Global &global = get_global();
   global.peak = memory_usage_current();
-}
-
-void mem_guarded::internal::memory_usage_store_memleak_data(std::any &memleak_data)
-{
-  Local &local = get_local_data();
-  local.memleak_data_storage.push_back(memleak_data);
 }

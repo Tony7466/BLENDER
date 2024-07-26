@@ -61,7 +61,7 @@ template<typename keyT, template<typename> typename hashT> class AllocStringStor
 #ifndef NDEBUG
     assert(storage_.count(key) == 0);
 #endif
-    return (storage_[key] = alloc_string).c_str();
+    return (storage_[key] = std::move(alloc_string)).c_str();
   }
 };
 

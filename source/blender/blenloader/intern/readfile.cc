@@ -2466,7 +2466,7 @@ static BHead *read_data_into_datamap(FileData *fd,
   bhead = blo_bhead_next(fd, bhead);
 
   /* FIXME part of testing, to be removed before final comits. */
-  bool is_first = true;
+  bool is_first = false;
 
   while (bhead && bhead->code == BLO_CODE_DATA) {
     /* The code below is useful for debugging leaks in data read from the blend file.
@@ -2490,7 +2490,7 @@ static BHead *read_data_into_datamap(FileData *fd,
 #endif
 
     void *data = read_struct(fd, bhead, allocname, id_type_index);
-  /* FIXME part of testing, to be removed before final comits. */
+    /* FIXME part of testing, to be removed before final comits. */
     if (is_first) {
       /* Artificial memleak! */
       data = MEM_dupallocN(data);
