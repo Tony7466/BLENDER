@@ -822,6 +822,7 @@ int clear_keyframe(Main *bmain,
       Vector<FCurve *> fcurves = action_fcurves_find(
           action, slot->handle, {rna_path, array_index});
       for (FCurve *fcu : fcurves) {
+        /* Since we got the fcurves from the action just before this should always be true. */
         if (action_fcurve_remove(action, *fcu)) {
           key_count++;
         }

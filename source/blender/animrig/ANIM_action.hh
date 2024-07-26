@@ -912,6 +912,9 @@ int action_delete_keyframe(Action &action, const slot_handle_t slot_handle, floa
 /**
  * Find all FCurves for that match the given fcurve_descriptor for the given slot handle. Since
  * there can be multiple layers, there may be multiple FCurves matching the description.
+ *
+ * \returns A Vector of FCurve pointers that match the description. These pointers are independent
+ * of the Action and can be iterated over while deleting FCurves from the Action.
  */
 Vector<FCurve *> action_fcurves_find(Action &action,
                                      slot_handle_t slot,
