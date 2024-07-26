@@ -103,7 +103,7 @@ static void validate_cryptomatte_session_from_stamp_data(void * /*data*/,
   }
 
   if (prop_name == "cryptomatte/87f095e/name") {
-    EXPECT_STREQ("viewlayername.layer1", propvalue);
+    EXPECT_STREQ("layer1", propvalue);
   }
   else if (prop_name == "cryptomatte/87f095e/hash") {
     EXPECT_STREQ("MurmurHash3_32", propvalue);
@@ -116,7 +116,7 @@ static void validate_cryptomatte_session_from_stamp_data(void * /*data*/,
   }
 
   else if (prop_name == "cryptomatte/c42daa7/name") {
-    EXPECT_STREQ("viewlayername.layer2", propvalue);
+    EXPECT_STREQ("layer2", propvalue);
   }
   else if (prop_name == "cryptomatte/c42daa7/hash") {
     EXPECT_STREQ("MurmurHash3_32", propvalue);
@@ -149,11 +149,9 @@ TEST(cryptomatte, session_from_stamp_data)
   RE_FreeRenderResult(render_result);
 
   /* Create StampData from CryptomatteSession. */
-  ViewLayer view_layer;
-  STRNCPY(view_layer.name, "viewlayername");
   RenderResult *render_result2 = static_cast<RenderResult *>(
       MEM_callocN(sizeof(RenderResult), __func__));
-  BKE_cryptomatte_store_metadata(session.get(), render_result2, &view_layer);
+  BKE_cryptomatte_store_metadata(session.get(), render_result2);
 
   /* Validate StampData. */
   BKE_stamp_info_callback(
