@@ -254,13 +254,17 @@ static OldNewMap *oldnewmap_new()
   return MEM_new<OldNewMap>(__func__);
 }
 
-static void oldnewmap_insert(OldNewMap *onm, const void *oldaddr, void *newaddr, int nr)
+/**
+ * \return `true` if the \a oldaddr key has been successfully added to the \a onm, and no existing
+ * entry was overwritten.
+ */
+static bool oldnewmap_insert(OldNewMap *onm, const void *oldaddr, void *newaddr, int nr)
 {
   if (oldaddr == nullptr || newaddr == nullptr) {
-    return;
+    return false;
   }
 
-  onm->map.add_overwrite(oldaddr, NewAddress{newaddr, nr});
+  return onm->map.add_overwrite(oldaddr, NewAddress{newaddr, nr});
 }
 
 static void oldnewmap_lib_insert(FileData *fd, const void *oldaddr, ID *newaddr, int id_code)
@@ -2417,7 +2421,13 @@ static BHead *read_data_into_datamap(FileData *fd, BHead *bhead, const char *all
 
     void *data = read_struct(fd, bhead, allocname);
     if (data) {
-      oldnewmap_insert(fd->datamap, bhead->old, data, 0);
+      const bool is_new = oldnewmap_insert(fd->datamap, bhead->old, data, 0);
+      if (!is_new) {
+        CLOG_ERROR(&LOG,
+                   "Blendfile corruption: Invalid, or multiple `bhead` with same old address "
+                   "value (%p) for a given ID.",
+                   bhead->old);
+      }
     }
 
     bhead = blo_bhead_next(fd, bhead);
@@ -4974,7 +4984,7 @@ blender::ImplicitSharingInfoAndData blo_read_shared_impl(
   if (BLO_read_data_is_undo(reader)) {
     if (reader->fd->flags & FD_FLAGS_IS_MEMFILE) {
       UndoReader *undo_reader = reinterpret_cast<UndoReader *>(reader->fd->file);
-      MemFile &memfile = *undo_reader->memfile;
+      const MemFile &memfile = *undo_reader->memfile;
       if (memfile.shared_storage) {
         /* Check if the data was saved with sharing-info. */
         if (const blender::ImplicitSharingInfo *sharing_info =

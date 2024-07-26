@@ -524,6 +524,7 @@ int blf_font_draw_mono(
   return columns;
 }
 
+#ifndef WITH_HEADLESS
 void blf_draw_svg_icon(
     FontBLF *font, uint icon_id, float x, float y, float size, float color[4], float outline_alpha)
 {
@@ -595,6 +596,7 @@ blender::Array<uchar> blf_svg_icon_bitmap(
   blf_glyph_cache_release(font);
   return bitmap;
 }
+#endif /* WITH_HEADLESS */
 
 /** \} */
 
@@ -899,8 +901,8 @@ static void blf_font_boundbox_ex(FontBLF *font,
     }
     const ft_pix pen_x_next = pen_x + g->advance_x;
 
-    const ft_pix gbox_xmin = pen_x;
-    const ft_pix gbox_xmax = pen_x_next;
+    const ft_pix gbox_xmin = std::min(pen_x, pen_x + g->box_xmin);
+    const ft_pix gbox_xmax = std::max(pen_x_next, pen_x + g->box_xmax);
     const ft_pix gbox_ymin = g->box_ymin + pen_y;
     const ft_pix gbox_ymax = g->box_ymax + pen_y;
 

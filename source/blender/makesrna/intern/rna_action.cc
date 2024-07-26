@@ -92,6 +92,7 @@ const EnumPropertyItem rna_enum_strip_type_items[] = {
 
 #  include "DEG_depsgraph.hh"
 
+#  include "ANIM_action_legacy.hh"
 #  include "ANIM_keyframing.hh"
 
 #  include <fmt/format.h>
@@ -244,15 +245,16 @@ static ActionLayer *rna_Action_layers_new(bAction *dna_action,
 void rna_Action_layers_remove(bAction *dna_action,
                               bContext *C,
                               ReportList *reports,
-                              ActionLayer *dna_layer)
+                              PointerRNA *layer_ptr)
 {
   animrig::Action &action = dna_action->wrap();
-  animrig::Layer &layer = dna_layer->wrap();
+  animrig::Layer &layer = rna_data_layer(layer_ptr);
   if (!action.layer_remove(layer)) {
     BKE_report(reports, RPT_ERROR, "This layer does not belong to this Action");
     return;
   }
 
+  RNA_POINTER_INVALIDATE(layer_ptr);
   WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN, nullptr);
   DEG_id_tag_update(&action.id, ID_RECALC_ANIMATION);
 }
@@ -393,15 +395,16 @@ ActionStrip *rna_ActionStrips_new(ActionLayer *dna_layer,
 }
 
 void rna_ActionStrips_remove(
-    ID *action, ActionLayer *dna_layer, bContext *C, ReportList *reports, ActionStrip *dna_strip)
+    ID *action, ActionLayer *dna_layer, bContext *C, ReportList *reports, PointerRNA *strip_ptr)
 {
   animrig::Layer &layer = dna_layer->wrap();
-  animrig::Strip &strip = dna_strip->wrap();
+  animrig::Strip &strip = rna_data_strip(strip_ptr);
   if (!layer.strip_remove(strip)) {
     BKE_report(reports, RPT_ERROR, "This strip does not belong to this layer");
     return;
   }
 
+  RNA_POINTER_INVALIDATE(strip_ptr);
   WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN, nullptr);
   DEG_id_tag_update(action, ID_RECALC_ANIMATION);
 }
@@ -476,16 +479,17 @@ static void rna_ChannelBags_remove(ID *action,
                                    KeyframeActionStrip *dna_strip,
                                    bContext *C,
                                    ReportList *reports,
-                                   ActionChannelBag *dna_channelbag)
+                                   PointerRNA *channelbag_ptr)
 {
   animrig::KeyframeStrip &key_strip = dna_strip->wrap();
-  animrig::ChannelBag &channelbag = dna_channelbag->wrap();
+  animrig::ChannelBag &channelbag = rna_data_channelbag(channelbag_ptr);
 
   if (!key_strip.channelbag_remove(channelbag)) {
     BKE_report(reports, RPT_ERROR, "This channelbag does not belong to this strip");
     return;
   }
 
+  RNA_POINTER_INVALIDATE(channelbag_ptr);
   WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN, nullptr);
   DEG_id_tag_update(action, ID_RECALC_ANIMATION);
 }
@@ -510,7 +514,7 @@ static bool rna_KeyframeActionStrip_key_insert(ID *id,
   const animrig::KeyframeSettings settings = animrig::get_keyframe_settings(true);
 
   const animrig::SingleKeyingResult result = key_strip.keyframe_insert(
-      slot, {rna_path, array_index}, {time, value}, settings, INSERTKEY_NOFLAGS);
+      bmain, slot, {rna_path, array_index}, {time, value}, settings, INSERTKEY_NOFLAGS);
 
   const bool ok = result == animrig::SingleKeyingResult::SUCCESS;
   if (ok) {
@@ -520,7 +524,7 @@ static bool rna_KeyframeActionStrip_key_insert(ID *id,
   return ok;
 }
 
-static std::optional<std::string> rna_ActionChannelBag_path(const PointerRNA *ptr)
+static std::optional<std::string> rna_ChannelBag_path(const PointerRNA *ptr)
 {
   animrig::Action &action = rna_action(ptr);
   animrig::ChannelBag &cbag_to_find = rna_data_channelbag(ptr);
@@ -559,6 +563,72 @@ static int rna_iterator_ChannelBag_fcurves_length(PointerRNA *ptr)
 {
   animrig::ChannelBag &bag = rna_data_channelbag(ptr);
   return bag.fcurves().size();
+}
+
+static FCurve *rna_ChannelBag_fcurve_new(ActionChannelBag *dna_channelbag,
+                                         Main *bmain,
+                                         ReportList *reports,
+                                         const char *data_path,
+                                         const int index)
+{
+  BLI_assert(data_path != nullptr);
+  if (data_path[0] == '\0') {
+    BKE_report(reports, RPT_ERROR, "F-Curve data path empty, invalid argument");
+    return nullptr;
+  }
+
+  animrig::ChannelBag &self = dna_channelbag->wrap();
+  FCurve *fcurve = self.fcurve_create_unique(bmain, {data_path, index});
+  if (!fcurve) {
+    BKE_reportf(reports,
+                RPT_ERROR,
+                "F-Curve '%s[%d]' already exists in this channelbag",
+                data_path,
+                index);
+    return nullptr;
+  }
+  return fcurve;
+}
+
+static FCurve *rna_ChannelBag_fcurve_find(ActionChannelBag *dna_channelbag,
+                                          ReportList *reports,
+                                          const char *data_path,
+                                          const int index)
+{
+  if (data_path[0] == '\0') {
+    BKE_report(reports, RPT_ERROR, "F-Curve data path empty, invalid argument");
+    return nullptr;
+  }
+
+  animrig::ChannelBag &self = dna_channelbag->wrap();
+  return self.fcurve_find({data_path, index});
+}
+
+static void rna_ChannelBag_fcurve_remove(ID *dna_action_id,
+                                         ActionChannelBag *dna_channelbag,
+                                         bContext *C,
+                                         ReportList *reports,
+                                         PointerRNA *fcurve_ptr)
+{
+  animrig::ChannelBag &self = dna_channelbag->wrap();
+  FCurve *fcurve = static_cast<FCurve *>(fcurve_ptr->data);
+
+  if (!self.fcurve_remove(*fcurve)) {
+    BKE_reportf(reports, RPT_ERROR, "F-Curve not found");
+    return;
+  }
+
+  DEG_id_tag_update(dna_action_id, ID_RECALC_ANIMATION_NO_FLUSH);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
+}
+
+static void rna_ChannelBag_fcurve_clear(ID *dna_action_id,
+                                        ActionChannelBag *dna_channelbag,
+                                        bContext *C)
+{
+  dna_channelbag->wrap().fcurves_clear();
+  DEG_id_tag_update(dna_action_id, ID_RECALC_ANIMATION_NO_FLUSH);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
 }
 
 static ActionChannelBag *rna_KeyframeActionStrip_channels(KeyframeActionStrip *self,
@@ -634,6 +704,80 @@ static void rna_Action_groups_remove(bAction *act, ReportList *reports, PointerR
   WM_main_add_notifier(NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
 }
 
+/* Use the backward-compatible API only when the experimental feature is
+ * enabled OR if the Action is already a layered Action. */
+static bool use_backward_compatible_api(animrig::Action &action)
+{
+  /* action.is_action_layered() returns 'true' on empty Actions, but that case must be protected by
+   * the experimental flag, hence the expression below uses !action.is_action_legacy(). */
+  return (USER_EXPERIMENTAL_TEST(&U, use_animation_baklava) && action.is_empty()) ||
+         !action.is_action_legacy();
+}
+
+#  ifdef WITH_ANIM_BAKLAVA
+static void rna_iterator_Action_fcurves_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
+{
+  animrig::Action &action = rna_action(ptr);
+
+  if (use_backward_compatible_api(action)) {
+    animrig::ChannelBag *channelbag = animrig::legacy::channelbag_get(action);
+    if (!channelbag) {
+      return;
+    }
+    rna_iterator_array_begin(iter, channelbag->fcurves());
+  }
+  else {
+    rna_iterator_listbase_begin(iter, &action.curves, nullptr);
+  }
+}
+static void rna_iterator_Action_fcurves_next(CollectionPropertyIterator *iter)
+{
+  animrig::Action &action = rna_action(&iter->parent);
+  if (use_backward_compatible_api(action)) {
+    rna_iterator_array_next(iter);
+  }
+  else {
+    rna_iterator_listbase_next(iter);
+  }
+}
+static void rna_iterator_Action_fcurves_end(CollectionPropertyIterator *iter)
+{
+  animrig::Action &action = rna_action(&iter->parent);
+  if (use_backward_compatible_api(action)) {
+    rna_iterator_array_end(iter);
+  }
+  else {
+    rna_iterator_listbase_end(iter);
+  }
+}
+static PointerRNA rna_iterator_Action_fcurves_get(CollectionPropertyIterator *iter)
+{
+  animrig::Action &action = rna_action(&iter->parent);
+  FCurve *fcurve;
+  if (use_backward_compatible_api(action)) {
+    fcurve = static_cast<FCurve *>(rna_iterator_array_dereference_get(iter));
+  }
+  else {
+    fcurve = static_cast<FCurve *>(rna_iterator_listbase_get(iter));
+  }
+
+  return RNA_pointer_create(&action.id, &RNA_FCurve, fcurve);
+}
+static int rna_iterator_Action_fcurves_length(PointerRNA *ptr)
+{
+  animrig::Action &action = rna_action(ptr);
+  if (use_backward_compatible_api(action)) {
+    animrig::ChannelBag *channelbag = animrig::legacy::channelbag_get(action);
+    if (!channelbag) {
+      return 0;
+    }
+    return channelbag->fcurves().size();
+  }
+  return BLI_listbase_count(&action.curves);
+}
+
+#  endif  // WITH_ANIM_BAKLAVA
+
 static FCurve *rna_Action_fcurve_new(bAction *act,
                                      Main *bmain,
                                      ReportList *reports,
@@ -641,23 +785,37 @@ static FCurve *rna_Action_fcurve_new(bAction *act,
                                      int index,
                                      const char *group)
 {
-  if (!act->wrap().is_action_legacy()) {
-    BKE_reportf(reports,
-                RPT_ERROR,
-                "Cannot add legacy F-Curves to a layered Action '%s'. Convert it to a legacy "
-                "Action first.",
-                act->id.name + 2);
-    return nullptr;
-  }
-
-  if (group && group[0] == '\0') {
-    group = nullptr;
-  }
-
   BLI_assert(data_path != nullptr);
   if (data_path[0] == '\0') {
     BKE_report(reports, RPT_ERROR, "F-Curve data path empty, invalid argument");
     return nullptr;
+  }
+
+  animrig::Action &action = act->wrap();
+  if (use_backward_compatible_api(action)) {
+    /* Add the F-Curve to the channelbag for the first slot. */
+    animrig::ChannelBag &channelbag = animrig::legacy::channelbag_ensure(action);
+    FCurve *fcurve = channelbag.fcurve_create_unique(bmain, {data_path, index});
+    if (!fcurve) {
+      /* The only reason fcurve_create_unique() returns nullptr is when the curve
+       * already exists. */
+
+      /* This is using the same error as below, as this is mimicking the legacy API. */
+      BKE_reportf(reports,
+                  RPT_ERROR,
+                  "F-Curve '%s[%d]' already exists in action '%s'",
+                  data_path,
+                  index,
+                  act->id.name + 2);
+      return nullptr;
+    }
+
+    /* TODO: handle the groups. */
+    return fcurve;
+  }
+
+  if (group && group[0] == '\0') {
+    group = nullptr;
   }
 
   /* Annoying, check if this exists. */
@@ -683,6 +841,15 @@ static FCurve *rna_Action_fcurve_find(bAction *act,
     return nullptr;
   }
 
+  animrig::Action &action = act->wrap();
+  if (use_backward_compatible_api(action)) {
+    animrig::ChannelBag *channelbag = animrig::legacy::channelbag_get(action);
+    if (!channelbag) {
+      return nullptr;
+    }
+    return channelbag->fcurve_find({data_path, index});
+  }
+
   /* Returns nullptr if not found. */
   return BKE_fcurve_find(&act->curves, data_path, index);
 }
@@ -690,6 +857,26 @@ static FCurve *rna_Action_fcurve_find(bAction *act,
 static void rna_Action_fcurve_remove(bAction *act, ReportList *reports, PointerRNA *fcu_ptr)
 {
   FCurve *fcu = static_cast<FCurve *>(fcu_ptr->data);
+
+  animrig::Action &action = act->wrap();
+  if (use_backward_compatible_api(action)) {
+    animrig::ChannelBag *channelbag = animrig::legacy::channelbag_get(action);
+    if (!channelbag) {
+      BKE_reportf(reports, RPT_ERROR, "F-Curve not found in action '%s'", act->id.name + 2);
+      return;
+    }
+    if (!channelbag->fcurve_remove(*fcu)) {
+      BKE_reportf(reports, RPT_ERROR, "F-Curve not found in action '%s'", act->id.name + 2);
+      return;
+    }
+    RNA_POINTER_INVALIDATE(fcu_ptr);
+
+    DEG_id_tag_update(&act->id, ID_RECALC_ANIMATION_NO_FLUSH);
+    WM_main_add_notifier(NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
+
+    return;
+  }
+
   if (fcu->grp) {
     if (BLI_findindex(&act->groups, fcu->grp) == -1) {
       BKE_reportf(reports,
@@ -721,7 +908,19 @@ static void rna_Action_fcurve_remove(bAction *act, ReportList *reports, PointerR
 
 static void rna_Action_fcurve_clear(bAction *act)
 {
-  BKE_action_fcurves_clear(act);
+  animrig::Action &action = act->wrap();
+  if (use_backward_compatible_api(action)) {
+    animrig::ChannelBag *channelbag = animrig::legacy::channelbag_get(action);
+    if (!channelbag) {
+      /* Nothing to clear, so the post-condition of not having F-Curves is fulfilled. */
+      return;
+    }
+    channelbag->fcurves_clear();
+  }
+  else {
+    BKE_action_fcurves_clear(act);
+  }
+
   WM_main_add_notifier(NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
 }
 
@@ -1344,7 +1543,7 @@ static void rna_def_action_layers(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_function_ui_description(func, "Remove the layer from the animation");
   parm = RNA_def_pointer(
       func, "anim_layer", "ActionLayer", "Animation Layer", "The layer to remove");
-  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED | PARM_RNAPTR);
 }
 
 static void rna_def_action_slot(BlenderRNA *brna)
@@ -1454,7 +1653,7 @@ static void rna_def_ActionLayer_strips(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_function_ui_description(func, "Remove the strip from the animation layer");
   parm = RNA_def_pointer(
       func, "anim_strip", "ActionStrip", "Animation Strip", "The strip to remove");
-  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED | PARM_RNAPTR);
 }
 
 static void rna_def_action_layer(BlenderRNA *brna)
@@ -1539,7 +1738,7 @@ static void rna_def_keyframestrip_channelbags(BlenderRNA *brna, PropertyRNA *cpr
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_CONTEXT | FUNC_USE_REPORTS);
   RNA_def_function_ui_description(func, "Remove the channelbag from the strip");
   parm = RNA_def_pointer(func, "channelbag", "ActionChannelBag", "", "The channelbag to remove");
-  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED | PARM_RNAPTR);
 }
 
 static void rna_def_action_keyframe_strip(BlenderRNA *brna)
@@ -1667,14 +1866,63 @@ static void rna_def_action_strip(BlenderRNA *brna)
   rna_def_action_keyframe_strip(brna);
 }
 
-static void rna_def_channelbag_for_slot_fcurves(BlenderRNA *brna, PropertyRNA *cprop)
+static void rna_def_channelbag_fcurves(BlenderRNA *brna, PropertyRNA *cprop)
 {
   StructRNA *srna;
 
+  FunctionRNA *func;
+  PropertyRNA *parm;
+
   RNA_def_property_srna(cprop, "ActionChannelBagFCurves");
   srna = RNA_def_struct(brna, "ActionChannelBagFCurves", nullptr);
-  RNA_def_struct_sdna(srna, "bActionChannelBag");
-  RNA_def_struct_ui_text(srna, "F-Curves", "Collection of F-Curves for a specific action slot");
+  RNA_def_struct_sdna(srna, "ActionChannelBag");
+  RNA_def_struct_ui_text(
+      srna, "F-Curves", "Collection of F-Curves for a specific action slot, on a specific strip");
+
+  /* ChannelBag.fcurves.new(...) */
+  extern struct FCurve *ActionChannelBagFCurves_new_func(struct ID * _selfid,
+                                                         struct ActionChannelBag * _self,
+                                                         Main * bmain,
+                                                         ReportList * reports,
+                                                         const char *data_path,
+                                                         int index);
+
+  func = RNA_def_function(srna, "new", "rna_ChannelBag_fcurve_new");
+  RNA_def_function_ui_description(func, "Add an F-Curve to the channelbag");
+  RNA_def_function_flag(func, FUNC_USE_MAIN | FUNC_USE_REPORTS);
+  parm = RNA_def_string(func, "data_path", nullptr, 0, "Data Path", "F-Curve data path to use");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  RNA_def_int(func, "index", 0, 0, INT_MAX, "Index", "Array index", 0, INT_MAX);
+
+  parm = RNA_def_pointer(func, "fcurve", "FCurve", "", "Newly created F-Curve");
+  RNA_def_function_return(func, parm);
+
+  /* ChannelBag.fcurves.find(...) */
+  func = RNA_def_function(srna, "find", "rna_ChannelBag_fcurve_find");
+  RNA_def_function_ui_description(
+      func,
+      "Find an F-Curve. Note that this function performs a linear scan "
+      "of all F-Curves in the channelbag.");
+  RNA_def_function_flag(func, FUNC_USE_REPORTS);
+  parm = RNA_def_string(func, "data_path", nullptr, 0, "Data Path", "F-Curve data path");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  RNA_def_int(func, "index", 0, 0, INT_MAX, "Index", "Array index", 0, INT_MAX);
+  parm = RNA_def_pointer(
+      func, "fcurve", "FCurve", "", "The found F-Curve, or None if it doesn't exist");
+  RNA_def_function_return(func, parm);
+
+  /* ChannelBag.fcurves.remove(...) */
+  func = RNA_def_function(srna, "remove", "rna_ChannelBag_fcurve_remove");
+  RNA_def_function_ui_description(func, "Remove F-Curve");
+  RNA_def_function_flag(func, FUNC_USE_CONTEXT | FUNC_USE_SELF_ID | FUNC_USE_REPORTS);
+  parm = RNA_def_pointer(func, "fcurve", "FCurve", "", "F-Curve to remove");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
+  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, ParameterFlag(0));
+
+  /* ChannelBag.fcurves.clear() */
+  func = RNA_def_function(srna, "clear", "rna_ChannelBag_fcurve_clear");
+  RNA_def_function_flag(func, FUNC_USE_CONTEXT | FUNC_USE_SELF_ID);
+  RNA_def_function_ui_description(func, "Remove all F-Curves from this channelbag");
 }
 
 static void rna_def_action_channelbag(BlenderRNA *brna)
@@ -1687,7 +1935,7 @@ static void rna_def_action_channelbag(BlenderRNA *brna)
       srna,
       "Animation Channel Bag",
       "Collection of animation channels, typically associated with an action slot");
-  RNA_def_struct_path_func(srna, "rna_ActionChannelBag_path");
+  RNA_def_struct_path_func(srna, "rna_ChannelBag_path");
 
   prop = RNA_def_property(srna, "slot_handle", PROP_INT, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
@@ -1704,7 +1952,7 @@ static void rna_def_action_channelbag(BlenderRNA *brna)
                                     nullptr);
   RNA_def_property_struct_type(prop, "FCurve");
   RNA_def_property_ui_text(prop, "F-Curves", "The individual F-Curves that animate the slot");
-  rna_def_channelbag_for_slot_fcurves(brna, prop);
+  rna_def_channelbag_fcurves(brna, prop);
 }
 #  endif  // WITH_ANIM_BAKLAVA
 
@@ -1827,6 +2075,17 @@ static void rna_def_action_fcurves(BlenderRNA *brna, PropertyRNA *cprop)
   srna = RNA_def_struct(brna, "ActionFCurves", nullptr);
   RNA_def_struct_sdna(srna, "bAction");
   RNA_def_struct_ui_text(srna, "Action F-Curves", "Collection of action F-Curves");
+#  ifdef WITH_ANIM_BAKLAVA
+  RNA_def_property_collection_funcs(cprop,
+                                    "rna_iterator_Action_fcurves_begin",
+                                    "rna_iterator_Action_fcurves_next",
+                                    "rna_iterator_Action_fcurves_end",
+                                    "rna_iterator_Action_fcurves_get",
+                                    "rna_iterator_Action_fcurves_length",
+                                    nullptr,
+                                    nullptr,
+                                    nullptr);
+#  endif
 
   /* Action.fcurves.new(...) */
   func = RNA_def_function(srna, "new", "rna_Action_fcurve_new");
