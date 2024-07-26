@@ -613,9 +613,7 @@ DenoiserPipeline::DenoiserPipeline(DeviceInfo &denoiser_device_info, const Denoi
   device_cpu_info(cpu_devices);
   cpu_device = device_cpu_create(cpu_devices[0], device->stats, device->profiler, true);
 
-  DenoiseParams expected_denoise_params = get_expected_denoise_params(device, cpu_device, params);
-
-  denoiser = Denoiser::create(device, cpu_device, expected_denoise_params);
+  denoiser = Denoiser::create(device, cpu_device, params);
   denoiser->load_kernels(nullptr);
 }
 

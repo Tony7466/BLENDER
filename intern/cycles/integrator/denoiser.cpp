@@ -172,9 +172,14 @@ unique_ptr<Denoiser> Denoiser::create(Device *denoiser_device,
 #endif
   }
 
+  /* Always fallback to OIDN on CPU. */
+  DenoiseParams oidn_params = params;
+  oidn_params.type = DENOISER_OPENIMAGEDENOISE;
+  oidn_params.use_gpu = false;
+
   /* Used preference CPU when possible, and fallback on CPU fallback device otherwise. */
   return make_unique<OIDNDenoiser>(
-      is_cpu_denoiser_device ? single_denoiser_device : cpu_fallback_device, params);
+      is_cpu_denoiser_device ? single_denoiser_device : cpu_fallback_device, oidn_params);
 }
 
 DenoiserType Denoiser::automatic_viewport_denoiser_type(const DeviceInfo &denoise_device_info)
