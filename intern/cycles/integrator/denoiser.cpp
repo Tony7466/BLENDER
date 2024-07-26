@@ -72,29 +72,6 @@ static Device *find_best_device(Device *device, const DenoiserType type)
   return best_device;
 }
 
-static Device *get_single_denoising_device(Device *denoiser_device,
-                                           Device *cpu_fallback_device,
-                                           const DenoiseParams &params)
-{
-  Device *single_denoiser_device = nullptr;
-  if (is_single_device(denoiser_device)) {
-    /* Simple case: denoising happens on a single device. */
-    single_denoiser_device = denoiser_device;
-  }
-  else {
-    /* Find best device from the ones which are proposed for denoising. */
-    /* The choice is expected to be between few GPUs, or between GPU and a CPU
-     * or between few GPU and a CPU. */
-    single_denoiser_device = find_best_device(denoiser_device, params.type);
-  }
-  /* Ensure that we have a device to be used later in the code below. */
-  if (single_denoiser_device == nullptr) {
-    single_denoiser_device = cpu_fallback_device;
-  }
-
-  return single_denoiser_device;
-}
-
 bool use_optix_denoiser(Device *denoiser_device, const DenoiseParams &params)
 {
 #ifdef WITH_OPTIX
@@ -119,22 +96,35 @@ bool use_gpu_oidn_denoiser(Device *denoiser_device, const DenoiseParams &params)
 
 DenoiseParams get_effective_denoise_params(Device *denoiser_device,
                                            Device *cpu_fallback_device,
-                                           const DenoiseParams &params)
+                                           const DenoiseParams &params,
+                                           Device *&single_denoiser_device)
 {
-  /* Keep logic in `get_effective_denoise_params` and `Denoiser::create` in sync. */
   DCHECK(params.use);
 
   DenoiseParams effective_denoise_params = params;
 
-  Device *single_denoiser_device = get_single_denoising_device(
-      denoiser_device, cpu_fallback_device, effective_denoise_params);
+  single_denoiser_device = nullptr;
+  if (is_single_device(denoiser_device)) {
+    /* Simple case: denoising happens on a single device. */
+    single_denoiser_device = denoiser_device;
+  }
+  else {
+    /* Find best device from the ones which are proposed for denoising.
+     * The choice is expected to be between a few GPUs, or between a GPU and a CPU
+     * or between a few GPUs and a CPU. */
+    single_denoiser_device = find_best_device(denoiser_device, params.type);
+  }
+  /* Ensure that we have a device to be used later in the code below. */
+  if (single_denoiser_device == nullptr) {
+    single_denoiser_device = cpu_fallback_device;
+  }
 
   bool is_cpu_denoiser_device = single_denoiser_device->info.type == DEVICE_CPU;
   if (is_cpu_denoiser_device == false) {
     if (use_optix_denoiser(single_denoiser_device, effective_denoise_params) ||
         use_gpu_oidn_denoiser(single_denoiser_device, effective_denoise_params))
     {
-      /* Denoising Parameters are correct and there will be need to falling back to CPU OIDN. */
+      /* Denoising parameters are correct and there is no need to fall back to CPU OIDN. */
       return effective_denoise_params;
     }
   }
@@ -150,36 +140,31 @@ unique_ptr<Denoiser> Denoiser::create(Device *denoiser_device,
                                       Device *cpu_fallback_device,
                                       const DenoiseParams &params)
 {
-  /* Keep logic in `get_effective_denoise_params` and `Denoiser::create` in sync. */
-  DCHECK(params.use);
 
-  Device *single_denoiser_device = get_single_denoising_device(
-      denoiser_device, cpu_fallback_device, params);
+  Device *single_denoiser_device;
+  const DenoiseParams effective_denoiser_params = get_effective_denoise_params(
+      denoiser_device, cpu_fallback_device, params, single_denoiser_device);
 
   bool is_cpu_denoiser_device = single_denoiser_device->info.type == DEVICE_CPU;
   if (is_cpu_denoiser_device == false) {
 #ifdef WITH_OPTIX
-    if (use_optix_denoiser(single_denoiser_device, params)) {
-      return make_unique<OptiXDenoiser>(single_denoiser_device, params);
+    if (use_optix_denoiser(single_denoiser_device, effective_denoiser_params)) {
+      return make_unique<OptiXDenoiser>(single_denoiser_device, effective_denoiser_params);
     }
 #endif
 
 #ifdef WITH_OPENIMAGEDENOISE
     /* If available and allowed, then we will use OpenImageDenoise on GPU, otherwise on CPU. */
-    if (use_gpu_oidn_denoiser(single_denoiser_device, params)) {
-      return make_unique<OIDNDenoiserGPU>(single_denoiser_device, params);
+    if (use_gpu_oidn_denoiser(single_denoiser_device, effective_denoiser_params)) {
+      return make_unique<OIDNDenoiserGPU>(single_denoiser_device, effective_denoiser_params);
     }
 #endif
   }
 
-  /* Always fallback to OIDN on CPU. */
-  DenoiseParams oidn_params = params;
-  oidn_params.type = DENOISER_OPENIMAGEDENOISE;
-  oidn_params.use_gpu = false;
-
   /* Used preference CPU when possible, and fallback on CPU fallback device otherwise. */
-  return make_unique<OIDNDenoiser>(
-      is_cpu_denoiser_device ? single_denoiser_device : cpu_fallback_device, oidn_params);
+  return make_unique<OIDNDenoiser>(is_cpu_denoiser_device ? single_denoiser_device :
+                                                            cpu_fallback_device,
+                                   effective_denoiser_params);
 }
 
 DenoiserType Denoiser::automatic_viewport_denoiser_type(const DeviceInfo &denoise_device_info)

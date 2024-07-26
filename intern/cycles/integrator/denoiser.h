@@ -25,7 +25,8 @@ bool use_gpu_oidn_denoiser(Device *denoiser_device, const DenoiseParams &params)
 
 DenoiseParams get_effective_denoise_params(Device *denoiser_device,
                                            Device *cpu_fallback_device,
-                                           const DenoiseParams &params);
+                                           const DenoiseParams &params,
+                                           Device *&single_denoiser_device);
 
 /* Implementation of a specific denoising algorithm.
  *

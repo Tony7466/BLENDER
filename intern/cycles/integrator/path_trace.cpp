@@ -491,9 +491,10 @@ void PathTrace::set_denoiser_params(const DenoiseParams &params)
     return;
   }
 
+  Device *effective_denoise_device;
   Device *cpu_fallback_device = cpu_device_.get();
   DenoiseParams effective_denoise_params = get_effective_denoise_params(
-      denoise_device_, cpu_fallback_device, params);
+      denoise_device_, cpu_fallback_device, params, effective_denoise_device);
 
   bool need_to_recreate_denoiser = false;
   if (denoiser_) {
@@ -505,7 +506,9 @@ void PathTrace::set_denoiser_params(const DenoiseParams &params)
                                          (effective_denoise_params.type ==
                                               DENOISER_OPENIMAGEDENOISE &&
                                           effective_denoise_params.use_gpu == true);
-    if (requested_gpu_denoising && is_cpu_denoising && denoise_device_->info.type == DEVICE_CPU) {
+    if (requested_gpu_denoising && is_cpu_denoising &&
+        effective_denoise_device->info.type == DEVICE_CPU)
+    {
       /* It won't be possible to use GPU denoising when according to user settings we have
        * only CPU as available denoising device. So we just exiting early to avoid
        * unnecessary denoiser recreation or parameters update. */
@@ -531,7 +534,8 @@ void PathTrace::set_denoiser_params(const DenoiseParams &params)
   }
 
   if (need_to_recreate_denoiser) {
-    denoiser_ = Denoiser::create(denoise_device_, cpu_fallback_device, effective_denoise_params);
+    denoiser_ = Denoiser::create(
+        effective_denoise_device, cpu_fallback_device, effective_denoise_params);
 
     /* Only take into account the "immediate" cancel to have interactive rendering responding to
      * navigation as quickly as possible, but allow to run denoiser after user hit Escape key while
