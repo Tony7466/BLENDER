@@ -50,7 +50,7 @@ TEST(subdiv_ccg_coord, constructor)
   key.grid_area = key.grid_size * key.grid_size; /* 9 */
   key.grid_bytes = key.grid_area * key.elem_size;
 
-  SubdivCCGCoord coord(key, 22);
+  SubdivCCGCoord coord = SubdivCCGCoord::from_index(key, 22);
   coord.grid_index = 2;
   coord.x = 1;
   coord.y = 1;
