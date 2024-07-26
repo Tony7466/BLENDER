@@ -1426,9 +1426,23 @@ TEST_F(KeyframingTest, delete_keyframes__layered_action)
                             INSERTKEY_NOFLAGS);
   EXPECT_EQ(3, result.get_count(SingleKeyingResult::SUCCESS));
 
-  int deleted_count = action_delete_keyframe(action, object->adt->slot_handle, scene_frame + 1);
-  ASSERT_EQ(deleted_count, 3);
   Span<FCurve *> fcurves = fcurves_for_action_slot(action, object->adt->slot_handle);
+  for (FCurve *fcu : fcurves) {
+    ASSERT_EQ(fcu->totvert, 2);
+    fcu->flag |= FCURVE_PROTECTED;
+  }
+  /* Protected curves shouldn't have their keyframes deleted. */
+  int deleted_count = action_delete_keyframe(action, object->adt->slot_handle, scene_frame);
+  ASSERT_EQ(deleted_count, 0);
+
+  for (FCurve *fcu : fcurves) {
+    ASSERT_EQ(fcu->totvert, 2);
+    fcu->flag &= ~FCURVE_PROTECTED;
+  }
+
+  deleted_count = action_delete_keyframe(action, object->adt->slot_handle, scene_frame + 1);
+  ASSERT_EQ(deleted_count, 3);
+  fcurves = fcurves_for_action_slot(action, object->adt->slot_handle);
   ASSERT_EQ(fcurves.size(), 3);
   for (FCurve *fcu : fcurves) {
     /* All those FCurves should have 1 key left. */
