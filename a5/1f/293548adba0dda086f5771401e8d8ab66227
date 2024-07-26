@@ -1,5 +1,5 @@
 Referenced by issue #125006, Purge Unused crashes if mouse not moved away from popup before confirm delete with enter key
 Referenced by issue #117399, Adding assets (modifiers, such as Smooth by Angle) not working in background Python script because Asset list might not be fully loaded yet
-Referenced by issue #125226, blender4.2 mac rigify (limbs.spline_tentacle) doesn't generate correctly
+Referenced by issue #125226, Blender 4.2 rigify (limbs.spline_tentacle) doesn't generate correctly
 Referenced by issue #125357, Blender crashed while using camera DEPTH of Field
 Referenced by issue #125454, problème avec blender 4.2.0
