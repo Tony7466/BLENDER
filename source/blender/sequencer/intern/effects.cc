@@ -3091,7 +3091,7 @@ static rcti draw_text_outline(const SeqRenderData *context,
 }
 
 /* Similar to #IMB_rectfill_area but blends the given color under the
- * existing image. */
+ * existing image. Also only works on byte buffers. */
 static void fill_rect_alpha_under(
     const ImBuf *ibuf, const float col[4], int x1, int y1, int x2, int y2)
 {
