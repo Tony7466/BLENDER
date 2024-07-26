@@ -23,9 +23,9 @@ bool use_optix_denoiser(Device *denoiser_device, const DenoiseParams &params);
 
 bool use_gpu_oidn_denoiser(Device *denoiser_device, const DenoiseParams &params);
 
-DenoiseParams get_expected_denoise_params(Device *denoiser_device,
-                                          Device *cpu_fallback_device,
-                                          const DenoiseParams &params);
+DenoiseParams get_effective_denoise_params(Device *denoiser_device,
+                                           Device *cpu_fallback_device,
+                                           const DenoiseParams &params);
 
 /* Implementation of a specific denoising algorithm.
  *

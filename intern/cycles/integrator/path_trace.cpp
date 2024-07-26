@@ -492,7 +492,7 @@ void PathTrace::set_denoiser_params(const DenoiseParams &params)
   }
 
   Device *cpu_fallback_device = cpu_device_.get();
-  DenoiseParams expected_denoise_params = get_expected_denoise_params(
+  DenoiseParams effective_denoise_params = get_effective_denoise_params(
       denoise_device_, cpu_fallback_device, params);
 
   bool need_to_recreate_denoiser = false;
@@ -501,10 +501,10 @@ void PathTrace::set_denoiser_params(const DenoiseParams &params)
 
     const bool is_cpu_denoising = old_denoiser_params.type == DENOISER_OPENIMAGEDENOISE &&
                                   old_denoiser_params.use_gpu == false;
-    const bool requested_gpu_denoising = expected_denoise_params.type == DENOISER_OPTIX ||
-                                         (expected_denoise_params.type ==
+    const bool requested_gpu_denoising = effective_denoise_params.type == DENOISER_OPTIX ||
+                                         (effective_denoise_params.type ==
                                               DENOISER_OPENIMAGEDENOISE &&
-                                          expected_denoise_params.use_gpu == true);
+                                          effective_denoise_params.use_gpu == true);
     if (requested_gpu_denoising && is_cpu_denoising && denoise_device_->info.type == DEVICE_CPU) {
       /* It won't be possible to use GPU denoising when according to user settings we have
        * only CPU as available denoising device. So we just exiting early to avoid
@@ -513,13 +513,13 @@ void PathTrace::set_denoiser_params(const DenoiseParams &params)
     }
 
     const bool is_same_denoising_device_type = old_denoiser_params.use_gpu ==
-                                               expected_denoise_params.use_gpu;
+                                               effective_denoise_params.use_gpu;
     /* Optix Denoiser is not supporting CPU devices, so use_gpu option is not
      * shown in the UI and changes in the option value should not be checked. */
-    if (old_denoiser_params.type == expected_denoise_params.type &&
-        (is_same_denoising_device_type || expected_denoise_params.type == DENOISER_OPTIX))
+    if (old_denoiser_params.type == effective_denoise_params.type &&
+        (is_same_denoising_device_type || effective_denoise_params.type == DENOISER_OPTIX))
     {
-      denoiser_->set_params(expected_denoise_params);
+      denoiser_->set_params(effective_denoise_params);
     }
     else {
       need_to_recreate_denoiser = true;
@@ -531,7 +531,7 @@ void PathTrace::set_denoiser_params(const DenoiseParams &params)
   }
 
   if (need_to_recreate_denoiser) {
-    denoiser_ = Denoiser::create(denoise_device_, cpu_fallback_device, expected_denoise_params);
+    denoiser_ = Denoiser::create(denoise_device_, cpu_fallback_device, effective_denoise_params);
 
     /* Only take into account the "immediate" cancel to have interactive rendering responding to
      * navigation as quickly as possible, but allow to run denoiser after user hit Escape key while
@@ -543,7 +543,7 @@ void PathTrace::set_denoiser_params(const DenoiseParams &params)
   if (denoise_device_)
     render_scheduler_.set_denoiser_params(denoiser_->get_params());
   else
-    render_scheduler_.set_denoiser_params(expected_denoise_params);
+    render_scheduler_.set_denoiser_params(effective_denoise_params);
 }
 
 void PathTrace::set_adaptive_sampling(const AdaptiveSampling &adaptive_sampling)

@@ -117,40 +117,40 @@ bool use_gpu_oidn_denoiser(Device *denoiser_device, const DenoiseParams &params)
   return false;
 }
 
-DenoiseParams get_expected_denoise_params(Device *denoiser_device,
-                                          Device *cpu_fallback_device,
-                                          const DenoiseParams &params)
+DenoiseParams get_effective_denoise_params(Device *denoiser_device,
+                                           Device *cpu_fallback_device,
+                                           const DenoiseParams &params)
 {
-  /* Keep logic in `get_expected_denoise_params` and `Denoiser::create` in sync. */
+  /* Keep logic in `get_effective_denoise_params` and `Denoiser::create` in sync. */
   DCHECK(params.use);
 
-  DenoiseParams expected_denoise_params = params;
+  DenoiseParams effective_denoise_params = params;
 
   Device *single_denoiser_device = get_single_denoising_device(
-      denoiser_device, cpu_fallback_device, expected_denoise_params);
+      denoiser_device, cpu_fallback_device, effective_denoise_params);
 
   bool is_cpu_denoiser_device = single_denoiser_device->info.type == DEVICE_CPU;
   if (is_cpu_denoiser_device == false) {
-    if (use_optix_denoiser(single_denoiser_device, expected_denoise_params) ||
-        use_gpu_oidn_denoiser(single_denoiser_device, expected_denoise_params))
+    if (use_optix_denoiser(single_denoiser_device, effective_denoise_params) ||
+        use_gpu_oidn_denoiser(single_denoiser_device, effective_denoise_params))
     {
       /* Denoising Parameters are correct and there will be need to falling back to CPU OIDN. */
-      return expected_denoise_params;
+      return effective_denoise_params;
     }
   }
 
   /* Always fallback to OIDN on CPU. */
-  expected_denoise_params.type = DENOISER_OPENIMAGEDENOISE;
-  expected_denoise_params.use_gpu = false;
+  effective_denoise_params.type = DENOISER_OPENIMAGEDENOISE;
+  effective_denoise_params.use_gpu = false;
 
-  return expected_denoise_params;
+  return effective_denoise_params;
 }
 
 unique_ptr<Denoiser> Denoiser::create(Device *denoiser_device,
                                       Device *cpu_fallback_device,
                                       const DenoiseParams &params)
 {
-  /* Keep logic in `get_expected_denoise_params` and `Denoiser::create` in sync. */
+  /* Keep logic in `get_effective_denoise_params` and `Denoiser::create` in sync. */
   DCHECK(params.use);
 
   Device *single_denoiser_device = get_single_denoising_device(
