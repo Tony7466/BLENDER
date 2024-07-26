@@ -633,7 +633,7 @@ int action_delete_keyframe(Action &action, const slot_handle_t handle, float fra
   /* No time remapping through the strips yet. Needs to implemented when more than 1 infinite strip
    * is supported. */
   assert_baklava_phase_1_invariants(action);
-  Vector<FCurve *> modified_fcurves;
+  int deleted_keys = 0;
 
   for (Layer *layer : action.layers()) {
     for (Strip *strip : layer->strips()) {
@@ -647,22 +647,24 @@ int action_delete_keyframe(Action &action, const slot_handle_t handle, float fra
           continue;
         }
 
+        Vector<FCurve *> modified_fcurves;
         for (FCurve *fcu : bag->fcurves()) {
           if (fcurve_delete_keyframe_at_time(fcu, frame)) {
             modified_fcurves.append(fcu);
+            deleted_keys++;
+          }
+        }
+
+        for (FCurve *fcu : modified_fcurves) {
+          if (BKE_fcurve_is_empty(fcu)) {
+            bag->fcurve_remove(*fcu);
           }
         }
       }
     }
   }
 
-  for (FCurve *fcu : modified_fcurves) {
-    if (BKE_fcurve_is_empty(fcu)) {
-      action_fcurve_remove(action, *fcu);
-    }
-  }
-
-  return modified_fcurves.size();
+  return deleted_keys;
 }
 
 int delete_keyframe(Main *bmain, ReportList *reports, ID *id, const RNAPath &rna_path, float cfra)
