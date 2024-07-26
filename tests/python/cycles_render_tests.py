@@ -65,8 +65,6 @@ BLOCKLIST_OSL = [
     'render_passes_.*.blend',
     # Noise differences in Principled BSDF mixing/layering
     'principled_.*.blend',
-    # NaN causes assert when setting up materials for OSL. Waiting for 125374 to fix it.
-    'vector_math.blend',
 ]
 
 BLOCKLIST_OPTIX = [
