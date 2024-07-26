@@ -27,6 +27,7 @@ set(DEFSRC
   rna_action.cc
   rna_animation.cc
   rna_animviz.cc
+  rna_annotations.cc
   rna_armature.cc
   rna_asset.cc
   rna_attribute.cc
@@ -46,7 +47,6 @@ set(DEFSRC
   rna_dynamicpaint.cc
   rna_fcurve.cc
   rna_fluid.cc
-  rna_gpencil_legacy.cc
   rna_gpencil_legacy_modifier.cc
   rna_grease_pencil.cc
   rna_image.cc
@@ -120,6 +120,7 @@ set(APISRC
   rna_camera_api.cc
   rna_curve_api.cc
   rna_fcurve_api.cc
+  rna_grease_pencil_api.cc
   rna_image_api.cc
   rna_lattice_api.cc
   rna_main_api.cc
