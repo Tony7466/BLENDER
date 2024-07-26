@@ -769,7 +769,7 @@ static void rna_ToolSettings_snap_mode_set(PointerRNA *ptr, int value)
 
 static void rna_ToolSettings_snap_uv_mode_set(PointerRNA *ptr, int value)
 {
-  ToolSettings *ts = (ToolSettings *)ptr->data;
+  ToolSettings *ts = static_cast<ToolSettings *>(ptr->data);
   if (value != 0) {
     ts->snap_uv_mode = value;
   }
