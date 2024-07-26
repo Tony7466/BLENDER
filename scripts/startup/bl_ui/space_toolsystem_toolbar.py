@@ -2056,6 +2056,15 @@ class _defs_grease_pencil_paint:
         ]
 
     @ToolDef.from_fn
+    def fill():
+        return dict(
+            idname="builtin_brush.Fill",
+            label="Fill",
+            icon="brush.gpencil_draw.fill",
+            data_block='FILL',
+        )
+
+    @ToolDef.from_fn
     def erase():
         return dict(
             idname="builtin_brush.Erase",
@@ -3748,6 +3757,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             _defs_view3d_generic.cursor,
             None,
             _defs_grease_pencil_paint.generate_from_brushes,
+            _defs_grease_pencil_paint.fill,
             _defs_grease_pencil_paint.erase,
             _defs_grease_pencil_paint.cutter,
             None,
