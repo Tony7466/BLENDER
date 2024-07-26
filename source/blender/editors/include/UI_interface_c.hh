@@ -3241,7 +3241,7 @@ void UI_context_active_but_prop_get_filebrowser(const bContext *C,
  *
  * This is for browsing and editing the ID-blocks used.
  */
-void UI_context_active_but_prop_get_templateID(bContext *C,
+void UI_context_active_but_prop_get_templateID(const bContext *C,
                                                PointerRNA *r_ptr,
                                                PropertyRNA **r_prop);
 ID *UI_context_active_but_get_tab_ID(bContext *C);

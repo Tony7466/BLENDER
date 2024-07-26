@@ -547,7 +547,7 @@ static uiBlock *id_search_menu(bContext *C, ARegion *region, void *arg_litem)
 
 static void template_id_cb(bContext *C, void *arg_litem, void *arg_event);
 
-void UI_context_active_but_prop_get_templateID(bContext *C,
+void UI_context_active_but_prop_get_templateID(const bContext *C,
                                                PointerRNA *r_ptr,
                                                PropertyRNA **r_prop)
 {
