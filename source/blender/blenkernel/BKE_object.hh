@@ -701,12 +701,3 @@ void BKE_object_replace_data_on_shallow_copy(Object *ob, ID *new_data);
 PartEff *BKE_object_do_version_give_parteff_245(Object *ob);
 
 bool BKE_object_supports_material_slots(Object *ob);
-
-/**
- * Lineart modifier operators.
- * XXX These will be removed, keeping them around here for API cleanup.
- */
-void OBJECT_OT_lineart_bake_strokes(struct wmOperatorType *ot);
-void OBJECT_OT_lineart_bake_strokes_all(struct wmOperatorType *ot);
-void OBJECT_OT_lineart_clear(struct wmOperatorType *ot);
-void OBJECT_OT_lineart_clear_all(struct wmOperatorType *ot);

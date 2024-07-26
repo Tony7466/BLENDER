@@ -124,7 +124,6 @@ set(SRC
   intern/MOD_wireframe.cc
   intern/lineart/lineart_chain.cc
   intern/lineart/lineart_cpu.cc
-  intern/lineart/lineart_ops.cc
   intern/lineart/lineart_shadow.cc
   intern/lineart/lineart_util.cc
 

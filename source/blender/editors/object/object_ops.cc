@@ -25,11 +25,6 @@
 
 /* ************************** registration **********************************/
 
-extern void OBJECT_OT_lineart_bake_strokes(struct wmOperatorType *ot);
-extern void OBJECT_OT_lineart_bake_strokes_all(struct wmOperatorType *ot);
-extern void OBJECT_OT_lineart_clear(struct wmOperatorType *ot);
-extern void OBJECT_OT_lineart_clear_all(struct wmOperatorType *ot);
-
 namespace blender::ed::object {
 
 void operatortypes_object()
@@ -154,12 +149,6 @@ void operatortypes_object()
   WM_operatortype_append(OBJECT_OT_grease_pencil_time_modifier_segment_add);
   WM_operatortype_append(OBJECT_OT_grease_pencil_time_modifier_segment_remove);
   WM_operatortype_append(OBJECT_OT_grease_pencil_time_modifier_segment_move);
-
-  /* grease pencil line art */
-  WM_operatortype_append(OBJECT_OT_lineart_bake_strokes);
-  WM_operatortype_append(OBJECT_OT_lineart_bake_strokes_all);
-  WM_operatortype_append(OBJECT_OT_lineart_clear);
-  WM_operatortype_append(OBJECT_OT_lineart_clear_all);
 
   /* Shader FX. */
   WM_operatortype_append(OBJECT_OT_shaderfx_add);
