@@ -731,16 +731,8 @@ int delete_keyframe(Main *bmain, ReportList *reports, ID *id, const RNAPath &rna
 /* ************************************************** */
 /* KEYFRAME CLEAR */
 
-int clear_keyframe(Main *bmain,
-                   ReportList *reports,
-                   ID *id,
-                   bAction *act,
-                   const char rna_path[],
-                   int array_index,
-                   eInsertKeyFlags /*flag*/)
+int clear_keyframe(Main *bmain, ReportList *reports, ID *id, const RNAPath &rna_path)
 {
-  BLI_assert(rna_path != nullptr);
-
   AnimData *adt = BKE_animdata_from_id(id);
 
   if (ELEM(nullptr, id, adt)) {
@@ -751,7 +743,7 @@ int clear_keyframe(Main *bmain,
   PointerRNA ptr;
   PropertyRNA *prop;
   PointerRNA id_ptr = RNA_id_pointer_create(id);
-  if (RNA_path_resolve_property(&id_ptr, rna_path, &ptr, &prop) == false) {
+  if (RNA_path_resolve_property(&id_ptr, rna_path.path.c_str(), &ptr, &prop) == false) {
     BKE_reportf(
         reports,
         RPT_ERROR,
@@ -761,36 +753,16 @@ int clear_keyframe(Main *bmain,
     return 0;
   }
 
-  if (act == nullptr) {
-    if (adt->action) {
-      act = adt->action;
-    }
-    else {
-      BKE_reportf(reports, RPT_ERROR, "No action to delete keyframes from for ID = %s", id->name);
-      return 0;
-    }
+  if (!adt->action) {
+    BKE_reportf(reports, RPT_ERROR, "No action to delete keyframes from for ID = %s", id->name);
+    return 0;
   }
+  bAction *act = adt->action;
 
-  Action &action = act->wrap();
-  int key_count = 0;
-  if (action.is_action_layered()) {
-    Slot *slot = action.find_suitable_slot_for(*id);
-    if (slot) {
-      Vector<FCurve *> fcurves = action_fcurves_find(
-          action, slot->handle, {rna_path, array_index});
-      for (FCurve *fcu : fcurves) {
-        /* Since we got the fcurves from the action just before this should always be true. */
-        if (action_fcurve_remove(action, *fcu)) {
-          key_count++;
-        }
-      }
-    }
-  }
-  else {
-    int array_index_max = array_index + 1;
-    if (array_index == -1) {
-      array_index = 0;
-      array_index_max = RNA_property_array_length(&ptr, prop);
+  int array_index = rna_path.index.value_or(0);
+  int array_index_max = array_index + 1;
+  if (!rna_path.index.has_value()) {
+    array_index_max = RNA_property_array_length(&ptr, prop);
 
       /* For single properties, increase max_index so that the property itself gets included,
        * but don't do this for standard arrays since that can cause corruption issues
@@ -801,9 +773,10 @@ int clear_keyframe(Main *bmain,
       }
     }
 
-    /* Will only loop once unless the array index was -1. */
-    for (; array_index < array_index_max; array_index++) {
-      FCurve *fcu = action_fcurve_find(act, {rna_path, array_index});
+  int key_count = 0;
+  /* Will only loop once unless the array index was -1. */
+  for (; array_index < array_index_max; array_index++) {
+    FCurve *fcu = action_fcurve_find(act, {rna_path.path, array_index});
 
       if (fcu == nullptr) {
         continue;
