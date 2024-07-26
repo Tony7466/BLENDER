@@ -649,20 +649,17 @@ int delete_keyframe(Main *bmain, ReportList *reports, ID *id, const RNAPath &rna
     return 0;
   }
 
-  bAction *act;
   if (!adt->action) {
     BKE_reportf(reports, RPT_ERROR, "No action to delete keyframes from for ID = %s", id->name);
     return 0;
   }
-
-  act = adt->action;
+  bAction *act = adt->action;
   cfra = BKE_nla_tweakedit_remap(adt, cfra, NLATIME_CONVERT_UNMAP);
-
   int array_index = rna_path.index.value_or(0);
   int array_index_max = array_index + 1;
+
   if (!rna_path.index.has_value()) {
     array_index_max = RNA_property_array_length(&ptr, prop);
-
     /* For single properties, increase max_index so that the property itself gets included,
      * but don't do this for standard arrays since that can cause corruption issues
      * (extra unused curves).
