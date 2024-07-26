@@ -815,6 +815,7 @@ static int grease_pencil_frame_duplicate_exec(bContext *C, wmOperator *op)
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
   const bool only_active = !RNA_boolean_get(op->ptr, "all");
   const int current_frame = scene->r.cfra;
+  bool changed = false;
 
   if (only_active) {
     if (!grease_pencil.has_active_layer()) {
@@ -822,15 +823,19 @@ static int grease_pencil_frame_duplicate_exec(bContext *C, wmOperator *op)
     }
     Layer &active_layer = *grease_pencil.get_active_layer();
     const std::optional<int> active_frame_number = active_layer.start_frame_at(current_frame);
-    grease_pencil.insert_duplicate_frame(
+    changed |= grease_pencil.insert_duplicate_frame(
         active_layer, active_frame_number.value(), current_frame, false);
   }
   else {
     for (Layer *layer : grease_pencil.layers_for_write()) {
       const std::optional<int> active_frame_number = layer->start_frame_at(current_frame);
-      grease_pencil.insert_duplicate_frame(
+      changed |= grease_pencil.insert_duplicate_frame(
           *layer, active_frame_number.value(), current_frame, false);
     }
+  }
+
+  if (!changed) {
+    return OPERATOR_CANCELLED;
   }
 
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
