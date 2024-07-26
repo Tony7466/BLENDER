@@ -8,7 +8,6 @@
 
 #pragma once
 
-#include <functional>
 #include <memory>
 #include <mutex>
 
@@ -30,9 +29,7 @@ class IDRemapper;
 
 namespace blender::asset_system {
 
-class AssetIdentifier;
 class AssetRepresentation;
-class AssetStorage;
 
 /**
  * AssetLibrary provides access to an asset library's data.
@@ -67,7 +64,17 @@ class AssetLibrary {
    * already in memory and which not. Neither do we keep track of how many parts of Blender are
    * using an asset or an asset library, which is needed to know when assets can be freed.
    */
-  std::unique_ptr<AssetStorage> asset_storage_;
+  struct Storage {
+    /* Uses shared pointers so the UI can acquire weak pointers. It can then ensure pointers are
+     * not dangling before accessing. */
+
+    Set<std::shared_ptr<AssetRepresentation>> external_assets;
+    /* Store local ID assets separately for efficient lookups.
+     * TODO(Julian): A [ID *, asset] or even [ID.session_uid, asset] map would be preferable for
+     * faster lookups. Not possible until each asset is only represented once in the storage. */
+    Set<std::shared_ptr<AssetRepresentation>> local_id_assets;
+  };
+  Storage storage_;
 
  protected:
   /* Changing this pointer should be protected using #catalog_service_mutex_. Note that changes
@@ -168,12 +175,6 @@ class AssetLibrary {
   void on_blend_save_handler_unregister();
 
   void on_blend_save_post(Main *bmain, PointerRNA **pointers, int num_pointers);
-
-  /**
-   * Create an asset identifier from the root path of this asset library and the given relative
-   * asset path (relative to the asset library root directory).
-   */
-  AssetIdentifier asset_identifier_from_library(StringRef relative_asset_path);
 
   std::string resolve_asset_weak_reference_to_full_path(const AssetWeakReference &asset_reference);
 
