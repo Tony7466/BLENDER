@@ -764,39 +764,39 @@ int clear_keyframe(Main *bmain, ReportList *reports, ID *id, const RNAPath &rna_
   if (!rna_path.index.has_value()) {
     array_index_max = RNA_property_array_length(&ptr, prop);
 
-      /* For single properties, increase max_index so that the property itself gets included,
-       * but don't do this for standard arrays since that can cause corruption issues
-       * (extra unused curves).
-       */
-      if (array_index_max == array_index) {
-        array_index_max++;
-      }
+    /* For single properties, increase max_index so that the property itself gets included,
+     * but don't do this for standard arrays since that can cause corruption issues
+     * (extra unused curves).
+     */
+    if (array_index_max == array_index) {
+      array_index_max++;
     }
+  }
 
   int key_count = 0;
   /* Will only loop once unless the array index was -1. */
   for (; array_index < array_index_max; array_index++) {
     FCurve *fcu = action_fcurve_find(act, {rna_path.path, array_index});
 
-      if (fcu == nullptr) {
-        continue;
-      }
-
-      if (BKE_fcurve_is_protected(fcu)) {
-        BKE_reportf(reports,
-                    RPT_WARNING,
-                    "Not clearing all keyframes from locked F-Curve '%s' for %s '%s'",
-                    fcu->rna_path,
-                    BKE_idtype_idcode_to_name(GS(id->name)),
-                    id->name + 2);
-        continue;
-      }
-
-      animdata_fcurve_delete(nullptr, adt, fcu);
-
-      key_count++;
+    if (fcu == nullptr) {
+      continue;
     }
+
+    if (BKE_fcurve_is_protected(fcu)) {
+      BKE_reportf(reports,
+                  RPT_WARNING,
+                  "Not clearing all keyframes from locked F-Curve '%s' for %s '%s'",
+                  fcu->rna_path,
+                  BKE_idtype_idcode_to_name(GS(id->name)),
+                  id->name + 2);
+      continue;
+    }
+
+    animdata_fcurve_delete(nullptr, adt, fcu);
+
+    key_count++;
   }
+
   if (key_count) {
     deg_tag_after_keyframe_delete(bmain, id, adt);
   }
