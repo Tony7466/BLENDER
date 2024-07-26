@@ -1673,12 +1673,39 @@ void BKE_pose_remove_group_index(bPose *pose, const int index)
 
 bool BKE_action_has_motion(const bAction *act)
 {
-  /* return on the first F-Curve that has some keyframes/samples defined */
-  if (act) {
-    LISTBASE_FOREACH (FCurve *, fcu, &act->curves) {
-      if (fcu->totvert) {
-        return true;
+  if (!act) {
+    return false;
+  }
+
+  const blender::animrig::Action &action = act->wrap();
+  if (!action.is_action_legacy()) {
+    for (const blender::animrig::Layer *layer : action.layers()) {
+      for (const blender::animrig::Strip *strip : layer->strips()) {
+        /* TODO: strip types other than keyframe strips, once they exist. */
+        BLI_assert(strip->is<blender::animrig::KeyframeStrip>());
+        if (!strip->is<blender::animrig::KeyframeStrip>()) {
+          continue;
+        }
+
+        for (const blender::animrig::ChannelBag *channel_bag :
+             strip->as<blender::animrig::KeyframeStrip>().channelbags())
+        {
+          for (const FCurve *fcurve : channel_bag->fcurves()) {
+            if (fcurve->totvert > 0) {
+              return true;
+            }
+          }
+        }
       }
+    }
+
+    return false;
+  }
+
+  /* return on the first F-Curve that has some keyframes/samples defined */
+  LISTBASE_FOREACH (FCurve *, fcu, &act->curves) {
+    if (fcu->totvert) {
+      return true;
     }
   }
 

@@ -530,7 +530,8 @@ static NlaStrip *rna_NlaStrip_new(ID *id,
                                   int start,
                                   bAction *action)
 {
-  NlaStrip *strip = BKE_nlastrip_new(action);
+  /* TODO: attempt to find an appropriate slot. */
+  NlaStrip *strip = BKE_nlastrip_new(action, 0);
 
   if (strip == nullptr) {
     BKE_report(reports, RPT_ERROR, "Unable to create new strip");

@@ -695,7 +695,8 @@ static int nlaedit_add_actionclip_exec(bContext *C, wmOperator *op)
     }
 
     /* create a new strip, and offset it to start on the current frame */
-    strip = BKE_nlastrip_new(act);
+    /* TODO: attempt to find an appropriate slot. */
+    strip = BKE_nlastrip_new(act, 0);
 
     strip->end += (cfra - strip->start);
     strip->start = cfra;

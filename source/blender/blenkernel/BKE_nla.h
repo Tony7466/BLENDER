@@ -185,7 +185,7 @@ void BKE_nla_clip_length_ensure_nonzero(const float *actstart, float *r_actend);
 /**
  * Create a NLA Strip referencing the given Action.
  */
-struct NlaStrip *BKE_nlastrip_new(struct bAction *act);
+struct NlaStrip *BKE_nlastrip_new(struct bAction *act, int32_t act_slot_handle);
 
 /*
  * Removes the given NLA strip from the list of strips provided.
@@ -203,6 +203,7 @@ void BKE_nlastrip_remove_and_free(ListBase *strips, struct NlaStrip *strip, cons
  */
 struct NlaStrip *BKE_nlastack_add_strip(struct AnimData *adt,
                                         struct bAction *act,
+                                        int32_t act_slot_handle,
                                         bool is_liboverride);
 /**
  * Add a NLA Strip referencing the given speaker's sound.

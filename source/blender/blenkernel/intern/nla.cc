@@ -462,7 +462,7 @@ void BKE_nla_clip_length_ensure_nonzero(const float *actstart, float *r_actend)
   }
 }
 
-NlaStrip *BKE_nlastrip_new(bAction *act)
+NlaStrip *BKE_nlastrip_new(bAction *act, const int32_t act_slot_handle)
 {
   NlaStrip *strip;
 
@@ -492,6 +492,7 @@ NlaStrip *BKE_nlastrip_new(bAction *act)
 
   /* assign the action reference */
   strip->act = act;
+  strip->act_slot_handle = act_slot_handle;
   id_us_plus(&act->id);
 
   /* determine initial range */
@@ -508,7 +509,10 @@ NlaStrip *BKE_nlastrip_new(bAction *act)
   return strip;
 }
 
-NlaStrip *BKE_nlastack_add_strip(AnimData *adt, bAction *act, const bool is_liboverride)
+NlaStrip *BKE_nlastack_add_strip(AnimData *adt,
+                                 bAction *act,
+                                 const int32_t act_slot_handle,
+                                 const bool is_liboverride)
 {
   NlaStrip *strip;
   NlaTrack *nlt;
@@ -519,7 +523,7 @@ NlaStrip *BKE_nlastack_add_strip(AnimData *adt, bAction *act, const bool is_libo
   }
 
   /* create a new NLA strip */
-  strip = BKE_nlastrip_new(act);
+  strip = BKE_nlastrip_new(act, act_slot_handle);
   if (strip == nullptr) {
     return nullptr;
   }
@@ -2110,7 +2114,7 @@ bool BKE_nla_action_stash(AnimData *adt, const bool is_liboverride)
   /* add the action as a strip in this new track
    * NOTE: a new user is created here
    */
-  strip = BKE_nlastrip_new(adt->action);
+  strip = BKE_nlastrip_new(adt->action, adt->slot_handle);
   BLI_assert(strip != nullptr);
 
   BKE_nlatrack_add_strip(nlt, strip, is_liboverride);
@@ -2157,7 +2161,7 @@ void BKE_nla_action_pushdown(AnimData *adt, const bool is_liboverride)
   }
 
   /* add a new NLA strip to the track, which references the active action */
-  strip = BKE_nlastack_add_strip(adt, adt->action, is_liboverride);
+  strip = BKE_nlastack_add_strip(adt, adt->action, adt->slot_handle, is_liboverride);
   if (strip == nullptr) {
     return;
   }

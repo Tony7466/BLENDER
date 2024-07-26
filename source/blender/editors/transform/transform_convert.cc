@@ -1203,7 +1203,8 @@ void animrecord_check_state(TransInfo *t, ID *id)
         /* Only push down if action is more than 1-2 frames long. */
         BKE_action_frame_range_calc(adt->action, true, &astart, &aend);
         if (aend > astart + 2.0f) {
-          NlaStrip *strip = BKE_nlastack_add_strip(adt, adt->action, ID_IS_OVERRIDE_LIBRARY(id));
+          NlaStrip *strip = BKE_nlastack_add_strip(
+              adt, adt->action, adt->slot_handle, ID_IS_OVERRIDE_LIBRARY(id));
 
           /* Clear reference to action now that we've pushed it onto the stack. */
           id_us_min(&adt->action->id);

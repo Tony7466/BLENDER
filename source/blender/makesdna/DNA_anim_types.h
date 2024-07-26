@@ -738,6 +738,9 @@ typedef struct NlaStrip {
   ListBase strips;
   /** Action that is referenced by this strip (strip is 'user' of the action). */
   bAction *act;
+  int32_t act_slot_handle;
+
+  char _pad0[4];
 
   /** F-Curves for controlling this strip's influence and timing */ /* TODO: move out? */
   ListBase fcurves;
@@ -786,6 +789,11 @@ typedef struct NlaStrip {
 
   void *_pad3;
 } NlaStrip;
+
+#ifdef __cplusplus
+/* Static assertion that things that should have the same type actually do. */
+static_assert(std::is_same_v<decltype(ActionSlot::handle), decltype(NlaStrip::act_slot_handle)>);
+#endif
 
 /* NLA Strip Blending Mode */
 typedef enum eNlaStrip_Blend_Mode {
