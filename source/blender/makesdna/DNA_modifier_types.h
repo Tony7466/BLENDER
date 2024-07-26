@@ -2418,7 +2418,9 @@ typedef struct NodesModifierBake {
   uint32_t flag;
   /** #NodesModifierBakeMode. */
   uint8_t bake_mode;
-  char _pad[7];
+  /** #NodesModifierBakeTarget. */
+  int8_t bake_target;
+  char _pad[6];
   /**
    * Directory where the baked data should be stored. This is only used when
    * `NODES_MODIFIER_BAKE_CUSTOM_PATH` is set.
@@ -2461,9 +2463,13 @@ typedef enum NodesModifierPanelFlag {
 typedef enum NodesModifierBakeFlag {
   NODES_MODIFIER_BAKE_CUSTOM_SIMULATION_FRAME_RANGE = 1 << 0,
   NODES_MODIFIER_BAKE_CUSTOM_PATH = 1 << 1,
-  /** Determines if the a new bake should be stored on disk or packed. */
-  NODES_MODIFIER_BAKE_TO_DISK = 1 << 2,
 } NodesModifierBakeFlag;
+
+typedef enum NodesModifierBakeTarget {
+  NODES_MODIFIER_BAKE_TARGET_INHERIT = 0,
+  NODES_MODIFIER_BAKE_TARGET_PACKED = 1,
+  NODES_MODIFIER_BAKE_TARGET_DISK = 2,
+} NodesModifierBakeTarget;
 
 typedef enum NodesModifierBakeMode {
   NODES_MODIFIER_BAKE_MODE_ANIMATION = 0,
@@ -2480,8 +2486,10 @@ typedef struct NodesModifierData {
   char *bake_directory;
   /** NodesModifierFlag. */
   int8_t flag;
+  /** #NodesModifierBakeTarget. */
+  int8_t bake_target;
 
-  char _pad[3];
+  char _pad[2];
   int bakes_num;
   NodesModifierBake *bakes;
 

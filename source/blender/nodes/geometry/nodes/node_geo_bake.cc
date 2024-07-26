@@ -630,13 +630,15 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
       }
       uiItemL(col, label.c_str(), ICON_NONE);
     }
-    if (!ctx.is_baked) {
-      uiItemR(col, &ctx.bake_rna, "bake_to_disk", UI_ITEM_NONE, nullptr, ICON_NONE);
-    }
   }
 
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
+  {
+    uiLayout *col = uiLayoutColumn(layout, true);
+    uiLayoutSetActive(col, !ctx.is_baked);
+    uiItemR(col, &ctx.bake_rna, "bake_target", UI_ITEM_NONE, nullptr, ICON_NONE);
+  }
   {
     uiLayout *settings_col = uiLayoutColumn(layout, false);
     uiLayoutSetEnabled(settings_col, !ctx.is_baked);
