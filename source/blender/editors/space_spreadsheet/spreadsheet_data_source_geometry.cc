@@ -561,7 +561,7 @@ int get_instance_reference_icon(const bke::InstanceReference &reference)
       return ICON_OUTLINER_COLLECTION;
     }
     case bke::InstanceReference::Type::GeometrySet: {
-      return ICON_EMPTY_AXIS;
+      return ICON_GEOMETRY_SET;
     }
     case bke::InstanceReference::Type::None: {
       break;

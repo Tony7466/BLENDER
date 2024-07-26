@@ -142,7 +142,7 @@ class RootGeometryViewItem : public InstancesTreeViewItem {
 
   void build_row(uiLayout &row) override
   {
-    uiItemL(&row, label_.c_str(), ICON_EMPTY_AXIS);
+    uiItemL(&row, label_.c_str(), ICON_GEOMETRY_SET);
   }
 };
 
