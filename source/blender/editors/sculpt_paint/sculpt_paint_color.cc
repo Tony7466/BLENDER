@@ -253,25 +253,6 @@ struct LocalData {
   Vector<Vector<int>> vert_neighbors;
 };
 
-BLI_NOINLINE static void calc_smooth_colors(const OffsetIndices<int> faces,
-                                            const Span<int> corner_verts,
-                                            const GroupedSpan<int> vert_to_face_map,
-                                            const Span<Vector<int>> vert_neighbors,
-                                            const GSpan colors,
-                                            const bke::AttrDomain color_domain,
-                                            const MutableSpan<float4> smooth_colors)
-{
-  for (const int i : vert_neighbors.index_range()) {
-    float4 sum(0);
-    const Span<int> neighbors = vert_neighbors[i];
-    for (const int vert : neighbors) {
-      sum += color::color_vert_get(
-          faces, corner_verts, vert_to_face_map, colors, color_domain, vert);
-    }
-    smooth_colors[i] = sum / neighbors.size();
-  }
-}
-
 static void do_color_smooth_task(const Object &object,
                                  const Span<float3> vert_positions,
                                  const Span<float3> vert_normals,
@@ -330,13 +311,13 @@ static void do_color_smooth_task(const Object &object,
 
   tls.new_colors.reinitialize(verts.size());
   MutableSpan<float4> new_colors = tls.new_colors;
-  calc_smooth_colors(faces,
-                     corner_verts,
-                     vert_to_face_map,
-                     vert_neighbors,
-                     color_attribute.span,
-                     color_attribute.domain,
-                     new_colors);
+  smooth::neighbor_color_average(faces,
+                                 corner_verts,
+                                 vert_to_face_map,
+                                 color_attribute.span,
+                                 color_attribute.domain,
+                                 vert_neighbors,
+                                 new_colors);
 
   for (const int i : colors.index_range()) {
     blend_color_interpolate_float(new_colors[i], colors[i], new_colors[i], factors[i]);
@@ -672,6 +653,7 @@ static void do_smear_brush_task(Object &object,
                                 const OffsetIndices<int> faces,
                                 const Span<int> corner_verts,
                                 const GroupedSpan<int> vert_to_face_map,
+                                const Span<bool> hide_poly,
                                 const Brush &brush,
                                 bke::pbvh::Node &node,
                                 LocalData &tls,
@@ -715,6 +697,9 @@ static void do_smear_brush_task(Object &object,
     brush_delta = ss.cache->location - ss.cache->last_location;
   }
 
+  Vector<int> neighbors;
+  Vector<int> neighbor_neighbors;
+
   for (const int i : verts.index_range()) {
     const int vert = verts[i];
 
@@ -752,23 +737,24 @@ static void do_smear_brush_task(Object &object,
      * costly.
      */
 
-    SculptVertexNeighborIter ni2;
-    SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (ss, PBVHVertRef{vert}, ni2) {
-      const float3 &nco = vert_positions[ni2.index];
-
-      SculptVertexNeighborIter ni;
-      SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (ss, ni2.vertex, ni) {
-        if (ni.index == vert) {
+    for (const int neigbor : vert_neighbors_get_mesh(
+             vert, faces, corner_verts, vert_to_face_map, hide_poly, neighbors))
+    {
+      const float3 &nco = vert_positions[neigbor];
+      for (const int neighbor_neighbor : vert_neighbors_get_mesh(
+               vert, faces, corner_verts, vert_to_face_map, hide_poly, neighbor_neighbors))
+      {
+        if (neighbor_neighbor == vert) {
           continue;
         }
 
-        float3 vertex_disp = vert_positions[ni.index] - vert_positions[vert];
+        float3 vertex_disp = vert_positions[neighbor_neighbor] - vert_positions[vert];
 
         /* Weight by how close we are to our target distance from vd.co. */
         float w = (1.0f + fabsf(math::length(vertex_disp) / strength - 1.0f));
 
         /* TODO: use cotangents (or at least face areas) here. */
-        float len = math::distance(vert_positions[ni.index], nco);
+        float len = math::distance(vert_positions[neighbor_neighbor], nco);
         if (len > 0.0f) {
           len = strength / len;
         }
@@ -790,7 +776,7 @@ static void do_smear_brush_task(Object &object,
           continue;
         }
 
-        const float4 &neighbor_color = ss.cache->prev_colors[ni.index];
+        const float4 &neighbor_color = ss.cache->prev_colors[neighbor_neighbor];
         float color_interp = -math::dot(current_disp_norm, vertex_disp_norm);
 
         /* Square directional weight to get a somewhat sharper result. */
@@ -799,9 +785,7 @@ static void do_smear_brush_task(Object &object,
         accum += neighbor_color * w;
         totw += w;
       }
-      SCULPT_VERTEX_NEIGHBORS_ITER_END(ni);
     }
-    SCULPT_VERTEX_NEIGHBORS_ITER_END(ni2);
 
     if (totw != 0.0f) {
       accum /= totw;
@@ -903,6 +887,7 @@ void do_smear_brush(const Sculpt &sd, Object &ob, Span<bke::pbvh::Node *> nodes)
                             faces,
                             corner_verts,
                             vert_to_face_map,
+                            hide_poly,
                             brush,
                             *nodes[i],
                             tls,
