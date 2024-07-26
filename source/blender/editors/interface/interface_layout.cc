@@ -102,7 +102,6 @@ enum uiItemType {
   ITEM_LAYOUT_SPLIT,
   ITEM_LAYOUT_OVERLAP,
   ITEM_LAYOUT_RADIAL,
-  ITEM_LAYOUT_ROW_PADDED,
 
   ITEM_LAYOUT_ROOT
 #if 0
@@ -465,7 +464,6 @@ int uiLayoutGetLocalDir(const uiLayout *layout)
     case ITEM_LAYOUT_ROOT:
     case ITEM_LAYOUT_OVERLAP:
     case ITEM_LAYOUT_PANEL_HEADER:
-    case ITEM_LAYOUT_ROW_PADDED:
       return UI_LAYOUT_HORIZONTAL;
     case ITEM_LAYOUT_COLUMN:
     case ITEM_LAYOUT_COLUMN_FLOW:
@@ -4020,15 +4018,6 @@ static RadialDirection ui_get_radialbut_vec(float vec[2], short itemnum)
   return dir;
 }
 
-static void ui_litem_layout_row_padded(uiLayout *litem)
-{
-  const int padding = 5.0f * UI_SCALE_FAC;
-  litem->x += padding;
-  litem->w -= 2 * padding;
-
-  ui_litem_layout_row(litem);
-}
-
 static bool ui_item_is_radial_displayable(uiItem *item)
 {
 
@@ -4960,19 +4949,6 @@ uiLayout *uiLayoutRow(uiLayout *layout, bool align)
   return litem;
 }
 
-uiLayout *uiLayoutRowPadded(uiLayout *layout, bool align)
-{
-  uiLayout *litem = MEM_new<uiLayout>(__func__);
-  ui_litem_init_from_parent(litem, layout, align);
-
-  litem->type = ITEM_LAYOUT_ROW_PADDED;
-  litem->space = (align) ? 0 : layout->root->style->buttonspacex;
-
-  UI_block_layout_set_current(layout->root->block, litem);
-
-  return litem;
-}
-
 PanelLayout uiLayoutPanelProp(const bContext *C,
                               uiLayout *layout,
                               PointerRNA *open_prop_owner,
@@ -5312,6 +5288,19 @@ void uiLayoutSetUnitsY(uiLayout *layout, float unit)
   layout->units[1] = unit;
 }
 
+void uiLayoutAddPaddingX(uiLayout *layout)
+{
+  uiBlock *block = uiLayoutGetBlock(layout);
+  uiLayout *row = uiLayoutRow(layout, true);
+  uiLayoutSetFixedSize(row, true);
+
+  const int padding = layout->root->style->boxspace;
+  uiDefBut(block, UI_BTYPE_SEPR, 0, "", 0, 0, padding, 0, nullptr, 0.0, 0.0, "");
+
+  /* Restore. */
+  UI_block_layout_set_current(block, layout);
+}
+
 void uiLayoutSetEmboss(uiLayout *layout, eUIEmbossType emboss)
 {
   layout->emboss = emboss;
@@ -5636,7 +5625,6 @@ static void ui_item_estimate(uiItem *item)
         ui_litem_estimate_grid_flow(litem);
         break;
       case ITEM_LAYOUT_ROW:
-      case ITEM_LAYOUT_ROW_PADDED:
         ui_litem_estimate_row(litem);
         break;
       case ITEM_LAYOUT_PANEL_HEADER:
@@ -5755,9 +5743,6 @@ static void ui_item_layout(uiItem *item)
         break;
       case ITEM_LAYOUT_ROW:
         ui_litem_layout_row(litem);
-        break;
-      case ITEM_LAYOUT_ROW_PADDED:
-        ui_litem_layout_row_padded(litem);
         break;
       case ITEM_LAYOUT_PANEL_HEADER:
         ui_litem_layout_panel_header(litem);
@@ -6393,7 +6378,6 @@ static void ui_layout_introspect_items(DynStr *ds, blender::Span<uiItem *> items
       CASE_ITEM(ITEM_LAYOUT_ROOT);
       CASE_ITEM(ITEM_LAYOUT_GRID_FLOW);
       CASE_ITEM(ITEM_LAYOUT_RADIAL);
-      CASE_ITEM(ITEM_LAYOUT_ROW_PADDED);
     }
 
 #undef CASE_ITEM

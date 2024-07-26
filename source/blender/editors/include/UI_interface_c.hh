@@ -2309,6 +2309,7 @@ void uiLayoutSetPropSep(uiLayout *layout, bool is_sep);
 void uiLayoutSetPropDecorate(uiLayout *layout, bool is_sep);
 int uiLayoutGetLocalDir(const uiLayout *layout);
 void uiLayoutSetSearchWeight(uiLayout *layout, float weight);
+void uiLayoutAddPaddingX(uiLayout *layout);
 
 wmOperatorCallContext uiLayoutGetOperatorContext(uiLayout *layout);
 bool uiLayoutGetActive(uiLayout *layout);
@@ -2333,12 +2334,6 @@ float uiLayoutGetSearchWeight(uiLayout *layout);
 /* Layout create functions. */
 
 uiLayout *uiLayoutRow(uiLayout *layout, bool align);
-
-/**
- * Variant of #uiLayoutRow that adds a bit of padding on the sides.
- * This can be used to add margins when stacking items in overlapping layouts.
- */
-uiLayout *uiLayoutRowPadded(uiLayout *layout, bool align);
 
 struct PanelLayout {
   uiLayout *header;
