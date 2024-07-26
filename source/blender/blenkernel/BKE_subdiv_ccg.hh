@@ -69,8 +69,9 @@ struct SubdivCCGCoord {
   /* Coordinate within the grid. */
   short x, y;
 
-  /* Returns the computed index within a grids sized array for this SubdivCCGCoord. */
-  inline int to_index(const CCGKey &key) const
+  /* Returns the index for the coordinate in an array sized to contain all grid vertices (including
+   * duplicates) */
+  int to_index(const CCGKey &key) const
   {
     return key.grid_area * this->grid_index +
            CCG_grid_xy_to_index(key.grid_size, this->x, this->y);
