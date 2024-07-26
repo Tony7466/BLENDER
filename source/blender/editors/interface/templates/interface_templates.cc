@@ -6376,7 +6376,8 @@ void uiTemplateReportsBanner(uiLayout *layout, bContext *C)
 static bool uiTemplateInputStatusAzone(uiLayout *layout, AZone *az, ARegion *region)
 {
   if (az->type == AZONE_AREA) {
-    uiItemL(layout, nullptr, ICON_MOUSE_LMB);
+    uiItemS_ex(layout, 0.5f);
+    uiItemL(layout, nullptr, ICON_MOUSE_LMB_DRAG);
     uiItemS_ex(layout, 0.3f);
     if (U.experimental.use_docking) {
       uiItemL(layout, IFACE_("Split/Dock"), ICON_NONE);
@@ -6386,18 +6387,18 @@ static bool uiTemplateInputStatusAzone(uiLayout *layout, AZone *az, ARegion *reg
     }
     uiItemS_ex(layout, 0.7f);
     uiItemL(layout, "", ICON_EVENT_SHIFT);
-    uiItemL(layout, nullptr, ICON_MOUSE_LMB);
+    uiItemL(layout, nullptr, ICON_MOUSE_LMB_DRAG);
     uiItemS_ex(layout, 0.3f);
     uiItemL(layout, IFACE_("Duplicate into window"), ICON_NONE);
     uiItemS_ex(layout, 0.7f);
     uiItemL(layout, "", ICON_EVENT_CTRL);
-    uiItemL(layout, nullptr, ICON_MOUSE_LMB);
+    uiItemL(layout, nullptr, ICON_MOUSE_LMB_DRAG);
     uiItemS_ex(layout, 0.3f);
     uiItemL(layout, IFACE_("Swap areas"), ICON_NONE);
     return true;
   }
   if (az->type == AZONE_REGION) {
-    uiItemL(layout, nullptr, ICON_MOUSE_LMB);
+    uiItemL(layout, nullptr, ICON_MOUSE_LMB_DRAG);
     uiItemS_ex(layout, 0.3f);
     uiItemL(layout,
             (region->visible) ? IFACE_("Resize region") : IFACE_("Show hidden region"),
@@ -6456,7 +6457,8 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
 
   if (!region) {
     /* On a gap between editors. */
-    uiItemL(row, nullptr, ICON_MOUSE_LMB);
+    uiItemS_ex(row, 0.5f);
+    uiItemL(row, nullptr, ICON_MOUSE_LMB_DRAG);
     uiItemS_ex(layout, 0.3f);
     uiItemL(row, IFACE_("Resize"), ICON_NONE);
     uiItemS_ex(layout, 0.7f);
