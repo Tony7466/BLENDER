@@ -117,7 +117,7 @@ bool AssetRepresentation::get_use_relative_path() const
 
 ID *AssetRepresentation::local_id() const
 {
-  return is_local_id() ? std::get<ID *>(asset_) : nullptr;
+  return this->is_local_id() ? std::get<ID *>(asset_) : nullptr;
 }
 
 bool AssetRepresentation::is_local_id() const
