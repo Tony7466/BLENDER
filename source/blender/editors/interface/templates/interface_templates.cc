@@ -6470,9 +6470,6 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
 
   /* Otherwise should cursor keymap status. */
   for (int i = 0; i < 3; i++) {
-    // uiLayout *box = uiLayoutRow(layout, false);
-    // uiLayout *col = uiLayoutColumn(box, false);
-    // uiLayout *row = uiLayoutRow(col, true);
     uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_LEFT);
 
     const char *msg = CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT,
@@ -6938,8 +6935,10 @@ bool uiTemplateEventFromKeymapItem(uiLayout *layout,
     /* Icon and text separately is closer together with aligned layout. */
 
     if (icon >= ICON_MOUSE_LMB && icon <= ICON_MOUSE_RMB_DRAG) {
-      /* Negative space before all narrow mice icons. */
-      uiItemS_ex(layout, -0.5f);
+      /* Negative space before all narrow mice icons. Except first item. */
+      if (!UI_block_is_empty(uiLayoutGetBlock(layout))) {
+        uiItemS_ex(layout, -0.5f);
+      }
     }
     uiItemL(layout, "", icon);
     if (icon >= ICON_MOUSE_LMB && icon <= ICON_MOUSE_RMB) {

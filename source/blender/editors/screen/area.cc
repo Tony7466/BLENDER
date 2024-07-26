@@ -892,7 +892,9 @@ static void ed_workspace_status_mouse_item(WorkSpace *workspace,
                                            const bool inverted = false)
 {
   if (icon) {
-    if (icon >= ICON_MOUSE_LMB && icon <= ICON_MOUSE_RMB_DRAG) {
+    if (!workspace->runtime->status.is_empty() && icon >= ICON_MOUSE_LMB &&
+        icon <= ICON_MOUSE_RMB_DRAG)
+    {
       /* Negative space before all narrow mice icons. */
       ed_workspace_status_space(workspace, STATUS_MOUSE_ICON_PAD);
     }
