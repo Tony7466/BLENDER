@@ -5051,6 +5051,8 @@ void ANIM_channel_draw(
           draw_sliders = (sipo->flag & SIPO_SLIDERS);
           break;
         }
+        default:
+          BLI_assert_unreachable();
       }
     }
 
@@ -5869,6 +5871,8 @@ void ANIM_channel_draw_widgets(const bContext *C,
           draw_sliders = (sipo->flag & SIPO_SLIDERS);
           break;
         }
+        default:
+          BLI_assert_unreachable();
       }
     }
 
@@ -5980,11 +5984,13 @@ void ANIM_channel_draw_widgets(const bContext *C,
         UI_block_emboss_set(block, UI_EMBOSS_NONE);
       }
 
+#ifdef WITH_ANIM_BAKLAVA
       /* Slot ID type indicator. */
       if (ale->type == ANIMTYPE_ACTION_SLOT) {
         offset -= ICON_WIDTH;
         UI_icon_draw(offset, ymid, acf_action_slot_idtype_icon(ale));
       }
+#endif /* WITH_ANIM_BAKLAVA */
     }
 
     /* Draw slider:
