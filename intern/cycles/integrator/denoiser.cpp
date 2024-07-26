@@ -104,7 +104,7 @@ bool use_optix_denoiser(Device *denoiser_device, const DenoiseParams &params)
 #endif
 
 #ifdef WITH_OPENIMAGEDENOISE
-bool use_oidn_denoiser(Device *denoiser_device, const DenoiseParams &params)
+bool use_gpu_oidn_denoiser(Device *denoiser_device, const DenoiseParams &params)
 {
   return (params.type == DENOISER_OPENIMAGEDENOISE && params.use_gpu &&
           OIDNDenoiserGPU::is_device_supported(denoiser_device->info));
@@ -133,7 +133,7 @@ DenoiseParams get_expected_denoise_params(Device *denoiser_device,
 
 #ifdef WITH_OPENIMAGEDENOISE
     /* If available and allowed, then we will use OpenImageDenoise on GPU, otherwise on CPU. */
-    if (use_oidn_denoiser(single_denoiser_device, expected_denoise_params)) {
+    if (use_gpu_oidn_denoiser(single_denoiser_device, expected_denoise_params)) {
       return expected_denoise_params;
     }
 #endif
@@ -166,7 +166,7 @@ unique_ptr<Denoiser> Denoiser::create(Device *denoiser_device,
 
 #ifdef WITH_OPENIMAGEDENOISE
     /* If available and allowed, then we will use OpenImageDenoise on GPU, otherwise on CPU. */
-    if (use_oidn_denoiser(single_denoiser_device, params)) {
+    if (use_gpu_oidn_denoiser(single_denoiser_device, params)) {
       return make_unique<OIDNDenoiserGPU>(single_denoiser_device, params);
     }
 #endif

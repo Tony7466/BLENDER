@@ -24,7 +24,7 @@ bool use_optix_denoiser(Device *denoiser_device, const DenoiseParams &params);
 #endif
 
 #ifdef WITH_OPENIMAGEDENOISE
-bool use_oidn_denoiser(Device *denoiser_device, const DenoiseParams &params);
+bool use_gpu_oidn_denoiser(Device *denoiser_device, const DenoiseParams &params);
 #endif
 
 DenoiseParams get_expected_denoise_params(Device *denoiser_device,
