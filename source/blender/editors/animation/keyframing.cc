@@ -882,18 +882,8 @@ static int delete_key_v3d_without_keying_set(bContext *C, wmOperator *op)
       const float cfra_unmap = BKE_nla_tweakedit_remap(adt, cfra, NLATIME_CONVERT_UNMAP);
 
       Action &action = act->wrap();
-      blender::Vector<FCurve *> modified_fcurves;
       if (action.is_action_layered()) {
-        for (FCurve *fcu : fcurves_for_action_slot(action, adt->slot_handle)) {
-          if (!can_delete_key(fcu, ob, op->reports)) {
-            continue;
-          }
-          const bool deleted = fcurve_delete_keyframe_at_time(fcu, cfra_unmap);
-          if (deleted) {
-            success += 1;
-            modified_fcurves.append(fcu);
-          }
-        }
+        success += action_delete_keyframe(action, adt->slot_handle, cfra_unmap);
       }
       else {
         FCurve *fcn;

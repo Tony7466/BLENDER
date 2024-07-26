@@ -1426,10 +1426,10 @@ Vector<FCurve *> action_fcurves_find(Action &action,
   Vector<FCurve *> fcurves;
   for (Layer *layer : action.layers()) {
     for (Strip *strip : layer->strips()) {
-      if (!(strip->type() == Strip::Type::Keyframe)) {
+      if (!strip->is<KeyframeStrip>()) {
         continue;
       }
-      KeyframeStrip &key_strip = strip->template as<KeyframeStrip>();
+      KeyframeStrip &key_strip = strip->as<KeyframeStrip>();
       for (ChannelBag *bag : key_strip.channelbags()) {
         if (bag->slot_handle != handle) {
           continue;
