@@ -677,14 +677,14 @@ static void rna_AttributeGroupID_active_index_range(
   *softmax = *max;
 }
 
-static void rna_AttributeGroupID_update_active(Main *bmain, Scene *scene, PointerRNA *ptr)
+static void rna_AttributeGroup_update_active(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   rna_Attribute_update_data(bmain, scene, ptr);
 }
 
-static void rna_AttributeGroupID_update_active_color(Main * /*bmain*/,
-                                                     Scene * /*scene*/,
-                                                     PointerRNA *ptr)
+static void rna_AttributeGroup_update_active_color(Main * /*bmain*/,
+                                                   Scene * /*scene*/,
+                                                   PointerRNA *ptr)
 {
   ID *id = ptr->owner_id;
 
@@ -1501,7 +1501,7 @@ static void rna_def_attribute_group_id_common(StructRNA *srna)
                                  nullptr,
                                  nullptr);
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_NEVER_UNLINK);
-  RNA_def_property_update(prop, 0, "rna_AttributeGroupID_update_active");
+  RNA_def_property_update(prop, 0, "rna_AttributeGroup_update_active");
 
   prop = RNA_def_property(srna, "active_index", PROP_INT, PROP_NONE);
   RNA_def_property_ui_text(prop, "Active Attribute Index", "Active attribute index");
@@ -1510,7 +1510,7 @@ static void rna_def_attribute_group_id_common(StructRNA *srna)
                              "rna_AttributeGroupID_active_index_get",
                              "rna_AttributeGroupID_active_index_set",
                              "rna_AttributeGroupID_active_index_range");
-  RNA_def_property_update(prop, 0, "rna_AttributeGroupID_update_active");
+  RNA_def_property_update(prop, 0, "rna_AttributeGroup_update_active");
 
   /* Domain Size */
   func = RNA_def_function(srna, "domain_size", "rna_AttributeGroupID_domain_size");
@@ -1548,7 +1548,7 @@ static void rna_def_attribute_group_mesh(BlenderRNA *brna)
                                  nullptr,
                                  nullptr);
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_NEVER_UNLINK);
-  RNA_def_property_update(prop, 0, "rna_AttributeGroupID_update_active_color");
+  RNA_def_property_update(prop, 0, "rna_AttributeGroup_update_active_color");
 
   prop = RNA_def_property(srna, "active_color_index", PROP_INT, PROP_NONE);
   RNA_def_property_ui_text(prop, "Active Color Index", "Active color attribute index");
@@ -1557,7 +1557,7 @@ static void rna_def_attribute_group_mesh(BlenderRNA *brna)
                              "rna_AttributeGroupMesh_active_color_index_get",
                              "rna_AttributeGroupMesh_active_color_index_set",
                              "rna_AttributeGroupMesh_active_color_index_range");
-  RNA_def_property_update(prop, 0, "rna_AttributeGroupID_update_active_color");
+  RNA_def_property_update(prop, 0, "rna_AttributeGroup_update_active_color");
 
   prop = RNA_def_property(srna, "render_color_index", PROP_INT, PROP_NONE);
   RNA_def_property_ui_text(prop,
@@ -1568,7 +1568,7 @@ static void rna_def_attribute_group_mesh(BlenderRNA *brna)
                              "rna_AttributeGroupMesh_render_color_index_get",
                              "rna_AttributeGroupMesh_render_color_index_set",
                              "rna_AttributeGroupMesh_render_color_index_range");
-  RNA_def_property_update(prop, 0, "rna_AttributeGroupID_update_active_color");
+  RNA_def_property_update(prop, 0, "rna_AttributeGroup_update_active_color");
 
   prop = RNA_def_property(srna, "default_color_name", PROP_STRING, PROP_NONE);
   RNA_def_property_string_maxlength(prop, MAX_CUSTOMDATA_LAYER_NAME_NO_PREFIX);
@@ -1676,7 +1676,7 @@ static void rna_def_attribute_group_grease_pencil_drawing(BlenderRNA *brna)
                                  nullptr,
                                  "rna_AttributeGroupGreasePencilDrawing_active_poll");
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_NEVER_UNLINK);
-  RNA_def_property_update(prop, 0, "rna_AttributeGroupID_update_active");
+  RNA_def_property_update(prop, 0, "rna_AttributeGroup_update_active");
 
   prop = RNA_def_property(srna, "active_index", PROP_INT, PROP_NONE);
   RNA_def_property_ui_text(prop, "Active Attribute Index", "Active attribute index");
@@ -1685,7 +1685,7 @@ static void rna_def_attribute_group_grease_pencil_drawing(BlenderRNA *brna)
                              "rna_AttributeGroupGreasePencilDrawing_active_index_get",
                              "rna_AttributeGroupGreasePencilDrawing_active_index_set",
                              "rna_AttributeGroupGreasePencilDrawing_active_index_range");
-  RNA_def_property_update(prop, 0, "rna_AttributeGroupID_update_active");
+  RNA_def_property_update(prop, 0, "rna_AttributeGroup_update_active");
 
   /* Domain Size */
   func = RNA_def_function(
