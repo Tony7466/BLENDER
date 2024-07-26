@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BKE_physics_geometry.hh"
 #include "BLI_string.h"
 
 #include "DNA_collection_types.h"
@@ -113,6 +114,36 @@ static BIFIconID curves_domain_to_icon(const bke::AttrDomain domain)
   }
 }
 
+static StringRefNull physics_domain_to_label(const bke::AttrDomain domain)
+{
+  switch (domain) {
+    case bke::AttrDomain::Point:
+      return IFACE_("Body");
+    case bke::AttrDomain::Edge:
+      return IFACE_("Constraint");
+    case bke::AttrDomain::Instance:
+      return IFACE_("Shape");
+    default:
+      BLI_assert_unreachable();
+      return "";
+  }
+}
+
+static BIFIconID physics_domain_to_icon(const bke::AttrDomain domain)
+{
+  switch (domain) {
+    case bke::AttrDomain::Point:
+      return ICON_RIGID_BODY;
+    case bke::AttrDomain::Edge:
+      return ICON_RIGID_BODY_CONSTRAINT;
+    case bke::AttrDomain::Instance:
+      return ICON_MESH_ICOSPHERE;
+    default:
+      BLI_assert_unreachable();
+      return ICON_NONE;
+  }
+}
+
 class DataSetViewItem : public ui::AbstractTreeViewItem {
  public:
   GeometryDataSetTreeView &get_tree() const;
@@ -217,18 +248,6 @@ class GreasePencilViewItem : public DataSetViewItem {
   void build_row(uiLayout &row) override
   {
     uiItemL(&row, label_.c_str(), ICON_OUTLINER_DATA_GREASEPENCIL);
-
-    GeometryDataSetTreeViewItem &physics = this->add_tree_item<GeometryDataSetTreeViewItem>(
-        bke::GeometryComponent::Type::Physics, IFACE_("Physics"), ICON_PHYSICS);
-    physics.uncollapse_by_default();
-    physics.add_tree_item<GeometryDataSetTreeViewItem>(bke::GeometryComponent::Type::Physics,
-                                                       bke::AttrDomain::Point,
-                                                       IFACE_("Bodies"),
-                                                       ICON_RIGID_BODY);
-    physics.add_tree_item<GeometryDataSetTreeViewItem>(bke::GeometryComponent::Type::Physics,
-                                                       bke::AttrDomain::Edge,
-                                                       IFACE_("Constraints"),
-                                                       ICON_RIGID_BODY_CONSTRAINT);
   }
 };
 
@@ -390,6 +409,46 @@ class InstancesViewItem : public DataSetViewItem {
   }
 };
 
+class PhysicsViewItem : public DataSetViewItem {
+ public:
+  PhysicsViewItem()
+  {
+    label_ = IFACE_("Physics");
+  }
+
+  void build_row(uiLayout &row) override
+  {
+    uiItemL(&row, label_.c_str(), ICON_CURVE_DATA);
+  }
+};
+
+class PhysicsDomainViewItem : public DataSetViewItem {
+ private:
+  const bke::PhysicsGeometry *physics_;
+  bke::AttrDomain domain_;
+
+ public:
+  PhysicsDomainViewItem(const bke::PhysicsGeometry *physics, const bke::AttrDomain domain)
+      : physics_(physics), domain_(domain)
+  {
+    label_ = physics_domain_to_label(domain);
+  }
+
+  std::optional<GeometryDataIdentifier> get_geometry_data_id() const override
+  {
+    return GeometryDataIdentifier{bke::GeometryComponent::Type::Physics, std::nullopt, domain_};
+  }
+
+  void build_row(uiLayout &row) override
+  {
+    const BIFIconID icon = physics_domain_to_icon(domain_);
+    uiItemL(&row, label_.c_str(), icon);
+
+    const int count = physics_ ? physics_->attributes().domain_size(domain_) : 0;
+    draw_count(*this, count);
+  }
+};
+
 class GeometryDataSetTreeView : public ui::AbstractTreeView {
  private:
   bke::GeometrySet root_geometry_set_;
@@ -430,6 +489,9 @@ class GeometryDataSetTreeView : public ui::AbstractTreeView {
 
     const bke::Instances *instances = geometry.get_instances();
     this->build_tree_for_instances(instances, parent);
+
+    const bke::PhysicsGeometry *physics = geometry.get_physics();
+    this->build_tree_for_physics(physics, parent);
   }
 
   void build_tree_for_mesh(const Mesh *mesh, ui::TreeViewItemContainer &parent)
@@ -486,6 +548,15 @@ class GeometryDataSetTreeView : public ui::AbstractTreeView {
   void build_tree_for_instances(const bke::Instances *instances, ui::TreeViewItemContainer &parent)
   {
     parent.add_tree_item<InstancesViewItem>(instances);
+  }
+
+  void build_tree_for_physics(const bke::PhysicsGeometry *physics,
+                              ui::TreeViewItemContainer &parent)
+  {
+    auto &physics_item = parent.add_tree_item<PhysicsViewItem>();
+    physics_item.uncollapse_by_default();
+    physics_item.add_tree_item<PhysicsDomainViewItem>(physics, bke::AttrDomain::Point);
+    physics_item.add_tree_item<PhysicsDomainViewItem>(physics, bke::AttrDomain::Curve);
   }
 };
 
