@@ -655,9 +655,9 @@ void rna_ID_extra_user_set(PointerRNA *ptr, bool value)
 }
 
 void rna_id_animdata_fix_paths_rename_all(struct ID *id,
-                                                      const char *prefix,
-                                                      const char *oldName,
-                                                      const char *newName)
+                                          const char *prefix,
+                                          const char *oldName,
+                                          const char *newName)
 {
   BKE_animdata_fix_paths_rename_all(id, prefix, oldName, newName);
 }
@@ -2522,13 +2522,11 @@ static void rna_def_ID(BlenderRNA *brna)
       func, "preview_image", "ImagePreview", "", "The existing or created preview");
   RNA_def_function_return(func, parm);
 
-  func = RNA_def_function(
-      srna, "fix_paths_rename_all", "rna_id_animdata_fix_paths_rename_all");
+  func = RNA_def_function(srna, "fix_paths_rename_all", "rna_id_animdata_fix_paths_rename_all");
   RNA_def_string(func, "prefix", 0, 128, "Prefix", "Name prefix");
   RNA_def_string(func, "old_name", 0, 128, "Old Name", "Old name");
   RNA_def_string(func, "new_name", 0, 128, "New Name", "New name");
   RNA_def_function_ui_description(func, "Rename animation properties");
-  //RNA_def_function_flag(func, FUNC_USE_SELF_ID);
 
 #  ifdef WITH_PYTHON
   RNA_def_struct_register_funcs(srna, nullptr, nullptr, "rna_ID_instance");
