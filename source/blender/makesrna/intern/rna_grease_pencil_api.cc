@@ -23,8 +23,8 @@ const EnumPropertyItem rna_enum_tree_node_move_type_items[] = {
 
 #ifdef RNA_RUNTIME
 
-#  include "BKE_report.hh"
 #  include "BKE_grease_pencil.hh"
+#  include "BKE_report.hh"
 
 #  include "DEG_depsgraph.hh"
 

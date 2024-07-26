@@ -683,8 +683,8 @@ static void rna_AttributeGroup_update_active(Main *bmain, Scene *scene, PointerR
 }
 
 static void rna_AttributeGroup_update_active_color(Main * /*bmain*/,
-                                                     Scene * /*scene*/,
-                                                     PointerRNA *ptr)
+                                                   Scene * /*scene*/,
+                                                   PointerRNA *ptr)
 {
   ID *id = ptr->owner_id;
 
