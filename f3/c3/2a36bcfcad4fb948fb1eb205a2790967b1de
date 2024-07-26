@@ -3,3 +3,4 @@ Referenced by commit 1e237da1db0131fdad64c03a741f433c2bcf2886, Fix #123076: Remo
 Referenced by issue #124690, Keep Custom Normals Missing - Triangulate Modifier
 Referenced by commit 9ce61d7222c2af3c3cbef0653af776e578301704, Fix #123076: Remove UI line for removed property
 Referenced by issue #124836, Triangulate modifier (also Triangulate Faces operator) changed behavior with custom normals
+Referenced by pull request #125499, Fix #124836: Triangulate modifier changed behavior with custom normals
