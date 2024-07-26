@@ -2776,6 +2776,63 @@ static void text_gaussian_blur_y(const Span<float> gaussian,
   }
 }
 
+static void clamp_rect(int width, int height, rcti &r_rect)
+{
+  r_rect.xmin = math::clamp(r_rect.xmin, 0, width - 1);
+  r_rect.xmax = math::clamp(r_rect.xmax, 0, width - 1);
+  r_rect.ymin = math::clamp(r_rect.ymin, 0, height - 1);
+  r_rect.ymax = math::clamp(r_rect.ymax, 0, height - 1);
+}
+
+static void initialize_shadow_alpha(int width,
+                                    int height,
+                                    int2 offset,
+                                    const rcti &shadow_rect,
+                                    const uchar *input,
+                                    Array<uchar> &r_shadow_mask)
+{
+  const IndexRange shadow_y_range(shadow_rect.ymin, shadow_rect.ymax - shadow_rect.ymin + 1);
+  threading::parallel_for(shadow_y_range, 8, [&](const IndexRange y_range) {
+    for (const int64_t y : y_range) {
+      const int64_t src_y = math::clamp<int64_t>(y + offset.y, 0, height - 1);
+      for (int x = shadow_rect.xmin; x <= shadow_rect.xmax; x++) {
+        int src_x = math::clamp(x - offset.x, 0, width - 1);
+        size_t src_offset = width * src_y + src_x;
+        size_t dst_offset = width * y + x;
+        r_shadow_mask[dst_offset] = input[src_offset * 4 + 3];
+      }
+    }
+  });
+}
+
+static void composite_shadow(int width,
+                             const rcti &shadow_rect,
+                             const float4 &shadow_color,
+                             const Array<uchar> &shadow_mask,
+                             uchar *output)
+{
+  const IndexRange shadow_y_range(shadow_rect.ymin, shadow_rect.ymax - shadow_rect.ymin + 1);
+  threading::parallel_for(shadow_y_range, 8, [&](const IndexRange y_range) {
+    for (const int64_t y : y_range) {
+      size_t offset = y * width + shadow_rect.xmin;
+      uchar *dst = output + offset * 4;
+      for (int x = shadow_rect.xmin; x <= shadow_rect.xmax; x++, offset++, dst += 4) {
+        uchar a = shadow_mask[offset];
+        if (a == 0) {
+          /* Fully transparent, leave output pixel as is. */
+          continue;
+        }
+        float4 col1 = load_premul_pixel(dst);
+        float4 col2 = shadow_color * (a * (1.0f / 255.0f));
+        /* Blend under the output. */
+        float fac = 1.0f - col1.w;
+        float4 col = col1 + fac * col2;
+        store_premul_pixel(col, dst);
+      }
+    }
+  });
+}
+
 static void draw_text_shadow(const SeqRenderData *context,
                              const TextVars *data,
                              int line_height,
@@ -2788,33 +2845,18 @@ static void draw_text_shadow(const SeqRenderData *context,
   const float blur_amount = line_height * 0.5f * data->shadow_blur;
   bool do_blur = blur_amount >= 1.0f;
 
-  Array<uchar> tmp_out1(size_t(width) * height, 0);
+  Array<uchar> shadow_mask(size_t(width) * height, 0);
 
-  const int offsetx = int(cosf(data->shadow_angle) * line_height * data->shadow_offset);
-  const int offsety = int(sinf(data->shadow_angle) * line_height * data->shadow_offset);
+  const int2 offset = int2(cosf(data->shadow_angle) * line_height * data->shadow_offset,
+                           sinf(data->shadow_angle) * line_height * data->shadow_offset);
 
   rcti shadow_rect = rect;
-  BLI_rcti_translate(&shadow_rect, offsetx, -offsety);
+  BLI_rcti_translate(&shadow_rect, offset.x, -offset.y);
   BLI_rcti_pad(&shadow_rect, 1, 1);
-
-  shadow_rect.xmin = clamp_i(shadow_rect.xmin, 0, width - 1);
-  shadow_rect.xmax = clamp_i(shadow_rect.xmax, 0, width - 1);
-  shadow_rect.ymin = clamp_i(shadow_rect.ymin, 0, height - 1);
-  shadow_rect.ymax = clamp_i(shadow_rect.ymax, 0, height - 1);
+  clamp_rect(width, height, shadow_rect);
 
   /* Initialize shadow by copying existing text/outline alpha. */
-  IndexRange shadow_y_range(shadow_rect.ymin, shadow_rect.ymax - shadow_rect.ymin + 1);
-  threading::parallel_for(shadow_y_range, 16, [&](const IndexRange y_range) {
-    for (int64_t y : y_range) {
-      int64_t src_y = math::clamp<int64_t>(y + offsety, 0, height - 1);
-      for (int x = shadow_rect.xmin; x <= shadow_rect.xmax; x++) {
-        int src_x = math::clamp(x - offsetx, 0, width - 1);
-        size_t src_offset = width * src_y + src_x;
-        size_t dst_offset = width * y + x;
-        tmp_out1[dst_offset] = out->byte_buffer.data[src_offset * 4 + 3];
-      }
-    }
-  });
+  initialize_shadow_alpha(width, height, offset, shadow_rect, out->byte_buffer.data, shadow_mask);
 
   if (do_blur) {
     /* Create blur kernel weights. */
@@ -2822,13 +2864,10 @@ static void draw_text_shadow(const SeqRenderData *context,
     Array<float> gaussian = make_gaussian_blur_kernel(blur_amount, half_size);
 
     BLI_rcti_pad(&shadow_rect, half_size + 1, half_size + 1);
-    shadow_rect.xmin = clamp_i(shadow_rect.xmin, 0, width - 1);
-    shadow_rect.xmax = clamp_i(shadow_rect.xmax, 0, width - 1);
-    shadow_rect.ymin = clamp_i(shadow_rect.ymin, 0, height - 1);
-    shadow_rect.ymax = clamp_i(shadow_rect.ymax, 0, height - 1);
+    clamp_rect(width, height, shadow_rect);
 
-    /* Horizontal blur: blur tmp_out1 into tmp_out2. */
-    Array<uchar> tmp_out2(size_t(width) * height, NoInitialization());
+    /* Horizontal blur: blur shadow_mask into blur_buffer. */
+    Array<uchar> blur_buffer(size_t(width) * height, NoInitialization());
     IndexRange blur_y_range(shadow_rect.ymin, shadow_rect.ymax - shadow_rect.ymin + 1);
     threading::parallel_for(blur_y_range, 8, [&](const IndexRange y_range) {
       const int y_first = y_range.first();
@@ -2838,12 +2877,12 @@ static void draw_text_shadow(const SeqRenderData *context,
                            y_first,
                            width,
                            y_size,
-                           tmp_out1.data(),
-                           tmp_out2.data(),
+                           shadow_mask.data(),
+                           blur_buffer.data(),
                            shadow_rect);
     });
 
-    /* Vertical blur: blur tmp_out2 into tmp_out1. */
+    /* Vertical blur: blur blur_buffer into shadow_mask. */
     threading::parallel_for(blur_y_range, 8, [&](const IndexRange y_range) {
       const int y_first = y_range.first();
       const int y_size = y_range.size();
@@ -2852,8 +2891,8 @@ static void draw_text_shadow(const SeqRenderData *context,
                            y_first,
                            width,
                            y_size,
-                           tmp_out2.data(),
-                           tmp_out1.data(),
+                           blur_buffer.data(),
+                           shadow_mask.data(),
                            shadow_rect);
     });
   }
@@ -2863,27 +2902,7 @@ static void draw_text_shadow(const SeqRenderData *context,
   color.x *= color.w;
   color.y *= color.w;
   color.z *= color.w;
-
-  shadow_y_range = IndexRange(shadow_rect.ymin, shadow_rect.ymax - shadow_rect.ymin + 1);
-  threading::parallel_for(shadow_y_range, 16, [&](const IndexRange y_range) {
-    for (int64_t y : y_range) {
-      size_t offset = y * width + shadow_rect.xmin;
-      uchar *dst = out->byte_buffer.data + offset * 4;
-      for (int x = shadow_rect.xmin; x <= shadow_rect.xmax; x++, offset++, dst += 4) {
-        uchar a = tmp_out1[offset];
-        if (a == 0) {
-          /* Fully transparent, leave output pixel as is. */
-          continue;
-        }
-        float4 col1 = load_premul_pixel(dst);
-        float4 col2 = color * (a * (1.0f / 255.0f));
-        /* Blend under the output. */
-        float fac = 1.0f - col1.w;
-        float4 col = col1 + fac * col2;
-        store_premul_pixel(col, dst);
-      }
-    }
-  });
+  composite_shadow(width, shadow_rect, color, shadow_mask, out->byte_buffer.data);
 }
 
 /* Text outline calculation is done by Jump Flooding Algorithm (JFA).
