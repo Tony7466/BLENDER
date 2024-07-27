@@ -796,7 +796,7 @@ static void ui_template_list_layout_draw(const bContext *C,
 
           uiLayout *item_row = uiLayoutRow(overlap, true);
 
-          uiLayouListItemAddPadding(item_row);
+          uiLayoutListItemAddPadding(item_row);
 
           sub = uiLayoutRow(item_row, false);
           icon = UI_icon_from_rnaptr(C, itemptr, rnaicon, false);
@@ -823,7 +823,7 @@ static void ui_template_list_layout_draw(const bContext *C,
             ui_layout_list_set_labels_active(sub);
           }
 
-          uiLayouListItemAddPadding(item_row);
+          uiLayoutListItemAddPadding(item_row);
           UI_block_flag_disable(subblock, UI_BLOCK_LIST_ITEM);
         }
       }

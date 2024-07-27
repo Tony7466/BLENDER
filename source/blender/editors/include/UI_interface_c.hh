@@ -2332,7 +2332,7 @@ Panel *uiLayoutGetRootPanel(uiLayout *layout);
 float uiLayoutGetSearchWeight(uiLayout *layout);
 
 int uiLayoutListItemPaddingWidth();
-void uiLayouListItemAddPadding(uiLayout *layout);
+void uiLayoutListItemAddPadding(uiLayout *layout);
 
 /* Layout create functions. */
 

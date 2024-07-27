@@ -684,7 +684,7 @@ void TreeViewLayoutBuilder::build_row(AbstractTreeViewItem &item) const
   }
   row = uiLayoutRow(content_col, true);
 
-  uiLayouListItemAddPadding(row);
+  uiLayoutListItemAddPadding(row);
   item.add_indent(*row);
   item.add_collapse_chevron(block_);
 
@@ -695,7 +695,7 @@ void TreeViewLayoutBuilder::build_row(AbstractTreeViewItem &item) const
     item.build_row(*row);
   }
 
-  uiLayouListItemAddPadding(row);
+  uiLayoutListItemAddPadding(row);
 
   UI_block_emboss_set(&block_, previous_emboss);
   UI_block_layout_set_current(&block_, &prev_layout);

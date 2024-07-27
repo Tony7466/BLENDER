@@ -5401,7 +5401,7 @@ int uiLayoutListItemPaddingWidth()
   return 5 * UI_SCALE_FAC;
 }
 
-void uiLayouListItemAddPadding(uiLayout *layout)
+void uiLayoutListItemAddPadding(uiLayout *layout)
 {
   uiBlock *block = uiLayoutGetBlock(layout);
   uiLayout *row = uiLayoutRow(layout, true);
