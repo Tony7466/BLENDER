@@ -164,11 +164,10 @@ void AbstractTreeView::draw_hierarchy_lines_recursive(const ARegion &region,
     rcti last_child_rect;
     ui_but_to_pixelrect(&last_child_rect, &region, block, &last_child_but);
 
-    /* Account for the padding added in the layout. */
-    const int padding = 5 * UI_SCALE_FAC;
-    const float x = first_child_rect.xmin + ((first_descendant->indent_width() + padding -
-                                              (0.5f * UI_ICON_SIZE) + U.pixelsize) /
-                                             aspect);
+    const float x = first_child_rect.xmin +
+                    ((first_descendant->indent_width() + uiLayoutListItemPaddingWidth() -
+                      (0.5f * UI_ICON_SIZE) + U.pixelsize) /
+                     aspect);
     const int first_child_top = first_child_rect.ymax - (2.0f * UI_SCALE_FAC / aspect);
     const int last_child_bottom = last_child_rect.ymin + (4.0f * UI_SCALE_FAC / aspect);
     immBegin(GPU_PRIM_LINES, 2);
@@ -685,7 +684,7 @@ void TreeViewLayoutBuilder::build_row(AbstractTreeViewItem &item) const
   }
   row = uiLayoutRow(content_col, true);
 
-  uiLayoutAddPaddingX(row);
+  uiLayouListItemAddPadding(row);
   item.add_indent(*row);
   item.add_collapse_chevron(block_);
 
@@ -696,7 +695,7 @@ void TreeViewLayoutBuilder::build_row(AbstractTreeViewItem &item) const
     item.build_row(*row);
   }
 
-  uiLayoutAddPaddingX(row);
+  uiLayouListItemAddPadding(row);
 
   UI_block_emboss_set(&block_, previous_emboss);
   UI_block_layout_set_current(&block_, &prev_layout);
