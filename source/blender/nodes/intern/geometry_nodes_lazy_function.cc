@@ -1598,6 +1598,8 @@ struct BuildGraphParams {
   /**  */
   /** Cache to avoid building the same socket combinations multiple times. */
   Map<Vector<lf::OutputSocket *>, lf::OutputSocket *> socket_usages_combination_cache;
+
+  BuildGraphParams(lf::Graph &lf_graph) : lf_graph(lf_graph) {}
 };
 
 struct ZoneFunctionIndices {
@@ -2181,7 +2183,16 @@ class GeometryNodesLazyFunctionLogger : public lf::GraphExecutor::Logger {
  * another (depending on e.g. which tree path is currently viewed in the node editor).
  */
 class GeometryNodesLazyFunctionSideEffectProvider : public lf::GraphExecutor::SideEffectProvider {
+ private:
+  Span<const lf::FunctionNode *> local_side_effect_nodes_;
+
  public:
+  GeometryNodesLazyFunctionSideEffectProvider(
+      Span<const lf::FunctionNode *> local_side_effect_nodes = {})
+      : local_side_effect_nodes_(local_side_effect_nodes)
+  {
+  }
+
   Vector<const lf::FunctionNode *> get_nodes_with_side_effects(
       const lf::Context &context) const override
   {
@@ -2192,7 +2203,10 @@ class GeometryNodesLazyFunctionSideEffectProvider : public lf::GraphExecutor::Si
       return {};
     }
     const ComputeContextHash &context_hash = user_data->compute_context->hash();
-    return call_data.side_effect_nodes->nodes_by_context.lookup(context_hash);
+    Vector<const lf::FunctionNode *> side_effect_nodes =
+        call_data.side_effect_nodes->nodes_by_context.lookup(context_hash);
+    side_effect_nodes.extend(local_side_effect_nodes_);
+    return side_effect_nodes;
   }
 };
 
@@ -2218,6 +2232,8 @@ struct GeometryNodesLazyFunctionBuilder {
 
   const bNodeTreeZones *tree_zones_;
   MutableSpan<ZoneBuildInfo> zone_build_infos_;
+
+  std::optional<BuildGraphParams> root_graph_build_params_;
 
   /**
    * The inputs sockets in the graph. Multiple group input nodes are combined into one in the
@@ -2720,7 +2736,7 @@ struct GeometryNodesLazyFunctionBuilder {
       lf_output_usages.append(&lf_socket);
     }
 
-    BuildGraphParams graph_params{lf_graph};
+    BuildGraphParams &graph_params = root_graph_build_params_.emplace(lf_graph);
     if (const bNode *group_output_bnode = btree_.group_output_node()) {
       for (const bNodeSocket *bsocket : group_output_bnode->input_sockets().drop_back(1)) {
         graph_params.usage_by_bsocket.add(bsocket, lf_output_usages[bsocket->index()]);
@@ -2790,12 +2806,24 @@ struct GeometryNodesLazyFunctionBuilder {
     function.outputs.input_usages = lf_graph_outputs.index_range().take_back(
         group_input_usage_sockets_.size());
 
+    Vector<const lf::FunctionNode *> &local_side_effect_nodes =
+        scope_.construct<Vector<const lf::FunctionNode *>>();
+    for (const bNode *bnode : btree_.nodes_by_type("GeometryNodeWarning")) {
+      const bNodeTreeZone *zone = tree_zones_->get_zone_by_node(bnode->identifier);
+      if (!zone) {
+        const lf::Socket *lf_socket = root_graph_build_params_->lf_inputs_by_bsocket.lookup(
+            &bnode->input_socket(0))[0];
+        const lf::FunctionNode &lf_node = static_cast<const lf::FunctionNode &>(lf_socket->node());
+        local_side_effect_nodes.append(&lf_node);
+      }
+    }
+
     function.function = &scope_.construct<lf::GraphExecutor>(
         lf_graph_info_->graph,
         std::move(lf_graph_inputs),
         std::move(lf_graph_outputs),
         &scope_.construct<GeometryNodesLazyFunctionLogger>(*lf_graph_info_),
-        &scope_.construct<GeometryNodesLazyFunctionSideEffectProvider>(),
+        &scope_.construct<GeometryNodesLazyFunctionSideEffectProvider>(local_side_effect_nodes),
         nullptr);
   }
 
@@ -3235,6 +3263,10 @@ struct GeometryNodesLazyFunctionBuilder {
       }
       case GEO_NODE_INDEX_SWITCH: {
         this->build_index_switch_node(bnode, graph_params);
+        break;
+      }
+      case GEO_NODE_WARNING: {
+        this->build_warning_node(bnode, graph_params);
         break;
       }
       case GEO_NODE_GIZMO_LINEAR:
@@ -3892,6 +3924,24 @@ struct GeometryNodesLazyFunctionBuilder {
         graph_params.usage_by_bsocket.add(&bnode.input_socket(index + 1), output_is_used);
       }
     }
+  }
+
+  void build_warning_node(const bNode &bnode, BuildGraphParams &graph_params)
+  {
+    auto lazy_function_ptr = get_warning_node_lazy_function(bnode);
+    LazyFunction &lazy_function = *lazy_function_ptr;
+    scope_.add(std::move(lazy_function_ptr));
+
+    lf::Node &lf_node = graph_params.lf_graph.add_function(lazy_function);
+
+    for (const int i : bnode.input_sockets().index_range()) {
+      const bNodeSocket &bsocket = bnode.input_socket(i);
+      lf::InputSocket &lf_socket = lf_node.input(i);
+      graph_params.lf_inputs_by_bsocket.add(&bsocket, &lf_socket);
+      mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
+    }
+
+    /* TODO: Need socket usage? */
   }
 
   void build_menu_switch_node(const bNode &bnode, BuildGraphParams &graph_params)
