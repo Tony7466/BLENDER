@@ -1206,6 +1206,9 @@ static bool do_lasso_select_grease_pencil(const ViewContext *vc,
     if (elements.is_empty()) {
       continue;
     }
+    const IndexMask visible_handle_elements =
+        ed::greasepencil::retrieve_visible_bezier_handle_elements(
+            *vc->obedit, info.drawing, info.layer_index, selection_domain, memory);
     const float4x4 layer_to_world = layer.to_world_space(*ob_eval);
     const float4x4 projection = ED_view3d_ob_project_mat_get_from_obmat(vc->rv3d, layer_to_world);
     changed = ed::curves::select_lasso(*vc,
@@ -1213,6 +1216,7 @@ static bool do_lasso_select_grease_pencil(const ViewContext *vc,
                                        deformation,
                                        projection,
                                        elements,
+                                       visible_handle_elements,
                                        selection_domain,
                                        mcoords,
                                        sel_op);
@@ -1440,8 +1444,15 @@ static bool view3d_lasso_select(bContext *C,
           const bke::AttrDomain selection_domain = bke::AttrDomain(curves_id.selection_domain);
           const IndexRange elements(curves.attributes().domain_size(selection_domain));
           const float4x4 projection = ED_view3d_ob_project_mat_get(vc->rv3d, vc->obedit);
-          changed = ed::curves::select_lasso(
-              *vc, curves, deformation, projection, elements, selection_domain, mcoords, sel_op);
+          changed = ed::curves::select_lasso(*vc,
+                                             curves,
+                                             deformation,
+                                             projection,
+                                             elements,
+                                             elements,
+                                             selection_domain,
+                                             mcoords,
+                                             sel_op);
           if (changed) {
             /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a
              * generic attribute for now. */
