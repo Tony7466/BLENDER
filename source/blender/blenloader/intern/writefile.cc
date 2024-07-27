@@ -435,7 +435,7 @@ struct WriteData {
   } validation_data;
 
   /**
-   * Keeps track if which shared data has been written for the current ID. This is necessary to
+   * Keeps track of which shared data has been written for the current ID. This is necessary to
    * avoid writing the same data more than once.
    */
   blender::Set<const void *> per_id_written_shared_addresses;
