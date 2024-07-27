@@ -635,7 +635,7 @@ struct CurveBooleanExecutor {
     while (inter_id != -1) {
       bool is_curve_A = true;
 
-      // in unsorted space
+      /* Both of these are in unsorted space. */
       int curr_int_id = inter_id;
       const int start_int_id = curr_int_id;
 
@@ -648,7 +648,7 @@ struct CurveBooleanExecutor {
         curr_int_id = get_next_intersection_id(curr_int_id, is_curve_A);
         unprocessed_intersection_unsorted_ids[curr_int_id] = false;
 
-        // Switching to the other curve
+        /* Switch to the other curve. */
         is_curve_A = !is_curve_A;
 
         newVertexIntersection(curr_int_id);
@@ -658,7 +658,7 @@ struct CurveBooleanExecutor {
         }
       }
 
-      // get the next unprocessed intersection point (in unsorted space)
+      /* Get the next unprocessed intersection point (in unsorted space). */
       inter_id = unprocessed_intersection_unsorted_ids.as_span().first_index_try(true);
     }
 
@@ -762,7 +762,7 @@ struct CurveBooleanExecutor {
     newVertexIntersection(i1);
   }
 
-  /* Curve `A` does not loop. */
+  /* Curve `A` does not have fill. */
   BooleanResult execute_cut(Span<float2> curve_a, Span<float2> curve_b)
   {
     len_a = curve_a.size();

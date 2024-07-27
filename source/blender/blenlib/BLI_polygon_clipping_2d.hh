@@ -73,7 +73,8 @@ struct IntersectionPoint {
   int point_a;
   int point_b;
   /**
-   * `alpha_a` is the factor between point_a and point_a + 1 (same for b)
+   * `alpha_a` is the factor between point_a and point_a + 1 (i.e. the next point)
+   * And the same is true for `B`
    */
   float alpha_a;
   float alpha_b;
@@ -94,8 +95,8 @@ BooleanResult curve_boolean_calc(const InputMode input_mode,
                                  Span<float2> curve_a,
                                  Span<float2> curve_b);
 /**
- * `Cut` behaves like `A_NOT_B` but with `A` not looping, and so no part of `B` is left in the
- * result.
+ * `Cut` behaves like `A_NOT_B` but with `A` not having any fill, and so `A` is cut into separate
+ * parts without any segments of `B` is left in the result.
  */
 BooleanResult curve_boolean_cut(Span<float2> curve_a, Span<float2> curve_b);
 
