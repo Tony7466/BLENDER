@@ -470,7 +470,7 @@ Array<T> interpolate_attribute_from_ab_result(const Span<T> attr_a,
 }
 
 template<typename T>
-void interpolate_attribute_from_a_result(const Span<T> attr_a,
+void interpolate_attribute_from_a_result(const VArray<T> attr_a,
                                          const BooleanResult &result,
                                          MutableSpan<T> dst_attr)
 {
@@ -498,7 +498,7 @@ void interpolate_attribute_from_a_result(const Span<T> attr_a,
 }
 
 template<typename T>
-void interpolate_attribute_from_b_result(const Span<T> attr_b,
+void interpolate_attribute_from_b_result(const VArray<T> attr_b,
                                          const BooleanResult &result,
                                          MutableSpan<T> dst_attr)
 {
