@@ -161,24 +161,8 @@ const char *read_header(PlyReadBuffer &file, PlyHeader &r_header)
   return nullptr;
 }
 
-void importer_main(bContext *C, const PLYImportParams &import_params)
+static Mesh *read_ply_to_mesh(const PLYImportParams &import_params, const char *ob_name)
 {
-  Main *bmain = CTX_data_main(C);
-  Scene *scene = CTX_data_scene(C);
-  ViewLayer *view_layer = CTX_data_view_layer(C);
-  importer_main(bmain, scene, view_layer, import_params);
-}
-
-void importer_main(Main *bmain,
-                   Scene *scene,
-                   ViewLayer *view_layer,
-                   const PLYImportParams &import_params)
-{
-  /* File base name used for both mesh and object. */
-  char ob_name[FILE_MAX];
-  STRNCPY(ob_name, BLI_path_basename(import_params.filepath));
-  BLI_path_extension_strip(ob_name);
-
   /* Parse header. */
   PlyReadBuffer file(import_params.filepath, 64 * 1024);
 
@@ -208,6 +192,45 @@ void importer_main(Main *bmain,
     return;
   }
 
+  Mesh *mesh = convert_ply_to_mesh(*data, import_params);
+
+  return mesh;
+}
+
+Mesh *import_mesh(const PLYImportParams &import_params)
+{
+  /* File base name used for both mesh and object. */
+  char ob_name[FILE_MAX];
+  STRNCPY(ob_name, BLI_path_basename(import_params.filepath));
+  BLI_path_extension_strip(ob_name);
+
+  /* Stuff ply data into the mesh. */
+  Mesh *mesh = read_ply_to_mesh(import_params, ob_name);
+
+  return mesh;
+}
+
+void importer_main(bContext *C, const PLYImportParams &import_params)
+{
+  Main *bmain = CTX_data_main(C);
+  Scene *scene = CTX_data_scene(C);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  importer_main(bmain, scene, view_layer, import_params);
+}
+
+void importer_main(Main *bmain,
+                   Scene *scene,
+                   ViewLayer *view_layer,
+                   const PLYImportParams &import_params)
+{
+  /* File base name used for both mesh and object. */
+  char ob_name[FILE_MAX];
+  STRNCPY(ob_name, BLI_path_basename(import_params.filepath));
+  BLI_path_extension_strip(ob_name);
+
+  /* Stuff ply data into the mesh. */
+  Mesh *mesh = read_ply_to_mesh(import_params, ob_name);
+
   /* Create mesh and do all prep work. */
   Mesh *mesh_in_main = BKE_mesh_add(bmain, ob_name);
   BKE_view_layer_base_deselect_all(scene, view_layer);
@@ -219,8 +242,6 @@ void importer_main(Main *bmain,
   Base *base = BKE_view_layer_base_find(view_layer, obj);
   BKE_view_layer_base_select_and_set_active(view_layer, base);
 
-  /* Stuff ply data into the mesh. */
-  Mesh *mesh = convert_ply_to_mesh(*data, import_params);
   BKE_mesh_nomain_to_mesh(mesh, mesh_in_main, obj);
 
   /* Object matrix and finishing up. */
