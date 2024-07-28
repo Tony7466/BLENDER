@@ -157,6 +157,12 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
 
     /* End caps. */
     if (!keep_caps && !is_fill) {
+      /**
+       * NOTE: the last vertex in the list is not guaranteed to be the last vertex in the order
+       * (i.e. the one with largest alpha)
+       * But it is guaranteed to be on the latest segment, and that is all that needs to be
+       * checked.
+       */
       const polygonboolean::Vertex &vertex_first = result.verts.first();
       const polygonboolean::Vertex &vertex_last = result.verts.last();
 
