@@ -102,6 +102,7 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
     return bke::CurvesGeometry(src);
   }
 
+  const VArray<bool> src_cyclic = src.cyclic();
   const OffsetIndices<int> src_points_by_curve = src.points_by_curve();
   const polygonboolean::InputMode input_mode = {polygonboolean::BooleanMode::A_NOT_B,
                                                 polygonboolean::HoleMode::WITHOUT_HOLES};
@@ -121,7 +122,7 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
       result = polygonboolean::curve_boolean_calc(input_mode, pos_2d_a, pos_2d_b);
     }
     else {
-      const bool is_cyclial = false; /* TODO */
+      const bool is_cyclial = src_cyclic[curve_i];
       result = polygonboolean::curve_boolean_cut(is_cyclial, pos_2d_a, pos_2d_b);
     }
 
