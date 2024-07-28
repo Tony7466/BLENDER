@@ -469,62 +469,6 @@ Array<T> interpolate_attribute_from_ab_result(const Span<T> attr_a,
   return attribute_out;
 }
 
-template<typename T>
-void interpolate_attribute_from_a_result(const VArray<T> attr_a,
-                                         const BooleanResult &result,
-                                         MutableSpan<T> dst_attr)
-{
-  for (const int i : result.verts.index_range()) {
-    const Vertex &vert = result.verts[i];
-    const VertexType &type = vert.type;
-
-    if (type == VertexType::PointA) {
-      dst_attr[i] = attr_a[vert.point_id];
-    }
-    else if (type == VertexType::PointB) {
-      /* TODO: Interpolate between start and end of the segment. */
-      dst_attr[i] = attr_a.first();
-    }
-    else if (type == VertexType::Intersection) {
-      const IntersectionPoint &inter_point = result.intersections_data[vert.point_id];
-
-      const T a0 = attr_a[inter_point.point_a];
-      const T a1 = attr_a[(inter_point.point_a + 1) % attr_a.size()];
-      const float alpha_a = inter_point.alpha_a;
-
-      dst_attr[i] = math::interpolate(a0, a1, alpha_a);
-    }
-  }
-}
-
-template<typename T>
-void interpolate_attribute_from_b_result(const VArray<T> attr_b,
-                                         const BooleanResult &result,
-                                         MutableSpan<T> dst_attr)
-{
-  for (const int i : result.verts.index_range()) {
-    const Vertex &vert = result.verts[i];
-    const VertexType &type = vert.type;
-
-    if (type == VertexType::PointA) {
-      /* TODO: Interpolate between start and end of the segment. */
-      dst_attr[i] = attr_b.first();
-    }
-    else if (type == VertexType::PointB) {
-      dst_attr[i] = attr_b[vert.point_id];
-    }
-    else if (type == VertexType::Intersection) {
-      const IntersectionPoint &inter_point = result.intersections_data[vert.point_id];
-
-      const T b0 = attr_b[inter_point.point_b];
-      const T b1 = attr_b[(inter_point.point_b + 1) % attr_b.size()];
-      const float alpha_b = inter_point.alpha_b;
-
-      dst_attr[i] = math::interpolate(b0, b1, alpha_b);
-    }
-  }
-}
-
 /**
  * Utility class to avoid passing large number of parameters between functions.
  */

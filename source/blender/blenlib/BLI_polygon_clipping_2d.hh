@@ -7,6 +7,7 @@
 #include "BLI_array.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_vector.hh"
+#include "BLI_virtual_array.hh"
 
 /** \file
  * \ingroup bli
@@ -106,6 +107,11 @@ void interpolate_attribute_from_b_result(const VArray<T> attr_b,
                                          const BooleanResult &result,
                                          MutableSpan<T> dst_attr);
 
+template<typename T>
+Array<T> interpolate_attribute_from_a_result(const Span<T> attr_a, const BooleanResult &result);
+template<typename T>
+Array<T> interpolate_attribute_from_b_result(const Span<T> attr_b, const BooleanResult &result);
+
 BooleanResult curve_boolean_calc(const InputMode input_mode,
                                  Span<float2> curve_a,
                                  Span<float2> curve_b);
@@ -116,5 +122,83 @@ BooleanResult curve_boolean_calc(const InputMode input_mode,
 BooleanResult curve_boolean_cut(const bool is_a_cyclic,
                                 Span<float2> curve_a,
                                 Span<float2> curve_b);
+
+template<typename T>
+void interpolate_attribute_from_a_result(const VArray<T> attr_a,
+                                         const BooleanResult &result,
+                                         MutableSpan<T> dst_attr)
+{
+  for (const int i : result.verts.index_range()) {
+    const Vertex &vert = result.verts[i];
+    const VertexType &type = vert.type;
+
+    if (type == VertexType::PointA) {
+      dst_attr[i] = attr_a[vert.point_id];
+    }
+    else if (type == VertexType::PointB) {
+      /* TODO: Interpolate between start and end of the segment. */
+      dst_attr[i] = attr_a.first();
+    }
+    else if (type == VertexType::Intersection) {
+      const IntersectionPoint &inter_point = result.intersections_data[vert.point_id];
+
+      const T a0 = attr_a[inter_point.point_a];
+      const T a1 = attr_a[(inter_point.point_a + 1) % attr_a.size()];
+      const float alpha_a = inter_point.alpha_a;
+
+      dst_attr[i] = math::interpolate(a0, a1, alpha_a);
+    }
+  }
+}
+
+template<typename T>
+void interpolate_attribute_from_b_result(const VArray<T> attr_b,
+                                         const BooleanResult &result,
+                                         MutableSpan<T> dst_attr)
+{
+  for (const int i : result.verts.index_range()) {
+    const Vertex &vert = result.verts[i];
+    const VertexType &type = vert.type;
+
+    if (type == VertexType::PointA) {
+      /* TODO: Interpolate between start and end of the segment. */
+      dst_attr[i] = attr_b.first();
+    }
+    else if (type == VertexType::PointB) {
+      dst_attr[i] = attr_b[vert.point_id];
+    }
+    else if (type == VertexType::Intersection) {
+      const IntersectionPoint &inter_point = result.intersections_data[vert.point_id];
+
+      const T b0 = attr_b[inter_point.point_b];
+      const T b1 = attr_b[(inter_point.point_b + 1) % attr_b.size()];
+      const float alpha_b = inter_point.alpha_b;
+
+      dst_attr[i] = math::interpolate(b0, b1, alpha_b);
+    }
+  }
+}
+
+template<typename T>
+Array<T> interpolate_attribute_from_a_result(const Span<T> attr_a, const BooleanResult &result)
+{
+  Array<T> attribute_out(result.verts.size());
+
+  interpolate_attribute_from_a_result(
+      VArray<T>::ForSpan(attr_a), result, attribute_out.as_mutable_span());
+
+  return attribute_out;
+}
+
+template<typename T>
+Array<T> interpolate_attribute_from_b_result(const Span<T> attr_b, const BooleanResult &result)
+{
+  Array<T> attribute_out(result.verts.size());
+
+  interpolate_attribute_from_b_result(
+      VArray<T>::ForSpan(attr_b), result, attribute_out.as_mutable_span());
+
+  return attribute_out;
+}
 
 }  // namespace blender::polygonboolean
