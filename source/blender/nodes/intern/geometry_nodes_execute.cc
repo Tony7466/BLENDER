@@ -985,9 +985,17 @@ bke::GeometrySet execute_geometry_nodes_on_geometry(const bNodeTree &btree,
 
   /* Prepare context inputs. */
   for (const int i : lf_graph_info.mapping.context_inputs.index_range()) {
-    static bke::SocketValueVariant value_variant;
-    value_variant.set(2.0f);
-    param_inputs[function.inputs.context[i]] = &value_variant;
+    const nodes::ContextInputID &context_id = lf_graph_info.mapping.context_inputs[i];
+    const bke::bNodeSocketType *stype = bke::nodeSocketTypeFind(
+        bke::nodeStaticSocketType(context_id.socket_type, 0));
+    const CPPType *type = stype->geometry_nodes_cpp_type;
+    const void *default_value = stype->geometry_nodes_default_cpp_value ?
+                                    stype->geometry_nodes_default_cpp_value :
+                                    type->default_value();
+    void *value = allocator.allocate(type->size(), type->alignment());
+    type->copy_construct(default_value, value);
+    param_inputs[function.inputs.context[i]] = {type, value};
+    inputs_to_destruct.append({type, value});
   }
 
   /* Prepare used-outputs inputs. */
