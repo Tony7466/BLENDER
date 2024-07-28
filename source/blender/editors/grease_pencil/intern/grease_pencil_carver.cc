@@ -90,12 +90,6 @@ static bool execute_carver_on_drawing(const int layer_index,
     }
   });
 
-  MutableSpan<float3> positions = cut.positions_for_write();
-  float4 plane = float4(0.0f, 1.0f, 0.0f, 0.0f); /* TODO */
-  for (const int i : mcoords.index_range()) {
-    ED_view3d_win_to_3d_on_plane(&region, plane, cut_pos2d[i], false, positions[i]);
-  }
-
   const bke::AttributeAccessor attributes = src.attributes();
   const VArray<int> materials = *attributes.lookup_or_default<int>(
       "material_index", bke::AttrDomain::Curve, -1);
