@@ -146,6 +146,8 @@ ${body}
 # Workarounds
 
 def _worlaround_win32_ssl_cert_failure() -> None:
+    # Applies workaround by `pukkandan` on GITHUB at run-time:
+    # See: https://github.com/python/cpython/pull/91740
     import ssl
 
     class SSLContext_DUMMY(ssl.SSLContext):
