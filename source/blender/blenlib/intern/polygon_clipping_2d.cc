@@ -422,21 +422,20 @@ static BooleanResult result_sort_holes(const BooleanResult &in_results,
 }
 
 template<typename T>
-Array<T> interpolate_attribute_from_ab_result(const Span<T> attr_a,
-                                              const Span<T> attr_b,
-                                              const BooleanResult &result)
+void interpolate_attribute_from_ab_result(const VArray<T> attr_a,
+                                          const VArray<T> attr_b,
+                                          const BooleanResult &result,
+                                          MutableSpan<T> dst_attr)
 {
-  Array<T> attribute_out(result.verts.size());
-
   for (const int i : result.verts.index_range()) {
     const Vertex &vert = result.verts[i];
     const VertexType &type = vert.type;
 
     if (type == VertexType::PointA) {
-      attribute_out[i] = attr_a[vert.point_id];
+      dst_attr[i] = attr_a[vert.point_id];
     }
     else if (type == VertexType::PointB) {
-      attribute_out[i] = attr_b[vert.point_id];
+      dst_attr[i] = attr_b[vert.point_id];
     }
     else if (type == VertexType::Intersection) {
       const IntersectionPoint &inter_point = result.intersections_data[vert.point_id];
@@ -449,10 +448,23 @@ Array<T> interpolate_attribute_from_ab_result(const Span<T> attr_a,
       const T b1 = attr_b[(inter_point.point_b + 1) % attr_b.size()];
       const float alpha_b = inter_point.alpha_b;
 
-      attribute_out[i] = math::interpolate(
+      dst_attr[i] = math::interpolate(
           math::interpolate(a0, a1, alpha_a), math::interpolate(b0, b1, alpha_b), 0.5f);
     }
   }
+}
+
+template<typename T>
+Array<T> interpolate_attribute_from_ab_result(const Span<T> attr_a,
+                                              const Span<T> attr_b,
+                                              const BooleanResult &result)
+{
+  Array<T> attribute_out(result.verts.size());
+
+  interpolate_attribute_from_ab_result(VArray<T>::ForSpan(attr_a),
+                                       VArray<T>::ForSpan(attr_b),
+                                       result,
+                                       attribute_out.as_mutable_span());
 
   return attribute_out;
 }
