@@ -686,11 +686,17 @@ struct CurveBooleanExecutor {
     result.intersections_data = intersections_data;
     result.valid_geometry = true;
 
-    if (input_mode.hole_mode == WITHOUT_HOLES) {
-      result = result_remove_holes(result, curve_a, curve_b);
-    }
-    else if (input_mode.hole_mode == WITH_ORDERED_HOLES) {
-      result = result_sort_holes(result, curve_a, curve_b);
+    /**
+     *  Holes are only create in the union of the shapes
+     * (Because non-intersecting holes are already handled)
+     */
+    if (input_mode.boolean_mode == A_OR_B) {
+      if (input_mode.hole_mode == WITHOUT_HOLES) {
+        result = result_remove_holes(result, curve_a, curve_b);
+      }
+      else if (input_mode.hole_mode == WITH_ORDERED_HOLES) {
+        result = result_sort_holes(result, curve_a, curve_b);
+      }
     }
 
     return result;
