@@ -171,7 +171,7 @@ static Mesh *read_ply_to_mesh(const PLYImportParams &import_params, const char *
   if (err != nullptr) {
     fprintf(stderr, "PLY Importer: %s: %s\n", ob_name, err);
     BKE_reportf(import_params.reports, RPT_ERROR, "PLY Importer: %s: %s", ob_name, err);
-    return;
+    return nullptr;
   }
 
   /* Parse actual file data. */
@@ -179,17 +179,17 @@ static Mesh *read_ply_to_mesh(const PLYImportParams &import_params, const char *
   if (data == nullptr) {
     fprintf(stderr, "PLY Importer: failed importing %s, unknown error\n", ob_name);
     BKE_report(import_params.reports, RPT_ERROR, "PLY Importer: failed importing, unknown error");
-    return;
+    return nullptr;
   }
   if (!data->error.empty()) {
     fprintf(stderr, "PLY Importer: failed importing %s: %s\n", ob_name, data->error.c_str());
     BKE_report(import_params.reports, RPT_ERROR, "PLY Importer: failed importing, unknown error");
-    return;
+    return nullptr;
   }
   if (data->vertices.is_empty()) {
     fprintf(stderr, "PLY Importer: file %s contains no vertices\n", ob_name);
     BKE_report(import_params.reports, RPT_ERROR, "PLY Importer: failed importing, no vertices");
-    return;
+    return nullptr;
   }
 
   Mesh *mesh = convert_ply_to_mesh(*data, import_params);
@@ -230,6 +230,10 @@ void importer_main(Main *bmain,
 
   /* Stuff ply data into the mesh. */
   Mesh *mesh = read_ply_to_mesh(import_params, ob_name);
+
+  if (mesh == nullptr) {
+    return;
+  }
 
   /* Create mesh and do all prep work. */
   Mesh *mesh_in_main = BKE_mesh_add(bmain, ob_name);
