@@ -376,6 +376,7 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
                                         const bool keep_caps,
                                         const ARegion &region,
                                         const float4x4 &layer_to_world,
+                                        const Span<float4> normal_planes,
                                         const Span<float2> src_pos2d,
                                         const Span<float2> cut_pos2d);
 

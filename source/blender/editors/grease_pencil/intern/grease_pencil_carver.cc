@@ -77,10 +77,21 @@ static bool execute_carver_on_drawing(const int layer_index,
   bke::CurvesGeometry cut = bke::CurvesGeometry(mcoords.size(), 1);
   cut.offsets_for_write().last() = mcoords.size();
 
+  const Span<float3> normals = drawing.curve_plane_normals();
+
+  Array<float4> normal_planes(src.points_num());
+  threading::parallel_for(src.curves_range(), 4096, [&](const IndexRange src_curves) {
+    for (const int src_curve : src_curves) {
+      const float3 &normal = normals[src_curve];
+      for (const int src_point : src_points_by_curve[src_curves]) {
+        normal_planes[src_point] = float4(normal,
+                                          -math::dot(deformation.positions[src_point], normal));
+      }
+    }
+  });
+
   MutableSpan<float3> positions = cut.positions_for_write();
-
   float4 plane = float4(0.0f, 1.0f, 0.0f, 0.0f); /* TODO */
-
   for (const int i : mcoords.index_range()) {
     ED_view3d_win_to_3d_on_plane(&region, plane, cut_pos2d[i], false, positions[i]);
   }
@@ -106,7 +117,15 @@ static bool execute_carver_on_drawing(const int layer_index,
   }
 
   bke::CurvesGeometry carved_strokes = ed::curves::clipping::curves_geometry_cut(
-      src, cut, use_fill, keep_caps, region, layer_to_world, screen_space_positions, cut_pos2d);
+      src,
+      cut,
+      use_fill,
+      keep_caps,
+      region,
+      layer_to_world,
+      normal_planes,
+      screen_space_positions,
+      cut_pos2d);
 
   /* Set the new geometry. */
   drawing.strokes_for_write() = std::move(carved_strokes);

@@ -93,12 +93,24 @@ void End_caps(const bool keep_first,
   }
 }
 
+static float4 transform_plane(const float4x4 &mat, const float4 &plane)
+{
+  float3 normal = float3(plane);
+  float3 point = -normal * plane.w;
+
+  normal = math::transform_direction(mat, normal);
+  point = math::transform_point(mat, point);
+
+  return float4(normal, -math::dot(normal, point));
+}
+
 bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
                                         const bke::CurvesGeometry &cut,
                                         const Span<bool> use_fill,
                                         const bool keep_caps,
                                         const ARegion &region,
                                         const float4x4 &layer_to_world,
+                                        const Span<float4> normal_planes,
                                         const Span<float2> src_pos2d,
                                         const Span<float2> cut_pos2d)
 {
@@ -295,7 +307,7 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
       const Array<float2> pos2d = calculate_positions_from_result(pos_2d_a, pos_2d_b, result);
       const float4x4 world_to_layer = math::invert(layer_to_world);
 
-      float4 plane = float4(0.0f, 1.0f, 0.0f, 0.0f); /* TODO */
+      const float4 &plane = transform_plane(layer_to_world, normal_planes[curve_i]);
 
       for (const int i : pos2d.index_range()) {
         ED_view3d_win_to_3d_on_plane(&region, plane, pos2d[i], false, positions[i]);
