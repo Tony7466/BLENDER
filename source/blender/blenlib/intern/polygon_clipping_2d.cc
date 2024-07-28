@@ -780,7 +780,7 @@ struct CurveBooleanExecutor {
     newVertexIntersection(inter_id_last);
 
     /* Go through all point from last intersection point to the end. */
-    for (const int i : IndexRange::from_begin_end(vertex_last.point_a, len_a)) {
+    for (const int i : IndexRange::from_begin_end(vertex_last.point_a + 1, len_a)) {
       newVertexID(i, true);
     }
 
