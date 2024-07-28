@@ -239,59 +239,19 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
             return true;
           }
 
-          GVArray src1 = *src_attributes.lookup(id, meta_data.domain);
+          GVArray src1 = (*src_attributes.lookup(id, meta_data.domain)).slice(points);
           GVArray src2 = *cut_attributes.lookup(id, meta_data.domain);
           bke::GSpanAttributeWriter dstW = dst_attributes.lookup_or_add_for_write_only_span(
               id, meta_data.domain, meta_data.data_type);
 
           bke::attribute_math::convert_to_static_type(dstW.span.type(), [&](auto dummy) {
             using T = decltype(dummy);
-            auto src1_attr = src1.typed<T>();
-            auto src2_attr = src2.typed<T>();
-            auto dst_attr = dstW.span.typed<T>();
+            VArray<T> src1_attr = src1.typed<T>();
+            VArray<T> src2_attr = src2.typed<T>();
+            MutableSpan<T> dst_attr = (dstW.span.typed<T>()).drop_front(points_num);
 
-            threading::parallel_for(
-                IndexRange(result.verts.size()), 4096, [&](const IndexRange i_range) {
-                  for (const int i : i_range) {
-                    const polygonboolean::Vertex &vert = result.verts[i];
-                    const int point_id = vert.point_id;
-                    const polygonboolean::VertexType type = vert.type;
-                    const int dst_point = points_num + i;
+            polygonboolean::interpolate_attribute_from_a_result<T>(src1_attr, result, dst_attr);
 
-                    if (type == polygonboolean::VertexType::PointA) {
-                      dst_attr[dst_point] = src1_attr[point_id + points.first()];
-                    }
-                    else if (type == polygonboolean::VertexType::PointB) {
-                      if (src2_attr) {
-                        dst_attr[dst_point] = src2_attr[point_id];
-                      }
-                      else {
-                        dst_attr[dst_point] = src1_attr[points.first()];
-                      }
-                    }
-                    else if (type == polygonboolean::VertexType::Intersection) {
-                      const polygonboolean::IntersectionPoint &intersection =
-                          result.intersections_data[point_id];
-
-                      const T a_line = bke::attribute_math::mix2<T>(
-                          intersection.alpha_a,
-                          src1_attr[intersection.point_a + points.first()],
-                          src1_attr[(intersection.point_a + 1) % a_size + points.first()]);
-
-                      if (src2_attr) {
-                        const T b_line = bke::attribute_math::mix2<T>(
-                            intersection.alpha_b,
-                            src2_attr[intersection.point_b],
-                            src2_attr[(intersection.point_b + 1) % b_size]);
-
-                        dst_attr[dst_point] = bke::attribute_math::mix2<T>(0.5, a_line, b_line);
-                      }
-                      else {
-                        dst_attr[dst_point] = a_line;
-                      }
-                    }
-                  }
-                });
             dstW.finish();
           });
 
