@@ -5742,7 +5742,9 @@ static PyObject *foreach_getset(BPy_PropertyRNA *self, PyObject *args, int set)
     return nullptr;
   }
 
-  RNA_property_update(BPY_context_get(), &self->ptr, self->prop);
+  if (set) {
+    RNA_property_update(BPY_context_get(), &self->ptr, self->prop);
+  }
   Py_RETURN_NONE;
 }
 
