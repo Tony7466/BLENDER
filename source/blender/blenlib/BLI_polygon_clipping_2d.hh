@@ -98,6 +98,8 @@ BooleanResult curve_boolean_calc(const InputMode input_mode,
  * `Cut` behaves like `A_NOT_B` but with `A` not having any fill, and so `A` is cut into separate
  * parts without any segments of `B` is left in the result.
  */
-BooleanResult curve_boolean_cut(Span<float2> curve_a, Span<float2> curve_b);
+BooleanResult curve_boolean_cut(const bool is_a_cyclic,
+                                Span<float2> curve_a,
+                                Span<float2> curve_b);
 
 }  // namespace blender::polygonboolean

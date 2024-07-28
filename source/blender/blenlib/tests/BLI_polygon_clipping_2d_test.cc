@@ -646,7 +646,7 @@ void simple_cut_test()
    */
   const Array<float2> points_a = {{5, 7}, {3, 6}, {0, 2}, {0, 0}};
   const Array<float2> points_b = {{1, 6}, {3, 4}, {3, 1}, {0, 4}, {2, 3}};
-  BooleanResult result = polygonboolean::curve_boolean_cut(points_a, points_b);
+  BooleanResult result = polygonboolean::curve_boolean_cut(false, points_a, points_b);
   EXPECT_TRUE(result.valid_geometry);
   EXPECT_EQ(result.verts.size(), 8);
   EXPECT_EQ(result.intersections_data.size(), 4);
@@ -664,7 +664,7 @@ void simple_cut_2_test()
    */
   const Array<float2> points_a = {{5, 5}, {3, 5}, {1, 3}, {1, 1}};
   const Array<float2> points_b = {{5, 6}, {6, 5}, {1, 0}, {0, 1}};
-  BooleanResult result = polygonboolean::curve_boolean_cut(points_a, points_b);
+  BooleanResult result = polygonboolean::curve_boolean_cut(false, points_a, points_b);
   EXPECT_TRUE(result.valid_geometry);
   EXPECT_EQ(result.verts.size(), 4);
   EXPECT_EQ(result.intersections_data.size(), 2);
@@ -683,7 +683,7 @@ void simple_cut_3_test()
   const Array<float2> points_a = {{6, 8}, {4, 7}, {1, 3}, {1, 1}};
   const Array<float2> points_b = {
       {3, 7}, {5, 5}, {1, 0}, {0, 4}, {2, 3}, {1, 5}, {3, 4}, {2, 6}, {4, 5}};
-  BooleanResult result = polygonboolean::curve_boolean_cut(points_a, points_b);
+  BooleanResult result = polygonboolean::curve_boolean_cut(false, points_a, points_b);
   EXPECT_TRUE(result.valid_geometry);
   EXPECT_EQ(result.verts.size(), 9);
   EXPECT_EQ(result.intersections_data.size(), 7);
@@ -702,7 +702,7 @@ void simple_cut_4_test()
   const Array<float2> points_a = {{6, 7}, {4, 6}, {1, 2}, {1, 0}};
   const Array<float2> points_b = {
       {0, 4}, {2, 2}, {7, 8}, {3, 7}, {4, 5}, {2, 6}, {3, 4}, {1, 5}, {2, 3}};
-  BooleanResult result = polygonboolean::curve_boolean_cut(points_a, points_b);
+  BooleanResult result = polygonboolean::curve_boolean_cut(false, points_a, points_b);
   EXPECT_TRUE(result.valid_geometry);
   EXPECT_EQ(result.verts.size(), 9);
   EXPECT_EQ(result.intersections_data.size(), 7);

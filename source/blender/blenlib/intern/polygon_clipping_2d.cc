@@ -762,19 +762,57 @@ struct CurveBooleanExecutor {
     newVertexIntersection(i1);
   }
 
+  bool cut_add_looping_cap()
+  {
+    const int inter_id_first = A_inter_sorted_ids.first();
+    const int inter_id_last = A_inter_sorted_ids.last();
+    const ExtendedIntersectionPoint &vertex_first = intersections[inter_id_first];
+    const ExtendedIntersectionPoint &vertex_last = intersections[inter_id_last];
+
+    if (vertex_first.A_entry_exit == ENTRY || vertex_last.A_entry_exit == EXIT) {
+      return false;
+    }
+
+    /* Start line. */
+    newPolygon();
+
+    /* Start at the last intersection point. */
+    newVertexIntersection(inter_id_last);
+
+    /* Go through all point from last intersection point to the end. */
+    for (const int i : IndexRange::from_begin_end(vertex_last.point_a, len_a)) {
+      newVertexID(i, true);
+    }
+
+    /* Go through all point from start point to the first intersection point. */
+    for (const int i : IndexRange::from_begin_end_inclusive(0, vertex_first.point_a)) {
+      newVertexID(i, true);
+    }
+
+    /* End at the first intersection point. */
+    newVertexIntersection(inter_id_first);
+    return true;
+  }
+
   /* Curve `A` does not have fill. */
-  BooleanResult execute_cut(Span<float2> curve_a, Span<float2> curve_b)
+  BooleanResult execute_cut(const bool is_a_cyclic, Span<float2> curve_a, Span<float2> curve_b)
   {
     len_a = curve_a.size();
     len_b = curve_b.size();
 
     /* ---- ---- ---- Phase One ---- ---- ---- */
 
-    for (const int i : IndexRange(len_a - 1)) { /* `A` does not loop. */
+    const IndexRange a_range = is_a_cyclic ? IndexRange(len_a) : IndexRange(len_a - 1);
+
+    for (const int i : a_range) {
       for (const int j : IndexRange(len_b)) {
         float alpha_a, alpha_b;
-        const int val = intersect(
-            curve_a[i], curve_a[i + 1], curve_b[j], curve_b[(j + 1) % len_b], &alpha_a, &alpha_b);
+        const int val = intersect(curve_a[i],
+                                  curve_a[(i + 1) % len_a],
+                                  curve_b[j],
+                                  curve_b[(j + 1) % len_b],
+                                  &alpha_a,
+                                  &alpha_b);
         if (val == ISECT_LINE_LINE_CROSS) {
           intersections.append(CreateIntersection(i, j, alpha_a, alpha_b));
         }
@@ -823,11 +861,22 @@ struct CurveBooleanExecutor {
 
     /* ---- ---- ---- Phase Four ---- ---- ---- */
 
-    const bool is_start = cut_add_start_cap();
+    bool is_looping = false;
+    if (is_a_cyclic) {
+      is_looping = cut_add_looping_cap();
+    }
+
+    bool is_start = is_looping;
+    if (!is_looping) {
+      is_start = cut_add_start_cap();
+    }
+
     for (int i = is_start ? 1 : 0; i < num_intersects - 1; i += 2) {
       cut_add_between_points(i);
     }
-    cut_add_end_cap();
+    if (!is_looping) {
+      cut_add_end_cap();
+    }
 
     /* Add one for the end. */
     newPolygon();
@@ -865,10 +914,10 @@ BooleanResult curve_boolean_calc(const InputMode input_mode,
   return executor.execute_boolean(input_mode, curve_a, curve_b);
 }
 
-BooleanResult curve_boolean_cut(Span<float2> curve_a, Span<float2> curve_b)
+BooleanResult curve_boolean_cut(const bool is_a_cyclic, Span<float2> curve_a, Span<float2> curve_b)
 {
   CurveBooleanExecutor executor;
-  return executor.execute_cut(curve_a, curve_b);
+  return executor.execute_cut(is_a_cyclic, curve_a, curve_b);
 }
 
 }  // namespace blender::polygonboolean
