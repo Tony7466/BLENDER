@@ -10,6 +10,7 @@
 
 #include "BLI_array.hh"
 #include "BLI_array_utils.hh"
+#include "BLI_math_base.hh"
 #include "BLI_math_geom.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_offset_indices.hh"
@@ -307,7 +308,8 @@ static int result_find_base_id(const BooleanResult &results,
                                const Span<float2> curve_b)
 {
   const OffsetIndices<int> points_by_polygon = OffsetIndices<int>(results.offsets);
-  const Array<float2> points = calculate_positions_from_result(curve_a, curve_b, results);
+  const Array<float2> points = interpolate_attribute_from_ab_result<float2>(
+      curve_a, curve_b, results);
 
   /**
    * The base is the polygon that all others are inside of, and therefor it is not in any others.
@@ -419,35 +421,40 @@ static BooleanResult result_sort_holes(const BooleanResult &in_results,
   return result;
 }
 
-Array<float2> calculate_positions_from_result(const Span<float2> curve_a,
-                                              const Span<float2> curve_b,
+template<typename T>
+Array<T> interpolate_attribute_from_ab_result(const Span<T> attr_a,
+                                              const Span<T> attr_b,
                                               const BooleanResult &result)
 {
-  const OffsetIndices<int> points_by_polygon = OffsetIndices<int>(result.offsets);
-  Array<float2> points(result.verts.size());
+  Array<T> attribute_out(result.verts.size());
 
   for (const int i : result.verts.index_range()) {
     const Vertex &vert = result.verts[i];
     const VertexType &type = vert.type;
 
     if (type == VertexType::PointA) {
-      points[i] = curve_a[vert.point_id];
+      attribute_out[i] = attr_a[vert.point_id];
     }
     else if (type == VertexType::PointB) {
-      points[i] = curve_b[vert.point_id];
+      attribute_out[i] = attr_b[vert.point_id];
     }
     else if (type == VertexType::Intersection) {
       const IntersectionPoint &inter_point = result.intersections_data[vert.point_id];
 
-      const float2 point_a0 = curve_a[inter_point.point_a];
-      const float2 point_a1 = curve_a[(inter_point.point_a + 1) % curve_a.size()];
+      const T a0 = attr_a[inter_point.point_a];
+      const T a1 = attr_a[(inter_point.point_a + 1) % attr_a.size()];
       const float alpha_a = inter_point.alpha_a;
 
-      points[i] = (1.0 - alpha_a) * point_a0 + alpha_a * point_a1;
+      const T b0 = attr_b[inter_point.point_b];
+      const T b1 = attr_b[(inter_point.point_b + 1) % attr_b.size()];
+      const float alpha_b = inter_point.alpha_b;
+
+      attribute_out[i] = math::interpolate(
+          math::interpolate(a0, a1, alpha_a), math::interpolate(b0, b1, alpha_b), 0.5f);
     }
   }
 
-  return points;
+  return attribute_out;
 }
 
 /**
