@@ -87,9 +87,14 @@ struct BooleanResult {
   Array<IntersectionPoint> intersections_data;
 };
 
-Array<float2> calculate_positions_from_result(const Span<float2> curve_a,
-                                              const Span<float2> curve_b,
+template<typename T>
+Array<T> interpolate_attribute_from_ab_result(const Span<T> attr_a,
+                                              const Span<T> attr_b,
                                               const BooleanResult &result);
+template<typename T>
+Array<T> interpolate_attribute_from_a_result(const Span<T> attr_a, const BooleanResult &result);
+template<typename T>
+Array<T> interpolate_attribute_from_b_result(const Span<T> attr_b, const BooleanResult &result);
 
 BooleanResult curve_boolean_calc(const InputMode input_mode,
                                  Span<float2> curve_a,
