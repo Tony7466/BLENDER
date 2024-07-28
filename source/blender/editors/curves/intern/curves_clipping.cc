@@ -114,11 +114,7 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
                                         const Span<float2> src_pos2d,
                                         const Span<float2> cut_pos2d)
 {
-  if (src.points_num() < 3) {
-    return bke::CurvesGeometry(src);
-  }
-
-  if (cut.points_num() < 3) {
+  if (src.points_num() == 0 || cut_pos2d.size() < 3) {
     return bke::CurvesGeometry(src);
   }
 
