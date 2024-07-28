@@ -88,13 +88,19 @@ struct BooleanResult {
 };
 
 template<typename T>
+void interpolate_attribute_from_ab_result(const VArray<T> attr_a,
+                                          const VArray<T> attr_b,
+                                          const BooleanResult &result,
+                                          MutableSpan<T> dst_attr);
+template<typename T>
 Array<T> interpolate_attribute_from_ab_result(const Span<T> attr_a,
                                               const Span<T> attr_b,
                                               const BooleanResult &result);
+
 template<typename T>
-Array<T> interpolate_attribute_from_a_result(const Span<T> attr_a, const BooleanResult &result);
+Array<T> interpolate_attribute_from_a_result(const VArray<T> attr_a, const BooleanResult &result);
 template<typename T>
-Array<T> interpolate_attribute_from_b_result(const Span<T> attr_b, const BooleanResult &result);
+Array<T> interpolate_attribute_from_b_result(const VArray<T> attr_b, const BooleanResult &result);
 
 BooleanResult curve_boolean_calc(const InputMode input_mode,
                                  Span<float2> curve_a,
