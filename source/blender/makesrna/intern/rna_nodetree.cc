@@ -9530,6 +9530,23 @@ static void rna_def_geo_capture_attribute(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE, "rna_Node_update");
 }
 
+static void rna_def_geo_context_input(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  RNA_def_struct_sdna_from(srna, "NodeGeometryContextInput", "storage");
+
+  prop = RNA_def_property(srna, "socket_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, rna_enum_node_socket_type_items);
+  RNA_def_property_ui_text(prop, "Socket Type", "");
+  RNA_def_property_update(prop, NC_NODE, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "context_identifier", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, nullptr, "identifier");
+  RNA_def_property_ui_text(prop, "Context Identifier", "");
+  RNA_def_property_update(prop, NC_NODE, "rna_Node_update");
+}
+
 static void rna_def_geo_bake_item(BlenderRNA *brna)
 {
   PropertyRNA *prop;

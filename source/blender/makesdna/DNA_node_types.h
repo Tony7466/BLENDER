@@ -1881,6 +1881,13 @@ typedef struct NodeGeometryViewer {
   int8_t domain;
 } NodeGeometryViewer;
 
+typedef struct NodeGeometryContextInput {
+  /** #eNodeSocketDatatype. */
+  int8_t socket_type;
+  char _pad[7];
+  char *identifier;
+} NodeGeometryContextInput;
+
 typedef struct NodeGeometryUVUnwrap {
   /** #GeometryNodeUVUnwrapMethod. */
   uint8_t method;
