@@ -963,10 +963,17 @@ file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libglapi.so.0.0.0)\n
   endif()
 
   if(WITH_DRACO)
-    install(
-      PROGRAMS $<TARGET_FILE:extern_draco>
-      DESTINATION ${TARGETDIR_VER}/python/lib/python${PYTHON_VERSION}/site-packages
-    )
+    if(WITH_PYTHON_MODULE)
+      install(
+        PROGRAMS $<TARGET_FILE:extern_draco>
+        DESTINATION ${CMAKE_BINARY_DIR}/bin/bpy/lib
+      )
+    else()
+      install(
+        PROGRAMS $<TARGET_FILE:extern_draco>
+        DESTINATION ${TARGETDIR_VER}/python/lib/python${PYTHON_VERSION}/site-packages
+      )
+    endif()
   endif()
 elseif(WIN32)
   if(WITH_WINDOWS_EXTERNAL_MANIFEST)
@@ -1490,10 +1497,17 @@ elseif(WIN32)
   endif()
 
   if(WITH_DRACO)
-    install(
-      PROGRAMS $<TARGET_FILE:extern_draco>
-      DESTINATION ${TARGETDIR_VER}/python/lib/site-packages
-    )
+    if(WITH_PYTHON_MODULE)
+      install(
+        PROGRAMS $<TARGET_FILE:extern_draco>
+        DESTINATION ${CMAKE_BINARY_DIR}/bin/bpy/lib
+      )
+    else()
+      install(
+        PROGRAMS $<TARGET_FILE:extern_draco>
+        DESTINATION ${TARGETDIR_VER}/python/lib/python${PYTHON_VERSION}/site-packages
+      )
+    endif()
   endif()
 
   if(WITH_PYTHON_MODULE AND TARGETDIR_BPY)
@@ -1613,10 +1627,17 @@ elseif(APPLE)
   endif()
 
   if(WITH_DRACO)
-    install(
-      PROGRAMS $<TARGET_FILE:extern_draco>
-      DESTINATION ${TARGETDIR_VER}/python/lib/python${PYTHON_VERSION}/site-packages
-    )
+    if(WITH_PYTHON_MODULE)
+      install(
+        PROGRAMS $<TARGET_FILE:extern_draco>
+        DESTINATION ${CMAKE_BINARY_DIR}/bin/bpy/lib
+      )
+    else()
+      install(
+        PROGRAMS $<TARGET_FILE:extern_draco>
+        DESTINATION ${TARGETDIR_VER}/python/lib/python${PYTHON_VERSION}/site-packages
+      )
+    endif()
   endif()
 endif()
 
@@ -1906,9 +1927,6 @@ if(UNIX AND NOT APPLE)
       install(
         CODE "\
 set(BLENDER_BIN \"${CMAKE_INSTALL_PREFIX}/${BLENDER_BIN}\")\n\
-if(DEFINED ENV\{DESTDIR\})\n\
-  set(BLENDER_BIN \"$ENV\{DESTDIR\}/$\{BLENDER_BIN\}\")\n\
-endif()\n\
 set(PYTHON_EXECUTABLE \"${PYTHON_EXECUTABLE}\")\n\
 set(MANPAGE_GEN \"${CMAKE_SOURCE_DIR}/doc/manpage/blender.1.py\")\n\
 set(MANPAGE_OUT \"${CMAKE_CURRENT_BINARY_DIR}/blender.1\")\n\
