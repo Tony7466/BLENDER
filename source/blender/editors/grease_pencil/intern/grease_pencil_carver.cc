@@ -74,9 +74,6 @@ static bool execute_carver_on_drawing(const int layer_index,
     }
   });
 
-  bke::CurvesGeometry cut = bke::CurvesGeometry(mcoords.size(), 1);
-  cut.offsets_for_write().last() = mcoords.size();
-
   const Span<float3> normals = drawing.curve_plane_normals();
 
   Array<float4> normal_planes(src.points_num());
@@ -112,7 +109,6 @@ static bool execute_carver_on_drawing(const int layer_index,
 
   bke::CurvesGeometry carved_strokes = ed::curves::clipping::curves_geometry_cut(
       src,
-      cut,
       use_fill,
       keep_caps,
       region,

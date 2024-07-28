@@ -371,7 +371,6 @@ void resize_curves(bke::CurvesGeometry &curves,
 namespace clipping {
 
 bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
-                                        const bke::CurvesGeometry &cut,
                                         const Span<bool> use_fill,
                                         const bool keep_caps,
                                         const ARegion &region,

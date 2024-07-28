@@ -105,7 +105,6 @@ static float4 transform_plane(const float4x4 &mat, const float4 &plane)
 }
 
 bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
-                                        const bke::CurvesGeometry &cut,
                                         const Span<bool> use_fill,
                                         const bool keep_caps,
                                         const ARegion &region,
@@ -148,9 +147,6 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
 
     BLI_assert(result.valid_geometry);
 
-    const int a_size = pos_2d_a.size();
-    const int b_size = pos_2d_b.size();
-
     const int points_num = dst.points_num();
     const int curves_num = dst.curves_num();
     const int added_curve_num = result.offsets.size() - 1;
@@ -166,7 +162,6 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
     dst.cyclic_for_write().drop_front(curves_num).fill(is_fill);
 
     const bke::AttributeAccessor src_attributes = src.attributes();
-    const bke::AttributeAccessor cut_attributes = cut.attributes();
     bke::MutableAttributeAccessor dst_attributes = dst.attributes_for_write();
 
     /* End caps. */
@@ -183,7 +178,7 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
       const bool keep_first = vertex_first.type == polygonboolean::VertexType::PointA &&
                               vertex_first.point_id == 0;
       const bool keep_last = vertex_last.type == polygonboolean::VertexType::PointA &&
-                             vertex_last.point_id == a_size - 1;
+                             vertex_last.point_id == pos_2d_a.size() - 1;
 
       End_caps(keep_first,
                keep_last,
@@ -240,14 +235,12 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
           }
 
           GVArray src1 = (*src_attributes.lookup(id, meta_data.domain)).slice(points);
-          GVArray src2 = *cut_attributes.lookup(id, meta_data.domain);
           bke::GSpanAttributeWriter dstW = dst_attributes.lookup_or_add_for_write_only_span(
               id, meta_data.domain, meta_data.data_type);
 
           bke::attribute_math::convert_to_static_type(dstW.span.type(), [&](auto dummy) {
             using T = decltype(dummy);
             VArray<T> src1_attr = src1.typed<T>();
-            VArray<T> src2_attr = src2.typed<T>();
             MutableSpan<T> dst_attr = (dstW.span.typed<T>()).drop_front(points_num);
 
             polygonboolean::interpolate_attribute_from_a_result<T>(src1_attr, result, dst_attr);
