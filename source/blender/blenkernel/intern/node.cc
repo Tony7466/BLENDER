@@ -904,6 +904,11 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
     if (node->type == GEO_NODE_MENU_SWITCH) {
       nodes::MenuSwitchItemsAccessor::blend_write(writer, *node);
     }
+    if (node->type == GEO_NODE_CONTEXT_INPUT) {
+      auto &storage = *static_cast<NodeGeometryContextInput *>(node->storage);
+      BLO_write_struct(writer, NodeGeometryContextInput, &storage);
+      BLO_write_string(writer, storage.identifier);
+    }
   }
 
   LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
@@ -1183,6 +1188,12 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
         }
         case GEO_NODE_CAPTURE_ATTRIBUTE: {
           nodes::CaptureAttributeItemsAccessor::blend_read_data(reader, *node);
+          break;
+        }
+        case GEO_NODE_CONTEXT_INPUT: {
+          NodeGeometryContextInput *storage = static_cast<NodeGeometryContextInput *>(
+              node->storage);
+          BLO_read_string(reader, &storage->identifier);
           break;
         }
 

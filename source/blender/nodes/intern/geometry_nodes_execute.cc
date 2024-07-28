@@ -983,6 +983,13 @@ bke::GeometrySet execute_geometry_nodes_on_geometry(const bNodeTree &btree,
     inputs_to_destruct.append({type, value});
   }
 
+  /* Prepare context inputs. */
+  for (const int i : lf_graph_info.mapping.context_inputs.index_range()) {
+    static bke::SocketValueVariant value_variant;
+    value_variant.set(2.0f);
+    param_inputs[function.inputs.context[i]] = &value_variant;
+  }
+
   /* Prepare used-outputs inputs. */
   Array<bool> output_used_inputs(btree.interface_outputs().size(), true);
   for (const int i : btree.interface_outputs().index_range()) {

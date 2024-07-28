@@ -61,7 +61,8 @@ static void node_register()
   static blender::bke::bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_CONTEXT_INPUT, "Context Input", NODE_CLASS_INPUT);
-  blender::bke::node_type_storage(&ntype, "Context Input", node_free_storage, node_copy_storage);
+  blender::bke::node_type_storage(
+      &ntype, "NodeGeometryContextInput", node_free_storage, node_copy_storage);
   ntype.declare = node_declare;
   ntype.initfunc = node_init;
   ntype.draw_buttons = node_layout;
