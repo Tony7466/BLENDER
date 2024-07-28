@@ -713,6 +713,21 @@ void simple_cut_4_test()
   }
 }
 
+void cyclical_cut_test()
+{
+  const Array<float2> points_a = {{6, 5}, {4, 5}, {1, 2}, {1, 0}};
+  const Array<float2> points_b = {{1, 4}, {3, 1}, {5, 3}, {2, 5}, {3, 3}};
+  BooleanResult result = polygonboolean::curve_boolean_cut(true, points_a, points_b);
+  EXPECT_TRUE(result.valid_geometry);
+  EXPECT_EQ(result.verts.size(), 10);
+  EXPECT_EQ(result.intersections_data.size(), 6);
+  EXPECT_EQ(result.offsets.size(), 4);
+
+  if (DO_DRAW) {
+    draw_cut("Cyclical cut", points_a, points_b, result);
+  }
+}
+
 TEST(polygonboolean, Squares_A_AND_B)
 {
   squares_A_AND_B_test();
@@ -796,6 +811,11 @@ TEST(polygonboolean, Simple_Cut_3)
 TEST(polygonboolean, Simple_Cut_4)
 {
   simple_cut_4_test();
+}
+
+TEST(polygonboolean, Cyclical_Cut)
+{
+  cyclical_cut_test();
 }
 
 }  // namespace blender::polygonboolean
