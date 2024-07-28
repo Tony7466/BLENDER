@@ -15,6 +15,9 @@
 #include "BLI_vector.hh"
 
 #include "DNA_grease_pencil_types.h"
+#include "DNA_screen_types.h"
+
+#include "ED_view3d.hh"
 
 #include "BLI_polygon_clipping_2d.hh"
 
@@ -24,12 +27,15 @@ namespace blender::ed::curves::clipping {
 
 static Set<std::string> skipped_attribute_ids(const bool keep_caps,
                                               const bool is_fill,
+                                              const bool reproject,
                                               const bke::AttrDomain domain)
 {
   switch (domain) {
     case bke::AttrDomain::Point:
+      if (reproject) {
+        return {"position"};
+      }
       return {};
-
     case bke::AttrDomain::Curve:
       if ((!keep_caps && !is_fill)) {
         return {
@@ -91,6 +97,8 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
                                         const bke::CurvesGeometry &cut,
                                         const Span<bool> use_fill,
                                         const bool keep_caps,
+                                        const ARegion &region,
+                                        const float4x4 &layer_to_world,
                                         const Span<float2> src_pos2d,
                                         const Span<float2> cut_pos2d)
 {
@@ -178,8 +186,10 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
                dst_attributes);
     }
 
-    const Set<std::string> &skip = skipped_attribute_ids(
-        keep_caps, is_fill, bke::AttrDomain::Curve);
+    const bool reproject = result.intersections_data.size() != 0;
+
+    const Set<std::string> &curve_skip = skipped_attribute_ids(
+        keep_caps, is_fill, reproject, bke::AttrDomain::Curve);
 
     /* Copy curve attributes. */
     src_attributes.for_all(
@@ -187,7 +197,7 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
           if (meta_data.domain != bke::AttrDomain::Curve) {
             return true;
           }
-          if (skip.contains(id.name())) {
+          if (curve_skip.contains(id.name())) {
             return true;
           }
           GVArray srcR = *src_attributes.lookup(id, meta_data.domain);
@@ -208,10 +218,16 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
           return true;
         });
 
+    const Set<std::string> &point_skip = skipped_attribute_ids(
+        keep_caps, is_fill, reproject, bke::AttrDomain::Point);
+
     /* Copy/Interpolate point attributes. */
     src_attributes.for_all(
         [&](const bke::AttributeIDRef &id, const bke::AttributeMetaData meta_data) {
           if (meta_data.domain != bke::AttrDomain::Point) {
+            return true;
+          }
+          if (point_skip.contains(id.name())) {
             return true;
           }
 
@@ -273,6 +289,19 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
 
           return true;
         });
+
+    if (reproject) {
+      MutableSpan<float3> positions = dst.positions_for_write().drop_front(points_num);
+      const Array<float2> pos2d = calculate_positions_from_result(pos_2d_a, pos_2d_b, result);
+      const float4x4 world_to_layer = math::invert(layer_to_world);
+
+      float4 plane = float4(0.0f, 1.0f, 0.0f, 0.0f); /* TODO */
+
+      for (const int i : pos2d.index_range()) {
+        ED_view3d_win_to_3d_on_plane(&region, plane, pos2d[i], false, positions[i]);
+        positions[i] = math::transform_point(world_to_layer, positions[i]);
+      }
+    }
   }
 
   dst.update_curve_types();

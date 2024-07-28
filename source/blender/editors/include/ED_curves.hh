@@ -25,6 +25,7 @@ struct ViewContext;
 struct rcti;
 struct TransVertStore;
 struct wmKeyConfig;
+struct ARegion;
 namespace blender::bke {
 enum class AttrDomain : int8_t;
 struct GSpanAttributeWriter;
@@ -373,6 +374,8 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
                                         const bke::CurvesGeometry &cut,
                                         const Span<bool> use_fill,
                                         const bool keep_caps,
+                                        const ARegion &region,
+                                        const float4x4 &layer_to_world,
                                         const Span<float2> src_pos2d,
                                         const Span<float2> cut_pos2d);
 

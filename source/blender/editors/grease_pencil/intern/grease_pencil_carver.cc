@@ -45,6 +45,7 @@ static bool execute_carver_on_drawing(const int layer_index,
                                       Object &obact,
                                       const ARegion &region,
                                       const float4x4 &projection,
+                                      const float4x4 &layer_to_world,
                                       const Span<int2> mcoords,
                                       const bool keep_caps,
                                       bke::greasepencil::Drawing &drawing)
@@ -105,7 +106,7 @@ static bool execute_carver_on_drawing(const int layer_index,
   }
 
   bke::CurvesGeometry carved_strokes = ed::curves::clipping::curves_geometry_cut(
-      src, cut, use_fill, keep_caps, screen_space_positions, cut_pos2d);
+      src, cut, use_fill, keep_caps, region, layer_to_world, screen_space_positions, cut_pos2d);
 
   /* Set the new geometry. */
   drawing.strokes_for_write() = std::move(carved_strokes);
@@ -154,6 +155,7 @@ static int stroke_carver_execute(const bContext *C, const Span<int2> mcoords)
                                     *obact,
                                     *region,
                                     projection,
+                                    layer_to_world,
                                     mcoords,
                                     keep_caps,
                                     info.drawing))
@@ -176,6 +178,7 @@ static int stroke_carver_execute(const bContext *C, const Span<int2> mcoords)
                                     *obact,
                                     *region,
                                     projection,
+                                    layer_to_world,
                                     mcoords,
                                     keep_caps,
                                     info.drawing))
