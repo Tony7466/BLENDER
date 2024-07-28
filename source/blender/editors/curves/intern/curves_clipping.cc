@@ -304,11 +304,11 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
 
     if (reproject) {
       MutableSpan<float3> positions = dst.positions_for_write().drop_front(points_num);
-      const Array<float2> pos2d = calculate_positions_from_result(pos_2d_a, pos_2d_b, result);
-      const float4x4 world_to_layer = math::invert(layer_to_world);
+      const Array<float2> pos2d = polygonboolean::interpolate_attribute_from_ab_result<float2>(
+          pos_2d_a, pos_2d_b, result);
 
       const float4 &plane = transform_plane(layer_to_world, normal_planes[curve_i]);
-
+      const float4x4 world_to_layer = math::invert(layer_to_world);
       for (const int i : pos2d.index_range()) {
         ED_view3d_win_to_3d_on_plane(&region, plane, pos2d[i], false, positions[i]);
         positions[i] = math::transform_point(world_to_layer, positions[i]);
