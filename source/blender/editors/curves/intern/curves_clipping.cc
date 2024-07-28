@@ -130,9 +130,7 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
       continue;
     }
 
-    if (!result.valid_geometry) {
-      printf("Not valid geometry.\n");
-    }
+    BLI_assert(result.valid_geometry);
 
     const int a_size = pos_2d_a.size();
     const int b_size = pos_2d_b.size();
