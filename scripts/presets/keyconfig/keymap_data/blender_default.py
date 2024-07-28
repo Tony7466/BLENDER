@@ -8610,6 +8610,16 @@ def km_3d_view_tool_paint_grease_pencil_cutter(params):
     )
 
 
+def km_3d_view_tool_paint_grease_pencil_carver(params):
+    return (
+        "3D View Tool: Paint Grease Pencil, Carver",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": [
+            ("grease_pencil.stroke_carver", {"type": params.tool_mouse, "value": 'PRESS'}, None),
+        ]},
+    )
+
+
 def km_3d_view_tool_paint_gpencil_eyedropper(params):
     return (
         "3D View Tool: Paint Gpencil, Eyedropper",
@@ -9313,6 +9323,7 @@ def generate_keymaps(params=None):
         *(km_sequencer_editor_tool_generic_select_preview(params, fallback=fallback) for fallback in (False, True)),
         *(km_sequencer_editor_tool_generic_select_box_preview(params, fallback=fallback) for fallback in (False, True)),
         km_3d_view_tool_paint_grease_pencil_cutter(params),
+        km_3d_view_tool_paint_grease_pencil_carver(params),
         km_sequencer_editor_tool_generic_cursor(params),
         km_sequencer_editor_tool_blade(params),
         km_sequencer_editor_tool_sample(params),

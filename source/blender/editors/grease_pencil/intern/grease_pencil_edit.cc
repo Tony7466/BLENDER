@@ -3241,4 +3241,5 @@ void ED_operatortypes_grease_pencil_edit()
   WM_operatortype_append(GREASE_PENCIL_OT_set_curve_type);
   WM_operatortype_append(GREASE_PENCIL_OT_set_curve_resolution);
   WM_operatortype_append(GREASE_PENCIL_OT_set_handle_type);
+  WM_operatortype_append(GREASE_PENCIL_OT_stroke_carver);
 }
