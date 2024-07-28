@@ -299,6 +299,7 @@ void draw_polygons(const std::string &label,
 }
 
 void draw_cut(const std::string &label,
+              const bool is_a_cyclic,
               const Span<float2> curve_a,
               const Span<float2> curve_b,
               const BooleanResult &result)
@@ -363,7 +364,12 @@ void draw_cut(const std::string &label,
 
   f << "<svg width=\"" << view_width << "\" height=\"" << view_height << "\">\n";
 
-  SVG_add_line(f, "cut-A", curve_a, topleft, scale);
+  if (is_a_cyclic) {
+    SVG_add_polygon(f, "cut-A", curve_a, topleft, scale);
+  }
+  else {
+    SVG_add_line(f, "cut-A", curve_a, topleft, scale);
+  }
   SVG_add_polygon(f, "cut-B", curve_b, topleft, scale);
 
   const Span<float2> points = calculate_positions_from_result(curve_a, curve_b, result);
@@ -653,7 +659,7 @@ void simple_cut_test()
   EXPECT_EQ(result.offsets.size(), 4);
 
   if (DO_DRAW) {
-    draw_cut("Simple cut", points_a, points_b, result);
+    draw_cut("Simple cut", false, points_a, points_b, result);
   }
 }
 
@@ -671,7 +677,7 @@ void simple_cut_2_test()
   EXPECT_EQ(result.offsets.size(), 2);
 
   if (DO_DRAW) {
-    draw_cut("Simple cut 2", points_a, points_b, result);
+    draw_cut("Simple cut 2", false, points_a, points_b, result);
   }
 }
 
@@ -690,7 +696,7 @@ void simple_cut_3_test()
   EXPECT_EQ(result.offsets.size(), 5);
 
   if (DO_DRAW) {
-    draw_cut("Simple cut 3", points_a, points_b, result);
+    draw_cut("Simple cut 3", false, points_a, points_b, result);
   }
 }
 
@@ -709,7 +715,7 @@ void simple_cut_4_test()
   EXPECT_EQ(result.offsets.size(), 5);
 
   if (DO_DRAW) {
-    draw_cut("Simple cut 4", points_a, points_b, result);
+    draw_cut("Simple cut 4", false, points_a, points_b, result);
   }
 }
 
@@ -724,7 +730,7 @@ void cyclical_cut_test()
   EXPECT_EQ(result.offsets.size(), 4);
 
   if (DO_DRAW) {
-    draw_cut("Cyclical cut", points_a, points_b, result);
+    draw_cut("Cyclical cut", true, points_a, points_b, result);
   }
 }
 
