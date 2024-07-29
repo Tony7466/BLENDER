@@ -151,7 +151,6 @@ static int rna_AnimData_action_editable(const PointerRNA *ptr, const char ** /*r
   return BKE_animdata_action_editable(adt) ? PROP_EDITABLE : PropertyFlag(0);
 }
 
-#  ifdef WITH_ANIM_BAKLAVA
 static PointerRNA rna_AnimData_action_get(PointerRNA *ptr)
 {
   ID &animated_id = *ptr->owner_id;
@@ -161,7 +160,6 @@ static PointerRNA rna_AnimData_action_get(PointerRNA *ptr)
   };
   return RNA_id_pointer_create(&action->id);
 }
-#  endif /* WITH_ANIM_BAKLAVA */
 
 static void rna_AnimData_action_set(PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
 {
@@ -1578,14 +1576,10 @@ static void rna_def_animdata(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_REFCOUNT);
   RNA_def_property_pointer_funcs(
       prop,
-#  ifdef WITH_ANIM_BAKLAVA
       /* Define a getter that is NULL-safe, so that an RNA_AnimData prop with `ptr->data = nullptr`
        * can still be used to get the property. In that case it will always return nullptr, of
        * course, but it won't crash Blender. */
       "rna_AnimData_action_get",
-#  else
-      nullptr,
-#  endif /* WITH_ANIM_BAKLAVA */
       /* Similarly, for the setter, the NULL-safety allows constructing the AnimData struct on
        * assignment of this "action" property. This is possible because RNA has typed NULL
        * pointers, and thus it knows which setter to call even when `ptr->data` is NULL. */

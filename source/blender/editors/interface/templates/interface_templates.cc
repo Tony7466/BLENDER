@@ -1834,11 +1834,11 @@ void uiTemplateAction(uiLayout *layout,
   BLI_assert(adt_action_prop);
   BLI_assert(RNA_property_type(adt_action_prop) == PROP_POINTER);
 
-  /* Get the Action assigned to the ID. */
+  /* Construct a pointer with the animated ID as owner, even when `adt` may be `nullptr`.
+   * This way it is possible to use this RNA pointer to get/set `adt->action`, as that RNA property
+   * has a getter and setter that only need the owner ID and are null-safe regarding the `adt`
+   * itself. */
   AnimData *adt = BKE_animdata_from_id(id);
-
-  /* Construct a pointer with the animated ID as owner, even when `action` may be `nullptr`.
-   * This way it is possible to use this RNA pointer to get/set the adt->action. */
   PointerRNA adt_ptr = RNA_pointer_create(id, &RNA_AnimData, adt);
 
   /* This must be heap-allocated because template_ID() will call MEM_dupallocN()

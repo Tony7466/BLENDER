@@ -1726,7 +1726,6 @@ void RNA_api_ui_layout(StructRNA *srna)
                "",
                "Optionally limit the items which can be selected");
 
-#  ifdef WITH_ANIM_BAKLAVA
   func = RNA_def_function(srna, "template_action", "rna_uiTemplateAction");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT);
   parm = RNA_def_pointer(func, "id", "ID", "", "The data-block for which to select an Action");
@@ -1734,7 +1733,6 @@ void RNA_api_ui_layout(StructRNA *srna)
   RNA_def_string(func, "new", nullptr, 0, "", "Operator identifier to create a new ID block");
   RNA_def_string(func, "unlink", nullptr, 0, "", "Operator identifier to unlink the ID block");
   api_ui_item_common_text(func);
-#  endif /* WITH_ANIM_BAKLAVA */
 
   func = RNA_def_function(srna, "template_search", "uiTemplateSearch");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT);
