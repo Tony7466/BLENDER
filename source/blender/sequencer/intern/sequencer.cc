@@ -324,6 +324,14 @@ static void seq_new_fix_links_recursive(Sequence *seq)
       smd->mask_sequence = static_cast<Sequence *>(smd->mask_sequence->tmp);
     }
   }
+
+  if (seq->connected.first) {
+    LISTBASE_FOREACH (Sequence *, old, &seq->connected) {
+      if (old->tmp) {
+        BLI_insertlinkreplace(&seq->connected, old, static_cast<Sequence *>(old->tmp));
+      }
+    }
+  }
 }
 
 SequencerToolSettings *SEQ_tool_settings_init()
@@ -660,7 +668,7 @@ void SEQ_sequence_base_dupli_recursive(const Scene *scene_src,
     return;
   }
 
-  /* fix modifier linking */
+  /* Fix modifier and connected strip links. */
   LISTBASE_FOREACH (Sequence *, seq, nseqbase) {
     seq_new_fix_links_recursive(seq);
   }
