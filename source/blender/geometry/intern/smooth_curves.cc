@@ -271,20 +271,20 @@ void smooth_curve_positions(bke::CurvesGeometry &curves,
      * This will smooth the handle positions together with the control point positions, because the
      * smoothing algorithm takes neighboring values to apply the gaussian smoothing to. */
     Array<float3> all_positions(positions.size() * 3);
-    bezier_curves_to_smooth.foreach_index(GrainSize(512), [&](const int curve_i) {
-      const IndexRange points = points_by_curve[curve_i];
-      for (const int point_i : points) {
-        const int index = point_i * 3;
-        all_positions[index] = handle_positions_left[point_i];
-        all_positions[index + 1] = positions[point_i];
-        all_positions[index + 2] = handle_positions_right[point_i];
+    bezier_curves_to_smooth.foreach_index(GrainSize(512), [&](const int curve) {
+      const IndexRange points = points_by_curve[curve];
+      for (const int point : points) {
+        const int index = point * 3;
+        all_positions[index] = handle_positions_left[point];
+        all_positions[index + 1] = positions[point];
+        all_positions[index + 2] = handle_positions_right[point];
       }
     });
 
     VArraySpan<float> influences(influence_by_point);
-    bezier_curves_to_smooth.foreach_index(GrainSize(512), [&](const int curve_i) {
+    bezier_curves_to_smooth.foreach_index(GrainSize(512), [&](const int curve) {
       Vector<float3> orig_data;
-      const IndexRange points = points_by_curve[curve_i];
+      const IndexRange points = points_by_curve[curve];
 
       IndexMaskMemory memory;
       const IndexMask selection_mask = IndexMask::from_bools(points, point_selection, memory);
@@ -295,7 +295,7 @@ void smooth_curve_positions(bke::CurvesGeometry &curves,
       selection_mask.foreach_range([&](const IndexRange range) {
         IndexRange positions_range(range.start() * 3, range.size() * 3);
         /* Ignore the left handle of the first point and the right handle of the last point. */
-        if (!smooth_ends && !cyclic[curve_i]) {
+        if (!smooth_ends && !cyclic[curve]) {
           positions_range = positions_range.drop_front(1).drop_back(1);
         }
         MutableSpan<float3> dst_data = all_positions.as_mutable_span().slice(positions_range);
@@ -307,7 +307,7 @@ void smooth_curve_positions(bke::CurvesGeometry &curves,
         /* The influence is mapped from handle+control point index to only control point index. */
         const VArray<float> point_influence = VArray<float>::ForFunc(
             positions_range.size(), [&](const int index) {
-              if (!smooth_ends && !cyclic[curve_i]) {
+              if (!smooth_ends && !cyclic[curve]) {
                 /* Account for the left handle of the first
                  * point being ignored. */
                 return influences.slice(range)[(index + 1) / 3];
@@ -319,20 +319,20 @@ void smooth_curve_positions(bke::CurvesGeometry &curves,
                          point_influence,
                          smooth_ends,
                          keep_shape,
-                         cyclic[curve_i],
+                         cyclic[curve],
                          dst_data);
       });
     });
 
     /* Copy the resulting values from the flat array back into the three posititon attributes for
      * the left and right handles as well as the control points. */
-    bezier_curves_to_smooth.foreach_index(GrainSize(512), [&](const int curve_i) {
-      const IndexRange points = points_by_curve[curve_i];
-      for (const int point_i : points) {
-        const int index = point_i * 3;
-        handle_positions_left[point_i] = all_positions[index];
-        positions[point_i] = all_positions[index + 1];
-        handle_positions_right[point_i] = all_positions[index + 2];
+    bezier_curves_to_smooth.foreach_index(GrainSize(512), [&](const int curve) {
+      const IndexRange points = points_by_curve[curve];
+      for (const int point : points) {
+        const int index = point * 3;
+        handle_positions_left[point] = all_positions[index];
+        positions[point] = all_positions[index + 1];
+        handle_positions_right[point] = all_positions[index + 2];
       }
     });
 
