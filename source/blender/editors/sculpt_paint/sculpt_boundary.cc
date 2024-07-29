@@ -36,70 +36,71 @@ namespace blender::ed::sculpt_paint::boundary {
  * From a vertex index anywhere in the mesh, returns the closest vertex in a mesh boundary inside
  * the given radius, if it exists.
  */
-static std::optional<int> get_closest_boundary_vert(Object &object,
-                                                    const GroupedSpan<int> vert_to_face,
-                                                    const Span<float3> vert_positions,
-                                                    const Span<bool> hide_vert,
-                                                    const Span<bool> hide_poly,
-                                                    const BitSpan boundary,
-                                                    const int initial_vert,
-                                                    const float radius);
-static std::optional<SubdivCCGCoord> get_closest_boundary_vert(Object &object,
-                                                               const OffsetIndices<int> faces,
-                                                               const Span<int> corner_verts,
-                                                               const SubdivCCG &subdiv_ccg,
-                                                               const Span<bool> hide_poly,
-                                                               const BitSpan boundary,
-                                                               const SubdivCCGCoord initial_vert,
-                                                               const float radius);
-static std::optional<BMVert *> get_closest_boundary_vert(Object &object,
-                                                         BMesh *bm,
-                                                         BMVert &initial_vert,
+static std::optional<int> get_closest_boundary_vert_mesh(Object &object,
+                                                         const GroupedSpan<int> vert_to_face,
+                                                         const Span<float3> vert_positions,
+                                                         const Span<bool> hide_vert,
+                                                         const Span<bool> hide_poly,
+                                                         const BitSpan boundary,
+                                                         const int initial_vert,
                                                          const float radius);
+static std::optional<SubdivCCGCoord> get_closest_boundary_vert_grids(
+    Object &object,
+    const OffsetIndices<int> faces,
+    const Span<int> corner_verts,
+    const SubdivCCG &subdiv_ccg,
+    const Span<bool> hide_poly,
+    const BitSpan boundary,
+    const SubdivCCGCoord initial_vert,
+    const float radius);
+static std::optional<BMVert *> get_closest_boundary_vert_bmesh(Object &object,
+                                                               BMesh *bm,
+                                                               BMVert &initial_vert,
+                                                               const float radius);
 /**
  * This function is used to check where the propagation should stop when calculating the boundary,
  * as well as to check if the initial vertex is valid.
  */
-static bool is_vert_in_editable_boundary(const OffsetIndices<int> faces,
-                                         const Span<int> corner_verts,
-                                         const GroupedSpan<int> vert_to_face,
-                                         const Span<bool> hide_vert,
-                                         const Span<bool> hide_poly,
-                                         const BitSpan boundary,
-                                         const int initial_vert);
-static bool is_vert_in_editable_boundary(const OffsetIndices<int> faces,
-                                         const Span<int> corner_verts,
-                                         const SubdivCCG &subdiv_ccg,
-                                         const Span<bool> hide_poly,
-                                         const BitSpan boundary,
-                                         const SubdivCCGCoord initial_vert);
-static bool is_vert_in_editable_boundary(BMVert &initial_vert);
+static bool is_vert_in_editable_boundary_mesh(const OffsetIndices<int> faces,
+                                              const Span<int> corner_verts,
+                                              const GroupedSpan<int> vert_to_face,
+                                              const Span<bool> hide_vert,
+                                              const Span<bool> hide_poly,
+                                              const BitSpan boundary,
+                                              const int initial_vert);
+static bool is_vert_in_editable_boundary_grids(const OffsetIndices<int> faces,
+                                               const Span<int> corner_verts,
+                                               const SubdivCCG &subdiv_ccg,
+                                               const Span<bool> hide_poly,
+                                               const BitSpan boundary,
+                                               const SubdivCCGCoord initial_vert);
+static bool is_vert_in_editable_boundary_bmesh(BMVert &initial_vert);
 
 /**
  * Determines the indices of a boundary.
  */
-static void indices_init(Object &object,
-                         const OffsetIndices<int> faces,
-                         const Span<int> corner_verts,
-                         const GroupedSpan<int> vert_to_face,
-                         const Span<bool> hide_vert,
-                         const Span<bool> hide_poly,
-                         const BitSpan boundary_verts,
-                         const Span<float3> vert_positions,
-                         const int initial_boundary_vert,
-                         SculptBoundary &boundary);
-static void indices_init(Object &object,
-                         const OffsetIndices<int> faces,
-                         const Span<int> corner_verts,
-                         const SubdivCCG &subdiv_ccg,
-                         const Span<bool> hide_poly,
-                         const BitSpan boundary_verts,
-                         const SubdivCCGCoord initial_vert,
-                         SculptBoundary &boundary);
-static void indices_init(Object &object,
-                         BMesh *bm,
-                         BMVert &initial_boundary_vert,
-                         SculptBoundary &boundary);
+static void indices_init_mesh(Object &object,
+                              const OffsetIndices<int> faces,
+                              const Span<int> corner_verts,
+                              const GroupedSpan<int> vert_to_face,
+                              const Span<bool> hide_vert,
+                              const Span<bool> hide_poly,
+                              const BitSpan boundary_verts,
+                              const Span<float3> vert_positions,
+                              const int initial_boundary_vert,
+                              SculptBoundary &boundary);
+static void indices_init_grids(Object &object,
+                               const OffsetIndices<int> faces,
+                               const Span<int> corner_verts,
+                               const SubdivCCG &subdiv_ccg,
+                               const Span<bool> hide_poly,
+                               const BitSpan boundary_verts,
+                               const SubdivCCGCoord initial_vert,
+                               SculptBoundary &boundary);
+static void indices_init_bmesh(Object &object,
+                               BMesh *bm,
+                               BMVert &initial_boundary_vert,
+                               SculptBoundary &boundary);
 
 /**
  * This functions initializes all data needed to calculate falloffs and deformation from the
@@ -107,23 +108,23 @@ static void indices_init(Object &object,
  * needed to go from a boundary vertex to an interior vertex and which vertex of the boundary is
  * the closest one.
  */
-static void edit_data_init(OffsetIndices<int> faces,
-                           Span<int> corner_verts,
-                           GroupedSpan<int> vert_to_face,
-                           Span<float3> vert_positions,
-                           Span<bool> hide_vert,
-                           Span<bool> hide_poly,
-                           const int initial_vert_i,
-                           const float radius,
-                           SculptBoundary &boundary);
-static void edit_data_init(const SubdivCCG &subdiv_ccg,
-                           const int initial_vert_i,
-                           const float radius,
-                           SculptBoundary &boundary);
-static void edit_data_init(BMesh *bm,
-                           const int initial_vert_i,
-                           const float radius,
-                           SculptBoundary &boundary);
+static void edit_data_init_mesh(OffsetIndices<int> faces,
+                                Span<int> corner_verts,
+                                GroupedSpan<int> vert_to_face,
+                                Span<float3> vert_positions,
+                                Span<bool> hide_vert,
+                                Span<bool> hide_poly,
+                                const int initial_vert_i,
+                                const float radius,
+                                SculptBoundary &boundary);
+static void edit_data_init_grids(const SubdivCCG &subdiv_ccg,
+                                 const int initial_vert_i,
+                                 const float radius,
+                                 SculptBoundary &boundary);
+static void edit_data_init_bmesh(BMesh *bm,
+                                 const int initial_vert_i,
+                                 const float radius,
+                                 SculptBoundary &boundary);
 
 std::unique_ptr<SculptBoundary> data_init(Object &object,
                                           const Brush *brush,
@@ -140,16 +141,16 @@ std::unique_ptr<SculptBoundary> data_init(Object &object,
   switch (ss.pbvh->type()) {
     case (bke::pbvh::Type::Mesh): {
       const int vert = initial_vert.i;
-      return data_init(object, brush, vert, radius);
+      return data_init_mesh(object, brush, vert, radius);
     }
     case (bke::pbvh::Type::Grids): {
       const CCGKey &key = BKE_subdiv_ccg_key_top_level(*ss.subdiv_ccg);
       const SubdivCCGCoord vert = SubdivCCGCoord::from_index(key, initial_vert.i);
-      return data_init(object, brush, vert, radius);
+      return data_init_grids(object, brush, vert, radius);
     }
     case (bke::pbvh::Type::BMesh): {
       BMVert *vert = reinterpret_cast<BMVert *>(initial_vert.i);
-      return data_init(object, brush, vert, radius);
+      return data_init_bmesh(object, brush, vert, radius);
     }
   }
 
@@ -157,10 +158,10 @@ std::unique_ptr<SculptBoundary> data_init(Object &object,
   return nullptr;
 }
 
-std::unique_ptr<SculptBoundary> data_init(Object &object,
-                                          const Brush *brush,
-                                          const int initial_vert,
-                                          const float radius)
+std::unique_ptr<SculptBoundary> data_init_mesh(Object &object,
+                                               const Brush *brush,
+                                               const int initial_vert,
+                                               const float radius)
 {
   SculptSession &ss = *object.sculpt;
 
@@ -177,7 +178,7 @@ std::unique_ptr<SculptBoundary> data_init(Object &object,
 
   const Span<float3> positions_eval = BKE_pbvh_get_vert_positions(pbvh);
 
-  const std::optional<int> boundary_initial_vert = get_closest_boundary_vert(
+  const std::optional<int> boundary_initial_vert = get_closest_boundary_vert_mesh(
       object,
       ss.vert_to_face_map,
       positions_eval,
@@ -194,13 +195,13 @@ std::unique_ptr<SculptBoundary> data_init(Object &object,
   /* Starting from a vertex that is the limit of a boundary is ambiguous, so return nullptr instead
    * of forcing a random active boundary from a corner. */
   /* TODO: Shouldn't this be boundary_initial_vert??? */
-  if (!is_vert_in_editable_boundary(faces,
-                                    corner_verts,
-                                    ss.vert_to_face_map,
-                                    hide_vert,
-                                    hide_poly,
-                                    ss.vertex_info.boundary,
-                                    initial_vert))
+  if (!is_vert_in_editable_boundary_mesh(faces,
+                                         corner_verts,
+                                         ss.vert_to_face_map,
+                                         hide_vert,
+                                         hide_poly,
+                                         ss.vertex_info.boundary,
+                                         initial_vert))
   {
     return nullptr;
   }
@@ -212,35 +213,35 @@ std::unique_ptr<SculptBoundary> data_init(Object &object,
   boundary->initial_vert_i = boundary_initial_vert_index;
   boundary->initial_vert_position = positions_eval[boundary_initial_vert_index];
 
-  indices_init(object,
-               faces,
-               corner_verts,
-               ss.vert_to_face_map,
-               hide_vert,
-               hide_poly,
-               ss.vertex_info.boundary,
-               positions_eval,
-               *boundary_initial_vert,
-               *boundary);
+  indices_init_mesh(object,
+                    faces,
+                    corner_verts,
+                    ss.vert_to_face_map,
+                    hide_vert,
+                    hide_poly,
+                    ss.vertex_info.boundary,
+                    positions_eval,
+                    *boundary_initial_vert,
+                    *boundary);
 
   const float boundary_radius = brush ? radius * (1.0f + brush->boundary_offset) : radius;
-  edit_data_init(faces,
-                 corner_verts,
-                 ss.vert_to_face_map,
-                 positions_eval,
-                 hide_vert,
-                 hide_poly,
-                 boundary_initial_vert_index,
-                 boundary_radius,
-                 *boundary);
+  edit_data_init_mesh(faces,
+                      corner_verts,
+                      ss.vert_to_face_map,
+                      positions_eval,
+                      hide_vert,
+                      hide_poly,
+                      boundary_initial_vert_index,
+                      boundary_radius,
+                      *boundary);
 
   return boundary;
 }
 
-std::unique_ptr<SculptBoundary> data_init(Object &object,
-                                          const Brush *brush,
-                                          const SubdivCCGCoord initial_vert,
-                                          const float radius)
+std::unique_ptr<SculptBoundary> data_init_grids(Object &object,
+                                                const Brush *brush,
+                                                const SubdivCCGCoord initial_vert,
+                                                const float radius)
 {
   SculptSession &ss = *object.sculpt;
 
@@ -255,7 +256,7 @@ std::unique_ptr<SculptBoundary> data_init(Object &object,
   const Span<CCGElem *> grids = subdiv_ccg.grids;
   const CCGKey &key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
-  const std::optional<SubdivCCGCoord> boundary_initial_vert = get_closest_boundary_vert(
+  const std::optional<SubdivCCGCoord> boundary_initial_vert = get_closest_boundary_vert_grids(
       object,
       faces,
       corner_verts,
@@ -271,7 +272,7 @@ std::unique_ptr<SculptBoundary> data_init(Object &object,
 
   /* Starting from a vertex that is the limit of a boundary is ambiguous, so return nullptr instead
    * of forcing a random active boundary from a corner. */
-  if (!is_vert_in_editable_boundary(
+  if (!is_vert_in_editable_boundary_grids(
           faces, corner_verts, subdiv_ccg, hide_poly, ss.vertex_info.boundary, initial_vert))
   {
     return nullptr;
@@ -286,32 +287,32 @@ std::unique_ptr<SculptBoundary> data_init(Object &object,
   boundary->initial_vert_position = CCG_grid_elem_co(
       key, grids[boundary_vert.grid_index], boundary_vert.x, boundary_vert.y);
 
-  indices_init(object,
-               faces,
-               corner_verts,
-               subdiv_ccg,
-               hide_poly,
-               ss.vertex_info.boundary,
-               boundary_vert,
-               *boundary);
+  indices_init_grids(object,
+                     faces,
+                     corner_verts,
+                     subdiv_ccg,
+                     hide_poly,
+                     ss.vertex_info.boundary,
+                     boundary_vert,
+                     *boundary);
 
   const float boundary_radius = brush ? radius * (1.0f + brush->boundary_offset) : radius;
-  edit_data_init(subdiv_ccg, boundary_initial_vert_index, boundary_radius, *boundary);
+  edit_data_init_grids(subdiv_ccg, boundary_initial_vert_index, boundary_radius, *boundary);
 
   return boundary;
 }
 
-std::unique_ptr<SculptBoundary> data_init(Object &object,
-                                          const Brush *brush,
-                                          BMVert *initial_vert,
-                                          const float radius)
+std::unique_ptr<SculptBoundary> data_init_bmesh(Object &object,
+                                                const Brush *brush,
+                                                BMVert *initial_vert,
+                                                const float radius)
 {
   SculptSession &ss = *object.sculpt;
 
   SCULPT_vertex_random_access_ensure(ss);
   boundary::ensure_boundary_info(object);
 
-  const std::optional<BMVert *> boundary_initial_vert = get_closest_boundary_vert(
+  const std::optional<BMVert *> boundary_initial_vert = get_closest_boundary_vert_bmesh(
       object, ss.bm, *initial_vert, radius);
 
   if (!boundary_initial_vert) {
@@ -320,7 +321,7 @@ std::unique_ptr<SculptBoundary> data_init(Object &object,
 
   /* Starting from a vertex that is the limit of a boundary is ambiguous, so return nullptr instead
    * of forcing a random active boundary from a corner. */
-  if (!is_vert_in_editable_boundary(*initial_vert)) {
+  if (!is_vert_in_editable_boundary_bmesh(*initial_vert)) {
     return nullptr;
   }
 
@@ -331,10 +332,10 @@ std::unique_ptr<SculptBoundary> data_init(Object &object,
   boundary->initial_vert_i = boundary_initial_vert_index;
   boundary->initial_vert_position = (*boundary_initial_vert)->co;
 
-  indices_init(object, ss.bm, **boundary_initial_vert, *boundary);
+  indices_init_bmesh(object, ss.bm, **boundary_initial_vert, *boundary);
 
   const float boundary_radius = brush ? radius * (1.0f + brush->boundary_offset) : radius;
-  edit_data_init(ss.bm, boundary_initial_vert_index, boundary_radius, *boundary);
+  edit_data_init_bmesh(ss.bm, boundary_initial_vert_index, boundary_radius, *boundary);
 
   return boundary;
 }
@@ -356,13 +357,13 @@ static bool check_counts(const int neighbor_count, const int boundary_vertex_cou
   return true;
 }
 
-static bool is_vert_in_editable_boundary(const OffsetIndices<int> faces,
-                                         const Span<int> corner_verts,
-                                         const GroupedSpan<int> vert_to_face,
-                                         const Span<bool> hide_vert,
-                                         const Span<bool> hide_poly,
-                                         const BitSpan boundary,
-                                         const int initial_vert)
+static bool is_vert_in_editable_boundary_mesh(const OffsetIndices<int> faces,
+                                              const Span<int> corner_verts,
+                                              const GroupedSpan<int> vert_to_face,
+                                              const Span<bool> hide_vert,
+                                              const Span<bool> hide_poly,
+                                              const BitSpan boundary,
+                                              const int initial_vert)
 {
   if (!hide_vert.is_empty() && hide_vert[initial_vert]) {
     return false;
@@ -386,12 +387,12 @@ static bool is_vert_in_editable_boundary(const OffsetIndices<int> faces,
   return check_counts(neighbor_count, boundary_vertex_count);
 }
 
-static bool is_vert_in_editable_boundary(const OffsetIndices<int> faces,
-                                         const Span<int> corner_verts,
-                                         const SubdivCCG &subdiv_ccg,
-                                         const Span<bool> hide_poly,
-                                         const BitSpan boundary,
-                                         const SubdivCCGCoord initial_vert)
+static bool is_vert_in_editable_boundary_grids(const OffsetIndices<int> faces,
+                                               const Span<int> corner_verts,
+                                               const SubdivCCG &subdiv_ccg,
+                                               const Span<bool> hide_poly,
+                                               const BitSpan boundary,
+                                               const SubdivCCGCoord initial_vert)
 {
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
   const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
@@ -419,7 +420,7 @@ static bool is_vert_in_editable_boundary(const OffsetIndices<int> faces,
   return check_counts(neighbor_count, boundary_vertex_count);
 }
 
-static bool is_vert_in_editable_boundary(BMVert &initial_vert)
+static bool is_vert_in_editable_boundary_bmesh(BMVert &initial_vert)
 {
   if (BM_elem_flag_test(&initial_vert, BM_ELEM_HIDDEN)) {
     return false;
@@ -444,14 +445,14 @@ static bool is_vert_in_editable_boundary(BMVert &initial_vert)
 /* -------------------------------------------------------------------- */
 /** \name Nearest Boundary Vert
  * \{ */
-static std::optional<int> get_closest_boundary_vert(Object &object,
-                                                    const GroupedSpan<int> vert_to_face,
-                                                    const Span<float3> vert_positions,
-                                                    const Span<bool> hide_vert,
-                                                    const Span<bool> hide_poly,
-                                                    const BitSpan boundary,
-                                                    const int initial_vert,
-                                                    const float radius)
+static std::optional<int> get_closest_boundary_vert_mesh(Object &object,
+                                                         const GroupedSpan<int> vert_to_face,
+                                                         const Span<float3> vert_positions,
+                                                         const Span<bool> hide_vert,
+                                                         const Span<bool> hide_poly,
+                                                         const BitSpan boundary,
+                                                         const int initial_vert,
+                                                         const float radius)
 {
   if (boundary::vert_is_boundary(hide_poly, vert_to_face, boundary, initial_vert)) {
     return initial_vert;
@@ -488,14 +489,15 @@ static std::optional<int> get_closest_boundary_vert(Object &object,
   return boundary_initial_vert;
 }
 
-static std::optional<SubdivCCGCoord> get_closest_boundary_vert(Object &object,
-                                                               const OffsetIndices<int> faces,
-                                                               const Span<int> corner_verts,
-                                                               const SubdivCCG &subdiv_ccg,
-                                                               const Span<bool> hide_poly,
-                                                               const BitSpan boundary,
-                                                               const SubdivCCGCoord initial_vert,
-                                                               const float radius)
+static std::optional<SubdivCCGCoord> get_closest_boundary_vert_grids(
+    Object &object,
+    const OffsetIndices<int> faces,
+    const Span<int> corner_verts,
+    const SubdivCCG &subdiv_ccg,
+    const Span<bool> hide_poly,
+    const BitSpan boundary,
+    const SubdivCCGCoord initial_vert,
+    const float radius)
 {
   if (boundary::vert_is_boundary(
           subdiv_ccg, hide_poly, corner_verts, faces, boundary, initial_vert))
@@ -550,10 +552,10 @@ static std::optional<SubdivCCGCoord> get_closest_boundary_vert(Object &object,
   return boundary_initial_vert;
 }
 
-static std::optional<BMVert *> get_closest_boundary_vert(Object &object,
-                                                         BMesh *bm,
-                                                         BMVert &initial_vert,
-                                                         const float radius)
+static std::optional<BMVert *> get_closest_boundary_vert_bmesh(Object &object,
+                                                               BMesh *bm,
+                                                               BMVert &initial_vert,
+                                                               const float radius)
 {
   if (boundary::vert_is_boundary(&initial_vert)) {
     return &initial_vert;
@@ -616,16 +618,16 @@ static void add_index(SculptBoundary &boundary,
   included_verts.add(new_index);
 };
 
-static void indices_init(Object &object,
-                         const OffsetIndices<int> faces,
-                         const Span<int> corner_verts,
-                         const GroupedSpan<int> vert_to_face,
-                         const Span<bool> hide_vert,
-                         const Span<bool> hide_poly,
-                         const BitSpan boundary_verts,
-                         const Span<float3> vert_positions,
-                         const int initial_boundary_vert,
-                         SculptBoundary &boundary)
+static void indices_init_mesh(Object &object,
+                              const OffsetIndices<int> faces,
+                              const Span<int> corner_verts,
+                              const GroupedSpan<int> vert_to_face,
+                              const Span<bool> hide_vert,
+                              const Span<bool> hide_poly,
+                              const BitSpan boundary_verts,
+                              const Span<float3> vert_positions,
+                              const int initial_boundary_vert,
+                              SculptBoundary &boundary)
 {
   flood_fill::FillDataMesh flood_fill(vert_positions.size());
 
@@ -645,19 +647,19 @@ static void indices_init(Object &object,
                                            edge_len;
     add_index(boundary, to_v, distance_boundary_to_dst, included_verts);
     boundary.edges.append({from_v_co, to_v_co});
-    return is_vert_in_editable_boundary(
+    return is_vert_in_editable_boundary_mesh(
         faces, corner_verts, vert_to_face, hide_vert, hide_poly, boundary_verts, to_v);
   });
 }
 
-static void indices_init(Object &object,
-                         const OffsetIndices<int> faces,
-                         const Span<int> corner_verts,
-                         const SubdivCCG &subdiv_ccg,
-                         const Span<bool> hide_poly,
-                         const BitSpan boundary_verts,
-                         const SubdivCCGCoord initial_vert,
-                         SculptBoundary &boundary)
+static void indices_init_grids(Object &object,
+                               const OffsetIndices<int> faces,
+                               const Span<int> corner_verts,
+                               const SubdivCCG &subdiv_ccg,
+                               const Span<bool> hide_poly,
+                               const BitSpan boundary_verts,
+                               const SubdivCCGCoord initial_vert,
+                               SculptBoundary &boundary)
 {
   const Span<CCGElem *> grids = subdiv_ccg.grids;
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
@@ -695,15 +697,15 @@ static void indices_init(Object &object,
         if (!is_duplicate) {
           boundary.edges.append({from_v_co, to_v_co});
         }
-        return is_vert_in_editable_boundary(
+        return is_vert_in_editable_boundary_grids(
             faces, corner_verts, subdiv_ccg, hide_poly, boundary_verts, to_v);
       });
 }
 
-static void indices_init(Object &object,
-                         BMesh *bm,
-                         BMVert &initial_boundary_vert,
-                         SculptBoundary &boundary)
+static void indices_init_bmesh(Object &object,
+                               BMesh *bm,
+                               BMVert &initial_boundary_vert,
+                               SculptBoundary &boundary)
 {
   const int num_verts = BM_mesh_elem_count(bm, BM_VERT);
   flood_fill::FillDataBMesh flood_fill(num_verts);
@@ -728,7 +730,7 @@ static void indices_init(Object &object,
                                            edge_len;
     add_index(boundary, to_v_i, distance_boundary_to_dst, included_verts);
     boundary.edges.append({from_v_co, to_v_co});
-    return is_vert_in_editable_boundary(*to_v);
+    return is_vert_in_editable_boundary_bmesh(*to_v);
   });
 }
 
@@ -737,15 +739,15 @@ static void indices_init(Object &object,
 /* -------------------------------------------------------------------- */
 /** \name Edit Data Calculation
  * \{ */
-static void edit_data_init(OffsetIndices<int> faces,
-                           Span<int> corner_verts,
-                           GroupedSpan<int> vert_to_face,
-                           Span<float3> vert_positions,
-                           Span<bool> hide_vert,
-                           Span<bool> hide_poly,
-                           const int initial_vert_i,
-                           const float radius,
-                           SculptBoundary &boundary)
+static void edit_data_init_mesh(OffsetIndices<int> faces,
+                                Span<int> corner_verts,
+                                GroupedSpan<int> vert_to_face,
+                                Span<float3> vert_positions,
+                                Span<bool> hide_vert,
+                                Span<bool> hide_poly,
+                                const int initial_vert_i,
+                                const float radius,
+                                SculptBoundary &boundary)
 {
   boundary.edit_info = Array<SculptBoundaryEditInfo>(vert_positions.size());
 
@@ -816,10 +818,10 @@ static void edit_data_init(OffsetIndices<int> faces,
   }
 }
 
-static void edit_data_init(const SubdivCCG &subdiv_ccg,
-                           const int initial_vert_i,
-                           const float radius,
-                           SculptBoundary &boundary)
+static void edit_data_init_grids(const SubdivCCG &subdiv_ccg,
+                                 const int initial_vert_i,
+                                 const float radius,
+                                 SculptBoundary &boundary)
 {
   const Span<CCGElem *> grids = subdiv_ccg.grids;
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
@@ -830,7 +832,7 @@ static void edit_data_init(const SubdivCCG &subdiv_ccg,
   std::queue<SubdivCCGCoord> current_iteration;
 
   for (int i = 0; i < boundary.verts.size(); i++) {
-    SubdivCCGCoord vert = SubdivCCGCoord::from_index(key, boundary.verts[i]);
+    const SubdivCCGCoord vert = SubdivCCGCoord::from_index(key, boundary.verts[i]);
 
     const int index = boundary.verts[i];
 
@@ -870,7 +872,7 @@ static void edit_data_init(const SubdivCCG &subdiv_ccg,
 
       for (const SubdivCCGCoord neighbor : neighbors.duplicates()) {
         const int neighbor_idx = neighbor.to_index(key);
-        const int index_in_grid = neighbor.y * key.grid_size + neighbor.x;
+        const int index_in_grid = CCG_grid_xy_to_index(key.grid_size, neighbor.x, neighbor.y);
 
         const bool is_hidden = !subdiv_ccg.grid_hidden.is_empty() &&
                                subdiv_ccg.grid_hidden[neighbor.grid_index][index_in_grid];
@@ -888,7 +890,7 @@ static void edit_data_init(const SubdivCCG &subdiv_ccg,
 
       for (const SubdivCCGCoord neighbor : neighbors.unique()) {
         const int neighbor_idx = neighbor.to_index(key);
-        const int index_in_grid = neighbor.y * key.grid_size + neighbor.x;
+        const int index_in_grid = CCG_grid_xy_to_index(key.grid_size, neighbor.x, neighbor.y);
 
         const bool is_hidden = !subdiv_ccg.grid_hidden.is_empty() &&
                                subdiv_ccg.grid_hidden[neighbor.grid_index][index_in_grid];
@@ -944,10 +946,10 @@ static void edit_data_init(const SubdivCCG &subdiv_ccg,
   }
 }
 
-static void edit_data_init(BMesh *bm,
-                           const int initial_vert_i,
-                           const float radius,
-                           SculptBoundary &boundary)
+static void edit_data_init_bmesh(BMesh *bm,
+                                 const int initial_vert_i,
+                                 const float radius,
+                                 SculptBoundary &boundary)
 {
   const int num_verts = BM_mesh_elem_count(bm, BM_VERT);
 
