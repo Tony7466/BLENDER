@@ -287,6 +287,49 @@ void GPU_batch_draw_instance_range(Batch *batch, int instance_first, int instanc
   GPU_batch_draw_advanced(batch, 0, 0, instance_first, instance_count);
 }
 
+static uint16_t bind_attribute_as_ssbo(const ShaderInterface *interface, VertBuf *vbo)
+{
+  const GPUVertFormat *format = &vbo->format;
+
+  BLI_assert_msg(format->deinterleaved == false,
+                 "Deinterleaved attribute buffers are not supported for now");
+  BLI_assert_msg(format->attr_len == 1, "Multi attribute buffers are not supported for now");
+
+  const GPUVertAttr *a = &format->attrs[0];
+  for (uint n_idx = 0; n_idx < a->name_len; n_idx++) {
+    const char *name = GPU_vertformat_attr_name_get(format, a, n_idx);
+    const ShaderInput *input = interface->ssbo_get(name);
+    if (input == nullptr || input->location == -1) {
+      continue;
+    }
+    GPU_vertbuf_bind_as_ssbo(vbo, input->location);
+    return (1 << input->location);
+  }
+  return 0;
+}
+
+static void bind_attribute_resources(Batch *batch)
+{
+  const Shader *active_shader = Context::get()->shader;
+  const ShaderInterface *interface = active_shader->interface;
+  if (interface->ssbo_attr_mask_ == 0) {
+    return;
+  }
+
+  uint16_t ssbo_attributes = interface->ssbo_attr_mask_;
+
+  /* Reverse order so first VBO'S have more prevalence (in term of attribute override). */
+  for (int v = GPU_BATCH_VBO_MAX_LEN - 1; v > -1; v--) {
+    VertBuf *vbo = batch->verts_(v);
+    if (vbo) {
+      ssbo_attributes &= ~bind_attribute_as_ssbo(interface, vbo);
+    }
+  }
+
+  BLI_assert_msg(ssbo_attributes == 0, "Not all attribute storage buffer fulfilled");
+  UNUSED_VARS_NDEBUG(ssbo_attributes);
+}
+
 void GPU_batch_draw_advanced(
     Batch *gpu_batch, int vertex_first, int vertex_count, int instance_first, int instance_count)
 {
@@ -314,6 +357,7 @@ void GPU_batch_draw_advanced(
     return;
   }
 
+  bind_attribute_resources(batch);
   batch->draw(vertex_first, vertex_count, instance_first, instance_count);
 }
 
@@ -323,6 +367,7 @@ void GPU_batch_draw_indirect(Batch *gpu_batch, GPUStorageBuf *indirect_buf, intp
   BLI_assert(indirect_buf != nullptr);
   Batch *batch = static_cast<Batch *>(gpu_batch);
 
+  bind_attribute_resources(batch);
   batch->draw_indirect(indirect_buf, offset);
 }
 
@@ -333,6 +378,7 @@ void GPU_batch_multi_draw_indirect(
   BLI_assert(indirect_buf != nullptr);
   Batch *batch = static_cast<Batch *>(gpu_batch);
 
+  bind_attribute_resources(batch);
   batch->multi_draw_indirect(indirect_buf, count, offset, stride);
 }
 

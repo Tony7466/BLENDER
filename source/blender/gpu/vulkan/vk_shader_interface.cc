@@ -137,6 +137,15 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
     }
   }
 
+  for (const ShaderCreateInfo::Resource &res : info.geometry_resources_) {
+    if (res.bind_type == ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER) {
+      ssbo_attr_mask_ |= (1 << res.slot);
+    }
+    else {
+      BLI_assert_msg(0, "Resource type is not supported for Geometry frequency");
+    }
+  }
+
   /* Constants */
   int constant_id = 0;
   for (const SpecializationConstant &constant : info.specialization_constants_) {

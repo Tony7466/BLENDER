@@ -1450,7 +1450,7 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
 #endif
 
   /* Bake shader interface. */
-  this->set_interface(msl_iface.bake_shader_interface(this->name));
+  this->set_interface(msl_iface.bake_shader_interface(this->name, info));
 
   /* Update other shader properties. */
   uses_gpu_layer = msl_iface.uses_gpu_layer;
@@ -1705,7 +1705,7 @@ bool MTLShader::generate_msl_from_glsl_compute(const shader::ShaderCreateInfo *i
   this->shader_compute_source_from_msl(msl_final_compute);
 
   /* Bake shader interface. */
-  this->set_interface(msl_iface.bake_shader_interface(this->name));
+  this->set_interface(msl_iface.bake_shader_interface(this->name, info));
 
   /* Compute dims. */
   this->compute_pso_common_state_.set_compute_workgroup_size(
@@ -3704,7 +3704,8 @@ static uint32_t name_buffer_copystr(char **name_buffer_ptr,
   return insert_offset;
 }
 
-MTLShaderInterface *MSLGeneratorInterface::bake_shader_interface(const char *name)
+MTLShaderInterface *MSLGeneratorInterface::bake_shader_interface(
+    const char *name, const shader::ShaderCreateInfo *info)
 {
   MTLShaderInterface *interface = new MTLShaderInterface(name);
   interface->init();
@@ -3863,7 +3864,7 @@ MTLShaderInterface *MSLGeneratorInterface::bake_shader_interface(const char *nam
       this->get_sampler_argument_buffer_bind_index(ShaderStage::COMPUTE));
 
   /* Map Metal bindings to standardized ShaderInput struct name/binding index. */
-  interface->prepare_common_shader_inputs();
+  interface->prepare_common_shader_inputs(info);
 
   /* Resize name buffer to save some memory. */
   if (name_buffer_offset < name_buffer_size) {
