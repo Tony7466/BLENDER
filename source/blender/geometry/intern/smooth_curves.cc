@@ -270,7 +270,7 @@ void smooth_curve_positions(bke::CurvesGeometry &curves,
     /* Write the positions of the handles and the control points into a flat array.
      * This will smooth the handle positions together with the control point positions, because the
      * smoothing algorithm takes neighboring values to apply the gaussian smoothing to. */
-    Array<float3> all_positions(positions.size() * 3, float3(0));
+    Array<float3> all_positions(positions.size() * 3);
     bezier_curves_to_smooth.foreach_index(GrainSize(512), [&](const int curve_i) {
       const IndexRange points = points_by_curve[curve_i];
       for (const int point_i : points) {
