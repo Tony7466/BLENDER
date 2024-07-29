@@ -25,6 +25,8 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
+#include "ANIM_action.hh"
+
 /* Enum defines exported for `rna_animation.cc`. */
 
 const EnumPropertyItem rna_enum_nla_mode_blend_items[] = {
@@ -454,6 +456,63 @@ static int rna_NlaStrip_action_editable(const PointerRNA *ptr, const char ** /*r
   return PROP_EDITABLE;
 }
 
+static PointerRNA rna_NlaStrip_action_slot_get(PointerRNA *ptr)
+{
+  using blender::animrig::Action;
+  using blender::animrig::Slot;
+
+  NlaStrip *data = (NlaStrip *)ptr->data;
+
+  if (!data->act || data->act_slot_handle == Slot::unassigned) {
+    return PointerRNA_NULL;
+  }
+
+  Action &action = data->act->wrap();
+  Slot *slot = action.slot_for_handle(data->act_slot_handle);
+  if (!slot) {
+    return PointerRNA_NULL;
+  }
+  return RNA_pointer_create(&action.id, &RNA_ActionSlot, slot);
+}
+
+static void rna_NlaStrip_action_slot_set(PointerRNA *ptr, PointerRNA value, ReportList *reports)
+{
+  using blender::animrig::Action;
+  using blender::animrig::Slot;
+
+  NlaStrip *data = (NlaStrip *)ptr->data;
+
+  if (!data->act) {
+    BKE_report(reports, RPT_ERROR, "Cannot set slot without an assigned Action.");
+    return;
+  }
+
+  // ID *animated_id = ptr->owner_id;
+  // BLI_assert(animated_id); /* Otherwise there is nothing to own this AnimData. */
+
+  ActionSlot *dna_slot = static_cast<ActionSlot *>(value.data);
+  if (!dna_slot) {
+    data->act_slot_handle = Slot::unassigned;
+    return;
+  }
+
+  Action &action = data->act->wrap();
+  Slot &slot = dna_slot->wrap();
+
+  if (!action.slots().as_span().contains(&slot)) {
+    BKE_reportf(reports,
+                RPT_ERROR,
+                "This slot (%s) does not belong to the assigned Action (%s)",
+                slot.name,
+                action.id.name + 2);
+    return;
+  }
+
+  /* TODO: do this assignment via methods on `Action`, which account for things
+   * like ensuring the slot is appropriate for the ID type, etc. */
+  data->act_slot_handle = slot.handle;
+}
+
 static void rna_NlaStrip_action_start_frame_set(PointerRNA *ptr, float value)
 {
   NlaStrip *data = (NlaStrip *)ptr->data;
@@ -836,6 +895,20 @@ static void rna_def_nlastrip(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_REFCOUNT);
   RNA_def_property_editable_func(prop, "rna_NlaStrip_action_editable");
   RNA_def_property_ui_text(prop, "Action", "Action referenced by this strip");
+  RNA_def_property_update(
+      prop, NC_ANIMATION | ND_NLA | NA_EDITED, "rna_NlaStrip_dependency_update");
+
+  /* Action slot */
+  prop = RNA_def_property(srna, "action_slot", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "ActionSlot");
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_ui_text(
+      prop,
+      "Action Slot",
+      "The slot identifies which sub-set of the Action is used by this strip");
+  RNA_def_property_pointer_funcs(
+      prop, "rna_NlaStrip_action_slot_get", "rna_NlaStrip_action_slot_set", nullptr, nullptr);
   RNA_def_property_update(
       prop, NC_ANIMATION | ND_NLA | NA_EDITED, "rna_NlaStrip_dependency_update");
 
