@@ -30,6 +30,7 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
   Vector<ShaderCreateInfo::Resource> all_resources;
   all_resources.extend(info.pass_resources_);
   all_resources.extend(info.batch_resources_);
+  all_resources.extend(info.geometry_resources_);
 
   for (ShaderCreateInfo::Resource &res : all_resources) {
     switch (res.bind_type) {

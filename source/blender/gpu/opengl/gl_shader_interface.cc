@@ -394,9 +394,7 @@ GLShaderInterface::GLShaderInterface(GLuint program, const shader::ShaderCreateI
   ubo_len_ = 0;
   ssbo_len_ = 0;
 
-  Vector<ShaderCreateInfo::Resource> all_resources;
-  all_resources.extend(info.pass_resources_);
-  all_resources.extend(info.batch_resources_);
+  Vector<ShaderCreateInfo::Resource> all_resources = info.resources_get_all_();
 
   for (ShaderCreateInfo::Resource &res : all_resources) {
     switch (res.bind_type) {
