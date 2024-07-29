@@ -4,6 +4,7 @@
 
 #include "BKE_attribute_math.hh"
 #include "BKE_curves.hh"
+#include "BKE_curves_utils.hh"
 
 #include "BLI_array.hh"
 #include "BLI_generic_span.hh"
@@ -263,23 +264,11 @@ void smooth_curve_positions(bke::CurvesGeometry &curves,
     const IndexMask bezier_curves_to_smooth = curves.indices_for_curve_type(
         CURVE_TYPE_BEZIER, curves_to_smooth, memory);
 
-    MutableSpan<float3> positions = curves.positions_for_write();
-    MutableSpan<float3> handle_positions_left = curves.handle_positions_left_for_write();
-    MutableSpan<float3> handle_positions_right = curves.handle_positions_right_for_write();
-
     /* Write the positions of the handles and the control points into a flat array.
      * This will smooth the handle positions together with the control point positions, because the
      * smoothing algorithm takes neighboring values to apply the gaussian smoothing to. */
-    Array<float3> all_positions(positions.size() * 3);
-    bezier_curves_to_smooth.foreach_index(GrainSize(512), [&](const int curve) {
-      const IndexRange points = points_by_curve[curve];
-      for (const int point : points) {
-        const int index = point * 3;
-        all_positions[index] = handle_positions_left[point];
-        all_positions[index + 1] = positions[point];
-        all_positions[index + 2] = handle_positions_right[point];
-      }
-    });
+    Array<float3> all_positions = bke::curves::bezier::retrieve_all_positions(
+        curves, bezier_curves_to_smooth);
 
     VArraySpan<float> influences(influence_by_point);
     bezier_curves_to_smooth.foreach_index(GrainSize(512), [&](const int curve) {
@@ -329,15 +318,7 @@ void smooth_curve_positions(bke::CurvesGeometry &curves,
 
     /* Copy the resulting values from the flat array back into the three posititon attributes for
      * the left and right handles as well as the control points. */
-    bezier_curves_to_smooth.foreach_index(GrainSize(512), [&](const int curve) {
-      const IndexRange points = points_by_curve[curve];
-      for (const int point : points) {
-        const int index = point * 3;
-        handle_positions_left[point] = all_positions[index];
-        positions[point] = all_positions[index + 1];
-        handle_positions_right[point] = all_positions[index + 2];
-      }
-    });
+    bke::curves::bezier::write_all_positions(curves, bezier_curves_to_smooth, all_positions);
 
     /* Smooth the other curve positions. */
     const IndexMask other_curves_to_smooth = bezier_curves_to_smooth.complement(
