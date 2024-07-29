@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-import math
 import pathlib
 import sys
 import unittest
@@ -45,8 +44,17 @@ class SVGImportTest(AbstractSVGTest):
 
         # Materials
         self.assertEqual(len(object.material_slots), 1)
+        # Note: Color import from SVG is currently limited.
+        # Per-element colors get converted to vertex colors, but most newer software exports style classes, which are not supported by NanoSVG.
+        # https://github.com/memononen/nanosvg/issues/55
+        # For now test for the single placeholder material and update this test when style classes are supported.
         material = object.material_slots[0].material
-        
+        self.assertEqual(material.name, "Fill")
+        self.assertEqual(material.grease_pencil.show_stroke, False)
+        self.assertEqual(material.grease_pencil.show_fill, True)
+        self.assertEqual(material.grease_pencil.color[:], (0, 0, 0, 1))
+        self.assertEqual(material.grease_pencil.fill_color[:], (0.5, 0.5, 0.5, 1))
+
 
 def main():
     global args
