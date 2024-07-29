@@ -659,14 +659,6 @@ static void add_index(SculptBoundary &boundary,
   included_verts.add(new_index);
 };
 
-/* Flood fill that adds to the boundary data all the vertices from a boundary and its duplicates.
- */
-
-struct BoundaryFloodFillData {
-  SculptBoundary *boundary;
-  Set<int, BOUNDARY_INDICES_BLOCK_SIZE> included_verts;
-};
-
 static void indices_init(Object &object,
                          const OffsetIndices<int> faces,
                          const Span<int> corner_verts,
@@ -680,24 +672,21 @@ static void indices_init(Object &object,
 {
   flood_fill::FillDataMesh flood_fill(vert_positions.size());
 
-  BoundaryFloodFillData fdata{};
-  fdata.boundary = &boundary;
-
-  add_index(boundary, initial_boundary_vert, 0.0f, fdata.included_verts);
+  Set<int, BOUNDARY_INDICES_BLOCK_SIZE> included_verts;
+  add_index(boundary, initial_boundary_vert, 1.0f, included_verts);
   flood_fill.add_initial(initial_boundary_vert);
 
-  flood_fill.execute(object, vert_to_face, [&](int from_v, int to_v) {
+  flood_fill.execute(object, vert_to_face, [&](const int from_v, const int to_v) {
     const float3 from_v_co = vert_positions[from_v];
     const float3 to_v_co = vert_positions[to_v];
 
-    SculptBoundary &boundary = *fdata.boundary;
     if (!boundary::vert_is_boundary(hide_poly, vert_to_face, boundary_verts, to_v)) {
       return false;
     }
     const float edge_len = len_v3v3(from_v_co, to_v_co);
     const float distance_boundary_to_dst = boundary.distance.lookup_default(from_v, 0.0f) +
                                            edge_len;
-    add_index(boundary, to_v, distance_boundary_to_dst, fdata.included_verts);
+    add_index(boundary, to_v, distance_boundary_to_dst, included_verts);
     boundary.edges.append({from_v_co, to_v_co});
     return is_vert_in_editable_boundary(
         faces, corner_verts, vert_to_face, hide_vert, hide_poly, boundary_verts, to_v);
@@ -718,17 +707,15 @@ static void indices_init(Object &object,
   const int num_grids = key.grid_area * grids.size();
   flood_fill::FillDataGrids flood_fill(num_grids);
 
-  BoundaryFloodFillData fdata{};
-  fdata.boundary = &boundary;
-
   const int initial_boundary_index = initial_vert.to_index(key);
-  add_index(boundary, initial_boundary_index, 0.0f, fdata.included_verts);
+  Set<int, BOUNDARY_INDICES_BLOCK_SIZE> included_verts;
+  add_index(boundary, initial_boundary_index, 0.0f, included_verts);
   flood_fill.add_initial(initial_vert);
 
   flood_fill.execute(
-      object, subdiv_ccg, [&](SubdivCCGCoord from_v, SubdivCCGCoord to_v, bool is_duplicate) {
-        int from_v_i = from_v.to_index(key);
-        int to_v_i = to_v.to_index(key);
+      object, subdiv_ccg, [&](const SubdivCCGCoord from_v, const SubdivCCGCoord to_v, const bool is_duplicate) {
+        const int from_v_i = from_v.to_index(key);
+        const int to_v_i = to_v.to_index(key);
 
         const float3 from_v_co = CCG_elem_offset_co(
             key,
@@ -737,7 +724,6 @@ static void indices_init(Object &object,
         const float3 to_v_co = CCG_elem_offset_co(
             key, grids[to_v.grid_index], CCG_grid_xy_to_index(key.grid_size, to_v.x, to_v.y));
 
-        SculptBoundary &boundary = *fdata.boundary;
         if (!boundary::vert_is_boundary(
                 subdiv_ccg, hide_poly, corner_verts, faces, boundary_verts, to_v))
         {
@@ -746,7 +732,7 @@ static void indices_init(Object &object,
         const float edge_len = len_v3v3(from_v_co, to_v_co);
         const float distance_boundary_to_dst = boundary.distance.lookup_default(from_v_i, 0.0f) +
                                                edge_len;
-        add_index(boundary, to_v_i, distance_boundary_to_dst, fdata.included_verts);
+        add_index(boundary, to_v_i, distance_boundary_to_dst, included_verts);
         if (!is_duplicate) {
           boundary.edges.append({from_v_co, to_v_co});
         }
@@ -763,28 +749,25 @@ static void indices_init(Object &object,
   const int num_verts = BM_mesh_elem_count(bm, BM_VERT);
   flood_fill::FillDataBMesh flood_fill(num_verts);
 
-  BoundaryFloodFillData fdata{};
-  fdata.boundary = &boundary;
-
   const int initial_boundary_index = BM_elem_index_get(&initial_boundary_vert);
-  add_index(boundary, initial_boundary_index, 0.0f, fdata.included_verts);
+  Set<int, BOUNDARY_INDICES_BLOCK_SIZE> included_verts;
+  add_index(boundary, initial_boundary_index, 0.0f, included_verts);
   flood_fill.add_initial(&initial_boundary_vert);
 
   flood_fill.execute(object, [&](BMVert *from_v, BMVert *to_v) {
-    int from_v_i = BM_elem_index_get(from_v);
-    int to_v_i = BM_elem_index_get(to_v);
+    const int from_v_i = BM_elem_index_get(from_v);
+    const int to_v_i = BM_elem_index_get(to_v);
 
     const float3 from_v_co = from_v->co;
     const float3 to_v_co = to_v->co;
 
-    SculptBoundary &boundary = *fdata.boundary;
     if (!boundary::vert_is_boundary(to_v)) {
       return false;
     }
     const float edge_len = len_v3v3(from_v_co, to_v_co);
     const float distance_boundary_to_dst = boundary.distance.lookup_default(from_v_i, 0.0f) +
                                            edge_len;
-    add_index(boundary, to_v_i, distance_boundary_to_dst, fdata.included_verts);
+    add_index(boundary, to_v_i, distance_boundary_to_dst, included_verts);
     boundary.edges.append({from_v_co, to_v_co});
     return is_vert_in_editable_boundary(*to_v);
   });
