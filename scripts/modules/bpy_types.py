@@ -1617,7 +1617,7 @@ class GreasePencilDrawing(StructRNA):
         The number of strokes in the drawing.
         """
         return self.attributes.domain_size('CURVE')
-    
+
     @property
     def num_points(self):
         """
@@ -1636,5 +1636,3 @@ class GreasePencilDrawing(StructRNA):
         offsets = self.curve_offsets
         return [GreasePencilStroke(self, curve_i, offsets[curve_i].value, offsets[curve_i + 1].value)
                 for curve_i in range(self.num_strokes)]
-    
-
