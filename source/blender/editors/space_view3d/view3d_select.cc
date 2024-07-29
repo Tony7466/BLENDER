@@ -1220,7 +1220,7 @@ static bool do_lasso_select_grease_pencil(const ViewContext *vc,
                                        mcoords,
                                        sel_op);
 
-    /* Run through a second time to select any handle points that are newly visible. */
+    /* Workaround: Run through a second time to select any handle points that are newly visible. */
     visible_handle_elements = ed::greasepencil::retrieve_visible_bezier_handle_elements(
         *vc->obedit, info.drawing, info.layer_index, selection_domain, memory);
     if (!visible_handle_elements.is_empty() && selection_domain == bke::AttrDomain::Point) {
@@ -4339,7 +4339,7 @@ static bool do_grease_pencil_box_select(const ViewContext *vc,
                                       *rect,
                                       sel_op);
 
-    /* Run through a second time to select any handle points that are newly visible. */
+    /* Workaround: Run through a second time to select any handle points that are newly visible. */
     visible_handle_elements = ed::greasepencil::retrieve_visible_bezier_handle_elements(
         *vc->obedit, info.drawing, info.layer_index, selection_domain, memory);
     if (!visible_handle_elements.is_empty() && selection_domain == bke::AttrDomain::Point) {
@@ -5226,7 +5226,7 @@ static bool grease_pencil_circle_select(const ViewContext *vc,
                                         rad,
                                         sel_op);
 
-    /* Run through a second time to select any handle points that are newly visible. */
+    /* Workaround: Run through a second time to select any handle points that are newly visible. */
     visible_handle_elements = ed::greasepencil::retrieve_visible_bezier_handle_elements(
         *vc->obedit, info.drawing, info.layer_index, selection_domain, memory);
     if (!visible_handle_elements.is_empty() && selection_domain == bke::AttrDomain::Point) {
