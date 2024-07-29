@@ -269,7 +269,7 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
             VArray<T> src1_attr = src1.typed<T>();
             MutableSpan<T> dst_attr = (dstW.span.typed<T>()).drop_front(points_num);
 
-            polygonboolean::interpolate_attribute_from_a_result<T>(src1_attr, result, dst_attr);
+            polygonboolean::interpolate_data_from_a_result<T>(src1_attr, result, dst_attr);
 
             dstW.finish();
           });
@@ -279,7 +279,7 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
 
     if (reproject) {
       MutableSpan<float3> positions = dst.positions_for_write().drop_front(points_num);
-      const Array<float2> pos2d = polygonboolean::interpolate_attribute_from_ab_result<float2>(
+      const Array<float2> pos2d = polygonboolean::interpolate_data_from_ab_result<float2>(
           pos_2d_a, pos_2d_b, result);
 
       const float4 &plane = transform_plane(layer_to_world, normal_planes[curve_i]);
