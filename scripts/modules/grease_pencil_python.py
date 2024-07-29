@@ -2,210 +2,111 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-def get_attribute_value_at_index(attribute, type, index):
-    if type in {'FLOAT', 'INT', 'STRING', 'BOOLEAN', 'INT8', 'INT32_2D', 'QUATERNION', 'FLOAT4X4'}:
-        return attribute.data[index].value
-    elif type == 'FLOAT_VECTOR':
-        return attribute.data[index].vector
-    elif type in {'FLOAT_COLOR', 'BYTE_COLOR'}:
-        return attribute.data[index].color
+# Helper class to get and set attributes at an index
+class AttributeGetterSetter:
+    def __init__(self, attributes, index, domain):
+        self._attributes = attributes
+        self._index = index
+        self._domain = domain
+
+    def _get_attribute(self, name, type):
+        if attribute := self._attributes.get(name):
+            if type in {'FLOAT', 'INT', 'STRING', 'BOOLEAN', 'INT8', 'INT32_2D', 'QUATERNION', 'FLOAT4X4'}:
+                return attribute.data[self._index].value
+            elif type == 'FLOAT_VECTOR':
+                return attribute.data[self._index].vector
+            elif type in {'FLOAT_COLOR', 'BYTE_COLOR'}:
+                return attribute.data[self._index].color
+            else:
+                raise Exception(f"Unkown type {type}")
+        else:
+            raise Exception(f"Attribute {name} not found")
+
+    def _set_attribute(self, name, type, value):
+        if attribute := self._attributes.get(name, self._attributes.new(name, type, self._domain)):
+            if type in {'FLOAT', 'INT', 'STRING', 'BOOLEAN', 'INT8', 'INT32_2D', 'QUATERNION', 'FLOAT4X4'}:
+                attribute.data[self._index].value = value
+            elif type == 'FLOAT_VECTOR':
+                attribute.data[self._index].vector = value
+            elif type in {'FLOAT_COLOR', 'BYTE_COLOR'}:
+                attribute.data[self._index].color = value
+        else:
+            raise Exception(f"Could not create attribute {name} of type {type}")
 
 
-def set_attribute_value_at_index(attribute, type, index, value):
-    if type in {'FLOAT', 'INT', 'STRING', 'BOOLEAN', 'INT8', 'INT32_2D', 'QUATERNION', 'FLOAT4X4'}:
-        attribute.data[index].value = value
-    elif type == 'FLOAT_VECTOR':
-        attribute.data[index].vector = value
-    elif type in {'FLOAT_COLOR', 'BYTE_COLOR'}:
-        attribute.data[index].color = value
+def def_prop_for_attribute(attr_name, type, doc):
+    # Define getter callback for property
+    def fget(self):
+        return self._get_attribute(attr_name, type)
+    # Define setter callback for property
+    def fset(self, value):
+        self._set_attribute(attr_name, type, value)
+    prop = property(fget=fget, fset=fset, doc=doc)
+    return prop
 
 
-class GreasePencilStrokePoint:
+def DefAttributeGetterSetters(attributes_list):
+    def wrapper(cls):
+        for prop_name, attr_name, type, doc in attributes_list:
+            prop = def_prop_for_attribute(attr_name, type, doc)
+            setattr(cls, prop_name, prop)
+        return cls
+    return wrapper
+
+
+@DefAttributeGetterSetters(attributes_list=[
+    # Property Name, Attribute Name, Type, Docstring
+    ('position', 'position', 'FLOAT_VECTOR', "The position of the point (in local space)."),
+    ('radius', 'radius', 'FLOAT', "The radius of the point."),
+    ('opacity', 'opacity', 'FLOAT', "The opacity of the point."),
+    ('select', '.selection', 'BOOLEAN', "The selection state for this point."),
+    ('vertex_color', 'vertex_color', 'FLOAT_COLOR',
+     "The color for this point. The alpha value is used as a mix factor with the base color of the stroke."),
+    ('rotation', 'rotation', 'FLOAT', "The rotation for this point. Used to rotate textures."),
+    ('delta_time', 'delta_time', 'FLOAT', "The time delta in seconds since the start of the stroke."),
+])
+class GreasePencilStrokePoint(AttributeGetterSetter):
     """
     A helper class to get access to stroke point data.
     """
 
     def __init__(self, drawing, point_index):
-        self.drawing = drawing
-        self.point_index = point_index
-
-    def get_attribute(self, name, type):
-        if attribute := self.drawing.attributes.get(name):
-            return get_attribute_value_at_index(attribute, type, self.point_index)
-
-    def set_attribute(self, name, type, value):
-        if attribute := self.drawing.attributes.get(name, self.drawing.attributes.new(name, type, 'POINT')):
-            set_attribute_value_at_index(attribute, type, self.point_index, value)
-
-    @property
-    def position(self):
-        return self.get_attribute('position', 'FLOAT_VECTOR')
-
-    @position.setter
-    def position(self, value):
-        self.set_attribute('position', 'FLOAT_VECTOR', value)
-
-    @property
-    def radius(self):
-        return self.get_attribute('radius', 'FLOAT')
-
-    @radius.setter
-    def radius(self, value):
-        self.set_attribute('radius', 'FLOAT', value)
-
-    @property
-    def opacity(self):
-        return self.get_attribute('opacity', 'FLOAT')
-
-    @opacity.setter
-    def opacity(self, value):
-        self.set_attribute('opacity', 'FLOAT', value)
-
-    @property
-    def selection(self):
-        return self.get_attribute('.selection', 'BOOLEAN')
-
-    @selection.setter
-    def selection(self, value):
-        self.set_attribute('.selection', 'BOOLEAN', value)
-
-    @property
-    def vertex_color(self):
-        return self.get_attribute('vertex_color', 'FLOAT_COLOR')
-
-    @vertex_color.setter
-    def vertex_color(self, value):
-        self.set_attribute('vertex_color', 'FLOAT_COLOR', value)
-
-    @property
-    def rotation(self):
-        return self.get_attribute('rotation', 'FLOAT')
-
-    @rotation.setter
-    def rotation(self, value):
-        self.set_attribute('rotation', 'FLOAT', value)
-
-    @property
-    def delta_time(self):
-        return self.get_attribute('delta_time', 'FLOAT')
-
-    @delta_time.setter
-    def delta_time(self, value):
-        self.set_attribute('delta_time', 'FLOAT', value)
+        super().__init__(drawing.attributes, point_index, 'POINT')
+        self._drawing = drawing
+        self._point_index = point_index
 
 
-class GreasePencilStroke:
+@DefAttributeGetterSetters(attributes_list=[
+    # Property Name, Attribute Name, Type, Docstring
+    ('cyclic', 'cyclic', 'BOOLEAN', "The closed state for this stroke."),
+    ('material_index', 'material_index', 'INT', "The index of the material for this stroke."),
+    ('select', '.selection', 'BOOLEAN', "The selection state for this stroke."),
+    ('softness', 'softness', 'FLOAT', "Used by the renderer to generate a soft gradient from the stroke center line to the edges."),
+    ('start_cap', 'start_cap', 'INT8', "The type of start cap of this stroke."),
+    ('end_cap', 'end_cap', 'INT8', "The type of end cap of this stroke."),
+    ('curve_type', 'curve_type', 'INT8', "The type of curve."),
+    ('aspect_ratio', 'aspect_ratio', 'FLOAT', "The aspect ratio (x/y) used for textures. "),
+    ('fill_opacity', 'fill_opacity', 'FLOAT', "The opacity of the fill."),
+    ('fill_color', 'fill_color', 'FLOAT_COLOR', "The color of the fill."),
+    ('time_start', 'init_time', 'FLOAT', "A time value for when the stroke was created."),
+])
+class GreasePencilStroke(AttributeGetterSetter):
     """
     A helper class to get access to stroke data.
     """
 
     def __init__(self, drawing, curve_index, points_start_index, points_end_index):
-        self.drawing = drawing
-        self.curve_index = curve_index
-        self.points_start_index = points_start_index
-        self.points_end_index = points_end_index
-
-    def get_attribute(self, name, type):
-        if attribute := self.drawing.attributes.get(name):
-            return get_attribute_value_at_index(attribute, type, self.curve_index)
-
-    def set_attribute(self, name, type, value):
-        if attribute := self.drawing.attributes.get(name, self.drawing.attributes.new(name, type, 'CURVE')):
-            set_attribute_value_at_index(attribute, type, self.curve_index, value)
+        super().__init__(drawing.attributes, curve_index, 'CURVE')
+        self._drawing = drawing
+        self._curve_index = curve_index
+        self._points_start_index = points_start_index
+        self._points_end_index = points_end_index
 
     @property
     def points(self):
         return [
             GreasePencilStrokePoint(
-                self.drawing,
-                point_i) for point_i in range(
-                self.points_start_index,
-                self.points_end_index)]
-
-    @property
-    def cyclic(self):
-        return self.get_attribute('cyclic', 'BOOLEAN')
-
-    @cyclic.setter
-    def cyclic(self, value):
-        self.set_attribute('cyclic', 'BOOLEAN', value)
-
-    @property
-    def material_index(self):
-        return self.get_attribute('material_index', 'INT')
-
-    @material_index.setter
-    def material_index(self, value):
-        self.set_attribute('material_index', 'INT', value)
-
-    @property
-    def selection(self):
-        return self.get_attribute('.selection', 'BOOLEAN')
-
-    @selection.setter
-    def selection(self, value):
-        self.set_attribute('.selection', 'BOOLEAN', value)
-
-    @property
-    def softness(self):
-        return self.get_attribute('softness', 'FLOAT')
-
-    @softness.setter
-    def softness(self, value):
-        self.set_attribute('softness', 'FLOAT', value)
-
-    @property
-    def start_cap(self):
-        return self.get_attribute('start_cap', 'INT8')
-
-    @start_cap.setter
-    def start_cap(self, value):
-        self.set_attribute('start_cap', 'INT8', value)
-
-    @property
-    def end_cap(self):
-        return self.get_attribute('end_cap', 'INT8')
-
-    @end_cap.setter
-    def end_cap(self, value):
-        self.set_attribute('end_cap', 'INT8', value)
-
-    @property
-    def curve_type(self):
-        return self.get_attribute('curve_type', 'INT8')
-
-    @curve_type.setter
-    def curve_type(self, value):
-        self.set_attribute('curve_type', 'INT8', value)
-
-    @property
-    def aspect_ratio(self):
-        return self.get_attribute('aspect_ratio', 'FLOAT')
-
-    @aspect_ratio.setter
-    def aspect_ratio(self, value):
-        self.set_attribute('aspect_ratio', 'FLOAT', value)
-
-    @property
-    def fill_opacity(self):
-        return self.get_attribute('fill_opacity', 'FLOAT')
-
-    @fill_opacity.setter
-    def fill_opacity(self, value):
-        self.set_attribute('fill_opacity', 'FLOAT', value)
-
-    @property
-    def fill_color(self):
-        return self.get_attribute('fill_color', 'FLOAT_COLOR')
-
-    @fill_color.setter
-    def fill_color(self, value):
-        self.set_attribute('fill_color', 'FLOAT_COLOR', value)
-
-    @property
-    def time_start(self):
-        return self.get_attribute('init_time', 'FLOAT')
-
-    @time_start.setter
-    def time_start(self, value):
-        self.set_attribute('init_time', 'FLOAT', value)
+                self._drawing,
+                point) for point in range(
+                self._points_start_index,
+                self._points_end_index)]
