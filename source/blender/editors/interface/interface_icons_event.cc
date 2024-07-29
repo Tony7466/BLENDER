@@ -11,8 +11,6 @@
  * Event codes are used as identifiers.
  */
 
-#include "GPU_state.hh"
-
 #include "BLI_string.h"
 
 #include "BLF_api.hh"
@@ -38,6 +36,44 @@ static void icon_draw_rect_input_text(
   BLF_batch_draw_flush();
 }
 
+static void icon_draw_outline(
+    float x, float y, float aspect, short event_type, float color[4], bool inverted)
+{
+  if (ELEM(event_type, EVT_LEFTSHIFTKEY, EVT_RETKEY)) {
+    return;
+  }
+
+  if (ELEM(event_type, EVT_SPACEKEY)) {
+    UI_icon_draw_ex(x, y, ICON_KEY_EMPTY3, aspect, 1.0f, 0.0f, nullptr, false, nullptr, false);
+  }
+  else if (ELEM(event_type, EVT_LEFTCTRLKEY, EVT_LEFTALTKEY, EVT_ESCKEY)) {
+    UI_icon_draw_ex(x, y, ICON_KEY_EMPTY2, aspect, 1.0f, 0.0f, nullptr, false, nullptr, false);
+  }
+  else {
+    UI_icon_draw_ex(x, y, ICON_KEY_EMPTY1, aspect, 1.0f, 0.0f, nullptr, false, nullptr, false);
+  }
+}
+
+static void icon_draw_icon(
+    float x, float y, float aspect, int icon_id, float color[4], bool inverted)
+{
+  if (inverted && ELEM(icon_id,
+                       ICON_KEY_COMMAND,
+                       ICON_KEY_CONTROL,
+                       ICON_KEY_EMPTY1,
+                       ICON_KEY_EMPTY2,
+                       ICON_KEY_EMPTY3,
+                       ICON_KEY_MENU,
+                       ICON_KEY_OPTION,
+                       ICON_KEY_RETURN,
+                       ICON_KEY_SHIFT,
+                       ICON_KEY_WINDOWS))
+  {
+    icon_id++;
+  }
+  UI_icon_draw_ex(x, y, icon_id, aspect, 1.0f, 0.0f, nullptr, false, nullptr, false);
+}
+
 void icon_draw_rect_input(float x,
                           float y,
                           int w,
@@ -54,18 +90,16 @@ void icon_draw_rect_input(float x,
   rect.ymax = int(y + h);
 
   float color[4];
-  GPU_line_width(1.0f);
-  UI_draw_roundbox_corner_set(UI_CNR_ALL);
+  UI_GetThemeColor4fv(TH_TEXT, color);
 
-  if (inverted) {
-    UI_GetThemeColor4fv(TH_TEXT, color);
-    UI_draw_roundbox_aa(&rect, true, 3.0f * U.pixelsize, color);
-    UI_GetThemeColor4fv(TH_BACK, color);
-  }
-  else {
-    UI_GetThemeColor4fv(TH_TEXT, color);
-    UI_draw_roundbox_aa(&rect, false, 3.0f * U.pixelsize, color);
-  }
+  const float aspect = float(ICON_DEFAULT_WIDTH) / float(h);
+
+  icon_draw_outline(x, y, aspect, event_type, color, inverted);
+
+  // needs to move to text output
+  //if (inverted) {
+  //  UI_GetThemeColor4fv(TH_BACK, color);
+  //}
 
   const enum {
     UNIX,
@@ -92,22 +126,19 @@ void icon_draw_rect_input(float x,
     icon_draw_rect_input_text(&rect, color, str, event_type > EVT_F9KEY ? 8.5f : 11.5f, 0.0f);
   }
   else if (event_type == EVT_LEFTSHIFTKEY) { /* Right Shift has already been converted to left. */
-    const char str[] = BLI_STR_UTF8_UPWARDS_WHITE_ARROW;
-    icon_draw_rect_input_text(&rect, color, str, 14.0f, 0.0f);
+    icon_draw_icon(x, y, aspect, ICON_KEY_SHIFT, color, inverted);
   }
   else if (event_type == EVT_LEFTCTRLKEY) { /* Right Ctrl has already been converted to left. */
     if (platform == MACOS) {
-      const char str[] = BLI_STR_UTF8_UP_ARROWHEAD;
-      icon_draw_rect_input_text(&rect, color, str, 21.0f, -8.0f);
+      icon_draw_icon(x, y, aspect, ICON_KEY_CONTROL, color, inverted);
     }
     else {
-      icon_draw_rect_input_text(&rect, color, "Ctrl", 9.0f, 0.0f);
+      icon_draw_rect_input_text(&rect, color, "Ctrl", 10.0f, 0.0f);
     }
   }
   else if (event_type == EVT_LEFTALTKEY) { /* Right Alt has already been converted to left. */
     if (platform == MACOS) {
-      const char str[] = BLI_STR_UTF8_OPTION_KEY;
-      icon_draw_rect_input_text(&rect, color, str, 13.0f, 0.0f);
+      icon_draw_icon(x, y, aspect, ICON_KEY_OPTION, color, inverted);
     }
     else {
       icon_draw_rect_input_text(&rect, color, "Alt", 11.0f, 0.0f);
@@ -115,12 +146,10 @@ void icon_draw_rect_input(float x,
   }
   else if (event_type == EVT_OSKEY) {
     if (platform == MACOS) {
-      const char str[] = BLI_STR_UTF8_PLACE_OF_INTEREST_SIGN;
-      icon_draw_rect_input_text(&rect, color, str, 13.0f, 0.0f);
+      icon_draw_icon(x, y, aspect, ICON_KEY_COMMAND, color, inverted);
     }
     else if (platform == MSWIN) {
-      const char str[] = BLI_STR_UTF8_BLACK_DIAMOND_MINUS_WHITE_X;
-      icon_draw_rect_input_text(&rect, color, str, 12.0f, 1.5f);
+      icon_draw_icon(x, y, aspect, ICON_KEY_WINDOWS, color, inverted);
     }
     else {
       icon_draw_rect_input_text(&rect, color, "OS", 10.0f, 0.0f);
@@ -130,8 +159,7 @@ void icon_draw_rect_input(float x,
     icon_draw_rect_input_text(&rect, color, "Del", 9.0f, 0.0f);
   }
   else if (event_type == EVT_TABKEY) {
-    const char str[] = BLI_STR_UTF8_HORIZONTAL_TAB_KEY;
-    icon_draw_rect_input_text(&rect, color, str, 18.0f, -1.5f);
+    icon_draw_icon(x, y, aspect, ICON_KEY_TAB, color, inverted);
   }
   else if (event_type == EVT_HOMEKEY) {
     icon_draw_rect_input_text(&rect, color, "Home", 5.5f, 0.0f);
@@ -140,8 +168,7 @@ void icon_draw_rect_input(float x,
     icon_draw_rect_input_text(&rect, color, "End", 8.0f, 0.0f);
   }
   else if (event_type == EVT_RETKEY) {
-    const char str[] = BLI_STR_UTF8_RETURN_SYMBOL;
-    icon_draw_rect_input_text(&rect, color, str, 16.0f, -2.0f);
+    icon_draw_icon(x, y, aspect, ICON_KEY_RETURN, color, inverted);
   }
   else if (event_type == EVT_ESCKEY) {
     if (platform == MACOS) {
@@ -177,8 +204,8 @@ void icon_draw_rect_input(float x,
     icon_draw_rect_input_text(&rect, color, str, 16.0f, 0.0f);
   }
   else if (event_type == EVT_SPACEKEY) {
-    const char str[] = BLI_STR_UTF8_OPEN_BOX;
-    icon_draw_rect_input_text(&rect, color, str, 20.0f, 2.0f);
+    const char str[] = "Space";
+    icon_draw_rect_input_text(&rect, color, str, 9.0f, 1.0f);
   }
   else if (event_type == BUTTON4MOUSE) {
     icon_draw_rect_input_text(&rect, color, BLI_STR_UTF8_BLACK_VERTICAL_ELLIPSE "4", 12.0f, 0.0f);

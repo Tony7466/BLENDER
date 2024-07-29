@@ -861,6 +861,28 @@ if(WITH_BLENDER)
       zoom_out
       zoom_previous
       zoom_selected
+      key_command
+      key_command_filled
+      key_control
+      key_control_filled
+      key_empty1
+      key_empty1_filled
+      key_empty2
+      key_empty2_filled
+      key_empty3
+      key_empty3_filled
+      key_menu
+      key_menu_filled
+      key_option
+      key_option_filled
+      key_return
+      key_return_filled
+      key_shift
+      key_shift_filled
+      key_tab
+      key_tab_filled
+      key_windows
+      key_windows_filled
     )
     set(SVG_CONTENTS_H)
     set(SVG_CONTENTS_C)
