@@ -487,9 +487,6 @@ static void rna_NlaStrip_action_slot_set(PointerRNA *ptr, PointerRNA value, Repo
     return;
   }
 
-  // ID *animated_id = ptr->owner_id;
-  // BLI_assert(animated_id); /* Otherwise there is nothing to own this AnimData. */
-
   ActionSlot *dna_slot = static_cast<ActionSlot *>(value.data);
   if (!dna_slot) {
     data->act_slot_handle = Slot::unassigned;
