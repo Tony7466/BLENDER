@@ -93,10 +93,10 @@ void MEM_enable_fail_on_memleak()
   fail_on_memleak = true;
 }
 
-void mem_guarded::internal::add_memleak_data(std::any &data)
+void mem_guarded::internal::add_memleak_data(std::any data)
 {
   static std::mutex mutex;
   static std::vector<std::any> data_vec;
   std::lock_guard lock{mutex};
-  data_vec.push_back(data);
+  data_vec.push_back(std::move(data));
 }

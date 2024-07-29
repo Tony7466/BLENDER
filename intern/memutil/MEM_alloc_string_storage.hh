@@ -104,7 +104,7 @@ AllocStringStorageContainer &ensure_storage_container();
  * Return a reference to the AllocStringStorage static data matching the given \a
  * storage_identifier, creating it if needed.
  *
- * \note The storage it `thread_local` data, so access to it is thread-safe as long as it is not
+ * \note The storage is `thread_local` data, so access to it is thread-safe as long as it is not
  * shared between threads by the user code.
  */
 template<typename keyT, template<typename> typename hashT>

@@ -426,9 +426,8 @@ template<typename T> inline T *MEM_cnew(const char *allocation_name, const T &ot
 /**
  * Construct a T that will only be destructed after leak detection is run.
  *
- * This is thread-safe, in the sense that the allocated data is stored locally in the calling
- * thread. Calling code should typically keep a reference to that data as a `static thread_local`
- * variable too.
+ * This call is thread-safe. Calling code should typically keep a reference to that data as a
+ * `static thread_local` variable, or use some lock, to prevent concurrent accesses.
  *
  * The returned value should not own any memory allocated with `MEM_*` functions, since these would
  * then be detected as leaked.
