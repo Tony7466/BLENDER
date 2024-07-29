@@ -523,7 +523,7 @@ void Instance::render_frame(RenderEngine *engine, RenderLayer *render_layer, con
     if ((sampling.sample_index() == 1) || ((sampling.sample_index() % 25) == 0) ||
         sampling.finished())
     {
-      /* TODO: Use fmt. */
+      /* TODO: Use `fmt`. */
       std::string re_info = "Rendering " + std::to_string(sampling.sample_index()) + " / " +
                             std::to_string(sampling.sample_count()) + " samples";
       RE_engine_update_stats(engine, nullptr, re_info.c_str());
@@ -564,6 +564,10 @@ void Instance::draw_viewport()
   render_sample();
   velocity.step_swap();
 
+  if (this->film.is_viewport_compositor_enabled()) {
+    this->film.write_viewport_compositor_passes();
+  }
+
   /* Do not request redraw during viewport animation to lock the frame-rate to the animation
    * playback rate. This is in order to preserve motion blur aspect and also to avoid TAA reset
    * that can show flickering. */
@@ -597,6 +601,10 @@ void Instance::draw_viewport_image_render()
     this->render_sample();
   }
   velocity.step_swap();
+
+  if (this->film.is_viewport_compositor_enabled()) {
+    this->film.write_viewport_compositor_passes();
+  }
 }
 
 void Instance::store_metadata(RenderResult *render_result)
