@@ -1633,7 +1633,7 @@ class GreasePencilDrawing(StructRNA):
         .. note:: This API should *not* be used for performance critical operations.
         Use the :class:`GreasePencilDrawing.attributes` API instead.
         """
-        offsets = self.curve_offset_data
+        offsets = self.curve_offsets
         return [GreasePencilStroke(self, curve_i, offsets[curve_i].value, offsets[curve_i + 1].value)
                 for curve_i in range(self.num_strokes)]
     
