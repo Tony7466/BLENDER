@@ -74,7 +74,8 @@ void foreach_curve_by_type(const VArray<int8_t> &types,
 
 namespace bezier {
 
-Array<float3> retrieve_all_positions(const bke::CurvesGeometry &curves, const IndexMask &selection)
+Array<float3> retrieve_all_positions(const bke::CurvesGeometry &curves,
+                                     const IndexMask &curves_selection)
 {
   if (curves.curves_num() == 0 || !curves.has_curve_with_type(CURVE_TYPE_BEZIER)) {
     return {};
@@ -85,7 +86,7 @@ Array<float3> retrieve_all_positions(const bke::CurvesGeometry &curves, const In
   const Span<float3> handle_positions_right = curves.handle_positions_right();
 
   Array<float3> all_positions(positions.size() * 3);
-  selection.foreach_index(GrainSize(1024), [&](const int curve) {
+  curves_selection.foreach_index(GrainSize(1024), [&](const int curve) {
     const IndexRange points = points_by_curve[curve];
     for (const int point : points) {
       const int index = point * 3;
@@ -99,22 +100,22 @@ Array<float3> retrieve_all_positions(const bke::CurvesGeometry &curves, const In
 }
 
 void write_all_positions(bke::CurvesGeometry &curves,
-                         const IndexMask &selection,
+                         const IndexMask &curves_selection,
                          const Span<float3> all_positions)
 {
-  if (selection.is_empty() || curves.curves_num() == 0 ||
+  if (curves_selection.is_empty() || curves.curves_num() == 0 ||
       !curves.has_curve_with_type(CURVE_TYPE_BEZIER))
   {
     return;
   }
-  BLI_assert(selection.size() * 3 == all_positions.size());
+  BLI_assert(curves_selection.size() * 3 == all_positions.size());
 
   const OffsetIndices points_by_curve = curves.points_by_curve();
   MutableSpan<float3> positions = curves.positions_for_write();
   MutableSpan<float3> handle_positions_left = curves.handle_positions_left_for_write();
   MutableSpan<float3> handle_positions_right = curves.handle_positions_right_for_write();
 
-  selection.foreach_index(GrainSize(1024), [&](const int curve) {
+  curves_selection.foreach_index(GrainSize(1024), [&](const int curve) {
     const IndexRange points = points_by_curve[curve];
     for (const int point : points) {
       const int index = point * 3;
