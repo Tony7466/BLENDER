@@ -513,13 +513,6 @@ void gpu_shader_create_info_init()
     overlay_motion_path_line = overlay_motion_path_line_no_geom;
     overlay_motion_path_line_clipped = overlay_motion_path_line_clipped_no_geom;
 
-    /* Workbench shadows.
-     * NOTE: Updates additional-info used by workbench shadow permutations.
-     * Must be prepared prior to permutation preparation. */
-    workbench_shadow_manifold = workbench_shadow_manifold_no_geom;
-    workbench_shadow_no_manifold = workbench_shadow_no_manifold_no_geom;
-    workbench_shadow_caps = workbench_shadow_caps_no_geom;
-
     /* Conservative rasterization. */
     basic_depth_mesh_conservative = basic_depth_mesh_conservative_no_geom;
     basic_depth_mesh_conservative_clipped = basic_depth_mesh_conservative_no_geom_clipped;

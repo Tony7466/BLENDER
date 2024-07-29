@@ -82,9 +82,9 @@ void main()
 
   /* In data is triangles - Should be guaranteed. */
   /* Read input position data. */
-  vData[0].pos = vertex_fetch_attribute(input_base_vertex_id + 0, pos, vec3);
-  vData[1].pos = vertex_fetch_attribute(input_base_vertex_id + 1, pos, vec3);
-  vData[2].pos = vertex_fetch_attribute(input_base_vertex_id + 2, pos, vec3);
+  vData[0].pos = pos[input_base_vertex_id + 0];
+  vData[1].pos = pos[input_base_vertex_id + 1];
+  vData[2].pos = pos[input_base_vertex_id + 2];
 
   /* Calculate front/back Positions. */
   vData[0].frontPosition = point_object_to_ndc(vData[0].pos);
