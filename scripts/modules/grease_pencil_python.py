@@ -2,6 +2,24 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+def get_attribute_value_at_index(attribute, type, index):
+    if type in {'FLOAT', 'INT', 'STRING', 'BOOLEAN', 'INT8', 'INT32_2D', 'QUATERNION', 'FLOAT4X4'}:
+        return attribute.data[index].value
+    elif type == 'FLOAT_VECTOR':
+        return attribute.data[index].vector
+    elif type in {'FLOAT_COLOR', 'BYTE_COLOR'}:
+        return attribute.data[index].color
+
+
+def set_attribute_value_at_index(attribute, type, index, value):
+    if type in {'FLOAT', 'INT', 'STRING', 'BOOLEAN', 'INT8', 'INT32_2D', 'QUATERNION', 'FLOAT4X4'}:
+        attribute.data[index].value = value
+    elif type == 'FLOAT_VECTOR':
+        attribute.data[index].vector = value
+    elif type in {'FLOAT_COLOR', 'BYTE_COLOR'}:
+        attribute.data[index].color = value
+
+
 class GreasePencilStrokePoint:
     """
     A helper class to get access to stroke point data.
@@ -13,21 +31,11 @@ class GreasePencilStrokePoint:
 
     def get_attribute(self, name, type):
         if attribute := self.drawing.attributes.get(name):
-            if type in {'FLOAT', 'INT', 'STRING', 'BOOLEAN', 'INT8', 'INT32_2D', 'QUATERNION', 'FLOAT4X4'}:
-                return attribute.data[self.point_index].value
-            elif type == 'FLOAT_VECTOR':
-                return attribute.data[self.point_index].vector
-            elif type in {'FLOAT_COLOR', 'BYTE_COLOR'}:
-                return attribute.data[self.point_index].color
+            return get_attribute_value_at_index(attribute, type, self.point_index)
 
     def set_attribute(self, name, type, value):
         if attribute := self.drawing.attributes.get(name, self.drawing.attributes.new(name, type, 'POINT')):
-            if type in {'FLOAT', 'INT', 'STRING', 'BOOLEAN', 'INT8', 'INT32_2D', 'QUATERNION', 'FLOAT4X4'}:
-                attribute.data[self.point_index].value = value
-            elif type == 'FLOAT_VECTOR':
-                attribute.data[self.point_index].vector = value
-            elif type in {'FLOAT_COLOR', 'BYTE_COLOR'}:
-                attribute.data[self.point_index].color = value
+            set_attribute_value_at_index(attribute, type, self.point_index, value)
 
     @property
     def position(self):
@@ -86,7 +94,6 @@ class GreasePencilStrokePoint:
         self.set_attribute('delta_time', 'FLOAT', value)
 
 
-
 class GreasePencilStroke:
     """
     A helper class to get access to stroke data.
@@ -100,21 +107,11 @@ class GreasePencilStroke:
 
     def get_attribute(self, name, type):
         if attribute := self.drawing.attributes.get(name):
-            if type in {'FLOAT', 'INT', 'STRING', 'BOOLEAN', 'INT8', 'INT32_2D', 'QUATERNION', 'FLOAT4X4'}:
-                return attribute.data[self.curve_index].value
-            elif type == 'FLOAT_VECTOR':
-                return attribute.data[self.curve_index].vector
-            elif type in {'FLOAT_COLOR', 'BYTE_COLOR'}:
-                return attribute.data[self.curve_index].color
+            return get_attribute_value_at_index(attribute, type, self.curve_index)
 
     def set_attribute(self, name, type, value):
         if attribute := self.drawing.attributes.get(name, self.drawing.attributes.new(name, type, 'CURVE')):
-            if type in {'FLOAT', 'INT', 'STRING', 'BOOLEAN', 'INT8', 'INT32_2D', 'QUATERNION', 'FLOAT4X4'}:
-                attribute.data[self.curve_index].value = value
-            elif type == 'FLOAT_VECTOR':
-                attribute.data[self.curve_index].vector = value
-            elif type in {'FLOAT_COLOR', 'BYTE_COLOR'}:
-                attribute.data[self.curve_index].color = value
+            set_attribute_value_at_index(attribute, type, self.curve_index, value)
 
     @property
     def points(self):
