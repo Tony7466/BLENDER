@@ -308,8 +308,7 @@ static int result_find_base_id(const BooleanResult &results,
                                const Span<float2> curve_b)
 {
   const OffsetIndices<int> points_by_polygon = OffsetIndices<int>(results.offsets);
-  const Array<float2> points = interpolate_attribute_from_ab_result<float2>(
-      curve_a, curve_b, results);
+  const Array<float2> points = interpolate_data_from_ab_result<float2>(curve_a, curve_b, results);
 
   /**
    * The base is the polygon that all others are inside of, and therefor it is not in any others.
@@ -422,30 +421,30 @@ static BooleanResult result_sort_holes(const BooleanResult &in_results,
 }
 
 template<typename T>
-void interpolate_attribute_from_ab_result(const VArray<T> attr_a,
-                                          const VArray<T> attr_b,
-                                          const BooleanResult &result,
-                                          MutableSpan<T> dst_attr)
+void interpolate_data_from_ab_result(const VArray<T> data_a,
+                                     const VArray<T> data_b,
+                                     const BooleanResult &result,
+                                     MutableSpan<T> dst_attr)
 {
   for (const int i : result.verts.index_range()) {
     const Vertex &vert = result.verts[i];
     const VertexType &type = vert.type;
 
     if (type == VertexType::PointA) {
-      dst_attr[i] = attr_a[vert.point_id];
+      dst_attr[i] = data_a[vert.point_id];
     }
     else if (type == VertexType::PointB) {
-      dst_attr[i] = attr_b[vert.point_id];
+      dst_attr[i] = data_b[vert.point_id];
     }
     else if (type == VertexType::Intersection) {
       const IntersectionPoint &inter_point = result.intersections_data[vert.point_id];
 
-      const T a0 = attr_a[inter_point.point_a];
-      const T a1 = attr_a[(inter_point.point_a + 1) % attr_a.size()];
+      const T a0 = data_a[inter_point.point_a];
+      const T a1 = data_a[(inter_point.point_a + 1) % data_a.size()];
       const float alpha_a = inter_point.alpha_a;
 
-      const T b0 = attr_b[inter_point.point_b];
-      const T b1 = attr_b[(inter_point.point_b + 1) % attr_b.size()];
+      const T b0 = data_b[inter_point.point_b];
+      const T b1 = data_b[(inter_point.point_b + 1) % data_b.size()];
       const float alpha_b = inter_point.alpha_b;
 
       dst_attr[i] = math::interpolate(
@@ -455,18 +454,16 @@ void interpolate_attribute_from_ab_result(const VArray<T> attr_a,
 }
 
 template<typename T>
-Array<T> interpolate_attribute_from_ab_result(const Span<T> attr_a,
-                                              const Span<T> attr_b,
-                                              const BooleanResult &result)
+Array<T> interpolate_data_from_ab_result(const Span<T> data_a,
+                                         const Span<T> data_b,
+                                         const BooleanResult &result)
 {
-  Array<T> attribute_out(result.verts.size());
+  Array<T> data_out(result.verts.size());
 
-  interpolate_attribute_from_ab_result(VArray<T>::ForSpan(attr_a),
-                                       VArray<T>::ForSpan(attr_b),
-                                       result,
-                                       attribute_out.as_mutable_span());
+  interpolate_data_from_ab_result(
+      VArray<T>::ForSpan(data_a), VArray<T>::ForSpan(data_b), result, data_out.as_mutable_span());
 
-  return attribute_out;
+  return data_out;
 }
 
 /**
