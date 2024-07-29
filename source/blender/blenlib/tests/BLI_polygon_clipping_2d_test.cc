@@ -460,7 +460,7 @@ void simple_intersection_test()
   /**
    * This is a replica of Fig. 10 from
    * Greiner, Günther; Kai Hormann (1998). "Efficient clipping of arbitrary polygons". ACM
-   * Transactions on Graphics. 17 (2): 71–83.
+   * Transactions on Graphics. 17 (2): 71-83.
    */
   const Array<float2> points_a = {{0, 6}, {8, 6}, {8, 3}, {0, 3}};
   const Array<float2> points_b = {{6, 0}, {6, 4}, {4, 2}, {2, 4}, {2, 0}};
@@ -481,7 +481,7 @@ void simple_union_with_hole_test()
   /**
    * This is a replica of Fig. 10 from
    * Greiner, Günther; Kai Hormann (1998). "Efficient clipping of arbitrary polygons". ACM
-   * Transactions on Graphics. 17 (2): 71–83.
+   * Transactions on Graphics. 17 (2): 71-83.
    */
   const Array<float2> points_a = {{0, 6}, {8, 6}, {8, 3}, {0, 3}};
   const Array<float2> points_b = {{6, 0}, {6, 4}, {4, 2}, {2, 4}, {2, 0}};
@@ -502,7 +502,7 @@ void simple_union_without_hole_test()
   /**
    * This is a replica of Fig. 10 from
    * Greiner, Günther; Kai Hormann (1998). "Efficient clipping of arbitrary polygons". ACM
-   * Transactions on Graphics. 17 (2): 71–83.
+   * Transactions on Graphics. 17 (2): 71-83.
    */
   const Array<float2> points_a = {{0, 6}, {8, 6}, {8, 3}, {0, 3}};
   const Array<float2> points_b = {{6, 0}, {6, 4}, {4, 2}, {2, 4}, {2, 0}};
@@ -523,7 +523,7 @@ void complex_A_AND_B_test()
   /**
    * This is a replica of Fig. 16 from
    * Greiner, Günther; Kai Hormann (1998). "Efficient clipping of arbitrary polygons". ACM
-   * Transactions on Graphics. 17 (2): 71–83.
+   * Transactions on Graphics. 17 (2): 71-83.
    */
   const Array<float2> points_a = {{14, 1}, {0, 5}, {14, 10}, {5, 6}, {14, 6}, {5, 5}};
   const Array<float2> points_b = {{9, 13}, {13, 0}, {9, 9}, {6, 0}};
@@ -544,7 +544,7 @@ void complex_A_OR_B_test()
   /**
    * This is a replica of Fig. 16 from
    * Greiner, Günther; Kai Hormann (1998). "Efficient clipping of arbitrary polygons". ACM
-   * Transactions on Graphics. 17 (2): 71–83.
+   * Transactions on Graphics. 17 (2): 71-83.
    */
   const Array<float2> points_a = {{14, 1}, {0, 5}, {14, 10}, {5, 6}, {14, 6}, {5, 5}};
   const Array<float2> points_b = {{9, 13}, {13, 0}, {9, 9}, {6, 0}};
@@ -565,7 +565,7 @@ void complex_A_OR_B_without_holes_test()
   /**
    * This is a replica of Fig. 16 from
    * Greiner, Günther; Kai Hormann (1998). "Efficient clipping of arbitrary polygons". ACM
-   * Transactions on Graphics. 17 (2): 71–83.
+   * Transactions on Graphics. 17 (2): 71-83.
    */
   const Array<float2> points_a = {{14, 1}, {0, 5}, {14, 10}, {5, 6}, {14, 6}, {5, 5}};
   const Array<float2> points_b = {{9, 13}, {13, 0}, {9, 9}, {6, 0}};
@@ -586,7 +586,7 @@ void complex_A_NOT_B_test()
   /**
    * This is a replica of Fig. 16 from
    * Greiner, Günther; Kai Hormann (1998). "Efficient clipping of arbitrary polygons". ACM
-   * Transactions on Graphics. 17 (2): 71–83.
+   * Transactions on Graphics. 17 (2): 71-83.
    */
   const Array<float2> points_a = {{14, 1}, {0, 5}, {14, 10}, {5, 6}, {14, 6}, {5, 5}};
   const Array<float2> points_b = {{9, 13}, {13, 0}, {9, 9}, {6, 0}};
@@ -607,7 +607,7 @@ void complex_B_NOT_A_test()
   /**
    * This is a replica of Fig. 16 from
    * Greiner, Günther; Kai Hormann (1998). "Efficient clipping of arbitrary polygons". ACM
-   * Transactions on Graphics. 17 (2): 71–83.
+   * Transactions on Graphics. 17 (2): 71-83.
    */
   const Array<float2> points_a = {{14, 1}, {0, 5}, {14, 10}, {5, 6}, {14, 6}, {5, 5}};
   const Array<float2> points_b = {{9, 13}, {13, 0}, {9, 9}, {6, 0}};
