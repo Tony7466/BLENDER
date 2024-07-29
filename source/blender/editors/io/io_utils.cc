@@ -5,10 +5,14 @@
 #include <fmt/format.h>
 
 #include "BLI_path_util.h"
+#include "BLI_set.hh"
 
+#include "BLI_string.h"
 #include "BLT_translation.hh"
 
 #include "BKE_context.hh"
+#include "BKE_global.hh"
+#include "BKE_main.hh"
 
 #include "DNA_space_types.h"
 
@@ -72,6 +76,7 @@ bool poll_file_object_drop(const bContext *C, blender::bke::FileHandlerType * /*
 
 Vector<std::string> paths_from_operator_properties(PointerRNA *ptr)
 {
+  Set<std::string> absolute_paths;
   Vector<std::string> paths;
   PropertyRNA *directory_prop = RNA_struct_find_property(ptr, "directory");
   if (RNA_property_is_set(ptr, directory_prop)) {
@@ -88,7 +93,13 @@ Vector<std::string> paths_from_operator_properties(PointerRNA *ptr)
       RNA_string_get(&file_ptr, "name", name);
       char path[FILE_MAX];
       BLI_path_join(path, sizeof(path), directory, name);
-      paths.append_non_duplicates(path);
+
+      char abs_path[FILE_MAX];
+      BLI_strncpy(abs_path, path, sizeof(abs_path));
+      BLI_path_abs(abs_path, BKE_main_blendfile_path(G.main));
+      if (absolute_paths.add(abs_path)) {
+        paths.append(path);
+      }
     }
     RNA_PROP_END;
   }
@@ -96,8 +107,15 @@ Vector<std::string> paths_from_operator_properties(PointerRNA *ptr)
   if (filepath_prop && RNA_property_is_set(ptr, filepath_prop)) {
     char filepath[FILE_MAX];
     RNA_string_get(ptr, "filepath", filepath);
-    paths.append_non_duplicates(filepath);
+
+    char abs_filepath[FILE_MAX];
+    BLI_strncpy(abs_filepath, filepath, sizeof(abs_filepath));
+    BLI_path_abs(abs_filepath, BKE_main_blendfile_path(G.main));
+    if (absolute_paths.add(abs_filepath)) {
+      paths.append_non_duplicates(filepath);
+    }
   }
   return paths;
 }
+
 }  // namespace blender::ed::io
