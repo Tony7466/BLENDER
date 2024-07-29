@@ -103,9 +103,9 @@ static void indices_init(Object &object,
 
 /**
  * This functions initializes all data needed to calculate falloffs and deformation from the
- * boundary into the mesh into a #SculptBoundaryEditInfo array. This includes how many steps
- * are needed to go from a boundary vertex to an interior vertex and which vertex of the
- * boundary is the closest one.
+ * boundary into the mesh into a #SculptBoundaryEditInfo array. This includes how many steps are
+ * needed to go from a boundary vertex to an interior vertex and which vertex of the boundary is
+ * the closest one.
  */
 static void edit_data_init(OffsetIndices<int> faces,
                            Span<int> corner_verts,
