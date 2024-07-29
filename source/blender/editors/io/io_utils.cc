@@ -75,8 +75,8 @@ Vector<std::string> paths_from_operator_properties(PointerRNA *ptr)
 {
   Vector<std::string> paths;
   PropertyRNA *directory_prop = RNA_struct_find_property(ptr, "directory");
-  bool relative_path = RNA_struct_find_property(ptr, "relative_path") &&
-                       RNA_boolean_get(ptr, "relative_path");
+  const bool relative_path = RNA_struct_find_property(ptr, "relative_path") &&
+                             RNA_boolean_get(ptr, "relative_path");
   if (RNA_property_is_set(ptr, directory_prop)) {
     char directory[FILE_MAX], name[FILE_MAX];
 
