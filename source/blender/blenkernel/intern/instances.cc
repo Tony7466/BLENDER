@@ -453,8 +453,7 @@ Span<int> Instances::reference_user_counts() const
     r_data.fill(0);
 
     const Span<int> handles = this->reference_handles();
-    for (const int i : IndexRange(instances_num_)) {
-      const int handle = handles[i];
+    for (const int handle : handles) {
       if (handle >= 0 && handle < references_num) {
         r_data[handle]++;
       }
