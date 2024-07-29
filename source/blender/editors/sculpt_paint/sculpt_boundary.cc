@@ -132,19 +132,19 @@ std::unique_ptr<SculptBoundary> data_init(Object &object,
 {
   /* TODO: Temporary bridge method to help in refactoring, this method should be deprecated
    * entirely. */
-  SculptSession &ss = *object.sculpt;
+  const SculptSession &ss = *object.sculpt;
   if (initial_vert.i == PBVH_REF_NONE) {
     return nullptr;
   }
 
   switch (ss.pbvh->type()) {
     case (bke::pbvh::Type::Mesh): {
-      int vert = initial_vert.i;
+      const int vert = initial_vert.i;
       return data_init(object, brush, vert, radius);
     }
     case (bke::pbvh::Type::Grids): {
       const CCGKey &key = BKE_subdiv_ccg_key_top_level(*ss.subdiv_ccg);
-      SubdivCCGCoord vert = SubdivCCGCoord::from_index(key, initial_vert.i);
+      const SubdivCCGCoord vert = SubdivCCGCoord::from_index(key, initial_vert.i);
       return data_init(object, brush, vert, radius);
     }
     case (bke::pbvh::Type::BMesh): {

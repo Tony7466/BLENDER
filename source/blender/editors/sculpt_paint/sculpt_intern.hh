@@ -2100,19 +2100,19 @@ namespace blender::ed::sculpt_paint::boundary {
  */
 std::unique_ptr<SculptBoundary> data_init(Object &object,
                                           const Brush *brush,
-                                          PBVHVertRef initial_vertex,
+                                          PBVHVertRef initial_vert,
                                           float radius);
 std::unique_ptr<SculptBoundary> data_init(Object &object,
                                           const Brush *brush,
-                                          int initial_vertex,
+                                          int initial_vert,
                                           float radius);
 std::unique_ptr<SculptBoundary> data_init(Object &object,
                                           const Brush *brush,
-                                          SubdivCCGCoord initial_vertex,
+                                          SubdivCCGCoord initial_vert,
                                           float radius);
 std::unique_ptr<SculptBoundary> data_init(Object &object,
                                           const Brush *brush,
-                                          BMVert *initial_vertex,
+                                          BMVert *initial_vert,
                                           float radius);
 std::unique_ptr<SculptBoundaryPreview> preview_data_init(Object &object,
                                                          const Brush *brush,
