@@ -6319,19 +6319,19 @@ static bool uiTemplateInputStatusAzone(uiLayout *layout, AZone *az, ARegion *reg
     uiItemL(layout, "", ICON_EVENT_SHIFT);
     uiItemL(layout, nullptr, ICON_MOUSE_LMB_DRAG);
     uiItemS_ex(layout, 0.3f);
-    uiItemL(layout, IFACE_("Duplicate into window"), ICON_NONE);
+    uiItemL(layout, IFACE_("Duplicate into Window"), ICON_NONE);
     uiItemS_ex(layout, 0.7f);
     uiItemL(layout, "", ICON_EVENT_CTRL);
     uiItemL(layout, nullptr, ICON_MOUSE_LMB_DRAG);
     uiItemS_ex(layout, 0.3f);
-    uiItemL(layout, IFACE_("Swap areas"), ICON_NONE);
+    uiItemL(layout, IFACE_("Swap Areas"), ICON_NONE);
     return true;
   }
   if (az->type == AZONE_REGION) {
     uiItemL(layout, nullptr, ICON_MOUSE_LMB_DRAG);
     uiItemS_ex(layout, 0.3f);
     uiItemL(layout,
-            (region->visible) ? IFACE_("Resize region") : IFACE_("Show hidden region"),
+            (region->visible) ? IFACE_("Resize Region") : IFACE_("Show Hidden Region"),
             ICON_NONE);
     return true;
   }
