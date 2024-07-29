@@ -28,10 +28,8 @@
 
 #  include "BKE_attribute.hh"
 #  include "BKE_curves.hh"
-#  include "BKE_curves_utils.hh"
 #  include "BKE_grease_pencil.hh"
 
-#  include "BLI_index_mask.hh"
 #  include "BLI_math_matrix.hh"
 #  include "BLI_span.hh"
 
@@ -503,7 +501,7 @@ static void rna_def_grease_pencil_drawing(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 
   /* Curve offsets. */
-  prop = RNA_def_property(srna, "curve_offset_data", PROP_COLLECTION, PROP_NONE);
+  prop = RNA_def_property(srna, "curve_offsets", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "IntAttributeValue");
   RNA_def_property_override_flag(prop, PROPOVERRIDE_IGNORE);
   RNA_def_property_collection_funcs(prop,
@@ -515,6 +513,9 @@ static void rna_def_grease_pencil_drawing(BlenderRNA *brna)
                                     "rna_GreasePencilDrawing_curve_offset_data_lookup_int",
                                     nullptr,
                                     nullptr);
+  RNA_def_parameter_clear_flags(prop, PROP_EDITABLE, ParameterFlag(0));
+  RNA_def_property_ui_text(
+      prop, "Curve Offsets", "Offset indices of the first point of each curve");
   RNA_def_property_update(prop, 0, "rna_grease_pencil_update");
 
   RNA_api_grease_pencil_drawing(srna);
