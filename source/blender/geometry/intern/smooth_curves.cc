@@ -304,18 +304,22 @@ void smooth_curve_positions(bke::CurvesGeometry &curves,
         orig_data.as_mutable_span().copy_from(dst_data);
 
         /* The influence is mapped from handle+control point index to only control point index. */
-        const VArray<float> point_influence = VArray<float>::ForFunc(
-            positions_range.size(), [&](const int index) {
-              if (!smooth_ends && !cyclic[curve]) {
-                /* Account for the left handle of the first
-                 * point being ignored. */
-                return influences.slice(range)[(index + 1) / 3];
+        Array<float> point_influences(positions_range.size());
+        threading::parallel_for(
+            positions_range.index_range(), 4096, [&](const IndexRange influences_range) {
+              for (const int index : influences_range) {
+                if (!smooth_ends && !cyclic[curve]) {
+                  /* Account for the left handle of the first
+                   * point being ignored. */
+                  point_influences[index] = influences.slice(range)[(index + 1) / 3];
+                }
+                point_influences[index] = influences.slice(range)[index / 3];
               }
-              return influences.slice(range)[index / 3];
             });
+
         gaussian_blur_1D(orig_data.as_span(),
                          iterations,
-                         point_influence,
+                         VArray<float>::ForSpan(point_influences.as_span()),
                          smooth_ends,
                          keep_shape,
                          cyclic[curve],
