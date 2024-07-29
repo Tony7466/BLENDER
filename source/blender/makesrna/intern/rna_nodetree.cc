@@ -4101,13 +4101,22 @@ static const EnumPropertyItem node_metallic_distribution_items[] = {
 };
 
 static const EnumPropertyItem node_metallic_fresnel_type_items[] = {
-    {SHD_PHYSICAL_CONDUCTOR, "PHYSICAL_CONDUCTOR", 0, "Physical Conductor", ""},
+    {SHD_PHYSICAL_CONDUCTOR,
+     "PHYSICAL_CONDUCTOR",
+     0,
+     "Physical Conductor",
+     "Physically accurate Fresnel effect based on the complex IOR of the material"},
     {SHD_ARTISTIC_CONDUCTOR,
      "ARTISTIC_CONDUCTOR",
      0,
      "Artistic Conductor",
      "Conductor Fresnel with artist friendly color inputs"},
-    {SHD_CONDUCTOR_F82, "F82", 0, "F82 Approximation", ""},
+    {SHD_CONDUCTOR_F82,
+     "F82",
+     0,
+     "F82 Approximation",
+     "An approximation of the Conductor Fresnel curve based on the perpendicular color and the "
+     "tint at an angle of 82°"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 

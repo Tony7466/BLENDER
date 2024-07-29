@@ -107,22 +107,18 @@ NODE_SHADER_MATERIALX_BEGIN
   NodeItem normal = get_input_link("Normal", NodeItem::Type::Vector3);
   NodeItem tangent = get_input_link("Tangent", NodeItem::Type::Vector3);
 
-  /* TODO: Figure out how to switch between artisitic_ior and using
-   * the IOR and Extinction values directly.
-   * `node` is not defined here so we can't use `node->custom2` */
-
-  /* if (node->custom2 == SHD_PHYSICAL_CONDUCTOR) {
-      USE_IOR_AND_EXTINCTION;
-   }
-   else {
-      USE ARTISTIC_IOR;
-   }*/
-
-  NodeItem artistic_ior = create_node("artistic_ior",
-                                      NodeItem::Type::Multioutput,
-                                      {{"reflectivity", color}, {"edge_color", edge_tint}});
-  NodeItem ior_out = artistic_ior.add_output("ior", NodeItem::Type::Color3);
-  NodeItem extinction_out = artistic_ior.add_output("extinction", NodeItem::Type::Color3);
+  NodeItem ior_out, extinction_out;
+  if (node_->custom2 == SHD_PHYSICAL_CONDUCTOR) {
+    ior_out = get_input_value("IOR", NodeItem::Type::Color3);
+    extinction_out = get_input_value("Extinction", NodeItem::Type::Color3);
+  }
+  else {
+    NodeItem artistic_ior = create_node("artistic_ior",
+                                        NodeItem::Type::Multioutput,
+                                        {{"reflectivity", color}, {"edge_color", edge_tint}});
+    ior_out = artistic_ior.add_output("ior", NodeItem::Type::Color3);
+    extinction_out = artistic_ior.add_output("extinction", NodeItem::Type::Color3);
+  }
 
   return create_node("conductor_bsdf",
                      NodeItem::Type::BSDF,
