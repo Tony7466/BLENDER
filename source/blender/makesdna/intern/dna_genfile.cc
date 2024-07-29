@@ -728,9 +728,27 @@ const char *DNA_struct_get_compareflags(const SDNA *oldsdna, const SDNA *newsdna
     BLI_assert(compare_flags[old_struct_index] != SDNA_CMP_UNKNOWN);
   }
 
-  /* First struct is `struct Link`, this is skipped in compare_flags (at index `0`).
-   * was a bug, and this way dirty patched! Solve this later. */
-  compare_flags[0] = SDNA_CMP_EQUAL;
+  /* First struct is the fake 'raw data' one (see the #SDNA_TYPE_RAW_DATA 'basic type' definition
+   * and its usages). By definition, it is always 'equal'.
+   *
+   *
+   * NOTE: Bugs History.
+   *
+   * It used to be `struct Link`, it was skipped in compare_flags (at index `0`). This was a bug,
+   * and was dirty-patched by setting `compare_flags[0]` to `SDNA_CMP_EQUAL` unconditionally.
+   *
+   * Then the `0` struct became `struct DrawDataList`, which was never actually written in
+   * blendfiles.
+   *
+   * Write and read blendfile code also has had implicit assumptions that a `0` value in the
+   * #BHead.SDNAnr (aka DNA struct index) meant 'raw data', and therefore was not representing any
+   * real DNA struct. This assumption has been false for years. By luck, this bug seems to have
+   * been fully harmless, for at least two reasons:
+   *   - Read code always ignored DNA struct info in BHead blocks with a `0` value.
+   *   - `DrawDataList` data was never actually written in blendfiles?
+   */
+  BLI_STATIC_ASSERT(SDNA_RAW_DATA_STRUCT_INDEX == 0, "'raw data' SDNA struct index should be 0")
+  compare_flags[SDNA_RAW_DATA_STRUCT_INDEX] = SDNA_CMP_EQUAL;
 
 /* This code can be enabled to see which structs have changed. */
 #if 0
@@ -834,7 +852,11 @@ static void cast_primitive_type(const eSDNA_Type old_type,
         const int8_t value = *reinterpret_cast<const int8_t *>(old_data);
         old_value_i = uint64_t(value);
         old_value_f = double(value);
+        break;
       }
+      case SDNA_TYPE_RAW_DATA:
+        BLI_assert_msg(0, "Conversion from SDNA_TYPE_RAW_DATA is not supported");
+        break;
     }
 
     switch (new_type) {
@@ -873,6 +895,9 @@ static void cast_primitive_type(const eSDNA_Type old_type,
         break;
       case SDNA_TYPE_INT8:
         *reinterpret_cast<int8_t *>(new_data) = int8_t(old_value_i);
+        break;
+      case SDNA_TYPE_RAW_DATA:
+        BLI_assert_msg(0, "Conversion to SDNA_TYPE_RAW_DATA is not supported");
         break;
     }
 
@@ -1738,6 +1763,8 @@ int DNA_elem_type_size(const eSDNA_Type elem_nr)
     case SDNA_TYPE_INT64:
     case SDNA_TYPE_UINT64:
       return 8;
+    case SDNA_TYPE_RAW_DATA:
+      return 0;
   }
 
   /* weak */
