@@ -230,6 +230,8 @@ void DRW_shader_exit()
  */
 static void drw_deferred_queue_append(GPUMaterial *mat, bool is_optimization_job)
 {
+  BLI_spin_lock(&compiler_data.list_lock);
+
   /* Add to either compilation or optimization queue. */
   if (is_optimization_job) {
     BLI_assert(GPU_material_optimization_status(mat) != GPU_MAT_OPTIMIZATION_QUEUED);
@@ -242,6 +244,8 @@ static void drw_deferred_queue_append(GPUMaterial *mat, bool is_optimization_job
     LinkData *node = BLI_genericNodeN(mat);
     BLI_addtail(&compiler_data.queue, node);
   }
+
+  BLI_spin_unlock(&compiler_data.list_lock);
 }
 
 static void drw_deferred_shader_add(GPUMaterial *mat, bool deferred)
