@@ -232,6 +232,7 @@ def force_exit_ok_enable() -> None:
 def execfile(filepath: str) -> Dict[str, Any]:
     global_namespace = {"__file__": filepath, "__name__": "__main__"}
     with open(filepath, "rb") as fh:
+        # pylint: disable-next=exec-used
         exec(compile(fh.read(), filepath, 'exec'), global_namespace)
     return global_namespace
 
@@ -287,7 +288,7 @@ class CleanupPathsContext:
 
 class PkgRepoData(NamedTuple):
     version: str
-    blocklist: List[str]
+    blocklist: List[Dict[str, Any]]
     data: List[Dict[str, Any]]
 
 
@@ -383,6 +384,12 @@ class PkgManifest_Archive(NamedTuple):
     archive_url: str
 
 
+class PkgServerRepoConfig(NamedTuple):
+    """Server configuration (for generating repositories)."""
+    schema_version: str
+    blocklist: List[Dict[str, Any]]
+
+
 # -----------------------------------------------------------------------------
 # Generic Functions
 
@@ -436,16 +443,30 @@ def random_acii_lines(*, seed: Union[int, str], width: int) -> Generator[str, No
         yield "".join(chars_list[:width])
 
 
-def sha256_from_file(filepath: str, block_size: int = 1 << 20, hash_prefix: bool = False) -> Tuple[int, str]:
+def sha256_from_file_or_error(
+        filepath: str,
+        block_size: int = 1 << 20,
+        hash_prefix: bool = False,
+) -> Union[Tuple[int, str], str]:
     """
     Returns an arbitrary sized unique ASCII string based on the file contents.
     (exact hashing method may change).
     """
-    with open(filepath, 'rb') as fh:
+    try:
+        # pylint: disable-next=consider-using-with
+        fh_context = open(filepath, 'rb')
+    except Exception as ex:
+        return "error opening file: {:s}".format(str(ex))
+
+    with contextlib.closing(fh_context) as fh:
         size = 0
         sha256 = hashlib.new('sha256')
         while True:
-            data = fh.read(block_size)
+            try:
+                data = fh.read(block_size)
+            except Exception as ex:
+                return "error reading file: {:s}".format(str(ex))
+
             if not data:
                 break
             sha256.update(data)
@@ -518,6 +539,8 @@ def rmtree_with_fallback_or_error(
     if sys.version_info >= (3, 12):
         shutil.rmtree(path, onexc=lambda *args: errors.append(args))
     else:
+        # Ignore as the deprecated logic is only used for older Python versions.
+        # pylint: disable-next=deprecated-argument
         shutil.rmtree(path, onerror=lambda *args: errors.append((args[0], args[1], args[2][1])))
 
     # Happy path (for practically all cases).
@@ -629,7 +652,7 @@ def pkg_manifest_from_dict_and_validate_impl(
     for key in PkgManifest._fields:
         val = data.get(key, ...)
         if val is ...:
-            # pylint: disable-next=no-member
+            # pylint: disable-next=no-member,protected-access
             val = PkgManifest._field_defaults.get(key, ...)
         # `pkg_manifest_is_valid_or_error{_all}` will have caught this, assert all the same.
         assert val is not ...
@@ -759,14 +782,12 @@ def pkg_manifest_from_zipfile_and_validate_impl(
     if file_content is None:
         return ["Archive does not contain a manifest"]
 
-    manifest_dict = toml_from_bytes(file_content)
-    assert isinstance(manifest_dict, dict)
+    if isinstance((manifest_dict := toml_from_bytes_or_error(file_content)), str):
+        return ["Archive contains a manifest that could not be parsed {:s}".format(manifest_dict)]
 
+    assert isinstance(manifest_dict, dict)
     pkg_manifest_dict_apply_build_generated_table(manifest_dict)
 
-    # TODO: forward actual error.
-    if manifest_dict is None:
-        return ["Archive does not contain a manifest"]
     return pkg_manifest_from_dict_and_validate_impl(
         manifest_dict,
         from_repo=False,
@@ -809,6 +830,7 @@ def pkg_manifest_from_archive_and_validate(
         strict: bool,
 ) -> Union[PkgManifest, str]:
     try:
+        # pylint: disable-next=consider-using-with
         zip_fh_context = zipfile.ZipFile(filepath, mode="r")
     except Exception as ex:
         return "Error extracting archive \"{:s}\"".format(str(ex))
@@ -819,12 +841,40 @@ def pkg_manifest_from_archive_and_validate(
         return pkg_manifest_from_zipfile_and_validate(zip_fh, archive_subdir, strict=strict)
 
 
+def pkg_server_repo_config_from_toml_and_validate(
+        filepath: str,
+) -> Union[PkgServerRepoConfig, str]:
+
+    if isinstance(result := toml_from_filepath_or_error(filepath), str):
+        return result
+
+    if not (field_schema_version := result.get("schema_version", "")):
+        return "missing \"schema_version\" field"
+
+    if not (field_blocklist := result.get("blocklist", "")):
+        return "missing \"blocklist\" field"
+
+    for item in field_blocklist:
+        if not isinstance(item, dict):
+            return "blocklist contains non dictionary item, found ({:s})".format(str(type(item)))
+        if not isinstance(value := item.get("id"), str):
+            return "blocklist items must have have a string typed \"id\" entry, found {:s}".format(str(type(value)))
+        if not isinstance(value := item.get("reason"), str):
+            return "blocklist items must have have a string typed \"reason\" entry, found {:s}".format(str(type(value)))
+
+    return PkgServerRepoConfig(
+        schema_version=field_schema_version,
+        blocklist=field_blocklist,
+    )
+
+
 def pkg_is_legacy_addon(filepath: str) -> bool:
     # Python file is legacy.
     if os.path.splitext(filepath)[1].lower() == ".py":
         return True
 
     try:
+        # pylint: disable-next=consider-using-with
         zip_fh_context = zipfile.ZipFile(filepath, mode="r")
     except Exception:
         return False
@@ -844,7 +894,7 @@ def pkg_is_legacy_addon(filepath: str) -> bool:
                 file_content = zip_fh.read(filename)
             except Exception:
                 file_content = None
-            if file_content and file_content.find(b"bl_info"):
+            if file_content and file_content.find(b"bl_info") != -1:
                 return True
 
     return False
@@ -887,6 +937,26 @@ def remote_url_validate_or_error(url: str) -> Optional[str]:
     if url_has_known_prefix(url):
         return None
     return "remote URL doesn't begin with a known prefix: {:s}".format(" ".join(URL_KNOWN_PREFIX))
+
+
+# -----------------------------------------------------------------------------
+# TOML Helpers
+
+def toml_repr_string(text: str) -> str:
+    # Encode a string for literal inclusion as a value in a TOML file (including quotes).
+    import string
+    # NOTE: this could be empty, using literal characters ensures simple strings & paths are readable.
+    literal_chars = set(string.digits + string.ascii_letters + "/_-. ")
+    result = ["\""]
+    for c in text:
+        if c in literal_chars:
+            result.append(c)
+        elif (c_scalar := ord(c)) <= 0xffff:
+            result.append("\\u{:04x}".format(c_scalar))
+        else:
+            result.append("\\U{:08x}".format(c_scalar))
+    result.append("\"")
+    return "".join(result)
 
 
 # -----------------------------------------------------------------------------
@@ -1439,12 +1509,12 @@ def pkg_manifest_tags_valid_or_error(
 #
 # However manifests from severs that don't adhere to strict rules are not prevented from loading.
 
+# pylint: disable-next=useless-return
 def pkg_manifest_validate_field_nop(
         value: Any,
         strict: bool,
 ) -> Optional[str]:
     _ = strict, value
-    # pylint: disable-next=useless-return
     return None
 
 
@@ -1538,6 +1608,32 @@ def pkg_manifest_validate_field_type(value: str, strict: bool) -> Optional[str]:
     value_expected = {"add-on", "theme"}
     if value not in value_expected:
         return "Expected to be one of [{:s}], found {!r}".format(", ".join(value_expected), value)
+    return None
+
+
+def pkg_manifest_validate_field_blender_version(
+        value: str,
+        strict: bool,
+) -> Optional[str]:
+    if (error := pkg_manifest_validate_field_any_version_primitive(value, strict)) is not None:
+        return error
+
+    if strict:
+        # NOTE: Blender's extension support allows `X`, `X.X`, `X.X.X`,
+        # Blender's own extensions site doesn't, so require this for validation.
+        if value.count(".") != 2:
+            return "expected 3 numbers separated by \".\", found \"{:s}\"".format(value)
+
+    return None
+
+
+def pkg_manifest_validate_field_blender_version_or_empty(
+        value: str,
+        strict: bool,
+) -> Optional[str]:
+    if value:
+        return pkg_manifest_validate_field_blender_version(value, strict)
+
     return None
 
 
@@ -1687,8 +1783,15 @@ def pkg_manifest_validate_field_wheels(
     filename_spec = "{distribution}-{version}(-{build tag})?-{python tag}-{abi tag}-{platform tag}.whl"
 
     for wheel in value:
+        if "\"" in wheel:
+            return "wheel paths most not contain quotes, found {!r}".format(wheel)
         if "\\" in wheel:
             return "wheel paths must use forward slashes, found {!r}".format(wheel)
+
+        if (error := pkg_manifest_validate_field_any_non_empty_string_stripped_no_control_chars(
+                wheel, True,
+        )) is not None:
+            return "wheel paths detected: {:s}, found {!r}".format(error, wheel)
 
         wheel_filename = os.path.basename(wheel)
         if not wheel_filename.lower().endswith(".whl"):
@@ -1746,10 +1849,10 @@ pkg_manifest_known_keys_and_types: Tuple[
     ("type", str, pkg_manifest_validate_field_type),
     ("maintainer", str, pkg_manifest_validate_field_any_non_empty_string_stripped_no_control_chars),
     ("license", list, pkg_manifest_validate_field_any_non_empty_list_of_non_empty_strings),
-    ("blender_version_min", str, pkg_manifest_validate_field_any_version_primitive),
+    ("blender_version_min", str, pkg_manifest_validate_field_blender_version),
 
     # Optional.
-    ("blender_version_max", str, pkg_manifest_validate_field_any_version_primitive_or_empty),
+    ("blender_version_max", str, pkg_manifest_validate_field_blender_version_or_empty),
     ("website", str, pkg_manifest_validate_field_any_non_empty_string_stripped_no_control_chars),
     ("copyright", list, pkg_manifest_validate_field_copyright),
     # Type should be `dict` eventually, some existing packages will have a list of strings instead.
@@ -1798,11 +1901,11 @@ def pkg_manifest_is_valid_or_error_impl(
             is_default_value = False
             x_val = data.get(x_key, ...)
             if x_val is ...:
-                # pylint: disable-next=no-member
+                # pylint: disable-next=no-member, protected-access
                 x_val = PkgManifest._field_defaults.get(x_key, ...)
                 if from_repo:
                     if x_val is ...:
-                        # pylint: disable-next=no-member
+                        # pylint: disable-next=no-member, protected-access
                         x_val = PkgManifest_Archive._field_defaults.get(x_key, ...)
                 if x_val is ...:
                     error_list.append("missing \"{:s}\"".format(x_key))
@@ -1886,6 +1989,9 @@ def pkg_manifest_dict_apply_build_generated_table(manifest_dict: Dict[str, Any])
 
     if (platforms := build_generated.get("platforms")) is not None:
         manifest_dict["platforms"] = platforms
+
+    if (wheels := build_generated.get("wheels")) is not None:
+        manifest_dict["wheels"] = wheels
 
 
 # -----------------------------------------------------------------------------
@@ -1975,6 +2081,35 @@ def blender_platform_compatible_with_wheel_platform(platform: str, wheel_platfor
     return platform == platform_blender
 
 
+def blender_platform_compatible_with_wheel_platform_from_filepath(platform: str, wheel_filepath: str) -> bool:
+    wheel_filename = os.path.splitext(os.path.basename(wheel_filepath))[0]
+
+    wheel_filename_split = wheel_filename.split("-")
+    # This should be unreachable because the manifest has been validated, add assert.
+    assert len(wheel_filename_split) >= 5, "Internal error, manifest validation disallows this"
+
+    wheel_platform = wheel_filename_split[-1]
+
+    return blender_platform_compatible_with_wheel_platform(platform, wheel_platform)
+
+
+def paths_filter_wheels_by_platform(
+        wheels: List[str],
+        platform: str,
+) -> List[str]:
+    """
+    All paths are wheels with filenames that follow the wheel spec.
+    Return wheels which are compatible with the ``platform``.
+    """
+    wheels_result: List[str] = []
+
+    for wheel_filepath in wheels:
+        if blender_platform_compatible_with_wheel_platform_from_filepath(platform, wheel_filepath):
+            wheels_result.append(wheel_filepath)
+
+    return wheels_result
+
+
 def build_paths_filter_wheels_by_platform(
         build_paths: List[Tuple[str, str]],
         platform: str,
@@ -1986,17 +2121,7 @@ def build_paths_filter_wheels_by_platform(
     build_paths_for_platform: List[Tuple[str, str]] = []
 
     for item in build_paths:
-        # Both the absolute/relative path can be used to get the filename.
-        # Use the relative since it's likely to be shorter.
-        wheel_filename = os.path.splitext(os.path.basename(item[1]))[0]
-
-        wheel_filename_split = wheel_filename.split("-")
-        # This should be unreachable because the manifest has been validated, add assert.
-        assert len(wheel_filename_split) >= 5, "Internal error, manifest validation disallows this"
-
-        wheel_platform = wheel_filename_split[-1]
-
-        if blender_platform_compatible_with_wheel_platform(platform, wheel_platform):
+        if blender_platform_compatible_with_wheel_platform_from_filepath(platform, item[1]):
             build_paths_for_platform.append(item)
 
     return build_paths_for_platform
@@ -2115,7 +2240,7 @@ def blender_version_parse_or_error(version: str) -> Union[Tuple[int, int, int], 
     # `mypy` can't detect that this is guaranteed to be 3 items.
     return (
         version_tuple if (len(version_tuple) == 3) else
-        (*version_tuple, (0, 0))[:3]     # type: ignore
+        (*version_tuple, 0, 0)[:3]  # type: ignore
     )
 
 
@@ -2166,9 +2291,9 @@ def repo_json_is_valid_or_error(filepath: str) -> Optional[str]:
         if not isinstance(value, list):
             return "Expected \"blocklist\" to be a list, not a {:s}".format(str(type(value)))
         for item in value:
-            if isinstance(item, str):
+            if isinstance(item, dict):
                 continue
-            return "Expected \"blocklist\" to be a list of strings, found {:s}".format(str(type(item)))
+            return "Expected \"blocklist\" to be a list of dictionaries, found {:s}".format(str(type(item)))
 
     if (value := result.get("data")) is None:
         return "Expected a \"data\" key which was not found"
@@ -2210,7 +2335,7 @@ def pkg_manifest_toml_is_valid_or_error(filepath: str, strict: bool) -> Tuple[Op
     return None, result
 
 
-def pkg_manifest_detect_duplicates(pkg_idname: str, pkg_items: List[PkgManifest]) -> Optional[str]:
+def pkg_manifest_detect_duplicates(pkg_items: List[PkgManifest]) -> Optional[str]:
     """
     When a repository includes multiple packages with the same ID, ensure they don't conflict.
 
@@ -2311,17 +2436,23 @@ def pkg_manifest_detect_duplicates(pkg_idname: str, pkg_items: List[PkgManifest]
     return None
 
 
-def toml_from_bytes(data: bytes) -> Optional[Dict[str, Any]]:
-    result = tomllib.loads(data.decode('utf-8'))
-    assert isinstance(result, dict)
-    return result
+def toml_from_bytes_or_error(data: bytes) -> Union[Dict[str, Any], str]:
+    try:
+        result = tomllib.loads(data.decode('utf-8'))
+        assert isinstance(result, dict)
+        return result
+    except Exception as ex:
+        return str(ex)
 
 
-def toml_from_filepath(filepath: str) -> Optional[Dict[str, Any]]:
-    with open(filepath, "rb") as fh:
-        data = fh.read()
-    result = toml_from_bytes(data)
-    return result
+def toml_from_filepath_or_error(filepath: str) -> Union[Dict[str, Any], str]:
+    try:
+        with open(filepath, "rb") as fh:
+            data = fh.read()
+        result = toml_from_bytes_or_error(data)
+        return result
+    except Exception as ex:
+        return str(ex)
 
 
 def repo_local_private_dir(*, local_dir: str) -> str:
@@ -2331,25 +2462,48 @@ def repo_local_private_dir(*, local_dir: str) -> str:
     return os.path.join(local_dir, REPO_LOCAL_PRIVATE_DIR)
 
 
-def repo_local_private_dir_ensure(*, local_dir: str) -> str:
+def repo_local_private_dir_ensure(
+        *,
+        local_dir: str,
+        error_fn: Callable[[Exception], None],
+) -> Optional[str]:
     """
     Ensure the repos hidden directory exists.
     """
     local_private_dir = repo_local_private_dir(local_dir=local_dir)
     if not os.path.isdir(local_private_dir):
         # Unlikely but possible `local_dir` is missing.
-        os.makedirs(local_private_dir)
+        try:
+            os.makedirs(local_private_dir)
+        except Exception as ex:
+            error_fn(ex)
+            return None
     return local_private_dir
 
 
-def repo_local_private_dir_ensure_with_subdir(*, local_dir: str, subdir: str) -> str:
+def repo_local_private_dir_ensure_with_subdir(
+        *,
+        local_dir: str,
+        subdir: str,
+        error_fn: Callable[[Exception], None],
+) -> Optional[str]:
     """
     Return a local directory used to cache package downloads.
     """
-    local_private_subdir = os.path.join(repo_local_private_dir_ensure(local_dir=local_dir), subdir)
+    if (local_private_dir := repo_local_private_dir_ensure(
+            local_dir=local_dir,
+            error_fn=error_fn,
+    )) is None:
+        return None
+
+    local_private_subdir = os.path.join(local_private_dir, subdir)
     if not os.path.isdir(local_private_subdir):
         # Unlikely but possible `local_dir` is missing.
-        os.makedirs(local_private_subdir)
+        try:
+            os.makedirs(local_private_subdir)
+        except Exception as ex:
+            error_fn(ex)
+            return None
     return local_private_subdir
 
 
@@ -2379,9 +2533,16 @@ def repo_sync_from_remote(
     if request_exit:
         return False
 
+    if (local_private_dir := repo_local_private_dir_ensure(
+            local_dir=local_dir,
+            error_fn=lambda ex: any_as_none(
+                msglog.fatal_error("Error creating private directory: {:s}".format(str(ex)))
+            ),
+    )) is None:
+        return False
+
     remote_json_url = remote_url_get(remote_url)
 
-    local_private_dir = repo_local_private_dir_ensure(local_dir=local_dir)
     local_json_path = os.path.join(local_private_dir, PKG_REPO_LIST_FILENAME)
     local_json_path_temp = local_json_path + "@"
 
@@ -2451,36 +2612,54 @@ def repo_sync_from_remote(
     return True
 
 
-def repo_pkginfo_from_local_as_dict(*, local_dir: str) -> Optional[Dict[str, Any]]:
+def repo_pkginfo_from_local_as_dict_or_error(*, local_dir: str) -> Union[Dict[str, Any], str]:
     """
     Load package cache.
     """
     local_private_dir = repo_local_private_dir(local_dir=local_dir)
     local_json_path = os.path.join(local_private_dir, PKG_REPO_LIST_FILENAME)
-    if not os.path.exists(local_json_path):
-        return None
 
-    with open(local_json_path, "r", encoding="utf-8") as fh:
-        result = json.load(fh)
-        assert isinstance(result, dict)
+    # Don't check if the path exists, allow this to raise an exception.
+    try:
+        with open(local_json_path, "r", encoding="utf-8") as fh:
+            result = json.load(fh)
+    except Exception as ex:
+        return str(ex)
+
+    if not isinstance(result, dict):
+        return "expected a dict, not a {:s}".format(str(type(result)))
 
     return result
 
 
-def pkg_repo_dat_from_json(json_data: Dict[str, Any]) -> PkgRepoData:
+def pkg_repo_data_from_json_or_error(json_data: Dict[str, Any]) -> Union[PkgRepoData, str]:
+    if not isinstance((version := json_data.get("version", "v1")), str):
+        return "expected \"version\" to be a string"
+
+    if not isinstance((blocklist := json_data.get("blocklist", [])), list):
+        return "expected \"blocklist\" to be a list"
+    for item in blocklist:
+        if not isinstance(item, dict):
+            return "expected \"blocklist\" contain dictionary items"
+
+    if not isinstance((data := json_data.get("data", [])), list):
+        return "expected \"data\" to be a list"
+    for item in data:
+        if not isinstance(item, dict):
+            return "expected \"data\" contain dictionary items"
+
     result_new = PkgRepoData(
-        version=json_data.get("version", "v1"),
-        blocklist=json_data.get("blocklist", []),
-        data=json_data.get("data", []),
+        version=version,
+        blocklist=blocklist,
+        data=data,
     )
     return result_new
 
 
-def repo_pkginfo_from_local(*, local_dir: str) -> Optional[PkgRepoData]:
-    result = repo_pkginfo_from_local_as_dict(local_dir=local_dir)
-    if result is None:
-        return None
-    return pkg_repo_dat_from_json(result)
+def repo_pkginfo_from_local_or_none(*, local_dir: str) -> Union[PkgRepoData, str]:
+    if isinstance((result := repo_pkginfo_from_local_as_dict_or_error(local_dir=local_dir)), str):
+        return result
+    return pkg_repo_data_from_json_or_error(result)
 
 
 def url_has_known_prefix(path: str) -> bool:
@@ -2580,6 +2759,31 @@ def generic_arg_package_valid_tags(subparse: argparse.ArgumentParser) -> None:
 
 # -----------------------------------------------------------------------------
 # Argument Handlers ("server-generate" command)
+
+def generic_arg_server_generate_repo_config(subparse: argparse.ArgumentParser) -> None:
+    subparse.add_argument(
+        "--repo-config",
+        dest="repo_config",
+        default="",
+        metavar="REPO_CONFIG",
+        help=(
+            "An optional server configuration to include information which can't be detected.\n"
+            "Defaults to ``blender_repo.toml`` (in the repository directory).\n"
+            "\n"
+            "This can be used to defined blocked extensions, for example ::\n"
+            "\n"
+            "   schema_version = \"1.0.0\"\n"
+            "\n"
+            "   [[blocklist]]\n"
+            "   id = \"my_example_package\"\n"
+            "   reason = \"Explanation for why this extension was blocked\"\n"
+            "   [[blocklist]]\n"
+            "   id = \"other_extenison\"\n"
+            "   reason = \"Another reason for why this is blocked\"\n"
+            "\n"
+        ),
+    )
+
 
 def generic_arg_server_generate_html(subparse: argparse.ArgumentParser) -> None:
     subparse.add_argument(
@@ -2763,9 +2967,9 @@ def generic_arg_package_output_filepath(subparse: argparse.ArgumentParser) -> No
         default="",
         type=str,
         help=(
-            "The package output filepath (should include a ``{:s}`` extension).\n"
+            "The package output filepath (should include a ``{0:s}`` extension).\n"
             "\n"
-            "Defaults to a name created using the ``id`` from the manifest."
+            "Defaults to ``{{id}}-{{version}}{0:s}`` using values from the manifest."
         ).format(PKG_EXT),
     )
 
@@ -3028,8 +3232,13 @@ class subcmd_server:
             return False
         del template
 
-        with open(filepath_repo_html, "w", encoding="utf-8") as fh_html:
-            fh_html.write(result)
+        try:
+            with open(filepath_repo_html, "w", encoding="utf-8") as fh_html:
+                fh_html.write(result)
+        except Exception as ex:
+            msglog.fatal_error("HTML failed to write: {:s}".format(str(ex)))
+            return False
+
         return True
 
     @staticmethod
@@ -3037,6 +3246,7 @@ class subcmd_server:
             msglog: MessageLogger,
             *,
             repo_dir: str,
+            repo_config_filepath: str,
             html: bool,
             html_template: str,
     ) -> bool:
@@ -3048,14 +3258,44 @@ class subcmd_server:
             msglog.fatal_error("Directory: {!r} not found!".format(repo_dir))
             return False
 
+        # Server manifest (optional), use if found.
+        server_manifest_default = "blender_repo.toml"
+        if not repo_config_filepath:
+            server_manifest_test = os.path.join(repo_dir, server_manifest_default)
+            if os.path.exists(server_manifest_test):
+                repo_config_filepath = server_manifest_test
+            del server_manifest_test
+        del server_manifest_default
+
+        repo_config = None
+        if repo_config_filepath:
+            repo_config = pkg_server_repo_config_from_toml_and_validate(repo_config_filepath)
+            if isinstance(repo_config, str):
+                msglog.fatal_error("parsing repository configuration {!r}, {:s}".format(
+                    repo_config,
+                    repo_config_filepath,
+                ))
+                return False
+            if repo_config.schema_version != "1.0.0":
+                msglog.fatal_error("unsupported schema version {!r} in {:s}, expected 1.0.0".format(
+                    repo_config.schema_version,
+                    repo_config_filepath,
+                ))
+                return False
+        assert repo_config is None or isinstance(repo_config, PkgServerRepoConfig)
+
         repo_data_idname_map: Dict[str, List[PkgManifest]] = {}
         repo_data: List[Dict[str, Any]] = []
+
         # Write package meta-data into each directory.
         repo_gen_dict = {
             "version": "v1",
-            "blocklist": [],
+            "blocklist": [] if repo_config is None else repo_config.blocklist,
             "data": repo_data,
         }
+
+        del repo_config
+
         for entry in os.scandir(repo_dir):
             if not entry.name.endswith(PKG_EXT):
                 continue
@@ -3100,10 +3340,11 @@ class subcmd_server:
             manifest_dict["archive_url"] = "./" + urllib.request.pathname2url(filename)
 
             # Add archive variables, see: `PkgManifest_Archive`.
-            (
-                manifest_dict["archive_size"],
-                manifest_dict["archive_hash"],
-            ) = sha256_from_file(filepath, hash_prefix=True)
+            if isinstance((result := sha256_from_file_or_error(filepath, hash_prefix=True)), str):
+                msglog.error("unable to calculate hash ({:s}): {:s}".format(result, filepath))
+                continue
+            manifest_dict["archive_size"], manifest_dict["archive_hash"] = result
+            del result
 
             repo_data.append(manifest_dict)
 
@@ -3112,7 +3353,7 @@ class subcmd_server:
         for pkg_idname, pkg_items in repo_data_idname_map.items():
             if len(pkg_items) == 1:
                 continue
-            if (error := pkg_manifest_detect_duplicates(pkg_idname, pkg_items)) is not None:
+            if (error := pkg_manifest_detect_duplicates(pkg_items)) is not None:
                 msglog.warn("archive found with duplicates for id {:s}: {:s}".format(pkg_idname, error))
 
         if html:
@@ -3128,8 +3369,13 @@ class subcmd_server:
 
         filepath_repo_json = os.path.join(repo_dir, PKG_REPO_LIST_FILENAME)
 
-        with open(filepath_repo_json, "w", encoding="utf-8") as fh:
-            json.dump(repo_gen_dict, fh, indent=2)
+        try:
+            with open(filepath_repo_json, "w", encoding="utf-8") as fh:
+                json.dump(repo_gen_dict, fh, indent=2)
+        except Exception as ex:
+            msglog.fatal_error("failed to write repository: {:s}".format(str(ex)))
+            return False
+
         msglog.status("found {:d} packages.".format(len(repo_data)))
 
         return True
@@ -3180,10 +3426,19 @@ class subcmd_client:
                 msglog.fatal_error(msg)
             return False
 
-        result_str = result.getvalue().decode("utf-8")
+        result_bytes = result.getvalue()
         del result
 
-        repo_gen_dict = pkg_repo_dat_from_json(json.loads(result_str))
+        try:
+            result_dict = json.loads(result_bytes)
+        except Exception as ex:
+            msglog.fatal_error("error loading JSON {:s}".format(str(ex)))
+            return False
+
+        if isinstance((repo_gen_dict := pkg_repo_data_from_json_or_error(result_dict)), str):
+            msglog.fatal_error("unexpected contants in JSON {:s}".format(repo_gen_dict))
+            return False
+        del result_dict
 
         items: List[Dict[str, Any]] = repo_gen_dict.data
         items.sort(key=lambda elem: elem.get("id", ""))
@@ -3246,6 +3501,7 @@ class subcmd_client:
         directories_to_clean: List[str] = []
         with CleanupPathsContext(files=(), directories=directories_to_clean):
             try:
+                # pylint: disable-next=consider-using-with
                 zip_fh_context = zipfile.ZipFile(filepath_archive, mode="r")
             except Exception as ex:
                 msglog.error("Error extracting archive: {:s}".format(str(ex)))
@@ -3289,10 +3545,12 @@ class subcmd_client:
                     manifest._asdict(),
                     filter_blender_version=blender_version_tuple,
                     filter_platform=platform_from_this_system(),
-                    skip_message_fn=lambda message:
-                        any_as_none(msglog.error("{:s}: {:s}".format(manifest.id, message))),
-                    error_fn=lambda ex:
-                        any_as_none(msglog.error("{:s}: {:s}".format(manifest.id, str(ex)))),
+                    skip_message_fn=lambda message: any_as_none(
+                        msglog.error("{:s}: {:s}".format(manifest.id, message))
+                    ),
+                    error_fn=lambda ex: any_as_none(
+                        msglog.error("{:s}: {:s}".format(manifest.id, str(ex)))
+                    ),
                 ):
                     return False
 
@@ -3402,9 +3660,18 @@ class subcmd_client:
         assert isinstance(blender_version_tuple, tuple)
 
         # Extract...
-        pkg_repo_data = repo_pkginfo_from_local(local_dir=local_dir)
-        if pkg_repo_data is None:
-            # TODO: raise warning.
+        if isinstance((pkg_repo_data := repo_pkginfo_from_local_or_none(local_dir=local_dir)), str):
+            msglog.fatal_error("Error loading package repository: {:s}".format(pkg_repo_data))
+            return False
+
+        # Ensure a private directory so a local cache can be created.
+        if (local_cache_dir := repo_local_private_dir_ensure_with_subdir(
+                local_dir=local_dir,
+                subdir="cache",
+                error_fn=lambda ex: any_as_none(
+                    msglog.fatal_error("Error creating cache directory: {:s}".format(str(ex)))
+                ),
+        )) is None:
             return False
 
         # Most likely this doesn't have duplicates,but any errors procured by duplicates
@@ -3412,22 +3679,28 @@ class subcmd_client:
         packages_as_set = set(packages)
         packages = tuple(sorted(packages_as_set))
 
-        # Ensure a private directory so a local cache can be created.
-        local_cache_dir = repo_local_private_dir_ensure_with_subdir(local_dir=local_dir, subdir="cache")
-
         # Needed so relative paths can be properly calculated.
         remote_url_strip = remote_url_params_strip(remote_url)
 
         # TODO: filter by version and platform.
         json_data_pkg_info = [
             pkg_info for pkg_info in pkg_repo_data.data
-            if pkg_info["id"] in packages_as_set
+            # The `id` key should always exist, avoid raising an unhandled exception here if it's not.
+            if pkg_info.get("id", "") in packages_as_set
         ]
 
         # Narrow down:
         json_data_pkg_info_map: Dict[str, List[Dict[str, Any]]] = {pkg_idname: [] for pkg_idname in packages}
         for pkg_info in json_data_pkg_info:
             json_data_pkg_info_map[pkg_info["id"]].append(pkg_info)
+
+        # NOTE: we could have full validation as a separate function,
+        # currently install is the only place this is needed.
+        json_data_pkg_block_map = {
+            pkg_idname: pkg_block.get("reason", "Unknown")
+            for pkg_block in pkg_repo_data.blocklist
+            if (pkg_idname := pkg_block.get("id"))
+        }
 
         platform_this = platform_from_this_system()
 
@@ -3439,8 +3712,10 @@ class subcmd_client:
                 has_fatal_error = True
                 continue
 
-            def error_handle(ex: Exception) -> None:
-                msglog.error("{:s}: {:s}".format(pkg_idname, str(ex)))
+            if (result := json_data_pkg_block_map.get(pkg_idname)) is not None:
+                msglog.fatal_error("Package \"{:s}\", is blocked: {:s}".format(pkg_idname, result))
+                has_fatal_error = True
+                continue
 
             pkg_info_list = [
                 pkg_info for pkg_info in pkg_info_list
@@ -3449,7 +3724,10 @@ class subcmd_client:
                     filter_blender_version=blender_version_tuple,
                     filter_platform=platform_this,
                     skip_message_fn=None,
-                    error_fn=error_handle,
+                    error_fn=lambda ex: any_as_none(
+                        # pylint: disable-next=cell-var-from-loop
+                        msglog.error("{:s}: {:s}".format(pkg_idname, str(ex))),
+                    ),
                 )
             ]
 
@@ -3508,14 +3786,16 @@ class subcmd_client:
                 # Check if the cache should be used.
                 found = False
                 if os.path.exists(filepath_local_cache_archive):
-                    if (
-                            local_cache and (
-                                archive_size_expected,
-                                archive_hash_expected,
-                            ) == sha256_from_file(filepath_local_cache_archive, hash_prefix=True)
-                    ):
-                        found = True
-                    else:
+                    if local_cache:
+                        if isinstance((result := sha256_from_file_or_error(
+                                filepath_local_cache_archive,
+                                hash_prefix=True,
+                        )), str):
+                            # Only a warning because it's not a problem to re-download the file.
+                            msglog.warn("unable to calculate hash for cache: {:s}".format(result))
+                        elif result == (archive_size_expected, archive_hash_expected):
+                            found = True
+                    if not found:
                         os.unlink(filepath_local_cache_archive)
 
                 if not found:
@@ -3563,7 +3843,7 @@ class subcmd_client:
 
                     # Validate:
                     if filename_archive_size_test != archive_size_expected:
-                        msglog.error("Archive size mismatch \"{:s}\", expected {:d}, was {:d}".format(
+                        msglog.fatal_error("Archive size mismatch \"{:s}\", expected {:d}, was {:d}".format(
                             pkg_idname,
                             archive_size_expected,
                             filename_archive_size_test,
@@ -3571,7 +3851,7 @@ class subcmd_client:
                         return False
                     filename_archive_hash_test = "sha256:" + sha256.hexdigest()
                     if filename_archive_hash_test != archive_hash_expected:
-                        msglog.error("Archive checksum mismatch \"{:s}\", expected {:s}, was {:s}".format(
+                        msglog.fatal_error("Archive checksum mismatch \"{:s}\", expected {:s}, was {:s}".format(
                             pkg_idname,
                             archive_hash_expected,
                             filename_archive_hash_test,
@@ -3610,6 +3890,17 @@ class subcmd_client:
             msglog.fatal_error("Missing local \"{:s}\"".format(local_dir))
             return False
 
+        # Ensure a private directory so a local cache can be created.
+        # TODO: don't create (it's only accessed for file removal).
+        if (local_cache_dir := repo_local_private_dir_ensure_with_subdir(
+                local_dir=local_dir,
+                subdir="cache",
+                error_fn=lambda ex: any_as_none(
+                    msglog.fatal_error("Error creating cache directory: {:s}".format(str(ex)))
+                ),
+        )) is None:
+            return False
+
         # Most likely this doesn't have duplicates,but any errors procured by duplicates
         # are likely to be obtuse enough that it's better to guarantee there are none.
         packages = tuple(sorted(set(packages)))
@@ -3639,10 +3930,6 @@ class subcmd_client:
         if has_fatal_error:
             return False
 
-        # Ensure a private directory so a local cache can be created.
-        # TODO: don't create (it's only accessed for file removal).
-        local_cache_dir = repo_local_private_dir_ensure_with_subdir(local_dir=local_dir, subdir="cache")
-
         files_to_clean: List[str] = []
         with CleanupPathsContext(files=files_to_clean, directories=()):
             for pkg_idname in packages_valid:
@@ -3650,9 +3937,8 @@ class subcmd_client:
 
                 if (error := rmtree_with_fallback_or_error(filepath_local_pkg)) is not None:
                     msglog.error("Failure to remove \"{:s}\" with error ({:s})".format(pkg_idname, error))
-                    continue
-
-                msglog.status("Removed \"{:s}\"".format(pkg_idname))
+                else:
+                    msglog.status("Removed \"{:s}\"".format(pkg_idname))
 
                 filepath_local_cache_archive = os.path.join(local_cache_dir, pkg_idname + PKG_EXT)
                 if os.path.exists(filepath_local_cache_archive):
@@ -3660,12 +3946,13 @@ class subcmd_client:
 
                 if user_dir:
                     filepath_user_pkg = os.path.join(user_dir, pkg_idname)
-                    if os.path.isdir(filepath_user_pkg):
+                    if os.path.exists(filepath_user_pkg):
                         if (error := rmtree_with_fallback_or_error(filepath_user_pkg)) is not None:
                             msglog.error(
                                 "Failure to remove \"{:s}\" user files with error ({:s})".format(pkg_idname, error),
                             )
-                            continue
+                        else:
+                            msglog.status("Removed cache \"{:s}\"".format(pkg_idname))
 
         return True
 
@@ -3845,7 +4132,7 @@ class subcmd_author:
                 del build_paths_extra_canonical
 
             except Exception as ex:
-                msglog.status("Error building path list \"{:s}\"".format(str(ex)))
+                msglog.fatal_error("Error building path list \"{:s}\"".format(str(ex)))
                 return False
 
         request_exit = False
@@ -3897,9 +4184,10 @@ class subcmd_author:
 
             with CleanupPathsContext(files=(outfile_temp,), directories=()):
                 try:
+                    # pylint: disable-next=consider-using-with
                     zip_fh_context = zipfile.ZipFile(outfile_temp, 'w', zipfile.ZIP_DEFLATED, compresslevel=9)
                 except Exception as ex:
-                    msglog.status("Error creating archive \"{:s}\"".format(str(ex)))
+                    msglog.fatal_error("Error creating archive \"{:s}\"".format(str(ex)))
                     return False
 
                 with contextlib.closing(zip_fh_context) as zip_fh:
@@ -3907,17 +4195,31 @@ class subcmd_author:
 
                         zip_data_override: Optional[bytes] = None
                         if platform and (filepath_rel == PKG_MANIFEST_FILENAME_TOML):
-                            with open(filepath_abs, "rb") as temp_fh:
-                                zip_data_override = temp_fh.read()
-                                zip_data_override = zip_data_override + b"".join((
-                                    b"\n",
-                                    b"\n",
-                                    b"# BEGIN GENERATED CONTENT.\n",
-                                    b"# This must not be included in source manifests.\n",
-                                    b"[build.generated]\n",
-                                    "platforms = [\"{:s}\"]\n".format(platform).encode("utf-8"),
-                                    b"# END GENERATED CONTENT.\n",
-                                ))
+                            zip_data_override = b"".join((
+                                b"\n",
+                                b"\n",
+                                b"# BEGIN GENERATED CONTENT.\n",
+                                b"# This must not be included in source manifests.\n",
+                                b"[build.generated]\n",
+                                "platforms = [{:s}]\n".format(toml_repr_string(platform)).encode("utf-8"),
+                                # Including wheels simplifies server side check as this list can be tested
+                                # without the server having to filter by platform too.
+                                b"wheels = [",
+                                ", ".join([
+                                    toml_repr_string(wheel) for wheel in paths_filter_wheels_by_platform(
+                                        manifest.wheels or [],
+                                        platform,
+                                    )
+                                ]).encode("utf-8"),
+                                b"]\n"
+                                b"# END GENERATED CONTENT.\n",
+                            ))
+                            try:
+                                with open(filepath_abs, "rb") as temp_fh:
+                                    zip_data_override = temp_fh.read() + zip_data_override
+                            except Exception as ex:
+                                msglog.fatal_error("Error overriding manifest \"{:s}\"".format(str(ex)))
+                                return False
 
                         # Handy for testing that sub-directories:
                         # zip_fh.write(filepath_abs, manifest.id + "/" + filepath_rel)
@@ -3928,7 +4230,7 @@ class subcmd_author:
                             else:
                                 zip_fh.write(filepath_abs, filepath_rel, compress_type=compress_type)
                         except Exception as ex:
-                            msglog.status("Error adding to archive \"{:s}\"".format(str(ex)))
+                            msglog.fatal_error("Error adding to archive \"{:s}\"".format(str(ex)))
                             return False
 
                         if verbose:
@@ -4039,6 +4341,7 @@ class subcmd_author:
         # extract the archive into a temporary directory and run validation there.
 
         try:
+            # pylint: disable-next=consider-using-with
             zip_fh_context = zipfile.ZipFile(pkg_source_archive, mode="r")
         except Exception as ex:
             msglog.status("Error extracting archive \"{:s}\"".format(str(ex)))
@@ -4046,14 +4349,14 @@ class subcmd_author:
 
         with contextlib.closing(zip_fh_context) as zip_fh:
             if (archive_subdir := pkg_zipfile_detect_subdir_or_none(zip_fh)) is None:
-                msglog.status("Error, archive has no manifest: \"{:s}\"".format(PKG_MANIFEST_FILENAME_TOML))
+                msglog.fatal_error("Error, archive has no manifest: \"{:s}\"".format(PKG_MANIFEST_FILENAME_TOML))
                 return False
             # Demote errors to status as the function of this action is to check the manifest is stable.
             manifest = pkg_manifest_from_zipfile_and_validate_all_errors(zip_fh, archive_subdir, strict=True)
             if isinstance(manifest, list):
-                msglog.status("Error parsing TOML in \"{:s}\"".format(pkg_source_archive))
+                msglog.fatal_error("Error parsing TOML in \"{:s}\"".format(pkg_source_archive))
                 for error_msg in manifest:
-                    msglog.status(error_msg)
+                    msglog.fatal_error(error_msg)
                 return False
 
             if valid_tags_filepath:
@@ -4081,7 +4384,7 @@ class subcmd_author:
             ok = True
             for filepath in expected_files:
                 if zip_fh.NameToInfo.get(filepath) is None:
-                    msglog.status("Error, file missing from {:s}: \"{:s}\"".format(
+                    msglog.fatal_error("Error, file missing from {:s}: \"{:s}\"".format(
                         manifest.type,
                         filepath,
                     ))
@@ -4212,6 +4515,7 @@ def unregister():
         if not subcmd_server.generate(
             MessageLogger(msg_fn_no_done),
             repo_dir=repo_dir,
+            repo_config_filepath="",
             html=True,
             html_template="",
         ):
@@ -4268,6 +4572,7 @@ def argparse_create_server_generate(
     )
 
     generic_arg_repo_dir(subparse)
+    generic_arg_server_generate_repo_config(subparse)
     generic_arg_server_generate_html(subparse)
     generic_arg_server_generate_html_template(subparse)
     if args_internal:
@@ -4277,6 +4582,7 @@ def argparse_create_server_generate(
         func=lambda args: subcmd_server.generate(
             msglog_from_args(args),
             repo_dir=args.repo_dir,
+            repo_config_filepath=args.repo_config,
             html=args.html,
             html_template=args.html_template,
         ),
@@ -4684,6 +4990,7 @@ def main(
         # While this is typically the case, is only guaranteed to be `TextIO` so check `reconfigure` is available.
         if not isinstance(fh, io.TextIOWrapper):
             continue
+        # pylint: disable-next=no-member; False positive.
         if fh.encoding.lower().partition(":")[0] == "utf-8":
             continue
         fh.reconfigure(encoding="utf-8")

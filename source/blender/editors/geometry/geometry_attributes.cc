@@ -254,7 +254,8 @@ static const EnumPropertyItem *geometry_attribute_domain_itemf(bContext *C,
     return rna_enum_dummy_NULL_items;
   }
 
-  return rna_enum_attribute_domain_itemf(static_cast<ID *>(ob->data), false, r_free);
+  const AttributeOwner owner = AttributeOwner::from_id(static_cast<ID *>(ob->data));
+  return rna_enum_attribute_domain_itemf(owner, false, r_free);
 }
 
 static int geometry_attribute_add_exec(bContext *C, wmOperator *op)
@@ -922,7 +923,8 @@ bool ED_geometry_attribute_convert(Mesh *mesh,
   const GVArray varray = *attributes.lookup_or_default(name_copy, dst_domain, dst_type);
 
   const CPPType &cpp_type = varray.type();
-  void *new_data = MEM_malloc_arrayN(varray.size(), cpp_type.size(), __func__);
+  void *new_data = MEM_mallocN_aligned(
+      varray.size() * cpp_type.size(), cpp_type.alignment(), __func__);
   varray.materialize_to_uninitialized(new_data);
   attributes.remove(name_copy);
   if (!attributes.add(name_copy, dst_domain, dst_type, bke::AttributeInitMoveArray(new_data))) {
