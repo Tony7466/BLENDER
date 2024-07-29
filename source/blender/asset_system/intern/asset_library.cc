@@ -9,7 +9,6 @@
 #include <memory>
 
 #include "AS_asset_catalog_tree.hh"
-#include "AS_asset_identifier.hh"
 #include "AS_asset_library.hh"
 #include "AS_asset_representation.hh"
 
@@ -206,36 +205,34 @@ std::weak_ptr<AssetRepresentation> AssetLibrary::add_external_asset(
     const int id_type,
     std::unique_ptr<AssetMetaData> metadata)
 {
-  AssetIdentifier identifier = this->asset_identifier_from_library(relative_asset_path);
-  return storage_.external_assets.lookup_key_or_add(std::make_shared<AssetRepresentation>(
-      std::move(identifier), name, id_type, std::move(metadata), *this));
+  return asset_storage_.external_assets.lookup_key_or_add(std::make_shared<AssetRepresentation>(
+      relative_asset_path, name, id_type, std::move(metadata), *this));
 }
 
 std::weak_ptr<AssetRepresentation> AssetLibrary::add_local_id_asset(StringRef relative_asset_path,
                                                                     ID &id)
 {
-  AssetIdentifier identifier = this->asset_identifier_from_library(relative_asset_path);
-  return storage_.local_id_assets.lookup_key_or_add(
-      std::make_shared<AssetRepresentation>(std::move(identifier), id, *this));
+  return asset_storage_.local_id_assets.lookup_key_or_add(
+      std::make_shared<AssetRepresentation>(relative_asset_path, id, *this));
 }
 
 bool AssetLibrary::remove_asset(AssetRepresentation &asset)
 {
-  if (storage_.local_id_assets.remove_as(&asset)) {
+  if (asset_storage_.local_id_assets.remove_as(&asset)) {
     return true;
   }
-  return storage_.external_assets.remove_as(&asset);
+  return asset_storage_.external_assets.remove_as(&asset);
 }
 
 void AssetLibrary::remap_ids_and_remove_invalid(const bke::id::IDRemapper &mappings)
 {
   Set<AssetRepresentation *> removed_assets;
 
-  for (auto &asset_ptr : storage_.local_id_assets) {
+  for (auto &asset_ptr : asset_storage_.local_id_assets) {
     AssetRepresentation &asset = *asset_ptr;
     BLI_assert(asset.is_local_id());
 
-    const IDRemapperApplyResult result = mappings.apply(&asset.local_asset_id_,
+    const IDRemapperApplyResult result = mappings.apply(&std::get<ID *>(asset.asset_),
                                                         ID_REMAP_APPLY_DEFAULT);
 
     /* Entirely remove assets whose ID is unset. We don't want assets with a null ID pointer. */
@@ -250,13 +247,13 @@ void AssetLibrary::remap_ids_and_remove_invalid(const bke::id::IDRemapper &mappi
 }
 
 namespace {
-void asset_library_on_save_post(Main *main,
+void asset_library_on_save_post(Main *bmain,
                                 PointerRNA **pointers,
                                 const int num_pointers,
                                 void *arg)
 {
   AssetLibrary *asset_lib = static_cast<AssetLibrary *>(arg);
-  asset_lib->on_blend_save_post(main, pointers, num_pointers);
+  asset_lib->on_blend_save_post(bmain, pointers, num_pointers);
 }
 
 }  // namespace
@@ -279,18 +276,13 @@ void AssetLibrary::on_blend_save_handler_unregister()
   on_save_callback_store_.arg = nullptr;
 }
 
-void AssetLibrary::on_blend_save_post(Main *main,
+void AssetLibrary::on_blend_save_post(Main *bmain,
                                       PointerRNA ** /*pointers*/,
                                       const int /*num_pointers*/)
 {
   if (save_catalogs_when_file_is_saved) {
-    this->catalog_service().write_to_disk(main->filepath);
+    this->catalog_service().write_to_disk(bmain->filepath);
   }
-}
-
-AssetIdentifier AssetLibrary::asset_identifier_from_library(StringRef relative_asset_path)
-{
-  return AssetIdentifier(root_path_, relative_asset_path);
 }
 
 std::string AssetLibrary::resolve_asset_weak_reference_to_full_path(
