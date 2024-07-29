@@ -1,2 +1,3 @@
 Referenced by issue #123624, No geometry after applying Visual Geometry to Mesh operator
 Referenced by issue #123678, Convert to mesh cause mesh to disappear from viewport
+Referenced by issue #125560, Regression: Mesh deform does not work anymore with collision enabled and cloth sim on another object
