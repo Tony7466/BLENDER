@@ -303,7 +303,6 @@ void smooth_curve_positions(bke::CurvesGeometry &curves,
         orig_data.resize(dst_data.size());
         orig_data.as_mutable_span().copy_from(dst_data);
 
-        const Span<float3> src_data = orig_data.as_span();
         /* The influence is mapped from handle+control point index to only control point index. */
         const VArray<float> point_influence = VArray<float>::ForFunc(
             positions_range.size(), [&](const int index) {
@@ -314,7 +313,7 @@ void smooth_curve_positions(bke::CurvesGeometry &curves,
               }
               return influences.slice(range)[index / 3];
             });
-        gaussian_blur_1D(src_data,
+        gaussian_blur_1D(orig_data.as_span(),
                          iterations,
                          point_influence,
                          smooth_ends,
