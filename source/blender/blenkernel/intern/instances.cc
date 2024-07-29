@@ -128,8 +128,8 @@ Instances::Instances(Instances &&other)
     : references_(std::move(other.references_)),
       instances_num_(other.instances_num_),
       attributes_(other.attributes_),
-      almost_unique_ids_cache_(std::move(other.almost_unique_ids_cache_)),
-      reference_user_counts_(std::move(other.reference_user_counts_))
+      reference_user_counts_(std::move(other.reference_user_counts_)),
+      almost_unique_ids_cache_(std::move(other.almost_unique_ids_cache_))
 {
   CustomData_reset(&other.attributes_);
 }
@@ -137,8 +137,8 @@ Instances::Instances(Instances &&other)
 Instances::Instances(const Instances &other)
     : references_(other.references_),
       instances_num_(other.instances_num_),
-      almost_unique_ids_cache_(other.almost_unique_ids_cache_),
-      reference_user_counts_(std::move(other.reference_user_counts_))
+      reference_user_counts_(std::move(other.reference_user_counts_)),
+      almost_unique_ids_cache_(other.almost_unique_ids_cache_)
 {
   CustomData_copy(&other.attributes_, &attributes_, CD_MASK_ALL, other.instances_num_);
 }
