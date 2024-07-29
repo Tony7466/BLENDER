@@ -16,7 +16,7 @@
 #include <type_traits>
 
 /* Should tests draw their output to an HTML file? */
-#define DO_DRAW 1
+#define DO_DRAW 0
 
 #include "BLI_polygon_clipping_2d.hh"
 
