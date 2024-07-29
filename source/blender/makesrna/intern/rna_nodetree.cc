@@ -4114,7 +4114,7 @@ static const EnumPropertyItem node_metallic_fresnel_type_items[] = {
     {SHD_CONDUCTOR_F82,
      "F82",
      0,
-     "F82 Approximation",
+     "F82 Tint",
      "An approximation of the Conductor Fresnel curve based on the perpendicular color and the "
      "tint at an angle of 82°"},
     {0, nullptr, 0, nullptr, nullptr},
