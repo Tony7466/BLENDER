@@ -1580,9 +1580,9 @@ std::unique_ptr<SculptBoundaryPreview> preview_data_init(Object &object,
     return nullptr;
   }
   std::unique_ptr<SculptBoundaryPreview> preview = std::make_unique<SculptBoundaryPreview>();
-  preview->edges = (*boundary).edges;
-  preview->pivot_position = (*boundary).pivot_position;
-  preview->initial_vert_position = (*boundary).initial_vert_position;
+  preview->edges = boundary->edges;
+  preview->pivot_position = boundary->pivot_position;
+  preview->initial_vert_position = boundary->initial_vert_position;
 
   return preview;
 }
