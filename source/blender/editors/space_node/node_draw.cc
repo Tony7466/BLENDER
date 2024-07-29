@@ -82,7 +82,7 @@
 #include "UI_view2d.hh"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "NOD_geometry_exec.hh"
 #include "NOD_geometry_nodes_gizmos.hh"
@@ -825,6 +825,7 @@ static void add_panel_items_recursive(const bContext &C,
       }
     }
     else if (item.is_valid_socket()) {
+      bool need_socket_spacing = false;
       if (item.input) {
         /* Draw buttons before the first input. */
         if (!state.buttons_drawn) {
@@ -839,7 +840,7 @@ static void add_panel_items_recursive(const bContext &C,
         else {
           /* Space between items. */
           if (!state.is_first && item.input->is_visible()) {
-            locy -= NODE_ITEM_SPACING_Y;
+            need_socket_spacing = true;
           }
         }
       }
@@ -851,9 +852,12 @@ static void add_panel_items_recursive(const bContext &C,
         else {
           /* Space between items. */
           if (!state.is_first && item.output->is_visible()) {
-            locy -= NODE_ITEM_SPACING_Y;
+            need_socket_spacing = true;
           }
         }
+      }
+      if (need_socket_spacing) {
+        locy -= NODE_ITEM_SPACING_Y;
       }
 
       if (!is_parent_collapsed &&
@@ -4045,7 +4049,7 @@ static void frame_node_draw_label(TreeDrawContext &tree_draw_ctx,
 {
   const float aspect = snode.runtime->aspect;
   /* XXX font id is crap design */
-  const int fontid = UI_style_get()->widgetlabel.uifont_id;
+  const int fontid = UI_style_get()->widget.uifont_id;
   const NodeFrame *data = (const NodeFrame *)node.storage;
   const float font_size = data->label_size / aspect;
 
@@ -4177,7 +4181,7 @@ static Set<const bNodeSocket *> find_sockets_on_active_gizmo_paths(const bContex
   }
   snode.edittree->ensure_topology_cache();
 
-  /* Compute compute context hash for the current node tree path. */
+  /* Compute the compute context hash for the current node tree path. */
   std::optional<ComputeContextHash> current_compute_context_hash =
       [&]() -> std::optional<ComputeContextHash> {
     ComputeContextBuilder compute_context_builder;
@@ -4692,7 +4696,7 @@ static void snode_setup_v2d(SpaceNode &snode, ARegion &region, const float2 &cen
   snode.runtime->aspect = BLI_rctf_size_x(&v2d.cur) / float(region.winx);
 }
 
-/* Similar to is_compositor_enabled() in `draw_manager.cc` but checks all 3D views. */
+/* Similar to DRW_is_viewport_compositor_enabled() in `draw_manager.cc` but checks all 3D views. */
 static bool realtime_compositor_is_in_use(const bContext &context)
 {
   const Scene *scene = CTX_data_scene(&context);
