@@ -453,19 +453,6 @@ static std::optional<int> get_closest_boundary_vert(Object &object,
                                                     const int initial_vert,
                                                     const float radius)
 {
-  struct FloodFillMeshData {
-    /* Inputs to the flood fill algorithm. */
-    float3 initial_vert_position;
-    float radius_sq;
-
-    /* Intermediate data used to filter vertices. */
-    Array<int> floodfill_steps;
-    int boundary_initial_vert_steps;
-
-    /* The found initial vertex. */
-    std::optional<int> boundary_initial_vert;
-  };
-
   if (boundary::vert_is_boundary(hide_poly, vert_to_face, boundary, initial_vert)) {
     return initial_vert;
   }
@@ -473,33 +460,32 @@ static std::optional<int> get_closest_boundary_vert(Object &object,
   flood_fill::FillDataMesh flood_fill(vert_positions.size());
   flood_fill.add_initial(initial_vert);
 
-  FloodFillMeshData fdata{};
-  fdata.initial_vert_position = vert_positions[initial_vert];
-  fdata.radius_sq = radius * radius;
+  const float3 initial_vert_position = vert_positions[initial_vert];
+  const float radius_sq = radius * radius;
 
-  fdata.boundary_initial_vert_steps = std::numeric_limits<int>::max();
-
-  fdata.floodfill_steps = Array<int>(vert_positions.size(), 0);
+  std::optional<int> boundary_initial_vert;
+  int boundary_initial_vert_steps = std::numeric_limits<int>::max();
+  Array<int> floodfill_steps(vert_positions.size(), 0);
 
   flood_fill.execute(object, vert_to_face, [&](int from_v, int to_v) {
     if (!hide_vert.is_empty() && hide_vert[from_v]) {
       return false;
     }
 
-    fdata.floodfill_steps[to_v] = fdata.floodfill_steps[from_v] + 1;
+    floodfill_steps[to_v] = floodfill_steps[from_v] + 1;
 
     if (boundary::vert_is_boundary(hide_poly, vert_to_face, boundary, to_v)) {
-      if (fdata.floodfill_steps[to_v] < fdata.boundary_initial_vert_steps) {
-        fdata.boundary_initial_vert_steps = fdata.floodfill_steps[to_v];
-        fdata.boundary_initial_vert = to_v;
+      if (floodfill_steps[to_v] < boundary_initial_vert_steps) {
+        boundary_initial_vert_steps = floodfill_steps[to_v];
+        boundary_initial_vert = to_v;
       }
     }
 
-    const float len_sq = math::distance_squared(fdata.initial_vert_position, vert_positions[to_v]);
-    return len_sq < fdata.radius_sq;
+    const float len_sq = math::distance_squared(initial_vert_position, vert_positions[to_v]);
+    return len_sq < radius_sq;
   });
 
-  return fdata.boundary_initial_vert;
+  return boundary_initial_vert;
 }
 
 static std::optional<SubdivCCGCoord> get_closest_boundary_vert(Object &object,
@@ -511,19 +497,6 @@ static std::optional<SubdivCCGCoord> get_closest_boundary_vert(Object &object,
                                                                const SubdivCCGCoord initial_vert,
                                                                const float radius)
 {
-  struct FloodFillGridsData {
-    /* Inputs to the flood fill algorithm. */
-    float3 initial_vert_position;
-    float radius_sq;
-
-    /* Intermediate data used to filter vertices. */
-    Array<int> floodfill_steps;
-    int boundary_initial_vert_steps;
-
-    /* The found initial vertex. */
-    std::optional<SubdivCCGCoord> boundary_initial_vert;
-  };
-
   if (boundary::vert_is_boundary(
           subdiv_ccg, hide_poly, corner_verts, faces, boundary, initial_vert))
   {
@@ -537,14 +510,13 @@ static std::optional<SubdivCCGCoord> get_closest_boundary_vert(Object &object,
   flood_fill::FillDataGrids flood_fill(num_grids);
   flood_fill.add_initial(initial_vert);
 
-  FloodFillGridsData fdata{};
-  fdata.initial_vert_position = CCG_grid_elem_co(
+  const float3 initial_vert_position = CCG_grid_elem_co(
       key, grids[initial_vert.grid_index], initial_vert.x, initial_vert.y);
-  fdata.radius_sq = radius * radius;
+  const float radius_sq = radius * radius;
 
-  fdata.boundary_initial_vert_steps = std::numeric_limits<int>::max();
-
-  fdata.floodfill_steps = Array<int>(num_grids, 0);
+  int boundary_initial_vert_steps = std::numeric_limits<int>::max();
+  Array<int> floodfill_steps(num_grids, 0);
+  std::optional<SubdivCCGCoord> boundary_initial_vert;
 
   flood_fill.execute(
       object, subdiv_ccg, [&](SubdivCCGCoord from_v, SubdivCCGCoord to_v, bool is_duplicate) {
@@ -556,27 +528,26 @@ static std::optional<SubdivCCGCoord> get_closest_boundary_vert(Object &object,
         }
 
         if (is_duplicate) {
-          fdata.floodfill_steps[to_v_index] = fdata.floodfill_steps[from_v_index];
+          floodfill_steps[to_v_index] = floodfill_steps[from_v_index];
         }
         else {
-          fdata.floodfill_steps[to_v_index] = fdata.floodfill_steps[from_v_index] + 1;
+          floodfill_steps[to_v_index] = floodfill_steps[from_v_index] + 1;
         }
 
         if (boundary::vert_is_boundary(subdiv_ccg, hide_poly, corner_verts, faces, boundary, to_v))
         {
-          if (fdata.floodfill_steps[to_v_index] < fdata.boundary_initial_vert_steps) {
-            fdata.boundary_initial_vert_steps = fdata.floodfill_steps[to_v_index];
-            fdata.boundary_initial_vert = to_v;
+          if (floodfill_steps[to_v_index] < boundary_initial_vert_steps) {
+            boundary_initial_vert_steps = floodfill_steps[to_v_index];
+            boundary_initial_vert = to_v;
           }
         }
 
         const float len_sq = math::distance_squared(
-            fdata.initial_vert_position,
-            CCG_grid_elem_co(key, grids[to_v.grid_index], to_v.x, to_v.y));
-        return len_sq < fdata.radius_sq;
+            initial_vert_position, CCG_grid_elem_co(key, grids[to_v.grid_index], to_v.x, to_v.y));
+        return len_sq < radius_sq;
       });
 
-  return fdata.boundary_initial_vert;
+  return boundary_initial_vert;
 }
 
 static std::optional<BMVert *> get_closest_boundary_vert(Object &object,
@@ -584,19 +555,6 @@ static std::optional<BMVert *> get_closest_boundary_vert(Object &object,
                                                          BMVert &initial_vert,
                                                          const float radius)
 {
-  struct FloodFillBMeshData {
-    /* Inputs to the flood fill algorithm. */
-    float3 initial_vert_position;
-    float radius_sq;
-
-    /* Intermediate data used to filter vertices. */
-    Array<int> floodfill_steps;
-    int boundary_initial_vert_steps;
-
-    /* The found initial vertex. */
-    std::optional<BMVert *> boundary_initial_vert;
-  };
-
   if (boundary::vert_is_boundary(&initial_vert)) {
     return &initial_vert;
   }
@@ -605,13 +563,12 @@ static std::optional<BMVert *> get_closest_boundary_vert(Object &object,
   flood_fill::FillDataBMesh flood_fill(num_verts);
   flood_fill.add_initial(&initial_vert);
 
-  FloodFillBMeshData fdata{};
-  fdata.initial_vert_position = initial_vert.co;
-  fdata.radius_sq = radius * radius;
+  const float3 initial_vert_position = initial_vert.co;
+  const float radius_sq = radius * radius;
 
-  fdata.boundary_initial_vert_steps = std::numeric_limits<int>::max();
-
-  fdata.floodfill_steps = Array<int>(num_verts, 0);
+  int boundary_initial_vert_steps = std::numeric_limits<int>::max();
+  Array<int> floodfill_steps(num_verts, 0);
+  std::optional<BMVert *> boundary_initial_vert;
 
   flood_fill.execute(object, [&](BMVert *from_v, BMVert *to_v) {
     const int from_v_i = BM_elem_index_get(from_v);
@@ -621,20 +578,20 @@ static std::optional<BMVert *> get_closest_boundary_vert(Object &object,
       return false;
     }
 
-    fdata.floodfill_steps[to_v_i] = fdata.floodfill_steps[from_v_i] + 1;
+    floodfill_steps[to_v_i] = floodfill_steps[from_v_i] + 1;
 
     if (boundary::vert_is_boundary(to_v)) {
-      if (fdata.floodfill_steps[to_v_i] < fdata.boundary_initial_vert_steps) {
-        fdata.boundary_initial_vert_steps = fdata.floodfill_steps[to_v_i];
-        fdata.boundary_initial_vert = to_v;
+      if (floodfill_steps[to_v_i] < boundary_initial_vert_steps) {
+        boundary_initial_vert_steps = floodfill_steps[to_v_i];
+        boundary_initial_vert = to_v;
       }
     }
 
-    const float len_sq = math::distance_squared(fdata.initial_vert_position, float3(to_v->co));
-    return len_sq < fdata.radius_sq;
+    const float len_sq = math::distance_squared(initial_vert_position, float3(to_v->co));
+    return len_sq < radius_sq;
   });
 
-  return fdata.boundary_initial_vert;
+  return boundary_initial_vert;
 }
 
 /** \} */
@@ -713,7 +670,9 @@ static void indices_init(Object &object,
   flood_fill.add_initial(initial_vert);
 
   flood_fill.execute(
-      object, subdiv_ccg, [&](const SubdivCCGCoord from_v, const SubdivCCGCoord to_v, const bool is_duplicate) {
+      object,
+      subdiv_ccg,
+      [&](const SubdivCCGCoord from_v, const SubdivCCGCoord to_v, const bool is_duplicate) {
         const int from_v_i = from_v.to_index(key);
         const int to_v_i = to_v.to_index(key);
 
