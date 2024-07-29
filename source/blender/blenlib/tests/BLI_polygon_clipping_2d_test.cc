@@ -283,8 +283,7 @@ void draw_polygons(const std::string &label,
   SVG_add_polygon(f, "polygon-A", curve_a, topleft, scale);
   SVG_add_polygon(f, "polygon-B", curve_b, topleft, scale);
 
-  const Span<float2> points = interpolate_attribute_from_ab_result<float2>(
-      curve_a, curve_b, result);
+  const Span<float2> points = interpolate_data_from_ab_result<float2>(curve_a, curve_b, result);
   const OffsetIndices<int> points_by_polygon = OffsetIndices<int>(result.offsets);
 
   if (points_by_polygon.size() == 1) {
@@ -373,7 +372,7 @@ void draw_cut(const std::string &label,
   }
   SVG_add_polygon(f, "cut-B", curve_b, topleft, scale);
 
-  const Span<float2> points = interpolate_attribute_from_a_result<float2>(curve_a, result);
+  const Span<float2> points = interpolate_data_from_a_result<float2>(curve_a, result);
   const OffsetIndices<int> points_by_polygon = OffsetIndices<int>(result.offsets);
 
   if (points_by_polygon.size() == 1) {
