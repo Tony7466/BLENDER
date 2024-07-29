@@ -962,6 +962,13 @@ if(WITH_USD)
   )
 endif()
 
+add_blender_test(
+  io_grease_pencil_svg_import
+  --python ${CMAKE_CURRENT_LIST_DIR}/grease_pencil_svg_import_test.py
+  --
+  --testdir "${TEST_SRC_DIR}/grease_pencil"
+)
+
 if(WITH_CODEC_FFMPEG)
   add_python_test(
     ffmpeg
