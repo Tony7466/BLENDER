@@ -104,7 +104,8 @@ add_custom_command(
     ${CMAKE_CURRENT_BINARY_DIR}/dna.c
     ${CMAKE_CURRENT_BINARY_DIR}/dna_type_offsets.h
     ${CMAKE_CURRENT_BINARY_DIR}/dna_verify.c
-  COMMAND ${CMAKE_COMMAND} -E env ${PLATFORM_ENV_BUILD}
+  COMMAND
+    ${CMAKE_COMMAND} -E env ${PLATFORM_ENV_BUILD}
     "$<TARGET_FILE:makesdna>"
     ${CMAKE_CURRENT_BINARY_DIR}/dna.c
     ${CMAKE_CURRENT_BINARY_DIR}/dna_type_offsets.h
@@ -155,6 +156,7 @@ set(INC_SYS
 set(SRC
   ${SRC_BLENLIB}
   ${SRC_DNA_DEFAULTS_INC}
+  ${SRC_DNA_OTHER_INC}
 )
 
 set(LIB
