@@ -450,6 +450,11 @@ class GPUShaderCreator : public OCIO::GpuShaderCreator {
 /* A stub implementation in case OCIO is disabled at build time. */
 class GPUShaderCreator {
  public:
+  static std::shared_ptr<GPUShaderCreator> Create(ResultPrecision /* precision */)
+  {
+    return std::make_shared<GPUShaderCreator>();
+  }
+
   GPUShader *bind_shader_and_resources()
   {
     return nullptr;
@@ -480,9 +485,9 @@ OCIOColorSpaceConversionShader::OCIOColorSpaceConversionShader(Context &context,
 {
   /* Create a GPU shader creator and construct it based on the transforms in the default GPU
    * processor. */
-#if defined(WITH_OCIO)
   shader_creator_ = GPUShaderCreator::Create(context.get_precision());
 
+#if defined(WITH_OCIO)
   /* Get a GPU processor that transforms the source color space to the target color space. */
   try {
     OCIO::ConstConfigRcPtr config = OCIO::GetCurrentConfig();
@@ -495,7 +500,7 @@ OCIOColorSpaceConversionShader::OCIOColorSpaceConversionShader(Context &context,
   catch (OCIO::Exception &e) {
   }
 #else
-  UNUSED_VARS(context, source, target);
+  UNUSED_VARS(source, target);
 #endif
 }
 
