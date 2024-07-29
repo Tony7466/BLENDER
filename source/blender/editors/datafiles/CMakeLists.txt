@@ -383,6 +383,7 @@ if(WITH_BLENDER)
       handle_free
       handle_vector
       heart
+      heart_overlay
       help
       hide_off
       hide_on
@@ -704,6 +705,7 @@ if(WITH_BLENDER)
       restrict_view_off
       restrict_view_on
       rew
+      ribbon_overlay
       rightarrow
       rightarrow_thin
       rigid_body
@@ -773,6 +775,7 @@ if(WITH_BLENDER)
       split_horizontal
       split_vertical
       spreadsheet
+      star_overlay
       statusbar
       sticky_uvs_disable
       sticky_uvs_loc

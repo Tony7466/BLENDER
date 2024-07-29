@@ -1406,7 +1406,7 @@ static void icon_draw_size(float x,
     }
 
     if (text_overlay && text_overlay->icon) {
-      BLF_draw_svg_icon(uint(ICON_CHECKMARK_OVERLAY),
+      BLF_draw_svg_icon(uint(text_overlay->icon),
                         x + (float(draw_size) * 0.35f / aspect),
                         y + (float(draw_size) * 0.35f / aspect),
                         float(draw_size) * 0.75f / aspect,
