@@ -44,9 +44,9 @@
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
 #include "RNA_path.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
-#include "rna_access_internal.h"
+#include "rna_access_internal.hh"
 #include "rna_internal.hh"
 
 static CLG_LogRef LOG = {"rna.access_compare_override"};
@@ -137,12 +137,6 @@ bool RNA_property_overridable_get(const PointerRNA *ptr, PropertyRNA *prop)
     else if (RNA_struct_is_a(ptr->type, &RNA_Modifier)) {
       ModifierData *mod = static_cast<ModifierData *>(ptr->data);
       if (mod->flag & eModifierFlag_OverrideLibrary_Local) {
-        return true;
-      }
-    }
-    else if (RNA_struct_is_a(ptr->type, &RNA_GpencilModifier)) {
-      GpencilModifierData *gp_mod = static_cast<GpencilModifierData *>(ptr->data);
-      if (gp_mod->flag & eGpencilModifierFlag_OverrideLibrary_Local) {
         return true;
       }
     }
@@ -840,6 +834,11 @@ bool RNA_struct_override_matches(Main *bmain,
               const bool is_restored = rna_property_override_operation_apply(bmain, rnaapply_ctx);
 
               if (is_restored) {
+                CLOG_INFO(&LOG,
+                          5,
+                          "Restoreed forbidden liboverride `%s` for override data '%s'",
+                          rna_path->c_str(),
+                          ptr_local->owner_id->name);
                 if (r_report_flags) {
                   *r_report_flags |= RNA_OVERRIDE_MATCH_RESULT_RESTORED;
                 }
@@ -878,6 +877,12 @@ bool RNA_struct_override_matches(Main *bmain,
               opop_restore->tag |= LIBOVERRIDE_PROP_TAG_NEEDS_RETORE;
               liboverride->runtime->tag |= LIBOVERRIDE_TAG_NEEDS_RESTORE;
 
+              CLOG_INFO(
+                  &LOG,
+                  5,
+                  "Tagging for restoration forbidden liboverride `%s` for override data '%s'",
+                  rna_path->c_str(),
+                  ptr_local->owner_id->name);
               if (r_report_flags) {
                 *r_report_flags |= RNA_OVERRIDE_MATCH_RESULT_RESTORE_TAGGED;
               }
