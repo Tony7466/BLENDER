@@ -40,6 +40,7 @@
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
+#include "ED_anim_api.hh"
 #include "ED_keyframing.hh"
 #include "ED_object.hh"
 #include "ED_screen.hh"
@@ -433,6 +434,8 @@ static int insert_key(bContext *C, wmOperator *op)
 
 static int insert_key_exec(bContext *C, wmOperator *op)
 {
+  ANIM_deselect_keys_in_animation_editors(C);
+
   Scene *scene = CTX_data_scene(C);
   /* Use the active keying set if there is one. */
   const int type = RNA_enum_get(op->ptr, "type");
@@ -469,6 +472,8 @@ void ANIM_OT_keyframe_insert(wmOperatorType *ot)
 
 static int keyframe_insert_with_keyingset_exec(bContext *C, wmOperator *op)
 {
+  ANIM_deselect_keys_in_animation_editors(C);
+
   Scene *scene = CTX_data_scene(C);
   KeyingSet *ks = keyingset_get_from_op_with_error(op, op->type->prop, scene);
   if (ks == nullptr) {
@@ -874,7 +879,6 @@ static int delete_key_v3d_without_keying_set(bContext *C, wmOperator *op)
     if ((ob->adt) && (ob->adt->action)) {
       AnimData *adt = ob->adt;
       bAction *act = adt->action;
-      FCurve *fcu, *fcn;
       const float cfra_unmap = BKE_nla_tweakedit_remap(adt, cfra, NLATIME_CONVERT_UNMAP);
 
       Action &action = act->wrap();
@@ -887,7 +891,8 @@ static int delete_key_v3d_without_keying_set(bContext *C, wmOperator *op)
         }
       }
       else {
-        for (fcu = static_cast<FCurve *>(act->curves.first); fcu; fcu = fcn) {
+        FCurve *fcn;
+        for (FCurve *fcu = static_cast<FCurve *>(act->curves.first); fcu; fcu = fcn) {
           fcn = fcu->next;
           if (!can_delete_key(fcu, ob, op->reports)) {
             continue;
@@ -1062,6 +1067,8 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
         const std::optional<blender::StringRefNull> group = default_channel_group_for_path(
             &ptr, identifier);
 
+        ANIM_deselect_keys_in_animation_editors(C);
+
         /* NOTE: `index == -1` is a magic number, meaning either "operate on all
          * elements" or "not an array property". */
         const std::optional<int> array_index = (all || index < 0) ? std::nullopt :
@@ -1198,13 +1205,14 @@ static int delete_key_button_exec(bContext *C, wmOperator *op)
     else {
       /* standard properties */
       if (const std::optional<std::string> path = RNA_path_from_ID_to_property(&ptr, prop)) {
+        RNAPath rna_path = {path->c_str(), std::nullopt, index};
         if (all) {
-          /* -1 indicates operating on the entire array (or the property itself otherwise) */
-          index = -1;
+          /* nullopt indicates operating on the entire array (or the property itself otherwise). */
+          rna_path.index = std::nullopt;
         }
 
         changed = blender::animrig::delete_keyframe(
-                      bmain, op->reports, ptr.owner_id, nullptr, path->c_str(), index, cfra) != 0;
+                      bmain, op->reports, ptr.owner_id, rna_path, cfra) != 0;
       }
       else if (G.debug & G_DEBUG) {
         printf("Button Delete-Key: no path to property\n");
@@ -1262,18 +1270,14 @@ static int clear_key_button_exec(bContext *C, wmOperator *op)
 
   if (ptr.owner_id && ptr.data && prop) {
     if (const std::optional<std::string> path = RNA_path_from_ID_to_property(&ptr, prop)) {
+      RNAPath rna_path = {path->c_str(), std::nullopt, index};
       if (all) {
-        /* -1 indicates operating on the entire array (or the property itself otherwise) */
-        index = -1;
+        /* nullopt indicates operating on the entire array (or the property itself otherwise). */
+        rna_path.index = std::nullopt;
       }
 
-      changed |= (blender::animrig::clear_keyframe(bmain,
-                                                   op->reports,
-                                                   ptr.owner_id,
-                                                   nullptr,
-                                                   path->c_str(),
-                                                   index,
-                                                   eInsertKeyFlags(0)) != 0);
+      changed |= (blender::animrig::clear_keyframe(bmain, op->reports, ptr.owner_id, rna_path) !=
+                  0);
     }
     else if (G.debug & G_DEBUG) {
       printf("Button Clear-Key: no path to property\n");
