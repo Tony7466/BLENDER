@@ -9978,7 +9978,7 @@ static void def_geo_sample_sound(StructRNA *srna)
   // TODO: make tooltips more concise
   PropertyRNA *prop;
   prop = RNA_def_property(srna, "downmix", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_ui_text(prop, "Downmix", "Downmix");
+  RNA_def_property_ui_text(prop, "Downmix to Mono", "Downmix to Mono");
   RNA_def_property_boolean_sdna(prop, nullptr, "downmix", 1);
   RNA_def_property_boolean_default(prop, true);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);

@@ -12,7 +12,7 @@
 
 #include "DNA_sound_types.h"
 
-void BKE_sound_fft_cache_new(struct bSound *sound);
+void BKE_sound_fft_cache_new(struct bSound *sound, int total_samples);
 void BKE_sound_fft_cache_delete(struct bSound *sound);
 
 namespace blender::bke::sound::fft_cache {
@@ -28,9 +28,19 @@ struct Parameter {
   uint64_t hash() const;
 };
 
-struct FFTCache {
-  std::shared_mutex mutex;
-  Map<Parameter, Array<float>> map;
+class FFTCache {
+ public:
+  FFTCache(int total_samples);
+
+  bool contains(const Parameter &parameter) const;
+  Span<float> get(const Parameter &parameter, int sample_index) const;
+  MutableSpan<float> upsert(const Parameter &parameter, int sample_index);
+
+  std::shared_mutex mutex_;
+
+ private:
+  Map<Parameter, Array<float>> map_;
+  const int total_samples_;
 };
 
 struct FFTCacheRuntime {

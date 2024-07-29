@@ -21,6 +21,12 @@ static void node_declare(NodeDeclarationBuilder &b)
 static void node_geo_exec(GeoNodeExecParams params)
 {
   bSound *sound = params.get_input<bSound *>("Sound");
+  if (!sound) {
+    params.set_output("Audio Channels", 0);
+    params.set_output("Sample Rate", 0);
+    return;
+  }
+
   params.set_output("Audio Channels", sound->audio_channels);
   params.set_output("Sample Rate", sound->samplerate);
 }
@@ -36,4 +42,4 @@ static void node_register()
 }
 NOD_REGISTER_NODE(node_register)
 
-}  // namespace blender::nodes::node_geo_input_sound_cc
+}  // namespace blender::nodes::node_geo_sound_info_cc
