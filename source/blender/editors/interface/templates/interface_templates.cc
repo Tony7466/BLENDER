@@ -2075,7 +2075,18 @@ static void template_search_add_button_name(uiBlock *block,
     return;
   }
 
-  PropertyRNA *name_prop = RNA_struct_name_property(type);
+  PropertyRNA *name_prop;
+#ifdef WITH_ANIM_BAKLAVA
+  if (type == &RNA_ActionSlot) {
+    name_prop = RNA_struct_find_property(active_ptr, "name_display");
+  }
+  else {
+#endif /* WITH_ANIM_BAKLAVA */
+    name_prop = RNA_struct_name_property(type);
+#ifdef WITH_ANIM_BAKLAVA
+  }
+#endif /* WITH_ANIM_BAKLAVA */
+
   const int width = template_search_textbut_width(active_ptr, name_prop);
   const int height = template_search_textbut_height();
   uiDefAutoButR(block, active_ptr, name_prop, 0, "", ICON_NONE, 0, 0, width, height);
@@ -6458,6 +6469,29 @@ void uiTemplateStatusInfo(uiLayout *layout, bContext *C)
 
   if (U.statusbar_flag & STATUSBAR_SHOW_EXTENSIONS_UPDATES) {
     wmWindowManager *wm = CTX_wm_manager(C);
+
+    /* Special case, always show an alert for any blocked extensions. */
+    if (wm->extensions_blocked > 0) {
+      if (has_status_info) {
+        uiItemS_ex(row, -0.5f);
+        uiItemL(row, "|", ICON_NONE);
+        uiItemS_ex(row, -0.5f);
+      }
+      uiLayoutSetEmboss(row, UI_EMBOSS_NONE);
+      /* This operator also works fine for blocked extensions. */
+      uiItemO(row, "", ICON_ERROR, "EXTENSIONS_OT_userpref_show_for_update");
+      uiBut *but = static_cast<uiBut *>(uiLayoutGetBlock(layout)->buttons.last);
+      uchar color[4];
+      UI_GetThemeColor4ubv(TH_TEXT, color);
+      copy_v4_v4_uchar(but->col, color);
+
+      BLI_str_format_integer_unit(but->icon_overlay_text.text, wm->extensions_blocked);
+      UI_but_icon_indicator_color_set(but, color);
+
+      uiItemS_ex(row, 1.0f);
+      has_status_info = true;
+    }
+
     if ((G.f & G_FLAG_INTERNET_ALLOW) == 0) {
       if (has_status_info) {
         uiItemS_ex(row, -0.5f);
@@ -6502,7 +6536,6 @@ void uiTemplateStatusInfo(uiLayout *layout, bContext *C)
 
       if (wm->extensions_updates > 0) {
         BLI_str_format_integer_unit(but->icon_overlay_text.text, wm->extensions_updates);
-        UI_GetThemeColor4ubv(TH_TEXT, color);
         UI_but_icon_indicator_color_set(but, color);
       }
 
@@ -7262,7 +7295,7 @@ void uiTemplateCacheFile(uiLayout *layout,
 /* -------------------------------------------------------------------- */
 /** \name Recent Files Template
  * \{ */
-static void uiTemplateRecentFiles_tooltip_func(bContext * /*C*/, uiTooltipData *tip, void *argN)
+static void uiTemplateRecentFiles_tooltip_func(bContext & /*C*/, uiTooltipData &tip, void *argN)
 {
   char *path = (char *)argN;
 
