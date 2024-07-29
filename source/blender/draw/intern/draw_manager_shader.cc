@@ -317,6 +317,11 @@ static void drw_register_shader_vlattrs(GPUMaterial *mat)
 
 void DRW_deferred_shader_remove(GPUMaterial *mat)
 {
+  if (GPU_use_main_context_workaround()) {
+    /* Deferred compilation is not supported. */
+    return;
+  }
+
   BLI_spin_lock(&compiler_data.list_lock);
 
   /* Search for compilation job in queue. */
@@ -343,6 +348,11 @@ void DRW_deferred_shader_remove(GPUMaterial *mat)
 
 void DRW_deferred_shader_optimize_remove(GPUMaterial *mat)
 {
+  if (GPU_use_main_context_workaround()) {
+    /* Deferred compilation is not supported. */
+    return;
+  }
+
   BLI_spin_lock(&compiler_data.list_lock);
   /* Search for optimization job in queue. */
   LinkData *opti_link = (LinkData *)BLI_findptr(
