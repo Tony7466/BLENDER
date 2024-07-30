@@ -150,7 +150,7 @@ void vector_math_refract(
 {
   /* Match the safe normalize function in Cycles by defaulting to vec3(0.0) */
   float length_sqr = length_squared(b);
-  b = (length_sqr > 1e-35f) ? b / sqrt(length_sqr) : vec3(0.0);
+  b = (length_sqr > 1e-35f) ? b * inversesqrt(length_sqr) : vec3(0.0);
 
   outVector = refract(a, b, scale);
 }
