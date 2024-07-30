@@ -4821,6 +4821,22 @@ def km_grease_pencil_weight_paint(params):
 
     return keymap
 
+def km_grease_pencil_vertex_paint(params):
+    items = []
+    keymap = (
+        "Grease Pencil Vertex Paint",
+        {"space_type": 'EMPTY', "region_type": 'WINDOW'},
+        {"items": items}
+    )
+
+    items.extend([
+        # Paint vertex
+        ("grease_pencil.vertex_brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
+        ("grease_pencil.vertex_brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
+         {"properties": [("mode", 'INVERT')]}),
+    ])
+
+    return keymap
 
 # Grease Pencil v3 Fill Tool.
 def km_grease_pencil_fill_tool(_params):
@@ -9106,6 +9122,7 @@ def generate_keymaps(params=None):
         km_grease_pencil_edit_mode(params),
         km_grease_pencil_sculpt_mode(params),
         km_grease_pencil_weight_paint(params),
+        km_grease_pencil_vertex_paint(params),
         km_grease_pencil_brush_stroke(params),
         km_grease_pencil_fill_tool(params),
         # Object mode.

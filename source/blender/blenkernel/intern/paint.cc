@@ -549,6 +549,8 @@ PaintMode BKE_paintmode_get_active_from_context(const bContext *C)
           return PaintMode::GPencil;
         case OB_MODE_WEIGHT_GPENCIL_LEGACY:
           return PaintMode::WeightGPencil;
+        case OB_MODE_VERTEX_GPENCIL_LEGACY:
+          return PaintMode::VertexGPencil;
         case OB_MODE_VERTEX_PAINT:
           return PaintMode::Vertex;
         case OB_MODE_WEIGHT_PAINT:
