@@ -75,13 +75,15 @@ Vector<std::string> paths_from_operator_properties(PointerRNA *ptr)
 {
   Vector<std::string> paths;
   PropertyRNA *directory_prop = RNA_struct_find_property(ptr, "directory");
-  const bool relative_path = RNA_struct_find_property(ptr, "relative_path") &&
-                             RNA_boolean_get(ptr, "relative_path");
+  PropertyRNA *relative_path_prop = RNA_struct_find_property(ptr, "relative_path");
+  const bool is_relative_path = relative_path_prop ?
+                                    RNA_property_boolean_get(ptr, relative_path_prop) :
+                                    false;
   if (RNA_property_is_set(ptr, directory_prop)) {
     char directory[FILE_MAX], name[FILE_MAX];
 
     RNA_string_get(ptr, "directory", directory);
-    if (relative_path && !BLI_path_is_rel(directory)) {
+    if (is_relative_path && !BLI_path_is_rel(directory)) {
       BLI_path_rel(directory, BKE_main_blendfile_path_from_global());
     }
 
@@ -102,7 +104,7 @@ Vector<std::string> paths_from_operator_properties(PointerRNA *ptr)
   if (filepath_prop && RNA_property_is_set(ptr, filepath_prop)) {
     char filepath[FILE_MAX];
     RNA_string_get(ptr, "filepath", filepath);
-    if (relative_path && !BLI_path_is_rel(filepath)) {
+    if (is_relative_path && !BLI_path_is_rel(filepath)) {
       BLI_path_rel(filepath, BKE_main_blendfile_path_from_global());
     }
     paths.append_non_duplicates(filepath);
