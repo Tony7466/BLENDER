@@ -1969,6 +1969,7 @@ static int collection_instance_add_exec(bContext *C, wmOperator *op)
   ob->instance_collection = add_info->collection;
   ob->empty_drawsize = U.collection_instance_empty_size;
   ob->transflag |= OB_DUPLICOLLECTION;
+  RNA_float_get_array(op->ptr, "scale", ob->scale);
   id_us_plus(&add_info->collection->id);
 
   return OPERATOR_FINISHED;
