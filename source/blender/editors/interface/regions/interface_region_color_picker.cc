@@ -754,7 +754,7 @@ static void ui_block_colorpicker(uiBlock *block,
                 8,
                 nullptr);
 
-  const auto bt_tooltip_func = [](bContext * /*C*/, uiTooltipData *tip, void * /*argN*/) {
+  const auto bt_tooltip_func = [](bContext & /*C*/, uiTooltipData &tip, void * /*argN*/) {
     UI_tooltip_text_field_add(
         tip, "Hex triplet for color (#RRGGBB).", {}, UI_TIP_STYLE_HEADER, UI_TIP_LC_NORMAL, false);
     UI_tooltip_text_field_add(
