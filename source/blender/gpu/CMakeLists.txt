@@ -31,6 +31,8 @@ set(INC
 
   ../../../intern/ghost
   ../../../intern/mantaflow/extern
+  
+  ../windowmanager
 )
 
 if(WITH_RENDERDOC)
@@ -322,6 +324,7 @@ set(METAL_SRC
   metal/mtl_immediate.mm
   metal/mtl_index_buffer.mm
   metal/mtl_memory.mm
+  metal/mtl_misc.mm	
   metal/mtl_query.mm
   metal/mtl_shader.mm
   metal/mtl_shader_generator.mm
@@ -345,6 +348,7 @@ set(METAL_SRC
   metal/mtl_immediate.hh
   metal/mtl_index_buffer.hh
   metal/mtl_memory.hh
+  metal/mtl_misc.hh
   metal/mtl_primitive.hh
   metal/mtl_pso_descriptor_state.hh
   metal/mtl_query.hh
