@@ -52,6 +52,12 @@ ENUM_OPERATORS(eFileDataFlag, FD_FLAGS_IS_MEMFILE)
 #  pragma GCC poison off_t
 #endif
 
+/**
+ * General data used during a blend-file reading.
+ *
+ * Note that this data (and its accesses) are absolutely not thread-safe currently. It should never
+ * be accessed concurrently.
+ */
 struct FileData {
   /** Linked list of BHeadN's. */
   ListBase bhead_list;
@@ -142,6 +148,9 @@ struct FileData {
   IDNameLib_Map *new_idmap_uid;
 
   BlendFileReadReport *reports;
+
+  /** Opaque handle to the storage system used for non-static allocation strings. */
+  void *storage_handle;
 };
 
 #define SIZEOFBLENDERHEADER 12
