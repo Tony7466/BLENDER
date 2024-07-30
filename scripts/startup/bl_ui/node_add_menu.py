@@ -43,7 +43,8 @@ def draw_node_group_add_menu(context, layout):
             group for group in context.blend_data.node_groups
             if (group.bl_idname == node_tree.bl_idname and
                 not group.contains_tree(node_tree) and
-                not group.name.startswith('.'))
+                not group.name.startswith('.') and
+                not group.is_locked)
         ]
         if groups:
             layout.separator()
