@@ -113,7 +113,7 @@ static void apply_new_mask_mesh(Object &object,
       const Span<int> verts = hide::node_visible_verts(*nodes[i], hide_vert, tls);
       const Span<float> new_node_mask = new_mask.slice(node_verts[i]);
       if (array_utils::indexed_data_equal<float>(mask, verts, new_node_mask)) {
-        return;
+        continue;
       }
       undo::push_node(object, nodes[i], undo::Type::Mask);
       scatter_data_mesh(new_node_mask, verts, mask);
@@ -260,6 +260,7 @@ BLI_NOINLINE static void copy_old_hidden_mask_grids(const SubdivCCG &subdiv_ccg,
                                                     const Span<int> grids,
                                                     const MutableSpan<float> new_mask)
 {
+  return;
   const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
   if (subdiv_ccg.grid_hidden.is_empty()) {
     return;
@@ -288,9 +289,9 @@ static void apply_new_mask_grids(Object &object,
     for (const int i : range) {
       const Span<int> grids = bke::pbvh::node_grid_indices(*nodes[i]);
       const Span<float> new_node_mask = new_mask.slice(node_verts[i]);
-      // if (mask_equals_array_grids(subdiv_ccg.grids, key, grids, new_node_mask)) {
-      //   return;
-      // }
+      if (mask_equals_array_grids(subdiv_ccg.grids, key, grids, new_node_mask)) {
+        continue;
+      }
       undo::push_node(object, nodes[i], undo::Type::Mask);
       scatter_mask_grids(new_node_mask, subdiv_ccg, grids);
       BKE_pbvh_node_mark_update_mask(nodes[i]);
@@ -304,7 +305,7 @@ static void smooth_mask_grids(const SubdivCCG &subdiv_ccg,
 {
   const Span<int> grids = bke::pbvh::node_grid_indices(node);
   average_neighbor_mask_grids(subdiv_ccg, bke::pbvh::node_grid_indices(node), new_mask);
-  // copy_old_hidden_mask_grids(subdiv_ccg, grids, new_mask);
+  copy_old_hidden_mask_grids(subdiv_ccg, grids, new_mask);
 }
 
 static void sharpen_mask_grids(const SubdivCCG &subdiv_ccg,
@@ -351,11 +352,11 @@ static void grow_mask_grids(const SubdivCCG &subdiv_ccg,
         SubdivCCGCoord coord{grid, x, y};
         BKE_subdiv_ccg_neighbor_coords_get(subdiv_ccg, coord, false, neighbors);
 
-        float value = 0.0f;
+        new_mask[node_vert_index] = 0.0f;
         for (const SubdivCCGCoord neighbor : neighbors.coords) {
-          value = std::max(CCG_grid_elem_mask(key, elem, neighbor.x, neighbor.y), value);
+          new_mask[node_vert_index] = std::max(
+              CCG_grid_elem_mask(key, elem, neighbor.x, neighbor.y), new_mask[node_vert_index]);
         }
-        new_mask[node_vert_index] = value;
       }
     }
   }
@@ -386,11 +387,11 @@ static void shrink_mask_grids(const SubdivCCG &subdiv_ccg,
         SubdivCCGCoord coord{grid, x, y};
         BKE_subdiv_ccg_neighbor_coords_get(subdiv_ccg, coord, false, neighbors);
 
-        float value = 1.0f;
+        new_mask[node_vert_index] = 1.0f;
         for (const SubdivCCGCoord neighbor : neighbors.coords) {
-          value = std::min(CCG_grid_elem_mask(key, elem, neighbor.x, neighbor.y), value);
+          new_mask[node_vert_index] = std::min(
+              CCG_grid_elem_mask(key, elem, neighbor.x, neighbor.y), new_mask[node_vert_index]);
         }
-        new_mask[node_vert_index] = value;
       }
     }
   }
@@ -485,7 +486,7 @@ static void apply_new_mask_bmesh(Object &object,
       const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(nodes[i]);
       const Span<float> new_node_mask = new_mask.slice(node_verts[i]);
       if (mask_equals_array_bmesh(mask_offset, verts, new_node_mask)) {
-        return;
+        continue;
       }
       undo::push_node(object, nodes[i], undo::Type::Mask);
       scatter_mask_bmesh(new_node_mask, bm, verts);
