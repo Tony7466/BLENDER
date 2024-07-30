@@ -1392,7 +1392,7 @@ TEST_F(KeyframingTest, insert_keyframes__legacy_action__quaternion_on_nla__only_
   EXPECT_EQ(4, result_3.get_count(SingleKeyingResult::SUCCESS));
 }
 
-TEST_F(KeyframingTest, delete_keyframes__layered_action)
+TEST_F(KeyframingTest, delete_keyframes__layered_action__object)
 {
   /* Turn on Baklava experimental flag. */
   U.flag |= USER_DEVELOPER_UI;

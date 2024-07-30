@@ -690,7 +690,7 @@ class NlaInsertTest(AbstractKeyframingTest, unittest.TestCase):
 
 class KeyframeDeleteTest(AbstractKeyframingTest, unittest.TestCase):
 
-    def test_delete_in_pose_mode(self):
+    def test_delete_in_v3d_pose_mode(self):
         armature = _create_armature()
         bpy.context.scene.frame_set(1)
         with bpy.context.temp_override(**_get_view3d_context()):
