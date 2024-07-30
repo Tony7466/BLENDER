@@ -542,10 +542,10 @@ void update_mask_mesh(Object &object,
                       Span<bke::pbvh::Node *> nodes,
                       FunctionRef<void(MutableSpan<float>, Span<int>)> update_fn);
 
-bool grid_mask_equals_array(Span<CCGElem *> elems,
-                            const CCGKey &key,
-                            Span<int> grids,
-                            Span<float> values);
+bool mask_equals_array_grids(Span<CCGElem *> elems,
+                             const CCGKey &key,
+                             Span<int> grids,
+                             Span<float> values);
 
 void PAINT_OT_mask_flood_fill(wmOperatorType *ot);
 void PAINT_OT_mask_lasso_gesture(wmOperatorType *ot);

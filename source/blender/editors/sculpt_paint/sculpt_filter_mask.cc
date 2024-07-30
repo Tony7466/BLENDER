@@ -292,7 +292,7 @@ static void apply_new_mask_grids(Object &object,
       for (const int i : range) {
         const Span<int> grids = bke::pbvh::node_grid_indices(*nodes[i]);
         const Span<float> new_node_mask = new_mask.slice(node_verts[i]);
-        if (grid_mask_equals_array(subdiv_ccg.grids, key, grids, new_node_mask)) {
+        if (mask_equals_array_grids(subdiv_ccg.grids, key, grids, new_node_mask)) {
           return;
         }
         undo::push_node(object, nodes[i], undo::Type::Mask);
@@ -496,7 +496,7 @@ static void apply_new_mask_bmesh(Object &object,
       for (const int i : range) {
         const Span<int> grids = bke::pbvh::node_grid_indices(*nodes[i]);
         const Span<float> new_node_mask = new_mask.slice(node_verts[i]);
-        if (grid_mask_equals_array(subdiv_ccg.grids, key, grids, new_node_mask)) {
+        if (mask_equals_array_grids(subdiv_ccg.grids, key, grids, new_node_mask)) {
           return;
         }
         undo::push_node(object, nodes[i], undo::Type::Mask);

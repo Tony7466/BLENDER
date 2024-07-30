@@ -289,10 +289,10 @@ void update_mask_mesh(Object &object,
   mask.finish();
 }
 
-bool grid_mask_equals_array(const Span<CCGElem *> elems,
-                            const CCGKey &key,
-                            const Span<int> grids,
-                            const Span<float> values)
+bool mask_equals_array_grids(const Span<CCGElem *> elems,
+                             const CCGKey &key,
+                             const Span<int> grids,
+                             const Span<float> values)
 {
   const IndexRange range = grids.index_range();
   return std::all_of(range.begin(), range.end(), [&](const int i) {
