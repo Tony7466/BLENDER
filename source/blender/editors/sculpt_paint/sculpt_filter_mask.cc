@@ -297,6 +297,9 @@ static void apply_new_mask_grids(Object &object,
       BKE_pbvh_node_mark_update_mask(nodes[i]);
     }
   });
+
+  /* New mask values need propagation across grid boundaries. */
+  BKE_subdiv_ccg_average_grids(subdiv_ccg);
 }
 
 static void smooth_mask_grids(const SubdivCCG &subdiv_ccg,
@@ -840,7 +843,6 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
             break;
           }
         }
-        BKE_subdiv_ccg_average_grids(subdiv_ccg);
       }
       break;
     }
