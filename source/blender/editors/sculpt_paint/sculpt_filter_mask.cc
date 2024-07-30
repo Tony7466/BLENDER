@@ -840,6 +840,7 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
             break;
           }
         }
+        BKE_subdiv_ccg_average_grids(subdiv_ccg);
       }
       break;
     }
