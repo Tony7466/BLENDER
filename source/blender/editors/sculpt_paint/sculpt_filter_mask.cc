@@ -180,7 +180,7 @@ static void grow_mask_mesh(const OffsetIndices<int> faces,
   calc_vert_neighbors(faces, corner_verts, vert_to_face_map, hide_poly, verts, neighbors);
 
   for (const int i : verts.index_range()) {
-    new_mask[i] = 0.0f;
+    new_mask[i] = mask[verts[i]];
     for (const int neighbor : neighbors[i]) {
       new_mask[i] = std::max(mask[neighbor], new_mask[i]);
     }
@@ -203,7 +203,7 @@ static void shrink_mask_mesh(const OffsetIndices<int> faces,
   calc_vert_neighbors(faces, corner_verts, vert_to_face_map, hide_poly, verts, neighbors);
 
   for (const int i : verts.index_range()) {
-    new_mask[i] = 1.0f;
+    new_mask[i] = mask[verts[i]];
     for (const int neighbor : neighbors[i]) {
       new_mask[i] = std::min(mask[neighbor], new_mask[i]);
     }
@@ -352,7 +352,7 @@ static void grow_mask_grids(const SubdivCCG &subdiv_ccg,
         SubdivCCGCoord coord{grid, x, y};
         BKE_subdiv_ccg_neighbor_coords_get(subdiv_ccg, coord, false, neighbors);
 
-        new_mask[node_vert_index] = 0.0f;
+        new_mask[node_vert_index] = CCG_elem_offset_mask(key, elem, offset);
         for (const SubdivCCGCoord neighbor : neighbors.coords) {
           new_mask[node_vert_index] = std::max(
               CCG_grid_elem_mask(key, elem, neighbor.x, neighbor.y), new_mask[node_vert_index]);
@@ -387,7 +387,7 @@ static void shrink_mask_grids(const SubdivCCG &subdiv_ccg,
         SubdivCCGCoord coord{grid, x, y};
         BKE_subdiv_ccg_neighbor_coords_get(subdiv_ccg, coord, false, neighbors);
 
-        new_mask[node_vert_index] = 1.0f;
+        new_mask[node_vert_index] = CCG_elem_offset_mask(key, elem, offset);
         for (const SubdivCCGCoord neighbor : neighbors.coords) {
           new_mask[node_vert_index] = std::min(
               CCG_grid_elem_mask(key, elem, neighbor.x, neighbor.y), new_mask[node_vert_index]);
@@ -533,7 +533,7 @@ static void grow_mask_bmesh(const int mask_offset,
   int i = 0;
   for (BMVert *vert : verts) {
     neighbors.clear();
-    new_mask[i] = 0.0f;
+    new_mask[i] = BM_ELEM_CD_GET_FLOAT(vert, mask_offset);
     for (const BMVert *neighbor : vert_neighbors_get_bmesh(*vert, neighbors)) {
       new_mask[i] = std::max(BM_ELEM_CD_GET_FLOAT(neighbor, mask_offset), new_mask[i]);
     }
@@ -553,7 +553,7 @@ static void shrink_mask_bmesh(const int mask_offset,
   int i = 0;
   for (BMVert *vert : verts) {
     neighbors.clear();
-    new_mask[i] = 1.0f;
+    new_mask[i] = BM_ELEM_CD_GET_FLOAT(vert, mask_offset);
     for (const BMVert *neighbor : vert_neighbors_get_bmesh(*vert, neighbors)) {
       new_mask[i] = std::min(BM_ELEM_CD_GET_FLOAT(neighbor, mask_offset), new_mask[i]);
     }
@@ -924,6 +924,9 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
   }
 
   undo::push_end(ob);
+
+  flush_update_step(C, UpdateType::Mask);
+  flush_update_done(C, ob, UpdateType::Mask);
 
   SCULPT_tag_update_overlays(C);
 
