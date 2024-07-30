@@ -342,7 +342,7 @@ struct LineInstanceBuf : private select::SelectBuf {
     if (color_id) {
       pass.push_constant("colorid", color_id);
     }
-    pass.draw_procedural(GPU_PRIM_LINES, data_buf.size() / 2, 2);
+    pass.draw_procedural(GPU_PRIM_LINES, 1, data_buf.size());
   }
 };
 
