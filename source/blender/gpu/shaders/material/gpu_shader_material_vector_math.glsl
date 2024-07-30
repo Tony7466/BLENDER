@@ -148,11 +148,11 @@ void vector_math_tangent(
 void vector_math_refract(
     vec3 a, vec3 b, vec3 c, float scale, out vec3 outVector, out float outValue)
 {
-  /* Match the safe normalize function in Cycles */
-  float length;
-  b = safe_normalize_and_get_length(b, length);
+  /* Match the safe normalize function in Cycles by defaulting to vec3(0.0) */
+  float length_sqr = length_squared(b);
+  b = (length_sqr > 1e-35f) ? b / sqrt(length_sqr) : vec3(0.0);
 
-  outVector = refract(a, length == 0.0 ? vec3(0.0) : b, scale);
+  outVector = refract(a, b, scale);
 }
 
 void vector_math_faceforward(
