@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_attribute.hh"
+#include "BKE_main.hh"
 #include "BLI_assert.h"
 #include "BLI_bounds.hh"
 #include "BLI_color.hh"
@@ -17,6 +18,7 @@
 #include "BKE_grease_pencil.hh"
 #include "BKE_report.hh"
 
+#include "BLI_string.h"
 #include "DNA_grease_pencil_types.h"
 #include "DNA_space_types.h"
 #include "DNA_windowmanager_types.h"
@@ -264,8 +266,12 @@ bool SVGImporter::read(StringRefNull filepath)
   constexpr const char *svg_units = "mm";
   constexpr float svg_dpi = 96.0f;
 
+  char abs_filepath[FILE_MAX];
+  BLI_strncpy(abs_filepath, filepath.c_str(), sizeof(abs_filepath));
+  BLI_path_abs(abs_filepath, BKE_main_blendfile_path_from_global());
+
   NSVGimage *svg_data = nullptr;
-  svg_data = nsvgParseFromFile(filepath.c_str(), svg_units, svg_dpi);
+  svg_data = nsvgParseFromFile(abs_filepath, svg_units, svg_dpi);
   if (svg_data == nullptr) {
     BKE_report(context_.reports, RPT_ERROR, "Could not open SVG");
     return false;
@@ -273,7 +279,7 @@ bool SVGImporter::read(StringRefNull filepath)
 
   /* Create grease pencil object. */
   char filename[FILE_MAX];
-  BLI_path_split_file_part(filepath.c_str(), filename, ARRAY_SIZE(filename));
+  BLI_path_split_file_part(abs_filepath, filename, ARRAY_SIZE(filename));
   object_ = create_object(filename);
   if (object_ == nullptr) {
     BKE_report(context_.reports, RPT_ERROR, "Unable to create new object");
