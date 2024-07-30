@@ -759,10 +759,10 @@ static bool gpencil_vertexmode_toggle_poll(bContext *C)
 {
   /* if using gpencil object, use this gpd */
   Object *ob = CTX_data_active_object(C);
-  if ((ob) && (ob->type == OB_GPENCIL_LEGACY)) {
+  if ((ob) && ELEM(ob->type, OB_GPENCIL_LEGACY, OB_GREASE_PENCIL)) {
     return ob->data != nullptr;
   }
-  return ED_gpencil_data_get_active(C) != nullptr;
+  return false;
 }
 static int gpencil_vertexmode_toggle_exec(bContext *C, wmOperator *op)
 {
@@ -770,36 +770,48 @@ static int gpencil_vertexmode_toggle_exec(bContext *C, wmOperator *op)
 
   wmMsgBus *mbus = CTX_wm_message_bus(C);
   Main *bmain = CTX_data_main(C);
-  bGPdata *gpd = ED_gpencil_data_get_active(C);
   ToolSettings *ts = CTX_data_tool_settings(C);
 
   bool is_object = false;
   short mode;
   /* if using a gpencil object, use this datablock */
   Object *ob = CTX_data_active_object(C);
+  const bool is_mode_set = (ob->mode & OB_MODE_VERTEX_GPENCIL_LEGACY) != 0;
   if ((ob) && (ob->type == OB_GPENCIL_LEGACY)) {
-    gpd = static_cast<bGPdata *>(ob->data);
+    bGPdata *gpd = static_cast<bGPdata *>(ob->data);
     is_object = true;
-  }
 
-  if (gpd == nullptr) {
-    return OPERATOR_CANCELLED;
-  }
+    if (gpd == nullptr) {
+      return OPERATOR_CANCELLED;
+    }
 
-  /* Just toggle paintmode flag... */
-  gpd->flag ^= GP_DATA_STROKE_VERTEXMODE;
-  /* set mode */
-  if (gpd->flag & GP_DATA_STROKE_VERTEXMODE) {
-    mode = OB_MODE_VERTEX_GPENCIL_LEGACY;
+    /* Just toggle paintmode flag... */
+    gpd->flag ^= GP_DATA_STROKE_VERTEXMODE;
+    /* set mode */
+    if (gpd->flag & GP_DATA_STROKE_VERTEXMODE) {
+      mode = OB_MODE_VERTEX_GPENCIL_LEGACY;
+    }
+    else {
+      mode = OB_MODE_OBJECT;
+    }
   }
-  else {
-    mode = OB_MODE_OBJECT;
+  else if ((ob) && (ob->type == OB_GREASE_PENCIL)) {
+    is_object = true;
+    if (!is_mode_set) {
+      mode = OB_MODE_VERTEX_GPENCIL_LEGACY;
+    }
+    else {
+      mode = OB_MODE_OBJECT;
+    }
   }
 
   if (is_object) {
-    /* try to back previous mode */
-    if ((ob->restore_mode) && ((gpd->flag & GP_DATA_STROKE_VERTEXMODE) == 0) && (back == 1)) {
-      mode = ob->restore_mode;
+    if (ob->type == OB_GPENCIL_LEGACY) {
+      bGPdata *gpd = static_cast<bGPdata *>(ob->data);
+      /* try to back previous mode */
+      if ((ob->restore_mode) && ((gpd->flag & GP_DATA_STROKE_VERTEXMODE) == 0) && (back == 1)) {
+        mode = ob->restore_mode;
+      }
     }
     ob->restore_mode = ob->mode;
     ob->mode = mode;
@@ -818,9 +830,16 @@ static int gpencil_vertexmode_toggle_exec(bContext *C, wmOperator *op)
   }
 
   /* setup other modes */
-  ED_gpencil_setup_modes(C, gpd, mode);
-  /* set cache as dirty */
-  DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+  if (ob->type == OB_GPENCIL_LEGACY) {
+    bGPdata *gpd = static_cast<bGPdata *>(ob->data);
+    ED_gpencil_setup_modes(C, gpd, mode);
+    /* set cache as dirty */
+    DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+  }
+  else if (ob->type == OB_GREASE_PENCIL) {
+    GreasePencil *grease_pencil = static_cast<GreasePencil *>(ob->data);
+    DEG_id_tag_update(&grease_pencil->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+  }
 
   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | ND_GPENCIL_EDITMODE, nullptr);
   WM_event_add_notifier(C, NC_SCENE | ND_MODE, nullptr);

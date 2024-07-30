@@ -584,6 +584,7 @@ PaintMode BKE_paintmode_get_from_tool(const bToolRef *tref)
         return PaintMode::GPencil;
       case CTX_MODE_PAINT_TEXTURE:
         return PaintMode::Texture3D;
+      case CTX_MODE_VERTEX_GREASE_PENCIL:
       case CTX_MODE_VERTEX_GPENCIL_LEGACY:
         return PaintMode::VertexGPencil;
       case CTX_MODE_SCULPT_GPENCIL_LEGACY:

@@ -13,6 +13,7 @@ from bl_ui.properties_paint_common import (
     brush_basic_texpaint_settings,
     brush_basic_gpencil_weight_settings,
     brush_basic_grease_pencil_weight_settings,
+    brush_basic_grease_pencil_vertex_settings,
     BrushAssetShelf,
 )
 from bl_ui.properties_grease_pencil_common import (
@@ -144,7 +145,7 @@ class VIEW3D_HT_tool_header(Header):
         elif tool_mode == 'WEIGHT_GPENCIL' or tool_mode == 'WEIGHT_GREASE_PENCIL':
             if is_valid_context:
                 layout.popover("VIEW3D_PT_tools_grease_pencil_weight_appearance")
-        elif tool_mode == 'VERTEX_GPENCIL':
+        elif tool_mode == 'VERTEX_GPENCIL' or tool_mode == 'VERTEX_GREASE_PENCIL':
             if is_valid_context:
                 layout.popover("VIEW3D_PT_tools_grease_pencil_vertex_appearance")
 
@@ -551,7 +552,6 @@ class _draw_tool_settings_context_mode:
         brush = paint.brush
 
         row = layout.row(align=True)
-        settings = tool_settings.gpencil_vertex_paint
 
         BrushAssetShelf.draw_popup_selector(layout, context, brush)
 
@@ -566,6 +566,28 @@ class _draw_tool_settings_context_mode:
         brush_basic_gpencil_vertex_settings(layout, context, brush, compact=True)
 
         return True
+    
+    @staticmethod
+    def VERTEX_GREASE_PENCIL(context, layout, tool):
+        if (tool is None) or (not tool.has_datablock):
+            return False
+
+        tool_settings = context.tool_settings
+        paint = tool_settings.gpencil_vertex_paint
+        brush = paint.brush
+
+        row = layout.row(align=True)
+
+        BrushAssetShelf.draw_popup_selector(layout, context, brush)
+
+        if brush.gpencil_vertex_tool not in {'BLUR', 'AVERAGE', 'SMEAR'}:
+            row.separator(factor=0.4)
+            row.prop_with_popover(brush, "color", text="", panel="TOPBAR_PT_gpencil_vertexcolor")
+
+        brush_basic_grease_pencil_vertex_settings(layout, context, brush, compact=True)
+
+        return True
+    
 
     @staticmethod
     def PARTICLE(context, layout, tool):
