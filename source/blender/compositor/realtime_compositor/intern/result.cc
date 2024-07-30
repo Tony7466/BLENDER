@@ -422,6 +422,8 @@ void Result::release()
       texture_pool_->release(texture_);
     }
     texture_ = nullptr;
+    delete derived_resources_;
+    derived_resources_ = nullptr;
   }
 }
 
@@ -465,6 +467,14 @@ bool Result::is_allocated() const
 GPUTexture *Result::texture() const
 {
   return texture_;
+}
+
+DerivedResources &Result::derived_resources()
+{
+  if (!derived_resources_) {
+    derived_resources_ = new DerivedResources();
+  }
+  return *derived_resources_;
 }
 
 int Result::reference_count() const

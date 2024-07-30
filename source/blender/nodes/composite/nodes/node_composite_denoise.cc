@@ -7,6 +7,7 @@
  */
 
 #include "BLI_system.h"
+#include "BLI_vector.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -110,10 +111,13 @@ class DenoiseOperation : public NodeOperation {
     const int pixel_stride = sizeof(float) * 4;
     const eGPUDataFormat data_format = GPU_DATA_FLOAT;
 
+    Vector<float *> temporary_buffers_to_free;
+
     /* Download the input texture and set it as both the input and output of the filter to denoise
      * it in-place. */
     GPU_memory_barrier(GPU_BARRIER_TEXTURE_UPDATE);
     float *color = static_cast<float *>(GPU_texture_read(input_image.texture(), data_format, 0));
+    temporary_buffers_to_free.append(color);
     oidn::FilterRef filter = device.newFilter("RT");
     filter.setImage("color", color, oidn::Format::Float3, width, height, 0, pixel_stride);
     filter.setImage("output", color, oidn::Format::Float3, width, height, 0, pixel_stride);
@@ -123,22 +127,18 @@ class DenoiseOperation : public NodeOperation {
 
     /* If the albedo input is not a single value input, download the albedo texture, denoise it
      * in-place if denoising auxiliary passes is needed, and set it to the main filter. */
-    float *albedo = nullptr;
     Result &input_albedo = get_input("Albedo");
     if (!input_albedo.is_single_value()) {
-      albedo = static_cast<float *>(GPU_texture_read(input_albedo.texture(), data_format, 0));
-
+      float *albedo = nullptr;
       if (should_denoise_auxiliary_passes()) {
-        oidn::FilterRef albedoFilter = device.newFilter("RT");
-        albedoFilter.setImage(
-            "albedo", albedo, oidn::Format::Float3, width, height, 0, pixel_stride);
-        albedoFilter.setImage(
-            "output", albedo, oidn::Format::Float3, width, height, 0, pixel_stride);
-        albedoFilter.setProgressMonitorFunction(oidn_progress_monitor_function, &context());
-        albedoFilter.commit();
-        albedoFilter.execute();
+        albedo = input_albedo.derived_resources()
+                     .denoised_auxiliary_passes.get(context(), input_albedo, "albedo")
+                     .denoised_buffer;
       }
-
+      else {
+        albedo = static_cast<float *>(GPU_texture_read(input_albedo.texture(), data_format, 0));
+        temporary_buffers_to_free.append(albedo);
+      }
       filter.setImage("albedo", albedo, oidn::Format::Float3, width, height, 0, pixel_stride);
     }
 
@@ -146,22 +146,18 @@ class DenoiseOperation : public NodeOperation {
      * denoise it in-place if denoising auxiliary passes is needed, and set it to the main filter.
      * Notice that we also consider the albedo input because OIDN doesn't support denoising with
      * only the normal auxiliary pass. */
-    float *normal = nullptr;
     Result &input_normal = get_input("Normal");
-    if (albedo && !input_normal.is_single_value()) {
-      normal = static_cast<float *>(GPU_texture_read(input_normal.texture(), data_format, 0));
-
+    if (!input_albedo.is_single_value() && !input_normal.is_single_value()) {
+      float *normal = nullptr;
       if (should_denoise_auxiliary_passes()) {
-        oidn::FilterRef normalFilter = device.newFilter("RT");
-        normalFilter.setImage(
-            "normal", normal, oidn::Format::Float3, width, height, 0, pixel_stride);
-        normalFilter.setImage(
-            "output", normal, oidn::Format::Float3, width, height, 0, pixel_stride);
-        normalFilter.setProgressMonitorFunction(oidn_progress_monitor_function, &context());
-        normalFilter.commit();
-        normalFilter.execute();
+        normal = input_normal.derived_resources()
+                     .denoised_auxiliary_passes.get(context(), input_normal, "normal")
+                     .denoised_buffer;
       }
-
+      else {
+        normal = static_cast<float *>(GPU_texture_read(input_normal.texture(), data_format, 0));
+        temporary_buffers_to_free.append(normal);
+      }
       filter.setImage("normal", normal, oidn::Format::Float3, width, height, 0, pixel_stride);
     }
 
@@ -171,12 +167,8 @@ class DenoiseOperation : public NodeOperation {
     output_image.allocate_texture(input_image.domain());
     GPU_texture_update(output_image.texture(), data_format, color);
 
-    MEM_freeN(color);
-    if (albedo) {
-      MEM_freeN(albedo);
-    }
-    if (normal) {
-      MEM_freeN(normal);
+    for (float *buffer : temporary_buffers_to_free) {
+      MEM_freeN(buffer);
     }
 #endif
   }

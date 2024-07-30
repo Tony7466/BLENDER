@@ -6,6 +6,7 @@ set(INC
   .
   algorithms
   cached_resources
+  derived_resources
   ../../blenkernel
   ../../blentranslation
   ../../draw
@@ -47,6 +48,7 @@ set(SRC
   COM_compile_state.hh
   COM_context.hh
   COM_conversion_operation.hh
+  COM_derived_resources.hh
   COM_domain.hh
   COM_evaluator.hh
   COM_input_descriptor.hh
@@ -129,6 +131,10 @@ set(SRC
   cached_resources/COM_symmetric_blur_weights.hh
   cached_resources/COM_symmetric_separable_blur_weights.hh
   cached_resources/COM_van_vliet_gaussian_coefficients.hh
+
+  derived_resources/intern/denoised_auxiliary_pass.cc
+
+  derived_resources/COM_denoised_auxiliary_pass.hh
 )
 
 set(LIB
@@ -398,6 +404,19 @@ if(WITH_FFTW3)
     ${FFTW3_LIBRARIES}
   )
   add_definitions(-DWITH_FFTW3)
+endif()
+
+if(WITH_OPENIMAGEDENOISE)
+  add_definitions(-DWITH_OPENIMAGEDENOISE)
+  add_definitions(-DOIDN_STATIC_LIB)
+  list(APPEND INC_SYS
+    ${OPENIMAGEDENOISE_INCLUDE_DIRS}
+    ${TBB_INCLUDE_DIRS}
+  )
+  list(APPEND LIB
+    ${OPENIMAGEDENOISE_LIBRARIES}
+    ${TBB_LIBRARIES}
+  )
 endif()
 
 blender_add_lib(bf_realtime_compositor "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

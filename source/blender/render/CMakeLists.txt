@@ -10,6 +10,7 @@ set(INC
   ../blentranslation
   ../compositor/realtime_compositor
   ../compositor/realtime_compositor/cached_resources
+  ../compositor/realtime_compositor/derived_resources
   ../draw
   ../draw/intern
   ../gpu

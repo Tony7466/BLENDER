@@ -10,6 +10,7 @@
 #include "GPU_shader.hh"
 #include "GPU_texture.hh"
 
+#include "COM_derived_resources.hh"
 #include "COM_domain.hh"
 #include "COM_meta_data.hh"
 #include "COM_texture_pool.hh"
@@ -128,6 +129,9 @@ class Result {
    * result. This is set up by a call to the wrap_external method. In that case, when the reference
    * count eventually reach zero, the texture will not be freed. */
   bool is_external_ = false;
+
+  /* Stores resources that are derived from this result. Lazily allocated if needed. */
+  DerivedResources *derived_resources_ = nullptr;
 
  public:
   /* Stores extra information about the result such as image meta data that can eventually be
@@ -322,6 +326,10 @@ class Result {
 
   /* Returns the allocated GPU texture of the result. */
   GPUTexture *texture() const;
+
+  /* Returns a reference to the derived resources of the result, which is allocated if it was not
+   * allocated already. */
+  DerivedResources &derived_resources();
 
   /* Returns the reference count of the result. If this result have a master result, then the
    * reference count of the master result is returned instead. */
