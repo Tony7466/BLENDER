@@ -98,6 +98,7 @@ class GreasePencilStroke(AttributeGetterSetter):
     def __init__(self, drawing, curve_index, points_start_index, points_end_index):
         super().__init__(drawing.attributes, curve_index, 'CURVE')
         self._drawing = drawing
+        self._curve_index = curve_index
         self._points_start_index = points_start_index
         self._points_end_index = points_end_index
 
@@ -112,3 +113,31 @@ class GreasePencilStroke(AttributeGetterSetter):
                 point) for point in range(
                 self._points_start_index,
                 self._points_end_index)]
+    
+    def add_points(self, count):
+        """
+        Add new points at the end of the stroke and returns the new points as a list.
+        """
+        previous_end = self._points_end_index
+        new_size = self._points_end_index - self._points_start_index + count
+        self._drawing.resize_curves(sizes=[new_size], indices=[self._curve_index])
+        self._points_end_index = self._points_start_index + new_size
+        return [
+            GreasePencilStrokePoint(
+                self._drawing,
+                point) for point in range(
+                previous_end,
+                self._points_end_index)]
+
+
+    def remove_points(self, count):
+        """
+        Remove points at the end of the stroke.
+        """
+        new_size = self._points_end_index - self._points_start_index - count
+        # A stroke need to have at least one point.
+        if new_size < 1:
+            new_size = 1
+        self._drawing.resize_curves(sizes=[new_size], indices=[self._curve_index])
+        self._points_end_index = self._points_start_index + new_size
+
