@@ -797,7 +797,7 @@ static void bend_data_init_grids(const SubdivCCG &subdiv_ccg, SculptBoundary &bo
     const float3 normal = CCG_grid_elem_no(key, grids[vert.grid_index], vert.x, vert.y);
     const float3 dir = CCG_grid_elem_co(
                            key, grids[orig_vert.grid_index], orig_vert.x, orig_vert.y) -
-                       CCG_grid_elem_co(key, grids[orig_vert.grid_index], vert.x, vert.y);
+                       CCG_grid_elem_co(key, grids[vert.grid_index], vert.x, vert.y);
     boundary.bend.pivot_rotation_axis[orig_vert_i] = math::normalize(math::cross(dir, normal));
     boundary.bend.pivot_positions[orig_vert_i] = CCG_grid_elem_co(
         key, grids[vert.grid_index], vert.x, vert.y);
