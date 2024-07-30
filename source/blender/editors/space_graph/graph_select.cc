@@ -1280,10 +1280,11 @@ static void columnselect_graph_keys(bAnimContext *ac, short mode)
     LISTBASE_FOREACH (CfraElem *, ce, &ked.list) {
       /* set frame for validation callback to refer to */
       ked.f1 = BKE_nla_tweakedit_remap(adt, ce->cfra, NLATIME_CONVERT_UNMAP);
-
+      FCurve *fcu = static_cast<FCurve *>(ale->key_data);
       /* select elements with frame number matching cfraelem */
-      ANIM_fcurve_keyframes_loop(
-          &ked, static_cast<FCurve *>(ale->key_data), ok_cb, select_cb, nullptr);
+      if (ANIM_fcurve_keyframes_loop(&ked, fcu, ok_cb, select_cb, nullptr)) {
+        fcu->flag |= FCURVE_SELECTED;
+      }
     }
   }
 

@@ -1586,7 +1586,7 @@ static short select_bezier_add(KeyframeEditData *ked, BezTriple *bezt)
     BEZT_SEL_ALL(bezt);
   }
 
-  return 0;
+  return 1;
 }
 
 static short select_bezier_subtract(KeyframeEditData *ked, BezTriple *bezt)
