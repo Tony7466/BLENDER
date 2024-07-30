@@ -119,6 +119,8 @@
 #include "BKE_report.hh"
 #include "BKE_workspace.hh"
 
+#include "DRW_engine.hh"
+
 #include "BLO_blend_defs.hh"
 #include "BLO_blend_validate.hh"
 #include "BLO_read_write.hh"
@@ -428,11 +430,17 @@ struct WriteData {
      */
     bool critical_error;
     /**
-     * A set of all 'old' adresses used as uid of written blocks for the current ID. Allows
+     * A set of all 'old' addresses used as UID of written blocks for the current ID. Allows
      * detecting invalid re-uses of the same address multiple times.
      */
     blender::Set<const void *> per_id_addresses_set;
   } validation_data;
+
+  /**
+   * Keeps track of which shared data has been written for the current ID. This is necessary to
+   * avoid writing the same data more than once.
+   */
+  blender::Set<const void *> per_id_written_shared_addresses;
 
   /** #MemFile writing (used for undo). */
   MemFileWriteData mem;
@@ -674,6 +682,7 @@ static void mywrite_id_end(WriteData *wd, ID * /*id*/)
   }
 
   wd->validation_data.per_id_addresses_set.clear();
+  wd->per_id_written_shared_addresses.clear();
 
   BLI_assert(wd->is_writing_id == true);
   wd->is_writing_id = false;
@@ -700,13 +709,12 @@ static bool write_at_address_validate(WriteData *wd, int filecode, const void *a
   }
 
   if (wd->is_writing_id && filecode == BLO_CODE_DATA) {
-    if (wd->validation_data.per_id_addresses_set.contains(address)) {
+    if (!wd->validation_data.per_id_addresses_set.add(address)) {
       CLOG_ERROR(&LOG,
                  "Same identifier (old address) used several times for a same ID, skipping this "
                  "block to avoid critical corruption of the Blender file.");
       return false;
     }
-    wd->validation_data.per_id_addresses_set.add(address);
   }
   return true;
 }
@@ -732,9 +740,7 @@ static void writestruct_at_address_nr(
   bh.nr = nr;
 
   bh.SDNAnr = struct_nr;
-  const SDNA_Struct *struct_info = wd->sdna->structs[bh.SDNAnr];
-
-  bh.len = nr * wd->sdna->types_size[struct_info->type];
+  bh.len = nr * DNA_struct_size(wd->sdna, bh.SDNAnr);
 
   if (bh.len == 0) {
     return;
@@ -1233,6 +1239,11 @@ static void id_buffer_init_from_id(BLO_Write_IDBuffer *id_buffer, ID *id, const 
    * when we need to re-read the ID into its original address, this is currently cleared in
    * #direct_link_id_common in `readfile.cc` anyway. */
   temp_id->py_instance = nullptr;
+
+  DrawDataList *drawdata = DRW_drawdatalist_from_id(temp_id);
+  if (drawdata) {
+    BLI_listbase_clear(reinterpret_cast<ListBase *>(drawdata));
+  }
 }
 
 /* Helper callback for checking linked IDs used by given ID (assumed local), to ensure directly
@@ -1960,6 +1971,12 @@ void BLO_write_shared(BlendWriter *writer,
         memfile.size += approximate_size_in_bytes / sharing_info->strong_users();
         return;
       }
+    }
+  }
+  if (sharing_info != nullptr) {
+    if (!writer->wd->per_id_written_shared_addresses.add(data)) {
+      /* Was written already. */
+      return;
     }
   }
   write_fn();
