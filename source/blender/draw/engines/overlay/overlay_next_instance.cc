@@ -85,12 +85,12 @@ void Instance::begin_sync()
     layer.cameras.begin_sync();
     layer.empties.begin_sync();
     layer.lights.begin_sync();
+    layer.speakers.begin_sync();
   };
   begin_sync_layer(regular);
   begin_sync_layer(infront);
 
   metaballs.begin_sync();
-  speakers.begin_sync();
   grid.begin_sync(resources, state, view);
 }
 
@@ -162,7 +162,7 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
       case OB_GPENCIL_LEGACY:
         break;
       case OB_SPEAKER:
-        speakers.object_sync(ob_ref, resources, state);
+        layer.speakers.object_sync(ob_ref, resources, state);
         break;
     }
     layer.bounds.object_sync(ob_ref, resources, state);
@@ -178,12 +178,12 @@ void Instance::end_sync()
     layer.cameras.end_sync(resources, shapes, state);
     layer.empties.end_sync(resources, shapes, state);
     layer.lights.end_sync(resources, shapes, state);
+    layer.speakers.end_sync(resources, shapes, state);
   };
   end_sync_layer(regular);
   end_sync_layer(infront);
 
   metaballs.end_sync(resources, shapes, state);
-  speakers.end_sync(resources, shapes, state);
 }
 
 void Instance::draw(Manager &manager)
@@ -251,16 +251,15 @@ void Instance::draw(Manager &manager)
   regular.cameras.draw(resources.overlay_line_fb, manager, view);
   regular.empties.draw(resources.overlay_line_fb, manager, view);
   regular.lights.draw(resources.overlay_line_fb, manager, view);
+  regular.speakers.draw(resources.overlay_color_only_fb, manager, view);
   lattices.draw(resources, manager, view);
   metaballs.draw(resources, manager, view);
-  speakers.draw(resources, manager, view);
 
   grid.draw(resources, manager, view);
 
   /* TODO(: Breaks selection on M1 Max. */
   // lattices.draw_in_front(resources, manager, view);
   metaballs.draw_in_front(resources, manager, view);
-  speakers.draw_in_front(resources, manager, view);
 
   // anti_aliasing.draw(resources, manager, view);
 
