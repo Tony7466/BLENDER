@@ -8,6 +8,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_array_utils.hh"
 #include "BLI_math_vector.hh"
 #include "BLI_task.h"
 
@@ -983,9 +984,7 @@ static void populate_twist_data(const Span<float3> positions, SculptBoundary &bo
 static void twist_data_init_mesh(const Span<float3> vert_positions, SculptBoundary &boundary)
 {
   Array<float3> positions(boundary.verts.size());
-  for (const int i : positions.index_range()) {
-    positions[i] = vert_positions[boundary.verts[i]];
-  }
+  array_utils::gather(vert_positions, boundary.verts.as_span(), positions.as_mutable_span());
   populate_twist_data(positions, boundary);
 }
 
