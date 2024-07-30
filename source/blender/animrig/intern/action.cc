@@ -1333,7 +1333,7 @@ ActionFCurveIterator &ActionFCurveIterator::operator++()
   bool strip_changed = false;
 
   /* Iterated over all FCurves of the channel bag. */
-  if (current_channel_bag && current_fcurve_index < current_channel_bag->fcurve_array_num) {
+  if (current_channel_bag && current_fcurve_index >= current_channel_bag->fcurve_array_num) {
     current_fcurve_index = 0;
     current_strip_index++;
     strip_changed = true;

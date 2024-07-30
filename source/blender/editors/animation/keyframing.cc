@@ -765,8 +765,8 @@ static int clear_anim_v3d_exec(bContext *C, wmOperator * /*op*/)
           }
           ++it;
         }
-        for (auto &asd : fcurves_to_delete) {
-          asd.first->fcurve_remove(*asd.second);
+        for (auto &pair : fcurves_to_delete) {
+          pair.first->fcurve_remove(*pair.second);
         }
       }
       else {
@@ -846,6 +846,8 @@ static bool can_delete_key(FCurve *fcu, Object *ob, ReportList *reports)
   /* Special exception for bones, as this makes this operator more convenient to use
    * NOTE: This is only done in pose mode.
    * In object mode, we're dealing with the entire object.
+   * TODO: While this means bone animation is not deleted of all bones while in pose mode. Running
+   * the code on the armature object WILL delete keys of all bones.
    */
   if (ob->mode & OB_MODE_POSE) {
     bPoseChannel *pchan = nullptr;
@@ -910,14 +912,16 @@ static int delete_key_v3d_without_keying_set(bContext *C, wmOperator *op)
         blender::Vector<std::pair<blender::animrig::ChannelBag *, FCurve *>> modified_fcurves;
         while (*it) {
           if (can_delete_key(*it, ob, op->reports)) {
-            fcurve_delete_keyframe_at_time(*it, cfra_unmap);
+            success += fcurve_delete_keyframe_at_time(*it, cfra_unmap);
             modified_fcurves.append(std::pair<blender::animrig::ChannelBag *, FCurve *>(
                 it.get_current_channel_bag(), *it));
           }
           ++it;
         }
-        for (auto &asd : modified_fcurves) {
-          asd.first->fcurve_remove(*asd.second);
+        for (auto &pair : modified_fcurves) {
+          if (BKE_fcurve_is_empty(pair.second)) {
+            pair.first->fcurve_remove(*pair.second);
+          }
         }
       }
       else {
