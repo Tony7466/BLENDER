@@ -288,9 +288,9 @@ static void apply_new_mask_grids(Object &object,
     for (const int i : range) {
       const Span<int> grids = bke::pbvh::node_grid_indices(*nodes[i]);
       const Span<float> new_node_mask = new_mask.slice(node_verts[i]);
-      if (mask_equals_array_grids(subdiv_ccg.grids, key, grids, new_node_mask)) {
-        return;
-      }
+      // if (mask_equals_array_grids(subdiv_ccg.grids, key, grids, new_node_mask)) {
+      //   return;
+      // }
       undo::push_node(object, nodes[i], undo::Type::Mask);
       scatter_mask_grids(new_node_mask, subdiv_ccg, grids);
       BKE_pbvh_node_mark_update_mask(nodes[i]);
@@ -304,7 +304,7 @@ static void smooth_mask_grids(const SubdivCCG &subdiv_ccg,
 {
   const Span<int> grids = bke::pbvh::node_grid_indices(node);
   average_neighbor_mask_grids(subdiv_ccg, bke::pbvh::node_grid_indices(node), new_mask);
-  copy_old_hidden_mask_grids(subdiv_ccg, grids, new_mask);
+  // copy_old_hidden_mask_grids(subdiv_ccg, grids, new_mask);
 }
 
 static void sharpen_mask_grids(const SubdivCCG &subdiv_ccg,
@@ -532,9 +532,9 @@ static void grow_mask_bmesh(const int mask_offset,
   int i = 0;
   for (BMVert *vert : verts) {
     neighbors.clear();
-    float value = 0.0f;
+    new_mask[i] = 0.0f;
     for (const BMVert *neighbor : vert_neighbors_get_bmesh(*vert, neighbors)) {
-      value = std::max(BM_ELEM_CD_GET_FLOAT(neighbor, mask_offset), value);
+      new_mask[i] = std::max(BM_ELEM_CD_GET_FLOAT(neighbor, mask_offset), new_mask[i]);
     }
     i++;
   }
@@ -552,9 +552,9 @@ static void shrink_mask_bmesh(const int mask_offset,
   int i = 0;
   for (BMVert *vert : verts) {
     neighbors.clear();
-    float value = 1.0f;
+    new_mask[i] = 1.0f;
     for (const BMVert *neighbor : vert_neighbors_get_bmesh(*vert, neighbors)) {
-      value = std::min(BM_ELEM_CD_GET_FLOAT(neighbor, mask_offset), value);
+      new_mask[i] = std::min(BM_ELEM_CD_GET_FLOAT(neighbor, mask_offset), new_mask[i]);
     }
     i++;
   }
@@ -670,7 +670,7 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
       OffsetIndices node_offsets = create_node_vert_offsets(nodes, node_vert_offset_data);
       Array<float> new_masks(node_offsets.total_size());
 
-      for (int i = 0; i < iterations; i++) {
+      for ([[maybe_unused]] const int iteration : IndexRange(iterations)) {
         switch (filter_type) {
           case FilterType::Smooth: {
             threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
@@ -743,18 +743,22 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
           case FilterType::ContrastIncrease: {
             threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
               FilterLocalData &tls = all_tls.local();
-              for (const int i : range) {
-                increase_contrast_mask_mesh(ob, hide_vert, *nodes[i], tls, mask.span);
-              }
+              threading::isolate_task([&]() {
+                for (const int i : range) {
+                  increase_contrast_mask_mesh(ob, hide_vert, *nodes[i], tls, mask.span);
+                }
+              });
             });
             break;
           }
           case FilterType::ContrastDecrease: {
             threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
               FilterLocalData &tls = all_tls.local();
-              for (const int i : range) {
-                decrease_contrast_mask_mesh(ob, hide_vert, *nodes[i], tls, mask.span);
-              }
+              threading::isolate_task([&]() {
+                for (const int i : range) {
+                  decrease_contrast_mask_mesh(ob, hide_vert, *nodes[i], tls, mask.span);
+                }
+              });
             });
             break;
           }
@@ -771,7 +775,7 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
           nodes, BKE_subdiv_ccg_key_top_level(subdiv_ccg), node_vert_offset_data);
       Array<float> new_masks(node_offsets.total_size());
 
-      for (int i = 0; i < iterations; i++) {
+      for ([[maybe_unused]] const int iteration : IndexRange(iterations)) {
         switch (filter_type) {
           case FilterType::Smooth: {
             threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
@@ -848,7 +852,7 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
       OffsetIndices node_offsets = create_node_vert_offsets_bmesh(nodes, node_vert_offset_data);
       Array<float> new_masks(node_offsets.total_size());
 
-      for (int i = 0; i < iterations; i++) {
+      for ([[maybe_unused]] const int iteration : IndexRange(iterations)) {
         switch (filter_type) {
           case FilterType::Smooth: {
             threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
