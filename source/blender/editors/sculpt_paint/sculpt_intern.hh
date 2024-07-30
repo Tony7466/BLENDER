@@ -803,7 +803,7 @@ void sculpt_project_v3_normal_align(const SculptSession &ss,
 /** \name Sculpt mesh accessor API
  * \{ */
 
-/** Ensure random access; required for PBVH_BMESH */
+/** Ensure random access; required for blender::bke::pbvh::Type::BMesh */
 void SCULPT_vertex_random_access_ensure(SculptSession &ss);
 
 int SCULPT_vertex_count_get(const SculptSession &ss);
