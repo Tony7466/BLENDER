@@ -102,29 +102,29 @@ static void validate_cryptomatte_session_from_stamp_data(void * /*data*/,
     return;
   }
 
-  if (prop_name == "cryptomatte/87f095e/name") {
+  if (prop_name == "cryptomatte/67da54b/name") {
     EXPECT_STREQ("layer1", propvalue);
   }
-  else if (prop_name == "cryptomatte/87f095e/hash") {
+  else if (prop_name == "cryptomatte/67da54b/hash") {
     EXPECT_STREQ("MurmurHash3_32", propvalue);
   }
-  else if (prop_name == "cryptomatte/87f095e/conversion") {
+  else if (prop_name == "cryptomatte/67da54b/conversion") {
     EXPECT_STREQ("uint32_to_float32", propvalue);
   }
-  else if (prop_name == "cryptomatte/87f095e/manifest") {
+  else if (prop_name == "cryptomatte/67da54b/manifest") {
     EXPECT_STREQ(R"({"Object":"12345678"})", propvalue);
   }
 
-  else if (prop_name == "cryptomatte/c42daa7/name") {
+  else if (prop_name == "cryptomatte/79b2306/name") {
     EXPECT_STREQ("layer2", propvalue);
   }
-  else if (prop_name == "cryptomatte/c42daa7/hash") {
+  else if (prop_name == "cryptomatte/79b2306/hash") {
     EXPECT_STREQ("MurmurHash3_32", propvalue);
   }
-  else if (prop_name == "cryptomatte/c42daa7/conversion") {
+  else if (prop_name == "cryptomatte/79b2306/conversion") {
     EXPECT_STREQ("uint32_to_float32", propvalue);
   }
-  else if (prop_name == "cryptomatte/c42daa7/manifest") {
+  else if (prop_name == "cryptomatte/79b2306/manifest") {
     EXPECT_STREQ(R"({"Object2":"87654321"})", propvalue);
   }
 
