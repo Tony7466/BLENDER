@@ -394,6 +394,8 @@ typedef struct ID_Runtime_Remap {
   int skipped_direct;
   /** During ID remapping, the number of indirect use cases that could not be remapped. */
   int skipped_indirect;
+  int skipped_locked;
+  char _pad[4];
 } ID_Runtime_Remap;
 
 typedef struct ID_Runtime {

@@ -113,6 +113,8 @@ enum {
   /** This ID pointer is expected to be overridden by default, in liboverride hierarchy context. */
   IDWALK_CB_OVERRIDE_LIBRARY_HIERARCHY_DEFAULT = (1 << 18),
 
+  /** Similar to #IDWALK_CB_INDIRECT_USAGE but for locked data-blocks. */
+  IDWALK_CB_LOCKED_USAGE = (1 << 19),
 };
 
 enum {

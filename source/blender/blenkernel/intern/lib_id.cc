@@ -1452,6 +1452,7 @@ void BKE_libblock_runtime_reset_remapping_status(ID *id)
   id->runtime.remap.skipped_refcounted = 0;
   id->runtime.remap.skipped_direct = 0;
   id->runtime.remap.skipped_indirect = 0;
+  id->runtime.remap.skipped_locked = 0;
 }
 
 /* ********** ID session-wise UID management. ********** */

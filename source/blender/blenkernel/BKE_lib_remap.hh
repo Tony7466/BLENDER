@@ -123,6 +123,8 @@ enum {
    * Use when original ID pointers values are (probably) not valid, e.g. during read-file process.
    */
   ID_REMAP_NO_ORIG_POINTERS_ACCESS = 1 << 20,
+  /** Similar to #ID_REMAP_SKIP_INDIRECT_USAGE but for locked local data-blocks. */
+  ID_REMAP_SKIP_LOCKED_USAGE = 1 << 21,
 };
 
 enum eIDRemapType {

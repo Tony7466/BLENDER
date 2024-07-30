@@ -58,6 +58,7 @@
 #include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_override.hh"
+#include "BKE_lib_remap.hh"
 #include "BKE_linestyle.h"
 #include "BKE_main.hh"
 #include "BKE_modifier.hh"
@@ -1062,10 +1063,8 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
       BLI_assert(!ID_IS_LOCKED(new_id));
       BKE_libblock_rename(bmain, new_id, name);
 
-      PointerRNA new_id_ptr = RNA_id_pointer_create(new_id);
-      BLI_assert(ID_IS_EDITABLE(template_ui->ptr.owner_id));
-      RNA_property_pointer_set(&template_ui->ptr, template_ui->prop, new_id_ptr, nullptr);
-      RNA_property_update(C, &template_ui->ptr, template_ui->prop);
+      BKE_libblock_remap(
+          bmain, id, new_id, ID_REMAP_SKIP_INDIRECT_USAGE | ID_REMAP_SKIP_LOCKED_USAGE);
 
       /* #BKE_id_copy added a user count. */
       id_us_min(new_id);

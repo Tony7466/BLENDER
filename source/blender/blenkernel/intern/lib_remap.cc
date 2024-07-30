@@ -74,6 +74,7 @@ static void foreach_libblock_remap_callback_skip(const ID * /*id_owner*/,
                                                  ID **id_ptr,
                                                  const int cb_flag,
                                                  const bool is_indirect,
+                                                 const bool is_locked,
                                                  const bool is_reference,
                                                  const bool violates_never_null,
                                                  const bool /*is_obj*/,
@@ -84,6 +85,9 @@ static void foreach_libblock_remap_callback_skip(const ID * /*id_owner*/,
 
   if (is_indirect) {
     id->runtime.remap.skipped_indirect++;
+  }
+  if (is_locked) {
+    id->runtime.remap.skipped_locked++;
   }
   else if (violates_never_null || is_obj_editmode || is_reference) {
     id->runtime.remap.skipped_direct++;
@@ -228,7 +232,9 @@ static int foreach_libblock_remap_callback(LibraryIDLinkCallbackData *cb_data)
 
   const bool is_reference = (cb_flag & IDWALK_CB_OVERRIDE_LIBRARY_REFERENCE) != 0;
   const bool is_indirect = (cb_flag & IDWALK_CB_INDIRECT_USAGE) != 0;
+  const bool is_locked = (cb_flag & IDWALK_CB_LOCKED_USAGE) != 0;
   const bool skip_indirect = (id_remap_data->flag & ID_REMAP_SKIP_INDIRECT_USAGE) != 0;
+  const bool skip_locked = (id_remap_data->flag & ID_REMAP_SKIP_LOCKED_USAGE) != 0;
   const bool is_obj = (GS(id_owner->name) == ID_OB);
   /* NOTE: Edit Mode is a 'skip direct' case, unless specifically requested, obdata should not be
    * remapped in this situation. */
@@ -269,12 +275,14 @@ static int foreach_libblock_remap_callback(LibraryIDLinkCallbackData *cb_data)
   if ((violates_never_null && skip_never_null) ||
       (is_obj_editmode && (((Object *)id_owner)->data == *id_p) &&
        (expected_mapping_result == ID_REMAP_RESULT_SOURCE_REMAPPED)) ||
-      (skip_indirect && is_indirect) || (is_reference && skip_reference))
+      (skip_indirect && is_indirect) || (skip_locked && is_locked) ||
+      (is_reference && skip_reference))
   {
     foreach_libblock_remap_callback_skip(id_owner,
                                          id_p,
                                          cb_flag,
                                          is_indirect,
+                                         is_locked,
                                          is_reference,
                                          violates_never_null,
                                          is_obj,
