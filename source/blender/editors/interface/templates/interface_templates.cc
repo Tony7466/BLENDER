@@ -1493,7 +1493,7 @@ static void template_ID(const bContext *C,
       }
     }
 
-    if ((ID_REAL_USERS(id) > 1) && (hide_buttons == false) && !ID_IS_LOCKED(id)) {
+    if ((ID_REAL_USERS(id) > 1) && (hide_buttons == false)) {
       char numstr[32];
       short numstr_len;
 
@@ -1544,7 +1544,8 @@ static void template_ID(const bContext *C,
                       UI_UNIT_Y,
                       nullptr);
       }
-      else if (!ELEM(GS(id->name), ID_GR, ID_SCE, ID_SCR, ID_OB, ID_WS) && (hide_buttons == false))
+      else if (!ELEM(GS(id->name), ID_GR, ID_SCE, ID_SCR, ID_OB, ID_WS) &&
+               (hide_buttons == false) && !ID_IS_LOCKED(id))
       {
         uiDefIconButR(block,
                       UI_BTYPE_ICON_TOGGLE,
