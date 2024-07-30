@@ -257,7 +257,9 @@ def draw_material_surface_settings(layout, mat, is_eevee=True):
         col = col.column(align=True)
 
     col.enabled = mat.displacement_method != 'BUMP'
-    col.prop(mat, "max_vertex_displacement", text="Max Distance" if is_eevee else "Max Displacement")
+    # Clarify that this is for displacement if the displacement method setting is not above.
+    max_diplacement_text = "Max Distance" if is_eevee else "Max Displacement"
+    col.prop(mat, "max_vertex_displacement", text=max_diplacement_text)
 
     if mat.displacement_method == 'DISPLACEMENT':
         layout.label(text="Unsupported displacement method", icon='ERROR')
