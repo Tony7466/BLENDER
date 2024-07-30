@@ -32,7 +32,7 @@
 #include "BKE_scene.hh"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -306,16 +306,6 @@ static void update_output_file(bNodeTree *ntree, bNode *node)
         BKE_ntree_update_tag_socket_property(ntree, sock);
       }
     }
-  }
-}
-
-static void node_gather_link_searches(GatherLinkSearchOpParams &params)
-{
-  if (params.in_out() == SOCK_IN) {
-    params.add_item(IFACE_("Image"), [](LinkSearchOpParams &params) {
-      bNode &node = params.add_node("CompositorNodeOutputFile");
-      params.update_and_connect_available_socket(node, "Image");
-    });
   }
 }
 
@@ -708,7 +698,7 @@ class FileOutputOperation : public NodeOperation {
   }
 
   /* Add Cryptomatte meta data to the file if they exist for the given result of the given layer
-   * name. We do not write any other other meta data for now. */
+   * name. We do not write any other meta data for now. */
   void add_meta_data_for_result(FileOutput &file_output, const Result &result, const char *name)
   {
     StringRef cryptomatte_layer_name = bke::cryptomatte::BKE_cryptomatte_extract_layer_name(name);
@@ -836,7 +826,6 @@ void register_node_type_cmp_output_file()
   blender::bke::node_type_storage(
       &ntype, "NodeImageMultiFile", file_ns::free_output_file, file_ns::copy_output_file);
   ntype.updatefunc = file_ns::update_output_file;
-  ntype.gather_link_search_ops = file_ns::node_gather_link_searches;
   ntype.get_compositor_operation = file_ns::get_compositor_operation;
 
   blender::bke::nodeRegisterType(&ntype);

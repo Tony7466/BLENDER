@@ -87,6 +87,18 @@ class ShapeCache {
 
   BatchPtr speaker;
 
+  BatchPtr ground_line;
+
+  BatchPtr light_icon_outer_lines;
+  BatchPtr light_icon_inner_lines;
+  BatchPtr light_icon_sun_rays;
+  BatchPtr light_point_lines;
+  BatchPtr light_sun_lines;
+  BatchPtr light_spot_lines;
+  BatchPtr light_area_disk_lines;
+  BatchPtr light_area_square_lines;
+  BatchPtr light_spot_volume;
+
   ShapeCache();
 };
 
@@ -121,6 +133,10 @@ class ShaderModule {
   ShaderPtr armature_sphere_outline;
   ShaderPtr depth_mesh;
   ShaderPtr extra_shape;
+  ShaderPtr extra_wire_object;
+  ShaderPtr extra_ground_line;
+  ShaderPtr lattice_points;
+  ShaderPtr lattice_wire;
 
   ShaderModule(const SelectionType selection_type, const bool clipping_enabled);
 
@@ -162,6 +178,7 @@ struct Resources : public select::SelectMap {
   TextureRef depth_in_front_tx;
   TextureRef color_overlay_tx;
   TextureRef color_render_tx;
+  TextureRef weight_ramp_tx;
 
   Resources(const SelectionType selection_type_, ShaderModule &shader_module)
       : select::SelectMap(selection_type_), shaders(shader_module){};
@@ -261,7 +278,7 @@ template<typename InstanceDataT> struct ShapeInstanceBuf : private select::Selec
     data_buf.append(data);
   }
 
-  void end_sync(PassSimple &pass, gpu::Batch *shape)
+  void end_sync(PassSimple::Sub &pass, gpu::Batch *shape)
   {
     if (data_buf.is_empty()) {
       return;

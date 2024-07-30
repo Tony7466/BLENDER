@@ -46,7 +46,7 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -165,7 +165,7 @@ enum ModSide {
  * \{ */
 
 static void wm_window_set_drawable(wmWindowManager *wm, wmWindow *win, bool activate);
-static bool wm_window_timers_process(const bContext *C, int *sleep_us);
+static bool wm_window_timers_process(const bContext *C, int *sleep_us_p);
 static uint8_t wm_ghost_modifier_query(const enum ModSide side);
 
 bool wm_get_screensize(int *r_width, int *r_height)
@@ -1093,7 +1093,7 @@ wmWindow *WM_window_open(bContext *C,
   }
 
   /* Refresh screen dimensions, after the effective window size is known. */
-  ED_screen_refresh(wm, win);
+  ED_screen_refresh(C, wm, win);
 
   if (win->ghostwin) {
     wm_window_raise(win);

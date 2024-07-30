@@ -358,7 +358,16 @@ static void versioning_eevee_material_shadow_none(Material *material)
   bNodeTree *ntree = material->nodetree;
 
   bNode *output_node = version_eevee_output_node_get(ntree, SH_NODE_OUTPUT_MATERIAL);
+  bNode *old_output_node = version_eevee_output_node_get(ntree, SH_NODE_OUTPUT_MATERIAL);
   if (output_node == nullptr) {
+    return;
+  }
+
+  bNodeSocket *existing_out_sock = blender::bke::nodeFindSocket(output_node, SOCK_IN, "Surface");
+  bNodeSocket *volume_sock = blender::bke::nodeFindSocket(output_node, SOCK_IN, "Volume");
+  if (existing_out_sock->link == nullptr && volume_sock->link) {
+    /* Don't apply versioning to a material that only has a volumetric input as this makes the
+     * object surface opaque to the camera, hiding the volume inside. */
     return;
   }
 
@@ -381,7 +390,7 @@ static void versioning_eevee_material_shadow_none(Material *material)
       }
     };
 
-    copy_link("Surface");
+    /* Don't copy surface as that is handled later */
     copy_link("Volume");
     copy_link("Displacement");
     copy_link("Thickness");
@@ -390,13 +399,9 @@ static void versioning_eevee_material_shadow_none(Material *material)
   }
 
   bNodeSocket *out_sock = blender::bke::nodeFindSocket(output_node, SOCK_IN, "Surface");
-  bNodeSocket *volume_sock = blender::bke::nodeFindSocket(output_node, SOCK_IN, "Volume");
-  if (out_sock->link == nullptr && volume_sock->link) {
-    /* Don't apply versioning to a material that only has a volumetric input as this makes the
-     * object surface opaque to the camera, hiding the volume inside. */
-    return;
-  }
+  bNodeSocket *old_out_sock = blender::bke::nodeFindSocket(old_output_node, SOCK_IN, "Surface");
 
+  /* Add mix node for mixing between original material, and transparent BSDF for shadows */
   bNode *mix_node = blender::bke::nodeAddNode(nullptr, ntree, "ShaderNodeMixShader");
   STRNCPY(mix_node->label, "Disable Shadow");
   mix_node->flag |= NODE_HIDDEN;
@@ -407,13 +412,16 @@ static void versioning_eevee_material_shadow_none(Material *material)
   bNodeSocket *mix_in_1 = static_cast<bNodeSocket *>(BLI_findlink(&mix_node->inputs, 1));
   bNodeSocket *mix_in_2 = static_cast<bNodeSocket *>(BLI_findlink(&mix_node->inputs, 2));
   bNodeSocket *mix_out = static_cast<bNodeSocket *>(BLI_findlink(&mix_node->outputs, 0));
-  if (out_sock->link != nullptr) {
+  if (old_out_sock->link != nullptr) {
     blender::bke::nodeAddLink(
-        ntree, out_sock->link->fromnode, out_sock->link->fromsock, mix_node, mix_in_1);
-    blender::bke::nodeRemLink(ntree, out_sock->link);
+        ntree, old_out_sock->link->fromnode, old_out_sock->link->fromsock, mix_node, mix_in_1);
+    if (out_sock->link != nullptr) {
+      blender::bke::nodeRemLink(ntree, out_sock->link);
+    }
   }
   blender::bke::nodeAddLink(ntree, mix_node, mix_out, output_node, out_sock);
 
+  /* Add light path node to control shadow visibility */
   bNode *lp_node = blender::bke::nodeAddNode(nullptr, ntree, "ShaderNodeLightPath");
   lp_node->flag |= NODE_HIDDEN;
   lp_node->parent = output_node->parent;
@@ -428,6 +436,7 @@ static void versioning_eevee_material_shadow_none(Material *material)
     }
   }
 
+  /* Add transparent BSDF to make shadows transparent. */
   bNode *bsdf_node = blender::bke::nodeAddNode(nullptr, ntree, "ShaderNodeBsdfTransparent");
   bsdf_node->flag |= NODE_HIDDEN;
   bsdf_node->parent = output_node->parent;
@@ -4154,7 +4163,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         IDProperty *clight = version_cycles_properties_from_ID(&light->id);
         if (clight) {
           bool value = version_cycles_property_boolean(
-              clight, "use_shadow", default_light->mode & LA_SHADOW);
+              clight, "cast_shadow", default_light->mode & LA_SHADOW);
           SET_FLAG_FROM_TEST(light->mode, value, LA_SHADOW);
         }
       }
@@ -4401,6 +4410,39 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 9)) {
     fix_built_in_curve_attribute_defaults(bmain);
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 10)) {
+    /* Initialize Color Balance node white point settings. */
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type != NTREE_CUSTOM) {
+        LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+          if (node->type == CMP_NODE_COLORBALANCE) {
+            NodeColorBalance *n = static_cast<NodeColorBalance *>(node->storage);
+            n->input_temperature = n->output_temperature = 6500.0f;
+            n->input_tint = n->output_tint = 10.0f;
+          }
+        }
+      }
+    }
+    FOREACH_NODETREE_END;
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 11)) {
+    LISTBASE_FOREACH (Curves *, curves, &bmain->hair_curves) {
+      curves->geometry.attributes_active_index = curves->attributes_active_index_legacy;
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 13)) {
+    Camera default_cam = *DNA_struct_default_get(Camera);
+    LISTBASE_FOREACH (Camera *, camera, &bmain->cameras) {
+      camera->central_cylindrical_range_u_min = default_cam.central_cylindrical_range_u_min;
+      camera->central_cylindrical_range_u_max = default_cam.central_cylindrical_range_u_max;
+      camera->central_cylindrical_range_v_min = default_cam.central_cylindrical_range_v_min;
+      camera->central_cylindrical_range_v_max = default_cam.central_cylindrical_range_v_max;
+      camera->central_cylindrical_radius = default_cam.central_cylindrical_radius;
+    }
   }
 
   /**
