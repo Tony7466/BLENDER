@@ -37,6 +37,7 @@
 #include "RNA_prototypes.hh"
 
 #include "SEQ_add.hh"
+#include "SEQ_connect.hh"
 #include "SEQ_effects.hh"
 #include "SEQ_proxy.hh"
 #include "SEQ_select.hh"
@@ -895,8 +896,7 @@ static void sequencer_add_movie_multiple_strips(bContext *C,
       }
 
       if (RNA_boolean_get(op->ptr, "connect_strips")) {
-        BLI_addtail(&seq_movie->connected, seq_sound);
-        BLI_addtail(&seq_sound->connected, seq_movie);
+        SEQ_connect_pair(seq_movie, seq_sound);
       }
 
       r_movie_strips.add(seq_movie);
@@ -967,8 +967,7 @@ static bool sequencer_add_movie_single_strip(bContext *C,
   }
 
   if (RNA_boolean_get(op->ptr, "connect_strips")) {
-    BLI_addtail(&seq_movie->connected, seq_sound);
-    BLI_addtail(&seq_sound->connected, seq_movie);
+    SEQ_connect_pair(seq_movie, seq_sound);
   }
 
   r_movie_strips.add(seq_movie);

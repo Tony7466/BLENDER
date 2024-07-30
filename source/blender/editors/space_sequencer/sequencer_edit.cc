@@ -30,6 +30,7 @@
 #include "SEQ_add.hh"
 #include "SEQ_animation.hh"
 #include "SEQ_channels.hh"
+#include "SEQ_connect.hh"
 #include "SEQ_edit.hh"
 #include "SEQ_effects.hh"
 #include "SEQ_iterator.hh"
@@ -1022,23 +1023,47 @@ void SEQUENCER_OT_unlock(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Disconnect Strips Operator
+/** \name Connect Strips Operator
  * \{ */
 
-/* Returns false if the strip was not already connected. */
-static bool seq_disconnect(Sequence *seq)
+static int sequencer_connect_exec(bContext *C, wmOperator * /*op*/)
 {
-  if (BLI_listbase_is_empty(&seq->connected)) {
-    return false;
+  Scene *scene = CTX_data_scene(C);
+  Editing *ed = SEQ_editing_get(scene);
+  ListBase *active_seqbase = SEQ_active_seqbase_get(ed);
+
+  blender::VectorSet<Sequence *> selected = SEQ_query_selected_strips(active_seqbase);
+
+  if (selected.is_empty()) {
+    return OPERATOR_CANCELLED;
   }
 
-  LISTBASE_FOREACH (Sequence *, co, &seq->connected) {
-    BLI_remlink(&co->connected, seq);
-  }
-  BLI_listbase_clear(&seq->connected);
+  SEQ_connect_multiple(selected);
 
-  return true;
+  WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
+  return OPERATOR_FINISHED;
 }
+
+void SEQUENCER_OT_connect(wmOperatorType *ot)
+{
+  /* Identifiers. */
+  ot->name = "Connect Strips";
+  ot->idname = "SEQUENCER_OT_connect";
+  ot->description = "Connect strips so that they are selected together";
+
+  /* Api callbacks. */
+  ot->exec = sequencer_connect_exec;
+  ot->poll = sequencer_edit_poll;
+
+  /* Flags. */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Disconnect Strips Operator
+ * \{ */
 
 static int sequencer_disconnect_exec(bContext *C, wmOperator * /*op*/)
 {
@@ -1048,11 +1073,9 @@ static int sequencer_disconnect_exec(bContext *C, wmOperator * /*op*/)
   bool changed = false;
   LISTBASE_FOREACH (Sequence *, seq, ed->seqbasep) {
     if (seq->flag & SELECT) {
-      changed |= seq_disconnect(seq);
+      changed |= SEQ_disconnect(seq);
     }
   }
-
-  WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
 
   if (changed) {
     WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
@@ -1072,54 +1095,6 @@ void SEQUENCER_OT_disconnect(wmOperatorType *ot)
 
   /* Api callbacks. */
   ot->exec = sequencer_disconnect_exec;
-  ot->poll = sequencer_edit_poll;
-
-  /* Flags. */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Connect Strips Operator
- * \{ */
-
-static int sequencer_connect_exec(bContext *C, wmOperator * /*op*/)
-{
-  Scene *scene = CTX_data_scene(C);
-  Editing *ed = SEQ_editing_get(scene);
-  ListBase *active_seqbase = SEQ_active_seqbase_get(ed);
-
-  blender::VectorSet<Sequence *> selected = SEQ_query_selected_strips(active_seqbase);
-
-  if (selected.is_empty()) {
-    return OPERATOR_CANCELLED;
-  }
-
-  for (Sequence *seq1 : selected) {
-    /* Remove any existing connections. */
-    seq_disconnect(seq1);
-
-    for (Sequence *seq2 : selected) {
-      if (seq2 == seq1) {
-        continue;
-      }
-      BLI_addtail(&seq1->connected, seq2);
-    }
-  }
-  WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
-  return OPERATOR_FINISHED;
-}
-
-void SEQUENCER_OT_connect(wmOperatorType *ot)
-{
-  /* Identifiers. */
-  ot->name = "Connect Strips";
-  ot->idname = "SEQUENCER_OT_connect";
-  ot->description = "Connect strips so that they are selected together";
-
-  /* Api callbacks. */
-  ot->exec = sequencer_connect_exec;
   ot->poll = sequencer_edit_poll;
 
   /* Flags. */

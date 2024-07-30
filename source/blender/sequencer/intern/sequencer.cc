@@ -32,6 +32,7 @@
 #include "IMB_imbuf.hh"
 
 #include "SEQ_channels.hh"
+#include "SEQ_connect.hh"
 #include "SEQ_edit.hh"
 #include "SEQ_effects.hh"
 #include "SEQ_iterator.hh"
@@ -226,6 +227,10 @@ static void seq_sequence_free_ex(Scene *scene,
     SEQ_channels_free(&seq->channels);
   }
 
+  if (SEQ_is_strip_connected(seq)) {
+    SEQ_disconnect(seq);
+  }
+
   if (seq->retiming_keys != nullptr) {
     MEM_freeN(seq->retiming_keys);
     seq->retiming_keys = nullptr;
@@ -325,10 +330,10 @@ static void seq_new_fix_links_recursive(Sequence *seq)
     }
   }
 
-  if (seq->connected.first) {
-    LISTBASE_FOREACH (Sequence *, old, &seq->connected) {
-      if (old->tmp) {
-        BLI_insertlinkreplace(&seq->connected, old, static_cast<Sequence *>(old->tmp));
+  if (SEQ_is_strip_connected(seq)) {
+    LISTBASE_FOREACH (SeqConnection *, con, &seq->connections) {
+      if (con->seq_ref->tmp) {
+        con->seq_ref = static_cast<Sequence *>(con->seq_ref->tmp);
       }
     }
   }
@@ -531,6 +536,10 @@ static Sequence *seq_dupli(const Scene *scene_src,
     BLI_listbase_clear(&seqn->modifiers);
 
     SEQ_modifier_list_copy(seqn, seq);
+  }
+
+  if (SEQ_is_strip_connected(seq)) {
+    SEQ_connections_duplicate(&seqn->connections, &seq->connections);
   }
 
   if (seq->type == SEQ_TYPE_META) {
