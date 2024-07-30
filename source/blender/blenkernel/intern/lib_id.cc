@@ -1057,6 +1057,8 @@ bool id_single_user(bContext *C, ID *id, PointerRNA *ptr, PropertyRNA *prop)
       /* copy animation actions too */
       newid = BKE_id_copy_ex(bmain, id, nullptr, LIB_ID_COPY_DEFAULT | LIB_ID_COPY_ACTIONS);
       if (newid != nullptr) {
+        BKE_libblock_rename(bmain, newid, BKE_id_ui_name_get(*id));
+
         /* us is 1 by convention with new IDs, but RNA_property_pointer_set
          * will also increment it, decrement it here. */
         id_us_min(newid);
