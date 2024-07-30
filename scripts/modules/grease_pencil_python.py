@@ -33,19 +33,27 @@ class AttributeGetterSetter:
         else:
             raise Exception(f"Could not create attribute {name} of type {type}")
 
-# Creates a property that can read and write an attribute
+
 def def_prop_for_attribute(attr_name, type, doc):
-    # Define getter callback for property
+    """
+    Creates a property that can read and write an attribute.
+    """
+
     def fget(self):
+        # Define getter callback for property
         return self._get_attribute(attr_name, type)
-    # Define setter callback for property
+
     def fset(self, value):
+        # Define setter callback for property
         self._set_attribute(attr_name, type, value)
     prop = property(fget=fget, fset=fset, doc=doc)
     return prop
 
-# A class decorator that reads a list of attribute infos and creates properties on the class with getters and setters
+
 def DefAttributeGetterSetters(attributes_list):
+    """
+    A class decorator that reads a list of attribute infos and creates properties on the class with getters and setters.
+    """
     def wrapper(cls):
         for prop_name, attr_name, type, doc in attributes_list:
             prop = def_prop_for_attribute(attr_name, type, doc)
@@ -113,7 +121,7 @@ class GreasePencilStroke(AttributeGetterSetter):
                 point) for point in range(
                 self._points_start_index,
                 self._points_end_index)]
-    
+
     def add_points(self, count):
         """
         Add new points at the end of the stroke and returns the new points as a list.
@@ -129,7 +137,6 @@ class GreasePencilStroke(AttributeGetterSetter):
                 previous_end,
                 self._points_end_index)]
 
-
     def remove_points(self, count):
         """
         Remove points at the end of the stroke.
@@ -140,4 +147,3 @@ class GreasePencilStroke(AttributeGetterSetter):
             new_size = 1
         self._drawing.resize_curves(sizes=[new_size], indices=[self._curve_index])
         self._points_end_index = self._points_start_index + new_size
-
