@@ -1697,7 +1697,8 @@ static void switch_endian_structs(const SDNA *filesdna, BHead *bhead)
   char *data;
 
   data = (char *)(bhead + 1);
-  blocksize = filesdna->types_size[filesdna->structs[bhead->SDNAnr]->type];
+
+  blocksize = DNA_struct_size(filesdna, bhead->SDNAnr);
 
   nblocks = bhead->nr;
   while (nblocks--) {
@@ -1730,7 +1731,7 @@ static const char *get_alloc_name(FileData *fd,
   constexpr std::string_view STORAGE_ID = "readfile";
 
   /* NOTE: This is thread_local storage, so as long as the handling of a same FileData is not
-   * spread accross threads (which is not supported at all currently), this is thread-safe. */
+   * spread across threads (which is not supported at all currently), this is thread-safe. */
   if (!fd->storage_handle) {
     fd->storage_handle = &intern::memutil::alloc_string_storage_get<keyT, blender::DefaultHash>(
         std::string(STORAGE_ID));
@@ -2466,26 +2467,6 @@ static BHead *read_data_into_datamap(FileData *fd,
   bhead = blo_bhead_next(fd, bhead);
 
   while (bhead && bhead->code == BLO_CODE_DATA) {
-    /* The code below is useful for debugging leaks in data read from the blend file.
-     * Without this the messages only tell us what ID-type the memory came from,
-     * eg: `Data from OB len 64`, see #dataname.
-     * With the code below we get the struct-name to help tracking down the leak.
-     * This is kept disabled as the #malloc for the text always leaks memory. */
-#if 0
-    if (bhead->SDNAnr == 0) {
-      /* The data type here is unclear because #writedata sets SDNAnr to 0. */
-      allocname = "likely raw data";
-    }
-    else {
-      SDNA_Struct *sp = fd->filesdna->structs[bhead->SDNAnr];
-      allocname = fd->filesdna->types[sp->type];
-      size_t allocname_size = strlen(allocname) + 1;
-      char *allocname_buf = static_cast<char *>(malloc(allocname_size));
-      memcpy(allocname_buf, allocname, allocname_size);
-      allocname = allocname_buf;
-    }
-#endif
-
     void *data = read_struct(fd, bhead, allocname, id_type_index);
     if (data) {
       const bool is_new = oldnewmap_insert(fd->datamap, bhead->old, data, 0);
