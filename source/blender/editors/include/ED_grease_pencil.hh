@@ -320,11 +320,11 @@ IndexMask retrieve_visible_points(Object &object,
 
 IndexMask retrieve_visible_bezier_handle_points(Object &object,
                                                 const bke::greasepencil::Drawing &drawing,
-                                                const int layer_index,
+                                                int layer_index,
                                                 IndexMaskMemory &memory);
 IndexMask retrieve_visible_bezier_handle_elements(Object &object,
                                                   const bke::greasepencil::Drawing &drawing,
-                                                  const int layer_index,
+                                                  int layer_index,
                                                   bke::AttrDomain selection_domain,
                                                   IndexMaskMemory &memory);
 
