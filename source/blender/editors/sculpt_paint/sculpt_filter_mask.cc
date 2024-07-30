@@ -256,23 +256,41 @@ static void decrease_contrast_mask_mesh(const Object &object,
   BKE_pbvh_node_mark_update_mask(&node);
 }
 
+BLI_NOINLINE void copy_old_hidden_mask_grids(const SubdivCCG &subdiv_ccg,
+                                             const Span<int> grids,
+                                             const MutableSpan<float> new_mask)
+{
+  const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
+  if (subdiv_ccg.grid_hidden.is_empty()) {
+    return;
+  }
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+  const Span<CCGElem *> elems = subdiv_ccg.grids;
+  for (const int i : grids.index_range()) {
+    const int node_verts_start = i * key.grid_area;
+    CCGElem *elem = elems[grids[i]];
+    bits::foreach_1_index(grid_hidden[grids[i]], [&](const int offset) {
+      new_mask[node_verts_start + offset] = CCG_elem_offset_mask(key, elem, offset);
+    });
+  }
+}
+
 static void apply_new_mask_grids(Object &object,
-                                 const Span<bool> hide_vert,
                                  const Span<bke::pbvh::Node *> nodes,
                                  const OffsetIndices<int> node_verts,
-                                 const Span<float> new_mask,
-                                 MutableSpan<float> mask)
+                                 const Span<float> new_mask)
 {
   SculptSession &ss = *object.sculpt;
   SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+  const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
 
   threading::EnumerableThreadSpecific<Vector<int>> all_tls;
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     Vector<int> &tls = all_tls.local();
     threading::isolate_task([&]() {
       for (const int i : range) {
-        const Span<int> grids = hide::node_visible_verts(*nodes[i], hide_vert, tls);
+        const Span<int> grids = bke::pbvh::node_grid_indices(*nodes[i]);
         const Span<float> new_node_mask = new_mask.slice(node_verts[i]);
         if (grid_mask_equals_array(subdiv_ccg.grids, key, grids, new_node_mask)) {
           return;
@@ -292,6 +310,7 @@ static void smooth_mask_grids(const SubdivCCG &subdiv_ccg,
 {
   const Span<int> grids = bke::pbvh::node_grid_indices(node);
   average_neighbor_mask_grids(subdiv_ccg, bke::pbvh::node_grid_indices(node), new_mask);
+  copy_old_hidden_mask_grids(subdiv_ccg, grids, new_mask);
 }
 
 static void sharpen_mask_grids(const SubdivCCG &subdiv_ccg,
@@ -311,6 +330,8 @@ static void sharpen_mask_grids(const SubdivCCG &subdiv_ccg,
   average_neighbor_mask_grids(subdiv_ccg, grids, new_mask);
 
   sharpen_masks(node_mask, new_mask);
+
+  copy_old_hidden_mask_grids(subdiv_ccg, grids, new_mask);
 }
 
 static void grow_mask_grids(const SubdivCCG &subdiv_ccg,
@@ -319,16 +340,35 @@ static void grow_mask_grids(const SubdivCCG &subdiv_ccg,
                             MutableSpan<float> new_mask)
 {
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+  const Span<CCGElem *> elems = subdiv_ccg.grids;
 
   const Span<int> grids = bke::pbvh::node_grid_indices(node);
   const int grid_verts_num = grids.size() * key.grid_area;
 
   for (const int i : grids.index_range()) {
-    new_mask[i] = 0.0f;
-    for (const int neighbor : neighbors[i]) {
-      new_mask[i] = std::max(mask[neighbor], new_mask[i]);
+    const int grid = grids[i];
+    CCGElem *elem = elems[grid];
+    const int node_verts_start = i * key.grid_area;
+
+    for (const int y : IndexRange(key.grid_size)) {
+      for (const int x : IndexRange(key.grid_size)) {
+        const int offset = CCG_grid_xy_to_index(key.grid_size, x, y);
+        const int node_vert_index = node_verts_start + offset;
+
+        SubdivCCGNeighbors neighbors;
+        SubdivCCGCoord coord{grid, x, y};
+        BKE_subdiv_ccg_neighbor_coords_get(subdiv_ccg, coord, false, neighbors);
+
+        float value = 0.0f;
+        for (const SubdivCCGCoord neighbor : neighbors.coords) {
+          value = std::max(CCG_grid_elem_mask(key, elem, x, y), value);
+        }
+        new_mask[node_vert_index] = value;
+      }
     }
   }
+
+  copy_old_hidden_mask_grids(subdiv_ccg, grids, new_mask);
 }
 
 static void shrink_mask_grids(const SubdivCCG &subdiv_ccg,
@@ -337,23 +377,40 @@ static void shrink_mask_grids(const SubdivCCG &subdiv_ccg,
                               MutableSpan<float> new_mask)
 {
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+  const Span<CCGElem *> elems = subdiv_ccg.grids;
 
   const Span<int> grids = bke::pbvh::node_grid_indices(node);
   const int grid_verts_num = grids.size() * key.grid_area;
 
   for (const int i : grids.index_range()) {
-    new_mask[i] = 1.0f;
-    for (const int neighbor : neighbors[i]) {
-      new_mask[i] = std::min(mask[neighbor], new_mask[i]);
+    const int grid = grids[i];
+    CCGElem *elem = elems[grid];
+    const int node_verts_start = i * key.grid_area;
+
+    for (const int y : IndexRange(key.grid_size)) {
+      for (const int x : IndexRange(key.grid_size)) {
+        const int offset = CCG_grid_xy_to_index(key.grid_size, x, y);
+        const int node_vert_index = node_verts_start + offset;
+
+        SubdivCCGNeighbors neighbors;
+        SubdivCCGCoord coord{grid, x, y};
+        BKE_subdiv_ccg_neighbor_coords_get(subdiv_ccg, coord, false, neighbors);
+
+        float value = 1.0f;
+        for (const SubdivCCGCoord neighbor : neighbors.coords) {
+          value = std::min(CCG_grid_elem_mask(key, elem, x, y), value);
+        }
+        new_mask[node_vert_index] = value;
+      }
     }
   }
+
+  copy_old_hidden_mask_grids(subdiv_ccg, grids, new_mask);
 }
 
 static void increase_contrast_mask_grids(const Object &object,
-                                         const Span<bool> hide_vert,
                                          bke::pbvh::Node &node,
-                                         FilterLocalData &tls,
-                                         MutableSpan<float> mask)
+                                         FilterLocalData &tls)
 {
   SculptSession &ss = *object.sculpt;
   SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
@@ -370,6 +427,8 @@ static void increase_contrast_mask_grids(const Object &object,
   const MutableSpan<float> new_mask = tls.new_mask;
   mask_increase_contrast(node_mask, new_mask);
 
+  copy_old_hidden_mask_grids(subdiv_ccg, grids, new_mask);
+
   if (node_mask.as_span() == new_mask.as_span()) {
     return;
   }
@@ -380,10 +439,8 @@ static void increase_contrast_mask_grids(const Object &object,
 }
 
 static void decrease_contrast_mask_grids(const Object &object,
-                                         const Span<bool> hide_vert,
                                          bke::pbvh::Node &node,
-                                         FilterLocalData &tls,
-                                         MutableSpan<float> mask)
+                                         FilterLocalData &tls)
 {
   SculptSession &ss = *object.sculpt;
   SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
@@ -399,6 +456,8 @@ static void decrease_contrast_mask_grids(const Object &object,
   tls.new_mask.reinitialize(grid_verts_num);
   const MutableSpan<float> new_mask = tls.new_mask;
   mask_decrease_contrast(node_mask, new_mask);
+
+  copy_old_hidden_mask_grids(subdiv_ccg, grids, new_mask);
 
   if (node_mask.as_span() == new_mask.as_span()) {
     return;
@@ -432,7 +491,6 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
 
   Vector<bke::pbvh::Node *> nodes = bke::pbvh::search_gather(pbvh, {});
   undo::push_begin(ob, op);
-  undo::push_nodes(ob, nodes, undo::Type::Mask);
 
   int iterations = RNA_int_get(op->ptr, "iterations");
 
@@ -578,7 +636,7 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
                                   new_masks.as_mutable_span().slice(node_offsets[i]));
               }
             });
-            apply_new_mask_grids(ob, hide_vert, nodes, node_offsets, new_masks, mask.span);
+            apply_new_mask_grids(ob, nodes, node_offsets, new_masks);
             break;
           }
           case FilterType::Sharpen: {
@@ -591,36 +649,40 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
                                    new_masks.as_mutable_span().slice(node_offsets[i]));
               }
             });
-            apply_new_mask_grids(ob, hide_vert, nodes, node_offsets, new_masks, mask.span);
+            apply_new_mask_grids(ob, nodes, node_offsets, new_masks);
             break;
           }
           case FilterType::Grow: {
             threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
               FilterLocalData &tls = all_tls.local();
               for (const int i : range) {
-                grow_mask_grids(
-                    *nodes[i], tls, new_masks.as_mutable_span().slice(node_offsets[i]));
+                grow_mask_grids(subdiv_ccg,
+                                *nodes[i],
+                                tls,
+                                new_masks.as_mutable_span().slice(node_offsets[i]));
               }
             });
-            apply_new_mask_grids(ob, hide_vert, nodes, node_offsets, new_masks, mask.span);
+            apply_new_mask_grids(ob, nodes, node_offsets, new_masks);
             break;
           }
           case FilterType::Shrink: {
             threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
               FilterLocalData &tls = all_tls.local();
               for (const int i : range) {
-                shrink_mask_grids(
-                    *nodes[i], tls, new_masks.as_mutable_span().slice(node_offsets[i]));
+                shrink_mask_grids(subdiv_ccg,
+                                  *nodes[i],
+                                  tls,
+                                  new_masks.as_mutable_span().slice(node_offsets[i]));
               }
             });
-            apply_new_mask_grids(ob, hide_vert, nodes, node_offsets, new_masks, mask.span);
+            apply_new_mask_grids(ob, nodes, node_offsets, new_masks);
             break;
           }
           case FilterType::ContrastIncrease: {
             threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
               FilterLocalData &tls = all_tls.local();
               for (const int i : range) {
-                increase_contrast_mask_grids(ob, hide_vert, *nodes[i], tls, mask.span);
+                increase_contrast_mask_grids(ob, *nodes[i], tls);
               }
             });
             break;
@@ -629,7 +691,7 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
             threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
               FilterLocalData &tls = all_tls.local();
               for (const int i : range) {
-                decrease_contrast_mask_grids(ob, hide_vert, *nodes[i], tls, mask.span);
+                decrease_contrast_mask_grids(ob, *nodes[i], tls);
               }
             });
             break;
