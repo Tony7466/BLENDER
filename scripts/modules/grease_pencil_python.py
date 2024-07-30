@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-# Helper class to get and set attributes at an index
+# Helper class to get and set attributes at an index for a domain
 class AttributeGetterSetter:
     def __init__(self, attributes, index, domain):
         self._attributes = attributes
@@ -33,7 +33,7 @@ class AttributeGetterSetter:
         else:
             raise Exception(f"Could not create attribute {name} of type {type}")
 
-
+# Creates a property that can read and write an attribute
 def def_prop_for_attribute(attr_name, type, doc):
     # Define getter callback for property
     def fget(self):
@@ -44,7 +44,7 @@ def def_prop_for_attribute(attr_name, type, doc):
     prop = property(fget=fget, fset=fset, doc=doc)
     return prop
 
-
+# A class decorator that reads a list of attribute infos and creates properties on the class with getters and setters
 def DefAttributeGetterSetters(attributes_list):
     def wrapper(cls):
         for prop_name, attr_name, type, doc in attributes_list:
@@ -54,7 +54,8 @@ def DefAttributeGetterSetters(attributes_list):
     return wrapper
 
 
-@DefAttributeGetterSetters(attributes_list=[
+# Define the list of attributes that should be exposed as read/write properties on the class.
+@DefAttributeGetterSetters([
     # Property Name, Attribute Name, Type, Docstring
     ('position', 'position', 'FLOAT_VECTOR', "The position of the point (in local space)."),
     ('radius', 'radius', 'FLOAT', "The radius of the point."),
@@ -72,11 +73,10 @@ class GreasePencilStrokePoint(AttributeGetterSetter):
 
     def __init__(self, drawing, point_index):
         super().__init__(drawing.attributes, point_index, 'POINT')
-        self._drawing = drawing
-        self._point_index = point_index
 
 
-@DefAttributeGetterSetters(attributes_list=[
+# Define the list of attributes that should be exposed as read/write properties on the class.
+@DefAttributeGetterSetters([
     # Property Name, Attribute Name, Type, Docstring
     ('cyclic', 'cyclic', 'BOOLEAN', "The closed state for this stroke."),
     ('material_index', 'material_index', 'INT', "The index of the material for this stroke."),
@@ -98,12 +98,14 @@ class GreasePencilStroke(AttributeGetterSetter):
     def __init__(self, drawing, curve_index, points_start_index, points_end_index):
         super().__init__(drawing.attributes, curve_index, 'CURVE')
         self._drawing = drawing
-        self._curve_index = curve_index
         self._points_start_index = points_start_index
         self._points_end_index = points_end_index
 
     @property
     def points(self):
+        """
+        Return a list of points in the stroke.
+        """
         return [
             GreasePencilStrokePoint(
                 self._drawing,
