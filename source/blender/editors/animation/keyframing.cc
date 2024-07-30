@@ -711,50 +711,73 @@ void ANIM_OT_keyframe_delete_by_name(wmOperatorType *ot)
  * it is more useful for animators working in the 3D view.
  */
 
+/* While in pose mode, the selection of bones has to be considered. */
+static bool can_delete_fcurve(FCurve *fcu, Object *ob)
+{
+  bool can_delete = false;
+  /* in pose mode, only delete the F-Curve if it belongs to a selected bone */
+  if (ob->mode & OB_MODE_POSE) {
+    if (fcu->rna_path) {
+      /* Get bone-name, and check if this bone is selected. */
+      bPoseChannel *pchan = nullptr;
+      char bone_name[sizeof(pchan->name)];
+      if (BLI_str_quoted_substr(fcu->rna_path, "pose.bones[", bone_name, sizeof(bone_name))) {
+        pchan = BKE_pose_channel_find_name(ob->pose, bone_name);
+        /* Delete if bone is selected. */
+        if ((pchan) && (pchan->bone)) {
+          if (pchan->bone->flag & BONE_SELECTED) {
+            can_delete = true;
+          }
+        }
+      }
+    }
+  }
+  else {
+    /* object mode - all of Object's F-Curves are affected */
+    /* TODO: this logic isn't solid. Only delete FCurves of the object, not of bones in this case.
+     */
+    can_delete = true;
+  }
+
+  return can_delete;
+}
+
 static int clear_anim_v3d_exec(bContext *C, wmOperator * /*op*/)
 {
+  using namespace blender::animrig;
   bool changed = false;
 
   CTX_DATA_BEGIN (C, Object *, ob, selected_objects) {
     /* just those in active action... */
     if ((ob->adt) && (ob->adt->action)) {
       AnimData *adt = ob->adt;
-      bAction *act = adt->action;
+      bAction *dna_action = adt->action;
       FCurve *fcu, *fcn;
 
-      for (fcu = static_cast<FCurve *>(act->curves.first); fcu; fcu = fcn) {
-        bool can_delete = false;
-
-        fcn = fcu->next;
-
-        /* in pose mode, only delete the F-Curve if it belongs to a selected bone */
-        if (ob->mode & OB_MODE_POSE) {
-          if (fcu->rna_path) {
-            /* Get bone-name, and check if this bone is selected. */
-            bPoseChannel *pchan = nullptr;
-            char bone_name[sizeof(pchan->name)];
-            if (BLI_str_quoted_substr(fcu->rna_path, "pose.bones[", bone_name, sizeof(bone_name)))
-            {
-              pchan = BKE_pose_channel_find_name(ob->pose, bone_name);
-              /* Delete if bone is selected. */
-              if ((pchan) && (pchan->bone)) {
-                if (pchan->bone->flag & BONE_SELECTED) {
-                  can_delete = true;
-                }
-              }
-            }
+      Action &action = dna_action->wrap();
+      if (action.is_action_layered()) {
+        ActionFCurveIterator it(action, adt->slot_handle);
+        blender::Vector<std::pair<blender::animrig::ChannelBag *, FCurve *>> fcurves_to_delete;
+        while (*it) {
+          if (can_delete_fcurve(*it, ob)) {
+            fcurves_to_delete.append(std::pair<blender::animrig::ChannelBag *, FCurve *>(
+                it.get_current_channel_bag(), *it));
           }
+          ++it;
         }
-        else {
-          /* object mode - all of Object's F-Curves are affected */
-          can_delete = true;
+        for (auto &asd : fcurves_to_delete) {
+          asd.first->fcurve_remove(*asd.second);
         }
-
-        /* delete F-Curve completely */
-        if (can_delete) {
-          blender::animrig::animdata_fcurve_delete(nullptr, adt, fcu);
-          DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM);
-          changed = true;
+      }
+      else {
+        for (fcu = static_cast<FCurve *>(dna_action->curves.first); fcu; fcu = fcn) {
+          fcn = fcu->next;
+          /* delete F-Curve completely */
+          if (can_delete_fcurve(fcu, ob)) {
+            blender::animrig::animdata_fcurve_delete(nullptr, adt, fcu);
+            DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM);
+            changed = true;
+          }
         }
       }
 
