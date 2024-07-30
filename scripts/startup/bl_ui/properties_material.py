@@ -244,18 +244,18 @@ class EEVEE_MATERIAL_PT_thickness(MaterialButtonsPanel, Panel):
         panel_node_draw(layout, mat.node_tree, 'OUTPUT_MATERIAL', "Thickness")
 
 
-def draw_material_surface_settings(layout, mat, is_eevee = True):
+def draw_material_surface_settings(layout, mat, is_eevee=True):
     col = layout.column(heading="Backface Culling")
     col.prop(mat, "use_backface_culling", text="Camera")
     col.prop(mat, "use_backface_culling_shadow", text="Shadow")
     col.prop(mat, "use_backface_culling_lightprobe_volume", text="Light Probe Volume")
 
     col = layout.column(align=True)
-    
+
     if is_eevee:
         col.prop(mat, "displacement_method", text="Displacement")
         col = col.column(align=True)
-    
+
     col.enabled = mat.displacement_method != 'BUMP'
     col.prop(mat, "max_vertex_displacement", text="Max Distance" if is_eevee else "Max Displacement")
 
@@ -278,7 +278,7 @@ def draw_material_surface_settings(layout, mat, is_eevee = True):
         col.prop(mat, "use_thickness_from_shadow", text="From Shadow")
 
 
-def draw_material_volume_settings(layout, mat, is_eevee = True):
+def draw_material_volume_settings(layout, mat, is_eevee=True):
     layout.prop(mat, "volume_intersection_method", text="Intersection" if is_eevee else "Volume Intersection")
 
 
