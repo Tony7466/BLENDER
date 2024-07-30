@@ -309,6 +309,20 @@ bool mask_equals_array_grids(const Span<CCGElem *> elems,
   });
 }
 
+bool mask_equals_array_bmesh(const int mask_offset,
+                             const Set<BMVert *, 0> &verts,
+                             const Span<float> values)
+{
+  int i = 0;
+  for (const BMVert *vert : verts) {
+    if (BM_ELEM_CD_GET_FLOAT(vert, mask_offset) != values[i]) {
+      return false;
+    }
+    i++;
+  }
+  return true;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */

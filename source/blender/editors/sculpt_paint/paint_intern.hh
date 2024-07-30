@@ -547,6 +547,8 @@ bool mask_equals_array_grids(Span<CCGElem *> elems,
                              Span<int> grids,
                              Span<float> values);
 
+bool mask_equals_array_bmesh(int mask_offset, const Set<BMVert *, 0> &verts, Span<float> values);
+
 void PAINT_OT_mask_flood_fill(wmOperatorType *ot);
 void PAINT_OT_mask_lasso_gesture(wmOperatorType *ot);
 void PAINT_OT_mask_box_gesture(wmOperatorType *ot);
