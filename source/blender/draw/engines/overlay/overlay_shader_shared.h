@@ -220,6 +220,14 @@ struct ExtraInstanceData {
     this->object_to_world_ = object_to_world;
     this->object_to_world_[3][3] = draw_size;
   };
+
+  ExtraInstanceData with_color(const float4 &color) const
+  {
+    ExtraInstanceData copy = *this;
+    copy.color_ = color;
+    return copy;
+  }
+
 #endif
 };
 BLI_STATIC_ASSERT_ALIGN(ExtraInstanceData, 16)

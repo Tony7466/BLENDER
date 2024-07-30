@@ -79,6 +79,9 @@ class ShapeCache {
   BatchPtr circle;
   BatchPtr empty_sphere;
   BatchPtr empty_cone;
+  BatchPtr cylinder;
+  BatchPtr capsule_body;
+  BatchPtr capsule_cap;
   BatchPtr arrows;
   BatchPtr metaball_wire_circle;
 
@@ -93,6 +96,18 @@ class ShapeCache {
   BatchPtr camera_volume_wire;
 
   BatchPtr sphere_low_detail;
+
+  BatchPtr ground_line;
+
+  BatchPtr light_icon_outer_lines;
+  BatchPtr light_icon_inner_lines;
+  BatchPtr light_icon_sun_rays;
+  BatchPtr light_point_lines;
+  BatchPtr light_sun_lines;
+  BatchPtr light_spot_lines;
+  BatchPtr light_area_disk_lines;
+  BatchPtr light_area_square_lines;
+  BatchPtr light_spot_volume;
 
   ShapeCache();
 };
@@ -130,6 +145,7 @@ class ShaderModule {
   ShaderPtr extra_shape;
   ShaderPtr extra_wire_object;
   ShaderPtr extra_wire;
+  ShaderPtr extra_ground_line;
   ShaderPtr lattice_points;
   ShaderPtr lattice_wire;
 
