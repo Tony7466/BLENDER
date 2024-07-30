@@ -256,9 +256,9 @@ static void decrease_contrast_mask_mesh(const Object &object,
   BKE_pbvh_node_mark_update_mask(&node);
 }
 
-BLI_NOINLINE void copy_old_hidden_mask_grids(const SubdivCCG &subdiv_ccg,
-                                             const Span<int> grids,
-                                             const MutableSpan<float> new_mask)
+BLI_NOINLINE static void copy_old_hidden_mask_grids(const SubdivCCG &subdiv_ccg,
+                                                    const Span<int> grids,
+                                                    const MutableSpan<float> new_mask)
 {
   const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
   if (subdiv_ccg.grid_hidden.is_empty()) {
@@ -283,29 +283,23 @@ static void apply_new_mask_grids(Object &object,
   SculptSession &ss = *object.sculpt;
   SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-  const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
 
-  threading::EnumerableThreadSpecific<Vector<int>> all_tls;
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-    Vector<int> &tls = all_tls.local();
-    threading::isolate_task([&]() {
-      for (const int i : range) {
-        const Span<int> grids = bke::pbvh::node_grid_indices(*nodes[i]);
-        const Span<float> new_node_mask = new_mask.slice(node_verts[i]);
-        if (mask_equals_array_grids(subdiv_ccg.grids, key, grids, new_node_mask)) {
-          return;
-        }
-        undo::push_node(object, nodes[i], undo::Type::Mask);
-        scatter_mask_grids(new_node_mask, subdiv_ccg, grids);
-        BKE_pbvh_node_mark_update_mask(nodes[i]);
+    for (const int i : range) {
+      const Span<int> grids = bke::pbvh::node_grid_indices(*nodes[i]);
+      const Span<float> new_node_mask = new_mask.slice(node_verts[i]);
+      if (mask_equals_array_grids(subdiv_ccg.grids, key, grids, new_node_mask)) {
+        return;
       }
-    });
+      undo::push_node(object, nodes[i], undo::Type::Mask);
+      scatter_mask_grids(new_node_mask, subdiv_ccg, grids);
+      BKE_pbvh_node_mark_update_mask(nodes[i]);
+    }
   });
 }
 
 static void smooth_mask_grids(const SubdivCCG &subdiv_ccg,
                               const bke::pbvh::Node &node,
-                              FilterLocalData &tls,
                               MutableSpan<float> new_mask)
 {
   const Span<int> grids = bke::pbvh::node_grid_indices(node);
@@ -336,22 +330,20 @@ static void sharpen_mask_grids(const SubdivCCG &subdiv_ccg,
 
 static void grow_mask_grids(const SubdivCCG &subdiv_ccg,
                             const bke::pbvh::Node &node,
-                            FilterLocalData &tls,
                             MutableSpan<float> new_mask)
 {
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
   const Span<CCGElem *> elems = subdiv_ccg.grids;
 
   const Span<int> grids = bke::pbvh::node_grid_indices(node);
-  const int grid_verts_num = grids.size() * key.grid_area;
 
   for (const int i : grids.index_range()) {
     const int grid = grids[i];
     CCGElem *elem = elems[grid];
     const int node_verts_start = i * key.grid_area;
 
-    for (const int y : IndexRange(key.grid_size)) {
-      for (const int x : IndexRange(key.grid_size)) {
+    for (const short y : IndexRange(key.grid_size)) {
+      for (const short x : IndexRange(key.grid_size)) {
         const int offset = CCG_grid_xy_to_index(key.grid_size, x, y);
         const int node_vert_index = node_verts_start + offset;
 
@@ -361,7 +353,7 @@ static void grow_mask_grids(const SubdivCCG &subdiv_ccg,
 
         float value = 0.0f;
         for (const SubdivCCGCoord neighbor : neighbors.coords) {
-          value = std::max(CCG_grid_elem_mask(key, elem, x, y), value);
+          value = std::max(CCG_grid_elem_mask(key, elem, neighbor.x, neighbor.y), value);
         }
         new_mask[node_vert_index] = value;
       }
@@ -373,22 +365,20 @@ static void grow_mask_grids(const SubdivCCG &subdiv_ccg,
 
 static void shrink_mask_grids(const SubdivCCG &subdiv_ccg,
                               const bke::pbvh::Node &node,
-                              FilterLocalData &tls,
                               MutableSpan<float> new_mask)
 {
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
   const Span<CCGElem *> elems = subdiv_ccg.grids;
 
   const Span<int> grids = bke::pbvh::node_grid_indices(node);
-  const int grid_verts_num = grids.size() * key.grid_area;
 
   for (const int i : grids.index_range()) {
     const int grid = grids[i];
     CCGElem *elem = elems[grid];
     const int node_verts_start = i * key.grid_area;
 
-    for (const int y : IndexRange(key.grid_size)) {
-      for (const int x : IndexRange(key.grid_size)) {
+    for (const short y : IndexRange(key.grid_size)) {
+      for (const short x : IndexRange(key.grid_size)) {
         const int offset = CCG_grid_xy_to_index(key.grid_size, x, y);
         const int node_vert_index = node_verts_start + offset;
 
@@ -398,7 +388,7 @@ static void shrink_mask_grids(const SubdivCCG &subdiv_ccg,
 
         float value = 1.0f;
         for (const SubdivCCGCoord neighbor : neighbors.coords) {
-          value = std::min(CCG_grid_elem_mask(key, elem, x, y), value);
+          value = std::min(CCG_grid_elem_mask(key, elem, neighbor.x, neighbor.y), value);
         }
         new_mask[node_vert_index] = value;
       }
@@ -468,9 +458,9 @@ static void decrease_contrast_mask_grids(const Object &object,
   BKE_pbvh_node_mark_update_mask(&node);
 }
 
-BLI_NOINLINE void copy_old_hidden_mask_bmesh(const int mask_offset,
-                                             const Set<BMVert *, 0> &verts,
-                                             const MutableSpan<float> new_mask)
+BLI_NOINLINE static void copy_old_hidden_mask_bmesh(const int mask_offset,
+                                                    const Set<BMVert *, 0> &verts,
+                                                    const MutableSpan<float> new_mask)
 {
   int i = 0;
   for (const BMVert *vert : verts) {
@@ -490,27 +480,22 @@ static void apply_new_mask_bmesh(Object &object,
   SculptSession &ss = *object.sculpt;
   BMesh &bm = *ss.bm;
 
-  threading::EnumerableThreadSpecific<Vector<int>> all_tls;
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-    Vector<int> &tls = all_tls.local();
-    threading::isolate_task([&]() {
-      for (const int i : range) {
-        const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(nodes[i]);
-        const Span<float> new_node_mask = new_mask.slice(node_verts[i]);
-        if (mask_equals_array_bmesh(mask_offset, verts, new_node_mask)) {
-          return;
-        }
-        undo::push_node(object, nodes[i], undo::Type::Mask);
-        scatter_mask_bmesh(new_node_mask, bm, verts);
-        BKE_pbvh_node_mark_update_mask(nodes[i]);
+    for (const int i : range) {
+      const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(nodes[i]);
+      const Span<float> new_node_mask = new_mask.slice(node_verts[i]);
+      if (mask_equals_array_bmesh(mask_offset, verts, new_node_mask)) {
+        return;
       }
-    });
+      undo::push_node(object, nodes[i], undo::Type::Mask);
+      scatter_mask_bmesh(new_node_mask, bm, verts);
+      BKE_pbvh_node_mark_update_mask(nodes[i]);
+    }
   });
 }
 
 static void smooth_mask_bmesh(const int mask_offset,
                               bke::pbvh::Node &node,
-                              FilterLocalData &tls,
                               MutableSpan<float> new_mask)
 {
   const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(&node);
@@ -539,7 +524,6 @@ static void sharpen_mask_bmesh(const BMesh &bm,
 
 static void grow_mask_bmesh(const int mask_offset,
                             bke::pbvh::Node &node,
-                            FilterLocalData &tls,
                             MutableSpan<float> new_mask)
 {
   const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(&node);
@@ -560,7 +544,6 @@ static void grow_mask_bmesh(const int mask_offset,
 
 static void shrink_mask_bmesh(const int mask_offset,
                               bke::pbvh::Node &node,
-                              FilterLocalData &tls,
                               MutableSpan<float> new_mask)
 {
   const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(&node);
@@ -792,12 +775,9 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
         switch (filter_type) {
           case FilterType::Smooth: {
             threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-              FilterLocalData &tls = all_tls.local();
               for (const int i : range) {
-                smooth_mask_grids(subdiv_ccg,
-                                  *nodes[i],
-                                  tls,
-                                  new_masks.as_mutable_span().slice(node_offsets[i]));
+                smooth_mask_grids(
+                    subdiv_ccg, *nodes[i], new_masks.as_mutable_span().slice(node_offsets[i]));
               }
             });
             apply_new_mask_grids(ob, nodes, node_offsets, new_masks);
@@ -818,12 +798,9 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
           }
           case FilterType::Grow: {
             threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-              FilterLocalData &tls = all_tls.local();
               for (const int i : range) {
-                grow_mask_grids(subdiv_ccg,
-                                *nodes[i],
-                                tls,
-                                new_masks.as_mutable_span().slice(node_offsets[i]));
+                grow_mask_grids(
+                    subdiv_ccg, *nodes[i], new_masks.as_mutable_span().slice(node_offsets[i]));
               }
             });
             apply_new_mask_grids(ob, nodes, node_offsets, new_masks);
@@ -831,12 +808,9 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
           }
           case FilterType::Shrink: {
             threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-              FilterLocalData &tls = all_tls.local();
               for (const int i : range) {
-                shrink_mask_grids(subdiv_ccg,
-                                  *nodes[i],
-                                  tls,
-                                  new_masks.as_mutable_span().slice(node_offsets[i]));
+                shrink_mask_grids(
+                    subdiv_ccg, *nodes[i], new_masks.as_mutable_span().slice(node_offsets[i]));
               }
             });
             apply_new_mask_grids(ob, nodes, node_offsets, new_masks);
@@ -878,12 +852,9 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
         switch (filter_type) {
           case FilterType::Smooth: {
             threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-              FilterLocalData &tls = all_tls.local();
               for (const int i : range) {
-                smooth_mask_bmesh(mask_offset,
-                                  *nodes[i],
-                                  tls,
-                                  new_masks.as_mutable_span().slice(node_offsets[i]));
+                smooth_mask_bmesh(
+                    mask_offset, *nodes[i], new_masks.as_mutable_span().slice(node_offsets[i]));
               }
             });
             apply_new_mask_bmesh(ob, mask_offset, nodes, node_offsets, new_masks);
@@ -905,12 +876,9 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
           }
           case FilterType::Grow: {
             threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-              FilterLocalData &tls = all_tls.local();
               for (const int i : range) {
-                grow_mask_bmesh(mask_offset,
-                                *nodes[i],
-                                tls,
-                                new_masks.as_mutable_span().slice(node_offsets[i]));
+                grow_mask_bmesh(
+                    mask_offset, *nodes[i], new_masks.as_mutable_span().slice(node_offsets[i]));
               }
             });
             apply_new_mask_bmesh(ob, mask_offset, nodes, node_offsets, new_masks);
@@ -918,12 +886,9 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
           }
           case FilterType::Shrink: {
             threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-              FilterLocalData &tls = all_tls.local();
               for (const int i : range) {
-                shrink_mask_bmesh(mask_offset,
-                                  *nodes[i],
-                                  tls,
-                                  new_masks.as_mutable_span().slice(node_offsets[i]));
+                shrink_mask_bmesh(
+                    mask_offset, *nodes[i], new_masks.as_mutable_span().slice(node_offsets[i]));
               }
             });
             apply_new_mask_bmesh(ob, mask_offset, nodes, node_offsets, new_masks);
