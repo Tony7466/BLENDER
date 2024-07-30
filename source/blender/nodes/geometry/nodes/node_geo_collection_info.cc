@@ -13,6 +13,7 @@
 
 #include "BKE_collection.hh"
 #include "BKE_instances.hh"
+#include "BKE_lib_id.hh"
 
 #include "DEG_depsgraph_query.hh"
 
@@ -150,7 +151,12 @@ static void node_geo_exec(GeoNodeExecParams params)
     instances->add_instance(handle, transform);
   }
   GeometrySet geometry = GeometrySet::from_instances(instances.release());
-  geometry.name = collection->id.name + 2;
+
+  const Collection *collection_orig = reinterpret_cast<Collection *>(
+      DEG_get_original_id(&collection->id));
+  if (collection_orig) {
+    geometry.name = BKE_id_ui_name_get(collection_orig->id);
+  }
 
   params.set_output("Instances", std::move(geometry));
 }

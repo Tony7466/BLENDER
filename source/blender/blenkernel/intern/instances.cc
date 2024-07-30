@@ -14,6 +14,9 @@
 #include "BKE_geometry_set.hh"
 #include "BKE_geometry_set_instances.hh"
 #include "BKE_instances.hh"
+#include "BKE_lib_id.hh"
+
+#include "DEG_depsgraph_query.hh"
 
 #include "BLT_translation.hh"
 
@@ -100,9 +103,9 @@ StringRefNull InstanceReference::name() const
 {
   switch (type_) {
     case Type::Object:
-      return this->object().id.name + 2;
+      return BKE_id_ui_name_get(DEG_get_original_object(&this->object())->id);
     case Type::Collection:
-      return this->collection().id.name + 2;
+      return BKE_id_ui_name_get(*DEG_get_original_id(&this->collection().id));
     case Type::GeometrySet:
       return this->geometry_set().name;
     case Type::None:

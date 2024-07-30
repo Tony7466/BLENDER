@@ -7,6 +7,7 @@
 
 #include "BKE_geometry_set_instances.hh"
 #include "BKE_instances.hh"
+#include "BKE_lib_id.hh"
 
 #include "DNA_object_types.h"
 
@@ -155,7 +156,10 @@ static void node_geo_exec(GeoNodeExecParams params)
     }
   }
 
-  geometry_set.name = object->id.name + 2;
+  Object *object_orig = DEG_get_original_object(object);
+  if (object_orig) {
+    geometry_set.name = BKE_id_ui_name_get(object_orig->id);
+  }
   params.set_output("Geometry", geometry_set);
 }
 
