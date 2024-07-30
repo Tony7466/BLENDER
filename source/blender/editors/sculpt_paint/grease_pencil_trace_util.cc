@@ -20,6 +20,8 @@
 
 namespace blender::ed::image_trace {
 
+#ifdef WITH_POTRACE
+
 using PathSegment = potrace_dpoint_t[3];
 
 static int to_potrace(const TurnPolicy turn_policy)
@@ -46,7 +48,7 @@ static int to_potrace(const TurnPolicy turn_policy)
 
 Bitmap *create_bitmap(const int2 &size)
 {
-#ifdef WITH_POTRACE
+#  ifdef WITH_POTRACE
   constexpr int BM_WORDSIZE = int(sizeof(potrace_word));
   constexpr int BM_WORDBITS = 8 * BM_WORDSIZE;
 
@@ -64,22 +66,22 @@ Bitmap *create_bitmap(const int2 &size)
   bm->map = static_cast<potrace_word *>(MEM_mallocN(size.y * dy * sizeof(potrace_word), __func__));
 
   return bm;
-#else
+#  else
   UNUSED_VARS(size);
   return nullptr;
-#endif
+#  endif
 }
 
 void free_bitmap(Bitmap *bm)
 {
-#ifdef WITH_POTRACE
+#  ifdef WITH_POTRACE
   if (bm != nullptr) {
     MEM_freeN(bm->map);
   }
   MEM_SAFE_FREE(bm);
-#else
+#  else
   UNUSED_VARS(bm);
-#endif
+#  endif
 }
 
 ImBuf *bitmap_to_image(const Bitmap &bm)
@@ -225,7 +227,7 @@ bke::CurvesGeometry trace_to_curves(const Trace &trace,
       holes.span[curve_i] = (path->sign == '-');
     }
 
-    /* Potrace stores the last 3 points of a bezier segment.
+    /* POTRACE stores the last 3 points of a bezier segment.
      * The start point is the last segment's end point. */
     int point_i = points.last();
     auto next_point = [&]() {
@@ -236,7 +238,7 @@ bke::CurvesGeometry trace_to_curves(const Trace &trace,
       const PathSegment &segment = path_segments[segment_i];
       switch (path_tags[segment_i]) {
         case POTRACE_CORNER:
-          /* Potrace corners are formed by straight lines from the previous/next point.
+          /* POTRACE corners are formed by straight lines from the previous/next point.
            * segment[0] is unused, segment[1] is the corner position, segment[2] is the next point.
            */
           handle_types_right[point_i] = BEZIER_HANDLE_VECTOR;
@@ -278,5 +280,7 @@ bke::CurvesGeometry trace_to_curves(const Trace &trace,
 
   return curves;
 }
+
+#endif
 
 }  // namespace blender::ed::image_trace
