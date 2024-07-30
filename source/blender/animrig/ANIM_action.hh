@@ -929,16 +929,6 @@ FCurve *action_fcurve_find(bAction *act, FCurveDescriptor fcurve_descriptor);
 bool action_fcurve_remove(Action &action, FCurve &fcu);
 
 /**
- * Delete all keyframes of the action on the given frame. Empty FCurves will be automatically
- * removed.
- *
- * \param frame is in NLA time. Once Strips are supported this function will remap internally to
- * the correct strip time. When Layers are supported in the Action and the NLA is removed, NLA time
- * will equal scene time.
- */
-int action_delete_keyframe(Action &action, const slot_handle_t slot_handle, float frame);
-
-/**
  * Find all FCurves for that match the given fcurve_descriptor for the given slot handle. Since
  * there can be multiple layers, there may be multiple FCurves matching the description.
  *

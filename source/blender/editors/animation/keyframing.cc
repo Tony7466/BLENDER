@@ -906,7 +906,19 @@ static int delete_key_v3d_without_keying_set(bContext *C, wmOperator *op)
 
       Action &action = act->wrap();
       if (action.is_action_layered()) {
-        success += action_delete_keyframe(action, adt->slot_handle, cfra_unmap);
+        ActionFCurveIterator it(action, adt->slot_handle);
+        blender::Vector<std::pair<blender::animrig::ChannelBag *, FCurve *>> modified_fcurves;
+        while (*it) {
+          if (can_delete_key(*it, ob, op->reports)) {
+            fcurve_delete_keyframe_at_time(*it, cfra_unmap);
+            modified_fcurves.append(std::pair<blender::animrig::ChannelBag *, FCurve *>(
+                it.get_current_channel_bag(), *it));
+          }
+          ++it;
+        }
+        for (auto &asd : modified_fcurves) {
+          asd.first->fcurve_remove(*asd.second);
+        }
       }
       else {
         FCurve *fcn;

@@ -1323,7 +1323,7 @@ bool ActionFCurveIterator::operator==(const ActionFCurveIterator &other)
 }
 bool ActionFCurveIterator::operator!=(const ActionFCurveIterator &other)
 {
-  return *(*this) != *other;
+  return !(*this == other);
 }
 
 ActionFCurveIterator &ActionFCurveIterator::operator++()
@@ -1680,46 +1680,6 @@ bool action_fcurve_remove(Action &action, FCurve &fcu)
     }
   }
   return false;
-}
-
-int action_delete_keyframe(Action &action, const slot_handle_t handle, float frame)
-{
-  BLI_assert(action.is_action_layered());
-  /* No time remapping through the strips yet. Needs to implemented when more than 1 infinite strip
-   * is supported. */
-  assert_baklava_phase_1_invariants(action);
-  int deleted_keys = 0;
-
-  for (Layer *layer : action.layers()) {
-    for (Strip *strip : layer->strips()) {
-      if (!strip->is<KeyframeStrip>()) {
-        continue;
-      }
-      KeyframeStrip &key_strip = strip->as<KeyframeStrip>();
-
-      for (ChannelBag *bag : key_strip.channelbags()) {
-        if (bag->slot_handle != handle) {
-          continue;
-        }
-
-        Vector<FCurve *> modified_fcurves;
-        for (FCurve *fcu : bag->fcurves()) {
-          if (fcurve_delete_keyframe_at_time(fcu, frame)) {
-            modified_fcurves.append(fcu);
-            deleted_keys++;
-          }
-        }
-
-        for (FCurve *fcu : modified_fcurves) {
-          if (BKE_fcurve_is_empty(fcu)) {
-            bag->fcurve_remove(*fcu);
-          }
-        }
-      }
-    }
-  }
-
-  return deleted_keys;
 }
 
 ID *action_slot_get_id_for_keying(Main &bmain,
