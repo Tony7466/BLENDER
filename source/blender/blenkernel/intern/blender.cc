@@ -102,15 +102,15 @@ static void blender_version_init()
   const char *version_cycle_compact = "";
   if (STREQ(STRINGIFY(BLENDER_VERSION_CYCLE), "alpha")) {
     version_cycle = " Alpha";
-    version_cycle_compact = "A";
+    version_cycle_compact = " a";
   }
   else if (STREQ(STRINGIFY(BLENDER_VERSION_CYCLE), "beta")) {
     version_cycle = " Beta";
-    version_cycle_compact = "B";
+    version_cycle_compact = " b";
   }
   else if (STREQ(STRINGIFY(BLENDER_VERSION_CYCLE), "rc")) {
     version_cycle = " Release Candidate";
-    version_cycle_compact = "RC";
+    version_cycle_compact = " RC";
   }
   else if (STREQ(STRINGIFY(BLENDER_VERSION_CYCLE), "release")) {
     version_cycle = "";
