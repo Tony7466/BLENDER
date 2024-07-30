@@ -128,11 +128,11 @@ static int2 sample(const int3 all, const int2 indices)
   return int2{all[indices.a], all[indices.b]};
 }
 
-static constexpr std::array<int2, 3> edges{int2{0, 1}, int2{1, 2}, int2{2, 0}};
+static const std::array<int2, 3> edges{int2{0, 1}, int2{1, 2}, int2{2, 0}};
 static const int3 face{0, 1, 2};
 
-static constexpr std::array<int, 3> shift_front{1, 2, 0};
-static constexpr std::array<int, 3> shift_back{2, 0, 1};
+static const std::array<int, 3> shift_front{1, 2, 0};
+static const std::array<int, 3> shift_back{2, 0, 1};
 
 constexpr int vert_a = 0;
 constexpr int vert_b = 1;
@@ -142,7 +142,7 @@ constexpr int edge_ab = 0;
 constexpr int edge_bc = 1;
 constexpr int edge_ca = 2;
 
-}
+}  // namespace topo_set
 
 static int3 gather_tri(const IndexRange range, const Span<int> indices)
 {
@@ -210,42 +210,6 @@ static bool triangle_is_in_range(
   return len_squared_to_tris({a, b, c}, centre) < range;
 }
 
-static std::optional<int2> largest_side_to_split(const float2 &a,
-                                                 const float2 &b,
-                                                 const float2 &c,
-                                                 const std::array<int, 9> &edge_indices,
-                                                 const float max_length)
-{
-  const std::array<float, 3> to_compare = {
-      math::distance_squared(a, b), math::distance_squared(b, c), math::distance_squared(c, a)};
-  constexpr const IndexRange edges_range(3);
-  const int max_elem_i = *std::max_element(
-      edges_range.begin(), edges_range.end(), [&](const int a_i, const int b_i) -> bool {
-        const float a = to_compare[a_i];
-        const float b = to_compare[b_i];
-        if (UNLIKELY(a == b)) {
-          return edge_indices[a_i] < edge_indices[b_i];
-        }
-        return a < b;
-      });
-
-  if (UNLIKELY(to_compare[max_elem_i] <= max_length)) {
-    return std::nullopt;
-  }
-
-  switch (max_elem_i) {
-    case 0:
-      return int2(0, 1);
-    case 1:
-      return int2(1, 2);
-    case 2:
-      return int2(2, 0);
-    default:
-      BLI_assert_unreachable();
-      return {};
-  }
-}
-
 namespace FaceVerts {
 static constexpr const int a = 0;
 static constexpr const int b = 1;
@@ -258,352 +222,15 @@ static constexpr const int8_t ab_is_real_edge = 1 << 0;
 static constexpr const int8_t bc_is_real_edge = 1 << 1;
 static constexpr const int8_t ca_is_real_edge = 1 << 2;
 
-static constexpr const int8_t ab_is_splitable_edge = 1 << 3;
-static constexpr const int8_t bc_is_splitable_edge = 1 << 4;
-static constexpr const int8_t ca_is_splitable_edge = 1 << 5;
+static constexpr const int8_t ab_is_owned_edge = 1 << 3;
+static constexpr const int8_t bc_is_owned_edge = 1 << 4;
+static constexpr const int8_t ca_is_owned_edge = 1 << 5;
 
-static const std::array<int8_t, 3> edge_state_for_vert = {
-    bc_is_real_edge, ca_is_real_edge, ab_is_real_edge};
+static const std::array<int8_t, 3> edges_real = {
+    ab_is_real_edge, bc_is_real_edge, ca_is_real_edge};
+static const std::array<int8_t, 3> edges_owned = {
+    ab_is_owned_edge, bc_is_owned_edge, ca_is_owned_edge};
 }  // namespace EdgeState
-
-static void split_edge_for_vert(const std::array<float2, 6> &verts,
-                                const int2 split_edge,
-                                Vector<std::array<float2, 6>> &r_list)
-{
-  switch (exclusive_one(int3(0, 1, 2), split_edge)) {
-    case 2: {
-      const float2 mid = math::midpoint(verts[0], verts[1]);
-      r_list.append({verts[0], mid, verts[2], verts[3], verts[2], verts[5]});
-      r_list.append({mid, verts[1], verts[2], verts[3], verts[4], verts[0]});
-      break;
-    }
-    case 0: {
-      const float2 mid = math::midpoint(verts[1], verts[2]);
-      r_list.append({verts[0], verts[1], mid, verts[3], verts[4], verts[2]});
-      r_list.append({verts[0], mid, verts[2], verts[2], verts[4], verts[5]});
-      break;
-    }
-    case 1: {
-      const float2 mid = math::midpoint(verts[2], verts[0]);
-      r_list.append({verts[0], verts[1], mid, verts[3], verts[2], verts[5]});
-      r_list.append({mid, verts[1], verts[2], verts[0], verts[4], verts[5]});
-      break;
-    }
-  }
-}
-
-static void split_edge_for_state(const int8_t state, const int2 split_edge, Vector<int8_t> &r_list)
-{
-  switch (exclusive_one(FaceVerts::abc, split_edge)) {
-    case FaceVerts::a: {
-      r_list.append(state & (~EdgeState::ca_is_real_edge));
-      r_list.append(state & (~EdgeState::ab_is_real_edge) & (~EdgeState::ab_is_splitable_edge));
-      break;
-    }
-    case FaceVerts::b: {
-      r_list.append(state & (~EdgeState::bc_is_real_edge) & (~EdgeState::bc_is_splitable_edge));
-      r_list.append(state & (~EdgeState::ab_is_real_edge));
-      break;
-    }
-    case FaceVerts::c: {
-      r_list.append(state & (~EdgeState::ca_is_real_edge) & (~EdgeState::ca_is_splitable_edge));
-      r_list.append(state & (~EdgeState::bc_is_real_edge));
-      break;
-    }
-  }
-}
-
-static void split_edge_for_indices(const int3 verts,
-                                   const int new_vert,
-                                   const int2 split_edge,
-                                   Vector<int3> &r_list)
-{
-  switch (exclusive_one(FaceVerts::abc, split_edge)) {
-    case FaceVerts::a: {
-      r_list.append(int3(verts[0], verts[1], new_vert));
-      r_list.append(int3(verts[0], new_vert, verts[2]));
-      break;
-    }
-    case FaceVerts::b: {
-      r_list.append(int3(verts[0], verts[1], new_vert));
-      r_list.append(int3(new_vert, verts[1], verts[2]));
-      break;
-    }
-    case FaceVerts::c: {
-      r_list.append(int3(verts[0], new_vert, verts[2]));
-      r_list.append(int3(new_vert, verts[1], verts[2]));
-      break;
-    }
-  }
-}
-
-static void edge_subdivide(const std::array<float2, 2> &real_verts,
-                           const Span<float2> linked_verts,
-                           const int2 real_edge,
-                           const Span<int> edge_indices,
-                           const Span<float> edge_lengths,
-                           const float2 centre,
-                           const float radius,
-                           const float max_length,
-                           VectorSet<OrderedEdge> &r_all_edges,
-                           VectorSet<OrderedEdge> &r_unique_edges)
-{
-}
-
-static void gather_faces_to_split(const GroupedSpan<float2> verts_by_face_type,
-                                  const float2 centre,
-                                  const float radius,
-                                  Vector<int> &r_faces_to_split)
-{
-  if (triangle_is_in_range(verts_by_face_type[0][0],
-                           verts_by_face_type[0][1],
-                           verts_by_face_type[0][2],
-                           centre,
-                           radius))
-  {
-    r_faces_to_split.append(0);
-  }
-  int offset = 1;
-  for (const int face_i : verts_by_face_type[1].index_range()) {
-    if (triangle_is_in_range(verts_by_face_type[0][0],
-                             verts_by_face_type[0][1],
-                             verts_by_face_type[1][face_i],
-                             centre,
-                             radius))
-    {
-      r_faces_to_split.append(offset + face_i);
-    }
-  }
-  offset += verts_by_face_type[1].size();
-  for (const int face_i : verts_by_face_type[2].index_range()) {
-    if (triangle_is_in_range(verts_by_face_type[0][1],
-                             verts_by_face_type[0][2],
-                             verts_by_face_type[2][face_i],
-                             centre,
-                             radius))
-    {
-      r_faces_to_split.append(offset + face_i);
-    }
-  }
-  offset += verts_by_face_type[2].size();
-  for (const int face_i : verts_by_face_type[3].index_range()) {
-    if (triangle_is_in_range(verts_by_face_type[0][2],
-                             verts_by_face_type[0][0],
-                             verts_by_face_type[3][face_i],
-                             centre,
-                             radius))
-    {
-      r_faces_to_split.append(offset + face_i);
-    }
-  }
-}
-
-static void gather_edges_to_split(const Span<int> faces,
-                                  const GroupedSpan<float3> real_verts_by_face_type,
-                                  const float max_length,
-                                  Vector<int> &r_edges_to_split)
-{
-  float max_length_iter = std::numeric_limits<float>::lowest();
-
-  bool ab_added = false;
-  bool bc_added = false;
-  bool ca_added = false;
-
-  for (const int face_i : faces) {
-    if (face_i == 0) {
-      const float ab_length = math::distance_squared(real_verts_by_face_type[0][0],
-                                                     real_verts_by_face_type[0][1]);
-      if (max_length_iter == ab_length) {
-        ab_added = true;
-        r_edges_to_split.append(0);
-        // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
-      }
-      else if (max_length_iter < ab_length) {
-        ab_added = true;
-        r_edges_to_split.clear();
-        max_length_iter = ab_length;
-        r_edges_to_split.append(0);
-        // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
-      }
-      const float bc_length = math::distance_squared(real_verts_by_face_type[0][1],
-                                                     real_verts_by_face_type[0][2]);
-      if (max_length_iter == bc_length) {
-        bc_added = true;
-        r_edges_to_split.append(1);
-        // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
-      }
-      else if (max_length_iter < bc_length) {
-        bc_added = true;
-        r_edges_to_split.clear();
-        max_length_iter = bc_length;
-        r_edges_to_split.append(1);
-        // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
-      }
-      const float ca_length = math::distance_squared(real_verts_by_face_type[0][2],
-                                                     real_verts_by_face_type[0][0]);
-      if (max_length_iter == ca_length) {
-        ca_added = true;
-        r_edges_to_split.append(2);
-        // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
-      }
-      else if (max_length_iter < ca_length) {
-        ca_added = true;
-        r_edges_to_split.clear();
-        max_length_iter = ca_length;
-        r_edges_to_split.append(2);
-        // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
-      }
-    }
-
-    const IndexRange ab_faces = real_verts_by_face_type[1].index_range();
-    int offset = 1;
-    int edge_offset = 3;
-    if (ab_faces.contains(face_i - offset)) {
-      const int side_edges_offset = (face_i - offset) * 2;
-      const float ad_length = math::distance_squared(real_verts_by_face_type[0][0],
-                                                     real_verts_by_face_type[1][face_i - offset]);
-      if (max_length_iter == ad_length) {
-        r_edges_to_split.append(edge_offset + side_edges_offset + 0);
-        // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
-      }
-      else if (max_length_iter < ad_length) {
-        r_edges_to_split.clear();
-        max_length_iter = ad_length;
-        r_edges_to_split.append(edge_offset + side_edges_offset + 0);
-        // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
-      }
-      const float bd_length = math::distance_squared(real_verts_by_face_type[0][1],
-                                                     real_verts_by_face_type[1][face_i - offset]);
-      if (max_length_iter == bd_length) {
-        r_edges_to_split.append(edge_offset + side_edges_offset + 1);
-        // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
-      }
-      else if (max_length_iter < bd_length) {
-        r_edges_to_split.clear();
-        max_length_iter = bd_length;
-        r_edges_to_split.append(edge_offset + side_edges_offset + 1);
-        // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
-      }
-
-      if (!ab_added) {
-        ab_added = true;
-        const float ab_length = math::distance_squared(real_verts_by_face_type[0][0],
-                                                       real_verts_by_face_type[0][1]);
-        if (max_length_iter == ab_length) {
-          r_edges_to_split.append(0);
-          // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
-        }
-        else if (max_length_iter < ab_length) {
-          r_edges_to_split.clear();
-          max_length_iter = ab_length;
-          r_edges_to_split.append(0);
-          // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
-        }
-      }
-    }
-    offset += ab_faces.size();
-    edge_offset += ab_faces.size() * 2;
-
-    const IndexRange bc_faces = real_verts_by_face_type[2].index_range();
-    if (bc_faces.contains(face_i - offset)) {
-      const int side_edges_offset = (face_i - offset) * 2;
-      const float de_length = math::distance_squared(real_verts_by_face_type[0][1],
-                                                     real_verts_by_face_type[2][face_i - offset]);
-      if (max_length_iter == de_length) {
-        r_edges_to_split.append(edge_offset + side_edges_offset + 0);
-        // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
-      }
-      else if (max_length_iter < de_length) {
-        r_edges_to_split.clear();
-        max_length_iter = de_length;
-        r_edges_to_split.append(edge_offset + side_edges_offset + 0);
-        // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
-      }
-      const float ce_length = math::distance_squared(real_verts_by_face_type[0][2],
-                                                     real_verts_by_face_type[2][face_i - offset]);
-      if (max_length_iter == ce_length) {
-        r_edges_to_split.append(edge_offset + side_edges_offset + 1);
-        // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
-      }
-      else if (max_length_iter < ce_length) {
-        r_edges_to_split.clear();
-        max_length_iter = ce_length;
-        r_edges_to_split.append(edge_offset + side_edges_offset + 1);
-        // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
-      }
-      if (!bc_added) {
-        bc_added = true;
-        const float bc_length = math::distance_squared(real_verts_by_face_type[0][1],
-                                                       real_verts_by_face_type[0][2]);
-        if (max_length_iter == bc_length) {
-          r_edges_to_split.append(1);
-          // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
-        }
-        else if (max_length_iter < bc_length) {
-          r_edges_to_split.clear();
-          max_length_iter = bc_length;
-          r_edges_to_split.append(1);
-          // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
-        }
-      }
-    }
-    offset += bc_faces.size();
-    edge_offset += bc_faces.size() * 2;
-
-    const IndexRange ca_faces = real_verts_by_face_type[3].index_range();
-    if (ca_faces.contains(face_i - offset)) {
-      const int side_edges_offset = (face_i - offset) * 2;
-      const float cf_length = math::distance_squared(real_verts_by_face_type[0][2],
-                                                     real_verts_by_face_type[3][face_i - offset]);
-      if (max_length_iter == cf_length) {
-        r_edges_to_split.append(edge_offset + side_edges_offset + 0);
-        // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
-      }
-      else if (max_length_iter < cf_length) {
-        r_edges_to_split.clear();
-        max_length_iter = cf_length;
-        r_edges_to_split.append(edge_offset + side_edges_offset + 0);
-        // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
-      }
-      const float af_length = math::distance_squared(real_verts_by_face_type[0][0],
-                                                     real_verts_by_face_type[3][face_i - offset]);
-      if (max_length_iter == af_length) {
-        r_edges_to_split.append(edge_offset + side_edges_offset + 1);
-        // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
-      }
-      else if (max_length_iter < af_length) {
-        r_edges_to_split.clear();
-        max_length_iter = af_length;
-        r_edges_to_split.append(edge_offset + side_edges_offset + 1);
-        // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
-      }
-
-      if (!ca_added) {
-        ca_added = true;
-        const float ca_length = math::distance_squared(real_verts_by_face_type[0][2],
-                                                       real_verts_by_face_type[0][0]);
-        if (max_length_iter == ca_length) {
-          r_edges_to_split.append(2);
-          // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
-        }
-        else if (max_length_iter < ca_length) {
-          r_edges_to_split.clear();
-          max_length_iter = ca_length;
-          r_edges_to_split.append(2);
-          // std::cout << "\t\t\t << " << r_edges_to_split.as_span() << ": " << AT << ";\n";
-        }
-      }
-    }
-  }
-
-  if (max_length_iter < max_length) {
-    r_edges_to_split.clear();
-  }
-
-  // std::cout << "\t" << __func__ << ":\n";
-  // std::cout << "\t\t" << max_length_iter << ";\n";
-  // std::cout << "\t\t" << r_edges_to_split.as_span() << ";\n";
-}
 
 static int dominant_axis(const float3 a)
 {
@@ -619,7 +246,7 @@ static void connected_tris_ensure_short_edges(const float3 a_point_3d,
                                               MutableSpan<float2> points_2d)
 {
   BLI_assert(points_3d.size() == points_2d.size());
-  
+
   for (const int point_i : points_2d.index_range()) {
     while (true) {
       const float ac_length_squared = math::distance_squared(a_point_3d, points_3d[point_i]);
@@ -632,7 +259,8 @@ static void connected_tris_ensure_short_edges(const float3 a_point_3d,
       if (ac_length_squared < bc_length_squared) {
         points_3d[point_i] = math::midpoint(b_point_3d, points_3d[point_i]);
         points_2d[point_i] = math::midpoint(b_point_2d, points_2d[point_i]);
-      } else {
+      }
+      else {
         points_3d[point_i] = math::midpoint(a_point_3d, points_3d[point_i]);
         points_2d[point_i] = math::midpoint(a_point_2d, points_2d[point_i]);
       }
@@ -640,10 +268,14 @@ static void connected_tris_ensure_short_edges(const float3 a_point_3d,
   }
 }
 
-static void connected_tris_drop_short_edges(const float3 a_point_3d, const float3 b_point_3d, const float max_length_squared, Vector<float3> &r_points_3d, Vector<float2> &r_points_2d)
+static void connected_tris_drop_short_edges(const float3 a_point_3d,
+                                            const float3 b_point_3d,
+                                            const float max_length_squared,
+                                            Vector<float3> &r_points_3d,
+                                            Vector<float2> &r_points_2d)
 {
   BLI_assert(points_3d.size() == points_2d.size());
-  
+
   const IndexRange range = points_2d.index_range();
   for (const int point_i : range) {
     const int r_point_i = range.last(point_i);
@@ -656,6 +288,7 @@ static void connected_tris_drop_short_edges(const float3 a_point_3d, const float
   }
 }
 
+template<typename VertFunc, typename FaceFunc>
 static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
                            std::array<Vector<float3>, 3> connected_3d_points,
                            const std::array<float2, 3> tri_2d_points,
@@ -663,410 +296,194 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
                            const float2 centre,
                            const float radius,
                            const float max_length,
-                           const int3 face_verts)
+                           const int3 tri_verts,
+                           VertFunc vert_func,
+                           FaceFunc face_func)
 {
-  Vector<std::array<Vector<float2>, 3>> connected_2d_points_stack = {std::move(connected_2d_points)};
-  Vector<std::array<Vector<float3>, 3>> connected_3d_points_stack = {std::move(connected_3d_points)};
+  Vector<std::array<Vector<float2>, 3>> connected_2d_points_stack = {
+      std::move(connected_2d_points)};
+  Vector<std::array<Vector<float3>, 3>> connected_3d_points_stack = {
+      std::move(connected_3d_points)};
   Vector<std::array<float2, 3>> tri_2d_points_stack = {tri_2d_points};
   Vector<std::array<float3, 3>> tri_3d_points_stack = {tri_3d_points};
 
-  while () {
-    std::array<Vector<float2>, 3>> connected_2d_points = connected_2d_points_stack.pop_last();
-    std::array<Vector<float3>, 3>> connected_3d_points = connected_3d_points_stack.pop_last();
-    std::array<float2, 3>> tri_2d_points = tri_2d_points_stack.pop_last();
-    std::array<float3, 3>> tri_3d_points = tri_3d_points_stack.pop_last();
-    
+  Vector<int3> tri_verts_stack = {tri_verts};
+
+  VectorSet<OrderedEdge> split_of_edges;
+  VectorSet<OrderedEdge> split_in_face;
+
+  constexpr int8_t edges_are_real = EdgeState::ab_is_real_edge | EdgeState::bc_is_real_edge |
+                                    EdgeState::ca_is_real_edge;
+  constexpr int8_t edges_are_owned = EdgeState::ab_is_owned_edge | EdgeState::bc_is_owned_edge |
+                                     EdgeState::ca_is_owned_edge;
+  Vector<int8_t> edges_states = {edges_are_real | (~edges_are_owned)};
+
+  while (!edges_states.is_empty()) {
+    std::array < Vector<float2>, 3 >> connected_2d_points = connected_2d_points_stack.pop_last();
+    std::array < Vector<float3>, 3 >> connected_3d_points = connected_3d_points_stack.pop_last();
+    std::array < float2, 3 >> tri_2d_points = tri_2d_points_stack.pop_last();
+    std::array < float3, 3 >> tri_3d_points = tri_3d_points_stack.pop_last();
+
+    const int3 tri_verts = tri_verts_stack.pop_last();
+
+    const int8_t edges_state = edges_states.pop_last();
+
     std::array<float, 3> lengths_squared;
     lengths_squared[0] = math::distance_squared(tri_3d_points[0], tri_3d_points[1]);
     lengths_squared[1] = math::distance_squared(tri_3d_points[1], tri_3d_points[2]);
     lengths_squared[2] = math::distance_squared(tri_3d_points[2], tri_3d_points[0]);
     /* TODO. */
-    BLI_assert(!(ELEM(lengths_squared[0], lengths_squared[1], lengths_squared[2]) || ELEM(lengths_squared[1], lengths_squared[0], lengths_squared[2])));
-    const int largest_side_to_split = dominant_axis({lengths_squared[0], lengths_squared[1], lengths_squared[2]});
+    BLI_assert(!(ELEM(lengths_squared[0], lengths_squared[1], lengths_squared[2]) ||
+                 ELEM(lengths_squared[1], lengths_squared[0], lengths_squared[2])));
+    const int largest_side_to_split = dominant_axis(
+        {lengths_squared[0], lengths_squared[1], lengths_squared[2]});
     if (lengths_squared[largest_side_to_split] <= max_length) {
+      face_func(tri_verts);
       continue;
     }
 
-    connected_tris_ensure_short_edges(tri_3d_points[0], tri_3d_points[1], tri_2d_points[0], tri_2d_points[1], lengths_squared[largest_side_to_split], connected_3d_points[0], connected_2d_points[0]);
-    connected_tris_ensure_short_edges(tri_3d_points[1], tri_3d_points[2], tri_2d_points[1], tri_2d_points[2], lengths_squared[largest_side_to_split], connected_3d_points[1], connected_2d_points[1]);
-    connected_tris_ensure_short_edges(tri_3d_points[2], tri_3d_points[0], tri_2d_points[2], tri_2d_points[0], lengths_squared[largest_side_to_split], connected_3d_points[2], connected_2d_points[2]);
+    connected_tris_ensure_short_edges(tri_3d_points[0],
+                                      tri_3d_points[1],
+                                      tri_2d_points[0],
+                                      tri_2d_points[1],
+                                      lengths_squared[largest_side_to_split],
+                                      connected_3d_points[0],
+                                      connected_2d_points[0]);
+    connected_tris_ensure_short_edges(tri_3d_points[1],
+                                      tri_3d_points[2],
+                                      tri_2d_points[1],
+                                      tri_2d_points[2],
+                                      lengths_squared[largest_side_to_split],
+                                      connected_3d_points[1],
+                                      connected_2d_points[1]);
+    connected_tris_ensure_short_edges(tri_3d_points[2],
+                                      tri_3d_points[0],
+                                      tri_2d_points[2],
+                                      tri_2d_points[0],
+                                      lengths_squared[largest_side_to_split],
+                                      connected_3d_points[2],
+                                      connected_2d_points[2]);
 
-    connected_tris_drop_short_edges(tri_3d_points[0], tri_3d_points[1], max_length, connected_3d_points[0], connected_2d_points[0]);
-    connected_tris_drop_short_edges(tri_3d_points[1], tri_3d_points[2], max_length, connected_3d_points[1], connected_2d_points[1]);
-    connected_tris_drop_short_edges(tri_3d_points[2], tri_3d_points[0], max_length, connected_3d_points[2], connected_2d_points[2]);
+    connected_tris_drop_short_edges(tri_3d_points[0],
+                                    tri_3d_points[1],
+                                    max_length,
+                                    connected_3d_points[0],
+                                    connected_2d_points[0]);
+    connected_tris_drop_short_edges(tri_3d_points[1],
+                                    tri_3d_points[2],
+                                    max_length,
+                                    connected_3d_points[1],
+                                    connected_2d_points[1]);
+    connected_tris_drop_short_edges(tri_3d_points[2],
+                                    tri_3d_points[0],
+                                    max_length,
+                                    connected_3d_points[2],
+                                    connected_2d_points[2]);
 
-    if (UNLIKELY(!triangle_is_in_range(tri_2d_points[0], tri_2d_points[1], tri_2d_points[2], centre, radius))) {
+    if (UNLIKELY(!triangle_is_in_range(
+            tri_2d_points[0], tri_2d_points[1], tri_2d_points[2], centre, radius)))
+    {
       const float2 a_point = tri_2d_points[largest_side_to_split];
       const float2 b_point = tri_2d_points[topo_set::shift_front[largest_side_to_split]];
       const Span<float2> side_points = connected_2d_points[largest_side_to_split];
-      const bool has_connection_to_split = std::any_of(side_points.begin(), side_points.end(), [&](const float2 point) {
-        return triangle_is_in_range(a_point, b_point, point, centre, radius);
-      });
+      const bool has_connection_to_split = std::any_of(
+          side_points.begin(), side_points.end(), [&](const float2 point) {
+            return triangle_is_in_range(a_point, b_point, point, centre, radius);
+          });
       if (!has_connection_to_split) {
+        face_func(tri_verts);
         continue;
       }
     }
 
     const int2 split_edge = topo_set::edges[largest_side_to_split];
 
-    const float2 mid_2d = math::midpoint(tri_2d_points[split_edge[0]], tri_2d_points[split_edge[1]]);
-    const float3 mid_3d = math::midpoint(tri_3d_points[split_edge[0]], tri_3d_points[split_edge[1]]);
+    const int2 face_verts_to_split = topo_set::sample(tri_verts, split_edge);
+    const int new_vert_i = [&]() {
+      if (edges_state & EdgeState::edges_real(largest_side_to_split)) {
+        return split_in_face.index_of_or_add(face_verts_to_split);
+      }
+      return std::numeric_limits<int>::min() + split_of_edges.index_of_or_add(face_verts_to_split);
+    }();
 
-    std::array<Vector<float2>, 3>> left_connected_2d_points;
-    std::array<Vector<float3>, 3>> left_connected_3d_points;
-    std::array<float2, 3>> left_tri_2d_points = tri_2d_points;
-    std::array<float3, 3>> left_tri_3d_points = tri_3d_points;
+    const float2 mid_2d = math::midpoint(tri_2d_points[split_edge[0]],
+                                         tri_2d_points[split_edge[1]]);
+    const float3 mid_3d = math::midpoint(tri_3d_points[split_edge[0]],
+                                         tri_3d_points[split_edge[1]]);
+
+    vert_func(mid_2d, mid_3d, edges_state, new_vert_i);
+
+    std::array < Vector<float2>, 3 >> left_connected_2d_points;
+    std::array < Vector<float3>, 3 >> left_connected_3d_points;
+    std::array < float2, 3 >> left_tri_2d_points = tri_2d_points;
+    std::array < float3, 3 >> left_tri_3d_points = tri_3d_points;
 
     left_connected_2d_points[largest_side_to_split] = connected_2d_points[largest_side_to_split];
     left_connected_3d_points[largest_side_to_split] = connected_3d_points[largest_side_to_split];
 
-    left_connected_2d_points[topo_set::shift_front[largest_side_to_split]] = {tri_2d_points[topo_set::shift_front[largest_side_to_split]]};
-    left_connected_3d_points[topo_set::shift_front[largest_side_to_split]] = {tri_3d_points[topo_set::shift_front[largest_side_to_split]]};
+    left_connected_2d_points[topo_set::shift_front[largest_side_to_split]] = {
+        tri_2d_points[topo_set::shift_front[largest_side_to_split]]};
+    left_connected_3d_points[topo_set::shift_front[largest_side_to_split]] = {
+        tri_3d_points[topo_set::shift_front[largest_side_to_split]]};
 
-    left_connected_2d_points[topo_set::shift_back[largest_side_to_split]] = std::move(connected_2d_points[topo_set::shift_back[largest_side_to_split]]);
-    left_connected_3d_points[topo_set::shift_back[largest_side_to_split]] = std::move(connected_3d_points[topo_set::shift_back[largest_side_to_split]]);
+    left_connected_2d_points[topo_set::shift_back[largest_side_to_split]] = std::move(
+        connected_2d_points[topo_set::shift_back[largest_side_to_split]]);
+    left_connected_3d_points[topo_set::shift_back[largest_side_to_split]] = std::move(
+        connected_3d_points[topo_set::shift_back[largest_side_to_split]]);
 
     left_tri_2d_points[topo_set::shift_front[largest_side_to_split]] = mid_2d;
     left_tri_3d_points[topo_set::shift_front[largest_side_to_split]] = mid_3d;
 
-    std::array<Vector<float2>, 3>> right_connected_2d_points;
-    std::array<Vector<float3>, 3>> right_connected_3d_points;
-    std::array<float2, 3>> right_tri_2d_points = tri_2d_points;
-    std::array<float3, 3>> right_tri_3d_points = tri_3d_points;
+    const int8_t left_edges_state =
+        edges_state & (~EdgeState::edges_real[topo_set::shift_front[largest_side_to_split]]) |
+        EdgeState::edges_owned[topo_set::shift_front[largest_side_to_split]];
 
-    right_connected_2d_points[largest_side_to_split] = std::move(connected_2d_points[largest_side_to_split]);
-    right_connected_3d_points[largest_side_to_split] = std::move(connected_3d_points[largest_side_to_split]);
+    int3 left_tri_verts = tri_verts;
+    left_tri_verts[topo_set::shift_front[largest_side_to_split]] = new_vert_i;
 
-    right_connected_2d_points[topo_set::shift_front[largest_side_to_split]] = std::move(connected_2d_points[topo_set::shift_front[largest_side_to_split]]);
-    right_connected_3d_points[topo_set::shift_front[largest_side_to_split]] = std::move(connected_3d_points[topo_set::shift_front[largest_side_to_split]]);
+    std::array < Vector<float2>, 3 >> right_connected_2d_points;
+    std::array < Vector<float3>, 3 >> right_connected_3d_points;
+    std::array < float2, 3 >> right_tri_2d_points = tri_2d_points;
+    std::array < float3, 3 >> right_tri_3d_points = tri_3d_points;
 
-    right_connected_2d_points[topo_set::shift_back[largest_side_to_split]] = {tri_2d_points[largest_side_to_split]};
-    right_connected_3d_points[topo_set::shift_back[largest_side_to_split]] = {tri_3d_points[largest_side_to_split]};
+    right_connected_2d_points[largest_side_to_split] = std::move(
+        connected_2d_points[largest_side_to_split]);
+    right_connected_3d_points[largest_side_to_split] = std::move(
+        connected_3d_points[largest_side_to_split]);
+
+    right_connected_2d_points[topo_set::shift_front[largest_side_to_split]] = std::move(
+        connected_2d_points[topo_set::shift_front[largest_side_to_split]]);
+    right_connected_3d_points[topo_set::shift_front[largest_side_to_split]] = std::move(
+        connected_3d_points[topo_set::shift_front[largest_side_to_split]]);
+
+    right_connected_2d_points[topo_set::shift_back[largest_side_to_split]] = {
+        tri_2d_points[largest_side_to_split]};
+    right_connected_3d_points[topo_set::shift_back[largest_side_to_split]] = {
+        tri_3d_points[largest_side_to_split]};
 
     right_tri_2d_points[largest_side_to_split] = mid_2d;
     right_tri_3d_points[largest_side_to_split] = mid_3d;
+
+    const int8_t right_edges_state =
+        edges_state & (~EdgeState::edges_real[topo_set::shift_back[largest_side_to_split]]);
+
+    int3 right_tri_verts = tri_verts;
+    right_tri_verts[largest_side_to_split] = new_vert_i;
 
     connected_2d_points_stack.append(std::move(left_connected_2d_points));
     connected_3d_points_stack.append(std::move(left_connected_3d_points));
     tri_2d_points_stack.append(std::move(left_tri_2d_points));
     tri_3d_points_stack.append(std::move(left_tri_3d_points));
-    
+    edges_states.append(left_edges_state);
+    tri_verts_stack.append(left_tri_verts);
+
     connected_2d_points_stack.append(std::move(right_connected_2d_points));
     connected_3d_points_stack.append(std::move(right_connected_3d_points));
     tri_2d_points_stack.append(std::move(right_tri_2d_points));
     tri_3d_points_stack.append(std::move(right_tri_3d_points));
+    edges_states.append(right_edges_state);
+    tri_verts_stack.append(right_tri_verts);
   }
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-template<typename VertFunc, typename FaceFunc>
-static void face_subdivide(const std::array<int, 5> &vert_offsets,
-                           const Span<float2> verts,
-                           const Span<float3> real_verts,
-                           const float2 centre,
-                           const float radius,
-                           const float max_length,
-                           const int3 face_verts,
-                           VertFunc vert_func,
-                           FaceFunc face_func,
-                           VectorSet<OrderedEdge> &r_all_edges,
-                           VectorSet<OrderedEdge> &r_unique_edges)
-{
-  Vector<std::array<int, 5>> offsets_stack = {vert_offsets};
-  Vector<Vector<float2>> verts_stack = {verts};
-  Vector<Vector<float3>> real_verts_stack = {real_verts};
-  Vector<int3> tris = {face_verts};
-  Vector<int8_t> edge_states = {EdgeState::ab_is_real_edge | EdgeState::bc_is_real_edge |
-                                EdgeState::ca_is_real_edge | EdgeState::ab_is_splitable_edge |
-                                EdgeState::bc_is_splitable_edge | EdgeState::ca_is_splitable_edge};
-
-  while (!offsets_stack.is_empty()) {
-    std::cout << "Stack call." << std::endl;
-    BLI_assert(offsets_stack.size() == verts_stack.size());
-    BLI_assert(offsets_stack.size() == real_verts_stack.size());
-    BLI_assert(offsets_stack.size() == tris.size());
-    BLI_assert(offsets_stack.size() == edge_states.size());
-
-    const std::array<int, 5> offset_data = offsets_stack.pop_last();
-    Vector<float2> verts = verts_stack.pop_last();
-    Vector<float3> real_verts = real_verts_stack.pop_last();
-    const int3 face_verts = tris.pop_last();
-    const int8_t states = edge_states.pop_last();
-
-    std::cout << " -" << offset_data << std::endl;
-    std::cout << " -" << verts.as_span() << std::endl;
-    std::cout << " -" << real_verts.as_span() << std::endl;
-    std::cout << " -" << face_verts << std::endl;
-    std::cout << " - States: " << (states & EdgeState::ab_is_real_edge ? "A" : "0")
-              << (states & EdgeState::bc_is_real_edge ? "B" : "0")
-              << (states & EdgeState::ca_is_real_edge ? "C" : "0") << std::endl;
-    std::cout << " - Is Subdivideble: " << (states & EdgeState::ab_is_splitable_edge ? "A" : "0")
-              << (states & EdgeState::bc_is_splitable_edge ? "B" : "0")
-              << (states & EdgeState::ca_is_splitable_edge ? "C" : "0") << std::endl;
-
-    BLI_assert(offset_data[1] == 3);
-
-    const OffsetIndices<int> vert_offset(offset_data);
-    const GroupedSpan<float2> verts_by_face_type(vert_offset, verts);
-    const GroupedSpan<float3> real_verts_by_face_type(vert_offset, real_verts);
-
-    Vector<int> faces_to_split;
-    gather_faces_to_split(verts_by_face_type, centre, radius, faces_to_split);
-    std::cout << "  - " << faces_to_split.as_span() << ";\n";
-    if (faces_to_split.is_empty()) {
-      face_func(face_verts);
-      continue;
-    }
-
-    Vector<int> edges_to_split;
-    gather_edges_to_split(faces_to_split, real_verts_by_face_type, max_length, edges_to_split);
-    std::cout << "  - " << edges_to_split.as_span() << ";\n";
-    if (edges_to_split.is_empty()) {
-      face_func(face_verts);
-      continue;
-    }
-
-    if (edges_to_split.size() > 1) {
-      /* TODO. */
-      BLI_assert_unreachable();
-      break;
-    }
-
-    const std::array<int2, 3> edges = {int2{0, 1}, int2{1, 2}, int2{2, 0}};
-
-    const int edge_i = edges_to_split[0];
-
-    const bool split_this_tris = ELEM(edge_i, 0, 1, 2);
-    if (!split_this_tris) {
-      const int side_index = (edge_i - 3) / 2 + 3;
-
-      const int face_side = vert_offset[1].contains(side_index) ?
-                                0 :
-                                (vert_offset[2].contains(side_index) ? 1 : 2);
-      BLI_assert(vert_offset[face_side + 1].contains(side_index));
-      const int split_face_i = vert_offset[face_side + 1].start() - side_index;
-      const int split_face_side_i = (edge_i - 3) % 2;
-      BLI_assert(split_face_i >= 0);
-      BLI_assert(ELEM(split_face_side_i, 0, 1));
-
-      const int2 split_edge = edges[face_side];
-      const int split_a_vert_i = split_edge[split_face_side_i];
-      const int split_target_vert_i = split_face_i;
-
-      const float2 mid = math::midpoint(verts_by_face_type[0][split_a_vert_i],
-                                        verts_by_face_type[face_side + 1][split_target_vert_i]);
-      const float3 real_mid = math::midpoint(
-          real_verts_by_face_type[0][split_a_vert_i],
-          real_verts_by_face_type[face_side + 1][split_target_vert_i]);
-
-      const int3 next_face_verts = face_verts;
-      Vector<float2> next_verts = verts;
-      Vector<float3> next_real_verts = real_verts;
-      std::array<int, 5> next_offset_data;
-      MutableSpan(next_offset_data).copy_from(offset_data);
-
-      next_verts[vert_offset[face_side + 1][split_face_i]] = mid;
-      next_real_verts[vert_offset[face_side + 1][split_face_i]] = real_mid;
-
-      offsets_stack.append(next_offset_data);
-      verts_stack.append(next_verts);
-      real_verts_stack.append(next_real_verts);
-      tris.append(next_face_verts);
-      edge_states.append(states);
-      continue;
-    }
-
-    const int2 edge = edges[edge_i];
-
-    const float2 mid = math::midpoint(verts_by_face_type[0][edge[0]],
-                                      verts_by_face_type[0][edge[1]]);
-    const float3 real_mid = math::midpoint(real_verts_by_face_type[0][edge[0]],
-                                           real_verts_by_face_type[0][edge[1]]);
-
-    if (r_all_edges.add({face_verts[edge[0]], face_verts[edge[1]]})) {
-      const int8_t split_mask =
-          EdgeState::edge_state_for_vert[exclusive_one(FaceVerts::abc, edge)];
-      const bool is_edge_vert = bool(states & split_mask);
-      const bool is_this_tris_vert = !bool(states & (split_mask << 3));
-      vert_func(mid, real_mid, is_edge_vert, is_this_tris_vert);
-    }
-
-    const int new_vert_i = r_all_edges.index_of({face_verts[edge[0]], face_verts[edge[1]]});
-
-    int3 left_face_verts = face_verts;
-    int3 right_face_verts = face_verts;
-    left_face_verts[edge[0]] = new_vert_i;
-    right_face_verts[edge[1]] = new_vert_i;
-
-    Vector<float2> left_verts;
-    Vector<float2> right_verts;
-
-    Vector<float3> left_real_verts;
-    Vector<float3> right_real_verts;
-
-    std::array<int, 5> left_offset_data;
-    std::array<int, 5> right_offset_data;
-    left_offset_data[0] = 3;
-    right_offset_data[0] = 3;
-
-    switch (edge_i) {
-      case 0: {
-        left_verts.append(mid);
-        left_verts.append(verts_by_face_type[0][1]);
-        left_verts.append(verts_by_face_type[0][2]);
-        left_verts.extend(verts_by_face_type[1]);
-        left_verts.extend(verts_by_face_type[2]);
-        left_verts.append(verts_by_face_type[0][0]);
-
-        left_offset_data[1] = verts_by_face_type[1].size();
-        left_offset_data[2] = verts_by_face_type[2].size();
-        left_offset_data[3] = 1;
-
-        right_verts.append(verts_by_face_type[0][0]);
-        right_verts.append(mid);
-        right_verts.append(verts_by_face_type[0][2]);
-        right_verts.extend(verts_by_face_type[1]);
-        right_verts.append(verts_by_face_type[0][1]);
-        right_verts.extend(verts_by_face_type[3]);
-
-        right_offset_data[1] = verts_by_face_type[1].size();
-        right_offset_data[2] = 1;
-        right_offset_data[3] = verts_by_face_type[3].size();
-
-        left_real_verts.append(real_mid);
-        left_real_verts.append(real_verts_by_face_type[0][1]);
-        left_real_verts.append(real_verts_by_face_type[0][2]);
-        left_real_verts.extend(real_verts_by_face_type[1]);
-        left_real_verts.extend(real_verts_by_face_type[2]);
-        left_real_verts.append(real_verts_by_face_type[0][0]);
-
-        right_real_verts.append(real_verts_by_face_type[0][0]);
-        right_real_verts.append(real_mid);
-        right_real_verts.append(real_verts_by_face_type[0][2]);
-        right_real_verts.extend(real_verts_by_face_type[1]);
-        right_real_verts.append(real_verts_by_face_type[0][1]);
-        right_real_verts.extend(real_verts_by_face_type[3]);
-        break;
-      }
-      case 1: {
-        left_verts.append(verts_by_face_type[0][0]);
-        left_verts.append(verts_by_face_type[0][1]);
-        left_verts.append(mid);
-        left_verts.extend(verts_by_face_type[1]);
-        left_verts.extend(verts_by_face_type[2]);
-        left_verts.append(verts_by_face_type[0][2]);
-
-        left_offset_data[1] = verts_by_face_type[1].size();
-        left_offset_data[2] = verts_by_face_type[2].size();
-        left_offset_data[3] = 1;
-
-        right_verts.append(verts_by_face_type[0][0]);
-        right_verts.append(mid);
-        right_verts.append(verts_by_face_type[0][2]);
-        right_verts.append(verts_by_face_type[0][1]);
-        right_verts.extend(verts_by_face_type[2]);
-        right_verts.extend(verts_by_face_type[3]);
-
-        right_offset_data[1] = 1;
-        right_offset_data[2] = verts_by_face_type[2].size();
-        right_offset_data[3] = verts_by_face_type[3].size();
-
-        left_real_verts.append(real_verts_by_face_type[0][0]);
-        left_real_verts.append(real_verts_by_face_type[0][1]);
-        left_real_verts.append(real_mid);
-        left_real_verts.extend(real_verts_by_face_type[1]);
-        left_real_verts.extend(real_verts_by_face_type[2]);
-        left_real_verts.append(real_verts_by_face_type[0][2]);
-
-        right_real_verts.append(real_verts_by_face_type[0][0]);
-        right_real_verts.append(real_mid);
-        right_real_verts.append(real_verts_by_face_type[0][2]);
-        right_real_verts.append(real_verts_by_face_type[0][1]);
-        right_real_verts.extend(real_verts_by_face_type[2]);
-        right_real_verts.extend(real_verts_by_face_type[3]);
-        break;
-      }
-      case 2: {
-        left_verts.append(verts_by_face_type[0][0]);
-        left_verts.append(verts_by_face_type[0][1]);
-        left_verts.append(mid);
-        left_verts.extend(verts_by_face_type[1]);
-        left_verts.append(verts_by_face_type[0][2]);
-        left_verts.extend(verts_by_face_type[3]);
-
-        left_offset_data[1] = verts_by_face_type[1].size();
-        left_offset_data[2] = 1;
-        left_offset_data[3] = verts_by_face_type[3].size();
-
-        right_verts.append(mid);
-        right_verts.append(verts_by_face_type[0][1]);
-        right_verts.append(verts_by_face_type[0][2]);
-        right_verts.append(verts_by_face_type[0][0]);
-        right_verts.extend(verts_by_face_type[2]);
-        right_verts.extend(verts_by_face_type[3]);
-
-        right_offset_data[1] = 1;
-        right_offset_data[2] = verts_by_face_type[2].size();
-        right_offset_data[3] = verts_by_face_type[3].size();
-
-        left_real_verts.append(real_verts_by_face_type[0][0]);
-        left_real_verts.append(real_verts_by_face_type[0][1]);
-        left_real_verts.append(real_mid);
-        left_real_verts.extend(real_verts_by_face_type[1]);
-        left_real_verts.append(real_verts_by_face_type[0][2]);
-        left_real_verts.extend(real_verts_by_face_type[3]);
-
-        right_real_verts.append(real_mid);
-        right_real_verts.append(real_verts_by_face_type[0][1]);
-        right_real_verts.append(real_verts_by_face_type[0][2]);
-        right_real_verts.append(real_verts_by_face_type[0][0]);
-        right_real_verts.extend(real_verts_by_face_type[2]);
-        right_real_verts.extend(real_verts_by_face_type[3]);
-        break;
-      }
-    }
-
-    split_edge_for_state(states, edge, edge_states);
-
-    // std::cout << "\t left_offset_data" << left_offset_data << ";\n";
-    // std::cout << "\t right_offset_data" << right_offset_data << ";\n";
-
-    offset_indices::accumulate_counts_to_offsets(left_offset_data);
-    offset_indices::accumulate_counts_to_offsets(right_offset_data);
-
-    offsets_stack.append(left_offset_data);
-    offsets_stack.append(right_offset_data);
-
-    verts_stack.append(left_verts);
-    verts_stack.append(right_verts);
-
-    real_verts_stack.append(left_real_verts);
-    real_verts_stack.append(right_real_verts);
-
-    tris.append(left_face_verts);
-    tris.append(right_face_verts);
-  }
-
-  std::cout << __func__ << ":\n";
-  for (const OrderedEdge e : r_unique_edges) {
-    std::cout << "  " << e << ", ";
-  }
-  std::cout << ";\n";
-  for (const OrderedEdge e : r_all_edges) {
-    std::cout << "  " << e << ", ";
-  }
-  std::cout << ";\n";
 }
 
 static void edge_subdivide_count(const float2 a_vert,
@@ -1239,16 +656,6 @@ static void edge_subdivide_uv(const float2 a_vert,
   }
 }
 
-struct TrisEdge {
-  float2 a;
-  float2 b;
-  float2 c;
-  float2 d;
-
-  int vert_a;
-  int vert_b;
-};
-
 static void edge_subdivide_verts(const float2 a_vert,
                                  const float2 b_vert,
                                  const float2 c_vert,
@@ -1366,123 +773,6 @@ static void edge_subdivide_verts(const float2 a_vert,
                       edge_and_tris.vert_a,
                       edge_and_tris.vert_b});
       }
-    }
-  }
-}
-
-static void face_subdivide(const std::array<float2, 6> &verts_list,
-                           const std::array<int, 9> &edge_indices,
-                           const int3 face_verts,
-                           const float2 centre,
-                           const float radius,
-                           const float max_length,
-                           const IndexRange verts_range,
-                           const IndexRange ab_points_range,
-                           const IndexRange bc_points_range,
-                           const IndexRange ca_points_range,
-                           VectorSet<OrderedEdge> &r_face_edges,
-                           VectorSet<OrderedEdge> &r_unique_face_edges)
-{
-  BLI_assert(verts_range.intersect(ab_points_range).is_empty());
-  BLI_assert(verts_range.intersect(bc_points_range).is_empty());
-  BLI_assert(verts_range.intersect(ca_points_range).is_empty());
-
-  BLI_assert(ab_points_range.intersect(bc_points_range).is_empty());
-  BLI_assert(ab_points_range.intersect(ca_points_range).is_empty());
-
-  BLI_assert(bc_points_range.intersect(ab_points_range).is_empty());
-  BLI_assert(bc_points_range.intersect(ca_points_range).is_empty());
-
-  BLI_assert(ca_points_range.intersect(ab_points_range).is_empty());
-  BLI_assert(ca_points_range.intersect(bc_points_range).is_empty());
-
-  static const int3 abc_verts(0, 1, 2);
-
-  [[maybe_unused]] VectorSet<OrderedEdge> ab_edges;
-  [[maybe_unused]] VectorSet<OrderedEdge> bc_edges;
-  [[maybe_unused]] VectorSet<OrderedEdge> ca_edges;
-
-  Vector<std::array<float2, 6>> vertices = {verts_list};
-  Vector<int3> tri_indices = {face_verts};
-  Vector<int8_t> is_real_edges = {EdgeState::ab_is_real_edge | EdgeState::bc_is_real_edge |
-                                  EdgeState::ca_is_real_edge};
-
-  while (!vertices.is_empty()) {
-    // std::cout << "  " << vertices.size() << ";\n";
-    BLI_assert(vertices.size() == is_real_edges.size());
-    BLI_assert(vertices.size() == tri_indices.size());
-    const std::array<float2, 6> verts = vertices.pop_last();
-    const int8_t edges_is_real = is_real_edges.pop_last();
-    const int3 face_indices = tri_indices.pop_last();
-
-    // std::cout << "    verts: " << verts << ";\n";
-    // std::cout << "    edges_is_real: " << edges_is_real << ";\n";
-    // std::cout << "    face_indices: " << face_indices << ";\n";
-
-    const float2 &vert_a = verts[abc_verts[0]];
-    const float2 &vert_b = verts[abc_verts[1]];
-    const float2 &vert_c = verts[abc_verts[2]];
-
-    const bool abc_is_affected = triangle_is_in_range(vert_a, vert_b, vert_c, centre, radius);
-    if (!abc_is_affected) {
-      // std::cout << "    - Is not affected;\n";
-      // TODO: Handle neighboards...
-      r_unique_face_edges.add({face_indices[0], face_indices[1]});
-      r_unique_face_edges.add({face_indices[1], face_indices[2]});
-      r_unique_face_edges.add({face_indices[2], face_indices[0]});
-      continue;
-    }
-    // std::cout << "    - Is affected;\n";
-
-    const std::optional<int2> edge_to_split = largest_side_to_split(
-        vert_a, vert_b, vert_c, edge_indices, max_length);
-    if (!edge_to_split.has_value()) {
-      // std::cout << "    - No edge to split;\n";
-      r_unique_face_edges.add({face_indices[0], face_indices[1]});
-      r_unique_face_edges.add({face_indices[1], face_indices[2]});
-      r_unique_face_edges.add({face_indices[2], face_indices[0]});
-      continue;
-    }
-    // std::cout << "    Edge to split: " << (*edge_to_split) << "\n";
-
-    split_edge_for_vert(verts, *edge_to_split, vertices);
-    split_edge_for_state(edges_is_real, *edge_to_split, is_real_edges);
-
-    const int2 virtual_split_edge(face_indices[(*edge_to_split)[0]],
-                                  face_indices[(*edge_to_split)[1]]);
-
-    const int other_vert_for_split = exclusive_one(FaceVerts::abc, *edge_to_split);
-    const bool split_of_real_edge = EdgeState::edge_state_for_vert[other_vert_for_split] &
-                                    edges_is_real;
-    if (UNLIKELY(split_of_real_edge)) {
-      switch ((*edge_to_split)[0]) {
-        case 0: {
-          const int vert_i = ab_edges.index_of_or_add(virtual_split_edge);
-          // std::cout << "    ." << ab_points_range << ": " << vert_i << ";\n";
-          const int edge_vert = ab_points_range[vert_i];
-          split_edge_for_indices(face_indices, edge_vert, *edge_to_split, tri_indices);
-          break;
-        }
-        case 1: {
-          const int vert_i = bc_edges.index_of_or_add(virtual_split_edge);
-          // std::cout << "    ." << bc_points_range << ": " << vert_i << ";\n";
-          const int edge_vert = bc_points_range[vert_i];
-          split_edge_for_indices(face_indices, edge_vert, *edge_to_split, tri_indices);
-          break;
-        }
-        case 2: {
-          const int vert_i = ca_edges.index_of_or_add(virtual_split_edge);
-          // std::cout << "    ." << ca_points_range << ": " << vert_i << ";\n";
-          const int edge_vert = ca_points_range[vert_i];
-          split_edge_for_indices(face_indices, edge_vert, *edge_to_split, tri_indices);
-          break;
-        }
-      }
-    }
-    else {
-      const int vert_i = r_face_edges.index_of_or_add(virtual_split_edge);
-      const int face_vert = verts_range[vert_i];
-      split_edge_for_indices(face_indices, face_vert, *edge_to_split, tri_indices);
     }
   }
 }
