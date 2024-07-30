@@ -133,7 +133,7 @@ static void smooth_mask_mesh(const OffsetIndices<int> faces,
 {
   const Span<int> verts = bke::pbvh::node_unique_verts(node);
 
-  tls.vert_neighbors.reinitialize(verts.size());
+  tls.vert_neighbors.resize(verts.size());
   const MutableSpan<Vector<int>> neighbors = tls.vert_neighbors;
   calc_vert_neighbors(faces, corner_verts, vert_to_face_map, hide_poly, verts, neighbors);
 
@@ -151,11 +151,11 @@ static void sharpen_mask_mesh(const OffsetIndices<int> faces,
 {
   const Span<int> verts = bke::pbvh::node_unique_verts(node);
 
-  tls.node_mask.reinitialize(verts.size());
+  tls.node_mask.resize(verts.size());
   const MutableSpan<float> node_mask = tls.node_mask;
   gather_data_mesh(mask, verts, node_mask);
 
-  tls.vert_neighbors.reinitialize(verts.size());
+  tls.vert_neighbors.resize(verts.size());
   const MutableSpan<Vector<int>> neighbors = tls.vert_neighbors;
   calc_vert_neighbors(faces, corner_verts, vert_to_face_map, hide_poly, verts, neighbors);
 
@@ -175,7 +175,7 @@ static void grow_mask_mesh(const OffsetIndices<int> faces,
 {
   const Span<int> verts = bke::pbvh::node_unique_verts(node);
 
-  tls.vert_neighbors.reinitialize(verts.size());
+  tls.vert_neighbors.resize(verts.size());
   const MutableSpan<Vector<int>> neighbors = tls.vert_neighbors;
   calc_vert_neighbors(faces, corner_verts, vert_to_face_map, hide_poly, verts, neighbors);
 
@@ -198,7 +198,7 @@ static void shrink_mask_mesh(const OffsetIndices<int> faces,
 {
   const Span<int> verts = bke::pbvh::node_unique_verts(node);
 
-  tls.vert_neighbors.reinitialize(verts.size());
+  tls.vert_neighbors.resize(verts.size());
   const MutableSpan<Vector<int>> neighbors = tls.vert_neighbors;
   calc_vert_neighbors(faces, corner_verts, vert_to_face_map, hide_poly, verts, neighbors);
 
@@ -220,7 +220,7 @@ static void increase_contrast_mask_mesh(const Object &object,
 
   const Span<float> node_mask = gather_data_mesh(mask.as_span(), verts, tls.node_mask);
 
-  tls.new_mask.reinitialize(verts.size());
+  tls.new_mask.resize(verts.size());
   const MutableSpan<float> new_mask = tls.new_mask;
   mask_increase_contrast(node_mask, new_mask);
 
@@ -243,7 +243,7 @@ static void decrease_contrast_mask_mesh(const Object &object,
 
   const Span<float> node_mask = gather_data_mesh(mask.as_span(), verts, tls.node_mask);
 
-  tls.new_mask.reinitialize(verts.size());
+  tls.new_mask.resize(verts.size());
   const MutableSpan<float> new_mask = tls.new_mask;
   mask_decrease_contrast(node_mask, new_mask);
 
@@ -317,7 +317,7 @@ static void sharpen_mask_grids(const SubdivCCG &subdiv_ccg,
   const Span<int> grids = bke::pbvh::node_grid_indices(node);
   const int grid_verts_num = grids.size() * key.grid_area;
 
-  tls.node_mask.reinitialize(grid_verts_num);
+  tls.node_mask.resize(grid_verts_num);
   const MutableSpan<float> node_mask = tls.node_mask;
   gather_mask_grids(subdiv_ccg, grids, node_mask);
 
@@ -409,11 +409,11 @@ static void increase_contrast_mask_grids(const Object &object,
   const Span<int> grids = bke::pbvh::node_grid_indices(node);
   const int grid_verts_num = grids.size() * key.grid_area;
 
-  tls.node_mask.reinitialize(grid_verts_num);
+  tls.node_mask.resize(grid_verts_num);
   const MutableSpan<float> node_mask = tls.node_mask;
   gather_mask_grids(subdiv_ccg, grids, node_mask);
 
-  tls.new_mask.reinitialize(grid_verts_num);
+  tls.new_mask.resize(grid_verts_num);
   const MutableSpan<float> new_mask = tls.new_mask;
   mask_increase_contrast(node_mask, new_mask);
 
@@ -439,11 +439,11 @@ static void decrease_contrast_mask_grids(const Object &object,
   const Span<int> grids = bke::pbvh::node_grid_indices(node);
   const int grid_verts_num = grids.size() * key.grid_area;
 
-  tls.node_mask.reinitialize(grid_verts_num);
+  tls.node_mask.resize(grid_verts_num);
   const MutableSpan<float> node_mask = tls.node_mask;
   gather_mask_grids(subdiv_ccg, grids, node_mask);
 
-  tls.new_mask.reinitialize(grid_verts_num);
+  tls.new_mask.resize(grid_verts_num);
   const MutableSpan<float> new_mask = tls.new_mask;
   mask_decrease_contrast(node_mask, new_mask);
 
@@ -511,7 +511,7 @@ static void sharpen_mask_bmesh(const BMesh &bm,
 {
   const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(&node);
 
-  tls.node_mask.reinitialize(verts.size());
+  tls.node_mask.resize(verts.size());
   const MutableSpan<float> node_mask = tls.node_mask;
   gather_mask_bmesh(bm, verts, node_mask);
 
@@ -572,11 +572,11 @@ static void increase_contrast_mask_bmesh(Object &object,
 
   const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(&node);
 
-  tls.node_mask.reinitialize(verts.size());
+  tls.node_mask.resize(verts.size());
   const MutableSpan<float> node_mask = tls.node_mask;
   gather_mask_bmesh(bm, verts, node_mask);
 
-  tls.new_mask.reinitialize(verts.size());
+  tls.new_mask.resize(verts.size());
   const MutableSpan<float> new_mask = tls.new_mask;
   mask_increase_contrast(node_mask, new_mask);
 
@@ -601,11 +601,11 @@ static void decrease_contrast_mask_bmesh(Object &object,
 
   const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(&node);
 
-  tls.node_mask.reinitialize(verts.size());
+  tls.node_mask.resize(verts.size());
   const MutableSpan<float> node_mask = tls.node_mask;
   gather_mask_bmesh(bm, verts, node_mask);
 
-  tls.new_mask.reinitialize(verts.size());
+  tls.new_mask.resize(verts.size());
   const MutableSpan<float> new_mask = tls.new_mask;
   mask_decrease_contrast(node_mask, new_mask);
 
