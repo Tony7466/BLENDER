@@ -97,7 +97,7 @@ void icon_draw_rect_input(float x,
   icon_draw_outline(x, y, aspect, event_type, color, inverted);
 
   // needs to move to text output
-  //if (inverted) {
+  // if (inverted) {
   //  UI_GetThemeColor4fv(TH_BACK, color);
   //}
 
