@@ -973,7 +973,7 @@ void rna_uiTemplateAssetShelfPopover(uiLayout *layout,
     icon = icon_value;
   }
 
-  blender::ui::template_asset_shelf_popover(*layout, *C, asset_shelf_id, name, icon);
+  blender::ui::template_asset_shelf_popover(*layout, *C, asset_shelf_id, name ? name : "", icon);
 }
 
 PointerRNA rna_uiTemplatePopupConfirm(uiLayout *layout,
@@ -1787,11 +1787,6 @@ void RNA_api_ui_layout(StructRNA *srna)
                   true,
                   "",
                   "Add panels for bone constraints instead of object constraints");
-
-  func = RNA_def_function(srna, "template_grease_pencil_modifiers", "uiTemplateGpencilModifiers");
-  RNA_def_function_flag(func, FUNC_USE_CONTEXT);
-  RNA_def_function_ui_description(func,
-                                  "Generates the panels for the grease pencil modifier stack");
 
   func = RNA_def_function(srna, "template_shaderfx", "uiTemplateShaderFx");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT);

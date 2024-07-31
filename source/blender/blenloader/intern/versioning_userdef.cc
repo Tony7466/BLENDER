@@ -947,7 +947,6 @@ void blo_do_versions_userdef(UserDef *userdef)
     LISTBASE_FOREACH (uiStyle *, style, &userdef->uistyles) {
       style->paneltitle.character_weight = 400;
       style->grouplabel.character_weight = 400;
-      style->widgetlabel.character_weight = 400;
       style->widget.character_weight = 400;
     }
   }
@@ -1021,6 +1020,31 @@ void blo_do_versions_userdef(UserDef *userdef)
 
   if (!USER_VERSION_ATLEAST(402, 63)) {
     userdef->statusbar_flag |= STATUSBAR_SHOW_EXTENSIONS_UPDATES;
+  }
+
+  if (!USER_VERSION_ATLEAST(402, 65)) {
+    /* Bone Selection Sets is no longer an add-on, but core functionality. */
+    BKE_addon_remove_safe(&userdef->addons, "bone_selection_sets");
+  }
+
+  if (!USER_VERSION_ATLEAST(403, 3)) {
+    BKE_preferences_asset_shelf_settings_ensure_catalog_path_enabled(
+        userdef, "VIEW3D_AST_brush_sculpt", "Brushes/Mesh Sculpt/Cloth");
+    BKE_preferences_asset_shelf_settings_ensure_catalog_path_enabled(
+        userdef, "VIEW3D_AST_brush_sculpt", "Brushes/Mesh Sculpt/General");
+    BKE_preferences_asset_shelf_settings_ensure_catalog_path_enabled(
+        userdef, "VIEW3D_AST_brush_sculpt", "Brushes/Mesh Sculpt/Paint");
+  }
+
+  if (!USER_VERSION_ATLEAST(403, 12)) {
+    LISTBASE_FOREACH (uiStyle *, style, &userdef->uistyles) {
+      style->tooltip.points = 11.0f; /* UI_DEFAULT_TOOLTIP_POINTS */
+      style->tooltip.character_weight = 400;
+      style->tooltip.shadow = 0;
+      style->tooltip.shady = -1;
+      style->tooltip.shadowalpha = 0.5f;
+      style->tooltip.shadowcolor = 0.0f;
+    }
   }
 
   /**
