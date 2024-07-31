@@ -43,7 +43,6 @@ class Instance {
 
   /** Overlay types. */
   Background background;
-  Prepass prepass;
 
   struct OverlayLayer {
     const SelectionType selection_type_;
@@ -53,6 +52,7 @@ class Instance {
     Lattices lattices;
     Lights lights = {selection_type_};
     Metaballs metaballs = {selection_type_};
+    Prepass prepass;
     Speakers speakers = {selection_type_};
   } regular{selection_type_}, infront{selection_type_};
 

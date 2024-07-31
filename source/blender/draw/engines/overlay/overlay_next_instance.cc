@@ -77,7 +77,6 @@ void Instance::begin_sync()
   resources.begin_sync();
 
   background.begin_sync(resources, state);
-  prepass.begin_sync(resources, state);
 
   auto begin_sync_layer = [&](OverlayLayer &layer) {
     layer.bounds.begin_sync();
@@ -86,6 +85,7 @@ void Instance::begin_sync()
     layer.lattices.begin_sync(resources, state);
     layer.lights.begin_sync();
     layer.metaballs.begin_sync();
+    layer.prepass.begin_sync(resources, state);
     layer.speakers.begin_sync();
   };
   begin_sync_layer(regular);
@@ -108,7 +108,7 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
       case OB_CURVES:
       case OB_FONT:
       case OB_CURVES_LEGACY:
-        prepass.object_sync(manager, ob_ref, resources);
+        layer.prepass.object_sync(manager, ob_ref, resources);
         break;
     }
   }
@@ -242,8 +242,8 @@ void Instance::draw(Manager &manager)
   float4 clear_color(0.0f);
   GPU_framebuffer_clear_color(resources.overlay_color_only_fb, clear_color);
 
-  prepass.draw(resources, manager, view);
-  prepass.draw_in_front(resources, manager, view);
+  regular.prepass.draw(resources.overlay_line_fb, manager, view);
+  infront.prepass.draw(resources.overlay_line_in_front_fb, manager, view);
 
   background.draw(resources, manager);
   regular.bounds.draw(resources.overlay_line_fb, manager, view);
@@ -257,7 +257,7 @@ void Instance::draw(Manager &manager)
   grid.draw(resources, manager, view);
 
   /* TODO(: Breaks selection on M1 Max. */
-  // lattices.draw_in_front(resources, manager, view);
+  // infront.lattices.draw(resources.overlay_line_in_front_fb, manager, view);
 
   // anti_aliasing.draw(resources, manager, view);
 
