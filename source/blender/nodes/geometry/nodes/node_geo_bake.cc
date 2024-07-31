@@ -778,13 +778,11 @@ void draw_common_bake_settings(bContext *C, BakeDrawContext &ctx, uiLayout *layo
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
 
-  uiItemR(layout, &ctx.bake_rna, "bake_target", UI_ITEM_NONE, nullptr, ICON_NONE);
-
   uiLayout *settings_col = uiLayoutColumn(layout, false);
   uiLayoutSetActive(settings_col, !ctx.is_baked);
   {
     uiLayout *col = uiLayoutColumn(settings_col, true);
-    uiLayoutSetActive(col, !ctx.is_baked);
+    uiItemR(col, &ctx.bake_rna, "bake_target", UI_ITEM_NONE, nullptr, ICON_NONE);
     uiItemR(col, &ctx.bake_rna, "use_custom_path", UI_ITEM_NONE, IFACE_("Custom Path"), ICON_NONE);
     uiLayout *subcol = uiLayoutColumn(col, true);
     const bool use_custom_path = ctx.bake->flag & NODES_MODIFIER_BAKE_CUSTOM_PATH;
