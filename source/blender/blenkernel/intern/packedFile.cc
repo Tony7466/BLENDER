@@ -286,7 +286,7 @@ static int BKE_packedfile_pack_geometry_nodes_bake(Main &bmain,
     return RET_OK;
   }
   bake.packed = bake::pack_bake_from_disk(*bake_path, reports);
-  nmd.runtime->cache->get_node_bake_cache(bake.id)->reset();
+  nmd.runtime->cache->reset_cache(bake.id);
   DEG_id_tag_update(&object.id, ID_RECALC_GEOMETRY);
   return RET_OK;
 }
@@ -835,7 +835,7 @@ static int BKE_packedfile_unpack_geometry_nodes_bake(Main &bmain,
   auto free_packed_bake = [&]() {
     blender::nodes_modifier_packed_bake_free(bake.packed);
     bake.packed = nullptr;
-    nmd.runtime->cache->get_node_bake_cache(bake.id)->reset();
+    nmd.runtime->cache->reset_cache(bake.id);
   };
 
   switch (how) {

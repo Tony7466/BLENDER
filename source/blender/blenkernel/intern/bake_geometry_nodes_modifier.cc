@@ -71,6 +71,16 @@ NodeBakeCache *ModifierCache::get_node_bake_cache(const int id)
   return nullptr;
 }
 
+void ModifierCache::reset_cache(const int id)
+{
+  if (SimulationNodeCache *cache = this->get_simulation_node_cache(id)) {
+    cache->reset();
+  }
+  if (BakeNodeCache *cache = this->get_bake_node_cache(id)) {
+    cache->reset();
+  }
+}
+
 void scene_simulation_states_reset(Scene &scene)
 {
   FOREACH_SCENE_OBJECT_BEGIN (&scene, ob) {

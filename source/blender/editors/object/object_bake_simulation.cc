@@ -1069,9 +1069,7 @@ static int pack_single_bake_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
   bake->packed = bake::pack_bake_from_disk(*bake_path, op->reports);
-  if (bake::NodeBakeCache *cache = nmd.runtime->cache->get_node_bake_cache(bake_id)) {
-    cache->reset();
-  }
+  nmd.runtime->cache->reset_cache(bake_id);
 
   DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
   WM_main_add_notifier(NC_OBJECT | ND_MODIFIER, nullptr);
@@ -1133,9 +1131,7 @@ static int unpack_single_bake_exec(bContext *C, wmOperator *op)
 
   blender::nodes_modifier_packed_bake_free(bake->packed);
   bake->packed = nullptr;
-  if (bake::NodeBakeCache *cache = nmd.runtime->cache->get_node_bake_cache(bake_id)) {
-    cache->reset();
-  }
+  nmd.runtime->cache->reset_cache(bake_id);
 
   DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
   WM_main_add_notifier(NC_OBJECT | ND_MODIFIER, nullptr);
