@@ -39,6 +39,8 @@ struct OVERLAY_Shaders {
   GPUShader *edit_gpencil_guide_point;
   GPUShader *edit_gpencil_point;
   GPUShader *edit_gpencil_wire;
+  GPUShader *edit_grease_pencil_wire;
+  GPUShader *edit_grease_pencil_point;
   GPUShader *edit_lattice_point;
   GPUShader *edit_lattice_wire;
   GPUShader *edit_mesh_vert;
@@ -499,6 +501,30 @@ GPUShader *OVERLAY_shader_edit_particle_point()
                                                        "overlay_edit_particle_point");
   }
   return sh_data->edit_particle_point;
+}
+
+GPUShader *OVERLAY_shader_edit_grease_pencil_wire()
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  if (!sh_data->edit_grease_pencil_wire) {
+    sh_data->edit_grease_pencil_wire = GPU_shader_create_from_info_name(
+        (draw_ctx->sh_cfg == GPU_SHADER_CFG_CLIPPED) ? "overlay_edit_grease_pencil_wire_clipped" :
+                                                       "overlay_edit_grease_pencil_wire");
+  }
+  return sh_data->edit_grease_pencil_wire;
+}
+
+GPUShader *OVERLAY_shader_edit_grease_pencil_point()
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
+  if (!sh_data->edit_grease_pencil_point) {
+    sh_data->edit_grease_pencil_point = GPU_shader_create_from_info_name(
+        (draw_ctx->sh_cfg == GPU_SHADER_CFG_CLIPPED) ? "overlay_edit_grease_pencil_point_clipped" :
+                                                       "overlay_edit_grease_pencil_point");
+  }
+  return sh_data->edit_grease_pencil_point;
 }
 
 GPUShader *OVERLAY_shader_extra(bool is_select)

@@ -37,7 +37,7 @@ void OVERLAY_edit_grease_pencil_cache_init(OVERLAY_Data *vedata)
   const bool show_lines = (v3d->gp_flag & V3D_GP_SHOW_EDIT_LINES) != 0;
 
   if (show_lines) {
-    sh = OVERLAY_shader_edit_particle_strand();
+    sh = OVERLAY_shader_edit_grease_pencil_wire();
     grp = pd->edit_grease_pencil_wires_grp = DRW_shgroup_create(sh, psl->edit_grease_pencil_ps);
     DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
     DRW_shgroup_uniform_bool_copy(grp, "useWeight", use_weight);
@@ -48,7 +48,7 @@ void OVERLAY_edit_grease_pencil_cache_init(OVERLAY_Data *vedata)
   }
 
   if (show_points) {
-    sh = OVERLAY_shader_edit_particle_point();
+    sh = OVERLAY_shader_edit_grease_pencil_point();
     grp = pd->edit_grease_pencil_points_grp = DRW_shgroup_create(sh, psl->edit_grease_pencil_ps);
     DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
     DRW_shgroup_uniform_bool_copy(grp, "useWeight", use_weight);

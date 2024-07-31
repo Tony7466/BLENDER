@@ -756,6 +756,8 @@ GPUShader *OVERLAY_shader_edit_mesh_skin_root();
 GPUShader *OVERLAY_shader_edit_mesh_vert();
 GPUShader *OVERLAY_shader_edit_particle_strand();
 GPUShader *OVERLAY_shader_edit_particle_point();
+GPUShader *OVERLAY_shader_edit_grease_pencil_wire();
+GPUShader *OVERLAY_shader_edit_grease_pencil_point();
 GPUShader *OVERLAY_shader_edit_uv_edges_get();
 GPUShader *OVERLAY_shader_edit_uv_edges_for_edge_select_get();
 GPUShader *OVERLAY_shader_edit_uv_face_get();

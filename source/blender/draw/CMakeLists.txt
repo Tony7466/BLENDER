@@ -657,6 +657,8 @@ set(GLSL_SRC
   engines/overlay/shaders/overlay_edit_gpencil_canvas_vert.glsl
   engines/overlay/shaders/overlay_edit_gpencil_guide_vert.glsl
   engines/overlay/shaders/overlay_edit_gpencil_vert.glsl
+  engines/overlay/shaders/overlay_edit_grease_pencil_point_vert.glsl
+  engines/overlay/shaders/overlay_edit_grease_pencil_wire_vert.glsl
   engines/overlay/shaders/overlay_edit_lattice_point_vert.glsl
   engines/overlay/shaders/overlay_edit_lattice_wire_vert.glsl
   engines/overlay/shaders/overlay_edit_mesh_analysis_frag.glsl
