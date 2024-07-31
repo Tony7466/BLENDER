@@ -544,11 +544,11 @@ void update_mask_mesh(Object &object,
                       Span<bke::pbvh::Node *> nodes,
                       FunctionRef<void(MutableSpan<float>, Span<int>)> update_fn);
 
+/** Check whether array data is the same as the stored mask for the referenced geometry. */
 bool mask_equals_array_grids(Span<CCGElem *> elems,
                              const CCGKey &key,
                              Span<int> grids,
                              Span<float> values);
-
 bool mask_equals_array_bmesh(int mask_offset, const Set<BMVert *, 0> &verts, Span<float> values);
 
 void PAINT_OT_mask_flood_fill(wmOperatorType *ot);
