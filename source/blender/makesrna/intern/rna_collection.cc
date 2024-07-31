@@ -43,8 +43,6 @@ BLI_STATIC_ASSERT(ARRAY_SIZE(rna_enum_collection_color_items) - 2 == COLLECTION_
 
 #  include <fmt/format.h>
 
-#  include "BLI_string.h"
-
 #  include "DNA_object_types.h"
 #  include "DNA_scene_types.h"
 
@@ -455,11 +453,7 @@ static void rna_CollectionLightLinking_update(Main *bmain, Scene * /*scene*/, Po
 static void rna_CollectionExport_name_set(PointerRNA *ptr, const char *value)
 {
   CollectionExport *data = reinterpret_cast<CollectionExport *>(ptr->data);
-
-  /* Only set the name if it's not empty. */
-  if (value[0] != '\0') {
-    STRNCPY(data->name, value);
-  }
+  BKE_collection_exporter_name_set(data, value);
 }
 
 static PointerRNA rna_CollectionExport_export_properties_get(PointerRNA *ptr)

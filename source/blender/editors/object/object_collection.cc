@@ -10,7 +10,6 @@
 
 #include "BLI_path_util.h"
 #include "BLI_string.h"
-#include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
 #include "DNA_collection_types.h"
@@ -475,8 +474,7 @@ static int collection_exporter_add_exec(bContext *C, wmOperator *op)
   CollectionExport *data = MEM_cnew<CollectionExport>("CollectionExport");
   STRNCPY(data->fh_idname, fh->idname);
 
-  BLI_uniquename(
-      exporters, data, fh->label, '.', offsetof(CollectionExport, name), sizeof(data->name));
+  BKE_collection_exporter_name_set(data, fh->label);
 
   IDPropertyTemplate val{};
   data->export_properties = IDP_New(IDP_GROUP, &val, "export_properties");

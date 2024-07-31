@@ -52,6 +52,7 @@
 #include "BKE_animsys.h"
 #include "BKE_armature.hh"
 #include "BKE_attribute.hh"
+#include "BKE_collection.hh"
 #include "BKE_colortools.hh"
 #include "BKE_context.hh"
 #include "BKE_curve.hh"
@@ -4450,13 +4451,12 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 14)) {
     using namespace blender;
 
-    Collection *collection;
     LISTBASE_FOREACH (Collection *, collection, &bmain->collections) {
       ListBase *exporters = &collection->exporters;
       LISTBASE_FOREACH (CollectionExport *, data, exporters) {
         if (data->name[0] == '\0') {
           bke::FileHandlerType *fh = bke::file_handler_find(data->fh_idname);
-          STRNCPY(data->name, fh ? fh->label : DATA_("Undefined"));
+          BKE_collection_exporter_name_set(data, fh ? fh->label : DATA_("Undefined"));
         }
       }
     }
