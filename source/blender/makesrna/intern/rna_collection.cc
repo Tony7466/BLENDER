@@ -452,39 +452,14 @@ static void rna_CollectionLightLinking_update(Main *bmain, Scene * /*scene*/, Po
   DEG_relations_tag_update(bmain);
 }
 
-static void rna_CollectionExport_friendly_name(CollectionExport *data, char *value)
-{
-  if (data->name[0] == '\0') {
-    blender::bke::FileHandlerType *fh = blender::bke::file_handler_find(data->fh_idname);
-    if (!fh) {
-      STRNCPY(data->name, DATA_("Undefined"));
-    }
-    else {
-      STRNCPY(data->name, fh->label);
-    }
-  }
-
-  BLI_strncpy(value, data->name, OP_MAX_TYPENAME);
-}
-
-static void rna_CollectionExport_name_get(PointerRNA *ptr, char *value)
-{
-  CollectionExport *data = reinterpret_cast<CollectionExport *>(ptr->data);
-  rna_CollectionExport_friendly_name(data, value);
-}
-
-static int rna_CollectionExport_name_length(PointerRNA *ptr)
-{
-  CollectionExport *data = reinterpret_cast<CollectionExport *>(ptr->data);
-  char value[OP_MAX_TYPENAME];
-  rna_CollectionExport_friendly_name(data, value);
-  return strlen(value);
-}
-
 static void rna_CollectionExport_name_set(PointerRNA *ptr, const char *value)
 {
   CollectionExport *data = reinterpret_cast<CollectionExport *>(ptr->data);
-  STRNCPY(data->name, value);
+
+  /* Only set the name if it's not empty. */
+  if (value[0] != '\0') {
+    STRNCPY(data->name, value);
+  }
 }
 
 static PointerRNA rna_CollectionExport_export_properties_get(PointerRNA *ptr)
@@ -638,10 +613,7 @@ static void rna_def_collection_exporter_data(BlenderRNA *brna)
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
   RNA_def_struct_ui_text(srna, "Name", "");
   RNA_def_struct_name_property(srna, prop);
-  RNA_def_property_string_funcs(prop,
-                                "rna_CollectionExport_name_get",
-                                "rna_CollectionExport_name_length",
-                                "rna_CollectionExport_name_set");
+  RNA_def_property_string_funcs(prop, nullptr, nullptr, "rna_CollectionExport_name_set");
 
   prop = RNA_def_property(srna, "is_open", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", IO_HANDLER_PANEL_OPEN);

@@ -17,6 +17,7 @@
 #include "DNA_anim_types.h"
 #include "DNA_brush_types.h"
 #include "DNA_camera_types.h"
+#include "DNA_collection_types.h"
 #include "DNA_constraint_types.h"
 #include "DNA_curve_types.h"
 #include "DNA_defaults.h"
@@ -56,6 +57,7 @@
 #include "BKE_curve.hh"
 #include "BKE_customdata.hh"
 #include "BKE_effect.h"
+#include "BKE_file_handler.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_idprop.hh"
 #include "BKE_main.hh"
@@ -4442,6 +4444,21 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       camera->central_cylindrical_range_v_min = default_cam.central_cylindrical_range_v_min;
       camera->central_cylindrical_range_v_max = default_cam.central_cylindrical_range_v_max;
       camera->central_cylindrical_radius = default_cam.central_cylindrical_radius;
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 14)) {
+    using namespace blender;
+
+    Collection *collection;
+    LISTBASE_FOREACH (Collection *, collection, &bmain->collections) {
+      ListBase *exporters = &collection->exporters;
+      LISTBASE_FOREACH (CollectionExport *, data, exporters) {
+        if (data->name[0] == '\0') {
+          bke::FileHandlerType *fh = bke::file_handler_find(data->fh_idname);
+          STRNCPY(data->name, fh ? fh->label : DATA_("Undefined"));
+        }
+      }
     }
   }
 
