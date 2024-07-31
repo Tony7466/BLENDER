@@ -78,12 +78,12 @@ void Instance::begin_sync()
 
   background.begin_sync(resources, state);
   prepass.begin_sync(resources, state);
-  lattices.begin_sync(resources, state);
 
   auto begin_sync_layer = [&](OverlayLayer &layer) {
     layer.bounds.begin_sync();
     layer.cameras.begin_sync();
     layer.empties.begin_sync();
+    layer.lattices.begin_sync(resources, state);
     layer.lights.begin_sync();
     layer.speakers.begin_sync();
   };
@@ -124,7 +124,7 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
       case OB_SURF:
         break;
       case OB_LATTICE:
-        lattices.edit_object_sync(manager, ob_ref, resources);
+        layer.lattices.edit_object_sync(manager, ob_ref, resources);
         break;
       case OB_MBALL:
         metaballs.edit_object_sync(ob_ref, resources);
@@ -148,7 +148,7 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
         break;
       case OB_LATTICE:
         if (!in_edit_mode) {
-          lattices.object_sync(manager, ob_ref, resources, state);
+          layer.lattices.object_sync(manager, ob_ref, resources, state);
         }
         break;
       case OB_LAMP:
@@ -251,8 +251,8 @@ void Instance::draw(Manager &manager)
   regular.cameras.draw(resources.overlay_line_fb, manager, view);
   regular.empties.draw(resources.overlay_line_fb, manager, view);
   regular.lights.draw(resources.overlay_line_fb, manager, view);
-  regular.speakers.draw(resources.overlay_color_only_fb, manager, view);
-  lattices.draw(resources, manager, view);
+  regular.speakers.draw(resources.overlay_line_fb, manager, view);
+  regular.lattices.draw(resources.overlay_line_fb, manager, view);
   metaballs.draw(resources, manager, view);
 
   grid.draw(resources, manager, view);

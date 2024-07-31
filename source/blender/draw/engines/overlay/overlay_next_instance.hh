@@ -50,12 +50,12 @@ class Instance {
     Bounds bounds = {selection_type_};
     Cameras cameras = {selection_type_};
     Empties empties = {selection_type_};
+    Lattices lattices;
     Lights lights = {selection_type_};
     Speakers speakers = {selection_type_};
   } regular{selection_type_}, infront{selection_type_};
 
   Metaballs metaballs = {selection_type_};
-  Lattices lattices;
   Grid grid;
 
   Instance(const SelectionType selection_type) : selection_type_(selection_type){};
