@@ -585,36 +585,7 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
     if (const std::optional<std::string> bake_state_str = get_bake_state_string(ctx)) {
       uiLayout *row = uiLayoutRow(col, true);
       uiItemL(row, bake_state_str->c_str(), ICON_NONE);
-      if (ctx.is_baked) {
-        if (ctx.bake->packed) {
-          PointerRNA ptr;
-          uiItemFullO(row,
-                      "OBJECT_OT_geometry_node_bake_unpack_single",
-                      "",
-                      ICON_PACKAGE,
-                      nullptr,
-                      WM_OP_INVOKE_DEFAULT,
-                      UI_ITEM_NONE,
-                      &ptr);
-          WM_operator_properties_id_lookup_set_from_id(&ptr, &ctx.object->id);
-          RNA_string_set(&ptr, "modifier_name", ctx.nmd->modifier.name);
-          RNA_int_set(&ptr, "bake_id", ctx.bake->id);
-        }
-        else {
-          PointerRNA ptr;
-          uiItemFullO(row,
-                      "OBJECT_OT_geometry_node_bake_pack_single",
-                      "",
-                      ICON_PACKAGE,
-                      nullptr,
-                      WM_OP_INVOKE_DEFAULT,
-                      UI_ITEM_NONE,
-                      &ptr);
-          WM_operator_properties_id_lookup_set_from_id(&ptr, &ctx.object->id);
-          RNA_string_set(&ptr, "modifier_name", ctx.nmd->modifier.name);
-          RNA_int_set(&ptr, "bake_id", ctx.bake->id);
-        }
-      }
+      draw_pack_unpack_button(ctx, row);
     }
   }
 
@@ -801,6 +772,40 @@ void draw_bake_button(const BakeDrawContext &ctx, uiLayout *layout)
     WM_operator_properties_id_lookup_set_from_id(&ptr, &ctx.object->id);
     RNA_string_set(&ptr, "modifier_name", ctx.nmd->modifier.name);
     RNA_int_set(&ptr, "bake_id", ctx.bake->id);
+  }
+}
+
+void draw_pack_unpack_button(const BakeDrawContext &ctx, uiLayout *layout)
+{
+  if (ctx.is_baked) {
+    if (ctx.bake->packed) {
+      PointerRNA ptr;
+      uiItemFullO(layout,
+                  "OBJECT_OT_geometry_node_bake_unpack_single",
+                  "",
+                  ICON_PACKAGE,
+                  nullptr,
+                  WM_OP_INVOKE_DEFAULT,
+                  UI_ITEM_NONE,
+                  &ptr);
+      WM_operator_properties_id_lookup_set_from_id(&ptr, &ctx.object->id);
+      RNA_string_set(&ptr, "modifier_name", ctx.nmd->modifier.name);
+      RNA_int_set(&ptr, "bake_id", ctx.bake->id);
+    }
+    else {
+      PointerRNA ptr;
+      uiItemFullO(layout,
+                  "OBJECT_OT_geometry_node_bake_pack_single",
+                  "",
+                  ICON_UGLYPACKAGE,
+                  nullptr,
+                  WM_OP_INVOKE_DEFAULT,
+                  UI_ITEM_NONE,
+                  &ptr);
+      WM_operator_properties_id_lookup_set_from_id(&ptr, &ctx.object->id);
+      RNA_string_set(&ptr, "modifier_name", ctx.nmd->modifier.name);
+      RNA_int_set(&ptr, "bake_id", ctx.bake->id);
+    }
   }
 }
 
