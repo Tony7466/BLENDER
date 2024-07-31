@@ -234,4 +234,19 @@ std::string get_default_modifier_bake_directory(const Main &bmain,
   return dir;
 }
 
+std::string get_default_node_bake_directory(const Main &bmain,
+                                            const Object &object,
+                                            const NodesModifierData &nmd,
+                                            int node_id)
+{
+  char dir[FILE_MAX];
+  BLI_path_join(dir,
+                sizeof(dir),
+                "//",
+                get_blend_file_name(bmain).c_str(),
+                get_modifier_directory_name(object, nmd.modifier).c_str(),
+                std::to_string(node_id).c_str());
+  return dir;
+}
+
 }  // namespace blender::bke::bake

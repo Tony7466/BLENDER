@@ -133,5 +133,9 @@ std::optional<std::string> get_modifier_bake_path(const Main &bmain,
 std::string get_default_modifier_bake_directory(const Main &bmain,
                                                 const Object &object,
                                                 const NodesModifierData &nmd);
+std::string get_default_node_bake_directory(const Main &bmain,
+                                            const Object &object,
+                                            const NodesModifierData &nmd,
+                                            int node_id);
 
 }  // namespace blender::bke::bake
