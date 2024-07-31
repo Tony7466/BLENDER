@@ -25,6 +25,7 @@
 #include "DNA_windowmanager_types.h"
 
 #include "BKE_bake_geometry_nodes_modifier.hh"
+#include "BKE_bake_geometry_nodes_modifier_pack.hh"
 #include "BKE_context.hh"
 #include "BKE_global.hh"
 #include "BKE_lib_id.hh"
@@ -1026,6 +1027,115 @@ static int delete_single_bake_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static int pack_single_bake_exec(bContext *C, wmOperator *op)
+{
+  Main *bmain = CTX_data_main(C);
+  Object *object = reinterpret_cast<Object *>(
+      WM_operator_properties_id_lookup_from_name_or_session_uid(bmain, op->ptr, ID_OB));
+  if (object == nullptr) {
+    return OPERATOR_CANCELLED;
+  }
+  char *modifier_name = RNA_string_get_alloc(op->ptr, "modifier_name", nullptr, 0, nullptr);
+  if (modifier_name == nullptr) {
+    return OPERATOR_CANCELLED;
+  }
+  BLI_SCOPED_DEFER([&]() { MEM_SAFE_FREE(modifier_name); });
+
+  ModifierData *md = BKE_modifiers_findby_name(object, modifier_name);
+  if (md == nullptr) {
+    return OPERATOR_CANCELLED;
+  }
+  NodesModifierData &nmd = *reinterpret_cast<NodesModifierData *>(md);
+  const int bake_id = RNA_int_get(op->ptr, "bake_id");
+
+  const std::optional<bake::BakePath> bake_path = bake::get_node_bake_path(
+      *bmain, *object, nmd, bake_id);
+  if (!bake_path) {
+    return OPERATOR_CANCELLED;
+  }
+  NodesModifierBake *bake = nmd.find_bake(bake_id);
+  if (!bake) {
+    return OPERATOR_CANCELLED;
+  }
+  if (bake->packed) {
+    /* Packed already. */
+    return OPERATOR_CANCELLED;
+  }
+  bake->packed = bake::pack_bake_from_disk(*bake_path, op->reports);
+  if (bake::NodeBakeCache *cache = nmd.runtime->cache->get_node_bake_cache(bake_id)) {
+    cache->reset();
+  }
+
+  DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
+  WM_main_add_notifier(NC_OBJECT | ND_MODIFIER, nullptr);
+  WM_main_add_notifier(NC_NODE, nullptr);
+  return OPERATOR_FINISHED;
+}
+
+static int unpack_single_bake_exec(bContext *C, wmOperator *op)
+{
+  Main *bmain = CTX_data_main(C);
+  Object *object = reinterpret_cast<Object *>(
+      WM_operator_properties_id_lookup_from_name_or_session_uid(bmain, op->ptr, ID_OB));
+  if (object == nullptr) {
+    return OPERATOR_CANCELLED;
+  }
+  char *modifier_name = RNA_string_get_alloc(op->ptr, "modifier_name", nullptr, 0, nullptr);
+  if (modifier_name == nullptr) {
+    return OPERATOR_CANCELLED;
+  }
+  BLI_SCOPED_DEFER([&]() { MEM_SAFE_FREE(modifier_name); });
+
+  ModifierData *md = BKE_modifiers_findby_name(object, modifier_name);
+  if (md == nullptr) {
+    return OPERATOR_CANCELLED;
+  }
+  NodesModifierData &nmd = *reinterpret_cast<NodesModifierData *>(md);
+  const int bake_id = RNA_int_get(op->ptr, "bake_id");
+  NodesModifierBake *bake = nmd.find_bake(bake_id);
+  if (!bake) {
+    return OPERATOR_CANCELLED;
+  }
+  if (!bake->packed) {
+    /* No packed already to unpack. */
+    return OPERATOR_CANCELLED;
+  }
+
+  std::optional<bake::BakePath> bake_path = bake::get_node_bake_path(
+      *bmain, *object, nmd, bake_id);
+  if (!bake_path) {
+    const char *base_path = ID_BLEND_PATH(bmain, &object->id);
+    if (StringRef(base_path).is_empty()) {
+      return OPERATOR_CANCELLED;
+    }
+    const std::string directory = bake::get_default_node_bake_directory(
+        *bmain, *object, nmd, bake_id);
+    bake->flag |= NODES_MODIFIER_BAKE_CUSTOM_PATH;
+    MEM_SAFE_FREE(bake->directory);
+    bake->directory = BLI_strdup(directory.c_str());
+    char absolute_dir[FILE_MAX];
+    STRNCPY(absolute_dir, directory.c_str());
+    BLI_path_abs(absolute_dir, base_path);
+    bake_path = bake::BakePath::from_single_root(absolute_dir);
+  }
+
+  BLI_delete(bake_path->meta_dir.c_str(), true, true);
+  BLI_delete(bake_path->blobs_dir.c_str(), true, true);
+
+  bake::unpack_bake_to_disk(*bake->packed, *bake_path, op->reports);
+
+  blender::nodes_modifier_packed_bake_free(bake->packed);
+  bake->packed = nullptr;
+  if (bake::NodeBakeCache *cache = nmd.runtime->cache->get_node_bake_cache(bake_id)) {
+    cache->reset();
+  }
+
+  DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
+  WM_main_add_notifier(NC_OBJECT | ND_MODIFIER, nullptr);
+  WM_main_add_notifier(NC_NODE, nullptr);
+  return OPERATOR_FINISHED;
+}
+
 void OBJECT_OT_simulation_nodes_cache_calculate_to_frame(wmOperatorType *ot)
 {
   ot->name = "Calculate Simulation to Frame";
@@ -1104,6 +1214,28 @@ void OBJECT_OT_geometry_node_bake_delete_single(wmOperatorType *ot)
   ot->idname = "OBJECT_OT_geometry_node_bake_delete_single";
 
   ot->exec = delete_single_bake_exec;
+
+  single_bake_operator_props(ot);
+}
+
+void OBJECT_OT_geometry_node_bake_pack_single(wmOperatorType *ot)
+{
+  ot->name = "Pack Geometry Node Bake";
+  ot->description = "Pack baked data from disk into the .blend file";
+  ot->idname = "OBJECT_OT_geometry_node_bake_pack_single";
+
+  ot->exec = pack_single_bake_exec;
+
+  single_bake_operator_props(ot);
+}
+
+void OBJECT_OT_geometry_node_bake_unpack_single(wmOperatorType *ot)
+{
+  ot->name = "Unpack Geometry Node Bake";
+  ot->description = "Unpack baked data from the .blend file to disk";
+  ot->idname = "OBJECT_OT_geometry_node_bake_unpack_single";
+
+  ot->exec = unpack_single_bake_exec;
 
   single_bake_operator_props(ot);
 }
