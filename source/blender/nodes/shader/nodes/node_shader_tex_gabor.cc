@@ -102,12 +102,11 @@ static int node_shader_gpu_tex_gabor(GPUMaterial *material,
 
 class GaborNoiseFunction : public mf::MultiFunction {
  private:
-  int type_;
+  NodeGaborType type_;
 
  public:
-  GaborNoiseFunction(const int type) : type_(type)
+  GaborNoiseFunction(const NodeGaborType type) : type_(type)
   {
-    BLI_assert(type >= 0 && type <= 1);
     static std::array<mf::Signature, 2> signatures{
         create_signature(SHD_GABOR_TYPE_2D),
         create_signature(SHD_GABOR_TYPE_3D),
@@ -115,7 +114,7 @@ class GaborNoiseFunction : public mf::MultiFunction {
     this->set_signature(&signatures[type]);
   }
 
-  static mf::Signature create_signature(const int type)
+  static mf::Signature create_signature(const NodeGaborType type)
   {
     mf::Signature signature;
     mf::SignatureBuilder builder{"GaborNoise", signature};
@@ -141,46 +140,45 @@ class GaborNoiseFunction : public mf::MultiFunction {
 
   void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
   {
-    int param = 0;
-    const VArray<float3> &vector = params.readonly_single_input<float3>(param++, "Vector");
-    const VArray<float> &scale = params.readonly_single_input<float>(param++, "Scale");
-    const VArray<float> &frequency = params.readonly_single_input<float>(param++, "Frequency");
-    const VArray<float> &anistropy = params.readonly_single_input<float>(param++, "Anistropy");
-    const int orientation_param = param++;
-    MutableSpan<float> r_value = params.uninitialized_single_output_if_required<float>(param++,
-                                                                                       "Value");
-    MutableSpan<float> r_phase = params.uninitialized_single_output_if_required<float>(param++,
-                                                                                       "Phase");
+    const VArray<float3> &vector = params.readonly_single_input<float3>(0, "Vector");
+    const VArray<float> &scale = params.readonly_single_input<float>(1, "Scale");
+    const VArray<float> &frequency = params.readonly_single_input<float>(2, "Frequency");
+    const VArray<float> &anistropy = params.readonly_single_input<float>(3, "Anistropy");
+    /* A parameter index of 4 is reserved for Orientation input below. */
+    MutableSpan<float> r_value = params.uninitialized_single_output_if_required<float>(5, "Value");
+    MutableSpan<float> r_phase = params.uninitialized_single_output_if_required<float>(6, "Phase");
     MutableSpan<float> r_intensity = params.uninitialized_single_output_if_required<float>(
-        param++, "Intensity");
+        7, "Intensity");
 
-    if (type_ == SHD_GABOR_TYPE_2D) {
-      const VArray<float> &orientation = params.readonly_single_input<float>(orientation_param,
-                                                                             "Orientation");
-      mask.foreach_index([&](const int64_t i) {
-        noise::gabor(vector[i].xy(),
-                     scale[i],
-                     frequency[i],
-                     anistropy[i],
-                     orientation[i],
-                     r_value.is_empty() ? nullptr : &r_value[i],
-                     r_phase.is_empty() ? nullptr : &r_phase[i],
-                     r_intensity.is_empty() ? nullptr : &r_intensity[i]);
-      });
-    }
-    else if (type_ == SHD_GABOR_TYPE_3D) {
-      const VArray<float3> &orientation = params.readonly_single_input<float3>(orientation_param,
-                                                                               "Orientation");
-      mask.foreach_index([&](const int64_t i) {
-        noise::gabor(vector[i],
-                     scale[i],
-                     frequency[i],
-                     anistropy[i],
-                     orientation[i],
-                     r_value.is_empty() ? nullptr : &r_value[i],
-                     r_phase.is_empty() ? nullptr : &r_phase[i],
-                     r_intensity.is_empty() ? nullptr : &r_intensity[i]);
-      });
+    switch (type_) {
+      case SHD_GABOR_TYPE_2D: {
+        const VArray<float> &orientation = params.readonly_single_input<float>(4, "Orientation");
+        mask.foreach_index([&](const int64_t i) {
+          noise::gabor(vector[i].xy(),
+                       scale[i],
+                       frequency[i],
+                       anistropy[i],
+                       orientation[i],
+                       r_value.is_empty() ? nullptr : &r_value[i],
+                       r_phase.is_empty() ? nullptr : &r_phase[i],
+                       r_intensity.is_empty() ? nullptr : &r_intensity[i]);
+        });
+        break;
+      }
+      case SHD_GABOR_TYPE_3D: {
+        const VArray<float3> &orientation = params.readonly_single_input<float3>(4, "Orientation");
+        mask.foreach_index([&](const int64_t i) {
+          noise::gabor(vector[i],
+                       scale[i],
+                       frequency[i],
+                       anistropy[i],
+                       orientation[i],
+                       r_value.is_empty() ? nullptr : &r_value[i],
+                       r_phase.is_empty() ? nullptr : &r_phase[i],
+                       r_intensity.is_empty() ? nullptr : &r_intensity[i]);
+        });
+        break;
+      }
     }
   }
 
@@ -196,7 +194,8 @@ class GaborNoiseFunction : public mf::MultiFunction {
 static void build_multi_function(NodeMultiFunctionBuilder &builder)
 {
   const NodeTexGabor &storage = node_storage(builder.node());
-  builder.construct_and_set_matching_fn<GaborNoiseFunction>(storage.type);
+  builder.construct_and_set_matching_fn<GaborNoiseFunction>(
+      static_cast<NodeGaborType>(storage.type));
 }
 
 }  // namespace blender::nodes::node_shader_tex_gabor_cc

@@ -2077,7 +2077,7 @@ template float fractal_voronoi_distance_to_edge<float4>(const VoronoiParams &par
  * are sampled using a Bernoulli distribution, as shown in Figure (3). By stratified sampling, they
  * mean a constant number of impulses per cell, so the stratification is the grid itself in that
  * sense, as described in the supplementary material of the paper. */
-static constexpr int IMPULSES_COUNT = 8;
+static constexpr int gabor_impulses_count = 8;
 
 /* Computes a 2D Gabor kernel based on Equation (6) in the original Gabor noise paper. Where the
  * frequency argument is the F_0 parameter and the orientation argument is the w_0 parameter. We
@@ -2144,12 +2144,12 @@ static float2 compute_2d_gabor_kernel(const float2 position,
  * Secondly, we note that the second moment of the weights distribution is 0.5 since it is a
  * fair Bernoulli distribution. So the final standard deviation expression is square root the
  * integral multiplied by the impulse density multiplied by the second moment. */
-static float compute_2d_gabor_standard_deviation(float frequency)
+static float compute_2d_gabor_standard_deviation(const float frequency)
 {
   const float integral_of_gabor_squared =
       (1.0f - math::exp(-2.0f * math::numbers::pi * frequency * frequency)) / 4.0f;
   const float second_moment = 0.5f;
-  return math::sqrt(IMPULSES_COUNT * second_moment * integral_of_gabor_squared);
+  return math::sqrt(gabor_impulses_count * second_moment * integral_of_gabor_squared);
 }
 
 /* Computes the Gabor noise value at the given position for the given cell. This is essentially the
@@ -2166,7 +2166,7 @@ float2 compute_2d_gabor_noise_cell(const float2 cell,
 
 {
   float2 noise(0.0f);
-  for (const int i : IndexRange(IMPULSES_COUNT)) {
+  for (const int i : IndexRange(gabor_impulses_count)) {
     /* Compute unique seeds for each of the needed random variables. */
     const float3 seed_for_orientation(cell.x, cell.y, i * 3);
     const float3 seed_for_kernel_center(cell.x, cell.y, i * 3 + 1);
@@ -2245,19 +2245,19 @@ static float2 compute_3d_gabor_kernel(const float3 position,
 /* Identical to compute_2d_gabor_standard_deviation except we do triple integration in 3D. The only
  * difference is the denominator in the integral expression, which is 2^{5 / 2} for the 3D case
  * instead of 4 for the 2D case.  */
-static float compute_3d_gabor_standard_deviation(float frequency)
+static float compute_3d_gabor_standard_deviation(const float frequency)
 {
   const float integral_of_gabor_squared = (1.0f - math::exp(-2.0f * math::numbers::pi * frequency *
                                                             frequency)) /
                                           math::pow(2.0f, 5.0f / 2.0f);
   const float second_moment = 0.5f;
-  return math::sqrt(IMPULSES_COUNT * second_moment * integral_of_gabor_squared);
+  return math::sqrt(gabor_impulses_count * second_moment * integral_of_gabor_squared);
 }
 
 /* Computes the orientation of the Gabor kernel such that it is constant for anisotropic
  * noise while it is random for isotropic noise. We randomize in spherical coordinates for a
  * uniform distribution. */
-float3 compute_3d_orientation(float3 orientation, float isotropy, float4 seed)
+float3 compute_3d_orientation(const float3 orientation, const float isotropy, const float4 seed)
 {
   /* Return the base orientation in case we are completely anisotropic. */
   if (isotropy == 0.0) {
@@ -2291,7 +2291,7 @@ static float2 compute_3d_gabor_noise_cell(const float3 cell,
 
 {
   float2 noise(0.0f);
-  for (const int i : IndexRange(IMPULSES_COUNT)) {
+  for (const int i : IndexRange(gabor_impulses_count)) {
     /* Compute unique seeds for each of the needed random variables. */
     const float4 seed_for_orientation(cell.x, cell.y, cell.z, i * 3);
     const float4 seed_for_kernel_center(cell.x, cell.y, cell.z, i * 3 + 1);
