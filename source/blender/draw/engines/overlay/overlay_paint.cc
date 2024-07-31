@@ -89,7 +89,7 @@ void OVERLAY_paint_cache_init(OVERLAY_Data *vedata)
     case CTX_MODE_PAINT_WEIGHT: {
       opacity = is_edit_mode ? 1.0 : pd->overlay.weight_paint_mode_opacity;
       if (opacity > 0.0f) {
-        state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL | DRW_STATE_BLEND_ALPHA;
+        state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA;
         DRW_PASS_CREATE(psl->paint_color_ps, state | pd->clipping_state);
 
         const bool do_shading = draw_ctx->v3d->shading.type != OB_WIRE;
@@ -121,7 +121,7 @@ void OVERLAY_paint_cache_init(OVERLAY_Data *vedata)
     case CTX_MODE_PAINT_VERTEX: {
       opacity = pd->overlay.vertex_paint_mode_opacity;
       if (opacity > 0.0f) {
-        state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL;
+        state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL;
         state |= pd->painting.alpha_blending ? DRW_STATE_BLEND_ALPHA : DRW_STATE_BLEND_MUL;
         DRW_PASS_CREATE(psl->paint_color_ps, state | pd->clipping_state);
 
@@ -140,7 +140,7 @@ void OVERLAY_paint_cache_init(OVERLAY_Data *vedata)
 
       opacity = mask_enabled ? pd->overlay.texture_paint_mode_opacity : 0.0f;
       if (opacity > 0.0f) {
-        state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL | DRW_STATE_BLEND_ALPHA;
+        state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA;
         DRW_PASS_CREATE(psl->paint_color_ps, state | pd->clipping_state);
 
         GPUTexture *tex = BKE_image_get_gpu_texture(imapaint->stencil, nullptr);
