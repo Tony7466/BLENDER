@@ -134,8 +134,24 @@ class PaintModeData {
 void paint_stroke_set_mode_data(PaintStroke *stroke, std::unique_ptr<PaintModeData> mode_data);
 
 bool paint_stroke_started(PaintStroke *stroke);
+void paint_stroke_jitter_pos(Scene &scene,
+                             const PaintStroke &stroke,
+                             const PaintMode mode,
+                             const Brush &brush,
+                             const float pressure,
+                             const float mval[2],
+                             float r_mouse_out[2]);
 
 bool paint_brush_tool_poll(bContext *C);
+bool paint_brush_update(bContext *C,
+                        const Brush &brush,
+                        PaintMode mode,
+                        PaintStroke *stroke,
+                        const float mouse_init[2],
+                        float mouse[2],
+                        float pressure,
+                        float r_location[3],
+                        bool *r_location_is_set);
 
 void BRUSH_OT_asset_activate(wmOperatorType *ot);
 void BRUSH_OT_asset_save_as(wmOperatorType *ot);
@@ -506,9 +522,6 @@ void gather_mask_bmesh(const BMesh &bm, const Set<BMVert *, 0> &verts, MutableSp
 void scatter_mask_grids(Span<float> mask, SubdivCCG &subdiv_ccg, Span<int> grids);
 void scatter_mask_bmesh(Span<float> mask, const BMesh &bm, const Set<BMVert *, 0> &verts);
 
-void average_neighbor_mask_mesh(Span<float> masks,
-                                Span<Vector<int>> vert_neighbors,
-                                MutableSpan<float> new_masks);
 void average_neighbor_mask_grids(const SubdivCCG &subdiv_ccg,
                                  Span<int> grids,
                                  MutableSpan<float> new_masks);

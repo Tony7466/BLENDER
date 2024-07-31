@@ -2470,7 +2470,8 @@ class DialogData {
 
 static void split(const char *text, const char *seps, char ***str, int *count)
 {
-  char *tok, *data;
+  const char *tok;
+  char *data;
   int i;
   *count = 0;
 
