@@ -1499,10 +1499,13 @@ void do_boundary_brush(const Sculpt &sd, Object &ob, Span<bke::pbvh::Node *> nod
     switch (ss.pbvh->type()) {
       case bke::pbvh::Type::Mesh:
         init_boundary_mesh(ob, brush, symm_area);
+        break;
       case bke::pbvh::Type::Grids:
         init_boundary_grids(ob, brush, symm_area);
+        break;
       case bke::pbvh::Type::BMesh:
         init_boundary_bmesh(ob, brush, symm_area);
+        break;
       default:
         BLI_assert_unreachable();
     }
