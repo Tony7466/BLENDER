@@ -10,6 +10,8 @@
 #include "BKE_bake_items_paths.hh"
 #include "BKE_bake_items_serialize.hh"
 
+#include "DNA_modifier_types.h"
+
 struct NodesModifierData;
 struct Main;
 struct Object;
@@ -110,6 +112,9 @@ struct ModifierCache {
  */
 void scene_simulation_states_reset(Scene &scene);
 
+std::optional<NodesModifierBakeTarget> get_node_bake_target(const Object &object,
+                                                            const NodesModifierData &nmd,
+                                                            int node_id);
 std::optional<BakePath> get_node_bake_path(const Main &bmain,
                                            const Object &object,
                                            const NodesModifierData &nmd,
@@ -121,5 +126,12 @@ std::optional<IndexRange> get_node_bake_frame_range(const Scene &scene,
 std::optional<std::string> get_modifier_bake_path(const Main &bmain,
                                                   const Object &object,
                                                   const NodesModifierData &nmd);
+
+/**
+ * Get default directory for baking modifier to disk.
+ */
+std::string get_default_modifier_bake_directory(const Main &bmain,
+                                                const Object &object,
+                                                const NodesModifierData &nmd);
 
 }  // namespace blender::bke::bake

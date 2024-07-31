@@ -636,7 +636,6 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
   uiLayoutSetPropDecorate(layout, false);
   {
     uiLayout *col = uiLayoutColumn(layout, true);
-    uiLayoutSetActive(col, !ctx.is_baked);
     uiItemR(col, &ctx.bake_rna, "bake_target", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
   {
@@ -644,6 +643,9 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
     uiLayoutSetEnabled(settings_col, !ctx.is_baked);
     {
       uiLayout *col = uiLayoutColumn(settings_col, true);
+      uiLayoutSetActive(col,
+                        bake::get_node_bake_target(*ctx.object, *ctx.nmd, ctx.bake->id) ==
+                            NODES_MODIFIER_BAKE_TARGET_DISK);
       uiItemR(
           col, &ctx.bake_rna, "use_custom_path", UI_ITEM_NONE, IFACE_("Custom Path"), ICON_NONE);
       uiLayout *subcol = uiLayoutColumn(col, true);

@@ -612,7 +612,9 @@ static Vector<NodeBakeRequest> collect_simulations_to_bake(Main &bmain,
         request.bake_id = id;
         request.node_type = node->type;
         request.blob_sharing = std::make_unique<bake::BlobWriteSharing>();
-        request.path = bake::get_node_bake_path(bmain, *object, *nmd, id);
+        if (bake::get_node_bake_target(*object, *nmd, id) == NODES_MODIFIER_BAKE_TARGET_DISK) {
+          request.path = bake::get_node_bake_path(bmain, *object, *nmd, id);
+        }
         std::optional<IndexRange> frame_range = bake::get_node_bake_frame_range(
             scene, *object, *nmd, id);
         if (!frame_range) {
@@ -694,6 +696,65 @@ static bool bake_directory_has_data(const StringRefNull absolute_bake_dir)
   return true;
 }
 
+static bool may_have_disk_bake(const NodesModifierData &nmd)
+{
+  if (nmd.bake_target == NODES_MODIFIER_BAKE_TARGET_DISK) {
+    return true;
+  }
+  for (const NodesModifierBake &bake : Span{nmd.bakes, nmd.bakes_num}) {
+    if (bake.bake_target == NODES_MODIFIER_BAKE_TARGET_DISK) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static void initialize_modifier_bake_directory_if_necessary(bContext *C,
+                                                            Object &object,
+                                                            NodesModifierData &nmd,
+                                                            wmOperator *op)
+{
+  const bool bake_directory_set = !StringRef(nmd.bake_directory).is_empty();
+  if (bake_directory_set) {
+    return;
+  }
+  if (!may_have_disk_bake(nmd)) {
+    return;
+  }
+
+  Main *bmain = CTX_data_main(C);
+
+  BKE_reportf(op->reports,
+              RPT_INFO,
+              "Bake directory of object %s, modifier %s is empty, setting default path",
+              object.id.name + 2,
+              nmd.modifier.name);
+
+  nmd.bake_directory = BLI_strdup(
+      bake::get_default_modifier_bake_directory(*bmain, object, nmd).c_str());
+}
+
+static void bake_simulation_validate_paths(bContext *C,
+                                           wmOperator *op,
+                                           const Span<Object *> objects)
+{
+  Main *bmain = CTX_data_main(C);
+
+  for (Object *object : objects) {
+    if (!BKE_id_is_editable(bmain, &object->id)) {
+      continue;
+    }
+
+    LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
+      if (md->type != eModifierType_Nodes) {
+        continue;
+      }
+      NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
+      initialize_modifier_bake_directory_if_necessary(C, *object, *nmd, op);
+    }
+  }
+}
+
 /* Map for counting path references. */
 using PathUsersMap = Map<std::string,
                          int,
@@ -744,6 +805,9 @@ static int bake_simulation_invoke(bContext *C, wmOperator *op, const wmEvent * /
       objects.append(object);
     }
   }
+
+  /* Set empty paths to default if necessary. */
+  bake_simulation_validate_paths(C, op, objects);
 
   PathUsersMap path_users = bake_simulation_get_path_users(C, objects);
   bool has_path_conflict = false;
@@ -855,6 +919,8 @@ static Vector<NodeBakeRequest> bake_single_node_gather_bake_request(bContext *C,
     return {};
   }
 
+  initialize_modifier_bake_directory_if_necessary(C, *object, nmd, op);
+
   const int bake_id = RNA_int_get(op->ptr, "bake_id");
   const bNode *node = nmd.node_group->find_nested_node(bake_id);
   if (node == nullptr) {
@@ -875,7 +941,9 @@ static Vector<NodeBakeRequest> bake_single_node_gather_bake_request(bContext *C,
   if (!bake) {
     return {};
   }
-  request.path = bake::get_node_bake_path(*bmain, *object, nmd, bake_id);
+  if (bake::get_node_bake_target(*object, nmd, bake_id) == NODES_MODIFIER_BAKE_TARGET_DISK) {
+    request.path = bake::get_node_bake_path(*bmain, *object, nmd, bake_id);
+  }
 
   if (node->type == GEO_NODE_BAKE && bake->bake_mode == NODES_MODIFIER_BAKE_MODE_STILL) {
     const int current_frame = scene->r.cfra;
@@ -958,20 +1026,6 @@ static int delete_single_bake_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static bool bake_poll(bContext *C)
-{
-  return true;
-}
-
-static bool bake_delete_poll(bContext *C)
-{
-  Main *bmain = CTX_data_main(C);
-  if (BKE_main_blendfile_path(bmain)[0] == '\0') {
-    return false;
-  }
-  return true;
-}
-
 void OBJECT_OT_simulation_nodes_cache_calculate_to_frame(wmOperatorType *ot)
 {
   ot->name = "Calculate Simulation to Frame";
@@ -1036,7 +1090,6 @@ void OBJECT_OT_geometry_node_bake_single(wmOperatorType *ot)
   ot->description = "Bake a single bake node or simulation";
   ot->idname = "OBJECT_OT_geometry_node_bake_single";
 
-  ot->poll = bake_poll;
   ot->invoke = bake_single_node_invoke;
   ot->exec = bake_single_node_exec;
   ot->modal = bake_single_node_modal;
@@ -1050,7 +1103,6 @@ void OBJECT_OT_geometry_node_bake_delete_single(wmOperatorType *ot)
   ot->description = "Delete baked data of a single bake node or simulation";
   ot->idname = "OBJECT_OT_geometry_node_bake_delete_single";
 
-  ot->poll = bake_delete_poll;
   ot->exec = delete_single_bake_exec;
 
   single_bake_operator_props(ot);

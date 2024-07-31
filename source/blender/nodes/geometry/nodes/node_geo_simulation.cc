@@ -419,9 +419,7 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *current_no
                int(simulation_range->last()));
       uiItemL(layout, simulation_range_label, ICON_NONE);
     }
-    if (!is_baked) {
-      uiItemR(col, &bake_rna, "bake_to_disk", UI_ITEM_NONE, nullptr, ICON_NONE);
-    }
+    uiItemR(col, &bake_rna, "bake_target", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
   {
     uiLayout *settings_col = uiLayoutColumn(layout, false);
