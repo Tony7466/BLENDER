@@ -343,7 +343,11 @@ static void bake_geometry_nodes_startjob(void *customdata, wmJobWorkerStatus *wo
         const Map<std::string, bake::MemoryBlobWriter::OutputStream> &blob_stream_by_name =
             blob_writer.get_stream_by_name();
         for (auto &&item : blob_stream_by_name.items()) {
-          packed_data.blob_files.append({item.key, item.value.stream->str()});
+          std::string data = item.value.stream->str();
+          if (data.empty()) {
+            continue;
+          }
+          packed_data.blob_files.append({item.key, std::move(data)});
         }
         written_size += blob_writer.written_size();
         written_size += meta_file.tellp();
@@ -380,6 +384,9 @@ static void bake_geometry_nodes_startjob(void *customdata, wmJobWorkerStatus *wo
             MemoryBakeFile &memory = memory_bake_files[i];
             bake_file.name = BLI_strdup_null(memory.name.c_str());
             const int64_t data_size = memory.data.size();
+            if (data_size == 0) {
+              continue;
+            }
             void *data = MEM_mallocN(data_size, __func__);
             memcpy(data, memory.data.data(), data_size);
             memory.data.clear();

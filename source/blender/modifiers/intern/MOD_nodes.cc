@@ -1028,8 +1028,7 @@ static bool try_find_baked_data(const NodesModifierBake &bake,
       const NodesModifierBakeFile &meta_file = *file_by_frame.lookup(frame);
       auto frame_cache = std::make_unique<bake::FrameCache>();
       frame_cache->frame = frame;
-      frame_cache->meta_buffer = Span(static_cast<const std::byte *>(meta_file.packed_file->data),
-                                      meta_file.packed_file->size);
+      frame_cache->meta_buffer = meta_file.data();
       bake_cache.frames.append(std::move(frame_cache));
     }
 
@@ -1037,10 +1036,7 @@ static bool try_find_baked_data(const NodesModifierBake &bake,
     for (const NodesModifierBakeFile &blob_file :
          Span{bake.packed->blob_files, bake.packed->blob_files_num})
     {
-      bake_cache.memory_blob_reader->add(
-          blob_file.name,
-          Span(static_cast<const std::byte *>(blob_file.packed_file->data),
-               blob_file.packed_file->size));
+      bake_cache.memory_blob_reader->add(blob_file.name, blob_file.data());
     }
     bake_cache.blob_sharing = std::make_unique<bake::BlobReadSharing>();
     return true;
@@ -2474,7 +2470,9 @@ static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const Modi
             writer, NodesModifierBakeFile, bake.packed->blob_files_num, bake.packed->blob_files);
         const auto write_bake_file = [&](const NodesModifierBakeFile &bake_file) {
           BLO_write_string(writer, bake_file.name);
-          BKE_packedfile_blend_write(writer, bake_file.packed_file);
+          if (bake_file.packed_file) {
+            BKE_packedfile_blend_write(writer, bake_file.packed_file);
+          }
         };
         for (const NodesModifierBakeFile &meta_file :
              Span{bake.packed->meta_files, bake.packed->meta_files_num})
@@ -2546,7 +2544,9 @@ static void blend_read(BlendDataReader *reader, ModifierData *md)
           reader, NodesModifierBakeFile, bake.packed->blob_files_num, &bake.packed->blob_files);
       const auto read_bake_file = [&](NodesModifierBakeFile &bake_file) {
         BLO_read_string(reader, &bake_file.name);
-        BKE_packedfile_blend_read(reader, &bake_file.packed_file);
+        if (bake_file.packed_file) {
+          BKE_packedfile_blend_read(reader, &bake_file.packed_file);
+        }
       };
       for (NodesModifierBakeFile &meta_file :
            MutableSpan{bake.packed->meta_files, bake.packed->meta_files_num})
@@ -2602,7 +2602,9 @@ static void copy_data(const ModifierData *md, ModifierData *target, const int fl
           *bake_files = static_cast<NodesModifierBakeFile *>(MEM_dupallocN(*bake_files));
           for (NodesModifierBakeFile &bake_file : MutableSpan{*bake_files, bake_files_num}) {
             bake_file.name = BLI_strdup_null(bake_file.name);
-            bake_file.packed_file = BKE_packedfile_duplicate(bake_file.packed_file);
+            if (bake_file.packed_file) {
+              bake_file.packed_file = BKE_packedfile_duplicate(bake_file.packed_file);
+            }
           }
         };
         copy_bake_files_inplace(&bake.packed->meta_files, bake.packed->meta_files_num);
@@ -2639,7 +2641,9 @@ void nodes_modifier_packed_bake_free(NodesModifierPackedBake *packed_bake)
   const auto free_packed_files = [](NodesModifierBakeFile *files, const int files_num) {
     for (NodesModifierBakeFile &file : MutableSpan{files, files_num}) {
       MEM_SAFE_FREE(file.name);
-      BKE_packedfile_free(file.packed_file);
+      if (file.packed_file) {
+        BKE_packedfile_free(file.packed_file);
+      }
     }
     MEM_SAFE_FREE(files);
   };

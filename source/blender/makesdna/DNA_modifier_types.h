@@ -2402,7 +2402,19 @@ typedef struct NodesModifierDataBlock {
 
 typedef struct NodesModifierBakeFile {
   const char *name;
+  /* May be null if the file is empty. */
   PackedFile *packed_file;
+
+#ifdef __cplusplus
+  blender::Span<std::byte> data() const
+  {
+    if (this->packed_file) {
+      return blender::Span{static_cast<const std::byte *>(this->packed_file->data),
+                           this->packed_file->size};
+    }
+    return {};
+  }
+#endif
 } NodesModifierBakeFile;
 
 typedef struct NodesModifierPackedBake {
