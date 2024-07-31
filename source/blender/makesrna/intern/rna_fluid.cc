@@ -2264,19 +2264,14 @@ static void rna_def_fluid_domain_settings(BlenderRNA *brna)
   RNA_def_property_range(prop, -MAXFRAME, MAXFRAME);
   RNA_def_property_int_funcs(prop, nullptr, "rna_Fluid_cache_startframe_set", nullptr);
   RNA_def_property_ui_text(
-      prop,
-      "Start",
-      "Frame on which the simulation starts. This is the first frame that will be baked.");
+      prop, "Start", "Frame on which the simulation starts (first frame baked)");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 
   prop = RNA_def_property(srna, "cache_frame_end", PROP_INT, PROP_TIME);
   RNA_def_property_int_sdna(prop, nullptr, "cache_frame_end");
   RNA_def_property_range(prop, -MAXFRAME, MAXFRAME);
   RNA_def_property_int_funcs(prop, nullptr, "rna_Fluid_cache_endframe_set", nullptr);
-  RNA_def_property_ui_text(
-      prop,
-      "End",
-      "Frame on which the simulation stops. This is the last frame that will be baked.");
+  RNA_def_property_ui_text(prop, "End", "Frame on which the simulation stops (last frame baked)");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 
   prop = RNA_def_property(srna, "cache_frame_offset", PROP_INT, PROP_TIME);

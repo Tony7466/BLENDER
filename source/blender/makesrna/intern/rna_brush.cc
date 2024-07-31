@@ -1571,7 +1571,7 @@ static void rna_def_gpencil_options(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop,
       "Input Samples",
-      "Generate intermediate points for very fast mouse movements. Set to 0 to disable.");
+      "Generated intermediate points for very fast mouse movements (Set to 0 to disable)");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, nullptr);
 
@@ -1785,8 +1785,8 @@ static void rna_def_gpencil_options(BlenderRNA *brna)
   RNA_def_property_boolean_default(prop, true);
   RNA_def_property_ui_text(prop,
                            "Use Stabilizer",
-                           "Draw lines with a delay to allow smooth strokes. Press Shift key to "
-                           "override while drawing.");
+                           "Draw lines with a delay to allow smooth strokes (press Shift key to "
+                           "override while drawing)");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 
   prop = RNA_def_property(srna, "eraser_mode", PROP_ENUM, PROP_NONE);
@@ -2886,10 +2886,10 @@ static void rna_def_brush(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_color_as_displacement", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag2", BRUSH_USE_COLOR_AS_DISPLACEMENT);
-  RNA_def_property_ui_text(prop,
-                           "Vector Displacement",
-                           "Handles each pixel color as individual vector for displacement. Works "
-                           "only with area plane mapping.");
+  RNA_def_property_ui_text(
+      prop,
+      "Vector Displacement",
+      "Handle each pixel color as individual vector for displacement (area plane mapping only)");
   RNA_def_property_update(prop, 0, "rna_Brush_update");
 
   prop = RNA_def_property(srna, "normal_weight", PROP_FLOAT, PROP_FACTOR);
