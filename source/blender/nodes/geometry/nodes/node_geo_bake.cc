@@ -587,7 +587,7 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
     }
   }
 
-  draw_common_bake_settings(ctx, layout);
+  draw_common_bake_settings(C, ctx, layout);
   draw_data_blocks(C, layout, ctx.bake_rna);
 }
 
@@ -773,7 +773,7 @@ void draw_bake_button(const BakeDrawContext &ctx, uiLayout *layout)
   }
 }
 
-void draw_common_bake_settings(BakeDrawContext &ctx, uiLayout *layout)
+void draw_common_bake_settings(bContext *C, BakeDrawContext &ctx, uiLayout *layout)
 {
   uiItemR(layout, &ctx.bake_rna, "bake_target", UI_ITEM_NONE, nullptr, ICON_NONE);
 
@@ -786,8 +786,21 @@ void draw_common_bake_settings(BakeDrawContext &ctx, uiLayout *layout)
     uiLayoutSetActive(col, !ctx.is_baked);
     uiItemR(col, &ctx.bake_rna, "use_custom_path", UI_ITEM_NONE, IFACE_("Custom Path"), ICON_NONE);
     uiLayout *subcol = uiLayoutColumn(col, true);
-    uiLayoutSetActive(subcol, ctx.bake->flag & NODES_MODIFIER_BAKE_CUSTOM_PATH);
-    uiItemR(subcol, &ctx.bake_rna, "directory", UI_ITEM_NONE, IFACE_("Path"), ICON_NONE);
+    const bool use_custom_path = ctx.bake->flag & NODES_MODIFIER_BAKE_CUSTOM_PATH;
+    uiLayoutSetActive(subcol, use_custom_path);
+    auto bake_path = bke::bake::get_node_bake_path(
+        *CTX_data_main(C), *ctx.object, *ctx.nmd, ctx.bake->id);
+    uiItemFullR(subcol,
+                &ctx.bake_rna,
+                RNA_struct_find_property(&ctx.bake_rna, "directory"),
+                -1,
+                0,
+                UI_ITEM_NONE,
+                IFACE_("Path"),
+                ICON_NONE,
+                bake_path.has_value() ?
+                    (bake_path->bake_dir.has_value() ? bake_path->bake_dir->c_str() : nullptr) :
+                    nullptr);
   }
   {
     uiLayout *col = uiLayoutColumn(settings_col, true);

@@ -328,7 +328,7 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *current_no
       uiItemL(col, bake_state_str->c_str(), ICON_NONE);
     }
   }
-  draw_common_bake_settings(ctx, layout);
+  draw_common_bake_settings(C, ctx, layout);
   draw_data_blocks(C, layout, ctx.bake_rna);
 }
 
