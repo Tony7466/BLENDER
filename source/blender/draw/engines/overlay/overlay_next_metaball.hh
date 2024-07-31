@@ -47,7 +47,7 @@ class Metaballs {
     LISTBASE_FOREACH (MetaElem *, ml, mb->editelems) {
       const bool is_selected = (ml->flag & SELECT) != 0;
       const bool is_scale_radius = (ml->flag & MB_SCALE_RAD) != 0;
-      float stiffness_radius = ml->rad * atanf(ml->s) / float(M_PI_2);
+      const float stiffness_radius = ml->rad * atanf(ml->s) * 2.0f / math::numbers::pi;
 
       const select::ID radius_id = res.select_id(ob_ref, MBALLSEL_RADIUS | elem_num);
       color = (is_selected && is_scale_radius) ? col_radius_select : col_radius;
