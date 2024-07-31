@@ -246,13 +246,18 @@ void Instance::draw(Manager &manager)
   infront.prepass.draw(resources.overlay_line_in_front_fb, manager, view);
 
   background.draw(resources, manager);
-  regular.bounds.draw(resources.overlay_line_fb, manager, view);
-  regular.cameras.draw(resources.overlay_line_fb, manager, view);
-  regular.empties.draw(resources.overlay_line_fb, manager, view);
-  regular.lights.draw(resources.overlay_line_fb, manager, view);
-  regular.speakers.draw(resources.overlay_line_fb, manager, view);
-  regular.lattices.draw(resources.overlay_line_fb, manager, view);
-  regular.metaballs.draw(resources.overlay_line_fb, manager, view);
+
+  auto draw_layer = [&](OverlayLayer &layer, Framebuffer &framebuffer) {
+    layer.bounds.draw(framebuffer, manager, view);
+    layer.cameras.draw(framebuffer, manager, view);
+    layer.empties.draw(framebuffer, manager, view);
+    layer.lights.draw(framebuffer, manager, view);
+    layer.speakers.draw(framebuffer, manager, view);
+    layer.lattices.draw(framebuffer, manager, view);
+    layer.metaballs.draw(framebuffer, manager, view);
+  };
+
+  draw_layer(regular, resources.overlay_line_fb);
 
   grid.draw(resources, manager, view);
 
