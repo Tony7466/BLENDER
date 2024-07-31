@@ -6322,6 +6322,7 @@ static bool uiTemplateInputStatusAzone(uiLayout *layout, AZone *az, ARegion *reg
     uiItemL(layout, IFACE_("Swap Areas"), ICON_NONE);
     return true;
   }
+
   if (az->type == AZONE_REGION) {
     uiItemL(layout, nullptr, ICON_MOUSE_LMB_DRAG);
     uiItemS_ex(layout, 0.3f);
@@ -6330,6 +6331,7 @@ static bool uiTemplateInputStatusAzone(uiLayout *layout, AZone *az, ARegion *reg
             ICON_NONE);
     return true;
   }
+
   return false;
 }
 
@@ -6361,7 +6363,6 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
 
   bScreen *screen = CTX_wm_screen(C);
   ARegion *region = screen->active_region;
-  ScrArea *area = nullptr;
   uiLayout *row = uiLayoutRow(layout, true);
 
   if (region == nullptr) {
@@ -6370,7 +6371,6 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
       LISTBASE_FOREACH (AZone *, az, &area_iter->actionzones) {
         if (BLI_rcti_isect_pt_v(&az->rect, win->eventstate->xy)) {
           region = az->region;
-          area = area_iter;
           if (uiTemplateInputStatusAzone(row, az, region)) {
             return;
           }
@@ -6401,7 +6401,6 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
                                       WM_window_cursor_keymap_status_get(win, i, 1));
 
     if (msg) {
-      /* Icon and text separately are closer together with aligned layout. */
       uiItemL(row, "", (ICON_MOUSE_LMB + i));
       uiItemS_ex(row, -0.6f);
       uiItemL(row, msg ? msg : "", ICON_NONE);
