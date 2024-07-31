@@ -85,12 +85,12 @@ void Instance::begin_sync()
     layer.empties.begin_sync();
     layer.lattices.begin_sync(resources, state);
     layer.lights.begin_sync();
+    layer.metaballs.begin_sync();
     layer.speakers.begin_sync();
   };
   begin_sync_layer(regular);
   begin_sync_layer(infront);
 
-  metaballs.begin_sync();
   grid.begin_sync(resources, state, view);
 }
 
@@ -127,7 +127,7 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
         layer.lattices.edit_object_sync(manager, ob_ref, resources);
         break;
       case OB_MBALL:
-        metaballs.edit_object_sync(ob_ref, resources);
+        layer.metaballs.edit_object_sync(ob_ref, resources);
         break;
       case OB_FONT:
         break;
@@ -156,7 +156,7 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
         break;
       case OB_MBALL:
         if (!in_edit_mode) {
-          metaballs.object_sync(ob_ref, resources, state);
+          layer.metaballs.object_sync(ob_ref, resources, state);
         }
         break;
       case OB_GPENCIL_LEGACY:
@@ -178,12 +178,11 @@ void Instance::end_sync()
     layer.cameras.end_sync(resources, shapes, state);
     layer.empties.end_sync(resources, shapes, state);
     layer.lights.end_sync(resources, shapes, state);
+    layer.metaballs.end_sync(resources, shapes, state);
     layer.speakers.end_sync(resources, shapes, state);
   };
   end_sync_layer(regular);
   end_sync_layer(infront);
-
-  metaballs.end_sync(resources, shapes, state);
 }
 
 void Instance::draw(Manager &manager)
@@ -253,13 +252,12 @@ void Instance::draw(Manager &manager)
   regular.lights.draw(resources.overlay_line_fb, manager, view);
   regular.speakers.draw(resources.overlay_line_fb, manager, view);
   regular.lattices.draw(resources.overlay_line_fb, manager, view);
-  metaballs.draw(resources, manager, view);
+  regular.metaballs.draw(resources.overlay_line_fb, manager, view);
 
   grid.draw(resources, manager, view);
 
   /* TODO(: Breaks selection on M1 Max. */
   // lattices.draw_in_front(resources, manager, view);
-  metaballs.draw_in_front(resources, manager, view);
 
   // anti_aliasing.draw(resources, manager, view);
 

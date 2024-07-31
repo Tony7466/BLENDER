@@ -52,10 +52,10 @@ class Instance {
     Empties empties = {selection_type_};
     Lattices lattices;
     Lights lights = {selection_type_};
+    Metaballs metaballs = {selection_type_};
     Speakers speakers = {selection_type_};
   } regular{selection_type_}, infront{selection_type_};
 
-  Metaballs metaballs = {selection_type_};
   Grid grid;
 
   Instance(const SelectionType selection_type) : selection_type_(selection_type){};
