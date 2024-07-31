@@ -709,7 +709,7 @@ class IMAGE_HT_tool_header(Header):
             draw_fn(context, layout, tool)
 
         if tool_mode == 'PAINT':
-            if (tool is not None) and tool.has_datablock:
+            if (tool is not None) and tool.uses_brushes:
                 layout.popover("IMAGE_PT_paint_settings_advanced")
                 layout.popover("IMAGE_PT_paint_stroke")
                 layout.popover("IMAGE_PT_paint_curve")
@@ -733,7 +733,7 @@ class IMAGE_HT_tool_header(Header):
 class _draw_tool_settings_context_mode:
     @staticmethod
     def UV(context, layout, tool):
-        if tool and tool.has_datablock:
+        if tool and tool.uses_brushes:
             if context.mode == 'EDIT_MESH':
                 tool_settings = context.tool_settings
                 uv_sculpt = tool_settings.uv_sculpt

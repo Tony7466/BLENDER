@@ -158,10 +158,12 @@ static void toolsystem_ref_link(bContext *C, WorkSpace *workspace, bToolRef *tre
     }
   }
 
-  if (tref_rt->data_block[0]) {
+  if (tref_rt->flag & TOOLREF_FLAG_USES_BRUSHES) {
     Main *bmain = CTX_data_main(C);
 
-    if ((tref->space_type == SPACE_VIEW3D) && (tref->mode == CTX_MODE_PARTICLE)) {
+    if ((tref->space_type == SPACE_VIEW3D) && (tref->mode == CTX_MODE_PARTICLE) &&
+        tref_rt->data_block[0])
+    {
       const EnumPropertyItem *items = rna_enum_particle_edit_hair_brush_items;
       const int i = RNA_enum_from_identifier(items, tref_rt->data_block);
       if (i != -1) {
@@ -179,14 +181,14 @@ static void toolsystem_ref_link(bContext *C, WorkSpace *workspace, bToolRef *tre
     else if ((tref->space_type == SPACE_VIEW3D) &&
              ELEM(tref->mode, CTX_MODE_PAINT_GPENCIL_LEGACY, CTX_MODE_PAINT_GREASE_PENCIL))
     {
-      blender::StringRef brush_type_name = tref->runtime->data_block;
       wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first);
       LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
         if (workspace == WM_window_get_active_workspace(win)) {
           Scene *scene = WM_window_get_active_scene(win);
           ToolSettings *ts = scene->toolsettings;
 
-          if (ELEM(brush_type_name, "FILL", "ERASE")) {
+          if (tref_rt->data_block[0]) {
+            blender::StringRef brush_type_name = tref->runtime->data_block;
             BrushLink *brush_link = [&]() {
               LISTBASE_FOREACH (BrushLink *, saved_link, &ts->gp_paint->brush_assets_for_type) {
                 if (brush_type_name == saved_link->brush_type_name) {
@@ -209,6 +211,9 @@ static void toolsystem_ref_link(bContext *C, WorkSpace *workspace, bToolRef *tre
                   }
                   if (brush_type_name == "FILL") {
                     return "Fill Area";
+                  }
+                  if (brush_type_name == "DRAW") {
+                    return "Draw";
                   }
                   BLI_assert_unreachable();
                   return nullptr;
@@ -850,7 +855,7 @@ void WM_toolsystem_update_from_context(
 bool WM_toolsystem_active_tool_is_brush(const bContext *C)
 {
   bToolRef_Runtime *tref_rt = WM_toolsystem_runtime_from_context((bContext *)C);
-  return tref_rt && (tref_rt->data_block[0] != '\0');
+  return tref_rt && (tref_rt->flag & TOOLREF_FLAG_USES_BRUSHES);
 }
 
 std::optional<blender::StringRefNull> WM_toolsystem_find_id_from_data_block(

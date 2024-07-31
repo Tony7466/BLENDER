@@ -99,7 +99,7 @@ class VIEW3D_HT_tool_header(Header):
             pass
         elif tool_mode == 'PARTICLE':
             # Disable, only shows "Brush" panel, which is already in the top-bar.
-            # if tool.has_datablock:
+            # if tool.uses_brushes:
             #     layout.popover_group(context=".paint_common", **popover_kw)
             pass
         elif tool_mode == 'PAINT_GPENCIL':
@@ -243,7 +243,7 @@ class VIEW3D_HT_tool_header(Header):
 class _draw_tool_settings_context_mode:
     @staticmethod
     def SCULPT(context, layout, tool):
-        if (tool is None) or (not tool.has_datablock):
+        if (tool is None) or (not tool.uses_brushes):
             return False
 
         paint = context.tool_settings.sculpt
@@ -305,7 +305,7 @@ class _draw_tool_settings_context_mode:
 
     @staticmethod
     def PAINT_TEXTURE(context, layout, tool):
-        if (tool is None) or (not tool.has_datablock):
+        if (tool is None) or (not tool.uses_brushes):
             return False
 
         paint = context.tool_settings.image_paint
@@ -322,7 +322,7 @@ class _draw_tool_settings_context_mode:
 
     @staticmethod
     def PAINT_VERTEX(context, layout, tool):
-        if (tool is None) or (not tool.has_datablock):
+        if (tool is None) or (not tool.uses_brushes):
             return False
 
         paint = context.tool_settings.vertex_paint
@@ -339,7 +339,7 @@ class _draw_tool_settings_context_mode:
 
     @staticmethod
     def PAINT_WEIGHT(context, layout, tool):
-        if (tool is None) or (not tool.has_datablock):
+        if (tool is None) or (not tool.uses_brushes):
             return False
 
         paint = context.tool_settings.weight_paint
@@ -394,7 +394,7 @@ class _draw_tool_settings_context_mode:
             row = layout.row(align=True)
             row.prop(context.tool_settings.gpencil_sculpt, "intersection_threshold")
             return False
-        elif not tool.has_datablock:
+        elif not tool.uses_brushes:
             return False
 
         tool_settings = context.tool_settings
@@ -430,7 +430,7 @@ class _draw_tool_settings_context_mode:
 
     @staticmethod
     def SCULPT_GPENCIL(context, layout, tool):
-        if (tool is None) or (not tool.has_datablock):
+        if (tool is None) or (not tool.uses_brushes):
             return False
 
         tool_settings = context.tool_settings
@@ -448,7 +448,7 @@ class _draw_tool_settings_context_mode:
 
     @staticmethod
     def SCULPT_GREASE_PENCIL(context, layout, tool):
-        if (tool is None) or (not tool.has_datablock):
+        if (tool is None) or (not tool.uses_brushes):
             return False
 
         paint = context.tool_settings.gpencil_sculpt_paint
@@ -506,7 +506,7 @@ class _draw_tool_settings_context_mode:
 
     @staticmethod
     def WEIGHT_GPENCIL(context, layout, tool):
-        if (tool is None) or (not tool.has_datablock):
+        if (tool is None) or (not tool.uses_brushes):
             return False
 
         tool_settings = context.tool_settings
@@ -524,7 +524,7 @@ class _draw_tool_settings_context_mode:
 
     @staticmethod
     def WEIGHT_GREASE_PENCIL(context, layout, tool):
-        if (tool is None) or (not tool.has_datablock):
+        if (tool is None) or (not tool.uses_brushes):
             return False
 
         paint = context.tool_settings.gpencil_weight_paint
@@ -543,7 +543,7 @@ class _draw_tool_settings_context_mode:
 
     @staticmethod
     def VERTEX_GPENCIL(context, layout, tool):
-        if (tool is None) or (not tool.has_datablock):
+        if (tool is None) or (not tool.uses_brushes):
             return False
 
         tool_settings = context.tool_settings
@@ -569,7 +569,7 @@ class _draw_tool_settings_context_mode:
 
     @staticmethod
     def PARTICLE(context, layout, tool):
-        if (tool is None) or (not tool.has_datablock):
+        if (tool is None) or (not tool.uses_brushes):
             return False
 
         # See: `VIEW3D_PT_tools_brush`, basically a duplicate
@@ -607,7 +607,7 @@ class _draw_tool_settings_context_mode:
 
     @staticmethod
     def SCULPT_CURVES(context, layout, tool):
-        if (tool is None) or (not tool.has_datablock):
+        if (tool is None) or (not tool.uses_brushes):
             return False
 
         tool_settings = context.tool_settings
@@ -695,7 +695,7 @@ class _draw_tool_settings_context_mode:
 
     @staticmethod
     def PAINT_GREASE_PENCIL(context, layout, tool):
-        if (tool is None) or (not tool.has_datablock):
+        if (tool is None) or (not tool.uses_brushes):
             return False
 
         tool_settings = context.tool_settings
