@@ -715,10 +715,14 @@ std::string get_baked_string(const BakeDrawContext &ctx)
 
 std::optional<std::string> get_bake_state_string(const BakeDrawContext &ctx)
 {
+  if (G.is_rendering) {
+    /* Avoid accessing data that is generated while baking. */
+    return std::nullopt;
+  }
   if (ctx.is_baked) {
+    const std::string baked_str = get_baked_string(ctx);
     char size_str[BLI_STR_FORMAT_INT64_BYTE_UNIT_SIZE];
     BLI_str_format_byte_unit(size_str, ctx.bake->bake_size, true);
-    const std::string baked_str = get_baked_string(ctx);
     if (ctx.bake->packed) {
       return fmt::format(RPT_("{} ({} packed)"), baked_str, size_str);
     }

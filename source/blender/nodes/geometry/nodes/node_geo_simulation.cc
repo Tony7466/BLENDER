@@ -327,7 +327,6 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *current_no
     if (const std::optional<std::string> bake_state_str = get_bake_state_string(ctx)) {
       uiItemL(col, bake_state_str->c_str(), ICON_NONE);
     }
-    uiItemR(col, &bake_rna, "bake_target", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
   draw_common_bake_settings(ctx, layout);
   draw_data_blocks(C, layout, ctx.bake_rna);
