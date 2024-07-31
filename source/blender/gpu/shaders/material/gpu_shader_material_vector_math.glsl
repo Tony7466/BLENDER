@@ -4,7 +4,7 @@
 
 #pragma BLENDER_REQUIRE(gpu_shader_common_math_utils.glsl)
 
-vec3 cycles_safe_normalize(vec3 a)
+vec3 vector_math_safe_normalize(vec3 a)
 {
   /* Match the safe normalize function in Cycles by defaulting to vec3(0.0) */
   float length_sqr = length_squared(a);
@@ -49,7 +49,7 @@ void vector_math_project(
 void vector_math_reflect(
     vec3 a, vec3 b, vec3 c, float scale, out vec3 outVector, out float outValue)
 {
-  outVector = reflect(a, cycles_safe_normalize(b));
+  outVector = reflect(a, vector_math_safe_normalize(b));
 }
 
 void vector_math_dot(vec3 a, vec3 b, vec3 c, float scale, out vec3 outVector, out float outValue)
@@ -155,7 +155,7 @@ void vector_math_tangent(
 void vector_math_refract(
     vec3 a, vec3 b, vec3 c, float scale, out vec3 outVector, out float outValue)
 {
-  outVector = refract(a, cycles_safe_normalize(b), scale);
+  outVector = refract(a, vector_math_safe_normalize(b), scale);
 }
 
 void vector_math_faceforward(
