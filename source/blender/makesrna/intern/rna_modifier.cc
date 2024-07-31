@@ -7762,7 +7762,7 @@ static EnumPropertyItem bake_target_items[] = {
      "INHERIT",
      0,
      "Inherit",
-     "Use setting from a higher level"},
+     "Use setting from a higher level or fallback to packed baking"},
     {NODES_MODIFIER_BAKE_TARGET_PACKED,
      "PACKED",
      0,
