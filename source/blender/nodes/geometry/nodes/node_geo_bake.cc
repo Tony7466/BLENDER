@@ -775,11 +775,12 @@ void draw_bake_button(const BakeDrawContext &ctx, uiLayout *layout)
 
 void draw_common_bake_settings(bContext *C, BakeDrawContext &ctx, uiLayout *layout)
 {
+  uiLayoutSetPropSep(layout, true);
+  uiLayoutSetPropDecorate(layout, false);
+
   uiItemR(layout, &ctx.bake_rna, "bake_target", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   uiLayout *settings_col = uiLayoutColumn(layout, false);
-  uiLayoutSetPropSep(settings_col, true);
-  uiLayoutSetPropDecorate(settings_col, false);
   uiLayoutSetActive(settings_col, !ctx.is_baked);
   {
     uiLayout *col = uiLayoutColumn(settings_col, true);
