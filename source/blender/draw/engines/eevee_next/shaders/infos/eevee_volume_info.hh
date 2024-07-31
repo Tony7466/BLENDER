@@ -30,7 +30,7 @@ GPU_SHADER_CREATE_INFO(eevee_volume_properties_data)
            ImageType::FLOAT_3D,
            "in_emission_img")
     .image(VOLUME_PROP_PHASE_IMG_SLOT,
-           GPU_RG16F,
+           GPU_R11F_G11F_B10F,
            Qualifier::READ,
            ImageType::FLOAT_3D,
            "in_phase_img");

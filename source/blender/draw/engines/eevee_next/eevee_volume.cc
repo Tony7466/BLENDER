@@ -187,7 +187,9 @@ void VolumeModule::end_sync()
   prop_scattering_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
   prop_extinction_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
   prop_emission_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
-  prop_phase_tx_.ensure_3d(GPU_RG16F, data_.tex_size, usage);
+  /* The third channel is not needed, but Nvidia drivers have troubles when the phase texture uses
+   * a different format (See #122454).  */
+  prop_phase_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
 
   int occupancy_layers = divide_ceil_u(data_.tex_size.z, 32u);
   eGPUTextureUsage occupancy_usage = GPU_TEXTURE_USAGE_SHADER_READ |

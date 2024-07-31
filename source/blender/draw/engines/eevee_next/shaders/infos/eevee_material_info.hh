@@ -312,7 +312,7 @@ GPU_SHADER_CREATE_INFO(eevee_surf_volume)
            ImageType::FLOAT_3D,
            "out_emissive_img")
     .image(VOLUME_PROP_PHASE_IMG_SLOT,
-           GPU_RG16F,
+           GPU_R11F_G11F_B10F,
            Qualifier::READ_WRITE,
            ImageType::FLOAT_3D,
            "out_phase_img")
