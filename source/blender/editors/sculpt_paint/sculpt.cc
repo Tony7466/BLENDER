@@ -251,19 +251,6 @@ float3 SCULPT_vertex_limit_surface_get(const SculptSession &ss, PBVHVertRef vert
   return {};
 }
 
-float SCULPT_mask_get_at_grids_vert_index(const SubdivCCG &subdiv_ccg,
-                                          const CCGKey &key,
-                                          const int vert_index)
-{
-  if (key.mask_offset == -1) {
-    return 0.0f;
-  }
-  const int grid_index = vert_index / key.grid_area;
-  const int index_in_grid = vert_index - grid_index * key.grid_area;
-  CCGElem *elem = subdiv_ccg.grids[grid_index];
-  return CCG_elem_offset_mask(key, elem, index_in_grid);
-}
-
 PBVHVertRef SCULPT_active_vertex_get(const SculptSession &ss)
 {
   if (ELEM(ss.pbvh->type(),
