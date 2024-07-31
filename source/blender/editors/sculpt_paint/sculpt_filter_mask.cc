@@ -260,7 +260,6 @@ BLI_NOINLINE static void copy_old_hidden_mask_grids(const SubdivCCG &subdiv_ccg,
                                                     const Span<int> grids,
                                                     const MutableSpan<float> new_mask)
 {
-  return;
   const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
   if (subdiv_ccg.grid_hidden.is_empty()) {
     return;
