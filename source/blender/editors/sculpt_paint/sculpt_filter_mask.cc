@@ -44,6 +44,16 @@ enum class FilterType {
   ContrastDecrease = 6,
 };
 
+BLI_NOINLINE static void multiply_add(const Span<float> src,
+                                      const float factor,
+                                      const float offset,
+                                      const MutableSpan<float> dst)
+{
+  for (const int i : src.index_range()) {
+    dst[i] = factor * src[i] + offset;
+  }
+}
+
 BLI_NOINLINE static void mask_increase_contrast(const Span<float> src,
                                                 const MutableSpan<float> dst)
 {
@@ -51,9 +61,7 @@ BLI_NOINLINE static void mask_increase_contrast(const Span<float> src,
   const float delta = contrast * 0.5f;
   const float gain = math::rcp(1.0f - contrast);
   const float offset = gain * -delta;
-  for (const int i : src.index_range()) {
-    dst[i] = gain * src[i] + offset;
-  }
+  multiply_add(src, gain, offset, dst);
 
   mask::clamp_mask(dst);
 }
@@ -65,9 +73,7 @@ BLI_NOINLINE static void mask_decrease_contrast(const Span<float> src,
   const float delta = contrast * 0.5f;
   const float gain = 1.0f - contrast;
   const float offset = gain * -delta;
-  for (const int i : src.index_range()) {
-    dst[i] = gain * src[i] + offset;
-  }
+  multiply_add(src, gain, offset, dst);
 
   mask::clamp_mask(dst);
 }
