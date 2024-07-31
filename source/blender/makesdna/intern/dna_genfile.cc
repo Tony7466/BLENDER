@@ -1729,6 +1729,9 @@ int DNA_struct_alignment(const SDNA *sdna, const int struct_nr)
 
 const char *DNA_struct_identifier(struct SDNA *sdna, const int struct_index)
 {
+  if (struct_index == 0) {
+    return "Raw data or DrawDataList";
+  }
   DNA_sdna_alias_data_ensure(sdna);
   const SDNA_Struct *struct_info = sdna->structs[struct_index];
   return sdna->alias.types[struct_info->type];
