@@ -704,7 +704,7 @@ if(WITH_CYCLES_DEVICE_OPTIX AND WITH_CYCLES_CUDA_BINARIES)
 
       add_custom_command(
         OUTPUT ${optix_file_compressed}
-        DEPENDS cycles_kernel_optix
+        DEPENDS ${optix_file}
         COMMAND "$<TARGET_FILE:zstd_compress>" ${optix_file} ${optix_file_compressed})
 
       list(APPEND optix_link ${optix_file_compressed})
