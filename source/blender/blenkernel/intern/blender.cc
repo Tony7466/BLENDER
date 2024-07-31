@@ -96,8 +96,6 @@ static char blender_version_string_compact[48] = "";
 
 static void blender_version_init()
 {
-  const char *version_suffix = BKE_blender_version_is_lts() ? " LTS" : "";
-
   const char *version_cycle = "";
   const char *version_cycle_compact = "";
   if (STREQ(STRINGIFY(BLENDER_VERSION_CYCLE), "alpha")) {
@@ -114,6 +112,7 @@ static void blender_version_init()
   }
   else if (STREQ(STRINGIFY(BLENDER_VERSION_CYCLE), "release")) {
     version_cycle = "";
+    version_cycle_compact = "";
   }
   else {
     BLI_assert_msg(0, "Invalid Blender version cycle");
@@ -123,6 +122,8 @@ static void blender_version_init()
   if (!STREQ(STRINGIFY(BLENDER_VERSION_PATCH), "0")) {
     version_patch = "." STRINGIFY(BLENDER_VERSION_PATCH);
   }
+
+  const char *version_suffix = BKE_blender_version_is_lts() ? " LTS" : "";
 
   SNPRINTF(blender_version_string,
            "%d.%01d%s%s%s",
