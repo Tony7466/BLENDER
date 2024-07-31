@@ -484,8 +484,11 @@ target_link_libraries(zstd_compress ${ZSTD_LIBRARIES} ${PTHREADS_LIBRARIES})
 if(WITH_CYCLES_CUDA_BINARIES)
   set(CYCLES_CUDA_BINARIES_ARCH_WITHOUT_PREFIX ${CYCLES_CUDA_BINARIES_ARCH})
   list(TRANSFORM CYCLES_CUDA_BINARIES_ARCH_WITHOUT_PREFIX REPLACE "sm_|compute_" "")
+  # Remove architectures which are handled by custom command below
   list(REMOVE_ITEM CYCLES_CUDA_BINARIES_ARCH_WITHOUT_PREFIX 30 35 37)
   list(REMOVE_DUPLICATES CYCLES_CUDA_BINARIES_ARCH_WITHOUT_PREFIX)
+  # Only generate binary code (for real architecture)
+  list(TRANSFORM CYCLES_CUDA_BINARIES_ARCH_WITHOUT_PREFIX APPEND "-real")
 
   if(WITH_CYCLES_CUDA_BUILD_WHOLE_PROGRAM)
     set(cycles_kernel_cuda_final_target cycles_kernel_cuda)
@@ -673,12 +676,12 @@ if(WITH_CYCLES_DEVICE_OPTIX AND WITH_CYCLES_CUDA_BINARIES)
   if(NOT WITH_CYCLES_OPTIX_BUILD_OPTIX_IR)
     set(format "ptx")
     set_target_properties(cycles_kernel_optix PROPERTIES
-      CUDA_ARCHITECTURES 50
+      CUDA_ARCHITECTURES "50-virtual"
       CUDA_PTX_COMPILATION ON) # Fall back to PTX when OptiX IR is not available
   else()
     set(format "optixir")
     set_target_properties(cycles_kernel_optix PROPERTIES
-      CUDA_ARCHITECTURES 50
+      CUDA_ARCHITECTURES "50-virtual"
       CUDA_OPTIX_COMPILATION ON)
   endif()
 
