@@ -655,11 +655,12 @@ void rna_ID_extra_user_set(PointerRNA *ptr, bool value)
 }
 
 void rna_id_animdata_fix_paths_rename_all(struct ID *id,
+                                          struct Main *bmain,
                                           const char *prefix,
                                           const char *oldName,
                                           const char *newName)
 {
-  BKE_animdata_fix_paths_rename_all(id, prefix, oldName, newName);
+  BKE_animdata_fix_paths_rename_all_ex(bmain, ref_id, prefix, oldName, newName, 0, 0, true);
 }
 
 IDProperty **rna_PropertyGroup_idprops(PointerRNA *ptr)
@@ -1562,7 +1563,6 @@ static void rna_def_ID_properties(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
-  FunctionRNA *func;
 
   /* this is struct is used for holding the virtual
    * PropertyRNA's for ID properties */
@@ -2523,10 +2523,14 @@ static void rna_def_ID(BlenderRNA *brna)
   RNA_def_function_return(func, parm);
 
   func = RNA_def_function(srna, "fix_paths_rename_all", "rna_id_animdata_fix_paths_rename_all");
-  RNA_def_string(func, "prefix", 0, 128, "Prefix", "Name prefix");
-  RNA_def_string(func, "old_name", 0, 128, "Old Name", "Old name");
-  RNA_def_string(func, "new_name", 0, 128, "New Name", "New name");
-  RNA_def_function_ui_description(func, "Rename animation properties");
+  RNA_def_string(func, "prefix", nullptr, MAX_ID_NAME, "Prefix", "Name prefix");
+  RNA_def_string(func, "old_name", nullptr, MAX_ID_NAME, "Old Name", "Old name");
+  RNA_def_string(func, "new_name", nullptr, MAX_ID_NAME, "New Name", "New name");
+  RNA_def_function_ui_description(
+      func,
+      "Rename the property paths in the animation system, since properties are animated via "
+      "string paths, it's needed to keep them valid after properties has been renamed");
+  RNA_def_function_flag(func, FUNC_USE_MAIN | FUNC_USE_SELF_ID);
 
 #  ifdef WITH_PYTHON
   RNA_def_struct_register_funcs(srna, nullptr, nullptr, "rna_ID_instance");

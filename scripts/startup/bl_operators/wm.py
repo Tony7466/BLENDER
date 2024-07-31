@@ -1881,14 +1881,13 @@ class WM_OT_properties_edit(Operator):
             new_value = self._get_converted_value(item, name_old, prop_type_new, id_type_old, id_type_new)
             del item[name_old]
             item[name] = new_value
-            
+
             self._create_ui_data_for_new_prop(item, name, prop_type_new)
 
         self._update_blender_for_prop_change(context, item, name, prop_type_old, prop_type_new)
 
         if name_old != name:
-            item.id_data.fix_paths_rename_all(prefix="",old_name=name_old,
-                new_name=bpy.utils.escape_identifier(name))
+            item.id_data.fix_paths_rename_all(prefix="", old_name=name_old, new_name=name)
 
         return {'FINISHED'}
 
