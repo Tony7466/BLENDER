@@ -294,6 +294,8 @@ bool mask_equals_array_grids(const Span<CCGElem *> elems,
                              const Span<int> grids,
                              const Span<float> values)
 {
+  BLI_assert(grids.size() * key.grid_area == values.size());
+
   const IndexRange range = grids.index_range();
   return std::all_of(range.begin(), range.end(), [&](const int i) {
     const int grid = grids[i];
@@ -313,6 +315,8 @@ bool mask_equals_array_bmesh(const int mask_offset,
                              const Set<BMVert *, 0> &verts,
                              const Span<float> values)
 {
+  BLI_assert(verts.size() == values.size());
+
   int i = 0;
   for (const BMVert *vert : verts) {
     if (BM_ELEM_CD_GET_FLOAT(vert, mask_offset) != values[i]) {
