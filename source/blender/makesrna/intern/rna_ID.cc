@@ -660,7 +660,7 @@ void rna_id_animdata_fix_paths_rename_all(struct ID *id,
                                           const char *oldName,
                                           const char *newName)
 {
-  BKE_animdata_fix_paths_rename_all_ex(bmain, ref_id, prefix, oldName, newName, 0, 0, true);
+  BKE_animdata_fix_paths_rename_all_ex(bmain, id, prefix, oldName, newName, 0, 0, true);
 }
 
 IDProperty **rna_PropertyGroup_idprops(PointerRNA *ptr)
@@ -2530,7 +2530,7 @@ static void rna_def_ID(BlenderRNA *brna)
       func,
       "Rename the property paths in the animation system, since properties are animated via "
       "string paths, it's needed to keep them valid after properties has been renamed");
-  RNA_def_function_flag(func, FUNC_USE_MAIN | FUNC_USE_SELF_ID);
+  RNA_def_function_flag(func, FUNC_USE_MAIN);
 
 #  ifdef WITH_PYTHON
   RNA_def_struct_register_funcs(srna, nullptr, nullptr, "rna_ID_instance");
