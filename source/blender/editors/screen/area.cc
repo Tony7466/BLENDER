@@ -519,7 +519,7 @@ void ED_region_do_draw(bContext *C, ARegion *region)
   /* Set client-side window decoration titlebar colors. */
   if (at->regionid == RGN_TYPE_WINDOW) {
     /* For main windows, use the topbar color. */
-    if (WM_window_has_global_areas(win)) {
+    if (WM_window_should_have_global_areas(win)) {
       UI_SetTheme(SPACE_TOPBAR, RGN_TYPE_HEADER);
     }
     /* For single editor floating windows, use the editor header color. */

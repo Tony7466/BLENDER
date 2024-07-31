@@ -2749,7 +2749,7 @@ bool WM_window_is_maximized(const wmWindow *win)
   return win->windowstate == GHOST_kWindowStateMaximized;
 }
 
-bool WM_window_has_global_areas(const wmWindow *win)
+bool WM_window_should_have_global_areas(const wmWindow *win)
 {
   /**
    * Return whether the window should contain global areas (topbar/statusbar).
