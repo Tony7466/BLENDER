@@ -12,6 +12,7 @@
 #include <queue>
 
 #include "BKE_attribute.hh"
+#include "BKE_collision.h"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 #include "BKE_subdiv_ccg.hh"
@@ -1427,7 +1428,7 @@ float factor_get(const Cache *automasking,
 
 /* Returns the automasking cache depending on the active tool. Used for code that can run both for
  * brushes and filter. */
-Cache *active_cache_get(SculptSession &ss);
+const Cache *active_cache_get(const SculptSession &ss);
 
 /**
  * Creates and initializes an automasking cache.
@@ -1573,11 +1574,10 @@ struct SimulationData {
   Array<float3> prev_pos;
   Array<float3> last_iteration_pos;
 
-  ListBase *collider_list;
+  Vector<ColliderCache> collider_list;
 
   int totnode;
-  /** #blender::bke::pbvh::Node pointer as a key, index in #SimulationData.node_state as value. */
-  GHash *node_state_index;
+  Map<const bke::pbvh::Node *, int> node_state_index;
   Array<NodeSimState> node_state;
 
   VArraySpan<float> mask_mesh;
@@ -1598,7 +1598,6 @@ std::unique_ptr<SimulationData> brush_simulation_create(Object &ob,
                                                         float cloth_softbody_strength,
                                                         bool use_collisions,
                                                         bool needs_deform_coords);
-void brush_simulation_init(const SculptSession &ss, SimulationData &cloth_sim);
 
 void sim_activate_nodes(SimulationData &cloth_sim, Span<blender::bke::pbvh::Node *> nodes);
 
@@ -1610,10 +1609,10 @@ void do_simulation_step(const Sculpt &sd,
                         Span<blender::bke::pbvh::Node *> nodes);
 
 void ensure_nodes_constraints(const Sculpt &sd,
-                              Object &ob,
-                              Span<blender::bke::pbvh::Node *> nodes,
+                              const Object &ob,
+                              Span<bke::pbvh::Node *> nodes,
                               SimulationData &cloth_sim,
-                              float initial_location[3],
+                              const float3 &initial_location,
                               float radius);
 
 /**
@@ -1644,6 +1643,14 @@ bool is_cloth_deform_brush(const Brush &brush);
 /* -------------------------------------------------------------------- */
 /** \name Smoothing API
  * \{ */
+
+namespace blender::ed::sculpt_paint {
+
+void calc_smooth_translations(const Object &object,
+                              Span<bke::pbvh::Node *> nodes,
+                              MutableSpan<float3> translations);
+
+}
 
 namespace blender::ed::sculpt_paint::smooth {
 
@@ -2100,8 +2107,20 @@ namespace blender::ed::sculpt_paint::boundary {
  */
 std::unique_ptr<SculptBoundary> data_init(Object &object,
                                           const Brush *brush,
-                                          PBVHVertRef initial_vertex,
+                                          PBVHVertRef initial_vert,
                                           float radius);
+std::unique_ptr<SculptBoundary> data_init_mesh(Object &object,
+                                               const Brush *brush,
+                                               int initial_vert,
+                                               float radius);
+std::unique_ptr<SculptBoundary> data_init_grids(Object &object,
+                                                const Brush *brush,
+                                                SubdivCCGCoord initial_vert,
+                                                float radius);
+std::unique_ptr<SculptBoundary> data_init_bmesh(Object &object,
+                                                const Brush *brush,
+                                                BMVert *initial_vert,
+                                                float radius);
 std::unique_ptr<SculptBoundaryPreview> preview_data_init(Object &object,
                                                          const Brush *brush,
                                                          PBVHVertRef initial_vertex,

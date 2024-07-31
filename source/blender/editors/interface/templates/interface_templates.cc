@@ -2963,7 +2963,6 @@ static void draw_exporter_item(uiList * /*ui_list*/,
   RNA_string_get(itemptr, "name", name);
 
   uiLayout *row = uiLayoutRow(layout, false);
-  uiItemS(row);
   uiItemL(row, name, ICON_NONE);
 }
 
@@ -6306,9 +6305,7 @@ void uiTemplateReportsBanner(uiLayout *layout, bContext *C)
 static bool uiTemplateInputStatusAzone(uiLayout *layout, AZone *az, ARegion *region)
 {
   if (az->type == AZONE_AREA) {
-    uiItemS_ex(layout, 0.5f);
     uiItemL(layout, nullptr, ICON_MOUSE_LMB_DRAG);
-    uiItemS_ex(layout, 0.3f);
     if (U.experimental.use_docking) {
       uiItemL(layout, IFACE_("Split/Dock"), ICON_NONE);
     }
@@ -6318,12 +6315,10 @@ static bool uiTemplateInputStatusAzone(uiLayout *layout, AZone *az, ARegion *reg
     uiItemS_ex(layout, 0.7f);
     uiItemL(layout, "", ICON_EVENT_SHIFT);
     uiItemL(layout, nullptr, ICON_MOUSE_LMB_DRAG);
-    uiItemS_ex(layout, 0.3f);
     uiItemL(layout, IFACE_("Duplicate into Window"), ICON_NONE);
     uiItemS_ex(layout, 0.7f);
     uiItemL(layout, "", ICON_EVENT_CTRL);
     uiItemL(layout, nullptr, ICON_MOUSE_LMB_DRAG);
-    uiItemS_ex(layout, 0.3f);
     uiItemL(layout, IFACE_("Swap Areas"), ICON_NONE);
     return true;
   }
@@ -6387,13 +6382,11 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
 
   if (!region) {
     /* On a gap between editors. */
-    uiItemS_ex(row, 0.5f);
     uiItemL(row, nullptr, ICON_MOUSE_LMB_DRAG);
-    uiItemS_ex(layout, 0.3f);
     uiItemL(row, IFACE_("Resize"), ICON_NONE);
-    uiItemS_ex(layout, 0.7f);
+    uiItemS_ex(row, 0.7f);
     uiItemL(row, nullptr, ICON_MOUSE_RMB);
-    uiItemS_ex(layout, 0.3f);
+    uiItemS_ex(row, -0.6f);
     uiItemL(row, IFACE_("Options"), ICON_NONE);
     return;
   }
@@ -6410,12 +6403,15 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
     if (msg) {
       /* Icon and text separately are closer together with aligned layout. */
       uiItemL(row, "", (ICON_MOUSE_LMB + i));
+      uiItemS_ex(row, -0.6f);
       uiItemL(row, msg ? msg : "", ICON_NONE);
+      uiItemS_ex(row, 0.7f);
     }
 
     if (msg_drag) {
       uiItemL(row, "", (ICON_MOUSE_LMB_DRAG + i));
       uiItemL(row, msg_drag, ICON_NONE);
+      uiItemS_ex(row, 0.7f);
     }
   }
 }
@@ -6864,16 +6860,10 @@ bool uiTemplateEventFromKeymapItem(uiLayout *layout,
 
     /* Icon and text separately is closer together with aligned layout. */
 
-    if (icon >= ICON_MOUSE_LMB && icon <= ICON_MOUSE_RMB_DRAG) {
-      /* Negative space before all narrow mice icons. Except first item. */
-      if (!UI_block_is_empty(uiLayoutGetBlock(layout))) {
-        uiItemS_ex(layout, -0.5f);
-      }
-    }
     uiItemL(layout, "", icon);
-    if (icon >= ICON_MOUSE_LMB && icon <= ICON_MOUSE_RMB) {
-      /* Negative space after non-drag mice icons. */
-      uiItemS_ex(layout, -0.5f);
+    if (icon >= ICON_MOUSE_LMB && icon <= ICON_MOUSE_MMB_SCROLL) {
+      /* Negative space after narrow mice icons. */
+      uiItemS_ex(layout, -0.9f);
     }
 
     uiItemS_ex(layout, 0.3f);
