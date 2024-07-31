@@ -714,7 +714,7 @@ if(WITH_CYCLES_DEVICE_OPTIX AND WITH_CYCLES_CUDA_BINARIES)
       delayed_install("${CMAKE_CURRENT_BINARY_DIR}" ${optix_file_compressed} ${CYCLES_INSTALL_PATH}/lib/optix)
     endforeach()
 
-    add_custom_target(cycles_kernel_optix_link ALL DEPENDS ${optix_link})
+    add_custom_target(cycles_kernel_optix_link ALL DEPENDS cycles_kernel_optix ${optix_link})
     cycles_set_solution_folder(cycles_kernel_optix_link)
   else()
     # OptiX IR does not compress further, so install it as-is
