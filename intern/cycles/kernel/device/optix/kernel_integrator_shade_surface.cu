@@ -14,15 +14,6 @@
 
 #include "kernel/integrator/shade_surface.h"
 
-extern "C" __global__ void __raygen__kernel_optix_integrator_shade_surface()
-{
-  const int global_index = optixGetLaunchIndex().x;
-  const int path_index = (kernel_params.path_index_array) ?
-                             kernel_params.path_index_array[global_index] :
-                             global_index;
-  integrator_shade_surface(nullptr, path_index, kernel_params.render_buffer);
-}
-
 extern "C" __global__ void __raygen__kernel_optix_integrator_shade_surface_raytrace()
 {
   const int global_index = optixGetLaunchIndex().x;
