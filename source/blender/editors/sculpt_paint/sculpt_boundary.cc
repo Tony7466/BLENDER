@@ -1372,6 +1372,10 @@ static void init_falloff(const Brush &brush, const float radius, SculptBoundary 
       case BRUSH_BOUNDARY_FALLOFF_CONSTANT:
         /* For constant falloff distances are not allocated, so this should never happen. */
         BLI_assert(false);
+        break;
+      default:
+        BLI_assert_unreachable();
+        break;
     }
 
     boundary.edit_info[i].strength_factor *= direction * BKE_brush_curve_strength(
@@ -1415,6 +1419,9 @@ void do_boundary_brush(const Sculpt &sd, Object &ob, Span<bke::pbvh::Node *> nod
         case BRUSH_BOUNDARY_DEFORM_INFLATE:
         case BRUSH_BOUNDARY_DEFORM_GRAB:
           /* Do nothing. These deform modes don't need any extra data to be precomputed. */
+          break;
+        default:
+          BLI_assert_unreachable();
           break;
       }
 
@@ -1469,6 +1476,9 @@ void do_boundary_brush(const Sculpt &sd, Object &ob, Span<bke::pbvh::Node *> nod
           brush_smooth_task(ob, brush, nodes[i]);
         }
       });
+      break;
+    default:
+      BLI_assert_unreachable();
       break;
   }
 }
