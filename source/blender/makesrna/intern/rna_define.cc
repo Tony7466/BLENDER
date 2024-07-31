@@ -64,7 +64,7 @@ BlenderDefRNA DefRNA = {
 
 #ifndef RNA_RUNTIME
 static struct {
-  GHash *struct_map_static_from_alias;
+  GHash *type_map_static_from_alias;
 } g_version_data;
 #endif
 
@@ -181,17 +181,17 @@ static void rna_brna_structs_remove_and_free(BlenderRNA *brna, StructRNA *srna)
 }
 #endif
 
-static int DNA_struct_find_nr_wrapper(const SDNA *sdna, const char *struct_name)
+static int DNA_struct_find_index_wrapper(const SDNA *sdna, const char *type_name)
 {
-  struct_name = DNA_struct_rename_legacy_hack_static_from_alias(struct_name);
+  type_name = DNA_struct_rename_legacy_hack_static_from_alias(type_name);
 #ifdef RNA_RUNTIME
   /* We may support this at some point but for now we don't. */
   BLI_assert_unreachable();
 #else
-  struct_name = static_cast<const char *>(BLI_ghash_lookup_default(
-      g_version_data.struct_map_static_from_alias, struct_name, (void *)struct_name));
+  type_name = static_cast<const char *>(BLI_ghash_lookup_default(
+      g_version_data.type_map_static_from_alias, type_name, (void *)type_name));
 #endif
-  return DNA_struct_find_without_alias(sdna, struct_name);
+  return DNA_struct_find_index_without_alias(sdna, type_name);
 }
 
 StructDefRNA *rna_find_struct_def(StructRNA *srna)
@@ -427,7 +427,7 @@ static int rna_find_sdna_member(SDNA *sdna,
     CLOG_ERROR(&LOG, "only during preprocessing.");
     return 0;
   }
-  structnr = DNA_struct_find_nr_wrapper(sdna, structname);
+  structnr = DNA_struct_find_index_wrapper(sdna, structname);
 
   smember->offset = -1;
   if (structnr == -1) {
@@ -436,14 +436,14 @@ static int rna_find_sdna_member(SDNA *sdna,
   }
 
   const SDNA_Struct *struct_info = sdna->structs[structnr];
-  for (int a = 0; a < struct_info->members_len; a++) {
+  for (int a = 0; a < struct_info->members_num; a++) {
     const SDNA_StructMember *member = &struct_info->members[a];
-    const int size = DNA_struct_member_size(sdna, member->type, member->name);
-    dnaname = sdna->alias.names[member->name];
+    const int size = DNA_struct_member_size(sdna, member->type_index, member->member_index);
+    dnaname = sdna->alias.members[member->member_index];
     cmp = rna_member_cmp(dnaname, membername);
 
     if (cmp == 1) {
-      smember->type = sdna->alias.types[member->type];
+      smember->type = sdna->alias.types[member->type_index];
       smember->name = dnaname;
       smember->offset = *offset;
       smember->size = size;
@@ -452,7 +452,7 @@ static int rna_find_sdna_member(SDNA *sdna,
         smember->arraylength = 0;
       }
       else {
-        smember->arraylength = DNA_elem_array_size(smember->name);
+        smember->arraylength = DNA_member_array_num(smember->name);
       }
 
       smember->pointerlevel = 0;
@@ -471,7 +471,8 @@ static int rna_find_sdna_member(SDNA *sdna,
       smember->arraylength = 0;
 
       membername = strstr(membername, ".") + strlen(".");
-      rna_find_sdna_member(sdna, sdna->alias.types[member->type], membername, smember, offset);
+      rna_find_sdna_member(
+          sdna, sdna->alias.types[member->type_index], membername, smember, offset);
 
       return 1;
     }
@@ -485,7 +486,8 @@ static int rna_find_sdna_member(SDNA *sdna,
 
       *offset = -1;
       membername = strstr(membername, "->") + strlen("->");
-      rna_find_sdna_member(sdna, sdna->alias.types[member->type], membername, smember, offset);
+      rna_find_sdna_member(
+          sdna, sdna->alias.types[member->type_index], membername, smember, offset);
 
       return 1;
     }
@@ -700,7 +702,7 @@ BlenderRNA *RNA_create()
 
 #ifndef RNA_RUNTIME
   DNA_alias_maps(
-      DNA_RENAME_STATIC_FROM_ALIAS, &g_version_data.struct_map_static_from_alias, nullptr);
+      DNA_RENAME_STATIC_FROM_ALIAS, &g_version_data.type_map_static_from_alias, nullptr);
 #endif
 
   return brna;
@@ -866,8 +868,8 @@ void RNA_free(BlenderRNA *brna)
   }
 
 #ifndef RNA_RUNTIME
-  BLI_ghash_free(g_version_data.struct_map_static_from_alias, nullptr, nullptr);
-  g_version_data.struct_map_static_from_alias = nullptr;
+  BLI_ghash_free(g_version_data.type_map_static_from_alias, nullptr, nullptr);
+  g_version_data.type_map_static_from_alias = nullptr;
 #endif
 }
 
@@ -1071,7 +1073,7 @@ void RNA_def_struct_sdna(StructRNA *srna, const char *structname)
  * names, this can't be checked without adding an option to disable
  * (tested this and it means changes all over). */
 #if 0
-  if (DNA_struct_find_nr_wrapper(DefRNA.sdna, structname) == -1) {
+  if (DNA_struct_find_index_wrapper(DefRNA.sdna, structname) == -1) {
     if (!DefRNA.silent) {
       CLOG_ERROR(&LOG, "%s not found.", structname);
       DefRNA.error = true;
@@ -1099,7 +1101,7 @@ void RNA_def_struct_sdna_from(StructRNA *srna, const char *structname, const cha
     return;
   }
 
-  if (DNA_struct_find_nr_wrapper(DefRNA.sdna, structname) == -1) {
+  if (DNA_struct_find_index_wrapper(DefRNA.sdna, structname) == -1) {
     if (!DefRNA.silent) {
       CLOG_ERROR(&LOG, "%s not found.", structname);
       DefRNA.error = true;
@@ -2342,7 +2344,7 @@ void RNA_def_property_boolean_sdna(PropertyRNA *prop,
 #ifndef RNA_RUNTIME
     /* Set the default if possible. */
     if (dp->dnaoffset != -1) {
-      int SDNAnr = DNA_struct_find_nr_wrapper(DefRNA.sdna, dp->dnastructname);
+      int SDNAnr = DNA_struct_find_index_wrapper(DefRNA.sdna, dp->dnastructname);
       if (SDNAnr != -1) {
         const void *default_data = DNA_default_table[SDNAnr];
         if (default_data) {
@@ -2471,7 +2473,7 @@ void RNA_def_property_int_sdna(PropertyRNA *prop, const char *structname, const 
 #ifndef RNA_RUNTIME
     /* Set the default if possible. */
     if (dp->dnaoffset != -1) {
-      int SDNAnr = DNA_struct_find_nr_wrapper(DefRNA.sdna, dp->dnastructname);
+      int SDNAnr = DNA_struct_find_index_wrapper(DefRNA.sdna, dp->dnastructname);
       if (SDNAnr != -1) {
         const void *default_data = DNA_default_table[SDNAnr];
         if (default_data) {
@@ -2603,7 +2605,7 @@ void RNA_def_property_float_sdna(PropertyRNA *prop, const char *structname, cons
 #ifndef RNA_RUNTIME
     /* Set the default if possible. */
     if (dp->dnaoffset != -1) {
-      int SDNAnr = DNA_struct_find_nr_wrapper(DefRNA.sdna, dp->dnastructname);
+      int SDNAnr = DNA_struct_find_index_wrapper(DefRNA.sdna, dp->dnastructname);
       if (SDNAnr != -1) {
         const void *default_data = DNA_default_table[SDNAnr];
         if (default_data) {
@@ -2699,7 +2701,7 @@ void RNA_def_property_enum_sdna(PropertyRNA *prop, const char *structname, const
 #ifndef RNA_RUNTIME
     /* Set the default if possible. */
     if (dp->dnaoffset != -1) {
-      int SDNAnr = DNA_struct_find_nr_wrapper(DefRNA.sdna, dp->dnastructname);
+      int SDNAnr = DNA_struct_find_index_wrapper(DefRNA.sdna, dp->dnastructname);
       if (SDNAnr != -1) {
         const void *default_data = DNA_default_table[SDNAnr];
         if (default_data) {
@@ -2789,7 +2791,7 @@ void RNA_def_property_string_sdna(PropertyRNA *prop, const char *structname, con
 #ifndef RNA_RUNTIME
     /* Set the default if possible. */
     if ((dp->dnaoffset != -1) && (dp->dnapointerlevel != 0)) {
-      int SDNAnr = DNA_struct_find_nr_wrapper(DefRNA.sdna, dp->dnastructname);
+      int SDNAnr = DNA_struct_find_index_wrapper(DefRNA.sdna, dp->dnastructname);
       if (SDNAnr != -1) {
         const void *default_data = DNA_default_table[SDNAnr];
         if (default_data) {
