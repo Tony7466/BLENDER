@@ -1,3 +1,11 @@
+/* SPDX-FileCopyrightText: 2024 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
+/** \file
+ * \ingroup animrig
+ */
+
 #include "ANIM_action.hh"
 #include "ANIM_action_iterators.hh"
 #include "BLI_assert.h"

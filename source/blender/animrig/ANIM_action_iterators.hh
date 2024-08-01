@@ -1,3 +1,13 @@
+/* SPDX-FileCopyrightText: 2024 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
+/** \file
+ * \ingroup animrig
+ *
+ * \brief Functionality to iterate an Action in various ways.
+ */
+
 #pragma once
 
 #include <cstdint>
