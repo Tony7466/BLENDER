@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from _bpy import types as bpy_types
-from grease_pencil_python import GreasePencilStroke, GreasePencilStrokePoint
+from grease_pencil_python import GreasePencilStrokeSlice
 
 StructRNA = bpy_types.bpy_struct
 StructMetaPropGroup = bpy_types.bpy_struct_meta_idprop
@@ -1418,11 +1418,10 @@ class GreasePencilDrawing(StructRNA):
     @property
     def strokes(self):
         """
-        Return a list of all the Grease Pencil strokes in this drawing.
+        Return a collection of all the Grease Pencil strokes in this drawing.
 
         .. note:: This API should *not* be used for performance critical operations.
         Use the :class:`GreasePencilDrawing.attributes` API instead.
         """
-        offsets = self.curve_offsets
-        return [GreasePencilStroke(self, curve_i, offsets[curve_i].value, offsets[curve_i + 1].value)
-                for curve_i in range(self.num_strokes)]
+        if self.num_strokes > 0:
+            return GreasePencilStrokeSlice(self, 0, self.num_strokes)
