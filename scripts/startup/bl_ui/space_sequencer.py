@@ -2796,7 +2796,6 @@ class SEQUENCER_PT_modifiers(SequencerButtonsPanel, Panel):
                         col.prop(mod, "input_mask_id")
                         row = col.row()
                         row.prop(mod, "mask_time", expand=True)
-                        del row, col
                 else:
                     if mod.type == 'SOUND_EQUALIZER':
                         # eq_row = box.row()
