@@ -233,11 +233,7 @@ static void toolsystem_ref_link(bContext *C, WorkSpace *workspace, bToolRef *tre
           if (!ts->gp_paint->restore_brush_asset_reference) {
             AssetWeakReference *weak_ref = MEM_new<AssetWeakReference>(
                 "toolsystem_ref_link brush asset weak reference");
-            weak_ref->asset_library_type =
-                ts->gp_paint->paint.brush_asset_reference->asset_library_type;
-            weak_ref->relative_asset_identifier =
-                ts->gp_paint->paint.brush_asset_reference->relative_asset_identifier;
-            ts->gp_paint->restore_brush_asset_reference = weak_ref;
+            *weak_ref = *ts->gp_paint->paint.brush_asset_reference;
           }
 
           Brush *brush = reinterpret_cast<Brush *>(blender::bke::asset_edit_id_from_weak_reference(
@@ -252,7 +248,8 @@ static void toolsystem_ref_link(bContext *C, WorkSpace *workspace, bToolRef *tre
                     *bmain, ID_BR, *ts->gp_paint->restore_brush_asset_reference));
             BKE_paint_brush_set(&ts->gp_paint->paint, restore_brush);
           }
-          MEM_SAFE_FREE(ts->gp_paint->restore_brush_asset_reference);
+          MEM_delete(ts->gp_paint->restore_brush_asset_reference);
+          ts->gp_paint->restore_brush_asset_reference = nullptr;
         }
       }
     }
