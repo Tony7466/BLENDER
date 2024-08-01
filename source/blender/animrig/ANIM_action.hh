@@ -894,6 +894,7 @@ FCurve *action_fcurve_find(bAction *act, FCurveDescriptor fcurve_descriptor);
 
 /**
  * Remove the given FCurve from the action by searching for it in all channelbags.
+ * This assumes that an FCurve can only exist in an action once.
  *
  *  \returns true if the given FCurve was removed.
  */

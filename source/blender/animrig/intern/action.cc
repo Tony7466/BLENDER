@@ -1572,7 +1572,6 @@ bool action_fcurve_remove(Action &action, FCurve &fcu)
       KeyframeStrip &key_strip = strip->template as<KeyframeStrip>();
       for (ChannelBag *bag : key_strip.channelbags()) {
         const bool removed = bag->fcurve_remove(fcu);
-        /* This assumes that an FCurve can only exist in an action once. */
         if (removed) {
           return true;
         }

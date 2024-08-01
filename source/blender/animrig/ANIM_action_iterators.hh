@@ -17,22 +17,20 @@ class ActionFCurveIterator {
   FCurve *operator*() const;
   FCurve *operator->();
 
-  bool operator==(const ActionFCurveIterator &other);
-  bool operator!=(const ActionFCurveIterator &other);
+  bool operator==(const ActionFCurveIterator &other) const;
+  bool operator!=(const ActionFCurveIterator &other) const;
 
   ChannelBag *get_current_channel_bag();
 
  private:
   Action &action;
   slot_handle_t handle;
-  int64_t current_layer_index;
-  int64_t current_strip_index;
-  int64_t current_fcurve_index;
+  int64_t current_fcurve_index = 0;
 
   /* Those are pointers because they need to be able to be nullptr. */
-  Layer *current_layer;
-  Strip *current_strip;
-  ChannelBag *current_channel_bag;
+  Layer *current_layer = nullptr;
+  Strip *current_strip = nullptr;
+  ChannelBag *current_channel_bag = nullptr;
 };
 
 }  // namespace blender::animrig::iterators
