@@ -1219,21 +1219,6 @@ static bool do_lasso_select_grease_pencil(const ViewContext *vc,
                                        selection_domain,
                                        mcoords,
                                        sel_op);
-
-    /* Workaround: Run through a second time to select any handle points that are newly visible. */
-    visible_handle_elements = ed::greasepencil::retrieve_visible_bezier_handle_elements(
-        *vc->obedit, info.drawing, info.layer_index, selection_domain, memory);
-    if (!visible_handle_elements.is_empty() && selection_domain == bke::AttrDomain::Point) {
-      changed = ed::curves::select_lasso(*vc,
-                                         info.drawing.strokes_for_write(),
-                                         deformation,
-                                         projection,
-                                         elements,
-                                         visible_handle_elements,
-                                         selection_domain,
-                                         mcoords,
-                                         sel_op);
-    }
   }
 
   if (changed) {
@@ -4338,21 +4323,6 @@ static bool do_grease_pencil_box_select(const ViewContext *vc,
                                       selection_domain,
                                       *rect,
                                       sel_op);
-
-    /* Workaround: Run through a second time to select any handle points that are newly visible. */
-    visible_handle_elements = ed::greasepencil::retrieve_visible_bezier_handle_elements(
-        *vc->obedit, info.drawing, info.layer_index, selection_domain, memory);
-    if (!visible_handle_elements.is_empty() && selection_domain == bke::AttrDomain::Point) {
-      changed |= ed::curves::select_box(*vc,
-                                        info.drawing.strokes_for_write(),
-                                        deformation,
-                                        projection,
-                                        elements,
-                                        visible_handle_elements,
-                                        selection_domain,
-                                        *rect,
-                                        sel_op);
-    }
   }
 
   if (changed) {
@@ -5225,22 +5195,6 @@ static bool grease_pencil_circle_select(const ViewContext *vc,
                                         int2(mval),
                                         rad,
                                         sel_op);
-
-    /* Workaround: Run through a second time to select any handle points that are newly visible. */
-    visible_handle_elements = ed::greasepencil::retrieve_visible_bezier_handle_elements(
-        *vc->obedit, info.drawing, info.layer_index, selection_domain, memory);
-    if (!visible_handle_elements.is_empty() && selection_domain == bke::AttrDomain::Point) {
-      changed = ed::curves::select_circle(*vc,
-                                          info.drawing.strokes_for_write(),
-                                          deformation,
-                                          projection,
-                                          elements,
-                                          visible_handle_elements,
-                                          selection_domain,
-                                          int2(mval),
-                                          rad,
-                                          sel_op);
-    }
   }
 
   if (changed) {
