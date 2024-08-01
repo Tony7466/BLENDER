@@ -888,8 +888,8 @@ static void ed_workspace_status_text_item(WorkSpace *workspace, std::string text
 }
 
 static void ed_workspace_status_icon_item(WorkSpace *workspace,
-                                           const int icon,
-                                           const bool inverted = false)
+                                          const int icon,
+                                          const bool inverted = false)
 {
   if (icon) {
     ed_workspace_status_item(workspace, {}, icon, 0.0f, inverted);
