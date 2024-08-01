@@ -350,15 +350,69 @@ struct SpecializeConstant {
 
 struct Draw {
   gpu::Batch *batch;
-  uint instance_len;
-  uint vertex_len;
-  uint vertex_first;
+  /* Negative instance count denote expanded draw. */
+  int32_t instance_len;
+  uint32_t vertex_first;
+  union {
+    /* Ugly packing to support expanded draws without inflating the struct.
+     * Makes vertex range restricted to smaller range for expanded draw. */
+    struct {
+      uint32_t prim_type : 4;
+      uint32_t prim_len : 3;
+      uint32_t vertex_len : 25;
+    } expand;
+    uint32_t vertex_len;
+  };
   ResourceHandle handle;
-#ifdef WITH_METAL_BACKEND
-  /* Shader is required for extracting SSBO vertex fetch expansion parameters during draw command
-   * generation. */
-  GPUShader *shader;
-#endif
+
+  Draw() = default;
+
+  Draw(gpu::Batch *batch,
+       uint instance_len,
+       uint vertex_len,
+       uint vertex_first,
+       GPUPrimType expanded_prim_type,
+       uint expanded_prim_len,
+       ResourceHandle handle)
+  {
+    this->batch = batch;
+    this->handle = handle;
+    BLI_assert((instance_len > 0) && (instance_len < ~uint32_t(0)));
+    if (expanded_prim_type != GPU_PRIM_NONE) {
+      this->instance_len = -int32_t(instance_len);
+      BLI_assert(expanded_prim_type < (1 << 4));
+      BLI_assert(expanded_prim_len < (1 << 3));
+      BLI_assert(vertex_len == uint(-1) || vertex_len < (1 << 25));
+      BLI_assert(vertex_len != 0);
+      this->expand.prim_type = expanded_prim_type;
+      this->expand.prim_len = expanded_prim_len;
+      /* Cannot store auto vertex len value, store it as 0 as this is an invalid input here. */
+      this->expand.vertex_len = (vertex_len == uint(-1)) ? 0 : vertex_len;
+    }
+    else {
+      this->instance_len = instance_len;
+      this->vertex_len = vertex_len;
+    }
+    this->vertex_first = vertex_first;
+  }
+
+  bool is_primitive_expansion() const
+  {
+    return instance_len < 0;
+  }
+
+  uint32_t instance_len_get() const
+  {
+    return is_primitive_expansion() ? -instance_len : instance_len;
+  }
+
+  uint32_t vertex_len_get() const
+  {
+    if (is_primitive_expansion()) {
+      return (expand.vertex_len == 0) ? uint(-1) : vertex_len;
+    }
+    return vertex_len;
+  }
 
   void execute(RecordingState &state) const;
   std::string serialize() const;
@@ -469,7 +523,7 @@ union Undetermined {
 };
 
 /** Try to keep the command size as low as possible for performance. */
-BLI_STATIC_ASSERT(sizeof(Undetermined) <= /*24*/ 32, "One of the command type is too large.")
+BLI_STATIC_ASSERT(sizeof(Undetermined) <= 24, "One of the command type is too large.")
 
 /** \} */
 
@@ -508,12 +562,9 @@ class DrawCommandBuf {
                    uint vertex_len,
                    uint vertex_first,
                    ResourceHandle handle,
-                   uint /*custom_id*/
-#ifdef WITH_METAL_BACKEND
-                   ,
-                   GPUShader *shader = nullptr
-#endif
-  )
+                   uint /*custom_id*/,
+                   GPUPrimType expanded_prim_type,
+                   uint16_t expanded_prim_len)
   {
     vertex_first = vertex_first != -1 ? vertex_first : 0;
     instance_len = instance_len != -1 ? instance_len : 1;
@@ -524,12 +575,9 @@ class DrawCommandBuf {
                             instance_len,
                             vertex_len,
                             vertex_first,
-                            handle
-#ifdef WITH_METAL_BACKEND
-                            ,
-                            shader
-#endif
-    };
+                            expanded_prim_type,
+                            expanded_prim_len,
+                            handle};
   }
 
   void bind(RecordingState &state,
@@ -628,12 +676,9 @@ class DrawMultiBuf {
                    uint vertex_len,
                    uint vertex_first,
                    ResourceHandle handle,
-                   uint custom_id
-#ifdef WITH_METAL_BACKEND
-                   ,
-                   GPUShader *shader
-#endif
-  )
+                   uint custom_id,
+                   GPUPrimType expanded_prim_type,
+                   uint16_t expanded_prim_len)
   {
     /* Custom draw-calls cannot be batched and will produce one group per draw. */
     const bool custom_group = ((vertex_first != 0 && vertex_first != -1) || vertex_len != -1);
@@ -672,11 +717,8 @@ class DrawMultiBuf {
       group.back_proto_len = 0;
       group.vertex_len = vertex_len;
       group.vertex_first = vertex_first;
-#ifdef WITH_METAL_BACKEND
-      /* If SSBO vertex fetch is used, shader must be known to extract vertex expansion parameters.
-       */
-      group.gpu_shader = shader;
-#endif
+      group.expanded_prim_type = expanded_prim_type;
+      group.expanded_prim_len = expanded_prim_len;
       /* Custom group are not to be registered in the group_ids_. */
       if (!custom_group) {
         group_id = new_group_id;
@@ -690,13 +732,16 @@ class DrawMultiBuf {
       DrawGroup &group = group_buf_[group_id];
       group.len += instance_len;
       group.front_facing_len += inverted ? 0 : instance_len;
-#ifdef WITH_METAL_BACKEND
-      /* If SSBO vertex fetch is used, shader must be known to extract vertex expansion parameters.
-       */
-      group.gpu_shader = shader;
-#endif
       /* For serialization only. */
       (inverted ? group.back_proto_len : group.front_proto_len)++;
+      /* NOTE: We assume that primitive expansion is coupled to the shader itself. Meaning we rely
+       * on shader bind to isolate the expanded draws into their own group (as there could be
+       * regular draws and extended draws using the same batch mixed inside the same pass). This
+       * will cause issues if this assumption is broken. Also it is very hard to detect this case
+       * for error checking. At least we can check that expansion settings don't change inside a
+       * group. */
+      BLI_assert(group.expanded_prim_type == expanded_prim_type);
+      BLI_assert(group.expanded_prim_len == expanded_prim_len);
     }
   }
 

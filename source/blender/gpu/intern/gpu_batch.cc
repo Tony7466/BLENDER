@@ -301,7 +301,7 @@ void GPU_batch_draw_parameter_get(Batch *gpu_batch,
                                   int *r_vertex_count,
                                   int *r_vertex_first,
                                   int *r_base_index,
-                                  int *r_indices_count)
+                                  int *r_instance_count)
 {
   Batch *batch = static_cast<Batch *>(gpu_batch);
 
@@ -321,7 +321,27 @@ void GPU_batch_draw_parameter_get(Batch *gpu_batch,
   if (batch->inst[1] != nullptr) {
     i_count = min_ii(i_count, batch->inst_(1)->vertex_len);
   }
-  *r_indices_count = i_count;
+  *r_instance_count = i_count;
+}
+
+blender::IndexRange GPU_batch_draw_expanded_parameter_get(blender::gpu::Batch *batch,
+                                                          GPUPrimType expanded_prim_type,
+                                                          int vertex_count,
+                                                          int vertex_first)
+{
+  int vert_per_original_primitive = indices_per_primitive(batch->prim_type);
+  int vert_per_expanded_primitive = indices_per_primitive(expanded_prim_type);
+
+  BLI_assert_msg(vert_per_original_primitive != -1,
+                 "Primitive expansion only works for primitives with known amount of vertices");
+
+  int prim_first = vertex_first / vert_per_original_primitive;
+  int prim_len = vertex_count / vert_per_original_primitive;
+
+  int out_vertex_first = prim_first * vert_per_expanded_primitive;
+  int out_vertex_count = prim_len * vert_per_expanded_primitive;
+
+  return blender::IndexRange(out_vertex_first, out_vertex_count);
 }
 
 void GPU_batch_draw(Batch *batch)

@@ -132,6 +132,8 @@ inline int indices_per_primitive(GPUPrimType prim_type)
       return 3;
     case GPU_PRIM_LINES_ADJ:
       return 4;
+    case GPU_PRIM_TRIS_ADJ:
+      return 6;
     default:
       return -1;
   }

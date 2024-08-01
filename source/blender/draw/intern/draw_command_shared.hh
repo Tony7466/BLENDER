@@ -36,13 +36,13 @@ struct DrawGroup {
   /** #gpu::Batch values to be copied to #DrawCommand after sorting (if not overridden). */
   int vertex_len;
   int vertex_first;
+  /* Set to -1 if not an indexed draw. */
   int base_index;
 
   /** Atomic counters used during command sorting. */
   uint total_counter;
 
 #ifndef GPU_SHADER
-
   /* NOTE: Union just to make sure the struct has always the same size on all platform. */
   union {
     struct {
@@ -51,18 +51,23 @@ struct DrawGroup {
       uint back_proto_len;
       /** Needed to create the correct draw call. */
       gpu::Batch *gpu_batch;
-#  ifdef WITH_METAL_BACKEND
-      GPUShader *gpu_shader;
-#  endif
+
+      GPUPrimType expanded_prim_type;
+      uint expanded_prim_len;
+      uint _cpu_pad4;
+      uint _cpu_pad5;
     };
     struct {
 #endif
       uint front_facing_counter;
       uint back_facing_counter;
-      uint _pad0, _pad1;
-#if defined(WITH_METAL_BACKEND) || defined(GPU_METAL)
-      uint _pad2, _pad3, _pad4, _pad5;
-#endif
+      uint _cpu_reserved_1;
+      uint _cpu_reserved_2;
+
+      uint _cpu_reserved_3;
+      uint _cpu_reserved_4;
+      uint _pad4;
+      uint _pad5;
 #ifndef GPU_SHADER
     };
   };
