@@ -198,6 +198,7 @@ static void toolsystem_ref_link(bContext *C, WorkSpace *workspace, bToolRef *tre
                 return saved_link;
               }
             }
+
             BrushLink *new_link = static_cast<BrushLink *>(
                 MEM_mallocN(sizeof(*new_link), "BrushLink"));
             new_link->brush_type_name = BLI_strdupn(brush_type_name.data(),
@@ -231,9 +232,9 @@ static void toolsystem_ref_link(bContext *C, WorkSpace *workspace, bToolRef *tre
           }();
 
           if (!ts->gp_paint->restore_brush_asset_reference) {
-            AssetWeakReference *weak_ref = MEM_new<AssetWeakReference>(
-                "toolsystem_ref_link brush asset weak reference");
-            *weak_ref = *ts->gp_paint->paint.brush_asset_reference;
+            ts->gp_paint->restore_brush_asset_reference = MEM_new<AssetWeakReference>(
+                "toolsystem_ref_link restore brush reference",
+                *ts->gp_paint->paint.brush_asset_reference);
           }
 
           Brush *brush = reinterpret_cast<Brush *>(blender::bke::asset_edit_id_from_weak_reference(
