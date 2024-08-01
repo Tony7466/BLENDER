@@ -21,6 +21,8 @@
 #include "editors/sculpt_paint/sculpt_intern.hh"
 
 namespace blender::ed::sculpt_paint {
+#define BOUNDARY_VERTEX_NONE -1
+#define BOUNDARY_STEPS_NONE -1
 
 inline namespace boundary_cc {
 
@@ -28,13 +30,20 @@ inline namespace boundary_cc {
 
 static void init_falloff(const Brush &brush, const float radius, SculptBoundary &boundary)
 {
-  for (const int i : boundary.edit_info.index_range()) {
-    if (boundary.edit_info[i].propagation_steps_num != -1) {
-      boundary.edit_info[i].strength_factor = BKE_brush_curve_strength(
-          &brush, boundary.edit_info[i].propagation_steps_num, boundary.max_propagation_steps);
+  BLI_assert(boundary.edit_info.original_vertex_i.size() ==
+             boundary.edit_info.propagation_steps_num.size());
+  BLI_assert(boundary.edit_info.original_vertex_i.size() ==
+             boundary.edit_info.strength_factor.size());
+
+  const int num_elements = boundary.edit_info.strength_factor.size();
+
+  for (const int i : IndexRange(num_elements)) {
+    if (boundary.edit_info.propagation_steps_num[i] != BOUNDARY_STEPS_NONE) {
+      boundary.edit_info.strength_factor[i] = BKE_brush_curve_strength(
+          &brush, boundary.edit_info.propagation_steps_num[i], boundary.max_propagation_steps);
     }
 
-    if (boundary.edit_info[i].original_vertex_i == boundary.initial_vert_i) {
+    if (boundary.edit_info.original_vertex_i[i] == boundary.initial_vert_i) {
       /* All vertices that are propagated from the original vertex won't be affected by the
        * boundary falloff, so there is no need to calculate anything else. */
       continue;
@@ -50,7 +59,7 @@ static void init_falloff(const Brush &brush, const float radius, SculptBoundary 
     }
 
     const float boundary_distance = boundary.distance.lookup_default(
-        boundary.edit_info[i].original_vertex_i, 0.0f);
+        boundary.edit_info.original_vertex_i[i], 0.0f);
     float falloff_distance = 0.0f;
     float direction = 1.0f;
 
@@ -77,13 +86,9 @@ static void init_falloff(const Brush &brush, const float radius, SculptBoundary 
       case BRUSH_BOUNDARY_FALLOFF_CONSTANT:
         /* For constant falloff distances are not allocated, so this should never happen. */
         BLI_assert(false);
-        break;
-      default:
-        BLI_assert_unreachable();
-        break;
     }
 
-    boundary.edit_info[i].strength_factor *= direction * BKE_brush_curve_strength(
+    boundary.edit_info.strength_factor[i] *= direction * BKE_brush_curve_strength(
                                                              &brush, falloff_distance, radius);
   }
 }
@@ -92,15 +97,22 @@ static void bend_data_init_mesh(const Span<float3> vert_positions,
                                 const Span<float3> vert_normals,
                                 SculptBoundary &boundary)
 {
-  boundary.bend.pivot_rotation_axis = Array<float3>(boundary.edit_info.size(), float3(0));
-  boundary.bend.pivot_positions = Array<float3>(boundary.edit_info.size(), float3(0));
+  BLI_assert(boundary.edit_info.original_vertex_i.size() ==
+             boundary.edit_info.propagation_steps_num.size());
+  BLI_assert(boundary.edit_info.original_vertex_i.size() ==
+             boundary.edit_info.strength_factor.size());
 
-  for (const int i : boundary.edit_info.index_range()) {
-    if (boundary.edit_info[i].propagation_steps_num != boundary.max_propagation_steps) {
+  const int num_elements = boundary.edit_info.strength_factor.size();
+
+  boundary.bend.pivot_rotation_axis = Array<float3>(num_elements, float3(0));
+  boundary.bend.pivot_positions = Array<float3>(num_elements, float3(0));
+
+  for (const int i : IndexRange(num_elements)) {
+    if (boundary.edit_info.propagation_steps_num[i] != boundary.max_propagation_steps) {
       continue;
     }
 
-    const int orig_vert_i = boundary.edit_info[i].original_vertex_i;
+    const int orig_vert_i = boundary.edit_info.original_vertex_i[i];
 
     const float3 normal = vert_normals[i];
     const float3 dir = vert_positions[orig_vert_i] - vert_positions[i];
@@ -108,11 +120,11 @@ static void bend_data_init_mesh(const Span<float3> vert_positions,
     boundary.bend.pivot_positions[orig_vert_i] = vert_positions[i];
   }
 
-  for (const int i : boundary.edit_info.index_range()) {
-    if (boundary.edit_info[i].propagation_steps_num == BOUNDARY_STEPS_NONE) {
+  for (const int i : IndexRange(num_elements)) {
+    if (boundary.edit_info.propagation_steps_num[i] == BOUNDARY_STEPS_NONE) {
       continue;
     }
-    const int orig_vert_i = boundary.edit_info[i].original_vertex_i;
+    const int orig_vert_i = boundary.edit_info.original_vertex_i[i];
 
     boundary.bend.pivot_positions[i] = boundary.bend.pivot_positions[orig_vert_i];
     boundary.bend.pivot_rotation_axis[i] = boundary.bend.pivot_rotation_axis[orig_vert_i];
@@ -121,19 +133,26 @@ static void bend_data_init_mesh(const Span<float3> vert_positions,
 
 static void bend_data_init_grids(const SubdivCCG &subdiv_ccg, SculptBoundary &boundary)
 {
+  BLI_assert(boundary.edit_info.original_vertex_i.size() ==
+             boundary.edit_info.propagation_steps_num.size());
+  BLI_assert(boundary.edit_info.original_vertex_i.size() ==
+             boundary.edit_info.strength_factor.size());
+
+  const int num_elements = boundary.edit_info.strength_factor.size();
+
   const CCGKey &key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
   Span<CCGElem *> grids = subdiv_ccg.grids;
 
-  boundary.bend.pivot_rotation_axis = Array<float3>(boundary.edit_info.size(), float3(0));
-  boundary.bend.pivot_positions = Array<float3>(boundary.edit_info.size(), float3(0));
+  boundary.bend.pivot_rotation_axis = Array<float3>(num_elements, float3(0));
+  boundary.bend.pivot_positions = Array<float3>(num_elements, float3(0));
 
-  for (const int i : boundary.edit_info.index_range()) {
-    if (boundary.edit_info[i].propagation_steps_num != boundary.max_propagation_steps) {
+  for (const int i : IndexRange(num_elements)) {
+    if (boundary.edit_info.propagation_steps_num[i] != boundary.max_propagation_steps) {
       continue;
     }
 
     const SubdivCCGCoord vert = SubdivCCGCoord::from_index(key, i);
-    const int orig_vert_i = boundary.edit_info[i].original_vertex_i;
+    const int orig_vert_i = boundary.edit_info.original_vertex_i[i];
     const SubdivCCGCoord orig_vert = SubdivCCGCoord::from_index(key, orig_vert_i);
 
     const float3 normal = CCG_grid_elem_no(key, grids[vert.grid_index], vert.x, vert.y);
@@ -145,11 +164,11 @@ static void bend_data_init_grids(const SubdivCCG &subdiv_ccg, SculptBoundary &bo
         key, grids[vert.grid_index], vert.x, vert.y);
   }
 
-  for (const int i : boundary.edit_info.index_range()) {
-    if (boundary.edit_info[i].propagation_steps_num == BOUNDARY_STEPS_NONE) {
+  for (const int i : IndexRange(num_elements)) {
+    if (boundary.edit_info.propagation_steps_num[i] == BOUNDARY_STEPS_NONE) {
       continue;
     }
-    const int orig_vert_i = boundary.edit_info[i].original_vertex_i;
+    const int orig_vert_i = boundary.edit_info.original_vertex_i[i];
 
     boundary.bend.pivot_positions[i] = boundary.bend.pivot_positions[orig_vert_i];
     boundary.bend.pivot_rotation_axis[i] = boundary.bend.pivot_rotation_axis[orig_vert_i];
@@ -158,29 +177,36 @@ static void bend_data_init_grids(const SubdivCCG &subdiv_ccg, SculptBoundary &bo
 
 static void bend_data_init_bmesh(BMesh *bm, SculptBoundary &boundary)
 {
-  boundary.bend.pivot_rotation_axis = Array<float3>(boundary.edit_info.size(), float3(0));
-  boundary.bend.pivot_positions = Array<float3>(boundary.edit_info.size(), float3(0));
+  BLI_assert(boundary.edit_info.original_vertex_i.size() ==
+             boundary.edit_info.propagation_steps_num.size());
+  BLI_assert(boundary.edit_info.original_vertex_i.size() ==
+             boundary.edit_info.strength_factor.size());
 
-  for (const int i : boundary.edit_info.index_range()) {
-    if (boundary.edit_info[i].propagation_steps_num != boundary.max_propagation_steps) {
+  const int num_elements = boundary.edit_info.strength_factor.size();
+
+  boundary.bend.pivot_rotation_axis = Array<float3>(num_elements, float3(0));
+  boundary.bend.pivot_positions = Array<float3>(num_elements, float3(0));
+
+  for (const int i : IndexRange(num_elements)) {
+    if (boundary.edit_info.propagation_steps_num[i] != boundary.max_propagation_steps) {
       continue;
     }
 
     BMVert *vert = BM_vert_at_index(bm, i);
-    const int orig_vert_i = boundary.edit_info[i].original_vertex_i;
+    const int orig_vert_i = boundary.edit_info.original_vertex_i[i];
     BMVert *orig_vert = BM_vert_at_index(bm, orig_vert_i);
 
     const float3 normal = vert->no;
     const float3 dir = float3(orig_vert->co) - float3(vert->co);
     boundary.bend.pivot_rotation_axis[orig_vert_i] = math::normalize(math::cross(dir, normal));
-    boundary.bend.pivot_positions[boundary.edit_info[i].original_vertex_i] = vert->co;
+    boundary.bend.pivot_positions[boundary.edit_info.original_vertex_i[i]] = vert->co;
   }
 
-  for (const int i : boundary.edit_info.index_range()) {
-    if (boundary.edit_info[i].propagation_steps_num == BOUNDARY_STEPS_NONE) {
+  for (const int i : IndexRange(num_elements)) {
+    if (boundary.edit_info.propagation_steps_num[i] == BOUNDARY_STEPS_NONE) {
       continue;
     }
-    const int orig_vert_i = boundary.edit_info[i].original_vertex_i;
+    const int orig_vert_i = boundary.edit_info.original_vertex_i[i];
     boundary.bend.pivot_positions[i] = boundary.bend.pivot_positions[orig_vert_i];
     boundary.bend.pivot_rotation_axis[i] = boundary.bend.pivot_rotation_axis[orig_vert_i];
   }
@@ -188,39 +214,51 @@ static void bend_data_init_bmesh(BMesh *bm, SculptBoundary &boundary)
 
 static void slide_data_init_mesh(const Span<float3> vert_positions, SculptBoundary &boundary)
 {
-  boundary.slide.directions = Array<float3>(boundary.edit_info.size(), float3(0));
+  BLI_assert(boundary.edit_info.original_vertex_i.size() ==
+             boundary.edit_info.propagation_steps_num.size());
+  BLI_assert(boundary.edit_info.original_vertex_i.size() ==
+             boundary.edit_info.strength_factor.size());
 
-  for (const int i : boundary.edit_info.index_range()) {
-    if (boundary.edit_info[i].propagation_steps_num != boundary.max_propagation_steps) {
+  const int num_elements = boundary.edit_info.strength_factor.size();
+  boundary.slide.directions = Array<float3>(num_elements, float3(0));
+
+  for (const int i : IndexRange(num_elements)) {
+    if (boundary.edit_info.propagation_steps_num[i] != boundary.max_propagation_steps) {
       continue;
     }
-    const int orig_vert_i = boundary.edit_info[i].original_vertex_i;
+    const int orig_vert_i = boundary.edit_info.original_vertex_i[i];
     boundary.slide.directions[orig_vert_i] = math::normalize(vert_positions[orig_vert_i] -
                                                              vert_positions[i]);
   }
 
-  for (const int i : boundary.edit_info.index_range()) {
-    if (boundary.edit_info[i].propagation_steps_num == BOUNDARY_STEPS_NONE) {
+  for (const int i : IndexRange(num_elements)) {
+    if (boundary.edit_info.propagation_steps_num[i] == BOUNDARY_STEPS_NONE) {
       continue;
     }
     boundary.slide.directions[i] =
-        boundary.slide.directions[boundary.edit_info[i].original_vertex_i];
+        boundary.slide.directions[boundary.edit_info.original_vertex_i[i]];
   }
 }
 
 static void slide_data_init_grids(const SubdivCCG &subdiv_ccg, SculptBoundary &boundary)
 {
+  BLI_assert(boundary.edit_info.original_vertex_i.size() ==
+             boundary.edit_info.propagation_steps_num.size());
+  BLI_assert(boundary.edit_info.original_vertex_i.size() ==
+             boundary.edit_info.strength_factor.size());
+
+  const int num_elements = boundary.edit_info.strength_factor.size();
   const CCGKey &key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
   Span<CCGElem *> grids = subdiv_ccg.grids;
 
-  boundary.slide.directions = Array<float3>(boundary.edit_info.size(), float3(0));
+  boundary.slide.directions = Array<float3>(num_elements, float3(0));
 
-  for (const int i : boundary.edit_info.index_range()) {
-    if (boundary.edit_info[i].propagation_steps_num != boundary.max_propagation_steps) {
+  for (const int i : IndexRange(num_elements)) {
+    if (boundary.edit_info.propagation_steps_num[i] != boundary.max_propagation_steps) {
       continue;
     }
     const SubdivCCGCoord vert = SubdivCCGCoord::from_index(key, i);
-    const int orig_vert_i = boundary.edit_info[i].original_vertex_i;
+    const int orig_vert_i = boundary.edit_info.original_vertex_i[i];
     const SubdivCCGCoord orig_vert = SubdivCCGCoord::from_index(key, orig_vert_i);
 
     boundary.slide.directions[orig_vert_i] = math::normalize(
@@ -228,36 +266,42 @@ static void slide_data_init_grids(const SubdivCCG &subdiv_ccg, SculptBoundary &b
         CCG_grid_elem_co(key, grids[vert.grid_index], vert.x, vert.y));
   }
 
-  for (const int i : boundary.edit_info.index_range()) {
-    if (boundary.edit_info[i].propagation_steps_num == BOUNDARY_STEPS_NONE) {
+  for (const int i : IndexRange(num_elements)) {
+    if (boundary.edit_info.propagation_steps_num[i] == BOUNDARY_STEPS_NONE) {
       continue;
     }
     boundary.slide.directions[i] =
-        boundary.slide.directions[boundary.edit_info[i].original_vertex_i];
+        boundary.slide.directions[boundary.edit_info.original_vertex_i[i]];
   }
 }
 
 static void slide_data_init_bmesh(BMesh *bm, SculptBoundary &boundary)
 {
-  boundary.slide.directions = Array<float3>(boundary.edit_info.size(), float3(0));
+  BLI_assert(boundary.edit_info.original_vertex_i.size() ==
+             boundary.edit_info.propagation_steps_num.size());
+  BLI_assert(boundary.edit_info.original_vertex_i.size() ==
+             boundary.edit_info.strength_factor.size());
 
-  for (const int i : boundary.edit_info.index_range()) {
-    if (boundary.edit_info[i].propagation_steps_num != boundary.max_propagation_steps) {
+  const int num_elements = boundary.edit_info.strength_factor.size();
+  boundary.slide.directions = Array<float3>(num_elements, float3(0));
+
+  for (const int i : IndexRange(num_elements)) {
+    if (boundary.edit_info.propagation_steps_num[i] != boundary.max_propagation_steps) {
       continue;
     }
     BMVert *vert = BM_vert_at_index(bm, i);
-    const int orig_vert_i = boundary.edit_info[i].original_vertex_i;
+    const int orig_vert_i = boundary.edit_info.original_vertex_i[i];
     BMVert *orig_vert = BM_vert_at_index(bm, orig_vert_i);
     boundary.slide.directions[orig_vert_i] = math::normalize(float3(orig_vert->co) -
                                                              float3(vert->co));
   }
 
-  for (const int i : boundary.edit_info.index_range()) {
-    if (boundary.edit_info[i].propagation_steps_num == BOUNDARY_STEPS_NONE) {
+  for (const int i : IndexRange(num_elements)) {
+    if (boundary.edit_info.propagation_steps_num[i] == BOUNDARY_STEPS_NONE) {
       continue;
     }
     boundary.slide.directions[i] =
-        boundary.slide.directions[boundary.edit_info[i].original_vertex_i];
+        boundary.slide.directions[boundary.edit_info.original_vertex_i[i]];
   }
 }
 
@@ -444,10 +488,10 @@ static void init_boundary_bmesh(Object &object,
 
   std::optional<BMVert *> initial_vert;
   if (ss.cache->mirror_symmetry_pass == 0) {
-    initial_vert = BM_vert_at_index(bm, initial_vert_ref.i);
+    initial_vert = reinterpret_cast<BMVert *>(initial_vert_ref.i);
   }
   else {
-    BMVert *active_vert = BM_vert_at_index(bm, initial_vert_ref.i);
+    BMVert *active_vert = reinterpret_cast<BMVert *>(initial_vert_ref.i);
     float3 location;
     flip_v3_v3(location, active_vert->co, symm_area);
     initial_vert = nearest_vert_calc_bmesh(pbvh, location, ss.cache->radius_squared, false);
@@ -494,12 +538,16 @@ void do_boundary_brush(const Sculpt &sd, Object &ob, Span<bke::pbvh::Node *> nod
     switch (ss.pbvh->type()) {
       case bke::pbvh::Type::Mesh:
         init_boundary_mesh(ob, brush, symm_area);
+        break;
       case bke::pbvh::Type::Grids:
         init_boundary_grids(ob, brush, symm_area);
+        break;
       case bke::pbvh::Type::BMesh:
         init_boundary_bmesh(ob, brush, symm_area);
+        break;
       default:
         BLI_assert_unreachable();
+        break;
     }
   }
 
