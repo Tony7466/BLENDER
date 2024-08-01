@@ -46,6 +46,7 @@
 #include "ED_screen.hh"
 
 #include "ANIM_action.hh"
+#include "ANIM_action_iterators.hh"
 #include "ANIM_animdata.hh"
 #include "ANIM_bone_collections.hh"
 #include "ANIM_driver.hh"
@@ -756,7 +757,7 @@ static int clear_anim_v3d_exec(bContext *C, wmOperator * /*op*/)
 
       Action &action = dna_action->wrap();
       if (action.is_action_layered()) {
-        ActionFCurveIterator it(action, adt->slot_handle);
+        iterators::ActionFCurveIterator it(action, adt->slot_handle);
         blender::Vector<std::pair<blender::animrig::ChannelBag *, FCurve *>> fcurves_to_delete;
         while (*it) {
           if (can_delete_fcurve(*it, ob)) {
@@ -908,7 +909,7 @@ static int delete_key_v3d_without_keying_set(bContext *C, wmOperator *op)
 
       Action &action = act->wrap();
       if (action.is_action_layered()) {
-        ActionFCurveIterator it(action, adt->slot_handle);
+        iterators::ActionFCurveIterator it(action, adt->slot_handle);
         blender::Vector<std::pair<blender::animrig::ChannelBag *, FCurve *>> modified_fcurves;
         while (*it) {
           if (can_delete_key(*it, ob, op->reports)) {

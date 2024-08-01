@@ -24,6 +24,7 @@ set(SRC
   intern/action_legacy.cc
   intern/action_runtime.cc
   intern/action_selection.cc
+  intern/action_iterators.cc
   intern/anim_rna.cc
   intern/animdata.cc
   intern/bone_collections.cc
@@ -37,6 +38,7 @@ set(SRC
 
   ANIM_action.hh
   ANIM_action_legacy.hh
+  ANIM_action_iterators.hh
   ANIM_animdata.hh
   ANIM_armature_iter.hh
   ANIM_bone_collections.hh
