@@ -79,11 +79,6 @@ void OVERLAY_paint_cache_init(OVERLAY_Data *vedata)
   const bool is_edit_mode = (pd->ctx_mode == CTX_MODE_EDIT_MESH);
   const bool draw_contours = !is_edit_mode &&
                              (pd->overlay.wpaint_flag & V3D_OVERLAY_WPAINT_CONTOURS) != 0;
-  const bool is_workbench = (draw_ctx->v3d->shading.type <= OB_SOLID) ||
-                            BKE_scene_uses_blender_workbench(draw_ctx->scene);
-  /* Support masked transparency in Workbench.
-   * EEVEE can't be supported since depth won't match. */
-  const DRWState depth_mode = is_workbench ? DRW_STATE_DEPTH_EQUAL : DRW_STATE_DEPTH_LESS_EQUAL;
   float opacity = 0.0f;
   pd->paint_depth_grp = nullptr;
   psl->paint_depth_ps = nullptr;
@@ -94,7 +89,13 @@ void OVERLAY_paint_cache_init(OVERLAY_Data *vedata)
     case CTX_MODE_PAINT_WEIGHT: {
       opacity = is_edit_mode ? 1.0 : pd->overlay.weight_paint_mode_opacity;
       if (opacity > 0.0f) {
-        state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA | depth_mode;
+        state = DRW_STATE_WRITE_COLOR;
+        const bool is_workbench = (draw_ctx->v3d->shading.type <= OB_SOLID) ||
+                                  BKE_scene_uses_blender_workbench(draw_ctx->scene);
+        /* Support masked transparency in Workbench.
+         * EEVEE can't be supported since depth won't match. */
+        state |= is_workbench ? DRW_STATE_DEPTH_EQUAL | DRW_STATE_BLEND_ALPHA :
+                                DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_WRITE_DEPTH;
         DRW_PASS_CREATE(psl->paint_color_ps, state | pd->clipping_state);
 
         const bool do_shading = draw_ctx->v3d->shading.type != OB_WIRE;
@@ -126,7 +127,7 @@ void OVERLAY_paint_cache_init(OVERLAY_Data *vedata)
     case CTX_MODE_PAINT_VERTEX: {
       opacity = pd->overlay.vertex_paint_mode_opacity;
       if (opacity > 0.0f) {
-        state = DRW_STATE_WRITE_COLOR | depth_mode;
+        state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL;
         state |= pd->painting.alpha_blending ? DRW_STATE_BLEND_ALPHA : DRW_STATE_BLEND_MUL;
         DRW_PASS_CREATE(psl->paint_color_ps, state | pd->clipping_state);
 
@@ -145,7 +146,7 @@ void OVERLAY_paint_cache_init(OVERLAY_Data *vedata)
 
       opacity = mask_enabled ? pd->overlay.texture_paint_mode_opacity : 0.0f;
       if (opacity > 0.0f) {
-        state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA | depth_mode;
+        state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL | DRW_STATE_BLEND_ALPHA;
         DRW_PASS_CREATE(psl->paint_color_ps, state | pd->clipping_state);
 
         GPUTexture *tex = BKE_image_get_gpu_texture(imapaint->stencil, nullptr);
