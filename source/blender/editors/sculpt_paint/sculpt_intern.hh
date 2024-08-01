@@ -347,6 +347,12 @@ struct StrokeCache {
   /* Position of the mouse event in screen space, not modified by the stroke type. */
   float2 mouse_event;
 
+  /**
+   * Used by the color attribute paint brush tool to store the brush color during a stroke and
+   * composite it over the original color.
+   */
+  Array<float4> mix_colors;
+
   Array<float4> prev_colors;
   GArray<> prev_colors_vpaint;
 
@@ -815,8 +821,6 @@ const blender::float3 SCULPT_vertex_normal_get(const SculptSession &ss, PBVHVert
 
 bool SCULPT_vertex_is_occluded(SculptSession &ss, PBVHVertRef vertex, bool original);
 
-const float *SCULPT_vertex_persistent_co_get(const SculptSession &ss, PBVHVertRef vertex);
-
 /**
  * Coordinates used for manipulating the base mesh when Grab Active Vertex is enabled.
  */
@@ -967,6 +971,15 @@ int active_face_set_get(const SculptSession &ss);
 int vert_face_set_get(const SculptSession &ss, PBVHVertRef vertex);
 
 bool vert_has_face_set(const SculptSession &ss, PBVHVertRef vertex, int face_set);
+bool vert_has_face_set(const GroupedSpan<int> vert_to_face_map,
+                       const int *face_sets,
+                       const int vert,
+                       const int face_set);
+bool vert_has_face_set(const SubdivCCG &subdiv_ccg,
+                       const int *face_sets,
+                       const int grid,
+                       const int face_set);
+bool vert_has_face_set(const int face_set_offset, const BMVert &vert, const int face_set);
 bool vert_has_unique_face_set(const SculptSession &ss, PBVHVertRef vertex);
 bool vert_has_unique_face_set(const GroupedSpan<int> vert_to_face_map,
                               const int *face_sets,
@@ -1526,7 +1539,6 @@ struct LengthConstraint {
 
 struct SimulationData {
   Vector<LengthConstraint> length_constraints;
-  Set<OrderedEdge> created_length_constraints;
   Array<float> length_constraint_tweak;
 
   /* Position anchors for deformation brushes. These positions are modified by the brush and the
@@ -1552,10 +1564,6 @@ struct SimulationData {
   int totnode;
   Map<const bke::pbvh::Node *, int> node_state_index;
   Array<NodeSimState> node_state;
-
-  VArraySpan<float> mask_mesh;
-  int mask_cd_offset_bmesh;
-  CCGKey grid_key;
 
   ~SimulationData();
 };
