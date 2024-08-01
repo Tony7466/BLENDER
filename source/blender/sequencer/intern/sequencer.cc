@@ -210,6 +210,10 @@ static void seq_sequence_free_ex(Scene *scene,
   /* free modifiers */
   SEQ_modifier_clear(seq);
 
+  if (SEQ_is_strip_connected(seq)) {
+    SEQ_disconnect(seq);
+  }
+
   /* free cached data used by this strip,
    * also invalidate cache for all dependent sequences
    *
@@ -225,10 +229,6 @@ static void seq_sequence_free_ex(Scene *scene,
   }
   if (seq->type == SEQ_TYPE_META) {
     SEQ_channels_free(&seq->channels);
-  }
-
-  if (SEQ_is_strip_connected(seq)) {
-    SEQ_disconnect(seq);
   }
 
   if (seq->retiming_keys != nullptr) {
@@ -539,6 +539,7 @@ static Sequence *seq_dupli(const Scene *scene_src,
   }
 
   if (SEQ_is_strip_connected(seq)) {
+    BLI_listbase_clear(&seqn->connections);
     SEQ_connections_duplicate(&seqn->connections, &seq->connections);
   }
 

@@ -24,7 +24,6 @@ static void seq_connections_free(Sequence *seq)
 
 void SEQ_connections_duplicate(ListBase *connections_dst, ListBase *connections_src)
 {
-  BLI_listbase_clear(connections_dst);
   LISTBASE_FOREACH (SeqConnection *, con, connections_src) {
     SeqConnection *con_duplicate = MEM_cnew<SeqConnection>(__func__, *con);
     BLI_addtail(connections_dst, con_duplicate);
@@ -36,11 +35,15 @@ bool SEQ_disconnect(Sequence *seq)
   if (BLI_listbase_is_empty(&seq->connections)) {
     return false;
   }
-  /* Remove `seq` from other strips' `connections` list. */
-  LISTBASE_FOREACH (SeqConnection *, con, &seq->connections) {
-    Sequence *con_seq = con->seq_ref;
-    BLI_remlink(&con_seq->connections, con);
-    MEM_delete(con);
+  /* Remove `SeqConnections` from other strips' `connections` list that point to `seq`. */
+  LISTBASE_FOREACH (SeqConnection *, con_seq, &seq->connections) {
+    Sequence *other = con_seq->seq_ref;
+    LISTBASE_FOREACH_MUTABLE (SeqConnection *, con_other, &other->connections) {
+      if (con_other->seq_ref == seq) {
+        BLI_remlink(&other->connections, con_other);
+        MEM_delete(con_other);
+      }
+    }
   }
   /* Now clear `connections` for `seq` itself.*/
   seq_connections_free(seq);
