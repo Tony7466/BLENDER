@@ -2,8 +2,11 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-# Helper class to get and set attributes at an index for a domain
 class AttributeGetterSetter:
+    """
+    Helper class to get and set attributes at an index for a domain
+    """
+
     def __init__(self, attributes, index, domain):
         self._attributes = attributes
         self._index = index
