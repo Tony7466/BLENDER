@@ -15,7 +15,6 @@
 #include "BKE_main.hh"
 #include "BKE_nla.h"
 #include "BKE_object.hh"
-#include "BKE_scene.hh"
 
 #include "DNA_anim_types.h"
 #include "DNA_object_types.h"
