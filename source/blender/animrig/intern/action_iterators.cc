@@ -1,4 +1,6 @@
+#include "ANIM_action.hh"
 #include "ANIM_action_iterators.hh"
+#include "BLI_assert.h"
 
 namespace blender::animrig::iterators {
 
@@ -60,6 +62,33 @@ FCurve *ActionFCurveIterator::operator->()
 ChannelBag *ActionFCurveIterator::get_current_channel_bag()
 {
   return current_channel_bag;
+}
+
+blender::Vector<FCurve *> foreach_fcurve(Action &action,
+                                         slot_handle_t handle,
+                                         void *data,
+                                         bool (*callback)(FCurve *fcurve, void *data))
+{
+  blender::Vector<FCurve *> fcurves;
+  for (Layer *layer : action.layers()) {
+    for (Strip *strip : layer->strips()) {
+      if (!strip->is<KeyframeStrip>()) {
+        continue;
+      }
+      KeyframeStrip &key_strip = strip->as<KeyframeStrip>();
+      for (ChannelBag *bag : key_strip.channelbags()) {
+        if (bag->slot_handle != handle) {
+          continue;
+        }
+        for (FCurve *fcu : bag->fcurves()) {
+          if (callback(fcu, data)) {
+            fcurves.append(fcu);
+          }
+        }
+      }
+    }
+  }
+  return fcurves;
 }
 
 }  // namespace blender::animrig::iterators

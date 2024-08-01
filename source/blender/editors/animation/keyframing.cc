@@ -884,6 +884,21 @@ static bool can_delete_key(FCurve *fcu, Object *ob, ReportList *reports)
   return true;
 }
 
+struct DeleteKeyCallbackData {
+  float frame;
+  Object *ob;
+  ReportList *reports;
+};
+
+static bool delete_key_callback(FCurve *fcurve, void *data)
+{
+  DeleteKeyCallbackData *fdata = (DeleteKeyCallbackData *)data;
+  if (!can_delete_key(fcurve, fdata->ob, fdata->reports)) {
+    return false;
+  }
+  return blender::animrig::fcurve_delete_keyframe_at_time(fcurve, fdata->frame);
+}
+
 static int delete_key_v3d_without_keying_set(bContext *C, wmOperator *op)
 {
   using namespace blender::animrig;
@@ -909,19 +924,18 @@ static int delete_key_v3d_without_keying_set(bContext *C, wmOperator *op)
 
       Action &action = act->wrap();
       if (action.is_action_layered()) {
-        iterators::ActionFCurveIterator it(action, adt->slot_handle);
-        blender::Vector<std::pair<blender::animrig::ChannelBag *, FCurve *>> modified_fcurves;
-        while (*it) {
-          if (can_delete_key(*it, ob, op->reports)) {
-            success += fcurve_delete_keyframe_at_time(*it, cfra_unmap);
-            modified_fcurves.append(std::pair<blender::animrig::ChannelBag *, FCurve *>(
-                it.get_current_channel_bag(), *it));
-          }
-          ++it;
-        }
-        for (auto &pair : modified_fcurves) {
-          if (BKE_fcurve_is_empty(pair.second)) {
-            pair.first->fcurve_remove(*pair.second);
+        DeleteKeyCallbackData callback_data;
+        callback_data.frame = cfra_unmap;
+        callback_data.ob = ob;
+        callback_data.reports = op->reports;
+
+        blender::Vector<FCurve *> modified_fcurves = iterators::foreach_fcurve(
+            action, adt->slot_handle, (void *)&callback_data, delete_key_callback);
+
+        success += modified_fcurves.size();
+        for (FCurve *fcurve : modified_fcurves) {
+          if (BKE_fcurve_is_empty(fcurve)) {
+            action_fcurve_remove(action, *fcurve);
           }
         }
       }
