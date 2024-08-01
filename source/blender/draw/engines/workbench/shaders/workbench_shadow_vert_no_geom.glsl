@@ -6,6 +6,7 @@
  * geometry manifold type */
 
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_index_load_lib.glsl)
 
 #ifdef DOUBLE_MANIFOLD
 #  define vert_len 12 /* Triangle Strip with 6 verts = 4 triangles = 12 verts. */
@@ -90,14 +91,14 @@ void main()
 #endif
 
   /* Source primitive data location derived from output primitive. */
-  int input_base_vertex_id = (input_prim_index * 4);
+  int input_base_index = (input_prim_index * 4);
 
   /* IN DATA is lines_adjacency - Should be guaranteed. */
   /* Read input position data. */
-  vData[0].pos = pos[input_base_vertex_id + 0];
-  vData[1].pos = pos[input_base_vertex_id + 1];
-  vData[2].pos = pos[input_base_vertex_id + 2];
-  vData[3].pos = pos[input_base_vertex_id + 3];
+  vData[0].pos = pos[gpu_index_load(input_base_index + 0)];
+  vData[1].pos = pos[gpu_index_load(input_base_index + 1)];
+  vData[2].pos = pos[gpu_index_load(input_base_index + 2)];
+  vData[3].pos = pos[gpu_index_load(input_base_index + 3)];
 
   /* Calculate front/back Positions. */
   vData[0].frontPosition = point_object_to_ndc(vData[0].pos);

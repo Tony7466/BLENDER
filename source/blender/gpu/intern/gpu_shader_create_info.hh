@@ -33,6 +33,9 @@
 #define GPU_SHADER_PRINTF_SLOT 13
 #define GPU_SHADER_PRINTF_MAX_CAPACITY (1024 * 4)
 
+/* Used for primitive expansion. */
+#define GPU_SSBO_INDEX_BUF_SLOT 7
+
 namespace blender::gpu::shader {
 
 /* Helps intellisense / auto-completion. */
