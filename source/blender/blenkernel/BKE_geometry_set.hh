@@ -115,6 +115,8 @@ class GeometryComponent : public ImplicitSharingMixin {
 
   virtual bool is_empty() const;
 
+  virtual int64_t size_in_bytes_approximate() const = 0;
+
  private:
   void delete_self() override;
   void delete_data_only() override;
@@ -336,6 +338,8 @@ struct GeometrySet {
    */
   bool is_empty() const;
 
+  int64_t size_in_bytes_approximate() const;
+
   /**
    * Returns a read-only mesh or null.
    */
@@ -491,6 +495,7 @@ class MeshComponent : public GeometryComponent {
   Mesh *get_for_write();
 
   bool is_empty() const final;
+  int64_t size_in_bytes_approximate() const final;
 
   bool owns_direct_data() const override;
   void ensure_owns_direct_data() override;
@@ -550,6 +555,7 @@ class PointCloudComponent : public GeometryComponent {
   PointCloud *get_for_write();
 
   bool is_empty() const final;
+  int64_t size_in_bytes_approximate() const final;
 
   bool owns_direct_data() const override;
   void ensure_owns_direct_data() override;
@@ -596,6 +602,7 @@ class CurveComponent : public GeometryComponent {
   Curves *get_for_write();
 
   bool is_empty() const final;
+  int64_t size_in_bytes_approximate() const final;
 
   bool owns_direct_data() const override;
   void ensure_owns_direct_data() override;
@@ -636,6 +643,7 @@ class InstancesComponent : public GeometryComponent {
                GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
 
   bool is_empty() const final;
+  int64_t size_in_bytes_approximate() const final;
 
   bool owns_direct_data() const override;
   void ensure_owns_direct_data() override;
@@ -685,6 +693,8 @@ class VolumeComponent : public GeometryComponent {
    */
   Volume *get_for_write();
 
+  int64_t size_in_bytes_approximate() const final;
+
   bool owns_direct_data() const override;
   void ensure_owns_direct_data() override;
 
@@ -723,6 +733,8 @@ class GeometryComponentEditData final : public GeometryComponent {
   void ensure_owns_direct_data() final;
 
   void clear() override;
+
+  int64_t size_in_bytes_approximate() const final;
 
   /**
    * The first node that does topology changing operations on curves should store the curve point
@@ -767,6 +779,7 @@ class GreasePencilComponent : public GeometryComponent {
   GreasePencil *get_for_write();
 
   bool is_empty() const final;
+  int64_t size_in_bytes_approximate() const final;
 
   bool owns_direct_data() const override;
   void ensure_owns_direct_data() override;

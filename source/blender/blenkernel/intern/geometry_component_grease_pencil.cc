@@ -85,6 +85,11 @@ bool GreasePencilComponent::is_empty() const
   return grease_pencil_ == nullptr;
 }
 
+int64_t GreasePencilComponent::size_in_bytes_approximate() const
+{
+  return 0;
+}
+
 bool GreasePencilComponent::owns_direct_data() const
 {
   return ownership_ == GeometryOwnershipType::Owned;

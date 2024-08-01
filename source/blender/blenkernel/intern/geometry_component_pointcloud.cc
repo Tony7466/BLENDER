@@ -90,6 +90,11 @@ bool PointCloudComponent::is_empty() const
   return pointcloud_ == nullptr;
 }
 
+int64_t PointCloudComponent::size_in_bytes_approximate() const
+{
+  return 0;
+}
+
 bool PointCloudComponent::owns_direct_data() const
 {
   return ownership_ == GeometryOwnershipType::Owned;

@@ -105,6 +105,11 @@ bool CurveComponent::is_empty() const
   return curves_ == nullptr;
 }
 
+int64_t CurveComponent::size_in_bytes_approximate() const
+{
+  return 0;
+}
+
 bool CurveComponent::owns_direct_data() const
 {
   return ownership_ == GeometryOwnershipType::Owned;

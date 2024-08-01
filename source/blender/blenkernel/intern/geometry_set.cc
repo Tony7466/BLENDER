@@ -405,6 +405,17 @@ bool GeometrySet::is_empty() const
            this->has_volume() || this->has_instances() || this->has_grease_pencil());
 }
 
+int64_t GeometrySet::size_in_bytes_approximate() const
+{
+  int64_t size = 0;
+  for (const GeometryComponentPtr &component_ptr : components_) {
+    if (component_ptr) {
+      size += component_ptr->size_in_bytes_approximate();
+    }
+  }
+  return size;
+}
+
 GeometrySet GeometrySet::from_mesh(Mesh *mesh, GeometryOwnershipType ownership)
 {
   GeometrySet geometry_set;

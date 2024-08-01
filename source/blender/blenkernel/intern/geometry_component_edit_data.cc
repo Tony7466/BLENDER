@@ -45,6 +45,11 @@ void GeometryComponentEditData::clear()
   gizmo_edit_hints_.reset();
 }
 
+int64_t GeometryComponentEditData::size_in_bytes_approximate() const
+{
+  return 0;
+}
+
 static ImplicitSharingPtrAndData save_shared_attribute(const GAttributeReader &attribute)
 {
   if (attribute.sharing_info && attribute.varray.is_span()) {

@@ -64,6 +64,11 @@ bool InstancesComponent::is_empty() const
   return true;
 }
 
+int64_t InstancesComponent::size_in_bytes_approximate() const
+{
+  return 0;
+}
+
 bool InstancesComponent::owns_direct_data() const
 {
   if (instances_ != nullptr) {

@@ -100,6 +100,11 @@ bool MeshComponent::is_empty() const
   return mesh_ == nullptr;
 }
 
+int64_t MeshComponent::size_in_bytes_approximate() const
+{
+  return mesh_->vert_data.totsize;
+}
+
 bool MeshComponent::owns_direct_data() const
 {
   return ownership_ == GeometryOwnershipType::Owned;
