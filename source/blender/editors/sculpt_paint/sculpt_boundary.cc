@@ -1508,6 +1508,7 @@ void do_boundary_brush(const Sculpt &sd, Object &ob, Span<bke::pbvh::Node *> nod
         break;
       default:
         BLI_assert_unreachable();
+        break;
     }
   }
 
