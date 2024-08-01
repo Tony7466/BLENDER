@@ -876,33 +876,6 @@ static void bend_data_init_bmesh(BMesh *bm, SculptBoundary &boundary)
   }
 }
 
-static void bend_data_init(const Object &object, SculptBoundary &boundary)
-{
-  /* TODO: This method is to assist in refactoring, it should be removed when the rest of this
-   * brush is done. */
-  SculptSession &ss = *object.sculpt;
-  const bke::pbvh::Tree &pbvh = *ss.pbvh;
-
-  switch (pbvh.type()) {
-    case (bke::pbvh::Type::Mesh): {
-      Mesh &mesh = *static_cast<Mesh *>(object.data);
-
-      const Span<float3> positions_eval = BKE_pbvh_get_vert_positions(pbvh);
-      const Span<float3> vert_normals = BKE_pbvh_get_vert_normals(pbvh);
-
-      bend_data_init_mesh(positions_eval, vert_normals, boundary);
-      break;
-    }
-    case (bke::pbvh::Type::Grids):
-      bend_data_init_grids(*ss.subdiv_ccg, boundary);
-      break;
-
-    case (bke::pbvh::Type::BMesh):
-      bend_data_init_bmesh(ss.bm, boundary);
-      break;
-  }
-}
-
 static void slide_data_init_mesh(const Span<float3> vert_positions, SculptBoundary &boundary)
 {
   BLI_assert(boundary.edit_info.original_vertex_i.size() ==
