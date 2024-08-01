@@ -514,37 +514,7 @@ void ED_region_do_draw(bContext *C, ARegion *region)
 
   wmOrtho2_region_pixelspace(region);
 
-  const char area_spacetype = area ? area->spacetype : 0;
-
-  /* Set client-side window decoration titlebar colors. */
-  if (at->regionid == RGN_TYPE_WINDOW) {
-    /* For main windows, use the topbar color. */
-    if (WM_window_should_have_global_areas(win)) {
-      UI_SetTheme(SPACE_TOPBAR, RGN_TYPE_HEADER);
-    }
-    /* For single editor floating windows, use the editor header color. */
-    else if (BLI_listbase_is_single(&CTX_wm_screen(C)->areabase)) {
-      /* Except for the View 3D editor which has a transparent titlebar, in which case use the
-       * window background color instead. */
-      if (area_spacetype == SPACE_VIEW3D) {
-        UI_SetTheme(area_spacetype, RGN_TYPE_WINDOW);
-      }
-      else {
-        UI_SetTheme(area_spacetype, RGN_TYPE_HEADER);
-      }
-    }
-    /* For floating window with multiple editors/areas, use the default space color. */
-    else {
-      UI_SetTheme(0, RGN_TYPE_WINDOW);
-    }
-
-    float tb_background_color[4], tb_title_color[4];
-    UI_GetThemeColor4fv(TH_BACK, tb_background_color);
-    UI_GetThemeColor4fv(TH_BUTBACK_TEXT, tb_title_color);
-    WM_window_set_titlebar_csd_color(win, tb_background_color, tb_title_color);
-  }
-
-  UI_SetTheme(area_spacetype, at->regionid);
+  UI_SetTheme(area ? area->spacetype : 0, at->regionid);
 
   if (area && area_is_pseudo_minimized(area)) {
     UI_ThemeClearColor(TH_EDITOR_OUTLINE);

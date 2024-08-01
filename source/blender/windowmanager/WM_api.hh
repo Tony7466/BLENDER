@@ -383,6 +383,8 @@ void WM_window_set_titlebar_csd_color(const wmWindow *win,
                                       const float background_color[4],
                                       const float title_text_color[4]);
 
+void WM_window_update_decorations(const wmWindow *win, const bScreen *screen);
+
 /* `wm_files.cc`. */
 
 void WM_file_autoexec_init(const char *filepath);
