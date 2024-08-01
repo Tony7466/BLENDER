@@ -901,17 +901,6 @@ FCurve *action_fcurve_find(bAction *act, FCurveDescriptor fcurve_descriptor);
 bool action_fcurve_remove(Action &action, FCurve &fcu);
 
 /**
- * Find all FCurves for that match the given fcurve_descriptor for the given slot handle. Since
- * there can be multiple layers, there may be multiple FCurves matching the description.
- *
- * \returns A Vector of FCurve pointers that match the description. These pointers are independent
- * of the Action and can be iterated over while deleting FCurves from the Action.
- */
-Vector<FCurve *> action_fcurves_find(Action &action,
-                                     slot_handle_t slot,
-                                     FCurveDescriptor fcurve_descriptor);
-
-/**
  * Find an appropriate user of the given Action + Slot for keyframing purposes.
  *
  * (NOTE: although this function exists for handling situations caused by the

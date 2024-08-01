@@ -1419,38 +1419,6 @@ FCurve *action_fcurve_find(bAction *act, FCurveDescriptor fcurve_descriptor)
       &act->curves, fcurve_descriptor.rna_path.c_str(), fcurve_descriptor.array_index);
 }
 
-Vector<FCurve *> action_fcurves_find(Action &action,
-                                     slot_handle_t handle,
-                                     FCurveDescriptor fcurve_descriptor)
-{
-  Vector<FCurve *> fcurves;
-  for (Layer *layer : action.layers()) {
-    for (Strip *strip : layer->strips()) {
-      if (!strip->is<KeyframeStrip>()) {
-        continue;
-      }
-      KeyframeStrip &key_strip = strip->as<KeyframeStrip>();
-      for (ChannelBag *bag : key_strip.channelbags()) {
-        if (bag->slot_handle != handle) {
-          continue;
-        }
-        for (FCurve *fcu : bag->fcurves()) {
-          if (fcurve_descriptor.array_index != -1 &&
-              fcurve_descriptor.array_index != fcu->array_index)
-          {
-            continue;
-          }
-          if (!STREQ(fcurve_descriptor.rna_path.c_str(), fcu->rna_path)) {
-            continue;
-          }
-          fcurves.append(fcu);
-        }
-      }
-    }
-  }
-  return fcurves;
-}
-
 FCurve *action_fcurve_ensure(Main *bmain,
                              bAction *act,
                              const char group[],
