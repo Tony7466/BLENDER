@@ -1449,10 +1449,10 @@ static void init_boundary_bmesh(Object &object,
 
   std::optional<BMVert *> initial_vert;
   if (ss.cache->mirror_symmetry_pass == 0) {
-    initial_vert = BM_vert_at_index(bm, initial_vert_ref.i);
+    initial_vert = reinterpret_cast<BMVert *>(initial_vert_ref.i);
   }
   else {
-    BMVert *active_vert = BM_vert_at_index(bm, initial_vert_ref.i);
+    BMVert *active_vert = reinterpret_cast<BMVert *>(initial_vert_ref.i);
     float3 location;
     flip_v3_v3(location, active_vert->co, symm_area);
     initial_vert = nearest_vert_calc_bmesh(pbvh, location, ss.cache->radius_squared, false);
