@@ -377,6 +377,11 @@ ccl_device_inline float3 cos(float3 v)
   return make_float3(cosf(v.x), cosf(v.y), cosf(v.z));
 }
 
+ccl_device_inline float3 reflect(const float3 incident, const float3 unit_normal)
+{
+  return incident - 2.0f * unit_normal * dot(incident, unit_normal);
+}
+
 ccl_device_inline float3 refract(const float3 incident, const float3 normal, const float eta)
 {
   float k = 1.0f - eta * eta * (1.0f - dot(normal, incident) * dot(normal, incident));
@@ -435,12 +440,6 @@ ccl_device_inline float3 safe_divide(const float3 a, const float3 b)
 ccl_device_inline float3 safe_divide(const float3 a, const float b)
 {
   return (b != 0.0f) ? a / b : zero_float3();
-}
-
-ccl_device_inline float3 reflect(const float3 incident, const float3 normal)
-{
-  float3 unit_normal = safe_normalize(normal);
-  return incident - 2.0f * unit_normal * dot(incident, unit_normal);
 }
 
 ccl_device_inline float3 interp(float3 a, float3 b, float t)
