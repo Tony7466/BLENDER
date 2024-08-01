@@ -5146,6 +5146,8 @@ static bool grease_pencil_circle_select(const ViewContext *vc,
   /* Get selection domain from tool settings. */
   const bke::AttrDomain selection_domain = ED_grease_pencil_selection_domain_get(
       vc->scene->toolsettings);
+  const bool use_segment_selection = ED_grease_pencil_segment_selection_enabled(
+      vc->scene->toolsettings);
 
   bool changed = false;
   const Vector<ed::greasepencil::MutableDrawingInfo> drawings =
@@ -5172,6 +5174,11 @@ static bool grease_pencil_circle_select(const ViewContext *vc,
                                         int2(mval),
                                         rad,
                                         sel_op);
+
+    if (use_segment_selection && changed) {
+      ed::greasepencil::update_segment_selection(
+          *vc, info.drawing.strokes_for_write(), deformation, projection, elements, sel_op);
+    }
   }
 
   if (changed) {

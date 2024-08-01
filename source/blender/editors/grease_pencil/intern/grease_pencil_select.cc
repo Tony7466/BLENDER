@@ -19,6 +19,7 @@
 #include "ED_curves.hh"
 #include "ED_grease_pencil.hh"
 #include "ED_screen.hh"
+#include "ED_view3d.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -27,6 +28,26 @@
 #include "WM_api.hh"
 
 namespace blender::ed::greasepencil {
+
+bool update_segment_selection(const ViewContext &vc,
+                              bke::CurvesGeometry &curves,
+                              const bke::crazyspace::GeometryDeformation &deformation,
+                              const float4x4 &projection,
+                              const IndexMask &mask,
+                              const eSelectOp sel_op)
+{
+  Array<float2> screen_space_positions(deformation.positions.size());
+  mask.foreach_index(GrainSize(4096), [&](const int point_i) {
+    screen_space_positions[point_i] = ED_view3d_project_float_v2_m4(
+        vc.region, deformation.positions[point_i], projection);
+  });
+
+  Array<bool> hits(curves.points_num());
+  find_curve_intersections(
+      curves, screen_space_positions, mask, mask, hits, std::nullopt, std::nullopt);
+  // Array<IndexRange> segment_ranges;
+  //  find_curve_segments(curves, screen_space_positions, mask, mask,segment_ranges);
+}
 
 static int select_all_exec(bContext *C, wmOperator *op)
 {
@@ -525,6 +546,11 @@ blender::bke::AttrDomain ED_grease_pencil_selection_domain_get(const ToolSetting
       return blender::bke::AttrDomain::Point;
   }
   return blender::bke::AttrDomain::Point;
+}
+
+bool ED_grease_pencil_segment_selection_enabled(const ToolSettings *tool_settings)
+{
+  return tool_settings->gpencil_selectmode_edit == GP_SELECTMODE_SEGMENT;
 }
 
 void ED_operatortypes_grease_pencil_select()

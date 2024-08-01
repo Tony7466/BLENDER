@@ -1317,29 +1317,24 @@ bke::CurvesGeometry trim_curve_segments(const bke::CurvesGeometry &src,
 
 }  // namespace cutter
 
-/*
- * \param r_indices: Indices of interval start points with at least one intersection.
- * \param r_first_intersect_factors: Smallest cut factor in the interval.
- * \param r_last_intersect_factors: Largest cut factor in the interval.
- */
-static void find_intersections(const bke::CurvesGeometry &src,
-                               const Span<float2> screen_space_positions,
-                               const IndexMask &target_curves,
-                               const IndexMask &intersecting_curves,
-                               MutableSpan<bool> r_hits,
-                               MutableSpan<float> r_first_intersect_factors,
-                               MutableSpan<float> r_last_intersect_factors)
+void find_curve_intersections(const bke::CurvesGeometry &curves,
+                              const Span<float2> screen_space_positions,
+                              const IndexMask &target_curves,
+                              const IndexMask &intersecting_curves,
+                              MutableSpan<bool> r_hits,
+                              std::optional<MutableSpan<float>> r_first_intersect_factors,
+                              std::optional<MutableSpan<float>> r_last_intersect_factors)
 {
   /* Upper bound for segment count. Arrays are sized for easy index mapping, exact count isn't
    * necessary. Not all entries are added to the BVH tree. */
-  const int max_bvh_lines = src.points_num();
+  const int max_bvh_lines = curves.points_num();
 
   BVHTree *tree = BLI_bvhtree_new(max_bvh_lines, 0.0f, 4, 6);
   BLI_SCOPED_DEFER([&]() { BLI_bvhtree_free(tree); });
 
   /* Insert segments for cutting extensions on stroke intersection. */
-  const OffsetIndices points_by_curve = src.points_by_curve();
-  const VArray<bool> cyclic = src.cyclic();
+  const OffsetIndices points_by_curve = curves.points_by_curve();
+  const VArray<bool> cyclic = curves.cyclic();
   /* View space positions for each interval's end point, filled in below. */
   Array<float2> screen_space_end_positions(screen_space_positions.size());
 
@@ -1439,8 +1434,12 @@ static void find_intersections(const bke::CurvesGeometry &src,
   };
 
   r_hits.fill(false);
-  r_first_intersect_factors.fill(-1.0f);
-  r_last_intersect_factors.fill(-1.0f);
+  if (r_first_intersect_factors) {
+    r_first_intersect_factors->fill(-1.0f);
+  }
+  if (r_last_intersect_factors) {
+    r_last_intersect_factors->fill(-1.0f);
+  }
 
   target_curves.foreach_index(GrainSize(1024), [&](const int i_curve) {
     const bool is_cyclic = cyclic[i_curve];
@@ -1455,18 +1454,22 @@ static void find_intersections(const bke::CurvesGeometry &src,
       /* Find first intersections by raycast from each point to the next. */
       if (do_raycast(i_prev_point, i_point, i_next_point, lambda)) {
         r_hits[i_point] = true;
-        r_first_intersect_factors[i_point] = lambda;
+        if (r_first_intersect_factors) {
+          (*r_first_intersect_factors)[i_point] = lambda;
+        }
       }
       /* Find last intersections by raycast from each point to the previous. */
       if (do_raycast(i_next_point, i_point, i_prev_point, lambda)) {
         /* Note: factor = (1 - lambda) because of reverse raycast. */
-        r_last_intersect_factors[i_point] = 1.0f - lambda;
+        if (r_last_intersect_factors) {
+          (*r_last_intersect_factors)[i_point] = 1.0f - lambda;
+        }
       }
     }
   });
 }
 
-static void find_curve_segments(const bke::CurvesGeometry &src,
+static void find_curve_segments(const bke::CurvesGeometry &curves,
                                 const Span<float2> screen_space_positions,
                                 const IndexMask &target_curves,
                                 const IndexMask &intersecting_curves,
@@ -1474,12 +1477,12 @@ static void find_curve_segments(const bke::CurvesGeometry &src,
                                 Array<float> *r_start_factors,
                                 Array<float> *r_end_factors)
 {
-  const OffsetIndices points_by_curve = src.points_by_curve();
+  const OffsetIndices points_by_curve = curves.points_by_curve();
 
-  Array<bool> hits(src.points_num());
-  Array<float> first_intersect_factors(src.points_num());
-  Array<float> last_intersect_factors(src.points_num());
-  find_intersections(src,
+  Array<bool> hits(curves.points_num());
+  Array<float> first_intersect_factors(curves.points_num());
+  Array<float> last_intersect_factors(curves.points_num());
+  find_intersections(curves,
                      screen_space_positions,
                      target_curves,
                      intersecting_curves,
@@ -1504,7 +1507,8 @@ static void find_curve_segments(const bke::CurvesGeometry &src,
     r_end_factors->reinitialize(num_segments);
   }
 
-  /* Count number of segments in each curve. */
+  /* Count number of segments in each curve.
+   * This is needed to write to the correct segments range for each curve. */
   Array<int> segments_count;
   target_curves.foreach_index(GrainSize(512), [&](const int i_curve) {
     const IndexRange points = points_by_curve[i_curve];
@@ -1546,7 +1550,7 @@ static void find_curve_segments(const bke::CurvesGeometry &src,
   });
 }
 
-void find_curve_segments(const bke::CurvesGeometry &src,
+void find_curve_segments(const bke::CurvesGeometry &curves,
                          const Span<float2> screen_space_positions,
                          const IndexMask &target_curves,
                          const IndexMask &intersecting_curves,
@@ -1554,7 +1558,7 @@ void find_curve_segments(const bke::CurvesGeometry &src,
                          Array<float> r_start_factors,
                          Array<float> r_end_factors)
 {
-  find_curve_segments(src,
+  find_curve_segments(curves,
                       screen_space_positions,
                       target_curves,
                       intersecting_curves,
@@ -1563,13 +1567,13 @@ void find_curve_segments(const bke::CurvesGeometry &src,
                       &r_end_factors);
 }
 
-void find_curve_segments(const bke::CurvesGeometry &src,
+void find_curve_segments(const bke::CurvesGeometry &curves,
                          const Span<float2> screen_space_positions,
                          const IndexMask &target_curves,
                          const IndexMask &intersecting_curves,
                          Array<IndexRange> &r_segment_ranges)
 {
-  return find_curve_segments(src,
+  return find_curve_segments(curves,
                              screen_space_positions,
                              target_curves,
                              intersecting_curves,

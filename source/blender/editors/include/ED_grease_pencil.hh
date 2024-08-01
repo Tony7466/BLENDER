@@ -76,6 +76,10 @@ void ED_undosys_type_grease_pencil(UndoType *undo_type);
  * Get the selection mode for Grease Pencil selection operators: point, stroke, segment.
  */
 blender::bke::AttrDomain ED_grease_pencil_selection_domain_get(const ToolSettings *tool_settings);
+/**
+ * True if segment selection is enabled.
+ */
+bool ED_grease_pencil_segment_selection_enabled(const ToolSettings *tool_settings);
 
 /** \} */
 
@@ -730,13 +734,43 @@ void find_curve_segments(const bke::CurvesGeometry &src,
                          const IndexMask &intersecting_curves,
                          Array<IndexRange> &r_segment_ranges);
 
+bool update_segment_selection(const ViewContext &vc,
+                              bke::CurvesGeometry &curves,
+                              const bke::crazyspace::GeometryDeformation &deformation,
+                              const float4x4 &projection,
+                              const IndexMask &mask,
+                              const eSelectOp sel_op);
 /**
  * Find intersections between curves and accurate cut positions.
  *
- * Note: Index masks for target and intersecting curves can have any amount of overlap, including
- * equal or fully separate masks. A curve can be self-intersecting by being in both masks.
+ * Note: Index masks for target and intersecting curves can have any amount of overlap,
+ * including equal or fully separate masks. A curve can be self-intersecting by being in both
+ * masks.
  *
- * \param src: Source geometry for both target and cutter curves.
+ * \param curves: Curves geometry for both target and cutter curves.
+ * \param screen_space_positions: Screen space positions computed in advance.
+ * \param target_curves: Set of curves that will be intersected.
+ * \param intersecting_curves: Set of curves that create cuts on target curves.
+ * \param r_hits: True for points with at least one intersection.
+ * \param r_first_intersect_factors: Smallest cut factor in the interval (optional).
+ * \param r_last_intersect_factors: Largest cut factor in the interval (optional).
+ */
+void find_curve_intersections(const bke::CurvesGeometry &curves,
+                              const Span<float2> screen_space_positions,
+                              const IndexMask &target_curves,
+                              const IndexMask &intersecting_curves,
+                              MutableSpan<bool> r_hits,
+                              std::optional<MutableSpan<float>> r_first_intersect_factors,
+                              std::optional<MutableSpan<float>> r_last_intersect_factors);
+
+/**
+ * Find intersections between curves and accurate cut positions.
+ *
+ * Note: Index masks for target and intersecting curves can have any amount of overlap,
+ * including equal or fully separate masks. A curve can be self-intersecting by being in both
+ * masks.
+ *
+ * \param curves: Curves geometry for both target and cutter curves.
  * \param screen_space_positions: Screen space positions computed in advance.
  * \param target_curves: Set of curves that will be intersected.
  * \param intersecting_curves: Set of curves that create cuts on target curves.
@@ -744,7 +778,7 @@ void find_curve_segments(const bke::CurvesGeometry &src,
  * \param r_start_factors: Factor (0..1) of the cut in the start segment.
  * \param r_end_factors: Factor (0..1) of the cut in the end segment.
  */
-void find_curve_segments(const bke::CurvesGeometry &src,
+void find_curve_segments(const bke::CurvesGeometry &curves,
                          const Span<float2> screen_space_positions,
                          const IndexMask &target_curves,
                          const IndexMask &intersecting_curves,
