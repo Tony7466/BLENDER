@@ -9,7 +9,7 @@ class AttributeGetterSetter:
         self._index = index
         self._domain = domain
 
-    def _get_attribute(self, name, type):
+    def _get_attribute(self, name, type, default):
         if attribute := self._attributes.get(name):
             if type in {'FLOAT', 'INT', 'STRING', 'BOOLEAN', 'INT8', 'INT32_2D', 'QUATERNION', 'FLOAT4X4'}:
                 return attribute.data[self._index].value
@@ -19,8 +19,7 @@ class AttributeGetterSetter:
                 return attribute.data[self._index].color
             else:
                 raise Exception(f"Unkown type {type}")
-        else:
-            raise Exception(f"Attribute {name} not found")
+        return default
 
     def _set_attribute(self, name, type, value):
         if attribute := self._attributes.get(name, self._attributes.new(name, type, self._domain)):
@@ -30,18 +29,20 @@ class AttributeGetterSetter:
                 attribute.data[self._index].vector = value
             elif type in {'FLOAT_COLOR', 'BYTE_COLOR'}:
                 attribute.data[self._index].color = value
+            else:
+                raise Exception(f"Unkown type {type}")
         else:
             raise Exception(f"Could not create attribute {name} of type {type}")
 
 
-def def_prop_for_attribute(attr_name, type, doc):
+def def_prop_for_attribute(attr_name, type, default, doc):
     """
     Creates a property that can read and write an attribute.
     """
 
     def fget(self):
         # Define getter callback for property
-        return self._get_attribute(attr_name, type)
+        return self._get_attribute(attr_name, type, default)
 
     def fset(self, value):
         # Define setter callback for property
@@ -55,8 +56,8 @@ def DefAttributeGetterSetters(attributes_list):
     A class decorator that reads a list of attribute infos and creates properties on the class with getters and setters.
     """
     def wrapper(cls):
-        for prop_name, attr_name, type, doc in attributes_list:
-            prop = def_prop_for_attribute(attr_name, type, doc)
+        for prop_name, attr_name, type, default, doc in attributes_list:
+            prop = def_prop_for_attribute(attr_name, type, default, doc)
             setattr(cls, prop_name, prop)
         return cls
     return wrapper
@@ -64,15 +65,15 @@ def DefAttributeGetterSetters(attributes_list):
 
 # Define the list of attributes that should be exposed as read/write properties on the class.
 @DefAttributeGetterSetters([
-    # Property Name, Attribute Name, Type, Docstring
-    ('position', 'position', 'FLOAT_VECTOR', "The position of the point (in local space)."),
-    ('radius', 'radius', 'FLOAT', "The radius of the point."),
-    ('opacity', 'opacity', 'FLOAT', "The opacity of the point."),
-    ('select', '.selection', 'BOOLEAN', "The selection state for this point."),
-    ('vertex_color', 'vertex_color', 'FLOAT_COLOR',
+    # Property Name, Attribute Name, Type, Default Value, Docstring
+    ('position', 'position', 'FLOAT_VECTOR', (0.0, 0.0, 0.0), "The position of the point (in local space)."),
+    ('radius', 'radius', 'FLOAT', 0.01, "The radius of the point."),
+    ('opacity', 'opacity', 'FLOAT', 0.0, "The opacity of the point."),
+    ('select', '.selection', 'BOOLEAN', True, "The selection state for this point."),
+    ('vertex_color', 'vertex_color', 'FLOAT_COLOR', (0.0, 0.0, 0.0, 0.0),
      "The color for this point. The alpha value is used as a mix factor with the base color of the stroke."),
-    ('rotation', 'rotation', 'FLOAT', "The rotation for this point. Used to rotate textures."),
-    ('delta_time', 'delta_time', 'FLOAT', "The time delta in seconds since the start of the stroke."),
+    ('rotation', 'rotation', 'FLOAT', 0.0, "The rotation for this point. Used to rotate textures."),
+    ('delta_time', 'delta_time', 'FLOAT', 0.0, "The time delta in seconds since the start of the stroke."),
 ])
 class GreasePencilStrokePoint(AttributeGetterSetter):
     """
@@ -85,18 +86,18 @@ class GreasePencilStrokePoint(AttributeGetterSetter):
 
 # Define the list of attributes that should be exposed as read/write properties on the class.
 @DefAttributeGetterSetters([
-    # Property Name, Attribute Name, Type, Docstring
-    ('cyclic', 'cyclic', 'BOOLEAN', "The closed state for this stroke."),
-    ('material_index', 'material_index', 'INT', "The index of the material for this stroke."),
-    ('select', '.selection', 'BOOLEAN', "The selection state for this stroke."),
-    ('softness', 'softness', 'FLOAT', "Used by the renderer to generate a soft gradient from the stroke center line to the edges."),
-    ('start_cap', 'start_cap', 'INT8', "The type of start cap of this stroke."),
-    ('end_cap', 'end_cap', 'INT8', "The type of end cap of this stroke."),
-    ('curve_type', 'curve_type', 'INT8', "The type of curve."),
-    ('aspect_ratio', 'aspect_ratio', 'FLOAT', "The aspect ratio (x/y) used for textures. "),
-    ('fill_opacity', 'fill_opacity', 'FLOAT', "The opacity of the fill."),
-    ('fill_color', 'fill_color', 'FLOAT_COLOR', "The color of the fill."),
-    ('time_start', 'init_time', 'FLOAT', "A time value for when the stroke was created."),
+    # Property Name, Attribute Name, Type, Default Value, Docstring
+    ('cyclic', 'cyclic', 'BOOLEAN', False, "The closed state for this stroke."),
+    ('material_index', 'material_index', 'INT', 0, "The index of the material for this stroke."),
+    ('select', '.selection', 'BOOLEAN', True, "The selection state for this stroke."),
+    ('softness', 'softness', 'FLOAT', 0.0, "Used by the renderer to generate a soft gradient from the stroke center line to the edges."),
+    ('start_cap', 'start_cap', 'INT8', 0, "The type of start cap of this stroke."),
+    ('end_cap', 'end_cap', 'INT8', 0, "The type of end cap of this stroke."),
+    ('curve_type', 'curve_type', 'INT8', 0, "The type of curve."),
+    ('aspect_ratio', 'aspect_ratio', 'FLOAT', 1.0, "The aspect ratio (x/y) used for textures. "),
+    ('fill_opacity', 'fill_opacity', 'FLOAT', 0.0, "The opacity of the fill."),
+    ('fill_color', 'fill_color', 'FLOAT_COLOR', (0.0, 0.0, 0.0, 0.0), "The color of the fill."),
+    ('time_start', 'init_time', 'FLOAT', 0.0, "A time value for when the stroke was created."),
 ])
 class GreasePencilStroke(AttributeGetterSetter):
     """
