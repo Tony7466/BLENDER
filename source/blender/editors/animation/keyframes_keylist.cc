@@ -1123,12 +1123,7 @@ void fcurve_to_keylist(AnimData *adt,
     if (x < range[0] || x > range[1]) {
       continue;
     }
-    if (index_bounds.is_empty() || index_bounds.min > v) {
-      index_bounds.min = v;
-    }
-    if (index_bounds.is_empty() || index_bounds.max < v) {
-      index_bounds.max = v;
-    }
+    blender::math::min_max(v, index_bounds.min, index_bounds.max);
     chain.cur = &fcu->bezt[v];
 
     /* Neighbor columns, accounting for being cyclic. */
