@@ -206,92 +206,83 @@ static const std::array<int8_t, 3> edges_owned = {
     ab_is_owned_edge, bc_is_owned_edge, ca_is_owned_edge};
 }  // namespace edge_state
 
-static int dominant_axis(const float3 a)
+static void corner_verts_from_edges(const Span<int> corner_edges,
+                                    const Span<int2> edges,
+                                    const int faces_num,
+                                    MutableSpan<int> corner_verts)
 {
-  return ((a.x > a.y) ? ((a.x > a.z) ? 0 : 2) : ((a.y > a.z) ? 1 : 2));
-}
+  threading::parallel_for(IndexRange(faces_num), 2048, [&](const IndexRange range) {
+    for (const int64_t i : range) {
+      const int face_i = i * 3;
+      const int2 edge_a = edges[corner_edges[face_i + 0]];
+      const int2 edge_b = edges[corner_edges[face_i + 1]];
+      const int2 edge_c = edges[corner_edges[face_i + 2]];
 
-static void connected_tris_ensure_short_edges(const float3 a_point_3d,
-                                              const float3 b_point_3d,
-                                              const float2 a_point_2d,
-                                              const float2 b_point_2d,
-                                              const float max_length_squared,
-                                              MutableSpan<float3> points_3d,
-                                              MutableSpan<float2> points_2d)
-{
-  BLI_assert(points_3d.size() == points_2d.size());
+      BLI_assert(topo_set::part_of(edge_b, edge_a[0]) != topo_set::part_of(edge_c, edge_a[0]));
+      BLI_assert(topo_set::part_of(edge_a, edge_b[0]) != topo_set::part_of(edge_c, edge_b[0]));
+      BLI_assert(topo_set::part_of(edge_b, edge_c[0]) != topo_set::part_of(edge_a, edge_c[0]));
 
-  for (const int point_i : points_2d.index_range()) {
-    while (true) {
-      const float ac_length_squared = math::distance_squared(a_point_3d, points_3d[point_i]);
-      const float bc_length_squared = math::distance_squared(b_point_3d, points_3d[point_i]);
-      if (math::max(ac_length_squared, bc_length_squared) <= max_length_squared) {
-        break;
-      }
-      /* TODO. */
-      BLI_assert(ac_length_squared != bc_length_squared);
-      if (ac_length_squared < bc_length_squared) {
-        points_3d[point_i] = math::midpoint(b_point_3d, points_3d[point_i]);
-        points_2d[point_i] = math::midpoint(b_point_2d, points_2d[point_i]);
-      }
-      else {
-        points_3d[point_i] = math::midpoint(a_point_3d, points_3d[point_i]);
-        points_2d[point_i] = math::midpoint(a_point_2d, points_2d[point_i]);
-      }
+      const int vert_a = topo_set::part_of(edge_c, edge_a[0]) ? edge_a[0] : edge_a[1];
+      const int vert_c = bke::mesh::edge_other_vert(edge_c, vert_a);
+      const int vert_b = bke::mesh::edge_other_vert(edge_b, vert_c);
+
+      corner_verts[face_i + 0] = vert_a;
+      corner_verts[face_i + 1] = vert_b;
+      corner_verts[face_i + 2] = vert_c;
     }
-  }
+  });
 }
 
-static void connected_tris_drop_short_edges(const float3 a_point_3d,
-                                            const float3 b_point_3d,
-                                            const float max_length_squared,
-                                            Vector<float3> &r_points_3d,
-                                            Vector<float2> &r_points_2d)
+static void edge_tris_split_and_skip(const float3 a_point_3d,
+                                     const float3 b_point_3d,
+                                     const float2 a_point_2d,
+                                     const float2 b_point_2d,
+                                     const float2 centre,
+                                     const float radius,
+                                     const float max_length_squared,
+                                     Vector<float3> &r_points_3d,
+                                     Vector<float2> &r_points_2d)
 {
   BLI_assert(r_points_3d.size() == r_points_2d.size());
 
   const IndexRange range = r_points_2d.index_range();
   for (const int point_i : range) {
     const int r_point_i = range.last(point_i);
-    const float ac_length_squared = math::distance_squared(a_point_3d, r_points_3d[r_point_i]);
-    const float bc_length_squared = math::distance_squared(b_point_3d, r_points_3d[r_point_i]);
-    if (math::max(ac_length_squared, bc_length_squared) <= max_length_squared) {
+    if (!triangle_is_in_range(a_point_2d, b_point_2d, r_points_2d[r_point_i], centre, radius)) {
       r_points_3d.remove_and_reorder(r_point_i);
       r_points_2d.remove_and_reorder(r_point_i);
-    }
-  }
-}
-
-static std::optional<int> side_to_split_in_priority(
-    const std::array<Vector<float2>, 3> connected_2d_points,
-    const std::array<float2, 3> tri_2d_points,
-    const std::array<float, 3> lengths_squared,
-    const std::array<int, 3> order,
-    const float max_length,
-    const float2 centre,
-    const float radius)
-{
-  for (const int side_i : order) {
-    if (lengths_squared[side_i] <= max_length) {
       continue;
     }
 
-    const float2 a_point = tri_2d_points[side_i];
-    const float2 b_point = tri_2d_points[topo_set::shift_front[side_i]];
-    const Span<float2> side_points = connected_2d_points[side_i];
-    const bool has_connection_to_split = std::any_of(
-        side_points.begin(), side_points.end(), [&](const float2 point) {
-          return triangle_is_in_range(a_point, b_point, point, centre, radius);
-        });
-    if (!has_connection_to_split) {
-      continue;
-    }
-    return side_i;
-  }
-  return std::nullopt;
-}
+    while (true) {
+      const float3 c_point_3d = r_points_3d[r_point_i];
+      const float2 c_point_2d = r_points_2d[r_point_i];
 
-static void tris_are_affected(const float2 a_point_2d, const float2 b_point_2d, const Span<float2> connected_2d_points, const float2 centre, const float radius, MutableSpan<bool> )
+      const float ac_length_squared = math::distance_squared(a_point_3d, c_point_3d);
+      const float bc_length_squared = math::distance_squared(b_point_3d, c_point_3d);
+      if (math::max(ac_length_squared, bc_length_squared) <= max_length_squared) {
+        break;
+      }
+
+      /* TODO. */
+      BLI_assert(ac_length_squared != bc_length_squared);
+      if (ac_length_squared < bc_length_squared) {
+        r_points_3d[r_point_i] = math::midpoint(b_point_3d, c_point_3d);
+        r_points_2d[r_point_i] = math::midpoint(b_point_2d, c_point_2d);
+      }
+      else {
+        r_points_3d[r_point_i] = math::midpoint(a_point_3d, c_point_3d);
+        r_points_2d[r_point_i] = math::midpoint(a_point_2d, c_point_2d);
+      }
+
+      if (!triangle_is_in_range(a_point_2d, b_point_2d, r_points_2d[r_point_i], centre, radius)) {
+        r_points_3d.remove_and_reorder(r_point_i);
+        r_points_2d.remove_and_reorder(r_point_i);
+        break;
+      }
+    }
+  }
+}
 
 static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
                            std::array<Vector<float3>, 3> connected_3d_points,
@@ -306,19 +297,12 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
 {
   // std::cout << __func__ << ";\n";
 
-  Vector<std::array<Vector<float2>, 3>> connected_2d_points_stack = {
-      std::move(connected_2d_points)};
-  Vector<std::array<Vector<float3>, 3>> connected_3d_points_stack = {
-      std::move(connected_3d_points)};
+  Vector<std::array<Vector<float2>, 3>> connected_2d_points_stack = {std::move(connected_2d_points)};
+  Vector<std::array<Vector<float3>, 3>> connected_3d_points_stack = {std::move(connected_3d_points)};
   Vector<std::array<float2, 3>> tri_2d_points_stack = {tri_2d_points};
   Vector<std::array<float3, 3>> tri_3d_points_stack = {tri_3d_points};
 
   Vector<int8_t> edges_states = {0};
-
-  Vector<std::array<Vector<bool>, 3>> is_affected_stack = {};
-  tris_are_affected(tri_2d_points[0], tri_2d_points[1], connected_2d_points_stack[0], centre, radius, is_affected_stack[0]);
-  tris_are_affected(tri_2d_points[1], tri_2d_points[2], connected_2d_points_stack[1], centre, radius, is_affected_stack[1]);
-  tris_are_affected(tri_2d_points[2], tri_2d_points[0], connected_2d_points_stack[2], centre, radius, is_affected_stack[2]);
 
   while (!edges_states.is_empty()) {
     std::array<Vector<float2>, 3> connected_2d_points = connected_2d_points_stack.pop_last();
@@ -344,8 +328,7 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
     lengths_squared[1] = math::distance_squared(tri_3d_points[1], tri_3d_points[2]);
     lengths_squared[2] = math::distance_squared(tri_3d_points[2], tri_3d_points[0]);
     /* TODO. */
-    BLI_assert(!(ELEM(lengths_squared[0], lengths_squared[1], lengths_squared[2]) ||
-                 ELEM(lengths_squared[1], lengths_squared[0], lengths_squared[2])));
+    BLI_assert(!(ELEM(lengths_squared[0], lengths_squared[1], lengths_squared[2]) || ELEM(lengths_squared[1], lengths_squared[0], lengths_squared[2])));
 
     std::array<int, 3> edge_indices = {0, 1, 2};
     std::sort(edge_indices.begin(), edge_indices.end(), [&](const int a, const int b) {
@@ -359,61 +342,32 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
       continue;
     }
 
-    connected_tris_ensure_short_edges(tri_3d_points[0],
-                                      tri_3d_points[1],
-                                      tri_2d_points[0],
-                                      tri_2d_points[1],
-                                      lengths_squared[0],
-                                      connected_3d_points[0],
-                                      connected_2d_points[0]);
-    connected_tris_ensure_short_edges(tri_3d_points[1],
-                                      tri_3d_points[2],
-                                      tri_2d_points[1],
-                                      tri_2d_points[2],
-                                      lengths_squared[1],
-                                      connected_3d_points[1],
-                                      connected_2d_points[1]);
-    connected_tris_ensure_short_edges(tri_3d_points[2],
-                                      tri_3d_points[0],
-                                      tri_2d_points[2],
-                                      tri_2d_points[0],
-                                      lengths_squared[2],
-                                      connected_3d_points[2],
-                                      connected_2d_points[2]);
-    /*
-        connected_tris_drop_short_edges(tri_3d_points[0],
-                                        tri_3d_points[1],
-                                        max_length,
-                                        connected_3d_points[0],
-                                        connected_2d_points[0]);
-        connected_tris_drop_short_edges(tri_3d_points[1],
-                                        tri_3d_points[2],
-                                        max_length,
-                                        connected_3d_points[1],
-                                        connected_2d_points[1]);
-        connected_tris_drop_short_edges(tri_3d_points[2],
-                                        tri_3d_points[0],
-                                        max_length,
-                                        connected_3d_points[2],
-                                        connected_2d_points[2]);
-    */
+    for (const int side_i : topo_set::face) {
+      edge_tris_split_and_skip(tri_3d_points[side_i],
+                               tri_3d_points[topo_set::shift_front[side_i]],
+                               tri_2d_points[side_i],
+                               tri_2d_points[topo_set::shift_front[side_i]],
+                               centre,
+                               radius,
+                               lengths_squared[side_i],
+                               connected_3d_points[side_i],
+                               connected_2d_points[side_i]);
+    }
 
     int largest_side_to_split = edge_indices[0];
-    if (UNLIKELY(!triangle_is_in_range(
-            tri_2d_points[0], tri_2d_points[1], tri_2d_points[2], centre, radius)))
+    if (!triangle_is_in_range(tri_2d_points[0], tri_2d_points[1], tri_2d_points[2], centre, radius))
     {
-      const std::optional<int> side_i = side_to_split_in_priority(connected_2d_points,
-                                                                  tri_2d_points,
-                                                                  lengths_squared,
-                                                                  edge_indices,
-                                                                  max_length,
-                                                                  centre,
-                                                                  radius);
-      if (!side_i.has_value()) {
+      const auto side_iter = std::find_if(edge_indices.begin(), edge_indices.end(), [&] (const int side_i) {
+        const float side_length_squared = lengths_squared[side_i];
+        const bool has_side_tris = !connected_3d_points[side_i].is_empty();
+        return (side_length_squared > max_length) && has_side_tris;
+      });
+
+      if (side_iter == edge_indices.end()) {
         r_total_faces++;
         continue;
       }
-      largest_side_to_split = *side_i;
+      largest_side_to_split = *side_iter;
     }
 
     // std::cout << "\t" << "Split of:\t" << largest_side_to_split << "\n";
@@ -522,28 +476,24 @@ static void edge_subdivide(Vector<float2> connected_2d_points,
       continue;
     }
 
-    connected_tris_ensure_short_edges(edge_3d_points[0],
-                                      edge_3d_points[1],
-                                      edge_2d_points[0],
-                                      edge_2d_points[1],
-                                      length_squared,
-                                      connected_3d_points,
-                                      connected_2d_points);
+    edge_tris_split_and_skip(edge_3d_points[0],
+                             edge_3d_points[1],
+                             edge_2d_points[0],
+                             edge_2d_points[1],
+                             centre,
+                             radius,
+                             length_squared,
+                             connected_3d_points,
+                             connected_2d_points);
 
-    // connected_tris_drop_short_edges(edge_3d_points[0], edge_3d_points[1], max_length,
-    // connected_3d_points, connected_2d_points);
-
-    const float2 a_2d_point = edge_2d_points[0];
-    const float2 b_2d_point = edge_2d_points[1];
-    const bool has_connection_to_split = std::any_of(
-        connected_2d_points.begin(), connected_2d_points.end(), [&](const float2 point) {
-          return triangle_is_in_range(a_2d_point, b_2d_point, point, centre, radius);
-        });
-    if (UNLIKELY(!has_connection_to_split)) {
+    if (connected_3d_points.is_empty()) {
       continue;
     }
 
     r_split_count++;
+
+    const float2 a_2d_point = edge_2d_points[0];
+    const float2 b_2d_point = edge_2d_points[1];
 
     const float2 mid_2d = math::midpoint(a_2d_point, b_2d_point);
     const float3 mid_3d = math::midpoint(edge_3d_points[0], edge_3d_points[1]);
@@ -615,28 +565,24 @@ static void edge_subdivide(Vector<float2> connected_2d_points,
       continue;
     }
 
-    connected_tris_ensure_short_edges(edge_3d_points[0],
-                                      edge_3d_points[1],
-                                      edge_2d_points[0],
-                                      edge_2d_points[1],
-                                      length_squared,
-                                      connected_3d_points,
-                                      connected_2d_points);
+    edge_tris_split_and_skip(edge_3d_points[0],
+                             edge_3d_points[1],
+                             edge_2d_points[0],
+                             edge_2d_points[1],
+                             centre,
+                             radius,
+                             length_squared,
+                             connected_3d_points,
+                             connected_2d_points);
 
-    // connected_tris_drop_short_edges(edge_3d_points[0], edge_3d_points[1], max_length,
-    // connected_3d_points, connected_2d_points);
-
-    const float2 a_2d_point = edge_2d_points[0];
-    const float2 b_2d_point = edge_2d_points[1];
-    const bool has_connection_to_split = std::any_of(
-        connected_2d_points.begin(), connected_2d_points.end(), [&](const float2 point) {
-          return triangle_is_in_range(a_2d_point, b_2d_point, point, centre, radius);
-        });
-    if (UNLIKELY(!has_connection_to_split)) {
+    if (connected_3d_points.is_empty()) {
       r_edges[edge_iter] = edge_verts;
       edge_iter++;
       continue;
     }
+
+    const float2 a_2d_point = edge_2d_points[0];
+    const float2 b_2d_point = edge_2d_points[1];
 
     r_factors[vert_iter] = math::midpoint(edge_factors.x, edge_factors.y);
 
@@ -687,33 +633,6 @@ static void edge_subdivide(Vector<float2> connected_2d_points,
 
     vert_iter++;
   }
-}
-
-static void corner_verts_from_edges(const Span<int> corner_edges,
-                                    const Span<int2> edges,
-                                    const int faces_num,
-                                    MutableSpan<int> corner_verts)
-{
-  threading::parallel_for(IndexRange(faces_num), 2048, [&](const IndexRange range) {
-    for (const int64_t i : range) {
-      const int face_i = i * 3;
-      const int2 edge_a = edges[corner_edges[face_i + 0]];
-      const int2 edge_b = edges[corner_edges[face_i + 1]];
-      const int2 edge_c = edges[corner_edges[face_i + 2]];
-
-      BLI_assert(topo_set::part_of(edge_b, edge_a[0]) != topo_set::part_of(edge_c, edge_a[0]));
-      BLI_assert(topo_set::part_of(edge_a, edge_b[0]) != topo_set::part_of(edge_c, edge_b[0]));
-      BLI_assert(topo_set::part_of(edge_b, edge_c[0]) != topo_set::part_of(edge_a, edge_c[0]));
-
-      const int vert_a = topo_set::part_of(edge_c, edge_a[0]) ? edge_a[0] : edge_a[1];
-      const int vert_c = bke::mesh::edge_other_vert(edge_c, vert_a);
-      const int vert_b = bke::mesh::edge_other_vert(edge_b, vert_c);
-
-      corner_verts[face_i + 0] = vert_a;
-      corner_verts[face_i + 1] = vert_b;
-      corner_verts[face_i + 2] = vert_c;
-    }
-  });
 }
 
 static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
@@ -801,35 +720,16 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
     const float squred_length_for_pass = lengths_squared[edge_indices[0]];
     if (squred_length_for_pass <= max_length) {
       int3 face_edges(-1);
-      if (edges_state & edge_state::edges_owned[topo_set::edge_ab]) {
-        face_edges[topo_set::edge_ab] = body_edges_range[edges_in_face.index_of_or_add(
-            topo_set::sample(tri_verts, topo_set::edges[topo_set::edge_ab]))];
-      }
-      else {
-        const int edge_edge_i = edge_edges_iters[topo_set::edge_ab];
-        edge_edges_iters[topo_set::edge_ab]++;
-        const int edge_edge_index = side_edge_edges_ranges[topo_set::edge_ab][edge_edge_i];
-        face_edges[topo_set::edge_ab] = edge_edge_index;
-      }
-      if (edges_state & edge_state::edges_owned[topo_set::edge_bc]) {
-        face_edges[topo_set::edge_bc] = body_edges_range[edges_in_face.index_of_or_add(
-            topo_set::sample(tri_verts, topo_set::edges[topo_set::edge_bc]))];
-      }
-      else {
-        const int edge_edge_i = edge_edges_iters[topo_set::edge_bc];
-        edge_edges_iters[topo_set::edge_bc]++;
-        const int edge_edge_index = side_edge_edges_ranges[topo_set::edge_bc][edge_edge_i];
-        face_edges[topo_set::edge_bc] = edge_edge_index;
-      }
-      if (edges_state & edge_state::edges_owned[topo_set::edge_ca]) {
-        face_edges[topo_set::edge_ca] = body_edges_range[edges_in_face.index_of_or_add(
-            topo_set::sample(tri_verts, topo_set::edges[topo_set::edge_ca]))];
-      }
-      else {
-        const int edge_edge_i = edge_edges_iters[topo_set::edge_ca];
-        edge_edges_iters[topo_set::edge_ca]++;
-        const int edge_edge_index = side_edge_edges_ranges[topo_set::edge_ca][edge_edge_i];
-        face_edges[topo_set::edge_ca] = edge_edge_index;
+      for (const int side_i : topo_set::face) {
+        if (edges_state & edge_state::edges_owned[side_i]) {
+          face_edges[side_i] = body_edges_range[edges_in_face.index_of_or_add(topo_set::sample(tri_verts, topo_set::edges[side_i]))];
+        }
+        else {
+          const int edge_edge_i = edge_edges_iters[side_i];
+          edge_edges_iters[side_i]++;
+          const int edge_edge_index = side_edge_edges_ranges[side_i][edge_edge_i];
+          face_edges[side_i] = edge_edge_index;
+        }
       }
       r_edge_indices[face_iter + 0] = face_edges[0];
       r_edge_indices[face_iter + 1] = face_edges[1];
@@ -839,87 +739,39 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
       continue;
     }
 
-    connected_tris_ensure_short_edges(tri_3d_points[0],
-                                      tri_3d_points[1],
-                                      tri_2d_points[0],
-                                      tri_2d_points[1],
-                                      lengths_squared[0],
-                                      connected_3d_points[0],
-                                      connected_2d_points[0]);
-    connected_tris_ensure_short_edges(tri_3d_points[1],
-                                      tri_3d_points[2],
-                                      tri_2d_points[1],
-                                      tri_2d_points[2],
-                                      lengths_squared[1],
-                                      connected_3d_points[1],
-                                      connected_2d_points[1]);
-    connected_tris_ensure_short_edges(tri_3d_points[2],
-                                      tri_3d_points[0],
-                                      tri_2d_points[2],
-                                      tri_2d_points[0],
-                                      lengths_squared[2],
-                                      connected_3d_points[2],
-                                      connected_2d_points[2]);
-    /*
-        connected_tris_drop_short_edges(tri_3d_points[0],
-                                        tri_3d_points[1],
-                                        max_length,
-                                        connected_3d_points[0],
-                                        connected_2d_points[0]);
-        connected_tris_drop_short_edges(tri_3d_points[1],
-                                        tri_3d_points[2],
-                                        max_length,
-                                        connected_3d_points[1],
-                                        connected_2d_points[1]);
-        connected_tris_drop_short_edges(tri_3d_points[2],
-                                        tri_3d_points[0],
-                                        max_length,
-                                        connected_3d_points[2],
-                                        connected_2d_points[2]);
-    */
+    for (const int side_i : topo_set::face) {
+      edge_tris_split_and_skip(tri_3d_points[side_i],
+                               tri_3d_points[topo_set::shift_front[side_i]],
+                               tri_2d_points[side_i],
+                               tri_2d_points[topo_set::shift_front[side_i]],
+                               centre,
+                               radius,
+                               lengths_squared[side_i],
+                               connected_3d_points[side_i],
+                               connected_2d_points[side_i]);
+    }
 
     int largest_side_to_split = edge_indices[0];
-    if (UNLIKELY(!triangle_is_in_range(
-            tri_2d_points[0], tri_2d_points[1], tri_2d_points[2], centre, radius)))
+    if (!triangle_is_in_range(tri_2d_points[0], tri_2d_points[1], tri_2d_points[2], centre, radius))
     {
-      const std::optional<int> side_i = side_to_split_in_priority(connected_2d_points,
-                                                                  tri_2d_points,
-                                                                  lengths_squared,
-                                                                  edge_indices,
-                                                                  max_length,
-                                                                  centre,
-                                                                  radius);
-      if (!side_i.has_value()) {
+      const auto side_iter = std::find_if(edge_indices.begin(), edge_indices.end(), [&] (const int side_i) {
+        const float side_length_squared = lengths_squared[side_i];
+        const bool has_side_tris = !connected_3d_points[side_i].is_empty();
+        return (side_length_squared > max_length) && has_side_tris;
+      });
+
+      if (side_iter == edge_indices.end()) {
         int3 face_edges(-1);
-        if (edges_state & edge_state::edges_owned[topo_set::edge_ab]) {
-          face_edges[topo_set::edge_ab] = body_edges_range[edges_in_face.index_of_or_add(
-              topo_set::sample(tri_verts, topo_set::edges[topo_set::edge_ab]))];
-        }
-        else {
-          const int edge_edge_i = edge_edges_iters[topo_set::edge_ab];
-          edge_edges_iters[topo_set::edge_ab]++;
-          const int edge_edge_index = side_edge_edges_ranges[topo_set::edge_ab][edge_edge_i];
-          face_edges[topo_set::edge_ab] = edge_edge_index;
-        }
-        if (edges_state & edge_state::edges_owned[topo_set::edge_bc]) {
-          face_edges[topo_set::edge_bc] = body_edges_range[edges_in_face.index_of_or_add(
-              topo_set::sample(tri_verts, topo_set::edges[topo_set::edge_bc]))];
-        }
-        else {
-          const int edge_edge_i = edge_edges_iters[topo_set::edge_bc];
-          edge_edges_iters[topo_set::edge_bc]++;
-          const int edge_edge_index = side_edge_edges_ranges[topo_set::edge_bc][edge_edge_i];
-          face_edges[topo_set::edge_bc] = edge_edge_index;
-        }
-        if (edges_state & edge_state::edges_owned[topo_set::edge_ca]) {
-          face_edges[topo_set::edge_ca] = body_edges_range[edges_in_face.index_of_or_add(
-              topo_set::sample(tri_verts, topo_set::edges[topo_set::edge_ca]))];
-        }
-        else {
-          const int edge_edge_i = edge_edges_iters[topo_set::edge_ca];
-          edge_edges_iters[topo_set::edge_ca]++;
-          const int edge_edge_index = side_edge_edges_ranges[topo_set::edge_ca][edge_edge_i];
-          face_edges[topo_set::edge_ca] = edge_edge_index;
+        for (const int side_i : topo_set::face) {
+          if (edges_state & edge_state::edges_owned[side_i]) {
+            face_edges[side_i] = body_edges_range[edges_in_face.index_of_or_add(topo_set::sample(tri_verts, topo_set::edges[side_i]))];
+          }
+          else {
+            const int edge_edge_i = edge_edges_iters[side_i];
+            edge_edges_iters[side_i]++;
+            const int edge_edge_index = side_edge_edges_ranges[side_i][edge_edge_i];
+            face_edges[side_i] = edge_edge_index;
+          }
         }
         r_edge_indices[face_iter + 0] = face_edges[0];
         r_edge_indices[face_iter + 1] = face_edges[1];
@@ -927,7 +779,7 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
         face_iter += 3;
         continue;
       }
-      largest_side_to_split = *side_i;
+      largest_side_to_split = *side_iter;
     }
 
     // std::cout << "\t" << "Split of:\t" << largest_side_to_split << "\n";
@@ -1278,7 +1130,7 @@ Mesh *subdivide(const Mesh &src_mesh,
   // dst_attributes);
   dst_positions.take_front(src_mesh.verts_num).copy_from(src_positions);
 
-  keeped_edges.foreach_index_optimized<int>(GrainSize(8092), [&](const int i, const int pos) {
+  keeped_edges.foreach_index_optimized<int>(GrainSize(8092), [&](const int i) {
     dst_edges[edge_total_verts[i] + i] = edges[i];
   });
 
