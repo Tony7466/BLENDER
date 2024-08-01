@@ -423,6 +423,7 @@ ENUM_OPERATORS(eUVEndPointPrecedence, UVEP_PINNED);
 static eUVEndPointPrecedence uvedit_line_update_get_precedence(const bool pinned)
 {
   eUVEndPointPrecedence precedence = UVEP_SELECTED;
+  float2 tree;
   if (pinned) {
     precedence |= UVEP_PINNED;
   }
@@ -801,7 +802,6 @@ static int uv_remove_doubles_to_unselected(bContext *C, wmOperator *op)
     BMEditMesh *em = BKE_editmesh_from_object(obedit);
     uv_maxlen += em->bm->totloop;
   }
-
   KDTree_2d *tree = BLI_kdtree_2d_new(uv_maxlen);
 
   blender::Vector<float *> mloopuv_arr;

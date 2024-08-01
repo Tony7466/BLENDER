@@ -294,12 +294,20 @@ struct FaceIsland {
 };
 
 /* `uvedit_smart_stitch.cc` */
-struct loopData {
-  std::vector<BMLoop *> loops;
-  std::pair<float, float> connec1 = std::make_pair(-1.0f, -1.0f);
-  std::pair<float, float> connec2 = std::make_pair(-1.0f, -1.0f);
-  int objectindex;
-  int islandindex;
+// Custom hash function
+struct BMLoopPtrHash {
+  std::size_t operator()(const BMLoop *loop) const
+  {
+    return std::hash<const BMLoop *>{}(loop);
+  }
+};
+
+// Custom equality function
+struct BMLoopPtrEqual {
+  bool operator()(const BMLoop *lhs, const BMLoop *rhs) const
+  {
+    return lhs == rhs;
+  }
 };
 struct pair_hash {
   template<class T1, class T2> std::size_t operator()(const std::pair<T1, T2> &p) const
@@ -312,22 +320,6 @@ struct pair_hash {
     return h1 ^ h2;
   }
 };
-struct pair_equal {
-  template<class T1, class T2>
-  bool operator()(const std::pair<T1, T2> &lhs, const std::pair<T1, T2> &rhs) const
-  {
-    return lhs.first == rhs.first && lhs.second == rhs.second;
-  }
-};
-void getBMLoopPointers(
-    Scene *scene,
-    BMesh *bm,
-    int objectIndex,
-    float aspect_y,
-    std::unordered_map<std::pair<float, float>, loopData, pair_hash, pair_equal> *loopMapPtr);
-bool construct_pairs_of_selected_UVCoordinates(
-    std::unordered_map<std::pair<float, float>, loopData, pair_hash, pair_equal> *loopMapPtr,
-    std::vector<std::pair<loopData *, loopData *>> *linesegmentsdata);
 bool ED_uvedit_shift_pair_of_UV_coordinates(
     BMUVOffsets offset1,
     BMUVOffsets offset2,
