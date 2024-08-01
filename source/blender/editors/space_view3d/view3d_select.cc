@@ -5165,19 +5165,26 @@ static bool grease_pencil_circle_select(const ViewContext *vc,
     }
     const float4x4 layer_to_world = layer.to_world_space(*ob_eval);
     const float4x4 projection = ED_view3d_ob_project_mat_get_from_obmat(vc->rv3d, layer_to_world);
-    changed = ed::curves::select_circle(*vc,
-                                        info.drawing.strokes_for_write(),
-                                        deformation,
-                                        projection,
-                                        elements,
-                                        selection_domain,
-                                        int2(mval),
-                                        rad,
-                                        sel_op);
-
-    if (use_segment_selection && changed) {
-      ed::greasepencil::update_segment_selection(
-          *vc, info.drawing.strokes_for_write(), deformation, projection, elements, sel_op);
+    if (use_segment_selection) {
+      changed = ed::greasepencil::select_segment_circle(*vc,
+                                                        info.drawing.strokes_for_write(),
+                                                        deformation,
+                                                        projection,
+                                                        elements,
+                                                        int2(mval),
+                                                        rad,
+                                                        sel_op);
+    }
+    else {
+      changed = ed::curves::select_circle(*vc,
+                                          info.drawing.strokes_for_write(),
+                                          deformation,
+                                          projection,
+                                          elements,
+                                          selection_domain,
+                                          int2(mval),
+                                          rad,
+                                          sel_op);
     }
   }
 

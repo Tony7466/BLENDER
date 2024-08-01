@@ -734,12 +734,15 @@ void find_curve_segments(const bke::CurvesGeometry &src,
                          const IndexMask &intersecting_curves,
                          Array<IndexRange> &r_segment_ranges);
 
-bool update_segment_selection(const ViewContext &vc,
-                              bke::CurvesGeometry &curves,
-                              const bke::crazyspace::GeometryDeformation &deformation,
-                              const float4x4 &projection,
-                              const IndexMask &mask,
-                              const eSelectOp sel_op);
+bool select_segment_circle(const ViewContext &vc,
+                           bke::CurvesGeometry &curves,
+                           const bke::crazyspace::GeometryDeformation &deformation,
+                           const float4x4 &projection,
+                           const IndexMask &mask,
+                           int2 coord,
+                           float radius,
+                           eSelectOp sel_op);
+
 /**
  * Find intersections between curves and accurate cut positions.
  *

@@ -29,24 +29,108 @@
 
 namespace blender::ed::greasepencil {
 
-bool update_segment_selection(const ViewContext &vc,
-                              bke::CurvesGeometry &curves,
-                              const bke::crazyspace::GeometryDeformation &deformation,
-                              const float4x4 &projection,
-                              const IndexMask &mask,
-                              const eSelectOp sel_op)
-{
-  Array<float2> screen_space_positions(deformation.positions.size());
-  mask.foreach_index(GrainSize(4096), [&](const int point_i) {
-    screen_space_positions[point_i] = ED_view3d_project_float_v2_m4(
-        vc.region, deformation.positions[point_i], projection);
-  });
+// bool update_segment_selection(const ViewContext &vc,
+//                               bke::CurvesGeometry &curves,
+//                               const bke::crazyspace::GeometryDeformation &deformation,
+//                               const float4x4 &projection,
+//                               const IndexMask &mask,
+//                               const eSelectOp sel_op)
+//{
+//   Array<float2> screen_space_positions(deformation.positions.size());
+//   mask.foreach_index(GrainSize(4096), [&](const int point_i) {
+//     screen_space_positions[point_i] = ED_view3d_project_float_v2_m4(
+//         vc.region, deformation.positions[point_i], projection);
+//   });
+//
+//   Array<bool> hits(curves.points_num());
+//   find_curve_intersections(
+//       curves, screen_space_positions, mask, mask, hits, std::nullopt, std::nullopt);
+//   // Array<IndexRange> segment_ranges;
+//   //  find_curve_segments(curves, screen_space_positions, mask, mask,segment_ranges);
+// }
 
-  Array<bool> hits(curves.points_num());
-  find_curve_intersections(
-      curves, screen_space_positions, mask, mask, hits, std::nullopt, std::nullopt);
-  // Array<IndexRange> segment_ranges;
-  //  find_curve_segments(curves, screen_space_positions, mask, mask,segment_ranges);
+bool select_segment_circle(const ViewContext &vc,
+                           bke::CurvesGeometry &curves,
+                           const bke::crazyspace::GeometryDeformation &deformation,
+                           const float4x4 &projection,
+                           const IndexMask &mask,
+                           const int2 coord,
+                           const float radius,
+                           const eSelectOp sel_op)
+{
+  const float radius_sq = pow2f(radius);
+  Vector<bke::GSpanAttributeWriter> selection_writers = ed::curves::init_selection_writers(
+      curves, selection_domain);
+  bool changed = false;
+  if (sel_op == SEL_OP_SET) {
+    for (bke::GSpanAttributeWriter &selection : selection_writers) {
+      fill_selection_false(selection.span, mask);
+    };
+    changed = true;
+  }
+
+  if (selection_domain == bke::AttrDomain::Point) {
+    foreach_selectable_point_range(
+        curves,
+        deformation,
+        [&](IndexRange range, Span<float3> positions, StringRef selection_attribute_name) {
+          mask.slice_content(range).foreach_index(GrainSize(1024), [&](const int point_i) {
+            const float2 pos_proj = ED_view3d_project_float_v2_m4(
+                vc.region, positions[point_i], projection);
+            if (math::distance_squared(pos_proj, float2(coord)) <= radius_sq) {
+              apply_selection_operation_at_index(
+                  selection_attribute_writer_by_name(selection_writers, selection_attribute_name)
+                      .span,
+                  point_i,
+                  sel_op);
+              changed = true;
+            }
+          });
+        });
+  }
+  else if (selection_domain == bke::AttrDomain::Curve) {
+    const OffsetIndices points_by_curve = curves.points_by_curve();
+    foreach_selectable_curve_range(
+        curves,
+        deformation,
+        [&](const IndexRange range,
+            const Span<float3> positions,
+            StringRef /* selection_attribute_name */) {
+          mask.slice_content(range).foreach_index(GrainSize(512), [&](const int curve_i) {
+            const IndexRange points = points_by_curve[curve_i];
+            if (points.size() == 1) {
+              const float2 pos_proj = ED_view3d_project_float_v2_m4(
+                  vc.region, positions[points.first()], projection);
+              if (math::distance_squared(pos_proj, float2(coord)) <= radius_sq) {
+                for (bke::GSpanAttributeWriter &selection : selection_writers) {
+                  apply_selection_operation_at_index(selection.span, curve_i, sel_op);
+                }
+                changed = true;
+              }
+              return;
+            }
+            for (const int segment_i : points.drop_back(1)) {
+              const float3 pos1 = positions[segment_i];
+              const float3 pos2 = positions[segment_i + 1];
+
+              const float2 pos1_proj = ED_view3d_project_float_v2_m4(vc.region, pos1, projection);
+              const float2 pos2_proj = ED_view3d_project_float_v2_m4(vc.region, pos2, projection);
+
+              const float distance_proj_sq = dist_squared_to_line_segment_v2(
+                  float2(coord), pos1_proj, pos2_proj);
+              if (distance_proj_sq <= radius_sq) {
+                for (bke::GSpanAttributeWriter &selection : selection_writers) {
+                  apply_selection_operation_at_index(selection.span, curve_i, sel_op);
+                }
+                changed = true;
+                break;
+              }
+            }
+          });
+        });
+  }
+  finish_attribute_writers(selection_writers);
+  return changed;
 }
 
 static int select_all_exec(bContext *C, wmOperator *op)
