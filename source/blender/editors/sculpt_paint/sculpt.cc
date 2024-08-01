@@ -207,15 +207,6 @@ const blender::float3 SCULPT_vertex_normal_get(const SculptSession &ss, PBVHVert
   return {};
 }
 
-const float *SCULPT_vertex_persistent_co_get(const SculptSession &ss, PBVHVertRef vertex)
-{
-  if (ss.attrs.persistent_co) {
-    return (const float *)SCULPT_vertex_attr_get(vertex, ss.attrs.persistent_co);
-  }
-
-  return SCULPT_vertex_co_get(ss, vertex);
-}
-
 const float *SCULPT_vertex_co_for_grab_active_get(const SculptSession &ss, PBVHVertRef vertex)
 {
   if (ss.pbvh->type() == blender::bke::pbvh::Type::Mesh) {
@@ -513,6 +504,46 @@ int vert_face_set_get(const SculptSession &ss, PBVHVertRef vertex)
     }
   }
   return 0;
+}
+
+bool vert_has_face_set(const GroupedSpan<int> vert_to_face_map,
+                       const int *face_sets,
+                       const int vert,
+                       const int face_set)
+{
+  if (!face_sets) {
+    return face_set == SCULPT_FACE_SET_NONE;
+  }
+  const Span<int> faces = vert_to_face_map[vert];
+  return std::any_of(
+      faces.begin(), faces.end(), [&](const int face) { return face_sets[face] == face_set; });
+}
+
+bool vert_has_face_set(const SubdivCCG &subdiv_ccg,
+                       const int *face_sets,
+                       const int grid,
+                       const int face_set)
+{
+  if (!face_sets) {
+    return face_set == SCULPT_FACE_SET_NONE;
+  }
+  const int face = BKE_subdiv_ccg_grid_to_face_index(subdiv_ccg, grid);
+  return face_sets[face] == face_set;
+}
+
+bool vert_has_face_set(const int face_set_offset, const BMVert &vert, const int face_set)
+{
+  if (face_set_offset == -1) {
+    return false;
+  }
+  BMIter iter;
+  BMFace *face;
+  BM_ITER_ELEM (face, &iter, &const_cast<BMVert &>(vert), BM_FACES_OF_VERT) {
+    if (BM_ELEM_CD_GET_INT(face, face_set_offset) == face_set) {
+      return true;
+    }
+  }
+  return false;
 }
 
 bool vert_has_face_set(const SculptSession &ss, PBVHVertRef vertex, int face_set)
@@ -5938,8 +5969,7 @@ static void sculpt_stroke_update_step(bContext *C,
    *
    * For some brushes, flushing is done in the brush code itself.
    */
-  if ((ELEM(brush.sculpt_tool, SCULPT_TOOL_BOUNDARY, SCULPT_TOOL_CLOTH) ||
-       ss.pbvh->type() != bke::pbvh::Type::Mesh))
+  if ((ELEM(brush.sculpt_tool, SCULPT_TOOL_BOUNDARY) || ss.pbvh->type() != bke::pbvh::Type::Mesh))
   {
     if (ss.deform_modifiers_active) {
       SCULPT_flush_stroke_deform(sd, ob, sculpt_tool_is_proxy_used(brush.sculpt_tool));
