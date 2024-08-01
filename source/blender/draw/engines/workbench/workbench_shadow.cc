@@ -402,7 +402,8 @@ void ShadowPass::object_sync(SceneState &scene_state,
 
   /* Shadow pass technique needs object to be have all its surface opaque. */
   /* We cannot use the PASS technique on non-manifold object (see #76168). */
-  bool force_fail_pass = has_transp_mat || (!is_manifold && (scene_state.cull_state != 0));
+  bool force_fail_pass = true;
+  // has_transp_mat || (!is_manifold && (scene_state.cull_state != 0));
 
   PassType fail_type = force_fail_pass ? FORCED_FAIL : FAIL;
 
@@ -414,8 +415,12 @@ void ShadowPass::object_sync(SceneState &scene_state,
     ps.draw(geom_shadow, handle);
   }
 
-  get_pass_ptr(fail_type, is_manifold, true)->draw(DRW_cache_object_surface_get(ob), handle);
-  get_pass_ptr(fail_type, is_manifold, false)->draw(geom_shadow, handle);
+  blender::gpu::Batch *geom_faces = DRW_cache_object_surface_get(ob);
+  /* Caps. */
+  get_pass_ptr(fail_type, is_manifold, true)->draw(geom_faces, handle);
+  /* Sides extrusion. */
+  get_pass_ptr(fail_type, is_manifold, false)
+      ->draw_expand(geom_shadow, GPU_PRIM_TRIS, is_manifold ? 2 : 4, 1, handle);
 }
 
 void ShadowPass::draw(Manager &manager,
