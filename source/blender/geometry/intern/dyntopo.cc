@@ -291,6 +291,8 @@ static std::optional<int> side_to_split_in_priority(
   return std::nullopt;
 }
 
+static void tris_are_affected(const float2 a_point_2d, const float2 b_point_2d, const Span<float2> connected_2d_points, const float2 centre, const float radius, MutableSpan<bool> )
+
 static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
                            std::array<Vector<float3>, 3> connected_3d_points,
                            const std::array<float2, 3> tri_2d_points,
@@ -312,6 +314,11 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
   Vector<std::array<float3, 3>> tri_3d_points_stack = {tri_3d_points};
 
   Vector<int8_t> edges_states = {0};
+
+  Vector<std::array<Vector<bool>, 3>> is_affected_stack = {};
+  tris_are_affected(tri_2d_points[0], tri_2d_points[1], connected_2d_points_stack[0], centre, radius, is_affected_stack[0]);
+  tris_are_affected(tri_2d_points[1], tri_2d_points[2], connected_2d_points_stack[1], centre, radius, is_affected_stack[1]);
+  tris_are_affected(tri_2d_points[2], tri_2d_points[0], connected_2d_points_stack[2], centre, radius, is_affected_stack[2]);
 
   while (!edges_states.is_empty()) {
     std::array<Vector<float2>, 3> connected_2d_points = connected_2d_points_stack.pop_last();
