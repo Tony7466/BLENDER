@@ -242,13 +242,12 @@ static void toolsystem_ref_link(bContext *C, WorkSpace *workspace, bToolRef *tre
           BLI_assert(brush == nullptr || blender::bke::asset_edit_id_is_editable(brush->id));
           BKE_paint_brush_set(&ts->gp_paint->paint, brush);
         }
-        else {
-          if (ts->gp_paint->restore_brush_asset_reference) {
-            Brush *restore_brush = reinterpret_cast<Brush *>(
-                blender::bke::asset_edit_id_from_weak_reference(
-                    *bmain, ID_BR, *ts->gp_paint->restore_brush_asset_reference));
-            BKE_paint_brush_set(&ts->gp_paint->paint, restore_brush);
-          }
+        else if (ts->gp_paint->restore_brush_asset_reference) {
+          Brush *restore_brush = reinterpret_cast<Brush *>(
+              blender::bke::asset_edit_id_from_weak_reference(
+                  *bmain, ID_BR, *ts->gp_paint->restore_brush_asset_reference));
+          BKE_paint_brush_set(&ts->gp_paint->paint, restore_brush);
+
           MEM_delete(ts->gp_paint->restore_brush_asset_reference);
           ts->gp_paint->restore_brush_asset_reference = nullptr;
         }
