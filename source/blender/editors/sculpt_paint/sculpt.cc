@@ -139,25 +139,6 @@ bool ED_sculpt_report_if_shape_key_is_locked(const Object &ob, ReportList *repor
  * different index for each grid.
  * \{ */
 
-SculptMaskWriteInfo SCULPT_mask_get_for_write(SculptSession &ss)
-{
-  SculptMaskWriteInfo info;
-  switch (ss.pbvh->type()) {
-    case blender::bke::pbvh::Type::Mesh: {
-      Mesh *mesh = BKE_pbvh_get_mesh(*ss.pbvh);
-      info.layer = static_cast<float *>(CustomData_get_layer_named_for_write(
-          &mesh->vert_data, CD_PROP_FLOAT, ".sculpt_mask", mesh->verts_num));
-      break;
-    }
-    case blender::bke::pbvh::Type::BMesh:
-      info.bm_offset = CustomData_get_offset_named(&ss.bm->vdata, CD_PROP_FLOAT, ".sculpt_mask");
-      break;
-    case blender::bke::pbvh::Type::Grids:
-      break;
-  }
-  return info;
-}
-
 void SCULPT_vertex_random_access_ensure(SculptSession &ss)
 {
   if (ss.pbvh->type() == blender::bke::pbvh::Type::BMesh) {
@@ -268,19 +249,6 @@ float3 SCULPT_vertex_limit_surface_get(const SculptSession &ss, PBVHVertRef vert
   }
   BLI_assert_unreachable();
   return {};
-}
-
-float SCULPT_mask_get_at_grids_vert_index(const SubdivCCG &subdiv_ccg,
-                                          const CCGKey &key,
-                                          const int vert_index)
-{
-  if (key.mask_offset == -1) {
-    return 0.0f;
-  }
-  const int grid_index = vert_index / key.grid_area;
-  const int index_in_grid = vert_index - grid_index * key.grid_area;
-  CCGElem *elem = subdiv_ccg.grids[grid_index];
-  return CCG_elem_offset_mask(key, elem, index_in_grid);
 }
 
 PBVHVertRef SCULPT_active_vertex_get(const SculptSession &ss)
@@ -3840,7 +3808,6 @@ static void do_brush_action(const Scene &scene,
   if (brush.deform_target == BRUSH_DEFORM_TARGET_CLOTH_SIM) {
     if (!ss.cache->cloth_sim) {
       ss.cache->cloth_sim = cloth::brush_simulation_create(ob, 1.0f, 0.0f, 0.0f, false, true);
-      cloth::brush_simulation_init(ss, *ss.cache->cloth_sim);
     }
     cloth::brush_store_simulation_state(ss, *ss.cache->cloth_sim);
     cloth::ensure_nodes_constraints(
@@ -5971,8 +5938,7 @@ static void sculpt_stroke_update_step(bContext *C,
    *
    * For some brushes, flushing is done in the brush code itself.
    */
-  if ((ELEM(brush.sculpt_tool, SCULPT_TOOL_BOUNDARY, SCULPT_TOOL_CLOTH) ||
-       ss.pbvh->type() != bke::pbvh::Type::Mesh))
+  if ((ELEM(brush.sculpt_tool, SCULPT_TOOL_BOUNDARY) || ss.pbvh->type() != bke::pbvh::Type::Mesh))
   {
     if (ss.deform_modifiers_active) {
       SCULPT_flush_stroke_deform(sd, ob, sculpt_tool_is_proxy_used(brush.sculpt_tool));
@@ -7478,6 +7444,15 @@ void scale_factors(const MutableSpan<float> factors, const float strength)
   }
   for (float &factor : factors) {
     factor *= strength;
+  }
+}
+
+void scale_factors(const MutableSpan<float> factors, const Span<float> strengths)
+{
+  BLI_assert(factors.size() == strengths.size());
+
+  for (const int i : factors.index_range()) {
+    factors[i] *= strengths[i];
   }
 }
 
