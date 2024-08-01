@@ -10,10 +10,8 @@
 
 #ifdef DOUBLE_MANIFOLD
 #  define vert_len 12 /* Triangle Strip with 6 verts = 4 triangles = 12 verts. */
-#  define emit_triangle_count 4
 #else
 #  define vert_len 6 /* Triangle Strip with 4 verts = 2 triangles = 6 verts. */
-#  define emit_triangle_count 2
 #endif
 
 #define DEGENERATE_TRIS_WORKAROUND
@@ -22,7 +20,7 @@
 #define len_sqr(a) dot(a, a)
 
 struct VertexData {
-  vec3 pos;           /* local position */
+  vec3 lP;            /* local position */
   vec4 frontPosition; /* final ndc position */
   vec4 backPosition;
 };
@@ -95,32 +93,32 @@ void main()
 
   /* IN DATA is lines_adjacency - Should be guaranteed. */
   /* Read input position data. */
-  vData[0].pos = pos[gpu_index_load(input_base_index + 0)];
-  vData[1].pos = pos[gpu_index_load(input_base_index + 1)];
-  vData[2].pos = pos[gpu_index_load(input_base_index + 2)];
-  vData[3].pos = pos[gpu_index_load(input_base_index + 3)];
+  vData[0].lP = pos[gpu_index_load(input_base_index + 0)];
+  vData[1].lP = pos[gpu_index_load(input_base_index + 1)];
+  vData[2].lP = pos[gpu_index_load(input_base_index + 2)];
+  vData[3].lP = pos[gpu_index_load(input_base_index + 3)];
 
   /* Calculate front/back Positions. */
-  vData[0].frontPosition = point_object_to_ndc(vData[0].pos);
-  vData[0].backPosition = point_world_to_ndc(point_object_to_world(vData[0].pos) +
-                                             extrude_offset(vData[0].pos));
+  vData[0].frontPosition = point_object_to_ndc(vData[0].lP);
+  vData[0].backPosition = point_world_to_ndc(point_object_to_world(vData[0].lP) +
+                                             extrude_offset(vData[0].lP));
 
-  vData[1].frontPosition = point_object_to_ndc(vData[1].pos);
-  vData[1].backPosition = point_world_to_ndc(point_object_to_world(vData[1].pos) +
-                                             extrude_offset(vData[1].pos));
+  vData[1].frontPosition = point_object_to_ndc(vData[1].lP);
+  vData[1].backPosition = point_world_to_ndc(point_object_to_world(vData[1].lP) +
+                                             extrude_offset(vData[1].lP));
 
-  vData[2].frontPosition = point_object_to_ndc(vData[2].pos);
-  vData[2].backPosition = point_world_to_ndc(point_object_to_world(vData[2].pos) +
-                                             extrude_offset(vData[2].pos));
+  vData[2].frontPosition = point_object_to_ndc(vData[2].lP);
+  vData[2].backPosition = point_world_to_ndc(point_object_to_world(vData[2].lP) +
+                                             extrude_offset(vData[2].lP));
 
-  vData[3].frontPosition = point_object_to_ndc(vData[3].pos);
-  vData[3].backPosition = point_world_to_ndc(point_object_to_world(vData[3].pos) +
-                                             extrude_offset(vData[3].pos));
+  vData[3].frontPosition = point_object_to_ndc(vData[3].lP);
+  vData[3].backPosition = point_world_to_ndc(point_object_to_world(vData[3].lP) +
+                                             extrude_offset(vData[3].lP));
 
   /* Geometry shader equivalent path. */
-  vec3 v10 = vData[0].pos - vData[1].pos;
-  vec3 v12 = vData[2].pos - vData[1].pos;
-  vec3 v13 = vData[3].pos - vData[1].pos;
+  vec3 v10 = vData[0].lP - vData[1].lP;
+  vec3 v12 = vData[2].lP - vData[1].lP;
+  vec3 v13 = vData[3].lP - vData[1].lP;
   vec3 n1 = cross(v12, v10);
   vec3 n2 = cross(v13, v12);
 
@@ -140,7 +138,7 @@ void main()
   vec2 facing = vec2(dot(n1, lightDirection), dot(n2, lightDirection));
 
   /* WATCH: maybe unpredictable in some cases. */
-  bool is_manifold = any(notEqual(vData[0].pos, vData[3].pos));
+  bool is_manifold = any(notEqual(vData[0].lP, vData[3].lP));
 
   bvec2 backface = greaterThan(facing, vec2(0.0));
 

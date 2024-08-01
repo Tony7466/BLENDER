@@ -7,20 +7,18 @@
 
 #ifdef DOUBLE_MANIFOLD
 #  define vert_len 6 /* Triangle Strip with 6 verts = 4 triangles = 12 verts. */
-#  define emit_triangle_count 2
 #else
 #  define vert_len 6 /* Triangle Strip with 6 verts = 4 triangles = 12 verts. */
-#  define emit_triangle_count 2
 #endif
 
 struct VertexData {
-  vec3 pos;           /* local position */
+  vec3 lP;            /* local position */
   vec4 frontPosition; /* final ndc position */
   vec4 backPosition;
 };
 
 /* Input geometry triangle list. */
-VertexData vData[3] = {};
+VertexData vData[3];
 
 #define DISCARD_VERTEX \
   gl_Position = vec4(0.0); \
@@ -82,26 +80,26 @@ void main()
 
   /* In data is triangles - Should be guaranteed. */
   /* Read input position data. */
-  vData[0].pos = pos[input_base_vertex_id + 0];
-  vData[1].pos = pos[input_base_vertex_id + 1];
-  vData[2].pos = pos[input_base_vertex_id + 2];
+  vData[0].lP = pos[input_base_vertex_id + 0];
+  vData[1].lP = pos[input_base_vertex_id + 1];
+  vData[2].lP = pos[input_base_vertex_id + 2];
 
   /* Calculate front/back Positions. */
-  vData[0].frontPosition = point_object_to_ndc(vData[0].pos);
-  vData[0].backPosition = point_world_to_ndc(point_object_to_world(vData[0].pos) +
-                                             extrude_offset(vData[0].pos));
+  vData[0].frontPosition = point_object_to_ndc(vData[0].lP);
+  vData[0].backPosition = point_world_to_ndc(point_object_to_world(vData[0].lP) +
+                                             extrude_offset(vData[0].lP));
 
-  vData[1].frontPosition = point_object_to_ndc(vData[1].pos);
-  vData[1].backPosition = point_world_to_ndc(point_object_to_world(vData[1].pos) +
-                                             extrude_offset(vData[1].pos));
+  vData[1].frontPosition = point_object_to_ndc(vData[1].lP);
+  vData[1].backPosition = point_world_to_ndc(point_object_to_world(vData[1].lP) +
+                                             extrude_offset(vData[1].lP));
 
-  vData[2].frontPosition = point_object_to_ndc(vData[2].pos);
-  vData[2].backPosition = point_world_to_ndc(point_object_to_world(vData[2].pos) +
-                                             extrude_offset(vData[2].pos));
+  vData[2].frontPosition = point_object_to_ndc(vData[2].lP);
+  vData[2].backPosition = point_world_to_ndc(point_object_to_world(vData[2].lP) +
+                                             extrude_offset(vData[2].lP));
 
   /* Geometry shader equivalent calc. */
-  vec3 v10 = vData[0].pos - vData[1].pos;
-  vec3 v12 = vData[2].pos - vData[1].pos;
+  vec3 v10 = vData[0].lP - vData[1].lP;
+  vec3 v12 = vData[2].lP - vData[1].lP;
 
   vec3 lightDirection = normal_world_to_object(vec3(pass_data.light_direction_ws));
 
