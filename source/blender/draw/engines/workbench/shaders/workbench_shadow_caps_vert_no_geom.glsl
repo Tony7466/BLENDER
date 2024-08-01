@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
-#pragma USE_SSBO_VERTEX_FETCH(TriangleList, 6)
+#pragma BLENDER_REQUIRE(gpu_shader_index_load_lib.glsl)
 
 #ifdef DOUBLE_MANIFOLD
 #  define vert_len 6 /* Triangle Strip with 6 verts = 4 triangles = 12 verts. */
@@ -80,9 +80,9 @@ void main()
 
   /* In data is triangles - Should be guaranteed. */
   /* Read input position data. */
-  vData[0].lP = pos[input_base_vertex_id + 0];
-  vData[1].lP = pos[input_base_vertex_id + 1];
-  vData[2].lP = pos[input_base_vertex_id + 2];
+  vData[0].lP = pos[gpu_index_load(input_base_vertex_id + 0)];
+  vData[1].lP = pos[gpu_index_load(input_base_vertex_id + 1)];
+  vData[2].lP = pos[gpu_index_load(input_base_vertex_id + 2)];
 
   /* Calculate front/back Positions. */
   vData[0].frontPosition = point_object_to_ndc(vData[0].lP);

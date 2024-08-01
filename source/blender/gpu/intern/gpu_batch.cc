@@ -265,10 +265,12 @@ void GPU_batch_bind_as_resources(Batch *batch, GPUShader *shader)
   uint16_t ssbo_attributes = interface->ssbo_attr_mask_;
 
   if (ssbo_attributes & (1 << GPU_SSBO_INDEX_BUF_SLOT)) {
+    /* Ensure binding for setting uniforms. This is required by the OpenGL backend. */
+    GPU_shader_bind(shader);
     if (batch->elem) {
       GPU_indexbuf_bind_as_ssbo(batch->elem, GPU_SSBO_INDEX_BUF_SLOT);
       GPU_shader_uniform_1b(shader, "gpu_index_no_buffer", false);
-      GPU_shader_uniform_1b(shader, "gpu_index_32bit", batch->elem->is_32bit());
+      GPU_shader_uniform_1b(shader, "gpu_index_16bit", !batch->elem->is_32bit());
       GPU_shader_uniform_1i(shader, "gpu_index_base_index", batch->elem->index_base_get());
     }
     else {

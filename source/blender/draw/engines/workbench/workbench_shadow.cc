@@ -417,7 +417,7 @@ void ShadowPass::object_sync(SceneState &scene_state,
 
   blender::gpu::Batch *geom_faces = DRW_cache_object_surface_get(ob);
   /* Caps. */
-  get_pass_ptr(fail_type, is_manifold, true)->draw(geom_faces, handle);
+  get_pass_ptr(fail_type, is_manifold, true)->draw_expand(geom_faces, GPU_PRIM_TRIS, 2, 1, handle);
   /* Sides extrusion. */
   get_pass_ptr(fail_type, is_manifold, false)
       ->draw_expand(geom_shadow, GPU_PRIM_TRIS, is_manifold ? 2 : 4, 1, handle);
