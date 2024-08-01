@@ -19,6 +19,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_array.hh"
+#include "BLI_bounds.hh"
 #include "BLI_listbase.h"
 #include "BLI_range.h"
 #include "BLI_utildefines.h"
@@ -1113,7 +1114,7 @@ void fcurve_to_keylist(AnimData *adt,
 
   BezTripleChain chain = {nullptr};
   /* The indices for which keys have been addeed to the key columns. */
-  blender::int2 index_range(-1, -1);
+  blender::Bounds<int> index_bounds = {int(fcu->totvert), 0};
   /* Loop through beztriples, making ActKeysColumns. */
   for (int v = 0; v < fcu->totvert; v++) {
     /* Not using binary search to limit the range because the FCurve might not be sorted e.g. when
@@ -1122,11 +1123,11 @@ void fcurve_to_keylist(AnimData *adt,
     if (x < range[0] || x > range[1]) {
       continue;
     }
-    if (index_range[0] == -1 || index_range[0] > v) {
-      index_range[0] = v;
+    if (index_bounds.is_empty() || index_bounds.min > v) {
+      index_bounds.min = v;
     }
-    if (index_range[1] == -1 || index_range[1] < v) {
-      index_range[1] = v;
+    if (index_bounds.is_empty() || index_bounds.max < v) {
+      index_bounds.max = v;
     }
     chain.cur = &fcu->bezt[v];
 
@@ -1143,12 +1144,9 @@ void fcurve_to_keylist(AnimData *adt,
     add_bezt_to_keycolumns_list(keylist, &chain);
   }
 
-  if (index_range[0] == -1 || index_range[1] == -1) {
-    index_range[0] = 0;
-    index_range[1] = fcu->totvert;
+  if (!index_bounds.is_empty()) {
+    update_keyblocks(keylist, &fcu->bezt[index_bounds.min], index_bounds.max - index_bounds.min);
   }
-
-  update_keyblocks(keylist, &fcu->bezt[index_range[0]], index_range[1] - index_range[0]);
 
   if (adt) {
     ANIM_nla_mapping_apply_fcurve(adt, fcu, true, false);
