@@ -1304,7 +1304,7 @@ class VIEW3D_MT_editor_menus(Menu):
                 layout.menu("VIEW3D_MT_select_paint_mask")
             elif mesh.use_paint_mask_vertex and mode_string in {'PAINT_WEIGHT', 'PAINT_VERTEX'}:
                 layout.menu("VIEW3D_MT_select_paint_mask_vertex")
-        elif mode_string not in {'SCULPT', 'SCULPT_CURVES', 'PAINT_GREASE_PENCIL', 'SCULPT_GREASE_PENCIL', 'WEIGHT_GREASE_PENCIL'}:
+        elif mode_string not in {'SCULPT', 'SCULPT_CURVES', 'PAINT_GREASE_PENCIL', 'SCULPT_GREASE_PENCIL', 'WEIGHT_GREASE_PENCIL', 'VERTEX_GREASE_PENCIL'}:
             layout.menu("VIEW3D_MT_select_" + mode_string.lower())
 
         if gp_edit:
@@ -1357,7 +1357,7 @@ class VIEW3D_MT_editor_menus(Menu):
                 layout.menu("VIEW3D_MT_edit_greasepencil_stroke")
 
         elif obj:
-            if mode_string not in {'PAINT_TEXTURE', 'SCULPT_CURVES', 'SCULPT_GREASE_PENCIL'}:
+            if mode_string not in {'PAINT_TEXTURE', 'SCULPT_CURVES', 'SCULPT_GREASE_PENCIL', 'VERTEX_GREASE_PENCIL'}:
                 layout.menu("VIEW3D_MT_" + mode_string.lower())
             if mode_string == 'SCULPT':
                 layout.menu("VIEW3D_MT_mask")
@@ -1366,6 +1366,10 @@ class VIEW3D_MT_editor_menus(Menu):
             elif mode_string == 'SCULPT_CURVES':
                 layout.menu("VIEW3D_MT_select_sculpt_curves")
                 layout.menu("VIEW3D_MT_sculpt_curves")
+                layout.template_node_operator_asset_root_items()
+            elif mode_string == 'VERTEX_GREASE_PENCIL':
+                layout.menu("VIEW3D_MT_select_edit_grease_pencil")
+                layout.menu("VIEW3D_MT_paint_vertex_grease_pencil")
                 layout.template_node_operator_asset_root_items()
             else:
                 layout.template_node_operator_asset_root_items()
@@ -2383,6 +2387,21 @@ class VIEW3D_MT_paint_gpencil(Menu):
         layout.operator("gpencil.vertex_color_levels", text="Levels")
         layout.operator("gpencil.vertex_color_hsv", text="Hue/Saturation/Value")
         layout.operator("gpencil.vertex_color_brightness_contrast", text="Brightness/Contrast")
+
+
+class VIEW3D_MT_paint_vertex_grease_pencil(Menu):
+    bl_label = "Paint"
+
+    def draw(self, _context):
+        layout = self.layout
+
+        # layout.operator("gpencil.vertex_color_set", text="Set Color Attribute")
+        # layout.operator("gpencil.stroke_reset_vertex_color")
+        # layout.separator()
+        # layout.operator("gpencil.vertex_color_invert", text="Invert")
+        # layout.operator("gpencil.vertex_color_levels", text="Levels")
+        # layout.operator("gpencil.vertex_color_hsv", text="Hue/Saturation/Value")
+        # layout.operator("gpencil.vertex_color_brightness_contrast", text="Brightness/Contrast")
 
 
 class VIEW3D_MT_select_edit_gpencil(Menu):
@@ -9464,6 +9483,7 @@ classes = (
     VIEW3D_MT_greasepencil_material_active,
     VIEW3D_MT_paint_grease_pencil,
     VIEW3D_MT_paint_gpencil,
+    VIEW3D_MT_paint_vertex_grease_pencil,
     VIEW3D_MT_draw_gpencil,
     VIEW3D_MT_assign_material,
     VIEW3D_MT_edit_gpencil,
