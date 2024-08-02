@@ -1096,16 +1096,20 @@ void cachefile_to_keylist(bDopeSheet *ads,
 
 static inline void set_up_beztriple_chain(BezTripleChain &chain,
                                           const FCurve *fcu,
-                                          const int v,
+                                          const int key_index,
                                           const bool do_extremes,
                                           const bool is_cyclic)
 {
-  chain.cur = &fcu->bezt[v];
+  chain.cur = &fcu->bezt[key_index];
 
   /* Neighbor columns, accounting for being cyclic. */
   if (do_extremes) {
-    chain.prev = (v > 0) ? &fcu->bezt[v - 1] : is_cyclic ? &fcu->bezt[fcu->totvert - 2] : nullptr;
-    chain.next = (v + 1 < fcu->totvert) ? &fcu->bezt[v + 1] : is_cyclic ? &fcu->bezt[1] : nullptr;
+    chain.prev = (key_index > 0) ? &fcu->bezt[key_index - 1] :
+                 is_cyclic       ? &fcu->bezt[fcu->totvert - 2] :
+                                   nullptr;
+    chain.next = (key_index + 1 < fcu->totvert) ? &fcu->bezt[key_index + 1] :
+                 is_cyclic                      ? &fcu->bezt[1] :
+                                                  nullptr;
   }
 }
 
@@ -1146,7 +1150,11 @@ void fcurve_to_keylist(AnimData *adt,
     add_bezt_to_keycolumns_list(keylist, &chain);
   }
 
-  if (!index_bounds.is_empty()) {
+  /* Not using index_bounds.is_empty() because that returns true if min and max are the same. That
+   * is a valid configuration in this case though. */
+  if (index_bounds.min <= index_bounds.max) {
+    /* Adding 1 beyond the given range so drawing in the dope sheet can create lines
+     * that extend off-screen. */
     if (index_bounds.min > 0) {
       set_up_beztriple_chain(chain, fcu, index_bounds.min - 1, do_extremes, is_cyclic);
       add_bezt_to_keycolumns_list(keylist, &chain);
@@ -1157,7 +1165,8 @@ void fcurve_to_keylist(AnimData *adt,
       add_bezt_to_keycolumns_list(keylist, &chain);
       index_bounds.max++;
     }
-    update_keyblocks(keylist, &fcu->bezt[index_bounds.min], index_bounds.max - index_bounds.min);
+    update_keyblocks(
+        keylist, &fcu->bezt[index_bounds.min], (index_bounds.max + 1) - index_bounds.min);
   }
 
   if (adt) {
