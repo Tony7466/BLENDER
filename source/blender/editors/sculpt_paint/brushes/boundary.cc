@@ -397,6 +397,7 @@ static void init_boundary_mesh(Object &object,
         break;
       case BRUSH_BOUNDARY_DEFORM_INFLATE:
       case BRUSH_BOUNDARY_DEFORM_GRAB:
+      case BRUSH_BOUNDARY_DEFORM_SMOOTH:
         /* Do nothing. These deform modes don't need any extra data to be precomputed. */
         break;
       default:
@@ -459,8 +460,8 @@ static void init_boundary_grids(Object &object,
         break;
       case BRUSH_BOUNDARY_DEFORM_INFLATE:
       case BRUSH_BOUNDARY_DEFORM_GRAB:
+      case BRUSH_BOUNDARY_DEFORM_SMOOTH:
         /* Do nothing. These deform modes don't need any extra data to be precomputed. */
-        break;
         break;
       default:
         BLI_assert_unreachable();
@@ -517,6 +518,7 @@ static void init_boundary_bmesh(Object &object,
         break;
       case BRUSH_BOUNDARY_DEFORM_INFLATE:
       case BRUSH_BOUNDARY_DEFORM_GRAB:
+      case BRUSH_BOUNDARY_DEFORM_SMOOTH:
         /* Do nothing. These deform modes don't need any extra data to be precomputed. */
         break;
       default:
