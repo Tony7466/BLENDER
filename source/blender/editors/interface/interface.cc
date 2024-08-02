@@ -873,6 +873,8 @@ static void ui_but_update_old_active_from_new(uiBut *oldbut, uiBut *but)
   if (oldbut->poin != (char *)oldbut) {
     std::swap(oldbut->poin, but->poin);
     std::swap(oldbut->func_argN, but->func_argN);
+    std::swap(oldbut->func_argN_free_fn, but->func_argN_free_fn);
+    std::swap(oldbut->func_argN_copy_fn, but->func_argN_copy_fn);
   }
 
   /* Move tooltip from new to old. */
