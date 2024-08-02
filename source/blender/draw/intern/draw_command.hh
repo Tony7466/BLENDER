@@ -364,6 +364,11 @@ struct Draw {
     uint32_t vertex_len;
   };
   ResourceHandle handle;
+#ifdef WITH_METAL_BACKEND
+  /* Shader is required for extracting SSBO vertex fetch expansion parameters during draw command
+   * generation. */
+  GPUShader *shader;
+#endif
 
   Draw() = default;
 
@@ -371,12 +376,18 @@ struct Draw {
        uint instance_len,
        uint vertex_len,
        uint vertex_first,
+#ifdef WITH_METAL_BACKEND
+       GPUShader *shader,
+#endif
        GPUPrimType expanded_prim_type,
        uint expanded_prim_len,
        ResourceHandle handle)
   {
     this->batch = batch;
     this->handle = handle;
+#ifdef WITH_METAL_BACKEND
+    this->shader = shader;
+#endif
     BLI_assert((instance_len > 0) && (instance_len < ~uint32_t(0)));
     if (expanded_prim_type != GPU_PRIM_NONE) {
       this->instance_len = -int32_t(instance_len);
@@ -563,6 +574,9 @@ class DrawCommandBuf {
                    uint vertex_first,
                    ResourceHandle handle,
                    uint /*custom_id*/,
+#ifdef WITH_METAL_BACKEND
+                   GPUShader *shader,
+#endif
                    GPUPrimType expanded_prim_type,
                    uint16_t expanded_prim_len)
   {
@@ -575,6 +589,9 @@ class DrawCommandBuf {
                             instance_len,
                             vertex_len,
                             vertex_first,
+#ifdef WITH_METAL_BACKEND
+                            shader,
+#endif
                             expanded_prim_type,
                             expanded_prim_len,
                             handle};
@@ -677,6 +694,9 @@ class DrawMultiBuf {
                    uint vertex_first,
                    ResourceHandle handle,
                    uint custom_id,
+#ifdef WITH_METAL_BACKEND
+                   GPUShader *shader,
+#endif
                    GPUPrimType expanded_prim_type,
                    uint16_t expanded_prim_len)
   {
@@ -719,6 +739,9 @@ class DrawMultiBuf {
       group.vertex_first = vertex_first;
       group.expanded_prim_type = expanded_prim_type;
       group.expanded_prim_len = expanded_prim_len;
+#ifdef WITH_METAL_BACKEND
+      group.gpu_shader = shader;
+#endif
       /* Custom group are not to be registered in the group_ids_. */
       if (!custom_group) {
         group_id = new_group_id;
@@ -742,6 +765,9 @@ class DrawMultiBuf {
        * group. */
       BLI_assert(group.expanded_prim_type == expanded_prim_type);
       BLI_assert(group.expanded_prim_len == expanded_prim_len);
+#ifdef WITH_METAL_BACKEND
+      BLI_assert(group.gpu_shader == shader);
+#endif
     }
   }
 

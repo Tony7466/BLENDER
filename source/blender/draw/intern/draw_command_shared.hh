@@ -51,23 +51,27 @@ struct DrawGroup {
       uint back_proto_len;
       /** Needed to create the correct draw call. */
       gpu::Batch *gpu_batch;
+#  ifdef WITH_METAL_BACKEND
+      GPUShader *gpu_shader;
+#  else
+      uint64_t _cpu_pad0;
+#  endif
 
       GPUPrimType expanded_prim_type;
       uint expanded_prim_len;
-      uint _cpu_pad4;
-      uint _cpu_pad5;
     };
     struct {
 #endif
       uint front_facing_counter;
       uint back_facing_counter;
+      /* These can be used for computation on GPU. But cannot be changed or set on CPU. */
       uint _cpu_reserved_1;
       uint _cpu_reserved_2;
 
       uint _cpu_reserved_3;
       uint _cpu_reserved_4;
-      uint _pad4;
-      uint _pad5;
+      uint _cpu_reserved_5;
+      uint _cpu_reserved_6;
 #ifndef GPU_SHADER
     };
   };
