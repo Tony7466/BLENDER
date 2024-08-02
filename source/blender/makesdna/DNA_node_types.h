@@ -1126,7 +1126,8 @@ typedef struct NodeImageMultiFile {
   int sfra DNA_DEPRECATED, efra DNA_DEPRECATED;
   /** Selected input in details view list. */
   int active_input;
-  char _pad[4];
+  char save_as_render;
+  char _pad[3];
 } NodeImageMultiFile;
 typedef struct NodeImageMultiFileSocket {
   /* single layer file output */
@@ -1212,19 +1213,19 @@ typedef struct NodeLensDist {
 } NodeLensDist;
 
 typedef struct NodeColorBalance {
-  /* ASC CDL parameters */
+  /* ASC CDL parameters. */
   float slope[3];
   float offset[3];
   float power[3];
   float offset_basis;
   char _pad[4];
 
-  /* LGG parameters */
+  /* LGG parameters. */
   float lift[3];
   float gamma[3];
   float gain[3];
 
-  /* Whitepoint parameters */
+  /* White-point parameters. */
   float input_temperature;
   float input_tint;
   float output_temperature;

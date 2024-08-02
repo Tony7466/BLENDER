@@ -44,7 +44,7 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh" /* RNA_def_property_free_identifier */
 #include "RNA_enum_types.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "CLG_log.h"
 
@@ -5742,6 +5742,9 @@ static PyObject *foreach_getset(BPy_PropertyRNA *self, PyObject *args, int set)
     return nullptr;
   }
 
+  if (set) {
+    RNA_property_update(BPY_context_get(), &self->ptr, self->prop);
+  }
   Py_RETURN_NONE;
 }
 

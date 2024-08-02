@@ -24,30 +24,8 @@ set(LIB
 # See: `make icons_geom` and the script `./release/datafiles/blender_icons_geom_update.py`.
 set_property(GLOBAL PROPERTY ICON_GEOM_NAMES
   # BEGIN ICON_GEOM_NAMES
-  brush.gpencil_draw.draw
   brush.gpencil_draw.erase
   brush.gpencil_draw.fill
-  brush.gpencil_draw.tint
-  brush.paint_texture.airbrush
-  brush.paint_texture.clone
-  brush.paint_texture.draw
-  brush.paint_texture.fill
-  brush.paint_texture.mask
-  brush.paint_texture.masklort
-  brush.paint_texture.multiply
-  brush.paint_texture.smear
-  brush.paint_texture.soften
-  brush.paint_vertex.alpha
-  brush.paint_vertex.average
-  brush.paint_vertex.blur
-  brush.paint_vertex.draw
-  brush.paint_vertex.replace
-  brush.paint_vertex.smear
-  brush.paint_weight.average
-  brush.paint_weight.blur
-  brush.paint_weight.draw
-  brush.paint_weight.mix
-  brush.paint_weight.smear
   brush.particle.add
   brush.particle.comb
   brush.particle.cut
@@ -55,38 +33,7 @@ set_property(GLOBAL PROPERTY ICON_GEOM_NAMES
   brush.particle.puff
   brush.particle.smooth
   brush.particle.weight
-  brush.sculpt.blob
-  brush.sculpt.boundary
-  brush.sculpt.clay
-  brush.sculpt.clay_strips
-  brush.sculpt.clay_thumb
-  brush.sculpt.cloth
-  brush.sculpt.crease
-  brush.sculpt.displacement_eraser
-  brush.sculpt.displacement_smear
-  brush.sculpt.draw
-  brush.sculpt.draw_face_sets
-  brush.sculpt.draw_sharp
-  brush.sculpt.elastic_deform
-  brush.sculpt.fill
-  brush.sculpt.flatten
-  brush.sculpt.grab
-  brush.sculpt.inflate
-  brush.sculpt.layer
-  brush.sculpt.mask
-  brush.sculpt.multiplane_scrape
-  brush.sculpt.nudge
   brush.sculpt.paint
-  brush.sculpt.pinch
-  brush.sculpt.pose
-  brush.sculpt.rotate
-  brush.sculpt.scrape
-  brush.sculpt.simplify
-  brush.sculpt.smear
-  brush.sculpt.smooth
-  brush.sculpt.snake_hook
-  brush.sculpt.thumb
-  brush.sculpt.topology
   brush.uv_sculpt.grab
   brush.uv_sculpt.pinch
   brush.uv_sculpt.relax
@@ -100,17 +47,6 @@ set_property(GLOBAL PROPERTY ICON_GEOM_NAMES
   ops.curve.pen
   ops.curve.radius
   ops.curve.vertex_random
-  ops.curves.sculpt_add
-  ops.curves.sculpt_comb
-  ops.curves.sculpt_cut
-  ops.curves.sculpt_delete
-  ops.curves.sculpt_density
-  ops.curves.sculpt_grow_shrink
-  ops.curves.sculpt_pinch
-  ops.curves.sculpt_puff
-  ops.curves.sculpt_slide
-  ops.curves.sculpt_smooth
-  ops.curves.sculpt_snake_hook
   ops.generic.cursor
   ops.generic.select
   ops.generic.select_box
@@ -133,19 +69,6 @@ set_property(GLOBAL PROPERTY ICON_GEOM_NAMES
   ops.gpencil.primitive_line
   ops.gpencil.primitive_polyline
   ops.gpencil.radius
-  ops.gpencil.sculpt_average
-  ops.gpencil.sculpt_blur
-  ops.gpencil.sculpt_clone
-  ops.gpencil.sculpt_grab
-  ops.gpencil.sculpt_pinch
-  ops.gpencil.sculpt_push
-  ops.gpencil.sculpt_randomize
-  ops.gpencil.sculpt_smear
-  ops.gpencil.sculpt_smooth
-  ops.gpencil.sculpt_strength
-  ops.gpencil.sculpt_thickness
-  ops.gpencil.sculpt_twist
-  ops.gpencil.sculpt_weight
   ops.gpencil.stroke_cutter
   ops.gpencil.transform_fill
   ops.mesh.bevel
@@ -232,7 +155,7 @@ if(WITH_BLENDER)
   if(NOT WITH_HEADLESS)
     # Blender UI only.
 
-    set(SVG_SRC
+    set(SVG_FILENAMES_NOEXT
       action
       action_tweak
       add
@@ -431,6 +354,7 @@ if(WITH_BLENDER)
       fullscreen_exit
       fund
       geometry_nodes
+      geometry_set
       ghost_disabled
       ghost_enabled
       gizmo
@@ -624,9 +548,11 @@ if(WITH_BLENDER)
       mod_wireframe
       monkey
       mouse_lmb
+      mouse_lmb_2x
       mouse_lmb_drag
       mouse_mmb
       mouse_mmb_drag
+      mouse_mmb_scroll
       mouse_move
       mouse_rmb
       mouse_rmb_drag
@@ -939,14 +865,23 @@ if(WITH_BLENDER)
       zoom_previous
       zoom_selected
     )
-    set(SVGHCONTENTS )
-    set(SVGCCCONTENTS )
-    foreach(svg ${SVG_SRC})
+    set(SVG_CONTENTS_H)
+    set(SVG_CONTENTS_C)
+    foreach(svg ${SVG_FILENAMES_NOEXT})
       data_to_c_simple(../../../../release/datafiles/icons_svg/${svg}.svg SRC)
       string(TOUPPER ${svg} svg_name_upper)
-      set(SVGHCONTENTS "${SVGHCONTENTS}extern const char datatoc_${svg}_svg[];\n")
-      set(SVGCCCONTENTS "${SVGCCCONTENTS}case ICON_${svg_name_upper}: return datatoc_${svg}_svg;\n")
+      list(APPEND SVG_CONTENTS_H
+        "extern const char datatoc_${svg}_svg[]\;\n"
+      )
+      list(APPEND SVG_CONTENTS_C
+        "case ICON_${svg_name_upper}: return datatoc_${svg}_svg\;\n"
+      )
     endforeach()
+    unset(svg_name_upper)
+
+    list(JOIN SVG_CONTENTS_C "" SVG_CONTENTS_C)
+    list(JOIN SVG_CONTENTS_H "" SVG_CONTENTS_H)
+
     configure_file(
       "svg_icons.h.in"
       "${CMAKE_CURRENT_BINARY_DIR}/svg_icons.h"
@@ -959,6 +894,7 @@ if(WITH_BLENDER)
       ESCAPE_QUOTES
       @ONLY
     )
+
     list(APPEND SRC ${CMAKE_CURRENT_BINARY_DIR}/svg_icons.h)
     list(APPEND SRC ${CMAKE_CURRENT_BINARY_DIR}/svg_icons.cc)
     # Blend files.
@@ -968,6 +904,10 @@ if(WITH_BLENDER)
 
     # Images.
     data_to_c_simple(../../../../release/datafiles/splash.png SRC)
+
+    unset(SVG_CONTENTS_H)
+    unset(SVG_CONTENTS_C)
+    unset(SVG_FILENAMES_NOEXT)
 
   endif()
 

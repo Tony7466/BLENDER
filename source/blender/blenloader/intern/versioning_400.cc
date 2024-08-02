@@ -58,6 +58,7 @@
 #include "BKE_effect.h"
 #include "BKE_grease_pencil.hh"
 #include "BKE_idprop.hh"
+#include "BKE_image_format.h"
 #include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mesh_legacy_convert.hh"
@@ -358,6 +359,7 @@ static void versioning_eevee_material_shadow_none(Material *material)
   bNodeTree *ntree = material->nodetree;
 
   bNode *output_node = version_eevee_output_node_get(ntree, SH_NODE_OUTPUT_MATERIAL);
+  bNode *old_output_node = version_eevee_output_node_get(ntree, SH_NODE_OUTPUT_MATERIAL);
   if (output_node == nullptr) {
     return;
   }
@@ -389,7 +391,7 @@ static void versioning_eevee_material_shadow_none(Material *material)
       }
     };
 
-    copy_link("Surface");
+    /* Don't copy surface as that is handled later */
     copy_link("Volume");
     copy_link("Displacement");
     copy_link("Thickness");
@@ -398,7 +400,9 @@ static void versioning_eevee_material_shadow_none(Material *material)
   }
 
   bNodeSocket *out_sock = blender::bke::nodeFindSocket(output_node, SOCK_IN, "Surface");
+  bNodeSocket *old_out_sock = blender::bke::nodeFindSocket(old_output_node, SOCK_IN, "Surface");
 
+  /* Add mix node for mixing between original material, and transparent BSDF for shadows */
   bNode *mix_node = blender::bke::nodeAddNode(nullptr, ntree, "ShaderNodeMixShader");
   STRNCPY(mix_node->label, "Disable Shadow");
   mix_node->flag |= NODE_HIDDEN;
@@ -409,13 +413,16 @@ static void versioning_eevee_material_shadow_none(Material *material)
   bNodeSocket *mix_in_1 = static_cast<bNodeSocket *>(BLI_findlink(&mix_node->inputs, 1));
   bNodeSocket *mix_in_2 = static_cast<bNodeSocket *>(BLI_findlink(&mix_node->inputs, 2));
   bNodeSocket *mix_out = static_cast<bNodeSocket *>(BLI_findlink(&mix_node->outputs, 0));
-  if (out_sock->link != nullptr) {
+  if (old_out_sock->link != nullptr) {
     blender::bke::nodeAddLink(
-        ntree, out_sock->link->fromnode, out_sock->link->fromsock, mix_node, mix_in_1);
-    blender::bke::nodeRemLink(ntree, out_sock->link);
+        ntree, old_out_sock->link->fromnode, old_out_sock->link->fromsock, mix_node, mix_in_1);
+    if (out_sock->link != nullptr) {
+      blender::bke::nodeRemLink(ntree, out_sock->link);
+    }
   }
   blender::bke::nodeAddLink(ntree, mix_node, mix_out, output_node, out_sock);
 
+  /* Add light path node to control shadow visibility */
   bNode *lp_node = blender::bke::nodeAddNode(nullptr, ntree, "ShaderNodeLightPath");
   lp_node->flag |= NODE_HIDDEN;
   lp_node->parent = output_node->parent;
@@ -430,6 +437,7 @@ static void versioning_eevee_material_shadow_none(Material *material)
     }
   }
 
+  /* Add transparent BSDF to make shadows transparent. */
   bNode *bsdf_node = blender::bke::nodeAddNode(nullptr, ntree, "ShaderNodeBsdfTransparent");
   bsdf_node->flag |= NODE_HIDDEN;
   bsdf_node->parent = output_node->parent;
@@ -4156,7 +4164,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         IDProperty *clight = version_cycles_properties_from_ID(&light->id);
         if (clight) {
           bool value = version_cycles_property_boolean(
-              clight, "use_shadow", default_light->mode & LA_SHADOW);
+              clight, "cast_shadow", default_light->mode & LA_SHADOW);
           SET_FLAG_FROM_TEST(light->mode, value, LA_SHADOW);
         }
       }
@@ -4415,6 +4423,104 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
             n->input_temperature = n->output_temperature = 6500.0f;
             n->input_tint = n->output_tint = 10.0f;
           }
+        }
+      }
+    }
+    FOREACH_NODETREE_END;
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 11)) {
+    LISTBASE_FOREACH (Curves *, curves, &bmain->hair_curves) {
+      curves->geometry.attributes_active_index = curves->attributes_active_index_legacy;
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 13)) {
+    Camera default_cam = *DNA_struct_default_get(Camera);
+    LISTBASE_FOREACH (Camera *, camera, &bmain->cameras) {
+      camera->central_cylindrical_range_u_min = default_cam.central_cylindrical_range_u_min;
+      camera->central_cylindrical_range_u_max = default_cam.central_cylindrical_range_u_max;
+      camera->central_cylindrical_range_v_min = default_cam.central_cylindrical_range_v_min;
+      camera->central_cylindrical_range_v_max = default_cam.central_cylindrical_range_v_max;
+      camera->central_cylindrical_radius = default_cam.central_cylindrical_radius;
+    }
+  }
+
+  /* The File Output node now uses the linear color space setting of its stored image formats. So
+   * we need to ensure the color space value is initialized to some sane default based on the image
+   * type. Furthermore, the node now gained a new Save As Render option that is global to the node,
+   * which will be used if Use Node Format is enabled for each input, so we potentially need to
+   * disable Use Node Format in case inputs had different Save As render options. */
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 14)) {
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type != NTREE_COMPOSIT) {
+        continue;
+      }
+
+      LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+        if (node->type != CMP_NODE_OUTPUT_FILE) {
+          continue;
+        }
+
+        /* Initialize node format color space if it is not set. */
+        NodeImageMultiFile *storage = static_cast<NodeImageMultiFile *>(node->storage);
+        if (storage->format.linear_colorspace_settings.name[0] == '\0') {
+          BKE_image_format_update_color_space_for_type(&storage->format);
+        }
+
+        if (BLI_listbase_is_empty(&node->inputs)) {
+          continue;
+        }
+
+        /* Initialize input formats color space if it is not set. */
+        LISTBASE_FOREACH (const bNodeSocket *, input, &node->inputs) {
+          NodeImageMultiFileSocket *input_storage = static_cast<NodeImageMultiFileSocket *>(
+              input->storage);
+          if (input_storage->format.linear_colorspace_settings.name[0] == '\0') {
+            BKE_image_format_update_color_space_for_type(&input_storage->format);
+          }
+        }
+
+        /* EXR images don't use Save As Render. */
+        if (ELEM(storage->format.imtype, R_IMF_IMTYPE_OPENEXR, R_IMF_IMTYPE_MULTILAYER)) {
+          continue;
+        }
+
+        /* Find out if all inputs have the same Save As Render option. */
+        const bNodeSocket *first_input = static_cast<bNodeSocket *>(node->inputs.first);
+        const NodeImageMultiFileSocket *first_input_storage =
+            static_cast<NodeImageMultiFileSocket *>(first_input->storage);
+        const bool first_save_as_render = first_input_storage->save_as_render;
+        bool all_inputs_have_same_save_as_render = true;
+        LISTBASE_FOREACH (const bNodeSocket *, input, &node->inputs) {
+          const NodeImageMultiFileSocket *input_storage = static_cast<NodeImageMultiFileSocket *>(
+              input->storage);
+          if (input_storage->save_as_render != first_save_as_render) {
+            all_inputs_have_same_save_as_render = false;
+            break;
+          }
+        }
+
+        /* All inputs have the same save as render option, so we set the node Save As Render option
+         * to that value, and we leave inputs as is. */
+        if (all_inputs_have_same_save_as_render) {
+          storage->save_as_render = first_save_as_render;
+          continue;
+        }
+
+        /* For inputs that have Use Node Format enabled, we need to disabled it because otherwise
+         * they will use the node's Save As Render option. It follows that we need to copy the
+         * node's format to the input format. */
+        LISTBASE_FOREACH (const bNodeSocket *, input, &node->inputs) {
+          NodeImageMultiFileSocket *input_storage = static_cast<NodeImageMultiFileSocket *>(
+              input->storage);
+
+          if (!input_storage->use_node_format) {
+            continue;
+          }
+
+          input_storage->use_node_format = false;
+          input_storage->format = storage->format;
         }
       }
     }
