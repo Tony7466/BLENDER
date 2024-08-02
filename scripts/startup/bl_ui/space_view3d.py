@@ -576,13 +576,13 @@ class _draw_tool_settings_context_mode:
         paint = tool_settings.gpencil_vertex_paint
         brush = paint.brush
 
-        row = layout.row(align=True)
-
         BrushAssetShelf.draw_popup_selector(layout, context, brush)
 
         if brush.gpencil_vertex_tool not in {'BLUR', 'AVERAGE', 'SMEAR'}:
-            row.separator(factor=0.4)
-            row.prop_with_popover(brush, "color", text="", panel="TOPBAR_PT_gpencil_vertexcolor")
+            layout.separator(factor=0.4)
+            ups = context.tool_settings.unified_paint_settings
+            prop_owner = ups if ups.use_unified_color else brush
+            layout.prop_with_popover(prop_owner, "color", text="", panel="TOPBAR_PT_grease_pencil_vertex_color")
 
         brush_basic_grease_pencil_vertex_settings(layout, context, brush, compact=True)
 
@@ -9197,6 +9197,41 @@ class TOPBAR_PT_gpencil_vertexcolor(GreasePencilVertexcolorPanel, Panel):
         return ob and ob.type == 'GPENCIL'
 
 
+class TOPBAR_PT_grease_pencil_vertex_color(Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'HEADER'
+    bl_label = "Color Attribute"
+    bl_ui_units_x = 10
+
+    @classmethod
+    def poll(cls, context):
+        ob = context.object
+        return ob and ob.type == 'GREASEPENCIL' and context.mode == 'VERTEX_GREASE_PENCIL'
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        gpencil_paint = context.scene.tool_settings.gpencil_vertex_paint
+        brush = gpencil_paint.brush
+
+        col = layout.column()
+        col.template_color_picker(brush, "color", value_slider=True)
+
+        sub_row = layout.row(align=True)
+        UnifiedPaintPanel.prop_unified_color(sub_row, context, brush, "color", text="")
+        UnifiedPaintPanel.prop_unified_color(sub_row, context, brush, "secondary_color", text="")
+
+        # TODO
+        # sub_row.operator("gpencil.tint_flip", icon='FILE_REFRESH', text="")
+
+        row = layout.row(align=True)
+        row.template_ID(gpencil_paint, "palette", new="palette.new")
+        if gpencil_paint.palette:
+            layout.template_palette(gpencil_paint, "palette", color=True)
+
+
 class VIEW3D_PT_curves_sculpt_add_shape(Panel):
     # Only for popover, these are dummy values.
     bl_space_type = 'VIEW_3D'
@@ -9612,6 +9647,7 @@ classes = (
     VIEW3D_PT_sculpt_context_menu,
     TOPBAR_PT_gpencil_materials,
     TOPBAR_PT_gpencil_vertexcolor,
+    TOPBAR_PT_grease_pencil_vertex_color,
     TOPBAR_PT_annotation_layers,
     VIEW3D_PT_curves_sculpt_add_shape,
     VIEW3D_PT_curves_sculpt_parameter_falloff,
