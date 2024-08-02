@@ -3031,6 +3031,7 @@ class _defs_grease_pencil_vertex:
             )
         ]
 
+
 class _defs_curves_sculpt:
 
     @staticmethod

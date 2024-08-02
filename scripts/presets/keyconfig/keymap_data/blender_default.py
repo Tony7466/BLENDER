@@ -4821,6 +4821,7 @@ def km_grease_pencil_weight_paint(params):
 
     return keymap
 
+
 def km_grease_pencil_vertex_paint(params):
     items = []
     keymap = (
@@ -4846,6 +4847,8 @@ def km_grease_pencil_vertex_paint(params):
     return keymap
 
 # Grease Pencil v3 Fill Tool.
+
+
 def km_grease_pencil_fill_tool(_params):
     items = []
     keymap = (

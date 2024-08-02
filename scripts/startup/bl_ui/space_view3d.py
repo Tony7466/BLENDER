@@ -566,7 +566,7 @@ class _draw_tool_settings_context_mode:
         brush_basic_gpencil_vertex_settings(layout, context, brush, compact=True)
 
         return True
-    
+
     @staticmethod
     def VERTEX_GREASE_PENCIL(context, layout, tool):
         if (tool is None) or (not tool.has_datablock):
@@ -587,7 +587,6 @@ class _draw_tool_settings_context_mode:
         brush_basic_grease_pencil_vertex_settings(layout, context, brush, compact=True)
 
         return True
-    
 
     @staticmethod
     def PARTICLE(context, layout, tool):

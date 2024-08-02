@@ -1785,6 +1785,7 @@ def brush_basic_grease_pencil_vertex_settings(layout, context, brush, *, compact
         row = layout.row(align=True)
         row.prop(gp_settings, "vertex_mode", text="Mode")
 
+
 classes = (
     VIEW3D_MT_tools_projectpaint_clone,
 )
