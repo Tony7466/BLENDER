@@ -45,7 +45,7 @@ void GeometryComponentEditData::clear()
   gizmo_edit_hints_.reset();
 }
 
-int64_t GeometryComponentEditData::size_in_bytes_approximate() const
+size_t GeometryComponentEditData::size_in_bytes_approximate() const
 {
   return 0;
 }

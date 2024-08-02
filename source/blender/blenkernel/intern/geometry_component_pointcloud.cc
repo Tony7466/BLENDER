@@ -90,7 +90,7 @@ bool PointCloudComponent::is_empty() const
   return pointcloud_ == nullptr;
 }
 
-int64_t PointCloudComponent::size_in_bytes_approximate() const
+size_t PointCloudComponent::size_in_bytes_approximate() const
 {
   return 0;
 }

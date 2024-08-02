@@ -76,7 +76,7 @@ Volume *VolumeComponent::get_for_write()
   return volume_;
 }
 
-int64_t VolumeComponent::size_in_bytes_approximate() const
+size_t VolumeComponent::size_in_bytes_approximate() const
 {
   return 0;
 }

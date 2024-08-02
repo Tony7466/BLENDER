@@ -105,7 +105,7 @@ bool CurveComponent::is_empty() const
   return curves_ == nullptr;
 }
 
-int64_t CurveComponent::size_in_bytes_approximate() const
+size_t CurveComponent::size_in_bytes_approximate() const
 {
   return 0;
 }

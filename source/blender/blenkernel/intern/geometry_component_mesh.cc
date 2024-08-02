@@ -9,6 +9,7 @@
 #include "DNA_object_types.h"
 
 #include "BKE_attribute_math.hh"
+#include "BKE_customdata.hh"
 #include "BKE_deform.hh"
 #include "BKE_geometry_fields.hh"
 #include "BKE_geometry_set.hh"
@@ -100,9 +101,35 @@ bool MeshComponent::is_empty() const
   return mesh_ == nullptr;
 }
 
-int64_t MeshComponent::size_in_bytes_approximate() const
+size_t MeshComponent::size_in_bytes_approximate() const
 {
-  return mesh_->verts_num;  // * <stride of each vertex>
+  size_t point_size = 0, edge_size = 0, face_size = 0, corner_size = 0;
+
+  mesh_->attributes().for_all(
+      [&](const blender::bke::AttributeIDRef, const blender::bke::AttributeMetaData meta_data) {
+        switch (meta_data.domain) {
+          case blender::bke::AttrDomain::Point:
+            point_size += CustomDataType_get_elem_size(meta_data.data_type);
+            break;
+          case blender::bke::AttrDomain::Edge:
+            edge_size += CustomDataType_get_elem_size(meta_data.data_type);
+            break;
+          case blender::bke::AttrDomain::Face:
+            face_size += CustomDataType_get_elem_size(meta_data.data_type);
+            break;
+          case blender::bke::AttrDomain::Corner:
+            corner_size += CustomDataType_get_elem_size(meta_data.data_type);
+            break;
+          default:
+            break;
+        }
+        return true;
+      });
+
+  size_t mesh_size = (mesh_->verts_num * point_size) + (mesh_->edges_num * edge_size) +
+                     (mesh_->faces_num * face_size) + (mesh_->corners_num * corner_size);
+
+  return mesh_size;
 }
 
 bool MeshComponent::owns_direct_data() const

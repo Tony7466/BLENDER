@@ -802,6 +802,7 @@ void CustomData_blend_write(BlendWriter *writer,
 void CustomData_blend_read(BlendDataReader *reader, CustomData *data, int count);
 
 size_t CustomData_get_elem_size(const CustomDataLayer *layer);
+size_t CustomDataType_get_elem_size(const eCustomDataType type);
 
 #ifndef NDEBUG
 struct DynStr;

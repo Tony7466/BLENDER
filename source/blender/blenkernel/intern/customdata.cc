@@ -5637,3 +5637,8 @@ size_t CustomData_get_elem_size(const CustomDataLayer *layer)
 {
   return LAYERTYPEINFO[layer->type].size;
 }
+
+size_t CustomDataType_get_elem_size(const eCustomDataType type)
+{
+  return LAYERTYPEINFO[type].size;
+}

@@ -85,7 +85,7 @@ bool GreasePencilComponent::is_empty() const
   return grease_pencil_ == nullptr;
 }
 
-int64_t GreasePencilComponent::size_in_bytes_approximate() const
+size_t GreasePencilComponent::size_in_bytes_approximate() const
 {
   return 0;
 }
