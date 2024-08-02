@@ -4834,6 +4834,13 @@ def km_grease_pencil_vertex_paint(params):
         ("grease_pencil.vertex_brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
         ("grease_pencil.vertex_brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
          {"properties": [("mode", 'INVERT')]}),
+        # Increase/Decrease brush size
+        ("brush.scale_size", {"type": 'LEFT_BRACKET', "value": 'PRESS', "repeat": True},
+         {"properties": [("scalar", 0.9)]}),
+        ("brush.scale_size", {"type": 'RIGHT_BRACKET', "value": 'PRESS', "repeat": True},
+         {"properties": [("scalar", 1.0 / 0.9)]}),
+        # Radial controls
+        *_template_paint_radial_control("gpencil_vertex_paint"),
     ])
 
     return keymap
