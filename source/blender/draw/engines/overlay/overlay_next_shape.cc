@@ -16,6 +16,12 @@ struct Vertex {
   int vclass;
 };
 
+struct VertShaded {
+  float3 pos;
+  int v_class;
+  float3 nor;
+};
+
 /* Caller gets ownership of the #gpu::VertBuf. */
 static gpu::VertBuf *vbo_from_vector(const Vector<Vertex> &vector)
 {
@@ -28,6 +34,21 @@ static gpu::VertBuf *vbo_from_vector(const Vector<Vertex> &vector)
   gpu::VertBuf *vbo = GPU_vertbuf_create_with_format(format);
   GPU_vertbuf_data_alloc(*vbo, vector.size());
   vbo->data<Vertex>().copy_from(vector);
+  return vbo;
+}
+
+static gpu::VertBuf *vbo_from_vector(Vector<VertShaded> &vector)
+{
+  static GPUVertFormat format = {0};
+  if (format.attr_len == 0) {
+    GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+    GPU_vertformat_attr_add(&format, "vclass", GPU_COMP_I32, 1, GPU_FETCH_INT);
+    GPU_vertformat_attr_add(&format, "nor", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+  }
+
+  gpu::VertBuf *vbo = GPU_vertbuf_create_with_format(format);
+  GPU_vertbuf_data_alloc(*vbo, vector.size());
+  vbo->data<VertShaded>().copy_from(vector);
   return vbo;
 }
 
@@ -74,6 +95,26 @@ static constexpr std::array<uint, 24> bone_box_wire = {
     0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 5, 6, 6, 7, 7, 4, 0, 4, 1, 5, 2, 6, 3, 7,
 };
 
+static const std::array<uint3, 12> bone_box_solid_tris{
+    uint3{0, 2, 1}, /* bottom */
+    {0, 3, 2},
+
+    {0, 1, 5}, /* sides */
+    {0, 5, 4},
+
+    {1, 2, 6},
+    {1, 6, 5},
+
+    {2, 3, 7},
+    {2, 7, 6},
+
+    {3, 0, 4},
+    {3, 4, 7},
+
+    {4, 5, 6}, /* top */
+    {4, 6, 7},
+};
+
 static void append_line_loop(
     Vector<Vertex> &dest, Span<float2> verts, float z, int flag, bool dashed = false)
 {
@@ -106,11 +147,14 @@ static float light_distance_z_get(char axis, const bool start)
 }
 
 /* A single ring of vertices. */
-static Vector<float2> ring_vertices(const float radius, const int segments)
+static Vector<float2> ring_vertices(const float radius,
+                                    const int segments,
+                                    const bool half = false)
 {
   Vector<float2> verts;
-  for (int i : IndexRange(segments)) {
-    float angle = (2 * math::numbers::pi * i) / segments;
+  const float full = (half ? 1.0f : 2.0f) * math::numbers::pi;
+  for (const int angle_i : IndexRange(segments + (half ? 1 : 0))) {
+    const float angle = (full * angle_i) / segments;
     verts.append(radius * float2(math::cos(angle), math::sin(angle)));
   }
   return verts;
@@ -152,6 +196,60 @@ static void light_append_direction_line(Vector<Vertex> &verts)
   verts.append({{0.0, 0.0, zend}, VCLASS_LIGHT_DIST});
   append_line_loop(verts, diamond, zsta, VCLASS_LIGHT_DIST | VCLASS_SCREENSPACE);
   append_line_loop(verts, diamond, zend, VCLASS_LIGHT_DIST | VCLASS_SCREENSPACE);
+}
+
+static VertShaded sphere_lat_lon_vert(const float2 &lat_pt, const float2 &lon_pt)
+{
+  const float x = lon_pt.y * lat_pt.x;
+  const float y = lon_pt.x;
+  const float z = lon_pt.y * lat_pt.y;
+  return VertShaded{{x, y, z}, VCLASS_EMPTY_SCALED, {x, y, z}};
+}
+
+static void append_sphere(Vector<VertShaded> &dest, const eDRWLevelOfDetail level_of_detail)
+{
+  /* Sphere shape resolution */
+  /* Low */
+  constexpr int drw_sphere_shape_latitude_low = 32;
+  constexpr int drw_sphere_shape_longitude_low = 24;
+  /* Medium */
+  constexpr int drw_sphere_shape_latitude_medium = 64;
+  constexpr int drw_sphere_shape_longitude_medium = 48;
+  /* High */
+  constexpr int drw_sphere_shape_latitude_high = 80;
+  constexpr int drw_sphere_shape_longitude_high = 60;
+
+  BLI_assert(level_of_detail >= DRW_LOD_LOW && level_of_detail < DRW_LOD_MAX);
+  const std::array<Vector<float2>, DRW_LOD_MAX> latitude_rings = {
+      ring_vertices(1.0f, drw_sphere_shape_latitude_low),
+      ring_vertices(1.0f, drw_sphere_shape_latitude_medium),
+      ring_vertices(1.0f, drw_sphere_shape_latitude_high)};
+  const std::array<Vector<float2>, DRW_LOD_MAX> longitude_half_rings = {
+      ring_vertices(1.0f, drw_sphere_shape_longitude_low, true),
+      ring_vertices(1.0f, drw_sphere_shape_longitude_medium, true),
+      ring_vertices(1.0f, drw_sphere_shape_longitude_high, true)};
+
+  const Vector<float2> &latitude_ring = latitude_rings[level_of_detail];
+  const Vector<float2> &longitude_half_ring = longitude_half_rings[level_of_detail];
+
+  for (const int i : latitude_ring.index_range()) {
+    const float2 lat_pt = latitude_ring[i];
+    const float2 next_lat_pt = latitude_ring[(i + 1) % latitude_ring.size()];
+    for (const int j : IndexRange(longitude_half_ring.size() - 1)) {
+      const float2 lon_pt = longitude_half_ring[j];
+      const float2 next_lon_pt = longitude_half_ring[j + 1];
+      if (j != 0) { /* Pole */
+        dest.append(sphere_lat_lon_vert(next_lat_pt, next_lon_pt));
+        dest.append(sphere_lat_lon_vert(next_lat_pt, lon_pt));
+        dest.append(sphere_lat_lon_vert(lat_pt, lon_pt));
+      }
+      if (j != longitude_half_ring.index_range().last(1)) { /* Pole */
+        dest.append(sphere_lat_lon_vert(lat_pt, next_lon_pt));
+        dest.append(sphere_lat_lon_vert(next_lat_pt, next_lon_pt));
+        dest.append(sphere_lat_lon_vert(lat_pt, lon_pt));
+      }
+    }
+  }
 }
 
 ShapeCache::ShapeCache()
@@ -416,44 +514,117 @@ ShapeCache::ShapeCache()
   /* speaker */
   {
     constexpr int segments = 16;
+    constexpr float bottom_r = 0.5f;
+    constexpr float bottom_z = -0.125f;
+    constexpr float step_z = 0.25f;
+    const Vector<float2> diamond = ring_vertices(bottom_r, 4);
+    Vector<float2> ring = ring_vertices(bottom_r, segments);
     Vector<Vertex> verts;
 
-    for (int j = 0; j < 3; j++) {
-      float z = 0.25f * j - 0.125f;
-      float r = (j == 0 ? 0.5f : 0.25f);
-
-      verts.append({{r, 0.0f, z}});
-
-      for (int i = 1; i < segments; i++) {
-        float x = cosf(2.0f * math::numbers::pi * i / segments) * r;
-        float y = sinf(2.0f * math::numbers::pi * i / segments) * r;
-        Vertex v{{x, y, z}};
-        verts.append(v);
-        verts.append(v);
-      }
-      Vertex v{{r, 0.0f, z}};
-      verts.append(v);
+    append_line_loop(verts, ring, bottom_z, VCLASS_NONE);
+    for (float2 &point : ring) {
+      point *= 0.5f;
+    }
+    for (const int j : IndexRange(1, 2)) {
+      const float z = step_z * j + bottom_z;
+      append_line_loop(verts, ring, z, VCLASS_NONE);
     }
 
-    for (int j = 0; j < 4; j++) {
-      float x = (((j + 1) % 2) * (j - 1)) * 0.5f;
-      float y = ((j % 2) * (j - 2)) * 0.5f;
-      for (int i = 0; i < 3; i++) {
-        if (i == 1) {
-          x *= 0.5f;
-          y *= 0.5f;
-        }
-
-        float z = 0.25f * i - 0.125f;
-        Vertex v{{x, y, z}};
-        verts.append(v);
-        if (i == 1) {
-          verts.append(v);
-        }
-      }
+    for (const float2 &point : diamond) {
+      Vertex vertex{float3{point, bottom_z}};
+      verts.append(vertex);
+      vertex.pos = float3{point * 0.5f, bottom_z + step_z};
+      verts.append(vertex);
+      verts.append(vertex);
+      vertex.pos.z += step_z;
+      verts.append(vertex);
     }
     speaker = BatchPtr(
         GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* camera distances */
+  {
+    const Vector<float2> diamond = ring_vertices(1.5f, 5);
+    const Vector<float2> cross = {{1.0f, 0.0f}, {-1.0f, 0.0f}, {0.0f, 1.0f}, {0.0f, -1.0f}};
+
+    Vector<Vertex> verts;
+    verts.append({{0.0f, 0.0f, 0.0f}, VCLASS_CAMERA_DIST});
+    verts.append({{0.0f, 0.0f, 1.0f}, VCLASS_CAMERA_DIST});
+
+    append_line_loop(verts, diamond, 0.0f, VCLASS_CAMERA_DIST | VCLASS_SCREENSPACE);
+    append_line_loop(verts, diamond, 1.0f, VCLASS_CAMERA_DIST | VCLASS_SCREENSPACE);
+
+    /* Focus cross */
+    for (const float2 &point : cross) {
+      verts.append({{point.x, point.y, 2.0f}, VCLASS_CAMERA_DIST});
+    }
+    camera_distances = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* camera frame */
+  {
+    const Vector<float2> rect{{-1.0f, -1.0f}, {-1.0f, 1.0f}, {1.0f, 1.0f}, {1.0f, -1.0f}};
+    Vector<Vertex> verts;
+    /* Frame */
+    append_line_loop(verts, rect, 1.0f, VCLASS_CAMERA_FRAME);
+    /* Wires to origin. */
+    for (const float2 &point : rect) {
+      verts.append({{point.x, point.y, 1.0f}, VCLASS_CAMERA_FRAME});
+      verts.append({{point.x, point.y, 0.0f}, VCLASS_CAMERA_FRAME});
+    }
+    camera_frame = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* camera tria */
+  {
+    const Vector<float2> triangle = {{-1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 0.0f}};
+    Vector<Vertex> verts(2 * 3);
+    /* Wire */
+    append_line_loop(verts, triangle, 1.0f, VCLASS_CAMERA_FRAME);
+    camera_tria_wire = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+
+    verts.clear();
+    /* Triangle */
+    for (const float2 &point : triangle) {
+      verts.append({{point.x, point.y, 1.0f}, VCLASS_CAMERA_FRAME});
+    }
+    camera_tria = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_TRIS, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* camera volume */
+  {
+    Vector<Vertex> verts;
+    for (const uint3 &tri : bone_box_solid_tris) {
+      for (const int i : IndexRange(tri.type_length)) {
+        const int v = tri[i];
+        const float x = bone_box_verts[v][2];
+        const float y = bone_box_verts[v][0];
+        const float z = bone_box_verts[v][1];
+        verts.append({{x, y, z}, VCLASS_CAMERA_FRAME | VCLASS_CAMERA_VOLUME});
+      }
+    }
+    camera_volume = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_TRIS, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* camera volume wire */
+  {
+    Vector<Vertex> verts(bone_box_wire.size());
+    for (int i : bone_box_wire) {
+      const float x = bone_box_verts[i][2];
+      const float y = bone_box_verts[i][0];
+      const float z = bone_box_verts[i][1];
+      verts.append({{x, y, z}, VCLASS_CAMERA_FRAME | VCLASS_CAMERA_VOLUME});
+    }
+    camera_volume_wire = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* spheres */
+  {
+    Vector<VertShaded> verts;
+    append_sphere(verts, DRW_LOD_LOW);
+    sphere_low_detail = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_TRIS, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
   }
   /* ground line */
   {
