@@ -207,15 +207,6 @@ const blender::float3 SCULPT_vertex_normal_get(const SculptSession &ss, PBVHVert
   return {};
 }
 
-const float *SCULPT_vertex_persistent_co_get(const SculptSession &ss, PBVHVertRef vertex)
-{
-  if (ss.attrs.persistent_co) {
-    return (const float *)SCULPT_vertex_attr_get(vertex, ss.attrs.persistent_co);
-  }
-
-  return SCULPT_vertex_co_get(ss, vertex);
-}
-
 const float *SCULPT_vertex_co_for_grab_active_get(const SculptSession &ss, PBVHVertRef vertex)
 {
   if (ss.pbvh->type() == blender::bke::pbvh::Type::Mesh) {
@@ -513,6 +504,46 @@ int vert_face_set_get(const SculptSession &ss, PBVHVertRef vertex)
     }
   }
   return 0;
+}
+
+bool vert_has_face_set(const GroupedSpan<int> vert_to_face_map,
+                       const int *face_sets,
+                       const int vert,
+                       const int face_set)
+{
+  if (!face_sets) {
+    return face_set == SCULPT_FACE_SET_NONE;
+  }
+  const Span<int> faces = vert_to_face_map[vert];
+  return std::any_of(
+      faces.begin(), faces.end(), [&](const int face) { return face_sets[face] == face_set; });
+}
+
+bool vert_has_face_set(const SubdivCCG &subdiv_ccg,
+                       const int *face_sets,
+                       const int grid,
+                       const int face_set)
+{
+  if (!face_sets) {
+    return face_set == SCULPT_FACE_SET_NONE;
+  }
+  const int face = BKE_subdiv_ccg_grid_to_face_index(subdiv_ccg, grid);
+  return face_sets[face] == face_set;
+}
+
+bool vert_has_face_set(const int face_set_offset, const BMVert &vert, const int face_set)
+{
+  if (face_set_offset == -1) {
+    return false;
+  }
+  BMIter iter;
+  BMFace *face;
+  BM_ITER_ELEM (face, &iter, &const_cast<BMVert &>(vert), BM_FACES_OF_VERT) {
+    if (BM_ELEM_CD_GET_INT(face, face_set_offset) == face_set) {
+      return true;
+    }
+  }
+  return false;
 }
 
 bool vert_has_face_set(const SculptSession &ss, PBVHVertRef vertex, int face_set)
@@ -1670,8 +1701,6 @@ static void restore_from_undo_step(const Sculpt &sd, Object &object)
   /* Disable multi-threading when dynamic-topology is enabled. Otherwise,
    * new entries might be inserted by #undo::push_node() into the #GHash
    * used internally by #BM_log_original_vert_co() by a different thread. See #33787. */
-
-  BKE_pbvh_node_color_buffer_free(*ss.pbvh);
 }
 
 }  // namespace undo
@@ -6004,7 +6033,6 @@ static void sculpt_stroke_done(const bContext *C, PaintStroke * /*stroke*/)
     brush = BKE_paint_brush(&sd.paint);
   }
 
-  BKE_pbvh_node_color_buffer_free(*ss.pbvh);
   MEM_delete(ss.cache);
   ss.cache = nullptr;
 
@@ -6710,6 +6738,7 @@ void scatter_data_vert_bmesh(const Span<T> node_data,
 
 template void gather_data_mesh<float>(Span<float>, Span<int>, MutableSpan<float>);
 template void gather_data_mesh<float3>(Span<float3>, Span<int>, MutableSpan<float3>);
+template void gather_data_mesh<float4>(Span<float4>, Span<int>, MutableSpan<float4>);
 template void gather_data_grids<float>(const SubdivCCG &,
                                        Span<float>,
                                        Span<int>,
@@ -6727,6 +6756,7 @@ template void gather_data_vert_bmesh<float3>(Span<float3>,
 
 template void scatter_data_mesh<float>(Span<float>, Span<int>, MutableSpan<float>);
 template void scatter_data_mesh<float3>(Span<float3>, Span<int>, MutableSpan<float3>);
+template void scatter_data_mesh<float4>(Span<float4>, Span<int>, MutableSpan<float4>);
 template void scatter_data_grids<float>(const SubdivCCG &,
                                         Span<float>,
                                         Span<int>,
