@@ -845,13 +845,20 @@ if(WITH_CYCLES_DEVICE_HIPRT AND WITH_CYCLES_HIP_BINARIES)
     ${cycles_bitcode_file}
     ${sdk_bitcode_file}
     -o ${hiprt_file})
+
   add_custom_command(
     OUTPUT  ${hiprt_file}
     COMMAND ${hiprt_link_command} ${hiprt_link_flags}
     DEPENDS ${cycles_bitcode_file} ${sdk_bitcode_file})
 
   if(WIN32)
-    set(BVH_INSTALL_PATH ${CMAKE_INSTALL_PREFIX}/blender.shared)
+    if(NOT WITH_BLENDER)
+      set(BVH_INSTALL_PATH ${CYCLES_INSTALL_PATH})
+      set(HIPRT_LIB_PATH ${LIBDIR}/hiprt/bin)
+      delayed_install("${HIPRT_LIB_PATH}" "hiprt64.dll" ${CYCLES_INSTALL_PATH})
+    else()
+      set(BVH_INSTALL_PATH ${CMAKE_INSTALL_PREFIX}/blender.shared)
+    endif()
   else()
     set(BVH_INSTALL_PATH ${CMAKE_INSTALL_PREFIX}/lib)
   endif()
@@ -859,10 +866,7 @@ if(WITH_CYCLES_DEVICE_HIPRT AND WITH_CYCLES_HIP_BINARIES)
  delayed_install("${CMAKE_CURRENT_BINARY_DIR}" "${bvh_file}"     ${BVH_INSTALL_PATH})
  delayed_install("${CMAKE_CURRENT_BINARY_DIR}" "${bvh_file_oro}" ${BVH_INSTALL_PATH})
 
-  add_custom_command(
-    OUTPUT  ${hiprt_file}
-    COMMAND ${hiprt_link_command} ${hiprt_link_flags}
-    DEPENDS ${bitcode_file})
+
   add_custom_command(
     OUTPUT ${hiprt_file_compressed}
     COMMAND "$<TARGET_FILE:zstd_compress>" ${hiprt_file} ${hiprt_file_compressed}
