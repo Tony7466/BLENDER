@@ -150,6 +150,11 @@ std::unique_ptr<GreasePencilStrokeOperation> new_push_operation(BrushStrokeMode 
 std::unique_ptr<GreasePencilStrokeOperation> new_pinch_operation(BrushStrokeMode stroke_mode);
 std::unique_ptr<GreasePencilStrokeOperation> new_twist_operation(BrushStrokeMode stroke_mode);
 std::unique_ptr<GreasePencilStrokeOperation> new_clone_operation(BrushStrokeMode stroke_mode);
+std::unique_ptr<GreasePencilStrokeOperation> new_vertex_average_operation();
+std::unique_ptr<GreasePencilStrokeOperation> new_vertex_blur_operation();
+std::unique_ptr<GreasePencilStrokeOperation> new_vertex_paint_operation();
+std::unique_ptr<GreasePencilStrokeOperation> new_vertex_replace_operation();
+std::unique_ptr<GreasePencilStrokeOperation> new_vertex_smear_operation();
 
 }  // namespace greasepencil
 
