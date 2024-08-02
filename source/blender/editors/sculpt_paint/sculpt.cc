@@ -207,15 +207,6 @@ const blender::float3 SCULPT_vertex_normal_get(const SculptSession &ss, PBVHVert
   return {};
 }
 
-const float *SCULPT_vertex_persistent_co_get(const SculptSession &ss, PBVHVertRef vertex)
-{
-  if (ss.attrs.persistent_co) {
-    return (const float *)SCULPT_vertex_attr_get(vertex, ss.attrs.persistent_co);
-  }
-
-  return SCULPT_vertex_co_get(ss, vertex);
-}
-
 const float *SCULPT_vertex_co_for_grab_active_get(const SculptSession &ss, PBVHVertRef vertex)
 {
   if (ss.pbvh->type() == blender::bke::pbvh::Type::Mesh) {
@@ -1710,8 +1701,6 @@ static void restore_from_undo_step(const Sculpt &sd, Object &object)
   /* Disable multi-threading when dynamic-topology is enabled. Otherwise,
    * new entries might be inserted by #undo::push_node() into the #GHash
    * used internally by #BM_log_original_vert_co() by a different thread. See #33787. */
-
-  BKE_pbvh_node_color_buffer_free(*ss.pbvh);
 }
 
 }  // namespace undo
@@ -6044,7 +6033,6 @@ static void sculpt_stroke_done(const bContext *C, PaintStroke * /*stroke*/)
     brush = BKE_paint_brush(&sd.paint);
   }
 
-  BKE_pbvh_node_color_buffer_free(*ss.pbvh);
   MEM_delete(ss.cache);
   ss.cache = nullptr;
 
@@ -6750,6 +6738,7 @@ void scatter_data_vert_bmesh(const Span<T> node_data,
 
 template void gather_data_mesh<float>(Span<float>, Span<int>, MutableSpan<float>);
 template void gather_data_mesh<float3>(Span<float3>, Span<int>, MutableSpan<float3>);
+template void gather_data_mesh<float4>(Span<float4>, Span<int>, MutableSpan<float4>);
 template void gather_data_grids<float>(const SubdivCCG &,
                                        Span<float>,
                                        Span<int>,
@@ -6767,6 +6756,7 @@ template void gather_data_vert_bmesh<float3>(Span<float3>,
 
 template void scatter_data_mesh<float>(Span<float>, Span<int>, MutableSpan<float>);
 template void scatter_data_mesh<float3>(Span<float3>, Span<int>, MutableSpan<float3>);
+template void scatter_data_mesh<float4>(Span<float4>, Span<int>, MutableSpan<float4>);
 template void scatter_data_grids<float>(const SubdivCCG &,
                                         Span<float>,
                                         Span<int>,
