@@ -1444,7 +1444,7 @@ void BKE_blendfile_append(BlendfileLinkAppendContext *lapp_context, ReportList *
   /* Remove linked IDs when a local existing data has been reused instead. */
   BKE_main_id_tag_all(bmain, LIB_TAG_DOIT, false);
   for (BlendfileLinkAppendContextItem *item : lapp_context->items) {
-    if (!ELEM(item->action, LINK_APPEND_ACT_COPY_LOCAL)) {
+    if (!ELEM(item->action, LINK_APPEND_ACT_COPY_LOCAL, LINK_APPEND_ACT_REUSE_LOCAL)) {
       continue;
     }
 
