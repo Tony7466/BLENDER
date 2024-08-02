@@ -1339,13 +1339,13 @@ int ui_id_icon_get(const bContext *C, ID *id, bool big);
 
 /* interface_icons_event.cc */
 
-enum eIconWidth {
-  ICON_WIDTH_NORMAL,
-  ICON_WIDTH_WIDE,
-  ICON_WIDTH_WIDEST,
+enum class EventIconWidth {
+  Normal,
+  Wide,
+  Widest,
 };
 
-eIconWidth ui_event_icon_width(const int icon_id);
+EventIconWidth ui_event_icon_width(const int icon_id);
 
 void icon_draw_rect_input(float x, float y, int w, int h, int icon_id, float alpha, bool inverted);
 

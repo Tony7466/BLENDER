@@ -6353,11 +6353,11 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
         if (item.inverted) {
           but->drawflag |= UI_BUT_ICON_INVERT;
         }
-        eIconWidth icon_width = ui_event_icon_width(item.icon);
-        if (icon_width == ICON_WIDTH_WIDE) {
+        EventIconWidth icon_width = ui_event_icon_width(item.icon);
+        if (icon_width == EventIconWidth::Wide) {
           uiItemS_ex(row, 1.5f);
         }
-        else if (icon_width == ICON_WIDTH_WIDEST) {
+        else if (icon_width == EventIconWidth::Widest) {
           uiItemS_ex(row, 3.0f);
         }
       }
@@ -6873,11 +6873,11 @@ bool uiTemplateEventFromKeymapItem(uiLayout *layout,
       uiItemS_ex(layout, -0.9f);
     }
 
-    eIconWidth icon_width = ui_event_icon_width(icon);
-    if (icon_width == ICON_WIDTH_WIDE) {
+    EventIconWidth icon_width = ui_event_icon_width(icon);
+    if (icon_width == EventIconWidth::Wide) {
       uiItemS_ex(layout, 1.5f);
     }
-    else if (icon_width == ICON_WIDTH_WIDEST) {
+    else if (icon_width == EventIconWidth::Widest) {
       uiItemS_ex(layout, 3.0f);
     }
 

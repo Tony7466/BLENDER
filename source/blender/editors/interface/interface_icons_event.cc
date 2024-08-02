@@ -36,7 +36,7 @@ static void icon_draw_icon(float x, float y, int icon_id, bool inverted, float a
 }
 
 static void icon_draw_rect_input_text(
-    rctf *rect, const char *str, bool inverted, float alpha, eIconWidth icon_width)
+    rctf *rect, const char *str, bool inverted, float alpha, EventIconWidth icon_width)
 {
   float color[4];
   UI_GetThemeColor4fv(inverted ? TH_BACK : TH_TEXT, color);
@@ -44,12 +44,12 @@ static void icon_draw_rect_input_text(
     color[3] *= alpha;
   }
 
-  if (icon_width == ICON_WIDTH_WIDE) {
+  if (icon_width == EventIconWidth::Wide) {
     rect->xmax = rect->xmin + (rect->xmax - rect->xmin) * 1.5f;
     float offset = 4.0f * UI_SCALE_FAC;
     icon_draw_icon(rect->xmin + offset, rect->ymin, ICON_KEY_EMPTY2, inverted, alpha);
   }
-  else if (icon_width == ICON_WIDTH_WIDEST) {
+  else if (icon_width == EventIconWidth::Widest) {
     rect->xmax = rect->xmin + (rect->xmax - rect->xmin) * 2.0f;
     float offset = 8.0f * UI_SCALE_FAC;
     icon_draw_icon(rect->xmin + offset, rect->ymin, ICON_KEY_EMPTY3, inverted, alpha);
@@ -83,7 +83,7 @@ static void icon_draw_rect_input_text(
   BLF_draw(font_id, str, BLF_DRAW_STR_DUMMY_MAX);
 }
 
-eIconWidth ui_event_icon_width(const int icon)
+EventIconWidth ui_event_icon_width(const int icon)
 {
   const enum {
     UNIX,
@@ -109,22 +109,22 @@ eIconWidth ui_event_icon_width(const int icon)
            ICON_EVENT_INSERT,
            ICON_EVENT_APP))
   {
-    return ICON_WIDTH_WIDE;
+    return EventIconWidth::Wide;
   }
 
   if (platform != MACOS && ELEM(icon, ICON_EVENT_CTRL, ICON_EVENT_ALT, ICON_EVENT_OS)) {
-    return ICON_WIDTH_WIDE;
+    return EventIconWidth::Wide;
   }
 
   if (icon == ICON_EVENT_OS && !MACOS && !MSWIN) {
-    return ICON_WIDTH_WIDE;
+    return EventIconWidth::Wide;
   }
 
   if (icon == ICON_EVENT_SPACEKEY) {
-    return ICON_WIDTH_WIDEST;
+    return EventIconWidth::Widest;
   }
 
-  return ICON_WIDTH_NORMAL;
+  return EventIconWidth::Normal;
 }
 
 void icon_draw_rect_input(float x, float y, int w, int h, int icon, float alpha, bool inverted)
@@ -150,7 +150,7 @@ void icon_draw_rect_input(float x, float y, int w, int h, int icon, float alpha,
 #endif
       ;
 
-  eIconWidth icon_width = ui_event_icon_width(icon);
+  EventIconWidth icon_width = ui_event_icon_width(icon);
 
   if ((icon >= ICON_EVENT_A) && (icon <= ICON_EVENT_Z)) {
     const char str[2] = {char('A' + (icon - ICON_EVENT_A)), '\0'};
