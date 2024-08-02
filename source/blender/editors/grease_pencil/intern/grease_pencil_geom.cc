@@ -1570,14 +1570,24 @@ void find_curve_segments(const bke::CurvesGeometry &curves,
     if (curve_hit_mask.is_empty()) {
       return;
     }
+    // if (is_cyclic && curve_hit_mask.size() == 1) {
+    //   /* Single segment cyclic curve simply
+    //   const int i_segment = segments.first();
+    // }
 
-    int i_prev_point = (is_cyclic ? 0 : curve_hit_mask.last());
+    int i_prev_point = (is_cyclic ? curve_hit_mask.last() : 0);
     curve_hit_mask.foreach_index([&](const int i_point, const int i_hit) {
       const int i_segment = segments[i_hit];
+      if (i_prev_point == i_point) {
+        r_points_by_segment[i_segment] = (is_cyclic ? points.size() : 0);
+      }
       /* Account for negative range for the first segment. */
-      r_points_by_segment[i_segment] = (i_prev_point > i_point ?
-                                            points.size() + i_point - i_prev_point :
-                                            i_point - i_prev_point);
+      else if (i_point < i_prev_point) {
+        r_points_by_segment[i_segment] = points.size() + i_point - i_prev_point;
+      }
+      else {
+        r_points_by_segment[i_segment] = i_point - i_prev_point;
+      }
       if (r_segment_start_factors) {
         (*r_segment_start_factors)[i_segment] = last_hit_factors[i_prev_point];
       }
