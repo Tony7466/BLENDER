@@ -534,7 +534,13 @@ union Undetermined {
 };
 
 /** Try to keep the command size as low as possible for performance. */
+
+#ifdef WITH_METAL_BACKEND
+/* TODO(fclem): Remove. */
+BLI_STATIC_ASSERT(sizeof(Undetermined) <= 32, "One of the command type is too large.")
+#else
 BLI_STATIC_ASSERT(sizeof(Undetermined) <= 24, "One of the command type is too large.")
+#endif
 
 /** \} */
 
