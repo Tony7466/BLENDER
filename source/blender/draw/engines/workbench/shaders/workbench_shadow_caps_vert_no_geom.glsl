@@ -85,9 +85,9 @@ void main()
   uint v2 = gpu_index_load(input_base_index + 2);
 
   /* Read input position data. */
-  vData[0].lP = gpu_attr_load_float3(pos, v0);
-  vData[1].lP = gpu_attr_load_float3(pos, v1);
-  vData[2].lP = gpu_attr_load_float3(pos, v2);
+  vData[0].lP = gpu_attr_load_float3(pos, gpu_attr_3, v0);
+  vData[1].lP = gpu_attr_load_float3(pos, gpu_attr_3, v1);
+  vData[2].lP = gpu_attr_load_float3(pos, gpu_attr_3, v2);
 
   /* Calculate front/back Positions. */
   vData[0].frontPosition = point_object_to_ndc(vData[0].lP);

@@ -12,6 +12,8 @@
 
 GPU_SHADER_CREATE_INFO(workbench_shadow_common)
     .storage_buf(3, Qualifier::READ, "float", "pos[]", Frequency::GEOMETRY)
+    /* WORKAROUND: Needed to support OpenSubdiv vertex format. Should be removed. */
+    .push_constant(Type::IVEC2, "gpu_attr_3")
     .uniform_buf(1, "ShadowPassData", "pass_data")
     .typedef_source("workbench_shader_shared.h")
     .additional_info("gpu_index_load")

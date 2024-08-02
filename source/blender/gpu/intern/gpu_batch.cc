@@ -234,14 +234,23 @@ void GPU_batch_set_shader(Batch *batch, GPUShader *shader)
   GPU_shader_bind(batch->shader);
 }
 
-static uint16_t bind_attribute_as_ssbo(const ShaderInterface *interface, VertBuf *vbo)
+static uint16_t bind_attribute_as_ssbo(const ShaderInterface *interface,
+                                       GPUShader *shader,
+                                       VertBuf *vbo)
 {
   const GPUVertFormat *format = &vbo->format;
 
-  BLI_assert_msg(format->deinterleaved == false,
-                 "Deinterleaved attribute buffers are not supported for now");
-  BLI_assert_msg(format->attr_len == 1, "Multi attribute buffers are not supported for now");
+  if (format->deinterleaved == true) {
+    /* Deinterleaved attribute buffers are not supported for now. */
+    /* TODO(fclem): Detect this case and assert? */
+    return 0u;
+  }
+  /* We need to support GPU OpenSubdiv meshes. This assert can be enabled back after we refactor
+   * our opensubdiv implementation to output the same layout as the regular mesh extraction. */
+  // BLI_assert_msg(format->attr_len == 1, "Multi attribute buffers are not supported for now");
 
+  char uniform_name[] = "gpu_attr_0";
+  uint16_t bound_attr = 0u;
   const GPUVertAttr *a = &format->attrs[0];
   for (uint n_idx = 0; n_idx < a->name_len; n_idx++) {
     const char *name = GPU_vertformat_attr_name_get(format, a, n_idx);
@@ -250,9 +259,17 @@ static uint16_t bind_attribute_as_ssbo(const ShaderInterface *interface, VertBuf
       continue;
     }
     GPU_vertbuf_bind_as_ssbo(vbo, input->location);
-    return (1 << input->location);
+    bound_attr |= (1 << input->location);
+
+    /* WORKAROUND: This is to support complex format. But ideally this should not be supported. */
+    uniform_name[9] = '0' + input->location;
+    /* Only support 4byte aligned attributes. */
+    BLI_assert((format->stride % 4) == 0);
+    BLI_assert((a->offset % 4) == 0);
+    int descriptor[2] = {format->stride / 4, a->offset / 4};
+    GPU_shader_uniform_2iv(shader, uniform_name, descriptor);
   }
-  return 0;
+  return bound_attr;
 }
 
 void GPU_batch_bind_as_resources(Batch *batch, GPUShader *shader)
@@ -285,7 +302,7 @@ void GPU_batch_bind_as_resources(Batch *batch, GPUShader *shader)
   for (int v = GPU_BATCH_VBO_MAX_LEN - 1; v > -1; v--) {
     VertBuf *vbo = batch->verts_(v);
     if (vbo) {
-      ssbo_attributes &= ~bind_attribute_as_ssbo(interface, vbo);
+      ssbo_attributes &= ~bind_attribute_as_ssbo(interface, shader, vbo);
     }
   }
 
