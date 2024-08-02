@@ -92,5 +92,11 @@ TEST_F(ActionIteratorsTest, iterate_all_fcurves_of_slot)
 
   ASSERT_EQ(monkey_fcurves.size(), 1);
   ASSERT_STREQ(monkey_fcurves[0]->rna_path, "rotation");
+
+  /* Slots handles are just numbers. Passing in a slot handle that doesn't exist should return
+   * nothing. */
+  blender::Vector<FCurve *> invalid_slot_fcurves = action_foreach_fcurve(
+      *action, monkey_slot.handle + cube_slot.handle, [&](FCurve & /* fcurve */) { return true; });
+  ASSERT_TRUE(invalid_slot_fcurves.is_empty());
 }
 }  // namespace blender::animrig::tests
