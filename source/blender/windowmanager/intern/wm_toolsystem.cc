@@ -137,6 +137,31 @@ void WM_toolsystem_unlink(bContext *C, WorkSpace *workspace, const bToolKey *tke
   }
 }
 
+static AssetWeakReference *default_brush_asset_reference(blender::StringRef brush_type_name)
+{
+  AssetWeakReference *weak_ref = MEM_new<AssetWeakReference>(
+      "toolsystem_ref_link brush asset weak reference");
+  weak_ref->asset_library_type = eAssetLibraryType::ASSET_LIBRARY_ESSENTIALS;
+
+  const char *default_brush = [&brush_type_name]() -> const char * {
+    if (brush_type_name == "ERASE") {
+      return "Eraser Hard";
+    }
+    if (brush_type_name == "FILL") {
+      return "Fill Area";
+    }
+    if (brush_type_name == "DRAW") {
+      return "Draw";
+    }
+    BLI_assert_unreachable();
+    return nullptr;
+  }();
+
+  weak_ref->relative_asset_identifier = BLI_sprintfN("brushes/essentials_brushes.blend/Brush/%s",
+                                                     default_brush);
+  return weak_ref;
+}
+
 static void toolsystem_ref_link(bContext *C, WorkSpace *workspace, bToolRef *tref)
 {
   bToolRef_Runtime *tref_rt = tref->runtime;
@@ -178,6 +203,43 @@ static void toolsystem_ref_link(bContext *C, WorkSpace *workspace, bToolRef *tre
         }
       }
     }
+    else if (tref->space_type == SPACE_VIEW3D) {
+      const PaintMode paint_mode = BKE_paintmode_get_from_tool(tref);
+      BLI_assert(paint_mode != PaintMode::Invalid);
+      const EnumPropertyItem *items = BKE_paint_get_tool_enum_from_paintmode(paint_mode);
+      BLI_assert(items != nullptr);
+
+      const int i = items ? RNA_enum_from_identifier(items, tref_rt->data_block) : -1;
+      if (i != -1) {
+        const int slot_index = items[i].value;
+        wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first);
+        LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
+          if (workspace == WM_window_get_active_workspace(win)) {
+            Scene *scene = WM_window_get_active_scene(win);
+            BKE_paint_ensure_from_paintmode(bmain, scene, paint_mode);
+            Paint *paint = BKE_paint_get_active_from_paintmode(scene, paint_mode);
+
+            AssetWeakReference *brush_asset_reference = [&]() {
+              if (AssetWeakReference *ref_from_tool =
+                      BKE_paint_toolslots_brush_asset_reference_get(paint, slot_index))
+              {
+                return ref_from_tool;
+              }
+              return default_brush_asset_reference(tref->runtime->data_block);
+            }();
+
+            if (brush_asset_reference) {
+              Brush *brush = reinterpret_cast<Brush *>(
+                  blender::bke::asset_edit_id_from_weak_reference(
+                      *bmain, ID_BR, *brush_asset_reference));
+
+              BKE_paint_brush_set(paint, brush);
+            }
+          }
+        }
+      }
+    }
+#if 0
     else if ((tref->space_type == SPACE_VIEW3D) &&
              ELEM(tref->mode, CTX_MODE_PAINT_GPENCIL_LEGACY, CTX_MODE_PAINT_GREASE_PENCIL))
     {
@@ -252,7 +314,7 @@ static void toolsystem_ref_link(bContext *C, WorkSpace *workspace, bToolRef *tre
           ts->gp_paint->restore_brush_asset_reference = nullptr;
         }
       }
-    }
+#endif
   }
 }
 

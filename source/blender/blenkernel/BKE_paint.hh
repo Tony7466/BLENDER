@@ -289,6 +289,23 @@ void paint_update_brush_rake_rotation(UnifiedPaintSettings &ups,
 
 void BKE_paint_stroke_get_average(const Scene *scene, const Object *ob, float stroke[3]);
 
+/* Tool slot API. */
+
+// void BKE_paint_toolslots_init_from_main(Main *bmain);
+void BKE_paint_toolslots_len_ensure(Paint *paint, int len);
+// void BKE_paint_toolslots_brush_update_ex(Paint *paint,
+//                                          const Brush *brush,
+//                                          const struct AssetWeakReference
+//                                          *brush_asset_reference);
+void BKE_paint_toolslots_brush_update(Paint *paint);
+/**
+ * Run this to ensure brush types are set for each slot on entering modes
+ * (for new scenes for example).
+ */
+void BKE_paint_brush_validate(Main *bmain, Paint *paint);
+struct AssetWeakReference *BKE_paint_toolslots_brush_asset_reference_get(Paint *paint,
+                                                                         int slot_index);
+
 /* .blend I/O */
 
 void BKE_paint_blend_write(BlendWriter *writer, Paint *paint);

@@ -920,6 +920,11 @@ typedef struct Paint_Runtime {
   char _pad[2];
 } Paint_Runtime;
 
+typedef struct PaintToolSlot {
+  struct AssetWeakReference *brush_asset_reference;
+  // struct Brush *brush;
+} PaintToolSlot;
+
 /** Paint Tool Base. */
 typedef struct Paint {
   /**
@@ -934,6 +939,10 @@ typedef struct Paint {
    * file load.
    */
   struct AssetWeakReference *brush_asset_reference;
+
+  struct PaintToolSlot *tool_slots;
+  int tool_slots_len;
+  char _pad1[4];
 
   /** Default eraser brush and associated weak reference. */
   struct Brush *eraser_brush;
