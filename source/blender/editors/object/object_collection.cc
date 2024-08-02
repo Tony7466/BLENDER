@@ -474,7 +474,7 @@ static int collection_exporter_add_exec(bContext *C, wmOperator *op)
   CollectionExport *data = MEM_cnew<CollectionExport>("CollectionExport");
   STRNCPY(data->fh_idname, fh->idname);
 
-  BKE_collection_exporter_name_set(data, fh->label);
+  BKE_collection_exporter_name_set(exporters, data, fh->label);
 
   IDPropertyTemplate val{};
   data->export_properties = IDP_New(IDP_GROUP, &val, "export_properties");

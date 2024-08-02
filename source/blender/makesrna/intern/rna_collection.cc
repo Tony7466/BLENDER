@@ -453,7 +453,7 @@ static void rna_CollectionLightLinking_update(Main *bmain, Scene * /*scene*/, Po
 static void rna_CollectionExport_name_set(PointerRNA *ptr, const char *value)
 {
   CollectionExport *data = reinterpret_cast<CollectionExport *>(ptr->data);
-  BKE_collection_exporter_name_set(data, value);
+  BKE_collection_exporter_name_set(nullptr, data, value);
 }
 
 static PointerRNA rna_CollectionExport_export_properties_get(PointerRNA *ptr)

@@ -4530,18 +4530,20 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     FOREACH_NODETREE_END;
   }
 
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 14)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 15)) {
     using namespace blender;
 
     LISTBASE_FOREACH (Collection *, collection, &bmain->collections) {
-      ListBase *exporters = &collection->exporters;
+      const ListBase *exporters = &collection->exporters;
       LISTBASE_FOREACH (CollectionExport *, data, exporters) {
-        if (data->name[0] == '\0') {
-          bke::FileHandlerType *fh = bke::file_handler_find(data->fh_idname);
-          BKE_collection_exporter_name_set(data, fh ? fh->label : DATA_("Undefined"));
-        }
+        /* The name field should be empty at this point. */
+        BLI_assert(data->name[0] == '\0');
+
+        bke::FileHandlerType *fh = bke::file_handler_find(data->fh_idname);
+        BKE_collection_exporter_name_set(exporters, data, fh ? fh->label : DATA_("Undefined"));
       }
     }
+  }
 
   /**
    * Always bump subversion in BKE_blender_version.h when adding versioning

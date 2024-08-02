@@ -71,7 +71,9 @@ void BKE_collection_free_data(Collection *collection);
 /**
  * Assigns a unique name to the collection exporter.
  */
-void BKE_collection_exporter_name_set(CollectionExport *data, const char *newname);
+void BKE_collection_exporter_name_set(const ListBase *exporters,
+                                      CollectionExport *data,
+                                      const char *newname);
 
 /**
  * Free all data owned by the collection exporter.

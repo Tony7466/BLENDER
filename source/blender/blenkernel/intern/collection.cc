@@ -517,15 +517,17 @@ void BKE_collection_free_data(Collection *collection)
   collection_free_data(&collection->id);
 }
 
-void BKE_collection_exporter_name_set(CollectionExport *data, const char *newname)
+void BKE_collection_exporter_name_set(const ListBase *exporters,
+                                      CollectionExport *data,
+                                      const char *newname)
 {
   /* Only use the new name if it's not empty. */
   if (newname && newname[0] != '\0') {
-    ListBase exporters = BLI_listbase_from_link((Link *)data);
+    const ListBase list = exporters ? *exporters : BLI_listbase_from_link((Link *)data);
 
     STRNCPY(data->name, newname);
     BLI_uniquename(
-        &exporters, data, newname, '.', offsetof(CollectionExport, name), sizeof(data->name));
+        &list, data, newname, '.', offsetof(CollectionExport, name), sizeof(data->name));
   }
 }
 
