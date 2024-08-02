@@ -23,7 +23,7 @@ class Strip;
 class ChannelBag;
 }  // namespace blender::animrig
 
-namespace blender::animrig::iterators {
+namespace blender::animrig {
 
 using slot_handle_t = decltype(::ActionSlot::handle);
 
@@ -67,4 +67,4 @@ blender::Vector<FCurve *> foreach_fcurve(Action &action,
                                          slot_handle_t handle,
                                          FunctionRef<bool(FCurve &fcurve)> callback);
 
-}  // namespace blender::animrig::iterators
+}  // namespace blender::animrig

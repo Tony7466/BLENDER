@@ -765,16 +765,15 @@ int clear_keyframe(Main *bmain, ReportList *reports, ID *id, const RNAPath &rna_
 
   if (action.is_action_layered()) {
     if (adt->slot_handle) {
-      Vector<FCurve *> fcurves = iterators::foreach_fcurve(
-          action, adt->slot_handle, [&](FCurve &fcurve) {
-            if (rna_path.index.has_value() && rna_path.index.value() != fcurve.array_index) {
-              return false;
-            }
-            if (rna_path.path != fcurve.rna_path) {
-              return false;
-            }
-            return true;
-          });
+      Vector<FCurve *> fcurves = foreach_fcurve(action, adt->slot_handle, [&](FCurve &fcurve) {
+        if (rna_path.index.has_value() && rna_path.index.value() != fcurve.array_index) {
+          return false;
+        }
+        if (rna_path.path != fcurve.rna_path) {
+          return false;
+        }
+        return true;
+      });
 
       for (FCurve *fcu : fcurves) {
         if (action_fcurve_remove(action, *fcu)) {

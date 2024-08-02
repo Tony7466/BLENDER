@@ -757,7 +757,7 @@ static int clear_anim_v3d_exec(bContext *C, wmOperator * /*op*/)
 
       Action &action = dna_action->wrap();
       if (action.is_action_layered()) {
-        iterators::ActionFCurveIterator it(action, adt->slot_handle);
+        ActionFCurveIterator it(action, adt->slot_handle);
         blender::Vector<std::pair<blender::animrig::ChannelBag *, FCurve *>> fcurves_to_delete;
         while (*it) {
           if (can_delete_fcurve(*it, ob)) {
@@ -909,7 +909,7 @@ static int delete_key_v3d_without_keying_set(bContext *C, wmOperator *op)
 
       Action &action = act->wrap();
       if (action.is_action_layered()) {
-        blender::Vector<FCurve *> modified_fcurves = iterators::foreach_fcurve(
+        blender::Vector<FCurve *> modified_fcurves = foreach_fcurve(
             action, adt->slot_handle, [&](FCurve &fcurve) {
               if (!can_delete_key(&fcurve, ob, op->reports)) {
                 return false;

@@ -10,7 +10,7 @@
 #include "ANIM_action_iterators.hh"
 #include "BLI_assert.h"
 
-namespace blender::animrig::iterators {
+namespace blender::animrig {
 
 /* Action FCurve iterator implementation. */
 
@@ -99,4 +99,4 @@ blender::Vector<FCurve *> foreach_fcurve(Action &action,
   return fcurves;
 }
 
-}  // namespace blender::animrig::iterators
+}  // namespace blender::animrig
