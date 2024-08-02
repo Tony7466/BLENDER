@@ -17,6 +17,7 @@
 #include "BLI_set.hh"
 
 #include "ED_keyframes_edit.hh"
+#include "ED_select_utils.hh"
 
 #include "WM_api.hh"
 
@@ -33,11 +34,15 @@ struct UndoType;
 struct ViewDepths;
 struct View3D;
 struct ViewContext;
+struct BVHTree;
 struct GreasePencilLineartModifierData;
 namespace blender {
 namespace bke {
 enum class AttrDomain : int8_t;
 class CurvesGeometry;
+namespace crazyspace {
+struct GeometryDeformation;
+}
 }  // namespace bke
 }  // namespace blender
 
@@ -716,32 +721,21 @@ bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawing &draw
                                           float outline_offset,
                                           int material_index);
 
-/**
- * Find intersections between curves.
- *
- * Note: Index masks for target and intersecting curves can have any amount of overlap, including
- * equal or fully separate masks. A curve can be self-intersecting by being in both masks.
- *
- * \param src: Source geometry for both target and cutter curves.
- * \param screen_space_positions: Screen space positions computed in advance.
- * \param target_curves: Set of curves that will be intersected.
- * \param intersecting_curves: Set of curves that create cuts on target curves.
- * \param r_segment_ranges: Index ranges in source points that form new segments.
- */
-void find_curve_segments(const bke::CurvesGeometry &src,
-                         const Span<float2> screen_space_positions,
-                         const IndexMask &target_curves,
-                         const IndexMask &intersecting_curves,
-                         Array<IndexRange> &r_segment_ranges);
+/* BVHTree and associated data for 2D curve projection. */
+struct Curves2DBVHTree {
+  BVHTree *tree = nullptr;
+  Array<float2> start_positions;
+  Array<float2> end_positions;
+};
 
-bool select_segment_circle(const ViewContext &vc,
-                           bke::CurvesGeometry &curves,
-                           const bke::crazyspace::GeometryDeformation &deformation,
-                           const float4x4 &projection,
-                           const IndexMask &mask,
-                           int2 coord,
-                           float radius,
-                           eSelectOp sel_op);
+/**
+ * Construct a 2D BVH tree from the screen space line segments of visible curves.
+ */
+Curves2DBVHTree build_curves_2d_bvh_from_visible(const ViewContext &vc,
+                                                 const Object &object,
+                                                 const GreasePencil &grease_pencil,
+                                                 Span<MutableDrawingInfo> drawings);
+void free_curves_2d_bvh_data(Curves2DBVHTree &data);
 
 /**
  * Find intersections between curves and accurate cut positions.
@@ -759,15 +753,15 @@ bool select_segment_circle(const ViewContext &vc,
  * \param r_last_intersect_factors: Largest cut factor in the interval (optional).
  */
 void find_curve_intersections(const bke::CurvesGeometry &curves,
+                              const IndexMask &curve_mask,
                               const Span<float2> screen_space_positions,
-                              const IndexMask &target_curves,
-                              const IndexMask &intersecting_curves,
+                              const Curves2DBVHTree &tree_data,
                               MutableSpan<bool> r_hits,
                               std::optional<MutableSpan<float>> r_first_intersect_factors,
                               std::optional<MutableSpan<float>> r_last_intersect_factors);
 
 /**
- * Find intersections between curves and accurate cut positions.
+ * Find segments between intersections.
  *
  * Note: Index masks for target and intersecting curves can have any amount of overlap,
  * including equal or fully separate masks. A curve can be self-intersecting by being in both
@@ -782,12 +776,13 @@ void find_curve_intersections(const bke::CurvesGeometry &curves,
  * \param r_end_factors: Factor (0..1) of the cut in the end segment.
  */
 void find_curve_segments(const bke::CurvesGeometry &curves,
+                         const IndexMask &curve_mask,
                          const Span<float2> screen_space_positions,
-                         const IndexMask &target_curves,
-                         const IndexMask &intersecting_curves,
-                         Array<IndexRange> &r_segment_ranges,
-                         Array<float> r_start_factors,
-                         Array<float> r_end_factors);
+                         const Curves2DBVHTree &tree_data,
+                         Array<int> &r_segments_by_curve,
+                         Array<int> &r_points_by_segment,
+                         std::optional<Array<float>> r_segment_start_factors,
+                         std::optional<Array<float>> r_segment_end_factors);
 
 namespace cutter {
 bke::CurvesGeometry trim_curve_segments(const bke::CurvesGeometry &src,

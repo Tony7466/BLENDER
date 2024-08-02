@@ -10,7 +10,10 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <optional>
 
+#include "BKE_curves.hh"
+#include "BLI_index_mask_expression.hh"
 #include "DNA_action_types.h"
 #include "DNA_armature_types.h"
 #include "DNA_curve_types.h"
@@ -103,6 +106,8 @@
 #include "ANIM_bone_collections.hh"
 
 #include "view3d_intern.hh" /* own include */
+
+#include <iostream>
 
 // #include "BLI_time_utildefines.h"
 
@@ -5133,6 +5138,31 @@ static bool mball_circle_select(const ViewContext *vc,
   return data.is_changed;
 }
 
+namespace blender::ed::greasepencil {
+
+// static void cache_selection_state(const bke::CurvesGeometry &curves, Array<bool>
+// &selection_cache)
+// {
+//   selection_cache.reinitialize(curves.points_num());
+//   const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
+//       ".selection", bke::AttrDomain::Point, true);
+//   selection.materialize(selection_cache);
+// }
+
+static IndexMask curve_mask_from_point_mask(const OffsetIndices<int> &points_by_curve,
+                                            const IndexMask &point_mask,
+                                            IndexMaskMemory &memory)
+{
+  return IndexMask::from_predicate(
+      points_by_curve.index_range(), GrainSize(512), memory, [&](const int64_t curve_i) {
+        const IndexRange points = points_by_curve[curve_i];
+        /* The curve is selected if any of its points are selected. */
+        return !point_mask.slice_content(points).is_empty();
+      });
+}
+
+}  // namespace blender::ed::greasepencil
+
 static bool grease_pencil_circle_select(const ViewContext *vc,
                                         const eSelectOp sel_op,
                                         const int mval[2],
@@ -5152,8 +5182,30 @@ static bool grease_pencil_circle_select(const ViewContext *vc,
   bool changed = false;
   const Vector<ed::greasepencil::MutableDrawingInfo> drawings =
       ed::greasepencil::retrieve_editable_drawings(*vc->scene, grease_pencil);
-  for (const ed::greasepencil::MutableDrawingInfo info : drawings) {
+
+  /* Construct BVH tree for segment selection. */
+  ed::greasepencil::Curves2DBVHTree tree_data;
+  BLI_SCOPED_DEFER([&]() { ed::greasepencil::free_curves_2d_bvh_data(tree_data); });
+  if (use_segment_selection) {
+    tree_data = ed::greasepencil::build_curves_2d_bvh_from_visible(
+        *vc, *ob_eval, grease_pencil, drawings);
+  }
+
+  /* Cached original selection in each drawing, used in segment selection mode. */
+  IndexMaskMemory memory;
+  Array<IndexMask> point_selection_by_drawing;
+  if (use_segment_selection) {
+    point_selection_by_drawing.reinitialize(drawings.size());
+  }
+
+  /* Range of points in tree data matching for the current curve, for re-using screen space
+   * positions. */
+  IndexRange tree_data_range = IndexRange();
+  for (const int i_drawing : drawings.index_range()) {
+    const ed::greasepencil::MutableDrawingInfo &info = drawings[i_drawing];
     const bke::greasepencil::Layer &layer = *grease_pencil.layer(info.layer_index);
+    bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
+    const OffsetIndices points_by_curve = curves.points_by_curve();
     bke::crazyspace::GeometryDeformation deformation =
         bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
             ob_eval, *vc->obedit, info.layer_index, info.frame_number);
@@ -5163,28 +5215,63 @@ static bool grease_pencil_circle_select(const ViewContext *vc,
     if (elements.is_empty()) {
       continue;
     }
+
+    /* Store input selection. */
+    if (use_segment_selection) {
+      point_selection_by_drawing[i_drawing] = ed::curves::retrieve_selected_points(curves, memory);
+    }
+
     const float4x4 layer_to_world = layer.to_world_space(*ob_eval);
     const float4x4 projection = ED_view3d_ob_project_mat_get_from_obmat(vc->rv3d, layer_to_world);
+    changed = ed::curves::select_circle(
+        *vc, curves, deformation, projection, elements, selection_domain, int2(mval), rad, sel_op);
+
     if (use_segment_selection) {
-      changed = ed::greasepencil::select_segment_circle(*vc,
-                                                        info.drawing.strokes_for_write(),
-                                                        deformation,
-                                                        projection,
-                                                        elements,
-                                                        int2(mval),
-                                                        rad,
-                                                        sel_op);
-    }
-    else {
-      changed = ed::curves::select_circle(*vc,
-                                          info.drawing.strokes_for_write(),
-                                          deformation,
-                                          projection,
-                                          elements,
-                                          selection_domain,
-                                          int2(mval),
-                                          rad,
-                                          sel_op);
+      /* Range of points in tree data matching this curve, for re-using screen space positions. */
+      tree_data_range = tree_data_range.after(curves.points_num());
+      const Span<float2> screen_space_positions = tree_data.start_positions.as_span().slice(
+          tree_data_range);
+
+      const IndexMask new_point_selection = ed::curves::retrieve_selected_points(curves, memory);
+      IndexMask added_point_mask = IndexMask::from_difference(
+          new_point_selection, point_selection_by_drawing[i_drawing], memory);
+      IndexMask removed_point_mask = IndexMask::from_difference(
+          point_selection_by_drawing[i_drawing], new_point_selection, memory);
+
+      /* Create curve masks for added and removed points to limit intersection tests.
+       * Note: this cannot be constructed as a difference of before/after curve selection,
+       * because points may be selected without changing the curve selection. The curve mask
+       * difference would be empty even though there are curves we need to consider. */
+      IndexMask added_curve_mask = ed::greasepencil::curve_mask_from_point_mask(
+          points_by_curve, added_point_mask, memory);
+      IndexMask removed_curve_mask = ed::greasepencil::curve_mask_from_point_mask(
+          points_by_curve, removed_point_mask, memory);
+
+      if (!added_curve_mask.is_empty()) {
+        Array<int> segments_by_curve;
+        Array<int> points_by_segment;
+        ed::greasepencil::find_curve_segments(curves,
+                                              added_curve_mask,
+                                              screen_space_positions,
+                                              tree_data,
+                                              segments_by_curve,
+                                              points_by_segment,
+                                              std::nullopt,
+                                              std::nullopt);
+
+        {
+          std::cout << "Segments: " << std::endl;
+          for (const int i_curve : segments_by_curve.index_range().drop_back(1)) {
+            const IndexRange segments = OffsetIndices<int>(segments_by_curve)[i_curve];
+            std::cout << "  Curve " << i_curve << " segments " << segments << std::endl;
+            for (const int i_seg : points_by_segment.index_range().drop_back(1)) {
+              const IndexRange points = OffsetIndices<int>(points_by_segment)[i_seg];
+              std::cout << "    Segment " << i_seg << " points " << points << std::endl;
+            }
+          }
+          std::cout << std::endl;
+        }
+      }
     }
   }
 
