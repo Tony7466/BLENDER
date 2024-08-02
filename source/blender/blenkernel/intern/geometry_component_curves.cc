@@ -9,6 +9,7 @@
 
 #include "BKE_attribute_math.hh"
 #include "BKE_curves.hh"
+#include "BKE_customdata.hh"
 #include "BKE_deform.hh"
 #include "BKE_geometry_fields.hh"
 #include "BKE_geometry_set.hh"
@@ -107,7 +108,22 @@ bool CurveComponent::is_empty() const
 
 size_t CurveComponent::size_in_bytes_approximate() const
 {
-  return 0;
+  size_t point_size = 0, curve_size = 0;
+
+  for (const int i : IndexRange(curves_->geometry.point_data.totlayer)) {
+    const CustomDataLayer &data_layer = curves_->geometry.point_data.layers[i];
+    point_size += CustomData_get_elem_size(&data_layer);
+  }
+
+  for (const int i : IndexRange(curves_->geometry.curve_data.totlayer)) {
+    const CustomDataLayer &data_layer = curves_->geometry.curve_data.layers[i];
+    curve_size += CustomData_get_elem_size(&data_layer);
+  }
+
+  size_t total_size = (curves_->geometry.curve_num * curve_size) +
+                      (curves_->geometry.point_num * point_size);
+
+  return total_size;
 }
 
 bool CurveComponent::owns_direct_data() const

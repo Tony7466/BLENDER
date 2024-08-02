@@ -126,10 +126,10 @@ size_t MeshComponent::size_in_bytes_approximate() const
         return true;
       });
 
-  size_t mesh_size = (mesh_->verts_num * point_size) + (mesh_->edges_num * edge_size) +
-                     (mesh_->faces_num * face_size) + (mesh_->corners_num * corner_size);
+  size_t total_size = (mesh_->verts_num * point_size) + (mesh_->edges_num * edge_size) +
+                      (mesh_->faces_num * face_size) + (mesh_->corners_num * corner_size);
 
-  return mesh_size;
+  return total_size;
 }
 
 bool MeshComponent::owns_direct_data() const
