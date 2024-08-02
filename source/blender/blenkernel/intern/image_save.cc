@@ -1078,6 +1078,11 @@ bool BKE_image_render_write(ReportList *reports,
   ImageFormatData image_format;
   BKE_image_format_init_for_write(&image_format, scene, format);
 
+  if (!save_as_render) {
+    BKE_color_managed_colorspace_settings_copy(&image_format.linear_colorspace_settings,
+                                               &format->linear_colorspace_settings);
+  }
+
   const bool is_mono = BLI_listbase_count_at_most(&rr->views, 2) < 2;
   const bool is_exr_rr = ELEM(
                              image_format.imtype, R_IMF_IMTYPE_OPENEXR, R_IMF_IMTYPE_MULTILAYER) &&
