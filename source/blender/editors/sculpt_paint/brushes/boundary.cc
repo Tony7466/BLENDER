@@ -13,6 +13,7 @@
 #include "BLI_array_utils.hh"
 
 #include "BLI_enumerable_thread_specific.hh"
+#include "BLI_math_rotation_legacy.hh"
 #include "BLI_math_vector.hh"
 #include "BLI_task.hh"
 
@@ -25,6 +26,117 @@ namespace blender::ed::sculpt_paint {
 #define BOUNDARY_STEPS_NONE -1
 
 inline namespace boundary_cc {
+
+static void filter_uninitialized_verts(const Span<int> propagation_steps,
+                                       const MutableSpan<float> factors)
+{
+  BLI_assert(propagation_steps.size() == factors.size());
+
+  for (const int i : factors.index_range()) {
+    if (propagation_steps[i] == BOUNDARY_STEPS_NONE) {
+      factors[i] = 0.0f;
+    }
+  }
+}
+
+static void filter_verts_outside_symmetry_area(const Span<float3> positions,
+                                               const float3 pivot,
+                                               const ePaintSymmetryFlags symm,
+                                               const MutableSpan<float> factors)
+{
+  BLI_assert(positions.size() == factors.size());
+  for (const int i : factors.index_range()) {
+    if (!SCULPT_check_vertex_pivot_symmetry(positions[i], pivot, symm)) {
+      factors[i] = 0.0f;
+    }
+  }
+}
+
+static void calc_bend_transform(const Span<float3> positions,
+                                const Span<float3> pivot_positions,
+                                const Span<float3> pivot_axes,
+                                const Span<float> factors,
+                                const MutableSpan<float3> transforms)
+{
+  BLI_assert(positions.size() == pivot_positions.size());
+  BLI_assert(positions.size() == pivot_axes.size());
+  BLI_assert(positions.size() == factors.size());
+  BLI_assert(positions.size() == transforms.size());
+
+  for (const int i : positions.index_range()) {
+    transforms[i] = math::rotate_around_axis(
+        positions[i], pivot_positions[i], pivot_axes[i], factors[i]);
+  }
+}
+
+static void calc_slide_transform(const Span<float3> positions,
+                                 const Span<float3> directions,
+                                 const Span<float> factors,
+                                 const MutableSpan<float3> transforms)
+{
+  BLI_assert(positions.size() == directions.size());
+  BLI_assert(positions.size() == factors.size());
+  BLI_assert(positions.size() == transforms.size());
+
+  for (const int i : positions.index_range()) {
+    transforms[i] = positions[i] + (directions[i] * factors[i]);
+  }
+}
+
+static void calc_inflate_transform(const Span<float3> positions,
+                                   const Span<float3> normals,
+                                   const Span<float> factors,
+                                   const MutableSpan<float3> transforms)
+{
+  BLI_assert(positions.size() == normals.size());
+  BLI_assert(positions.size() == factors.size());
+  BLI_assert(positions.size() == transforms.size());
+
+  for (const int i : positions.index_range()) {
+    transforms[i] = positions[i] + (normals[i] * factors[i]);
+  }
+}
+
+static void calc_grab_transform(const Span<float3> positions,
+                                const float3 grab_delta,
+                                const Span<float> factors,
+                                const MutableSpan<float3> transforms)
+{
+  BLI_assert(positions.size() == factors.size());
+  BLI_assert(positions.size() == transforms.size());
+
+  for (const int i : positions.index_range()) {
+    transforms[i] = positions[i] + (grab_delta * factors[i]);
+  }
+}
+
+static void calc_twist_transform(const Span<float3> positions,
+                                 const float3 pivot_point,
+                                 const float3 pivot_axis,
+                                 const Span<float> factors,
+                                 const MutableSpan<float3> transforms)
+{
+  BLI_assert(positions.size() == factors.size());
+  BLI_assert(positions.size() == transforms.size());
+
+  for (const int i : positions.index_range()) {
+    transforms[i] = math::rotate_around_axis(positions[i], pivot_point, pivot_axis, factors[i]);
+  }
+}
+
+static void calc_smooth_transform(const Span<float3> positions,
+                                  const Span<float3> smooth_targets,
+                                  const Span<float> factors,
+                                  const MutableSpan<float3> transforms)
+{
+  BLI_assert(positions.size() == factors.size());
+  BLI_assert(positions.size() == smooth_targets.size());
+  BLI_assert(positions.size() == transforms.size());
+
+  for (const int i : positions.index_range()) {
+    transforms[i] = positions[i] + (smooth_targets[i] * factors[i]);
+  }
+}
 
 };  // namespace boundary_cc
 
