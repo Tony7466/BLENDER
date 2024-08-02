@@ -757,17 +757,12 @@ static int clear_anim_v3d_exec(bContext *C, wmOperator * /*op*/)
 
       Action &action = dna_action->wrap();
       if (action.is_action_layered()) {
-        ActionFCurveIterator it(action, adt->slot_handle);
-        blender::Vector<std::pair<blender::animrig::ChannelBag *, FCurve *>> fcurves_to_delete;
-        while (*it) {
-          if (can_delete_fcurve(*it, ob)) {
-            fcurves_to_delete.append(std::pair<blender::animrig::ChannelBag *, FCurve *>(
-                it.get_current_channel_bag(), *it));
-          }
-          ++it;
-        }
-        for (auto &pair : fcurves_to_delete) {
-          pair.first->fcurve_remove(*pair.second);
+        blender::Vector<FCurve *> fcurves_to_delete = foreach_fcurve(
+            action, adt->slot_handle, [&](FCurve &fcurve) {
+              return can_delete_fcurve(&fcurve, ob);
+            });
+        for (FCurve *fcurve : fcurves_to_delete) {
+          action_fcurve_remove(action, *fcurve);
         }
       }
       else {
