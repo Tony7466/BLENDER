@@ -1094,6 +1094,21 @@ void cachefile_to_keylist(bDopeSheet *ads,
   ANIM_animdata_freelist(&anim_data);
 }
 
+static inline void set_up_beztriple_chain(BezTripleChain &chain,
+                                          const FCurve *fcu,
+                                          const int v,
+                                          const bool do_extremes,
+                                          const bool is_cyclic)
+{
+  chain.cur = &fcu->bezt[v];
+
+  /* Neighbor columns, accounting for being cyclic. */
+  if (do_extremes) {
+    chain.prev = (v > 0) ? &fcu->bezt[v - 1] : is_cyclic ? &fcu->bezt[fcu->totvert - 2] : nullptr;
+    chain.next = (v + 1 < fcu->totvert) ? &fcu->bezt[v + 1] : is_cyclic ? &fcu->bezt[1] : nullptr;
+  }
+}
+
 void fcurve_to_keylist(AnimData *adt,
                        FCurve *fcu,
                        AnimKeylist *keylist,
@@ -1126,22 +1141,22 @@ void fcurve_to_keylist(AnimData *adt,
       continue;
     }
     blender::math::min_max(v, index_bounds.min, index_bounds.max);
-    chain.cur = &fcu->bezt[v];
-
-    /* Neighbor columns, accounting for being cyclic. */
-    if (do_extremes) {
-      chain.prev = (v > 0)   ? &fcu->bezt[v - 1] :
-                   is_cyclic ? &fcu->bezt[fcu->totvert - 2] :
-                               nullptr;
-      chain.next = (v + 1 < fcu->totvert) ? &fcu->bezt[v + 1] :
-                   is_cyclic              ? &fcu->bezt[1] :
-                                            nullptr;
-    }
+    set_up_beztriple_chain(chain, fcu, v, do_extremes, is_cyclic);
 
     add_bezt_to_keycolumns_list(keylist, &chain);
   }
 
   if (!index_bounds.is_empty()) {
+    if (index_bounds.min > 0) {
+      set_up_beztriple_chain(chain, fcu, index_bounds.min - 1, do_extremes, is_cyclic);
+      add_bezt_to_keycolumns_list(keylist, &chain);
+      index_bounds.min--;
+    }
+    if (index_bounds.max < fcu->totvert - 1) {
+      set_up_beztriple_chain(chain, fcu, index_bounds.max + 1, do_extremes, is_cyclic);
+      add_bezt_to_keycolumns_list(keylist, &chain);
+      index_bounds.max++;
+    }
     update_keyblocks(keylist, &fcu->bezt[index_bounds.min], index_bounds.max - index_bounds.min);
   }
 
