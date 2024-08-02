@@ -1762,25 +1762,19 @@ def brush_basic_grease_pencil_vertex_settings(layout, context, brush, *, compact
         header=compact,
     )
 
-    capabilities = brush.sculpt_capabilities
-    pressure_name = "use_pressure_strength" if capabilities.has_strength_pressure else None
-    UnifiedPaintPanel.prop_unified(
-        layout,
-        context,
-        brush,
-        "strength",
-        pressure_name=pressure_name,
-        unified_name="use_unified_strength",
-        text="Strength",
-        header=compact,
-    )
-    gp_settings = brush.gpencil_settings
-
     if brush.gpencil_vertex_tool in {'DRAW', 'BLUR', 'SMEAR'}:
-        row = layout.row(align=True)
-        row.prop(gp_settings, "pen_strength", slider=True)
-        row.prop(gp_settings, "use_strength_pressure", text="", icon='STYLUS_PRESSURE')
+        UnifiedPaintPanel.prop_unified(
+            layout,
+            context,
+            brush,
+            "strength",
+            pressure_name="use_pressure_strength",
+            unified_name="use_unified_strength",
+            text="Strength",
+            header=compact,
+        )
 
+    gp_settings = brush.gpencil_settings
     if brush.gpencil_vertex_tool in {'DRAW', 'REPLACE'}:
         row = layout.row(align=True)
         row.prop(gp_settings, "vertex_mode", text="Mode")
