@@ -732,19 +732,6 @@ int delete_keyframe(Main *bmain, ReportList *reports, ID *id, const RNAPath &rna
 /* ************************************************** */
 /* KEYFRAME CLEAR */
 
-static bool fcurve_matches_descriptor(FCurve *fcurve, void *data)
-{
-  FCurveDescriptor fcurve_descriptor = *(FCurveDescriptor *)data;
-  if (fcurve_descriptor.array_index != -1 && fcurve_descriptor.array_index != fcurve->array_index)
-  {
-    return false;
-  }
-  if (fcurve_descriptor.rna_path != fcurve->rna_path) {
-    return false;
-  }
-  return true;
-}
-
 int clear_keyframe(Main *bmain, ReportList *reports, ID *id, const RNAPath &rna_path)
 {
   AnimData *adt = BKE_animdata_from_id(id);
@@ -775,11 +762,20 @@ int clear_keyframe(Main *bmain, ReportList *reports, ID *id, const RNAPath &rna_
 
   Action &action = act->wrap();
   int key_count = 0;
+
   if (action.is_action_layered()) {
     if (adt->slot_handle) {
-      FCurveDescriptor descriptor = {rna_path.path, rna_path.index.value_or(-1)};
       Vector<FCurve *> fcurves = iterators::foreach_fcurve(
-          action, adt->slot_handle, (void *)&descriptor, fcurve_matches_descriptor);
+          action, adt->slot_handle, [&](FCurve &fcurve) {
+            if (rna_path.index.has_value() && rna_path.index.value() != fcurve.array_index) {
+              return false;
+            }
+            if (rna_path.path != fcurve.rna_path) {
+              return false;
+            }
+            return true;
+          });
+
       for (FCurve *fcu : fcurves) {
         if (action_fcurve_remove(action, *fcu)) {
           key_count++;

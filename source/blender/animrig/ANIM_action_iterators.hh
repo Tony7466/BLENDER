@@ -59,14 +59,12 @@ class ActionFCurveIterator {
  * it. If the callback returns true, the FCurve is added to the Vector returned at the end of the
  * function.
  *
- * \param data Will get passed to the callback. Can be a nullptr if the callback can deal with
- * that.
+ * \note Use lambdas to have access to specific data in the callback.
  *
  * \returns A Vector of FCurves for which the callback returned true.
  */
 blender::Vector<FCurve *> foreach_fcurve(Action &action,
                                          slot_handle_t handle,
-                                         void *data,
-                                         bool (*callback)(FCurve *fcurve, void *data));
+                                         FunctionRef<bool(FCurve &fcurve)> callback);
 
 }  // namespace blender::animrig::iterators

@@ -884,21 +884,6 @@ static bool can_delete_key(FCurve *fcu, Object *ob, ReportList *reports)
   return true;
 }
 
-struct DeleteKeyCallbackData {
-  float frame;
-  Object *ob;
-  ReportList *reports;
-};
-
-static bool delete_key_callback(FCurve *fcurve, void *data)
-{
-  DeleteKeyCallbackData *fdata = (DeleteKeyCallbackData *)data;
-  if (!can_delete_key(fcurve, fdata->ob, fdata->reports)) {
-    return false;
-  }
-  return blender::animrig::fcurve_delete_keyframe_at_time(fcurve, fdata->frame);
-}
-
 static int delete_key_v3d_without_keying_set(bContext *C, wmOperator *op)
 {
   using namespace blender::animrig;
@@ -924,13 +909,13 @@ static int delete_key_v3d_without_keying_set(bContext *C, wmOperator *op)
 
       Action &action = act->wrap();
       if (action.is_action_layered()) {
-        DeleteKeyCallbackData callback_data;
-        callback_data.frame = cfra_unmap;
-        callback_data.ob = ob;
-        callback_data.reports = op->reports;
-
         blender::Vector<FCurve *> modified_fcurves = iterators::foreach_fcurve(
-            action, adt->slot_handle, (void *)&callback_data, delete_key_callback);
+            action, adt->slot_handle, [&](FCurve &fcurve) {
+              if (!can_delete_key(&fcurve, ob, op->reports)) {
+                return false;
+              }
+              return blender::animrig::fcurve_delete_keyframe_at_time(&fcurve, cfra_unmap);
+            });
 
         success += modified_fcurves.size();
         for (FCurve *fcurve : modified_fcurves) {

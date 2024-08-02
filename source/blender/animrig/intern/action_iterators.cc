@@ -74,8 +74,7 @@ ChannelBag *ActionFCurveIterator::get_current_channel_bag()
 
 blender::Vector<FCurve *> foreach_fcurve(Action &action,
                                          slot_handle_t handle,
-                                         void *data,
-                                         bool (*callback)(FCurve *fcurve, void *data))
+                                         FunctionRef<bool(FCurve &fcurve)> callback)
 {
   blender::Vector<FCurve *> fcurves;
   for (Layer *layer : action.layers()) {
@@ -89,7 +88,8 @@ blender::Vector<FCurve *> foreach_fcurve(Action &action,
           continue;
         }
         for (FCurve *fcu : bag->fcurves()) {
-          if (callback(fcu, data)) {
+          BLI_assert(fcu != nullptr);
+          if (callback(*fcu)) {
             fcurves.append(fcu);
           }
         }
