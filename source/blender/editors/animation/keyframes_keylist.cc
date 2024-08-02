@@ -1136,11 +1136,25 @@ void fcurve_to_keylist(AnimData *adt,
    * for the case that no keyframes get added to the keycolumns, which happens when the given range
    * doesn't overlap with the existing keyframes. */
   blender::Bounds<int> index_bounds(int(fcu->totvert), 0);
+  /* The following is used to find the keys that are JUST outside the range. This is done so
+   * drawing in the dope sheet can create lines that extend off-screen. */
+  float left_outside_key_x = -FLT_MAX;
+  float right_outside_key_x = FLT_MAX;
+  int left_outside_key_index = -1;
+  int right_outside_key_index = -1;
   /* Loop through beztriples, making ActKeysColumns. */
   for (int v = 0; v < fcu->totvert; v++) {
     /* Not using binary search to limit the range because the FCurve might not be sorted e.g. when
      * transforming in the Dope Sheet. */
     const float x = fcu->bezt[v].vec[1][0];
+    if (x < range[0] && x > left_outside_key_x) {
+      left_outside_key_x = x;
+      left_outside_key_index = v;
+    }
+    if (x > range[1] && x < right_outside_key_x) {
+      right_outside_key_x = x;
+      right_outside_key_index = v;
+    }
     if (x < range[0] || x > range[1]) {
       continue;
     }
@@ -1150,21 +1164,19 @@ void fcurve_to_keylist(AnimData *adt,
     add_bezt_to_keycolumns_list(keylist, &chain);
   }
 
+  if (left_outside_key_index >= 0) {
+    set_up_beztriple_chain(chain, fcu, left_outside_key_index, do_extremes, is_cyclic);
+    add_bezt_to_keycolumns_list(keylist, &chain);
+    index_bounds.min = blender::math::min(index_bounds.min, left_outside_key_index);
+  }
+  if (right_outside_key_index >= 0) {
+    set_up_beztriple_chain(chain, fcu, right_outside_key_index, do_extremes, is_cyclic);
+    add_bezt_to_keycolumns_list(keylist, &chain);
+    index_bounds.max = blender::math::max(index_bounds.max, right_outside_key_index);
+  }
   /* Not using index_bounds.is_empty() because that returns true if min and max are the same. That
    * is a valid configuration in this case though. */
   if (index_bounds.min <= index_bounds.max) {
-    /* Adding 1 beyond the given range so drawing in the dope sheet can create lines
-     * that extend off-screen. */
-    if (index_bounds.min > 0) {
-      set_up_beztriple_chain(chain, fcu, index_bounds.min - 1, do_extremes, is_cyclic);
-      add_bezt_to_keycolumns_list(keylist, &chain);
-      index_bounds.min--;
-    }
-    if (index_bounds.max < fcu->totvert - 1) {
-      set_up_beztriple_chain(chain, fcu, index_bounds.max + 1, do_extremes, is_cyclic);
-      add_bezt_to_keycolumns_list(keylist, &chain);
-      index_bounds.max++;
-    }
     update_keyblocks(
         keylist, &fcu->bezt[index_bounds.min], (index_bounds.max + 1) - index_bounds.min);
   }
