@@ -36,8 +36,8 @@ using slot_handle_t = decltype(::ActionSlot::handle);
  *
  * \returns A Vector of FCurves for which the callback returned true.
  */
-blender::Vector<FCurve *> foreach_fcurve(Action &action,
-                                         slot_handle_t handle,
-                                         FunctionRef<bool(FCurve &fcurve)> callback);
+blender::Vector<FCurve *> action_foreach_fcurve(Action &action,
+                                                slot_handle_t handle,
+                                                FunctionRef<bool(FCurve &fcurve)> callback);
 
 }  // namespace blender::animrig
