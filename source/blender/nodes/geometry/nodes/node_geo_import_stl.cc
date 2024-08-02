@@ -64,7 +64,11 @@ static void node_geo_exec(GeoNodeExecParams params)
     params.error_message_add(type, TIP_(report->message));
   }
 
-  params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+  auto gset = GeometrySet::from_mesh(mesh);
+
+  fprintf(stderr, "Size: %lld\n", gset.size_in_bytes_approximate());
+
+  params.set_output("Mesh", gset);
 
 #else
   params.error_message_add(NodeWarningType::Error,

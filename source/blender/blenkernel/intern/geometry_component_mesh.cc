@@ -102,7 +102,7 @@ bool MeshComponent::is_empty() const
 
 int64_t MeshComponent::size_in_bytes_approximate() const
 {
-  return mesh_->vert_data.totsize;
+  return mesh_->verts_num;  // * <stride of each vertex>
 }
 
 bool MeshComponent::owns_direct_data() const
