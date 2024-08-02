@@ -739,7 +739,7 @@ static bool fcurve_matches_descriptor(FCurve *fcurve, void *data)
   {
     return false;
   }
-  if (!STREQ(fcurve_descriptor.rna_path.c_str(), fcurve->rna_path)) {
+  if (fcurve_descriptor.rna_path != fcurve->rna_path) {
     return false;
   }
   return true;
