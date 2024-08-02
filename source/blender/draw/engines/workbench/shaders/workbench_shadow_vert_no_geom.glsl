@@ -6,6 +6,7 @@
  * geometry manifold type */
 
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_attribute_load_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_index_load_lib.glsl)
 
 #ifdef DOUBLE_MANIFOLD
@@ -92,11 +93,16 @@ void main()
   int input_base_index = (input_prim_index * 4);
 
   /* IN DATA is lines_adjacency - Should be guaranteed. */
+  uint v0 = gpu_index_load(input_base_index + 0);
+  uint v1 = gpu_index_load(input_base_index + 1);
+  uint v2 = gpu_index_load(input_base_index + 2);
+  uint v3 = gpu_index_load(input_base_index + 3);
+
   /* Read input position data. */
-  vData[0].lP = pos[gpu_index_load(input_base_index + 0)];
-  vData[1].lP = pos[gpu_index_load(input_base_index + 1)];
-  vData[2].lP = pos[gpu_index_load(input_base_index + 2)];
-  vData[3].lP = pos[gpu_index_load(input_base_index + 3)];
+  vData[0].lP = gpu_attr_load_float3(pos, v0);
+  vData[1].lP = gpu_attr_load_float3(pos, v1);
+  vData[2].lP = gpu_attr_load_float3(pos, v2);
+  vData[3].lP = gpu_attr_load_float3(pos, v3);
 
   /* Calculate front/back Positions. */
   vData[0].frontPosition = point_object_to_ndc(vData[0].lP);
