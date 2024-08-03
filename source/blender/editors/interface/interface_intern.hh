@@ -1339,13 +1339,15 @@ int ui_id_icon_get(const bContext *C, ID *id, bool big);
 
 /* interface_icons_event.cc */
 
-enum class EventIconWidth {
-  Normal,
-  Wide,
-  Widest,
+enum class EventIconType {
+  None,
+  Square,
+  Ring,
+  Rectangle,
+  WideRectangle,
 };
 
-EventIconWidth ui_event_icon_width(const int icon_id);
+EventIconType ui_event_icon_type(const int icon_id);
 
 void icon_draw_rect_input(float x, float y, int w, int h, int icon_id, float alpha, bool inverted);
 

@@ -864,6 +864,8 @@ if(WITH_BLENDER)
       zoom_out
       zoom_previous
       zoom_selected
+      key_backspace
+      key_backspace_filled
       key_command
       key_command_filled
       key_control
@@ -880,6 +882,8 @@ if(WITH_BLENDER)
       key_option_filled
       key_return
       key_return_filled
+      key_ring
+      key_ring_filled
       key_shift
       key_shift_filled
       key_tab
