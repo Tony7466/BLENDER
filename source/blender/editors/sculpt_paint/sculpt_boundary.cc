@@ -1093,6 +1093,10 @@ struct LocalDataMesh {
   /* Slide */
   Vector<float3> slide_directions;
 
+  /* Smooth */
+  Vector<Vector<int>> neighbors;
+  Vector<float3> smoothed_positions;
+
   Vector<float3> new_positions;
   Vector<float3> translations;
 };
@@ -1673,6 +1677,148 @@ static void do_twist_brush(const Sculpt &sd,
 /* -------------------------------------------------------------------- */
 /** \name Smooth Deformation
  * \{ */
+
+static void calc_smooth_position(const Span<float3> vert_positions,
+                                 const Span<int> verts,
+                                 const Span<float3> average_position,
+                                 const Span<float> factors,
+                                 const MutableSpan<float3> new_positions)
+{
+  BLI_assert(verts.size() == average_position.size());
+  BLI_assert(verts.size() == factors.size());
+  BLI_assert(verts.size() == new_positions.size());
+
+  for (const int i : verts.index_range()) {
+    const float3 to_smooth = average_position[i] - vert_positions[verts[i]];
+    new_positions[i] = vert_positions[verts[i]] + (to_smooth * factors[i]);
+  }
+}
+
+static void calc_smooth_mesh(const Sculpt &sd,
+                             Object &object,
+                             const Span<float3> positions_eval,
+                             const OffsetIndices<int> faces,
+                             const Span<int> corner_verts,
+                             const GroupedSpan<int> vert_to_face,
+                             const Span<bool> hide_poly,
+                             const Span<int> vert_propagation_steps,
+                             const Span<float> vert_factors,
+                             const bke::pbvh::Node &node,
+                             LocalDataMesh &tls,
+                             const float3 symmetry_pivot,
+                             const float strength,
+                             const eBrushDeformTarget deform_target,
+                             const MutableSpan<float3> positions_orig)
+{
+  SculptSession &ss = *object.sculpt;
+  const StrokeCache &cache = *ss.cache;
+  const Mesh &mesh = *static_cast<Mesh *>(object.data);
+
+  const Span<int> verts = bke::pbvh::node_unique_verts(node);
+  const OrigPositionData orig_data = orig_position_data_get_mesh(object, node);
+
+  const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(object);
+
+  gather_data_mesh(vert_factors, verts, tls.factors);
+  const MutableSpan<float> factors = tls.factors;
+
+  calc_mask_factor(mesh, verts, factors);
+
+  gather_data_mesh(vert_propagation_steps, verts, tls.propagation_steps);
+  const Span<int> propagation_steps = tls.propagation_steps;
+
+  filter_uninitialized_verts(propagation_steps, factors);
+  filter_verts_outside_symmetry_area(orig_data.positions, symmetry_pivot, symm, factors);
+
+  scale_factors(factors, strength);
+
+  tls.new_positions.resize(verts.size());
+  const MutableSpan<float3> new_positions = tls.new_positions;
+
+  tls.neighbors.resize(verts.size());
+  const MutableSpan<Vector<int>> neighbors = tls.neighbors;
+
+  calc_vert_neighbors(faces, corner_verts, vert_to_face, hide_poly, verts, neighbors);
+  tls.smoothed_positions.resize(verts.size());
+  const MutableSpan<float3> smoothed_positions = tls.smoothed_positions;
+  for (const int i : neighbors.index_range()) {
+    smoothed_positions[i] = float3(0.0f);
+    int valid_neighbors = 0;
+    for (const int neighbor : neighbors[i]) {
+      if (propagation_steps[i] == propagation_steps[neighbor]) {
+        smoothed_positions[i] += positions_eval[neighbor];
+        valid_neighbors++;
+      }
+    }
+    smoothed_positions[i] = smoothed_positions[i] * math::safe_rcp(float(valid_neighbors));
+    /*
+    if (valid_neighbors == 0) {
+      factors[i] = 0.0f;
+    }
+    */
+  }
+
+  calc_smooth_position(positions_eval, verts, smoothed_positions, factors, new_positions);
+
+  tls.translations.resize(verts.size());
+  const MutableSpan<float3> translations = tls.translations;
+  translations_from_new_positions(new_positions, verts, positions_eval, translations);
+
+  switch (eBrushDeformTarget(deform_target)) {
+    case BRUSH_DEFORM_TARGET_GEOMETRY:
+      write_translations(sd, object, positions_eval, verts, translations, positions_orig);
+      break;
+    case BRUSH_DEFORM_TARGET_CLOTH_SIM:
+      assign_cloth_deformation(new_positions, verts, cache.cloth_sim->deformation_pos);
+      break;
+  }
+}
+
+static void do_smooth_brush(const Sculpt &sd,
+                            Object &object,
+                            const Span<bke::pbvh::Node *> nodes,
+                            const SculptBoundary &boundary,
+                            const float strength,
+                            const eBrushDeformTarget deform_target)
+{
+  SculptSession &ss = *object.sculpt;
+  switch (ss.pbvh->type()) {
+    case bke::pbvh::Type::Mesh: {
+      Mesh &mesh = *static_cast<Mesh *>(object.data);
+      Span<float3> positions_eval = BKE_pbvh_get_vert_positions(*ss.pbvh);
+      MutableSpan<float3> positions_orig = mesh.vert_positions_for_write();
+      const OffsetIndices<int> faces = mesh.faces();
+      const Span<int> corner_verts = mesh.corner_verts();
+      const GroupedSpan<int> vert_to_face_map = ss.vert_to_face_map;
+      bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
+      const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
+
+      threading::EnumerableThreadSpecific<LocalDataMesh> all_tls;
+      threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+        LocalDataMesh &tls = all_tls.local();
+        for (const int i : range) {
+          calc_smooth_mesh(sd,
+                           object,
+                           positions_eval,
+                           faces,
+                           corner_verts,
+                           vert_to_face_map,
+                           hide_poly,
+                           boundary.edit_info.propagation_steps_num,
+                           boundary.edit_info.strength_factor,
+                           *nodes[i],
+                           tls,
+                           boundary.initial_vert_position,
+                           strength,
+                           deform_target,
+                           positions_orig);
+          BKE_pbvh_node_mark_positions_update(nodes[i]);
+        }
+      });
+      break;
+    }
+  }
+}
 
 /* -------------------------------------------------------------------- */
 /** \name Brush Actions
@@ -2309,6 +2455,14 @@ void do_boundary_brush(const Sculpt &sd, Object &ob, Span<bke::pbvh::Node *> nod
                      *ss.cache->boundaries[symm_area],
                      strength,
                      eBrushDeformTarget(brush.deform_target));
+      break;
+    case BRUSH_BOUNDARY_DEFORM_SMOOTH:
+      do_smooth_brush(sd,
+                      ob,
+                      nodes,
+                      *ss.cache->boundaries[symm_area],
+                      strength,
+                      eBrushDeformTarget(brush.deform_target));
       break;
   }
   return;
