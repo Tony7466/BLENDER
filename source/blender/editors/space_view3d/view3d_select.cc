@@ -5183,62 +5183,38 @@ static bool grease_pencil_circle_select(const ViewContext *vc,
   const Vector<ed::greasepencil::MutableDrawingInfo> drawings =
       ed::greasepencil::retrieve_editable_drawings(*vc->scene, grease_pencil);
 
-  /* Construct BVH tree for segment selection. */
-  ed::greasepencil::Curves2DBVHTree tree_data;
-  BLI_SCOPED_DEFER([&]() { ed::greasepencil::free_curves_2d_bvh_data(tree_data); });
+  /* Store input selection. */
   if (use_segment_selection) {
-    tree_data = ed::greasepencil::build_curves_2d_bvh_from_visible(
-        *vc, *ob_eval, grease_pencil, drawings);
-  }
-
-  /* Cached original selection in each drawing, used in segment selection mode. */
-  IndexMaskMemory memory;
-  Array<IndexMask> point_selection_by_drawing;
-  if (use_segment_selection) {
-    point_selection_by_drawing.reinitialize(drawings.size());
-  }
-
-  /* Range of points in tree data matching for the current curve, for re-using screen space
-   * positions. */
-  IndexRange tree_data_range = IndexRange();
-  for (const int i_drawing : drawings.index_range()) {
-    const ed::greasepencil::MutableDrawingInfo &info = drawings[i_drawing];
-    const bke::greasepencil::Layer &layer = *grease_pencil.layer(info.layer_index);
-    bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
-    const OffsetIndices points_by_curve = curves.points_by_curve();
-    bke::crazyspace::GeometryDeformation deformation =
-        bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
-            ob_eval, *vc->obedit, info.layer_index, info.frame_number);
-    IndexMaskMemory memory;
-    const IndexMask elements = ed::greasepencil::retrieve_editable_elements(
-        *vc->obedit, info, selection_domain, memory);
-    if (elements.is_empty()) {
-      continue;
+    /* Construct BVH tree for segment selection. */
+    ed::greasepencil::Curves2DBVHTree tree_data;
+    BLI_SCOPED_DEFER([&]() { ed::greasepencil::free_curves_2d_bvh_data(tree_data); });
+    if (use_segment_selection) {
+      tree_data = ed::greasepencil::build_curves_2d_bvh_from_visible(
+          *vc, *ob_eval, grease_pencil, drawings);
     }
 
-    /* Store input selection. */
-    if (use_segment_selection) {
-      point_selection_by_drawing[i_drawing] = ed::curves::retrieve_selected_points(curves, memory);
-    }
-
-    const float4x4 layer_to_world = layer.to_world_space(*ob_eval);
-    const float4x4 projection = ED_view3d_ob_project_mat_get_from_obmat(vc->rv3d, layer_to_world);
-    changed = ed::curves::select_circle(
-        *vc, curves, deformation, projection, elements, selection_domain, int2(mval), rad, sel_op);
-
-    if (use_segment_selection) {
-      /* Range of points in tree data matching this curve, for re-using screen space positions. */
+    /* Range of points in tree data matching for the current curve, for re-using screen space
+     * positions. */
+    IndexRange tree_data_range = IndexRange();
+    for (const int i_drawing : drawings.index_range()) {
+      const ed::greasepencil::MutableDrawingInfo &info = drawings[i_drawing];
+      const bke::greasepencil::Layer &layer = *grease_pencil.layer(info.layer_index);
+      bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
+      const OffsetIndices points_by_curve = curves.points_by_curve();
+      bke::crazyspace::GeometryDeformation deformation =
+          bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
+              ob_eval, *vc->obedit, info.layer_index, info.frame_number);
+      IndexMaskMemory memory;
+      const IndexMask elements = ed::greasepencil::retrieve_editable_elements(
+          *vc->obedit, info, selection_domain, memory);
+      if (elements.is_empty()) {
+        continue;
+      }
+      /* Range of points in tree data matching this curve, for re-using screen space positions.
+       */
       tree_data_range = tree_data_range.after(curves.points_num());
       const Span<float2> screen_space_positions = tree_data.start_positions.as_span().slice(
           tree_data_range);
-
-      const IndexMask new_point_selection = ed::curves::retrieve_selected_points(curves, memory);
-      const IndexMask changed_points_mask = IndexMask::from_union(
-          IndexMask::from_difference(
-              new_point_selection, point_selection_by_drawing[i_drawing], memory),
-          IndexMask::from_difference(
-              point_selection_by_drawing[i_drawing], new_point_selection, memory),
-          memory);
 
       /* Create curve masks for added and removed points to limit intersection tests.
        * Note: this cannot be constructed as a difference of before/after curve selection,
@@ -5315,6 +5291,35 @@ static bool grease_pencil_circle_select(const ViewContext *vc,
           std::cout << std::endl;
         }
       }
+    }
+  }
+  else {
+    for (const int i_drawing : drawings.index_range()) {
+      const ed::greasepencil::MutableDrawingInfo &info = drawings[i_drawing];
+      const bke::greasepencil::Layer &layer = *grease_pencil.layer(info.layer_index);
+      bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
+      const OffsetIndices points_by_curve = curves.points_by_curve();
+      bke::crazyspace::GeometryDeformation deformation =
+          bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
+              ob_eval, *vc->obedit, info.layer_index, info.frame_number);
+      IndexMaskMemory memory;
+      const IndexMask elements = ed::greasepencil::retrieve_editable_elements(
+          *vc->obedit, info, selection_domain, memory);
+      if (elements.is_empty()) {
+        continue;
+      }
+      const float4x4 layer_to_world = layer.to_world_space(*ob_eval);
+      const float4x4 projection = ED_view3d_ob_project_mat_get_from_obmat(vc->rv3d,
+                                                                          layer_to_world);
+      changed = ed::curves::select_circle(*vc,
+                                          curves,
+                                          deformation,
+                                          projection,
+                                          elements,
+                                          selection_domain,
+                                          int2(mval),
+                                          rad,
+                                          sel_op);
     }
   }
 

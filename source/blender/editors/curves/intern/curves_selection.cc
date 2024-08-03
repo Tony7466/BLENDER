@@ -1156,4 +1156,58 @@ bool select_circle(const ViewContext &vc,
   return changed;
 }
 
+IndexMask select_circle_mask(const ViewContext &vc,
+                             bke::CurvesGeometry &curves,
+                             const bke::crazyspace::GeometryDeformation &deformation,
+                             const float4x4 &projection,
+                             const IndexMask &mask,
+                             const bke::AttrDomain selection_domain,
+                             const int2 coord,
+                             const float radius,
+                             IndexMaskMemory &memory)
+{
+  const float radius_sq = pow2f(radius);
+
+  if (selection_domain == bke::AttrDomain::Point) {
+    const Span<float3> positions = deformation.positions;
+    return IndexMask::from_predicate(mask.slice_content(curves.points_range()),
+                                     GrainSize(1024),
+                                     memory,
+                                     [&](const int point_i) -> bool {
+                                       const float2 pos_proj = ED_view3d_project_float_v2_m4(
+                                           vc.region, positions[point_i], projection);
+                                       return math::distance_squared(pos_proj, float2(coord)) <=
+                                              radius_sq;
+                                     });
+  }
+  else if (selection_domain == bke::AttrDomain::Curve) {
+    const OffsetIndices points_by_curve = curves.points_by_curve();
+    const Span<float3> positions = deformation.positions;
+    return IndexMask::from_predicate(
+        mask.slice_content(curves.curves_range()),
+        GrainSize(512),
+        memory,
+        [&](const int curve_i) -> bool {
+          const IndexRange points = points_by_curve[curve_i];
+          if (points.size() == 1) {
+            const float2 pos_proj = ED_view3d_project_float_v2_m4(
+                vc.region, positions[points.first()], projection);
+            return math::distance_squared(pos_proj, float2(coord)) <= radius_sq;
+          }
+          for (const int segment_i : points.drop_back(1)) {
+            const float3 pos1 = positions[segment_i];
+            const float3 pos2 = positions[segment_i + 1];
+
+            const float2 pos1_proj = ED_view3d_project_float_v2_m4(vc.region, pos1, projection);
+            const float2 pos2_proj = ED_view3d_project_float_v2_m4(vc.region, pos2, projection);
+
+            const float distance_proj_sq = dist_squared_to_line_segment_v2(
+                float2(coord), pos1_proj, pos2_proj);
+            return distance_proj_sq <= radius_sq;
+          }
+        });
+  }
+  return {};
+}
+
 }  // namespace blender::ed::curves

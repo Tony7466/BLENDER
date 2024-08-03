@@ -333,6 +333,19 @@ bool select_circle(const ViewContext &vc,
                    int2 coord,
                    float radius,
                    eSelectOp sel_op);
+
+/**
+ * Select points or curves in a (screen-space) circle.
+ */
+IndexMask select_circle_mask(const ViewContext &vc,
+                             bke::CurvesGeometry &curves,
+                             const bke::crazyspace::GeometryDeformation &deformation,
+                             const float4x4 &projection,
+                             const IndexMask &mask,
+                             bke::AttrDomain selection_domain,
+                             int2 coord,
+                             float radius,
+                             IndexMaskMemory &memory);
 /** \} */
 
 /* -------------------------------------------------------------------- */
