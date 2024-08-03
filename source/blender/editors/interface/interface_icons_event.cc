@@ -116,7 +116,7 @@ EventIconWidth ui_event_icon_width(const int icon)
     return EventIconWidth::Wide;
   }
 
-  if (icon == ICON_EVENT_OS && !MACOS && !MSWIN) {
+  if (icon == ICON_EVENT_OS && platform != MACOS && platform != MSWIN) {
     return EventIconWidth::Wide;
   }
 
