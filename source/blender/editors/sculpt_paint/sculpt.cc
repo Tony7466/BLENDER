@@ -6740,6 +6740,7 @@ template void gather_data_mesh<int>(Span<int>, Span<int>, MutableSpan<int>);
 template void gather_data_mesh<float>(Span<float>, Span<int>, MutableSpan<float>);
 template void gather_data_mesh<float3>(Span<float3>, Span<int>, MutableSpan<float3>);
 template void gather_data_mesh<float4>(Span<float4>, Span<int>, MutableSpan<float4>);
+template void gather_data_grids<int>(const SubdivCCG &, Span<int>, Span<int>, MutableSpan<int>);
 template void gather_data_grids<float>(const SubdivCCG &,
                                        Span<float>,
                                        Span<int>,
@@ -6748,6 +6749,7 @@ template void gather_data_grids<float3>(const SubdivCCG &,
                                         Span<float3>,
                                         Span<int>,
                                         MutableSpan<float3>);
+template void gather_data_vert_bmesh<int>(Span<int>, const Set<BMVert *, 0> &, MutableSpan<int>);
 template void gather_data_vert_bmesh<float>(Span<float>,
                                             const Set<BMVert *, 0> &,
                                             MutableSpan<float>);
