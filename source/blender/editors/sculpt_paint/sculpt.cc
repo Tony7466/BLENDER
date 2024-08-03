@@ -6922,19 +6922,21 @@ void calc_mask_factor(const Mesh &mesh, const Span<int> verts, const MutableSpan
 }
 
 void calc_mask_factor(const SubdivCCG &subdiv_ccg,
-                      const Span<SubdivCCGCoord> coords,
+                      const Span<int> grids,
                       const MutableSpan<float> factors)
 {
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
   const Span<CCGElem *> elems = subdiv_ccg.grids;
 
-  BLI_assert(coords.size() == factors.size());
+  BLI_assert(grids.size() * key.grid_area == factors.size());
 
   if (key.has_mask) {
-    int i = 0;
-    for (const SubdivCCGCoord coord : coords) {
-      factors[i] *= 1.0f - CCG_grid_elem_mask(key, elems[coord.grid_index], coord.x, coord.y);
-      i++;
+    for (const int i : grids.index_range()) {
+      CCGElem *elem = elems[grids[i]];
+      const int start = i * key.grid_area;
+      for (const int offset : IndexRange(key.grid_area)) {
+        factors[start + offset] = 1.0f - CCG_elem_offset_mask(key, elem, offset);
+      }
     }
   }
 }

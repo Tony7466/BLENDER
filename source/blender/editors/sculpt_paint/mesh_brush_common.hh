@@ -149,7 +149,9 @@ MutableSpan<T> gather_data_grids(const SubdivCCG &subdiv_ccg,
 template<typename T>
 void gather_data_vert_bmesh(Span<T> src, const Set<BMVert *, 0> &verts, MutableSpan<T> node_data);
 template<typename T>
-MutableSpan<T> gather_data_vert_bmesh(const Span<T> src, const Set<BMVert &> &verts, Vector<T> &dst)
+MutableSpan<T> gather_data_vert_bmesh(const Span<T> src,
+                                      const Set<BMVert *, 0> &verts,
+                                      Vector<T> &dst)
 {
   dst.resize(verts.size());
   gather_data_vert_bmesh(src, verts, dst.as_mutable_span());
@@ -194,13 +196,9 @@ void fill_factor_from_hide_and_mask(const BMesh &bm,
  * \note Most brush implementations will prefer to use #fill_factor_from_hide_and_mask or
  * #fill_factor_from_hide
  */
-void calc_mask_factor(const Mesh &mesh, const Span<int> verts, const MutableSpan<float> factors);
-void calc_mask_factor(const SubdivCCG &subdiv_ccg,
-                      const Span<SubdivCCGCoord> coords,
-                      const MutableSpan<float> factors);
-void calc_mask_factor(const BMesh &bm,
-                      const Set<BMVert *, 0> &verts,
-                      const MutableSpan<float> factors);
+void calc_mask_factor(const Mesh &mesh, Span<int> verts, MutableSpan<float> factors);
+void calc_mask_factor(const SubdivCCG &subdiv_ccg, Span<int> grids, MutableSpan<float> factors);
+void calc_mask_factor(const BMesh &bm, const Set<BMVert *, 0> &verts, MutableSpan<float> factors);
 
 /**
  * Disable brush influence when vertex normals point away from the view.

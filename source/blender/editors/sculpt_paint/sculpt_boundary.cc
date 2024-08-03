@@ -1046,16 +1046,48 @@ static void filter_verts_outside_symmetry_area(const Span<float3> positions,
   }
 }
 
-void assign_cloth_deformation(const Span<float3> new_positions,
-                              const Span<int> verts,
-                              const MutableSpan<float3> positions)
-{
-  BLI_assert(verts.size() == new_positions.size());
+struct LocalDataMesh {
+  Vector<float> factors;
+  Vector<int> propagation_steps;
 
-  for (const int i : verts.index_range()) {
-    positions[verts[i]] = new_positions[i];
-  }
-}
+  /* TODO: std::variant?
+  /* Bend */
+  Vector<float3> pivot_positions;
+  Vector<float3> pivot_axes;
+
+  /* Slide */
+  Vector<float3> slide_directions;
+
+  /* Smooth */
+  Vector<Vector<int>> neighbors;
+  Vector<float3> average_positions;
+
+  Vector<float3> new_positions;
+  Vector<float3> translations;
+};
+
+struct LocalDataGrids {
+  Vector<float3> positions;
+  Vector<int> indices;
+
+  Vector<float> factors;
+  Vector<int> propagation_steps;
+
+  /* TODO: std::variant?
+  /* Bend */
+  Vector<float3> pivot_positions;
+  Vector<float3> pivot_axes;
+
+  /* Slide */
+  Vector<float3> slide_directions;
+
+  /* Smooth */
+  Vector<Vector<int>> neighbors;
+  Vector<float3> average_positions;
+
+  Vector<float3> new_positions;
+  Vector<float3> translations;
+};
 
 /** \} */
 
@@ -1082,25 +1114,6 @@ static void calc_bend_position(const Span<float3> positions,
   }
 }
 
-struct LocalDataMesh {
-  Vector<float> factors;
-  Vector<int> propagation_steps;
-
-  /* Bend */
-  Vector<float3> pivot_positions;
-  Vector<float3> pivot_axes;
-
-  /* Slide */
-  Vector<float3> slide_directions;
-
-  /* Smooth */
-  Vector<Vector<int>> neighbors;
-  Vector<float3> average_positions;
-
-  Vector<float3> new_positions;
-  Vector<float3> translations;
-};
-
 static void calc_bend_mesh(const Sculpt &sd,
                            Object &object,
                            const Span<float3> positions_eval,
@@ -1124,8 +1137,7 @@ static void calc_bend_mesh(const Sculpt &sd,
 
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(object);
 
-  gather_data_mesh(vert_factors, verts, tls.factors);
-  const MutableSpan<float> factors = tls.factors;
+  const MutableSpan<float> factors = gather_data_mesh(vert_factors, verts, tls.factors);
 
   calc_mask_factor(mesh, verts, factors);
 
@@ -1133,8 +1145,8 @@ static void calc_bend_mesh(const Sculpt &sd,
     auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
   }
 
-  gather_data_mesh(vert_propagation_steps, verts, tls.propagation_steps);
-  const Span<int> propagation_steps = tls.propagation_steps;
+  const Span<int> propagation_steps = gather_data_mesh(
+      vert_propagation_steps, verts, tls.propagation_steps);
 
   filter_uninitialized_verts(propagation_steps, factors);
   filter_verts_outside_symmetry_area(orig_data.positions, symmetry_pivot, symm, factors);
@@ -1144,11 +1156,9 @@ static void calc_bend_mesh(const Sculpt &sd,
   tls.new_positions.resize(verts.size());
   const MutableSpan<float3> new_positions = tls.new_positions;
 
-  gather_data_mesh(vert_pivot_positions, verts, tls.pivot_positions);
-  const Span<float3> pivot_positions = tls.pivot_positions;
-
-  gather_data_mesh(vert_pivot_axes, verts, tls.pivot_axes);
-  const Span<float3> pivot_axes = tls.pivot_axes;
+  const Span<float3> pivot_positions = gather_data_mesh(
+      vert_pivot_positions, verts, tls.pivot_positions);
+  const Span<float3> pivot_axes = gather_data_mesh(vert_pivot_axes, verts, tls.pivot_axes);
 
   calc_bend_position(orig_data.positions, pivot_positions, pivot_axes, factors, new_positions);
 
@@ -1161,9 +1171,79 @@ static void calc_bend_mesh(const Sculpt &sd,
       write_translations(sd, object, positions_eval, verts, translations, positions_orig);
       break;
     case BRUSH_DEFORM_TARGET_CLOTH_SIM:
-      assign_cloth_deformation(new_positions, verts, cache.cloth_sim->deformation_pos);
+      scatter_data_mesh(
+          new_positions.as_span(), verts, cache.cloth_sim->deformation_pos.as_mutable_span());
       break;
   }
+}
+
+static void calc_bend_grids(const Sculpt &sd,
+                            Object &object,
+                            const SubdivCCG &subdiv_ccg,
+                            const Span<int> vert_propagation_steps,
+                            const Span<float> vert_factors,
+                            const Span<float3> vert_pivot_positions,
+                            const Span<float3> vert_pivot_axes,
+                            const bke::pbvh::Node &node,
+                            LocalDataGrids &tls,
+                            const float3 symmetry_pivot,
+                            const float strength,
+                            const eBrushDeformTarget deform_target)
+{
+  SculptSession &ss = *object.sculpt;
+  const StrokeCache &cache = *ss.cache;
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+
+  const Span<int> grids = bke::pbvh::node_grid_indices(node);
+  const int num_elements = grids.size() * key.grid_area;
+  const OrigPositionData orig_data = orig_position_data_get_grids(object, node);
+
+  const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(object);
+
+  const MutableSpan<float> factors = gather_data_grids(
+      subdiv_ccg, vert_factors, grids, tls.factors);
+
+  calc_mask_factor(subdiv_ccg, grids, factors);
+
+  if (cache.automasking) {
+    auto_mask::calc_grids_factors(object, *cache.automasking, node, grids, factors);
+  }
+
+  const Span<int> propagation_steps = gather_data_grids(
+      subdiv_ccg, vert_propagation_steps, grids, tls.propagation_steps);
+
+  filter_uninitialized_verts(propagation_steps, factors);
+  filter_verts_outside_symmetry_area(orig_data.positions, symmetry_pivot, symm, factors);
+
+  scale_factors(factors, strength);
+
+  tls.new_positions.resize(num_elements);
+  const MutableSpan<float3> new_positions = tls.new_positions;
+
+  const Span<float3> pivot_positions = gather_data_grids(
+      subdiv_ccg, vert_pivot_positions, grids, tls.pivot_positions);
+  const Span<float3> pivot_axes = gather_data_grids(
+      subdiv_ccg, vert_pivot_axes, grids, tls.pivot_axes);
+
+  calc_bend_position(orig_data.positions, pivot_positions, pivot_axes, factors, new_positions);
+
+  tls.translations.resize(num_elements);
+  const MutableSpan<float3> translations = tls.translations;
+
+  const Span<float3> positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
+  translations_from_new_positions(new_positions, positions, translations);
+
+  /*
+  switch (eBrushDeformTarget(deform_target)) {
+    case BRUSH_DEFORM_TARGET_GEOMETRY:
+      write_translations(sd, object, positions_eval, verts, translations, positions_orig);
+      break;
+    case BRUSH_DEFORM_TARGET_CLOTH_SIM:
+      scatter_data_mesh(
+          new_positions.as_span(), verts, cache.cloth_sim->deformation_pos.as_mutable_span());
+      break;
+  }
+  */
 }
 
 static void do_bend_brush(const Sculpt &sd,
@@ -1280,7 +1360,8 @@ static void calc_slide_mesh(const Sculpt &sd,
       write_translations(sd, object, positions_eval, verts, translations, positions_orig);
       break;
     case BRUSH_DEFORM_TARGET_CLOTH_SIM:
-      assign_cloth_deformation(new_positions, verts, cache.cloth_sim->deformation_pos);
+      scatter_data_mesh(
+          new_positions.as_span(), verts, cache.cloth_sim->deformation_pos.as_mutable_span());
       break;
   }
 }
@@ -1394,7 +1475,8 @@ static void calc_inflate_mesh(const Sculpt &sd,
       write_translations(sd, object, positions_eval, verts, translations, positions_orig);
       break;
     case BRUSH_DEFORM_TARGET_CLOTH_SIM:
-      assign_cloth_deformation(new_positions, verts, cache.cloth_sim->deformation_pos);
+      scatter_data_mesh(
+          new_positions.as_span(), verts, cache.cloth_sim->deformation_pos.as_mutable_span());
       break;
   }
 }
@@ -1507,7 +1589,8 @@ static void calc_grab_mesh(const Sculpt &sd,
       write_translations(sd, object, positions_eval, verts, translations, positions_orig);
       break;
     case BRUSH_DEFORM_TARGET_CLOTH_SIM:
-      assign_cloth_deformation(new_positions, verts, cache.cloth_sim->deformation_pos);
+      scatter_data_mesh(
+          new_positions.as_span(), verts, cache.cloth_sim->deformation_pos.as_mutable_span());
       break;
   }
 }
@@ -1624,7 +1707,8 @@ static void calc_twist_mesh(const Sculpt &sd,
       write_translations(sd, object, positions_eval, verts, translations, positions_orig);
       break;
     case BRUSH_DEFORM_TARGET_CLOTH_SIM:
-      assign_cloth_deformation(new_positions, verts, cache.cloth_sim->deformation_pos);
+      scatter_data_mesh(
+          new_positions.as_span(), verts, cache.cloth_sim->deformation_pos.as_mutable_span());
       break;
   }
 }
@@ -1785,7 +1869,8 @@ static void calc_smooth_mesh(const Sculpt &sd,
       write_translations(sd, object, positions_eval, verts, translations, positions_orig);
       break;
     case BRUSH_DEFORM_TARGET_CLOTH_SIM:
-      assign_cloth_deformation(new_positions, verts, cache.cloth_sim->deformation_pos);
+      scatter_data_mesh(
+          new_positions.as_span(), verts, cache.cloth_sim->deformation_pos.as_mutable_span());
       break;
   }
 }
