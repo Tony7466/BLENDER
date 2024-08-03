@@ -11,6 +11,7 @@
  * Event codes are used as identifiers.
  */
 
+#include "BLI_rect.h"
 #include "BLI_string.h"
 
 #include "BLF_api.hh"
@@ -21,18 +22,21 @@
 
 #include "interface_intern.hh"
 
-static void icon_draw_icon(float x, float y, int icon_id, bool inverted, float alpha)
+static void icon_draw_icon(rctf *rect, int icon_id, bool inverted, float alpha)
 {
-  UI_icon_draw_ex(x,
-                  y,
-                  inverted ? icon_id + 1 : icon_id,
-                  U.inv_scale_factor,
-                  alpha,
-                  0.0f,
-                  nullptr,
-                  false,
-                  nullptr,
-                  false);
+  float color[4];
+  UI_GetThemeColor4fv(TH_TEXT, color);
+  if (alpha < 1.0f) {
+    color[3] *= alpha;
+  }
+
+  float offset = (BLI_rctf_size_x(rect) - BLI_rctf_size_y(rect)) / 2.0f;
+  BLF_draw_svg_icon(uint(inverted ? icon_id + 1 : icon_id),
+                    rect->xmin + offset,
+                    rect->ymin,
+                    float(ICON_DEFAULT_HEIGHT) * UI_SCALE_FAC,
+                    color,
+                    0.0f);
 }
 
 static void icon_draw_rect_input_text(
@@ -46,16 +50,14 @@ static void icon_draw_rect_input_text(
 
   if (icon_width == EventIconWidth::Wide) {
     rect->xmax = rect->xmin + (rect->xmax - rect->xmin) * 1.5f;
-    float offset = 4.0f * UI_SCALE_FAC;
-    icon_draw_icon(rect->xmin + offset, rect->ymin, ICON_KEY_EMPTY2, inverted, alpha);
+    icon_draw_icon(rect, ICON_KEY_EMPTY2, inverted, alpha);
   }
   else if (icon_width == EventIconWidth::Widest) {
     rect->xmax = rect->xmin + (rect->xmax - rect->xmin) * 2.0f;
-    float offset = 8.0f * UI_SCALE_FAC;
-    icon_draw_icon(rect->xmin + offset, rect->ymin, ICON_KEY_EMPTY3, inverted, alpha);
+    icon_draw_icon(rect, ICON_KEY_EMPTY3, inverted, alpha);
   }
   else {
-    icon_draw_icon(rect->xmin, rect->ymin, ICON_KEY_EMPTY1, inverted, alpha);
+    icon_draw_icon(rect, ICON_KEY_EMPTY1, inverted, alpha);
   }
 
   const int font_id = BLF_default();
@@ -66,16 +68,16 @@ static void icon_draw_rect_input_text(
   const uiFontStyle *fstyle = UI_FSTYLE_WIDGET;
   float font_size = std::min(15.0f, fstyle->points) * UI_SCALE_FAC;
 
-  float width, height;
+  float width;
   BLF_size(font_id, font_size);
-  BLF_width_and_height(font_id, str, BLF_DRAW_STR_DUMMY_MAX, &width, &height);
+  width = BLF_width(font_id, str, BLF_DRAW_STR_DUMMY_MAX);
 
   if (width > available_width) {
     font_size *= available_width / width;
   }
 
   BLF_size(font_id, font_size);
-  BLF_width_and_height(font_id, str, BLF_DRAW_STR_DUMMY_MAX, &width, &height);
+  width = BLF_width(font_id, str, BLF_DRAW_STR_DUMMY_MAX);
   const float x = rect->xmin + UI_SCALE_FAC + ((available_width - width) / 2.0f);
 
   const float y = rect->ymin + (font_size * 0.4f);
@@ -171,11 +173,11 @@ void icon_draw_rect_input(float x, float y, int w, int h, int icon, float alpha,
     icon_draw_rect_input_text(&rect, str, inverted, alpha, icon_width);
   }
   if (icon == ICON_EVENT_SHIFT) {
-    icon_draw_icon(rect.xmin, rect.ymin, ICON_KEY_SHIFT, inverted, alpha);
+    icon_draw_icon(&rect, ICON_KEY_SHIFT, inverted, alpha);
   }
   else if (icon == ICON_EVENT_CTRL) {
     if (platform == MACOS) {
-      icon_draw_icon(rect.xmin, rect.ymin, ICON_KEY_CONTROL, inverted, alpha);
+      icon_draw_icon(&rect, ICON_KEY_CONTROL, inverted, alpha);
     }
     else {
       icon_draw_rect_input_text(&rect, IFACE_("Ctrl"), inverted, alpha, icon_width);
@@ -183,7 +185,7 @@ void icon_draw_rect_input(float x, float y, int w, int h, int icon, float alpha,
   }
   else if (icon == ICON_EVENT_ALT) {
     if (platform == MACOS) {
-      icon_draw_icon(rect.xmin, rect.ymin, ICON_KEY_OPTION, inverted, alpha);
+      icon_draw_icon(&rect, ICON_KEY_OPTION, inverted, alpha);
     }
     else {
       icon_draw_rect_input_text(&rect, IFACE_("Alt"), inverted, alpha, icon_width);
@@ -191,10 +193,10 @@ void icon_draw_rect_input(float x, float y, int w, int h, int icon, float alpha,
   }
   else if (icon == ICON_EVENT_OS) {
     if (platform == MACOS) {
-      icon_draw_icon(rect.xmin, rect.ymin, ICON_KEY_COMMAND, inverted, alpha);
+      icon_draw_icon(&rect, ICON_KEY_COMMAND, inverted, alpha);
     }
     else if (platform == MSWIN) {
-      icon_draw_icon(rect.xmin, rect.ymin, ICON_KEY_WINDOWS, inverted, alpha);
+      icon_draw_icon(&rect, ICON_KEY_WINDOWS, inverted, alpha);
     }
     else {
       icon_draw_rect_input_text(&rect, IFACE_("OS"), inverted, alpha, icon_width);
@@ -204,7 +206,7 @@ void icon_draw_rect_input(float x, float y, int w, int h, int icon, float alpha,
     icon_draw_rect_input_text(&rect, IFACE_("Del"), inverted, alpha, icon_width);
   }
   else if (icon == ICON_EVENT_TAB) {
-    icon_draw_icon(rect.xmin, rect.ymin, ICON_KEY_TAB, inverted, alpha);
+    icon_draw_icon(&rect, ICON_KEY_TAB, inverted, alpha);
   }
   else if (icon == ICON_EVENT_HOME) {
     icon_draw_rect_input_text(&rect, IFACE_("Home"), inverted, alpha, icon_width);
@@ -213,7 +215,7 @@ void icon_draw_rect_input(float x, float y, int w, int h, int icon, float alpha,
     icon_draw_rect_input_text(&rect, IFACE_("End"), inverted, alpha, icon_width);
   }
   else if (icon == ICON_EVENT_RETURN) {
-    icon_draw_icon(rect.xmin, rect.ymin, ICON_KEY_RETURN, inverted, alpha);
+    icon_draw_icon(&rect, ICON_KEY_RETURN, inverted, alpha);
   }
   else if (icon == ICON_EVENT_ESC) {
     icon_draw_rect_input_text(&rect, IFACE_("Esc"), inverted, alpha, icon_width);
