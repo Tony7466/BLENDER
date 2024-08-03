@@ -70,6 +70,7 @@ class LightProbes {
     const bool show_parallax = (prb->flag & LIGHTPROBE_FLAG_SHOW_PARALLAX) != 0;
     const bool show_influence = (prb->flag & LIGHTPROBE_FLAG_SHOW_INFLUENCE) != 0;
     const bool is_select = selection_type_ == SelectionType::ENABLED;
+    const bool show_data = (ob_ref.object->base_flag & BASE_SELECTED) || is_select;
 
     const select::ID select_id = res.select_id(ob_ref);
     const float4 color = res.object_wire_color(ob_ref, state);
@@ -132,7 +133,6 @@ class LightProbes {
         }
 
         /* Data dots */
-        const bool show_data = (ob_ref.object->base_flag & BASE_SELECTED) || is_select;
         if (show_data) {
           matrix[0].w = prb->grid_resolution_x;
           matrix[1].w = prb->grid_resolution_y;
