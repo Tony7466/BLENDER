@@ -6666,18 +6666,6 @@ void gather_data_mesh(const Span<T> src, const Span<int> indices, const MutableS
   }
 }
 
-/* TODO: For some reason, without this specialization, clang on OSX ARM64 fails in the linker step.
- */
-template<>
-void gather_data_mesh(const Span<int> src, const Span<int> indices, const MutableSpan<int> dst)
-{
-  BLI_assert(indices.size() == dst.size());
-
-  for (const int i : indices.index_range()) {
-    dst[i] = src[indices[i]];
-  }
-}
-
 template<typename T>
 void gather_data_grids(const SubdivCCG &subdiv_ccg,
                        const Span<T> src,
@@ -6748,6 +6736,7 @@ void scatter_data_vert_bmesh(const Span<T> node_data,
   }
 }
 
+template void gather_data_mesh<int>(Span<int>, Span<int>, MutableSpan<int>);
 template void gather_data_mesh<float>(Span<float>, Span<int>, MutableSpan<float>);
 template void gather_data_mesh<float3>(Span<float3>, Span<int>, MutableSpan<float3>);
 template void gather_data_mesh<float4>(Span<float4>, Span<int>, MutableSpan<float4>);
