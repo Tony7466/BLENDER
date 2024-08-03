@@ -378,7 +378,7 @@ static int seq_anims_count(const Scene *scene, Sequence *seq)
   AnimManager *manager = seq_anim_manager_ensure(SEQ_editing_get(scene));
   manager->strip_anims_acquire(scene, seq);
   blender::Vector<ImBufAnim *> anims = manager->strip_anims_get(scene, seq);
-  int count = anims.size();
+  const int count = anims.size();
   manager->strip_anims_release(scene, seq);
   return count;
 }

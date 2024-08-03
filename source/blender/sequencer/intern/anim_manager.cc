@@ -136,7 +136,7 @@ void ShareableAnim::release_from_strip(Sequence *seq)
     return;
   }
 
-  this->mutex->lock();
+  this->mutex.lock();
 
   this->users.remove_if([seq](Sequence *seq_user) { return seq == seq_user; });
 
@@ -147,7 +147,7 @@ void ShareableAnim::release_from_strip(Sequence *seq)
     this->anims.clear();
   }
 
-  this->mutex->unlock();
+  this->mutex.unlock();
 };
 
 void ShareableAnim::release_from_all_strips(void)
@@ -173,7 +173,7 @@ void ShareableAnim::acquire_anims(const Scene *scene, Sequence *seq)
   }
 
   if (is_multiview(scene, seq)) {
-    blender::Vector<ImBufAnim *> new_anims = multiview_anims_get(
+    const blender::Vector<ImBufAnim *> new_anims = multiview_anims_get(
         scene, seq, filepath, anims_loaded);
 
     for (ImBufAnim *anim : new_anims) {
@@ -187,7 +187,7 @@ void ShareableAnim::acquire_anims(const Scene *scene, Sequence *seq)
     }
   }
 
-  for (int i = 0; i < this->anims.size(); i++) {
+  for (const int i: this->anims.index_range()) {
     index_dir_set(SEQ_editing_get(scene), seq, this->anims[i]);
     if (is_multiview(scene, seq)) {
       const char *suffix = BKE_scene_multiview_view_id_suffix_get(&scene->r, i);
@@ -200,7 +200,7 @@ void ShareableAnim::acquire_anims(const Scene *scene, Sequence *seq)
 
 void ShareableAnim::unlock()
 {
-  this->mutex->unlock();
+  this->mutex.unlock();
 }
 
 /* TODO: It would be simpler, and perhaps better for user to load n strips, instead of
@@ -305,10 +305,10 @@ void AnimManager::parallel_load_anims(const Scene *scene,
   strips = remove_duplicates_for_parallel_load(scene, strips);
 
   threading::parallel_for(strips.index_range(), 1, [&](const IndexRange range) {
-    for (int i : range) {
+    for (const int i : range) {
       Sequence *seq = strips[i];
       ShareableAnim &sh_anim = this->cache_entry_get(scene, seq);
-      sh_anim.mutex->lock();
+      sh_anim.mutex.lock();
 
       sh_anim.acquire_anims(scene, seq);
 
@@ -360,7 +360,7 @@ void AnimManager::strip_anims_acquire(const Scene *scene, blender::Vector<Sequen
 void AnimManager::strip_anims_acquire(const Scene *scene, Sequence *seq)
 {
   ShareableAnim &sh_anim = this->cache_entry_get(scene, seq);
-  sh_anim.mutex->lock();
+  sh_anim.mutex.lock();
   sh_anim.acquire_anims(scene, seq);
 }
 
@@ -380,7 +380,7 @@ void AnimManager::strip_anims_release(const Scene *scene, Sequence *seq)
   sh_anim.unlock();
 }
 
-blender::Vector<ImBufAnim *> &AnimManager::strip_anims_get(const Scene *scene, const Sequence *seq)
+blender::Vector<ImBufAnim *> AnimManager::strip_anims_get(const Scene *scene, const Sequence *seq)
 {
   ShareableAnim &sh_anim = this->cache_entry_get(scene, seq);
   return sh_anim.anims;

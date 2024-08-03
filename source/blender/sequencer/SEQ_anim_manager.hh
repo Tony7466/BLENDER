@@ -21,10 +21,10 @@ class ShareableAnim {
  public:
   blender::Vector<ImBufAnim *> anims; /* Ordered by view_id. */
   blender::Set<Sequence *> users;
-  std::unique_ptr<std::mutex> mutex = std::make_unique<std::mutex>();
+  std::mutex mutex;
 
   void release_from_strip(Sequence *seq);
-  void release_from_all_strips(void);
+  void release_from_all_strips();
   void acquire_anims(const Scene *scene, Sequence *seq);
   void unlock();
 };
@@ -52,7 +52,7 @@ class AnimManager {
   /**
    * Get anims used by `seq`.
    */
-  blender::Vector<ImBufAnim *> &strip_anims_get(const Scene *scene, const Sequence *seq);
+  blender::Vector<ImBufAnim *> strip_anims_get(const Scene *scene, const Sequence *seq);
   /**
    * Free anims used by `seq`.
    */

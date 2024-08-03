@@ -31,7 +31,7 @@ struct bSound;
 #ifdef __cplusplus
 namespace blender::seq {
 struct MediaPresence;
-struct AnimManager;
+class AnimManager;
 }  // namespace blender::seq
 using MediaPresence = blender::seq::MediaPresence;
 using AnimManager = blender::seq::AnimManager;
