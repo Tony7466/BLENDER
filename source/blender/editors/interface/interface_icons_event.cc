@@ -49,11 +49,11 @@ static void icon_draw_rect_input_text(
   }
 
   if (icon_width == EventIconWidth::Wide) {
-    rect->xmax = rect->xmin + (rect->xmax - rect->xmin) * 1.5f;
+    rect->xmax = rect->xmin + BLI_rctf_size_x(rect) * 1.5f;
     icon_draw_icon(rect, ICON_KEY_EMPTY2, inverted, alpha);
   }
   else if (icon_width == EventIconWidth::Widest) {
-    rect->xmax = rect->xmin + (rect->xmax - rect->xmin) * 2.0f;
+    rect->xmax = rect->xmin + BLI_rctf_size_x(rect) * 2.0f;
     icon_draw_icon(rect, ICON_KEY_EMPTY3, inverted, alpha);
   }
   else {
@@ -63,12 +63,12 @@ static void icon_draw_rect_input_text(
   const int font_id = BLF_default();
   BLF_color4fv(font_id, color);
 
-  float available_width = rect->xmax - rect->xmin - (3.0f * UI_SCALE_FAC);
+  float available_width = BLI_rctf_size_x(rect) - (3.0f * UI_SCALE_FAC);
 
   const uiFontStyle *fstyle = UI_FSTYLE_WIDGET;
   float font_size = std::min(15.0f, fstyle->points) * UI_SCALE_FAC;
 
-  float width;
+  float width, height;
   BLF_size(font_id, font_size);
   width = BLF_width(font_id, str, BLF_DRAW_STR_DUMMY_MAX);
 
@@ -77,10 +77,11 @@ static void icon_draw_rect_input_text(
   }
 
   BLF_size(font_id, font_size);
-  width = BLF_width(font_id, str, BLF_DRAW_STR_DUMMY_MAX);
+  BLF_width_and_height(font_id, str, BLF_DRAW_STR_DUMMY_MAX, &width, &height);
   const float x = rect->xmin + UI_SCALE_FAC + ((available_width - width) / 2.0f);
+  const float offset = std::max((BLI_rctf_size_y(rect) - height) * 0.5f, (font_size * 0.4f));
+  const float y = rect->ymin + offset;
 
-  const float y = rect->ymin + (font_size * 0.4f);
   BLF_position(font_id, x, y, 0.0f);
   BLF_draw(font_id, str, BLF_DRAW_STR_DUMMY_MAX);
 }
@@ -110,6 +111,15 @@ EventIconWidth ui_event_icon_width(const int icon)
            ICON_EVENT_PAUSE,
            ICON_EVENT_INSERT,
            ICON_EVENT_APP))
+  {
+    return EventIconWidth::Wide;
+  }
+
+  if (icon >= ICON_EVENT_PAD0 && icon <= ICON_EVENT_PADPERIOD) {
+    return EventIconWidth::Wide;
+  }
+
+  if (icon >= ICON_EVENT_F10 && icon <= ICON_EVENT_F24)
   {
     return EventIconWidth::Wide;
   }
@@ -162,14 +172,9 @@ void icon_draw_rect_input(float x, float y, int w, int h, int icon, float alpha,
     const char str[2] = {char('0' + (icon - ICON_EVENT_ZEROKEY)), '\0'};
     icon_draw_rect_input_text(&rect, str, inverted, alpha, icon_width);
   }
-  else if ((icon >= ICON_EVENT_F1) && (icon <= ICON_EVENT_F12)) {
+  else if ((icon >= ICON_EVENT_F1) && (icon <= ICON_EVENT_F24)) {
     char str[4];
     SNPRINTF(str, "F%d", 1 + (icon - ICON_EVENT_F1));
-    icon_draw_rect_input_text(&rect, str, inverted, alpha, icon_width);
-  }
-  else if ((icon >= ICON_EVENT_F13) && (icon <= ICON_EVENT_F24)) {
-    char str[4];
-    SNPRINTF(str, "F%d", 1 + (icon - ICON_EVENT_F13));
     icon_draw_rect_input_text(&rect, str, inverted, alpha, icon_width);
   }
   if (icon == ICON_EVENT_SHIFT) {
