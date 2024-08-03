@@ -10,6 +10,8 @@
 
 #include "BLI_path_util.h"
 
+#include "BKE_geometry_set.hh"
+
 #include "DEG_depsgraph.hh"
 
 #include "IO_orientation.hh"
@@ -19,10 +21,11 @@ struct bContext;
 struct ReportList;
 
 struct OBJExportParams {
-  /** Full path to the destination .OBJ file. */
+  /** Full path to the destination `.OBJ` file. */
   char filepath[FILE_MAX];
   /** Pretend that destination file folder is this, if non-empty. Used only for tests. */
   char file_base_for_tests[FILE_MAX];
+  char collection[MAX_IDPROP_NAME] = "";
 
   /** Full path to current blender file (used for comments in output). */
   const char *blen_filepath;
@@ -76,12 +79,18 @@ struct OBJImportParams {
   bool use_split_objects = true;
   bool use_split_groups = false;
   bool import_vertex_groups = false;
-  bool validate_meshes = false;
+  bool validate_meshes = true;
   bool relative_paths = true;
   bool clear_selection = true;
 
   ReportList *reports = nullptr;
 };
+
+/**
+ * Reads and returns just the meshes in the obj file
+ */
+void OBJ_import_geometries(const OBJImportParams *import_params,
+                           blender::Vector<blender::bke::GeometrySet> &geometries);
 
 /**
  * Perform the full import process.

@@ -44,6 +44,7 @@
 #include "BLT_translation.hh"
 
 #include "BKE_anonymous_attribute_id.hh"
+#include "BKE_attribute_math.hh"
 #include "BKE_customdata.hh"
 #include "BKE_customdata_file.h"
 #include "BKE_deform.hh"
@@ -1528,6 +1529,26 @@ static void layerDefault_propquaternion(void *data, const int count)
   MutableSpan(static_cast<math::Quaternion *>(data), count).fill(math::Quaternion::identity());
 }
 
+static void layerInterp_propquaternion(const void **sources,
+                                       const float *weights,
+                                       const float * /*sub_weights*/,
+                                       int count,
+                                       void *dest)
+{
+  using blender::math::Quaternion;
+  Quaternion result;
+  blender::bke::attribute_math::DefaultMixer<Quaternion> mixer({&result, 1},
+                                                               Quaternion::identity());
+
+  for (int i = 0; i < count; i++) {
+    const float interp_weight = weights[i];
+    const Quaternion *src = static_cast<const Quaternion *>(sources[i]);
+    mixer.mix_in(0, *src, interp_weight);
+  }
+  mixer.finalize();
+  *static_cast<Quaternion *>(dest) = result;
+}
+
 /* -------------------------------------------------------------------- */
 /** \name Callbacks for (#math::Quaternion, #CD_PROP_FLOAT4X4)
  * \{ */
@@ -1754,8 +1775,8 @@ static const LayerTypeInfo LAYERTYPEINFO[CD_NUMTYPES] = {
      nullptr,
      nullptr},
     /* 18: CD_TANGENT */
-    {sizeof(float[4][4]),
-     alignof(float[4][4]),
+    {sizeof(float[4]),
+     alignof(float[4]),
      "",
      0,
      N_("Tangent"),
@@ -2129,10 +2150,12 @@ static const LayerTypeInfo LAYERTYPEINFO[CD_NUMTYPES] = {
      N_("Quaternion"),
      nullptr,
      nullptr,
-     nullptr,
+     layerInterp_propquaternion,
      nullptr,
      layerDefault_propquaternion},
 };
+
+static_assert(sizeof(mat4x4f) == sizeof(blender::float4x4));
 
 static const char *LAYERTYPENAMES[CD_NUMTYPES] = {
     /*   0-4 */ "CDMVert",
@@ -4799,7 +4822,7 @@ void CustomData_external_read(CustomData *data, ID *id, eCustomDataMask mask, co
       /* pass */
     }
     else if ((layer->flag & CD_FLAG_EXTERNAL) && typeInfo->read) {
-      CDataFileLayer *blay = cdf_layer_find(cdf, layer->type, layer->name);
+      const CDataFileLayer *blay = cdf_layer_find(cdf, layer->type, layer->name);
 
       if (blay) {
         if (cdf_read_layer(cdf, blay)) {
@@ -5297,7 +5320,9 @@ static void write_mdisps(BlendWriter *writer,
       }
 
       if (md->hidden) {
-        BLO_write_raw(writer, BLI_BITMAP_SIZE(md->totdisp), md->hidden);
+        BLO_write_int8_array(writer,
+                             BLI_BITMAP_SIZE(md->totdisp) * sizeof(BLI_bitmap),
+                             reinterpret_cast<const int8_t *>(md->hidden));
       }
     }
   }
@@ -5312,8 +5337,8 @@ static void write_grid_paint_mask(BlendWriter *writer,
     for (int i = 0; i < count; i++) {
       const GridPaintMask *gpm = &grid_paint_mask[i];
       if (gpm->data) {
-        const int gridsize = BKE_ccg_gridsize(gpm->level);
-        BLO_write_raw(writer, sizeof(*gpm->data) * gridsize * gridsize, gpm->data);
+        const uint32_t gridsize = uint32_t(BKE_ccg_gridsize(gpm->level));
+        BLO_write_float_array(writer, gridsize * gridsize, gpm->data);
       }
     }
   }
@@ -5332,19 +5357,21 @@ static void blend_write_layer_data(BlendWriter *writer,
           writer, count, static_cast<const MDisps *>(layer.data), layer.flag & CD_FLAG_EXTERNAL);
       break;
     case CD_PAINT_MASK:
-      BLO_write_raw(writer, sizeof(float) * count, static_cast<const float *>(layer.data));
+      BLO_write_float_array(writer, count, static_cast<const float *>(layer.data));
       break;
     case CD_GRID_PAINT_MASK:
       write_grid_paint_mask(writer, count, static_cast<const GridPaintMask *>(layer.data));
       break;
     case CD_PROP_BOOL:
-      BLO_write_raw(writer, sizeof(bool) * count, static_cast<const bool *>(layer.data));
+      BLI_STATIC_ASSERT(sizeof(bool) == sizeof(uint8_t),
+                        "bool type is expected to have the same size as uint8_t")
+      BLO_write_uint8_array(writer, count, static_cast<const uint8_t *>(layer.data));
       break;
     default: {
       const char *structname;
       int structnum;
       CustomData_file_write_info(eCustomDataType(layer.type), &structname, &structnum);
-      if (structnum) {
+      if (structnum > 0) {
         int datasize = structnum * count;
         BLO_write_struct_array_by_name(writer, structname, datasize, layer.data);
       }
@@ -5392,25 +5419,24 @@ static void blend_read_mdisps(BlendDataReader *reader,
 {
   if (mdisps) {
     for (int i = 0; i < count; i++) {
-      BLO_read_data_address(reader, &mdisps[i].disps);
-      BLO_read_data_address(reader, &mdisps[i].hidden);
+      MDisps &md = mdisps[i];
 
-      if (mdisps[i].totdisp && !mdisps[i].level) {
+      BLO_read_float3_array(reader, md.totdisp, reinterpret_cast<float **>(&md.disps));
+      BLO_read_int8_array(reader,
+                          BLI_BITMAP_SIZE(md.totdisp) * sizeof(BLI_bitmap),
+                          reinterpret_cast<int8_t **>(&md.hidden));
+
+      if (md.totdisp && !md.level) {
         /* this calculation is only correct for loop mdisps;
          * if loading pre-BMesh face mdisps this will be
          * overwritten with the correct value in
          * #bm_corners_to_loops() */
-        float gridsize = sqrtf(mdisps[i].totdisp);
-        mdisps[i].level = int(logf(gridsize - 1.0f) / float(M_LN2)) + 1;
+        float gridsize = sqrtf(md.totdisp);
+        md.level = int(logf(gridsize - 1.0f) / float(M_LN2)) + 1;
       }
 
-      if (BLO_read_requires_endian_switch(reader) && (mdisps[i].disps)) {
-        /* #DNA_struct_switch_endian doesn't do endian swap for `(*disps)[]` */
-        /* this does swap for data written at #write_mdisps() - `readfile.cc`. */
-        BLI_endian_switch_float_array(*mdisps[i].disps, mdisps[i].totdisp * 3);
-      }
-      if (!external && !mdisps[i].disps) {
-        mdisps[i].totdisp = 0;
+      if (!external && !md.disps) {
+        md.totdisp = 0;
       }
     }
   }
@@ -5424,7 +5450,8 @@ static void blend_read_paint_mask(BlendDataReader *reader,
     for (int i = 0; i < count; i++) {
       GridPaintMask *gpm = &grid_paint_mask[i];
       if (gpm->data) {
-        BLO_read_data_address(reader, &gpm->data);
+        const int gridsize = BKE_ccg_gridsize(gpm->level);
+        BLO_read_float_array(reader, gridsize * gridsize, &gpm->data);
       }
     }
   }
@@ -5432,7 +5459,44 @@ static void blend_read_paint_mask(BlendDataReader *reader,
 
 static void blend_read_layer_data(BlendDataReader *reader, CustomDataLayer &layer, const int count)
 {
-  BLO_read_data_address(reader, &layer.data);
+  switch (layer.type) {
+    case CD_MDEFORMVERT:
+      BLO_read_struct_array(reader, MDeformVert, count, &layer.data);
+      BKE_defvert_blend_read(reader, count, static_cast<MDeformVert *>(layer.data));
+      break;
+    case CD_MDISPS:
+      BLO_read_struct_array(reader, MDisps, count, &layer.data);
+      blend_read_mdisps(
+          reader, count, static_cast<MDisps *>(layer.data), layer.flag & CD_FLAG_EXTERNAL);
+      break;
+    case CD_PAINT_MASK:
+      BLO_read_float_array(reader, count, reinterpret_cast<float **>(&layer.data));
+      break;
+    case CD_GRID_PAINT_MASK:
+      BLO_read_struct_array(reader, GridPaintMask, count, &layer.data);
+      blend_read_paint_mask(reader, count, static_cast<GridPaintMask *>(layer.data));
+      break;
+    case CD_PROP_BOOL:
+      BLI_STATIC_ASSERT(sizeof(bool) == sizeof(uint8_t),
+                        "bool type is expected to have the same size as uint8_t")
+      BLO_read_uint8_array(reader, count, reinterpret_cast<uint8_t **>(&layer.data));
+      break;
+    default: {
+      const char *structname;
+      int structnum;
+      CustomData_file_write_info(eCustomDataType(layer.type), &structname, &structnum);
+      if (structnum > 0) {
+        const int data_num = structnum * count;
+        layer.data = BLO_read_struct_by_name_array(reader, structname, data_num, layer.data);
+      }
+      else {
+        /* Can happen with deprecated types of customdata. */
+        const size_t elem_size = CustomData_sizeof(eCustomDataType(layer.type));
+        BLO_read_struct_array(reader, char, elem_size *count, &layer.data);
+      }
+    }
+  }
+
   if (CustomData_layer_ensure_data_exists(&layer, count)) {
     /* Under normal operations, this shouldn't happen, but...
      * For a CD_PROP_BOOL example, see #84935.
@@ -5441,22 +5505,11 @@ static void blend_read_layer_data(BlendDataReader *reader, CustomDataLayer &laye
               "Allocated custom data layer that was not saved correctly for layer.type = %d.",
               layer.type);
   }
-
-  if (layer.type == CD_MDISPS) {
-    blend_read_mdisps(
-        reader, count, static_cast<MDisps *>(layer.data), layer.flag & CD_FLAG_EXTERNAL);
-  }
-  else if (layer.type == CD_GRID_PAINT_MASK) {
-    blend_read_paint_mask(reader, count, static_cast<GridPaintMask *>(layer.data));
-  }
-  else if (layer.type == CD_MDEFORMVERT) {
-    BKE_defvert_blend_read(reader, count, static_cast<MDeformVert *>(layer.data));
-  }
 }
 
 void CustomData_blend_read(BlendDataReader *reader, CustomData *data, const int count)
 {
-  BLO_read_data_address(reader, &data->layers);
+  BLO_read_struct_array(reader, CustomDataLayer, data->totlayer, &data->layers);
 
   /* Annoying workaround for bug #31079 loading legacy files with
    * no polygons _but_ have stale custom-data. */
@@ -5465,9 +5518,7 @@ void CustomData_blend_read(BlendDataReader *reader, CustomData *data, const int 
     return;
   }
 
-  BLO_read_data_address(reader, &data->external);
-
-  blender::Map<void *, const ImplicitSharingInfo *> sharing_info_by_data;
+  BLO_read_struct(reader, CustomDataExternal, &data->external);
 
   int i = 0;
   while (i < data->totlayer) {
@@ -5485,17 +5536,8 @@ void CustomData_blend_read(BlendDataReader *reader, CustomData *data, const int 
             if (layer->data == nullptr) {
               return nullptr;
             }
-            const ImplicitSharingInfo *sharing_info = sharing_info_by_data.lookup_default(
-                layer->data, nullptr);
-            if (sharing_info != nullptr) {
-              sharing_info->add_user();
-            }
-            else {
-              sharing_info = make_implicit_sharing_info_for_layer(
-                  eCustomDataType(layer->type), layer->data, count);
-              sharing_info_by_data.add(layer->data, sharing_info);
-            }
-            return sharing_info;
+            return make_implicit_sharing_info_for_layer(
+                eCustomDataType(layer->type), layer->data, count);
           });
       i++;
     }

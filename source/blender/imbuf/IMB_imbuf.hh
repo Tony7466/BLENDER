@@ -40,7 +40,7 @@
 
 #pragma once
 
-#include "../gpu/GPU_texture.h"
+#include "../gpu/GPU_texture.hh"
 
 #include "BLI_utildefines.h"
 
@@ -117,6 +117,21 @@ ImBuf *IMB_allocFromBuffer(const uint8_t *byte_buffer,
  */
 void IMB_assign_byte_buffer(ImBuf *ibuf, uint8_t *buffer_data, ImBufOwnership ownership);
 void IMB_assign_float_buffer(ImBuf *ibuf, float *buffer_data, ImBufOwnership ownership);
+
+/**
+ * Assign the content and the color space of the corresponding buffer the data from the given
+ * buffer.
+ *
+ * \note Does not modify the topology (width, height, number of channels)
+ * or the mipmaps in any way.
+ *
+ * \note The ownership of the data in the source buffer is ignored.
+ */
+void IMB_assign_byte_buffer(ImBuf *ibuf, const ImBufByteBuffer &buffer, ImBufOwnership ownership);
+void IMB_assign_float_buffer(ImBuf *ibuf,
+                             const ImBufFloatBuffer &buffer,
+                             ImBufOwnership ownership);
+void IMB_assign_dds_data(ImBuf *ibuf, const DDSData &data, ImBufOwnership ownership);
 
 /**
  * Make corresponding buffers available for modification.
@@ -745,6 +760,6 @@ ImBuf *IMB_stereo3d_ImBuf(const ImageFormatData *im_format, ImBuf *ibuf_left, Im
  * Reading a stereo encoded ibuf (*left) and generating two ibufs from it (*left and *right).
  */
 void IMB_ImBufFromStereo3d(const Stereo3dFormat *s3d,
-                           ImBuf *ibuf_stereo,
+                           ImBuf *ibuf_stereo3d,
                            ImBuf **r_ibuf_left,
                            ImBuf **r_ibuf_right);

@@ -19,10 +19,10 @@
 
 #include "ED_screen.hh"
 
-#include "GPU_matrix.h"
-#include "GPU_vertex_buffer.h"
+#include "GPU_matrix.hh"
+#include "GPU_vertex_buffer.hh"
 
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "SEQ_channels.hh"
 #include "SEQ_sequencer.hh"

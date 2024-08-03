@@ -16,7 +16,6 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_context.hh"
-#include "BKE_gpencil_modifier_legacy.h" /* Types for registering panels. */
 #include "BKE_lib_query.hh"
 #include "BKE_lib_remap.hh"
 #include "BKE_modifier.hh"
@@ -39,7 +38,7 @@
 
 #include "BLO_read_write.hh"
 
-#include "buttons_intern.h" /* own include */
+#include "buttons_intern.hh" /* own include */
 
 /* -------------------------------------------------------------------- */
 /** \name Default Callbacks for Properties Space
@@ -726,6 +725,7 @@ static void buttons_area_listener(const wmSpaceTypeListenerParams *params)
           buttons_area_redraw(area, BCONTEXT_PHYSICS);
           /* Needed to refresh context path when changing active particle system index. */
           buttons_area_redraw(area, BCONTEXT_PARTICLE);
+          buttons_area_redraw(area, BCONTEXT_TOOL);
           break;
         case ND_DRAW_ANIMVIZ:
           buttons_area_redraw(area, BCONTEXT_OBJECT);
@@ -811,12 +811,13 @@ static void buttons_area_listener(const wmSpaceTypeListenerParams *params)
       }
       break;
     case NC_GPENCIL:
-      switch (wmn->data) {
-        case ND_DATA:
-          if (ELEM(wmn->action, NA_EDITED, NA_ADDED, NA_REMOVED, NA_SELECTED, NA_RENAME)) {
-            ED_area_tag_redraw(area);
-          }
-          break;
+      if (wmn->data == ND_DATA) {
+        if (ELEM(wmn->action, NA_EDITED, NA_ADDED, NA_REMOVED, NA_SELECTED, NA_RENAME)) {
+          ED_area_tag_redraw(area);
+        }
+      }
+      else if (wmn->action == NA_EDITED) {
+        ED_area_tag_redraw(area);
       }
       break;
     case NC_NODE:
@@ -913,7 +914,7 @@ static void buttons_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data
   const int data_flags = BKE_lib_query_foreachid_process_flags_get(data);
   const bool is_readonly = (data_flags & IDWALK_READONLY) != 0;
 
-  BKE_LIB_FOREACHID_PROCESS_ID(data, sbuts->pinid, IDWALK_CB_NOP);
+  BKE_LIB_FOREACHID_PROCESS_ID(data, sbuts->pinid, IDWALK_CB_DIRECT_WEAK_LINK);
   if (!is_readonly) {
     if (sbuts->pinid == nullptr) {
       sbuts->flag &= ~SB_PIN_CONTEXT;
@@ -925,7 +926,7 @@ static void buttons_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data
 
   if (sbuts->texuser) {
     ButsContextTexture *ct = static_cast<ButsContextTexture *>(sbuts->texuser);
-    BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, ct->texture, IDWALK_CB_NOP);
+    BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, ct->texture, IDWALK_CB_DIRECT_WEAK_LINK);
 
     if (!is_readonly) {
       BLI_freelistN(&ct->users);
@@ -1004,12 +1005,6 @@ void ED_spacetype_buttons()
    * than per modifier type. */
   for (int i = 0; i < NUM_MODIFIER_TYPES; i++) {
     const ModifierTypeInfo *mti = BKE_modifier_get_info(ModifierType(i));
-    if (mti != nullptr && mti->panel_register != nullptr) {
-      mti->panel_register(art);
-    }
-  }
-  for (int i = 0; i < NUM_GREASEPENCIL_MODIFIER_TYPES; i++) {
-    const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(GpencilModifierType(i));
     if (mti != nullptr && mti->panel_register != nullptr) {
       mti->panel_register(art);
     }

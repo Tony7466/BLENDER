@@ -38,9 +38,12 @@ int /*eContextResult*/ file_context(const bContext *C,
 
 #define ATTRIBUTE_COLUMN_PADDING (0.5f * UI_UNIT_X)
 
-#define FILE_LAYOUT_COMPACT(_layout) ((_layout->width / UI_SCALE_FAC) < 500)
-#define FILE_LAYOUT_HIDE_DATE(_layout) ((_layout->width / UI_SCALE_FAC) < 250)
-#define FILE_LAYOUT_HIDE_SIZE(_layout) ((_layout->width / UI_SCALE_FAC) < 350)
+#define FILE_LAYOUT_COMPACT(_layout) \
+  (_layout->flag & FILE_LAYOUT_VER && (_layout->width / UI_SCALE_FAC) < 500)
+#define FILE_LAYOUT_HIDE_DATE(_layout) \
+  (_layout->flag & FILE_LAYOUT_VER && (_layout->width / UI_SCALE_FAC) < 250)
+#define FILE_LAYOUT_HIDE_SIZE(_layout) \
+  (_layout->flag & FILE_LAYOUT_VER && (_layout->width / UI_SCALE_FAC) < 350)
 
 void file_calc_previews(const bContext *C, ARegion *region);
 void file_draw_list(const bContext *C, ARegion *region);
@@ -167,7 +170,7 @@ void file_params_invoke_rename_postscroll(wmWindowManager *wm, wmWindow *win, Sp
 void file_params_rename_end(wmWindowManager *wm,
                             wmWindow *win,
                             SpaceFile *sfile,
-                            FileDirEntry *rename_file);
+                            const FileDirEntry *rename_file);
 /**
  * Helper used by both main update code, and smooth-scroll timer,
  * to try to enable rename editing from #FileSelectParams.renamefile name.
@@ -223,7 +226,7 @@ void file_tile_boundbox(const ARegion *region, FileLayout *layout, int file, rct
 /**
  * If \a path leads to a .blend, remove the trailing slash (if needed).
  */
-void file_path_to_ui_path(const char *path, char *r_pathi, int max_size);
+void file_path_to_ui_path(const char *path, char *r_path, int r_path_maxncpy);
 
 /* asset_catalog_tree_view.cc */
 

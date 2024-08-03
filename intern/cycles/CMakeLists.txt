@@ -11,9 +11,9 @@ else()
   # be started with --env-system-scripts pointing to the release folder, which will
   # lack the cycles addon, and we don't want to write into it.
   if(NOT WINDOWS_PYTHON_DEBUG)
-    set(CYCLES_INSTALL_PATH "scripts/addons/cycles")
+    set(CYCLES_INSTALL_PATH "scripts/addons_core/cycles")
   else()
-    set(CYCLES_INSTALL_PATH "$ENV{appdata}/blender foundation/blender/${BLENDER_VERSION}/scripts/addons/cycles")
+    set(CYCLES_INSTALL_PATH "$ENV{appdata}/blender foundation/blender/${BLENDER_VERSION}/scripts/addons_core/cycles")
   endif()
 endif()
 
@@ -122,11 +122,23 @@ elseif(CMAKE_COMPILER_IS_GNUCC OR (CMAKE_CXX_COMPILER_ID MATCHES "Clang"))
   check_cxx_compiler_flag(-mavx2 CXX_HAS_AVX2)
 
   # Assume no signal trapping for better code generation.
-  set(CYCLES_KERNEL_FLAGS "-fno-trapping-math")
-  # Avoid overhead of setting errno for NaNs.
-  string(APPEND CYCLES_KERNEL_FLAGS " -fno-math-errno")
-  # Let compiler optimize 0.0 - x without worrying about signed zeros.
-  string(APPEND CYCLES_KERNEL_FLAGS " -fno-signed-zeros")
+  # We need to omit or modify specific flags to pass through clang-cl to prevent
+  # unknown flag errors
+  if (WIN32 AND MSVC)
+    # Pass clang flags directly to clang otherwise. Clang-cl doesn't recognize
+    # these flags by default
+    set(CYCLES_KERNEL_FLAGS " /clang:-fno-trapping-math")
+    # Avoid overhead of setting errno for NaNs.
+    string(APPEND CYCLES_KERNEL_FLAGS " /clang:-fno-math-errno")
+    # Let compiler optimize 0.0 - x without worrying about signed zeros.
+    string(APPEND CYCLES_KERNEL_FLAGS " /clang:-fno-signed-zeros")
+  else ()
+    set(CYCLES_KERNEL_FLAGS " -fno-trapping-math")
+    # Avoid overhead of setting errno for NaNs.
+    string(APPEND CYCLES_KERNEL_FLAGS " -fno-math-errno")
+    # Let compiler optimize 0.0 - x without worrying about signed zeros.
+    string(APPEND CYCLES_KERNEL_FLAGS " -fno-signed-zeros")
+  endif()
 
   if(CMAKE_COMPILER_IS_GNUCC)
     # Assume no signal trapping for better code generation.
@@ -219,10 +231,6 @@ endif()
 
 if(WITH_CYCLES_OSL)
   add_definitions(-DWITH_OSL)
-  # osl 1.9.x
-  add_definitions(-DOSL_STATIC_BUILD)
-  # pre 1.9
-  add_definitions(-DOSL_STATIC_LIBRARY)
   include_directories(
     SYSTEM
     ${OSL_INCLUDE_DIR}
@@ -387,7 +395,7 @@ if(WITH_CYCLES_DEBUG_NAN)
   add_definitions(-DWITH_CYCLES_DEBUG_NAN)
 endif()
 
-if(NOT OPENIMAGEIO_PUGIXML_FOUND)
+if((NOT OPENIMAGEIO_PUGIXML_FOUND) OR WIN32)
   add_definitions(-DWITH_SYSTEM_PUGIXML)
 endif()
 
@@ -465,5 +473,9 @@ if(WITH_CYCLES_HYDRA_RENDER_DELEGATE OR (WITH_CYCLES_STANDALONE AND WITH_USD))
 endif()
 
 if(NOT WITH_BLENDER)
-  delayed_do_install(${CMAKE_BINARY_DIR}/bin)
+  if(CYCLES_STANDALONE_REPOSITORY)
+    delayed_do_install()
+  else()
+    delayed_do_install(${CMAKE_BINARY_DIR}/bin)
+  endif()
 endif()

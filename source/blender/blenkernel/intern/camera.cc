@@ -31,7 +31,7 @@
 
 #include "BKE_action.h"
 #include "BKE_camera.h"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_idtype.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_query.hh"
@@ -124,33 +124,26 @@ static CameraCyclesCompatibilityData camera_write_cycles_compatibility_data_crea
     if (prop) {
       return prop;
     }
-    IDPropertyTemplate val = {0};
-    prop = IDP_New(IDP_GROUP, &val, "cycles");
+    prop = blender::bke::idprop::create_group("cycles").release();
     IDP_AddToGroup(group, prop);
     return prop;
   };
 
   auto cycles_property_int_set = [](IDProperty *idprop, const char *name, int value) {
-    IDProperty *prop = IDP_GetPropertyTypeFromGroup(idprop, name, IDP_INT);
-    if (prop) {
+    if (IDProperty *prop = IDP_GetPropertyTypeFromGroup(idprop, name, IDP_INT)) {
       IDP_Int(prop) = value;
     }
     else {
-      IDPropertyTemplate val = {0};
-      val.i = value;
-      IDP_AddToGroup(idprop, IDP_New(IDP_INT, &val, name));
+      IDP_AddToGroup(idprop, blender::bke::idprop::create(name, value).release());
     }
   };
 
   auto cycles_property_float_set = [](IDProperty *idprop, const char *name, float value) {
-    IDProperty *prop = IDP_GetPropertyTypeFromGroup(idprop, name, IDP_FLOAT);
-    if (prop) {
+    if (IDProperty *prop = IDP_GetPropertyTypeFromGroup(idprop, name, IDP_FLOAT)) {
       IDP_Float(prop) = value;
     }
     else {
-      IDPropertyTemplate val = {0};
-      val.f = value;
-      IDP_AddToGroup(idprop, IDP_New(IDP_FLOAT, &val, name));
+      IDP_AddToGroup(idprop, blender::bke::idprop::create(name, value).release());
     }
   };
 
@@ -219,7 +212,7 @@ static void camera_blend_read_data(BlendDataReader *reader, ID *id)
 {
   Camera *ca = (Camera *)id;
 
-  BLO_read_list(reader, &ca->bg_images);
+  BLO_read_struct_list(reader, CameraBGImage, &ca->bg_images);
 
   LISTBASE_FOREACH (CameraBGImage *, bgpic, &ca->bg_images) {
     bgpic->iuser.scene = nullptr;
@@ -297,9 +290,9 @@ float BKE_camera_object_dof_distance(const Object *ob)
                   ob->object_to_world().location(),
                   cam->dof.focus_object->object_to_world().location());
     }
-    return fabsf(dot_v3v3(view_dir, dof_dir));
+    return fmax(fabsf(dot_v3v3(view_dir, dof_dir)), 1e-5f);
   }
-  return cam->dof.focus_distance;
+  return fmax(cam->dof.focus_distance, 1e-5f);
 }
 
 float BKE_camera_sensor_size(int sensor_fit, float sensor_x, float sensor_y)
@@ -490,6 +483,18 @@ void BKE_camera_params_compute_viewplane(
   params->viewdx = pixsize;
   params->viewdy = params->ycor * pixsize;
   params->viewplane = viewplane;
+}
+
+void BKE_camera_params_crop_viewplane(rctf *viewplane, int winx, int winy, const rcti *region)
+{
+  float pix_size_x = BLI_rctf_size_x(viewplane) / winx;
+  float pix_size_y = BLI_rctf_size_y(viewplane) / winy;
+
+  viewplane->xmin += pix_size_x * region->xmin;
+  viewplane->ymin += pix_size_y * region->ymin;
+
+  viewplane->xmax = viewplane->xmin + pix_size_x * BLI_rcti_size_x(region);
+  viewplane->ymax = viewplane->ymin + pix_size_y * BLI_rcti_size_y(region);
 }
 
 void BKE_camera_params_compute_matrix(CameraParams *params)

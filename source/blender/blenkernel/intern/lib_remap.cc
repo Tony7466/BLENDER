@@ -426,7 +426,7 @@ static void libblock_remap_data_postprocess_obdata_relink(Main *bmain, Object *o
 static void libblock_remap_data_postprocess_nodetree_update(Main *bmain, ID *new_id)
 {
   /* Update all group nodes using a node group. */
-  ntreeUpdateAllUsers(bmain, new_id);
+  blender::bke::ntreeUpdateAllUsers(bmain, new_id);
 }
 
 static void libblock_remap_data_update_tags(ID *old_id, ID *new_id, IDRemap *id_remap_data)
@@ -488,11 +488,11 @@ static void libblock_remap_data(
     Main *bmain, ID *id, eIDRemapType remap_type, IDRemapper &id_remapper, const int remap_flags)
 {
   IDRemap id_remap_data = {
-      /*.type=*/remap_type,
-      /*.bmain=*/bmain,
-      /*.id_remapper=*/id_remapper,
-      /*.id_owner=*/nullptr,
-      /*.flag=*/remap_flags,
+      /*type*/ remap_type,
+      /*bmain*/ bmain,
+      /*id_remapper*/ id_remapper,
+      /*id_owner*/ nullptr,
+      /*flag*/ remap_flags,
   };
 
   const bool include_ui = (remap_flags & ID_REMAP_FORCE_UI_POINTERS) != 0;
@@ -514,10 +514,10 @@ static void libblock_remap_data(
 #ifdef DEBUG_PRINT
     printf("\tchecking id %s (%p, %p)\n", id->name, id, id->lib);
 #endif
-    id_remap_data.id_owner = id;
+    id_remap_data.id_owner = (id->flag & LIB_EMBEDDED_DATA) ? BKE_id_owner_get(id) : id;
     libblock_remap_data_preprocess(id_remap_data.id_owner, remap_type, id_remapper);
     BKE_library_foreach_ID_link(
-        nullptr, id, foreach_libblock_remap_callback, &id_remap_data, foreach_id_flags);
+        bmain, id, foreach_libblock_remap_callback, &id_remap_data, foreach_id_flags);
   }
   else {
     /* Note that this is a very 'brute force' approach,
@@ -542,7 +542,7 @@ static void libblock_remap_data(
       id_remap_data.id_owner = id_curr;
       libblock_remap_data_preprocess(id_remap_data.id_owner, remap_type, id_remapper);
       BKE_library_foreach_ID_link(
-          nullptr, id_curr, foreach_libblock_remap_callback, &id_remap_data, foreach_id_flags);
+          bmain, id_curr, foreach_libblock_remap_callback, &id_remap_data, foreach_id_flags);
     }
     FOREACH_MAIN_ID_END;
   }

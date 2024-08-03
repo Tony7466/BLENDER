@@ -28,11 +28,11 @@
 #include "IMB_colormanagement.hh"
 #include "IMB_imbuf.hh"
 
-#include "GPU_framebuffer.h"
-#include "GPU_immediate.h"
-#include "GPU_immediate_util.h"
-#include "GPU_matrix.h"
-#include "GPU_viewport.h"
+#include "GPU_framebuffer.hh"
+#include "GPU_immediate.hh"
+#include "GPU_immediate_util.hh"
+#include "GPU_matrix.hh"
+#include "GPU_viewport.hh"
 
 #include "ED_gpencil_legacy.hh"
 #include "ED_screen.hh"
@@ -79,7 +79,7 @@ void ED_sequencer_special_preview_set(bContext *C, const int mval[2])
 {
   Scene *scene = CTX_data_scene(C);
   ARegion *region = CTX_wm_region(C);
-  int hand_dummy;
+  eSeqHandle hand_dummy;
   Sequence *seq = find_nearest_seq(scene, &region->v2d, mval, &hand_dummy);
   sequencer_special_update_set(seq);
 }
@@ -89,15 +89,18 @@ void ED_sequencer_special_preview_clear()
   sequencer_special_update_set(nullptr);
 }
 
-ImBuf *sequencer_ibuf_get(Main *bmain,
-                          ARegion *region,
-                          Depsgraph *depsgraph,
-                          Scene *scene,
-                          SpaceSeq *sseq,
+ImBuf *sequencer_ibuf_get(const bContext *C,
                           int timeline_frame,
                           int frame_ofs,
                           const char *viewname)
 {
+  Main *bmain = CTX_data_main(C);
+  ARegion *region = CTX_wm_region(C);
+  Depsgraph *depsgraph = CTX_data_expect_evaluated_depsgraph(C);
+  Scene *scene = CTX_data_scene(C);
+  SpaceSeq *sseq = CTX_wm_space_seq(C);
+  bScreen *screen = CTX_wm_screen(C);
+
   SeqRenderData context = {nullptr};
   ImBuf *ibuf;
   int rectx, recty;
@@ -122,9 +125,11 @@ ImBuf *sequencer_ibuf_get(Main *bmain,
       bmain, depsgraph, scene, rectx, recty, sseq->render_size, false, &context);
   context.view_id = BKE_scene_multiview_view_id_get(&scene->r, viewname);
   context.use_proxies = (sseq->flag & SEQ_USE_PROXIES) != 0;
+  context.is_playing = screen->animtimer != nullptr;
+  context.is_scrubbing = screen->scrubbing;
 
-  /* Sequencer could start rendering, in this case we need to be sure it wouldn't be canceled
-   * by Escape pressed somewhere in the past. */
+  /* Sequencer could start rendering, in this case we need to be sure it wouldn't be
+   * canceled by Escape pressed somewhere in the past. */
   G.is_break = false;
 
   GPUViewport *viewport = WM_draw_region_get_bound_viewport(region);
@@ -290,7 +295,7 @@ void sequencer_draw_maskedit(const bContext *C, Scene *scene, ARegion *region, S
 /* Force redraw, when prefetching and using cache view. */
 static void seq_prefetch_wm_notify(const bContext *C, Scene *scene)
 {
-  if (SEQ_prefetch_need_redraw(CTX_data_main(C), scene)) {
+  if (SEQ_prefetch_need_redraw(C, scene)) {
     WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, nullptr);
   }
 }
@@ -528,10 +533,6 @@ static void draw_histogram(ARegion *region,
   if (hist.data.is_empty()) {
     return;
   }
-
-  /* Background. */
-  uchar col_bg[4] = {0, 0, 0, 255};
-  quads.add_quad(area.xmin, area.ymin, area.xmax, area.ymax, col_bg);
 
   /* Grid lines and labels. */
   uchar col_grid[4] = {128, 128, 128, 128};
@@ -814,21 +815,37 @@ static void sequencer_draw_scopes(Scene *scene, ARegion *region, SpaceSeq *sseq)
   SeqQuadsBatch quads;
   SeqScopes *scopes = &sseq->runtime->scopes;
 
-  /* Draw scope image if there is one. */
   bool use_blend = sseq->mainb == SEQ_DRAW_IMG_IMBUF && sseq->flag & SEQ_USE_ALPHA;
+
+  /* Draw opaque black rectangle over whole preview area. The scope texture
+   * with clamp to border extend mode should be enough, but results in
+   * garbage pixels around the actual scope on some GPUs/drivers (#119505).
+   * To fix that, background must be drawn, and then the scopes texture be
+   * blended on top. */
+  if (sseq->mainb != SEQ_DRAW_IMG_IMBUF) {
+    GPU_blend(GPU_BLEND_NONE);
+    uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+    uchar black[4] = {0, 0, 0, 255};
+    immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+    immUniformColor4ubv(black);
+    immRectf(pos, preview.xmin, preview.ymin, preview.xmax, preview.ymax);
+    immUnbindProgram();
+    use_blend = true;
+  }
+
+  /* Draw scope image if there is one. */
   ImBuf *scope_image = nullptr;
   if (sseq->mainb == SEQ_DRAW_IMG_IMBUF) {
     scope_image = scopes->zebra_ibuf;
   }
   else if (sseq->mainb == SEQ_DRAW_IMG_WAVEFORM) {
-    scope_image = (sseq->flag & SEQ_DRAW_COLOR_SEPARATED) != 0 ? scopes->sep_waveform_ibuf :
-                                                                 scopes->waveform_ibuf;
+    scope_image = scopes->waveform_ibuf;
   }
   else if (sseq->mainb == SEQ_DRAW_IMG_VECTORSCOPE) {
     scope_image = scopes->vector_ibuf;
   }
-  else if (sseq->mainb == SEQ_DRAW_IMG_HISTOGRAM) {
-    use_blend = true;
+  else if (sseq->mainb == SEQ_DRAW_IMG_RGBPARADE) {
+    scope_image = scopes->sep_waveform_ibuf;
   }
 
   if (use_blend) {
@@ -883,7 +900,7 @@ static void sequencer_draw_scopes(Scene *scene, ARegion *region, SpaceSeq *sseq)
   if (sseq->mainb == SEQ_DRAW_IMG_HISTOGRAM) {
     draw_histogram(region, scopes->histogram, quads, preview);
   }
-  if (sseq->mainb == SEQ_DRAW_IMG_WAVEFORM) {
+  if (ELEM(sseq->mainb, SEQ_DRAW_IMG_WAVEFORM, SEQ_DRAW_IMG_RGBPARADE)) {
     use_blend = true;
     draw_waveform_graticule(region, quads, preview);
   }
@@ -929,16 +946,8 @@ static bool sequencer_calc_scopes(Scene *scene, SpaceSeq *sseq, ImBuf *ibuf, boo
       }
       break;
     case SEQ_DRAW_IMG_WAVEFORM:
-      if ((sseq->flag & SEQ_DRAW_COLOR_SEPARATED) != 0) {
-        if (!scopes->sep_waveform_ibuf) {
-          scopes->sep_waveform_ibuf = sequencer_make_scope(
-              scene, ibuf, make_sep_waveform_view_from_ibuf);
-        }
-      }
-      else {
-        if (!scopes->waveform_ibuf) {
-          scopes->waveform_ibuf = sequencer_make_scope(scene, ibuf, make_waveform_view_from_ibuf);
-        }
+      if (!scopes->waveform_ibuf) {
+        scopes->waveform_ibuf = sequencer_make_scope(scene, ibuf, make_waveform_view_from_ibuf);
       }
       break;
     case SEQ_DRAW_IMG_VECTORSCOPE:
@@ -953,6 +962,12 @@ static bool sequencer_calc_scopes(Scene *scene, SpaceSeq *sseq, ImBuf *ibuf, boo
       scopes->histogram.calc_from_ibuf(display_ibuf);
       IMB_freeImBuf(display_ibuf);
     } break;
+    case SEQ_DRAW_IMG_RGBPARADE:
+      if (!scopes->sep_waveform_ibuf) {
+        scopes->sep_waveform_ibuf = sequencer_make_scope(
+            scene, ibuf, make_sep_waveform_view_from_ibuf);
+      }
+      break;
     default: /* Future files might have scopes we don't know about. */
       return false;
   }
@@ -1007,7 +1022,12 @@ static void seq_draw_image_origin_and_outline(const bContext *C, Sequence *seq, 
   {
     return;
   }
-  if (ELEM(sseq->mainb, SEQ_DRAW_IMG_WAVEFORM, SEQ_DRAW_IMG_VECTORSCOPE, SEQ_DRAW_IMG_HISTOGRAM)) {
+  if (ELEM(sseq->mainb,
+           SEQ_DRAW_IMG_WAVEFORM,
+           SEQ_DRAW_IMG_RGBPARADE,
+           SEQ_DRAW_IMG_VECTORSCOPE,
+           SEQ_DRAW_IMG_HISTOGRAM))
+  {
     return;
   }
 
@@ -1066,8 +1086,6 @@ void sequencer_draw_preview(const bContext *C,
                             bool draw_overlay,
                             bool draw_backdrop)
 {
-  Main *bmain = CTX_data_main(C);
-  Depsgraph *depsgraph = CTX_data_expect_evaluated_depsgraph(C);
   View2D *v2d = &region->v2d;
   ImBuf *ibuf = nullptr;
   float viewrect[2];
@@ -1086,8 +1104,7 @@ void sequencer_draw_preview(const bContext *C,
   }
 
   /* Get image. */
-  ibuf = sequencer_ibuf_get(
-      bmain, region, depsgraph, scene, sseq, preview_frame, offset, names[sseq->multiview_eye]);
+  ibuf = sequencer_ibuf_get(C, preview_frame, offset, names[sseq->multiview_eye]);
 
   /* Setup off-screen buffers. */
   GPUViewport *viewport = WM_draw_region_get_viewport(region);
@@ -1102,7 +1119,7 @@ void sequencer_draw_preview(const bContext *C,
 
   /* Setup view. */
   sequencer_display_size(scene, viewrect);
-  UI_view2d_totRect_set(v2d, roundf(viewrect[0] + 0.5f), roundf(viewrect[1] + 0.5f));
+  UI_view2d_totRect_set(v2d, roundf(viewrect[0]), roundf(viewrect[1]));
   UI_view2d_curRect_validate(v2d);
   UI_view2d_view_ortho(v2d);
 

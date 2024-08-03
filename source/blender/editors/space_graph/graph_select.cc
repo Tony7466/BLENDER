@@ -40,7 +40,7 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "graph_intern.h"
+#include "graph_intern.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Internal Keyframe Utilities
@@ -174,7 +174,7 @@ static void get_nearest_fcurve_verts_list(bAnimContext *ac, const int mval[2], L
    *   include the 'only selected' flag...
    */
   filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE | ANIMFILTER_FCURVESONLY |
-            ANIMFILTER_NODUPLIS | ANIMFILTER_FCURVESONLY);
+            ANIMFILTER_NODUPLIS);
   /* FIXME: this should really be check for by the filtering code. */
   if (U.animation_flag & USER_ANIM_ONLY_SHOW_SELECTED_CURVE_KEYS) {
     filter |= ANIMFILTER_SEL;
@@ -689,8 +689,11 @@ static short ok_bezier_always_ok(KeyframeEditData * /*ked*/, BezTriple * /*bezt*
 #define ABOVE 1
 #define INSIDE 0
 #define BELOW -1
-static int rectf_curve_zone_y(
-    FCurve *fcu, const rctf *rectf, const float offset, const float unit_scale, const float eval_x)
+static int rectf_curve_zone_y(const FCurve *fcu,
+                              const rctf *rectf,
+                              const float offset,
+                              const float unit_scale,
+                              const float eval_x)
 {
   const float fcurve_y = (evaluate_fcurve(fcu, eval_x) + offset) * unit_scale;
   return fcurve_y < rectf->ymin ? BELOW : fcurve_y <= rectf->ymax ? INSIDE : ABOVE;
@@ -700,8 +703,11 @@ static int rectf_curve_zone_y(
  * only keyframes, but also all the interpolated values). This is done by sampling the curve at
  * different points between the xmin and the xmax of the rectangle.
  */
-static bool rectf_curve_intersection(
-    const float offset, const float unit_scale, const rctf *rectf, AnimData *adt, FCurve *fcu)
+static bool rectf_curve_intersection(const float offset,
+                                     const float unit_scale,
+                                     const rctf *rectf,
+                                     AnimData *adt,
+                                     const FCurve *fcu)
 {
   /* 30 sampling points. This worked well in tests. */
   int num_steps = 30;
@@ -1246,7 +1252,7 @@ static void columnselect_graph_keys(bAnimContext *ac, short mode)
       break;
 
     case GRAPHKEYS_COLUMNSEL_MARKERS_COLUMN: /* list of selected markers */
-      ED_markers_make_cfra_list(ac->markers, &ked.list, SELECT);
+      ED_markers_make_cfra_list(ac->markers, &ked.list, true);
       break;
 
     default: /* invalid option */
@@ -2179,19 +2185,6 @@ static int graphkeys_select_key_handles_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static void graphkeys_select_key_handles_ui(bContext * /*C*/, wmOperator *op)
-{
-  uiLayout *layout = op->layout;
-  uiLayout *row;
-
-  row = uiLayoutRow(layout, false);
-  uiItemR(row, op->ptr, "left_handle_action", UI_ITEM_NONE, nullptr, ICON_NONE);
-  row = uiLayoutRow(layout, false);
-  uiItemR(row, op->ptr, "right_handle_action", UI_ITEM_NONE, nullptr, ICON_NONE);
-  row = uiLayoutRow(layout, false);
-  uiItemR(row, op->ptr, "key_action", UI_ITEM_NONE, nullptr, ICON_NONE);
-}
-
 void GRAPH_OT_select_key_handles(wmOperatorType *ot)
 {
   /* identifiers */
@@ -2203,7 +2196,6 @@ void GRAPH_OT_select_key_handles(wmOperatorType *ot)
   /* callbacks */
   ot->poll = graphop_visible_keyframes_poll;
   ot->exec = graphkeys_select_key_handles_exec;
-  ot->ui = graphkeys_select_key_handles_ui;
 
   /* flags */
   ot->flag = OPTYPE_UNDO | OPTYPE_REGISTER;

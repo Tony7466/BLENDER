@@ -667,6 +667,9 @@ static ShaderNode *add_node(Scene *scene,
   else if (b_node.is_a(&RNA_ShaderNodeBsdfTransparent)) {
     node = graph->create_node<TransparentBsdfNode>();
   }
+  else if (b_node.is_a(&RNA_ShaderNodeBsdfRayPortal)) {
+    node = graph->create_node<RayPortalBsdfNode>();
+  }
   else if (b_node.is_a(&RNA_ShaderNodeBsdfSheen)) {
     BL::ShaderNodeBsdfSheen b_sheen_node(b_node);
     SheenBsdfNode *sheen = graph->create_node<SheenBsdfNode>();
@@ -941,6 +944,14 @@ static ShaderNode *add_node(Scene *scene,
     BL::TexMapping b_texture_mapping(b_noise_node.texture_mapping());
     get_tex_mapping(noise, b_texture_mapping);
     node = noise;
+  }
+  else if (b_node.is_a(&RNA_ShaderNodeTexGabor)) {
+    BL::ShaderNodeTexGabor b_gabor_node(b_node);
+    GaborTextureNode *gabor = graph->create_node<GaborTextureNode>();
+    gabor->set_type((NodeGaborType)b_gabor_node.gabor_type());
+    BL::TexMapping b_texture_mapping(b_gabor_node.texture_mapping());
+    get_tex_mapping(gabor, b_texture_mapping);
+    node = gabor;
   }
   else if (b_node.is_a(&RNA_ShaderNodeTexCoord)) {
     BL::ShaderNodeTexCoord b_tex_coord_node(b_node);

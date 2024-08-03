@@ -30,7 +30,7 @@
 #include "MOD_grease_pencil_util.hh"
 #include "MOD_ui_common.hh"
 
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 namespace blender {
 
@@ -131,7 +131,7 @@ static void deform_drawing(const ModifierData &md,
             (mmd.influence.custom_curve))
         {
           /* Normalize value to evaluate curve. */
-          const float value = float(i) / (points.size() - 1);
+          const float value = math::safe_divide(float(i), float(points.size() - 1));
           return BKE_curvemapping_evaluateF(mmd.influence.custom_curve, 0, value);
         }
         return 1.0f;

@@ -27,7 +27,7 @@
 #include "IMB_interp.hh"
 #include "IMB_openexr.hh"
 
-#include "GPU_texture.h"
+#include "GPU_texture.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -345,7 +345,7 @@ static void studiolight_multilayer_addpass(void *base,
 static void studiolight_load_equirect_image(StudioLight *sl)
 {
   if (sl->flag & STUDIOLIGHT_EXTERNAL_FILE) {
-    ImBuf *ibuf = IMB_loadiffname(sl->filepath, IB_multilayer, nullptr);
+    ImBuf *ibuf = IMB_loadiffname(sl->filepath, IB_multilayer | IB_alphamode_ignore, nullptr);
     ImBuf *specular_ibuf = nullptr;
     ImBuf *diffuse_ibuf = nullptr;
     const bool failed = (ibuf == nullptr);
@@ -491,7 +491,7 @@ static float4 studiolight_calculate_radiance(ImBuf *ibuf, const float direction[
 {
   float uv[2];
   direction_to_equirect(uv, direction);
-  return blender::imbuf::interpolate_nearest_fl(ibuf, uv[0] * ibuf->x, uv[1] * ibuf->y);
+  return blender::imbuf::interpolate_nearest_border_fl(ibuf, uv[0] * ibuf->x, uv[1] * ibuf->y);
 }
 
 /*
@@ -732,10 +732,10 @@ static void studiolight_matcap_preview(uint *icon_buffer, StudioLight *sl, bool 
 
     float u = dx * diffuse_buffer->x - 1.0f;
     float v = dy * diffuse_buffer->y - 1.0f;
-    float4 color = imbuf::interpolate_nearest_fl(diffuse_buffer, u, v);
+    float4 color = imbuf::interpolate_nearest_border_fl(diffuse_buffer, u, v);
 
     if (specular_buffer) {
-      float4 specular = imbuf::interpolate_nearest_fl(specular_buffer, u, v);
+      float4 specular = imbuf::interpolate_nearest_border_fl(specular_buffer, u, v);
       add_v3_v3(color, specular);
     }
 
@@ -840,21 +840,17 @@ void BKE_studiolight_init()
   BLI_addtail(&studiolights, sl);
 
   /* Go over the preset folder and add a studio-light for every image with its path. */
-  /* For portable installs (where USER and SYSTEM paths are the same),
-   * only go over LOCAL data-files once. */
   /* Also reserve icon space for it. */
-  if (!BKE_appdir_app_is_portable_install()) {
-    studiolight_add_files_from_datafolder(BLENDER_USER_DATAFILES,
-                                          STUDIOLIGHT_LIGHTS_FOLDER,
-                                          STUDIOLIGHT_TYPE_STUDIO | STUDIOLIGHT_USER_DEFINED |
-                                              STUDIOLIGHT_SPECULAR_HIGHLIGHT_PASS);
-    studiolight_add_files_from_datafolder(BLENDER_USER_DATAFILES,
-                                          STUDIOLIGHT_WORLD_FOLDER,
-                                          STUDIOLIGHT_TYPE_WORLD | STUDIOLIGHT_USER_DEFINED);
-    studiolight_add_files_from_datafolder(BLENDER_USER_DATAFILES,
-                                          STUDIOLIGHT_MATCAP_FOLDER,
-                                          STUDIOLIGHT_TYPE_MATCAP | STUDIOLIGHT_USER_DEFINED);
-  }
+  studiolight_add_files_from_datafolder(BLENDER_USER_DATAFILES,
+                                        STUDIOLIGHT_LIGHTS_FOLDER,
+                                        STUDIOLIGHT_TYPE_STUDIO | STUDIOLIGHT_USER_DEFINED |
+                                            STUDIOLIGHT_SPECULAR_HIGHLIGHT_PASS);
+  studiolight_add_files_from_datafolder(BLENDER_USER_DATAFILES,
+                                        STUDIOLIGHT_WORLD_FOLDER,
+                                        STUDIOLIGHT_TYPE_WORLD | STUDIOLIGHT_USER_DEFINED);
+  studiolight_add_files_from_datafolder(BLENDER_USER_DATAFILES,
+                                        STUDIOLIGHT_MATCAP_FOLDER,
+                                        STUDIOLIGHT_TYPE_MATCAP | STUDIOLIGHT_USER_DEFINED);
   studiolight_add_files_from_datafolder(BLENDER_SYSTEM_DATAFILES,
                                         STUDIOLIGHT_LIGHTS_FOLDER,
                                         STUDIOLIGHT_TYPE_STUDIO |

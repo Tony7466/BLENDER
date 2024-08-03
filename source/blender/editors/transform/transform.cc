@@ -21,8 +21,9 @@
 #include "BKE_editmesh.hh"
 #include "BKE_layer.hh"
 #include "BKE_mask.h"
+#include "BKE_workspace.hh"
 
-#include "GPU_state.h"
+#include "GPU_state.hh"
 
 #include "ED_clip.hh"
 #include "ED_gpencil_legacy.hh"
@@ -540,6 +541,10 @@ static void viewRedrawForce(const bContext *C, TransInfo *t)
 static void viewRedrawPost(bContext *C, TransInfo *t)
 {
   ED_area_status_text(t->area, nullptr);
+  WorkSpace *workspace = CTX_wm_workspace(C);
+  if (workspace) {
+    BKE_workspace_status_clear(workspace);
+  }
 
   if (t->spacetype == SPACE_VIEW3D) {
     /* If auto-keying is enabled, send notifiers that keyframes were added. */
@@ -557,9 +562,6 @@ static void viewRedrawPost(bContext *C, TransInfo *t)
     {
       WM_event_add_notifier(C, NC_GEOM | ND_DATA, nullptr);
     }
-
-    /* XXX(ton): temp, first hack to get auto-render in compositor work. */
-    WM_event_add_notifier(C, NC_SCENE | ND_TRANSFORM_DONE, CTX_data_scene(C));
   }
 }
 
@@ -710,7 +712,7 @@ static bool transform_modal_item_poll(const wmOperator *op, int value)
     case TFM_MODAL_EDIT_SNAP_SOURCE_OFF:
       return false;
     case TFM_MODAL_EDIT_SNAP_SOURCE_ON: {
-      if (t->spacetype != SPACE_VIEW3D) {
+      if (!ELEM(t->spacetype, SPACE_VIEW3D, SPACE_IMAGE)) {
         return false;
       }
       if (!ELEM(
@@ -726,11 +728,11 @@ static bool transform_modal_item_poll(const wmOperator *op, int value)
       break;
     }
     case TFM_MODAL_PASSTHROUGH_NAVIGATE:
-      if (ELEM(t->mode, TFM_EDGE_SLIDE, TFM_VERT_SLIDE)) {
+      if (ELEM(t->mode, TFM_EDGE_SLIDE, TFM_VERT_SLIDE, TFM_SHRINKFATTEN)) {
         /* Returning `false` will not prevent the navigation from working, it will just not display
          * the shortcut in the header.
          * Return `false` here to prevent this modal item from affecting the state with
-         * #T_ALT_TRANSFORM used by the Edge and Vert Slide operators. */
+         * #T_ALT_TRANSFORM is used by the operator. */
         return false;
       }
       return t->vod != nullptr;
@@ -988,7 +990,7 @@ static bool transform_event_modal_constraint(TransInfo *t, short modal_type)
   return true;
 }
 
-int transformEvent(TransInfo *t, const wmEvent *event)
+int transformEvent(TransInfo *t, wmOperator *op, const wmEvent *event)
 {
   bool handled = false;
   bool is_navigating = t->vod ? ((RegionView3D *)t->region->regiondata)->rflag & RV3D_NAVIGATING :
@@ -1096,7 +1098,7 @@ int transformEvent(TransInfo *t, const wmEvent *event)
         }
         else {
           /* First try Edge Slide. */
-          transform_mode_init(t, nullptr, TFM_EDGE_SLIDE);
+          transform_mode_init(t, op, TFM_EDGE_SLIDE);
           /* If that fails, try Vertex Slide. */
           if (t->state == TRANS_CANCEL) {
             resetTransModal(t);
@@ -1311,15 +1313,7 @@ int transformEvent(TransInfo *t, const wmEvent *event)
         }
         else if (event->prev_val == KM_PRESS) {
           t->modifiers |= MOD_PRECISION;
-          /* If we are already in a snapping mode, we don't want to add mouse precision,
-           * it makes things like rotate snap really tedious. */
-          if (t->modifiers & (MOD_SNAP | MOD_SNAP_INVERT)) {
-            t->mouse.precision = false;
-          }
-          else {
-            /* Shift is modifier for higher precision transform. */
-            t->mouse.precision = true;
-          }
+          t->mouse.precision = true;
 
           t->redraw |= TREDRAW_HARD;
         }
@@ -1439,6 +1433,11 @@ int transformEvent(TransInfo *t, const wmEvent *event)
     WM_window_status_area_tag_redraw(CTX_wm_window(t->context));
   }
 
+  WorkSpace *workspace = CTX_wm_workspace(t->context);
+  if (workspace) {
+    BKE_workspace_status_clear(workspace);
+  }
+
   if (!is_navigating && (handled || t->redraw)) {
     return 0;
   }
@@ -1486,7 +1485,7 @@ bool calculateTransformCenter(bContext *C, int centerMode, float cent3d[3], floa
     }
   }
 
-  /* Aftertrans does insert keyframes, and clears base flags; doesn't read transdata. */
+  /* Does insert keyframes, and clears base flags; doesn't read `transdata`. */
   special_aftertrans_update(C, t);
 
   postTrans(C, t);
@@ -1560,8 +1559,10 @@ static void drawAutoKeyWarning(TransInfo *t, ARegion *region)
   const rcti *rect = ED_region_visible_rect(region);
 
   View3D *v3d = nullptr;
+  Scene *scene = nullptr;
   if (t->spacetype == SPACE_VIEW3D) {
     v3d = static_cast<View3D *>(t->view);
+    scene = static_cast<Scene *>(t->scene);
   }
 
   const int font_id = BLF_set_default();
@@ -1570,7 +1571,6 @@ static void drawAutoKeyWarning(TransInfo *t, ARegion *region)
 
   /* Check to see if the Navigation Gizmo is enabled. */
   if ((t->spacetype != SPACE_VIEW3D) || (v3d == nullptr) ||
-      ((U.uiflag & USER_SHOW_GIZMO_NAVIGATE) == 0) ||
       (v3d->gizmo_flag & (V3D_GIZMO_HIDE | V3D_GIZMO_HIDE_NAVIGATE)))
   {
     offset = 10;
@@ -1598,10 +1598,18 @@ static void drawAutoKeyWarning(TransInfo *t, ARegion *region)
   /* Warning text (to clarify meaning of overlays)
    * - Original color was red to match the icon, but that clashes badly with a less nasty border.
    */
-  uchar color[3];
-  UI_GetThemeColorShade3ubv(TH_TEXT_HI, -50, color);
-  BLF_color3ubv(font_id, color);
-  BLF_draw_default_shadowed(xco, yco, 0.0f, printable, BLF_DRAW_STR_DUMMY_MAX);
+
+  float text_color[4], shadow_color[4];
+  if (v3d && scene) {
+    ED_view3d_text_colors_get(scene, v3d, text_color, shadow_color);
+  }
+  else {
+    UI_GetThemeColor4fv(TH_TEXT_HI, text_color);
+    UI_GetThemeColor4fv(TH_BACK, text_color);
+  }
+  BLF_color4fv(BLF_default(), text_color);
+  BLF_shadow(BLF_default(), FontShadowType::Outline, shadow_color);
+  BLF_draw_default(xco, yco, 0.0f, printable, BLF_DRAW_STR_DUMMY_MAX);
 
   /* Auto-key recording icon. */
   GPU_blend(GPU_BLEND_ALPHA);
@@ -1892,6 +1900,7 @@ static void initSnapSpatial(TransInfo *t, float r_snap[3], float *r_snap_precisi
   *r_snap_precision = 0.1f;
 
   if (t->spacetype == SPACE_VIEW3D) {
+    /* Used by incremental snap. */
     if (t->region->regiondata) {
       View3D *v3d = static_cast<View3D *>(t->area->spacedata.first);
       r_snap[0] = r_snap[1] = r_snap[2] = ED_view3d_grid_view_scale(
@@ -2229,7 +2238,7 @@ int transformEnd(bContext *C, TransInfo *t)
       exit_code = OPERATOR_FINISHED;
     }
 
-    /* Aftertrans does insert keyframes, and clears base flags; doesn't read transdata. */
+    /* Does insert keyframes, and clears base flags; doesn't read `transdata`. */
     special_aftertrans_update(C, t);
 
     /* Free data, also handles overlap [in freeTransCustomData()]. */

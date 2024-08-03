@@ -12,6 +12,7 @@
 #include "DNA_collection_types.h"
 #include "DNA_scene_types.h"
 
+#include "DNA_screen_types.h"
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
@@ -193,11 +194,13 @@ static void nla_track_region_draw(const bContext *C, ARegion *region)
   const size_t item_count = ANIM_animdata_filter(
       &ac, &anim_data, filter, ac.data, eAnimCont_Types(ac.datatype));
 
-  /* Recalculate the height of the track list. Needs to be done before the call to
-   * `UI_view2d_view_ortho`.*/
+  /* Recalculate the height of the track list.
+   * Needs to be done before the call to #UI_view2d_view_ortho. */
   int height = NLATRACK_TOT_HEIGHT(&ac, item_count);
+  /* Add padding for the collapsed redo panel. */
+  height += HEADERY;
   if (!BLI_listbase_is_empty(ED_context_get_markers(C))) {
-    height -= (UI_MARKER_MARGIN_Y - NLATRACK_STEP(snla));
+    height += (UI_MARKER_MARGIN_Y - NLATRACK_STEP(snla));
   }
   v2d->tot.ymin = -height;
   UI_view2d_curRect_clamp_y(v2d);
@@ -582,14 +585,14 @@ static void nla_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data)
     return;
   }
 
-  BKE_LIB_FOREACHID_PROCESS_ID(data, snla->ads->source, IDWALK_CB_NOP);
-  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, snla->ads->filter_grp, IDWALK_CB_NOP);
+  BKE_LIB_FOREACHID_PROCESS_ID(data, snla->ads->source, IDWALK_CB_DIRECT_WEAK_LINK);
+  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, snla->ads->filter_grp, IDWALK_CB_DIRECT_WEAK_LINK);
 }
 
 static void nla_space_blend_read_data(BlendDataReader *reader, SpaceLink *sl)
 {
   SpaceNla *snla = reinterpret_cast<SpaceNla *>(sl);
-  BLO_read_data_address(reader, &snla->ads);
+  BLO_read_struct(reader, bDopeSheet, &snla->ads);
 }
 
 static void nla_space_blend_write(BlendWriter *writer, SpaceLink *sl)

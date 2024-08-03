@@ -27,12 +27,12 @@
 
 #include "BKE_brush.hh"
 #include "BKE_context.hh"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_paint.hh"
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
 
 #include "RNA_access.hh"
 #include "RNA_enum_types.hh"
@@ -170,43 +170,6 @@ static void toolsystem_ref_link(bContext *C, WorkSpace *workspace, bToolRef *tre
             Scene *scene = WM_window_get_active_scene(win);
             ToolSettings *ts = scene->toolsettings;
             ts->particle.brushtype = value;
-          }
-        }
-      }
-    }
-    else {
-      const PaintMode paint_mode = BKE_paintmode_get_from_tool(tref);
-      BLI_assert(paint_mode != PaintMode::Invalid);
-      const EnumPropertyItem *items = BKE_paint_get_tool_enum_from_paintmode(paint_mode);
-      BLI_assert(items != nullptr);
-
-      const int i = items ? RNA_enum_from_identifier(items, tref_rt->data_block) : -1;
-      if (i != -1) {
-        const int slot_index = items[i].value;
-        wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first);
-        LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
-          if (workspace == WM_window_get_active_workspace(win)) {
-            Scene *scene = WM_window_get_active_scene(win);
-            BKE_paint_ensure_from_paintmode(scene, paint_mode);
-            Paint *paint = BKE_paint_get_active_from_paintmode(scene, paint_mode);
-            Brush *brush = BKE_paint_toolslots_brush_get(paint, slot_index);
-            if (brush == nullptr) {
-              /* Could make into a function. */
-              brush = (Brush *)BKE_libblock_find_name(bmain, ID_BR, items[i].name);
-              if (brush && slot_index == BKE_brush_tool_get(brush, paint)) {
-                /* Pass. */
-              }
-              else {
-                brush = BKE_brush_add(bmain, items[i].name, eObjectMode(paint->runtime.ob_mode));
-
-                BKE_brush_tool_set(brush, paint, slot_index);
-
-                if (paint_mode == PaintMode::Sculpt) {
-                  BKE_brush_sculpt_reset(brush);
-                }
-              }
-            }
-            BKE_paint_brush_set(paint, brush);
           }
         }
       }
@@ -380,25 +343,6 @@ void WM_toolsystem_ref_sync_from_context(Main *bmain, WorkSpace *workspace, bToo
         if (!STREQ(tref_rt->data_block, item->identifier)) {
           STRNCPY(tref_rt->data_block, item->identifier);
           SNPRINTF(tref->idname, "builtin_brush.%s", item->name);
-        }
-      }
-    }
-    else {
-      const PaintMode paint_mode = BKE_paintmode_get_from_tool(tref);
-      Paint *paint = BKE_paint_get_active_from_paintmode(scene, paint_mode);
-      const EnumPropertyItem *items = BKE_paint_get_tool_enum_from_paintmode(paint_mode);
-      if (paint && paint->brush && items) {
-        const ID *brush = (ID *)paint->brush;
-        const char tool_type = BKE_brush_tool_get((Brush *)brush, paint);
-        const int i = RNA_enum_from_value(items, tool_type);
-        /* Possible when loading files from the future. */
-        if (i != -1) {
-          const char *name = items[i].name;
-          const char *identifier = items[i].identifier;
-          if (!STREQ(tref_rt->data_block, identifier)) {
-            STRNCPY(tref_rt->data_block, identifier);
-            SNPRINTF(tref->idname, "builtin_brush.%s", name);
-          }
         }
       }
     }
@@ -711,24 +655,19 @@ static const char *toolsystem_default_tool(const bToolKey *tkey)
   switch (tkey->space_type) {
     case SPACE_VIEW3D:
       switch (tkey->mode) {
-        /* Use the names of the enums for each brush tool. */
         case CTX_MODE_SCULPT:
         case CTX_MODE_PAINT_VERTEX:
         case CTX_MODE_PAINT_WEIGHT:
         case CTX_MODE_PAINT_TEXTURE:
         case CTX_MODE_PAINT_GPENCIL_LEGACY:
         case CTX_MODE_PAINT_GREASE_PENCIL:
-          return "builtin_brush.Draw";
         case CTX_MODE_SCULPT_GPENCIL_LEGACY:
-          return "builtin_brush.Push";
+        case CTX_MODE_SCULPT_GREASE_PENCIL:
         case CTX_MODE_WEIGHT_GPENCIL_LEGACY:
-          return "builtin_brush.Weight";
+        case CTX_MODE_WEIGHT_GREASE_PENCIL:
         case CTX_MODE_VERTEX_GPENCIL_LEGACY:
-          return "builtin_brush.Draw";
         case CTX_MODE_SCULPT_CURVES:
-          return "builtin_brush.Density";
-          /* End temporary hack. */
-
+          return "builtin.brush";
         case CTX_MODE_PARTICLE:
           return "builtin_brush.Comb";
         case CTX_MODE_EDIT_TEXT:
@@ -738,7 +677,7 @@ static const char *toolsystem_default_tool(const bToolKey *tkey)
     case SPACE_IMAGE:
       switch (tkey->mode) {
         case SI_MODE_PAINT:
-          return "builtin_brush.Draw";
+          return "builtin.brush";
       }
       break;
     case SPACE_NODE: {
@@ -869,8 +808,7 @@ static IDProperty *idprops_ensure_named_group(IDProperty *group, const char *idn
 {
   IDProperty *prop = IDP_GetPropertyFromGroup(group, idname);
   if ((prop == nullptr) || (prop->type != IDP_GROUP)) {
-    IDPropertyTemplate val = {0};
-    prop = IDP_New(IDP_GROUP, &val, __func__);
+    prop = blender::bke::idprop::create_group(__func__).release();
     STRNCPY(prop->name, idname);
     IDP_ReplaceInGroup_ex(group, prop, nullptr);
   }
@@ -889,8 +827,7 @@ IDProperty *WM_toolsystem_ref_properties_get_idprops(bToolRef *tref)
 IDProperty *WM_toolsystem_ref_properties_ensure_idprops(bToolRef *tref)
 {
   if (tref->properties == nullptr) {
-    IDPropertyTemplate val = {0};
-    tref->properties = IDP_New(IDP_GROUP, &val, __func__);
+    tref->properties = blender::bke::idprop::create_group(__func__).release();
   }
   return idprops_ensure_named_group(tref->properties, tref->idname);
 }
@@ -926,8 +863,7 @@ void WM_toolsystem_ref_properties_init_for_keymap(bToolRef *tref,
     dst_ptr->data = IDP_CopyProperty(static_cast<const IDProperty *>(dst_ptr->data));
   }
   else {
-    IDPropertyTemplate val = {0};
-    dst_ptr->data = IDP_New(IDP_GROUP, &val, "wmOpItemProp");
+    dst_ptr->data = blender::bke::idprop::create_group("wmOpItemProp").release();
   }
   IDProperty *group = WM_toolsystem_ref_properties_get_idprops(tref);
   if (group != nullptr) {

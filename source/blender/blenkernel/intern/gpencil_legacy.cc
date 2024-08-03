@@ -204,52 +204,54 @@ void BKE_gpencil_blend_read_data(BlendDataReader *reader, bGPdata *gpd)
   gpd->runtime.update_cache = nullptr;
 
   /* Relink palettes (old palettes deprecated, only to convert old files). */
-  BLO_read_list(reader, &gpd->palettes);
+  BLO_read_struct_list(reader, bGPDpalette, &gpd->palettes);
   if (gpd->palettes.first != nullptr) {
     LISTBASE_FOREACH (bGPDpalette *, palette, &gpd->palettes) {
-      BLO_read_list(reader, &palette->colors);
+      BLO_read_struct_list(reader, PaletteColor, &palette->colors);
     }
   }
 
-  BLO_read_list(reader, &gpd->vertex_group_names);
+  BLO_read_struct_list(reader, bDeformGroup, &gpd->vertex_group_names);
 
   /* Materials. */
-  BLO_read_pointer_array(reader, (void **)&gpd->mat);
+  BLO_read_pointer_array(reader, gpd->totcol, (void **)&gpd->mat);
 
   /* Relink layers. */
-  BLO_read_list(reader, &gpd->layers);
+  BLO_read_struct_list(reader, bGPDlayer, &gpd->layers);
 
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     /* Relink frames. */
-    BLO_read_list(reader, &gpl->frames);
+    BLO_read_struct_list(reader, bGPDframe, &gpl->frames);
 
-    BLO_read_data_address(reader, &gpl->actframe);
+    BLO_read_struct(reader, bGPDframe, &gpl->actframe);
 
     gpl->runtime.icon_id = 0;
 
     /* Relink masks. */
-    BLO_read_list(reader, &gpl->mask_layers);
+    BLO_read_struct_list(reader, bGPDlayer_Mask, &gpl->mask_layers);
 
     LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
       /* Relink strokes (and their points). */
-      BLO_read_list(reader, &gpf->strokes);
+      BLO_read_struct_list(reader, bGPDstroke, &gpf->strokes);
 
       LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
         /* Relink stroke points array. */
-        BLO_read_data_address(reader, &gps->points);
+        BLO_read_struct_array(reader, bGPDspoint, gps->totpoints, &gps->points);
         /* Relink geometry. */
-        BLO_read_data_address(reader, &gps->triangles);
+        BLO_read_struct_array(reader, bGPDtriangle, gps->tot_triangles, &gps->triangles);
 
         /* Relink stroke edit curve. */
-        BLO_read_data_address(reader, &gps->editcurve);
+        BLO_read_struct(reader, bGPDcurve, &gps->editcurve);
         if (gps->editcurve != nullptr) {
           /* Relink curve point array. */
-          BLO_read_data_address(reader, &gps->editcurve->curve_points);
+          bGPDcurve *gpc = gps->editcurve;
+          BLO_read_struct_array(
+              reader, bGPDcurve_point, gpc->tot_curve_points, &gps->editcurve->curve_points);
         }
 
         /* Relink weight data. */
         if (gps->dvert) {
-          BLO_read_data_address(reader, &gps->dvert);
+          BLO_read_struct_array(reader, MDeformVert, gps->totpoints, &gps->dvert);
           BKE_defvert_blend_read(reader, gps->totpoints, gps->dvert);
         }
       }
@@ -1028,7 +1030,7 @@ void BKE_gpencil_stroke_copy_settings(const bGPDstroke *gps_src, bGPDstroke *gps
   copy_v2_v2_short(gps_dst->caps, gps_src->caps);
   gps_dst->hardness = gps_src->hardness;
   copy_v2_v2(gps_dst->aspect_ratio, gps_src->aspect_ratio);
-  gps_dst->fill_opacity_fac = gps_dst->fill_opacity_fac;
+  gps_dst->fill_opacity_fac = gps_src->fill_opacity_fac;
   copy_v3_v3(gps_dst->boundbox_min, gps_src->boundbox_min);
   copy_v3_v3(gps_dst->boundbox_max, gps_src->boundbox_max);
   gps_dst->uv_rotation = gps_src->uv_rotation;
@@ -1749,9 +1751,9 @@ Material *BKE_gpencil_object_material_ensure_from_active_input_toolsettings(Main
                                                                             Object *ob,
                                                                             ToolSettings *ts)
 {
-  if (ts && ts->gp_paint && ts->gp_paint->paint.brush) {
+  if (ts && ts->gp_paint && BKE_paint_brush(&ts->gp_paint->paint)) {
     return BKE_gpencil_object_material_ensure_from_active_input_brush(
-        bmain, ob, ts->gp_paint->paint.brush);
+        bmain, ob, BKE_paint_brush(&ts->gp_paint->paint));
   }
 
   return BKE_gpencil_object_material_ensure_from_active_input_brush(bmain, ob, nullptr);

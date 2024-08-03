@@ -14,7 +14,7 @@
 
 #include "GPU_select.hh"
 
-#include "../intern/gpu_select_private.h"
+#include "../intern/gpu_select_private.hh"
 
 #include "draw_manager.hh"
 #include "draw_pass.hh"
@@ -70,7 +70,7 @@ struct SelectBuf {
     }
   }
 
-  void select_bind(PassSimple &pass)
+  void select_bind(PassSimple::Sub &pass)
   {
     if (selection_type != SelectionType::DISABLED) {
       select_buf.push_update();

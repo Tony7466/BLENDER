@@ -5,6 +5,7 @@
 set(INC
   .
   intern
+  intern/lineart
   ../blenkernel
   ../blenloader
   ../blentranslation
@@ -18,12 +19,7 @@ set(INC
   ../windowmanager
   ../../../intern/eigen
 
-  # Needed for shared line art functions from legacy implementations.
-  ../gpencil_modifiers_legacy
-  ../gpencil_modifiers_legacy/intern
-  ../gpencil_modifiers_legacy/intern/lineart
-
-  # RNA_prototypes.h
+  # RNA_prototypes.hh
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
@@ -51,6 +47,7 @@ set(SRC
   intern/MOD_fluid.cc
   intern/MOD_grease_pencil_armature.cc
   intern/MOD_grease_pencil_array.cc
+  intern/MOD_grease_pencil_build.cc
   intern/MOD_grease_pencil_color.cc
   intern/MOD_grease_pencil_dash.cc
   intern/MOD_grease_pencil_envelope.cc
@@ -64,8 +61,10 @@ set(SRC
   intern/MOD_grease_pencil_opacity.cc
   intern/MOD_grease_pencil_outline.cc
   intern/MOD_grease_pencil_shrinkwrap.cc
+  intern/MOD_grease_pencil_simplify.cc
   intern/MOD_grease_pencil_smooth.cc
   intern/MOD_grease_pencil_subdiv.cc
+  intern/MOD_grease_pencil_texture.cc
   intern/MOD_grease_pencil_thickness.cc
   intern/MOD_grease_pencil_time.cc
   intern/MOD_grease_pencil_tint.cc
@@ -123,6 +122,10 @@ set(SRC
   intern/MOD_weightvgproximity.cc
   intern/MOD_weld.cc
   intern/MOD_wireframe.cc
+  intern/lineart/lineart_chain.cc
+  intern/lineart/lineart_cpu.cc
+  intern/lineart/lineart_shadow.cc
+  intern/lineart/lineart_util.cc
 
   MOD_modifiertypes.hh
   MOD_nodes.hh
@@ -132,6 +135,8 @@ set(SRC
   intern/MOD_ui_common.hh
   intern/MOD_util.hh
   intern/MOD_weightvg_util.hh
+  intern/lineart/MOD_lineart.h
+  intern/lineart/lineart_intern.h
 )
 
 set(LIB
@@ -211,19 +216,11 @@ if(WITH_GMP)
 endif()
 
 if(WITH_TBB)
-  add_definitions(-DWITH_TBB)
   if(WIN32)
     # TBB includes Windows.h which will define min/max macros
     # that will collide with the stl versions.
     add_definitions(-DNOMINMAX)
   endif()
-  list(APPEND INC_SYS
-    ${TBB_INCLUDE_DIRS}
-  )
-
-  list(APPEND LIB
-    ${TBB_LIBRARIES}
-  )
 endif()
 
 if(WITH_OPENVDB)
@@ -248,5 +245,5 @@ endif()
 
 blender_add_lib(bf_modifiers "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
-# RNA_prototypes.h
+# RNA_prototypes.hh
 add_dependencies(bf_modifiers bf_rna)

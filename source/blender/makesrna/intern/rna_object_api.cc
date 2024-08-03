@@ -122,7 +122,8 @@ static void rna_Object_select_set(
     return;
   }
 
-  ED_object_base_select(base, select ? BA_SELECT : BA_DESELECT);
+  blender::ed::object::base_select(
+      base, select ? blender::ed::object::BA_SELECT : blender::ed::object::BA_DESELECT);
 
   DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
   WM_main_add_notifier(NC_SCENE | ND_OB_SELECT, scene);
@@ -741,7 +742,7 @@ static bool rna_Object_is_deform_modified(Object *ob, Scene *scene, int settings
 void rna_Object_me_eval_info(
     Object *ob, bContext *C, int type, PointerRNA *rnaptr_depsgraph, char *result)
 {
-  Mesh *mesh_eval = nullptr;
+  const Mesh *mesh_eval = nullptr;
   char *ret = nullptr;
 
   result[0] = '\0';
@@ -761,7 +762,7 @@ void rna_Object_me_eval_info(
       }
       break;
     case 1:
-      mesh_eval = ob->runtime->mesh_deform_eval;
+      mesh_eval = BKE_object_get_mesh_deform_eval(ob);
       break;
     case 2:
       mesh_eval = BKE_object_get_evaluated_mesh(ob);
@@ -790,7 +791,7 @@ void rna_Object_me_eval_info(Object * /*ob*/,
 static bool rna_Object_update_from_editmode(Object *ob, Main *bmain)
 {
   /* fail gracefully if we aren't in edit-mode. */
-  const bool result = ED_object_editmode_load(bmain, ob);
+  const bool result = blender::ed::object::editmode_load(bmain, ob);
   if (result) {
     /* Loading edit mesh to mesh changes geometry, and scripts might expect it to be properly
      * informed about changes. */
@@ -849,7 +850,7 @@ void RNA_api_object(StructRNA *srna)
   /* Special wrapper to access the base selection value */
   func = RNA_def_function(srna, "select_get", "rna_Object_select_get");
   RNA_def_function_ui_description(
-      func, "Test if the object is selected. The selection state is per view layer");
+      func, "Test if the object is selected. The selection state is per view layer.");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT);
   parm = RNA_def_pointer(
       func, "view_layer", "ViewLayer", "", "Use this instead of the active view layer");
@@ -859,7 +860,7 @@ void RNA_api_object(StructRNA *srna)
 
   func = RNA_def_function(srna, "select_set", "rna_Object_select_set");
   RNA_def_function_ui_description(
-      func, "Select or deselect the object. The selection state is per view layer");
+      func, "Select or deselect the object. The selection state is per view layer.");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT | FUNC_USE_REPORTS);
   parm = RNA_def_boolean(func, "state", false, "", "Selection state to define");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
@@ -870,7 +871,7 @@ void RNA_api_object(StructRNA *srna)
   func = RNA_def_function(srna, "hide_get", "rna_Object_hide_get");
   RNA_def_function_ui_description(
       func,
-      "Test if the object is hidden for viewport editing. This hiding state is per view layer");
+      "Test if the object is hidden for viewport editing. This hiding state is per view layer.");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT);
   parm = RNA_def_pointer(
       func, "view_layer", "ViewLayer", "", "Use this instead of the active view layer");
@@ -880,7 +881,7 @@ void RNA_api_object(StructRNA *srna)
 
   func = RNA_def_function(srna, "hide_set", "rna_Object_hide_set");
   RNA_def_function_ui_description(
-      func, "Hide the object for viewport editing. This hiding state is per view layer");
+      func, "Hide the object for viewport editing. This hiding state is per view layer.");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT | FUNC_USE_REPORTS);
   parm = RNA_def_boolean(func, "state", false, "", "Hide state to define");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
@@ -1077,7 +1078,7 @@ void RNA_api_object(StructRNA *srna)
       func,
       "Create a Mesh data-block from the current state of the object. The object owns the "
       "data-block. To force free it use to_mesh_clear(). "
-      "The result is temporary and cannot be used by objects from the main database");
+      "The result is temporary and cannot be used by objects from the main database.");
   RNA_def_function_flag(func, FUNC_USE_REPORTS);
   RNA_def_boolean(func,
                   "preserve_all_data_layers",
@@ -1085,7 +1086,7 @@ void RNA_api_object(StructRNA *srna)
                   "",
                   "Preserve all data layers in the mesh, like UV maps and vertex groups. "
                   "By default Blender only computes the subset of data layers needed for viewport "
-                  "display and rendering, for better performance");
+                  "display and rendering, for better performance.");
   RNA_def_pointer(
       func,
       "depsgraph",
@@ -1104,7 +1105,7 @@ void RNA_api_object(StructRNA *srna)
       func,
       "Create a Curve data-block from the current state of the object. This only works for curve "
       "and text objects. The object owns the data-block. To force free it, use to_curve_clear(). "
-      "The result is temporary and cannot be used by objects from the main database");
+      "The result is temporary and cannot be used by objects from the main database.");
   RNA_def_function_flag(func, FUNC_USE_REPORTS);
   parm = RNA_def_pointer(
       func, "depsgraph", "Depsgraph", "Dependency Graph", "Evaluated dependency graph");
@@ -1114,7 +1115,7 @@ void RNA_api_object(StructRNA *srna)
                   false,
                   "",
                   "Apply the deform modifiers on the control points of the curve. This is only "
-                  "supported for curve objects");
+                  "supported for curve objects.");
   parm = RNA_def_pointer(func, "curve", "Curve", "", "Curve created from object");
   RNA_def_function_return(func, parm);
 
@@ -1354,7 +1355,7 @@ void RNA_api_object(StructRNA *srna)
   func = RNA_def_function(srna, "cache_release", "BKE_object_free_caches");
   RNA_def_function_ui_description(func,
                                   "Release memory used by caches associated with this object. "
-                                  "Intended to be used by render engines only");
+                                  "Intended to be used by render engines only.");
 
   /* Convert curve object to gpencil strokes. */
   func = RNA_def_function(srna, "generate_gpencil_strokes", "rna_Object_generate_gpencil_strokes");

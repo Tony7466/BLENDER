@@ -25,13 +25,14 @@
 
 #include "RNA_access.hh"
 #include "RNA_path.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
 #include "intern/depsgraph.hh"
 #include "intern/eval/deg_eval_copy_on_write.h"
+#include "intern/node/deg_node_component.hh"
 #include "intern/node/deg_node_id.hh"
 
 namespace blender::deg {
@@ -287,6 +288,11 @@ ID *DEG_get_original_id(ID *id)
   return deg::get_original_id(id);
 }
 
+Depsgraph *DEG_get_depsgraph_by_id(const ID &id)
+{
+  return id.runtime.depsgraph;
+}
+
 bool DEG_is_original_id(const ID *id)
 {
   /* Some explanation of the logic.
@@ -339,4 +345,74 @@ bool DEG_is_fully_evaluated(const Depsgraph *depsgraph)
     return false;
   }
   return true;
+}
+
+bool DEG_id_is_fully_evaluated(const Depsgraph *depsgraph, const ID *id_eval)
+{
+  const deg::Depsgraph *deg_graph = reinterpret_cast<const deg::Depsgraph *>(depsgraph);
+  /* Only us the original ID pointer to look up the IDNode, do not dereference it. */
+  const ID *id_orig = deg::get_original_id(id_eval);
+  const deg::IDNode *id_node = deg_graph->find_id_node(id_orig);
+  if (!id_node) {
+    return false;
+  }
+  for (deg::ComponentNode *component : id_node->components.values()) {
+    for (deg::OperationNode *operation : component->operations) {
+      if (operation->flag & deg::DEPSOP_FLAG_NEEDS_UPDATE) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+static bool operation_needs_update(const ID &id,
+                                   const deg::NodeType component_type,
+                                   const deg::OperationCode opcode)
+{
+  const Depsgraph *depsgraph = DEG_get_depsgraph_by_id(id);
+  if (!depsgraph) {
+    return false;
+  }
+  const deg::Depsgraph &deg_graph = *reinterpret_cast<const deg::Depsgraph *>(depsgraph);
+  /* Only us the original ID pointer to look up the IDNode, do not dereference it. */
+  const ID *id_orig = deg::get_original_id(&id);
+  if (!id_orig) {
+    return false;
+  }
+  const deg::IDNode *id_node = deg_graph.find_id_node(id_orig);
+  if (!id_node) {
+    return false;
+  };
+  const deg::ComponentNode *component_node = id_node->find_component(component_type);
+  if (!component_node) {
+    return false;
+  }
+  const deg::OperationNode *operation_node = component_node->find_operation(opcode);
+  if (!operation_node) {
+    return false;
+  }
+  /* Technically, there is potential for a race condition here, because the depsgraph evaluation
+   * might update this flag, but it's very unlikely to cause issues right now. Maybe this should
+   * become an atomic eventually. */
+  const bool needs_update = operation_node->flag & deg::DEPSOP_FLAG_NEEDS_UPDATE;
+  return needs_update;
+}
+
+bool DEG_object_geometry_is_evaluated(const Object &object)
+{
+  return !operation_needs_update(
+      object.id, deg::NodeType::GEOMETRY, deg::OperationCode::GEOMETRY_EVAL);
+}
+
+bool DEG_object_transform_is_evaluated(const Object &object)
+{
+  return !operation_needs_update(
+      object.id, deg::NodeType::TRANSFORM, deg::OperationCode::TRANSFORM_FINAL);
+}
+
+bool DEG_collection_geometry_is_evaluated(const Collection &collection)
+{
+  return !operation_needs_update(
+      collection.id, deg::NodeType::GEOMETRY, deg::OperationCode::GEOMETRY_EVAL_DONE);
 }

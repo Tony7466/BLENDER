@@ -40,9 +40,9 @@
 #include "BKE_context.hh"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
-#include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_main.hh"
 #include "BKE_material.h"
+#include "BKE_paint.hh"
 #include "BKE_report.hh"
 
 #include "UI_interface.hh"
@@ -52,7 +52,7 @@
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "UI_view2d.hh"
 
@@ -65,7 +65,7 @@
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
-#include "gpencil_intern.h"
+#include "gpencil_intern.hh"
 
 #define SEARCH_RADIUS_PIXEL 20
 
@@ -1188,7 +1188,7 @@ static bool gpencil_sculpt_brush_init(bContext *C, wmOperator *op)
       gso->vrgroup = -1;
     }
     /* Check if some modifier can transform the stroke. */
-    gso->is_transformed = BKE_gpencil_has_transform_modifiers(ob);
+    gso->is_transformed = false;
 
     gso->ob_eval = (Object *)DEG_get_evaluated_id(gso->depsgraph, &ob->id);
   }
@@ -1202,7 +1202,10 @@ static bool gpencil_sculpt_brush_init(bContext *C, wmOperator *op)
   gso->region = CTX_wm_region(C);
 
   Paint *paint = &ts->gp_sculptpaint->paint;
-  Brush *brush = paint->brush;
+  Brush *brush = BKE_paint_brush(paint);
+  if (brush && !brush->gpencil_settings) {
+    BKE_brush_init_gpencil_settings(brush);
+  }
   gso->brush = brush;
   BKE_curvemapping_init(gso->brush->curve);
 
@@ -1468,7 +1471,7 @@ static bool gpencil_sculpt_brush_do_stroke(tGP_BrushEditData *gso,
                                            GP_BrushApplyCb apply)
 {
   GP_SpaceConversion *gsc = &gso->gsc;
-  rcti *rect = &gso->brush_rect;
+  const rcti *rect = &gso->brush_rect;
   Brush *brush = gso->brush;
   const int radius = (brush->flag & GP_BRUSH_USE_PRESSURE) ? gso->brush->size * gso->pressure :
                                                              gso->brush->size;
@@ -2176,9 +2179,10 @@ static void gpencil_sculpt_brush_apply(bContext *C, wmOperator *op, PointerRNA *
 static Brush *gpencil_sculpt_get_smooth_brush(tGP_BrushEditData *gso)
 {
   Main *bmain = gso->bmain;
-  Brush *brush = static_cast<Brush *>(
-      BLI_findstring(&bmain->brushes, "Smooth Stroke", offsetof(ID, name) + 2));
-
+  Brush *brush = BKE_paint_brush_from_essentials(bmain, "Smooth Stroke");
+  if (brush && !brush->gpencil_settings) {
+    BKE_brush_init_gpencil_settings(brush);
+  }
   return brush;
 }
 

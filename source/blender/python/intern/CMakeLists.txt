@@ -15,7 +15,7 @@ set(INC
   ../../windowmanager
   ../../../../intern/mantaflow/extern
   ../../../../intern/opencolorio
-  # RNA_prototypes.h
+  # RNA_prototypes.hh
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
@@ -154,7 +154,7 @@ if(WITH_PYTHON AND WITH_PYTHON_INSTALL AND (APPLE OR WITH_INSTALL_PORTABLE) AND 
   # - `PYTHON_SSL_CERT_FILE` absolute path to the PEM file.
   find_python_module_file("certifi/cacert.pem" PYTHON_SSL_CERT_FILE _python_ssl_cert_file_relative)
   mark_as_advanced(PYTHON_SSL_CERT_FILE)
-  if (PYTHON_SSL_CERT_FILE)
+  if(PYTHON_SSL_CERT_FILE)
     add_definitions(-DPYTHON_SSL_CERT_FILE="${_python_ssl_cert_file_relative}")
   else()
     message(WARNING
@@ -393,5 +393,5 @@ endif()
 
 blender_add_lib(bf_python "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
-# RNA_prototypes.h
+# RNA_prototypes.hh
 add_dependencies(bf_python bf_rna)

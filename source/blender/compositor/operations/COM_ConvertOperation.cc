@@ -25,6 +25,15 @@ void ConvertBaseOperation::update_memory_buffer_partial(MemoryBuffer *output,
   update_memory_buffer_partial(it);
 }
 
+std::unique_ptr<MetaData> ConvertBaseOperation::get_meta_data()
+{
+  if (this->get_input_operation(0)) {
+    this->get_input_operation(0)->get_meta_data();
+  }
+
+  return nullptr;
+}
+
 /* ******** Value to Color ******** */
 
 ConvertValueToColorOperation::ConvertValueToColorOperation() : ConvertBaseOperation()
@@ -325,7 +334,7 @@ void ConvertHSLToRGBOperation::update_memory_buffer_partial(BuffersIterator<floa
   }
 }
 
-/* ******** Premul to Straight ******** */
+/* ******** Pre-multiplied to Straight ******** */
 
 ConvertPremulToStraightOperation::ConvertPremulToStraightOperation() : ConvertBaseOperation()
 {
@@ -340,7 +349,7 @@ void ConvertPremulToStraightOperation::update_memory_buffer_partial(BuffersItera
   }
 }
 
-/* ******** Straight to Premul ******** */
+/* ******** Straight to Pre-multiplied ******** */
 
 ConvertStraightToPremulOperation::ConvertStraightToPremulOperation() : ConvertBaseOperation()
 {

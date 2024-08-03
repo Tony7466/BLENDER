@@ -41,16 +41,18 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 
+#include "ED_anim_api.hh"
 #include "ED_curves.hh"
 #include "ED_keyframing.hh"
 #include "ED_object.hh"
 #include "ED_screen.hh"
 #include "ED_transverts.hh"
 
+#include "ANIM_action.hh"
 #include "ANIM_bone_collections.hh"
 #include "ANIM_keyframing.hh"
 
-#include "view3d_intern.h"
+#include "view3d_intern.hh"
 
 using blender::Vector;
 
@@ -64,6 +66,7 @@ static bool snap_calc_active_center(bContext *C, const bool select_only, float r
 /** Snaps every individual object center to its nearest point on the grid. */
 static int snap_sel_to_grid_exec(bContext *C, wmOperator *op)
 {
+  using namespace blender::ed;
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   ViewLayer *view_layer_eval = DEG_get_evaluated_view_layer(depsgraph);
   Object *obact = CTX_data_active_object(C);
@@ -90,7 +93,7 @@ static int snap_sel_to_grid_exec(bContext *C, wmOperator *op)
         }
       }
 
-      if (ED_object_edit_report_if_shape_key_is_locked(obedit, op->reports)) {
+      if (blender::ed::object::shape_key_report_if_locked(obedit, op->reports)) {
         continue;
       }
 
@@ -184,14 +187,16 @@ static int snap_sel_to_grid_exec(bContext *C, wmOperator *op)
                                               SCE_XFORM_SKIP_CHILDREN);
     const bool use_transform_data_origin = (scene->toolsettings->transform_flag &
                                             SCE_XFORM_DATA_ORIGIN);
-    XFormObjectSkipChild_Container *xcs = nullptr;
-    XFormObjectData_Container *xds = nullptr;
+    object::XFormObjectSkipChild_Container *xcs = nullptr;
+    object::XFormObjectData_Container *xds = nullptr;
 
     /* Build object array. */
     Vector<Object *> objects_eval;
+    Vector<Object *> objects_orig;
     {
       FOREACH_SELECTED_EDITABLE_OBJECT_BEGIN (view_layer_eval, v3d, ob_eval) {
         objects_eval.append(ob_eval);
+        objects_orig.append(DEG_get_original_object(ob_eval));
       }
       FOREACH_SELECTED_EDITABLE_OBJECT_END;
     }
@@ -204,13 +209,17 @@ static int snap_sel_to_grid_exec(bContext *C, wmOperator *op)
         objects.append_unchecked(DEG_get_original_object(ob_eval));
       }
       BKE_scene_graph_evaluated_ensure(depsgraph, bmain);
-      xcs = ED_object_xform_skip_child_container_create();
-      ED_object_xform_skip_child_container_item_ensure_from_array(
+      xcs = object::xform_skip_child_container_create();
+      object::xform_skip_child_container_item_ensure_from_array(
           xcs, scene, view_layer, objects.data(), objects.size());
     }
     if (use_transform_data_origin) {
       BKE_scene_graph_evaluated_ensure(depsgraph, bmain);
-      xds = ED_object_data_xform_container_create();
+      xds = object::data_xform_container_create();
+    }
+
+    if (blender::animrig::is_autokey_on(scene)) {
+      ANIM_deselect_keys_in_animation_editors(C);
     }
 
     for (Object *ob_eval : objects_eval) {
@@ -243,19 +252,19 @@ static int snap_sel_to_grid_exec(bContext *C, wmOperator *op)
       blender::animrig::autokeyframe_object(C, scene, ob, ks);
 
       if (use_transform_data_origin) {
-        ED_object_data_xform_container_item_ensure(xds, ob);
+        object::data_xform_container_item_ensure(xds, ob);
       }
 
       DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM);
     }
 
     if (use_transform_skip_children) {
-      ED_object_xform_skip_child_container_update_all(xcs, bmain, depsgraph);
-      ED_object_xform_skip_child_container_destroy(xcs);
+      object::object_xform_skip_child_container_update_all(xcs, bmain, depsgraph);
+      object::object_xform_skip_child_container_destroy(xcs);
     }
     if (use_transform_data_origin) {
-      ED_object_data_xform_container_update_all(xds, bmain, depsgraph);
-      ED_object_data_xform_container_destroy(xds);
+      object::data_xform_container_update_all(xds, bmain, depsgraph);
+      object::data_xform_container_destroy(xds);
     }
   }
 
@@ -301,6 +310,7 @@ static bool snap_selected_to_location(bContext *C,
                                       const int pivot_point,
                                       const bool use_toolsettings)
 {
+  using namespace blender::ed;
   Scene *scene = CTX_data_scene(C);
   Object *obedit = CTX_data_edit_object(C);
   Object *obact = CTX_data_active_object(C);
@@ -338,7 +348,7 @@ static bool snap_selected_to_location(bContext *C,
         }
       }
 
-      if (ED_object_edit_report_if_shape_key_is_locked(obedit, op->reports)) {
+      if (blender::ed::object::shape_key_report_if_locked(obedit, op->reports)) {
         continue;
       }
 
@@ -480,24 +490,28 @@ static bool snap_selected_to_location(bContext *C,
     const bool use_transform_data_origin = use_toolsettings &&
                                            (scene->toolsettings->transform_flag &
                                             SCE_XFORM_DATA_ORIGIN);
-    XFormObjectSkipChild_Container *xcs = nullptr;
-    XFormObjectData_Container *xds = nullptr;
+    object::XFormObjectSkipChild_Container *xcs = nullptr;
+    object::XFormObjectData_Container *xds = nullptr;
 
     if (use_transform_skip_children) {
       BKE_scene_graph_evaluated_ensure(depsgraph, bmain);
-      xcs = ED_object_xform_skip_child_container_create();
-      ED_object_xform_skip_child_container_item_ensure_from_array(
+      xcs = object::xform_skip_child_container_create();
+      object::xform_skip_child_container_item_ensure_from_array(
           xcs, scene, view_layer, objects.data(), objects.size());
     }
     if (use_transform_data_origin) {
       BKE_scene_graph_evaluated_ensure(depsgraph, bmain);
-      xds = ED_object_data_xform_container_create();
+      xds = object::data_xform_container_create();
 
       /* Initialize the transform data in a separate loop because the depsgraph
        * may be evaluated while setting the locations. */
       for (Object *ob : objects) {
-        ED_object_data_xform_container_item_ensure(xds, ob);
+        object::data_xform_container_item_ensure(xds, ob);
       }
+    }
+
+    if (blender::animrig::is_autokey_on(scene)) {
+      ANIM_deselect_keys_in_animation_editors(C);
     }
 
     for (Object *ob : objects) {
@@ -550,12 +564,12 @@ static bool snap_selected_to_location(bContext *C,
     }
 
     if (use_transform_skip_children) {
-      ED_object_xform_skip_child_container_update_all(xcs, bmain, depsgraph);
-      ED_object_xform_skip_child_container_destroy(xcs);
+      object::object_xform_skip_child_container_update_all(xcs, bmain, depsgraph);
+      object::object_xform_skip_child_container_destroy(xcs);
     }
     if (use_transform_data_origin) {
-      ED_object_data_xform_container_update_all(xds, bmain, depsgraph);
-      ED_object_data_xform_container_destroy(xds);
+      object::data_xform_container_update_all(xds, bmain, depsgraph);
+      object::data_xform_container_destroy(xds);
     }
   }
 
@@ -910,7 +924,7 @@ static bool snap_calc_active_center(bContext *C, const bool select_only, float r
   if (ob == nullptr) {
     return false;
   }
-  return ED_object_calc_active_center(ob, select_only, r_center);
+  return blender::ed::object::calc_active_center(ob, select_only, r_center);
 }
 
 static int snap_curs_to_active_exec(bContext *C, wmOperator * /*op*/)
@@ -951,11 +965,8 @@ void VIEW3D_OT_snap_cursor_to_active(wmOperatorType *ot)
 static int snap_curs_to_center_exec(bContext *C, wmOperator * /*op*/)
 {
   Scene *scene = CTX_data_scene(C);
-  float mat3[3][3];
-  unit_m3(mat3);
 
-  zero_v3(scene->cursor.location);
-  BKE_scene_cursor_mat3_to_rot(&scene->cursor, mat3, false);
+  scene->cursor.set_matrix(blender::float4x4::identity(), false);
 
   DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
 

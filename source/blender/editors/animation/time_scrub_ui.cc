@@ -9,9 +9,9 @@
 #include "BKE_context.hh"
 #include "BKE_scene.hh"
 
-#include "GPU_immediate.h"
-#include "GPU_matrix.h"
-#include "GPU_state.h"
+#include "GPU_immediate.hh"
+#include "GPU_matrix.hh"
+#include "GPU_state.hh"
 
 #include "ED_time_scrub_ui.hh"
 
@@ -30,7 +30,7 @@
 #include "BLI_timecode.h"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 void ED_time_scrub_region_rect_get(const ARegion *region, rcti *rect)
 {
@@ -65,7 +65,7 @@ static void get_current_time_str(
     const Scene *scene, bool display_seconds, int frame, char *r_str, uint str_maxncpy)
 {
   if (display_seconds) {
-    BLI_timecode_string_from_time(r_str, str_maxncpy, 0, FRA2TIME(frame), FPS, U.timecode_style);
+    BLI_timecode_string_from_time(r_str, str_maxncpy, -1, FRA2TIME(frame), FPS, U.timecode_style);
   }
   else {
     BLI_snprintf(r_str, str_maxncpy, "%d", frame);
@@ -133,7 +133,7 @@ static void draw_current_frame(const Scene *scene,
   uchar text_color[4];
   UI_GetThemeColor4ubv(TH_HEADER_TEXT_HI, text_color);
 
-  const int y = BLI_rcti_cent_y(scrub_region_rect) - int((fstyle->points * UI_SCALE_FAC * 0.35f));
+  const int y = BLI_rcti_cent_y(scrub_region_rect) - int(fstyle->points * UI_SCALE_FAC * 0.35f);
 
   UI_fontstyle_draw_simple(
       +fstyle, frame_x - text_width / 2 + U.pixelsize / 2, y, frame_str, text_color);

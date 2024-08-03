@@ -191,6 +191,10 @@ static void volume_free_data(ID *id)
   BKE_animdata_free(&volume->id, false);
   BKE_volume_batch_cache_free(volume);
   MEM_SAFE_FREE(volume->mat);
+  if (volume->packedfile) {
+    BKE_packedfile_free(volume->packedfile);
+    volume->packedfile = nullptr;
+  }
 #ifdef WITH_OPENVDB
   MEM_delete(volume->runtime->grids);
   volume->runtime->grids = nullptr;
@@ -263,7 +267,7 @@ static void volume_blend_read_data(BlendDataReader *reader, ID *id)
   volume->runtime->frame = 0;
 
   /* materials */
-  BLO_read_pointer_array(reader, (void **)&volume->mat);
+  BLO_read_pointer_array(reader, volume->totcol, (void **)&volume->mat);
 }
 
 static void volume_blend_read_after_liblink(BlendLibReader * /*reader*/, ID *id)

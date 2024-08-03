@@ -96,14 +96,16 @@
 #include "BLI_linklist.h"
 #include "BLI_math_base.h"
 #include "BLI_mempool.h"
+#include "BLI_set.hh"
 #include "BLI_threads.h"
 
 #include "MEM_guardedalloc.h" /* MEM_freeN */
 
+#include "BKE_asset.hh"
 #include "BKE_blender_version.h"
 #include "BKE_bpath.hh"
 #include "BKE_global.hh" /* For #Global `G`. */
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_idtype.hh"
 #include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
@@ -113,8 +115,11 @@
 #include "BKE_main_namemap.hh"
 #include "BKE_node.hh"
 #include "BKE_packedFile.h"
+#include "BKE_preferences.h"
 #include "BKE_report.hh"
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
+
+#include "DRW_engine.hh"
 
 #include "BLO_blend_defs.hh"
 #include "BLO_blend_validate.hh"
@@ -414,8 +419,28 @@ struct WriteData {
   size_t write_len;
 #endif
 
-  /** Set on unlikely case of an error (ignores further file writing). */
-  bool error;
+  /** Whether writefile code is currently writing an ID. */
+  bool is_writing_id;
+
+  /** Some validation and error handling data. */
+  struct {
+    /**
+     * Set on unlikely case of an error (ignores further file writing). Only used for very
+     * low-level errors (like if the actual write on file fails).
+     */
+    bool critical_error;
+    /**
+     * A set of all 'old' addresses used as UID of written blocks for the current ID. Allows
+     * detecting invalid re-uses of the same address multiple times.
+     */
+    blender::Set<const void *> per_id_addresses_set;
+  } validation_data;
+
+  /**
+   * Keeps track of which shared data has been written for the current ID. This is necessary to
+   * avoid writing the same data more than once.
+   */
+  blender::Set<const void *> per_id_written_shared_addresses;
 
   /** #MemFile writing (used for undo). */
   MemFileWriteData mem;
@@ -459,7 +484,7 @@ static WriteData *writedata_new(WriteWrap *ww)
 
 static void writedata_do_write(WriteData *wd, const void *mem, size_t memlen)
 {
-  if ((wd == nullptr) || wd->error || (mem == nullptr) || memlen < 1) {
+  if ((wd == nullptr) || wd->validation_data.critical_error || (mem == nullptr) || memlen < 1) {
     return;
   }
 
@@ -468,7 +493,7 @@ static void writedata_do_write(WriteData *wd, const void *mem, size_t memlen)
     return;
   }
 
-  if (UNLIKELY(wd->error)) {
+  if (UNLIKELY(wd->validation_data.critical_error)) {
     return;
   }
 
@@ -478,7 +503,7 @@ static void writedata_do_write(WriteData *wd, const void *mem, size_t memlen)
   }
   else {
     if (!wd->ww->write(mem, memlen)) {
-      wd->error = true;
+      wd->validation_data.critical_error = true;
     }
   }
 }
@@ -516,7 +541,7 @@ static void mywrite_flush(WriteData *wd)
  */
 static void mywrite(WriteData *wd, const void *adr, size_t len)
 {
-  if (UNLIKELY(wd->error)) {
+  if (UNLIKELY(wd->validation_data.critical_error)) {
     return;
   }
 
@@ -599,7 +624,7 @@ static bool mywrite_end(WriteData *wd)
     BLO_memfile_write_finalize(&wd->mem);
   }
 
-  const bool err = wd->error;
+  const bool err = wd->validation_data.critical_error;
   writedata_free(wd);
 
   return err;
@@ -612,18 +637,23 @@ static bool mywrite_end(WriteData *wd)
  */
 static void mywrite_id_begin(WriteData *wd, ID *id)
 {
+  BLI_assert(wd->is_writing_id == false);
+  wd->is_writing_id = true;
+
+  BLI_assert(wd->validation_data.per_id_addresses_set.is_empty());
+
   if (wd->use_memfile) {
     wd->mem.current_id_session_uid = id->session_uid;
 
     /* If current next memchunk does not match the ID we are about to write, or is not the _first_
      * one for said ID, try to find the correct memchunk in the mapping using ID's session_uid. */
-    MemFileChunk *curr_memchunk = wd->mem.reference_current_chunk;
-    MemFileChunk *prev_memchunk = curr_memchunk != nullptr ?
-                                      static_cast<MemFileChunk *>(curr_memchunk->prev) :
-                                      nullptr;
-    if ((curr_memchunk == nullptr || curr_memchunk->id_session_uid != id->session_uid ||
-         (prev_memchunk != nullptr &&
-          (prev_memchunk->id_session_uid == curr_memchunk->id_session_uid))))
+    const MemFileChunk *curr_memchunk = wd->mem.reference_current_chunk;
+    const MemFileChunk *prev_memchunk = curr_memchunk != nullptr ?
+                                            static_cast<MemFileChunk *>(curr_memchunk->prev) :
+                                            nullptr;
+    if (curr_memchunk == nullptr || curr_memchunk->id_session_uid != id->session_uid ||
+        (prev_memchunk != nullptr &&
+         (prev_memchunk->id_session_uid == curr_memchunk->id_session_uid)))
     {
       if (MemFileChunk *ref = wd->mem.id_session_uid_mapping.lookup_default(id->session_uid,
                                                                             nullptr))
@@ -650,6 +680,12 @@ static void mywrite_id_end(WriteData *wd, ID * /*id*/)
     mywrite_flush(wd);
     wd->mem.current_id_session_uid = MAIN_ID_SESSION_UID_UNSET;
   }
+
+  wd->validation_data.per_id_addresses_set.clear();
+  wd->per_id_written_shared_addresses.clear();
+
+  BLI_assert(wd->is_writing_id == true);
+  wd->is_writing_id = false;
 }
 
 /** \} */
@@ -657,6 +693,31 @@ static void mywrite_id_end(WriteData *wd, ID * /*id*/)
 /* -------------------------------------------------------------------- */
 /** \name Generic DNA File Writing
  * \{ */
+
+/**
+ * Return \a false if the given 'old' address is not valid in current context. The block should
+ * not be written in that case.
+ *
+ * \note Currently only checks that #BLO_CODE_DATA blocks written as part of an ID data never match
+ * an already written one for the same ID.
+ */
+static bool write_at_address_validate(WriteData *wd, int filecode, const void *address)
+{
+  /* Skip in undo case. */
+  if (wd->use_memfile) {
+    return true;
+  }
+
+  if (wd->is_writing_id && filecode == BLO_CODE_DATA) {
+    if (!wd->validation_data.per_id_addresses_set.add(address)) {
+      CLOG_ERROR(&LOG,
+                 "Same identifier (old address) used several times for a same ID, skipping this "
+                 "block to avoid critical corruption of the Blender file.");
+      return false;
+    }
+  }
+  return true;
+}
 
 static void writestruct_at_address_nr(
     WriteData *wd, int filecode, const int struct_nr, int nr, const void *adr, const void *data)
@@ -669,15 +730,17 @@ static void writestruct_at_address_nr(
     return;
   }
 
+  if (!write_at_address_validate(wd, filecode, adr)) {
+    return;
+  }
+
   /* Initialize #BHead. */
   bh.code = filecode;
   bh.old = adr;
   bh.nr = nr;
 
   bh.SDNAnr = struct_nr;
-  const SDNA_Struct *struct_info = wd->sdna->structs[bh.SDNAnr];
-
-  bh.len = nr * wd->sdna->types_size[struct_info->type];
+  bh.len = nr * DNA_struct_size(wd->sdna, bh.SDNAnr);
 
   if (bh.len == 0) {
     return;
@@ -701,6 +764,10 @@ static void writedata(WriteData *wd, int filecode, size_t len, const void *adr)
   BHead bh;
 
   if (adr == nullptr || len == 0) {
+    return;
+  }
+
+  if (!write_at_address_validate(wd, filecode, adr)) {
     return;
   }
 
@@ -933,6 +1000,13 @@ static void write_userdef(BlendWriter *writer, const UserDef *userdef)
 
   LISTBASE_FOREACH (const bUserExtensionRepo *, repo_ref, &userdef->extension_repos) {
     BLO_write_struct(writer, bUserExtensionRepo, repo_ref);
+    BKE_preferences_extension_repo_write_data(writer, repo_ref);
+  }
+  LISTBASE_FOREACH (
+      const bUserAssetShelfSettings *, shelf_settings, &userdef->asset_shelves_settings)
+  {
+    BLO_write_struct(writer, bUserAssetShelfSettings, shelf_settings);
+    BKE_asset_catalog_path_list_blend_write(writer, shelf_settings->enabled_catalog_paths);
   }
 
   LISTBASE_FOREACH (const uiStyle *, style, &userdef->uistyles) {
@@ -1008,7 +1082,7 @@ static void write_libraries(WriteData *wd, Main *main)
                          "Data-block '%s' from lib '%s' is not linkable, but is flagged as "
                          "directly linked",
                          id->name,
-                         main->curlib->filepath_abs);
+                         main->curlib->runtime.filepath_abs);
             }
             writestruct(wd, ID_LINK_PLACEHOLDER, ID, 1, id);
           }
@@ -1165,6 +1239,11 @@ static void id_buffer_init_from_id(BLO_Write_IDBuffer *id_buffer, ID *id, const 
    * when we need to re-read the ID into its original address, this is currently cleared in
    * #direct_link_id_common in `readfile.cc` anyway. */
   temp_id->py_instance = nullptr;
+
+  DrawDataList *drawdata = DRW_drawdatalist_from_id(temp_id);
+  if (drawdata) {
+    BLI_listbase_clear(reinterpret_cast<ListBase *>(drawdata));
+  }
 }
 
 /* Helper callback for checking linked IDs used by given ID (assumed local), to ensure directly
@@ -1182,6 +1261,14 @@ static int write_id_direct_linked_data_process_cb(LibraryIDLinkCallbackData *cb_
   BLI_assert((cb_flag & IDWALK_CB_INDIRECT_USAGE) == 0);
 
   if (self_id->tag & LIB_TAG_RUNTIME) {
+    return IDWALK_RET_NOP;
+  }
+
+  if (!BKE_idtype_idcode_is_linkable(GS(id->name))) {
+    /* Usages of unlinkable IDs (aka ShapeKeys and some UI IDs) should never cause them to be
+     * considered as directly linked. This can often happen e.g. from UI data (the Outliner will
+     * have links to most IDs).
+     */
     return IDWALK_RET_NOP;
   }
 
@@ -1254,6 +1341,14 @@ static bool write_file_handle(Main *mainvar,
     FOREACH_MAIN_ID_END;
   }
 
+  /* Recompute all ID user-counts if requested. Allows to avoid skipping writing of IDs wrongly
+   * detected as unused due to invalid user-count. */
+  if (!wd->use_memfile) {
+    if (USER_EXPERIMENTAL_TEST(&U, use_recompute_usercount_on_save_debug)) {
+      BKE_main_id_refcount_recompute(mainvar, false);
+    }
+  }
+
   blo_split_main(&mainlist, mainvar);
 
   SNPRINTF(buf,
@@ -1302,10 +1397,18 @@ static bool write_file_handle(Main *mainvar,
 
         /* We only write unused IDs in undo case. */
         if (!wd->use_memfile) {
-          /* NOTE: All Scenes, WindowManagers and WorkSpaces should always be written to disk, so
-           * their user-count should never be zero currently. */
+          /* NOTE: All 'never unused' local IDs (Scenes, WindowManagers, ...) should always be
+           * written to disk, so their user-count should never be zero currently. Note that
+           * libraries have already been skipped above, as they need a specific handling. */
           if (id->us == 0) {
-            BLI_assert(!ELEM(GS(id->name), ID_SCE, ID_WM, ID_WS));
+            /* FIXME: #124857: Some old files seem to cause incorrect handling of their temp
+             * screens.
+             *
+             * See e.g. file attached to #124777 (from 2.79.1).
+             *
+             * For now ignore, issue is not obvious to track down (`temp` bScreen ID from read data
+             * _does_ have the proper `temp` tag), and seems anecdotal at worst. */
+            BLI_assert((id_type->flags & IDTYPE_FLAGS_NEVER_UNUSED) == 0);
             continue;
           }
 
@@ -1338,8 +1441,11 @@ static bool write_file_handle(Main *mainvar,
 
         /* If not writing undo data, properly set directly linked IDs as `LIB_TAG_EXTERN`. */
         if (!wd->use_memfile) {
-          BKE_library_foreach_ID_link(
-              bmain, id, write_id_direct_linked_data_process_cb, nullptr, IDWALK_READONLY);
+          BKE_library_foreach_ID_link(bmain,
+                                      id,
+                                      write_id_direct_linked_data_process_cb,
+                                      nullptr,
+                                      IDWALK_READONLY | IDWALK_INCLUDE_UI);
         }
 
         if (do_override) {
@@ -1386,7 +1492,7 @@ static bool write_file_handle(Main *mainvar,
    *
    * Note that we *borrow* the pointer to 'DNAstr',
    * so writing each time uses the same address and doesn't cause unnecessary undo overhead. */
-  writedata(wd, BLO_CODE_DNA1, size_t(wd->sdna->data_len), wd->sdna->data);
+  writedata(wd, BLO_CODE_DNA1, size_t(wd->sdna->data_size), wd->sdna->data);
 
   /* End of file. */
   memset(&bhead, 0, sizeof(BHead));
@@ -1498,6 +1604,14 @@ static bool BLO_write_file_impl(Main *mainvar,
   const bool use_userdef = params->use_userdef;
   const BlendThumbnail *thumb = params->thumb;
   const bool relbase_valid = (mainvar->filepath[0] != '\0');
+
+  /* Extra protection: Never save a non asset file as asset file. Otherwise a normal file is turned
+   * into an asset file, which can result in data loss because the asset system will allow editing
+   * this file from the UI, regenerating its content with just the asset and it dependencies. */
+  if ((write_flags & G_FILE_ASSET_EDIT_FILE) && !mainvar->is_asset_edit_file) {
+    BKE_reportf(reports, RPT_ERROR, "Cannot save normal file (%s) as asset system file", tempname);
+    return false;
+  }
 
   /* Path backup/restore. */
   void *path_list_backup = nullptr;
@@ -1783,9 +1897,19 @@ int BLO_get_struct_id_by_name(BlendWriter *writer, const char *struct_name)
   return struct_id;
 }
 
+void BLO_write_char_array(BlendWriter *writer, uint num, const char *data_ptr)
+{
+  BLO_write_raw(writer, sizeof(char) * size_t(num), data_ptr);
+}
+
 void BLO_write_int8_array(BlendWriter *writer, uint num, const int8_t *data_ptr)
 {
   BLO_write_raw(writer, sizeof(int8_t) * size_t(num), data_ptr);
+}
+
+void BLO_write_uint8_array(BlendWriter *writer, uint num, const uint8_t *data_ptr)
+{
+  BLO_write_raw(writer, sizeof(uint8_t) * size_t(num), data_ptr);
 }
 
 void BLO_write_int32_array(BlendWriter *writer, uint num, const int32_t *data_ptr)
@@ -1847,6 +1971,12 @@ void BLO_write_shared(BlendWriter *writer,
         memfile.size += approximate_size_in_bytes / sharing_info->strong_users();
         return;
       }
+    }
+  }
+  if (sharing_info != nullptr) {
+    if (!writer->wd->per_id_written_shared_addresses.add(data)) {
+      /* Was written already. */
+      return;
     }
   }
   write_fn();

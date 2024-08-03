@@ -107,6 +107,9 @@ static void curves_blend_write(BlendWriter *writer, ID *id, const void *id_addre
 {
   Curves *curves = (Curves *)id;
 
+  /* Only for forward compatibility. */
+  curves->attributes_active_index_legacy = curves->geometry.attributes_active_index;
+
   blender::bke::CurvesGeometry::BlendWriteData write_data =
       curves->geometry.wrap().blend_write_prepare();
 
@@ -129,10 +132,10 @@ static void curves_blend_read_data(BlendDataReader *reader, ID *id)
   /* Geometry */
   curves->geometry.wrap().blend_read(*reader);
 
-  BLO_read_data_address(reader, &curves->surface_uv_map);
+  BLO_read_string(reader, &curves->surface_uv_map);
 
   /* Materials */
-  BLO_read_pointer_array(reader, (void **)&curves->mat);
+  BLO_read_pointer_array(reader, curves->totcol, (void **)&curves->mat);
 }
 
 IDTypeInfo IDType_ID_CV = {
@@ -302,7 +305,6 @@ Curves *curves_new_nomain(CurvesGeometry curves)
 void curves_copy_parameters(const Curves &src, Curves &dst)
 {
   dst.flag = src.flag;
-  dst.attributes_active_index = src.attributes_active_index;
   MEM_SAFE_FREE(dst.mat);
   dst.mat = static_cast<Material **>(MEM_malloc_arrayN(src.totcol, sizeof(Material *), __func__));
   dst.totcol = src.totcol;
@@ -333,8 +335,8 @@ CurvesSurfaceTransforms::CurvesSurfaceTransforms(const Object &curves_ob, const 
 bool CurvesEditHints::is_valid() const
 {
   const int point_num = this->curves_id_orig.geometry.point_num;
-  if (this->positions.has_value()) {
-    if (this->positions->size() != point_num) {
+  if (this->positions().has_value()) {
+    if (this->positions()->size() != point_num) {
       return false;
     }
   }
@@ -344,6 +346,35 @@ bool CurvesEditHints::is_valid() const
     }
   }
   return true;
+}
+
+std::optional<Span<float3>> CurvesEditHints::positions() const
+{
+  if (!this->positions_data.has_value()) {
+    return std::nullopt;
+  }
+  const int points_num = this->curves_id_orig.geometry.wrap().points_num();
+  return Span(static_cast<const float3 *>(this->positions_data.data), points_num);
+}
+
+std::optional<MutableSpan<float3>> CurvesEditHints::positions_for_write()
+{
+  if (!this->positions_data.has_value()) {
+    return std::nullopt;
+  }
+
+  const int points_num = this->curves_id_orig.geometry.wrap().points_num();
+  ImplicitSharingPtrAndData &data = this->positions_data;
+  if (data.sharing_info->is_mutable()) {
+    data.sharing_info->tag_ensured_mutable();
+  }
+  else {
+    auto *new_sharing_info = new ImplicitSharedValue<Array<float3>>(*this->positions());
+    data.sharing_info = ImplicitSharingPtr<ImplicitSharingInfo>(new_sharing_info);
+    data.data = new_sharing_info->data.data();
+  }
+
+  return MutableSpan(const_cast<float3 *>(static_cast<const float3 *>(data.data)), points_num);
 }
 
 void curves_normals_point_domain_calc(const CurvesGeometry &curves, MutableSpan<float3> normals)

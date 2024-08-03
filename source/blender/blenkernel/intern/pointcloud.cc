@@ -62,11 +62,11 @@ static void pointcloud_init_data(ID *id)
 
   MEMCPY_STRUCT_AFTER(pointcloud, DNA_struct_default_get(PointCloud), id);
 
+  pointcloud->runtime = new blender::bke::PointCloudRuntime();
+
   CustomData_reset(&pointcloud->pdata);
   pointcloud->attributes_for_write().add<float3>(
       "position", blender::bke::AttrDomain::Point, blender::bke::AttributeInitConstruct());
-
-  pointcloud->runtime = new blender::bke::PointCloudRuntime();
 }
 
 static void pointcloud_copy_data(Main * /*bmain*/,
@@ -141,7 +141,7 @@ static void pointcloud_blend_read_data(BlendDataReader *reader, ID *id)
   CustomData_blend_read(reader, &pointcloud->pdata, pointcloud->totpoint);
 
   /* Materials */
-  BLO_read_pointer_array(reader, (void **)&pointcloud->mat);
+  BLO_read_pointer_array(reader, pointcloud->totcol, (void **)&pointcloud->mat);
 
   pointcloud->runtime = new blender::bke::PointCloudRuntime();
 }

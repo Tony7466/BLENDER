@@ -67,7 +67,6 @@
 #endif
 
 #include "GHOST_C-api.h"
-#include "GHOST_Path-api.hh"
 
 #include "RNA_define.hh"
 
@@ -86,6 +85,7 @@
 #include "ED_anim_api.hh"
 #include "ED_asset.hh"
 #include "ED_gpencil_legacy.hh"
+#include "ED_grease_pencil.hh"
 #include "ED_keyframes_edit.hh"
 #include "ED_keyframing.hh"
 #include "ED_node.hh"
@@ -102,8 +102,9 @@
 #include "UI_resources.hh"
 #include "UI_string_search.hh"
 
-#include "GPU_context.h"
-#include "GPU_init_exit.h"
+#include "GPU_compilation_subprocess.hh"
+#include "GPU_context.hh"
+#include "GPU_init_exit.hh"
 #include "GPU_material.hh"
 
 #include "COM_compositor.hh"
@@ -202,12 +203,9 @@ void WM_init(bContext *C, int argc, const char **argv)
     BKE_sound_jack_sync_callback_set(sound_jack_sync_callback);
   }
 
-  GHOST_CreateSystemPaths();
-
   BKE_addon_pref_type_init();
   BKE_keyconfig_pref_type_init();
 
-  wm_operatortype_init();
   wm_operatortypes_register();
 
   WM_paneltype_init(); /* Lookup table only. */
@@ -276,6 +274,7 @@ void WM_init(bContext *C, int argc, const char **argv)
   read_homefile_params.use_empty_data = false;
   read_homefile_params.filepath_startup_override = nullptr;
   read_homefile_params.app_template_override = WM_init_state_app_template_get();
+  read_homefile_params.is_first_time = true;
 
   wm_homefile_read_ex(C, &read_homefile_params, nullptr, &params_file_read_post);
 
@@ -308,7 +307,7 @@ void WM_init(bContext *C, int argc, const char **argv)
     GPU_render_end();
   }
 
-  BKE_subdiv_init();
+  blender::bke::subdiv::init();
 
   ED_spacemacros_init();
 
@@ -581,6 +580,7 @@ void WM_exit_ex(bContext *C, const bool do_python_exit, const bool do_user_exit_
   BKE_mask_clipboard_free();
   BKE_vfont_clipboard_free();
   ED_node_clipboard_free();
+  ed::greasepencil::clipboard_free();
   UV_clipboard_free();
   wm_clipboard_free();
 
@@ -588,7 +588,7 @@ void WM_exit_ex(bContext *C, const bool do_python_exit, const bool do_user_exit_
   COM_deinitialize();
 #endif
 
-  BKE_subdiv_exit();
+  bke::subdiv::exit();
 
   if (gpu_is_init) {
     BKE_image_free_unused_gpu_textures();
@@ -673,8 +673,6 @@ void WM_exit_ex(bContext *C, const bool do_python_exit, const bool do_user_exit_
     CTX_free(C);
   }
 
-  GHOST_DisposeSystemPaths();
-
   DNA_sdna_current_free();
 
   BLI_threadapi_exit();
@@ -691,6 +689,10 @@ void WM_exit_ex(bContext *C, const bool do_python_exit, const bool do_user_exit_
   wm_autosave_delete();
 
   BKE_tempdir_session_purge();
+
+#if defined(WITH_OPENGL_BACKEND) && BLI_SUBPROCESS_SUPPORT
+  GPU_shader_cache_dir_clear_old();
+#endif
 
   /* Logging cannot be called after exiting (#CLOG_INFO, #CLOG_WARN etc will crash).
    * So postpone exiting until other sub-systems that may use logging have shut down. */

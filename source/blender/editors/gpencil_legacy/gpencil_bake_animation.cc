@@ -22,7 +22,6 @@
 #include "BKE_duplilist.hh"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
-#include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_material.h"
 #include "BKE_scene.hh"
 
@@ -40,7 +39,7 @@
 #include "ED_gpencil_legacy.hh"
 #include "ED_transform_snap_object_context.hh"
 
-#include "gpencil_intern.h"
+#include "gpencil_intern.hh"
 
 const EnumPropertyItem rna_gpencil_reproject_type_items[] = {
     {GP_REPROJECT_KEEP, "KEEP", 0, "No Reproject", ""},
@@ -279,12 +278,9 @@ static int gpencil_bake_grease_pencil_animation_exec(bContext *C, wmOperator *op
         }
         MEM_freeN(layer_name);
 
-        /* Apply time modifier. */
-        int remap_cfra = BKE_gpencil_time_modifier_cfra(
-            depsgraph, scene, elem->ob, gpl_src, scene->r.cfra, false);
         /* Duplicate frame. */
         bGPDframe *gpf_src = BKE_gpencil_layer_frame_get(
-            gpl_src, remap_cfra, GP_GETFRAME_USE_PREV);
+            gpl_src, scene->r.cfra, GP_GETFRAME_USE_PREV);
         if (gpf_src == nullptr) {
           continue;
         }

@@ -540,6 +540,17 @@ static int text_reload_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static int text_reload_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+{
+  return WM_operator_confirm_ex(C,
+                                op,
+                                IFACE_("Reload active text file?"),
+                                nullptr,
+                                IFACE_("Reload"),
+                                ALERT_ICON_NONE,
+                                false);
+}
+
 void TEXT_OT_reload(wmOperatorType *ot)
 {
   /* identifiers */
@@ -549,7 +560,7 @@ void TEXT_OT_reload(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = text_reload_exec;
-  ot->invoke = WM_operator_confirm;
+  ot->invoke = text_reload_invoke;
   ot->poll = text_edit_poll;
 }
 
@@ -591,6 +602,17 @@ static int text_unlink_exec(bContext *C, wmOperator * /*op*/)
   return OPERATOR_FINISHED;
 }
 
+static int text_unlink_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+{
+  return WM_operator_confirm_ex(C,
+                                op,
+                                IFACE_("Delete active text file?"),
+                                nullptr,
+                                IFACE_("Delete"),
+                                ALERT_ICON_NONE,
+                                false);
+}
+
 void TEXT_OT_unlink(wmOperatorType *ot)
 {
   /* identifiers */
@@ -600,7 +622,7 @@ void TEXT_OT_unlink(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = text_unlink_exec;
-  ot->invoke = WM_operator_confirm;
+  ot->invoke = text_unlink_invoke;
   ot->poll = text_unlink_poll;
 
   /* flags */
@@ -839,6 +861,7 @@ static int text_run_script(bContext *C, ReportList *reports)
   /* only for comparison */
   void *curl_prev = text->curl;
   int curc_prev = text->curc;
+  int selc_prev = text->selc;
 
   if (BPY_run_text(C, text, reports, !is_live)) {
     if (is_live) {
@@ -852,7 +875,7 @@ static int text_run_script(bContext *C, ReportList *reports)
   if (!is_live) {
     /* text may have freed itself */
     if (CTX_data_edit_text(C) == text) {
-      if (text->curl != curl_prev || curc_prev != text->curc) {
+      if (text->curl != curl_prev || curc_prev != text->curc || selc_prev != text->selc) {
         space_text_update_cursor_moved(C);
         WM_event_add_notifier(C, NC_TEXT | NA_EDITED, text);
       }
@@ -1080,7 +1103,7 @@ void TEXT_OT_duplicate_line(wmOperatorType *ot)
 /** \name Copy Operator
  * \{ */
 
-static void txt_copy_clipboard(Text *text)
+static void txt_copy_clipboard(const Text *text)
 {
   char *buf;
 
@@ -1098,7 +1121,7 @@ static void txt_copy_clipboard(Text *text)
 
 static int text_copy_exec(bContext *C, wmOperator * /*op*/)
 {
-  Text *text = CTX_data_edit_text(C);
+  const Text *text = CTX_data_edit_text(C);
 
   txt_copy_clipboard(text);
 
@@ -3819,7 +3842,7 @@ static int text_find_and_replace(bContext *C, wmOperator *op, short mode)
   }
   else {
     if (!found) {
-      BKE_reportf(op->reports, RPT_WARNING, "Text not found: %s", st->findstr);
+      BKE_reportf(op->reports, RPT_INFO, "Text not found: %s", st->findstr);
     }
   }
 

@@ -11,15 +11,15 @@
 #include "BKE_object.hh"
 #include "BLI_link_utils.h"
 #include "BLI_math_matrix.hh"
-#include "GPU_batch.h"
-#include "GPU_capabilities.h"
-#include "GPU_debug.h"
+#include "GPU_batch.hh"
+#include "GPU_capabilities.hh"
+#include "GPU_debug.hh"
 
-#include "draw_debug.h"
 #include "draw_debug.hh"
-#include "draw_manager.h"
+#include "draw_debug_c.hh"
+#include "draw_manager_c.hh"
 #include "draw_shader.hh"
-#include "draw_shader_shared.h"
+#include "draw_shader_shared.hh"
 
 #include <iomanip>
 #include <sstream>
@@ -44,7 +44,7 @@ DebugDraw::DebugDraw()
     for (auto edge : IndexRange(circle_resolution)) {
       for (auto vert : IndexRange(2)) {
         const float angle = (2 * M_PI) * (edge + vert) / float(circle_resolution);
-        float point[3] = {cosf(angle), sinf(angle), 0.0f};
+        const float point[3] = {cosf(angle), sinf(angle), 0.0f};
         sphere_verts_.append(
             float3(point[(0 + axis) % 3], point[(1 + axis) % 3], point[(2 + axis) % 3]));
       }
@@ -56,7 +56,7 @@ DebugDraw::DebugDraw()
     for (auto edge : IndexRange(point_resolution)) {
       for (auto vert : IndexRange(2)) {
         const float angle = (2 * M_PI) * (edge + vert) / float(point_resolution);
-        float point[3] = {cosf(angle), sinf(angle), 0.0f};
+        const float point[3] = {cosf(angle), sinf(angle), 0.0f};
         point_verts_.append(
             float3(point[(0 + axis) % 3], point[(1 + axis) % 3], point[(2 + axis) % 3]));
       }
@@ -520,7 +520,7 @@ void DebugDraw::display_lines()
 
   drw_state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS);
 
-  GPUBatch *batch = drw_cache_procedural_lines_get();
+  gpu::Batch *batch = drw_cache_procedural_lines_get();
   GPUShader *shader = DRW_shader_debug_draw_display_get();
   GPU_batch_set_shader(batch, shader);
   GPU_shader_uniform_mat4(shader, "persmat", persmat.ptr());
@@ -552,7 +552,7 @@ void DebugDraw::display_prints()
 
   drw_state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_PROGRAM_POINT_SIZE);
 
-  GPUBatch *batch = drw_cache_procedural_points_get();
+  gpu::Batch *batch = drw_cache_procedural_points_get();
   GPUShader *shader = DRW_shader_debug_print_display_get();
   GPU_batch_set_shader(batch, shader);
   float f_viewport[4];

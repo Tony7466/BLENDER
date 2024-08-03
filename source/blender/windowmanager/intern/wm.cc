@@ -30,14 +30,14 @@
 
 #include "BKE_context.hh"
 #include "BKE_global.hh"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_idtype.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_query.hh"
 #include "BKE_main.hh"
 #include "BKE_report.hh"
 #include "BKE_screen.hh"
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
 
 #include "WM_api.hh"
 #include "WM_message.hh"
@@ -144,13 +144,13 @@ static void window_manager_blend_read_data(BlendDataReader *reader, ID *id)
   wmWindowManager *wm = (wmWindowManager *)id;
 
   id_us_ensure_real(&wm->id);
-  BLO_read_list(reader, &wm->windows);
+  BLO_read_struct_list(reader, wmWindow, &wm->windows);
 
   LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
-    BLO_read_data_address(reader, &win->parent);
+    BLO_read_struct(reader, wmWindow, &win->parent);
 
     WorkSpaceInstanceHook *hook = win->workspace_hook;
-    BLO_read_data_address(reader, &win->workspace_hook);
+    BLO_read_struct(reader, WorkSpaceInstanceHook, &win->workspace_hook);
 
     /* This will be nullptr for any pre-2.80 blend file. */
     if (win->workspace_hook != nullptr) {
@@ -194,7 +194,7 @@ static void window_manager_blend_read_data(BlendDataReader *reader, ID *id)
     win->event_queue_check_drag_handled = 0;
     win->event_queue_consecutive_gesture_type = 0;
     win->event_queue_consecutive_gesture_data = nullptr;
-    BLO_read_data_address(reader, &win->stereo3d_format);
+    BLO_read_struct(reader, Stereo3dFormat, &win->stereo3d_format);
 
     /* Multi-view always fallback to anaglyph at file opening
      * otherwise quad-buffer saved files can break Blender. */
@@ -228,6 +228,8 @@ static void window_manager_blend_read_data(BlendDataReader *reader, ID *id)
   wm->winactive = nullptr;
   wm->init_flag = 0;
   wm->op_undo_depth = 0;
+  wm->extensions_updates = WM_EXTENSIONS_UPDATE_UNSET;
+  wm->extensions_blocked = 0;
 
   BLI_assert(wm->runtime == nullptr);
   wm->runtime = MEM_new<blender::bke::WindowManagerRuntime>(__func__);
@@ -254,7 +256,7 @@ IDTypeInfo IDType_ID_WM = {
     /*name_plural*/ N_("window_managers"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_WINDOWMANAGER,
     /*flags*/ IDTYPE_FLAGS_NO_COPY | IDTYPE_FLAGS_NO_LIBLINKING | IDTYPE_FLAGS_NO_ANIMDATA |
-        IDTYPE_FLAGS_NO_MEMFILE_UNDO,
+        IDTYPE_FLAGS_NO_MEMFILE_UNDO | IDTYPE_FLAGS_NEVER_UNUSED,
     /*asset_type_info*/ nullptr,
 
     /*init_data*/ nullptr,
@@ -507,7 +509,7 @@ void WM_check(bContext *C)
   /* Case: file-read. */
   /* NOTE: this runs in background mode to set the screen context cb. */
   if ((wm->init_flag & WM_INIT_FLAG_WINDOW) == 0) {
-    ED_screens_init(bmain, wm);
+    ED_screens_init(C, bmain, wm);
     wm->init_flag |= WM_INIT_FLAG_WINDOW;
   }
 }

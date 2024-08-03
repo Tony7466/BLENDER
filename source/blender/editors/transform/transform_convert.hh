@@ -24,6 +24,7 @@ struct TransData;
 struct TransDataCurveHandleFlags;
 struct TransInfo;
 struct bContext;
+struct Sequence;
 
 struct TransConvertTypeInfo {
   int flags; /* #eTFlag. */
@@ -50,7 +51,7 @@ struct TransConvertTypeInfo {
  */
 struct TransDataEdgeSlideVert {
   TransData *td;
-  blender::float3 dir_side[2]; /* Directional vectors on the sides.*/
+  blender::float3 dir_side[2]; /* Directional vectors on the sides. */
   float edge_len;              /* Distance between vectors. */
   int loop_nr;                 /* Number that identifies the group of connected edges. */
 
@@ -66,7 +67,7 @@ struct TransDataEdgeSlideVert {
  */
 struct TransDataVertSlideVert {
   TransData *td;
-  blender::Span<blender::float3> co_link_orig_3d; /* Target locations.*/
+  blender::Span<blender::float3> co_link_orig_3d; /* Target locations. */
   int co_link_curr;
 
   const float *co_orig_3d() const
@@ -78,6 +79,27 @@ struct TransDataVertSlideVert {
   {
     return this->co_link_orig_3d[this->co_link_curr];
   }
+};
+
+/**
+ * Structure used for curves transform operation.
+ * Used for both curves and grease pencil objects.
+ */
+struct CurvesTransformData {
+  blender::IndexMaskMemory memory;
+  blender::Vector<blender::IndexMask> selection_by_layer;
+
+  /**
+   * The offsets of every grease pencil layer into `positions` array.
+   * For curves layers are used to store: positions, handle_positions_left and
+   * handle_positions_right.
+   */
+  blender::Vector<int> layer_offsets;
+
+  /**
+   * Copy of all positions being transformed.
+   */
+  blender::Array<blender::float3> positions;
 };
 
 /* `transform_convert.cc` */
@@ -151,15 +173,22 @@ void animrecord_check_state(TransInfo *t, ID *id);
 /**
  * Used for both curves and grease pencil objects.
  */
-void curve_populate_trans_data_structs(TransDataContainer &tc,
-                                       blender::bke::CurvesGeometry &curves,
-                                       const blender::float4x4 &matrix,
-                                       std::optional<blender::MutableSpan<float>> value_attribute,
-                                       const blender::IndexMask &selected_indices,
-                                       bool use_proportional_edit,
-                                       const blender::IndexMask &affected_curves,
-                                       bool use_connected_only,
-                                       int trans_data_offset);
+void curve_populate_trans_data_structs(
+    TransDataContainer &tc,
+    blender::bke::CurvesGeometry &curves,
+    const blender::float4x4 &transform,
+    std::optional<blender::MutableSpan<float>> value_attribute,
+    const blender::Span<blender::IndexMask> points_to_transform_indices,
+    const blender::IndexMask &affected_curves,
+    bool use_connected_only,
+    const blender::IndexMask &bezier_curves);
+
+CurvesTransformData *create_curves_transform_custom_data(TransCustomData &custom_data);
+
+void copy_positions_from_curves_transform_custom_data(
+    const TransCustomData &custom_data,
+    const int layer,
+    blender::MutableSpan<blender::float3> positions_dst);
 
 /* `transform_convert_action.cc` */
 
@@ -337,6 +366,8 @@ extern TransConvertTypeInfo TransConvertType_Sculpt;
 /* `transform_convert_sequencer.cc` */
 
 extern TransConvertTypeInfo TransConvertType_Sequencer;
+
+bool seq_transform_check_overlap(blender::Span<Sequence *> transformed_strips);
 
 /* `transform_convert_sequencer_image.cc` */
 

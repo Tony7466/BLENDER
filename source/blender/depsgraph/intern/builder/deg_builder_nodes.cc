@@ -66,7 +66,7 @@
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_grease_pencil.hh"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_idtype.hh"
 #include "BKE_image.h"
 #include "BKE_key.hh"
@@ -96,7 +96,7 @@
 
 #include "RNA_access.hh"
 #include "RNA_path.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 #include "RNA_types.hh"
 
 #include "DEG_depsgraph.hh"
@@ -406,6 +406,12 @@ void DepsgraphNodeBuilder::begin_build()
     saved_entry_tags_.append_as(op_node);
   }
 
+  for (const OperationNode *op_node : graph_->operations) {
+    if (op_node->flag & DEPSOP_FLAG_NEEDS_UPDATE) {
+      needs_update_operations_.append_as(op_node);
+    }
+  }
+
   /* Make sure graph has no nodes left from previous state. */
   graph_->clear_all_nodes();
   graph_->operations.clear();
@@ -537,6 +543,16 @@ void DepsgraphNodeBuilder::tag_previously_tagged_nodes()
      * that originally node was explicitly tagged for user update. */
     operation_node->tag_update(graph_, DEG_UPDATE_SOURCE_USER_EDIT);
   }
+
+  /* Restore needs-update flags since the previous state of the dependency graph, ensuring the
+   * previously-skipped operations are properly re-evaluated when needed. */
+  for (const OperationKey &operation_key : needs_update_operations_) {
+    OperationNode *operation_node = find_operation_node(operation_key);
+    if (operation_node == nullptr) {
+      continue;
+    }
+    operation_node->flag |= DEPSOP_FLAG_NEEDS_UPDATE;
+  }
 }
 
 void DepsgraphNodeBuilder::end_build()
@@ -556,10 +572,6 @@ void DepsgraphNodeBuilder::build_id(ID *id, const bool force_be_visible)
   switch (id_type) {
     case ID_AC:
       build_action((bAction *)id);
-      break;
-    case ID_AN:
-      /* TODO: actually handle this ID type properly, will be done in a followup commit. */
-      build_generic_id(id);
       break;
     case ID_AR:
       build_armature((bArmature *)id);
@@ -672,16 +684,11 @@ void DepsgraphNodeBuilder::build_generic_id(ID *id)
   build_parameters(id);
 }
 
-static void build_idproperties_callback(IDProperty *id_property, void *user_data)
-{
-  DepsgraphNodeBuilder *builder = reinterpret_cast<DepsgraphNodeBuilder *>(user_data);
-  BLI_assert(id_property->type == IDP_ID);
-  builder->build_id(reinterpret_cast<ID *>(id_property->data.pointer));
-}
-
 void DepsgraphNodeBuilder::build_idproperties(IDProperty *id_property)
 {
-  IDP_foreach_property(id_property, IDP_TYPE_FILTER_ID, build_idproperties_callback, this);
+  IDP_foreach_property(id_property, IDP_TYPE_FILTER_ID, [&](IDProperty *id_property) {
+    this->build_id(static_cast<ID *>(id_property->data.pointer));
+  });
 }
 
 void DepsgraphNodeBuilder::build_collection(LayerCollection *from_layer_collection,
@@ -958,7 +965,13 @@ void DepsgraphNodeBuilder::build_object_modifiers(Object *object)
 
   BuilderWalkUserData data;
   data.builder = this;
+
+  /* Temporarily set the collection visibility to false, relying on the visibility flushing code
+   * to flush the visibility from a modifier into collections it depends on. */
+  const bool is_current_parent_collection_visible = is_parent_collection_visible_;
+  is_parent_collection_visible_ = false;
   BKE_modifiers_foreach_ID_link(object, modifier_walk, &data);
+  is_parent_collection_visible_ = is_current_parent_collection_visible;
 }
 
 void DepsgraphNodeBuilder::build_object_data(Object *object)
@@ -1269,7 +1282,7 @@ void DepsgraphNodeBuilder::build_animation_images(ID *id)
    * we have to check if they might be created during evaluation. */
   bool has_image_animation = false;
   if (ELEM(GS(id->name), ID_MA, ID_WO)) {
-    bNodeTree *ntree = *BKE_ntree_ptr_from_id(id);
+    bNodeTree *ntree = *bke::BKE_ntree_ptr_from_id(id);
     if (ntree != nullptr && ntree->runtime->runtime_flag & NTREE_RUNTIME_FLAG_HAS_IMAGE_ANIMATION)
     {
       has_image_animation = true;
@@ -1386,6 +1399,9 @@ void DepsgraphNodeBuilder::build_driver_id_property(const PointerRNA &target_pro
   }
   if (!rna_prop_affects_parameters_node(&ptr, prop)) {
     return;
+  }
+  if (ptr.owner_id) {
+    build_id(ptr.owner_id);
   }
   const char *prop_identifier = RNA_property_identifier((PropertyRNA *)prop);
   /* Custom properties of bones are placed in their components to improve granularity. */
@@ -2001,7 +2017,9 @@ void DepsgraphNodeBuilder::build_nodetree(bNodeTree *ntree)
       build_nodetree(group_ntree);
     }
     else {
-      BLI_assert_msg(0, "Unknown ID type used for node");
+      /* Ignore this case. It can happen when the node type is not known currently. Either because
+       * it belongs to an add-on or because it comes from a different Blender version that does
+       * support the ID type here already. */
     }
   }
 

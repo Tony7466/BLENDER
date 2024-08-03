@@ -44,7 +44,7 @@
 const wchar_t *GHOST_WindowWin32::s_windowClassName = L"GHOST_WindowClass";
 const int GHOST_WindowWin32::s_maxTitleLength = 128;
 
-/* force NVidia Optimus to used dedicated graphics */
+/* force NVidia OPTIMUS to used dedicated graphics */
 extern "C" {
 __declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
 }
@@ -133,11 +133,15 @@ GHOST_WindowWin32::GHOST_WindowWin32(GHOST_SystemWin32 *system,
     const char *title = "Blender - Unsupported Graphics Card Configuration";
     const char *text = "";
 #if defined(WIN32)
-    if (strncmp(BLI_getenv("PROCESSOR_IDENTIFIER"), "ARM", 3) == 0) {
+    if (strncmp(BLI_getenv("PROCESSOR_IDENTIFIER"), "ARM", 3) == 0 &&
+        strstr(BLI_getenv("PROCESSOR_IDENTIFIER"), "Qualcomm") != NULL)
+    {
       text =
           "A driver with support for OpenGL 4.3 or higher is required.\n\n"
-          "If you are on a Qualcomm 8cx Gen3 device or newer, you need to download the"
-          "\"OpenCL™, OpenGL®, and Vulkan® Compatibility Pack\" from the MS Store.";
+          "Qualcomm devices require the \"OpenCL™, OpenGL®, and Vulkan® Compatibility Pack\" "
+          "from the Microsoft Store.\n\n"
+          "Devices using processors older than a Qualcomm Snapdragon 8cx Gen3 are incompatible, "
+          "but may be able to run an emulated x64 copy of Blender, such as a 3.x LTS release.";
     }
     else
 #endif
@@ -220,9 +224,6 @@ GHOST_WindowWin32::GHOST_WindowWin32(GHOST_SystemWin32 *system,
     DeleteObject(bb.hRgnBlur);
   }
 #endif
-
-  /* Force an initial paint of the window. */
-  ::UpdateWindow(m_hWnd);
 
   /* Initialize WINTAB. */
   if (system->getTabletAPI() != GHOST_kTabletWinPointer) {
@@ -822,6 +823,16 @@ HCURSOR GHOST_WindowWin32::getStandardCursor(GHOST_TStandardCursor shape) const
     case GHOST_kStandardCursorStop:
       cursor = ::LoadImage(module, "forbidden_cursor", IMAGE_CURSOR, cx, cy, flags);
       break; /* Slashed circle */
+    case GHOST_kStandardCursorLeftHandle:
+      cursor = ::LoadImage(module, "handle_left_cursor", IMAGE_CURSOR, cx, cy, flags);
+      break;
+    case GHOST_kStandardCursorRightHandle:
+      cursor = ::LoadImage(module, "handle_right_cursor", IMAGE_CURSOR, cx, cy, flags);
+      break;
+    case GHOST_kStandardCursorBothHandles:
+      cursor = ::LoadImage(module, "handle_both_cursor", IMAGE_CURSOR, cx, cy, flags);
+      break;
+
     case GHOST_kStandardCursorDefault:
       cursor = nullptr;
       break;

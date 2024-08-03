@@ -223,7 +223,7 @@ static const EnumPropertyItem target_space_pchan_items[] = {
      "The transformation of the target bone is evaluated relative to its local coordinate "
      "system, followed by a correction for the difference in target and owner rest pose "
      "orientations. When applied as local transform to the owner produces the same global "
-     "motion as the target if the parents are still in rest pose"},
+     "motion as the target if the parents are still in rest pose."},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -428,7 +428,7 @@ static void rna_Constraint_name_set(PointerRNA *ptr, const char *value)
   /* make sure name is unique */
   if (ptr->owner_id) {
     Object *ob = (Object *)ptr->owner_id;
-    ListBase *list = ED_object_constraint_list_from_constraint(ob, con, nullptr);
+    ListBase *list = blender::ed::object::constraint_list_from_constraint(ob, con, nullptr);
 
     /* if we have the list, check for unique name, otherwise give up */
     if (list) {
@@ -443,7 +443,7 @@ static void rna_Constraint_name_set(PointerRNA *ptr, const char *value)
 static std::optional<std::string> rna_Constraint_do_compute_path(Object *ob, bConstraint *con)
 {
   bPoseChannel *pchan;
-  ListBase *lb = ED_object_constraint_list_from_constraint(ob, con, &pchan);
+  ListBase *lb = blender::ed::object::constraint_list_from_constraint(ob, con, &pchan);
 
   if (lb == nullptr) {
     printf("%s: internal error, constraint '%s' not found in object '%s'\n",
@@ -512,24 +512,25 @@ static std::optional<std::string> rna_ConstraintTarget_path(const PointerRNA *pt
 
 static void rna_Constraint_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
-  ED_object_constraint_tag_update(
+  blender::ed::object::constraint_tag_update(
       bmain, (Object *)ptr->owner_id, static_cast<bConstraint *>(ptr->data));
 }
 
 static void rna_Constraint_dependency_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
-  ED_object_constraint_dependency_tag_update(
+  blender::ed::object::constraint_dependency_tag_update(
       bmain, (Object *)ptr->owner_id, static_cast<bConstraint *>(ptr->data));
 }
 
 static void rna_ConstraintTarget_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
-  ED_object_constraint_tag_update(bmain, (Object *)ptr->owner_id, rna_constraint_from_target(ptr));
+  blender::ed::object::constraint_tag_update(
+      bmain, (Object *)ptr->owner_id, rna_constraint_from_target(ptr));
 }
 
 static void rna_ConstraintTarget_dependency_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
-  ED_object_constraint_dependency_tag_update(
+  blender::ed::object::constraint_dependency_tag_update(
       bmain, (Object *)ptr->owner_id, rna_constraint_from_target(ptr));
 }
 
@@ -643,7 +644,7 @@ static bConstraintTarget *rna_ArmatureConstraint_target_new(ID *id, bConstraint 
   tgt->weight = 1.0f;
   BLI_addtail(&acon->targets, tgt);
 
-  ED_object_constraint_dependency_tag_update(bmain, (Object *)id, con);
+  blender::ed::object::constraint_dependency_tag_update(bmain, (Object *)id, con);
   return tgt;
 }
 
@@ -660,7 +661,7 @@ static void rna_ArmatureConstraint_target_remove(
 
   BLI_freelinkN(&acon->targets, tgt);
 
-  ED_object_constraint_dependency_tag_update(bmain, (Object *)id, con);
+  blender::ed::object::constraint_dependency_tag_update(bmain, (Object *)id, con);
 }
 
 static void rna_ArmatureConstraint_target_clear(ID *id, bConstraint *con, Main *bmain)
@@ -669,7 +670,7 @@ static void rna_ArmatureConstraint_target_clear(ID *id, bConstraint *con, Main *
 
   BLI_freelistN(&acon->targets);
 
-  ED_object_constraint_dependency_tag_update(bmain, (Object *)id, con);
+  blender::ed::object::constraint_dependency_tag_update(bmain, (Object *)id, con);
 }
 
 static void rna_ActionConstraint_mix_mode_set(PointerRNA *ptr, int value)
@@ -1147,7 +1148,7 @@ static void rna_def_constraint_armature_deform(BlenderRNA *brna)
       "Use Envelopes",
       "Multiply weights by envelope for all bones, instead of acting like Vertex Group based "
       "blending. "
-      "The specified weights are still used, and only the listed bones are considered");
+      "The specified weights are still used, and only the listed bones are considered.");
   RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
 
   prop = RNA_def_property(srna, "use_current_location", PROP_BOOLEAN, PROP_NONE);
@@ -1437,7 +1438,7 @@ static void rna_def_constraint_rotate_like(BlenderRNA *brna)
        0,
        "Offset (Legacy)",
        "Combine rotations like the original Offset checkbox. Does not work well for "
-       "multiple axis rotations"},
+       "multiple axis rotations."},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -1587,13 +1588,13 @@ static void rna_def_constraint_same_volume(BlenderRNA *brna)
        0,
        "Uniform",
        "Volume is preserved when the object is scaled uniformly. "
-       "Deviations from uniform scale on non-free axes are passed through"},
+       "Deviations from uniform scale on non-free axes are passed through."},
       {SAMEVOL_SINGLE_AXIS,
        "SINGLE_AXIS",
        0,
        "Single Axis",
        "Volume is preserved when the object is scaled only on the free axis. "
-       "Non-free axis scaling is passed through"},
+       "Non-free axis scaling is passed through."},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -1646,14 +1647,14 @@ static void rna_def_constraint_transform_like(BlenderRNA *brna)
        "Before Original (Full)",
        "Apply copied transformation before original, using simple matrix multiplication as if "
        "the constraint target is a parent in Full Inherit Scale mode. "
-       "Will create shear when combining rotation and non-uniform scale"},
+       "Will create shear when combining rotation and non-uniform scale."},
       {TRANSLIKE_MIX_BEFORE,
        "BEFORE",
        0,
        "Before Original (Aligned)",
        "Apply copied transformation before original, as if the constraint target is a parent in "
        "Aligned Inherit Scale mode. This effectively uses Full for location and Split Channels "
-       "for rotation and scale"},
+       "for rotation and scale."},
       {TRANSLIKE_MIX_BEFORE_SPLIT,
        "BEFORE_SPLIT",
        0,
@@ -1667,14 +1668,14 @@ static void rna_def_constraint_transform_like(BlenderRNA *brna)
        "After Original (Full)",
        "Apply copied transformation after original, using simple matrix multiplication as if "
        "the constraint target is a child in Full Inherit Scale mode. "
-       "Will create shear when combining rotation and non-uniform scale"},
+       "Will create shear when combining rotation and non-uniform scale."},
       {TRANSLIKE_MIX_AFTER,
        "AFTER",
        0,
        "After Original (Aligned)",
        "Apply copied transformation after original, as if the constraint target is a child in "
        "Aligned Inherit Scale mode. This effectively uses Full for location and Split Channels "
-       "for rotation and scale"},
+       "for rotation and scale."},
       {TRANSLIKE_MIX_AFTER_SPLIT,
        "AFTER_SPLIT",
        0,
@@ -1784,14 +1785,14 @@ static void rna_def_constraint_action(BlenderRNA *brna)
        "Before Original (Full)",
        "Apply the action channels before the original transformation, as if applied to an "
        "imaginary parent in Full Inherit Scale mode. Will create shear when combining rotation "
-       "and non-uniform scale"},
+       "and non-uniform scale."},
       {ACTCON_MIX_BEFORE,
        "BEFORE",
        0,
        "Before Original (Aligned)",
        "Apply the action channels before the original transformation, as if applied to an "
        "imaginary parent in Aligned Inherit Scale mode. This effectively uses Full for location "
-       "and Split Channels for rotation and scale"},
+       "and Split Channels for rotation and scale."},
       {ACTCON_MIX_BEFORE_SPLIT,
        "BEFORE_SPLIT",
        0,
@@ -1805,14 +1806,14 @@ static void rna_def_constraint_action(BlenderRNA *brna)
        "After Original (Full)",
        "Apply the action channels after the original transformation, as if applied to an "
        "imaginary child in Full Inherit Scale mode. Will create shear when combining rotation "
-       "and non-uniform scale"},
+       "and non-uniform scale."},
       {ACTCON_MIX_AFTER,
        "AFTER",
        0,
        "After Original (Aligned)",
        "Apply the action channels after the original transformation, as if applied to an "
        "imaginary child in Aligned Inherit Scale mode. This effectively uses Full for location "
-       "and Split Channels for rotation and scale"},
+       "and Split Channels for rotation and scale."},
       {ACTCON_MIX_AFTER_SPLIT,
        "AFTER_SPLIT",
        0,
@@ -2638,37 +2639,43 @@ static void rna_def_constraint_rotation_limit(BlenderRNA *brna)
   prop = RNA_def_property(srna, "min_x", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_float_sdna(prop, nullptr, "xmin");
   RNA_def_property_range(prop, -1000.0, 1000.0f);
-  RNA_def_property_ui_text(prop, "Minimum X", "Lowest X value to allow");
+  RNA_def_property_ui_range(prop, -2 * M_PI, 2 * M_PI, 10.0f, 1.0f);
+  RNA_def_property_ui_text(prop, "Minimum X", "Lower X angle bound");
   RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
 
   prop = RNA_def_property(srna, "min_y", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_float_sdna(prop, nullptr, "ymin");
   RNA_def_property_range(prop, -1000.0, 1000.0f);
-  RNA_def_property_ui_text(prop, "Minimum Y", "Lowest Y value to allow");
+  RNA_def_property_ui_range(prop, -2 * M_PI, 2 * M_PI, 10.0f, 1.0f);
+  RNA_def_property_ui_text(prop, "Minimum Y", "Lower Y angle bound");
   RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
 
   prop = RNA_def_property(srna, "min_z", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_float_sdna(prop, nullptr, "zmin");
   RNA_def_property_range(prop, -1000.0, 1000.0f);
-  RNA_def_property_ui_text(prop, "Minimum Z", "Lowest Z value to allow");
+  RNA_def_property_ui_range(prop, -2 * M_PI, 2 * M_PI, 10.0f, 1.0f);
+  RNA_def_property_ui_text(prop, "Minimum Z", "Lower Z angle bound");
   RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
 
   prop = RNA_def_property(srna, "max_x", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_float_sdna(prop, nullptr, "xmax");
   RNA_def_property_range(prop, -1000.0, 1000.0f);
-  RNA_def_property_ui_text(prop, "Maximum X", "Highest X value to allow");
+  RNA_def_property_ui_range(prop, -2 * M_PI, 2 * M_PI, 10.0f, 1.0f);
+  RNA_def_property_ui_text(prop, "Maximum X", "Upper X angle bound");
   RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
 
   prop = RNA_def_property(srna, "max_y", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_float_sdna(prop, nullptr, "ymax");
   RNA_def_property_range(prop, -1000.0, 1000.0f);
-  RNA_def_property_ui_text(prop, "Maximum Y", "Highest Y value to allow");
+  RNA_def_property_ui_range(prop, -2 * M_PI, 2 * M_PI, 10.0f, 1.0f);
+  RNA_def_property_ui_text(prop, "Maximum Y", "Upper Y angle bound");
   RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
 
   prop = RNA_def_property(srna, "max_z", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_float_sdna(prop, nullptr, "zmax");
   RNA_def_property_range(prop, -1000.0, 1000.0f);
-  RNA_def_property_ui_text(prop, "Maximum Z", "Highest Z value to allow");
+  RNA_def_property_ui_range(prop, -2 * M_PI, 2 * M_PI, 10.0f, 1.0f);
+  RNA_def_property_ui_text(prop, "Maximum Z", "Upper Z angle bound");
   RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
 
   prop = RNA_def_property(srna, "euler_order", PROP_ENUM, PROP_NONE);
@@ -2681,6 +2688,14 @@ static void rna_def_constraint_rotation_limit(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, nullptr, "flag2", LIMIT_TRANSFORM);
   RNA_def_property_ui_text(
       prop, "Affect Transform", "Transform tools are affected by this constraint as well");
+  RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
+
+  prop = RNA_def_property(srna, "use_legacy_behavior", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", LIMIT_ROT_LEGACY_BEHAVIOR);
+  RNA_def_property_ui_text(
+      prop,
+      "Legacy Behavior",
+      "Use the old semi-broken behavior that doesn't understand that rotations loop around");
   RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
 
   RNA_define_lib_overridable(false);
