@@ -26,7 +26,6 @@ void do_blob_brush(const Scene &scene,
                    const Sculpt &sd,
                    Object &ob,
                    Span<bke::pbvh::Node *> nodes);
-void do_boundary_brush(const Sculpt &sd, Object &ob, Span<bke::pbvh::Node *> nodes);
 void do_bmesh_topology_rake_brush(const Sculpt &sd,
                                   Object &ob,
                                   Span<bke::pbvh::Node *> nodes,

@@ -125,7 +125,6 @@ set(SRC
   sculpt_intern.hh
 
   brushes/bmesh_topology_rake.cc
-  brushes/boundary.cc
   brushes/clay.cc
   brushes/clay_strips.cc
   brushes/clay_thumb.cc

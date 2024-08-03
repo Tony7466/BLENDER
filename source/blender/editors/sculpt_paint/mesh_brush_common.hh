@@ -170,6 +170,20 @@ void fill_factor_from_hide_and_mask(const BMesh &bm,
                                     MutableSpan<float> r_factors);
 
 /**
+ * Applies a modifier to the factor based on the current mask value.
+ *
+ * \note Most brush implementations will prefer to use #fill_factor_from_hide_and_mask or
+ * #fill_factor_from_hide
+ */
+void calc_mask_factor(const Mesh &mesh, const Span<int> verts, const MutableSpan<float> factors);
+void calc_mask_factor(const SubdivCCG &subdiv_ccg,
+                      const Span<SubdivCCGCoord> coords,
+                      const MutableSpan<float> factors);
+void calc_mask_factor(const BMesh &bm,
+                      const Set<BMVert *, 0> &verts,
+                      const MutableSpan<float> factors);
+
+/**
  * Disable brush influence when vertex normals point away from the view.
  */
 void calc_front_face(const float3 &view_normal, Span<float3> normals, MutableSpan<float> factors);

@@ -9,6 +9,8 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_array_utils.hh"
+#include "BLI_enumerable_thread_specific.hh"
+#include "BLI_math_rotation_legacy.hh"
 #include "BLI_math_vector.hh"
 #include "BLI_task.h"
 
@@ -22,6 +24,7 @@
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
+#include "mesh_brush_common.hh"
 #include "paint_intern.hh"
 #include "sculpt_intern.hh"
 
@@ -1013,6 +1016,259 @@ static void twist_data_init_bmesh(BMesh *bm, SculptBoundary &boundary)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Common helpers
+ * \{ */
+
+BLI_NOINLINE static void filter_uninitialized_verts(const Span<int> propagation_steps,
+                                                    const MutableSpan<float> factors)
+{
+  BLI_assert(propagation_steps.size() == factors.size());
+
+  for (const int i : factors.index_range()) {
+    if (propagation_steps[i] == BOUNDARY_STEPS_NONE) {
+      factors[i] = 0.0f;
+    }
+  }
+}
+
+static void filter_verts_outside_symmetry_area(const Span<float3> positions,
+                                               const float3 pivot,
+                                               const ePaintSymmetryFlags symm,
+                                               const MutableSpan<float> factors)
+{
+  BLI_assert(positions.size() == factors.size());
+  for (const int i : factors.index_range()) {
+    if (!SCULPT_check_vertex_pivot_symmetry(positions[i], pivot, symm)) {
+      factors[i] = 0.0f;
+    }
+  }
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Bend Deformation
+ * \{ */
+
+static void calc_bend_translation(const Span<float3> positions,
+                                  const Span<float3> pivot_positions,
+                                  const Span<float3> pivot_axes,
+                                  const Span<float> factors,
+                                  const MutableSpan<float3> translations)
+{
+  BLI_assert(positions.size() == pivot_positions.size());
+  BLI_assert(positions.size() == pivot_axes.size());
+  BLI_assert(positions.size() == factors.size());
+  BLI_assert(positions.size() == translations.size());
+
+  for (const int i : positions.index_range()) {
+    float3 from_pivot_to_pos = positions[i] - pivot_positions[i];
+    float3 rotated;
+    rotate_v3_v3v3fl(rotated, from_pivot_to_pos, pivot_axes[i], factors[i]);
+    translations[i] = rotated + pivot_positions[i];
+  }
+}
+
+struct LocalDataMesh {
+  Vector<float> factors;
+  Vector<int> propagation_steps;
+  Vector<float3> pivot_positions;
+  Vector<float3> pivot_axes;
+  Vector<float3> new_positions;
+  Vector<float3> translations;
+};
+
+static void calc_bend_mesh(const Sculpt &sd,
+                           Object &object,
+                           const Span<float3> positions_eval,
+                           const Span<int> vert_propagation_steps,
+                           const Span<float> vert_factors,
+                           const Span<float3> vert_pivot_positions,
+                           const Span<float3> vert_pivot_axes,
+                           const bke::pbvh::Node &node,
+                           LocalDataMesh &tls,
+                           const float3 symmetry_pivot,
+                           const float strength,
+                           const eBrushDeformTarget deform_target,
+                           const MutableSpan<float3> positions_orig)
+{
+  SculptSession &ss = *object.sculpt;
+  const StrokeCache &cache = *ss.cache;
+  const Mesh &mesh = *static_cast<Mesh *>(object.data);
+
+  const Span<int> verts = bke::pbvh::node_unique_verts(node);
+  const OrigPositionData orig_data = orig_position_data_get_mesh(object, node);
+
+  const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(object);
+
+  gather_data_mesh(vert_factors, verts, tls.factors);
+  const MutableSpan<float> factors = tls.factors;
+
+  calc_mask_factor(mesh, verts, factors);
+
+  if (cache.automasking) {
+    auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
+  }
+
+  gather_data_mesh(vert_propagation_steps, verts, tls.propagation_steps);
+  const Span<int> propagation_steps = tls.propagation_steps;
+
+  filter_uninitialized_verts(propagation_steps, factors);
+  filter_verts_outside_symmetry_area(orig_data.positions, symmetry_pivot, symm, factors);
+
+  scale_factors(factors, strength);
+
+  tls.new_positions.resize(verts.size());
+  const MutableSpan<float3> new_positions = tls.new_positions;
+
+  gather_data_mesh(vert_pivot_positions, verts, tls.pivot_positions);
+  const Span<float3> pivot_positions = tls.pivot_positions;
+
+  gather_data_mesh(vert_pivot_axes, verts, tls.pivot_axes);
+  const Span<float3> pivot_axes = tls.pivot_axes;
+
+  calc_bend_translation(orig_data.positions, pivot_positions, pivot_axes, factors, new_positions);
+
+  tls.translations.resize(verts.size());
+  const MutableSpan<float3> translations = tls.translations;
+  translations_from_new_positions(new_positions, verts, positions_eval, translations);
+
+  switch (eBrushDeformTarget(deform_target)) {
+    case BRUSH_DEFORM_TARGET_GEOMETRY:
+      // write_translations(sd, object, positions_eval, verts, translations, positions_orig);
+      apply_translations(translations, verts, positions_orig);
+      break;
+    case BRUSH_DEFORM_TARGET_CLOTH_SIM:
+      apply_translations(translations, verts, cache.cloth_sim->deformation_pos);
+      break;
+  }
+}
+
+static void do_bend_brush(const Sculpt &sd,
+                          Object &object,
+                          const Span<bke::pbvh::Node *> nodes,
+                          const SculptBoundary &boundary,
+                          const float strength,
+                          const eBrushDeformTarget deform_target)
+{
+  SculptSession &ss = *object.sculpt;
+  switch (ss.pbvh->type()) {
+    case bke::pbvh::Type::Mesh: {
+      Mesh &mesh = *static_cast<Mesh *>(object.data);
+      Span<float3> positions_eval = BKE_pbvh_get_vert_positions(*ss.pbvh);
+      MutableSpan<float3> positions_orig = mesh.vert_positions_for_write();
+
+      threading::EnumerableThreadSpecific<LocalDataMesh> all_tls;
+      threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+        LocalDataMesh &tls = all_tls.local();
+        for (const int i : range) {
+          calc_bend_mesh(sd,
+                         object,
+                         positions_eval,
+                         boundary.edit_info.propagation_steps_num,
+                         boundary.edit_info.strength_factor,
+                         boundary.bend.pivot_positions,
+                         boundary.bend.pivot_rotation_axis,
+                         *nodes[i],
+                         tls,
+                         boundary.initial_vert_position,
+                         strength,
+                         deform_target,
+                         positions_orig);
+          BKE_pbvh_node_mark_positions_update(nodes[i]);
+        }
+      });
+      break;
+    }
+  }
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Slide Deformation
+ * \{ */
+
+static void calc_slide_transform(const Span<float3> positions,
+                                 const Span<float3> directions,
+                                 const Span<float> factors,
+                                 const MutableSpan<float3> transforms)
+{
+  BLI_assert(positions.size() == directions.size());
+  BLI_assert(positions.size() == factors.size());
+  BLI_assert(positions.size() == transforms.size());
+
+  for (const int i : positions.index_range()) {
+    transforms[i] = positions[i] + (directions[i] * factors[i]);
+  }
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Inflate Deformation
+ * \{ */
+
+static void calc_inflate_transform(const Span<float3> positions,
+                                   const Span<float3> normals,
+                                   const Span<float> factors,
+                                   const MutableSpan<float3> transforms)
+{
+  BLI_assert(positions.size() == normals.size());
+  BLI_assert(positions.size() == factors.size());
+  BLI_assert(positions.size() == transforms.size());
+
+  for (const int i : positions.index_range()) {
+    transforms[i] = positions[i] + (normals[i] * factors[i]);
+  }
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Grab Deformation
+ * \{ */
+
+static void calc_grab_transform(const Span<float3> positions,
+                                const float3 grab_delta,
+                                const Span<float> factors,
+                                const MutableSpan<float3> transforms)
+{
+  BLI_assert(positions.size() == factors.size());
+  BLI_assert(positions.size() == transforms.size());
+
+  for (const int i : positions.index_range()) {
+    transforms[i] = positions[i] + (grab_delta * factors[i]);
+  }
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Twist Deformation
+ * \{ */
+
+static void calc_twist_transform(const Span<float3> positions,
+                                 const float3 pivot_point,
+                                 const float3 pivot_axis,
+                                 const Span<float> factors,
+                                 const MutableSpan<float3> transforms)
+{
+  BLI_assert(positions.size() == factors.size());
+  BLI_assert(positions.size() == transforms.size());
+
+  for (const int i : positions.index_range()) {
+    transforms[i] = math::rotate_around_axis(positions[i], pivot_point, pivot_axis, factors[i]);
+  }
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Smooth Deformation
+ * \{ */
+
+/* -------------------------------------------------------------------- */
 /** \name Brush Actions
  *
  * Actual functions related to modifying vertices.
@@ -1605,6 +1861,19 @@ void do_boundary_brush(const Sculpt &sd, Object &ob, Span<bke::pbvh::Node *> nod
   }
 
   const float strength = get_mesh_strength(ss, brush);
+
+#if 1
+  switch (brush.boundary_deform_type) {
+    case BRUSH_BOUNDARY_DEFORM_BEND:
+      do_bend_brush(sd,
+                    ob,
+                    nodes,
+                    *ss.cache->boundaries[symm_area],
+                    strength,
+                    eBrushDeformTarget(brush.deform_target));
+  }
+  return;
+#endif
 
   switch (brush.boundary_deform_type) {
     case BRUSH_BOUNDARY_DEFORM_BEND:

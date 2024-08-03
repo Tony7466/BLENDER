@@ -6666,6 +6666,18 @@ void gather_data_mesh(const Span<T> src, const Span<int> indices, const MutableS
   }
 }
 
+/* TODO: For some reason, without this specialization, clang on OSX ARM64 fails in the linker step.
+ */
+template<>
+void gather_data_mesh(const Span<int> src, const Span<int> indices, const MutableSpan<int> dst)
+{
+  BLI_assert(indices.size() == dst.size());
+
+  for (const int i : indices.index_range()) {
+    dst[i] = src[indices[i]];
+  }
+}
+
 template<typename T>
 void gather_data_grids(const SubdivCCG &subdiv_ccg,
                        const Span<T> src,
@@ -6901,6 +6913,57 @@ void fill_factor_from_hide_and_mask(const SubdivCCG &subdiv_ccg,
         }
       }
     }
+  }
+}
+
+void calc_mask_factor(const Mesh &mesh, const Span<int> verts, const MutableSpan<float> factors)
+{
+  BLI_assert(verts.size() == factors.size());
+
+  /* TODO: Avoid overhead of accessing attributes for every bke::pbvh::Tree node. */
+  const bke::AttributeAccessor attributes = mesh.attributes();
+  if (const VArray mask = *attributes.lookup<float>(".sculpt_mask", bke::AttrDomain::Point)) {
+    const VArraySpan span(mask);
+    for (const int i : verts.index_range()) {
+      factors[i] *= 1.0f - span[verts[i]];
+    }
+  }
+}
+
+void calc_mask_factor(const SubdivCCG &subdiv_ccg,
+                      const Span<SubdivCCGCoord> coords,
+                      const MutableSpan<float> factors)
+{
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+  const Span<CCGElem *> elems = subdiv_ccg.grids;
+
+  BLI_assert(coords.size() == factors.size());
+
+  if (key.has_mask) {
+    int i = 0;
+    for (const SubdivCCGCoord coord : coords) {
+      factors[i] *= 1.0f - CCG_grid_elem_mask(key, elems[coord.grid_index], coord.x, coord.y);
+      i++;
+    }
+  }
+}
+
+void calc_mask_factor(const BMesh &bm,
+                      const Set<BMVert *, 0> &verts,
+                      const MutableSpan<float> factors)
+{
+  BLI_assert(verts.size() == factors.size());
+
+  /* TODO: Avoid overhead of accessing attributes for every bke::pbvh::Tree node. */
+  const int mask_offset = CustomData_get_offset_named(&bm.vdata, CD_PROP_FLOAT, ".sculpt_mask");
+  if (mask_offset == -1) {
+    return;
+  }
+
+  int i = 0;
+  for (const BMVert *vert : verts) {
+    factors[i] *= 1.0f - BM_ELEM_CD_GET_FLOAT(vert, mask_offset);
+    i++;
   }
 }
 
