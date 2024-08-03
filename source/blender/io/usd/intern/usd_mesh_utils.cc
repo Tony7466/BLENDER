@@ -17,11 +17,11 @@
 namespace blender::io::usd {
 
 template<typename USDT>
-void read_color_data_primvar(Mesh *mesh,
-                             const pxr::UsdGeomPrimvar &primvar,
-                             double motion_sample_time,
-                             ReportList *reports,
-                             bool is_left_handed)
+static void read_color_data_primvar(Mesh *mesh,
+                                    const pxr::UsdGeomPrimvar &primvar,
+                                    double motion_sample_time,
+                                    ReportList *reports,
+                                    bool is_left_handed)
 {
   const pxr::VtArray<USDT> usd_colors = get_primvar_array<USDT>(primvar, motion_sample_time);
   if (usd_colors.empty()) {
