@@ -12,6 +12,7 @@
 #include "BLI_task.hh"
 #include "BLI_vector.hh"
 
+#include "BKE_customdata.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_instances.hh"
 
@@ -66,7 +67,29 @@ bool InstancesComponent::is_empty() const
 
 size_t InstancesComponent::size_in_bytes_approximate() const
 {
-  return 0;
+  size_t instance_size = 0;
+
+  std::optional<blender::bke::AttributeAccessor> component_attributes = attributes();
+
+  if (!component_attributes.has_value()) {
+    return 0;
+  }
+
+  component_attributes.value().for_all(
+      [&](const blender::bke::AttributeIDRef, const blender::bke::AttributeMetaData meta_data) {
+        switch (meta_data.domain) {
+          case blender::bke::AttrDomain::Instance:
+            instance_size += CustomDataType_get_elem_size(meta_data.data_type);
+            break;
+          default:
+            break;
+        }
+        return true;
+      });
+
+  size_t total_size = (instances_->instances_num() * instance_size);
+
+  return total_size;
 }
 
 bool InstancesComponent::owns_direct_data() const

@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BKE_customdata.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_lib_id.hh"
@@ -87,7 +88,29 @@ bool GreasePencilComponent::is_empty() const
 
 size_t GreasePencilComponent::size_in_bytes_approximate() const
 {
-  return 0;
+  size_t layer_size = 0;
+
+  std::optional<blender::bke::AttributeAccessor> component_attributes = attributes();
+
+  if (!component_attributes.has_value()) {
+    return 0;
+  }
+
+  component_attributes.value().for_all(
+      [&](const blender::bke::AttributeIDRef, const blender::bke::AttributeMetaData meta_data) {
+        switch (meta_data.domain) {
+          case blender::bke::AttrDomain::Layer:
+            layer_size += CustomDataType_get_elem_size(meta_data.data_type);
+            break;
+          default:
+            break;
+        }
+        return true;
+      });
+
+  size_t total_size = (grease_pencil_->drawing_array_num * layer_size);
+
+  return total_size;
 }
 
 bool GreasePencilComponent::owns_direct_data() const

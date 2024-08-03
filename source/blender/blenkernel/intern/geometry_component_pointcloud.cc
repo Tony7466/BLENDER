@@ -4,6 +4,7 @@
 
 #include "DNA_pointcloud_types.h"
 
+#include "BKE_customdata.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_pointcloud.hh"
@@ -92,7 +93,29 @@ bool PointCloudComponent::is_empty() const
 
 size_t PointCloudComponent::size_in_bytes_approximate() const
 {
-  return 0;
+  size_t point_size = 0;
+
+  std::optional<blender::bke::AttributeAccessor> component_attributes = attributes();
+
+  if (!component_attributes.has_value()) {
+    return 0;
+  }
+
+  component_attributes.value().for_all(
+      [&](const blender::bke::AttributeIDRef, const blender::bke::AttributeMetaData meta_data) {
+        switch (meta_data.domain) {
+          case blender::bke::AttrDomain::Point:
+            point_size += CustomDataType_get_elem_size(meta_data.data_type);
+            break;
+          default:
+            break;
+        }
+        return true;
+      });
+
+  size_t total_size = (pointcloud_->totpoint * point_size);
+
+  return total_size;
 }
 
 bool PointCloudComponent::owns_direct_data() const

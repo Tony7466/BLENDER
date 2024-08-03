@@ -105,7 +105,13 @@ size_t MeshComponent::size_in_bytes_approximate() const
 {
   size_t point_size = 0, edge_size = 0, face_size = 0, corner_size = 0;
 
-  mesh_->attributes().for_all(
+  std::optional<blender::bke::AttributeAccessor> component_attributes = attributes();
+
+  if (!component_attributes.has_value()) {
+    return 0;
+  }
+
+  component_attributes.value().for_all(
       [&](const blender::bke::AttributeIDRef, const blender::bke::AttributeMetaData meta_data) {
         switch (meta_data.domain) {
           case blender::bke::AttrDomain::Point:

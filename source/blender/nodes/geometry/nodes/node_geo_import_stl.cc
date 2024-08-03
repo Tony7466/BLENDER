@@ -67,7 +67,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   auto gset = GeometrySet::from_mesh(mesh);
 
   // TODO: Remove this
-  fprintf(stderr, "Size: %zu\n", gset.size_in_bytes_approximate());
+  fprintf(stderr, "STL Approx Size: %zu\n", gset.size_in_bytes_approximate());
 
   params.set_output("Mesh", gset);
 

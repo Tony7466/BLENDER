@@ -110,15 +110,26 @@ size_t CurveComponent::size_in_bytes_approximate() const
 {
   size_t point_size = 0, curve_size = 0;
 
-  for (const int i : IndexRange(curves_->geometry.point_data.totlayer)) {
-    const CustomDataLayer &data_layer = curves_->geometry.point_data.layers[i];
-    point_size += CustomData_get_elem_size(&data_layer);
+  std::optional<blender::bke::AttributeAccessor> component_attributes = attributes();
+
+  if (!component_attributes.has_value()) {
+    return 0;
   }
 
-  for (const int i : IndexRange(curves_->geometry.curve_data.totlayer)) {
-    const CustomDataLayer &data_layer = curves_->geometry.curve_data.layers[i];
-    curve_size += CustomData_get_elem_size(&data_layer);
-  }
+  component_attributes.value().for_all(
+      [&](const blender::bke::AttributeIDRef, const blender::bke::AttributeMetaData meta_data) {
+        switch (meta_data.domain) {
+          case blender::bke::AttrDomain::Point:
+            point_size += CustomDataType_get_elem_size(meta_data.data_type);
+            break;
+          case blender::bke::AttrDomain::Curve:
+            curve_size += CustomDataType_get_elem_size(meta_data.data_type);
+            break;
+          default:
+            break;
+        }
+        return true;
+      });
 
   size_t total_size = (curves_->geometry.curve_num * curve_size) +
                       (curves_->geometry.point_num * point_size);

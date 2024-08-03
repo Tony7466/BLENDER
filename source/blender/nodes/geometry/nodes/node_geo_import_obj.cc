@@ -70,7 +70,12 @@ static void node_geo_exec(GeoNodeExecParams params)
     instances->add_instance(handle, float4x4::identity());
   }
 
-  params.set_output("Instances", GeometrySet::from_instances(instances));
+  auto gset = GeometrySet::from_instances(instances);
+
+  // TODO: Remove this
+  fprintf(stderr, "OBJ Approx Size: %zu\n", gset.size_in_bytes_approximate());
+
+  params.set_output("Instances", gset);
 #else
   params.error_message_add(NodeWarningType::Error,
                            TIP_("Disabled, Blender was compiled without OBJ I/O"));
