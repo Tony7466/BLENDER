@@ -42,12 +42,6 @@ static void icon_draw_icon(rctf *rect, int icon_id, bool inverted, float alpha)
 static void icon_draw_rect_input_text(
     rctf *rect, const char *str, bool inverted, float alpha, EventIconWidth icon_width)
 {
-  float color[4];
-  UI_GetThemeColor4fv(inverted ? TH_BACK : TH_TEXT, color);
-  if (alpha < 1.0f) {
-    color[3] *= alpha;
-  }
-
   if (icon_width == EventIconWidth::Wide) {
     rect->xmax = rect->xmin + BLI_rctf_size_x(rect) * 1.5f;
     icon_draw_icon(rect, ICON_KEY_EMPTY2, inverted, alpha);
@@ -61,28 +55,30 @@ static void icon_draw_rect_input_text(
   }
 
   const int font_id = BLF_default();
+  float color[4];
+  UI_GetThemeColor4fv(inverted ? TH_BACK : TH_TEXT, color);
+  if (alpha < 1.0f) {
+    color[3] *= alpha;
+  }
   BLF_color4fv(font_id, color);
 
-  float available_width = BLI_rctf_size_x(rect) - (3.0f * UI_SCALE_FAC);
+  const float available_width = BLI_rctf_size_x(rect) - (3.0f * UI_SCALE_FAC);
 
   const uiFontStyle *fstyle = UI_FSTYLE_WIDGET;
   float font_size = std::min(15.0f, fstyle->points) * UI_SCALE_FAC;
+  BLF_size(font_id, font_size);
 
   float width, height;
-  BLF_size(font_id, font_size);
-  width = BLF_width(font_id, str, BLF_DRAW_STR_DUMMY_MAX);
-
+  BLF_width_and_height(font_id, str, BLF_DRAW_STR_DUMMY_MAX, &width, &height);
   if (width > available_width) {
     font_size *= available_width / width;
+    BLF_size(font_id, font_size);
+    BLF_width_and_height(font_id, str, BLF_DRAW_STR_DUMMY_MAX, &width, &height);
   }
 
-  BLF_size(font_id, font_size);
-  BLF_width_and_height(font_id, str, BLF_DRAW_STR_DUMMY_MAX, &width, &height);
   const float x = rect->xmin + UI_SCALE_FAC + ((available_width - width) / 2.0f);
-  const float offset = std::max((BLI_rctf_size_y(rect) - height) * 0.5f, (font_size * 0.4f));
-  const float y = rect->ymin + offset;
-
-  BLF_position(font_id, x, y, 0.0f);
+  const float v_offset = std::max((BLI_rctf_size_y(rect) - height) * 0.5f, (font_size * 0.4f));
+  BLF_position(font_id, x, rect->ymin + v_offset, 0.0f);
   BLF_draw(font_id, str, BLF_DRAW_STR_DUMMY_MAX);
 }
 
@@ -116,6 +112,10 @@ EventIconWidth ui_event_icon_width(const int icon)
   }
 
   if (icon >= ICON_EVENT_PAD0 && icon <= ICON_EVENT_PADPERIOD) {
+    return EventIconWidth::Wide;
+  }
+
+  if (icon >= ICON_EVENT_NDOF_BUTTON_V1 && icon <= ICON_EVENT_NDOF_BUTTON_MINUS) {
     return EventIconWidth::Wide;
   }
 
