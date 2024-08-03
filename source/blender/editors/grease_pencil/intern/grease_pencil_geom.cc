@@ -1508,10 +1508,15 @@ void find_curve_intersections(const bke::CurvesGeometry &curves,
   });
 }
 
+static int index_in_cyclic_range(const IndexRange range, int index) {
+  return (index - range.first()) % range.size() + range.first();
+}
+
 void find_curve_segments(const bke::CurvesGeometry &curves,
                          const IndexMask &curve_mask,
                          const Span<float2> screen_space_positions,
                          const Curves2DBVHTree &tree_data,
+                         Array<int> &r_curve_starts,
                          Array<int> &r_segments_by_curve,
                          Array<int> &r_points_by_segment,
                          std::optional<Array<float>> r_segment_start_factors,
@@ -1536,6 +1541,7 @@ void find_curve_segments(const bke::CurvesGeometry &curves,
 
   /* Count number of segments in each curve.
    * This is needed to write to the correct segments range for each curve. */
+  r_curve_starts.reinitialize(curves.curves_num());
   r_segments_by_curve.reinitialize(curves.curves_num() + 1);
   /* Only segments with hits are written to, initialize all to zero. */
   r_segments_by_curve.fill(0);
@@ -1548,6 +1554,11 @@ void find_curve_segments(const bke::CurvesGeometry &curves,
      * first split, non-cylic curve have one more segment. */
     const int num_hits = curve_hit_mask.size();
     r_segments_by_curve[i_curve] = (num_hits > 0 ? num_hits + (is_cyclic ? 0 : 1) : 0);
+
+    /* Shift cyclic curve starts to the first cut so last and first segments are contiguous. */
+    r_curve_starts[i_curve] = (is_cyclic && !curve_hit_mask.is_empty() ?
+                                   index_in_cyclic_range(points, curve_hit_mask.first() + 1) :
+                                   points.first());
   });
   const OffsetIndices segments_by_curve = offset_indices::accumulate_counts_to_offsets(
       r_segments_by_curve);
@@ -1575,7 +1586,7 @@ void find_curve_segments(const bke::CurvesGeometry &curves,
     //   const int i_segment = segments.first();
     // }
 
-    int i_prev_point = (is_cyclic ? curve_hit_mask.last() : 0);
+    int i_prev_point = (is_cyclic ? curve_hit_mask.last() : points.first());
     curve_hit_mask.foreach_index([&](const int i_point, const int i_hit) {
       const int i_segment = segments[i_hit];
       if (i_prev_point == i_point) {
@@ -1583,10 +1594,10 @@ void find_curve_segments(const bke::CurvesGeometry &curves,
       }
       /* Account for negative range for the first segment. */
       else if (i_point < i_prev_point) {
-        r_points_by_segment[i_segment] = points.size() + i_point - i_prev_point;
+        r_points_by_segment[i_segment] = points.size() + 1 + i_point - i_prev_point;
       }
       else {
-        r_points_by_segment[i_segment] = i_point - i_prev_point;
+        r_points_by_segment[i_segment] = 1 + i_point - i_prev_point;
       }
       if (r_segment_start_factors) {
         (*r_segment_start_factors)[i_segment] = last_hit_factors[i_prev_point];

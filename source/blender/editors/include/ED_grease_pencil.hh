@@ -768,17 +768,22 @@ void find_curve_intersections(const bke::CurvesGeometry &curves,
  * masks.
  *
  * \param curves: Curves geometry for both target and cutter curves.
+ * \param curve_mask: Set of curves that will be intersected.
  * \param screen_space_positions: Screen space positions computed in advance.
- * \param target_curves: Set of curves that will be intersected.
- * \param intersecting_curves: Set of curves that create cuts on target curves.
- * \param r_segment_ranges: Index ranges in source points that form new segments.
- * \param r_start_factors: Factor (0..1) of the cut in the start segment.
- * \param r_end_factors: Factor (0..1) of the cut in the end segment.
+ * \param tree_data: Screen-space BVH tree of the intersecting curves.
+ * \param r_curve_starts: Start index for segments of each curve.
+ *        Shift the curve points index range to ensure contiguous segments with cyclic curves.
+ * \param r_segments_by_curve: Offsets for segments in each curve.
+ * \param r_points_by_segment: Offsets for point range of each segment. Index ranges can exceed
+ *        original curve range and must be wrapped around.
+ * \param r_start_factors: Factor (-1..0) previous segment to prepend.
+ * \param r_end_factors: Factor (0..1) of last segment to append.
  */
 void find_curve_segments(const bke::CurvesGeometry &curves,
                          const IndexMask &curve_mask,
                          const Span<float2> screen_space_positions,
                          const Curves2DBVHTree &tree_data,
+                         Array<int> &r_curve_starts,
                          Array<int> &r_segments_by_curve,
                          Array<int> &r_points_by_segment,
                          std::optional<Array<float>> r_segment_start_factors,

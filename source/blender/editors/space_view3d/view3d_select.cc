@@ -5233,38 +5233,81 @@ static bool grease_pencil_circle_select(const ViewContext *vc,
           tree_data_range);
 
       const IndexMask new_point_selection = ed::curves::retrieve_selected_points(curves, memory);
-      IndexMask added_point_mask = IndexMask::from_difference(
-          new_point_selection, point_selection_by_drawing[i_drawing], memory);
-      IndexMask removed_point_mask = IndexMask::from_difference(
-          point_selection_by_drawing[i_drawing], new_point_selection, memory);
+      const IndexMask changed_points_mask = IndexMask::from_union(
+          IndexMask::from_difference(
+              new_point_selection, point_selection_by_drawing[i_drawing], memory),
+          IndexMask::from_difference(
+              point_selection_by_drawing[i_drawing], new_point_selection, memory),
+          memory);
 
       /* Create curve masks for added and removed points to limit intersection tests.
        * Note: this cannot be constructed as a difference of before/after curve selection,
        * because points may be selected without changing the curve selection. The curve mask
        * difference would be empty even though there are curves we need to consider. */
-      IndexMask added_curve_mask = ed::greasepencil::curve_mask_from_point_mask(
-          points_by_curve, added_point_mask, memory);
-      IndexMask removed_curve_mask = ed::greasepencil::curve_mask_from_point_mask(
-          points_by_curve, removed_point_mask, memory);
+      IndexMask changed_curve_mask = ed::greasepencil::curve_mask_from_point_mask(
+          points_by_curve, changed_points_mask, memory);
 
-      if (!added_curve_mask.is_empty()) {
-        Array<int> segments_by_curve;
-        Array<int> points_by_segment;
+      if (!changed_curve_mask.is_empty()) {
+        Array<int> curve_starts;
+        Array<int> segment_offsets;
+        Array<int> point_offsets;
         ed::greasepencil::find_curve_segments(curves,
-                                              added_curve_mask,
+                                              changed_curve_mask,
                                               screen_space_positions,
                                               tree_data,
-                                              segments_by_curve,
-                                              points_by_segment,
+                                              curve_starts,
+                                              segment_offsets,
+                                              point_offsets,
                                               std::nullopt,
                                               std::nullopt);
 
+        const OffsetIndices<int> segments_by_curve = OffsetIndices<int>(segment_offsets);
+        const OffsetIndices<int> points_by_segment = OffsetIndices<int>(point_offsets);
+        Vector<bke::GSpanAttributeWriter> attribute_writers;
+        const eCustomDataType create_type = CD_PROP_BOOL;
+        const Span<StringRef> selection_attribute_names =
+            ed::curves::get_curves_selection_attribute_names(curves);
+        for (const int i : selection_attribute_names.index_range()) {
+          attribute_writers.append(ed::curves::ensure_selection_attribute(
+              curves, selection_domain, create_type, selection_attribute_names[i]));
+        };
+
+        /* Find all segments that have changed points and fill them. */
+        threading::parallel_for(segments_by_curve.index_range(), 256, [&](const IndexRange range) {
+          for (const int i_curve : range) {
+            const IndexRange segments = segments_by_curve[i_curve];
+            for (const int i_segment : points_by_segment.index_range().slice(segments)) {
+              const IndexRange points = points_by_segment[i_segment];
+              /* Test if anything was changed. */
+              if (changed_curve_mask.slice_content(points).is_empty()) {
+                continue;
+              }
+              for (auto &attribute_writer : attribute_writers) {
+                for (const int i_point : points) {
+                  ed::curves::apply_selection_operation_at_index(
+                      attribute_writer.span, i_point, sel_op);
+                }
+              }
+            }
+          }
+        });
+
+        for (auto &attribute_writer : attribute_writers) {
+          attribute_writer.finish();
+        }
+
         {
-          std::cout << "Segments: " << std::endl;
-          for (const int i_curve : segments_by_curve.index_range().drop_back(1)) {
+          std::cout << "Curves: " << std::endl;
+          for (const int i_curve : segments_by_curve.index_range()) {
             const IndexRange segments = OffsetIndices<int>(segments_by_curve)[i_curve];
-            std::cout << "  Curve " << i_curve << " segments " << segments << std::endl;
-            for (const int i_seg : points_by_segment.index_range().drop_back(1)) {
+            std::cout << "  Curve " << i_curve << " segments ";
+            if (segments.is_empty()) {
+              std::cout << "empty" << std::endl;
+            }
+            else {
+              std::cout << segments << std::endl;
+            }
+            for (const int i_seg : points_by_segment.index_range().slice(segments)) {
               const IndexRange points = OffsetIndices<int>(points_by_segment)[i_seg];
               std::cout << "    Segment " << i_seg << " points " << points << std::endl;
             }
