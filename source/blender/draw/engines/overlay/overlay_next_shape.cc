@@ -548,9 +548,9 @@ ShapeCache::ShapeCache()
     }
 
     for (const float2 &point : diamond) {
-      Vertex vertex{float3{point, bottom_z}};
+      Vertex vertex{float3(point, bottom_z)};
       verts.append(vertex);
-      vertex.pos = float3{point * 0.5f, bottom_z + step_z};
+      vertex.pos = float3(point * 0.5f, bottom_z + step_z);
       verts.append(vertex);
       verts.append(vertex);
       vertex.pos.z += step_z;
@@ -786,12 +786,12 @@ ShapeCache::ShapeCache()
     constexpr float sin_pi_3 = 0.86602540378f;
     constexpr float cos_pi_3 = 0.5f;
     const Array<float2, 6> points = {
-        float2{0.0f, 1.0f} * r,
-        float2{sin_pi_3, cos_pi_3} * r,
-        float2{sin_pi_3, -cos_pi_3} * r,
-        float2{0.0f, -1.0f} * r,
-        float2{-sin_pi_3, -cos_pi_3} * r,
-        float2{-sin_pi_3, cos_pi_3} * r,
+        float2(0.0f, 1.0f) * r,
+        float2(sin_pi_3, cos_pi_3) * r,
+        float2(sin_pi_3, -cos_pi_3) * r,
+        float2(0.0f, -1.0f) * r,
+        float2(-sin_pi_3, -cos_pi_3) * r,
+        float2(-sin_pi_3, cos_pi_3) * r,
     };
 
     Vector<Vertex> verts;
@@ -819,10 +819,10 @@ ShapeCache::ShapeCache()
     /* Icon */
     constexpr float sin_pi_3 = 0.86602540378f;
     const Array<float2, 4> points = {
-        float2{0.0f, 0.5f} * r,
-        float2{sin_pi_3, 0.0f} * r,
-        float2{0.0f, -0.5f} * r,
-        float2{-sin_pi_3, 0.0f} * r,
+        float2(0.0f, 0.5f) * r,
+        float2(sin_pi_3, 0.0f) * r,
+        float2(0.0f, -0.5f) * r,
+        float2(-sin_pi_3, 0.0f) * r,
     };
 
     Vector<Vertex> verts;
@@ -833,18 +833,17 @@ ShapeCache::ShapeCache()
   }
   /* lightprobe_grid */
   {
-
     constexpr float r = 14.0f;
     constexpr int flag = VCLASS_SCREENSPACE;
     /* Icon */
     constexpr float sin_pi_3 = 0.86602540378f;
     constexpr float cos_pi_3 = 0.5f;
-    const Array<float2, 6> points = {float2{0.0f, 1.0f} * r,
-                                     float2{sin_pi_3, cos_pi_3} * r,
-                                     float2{sin_pi_3, -cos_pi_3} * r,
-                                     float2{0.0f, -1.0f} * r,
-                                     float2{-sin_pi_3, -cos_pi_3} * r,
-                                     float2{-sin_pi_3, cos_pi_3} * r};
+    const Array<float2, 6> points = {float2(0.0f, 1.0f) * r,
+                                     float2(sin_pi_3, cos_pi_3) * r,
+                                     float2(sin_pi_3, -cos_pi_3) * r,
+                                     float2(0.0f, -1.0f) * r,
+                                     float2(-sin_pi_3, -cos_pi_3) * r,
+                                     float2(-sin_pi_3, cos_pi_3) * r};
     Vector<Vertex> verts;
 
     append_line_loop(verts, points, 0.0f, flag);
