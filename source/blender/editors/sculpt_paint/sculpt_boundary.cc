@@ -1095,7 +1095,7 @@ struct LocalDataMesh {
 
   /* Smooth */
   Vector<Vector<int>> neighbors;
-  Vector<float3> smoothed_positions;
+  Vector<float3> average_positions;
 
   Vector<float3> new_positions;
   Vector<float3> translations;
@@ -1694,6 +1694,36 @@ static void calc_smooth_position(const Span<float3> vert_positions,
   }
 }
 
+static void calc_average_position(const Span<float3> vert_positions,
+                                  const Span<int> vert_propagation_steps,
+                                  const Span<int> verts,
+                                  const Span<Vector<int>> neighbors,
+                                  const Span<int> propagation_steps,
+                                  const MutableSpan<float> factors,
+                                  const MutableSpan<float3> smoothed_positions)
+{
+  BLI_assert(vert_positions.size() == vert_propagation_steps.size());
+  BLI_assert(verts.size() == neighbors.size());
+  BLI_assert(verts.size() == propagation_steps.size());
+  BLI_assert(verts.size() == factors.size());
+  BLI_assert(verts.size() == smoothed_positions.size());
+
+  for (const int i : neighbors.index_range()) {
+    smoothed_positions[i] = float3(0.0f);
+    int valid_neighbors = 0;
+    for (const int neighbor : neighbors[i]) {
+      if (propagation_steps[i] == vert_propagation_steps[neighbor]) {
+        smoothed_positions[i] += vert_positions[neighbor];
+        valid_neighbors++;
+      }
+    }
+    smoothed_positions[i] *= math::safe_rcp(float(valid_neighbors));
+    if (valid_neighbors == 0) {
+      factors[i] = 0.0f;
+    }
+  }
+}
+
 static void calc_smooth_mesh(const Sculpt &sd,
                              Object &object,
                              const Span<float3> positions_eval,
@@ -1739,26 +1769,17 @@ static void calc_smooth_mesh(const Sculpt &sd,
   const MutableSpan<Vector<int>> neighbors = tls.neighbors;
 
   calc_vert_neighbors(faces, corner_verts, vert_to_face, hide_poly, verts, neighbors);
-  tls.smoothed_positions.resize(verts.size());
-  const MutableSpan<float3> smoothed_positions = tls.smoothed_positions;
-  for (const int i : neighbors.index_range()) {
-    smoothed_positions[i] = float3(0.0f);
-    int valid_neighbors = 0;
-    for (const int neighbor : neighbors[i]) {
-      if (propagation_steps[i] == propagation_steps[neighbor]) {
-        smoothed_positions[i] += positions_eval[neighbor];
-        valid_neighbors++;
-      }
-    }
-    smoothed_positions[i] = smoothed_positions[i] * math::safe_rcp(float(valid_neighbors));
-    /*
-    if (valid_neighbors == 0) {
-      factors[i] = 0.0f;
-    }
-    */
-  }
+  tls.average_positions.resize(verts.size());
+  const MutableSpan<float3> average_positions = tls.average_positions;
+  calc_average_position(positions_eval,
+                        vert_propagation_steps,
+                        verts,
+                        neighbors,
+                        propagation_steps,
+                        factors,
+                        average_positions);
 
-  calc_smooth_position(positions_eval, verts, smoothed_positions, factors, new_positions);
+  calc_smooth_position(positions_eval, verts, average_positions, factors, new_positions);
 
   tls.translations.resize(verts.size());
   const MutableSpan<float3> translations = tls.translations;
