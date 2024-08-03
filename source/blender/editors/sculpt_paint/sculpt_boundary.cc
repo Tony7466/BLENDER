@@ -1135,8 +1135,7 @@ static void calc_bend_mesh(const Sculpt &sd,
 
   switch (eBrushDeformTarget(deform_target)) {
     case BRUSH_DEFORM_TARGET_GEOMETRY:
-      // write_translations(sd, object, positions_eval, verts, translations, positions_orig);
-      apply_translations(translations, verts, positions_orig);
+      write_translations(sd, object, positions_eval, verts, translations, positions_orig);
       break;
     case BRUSH_DEFORM_TARGET_CLOTH_SIM:
       apply_translations(translations, verts, cache.cloth_sim->deformation_pos);
