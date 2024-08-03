@@ -636,6 +636,7 @@ hiprtGeometryBuildInput HIPRTDevice::prepare_point_blas(BVHHIPRT *bvh, PointClou
   int num_bounds = 0;
 
   if (point_attr_mP == NULL) {
+    bvh->custom_prim_info.resize(num_points);
     bvh->custom_primitive_bound.alloc(num_points);
     for (uint j = 0; j < num_points; j++) {
       const PointCloud::Point point = pointcloud->get_point(j);
@@ -651,6 +652,7 @@ hiprtGeometryBuildInput HIPRTDevice::prepare_point_blas(BVHHIPRT *bvh, PointClou
   }
   else if (bvh->params.num_motion_point_steps == 0) {
 
+    bvh->custom_prim_info.resize(num_points * num_steps);
     bvh->custom_primitive_bound.alloc(num_points * num_steps);
 
     for (uint j = 0; j < num_points; j++) {
@@ -673,6 +675,7 @@ hiprtGeometryBuildInput HIPRTDevice::prepare_point_blas(BVHHIPRT *bvh, PointClou
     const int num_bvh_steps = bvh->params.num_motion_point_steps * 2 + 1;
     const float num_bvh_steps_inv_1 = 1.0f / (num_bvh_steps - 1);
 
+    bvh->custom_prim_info.resize(num_points * num_bvh_steps);
     bvh->custom_primitive_bound.alloc(num_points * num_bvh_steps);
 
     for (uint j = 0; j < num_points; j++) {
