@@ -522,6 +522,28 @@ def repo_cache_store_refresh_from_prefs(repo_cache_store, include_disabled=False
     return repos
 
 
+def _preferences_pkg_id_sequence_filter_enabled(
+        repo_item,  # `RepoItem`
+        pkg_id_sequence,  # `List[str]`
+):  # `-> List[str]`
+    import addon_utils
+    result = []
+
+    module_base_elem = (_ext_base_pkg_idname, repo_item.module)
+
+    for pkg_id in pkg_id_sequence:
+        addon_module_elem = (*module_base_elem, pkg_id)
+        addon_module_name = ".".join(addon_module_elem)
+        loaded_default, loaded_state = addon_utils.check(addon_module_name)
+
+        if not (loaded_default or loaded_state):
+            continue
+
+        result.append(pkg_id)
+
+    return result
+
+
 def _preferences_ensure_disabled(
         *,
         repo_item,  # `RepoItem`
@@ -984,6 +1006,20 @@ def _extensions_repo_refresh_on_change(repo_cache_store, *, extensions_enabled, 
 
     if stats_calc:
         repo_stats_calc()
+
+
+def _extension_repo_directory_validate_module(repo_directory):
+    # Call after any action which may have created the repository directory for the first time.
+    # This is needed in case an import was attempted and failed.
+    # Afterwards, the user can perform an action which creates the directory.
+    # If the cache is not cleared, enabling the add-on will fail, see: #124457.
+    from sys import path_importer_cache
+    # If the directory has been cached as missing, remove the cache.
+    if path_importer_cache.get(repo_directory, ...) is None:
+        # While highly likely the directory exists, it's possible it failed to be created
+        # (maybe there are no permissions?), if that's the case keep the cache.
+        if os.path.exists(repo_directory):
+            del path_importer_cache[repo_directory]
 
 
 # -----------------------------------------------------------------------------
@@ -1521,6 +1557,7 @@ class EXTENSIONS_OT_repo_refresh_all(Operator):
         self.report({'WARNING'}, "{:s}: {:s}".format(repo_name, str(ex)))
 
     def execute(self, _context):
+        import importlib
         import addon_utils
 
         repos_all = extension_repos_read()
@@ -1541,6 +1578,15 @@ class EXTENSIONS_OT_repo_refresh_all(Operator):
                 # pylint: disable-next=cell-var-from-loop
                 error_fn=lambda ex: self._exceptions_as_report(repo_item.name, ex),
             )
+
+        # Ensure module cache is removed, especially module cache that has marked a module as missing.
+        # This is necessary for extension repositories that:
+        # - Did not exist on startup.
+        # - An extension attempted to load (marking the module as missing).
+        # - The user then manually creates the directory and installs extensions.
+        # In this case any add-on will fail to enable as the cache stores the missing state.
+        # For a closely related issue see: #124457.
+        importlib.invalidate_caches()
 
         # In-line `bpy.ops.preferences.addon_refresh`.
         addon_utils.modules_refresh()
@@ -1801,6 +1847,9 @@ class EXTENSIONS_OT_package_upgrade_all(Operator, _ExtCmdMixIn):
                 if item_local is None:
                     # Not installed.
                     continue
+                if item_remote.block:
+                    # Blocked, don't touch.
+                    continue
 
                 if item_remote.version != item_local.version:
                     packages_to_upgrade[repo_index].append(pkg_id)
@@ -1995,6 +2044,7 @@ class EXTENSIONS_OT_package_install_marked(Operator, _ExtCmdMixIn):
                 directory=directory,
                 error_fn=self.error_fn_from_exception,
             )
+            _extension_repo_directory_validate_module(directory)
 
         extensions_enabled = None
         if self.enable_on_install:
@@ -2299,24 +2349,17 @@ class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
         # pylint: disable-next=attribute-defined-outside-init
         self.pkg_id_sequence = pkg_id_sequence
 
-        # Detect upgrade.
+        # Detect upgrade of enabled add-ons.
         if pkg_id_sequence:
-            repo_cache_store = repo_cache_store_ensure()
-            pkg_manifest_local = repo_cache_store.refresh_local_from_directory(
-                directory=self.repo_directory,
-                error_fn=self.error_fn_from_exception,
-            )
-            if pkg_manifest_local is not None:
-                pkg_id_sequence_upgrade = [pkg_id for pkg_id in pkg_id_sequence if pkg_id in pkg_manifest_local]
-                if pkg_id_sequence_upgrade:
-                    result = _preferences_ensure_disabled(
-                        repo_item=repo_item,
-                        pkg_id_sequence=pkg_id_sequence_upgrade,
-                        default_set=False,
-                        error_fn=lambda ex: self.report({'ERROR'}, str(ex)),
-                    )
-                    self._addon_restore.append((repo_item, pkg_id_sequence_upgrade, result))
-            del repo_cache_store, pkg_manifest_local
+            if pkg_id_sequence_upgrade := _preferences_pkg_id_sequence_filter_enabled(repo_item, pkg_id_sequence):
+                result = _preferences_ensure_disabled(
+                    repo_item=repo_item,
+                    pkg_id_sequence=pkg_id_sequence_upgrade,
+                    default_set=False,
+                    error_fn=lambda ex: self.report({'ERROR'}, str(ex)),
+                )
+                self._addon_restore.append((repo_item, pkg_id_sequence_upgrade, result))
+            del pkg_id_sequence_upgrade
 
         # Lock repositories.
         # pylint: disable-next=attribute-defined-outside-init
@@ -2352,6 +2395,7 @@ class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
             error_fn=self.error_fn_from_exception,
             force=True,
         )
+        _extension_repo_directory_validate_module(self.repo_directory)
 
         # Unlock repositories.
         lock_result_any_failed_with_report(self, self.repo_lock.release(), report_type='WARNING')
@@ -2682,25 +2726,16 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
 
         prefs = bpy.context.preferences
 
-        # Detect upgrade.
-        repo_cache_store = repo_cache_store_ensure()
-        pkg_manifest_local = repo_cache_store.refresh_local_from_directory(
-            directory=self.repo_directory,
-            error_fn=self.error_fn_from_exception,
-        )
-        is_installed = pkg_manifest_local is not None and (pkg_id in pkg_manifest_local)
-        del repo_cache_store, pkg_manifest_local
-
-        if is_installed:
-            pkg_id_sequence = (pkg_id,)
+        if pkg_id_sequence_upgrade := _preferences_pkg_id_sequence_filter_enabled(repo_item, [pkg_id]):
             result = _preferences_ensure_disabled(
                 repo_item=repo_item,
-                pkg_id_sequence=pkg_id_sequence,
+                pkg_id_sequence=pkg_id_sequence_upgrade,
                 default_set=False,
                 error_fn=lambda ex: self.report({'ERROR'}, str(ex)),
             )
-            self._addon_restore.append((repo_item, pkg_id_sequence, result))
-            del pkg_id_sequence
+            self._addon_restore.append((repo_item, pkg_id_sequence_upgrade, result))
+            del result
+        del pkg_id_sequence_upgrade
 
         # Lock repositories.
         # pylint: disable-next=attribute-defined-outside-init
@@ -2743,6 +2778,7 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
             directory=self.repo_directory,
             error_fn=self.error_fn_from_exception,
         )
+        _extension_repo_directory_validate_module(self.repo_directory)
 
         extensions_enabled = None
         if self.enable_on_install:
@@ -3013,9 +3049,9 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
                             "Repository found:",
                             "\"{:s}\"".format(repo_from_url_name),
                             lambda layout: layout.separator(),
-                            "The extension dropped may be incompatible.",
-                            "Check for an extension compatible with:",
-                            "Blender v{:s} on \"{:s}\".".format(
+                            "The extension dropped was not found in the remote repository.",
+                            "Check this is part of the repository and compatible with:",
+                            "Blender version {:s} on \"{:s}\".".format(
                                 ".".join(str(v) for v in bpy.app.version), platform_from_this_system(),
                             )
                         ]
@@ -3044,6 +3080,23 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
             )
             return False
 
+        if item_remote.block:
+            self._draw_override = (
+                self._draw_override_errors,
+                {
+                    "errors": [
+                        (
+                            "Repository \"{:s}\" has blocked \"{:s}\"\n"
+                            "for the following reason:"
+                        ).format(repo_name, pkg_id),
+                        "  " + item_remote.block.reason,
+                        "If you wish to install the extensions anyway,\n"
+                        "manually download and install the extension from disk."
+                    ]
+                }
+            )
+            return False
+
         self._drop_variables = repo_index, repo_name, pkg_id, item_remote
 
         self.repo_index = repo_index
@@ -3063,7 +3116,15 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
         icon = 'ERROR'
         for error in errors:
             if isinstance(error, str):
-                layout.label(text=error, translate=False, icon=icon)
+                # Group text split by newlines more closely.
+                # Without this, lines have too much vertical space.
+                if "\n" in error:
+                    layout_aligned = layout.column(align=True)
+                    for error in error.split("\n"):
+                        layout_aligned.label(text=error, translate=False, icon=icon)
+                        icon = 'BLANK1'
+                else:
+                    layout.label(text=error, translate=False, icon=icon)
             else:
                 error(layout)
             icon = 'BLANK1'
