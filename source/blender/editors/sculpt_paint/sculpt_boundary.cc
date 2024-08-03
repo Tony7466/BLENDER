@@ -1247,8 +1247,7 @@ static void calc_slide_mesh(const Sculpt &sd,
 
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(object);
 
-  gather_data_mesh(vert_factors, verts, tls.factors);
-  const MutableSpan<float> factors = tls.factors;
+  const MutableSpan<float> factors = gather_data_mesh(vert_factors, verts, tls.factors);
 
   calc_mask_factor(mesh, verts, factors);
 
@@ -1256,8 +1255,8 @@ static void calc_slide_mesh(const Sculpt &sd,
     auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
   }
 
-  gather_data_mesh(vert_propagation_steps, verts, tls.propagation_steps);
-  const Span<int> propagation_steps = tls.propagation_steps;
+  const Span<int> propagation_steps = gather_data_mesh(
+      vert_propagation_steps, verts, tls.propagation_steps);
 
   filter_uninitialized_verts(propagation_steps, factors);
   filter_verts_outside_symmetry_area(orig_data.positions, symmetry_pivot, symm, factors);
@@ -1267,8 +1266,8 @@ static void calc_slide_mesh(const Sculpt &sd,
   tls.new_positions.resize(verts.size());
   const MutableSpan<float3> new_positions = tls.new_positions;
 
-  gather_data_mesh(vert_slide_directions, verts, tls.slide_directions);
-  const Span<float3> slide_directions = tls.slide_directions;
+  const Span<float3> slide_directions = gather_data_mesh(
+      vert_slide_directions, verts, tls.slide_directions);
 
   calc_slide_position(orig_data.positions, slide_directions, factors, new_positions);
 
@@ -1365,8 +1364,7 @@ static void calc_inflate_mesh(const Sculpt &sd,
 
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(object);
 
-  gather_data_mesh(vert_factors, verts, tls.factors);
-  const MutableSpan<float> factors = tls.factors;
+  const MutableSpan<float> factors = gather_data_mesh(vert_factors, verts, tls.factors);
 
   calc_mask_factor(mesh, verts, factors);
 
@@ -1374,8 +1372,8 @@ static void calc_inflate_mesh(const Sculpt &sd,
     auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
   }
 
-  gather_data_mesh(vert_propagation_steps, verts, tls.propagation_steps);
-  const Span<int> propagation_steps = tls.propagation_steps;
+  const Span<int> propagation_steps = gather_data_mesh(
+      vert_propagation_steps, verts, tls.propagation_steps);
 
   filter_uninitialized_verts(propagation_steps, factors);
   filter_verts_outside_symmetry_area(orig_data.positions, symmetry_pivot, symm, factors);
@@ -1479,8 +1477,7 @@ static void calc_grab_mesh(const Sculpt &sd,
 
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(object);
 
-  gather_data_mesh(vert_factors, verts, tls.factors);
-  const MutableSpan<float> factors = tls.factors;
+  const MutableSpan<float> factors = gather_data_mesh(vert_factors, verts, tls.factors);
 
   calc_mask_factor(mesh, verts, factors);
 
@@ -1488,8 +1485,8 @@ static void calc_grab_mesh(const Sculpt &sd,
     auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
   }
 
-  gather_data_mesh(vert_propagation_steps, verts, tls.propagation_steps);
-  const Span<int> propagation_steps = tls.propagation_steps;
+  const Span<int> propagation_steps = gather_data_mesh(
+      vert_propagation_steps, verts, tls.propagation_steps);
 
   filter_uninitialized_verts(propagation_steps, factors);
   filter_verts_outside_symmetry_area(orig_data.positions, symmetry_pivot, symm, factors);
@@ -1596,8 +1593,7 @@ static void calc_twist_mesh(const Sculpt &sd,
 
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(object);
 
-  gather_data_mesh(vert_factors, verts, tls.factors);
-  const MutableSpan<float> factors = tls.factors;
+  const MutableSpan<float> factors = gather_data_mesh(vert_factors, verts, tls.factors);
 
   calc_mask_factor(mesh, verts, factors);
 
@@ -1605,8 +1601,8 @@ static void calc_twist_mesh(const Sculpt &sd,
     auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
   }
 
-  gather_data_mesh(vert_propagation_steps, verts, tls.propagation_steps);
-  const Span<int> propagation_steps = tls.propagation_steps;
+  const Span<int> propagation_steps = gather_data_mesh(
+      vert_propagation_steps, verts, tls.propagation_steps);
 
   filter_uninitialized_verts(propagation_steps, factors);
   filter_verts_outside_symmetry_area(orig_data.positions, symmetry_pivot, symm, factors);
@@ -1749,13 +1745,12 @@ static void calc_smooth_mesh(const Sculpt &sd,
 
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(object);
 
-  gather_data_mesh(vert_factors, verts, tls.factors);
-  const MutableSpan<float> factors = tls.factors;
+  const MutableSpan<float> factors = gather_data_mesh(vert_factors, verts, tls.factors);
 
   calc_mask_factor(mesh, verts, factors);
 
-  gather_data_mesh(vert_propagation_steps, verts, tls.propagation_steps);
-  const Span<int> propagation_steps = tls.propagation_steps;
+  const Span<int> propagation_steps = gather_data_mesh(
+      vert_propagation_steps, verts, tls.propagation_steps);
 
   filter_uninitialized_verts(propagation_steps, factors);
   filter_verts_outside_symmetry_area(orig_data.positions, symmetry_pivot, symm, factors);
