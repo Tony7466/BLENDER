@@ -17,7 +17,7 @@ namespace blender::dna::parser {
 namespace ast {
 using namespace lex;
 
-/* Constant int defined value. */
+/** Constant int defined value. */
 struct DefineInt {
   std::string_view name;
   int32_t value{0};
@@ -47,7 +47,7 @@ struct Variable {
   static std::optional<Variable> parse(TokenIterator &token_iterator);
 };
 
-/* Function pointer declaration. */
+/** Function pointer declaration. */
 struct FunctionPtr {
   bool const_tag{false};
   std::string_view type;
@@ -57,7 +57,7 @@ struct FunctionPtr {
   static std::optional<FunctionPtr> parse(TokenIterator &token_iterator);
 };
 
-/* Pointer to array declaration. */
+/** Pointer to array declaration. */
 struct PointerToArray {
   std::string_view type;
   std::string_view name;
@@ -67,21 +67,21 @@ struct PointerToArray {
   static std::optional<PointerToArray> parse(TokenIterator &token_iterator);
 };
 
-/* Struct declaration.*/
+/** Struct declaration.*/
 struct Struct {
   std::string_view name;
-  /* Recursive struct keep inline buffer capacity to 0. */
+  /** Recursive struct keep inline buffer capacity to `0`. */
   Vector<std::variant<Variable, FunctionPtr, PointerToArray, Struct>, 0> items;
-  /* Name set if struct is declared as member variable. */
+  /** Name set if struct is declared as member variable. */
   std::string_view member_name;
 
   static std::optional<Struct> parse(TokenIterator &token_iterator);
   bool operator==(const Struct &other) const;
 };
 
-/* Enum declaration. */
+/** Enum declaration. */
 struct Enum {
-  /* Enum name, unset for unnamed enums. */
+  /** Enum name, unset for unnamed enums. */
   std::optional<std::string_view> name;
   /** Fixed type specification. */
   std::optional<std::string_view> type;

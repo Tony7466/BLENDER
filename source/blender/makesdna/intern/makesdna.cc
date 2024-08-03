@@ -612,9 +612,9 @@ struct StrucMemberRegister {
   short *sp{nullptr};
   const char *filepath{nullptr};
 
-  std::optional<int> _add_type(std::string_view type)
+  std::optional<int> add_member_type(std::string_view type)
   {
-    /** TODO: if type is enum, replace by it fixed size.  */
+    /* TODO: Check if type is enum, if so replace it to its fixed size. */
     const std::string type_str = fmt::format("{}", type);
     if (ELEM(type, "long", "ulong")) {
       fprintf(stderr,
@@ -632,9 +632,9 @@ struct StrucMemberRegister {
     return type_result;
   }
 
-  bool _add_name(int type, const std::string &name)
+  bool add_member_name(int type, const std::string &name)
   {
-    const int name_result = add_name(version_elem_static_from_alias(strct, name.c_str()));
+    const int name_result = add_member(version_member_static_from_alias(strct, name.c_str()));
     if (name_result == -1) {
       fprintf(stderr,
               "File '%s' contains struct with name that can't be added \"%s\"\n",
@@ -651,33 +651,34 @@ struct StrucMemberRegister {
 
   bool operator()(FunctionPtr &fn_ptr)
   {
-    std::optional<int> type = _add_type(fn_ptr.type);
+    std::optional<int> type = add_member_type(fn_ptr.type);
     if (!type.has_value()) {
       return false;
     }
     const std::string name = fmt::format("(*{})()", fn_ptr.name);
-    return _add_name(type.value(), name);
+    return add_member_name(type.value(), name);
   }
 
   bool operator()(PointerToArray &array_ptr)
   {
-    std::optional<int> type = _add_type(array_ptr.type);
+    std::optional<int> type = add_member_type(array_ptr.type);
     if (!type.has_value()) {
       return false;
     }
     const std::string name = fmt::format("(*{})[{}]", array_ptr.name, array_ptr.size);
-    return _add_name(type.value(), name);
+    return add_member_name(type.value(), name);
   }
 
   bool operator()(Struct & /*struct*/)
   {
-    printf("Unexpedted child struct declaration.");
+    /* Unexpected child struct declaration. */
+    BLI_assert_unreachable();
     return false;
   }
 
   bool operator()(Variable &var)
   {
-    std::optional<int> type = _add_type(var.type);
+    std::optional<int> type = add_member_type(var.type);
     if (!type.has_value()) {
       return false;
     }
@@ -685,15 +686,15 @@ struct StrucMemberRegister {
       std::string name_str = fmt::format("{}{}", var_item.ptr.value_or(""), var_item.name);
       for (auto &size : var_item.size) {
         if (std::holds_alternative<std::string_view>(size)) {
-          /** TODO: Look to #defines to find name. */
-          // name_str += fmt::format("[{}]", std::get<std::string_view>(size));
+          /* TODO: Add support to looking through detected #defines to find const int values. */
+          BLI_assert_unreachable();
           return false;
         }
         else {
           name_str += fmt::format("[{}]", std::get<int32_t>(size));
         }
       }
-      if (!_add_name(type.value(), name_str)) {
+      if (!add_member_name(type.value(), name_str)) {
         return false;
       }
     }
@@ -703,7 +704,6 @@ struct StrucMemberRegister {
 
 static int convert_include(const char *filepath)
 {
-
   std::ifstream file(std::string{filepath});
   if (!file.is_open()) {
     fprintf(stderr, "Can't read file %s\n", filepath);
@@ -738,7 +738,7 @@ static int convert_include(const char *filepath)
     }
     short *structpoin = add_struct(strct);
     StrucMemberRegister member_register{strct, structpoin, structpoin + 2, filepath};
-    /** Register struct members. */
+    /* Register struct members. */
     for (auto &item : struct_def.items) {
       if (!std::visit(member_register, item)) {
         return 1;

@@ -5,19 +5,20 @@
 #include "dna_parser.hh"
 #include <fmt/format.h>
 
+// #define DEBUG_PRINT_DNA_PARSER
+
 #ifdef DEBUG_PRINT_DNA_PARSER
 namespace blender::dna::parser {
 
-void printf_struct(ast::Struct &val, size_t padding);
+void printf_struct(const ast::Struct &val, size_t padding);
 
 struct StructMemberPrinter {
   size_t padding;
-  void operator()(ast::Variable &var) const
+
+  void operator()(const ast::Variable &var) const
   {
-    if (var.const_tag) {
-      printf("const ");
-    }
-    printf("%s", fmt::format("{} ", var.type).c_str());
+    const std::string const_tag = var.const_tag ? "const " : "";
+    fmt::print("{}{} ", const_tag, var.type);
 
     bool first = true;
     for (auto &variable_item : var.items) {
@@ -25,30 +26,30 @@ struct StructMemberPrinter {
         printf(",");
       }
       first = false;
-      printf("%s",
-             fmt::format("{}{}", variable_item.ptr.value_or(""), variable_item.name).c_str());
+      fmt::print("{}{}", variable_item.ptr.value_or(""), variable_item.name);
       for (auto &size : variable_item.size) {
         if (std::holds_alternative<std::string_view>(size)) {
-          printf("%s", fmt::format("[{}]", std::get<std::string_view>(size)).c_str());
+          fmt::print("[{}]", std::get<std::string_view>(size));
         }
         else {
-          printf("%s", fmt::format("[{}]", std::get<int32_t>(size)).c_str());
+          fmt::print("[{}]", std::get<int32_t>(size));
         }
       }
     }
   }
-  void operator()(ast::FunctionPtr &fn) const
+
+  void operator()(const ast::FunctionPtr &fn) const
   {
-    if (fn.const_tag) {
-      printf("%s", "const ");
-    }
-    printf("%s", fmt::format("{} (*{})(...)", fn.type, fn.name).c_str());
+    const std::string const_tag = fn.const_tag ? "const " : "";
+    fmt::print("{}{} (*{})(...)", const_tag, fn.type, fn.name);
   }
-  void operator()(ast::PointerToArray &ptr) const
+
+  void operator()(const ast::PointerToArray &ptr) const
   {
-    printf("%s", fmt::format("{} (*{})[{}]", ptr.type, ptr.name, ptr.size).c_str());
+    fmt::print("{} (*{})[{}]", ptr.type, ptr.name, ptr.size);
   }
-  void operator()(ast::Struct &val) const
+
+  void operator()(const ast::Struct &val) const
   {
     printf_struct(val, padding);
   }
@@ -56,48 +57,51 @@ struct StructMemberPrinter {
 
 struct ParserDebugPrinter {
   size_t padding;
-  void operator()(ast::DefineInt &val) const
+
+  void operator()(const ast::DefineInt &val) const
   {
-    printf("%s\n", fmt::format("#define {} {}", val.name, val.value).c_str());
+    fmt::print("#define {} {}\n", val.name, val.value);
   }
-  void operator()(ast::Enum &val) const
+
+  void operator()(const ast::Enum &val) const
   {
-    printf("%s", fmt::format("enum {}", val.name.value_or("unnamed")).c_str());
+    fmt::print("enum {}", val.name.value_or("unnamed"));
     if (val.type) {
-      printf("%s", fmt::format(": {}", val.type.value()).c_str());
+      fmt::print(": {}", val.type.value());
     }
     printf(" {...};\n");
   }
-  void operator()(ast::Struct &val) const
+
+  void operator()(const ast::Struct &val) const
   {
     printf_struct(val, padding);
     printf(";\n");
   }
-  void operator()(ast::FunctionPtr &fn) const
+
+  void operator()(const ast::FunctionPtr &fn) const
   {
     StructMemberPrinter{padding + 1}.operator()(fn);
     printf("\n");
   }
-  void operator()(ast::Variable &var) const
+
+  void operator()(const ast::Variable &var) const
   {
     StructMemberPrinter{padding + 1}.operator()(var);
     printf("\n");
   }
 };
 
-void printf_struct(ast::Struct &val, size_t padding)
+void printf_struct(const ast::Struct &val, size_t padding)
 {
-  printf("%s\n", fmt::format("struct {} {{", val.name).c_str());
+  const auto print_padding = [](size_t padding) { fmt::print("{: >{}}", "", padding * 4); };
+
+  fmt::print("struct {} {{\n", val.name);
   for (auto &item : val.items) {
-    for (size_t x = 0; x < padding + 1; x++) {
-      printf("    ");
-    }
+    print_padding(padding + 1);
     std::visit(StructMemberPrinter{padding + 1}, item);
     printf(";\n");
   }
-  for (size_t x = 0; x < padding; x++) {
-    printf("    ");
-  }
+  print_padding(padding);
   printf("}");
 };
 
@@ -109,28 +113,26 @@ namespace blender::dna::parser::ast {
 /**
  * Parser that matches a sequence of elements to parse, fails if any `Args` in `Args...` fails to
  * parse.
- * Given the following example:`Sequence<HashSymbol,PragmaKeyword,OnceKeyword>` parses when the
+ * The sequence: `Sequence<HashSymbol, PragmaKeyword, OnceKeyword>` parses when the
  * text contains `#pragma once`.
  */
 template<class... Args> struct Sequence : public std::tuple<Args...> {
 
  private:
-  template<std::size_t I, typename Type>
-  static inline bool parse_type(TokenIterator &token_iterator, Sequence &sequence)
+  template<std::size_t I> inline bool parse_type(TokenIterator &token_iterator)
   {
+    using Type = std::tuple_element_t<I, std::tuple<Args...>>;
     std::optional<Type> val = Type::parse(token_iterator);
     if (val.has_value()) {
-      std::get<I>(sequence) = std::move(val.value());
+      std::get<I>(*this) = std::move(val.value());
     }
     return val.has_value();
   };
 
   template<std::size_t... I>
-  static inline bool parse_impl(std::index_sequence<I...> /*indices*/,
-                                TokenIterator &token_iterator,
-                                Sequence &sequence)
+  inline bool parse_impl(std::index_sequence<I...> /*indices*/, TokenIterator &token_iterator)
   {
-    return (parse_type<I, Args>(token_iterator, sequence) && ...);
+    return (parse_type<I>(token_iterator) && ...);
   };
 
  public:
@@ -138,8 +140,8 @@ template<class... Args> struct Sequence : public std::tuple<Args...> {
   {
     token_iterator.push_waypoint();
     Sequence sequence;
-    const bool success = parse_impl(
-        std::make_index_sequence<sizeof...(Args)>{}, token_iterator, sequence);
+    const bool success = sequence.parse_impl(std::make_index_sequence<sizeof...(Args)>{},
+                                             token_iterator);
     token_iterator.end_waypoint(success);
     if (success) {
       return sequence;
@@ -150,8 +152,8 @@ template<class... Args> struct Sequence : public std::tuple<Args...> {
 
 /**
  * Parser that don't fails if `Type` can't be parsed.
- * Parsing the sequence `Sequence<Optional<ConstKeyword>,IntKeyword, Identifier,SemicolonSymbol>`
- * success either if text is `const int num;` or `int num;`
+ * The sequence `Sequence<Optional<ConstKeyword>, IntKeyword, Identifier, SemicolonSymbol>` success
+ * either if text is `const int num;` or `int num;`
  */
 template<typename Type> struct Optional : public std::optional<Type> {
   static std::optional<Optional> parse(TokenIterator &token_iterator)
@@ -165,18 +167,17 @@ template<typename Type> struct Optional : public std::optional<Type> {
 
 /**
  * Parser that tries to match any `Arg` in `Args...`
- * Parsing the sequence `Sequence<Variant<IntKeyword,FloatKeyword>,Identifier,SemicolonSymbol>`
+ * The sequence `Sequence<Variant<IntKeyword, FloatKeyword>, Identifier, SemicolonSymbol>`
  * success either if text is `int num;` or `float num;`
  */
 template<class... Args> struct Variant : public std::variant<Args...> {
  private:
-  template<typename Type>
-  static inline bool parse_type(TokenIterator &token_iterator, Variant &variant)
+  template<typename Type> inline bool parse_type(TokenIterator &token_iterator)
   {
     token_iterator.push_waypoint();
     std::optional<Type> val = Type::parse(token_iterator);
     if (val.has_value()) {
-      variant.template emplace<Type>(std::move(val.value()));
+      (*this).template emplace<Type>(std::move(val.value()));
     }
     token_iterator.end_waypoint(val.has_value());
     return val.has_value();
@@ -185,9 +186,9 @@ template<class... Args> struct Variant : public std::variant<Args...> {
  public:
   static std::optional<Variant> parse(TokenIterator &token_iterator)
   {
-    Variant tmp;
-    if ((parse_type<Args>(token_iterator, tmp) || ...)) {
-      return tmp;
+    Variant variant;
+    if ((variant.parse_type<Args>(token_iterator) || ...)) {
+      return variant;
     }
     return std::nullopt;
   }
@@ -702,7 +703,7 @@ bool Struct::operator==(const Struct &other) const
   return name == other.name && items == other.items;
 }
 
-/** Parses non used definitions that DNA. */
+/** Parses skipped declarations by makesdna. */
 struct Skip {
   static std::optional<Skip> parse(TokenIterator &token_iterator)
   {
@@ -719,7 +720,7 @@ struct Skip {
     if (UnusedDeclarations::parse(token_iterator).has_value()) {
       return Skip{};
     }
-    /* Forward declare. */
+    /* Forward declarations. */
     if (Sequence<StructKeyword, Identifier>::parse(token_iterator).has_value()) {
       for (; Sequence<CommaSymbol, Identifier>::parse(token_iterator).has_value();) {
       }
@@ -774,11 +775,12 @@ bool Enum::operator==(const Enum &other) const
 }  // namespace blender::dna::parser::ast
 
 namespace blender::dna::parser {
+
 static void print_unhandled_token_error(std::string_view filepath,
                                         std::string_view text,
                                         lex::TokenVariant *what)
 {
-  auto visit_fn = [text, filepath](auto &&token) {
+  const auto visit_fn = [text, filepath](auto &&token) {
     std::string_view::iterator itr = text.begin();
     size_t line = 1;
     while (itr < token.where.begin()) {
@@ -787,11 +789,11 @@ static void print_unhandled_token_error(std::string_view filepath,
       }
       itr++;
     }
-    printf("%s\n",
-           fmt::format("{}{} Unhandled token: \"{}\"", filepath, line, token.where).c_str());
+    fmt::print("{}{} Unhandled token: \"{}\"\n", filepath, line, token.where);
   };
   std::visit(visit_fn, *what);
 }
+
 bool parse_include(std::string_view filepath,
                    std::string_view text,
                    lex::TokenIterator &token_iterator,
@@ -828,7 +830,7 @@ bool parse_include(std::string_view filepath,
     }
     else if (std::holds_alternative<Enum>(val.value())) {
       Enum &enum_def = std::get<Enum>(val.value());
-      /** Keep only named enums with fixed type. */
+      /* Keep only named enums with fixed type. */
       if (!enum_def.name.has_value() || !enum_def.type.has_value()) {
         continue;
       }
@@ -838,14 +840,12 @@ bool parse_include(std::string_view filepath,
       dna_deprecated_allow_count++;
     }
     else if (std::holds_alternative<EndIfSeq>(val.value())) {
-      dna_deprecated_allow_count++;
-      if (dna_deprecated_allow_count < 0) {
-        return false;
-      }
+      dna_deprecated_allow_count--;
+      BLI_assert(dna_deprecated_allow_count >= 0);
     }
   }
 #ifdef DEBUG_PRINT_DNA_PARSER
-  static constexpr std::string_view debug_file{""};
+  constexpr std::string_view debug_file{"DNA_action_types.h"};
   if (!debug_file.empty() && filepath.find(debug_file) != filepath.npos) {
     for (auto &val : dest) {
       std::visit(ParserDebugPrinter{}, val);

@@ -112,14 +112,14 @@ struct TokenIterator {
   TokenVariant *last_unmatched{nullptr};
 
  private:
-  /* Token stream. */
+  /** Token stream. */
   Vector<TokenVariant> token_stream_;
-  /* Return points to use if the parser fails when parsing tokens. */
+  /** Return points to use for roll back when parser fails to parse tokens. */
   Vector<TokenVariant *> waypoints_;
-  /* Pointer to next token to use. */
+  /** Pointer to next token to iterate. */
   TokenVariant *next_{nullptr};
 
-  /* Print line where a unkown token was found. */
+  /** Print the line where an unkown token was found. */
   void print_unkown_token(std::string_view filepath,
                           std::string_view::iterator start,
                           std::string_view::iterator where);
@@ -127,33 +127,36 @@ struct TokenIterator {
   void skip_break_lines();
 
  public:
-  /* Iterates over the input text looking for tokens. */
+  /** Iterates over the input text looking for tokens. */
   void process_text(std::string_view filepath, std::string_view text);
 
-  /* Add a return point in case the token parser fails create an item. */
+  /**
+   * Add the current token as waypoint, in case the token parser needs the iterator to roll
+   * back.
+   */
   void push_waypoint();
 
   /**
-   * Removes the last return point, if `success==false` the iterator steps back to the return
-   * point.
+   * Removes the last waypoint, if `success==false` the iterator rolls back to this last
+   * waypoint.
    */
   void end_waypoint(bool success);
 
-  /* Return the pointer to the next token, and advances the iterator. */
+  /** Return the pointer to the next token, and advances the iterator. */
   TokenVariant *next_variant();
 
-  /* Checks if the token iterator has reach the last token. */
+  /** Checks if the token iterator has reach the last token. */
   bool has_finish();
 
-  /* Appends a token. */
+  /** Appends a token. */
   template<class TokenType> void append(TokenType &&token)
   {
-    token_stream_.append(token);
+    token_stream_.append(std::move(token));
   }
 
   /**
    * Return the next token if it type matches to `Type`.
-   * Break lines are skipped for not break lines requested tokens.
+   * Break lines are skipped for non break line requested tokens.
    */
   template<class Type> Type *next()
   {
@@ -171,10 +174,10 @@ struct TokenIterator {
     return nullptr;
   }
 
-  /* Return the next token if it matches to the requested keyword type. */
+  /** Return the next token if it matches to the requested keyword type. */
   KeywordToken *next_keyword(KeywordType type);
 
-  /* Return the next token if it matches to the requested symbol type. */
+  /** Return the next token if it matches to the requested symbol type. */
   SymbolToken *next_symbol(SymbolType type);
 };
 

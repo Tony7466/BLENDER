@@ -11,7 +11,7 @@ static std::string_view string_view_from_range(const std::string_view::iterator 
   return std::string_view{&*first, size_t(last - first)};
 }
 
-/* Match any white space except break lines. */
+/** Match any whitespace except break lines. */
 static void eval_space(std::string_view::iterator &itr,
                        std::string_view::iterator last,
                        TokenIterator & /*cont*/)
@@ -21,7 +21,7 @@ static void eval_space(std::string_view::iterator &itr,
   }
 }
 
-/* Match break lines, added as tokens as they are needed for `#define` blocks. */
+/** Match break lines. */
 static void eval_break_line(std::string_view::iterator &itr,
                             std::string_view::iterator /*last*/,
                             TokenIterator &cont)
@@ -33,7 +33,7 @@ static void eval_break_line(std::string_view::iterator &itr,
   itr++;
 }
 
-/* Match any identifier substring, also matches C++ keywords. */
+/** Match identifiers and `C++` keywords. */
 static void eval_identifier(std::string_view::iterator &itr,
                             std::string_view::iterator last,
                             TokenIterator &cont)
@@ -105,7 +105,7 @@ static void eval_identifier(std::string_view::iterator &itr,
   cont.append(IdentifierToken{str});
 }
 
-/* Match a line comment until break line. */
+/** Match single-line comment. */
 static void eval_line_comment(std::string_view::iterator &itr,
                               std::string_view::iterator last,
                               TokenIterator & /*cont*/)
@@ -138,7 +138,7 @@ static void eval_int_literal(std::string_view::iterator &itr,
   cont.append(IntLiteralToken{string_view_from_range(start, itr), val});
 }
 
-/* Match a c-style comment. */
+/** Match a multi-line comment. */
 static void eval_multiline_comment(std::string_view::iterator &itr,
                                    std::string_view::iterator last,
                                    TokenIterator & /*cont*/)
@@ -160,7 +160,7 @@ static void eval_multiline_comment(std::string_view::iterator &itr,
   }
 }
 
-/* Match a symbol. */
+/** Match a symbol. */
 static void eval_symbol(std::string_view::iterator &itr,
                         std::string_view::iterator /*last*/,
                         TokenIterator &cont)
@@ -189,7 +189,7 @@ static void eval_symbol(std::string_view::iterator &itr,
   }
 }
 
-/* Match a string or char literal. */
+/** Match a string or char literal. */
 static void eval_string_literal(std::string_view::iterator &itr,
                                 std::string_view::iterator last,
                                 TokenIterator &cont)
@@ -223,7 +223,7 @@ void TokenIterator::print_unkown_token(std::string_view filepath,
     }
     start++;
   }
-  printf("%s\n", fmt::format("{}({}) Unknown token: ({})", filepath, line, where[0]).c_str());
+  fmt::print("{}({}) Unknown token: ({})\n", filepath, line, where[0]);
 }
 
 void TokenIterator::skip_break_lines()
@@ -256,7 +256,7 @@ void TokenIterator::process_text(std::string_view filepath, std::string_view tex
     {
       continue;
     }
-    /* Unkown token found. */
+    /* Unknown token found. */
     if (current == itr) {
       print_unkown_token(filepath, text.begin(), itr);
       token_stream_.clear();
@@ -314,4 +314,5 @@ SymbolToken *TokenIterator::next_symbol(SymbolType type)
   next_ = tmp;
   return nullptr;
 }
+
 }  // namespace blender::dna::lex
