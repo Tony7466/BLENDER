@@ -407,6 +407,13 @@ ccl_device_forceinline void kernel_embree_filter_occluded_shadow_all_func_impl(
       }
     }
 
+    /* For the first time the index exceeds the limits, `max_t` was not yet computed, so additional
+     * check is needed. */
+    if (isect_index == max_record_hits && current_isect.t >= max_t) {
+      ctx->max_t = max_t;
+      return;
+    }
+
     isect_index = max_recorded_hit;
 
     /* After replacing `max_t` with `current_isect.t`, the new largest t would be either
