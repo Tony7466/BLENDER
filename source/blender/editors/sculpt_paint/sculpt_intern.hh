@@ -347,6 +347,12 @@ struct StrokeCache {
   /* Position of the mouse event in screen space, not modified by the stroke type. */
   float2 mouse_event;
 
+  /**
+   * Used by the color attribute paint brush tool to store the brush color during a stroke and
+   * composite it over the original color.
+   */
+  Array<float4> mix_colors;
+
   Array<float4> prev_colors;
   GArray<> prev_colors_vpaint;
 
@@ -814,8 +820,6 @@ const float *SCULPT_vertex_co_get(const SculptSession &ss, PBVHVertRef vertex);
 const blender::float3 SCULPT_vertex_normal_get(const SculptSession &ss, PBVHVertRef vertex);
 
 bool SCULPT_vertex_is_occluded(SculptSession &ss, PBVHVertRef vertex, bool original);
-
-const float *SCULPT_vertex_persistent_co_get(const SculptSession &ss, PBVHVertRef vertex);
 
 /**
  * Coordinates used for manipulating the base mesh when Grab Active Vertex is enabled.
@@ -1560,10 +1564,6 @@ struct SimulationData {
   int totnode;
   Map<const bke::pbvh::Node *, int> node_state_index;
   Array<NodeSimState> node_state;
-
-  VArraySpan<float> mask_mesh;
-  int mask_cd_offset_bmesh;
-  CCGKey grid_key;
 
   ~SimulationData();
 };
