@@ -1050,7 +1050,7 @@ struct LocalDataMesh {
   Vector<float> factors;
   Vector<int> propagation_steps;
 
-  /* TODO: std::variant?
+  /* TODO: std::variant? */
   /* Bend */
   Vector<float3> pivot_positions;
   Vector<float3> pivot_axes;
@@ -1073,7 +1073,7 @@ struct LocalDataGrids {
   Vector<float> factors;
   Vector<int> propagation_steps;
 
-  /* TODO: std::variant?
+  /* TODO: std::variant? */
   /* Bend */
   Vector<float3> pivot_positions;
   Vector<float3> pivot_axes;
@@ -1179,7 +1179,7 @@ static void calc_bend_mesh(const Sculpt &sd,
 
 static void calc_bend_grids(const Sculpt &sd,
                             Object &object,
-                            const SubdivCCG &subdiv_ccg,
+                            SubdivCCG &subdiv_ccg,
                             const Span<int> vert_propagation_steps,
                             const Span<float> vert_factors,
                             const Span<float3> vert_pivot_positions,
@@ -1233,17 +1233,18 @@ static void calc_bend_grids(const Sculpt &sd,
   const Span<float3> positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
   translations_from_new_positions(new_positions, positions, translations);
 
-  /*
   switch (eBrushDeformTarget(deform_target)) {
     case BRUSH_DEFORM_TARGET_GEOMETRY:
-      write_translations(sd, object, positions_eval, verts, translations, positions_orig);
+      clip_and_lock_translations(sd, ss, orig_data.positions, translations);
+      apply_translations(translations, grids, subdiv_ccg);
       break;
     case BRUSH_DEFORM_TARGET_CLOTH_SIM:
-      scatter_data_mesh(
-          new_positions.as_span(), verts, cache.cloth_sim->deformation_pos.as_mutable_span());
+      scatter_data_grids(subdiv_ccg,
+                         new_positions.as_span(),
+                         grids,
+                         cache.cloth_sim->deformation_pos.as_mutable_span());
       break;
   }
-  */
 }
 
 static void do_bend_brush(const Sculpt &sd,
@@ -1278,6 +1279,28 @@ static void do_bend_brush(const Sculpt &sd,
                          deform_target,
                          positions_orig);
           BKE_pbvh_node_mark_positions_update(nodes[i]);
+        }
+      });
+      break;
+    }
+    case bke::pbvh::Type::Grids: {
+      SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      threading::EnumerableThreadSpecific<LocalDataGrids> all_tls;
+      threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+        LocalDataGrids &tls = all_tls.local();
+        for (const int i : range) {
+          calc_bend_grids(sd,
+                          object,
+                          subdiv_ccg,
+                          boundary.edit_info.propagation_steps_num,
+                          boundary.edit_info.strength_factor,
+                          boundary.bend.pivot_positions,
+                          boundary.bend.pivot_rotation_axis,
+                          *nodes[i],
+                          tls,
+                          boundary.initial_vert_position,
+                          strength,
+                          deform_target);
         }
       });
       break;
