@@ -2217,6 +2217,8 @@ void ensure_valid_pivot(const Object &ob, Scene &scene);
 /* -------------------------------------------------------------------- */
 /** \name Topology island API
  * \{
+ * Each mesh island shell gets its own integer
+ * key; these are temporary and internally limited to 8 bits.
  */
 
 namespace blender::ed::sculpt_paint::islands {

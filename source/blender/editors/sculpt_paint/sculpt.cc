@@ -6258,7 +6258,6 @@ static void do_fake_neighbor_search_task(SculptSession &ss,
                                          bke::pbvh::Node *node,
                                          NearestVertexFakeNeighborData *nvtd)
 {
-  using namespace blender::ed::sculpt_paint;
   PBVHVertexIter vd;
   BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
     int vd_topology_id = islands::vert_id_get(ss, vd.index);
@@ -6483,6 +6482,7 @@ namespace blender::ed::sculpt_paint::islands {
 
 int vert_id_get(const SculptSession &ss, const int vert)
 {
+  BLI_assert(ss.topology_island_cache);
   const SculptTopologyIslandCache &cache = *ss.topology_island_cache;
   if (!cache.small_vert_island_ids.is_empty()) {
     return cache.small_vert_island_ids[vert];
@@ -6544,48 +6544,20 @@ static SculptTopologyIslandCache calc_topology_islands_mesh(const Mesh &mesh)
   return vert_disjoint_set_to_islands(disjoint_set, mesh.verts_num);
 }
 
-static SculptTopologyIslandCache calc_topology_islands_grids(SculptSession &ss)
+static SculptTopologyIslandCache calc_topology_islands_grids(const Object &object)
 {
-  SculptTopologyIslandCache cache;
-
-  int totvert = SCULPT_vertex_count_get(ss);
-  Set<PBVHVertRef> visit;
-  Vector<PBVHVertRef> stack;
-  uint8_t island_nr = 0;
-
-  cache.small_vert_island_ids.reinitialize(totvert);
-
-  for (int i = 0; i < totvert; i++) {
-    PBVHVertRef vertex = BKE_pbvh_index_to_vertex(*ss.pbvh, i);
-
-    if (visit.contains(vertex)) {
-      continue;
+  const SculptSession &ss = *object.sculpt;
+  const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+  const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
+  const int verts_num = subdiv_ccg.grids.size() * key.grid_area;
+  AtomicDisjointSet disjoint_set(verts_num);
+  threading::parallel_for(subdiv_ccg.grids.index_range(), 512, [&](const IndexRange range) {
+    for (const int grid : range) {
     }
+  });
 
-    stack.clear();
-    stack.append(vertex);
-    visit.add(vertex);
-
-    while (stack.size()) {
-      PBVHVertRef vertex2 = stack.pop_last();
-      SculptVertexNeighborIter ni;
-
-      const int index = BKE_pbvh_vertex_to_index(*ss.pbvh, vertex2);
-
-      cache.small_vert_island_ids[index] = island_nr;
-
-      SCULPT_VERTEX_DUPLICATES_AND_NEIGHBORS_ITER_BEGIN (ss, vertex2, ni) {
-        if (visit.add(ni.vertex) && hide::vert_any_face_visible_get(ss, ni.vertex)) {
-          stack.append(ni.vertex);
-        }
-      }
-      SCULPT_VERTEX_NEIGHBORS_ITER_END(ni);
-    }
-
-    island_nr++;
-  }
-
-  return cache;
+  return vert_disjoint_set_to_islands(disjoint_set, verts_num);
 }
 
 static SculptTopologyIslandCache calc_topology_islands_bmesh(const Object &object)
@@ -6614,15 +6586,15 @@ static SculptTopologyIslandCache calc_topology_islands_bmesh(const Object &objec
   return vert_disjoint_set_to_islands(disjoint_set, bm.totvert);
 }
 
-static SculptTopologyIslandCache calculate_cache(Object &object)
+static SculptTopologyIslandCache calculate_cache(const Object &object)
 {
   SCOPED_TIMER_AVERAGED(__func__);
-  SculptSession &ss = *object.sculpt;
+  const SculptSession &ss = *object.sculpt;
   switch (ss.pbvh->type()) {
     case bke::pbvh::Type::Mesh:
       return calc_topology_islands_mesh(*static_cast<const Mesh *>(object.data));
     case bke::pbvh::Type::Grids:
-      return calc_topology_islands_grids(ss);
+      return calc_topology_islands_grids(object);
     case bke::pbvh::Type::BMesh:
       return calc_topology_islands_bmesh(object);
   }
