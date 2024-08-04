@@ -650,6 +650,25 @@ struct CurveBooleanExecutor {
     }
   }
 
+  /**
+   * This is a modified implementation of the Greiner-Hormann clipping algorithm.
+   *
+   * Greiner, Günther; Kai Hormann (1998). "Efficient clipping of arbitrary polygons". ACM
+   * Transactions on Graphics. 17 (2): 71-83.
+   *
+   * The Greiner-Hormann algorithm works in three phases:
+   *  1: Find all intersections and sort them.
+   *  2: Set the `direction` of all intersection point (the paper call it `entry_exit`)
+   *  3: Create all polygons by following the direction of each intersection point until in loops.
+   *
+   * Some changes where made to use c++ style objects and so that the intersection point stored
+   * separately from the rest of the points.
+   *
+   * The original algorithm created two copies of each intersection point, one in the curve `A`
+   * and the other in curve `B`. each would be sorted and have pointer to the other.
+   * Instead we store each intersection point in an arbitrarily ordered list and then have two
+   * lists of sorted indices that point to intersection point for curve `A` and `B`
+   */
   BooleanResult execute_boolean(const InputMode input_mode,
                                 Span<float2> curve_a,
                                 Span<float2> curve_b)
