@@ -570,6 +570,30 @@ struct CurveBooleanExecutor {
     }
   }
 
+  BooleanResult copy_data_to_result()
+  {
+    Array<Vertex> verts_out(verts.size());
+    array_utils::copy(verts.as_span(), verts_out.as_mutable_span());
+
+    Array<int> offsets(vertex_offsets.size());
+    array_utils::copy(vertex_offsets.as_span(), offsets.as_mutable_span());
+
+    Array<IntersectionPoint> intersections_data(intersections.size());
+    for (const int i : IndexRange(intersections.size())) {
+      const ExtendedIntersectionPoint &inter = intersections[i];
+      intersections_data[i] = {inter.point_a, inter.point_b, inter.alpha_a, inter.alpha_b};
+    }
+
+    BooleanResult result;
+
+    result.verts = verts_out;
+    result.offsets = offsets;
+    result.intersections_data = intersections_data;
+    result.valid_geometry = true;
+
+    return result;
+  }
+
   BooleanResult execute_boolean(const InputMode input_mode,
                                 Span<float2> curve_a,
                                 Span<float2> curve_b)
@@ -683,24 +707,7 @@ struct CurveBooleanExecutor {
 
     /* ---- ---- ---- Phase Five ---- ---- ---- */
 
-    Array<Vertex> verts_out(verts.size());
-    array_utils::copy(verts.as_span(), verts_out.as_mutable_span());
-
-    Array<int> offsets(vertex_offsets.size());
-    array_utils::copy(vertex_offsets.as_span(), offsets.as_mutable_span());
-
-    Array<IntersectionPoint> intersections_data(intersections.size());
-    for (const int i : IndexRange(intersections.size())) {
-      const ExtendedIntersectionPoint &inter = intersections[i];
-      intersections_data[i] = {inter.point_a, inter.point_b, inter.alpha_a, inter.alpha_b};
-    }
-
-    BooleanResult result;
-
-    result.verts = verts_out;
-    result.offsets = offsets;
-    result.intersections_data = intersections_data;
-    result.valid_geometry = true;
+    BooleanResult result = copy_data_to_result();
 
     /**
      *  Holes are only create in the union of the shapes
@@ -905,24 +912,7 @@ struct CurveBooleanExecutor {
 
     /* ---- ---- ---- Phase Five ---- ---- ---- */
 
-    Array<Vertex> verts_out(verts.size());
-    array_utils::copy(verts.as_span(), verts_out.as_mutable_span());
-
-    Array<int> offsets(vertex_offsets.size());
-    array_utils::copy(vertex_offsets.as_span(), offsets.as_mutable_span());
-
-    Array<IntersectionPoint> intersections_data(intersections.size());
-    for (const int i : IndexRange(intersections.size())) {
-      const ExtendedIntersectionPoint &inter = intersections[i];
-      intersections_data[i] = {inter.point_a, inter.point_b, inter.alpha_a, inter.alpha_b};
-    }
-
-    BooleanResult result;
-
-    result.verts = verts_out;
-    result.offsets = offsets;
-    result.intersections_data = intersections_data;
-    result.valid_geometry = true;
+    const BooleanResult &result = copy_data_to_result();
 
     return result;
   }
