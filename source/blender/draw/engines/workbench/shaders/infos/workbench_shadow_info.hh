@@ -53,11 +53,9 @@ GPU_SHADER_CREATE_INFO(workbench_shadow_visibility_compute_static_pass_type)
 /** \name Manifold Type
  * \{ */
 
-GPU_SHADER_CREATE_INFO(workbench_shadow_manifold)
-    .vertex_source("workbench_shadow_vert_no_geom.glsl");
+GPU_SHADER_CREATE_INFO(workbench_shadow_manifold).vertex_source("workbench_shadow_vert.glsl");
 
-GPU_SHADER_CREATE_INFO(workbench_shadow_no_manifold)
-    .vertex_source("workbench_shadow_vert_no_geom.glsl");
+GPU_SHADER_CREATE_INFO(workbench_shadow_no_manifold).vertex_source("workbench_shadow_vert.glsl");
 
 /** \} */
 
