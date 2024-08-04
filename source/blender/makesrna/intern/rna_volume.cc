@@ -12,7 +12,7 @@
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
 
-#include "rna_internal.h"
+#include "rna_internal.hh"
 
 #include "DNA_scene_types.h"
 #include "DNA_volume_types.h"
@@ -22,7 +22,7 @@
 #include "BLI_math_base.h"
 #include "BLI_string_utf8_symbols.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 const EnumPropertyItem rna_enum_volume_grid_data_type_items[] = {
     {VOLUME_GRID_BOOLEAN, "BOOLEAN", 0, "Boolean", "Boolean"},
@@ -59,14 +59,14 @@ struct DummyVolumeGridData;
 #  include "WM_api.hh"
 #  include "WM_types.hh"
 
-static char *rna_VolumeRender_path(const PointerRNA * /*ptr*/)
+static std::optional<std::string> rna_VolumeRender_path(const PointerRNA * /*ptr*/)
 {
-  return BLI_strdup("render");
+  return "render";
 }
 
-static char *rna_VolumeDisplay_path(const PointerRNA * /*ptr*/)
+static std::optional<std::string> rna_VolumeDisplay_path(const PointerRNA * /*ptr*/)
 {
-  return BLI_strdup("display");
+  return "display";
 }
 
 /* Updates */
@@ -81,7 +81,7 @@ static void rna_Volume_update_filepath(Main * /*bmain*/, Scene * /*scene*/, Poin
 {
   Volume *volume = (Volume *)ptr->owner_id;
   BKE_volume_unload(volume);
-  DEG_id_tag_update(&volume->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&volume->id, ID_RECALC_SYNC_TO_EVAL);
   WM_main_add_notifier(NC_GEOM | ND_DATA, volume);
 }
 
@@ -345,7 +345,7 @@ static void rna_def_volume_grids(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_property_ui_text(prop, "Is Loaded", "List of grids and metadata are loaded in memory");
 
   prop = RNA_def_property(srna, "frame", PROP_INT, PROP_NONE);
-  RNA_def_property_int_sdna(prop, nullptr, "runtime.frame");
+  RNA_def_property_int_sdna(prop, nullptr, "runtime->frame");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop,
                            "Frame",
@@ -362,7 +362,7 @@ static void rna_def_volume_grids(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_property_ui_text(prop,
                            "Frame File Path",
                            "Volume file used for loading the volume at the current frame. Empty "
-                           "if the volume has not be loaded or the frame only exists in memory");
+                           "if the volume has not be loaded or the frame only exists in memory.");
 
   /* API */
   FunctionRNA *func;
@@ -515,7 +515,7 @@ static void rna_def_volume_render(BlenderRNA *brna)
   RNA_def_property_ui_text(prop,
                            "Precision",
                            "Specify volume data precision. Lower values reduce memory consumption "
-                           "at the cost of detail");
+                           "at the cost of detail.");
   RNA_def_property_update(prop, 0, "rna_Volume_update_display");
 
   static const EnumPropertyItem space_items[] = {
@@ -546,7 +546,7 @@ static void rna_def_volume_render(BlenderRNA *brna)
                            "Step Size",
                            "Distance between volume samples. Lower values render more detail at "
                            "the cost of performance. If set to zero, the step size is "
-                           "automatically determined based on voxel size");
+                           "automatically determined based on voxel size.");
   RNA_def_property_update(prop, 0, "rna_Volume_update_display");
 
   prop = RNA_def_property(srna, "clipping", PROP_FLOAT, PROP_NONE);
@@ -696,7 +696,7 @@ static void rna_def_volume(BlenderRNA *brna)
 
   /* Scalar grids for velocity. */
   prop = RNA_def_property(srna, "velocity_x_grid", PROP_STRING, PROP_NONE);
-  RNA_def_property_string_sdna(prop, nullptr, "runtime.velocity_x_grid");
+  RNA_def_property_string_sdna(prop, nullptr, "runtime->velocity_x_grid");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop,
                            "Velocity X Grid",
@@ -704,7 +704,7 @@ static void rna_def_volume(BlenderRNA *brna)
                            "was split into multiple grids");
 
   prop = RNA_def_property(srna, "velocity_y_grid", PROP_STRING, PROP_NONE);
-  RNA_def_property_string_sdna(prop, nullptr, "runtime.velocity_y_grid");
+  RNA_def_property_string_sdna(prop, nullptr, "runtime->velocity_y_grid");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop,
                            "Velocity Y Grid",
@@ -712,7 +712,7 @@ static void rna_def_volume(BlenderRNA *brna)
                            "was split into multiple grids");
 
   prop = RNA_def_property(srna, "velocity_z_grid", PROP_STRING, PROP_NONE);
-  RNA_def_property_string_sdna(prop, nullptr, "runtime.velocity_z_grid");
+  RNA_def_property_string_sdna(prop, nullptr, "runtime->velocity_z_grid");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop,
                            "Velocity Z Grid",

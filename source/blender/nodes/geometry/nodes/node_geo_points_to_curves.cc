@@ -113,6 +113,9 @@ static Curves *curves_from_points(const PointCloud &points,
                                   const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
   const int domain_size = points.totpoint;
+  if (domain_size == 0) {
+    return nullptr;
+  }
 
   const bke::PointCloudFieldContext context(points);
   fn::FieldEvaluator evaluator(context, domain_size);
@@ -181,12 +184,12 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_POINTS_TO_CURVES, "Points to Curves", NODE_CLASS_GEOMETRY);
   ntype.geometry_node_execute = node_geo_exec;
   ntype.declare = node_declare;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 

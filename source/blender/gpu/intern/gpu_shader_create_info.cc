@@ -12,15 +12,17 @@
 #include "BLI_set.hh"
 #include "BLI_string_ref.hh"
 
-#include "GPU_capabilities.h"
-#include "GPU_context.h"
-#include "GPU_platform.h"
-#include "GPU_shader.h"
-#include "GPU_texture.h"
+#include "BKE_global.hh"
+
+#include "GPU_capabilities.hh"
+#include "GPU_context.hh"
+#include "GPU_platform.hh"
+#include "GPU_shader.hh"
+#include "GPU_texture.hh"
 
 #include "gpu_shader_create_info.hh"
 #include "gpu_shader_create_info_private.hh"
-#include "gpu_shader_dependency_private.h"
+#include "gpu_shader_dependency_private.hh"
 
 #undef GPU_SHADER_INTERFACE_INFO
 #undef GPU_SHADER_CREATE_INFO
@@ -122,6 +124,7 @@ void ShaderCreateInfo::finalize()
     vertex_out_interfaces_.extend_non_duplicates(info.vertex_out_interfaces_);
     geometry_out_interfaces_.extend_non_duplicates(info.geometry_out_interfaces_);
     subpass_inputs_.extend_non_duplicates(info.subpass_inputs_);
+    specialization_constants_.extend_non_duplicates(info.specialization_constants_);
 
     validate_vertex_attributes(&info);
 
@@ -130,7 +133,16 @@ void ShaderCreateInfo::finalize()
     defines_.extend_non_duplicates(info.defines_);
     batch_resources_.extend_non_duplicates(info.batch_resources_);
     pass_resources_.extend_non_duplicates(info.pass_resources_);
+    geometry_resources_.extend_non_duplicates(info.geometry_resources_);
     typedef_sources_.extend_non_duplicates(info.typedef_sources_);
+
+    /* API-specific parameters.
+     * We will only copy API-specific parameters if they are otherwise unassigned. */
+#ifdef WITH_METAL_BACKEND
+    if (mtl_max_threads_per_threadgroup_ == 0) {
+      mtl_max_threads_per_threadgroup_ = info.mtl_max_threads_per_threadgroup_;
+    }
+#endif
 
     if (info.early_fragment_test_) {
       early_fragment_test_ = true;
@@ -215,6 +227,9 @@ void ShaderCreateInfo::finalize()
     for (auto &res : pass_resources_) {
       set_resource_slot(res);
     }
+    for (auto &res : geometry_resources_) {
+      set_resource_slot(res);
+    }
   }
 }
 
@@ -261,7 +276,16 @@ std::string ShaderCreateInfo::check_error() const
     }
   }
 
-#ifndef NDEBUG
+  if ((G.debug & G_DEBUG_GPU) == 0) {
+    return error;
+  }
+
+  /*
+   * The next check has been disabled. 'eevee_legacy_surface_common_iface' is known to fail.
+   * The check was added to validate if shader would be able to compile on Vulkan.
+   * TODO(jbakker): Enable the check after EEVEE is replaced by EEVEE-Next.
+   */
+#if 0
   if (bool(this->builtins_ &
            (BuiltinBits::BARYCENTRIC_COORD | BuiltinBits::VIEWPORT_INDEX | BuiltinBits::LAYER)))
   {
@@ -273,13 +297,23 @@ std::string ShaderCreateInfo::check_error() const
       }
     }
   }
+#endif
 
   if (!this->is_vulkan_compatible()) {
     error += this->name_ +
              " contains a stage interface using an instance name and mixed interpolation modes. "
              "This is not compatible with Vulkan and need to be adjusted.\n";
   }
-#endif
+
+  /* Validate specialization constants. */
+  for (int i = 0; i < specialization_constants_.size(); i++) {
+    for (int j = i + 1; j < specialization_constants_.size(); j++) {
+      if (specialization_constants_[i].name == specialization_constants_[j].name) {
+        error += this->name_ + " contains two specialization constants with the name: " +
+                 std::string(specialization_constants_[i].name);
+      }
+    }
+  }
 
   return error;
 }
@@ -305,7 +339,7 @@ void ShaderCreateInfo::validate_merge(const ShaderCreateInfo &other_info)
       }
     };
 
-    auto print_error_msg = [&](const Resource &res, Vector<Resource> &resources) {
+    auto print_error_msg = [&](const Resource &res, const Vector<Resource> &resources) {
       auto print_resource_name = [&](const Resource &res) {
         switch (res.bind_type) {
           case Resource::BindType::UNIFORM_BUFFER:
@@ -339,15 +373,19 @@ void ShaderCreateInfo::validate_merge(const ShaderCreateInfo &other_info)
 
     for (auto &res : batch_resources_) {
       if (register_resource(res) == false) {
-        print_error_msg(res, batch_resources_);
-        print_error_msg(res, pass_resources_);
+        print_error_msg(res, resources_get_all_());
       }
     }
 
     for (auto &res : pass_resources_) {
       if (register_resource(res) == false) {
-        print_error_msg(res, batch_resources_);
-        print_error_msg(res, pass_resources_);
+        print_error_msg(res, resources_get_all_());
+      }
+    }
+
+    for (auto &res : geometry_resources_) {
+      if (register_resource(res) == false) {
+        print_error_msg(res, resources_get_all_());
       }
     }
   }
@@ -394,6 +432,15 @@ void ShaderCreateInfo::validate_vertex_attributes(const ShaderCreateInfo *other_
 
 using namespace blender::gpu::shader;
 
+#ifdef _MSC_VER
+/* Disable optimization for this function with MSVC. It does not like the fact
+ * shaders info are declared in the same function (same basic block or not does
+ * not change anything).
+ * Since it is just a function called to register shaders (once),
+ * the fact it's optimized or not does not matter, it's not on any hot
+ * code path. */
+#  pragma optimize("", off)
+#endif
 void gpu_shader_create_info_init()
 {
   g_create_infos = new CreateInfoDictionnary();
@@ -428,7 +475,6 @@ void gpu_shader_create_info_init()
                           GPU_OS_ANY,
                           GPU_DRIVER_ANY,
                           GPU_BACKEND_OPENGL) ||
-      GPU_type_matches_ex(GPU_DEVICE_ANY, GPU_OS_MAC, GPU_DRIVER_ANY, GPU_BACKEND_OPENGL) ||
       GPU_crappy_amd_driver())
   {
     draw_modelmat = draw_modelmat_legacy;
@@ -461,17 +507,11 @@ void gpu_shader_create_info_init()
     /* Overlay Armature Shape outline. */
     overlay_armature_shape_outline = overlay_armature_shape_outline_no_geom;
     overlay_armature_shape_outline_clipped = overlay_armature_shape_outline_clipped_no_geom;
+    overlay_armature_shape_wire = overlay_armature_shape_wire_no_geom;
 
     /* Overlay Motion Path Line. */
     overlay_motion_path_line = overlay_motion_path_line_no_geom;
     overlay_motion_path_line_clipped = overlay_motion_path_line_clipped_no_geom;
-
-    /* Workbench shadows.
-     * NOTE: Updates additional-info used by workbench shadow permutations.
-     * Must be prepared prior to permutation preparation. */
-    workbench_shadow_manifold = workbench_shadow_manifold_no_geom;
-    workbench_shadow_no_manifold = workbench_shadow_no_manifold_no_geom;
-    workbench_shadow_caps = workbench_shadow_caps_no_geom;
 
     /* Conservative rasterization. */
     basic_depth_mesh_conservative = basic_depth_mesh_conservative_no_geom;
@@ -486,31 +526,20 @@ void gpu_shader_create_info_init()
     /* Edit UV Edges. */
     overlay_edit_uv_edges = overlay_edit_uv_edges_no_geom;
 
-    /* Down-sample Cube/Probe rendering. */
-    eevee_legacy_effect_downsample_cube = eevee_legacy_effect_downsample_cube_no_geom;
-    eevee_legacy_probe_filter_glossy = eevee_legacy_probe_filter_glossy_no_geom;
-    eevee_legacy_lightprobe_planar_downsample = eevee_legacy_lightprobe_planar_downsample_no_geom;
-
-    /* EEVEE Volumetrics */
-    eevee_legacy_volumes_clear = eevee_legacy_volumes_clear_no_geom;
-    eevee_legacy_volumes_scatter = eevee_legacy_volumes_scatter_no_geom;
-    eevee_legacy_volumes_scatter_with_lights = eevee_legacy_volumes_scatter_with_lights_no_geom;
-    eevee_legacy_volumes_integration = eevee_legacy_volumes_integration_no_geom;
-    eevee_legacy_volumes_integration_OPTI = eevee_legacy_volumes_integration_OPTI_no_geom;
-
-    /* EEVEE Volumetric Material */
-    eevee_legacy_material_volumetric_vert = eevee_legacy_material_volumetric_vert_no_geom;
-
     /* GPencil stroke. */
     gpu_shader_gpencil_stroke = gpu_shader_gpencil_stroke_no_geom;
 
     /* NOTE: As atomic data types can alter shader gen if native atomics are unsupported, we need
      * to use differing create info's to handle the tile optimized check. This does prevent
-     * the shadow techniques from being dynamically switchable . */
+     * the shadow techniques from being dynamically switchable. */
+#  if 0
+    /* Temp: Disable TILE_COPY path while efficient solution for parameter buffer overflow is
+     * identified. This path can be re-enabled in future. */
     const bool is_tile_based_arch = (GPU_platform_architecture() == GPU_ARCHITECTURE_TBDR);
     if (is_tile_based_arch) {
       eevee_shadow_data = eevee_shadow_data_non_atomic;
     }
+#  endif
   }
 #endif
 
@@ -519,6 +548,14 @@ void gpu_shader_create_info_init()
     info->builtins_ |= gpu_shader_dependency_get_builtins(info->fragment_source_);
     info->builtins_ |= gpu_shader_dependency_get_builtins(info->geometry_source_);
     info->builtins_ |= gpu_shader_dependency_get_builtins(info->compute_source_);
+
+#if GPU_SHADER_PRINTF_ENABLE
+    if ((info->builtins_ & BuiltinBits::USE_PRINTF) == BuiltinBits::USE_PRINTF ||
+        gpu_shader_dependency_force_gpu_print_injection())
+    {
+      info->additional_info("gpu_print");
+    }
+#endif
 
 #ifndef NDEBUG
     /* Automatically amend the create info for ease of use of the debug feature. */
@@ -534,6 +571,9 @@ void gpu_shader_create_info_init()
   /* TEST */
   // gpu_shader_create_info_compile(nullptr);
 }
+#ifdef _MSC_VER
+#  pragma optimize("", on)
+#endif
 
 void gpu_shader_create_info_exit()
 {
@@ -565,9 +605,7 @@ bool gpu_shader_create_info_compile(const char *name_starts_with_filter)
         continue;
       }
       if ((info->metal_backend_only_ && GPU_backend_get_type() != GPU_BACKEND_METAL) ||
-          (GPU_compute_shader_support() == false && info->compute_source_ != nullptr) ||
           (GPU_geometry_shader_support() == false && info->geometry_source_ != nullptr) ||
-          (GPU_shader_image_load_store_support() == false && info->has_resource_image()) ||
           (GPU_transform_feedback_support() == false && info->tf_type_ != GPU_SHADER_TFB_NONE))
       {
         skipped++;
@@ -587,9 +625,7 @@ bool gpu_shader_create_info_compile(const char *name_starts_with_filter)
         /* TODO(fclem): Limit this to OpenGL backend. */
         const ShaderInterface *interface = unwrap(shader)->interface;
 
-        blender::Vector<ShaderCreateInfo::Resource> all_resources;
-        all_resources.extend(info->pass_resources_);
-        all_resources.extend(info->batch_resources_);
+        blender::Vector<ShaderCreateInfo::Resource> all_resources = info->resources_get_all_();
 
         for (ShaderCreateInfo::Resource &res : all_resources) {
           blender::StringRefNull name = "";

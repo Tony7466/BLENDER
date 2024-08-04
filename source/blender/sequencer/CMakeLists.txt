@@ -13,7 +13,7 @@ set(INC
   ../render
   ../windowmanager
 
-  # RNA_prototypes.h
+  # RNA_prototypes.hh
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
@@ -50,6 +50,7 @@ set(SRC
   intern/image_cache.cc
   intern/image_cache.hh
   intern/iterator.cc
+  intern/media_presence.cc
   intern/modifier.cc
   intern/multiview.cc
   intern/multiview.hh
@@ -106,5 +107,5 @@ endif()
 
 blender_add_lib(bf_sequencer "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
-# RNA_prototypes.h
+# RNA_prototypes.hh
 add_dependencies(bf_sequencer bf_rna)

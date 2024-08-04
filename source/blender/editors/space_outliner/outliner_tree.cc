@@ -6,6 +6,7 @@
  * \ingroup spoutliner
  */
 
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 
@@ -19,7 +20,7 @@
 #include "BLI_mempool.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_main.hh"
 #include "BKE_modifier.hh"
 #include "BKE_outliner_treehash.hh"
@@ -691,7 +692,7 @@ static void outliner_restore_scrolling_position(SpaceOutliner *space_outliner,
       int ys_new = te_new->ys;
       int ys_old = focus->ys;
 
-      float y_move = MIN2(ys_new - ys_old, -v2d->cur.ymax);
+      float y_move = std::min(float(ys_new - ys_old), -v2d->cur.ymax);
       BLI_rctf_translate(&v2d->cur, 0, y_move);
     }
     else {
@@ -906,8 +907,8 @@ static bool outliner_element_visible_get(const Scene *scene,
             return false;
           }
           break;
-        case OB_GPENCIL_LEGACY:
-          if (exclude_filter & SO_FILTER_NO_OB_GPENCIL_LEGACY) {
+        case OB_GREASE_PENCIL:
+          if (exclude_filter & SO_FILTER_NO_OB_GREASE_PENCIL) {
             return false;
           }
           break;

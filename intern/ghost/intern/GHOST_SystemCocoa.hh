@@ -13,7 +13,7 @@
 #  error Apple OSX only!
 #endif  // __APPLE__
 
-//#define __CARBONSOUND__
+// #define __CARBONSOUND__
 
 #include "GHOST_System.hh"
 
@@ -140,8 +140,8 @@ class GHOST_SystemCocoa : public GHOST_System {
   bool handleOpenDocumentRequest(void *filepathStr);
 
   /**
-   * Handles a drag'n'drop destination event. Called by GHOST_WindowCocoa window subclass
-   * \param eventType: The type of drag'n'drop event.
+   * Handles a drag & drop destination event. Called by GHOST_WindowCocoa window subclass.
+   * \param eventType: The type of drag & drop event.
    * \param draggedObjectType: The type object concerned.
    * (currently array of file names, string, TIFF image).
    * \param mouseX: x mouse coordinate (in cocoa base window coordinates).
@@ -305,9 +305,6 @@ class GHOST_SystemCocoa : public GHOST_System {
    * \return Indication of success.
    */
   GHOST_TSuccess setMouseCursorPosition(int32_t x, int32_t y);
-
-  /** Start time at initialization. */
-  uint64_t m_start_time;
 
   /** Event has been processed directly by Cocoa (or NDOF manager)
    * and has sent a ghost event to be dispatched */

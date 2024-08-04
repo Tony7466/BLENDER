@@ -7,6 +7,7 @@
 #include "curves_sculpt_intern.hh"
 
 #include "BLI_math_matrix_types.hh"
+#include "BLI_math_rotation.h"
 #include "BLI_task.hh"
 #include "BLI_vector.hh"
 
@@ -21,7 +22,7 @@
 #include "BKE_mesh_sample.hh"
 #include "BKE_object.hh"
 #include "BKE_paint.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "DNA_brush_enums.h"
 #include "DNA_curves_types.h"
@@ -37,8 +38,6 @@
 
 #include "GEO_add_curves_on_mesh.hh"
 #include "GEO_reverse_uv_sampler.hh"
-
-#include "BLT_translation.h"
 
 namespace blender::ed::sculpt_paint {
 
@@ -144,7 +143,7 @@ struct SlideOperationExecutor {
     if (curves_orig_->surface_uv_coords().is_empty()) {
       BKE_report(stroke_extension.reports,
                  RPT_WARNING,
-                 TIP_("Curves do not have surface attachment information"));
+                 "Curves do not have surface attachment information");
       return;
     }
     const StringRefNull uv_map_name = curves_id_orig_->surface_uv_map;
@@ -217,8 +216,7 @@ struct SlideOperationExecutor {
     this->slide_with_symmetry();
 
     if (found_invalid_uv_mapping_) {
-      BKE_report(
-          stroke_extension.reports, RPT_WARNING, TIP_("UV map or surface attachment is invalid"));
+      BKE_report(stroke_extension.reports, RPT_WARNING, "UV map or surface attachment is invalid");
     }
 
     curves_orig_->tag_positions_changed();

@@ -5,8 +5,8 @@
 #include "DNA_pointcloud_types.h"
 
 #include "BKE_geometry_set.hh"
-#include "BKE_lib_id.h"
-#include "BKE_pointcloud.h"
+#include "BKE_lib_id.hh"
+#include "BKE_pointcloud.hh"
 
 #include "attribute_access_intern.hh"
 
@@ -17,6 +17,11 @@ namespace blender::bke {
  * \{ */
 
 PointCloudComponent::PointCloudComponent() : GeometryComponent(Type::PointCloud) {}
+
+PointCloudComponent::PointCloudComponent(PointCloud *pointcloud, GeometryOwnershipType ownership)
+    : GeometryComponent(Type::PointCloud), pointcloud_(pointcloud), ownership_(ownership)
+{
+}
 
 PointCloudComponent::~PointCloudComponent()
 {
@@ -142,24 +147,18 @@ static ComponentAttributeProviders create_attribute_providers_for_point_cloud()
   static BuiltinCustomDataLayerProvider position("position",
                                                  AttrDomain::Point,
                                                  CD_PROP_FLOAT3,
-                                                 CD_PROP_FLOAT3,
-                                                 BuiltinAttributeProvider::Creatable,
                                                  BuiltinAttributeProvider::NonDeletable,
                                                  point_access,
                                                  tag_component_positions_changed);
   static BuiltinCustomDataLayerProvider radius("radius",
                                                AttrDomain::Point,
                                                CD_PROP_FLOAT,
-                                               CD_PROP_FLOAT,
-                                               BuiltinAttributeProvider::Creatable,
                                                BuiltinAttributeProvider::Deletable,
                                                point_access,
                                                tag_component_radius_changed);
   static BuiltinCustomDataLayerProvider id("id",
                                            AttrDomain::Point,
                                            CD_PROP_INT32,
-                                           CD_PROP_INT32,
-                                           BuiltinAttributeProvider::Creatable,
                                            BuiltinAttributeProvider::Deletable,
                                            point_access,
                                            nullptr);

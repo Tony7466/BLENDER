@@ -16,7 +16,6 @@
 
 #include "DNA_volume_types.h"
 
-#include "BKE_volume.hh"
 #include "BKE_volume_grid.hh"
 #include "BKE_volume_openvdb.hh"
 #include "BKE_volume_render.hh"
@@ -98,11 +97,19 @@ bool BKE_volume_grid_dense_floats(const Volume *volume,
 {
 #ifdef WITH_OPENVDB
   const VolumeGridType grid_type = volume_grid->grid_type();
-  blender::bke::VolumeTreeAccessToken access_token = volume_grid->tree_access_token();
-  const openvdb::GridBase &grid = volume_grid->grid(access_token);
+  blender::bke::VolumeTreeAccessToken tree_token;
+  const openvdb::GridBase &grid = volume_grid->grid(tree_token);
 
   const openvdb::CoordBBox bbox = grid.evalActiveVoxelBoundingBox();
   if (bbox.empty()) {
+    return false;
+  }
+  const std::array<int64_t, 6> bbox_indices = {UNPACK3(openvdb::math::Abs(bbox.min())),
+                                               UNPACK3(openvdb::math::Abs(bbox.max()))};
+  const int64_t max_bbox_index = *std::max_element(bbox_indices.begin(), bbox_indices.end());
+  if (max_bbox_index > (1 << 30)) {
+    /* There is an integer overflow when trying to extract dense voxels when the indices are very
+     * large. */
     return false;
   }
 
@@ -333,8 +340,8 @@ void BKE_volume_grid_wireframe(const Volume *volume,
   }
 
 #ifdef WITH_OPENVDB
-  blender::bke::VolumeTreeAccessToken access_token = volume_grid->tree_access_token();
-  const openvdb::GridBase &grid = volume_grid->grid(access_token);
+  blender::bke::VolumeTreeAccessToken tree_token;
+  const openvdb::GridBase &grid = volume_grid->grid(tree_token);
 
   if (volume->display.wireframe_type == VOLUME_WIREFRAME_BOUNDS) {
     /* Bounding box. */
@@ -412,8 +419,8 @@ void BKE_volume_grid_selection_surface(const Volume * /*volume*/,
                                        void *cb_userdata)
 {
 #ifdef WITH_OPENVDB
-  blender::bke::VolumeTreeAccessToken access_token = volume_grid->tree_access_token();
-  const openvdb::GridBase &grid = volume_grid->grid(access_token);
+  blender::bke::VolumeTreeAccessToken tree_token;
+  const openvdb::GridBase &grid = volume_grid->grid(tree_token);
   blender::Vector<openvdb::CoordBBox> boxes = get_bounding_boxes(
       volume_grid->grid_type(), grid, true);
 

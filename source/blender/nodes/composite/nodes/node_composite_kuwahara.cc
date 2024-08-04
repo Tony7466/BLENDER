@@ -57,7 +57,10 @@ static void node_composit_buts_kuwahara(uiLayout *layout, bContext * /*C*/, Poin
 
   const int variation = RNA_enum_get(ptr, "variation");
 
-  if (variation == CMP_NODE_KUWAHARA_ANISOTROPIC) {
+  if (variation == CMP_NODE_KUWAHARA_CLASSIC) {
+    uiItemR(col, ptr, "use_high_precision", UI_ITEM_NONE, nullptr, ICON_NONE);
+  }
+  else if (variation == CMP_NODE_KUWAHARA_ANISOTROPIC) {
     uiItemR(col, ptr, "uniformity", UI_ITEM_NONE, nullptr, ICON_NONE);
     uiItemR(col, ptr, "sharpness", UI_ITEM_NONE, nullptr, ICON_NONE);
     uiItemR(col, ptr, "eccentricity", UI_ITEM_NONE, nullptr, ICON_NONE);
@@ -88,9 +91,12 @@ class ConvertKuwaharaOperation : public NodeOperation {
   void execute_classic()
   {
     /* For high radii, we accelerate the filter using a summed area table, making the filter
-     * execute in constant time as opposed to the trivial quadratic complexity. */
+     * execute in constant time as opposed to having quadratic complexity. Except if high precision
+     * is enabled, since summed area tables are less precise. */
     Result &size_input = get_input("Size");
-    if (size_input.is_single_value() && size_input.get_float_value() > 5.0f) {
+    if (!node_storage(bnode()).high_precision &&
+        (size_input.is_texture() || size_input.get_float_value() > 5.0f))
+    {
       execute_classic_summed_area_table();
       return;
     }
@@ -306,15 +312,15 @@ void register_node_type_cmp_kuwahara()
 {
   namespace file_ns = blender::nodes::node_composite_kuwahara_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_KUWAHARA, "Kuwahara", NODE_CLASS_OP_FILTER);
   ntype.declare = file_ns::cmp_node_kuwahara_declare;
   ntype.draw_buttons = file_ns::node_composit_buts_kuwahara;
   ntype.initfunc = file_ns::node_composit_init_kuwahara;
-  node_type_storage(
+  blender::bke::node_type_storage(
       &ntype, "NodeKuwaharaData", node_free_standard_storage, node_copy_standard_storage);
   ntype.get_compositor_operation = file_ns::get_compositor_operation;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

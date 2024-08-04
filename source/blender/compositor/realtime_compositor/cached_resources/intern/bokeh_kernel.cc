@@ -9,8 +9,8 @@
 #include "BLI_math_base.h"
 #include "BLI_math_vector_types.hh"
 
-#include "GPU_shader.h"
-#include "GPU_texture.h"
+#include "GPU_shader.hh"
+#include "GPU_texture.hh"
 
 #include "COM_bokeh_kernel.hh"
 #include "COM_context.hh"
@@ -36,7 +36,7 @@ BokehKernelKey::BokehKernelKey(
 
 uint64_t BokehKernelKey::hash() const
 {
-  return get_default_hash_3(
+  return get_default_hash(
       size, size, get_default_hash(float4(rotation, roundness, catadioptric, lens_shift)));
 }
 

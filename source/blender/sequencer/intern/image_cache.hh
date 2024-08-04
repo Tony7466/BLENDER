@@ -13,16 +13,17 @@
 struct ImBuf;
 struct Main;
 struct Scene;
+struct SeqCache;
 struct SeqRenderData;
 struct Sequence;
 
 struct SeqCacheKey {
-  struct SeqCache *cache_owner;
+  SeqCache *cache_owner;
   void *userkey;
-  struct SeqCacheKey *link_prev; /* Used for linking intermediate items to final frame. */
-  struct SeqCacheKey *link_next; /* Used for linking intermediate items to final frame. */
-  struct Sequence *seq;
-  struct SeqRenderData context;
+  SeqCacheKey *link_prev; /* Used for linking intermediate items to final frame. */
+  SeqCacheKey *link_next; /* Used for linking intermediate items to final frame. */
+  Sequence *seq;
+  SeqRenderData context;
   float frame_index;    /* Usually same as timeline_frame. Mapped to media for RAW entries. */
   float timeline_frame; /* Only for reference - used for freeing when cache is full. */
   float cost;           /* In short: render time(s) divided by playback frame duration(s) */
@@ -41,7 +42,7 @@ void seq_cache_thumbnail_put(const SeqRenderData *context,
                              ImBuf *i,
                              const rctf *view_area);
 bool seq_cache_put_if_possible(
-    const SeqRenderData *context, Sequence *seq, float timeline_frame, int type, ImBuf *nval);
+    const SeqRenderData *context, Sequence *seq, float timeline_frame, int type, ImBuf *ibuf);
 /**
  * Find only "base" keys.
  * Sources(other types) for a frame must be freed all at once.
@@ -55,6 +56,6 @@ void seq_cache_cleanup_sequence(Scene *scene,
                                 Sequence *seq_changed,
                                 int invalidate_types,
                                 bool force_seq_changed_range);
-void seq_cache_thumbnail_cleanup(Scene *scene, rctf *view_area);
+void seq_cache_thumbnail_cleanup(Scene *scene, rctf *r_view_area_safe);
 bool seq_cache_is_full();
 float seq_cache_frame_index_to_timeline_frame(Sequence *seq, float frame_index);

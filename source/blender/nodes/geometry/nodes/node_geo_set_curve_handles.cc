@@ -162,7 +162,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   });
 
   if (has_curves && !has_bezier) {
-    params.error_message_add(NodeWarningType::Info, TIP_("Input curves do not have Bezier type"));
+    params.error_message_add(NodeWarningType::Info, TIP_("Input curves do not have Bézier type"));
   }
 
   params.set_output("Curve", std::move(geometry_set));
@@ -181,7 +181,7 @@ static void node_rna(StructRNA *srna)
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   geo_node_type_base(
       &ntype, GEO_NODE_SET_CURVE_HANDLES, "Set Handle Positions", NODE_CLASS_GEOMETRY);
@@ -189,12 +189,12 @@ static void node_register()
   ntype.declare = node_declare;
   ntype.minwidth = 100.0f;
   ntype.initfunc = node_init;
-  node_type_storage(&ntype,
-                    "NodeGeometrySetCurveHandlePositions",
-                    node_free_standard_storage,
-                    node_copy_standard_storage);
+  blender::bke::node_type_storage(&ntype,
+                                  "NodeGeometrySetCurveHandlePositions",
+                                  node_free_standard_storage,
+                                  node_copy_standard_storage);
   ntype.draw_buttons = node_layout;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }

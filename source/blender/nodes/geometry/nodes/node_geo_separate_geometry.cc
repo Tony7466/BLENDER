@@ -9,6 +9,8 @@
 
 #include "RNA_enum_types.hh"
 
+#include "GEO_separate_geometry.hh"
+
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_separate_geometry_cc {
@@ -59,21 +61,21 @@ static void node_geo_exec(GeoNodeExecParams params)
         bool is_error;
         if (domain == AttrDomain::Instance) {
           /* Only delete top level instances. */
-          separate_geometry(geometry_set,
-                            domain,
-                            GEO_NODE_DELETE_GEOMETRY_MODE_ALL,
-                            selection,
-                            propagation_info,
-                            is_error);
+          geometry::separate_geometry(geometry_set,
+                                      domain,
+                                      GEO_NODE_DELETE_GEOMETRY_MODE_ALL,
+                                      selection,
+                                      propagation_info,
+                                      is_error);
         }
         else {
           geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
-            separate_geometry(geometry_set,
-                              domain,
-                              GEO_NODE_DELETE_GEOMETRY_MODE_ALL,
-                              selection,
-                              propagation_info,
-                              is_error);
+            geometry::separate_geometry(geometry_set,
+                                        domain,
+                                        GEO_NODE_DELETE_GEOMETRY_MODE_ALL,
+                                        selection,
+                                        propagation_info,
+                                        is_error);
           });
         }
       };
@@ -105,21 +107,21 @@ static void node_rna(StructRNA *srna)
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_SEPARATE_GEOMETRY, "Separate Geometry", NODE_CLASS_GEOMETRY);
 
-  node_type_storage(&ntype,
-                    "NodeGeometrySeparateGeometry",
-                    node_free_standard_storage,
-                    node_copy_standard_storage);
+  blender::bke::node_type_storage(&ntype,
+                                  "NodeGeometrySeparateGeometry",
+                                  node_free_standard_storage,
+                                  node_copy_standard_storage);
 
   ntype.initfunc = node_init;
 
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }

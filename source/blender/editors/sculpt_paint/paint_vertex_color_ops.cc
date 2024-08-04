@@ -20,7 +20,7 @@
 
 #include "BKE_attribute_math.hh"
 #include "BKE_context.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_mesh.hh"
 
@@ -58,13 +58,13 @@ static bool vertex_weight_paint_mode_poll(bContext *C)
          (mesh && mesh->faces_num && !mesh->deform_verts().is_empty());
 }
 
-static void tag_object_after_update(Object *object)
+static void tag_object_after_update(Object &object)
 {
-  BLI_assert(object->type == OB_MESH);
-  Mesh *mesh = static_cast<Mesh *>(object->data);
-  DEG_id_tag_update(&mesh->id, ID_RECALC_COPY_ON_WRITE);
+  BLI_assert(object.type == OB_MESH);
+  Mesh &mesh = *static_cast<Mesh *>(object.data);
+  DEG_id_tag_update(&mesh.id, ID_RECALC_SYNC_TO_EVAL);
   /* NOTE: Original mesh is used for display, so tag it directly here. */
-  BKE_mesh_batch_cache_dirty_tag(mesh, BKE_MESH_BATCH_DIRTY_ALL);
+  BKE_mesh_batch_cache_dirty_tag(&mesh, BKE_MESH_BATCH_DIRTY_ALL);
 }
 
 /** \} */
@@ -73,12 +73,13 @@ static void tag_object_after_update(Object *object)
 /** \name Vertex Color from Weight Operator
  * \{ */
 
-static bool vertex_paint_from_weight(Object *ob)
+static bool vertex_paint_from_weight(Object &ob)
 {
   using namespace blender;
 
   Mesh *mesh;
-  if ((mesh = BKE_mesh_from_object(ob)) == nullptr || ED_mesh_color_ensure(mesh, nullptr) == false)
+  if ((mesh = BKE_mesh_from_object(&ob)) == nullptr ||
+      ED_mesh_color_ensure(mesh, nullptr) == false)
   {
     return false;
   }
@@ -129,7 +130,7 @@ static bool vertex_paint_from_weight(Object *ob)
 static int vertex_paint_from_weight_exec(bContext *C, wmOperator * /*op*/)
 {
   Object *obact = CTX_data_active_object(C);
-  if (vertex_paint_from_weight(obact)) {
+  if (vertex_paint_from_weight(*obact)) {
     WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, obact);
     return OPERATOR_FINISHED;
   }
@@ -200,11 +201,11 @@ static void face_corner_color_equalize_verts(Mesh &mesh, const IndexMask selecti
   attribute.finish();
 }
 
-static bool vertex_color_smooth(Object *ob)
+static bool vertex_color_smooth(Object &ob)
 {
   using namespace blender;
   Mesh *mesh;
-  if (((mesh = BKE_mesh_from_object(ob)) == nullptr) ||
+  if (((mesh = BKE_mesh_from_object(&ob)) == nullptr) ||
       (ED_mesh_color_ensure(mesh, nullptr) == false))
   {
     return false;
@@ -223,7 +224,7 @@ static bool vertex_color_smooth(Object *ob)
 static int vertex_color_smooth_exec(bContext *C, wmOperator * /*op*/)
 {
   Object *obact = CTX_data_active_object(C);
-  if (vertex_color_smooth(obact)) {
+  if (vertex_color_smooth(*obact)) {
     WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, obact);
     return OPERATOR_FINISHED;
   }
@@ -304,27 +305,32 @@ static void transform_active_color(bContext *C,
                                    wmOperator *op,
                                    const FunctionRef<void(ColorGeometry4f &color)> transform_fn)
 {
+  using namespace blender;
   using namespace blender::ed::sculpt_paint;
-  Object *obact = CTX_data_active_object(C);
+  Object &obact = *CTX_data_active_object(C);
 
   /* Ensure valid sculpt state. */
-  BKE_sculpt_update_object_for_edit(CTX_data_ensure_evaluated_depsgraph(C), obact, true);
+  BKE_sculpt_update_object_for_edit(CTX_data_ensure_evaluated_depsgraph(C), &obact, true);
 
   undo::push_begin(obact, op);
 
-  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(obact->sculpt->pbvh, {});
-  for (PBVHNode *node : nodes) {
-    undo::push_node(obact, node, undo::Type::Color);
-  }
+  bke::pbvh::Tree &pbvh = *obact.sculpt->pbvh;
+  const Mesh &mesh = *static_cast<const Mesh *>(obact.data);
+  /* The sculpt undo system needs pbvh::Tree node corner indices for corner domain color
+   * attributes. */
+  BKE_pbvh_ensure_node_loops(pbvh, mesh.corner_tris());
 
-  transform_active_color_data(*BKE_mesh_from_object(obact), transform_fn);
+  Vector<bke::pbvh::Node *> nodes = bke::pbvh::search_gather(pbvh, {});
+  undo::push_nodes(obact, nodes, undo::Type::Color);
 
-  for (PBVHNode *node : nodes) {
+  transform_active_color_data(*BKE_mesh_from_object(&obact), transform_fn);
+
+  for (bke::pbvh::Node *node : nodes) {
     BKE_pbvh_node_mark_update_color(node);
   }
 
   undo::push_end(obact);
-  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, obact);
+  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, &obact);
 }
 
 static int vertex_color_brightness_contrast_exec(bContext *C, wmOperator *op)

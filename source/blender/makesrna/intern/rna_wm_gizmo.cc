@@ -17,13 +17,13 @@
 #include "BLI_listbase.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
 
-#include "rna_internal.h"
+#include "rna_internal.hh"
 
 #include "WM_types.hh"
 
@@ -43,13 +43,13 @@
 
 #  include "UI_interface.hh"
 
-#  include "BKE_global.h"
-#  include "BKE_idprop.h"
-#  include "BKE_workspace.h"
+#  include "BKE_global.hh"
+#  include "BKE_idprop.hh"
+#  include "BKE_workspace.hh"
 
 #  include "MEM_guardedalloc.h"
 
-#  include "GPU_state.h"
+#  include "GPU_state.hh"
 
 #  ifdef WITH_PYTHON
 #    include "BPY_extern.h"
@@ -460,6 +460,13 @@ static StructRNA *rna_Gizmo_register(Main *bmain,
   {
     const wmGizmoType *gzt = WM_gizmotype_find(dummy_gt.idname, true);
     if (gzt) {
+      BKE_reportf(reports,
+                  RPT_INFO,
+                  "%s '%s', bl_idname '%s' has been registered before, unregistering previous",
+                  error_prefix,
+                  identifier,
+                  dummy_gt.idname);
+
       StructRNA *srna = gzt->rna_ext.srna;
       if (!(srna && rna_Gizmo_unregister(bmain, srna))) {
         BKE_reportf(reports,
@@ -595,7 +602,7 @@ static wmGizmo *rna_GizmoGroup_gizmo_new(wmGizmoGroup *gzgroup,
       BKE_reportf(reports,
                   RPT_ERROR,
                   "GizmoType '%s' is for a 3D gizmo-group. "
-                  "The 'draw_select' callback is set where only 'test_select' will be used",
+                  "The 'draw_select' callback is set where only 'test_select' will be used.",
                   idname);
       return nullptr;
     }
@@ -652,12 +659,6 @@ static void rna_GizmoGroup_bl_label_set(PointerRNA *ptr, const char *value)
   else {
     BLI_assert_msg(0, "setting the bl_label on a non-builtin operator");
   }
-}
-
-static bool rna_GizmoGroup_has_reports_get(PointerRNA *ptr)
-{
-  wmGizmoGroup *gzgroup = static_cast<wmGizmoGroup *>(ptr->data);
-  return (gzgroup->reports && gzgroup->reports->list.first);
 }
 
 #  ifdef WITH_PYTHON
@@ -1075,7 +1076,7 @@ static void rna_def_gizmo(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_function_return(func, parm);
 
   /* wmGizmo.handler */
-  static EnumPropertyItem tweak_actions[] = {
+  static const EnumPropertyItem tweak_actions[] = {
       {WM_GIZMO_TWEAK_PRECISE, "PRECISE", 0, "Precise", ""},
       {WM_GIZMO_TWEAK_SNAP, "SNAP", 0, "Snap", ""},
       {0, nullptr, 0, nullptr, nullptr},
@@ -1384,7 +1385,7 @@ static void rna_def_gizmogroup(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_REGISTER_OPTIONAL);
 
   /* bl_options */
-  static EnumPropertyItem gizmogroup_flag_items[] = {
+  static const EnumPropertyItem gizmogroup_flag_items[] = {
       {WM_GIZMOGROUPTYPE_3D, "3D", 0, "3D", "Use in 3D viewport"},
       {WM_GIZMOGROUPTYPE_SCALE,
        "SCALE",
@@ -1440,7 +1441,7 @@ static void rna_def_gizmogroup(BlenderRNA *brna)
   func = RNA_def_function(srna, "poll", nullptr);
   RNA_def_function_ui_description(func, "Test if the gizmo group can be called or not");
   RNA_def_function_flag(func, FUNC_NO_SELF | FUNC_REGISTER_OPTIONAL);
-  RNA_def_function_return(func, RNA_def_boolean(func, "visible", true, "", ""));
+  RNA_def_function_return(func, RNA_def_boolean(func, "visible", false, "", ""));
   parm = RNA_def_pointer(func, "context", "Context", "", "");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
 
@@ -1493,14 +1494,6 @@ static void rna_def_gizmogroup(BlenderRNA *brna)
   RNA_def_property_string_funcs(
       prop, "rna_GizmoGroup_name_get", "rna_GizmoGroup_name_length", nullptr);
   RNA_def_property_ui_text(prop, "Name", "");
-
-  prop = RNA_def_property(srna, "has_reports", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_clear_flag(prop, PROP_EDITABLE); /* this is 'virtual' property */
-  RNA_def_property_boolean_funcs(prop, "rna_GizmoGroup_has_reports_get", nullptr);
-  RNA_def_property_ui_text(
-      prop,
-      "Has Reports",
-      "GizmoGroup has a set of reports (warnings and errors) from last execution");
 
   RNA_define_verify_sdna(false); /* not in sdna */
 

@@ -25,14 +25,13 @@ static OneAPIErrorCallback s_error_cb = nullptr;
 static void *s_error_user_ptr = nullptr;
 
 #  ifdef WITH_EMBREE_GPU
-static const RTCFeatureFlags CYCLES_ONEAPI_EMBREE_BASIC_FEATURES =
-    (const RTCFeatureFlags)(RTC_FEATURE_FLAG_TRIANGLE | RTC_FEATURE_FLAG_INSTANCE |
-                            RTC_FEATURE_FLAG_FILTER_FUNCTION_IN_ARGUMENTS |
-                            RTC_FEATURE_FLAG_POINT | RTC_FEATURE_FLAG_MOTION_BLUR);
-static const RTCFeatureFlags CYCLES_ONEAPI_EMBREE_ALL_FEATURES =
-    (const RTCFeatureFlags)(CYCLES_ONEAPI_EMBREE_BASIC_FEATURES |
-                            RTC_FEATURE_FLAG_ROUND_CATMULL_ROM_CURVE |
-                            RTC_FEATURE_FLAG_FLAT_CATMULL_ROM_CURVE);
+static const RTCFeatureFlags CYCLES_ONEAPI_EMBREE_BASIC_FEATURES = (const RTCFeatureFlags)(
+    RTC_FEATURE_FLAG_TRIANGLE | RTC_FEATURE_FLAG_INSTANCE |
+    RTC_FEATURE_FLAG_FILTER_FUNCTION_IN_ARGUMENTS | RTC_FEATURE_FLAG_POINT |
+    RTC_FEATURE_FLAG_MOTION_BLUR);
+static const RTCFeatureFlags CYCLES_ONEAPI_EMBREE_ALL_FEATURES = (const RTCFeatureFlags)(
+    CYCLES_ONEAPI_EMBREE_BASIC_FEATURES | RTC_FEATURE_FLAG_ROUND_CATMULL_ROM_CURVE |
+    RTC_FEATURE_FLAG_FLAT_CATMULL_ROM_CURVE);
 #  endif
 
 void oneapi_set_error_cb(OneAPIErrorCallback cb, void *user_ptr)
@@ -132,6 +131,26 @@ bool oneapi_run_test_kernel(SyclQueue *queue_)
   }
 
   return is_computation_correct;
+}
+
+bool oneapi_zero_memory_on_device(SyclQueue *queue_, void *device_pointer, size_t num_bytes)
+{
+  assert(queue_);
+  sycl::queue *queue = reinterpret_cast<sycl::queue *>(queue_);
+  try {
+    queue->submit([&](sycl::handler &cgh) {
+      cgh.parallel_for(num_bytes,
+                       [=](sycl::id<1> idx) { ((char *)device_pointer)[idx.get(0)] = (char)0; });
+    });
+    queue->wait_and_throw();
+    return true;
+  }
+  catch (sycl::exception const &e) {
+    if (s_error_cb) {
+      s_error_cb(e.what(), s_error_user_ptr);
+    }
+    return false;
+  }
 }
 
 bool oneapi_kernel_is_required_for_features(const std::string &kernel_name,

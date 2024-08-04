@@ -2,6 +2,18 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+# Compilers
+#
+# Version used for precompiled library builds used for official releases.
+# For anyone making their own library build, matching these exactly is not
+# needed but it can be a useful reference.
+
+set(RELEASE_GCC_VERSION 11.2.*)
+set(RELEASE_CUDA_VERSION 12.3.*)
+set(RELEASE_HIP_VERSION 5.7.*)
+
+# Libraries
+#
 # CPE's are used to identify dependencies, for more information on what they
 # are please see https://nvd.nist.gov/products/cpe
 #
@@ -18,9 +30,9 @@ set(ZLIB_FILE zlib-${ZLIB_VERSION}.tar.gz)
 set(ZLIB_CPE "cpe:2.3:a:zlib:zlib:${ZLIB_VERSION}:*:*:*:*:*:*:*")
 set(ZLIB_HOMEPAGE https://zlib.net)
 
-set(OPENAL_VERSION 1.21.1)
-set(OPENAL_URI http://openal-soft.org/openal-releases/openal-soft-${OPENAL_VERSION}.tar.bz2)
-set(OPENAL_HASH a936806ebd8de417b0ffd8cf3f48f456)
+set(OPENAL_VERSION 1.23.1)
+set(OPENAL_URI https://github.com/kcat/openal-soft/releases/download/${OPENAL_VERSION}/openal-soft-${OPENAL_VERSION}.tar.bz2)
+set(OPENAL_HASH 58a73698288d2787451b61f8f4431513)
 set(OPENAL_HASH_TYPE MD5)
 set(OPENAL_FILE openal-soft-${OPENAL_VERSION}.tar.bz2)
 set(OPENAL_HOMEPAGE https://openal-soft.org/)
@@ -56,7 +68,7 @@ set(BLOSC_URI https://github.com/Blosc/c-blosc/archive/v${BLOSC_VERSION}.tar.gz)
 set(BLOSC_HASH 134b55813b1dca57019d2a2dc1f7a923)
 set(BLOSC_HASH_TYPE MD5)
 set(BLOSC_FILE blosc-${BLOSC_VERSION}.tar.gz)
-set(BLOSC_CPE "cpe:2.3:a:c-blosc2_project:c-blosc2:${BLOSC_VERSION}:*:*:*:*:*:*:*")
+set(BLOSC_CPE "cpe:2.3:a:c-blosc_project:c-blosc:${BLOSC_VERSION}:*:*:*:*:*:*:*")
 
 set(PTHREADS_VERSION 3.0.0)
 set(PTHREADS_URI http://prdownloads.sourceforge.net/pthreads4w/pthreads4w-code-v${PTHREADS_VERSION}.zip)
@@ -71,9 +83,9 @@ set(DEFLATE_HASH a29d9dd653cbe03f2d5cd83972063f9e)
 set(DEFLATE_HASH_TYPE MD5)
 set(DEFLATE_FILE libdeflate-v${DEFLATE_VERSION}.tar.gz)
 
-set(OPENEXR_VERSION 3.2.1)
+set(OPENEXR_VERSION 3.2.4)
 set(OPENEXR_URI https://github.com/AcademySoftwareFoundation/openexr/archive/v${OPENEXR_VERSION}.tar.gz)
-set(OPENEXR_HASH 1d5bb07433ec641cf3bb1b519a27ea6f)
+set(OPENEXR_HASH 83b23b937b3a76fd37680422f41b81b7)
 set(OPENEXR_HASH_TYPE MD5)
 set(OPENEXR_FILE openexr-${OPENEXR_VERSION}.tar.gz)
 set(OPENEXR_CPE "cpe:2.3:a:openexr:openexr:${OPENEXR_VERSION}:*:*:*:*:*:*:*")
@@ -135,15 +147,15 @@ set(SDL_FILE SDL2-${SDL_VERSION}.tar.gz)
 set(SDL_CPE "cpe:2.3:a:libsdl:sdl:${SDL_VERSION}:*:*:*:*:*:*:*")
 set(SDL_HOMEPAGE https://www.libsdl.org)
 
-set(OPENCOLLADA_VERSION v1.6.68)
-set(OPENCOLLADA_URI https://github.com/KhronosGroup/OpenCOLLADA/archive/${OPENCOLLADA_VERSION}.tar.gz)
-set(OPENCOLLADA_HASH ee7dae874019fea7be11613d07567493)
+set(OPENCOLLADA_VERSION dfc341ab0b3b23ee307ab8660c0213e64da1eac6)
+set(OPENCOLLADA_URI https://github.com/aras-p/OpenCOLLADA/archive/${OPENCOLLADA_VERSION}.tar.gz)
+set(OPENCOLLADA_HASH 2120c8c02aab840e81cb87e625a608f7)
 set(OPENCOLLADA_HASH_TYPE MD5)
 set(OPENCOLLADA_FILE opencollada-${OPENCOLLADA_VERSION}.tar.gz)
 
-set(OPENCOLORIO_VERSION 2.3.0)
+set(OPENCOLORIO_VERSION 2.3.2)
 set(OPENCOLORIO_URI https://github.com/AcademySoftwareFoundation/OpenColorIO/archive/v${OPENCOLORIO_VERSION}.tar.gz)
-set(OPENCOLORIO_HASH c05f24a516fe82d381c4b0d471e12ad5)
+set(OPENCOLORIO_HASH 8af74fcb8c4820ab21204463a06ba490)
 set(OPENCOLORIO_HASH_TYPE MD5)
 set(OPENCOLORIO_FILE OpenColorIO-${OPENCOLORIO_VERSION}.tar.gz)
 
@@ -173,9 +185,9 @@ set(OPENMP_URI https://github.com/llvm/llvm-project/releases/download/llvmorg-${
 set(OPENMP_HASH_TYPE MD5)
 set(OPENMP_FILE openmp-${OPENMP_VERSION}.src.tar.xz)
 
-set(OPENIMAGEIO_VERSION v2.5.6.0)
+set(OPENIMAGEIO_VERSION v2.5.11.0)
 set(OPENIMAGEIO_URI https://github.com/AcademySoftwareFoundation/OpenImageIO/archive/refs/tags/${OPENIMAGEIO_VERSION}.tar.gz)
-set(OPENIMAGEIO_HASH d02db17716a20a71a446bdc6de57bd9c)
+set(OPENIMAGEIO_HASH 691e9364d25e2878e042d48980fad593)
 set(OPENIMAGEIO_HASH_TYPE MD5)
 set(OPENIMAGEIO_FILE OpenImageIO-${OPENIMAGEIO_VERSION}.tar.gz)
 
@@ -196,9 +208,9 @@ set(ROBINMAP_HASH c08ec4b1bf1c85eb0d6432244a6a89862229da1cb834f3f90fba8dc35d8c8e
 set(ROBINMAP_HASH_TYPE SHA256)
 set(ROBINMAP_FILE robinmap-${ROBINMAP_VERSION}.tar.gz)
 
-set(TIFF_VERSION 4.5.1)
+set(TIFF_VERSION 4.6.0)
 set(TIFF_URI http://download.osgeo.org/libtiff/tiff-${TIFF_VERSION}.tar.gz)
-set(TIFF_HASH d08c5f9eee6350fffc239e5993d92779)
+set(TIFF_HASH fc7d49a9348b890b29f91a4ecadd5b49)
 set(TIFF_HASH_TYPE MD5)
 set(TIFF_FILE tiff-${TIFF_VERSION}.tar.gz)
 set(TIFF_CPE "cpe:2.3:a:libtiff:libtiff:${TIFF_VERSION}:*:*:*:*:*:*:*")
@@ -207,9 +219,9 @@ set(TIFF_HOMEPAGE http://www.simplesystems.org/libtiff/)
 # Recent commit from 1.13.5.0 under development, which includes string table
 # changes that make the Cycles OptiX implementation work. Official 1.12 OSL
 # releases should also build but without OptiX support.
-set(OSL_VERSION 3d52f3906b12d38ad0f4b991a8f9ea678171bd28)
-set(OSL_URI https://github.com/AcademySoftwareFoundation/OpenShadingLanguage/archive/${OSL_VERSION}.tar.gz)
-set(OSL_HASH dfe5d69f48930badc1ad39a4e11e2e98)
+set(OSL_VERSION 1.13.7.0)
+set(OSL_URI https://github.com/AcademySoftwareFoundation/OpenShadingLanguage/archive/refs/tags/v${OSL_VERSION}.tar.gz)
+set(OSL_HASH 769ae444a7df0e6561b3e745fd2eb50d)
 set(OSL_HASH_TYPE MD5)
 set(OSL_FILE OpenShadingLanguage-${OSL_VERSION}.tar.gz)
 
@@ -217,16 +229,27 @@ set(OSL_FILE OpenShadingLanguage-${OSL_VERSION}.tar.gz)
 # it wants to use in PCbuild/get_externals.bat for the following dependencies:
 # BZIP2, FFI, SQLITE and change the versions in this file as well. For compliance
 # reasons there can be no exceptions to this.
+# Additionally, keep the PYTHON_PIP_VERSION in sync with the pip version bundled
+# into Python.
 
-set(PYTHON_VERSION 3.11.6)
+set(PYTHON_VERSION 3.11.7)
 set(PYTHON_SHORT_VERSION 3.11)
 set(PYTHON_SHORT_VERSION_NO_DOTS 311)
 set(PYTHON_URI https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tar.xz)
-set(PYTHON_HASH d0c5a1a31efe879723e51addf56dd206)
+set(PYTHON_HASH d96c7e134c35a8c46236f8a0e566b69c)
 set(PYTHON_HASH_TYPE MD5)
 set(PYTHON_FILE Python-${PYTHON_VERSION}.tar.xz)
 set(PYTHON_CPE "cpe:2.3:a:python:python:${PYTHON_VERSION}:-:*:*:*:*:*:*")
 set(PYTHON_HOMEPAGE https://www.python.org/)
+
+# Python bundles pip wheel, and does not track CVEs from it. Add an explicit CPE
+# identifier for pip, so that cve_check can detect vulnerabilities in it.
+# The version needs to be kept in symc with the version bundled in Python.
+# Currently it is done manually by tracking _PIP_VERSION variable in the
+# `Lib/ensurepip/__init__.py`. For example,
+#   https://github.com/python/cpython/tree/v3.11.7/Lib/ensurepip/__init__.py
+set(PYTHON_PIP_VERSION 23.2.1)
+set(PYTHON_PIP_CPE "cpe:2.3:a:pypa:pip:${PYTHON_PIP_VERSION}:*:*:*:*:*:*:*")
 
 set(TBB_YEAR 2020)
 set(TBB_VERSION ${TBB_YEAR}_U3)
@@ -318,9 +341,9 @@ set(FLAC_FILE flac-${FLAC_VERSION}.tar.xz)
 set(FLAC_CPE "cpe:2.3:a:flac_project:flac:${FLAC_VERSION}:*:*:*:*:*:*:*")
 set(FLAC_HOMEPAGE https://xiph.org/flac/)
 
-set(VPX_VERSION 1.11.0)
+set(VPX_VERSION 1.14.0)
 set(VPX_URI https://github.com/webmproject/libvpx/archive/v${VPX_VERSION}/libvpx-v${VPX_VERSION}.tar.gz)
-set(VPX_HASH 965e51c91ad9851e2337aebcc0f517440c637c506f3a03948062e3d5ea129a83)
+set(VPX_HASH 5f21d2db27071c8a46f1725928a10227ae45c5cd1cad3727e4aafbe476e321fa)
 set(VPX_HASH_TYPE SHA256)
 set(VPX_FILE libvpx-v${VPX_VERSION}.tar.gz)
 set(VPX_CPE "cpe:2.3:a:webmproject:libvpx:${VPX_VERSION}:*:*:*:*:*:*:*")
@@ -339,6 +362,13 @@ set(X264_HASH_TYPE SHA256)
 set(X264_FILE x264-${X264_VERSION}.tar.gz)
 set(X264_HOMEPAGE https://www.videolan.org/developers/x264.html)
 
+set(X265_VERSION 3cf6c1e53037eb9e198860365712e1bafb22f7c6)
+set(X265_URI https://bitbucket.org/multicoreware/x265_git/get/${X265_VERSION}.tar.gz)
+set(X265_HASH 40d12016192cdc740132cb00dd6cc80ead094ff91a1a897181256def2011342e)
+set(X265_HASH_TYPE SHA256)
+set(X265_FILE x265-${X265_VERSION}.tar.gz)
+set(X265_HOMEPAGE https://www.videolan.org/developers/x265.html)
+
 set(OPENJPEG_VERSION 2.5.0)
 set(OPENJPEG_SHORT_VERSION 2.5)
 set(OPENJPEG_URI https://github.com/uclouvain/openjpeg/archive/v${OPENJPEG_VERSION}.tar.gz)
@@ -347,9 +377,9 @@ set(OPENJPEG_HASH_TYPE SHA256)
 set(OPENJPEG_FILE openjpeg-v${OPENJPEG_VERSION}.tar.gz)
 set(OPENJPEG_CPE "cpe:2.3:a:uclouvain:openjpeg:${OPENJPEG_VERSION}:*:*:*:*:*:*:*")
 
-set(FFMPEG_VERSION 6.0)
+set(FFMPEG_VERSION 6.1.1)
 set(FFMPEG_URI http://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.bz2)
-set(FFMPEG_HASH 47d062731c9f66a78380e35a19aac77cebceccd1c7cc309b9c82343ffc430c3d)
+set(FFMPEG_HASH 5e3133939a61ef64ac9b47ffd29a5ea6e337a4023ef0ad972094b4da844e3a20)
 set(FFMPEG_HASH_TYPE SHA256)
 set(FFMPEG_FILE ffmpeg-${FFMPEG_VERSION}.tar.bz2)
 set(FFMPEG_CPE "cpe:2.3:a:ffmpeg:ffmpeg:${FFMPEG_VERSION}:*:*:*:*:*:*:*")
@@ -479,9 +509,9 @@ set(LZMA_FILE xz-${LZMA_VERSION}.tar.bz2)
 set(LZMA_HOMEPAGE https://tukaani.org/lzma/)
 
 # NOTE: Python's build has been modified to use our ssl version.
-set(SSL_VERSION 3.1.2)
+set(SSL_VERSION 3.1.5)
 set(SSL_URI https://www.openssl.org/source/openssl-${SSL_VERSION}.tar.gz)
-set(SSL_HASH a0ce69b8b97ea6a35b96875235aa453b966ba3cba8af2de23657d8b6767d6539)
+set(SSL_HASH 6ae015467dabf0469b139ada93319327be24b98251ffaeceda0221848dc09262)
 set(SSL_HASH_TYPE SHA256)
 set(SSL_FILE openssl-${SSL_VERSION}.tar.gz)
 set(SSL_CPE "cpe:2.3:a:openssl:openssl:${SSL_VERSION}:*:*:*:*:*:*:*")
@@ -490,24 +520,24 @@ set(SSL_HOMEPAGE https://www.openssl.org)
 # Note: This will *HAVE* to match the version python ships on windows which
 # is hardcoded in pythons PCbuild/get_externals.bat for compliance reasons there
 # can be no exceptions to this.
-set(SQLITE_VERSION 3.42.0)
-set(SQLLITE_LONG_VERSION 3420000)
-set(SQLITE_URI https://www.sqlite.org/2023/sqlite-autoconf-${SQLLITE_LONG_VERSION}.tar.gz)
-set(SQLITE_HASH 036575929b174c1b829769255491ba2b32bda9ee)
+set(SQLITE_VERSION 3.45.1)
+set(SQLLITE_LONG_VERSION 3450100)
+set(SQLITE_URI https://www.sqlite.org/2024/sqlite-autoconf-${SQLLITE_LONG_VERSION}.tar.gz)
+set(SQLITE_HASH 650305e234add12fc1e6bef0b365d86a087b3d38)
 set(SQLITE_HASH_TYPE SHA1)
 set(SQLITE_FILE sqlite-autoconf-${SQLLITE_LONG_VERSION}.tar.gz)
 set(SQLITE_CPE "cpe:2.3:a:sqlite:sqlite:${SQLITE_VERSION}:*:*:*:*:*:*:*")
 set(SQLITE_HOMEPAGE https://www.sqlite.org)
 
-set(EMBREE_VERSION 4.1.0)
+set(EMBREE_VERSION 4.3.2-blender)
 set(EMBREE_URI https://github.com/embree/embree/archive/v${EMBREE_VERSION}.zip)
-set(EMBREE_HASH 4b525955b08e1249a700dea5b5ffc8b2)
+set(EMBREE_HASH 91bd65e59c6cf4d9ff0e4d628aa28d6a)
 set(EMBREE_HASH_TYPE MD5)
 set(EMBREE_FILE embree-v${EMBREE_VERSION}.zip)
 
-set(USD_VERSION 23.11)
+set(USD_VERSION 24.05)
 set(USD_URI https://github.com/PixarAnimationStudios/OpenUSD/archive/v${USD_VERSION}.tar.gz)
-set(USD_HASH 77358a244f50fc607e8b40764ea4f6c6)
+set(USD_HASH 44a5b976a76588b485a652f08a55e91f)
 set(USD_HASH_TYPE MD5)
 set(USD_FILE usd-v${USD_VERSION}.tar.gz)
 
@@ -517,9 +547,9 @@ set(MATERIALX_HASH fad8f4e19305fb2ee920cbff638f3560)
 set(MATERIALX_HASH_TYPE MD5)
 set(MATERIALX_FILE materialx-v${MATERIALX_VERSION}.tar.gz)
 
-set(OIDN_VERSION 2.1.0)
+set(OIDN_VERSION 2.3.0)
 set(OIDN_URI https://github.com/OpenImageDenoise/oidn/releases/download/v${OIDN_VERSION}/oidn-${OIDN_VERSION}.src.tar.gz)
-set(OIDN_HASH 997251847c49ce0f3ab21c7fc712bfb4)
+set(OIDN_HASH 31a3d8b9168966a2fa93daa6becad586)
 set(OIDN_HASH_TYPE MD5)
 set(OIDN_FILE oidn-${OIDN_VERSION}.src.tar.gz)
 
@@ -551,31 +581,31 @@ set(XR_OPENXR_SDK_HASH a2623ebab3d0b340bc16311b14f02075)
 set(XR_OPENXR_SDK_HASH_TYPE MD5)
 set(XR_OPENXR_SDK_FILE OpenXR-SDK-${XR_OPENXR_SDK_VERSION}.tar.gz)
 
-set(WL_PROTOCOLS_VERSION 1.32)
+set(WL_PROTOCOLS_VERSION 1.36)
 set(WL_PROTOCOLS_FILE wayland-protocols-${WL_PROTOCOLS_VERSION}.tar.xz)
 set(WL_PROTOCOLS_URI https://gitlab.freedesktop.org/wayland/wayland-protocols/-/releases/${WL_PROTOCOLS_VERSION}/downloads/${WL_PROTOCOLS_FILE})
-set(WL_PROTOCOLS_HASH 00c2cedb0d2df714a0965a00c19385c6)
+set(WL_PROTOCOLS_HASH d733380202a75ca837744e65b4dbadc5)
 set(WL_PROTOCOLS_HASH_TYPE MD5)
 set(WL_PROTOCOLS_HOMEPAGE https://gitlab.freedesktop.org/wayland/wayland-protocols)
 
-set(WAYLAND_VERSION 1.22.0)
+set(WAYLAND_VERSION 1.23.0)
 set(WAYLAND_FILE wayland-${WAYLAND_VERSION}.tar.xz)
 set(WAYLAND_URI https://gitlab.freedesktop.org/wayland/wayland/-/releases/${WAYLAND_VERSION}/downloads/wayland-${WAYLAND_VERSION}.tar.xz)
-set(WAYLAND_HASH 7410ab549e3928fce9381455b17b0803)
+set(WAYLAND_HASH 23ad991e776ec8cf7e58b34cbd2efa75)
 set(WAYLAND_HASH_TYPE MD5)
 set(WAYLAND_HOMEPAGE https://gitlab.freedesktop.org/wayland/wayland)
 
-set(WAYLAND_LIBDECOR_VERSION 0.1.0)
+set(WAYLAND_LIBDECOR_VERSION 0.2.2)
 set(WAYLAND_LIBDECOR_FILE libdecor-${WAYLAND_LIBDECOR_VERSION}.tar.xz)
-set(WAYLAND_LIBDECOR_URI https://gitlab.gnome.org/jadahl/libdecor/uploads/81adf91d27620e20bcc5f6b9b312d768/libdecor-${WAYLAND_LIBDECOR_VERSION}.tar.xz )
-set(WAYLAND_LIBDECOR_HASH 47b59eba76faa3787f0878bf8700e912)
+set(WAYLAND_LIBDECOR_URI https://gitlab.freedesktop.org/libdecor/libdecor/-/releases/${WAYLAND_LIBDECOR_VERSION}/downloads/libdecor-${WAYLAND_LIBDECOR_VERSION}.tar.xz)
+set(WAYLAND_LIBDECOR_HASH 5b7f4a10a9335b62101bccc220e2d13a)
 set(WAYLAND_LIBDECOR_HASH_TYPE MD5)
 set(WAYLAND_LIBDECOR_HOMEPAGE https://gitlab.freedesktop.org/libdecor/libdecor)
 
-set(WAYLAND_WESTON_VERSION 12.0.92)
+set(WAYLAND_WESTON_VERSION 13.0.3)
 set(WAYLAND_WESTON_FILE weston-${WAYLAND_WESTON_VERSION}.tar.xz)
 set(WAYLAND_WESTON_URI https://gitlab.freedesktop.org/wayland/weston/-/releases/${WAYLAND_WESTON_VERSION}/downloads/weston-${WAYLAND_WESTON_VERSION}.tar.xz)
-set(WAYLAND_WESTON_HASH 44542b60bf9b9fe3add904af11bbad98)
+set(WAYLAND_WESTON_HASH 9e10833f807214b4b060a1a8db1e3057)
 set(WAYLAND_WESTON_HASH_TYPE MD5)
 set(WAYLAND_WESTON_HOMEPAGE https://wayland.freedesktop.org)
 
@@ -614,9 +644,9 @@ set(ZSTD_HASH_TYPE SHA256)
 set(ZSTD_FILE zstd-${ZSTD_VERSION}.tar.gz)
 set(ZSTD_CPE "cpe:2.3:a:facebook:zstandard:${ZSTD_VERSION}:*:*:*:*:*:*:*")
 
-set(SSE2NEON_VERSION 0d6e9b3dd4687a0b98c0645e001f96659aae5854)
+set(SSE2NEON_VERSION cfaa59fc04fecb117c0a0f3fe9c82dece6f359ad)
 set(SSE2NEON_URI https://github.com/DLTcollab/sse2neon/archive/${SSE2NEON_VERSION}.tar.gz)
-set(SSE2NEON_HASH 68cf4dfe6d0667ae3e3850233227c4c4937b7b83de01845d356b68d313f25e32)
+set(SSE2NEON_HASH 5491c5038a301a6b0ba0531e516568bb50d165d206360f03d8d56558a2490669)
 set(SSE2NEON_HASH_TYPE SHA256)
 set(SSE2NEON_FILE sse2neon-${SSE2NEON_VERSION}.tar.gz)
 
@@ -627,22 +657,22 @@ set(BROTLI_HASH_TYPE SHA256)
 set(BROTLI_FILE brotli-v${BROTLI_VERSION}.tar.gz)
 set(BROTLI_CPE "cpe:2.3:a:google:brotli:${BROTLI_VERSION}:*:*:*:*:*:*:*")
 
-set(OPENPGL_VERSION v0.5.0)
-set(OPENPGL_SHORT_VERSION 0.5.0)
+set(OPENPGL_VERSION v0.6.0)
+set(OPENPGL_SHORT_VERSION 0.6.0)
 set(OPENPGL_URI https://github.com/OpenPathGuidingLibrary/openpgl/archive/refs/tags/${OPENPGL_VERSION}.tar.gz)
-set(OPENPGL_HASH 1ec806d434d45e43e098f82ee9be0cb74928343898c57490b34ff80584e9805a)
+set(OPENPGL_HASH 4192a4096ee3e3d31878cd013f8de23418c8037c576537551f946c4811931c5e)
 set(OPENPGL_HASH_TYPE SHA256)
 set(OPENPGL_FILE openpgl-${OPENPGL_VERSION}.tar.gz)
 
-set(LEVEL_ZERO_VERSION v1.8.8)
-set(LEVEL_ZERO_URI https://github.com/oneapi-src/level-zero/archive/refs/tags/${LEVEL_ZERO_VERSION}.tar.gz)
-set(LEVEL_ZERO_HASH 3553ae8fa0d2d69c4210a8f3428bd6612bd8bb8a627faf52c3658a01851e66d2)
+set(LEVEL_ZERO_VERSION 1.16.1)
+set(LEVEL_ZERO_URI https://codeload.github.com/oneapi-src/level-zero/tar.gz/refs/tags/v${LEVEL_ZERO_VERSION})
+set(LEVEL_ZERO_HASH f341dd6355d8da6ee9c29031642b8e8e4259f91c13c72d318c81663af048817e)
 set(LEVEL_ZERO_HASH_TYPE SHA256)
 set(LEVEL_ZERO_FILE level-zero-${LEVEL_ZERO_VERSION}.tar.gz)
 
-set(DPCPP_VERSION 2022-12)
-set(DPCPP_URI https://github.com/intel/llvm/archive/refs/tags/${DPCPP_VERSION}.tar.gz)
-set(DPCPP_HASH 13151d5ae79f7c9c4a9b072a0c486ae7b3c4993e301bb1268c92214451025790)
+set(DPCPP_VERSION d2817d6d317db1143bb227168e85c409d5ab7c82) # tip of sycl-rel_5_2_0 as of 2024.05.24
+set(DPCPP_URI https://github.com/intel/llvm/archive/${DPCPP_VERSION}.tar.gz)
+set(DPCPP_HASH 86cbff157b79e29a6ebb96ba79c96f64b4296c33fcd896f60a5579955fca5724)
 set(DPCPP_HASH_TYPE SHA256)
 set(DPCPP_FILE DPCPP-${DPCPP_VERSION}.tar.gz)
 
@@ -655,49 +685,56 @@ set(DPCPP_FILE DPCPP-${DPCPP_VERSION}.tar.gz)
 # will take care of building them, unpack is being done in dpcpp_deps.cmake
 
 # Source llvm/lib/SYCLLowerIR/CMakeLists.txt
-set(VCINTRINSICS_VERSION 782fbf7301dc73acaa049a4324c976ad94f587f7)
+set(VCINTRINSICS_VERSION da892e1982b6c25b9a133f85b4ac97142d8a3def)
 set(VCINTRINSICS_URI https://github.com/intel/vc-intrinsics/archive/${VCINTRINSICS_VERSION}.tar.gz)
-set(VCINTRINSICS_HASH f4c0ccad8c1f77760364c551c65e8e1cf194d058889fa46d3b1b2d19ec4dc33f)
+set(VCINTRINSICS_HASH 06b85bd988059939770eb6e6e6194562d17c5f5a5df9947af18696b3b1fe92f3)
 set(VCINTRINSICS_HASH_TYPE SHA256)
 set(VCINTRINSICS_FILE vc-intrinsics-${VCINTRINSICS_VERSION}.tar.gz)
 
 # Source opencl/CMakeLists.txt
-set(OPENCLHEADERS_VERSION dcd5bede6859d26833cd85f0d6bbcee7382dc9b3)
+set(OPENCLHEADERS_VERSION 9ddb236e6eb3cf844f9e2f81677e1045f9bf838e)
 set(OPENCLHEADERS_URI https://github.com/KhronosGroup/OpenCL-Headers/archive/${OPENCLHEADERS_VERSION}.tar.gz)
-set(OPENCLHEADERS_HASH ca8090359654e94f2c41e946b7e9d826253d795ae809ce7c83a7d3c859624693)
+set(OPENCLHEADERS_HASH 9db682a1b0037ef54c50ba8fa3fa73182e552fc1ad0119a771bebf68e43ea739)
 set(OPENCLHEADERS_HASH_TYPE SHA256)
 set(OPENCLHEADERS_FILE opencl_headers-${OPENCLHEADERS_VERSION}.tar.gz)
 
 # Source opencl/CMakeLists.txt
-set(ICDLOADER_VERSION 792682ad3d877ab38573b997808bab3b43902b70)
+set(ICDLOADER_VERSION 9a3e962f16f5097d2054233ad8b6dad51b6f41b7)
 set(ICDLOADER_URI https://github.com/KhronosGroup/OpenCL-ICD-Loader/archive/${ICDLOADER_VERSION}.tar.gz)
-set(ICDLOADER_HASH b33a0320d94bf300efa1da97931ded506d27813bd1148da6858fe79d412d1ea2)
+set(ICDLOADER_HASH 5e2979be5692caf11a4afc2fd7995a54c94a03d0f7ee2959f03f98f7689b677b)
 set(ICDLOADER_HASH_TYPE SHA256)
 set(ICDLOADER_FILE icdloader-${ICDLOADER_VERSION}.tar.gz)
 
 # Source sycl/cmake/modules/AddBoostMp11Headers.cmake
 # Using external MP11 here, getting AddBoostMp11Headers.cmake to recognize
 # our copy in boost directly was more trouble than it was worth.
-set(MP11_VERSION 7bc4e1ae9b36ec8ee635c3629b59ec525bbe82b9)
+set(MP11_VERSION ef7608b463298b881bc82eae4f45a4385ed74fca)
 set(MP11_URI https://github.com/boostorg/mp11/archive/${MP11_VERSION}.tar.gz)
-set(MP11_HASH 071ee2bd3952ec89882edb3af25dd1816f6b61723f66e42eea32f4d02ceef426)
+set(MP11_HASH ec2d68858dd4d04f9a1e3960fc94a58440715e1b3e746cc495438116715343e2)
 set(MP11_HASH_TYPE SHA256)
 set(MP11_FILE mp11-${MP11_VERSION}.tar.gz)
 
 # Source llvm-spirv/CMakeLists.txt (repo)
 # Source llvm-spirv/spirv-headers-tag.conf (hash)
-set(SPIRV_HEADERS_VERSION 5a121866927a16ab9d49bed4788b532c7fcea766)
+set(SPIRV_HEADERS_VERSION b73e168ca5e123dcf3dea8a34b19a5130f421ae1)
 set(SPIRV_HEADERS_URI https://github.com/KhronosGroup/SPIRV-Headers/archive/${SPIRV_HEADERS_VERSION}.tar.gz)
-set(SPIRV_HEADERS_HASH ec8ecb471a62672697846c436501638ab25447ae9d4a6761e0bfe8a9a839502a)
+set(SPIRV_HEADERS_HASH 11d835c60297b26532c05c3f3b581ba7a2787b5ae7399e94f72c392169216f11)
 set(SPIRV_HEADERS_HASH_TYPE SHA256)
 set(SPIRV_HEADERS_FILE SPIR-V-Headers-${SPIRV_HEADERS_VERSION}.tar.gz)
 
-# Source llvm/sycl/plugins/unified_runtime/CMakeLists.txt
-set(UNIFIED_RUNTIME_VERSION fd711c920acc4434cb52ff18b078c082d9d7f44d)
+# Source sycl/plugins/unified_runtime/CMakeLists.txt
+set(UNIFIED_RUNTIME_VERSION ec634ff05b067d7922ec45059dda94665e5dcd9b)
 set(UNIFIED_RUNTIME_URI https://github.com/oneapi-src/unified-runtime/archive/${UNIFIED_RUNTIME_VERSION}.tar.gz)
-set(UNIFIED_RUNTIME_HASH 535ca2ee78f68c5e7e62b10f1bbabd909179488885566e6d9b1fc50e8a1be65f)
+set(UNIFIED_RUNTIME_HASH ff15574aba6225d0c8a32f71866126551dee1aaacfa7894b8fdcc5e52e0f5da9)
 set(UNIFIED_RUNTIME_HASH_TYPE SHA256)
 set(UNIFIED_RUNTIME_FILE unified-runtime-${UNIFIED_RUNTIME_VERSION}.tar.gz)
+
+# Source unified-runtime/source/common/CMakeList.txt
+set(UNIFIED_MEMORY_FRAMEWORK_VERSION 9bf7a0dc4dff76844e10edbb5c6e9d917536ef6d)
+set(UNIFIED_MEMORY_FRAMEWORK_URI https://github.com/oneapi-src/unified-memory-framework/archive/${UNIFIED_MEMORY_FRAMEWORK_VERSION}.tar.gz)
+set(UNIFIED_MEMORY_FRAMEWORK_HASH 7ff7d0be7be6e59693d238eab02b5a9741c820d3d995446781dcd7a2adaa28e9)
+set(UNIFIED_MEMORY_FRAMEWORK_HASH_TYPE SHA256)
+set(UNIFIED_MEMORY_FRAMEWORK_FILE unified-memory-framework-${UNIFIED_MEMORY_FRAMEWORK_VERSION}.tar.gz)
 
 ######################
 ### DPCPP DEPS END ###
@@ -710,9 +747,9 @@ set(UNIFIED_RUNTIME_FILE unified-runtime-${UNIFIED_RUNTIME_VERSION}.tar.gz)
 # compiler, the versions used are taken from the following location
 # https://github.com/intel/intel-graphics-compiler/releases
 
-set(IGC_VERSION 1.0.14828.26)
+set(IGC_VERSION 1.0.15468.25)
 set(IGC_URI https://github.com/intel/intel-graphics-compiler/archive/refs/tags/igc-${IGC_VERSION}.tar.gz)
-set(IGC_HASH acad90b3e149cf87875e6b9100152f9e7644d6cc79ed54eaf52698abdb42076c)
+set(IGC_HASH c2c36af98ead4f4f6975633eaa53f45b84cb96ce48d9bfa879bebfaf12367b79)
 set(IGC_HASH_TYPE SHA256)
 set(IGC_FILE igc-${IGC_VERSION}.tar.gz)
 
@@ -756,9 +793,9 @@ set(IGC_SPIRV_TOOLS_HASH 327b2dba4515646eee28c1a5fe1332891e81c8b6ff289363f52877f
 set(IGC_SPIRV_TOOLS_HASH_TYPE SHA256)
 set(IGC_SPIRV_TOOLS_FILE SPIR-V-Tools-${IGC_SPIRV_TOOLS_VERSION}.tar.gz)
 
-set(IGC_SPIRV_TRANSLATOR_VERSION 23f398bf369093b1fd67459db8071ffcc6b92658)
+set(IGC_SPIRV_TRANSLATOR_VERSION 7e332d0acc8ee57462d9fbedefaf411fc193fdd0)
 set(IGC_SPIRV_TRANSLATOR_URI https://github.com/KhronosGroup/SPIRV-LLVM-Translator/archive/${IGC_SPIRV_TRANSLATOR_VERSION}.tar.gz)
-set(IGC_SPIRV_TRANSLATOR_HASH a96447656ff6b40d9ad286524e22f4e7319d439c54136026fe72550d1162cd35)
+set(IGC_SPIRV_TRANSLATOR_HASH 29aadf5fd4e64ff1d4f86446eacd6a7439efeb280478988c36314c4441072c36)
 set(IGC_SPIRV_TRANSLATOR_HASH_TYPE SHA256)
 set(IGC_SPIRV_TRANSLATOR_FILE SPIR-V-Translator-${IGC_SPIRV_TRANSLATOR_VERSION}.tar.gz)
 
@@ -766,15 +803,15 @@ set(IGC_SPIRV_TRANSLATOR_FILE SPIR-V-Translator-${IGC_SPIRV_TRANSLATOR_VERSION}.
 ### Intel Graphics Compiler DEPS END ###
 ########################################
 
-set(GMMLIB_VERSION intel-gmmlib-22.3.0)
+set(GMMLIB_VERSION intel-gmmlib-22.3.11)
 set(GMMLIB_URI https://github.com/intel/gmmlib/archive/refs/tags/${GMMLIB_VERSION}.tar.gz)
-set(GMMLIB_HASH c1f33e1519edfc527127baeb0436b783430dfd256c643130169a3a71dc86aff9)
+set(GMMLIB_HASH b97f4e501c1e902a559cbd6597c008a700f4ab8c495680bf1968db99c6547afe)
 set(GMMLIB_HASH_TYPE SHA256)
 set(GMMLIB_FILE ${GMMLIB_VERSION}.tar.gz)
 
-set(OCLOC_VERSION 23.30.26918.47)
+set(OCLOC_VERSION 23.43.27642.40)
 set(OCLOC_URI https://github.com/intel/compute-runtime/archive/refs/tags/${OCLOC_VERSION}.tar.gz)
-set(OCLOC_HASH 9890f29cbf27ce7eb845f3f7711fe8f3b0c4ee2164b77871fe51102548553f8f)
+set(OCLOC_HASH 67d0c6f3103ff12408a628e14f7170da3e0220313e10799693d576cea7821fe2)
 set(OCLOC_HASH_TYPE SHA256)
 set(OCLOC_FILE ocloc-${OCLOC_VERSION}.tar.gz)
 

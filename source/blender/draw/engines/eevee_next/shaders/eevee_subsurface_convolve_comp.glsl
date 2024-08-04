@@ -14,6 +14,7 @@
  */
 
 #pragma BLENDER_REQUIRE(draw_view_lib.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_shared_exponent_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_math_rotation_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_math_matrix_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_codegen_lib.glsl)
@@ -93,12 +94,12 @@ void main(void)
   vec3 vP = drw_point_screen_to_view(vec3(center_uv, depth));
 
   GBufferReader gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel);
-
-  if (!gbuf.has_sss) {
+  if (gbuffer_closure_get(gbuf, 0).type != CLOSURE_BSSRDF_BURLEY_ID) {
     return;
   }
 
-  float max_radius = reduce_max(gbuf.data.diffuse.sss_radius);
+  ClosureSubsurface closure = to_closure_subsurface(gbuffer_closure_get(gbuf, 0));
+  float max_radius = reduce_max(closure.sss_radius);
 
   float homcoord = ProjectionMatrix[2][3] * vP.z + ProjectionMatrix[3][3];
   vec2 sample_scale = vec2(ProjectionMatrix[0][0], ProjectionMatrix[1][1]) *
@@ -111,10 +112,11 @@ void main(void)
   }
 
   /* Avoid too small radii that have float imprecision. */
-  vec3 clamped_sss_radius = max(vec3(1e-4), gbuf.data.diffuse.sss_radius / max_radius) *
+  vec3 clamped_sss_radius = max(vec3(uniform_buf.subsurface.min_radius),
+                                closure.sss_radius / max_radius) *
                             max_radius;
   /* Scale albedo because we can have HDR value caused by BSDF sampling. */
-  vec3 albedo = gbuf.data.diffuse.color / max(1e-6, reduce_max(gbuf.data.diffuse.color));
+  vec3 albedo = closure.color / max(1e-6, reduce_max(closure.color));
   vec3 d = burley_setup(clamped_sss_radius, albedo);
 
   /* Do not rotate too much to avoid too much cache misses. */
@@ -132,7 +134,7 @@ void main(void)
 
     SubSurfaceSample samp = sample_neighborhood(sample_uv);
     /* Reject radiance from other surfaces. Avoids light leak between objects. */
-    if (samp.sss_id != gbuf.data.object_id) {
+    if (samp.sss_id != gbuf.object_id) {
       continue;
     }
     /* Slide 34. */
@@ -147,7 +149,7 @@ void main(void)
   accum_radiance *= safe_rcp(accum_weight);
 
   /* Put result in direct diffuse. */
-  imageStore(out_direct_light_img, texel, vec4(accum_radiance, 0.0));
+  imageStore(out_direct_light_img, texel, uvec4(rgb9e5_encode(accum_radiance)));
   /* Clear the indirect pass since its content has been merged and convolved with direct light. */
   imageStore(out_indirect_light_img, texel, vec4(0.0, 0.0, 0.0, 0.0));
 }

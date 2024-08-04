@@ -156,6 +156,9 @@ class ImBufLoadTest(ImBufTest):
 
         self.check("*.webp")
 
+    def test_load_psd(self):
+        self.check("*.psd")
+
 
 class ImBufBrokenTest(AbstractImBufTest):
     @classmethod
@@ -196,7 +199,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-test_dir', required=True, type=pathlib.Path)
     parser.add_argument('-output_dir', required=True, type=pathlib.Path)
-    parser.add_argument('-idiff', required=True, type=pathlib.Path)
+    parser.add_argument('-oiiotool', required=True, type=pathlib.Path)
     parser.add_argument('-optional_formats', required=True)
     args, remaining = parser.parse_known_args(argv)
 

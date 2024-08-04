@@ -6,6 +6,8 @@
  * \ingroup bke
  */
 
+#include <optional>
+
 #include "MEM_guardedalloc.h"
 
 #include "DNA_defaults.h"
@@ -29,27 +31,28 @@
 #include "BLI_task.hh"
 #include "BLI_utildefines.h"
 
-#include "BKE_anim_data.h"
-#include "BKE_bpath.h"
+#include "BKE_anim_data.hh"
+#include "BKE_bake_data_block_id.hh"
+#include "BKE_bpath.hh"
 #include "BKE_geometry_set.hh"
-#include "BKE_global.h"
-#include "BKE_idtype.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
+#include "BKE_global.hh"
+#include "BKE_idtype.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_lib_remap.hh"
 #include "BKE_main.hh"
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_object_types.hh"
 #include "BKE_packedFile.h"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 #include "BKE_volume.hh"
 #include "BKE_volume_grid.hh"
 #include "BKE_volume_grid_file_cache.hh"
 #include "BKE_volume_openvdb.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DEG_depsgraph_query.hh"
 
@@ -140,15 +143,22 @@ static void volume_init_data(ID *id)
 
   MEMCPY_STRUCT_AFTER(volume, DNA_struct_default_get(Volume), id);
 
+  volume->runtime = MEM_new<blender::bke::VolumeRuntime>(__func__);
+
   BKE_volume_init_grids(volume);
 
   STRNCPY(volume->velocity_grid, "velocity");
 }
 
-static void volume_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, const int /*flag*/)
+static void volume_copy_data(Main * /*bmain*/,
+                             std::optional<Library *> /*owner_library*/,
+                             ID *id_dst,
+                             const ID *id_src,
+                             const int /*flag*/)
 {
   Volume *volume_dst = (Volume *)id_dst;
   const Volume *volume_src = (const Volume *)id_src;
+  volume_dst->runtime = MEM_new<blender::bke::VolumeRuntime>(__func__);
 
   if (volume_src->packedfile) {
     volume_dst->packedfile = BKE_packedfile_duplicate(volume_src->packedfile);
@@ -156,11 +166,21 @@ static void volume_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, con
 
   volume_dst->mat = (Material **)MEM_dupallocN(volume_src->mat);
 #ifdef WITH_OPENVDB
-  if (volume_src->runtime.grids) {
-    const VolumeGridVector &grids_src = *(volume_src->runtime.grids);
-    volume_dst->runtime.grids = MEM_new<VolumeGridVector>(__func__, grids_src);
+  if (volume_src->runtime->grids) {
+    const VolumeGridVector &grids_src = *(volume_src->runtime->grids);
+    volume_dst->runtime->grids = MEM_new<VolumeGridVector>(__func__, grids_src);
   }
 #endif
+
+  volume_dst->runtime->frame = volume_src->runtime->frame;
+  STRNCPY(volume_dst->runtime->velocity_x_grid, volume_src->runtime->velocity_x_grid);
+  STRNCPY(volume_dst->runtime->velocity_y_grid, volume_src->runtime->velocity_y_grid);
+  STRNCPY(volume_dst->runtime->velocity_z_grid, volume_src->runtime->velocity_z_grid);
+
+  if (volume_src->runtime->bake_materials) {
+    volume_dst->runtime->bake_materials = std::make_unique<blender::bke::bake::BakeMaterialsList>(
+        *volume_src->runtime->bake_materials);
+  }
 
   volume_dst->batch_cache = nullptr;
 }
@@ -171,12 +191,17 @@ static void volume_free_data(ID *id)
   BKE_animdata_free(&volume->id, false);
   BKE_volume_batch_cache_free(volume);
   MEM_SAFE_FREE(volume->mat);
+  if (volume->packedfile) {
+    BKE_packedfile_free(volume->packedfile);
+    volume->packedfile = nullptr;
+  }
 #ifdef WITH_OPENVDB
-  MEM_delete(volume->runtime.grids);
-  volume->runtime.grids = nullptr;
+  MEM_delete(volume->runtime->grids);
+  volume->runtime->grids = nullptr;
   /* Deleting the volume might have made some grids completely unused, so they can be freed. */
   blender::bke::volume_grid::file_cache::unload_unused();
 #endif
+  MEM_delete(volume->runtime);
 }
 
 static void volume_foreach_id(ID *id, LibraryForeachIDData *data)
@@ -193,11 +218,11 @@ static void volume_foreach_cache(ID *id,
 {
   Volume *volume = (Volume *)id;
   IDCacheKey key = {
-      /*id_session_uuid*/ id->session_uuid,
-      /*offset_in_ID*/ offsetof(Volume, runtime.grids),
+      /*id_session_uid*/ id->session_uid,
+      /*identifier*/ 1,
   };
 
-  function_callback(id, &key, (void **)&volume->runtime.grids, 0, user_data);
+  function_callback(id, &key, (void **)&volume->runtime->grids, 0, user_data);
 }
 
 static void volume_foreach_path(ID *id, BPathForeachPathData *bpath_data)
@@ -205,7 +230,8 @@ static void volume_foreach_path(ID *id, BPathForeachPathData *bpath_data)
   Volume *volume = reinterpret_cast<Volume *>(id);
 
   if (volume->packedfile != nullptr &&
-      (bpath_data->flag & BKE_BPATH_FOREACH_PATH_SKIP_PACKED) != 0) {
+      (bpath_data->flag & BKE_BPATH_FOREACH_PATH_SKIP_PACKED) != 0)
+  {
     return;
   }
 
@@ -216,9 +242,6 @@ static void volume_blend_write(BlendWriter *writer, ID *id, const void *id_addre
 {
   Volume *volume = (Volume *)id;
   const bool is_undo = BLO_write_is_undo(writer);
-
-  /* Clean up, important in undo case to reduce false detection of changed datablocks. */
-  volume->runtime.grids = nullptr;
 
   /* Do not store packed files in case this is a library override ID. */
   if (ID_IS_OVERRIDE_LIBRARY(volume) && !is_undo) {
@@ -238,12 +261,13 @@ static void volume_blend_write(BlendWriter *writer, ID *id, const void *id_addre
 static void volume_blend_read_data(BlendDataReader *reader, ID *id)
 {
   Volume *volume = (Volume *)id;
+  volume->runtime = MEM_new<blender::bke::VolumeRuntime>(__func__);
 
   BKE_packedfile_blend_read(reader, &volume->packedfile);
-  volume->runtime.frame = 0;
+  volume->runtime->frame = 0;
 
   /* materials */
-  BLO_read_pointer_array(reader, (void **)&volume->mat);
+  BLO_read_pointer_array(reader, volume->totcol, (void **)&volume->mat);
 }
 
 static void volume_blend_read_after_liblink(BlendLibReader * /*reader*/, ID *id)
@@ -259,6 +283,7 @@ static void volume_blend_read_after_liblink(BlendLibReader * /*reader*/, ID *id)
 IDTypeInfo IDType_ID_VO = {
     /*id_code*/ ID_VO,
     /*id_filter*/ FILTER_ID_VO,
+    /*dependencies_id_types*/ FILTER_ID_MA,
     /*main_listbase_index*/ INDEX_ID_VO,
     /*struct_size*/ sizeof(Volume),
     /*name*/ "Volume",
@@ -288,8 +313,8 @@ IDTypeInfo IDType_ID_VO = {
 void BKE_volume_init_grids(Volume *volume)
 {
 #ifdef WITH_OPENVDB
-  if (volume->runtime.grids == nullptr) {
-    volume->runtime.grids = MEM_new<VolumeGridVector>(__func__);
+  if (volume->runtime->grids == nullptr) {
+    volume->runtime->grids = MEM_new<VolumeGridVector>(__func__);
   }
 #else
   UNUSED_VARS(volume);
@@ -381,7 +406,7 @@ static void volume_filepath_get(const Main *bmain, const Volume *volume, char r_
   if (volume->is_sequence && BLI_path_frame_get(r_filepath, &path_frame, &path_digits)) {
     char ext[32];
     BLI_path_frame_strip(r_filepath, ext, sizeof(ext));
-    BLI_path_frame(r_filepath, FILE_MAX, volume->runtime.frame, path_digits);
+    BLI_path_frame(r_filepath, FILE_MAX, volume->runtime->frame, path_digits);
     BLI_path_extension_ensure(r_filepath, FILE_MAX, ext);
   }
 }
@@ -393,7 +418,7 @@ bool BKE_volume_is_loaded(const Volume *volume)
 {
 #ifdef WITH_OPENVDB
   /* Test if there is a file to load, or if already loaded. */
-  return (volume->filepath[0] == '\0' || volume->runtime.grids->is_loaded());
+  return (volume->filepath[0] == '\0' || volume->runtime->grids->is_loaded());
 #else
   UNUSED_VARS(volume);
   return true;
@@ -406,9 +431,9 @@ bool BKE_volume_set_velocity_grid_by_name(Volume *volume, const char *base_name)
 
   if (BKE_volume_grid_find(volume, base_name)) {
     STRNCPY(volume->velocity_grid, base_name);
-    volume->runtime.velocity_x_grid[0] = '\0';
-    volume->runtime.velocity_y_grid[0] = '\0';
-    volume->runtime.velocity_z_grid[0] = '\0';
+    volume->runtime->velocity_x_grid[0] = '\0';
+    volume->runtime->velocity_y_grid[0] = '\0';
+    volume->runtime->velocity_z_grid[0] = '\0';
     return true;
   }
 
@@ -431,26 +456,26 @@ bool BKE_volume_set_velocity_grid_by_name(Volume *volume, const char *base_name)
 
     /* Save the base name as well. */
     STRNCPY(volume->velocity_grid, base_name);
-    STRNCPY(volume->runtime.velocity_x_grid, (ref_base_name + postfix[0]).c_str());
-    STRNCPY(volume->runtime.velocity_y_grid, (ref_base_name + postfix[1]).c_str());
-    STRNCPY(volume->runtime.velocity_z_grid, (ref_base_name + postfix[2]).c_str());
+    STRNCPY(volume->runtime->velocity_x_grid, (ref_base_name + postfix[0]).c_str());
+    STRNCPY(volume->runtime->velocity_y_grid, (ref_base_name + postfix[1]).c_str());
+    STRNCPY(volume->runtime->velocity_z_grid, (ref_base_name + postfix[2]).c_str());
     return true;
   }
 
   /* Reset to avoid potential issues. */
   volume->velocity_grid[0] = '\0';
-  volume->runtime.velocity_x_grid[0] = '\0';
-  volume->runtime.velocity_y_grid[0] = '\0';
-  volume->runtime.velocity_z_grid[0] = '\0';
+  volume->runtime->velocity_x_grid[0] = '\0';
+  volume->runtime->velocity_y_grid[0] = '\0';
+  volume->runtime->velocity_z_grid[0] = '\0';
   return false;
 }
 
 bool BKE_volume_load(const Volume *volume, const Main *bmain)
 {
 #ifdef WITH_OPENVDB
-  const VolumeGridVector &const_grids = *volume->runtime.grids;
+  const VolumeGridVector &const_grids = *volume->runtime->grids;
 
-  if (volume->runtime.frame == VOLUME_FRAME_NONE) {
+  if (volume->runtime->frame == VOLUME_FRAME_NONE) {
     /* Skip loading this frame, outside of sequence range. */
     return true;
   }
@@ -519,7 +544,7 @@ bool BKE_volume_load(const Volume *volume, const Main *bmain)
 void BKE_volume_unload(Volume *volume)
 {
 #ifdef WITH_OPENVDB
-  VolumeGridVector &grids = *volume->runtime.grids;
+  VolumeGridVector &grids = *volume->runtime->grids;
   if (grids.filepath[0] != '\0') {
     const char *volume_name = volume->id.name + 2;
     CLOG_INFO(&LOG, 1, "Volume %s: unload", volume_name);
@@ -543,15 +568,15 @@ bool BKE_volume_save(const Volume *volume,
     return false;
   }
 
-  VolumeGridVector &grids = *volume->runtime.grids;
+  VolumeGridVector &grids = *volume->runtime->grids;
   openvdb::GridCPtrVec vdb_grids;
 
   /* Tree users need to be kept alive for as long as the grids may be accessed. */
-  blender::Vector<blender::bke::VolumeTreeAccessToken> tree_users;
+  blender::Vector<blender::bke::VolumeTreeAccessToken> tree_tokens;
 
   for (const GVolumeGrid &grid : grids) {
-    tree_users.append(grid->tree_access_token());
-    vdb_grids.push_back(grid->grid_ptr(tree_users.last()));
+    tree_tokens.append_as();
+    vdb_grids.push_back(grid->grid_ptr(tree_tokens.last()));
   }
 
   try {
@@ -585,9 +610,9 @@ std::optional<blender::Bounds<blender::float3>> BKE_volume_min_max(const Volume 
     std::optional<blender::Bounds<blender::float3>> result;
     for (const int i : IndexRange(BKE_volume_num_grids(volume))) {
       const blender::bke::VolumeGridData *volume_grid = BKE_volume_grid_get(volume, i);
-      blender::bke::VolumeTreeAccessToken access_token = volume_grid->tree_access_token();
+      blender::bke::VolumeTreeAccessToken tree_token;
       result = blender::bounds::merge(result,
-                                      BKE_volume_grid_bounds(volume_grid->grid_ptr(access_token)));
+                                      BKE_volume_grid_bounds(volume_grid->grid_ptr(tree_token)));
     }
     return result;
   }
@@ -601,7 +626,7 @@ bool BKE_volume_is_y_up(const Volume *volume)
 {
   /* Simple heuristic for common files to open the right way up. */
 #ifdef WITH_OPENVDB
-  VolumeGridVector &grids = *volume->runtime.grids;
+  VolumeGridVector &grids = *volume->runtime->grids;
   if (grids.metadata) {
     openvdb::StringMetadata::ConstPtr creator =
         grids.metadata->getMetadata<openvdb::StringMetadata>("creator");
@@ -640,11 +665,10 @@ static void volume_update_simplify_level(Main *bmain, Volume *volume, const Deps
 {
 #ifdef WITH_OPENVDB
   const int simplify_level = BKE_volume_simplify_level(depsgraph);
-  volume->runtime.default_simplify_level = simplify_level;
 
   /* Replace grids with the new simplify level variants from the cache. */
   if (BKE_volume_load(volume, bmain)) {
-    VolumeGridVector &grids = *volume->runtime.grids;
+    VolumeGridVector &grids = *volume->runtime->grids;
     std::list<GVolumeGrid> new_grids;
     for (const GVolumeGrid &old_grid : grids) {
       GVolumeGrid simple_grid = blender::bke::volume_grid::file_cache::get_grid_from_file(
@@ -701,17 +725,17 @@ void BKE_volume_eval_geometry(Depsgraph *depsgraph, Volume *volume)
 
   /* TODO: can we avoid modifier re-evaluation when frame did not change? */
   int frame = volume_sequence_frame(depsgraph, volume);
-  if (frame != volume->runtime.frame) {
+  if (frame != volume->runtime->frame) {
     BKE_volume_unload(volume);
-    volume->runtime.frame = frame;
+    volume->runtime->frame = frame;
   }
 
   /* Flush back to original. */
   if (DEG_is_active(depsgraph)) {
     Volume *volume_orig = (Volume *)DEG_get_original_id(&volume->id);
-    if (volume_orig->runtime.frame != volume->runtime.frame) {
+    if (volume_orig->runtime->frame != volume->runtime->frame) {
       BKE_volume_unload(volume_orig);
-      volume_orig->runtime.frame = volume->runtime.frame;
+      volume_orig->runtime->frame = volume->runtime->frame;
     }
   }
 }
@@ -763,22 +787,22 @@ void BKE_volume_grids_backup_restore(Volume *volume, VolumeGridVector *grids, co
 #ifdef WITH_OPENVDB
   /* Restore grids after datablock was re-copied from original by depsgraph,
    * we don't want to load them again if possible. */
-  BLI_assert(volume->id.tag & LIB_TAG_COPIED_ON_WRITE);
-  BLI_assert(volume->runtime.grids != nullptr && grids != nullptr);
+  BLI_assert(volume->id.tag & LIB_TAG_COPIED_ON_EVAL);
+  BLI_assert(volume->runtime->grids != nullptr && grids != nullptr);
 
   if (!grids->is_loaded()) {
-    /* No grids loaded in CoW datablock, nothing lost by discarding. */
+    /* No grids loaded in evaluated datablock, nothing lost by discarding. */
     MEM_delete(grids);
   }
   else if (!STREQ(volume->filepath, filepath)) {
-    /* Filepath changed, discard grids from CoW datablock. */
+    /* Filepath changed, discard grids from evaluated datablock. */
     MEM_delete(grids);
   }
   else {
-    /* Keep grids from CoW datablock. We might still unload them a little
+    /* Keep grids from evaluated datablock. We might still unload them a little
      * later in BKE_volume_eval_geometry if the frame changes. */
-    MEM_delete(volume->runtime.grids);
-    volume->runtime.grids = grids;
+    MEM_delete(volume->runtime->grids);
+    volume->runtime->grids = grids;
   }
 #else
   UNUSED_VARS(volume, grids, filepath);
@@ -809,7 +833,7 @@ void BKE_volume_batch_cache_free(Volume *volume)
 int BKE_volume_num_grids(const Volume *volume)
 {
 #ifdef WITH_OPENVDB
-  return volume->runtime.grids->size();
+  return volume->runtime->grids->size();
 #else
   UNUSED_VARS(volume);
   return 0;
@@ -819,7 +843,7 @@ int BKE_volume_num_grids(const Volume *volume)
 const char *BKE_volume_grids_error_msg(const Volume *volume)
 {
 #ifdef WITH_OPENVDB
-  return volume->runtime.grids->error_msg.c_str();
+  return volume->runtime->grids->error_msg.c_str();
 #else
   UNUSED_VARS(volume);
   return "";
@@ -829,7 +853,7 @@ const char *BKE_volume_grids_error_msg(const Volume *volume)
 const char *BKE_volume_grids_frame_filepath(const Volume *volume)
 {
 #ifdef WITH_OPENVDB
-  return volume->runtime.grids->filepath;
+  return volume->runtime->grids->filepath;
 #else
   UNUSED_VARS(volume);
   return "";
@@ -839,7 +863,7 @@ const char *BKE_volume_grids_frame_filepath(const Volume *volume)
 const blender::bke::VolumeGridData *BKE_volume_grid_get(const Volume *volume, int grid_index)
 {
 #ifdef WITH_OPENVDB
-  const VolumeGridVector &grids = *volume->runtime.grids;
+  const VolumeGridVector &grids = *volume->runtime->grids;
   for (const GVolumeGrid &grid : grids) {
     if (grid_index-- == 0) {
       return &grid.get();
@@ -855,7 +879,7 @@ const blender::bke::VolumeGridData *BKE_volume_grid_get(const Volume *volume, in
 blender::bke::VolumeGridData *BKE_volume_grid_get_for_write(Volume *volume, int grid_index)
 {
 #ifdef WITH_OPENVDB
-  VolumeGridVector &grids = *volume->runtime.grids;
+  VolumeGridVector &grids = *volume->runtime->grids;
   for (GVolumeGrid &grid_ptr : grids) {
     if (grid_index-- == 0) {
       return &grid_ptr.get_for_write();
@@ -947,7 +971,7 @@ blender::bke::VolumeGridData *BKE_volume_grid_add_vdb(Volume &volume,
                                                       const StringRef name,
                                                       openvdb::GridBase::Ptr vdb_grid)
 {
-  VolumeGridVector &grids = *volume.runtime.grids;
+  VolumeGridVector &grids = *volume.runtime->grids;
   BLI_assert(BKE_volume_grid_find(&volume, name.data()) == nullptr);
   BLI_assert(blender::bke::volume_grid::get_type(*vdb_grid) != VOLUME_GRID_UNKNOWN);
 
@@ -960,7 +984,7 @@ blender::bke::VolumeGridData *BKE_volume_grid_add_vdb(Volume &volume,
 void BKE_volume_grid_remove(Volume *volume, const blender::bke::VolumeGridData *grid)
 {
 #ifdef WITH_OPENVDB
-  VolumeGridVector &grids = *volume->runtime.grids;
+  VolumeGridVector &grids = *volume->runtime->grids;
   for (VolumeGridVector::iterator it = grids.begin(); it != grids.end(); it++) {
     if (&it->get() == grid) {
       grids.erase(it);
@@ -975,7 +999,7 @@ void BKE_volume_grid_remove(Volume *volume, const blender::bke::VolumeGridData *
 void BKE_volume_grid_add(Volume *volume, const blender::bke::VolumeGridData &grid)
 {
 #ifdef WITH_OPENVDB
-  VolumeGridVector &grids = *volume->runtime.grids;
+  VolumeGridVector &grids = *volume->runtime->grids;
   grids.push_back(GVolumeGrid(&grid));
 #else
   UNUSED_VARS(volume, grid);

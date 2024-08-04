@@ -10,17 +10,6 @@ if(MSVC_CLANG AND WITH_OPENMP AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.0.1
   remove_cc_flag("-fopenmp")
 endif()
 
-# Exporting functions from the blender binary gives linker warnings on Apple arm64 systems.
-# Silence them here.
-if(APPLE)
-  if("${CMAKE_OSX_ARCHITECTURES}" STREQUAL "arm64")
-    if(CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
-      string(APPEND CMAKE_C_FLAGS " -fvisibility=hidden")
-      string(APPEND CMAKE_CXX_FLAGS " -fvisibility=hidden")
-    endif()
-  endif()
-endif()
-
 set(MANTAVERSION "0.13")
 
 add_definitions(-DWITH_FLUID=1)
@@ -94,15 +83,6 @@ set(INC_SYS
 if(WITH_MANTA_NUMPY AND WITH_PYTHON_NUMPY)
   list(APPEND INC_SYS
     ${PYTHON_NUMPY_INCLUDE_DIRS}
-  )
-endif()
-
-if(WITH_TBB)
-  list(APPEND INC_SYS
-    ${TBB_INCLUDE_DIRS}
-  )
-  list(APPEND LIB
-    ${TBB_LIBRARIES}
   )
 endif()
 
@@ -256,6 +236,7 @@ if(WITH_MANTA_NUMPY AND WITH_PYTHON_NUMPY)
 endif()
 
 set(LIB
+  PRIVATE bf::dependencies::optional::tbb
   ${PYTHON_LINKFLAGS}
   ${PYTHON_LIBRARIES}
 )

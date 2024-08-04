@@ -81,8 +81,8 @@ unsigned int hsv_to_cpack(float h, float s, float v);
 float srgb_to_linearrgb(float c);
 float linearrgb_to_srgb(float c);
 
-MINLINE void srgb_to_linearrgb_v3_v3(float linear[3], const float srgb[3]);
-MINLINE void linearrgb_to_srgb_v3_v3(float srgb[3], const float linear[3]);
+void srgb_to_linearrgb_v3_v3(float linear[3], const float srgb[3]);
+void linearrgb_to_srgb_v3_v3(float srgb[3], const float linear[3]);
 
 MINLINE void srgb_to_linearrgb_v4(float linear[4], const float srgb[4]);
 MINLINE void linearrgb_to_srgb_v4(float srgb[4], const float linear[4]);
@@ -177,7 +177,7 @@ MINLINE void float_to_byte_dither_v3(
     unsigned char b[3], const float f[3], float dither, float s, float t);
 
 #define rgba_char_args_set_fl(col, r, g, b, a) \
-  rgba_char_args_set(col, (r)*255, (g)*255, (b)*255, (a)*255)
+  rgba_char_args_set(col, (r) * 255, (g) * 255, (b) * 255, (a) * 255)
 
 #define rgba_float_args_set_ch(col, r, g, b, a) \
   rgba_float_args_set(col, (r) / 255.0f, (g) / 255.0f, (b) / 255.0f, (a) / 255.0f)

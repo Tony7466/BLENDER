@@ -16,11 +16,13 @@
 
 #include "BLI_sys_types.h"
 
-#include "GPU_shader.h"
+#include "GPU_shader.hh"
 
 namespace blender::bke {
 enum class AttrDomain : int8_t;
 }
+
+namespace blender::draw {
 
 struct DRW_AttributeRequest {
   eCustomDataType cd_type;
@@ -66,7 +68,9 @@ void drw_attributes_add_request(DRW_Attributes *attrs,
                                 int layer_index,
                                 blender::bke::AttrDomain domain);
 
-bool drw_custom_data_match_attribute(const CustomData *custom_data,
+bool drw_custom_data_match_attribute(const CustomData &custom_data,
                                      const char *name,
                                      int *r_layer_index,
                                      eCustomDataType *r_type);
+
+}  // namespace blender::draw

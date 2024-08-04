@@ -29,6 +29,7 @@
 #include "NOD_multi_function.hh"
 
 #include "BLI_compute_context.hh"
+#include "BLI_math_quaternion_types.hh"
 
 #include "BKE_bake_items.hh"
 #include "BKE_node_tree_zones.hh"
@@ -49,8 +50,7 @@ namespace sim_input {
  * The data is just passed through the node. Data that is incompatible with simulations (like
  * anonymous attributes), is removed though.
  */
-struct PassThrough {
-};
+struct PassThrough {};
 
 /**
  * The input is not evaluated, instead the values provided here are output by the node.
@@ -61,8 +61,9 @@ struct OutputCopy {
 };
 
 /**
- * Same as above, but the values can be output by move, instead of copy. This can reduce the amount
- * of unnecessary copies, when the old simulation state is not needed anymore.
+ * Same as #OutputCopy, but the values can be output by move, instead of copy.
+ * This can reduce the amount of unnecessary copies,
+ * when the old simulation state is not needed anymore.
  */
 struct OutputMove {
   float delta_time;
@@ -80,8 +81,7 @@ namespace sim_output {
  * Output the data that comes from the corresponding simulation input node, ignoring the nodes in
  * the zone.
  */
-struct PassThrough {
-};
+struct PassThrough {};
 
 /**
  * Computes the simulation step and calls the given function to cache the new simulation state.
@@ -123,6 +123,7 @@ using Behavior = std::variant<PassThrough, StoreNewState, ReadSingle, ReadInterp
 struct SimulationZoneBehavior {
   sim_input::Behavior input;
   sim_output::Behavior output;
+  bke::bake::BakeDataBlockMap *data_block_map = nullptr;
 };
 
 class GeoNodesSimulationParams {
@@ -135,8 +136,11 @@ class GeoNodesSimulationParams {
   virtual SimulationZoneBehavior *get(const int zone_id) const = 0;
 };
 
-/** The set of possible behaviors are the same for both of these nodes currently. */
-using BakeNodeBehavior = sim_output::Behavior;
+struct BakeNodeBehavior {
+  /** The set of possible behaviors are the same for both of these nodes currently. */
+  sim_output::Behavior behavior;
+  bke::bake::BakeDataBlockMap *data_block_map = nullptr;
+};
 
 class GeoNodesBakeParams {
  public:
@@ -162,13 +166,45 @@ struct GeoNodesModifierData {
   Depsgraph *depsgraph = nullptr;
 };
 
+struct GeoNodesOperatorDepsgraphs {
+  /** Current evaluated depsgraph from the viewport. Shouldn't be null. */
+  const Depsgraph *active = nullptr;
+  /**
+   * Depsgraph containing IDs referenced by the node tree and the node tree itself and from node
+   * group inputs (the redo panel).
+   */
+  Depsgraph *extra = nullptr;
+
+  ~GeoNodesOperatorDepsgraphs();
+
+  /**
+   * The evaluated data-block might be in the scene's active depsgraph, in that case we should use
+   * it directly. Otherwise retrieve it from the extra depsgraph that was built for all other
+   * data-blocks. Return null if it isn't found, generally geometry nodes can handle null ID
+   * pointers.
+   */
+  const ID *get_evaluated_id(const ID &id_orig) const;
+};
+
 struct GeoNodesOperatorData {
   eObjectMode mode;
   /** The object currently effected by the operator. */
-  const Object *self_object = nullptr;
-  /** Current evaluated depsgraph. */
-  Depsgraph *depsgraph = nullptr;
-  Scene *scene = nullptr;
+  const Object *self_object_orig = nullptr;
+  const GeoNodesOperatorDepsgraphs *depsgraphs = nullptr;
+  Scene *scene_orig = nullptr;
+  int2 mouse_position;
+  int2 region_size;
+
+  float3 cursor_position;
+  math::Quaternion cursor_rotation;
+
+  float4x4 viewport_winmat;
+  float4x4 viewport_viewmat;
+  bool viewport_is_perspective;
+
+  int active_point_index = -1;
+  int active_edge_index = -1;
+  int active_face_index = -1;
 };
 
 struct GeoNodesCallData {
@@ -396,9 +432,13 @@ std::unique_ptr<LazyFunction> get_simulation_input_lazy_function(
     const bNode &node,
     GeometryNodesLazyFunctionGraphInfo &own_lf_graph_info);
 std::unique_ptr<LazyFunction> get_switch_node_lazy_function(const bNode &node);
-std::unique_ptr<LazyFunction> get_index_switch_node_lazy_function(const bNode &node);
+std::unique_ptr<LazyFunction> get_index_switch_node_lazy_function(
+    const bNode &node, GeometryNodesLazyFunctionGraphInfo &lf_graph_info);
 std::unique_ptr<LazyFunction> get_bake_lazy_function(
     const bNode &node, GeometryNodesLazyFunctionGraphInfo &own_lf_graph_info);
+std::unique_ptr<LazyFunction> get_menu_switch_node_lazy_function(
+    const bNode &node, GeometryNodesLazyFunctionGraphInfo &lf_graph_info);
+std::unique_ptr<LazyFunction> get_menu_switch_node_socket_usage_lazy_function(const bNode &node);
 
 /**
  * Outputs the default value of each output socket that has not been output yet. This needs the

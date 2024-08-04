@@ -9,8 +9,6 @@
  * its corresponding grids to match a given original mesh.
  */
 
-#include <queue>
-
 #include "MEM_guardedalloc.h"
 
 #include "DNA_mesh_types.h"
@@ -18,21 +16,15 @@
 #include "DNA_modifier_types.h"
 #include "DNA_scene_types.h"
 
+#include "BLI_gsqueue.h"
 #include "BLI_math_vector.h"
 
 #include "BKE_customdata.hh"
-#include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.hh"
-#include "BKE_mesh_runtime.hh"
-#include "BKE_modifier.hh"
 #include "BKE_multires.hh"
-#include "BKE_subdiv.hh"
 #include "BKE_subsurf.hh"
 
 #include "bmesh.hh"
-
-#include "DEG_depsgraph_query.hh"
 
 #include "multires_reshape.hh"
 #include "multires_unsubdivide.hh"
@@ -165,7 +157,8 @@ static bool is_vertex_diagonal(BMVert *from_v, BMVert *to_v)
 static void unsubdivide_face_center_vertex_tag(BMesh *bm, BMVert *initial_vertex)
 {
   blender::BitVector<> visited_verts(bm->totvert);
-  std::queue<BMVert *> queue;
+  GSQueue *queue;
+  queue = BLI_gsqueue_new(sizeof(BMVert *));
 
   /* Add and tag the vertices connected by a diagonal to initial_vertex to the flood fill queue. If
    * initial_vertex is a pole and there is a valid solution, those vertices should be the (0,0) of
@@ -178,7 +171,7 @@ static void unsubdivide_face_center_vertex_tag(BMesh *bm, BMVert *initial_vertex
     BM_ITER_ELEM (neighbor_v, &iter_a, f, BM_VERTS_OF_FACE) {
       int neighbor_vertex_index = BM_elem_index_get(neighbor_v);
       if (neighbor_v != initial_vertex && is_vertex_diagonal(neighbor_v, initial_vertex)) {
-        queue.push(neighbor_v);
+        BLI_gsqueue_push(queue, &neighbor_v);
         visited_verts[neighbor_vertex_index].set();
         BM_elem_flag_set(neighbor_v, BM_ELEM_TAG, true);
       }
@@ -190,39 +183,43 @@ static void unsubdivide_face_center_vertex_tag(BMesh *bm, BMVert *initial_vertex
    * direction. If a solution exists and `initial_vertex` was a pole, this is guaranteed that will
    * tag all the (0,0) vertices of the grids, and nothing else. */
   /* If it was not a pole, it may or may not find a solution, even if the solution exists. */
-  while (!queue.empty()) {
-    BMVert *from_v = queue.front();
-    queue.pop();
+  while (!BLI_gsqueue_is_empty(queue)) {
+    BMVert *from_v;
+    BLI_gsqueue_pop(queue, &from_v);
 
     /* Get the diagonals (first connected step) */
-    std::queue<BMVert *> diagonals;
+    GSQueue *diagonals;
+    diagonals = BLI_gsqueue_new(sizeof(BMVert *));
     BM_ITER_ELEM (f, &iter, from_v, BM_FACES_OF_VERT) {
       BM_ITER_ELEM (neighbor_v, &iter_a, f, BM_VERTS_OF_FACE) {
         if (neighbor_v != from_v && is_vertex_diagonal(neighbor_v, from_v)) {
-          diagonals.push(neighbor_v);
+          BLI_gsqueue_push(diagonals, &neighbor_v);
         }
       }
     }
 
     /* Do the second connected step. This vertices are the ones that are added to the flood fill
      * queue. */
-    while (!diagonals.empty()) {
-      BMVert *diagonal_v = diagonals.front();
-      diagonals.pop();
+    while (!BLI_gsqueue_is_empty(diagonals)) {
+      BMVert *diagonal_v;
+      BLI_gsqueue_pop(diagonals, &diagonal_v);
       BM_ITER_ELEM (f, &iter, diagonal_v, BM_FACES_OF_VERT) {
         BM_ITER_ELEM (neighbor_v, &iter_a, f, BM_VERTS_OF_FACE) {
           int neighbor_vertex_index = BM_elem_index_get(neighbor_v);
           if (!visited_verts[neighbor_vertex_index] && neighbor_v != diagonal_v &&
               is_vertex_diagonal(neighbor_v, diagonal_v))
           {
-            queue.push(neighbor_v);
-            visited_verts[neighbor_vertex_index].set();
+            BLI_gsqueue_push(queue, &neighbor_v);
+            visited_verts[neighbor_vertex_index].set(true);
             BM_elem_flag_set(neighbor_v, BM_ELEM_TAG, true);
           }
         }
       }
     }
+    BLI_gsqueue_free(diagonals);
   }
+
+  BLI_gsqueue_free(queue);
 }
 
 /**
@@ -286,10 +283,10 @@ static bool unsubdivide_tag_disconnected_mesh_element(BMesh *bm, int *elem_id, i
   /* First, get vertex candidates to try to generate possible un-subdivide solution. */
   /* Find a vertex pole. If there is a solution on an all quad base mesh, this vertex should be
    * part of the base mesh. If it isn't, then there is no solution. */
-  std::queue<BMVert *> initial_vertex;
+  GSQueue *initial_vertex = BLI_gsqueue_new(sizeof(BMVert *));
   BMVert *initial_vertex_pole = unsubdivide_find_any_pole(bm, elem_id, elem);
   if (initial_vertex_pole != nullptr) {
-    initial_vertex.push(initial_vertex_pole);
+    BLI_gsqueue_push(initial_vertex, &initial_vertex_pole);
   }
 
   /* Also try from the different 4 vertices of a quad in the current
@@ -311,16 +308,16 @@ static bool unsubdivide_tag_disconnected_mesh_element(BMesh *bm, int *elem_id, i
   }
 
   BM_ITER_ELEM (v, &iter_a, init_face, BM_VERTS_OF_FACE) {
-    initial_vertex.push(v);
+    BLI_gsqueue_push(initial_vertex, &v);
   }
 
   bool valid_tag_found = false;
 
   /* Check all vertex candidates to a solution. */
-  while (!initial_vertex.empty()) {
+  while (!BLI_gsqueue_is_empty(initial_vertex)) {
 
-    BMVert *iv = initial_vertex.front();
-    initial_vertex.pop();
+    BMVert *iv;
+    BLI_gsqueue_pop(initial_vertex, &iv);
 
     /* Generate a possible solution. */
     unsubdivide_face_center_vertex_tag(bm, iv);
@@ -341,6 +338,7 @@ static bool unsubdivide_tag_disconnected_mesh_element(BMesh *bm, int *elem_id, i
       }
     }
   }
+  BLI_gsqueue_free(initial_vertex);
   return valid_tag_found;
 }
 
@@ -354,29 +352,31 @@ static int unsubdivide_init_elem_ids(BMesh *bm, int *elem_id)
   int current_id = 0;
   for (int i = 0; i < bm->totvert; i++) {
     if (!visited_verts[i]) {
-      std::queue<BMVert *> queue;
+      GSQueue *queue;
+      queue = BLI_gsqueue_new(sizeof(BMVert *));
 
       visited_verts[i] = true;
       elem_id[i] = current_id;
-      queue.push(BM_vert_at_index(bm, i));
+      BMVert *iv = BM_vert_at_index(bm, i);
+      BLI_gsqueue_push(queue, &iv);
 
-      while (!queue.empty()) {
+      while (!BLI_gsqueue_is_empty(queue)) {
         BMIter iter;
-        BMVert *current_v = queue.front();
-        queue.pop();
-        BMVert *neighbor_v;
+        BMVert *current_v, *neighbor_v;
         BMEdge *ed;
+        BLI_gsqueue_pop(queue, &current_v);
         BM_ITER_ELEM (ed, &iter, current_v, BM_EDGES_OF_VERT) {
           neighbor_v = BM_edge_other_vert(ed, current_v);
           const int neighbor_index = BM_elem_index_get(neighbor_v);
           if (!visited_verts[neighbor_index]) {
             visited_verts[neighbor_index] = true;
             elem_id[neighbor_index] = current_id;
-            queue.push(neighbor_v);
+            BLI_gsqueue_push(queue, &neighbor_v);
           }
         }
       }
       current_id++;
+      BLI_gsqueue_free(queue);
     }
   }
   MEM_freeN(visited_verts);
@@ -841,17 +841,17 @@ static void multires_unsubdivide_get_grid_corners_on_base_mesh(BMFace *f1,
   /* Do an edge step until it finds a tagged vertex, which is part of the base mesh. */
   /* x axis */
   edge_x = edge_step(current_vertex_x, edge_x, &current_vertex_x);
-  while (!BM_elem_flag_test(current_vertex_x, BM_ELEM_TAG)) {
+  while (edge_x && !BM_elem_flag_test(current_vertex_x, BM_ELEM_TAG)) {
     edge_x = edge_step(current_vertex_x, edge_x, &current_vertex_x);
   }
-  (*r_corner_x) = current_vertex_x;
+  *r_corner_x = current_vertex_x;
 
   /* Same for y axis */
   edge_y = edge_step(current_vertex_y, edge_y, &current_vertex_y);
-  while (!BM_elem_flag_test(current_vertex_y, BM_ELEM_TAG)) {
+  while (edge_y && !BM_elem_flag_test(current_vertex_y, BM_ELEM_TAG)) {
     edge_y = edge_step(current_vertex_y, edge_y, &current_vertex_y);
   }
-  (*r_corner_y) = current_vertex_y;
+  *r_corner_y = current_vertex_y;
 }
 
 static BMesh *get_bmesh_from_mesh(Mesh *mesh)
@@ -1043,10 +1043,16 @@ static void multires_unsubdivide_extract_grids(MultiresUnsubdivideContext *conte
        * base mesh of the face of grid that is going to be extracted. */
       BMVert *corner_x, *corner_y;
       multires_unsubdivide_get_grid_corners_on_base_mesh(l->f, l->e, &corner_x, &corner_y);
+      if (!corner_x || !corner_y) {
+        continue;
+      }
 
       /* Map the two obtained vertices to the base mesh. */
       const int corner_x_index = orig_to_base_vmap[BM_elem_index_get(corner_x)];
       const int corner_y_index = orig_to_base_vmap[BM_elem_index_get(corner_y)];
+      if (corner_x_index < 0 || corner_y_index < 0) {
+        continue;
+      }
 
       /* Iterate over the loops of the same vertex in the base mesh. With the previously obtained
        * vertices and the current vertex it is possible to get the index of the loop in the base

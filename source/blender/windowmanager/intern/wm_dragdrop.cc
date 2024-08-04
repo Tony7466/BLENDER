@@ -19,7 +19,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BLI_bitmap.h"
 #include "BLI_blenlib.h"
@@ -28,26 +28,26 @@
 #include "BIF_glutil.hh"
 
 #include "BKE_context.hh"
-#include "BKE_global.h"
-#include "BKE_idprop.h"
-#include "BKE_idtype.h"
-#include "BKE_lib_id.h"
+#include "BKE_global.hh"
+#include "BKE_idprop.hh"
+#include "BKE_idtype.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_screen.hh"
 
 #include "GHOST_C-api.h"
 
-#include "BLO_readfile.h"
+#include "BLO_readfile.hh"
 
 #include "ED_asset.hh"
 #include "ED_fileselect.hh"
 #include "ED_screen.hh"
 
-#include "GPU_shader.h"
-#include "GPU_state.h"
-#include "GPU_viewport.h"
+#include "GPU_shader.hh"
+#include "GPU_state.hh"
+#include "GPU_viewport.hh"
 
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf_types.hh"
 
 #include "UI_interface.hh"
 #include "UI_interface_icons.hh"
@@ -57,7 +57,7 @@
 
 #include "WM_api.hh"
 #include "WM_types.hh"
-#include "wm_event_system.h"
+#include "wm_event_system.hh"
 #include "wm_window.hh"
 
 #include <fmt/format.h>
@@ -68,12 +68,15 @@ static ListBase dropboxes = {nullptr, nullptr};
 static void wm_drag_free_asset_data(wmDragAsset **asset_data);
 static void wm_drag_free_path_data(wmDragPath **path_data);
 
+static void wm_drop_item_free_data(wmDropBox *drop);
+static void wm_drop_item_clear_runtime(wmDropBox *drop);
+
 wmDragActiveDropState::wmDragActiveDropState() = default;
 wmDragActiveDropState::~wmDragActiveDropState() = default;
 
-/* drop box maps are stored global for now */
-/* these are part of blender's UI/space specs, and not like keymaps */
-/* when editors become configurable, they can add own dropbox definitions */
+/* Drop box maps are stored global for now. */
+/* These are part of blender's UI/space specs, and not like keymaps. */
+/* When editors become configurable, they can add their own dropbox definitions. */
 
 struct wmDropBoxMap {
   wmDropBoxMap *next, *prev;
@@ -104,28 +107,102 @@ ListBase *WM_dropboxmap_find(const char *idname, int spaceid, int regionid)
 
 wmDropBox *WM_dropbox_add(ListBase *lb,
                           const char *idname,
-                          bool (*poll)(bContext *, wmDrag *, const wmEvent *),
-                          void (*copy)(bContext *, wmDrag *, wmDropBox *),
-                          void (*cancel)(Main *, wmDrag *, wmDropBox *),
+                          bool (*poll)(bContext *C, wmDrag *drag, const wmEvent *event),
+                          void (*copy)(bContext *C, wmDrag *drag, wmDropBox *drop),
+                          void (*cancel)(Main *bmain, wmDrag *drag, wmDropBox *drop),
                           WMDropboxTooltipFunc tooltip)
 {
+  wmOperatorType *ot = WM_operatortype_find(idname, true);
+  if (ot == nullptr) {
+    printf("Error: dropbox with unknown operator: %s\n", idname);
+    return nullptr;
+  }
+
   wmDropBox *drop = MEM_cnew<wmDropBox>(__func__);
   drop->poll = poll;
   drop->copy = copy;
   drop->cancel = cancel;
   drop->tooltip = tooltip;
-  drop->ot = WM_operatortype_find(idname, false);
+  drop->ot = ot;
+  STRNCPY(drop->opname, idname);
 
-  if (drop->ot == nullptr) {
-    MEM_freeN(drop);
-    printf("Error: dropbox with unknown operator: %s\n", idname);
-    return nullptr;
-  }
   WM_operator_properties_alloc(&(drop->ptr), &(drop->properties), idname);
+  WM_operator_properties_sanitize(drop->ptr, true);
+
+  /* Signal for no context, see #STRUCT_NO_CONTEXT_WITHOUT_OWNER_ID. */
+  drop->ptr->owner_id = nullptr;
 
   BLI_addtail(lb, drop);
 
   return drop;
+}
+
+static void wm_dropbox_item_update_ot(wmDropBox *drop)
+{
+  /* NOTE(@ideasman42): this closely follows #wm_keymap_item_properties_update_ot.
+   * `keep_properties` is implied because drop boxes aren't dynamically added & removed.
+   * It's possible in the future drop-boxes can be (un)registered by scripts.
+   * In this case we might want to remove drop-boxes that point to missing operators. */
+  wmOperatorType *ot = WM_operatortype_find(drop->opname, false);
+  if (ot == nullptr) {
+    /* Allow for the operator to be added back and re-validated, keep it's properties. */
+    wm_drop_item_clear_runtime(drop);
+    drop->ot = nullptr;
+    return;
+  }
+
+  if (drop->ptr == nullptr) {
+    WM_operator_properties_alloc(&(drop->ptr), &(drop->properties), drop->opname);
+    WM_operator_properties_sanitize(drop->ptr, true);
+  }
+  else {
+    if (ot->srna != drop->ptr->type) {
+      WM_operator_properties_create_ptr(drop->ptr, ot);
+      if (drop->properties) {
+        drop->ptr->data = drop->properties;
+      }
+      WM_operator_properties_sanitize(drop->ptr, true);
+    }
+  }
+
+  if (drop->ptr) {
+    drop->ptr->owner_id = nullptr;
+  }
+  drop->ot = ot;
+}
+
+void WM_dropbox_update_ot()
+{
+  LISTBASE_FOREACH (wmDropBoxMap *, dm, &dropboxes) {
+    LISTBASE_FOREACH (wmDropBox *, drop, &dm->dropboxes) {
+      wm_dropbox_item_update_ot(drop);
+    }
+  }
+}
+
+static void wm_drop_item_free_data(wmDropBox *drop)
+{
+  if (drop->ptr) {
+    WM_operator_properties_free(drop->ptr);
+    MEM_freeN(drop->ptr);
+    drop->ptr = nullptr;
+    drop->properties = nullptr;
+  }
+  else if (drop->properties) {
+    IDP_FreeProperty(drop->properties);
+    drop->properties = nullptr;
+  }
+}
+
+static void wm_drop_item_clear_runtime(wmDropBox *drop)
+{
+  IDProperty *properties = drop->properties;
+  drop->properties = nullptr;
+  if (drop->ptr) {
+    drop->ptr->data = nullptr;
+  }
+  wm_drop_item_free_data(drop);
+  drop->properties = properties;
 }
 
 void wm_dropbox_free()
@@ -133,10 +210,7 @@ void wm_dropbox_free()
 
   LISTBASE_FOREACH (wmDropBoxMap *, dm, &dropboxes) {
     LISTBASE_FOREACH (wmDropBox *, drop, &dm->dropboxes) {
-      if (drop->ptr) {
-        WM_operator_properties_free(drop->ptr);
-        MEM_freeN(drop->ptr);
-      }
+      wm_drop_item_free_data(drop);
     }
     BLI_freelistN(&dm->dropboxes);
   }
@@ -184,13 +258,12 @@ static void wm_dropbox_invoke(bContext *C, wmDrag *drag)
   }
 }
 
-wmDrag *WM_drag_data_create(
-    bContext *C, int icon, eWM_DragDataType type, void *poin, double value, uint flags)
+wmDrag *WM_drag_data_create(bContext *C, int icon, eWM_DragDataType type, void *poin, uint flags)
 {
   wmDrag *drag = MEM_new<wmDrag>(__func__);
 
   /* Keep track of future multi-touch drag too, add a mouse-pointer id or so. */
-  /* if multiple drags are added, they're drawn as list */
+  /* If multiple drags are added, they're drawn as list. */
 
   drag->flags = static_cast<eWM_DragFlags>(flags);
   drag->icon = icon;
@@ -215,20 +288,18 @@ wmDrag *WM_drag_data_create(
       /* The asset-list case is special: We get multiple assets from context and attach them to the
        * drag item. */
     case WM_DRAG_ASSET_LIST: {
-      ListBase asset_links = CTX_data_collection_get(C, "selected_assets");
-      LISTBASE_FOREACH (const CollectionPointerLink *, link, &asset_links) {
+      blender::Vector<PointerRNA> asset_links = CTX_data_collection_get(C, "selected_assets");
+      for (const PointerRNA &ptr : asset_links) {
         const AssetRepresentationHandle *asset = static_cast<const AssetRepresentationHandle *>(
-            link->ptr.data);
+            ptr.data);
         WM_drag_add_asset_list_item(drag, asset);
       }
-      BLI_freelistN(&asset_links);
       break;
     }
     default:
       drag->poin = poin;
       break;
   }
-  drag->value = value;
 
   return drag;
 }
@@ -241,10 +312,9 @@ void WM_event_start_prepared_drag(bContext *C, wmDrag *drag)
   wm_dropbox_invoke(C, drag);
 }
 
-void WM_event_start_drag(
-    bContext *C, int icon, eWM_DragDataType type, void *poin, double value, uint flags)
+void WM_event_start_drag(bContext *C, int icon, eWM_DragDataType type, void *poin, uint flags)
 {
-  wmDrag *drag = WM_drag_data_create(C, icon, type, poin, value, flags);
+  wmDrag *drag = WM_drag_data_create(C, icon, type, poin, flags);
   WM_event_start_prepared_drag(C, drag);
 }
 
@@ -308,6 +378,11 @@ void WM_drag_data_free(eWM_DragDataType dragtype, void *poin)
       wm_drag_free_path_data(&path_data);
       break;
     }
+    case WM_DRAG_STRING: {
+      std::string *str = static_cast<std::string *>(poin);
+      MEM_delete(str);
+      break;
+    }
     default:
       MEM_freeN(poin);
       break;
@@ -343,18 +418,15 @@ void WM_drag_free_list(ListBase *lb)
   }
 }
 
-static char *dropbox_tooltip(bContext *C, wmDrag *drag, const int xy[2], wmDropBox *drop)
+static std::string dropbox_tooltip(bContext *C, wmDrag *drag, const int xy[2], wmDropBox *drop)
 {
-  char *tooltip = nullptr;
   if (drop->tooltip) {
-    tooltip = drop->tooltip(C, drag, xy, drop);
+    return drop->tooltip(C, drag, xy, drop);
   }
-  if (!tooltip) {
-    tooltip = BLI_strdup(WM_operatortype_name(drop->ot, drop->ptr).c_str());
+  if (drop->ot) {
+    return WM_operatortype_name(drop->ot, drop->ptr);
   }
-  /* XXX Doing translation here might not be ideal, but later we have no more
-   *     access to ot (and hence op context)... */
-  return tooltip;
+  return {};
 }
 
 static wmDropBox *dropbox_active(bContext *C,
@@ -384,7 +456,7 @@ static wmDropBox *dropbox_active(bContext *C,
           }
 
           const wmOperatorCallContext opcontext = wm_drop_operator_context_get(drop);
-          if (WM_operator_poll_context(C, drop->ot, opcontext)) {
+          if (drop->ot && WM_operator_poll_context(C, drop->ot, opcontext)) {
             CTX_store_set(C, nullptr);
             return drop;
           }
@@ -405,7 +477,7 @@ static wmDropBox *dropbox_active(bContext *C,
   return nullptr;
 }
 
-/* return active operator tooltip/name when mouse is in box */
+/* Return active operator tooltip/name when mouse is in box. */
 static wmDropBox *wm_dropbox_active(bContext *C, wmDrag *drag, const wmEvent *event)
 {
   wmWindow *win = CTX_wm_window(C);
@@ -584,7 +656,10 @@ wmDragAsset *WM_drag_create_asset_data(const blender::asset_system::AssetReprese
 
 static void wm_drag_free_asset_data(wmDragAsset **asset_data)
 {
-  MEM_SAFE_FREE(*asset_data);
+  if (*asset_data) {
+    MEM_delete(*asset_data);
+    *asset_data = nullptr;
+  }
 }
 
 wmDragAsset *WM_drag_get_asset_data(const wmDrag *drag, int idcode)
@@ -621,7 +696,7 @@ ID *WM_drag_asset_id_import(const bContext *C, wmDragAsset *asset_drag, const in
                               FILE_ACTIVE_COLLECTION;
 
   const char *name = asset_drag->asset->get_name().c_str();
-  const std::string blend_path = asset_drag->asset->get_identifier().full_library_path();
+  const std::string blend_path = asset_drag->asset->full_library_path();
   const ID_Type idtype = asset_drag->asset->get_id_type();
   const bool use_relative_path = asset_drag->asset->get_use_relative_path();
 
@@ -711,9 +786,9 @@ void WM_drag_free_imported_drag_ID(Main *bmain, wmDrag *drag, wmDropBox *drop)
   }
 
   ID_Type asset_id_type = asset_drag->asset->get_id_type();
-  /* Try to find the imported ID. For this to work either a "session_uuid" or "name" property must
+  /* Try to find the imported ID. For this to work either a "session_uid" or "name" property must
    * have been defined (see #WM_operator_properties_id_lookup()). */
-  ID *id = WM_operator_properties_id_lookup_from_name_or_session_uuid(
+  ID *id = WM_operator_properties_id_lookup_from_name_or_session_uid(
       bmain, drop->ptr, asset_id_type);
   if (id != nullptr) {
     /* Do not delete the dragged ID if it has any user, otherwise if it is a 're-used' ID it will
@@ -806,9 +881,9 @@ const char *WM_drag_get_single_path(const wmDrag *drag, int file_type)
     return nullptr;
   }
   const wmDragPath *path_data = static_cast<const wmDragPath *>(drag->poin);
-  auto const file_types = path_data->file_types;
+  const blender::Span<int> file_types = path_data->file_types;
 
-  auto itr = std::find_if(
+  const auto *itr = std::find_if(
       file_types.begin(), file_types.end(), [file_type](const int file_fype_test) {
         return file_fype_test & file_type;
       });
@@ -849,9 +924,27 @@ int WM_drag_get_path_file_type(const wmDrag *drag)
   return path_data->file_types[0];
 }
 
+const std::string &WM_drag_get_string(const wmDrag *drag)
+{
+  BLI_assert(drag->type == WM_DRAG_STRING);
+  const std::string *str = static_cast<const std::string *>(drag->poin);
+  return *str;
+}
+
+std::string WM_drag_get_string_firstline(const wmDrag *drag)
+{
+  BLI_assert(drag->type == WM_DRAG_STRING);
+  const std::string *str = static_cast<const std::string *>(drag->poin);
+  const size_t str_eol = str->find('\n');
+  if (str_eol != std::string::npos) {
+    return str->substr(0, str_eol);
+  }
+  return *str;
+}
+
 /* ************** draw ***************** */
 
-static void wm_drop_operator_draw(const char *name, int x, int y)
+static void wm_drop_operator_draw(const blender::StringRef name, int x, int y)
 {
   const uiFontStyle *fstyle = UI_FSTYLE_WIDGET;
 
@@ -866,7 +959,7 @@ static void wm_drop_operator_draw(const char *name, int x, int y)
   UI_fontstyle_draw_simple_backdrop(fstyle, x, y, name, col_fg, col_bg);
 }
 
-static void wm_drop_redalert_draw(const char *redalert_str, int x, int y)
+static void wm_drop_redalert_draw(const blender::StringRef redalert_str, int x, int y)
 {
   const uiFontStyle *fstyle = UI_FSTYLE_WIDGET;
   const bTheme *btheme = UI_GetTheme();
@@ -933,7 +1026,7 @@ static void wm_drag_draw_icon(bContext * /*C*/, wmWindow * /*win*/, wmDrag *drag
     x = xy[0] - (wm_drag_imbuf_icon_width_get(drag) / 2);
     y = xy[1] - (wm_drag_imbuf_icon_height_get(drag) / 2);
 
-    const float col[4] = {1.0f, 1.0f, 1.0f, 0.65f}; /* this blends texture */
+    const float col[4] = {1.0f, 1.0f, 1.0f, 0.65f}; /* This blends texture. */
     IMMDrawPixelsTexState state = immDrawPixelsTexSetup(GPU_SHADER_3D_IMAGE_COLOR);
     immDrawPixelsTexTiled_scaling(&state,
                                   x,
@@ -984,14 +1077,14 @@ static void wm_drag_draw_tooltip(bContext *C, wmWindow *win, wmDrag *drag, const
   int iconsize = UI_ICON_SIZE;
   int padding = 4 * UI_SCALE_FAC;
 
-  char *tooltip = nullptr;
+  std::string tooltip;
   if (drag->drop_state.active_dropbox) {
     tooltip = dropbox_tooltip(C, drag, xy, drag->drop_state.active_dropbox);
   }
 
   const bool has_disabled_info = drag->drop_state.disabled_info &&
                                  drag->drop_state.disabled_info[0];
-  if (!tooltip && !has_disabled_info) {
+  if (tooltip.empty() && !has_disabled_info) {
     return;
   }
 
@@ -1021,9 +1114,8 @@ static void wm_drag_draw_tooltip(bContext *C, wmWindow *win, wmDrag *drag, const
     }
   }
 
-  if (tooltip) {
+  if (!tooltip.empty()) {
     wm_drop_operator_draw(tooltip, x, y);
-    MEM_freeN(tooltip);
   }
   else if (has_disabled_info) {
     wm_drop_redalert_draw(drag->drop_state.disabled_info, x, y);

@@ -24,18 +24,15 @@
 #include "DNA_armature_types.h"
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_meshdata_types.h"
-#include "DNA_scene_types.h"
 
 #include "BKE_action.h"
 #include "BKE_armature.hh"
 #include "BKE_context.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_gpencil_legacy.h"
-#include "BKE_gpencil_modifier_legacy.h"
-#include "BKE_layer.h"
-#include "BKE_main.hh"
+#include "BKE_layer.hh"
 #include "BKE_object_deform.h"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -47,13 +44,14 @@
 #include "ED_gpencil_legacy.hh"
 #include "ED_mesh.hh"
 #include "ED_object.hh"
+#include "ED_object_vgroup.hh"
 
 #include "ANIM_bone_collections.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
-#include "gpencil_intern.h"
+#include "gpencil_intern.hh"
 
 enum {
   GP_ARMATURE_NAME = 0,
@@ -127,7 +125,8 @@ static int gpencil_bone_skinnable_cb(Object * /*ob*/, Bone *bone, void *datap)
   if (!(bone->flag & BONE_HIDDEN_P)) {
     if (!(bone->flag & BONE_NO_DEFORM)) {
       if (data->heat && data->armob->pose &&
-          BKE_pose_channel_find_name(data->armob->pose, bone->name)) {
+          BKE_pose_channel_find_name(data->armob->pose, bone->name))
+      {
         segments = bone->segments;
       }
       else {
@@ -200,14 +199,15 @@ static int dgroup_skinnable_cb(Object *ob, Bone *bone, void *datap)
   if (!(bone->flag & BONE_HIDDEN_P)) {
     if (!(bone->flag & BONE_NO_DEFORM)) {
       if (data->heat && data->armob->pose &&
-          BKE_pose_channel_find_name(data->armob->pose, bone->name)) {
+          BKE_pose_channel_find_name(data->armob->pose, bone->name))
+      {
         segments = bone->segments;
       }
       else {
         segments = 1;
       }
 
-      if (ANIM_bonecoll_is_visible(arm, bone)) {
+      if (ANIM_bone_in_visible_collection(arm, bone)) {
         if (!(defgroup = BKE_object_defgroup_find_name(ob, bone->name))) {
           defgroup = BKE_object_defgroup_add_name(ob, bone->name);
         }
@@ -338,8 +338,8 @@ static void gpencil_add_verts_to_dgroups(
       copy_v3_v3(tip[j], bone->arm_tail);
     }
 
-    mul_m4_v3(ob_arm->object_to_world, root[j]);
-    mul_m4_v3(ob_arm->object_to_world, tip[j]);
+    mul_m4_v3(ob_arm->object_to_world().ptr(), root[j]);
+    mul_m4_v3(ob_arm->object_to_world().ptr(), tip[j]);
 
     selected[j] = 1;
 
@@ -374,7 +374,7 @@ static void gpencil_add_verts_to_dgroups(
           /* transform stroke points to global space */
           for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
             copy_v3_v3(verts[i], &pt->x);
-            mul_m4_v3(ob->object_to_world, verts[i]);
+            mul_m4_v3(ob->object_to_world().ptr(), verts[i]);
           }
 
           /* loop groups and assign weight */
@@ -460,7 +460,7 @@ static void gpencil_object_vgroup_calc_from_armature(const bContext *C,
   if (defbase_add) {
     /* It's possible there are DWeights outside the range of the current
      * object's deform groups. In this case the new groups won't be empty */
-    ED_vgroup_data_clamp_range(static_cast<ID *>(ob->data), defbase_tot);
+    blender::ed::object::vgroup_data_clamp_range(static_cast<ID *>(ob->data), defbase_tot);
   }
 
   if (mode == GP_ARMATURE_AUTO) {
@@ -474,40 +474,12 @@ static void gpencil_object_vgroup_calc_from_armature(const bContext *C,
   DEG_relations_tag_update(CTX_data_main(C));
 }
 
-bool ED_gpencil_add_armature(const bContext *C, ReportList *reports, Object *ob, Object *ob_arm)
+bool ED_gpencil_add_armature(const bContext * /*C*/,
+                             ReportList * /*reports*/,
+                             Object * /*ob*/,
+                             Object * /*ob_arm*/)
 {
-  Main *bmain = CTX_data_main(C);
-  Scene *scene = CTX_data_scene(C);
-
-  if (ob == nullptr) {
-    return false;
-  }
-
-  /* if no armature modifier, add a new one */
-  GpencilModifierData *md = BKE_gpencil_modifiers_findby_type(ob, eGpencilModifierType_Armature);
-  if (md == nullptr) {
-    md = ED_object_gpencil_modifier_add(
-        reports, bmain, scene, ob, "Armature", eGpencilModifierType_Armature);
-    if (md == nullptr) {
-      BKE_report(reports, RPT_ERROR, "Unable to add a new Armature modifier to object");
-      return false;
-    }
-    DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
-  }
-
-  /* verify armature */
-  ArmatureGpencilModifierData *mmd = (ArmatureGpencilModifierData *)md;
-  if (mmd->object == nullptr) {
-    mmd->object = ob_arm;
-  }
-  else {
-    if (ob_arm != mmd->object) {
-      BKE_report(reports,
-                 RPT_ERROR,
-                 "The existing Armature modifier is already using a different Armature object");
-      return false;
-    }
-  }
+  /* pass */
   return true;
 }
 
@@ -561,11 +533,9 @@ static bool gpencil_generate_weights_poll(bContext *C)
 
 static int gpencil_generate_weights_exec(bContext *C, wmOperator *op)
 {
-  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
   Object *ob = CTX_data_active_object(C);
-  Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
   bGPdata *gpd = (bGPdata *)ob->data;
   Object *ob_arm = nullptr;
 
@@ -585,23 +555,6 @@ static int gpencil_generate_weights_exec(bContext *C, wmOperator *op)
     Base *base = static_cast<Base *>(
         BLI_findlink(BKE_view_layer_object_bases_get(view_layer), arm_idx - 1));
     ob_arm = base->object;
-  }
-  else {
-    /* get armature from modifier */
-    GpencilModifierData *md = BKE_gpencil_modifiers_findby_type(ob_eval,
-                                                                eGpencilModifierType_Armature);
-    if (md == nullptr) {
-      BKE_report(op->reports, RPT_ERROR, "The grease pencil object needs an Armature modifier");
-      return OPERATOR_CANCELLED;
-    }
-
-    ArmatureGpencilModifierData *mmd = (ArmatureGpencilModifierData *)md;
-    if (mmd->object == nullptr) {
-      BKE_report(op->reports, RPT_ERROR, "The Armature modifier is invalid");
-      return OPERATOR_CANCELLED;
-    }
-
-    ob_arm = mmd->object;
   }
 
   if (ob_arm == nullptr) {
