@@ -1081,68 +1081,6 @@ class CYCLES_PT_post_processing(CyclesButtonsPanel, Panel):
         layout.prop(rd, "dither_intensity", text="Dither", slider=True)
 
 
-class CYCLES_CAMERA_PT_dof(CyclesButtonsPanel, Panel):
-    bl_label = "Depth of Field"
-    bl_context = "data"
-
-    @classmethod
-    def poll(cls, context):
-        return context.camera and CyclesButtonsPanel.poll(context)
-
-    def draw_header(self, context):
-        cam = context.camera
-        dof = cam.dof
-        self.layout.prop(dof, "use_dof", text="")
-
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-
-        cam = context.camera
-        dof = cam.dof
-        layout.active = dof.use_dof
-
-        col = layout.column()
-        if dof.focus_collection is None:
-            col.prop(dof, "focus_object", text="Focus on Object")
-            if dof.focus_object and dof.focus_object.type == 'ARMATURE':
-                col.prop_search(dof, "focus_subtarget", dof.focus_object.data, "bones", text="Focus on Bone")
-        if dof.focus_object is None:
-            sub = col.column()
-            sub.prop(dof, "focus_collection", text="Focus on Collection")
-        if dof.focus_object is None and dof.focus_collection is None:
-            sub = sub.column()
-            sub.prop(dof, "focus_distance", text="Focus Distance")
-            sub.operator(
-                "ui.eyedropper_depth",
-                icon='EYEDROPPER',
-                text="").prop_data_path = "scene.camera.data.dof.focus_distance"
-
-
-class CYCLES_CAMERA_PT_dof_aperture(CyclesButtonsPanel, Panel):
-    bl_label = "Aperture"
-    bl_parent_id = "CYCLES_CAMERA_PT_dof"
-
-    @classmethod
-    def poll(cls, context):
-        return context.camera and CyclesButtonsPanel.poll(context)
-
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-
-        cam = context.camera
-        dof = cam.dof
-        layout.active = dof.use_dof
-        flow = layout.grid_flow(row_major=True, columns=0, even_columns=True, even_rows=False, align=False)
-
-        col = flow.column()
-        col.prop(dof, "aperture_fstop")
-        col.prop(dof, "aperture_blades")
-        col.prop(dof, "aperture_rotation")
-        col.prop(dof, "aperture_ratio")
-
-
 class CYCLES_PT_context_material(CyclesButtonsPanel, Panel):
     bl_label = ""
     bl_context = "material"
@@ -2523,7 +2461,6 @@ def draw_make_links(self, context):
 
 def get_panels():
     exclude_panels = {
-        'DATA_PT_camera_dof',
         'DATA_PT_falloff_curve',
         'DATA_PT_light',
         'DATA_PT_preview',
@@ -2600,8 +2537,6 @@ classes = (
     CYCLES_RENDER_PT_filter,
     CYCLES_RENDER_PT_override,
     CYCLES_PT_post_processing,
-    CYCLES_CAMERA_PT_dof,
-    CYCLES_CAMERA_PT_dof_aperture,
     CYCLES_PT_context_material,
     CYCLES_OBJECT_PT_motion_blur,
     CYCLES_OBJECT_PT_shading,
