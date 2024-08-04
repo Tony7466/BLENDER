@@ -179,12 +179,7 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
     const int added_curve_num = result.offsets.size() - 1;
     bke::CurvesGeometry dst = bke::CurvesGeometry(result.verts.size(), added_curve_num);
 
-    MutableSpan<int> offsets = dst.offsets_for_write();
-
-    for (const int i : IndexRange(result.offsets.size())) {
-      offsets[i] = result.offsets[i];
-    }
-
+    dst.offsets_for_write().copy_from(result.offsets);
     dst.cyclic_for_write().fill(is_fill);
 
     const bke::AttributeAccessor src_attributes = src.attributes();
