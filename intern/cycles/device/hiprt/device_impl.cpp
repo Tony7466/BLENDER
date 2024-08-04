@@ -889,11 +889,11 @@ hiprtScene HIPRTDevice::build_tlas(BVHHIPRT *bvh,
             int time_offset = bvh->prims_time.size();
             prim_time_map[geom] = time_offset;
 
+            bvh.prims_time.resize(time_offset + current_bvh->prims_time.size());
             memcpy(bvh->prims_time.data() + time_offset,
                    current_bvh->prims_time.data(),
                    current_bvh->prims_time.size() * sizeof(float2));
-            /* TODO: Fix crash that occurs in the memcpy above.
-             * Writing too much data? Not enough? In the wrong spot? */
+
             prim_time_offset[blender_instance_id] = time_offset;
           }
           else
