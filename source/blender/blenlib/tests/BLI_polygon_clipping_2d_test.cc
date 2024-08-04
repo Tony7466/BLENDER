@@ -215,10 +215,7 @@ static void SVG_add_lines(std::ofstream &f,
 
 static bool draw_append = false; /* Will be set to true after first call. */
 
-void draw_polygons(const std::string &label,
-                   const Span<float2> curve_a,
-                   const Span<float2> curve_b,
-                   const BooleanResult &result)
+std::ofstream get_file_stream()
 {
   /* Would like to use BKE_tempdir_base() here, but that brings in dependence on kernel library.
    * This is just for developer debugging anyway, and should never be called in production Blender.
@@ -228,6 +225,39 @@ void draw_polygons(const std::string &label,
 #else
   constexpr const char *drawfile = "/tmp/polygon_clipping_test_draw.html";
 #endif
+
+  std::ofstream f;
+  if (draw_append) {
+    f.open(drawfile, std::ios_base::app);
+  }
+  else {
+    f.open(drawfile);
+  }
+  if (!f) {
+    std::cout << "Could not open file " << drawfile << "\n";
+    return f;
+  }
+
+  if (!draw_append) {
+    f << "<!DOCTYPE html>\n";
+
+    f << "<style>\n";
+
+    CSS_setup_style(f);
+
+    f << "</style>\n";
+  }
+
+  draw_append = true;
+
+  return f;
+}
+
+void draw_polygons(const std::string &label,
+                   const Span<float2> curve_a,
+                   const Span<float2> curve_b,
+                   const BooleanResult &result)
+{
   constexpr int max_draw_width = 800;
   constexpr int max_draw_height = 600;
 
@@ -253,26 +283,9 @@ void draw_polygons(const std::string &label,
   }
   const float scale = view_width / width;
 
-  std::ofstream f;
-  if (draw_append) {
-    f.open(drawfile, std::ios_base::app);
-  }
-  else {
-    f.open(drawfile);
-  }
+  std::ofstream f = get_file_stream();
   if (!f) {
-    std::cout << "Could not open file " << drawfile << "\n";
     return;
-  }
-
-  if (!draw_append) {
-    f << "<!DOCTYPE html>\n";
-
-    f << "<style>\n";
-
-    CSS_setup_style(f);
-
-    f << "</style>\n";
   }
 
   f << "<div>\n";
@@ -294,8 +307,6 @@ void draw_polygons(const std::string &label,
   }
 
   f << "</div>\n";
-
-  draw_append = true;
 }
 
 void draw_cut(const std::string &label,
@@ -304,14 +315,6 @@ void draw_cut(const std::string &label,
               const Span<float2> curve_b,
               const BooleanResult &result)
 {
-  /* Would like to use BKE_tempdir_base() here, but that brings in dependence on kernel library.
-   * This is just for developer debugging anyway, and should never be called in production Blender.
-   */
-#ifdef WIN32
-  constexpr const char *drawfile = "./polygon_clipping_test_draw.html";
-#else
-  constexpr const char *drawfile = "/tmp/polygon_clipping_test_draw.html";
-#endif
   constexpr int max_draw_width = 800;
   constexpr int max_draw_height = 600;
 
@@ -337,26 +340,9 @@ void draw_cut(const std::string &label,
   }
   const float scale = view_width / width;
 
-  std::ofstream f;
-  if (draw_append) {
-    f.open(drawfile, std::ios_base::app);
-  }
-  else {
-    f.open(drawfile);
-  }
+  std::ofstream f = get_file_stream();
   if (!f) {
-    std::cout << "Could not open file " << drawfile << "\n";
     return;
-  }
-
-  if (!draw_append) {
-    f << "<!DOCTYPE html>\n";
-
-    f << "<style>\n";
-
-    CSS_setup_style(f);
-
-    f << "</style>\n";
   }
 
   f << "<div>\n";
@@ -383,8 +369,6 @@ void draw_cut(const std::string &label,
   }
 
   f << "</div>\n";
-
-  draw_append = true;
 }
 
 #undef SX
