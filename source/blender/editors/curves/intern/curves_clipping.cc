@@ -228,10 +228,7 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
             auto src_attr = srcR.typed<T>();
             auto dst_attr = dstW.span.typed<T>();
 
-            // dst_attr.fill(src_attr[curve_i]); /* TODO */
-            for (const int i : IndexRange(added_curve_num)) {
-              dst_attr[i] = src_attr[curve_i];
-            }
+            dst_attr.fill(src_attr[curve_i]);
           });
           dstW.finish();
           return true;
