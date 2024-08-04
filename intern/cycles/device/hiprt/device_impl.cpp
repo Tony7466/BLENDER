@@ -651,8 +651,8 @@ hiprtGeometryBuildInput HIPRTDevice::prepare_point_blas(BVHHIPRT *bvh, PointClou
     }
   }
   else if (bvh->params.num_motion_point_steps == 0) {
-    bvh->custom_prim_info.resize(num_points * num_steps);
-    bvh->custom_primitive_bound.alloc(num_points * num_steps);
+    bvh->custom_prim_info.resize(num_points);
+    bvh->custom_primitive_bound.alloc(num_points);
 
     for (uint j = 0; j < num_points; j++) {
       const PointCloud::Point point = pointcloud->get_point(j);
@@ -664,7 +664,7 @@ hiprtGeometryBuildInput HIPRTDevice::prepare_point_blas(BVHHIPRT *bvh, PointClou
       if (bounds.valid()) {
         bvh->custom_primitive_bound[num_bounds] = bounds;
         bvh->custom_prim_info[num_bounds].x = j;
-        bvh->custom_prim_info[num_bounds].y = PRIMITIVE_POINT;
+        bvh->custom_prim_info[num_bounds].y = PRIMITIVE_MOTION_POINT;
         num_bounds++;
       }
     }
@@ -675,6 +675,7 @@ hiprtGeometryBuildInput HIPRTDevice::prepare_point_blas(BVHHIPRT *bvh, PointClou
 
     bvh->custom_prim_info.resize(num_points * num_bvh_steps);
     bvh->custom_primitive_bound.alloc(num_points * num_bvh_steps);
+    bvh->prims_time.resize(num_points * num_bvh_steps);
 
     for (uint j = 0; j < num_points; j++) {
       const PointCloud::Point point = pointcloud->get_point(j);
@@ -907,7 +908,7 @@ hiprtScene HIPRTDevice::build_tlas(BVHHIPRT *bvh,
       current_header.frameIndex = transform_matrix.size();
       if (ob->get_motion().size()) {
         int motion_size = ob->get_motion().size();
-        assert(motion_size == 1);
+        assert(motion_size != 1);
 
         array<Transform> tfm_array = ob->get_motion();
         float time_iternval = 1 / (float)(motion_size - 1);
