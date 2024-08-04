@@ -272,8 +272,8 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
       }
     }
 
-    Curves *target_id = curves_new_nomain(std::move(dst));
-    geometry_sets.append(bke::GeometrySet::from_curves(target_id));
+    Curves *dst_id = curves_new_nomain(std::move(dst));
+    geometry_sets.append(bke::GeometrySet::from_curves(dst_id));
   }
 
   if (geometry_sets.is_empty()) {
