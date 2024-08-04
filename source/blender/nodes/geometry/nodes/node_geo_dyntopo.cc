@@ -4,6 +4,11 @@
 
 #include "BKE_geometry_set.hh"
 
+#include "BKE_pbvh_api.hh"
+
+#include "bmesh.hh"
+#include "bmesh_tools.hh"
+
 #include "BKE_type_conversions.hh"
 
 #include "GEO_dyntopo.hh"
@@ -19,6 +24,8 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Vector>("Position");
   b.add_input<decl::Float>("Radius");
   b.add_input<decl::Float>("Max Length");
+
+  b.add_input<decl::Bool>("BMesh");
 
   b.add_output<decl::Geometry>("Mesh").propagate_all();
 }
@@ -38,6 +45,23 @@ static void node_geo_exec(GeoNodeExecParams params)
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     const Mesh *mesh = geometry_set.get_mesh();
     if (mesh != nullptr) {
+
+      if (params.get_input<bool>("BMesh")) {
+        BMeshCreateParams create_params{false};
+        BMeshFromMeshParams from_mesh_params{};
+        from_mesh_params.calc_face_normal = true;
+        from_mesh_params.calc_vert_normal = true;
+        BMesh *bm = BKE_mesh_to_bmesh_ex(mesh, &create_params, &from_mesh_params);
+        auto tree = bke::pbvh::build_bmesh(bm);
+        BMLog *log = BM_log_create(bm);
+        const float3 normal(0,0,1);
+        bke::pbvh::bmesh_update_topology(*tree, *log, PBVH_Subdivide, position, normal, radius, false, false);
+        
+        Mesh *result = BKE_mesh_from_bmesh_for_eval_nomain(bm, nullptr, mesh);
+        BM_mesh_free(bm);
+        geometry_set.replace_mesh(result);
+        return;
+      }
 
       bke::MeshFieldContext context(*mesh, bke::AttrDomain::Point);
       FieldEvaluator evaluator(context, mesh->verts_num);
