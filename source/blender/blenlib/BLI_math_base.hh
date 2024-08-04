@@ -107,14 +107,12 @@ template<typename T> inline T round(const T &a)
  */
 template<typename T> inline T mod_periodic(const T &a, const T &b)
 {
+  if constexpr (std::is_integral_v<T>) {
+    BLI_assert(std::numeric_limits<T>::max() - math::abs(a) >= b);
+    return ((a % b) + b) % b;
+  }
+
   return a - (b * math::floor(a / b));
-}
-template<> inline int64_t mod_periodic(const int64_t &a, const int64_t &b)
-{
-  int64_t c = (a >= 0) ? a : (-1 - a);
-  int64_t tmp = c - (b * (c / b));
-  /* Negative integers have different rounding that do not match floor(). */
-  return (a >= 0) ? tmp : (b - 1 - tmp);
 }
 
 template<typename T> inline T ceil(const T &a)
