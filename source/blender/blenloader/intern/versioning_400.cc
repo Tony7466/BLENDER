@@ -47,6 +47,7 @@
 #include "BLI_set.hh"
 #include "BLI_string.h"
 #include "BLI_string_ref.hh"
+#include "BLI_timeit.hh"
 
 #include "BKE_anim_data.hh"
 #include "BKE_animsys.h"
