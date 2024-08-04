@@ -57,7 +57,6 @@ static Set<std::string> skipped_attribute_ids(const bool keep_caps,
 }
 
 void Set_start_cap(const bool keep_first,
-                   const int dst_curve_i,
                    const int src_curve_i,
                    const int added_curve_num,
                    const bke::AttributeAccessor &src_attributes,
@@ -71,19 +70,18 @@ void Set_start_cap(const bool keep_first,
   bke::SpanAttributeWriter<int8_t> dst_start_caps =
       dst_attributes.lookup_or_add_for_write_span<int8_t>("start_cap", bke::AttrDomain::Curve);
 
-  dst_start_caps.span.drop_front(dst_curve_i).fill(GP_STROKE_CAP_TYPE_FLAT);
+  dst_start_caps.span.fill(GP_STROKE_CAP_TYPE_FLAT);
 
   if (keep_first) {
     const VArray<int> src_start_caps = *src_attributes.lookup_or_default<int>(
         "start_cap", bke::AttrDomain::Curve, GP_STROKE_CAP_TYPE_ROUND);
-    dst_start_caps.span[dst_curve_i] = src_start_caps[src_curve_i];
+    dst_start_caps.span.first() = src_start_caps[src_curve_i];
   }
 
   dst_start_caps.finish();
 }
 
 void Set_end_cap(const bool keep_last,
-                 const int dst_curve_i,
                  const int src_curve_i,
                  const int added_curve_num,
                  const bke::AttributeAccessor &src_attributes,
@@ -97,12 +95,12 @@ void Set_end_cap(const bool keep_last,
   bke::SpanAttributeWriter<int8_t> dst_end_caps =
       dst_attributes.lookup_or_add_for_write_span<int8_t>("end_cap", bke::AttrDomain::Curve);
 
-  dst_end_caps.span.drop_front(dst_curve_i).fill(GP_STROKE_CAP_TYPE_FLAT);
+  dst_end_caps.span.fill(GP_STROKE_CAP_TYPE_FLAT);
 
   if (keep_last) {
     const VArray<int> src_end_caps = *src_attributes.lookup_or_default<int>(
         "end_cap", bke::AttrDomain::Curve, GP_STROKE_CAP_TYPE_ROUND);
-    dst_end_caps.span[dst_curve_i + added_curve_num - 1] = src_end_caps[src_curve_i];
+    dst_end_caps.span.last() = src_end_caps[src_curve_i];
   }
 
   dst_end_caps.finish();
@@ -110,16 +108,13 @@ void Set_end_cap(const bool keep_last,
 
 void Set_cap_attributes(const bool keep_first,
                         const bool keep_last,
-                        const int dst_curve_i,
                         const int src_curve_i,
                         const int added_curve_num,
                         const bke::AttributeAccessor &src_attributes,
                         bke::MutableAttributeAccessor &dst_attributes)
 {
-  Set_start_cap(
-      keep_first, dst_curve_i, src_curve_i, added_curve_num, src_attributes, dst_attributes);
-  Set_end_cap(
-      keep_last, dst_curve_i, src_curve_i, added_curve_num, src_attributes, dst_attributes);
+  Set_start_cap(keep_first, src_curve_i, added_curve_num, src_attributes, dst_attributes);
+  Set_end_cap(keep_last, src_curve_i, added_curve_num, src_attributes, dst_attributes);
 }
 
 static float4 transform_plane(const float4x4 &mat, const float4 &plane)
@@ -202,7 +197,7 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
                              vertex_last.point_id == pos_2d_a.size() - 1;
 
       Set_cap_attributes(
-          keep_first, keep_last, 0, curve_i, added_curve_num, src_attributes, dst_attributes);
+          keep_first, keep_last, curve_i, added_curve_num, src_attributes, dst_attributes);
     }
 
     const bool reproject = result.intersections_data.size() != 0;
