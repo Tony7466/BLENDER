@@ -530,6 +530,7 @@ static ActKeyColumn *nalloc_ak_cel(void *data)
   /* Set as visible block. */
   ak->totblock = 1;
   ak->block.sel = ak->sel;
+  ak->block.flag |= ACTKEYBLOCK_FLAG_GPENCIL;
 
   return ak;
 }
@@ -1113,9 +1114,9 @@ void fcurve_to_keylist(AnimData *adt,
   const bool do_extremes = (saction_flag & SACTION_SHOW_EXTREMES) != 0;
 
   BezTripleChain chain = {nullptr};
-  /* The indices for which keys have been addeed to the key columns. Initialized as invalid bounds
-   * for the case that no keyframes get added to the keycolumns, which happens when the given range
-   * doesn't overlap with the existing keyframes. */
+  /* The indices for which keys have been added to the key columns. Initialized as invalid bounds
+   * for the case that no keyframes get added to the key-columns, which happens when the given
+   * range doesn't overlap with the existing keyframes. */
   blender::Bounds<int> index_bounds(int(fcu->totvert), 0);
   /* Loop through beztriples, making ActKeysColumns. */
   for (int v = 0; v < fcu->totvert; v++) {
