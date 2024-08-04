@@ -624,6 +624,32 @@ struct CurveBooleanExecutor {
     }
   }
 
+  void set_a_directions(Span<float2> curve_a, Span<float2> curve_b, bool A_mode)
+  {
+    const bool is_a_in_b = inside(curve_a.first(), curve_b);
+
+    bool A_status = is_a_in_b ^ A_mode ? EXIT : ENTRY;
+
+    for (const int j : IndexRange(num_intersects)) {
+      intersections[A_inter_sorted_ids[j]].A_entry_exit = A_status;
+
+      A_status = !A_status;
+    }
+  }
+
+  void set_b_directions(Span<float2> curve_a, Span<float2> curve_b, bool B_mode)
+  {
+    const bool is_b_in_a = inside(curve_b.first(), curve_a);
+
+    bool B_status = is_b_in_a ^ B_mode ? EXIT : ENTRY;
+
+    for (const int j : IndexRange(num_intersects)) {
+      intersections[B_inter_sorted_ids[j]].B_entry_exit = B_status;
+
+      B_status = !B_status;
+    }
+  }
+
   BooleanResult execute_boolean(const InputMode input_mode,
                                 Span<float2> curve_a,
                                 Span<float2> curve_b)
@@ -666,19 +692,8 @@ struct CurveBooleanExecutor {
 
     const auto [A_mode, B_mode] = get_AB_mode(input_mode.boolean_mode);
 
-    const bool is_a_in_b = inside(curve_a.first(), curve_b);
-    const bool is_b_in_a = inside(curve_b.first(), curve_a);
-
-    bool A_status = is_a_in_b ^ A_mode ? EXIT : ENTRY;
-    bool B_status = is_b_in_a ^ B_mode ? EXIT : ENTRY;
-
-    for (const int j : IndexRange(num_intersects)) {
-      intersections[A_inter_sorted_ids[j]].A_entry_exit = A_status;
-      intersections[B_inter_sorted_ids[j]].B_entry_exit = B_status;
-
-      A_status = !A_status;
-      B_status = !B_status;
-    }
+    set_a_directions(curve_a, curve_b, A_mode);
+    set_b_directions(curve_a, curve_b, B_mode);
 
     /* ---- ---- ---- Phase Four ---- ---- ---- */
 
@@ -882,15 +897,7 @@ struct CurveBooleanExecutor {
 
     /* ---- ---- ---- Phase Three ---- ---- ---- */
 
-    const bool is_a_in_b = inside(curve_a.first(), curve_b);
-
-    bool A_status = is_a_in_b ? ENTRY : EXIT;
-
-    for (const int j : IndexRange(num_intersects)) {
-      intersections[A_inter_sorted_ids[j]].A_entry_exit = A_status;
-
-      A_status = !A_status;
-    }
+    set_a_directions(curve_a, curve_b, true);
 
     /* ---- ---- ---- Phase Four ---- ---- ---- */
 
