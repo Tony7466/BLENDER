@@ -417,6 +417,7 @@ hiprtGeometryBuildInput HIPRTDevice::prepare_triangle_blas(BVHHIPRT *bvh, Mesh *
 
       bvh->custom_primitive_bound.alloc(num_triangles * num_bvh_steps);
       bvh->custom_prim_info.resize(num_triangles * num_bvh_steps);
+      bvh->prims_time.resize(num_triangles * num_bvh_steps);
 
       for (uint j = 0; j < num_triangles; j++) {
         Mesh::Triangle t = mesh->get_triangle(j);
@@ -891,7 +892,8 @@ hiprtScene HIPRTDevice::build_tlas(BVHHIPRT *bvh,
             memcpy(bvh->prims_time.data() + time_offset,
                    current_bvh->prims_time.data(),
                    current_bvh->prims_time.size() * sizeof(float2));
-
+            /* TODO: Fix crash that occurs in the line below.
+             * Don't have write access or something? */
             prim_time_offset[blender_instance_id] = time_offset;
           }
           else
