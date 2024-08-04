@@ -2903,9 +2903,10 @@ void DepsgraphRelationBuilder::build_camera(Camera *camera)
   build_idproperties(camera->id.properties);
   build_animdata(&camera->id);
   build_parameters(&camera->id);
+
+  ComponentKey camera_parameters_key(&camera->id, NodeType::PARAMETERS);
   if (camera->dof.focus_object != nullptr) {
     build_object(camera->dof.focus_object);
-    ComponentKey camera_parameters_key(&camera->id, NodeType::PARAMETERS);
     ComponentKey dof_ob_key(&camera->dof.focus_object->id, NodeType::TRANSFORM);
     add_relation(dof_ob_key, camera_parameters_key, "Camera DOF");
     if (camera->dof.focus_subtarget[0]) {
@@ -2915,6 +2916,14 @@ void DepsgraphRelationBuilder::build_camera(Camera *camera)
                               OperationCode::BONE_DONE);
       add_relation(target_key, camera_parameters_key, "Camera DOF subtarget");
     }
+  }
+  if (camera->dof.focus_collection != nullptr) {
+    build_collection(nullptr, camera->dof.focus_collection);
+    FOREACH_COLLECTION_OBJECT_RECURSIVE_BEGIN (camera->dof.focus_collection, object) {
+      ComponentKey dof_ob_key(&object->id, NodeType::TRANSFORM);
+      add_relation(dof_ob_key, camera_parameters_key, "Camera DOF Collection");
+    }
+    FOREACH_COLLECTION_OBJECT_RECURSIVE_END;
   }
 }
 
