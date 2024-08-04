@@ -15,6 +15,7 @@ PATHS: Tuple[Tuple[str, Tuple[Any, ...], Dict[str, str]], ...] = (
     ("doc/manpage/blender.1.py", (), {}),
     ("release/datafiles/", (), {}),
     ("scripts/modules/_bpy_internal/extensions/junction_module.py", (), {}),
+    ("scripts/modules/_bpy_internal/extensions/stale_file_manager.py", (), {}),
     ("scripts/modules/_bpy_internal/extensions/wheel_manager.py", (), {}),
     ("scripts/modules/_bpy_internal/freedesktop.py", (), {}),
     ("tools/check_blender_release/", (), {}),
