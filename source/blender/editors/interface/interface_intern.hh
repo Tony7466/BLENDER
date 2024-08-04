@@ -1341,7 +1341,8 @@ int ui_id_icon_get(const bContext *C, ID *id, bool big);
 
 float ui_event_icon_offset(const int icon);
 
-void icon_draw_rect_input(float x, float y, int w, int h, int icon_id, float alpha, bool inverted);
+void icon_draw_rect_input(
+    float x, float y, int w, int h, int icon_id, float aspect, float alpha, bool inverted);
 
 /* resources.cc */
 
