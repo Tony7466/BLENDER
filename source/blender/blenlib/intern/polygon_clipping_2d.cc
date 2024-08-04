@@ -677,25 +677,23 @@ struct CurveBooleanExecutor {
       }
     }
 
-    num_intersects = intersections.size();
-
-    /* ---- ---- ---- Phase Two ---- ---- ---- */
-
     if (intersections.is_empty()) {
       return non_intersecting_result(input_mode, curve_a, curve_b);
     }
 
+    num_intersects = intersections.size();
+
     sort_a_intersections();
     sort_b_intersections();
 
-    /* ---- ---- ---- Phase Three ---- ---- ---- */
+    /* ---- ---- ---- Phase Two ---- ---- ---- */
 
     const auto [A_mode, B_mode] = get_AB_mode(input_mode.boolean_mode);
 
     set_a_directions(curve_a, curve_b, A_mode);
     set_b_directions(curve_a, curve_b, B_mode);
 
-    /* ---- ---- ---- Phase Four ---- ---- ---- */
+    /* ---- ---- ---- Phase Three ---- ---- ---- */
 
     Array<bool> unprocessed_intersection_unsorted_ids(num_intersects, true);
     int inter_id = 0;
@@ -732,8 +730,6 @@ struct CurveBooleanExecutor {
 
     /* Add one for the end. */
     newPolygon();
-
-    /* ---- ---- ---- Phase Five ---- ---- ---- */
 
     BooleanResult result = copy_data_to_result();
 
@@ -879,10 +875,6 @@ struct CurveBooleanExecutor {
       }
     }
 
-    num_intersects = intersections.size();
-
-    /* ---- ---- ---- Phase Two ---- ---- ---- */
-
     if (intersections.is_empty()) {
       const bool is_a_in_b = inside(curve_a.first(), curve_b);
       if (is_a_in_b) {
@@ -893,13 +885,15 @@ struct CurveBooleanExecutor {
       }
     }
 
+    num_intersects = intersections.size();
+
     sort_a_intersections();
 
-    /* ---- ---- ---- Phase Three ---- ---- ---- */
+    /* ---- ---- ---- Phase Two ---- ---- ---- */
 
     set_a_directions(curve_a, curve_b, true);
 
-    /* ---- ---- ---- Phase Four ---- ---- ---- */
+    /* ---- ---- ---- Phase Three ---- ---- ---- */
 
     bool is_looping = false;
     if (is_a_cyclic) {
@@ -921,11 +915,7 @@ struct CurveBooleanExecutor {
     /* Add one for the end. */
     newPolygon();
 
-    /* ---- ---- ---- Phase Five ---- ---- ---- */
-
-    const BooleanResult &result = copy_data_to_result();
-
-    return result;
+    return copy_data_to_result();
   }
 };
 
