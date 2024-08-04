@@ -7659,13 +7659,21 @@ void calc_vert_neighbors(const SubdivCCG &subdiv_ccg,
 
         BKE_subdiv_ccg_neighbor_coords_get(subdiv_ccg, coord, false, neighbors);
 
-        Vector<SubdivCCGCoord> &neighbor = result[node_vert_index];
-        neighbor.clear();
-        for (const SubdivCCGCoord neighbor_coord : neighbors.coords) {
-          neighbor.append(neighbor_coord);
-        }
+        result[node_vert_index] = Vector<SubdivCCGCoord>(neighbors.coords.as_span());
       }
     }
+  }
+}
+void calc_vert_neighbors(Set<BMVert *, 0> verts, const MutableSpan<Vector<BMVert *>> result)
+{
+  BLI_assert(verts.size() == result.size());
+
+  int i = 0;
+  Vector<BMVert *, 64> neighbor_data;
+  for (BMVert *vert : verts) {
+    Span<BMVert *> verts = vert_neighbors_get_bmesh(*vert, neighbor_data);
+    result[i] = Vector<BMVert *>(verts);
+    i++;
   }
 }
 
