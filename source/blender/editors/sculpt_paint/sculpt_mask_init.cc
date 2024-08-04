@@ -145,10 +145,10 @@ static int sculpt_mask_init_exec(bContext *C, wmOperator *op)
           });
           break;
         case InitMode::Island:
-          SCULPT_topology_islands_ensure(ob);
+          islands::ensure_cache(ob);
           write_mask_mesh(ob, nodes, [&](MutableSpan<float> mask, Span<int> verts) {
             for (const int vert : verts) {
-              const int island = SCULPT_vertex_island_get(ss, PBVHVertRef{vert});
+              const int island = islands::vert_id_get(ss, PBVHVertRef{vert});
               mask[vert] = BLI_hash_int_01(island + seed);
             }
           });
