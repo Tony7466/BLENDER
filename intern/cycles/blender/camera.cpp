@@ -156,10 +156,7 @@ static float blender_camera_focal_distance(BL::RenderEngine &b_engine,
     int count = 0;
     for (BL::Object obj : b_dof_collection.all_objects) {
       Transform dofmat = get_transform(obj.matrix_world());
-      float3 pos = transform_get_column(&dofmat, 3);
-      focal_point.x += pos.x;
-      focal_point.y += pos.y;
-      focal_point.z += pos.z;
+      focal_point += transform_get_column(&dofmat, 3);
       count += 1;
     }
     focal_point /= count;
