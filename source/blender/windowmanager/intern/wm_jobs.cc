@@ -19,6 +19,7 @@
 #include "BLI_time.h"
 #include "BLI_utildefines.h"
 
+#include "BKE_callbacks.hh"
 #include "BKE_global.hh"
 #include "BKE_report.hh"
 
@@ -28,6 +29,9 @@
 #include "WM_types.hh"
 #include "wm.hh"
 #include "wm_event_types.hh"
+
+#include "RNA_access.hh"
+#include "RNA_prototypes.h"
 
 /*
  * Add new job
@@ -245,7 +249,19 @@ float WM_jobs_progress(const wmWindowManager *wm, const void *owner)
   const wmJob *wm_job = wm_job_find(wm, owner, WM_JOB_TYPE_ANY);
 
   if (wm_job && wm_job->flag & WM_JOB_PROGRESS) {
-    return wm_job->worker_status.progress;
+    float progress = wm_job->worker_status.progress;
+
+    PrimitiveIntRNA job_type = {wm_job->job_type};
+    PrimitiveFloatRNA prog = {progress};
+
+    PointerRNA job_type_ptr = RNA_pointer_create(nullptr, &RNA_PrimitiveInt, &job_type);
+    PointerRNA progress_ptr = RNA_pointer_create(nullptr, &RNA_PrimitiveFloat, &prog);
+
+    PointerRNA *pointers[2] = {&job_type_ptr, &progress_ptr};
+
+    BKE_callback_exec(NULL, pointers, 2, BKE_CB_EVT_JOB_UPDATE);
+
+    return progress;
   }
 
   return 0.0;
@@ -484,6 +500,17 @@ void WM_jobs_start(wmWindowManager *wm, wmJob *wm_job)
         wm_job->worker_status.progress = 0.0;
 
         // printf("job started: %s\n", wm_job->name);
+        float progress = 0;
+
+        PrimitiveIntRNA job_type = {wm_job->job_type};
+        PrimitiveFloatRNA prog = {progress};
+
+        PointerRNA job_type_ptr = RNA_pointer_create(nullptr, &RNA_PrimitiveInt, &job_type);
+        PointerRNA progress_ptr = RNA_pointer_create(nullptr, &RNA_PrimitiveFloat, &prog);
+
+        PointerRNA *pointers[2] = {&job_type_ptr, &progress_ptr};
+
+        BKE_callback_exec(NULL, pointers, 2, BKE_CB_EVT_JOB_INIT);
 
         BLI_threadpool_init(&wm_job->threads, do_job_thread, 1);
         BLI_threadpool_insert(&wm_job->threads, wm_job);
@@ -522,6 +549,18 @@ static void wm_job_end(wmWindowManager *wm, wmJob *wm_job)
   if (final_callback) {
     final_callback(wm_job->run_customdata);
   }
+
+  float progress = 1;
+
+  PrimitiveIntRNA job_type = {wm_job->job_type};
+  PrimitiveFloatRNA prog = {progress};
+
+  PointerRNA job_type_ptr = RNA_pointer_create(nullptr, &RNA_PrimitiveInt, &job_type);
+  PointerRNA progress_ptr = RNA_pointer_create(nullptr, &RNA_PrimitiveFloat, &prog);
+
+  PointerRNA *pointers[2] = {&job_type_ptr, &progress_ptr};
+
+  BKE_callback_exec(NULL, pointers, 2, BKE_CB_EVT_JOB_COMPLETE);
 
   /* Ensure all reports have been moved to WM. */
   wm_jobs_reports_update(wm, wm_job);

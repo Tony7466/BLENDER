@@ -91,6 +91,9 @@ static PyStructSequence_Field app_cb_info_fields[] = {
     {"animation_playback_pre", "on starting animation playback"},
     {"animation_playback_post", "on ending animation playback"},
     {"translation_update_post", "on translation settings update"},
+    {"job_init", "on a new job"},
+    {"job_update", "on a job status update"},
+    {"job_complete", "on a job completion"},
     /* NOTE(@ideasman42): This avoids bad-level calls into BPY API
      * but should not be considered part of the public Python API.
      * If there is a compelling reason to make these public, the leading `_` can be removed. */
