@@ -311,7 +311,7 @@ def dump_rna_messages(msgs, reports, settings, verbose=False):
         from bl_ui.space_toolsystem_common import ToolDef
 
         bl_rna = cls.bl_rna
-        op_default_context = bpy.app.translations.contexts.operator_default
+        tool_translation_context = bpy.app.translations.contexts.tool
 
         def process_tooldef(tool_context, tool):
             if not isinstance(tool, ToolDef):
@@ -321,7 +321,7 @@ def dump_rna_messages(msgs, reports, settings, verbose=False):
                 return
             msgsrc = "bpy.types.{} Tools: '{}', '{}'".format(bl_rna.identifier, tool_context, tool.idname)
             if tool.label:
-                process_msg(msgs, op_default_context, tool.label, msgsrc, reports, check_ctxt_rna, settings)
+                process_msg(msgs, tool_translation_context, tool.label, msgsrc, reports, check_ctxt_rna, settings)
             # Callable (function) descriptions must handle their translations themselves.
             if tool.description and not callable(tool.description):
                 process_msg(msgs, default_context, tool.description, msgsrc, reports, check_ctxt_rna_tip, settings)
@@ -973,20 +973,20 @@ def dump_asset_messages(msgs, reports, settings):
     for bfile in bfiles:
         basename = os.path.basename(bfile)
         bpy.ops.wm.open_mainfile(filepath=bfile)
-        # For now, only parse node groups.
-        # Perhaps some other assets will need to be extracted later?
-        for asset_type in ("node_groups",):
+        # For now, only parse node groups and brushes.
+        for asset_type in ("brushes", "node_groups",):
             for asset in getattr(bpy.data, asset_type):
                 if asset.asset_data is None:  # Not an asset
                     continue
                 assets = asset_files.setdefault(basename, [])
                 asset_data = {"name": asset.name,
                               "description": asset.asset_data.description}
-                for interface in asset.interface.items_tree:
-                    if interface.name == "Geometry":  # Ignore common socket
-                        continue
-                    socket_data = asset_data.setdefault("sockets", [])
-                    socket_data.append((interface.name, interface.description))
+                if asset_type == "node_groups":
+                    for interface in asset.interface.items_tree:
+                        if interface.name == "Geometry":  # Ignore common socket
+                            continue
+                        socket_data = asset_data.setdefault("sockets", [])
+                        socket_data.append((interface.name, interface.description))
                 assets.append(asset_data)
 
     for asset_file in sorted(asset_files):

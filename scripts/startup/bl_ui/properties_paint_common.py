@@ -4,6 +4,7 @@
 
 import bpy
 from bpy.types import Menu, Panel
+from bpy.app.translations import pgettext_iface as iface_
 
 
 class BrushAssetShelf:
@@ -138,7 +139,7 @@ class BrushAssetShelf:
 
         layout.template_asset_shelf_popover(
             shelf_name,
-            name=brush.name if (brush and show_name) else None,
+            name=iface_(brush.name) if (brush and show_name) else None,
             icon='BRUSH_DATA' if not preview_icon_id else 'NONE',
             icon_value=preview_icon_id,
         )
