@@ -96,14 +96,63 @@ static void CSS_setup_style(std::ofstream &f)
        "}\n";
 }
 
-#define SX(x) ((x - topleft[0]) * scale)
-#define SY(y) ((topleft[1] - y) * scale)
+class svg_mapping {
+ public:
+  float2 topleft;
+  float scale;
+  float view_width;
+  float view_height;
+
+  float SX(const float x) const
+  {
+    return ((x - topleft[0]) * scale);
+  }
+
+  float SY(const float y) const
+  {
+    return ((topleft[1] - y) * scale);
+  }
+};
+
+svg_mapping calculate_mapping_from_bounds(const Bounds<float2> &bound)
+{
+  constexpr int max_draw_width = 800;
+  constexpr int max_draw_height = 600;
+
+  const float2 vmin = bound.min;
+  const float2 vmax = bound.max;
+  const float draw_margin = ((vmax.x - vmin.x) + (vmax.y - vmin.y)) * 0.05;
+  const float minx = vmin.x - draw_margin;
+  const float maxx = vmax.x + draw_margin;
+  const float miny = vmin.y - draw_margin;
+  const float maxy = vmax.y + draw_margin;
+
+  const float2 topleft = float2(minx, maxy);
+
+  const float width = maxx - minx;
+  const float height = maxy - miny;
+  const float aspect = height / width;
+  int view_width = max_draw_width;
+  int view_height = int(view_width * aspect);
+  if (view_height > max_draw_height) {
+    view_height = max_draw_height;
+    view_width = int(view_height / aspect);
+  }
+  const float scale = view_width / width;
+
+  svg_mapping mapping;
+  mapping.topleft = topleft;
+  mapping.scale = scale;
+  mapping.view_width = view_width;
+  mapping.view_height = view_height;
+
+  return mapping;
+}
 
 static void SVG_add_polygon(std::ofstream &f,
                             const std::string &class_name,
                             const Span<float2> points,
-                            const float2 &topleft,
-                            const float scale)
+                            const svg_mapping &mapping)
 {
   f << "<polygon class = \"" << class_name << "\" points = \"";
   for (const int i : points.index_range()) {
@@ -111,7 +160,7 @@ static void SVG_add_polygon(std::ofstream &f,
     if (i != 0) {
       f << ", ";
     }
-    f << SX(point[0]) << "," << SY(point[1]);
+    f << mapping.SX(point[0]) << "," << mapping.SY(point[1]);
   }
   f << "\"/>\n";
 }
@@ -120,8 +169,7 @@ static void SVG_add_polygons_as_path(std::ofstream &f,
                                      const std::string &class_name,
                                      const Span<float2> points,
                                      const OffsetIndices<int> points_by_polygon,
-                                     const float2 &topleft,
-                                     const float scale)
+                                     const svg_mapping &mapping)
 {
   f << "<path class = \"" << class_name << "\" d = \"";
   for (const int polygon_id : points_by_polygon.index_range()) {
@@ -141,7 +189,7 @@ static void SVG_add_polygons_as_path(std::ofstream &f,
       else if (j != 0) {
         f << ", ";
       }
-      f << SX(point[0]) << "," << SY(point[1]);
+      f << mapping.SX(point[0]) << "," << mapping.SY(point[1]);
     }
     f << " Z";
   }
@@ -156,8 +204,7 @@ static void SVG_add_polygons_as_path(std::ofstream &f,
 static void SVG_add_line(std::ofstream &f,
                          const std::string &class_name,
                          const Span<float2> points,
-                         const float2 &topleft,
-                         const float scale)
+                         const svg_mapping &mapping)
 {
   f << "<path class = \"" << class_name << "\" d = \"";
 
@@ -171,7 +218,7 @@ static void SVG_add_line(std::ofstream &f,
     else if (i != 0) {
       f << ", ";
     }
-    f << SX(point[0]) << "," << SY(point[1]);
+    f << mapping.SX(point[0]) << "," << mapping.SY(point[1]);
   }
 
   f << "\"";
@@ -183,8 +230,7 @@ static void SVG_add_lines(std::ofstream &f,
                           const std::string &class_name,
                           const Span<float2> points,
                           const OffsetIndices<int> points_by_polygon,
-                          const float2 &topleft,
-                          const float scale)
+                          const svg_mapping &mapping)
 {
   f << "<path class = \"" << class_name << "\" d = \"";
   for (const int polygon_id : points_by_polygon.index_range()) {
@@ -204,7 +250,7 @@ static void SVG_add_lines(std::ofstream &f,
       else if (j != 0) {
         f << ", ";
       }
-      f << SX(point[0]) << "," << SY(point[1]);
+      f << mapping.SX(point[0]) << "," << mapping.SY(point[1]);
     }
   }
 
@@ -258,30 +304,8 @@ void draw_polygons(const std::string &label,
                    const Span<float2> curve_b,
                    const BooleanResult &result)
 {
-  constexpr int max_draw_width = 800;
-  constexpr int max_draw_height = 600;
-
-  const Bounds<float2> bound = *bounds::merge(bounds::min_max(curve_a), bounds::min_max(curve_b));
-  const float2 vmin = bound.min;
-  const float2 vmax = bound.max;
-  const float draw_margin = ((vmax.x - vmin.x) + (vmax.y - vmin.y)) * 0.05;
-  const float minx = vmin.x - draw_margin;
-  const float maxx = vmax.x + draw_margin;
-  const float miny = vmin.y - draw_margin;
-  const float maxy = vmax.y + draw_margin;
-
-  const float2 topleft = float2(minx, maxy);
-
-  const float width = maxx - minx;
-  const float height = maxy - miny;
-  const float aspect = height / width;
-  int view_width = max_draw_width;
-  int view_height = int(view_width * aspect);
-  if (view_height > max_draw_height) {
-    view_height = max_draw_height;
-    view_width = int(view_height / aspect);
-  }
-  const float scale = view_width / width;
+  const Bounds<float2> bounds = *bounds::merge(bounds::min_max(curve_a), bounds::min_max(curve_b));
+  svg_mapping mapping = calculate_mapping_from_bounds(bounds);
 
   std::ofstream f = get_file_stream();
   if (!f) {
@@ -291,19 +315,19 @@ void draw_polygons(const std::string &label,
   f << "<div>\n";
   f << "<h1>" << label << "</h1>\n";
 
-  f << "<svg width=\"" << view_width << "\" height=\"" << view_height << "\">\n";
+  f << "<svg width=\"" << mapping.view_width << "\" height=\"" << mapping.view_height << "\">\n";
 
-  SVG_add_polygon(f, "polygon-A", curve_a, topleft, scale);
-  SVG_add_polygon(f, "polygon-B", curve_b, topleft, scale);
+  SVG_add_polygon(f, "polygon-A", curve_a, mapping);
+  SVG_add_polygon(f, "polygon-B", curve_b, mapping);
 
   const Span<float2> points = interpolate_data_from_ab_result<float2>(curve_a, curve_b, result);
   const OffsetIndices<int> points_by_polygon = OffsetIndices<int>(result.offsets);
 
   if (points_by_polygon.size() == 1) {
-    SVG_add_polygon(f, "polygon-C", points, topleft, scale);
+    SVG_add_polygon(f, "polygon-C", points, mapping);
   }
   else {
-    SVG_add_polygons_as_path(f, "polygon-C", points, points_by_polygon, topleft, scale);
+    SVG_add_polygons_as_path(f, "polygon-C", points, points_by_polygon, mapping);
   }
 
   f << "</div>\n";
@@ -315,30 +339,8 @@ void draw_cut(const std::string &label,
               const Span<float2> curve_b,
               const BooleanResult &result)
 {
-  constexpr int max_draw_width = 800;
-  constexpr int max_draw_height = 600;
-
-  const Bounds<float2> bound = *bounds::merge(bounds::min_max(curve_a), bounds::min_max(curve_b));
-  const float2 vmin = bound.min;
-  const float2 vmax = bound.max;
-  const float draw_margin = ((vmax.x - vmin.x) + (vmax.y - vmin.y)) * 0.05;
-  const float minx = vmin.x - draw_margin;
-  const float maxx = vmax.x + draw_margin;
-  const float miny = vmin.y - draw_margin;
-  const float maxy = vmax.y + draw_margin;
-
-  const float2 topleft = float2(minx, maxy);
-
-  const float width = maxx - minx;
-  const float height = maxy - miny;
-  const float aspect = height / width;
-  int view_width = max_draw_width;
-  int view_height = int(view_width * aspect);
-  if (view_height > max_draw_height) {
-    view_height = max_draw_height;
-    view_width = int(view_height / aspect);
-  }
-  const float scale = view_width / width;
+  const Bounds<float2> bounds = *bounds::merge(bounds::min_max(curve_a), bounds::min_max(curve_b));
+  svg_mapping mapping = calculate_mapping_from_bounds(bounds);
 
   std::ofstream f = get_file_stream();
   if (!f) {
@@ -348,31 +350,28 @@ void draw_cut(const std::string &label,
   f << "<div>\n";
   f << "<h1>" << label << "</h1>\n";
 
-  f << "<svg width=\"" << view_width << "\" height=\"" << view_height << "\">\n";
+  f << "<svg width=\"" << mapping.view_width << "\" height=\"" << mapping.view_height << "\">\n";
 
   if (is_a_cyclic) {
-    SVG_add_polygon(f, "cut-A", curve_a, topleft, scale);
+    SVG_add_polygon(f, "cut-A", curve_a, mapping);
   }
   else {
-    SVG_add_line(f, "cut-A", curve_a, topleft, scale);
+    SVG_add_line(f, "cut-A", curve_a, mapping);
   }
-  SVG_add_polygon(f, "cut-B", curve_b, topleft, scale);
+  SVG_add_polygon(f, "cut-B", curve_b, mapping);
 
   const Span<float2> points = interpolate_data_from_a_result<float2>(curve_a, result);
   const OffsetIndices<int> points_by_polygon = OffsetIndices<int>(result.offsets);
 
   if (points_by_polygon.size() == 1) {
-    SVG_add_line(f, "cut-C", points, topleft, scale);
+    SVG_add_line(f, "cut-C", points, mapping);
   }
   else {
-    SVG_add_lines(f, "cut-C", points, points_by_polygon, topleft, scale);
+    SVG_add_lines(f, "cut-C", points, points_by_polygon, mapping);
   }
 
   f << "</div>\n";
 }
-
-#undef SX
-#undef SY
 
 void squares_A_AND_B_test()
 {
