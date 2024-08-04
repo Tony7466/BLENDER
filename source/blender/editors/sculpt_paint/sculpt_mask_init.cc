@@ -242,8 +242,7 @@ static int sculpt_mask_init_exec(bContext *C, wmOperator *op)
                 BM_ELEM_CD_SET_FLOAT(
                     vert,
                     offset,
-                    BLI_hash_int_01(SCULPT_vertex_island_get(ss, PBVHVertRef{intptr_t(vert)}) +
-                                    seed));
+                    BLI_hash_int_01(islands::vert_id_get(ss, BM_elem_index_get(vert)) + seed));
                 break;
             }
           }

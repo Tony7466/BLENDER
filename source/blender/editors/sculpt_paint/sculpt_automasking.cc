@@ -550,7 +550,7 @@ float factor_get(const Cache *automasking,
 
   if (!automasking->settings.topology_use_brush_limit &&
       automasking->settings.flags & BRUSH_AUTOMASKING_TOPOLOGY &&
-      islands::vert_id_get(*ss, BKE_pbvh_vertex_to_index(ss->pbvh, vert)) !=
+      islands::vert_id_get(ss, BKE_pbvh_vertex_to_index(*ss.pbvh, vert)) !=
           automasking->settings.initial_island_nr)
   {
     return 0.0f;

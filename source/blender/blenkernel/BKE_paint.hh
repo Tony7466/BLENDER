@@ -483,7 +483,7 @@ struct SculptTopologyIslandCache {
   bool is_multires_face;
 };
 
-struct SculptSession {
+struct SculptSession : blender::NonCopyable, blender::NonMovable {
   /* Mesh data (not copied) can come either directly from a Mesh, or from a MultiresDM */
   struct { /* Special handling for multires meshes */
     bool active;
@@ -661,6 +661,7 @@ struct SculptSession {
 
   int last_automasking_settings_hash = 0;
   uchar last_automask_stroke_id = 0;
+  std::unique_ptr<SculptTopologyIslandCache> topology_island_cache;
 
   SculptSession();
   ~SculptSession();
