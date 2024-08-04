@@ -7,6 +7,7 @@
  */
 
 #include "BKE_curves.hh"
+#include "BKE_geometry_set.hh"
 
 #include "BLI_array.hh"
 #include "BLI_array_utils.hh"
@@ -18,6 +19,8 @@
 #include "DNA_screen_types.h"
 
 #include "ED_view3d.hh"
+
+#include "GEO_join_geometries.hh"
 
 #include "BLI_polygon_clipping_2d.hh"
 
@@ -148,7 +151,7 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
   const polygonboolean::InputMode input_mode = {polygonboolean::BooleanMode::A_NOT_B,
                                                 polygonboolean::HoleMode::WITHOUT_HOLES};
 
-  bke::CurvesGeometry dst = bke::CurvesGeometry();
+  Vector<bke::GeometrySet> geometry_sets;
 
   for (const int curve_i : src.curves_range()) {
     const IndexRange points = src_points_by_curve[curve_i];
@@ -173,19 +176,16 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
 
     BLI_assert(result.valid_geometry);
 
-    const int points_num = dst.points_num();
-    const int curves_num = dst.curves_num();
     const int added_curve_num = result.offsets.size() - 1;
+    bke::CurvesGeometry dst = bke::CurvesGeometry(result.verts.size(), added_curve_num);
 
-    dst.resize(points_num + result.verts.size(), curves_num + added_curve_num);
-
-    MutableSpan<int> offsets = dst.offsets_for_write().drop_front(curves_num);
+    MutableSpan<int> offsets = dst.offsets_for_write();
 
     for (const int i : IndexRange(result.offsets.size())) {
-      offsets[i] = result.offsets[i] + points_num;
+      offsets[i] = result.offsets[i];
     }
 
-    dst.cyclic_for_write().drop_front(curves_num).fill(is_fill);
+    dst.cyclic_for_write().fill(is_fill);
 
     const bke::AttributeAccessor src_attributes = src.attributes();
     bke::MutableAttributeAccessor dst_attributes = dst.attributes_for_write();
@@ -206,13 +206,8 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
       const bool keep_last = vertex_last.type == polygonboolean::VertexType::PointA &&
                              vertex_last.point_id == pos_2d_a.size() - 1;
 
-      Set_cap_attributes(keep_first,
-                         keep_last,
-                         curves_num,
-                         curve_i,
-                         added_curve_num,
-                         src_attributes,
-                         dst_attributes);
+      Set_cap_attributes(
+          keep_first, keep_last, 0, curve_i, added_curve_num, src_attributes, dst_attributes);
     }
 
     const bool reproject = result.intersections_data.size() != 0;
@@ -238,9 +233,9 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
             auto src_attr = srcR.typed<T>();
             auto dst_attr = dstW.span.typed<T>();
 
-            // dst_attr.drop_back(curves_num).fill(src_attr[curve_i]);
+            // dst_attr.fill(src_attr[curve_i]); /* TODO */
             for (const int i : IndexRange(added_curve_num)) {
-              dst_attr[curves_num + i] = src_attr[curve_i];
+              dst_attr[i] = src_attr[curve_i];
             }
           });
           dstW.finish();
@@ -267,7 +262,7 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
           bke::attribute_math::convert_to_static_type(dstW.span.type(), [&](auto dummy) {
             using T = decltype(dummy);
             VArray<T> src1_attr = src1.typed<T>();
-            MutableSpan<T> dst_attr = (dstW.span.typed<T>()).drop_front(points_num);
+            MutableSpan<T> dst_attr = (dstW.span.typed<T>());
 
             polygonboolean::interpolate_data_from_a_result<T>(src1_attr, result, dst_attr);
 
@@ -278,7 +273,7 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
         });
 
     if (reproject) {
-      MutableSpan<float3> positions = dst.positions_for_write().drop_front(points_num);
+      MutableSpan<float3> positions = dst.positions_for_write();
       const Array<float2> pos2d = polygonboolean::interpolate_data_from_ab_result<float2>(
           pos_2d_a, pos_2d_b, result);
 
@@ -289,11 +284,21 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
         positions[i] = math::transform_point(world_to_layer, positions[i]);
       }
     }
+
+    Curves *target_id = curves_new_nomain(std::move(dst));
+    geometry_sets.append(bke::GeometrySet::from_curves(target_id));
   }
 
-  dst.update_curve_types();
+  if (geometry_sets.is_empty()) {
+    return bke::CurvesGeometry();
+  }
 
-  return dst;
+  bke::GeometrySet joined_curves = geometry::join_geometries(geometry_sets, {});
+  bke::CurvesGeometry out_dst = joined_curves.get_curves_for_write()->geometry.wrap();
+
+  out_dst.update_curve_types();
+
+  return out_dst;
 }
 
 }  // namespace blender::ed::curves::clipping
