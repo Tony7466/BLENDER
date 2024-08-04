@@ -330,6 +330,8 @@ void draw_polygons(const std::string &label,
     SVG_add_polygons_as_path(f, "polygon-C", points, points_by_polygon, mapping);
   }
 
+  f << "</svg>\n";
+
   f << "</div>\n";
 }
 
