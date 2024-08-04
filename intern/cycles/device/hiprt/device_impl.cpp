@@ -651,7 +651,6 @@ hiprtGeometryBuildInput HIPRTDevice::prepare_point_blas(BVHHIPRT *bvh, PointClou
     }
   }
   else if (bvh->params.num_motion_point_steps == 0) {
-
     bvh->custom_prim_info.resize(num_points * num_steps);
     bvh->custom_primitive_bound.alloc(num_points * num_steps);
 
@@ -671,7 +670,6 @@ hiprtGeometryBuildInput HIPRTDevice::prepare_point_blas(BVHHIPRT *bvh, PointClou
     }
   }
   else {
-
     const int num_bvh_steps = bvh->params.num_motion_point_steps * 2 + 1;
     const float num_bvh_steps_inv_1 = 1.0f / (num_bvh_steps - 1);
 
