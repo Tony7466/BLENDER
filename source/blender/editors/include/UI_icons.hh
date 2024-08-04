@@ -807,7 +807,7 @@ DEF_ICON(NETWORK_DRIVE_LARGE)
 DEF_ICON(QUESTION_LARGE)
 DEF_ICON(WARNING_LARGE)
 
-/* Used by the Event Icons. */
+/* The following are used when creating the Event Icons. */
 
 DEF_ICON(KEY_BACKSPACE)
 DEF_ICON(KEY_BACKSPACE_FILLED)
