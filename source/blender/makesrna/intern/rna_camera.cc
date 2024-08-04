@@ -532,7 +532,9 @@ static void rna_def_camera_dof_settings_data(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(
-      prop, "Focus Collection", "Use this object to define the depth of field focal point");
+      prop,
+      "Focus Collection",
+      "Use the center of the objects in this collection to define the depth of field focal point");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Camera_dependency_update");
 
   prop = RNA_def_property(srna, "focus_subtarget", PROP_STRING, PROP_NONE);
