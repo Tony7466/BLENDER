@@ -143,21 +143,6 @@ static void blender_camera_init(BlenderCamera *bcam, BL::RenderSettings &b_rende
   bcam->full_height = bcam->render_height;
 }
 
-static void sum_obj_positions(float3 &pos, int &count, BL::Collection &coll)
-{
-  for (BL::Object obj : coll.objects) {
-    Transform dofmat = get_transform(obj.matrix_world());
-    float3 curr = transform_get_column(&dofmat, 3);
-    pos.x += curr.x;
-    pos.y += curr.y;
-    pos.z += curr.z;
-    count += 1;
-  }
-  for (BL::Collection child : coll.children) {
-    sum_obj_positions(pos, count, child);
-  }
-}
-
 static float blender_camera_focal_distance(BL::RenderEngine &b_engine,
                                            BL::Object &b_ob,
                                            BL::Camera &b_camera,
@@ -166,42 +151,42 @@ static float blender_camera_focal_distance(BL::RenderEngine &b_engine,
   BL::Object b_dof_object = b_camera.dof().focus_object();
   BL::Collection b_dof_collection = b_camera.dof().focus_collection();
 
-  if (!b_dof_object && !b_dof_collection) {
+  float3 focal_point = zero_float3();
+  if (b_dof_collection) {
+    int count = 0;
+    for (BL::Object obj : b_dof_collection.all_objects) {
+      Transform dofmat = get_transform(obj.matrix_world());
+      float3 pos = transform_get_column(&dofmat, 3);
+      focal_point.x += pos.x;
+      focal_point.y += pos.y;
+      focal_point.z += pos.z;
+      count += 1;
+    }
+    focal_point /= count;
+  }
+  else if (b_dof_object) {
+    Transform dofmat = get_transform(b_dof_object.matrix_world());
+
+    string focus_subtarget = b_camera.dof().focus_subtarget();
+    if (b_dof_object.pose() && !focus_subtarget.empty()) {
+      BL::PoseBone b_bone = b_dof_object.pose().bones[focus_subtarget];
+      if (b_bone) {
+        dofmat = dofmat * get_transform(b_bone.matrix());
+      }
+    }
+
+    focal_point = transform_get_column(&dofmat, 3);
+  }
+  else {
     return b_camera.dof().focus_distance();
   }
 
-  if (b_dof_collection) {
-    int count = 0;
-    float3 pos = {};
-    sum_obj_positions(pos, count, b_dof_collection);
-    float den = static_cast<float>(count);
-    pos.x /= den;
-    pos.y /= den;
-    pos.z /= den;
-    BL::Array<float, 16> b_ob_matrix;
-    b_engine.camera_model_matrix(b_ob, bcam->use_spherical_stereo, b_ob_matrix);
-    Transform obmat = transform_clear_scale(get_transform(b_ob_matrix));
-    float3 view_dir = normalize(transform_get_column(&obmat, 2));
-    float3 dof_dir = transform_get_column(&obmat, 3) - pos;
-    return fabsf(dot(view_dir, dof_dir));
-  }
-
-  Transform dofmat = get_transform(b_dof_object.matrix_world());
-
-  string focus_subtarget = b_camera.dof().focus_subtarget();
-  if (b_dof_object.pose() && !focus_subtarget.empty()) {
-    BL::PoseBone b_bone = b_dof_object.pose().bones[focus_subtarget];
-    if (b_bone) {
-      dofmat = dofmat * get_transform(b_bone.matrix());
-    }
-  }
-
-  /* for dof object, return distance along camera Z direction */
+  /* for dof object/collection, return distance along camera Z direction */
   BL::Array<float, 16> b_ob_matrix;
   b_engine.camera_model_matrix(b_ob, bcam->use_spherical_stereo, b_ob_matrix);
   Transform obmat = transform_clear_scale(get_transform(b_ob_matrix));
   float3 view_dir = normalize(transform_get_column(&obmat, 2));
-  float3 dof_dir = transform_get_column(&obmat, 3) - transform_get_column(&dofmat, 3);
+  float3 dof_dir = transform_get_column(&obmat, 3) - focal_point;
   return fabsf(dot(view_dir, dof_dir));
 }
 

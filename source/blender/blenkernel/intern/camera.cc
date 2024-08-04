@@ -26,12 +26,14 @@
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
+#include "BLI_math_vector.hh"
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_action.h"
 #include "BKE_camera.h"
+#include "BKE_collection.hh"
 #include "BKE_idprop.hh"
 #include "BKE_idtype.hh"
 #include "BKE_lib_id.hh"
@@ -47,6 +49,9 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLO_read_write.hh"
+
+using blender::float3;
+using blender::float4x4;
 
 /* -------------------------------------------------------------------- */
 /** \name Camera Data-Block
@@ -271,68 +276,41 @@ void *BKE_camera_add(Main *bmain, const char *name)
   return cam;
 }
 
-static void sum_obj_positions(float pos[3], int *count, Collection *c)
-{
-  ListBase *gobject = &(c->gobject);
-  ListBase *children = &(c->children);
-  *count += BLI_listbase_count(gobject);
-  LISTBASE_FOREACH (LinkData *, current, gobject) {
-    Object *o = static_cast<Object *>(current->data);
-    const blender::float3 &cpos = o->object_to_world().location();
-    add_v3_v3v3(pos, pos, cpos);
-    printf("Name: %s, Pos: %f, %f, %f, Total: %f, %f, %f\n",
-           o->id.name,
-           cpos.x,
-           cpos.y,
-           cpos.z,
-           pos[0],
-           pos[1],
-           pos[2]);  // DEBUG
-  }
-  LISTBASE_FOREACH (LinkData *, current, children) {
-    Collection *child = static_cast<Collection *>(current->data);
-    sum_obj_positions(pos, count, child);
-  }
-}
-
 float BKE_camera_object_dof_distance(const Object *ob)
 {
+  using namespace blender::math;
+
   const Camera *cam = (const Camera *)ob->data;
   if (ob->type != OB_CAMERA) {
     return 0.0f;
   }
+
+  float3 focal_point(0.0f);
   if (cam->dof.focus_collection) {
-    float view_dir[3], dof_dir[3];
-    normalize_v3_v3(view_dir, ob->object_to_world().ptr()[2]);
-
-    float pos[3] = {0.0f, 0.0f, 0.0f};
     int count = 0;
-    sum_obj_positions(pos, &count, cam->dof.focus_collection);
-    float scale = 1.0f / static_cast<float>(count);
-    mul_v3_fl(pos, scale);
-    printf("Nobjects: %d, AVG Pos: %f, %f, %f\n", count, pos[0], pos[1], pos[2]);  // DEBUG
-
-    sub_v3_v3v3(dof_dir, ob->object_to_world().location(), pos);
-    return fabsf(dot_v3v3(view_dir, dof_dir));
+    FOREACH_COLLECTION_OBJECT_RECURSIVE_BEGIN (cam->dof.focus_collection, focus_ob) {
+      focal_point += focus_ob->object_to_world().location();
+      count += 1;
+    }
+    FOREACH_COLLECTION_OBJECT_RECURSIVE_END;
+    focal_point /= count;
   }
-  if (cam->dof.focus_object) {
-    float view_dir[3], dof_dir[3];
-    normalize_v3_v3(view_dir, ob->object_to_world().ptr()[2]);
+  else if (cam->dof.focus_object) {
+    float4x4 dofmat = cam->dof.focus_object->object_to_world();
     bPoseChannel *pchan = BKE_pose_channel_find_name(cam->dof.focus_object->pose,
                                                      cam->dof.focus_subtarget);
     if (pchan) {
-      float posemat[4][4];
-      mul_m4_m4m4(posemat, cam->dof.focus_object->object_to_world().ptr(), pchan->pose_mat);
-      sub_v3_v3v3(dof_dir, ob->object_to_world().location(), posemat[3]);
+      dofmat *= float4x4(pchan->pose_mat);
     }
-    else {
-      sub_v3_v3v3(dof_dir,
-                  ob->object_to_world().location(),
-                  cam->dof.focus_object->object_to_world().location());
-    }
-    return fmax(fabsf(dot_v3v3(view_dir, dof_dir)), 1e-5f);
+    focal_point = dofmat.location();
   }
-  return fmax(cam->dof.focus_distance, 1e-5f);
+  else {
+    return fmax(cam->dof.focus_distance, 1e-5f);
+  }
+
+  float3 view_dir = normalize(ob->object_to_world().z_axis());
+  float3 dof_dir = ob->object_to_world().location() - focal_point;
+  return fmax(fabsf(dot(view_dir, dof_dir)), 1e-5f);
 }
 
 float BKE_camera_sensor_size(int sensor_fit, float sensor_x, float sensor_y)
