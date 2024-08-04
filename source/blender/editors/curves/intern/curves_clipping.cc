@@ -206,28 +206,9 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
         keep_caps, is_fill, reproject, bke::AttrDomain::Curve);
 
     /* Copy curve attributes. */
-    src_attributes.for_all(
-        [&](const bke::AttributeIDRef &id, const bke::AttributeMetaData meta_data) {
-          if (meta_data.domain != bke::AttrDomain::Curve) {
-            return true;
-          }
-          if (curve_skip.contains(id.name())) {
-            return true;
-          }
-          GVArray srcR = *src_attributes.lookup(id, meta_data.domain);
-          bke::GSpanAttributeWriter dstW = dst_attributes.lookup_or_add_for_write_only_span(
-              id, meta_data.domain, meta_data.data_type);
-
-          bke::attribute_math::convert_to_static_type(dstW.span.type(), [&](auto dummy) {
-            using T = decltype(dummy);
-            auto src_attr = srcR.typed<T>();
-            auto dst_attr = dstW.span.typed<T>();
-
-            dst_attr.fill(src_attr[curve_i]);
-          });
-          dstW.finish();
-          return true;
-        });
+    const Array indices(added_curve_num, curve_i);
+    gather_attributes(
+        src_attributes, bke::AttrDomain::Curve, {}, curve_skip, indices, dst_attributes);
 
     const Set<std::string> &point_skip = skipped_attribute_ids(
         keep_caps, is_fill, reproject, bke::AttrDomain::Point);
