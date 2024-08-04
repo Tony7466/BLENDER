@@ -7636,6 +7636,39 @@ void calc_vert_neighbors(const OffsetIndices<int> faces,
   }
 }
 
+void calc_vert_neighbors(const SubdivCCG &subdiv_ccg,
+                         const Span<int> grids,
+                         const MutableSpan<Vector<SubdivCCGCoord>> result)
+{
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+  SubdivCCGNeighbors neighbors;
+  BLI_assert(result.size() == grids.size() * key.grid_area);
+  for (const int i : grids.index_range()) {
+    const int grid = grids[i];
+    const int node_verts_start = i * key.grid_area;
+
+    for (const int y : IndexRange(key.grid_size)) {
+      for (const int x : IndexRange(key.grid_size)) {
+        const int offset = CCG_grid_xy_to_index(key.grid_size, x, y);
+        const int node_vert_index = node_verts_start + offset;
+
+        SubdivCCGCoord coord{};
+        coord.grid_index = grid;
+        coord.x = x;
+        coord.y = y;
+
+        BKE_subdiv_ccg_neighbor_coords_get(subdiv_ccg, coord, false, neighbors);
+
+        Vector<SubdivCCGCoord> &neighbor = result[node_vert_index];
+        neighbor.clear();
+        for (const SubdivCCGCoord neighbor_coord : neighbors.coords) {
+          neighbor.append(neighbor_coord);
+        }
+      }
+    }
+  }
+}
+
 void calc_vert_neighbors_interior(const OffsetIndices<int> faces,
                                   const Span<int> corner_verts,
                                   const GroupedSpan<int> vert_to_face,

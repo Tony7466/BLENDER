@@ -431,6 +431,9 @@ void calc_vert_neighbors(OffsetIndices<int> faces,
                          Span<bool> hide_poly,
                          Span<int> verts,
                          MutableSpan<Vector<int>> result);
+void calc_vert_neighbors(const SubdivCCG &subdiv_ccg,
+                         Span<int> grids,
+                         MutableSpan<Vector<SubdivCCGCoord>> result);
 
 /**
  * Find vertices connected to the indexed vertices across faces. For boundary vertices (stored in
