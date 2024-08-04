@@ -201,4 +201,50 @@ Array<T> interpolate_data_from_b_result(const Span<T> data_b, const BooleanResul
   return attribute_out;
 }
 
+template<typename T>
+void interpolate_data_from_ab_result(const VArray<T> data_a,
+                                     const VArray<T> data_b,
+                                     const BooleanResult &result,
+                                     MutableSpan<T> dst_attr)
+{
+  for (const int i : result.verts.index_range()) {
+    const Vertex &vert = result.verts[i];
+    const VertexType &type = vert.type;
+
+    if (type == VertexType::PointA) {
+      dst_attr[i] = data_a[vert.point_id];
+    }
+    else if (type == VertexType::PointB) {
+      dst_attr[i] = data_b[vert.point_id];
+    }
+    else if (type == VertexType::Intersection) {
+      const IntersectionPoint &inter_point = result.intersections_data[vert.point_id];
+
+      const T a0 = data_a[inter_point.point_a];
+      const T a1 = data_a[(inter_point.point_a + 1) % data_a.size()];
+      const float alpha_a = inter_point.alpha_a;
+
+      const T b0 = data_b[inter_point.point_b];
+      const T b1 = data_b[(inter_point.point_b + 1) % data_b.size()];
+      const float alpha_b = inter_point.alpha_b;
+
+      dst_attr[i] = math::interpolate(
+          math::interpolate(a0, a1, alpha_a), math::interpolate(b0, b1, alpha_b), 0.5f);
+    }
+  }
+}
+
+template<typename T>
+Array<T> interpolate_data_from_ab_result(const Span<T> data_a,
+                                         const Span<T> data_b,
+                                         const BooleanResult &result)
+{
+  Array<T> data_out(result.verts.size());
+
+  interpolate_data_from_ab_result(
+      VArray<T>::ForSpan(data_a), VArray<T>::ForSpan(data_b), result, data_out.as_mutable_span());
+
+  return data_out;
+}
+
 }  // namespace blender::polygonboolean
