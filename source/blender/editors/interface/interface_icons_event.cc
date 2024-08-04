@@ -30,9 +30,8 @@ static void icon_draw_icon(rctf *rect, int icon_id, bool inverted, float alpha)
     color[3] *= alpha;
   }
 
-  float offset = (BLI_rctf_size_x(rect) - BLI_rctf_size_y(rect)) / 2.0f;
   BLF_draw_svg_icon(uint(inverted ? icon_id + 1 : icon_id),
-                    rect->xmin + offset,
+                    rect->xmin,
                     rect->ymin,
                     float(ICON_DEFAULT_HEIGHT) * UI_SCALE_FAC,
                     color,
