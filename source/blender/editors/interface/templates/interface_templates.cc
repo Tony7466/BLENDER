@@ -6351,12 +6351,9 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
         if (item.inverted) {
           but->drawflag |= UI_BUT_ICON_INVERT;
         }
-        EventIconType icon_type = ui_event_icon_type(item.icon);
-        if (icon_type == EventIconType::Rectangle) {
-          uiItemS_ex(row, 1.5f);
-        }
-        else if (icon_type == EventIconType::WideRectangle) {
-          uiItemS_ex(row, 3.0f);
+        const float offset = ui_event_icon_offset(item.icon);
+        if (offset != 0.0f) {
+          uiItemS_ex(row, offset);
         }
       }
     }
@@ -6871,12 +6868,9 @@ bool uiTemplateEventFromKeymapItem(uiLayout *layout,
       uiItemS_ex(layout, -0.9f);
     }
 
-    EventIconType icon_width = ui_event_icon_type(icon);
-    if (icon_width == EventIconType::Rectangle) {
-      uiItemS_ex(layout, 1.5f);
-    }
-    else if (icon_width == EventIconType::WideRectangle) {
-      uiItemS_ex(layout, 3.0f);
+    const float offset = ui_event_icon_offset(icon);
+    if (offset != 0.0f) {
+      uiItemS_ex(layout, offset);
     }
 
     uiItemS_ex(layout, 0.3f);

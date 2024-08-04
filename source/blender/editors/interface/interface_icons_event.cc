@@ -38,26 +38,17 @@ static void icon_draw_icon(rctf *rect, int icon_id, bool inverted, float alpha)
                     0.0f);
 }
 
-static void icon_draw_rect_input_text(rctf *rect,
-                                      const char *str,
-                                      bool inverted,
-                                      float alpha,
-                                      EventIconType icon_type = EventIconType::Square)
+static void icon_draw_rect_input_text(
+    rctf *rect, const char *str, bool inverted, float alpha, int icon_id = ICON_KEY_EMPTY1)
 {
-  if (icon_type == EventIconType::Ring) {
-    icon_draw_icon(rect, ICON_KEY_RING, inverted, alpha);
-  }
-  else if (icon_type == EventIconType::Rectangle) {
+  if (icon_id == ICON_KEY_EMPTY2) {
     rect->xmax = rect->xmin + BLI_rctf_size_x(rect) * 1.5f;
-    icon_draw_icon(rect, ICON_KEY_EMPTY2, inverted, alpha);
   }
-  else if (icon_type == EventIconType::WideRectangle) {
+  else if (icon_id == ICON_KEY_EMPTY3) {
     rect->xmax = rect->xmin + BLI_rctf_size_x(rect) * 2.0f;
-    icon_draw_icon(rect, ICON_KEY_EMPTY3, inverted, alpha);
   }
-  else {
-    icon_draw_icon(rect, ICON_KEY_EMPTY1, inverted, alpha);
-  }
+
+  icon_draw_icon(rect, icon_id, inverted, alpha);
 
   const int font_id = BLF_default();
   float color[4];
@@ -87,7 +78,7 @@ static void icon_draw_rect_input_text(rctf *rect,
   BLF_draw(font_id, str, BLF_DRAW_STR_DUMMY_MAX);
 }
 
-EventIconType ui_event_icon_type(const int icon)
+float ui_event_icon_offset(const int icon)
 {
   const enum {
     UNIX,
@@ -114,38 +105,27 @@ EventIconType ui_event_icon_type(const int icon)
            ICON_EVENT_INSERT,
            ICON_EVENT_APP))
   {
-    return EventIconType::Rectangle;
+    return 1.5f;
   }
-
-  if (icon >= ICON_EVENT_NDOF_BUTTON_V1 && icon <= ICON_EVENT_NDOF_BUTTON_MINUS) {
-    return EventIconType::Ring;
-  }
-
   if (icon >= ICON_EVENT_PAD0 && icon <= ICON_EVENT_PADPERIOD) {
-    return EventIconType::Rectangle;
+    return 1.5f;
   }
-
   if (icon >= ICON_EVENT_NDOF_BUTTON_V1 && icon <= ICON_EVENT_NDOF_BUTTON_MINUS) {
-    return EventIconType::Rectangle;
+    return 1.5f;
   }
-
   if (icon >= ICON_EVENT_F10 && icon <= ICON_EVENT_F24) {
-    return EventIconType::Rectangle;
+    return 1.5f;
   }
-
   if (platform != MACOS && ELEM(icon, ICON_EVENT_CTRL, ICON_EVENT_ALT, ICON_EVENT_OS)) {
-    return EventIconType::Rectangle;
+    return 1.5f;
   }
-
   if (icon == ICON_EVENT_OS && platform != MACOS && platform != MSWIN) {
-    return EventIconType::Rectangle;
+    return 1.5f;
   }
-
   if (icon == ICON_EVENT_SPACEKEY) {
-    return EventIconType::WideRectangle;
+    return 3.0f;
   }
-
-  return EventIconType::Square;
+  return 0.0f;
 }
 
 void icon_draw_rect_input(float x, float y, int w, int h, int icon, float alpha, bool inverted)
@@ -171,8 +151,6 @@ void icon_draw_rect_input(float x, float y, int w, int h, int icon, float alpha,
 #endif
       ;
 
-  EventIconType icon_type = ui_event_icon_type(icon);
-
   if ((icon >= ICON_EVENT_A) && (icon <= ICON_EVENT_Z)) {
     const char str[2] = {char('A' + (icon - ICON_EVENT_A)), '\0'};
     icon_draw_rect_input_text(&rect, str, inverted, alpha);
@@ -184,7 +162,7 @@ void icon_draw_rect_input(float x, float y, int w, int h, int icon, float alpha,
   else if ((icon >= ICON_EVENT_F1) && (icon <= ICON_EVENT_F24)) {
     char str[4];
     SNPRINTF(str, "F%d", 1 + (icon - ICON_EVENT_F1));
-    icon_draw_rect_input_text(&rect, str, inverted, alpha, icon_type);
+    icon_draw_rect_input_text(&rect, str, inverted, alpha, ICON_KEY_EMPTY2);
   }
   if (icon == ICON_EVENT_SHIFT) {
     icon_draw_icon(&rect, ICON_KEY_SHIFT, inverted, alpha);
@@ -194,7 +172,7 @@ void icon_draw_rect_input(float x, float y, int w, int h, int icon, float alpha,
       icon_draw_icon(&rect, ICON_KEY_CONTROL, inverted, alpha);
     }
     else {
-      icon_draw_rect_input_text(&rect, IFACE_("Ctrl"), inverted, alpha, icon_type);
+      icon_draw_rect_input_text(&rect, IFACE_("Ctrl"), inverted, alpha, ICON_KEY_EMPTY2);
     }
   }
   else if (icon == ICON_EVENT_ALT) {
@@ -202,7 +180,7 @@ void icon_draw_rect_input(float x, float y, int w, int h, int icon, float alpha,
       icon_draw_icon(&rect, ICON_KEY_OPTION, inverted, alpha);
     }
     else {
-      icon_draw_rect_input_text(&rect, IFACE_("Alt"), inverted, alpha, icon_type);
+      icon_draw_rect_input_text(&rect, IFACE_("Alt"), inverted, alpha, ICON_KEY_EMPTY2);
     }
   }
   else if (icon == ICON_EVENT_OS) {
@@ -213,26 +191,26 @@ void icon_draw_rect_input(float x, float y, int w, int h, int icon, float alpha,
       icon_draw_icon(&rect, ICON_KEY_WINDOWS, inverted, alpha);
     }
     else {
-      icon_draw_rect_input_text(&rect, IFACE_("OS"), inverted, alpha, icon_type);
+      icon_draw_rect_input_text(&rect, IFACE_("OS"), inverted, alpha, ICON_KEY_EMPTY2);
     }
   }
   else if (icon == ICON_EVENT_DEL) {
-    icon_draw_rect_input_text(&rect, IFACE_("Del"), inverted, alpha, icon_type);
+    icon_draw_rect_input_text(&rect, IFACE_("Del"), inverted, alpha, ICON_KEY_EMPTY2);
   }
   else if (icon == ICON_EVENT_TAB) {
     icon_draw_icon(&rect, ICON_KEY_TAB, inverted, alpha);
   }
   else if (icon == ICON_EVENT_HOME) {
-    icon_draw_rect_input_text(&rect, IFACE_("Home"), inverted, alpha, icon_type);
+    icon_draw_rect_input_text(&rect, IFACE_("Home"), inverted, alpha, ICON_KEY_EMPTY2);
   }
   else if (icon == ICON_EVENT_END) {
-    icon_draw_rect_input_text(&rect, IFACE_("End"), inverted, alpha, icon_type);
+    icon_draw_rect_input_text(&rect, IFACE_("End"), inverted, alpha, ICON_KEY_EMPTY2);
   }
   else if (icon == ICON_EVENT_RETURN) {
     icon_draw_icon(&rect, ICON_KEY_RETURN, inverted, alpha);
   }
   else if (icon == ICON_EVENT_ESC) {
-    icon_draw_rect_input_text(&rect, IFACE_("Esc"), inverted, alpha, icon_type);
+    icon_draw_rect_input_text(&rect, IFACE_("Esc"), inverted, alpha, ICON_KEY_EMPTY2);
   }
   else if (icon == ICON_EVENT_PAGEUP) {
     icon_draw_rect_input_text(&rect, "P" BLI_STR_UTF8_UPWARDS_ARROW, inverted, alpha);
@@ -253,7 +231,7 @@ void icon_draw_rect_input(float x, float y, int w, int h, int icon, float alpha,
     icon_draw_rect_input_text(&rect, BLI_STR_UTF8_DOWNWARDS_ARROW, inverted, alpha);
   }
   else if (icon == ICON_EVENT_SPACEKEY) {
-    icon_draw_rect_input_text(&rect, IFACE_("Space"), inverted, alpha, icon_type);
+    icon_draw_rect_input_text(&rect, IFACE_("Space"), inverted, alpha, ICON_KEY_EMPTY3);
   }
   else if (icon == ICON_EVENT_MOUSE_4) {
     icon_draw_rect_input_text(&rect, BLI_STR_UTF8_BLACK_VERTICAL_ELLIPSE "4", inverted, alpha);
@@ -276,19 +254,28 @@ void icon_draw_rect_input(float x, float y, int w, int h, int icon, float alpha,
   else if ((icon >= ICON_EVENT_PAD0) && (icon <= ICON_EVENT_PAD9)) {
     char str[5];
     SNPRINTF(str, "%s%i", BLI_STR_UTF8_SQUARE_WITH_ORTHOGONAL_CROSSHATCH, icon - ICON_EVENT_PAD0);
-    icon_draw_rect_input_text(&rect, str, inverted, alpha, icon_type);
+    icon_draw_rect_input_text(&rect, str, inverted, alpha, ICON_KEY_EMPTY2);
   }
   else if (icon == ICON_EVENT_PADASTER) {
-    icon_draw_rect_input_text(
-        &rect, BLI_STR_UTF8_SQUARE_WITH_ORTHOGONAL_CROSSHATCH "6", inverted, alpha, icon_type);
+    icon_draw_rect_input_text(&rect,
+                              BLI_STR_UTF8_SQUARE_WITH_ORTHOGONAL_CROSSHATCH "6",
+                              inverted,
+                              alpha,
+                              ICON_KEY_EMPTY2);
   }
   else if (icon == ICON_EVENT_PADSLASH) {
-    icon_draw_rect_input_text(
-        &rect, BLI_STR_UTF8_SQUARE_WITH_ORTHOGONAL_CROSSHATCH "/", inverted, alpha, icon_type);
+    icon_draw_rect_input_text(&rect,
+                              BLI_STR_UTF8_SQUARE_WITH_ORTHOGONAL_CROSSHATCH "/",
+                              inverted,
+                              alpha,
+                              ICON_KEY_EMPTY2);
   }
   else if (icon == ICON_EVENT_PADMINUS) {
-    icon_draw_rect_input_text(
-        &rect, BLI_STR_UTF8_SQUARE_WITH_ORTHOGONAL_CROSSHATCH "-", inverted, alpha, icon_type);
+    icon_draw_rect_input_text(&rect,
+                              BLI_STR_UTF8_SQUARE_WITH_ORTHOGONAL_CROSSHATCH "-",
+                              inverted,
+                              alpha,
+                              ICON_KEY_EMPTY2);
   }
   else if (icon == ICON_EVENT_PADENTER) {
     icon_draw_rect_input_text(
@@ -296,21 +283,27 @@ void icon_draw_rect_input(float x, float y, int w, int h, int icon, float alpha,
         BLI_STR_UTF8_SQUARE_WITH_ORTHOGONAL_CROSSHATCH BLI_STR_UTF8_RETURN_SYMBOL,
         inverted,
         alpha,
-        icon_type);
+        ICON_KEY_EMPTY2);
   }
   else if (icon == ICON_EVENT_PADPLUS) {
-    icon_draw_rect_input_text(
-        &rect, BLI_STR_UTF8_SQUARE_WITH_ORTHOGONAL_CROSSHATCH "+", inverted, alpha, icon_type);
+    icon_draw_rect_input_text(&rect,
+                              BLI_STR_UTF8_SQUARE_WITH_ORTHOGONAL_CROSSHATCH "+",
+                              inverted,
+                              alpha,
+                              ICON_KEY_EMPTY2);
   }
   else if (icon == ICON_EVENT_PADPERIOD) {
-    icon_draw_rect_input_text(
-        &rect, BLI_STR_UTF8_SQUARE_WITH_ORTHOGONAL_CROSSHATCH ".", inverted, alpha, icon_type);
+    icon_draw_rect_input_text(&rect,
+                              BLI_STR_UTF8_SQUARE_WITH_ORTHOGONAL_CROSSHATCH ".",
+                              inverted,
+                              alpha,
+                              ICON_KEY_EMPTY2);
   }
   else if (icon == ICON_EVENT_PAUSE) {
-    icon_draw_rect_input_text(&rect, IFACE_("Pause"), inverted, alpha, icon_type);
+    icon_draw_rect_input_text(&rect, IFACE_("Pause"), inverted, alpha, ICON_KEY_EMPTY2);
   }
   else if (icon == ICON_EVENT_INSERT) {
-    icon_draw_rect_input_text(&rect, IFACE_("Insert"), inverted, alpha, icon_type);
+    icon_draw_rect_input_text(&rect, IFACE_("Insert"), inverted, alpha, ICON_KEY_EMPTY2);
   }
   else if (icon == ICON_EVENT_UNKNOWN) {
     icon_draw_rect_input_text(&rect, " ", inverted, alpha);
@@ -340,15 +333,13 @@ void icon_draw_rect_input(float x, float y, int w, int h, int icon, float alpha,
                               alpha);
   }
   else if (icon == ICON_EVENT_APP) {
-    icon_draw_rect_input_text(&rect, IFACE_("App"), inverted, alpha);
+    icon_draw_rect_input_text(&rect, IFACE_("App"), inverted, alpha, ICON_KEY_EMPTY2);
   }
   else if (icon == ICON_EVENT_CAPSLOCK) {
     icon_draw_rect_input_text(&rect, BLI_STR_UTF8_UPWARDS_UP_ARROW_FROM_BAR, inverted, alpha);
   }
   else if (icon == ICON_EVENT_BACKSPACE) {
     icon_draw_icon(&rect, ICON_KEY_BACKSPACE, inverted, alpha);
-    // icon_draw_rect_input_text(&rect, BLI_STR_UTF8_ERASE_TO_THE_LEFT, inverted, alpha,
-    // icon_width);
   }
   else if (icon == ICON_EVENT_SEMICOLON) {
     icon_draw_rect_input_text(&rect, ";", inverted, alpha);
@@ -390,80 +381,80 @@ void icon_draw_rect_input(float x, float y, int w, int h, int icon, float alpha,
     if ((icon >= ICON_EVENT_NDOF_BUTTON_V1) && (icon <= ICON_EVENT_NDOF_BUTTON_V3)) {
       char str[7];
       SNPRINTF(str, "v%i", (icon + 1) - ICON_EVENT_NDOF_BUTTON_V1);
-      icon_draw_rect_input_text(&rect, str, inverted, alpha, icon_type);
+      icon_draw_rect_input_text(&rect, str, inverted, alpha, ICON_KEY_RING);
     }
     if ((icon >= ICON_EVENT_NDOF_BUTTON_SAVE_V1) && (icon <= ICON_EVENT_NDOF_BUTTON_SAVE_V3)) {
       char str[7];
       SNPRINTF(str, "s%i", (icon + 1) - ICON_EVENT_NDOF_BUTTON_SAVE_V1);
-      icon_draw_rect_input_text(&rect, str, inverted, alpha, icon_type);
+      icon_draw_rect_input_text(&rect, str, inverted, alpha, ICON_KEY_RING);
     }
     else if ((icon >= ICON_EVENT_NDOF_BUTTON_1) && (icon <= ICON_EVENT_NDOF_BUTTON_12)) {
       char str[7];
       SNPRINTF(str, "%i", (1 + icon) - ICON_EVENT_NDOF_BUTTON_1);
-      icon_draw_rect_input_text(&rect, str, inverted, alpha, icon_type);
+      icon_draw_rect_input_text(&rect, str, inverted, alpha, ICON_KEY_RING);
     }
     else if (icon == ICON_EVENT_NDOF_BUTTON_MENU) {
-      icon_draw_rect_input_text(&rect, "Me", inverted, alpha, icon_type);
+      icon_draw_rect_input_text(&rect, "Me", inverted, alpha, ICON_KEY_RING);
     }
     else if (icon == ICON_EVENT_NDOF_BUTTON_FIT) {
-      icon_draw_rect_input_text(&rect, "Ft", inverted, alpha, icon_type);
+      icon_draw_rect_input_text(&rect, "Ft", inverted, alpha, ICON_KEY_RING);
     }
     else if (icon == ICON_EVENT_NDOF_BUTTON_TOP) {
-      icon_draw_rect_input_text(&rect, "Tp", inverted, alpha, icon_type);
+      icon_draw_rect_input_text(&rect, "Tp", inverted, alpha, ICON_KEY_RING);
     }
     else if (icon == ICON_EVENT_NDOF_BUTTON_BOTTOM) {
-      icon_draw_rect_input_text(&rect, "Bt", inverted, alpha, icon_type);
+      icon_draw_rect_input_text(&rect, "Bt", inverted, alpha, ICON_KEY_RING);
     }
     else if (icon == ICON_EVENT_NDOF_BUTTON_LEFT) {
-      icon_draw_rect_input_text(&rect, "Le", inverted, alpha, icon_type);
+      icon_draw_rect_input_text(&rect, "Le", inverted, alpha, ICON_KEY_RING);
     }
     else if (icon == ICON_EVENT_NDOF_BUTTON_RIGHT) {
-      icon_draw_rect_input_text(&rect, "Ri", inverted, alpha, icon_type);
+      icon_draw_rect_input_text(&rect, "Ri", inverted, alpha, ICON_KEY_RING);
     }
     else if (icon == ICON_EVENT_NDOF_BUTTON_FRONT) {
-      icon_draw_rect_input_text(&rect, "Fr", inverted, alpha, icon_type);
+      icon_draw_rect_input_text(&rect, "Fr", inverted, alpha, ICON_KEY_RING);
     }
     else if (icon == ICON_EVENT_NDOF_BUTTON_BACK) {
-      icon_draw_rect_input_text(&rect, "Bk", inverted, alpha, icon_type);
+      icon_draw_rect_input_text(&rect, "Bk", inverted, alpha, ICON_KEY_RING);
     }
     else if (icon == ICON_EVENT_NDOF_BUTTON_ISO1) {
-      icon_draw_rect_input_text(&rect, "I1", inverted, alpha, icon_type);
+      icon_draw_rect_input_text(&rect, "I1", inverted, alpha, ICON_KEY_RING);
     }
     else if (icon == ICON_EVENT_NDOF_BUTTON_ISO2) {
-      icon_draw_rect_input_text(&rect, "I2", inverted, alpha, icon_type);
+      icon_draw_rect_input_text(&rect, "I2", inverted, alpha, ICON_KEY_RING);
     }
     else if (icon == ICON_EVENT_NDOF_BUTTON_ROLL_CW) {
-      icon_draw_rect_input_text(&rect, "Rl", inverted, alpha, icon_type);
+      icon_draw_rect_input_text(&rect, "Rl", inverted, alpha, ICON_KEY_RING);
     }
     else if (icon == ICON_EVENT_NDOF_BUTTON_ROLL_CCW) {
-      icon_draw_rect_input_text(&rect, "Rc", inverted, alpha, icon_type);
+      icon_draw_rect_input_text(&rect, "Rc", inverted, alpha, ICON_KEY_RING);
     }
     else if (icon == ICON_EVENT_NDOF_BUTTON_SPIN_CW) {
-      icon_draw_rect_input_text(&rect, "Sp", inverted, alpha, icon_type);
+      icon_draw_rect_input_text(&rect, "Sp", inverted, alpha, ICON_KEY_RING);
     }
     else if (icon == ICON_EVENT_NDOF_BUTTON_SPIN_CCW) {
-      icon_draw_rect_input_text(&rect, "Sc", inverted, alpha, icon_type);
+      icon_draw_rect_input_text(&rect, "Sc", inverted, alpha, ICON_KEY_RING);
     }
     else if (icon == ICON_EVENT_NDOF_BUTTON_TILT_CW) {
-      icon_draw_rect_input_text(&rect, "Ti", inverted, alpha, icon_type);
+      icon_draw_rect_input_text(&rect, "Ti", inverted, alpha, ICON_KEY_RING);
     }
     else if (icon == ICON_EVENT_NDOF_BUTTON_TILT_CCW) {
-      icon_draw_rect_input_text(&rect, "Tc", inverted, alpha, icon_type);
+      icon_draw_rect_input_text(&rect, "Tc", inverted, alpha, ICON_KEY_RING);
     }
     else if (icon == ICON_EVENT_NDOF_BUTTON_ROTATE) {
-      icon_draw_rect_input_text(&rect, "Ro", inverted, alpha, icon_type);
+      icon_draw_rect_input_text(&rect, "Ro", inverted, alpha, ICON_KEY_RING);
     }
     else if (icon == ICON_EVENT_NDOF_BUTTON_PANZOOM) {
-      icon_draw_rect_input_text(&rect, "PZ", inverted, alpha, icon_type);
+      icon_draw_rect_input_text(&rect, "PZ", inverted, alpha, ICON_KEY_RING);
     }
     else if (icon == ICON_EVENT_NDOF_BUTTON_DOMINANT) {
-      icon_draw_rect_input_text(&rect, "Dm", inverted, alpha, icon_type);
+      icon_draw_rect_input_text(&rect, "Dm", inverted, alpha, ICON_KEY_RING);
     }
     else if (icon == ICON_EVENT_NDOF_BUTTON_PLUS) {
-      icon_draw_rect_input_text(&rect, "+", inverted, alpha, icon_type);
+      icon_draw_rect_input_text(&rect, "+", inverted, alpha, ICON_KEY_RING);
     }
     else if (icon == ICON_EVENT_NDOF_BUTTON_MINUS) {
-      icon_draw_rect_input_text(&rect, "-", inverted, alpha, icon_type);
+      icon_draw_rect_input_text(&rect, "-", inverted, alpha, ICON_KEY_RING);
     }
   }
 }
