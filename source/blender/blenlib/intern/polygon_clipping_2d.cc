@@ -594,6 +594,36 @@ struct CurveBooleanExecutor {
     return result;
   }
 
+  void sort_a_intersections()
+  {
+    A_inter_sorted_ids = Array<int>(num_intersects);
+    array_utils::fill_index_range<int>(A_inter_sorted_ids);
+
+    std::sort(A_inter_sorted_ids.begin(), A_inter_sorted_ids.end(), [&](int i1, int i2) {
+      return intersections[i1].point_a + intersections[i1].alpha_a <
+             intersections[i2].point_a + intersections[i2].alpha_a;
+    });
+
+    for (const int id : IndexRange(num_intersects)) {
+      intersections[A_inter_sorted_ids[id]].sorted_id_a = id;
+    }
+  }
+
+  void sort_b_intersections()
+  {
+    B_inter_sorted_ids = Array<int>(num_intersects);
+    array_utils::fill_index_range<int>(B_inter_sorted_ids);
+
+    std::sort(B_inter_sorted_ids.begin(), B_inter_sorted_ids.end(), [&](int i1, int i2) {
+      return intersections[i1].point_b + intersections[i1].alpha_b <
+             intersections[i2].point_b + intersections[i2].alpha_b;
+    });
+
+    for (const int id : IndexRange(num_intersects)) {
+      intersections[B_inter_sorted_ids[id]].sorted_id_b = id;
+    }
+  }
+
   BooleanResult execute_boolean(const InputMode input_mode,
                                 Span<float2> curve_a,
                                 Span<float2> curve_b)
@@ -629,25 +659,8 @@ struct CurveBooleanExecutor {
       return non_intersecting_result(input_mode, curve_a, curve_b);
     }
 
-    A_inter_sorted_ids = Array<int>(num_intersects);
-    B_inter_sorted_ids = Array<int>(num_intersects);
-
-    array_utils::fill_index_range<int>(A_inter_sorted_ids);
-    array_utils::fill_index_range<int>(B_inter_sorted_ids);
-
-    std::sort(A_inter_sorted_ids.begin(), A_inter_sorted_ids.end(), [&](int i1, int i2) {
-      return intersections[i1].point_a + intersections[i1].alpha_a <
-             intersections[i2].point_a + intersections[i2].alpha_a;
-    });
-    std::sort(B_inter_sorted_ids.begin(), B_inter_sorted_ids.end(), [&](int i1, int i2) {
-      return intersections[i1].point_b + intersections[i1].alpha_b <
-             intersections[i2].point_b + intersections[i2].alpha_b;
-    });
-
-    for (const int id : IndexRange(num_intersects)) {
-      intersections[A_inter_sorted_ids[id]].sorted_id_a = id;
-      intersections[B_inter_sorted_ids[id]].sorted_id_b = id;
-    }
+    sort_a_intersections();
+    sort_b_intersections();
 
     /* ---- ---- ---- Phase Three ---- ---- ---- */
 
@@ -865,16 +878,7 @@ struct CurveBooleanExecutor {
       }
     }
 
-    A_inter_sorted_ids = Array<int>(num_intersects);
-    array_utils::fill_index_range<int>(A_inter_sorted_ids);
-    std::sort(A_inter_sorted_ids.begin(), A_inter_sorted_ids.end(), [&](int i1, int i2) {
-      return intersections[i1].point_a + intersections[i1].alpha_a <
-             intersections[i2].point_a + intersections[i2].alpha_a;
-    });
-
-    for (const int id : IndexRange(num_intersects)) {
-      intersections[A_inter_sorted_ids[id]].sorted_id_a = id;
-    }
+    sort_a_intersections();
 
     /* ---- ---- ---- Phase Three ---- ---- ---- */
 
