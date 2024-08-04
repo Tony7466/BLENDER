@@ -276,8 +276,8 @@ static void edge_tris_split_and_skip(const float3 a_point_3d,
       }
 
       if (!triangle_is_in_range(a_point_2d, b_point_2d, r_points_2d[r_point_i], centre, radius)) {
-        // r_points_3d.remove_and_reorder(r_point_i);
-        // r_points_2d.remove_and_reorder(r_point_i);
+        r_points_3d.remove_and_reorder(r_point_i);
+        r_points_2d.remove_and_reorder(r_point_i);
         break;
       }
     }
@@ -304,8 +304,6 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
 
   Vector<int8_t> edges_states = {0};
 
-  Vector<bool> force_split_stack = {triangle_is_in_range(tri_2d_points[0], tri_2d_points[1], tri_2d_points[2], centre, radius)};
-
   while (!edges_states.is_empty()) {
     std::array<Vector<float2>, 3> connected_2d_points = connected_2d_points_stack.pop_last();
     std::array<Vector<float3>, 3> connected_3d_points = connected_3d_points_stack.pop_last();
@@ -313,8 +311,6 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
     const std::array<float3, 3> tri_3d_points = tri_3d_points_stack.pop_last();
 
     const int8_t edges_state = edges_states.pop_last();
-
-    const bool force_this_split = force_split_stack.pop_last();
 
     // std::cout << "Pass;\n";
     // std::cout << "\t" << connected_2d_points << ";\n";
@@ -359,8 +355,7 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
     }
 
     int largest_side_to_split = edge_indices[0];
-    const bool need_this_split = triangle_is_in_range(tri_2d_points[0], tri_2d_points[1], tri_2d_points[2], centre, radius);
-    if (!(force_this_split || need_this_split))
+    if (!triangle_is_in_range(tri_2d_points[0], tri_2d_points[1], tri_2d_points[2], centre, radius))
     {
       const auto side_iter = std::find_if(edge_indices.begin(), edge_indices.end(), [&] (const int side_i) {
         const float side_length_squared = lengths_squared[side_i];
@@ -453,9 +448,6 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
     tri_2d_points_stack.append(std::move(right_tri_2d_points));
     tri_3d_points_stack.append(std::move(right_tri_3d_points));
     edges_states.append(right_edges_state);
-    
-    force_split_stack.append(need_this_split);
-    force_split_stack.append(need_this_split);
   }
 }
 
@@ -689,9 +681,6 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
 
   int face_iter = 0;
 
-  Vector<bool> force_split_stack = {triangle_is_in_range(tri_2d_points[0], tri_2d_points[1], tri_2d_points[2], centre, radius)};
-
-
   while (!edges_states.is_empty()) {
     std::array<Vector<float2>, 3> connected_2d_points = connected_2d_points_stack.pop_last();
     std::array<Vector<float3>, 3> connected_3d_points = connected_3d_points_stack.pop_last();
@@ -701,8 +690,6 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
     const int3 tri_verts = tri_verts_stack.pop_last();
 
     const int8_t edges_state = edges_states.pop_last();
-
-    const bool force_this_split = force_split_stack.pop_last();
 
     // std::cout << "Pass;\n";
     // std::cout << "\t" << connected_2d_points << ";\n";
@@ -765,8 +752,7 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
     }
 
     int largest_side_to_split = edge_indices[0];
-    const bool need_this_split = triangle_is_in_range(tri_2d_points[0], tri_2d_points[1], tri_2d_points[2], centre, radius);
-    if (!(force_this_split || need_this_split))
+    if (!triangle_is_in_range(tri_2d_points[0], tri_2d_points[1], tri_2d_points[2], centre, radius))
     {
       const auto side_iter = std::find_if(edge_indices.begin(), edge_indices.end(), [&] (const int side_i) {
         const float side_length_squared = lengths_squared[side_i];
@@ -899,9 +885,6 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
       tri_3d_points_stack.append(std::move(left_tri_3d_points));
       edges_states.append(left_edges_state);
       tri_verts_stack.append(left_tri_verts);
-      
-      force_split_stack.append(need_this_split);
-      force_split_stack.append(need_this_split);
     }
     else {
       connected_2d_points_stack.append(std::move(left_connected_2d_points));
@@ -917,9 +900,6 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
       tri_3d_points_stack.append(std::move(right_tri_3d_points));
       edges_states.append(right_edges_state);
       tri_verts_stack.append(right_tri_verts);
-      
-      force_split_stack.append(need_this_split);
-      force_split_stack.append(need_this_split);
     }
   }
 
