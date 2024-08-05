@@ -6483,6 +6483,11 @@ namespace blender::ed::sculpt_paint::islands {
 int vert_id_get(const SculptSession &ss, const int vert)
 {
   BLI_assert(ss.topology_island_cache);
+  if (!ss.topology_island_cache) {
+    /* The cache should be calculated whenever it's necessary.
+     * Still avoid crashing in release builds though. */
+    return 0;
+  }
   const SculptTopologyIslandCache &cache = *ss.topology_island_cache;
   if (!cache.vert_island_ids.is_empty()) {
     return cache.vert_island_ids[vert];
