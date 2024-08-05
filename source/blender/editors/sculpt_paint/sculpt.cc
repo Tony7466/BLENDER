@@ -7700,10 +7700,10 @@ void calc_translations_to_plane(const Span<float3> positions,
   }
 }
 
-static void filter_verts_outside_symmetry_area(const Span<float3> positions,
-                                               const float3 &pivot,
-                                               const ePaintSymmetryFlags symm,
-                                               const MutableSpan<float> factors)
+void filter_verts_outside_symmetry_area(const Span<float3> positions,
+                                        const float3 &pivot,
+                                        const ePaintSymmetryFlags symm,
+                                        const MutableSpan<float> factors)
 {
   BLI_assert(positions.size() == factors.size());
 
