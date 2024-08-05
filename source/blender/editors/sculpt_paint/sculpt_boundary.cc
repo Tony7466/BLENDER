@@ -2554,17 +2554,15 @@ BLI_NOINLINE static void calc_smooth_position(const Span<float3> positions,
 
 BLI_NOINLINE static void calc_average_position(const Span<float3> vert_positions,
                                                const Span<int> vert_propagation_steps,
-                                               const Span<int> verts,
                                                const Span<Vector<int>> neighbors,
                                                const Span<int> propagation_steps,
                                                const MutableSpan<float> factors,
                                                const MutableSpan<float3> average_positions)
 {
   BLI_assert(vert_positions.size() == vert_propagation_steps.size());
-  BLI_assert(verts.size() == neighbors.size());
-  BLI_assert(verts.size() == propagation_steps.size());
-  BLI_assert(verts.size() == factors.size());
-  BLI_assert(verts.size() == average_positions.size());
+  BLI_assert(factors.size() == neighbors.size());
+  BLI_assert(factors.size() == propagation_steps.size());
+  BLI_assert(factors.size() == average_positions.size());
 
   for (const int i : neighbors.index_range()) {
     average_positions[i] = float3(0.0f);
@@ -2690,7 +2688,6 @@ static void calc_smooth_mesh(const Sculpt &sd,
   const MutableSpan<float3> average_positions = tls.average_positions;
   calc_average_position(positions_eval,
                         vert_propagation_steps,
-                        verts,
                         neighbors,
                         propagation_steps,
                         factors,
