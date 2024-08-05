@@ -103,8 +103,8 @@ template<typename T> inline T round(const T &a)
 
 /**
  * Repeats the saw-tooth pattern even on negative numbers.
- * ex: `mod_periodic(-3, 4) = 1`, `mod(-3, 4)= -3`. This will protecte undefind behavior for
- * negative b.
+ * ex: `mod_periodic(-3, 4) = 1`, `mod(-3, 4)= -3`. This will cause undefined behavior for negative
+ * b.
  */
 template<typename T> inline T mod_periodic(const T &a, const T &b)
 {
