@@ -970,9 +970,9 @@ bool select_box(const ViewContext &vc,
                   apply_selection_operation_at_index(selection.span, curve_i, sel_op);
                 };
                 changed = true;
-                return 1;
+                return true;
               }
-              return 0;
+              return false;
             };
             bool segment_selected = false;
             for (const int segment_i : points.drop_back(1)) {
@@ -1083,9 +1083,9 @@ bool select_lasso(const ViewContext &vc,
                   apply_selection_operation_at_index(selection.span, curve_i, sel_op);
                 }
                 changed = true;
-                return 1;
+                return true;
               }
-              return 0;
+              return false;
             };
             bool segment_selected = false;
             for (const int segment_i : points.drop_back(cyclic[curve_i] ? 0 : 1)) {
@@ -1180,9 +1180,9 @@ bool select_circle(const ViewContext &vc,
                   apply_selection_operation_at_index(selection.span, curve_i, sel_op);
                 }
                 changed = true;
-                return 1;
+                return true;
               }
-              return 0;
+              return false;
             };
             bool segment_selected = false;
             for (const int segment_i : points.drop_back(1)) {
