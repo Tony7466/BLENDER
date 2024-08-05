@@ -1963,16 +1963,6 @@ class _defs_weight_paint:
 
 class _defs_grease_pencil_paint:
 
-    @staticmethod
-    def get_gpencil_tool_data_block(context):
-        # Though `data_block` is conceptually unnecessary with a single brush tool,
-        # it's still used because many areas assume that brush tools have it set #bToolRef.
-        if context:
-            brush = context.tool_settings.gpencil_paint.brush
-            if brush:
-                return brush.gpencil_tool
-        return None
-
     @ToolDef.from_fn
     def fill():
         return dict(
