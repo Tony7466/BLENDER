@@ -2944,6 +2944,47 @@ static void do_smooth_brush(const Sculpt &sd,
 /** \name Brush Initialization
  * \{ */
 
+static std::pair<float, float> calc_boundary_falloff(const SculptBoundary &boundary,
+                                                     const Brush &brush,
+                                                     const float radius,
+                                                     const int index)
+{
+  const float boundary_distance = boundary.distance.lookup_default(index, 0.0f);
+  float falloff_distance = 0.0f;
+  float direction = 1.0f;
+
+  switch (brush.boundary_falloff_type) {
+    case BRUSH_BOUNDARY_FALLOFF_RADIUS:
+      falloff_distance = boundary_distance;
+      break;
+    case BRUSH_BOUNDARY_FALLOFF_LOOP: {
+      const int div = boundary_distance / radius;
+      const float mod = fmodf(boundary_distance, radius);
+      falloff_distance = div % 2 == 0 ? mod : radius - mod;
+      break;
+    }
+    case BRUSH_BOUNDARY_FALLOFF_LOOP_INVERT: {
+      const int div = boundary_distance / radius;
+      const float mod = fmodf(boundary_distance, radius);
+      falloff_distance = div % 2 == 0 ? mod : radius - mod;
+      /* Inverts the falloff in the intervals 1 2 5 6 9 10 ... etc. */
+      if (((div - 1) & 2) == 0) {
+        direction = -1.0f;
+      }
+      break;
+    }
+    case BRUSH_BOUNDARY_FALLOFF_CONSTANT:
+      /* For constant falloff distances are not allocated, so this should never happen. */
+      BLI_assert_unreachable();
+      break;
+    default:
+      BLI_assert_unreachable();
+      break;
+  }
+
+  return {falloff_distance, direction};
+}
+
 static float displacement_from_grab_delta_get(const SculptSession &ss,
                                               const SculptBoundary &boundary)
 {
@@ -2991,36 +3032,8 @@ static void init_falloff(const Brush &brush, const float radius, SculptBoundary 
       continue;
     }
 
-    const float boundary_distance = boundary.distance.lookup_default(
-        boundary.edit_info.original_vertex_i[i], 0.0f);
-    float falloff_distance = 0.0f;
-    float direction = 1.0f;
-
-    switch (brush.boundary_falloff_type) {
-      case BRUSH_BOUNDARY_FALLOFF_RADIUS:
-        falloff_distance = boundary_distance;
-        break;
-      case BRUSH_BOUNDARY_FALLOFF_LOOP: {
-        const int div = boundary_distance / radius;
-        const float mod = fmodf(boundary_distance, radius);
-        falloff_distance = div % 2 == 0 ? mod : radius - mod;
-        break;
-      }
-      case BRUSH_BOUNDARY_FALLOFF_LOOP_INVERT: {
-        const int div = boundary_distance / radius;
-        const float mod = fmodf(boundary_distance, radius);
-        falloff_distance = div % 2 == 0 ? mod : radius - mod;
-        /* Inverts the falloff in the intervals 1 2 5 6 9 10 ... etc. */
-        if (((div - 1) & 2) == 0) {
-          direction = -1.0f;
-        }
-        break;
-      }
-      case BRUSH_BOUNDARY_FALLOFF_CONSTANT:
-        /* For constant falloff distances are not allocated, so this should never happen. */
-        BLI_assert(false);
-    }
-
+    auto [falloff_distance, direction] = calc_boundary_falloff(
+        boundary, brush, radius, boundary.edit_info.original_vertex_i[i]);
     boundary.edit_info.strength_factor[i] *= direction * BKE_brush_curve_strength(
                                                              &brush, falloff_distance, radius);
   }
@@ -3330,6 +3343,9 @@ void do_boundary_brush(const Sculpt &sd, Object &ob, Span<bke::pbvh::Node *> nod
                       *ss.cache->boundaries[symm_area],
                       strength,
                       eBrushDeformTarget(brush.deform_target));
+      break;
+    default:
+      BLI_assert_unreachable();
       break;
   }
 }
