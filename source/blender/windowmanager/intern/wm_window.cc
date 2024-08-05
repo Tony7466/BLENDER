@@ -2683,7 +2683,8 @@ int WM_window_pixels_y(const wmWindow *win)
   return int(fac * float(win->sizey));
 }
 
-void WM_window_pixels_coords(const wmWindow *win, int *x, int *y) {
+void WM_window_pixels_coords(const wmWindow *win, int *x, int *y)
+{
   const float fac = GHOST_GetNativePixelSize(static_cast<GHOST_WindowHandle>(win->ghostwin));
 
   *x *= fac;

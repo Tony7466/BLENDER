@@ -3841,8 +3841,10 @@ static AreaDockTarget area_docking_target(sAreaJoinData *jd, const wmEvent *even
   }
 
   /* Convert to local coordinates in sa2. */
-  int win1_posx = jd->win1->posx, win1_posy = jd->win1->posy;
-  int win2_posx = jd->win2->posx, win2_posy = jd->win2->posy;
+  int win1_posx = jd->win1->posx;
+  int win1_posy = jd->win1->posy;
+  int win2_posx = jd->win2->posx;
+  int win2_posy = jd->win2->posy;
   WM_window_pixels_coords(jd->win1, &win1_posx, &win1_posy);
   WM_window_pixels_coords(jd->win2, &win2_posx, &win2_posy);
 
