@@ -6536,12 +6536,14 @@ static SculptTopologyIslandCache calc_topology_islands_mesh(const Mesh &mesh)
   return vert_disjoint_set_to_islands(disjoint_set, mesh.verts_num);
 }
 
+/**
+ * \todo Take grid face visibility into account.
+ */
 static SculptTopologyIslandCache calc_topology_islands_grids(const Object &object)
 {
   const SculptSession &ss = *object.sculpt;
   const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-  const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
   const int verts_num = subdiv_ccg.grids.size() * key.grid_area;
   AtomicDisjointSet disjoint_set(verts_num);
   threading::parallel_for(subdiv_ccg.grids.index_range(), 512, [&](const IndexRange range) {
