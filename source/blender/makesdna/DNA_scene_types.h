@@ -940,8 +940,8 @@ typedef struct Paint {
    */
   struct AssetWeakReference *brush_asset_reference;
 
-  struct PaintToolSlot *tool_slots;
-  int tool_slots_len;
+  struct PaintToolSlot *tool_brushes;
+  int tool_brushes_len;
   char _pad1[4];
 
   /** Default eraser brush and associated weak reference. */

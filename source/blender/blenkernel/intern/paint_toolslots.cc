@@ -32,10 +32,10 @@ void BKE_paint_toolslots_len_ensure(Paint *paint, int len)
 {
   /* Tool slots are 'uchar'. */
   BLI_assert(len <= UCHAR_MAX);
-  if (paint->tool_slots_len < len) {
-    paint->tool_slots = static_cast<PaintToolSlot *>(
-        MEM_recallocN(paint->tool_slots, sizeof(*paint->tool_slots) * len));
-    paint->tool_slots_len = len;
+  if (paint->tool_brushes_len < len) {
+    paint->tool_brushes = static_cast<PaintToolSlot *>(
+        MEM_recallocN(paint->tool_brushes, sizeof(*paint->tool_brushes) * len));
+    paint->tool_brushes_len = len;
   }
 }
 
@@ -52,8 +52,8 @@ static void paint_toolslots_init(Main *bmain, Paint *paint)
     if (brush->ob_mode & ob_mode) {
       const int slot_index = BKE_brush_tool_get(brush, paint);
       BKE_paint_toolslots_len_ensure(paint, slot_index + 1);
-      if (paint->tool_slots[slot_index].brush == nullptr) {
-        paint->tool_slots[slot_index].brush = brush;
+      if (paint->tool_brushes[slot_index].brush == nullptr) {
+        paint->tool_brushes[slot_index].brush = brush;
         id_us_plus(&brush->id);
       }
     }
@@ -121,7 +121,7 @@ void BKE_paint_toolslots_brush_update_ex(Paint *paint,
       brush, eObjectMode(paint->runtime.ob_mode));
 
   BKE_paint_toolslots_len_ensure(paint, *slot_index + 1);
-  PaintToolSlot *tslot = &paint->tool_slots[*slot_index];
+  PaintToolSlot *tslot = &paint->tool_brushes[*slot_index];
   if (tslot->brush_asset_reference) {
     MEM_delete(tslot->brush_asset_reference);
   }
@@ -145,8 +145,8 @@ void BKE_paint_brush_validate(Main *bmain, Paint *paint)
   /* Clear slots with invalid slots or mode (unlikely but possible). */
   const eObjectMode ob_mode = eObjectMode(paint->runtime.ob_mode);
   BLI_assert(ob_mode);
-  for (int i = 0; i < paint->tool_slots_len; i++) {
-    PaintToolSlot *tslot = &paint->tool_slots[i];
+  for (int i = 0; i < paint->tool_brushes_len; i++) {
+    PaintToolSlot *tslot = &paint->tool_brushes[i];
     if (tslot->brush_asset_reference) {
       if ((i != BKE_brush_tool_get(tslot->brush, paint)) || (tslot->brush->ob_mode & ob_mode) == 0)
       {
@@ -165,8 +165,8 @@ void BKE_paint_brush_validate(Main *bmain, Paint *paint)
 
 AssetWeakReference *BKE_paint_toolslots_brush_asset_reference_get(Paint *paint, int slot_index)
 {
-  if (slot_index < paint->tool_slots_len) {
-    PaintToolSlot *tslot = &paint->tool_slots[slot_index];
+  if (slot_index < paint->tool_brushes_len) {
+    PaintToolSlot *tslot = &paint->tool_brushes[slot_index];
     return tslot->brush_asset_reference;
   }
   return nullptr;

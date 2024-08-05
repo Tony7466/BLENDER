@@ -1477,11 +1477,11 @@ void BKE_paint_init(Main *bmain, Scene *sce, PaintMode mode, const uchar col[3])
 
 static void paint_tool_slots_free(Paint *paint)
 {
-  for (int i = 0; i < paint->tool_slots_len; i++) {
-    PaintToolSlot &slot = paint->tool_slots[i];
+  for (int i = 0; i < paint->tool_brushes_len; i++) {
+    PaintToolSlot &slot = paint->tool_brushes[i];
     MEM_delete(slot.brush_asset_reference);
   }
-  MEM_SAFE_FREE(paint->tool_slots);
+  MEM_SAFE_FREE(paint->tool_brushes);
 }
 
 void BKE_paint_free(Paint *paint)
@@ -1505,11 +1505,11 @@ void BKE_paint_copy(const Paint *src, Paint *dst, const int flag)
     dst->eraser_brush_asset_reference = MEM_new<AssetWeakReference>(
         __func__, *src->eraser_brush_asset_reference);
   }
-  dst->tool_slots = MEM_cnew_array<PaintToolSlot>(src->tool_slots_len, "tool slot copy");
-  for (int i = 0; i < src->tool_slots_len; i++) {
-    if (src->tool_slots[i].brush_asset_reference) {
-      dst->tool_slots[i].brush_asset_reference = MEM_new<AssetWeakReference>(
-          "tool slot asset reference copy", *src->tool_slots[i].brush_asset_reference);
+  dst->tool_brushes = MEM_cnew_array<PaintToolSlot>(src->tool_brushes_len, "tool slot copy");
+  for (int i = 0; i < src->tool_brushes_len; i++) {
+    if (src->tool_brushes[i].brush_asset_reference) {
+      dst->tool_brushes[i].brush_asset_reference = MEM_new<AssetWeakReference>(
+          "tool slot asset reference copy", *src->tool_brushes[i].brush_asset_reference);
     }
   }
 
@@ -1541,10 +1541,10 @@ void BKE_paint_blend_write(BlendWriter *writer, Paint *paint)
   if (paint->eraser_brush_asset_reference) {
     BKE_asset_weak_reference_write(writer, paint->eraser_brush_asset_reference);
   }
-  BLO_write_struct_array(writer, PaintToolSlot, paint->tool_slots_len, paint->tool_slots);
-  for (int i = 0; i < paint->tool_slots_len; i++) {
-    if (paint->tool_slots[i].brush_asset_reference) {
-      BKE_asset_weak_reference_write(writer, paint->tool_slots[i].brush_asset_reference);
+  BLO_write_struct_array(writer, PaintToolSlot, paint->tool_brushes_len, paint->tool_brushes);
+  for (int i = 0; i < paint->tool_brushes_len; i++) {
+    if (paint->tool_brushes[i].brush_asset_reference) {
+      BKE_asset_weak_reference_write(writer, paint->tool_brushes[i].brush_asset_reference);
     }
   }
 }
@@ -1568,19 +1568,14 @@ void BKE_paint_blend_read_data(BlendDataReader *reader, const Scene *scene, Pain
   if (paint->eraser_brush_asset_reference) {
     BKE_asset_weak_reference_read(reader, paint->eraser_brush_asset_reference);
   }
-  BLO_read_struct_array(reader, PaintToolSlot, paint->tool_slots_len, paint->tool_slots);
-  for (int i = 0; i < paint->tool_slots_len; i++) {
-    BLO_read_struct(reader, AssetWeakReference, paint->tool_slots[i].brush_asset_reference);
-    if (paint->tool_slots[i].brush_asset_reference) {
-      BKE_asset_weak_reference_read(reader, paint->tool_slots[i].brush_asset_reference);
+  if (paint->tool_brushes) {
+    BLO_read_struct_array(reader, PaintToolSlot, paint->tool_brushes_len, paint->tool_brushes);
+    for (int i = 0; i < paint->tool_brushes_len; i++) {
+      BLO_read_struct(reader, AssetWeakReference, paint->tool_brushes[i].brush_asset_reference);
+      if (paint->tool_brushes[i].brush_asset_reference) {
+        BKE_asset_weak_reference_read(reader, paint->tool_brushes[i].brush_asset_reference);
+      }
     }
-  }
-
-  /* Workaround for invalid data written in older versions. */
-  const size_t expected_size = sizeof(PaintToolSlot) * paint->tool_slots_len;
-  if (paint->tool_slots && MEM_allocN_len(paint->tool_slots) < expected_size) {
-    paint_tool_slots_free(paint);
-    paint->tool_slots = MEM_cnew_array<PaintToolSlot>(expected_size, "PaintToolSlot");
   }
 
   paint->paint_cursor = nullptr;
