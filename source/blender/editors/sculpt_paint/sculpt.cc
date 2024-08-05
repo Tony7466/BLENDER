@@ -6593,7 +6593,6 @@ static SculptTopologyIslandCache calc_topology_islands_bmesh(const Object &objec
 
 static SculptTopologyIslandCache calculate_cache(const Object &object)
 {
-  SCOPED_TIMER_AVERAGED(__func__);
   const SculptSession &ss = *object.sculpt;
   switch (ss.pbvh->type()) {
     case bke::pbvh::Type::Mesh:
