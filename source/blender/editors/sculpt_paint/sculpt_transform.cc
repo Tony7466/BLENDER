@@ -633,20 +633,6 @@ static AveragePositionAccumulation combine_average_position_accumulation(
   return AveragePositionAccumulation{a.position + b.position, a.weight_total + b.weight_total};
 }
 
-BLI_NOINLINE static void filter_positions_pivot_symmetry(const Span<float3> positions,
-                                                         const float3 &pivot,
-                                                         const ePaintSymmetryFlags symm,
-                                                         const MutableSpan<float> factors)
-{
-  BLI_assert(positions.size() == factors.size());
-
-  for (const int i : positions.index_range()) {
-    if (!SCULPT_check_vertex_pivot_symmetry(positions[i], pivot, symm)) {
-      factors[i] = 0.0f;
-    }
-  }
-}
-
 BLI_NOINLINE static void accumulate_weighted_average_position(const Span<float3> positions,
                                                               const Span<float> factors,
                                                               AveragePositionAccumulation &total)
@@ -696,7 +682,7 @@ static float3 average_unmasked_position(const Object &object,
                 tls.factors.resize(verts.size());
                 const MutableSpan<float> factors = tls.factors;
                 fill_factor_from_hide_and_mask(mesh, verts, factors);
-                filter_positions_pivot_symmetry(positions, pivot, symm, factors);
+                filter_verts_outside_symmetry_area(positions, pivot, symm, factors);
 
                 accumulate_weighted_average_position(positions, factors, sum);
               }
@@ -722,7 +708,7 @@ static float3 average_unmasked_position(const Object &object,
               tls.factors.resize(positions.size());
               const MutableSpan<float> factors = tls.factors;
               fill_factor_from_hide_and_mask(subdiv_ccg, grids, factors);
-              filter_positions_pivot_symmetry(positions, pivot, symm, factors);
+              filter_verts_outside_symmetry_area(positions, pivot, symm, factors);
 
               accumulate_weighted_average_position(positions, factors, sum);
             }
@@ -745,7 +731,7 @@ static float3 average_unmasked_position(const Object &object,
               tls.factors.resize(verts.size());
               const MutableSpan<float> factors = tls.factors;
               fill_factor_from_hide_and_mask(*ss.bm, verts, factors);
-              filter_positions_pivot_symmetry(positions, pivot, symm, factors);
+              filter_verts_outside_symmetry_area(positions, pivot, symm, factors);
 
               accumulate_weighted_average_position(positions, factors, sum);
             }
@@ -811,7 +797,7 @@ static float3 average_mask_border_position(const Object &object,
               fill_factor_from_hide(mesh, verts, factors);
 
               mask_border_weight_calc(masks, factors);
-              filter_positions_pivot_symmetry(positions, pivot, symm, factors);
+              filter_verts_outside_symmetry_area(positions, pivot, symm, factors);
 
               accumulate_weighted_average_position(positions, factors, sum);
             }
@@ -841,7 +827,7 @@ static float3 average_mask_border_position(const Object &object,
               const MutableSpan<float> factors = tls.factors;
               fill_factor_from_hide(subdiv_ccg, grids, factors);
               mask_border_weight_calc(masks, factors);
-              filter_positions_pivot_symmetry(positions, pivot, symm, factors);
+              filter_verts_outside_symmetry_area(positions, pivot, symm, factors);
 
               accumulate_weighted_average_position(positions, factors, sum);
             }
@@ -869,7 +855,7 @@ static float3 average_mask_border_position(const Object &object,
               const MutableSpan<float> factors = tls.factors;
               fill_factor_from_hide(verts, factors);
               mask_border_weight_calc(masks, factors);
-              filter_positions_pivot_symmetry(positions, pivot, symm, factors);
+              filter_verts_outside_symmetry_area(positions, pivot, symm, factors);
 
               accumulate_weighted_average_position(positions, factors, sum);
             }
