@@ -92,11 +92,10 @@ class GreasePencilStrokePointSlice:
     A helper class that represents a slice of GreasePencilStrokePoint's.
     """
 
-    def __init__(self, drawing, start, stop, step=1):
+    def __init__(self, drawing, start, stop):
         self._drawing = drawing
         self._start = start
         self._stop = stop
-        self._step = step
         self._size = stop - start
 
     def __len__(self):
@@ -121,16 +120,15 @@ class GreasePencilStrokePointSlice:
             # Default to the current start and stop values and a step of 1.
             start = key.start or self._start
             stop = key.stop or self._stop
-            step = key.step or 1
             # Clamp start and stop.
             start = max(self._start, min(start, self._stop))
             stop = max(self._start, min(stop, self._stop))
-            return GreasePencilStrokePointSlice(self._drawing, start, stop, step)
+            return GreasePencilStrokePointSlice(self._drawing, start, stop)
         else:
             raise TypeError(f"Unexpected index of type {type(key)}")
 
     def __iter__(self):
-        for point_i in range(self._start, self._stop, self._step):
+        for point_i in range(self._start, self._stop):
             yield GreasePencilStrokePoint(self, point_i)
 
 
@@ -195,12 +193,11 @@ class GreasePencilStrokeSlice:
     A helper class that represents a slice of GreasePencilStroke's.
     """
 
-    def __init__(self, drawing, start, stop, step=1):
+    def __init__(self, drawing, start, stop):
         self._drawing = drawing
         self._curve_offsets = drawing.curve_offsets
         self._start = start
         self._stop = stop
-        self._step = step
         self._size = stop - start
 
     def __len__(self):
@@ -223,18 +220,17 @@ class GreasePencilStrokeSlice:
             offsets = self._curve_offsets
             return GreasePencilStroke(self._drawing, curve_i, offsets[curve_i].value, offsets[curve_i + 1].value)
         elif isinstance(key, slice):
-            # Default to the current start and stop values and a step of 1.
+            # Default to the current start and stop values.
             start = key.start or self._start
             stop = key.stop or self._stop
-            step = key.step or 1
             # Clamp start and stop.
             start = max(self._start, min(start, self._stop))
             stop = max(self._start, min(stop, self._stop))
-            return GreasePencilStrokeSlice(self._drawing, start, stop, step)
+            return GreasePencilStrokeSlice(self._drawing, start, stop)
         else:
             raise TypeError(f"Unexpected index of type {type(key)}")
 
     def __iter__(self):
         offsets = self._curve_offsets
-        for curve_i in range(self._start, self._stop, self._step):
+        for curve_i in range(self._start, self._stop):
             yield GreasePencilStroke(self._drawing, curve_i, offsets[curve_i].value, offsets[curve_i + 1].value)
