@@ -6484,9 +6484,6 @@ int vert_id_get(const SculptSession &ss, const int vert)
 {
   BLI_assert(ss.topology_island_cache);
   const SculptTopologyIslandCache &cache = *ss.topology_island_cache;
-  if (!cache.small_vert_island_ids.is_empty()) {
-    return cache.small_vert_island_ids[vert];
-  }
   if (!cache.vert_island_ids.is_empty()) {
     return cache.vert_island_ids[vert];
   }
@@ -6501,26 +6498,21 @@ void invalidate(SculptSession &ss)
 static SculptTopologyIslandCache vert_disjoint_set_to_islands(const AtomicDisjointSet &vert_sets,
                                                               const int verts_num)
 {
-  Array<int> island_ids(verts_num);
-  const int islands_num = vert_sets.calc_reduced_ids(island_ids);
+  Array<int> island_indices(verts_num);
+  const int islands_num = vert_sets.calc_reduced_ids(island_indices);
   if (islands_num == 1) {
     return {};
   }
 
-  SculptTopologyIslandCache cache;
-  if (islands_num > std::numeric_limits<int8_t>::max()) {
-    cache.vert_island_ids = std::move(island_ids);
-    return cache;
-  }
-
-  Array<int8_t> small_island_ids(island_ids.size());
+  Array<uint8_t> island_ids(island_ids.size());
   threading::parallel_for(island_ids.index_range(), 4096, [&](const IndexRange range) {
     for (const int i : range) {
-      small_island_ids[i] = int8_t(island_ids[i]);
+      island_ids[i] = uint8_t(island_ids[i]);
     }
   });
 
-  cache.small_vert_island_ids = std::move(small_island_ids);
+  SculptTopologyIslandCache cache;
+  cache.vert_island_ids = std::move(island_ids);
   return cache;
 }
 

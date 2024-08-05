@@ -478,9 +478,7 @@ struct SculptAttributePointers {
 };
 
 struct SculptTopologyIslandCache {
-  blender::Array<int> vert_island_ids;
-  blender::Array<int8_t> small_vert_island_ids;
-  bool is_multires_face;
+  blender::Array<uint8_t> vert_island_ids;
 };
 
 struct SculptSession : blender::NonCopyable, blender::NonMovable {
