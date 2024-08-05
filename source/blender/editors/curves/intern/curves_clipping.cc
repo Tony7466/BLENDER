@@ -141,6 +141,7 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
     return bke::CurvesGeometry(src);
   }
 
+  const float4x4 world_to_layer = math::invert(layer_to_world);
   const VArray<bool> src_cyclic = src.cyclic();
   const OffsetIndices<int> src_points_by_curve = src.points_by_curve();
   const polygonboolean::InputMode input_mode = {polygonboolean::BooleanMode::A_NOT_B,
@@ -246,7 +247,6 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
           pos_2d_a, pos_2d_b, result);
 
       const float4 &plane = transform_plane(layer_to_world, normal_planes[curve_i]);
-      const float4x4 world_to_layer = math::invert(layer_to_world);
       for (const int i : pos2d.index_range()) {
         ED_view3d_win_to_3d_on_plane(&region, plane, pos2d[i], false, positions[i]);
         positions[i] = math::transform_point(world_to_layer, positions[i]);
