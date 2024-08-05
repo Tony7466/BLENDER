@@ -3023,7 +3023,7 @@ static void init_falloff_grids(const SubdivCCG &subdiv_ccg,
     for (const int offset : IndexRange(key.grid_area)) {
       const int index = start + offset;
       if (boundary.edit_info.propagation_steps_num[index] != BOUNDARY_STEPS_NONE) {
-        const float mask_factor = key.has_mask() ?
+        const float mask_factor = key.has_mask ?
                                       1.0f - CCG_elem_offset_mask(key, grids[i], offset) :
                                       1.0f;
         boundary.edit_info.strength_factor[index] =
