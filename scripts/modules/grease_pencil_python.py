@@ -4,7 +4,7 @@
 
 class AttributeGetterSetter:
     """
-    Helper class to get and set attributes at an index for a domain
+    Helper class to get and set attributes at an index for a domain.
     """
 
     def __init__(self, attributes, index, domain):
@@ -44,11 +44,11 @@ def def_prop_for_attribute(attr_name, type, default, doc):
     """
 
     def fget(self):
-        # Define getter callback for property
+        # Define getter callback for property.
         return self._get_attribute(attr_name, type, default)
 
     def fset(self, value):
-        # Define setter callback for property
+        # Define setter callback for property.
         self._set_attribute(attr_name, type, value)
     prop = property(fget=fget, fset=fset, doc=doc)
     return prop
@@ -102,33 +102,33 @@ class GreasePencilStrokePointSlice:
     def __len__(self):
         return self._size
 
-    def _validate_key(self, key):
+    def _is_valid_index(self, key):
         if self._size <= 0:
             return False
         if key < 0:
-            # Support indexing from the end
+            # Support indexing from the end.
             return abs(key) <= self._size
         return abs(key) < self._size
 
     def __getitem__(self, key):
         if isinstance(key, int):
-            if not self._validate_key(key):
+            if not self._is_valid_index(key):
                 raise IndexError(f"Key {key} is out of range")
-            # Turn the key into an index
+            # Turn the key into an index.
             point_i = key % self._size
             return GreasePencilStrokePoint(self._drawing, point_i)
         elif isinstance(key, slice):
-            # Default to the current start and stop values and a step of 1
+            # Default to the current start and stop values and a step of 1.
             start = key.start or self._start
             stop = key.stop or self._stop
             step = key.step or 1
-            # Clamp start and stop
+            # Clamp start and stop.
             start = max(self._start, min(start, self._stop))
             stop = max(self._start, min(stop, self._stop))
             return GreasePencilStrokePointSlice(self._drawing, start, stop, step)
         else:
             raise TypeError(f"Unexpected index of type {type(key)}")
-        
+
     def __iter__(self):
         for point_i in range(self._start, self._stop, self._step):
             yield GreasePencilStrokePoint(self, point_i)
@@ -206,35 +206,35 @@ class GreasePencilStrokeSlice:
     def __len__(self):
         return self._size
 
-    def _validate_key(self, key):
+    def _is_valid_index(self, key):
         if self._size <= 0:
             return False
         if key < 0:
-            # Support indexing from the end
+            # Support indexing from the end.
             return abs(key) <= self._size
         return abs(key) < self._size
 
     def __getitem__(self, key):
         if isinstance(key, int):
-            if not self._validate_key(key):
+            if not self._is_valid_index(key):
                 raise IndexError(f"Key {key} is out of range")
-            # Turn the key into an index
+            # Turn the key into an index.
             curve_i = key % self._size
             offsets = self._curve_offsets
             return GreasePencilStroke(self._drawing, curve_i, offsets[curve_i].value, offsets[curve_i + 1].value)
         elif isinstance(key, slice):
-            # Default to the current start and stop values and a step of 1
+            # Default to the current start and stop values and a step of 1.
             start = key.start or self._start
             stop = key.stop or self._stop
             step = key.step or 1
-            # Clamp start and stop
+            # Clamp start and stop.
             start = max(self._start, min(start, self._stop))
             stop = max(self._start, min(stop, self._stop))
             return GreasePencilStrokeSlice(self._drawing, start, stop, step)
         else:
             raise TypeError(f"Unexpected index of type {type(key)}")
-        
+
     def __iter__(self):
         offsets = self._curve_offsets
         for curve_i in range(self._start, self._stop, self._step):
-            yield GreasePencilStroke(self, curve_i, offsets[curve_i].value, offsets[curve_i + 1].value)
+            yield GreasePencilStroke(self._drawing, curve_i, offsets[curve_i].value, offsets[curve_i + 1].value)
