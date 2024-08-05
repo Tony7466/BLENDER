@@ -14,12 +14,12 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Color>("Base Color").default_value({1.0f, 1.0f, 1.0f, 1.0f});
   b.add_input<decl::Color>("Edge Tint").default_value({1.0f, 1.0f, 1.0f, 1.0f});
   b.add_input<decl::Vector>("IOR")
-      .default_value({0.183f, 0.421f, 1.373f})
+      .default_value({2.741f, 2.542f, 2.267f})
       .min(0.0f)
       .max(100.0f)
       .description("Real part of the conductor's IOR");
   b.add_input<decl::Vector>("Extinction")
-      .default_value({3.424f, 2.346f, 1.770f})
+      .default_value({3.814f, 3.434f, 3.038f})
       .min(0.0f)
       .max(100.0f)
       .description("Complex part of the conductor's IOR");
