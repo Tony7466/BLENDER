@@ -129,6 +129,14 @@ void CURVES_OT_extrude(wmOperatorType *ot);
  * \{ */
 
 /**
+ * Create a mask for all curves that have at least one point in the point mask.
+ */
+IndexMask curve_mask_from_points(const bke::CurvesGeometry &curves,
+                                 const IndexMask &point_mask,
+                                 const GrainSize grain_size,
+                                 IndexMaskMemory &memory);
+
+/**
  * Return a mask of all the end points in the curves.
  * \param curves_mask (optional): The curves that should be used in the resulting point mask.
  * \param amount_start: The amount of points to mask from the front.

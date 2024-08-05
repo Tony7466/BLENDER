@@ -5200,7 +5200,6 @@ static bool grease_pencil_circle_select(const ViewContext *vc,
       const ed::greasepencil::MutableDrawingInfo &info = drawings[i_drawing];
       const bke::greasepencil::Layer &layer = *grease_pencil.layer(info.layer_index);
       bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
-      const OffsetIndices points_by_curve = curves.points_by_curve();
       bke::crazyspace::GeometryDeformation deformation =
           bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
               ob_eval, *vc->obedit, info.layer_index, info.frame_number);
@@ -5220,10 +5219,25 @@ static bool grease_pencil_circle_select(const ViewContext *vc,
        * Note: this cannot be constructed as a difference of before/after curve selection,
        * because points may be selected without changing the curve selection. The curve mask
        * difference would be empty even though there are curves we need to consider. */
-      IndexMask changed_curve_mask = ed::greasepencil::curve_mask_from_point_mask(
-          points_by_curve, changed_points_mask, memory);
+      const float4x4 layer_to_world = layer.to_world_space(*ob_eval);
+      const float4x4 projection = ED_view3d_ob_project_mat_get_from_obmat(vc->rv3d,
+                                                                          layer_to_world);
+      const IndexMask changed_point_mask = ed::curves::select_circle_mask(*vc,
+                                                                          curves,
+                                                                          deformation,
+                                                                          projection,
+                                                                          elements,
+                                                                          selection_domain,
+                                                                          int2(mval),
+                                                                          rad,
+                                                                          memory);
+
+      const IndexMask changed_curve_mask = ed::curves::curve_mask_from_points(
+          curves, changed_point_mask, GrainSize(512), memory);
 
       if (!changed_curve_mask.is_empty()) {
+        changed = true;
+
         Array<int> curve_starts;
         Array<int> segment_offsets;
         Array<int> point_offsets;
@@ -5298,7 +5312,6 @@ static bool grease_pencil_circle_select(const ViewContext *vc,
       const ed::greasepencil::MutableDrawingInfo &info = drawings[i_drawing];
       const bke::greasepencil::Layer &layer = *grease_pencil.layer(info.layer_index);
       bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
-      const OffsetIndices points_by_curve = curves.points_by_curve();
       bke::crazyspace::GeometryDeformation deformation =
           bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
               ob_eval, *vc->obedit, info.layer_index, info.frame_number);
