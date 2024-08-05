@@ -1251,24 +1251,21 @@ void OptiXDevice::build_bvh(BVH *bvh, Progress &progress, bool refit)
         else
 #  endif
         {
-          for (size_t curve_index = 0, segment_index = 0; curve_index < hair->num_curves();
-               ++curve_index)
-          {
+          for (size_t curve_index = 0, i = 0; curve_index < hair->num_curves(); ++curve_index) {
             const Hair::Curve curve = hair->get_curve(curve_index);
 
-            for (int k = 0; k < curve.num_segments(); ++k, ++segment_index) {
+            for (int segment = 0; segment < curve.num_segments(); ++segment, ++i) {
 #  if OPTIX_ABI_VERSION < 55
               if (hair->curve_shape == CURVE_THICK) {
-                int k0 = curve.first_key + k;
+                const array<float> &curve_radius = hair->get_curve_radius();
+
+                int k0 = curve.first_key + segment;
                 int k1 = k0 + 1;
                 int ka = max(k0 - 1, curve.first_key);
                 int kb = min(k1 + 1, curve.first_key + curve.num_keys - 1);
 
-                index_data[segment_index] = segment_index * 4;
-                float4 *const v = vertex_data.data() + step * num_vertices +
-                                  index_data[segment_index];
-
-                const array<float> &curve_radius = hair->get_curve_radius();
+                index_data[i] = i * 4;
+                float4 *const v = vertex_data.data() + step * num_vertices + index_data[i];
 
                 const float4 px = make_float4(keys[ka].x, keys[k0].x, keys[k1].x, keys[kb].x);
                 const float4 py = make_float4(keys[ka].y, keys[k0].y, keys[k1].y, keys[kb].y);
@@ -1295,9 +1292,9 @@ void OptiXDevice::build_bvh(BVH *bvh, Progress &progress, bool refit)
 #  endif
               {
                 BoundBox bounds = BoundBox::empty;
-                curve.bounds_grow(k, keys, hair->get_curve_radius().data(), bounds);
+                curve.bounds_grow(segment, keys, hair->get_curve_radius().data(), bounds);
 
-                const size_t index = step * num_segments + segment_index;
+                const size_t index = step * num_segments + i;
                 aabb_data[index].minX = bounds.min.x;
                 aabb_data[index].minY = bounds.min.y;
                 aabb_data[index].minZ = bounds.min.z;
