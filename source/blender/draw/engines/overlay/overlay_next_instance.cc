@@ -85,6 +85,7 @@ void Instance::begin_sync()
     layer.lattices.begin_sync(resources, state);
     layer.lights.begin_sync();
     layer.metaballs.begin_sync();
+    layer.meshes.begin_sync(resources, state);
     layer.prepass.begin_sync(resources, state);
     layer.speakers.begin_sync();
   };
@@ -116,6 +117,7 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
   if (in_edit_mode && !state.hide_overlays) {
     switch (ob_ref.object->type) {
       case OB_MESH:
+        layer.meshes.edit_object_sync(manager, ob_ref, resources);
         break;
       case OB_ARMATURE:
         break;

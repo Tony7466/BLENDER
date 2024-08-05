@@ -12,6 +12,19 @@ namespace blender::draw::overlay {
 
 ShaderModule *ShaderModule::g_shader_modules[2][2] = {{nullptr}};
 
+ShaderModule::ShaderPtr ShaderModule::shader(
+    const char *create_info_name,
+    const FunctionRef<void(gpu::shader::ShaderCreateInfo &info)> patch)
+{
+  gpu::shader::ShaderCreateInfo info = *reinterpret_cast<const gpu::shader::ShaderCreateInfo *>(
+      GPU_shader_create_info_get(create_info_name));
+
+  patch(info);
+
+  return ShaderPtr(
+      GPU_shader_create_from_info(reinterpret_cast<const GPUShaderCreateInfo *>(&info)));
+}
+
 ShaderModule::ShaderPtr ShaderModule::selectable_shader(const char *create_info_name)
 {
   /* TODO: This is what it should be like with all variations defined with create infos. */
@@ -62,6 +75,16 @@ using namespace blender::gpu::shader;
 ShaderModule::ShaderModule(const SelectionType selection_type, const bool clipping_enabled)
     : selection_type_(selection_type), clipping_enabled_(clipping_enabled)
 {
+  /** Shaders */
+
+  mesh_analysis = shader("overlay_edit_mesh_analysis", [](gpu::shader::ShaderCreateInfo &info) {
+    info.additional_infos_.clear();
+    info.additional_info(
+        "draw_view", "draw_modelmat_new", "draw_resource_handle_new", "draw_globals");
+  });
+
+  /** Selectable Shaders */
+
   armature_sphere_outline = selectable_shader(
       "overlay_armature_sphere_outline", [](gpu::shader::ShaderCreateInfo &info) {
         info.storage_buf(0, Qualifier::READ, "mat4", "data_buf[]");
@@ -123,7 +146,7 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
         info.storage_buf(0, Qualifier::READ, "vec4", "data_buf[]");
         info.define("inst_pos", "data_buf[gl_InstanceID].xyz");
         info.vertex_inputs_.pop_last();
-      });
+      })
 }
 
 ShaderModule &ShaderModule::module_get(SelectionType selection_type, bool clipping_enabled)

@@ -138,6 +138,7 @@ class ShaderModule {
   ShaderPtr grid = shader("overlay_grid");
   ShaderPtr background_fill = shader("overlay_background");
   ShaderPtr background_clip_bound = shader("overlay_clipbound");
+  ShaderPtr mesh_analysis;
 
   /** Selectable Shaders */
   ShaderPtr armature_sphere_outline;
@@ -161,6 +162,8 @@ class ShaderModule {
   {
     return ShaderPtr(GPU_shader_create_from_info_name(create_info_name));
   }
+  ShaderPtr shader(const char *create_info_name,
+                   FunctionRef<void(gpu::shader::ShaderCreateInfo &info)> patch);
   ShaderPtr selectable_shader(const char *create_info_name);
   ShaderPtr selectable_shader(const char *create_info_name,
                               FunctionRef<void(gpu::shader::ShaderCreateInfo &info)> patch);
