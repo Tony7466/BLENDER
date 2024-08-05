@@ -775,6 +775,7 @@ static std::optional<FindClosestData> find_closest_curve_to_screen_co(
     const ARegion *region,
     const OffsetIndices<int> points_by_curve,
     const Span<float3> positions,
+    const VArray<bool> cyclic,
     const float4x4 &projection,
     const IndexMask &curves_mask,
     const float2 mouse_pos,
@@ -815,9 +816,10 @@ static std::optional<FindClosestData> find_closest_curve_to_screen_co(
             continue;
           }
 
-          for (const int segment_i : points.drop_back(1)) {
+          for (const int segment_i : points.drop_back(cyclic[curve_i]?0:1)) {
             const float3 pos1 = positions[segment_i];
-            const float3 pos2 = positions[segment_i + 1];
+            const int next_seg = segment_i == points.last() ? points.first() : segment_i + 1;
+            const float3 pos2 = positions[next_seg];
             const float2 pos1_proj = ED_view3d_project_float_v2_m4(region, pos1, projection);
             const float2 pos2_proj = ED_view3d_project_float_v2_m4(region, pos2, projection);
 
@@ -858,6 +860,7 @@ std::optional<FindClosestData> closest_elem_find_screen_space(
     const ViewContext &vc,
     const OffsetIndices<int> points_by_curve,
     const Span<float3> positions,
+    const VArray<bool> cyclic,
     const float4x4 &projection,
     const IndexMask &mask,
     const bke::AttrDomain domain,
@@ -877,6 +880,7 @@ std::optional<FindClosestData> closest_elem_find_screen_space(
       return find_closest_curve_to_screen_co(vc.region,
                                              points_by_curve,
                                              positions,
+                                             cyclic,
                                              projection,
                                              mask,
                                              float2(coord),
@@ -929,6 +933,7 @@ bool select_box(const ViewContext &vc,
   }
   else if (selection_domain == bke::AttrDomain::Curve) {
     const OffsetIndices points_by_curve = curves.points_by_curve();
+    const VArray<bool> cyclic = curves.cyclic();
     foreach_selectable_curve_range(
         curves,
         deformation,
@@ -948,9 +953,10 @@ bool select_box(const ViewContext &vc,
               }
               return;
             }
-            for (const int segment_i : points.drop_back(1)) {
+            for (const int segment_i : points.drop_back(cyclic[curve_i] ? 0 : 1)) {
               const float3 pos1 = positions[segment_i];
-              const float3 pos2 = positions[segment_i + 1];
+              const int next_seg = segment_i == points.last() ? points.first() : segment_i + 1;
+              const float3 pos2 = positions[next_seg];
 
               const float2 pos1_proj = ED_view3d_project_float_v2_m4(vc.region, pos1, projection);
               const float2 pos2_proj = ED_view3d_project_float_v2_m4(vc.region, pos2, projection);
@@ -1016,6 +1022,7 @@ bool select_lasso(const ViewContext &vc,
   }
   else if (selection_domain == bke::AttrDomain::Curve) {
     const OffsetIndices points_by_curve = curves.points_by_curve();
+    const VArray<bool> cyclic = curves.cyclic();
     foreach_selectable_curve_range(
         curves,
         deformation,
@@ -1039,9 +1046,10 @@ bool select_lasso(const ViewContext &vc,
               }
               return;
             }
-            for (const int segment_i : points.drop_back(1)) {
+            for (const int segment_i : points.drop_back(cyclic[curve_i] ? 0 : 1)) {
               const float3 pos1 = positions[segment_i];
-              const float3 pos2 = positions[segment_i + 1];
+              const int next_seg = segment_i == points.last() ? points.first() : segment_i + 1;
+              const float3 pos2 = positions[next_seg];
 
               const float2 pos1_proj = ED_view3d_project_float_v2_m4(
                   vc.region, pos1, projection_matrix);
@@ -1113,6 +1121,7 @@ bool select_circle(const ViewContext &vc,
   }
   else if (selection_domain == bke::AttrDomain::Curve) {
     const OffsetIndices points_by_curve = curves.points_by_curve();
+    const VArray<bool> cyclic = curves.cyclic();
     foreach_selectable_curve_range(
         curves,
         deformation,
@@ -1132,9 +1141,10 @@ bool select_circle(const ViewContext &vc,
               }
               return;
             }
-            for (const int segment_i : points.drop_back(1)) {
+            for (const int segment_i : points.drop_back(cyclic[curve_i] ? 0 : 1)) {
               const float3 pos1 = positions[segment_i];
-              const float3 pos2 = positions[segment_i + 1];
+              const int next_seg = segment_i == points.last() ? points.first() : segment_i + 1;
+              const float3 pos2 = positions[next_seg];
 
               const float2 pos1_proj = ED_view3d_project_float_v2_m4(vc.region, pos1, projection);
               const float2 pos2_proj = ED_view3d_project_float_v2_m4(vc.region, pos2, projection);
