@@ -36,7 +36,7 @@
 
 namespace blender::ed::sculpt_paint::auto_mask {
 
-Cache *active_cache_get(SculptSession &ss)
+const Cache *active_cache_get(const SculptSession &ss)
 {
   if (ss.cache) {
     return ss.cache->automasking.get();
@@ -550,7 +550,8 @@ float factor_get(const Cache *automasking,
 
   if (!automasking->settings.topology_use_brush_limit &&
       automasking->settings.flags & BRUSH_AUTOMASKING_TOPOLOGY &&
-      SCULPT_vertex_island_get(ss, vert) != automasking->settings.initial_island_nr)
+      islands::vert_id_get(ss, BKE_pbvh_vertex_to_index(*ss.pbvh, vert)) !=
+          automasking->settings.initial_island_nr)
   {
     return 0.0f;
   }
@@ -562,7 +563,7 @@ float factor_get(const Cache *automasking,
   }
 
   if (automasking->settings.flags & BRUSH_AUTOMASKING_BOUNDARY_EDGES) {
-    if (SCULPT_vertex_is_boundary(ss, vert)) {
+    if (boundary::vert_is_boundary(ss, vert)) {
       return 0.0f;
     }
   }
@@ -598,7 +599,7 @@ static void mesh_orig_vert_data_update(SculptOrigVertData &orig_data, const int 
 
 void calc_vert_factors(const Object &object,
                        const Cache &cache,
-                       const PBVHNode &node,
+                       const bke::pbvh::Node &node,
                        const Span<int> verts,
                        const MutableSpan<float> factors)
 {
@@ -618,7 +619,7 @@ void calc_face_factors(const Object &object,
                        const OffsetIndices<int> faces,
                        const Span<int> corner_verts,
                        const Cache &cache,
-                       const PBVHNode &node,
+                       const bke::pbvh::Node &node,
                        const Span<int> face_indices,
                        const MutableSpan<float> factors)
 {
@@ -644,7 +645,7 @@ void calc_face_factors(const Object &object,
 
 void calc_grids_factors(const Object &object,
                         const Cache &cache,
-                        const PBVHNode &node,
+                        const bke::pbvh::Node &node,
                         const Span<int> grids,
                         const MutableSpan<float> factors)
 {
@@ -668,7 +669,7 @@ void calc_grids_factors(const Object &object,
 
 void calc_vert_factors(const Object &object,
                        const Cache &cache,
-                       const PBVHNode &node,
+                       const bke::pbvh::Node &node,
                        const Set<BMVert *, 0> &verts,
                        const MutableSpan<float> factors)
 {
@@ -687,7 +688,7 @@ void calc_vert_factors(const Object &object,
   }
 }
 
-NodeData node_begin(const Object &object, const Cache *automasking, const PBVHNode &node)
+NodeData node_begin(const Object &object, const Cache *automasking, const bke::pbvh::Node &node)
 {
   if (!automasking) {
     return {};
@@ -794,6 +795,11 @@ static void init_face_sets_masking(const Sculpt &sd, Object &ob)
 
 #define EDGE_DISTANCE_INF -1
 
+enum eBoundaryAutomaskMode {
+  AUTOMASK_INIT_BOUNDARY_EDGES = 1,
+  AUTOMASK_INIT_BOUNDARY_FACE_SETS = 2,
+};
+
 static void init_boundary_masking(Object &ob, eBoundaryAutomaskMode mode, int propagation_steps)
 {
   SculptSession &ss = *ob.sculpt;
@@ -807,7 +813,7 @@ static void init_boundary_masking(Object &ob, eBoundaryAutomaskMode mode, int pr
     edge_distance[i] = EDGE_DISTANCE_INF;
     switch (mode) {
       case AUTOMASK_INIT_BOUNDARY_EDGES:
-        if (SCULPT_vertex_is_boundary(ss, vertex)) {
+        if (boundary::vert_is_boundary(ss, vertex)) {
           edge_distance[i] = 0;
         }
         break;
@@ -944,15 +950,16 @@ std::unique_ptr<Cache> cache_init(const Sculpt &sd, const Brush *brush, Object &
 
   std::unique_ptr<Cache> automasking = std::make_unique<Cache>();
   cache_settings_update(*automasking, ss, sd, brush);
-  SCULPT_boundary_info_ensure(ob);
+  boundary::ensure_boundary_info(ob);
 
   automasking->current_stroke_id = ss.stroke_id;
 
   int mode = calc_effective_bits(sd, brush);
 
   if (mode & BRUSH_AUTOMASKING_TOPOLOGY && ss.active_vertex.i != PBVH_REF_NONE) {
-    SCULPT_topology_islands_ensure(ob);
-    automasking->settings.initial_island_nr = SCULPT_vertex_island_get(ss, ss.active_vertex);
+    islands::ensure_cache(ob);
+    automasking->settings.initial_island_nr = islands::vert_id_get(
+        ss, BKE_pbvh_vertex_to_index(*ss.pbvh, ss.active_vertex));
   }
 
   bool use_stroke_id = false;

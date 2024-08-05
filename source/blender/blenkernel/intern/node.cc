@@ -79,7 +79,7 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "NOD_common.h"
 #include "NOD_composite.hh"
@@ -90,6 +90,7 @@
 #include "NOD_geo_repeat.hh"
 #include "NOD_geo_simulation.hh"
 #include "NOD_geometry.hh"
+#include "NOD_geometry_nodes_gizmos.hh"
 #include "NOD_geometry_nodes_lazy_function.hh"
 #include "NOD_node_declaration.hh"
 #include "NOD_register.hh"
@@ -248,7 +249,7 @@ static void ntree_copy_data(Main * /*bmain*/,
   }
 
   if (ntree_src->geometry_node_asset_traits) {
-    ntree_dst->geometry_node_asset_traits = MEM_new<GeometryNodeAssetTraits>(
+    ntree_dst->geometry_node_asset_traits = MEM_cnew<GeometryNodeAssetTraits>(
         __func__, *ntree_src->geometry_node_asset_traits);
   }
 
@@ -309,7 +310,9 @@ static void ntree_free_data(ID *id)
     BKE_libblock_free_data(&ntree->id, true);
   }
 
-  MEM_delete(ntree->geometry_node_asset_traits);
+  if (ntree->geometry_node_asset_traits) {
+    MEM_freeN(ntree->geometry_node_asset_traits);
+  }
 
   if (ntree->nested_node_refs) {
     MEM_freeN(ntree->nested_node_refs);
@@ -981,7 +984,11 @@ static void direct_link_node_socket(BlendDataReader *reader, bNodeSocket *sock)
 
   BLO_read_struct(reader, bNodeLink, &sock->link);
   sock->typeinfo = nullptr;
+  /* FIXME Avoid using low-level untyped read function here. Although this seems to be only for
+   * versioning code now? Does not seem to be written anymore at least. */
   BLO_read_data_address(reader, &sock->storage);
+  /* FIXME Avoid using low-level untyped read function here. Most likely by just mirroring
+   * #write_node_socket_default_value ? */
   BLO_read_data_address(reader, &sock->default_value);
   BLO_read_string(reader, &sock->default_attribute_name);
   sock->runtime = MEM_new<bNodeSocketRuntime>(__func__);
@@ -1091,6 +1098,8 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
        * `IDTypeInfo.foreach_cache` callback. */
     }
     else {
+      /* FIXME Avoid using low-level untyped read function here. Most likely by just mirroring
+       * the matching logic in #ntreeBlendWrite ? */
       BLO_read_data_address(reader, &node->storage);
     }
 

@@ -736,11 +736,20 @@ void *BKE_sound_add_scene_sound(
   }
   sound_verify_evaluated_id(&sequence->sound->id);
   const double fps = FPS;
+  const double offset_time = sequence->sound->offset_time + sequence->sound_offset -
+                             frameskip / fps;
+  if (offset_time >= 0.0f) {
+    return AUD_Sequence_add(scene->sound_scene,
+                            sequence->sound->playback_handle,
+                            startframe / fps + offset_time,
+                            endframe / fps,
+                            0.0f);
+  }
   return AUD_Sequence_add(scene->sound_scene,
                           sequence->sound->playback_handle,
                           startframe / fps,
                           endframe / fps,
-                          frameskip / fps + sequence->sound->offset_time);
+                          -offset_time);
 }
 
 void *BKE_sound_add_scene_sound_defaults(Scene *scene, Sequence *sequence)
@@ -771,19 +780,29 @@ void BKE_sound_move_scene_sound(const Scene *scene,
 {
   sound_verify_evaluated_id(&scene->id);
   const double fps = FPS;
-  AUD_SequenceEntry_move(handle, startframe / fps, endframe / fps, frameskip / fps + audio_offset);
+  const double offset_time = audio_offset - frameskip / fps;
+  if (offset_time >= 0.0f) {
+    AUD_SequenceEntry_move(handle, startframe / fps + offset_time, endframe / fps, 0.0f);
+  }
+  else {
+    AUD_SequenceEntry_move(handle, startframe / fps, endframe / fps, -offset_time);
+  }
 }
 
 void BKE_sound_move_scene_sound_defaults(Scene *scene, Sequence *sequence)
 {
   sound_verify_evaluated_id(&scene->id);
   if (sequence->scene_sound) {
+    double offset_time = 0.0f;
+    if (sequence->sound != nullptr) {
+      offset_time = sequence->sound->offset_time + sequence->sound_offset;
+    }
     BKE_sound_move_scene_sound(scene,
                                sequence->scene_sound,
                                SEQ_time_left_handle_frame_get(scene, sequence),
                                SEQ_time_right_handle_frame_get(scene, sequence),
                                sequence->startofs + sequence->anim_startofs,
-                               0.0);
+                               offset_time);
   }
 }
 
@@ -941,7 +960,8 @@ void BKE_sound_seek_scene(Main *bmain, Scene *scene)
   bScreen *screen;
   int animation_playing;
 
-  const double one_frame = 1.0 / FPS;
+  const double one_frame = 1.0 / FPS +
+                           (U.audiorate > 0 ? U.mixbufsize / double(U.audiorate) : 0.0);
   const double cur_time = FRA2TIME(scene->r.cfra);
 
   AUD_Device_lock(sound_device);

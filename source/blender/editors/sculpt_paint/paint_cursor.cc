@@ -1113,13 +1113,14 @@ static void cursor_draw_point_with_symmetry(const uint gpuattr,
                                             const float radius)
 {
   const char symm = SCULPT_mesh_symmetry_xyz_get(ob);
-  float location[3], symm_rot_mat[4][4];
+  blender::float3 location;
+  float symm_rot_mat[4][4];
 
   for (int i = 0; i <= symm; i++) {
     if (i == 0 || (symm & i && (symm != 5 || i != 3) && (symm != 6 || !ELEM(i, 3, 5)))) {
 
       /* Axis Symmetry. */
-      flip_v3_v3(location, true_location, ePaintSymmetryFlags(i));
+      location = blender::ed::sculpt_paint::symmetry_flip(true_location, ePaintSymmetryFlags(i));
       cursor_draw_point_screen_space(gpuattr, region, location, ob.object_to_world().ptr(), 3);
 
       /* Tiling. */
@@ -1129,7 +1130,8 @@ static void cursor_draw_point_with_symmetry(const uint gpuattr,
       for (char raxis = 0; raxis < 3; raxis++) {
         for (int r = 1; r < sd.radial_symm[raxis]; r++) {
           float angle = 2 * M_PI * r / sd.radial_symm[int(raxis)];
-          flip_v3_v3(location, true_location, ePaintSymmetryFlags(i));
+          location = blender::ed::sculpt_paint::symmetry_flip(true_location,
+                                                              ePaintSymmetryFlags(i));
           unit_m4(symm_rot_mat);
           rotate_m4(symm_rot_mat, raxis + 'X', angle);
           mul_m4_v3(symm_rot_mat, location);
@@ -1155,7 +1157,7 @@ static void sculpt_geometry_preview_lines_draw(const uint gpuattr,
     return;
   }
 
-  if (BKE_pbvh_type(*ss.pbvh) != PBVH_FACES) {
+  if (ss.pbvh->type() != blender::bke::pbvh::Type::Mesh) {
     return;
   }
 
@@ -1428,7 +1430,7 @@ static void paint_cursor_sculpt_session_update_and_init(PaintCursorContext *pcon
     paint_cursor_update_unprojected_radius(ups, brush, vc, pcontext->scene_space_location);
   }
 
-  pcontext->is_multires = ss.pbvh != nullptr && BKE_pbvh_type(*ss.pbvh) == PBVH_GRIDS;
+  pcontext->is_multires = ss.pbvh != nullptr && ss.pbvh->type() == blender::bke::pbvh::Type::Grids;
 
   pcontext->sd = CTX_data_tool_settings(pcontext->C)->sculpt;
 }
@@ -1473,7 +1475,7 @@ static void paint_draw_2D_view_brush_cursor_default(PaintCursorContext *pcontext
 
 static void grease_pencil_eraser_draw(PaintCursorContext *pcontext)
 {
-  float radius = float(pcontext->brush->size);
+  float radius = float(pcontext->pixel_radius);
 
   /* Red-ish color with alpha. */
   immUniformColor4ub(255, 100, 100, 20);
@@ -1527,8 +1529,16 @@ static void grease_pencil_brush_cursor_draw(PaintCursorContext *pcontext)
 
   /* for paint use paint brush size and color */
   if (pcontext->mode == PaintMode::GPencil) {
-    /* Eraser has a special shape and use a different shader program. */
-    if (brush->gpencil_tool == GPAINT_TOOL_ERASE) {
+    /* Eraser has a special shape and uses a different shader program. */
+    if (brush->gpencil_tool == GPAINT_TOOL_ERASE || grease_pencil->runtime->temp_use_eraser) {
+      /* If we use the eraser from the draw tool with a "scene" radius unit, we need to draw the
+       * cursor with the appropriate size. */
+      if (grease_pencil->runtime->temp_use_eraser && (brush->flag & BRUSH_LOCK_SIZE) != 0) {
+        pcontext->pixel_radius = grease_pencil->runtime->temp_eraser_size;
+      }
+      else {
+        pcontext->pixel_radius = float(pcontext->brush->size);
+      }
       grease_pencil_eraser_draw(pcontext);
       return;
     }
@@ -1701,28 +1711,22 @@ static void paint_cursor_preview_boundary_data_pivot_draw(PaintCursorContext *pc
     return;
   }
   immUniformColor4f(1.0f, 1.0f, 1.0f, 0.8f);
-  cursor_draw_point_screen_space(
-      pcontext->pos,
-      pcontext->region,
-      SCULPT_vertex_co_get(*pcontext->ss, pcontext->ss->boundary_preview->pivot_vertex),
-      pcontext->vc.obact->object_to_world().ptr(),
-      3);
+  cursor_draw_point_screen_space(pcontext->pos,
+                                 pcontext->region,
+                                 pcontext->ss->boundary_preview->pivot_position,
+                                 pcontext->vc.obact->object_to_world().ptr(),
+                                 3);
 }
 
-static void paint_cursor_preview_boundary_data_update(PaintCursorContext *pcontext,
-                                                      const bool update_previews)
+static void paint_cursor_preview_boundary_data_update(PaintCursorContext *pcontext)
 {
   using namespace blender::ed::sculpt_paint;
   SculptSession &ss = *pcontext->ss;
-  if (!(update_previews || !ss.boundary_preview)) {
-    return;
-  }
-
   /* Needed for updating the necessary SculptSession data in order to initialize the
    * boundary data for the preview. */
   BKE_sculpt_update_object_for_edit(pcontext->depsgraph, pcontext->vc.obact, false);
 
-  ss.boundary_preview = boundary::data_init(
+  ss.boundary_preview = boundary::preview_data_init(
       *pcontext->vc.obact, pcontext->brush, ss.active_vertex, pcontext->radius);
 }
 
@@ -1815,7 +1819,7 @@ static void paint_cursor_draw_3d_view_brush_cursor_inactive(PaintCursorContext *
   }
 
   if (is_brush_tool && brush.sculpt_tool == SCULPT_TOOL_BOUNDARY) {
-    paint_cursor_preview_boundary_data_update(pcontext, update_previews);
+    paint_cursor_preview_boundary_data_update(pcontext);
     paint_cursor_preview_boundary_data_pivot_draw(pcontext);
   }
 
