@@ -1170,14 +1170,15 @@ static void calc_bend_mesh(const Sculpt &sd,
 
   calc_bend_position(orig_data.positions, pivot_positions, pivot_axes, factors, new_positions);
 
-  tls.translations.resize(verts.size());
-  const MutableSpan<float3> translations = tls.translations;
-  translations_from_new_positions(new_positions, verts, positions_eval, translations);
-
   switch (eBrushDeformTarget(deform_target)) {
-    case BRUSH_DEFORM_TARGET_GEOMETRY:
+    case BRUSH_DEFORM_TARGET_GEOMETRY: {
+      tls.translations.resize(verts.size());
+      const MutableSpan<float3> translations = tls.translations;
+      translations_from_new_positions(new_positions, verts, positions_eval, translations);
+
       write_translations(sd, object, positions_eval, verts, translations, positions_orig);
       break;
+    }
     case BRUSH_DEFORM_TARGET_CLOTH_SIM:
       scatter_data_mesh(
           new_positions.as_span(), verts, cache.cloth_sim->deformation_pos.as_mutable_span());
@@ -1235,17 +1236,17 @@ static void calc_bend_grids(const Sculpt &sd,
 
   calc_bend_position(orig_data.positions, pivot_positions, pivot_axes, factors, new_positions);
 
-  tls.translations.resize(num_elements);
-  const MutableSpan<float3> translations = tls.translations;
-
-  const Span<float3> positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
-  translations_from_new_positions(new_positions, positions, translations);
-
   switch (eBrushDeformTarget(deform_target)) {
-    case BRUSH_DEFORM_TARGET_GEOMETRY:
+    case BRUSH_DEFORM_TARGET_GEOMETRY: {
+      tls.translations.resize(num_elements);
+      const MutableSpan<float3> translations = tls.translations;
+      const Span<float3> positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
+      translations_from_new_positions(new_positions, positions, translations);
+
       clip_and_lock_translations(sd, ss, orig_data.positions, translations);
       apply_translations(translations, grids, subdiv_ccg);
       break;
+    }
     case BRUSH_DEFORM_TARGET_CLOTH_SIM:
       scatter_data_grids(subdiv_ccg,
                          new_positions.as_span(),
@@ -1303,16 +1304,17 @@ static void calc_bend_bmesh(const Sculpt &sd,
 
   calc_bend_position(orig_positions, pivot_positions, pivot_axes, factors, new_positions);
 
-  const MutableSpan<float3> positions = gather_bmesh_positions(verts, tls.positions);
-  tls.translations.resize(verts.size());
-  const MutableSpan<float3> translations = tls.translations;
-  translations_from_new_positions(new_positions, positions, translations);
-
   switch (eBrushDeformTarget(deform_target)) {
-    case BRUSH_DEFORM_TARGET_GEOMETRY:
+    case BRUSH_DEFORM_TARGET_GEOMETRY: {
+      const MutableSpan<float3> positions = gather_bmesh_positions(verts, tls.positions);
+      tls.translations.resize(verts.size());
+      const MutableSpan<float3> translations = tls.translations;
+      translations_from_new_positions(new_positions, positions, translations);
+
       clip_and_lock_translations(sd, ss, orig_positions, translations);
       apply_translations(translations, verts);
       break;
+    }
     case BRUSH_DEFORM_TARGET_CLOTH_SIM:
       scatter_data_vert_bmesh(
           new_positions.as_span(), verts, cache.cloth_sim->deformation_pos.as_mutable_span());
@@ -1467,14 +1469,15 @@ static void calc_slide_mesh(const Sculpt &sd,
 
   calc_slide_position(orig_data.positions, slide_directions, factors, new_positions);
 
-  tls.translations.resize(verts.size());
-  const MutableSpan<float3> translations = tls.translations;
-  translations_from_new_positions(new_positions, verts, positions_eval, translations);
-
   switch (eBrushDeformTarget(deform_target)) {
-    case BRUSH_DEFORM_TARGET_GEOMETRY:
+    case BRUSH_DEFORM_TARGET_GEOMETRY: {
+      tls.translations.resize(verts.size());
+      const MutableSpan<float3> translations = tls.translations;
+      translations_from_new_positions(new_positions, verts, positions_eval, translations);
+
       write_translations(sd, object, positions_eval, verts, translations, positions_orig);
       break;
+    }
     case BRUSH_DEFORM_TARGET_CLOTH_SIM:
       scatter_data_mesh(
           new_positions.as_span(), verts, cache.cloth_sim->deformation_pos.as_mutable_span());
@@ -1529,17 +1532,17 @@ static void calc_slide_grids(const Sculpt &sd,
 
   calc_slide_position(orig_data.positions, slide_directions, factors, new_positions);
 
-  tls.translations.resize(num_elements);
-  const MutableSpan<float3> translations = tls.translations;
-
-  const Span<float3> positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
-  translations_from_new_positions(new_positions, positions, translations);
-
   switch (eBrushDeformTarget(deform_target)) {
-    case BRUSH_DEFORM_TARGET_GEOMETRY:
+    case BRUSH_DEFORM_TARGET_GEOMETRY: {
+      tls.translations.resize(num_elements);
+      const MutableSpan<float3> translations = tls.translations;
+      const Span<float3> positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
+      translations_from_new_positions(new_positions, positions, translations);
+
       clip_and_lock_translations(sd, ss, orig_data.positions, translations);
       apply_translations(translations, grids, subdiv_ccg);
       break;
+    }
     case BRUSH_DEFORM_TARGET_CLOTH_SIM:
       scatter_data_grids(subdiv_ccg,
                          new_positions.as_span(),
@@ -1595,16 +1598,17 @@ static void calc_slide_bmesh(const Sculpt &sd,
 
   calc_slide_position(orig_positions, slide_directions, factors, new_positions);
 
-  const MutableSpan<float3> positions = gather_bmesh_positions(verts, tls.positions);
-  tls.translations.resize(verts.size());
-  const MutableSpan<float3> translations = tls.translations;
-  translations_from_new_positions(new_positions, positions, translations);
-
   switch (eBrushDeformTarget(deform_target)) {
-    case BRUSH_DEFORM_TARGET_GEOMETRY:
+    case BRUSH_DEFORM_TARGET_GEOMETRY: {
+      const MutableSpan<float3> positions = gather_bmesh_positions(verts, tls.positions);
+      tls.translations.resize(verts.size());
+      const MutableSpan<float3> translations = tls.translations;
+      translations_from_new_positions(new_positions, positions, translations);
+
       clip_and_lock_translations(sd, ss, orig_positions, translations);
       apply_translations(translations, verts);
       break;
+    }
     case BRUSH_DEFORM_TARGET_CLOTH_SIM:
       scatter_data_vert_bmesh(
           new_positions.as_span(), verts, cache.cloth_sim->deformation_pos.as_mutable_span());
@@ -1752,14 +1756,15 @@ static void calc_inflate_mesh(const Sculpt &sd,
 
   calc_inflate_position(orig_data.positions, orig_data.normals, factors, new_positions);
 
-  tls.translations.resize(verts.size());
-  const MutableSpan<float3> translations = tls.translations;
-  translations_from_new_positions(new_positions, verts, positions_eval, translations);
-
   switch (eBrushDeformTarget(deform_target)) {
-    case BRUSH_DEFORM_TARGET_GEOMETRY:
+    case BRUSH_DEFORM_TARGET_GEOMETRY: {
+      tls.translations.resize(verts.size());
+      const MutableSpan<float3> translations = tls.translations;
+      translations_from_new_positions(new_positions, verts, positions_eval, translations);
+
       write_translations(sd, object, positions_eval, verts, translations, positions_orig);
       break;
+    }
     case BRUSH_DEFORM_TARGET_CLOTH_SIM:
       scatter_data_mesh(
           new_positions.as_span(), verts, cache.cloth_sim->deformation_pos.as_mutable_span());
@@ -1810,17 +1815,17 @@ static void calc_inflate_grids(const Sculpt &sd,
 
   calc_inflate_position(orig_data.positions, orig_data.normals, factors, new_positions);
 
-  tls.translations.resize(num_elements);
-  const MutableSpan<float3> translations = tls.translations;
-
-  const Span<float3> positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
-  translations_from_new_positions(new_positions, positions, translations);
-
   switch (eBrushDeformTarget(deform_target)) {
-    case BRUSH_DEFORM_TARGET_GEOMETRY:
+    case BRUSH_DEFORM_TARGET_GEOMETRY: {
+      tls.translations.resize(num_elements);
+      const MutableSpan<float3> translations = tls.translations;
+      const Span<float3> positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
+      translations_from_new_positions(new_positions, positions, translations);
+
       clip_and_lock_translations(sd, ss, orig_data.positions, translations);
       apply_translations(translations, grids, subdiv_ccg);
       break;
+    }
     case BRUSH_DEFORM_TARGET_CLOTH_SIM:
       scatter_data_grids(subdiv_ccg,
                          new_positions.as_span(),
@@ -1872,16 +1877,17 @@ static void calc_inflate_bmesh(const Sculpt &sd,
 
   calc_inflate_position(orig_positions, orig_normals, factors, new_positions);
 
-  const MutableSpan<float3> positions = gather_bmesh_positions(verts, tls.positions);
-  tls.translations.resize(verts.size());
-  const MutableSpan<float3> translations = tls.translations;
-  translations_from_new_positions(new_positions, positions, translations);
-
   switch (eBrushDeformTarget(deform_target)) {
-    case BRUSH_DEFORM_TARGET_GEOMETRY:
+    case BRUSH_DEFORM_TARGET_GEOMETRY: {
+      const MutableSpan<float3> positions = gather_bmesh_positions(verts, tls.positions);
+      tls.translations.resize(verts.size());
+      const MutableSpan<float3> translations = tls.translations;
+      translations_from_new_positions(new_positions, positions, translations);
+
       clip_and_lock_translations(sd, ss, orig_positions, translations);
       apply_translations(translations, verts);
       break;
+    }
     case BRUSH_DEFORM_TARGET_CLOTH_SIM:
       scatter_data_vert_bmesh(
           new_positions.as_span(), verts, cache.cloth_sim->deformation_pos.as_mutable_span());
@@ -2026,14 +2032,15 @@ static void calc_grab_mesh(const Sculpt &sd,
 
   calc_grab_position(orig_data.positions, grab_delta_symmetry, factors, new_positions);
 
-  tls.translations.resize(verts.size());
-  const MutableSpan<float3> translations = tls.translations;
-  translations_from_new_positions(new_positions, verts, positions_eval, translations);
-
   switch (eBrushDeformTarget(deform_target)) {
-    case BRUSH_DEFORM_TARGET_GEOMETRY:
+    case BRUSH_DEFORM_TARGET_GEOMETRY: {
+      tls.translations.resize(verts.size());
+      const MutableSpan<float3> translations = tls.translations;
+      translations_from_new_positions(new_positions, verts, positions_eval, translations);
+
       write_translations(sd, object, positions_eval, verts, translations, positions_orig);
       break;
+    }
     case BRUSH_DEFORM_TARGET_CLOTH_SIM:
       scatter_data_mesh(
           new_positions.as_span(), verts, cache.cloth_sim->deformation_pos.as_mutable_span());
@@ -2085,17 +2092,17 @@ static void calc_grab_grids(const Sculpt &sd,
 
   calc_grab_position(orig_data.positions, grab_delta_symmetry, factors, new_positions);
 
-  tls.translations.resize(num_elements);
-  const MutableSpan<float3> translations = tls.translations;
-
-  const Span<float3> positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
-  translations_from_new_positions(new_positions, positions, translations);
-
   switch (eBrushDeformTarget(deform_target)) {
-    case BRUSH_DEFORM_TARGET_GEOMETRY:
+    case BRUSH_DEFORM_TARGET_GEOMETRY: {
+      tls.translations.resize(num_elements);
+      const MutableSpan<float3> translations = tls.translations;
+      const Span<float3> positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
+      translations_from_new_positions(new_positions, positions, translations);
+
       clip_and_lock_translations(sd, ss, orig_data.positions, translations);
       apply_translations(translations, grids, subdiv_ccg);
       break;
+    }
     case BRUSH_DEFORM_TARGET_CLOTH_SIM:
       scatter_data_grids(subdiv_ccg,
                          new_positions.as_span(),
@@ -2148,16 +2155,17 @@ static void calc_grab_bmesh(const Sculpt &sd,
 
   calc_grab_position(orig_positions, grab_delta_symmetry, factors, new_positions);
 
-  const MutableSpan<float3> positions = gather_bmesh_positions(verts, tls.positions);
-  tls.translations.resize(verts.size());
-  const MutableSpan<float3> translations = tls.translations;
-  translations_from_new_positions(new_positions, positions, translations);
-
   switch (eBrushDeformTarget(deform_target)) {
-    case BRUSH_DEFORM_TARGET_GEOMETRY:
+    case BRUSH_DEFORM_TARGET_GEOMETRY: {
+      const MutableSpan<float3> positions = gather_bmesh_positions(verts, tls.positions);
+      tls.translations.resize(verts.size());
+      const MutableSpan<float3> translations = tls.translations;
+      translations_from_new_positions(new_positions, positions, translations);
+
       clip_and_lock_translations(sd, ss, orig_positions, translations);
       apply_translations(translations, verts);
       break;
+    }
     case BRUSH_DEFORM_TARGET_CLOTH_SIM:
       scatter_data_vert_bmesh(
           new_positions.as_span(), verts, cache.cloth_sim->deformation_pos.as_mutable_span());
@@ -2308,14 +2316,15 @@ static void calc_twist_mesh(const Sculpt &sd,
   calc_twist_position(
       orig_data.positions, twist_pivot_position, twist_axis, factors, new_positions);
 
-  tls.translations.resize(verts.size());
-  const MutableSpan<float3> translations = tls.translations;
-  translations_from_new_positions(new_positions, verts, positions_eval, translations);
-
   switch (eBrushDeformTarget(deform_target)) {
-    case BRUSH_DEFORM_TARGET_GEOMETRY:
+    case BRUSH_DEFORM_TARGET_GEOMETRY: {
+      tls.translations.resize(verts.size());
+      const MutableSpan<float3> translations = tls.translations;
+      translations_from_new_positions(new_positions, verts, positions_eval, translations);
+
       write_translations(sd, object, positions_eval, verts, translations, positions_orig);
       break;
+    }
     case BRUSH_DEFORM_TARGET_CLOTH_SIM:
       scatter_data_mesh(
           new_positions.as_span(), verts, cache.cloth_sim->deformation_pos.as_mutable_span());
@@ -2369,17 +2378,17 @@ static void calc_twist_grids(const Sculpt &sd,
   calc_twist_position(
       orig_data.positions, twist_pivot_position, twist_axis, factors, new_positions);
 
-  tls.translations.resize(num_elements);
-  const MutableSpan<float3> translations = tls.translations;
-
-  const Span<float3> positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
-  translations_from_new_positions(new_positions, positions, translations);
-
   switch (eBrushDeformTarget(deform_target)) {
-    case BRUSH_DEFORM_TARGET_GEOMETRY:
+    case BRUSH_DEFORM_TARGET_GEOMETRY: {
+      tls.translations.resize(num_elements);
+      const MutableSpan<float3> translations = tls.translations;
+      const Span<float3> positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
+      translations_from_new_positions(new_positions, positions, translations);
+
       clip_and_lock_translations(sd, ss, orig_data.positions, translations);
       apply_translations(translations, grids, subdiv_ccg);
       break;
+    }
     case BRUSH_DEFORM_TARGET_CLOTH_SIM:
       scatter_data_grids(subdiv_ccg,
                          new_positions.as_span(),
@@ -2433,16 +2442,17 @@ static void calc_twist_bmesh(const Sculpt &sd,
 
   calc_twist_position(orig_positions, twist_pivot_position, twist_axis, factors, new_positions);
 
-  const MutableSpan<float3> positions = gather_bmesh_positions(verts, tls.positions);
-  tls.translations.resize(verts.size());
-  const MutableSpan<float3> translations = tls.translations;
-  translations_from_new_positions(new_positions, positions, translations);
-
   switch (eBrushDeformTarget(deform_target)) {
-    case BRUSH_DEFORM_TARGET_GEOMETRY:
+    case BRUSH_DEFORM_TARGET_GEOMETRY: {
+      const MutableSpan<float3> positions = gather_bmesh_positions(verts, tls.positions);
+      tls.translations.resize(verts.size());
+      const MutableSpan<float3> translations = tls.translations;
+      translations_from_new_positions(new_positions, positions, translations);
+
       clip_and_lock_translations(sd, ss, orig_positions, translations);
       apply_translations(translations, verts);
       break;
+    }
     case BRUSH_DEFORM_TARGET_CLOTH_SIM:
       scatter_data_vert_bmesh(
           new_positions.as_span(), verts, cache.cloth_sim->deformation_pos.as_mutable_span());
@@ -2695,14 +2705,15 @@ static void calc_smooth_mesh(const Sculpt &sd,
 
   calc_smooth_position(positions, average_positions, factors, new_positions);
 
-  tls.translations.resize(verts.size());
-  const MutableSpan<float3> translations = tls.translations;
-  translations_from_new_positions(new_positions, verts, positions_eval, translations);
-
   switch (eBrushDeformTarget(deform_target)) {
-    case BRUSH_DEFORM_TARGET_GEOMETRY:
+    case BRUSH_DEFORM_TARGET_GEOMETRY: {
+      tls.translations.resize(verts.size());
+      const MutableSpan<float3> translations = tls.translations;
+      translations_from_new_positions(new_positions, verts, positions_eval, translations);
+
       write_translations(sd, object, positions_eval, verts, translations, positions_orig);
       break;
+    }
     case BRUSH_DEFORM_TARGET_CLOTH_SIM:
       scatter_data_mesh(
           new_positions.as_span(), verts, cache.cloth_sim->deformation_pos.as_mutable_span());
@@ -2763,16 +2774,16 @@ static void calc_smooth_grids(const Sculpt &sd,
   const MutableSpan<float3> new_positions = tls.new_positions;
   calc_smooth_position(positions, average_positions, factors, new_positions);
 
-  tls.translations.resize(num_elements);
-  const MutableSpan<float3> translations = tls.translations;
-
-  translations_from_new_positions(new_positions, positions, translations);
-
   switch (eBrushDeformTarget(deform_target)) {
-    case BRUSH_DEFORM_TARGET_GEOMETRY:
+    case BRUSH_DEFORM_TARGET_GEOMETRY: {
+      tls.translations.resize(num_elements);
+      const MutableSpan<float3> translations = tls.translations;
+      translations_from_new_positions(new_positions, positions, translations);
+
       clip_and_lock_translations(sd, ss, orig_data.positions, translations);
       apply_translations(translations, grids, subdiv_ccg);
       break;
+    }
     case BRUSH_DEFORM_TARGET_CLOTH_SIM:
       scatter_data_grids(subdiv_ccg,
                          new_positions.as_span(),
@@ -2829,15 +2840,16 @@ static void calc_smooth_bmesh(const Sculpt &sd,
   const MutableSpan<float3> new_positions = tls.new_positions;
   calc_smooth_position(positions, average_positions, factors, new_positions);
 
-  tls.translations.resize(verts.size());
-  const MutableSpan<float3> translations = tls.translations;
-  translations_from_new_positions(new_positions, positions, translations);
-
   switch (eBrushDeformTarget(deform_target)) {
-    case BRUSH_DEFORM_TARGET_GEOMETRY:
+    case BRUSH_DEFORM_TARGET_GEOMETRY: {
+      tls.translations.resize(verts.size());
+      const MutableSpan<float3> translations = tls.translations;
+      translations_from_new_positions(new_positions, positions, translations);
+
       clip_and_lock_translations(sd, ss, orig_positions, translations);
       apply_translations(translations, verts);
       break;
+    }
     case BRUSH_DEFORM_TARGET_CLOTH_SIM:
       scatter_data_vert_bmesh(
           new_positions.as_span(), verts, cache.cloth_sim->deformation_pos.as_mutable_span());
