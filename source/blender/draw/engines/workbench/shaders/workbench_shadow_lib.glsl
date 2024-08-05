@@ -13,7 +13,7 @@ struct VertIn {
   vec3 lP;
 };
 
-VertIn input_assembly(int in_vertex_id)
+VertIn input_assembly(uint in_vertex_id)
 {
   uint v_i = gpu_index_load(in_vertex_id);
 

@@ -98,9 +98,9 @@ void main()
                            ouput_invocation_count;
 
   VertIn vert_in[input_primitive_vertex_count];
-  vert_in[0] = input_assembly(in_primitive_first_vertex + 0);
-  vert_in[1] = input_assembly(in_primitive_first_vertex + 1);
-  vert_in[2] = input_assembly(in_primitive_first_vertex + 2);
+  vert_in[0] = input_assembly(in_primitive_first_vertex + 0u);
+  vert_in[1] = input_assembly(in_primitive_first_vertex + 1u);
+  vert_in[2] = input_assembly(in_primitive_first_vertex + 2u);
 
   VertOut vert_out[input_primitive_vertex_count];
   vert_out[0] = vertex_main(vert_in[0]);
