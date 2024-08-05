@@ -224,24 +224,6 @@ const float *SCULPT_vertex_co_for_grab_active_get(const SculptSession &ss, PBVHV
   return SCULPT_vertex_co_get(ss, vertex);
 }
 
-float3 SCULPT_vertex_limit_surface_get(const SculptSession &ss, PBVHVertRef vertex)
-{
-  switch (ss.pbvh->type()) {
-    case blender::bke::pbvh::Type::Mesh:
-    case blender::bke::pbvh::Type::BMesh:
-      return SCULPT_vertex_co_get(ss, vertex);
-    case blender::bke::pbvh::Type::Grids: {
-      const CCGKey key = BKE_subdiv_ccg_key_top_level(*ss.subdiv_ccg);
-      SubdivCCGCoord coord = SubdivCCGCoord::from_index(key, vertex.i);
-      float3 tmp;
-      BKE_subdiv_ccg_eval_limit_point(*ss.subdiv_ccg, coord, tmp);
-      return tmp;
-    }
-  }
-  BLI_assert_unreachable();
-  return {};
-}
-
 PBVHVertRef SCULPT_active_vertex_get(const SculptSession &ss)
 {
   if (ELEM(ss.pbvh->type(),
@@ -1206,8 +1188,7 @@ bool SCULPT_is_vertex_inside_brush_radius_symm(const float vertex[3],
     if (!SCULPT_is_symmetry_iteration_valid(i, symm)) {
       continue;
     }
-    float location[3];
-    flip_v3_v3(location, br_co, ePaintSymmetryFlags(i));
+    float3 location = blender::ed::sculpt_paint::symmetry_flip(br_co, ePaintSymmetryFlags(i));
     if (len_squared_v3v3(location, vertex) < radius * radius) {
       return true;
     }
@@ -1797,8 +1778,7 @@ BLI_INLINE bool sculpt_brush_test_clipping(const SculptBrushTest &test, const fl
   if (!rv3d) {
     return false;
   }
-  float symm_co[3];
-  flip_v3_v3(symm_co, co, test.mirror_symmetry_pass);
+  float3 symm_co = blender::ed::sculpt_paint::symmetry_flip(co, test.mirror_symmetry_pass);
   if (test.radial_symmetry_pass) {
     mul_m4_v3(test.symm_rot_mat_inv.ptr(), symm_co);
   }
@@ -1962,10 +1942,7 @@ static float calc_overlap(const blender::ed::sculpt_paint::StrokeCache &cache,
                           const char axis,
                           const float angle)
 {
-  float mirror[3];
-  float distsq;
-
-  flip_v3_v3(mirror, cache.true_location, symm);
+  float3 mirror = blender::ed::sculpt_paint::symmetry_flip(cache.true_location, symm);
 
   if (axis != 0) {
     float mat[3][3];
@@ -1973,7 +1950,7 @@ static float calc_overlap(const blender::ed::sculpt_paint::StrokeCache &cache,
     mul_m3_v3(mat, mirror);
   }
 
-  distsq = len_squared_v3v3(mirror, cache.true_location);
+  const float distsq = len_squared_v3v3(mirror, cache.true_location);
 
   if (distsq <= 4.0f * (cache.radius_squared)) {
     return (2.0f * (cache.radius) - sqrtf(distsq)) / (2.0f * (cache.radius));
@@ -2885,8 +2862,6 @@ void sculpt_apply_texture(const SculptSession &ss,
     *r_value = BKE_brush_sample_tex_3d(scene, &brush, mtex, point, r_rgba, 0, ss.tex_pool);
   }
   else {
-    float symm_point[3];
-
     /* If the active area is being applied for symmetry, flip it
      * across the symmetry axis and rotate it back to the original
      * position in order to project it. This insures that the
@@ -2894,7 +2869,8 @@ void sculpt_apply_texture(const SculptSession &ss,
     if (cache.radial_symmetry_pass) {
       mul_m4_v3(cache.symm_rot_mat_inv.ptr(), point);
     }
-    flip_v3_v3(symm_point, point, cache.mirror_symmetry_pass);
+    float3 symm_point = blender::ed::sculpt_paint::symmetry_flip(point,
+                                                                 cache.mirror_symmetry_pass);
 
     /* Still no symmetry supported for other paint modes.
      * Sculpt does it DIY. */
@@ -2986,7 +2962,8 @@ void SCULPT_calc_vertex_displacement(const SculptSession &ss,
   if (ss.cache->radial_symmetry_pass) {
     mul_m4_v3(ss.cache->symm_rot_mat.ptr(), rgba);
   }
-  flip_v3_v3(r_offset, rgba, ss.cache->mirror_symmetry_pass);
+  copy_v3_v3(r_offset,
+             blender::ed::sculpt_paint::symmetry_flip(rgba, ss.cache->mirror_symmetry_pass));
 }
 
 namespace blender::ed::sculpt_paint {
@@ -3142,8 +3119,7 @@ static void update_sculpt_normal(const Sculpt &sd, Object &ob, Span<bke::pbvh::N
     copy_v3_v3(cache.sculpt_normal_symm, cache.sculpt_normal);
   }
   else {
-    copy_v3_v3(cache.sculpt_normal_symm, cache.sculpt_normal);
-    flip_v3(cache.sculpt_normal_symm, cache.mirror_symmetry_pass);
+    cache.sculpt_normal_symm = symmetry_flip(cache.sculpt_normal, cache.mirror_symmetry_pass);
     mul_m4_v3(cache.symm_rot_mat.ptr(), cache.sculpt_normal_symm);
   }
 }
@@ -3389,23 +3365,25 @@ static void flip_qt(float quat[4], const ePaintSymmetryFlags symm)
   flip_qt_qt(quat, quat, symm);
 }
 
-void SCULPT_flip_v3_by_symm_area(float v[3],
-                                 const ePaintSymmetryFlags symm,
-                                 const ePaintSymmetryAreas symmarea,
-                                 const float pivot[3])
+float3 SCULPT_flip_v3_by_symm_area(const float3 &vector,
+                                   const ePaintSymmetryFlags symm,
+                                   const ePaintSymmetryAreas symmarea,
+                                   const float3 &pivot)
 {
+  float3 result = vector;
   for (int i = 0; i < 3; i++) {
     ePaintSymmetryFlags symm_it = ePaintSymmetryFlags(1 << i);
     if (!(symm & symm_it)) {
       continue;
     }
     if (symmarea & symm_it) {
-      flip_v3(v, symm_it);
+      result = blender::ed::sculpt_paint::symmetry_flip(result, symm_it);
     }
     if (pivot[i] < 0.0f) {
-      flip_v3(v, symm_it);
+      result = blender::ed::sculpt_paint::symmetry_flip(result, symm_it);
     }
   }
+  return result;
 }
 
 void SCULPT_flip_quat_by_symm_area(float quat[4],
@@ -3465,8 +3443,8 @@ namespace blender::ed::sculpt_paint {
 void calc_brush_plane(const Brush &brush,
                       Object &ob,
                       Span<bke::pbvh::Node *> nodes,
-                      float r_area_no[3],
-                      float r_area_co[3])
+                      float3 &r_area_no,
+                      float3 &r_area_co)
 {
   const SculptSession &ss = *ob.sculpt;
 
@@ -3540,10 +3518,10 @@ void calc_brush_plane(const Brush &brush,
     copy_v3_v3(r_area_co, ss.cache->last_center);
 
     /* For area normal. */
-    flip_v3(r_area_no, ss.cache->mirror_symmetry_pass);
+    r_area_no = symmetry_flip(r_area_no, ss.cache->mirror_symmetry_pass);
 
     /* For flatten center. */
-    flip_v3(r_area_co, ss.cache->mirror_symmetry_pass);
+    r_area_co = symmetry_flip(r_area_co, ss.cache->mirror_symmetry_pass);
 
     /* For area normal. */
     mul_m4_v3(ss.cache->symm_rot_mat.ptr(), r_area_no);
@@ -4137,13 +4115,13 @@ void SCULPT_cache_calc_brushdata_symm(blender::ed::sculpt_paint::StrokeCache &ca
                                       const float angle)
 {
   using namespace blender;
-  flip_v3_v3(cache.location, cache.true_location, symm);
-  flip_v3_v3(cache.last_location, cache.true_last_location, symm);
-  flip_v3_v3(cache.grab_delta_symmetry, cache.grab_delta, symm);
-  flip_v3_v3(cache.view_normal, cache.true_view_normal, symm);
+  cache.location = ed::sculpt_paint::symmetry_flip(cache.true_location, symm);
+  cache.last_location = ed::sculpt_paint::symmetry_flip(cache.true_last_location, symm);
+  cache.grab_delta_symmetry = ed::sculpt_paint::symmetry_flip(cache.grab_delta, symm);
+  cache.view_normal = ed::sculpt_paint::symmetry_flip(cache.true_view_normal, symm);
 
-  flip_v3_v3(cache.initial_location, cache.true_initial_location, symm);
-  flip_v3_v3(cache.initial_normal, cache.true_initial_normal, symm);
+  cache.initial_location = ed::sculpt_paint::symmetry_flip(cache.true_initial_location, symm);
+  cache.initial_normal = ed::sculpt_paint::symmetry_flip(cache.true_initial_normal, symm);
 
   /* XXX This reduces the length of the grab delta if it approaches the line of symmetry
    * XXX However, a different approach appears to be needed. */
@@ -4174,7 +4152,7 @@ void SCULPT_cache_calc_brushdata_symm(blender::ed::sculpt_paint::StrokeCache &ca
   mul_m4_v3(cache.symm_rot_mat.ptr(), cache.grab_delta_symmetry);
 
   if (cache.supports_gravity) {
-    flip_v3_v3(cache.gravity_direction, cache.true_gravity_direction, symm);
+    cache.gravity_direction = ed::sculpt_paint::symmetry_flip(cache.true_gravity_direction, symm);
     mul_m4_v3(cache.symm_rot_mat.ptr(), cache.gravity_direction);
   }
 
@@ -6281,7 +6259,7 @@ static void do_fake_neighbor_search_task(SculptSession &ss,
 {
   PBVHVertexIter vd;
   BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    int vd_topology_id = SCULPT_vertex_island_get(ss, vd.vertex);
+    int vd_topology_id = islands::vert_id_get(ss, vd.vertex);
     if (vd_topology_id != nvtd->current_topology_id &&
         ss.fake_neighbors.fake_neighbor_index[vd.index] == FAKE_NEIGHBOR_NONE)
     {
@@ -6316,7 +6294,7 @@ static PBVHVertRef fake_neighbor_search(Object &ob, const PBVHVertRef vertex, fl
   NearestVertexFakeNeighborData nvtd;
   nvtd.nearest_vertex.i = -1;
   nvtd.nearest_vertex_distance_sq = FLT_MAX;
-  nvtd.current_topology_id = SCULPT_vertex_island_get(ss, vertex);
+  nvtd.current_topology_id = islands::vert_id_get(ss, vertex);
 
   nvtd = threading::parallel_reduce(
       nodes.index_range(),
@@ -6392,7 +6370,7 @@ void SCULPT_fake_neighbors_ensure(Object &ob, const float max_dist)
     return;
   }
 
-  SCULPT_topology_islands_ensure(ob);
+  islands::ensure_cache(ob);
   fake_neighbor_init(ss, max_dist);
 
   for (int i = 0; i < totvert; i++) {
@@ -6499,7 +6477,9 @@ void SCULPT_stroke_id_ensure(Object &ob)
   }
 }
 
-int SCULPT_vertex_island_get(const SculptSession &ss, PBVHVertRef vertex)
+namespace blender::ed::sculpt_paint::islands {
+
+int vert_id_get(const SculptSession &ss, PBVHVertRef vertex)
 {
   if (ss.attrs.topology_island_key) {
     return *static_cast<uint8_t *>(SCULPT_vertex_attr_get(vertex, ss.attrs.topology_island_key));
@@ -6508,15 +6488,13 @@ int SCULPT_vertex_island_get(const SculptSession &ss, PBVHVertRef vertex)
   return -1;
 }
 
-void SCULPT_topology_islands_invalidate(SculptSession &ss)
+void invalidate(SculptSession &ss)
 {
   ss.islands_valid = false;
 }
 
-void SCULPT_topology_islands_ensure(Object &ob)
+void ensure_cache(Object &ob)
 {
-  using namespace blender;
-  using namespace blender::ed::sculpt_paint;
   SculptSession &ss = *ob.sculpt;
 
   if (ss.attrs.topology_island_key && ss.islands_valid &&
@@ -6572,6 +6550,8 @@ void SCULPT_topology_islands_ensure(Object &ob)
 
   ss.islands_valid = true;
 }
+
+}  // namespace blender::ed::sculpt_paint::islands
 
 void SCULPT_cube_tip_init(const Sculpt & /*sd*/,
                           const Object &ob,
@@ -6993,8 +6973,7 @@ void filter_region_clip_factors(const SculptSession &ss,
   const int radial_symmetry_pass = ss.cache ? ss.cache->radial_symmetry_pass : 0;
   const float4x4 symm_rot_mat_inv = ss.cache ? ss.cache->symm_rot_mat_inv : float4x4::identity();
   for (const int i : verts.index_range()) {
-    float3 symm_co;
-    flip_v3_v3(symm_co, positions[verts[i]], mirror_symmetry_pass);
+    float3 symm_co = symmetry_flip(positions[verts[i]], mirror_symmetry_pass);
     if (radial_symmetry_pass) {
       symm_co = math::transform_point(symm_rot_mat_inv, symm_co);
     }
@@ -7021,8 +7000,7 @@ void filter_region_clip_factors(const SculptSession &ss,
   const int radial_symmetry_pass = ss.cache ? ss.cache->radial_symmetry_pass : 0;
   const float4x4 symm_rot_mat_inv = ss.cache ? ss.cache->symm_rot_mat_inv : float4x4::identity();
   for (const int i : positions.index_range()) {
-    float3 symm_co;
-    flip_v3_v3(symm_co, positions[i], mirror_symmetry_pass);
+    float3 symm_co = symmetry_flip(positions[i], mirror_symmetry_pass);
     if (radial_symmetry_pass) {
       symm_co = math::transform_point(symm_rot_mat_inv, symm_co);
     }
