@@ -1963,7 +1963,6 @@ class _defs_weight_paint:
 
 class _defs_grease_pencil_paint:
 
-
     @ToolDef.from_fn
     def cutter():
         def draw_settings(context, layout, _tool):
