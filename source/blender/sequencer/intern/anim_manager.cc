@@ -187,7 +187,7 @@ void ShareableAnim::acquire_anims(const Scene *scene, Sequence *seq)
     }
   }
 
-  for (const int i: this->anims.index_range()) {
+  for (const int i : this->anims.index_range()) {
     index_dir_set(SEQ_editing_get(scene), seq, this->anims[i]);
     if (is_multiview(scene, seq)) {
       const char *suffix = BKE_scene_multiview_view_id_suffix_get(&scene->r, i);
