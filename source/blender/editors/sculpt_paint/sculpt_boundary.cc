@@ -1204,7 +1204,7 @@ static void calc_bend_grids(const Sculpt &sd,
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
   const Span<int> grids = bke::pbvh::node_grid_indices(node);
-  const int num_elements = grids.size() * key.grid_area;
+  const int grid_verts_num = grids.size() * key.grid_area;
   const OrigPositionData orig_data = orig_position_data_get_grids(object, node);
 
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(object);
@@ -1226,7 +1226,7 @@ static void calc_bend_grids(const Sculpt &sd,
 
   scale_factors(factors, strength);
 
-  tls.new_positions.resize(num_elements);
+  tls.new_positions.resize(grid_verts_num);
   const MutableSpan<float3> new_positions = tls.new_positions;
 
   const Span<float3> pivot_positions = gather_data_grids(
@@ -1238,7 +1238,7 @@ static void calc_bend_grids(const Sculpt &sd,
 
   switch (eBrushDeformTarget(deform_target)) {
     case BRUSH_DEFORM_TARGET_GEOMETRY: {
-      tls.translations.resize(num_elements);
+      tls.translations.resize(grid_verts_num);
       const MutableSpan<float3> translations = tls.translations;
       const Span<float3> positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
       translations_from_new_positions(new_positions, positions, translations);
@@ -1502,7 +1502,7 @@ static void calc_slide_grids(const Sculpt &sd,
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
   const Span<int> grids = bke::pbvh::node_grid_indices(node);
-  const int num_elements = grids.size() * key.grid_area;
+  const int grid_verts_num = grids.size() * key.grid_area;
   const OrigPositionData orig_data = orig_position_data_get_grids(object, node);
 
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(object);
@@ -1524,7 +1524,7 @@ static void calc_slide_grids(const Sculpt &sd,
 
   scale_factors(factors, strength);
 
-  tls.new_positions.resize(num_elements);
+  tls.new_positions.resize(grid_verts_num);
   const MutableSpan<float3> new_positions = tls.new_positions;
 
   const Span<float3> slide_directions = gather_data_grids(
@@ -1534,7 +1534,7 @@ static void calc_slide_grids(const Sculpt &sd,
 
   switch (eBrushDeformTarget(deform_target)) {
     case BRUSH_DEFORM_TARGET_GEOMETRY: {
-      tls.translations.resize(num_elements);
+      tls.translations.resize(grid_verts_num);
       const MutableSpan<float3> translations = tls.translations;
       const Span<float3> positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
       translations_from_new_positions(new_positions, positions, translations);
@@ -1788,7 +1788,7 @@ static void calc_inflate_grids(const Sculpt &sd,
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
   const Span<int> grids = bke::pbvh::node_grid_indices(node);
-  const int num_elements = grids.size() * key.grid_area;
+  const int grid_verts_num = grids.size() * key.grid_area;
   const OrigPositionData orig_data = orig_position_data_get_grids(object, node);
 
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(object);
@@ -1810,14 +1810,14 @@ static void calc_inflate_grids(const Sculpt &sd,
 
   scale_factors(factors, strength);
 
-  tls.new_positions.resize(num_elements);
+  tls.new_positions.resize(grid_verts_num);
   const MutableSpan<float3> new_positions = tls.new_positions;
 
   calc_inflate_position(orig_data.positions, orig_data.normals, factors, new_positions);
 
   switch (eBrushDeformTarget(deform_target)) {
     case BRUSH_DEFORM_TARGET_GEOMETRY: {
-      tls.translations.resize(num_elements);
+      tls.translations.resize(grid_verts_num);
       const MutableSpan<float3> translations = tls.translations;
       const Span<float3> positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
       translations_from_new_positions(new_positions, positions, translations);
@@ -2065,7 +2065,7 @@ static void calc_grab_grids(const Sculpt &sd,
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
   const Span<int> grids = bke::pbvh::node_grid_indices(node);
-  const int num_elements = grids.size() * key.grid_area;
+  const int grid_verts_num = grids.size() * key.grid_area;
   const OrigPositionData orig_data = orig_position_data_get_grids(object, node);
 
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(object);
@@ -2087,14 +2087,14 @@ static void calc_grab_grids(const Sculpt &sd,
 
   scale_factors(factors, strength);
 
-  tls.new_positions.resize(num_elements);
+  tls.new_positions.resize(grid_verts_num);
   const MutableSpan<float3> new_positions = tls.new_positions;
 
   calc_grab_position(orig_data.positions, grab_delta_symmetry, factors, new_positions);
 
   switch (eBrushDeformTarget(deform_target)) {
     case BRUSH_DEFORM_TARGET_GEOMETRY: {
-      tls.translations.resize(num_elements);
+      tls.translations.resize(grid_verts_num);
       const MutableSpan<float3> translations = tls.translations;
       const Span<float3> positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
       translations_from_new_positions(new_positions, positions, translations);
@@ -2350,7 +2350,7 @@ static void calc_twist_grids(const Sculpt &sd,
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
   const Span<int> grids = bke::pbvh::node_grid_indices(node);
-  const int num_elements = grids.size() * key.grid_area;
+  const int grid_verts_num = grids.size() * key.grid_area;
   const OrigPositionData orig_data = orig_position_data_get_grids(object, node);
 
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(object);
@@ -2372,7 +2372,7 @@ static void calc_twist_grids(const Sculpt &sd,
 
   scale_factors(factors, strength);
 
-  tls.new_positions.resize(num_elements);
+  tls.new_positions.resize(grid_verts_num);
   const MutableSpan<float3> new_positions = tls.new_positions;
 
   calc_twist_position(
@@ -2380,7 +2380,7 @@ static void calc_twist_grids(const Sculpt &sd,
 
   switch (eBrushDeformTarget(deform_target)) {
     case BRUSH_DEFORM_TARGET_GEOMETRY: {
-      tls.translations.resize(num_elements);
+      tls.translations.resize(grid_verts_num);
       const MutableSpan<float3> translations = tls.translations;
       const Span<float3> positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
       translations_from_new_positions(new_positions, positions, translations);
@@ -2736,7 +2736,7 @@ static void calc_smooth_grids(const Sculpt &sd,
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
   const Span<int> grids = bke::pbvh::node_grid_indices(node);
-  const int num_elements = grids.size() * key.grid_area;
+  const int grid_verts_num = grids.size() * key.grid_area;
   const OrigPositionData orig_data = orig_position_data_get_grids(object, node);
 
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(object);
@@ -2754,11 +2754,11 @@ static void calc_smooth_grids(const Sculpt &sd,
 
   scale_factors(factors, strength);
 
-  tls.neighbors.resize(num_elements);
+  tls.neighbors.resize(grid_verts_num);
   const MutableSpan<Vector<SubdivCCGCoord>> neighbors = tls.neighbors;
   calc_vert_neighbors(subdiv_ccg, grids, neighbors);
 
-  tls.average_positions.resize(num_elements);
+  tls.average_positions.resize(grid_verts_num);
   const MutableSpan<float3> average_positions = tls.average_positions;
   calc_average_position(subdiv_ccg,
                         vert_propagation_steps,
@@ -2769,13 +2769,13 @@ static void calc_smooth_grids(const Sculpt &sd,
 
   const Span<float3> positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
 
-  tls.new_positions.resize(num_elements);
+  tls.new_positions.resize(grid_verts_num);
   const MutableSpan<float3> new_positions = tls.new_positions;
   calc_smooth_position(positions, average_positions, factors, new_positions);
 
   switch (eBrushDeformTarget(deform_target)) {
     case BRUSH_DEFORM_TARGET_GEOMETRY: {
-      tls.translations.resize(num_elements);
+      tls.translations.resize(grid_verts_num);
       const MutableSpan<float3> translations = tls.translations;
       translations_from_new_positions(new_positions, positions, translations);
 
