@@ -6504,10 +6504,10 @@ static SculptTopologyIslandCache vert_disjoint_set_to_islands(const AtomicDisjoi
     return {};
   }
 
-  Array<uint8_t> island_ids(island_ids.size());
+  Array<uint8_t> island_ids(island_indices.size());
   threading::parallel_for(island_ids.index_range(), 4096, [&](const IndexRange range) {
     for (const int i : range) {
-      island_ids[i] = uint8_t(island_ids[i]);
+      island_ids[i] = uint8_t(island_indices[i]);
     }
   });
 
@@ -6523,8 +6523,10 @@ static SculptTopologyIslandCache calc_topology_islands_mesh(const Mesh &mesh)
   const bke::AttributeAccessor attributes = mesh.attributes();
   const VArraySpan<bool> hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
   IndexMaskMemory memory;
-  const IndexMask visible_faces = IndexMask::from_bools_inverse(
-      faces.index_range(), hide_poly, memory);
+  const IndexMask visible_faces = hide_poly.is_empty() ?
+                                      IndexMask(faces.size()) :
+                                      IndexMask::from_bools_inverse(
+                                          faces.index_range(), hide_poly, memory);
 
   AtomicDisjointSet disjoint_set(mesh.verts_num);
   visible_faces.foreach_index(GrainSize(1024), [&](const int face) {
