@@ -2685,9 +2685,6 @@ static void calc_smooth_mesh(const Sculpt &sd,
 
   scale_factors(factors, strength);
 
-  tls.new_positions.resize(verts.size());
-  const MutableSpan<float3> new_positions = tls.new_positions;
-
   tls.neighbors.resize(verts.size());
   const MutableSpan<Vector<int>> neighbors = tls.neighbors;
 
@@ -2703,6 +2700,8 @@ static void calc_smooth_mesh(const Sculpt &sd,
                         factors,
                         average_positions);
 
+  tls.new_positions.resize(verts.size());
+  const MutableSpan<float3> new_positions = tls.new_positions;
   calc_smooth_position(positions, average_positions, factors, new_positions);
 
   switch (eBrushDeformTarget(deform_target)) {
