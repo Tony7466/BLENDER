@@ -192,7 +192,9 @@ static Mesh *read_ply_to_mesh(const PLYImportParams &import_params, const char *
     return nullptr;
   }
 
-  return convert_ply_to_mesh(*data, import_params);
+  Mesh *mesh = convert_ply_to_mesh(*data, import_params);
+
+  return mesh;
 }
 
 Mesh *import_mesh(const PLYImportParams &import_params)
@@ -203,7 +205,9 @@ Mesh *import_mesh(const PLYImportParams &import_params)
   BLI_path_extension_strip(ob_name);
 
   /* Stuff ply data into the mesh. */
-  return read_ply_to_mesh(import_params, ob_name);
+  Mesh *mesh = read_ply_to_mesh(import_params, ob_name);
+
+  return mesh;
 }
 
 void importer_main(bContext *C, const PLYImportParams &import_params)

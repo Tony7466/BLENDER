@@ -33,7 +33,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     return;
   }
 
-  PLYImportParams import_params{};
+  PLYImportParams import_params;
   STRNCPY(import_params.filepath, path.c_str());
 
   ReportList reports;
@@ -56,6 +56,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     params.error_message_add(type, TIP_(report->message));
   }
 
+  // TODO : GeometrySet::from_pointcloud() ?
   params.set_output("Mesh", GeometrySet::from_mesh(mesh));
 
 #else
