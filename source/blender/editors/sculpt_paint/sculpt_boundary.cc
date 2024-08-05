@@ -1138,7 +1138,6 @@ static void calc_bend_mesh(const Sculpt &sd,
 {
   SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
-  const Mesh &mesh = *static_cast<Mesh *>(object.data);
 
   const Span<int> verts = bke::pbvh::node_unique_verts(node);
   const OrigPositionData orig_data = orig_position_data_get_mesh(object, node);
@@ -1146,8 +1145,6 @@ static void calc_bend_mesh(const Sculpt &sd,
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(object);
 
   const MutableSpan<float> factors = gather_data_mesh(vert_factors, verts, tls.factors);
-
-  calc_mask_factor(mesh, verts, factors);
 
   if (cache.automasking) {
     auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
@@ -1211,8 +1208,6 @@ static void calc_bend_grids(const Sculpt &sd,
 
   const MutableSpan<float> factors = gather_data_grids(
       subdiv_ccg, vert_factors, grids, tls.factors);
-
-  calc_mask_factor(subdiv_ccg, grids, factors);
 
   if (cache.automasking) {
     auto_mask::calc_grids_factors(object, *cache.automasking, node, grids, factors);
@@ -1280,8 +1275,6 @@ static void calc_bend_bmesh(const Sculpt &sd,
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(object);
 
   const MutableSpan<float> factors = gather_data_vert_bmesh(vert_factors, verts, tls.factors);
-
-  calc_mask_factor(*ss.bm, verts, factors);
 
   if (cache.automasking) {
     auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
@@ -1438,7 +1431,6 @@ static void calc_slide_mesh(const Sculpt &sd,
 {
   SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
-  const Mesh &mesh = *static_cast<Mesh *>(object.data);
 
   const Span<int> verts = bke::pbvh::node_unique_verts(node);
   const OrigPositionData orig_data = orig_position_data_get_mesh(object, node);
@@ -1446,8 +1438,6 @@ static void calc_slide_mesh(const Sculpt &sd,
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(object);
 
   const MutableSpan<float> factors = gather_data_mesh(vert_factors, verts, tls.factors);
-
-  calc_mask_factor(mesh, verts, factors);
 
   if (cache.automasking) {
     auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
@@ -1509,8 +1499,6 @@ static void calc_slide_grids(const Sculpt &sd,
 
   const MutableSpan<float> factors = gather_data_grids(
       subdiv_ccg, vert_factors, grids, tls.factors);
-
-  calc_mask_factor(subdiv_ccg, grids, factors);
 
   if (cache.automasking) {
     auto_mask::calc_grids_factors(object, *cache.automasking, node, grids, factors);
@@ -1575,8 +1563,6 @@ static void calc_slide_bmesh(const Sculpt &sd,
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(object);
 
   const MutableSpan<float> factors = gather_data_vert_bmesh(vert_factors, verts, tls.factors);
-
-  calc_mask_factor(*ss.bm, verts, factors);
 
   if (cache.automasking) {
     auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
@@ -1728,7 +1714,6 @@ static void calc_inflate_mesh(const Sculpt &sd,
 {
   SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
-  const Mesh &mesh = *static_cast<Mesh *>(object.data);
 
   const Span<int> verts = bke::pbvh::node_unique_verts(node);
   const OrigPositionData orig_data = orig_position_data_get_mesh(object, node);
@@ -1736,8 +1721,6 @@ static void calc_inflate_mesh(const Sculpt &sd,
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(object);
 
   const MutableSpan<float> factors = gather_data_mesh(vert_factors, verts, tls.factors);
-
-  calc_mask_factor(mesh, verts, factors);
 
   if (cache.automasking) {
     auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
@@ -1795,8 +1778,6 @@ static void calc_inflate_grids(const Sculpt &sd,
 
   const MutableSpan<float> factors = gather_data_grids(
       subdiv_ccg, vert_factors, grids, tls.factors);
-
-  calc_mask_factor(subdiv_ccg, grids, factors);
 
   if (cache.automasking) {
     auto_mask::calc_grids_factors(object, *cache.automasking, node, grids, factors);
@@ -1857,8 +1838,6 @@ static void calc_inflate_bmesh(const Sculpt &sd,
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(object);
 
   const MutableSpan<float> factors = gather_data_vert_bmesh(vert_factors, verts, tls.factors);
-
-  calc_mask_factor(*ss.bm, verts, factors);
 
   if (cache.automasking) {
     auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
@@ -2004,7 +1983,6 @@ static void calc_grab_mesh(const Sculpt &sd,
 {
   SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
-  const Mesh &mesh = *static_cast<Mesh *>(object.data);
 
   const Span<int> verts = bke::pbvh::node_unique_verts(node);
   const OrigPositionData orig_data = orig_position_data_get_mesh(object, node);
@@ -2012,8 +1990,6 @@ static void calc_grab_mesh(const Sculpt &sd,
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(object);
 
   const MutableSpan<float> factors = gather_data_mesh(vert_factors, verts, tls.factors);
-
-  calc_mask_factor(mesh, verts, factors);
 
   if (cache.automasking) {
     auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
@@ -2072,8 +2048,6 @@ static void calc_grab_grids(const Sculpt &sd,
 
   const MutableSpan<float> factors = gather_data_grids(
       subdiv_ccg, vert_factors, grids, tls.factors);
-
-  calc_mask_factor(subdiv_ccg, grids, factors);
 
   if (cache.automasking) {
     auto_mask::calc_grids_factors(object, *cache.automasking, node, grids, factors);
@@ -2135,8 +2109,6 @@ static void calc_grab_bmesh(const Sculpt &sd,
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(object);
 
   const MutableSpan<float> factors = gather_data_vert_bmesh(vert_factors, verts, tls.factors);
-
-  calc_mask_factor(*ss.bm, verts, factors);
 
   if (cache.automasking) {
     auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
@@ -2287,7 +2259,6 @@ static void calc_twist_mesh(const Sculpt &sd,
 {
   SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
-  const Mesh &mesh = *static_cast<Mesh *>(object.data);
 
   const Span<int> verts = bke::pbvh::node_unique_verts(node);
   const OrigPositionData orig_data = orig_position_data_get_mesh(object, node);
@@ -2295,8 +2266,6 @@ static void calc_twist_mesh(const Sculpt &sd,
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(object);
 
   const MutableSpan<float> factors = gather_data_mesh(vert_factors, verts, tls.factors);
-
-  calc_mask_factor(mesh, verts, factors);
 
   if (cache.automasking) {
     auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
@@ -2357,8 +2326,6 @@ static void calc_twist_grids(const Sculpt &sd,
 
   const MutableSpan<float> factors = gather_data_grids(
       subdiv_ccg, vert_factors, grids, tls.factors);
-
-  calc_mask_factor(subdiv_ccg, grids, factors);
 
   if (cache.automasking) {
     auto_mask::calc_grids_factors(object, *cache.automasking, node, grids, factors);
@@ -2422,8 +2389,6 @@ static void calc_twist_bmesh(const Sculpt &sd,
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(object);
 
   const MutableSpan<float> factors = gather_data_vert_bmesh(vert_factors, verts, tls.factors);
-
-  calc_mask_factor(*ss.bm, verts, factors);
 
   if (cache.automasking) {
     auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
@@ -2666,7 +2631,6 @@ static void calc_smooth_mesh(const Sculpt &sd,
 {
   SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
-  const Mesh &mesh = *static_cast<Mesh *>(object.data);
 
   const Span<int> verts = bke::pbvh::node_unique_verts(node);
   const OrigPositionData orig_data = orig_position_data_get_mesh(object, node);
@@ -2674,8 +2638,6 @@ static void calc_smooth_mesh(const Sculpt &sd,
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(object);
 
   const MutableSpan<float> factors = gather_data_mesh(vert_factors, verts, tls.factors);
-
-  calc_mask_factor(mesh, verts, factors);
 
   const Span<int> propagation_steps = gather_data_mesh(
       vert_propagation_steps, verts, tls.propagation_steps);
@@ -2743,8 +2705,6 @@ static void calc_smooth_grids(const Sculpt &sd,
 
   const MutableSpan<float> factors = gather_data_grids(
       subdiv_ccg, vert_factors, grids, tls.factors);
-
-  calc_mask_factor(subdiv_ccg, grids, factors);
 
   const Span<int> propagation_steps = gather_data_grids(
       subdiv_ccg, vert_propagation_steps, grids, tls.propagation_steps);
@@ -2814,8 +2774,6 @@ static void calc_smooth_bmesh(const Sculpt &sd,
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(object);
 
   const MutableSpan<float> factors = gather_data_vert_bmesh(vert_factors, verts, tls.factors);
-
-  calc_mask_factor(*ss.bm, verts, factors);
 
   const Span<int> propagation_steps = gather_data_vert_bmesh(
       vert_propagation_steps, verts, tls.propagation_steps);
@@ -2944,6 +2902,17 @@ static void do_smooth_brush(const Sculpt &sd,
 /** \name Brush Initialization
  * \{ */
 
+static float displacement_from_grab_delta_get(const SculptSession &ss,
+                                              const SculptBoundary &boundary)
+{
+  float4 plane;
+  const float3 normal = math::normalize(ss.cache->initial_location - boundary.pivot_position);
+  plane_from_point_normal_v3(plane, ss.cache->initial_location, normal);
+
+  const float3 pos = ss.cache->initial_location + ss.cache->grab_delta_symmetry;
+  return dist_signed_to_plane_v3(pos, plane);
+}
+
 static std::pair<float, float> calc_boundary_falloff(const SculptBoundary &boundary,
                                                      const Brush &brush,
                                                      const float radius,
@@ -2985,22 +2954,112 @@ static std::pair<float, float> calc_boundary_falloff(const SculptBoundary &bound
   return {falloff_distance, direction};
 }
 
-static float displacement_from_grab_delta_get(const SculptSession &ss,
-                                              const SculptBoundary &boundary)
+/**
+ * These functions assign a falloff factor to each valid edit_info entry based on the brush curve,
+ * its propagation steps, and mask values. The falloff goes from the boundary into the mesh.
+ */
+static void init_falloff_mesh(const Span<float> mask,
+                              const Brush &brush,
+                              const float radius,
+                              SculptBoundary &boundary)
 {
-  float4 plane;
-  const float3 normal = math::normalize(ss.cache->initial_location - boundary.pivot_position);
-  plane_from_point_normal_v3(plane, ss.cache->initial_location, normal);
+  BLI_assert(boundary.edit_info.original_vertex_i.size() ==
+             boundary.edit_info.propagation_steps_num.size());
+  BLI_assert(boundary.edit_info.original_vertex_i.size() ==
+             boundary.edit_info.strength_factor.size());
 
-  const float3 pos = ss.cache->initial_location + ss.cache->grab_delta_symmetry;
-  return dist_signed_to_plane_v3(pos, plane);
+  const int num_elements = boundary.edit_info.strength_factor.size();
+  BKE_curvemapping_init(brush.curve);
+
+  for (const int i : IndexRange(num_elements)) {
+    if (boundary.edit_info.propagation_steps_num[i] != BOUNDARY_STEPS_NONE) {
+      const float mask_factor = mask.is_empty() ? 1.0f : 1.0f - mask[i];
+      boundary.edit_info.strength_factor[i] = mask_factor *
+                                              BKE_brush_curve_strength(
+                                                  &brush,
+                                                  boundary.edit_info.propagation_steps_num[i],
+                                                  boundary.max_propagation_steps);
+    }
+
+    if (boundary.edit_info.original_vertex_i[i] == boundary.initial_vert_i) {
+      /* All vertices that are propagated from the original vertex won't be affected by the
+       * boundary falloff, so there is no need to calculate anything else. */
+      continue;
+    }
+
+    const bool use_boundary_distances = brush.boundary_falloff_type !=
+                                        BRUSH_BOUNDARY_FALLOFF_CONSTANT;
+
+    if (!use_boundary_distances) {
+      /* There are falloff modes that do not require to modify the previously calculated falloff
+       * based on boundary distances. */
+      continue;
+    }
+
+    auto [falloff_distance, direction] = calc_boundary_falloff(
+        boundary, brush, radius, boundary.edit_info.original_vertex_i[i]);
+    boundary.edit_info.strength_factor[i] *= direction * BKE_brush_curve_strength(
+                                                             &brush, falloff_distance, radius);
+  }
 }
 
-/* This functions assigns a falloff factor to each one of the SculptBoundaryEditInfo structs
- * based on the brush curve and its propagation steps. The falloff goes from the boundary into
- * the mesh.
- */
-static void init_falloff(const Brush &brush, const float radius, SculptBoundary &boundary)
+static void init_falloff_grids(const SubdivCCG &subdiv_ccg,
+                               const Brush &brush,
+                               const float radius,
+                               SculptBoundary &boundary)
+{
+  BLI_assert(boundary.edit_info.original_vertex_i.size() ==
+             boundary.edit_info.propagation_steps_num.size());
+  BLI_assert(boundary.edit_info.original_vertex_i.size() ==
+             boundary.edit_info.strength_factor.size());
+
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+  Span<CCGElem *> grids = subdiv_ccg.grids;
+
+  BKE_curvemapping_init(brush.curve);
+
+  for (const int i : grids.index_range()) {
+    const int start = i * key.grid_area;
+    for (const int offset : IndexRange(key.grid_area)) {
+      const int index = start + offset;
+      if (boundary.edit_info.propagation_steps_num[index] != BOUNDARY_STEPS_NONE) {
+        const float mask_factor = key.has_mask() ?
+                                      1.0f - CCG_elem_offset_mask(key, grids[i], offset) :
+                                      1.0f;
+        boundary.edit_info.strength_factor[index] =
+            mask_factor * BKE_brush_curve_strength(&brush,
+                                                   boundary.edit_info.propagation_steps_num[index],
+                                                   boundary.max_propagation_steps);
+      }
+
+      if (boundary.edit_info.original_vertex_i[index] == boundary.initial_vert_i) {
+        /* All vertices that are propagated from the original vertex won't be affected by the
+         * boundary falloff, so there is no need to calculate anything else. */
+        continue;
+      }
+
+      const bool use_boundary_distances = brush.boundary_falloff_type !=
+                                          BRUSH_BOUNDARY_FALLOFF_CONSTANT;
+
+      if (!use_boundary_distances) {
+        /* There are falloff modes that do not require to modify the previously calculated falloff
+         * based on boundary distances. */
+        continue;
+      }
+
+      auto [falloff_distance, direction] = calc_boundary_falloff(
+          boundary, brush, radius, boundary.edit_info.original_vertex_i[index]);
+      boundary.edit_info.strength_factor[index] *= direction *
+                                                   BKE_brush_curve_strength(
+                                                       &brush, falloff_distance, radius);
+    }
+  }
+}
+
+static void init_falloff_bmesh(BMesh *bm,
+                               const Brush &brush,
+                               const float radius,
+                               SculptBoundary &boundary)
 {
   BLI_assert(boundary.edit_info.original_vertex_i.size() ==
              boundary.edit_info.propagation_steps_num.size());
@@ -3013,8 +3072,17 @@ static void init_falloff(const Brush &brush, const float radius, SculptBoundary 
 
   for (const int i : IndexRange(num_elements)) {
     if (boundary.edit_info.propagation_steps_num[i] != BOUNDARY_STEPS_NONE) {
-      boundary.edit_info.strength_factor[i] = BKE_brush_curve_strength(
-          &brush, boundary.edit_info.propagation_steps_num[i], boundary.max_propagation_steps);
+      BMVert *vert = BM_vert_at_index(bm, i);
+      const int mask_offset = CustomData_get_offset_named(
+          &bm->vdata, CD_PROP_FLOAT, ".sculpt_mask");
+      const float mask_factor = mask_offset == -1 ? 1.0f :
+                                                    1.0f - BM_ELEM_CD_GET_FLOAT(vert, mask_offset);
+
+      boundary.edit_info.strength_factor[i] = mask_factor *
+                                              BKE_brush_curve_strength(
+                                                  &brush,
+                                                  boundary.edit_info.propagation_steps_num[i],
+                                                  boundary.max_propagation_steps);
     }
 
     if (boundary.edit_info.original_vertex_i[i] == boundary.initial_vert_i) {
@@ -3049,6 +3117,7 @@ static void init_boundary_mesh(Object &object,
   const Mesh &mesh = *static_cast<const Mesh *>(object.data);
   const bke::AttributeAccessor attributes = mesh.attributes();
   VArraySpan<bool> hide_vert = *attributes.lookup<bool>(".hide_vert", bke::AttrDomain::Point);
+  VArraySpan<float> mask = *attributes.lookup<float>(".sculpt_mask", bke::AttrDomain::Point);
 
   const Span<float3> positions_eval = BKE_pbvh_get_vert_positions(pbvh);
   const Span<float3> vert_normals = BKE_pbvh_get_vert_normals(pbvh);
@@ -3097,7 +3166,7 @@ static void init_boundary_mesh(Object &object,
         break;
     }
 
-    init_falloff(brush, ss.cache->initial_radius, *ss.cache->boundaries[symm_area]);
+    init_falloff_mesh(mask, brush, ss.cache->initial_radius, *ss.cache->boundaries[symm_area]);
   }
 }
 
@@ -3159,7 +3228,8 @@ static void init_boundary_grids(Object &object,
         break;
     }
 
-    init_falloff(brush, ss.cache->initial_radius, *ss.cache->boundaries[symm_area]);
+    init_falloff_grids(
+        subdiv_ccg, brush, ss.cache->initial_radius, *ss.cache->boundaries[symm_area]);
   }
 }
 
@@ -3216,7 +3286,7 @@ static void init_boundary_bmesh(Object &object,
         break;
     }
 
-    init_falloff(brush, ss.cache->initial_radius, *ss.cache->boundaries[symm_area]);
+    init_falloff_bmesh(bm, brush, ss.cache->initial_radius, *ss.cache->boundaries[symm_area]);
   }
 }
 
