@@ -420,52 +420,6 @@ static BooleanResult result_sort_holes(const BooleanResult &in_results,
   return result;
 }
 
-template<typename T>
-void interpolate_data_from_ab_result(const VArray<T> data_a,
-                                     const VArray<T> data_b,
-                                     const BooleanResult &result,
-                                     MutableSpan<T> dst_attr)
-{
-  for (const int i : result.verts.index_range()) {
-    const Vertex &vert = result.verts[i];
-    const VertexType &type = vert.type;
-
-    if (type == VertexType::PointA) {
-      dst_attr[i] = data_a[vert.point_id];
-    }
-    else if (type == VertexType::PointB) {
-      dst_attr[i] = data_b[vert.point_id];
-    }
-    else if (type == VertexType::Intersection) {
-      const IntersectionPoint &inter_point = result.intersections_data[vert.point_id];
-
-      const T a0 = data_a[inter_point.point_a];
-      const T a1 = data_a[(inter_point.point_a + 1) % data_a.size()];
-      const float alpha_a = inter_point.alpha_a;
-
-      const T b0 = data_b[inter_point.point_b];
-      const T b1 = data_b[(inter_point.point_b + 1) % data_b.size()];
-      const float alpha_b = inter_point.alpha_b;
-
-      dst_attr[i] = math::interpolate(
-          math::interpolate(a0, a1, alpha_a), math::interpolate(b0, b1, alpha_b), 0.5f);
-    }
-  }
-}
-
-template<typename T>
-Array<T> interpolate_data_from_ab_result(const Span<T> data_a,
-                                         const Span<T> data_b,
-                                         const BooleanResult &result)
-{
-  Array<T> data_out(result.verts.size());
-
-  interpolate_data_from_ab_result(
-      VArray<T>::ForSpan(data_a), VArray<T>::ForSpan(data_b), result, data_out.as_mutable_span());
-
-  return data_out;
-}
-
 /**
  * Utility class to avoid passing large number of parameters between functions.
  */
@@ -570,6 +524,105 @@ struct CurveBooleanExecutor {
     }
   }
 
+  BooleanResult copy_data_to_result()
+  {
+    Array<Vertex> verts_out(verts.size());
+    array_utils::copy(verts.as_span(), verts_out.as_mutable_span());
+
+    Array<int> offsets(vertex_offsets.size());
+    array_utils::copy(vertex_offsets.as_span(), offsets.as_mutable_span());
+
+    Array<IntersectionPoint> intersections_data(intersections.size());
+    for (const int i : IndexRange(intersections.size())) {
+      const ExtendedIntersectionPoint &inter = intersections[i];
+      intersections_data[i] = {inter.point_a, inter.point_b, inter.alpha_a, inter.alpha_b};
+    }
+
+    BooleanResult result;
+
+    result.verts = verts_out;
+    result.offsets = offsets;
+    result.intersections_data = intersections_data;
+    result.valid_geometry = true;
+
+    return result;
+  }
+
+  void sort_a_intersections()
+  {
+    A_inter_sorted_ids = Array<int>(num_intersects);
+    array_utils::fill_index_range<int>(A_inter_sorted_ids);
+
+    std::sort(A_inter_sorted_ids.begin(), A_inter_sorted_ids.end(), [&](int i1, int i2) {
+      return intersections[i1].point_a + intersections[i1].alpha_a <
+             intersections[i2].point_a + intersections[i2].alpha_a;
+    });
+
+    for (const int id : IndexRange(num_intersects)) {
+      intersections[A_inter_sorted_ids[id]].sorted_id_a = id;
+    }
+  }
+
+  void sort_b_intersections()
+  {
+    B_inter_sorted_ids = Array<int>(num_intersects);
+    array_utils::fill_index_range<int>(B_inter_sorted_ids);
+
+    std::sort(B_inter_sorted_ids.begin(), B_inter_sorted_ids.end(), [&](int i1, int i2) {
+      return intersections[i1].point_b + intersections[i1].alpha_b <
+             intersections[i2].point_b + intersections[i2].alpha_b;
+    });
+
+    for (const int id : IndexRange(num_intersects)) {
+      intersections[B_inter_sorted_ids[id]].sorted_id_b = id;
+    }
+  }
+
+  void set_a_directions(Span<float2> curve_a, Span<float2> curve_b, bool A_mode)
+  {
+    const bool is_a_in_b = inside(curve_a.first(), curve_b);
+
+    bool A_status = is_a_in_b ^ A_mode ? EXIT : ENTRY;
+
+    for (const int j : IndexRange(num_intersects)) {
+      intersections[A_inter_sorted_ids[j]].A_entry_exit = A_status;
+
+      A_status = !A_status;
+    }
+  }
+
+  void set_b_directions(Span<float2> curve_a, Span<float2> curve_b, bool B_mode)
+  {
+    const bool is_b_in_a = inside(curve_b.first(), curve_a);
+
+    bool B_status = is_b_in_a ^ B_mode ? EXIT : ENTRY;
+
+    for (const int j : IndexRange(num_intersects)) {
+      intersections[B_inter_sorted_ids[j]].B_entry_exit = B_status;
+
+      B_status = !B_status;
+    }
+  }
+
+  /**
+   * This is a modified implementation of the Greiner-Hormann clipping algorithm.
+   *
+   * Greiner, Günther; Kai Hormann (1998). "Efficient clipping of arbitrary polygons". ACM
+   * Transactions on Graphics. 17 (2): 71-83.
+   *
+   * The Greiner-Hormann algorithm works in three phases:
+   *  1: Find all intersections and sort them.
+   *  2: Set the `direction` of all intersection point (the paper call it `entry_exit`)
+   *  3: Create all polygons by following the direction of each intersection point until in loops.
+   *
+   * Some changes where made to use c++ style objects and so that the intersection point stored
+   * separately from the rest of the points.
+   *
+   * The original algorithm created two copies of each intersection point, one in the curve `A`
+   * and the other in curve `B`. each would be sorted and have pointer to the other.
+   * Instead we store each intersection point in an arbitrarily ordered list and then have two
+   * lists of sorted indices that point to intersection point for curve `A` and `B`
+   */
   BooleanResult execute_boolean(const InputMode input_mode,
                                 Span<float2> curve_a,
                                 Span<float2> curve_b)
@@ -597,53 +650,23 @@ struct CurveBooleanExecutor {
       }
     }
 
-    num_intersects = intersections.size();
-
-    /* ---- ---- ---- Phase Two ---- ---- ---- */
-
     if (intersections.is_empty()) {
       return non_intersecting_result(input_mode, curve_a, curve_b);
     }
 
-    A_inter_sorted_ids = Array<int>(num_intersects);
-    B_inter_sorted_ids = Array<int>(num_intersects);
+    num_intersects = intersections.size();
 
-    array_utils::fill_index_range<int>(A_inter_sorted_ids);
-    array_utils::fill_index_range<int>(B_inter_sorted_ids);
+    sort_a_intersections();
+    sort_b_intersections();
 
-    std::sort(A_inter_sorted_ids.begin(), A_inter_sorted_ids.end(), [&](int i1, int i2) {
-      return intersections[i1].point_a + intersections[i1].alpha_a <
-             intersections[i2].point_a + intersections[i2].alpha_a;
-    });
-    std::sort(B_inter_sorted_ids.begin(), B_inter_sorted_ids.end(), [&](int i1, int i2) {
-      return intersections[i1].point_b + intersections[i1].alpha_b <
-             intersections[i2].point_b + intersections[i2].alpha_b;
-    });
-
-    for (const int id : IndexRange(num_intersects)) {
-      intersections[A_inter_sorted_ids[id]].sorted_id_a = id;
-      intersections[B_inter_sorted_ids[id]].sorted_id_b = id;
-    }
-
-    /* ---- ---- ---- Phase Three ---- ---- ---- */
+    /* ---- ---- ---- Phase Two ---- ---- ---- */
 
     const auto [A_mode, B_mode] = get_AB_mode(input_mode.boolean_mode);
 
-    const bool is_a_in_b = inside(curve_a.first(), curve_b);
-    const bool is_b_in_a = inside(curve_b.first(), curve_a);
+    set_a_directions(curve_a, curve_b, A_mode);
+    set_b_directions(curve_a, curve_b, B_mode);
 
-    bool A_status = is_a_in_b ^ A_mode ? EXIT : ENTRY;
-    bool B_status = is_b_in_a ^ B_mode ? EXIT : ENTRY;
-
-    for (const int j : IndexRange(num_intersects)) {
-      intersections[A_inter_sorted_ids[j]].A_entry_exit = A_status;
-      intersections[B_inter_sorted_ids[j]].B_entry_exit = B_status;
-
-      A_status = !A_status;
-      B_status = !B_status;
-    }
-
-    /* ---- ---- ---- Phase Four ---- ---- ---- */
+    /* ---- ---- ---- Phase Three ---- ---- ---- */
 
     Array<bool> unprocessed_intersection_unsorted_ids(num_intersects, true);
     int inter_id = 0;
@@ -681,26 +704,7 @@ struct CurveBooleanExecutor {
     /* Add one for the end. */
     newPolygon();
 
-    /* ---- ---- ---- Phase Five ---- ---- ---- */
-
-    Array<Vertex> verts_out(verts.size());
-    array_utils::copy(verts.as_span(), verts_out.as_mutable_span());
-
-    Array<int> offsets(vertex_offsets.size());
-    array_utils::copy(vertex_offsets.as_span(), offsets.as_mutable_span());
-
-    Array<IntersectionPoint> intersections_data(intersections.size());
-    for (const int i : IndexRange(intersections.size())) {
-      const ExtendedIntersectionPoint &inter = intersections[i];
-      intersections_data[i] = {inter.point_a, inter.point_b, inter.alpha_a, inter.alpha_b};
-    }
-
-    BooleanResult result;
-
-    result.verts = verts_out;
-    result.offsets = offsets;
-    result.intersections_data = intersections_data;
-    result.valid_geometry = true;
+    BooleanResult result = copy_data_to_result();
 
     /**
      *  Holes are only create in the union of the shapes
@@ -844,10 +848,6 @@ struct CurveBooleanExecutor {
       }
     }
 
-    num_intersects = intersections.size();
-
-    /* ---- ---- ---- Phase Two ---- ---- ---- */
-
     if (intersections.is_empty()) {
       const bool is_a_in_b = inside(curve_a.first(), curve_b);
       if (is_a_in_b) {
@@ -858,30 +858,15 @@ struct CurveBooleanExecutor {
       }
     }
 
-    A_inter_sorted_ids = Array<int>(num_intersects);
-    array_utils::fill_index_range<int>(A_inter_sorted_ids);
-    std::sort(A_inter_sorted_ids.begin(), A_inter_sorted_ids.end(), [&](int i1, int i2) {
-      return intersections[i1].point_a + intersections[i1].alpha_a <
-             intersections[i2].point_a + intersections[i2].alpha_a;
-    });
+    num_intersects = intersections.size();
 
-    for (const int id : IndexRange(num_intersects)) {
-      intersections[A_inter_sorted_ids[id]].sorted_id_a = id;
-    }
+    sort_a_intersections();
+
+    /* ---- ---- ---- Phase Two ---- ---- ---- */
+
+    set_a_directions(curve_a, curve_b, true);
 
     /* ---- ---- ---- Phase Three ---- ---- ---- */
-
-    const bool is_a_in_b = inside(curve_a.first(), curve_b);
-
-    bool A_status = is_a_in_b ? ENTRY : EXIT;
-
-    for (const int j : IndexRange(num_intersects)) {
-      intersections[A_inter_sorted_ids[j]].A_entry_exit = A_status;
-
-      A_status = !A_status;
-    }
-
-    /* ---- ---- ---- Phase Four ---- ---- ---- */
 
     bool is_looping = false;
     if (is_a_cyclic) {
@@ -903,28 +888,7 @@ struct CurveBooleanExecutor {
     /* Add one for the end. */
     newPolygon();
 
-    /* ---- ---- ---- Phase Five ---- ---- ---- */
-
-    Array<Vertex> verts_out(verts.size());
-    array_utils::copy(verts.as_span(), verts_out.as_mutable_span());
-
-    Array<int> offsets(vertex_offsets.size());
-    array_utils::copy(vertex_offsets.as_span(), offsets.as_mutable_span());
-
-    Array<IntersectionPoint> intersections_data(intersections.size());
-    for (const int i : IndexRange(intersections.size())) {
-      const ExtendedIntersectionPoint &inter = intersections[i];
-      intersections_data[i] = {inter.point_a, inter.point_b, inter.alpha_a, inter.alpha_b};
-    }
-
-    BooleanResult result;
-
-    result.verts = verts_out;
-    result.offsets = offsets;
-    result.intersections_data = intersections_data;
-    result.valid_geometry = true;
-
-    return result;
+    return copy_data_to_result();
   }
 };
 
