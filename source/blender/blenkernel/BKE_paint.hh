@@ -478,6 +478,10 @@ struct SculptAttributePointers {
 };
 
 struct SculptTopologyIslandCache {
+  /**
+   * An ID for the island containing each geometry vertex. Will be empty if there is only a single
+   * island.
+   */
   blender::Array<uint8_t> vert_island_ids;
 };
 
