@@ -515,7 +515,7 @@ template<MicrofacetType m_type> ccl_device_inline float bsdf_D(float alpha2, flo
   }
   else {
     kernel_assert(m_type == MicrofacetType::GGX);
-    return alpha2 / (M_PI_F * sqr(1.0f + (alpha2 - 1.0f) * cos_NH2));
+    return alpha2 / (M_PI_F * sqr((1.0f - cos_NH2) + alpha2 * cos_NH2));
   }
 }
 
