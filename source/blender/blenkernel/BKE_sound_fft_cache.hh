@@ -4,9 +4,10 @@
 
 #pragma once
 
-#include <shared_mutex>
+#include <mutex>
 
 #include "BLI_array.hh"
+#include "BLI_function_ref.hh"
 #include "BLI_map.hh"
 #include "BLI_struct_equality_utils.hh"
 
@@ -17,29 +18,32 @@ void BKE_sound_fft_cache_delete(struct bSound *sound);
 
 namespace blender::bke::sound::fft_cache {
 
-struct Parameter {
-  bool downmix;
+struct FFTParameter {
+  int aligned_sample_index;
   int fft_size;
   int window;
-  int channel;
+  std::optional<int> channel;
 
-  BLI_STRUCT_EQUALITY_OPERATORS_4(Parameter, downmix, fft_size, window, channel);
+  BLI_STRUCT_EQUALITY_OPERATORS_4(FFTParameter, aligned_sample_index, fft_size, window, channel);
 
   uint64_t hash() const;
+};
+
+struct FFTResult {
+  Array<float> bins;
 };
 
 class FFTCache {
  public:
   FFTCache(int total_samples);
 
-  bool contains(const Parameter &parameter) const;
-  Span<float> get(const Parameter &parameter, int sample_index) const;
-  MutableSpan<float> upsert(const Parameter &parameter, int sample_index);
+  FFTResult *try_get_or_compute(const FFTParameter &parameter,
+                                const FunctionRef<std::unique_ptr<FFTResult>()> fn);
 
-  std::shared_mutex mutex_;
+  std::mutex mutex_;
 
  private:
-  Map<Parameter, Array<float>> map_;
+  Map<FFTParameter, std::unique_ptr<FFTResult>> map_;
   const int total_samples_;
 };
 

@@ -22,8 +22,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 {
   bSound *sound = params.get_input<bSound *>("Sound");
   if (!sound) {
-    params.set_output("Audio Channels", 0);
-    params.set_output("Sample Rate", 0);
+    params.set_default_remaining_outputs();
     return;
   }
 

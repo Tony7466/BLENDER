@@ -9946,7 +9946,7 @@ static void def_geo_string_to_curves(StructRNA *srna)
 static void def_geo_sample_sound(StructRNA *srna)
 {
   static const EnumPropertyItem rna_node_geometry_sample_sound_window[] = {
-      {GEO_NODE_SAMPLE_SOUND_WINDOW_NONE, "NONE", 0, "None", "None"},
+      {GEO_NODE_SAMPLE_SOUND_WINDOW_RECTANGULAR, "RECTANGULAR", 0, "Rectangular", "Rectangular"},
       {GEO_NODE_SAMPLE_SOUND_WINDOW_HANN, "HANN", 0, "Hann", "Hann"},
       {GEO_NODE_SAMPLE_SOUND_WINDOW_HAMMING, "HAMMING", 0, "Hamming", "Hamming"},
       {GEO_NODE_SAMPLE_SOUND_WINDOW_BLACKMAN, "BLACKMAN", 0, "Blackman", "Blackman"},
@@ -9966,20 +9966,6 @@ static void def_geo_sample_sound(StructRNA *srna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
-  static const EnumPropertyItem rna_node_geometry_sample_sound_mode[] = {
-      {GEO_NODE_SAMPLE_SOUND_MODE_FULL,
-       "FULL",
-       0,
-       "Full",
-       "Sample the whole spectrum of the sound"},
-      {GEO_NODE_SAMPLE_SOUND_MODE_RANGE,
-       "RANGE",
-       0,
-       "Range",
-       "Sample in specific range of frequency"},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
   RNA_def_struct_sdna_from(srna, "NodeGeometrySampleSound", "storage");
 
   // TODO: make tooltips more concise
@@ -9988,14 +9974,6 @@ static void def_geo_sample_sound(StructRNA *srna)
   RNA_def_property_ui_text(prop, "Downmix to Mono", "Downmix to Mono");
   RNA_def_property_boolean_sdna(prop, nullptr, "downmix", 1);
   RNA_def_property_boolean_default(prop, true);
-  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
-
-  prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
-  RNA_def_property_ui_text(prop, "Mode", "Mode");
-  RNA_def_property_enum_sdna(prop, nullptr, "mode");
-  RNA_def_property_enum_items(prop, rna_node_geometry_sample_sound_mode);
-  RNA_def_property_enum_default(prop, GEO_NODE_SAMPLE_SOUND_MODE_RANGE);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
