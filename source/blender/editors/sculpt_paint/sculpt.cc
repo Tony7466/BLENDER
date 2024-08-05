@@ -6554,6 +6554,17 @@ static SculptTopologyIslandCache calc_topology_islands_grids(const Object &objec
   AtomicDisjointSet disjoint_set(verts_num);
   threading::parallel_for(subdiv_ccg.grids.index_range(), 512, [&](const IndexRange range) {
     for (const int grid : range) {
+      SubdivCCGNeighbors neighbors;
+      for (const short y : IndexRange(key.grid_size)) {
+        for (const short x : IndexRange(key.grid_size)) {
+          const SubdivCCGCoord coord{grid, x, y};
+          SubdivCCGNeighbors neighbors;
+          BKE_subdiv_ccg_neighbor_coords_get(subdiv_ccg, coord, true, neighbors);
+          for (const SubdivCCGCoord neighbor : neighbors.coords) {
+            disjoint_set.join(coord.to_index(key), neighbor.to_index(key));
+          }
+        }
+      }
     }
   });
 
