@@ -1941,6 +1941,45 @@ static int arg_handle_image_type_set(int argc, const char **argv, void *data)
       }
       else {
         scene->r.im_format.imtype = imtype_new;
+
+        /* Ensure format configuration is valid. */
+        ImageFormatData *imf = &scene->r.im_format;
+        const char chan_flag = BKE_imtype_valid_channels(imtype_new, true) | IMA_CHAN_FLAG_BW;
+
+        /* Ensure depth and color settings match. */
+        if ((imf->planes == R_IMF_PLANES_BW) && !(chan_flag & IMA_CHAN_FLAG_BW)) {
+          imf->planes = R_IMF_PLANES_RGBA;
+        }
+        if ((imf->planes == R_IMF_PLANES_RGBA) && !(chan_flag & IMA_CHAN_FLAG_RGBA)) {
+          imf->planes = R_IMF_PLANES_RGB;
+        }
+
+        /* Ensure usable depth. */
+        {
+          const int depth_ok = BKE_imtype_valid_depths(imf->imtype);
+          if ((imf->depth & depth_ok) == 0) {
+            /* set first available depth */
+            char depth_ls[] = {
+                R_IMF_CHAN_DEPTH_32,
+                R_IMF_CHAN_DEPTH_24,
+                R_IMF_CHAN_DEPTH_16,
+                R_IMF_CHAN_DEPTH_12,
+                R_IMF_CHAN_DEPTH_10,
+                R_IMF_CHAN_DEPTH_8,
+                R_IMF_CHAN_DEPTH_1,
+                0,
+            };
+            int i;
+
+            for (i = 0; depth_ls[i]; i++) {
+              if (depth_ok & depth_ls[i]) {
+                imf->depth = depth_ls[i];
+                break;
+              }
+            }
+          }
+        }
+
         DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
       }
     }

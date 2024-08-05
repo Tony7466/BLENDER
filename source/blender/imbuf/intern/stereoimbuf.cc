@@ -699,7 +699,7 @@ int *IMB_stereo3d_from_rect(const ImageFormatData *im_format,
   int *rect_result;
   Stereo3DData s3d_data = {{nullptr}};
   size_t width, height;
-  const bool is_float = im_format->depth > 8;
+  const bool is_float = im_format->depth > R_IMF_CHAN_DEPTH_16;
 
   IMB_stereo3d_write_dimensions(
       im_format->stereo3d_format.display_mode, false, x, y, &width, &height);
@@ -732,7 +732,7 @@ float *IMB_stereo3d_from_rectf(const ImageFormatData *im_format,
   float *rectf_result;
   Stereo3DData s3d_data = {{nullptr}};
   size_t width, height;
-  const bool is_float = im_format->depth > 8;
+  const bool is_float = im_format->depth > R_IMF_CHAN_DEPTH_16;
 
   IMB_stereo3d_write_dimensions(
       im_format->stereo3d_format.display_mode, false, x, y, &width, &height);
@@ -761,7 +761,7 @@ ImBuf *IMB_stereo3d_ImBuf(const ImageFormatData *im_format, ImBuf *ibuf_left, Im
   ImBuf *ibuf_stereo = nullptr;
   Stereo3DData s3d_data = {{nullptr}};
   size_t width, height;
-  const bool is_float = im_format->depth > 8;
+  const bool is_float = im_format->depth > R_IMF_CHAN_DEPTH_16;
 
   IMB_stereo3d_write_dimensions(
       im_format->stereo3d_format.display_mode, false, ibuf_left->x, ibuf_left->y, &width, &height);
