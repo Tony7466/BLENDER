@@ -18,7 +18,7 @@ typedef enum OVERLAY_GridBits OVERLAY_GridBits;
 typedef struct OVERLAY_GridData OVERLAY_GridData;
 typedef struct ThemeColorData ThemeColorData;
 typedef struct ExtraInstanceData ExtraInstanceData;
-typedef struct PointData PointData;
+typedef struct VertexData VertexData;
 #endif
 
 /* TODO(fclem): Should eventually become OVERLAY_BackgroundType.
@@ -232,11 +232,11 @@ struct ExtraInstanceData {
 };
 BLI_STATIC_ASSERT_ALIGN(ExtraInstanceData, 16)
 
-struct PointData {
+struct VertexData {
   float4 pos_;
   float4 color_;
 };
-BLI_STATIC_ASSERT_ALIGN(PointData, 16)
+BLI_STATIC_ASSERT_ALIGN(VertexData, 16)
 
 #ifndef GPU_SHADER
 #  ifdef __cplusplus

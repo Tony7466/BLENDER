@@ -29,8 +29,7 @@ class Relations {
  public:
   void begin_sync(Resources &res)
   {
-    const float4 &relation_color = res.theme_settings.color_wire;
-    points_buf_.clear(relation_color);
+    points_buf_.clear();
     relations_buf_.clear();
   }
 
@@ -55,7 +54,7 @@ class Relations {
         if (hmd->object) {
           relations_buf_.append(hmd->object->object_to_world().location(), center, relation_color);
         }
-        points_buf_.append(center);
+        points_buf_.append(center, relation_color);
       }
     }
 
@@ -68,7 +67,7 @@ class Relations {
         if (hmd->object) {
           relations_buf_.append(hmd->object->object_to_world().location(), center, relation_color);
         }
-        points_buf_.append(center);
+        points_buf_.append(center, relation_color);
       }
     }
 
