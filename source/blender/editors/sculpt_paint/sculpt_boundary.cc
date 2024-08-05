@@ -1031,19 +1031,6 @@ BLI_NOINLINE static void filter_uninitialized_verts(const Span<int> propagation_
   }
 }
 
-static void filter_verts_outside_symmetry_area(const Span<float3> positions,
-                                               const float3 pivot,
-                                               const ePaintSymmetryFlags symm,
-                                               const MutableSpan<float> factors)
-{
-  BLI_assert(positions.size() == factors.size());
-  for (const int i : factors.index_range()) {
-    if (!SCULPT_check_vertex_pivot_symmetry(positions[i], pivot, symm)) {
-      factors[i] = 0.0f;
-    }
-  }
-}
-
 struct LocalDataMesh {
   Vector<float3> positions;
 
@@ -1116,11 +1103,11 @@ struct LocalDataBMesh {
 /** \name Bend Deformation
  * \{ */
 
-static void calc_bend_position(const Span<float3> positions,
-                               const Span<float3> pivot_positions,
-                               const Span<float3> pivot_axes,
-                               const Span<float> factors,
-                               const MutableSpan<float3> new_positions)
+BLI_NOINLINE static void calc_bend_position(const Span<float3> positions,
+                                            const Span<float3> pivot_positions,
+                                            const Span<float3> pivot_axes,
+                                            const Span<float> factors,
+                                            const MutableSpan<float3> new_positions)
 {
   BLI_assert(positions.size() == pivot_positions.size());
   BLI_assert(positions.size() == pivot_axes.size());
@@ -1420,10 +1407,10 @@ static void do_bend_brush(const Sculpt &sd,
 /** \name Slide Deformation
  * \{ */
 
-static void calc_slide_position(const Span<float3> positions,
-                                const Span<float3> directions,
-                                const Span<float> factors,
-                                const MutableSpan<float3> new_positions)
+BLI_NOINLINE static void calc_slide_position(const Span<float3> positions,
+                                             const Span<float3> directions,
+                                             const Span<float> factors,
+                                             const MutableSpan<float3> new_positions)
 {
   BLI_assert(positions.size() == directions.size());
   BLI_assert(positions.size() == factors.size());
@@ -1709,10 +1696,10 @@ static void do_slide_brush(const Sculpt &sd,
 /** \name Inflate Deformation
  * \{ */
 
-static void calc_inflate_position(const Span<float3> positions,
-                                  const Span<float3> normals,
-                                  const Span<float> factors,
-                                  const MutableSpan<float3> new_positions)
+BLI_NOINLINE static void calc_inflate_position(const Span<float3> positions,
+                                               const Span<float3> normals,
+                                               const Span<float> factors,
+                                               const MutableSpan<float3> new_positions)
 {
   BLI_assert(positions.size() == normals.size());
   BLI_assert(positions.size() == factors.size());
@@ -1983,10 +1970,10 @@ static void do_inflate_brush(const Sculpt &sd,
 /** \name Grab Deformation
  * \{ */
 
-static void calc_grab_position(const Span<float3> positions,
-                               const float3 grab_delta,
-                               const Span<float> factors,
-                               const MutableSpan<float3> new_positions)
+BLI_NOINLINE static void calc_grab_position(const Span<float3> positions,
+                                            const float3 grab_delta,
+                                            const Span<float> factors,
+                                            const MutableSpan<float3> new_positions)
 {
   BLI_assert(positions.size() == factors.size());
   BLI_assert(positions.size() == new_positions.size());
@@ -2262,11 +2249,11 @@ static void do_grab_brush(const Sculpt &sd,
 /** \name Twist Deformation
  * \{ */
 
-static void calc_twist_position(const Span<float3> positions,
-                                const float3 pivot_point,
-                                const float3 pivot_axis,
-                                const Span<float> factors,
-                                const MutableSpan<float3> new_positions)
+BLI_NOINLINE static void calc_twist_position(const Span<float3> positions,
+                                             const float3 pivot_point,
+                                             const float3 pivot_axis,
+                                             const Span<float> factors,
+                                             const MutableSpan<float3> new_positions)
 {
   BLI_assert(positions.size() == factors.size());
   BLI_assert(positions.size() == new_positions.size());
@@ -2550,10 +2537,10 @@ static void do_twist_brush(const Sculpt &sd,
 /** \name Smooth Deformation
  * \{ */
 
-static void calc_smooth_position(const Span<float3> positions,
-                                 const Span<float3> average_position,
-                                 const Span<float> factors,
-                                 const MutableSpan<float3> new_positions)
+BLI_NOINLINE static void calc_smooth_position(const Span<float3> positions,
+                                              const Span<float3> average_position,
+                                              const Span<float> factors,
+                                              const MutableSpan<float3> new_positions)
 {
   BLI_assert(positions.size() == average_position.size());
   BLI_assert(positions.size() == factors.size());
@@ -2565,13 +2552,13 @@ static void calc_smooth_position(const Span<float3> positions,
   }
 }
 
-static void calc_average_position(const Span<float3> vert_positions,
-                                  const Span<int> vert_propagation_steps,
-                                  const Span<int> verts,
-                                  const Span<Vector<int>> neighbors,
-                                  const Span<int> propagation_steps,
-                                  const MutableSpan<float> factors,
-                                  const MutableSpan<float3> average_positions)
+BLI_NOINLINE static void calc_average_position(const Span<float3> vert_positions,
+                                               const Span<int> vert_propagation_steps,
+                                               const Span<int> verts,
+                                               const Span<Vector<int>> neighbors,
+                                               const Span<int> propagation_steps,
+                                               const MutableSpan<float> factors,
+                                               const MutableSpan<float3> average_positions)
 {
   BLI_assert(vert_positions.size() == vert_propagation_steps.size());
   BLI_assert(verts.size() == neighbors.size());
@@ -2595,12 +2582,12 @@ static void calc_average_position(const Span<float3> vert_positions,
   }
 }
 
-static void calc_average_position(const SubdivCCG &subdiv_ccg,
-                                  const Span<int> vert_propagation_steps,
-                                  const Span<Vector<SubdivCCGCoord>> neighbors,
-                                  const Span<int> propagation_steps,
-                                  const MutableSpan<float> factors,
-                                  const MutableSpan<float3> average_positions)
+BLI_NOINLINE static void calc_average_position(const SubdivCCG &subdiv_ccg,
+                                               const Span<int> vert_propagation_steps,
+                                               const Span<Vector<SubdivCCGCoord>> neighbors,
+                                               const Span<int> propagation_steps,
+                                               const MutableSpan<float> factors,
+                                               const MutableSpan<float3> average_positions)
 {
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
   Span<CCGElem *> grids = subdiv_ccg.grids;
@@ -2626,11 +2613,11 @@ static void calc_average_position(const SubdivCCG &subdiv_ccg,
   }
 }
 
-static void calc_average_position(const Span<int> vert_propagation_steps,
-                                  const Span<Vector<BMVert *>> neighbors,
-                                  const Span<int> propagation_steps,
-                                  const MutableSpan<float> factors,
-                                  const MutableSpan<float3> average_positions)
+BLI_NOINLINE static void calc_average_position(const Span<int> vert_propagation_steps,
+                                               const Span<Vector<BMVert *>> neighbors,
+                                               const Span<int> propagation_steps,
+                                               const MutableSpan<float> factors,
+                                               const MutableSpan<float3> average_positions)
 {
   BLI_assert(neighbors.size() == propagation_steps.size());
   BLI_assert(neighbors.size() == factors.size());
