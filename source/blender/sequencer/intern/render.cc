@@ -1247,7 +1247,7 @@ static ImBuf *seq_render_movie_strip(const SeqRenderData *context,
                              (context->scene->r.scemode & R_MULTIVIEW) != 0 &&
                              std::min(anim_count, totfiles + 1) == totfiles;
 
-  if (anims.is_empty() == 0) {
+  if (anims.is_empty()) {
     return nullptr;
   }
 
