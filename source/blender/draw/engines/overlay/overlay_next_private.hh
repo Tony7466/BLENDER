@@ -145,6 +145,7 @@ class ShaderModule {
   ShaderPtr extra_shape;
   ShaderPtr extra_wire_object;
   ShaderPtr extra_wire;
+  ShaderPtr extra_loose_points;
   ShaderPtr extra_ground_line;
   ShaderPtr lattice_points;
   ShaderPtr lattice_wire;
@@ -301,32 +302,80 @@ template<typename InstanceDataT> struct ShapeInstanceBuf : private select::Selec
   }
 };
 
-struct LineInstanceBuf : private select::SelectBuf {
+struct PointInstanceBuf {
+ private:
+  select::SelectBuf select_buf;
+  StorageVectorBuffer<float4> data_buf;
+  float4 ucolor;
 
+ public:
+  PointInstanceBuf(const SelectionType selection_type, const char *name = nullptr)
+      : select_buf(selection_type), data_buf(name){};
+
+  void clear(const float4 &ucolor)
+  {
+    select_buf.select_clear();
+    data_buf.clear();
+    this->ucolor = ucolor;
+  }
+
+  void append(const float3 &position)
+  {
+    data_buf.append(float4(position));
+  }
+
+  void append(const float3 &position, select::ID select_id)
+  {
+    select_buf.select_append(select_id);
+    append(position);
+  }
+
+  void end_sync(PassSimple::Sub &pass)
+  {
+    if (data_buf.is_empty()) {
+      return;
+    }
+    select_buf.select_bind(pass);
+    data_buf.push_update();
+    pass.bind_ssbo("data_buf", &data_buf);
+    pass.push_constant("ucolor", ucolor);
+    pass.draw_procedural(GPU_PRIM_POINTS, 1, data_buf.size());
+  }
+};
+
+struct LineInstanceBuf {
+ private:
+  select::SelectBuf select_buf;
   StorageVectorBuffer<PointData> data_buf;
   int color_id = 0;
 
+ public:
   LineInstanceBuf(const SelectionType selection_type, const char *name = nullptr)
-      : select::SelectBuf(selection_type), data_buf(name){};
+      : select_buf(selection_type), data_buf(name){};
 
   void clear()
   {
-    this->select_clear();
+    select_buf.select_clear();
     data_buf.clear();
     color_id = 0;
   }
 
-  void append(const float3 &start, const float3 &end, const float4 &color, select::ID select_id)
+  void append(const float3 &start, const float3 &end, const float4 &color)
   {
-    this->select_append(select_id);
     data_buf.append({float4{start}, color});
     data_buf.append({float4{end}, color});
+  }
+
+  void append(const float3 &start, const float3 &end, const float4 &color, select::ID select_id)
+  {
+    select_buf.select_append(select_id);
+    append(start, end, color);
   }
 
   void append(const float3 &start, const float3 &end, const int color_id, select::ID select_id)
   {
     this->color_id = color_id;
-    this->select_append(select_id);
+    select_buf.select_append(select_id);
     data_buf.append({float4{start}, float4{}});
     data_buf.append({float4{end}, float4{}});
   }
@@ -336,7 +385,7 @@ struct LineInstanceBuf : private select::SelectBuf {
     if (data_buf.is_empty()) {
       return;
     }
-    this->select_bind(pass);
+    select_buf.select_bind(pass);
     data_buf.push_update();
     pass.bind_ssbo("data_buf", &data_buf);
     pass.push_constant("colorid", color_id);

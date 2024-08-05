@@ -104,6 +104,15 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
             "draw_view", "draw_modelmat_new", "draw_resource_handle_new", "draw_globals");
       });
 
+  extra_loose_points = selectable_shader(
+      "overlay_extra_loose_point", [](gpu::shader::ShaderCreateInfo &info) {
+        info.storage_buf(0, Qualifier::READ, "vec4", "data_buf[]");
+        info.define("pos", "data_buf[gl_VertexID].xyz");
+        info.vertex_inputs_.pop_last();
+        info.additional_infos_.clear();
+        info.additional_info("draw_view", "draw_modelmat_new", "draw_globals");
+      });
+
   lattice_points = selectable_shader(
       "overlay_edit_lattice_point", [](gpu::shader::ShaderCreateInfo &info) {
         info.additional_infos_.clear();
