@@ -122,7 +122,6 @@ void CurveFromGeometry::create_nurbs(Curve *curve)
   BKE_nurb_points_add(nurb, tot_vert);
   nurb->pntsu = nurbs_geometry.u.parms.size() - nurb->orderu;
   nurb->pntsv = std::max(int(nurbs_geometry.v.parms.size() - nurb->orderv), 1);
-  BLI_assert(tot_vert == nurb->pntsu * nurb->pntsv);
 
   for (int i = 0; i < tot_vert; i++) {
     BPoint &bpoint = nurb->bp[i];
