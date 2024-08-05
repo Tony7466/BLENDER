@@ -49,6 +49,7 @@
 
 extern "C" char datatoc_common_subdiv_custom_data_interp_comp_glsl[];
 extern "C" char datatoc_common_subdiv_ibo_lines_comp_glsl[];
+extern "C" char datatoc_common_subdiv_ibo_lines_loose_comp_glsl[];
 extern "C" char datatoc_common_subdiv_ibo_tris_comp_glsl[];
 extern "C" char datatoc_common_subdiv_lib_glsl[];
 extern "C" char datatoc_common_subdiv_normals_accumulate_comp_glsl[];
@@ -97,9 +98,11 @@ static GPUShader
 static const char *get_shader_code(int shader_type)
 {
   switch (shader_type) {
-    case SHADER_BUFFER_LINES:
-    case SHADER_BUFFER_LINES_LOOSE: {
+    case SHADER_BUFFER_LINES: {
       return datatoc_common_subdiv_ibo_lines_comp_glsl;
+    }
+    case SHADER_BUFFER_LINES_LOOSE: {
+      return datatoc_common_subdiv_ibo_lines_loose_comp_glsl;
     }
     case SHADER_BUFFER_EDGE_FAC: {
       return datatoc_common_subdiv_vbo_edge_fac_comp_glsl;
@@ -294,9 +297,6 @@ static GPUShader *get_subdiv_shader(int shader_type)
       defines =
           "#define SUBDIV_POLYGON_OFFSET\n"
           "#define SINGLE_MATERIAL\n";
-    }
-    else if (shader_type == SHADER_BUFFER_LINES_LOOSE) {
-      defines = "#define LINES_LOOSE\n";
     }
     else if (shader_type == SHADER_BUFFER_EDGE_FAC) {
       /* No separate shader for the AMD driver case as we assume that the GPU will not change
@@ -1869,8 +1869,8 @@ void draw_subdiv_build_lines_loose_buffer(const DRWSubdivCache &cache,
   GPUShader *shader = get_subdiv_shader(SHADER_BUFFER_LINES_LOOSE);
   GPU_shader_bind(shader);
 
-  GPU_indexbuf_bind_as_ssbo(lines_indices, 3);
-  GPU_vertbuf_bind_as_ssbo(lines_flags, 4);
+  GPU_indexbuf_bind_as_ssbo(lines_indices, 1);
+  GPU_vertbuf_bind_as_ssbo(lines_flags, 2);
 
   drw_subdiv_compute_dispatch(cache, shader, 0, 0, num_loose_edges, false, edge_loose_offset);
 

@@ -560,6 +560,7 @@ set(GLSL_SRC
   intern/shaders/common_shape_lib.glsl
   intern/shaders/common_subdiv_custom_data_interp_comp.glsl
   intern/shaders/common_subdiv_ibo_lines_comp.glsl
+  intern/shaders/common_subdiv_ibo_lines_loose_comp.glsl
   intern/shaders/common_subdiv_ibo_tris_comp.glsl
   intern/shaders/common_subdiv_lib.glsl
   intern/shaders/common_subdiv_normals_accumulate_comp.glsl
