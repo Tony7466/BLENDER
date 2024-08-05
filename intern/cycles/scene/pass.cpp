@@ -6,6 +6,7 @@
 
 #include "util/algorithm.h"
 #include "util/log.h"
+#include "util/time.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -89,6 +90,7 @@ const NodeEnum *Pass::get_type_enum()
     pass_type_enum.insert("denoising_albedo", PASS_DENOISING_ALBEDO);
     pass_type_enum.insert("denoising_depth", PASS_DENOISING_DEPTH);
     pass_type_enum.insert("denoising_previous", PASS_DENOISING_PREVIOUS);
+    pass_type_enum.insert("render_time", PASS_RENDER_TIME);
 
     pass_type_enum.insert("shadow_catcher", PASS_SHADOW_CATCHER);
     pass_type_enum.insert("shadow_catcher_sample_count", PASS_SHADOW_CATCHER_SAMPLE_COUNT);
@@ -319,6 +321,11 @@ PassInfo Pass::get_info(const PassType type, const bool include_albedo, const bo
     case PASS_SAMPLE_COUNT:
       pass_info.num_components = 1;
       pass_info.use_exposure = false;
+      break;
+    case PASS_RENDER_TIME:
+      pass_info.num_components = 1;
+      pass_info.use_exposure = false;
+      pass_info.scale = 10000.0f / float(time_fast_frequency());
       break;
 
     case PASS_AOV_COLOR:
