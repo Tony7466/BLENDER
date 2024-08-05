@@ -1,1 +1,1 @@
-Referenced by issue #125879, Instances (od suzzan) cause blender so slow down while saving the file, and even to crash.
+Referenced by issue #125879, Regression: Instances cause blender so slow down while saving the file or crash.
