@@ -1210,7 +1210,7 @@ void OptiXDevice::build_bvh(BVH *bvh, Progress &progress, bool refit)
 
 #  if OPTIX_ABI_VERSION >= 55
         if (hair->curve_shape == CURVE_THICK) {
-          for (size_t curve_index = 0, segment_index = 0, vertex_index = 0;
+          for (size_t curve_index = 0, segment_index = 0, vertex_index = step * num_vertices;
                curve_index < hair->num_curves();
                ++curve_index)
           {
@@ -1226,7 +1226,9 @@ void OptiXDevice::build_bvh(BVH *bvh, Progress &progress, bool refit)
             }
 
             for (int k = 0; k < curve.num_segments(); ++k) {
-              index_data[segment_index++] = vertex_index - 1;
+              if (step == 0) {
+                index_data[segment_index++] = vertex_index - 1;
+              }
               vertex_data[vertex_index++] = make_float4(keys[first_key_index + k].x,
                                                         keys[first_key_index + k].y,
                                                         keys[first_key_index + k].z,
