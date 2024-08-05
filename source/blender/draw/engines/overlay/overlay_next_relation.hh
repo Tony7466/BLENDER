@@ -23,11 +23,11 @@ class Relations {
  private:
   PassSimple ps_ = {"Relations"};
 
-  LineInstanceBuf relations_buf_ = {SelectionType::DISABLED, "relations_buf_"};
-  PointInstanceBuf points_buf_ = {SelectionType::DISABLED, "points_buf_"};
+  LinePrimitiveBuf relations_buf_ = {SelectionType::DISABLED, "relations_buf_"};
+  PointPrimitiveBuf points_buf_ = {SelectionType::DISABLED, "points_buf_"};
 
  public:
-  void begin_sync(Resources &res)
+  void begin_sync()
   {
     points_buf_.clear();
     relations_buf_.clear();

@@ -302,13 +302,13 @@ template<typename InstanceDataT> struct ShapeInstanceBuf : private select::Selec
   }
 };
 
-struct VertexInstanceBuf {
+struct VertexPrimitiveBuf {
  protected:
   select::SelectBuf select_buf;
   StorageVectorBuffer<VertexData> data_buf;
   int color_id = 0;
 
-  VertexInstanceBuf(const SelectionType selection_type, const char *name = nullptr)
+  VertexPrimitiveBuf(const SelectionType selection_type, const char *name = nullptr)
       : select_buf(selection_type), data_buf(name){};
 
   void append(const float3 &position, const float4 &color)
@@ -337,17 +337,17 @@ struct VertexInstanceBuf {
   }
 };
 
-struct PointInstanceBuf : public VertexInstanceBuf {
+struct PointPrimitiveBuf : public VertexPrimitiveBuf {
 
  public:
-  PointInstanceBuf(const SelectionType selection_type, const char *name = nullptr)
-      : VertexInstanceBuf(selection_type, name)
+  PointPrimitiveBuf(const SelectionType selection_type, const char *name = nullptr)
+      : VertexPrimitiveBuf(selection_type, name)
   {
   }
 
   void append(const float3 &position, const float4 &color)
   {
-    VertexInstanceBuf::append(position, color);
+    VertexPrimitiveBuf::append(position, color);
   }
 
   void append(const float3 &position, const float4 &color, select::ID select_id)
@@ -364,22 +364,22 @@ struct PointInstanceBuf : public VertexInstanceBuf {
 
   void end_sync(PassSimple::Sub &pass)
   {
-    VertexInstanceBuf::end_sync(pass, GPU_PRIM_POINTS);
+    VertexPrimitiveBuf::end_sync(pass, GPU_PRIM_POINTS);
   }
 };
 
-struct LineInstanceBuf : public VertexInstanceBuf {
+struct LinePrimitiveBuf : public VertexPrimitiveBuf {
 
  public:
-  LineInstanceBuf(const SelectionType selection_type, const char *name = nullptr)
-      : VertexInstanceBuf(selection_type, name)
+  LinePrimitiveBuf(const SelectionType selection_type, const char *name = nullptr)
+      : VertexPrimitiveBuf(selection_type, name)
   {
   }
 
   void append(const float3 &start, const float3 &end, const float4 &color)
   {
-    VertexInstanceBuf::append(start, color);
-    VertexInstanceBuf::append(end, color);
+    VertexPrimitiveBuf::append(start, color);
+    VertexPrimitiveBuf::append(end, color);
   }
 
   void append(const float3 &start, const float3 &end, const float4 &color, select::ID select_id)
@@ -396,7 +396,7 @@ struct LineInstanceBuf : public VertexInstanceBuf {
 
   void end_sync(PassSimple::Sub &pass)
   {
-    VertexInstanceBuf::end_sync(pass, GPU_PRIM_LINES);
+    VertexPrimitiveBuf::end_sync(pass, GPU_PRIM_LINES);
   }
 };
 

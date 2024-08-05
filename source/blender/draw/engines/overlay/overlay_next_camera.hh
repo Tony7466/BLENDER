@@ -81,8 +81,8 @@ class Cameras {
     CameraInstanceBuf volume_buf = {selection_type_, "camera_volume_buf"};
     CameraInstanceBuf volume_wire_buf = {selection_type_, "camera_volume_wire_buf"};
     CameraInstanceBuf sphere_solid_buf = {selection_type_, "camera_sphere_solid_buf"};
-    LineInstanceBuf stereo_connect_lines = {selection_type_, "camera_dashed_lines_buf"};
-    LineInstanceBuf tracking_path = {selection_type_, "camera_tracking_path_buf"};
+    LinePrimitiveBuf stereo_connect_lines = {selection_type_, "camera_dashed_lines_buf"};
+    LinePrimitiveBuf tracking_path = {selection_type_, "camera_tracking_path_buf"};
     Empties::CallBuffers empties{selection_type_};
   } call_buffers_;
 
