@@ -785,9 +785,15 @@ void find_curve_segments(const bke::CurvesGeometry &curves,
                          const Curves2DBVHTree &tree_data,
                          Array<int> &r_curve_starts,
                          Array<int> &r_segments_by_curve,
-                         Array<int> &r_points_by_segment,
+                         Array<int> &r_segment_sizes,
                          std::optional<Array<float>> r_segment_start_factors,
                          std::optional<Array<float>> r_segment_end_factors);
+
+bool update_segment_selection(bke::CurvesGeometry &curves,
+                              const IndexMask &changed_point_mask,
+                              const Curves2DBVHTree &tree_data,
+                              const IndexRange tree_data_range,
+                              const eSelectOp sel_op);
 
 namespace cutter {
 bke::CurvesGeometry trim_curve_segments(const bke::CurvesGeometry &src,

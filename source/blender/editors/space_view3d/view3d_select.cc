@@ -5212,8 +5212,6 @@ static bool grease_pencil_circle_select(const ViewContext *vc,
       /* Range of points in tree data matching this curve, for re-using screen space positions.
        */
       tree_data_range = tree_data_range.after(curves.points_num());
-      const Span<float2> screen_space_positions = tree_data.start_positions.as_span().slice(
-          tree_data_range);
 
       /* Create curve masks for added and removed points to limit intersection tests.
        * Note: this cannot be constructed as a difference of before/after curve selection,
@@ -5232,79 +5230,8 @@ static bool grease_pencil_circle_select(const ViewContext *vc,
                                                                           rad,
                                                                           memory);
 
-      const IndexMask changed_curve_mask = ed::curves::curve_mask_from_points(
-          curves, changed_point_mask, GrainSize(512), memory);
-
-      if (!changed_curve_mask.is_empty()) {
-        changed = true;
-
-        Array<int> curve_starts;
-        Array<int> segment_offsets;
-        Array<int> point_offsets;
-        ed::greasepencil::find_curve_segments(curves,
-                                              changed_curve_mask,
-                                              screen_space_positions,
-                                              tree_data,
-                                              curve_starts,
-                                              segment_offsets,
-                                              point_offsets,
-                                              std::nullopt,
-                                              std::nullopt);
-
-        const OffsetIndices<int> segments_by_curve = OffsetIndices<int>(segment_offsets);
-        const OffsetIndices<int> points_by_segment = OffsetIndices<int>(point_offsets);
-        Vector<bke::GSpanAttributeWriter> attribute_writers;
-        const eCustomDataType create_type = CD_PROP_BOOL;
-        const Span<StringRef> selection_attribute_names =
-            ed::curves::get_curves_selection_attribute_names(curves);
-        for (const int i : selection_attribute_names.index_range()) {
-          attribute_writers.append(ed::curves::ensure_selection_attribute(
-              curves, selection_domain, create_type, selection_attribute_names[i]));
-        };
-
-        /* Find all segments that have changed points and fill them. */
-        threading::parallel_for(segments_by_curve.index_range(), 256, [&](const IndexRange range) {
-          for (const int i_curve : range) {
-            const IndexRange segments = segments_by_curve[i_curve];
-            for (const int i_segment : points_by_segment.index_range().slice(segments)) {
-              const IndexRange points = points_by_segment[i_segment];
-              /* Test if anything was changed. */
-              if (changed_curve_mask.slice_content(points).is_empty()) {
-                continue;
-              }
-              for (auto &attribute_writer : attribute_writers) {
-                for (const int i_point : points) {
-                  ed::curves::apply_selection_operation_at_index(
-                      attribute_writer.span, i_point, sel_op);
-                }
-              }
-            }
-          }
-        });
-
-        for (auto &attribute_writer : attribute_writers) {
-          attribute_writer.finish();
-        }
-
-        {
-          std::cout << "Curves: " << std::endl;
-          for (const int i_curve : segments_by_curve.index_range()) {
-            const IndexRange segments = OffsetIndices<int>(segments_by_curve)[i_curve];
-            std::cout << "  Curve " << i_curve << " segments ";
-            if (segments.is_empty()) {
-              std::cout << "empty" << std::endl;
-            }
-            else {
-              std::cout << segments << std::endl;
-            }
-            for (const int i_seg : points_by_segment.index_range().slice(segments)) {
-              const IndexRange points = OffsetIndices<int>(points_by_segment)[i_seg];
-              std::cout << "    Segment " << i_seg << " points " << points << std::endl;
-            }
-          }
-          std::cout << std::endl;
-        }
-      }
+      changed |= ed::greasepencil::update_segment_selection(
+          curves, changed_point_mask, tree_data, tree_data_range, sel_op);
     }
   }
   else {

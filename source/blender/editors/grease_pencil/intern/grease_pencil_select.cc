@@ -6,6 +6,7 @@
  * \ingroup edgreasepencil
  */
 
+#include "BKE_curves.hh"
 #include "BLI_vector_set.hh"
 
 #include "BKE_attribute.hh"
@@ -27,28 +28,124 @@
 
 #include "WM_api.hh"
 
+#include <iostream>
+
 namespace blender::ed::greasepencil {
 
-bool update_segment_selection(const ViewContext &vc,
-                              bke::CurvesGeometry &curves,
-                              const bke::crazyspace::GeometryDeformation &deformation,
-                              const float4x4 &projection,
-                              const IndexMask &mask,
+bool update_segment_selection(bke::CurvesGeometry &curves,
+                              const IndexMask &changed_point_mask,
+                              const Curves2DBVHTree &tree_data,
+                              const IndexRange tree_data_range,
                               const eSelectOp sel_op)
 {
-  Array<float2> screen_space_positions(deformation.positions.size());
-  mask.foreach_index(GrainSize(4096), [&](const int point_i) {
-    screen_space_positions[point_i] = ED_view3d_project_float_v2_m4(
-        vc.region, deformation.positions[point_i], projection);
+
+  if (changed_point_mask.is_empty()) {
+    return false;
+  }
+
+  IndexMaskMemory memory;
+  const IndexMask changed_curve_mask = ed::curves::curve_mask_from_points(
+      curves, changed_point_mask, GrainSize(512), memory);
+
+  std::cout << "Changed points: ";
+  changed_point_mask.foreach_index([&](const int index) { std::cout << index << ", "; });
+  std::cout << std::endl;
+  std::cout << "Changed curves: ";
+  changed_curve_mask.foreach_index([&](const int index) { std::cout << index << ", "; });
+  std::cout << std::endl;
+
+  const OffsetIndices points_by_curve = curves.points_by_curve();
+  const Span<float2> screen_space_positions = tree_data.start_positions.as_span().slice(
+      tree_data_range);
+
+  Array<int> curve_starts;
+  Array<int> segment_offsets;
+  Array<int> segment_sizes;
+  ed::greasepencil::find_curve_segments(curves,
+                                        changed_curve_mask,
+                                        screen_space_positions,
+                                        tree_data,
+                                        curve_starts,
+                                        segment_offsets,
+                                        segment_sizes,
+                                        std::nullopt,
+                                        std::nullopt);
+
+  const OffsetIndices<int> segments_by_curve = OffsetIndices<int>(segment_offsets);
+  Vector<bke::GSpanAttributeWriter> attribute_writers;
+  const eCustomDataType create_type = CD_PROP_BOOL;
+  const Span<StringRef> selection_attribute_names =
+      ed::curves::get_curves_selection_attribute_names(curves);
+  for (const int i : selection_attribute_names.index_range()) {
+    attribute_writers.append(ed::curves::ensure_selection_attribute(
+        curves, bke::AttrDomain::Point, create_type, selection_attribute_names[i]));
+  };
+
+  /* Find all segments that have changed points and fill them. */
+  threading::parallel_for(segments_by_curve.index_range(), 256, [&](const IndexRange range) {
+    for (const int i_curve : range) {
+      const IndexRange points = points_by_curve[i_curve];
+      const IndexRange segments = segments_by_curve[i_curve];
+      int segment_start = curve_starts[i_curve];
+      for (const int i_segment : segment_sizes.index_range().slice(segments)) {
+        const IndexRange segment_points = IndexRange::from_begin_size(segment_start,
+                                                                      segment_sizes[i_segment]);
+        /* Test if anything was changed. */
+        {
+          const IndexMask changed_segment_points = changed_point_mask.slice_content(
+              segment_points);
+          std::cout << "Segment " << i_segment << " points " << segment_points
+                    << ", changed segment points: ";
+          changed_segment_points.foreach_index(
+              [&](const int index) { std::cout << index << ", "; });
+          std::cout << std::endl;
+        }
+        if (!changed_point_mask.slice_content(segment_points).is_empty()) {
+          for (auto &attribute_writer : attribute_writers) {
+            for (const int i_seg_point : segment_points) {
+              /* Note: segment range can extend outside the curve points, in case of a cyclic curve
+               * getting split. The point index must wrap around the curve points range. */
+              const int i_point = (i_seg_point - points.start()) % points.size() + points.start();
+              std::cout << "select " << i_point << std::endl;
+              ed::curves::apply_selection_operation_at_index(
+                  attribute_writer.span, i_point, sel_op);
+            }
+          }
+        }
+
+        segment_start = segment_points.one_after_last();
+      }
+    }
   });
 
-  // Array<bool> hits(curves.points_num());
-  // find_curve_intersections(
-  //     curves, screen_space_positions, mask, mask, hits, std::nullopt, std::nullopt);
-  // Array<IndexRange> segment_ranges;
-  //  find_curve_segments(curves, screen_space_positions, mask, mask,segment_ranges);
+  for (auto &attribute_writer : attribute_writers) {
+    attribute_writer.finish();
+  }
 
-  return false;
+  {
+    std::cout << "Curves: " << std::endl;
+    for (const int i_curve : segments_by_curve.index_range()) {
+      const IndexRange points = points_by_curve[i_curve];
+      const IndexRange segments = OffsetIndices<int>(segments_by_curve)[i_curve];
+      std::cout << "  Curve " << i_curve << " segments ";
+      if (segments.is_empty()) {
+        std::cout << "empty" << std::endl;
+      }
+      else {
+        std::cout << segments << std::endl;
+      }
+      int segment_start = curve_starts[i_curve];
+      for (const int i_seg : segment_sizes.index_range().slice(segments)) {
+        const IndexRange segment_points = IndexRange::from_begin_size(segment_start,
+                                                                      segment_sizes[i_seg]);
+        std::cout << "    Segment " << i_seg << " points " << segment_points << std::endl;
+        segment_start = segment_points.one_after_last();
+      }
+    }
+    std::cout << std::endl;
+  }
+
+  return true;
 }
 
 static int select_all_exec(bContext *C, wmOperator *op)

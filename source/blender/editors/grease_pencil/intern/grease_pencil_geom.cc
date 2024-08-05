@@ -1508,7 +1508,8 @@ void find_curve_intersections(const bke::CurvesGeometry &curves,
   });
 }
 
-static int index_in_cyclic_range(const IndexRange range, int index) {
+static int index_in_cyclic_range(const IndexRange range, int index)
+{
   return (index - range.first()) % range.size() + range.first();
 }
 
@@ -1518,7 +1519,7 @@ void find_curve_segments(const bke::CurvesGeometry &curves,
                          const Curves2DBVHTree &tree_data,
                          Array<int> &r_curve_starts,
                          Array<int> &r_segments_by_curve,
-                         Array<int> &r_points_by_segment,
+                         Array<int> &r_segment_sizes,
                          std::optional<Array<float>> r_segment_start_factors,
                          std::optional<Array<float>> r_segment_end_factors)
 {
@@ -1564,7 +1565,7 @@ void find_curve_segments(const bke::CurvesGeometry &curves,
       r_segments_by_curve);
 
   const int num_segments = segments_by_curve.total_size();
-  r_points_by_segment.reinitialize(num_segments + 1);
+  r_segment_sizes.reinitialize(num_segments);
   if (r_segment_start_factors) {
     r_segment_start_factors->reinitialize(num_segments);
   }
@@ -1590,14 +1591,14 @@ void find_curve_segments(const bke::CurvesGeometry &curves,
     curve_hit_mask.foreach_index([&](const int i_point, const int i_hit) {
       const int i_segment = segments[i_hit];
       if (i_prev_point == i_point) {
-        r_points_by_segment[i_segment] = (is_cyclic ? points.size() : 0);
+        r_segment_sizes[i_segment] = (is_cyclic ? points.size() : 0);
       }
       /* Account for negative range for the first segment. */
       else if (i_point < i_prev_point) {
-        r_points_by_segment[i_segment] = points.size() + 1 + i_point - i_prev_point;
+        r_segment_sizes[i_segment] = points.size() + 1 + i_point - i_prev_point;
       }
       else {
-        r_points_by_segment[i_segment] = 1 + i_point - i_prev_point;
+        r_segment_sizes[i_segment] = 1 + i_point - i_prev_point;
       }
       if (r_segment_start_factors) {
         (*r_segment_start_factors)[i_segment] = last_hit_factors[i_prev_point];
@@ -1610,7 +1611,7 @@ void find_curve_segments(const bke::CurvesGeometry &curves,
     /* One last segment to the curve end. */
     if (!is_cyclic) {
       const int i_segment = segments[curve_hit_mask.size()];
-      r_points_by_segment[i_segment] = points.last() - i_prev_point;
+      r_segment_sizes[i_segment] = points.last() - i_prev_point;
       if (r_segment_start_factors) {
         (*r_segment_start_factors)[i_segment] = last_hit_factors[i_prev_point];
       }
@@ -1618,9 +1619,7 @@ void find_curve_segments(const bke::CurvesGeometry &curves,
         (*r_segment_end_factors)[i_segment] = 0.0f;
       }
     }
-    r_points_by_segment.last() = 0;
   });
-  offset_indices::accumulate_counts_to_offsets(r_points_by_segment);
 }
 
 }  // namespace blender::ed::greasepencil
