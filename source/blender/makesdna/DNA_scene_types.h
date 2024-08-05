@@ -922,7 +922,6 @@ typedef struct Paint_Runtime {
 
 typedef struct PaintToolSlot {
   struct AssetWeakReference *brush_asset_reference;
-  // struct Brush *brush;
 } PaintToolSlot;
 
 /** Paint Tool Base. */
@@ -973,15 +972,6 @@ typedef struct Paint {
 
   struct Paint_Runtime runtime;
 } Paint;
-
-typedef struct BrushLink {
-  struct BrushLink *next, *prev;
-
-  const char *brush_type_name;
-
-  struct Brush *brush;
-  struct AssetWeakReference *brush_asset_reference;
-} BrushLink;
 
 /** \} */
 
@@ -1139,10 +1129,6 @@ typedef struct UvSculpt {
 /** Grease pencil drawing brushes. */
 typedef struct GpPaint {
   Paint paint;
-
-  ListBase brush_assets_for_type; /* #BrushLink */
-  struct AssetWeakReference *restore_brush_asset_reference;
-
   int flag;
   /** Mode of paint (Materials or Vertex Color). */
   int mode;
