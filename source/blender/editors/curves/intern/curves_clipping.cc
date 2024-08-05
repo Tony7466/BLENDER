@@ -8,11 +8,13 @@
 
 #include "BKE_curves.hh"
 #include "BKE_geometry_set.hh"
+#include "BKE_polygon_clipping_2d.hh"
 
 #include "BLI_array.hh"
 #include "BLI_array_utils.hh"
 #include "BLI_math_geom.h"
 #include "BLI_math_vector_types.hh"
+#include "BLI_polygon_clipping_2d.hh"
 #include "BLI_vector.hh"
 
 #include "DNA_grease_pencil_types.h"
@@ -21,8 +23,6 @@
 #include "ED_view3d.hh"
 
 #include "GEO_join_geometries.hh"
-
-#include "BLI_polygon_clipping_2d.hh"
 
 #include <algorithm>
 
@@ -215,35 +215,35 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
         keep_caps, is_fill, reproject, bke::AttrDomain::Point);
 
     /* Copy/Interpolate point attributes. */
-    src_attributes.for_all(
-        [&](const bke::AttributeIDRef &id, const bke::AttributeMetaData meta_data) {
-          if (meta_data.domain != bke::AttrDomain::Point) {
-            return true;
-          }
-          if (point_skip.contains(id.name())) {
-            return true;
-          }
+    src_attributes.for_all([&](const bke::AttributeIDRef &id,
+                               const bke::AttributeMetaData meta_data) {
+      if (meta_data.domain != bke::AttrDomain::Point) {
+        return true;
+      }
+      if (point_skip.contains(id.name())) {
+        return true;
+      }
 
-          GVArray src1 = (*src_attributes.lookup(id, meta_data.domain)).slice(points);
-          bke::GSpanAttributeWriter dstW = dst_attributes.lookup_or_add_for_write_only_span(
-              id, meta_data.domain, meta_data.data_type);
+      GVArray src1 = (*src_attributes.lookup(id, meta_data.domain)).slice(points);
+      bke::GSpanAttributeWriter dstW = dst_attributes.lookup_or_add_for_write_only_span(
+          id, meta_data.domain, meta_data.data_type);
 
-          bke::attribute_math::convert_to_static_type(dstW.span.type(), [&](auto dummy) {
-            using T = decltype(dummy);
-            VArray<T> src1_attr = src1.typed<T>();
-            MutableSpan<T> dst_attr = (dstW.span.typed<T>());
+      bke::attribute_math::convert_to_static_type(dstW.span.type(), [&](auto dummy) {
+        using T = decltype(dummy);
+        VArray<T> src1_attr = src1.typed<T>();
+        MutableSpan<T> dst_attr = (dstW.span.typed<T>());
 
-            polygonboolean::interpolate_data_from_a_result<T>(src1_attr, result, dst_attr);
+        bke::polygonboolean::interpolate_attribute_from_a_result<T>(src1_attr, result, dst_attr);
 
-            dstW.finish();
-          });
+        dstW.finish();
+      });
 
-          return true;
-        });
+      return true;
+    });
 
     if (reproject) {
       MutableSpan<float3> positions = dst.positions_for_write();
-      const Array<float2> pos2d = polygonboolean::interpolate_data_from_ab_result<float2>(
+      const Array<float2> pos2d = polygonboolean::interpolate_position_ab(
           pos_2d_a, pos_2d_b, result);
 
       const float4 &plane = transform_plane(layer_to_world, normal_planes[curve_i]);
