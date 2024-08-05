@@ -34,6 +34,7 @@ def generate_from_enum_ex(
         icon_prefix,
         type,
         attr,
+        options,
         cursor='DEFAULT',
         tooldef_keywords=None,
         icon_map=None,
@@ -76,6 +77,7 @@ def generate_from_enum_ex(
                     icon=icon,
                     cursor=cursor,
                     data_block=idname,
+                    options=options,
                     **tooldef_keywords,
                 ),
             ),
@@ -1391,30 +1393,11 @@ class _defs_particle:
             icon_prefix="brush.particle.",
             type=bpy.types.ParticleEdit,
             attr="tool",
+            options={'USES_BRUSHES'}
         )
 
 
 class _defs_sculpt:
-
-    @staticmethod
-    def generate_from_brushes(context):
-        # Though `data_block` is conceptually unnecessary with a single brush tool,
-        # it's still used because many areas assume that brush tools have it set #bToolRef.
-        tool = None
-        if context:
-            brush = context.tool_settings.sculpt.brush
-            if brush:
-                tool = brush.sculpt_tool
-        return [
-            ToolDef.from_dict(
-                dict(
-                    idname="builtin.brush",
-                    label="Brush",
-                    icon="brush.sculpt.paint",
-                    data_block=tool
-                )
-            )
-        ]
 
     @staticmethod
     def draw_lasso_stroke_settings(layout, props, draw_inline, draw_popover):
@@ -1870,26 +1853,6 @@ class _defs_vertex_paint:
                 (ob.data.use_paint_mask or
                  ob.data.use_paint_mask_vertex))
 
-    @staticmethod
-    def generate_from_brushes(context):
-        # Though `data_block` is conceptually unnecessary with a single brush tool,
-        # it's still used because many areas assume that brush tools have it set #bToolRef.
-        tool = None
-        if context:
-            brush = context.tool_settings.vertex_paint.brush
-            if brush:
-                tool = brush.vertex_tool
-        return [
-            ToolDef.from_dict(
-                dict(
-                    idname="builtin.brush",
-                    label="Brush",
-                    icon="brush.sculpt.paint",
-                    data_block=tool
-                )
-            )
-        ]
-
 
 class _defs_texture_paint:
 
@@ -1901,26 +1864,15 @@ class _defs_texture_paint:
         return (ob and ob.type == 'MESH' and
                 (ob.data.use_paint_mask))
 
-    @staticmethod
-    def generate_from_brushes(context):
-        # Though `data_block` is conceptually unnecessary with a single brush tool,
-        # it's still used because many areas assume that brush tools have it set #bToolRef.
-        tool = None
-        if context:
-            brush = context.tool_settings.image_paint.brush
-            if brush:
-                tool = brush.image_tool
-        return [
-            ToolDef.from_dict(
-                dict(
-                    idname="builtin.brush",
-                    label="Brush",
-                    icon="brush.sculpt.paint",
-                    cursor='PAINT_CROSS',
-                    data_block=tool
-                )
-            )
-        ]
+    @ToolDef.from_fn
+    def brush():
+        return dict(
+            idname="builtin.brush",
+            label="Brush",
+            icon="brush.sculpt.paint",
+            cursor='PAINT_CROSS',
+            options={'USES_BRUSHES'},
+        )
 
 
 class _defs_weight_paint:
@@ -1937,26 +1889,6 @@ class _defs_weight_paint:
         elif context.pose_object:
             return VIEW3D_PT_tools_active._tools_select
         return ()
-
-    @staticmethod
-    def generate_from_brushes(context):
-        # Though `data_block` is conceptually unnecessary with a single brush tool,
-        # it's still used because many areas assume that brush tools have it set #bToolRef.
-        tool = None
-        if context:
-            brush = context.tool_settings.weight_paint.brush
-            if brush:
-                tool = brush.weight_tool
-        return [
-            ToolDef.from_dict(
-                dict(
-                    idname="builtin.brush",
-                    label="Brush",
-                    icon="brush.sculpt.paint",
-                    data_block=tool
-                )
-            )
-        ]
 
     @ToolDef.from_fn
     def sample_weight():
@@ -2031,25 +1963,6 @@ class _defs_weight_paint:
 
 class _defs_grease_pencil_paint:
 
-    @staticmethod
-    def generate_from_brushes(context):
-        # Though `data_block` is conceptually unnecessary with a single brush tool,
-        # it's still used because many areas assume that brush tools have it set #bToolRef.
-        tool = None
-        if context:
-            brush = context.tool_settings.gpencil_paint.brush
-            if brush:
-                tool = brush.gpencil_tool
-        return [
-            ToolDef.from_dict(
-                dict(
-                    idname="builtin.brush",
-                    label="Brush",
-                    icon="brush.sculpt.paint",
-                    data_block=tool
-                )
-            )
-        ]
 
     @ToolDef.from_fn
     def cutter():
@@ -2518,26 +2431,6 @@ class _defs_gpencil_paint:
         brush_basic_gpencil_paint_settings(layout, context, brush, compact=True)
         return True
 
-    @staticmethod
-    def generate_from_brushes(context):
-        # Though `data_block` is conceptually unnecessary with a single brush tool,
-        # it's still used because many areas assume that brush tools have it set #bToolRef.
-        tool = None
-        if context:
-            brush = context.tool_settings.gpencil_paint.brush
-            if brush:
-                tool = brush.gpencil_tool
-        return [
-            ToolDef.from_dict(
-                dict(
-                    idname="builtin.brush",
-                    label="Brush",
-                    icon="brush.sculpt.paint",
-                    data_block=tool
-                )
-            )
-        ]
-
     @ToolDef.from_fn
     def cutter():
         def draw_settings(_context, layout, tool):
@@ -2890,26 +2783,6 @@ class _defs_gpencil_sculpt:
             )
         )
 
-    @staticmethod
-    def generate_from_brushes(context):
-        # Though `data_block` is conceptually unnecessary with a single brush tool,
-        # it's still used because many areas assume that brush tools have it set #bToolRef.
-        tool = None
-        if context:
-            brush = context.tool_settings.gpencil_sculpt_paint.brush
-            if brush:
-                tool = brush.gpencil_sculpt_tool
-        return [
-            ToolDef.from_dict(
-                dict(
-                    idname="builtin.brush",
-                    label="Brush",
-                    icon="brush.sculpt.paint",
-                    data_block=tool
-                )
-            )
-        ]
-
 
 class _defs_grease_pencil_sculpt:
     @staticmethod
@@ -2927,94 +2800,20 @@ class _defs_grease_pencil_sculpt:
             )
         )
 
-    @staticmethod
-    def generate_from_brushes(context):
-        # Though `data_block` is conceptually unnecessary with a single brush tool,
-        # it's still used because many areas assume that brush tools have it set #bToolRef.
-        tool = None
-        if context:
-            brush = context.tool_settings.gpencil_sculpt_paint.brush
-            if brush:
-                tool = brush.gpencil_sculpt_tool
-        return [
-            ToolDef.from_dict(
-                dict(
-                    idname="builtin.brush",
-                    label="Brush",
-                    icon="brush.sculpt.paint",
-                    data_block=tool
-                )
-            )
-        ]
-
 
 class _defs_gpencil_weight:
-
-    @staticmethod
-    def generate_from_brushes(context):
-        # Though `data_block` is conceptually unnecessary with a single brush tool,
-        # it's still used because many areas assume that brush tools have it set #bToolRef.
-        tool = None
-        if context:
-            brush = context.tool_settings.gpencil_weight_paint.brush
-            if brush:
-                tool = brush.gpencil_weight_tool
-        return [
-            ToolDef.from_dict(
-                dict(
-                    idname="builtin.brush",
-                    label="Brush",
-                    icon="brush.sculpt.paint",
-                    data_block=tool
-                )
-            )
-        ]
+    # No mode specific tools currently (only general ones).
+    pass
 
 
 class _defs_grease_pencil_weight:
-
-    @staticmethod
-    def generate_from_brushes(context):
-        # Though `data_block` is conceptually unnecessary with a single brush tool,
-        # it's still used because many areas assume that brush tools have it set #bToolRef.
-        tool = None
-        if context:
-            brush = context.tool_settings.gpencil_weight_paint.brush
-            if brush:
-                tool = brush.gpencil_weight_tool
-        return [
-            ToolDef.from_dict(
-                dict(
-                    idname="builtin.brush",
-                    label="Brush",
-                    icon="brush.sculpt.paint",
-                    data_block=tool
-                )
-            )
-        ]
+    # No mode specific tools currently (only general ones).
+    pass
 
 
 class _defs_curves_sculpt:
-
-    @staticmethod
-    def generate_from_brushes(context):
-        # Though `data_block` is conceptually unnecessary with a single brush tool,
-        # it's still used because many areas assume that brush tools have it set #bToolRef.
-        tool = None
-        if context:
-            brush = context.tool_settings.curves_sculpt.brush
-            if brush:
-                tool = brush.curves_sculpt_tool
-        return [
-            ToolDef.from_dict(
-                dict(
-                    idname="builtin.brush",
-                    label="Brush",
-                    icon="brush.sculpt.paint",
-                    data_block=tool
-                )
-            )
-        ]
+    # No mode specific tools currently (only general ones).
+    pass
 
 
 class _defs_gpencil_vertex:
@@ -3033,26 +2832,6 @@ class _defs_gpencil_vertex:
                 tool_settings.use_gpencil_vertex_select_mask_segment
             )
         )
-
-    @staticmethod
-    def generate_from_brushes(context):
-        # Though `data_block` is conceptually unnecessary with a single brush tool,
-        # it's still used because many areas assume that brush tools have it set #bToolRef.
-        tool = None
-        if context:
-            brush = context.tool_settings.gpencil_vertex_paint.brush
-            if brush:
-                tool = brush.gpencil_vertex_tool
-        return [
-            ToolDef.from_dict(
-                dict(
-                    idname="builtin.brush",
-                    label="Brush",
-                    icon="brush.sculpt.paint",
-                    data_block=tool
-                )
-            )
-        ]
 
 
 class _defs_node_select:
@@ -3315,6 +3094,15 @@ class IMAGE_PT_tools_active(ToolSelectPanelHelper, Panel):
 
     # Private tool lists for convenient reuse in `_tools`.
 
+    _brush_tool = ToolDef.from_dict(
+        dict(
+            idname="builtin.brush",
+            label="Brush",
+            icon="brush.sculpt.paint",
+            options={'USES_BRUSHES'},
+        )
+    )
+
     _tools_transform = (
         _defs_image_uv_transform.translate,
         _defs_image_uv_transform.rotate,
@@ -3369,7 +3157,7 @@ class IMAGE_PT_tools_active(ToolSelectPanelHelper, Panel):
             None,
         ],
         'PAINT': [
-            _defs_texture_paint.generate_from_brushes,
+            _brush_tool,
             None,
             *_tools_annotate,
         ],
@@ -3468,6 +3256,15 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
         yield from cls._tools.items()
 
     # Private tool lists for convenient reuse in `_tools`.
+
+    _brush_tool = ToolDef.from_dict(
+        dict(
+            idname="builtin.brush",
+            label="Brush",
+            icon="brush.sculpt.paint",
+            options={'USES_BRUSHES'},
+        )
+    )
 
     _tools_transform = (
         _defs_transform.translate,
@@ -3678,7 +3475,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             _defs_particle.generate_from_brushes,
         ],
         'SCULPT': [
-            _defs_sculpt.generate_from_brushes,
+            _brush_tool,
             None,
             (
                 _defs_sculpt.mask_border,
@@ -3721,7 +3518,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             *_tools_annotate,
         ],
         'SCULPT_GREASE_PENCIL': [
-            _defs_grease_pencil_sculpt.generate_from_brushes,
+            _brush_tool,
             None,
             *_tools_annotate,
             lambda context: (
@@ -3731,7 +3528,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             ),
         ],
         'PAINT_TEXTURE': [
-            _defs_texture_paint.generate_from_brushes,
+            _brush_tool,
             None,
             lambda context: (
                 VIEW3D_PT_tools_active._tools_select
@@ -3741,7 +3538,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             *_tools_annotate,
         ],
         'PAINT_VERTEX': [
-            _defs_vertex_paint.generate_from_brushes,
+            _brush_tool,
             None,
             lambda context: (
                 VIEW3D_PT_tools_active._tools_select
@@ -3751,7 +3548,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             *_tools_annotate,
         ],
         'PAINT_WEIGHT': [
-            _defs_weight_paint.generate_from_brushes,
+            _brush_tool,
             _defs_weight_paint.gradient,
             None,
             (
@@ -3775,7 +3572,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
         'PAINT_GREASE_PENCIL': [
             _defs_view3d_generic.cursor,
             None,
-            _defs_grease_pencil_paint.generate_from_brushes,
+            _brush_tool,
             _defs_grease_pencil_paint.cutter,
             None,
             _defs_grease_pencil_paint.line,
@@ -3790,7 +3587,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
         'PAINT_GPENCIL': [
             _defs_view3d_generic.cursor,
             None,
-            _defs_gpencil_paint.generate_from_brushes,
+            _brush_tool,
             _defs_gpencil_paint.cutter,
             None,
             _defs_gpencil_paint.eyedropper,
@@ -3826,7 +3623,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             *_tools_annotate,
         ],
         'SCULPT_GPENCIL': [
-            _defs_gpencil_sculpt.generate_from_brushes,
+            _brush_tool,
             None,
             *_tools_annotate,
             lambda context: (
@@ -3836,17 +3633,17 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             ),
         ],
         'WEIGHT_GPENCIL': [
-            _defs_gpencil_weight.generate_from_brushes,
+            _brush_tool,
             None,
             *_tools_annotate,
         ],
         'WEIGHT_GREASE_PENCIL': [
-            _defs_grease_pencil_weight.generate_from_brushes,
+            _brush_tool,
             None,
             *_tools_annotate,
         ],
         'VERTEX_GPENCIL': [
-            _defs_gpencil_vertex.generate_from_brushes,
+            _brush_tool,
             None,
             *_tools_annotate,
             None,
@@ -3857,7 +3654,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             ),
         ],
         'SCULPT_CURVES': [
-            _defs_curves_sculpt.generate_from_brushes,
+            _brush_tool,
             None,
             *_tools_annotate,
         ],
