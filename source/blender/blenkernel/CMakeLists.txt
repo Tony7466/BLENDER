@@ -484,6 +484,7 @@ set(SRC
   BKE_pbvh_pixels.hh
   BKE_pointcache.h
   BKE_pointcloud.hh
+  BKE_polygon_clipping_2d.hh
   BKE_pose_backup.h
   BKE_preferences.h
   BKE_preview_image.hh

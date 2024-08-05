@@ -303,12 +303,70 @@ static bool is_point_in_others(const int polygon_a,
   return false;
 }
 
+Array<float2> interpolate_position_ab(const Span<float2> pos_a,
+                                      const Span<float2> pos_b,
+                                      const BooleanResult &result)
+{
+  Array<float2> pos_out(result.verts.size());
+
+  for (const int i : result.verts.index_range()) {
+    const Vertex &vert = result.verts[i];
+    const VertexType &type = vert.type;
+
+    if (type == VertexType::PointA) {
+      pos_out[i] = pos_a[vert.point_id];
+    }
+    else if (type == VertexType::PointB) {
+      pos_out[i] = pos_b[vert.point_id];
+    }
+    else if (type == VertexType::Intersection) {
+      const IntersectionPoint &inter_point = result.intersections_data[vert.point_id];
+
+      const float2 a0 = pos_a[inter_point.point_a];
+      const float2 a1 = pos_a[(inter_point.point_a + 1) % pos_a.size()];
+      const float alpha_a = inter_point.alpha_a;
+
+      pos_out[i] = math::interpolate(a0, a1, alpha_a);
+    }
+  }
+
+  return pos_out;
+}
+
+Array<float2> interpolate_position_a(const Span<float2> pos_a, const BooleanResult &result)
+{
+  Array<float2> pos_out(result.verts.size());
+
+  for (const int i : result.verts.index_range()) {
+    const Vertex &vert = result.verts[i];
+    const VertexType &type = vert.type;
+
+    if (type == VertexType::PointA) {
+      pos_out[i] = pos_a[vert.point_id];
+    }
+    else if (type == VertexType::PointB) {
+      pos_out[i] = pos_a.first();
+    }
+    else if (type == VertexType::Intersection) {
+      const IntersectionPoint &inter_point = result.intersections_data[vert.point_id];
+
+      const float2 a0 = pos_a[inter_point.point_a];
+      const float2 a1 = pos_a[(inter_point.point_a + 1) % pos_a.size()];
+      const float alpha_a = inter_point.alpha_a;
+
+      pos_out[i] = math::interpolate(a0, a1, alpha_a);
+    }
+  }
+
+  return pos_out;
+}
+
 static int result_find_base_id(const BooleanResult &results,
                                const Span<float2> curve_a,
                                const Span<float2> curve_b)
 {
   const OffsetIndices<int> points_by_polygon = OffsetIndices<int>(results.offsets);
-  const Array<float2> points = interpolate_data_from_ab_result<float2>(curve_a, curve_b, results);
+  const Array<float2> points = interpolate_position_ab(curve_a, curve_b, results);
 
   /**
    * The base is the polygon that all others are inside of, and therefor it is not in any others.
