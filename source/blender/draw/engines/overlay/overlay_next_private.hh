@@ -362,8 +362,8 @@ struct LineInstanceBuf {
 
   void append(const float3 &start, const float3 &end, const float4 &color)
   {
-    data_buf.append({float4{start}, color});
-    data_buf.append({float4{end}, color});
+    data_buf.append({float4(start), color});
+    data_buf.append({float4(end), color});
   }
 
   void append(const float3 &start, const float3 &end, const float4 &color, select::ID select_id)
@@ -376,8 +376,8 @@ struct LineInstanceBuf {
   {
     this->color_id = color_id;
     select_buf.select_append(select_id);
-    data_buf.append({float4{start}, float4{}});
-    data_buf.append({float4{end}, float4{}});
+    data_buf.append({float4(start), float4()});
+    data_buf.append({float4(end), float4()});
   }
 
   void end_sync(PassSimple::Sub &pass)

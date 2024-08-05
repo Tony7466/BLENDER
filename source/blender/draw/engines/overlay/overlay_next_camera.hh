@@ -146,7 +146,7 @@ class Cameras {
         }
         bool is_selected = TRACK_SELECTED(track);
 
-        float4x4 bundle_mat = math::translate(tracking_object_mat, float3{track->bundle_pos});
+        float4x4 bundle_mat = math::translate(tracking_object_mat, float3(track->bundle_pos));
 
         const float *bundle_color;
         if (track->flag & TRACK_CUSTOMCOLOR) {
@@ -180,7 +180,7 @@ class Cameras {
           }
 
           call_buffers.sphere_solid_buf.append(
-              ExtraInstanceData{bundle_mat, {float3{bundle_color}, 1.0f}, v3d->bundle_size},
+              ExtraInstanceData{bundle_mat, float4(float3(bundle_color), 1.0f), v3d->bundle_size},
               track_select_id);
         }
         else {
