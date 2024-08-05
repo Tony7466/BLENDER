@@ -103,10 +103,12 @@ template<typename T> inline T round(const T &a)
 
 /**
  * Repeats the saw-tooth pattern even on negative numbers.
- * ex: `mod_periodic(-3, 4) = 1`, `mod(-3, 4)= -3`
+ * ex: `mod_periodic(-3, 4) = 1`, `mod(-3, 4)= -3`. This will protecte undefind behavior for
+ * negative b.
  */
 template<typename T> inline T mod_periodic(const T &a, const T &b)
 {
+  BLI_assert(b >= 0);
   if constexpr (std::is_integral_v<T>) {
     BLI_assert(std::numeric_limits<T>::max() - math::abs(a) >= b);
     return ((a % b) + b) % b;
