@@ -129,7 +129,7 @@ class GreasePencilStrokePointSlice:
 
     def __iter__(self):
         for point_i in range(self._start, self._stop):
-            yield GreasePencilStrokePoint(self, point_i)
+            yield GreasePencilStrokePoint(self._drawing, point_i)
 
 
 # Define the list of attributes that should be exposed as read/write properties on the class.
