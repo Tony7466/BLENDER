@@ -1168,11 +1168,14 @@ void fcurve_to_keylist(AnimData *adt,
   if (left_outside_key_index >= 0) {
     set_up_beztriple_chain(chain, fcu, left_outside_key_index, do_extremes, is_cyclic);
     add_bezt_to_keycolumns_list(keylist, &chain);
+    /* Checking min and max because the FCurve might not be sorted. */
     index_bounds.min = blender::math::min(index_bounds.min, left_outside_key_index);
+    index_bounds.max = blender::math::max(index_bounds.max, left_outside_key_index);
   }
   if (right_outside_key_index >= 0) {
     set_up_beztriple_chain(chain, fcu, right_outside_key_index, do_extremes, is_cyclic);
     add_bezt_to_keycolumns_list(keylist, &chain);
+    index_bounds.min = blender::math::min(index_bounds.min, right_outside_key_index);
     index_bounds.max = blender::math::max(index_bounds.max, right_outside_key_index);
   }
   /* Not using index_bounds.is_empty() because that returns true if min and max are the same. That
