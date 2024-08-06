@@ -7,7 +7,6 @@
  */
 
 #include <fmt/format.h>
-#include <iostream>
 
 #include "DNA_windowmanager_types.h"
 
