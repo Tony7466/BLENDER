@@ -1,3 +1,4 @@
 Referenced by issue #109399, Blender LTS: Maintenance Task 3.6
 Referenced by pull request #125370, Fix #125353: Select by active material fails to select the selected slot
 Referenced by pull request #125948, Fix #125353: Select by active material fails to select the active slot
+Referenced by commit ca199ba13f7f400fb42705fe01f2bdb803d33ceb, Fix #125353: Select by active material fails to select the active slot
