@@ -757,10 +757,12 @@ static int clear_anim_v3d_exec(bContext *C, wmOperator * /*op*/)
 
       Action &action = dna_action->wrap();
       if (action.is_action_layered()) {
-        blender::Vector<FCurve *> fcurves_to_delete = action_foreach_fcurve(
-            action, adt->slot_handle, [&](FCurve &fcurve) {
-              return can_delete_fcurve(&fcurve, ob);
-            });
+        blender::Vector<FCurve *> fcurves_to_delete;
+        action_foreach_fcurve(action, adt->slot_handle, [&](FCurve &fcurve) {
+          if (can_delete_fcurve(&fcurve, ob)) {
+            fcurves_to_delete.append(&fcurve);
+          }
+        });
         for (FCurve *fcurve : fcurves_to_delete) {
           action_fcurve_remove(action, *fcurve);
         }
@@ -904,13 +906,15 @@ static int delete_key_v3d_without_keying_set(bContext *C, wmOperator *op)
 
       Action &action = act->wrap();
       if (action.is_action_layered()) {
-        blender::Vector<FCurve *> modified_fcurves = action_foreach_fcurve(
-            action, adt->slot_handle, [&](FCurve &fcurve) {
-              if (!can_delete_key(&fcurve, ob, op->reports)) {
-                return false;
-              }
-              return blender::animrig::fcurve_delete_keyframe_at_time(&fcurve, cfra_unmap);
-            });
+        blender::Vector<FCurve *> modified_fcurves;
+        action_foreach_fcurve(action, adt->slot_handle, [&](FCurve &fcurve) {
+          if (!can_delete_key(&fcurve, ob, op->reports)) {
+            return;
+          }
+          if (blender::animrig::fcurve_delete_keyframe_at_time(&fcurve, cfra_unmap)) {
+            modified_fcurves.append(&fcurve);
+          }
+        });
 
         success += modified_fcurves.size();
         for (FCurve *fcurve : modified_fcurves) {

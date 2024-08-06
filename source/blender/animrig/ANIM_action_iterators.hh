@@ -33,11 +33,9 @@ using slot_handle_t = decltype(::ActionSlot::handle);
  * function.
  *
  * \note Use lambdas to have access to specific data in the callback.
- *
- * \returns A Vector of FCurves for which the callback returned true.
  */
-blender::Vector<FCurve *> action_foreach_fcurve(Action &action,
-                                                slot_handle_t handle,
-                                                FunctionRef<bool(FCurve &fcurve)> callback);
+void action_foreach_fcurve(Action &action,
+                           slot_handle_t handle,
+                           FunctionRef<void(FCurve &fcurve)> callback);
 
 }  // namespace blender::animrig

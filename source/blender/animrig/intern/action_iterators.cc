@@ -12,11 +12,10 @@
 
 namespace blender::animrig {
 
-blender::Vector<FCurve *> action_foreach_fcurve(Action &action,
-                                                slot_handle_t handle,
-                                                FunctionRef<bool(FCurve &fcurve)> callback)
+void action_foreach_fcurve(Action &action,
+                           slot_handle_t handle,
+                           FunctionRef<void(FCurve &fcurve)> callback)
 {
-  blender::Vector<FCurve *> fcurves;
   for (Layer *layer : action.layers()) {
     for (Strip *strip : layer->strips()) {
       if (!strip->is<KeyframeStrip>()) {
@@ -29,14 +28,11 @@ blender::Vector<FCurve *> action_foreach_fcurve(Action &action,
         }
         for (FCurve *fcu : bag->fcurves()) {
           BLI_assert(fcu != nullptr);
-          if (callback(*fcu)) {
-            fcurves.append(fcu);
-          }
+          callback(*fcu);
         }
       }
     }
   }
-  return fcurves;
 }
 
 }  // namespace blender::animrig

@@ -54,8 +54,9 @@ TEST_F(ActionIteratorsTest, iterate_all_fcurves_of_slot)
   EXPECT_TRUE(action->is_action_layered());
 
   /* Try iterating an empty action. */
-  blender::Vector<FCurve *> no_fcurves = action_foreach_fcurve(
-      *action, cube_slot.handle, [&](FCurve & /* fcurve */) { return true; });
+  blender::Vector<FCurve *> no_fcurves;
+  action_foreach_fcurve(
+      *action, cube_slot.handle, [&](FCurve &fcurve) { no_fcurves.append(&fcurve); });
 
   ASSERT_TRUE(no_fcurves.is_empty());
 
@@ -78,8 +79,9 @@ TEST_F(ActionIteratorsTest, iterate_all_fcurves_of_slot)
   }
 
   /* Get all FCurves. */
-  blender::Vector<FCurve *> cube_fcurves = action_foreach_fcurve(
-      *action, cube_slot.handle, [&](FCurve & /* fcurve */) { return true; });
+  blender::Vector<FCurve *> cube_fcurves;
+  action_foreach_fcurve(
+      *action, cube_slot.handle, [&](FCurve &fcurve) { cube_fcurves.append(&fcurve); });
 
   ASSERT_EQ(cube_fcurves.size(), 3);
   for (FCurve *fcurve : cube_fcurves) {
@@ -87,16 +89,22 @@ TEST_F(ActionIteratorsTest, iterate_all_fcurves_of_slot)
   }
 
   /* Get only FCurves with index 0 which should be 1. */
-  blender::Vector<FCurve *> monkey_fcurves = action_foreach_fcurve(
-      *action, monkey_slot.handle, [&](FCurve &fcurve) { return fcurve.array_index == 0; });
+  blender::Vector<FCurve *> monkey_fcurves;
+  action_foreach_fcurve(*action, monkey_slot.handle, [&](FCurve &fcurve) {
+    if (fcurve.array_index == 0) {
+      monkey_fcurves.append(&fcurve);
+    }
+  });
 
   ASSERT_EQ(monkey_fcurves.size(), 1);
   ASSERT_STREQ(monkey_fcurves[0]->rna_path, "rotation");
 
   /* Slots handles are just numbers. Passing in a slot handle that doesn't exist should return
    * nothing. */
-  blender::Vector<FCurve *> invalid_slot_fcurves = action_foreach_fcurve(
-      *action, monkey_slot.handle + cube_slot.handle, [&](FCurve & /* fcurve */) { return true; });
+  blender::Vector<FCurve *> invalid_slot_fcurves;
+  action_foreach_fcurve(*action, monkey_slot.handle + cube_slot.handle, [&](FCurve &fcurve) {
+    invalid_slot_fcurves.append(&fcurve);
+  });
   ASSERT_TRUE(invalid_slot_fcurves.is_empty());
 }
 }  // namespace blender::animrig::tests
