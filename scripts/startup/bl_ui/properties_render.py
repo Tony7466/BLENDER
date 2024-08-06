@@ -623,7 +623,6 @@ class RENDER_PT_eevee_next_raytracing(RenderButtonsPanel, Panel):
         options = context.scene.eevee.ray_tracing_options
 
         col.prop(options, "resolution_scale")
-        col.prop(options, "trace_max_roughness", text="Max Roughness")
 
 
 class RENDER_PT_eevee_next_screen_trace(RenderButtonsPanel, Panel):
@@ -663,24 +662,28 @@ class RENDER_PT_eevee_next_gi_approximation(RenderButtonsPanel, Panel):
     def poll(cls, context):
         return (context.engine in cls.COMPAT_ENGINES)
 
+    def draw_header(self, context):
+        self.layout.active = context.scene.eevee.use_raytracing
+        props = context.scene.eevee
+        self.layout.prop(props, "use_fast_gi", text="")
+
     def draw(self, context):
         scene = context.scene
         props = scene.eevee
+        options = scene.eevee.ray_tracing_options
 
         layout = self.layout
         layout.use_property_split = True
         layout.use_property_decorate = False
 
-        is_valid =  props.ray_tracing_options.trace_max_roughness < 1
+        col = layout.column()
+        col.active = props.use_raytracing and props.use_fast_gi
+        col.prop(options, "trace_max_roughness", text="Threshold")
 
-        if not is_valid:
-            row = layout.row()
-            row.active = props.use_raytracing
-            row.label(text="Fast GI only works with Raytrace Max Roughness below 1.0", icon="INFO")
+        is_valid = props.use_raytracing and props.use_fast_gi and props.ray_tracing_options.trace_max_roughness < 1
 
         col = layout.column()
-        col.active = props.use_raytracing and is_valid
-
+        col.active = is_valid
         col.prop(props, "fast_gi_method")
         col.prop(props, "fast_gi_resolution", text="Resolution")
 
