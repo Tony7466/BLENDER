@@ -20,21 +20,23 @@
 
 namespace blender::asset_system {
 
-AssetRepresentation::AssetRepresentation(StringRef relative_path,
+AssetRepresentation::AssetRepresentation(StringRef relative_asset_path,
                                          StringRef name,
                                          const int id_type,
                                          std::unique_ptr<AssetMetaData> metadata,
                                          const AssetLibrary &owner_asset_library)
     : owner_asset_library_(owner_asset_library),
-      relative_identifier_(relative_path),
+      relative_identifier_(relative_asset_path),
       asset_(AssetRepresentation::ExternalAsset{name, id_type, std::move(metadata)})
 {
 }
 
-AssetRepresentation::AssetRepresentation(StringRef relative_path,
+AssetRepresentation::AssetRepresentation(StringRef relative_asset_path,
                                          ID &id,
                                          const AssetLibrary &owner_asset_library)
-    : owner_asset_library_(owner_asset_library), relative_identifier_(relative_path), asset_(&id)
+    : owner_asset_library_(owner_asset_library),
+      relative_identifier_(relative_asset_path),
+      asset_(&id)
 {
   if (!id.asset_data) {
     throw std::invalid_argument("Passed ID is not an asset");
@@ -48,24 +50,24 @@ AssetWeakReference AssetRepresentation::make_weak_reference() const
 
 StringRefNull AssetRepresentation::get_name() const
 {
-  if (const ID *local_id = this->local_id()) {
-    return local_id->name + 2;
+  if (const ID *id = this->local_id()) {
+    return id->name + 2;
   }
   return std::get<ExternalAsset>(asset_).name;
 }
 
 ID_Type AssetRepresentation::get_id_type() const
 {
-  if (const ID *local_id = this->local_id()) {
-    return GS(local_id->name);
+  if (const ID *id = this->local_id()) {
+    return GS(id->name);
   }
   return ID_Type(std::get<ExternalAsset>(asset_).id_type);
 }
 
 AssetMetaData &AssetRepresentation::get_metadata() const
 {
-  if (const ID *local_id = this->local_id()) {
-    return *local_id->asset_data;
+  if (const ID *id = this->local_id()) {
+    return *id->asset_data;
   }
   return *std::get<ExternalAsset>(asset_).metadata_;
 }

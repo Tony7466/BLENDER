@@ -47,7 +47,6 @@ set(DEFSRC
   rna_dynamicpaint.cc
   rna_fcurve.cc
   rna_fluid.cc
-  rna_gpencil_legacy_modifier.cc
   rna_grease_pencil.cc
   rna_image.cc
   rna_key.cc
@@ -119,6 +118,7 @@ set(APISRC
   rna_armature_api.cc
   rna_camera_api.cc
   rna_curve_api.cc
+  rna_curves_api.cc
   rna_fcurve_api.cc
   rna_grease_pencil_api.cc
   rna_image_api.cc
@@ -487,6 +487,7 @@ set(SRC
   rna_internal.hh
   rna_internal_types.hh
   rna_mesh_utils.hh
+  rna_curves_utils.hh
 )
 
 set(LIB
