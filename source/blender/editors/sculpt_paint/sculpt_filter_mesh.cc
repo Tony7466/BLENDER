@@ -418,7 +418,7 @@ static void calc_smooth_filter(const Sculpt &sd,
         for (const int i : range) {
           const Span<int> grids = bke::pbvh::node_grid_indices(*nodes[i]);
           const Span<float3> positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
-          const OrigPositionData orig_data = orig_position_data_get_mesh(object, *nodes[i]);
+          const OrigPositionData orig_data = orig_position_data_get_grids(object, *nodes[i]);
 
           tls.factors.resize(positions.size());
           const MutableSpan<float> factors = tls.factors;
@@ -548,7 +548,7 @@ static void calc_inflate_filter(const Sculpt &sd,
         for (const int i : range) {
           const Span<int> grids = bke::pbvh::node_grid_indices(*nodes[i]);
           const Span<float3> positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
-          const OrigPositionData orig_data = orig_position_data_get_mesh(object, *nodes[i]);
+          const OrigPositionData orig_data = orig_position_data_get_grids(object, *nodes[i]);
 
           tls.factors.resize(positions.size());
           const MutableSpan<float> factors = tls.factors;
@@ -668,7 +668,7 @@ static void calc_scale_filter(const Sculpt &sd,
         for (const int i : range) {
           const Span<int> grids = bke::pbvh::node_grid_indices(*nodes[i]);
           const Span<float3> positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
-          const OrigPositionData orig_data = orig_position_data_get_mesh(object, *nodes[i]);
+          const OrigPositionData orig_data = orig_position_data_get_grids(object, *nodes[i]);
 
           tls.factors.resize(positions.size());
           const MutableSpan<float> factors = tls.factors;
@@ -803,7 +803,7 @@ static void calc_sphere_filter(const Sculpt &sd,
         for (const int i : range) {
           const Span<int> grids = bke::pbvh::node_grid_indices(*nodes[i]);
           const Span<float3> positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
-          const OrigPositionData orig_data = orig_position_data_get_mesh(object, *nodes[i]);
+          const OrigPositionData orig_data = orig_position_data_get_grids(object, *nodes[i]);
 
           tls.factors.resize(positions.size());
           const MutableSpan<float> factors = tls.factors;
@@ -933,7 +933,7 @@ static void calc_random_filter(const Sculpt &sd,
         for (const int i : range) {
           const Span<int> grids = bke::pbvh::node_grid_indices(*nodes[i]);
           const Span<float3> positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
-          const OrigPositionData orig_data = orig_position_data_get_mesh(object, *nodes[i]);
+          const OrigPositionData orig_data = orig_position_data_get_grids(object, *nodes[i]);
 
           tls.factors.resize(positions.size());
           const MutableSpan<float> factors = tls.factors;
