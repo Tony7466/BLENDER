@@ -142,15 +142,15 @@ float brush_fill_influence(const Scene &scene,
   return influence_base * brush_falloff;
 }
 
-IndexMask brush_influence_mask(const Scene &scene,
-                               const Brush &brush,
-                               const float2 &mouse_position,
-                               const float pressure,
-                               const float multi_frame_falloff,
-                               const IndexMask &selection,
-                               const Span<float2> view_positions,
-                               Vector<float> &influences,
-                               IndexMaskMemory &memory)
+IndexMask brush_point_influence_mask(const Scene &scene,
+                                     const Brush &brush,
+                                     const float2 &mouse_position,
+                                     const float pressure,
+                                     const float multi_frame_falloff,
+                                     const IndexMask &selection,
+                                     const Span<float2> view_positions,
+                                     Vector<float> &influences,
+                                     IndexMaskMemory &memory)
 {
   if (selection.is_empty()) {
     return {};

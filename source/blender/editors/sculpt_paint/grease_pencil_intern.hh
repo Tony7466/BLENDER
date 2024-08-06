@@ -50,15 +50,15 @@ Vector<ed::greasepencil::MutableDrawingInfo> get_drawings_for_sculpt(const bCont
 void init_brush(Brush &brush);
 
 /* Index mask of all points within the brush radius. */
-IndexMask brush_influence_mask(const Scene &scene,
-                               const Brush &brush,
-                               const float2 &mouse_position,
-                               float pressure,
-                               float multi_frame_falloff,
-                               const IndexMask &selection,
-                               Span<float2> view_positions,
-                               Vector<float> &influences,
-                               IndexMaskMemory &memory);
+IndexMask brush_point_influence_mask(const Scene &scene,
+                                     const Brush &brush,
+                                     const float2 &mouse_position,
+                                     float pressure,
+                                     float multi_frame_falloff,
+                                     const IndexMask &selection,
+                                     Span<float2> view_positions,
+                                     Vector<float> &influences,
+                                     IndexMaskMemory &memory);
 
 /* Influence value at point co for the brush. */
 float brush_point_influence(const Scene &scene,

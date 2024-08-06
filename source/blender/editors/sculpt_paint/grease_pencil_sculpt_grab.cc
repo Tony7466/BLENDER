@@ -136,7 +136,7 @@ void GrabOperation::on_stroke_begin(const bContext &C, const InputSample &start_
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob_orig.data);
 
   const bool is_masking = GPENCIL_ANY_SCULPT_MASK(
-        eGP_Sculpt_SelectMaskFlag(scene.toolsettings->gpencil_selectmode_sculpt));
+      eGP_Sculpt_SelectMaskFlag(scene.toolsettings->gpencil_selectmode_sculpt));
 
   init_brush(brush);
 
@@ -168,15 +168,15 @@ void GrabOperation::on_stroke_begin(const bContext &C, const InputSample &start_
 
     /* Cache points under brush influence. */
     Vector<float> weights;
-    IndexMask point_mask = brush_influence_mask(scene,
-                                                brush,
-                                                start_sample.mouse_position,
-                                                1.0f,
-                                                info.multi_frame_falloff,
-                                                selection,
-                                                view_positions,
-                                                weights,
-                                                data.memory);
+    IndexMask point_mask = brush_point_influence_mask(scene,
+                                                      brush,
+                                                      start_sample.mouse_position,
+                                                      1.0f,
+                                                      info.multi_frame_falloff,
+                                                      selection,
+                                                      view_positions,
+                                                      weights,
+                                                      data.memory);
 
     if (point_mask.is_empty()) {
       /* Set empty point mask to skip. */
