@@ -1933,29 +1933,48 @@ LRESULT WINAPI GHOST_SystemWin32::s_wndProc(HWND hwnd, uint msg, WPARAM wParam, 
 
           const int32_t window_co[2] = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
 
-          POINT pt; static POINT ptLast={0};
-          MOUSEMOVEPOINT mmp = { 0 }; 
+          /* Try to get full mouse move history via GetMouseMovePointsEx. */
+          POINT pt;
+          static POINT ptLast = {0};
+          MOUSEMOVEPOINT mmp = {0};
           MOUSEMOVEPOINT mmp_buf[64];
-          
-          POINT pt; pt.x= window_co[0]; pt.y = window_co[1];
+
+          pt.x = window_co[0];
+          pt.y = window_co[1];
           ClientToScreen(hwnd, &pt);
-          mmp.x = pt.x; mmp.y = pt.y;
-          int num_points = GetMouseMovePointsEx(sizeof(MOUSEMOVEPOINT), &mmp, mmp_buf, 64, GMMP_USE_DISPLAY_POINTS);
-          int i;
-          for(i = 0; i < num_points; i++){
-              if(mmp_buf[i].time < last_mousemove_time){ break; }
-              if(mmp_buf[i].time == last_mousemove_time && mmp_buf[i].x==ptLast.x && mmp_buf[i].y==ptLast.y){ break; }
+          mmp.x = pt.x;
+          mmp.y = pt.y;
+          int num_points = GetMouseMovePointsEx(
+              sizeof(MOUSEMOVEPOINT), &mmp, mmp_buf, 64, GMMP_USE_DISPLAY_POINTS);
+          int point_i;
+          /* Reject events that are older than what we have processed. */
+          for (point_i = 0; point_i < num_points; point_i++) {
+            if (mmp_buf[point_i].time < last_mousemove_time) {
+              break;
+            }
+            if (mmp_buf[point_i].time == last_mousemove_time && mmp_buf[point_i].x == ptLast.x &&
+                mmp_buf[point_i].y == ptLast.y)
+            {
+              break;
+            }
           }
-          while(i){
-              pt.x = mmp_buf[i].x; pt.y = mmp_buf[i].y; ptLast = pt;
-              event = processCursorEvent(window, {pt.x, pt.y});
-              i--;
+          /* Push multiple mouse move events. */
+          while (point_i) {
+            pt.x = mmp_buf[point_i].x;
+            pt.y = mmp_buf[point_i].y;
+            ptLast = pt;
+            const int32_t screen_co[2] = {pt.x, pt.y};
+            event = processCursorEvent(window, screen_co);
+            if (event) {
+              system->pushEvent(event);
+              eventHandled = 1;
+            }
+            point_i--;
           }
           last_mousemove_time = GetMessageTime();
-          
-          //int32_t screen_co[2];
-          //window->clientToScreen(UNPACK2(window_co), UNPACK2(screen_co));
-          //event = processCursorEvent(window, screen_co);
+
+          /* We already pushed all the mouse move events, prevent duplicated pushing below. */
+          event = nullptr;
 
           break;
         }
