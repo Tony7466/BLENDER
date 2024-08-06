@@ -199,8 +199,6 @@ struct SculptBrushTest {
   RegionView3D *clip_rv3d;
 };
 
-using SculptBrushTestFn = bool (*)(SculptBrushTest &test, const float co[3]);
-
 /* Defines how transform tools are going to apply its displacement. */
 enum SculptTransformDisplacementMode {
   /* Displaces the elements from their original coordinates. */
@@ -1106,13 +1104,11 @@ void SCULPT_flip_quat_by_symm_area(float quat[4],
  */
 void SCULPT_brush_test_init(const SculptSession &ss, SculptBrushTest &test);
 
-bool SCULPT_brush_test_sphere_sq(SculptBrushTest &test, const float co[3]);
 bool SCULPT_brush_test_cube(SculptBrushTest &test,
                             const float co[3],
                             const float local[4][4],
                             const float roundness,
                             const float tip_scale_x);
-bool SCULPT_brush_test_circle_sq(SculptBrushTest &test, const float co[3]);
 
 namespace blender::ed::sculpt_paint {
 
@@ -1128,15 +1124,6 @@ bool node_in_cylinder(const DistRayAABB_Precalc &dist_ray_precalc,
 
 }
 
-/**
- * Initialize a point-in-brush test with a given falloff shape.
- *
- * \param falloff_shape: #PAINT_FALLOFF_SHAPE_SPHERE or #PAINT_FALLOFF_SHAPE_TUBE.
- * \return The brush falloff function.
- */
-SculptBrushTestFn SCULPT_brush_test_init_with_falloff_shape(const SculptSession &ss,
-                                                            SculptBrushTest &test,
-                                                            char falloff_shape);
 const float *SCULPT_brush_frontface_normal_from_falloff_shape(const SculptSession &ss,
                                                               char falloff_shape);
 void SCULPT_cube_tip_init(const Sculpt &sd, const Object &ob, const Brush &brush, float mat[4][4]);
