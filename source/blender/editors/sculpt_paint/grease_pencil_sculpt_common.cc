@@ -73,7 +73,7 @@ void init_brush(Brush &brush)
   BKE_curvemapping_init(brush.gpencil_settings->curve_rand_value);
 }
 
-static float brush_radius(const Scene &scene, const Brush &brush, const float pressure = 1.0f)
+float brush_radius(const Scene &scene, const Brush &brush, const float pressure = 1.0f)
 {
   float radius = BKE_brush_size_get(&scene, &brush);
   if (BKE_brush_use_size_pressure(&brush)) {
@@ -103,7 +103,7 @@ float brush_point_influence(const Scene &scene,
   return influence_base * brush_falloff;
 }
 
-static float closest_to_surface_2d(const float2 pt, const Span<float2> verts)
+float closest_distance_to_surface_2d(const float2 pt, const Span<float2> verts)
 {
   int j = verts.size() - 1;
   bool isect = false;
@@ -135,7 +135,7 @@ float brush_fill_influence(const Scene &scene,
                                multi_frame_falloff;
 
   /* Distance falloff. */
-  const float distance = closest_to_surface_2d(sample.mouse_position, fill_positions);
+  const float distance = closest_distance_to_surface_2d(sample.mouse_position, fill_positions);
   /* Apply Brush curve. */
   const float brush_falloff = BKE_brush_curve_strength(&brush, distance, radius);
 
