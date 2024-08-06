@@ -67,6 +67,11 @@ void Instance::init()
   resources.globals_buf = G_draw.block_ubo;
   resources.theme_settings = G_draw.block;
   resources.weight_ramp_tx.wrap(G_draw.weight_ramp);
+  {
+    eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ;
+    float data[1] = {0.0f};
+    resources.dummy_depth_tx.ensure_2d(GPU_DEPTH24_STENCIL8, int2(1, 1), usage, data);
+  }
 }
 
 void Instance::begin_sync()
@@ -263,6 +268,7 @@ void Instance::draw(Manager &manager)
     layer.speakers.draw(framebuffer, manager, view);
     layer.lattices.draw(framebuffer, manager, view);
     layer.metaballs.draw(framebuffer, manager, view);
+    layer.meshes.draw(framebuffer, manager, view);
   };
 
   draw_layer(regular, resources.overlay_line_fb);

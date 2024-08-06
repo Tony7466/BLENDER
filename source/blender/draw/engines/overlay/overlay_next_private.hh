@@ -144,6 +144,7 @@ class ShaderModule {
   ShaderPtr background_fill = shader("overlay_background");
   ShaderPtr background_clip_bound = shader("overlay_clipbound");
   ShaderPtr mesh_analysis;
+  ShaderPtr mesh_normal;
 
   /** Selectable Shaders */
   ShaderPtr armature_sphere_outline;
@@ -188,6 +189,8 @@ struct Resources : public select::SelectMap {
   TextureFromPool depth_in_front_alloc_tx = {"overlay_depth_in_front_tx"};
   TextureFromPool color_overlay_alloc_tx = {"overlay_color_overlay_alloc_tx"};
   TextureFromPool color_render_alloc_tx = {"overlay_color_render_alloc_tx"};
+
+  Texture dummy_depth_tx = {"dummy_depth_tx"};
 
   /** TODO(fclem): Copy of G_data.block that should become theme colors only and managed by the
    * engine. */

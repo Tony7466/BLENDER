@@ -46,7 +46,7 @@ void main()
   vec3 n = normalize(normal_object_to_world(nor));
   vec3 world_pos = point_object_to_world(pos);
 
-  if (gl_VertexID == 0) {
+  if ((gl_VertexID & 1) == 0) {
     if (isConstantScreenSizeNormals) {
       bool is_persp = (drw_view.winmat[3][3] == 0.0);
       if (is_persp) {

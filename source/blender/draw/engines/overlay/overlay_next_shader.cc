@@ -83,6 +83,12 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
         "draw_view", "draw_modelmat_new", "draw_resource_handle_new", "draw_globals");
   });
 
+  mesh_normal = shader("overlay_edit_mesh_normal", [](gpu::shader::ShaderCreateInfo &info) {
+    info.additional_infos_.clear();
+    info.additional_info(
+        "draw_view", "draw_modelmat_new", "draw_resource_handle_new", "draw_globals");
+  });
+
   /** Selectable Shaders */
 
   armature_sphere_outline = selectable_shader(
