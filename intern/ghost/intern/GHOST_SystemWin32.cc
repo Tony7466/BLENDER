@@ -1953,8 +1953,8 @@ LRESULT WINAPI GHOST_SystemWin32::s_wndProc(HWND hwnd, uint msg, WPARAM wParam, 
           }
           last_mousemove_time = GetMessageTime();
           
-          int32_t screen_co[2];
-          window->clientToScreen(UNPACK2(window_co), UNPACK2(screen_co));
+          //int32_t screen_co[2];
+          //window->clientToScreen(UNPACK2(window_co), UNPACK2(screen_co));
           //event = processCursorEvent(window, screen_co);
 
           break;
