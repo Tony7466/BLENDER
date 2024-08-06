@@ -284,7 +284,6 @@ struct Cache {
 
   ViewContext vc;
   float start_filter_strength;
-  bool no_orig_co;
 };
 
 }
@@ -1645,11 +1644,6 @@ void neighbor_color_average(OffsetIndices<int> faces,
                             Span<Vector<int>> vert_neighbors,
                             MutableSpan<float4> smooth_colors);
 
-/**
- * Mask the mesh boundaries smoothing only the mesh surface without using auto-masking.
- */
-float3 neighbor_coords_average_interior(const SculptSession &ss, PBVHVertRef vertex);
-
 void neighbor_position_average_grids(const SubdivCCG &subdiv_ccg,
                                      Span<int> grids,
                                      MutableSpan<float3> new_positions);
@@ -2219,7 +2213,6 @@ void ensure_valid_pivot(const Object &ob, Scene &scene);
  * \{
  * Each mesh island shell gets its own integer
  * key; these are temporary and internally limited to 8 bits.
- * Uses the `ss->topology_island_key` attribute.
  */
 
 namespace blender::ed::sculpt_paint::islands {
@@ -2231,7 +2224,7 @@ void ensure_cache(Object &object);
 void invalidate(SculptSession &ss);
 
 /** Get vertex island key. */
-int vert_id_get(const SculptSession &ss, PBVHVertRef vert);
+int vert_id_get(const SculptSession &ss, int vert);
 
 }
 
