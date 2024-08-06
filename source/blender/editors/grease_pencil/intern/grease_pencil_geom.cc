@@ -1557,6 +1557,7 @@ CurveSegmentsData find_curve_segments(const bke::CurvesGeometry &curves,
     const IndexMask curve_hit_mask = hit_mask.slice_content(points);
     const bool is_cyclic = cyclic[curve_i];
     const IndexRange segments = segments_by_curve[curve_i];
+    const int hit_segments_start = (is_cyclic ? 0 : 1);
 
     if (segments.is_empty()) {
       return;
@@ -1569,8 +1570,9 @@ CurveSegmentsData find_curve_segments(const bke::CurvesGeometry &curves,
     }
 
     curve_hit_mask.foreach_index([&](const int point_i, const int hit_i) {
-      result.segment_start_points[segments[1 + hit_i]] = point_i;
-      result.segment_start_fractions[segments[1 + hit_i]] = first_hit_factors[point_i];
+      result.segment_start_points[segments[hit_segments_start + hit_i]] = point_i;
+      result.segment_start_fractions[segments[hit_segments_start + hit_i]] =
+          first_hit_factors[point_i];
     });
   });
 
