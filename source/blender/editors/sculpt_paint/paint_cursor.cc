@@ -1251,7 +1251,10 @@ struct PaintCursorContext {
   /* Sculpt related data. */
   Sculpt *sd;
   SculptSession *ss;
+
+  /* Previous active vertex, used to determine if the preview is updated for the pose brush.  */
   PBVHVertRef prev_active_vertex;
+
   bool is_stroke_active;
   bool is_cursor_over_mesh;
   bool is_multires;
@@ -1755,7 +1758,6 @@ static void paint_cursor_draw_3d_view_brush_cursor_inactive(PaintCursorContext *
   paint_cursor_update_object_space_radius(pcontext);
 
   const PBVHVertRef active_vert = pcontext->ss->active_vertex();
-  const bool update_previews = pcontext->prev_active_vertex.i != active_vert.i;
 
   /* Setup drawing. */
   wmViewport(&pcontext->region->winrct);
@@ -1790,6 +1792,8 @@ static void paint_cursor_draw_3d_view_brush_cursor_inactive(PaintCursorContext *
      * cursor won't be tagged to update, so always initialize the preview chain if it is
      * nullptr before drawing it. */
     SculptSession &ss = *pcontext->ss;
+    const bool update_previews = pcontext->prev_active_vertex.i !=
+                                 active_vert.i;
     if (update_previews || !ss.pose_ik_chain_preview) {
       BKE_sculpt_update_object_for_edit(pcontext->depsgraph, pcontext->vc.obact, false);
 
