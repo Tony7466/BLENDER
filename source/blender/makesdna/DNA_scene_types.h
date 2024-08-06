@@ -855,6 +855,7 @@ enum {
 typedef enum eCompositorDevice {
   SCE_COMPOSITOR_DEVICE_CPU = 0,
   SCE_COMPOSITOR_DEVICE_GPU = 1,
+  SCE_COMPOSITOR_DEVICE_NEW_CPU = 2,
 } eCompositorDevice;
 
 /** #RenderData::compositor_precision */
