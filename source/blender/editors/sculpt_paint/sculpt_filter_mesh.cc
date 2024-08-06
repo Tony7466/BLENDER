@@ -442,6 +442,7 @@ static void calc_smooth_filter(const Sculpt &sd,
           reset_translations_to_original(translations, orig_data.positions, positions);
 
           lock_translation_axes(*ss.filter_cache, translations);
+          clip_and_lock_translations(sd, ss, orig_data.positions, translations);
           apply_translations(translations, grids, subdiv_ccg);
 
           BKE_pbvh_node_mark_positions_update(nodes[i]);
@@ -481,6 +482,7 @@ static void calc_smooth_filter(const Sculpt &sd,
           reset_translations_to_original(translations, orig_positions, positions);
 
           lock_translation_axes(*ss.filter_cache, translations);
+          clip_and_lock_translations(sd, ss, orig_positions, translations);
           apply_translations(translations, verts);
 
           BKE_pbvh_node_mark_positions_update(nodes[i]);
@@ -564,6 +566,7 @@ static void calc_inflate_filter(const Sculpt &sd,
           reset_translations_to_original(translations, orig_data.positions, positions);
 
           lock_translation_axes(*ss.filter_cache, translations);
+          clip_and_lock_translations(sd, ss, orig_data.positions, translations);
           apply_translations(translations, grids, subdiv_ccg);
 
           BKE_pbvh_node_mark_positions_update(nodes[i]);
@@ -599,6 +602,7 @@ static void calc_inflate_filter(const Sculpt &sd,
           reset_translations_to_original(translations, orig_positions, positions);
 
           lock_translation_axes(*ss.filter_cache, translations);
+          clip_and_lock_translations(sd, ss, orig_positions, translations);
           apply_translations(translations, verts);
 
           BKE_pbvh_node_mark_positions_update(nodes[i]);
@@ -682,6 +686,7 @@ static void calc_scale_filter(const Sculpt &sd,
           reset_translations_to_original(translations, orig_data.positions, positions);
 
           lock_translation_axes(*ss.filter_cache, translations);
+          clip_and_lock_translations(sd, ss, orig_data.positions, translations);
           apply_translations(translations, grids, subdiv_ccg);
 
           BKE_pbvh_node_mark_positions_update(nodes[i]);
@@ -716,6 +721,7 @@ static void calc_scale_filter(const Sculpt &sd,
           reset_translations_to_original(translations, orig_positions, positions);
 
           lock_translation_axes(*ss.filter_cache, translations);
+          clip_and_lock_translations(sd, ss, orig_positions, translations);
           apply_translations(translations, verts);
 
           BKE_pbvh_node_mark_positions_update(nodes[i]);
@@ -814,6 +820,7 @@ static void calc_sphere_filter(const Sculpt &sd,
           reset_translations_to_original(translations, orig_data.positions, positions);
 
           lock_translation_axes(*ss.filter_cache, translations);
+          clip_and_lock_translations(sd, ss, orig_data.positions, translations);
           apply_translations(translations, grids, subdiv_ccg);
 
           BKE_pbvh_node_mark_positions_update(nodes[i]);
@@ -847,6 +854,7 @@ static void calc_sphere_filter(const Sculpt &sd,
           reset_translations_to_original(translations, orig_positions, positions);
 
           lock_translation_axes(*ss.filter_cache, translations);
+          clip_and_lock_translations(sd, ss, orig_positions, translations);
           apply_translations(translations, verts);
 
           BKE_pbvh_node_mark_positions_update(nodes[i]);
@@ -944,6 +952,7 @@ static void calc_random_filter(const Sculpt &sd,
           reset_translations_to_original(translations, orig_data.positions, positions);
 
           lock_translation_axes(*ss.filter_cache, translations);
+          clip_and_lock_translations(sd, ss, orig_data.positions, translations);
           apply_translations(translations, grids, subdiv_ccg);
 
           BKE_pbvh_node_mark_positions_update(nodes[i]);
@@ -980,6 +989,7 @@ static void calc_random_filter(const Sculpt &sd,
           reset_translations_to_original(translations, orig_positions, positions);
 
           lock_translation_axes(*ss.filter_cache, translations);
+          clip_and_lock_translations(sd, ss, orig_positions, translations);
           apply_translations(translations, verts);
 
           BKE_pbvh_node_mark_positions_update(nodes[i]);
