@@ -384,6 +384,7 @@ class BONE_PT_display_custom_shape(BoneButtonsPanel, Panel):
         return context.bone
 
     def draw(self, context):
+        import platform
         layout = self.layout
         layout.use_property_split = True
 
@@ -413,7 +414,11 @@ class BONE_PT_display_custom_shape(BoneButtonsPanel, Panel):
 
             sub.separator()
             sub.prop(bone, "show_wire", text="Wireframe")
-            sub.prop(pchan, "custom_shape_wire_width")
+            # Disabled on Mac due to drawing issues with lacking geometry shader support. See #124691.
+            if platform.system() != "darwin":
+                sub.prop(pchan, "custom_shape_wire_width")
+            else:
+                sub.label(text="Custom wire width disabled on Mac due to rendering issues")
 
 
 class BONE_PT_inverse_kinematics(BoneButtonsPanel, Panel):
