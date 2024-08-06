@@ -1,1 +1,2 @@
 Referenced by issue #124452, Blender LTS: Maintenance Task 4.2
+Referenced by commit af28dcfb7d380350185c014e070bb7aa045126cb, Revert "Fix #124125: Depsgraph and scene time out of sync"
