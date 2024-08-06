@@ -762,11 +762,18 @@ CurveSegmentsData find_curve_segments(const bke::CurvesGeometry &curves,
                                       const Span<float2> screen_space_positions,
                                       const Curves2DBVHTree &tree_data);
 
-bool update_segment_selection(bke::CurvesGeometry &curves,
-                              const IndexMask &changed_point_mask,
-                              const Curves2DBVHTree &tree_data,
-                              const IndexRange tree_data_range,
-                              const eSelectOp sel_op);
+bool apply_mask_as_segment_selection(bke::CurvesGeometry &curves,
+                                     const IndexMask &point_selection,
+                                     const Curves2DBVHTree &tree_data,
+                                     const IndexRange tree_data_range,
+                                     const GrainSize grain_size,
+                                     const eSelectOp sel_op);
+
+bool apply_mask_as_selection(bke::CurvesGeometry &curves,
+                             const IndexMask &selection,
+                             const bke::AttrDomain selection_domain,
+                             const GrainSize grain_size,
+                             const eSelectOp sel_op);
 
 namespace cutter {
 bke::CurvesGeometry trim_curve_segments(const bke::CurvesGeometry &src,

@@ -1184,7 +1184,7 @@ IndexMask select_curves_from_predicate(bke::CurvesGeometry &curves,
                                      const IndexRange points = points_by_curve[curve_i];
                                      const bool is_cyclic = cyclic[curve_i];
 
-                                     for (const int point_i : points.index_range().drop_back(1)) {
+                                     for (const int point_i : points.drop_back(1)) {
                                        if (fn(curve_i, point_i, point_i + 1)) {
                                          return true;
                                        }

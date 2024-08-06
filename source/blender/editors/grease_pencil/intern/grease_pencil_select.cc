@@ -98,20 +98,21 @@ static int foreach_curve_segment(const CurveSegmentsData &segment_data,
   return segments.size();
 }
 
-bool update_segment_selection(bke::CurvesGeometry &curves,
-                              const IndexMask &changed_point_mask,
-                              const Curves2DBVHTree &tree_data,
-                              const IndexRange tree_data_range,
-                              const eSelectOp sel_op)
+bool apply_mask_as_segment_selection(bke::CurvesGeometry &curves,
+                                     const IndexMask &point_selection_mask,
+                                     const Curves2DBVHTree &tree_data,
+                                     const IndexRange tree_data_range,
+                                     const GrainSize grain_size,
+                                     const eSelectOp sel_op)
 {
 
-  if (changed_point_mask.is_empty()) {
+  if (point_selection_mask.is_empty()) {
     return false;
   }
 
   IndexMaskMemory memory;
   const IndexMask changed_curve_mask = ed::curves::curve_mask_from_points(
-      curves, changed_point_mask, GrainSize(512), memory);
+      curves, point_selection_mask, GrainSize(512), memory);
 
   const OffsetIndices points_by_curve = curves.points_by_curve();
   const Span<float2> screen_space_positions = tree_data.start_positions.as_span().slice(
@@ -132,7 +133,7 @@ bool update_segment_selection(bke::CurvesGeometry &curves,
 
   /* Find all segments that have changed points and fill them. */
   Array<bool> changed_points(curves.points_num());
-  changed_point_mask.to_bools(changed_points);
+  point_selection_mask.to_bools(changed_points);
 
   auto test_points_range = [&](const IndexRange range) -> bool {
     for (const int point_i : range) {
@@ -150,29 +151,57 @@ bool update_segment_selection(bke::CurvesGeometry &curves,
     }
   };
 
-  threading::parallel_for(segments_by_curve.index_range(), 256, [&](const IndexRange range) {
-    for (const int curve_i : range) {
-      const IndexRange points = points_by_curve[curve_i];
+  threading::parallel_for(
+      segments_by_curve.index_range(), grain_size.value, [&](const IndexRange range) {
+        for (const int curve_i : range) {
+          const IndexRange points = points_by_curve[curve_i];
 
-      const int num_segments = foreach_curve_segment(
-          segment_data,
-          curve_i,
-          points,
-          [&](const int /*segment_i*/, const IndexRange points1, const IndexRange points2) {
-            if (test_points_range(points1) || test_points_range(points2)) {
-              update_points_range(points1);
-              update_points_range(points2);
-            }
-          });
-      if (num_segments == 0 && test_points_range(points)) {
-        /* Cyclic curve without cuts, select all. */
-        update_points_range(points);
-      }
-    }
-  });
+          const int num_segments = foreach_curve_segment(
+              segment_data,
+              curve_i,
+              points,
+              [&](const int /*segment_i*/, const IndexRange points1, const IndexRange points2) {
+                if (test_points_range(points1) || test_points_range(points2)) {
+                  update_points_range(points1);
+                  update_points_range(points2);
+                }
+              });
+          if (num_segments == 0 && test_points_range(points)) {
+            /* Cyclic curve without cuts, select all. */
+            update_points_range(points);
+          }
+        }
+      });
 
   for (auto &attribute_writer : attribute_writers) {
     attribute_writer.finish();
+  }
+
+  return true;
+}
+
+bool apply_mask_as_selection(bke::CurvesGeometry &curves,
+                             const IndexMask &selection_mask,
+                             const bke::AttrDomain selection_domain,
+                             const GrainSize grain_size,
+                             const eSelectOp sel_op)
+{
+  if (selection_mask.is_empty()) {
+    return false;
+  }
+
+  const eCustomDataType create_type = CD_PROP_BOOL;
+  const Span<StringRef> selection_attribute_names =
+      ed::curves::get_curves_selection_attribute_names(curves);
+  for (const int i : selection_attribute_names.index_range()) {
+    bke::GSpanAttributeWriter writer = ed::curves::ensure_selection_attribute(
+        curves, selection_domain, create_type, selection_attribute_names[i]);
+
+    selection_mask.foreach_index(grain_size, [&](const int64_t element_i) {
+      ed::curves::apply_selection_operation_at_index(writer.span, element_i, sel_op);
+    });
+
+    writer.finish();
   }
 
   return true;
