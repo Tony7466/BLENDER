@@ -439,7 +439,7 @@ static void calc_smooth_filter(const Sculpt &sd,
           const MutableSpan<float3> translations = tls.translations;
           translations_from_new_positions(new_positions, orig_data.positions, translations);
           scale_translations(translations, factors);
-          reset_translations_to_original(translations, orig_data.positions, positions);
+          reset_translations_to_original(translations, positions, orig_data.positions);
 
           lock_translation_axes(*ss.filter_cache, translations);
           clip_and_lock_translations(sd, ss, orig_data.positions, translations);
@@ -479,7 +479,7 @@ static void calc_smooth_filter(const Sculpt &sd,
           const MutableSpan<float3> translations = tls.translations;
           translations_from_new_positions(new_positions, orig_positions, translations);
           scale_translations(translations, factors);
-          reset_translations_to_original(translations, orig_positions, positions);
+          reset_translations_to_original(translations, positions, orig_positions);
 
           lock_translation_axes(*ss.filter_cache, translations);
           clip_and_lock_translations(sd, ss, orig_positions, translations);
@@ -563,7 +563,7 @@ static void calc_inflate_filter(const Sculpt &sd,
           const MutableSpan<float3> translations = tls.translations;
           translations.copy_from(orig_data.normals);
           scale_translations(translations, factors);
-          reset_translations_to_original(translations, orig_data.positions, positions);
+          reset_translations_to_original(translations, positions, orig_data.positions);
 
           lock_translation_axes(*ss.filter_cache, translations);
           clip_and_lock_translations(sd, ss, orig_data.positions, translations);
@@ -599,7 +599,7 @@ static void calc_inflate_filter(const Sculpt &sd,
           const MutableSpan<float3> translations = tls.translations;
           translations.copy_from(orig_normals);
           scale_translations(translations, factors);
-          reset_translations_to_original(translations, orig_positions, positions);
+          reset_translations_to_original(translations, positions, orig_positions);
 
           lock_translation_axes(*ss.filter_cache, translations);
           clip_and_lock_translations(sd, ss, orig_positions, translations);
@@ -683,7 +683,7 @@ static void calc_scale_filter(const Sculpt &sd,
           const MutableSpan<float3> translations = tls.translations;
           translations.copy_from(orig_data.positions);
           scale_translations(translations, factors);
-          reset_translations_to_original(translations, orig_data.positions, positions);
+          reset_translations_to_original(translations, positions, orig_data.positions);
 
           lock_translation_axes(*ss.filter_cache, translations);
           clip_and_lock_translations(sd, ss, orig_data.positions, translations);
@@ -718,7 +718,7 @@ static void calc_scale_filter(const Sculpt &sd,
           const MutableSpan<float3> translations = tls.translations;
           translations.copy_from(orig_positions);
           scale_translations(translations, factors);
-          reset_translations_to_original(translations, orig_positions, positions);
+          reset_translations_to_original(translations, positions, orig_positions);
 
           lock_translation_axes(*ss.filter_cache, translations);
           clip_and_lock_translations(sd, ss, orig_positions, translations);
@@ -817,7 +817,7 @@ static void calc_sphere_filter(const Sculpt &sd,
           tls.translations.resize(positions.size());
           const MutableSpan<float3> translations = tls.translations;
           calc_sphere_translations(orig_data.positions, factors, translations);
-          reset_translations_to_original(translations, orig_data.positions, positions);
+          reset_translations_to_original(translations, positions, orig_data.positions);
 
           lock_translation_axes(*ss.filter_cache, translations);
           clip_and_lock_translations(sd, ss, orig_data.positions, translations);
@@ -851,7 +851,7 @@ static void calc_sphere_filter(const Sculpt &sd,
           tls.translations.resize(positions.size());
           const MutableSpan<float3> translations = tls.translations;
           calc_sphere_translations(orig_positions, factors, translations);
-          reset_translations_to_original(translations, orig_positions, positions);
+          reset_translations_to_original(translations, positions, orig_positions);
 
           lock_translation_axes(*ss.filter_cache, translations);
           clip_and_lock_translations(sd, ss, orig_positions, translations);
@@ -949,7 +949,7 @@ static void calc_random_filter(const Sculpt &sd,
           const MutableSpan<float3> translations = tls.translations;
           translations.copy_from(orig_data.normals);
           scale_translations(translations, factors);
-          reset_translations_to_original(translations, orig_data.positions, positions);
+          reset_translations_to_original(translations, positions, orig_data.positions);
 
           lock_translation_axes(*ss.filter_cache, translations);
           clip_and_lock_translations(sd, ss, orig_data.positions, translations);
@@ -986,7 +986,7 @@ static void calc_random_filter(const Sculpt &sd,
           const MutableSpan<float3> translations = tls.translations;
           translations.copy_from(orig_normals);
           scale_translations(translations, factors);
-          reset_translations_to_original(translations, orig_positions, positions);
+          reset_translations_to_original(translations, positions, orig_positions);
 
           lock_translation_axes(*ss.filter_cache, translations);
           clip_and_lock_translations(sd, ss, orig_positions, translations);
