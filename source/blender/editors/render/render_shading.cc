@@ -396,8 +396,20 @@ static int material_slot_de_select(bContext *C, bool select)
     if (ob->totcol == 0) {
       continue;
     }
+    const short *mat_num_p = BKE_object_material_len_p(ob);
+    BLI_assert(mat_num_p != nullptr); /* Never null, shading edit-mode ensures this. */
 
-    short mat_nr_active = BKE_object_material_index_get(ob, mat_active);
+    /* Prioritize the active slot (even for other objects),
+     * otherwise fall-back to the first used-index. */
+    short mat_nr_active = -1;
+    if (obact && (obact->actcol - 1 < *mat_num_p)) {
+      if (BKE_object_material_get(ob, obact->actcol) == mat_active) {
+        mat_nr_active = obact->actcol - 1;
+      }
+    }
+    if (mat_nr_active == -1) {
+      mat_nr_active = BKE_object_material_index_get(ob, mat_active);
+    }
 
     if (mat_nr_active == -1) {
       continue;
