@@ -81,7 +81,7 @@ void COM_execute(Render *render,
       (U.experimental.enable_new_cpu_compositor &&
        scene->r.compositor_device == SCE_COMPOSITOR_DEVICE_NEW_CPU))
   {
-    /* GPU compositor. */
+    /* Realtime compositor. */
     RE_compositor_execute(
         *render, *scene, *render_data, *node_tree, view_name, render_context, profiler);
   }

@@ -693,7 +693,7 @@ static const EnumPropertyItem eevee_resolution_scale_items[] = {
 static const EnumPropertyItem compositor_device_items[] = {
     {SCE_COMPOSITOR_DEVICE_CPU, "CPU", 0, "CPU", ""},
     {SCE_COMPOSITOR_DEVICE_GPU, "GPU", 0, "GPU", ""},
-    {SCE_COMPOSITOR_DEVICE_NEW_CPU, "NEW_GPU", 0, "New CPU", ""},
+    {SCE_COMPOSITOR_DEVICE_NEW_CPU, "NEW_CPU", 0, "New CPU", ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
