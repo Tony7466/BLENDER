@@ -109,9 +109,9 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
         info.typedef_source("overlay_shader_shared.h");
         info.storage_buf(0, Qualifier::READ, "VertexData", "data_buf[]");
         info.define("pos", "data_buf[gl_VertexID].pos_.xyz");
-        info.define("ucolor", "data_buf[gl_VertexID].color_");
+        info.define("vertex_color", "data_buf[gl_VertexID].color_");
         info.vertex_inputs_.pop_last();
-        info.push_constants_.pop_last();
+        info.vertex_inputs_.pop_last();
         info.additional_infos_.clear();
         info.additional_info("draw_view", "draw_modelmat_new", "draw_globals");
       });
