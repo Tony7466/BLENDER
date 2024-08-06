@@ -7,7 +7,6 @@
  */
 
 #include "BKE_curves.hh"
-#include "BLI_vector_set.hh"
 
 #include "BKE_attribute.hh"
 #include "BKE_context.hh"
@@ -31,6 +30,11 @@
 #include <iostream>
 
 namespace blender::ed::greasepencil {
+
+inline int wrap_range(const IndexRange range, const int index)
+{
+  return (index - range.start()) % range.size() + range.start();
+}
 
 bool update_segment_selection(bke::CurvesGeometry &curves,
                               const IndexMask &changed_point_mask,
@@ -58,20 +62,10 @@ bool update_segment_selection(bke::CurvesGeometry &curves,
   const Span<float2> screen_space_positions = tree_data.start_positions.as_span().slice(
       tree_data_range);
 
-  Array<int> curve_starts;
-  Array<int> segment_offsets;
-  Array<int> segment_sizes;
-  ed::greasepencil::find_curve_segments(curves,
-                                        changed_curve_mask,
-                                        screen_space_positions,
-                                        tree_data,
-                                        curve_starts,
-                                        segment_offsets,
-                                        segment_sizes,
-                                        std::nullopt,
-                                        std::nullopt);
+  const CurveSegmentsData segment_data = ed::greasepencil::find_curve_segments(
+      curves, changed_curve_mask, screen_space_positions, tree_data);
 
-  const OffsetIndices<int> segments_by_curve = OffsetIndices<int>(segment_offsets);
+  const OffsetIndices<int> segments_by_curve = OffsetIndices<int>(segment_data.segment_offsets);
   Vector<bke::GSpanAttributeWriter> attribute_writers;
   const eCustomDataType create_type = CD_PROP_BOOL;
   const Span<StringRef> selection_attribute_names =
@@ -82,67 +76,142 @@ bool update_segment_selection(bke::CurvesGeometry &curves,
   };
 
   /* Find all segments that have changed points and fill them. */
-  threading::parallel_for(segments_by_curve.index_range(), 256, [&](const IndexRange range) {
-    for (const int i_curve : range) {
-      const IndexRange points = points_by_curve[i_curve];
-      const IndexRange segments = segments_by_curve[i_curve];
-      int segment_start = curve_starts[i_curve];
-      for (const int i_segment : segment_sizes.index_range().slice(segments)) {
-        const IndexRange segment_points = IndexRange::from_begin_size(segment_start,
-                                                                      segment_sizes[i_segment]);
-        /* Test if anything was changed. */
-        {
-          const IndexMask changed_segment_points = changed_point_mask.slice_content(
-              segment_points);
-          std::cout << "Segment " << i_segment << " points " << segment_points
-                    << ", changed segment points: ";
-          changed_segment_points.foreach_index(
-              [&](const int index) { std::cout << index << ", "; });
-          std::cout << std::endl;
-        }
-        if (!changed_point_mask.slice_content(segment_points).is_empty()) {
-          for (auto &attribute_writer : attribute_writers) {
-            for (const int i_seg_point : segment_points) {
-              /* Note: segment range can extend outside the curve points, in case of a cyclic curve
-               * getting split. The point index must wrap around the curve points range. */
-              const int i_point = (i_seg_point - points.start()) % points.size() + points.start();
-              std::cout << "select " << i_point << std::endl;
-              ed::curves::apply_selection_operation_at_index(
-                  attribute_writer.span, i_point, sel_op);
-            }
-          }
-        }
-
-        segment_start = segment_points.one_after_last();
-      }
-    }
-  });
-
-  for (auto &attribute_writer : attribute_writers) {
-    attribute_writer.finish();
-  }
+  Array<bool> changed_points(curves.points_num());
+  changed_point_mask.to_bools(changed_points);
 
   {
     std::cout << "Curves: " << std::endl;
-    for (const int i_curve : segments_by_curve.index_range()) {
-      const IndexRange points = points_by_curve[i_curve];
-      const IndexRange segments = OffsetIndices<int>(segments_by_curve)[i_curve];
-      std::cout << "  Curve " << i_curve << " segments ";
+    for (const int curve_i : segments_by_curve.index_range()) {
+      const IndexRange points = points_by_curve[curve_i];
+      const IndexRange segments = segments_by_curve[curve_i];
+      const Span<int> curve_segment_points = segment_data.segment_start_points.as_span().slice(
+          segments);
+      const Span<float> curve_segment_fractions =
+          segment_data.segment_start_fractions.as_span().slice(segments);
+      /* Wrap the last segment around if the first segment does not match the curve start. */
+      const bool wrap_last_segment = (!curve_segment_points.is_empty() &&
+                                      curve_segment_points.first() == points.first() &&
+                                      curve_segment_fractions.first() == 0.0f);
+
+      std::cout << "  Curve " << curve_i << " segments ";
       if (segments.is_empty()) {
         std::cout << "empty" << std::endl;
       }
       else {
         std::cout << segments << std::endl;
       }
-      int segment_start = curve_starts[i_curve];
-      for (const int i_seg : segment_sizes.index_range().slice(segments)) {
-        const IndexRange segment_points = IndexRange::from_begin_size(segment_start,
-                                                                      segment_sizes[i_seg]);
-        std::cout << "    Segment " << i_seg << " points " << segment_points << std::endl;
-        segment_start = segment_points.one_after_last();
+
+      for (const int segment_i : segments) {
+        const int next_segment_i = wrap_range(segments, segment_i + 1);
+
+        const int segment_point_i = segment_data.segment_start_points[segment_i];
+        const float segment_fraction = segment_data.segment_start_fractions[segment_i];
+        const int next_segment_point_i = segment_data.segment_start_points[next_segment_i];
+        const float next_segment_fraction = segment_data.segment_start_fractions[next_segment_i];
+        const bool wrap_segment = (wrap_last_segment && segment_i == segments.last());
+
+        /* Start point with zero fraction is included. */
+        const int first_included_point_i = (segment_fraction == 0.0f ?
+                                                segment_point_i :
+                                                wrap_range(points, segment_point_i + 1));
+        /* End point with zero fraction is excluded. */
+        const int last_included_point_i = (next_segment_fraction == 0.0f ?
+                                               next_segment_point_i :
+                                               wrap_range(points, next_segment_point_i - 1));
+
+        std::cout << "  Segment " << segment_i << " start point "
+                  << segment_data.segment_start_points[segment_i] << " fraction "
+                  << segment_data.segment_start_fractions[segment_i];
+        if (wrap_segment) {
+          const IndexRange points_range1 = IndexRange::from_begin_end_inclusive(
+              points.first(), last_included_point_i);
+          const IndexRange points_range2 = IndexRange::from_begin_end_inclusive(
+              first_included_point_i, points.last());
+          std::cout << " (wrapped) " << points_range1 << " " << points_range2;
+        }
+        else {
+          const IndexRange points_range = IndexRange::from_begin_end_inclusive(
+              first_included_point_i, last_included_point_i);
+          std::cout << " " << points_range;
+        }
+        std::cout << std::endl;
       }
     }
-    std::cout << std::endl;
+  }
+
+  threading::parallel_for(segments_by_curve.index_range(), 256, [&](const IndexRange range) {
+    for (const int curve_i : range) {
+      const IndexRange points = points_by_curve[curve_i];
+      const IndexRange segments = segments_by_curve[curve_i];
+      const Span<int> curve_segment_points = segment_data.segment_start_points.as_span().slice(
+          segments);
+      const Span<float> curve_segment_fractions =
+          segment_data.segment_start_fractions.as_span().slice(segments);
+      /* Wrap the last segment around if the first segment does not match the curve start. */
+      const bool wrap_last_segment = (!curve_segment_points.is_empty() &&
+                                      curve_segment_points.first() == points.first() &&
+                                      curve_segment_fractions.first() == 0.0f);
+
+      for (const int segment_i : segments) {
+        const int next_segment_i = wrap_range(segments, segment_i + 1);
+
+        const int segment_point_i = segment_data.segment_start_points[segment_i];
+        const float segment_fraction = segment_data.segment_start_fractions[segment_i];
+        const int next_segment_point_i = segment_data.segment_start_points[next_segment_i];
+        const float next_segment_fraction = segment_data.segment_start_fractions[next_segment_i];
+        const bool wrap_segment = (wrap_last_segment && segment_i == segments.last());
+
+        /* Start point with zero fraction is included. */
+        const int first_included_point_i = (segment_fraction == 0.0f ?
+                                                segment_point_i :
+                                                wrap_range(points, segment_point_i + 1));
+        /* End point with zero fraction is excluded. */
+        const int last_included_point_i = (next_segment_fraction == 0.0f ?
+                                               next_segment_point_i :
+                                               wrap_range(points, next_segment_point_i - 1));
+
+        auto test_points_range = [&](const IndexRange range) -> bool {
+          for (const int point_i : range) {
+            if (changed_points[point_i]) {
+              return true;
+            }
+          }
+          return false;
+        };
+        auto update_points_range = [&](const IndexRange range) {
+          for (auto &attribute_writer : attribute_writers) {
+            for (const int point_i : range) {
+              ed::curves::apply_selection_operation_at_index(
+                  attribute_writer.span, point_i, sel_op);
+            }
+          }
+        };
+
+        /* In case the segment wraps around the curve start there will be two ranges to check,
+         * otherwise the second range is empty. */
+        if (wrap_segment) {
+          const IndexRange points_range1 = IndexRange::from_begin_end_inclusive(
+              points.first(), last_included_point_i);
+          const IndexRange points_range2 = IndexRange::from_begin_end_inclusive(
+              first_included_point_i, points.last());
+          if (test_points_range(points_range1) || test_points_range(points_range2)) {
+            update_points_range(points_range1);
+            update_points_range(points_range2);
+          }
+        }
+        else {
+          const IndexRange points_range = IndexRange::from_begin_end_inclusive(
+              first_included_point_i, last_included_point_i);
+          if (test_points_range(points_range)) {
+            update_points_range(points_range);
+          }
+        }
+      }
+    }
+  });
+
+  for (auto &attribute_writer : attribute_writers) {
+    attribute_writer.finish();
   }
 
   return true;

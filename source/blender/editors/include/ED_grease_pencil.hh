@@ -761,6 +761,34 @@ void find_curve_intersections(const bke::CurvesGeometry &curves,
                               std::optional<MutableSpan<float>> r_last_intersect_factors);
 
 /**
+ * Segmentation of curves into fractional ranges.
+ *
+ * Segments are defined by a point index and a fraction of the following line segment. The actual
+ * start point is found by interpolating between the start point and the next point on the curve. A
+ * curve can have no segments at all, in which case the full curve is cyclic and has a single
+ * segment. Segments can start and end on the same point, making them shorter than a line segment.
+ * A curve is fully partitioned into segments, each segment ends at the start of the next segment
+ * with no gaps. The last segment is wrapped around to connect to the first segment.
+ *
+ * curves:   0---------------1-----------------------2-------
+ * points:   0       1       2       3       4       5
+ * segments: ┌>0────>1──────┐┌──>2────────────>3──>4┐┌─────>┐
+ *           └──────────────┘└──────────────────────┘└──────┘
+ *
+ * segment_offsets = [0, 2, 5]
+ * segment_start_points = [0, 1, 2, 4, 4]
+ * segment_start_fractions = [.25, .0, .5, .25, .75]
+ */
+struct CurveSegmentsData {
+  /* Segment start index for each curve, can be used as \a OffsetIndices. */
+  Array<int> segment_offsets;
+  /* Point indices where new segments start. */
+  Array<int> segment_start_points;
+  /* Fraction of the start point on the line segment to the next point. */
+  Array<float> segment_start_fractions;
+};
+
+/**
  * Find segments between intersections.
  *
  * Note: Index masks for target and intersecting curves can have any amount of overlap,
@@ -779,15 +807,10 @@ void find_curve_intersections(const bke::CurvesGeometry &curves,
  * \param r_start_factors: Factor (-1..0) previous segment to prepend.
  * \param r_end_factors: Factor (0..1) of last segment to append.
  */
-void find_curve_segments(const bke::CurvesGeometry &curves,
-                         const IndexMask &curve_mask,
-                         const Span<float2> screen_space_positions,
-                         const Curves2DBVHTree &tree_data,
-                         Array<int> &r_curve_starts,
-                         Array<int> &r_segments_by_curve,
-                         Array<int> &r_segment_sizes,
-                         std::optional<Array<float>> r_segment_start_factors,
-                         std::optional<Array<float>> r_segment_end_factors);
+CurveSegmentsData find_curve_segments(const bke::CurvesGeometry &curves,
+                                      const IndexMask &curve_mask,
+                                      const Span<float2> screen_space_positions,
+                                      const Curves2DBVHTree &tree_data);
 
 bool update_segment_selection(bke::CurvesGeometry &curves,
                               const IndexMask &changed_point_mask,

@@ -5149,17 +5149,17 @@ namespace blender::ed::greasepencil {
 //   selection.materialize(selection_cache);
 // }
 
-static IndexMask curve_mask_from_point_mask(const OffsetIndices<int> &points_by_curve,
-                                            const IndexMask &point_mask,
-                                            IndexMaskMemory &memory)
-{
-  return IndexMask::from_predicate(
-      points_by_curve.index_range(), GrainSize(512), memory, [&](const int64_t curve_i) {
-        const IndexRange points = points_by_curve[curve_i];
-        /* The curve is selected if any of its points are selected. */
-        return !point_mask.slice_content(points).is_empty();
-      });
-}
+// static IndexMask curve_mask_from_point_mask(const OffsetIndices<int> &points_by_curve,
+//                                             const IndexMask &point_mask,
+//                                             IndexMaskMemory &memory)
+// {
+//   return IndexMask::from_predicate(
+//       points_by_curve.index_range(), GrainSize(512), memory, [&](const int64_t curve_i) {
+//         const IndexRange points = points_by_curve[curve_i];
+//         /* The curve is selected if any of its points are selected. */
+//         return !point_mask.slice_content(points).is_empty();
+//       });
+// }
 
 }  // namespace blender::ed::greasepencil
 

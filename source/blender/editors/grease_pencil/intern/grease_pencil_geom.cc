@@ -1508,20 +1508,10 @@ void find_curve_intersections(const bke::CurvesGeometry &curves,
   });
 }
 
-static int index_in_cyclic_range(const IndexRange range, int index)
-{
-  return (index - range.first()) % range.size() + range.first();
-}
-
-void find_curve_segments(const bke::CurvesGeometry &curves,
-                         const IndexMask &curve_mask,
-                         const Span<float2> screen_space_positions,
-                         const Curves2DBVHTree &tree_data,
-                         Array<int> &r_curve_starts,
-                         Array<int> &r_segments_by_curve,
-                         Array<int> &r_segment_sizes,
-                         std::optional<Array<float>> r_segment_start_factors,
-                         std::optional<Array<float>> r_segment_end_factors)
+CurveSegmentsData find_curve_segments(const bke::CurvesGeometry &curves,
+                                      const IndexMask &curve_mask,
+                                      const Span<float2> screen_space_positions,
+                                      const Curves2DBVHTree &tree_data)
 {
   const OffsetIndices points_by_curve = curves.points_by_curve();
   const VArray<bool> cyclic = curves.cyclic();
@@ -1542,84 +1532,49 @@ void find_curve_segments(const bke::CurvesGeometry &curves,
 
   /* Count number of segments in each curve.
    * This is needed to write to the correct segments range for each curve. */
-  r_curve_starts.reinitialize(curves.curves_num());
-  r_segments_by_curve.reinitialize(curves.curves_num() + 1);
+  CurveSegmentsData result;
+  result.segment_offsets.reinitialize(curves.curves_num() + 1);
   /* Only segments with hits are written to, initialize all to zero. */
-  r_segments_by_curve.fill(0);
-  curve_mask.foreach_index(GrainSize(512), [&](const int i_curve) {
-    const IndexRange points = points_by_curve[i_curve];
+  result.segment_offsets.fill(0);
+  curve_mask.foreach_index(GrainSize(512), [&](const int curve_i) {
+    const IndexRange points = points_by_curve[curve_i];
     const IndexMask curve_hit_mask = hit_mask.slice_content(points);
-    const bool is_cyclic = cyclic[i_curve];
+    const bool is_cyclic = cyclic[curve_i];
 
-    /* Each hit splits a segment in two. Cyclic curves have one (non-cyclic) segment after the
-     * first split, non-cylic curve have one more segment. */
-    const int num_hits = curve_hit_mask.size();
-    r_segments_by_curve[i_curve] = (num_hits > 0 ? num_hits + (is_cyclic ? 0 : 1) : 0);
-
-    /* Shift cyclic curve starts to the first cut so last and first segments are contiguous. */
-    r_curve_starts[i_curve] = (is_cyclic && !curve_hit_mask.is_empty() ?
-                                   index_in_cyclic_range(points, curve_hit_mask.first() + 1) :
-                                   points.first());
+    /* Each hit splits a segment in two. Non-cyclic curves add the curve start point as a segment
+     * start point. */
+    result.segment_offsets[curve_i] = (is_cyclic ? 0 : 1) + curve_hit_mask.size();
   });
   const OffsetIndices segments_by_curve = offset_indices::accumulate_counts_to_offsets(
-      r_segments_by_curve);
+      result.segment_offsets);
 
   const int num_segments = segments_by_curve.total_size();
-  r_segment_sizes.reinitialize(num_segments);
-  if (r_segment_start_factors) {
-    r_segment_start_factors->reinitialize(num_segments);
-  }
-  if (r_segment_end_factors) {
-    r_segment_end_factors->reinitialize(num_segments);
-  }
+  result.segment_start_points.reinitialize(num_segments);
+  result.segment_start_fractions.reinitialize(num_segments);
 
-  curve_mask.foreach_index(GrainSize(512), [&](const int i_curve) {
-    const IndexRange points = points_by_curve[i_curve];
+  curve_mask.foreach_index(GrainSize(512), [&](const int curve_i) {
+    const IndexRange points = points_by_curve[curve_i];
     const IndexMask curve_hit_mask = hit_mask.slice_content(points);
-    const IndexRange segments = segments_by_curve[i_curve];
-    const bool is_cyclic = cyclic[i_curve];
+    const bool is_cyclic = cyclic[curve_i];
+    const IndexRange segments = segments_by_curve[curve_i];
 
-    if (curve_hit_mask.is_empty()) {
+    if (segments.is_empty()) {
       return;
     }
-    // if (is_cyclic && curve_hit_mask.size() == 1) {
-    //   /* Single segment cyclic curve simply
-    //   const int i_segment = segments.first();
-    // }
 
-    int i_prev_point = (is_cyclic ? curve_hit_mask.last() : points.first());
-    curve_hit_mask.foreach_index([&](const int i_point, const int i_hit) {
-      const int i_segment = segments[i_hit];
-      if (i_prev_point == i_point) {
-        r_segment_sizes[i_segment] = (is_cyclic ? points.size() : 0);
-      }
-      /* Account for negative range for the first segment. */
-      else if (i_point < i_prev_point) {
-        r_segment_sizes[i_segment] = points.size() + 1 + i_point - i_prev_point;
-      }
-      else {
-        r_segment_sizes[i_segment] = 1 + i_point - i_prev_point;
-      }
-      if (r_segment_start_factors) {
-        (*r_segment_start_factors)[i_segment] = last_hit_factors[i_prev_point];
-      }
-      if (r_segment_end_factors) {
-        (*r_segment_end_factors)[i_segment] = first_hit_factors[i_point];
-      }
-      i_prev_point = i_point;
-    });
-    /* One last segment to the curve end. */
+    /* Add curve start a segment. */
     if (!is_cyclic) {
-      const int i_segment = segments[curve_hit_mask.size()];
-      r_segment_sizes[i_segment] = points.last() - i_prev_point;
-      if (r_segment_start_factors) {
-        (*r_segment_start_factors)[i_segment] = last_hit_factors[i_prev_point];
-      }
-      if (r_segment_end_factors) {
-        (*r_segment_end_factors)[i_segment] = 0.0f;
-      }
+      result.segment_start_points[segments[0]] = points.first();
+      result.segment_start_fractions[segments[0]] = 0.0f;
     }
+
+    curve_hit_mask.foreach_index([&](const int point_i, const int hit_i) {
+      result.segment_start_points[segments[1 + hit_i]] = point_i;
+      result.segment_start_fractions[segments[1 + hit_i]] = first_hit_factors[point_i];
+    });
   });
+
+  return result;
 }
 
 }  // namespace blender::ed::greasepencil
