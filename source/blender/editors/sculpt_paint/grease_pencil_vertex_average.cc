@@ -68,7 +68,9 @@ void VertexAverageOperation::on_stroke_extended(const bContext &C,
             scene, brush, view_positions[point_i], extension_sample, params.multi_frame_falloff);
 
         ColorGeometry4f &color = vertex_colors[point_i];
+        const float alpha = color.a;
         color = math::interpolate(color, mix_color, influence);
+        color.a = alpha;
       });
     }
 
@@ -101,7 +103,9 @@ void VertexAverageOperation::on_stroke_extended(const bContext &C,
             scene, brush, curve_view_positions, extension_sample, params.multi_frame_falloff);
 
         ColorGeometry4f &color = fill_colors[curve_i];
+        const float alpha = color.a;
         color = math::interpolate(color, mix_color, influence);
+        color.a = alpha;
       });
     }
     return true;
