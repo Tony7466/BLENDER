@@ -20,7 +20,6 @@
 #include "BLI_task.hh"
 
 #include "BKE_attribute.hh"
-#include "BKE_crazyspace.hh"
 #include "BKE_curves.hh"
 #include "BKE_curves_utils.hh"
 #include "BKE_grease_pencil.hh"
@@ -35,8 +34,6 @@
 extern "C" {
 #include "curve_fit_nd.h"
 }
-
-#include <iostream>
 
 namespace blender::ed::greasepencil {
 
@@ -1444,7 +1441,7 @@ void find_curve_intersections(const bke::CurvesGeometry &curves,
         hit->no[0] = result.lambda;
       };
 
-  /* Raycast from point a to b. Ignores intersections with line c. */
+  /* Raycast in the forward direction. Ignores intersections with neighboring lines. */
   auto do_raycast = [&](const int index_back,
                         const int index,
                         const int index_forward,

@@ -463,60 +463,6 @@ Array<PointTransferData> compute_topology_change(
     const Span<Vector<PointTransferData>> src_to_dst_points,
     const bool keep_caps);
 
-// /**
-//  * Structure describing a point in the destination relatively to the source.
-//  * If a point in the destination \a is_src_point, then it corresponds
-//  * exactly to the point at \a src_point index in the source geometry.
-//  * Otherwise, it is a linear combination of points at \a src_point and \a src_next_point in the
-//  * source geometry, with the given \a factor.
-//  * A point in the destination is a \a cut if it splits the source curves geometry, meaning it is
-//  * the first point of a new curve in the destination.
-//  */
-// struct PointTransferDataAlt {
-//   /* Source point index for every destination point. */
-//   Array<int> src_points;
-//   /* Next source point index for interpolation. */
-//   Array<int> next_src_points;
-//   /* Interpolation factor between \a src_points and \a next_src_point. */
-//   Array<float> factor;
-//   /* True for points that match the source point exactly. */
-//   bool is_src_point;
-//   /**/
-//   bool is_cut;
-
-//   /**
-//    * Source point is the last of the curve.
-//    */
-//   bool is_src_end_point() const
-//   {
-//     /* The src_next_point index increments for all points except the last, where it is set to
-//     the
-//      * first point index. This can be used to detect the curve end from the source index alone.
-//      */
-//     return is_src_point && src_point >= src_next_point;
-//   }
-// };
-
-// /**
-//  * Computes a \a dst curves geometry by applying a change of topology from a \a src curves
-//  * geometry.
-//  * The change of topology is described by \a src_to_dst_points, which size should be
-//  * equal to the number of points in the source.
-//  * For each point in the source, the corresponding vector in \a src_to_dst_points contains a set
-//  * of destination points (PointTransferData), which can correspond to points of the source, or
-//  * linear combination of them. Note that this vector can be empty, if we want to remove points
-//  * for example. Curves can also be split if a destination point is marked as a cut.
-//  *
-//  * \returns an array containing the same elements as \a src_to_dst_points, but in the
-//  destination
-//  * points domain.
-//  */
-// Array<PointTransferData> compute_topology_change_alt(
-//     const bke::CurvesGeometry &src,
-//     Span<Vector<PointTransferData>> src_to_dst_points,
-//     bool keep_caps,
-//     bke::CurvesGeometry &dst);
-
 /** Returns a set of vertex group names that are deformed by a bone in an armature. */
 Set<std::string> get_bone_deformed_vertex_group_names(const Object &object);
 

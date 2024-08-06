@@ -107,8 +107,6 @@
 
 #include "view3d_intern.hh" /* own include */
 
-#include <iostream>
-
 // #include "BLI_time_utildefines.h"
 
 using blender::Array;
@@ -5137,31 +5135,6 @@ static bool mball_circle_select(const ViewContext *vc,
       vc, do_circle_select_mball__doSelectElem, &data, V3D_PROJ_TEST_CLIP_DEFAULT);
   return data.is_changed;
 }
-
-namespace blender::ed::greasepencil {
-
-// static void cache_selection_state(const bke::CurvesGeometry &curves, Array<bool>
-// &selection_cache)
-// {
-//   selection_cache.reinitialize(curves.points_num());
-//   const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
-//       ".selection", bke::AttrDomain::Point, true);
-//   selection.materialize(selection_cache);
-// }
-
-// static IndexMask curve_mask_from_point_mask(const OffsetIndices<int> &points_by_curve,
-//                                             const IndexMask &point_mask,
-//                                             IndexMaskMemory &memory)
-// {
-//   return IndexMask::from_predicate(
-//       points_by_curve.index_range(), GrainSize(512), memory, [&](const int64_t curve_i) {
-//         const IndexRange points = points_by_curve[curve_i];
-//         /* The curve is selected if any of its points are selected. */
-//         return !point_mask.slice_content(points).is_empty();
-//       });
-// }
-
-}  // namespace blender::ed::greasepencil
 
 static bool grease_pencil_circle_select(const ViewContext *vc,
                                         const eSelectOp sel_op,

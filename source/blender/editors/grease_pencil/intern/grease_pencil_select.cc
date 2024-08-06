@@ -28,21 +28,12 @@
 
 #include "WM_api.hh"
 
-#include <iostream>
-
 namespace blender::ed::greasepencil {
 
 inline int clamp_range(const IndexRange range, const int index)
 {
   BLI_assert(!range.is_empty());
   return std::clamp(index, int(range.first()), int(range.last()));
-}
-
-inline int wrap_range(const IndexRange range, const int index)
-{
-  /* Add another size to account for negative numbers. */
-  BLI_assert(!range.is_empty());
-  return (index - range.start() + range.size()) % range.size() + range.start();
 }
 
 /**
@@ -64,23 +55,6 @@ static int foreach_curve_segment(const CurveSegmentsData &segment_data,
 
   const OffsetIndices segments_by_curve = OffsetIndices<int>(segment_data.segment_offsets);
   const IndexRange segments = segments_by_curve[curve_index];
-
-  // const Span<int> curve_segment_points = segment_data.segment_start_points.as_span().slice(
-  //     segments);
-  // const Span<float> curve_segment_fractions =
-  // segment_data.segment_start_fractions.as_span().slice(
-  //     segments);
-  /* Wrap the last segment around if the first segment does not match the curve start. */
-  // const bool wrap_last_segment = !curve_segment_points.is_empty() &&
-  //                                (curve_segment_points.first() != points.first() ||
-  //                                 curve_segment_fractions.first() != 0.0f);
-
-  // auto validate_point_index = [&](const int index) -> int {
-  //   if (wrap_last_segment) {
-  //     return wrap_range(points, index);
-  //   }
-  //   return clamp_range(points, index);
-  // };
 
   for (const int segment_i : segments) {
     const int segment_point_i = segment_data.segment_start_points[segment_i];
@@ -120,40 +94,6 @@ static int foreach_curve_segment(const CurveSegmentsData &segment_data,
 
       fn(segment_i, points_range1, points_range2);
     }
-
-    // const int next_segment_i = validate_index(segments, segment_i + 1);
-
-    // const int next_segment_point_i = segment_data.segment_start_points[next_segment_i];
-    // const float next_segment_fraction = segment_data.segment_start_fractions[next_segment_i];
-    // const bool wrap_segment = (wrap_last_segment && segment_i == segments.last());
-
-    // /* Start point with zero fraction is included. */
-    // const int first_included_point_i = (segment_fraction == 0.0f ?
-    //                                         segment_point_i :
-    //                                         validate_point_index(points, segment_point_i + 1));
-    // /* End point with zero fraction is excluded. */
-    // const int last_included_point_i = (next_segment_fraction == 0.0f ?
-    //                                        next_segment_point_i :
-    //                                        validate_point_index(points, next_segment_point_i -
-    //                                        1));
-
-    /* In case the segment wraps around the curve start there will be two ranges to check,
-     * otherwise the second range is empty. */
-    // if (wrap_segment) {
-    //   const IndexRange points_range1 = IndexRange::from_begin_end_inclusive(points.first(),
-    //                                                                         last_included_point_i);
-    //   const IndexRange points_range2 =
-    //   IndexRange::from_begin_end_inclusive(first_included_point_i,
-    //                                                                         points.last());
-
-    //   fn(segment_i, points_range1, points_range2);
-    // }
-    // else {
-    //   const IndexRange points_range =
-    //   IndexRange::from_begin_end_inclusive(first_included_point_i,
-    //                                                                        last_included_point_i);
-    //   fn(segment_i, points_range, IndexRange());
-    // }
   }
   return segments.size();
 }
@@ -172,13 +112,6 @@ bool update_segment_selection(bke::CurvesGeometry &curves,
   IndexMaskMemory memory;
   const IndexMask changed_curve_mask = ed::curves::curve_mask_from_points(
       curves, changed_point_mask, GrainSize(512), memory);
-
-  std::cout << "Changed points: ";
-  changed_point_mask.foreach_index([&](const int index) { std::cout << index << ", "; });
-  std::cout << std::endl;
-  std::cout << "Changed curves: ";
-  changed_curve_mask.foreach_index([&](const int index) { std::cout << index << ", "; });
-  std::cout << std::endl;
 
   const OffsetIndices points_by_curve = curves.points_by_curve();
   const Span<float2> screen_space_positions = tree_data.start_positions.as_span().slice(
@@ -200,31 +133,6 @@ bool update_segment_selection(bke::CurvesGeometry &curves,
   /* Find all segments that have changed points and fill them. */
   Array<bool> changed_points(curves.points_num());
   changed_point_mask.to_bools(changed_points);
-
-  {
-    std::cout << "Curves: " << std::endl;
-    for (const int curve_i : segments_by_curve.index_range()) {
-      const IndexRange points = points_by_curve[curve_i];
-      const IndexRange segments = segments_by_curve[curve_i];
-
-      std::cout << "  Curve " << curve_i << " segments ";
-      if (segments.is_empty()) {
-        std::cout << "empty" << std::endl;
-      }
-      else {
-        std::cout << segments << std::endl;
-      }
-
-      foreach_curve_segment(
-          segment_data,
-          curve_i,
-          points,
-          [&](const int segment_i, const IndexRange points1, const IndexRange points2) {
-            std::cout << " Segment " << segment_i << " range1=" << points1 << " range2=" << points2
-                      << std::endl;
-          });
-    }
-  }
 
   auto test_points_range = [&](const IndexRange range) -> bool {
     for (const int point_i : range) {
