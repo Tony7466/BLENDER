@@ -284,7 +284,6 @@ struct Cache {
 
   ViewContext vc;
   float start_filter_strength;
-  bool no_orig_co;
 };
 
 }
@@ -346,6 +345,12 @@ struct StrokeCache {
   float2 mouse;
   /* Position of the mouse event in screen space, not modified by the stroke type. */
   float2 mouse_event;
+
+  /**
+   * Used by the color attribute paint brush tool to store the brush color during a stroke and
+   * composite it over the original color.
+   */
+  Array<float4> mix_colors;
 
   Array<float4> prev_colors;
   GArray<> prev_colors_vpaint;
@@ -815,18 +820,10 @@ const blender::float3 SCULPT_vertex_normal_get(const SculptSession &ss, PBVHVert
 
 bool SCULPT_vertex_is_occluded(SculptSession &ss, PBVHVertRef vertex, bool original);
 
-const float *SCULPT_vertex_persistent_co_get(const SculptSession &ss, PBVHVertRef vertex);
-
 /**
  * Coordinates used for manipulating the base mesh when Grab Active Vertex is enabled.
  */
 const float *SCULPT_vertex_co_for_grab_active_get(const SculptSession &ss, PBVHVertRef vertex);
-
-/**
- * Returns the info of the limit surface when multi-res is available,
- * otherwise it returns the current coordinate of the vertex.
- */
-blender::float3 SCULPT_vertex_limit_surface_get(const SculptSession &ss, PBVHVertRef vertex);
 
 /**
  * Returns the pointer to the coordinates that should be edited from a brush tool iterator
@@ -967,6 +964,15 @@ int active_face_set_get(const SculptSession &ss);
 int vert_face_set_get(const SculptSession &ss, PBVHVertRef vertex);
 
 bool vert_has_face_set(const SculptSession &ss, PBVHVertRef vertex, int face_set);
+bool vert_has_face_set(const GroupedSpan<int> vert_to_face_map,
+                       const int *face_sets,
+                       const int vert,
+                       const int face_set);
+bool vert_has_face_set(const SubdivCCG &subdiv_ccg,
+                       const int *face_sets,
+                       const int grid,
+                       const int face_set);
+bool vert_has_face_set(const int face_set_offset, const BMVert &vert, const int face_set);
 bool vert_has_unique_face_set(const SculptSession &ss, PBVHVertRef vertex);
 bool vert_has_unique_face_set(const GroupedSpan<int> vert_to_face_map,
                               const int *face_sets,
@@ -1033,8 +1039,8 @@ namespace blender::ed::sculpt_paint {
 void calc_brush_plane(const Brush &brush,
                       Object &ob,
                       Span<bke::pbvh::Node *> nodes,
-                      float r_area_no[3],
-                      float r_area_co[3]);
+                      float3 &r_area_no,
+                      float3 &r_area_co);
 
 std::optional<float3> calc_area_normal(const Brush &brush,
                                        Object &ob,
@@ -1087,10 +1093,10 @@ bool SCULPT_is_vertex_inside_brush_radius_symm(const float vertex[3],
                                                float radius,
                                                char symm);
 bool SCULPT_is_symmetry_iteration_valid(char i, char symm);
-void SCULPT_flip_v3_by_symm_area(float v[3],
-                                 ePaintSymmetryFlags symm,
-                                 ePaintSymmetryAreas symmarea,
-                                 const float pivot[3]);
+blender::float3 SCULPT_flip_v3_by_symm_area(const blender::float3 &vector,
+                                            ePaintSymmetryFlags symm,
+                                            ePaintSymmetryAreas symmarea,
+                                            const blender::float3 &pivot);
 void SCULPT_flip_quat_by_symm_area(float quat[4],
                                    ePaintSymmetryFlags symm,
                                    ePaintSymmetryAreas symmarea,
@@ -1526,7 +1532,6 @@ struct LengthConstraint {
 
 struct SimulationData {
   Vector<LengthConstraint> length_constraints;
-  Set<OrderedEdge> created_length_constraints;
   Array<float> length_constraint_tweak;
 
   /* Position anchors for deformation brushes. These positions are modified by the brush and the
@@ -1552,10 +1557,6 @@ struct SimulationData {
   int totnode;
   Map<const bke::pbvh::Node *, int> node_state_index;
   Array<NodeSimState> node_state;
-
-  VArraySpan<float> mask_mesh;
-  int mask_cd_offset_bmesh;
-  CCGKey grid_key;
 
   ~SimulationData();
 };
@@ -2217,20 +2218,20 @@ void ensure_valid_pivot(const Object &ob, Scene &scene);
  * \{
  * Each mesh island shell gets its own integer
  * key; these are temporary and internally limited to 8 bits.
- * Uses the `ss->topology_island_key` attribute.
  */
 
-/* Ensures vertex island keys exist and are valid. */
-void SCULPT_topology_islands_ensure(Object &ob);
+namespace blender::ed::sculpt_paint::islands {
 
-/**
- * Mark vertex island keys as invalid.
- * Call when adding or hiding geometry.
- */
-void SCULPT_topology_islands_invalidate(SculptSession &ss);
+/* Ensure vertex island keys exist and are valid. */
+void ensure_cache(Object &object);
+
+/** Mark vertex island keys as invalid. Call when adding or hiding geometry. */
+void invalidate(SculptSession &ss);
 
 /** Get vertex island key. */
-int SCULPT_vertex_island_get(const SculptSession &ss, PBVHVertRef vertex);
+int vert_id_get(const SculptSession &ss, int vert);
+
+}
 
 /** \} */
 
