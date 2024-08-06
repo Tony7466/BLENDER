@@ -47,21 +47,24 @@ inline int wrap_range(const IndexRange range, const int index)
 
 /**
  * Callback for each segment. Each segment can have two point ranges, second range may be empty.
+ * Returns the total number of segments, or zero if the curve is cyclic and can be regarded as a
+ * single contiguous range.
  *
  * void fn(int segment_index, IndexRange point_range1, IndexRange point_range2);
  */
 template<typename Fn>
-static void foreach_curve_segment(const CurveSegmentsData &segment_data,
-                                  const int curve_index,
-                                  const IndexRange points,
-                                  Fn fn)
+static int foreach_curve_segment(const CurveSegmentsData &segment_data,
+                                 const int curve_index,
+                                 const IndexRange points,
+                                 Fn fn)
 {
   if (points.is_empty()) {
-    return;
+    return 0;
   }
 
   const OffsetIndices segments_by_curve = OffsetIndices<int>(segment_data.segment_offsets);
   const IndexRange segments = segments_by_curve[curve_index];
+
   // const Span<int> curve_segment_points = segment_data.segment_start_points.as_span().slice(
   //     segments);
   // const Span<float> curve_segment_fractions =
@@ -152,6 +155,7 @@ static void foreach_curve_segment(const CurveSegmentsData &segment_data,
     //   fn(segment_i, points_range, IndexRange());
     // }
   }
+  return segments.size();
 }
 
 bool update_segment_selection(bke::CurvesGeometry &curves,
@@ -222,37 +226,40 @@ bool update_segment_selection(bke::CurvesGeometry &curves,
     }
   }
 
+  auto test_points_range = [&](const IndexRange range) -> bool {
+    for (const int point_i : range) {
+      if (changed_points[point_i]) {
+        return true;
+      }
+    }
+    return false;
+  };
+  auto update_points_range = [&](const IndexRange range) {
+    for (auto &attribute_writer : attribute_writers) {
+      for (const int point_i : range) {
+        ed::curves::apply_selection_operation_at_index(attribute_writer.span, point_i, sel_op);
+      }
+    }
+  };
+
   threading::parallel_for(segments_by_curve.index_range(), 256, [&](const IndexRange range) {
     for (const int curve_i : range) {
       const IndexRange points = points_by_curve[curve_i];
 
-      foreach_curve_segment(
+      const int num_segments = foreach_curve_segment(
           segment_data,
           curve_i,
           points,
           [&](const int /*segment_i*/, const IndexRange points1, const IndexRange points2) {
-            auto test_points_range = [&](const IndexRange range) -> bool {
-              for (const int point_i : range) {
-                if (changed_points[point_i]) {
-                  return true;
-                }
-              }
-              return false;
-            };
-            auto update_points_range = [&](const IndexRange range) {
-              for (auto &attribute_writer : attribute_writers) {
-                for (const int point_i : range) {
-                  ed::curves::apply_selection_operation_at_index(
-                      attribute_writer.span, point_i, sel_op);
-                }
-              }
-            };
-
             if (test_points_range(points1) || test_points_range(points2)) {
               update_points_range(points1);
               update_points_range(points2);
             }
           });
+      if (num_segments == 0 && test_points_range(points)) {
+        /* Cyclic curve without cuts, select all. */
+        update_points_range(points);
+      }
     }
   });
 
