@@ -194,7 +194,7 @@ static void ui_update_color_picker_buts_rgb(uiBut *from_but,
        * push, so disable it on RNA buttons in the color picker block */
       UI_but_flag_disable(bt, UI_BUT_UNDO);
     }
-    else if (bt->str == "Hex: ") {
+    else if (bt->type == UI_BTYPE_TEXT) {
       float rgb_hex[3];
       uchar rgb_hex_uchar[3];
       char col[16];
@@ -464,7 +464,7 @@ static void ui_block_colorpicker(uiBlock *block,
   /* ePickerType */
   static char colormode = 1;
   uiBut *bt;
-  int width;
+  int picker_width;
   static char hexcol[128];
   float softmin, softmax, hardmin, hardmax, step, precision;
   int yco;
@@ -472,7 +472,7 @@ static void ui_block_colorpicker(uiBlock *block,
   PointerRNA *ptr = &from_but->rnapoin;
   PropertyRNA *prop = from_but->rnaprop;
 
-  width = PICKER_TOTAL_W;
+  picker_width = PICKER_TOTAL_W;
 
   /* sneaky way to check for alpha */
   rgba_scene_linear[3] = FLT_MAX;
@@ -517,7 +517,7 @@ static void ui_block_colorpicker(uiBlock *block,
                  IFACE_("RGB"),
                  0,
                  yco,
-                 width / 2,
+                 picker_width / 2,
                  UI_UNIT_Y,
                  &colormode,
                  0.0,
@@ -531,13 +531,13 @@ static void ui_block_colorpicker(uiBlock *block,
                  UI_BTYPE_ROW,
                  0,
                  IFACE_((U.color_picker_type == USER_CP_CIRCLE_HSL) ? "HSL" : "HSV"),
-                 width / 2,
+                 picker_width / 2,
                  yco,
-                 width / 2,
+                 picker_width / 2,
                  UI_UNIT_Y,
                  &colormode,
                  0.0,
-                 PICKER_TYPE_HSV,
+                 float(PICKER_TYPE_HSV),
                  (U.color_picker_type == USER_CP_CIRCLE_HSL) ? TIP_("Hue, Saturation, Lightness") :
                                                                TIP_("Hue, Saturation, Value"));
   UI_but_flag_disable(bt, UI_BUT_UNDO);
@@ -558,7 +558,7 @@ static void ui_block_colorpicker(uiBlock *block,
                       IFACE_("Red:"),
                       0,
                       yco,
-                      width,
+                      picker_width,
                       UI_UNIT_Y,
                       ptr,
                       prop,
@@ -576,7 +576,7 @@ static void ui_block_colorpicker(uiBlock *block,
                       IFACE_("Green:"),
                       0,
                       yco -= UI_UNIT_Y,
-                      width,
+                      picker_width,
                       UI_UNIT_Y,
                       ptr,
                       prop,
@@ -594,7 +594,7 @@ static void ui_block_colorpicker(uiBlock *block,
                       IFACE_("Blue:"),
                       0,
                       yco -= UI_UNIT_Y,
-                      width,
+                      picker_width,
                       UI_UNIT_Y,
                       ptr,
                       prop,
@@ -613,14 +613,13 @@ static void ui_block_colorpicker(uiBlock *block,
 
   /* HSV values */
   yco = -3.0f * UI_UNIT_Y;
-  UI_block_align_begin(block);
   bt = uiDefButF(block,
                  UI_BTYPE_NUM_SLIDER,
                  0,
                  IFACE_("Hue:"),
                  0,
                  yco,
-                 width,
+                 picker_width,
                  UI_UNIT_Y,
                  cpicker->hsv_scene_linear,
                  0.0,
@@ -637,7 +636,7 @@ static void ui_block_colorpicker(uiBlock *block,
                  IFACE_("Saturation:"),
                  0,
                  yco -= UI_UNIT_Y,
-                 width,
+                 picker_width,
                  UI_UNIT_Y,
                  cpicker->hsv_scene_linear + 1,
                  0.0,
@@ -655,7 +654,7 @@ static void ui_block_colorpicker(uiBlock *block,
                    IFACE_("Lightness:"),
                    0,
                    yco -= UI_UNIT_Y,
-                   width,
+                   picker_width,
                    UI_UNIT_Y,
                    cpicker->hsv_scene_linear + 2,
                    0.0,
@@ -671,7 +670,7 @@ static void ui_block_colorpicker(uiBlock *block,
                    CTX_IFACE_(BLT_I18NCONTEXT_COLOR, "Value:"),
                    0,
                    yco -= UI_UNIT_Y,
-                   width,
+                   picker_width,
                    UI_UNIT_Y,
                    cpicker->hsv_scene_linear + 2,
                    0.0,
@@ -686,8 +685,6 @@ static void ui_block_colorpicker(uiBlock *block,
   UI_but_func_set(bt, ui_colorpicker_hsv_update_cb, bt, nullptr);
   bt->custom_data = cpicker;
 
-  UI_block_align_end(block);
-
   if (rgba_scene_linear[3] != FLT_MAX) {
     bt = uiDefButR_prop(block,
                         UI_BTYPE_NUM_SLIDER,
@@ -695,7 +692,7 @@ static void ui_block_colorpicker(uiBlock *block,
                         IFACE_("Alpha:"),
                         0,
                         yco -= UI_UNIT_Y,
-                        width,
+                        picker_width,
                         UI_UNIT_Y,
                         ptr,
                         prop,
@@ -707,6 +704,8 @@ static void ui_block_colorpicker(uiBlock *block,
     UI_but_number_slider_precision_set(bt, 3);
     UI_but_func_set(bt, ui_colorpicker_rgba_update_cb, bt, nullptr);
     bt->custom_data = cpicker;
+
+    UI_block_align_end(block);
   }
   else {
     rgba_scene_linear[3] = 1.0f;
@@ -726,34 +725,37 @@ static void ui_block_colorpicker(uiBlock *block,
   rgb_float_to_uchar(rgb_hex_uchar, rgb_hex);
   SNPRINTF(hexcol, "#%02X%02X%02X", UNPACK3_EX((uint), rgb_hex_uchar, ));
 
+  yco -= UI_UNIT_Y * 1.5f;
+
+  const int label_width = picker_width * 0.15f;
+  const int eyedropper_offset = show_picker ? UI_UNIT_X * 1.25f : 0;
+  const int text_width = picker_width - label_width - eyedropper_offset;
+
   uiDefBut(block,
-           UI_BTYPE_SEPR_LINE,
+           UI_BTYPE_LABEL,
            0,
-           "",
+           IFACE_("Hex"),
            0,
-           yco -= UI_UNIT_Y,
-           width,
+           yco,
+           label_width,
            UI_UNIT_Y,
            nullptr,
            0.0,
            0.0,
-           "");
-
-  const int butwidth = width - 1.5f * UI_UNIT_X;
+           nullptr);
 
   bt = uiDefBut(block,
                 UI_BTYPE_TEXT,
                 0,
-                IFACE_("Hex: "),
-                0,
-                yco -= UI_UNIT_Y,
-                show_picker ? butwidth : width,
+                IFACE_(""),
+                label_width,
+                yco,
+                text_width,
                 UI_UNIT_Y,
                 hexcol,
                 0,
                 8,
                 nullptr);
-
   const auto bt_tooltip_func = [](bContext & /*C*/, uiTooltipData &tip, void * /*argN*/) {
     UI_tooltip_text_field_add(
         tip, "Hex triplet for color (#RRGGBB).", {}, UI_TIP_STYLE_HEADER, UI_TIP_LC_NORMAL, false);
@@ -771,7 +773,7 @@ static void ui_block_colorpicker(uiBlock *block,
                        "UI_OT_eyedropper_color",
                        WM_OP_INVOKE_DEFAULT,
                        ICON_EYEDROPPER,
-                       butwidth + 10,
+                       picker_width - UI_UNIT_X,
                        yco,
                        UI_UNIT_X,
                        UI_UNIT_Y,
