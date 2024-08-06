@@ -76,7 +76,7 @@ void SEQ_connect_multiple(blender::VectorSet<Sequence *> seq_list)
   }
 }
 
-bool SEQ_is_strip_connected(Sequence *seq)
+bool SEQ_is_strip_connected(const Sequence *seq)
 {
   return !BLI_listbase_is_empty(&seq->connections);
 }

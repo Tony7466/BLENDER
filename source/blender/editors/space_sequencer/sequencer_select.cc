@@ -870,6 +870,25 @@ static bool element_already_selected(const StripSelection &selection)
   return seq1_already_selected && seq2_already_selected && both_handles_selected;
 }
 
+static void sequencer_select_connected_strips(const StripSelection &selection)
+{
+  blender::VectorSet<Sequence *> sources;
+  sources.add(selection.seq1);
+  if (selection.seq2) {
+    sources.add(selection.seq2);
+  }
+
+  for (Sequence *source : sources) {
+    LISTBASE_FOREACH (SeqConnection *, con, &source->connections) {
+      Sequence *connection = con->seq_ref;
+
+      /* Copy selection settings exactly for connected strips. */
+      connection->flag &= ~(SELECT | SEQ_LEFTSEL | SEQ_RIGHTSEL);
+      connection->flag |= source->flag & (SELECT | SEQ_LEFTSEL | SEQ_RIGHTSEL);
+    }
+  }
+}
+
 static void sequencer_select_strip_impl(const Editing *ed,
                                         Sequence *seq,
                                         const eSeqHandle handle_clicked,
@@ -1162,13 +1181,14 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
 
   /* If no key was found, the mouse cursor may still intersect with a "fake key" that has not been
    * realized yet. */
-  if (seq_key_owner != nullptr && key == nullptr) {
+  if (seq_key_owner != nullptr && key == nullptr &&
+      retiming_keys_can_be_displayed(CTX_wm_space_seq(C)) &&
+      SEQ_retiming_data_is_editable(seq_key_owner))
+  {
     key = try_to_realize_fake_keys(C, seq_key_owner, mouse_co.region);
   }
 
-  if (key != nullptr && retiming_keys_can_be_displayed(CTX_wm_space_seq(C)) &&
-      SEQ_retiming_data_is_editable(seq_key_owner))
-  {
+  if (key != nullptr) {
     if (!was_retiming) {
       ED_sequencer_deselect_all(scene);
     }
@@ -1269,6 +1289,10 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
     eSeqHandle seq2_handle_clicked = (selection.handle == SEQ_HANDLE_LEFT) ? SEQ_HANDLE_RIGHT :
                                                                              SEQ_HANDLE_LEFT;
     sequencer_select_strip_impl(ed, selection.seq2, seq2_handle_clicked, extend, deselect, toggle);
+  }
+
+  if (!toggle) {
+    sequencer_select_connected_strips(selection);
   }
 
   sequencer_select_do_updates(C, scene);
@@ -2092,6 +2116,11 @@ static int sequencer_box_select_exec(bContext *C, wmOperator *op)
         seq->flag &= ~(SEQ_LEFTSEL | SEQ_RIGHTSEL);
         changed = true;
       }
+
+      /* Propagate selection to connected strips. */
+      StripSelection selection;
+      selection.seq1 = seq;
+      sequencer_select_connected_strips(selection);
     }
   }
 

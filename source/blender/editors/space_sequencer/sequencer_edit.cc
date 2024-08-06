@@ -1091,7 +1091,7 @@ void SEQUENCER_OT_disconnect(wmOperatorType *ot)
   /* Identifiers. */
   ot->name = "Disconnect Strips";
   ot->idname = "SEQUENCER_OT_disconnect";
-  ot->description = "Disconnect strips so that they are not selected together";
+  ot->description = "Disconnect selected strips so that they can be selected individually";
 
   /* Api callbacks. */
   ot->exec = sequencer_disconnect_exec;

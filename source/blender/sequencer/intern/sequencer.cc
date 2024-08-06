@@ -678,7 +678,7 @@ void SEQ_sequence_base_dupli_recursive(const Scene *scene_src,
     return;
   }
 
-  /* Fix modifier and connected strip links. */
+  /* Fix effect, modifier, and connected strip links. */
   LISTBASE_FOREACH (Sequence *, seq, nseqbase) {
     seq_new_fix_links_recursive(seq);
   }
@@ -785,6 +785,10 @@ static bool seq_write_data_cb(Sequence *seq, void *userdata)
     BLO_write_struct(writer, SeqTimelineChannel, channel);
   }
 
+  LISTBASE_FOREACH (SeqConnection *, con, &seq->connections) {
+    BLO_write_struct(writer, SeqConnection, con);
+  }
+
   if (seq->retiming_keys != nullptr) {
     int size = SEQ_retiming_keys_count(seq);
     BLO_write_struct_array(writer, SeqRetimingKey, size, seq->retiming_keys);
@@ -863,6 +867,13 @@ static bool seq_read_data_cb(Sequence *seq, void *user_data)
   }
 
   SEQ_modifier_blend_read_data(reader, &seq->modifiers);
+
+  BLO_read_struct_list(reader, SeqConnection, &seq->connections);
+  LISTBASE_FOREACH (SeqConnection *, con, &seq->connections) {
+    if (con->seq_ref) {
+      BLO_read_struct(reader, Sequence, &con->seq_ref);
+    }
+  }
 
   BLO_read_struct_list(reader, SeqTimelineChannel, &seq->channels);
 

@@ -37,4 +37,4 @@ void SEQ_connect_multiple(blender::VectorSet<Sequence *> seq_list);
 /**
  * Check whether a strip has any connections.
  */
-bool SEQ_is_strip_connected(Sequence *seq);
+bool SEQ_is_strip_connected(const Sequence *seq);
