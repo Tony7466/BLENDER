@@ -476,8 +476,8 @@ static void sequencer_image_crop_transform_matrix(const Sequence *seq,
                                                   float r_transform_matrix[4][4])
 {
   /* Center the image and scale it to expected size (downscale original media if needed). */
-  const float image_center_offs_x = (out->x - in->x) / 2;
-  const float image_center_offs_y = (out->y - in->y) / 2;
+  const float image_center_offs_x = (out->x - in->x) / 2.0f;
+  const float image_center_offs_y = (out->y - in->y) / 2.0f;
   float image_prescale_matrix[4][4];
   float rotation_matrix[3][3];
   unit_m3(rotation_matrix);
@@ -506,7 +506,7 @@ static void sequencer_image_crop_transform_matrix(const Sequence *seq,
   const float3 pivot{out->x / 2 + origin_rel.x, out->y / 2 + origin_rel.y, 0.0f};
   transform_pivot_set_m4(transform_matrix, pivot);
 
-  mul_m4_m4m4_aligned_scale(r_transform_matrix, transform_matrix, image_prescale_matrix);
+  mul_m4_m4m4(r_transform_matrix, transform_matrix, image_prescale_matrix);
   invert_m4(r_transform_matrix);
 }
 
