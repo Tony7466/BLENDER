@@ -592,7 +592,8 @@ class RealtimeCompositor {
 
   ~RealtimeCompositor()
   {
-    if (context_->use_gpu()) {
+    const bool use_gpu = context_->use_gpu();
+    if (use_gpu) {
       /* Free resources with GPU context enabled. Cleanup may happen from the
        * main thread, and we must use the main context there. */
       if (BLI_thread_is_main()) {
@@ -606,7 +607,7 @@ class RealtimeCompositor {
     context_.reset();
     texture_pool_.reset();
 
-    if (context_->use_gpu()) {
+    if (use_gpu) {
       if (BLI_thread_is_main()) {
         DRW_gpu_context_disable();
       }
