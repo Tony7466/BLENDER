@@ -162,8 +162,8 @@ class Relations {
     }
     {
       PassSimple::Sub &sub_pass = ps_.sub("loose_points");
-      sub_pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_WRITE_DEPTH |
-                         state.clipping_state);
+      sub_pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |
+                         DRW_STATE_DEPTH_LESS_EQUAL | state.clipping_state);
       sub_pass.shader_set(res.shaders.extra_loose_points.get());
       sub_pass.bind_ubo("globalsBlock", &res.globals_buf);
       points_buf_.end_sync(sub_pass);
