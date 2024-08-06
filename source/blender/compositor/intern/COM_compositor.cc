@@ -78,8 +78,7 @@ void COM_execute(Render *render,
   compositor_reset_node_tree_status(node_tree);
 
   if (scene->r.compositor_device == SCE_COMPOSITOR_DEVICE_GPU ||
-      (U.experimental.enable_new_cpu_compositor &&
-       scene->r.compositor_device == SCE_COMPOSITOR_DEVICE_NEW_CPU))
+      (U.experimental.enable_new_cpu_compositor && scene->r.use_new_cpu_compositor))
   {
     /* Realtime compositor. */
     RE_compositor_execute(

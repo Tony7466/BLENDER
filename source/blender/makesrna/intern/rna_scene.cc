@@ -690,13 +690,6 @@ static const EnumPropertyItem eevee_resolution_scale_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-static const EnumPropertyItem compositor_device_items[] = {
-    {SCE_COMPOSITOR_DEVICE_CPU, "CPU", 0, "CPU", ""},
-    {SCE_COMPOSITOR_DEVICE_GPU, "GPU", 0, "GPU", ""},
-    {SCE_COMPOSITOR_DEVICE_NEW_CPU, "NEW_CPU", 0, "New CPU", ""},
-    {0, nullptr, 0, nullptr, nullptr},
-};
-
 #ifdef RNA_RUNTIME
 
 #  include <algorithm>
@@ -1332,24 +1325,6 @@ static int rna_RenderSettings_threads_mode_get(PointerRNA *ptr)
   else {
     return (rd->mode & R_FIXED_THREADS);
   }
-}
-
-static const EnumPropertyItem *rna_Scene_compositor_device_itemf(bContext * /*C*/,
-                                                                 PointerRNA *ptr,
-                                                                 PropertyRNA * /*prop*/,
-                                                                 bool *r_free)
-{
-  int totitem = 0;
-  EnumPropertyItem *item = nullptr;
-  RNA_enum_item_add(&item, &totitem, &compositor_device_items[0]);
-  RNA_enum_item_add(&item, &totitem, &compositor_device_items[1]);
-  if (U.experimental.enable_new_cpu_compositor) {
-    RNA_enum_item_add(&item, &totitem, &compositor_device_items[2]);
-  }
-  RNA_enum_item_end(&item, &totitem);
-  *r_free = true;
-
-  return item;
 }
 
 static bool rna_RenderSettings_is_movie_format_get(PointerRNA *ptr)
@@ -6805,6 +6780,12 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
+  static const EnumPropertyItem compositor_device_items[] = {
+      {SCE_COMPOSITOR_DEVICE_CPU, "CPU", 0, "CPU", ""},
+      {SCE_COMPOSITOR_DEVICE_GPU, "GPU", 0, "GPU", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   static const EnumPropertyItem compositor_precision_items[] = {
       {SCE_COMPOSITOR_PRECISION_AUTO,
        "AUTO",
@@ -7546,7 +7527,6 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "compositor_device", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, compositor_device_items);
-  RNA_def_property_enum_funcs(prop, nullptr, nullptr, "rna_Scene_compositor_device_itemf");
   RNA_def_property_ui_text(prop, "Compositor Device", "Set how compositing is executed");
   RNA_def_property_update(prop, NC_NODE | ND_DISPLAY, "rna_Scene_compositor_update");
 
@@ -7555,6 +7535,12 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, compositor_precision_items);
   RNA_def_property_ui_text(
       prop, "Compositor Precision", "The precision of compositor intermediate result");
+  RNA_def_property_update(prop, NC_NODE | ND_DISPLAY, "rna_Scene_compositor_update");
+
+  prop = RNA_def_property(srna, "use_new_cpu_compositor", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "use_new_cpu_compositor", 1);
+  RNA_def_property_ui_text(
+      prop, "Use New CPU Compositor", "Use the new CPU compositor implementation");
   RNA_def_property_update(prop, NC_NODE | ND_DISPLAY, "rna_Scene_compositor_update");
 
   /* Nestled Data. */

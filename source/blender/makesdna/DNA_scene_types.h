@@ -831,6 +831,11 @@ typedef struct RenderData {
 
   /** Precision used by the GPU execution of the compositor tree. */
   int compositor_precision; /* eCompositorPrecision */
+
+  /* If true and U.experimental.enable_new_cpu_compositor is also true, use the new experimental
+   * CPU compositor implementation. */
+  char use_new_cpu_compositor;
+  char _pad10[7];
 } RenderData;
 
 /** #RenderData::quality_flag */
@@ -855,7 +860,6 @@ enum {
 typedef enum eCompositorDevice {
   SCE_COMPOSITOR_DEVICE_CPU = 0,
   SCE_COMPOSITOR_DEVICE_GPU = 1,
-  SCE_COMPOSITOR_DEVICE_NEW_CPU = 2,
 } eCompositorDevice;
 
 /** #RenderData::compositor_precision */
