@@ -7,3 +7,4 @@ Referenced by commit 46f5079f1170b6b8b42b818450e632380afcbff0, Fix: Various cras
 Referenced by issue #122276, Crash when searching for a Collection Instance (Add > Collection Instance)
 Referenced by commit 71b0e9d92af80b98bd7fc64aca14866e1ef58440, UI: Don't refresh searchbox region blocks on text input
 Referenced by issue #125935, Insert text unicode not working in 4.2
+Referenced by pull request #125943, Fix #125935: Insert unicode text not working
