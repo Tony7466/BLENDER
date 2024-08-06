@@ -98,8 +98,7 @@ void add_initial_with_symmetry(const Object &ob,
     else {
       BLI_assert(radius > 0.0f);
       const float radius_squared = (radius == FLT_MAX) ? FLT_MAX : radius * radius;
-      float3 location;
-      flip_v3_v3(location, SCULPT_vertex_co_get(ss, vertex), ePaintSymmetryFlags(i));
+      float3 location = symmetry_flip(SCULPT_vertex_co_get(ss, vertex), ePaintSymmetryFlags(i));
       v = nearest_vert_calc(ob, location, radius_squared, false);
     }
 
@@ -137,8 +136,7 @@ void FillDataMesh::add_initial_with_symmetry(const Object &object,
     else {
       BLI_assert(radius > 0.0f);
       const float radius_squared = (radius == FLT_MAX) ? FLT_MAX : radius * radius;
-      float3 location;
-      flip_v3_v3(location, vert_positions[vertex], ePaintSymmetryFlags(i));
+      float3 location = symmetry_flip(vert_positions[vertex], ePaintSymmetryFlags(i));
       vert_to_add = nearest_vert_calc_mesh(
           pbvh, vert_positions, hide_vert, location, radius_squared, false);
     }
@@ -175,10 +173,9 @@ void FillDataGrids::add_initial_with_symmetry(const Object &object,
     else {
       BLI_assert(radius > 0.0f);
       const float radius_squared = (radius == FLT_MAX) ? FLT_MAX : radius * radius;
-      float3 location;
       CCGElem *elem = subdiv_ccg.grids[vertex.grid_index];
-      flip_v3_v3(
-          location, CCG_grid_elem_co(key, elem, vertex.x, vertex.y), ePaintSymmetryFlags(i));
+      float3 location = symmetry_flip(CCG_grid_elem_co(key, elem, vertex.x, vertex.y),
+                                      ePaintSymmetryFlags(i));
       vert_to_add = nearest_vert_calc_grids(pbvh, subdiv_ccg, location, radius_squared, false);
     }
 
@@ -211,8 +208,7 @@ void FillDataBMesh::add_initial_with_symmetry(const Object &object,
     else {
       BLI_assert(radius > 0.0f);
       const float radius_squared = (radius == FLT_MAX) ? FLT_MAX : radius * radius;
-      float3 location;
-      flip_v3_v3(location, vertex->co, ePaintSymmetryFlags(i));
+      float3 location = symmetry_flip(vertex->co, ePaintSymmetryFlags(i));
       vert_to_add = nearest_vert_calc_bmesh(pbvh, location, radius_squared, false);
     }
 
@@ -239,12 +235,7 @@ void FillDataGrids::add_active(const Object &object, const SculptSession &ss, co
 
   const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-  const int grid_index = active_vert.i / key.grid_area;
-  const int index_in_grid = active_vert.i - grid_index * key.grid_area;
-  SubdivCCGCoord coord{};
-  coord.grid_index = grid_index;
-  coord.x = index_in_grid % key.grid_size;
-  coord.y = index_in_grid / key.grid_size;
+  SubdivCCGCoord coord = SubdivCCGCoord::from_index(key, active_vert.i);
 
   this->add_initial_with_symmetry(object, *ss.pbvh, subdiv_ccg, coord, radius);
 }
@@ -304,22 +295,14 @@ void FillDataMesh::execute(Object &object,
     const int from_v = this->queue.front();
     this->queue.pop();
 
-    neighbors.clear();
-    for (const int face : vert_to_face_map[from_v]) {
-      if (!hide_poly.is_empty() && hide_poly[face]) {
-        continue;
-      }
-      const int2 verts = bke::mesh::face_find_adjacent_verts(faces[face], corner_verts, from_v);
-      neighbors.append_non_duplicates(verts[0]);
-      neighbors.append_non_duplicates(verts[1]);
-    }
-
-    for (const int neighbor : neighbors) {
+    for (const int neighbor : vert_neighbors_get_mesh(
+             from_v, faces, corner_verts, vert_to_face_map, hide_poly, neighbors))
+    {
       if (this->visited_verts[neighbor]) {
         continue;
       }
 
-      if (hide_vert[neighbor]) {
+      if (!hide_vert.is_empty() && hide_vert[neighbor]) {
         continue;
       }
 
@@ -347,7 +330,7 @@ void FillDataGrids::execute(
 
     /* Flood fill expects the duplicate entries to be passed to the per-neighbor lambda first, so
      * iterate from the end of the vector to the beginning. */
-    for (int i = neighbors.coords.size() - 1; i >= 0; i++) {
+    for (int i = neighbors.coords.size() - 1; i >= 0; i--) {
       SubdivCCGCoord neighbor = neighbors.coords[i];
       const int index_in_grid = neighbor.y * key.grid_size + neighbor.x;
       const int index = neighbor.grid_index * key.grid_area + index_in_grid;

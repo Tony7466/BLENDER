@@ -237,7 +237,7 @@ static void face_sets_update(Object &object,
               bke::pbvh::node_face_indices_calc_mesh(tri_faces, *node, tls.face_indices) :
               bke::pbvh::node_face_indices_calc_grids(pbvh, *node, tls.face_indices);
 
-      tls.new_face_sets.reinitialize(faces.size());
+      tls.new_face_sets.resize(faces.size());
       MutableSpan<int> new_face_sets = tls.new_face_sets;
       array_utils::gather(face_sets.span.as_span(), faces, new_face_sets);
       calc_face_sets(faces, new_face_sets);
@@ -774,7 +774,7 @@ static void face_hide_update(Object &object,
               bke::pbvh::node_face_indices_calc_mesh(tri_faces, *node, tls.face_indices) :
               bke::pbvh::node_face_indices_calc_grids(pbvh, *node, tls.face_indices);
 
-      tls.new_hide.reinitialize(faces.size());
+      tls.new_hide.resize(faces.size());
       MutableSpan<bool> new_hide = tls.new_hide;
       array_utils::gather(hide_poly.span.as_span(), faces, new_hide);
       calc_hide(faces, new_hide);
@@ -900,7 +900,7 @@ static int change_visibility_exec(bContext *C, wmOperator *op)
   bke::pbvh::update_visibility(*ss.pbvh);
   BKE_sculpt_hide_poly_pointer_update(object);
 
-  SCULPT_topology_islands_invalidate(*object.sculpt);
+  islands::invalidate(*object.sculpt);
   hide::tag_update_visibility(*C);
 
   return OPERATOR_FINISHED;
@@ -1033,6 +1033,9 @@ static void edit_grow_shrink(Object &object,
   const Span<int> corner_verts = mesh.corner_verts();
   const GroupedSpan<int> vert_to_face_map = ss.vert_to_face_map;
   const bke::AttributeAccessor attributes = mesh.attributes();
+
+  BLI_assert(attributes.contains(".sculpt_face_set"));
+
   const VArraySpan<bool> hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
   Array<int> prev_face_sets = duplicate_face_sets(mesh);
 
@@ -1236,6 +1239,18 @@ static bool edit_is_operation_valid(const Object &object,
        * directly by the fair algorithm. Multi-resolution topology needs to be exposed in a
        * different way or converted to a mesh for this operation. */
       return false;
+    }
+  }
+
+  if (ELEM(mode, EditMode::Grow, EditMode::Shrink)) {
+    if (object.sculpt->pbvh->type() == bke::pbvh::Type::Mesh) {
+      const Mesh &mesh = *static_cast<Mesh *>(object.data);
+      const bke::AttributeAccessor attributes = mesh.attributes();
+      if (!attributes.contains(".sculpt_face_set")) {
+        /* If a mesh does not have the face set attribute, growing or shrinking the face set will
+         * have no effect, exit early in this case. */
+        return false;
+      }
     }
   }
 
