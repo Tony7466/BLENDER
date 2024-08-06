@@ -7025,33 +7025,6 @@ void filter_region_clip_factors(const SculptSession &ss,
   }
 }
 
-void calc_brush_distances(const SculptSession &ss,
-                          const Span<float3> positions,
-                          const Span<int> verts,
-                          const eBrushFalloffShape falloff_shape,
-                          const MutableSpan<float> r_distances)
-{
-  BLI_assert(verts.size() == r_distances.size());
-
-  const float3 &test_location = ss.cache ? ss.cache->location : ss.cursor_location;
-  if (falloff_shape == PAINT_FALLOFF_SHAPE_TUBE && (ss.cache || ss.filter_cache)) {
-    /* The tube falloff shape requires the cached view normal. */
-    const float3 &view_normal = ss.cache ? ss.cache->view_normal : ss.filter_cache->view_normal;
-    float4 test_plane;
-    plane_from_point_normal_v3(test_plane, test_location, view_normal);
-    for (const int i : verts.index_range()) {
-      float3 projected;
-      closest_to_plane_normalized_v3(projected, test_plane, positions[verts[i]]);
-      r_distances[i] = math::distance(projected, test_location);
-    }
-  }
-  else {
-    for (const int i : verts.index_range()) {
-      r_distances[i] = math::distance(test_location, positions[verts[i]]);
-    }
-  }
-}
-
 void calc_brush_distances_sq(const SculptSession &ss,
                              const Span<float3> positions,
                              const Span<int> verts,
@@ -7081,27 +7054,13 @@ void calc_brush_distances_sq(const SculptSession &ss,
 
 void calc_brush_distances(const SculptSession &ss,
                           const Span<float3> positions,
+                          const Span<int> verts,
                           const eBrushFalloffShape falloff_shape,
                           const MutableSpan<float> r_distances)
 {
-  BLI_assert(positions.size() == r_distances.size());
-
-  const float3 &test_location = ss.cache ? ss.cache->location : ss.cursor_location;
-  if (falloff_shape == PAINT_FALLOFF_SHAPE_TUBE && (ss.cache || ss.filter_cache)) {
-    /* The tube falloff shape requires the cached view normal. */
-    const float3 &view_normal = ss.cache ? ss.cache->view_normal : ss.filter_cache->view_normal;
-    float4 test_plane;
-    plane_from_point_normal_v3(test_plane, test_location, view_normal);
-    for (const int i : positions.index_range()) {
-      float3 projected;
-      closest_to_plane_normalized_v3(projected, test_plane, positions[i]);
-      r_distances[i] = math::distance(projected, test_location);
-    }
-  }
-  else {
-    for (const int i : positions.index_range()) {
-      r_distances[i] = math::distance(test_location, positions[i]);
-    }
+  calc_brush_distances_sq(ss, positions, verts, falloff_shape, r_distances);
+  for (float &value : r_distances) {
+    value = std::sqrt(value);
   }
 }
 
@@ -7128,6 +7087,17 @@ void calc_brush_distances_sq(const SculptSession &ss,
     for (const int i : positions.index_range()) {
       r_distances[i] = math::distance_squared(test_location, positions[i]);
     }
+  }
+}
+
+void calc_brush_distances(const SculptSession &ss,
+                          const Span<float3> positions,
+                          const eBrushFalloffShape falloff_shape,
+                          const MutableSpan<float> r_distances)
+{
+  calc_brush_distances_sq(ss, positions, falloff_shape, r_distances);
+  for (float &value : r_distances) {
+    value = std::sqrt(value);
   }
 }
 
