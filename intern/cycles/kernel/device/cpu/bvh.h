@@ -393,7 +393,7 @@ ccl_device_forceinline void kernel_embree_filter_occluded_shadow_all_func_impl(
 
     float max_t = INTEGRATOR_STATE_ARRAY(ctx->isect_s, shadow_isect, 0, t);
     numhit_t max_recorded_hit = numhit_t(0);
-    float second_largest_t = FLT_MIN;
+    float second_largest_t = 0.0f;
 
     for (numhit_t i = numhit_t(1); i < max_record_hits; ++i) {
       const float isect_t = INTEGRATOR_STATE_ARRAY(ctx->isect_s, shadow_isect, i, t);
@@ -407,9 +407,9 @@ ccl_device_forceinline void kernel_embree_filter_occluded_shadow_all_func_impl(
       }
     }
 
-    /* For the first time the index exceeds the limits, `max_t` was not yet computed, so additional
-     * check is needed. */
     if (isect_index == max_record_hits && current_isect.t >= max_t) {
+      /* `ctx->max_t` was initialized to `ray->tmax` before the index exceeds the limit. Now that
+       * we have looped through the array, we can properly clamp `ctx->max_t`. */
       ctx->max_t = max_t;
       return;
     }
