@@ -6,7 +6,7 @@
 
 namespace blender::ed::sculpt_paint::greasepencil {
 
-class VertexReplaceOperation : public GreasePencilStrokeOperation {
+class VertexReplaceOperation : public GreasePencilStrokeOperation {  
  public:
   void on_stroke_begin(const bContext &C, const InputSample &start_sample) override;
   void on_stroke_extended(const bContext &C, const InputSample &extension_sample) override;

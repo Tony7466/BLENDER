@@ -82,11 +82,11 @@ static float brush_radius(const Scene &scene, const Brush &brush, const float pr
   return radius;
 }
 
-float brush_influence(const Scene &scene,
-                      const Brush &brush,
-                      const float2 &co,
-                      const InputSample &sample,
-                      const float multi_frame_falloff)
+float brush_point_influence(const Scene &scene,
+                            const Brush &brush,
+                            const float2 &co,
+                            const InputSample &sample,
+                            const float multi_frame_falloff)
 {
   const float radius = brush_radius(scene, brush, sample.pressure);
   /* Basic strength factor from brush settings. */
@@ -97,6 +97,45 @@ float brush_influence(const Scene &scene,
   /* Distance falloff. */
   const int2 mval_i = int2(math::round(sample.mouse_position));
   const float distance = math::distance(mval_i, int2(co));
+  /* Apply Brush curve. */
+  const float brush_falloff = BKE_brush_curve_strength(&brush, distance, radius);
+
+  return influence_base * brush_falloff;
+}
+
+static float closest_to_surface_2d(const float2 pt, const Span<float2> verts)
+{
+  int j = verts.size() - 1;
+  bool isect = false;
+  float distance = FLT_MAX;
+  for (int i = 0; i < verts.size(); i++) {
+    /* Based on implementation of #isect_point_poly_v2. */
+    if (((verts[i].y > pt.y) != (verts[j].y > pt.y)) &&
+        (pt.x <
+         (verts[j].x - verts[i].x) * (pt.y - verts[i].y) / (verts[j].y - verts[i].y) + verts[i].x))
+    {
+      isect = !isect;
+    }
+    distance = math::min(distance, math::distance(pt, verts[i]));
+    j = i;
+  }
+  return isect ? 0.0f : distance;
+}
+
+float brush_fill_influence(const Scene &scene,
+                           const Brush &brush,
+                           const Span<float2> fill_positions,
+                           const InputSample &sample,
+                           const float multi_frame_falloff)
+{
+  const float radius = brush_radius(scene, brush, sample.pressure);
+  /* Basic strength factor from brush settings. */
+  const float brush_pressure = BKE_brush_use_alpha_pressure(&brush) ? sample.pressure : 1.0f;
+  const float influence_base = BKE_brush_alpha_get(&scene, &brush) * brush_pressure *
+                               multi_frame_falloff;
+
+  /* Distance falloff. */
+  const float distance = closest_to_surface_2d(sample.mouse_position, fill_positions);
   /* Apply Brush curve. */
   const float brush_falloff = BKE_brush_curve_strength(&brush, distance, radius);
 
@@ -177,13 +216,23 @@ GreasePencilStrokeParams GreasePencilStrokeParams::from_context(
           drawing};
 }
 
-IndexMask point_selection_mask(const GreasePencilStrokeParams &params, IndexMaskMemory &memory)
+IndexMask point_selection_mask(const GreasePencilStrokeParams &params,
+                               const bool use_masking,
+                               IndexMaskMemory &memory)
 {
-  const bool is_masking = GPENCIL_ANY_SCULPT_MASK(
-      eGP_Sculpt_SelectMaskFlag(params.toolsettings.gpencil_selectmode_sculpt));
-  return (is_masking ? ed::greasepencil::retrieve_editable_and_selected_points(
-                           params.ob_eval, params.drawing, params.layer_index, memory) :
-                       params.drawing.strokes().points_range());
+
+  return (use_masking ? ed::greasepencil::retrieve_editable_and_selected_points(
+                            params.ob_eval, params.drawing, params.layer_index, memory) :
+                        params.drawing.strokes().points_range());
+}
+
+IndexMask fill_selection_mask(const GreasePencilStrokeParams &params,
+                              const bool use_masking,
+                              IndexMaskMemory &memory)
+{
+  return (use_masking ? ed::greasepencil::retrieve_editable_and_selected_fill_strokes(
+                            params.ob_eval, params.drawing, params.layer_index, memory) :
+                        params.drawing.strokes().curves_range());
 }
 
 bke::crazyspace::GeometryDeformation get_drawing_deformation(
@@ -214,6 +263,20 @@ Array<float2> calculate_view_positions(const GreasePencilStrokeParams &params,
   });
 
   return view_positions;
+}
+
+bool do_vertex_color_points(const Brush &brush)
+{
+  return brush.gpencil_settings != nullptr &&
+         ((brush.gpencil_settings->vertex_mode == GPPAINT_MODE_STROKE) ||
+          (brush.gpencil_settings->vertex_mode == GPPAINT_MODE_BOTH));
+}
+
+bool do_vertex_color_fill(const Brush &brush)
+{
+  return brush.gpencil_settings != nullptr &&
+         ((brush.gpencil_settings->vertex_mode == GPPAINT_MODE_FILL) ||
+          (brush.gpencil_settings->vertex_mode == GPPAINT_MODE_BOTH));
 }
 
 bool GreasePencilStrokeOperationCommon::is_inverted(const Brush &brush) const

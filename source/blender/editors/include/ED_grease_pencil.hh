@@ -303,6 +303,10 @@ IndexMask retrieve_editable_strokes(Object &grease_pencil_object,
                                     const bke::greasepencil::Drawing &drawing,
                                     int layer_index,
                                     IndexMaskMemory &memory);
+IndexMask retrieve_editable_fill_strokes(Object &grease_pencil_object,
+                                         const bke::greasepencil::Drawing &drawing,
+                                         int layer_index,
+                                         IndexMaskMemory &memory);
 IndexMask retrieve_editable_strokes_by_material(Object &object,
                                                 const bke::greasepencil::Drawing &drawing,
                                                 const int mat_i,
@@ -337,6 +341,10 @@ IndexMask retrieve_editable_and_selected_strokes(Object &grease_pencil_object,
                                                  const bke::greasepencil::Drawing &drawing,
                                                  int layer_index,
                                                  IndexMaskMemory &memory);
+IndexMask retrieve_editable_and_selected_fill_strokes(Object &grease_pencil_object,
+                                                      const bke::greasepencil::Drawing &drawing,
+                                                      int layer_index,
+                                                      IndexMaskMemory &memory);
 IndexMask retrieve_editable_and_selected_points(Object &object,
                                                 const bke::greasepencil::Drawing &drawing,
                                                 int layer_index,

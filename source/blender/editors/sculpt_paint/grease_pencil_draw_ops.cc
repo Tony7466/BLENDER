@@ -150,7 +150,7 @@ static std::unique_ptr<GreasePencilStrokeOperation> get_stroke_operation(bContex
   else if (mode == PaintMode::VertexGPencil) {
     switch (eBrushGPVertexTool(brush.gpencil_vertex_tool)) {
       case GPVERTEX_TOOL_DRAW:
-        return greasepencil::new_vertex_paint_operation();
+        return greasepencil::new_vertex_paint_operation(stroke_mode);
       case GPVERTEX_TOOL_BLUR:
         return greasepencil::new_vertex_blur_operation();
       case GPVERTEX_TOOL_AVERAGE:

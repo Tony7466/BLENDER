@@ -61,11 +61,16 @@ IndexMask brush_influence_mask(const Scene &scene,
                                IndexMaskMemory &memory);
 
 /* Influence value at point co for the brush. */
-float brush_influence(const Scene &scene,
-                      const Brush &brush,
-                      const float2 &co,
-                      const InputSample &sample,
-                      float multi_frame_falloff);
+float brush_point_influence(const Scene &scene,
+                            const Brush &brush,
+                            const float2 &co,
+                            const InputSample &sample,
+                            float multi_frame_falloff);
+float brush_fill_influence(const Scene &scene,
+                           const Brush &brush,
+                           Span<float2> fill_positions,
+                           const InputSample &sample,
+                           float multi_frame_falloff);
 
 /* True if influence of the brush should be inverted. */
 bool is_brush_inverted(const Brush &brush, BrushStrokeMode stroke_mode);
@@ -95,7 +100,12 @@ struct GreasePencilStrokeParams {
 };
 
 /* Point index mask for a drawing based on selection tool settings. */
-IndexMask point_selection_mask(const GreasePencilStrokeParams &params, IndexMaskMemory &memory);
+IndexMask point_selection_mask(const GreasePencilStrokeParams &params,
+                               const bool use_masking,
+                               IndexMaskMemory &memory);
+IndexMask fill_selection_mask(const GreasePencilStrokeParams &params,
+                              const bool use_masking,
+                              IndexMaskMemory &memory);
 
 bke::crazyspace::GeometryDeformation get_drawing_deformation(
     const GreasePencilStrokeParams &params);
@@ -103,6 +113,9 @@ bke::crazyspace::GeometryDeformation get_drawing_deformation(
 /* Project points from layer space into 2D view space. */
 Array<float2> calculate_view_positions(const GreasePencilStrokeParams &params,
                                        const IndexMask &selection);
+
+bool do_vertex_color_points(const Brush &brush);
+bool do_vertex_color_fill(const Brush &brush);
 
 /* Stroke operation base class that performs various common initializations. */
 class GreasePencilStrokeOperationCommon : public GreasePencilStrokeOperation {
@@ -135,6 +148,8 @@ class GreasePencilStrokeOperationCommon : public GreasePencilStrokeOperation {
                                                  const DrawingPlacement &placement)> fn) const;
 };
 
+/* Operations */
+
 std::unique_ptr<GreasePencilStrokeOperation> new_paint_operation();
 std::unique_ptr<GreasePencilStrokeOperation> new_erase_operation(bool temp_eraser);
 std::unique_ptr<GreasePencilStrokeOperation> new_tint_operation();
@@ -154,7 +169,8 @@ std::unique_ptr<GreasePencilStrokeOperation> new_twist_operation(BrushStrokeMode
 std::unique_ptr<GreasePencilStrokeOperation> new_clone_operation(BrushStrokeMode stroke_mode);
 std::unique_ptr<GreasePencilStrokeOperation> new_vertex_average_operation();
 std::unique_ptr<GreasePencilStrokeOperation> new_vertex_blur_operation();
-std::unique_ptr<GreasePencilStrokeOperation> new_vertex_paint_operation();
+std::unique_ptr<GreasePencilStrokeOperation> new_vertex_paint_operation(
+    BrushStrokeMode stroke_mode);
 std::unique_ptr<GreasePencilStrokeOperation> new_vertex_replace_operation();
 std::unique_ptr<GreasePencilStrokeOperation> new_vertex_smear_operation();
 
