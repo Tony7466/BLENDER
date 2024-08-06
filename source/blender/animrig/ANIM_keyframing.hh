@@ -189,31 +189,16 @@ bool insert_keyframe_direct(ReportList *reports,
  * Will perform checks just in case.
  * \return The number of key-frames deleted.
  */
-int delete_keyframe(Main *bmain,
-                    ReportList *reports,
-                    ID *id,
-                    bAction *act,
-                    const char rna_path[],
-                    int array_index,
-                    float cfra);
+int delete_keyframe(Main *bmain, ReportList *reports, ID *id, const RNAPath &path, float cfra);
 
 /**
  * Main Keyframing API call:
  * Use this when validation of necessary animation data isn't necessary as it
  * already exists. It will clear the current buttons fcurve(s).
  *
- * The flag argument is used for special settings that alter the behavior of
- * the keyframe deletion. These include the quick refresh options.
- *
  * \return The number of f-curves removed.
  */
-int clear_keyframe(Main *bmain,
-                   ReportList *reports,
-                   ID *id,
-                   bAction *act,
-                   const char rna_path[],
-                   int array_index,
-                   eInsertKeyFlags /*flag*/);
+int clear_keyframe(Main *bmain, ReportList *reports, ID *id, const RNAPath &rna_path);
 
 /** Check if a flag is set for keyframing (per scene takes precedence). */
 bool is_keying_flag(const Scene *scene, eKeying_Flag flag);
