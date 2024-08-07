@@ -6006,6 +6006,12 @@ static void rna_def_space_sequencer_timeline_overlay(BlenderRNA *brna)
       prop, nullptr, "timeline_overlay.flag", SEQ_TIMELINE_SHOW_STRIP_RETIMING);
   RNA_def_property_ui_text(prop, "Show Retiming Keys", "Display retiming keys on top of strips");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_SEQUENCER, nullptr);
+
+  prop = RNA_def_property(srna, "use_new_thumbnails", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "timeline_overlay.flag", SEQ_TIMELINE_NEW_THUMBS);
+  RNA_def_property_ui_text(prop, "New Thumbnail Cache", "Use new thumbnail cache implementation (TODO temporary setting during dev)");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_SEQUENCER, nullptr);
 }
 
 static void rna_def_space_sequencer_cache_overlay(BlenderRNA *brna)
