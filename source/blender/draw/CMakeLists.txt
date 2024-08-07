@@ -290,10 +290,14 @@ set(SRC
   engines/image/image_usage.hh
   engines/overlay/overlay_engine.h
   engines/overlay/overlay_next_background.hh
+  engines/overlay/overlay_next_bounds.hh
   engines/overlay/overlay_next_empty.hh
+  engines/overlay/overlay_next_camera.hh
   engines/overlay/overlay_next_grid.hh
   engines/overlay/overlay_next_instance.hh
   engines/overlay/overlay_next_lattice.hh
+  engines/overlay/overlay_next_light.hh
+  engines/overlay/overlay_next_lightprobe.hh
   engines/overlay/overlay_next_metaball.hh
   engines/overlay/overlay_next_prepass.hh
   engines/overlay/overlay_next_private.hh
@@ -522,13 +526,11 @@ set(GLSL_SRC
   engines/workbench/shaders/workbench_prepass_hair_vert.glsl
   engines/workbench/shaders/workbench_prepass_pointcloud_vert.glsl
   engines/workbench/shaders/workbench_prepass_vert.glsl
-  engines/workbench/shaders/workbench_shadow_caps_geom.glsl
-  engines/workbench/shaders/workbench_shadow_caps_vert_no_geom.glsl
+  engines/workbench/shaders/workbench_shadow_caps_vert.glsl
   engines/workbench/shaders/workbench_shadow_debug_frag.glsl
-  engines/workbench/shaders/workbench_shadow_geom.glsl
+  engines/workbench/shaders/workbench_shadow_lib.glsl
   engines/workbench/shaders/workbench_shadow_vert.glsl
   engines/workbench/shaders/workbench_shadow_visibility_comp.glsl
-  engines/workbench/shaders/workbench_shadow_vert_no_geom.glsl
   engines/workbench/shaders/workbench_transparent_accum_frag.glsl
   engines/workbench/shaders/workbench_transparent_resolve_frag.glsl
   engines/workbench/shaders/workbench_volume_frag.glsl
@@ -606,6 +608,7 @@ set(GLSL_SRC
   engines/select/shaders/select_id_vert.glsl
   engines/select/shaders/select_id_frag.glsl
   engines/select/shaders/select_lib.glsl
+  engines/select/shaders/select_debug_frag.glsl
 
   engines/select/select_shader_shared.hh
 
