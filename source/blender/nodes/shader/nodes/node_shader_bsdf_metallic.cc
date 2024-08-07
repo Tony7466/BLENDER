@@ -11,7 +11,7 @@ namespace blender::nodes::node_shader_bsdf_metallic_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Color>("Base Color").default_value({1.0f, 1.0f, 1.0f, 1.0f});
+  b.add_input<decl::Color>("Base Color").default_value({0.8f, 0.8f, 0.8f, 1.0f});
   b.add_input<decl::Color>("Edge Tint").default_value({1.0f, 1.0f, 1.0f, 1.0f});
   b.add_input<decl::Vector>("IOR")
       .default_value({2.741f, 2.542f, 2.267f})

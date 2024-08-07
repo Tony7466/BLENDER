@@ -105,7 +105,7 @@ ccl_device Spectrum fresnel_conductor(float cosi, const Spectrum eta, const Spec
 
 ccl_device float3 conductor_ior_from_color(float3 r, const float3 edge_tint)
 {
-  r = clamp(r, zero_float3(), make_float3(0.99));
+  r = clamp(r, zero_float3(), make_float3(0.99f));
   const float3 r_sqrt = sqrt(r);
   const float3 one = one_float3();
 
@@ -117,7 +117,7 @@ ccl_device float3 conductor_ior_from_color(float3 r, const float3 edge_tint)
 
 ccl_device float3 conductor_extinction_from_color(float3 r, const float3 eta)
 {
-  r = clamp(r, zero_float3(), make_float3(0.99));
+  r = clamp(r, zero_float3(), make_float3(0.99f));
   const float3 one = one_float3();
 
   const float3 np1 = eta + one;
