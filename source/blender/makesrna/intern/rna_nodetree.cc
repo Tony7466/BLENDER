@@ -4938,6 +4938,58 @@ static void def_sh_tex_gabor(StructRNA *srna)
   RNA_def_property_update(prop, 0, "rna_ShaderNode_socket_update");
 }
 
+static void def_sh_tex_gaborf(StructRNA *srna)
+{
+  static const EnumPropertyItem prop_gaborf_mode[] = {
+      {SHD_GABOR_MODE_GABOR, "GABOR", 0, "Gabor", "Gabor default kernel"},
+      {SHD_GABOR_MODE_RING, "GABOR_RING", 0, "Gabor Ring", "Gabor ring kernel"},
+      {SHD_GABOR_MODE_CROSS, "GABOR_CROSS", 0, "Gabor Cross", "Gabor cross kernel"},
+      {SHD_GABOR_MODE_SQUARE, "GABOR_SQUARE", 0, "Gabor Square", "Gabor square kernel"},
+      {SHD_GABOR_MODE_PHASOR, "PHASOR", 0, "Phasor", "Phasor default kernel"},
+      {SHD_GABOR_MODE_PHASOR_RING, "PHASOR_RING", 0, "Phasor Ring", "Phasor ring kernel"},
+      {SHD_GABOR_MODE_PHASOR_CROSS, "PHASOR_CROSS", 0, "Phasor Cross", "Phasor cross kernel"},
+      {SHD_GABOR_MODE_PHASOR_SQUARE, "PHASOR_SQUARE", 0, "Phasor Square", "Phasor square kernel"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem prop_gaborf_dimensions[] = {
+      {2, "2D", 0, "2D", "Use the 2D vector (X, Y) as input. The Z component is ignored"},
+      {3, "3D", 0, "3D", "Use the 3D vector (X, Y, Z) as input"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  PropertyRNA *prop;
+  RNA_def_struct_sdna_from(srna, "NodeTexGaborF", "storage");
+  def_sh_tex(srna);
+
+  prop = RNA_def_property(srna, "gabor_dimensions", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "dimensions");
+  RNA_def_property_enum_items(prop, prop_gaborf_dimensions);
+  RNA_def_property_ui_text(prop, "Dimensions", "Number of dimensions to output noise for");
+  RNA_def_property_update(prop, 0, "rna_ShaderNode_socket_update");
+
+  prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "mode");
+  RNA_def_property_enum_items(prop, prop_gaborf_mode);
+  RNA_def_property_ui_text(prop, "Mode", "Mode");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_ShaderNode_socket_update");
+
+  prop = RNA_def_property(srna, "periodic", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "periodic", 0);
+  RNA_def_property_ui_text(prop, "Periodic", "Periodic noise");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "normalize", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "normalize", 0);
+  RNA_def_property_ui_text(prop, "Normalize", "Normalize output to 0.0 to 1.0 range");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "use_origin_offset", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "use_origin_offset", 0);
+  RNA_def_property_ui_text(prop, "Offset Origin", "Offset origin for each octave");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_ShaderNode_socket_update");
+}
+
 static void def_sh_tex_image(StructRNA *srna)
 {
   static const EnumPropertyItem prop_projection_items[] = {

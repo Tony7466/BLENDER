@@ -166,6 +166,7 @@ CCL_NAMESPACE_END
 #include "kernel/svm/displace.h"
 #include "kernel/svm/fresnel.h"
 #include "kernel/svm/gabor.h"
+#include "kernel/svm/gaborf.h"
 #include "kernel/svm/gamma.h"
 #include "kernel/svm/geometry.h"
 #include "kernel/svm/gradient.h"
@@ -483,6 +484,9 @@ ccl_device void svm_eval_nodes(KernelGlobals kg,
       break;
       SVM_CASE(NODE_TEX_GABOR)
       offset = svm_node_tex_gabor(kg, sd, stack, node.y, node.z, node.w, offset);
+      break;
+      SVM_CASE(NODE_TEX_GABORF)
+      offset = svm_node_tex_gabor(kg, sd, stack, node, offset);
       break;
       SVM_CASE(NODE_TEX_WAVE)
       offset = svm_node_tex_wave(kg, sd, stack, node, offset);

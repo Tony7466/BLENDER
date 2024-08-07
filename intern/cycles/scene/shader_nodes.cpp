@@ -1299,6 +1299,179 @@ void GaborTextureNode::compile(OSLCompiler &compiler)
   compiler.add(this, "node_gabor_texture");
 }
 
+/* GaborF Texture */
+
+NODE_DEFINE(GaborFTextureNode)
+{
+  NodeType *type = NodeType::add("gaborf_texture", create, NodeType::SHADER);
+
+  TEXTURE_MAPPING_DEFINE(GaborFTextureNode);
+
+  static NodeEnum dimensions_enum;
+  dimensions_enum.insert("2D", 2);
+  dimensions_enum.insert("3D", 3);
+  SOCKET_ENUM(dimensions, "Dimensions", dimensions_enum, 2);
+
+  static NodeEnum mode_enum;
+  mode_enum.insert("gabor", SHD_GABOR_MODE_GABOR);
+  mode_enum.insert("gabor_ring", SHD_GABOR_MODE_RING);
+  mode_enum.insert("gabor_cross", SHD_GABOR_MODE_CROSS);
+  mode_enum.insert("gabor_square", SHD_GABOR_MODE_SQUARE);
+  mode_enum.insert("phasor", SHD_GABOR_MODE_PHASOR);
+  mode_enum.insert("phasor_ring", SHD_GABOR_MODE_PHASOR_RING);
+  mode_enum.insert("phasor_cross", SHD_GABOR_MODE_PHASOR_CROSS);
+  mode_enum.insert("phasor_square", SHD_GABOR_MODE_PHASOR_SQUARE);
+  SOCKET_ENUM(mode, "Mode", mode_enum, SHD_GABOR_MODE_GABOR);
+
+  SOCKET_BOOLEAN(periodic, "Periodic", false);
+  SOCKET_BOOLEAN(use_normalize, "Normalize", true);
+  SOCKET_BOOLEAN(use_origin_offset, "Origin Offset", true);
+
+  SOCKET_IN_POINT(vector, "Vector", zero_float3(), SocketType::LINK_TEXTURE_GENERATED);
+  SOCKET_IN_FLOAT(scale, "Scale", 5.0f);
+  SOCKET_IN_FLOAT(frequency, "Frequency", 4.0f);
+  SOCKET_IN_FLOAT(gain, "Gain", 1.0f);
+  SOCKET_IN_FLOAT(detail, "Detail", 0.0f);
+  SOCKET_IN_FLOAT(roughness, "Roughness", 0.5f);
+  SOCKET_IN_FLOAT(scl_lacunarity, "Scale Lacunarity", 2.0f);
+  SOCKET_IN_FLOAT(fre_lacunarity, "Frequency Lacunarity", 2.0f);
+  SOCKET_IN_FLOAT(rot_lacunarity, "Rotation Lacunarity", 0.0f);
+  SOCKET_IN_FLOAT(radius, "Radius", 1.0f);
+  SOCKET_IN_FLOAT(impulses, "Impulses", 2.0f);
+  SOCKET_IN_FLOAT(phase, "Phase Offset", 0.0f);
+  SOCKET_IN_FLOAT(phase_variance, "Phase Variance", 1.0f);
+  SOCKET_IN_FLOAT(rotation, "Rotation", 0.0f);
+  SOCKET_IN_FLOAT(rot_variance, "Rotation Variance", 0.0f);
+  SOCKET_IN_FLOAT(tilt_randomness, "Tilt Randomness", 1.0f);
+  SOCKET_IN_POINT(direction, "Direction", make_float3(0.0f, 0.0f, 1.0f));
+  SOCKET_IN_FLOAT(cell_randomness, "Cell Randomness", 1.0f);
+  SOCKET_IN_FLOAT(anisotropy, "Anisotropic Factor", 1.0f);
+
+  SOCKET_OUT_FLOAT(value, "Value");
+
+  return type;
+}
+
+GaborFTextureNode::GaborFTextureNode() : TextureNode(node_type) {}
+
+void GaborFTextureNode::constant_fold(const ConstantFolder &folder)
+{
+  ShaderInput *scale_in = input("Scale");
+  ShaderInput *gain_in = input("Gain");
+  ShaderInput *radius_in = input("Radius");
+  ShaderInput *impulses_in = input("Impulses");
+
+  if ((!scale_in->link && scale == 0.0f) || (!gain_in->link && gain == 0.0f) ||
+      (!radius_in->link && radius == 0.0f) || (!impulses_in->link && impulses == 0.0f))
+  {
+    folder.make_constant(use_normalize ? 0.5f : 0.0f);
+  }
+}
+
+void GaborFTextureNode::compile(SVMCompiler &compiler)
+{
+  ShaderInput *vector_in = input("Vector");
+  ShaderInput *scale_in = input("Scale");
+  ShaderInput *frequency_in = input("Frequency");
+  ShaderInput *detail_in = input("Detail");
+  ShaderInput *roughness_in = input("Roughness");
+  ShaderInput *scl_lacunarity_in = input("Scale Lacunarity");
+  ShaderInput *fre_lacunarity_in = input("Frequency Lacunarity");
+  ShaderInput *rot_lacunarity_in = input("Rotation Lacunarity");
+  ShaderInput *gain_in = input("Gain");
+  ShaderInput *radius_in = input("Radius");
+  ShaderInput *impulses_in = input("Impulses");
+  ShaderInput *phase_in = input("Phase Offset");
+  ShaderInput *phase_variance_in = input("Phase Variance");
+  ShaderInput *rotation_in = input("Rotation");
+  ShaderInput *rot_variance_in = input("Rotation Variance");
+  ShaderInput *tilt_randomness_in = input("Tilt Randomness");
+  ShaderInput *direction_in = input("Direction");
+  ShaderInput *cell_randomness_in = input("Cell Randomness");
+  ShaderInput *anisotropy_in = input("Anisotropic Factor");
+
+  ShaderOutput *value_out = output("Value");
+
+  int vector_stack_offset = tex_mapping.compile_begin(compiler, vector_in);
+
+  int scale_in_stack_offset = compiler.stack_assign(scale_in);
+  int frequency_in_stack_offset = compiler.stack_assign(frequency_in);
+  int detail_in_stack_offset = compiler.stack_assign(detail_in);
+  int roughness_in_stack_offset = compiler.stack_assign(roughness_in);
+  int scl_lacunarity_in_stack_offset = compiler.stack_assign(scl_lacunarity_in);
+  int fre_lacunarity_in_stack_offset = compiler.stack_assign(fre_lacunarity_in);
+  int rot_lacunarity_in_stack_offset = compiler.stack_assign(rot_lacunarity_in);
+  int gain_in_stack_offset = compiler.stack_assign(gain_in);
+  int radius_in_stack_offset = compiler.stack_assign(radius_in);
+  int impulses_in_stack_offset = compiler.stack_assign(impulses_in);
+  int phase_in_stack_offset = compiler.stack_assign(phase_in);
+  int phase_variance_in_stack_offset = compiler.stack_assign(phase_variance_in);
+  int rotation_in_stack_offset = compiler.stack_assign(rotation_in);
+  int rot_variance_in_stack_offset = compiler.stack_assign(rot_variance_in);
+  int tilt_randomness_in_stack_offset = compiler.stack_assign(tilt_randomness_in);
+  int cell_randomness_in_stack_offset = compiler.stack_assign(cell_randomness_in);
+  int anisotropy_in_stack_offset = compiler.stack_assign(anisotropy_in);
+  int direction_in_stack_offset = compiler.stack_assign(direction_in);
+
+  int value_out_stack_offset = compiler.stack_assign_if_linked(value_out);
+
+  compiler.add_node(NODE_TEX_GABORF,
+                    compiler.encode_uchar4(vector_stack_offset,
+                                           scale_in_stack_offset,
+                                           frequency_in_stack_offset,
+                                           detail_in_stack_offset),
+                    compiler.encode_uchar4(roughness_in_stack_offset,
+                                           scl_lacunarity_in_stack_offset,
+                                           fre_lacunarity_in_stack_offset,
+                                           rot_lacunarity_in_stack_offset),
+                    compiler.encode_uchar4(gain_in_stack_offset,
+                                           radius_in_stack_offset,
+                                           impulses_in_stack_offset,
+                                           phase_in_stack_offset));
+  compiler.add_node(
+      compiler.encode_uchar4(phase_variance_in_stack_offset,
+                             cell_randomness_in_stack_offset,
+                             rotation_in_stack_offset,
+                             tilt_randomness_in_stack_offset),
+      compiler.encode_uchar4(rot_variance_in_stack_offset,
+                             direction_in_stack_offset,
+                             value_out_stack_offset,
+                             dimensions),
+      compiler.encode_uchar4(mode, anisotropy_in_stack_offset, periodic, use_normalize),
+      use_origin_offset);
+
+  compiler.add_node(__float_as_int(scale),
+                    __float_as_int(frequency),
+                    __float_as_int(detail),
+                    __float_as_int(roughness));
+  compiler.add_node(__float_as_int(scl_lacunarity),
+                    __float_as_int(fre_lacunarity),
+                    __float_as_int(rot_lacunarity),
+                    __float_as_int(gain));
+  compiler.add_node(__float_as_int(radius),
+                    __float_as_int(impulses),
+                    __float_as_int(phase),
+                    __float_as_int(phase_variance));
+  compiler.add_node(__float_as_int(cell_randomness),
+                    __float_as_int(rotation),
+                    __float_as_int(rot_variance),
+                    __float_as_int(tilt_randomness));
+  compiler.add_node(__float_as_int(anisotropy));
+
+  tex_mapping.compile_end(compiler, vector_in, vector_stack_offset);
+}
+
+void GaborFTextureNode::compile(OSLCompiler &compiler)
+{
+  tex_mapping.compile(compiler);
+  compiler.parameter(this, "dimensions");
+  compiler.parameter(this, "mode");
+  compiler.parameter(this, "periodic");
+  compiler.parameter(this, "use_normalize");
+  compiler.parameter(this, "use_origin_offset");
+  compiler.add(this, "node_gaborf_texture");
+}
+
 /* Voronoi Texture */
 
 NODE_DEFINE(VoronoiTextureNode)

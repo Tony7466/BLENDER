@@ -281,6 +281,17 @@ typedef enum NodeGaborType {
   NODE_GABOR_TYPE_3D,
 } NodeGaborType;
 
+typedef enum NodeGaborFMode {
+  SHD_GABOR_MODE_GABOR,
+  SHD_GABOR_MODE_RING,
+  SHD_GABOR_MODE_CROSS,
+  SHD_GABOR_MODE_SQUARE,
+  SHD_GABOR_MODE_PHASOR,
+  SHD_GABOR_MODE_PHASOR_RING,
+  SHD_GABOR_MODE_PHASOR_CROSS,
+  SHD_GABOR_MODE_PHASOR_SQUARE,
+} NodeGaborFMode;
+
 typedef enum NodeWaveType { NODE_WAVE_BANDS, NODE_WAVE_RINGS } NodeWaveType;
 
 typedef enum NodeWaveBandsDirection {

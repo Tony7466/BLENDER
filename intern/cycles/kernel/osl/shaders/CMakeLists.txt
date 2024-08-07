@@ -34,6 +34,7 @@ set(SRC_OSL
   node_float_curve.osl
   node_fresnel.osl
   node_gabor_texture.osl
+  node_gaborf_texture.osl
   node_gamma.osl
   node_geometry.osl
   node_glass_bsdf.osl

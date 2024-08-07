@@ -1,0 +1,466 @@
+/* SPDX-FileCopyrightText: 2024 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+/* Gabor Noise
+ *
+ * Based on: Blender patch D287
+ *
+ * Adapted from Open Shading Language
+ * Copyright (c) 2009-2010 Sony Pictures Imageworks Inc., et al.
+ * All Rights Reserved.
+ *
+ * Gabor noise originally based on:
+ * Lagae, A. and Drettakis, G. 2011. Filtering Solid Gabor Noise.
+ */
+
+/* See GLSL implementation for code comments. */
+
+#include "node_hash.h"
+#include "node_math.h"
+#include "node_noise.h"
+#include "stdcycles.h"
+#include "vector2.h"
+#include "vector4.h"
+
+#define vector3 point
+
+#define GABOR_SEED 1259
+
+struct GaborParams {
+  float frequency;
+  float radius;
+  float impulses;
+  float phase;
+  float phase_variance;
+  float rotation;
+  float init_rotation;
+  float rot_variance;
+  float tilt_randomness;
+  float cell_randomness;
+  float anisotropy;
+  string mode;
+  vector direction;
+};
+
+struct FractalParams {
+  float octaves;
+  float roughness;
+  float scl_lacunarity;
+  float fre_lacunarity;
+  float rot_lacunarity;
+};
+
+int impulses_per_cell(vector3 cell, float impulses, int seed)
+{
+  int n = int(impulses);
+  float rmd = impulses - floor(impulses);
+  if (rmd > 0.0) {
+    float t = hash_vector4_to_float(vector4(cell[0], cell[1], cell[2], float(seed - GABOR_SEED)));
+    if (t <= rmd) {
+      return n + 1;
+    }
+    return n;
+  }
+  return n;
+}
+
+vector3 gabor_kernel(GaborParams gp, point omega, float phi, point position, float dv)
+{
+  float g = cos(M_PI * sqrt(dv)) * 0.5 + 0.5;
+  vector3 r = vector3(0.0);
+  float h;
+
+  if (gp.mode == "gabor") { /* SHD_GABOR_MODE_GABOR */
+    h = gp.frequency * dot(omega, position) + phi;
+    r = vector3(cos(h), 0.0, 0.0);
+  }
+  else if (gp.mode == "phasor") { /* SHD_GABOR_MODE_PHASOR */
+    h = gp.frequency * dot(omega, position) + phi;
+    r = vector3(cos(h), sin(h), 0.0);
+  }
+  else if (gp.mode == "gabor_cross") { /* SHD_GABOR_MODE_CROSS */
+    h = gp.frequency * length(omega * position) + phi;
+    r = vector3(cos(h), 0.0, 0.0);
+  }
+  else if (gp.mode == "phasor_cross") { /* SHD_GABOR_MODE_PHASOR_CROSS */
+    h = gp.frequency * length(omega * position) + phi;
+    r = vector3(cos(h), sin(h), 0.0);
+  }
+  else if (gp.mode == "gabor_ring") { /* SHD_GABOR_MODE_RING */
+    h = cos(gp.frequency * dot(omega, position) + phi) +
+        cos(gp.frequency * length(position) + phi);
+    r = vector3(h, 0.0, 0.0) * 0.5;
+    ;
+  }
+  else if (gp.mode == "phasor_ring") { /* SHD_GABOR_MODE_PHASOR_RING */
+    h = cos(gp.frequency * dot(omega, position) + phi) +
+        cos(gp.frequency * length(position) + phi);
+    float h2 = sin(gp.frequency * dot(omega, position) + phi) +
+               sin(gp.frequency * length(position) + phi);
+    r = vector3(h, h2, 0.0) * 0.5;
+  }
+  else if (gp.mode == "gabor_square") { /* SHD_GABOR_MODE_SQUARE */
+    vector3 positionyxz = vector3(position.y, position.x, position.z);
+    h = cos(gp.frequency * dot(omega, position) + phi) +
+        cos(gp.frequency * dot(omega, positionyxz) + phi);
+    r = vector3(h, 0.0, 0.0) * 0.5;
+  }
+  else if (gp.mode == "phasor_square") {
+    vector3 positionyxz = vector3(position.y, position.x, position.z);
+    h = cos(gp.frequency * dot(omega, position) + phi) +
+        cos(gp.frequency * dot(omega, positionyxz) + phi);
+    float h2 = sin(gp.frequency * dot(omega, position) + phi) +
+               sin(gp.frequency * dot(omega, positionyxz) + phi);
+    r = vector3(h, h2, 0.0) * 0.5;
+  }
+
+  return r * g;
+}
+
+vector gabor_sample(GaborParams gp, vector3 cell, int seed, output float phi)
+{
+  vector3 rand_values = hash_vector4_to_color(vector4(cell.x, cell.y, cell.z, float(seed))) * 2.0 -
+                        1.0;
+  float pvar = mix(0.0, rand_values.z, gp.phase_variance);
+  phi = M_2PI * pvar + gp.phase;
+
+  float omega_t = M_PI * (rand_values.x) * gp.rot_variance - gp.rotation - gp.init_rotation;
+  float cos_omega_p = clamp(rand_values.y * gp.tilt_randomness, -1.0, 1.0);
+  float sin_omega_p = sqrt(1.0 - cos_omega_p * cos_omega_p);
+  float sin_omega_t = sin(omega_t);
+  float cos_omega_t = cos(omega_t);
+
+  return mix(normalize(vector(cos_omega_t * sin_omega_p, sin_omega_t * sin_omega_p, cos_omega_p)),
+             normalize(transform(euler_to_mat(vector3(0.0, 0.0, -gp.rotation)), gp.direction)),
+             gp.anisotropy);
+}
+
+vector3 gabor_cell_3d(output GaborParams gp, point cell, point cell_position, int seed)
+{
+  int num_impulses = impulses_per_cell(cell, gp.impulses, seed);
+  vector3 sum = vector3(0.0);
+  for (int i = 0; i < num_impulses; ++i) {
+    vector3 rand_position = mix(
+        vector3(0.0),
+        hash_vector4_to_color(vector4(cell[0], cell[1], cell[2], float(seed + i * GABOR_SEED))),
+        gp.cell_randomness);
+
+    point kernel_position = (cell_position - rand_position);
+
+    float dv = dot(kernel_position, kernel_position) / gp.radius;
+
+    if (dv <= 1.0) {
+      float phi;
+      vector3 omega = gabor_sample(gp, cell, seed + (num_impulses + i) * GABOR_SEED, phi);
+      sum += gabor_kernel(gp, omega, phi, kernel_position, dv);
+    }
+  }
+  return sum;
+}
+
+vector3 gabor_cell_2d(output GaborParams gp, point cell, point cell_position, int seed)
+{
+  int num_impulses = impulses_per_cell(cell, gp.impulses, seed);
+  vector3 sum = vector3(0.0);
+  for (int i = 0; i < num_impulses; ++i) {
+    vector3 rand_position = mix(
+        vector3(0.0),
+        hash_vector4_to_color(vector4(cell[0], cell[1], cell[2], float(seed + i * GABOR_SEED))),
+        gp.cell_randomness);
+    rand_position.z = 0.0;
+
+    point kernel_position = (cell_position - rand_position);
+
+    float dv = dot(kernel_position, kernel_position) / gp.radius;
+
+    if (dv <= 1.0) {
+      float phi;
+      vector3 omega = gabor_sample(gp, cell, seed + (num_impulses + i) * GABOR_SEED, phi);
+      sum += gabor_kernel(gp, omega, phi, kernel_position, dv);
+    }
+  }
+  return sum;
+}
+
+float gabor_coord_wrap(float a, float b)
+{
+  return (b != 0.0) ? a - b * floor(a / b) : 0.0;
+}
+
+vector3 gabor_grid_3d(output GaborParams gp, point p, float scale, int periodic, int seed)
+{
+  point coords = p * scale;
+  point position = floor(coords);
+  point local_position = coords - position;
+
+  vector3 sum = 0.0;
+  for (int k = -1; k <= 1; k++) {
+    for (int j = -1; j <= 1; j++) {
+      for (int i = -1; i <= 1; i++) {
+        point cell_offset = point(i, j, k);
+        point cell = position + cell_offset;
+        point cell_position = local_position - cell_offset;
+
+        /* Skip this cell if it's too far away to contribute - Bruemmer.osl */
+        point Pr = (point(i > 0, j > 0, k > 0) - local_position) * cell_offset;
+        if (dot(Pr, Pr) >= 1.0) {
+          continue;
+        }
+
+        if (periodic == 1) {
+          cell[0] = gabor_coord_wrap(cell[0], scale);
+          cell[1] = gabor_coord_wrap(cell[1], scale);
+          cell[2] = gabor_coord_wrap(cell[2], scale);
+        }
+
+        sum += gabor_cell_3d(gp, cell, cell_position, seed);
+      }
+    }
+  }
+  return sum;
+}
+
+vector3 gabor_grid_2d(output GaborParams gp, point p, float scale, int periodic, int seed)
+{
+  point coords = point(p.x, p.y, 0.0) * scale;
+  point position = floor(coords);
+  point local_position = coords - position;
+
+  vector3 sum = 0.0;
+  for (int j = -1; j <= 1; j++) {
+    for (int i = -1; i <= 1; i++) {
+      point cell_offset = point(i, j, 0.0);
+      point cell = position + cell_offset;
+      point cell_position = local_position - cell_offset;
+
+      /* Skip this cell if it's too far away to contribute - Bruemmer.osl */
+      point Pr = (point(i > 0, j > 0, 0) - local_position) * cell_offset;
+      if (dot(Pr, Pr) >= 1.0) {
+        continue;
+      }
+
+      if (periodic == 1) {
+        cell[0] = gabor_coord_wrap(cell[0], scale);
+        cell[1] = gabor_coord_wrap(cell[1], scale);
+      }
+
+      sum += gabor_cell_2d(gp, cell, cell_position, seed);
+    }
+  }
+  return sum;
+}
+
+float gabor_fractal_noise(FractalParams fp,
+                          output GaborParams gp,
+                          vector3 p,
+                          float scale,
+                          string dimensions,
+                          int periodic,
+                          int use_origin_offset)
+{
+  float fscale = 1.0;
+  float amp = 1.0;
+  float maxamp = 0.0;
+  vector3 sum = 0.0;
+  float octaves = clamp(fp.octaves, 0.0, 15.0);
+  if (fp.roughness == 0.0) {
+    octaves = 0.0;
+  }
+  int n = int(octaves);
+  for (int i = 0; i <= n; i++) {
+    int seed = use_origin_offset * i * GABOR_SEED;
+    vector3 t = (dimensions == "3D") ? gabor_grid_3d(gp, fscale * p, scale, periodic, seed) :
+                                       gabor_grid_2d(gp, fscale * p, scale, periodic, seed);
+    gp.frequency *= fp.fre_lacunarity;
+    gp.rotation -= fp.rot_lacunarity;
+    sum += t * amp;
+    maxamp += amp;
+    amp *= fp.roughness;
+    fscale *= fp.scl_lacunarity;
+  }
+  float rmd = octaves - floor(octaves);
+  if (rmd != 0.0) {
+    int seed = use_origin_offset * (n + 1) * GABOR_SEED;
+    vector3 t = (dimensions == "3D") ? gabor_grid_3d(gp, fscale * p, scale, periodic, seed) :
+                                       gabor_grid_2d(gp, fscale * p, scale, periodic, seed);
+    vector3 sum2 = sum + t * amp;
+    sum = mix(sum, sum2, rmd);
+  }
+  sum /= maxamp;
+
+  if (gp.mode == "phasor" || gp.mode == "phasor_ring" || gp.mode == "phasor_cross" ||
+      gp.mode == "phasor_square")
+  {
+    float pn = atan2(sum.y, sum.x) / M_PI;
+    return pn;
+  }
+  else {
+    return sum.x;
+  }
+}
+
+GaborParams gabor_parameters(vector direction,
+                             float frequency,
+                             float radius,
+                             float impulses,
+                             float phase,
+                             float phase_variance,
+                             float rotation,
+                             float rot_variance,
+                             float tilt_randomness,
+                             float cell_randomness,
+                             float anisotropy,
+                             string mode)
+{
+  GaborParams gp;
+  gp.impulses = clamp(impulses, 0.0001, 32.0);
+  gp.rot_variance = rot_variance;
+  gp.anisotropy = anisotropy;
+  gp.mode = mode;
+  gp.direction = direction;
+  gp.phase = phase;
+  gp.rotation = 0.0;
+  gp.init_rotation = rotation;
+  gp.phase_variance = phase_variance;
+  gp.tilt_randomness = tilt_randomness;
+  gp.cell_randomness = cell_randomness;
+  gp.radius = radius;
+  gp.frequency = frequency * M_PI;
+  return gp;
+}
+
+/* Shader */
+
+float gabor_noise(point p,
+                  vector direction,
+                  float scale,
+                  float frequency,
+                  float detail,
+                  float roughness,
+                  float scl_lacunarity,
+                  float fre_lacunarity,
+                  float rot_lacunarity,
+                  float gain,
+                  float radius,
+                  float impulses,
+                  float phase,
+                  float phase_variance,
+                  float rotation,
+                  float rot_variance,
+                  float tilt_randomness,
+                  float cell_randomness,
+                  float anisotropy,
+                  string dimensions,
+                  string mode,
+                  int use_normalize,
+                  int periodic,
+                  int use_origin_offset)
+{
+  if (impulses == 0.0 || gain == 0.0 || radius <= 0.0 || scale == 0.0) {
+    if (use_normalize == 1) {
+      return 0.5;
+    }
+    return 0.0;
+  }
+
+  FractalParams fp;
+  fp.roughness = roughness;
+  fp.octaves = detail;
+  fp.scl_lacunarity = scl_lacunarity;
+  fp.fre_lacunarity = fre_lacunarity;
+  fp.rot_lacunarity = rot_lacunarity;
+
+  GaborParams gp = gabor_parameters(direction,
+                                    frequency,
+                                    radius,
+                                    impulses,
+                                    phase,
+                                    phase_variance,
+                                    rotation,
+                                    rot_variance,
+                                    tilt_randomness,
+                                    cell_randomness,
+                                    anisotropy,
+                                    mode);
+
+  float g = gabor_fractal_noise(fp, gp, p, scale, dimensions, periodic, use_origin_offset) * gain;
+
+  if (gp.mode == "gabor" || gp.mode == "gabor_ring" || gp.mode == "gabor_cross" ||
+      gp.mode == "gabor_square")
+  {
+    float impulse_scale = 1.2613446229;
+    if (impulses > 1.0) {
+      impulse_scale = 1.2613446229 * sqrt(gp.impulses);
+    }
+    g = g / impulse_scale;
+  }
+
+  if (use_normalize == 1) {
+    return clamp(0.5 * g + 0.5, 0.0, 1.0);
+  }
+  return g;
+}
+
+/* Gabor */
+
+shader node_gabor_texture(int use_mapping = 0,
+                          matrix mapping = matrix(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+                          string dimensions = "2D",
+                          string mode = "gabor",
+                          int use_normalize = 1,
+                          int periodic = 0,
+                          int use_origin_offset = 1,
+                          vector3 Vector = vector(0, 0, 0),
+                          float Scale = 5.0,
+                          float Detail = 0.0,
+                          float Roughness = 0.5,
+                          float ScaleLacunarity = 2.0,
+                          float FrequencyLacunarity = 2.0,
+                          float RotationLacunarity = 0.0,
+                          float Gain = 1.0,
+                          float Frequency = 4.0,
+                          float Radius = 1.0,
+                          float Impulses = 2.0,
+                          float PhaseOffset = 0.0,
+                          float PhaseVariance = 1.0,
+                          float CellRandomness = 1.0,
+                          float Rotation = 0.0,
+                          float RotationVariance = 0.0,
+                          float TiltRandomness = 1.0,
+                          vector3 Direction = vector(0, 0, 1),
+                          float AnisotropicFactor = 0.0,
+                          output float Value = 0.0)
+{
+  vector3 p = Vector;
+
+  if (use_mapping)
+    p = transform(mapping, p);
+
+  Value = gabor_noise(p,
+                      Direction,
+                      Scale,
+                      Frequency,
+                      Detail,
+                      Roughness,
+                      ScaleLacunarity,
+                      FrequencyLacunarity,
+                      RotationLacunarity,
+                      Gain,
+                      Radius,
+                      Impulses,
+                      PhaseOffset,
+                      PhaseVariance,
+                      Rotation,
+                      RotationVariance,
+                      TiltRandomness,
+                      CellRandomness,
+                      AnisotropicFactor,
+                      dimensions,
+                      mode,
+                      use_normalize,
+                      periodic,
+                      use_origin_offset);
+}
+
+#undef vector3

@@ -254,6 +254,38 @@ class GaborTextureNode : public TextureNode {
   NODE_SOCKET_API(float3, orientation_3d)
 };
 
+class GaborFTextureNode : public TextureNode {
+ public:
+  SHADER_NODE_CLASS(GaborFTextureNode)
+  void constant_fold(const ConstantFolder &folder);
+
+  NODE_SOCKET_API(int, dimensions)
+  NODE_SOCKET_API(NodeGaborFMode, mode);
+  NODE_SOCKET_API(bool, periodic)
+  NODE_SOCKET_API(bool, use_normalize)
+  NODE_SOCKET_API(bool, use_origin_offset)
+
+  NODE_SOCKET_API(float3, vector)
+  NODE_SOCKET_API(float, scale)
+  NODE_SOCKET_API(float, frequency)
+  NODE_SOCKET_API(float, detail)
+  NODE_SOCKET_API(float, roughness)
+  NODE_SOCKET_API(float, scl_lacunarity)
+  NODE_SOCKET_API(float, fre_lacunarity)
+  NODE_SOCKET_API(float, rot_lacunarity)
+  NODE_SOCKET_API(float, gain)
+  NODE_SOCKET_API(float, radius)
+  NODE_SOCKET_API(float, impulses)
+  NODE_SOCKET_API(float, phase)
+  NODE_SOCKET_API(float, phase_variance)
+  NODE_SOCKET_API(float, rotation)
+  NODE_SOCKET_API(float, rot_variance)
+  NODE_SOCKET_API(float, tilt_randomness)
+  NODE_SOCKET_API(float, cell_randomness)
+  NODE_SOCKET_API(float, anisotropy)
+  NODE_SOCKET_API(float3, direction)
+};
+
 class VoronoiTextureNode : public TextureNode {
  public:
   SHADER_NODE_CLASS(VoronoiTextureNode)

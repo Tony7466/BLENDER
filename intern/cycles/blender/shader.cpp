@@ -953,6 +953,18 @@ static ShaderNode *add_node(Scene *scene,
     get_tex_mapping(gabor, b_texture_mapping);
     node = gabor;
   }
+  else if (b_node.is_a(&RNA_ShaderNodeTexGaborF)) {
+    BL::ShaderNodeTexGaborF b_gaborf_node(b_node);
+    GaborFTextureNode *gaborf = graph->create_node<GaborFTextureNode>();
+    gaborf->set_mode((NodeGaborFMode)b_gaborf_node.mode());
+    gaborf->set_dimensions(b_gaborf_node.gabor_dimensions());
+    gaborf->set_periodic(b_gaborf_node.periodic());
+    gaborf->set_use_normalize(b_gaborf_node.normalize());
+    gaborf->set_use_origin_offset(b_gaborf_node.use_origin_offset());
+    BL::TexMapping b_texture_mapping(b_gaborf_node.texture_mapping());
+    get_tex_mapping(gaborf, b_texture_mapping);
+    node = gaborf;
+  }
   else if (b_node.is_a(&RNA_ShaderNodeTexCoord)) {
     BL::ShaderNodeTexCoord b_tex_coord_node(b_node);
     TextureCoordinateNode *tex_coord = graph->create_node<TextureCoordinateNode>();

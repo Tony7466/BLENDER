@@ -96,6 +96,7 @@ DefNode(ShaderNode,     SH_NODE_SCRIPT,             def_sh_script,          "SCR
 DefNode(ShaderNode,     SH_NODE_TEX_IMAGE,          def_sh_tex_image,       "TEX_IMAGE",          TexImage,         "Image Texture",     "Sample an image file as a texture")
 DefNode(ShaderNode,     SH_NODE_TEX_ENVIRONMENT,    def_sh_tex_environment, "TEX_ENVIRONMENT",    TexEnvironment,   "Environment Texture","Sample an image file as an environment texture. Typically used to light the scene with the background node")
 DefNode(ShaderNode,     SH_NODE_TEX_GABOR,          def_sh_tex_gabor,       "TEX_GABOR",          TexGabor,         "Gabor Texture",     "Generate Gabor noise")
+DefNode(ShaderNode,     SH_NODE_TEX_GABORF,         def_sh_tex_gaborf,      "TEX_GABORF",         TexGaborF,        "GaborF Texture",    "Generate GaborF noise")
 DefNode(ShaderNode,     SH_NODE_TEX_SKY,            def_sh_tex_sky,         "TEX_SKY",            TexSky,           "Sky Texture",       "Generate a procedural sky texture")
 DefNode(ShaderNode,     SH_NODE_TEX_GRADIENT,       def_sh_tex_gradient,    "TEX_GRADIENT",       TexGradient,      "Gradient Texture",  "Generate interpolated color and intensity values based on the input vector")
 DefNode(ShaderNode,     SH_NODE_TEX_NOISE,          def_sh_tex_noise,       "TEX_NOISE",          TexNoise,         "Noise Texture",     "Generate fractal Perlin noise")
