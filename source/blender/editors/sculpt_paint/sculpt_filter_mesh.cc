@@ -1289,8 +1289,8 @@ static void calc_surface_smooth_filter(const Sculpt &sd,
 
           tls.average_positions.resize(orig_data.positions.size());
           const MutableSpan<float3> average_laplacian_disps = tls.average_positions;
-          smooth::neighbor_data_average_mesh(
-              all_laplacian_disp.as_span(), tls.vert_neighbors, average_laplacian_disps);
+          smooth::average_data_grids(
+              subdiv_ccg, all_laplacian_disp.as_span(), grids, average_laplacian_disps);
 
           tls.translations.resize(orig_data.positions.size());
           const MutableSpan<float3> translations = tls.translations;
@@ -1354,7 +1354,6 @@ static void calc_surface_smooth_filter(const Sculpt &sd,
         LocalData &tls = all_tls.local();
         for (const int i : range) {
           const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(nodes[i]);
-          const Span<float3> positions = gather_bmesh_positions(verts, tls.positions);
           Array<float3> orig_positions(verts.size());
           Array<float3> orig_normals(verts.size());
           orig_position_data_gather_bmesh(*ss.bm_log, verts, orig_positions, orig_normals);
