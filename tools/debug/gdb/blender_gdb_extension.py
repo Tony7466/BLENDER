@@ -436,9 +436,6 @@ class BlenderPrettyPrinters(gdb.printing.PrettyPrinter):
         return None
 
 
-
-
-
 class ForeachIndexFilter:
     filename_pattern = r".*index_mask.*"
 
@@ -557,9 +554,6 @@ class FrameFilter:
         yield from handle_gathered_frames()
 
 
-
-
-
 class SimpleFrameDecorator(FrameDecorator):
     def __init__(self, name, frame, elided_frames):
         super().__init__(frame)
@@ -579,5 +573,6 @@ def register():
 
     frame_filter = FrameFilter()
     gdb.frame_filters[frame_filter.name] = frame_filter
+
 
 register()
