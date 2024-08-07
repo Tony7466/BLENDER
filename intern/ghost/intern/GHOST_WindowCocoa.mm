@@ -546,8 +546,8 @@ GHOST_TSuccess GHOST_WindowCocoa::setPath(const char *filepath)
   return success;
 }
 
-GHOST_TSuccess GHOST_WindowCocoa::setWindowDecorationTitlebarColors(
-    const float backgroundColor[4], const float /*titleTextColor*/[4])
+GHOST_TSuccess GHOST_WindowCocoa::setDecorationTitlebarColors(const float backgroundColor[4],
+                                                              const float /*titleTextColor*/[4])
 {
   @autoreleasepool {
     /* Titlebar background color. */
@@ -1266,7 +1266,7 @@ GHOST_TSuccess GHOST_WindowCocoa::setWindowCustomCursorShape(
   return GHOST_kSuccess;
 }
 
-GHOST_TSuccess GHOST_WindowCocoa::updateWindowDecorations()
+GHOST_TSuccess GHOST_WindowCocoa::updateDecorations()
 {
   @autoreleasepool {
     m_window.titlebarAppearsTransparent = m_windowDecorationFlags &

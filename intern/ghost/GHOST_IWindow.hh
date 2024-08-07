@@ -90,22 +90,21 @@ class GHOST_IWindow {
   /**
    * Return the current client-side window decoration (CSD) style flags.
    */
-  virtual GHOST_TWindowDecorationStyleFlags getWindowDecorationStyle() = 0;
+  virtual GHOST_TWindowDecorationStyleFlags getDecorationStyle() = 0;
 
   /**
    * Set the window client-side decorations (CSD) style flags.
    * \param style_flags: Decoration style flags.
    */
-  virtual GHOST_TSuccess setWindowDecorationStyle(
-      GHOST_TWindowDecorationStyleFlags style_flags) = 0;
+  virtual GHOST_TSuccess setDecorationStyle(GHOST_TWindowDecorationStyleFlags style_flags) = 0;
 
   /**
    * Set colors to be used by custom titlebar client-side window decorations (CSD).
    * \param backgroundColor: Titlebar background color.
    * \param titleTextColor: Titlebar title text color.
    */
-  virtual GHOST_TSuccess setWindowDecorationTitlebarColors(const float backgroundColor[4],
-                                                           const float titleTextColor[4]) = 0;
+  virtual GHOST_TSuccess setDecorationTitlebarColors(const float backgroundColor[4],
+                                                     const float titleTextColor[4]) = 0;
 
   /**
    * Returns the window rectangle dimensions.

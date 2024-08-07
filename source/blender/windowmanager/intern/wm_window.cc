@@ -597,7 +597,7 @@ void WM_window_set_dpi(const wmWindow *win)
 
 eWM_DecorationStyleFlag WM_window_decoration_get_style(const wmWindow *win)
 {
-  const GHOST_TWindowDecorationStyleFlags ghost_style_flags = GHOST_GetWindowDecorationStyle(
+  const GHOST_TWindowDecorationStyleFlags ghost_style_flags = GHOST_GetDecorationStyle(
       static_cast<GHOST_WindowHandle>(win->ghostwin));
 
   eWM_DecorationStyleFlag wm_style_flags = WM_DECORATION_NONE;
@@ -617,16 +617,15 @@ void WM_window_decoration_set_style(const wmWindow *win, eWM_DecorationStyleFlag
     ghost_style_flags |= GHOST_kDecorationColoredTitleBar;
   }
 
-  GHOST_SetWindowDecorationStyle(
-      static_cast<GHOST_WindowHandle>(win->ghostwin),
-      static_cast<GHOST_TWindowDecorationStyleFlags>(ghost_style_flags));
+  GHOST_SetDecorationStyle(static_cast<GHOST_WindowHandle>(win->ghostwin),
+                           static_cast<GHOST_TWindowDecorationStyleFlags>(ghost_style_flags));
 }
 
 void WM_window_decoration_set_titlebar_colors(const wmWindow *win,
                                               const float background_color[4],
                                               const float title_text_color[4])
 {
-  GHOST_SetWindowDecorationTitlebarColors(
+  GHOST_SetDecorationTitlebarColors(
       static_cast<GHOST_WindowHandle>(win->ghostwin), background_color, title_text_color);
 }
 

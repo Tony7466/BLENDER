@@ -96,8 +96,8 @@ class GHOST_WindowCocoa : public GHOST_Window {
    * \param backgroundColor: Titlebar background color.
    * \param titleTextColor: Titlebar title text color.
    */
-  GHOST_TSuccess setWindowDecorationTitlebarColors(const float backgroundColor[4],
-                                                   const float titleTextColor[4]);
+  GHOST_TSuccess setDecorationTitlebarColors(const float backgroundColor[4],
+                                             const float titleTextColor[4]);
 
   /**
    * Returns the window rectangle dimensions.
@@ -306,7 +306,7 @@ class GHOST_WindowCocoa : public GHOST_Window {
    * Update the window client-side decorations (CSD)
    * depending on decoration style flags.
    */
-  GHOST_TSuccess updateWindowDecorations();
+  GHOST_TSuccess updateDecorations();
 
   /** The window containing the view */
   CocoaWindow *m_window;

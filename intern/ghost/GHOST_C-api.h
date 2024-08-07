@@ -598,24 +598,23 @@ extern GHOST_TSuccess GHOST_SetPath(GHOST_WindowHandle windowhandle, const char 
 /**
  * Return the current client-side window decoration style flags.
  */
-extern GHOST_TWindowDecorationStyleFlags GHOST_GetWindowDecorationStyle(
-    GHOST_WindowHandle windowhandle);
+extern GHOST_TWindowDecorationStyleFlags GHOST_GetDecorationStyle(GHOST_WindowHandle windowhandle);
 
 /**
  * Set client-side window decorations style flags.
  * \param style_flags: Decoration Style Flags
  */
-extern GHOST_TSuccess GHOST_SetWindowDecorationStyle(
-    GHOST_WindowHandle windowhandle, GHOST_TWindowDecorationStyleFlags style_flags);
+extern GHOST_TSuccess GHOST_SetDecorationStyle(GHOST_WindowHandle windowhandle,
+                                               GHOST_TWindowDecorationStyleFlags style_flags);
 
 /**
  * Set colors to be used by custom titlebar client-side window decorations (CSD).
  * \param backgroundColor: Titlebar background color.
  * \param titleTextColor: Titlebar title text color.
  */
-extern GHOST_TSuccess GHOST_SetWindowDecorationTitlebarColors(GHOST_WindowHandle windowhandle,
-                                                              const float backgroundColor[4],
-                                                              const float titleTextColor[4]);
+extern GHOST_TSuccess GHOST_SetDecorationTitlebarColors(GHOST_WindowHandle windowhandle,
+                                                        const float backgroundColor[4],
+                                                        const float titleTextColor[4]);
 
 /**
  * Returns the window rectangle dimensions.

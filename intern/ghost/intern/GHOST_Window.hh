@@ -92,13 +92,13 @@ class GHOST_Window : public GHOST_IWindow {
   /**
    * Return the current client-side window decoration (CSD) style flags.
    */
-  virtual GHOST_TWindowDecorationStyleFlags getWindowDecorationStyle() override;
+  virtual GHOST_TWindowDecorationStyleFlags getDecorationStyle() override;
 
   /**
    * Set the window client-side decorations (CSD) style flags.
    * \param style_flags: Decoration style flags.
    */
-  virtual GHOST_TSuccess setWindowDecorationStyle(
+  virtual GHOST_TSuccess setDecorationStyle(
       GHOST_TWindowDecorationStyleFlags style_flags) override;
 
   /**
@@ -106,8 +106,8 @@ class GHOST_Window : public GHOST_IWindow {
    * \param backgroundColor: Titlebar background color.
    * \param titleTextColor: Titlebar title text color.
    */
-  virtual GHOST_TSuccess setWindowDecorationTitlebarColors(
-      const float /*backgroundColor*/[4], const float /*titleTextColor*/[4]) override
+  virtual GHOST_TSuccess setDecorationTitlebarColors(const float /*backgroundColor*/[4],
+                                                     const float /*titleTextColor*/[4]) override
   {
     return GHOST_kFailure;
   };
@@ -394,9 +394,9 @@ class GHOST_Window : public GHOST_IWindow {
 
   /**
    * Update the window client-side decorations (CSD)
-   * depending on decoration style flags.
+   * from current decoration style flags.
    */
-  virtual GHOST_TSuccess updateWindowDecorations()
+  virtual GHOST_TSuccess updateDecorations()
   {
     return GHOST_kSuccess;
   }
