@@ -759,7 +759,7 @@ static void topology_automasking_init(const Sculpt &sd, Object &ob)
    * the brush radius if the tool requires it. */
   flood_fill::FillData flood = flood_fill::init_fill(ss);
   const float radius = ss.cache ? ss.cache->radius : FLT_MAX;
-  flood_fill::add_active(ob, ss, flood, radius);
+  flood_fill::add_initial_with_symmetry(ob, ss, flood, ss.active_vertex(), radius);
 
   AutomaskFloodFillData fdata = {0};
 
@@ -767,7 +767,7 @@ static void topology_automasking_init(const Sculpt &sd, Object &ob)
   fdata.use_radius = ss.cache && is_constrained_by_radius(brush);
   fdata.symm = SCULPT_mesh_symmetry_xyz_get(ob);
 
-  copy_v3_v3(fdata.location, SCULPT_active_vertex_co_get(ss));
+  copy_v3_v3(fdata.location, SCULPT_vertex_co_get(ss, ss.active_vertex()));
   flood_fill::execute(ss, flood, [&](PBVHVertRef from_v, PBVHVertRef to_v, bool /*is_duplicate*/) {
     return floodfill_cb(ss, from_v, to_v, &fdata);
   });
