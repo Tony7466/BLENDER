@@ -10,6 +10,11 @@ Everything in this file is run by GDB when it is started.
 ```
 source ~/blender-git/blender/tools/debug/gdb/blender_gdb_extension.py
 ```
+
+To validate that things are registered correctly:
+1. Start `gdb`.
+2. Run `info pretty-printer` and check for `blender-pretty-printers`.
+3. Run `info frame-filter` and check for `blender-frame-filters`.
 '''
 
 import gdb
@@ -395,7 +400,7 @@ class OffsetIndicesPrinter:
 
 class BlenderPrettyPrinters(gdb.printing.PrettyPrinter):
     def __init__(self):
-        super().__init__("blender-printers")
+        super().__init__("blender-pretty-printers")
 
     def __call__(self, value: gdb.Value):
         value_type = value.type
@@ -522,7 +527,7 @@ frame_filters = [
 
 class FrameFilter:
     def __init__(self):
-        self.name = "blender_frame_filter"
+        self.name = "blender-frame-filters"
         self.priority = 100
         self.enabled = True
 
@@ -580,6 +585,21 @@ class SimpleFrameDecorator(FrameDecorator):
 
     def function(self):
         return self.name
+
+    def frame_args(self):
+        return None
+
+    def address(self):
+        return None
+
+    def line(self):
+        return None
+
+    def filename(self):
+        return None
+
+    def frame_locals(self):
+        return None
 
 
 def register():
