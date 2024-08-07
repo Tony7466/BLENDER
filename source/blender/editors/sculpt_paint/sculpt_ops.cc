@@ -600,7 +600,7 @@ void geometry_preview_lines_update(bContext *C, SculptSession &ss, float radius)
   BKE_sculpt_update_object_for_edit(depsgraph, ob, false);
 
   float brush_co[3];
-  copy_v3_v3(brush_co, SCULPT_vertex_co_get(ss, ss.active_vertex()));
+  copy_v3_v3(brush_co, SCULPT_vertex_co_get(ss, ss.active_vert_ref()));
 
   BitVector<> visited_verts(SCULPT_vertex_count_get(ss));
 

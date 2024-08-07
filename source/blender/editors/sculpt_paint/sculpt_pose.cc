@@ -609,7 +609,7 @@ void calc_pose_data(Object &ob,
   /* Calculate the pose rotation point based on the boundaries of the brush factor. */
   flood_fill::FillData flood = flood_fill::init_fill(ss);
   flood_fill::add_initial_with_symmetry(
-      ob, ss, flood, ss.active_vertex(), !r_pose_factor.is_empty() ? radius : 0.0f);
+      ob, ss, flood, ss.active_vert_ref(), !r_pose_factor.is_empty() ? radius : 0.0f);
 
   const int symm = SCULPT_mesh_symmetry_xyz_get(ob);
 
@@ -871,7 +871,7 @@ static std::unique_ptr<SculptPoseIKChain> pose_ik_chain_init_face_sets(Object &o
     current_vertex = next_vertex;
   }
 
-  pose_ik_chain_origin_heads_init(*ik_chain, SCULPT_vertex_co_get(ss, ss.active_vertex()));
+  pose_ik_chain_origin_heads_init(*ik_chain, SCULPT_vertex_co_get(ss, ss.active_vert_ref()));
 
   return ik_chain;
 }
@@ -1012,7 +1012,7 @@ static std::unique_ptr<SculptPoseIKChain> pose_ik_chain_init_face_sets_fk(
 
   {
     flood_fill::FillData flood = flood_fill::init_fill(ss);
-    flood_fill::add_initial_with_symmetry(ob, ss, flood, ss.active_vertex(), radius);
+    flood_fill::add_initial_with_symmetry(ob, ss, flood, ss.active_vert_ref(), radius);
     MutableSpan<float> fk_weights = ik_chain->segments[0].weights;
     flood_fill::execute(
         ss, flood, [&](PBVHVertRef /*from_v*/, PBVHVertRef to_v, bool /*is_duplicate*/) {

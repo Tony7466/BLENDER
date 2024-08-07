@@ -409,7 +409,7 @@ struct SculptTopologyIslandCache {
   blender::Array<uint8_t> vert_island_ids;
 };
 
-using ActiveVertex = std::variant<std::monostate, int, SubdivCCGCoord, BMVert *>;
+using ActiveVert = std::variant<std::monostate, int, SubdivCCGCoord, BMVert *>;
 
 struct SculptSession : blender::NonCopyable, blender::NonMovable {
   /* Mesh data (not copied) can come either directly from a Mesh, or from a MultiresDM */
@@ -593,7 +593,7 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
   ~SculptSession();
 
   PBVHVertRef active_vert_ref() const;
-  ActiveVertex active_vert() const;
+  ActiveVert active_vert() const;
 
   void set_active_vert(PBVHVertRef vert);
 

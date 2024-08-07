@@ -1749,7 +1749,7 @@ PBVHVertRef SculptSession::active_vert_ref() const
   return {PBVH_REF_NONE};
 }
 
-ActiveVertex SculptSession::active_vert() const
+ActiveVert SculptSession::active_vert() const
 {
   /* TODO: While this code currently translates the stored PBVHVertRef into the given type, once
    * we stored the actual field as ActiveVertex, this call can replace #active_vertex. */
