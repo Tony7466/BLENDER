@@ -1701,96 +1701,6 @@ bool SCULPT_get_redraw_rect(const ARegion &region,
   return true;
 }
 
-/************************ Brush Testing *******************/
-
-void SCULPT_brush_test_init(const SculptSession &ss, SculptBrushTest &test)
-{
-  using namespace blender;
-  RegionView3D *rv3d = ss.cache ? ss.cache->vc->rv3d : ss.rv3d;
-  View3D *v3d = ss.cache ? ss.cache->vc->v3d : ss.v3d;
-
-  test.radius_squared = ss.cache ? ss.cache->radius_squared : ss.cursor_radius * ss.cursor_radius;
-  test.radius = std::sqrt(test.radius_squared);
-
-  if (ss.cache) {
-    test.location = ss.cache->location;
-    test.mirror_symmetry_pass = ss.cache->mirror_symmetry_pass;
-    test.radial_symmetry_pass = ss.cache->radial_symmetry_pass;
-    test.symm_rot_mat_inv = ss.cache->symm_rot_mat_inv;
-  }
-  else {
-    test.location = ss.cursor_location;
-    test.mirror_symmetry_pass = ePaintSymmetryFlags(0);
-    test.radial_symmetry_pass = 0;
-
-    test.symm_rot_mat_inv = float4x4::identity();
-  }
-
-  /* Just for initialize. */
-  test.dist = 0.0f;
-
-  /* Only for 2D projection. */
-  zero_v4(test.plane_view);
-  zero_v4(test.plane_tool);
-
-  if (RV3D_CLIPPING_ENABLED(v3d, rv3d)) {
-    test.clip_rv3d = rv3d;
-  }
-  else {
-    test.clip_rv3d = nullptr;
-  }
-}
-
-BLI_INLINE bool sculpt_brush_test_clipping(const SculptBrushTest &test, const float co[3])
-{
-  RegionView3D *rv3d = test.clip_rv3d;
-  if (!rv3d) {
-    return false;
-  }
-  float3 symm_co = blender::ed::sculpt_paint::symmetry_flip(co, test.mirror_symmetry_pass);
-  if (test.radial_symmetry_pass) {
-    mul_m4_v3(test.symm_rot_mat_inv.ptr(), symm_co);
-  }
-  return ED_view3d_clipping_test(rv3d, symm_co, true);
-}
-
-bool SCULPT_brush_test_cube(SculptBrushTest &test,
-                            const float co[3],
-                            const float local[4][4],
-                            const float roundness,
-                            const float /*tip_scale_x*/)
-{
-  float local_co[3];
-
-  mul_v3_m4v3(local_co, local, co);
-
-  local_co[0] = fabsf(local_co[0]);
-  local_co[1] = fabsf(local_co[1]);
-  local_co[2] = fabsf(local_co[2]);
-
-  const float hardness = 1.0f - roundness;
-
-  if (!(local_co[0] <= 1.0f && local_co[1] <= 1.0f && local_co[2] <= 1.0f)) {
-    /* Outside the square. */
-    return false;
-  }
-  if (min_ff(local_co[0], local_co[1]) > hardness) {
-    /* Corner, distance to the center of the corner circle. */
-    float r_point[3];
-    copy_v3_fl(r_point, hardness);
-    test.dist = len_v2v2(r_point, local_co) / roundness;
-    return true;
-  }
-  if (max_ff(local_co[0], local_co[1]) > hardness) {
-    /* Side, distance to the square XY axis. */
-    test.dist = (max_ff(local_co[0], local_co[1]) - hardness) / roundness;
-    return true;
-  }
-
-  /* Inside the square, constant distance. */
-  test.dist = 0.0f;
-  return true;
-}
 
 const float *SCULPT_brush_frontface_normal_from_falloff_shape(const SculptSession &ss,
                                                               char falloff_shape)
@@ -1801,33 +1711,6 @@ const float *SCULPT_brush_frontface_normal_from_falloff_shape(const SculptSessio
   BLI_assert(falloff_shape == PAINT_FALLOFF_SHAPE_TUBE);
   return ss.cache->view_normal;
 }
-
-#if 0
-
-static bool sculpt_brush_test_cyl(SculptBrushTest *test,
-                                  float co[3],
-                                  float location[3],
-                                  const float area_no[3])
-{
-  if (sculpt_brush_test_sphere_fast(test, co)) {
-    float t1[3], t2[3], t3[3], dist;
-
-    sub_v3_v3v3(t1, location, co);
-    sub_v3_v3v3(t2, x2, location);
-
-    cross_v3_v3v3(t3, area_no, t1);
-
-    dist = len_v3(t3) / len_v3(t2);
-
-    test.dist = dist;
-
-    return true;
-  }
-
-  return false;
-}
-
-#endif
 
 /* ===== Sculpting =====
  */
@@ -7090,8 +6973,7 @@ void filter_distances_with_radius(const float radius,
   }
 }
 
-void calc_brush_cube_distances(const SculptSession &ss,
-                               const Brush &brush,
+void calc_brush_cube_distances(const Brush &brush,
                                const float4x4 &mat,
                                const Span<float3> positions,
                                const Span<int> verts,
@@ -7101,27 +6983,39 @@ void calc_brush_cube_distances(const SculptSession &ss,
   BLI_assert(verts.size() == factors.size());
   BLI_assert(verts.size() == r_distances.size());
 
-  SculptBrushTest test;
-  SCULPT_brush_test_init(ss, test);
-  const float tip_roundness = brush.tip_roundness;
-  const float tip_scale_x = brush.tip_scale_x;
+  const float roundness = brush.tip_roundness;
+  const float hardness = 1.0f - roundness;
   for (const int i : verts.index_range()) {
     if (factors[i] == 0.0f) {
       r_distances[i] = FLT_MAX;
       continue;
     }
-    /* TODO: Break up #SCULPT_brush_test_cube. */
-    if (!SCULPT_brush_test_cube(test, positions[verts[i]], mat.ptr(), tip_roundness, tip_scale_x))
-    {
+    const float3 local = math::abs(math::transform_point(mat, positions[verts[i]]));
+
+    if (!(local[0] <= 1.0f && local[1] <= 1.0f && local[2] <= 1.0f)) {
       factors[i] = 0.0f;
       r_distances[i] = FLT_MAX;
+      continue;
     }
-    r_distances[i] = test.dist;
+    if (std::min(local[0], local[1]) > hardness) {
+      /* Corner, distance to the center of the corner circle. */
+      float r_point[3];
+      copy_v3_fl(r_point, hardness);
+      r_distances[i] = len_v2v2(r_point, local) / roundness;
+      continue;
+    }
+    if (std::max(local[0], local[1]) > hardness) {
+      /* Side, distance to the square XY axis. */
+      r_distances[i] = (std::max(local[0], local[1]) - hardness) / roundness;
+      continue;
+    }
+
+    /* Inside the square, constant distance. */
+    r_distances[i] = 0.0f;
   }
 }
 
-void calc_brush_cube_distances(const SculptSession &ss,
-                               const Brush &brush,
+void calc_brush_cube_distances(const Brush &brush,
                                const float4x4 &mat,
                                const Span<float3> positions,
                                const MutableSpan<float> r_distances,
@@ -7130,21 +7024,35 @@ void calc_brush_cube_distances(const SculptSession &ss,
   BLI_assert(positions.size() == factors.size());
   BLI_assert(positions.size() == r_distances.size());
 
-  SculptBrushTest test;
-  SCULPT_brush_test_init(ss, test);
-  const float tip_roundness = brush.tip_roundness;
-  const float tip_scale_x = brush.tip_scale_x;
+  const float roundness = brush.tip_roundness;
+  const float hardness = 1.0f - roundness;
   for (const int i : positions.index_range()) {
     if (factors[i] == 0.0f) {
       r_distances[i] = FLT_MAX;
       continue;
     }
-    /* TODO: Break up #SCULPT_brush_test_cube. */
-    if (!SCULPT_brush_test_cube(test, positions[i], mat.ptr(), tip_roundness, tip_scale_x)) {
+    const float3 local = math::abs(math::transform_point(mat, positions[i]));
+
+    if (!(local[0] <= 1.0f && local[1] <= 1.0f && local[2] <= 1.0f)) {
       factors[i] = 0.0f;
       r_distances[i] = FLT_MAX;
+      continue;
     }
-    r_distances[i] = test.dist;
+    if (std::min(local[0], local[1]) > hardness) {
+      /* Corner, distance to the center of the corner circle. */
+      float r_point[3];
+      copy_v3_fl(r_point, hardness);
+      r_distances[i] = len_v2v2(r_point, local) / roundness;
+      continue;
+    }
+    if (std::max(local[0], local[1]) > hardness) {
+      /* Side, distance to the square XY axis. */
+      r_distances[i] = (std::max(local[0], local[1]) - hardness) / roundness;
+      continue;
+    }
+
+    /* Inside the square, constant distance. */
+    r_distances[i] = 0.0f;
   }
 }
 

@@ -608,7 +608,8 @@ void calc_pose_data(Object &ob,
 
   /* Calculate the pose rotation point based on the boundaries of the brush factor. */
   flood_fill::FillData flood = flood_fill::init_fill(ss);
-  flood_fill::add_active(ob, ss, flood, !r_pose_factor.is_empty() ? radius : 0.0f);
+  flood_fill::add_initial_with_symmetry(
+      ob, ss, flood, ss.active_vertex(), !r_pose_factor.is_empty() ? radius : 0.0f);
 
   const int symm = SCULPT_mesh_symmetry_xyz_get(ob);
 
@@ -1011,7 +1012,7 @@ static std::unique_ptr<SculptPoseIKChain> pose_ik_chain_init_face_sets_fk(
 
   {
     flood_fill::FillData flood = flood_fill::init_fill(ss);
-    flood_fill::add_active(ob, ss, flood, radius);
+    flood_fill::add_initial_with_symmetry(ob, ss, flood, ss.active_vertex(), radius);
     MutableSpan<float> fk_weights = ik_chain->segments[0].weights;
     flood_fill::execute(
         ss, flood, [&](PBVHVertRef /*from_v*/, PBVHVertRef to_v, bool /*is_duplicate*/) {
@@ -1023,11 +1024,11 @@ static std::unique_ptr<SculptPoseIKChain> pose_ik_chain_init_face_sets_fk(
   return ik_chain;
 }
 
-std::unique_ptr<SculptPoseIKChain> ik_chain_init(Object &ob,
-                                                 SculptSession &ss,
-                                                 const Brush &brush,
-                                                 const float3 &initial_location,
-                                                 const float radius)
+static std::unique_ptr<SculptPoseIKChain> ik_chain_init(Object &ob,
+                                                        SculptSession &ss,
+                                                        const Brush &brush,
+                                                        const float3 &initial_location,
+                                                        const float radius)
 {
   std::unique_ptr<SculptPoseIKChain> ik_chain;
 
@@ -1078,6 +1079,25 @@ void pose_brush_init(Object &ob, SculptSession &ss, const Brush &brush)
       });
     }
   }
+}
+
+std::unique_ptr<SculptPoseIKChainPreview> preview_ik_chain_init(Object &ob,
+                                                                SculptSession &ss,
+                                                                const Brush &brush,
+                                                                const float3 &initial_location,
+                                                                const float radius)
+{
+  const SculptPoseIKChain chain = *ik_chain_init(ob, ss, brush, initial_location, radius);
+  std::unique_ptr<SculptPoseIKChainPreview> preview = std::make_unique<SculptPoseIKChainPreview>();
+
+  preview->initial_head_coords.reinitialize(chain.segments.size());
+  preview->initial_orig_coords.reinitialize(chain.segments.size());
+  for (const int i : chain.segments.index_range()) {
+    preview->initial_head_coords[i] = chain.segments[i].initial_head;
+    preview->initial_orig_coords[i] = chain.segments[i].initial_orig;
+  }
+
+  return preview;
 }
 
 static void sculpt_pose_do_translate_deform(SculptSession &ss, const Brush &brush)
