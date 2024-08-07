@@ -22,8 +22,8 @@ vec4 gpu_attr_decode_1010102_snorm(uint data)
   uint4 v_data = uint4(data) >> uint4(0, 10, 20, 30);
   bvec4 v_sign = greaterThan(v_data & uint4(0x3FF, 0x3FF, 0x3FF, 0x3),
                              uint4(0x1FF, 0x1FF, 0x1FF, 0x1));
-  vec4 mag = float4(mix(v_data, ~v_data, v_sign) & uint4(0x1FF, 0x1FF, 0x1FF, 0x1)) /
-             vec4(0x1FF, 0x1FF, 0x1FF, 0x1);
+  uint4 v_data_u = floatBitsToUint(mix(uintBitsToFloat(v_data), uintBitsToFloat(~v_data), v_sign));
+  vec4 mag = float4(v_data_u & uint4(0x1FF, 0x1FF, 0x1FF, 0x1)) / vec4(0x1FF, 0x1FF, 0x1FF, 0x1);
   return mix(mag, -mag, v_sign);
 }
 
@@ -32,7 +32,8 @@ vec4 gpu_attr_decode_short4_to_float4_snorm(uint data0, uint data1)
   /* TODO(fclem): Improve this. */
   uint4 v_data = uint4(data0, data0 >> 16u, data1, data1 >> 16u);
   bvec4 v_sign = greaterThan(v_data & uint4(0xFFFF), uint4(0x7FFF));
-  vec4 mag = float4(mix(v_data, ~v_data, v_sign) & 0x7FFF) / float(0x7FFF);
+  uint4 v_data_u = floatBitsToUint(mix(uintBitsToFloat(v_data), uintBitsToFloat(~v_data), v_sign));
+  vec4 mag = float4(v_data_u & 0x7FFFu) / float(0x7FFF);
   return mix(mag, -mag, v_sign);
 }
 
