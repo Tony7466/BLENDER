@@ -287,6 +287,30 @@ struct Cache {
 
 }
 
+/** Pose Brush IK Chain. */
+struct SculptPoseIKChainSegment {
+  blender::float3 orig;
+  blender::float3 head;
+
+  blender::float3 initial_orig;
+  blender::float3 initial_head;
+  float len;
+  blender::float3 scale;
+  float rot[4];
+  blender::Array<float> weights;
+
+  /* Store a 4x4 transform matrix for each of the possible combinations of enabled XYZ symmetry
+   * axis. */
+  std::array<blender::float4x4, PAINT_SYMM_AREAS> trans_mat;
+  std::array<blender::float4x4, PAINT_SYMM_AREAS> pivot_mat;
+  std::array<blender::float4x4, PAINT_SYMM_AREAS> pivot_mat_inv;
+};
+
+struct SculptPoseIKChain {
+  blender::Array<SculptPoseIKChainSegment> segments;
+  blender::float3 grab_delta_offset;
+};
+
 /**
  * This structure contains all the temporary data
  * needed for individual brush strokes.
@@ -2042,11 +2066,11 @@ void calc_pose_data(Object &ob,
                     float3 &r_pose_origin,
                     MutableSpan<float> r_pose_factor);
 void pose_brush_init(Object &ob, SculptSession &ss, const Brush &brush);
-std::unique_ptr<SculptPoseIKChain> ik_chain_init(Object &ob,
-                                                 SculptSession &ss,
-                                                 const Brush &brush,
-                                                 const float3 &initial_location,
-                                                 float radius);
+std::unique_ptr<SculptPoseIKChainPreview> preview_ik_chain_init(Object &ob,
+                                                                SculptSession &ss,
+                                                                const Brush &brush,
+                                                                const float3 &initial_location,
+                                                                float radius);
 
 }
 
