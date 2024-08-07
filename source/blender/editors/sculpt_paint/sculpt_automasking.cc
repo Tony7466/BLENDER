@@ -724,6 +724,37 @@ void node_update(auto_mask::NodeData &automask_data, const int i)
   }
 }
 
+/**
+ * Flood fill automask to connected vertices.
+ *
+ * Limited to vertices inside the brush radius if the tool requires it.
+ */
+static void fill_topology_automasking_factors_mesh(const Sculpt &sd,
+                                                   Object &ob,
+                                                   const Span<float3> vert_positions)
+{
+  SculptSession &ss = *ob.sculpt;
+  const Brush *brush = BKE_paint_brush_for_read(&sd.paint);
+
+  const float radius = ss.cache ? ss.cache->radius : FLT_MAX;
+  const int active_vert = std::get<int>(ss.active_vert());
+  flood_fill::FillDataMesh flood = flood_fill::FillDataMesh(active_vert);
+
+  flood.add_initial_with_symmetry(ob, *ss.pbvh, active_vert, radius);
+
+  const bool use_radius = ss.cache && is_constrained_by_radius(brush);
+  const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(ob);
+
+  float3 location = vert_positions[active_vert];
+
+  flood.execute(ob, ss.vert_to_face_map, [&](int from_v, int to_v) {
+    *(float *)SCULPT_vertex_attr_get(to_v, ss.attrs.automasking_factor) = 1.0f;
+    *(float *)SCULPT_vertex_attr_get(from_v, ss.attrs.automasking_factor) = 1.0f;
+    return (use_radius || SCULPT_is_vertex_inside_brush_radius_symm(
+                              SCULPT_vertex_co_get(ss, to_v), location, radius, symm));
+  });
+}
+
 static void topology_automasking_init(const Sculpt &sd, Object &ob)
 {
   SculptSession &ss = *ob.sculpt;
