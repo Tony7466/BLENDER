@@ -287,7 +287,7 @@ static std::optional<std::string> rna_ImageUser_path(const PointerRNA *ptr)
         LISTBASE_FOREACH_INDEX (ScrArea *, area, &screen->areabase, area_index) {
           LISTBASE_FOREACH_INDEX (SpaceLink *, sl, &area->spacedata, space_index) {
             if (sl->spacetype == SPACE_IMAGE) {
-              SpaceImage *sima = (SpaceImage *)sl;
+              SpaceImage *sima = reinterpret_cast<SpaceImage *>(sl);
               if (&sima->iuser == iuser) {
                 return fmt::format("areas[{}].spaces[{}].image_user", area_index, space_index);
               }
