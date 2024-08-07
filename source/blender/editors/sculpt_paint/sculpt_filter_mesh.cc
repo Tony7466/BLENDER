@@ -1204,6 +1204,7 @@ static void calc_sharpen_filter(const Sculpt &sd,
     Vector<Vector<int>> vert_neighbors;
     Vector<float3> smooth_positions;
     Vector<float> sharpen_factors;
+    Vector<float3> detail_directions;
     Vector<float3> translations;
   };
   SculptSession &ss = *object.sculpt;
@@ -1266,15 +1267,16 @@ static void calc_sharpen_filter(const Sculpt &sd,
             translations[i] = disp_sharpen;
           }
 
-          for (const int i : verts.index_range()) {
-            const int vert = verts[i];
+          const Span<float3> detail_directions = gather_data_mesh(
+              ss.filter_cache->detail_directions.as_span(), verts, tls.detail_directions);
 
+          for (const int i : verts.index_range()) {
             float3 disp_avg = smooth_positions[i] - positions[i];
             disp_avg = disp_avg * smooth_ratio * pow2f(sharpen_factors[i]);
             translations[i] += disp_avg;
             /* Intensify details. */
             if (ss.filter_cache->sharpen_intensify_detail_strength > 0.0f) {
-              float3 detail_strength = ss.filter_cache->detail_directions[vert];
+              float3 detail_strength = detail_directions[i];
               translations[i] += detail_strength *
                                  -ss.filter_cache->sharpen_intensify_detail_strength *
                                  sharpen_factors[i];
