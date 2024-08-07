@@ -1192,12 +1192,31 @@ static void calc_surface_smooth_filter(const Sculpt & /*sd*/,
   });
 }
 
+BLI_NOINLINE static void calc_sharpen_detail_translations(const filter::Cache &filter_cache,
+                                                          const Span<float3> positions,
+                                                          const Span<float3> smooth_positions,
+                                                          const Span<float> sharpen_factors,
+                                                          const Span<float3> detail_directions,
+                                                          const MutableSpan<float3> translations)
+{
+  for (const int i : positions.index_range()) {
+    float3 disp_avg = smooth_positions[i] - positions[i];
+    disp_avg = disp_avg * filter_cache.sharpen_smooth_ratio * pow2f(sharpen_factors[i]);
+    translations[i] += disp_avg;
+    /* Intensify details. */
+    if (filter_cache.sharpen_intensify_detail_strength > 0.0f) {
+      float3 detail_strength = detail_directions[i];
+      translations[i] += detail_strength * -filter_cache.sharpen_intensify_detail_strength *
+                         sharpen_factors[i];
+    }
+  }
+}
+
 static void calc_sharpen_filter(const Sculpt &sd,
                                 const float strength,
                                 Object &object,
                                 const Span<bke::pbvh::Node *> nodes)
 {
-  SculptSession &ss = *object.sculpt;
   struct LocalData {
     Vector<float> factors;
     Vector<float3> positions;
@@ -1222,7 +1241,6 @@ static void calc_sharpen_filter(const Sculpt &sd,
         for (const int i : range) {
           const Span<int> verts = bke::pbvh::node_unique_verts(*nodes[i]);
           const Span<float3> positions = gather_data_mesh(positions_eval, verts, tls.positions);
-          const OrigPositionData orig_data = orig_position_data_get_mesh(object, *nodes[i]);
 
           tls.factors.resize(verts.size());
           const MutableSpan<float> factors = tls.factors;
@@ -1232,8 +1250,6 @@ static void calc_sharpen_filter(const Sculpt &sd,
                 object, *ss.filter_cache->automasking, *nodes[i], verts, factors);
           }
           scale_factors(factors, strength);
-
-          const float smooth_ratio = ss.filter_cache->sharpen_smooth_ratio;
 
           /* This filter can't work at full strength as it needs multiple iterations to reach a
            * stable state. */
@@ -1270,22 +1286,13 @@ static void calc_sharpen_filter(const Sculpt &sd,
           const Span<float3> detail_directions = gather_data_mesh(
               ss.filter_cache->detail_directions.as_span(), verts, tls.detail_directions);
 
-          for (const int i : verts.index_range()) {
-            float3 disp_avg = smooth_positions[i] - positions[i];
-            disp_avg = disp_avg * smooth_ratio * pow2f(sharpen_factors[i]);
-            translations[i] += disp_avg;
-            /* Intensify details. */
-            if (ss.filter_cache->sharpen_intensify_detail_strength > 0.0f) {
-              float3 detail_strength = detail_directions[i];
-              translations[i] += detail_strength *
-                                 -ss.filter_cache->sharpen_intensify_detail_strength *
-                                 sharpen_factors[i];
-            }
-          }
-
+          calc_sharpen_detail_translations(*ss.filter_cache,
+                                           positions,
+                                           smooth_positions,
+                                           sharpen_factors,
+                                           detail_directions,
+                                           translations);
           scale_translations(translations, factors);
-
-          // reset_translations_to_original(translations, positions, orig_data.positions);
 
           zero_disabled_axis_components(*ss.filter_cache, translations);
           write_translations(sd, object, positions_eval, verts, translations, positions_orig);
@@ -1297,13 +1304,15 @@ static void calc_sharpen_filter(const Sculpt &sd,
     }
     case bke::pbvh::Type::Grids: {
       SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+      const Span<CCGElem *> elems = subdiv_ccg.grids;
+
       threading::EnumerableThreadSpecific<LocalData> all_tls;
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
         LocalData &tls = all_tls.local();
         for (const int i : range) {
           const Span<int> grids = bke::pbvh::node_grid_indices(*nodes[i]);
           const Span<float3> positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
-          const OrigPositionData orig_data = orig_position_data_get_grids(object, *nodes[i]);
 
           tls.factors.resize(positions.size());
           const MutableSpan<float> factors = tls.factors;
@@ -1314,11 +1323,69 @@ static void calc_sharpen_filter(const Sculpt &sd,
           }
           scale_factors(factors, strength);
 
-          // reset_translations_to_original(translations, positions, orig_data.positions);
+          /* This filter can't work at full strength as it needs multiple iterations to reach a
+           * stable state. */
+          clamp_factors(factors, 0.0f, 0.5f);
 
-          // zero_disabled_axis_components(*ss.filter_cache, translations);
-          // clip_and_lock_translations(sd, ss, orig_data.positions, translations);
-          // apply_translations(translations, grids, subdiv_ccg);
+          tls.vert_neighbors.resize(positions.size());
+
+          tls.smooth_positions.resize(positions.size());
+          const MutableSpan<float3> smooth_positions = tls.smooth_positions;
+          smooth::neighbor_position_average_grids(subdiv_ccg, grids, smooth_positions);
+
+          const Span<float> sharpen_factors = gather_data_grids(
+              subdiv_ccg, ss.filter_cache->sharpen_factor.as_span(), grids, tls.sharpen_factors);
+
+          tls.translations.resize(positions.size());
+          const MutableSpan<float3> translations = tls.translations;
+          for (const int i : grids.index_range()) {
+            const int node_verts_start = i * key.grid_area;
+            const int grid = grids[i];
+            const int grid_verts_start = grid * key.grid_area;
+            CCGElem *elem = elems[grid];
+            for (const short y : IndexRange(key.grid_size)) {
+              for (const short x : IndexRange(key.grid_size)) {
+                const int offset = CCG_grid_xy_to_index(key.grid_size, x, y);
+                const int vert = grid_verts_start + offset;
+                const int node_vert = node_verts_start + offset;
+
+                const float3 &position = CCG_elem_offset_co(key, elem, offset);
+
+                float3 disp_sharpen(0.0f);
+                SubdivCCGNeighbors neighbors;
+                BKE_subdiv_ccg_neighbor_coords_get(
+                    subdiv_ccg, SubdivCCGCoord{grid, x, y}, false, neighbors);
+                for (const SubdivCCGCoord neighbor : neighbors.coords) {
+                  float3 disp_n = CCG_grid_elem_co(
+                                      key, elems[neighbor.grid_index], neighbor.x, neighbor.y) -
+                                  position;
+                  disp_n *= ss.filter_cache->sharpen_factor[neighbor.to_index(key)];
+                  disp_sharpen += disp_n;
+                }
+
+                disp_sharpen *= (1.0f - sharpen_factors[i]);
+                translations[i] = disp_sharpen;
+              }
+            }
+          }
+
+          const Span<float3> detail_directions = gather_data_grids(
+              subdiv_ccg,
+              ss.filter_cache->detail_directions.as_span(),
+              grids,
+              tls.detail_directions);
+
+          calc_sharpen_detail_translations(*ss.filter_cache,
+                                           positions,
+                                           smooth_positions,
+                                           sharpen_factors,
+                                           detail_directions,
+                                           translations);
+          scale_translations(translations, factors);
+
+          zero_disabled_axis_components(*ss.filter_cache, translations);
+          clip_and_lock_translations(sd, ss, positions, translations);
+          apply_translations(translations, grids, subdiv_ccg);
 
           BKE_pbvh_node_mark_positions_update(nodes[i]);
         }
@@ -1333,8 +1400,6 @@ static void calc_sharpen_filter(const Sculpt &sd,
         for (const int i : range) {
           const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(nodes[i]);
           const Span<float3> positions = gather_bmesh_positions(verts, tls.positions);
-          Array<float3> orig_positions(verts.size());
-          orig_position_data_gather_bmesh(*ss.bm_log, verts, orig_positions, {});
 
           tls.factors.resize(verts.size());
           const MutableSpan<float> factors = tls.factors;
@@ -1345,11 +1410,52 @@ static void calc_sharpen_filter(const Sculpt &sd,
           }
           scale_factors(factors, strength);
 
-          // reset_translations_to_original(translations, positions, orig_positions);
+          /* This filter can't work at full strength as it needs multiple iterations to reach a
+           * stable state. */
+          clamp_factors(factors, 0.0f, 0.5f);
 
-          // zero_disabled_axis_components(*ss.filter_cache, translations);
-          // clip_and_lock_translations(sd, ss, orig_positions, translations);
-          // apply_translations(translations, verts);
+          tls.smooth_positions.resize(verts.size());
+          const MutableSpan<float3> smooth_positions = tls.smooth_positions;
+          smooth::neighbor_position_average_bmesh(verts, smooth_positions);
+
+          const Span<float> sharpen_factors = gather_data_vert_bmesh(
+              ss.filter_cache->sharpen_factor.as_span(), verts, tls.sharpen_factors);
+
+          tls.translations.resize(verts.size());
+          const MutableSpan<float3> translations = tls.translations;
+
+          Vector<BMVert *, 64> neighbors;
+
+          int vert_i = 0;
+          for (BMVert *vert : verts) {
+            const float3 &position = vert->co;
+
+            float3 disp_sharpen(0.0f);
+            for (const BMVert *neighbor : vert_neighbors_get_bmesh(*vert, neighbors)) {
+              float3 disp_n = float3(neighbor->co) - position;
+              disp_n *= ss.filter_cache->sharpen_factor[BM_elem_index_get(neighbor)];
+              disp_sharpen += disp_n;
+            }
+
+            disp_sharpen *= (1.0f - sharpen_factors[i]);
+            translations[i] = disp_sharpen;
+            vert_i++;
+          }
+
+          const Span<float3> detail_directions = gather_data_vert_bmesh(
+              ss.filter_cache->detail_directions.as_span(), verts, tls.detail_directions);
+
+          calc_sharpen_detail_translations(*ss.filter_cache,
+                                           positions,
+                                           smooth_positions,
+                                           sharpen_factors,
+                                           detail_directions,
+                                           translations);
+          scale_translations(translations, factors);
+
+          zero_disabled_axis_components(*ss.filter_cache, translations);
+          clip_and_lock_translations(sd, ss, positions, translations);
+          apply_translations(translations, verts);
 
           BKE_pbvh_node_mark_positions_update(nodes[i]);
         }
