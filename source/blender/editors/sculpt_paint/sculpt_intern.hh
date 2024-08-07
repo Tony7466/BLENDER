@@ -967,13 +967,10 @@ bool vert_has_face_set(GroupedSpan<int> vert_to_face_map,
                        const int *face_sets,
                        int vert,
                        int face_set);
-bool vert_has_face_set(const SubdivCCG &subdiv_ccg,
-                       const int *face_sets, int grid, int face_set);
+bool vert_has_face_set(const SubdivCCG &subdiv_ccg, const int *face_sets, int grid, int face_set);
 bool vert_has_face_set(int face_set_offset, const BMVert &vert, int face_set);
 bool vert_has_unique_face_set(const SculptSession &ss, PBVHVertRef vertex);
-bool vert_has_unique_face_set(GroupedSpan<int> vert_to_face_map,
-                              const int *face_sets,
-                              int vert);
+bool vert_has_unique_face_set(GroupedSpan<int> vert_to_face_map, const int *face_sets, int vert);
 bool vert_has_unique_face_set(GroupedSpan<int> vert_to_face_map,
                               Span<int> corner_verts,
                               OffsetIndices<int> faces,
@@ -1316,8 +1313,7 @@ float relative_to_detail_size(float relative_detail,
  *
  * Corresponds to a change from Constant & Manual Detailing to Brush Detailing.
  */
-float constant_to_brush_detail(float constant_detail, float brush_radius,
-                               const Object &ob);
+float constant_to_brush_detail(float constant_detail, float brush_radius, const Object &ob);
 
 /**
  * Converts from Sculpt#constant_detail to equivalent Sculpt#detail_size value.
@@ -2101,8 +2097,7 @@ void swap_gathered_colors(Span<int> indices,
                           MutableSpan<float4> r_colors);
 
 /* Stores colors from the elements in indices into colors. */
-void gather_colors(GSpan color_attribute, Span<int> indices,
-                   MutableSpan<float4> r_colors);
+void gather_colors(GSpan color_attribute, Span<int> indices, MutableSpan<float4> r_colors);
 
 /* Like gather_colors but handles loop->vert conversion */
 void gather_colors_vert(OffsetIndices<int> faces,
