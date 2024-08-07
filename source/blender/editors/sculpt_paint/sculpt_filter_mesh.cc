@@ -1259,18 +1259,22 @@ static void calc_sharpen_filter(const Sculpt &sd,
             }
 
             disp_sharpen *= (1.0f - ss.filter_cache->sharpen_factor[vert]);
+            translations[i] = disp_sharpen;
+          }
+
+          for (const int i : verts.index_range()) {
+            const int vert = verts[i];
 
             float3 disp_avg = smooth_positions[i] - positions[i];
             disp_avg = disp_avg * smooth_ratio * pow2f(ss.filter_cache->sharpen_factor[vert]);
-            float3 disp = disp_avg + disp_sharpen;
+            translations[i] += disp_avg;
             /* Intensify details. */
             if (ss.filter_cache->sharpen_intensify_detail_strength > 0.0f) {
               float3 detail_strength = ss.filter_cache->detail_directions[vert];
-              disp += detail_strength * -ss.filter_cache->sharpen_intensify_detail_strength *
-                      ss.filter_cache->sharpen_factor[vert];
+              translations[i] += detail_strength *
+                                 -ss.filter_cache->sharpen_intensify_detail_strength *
+                                 ss.filter_cache->sharpen_factor[vert];
             }
-
-            translations[i] = disp;
           }
 
           scale_translations(translations, factors);
