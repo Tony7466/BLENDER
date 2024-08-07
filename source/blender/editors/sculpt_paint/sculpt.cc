@@ -225,22 +225,9 @@ const float *SCULPT_vertex_co_for_grab_active_get(const SculptSession &ss, PBVHV
   return SCULPT_vertex_co_get(ss, vertex);
 }
 
-PBVHVertRef SCULPT_active_vertex_get(const SculptSession &ss)
-{
-  if (ELEM(ss.pbvh->type(),
-           blender::bke::pbvh::Type::Mesh,
-           blender::bke::pbvh::Type::BMesh,
-           blender::bke::pbvh::Type::Grids))
-  {
-    return ss.active_vertex;
-  }
-
-  return BKE_pbvh_make_vref(PBVH_REF_NONE);
-}
-
 const float *SCULPT_active_vertex_co_get(const SculptSession &ss)
 {
-  return SCULPT_vertex_co_get(ss, SCULPT_active_vertex_get(ss));
+  return SCULPT_vertex_co_get(ss, ss.active_vertex());
 }
 
 MutableSpan<float3> SCULPT_mesh_deformed_positions_get(SculptSession &ss)
@@ -1233,20 +1220,6 @@ static bool sculpt_tool_needs_original(const char sculpt_tool)
               SCULPT_TOOL_POSE);
 }
 
-static bool sculpt_tool_is_proxy_used(const char sculpt_tool)
-{
-  return ELEM(sculpt_tool,
-              SCULPT_TOOL_SMOOTH,
-              SCULPT_TOOL_LAYER,
-              SCULPT_TOOL_POSE,
-              SCULPT_TOOL_DISPLACEMENT_SMEAR,
-              SCULPT_TOOL_BOUNDARY,
-              SCULPT_TOOL_CLOTH,
-              SCULPT_TOOL_PAINT,
-              SCULPT_TOOL_SMEAR,
-              SCULPT_TOOL_DRAW_FACE_SETS);
-}
-
 static bool sculpt_brush_use_topology_rake(const SculptSession &ss, const Brush &brush)
 {
   return SCULPT_TOOL_HAS_TOPOLOGY_RAKE(brush.sculpt_tool) && (brush.topology_rake_factor > 0.0f) &&
@@ -1892,15 +1865,6 @@ const float *SCULPT_brush_frontface_normal_from_falloff_shape(const SculptSessio
   }
   BLI_assert(falloff_shape == PAINT_FALLOFF_SHAPE_TUBE);
   return ss.cache->view_normal;
-}
-
-static float frontface(const Brush &brush, const float3 &view_normal, const float3 &normal)
-{
-  using namespace blender;
-  if (!(brush.flag & BRUSH_FRONTFACE)) {
-    return 1.0f;
-  }
-  return std::max(math::dot(normal, view_normal), 0.0f);
 }
 
 #if 0
@@ -2813,26 +2777,6 @@ static float brush_strength(const Sculpt &sd,
   }
 }
 
-static float sculpt_apply_hardness(const blender::ed::sculpt_paint::StrokeCache &cache,
-                                   const float input_len)
-{
-  float final_len = input_len;
-  const float hardness = cache.paint_brush.hardness;
-  float p = input_len / cache.radius;
-  if (p < hardness) {
-    final_len = 0.0f;
-  }
-  else if (hardness == 1.0f) {
-    final_len = cache.radius;
-  }
-  else {
-    p = (p - hardness) / (1.0f - hardness);
-    final_len = p * cache.radius;
-  }
-
-  return final_len;
-}
-
 void sculpt_apply_texture(const SculptSession &ss,
                           const Brush &brush,
                           const float brush_point[3],
@@ -2897,41 +2841,6 @@ void sculpt_apply_texture(const SculptSession &ss,
       *r_value = BKE_brush_sample_tex_3d(scene, &brush, mtex, point_3d, r_rgba, 0, ss.tex_pool);
     }
   }
-}
-
-float SCULPT_brush_strength_factor(
-    SculptSession &ss,
-    const Brush &brush,
-    const float brush_point[3],
-    float len,
-    const float vno[3],
-    const float fno[3],
-    float mask,
-    const PBVHVertRef vertex,
-    int thread_id,
-    const blender::ed::sculpt_paint::auto_mask::NodeData *automask_data)
-{
-  using namespace blender::ed::sculpt_paint;
-  StrokeCache *cache = ss.cache;
-
-  float avg = 1.0f;
-  float rgba[4];
-  sculpt_apply_texture(ss, brush, brush_point, thread_id, &avg, rgba);
-
-  /* Hardness. */
-  const float final_len = sculpt_apply_hardness(*cache, len);
-
-  /* Falloff curve. */
-  avg *= BKE_brush_curve_strength(&brush, final_len, cache->radius);
-  avg *= frontface(brush, cache->view_normal, vno ? vno : fno);
-
-  /* Paint mask. */
-  avg *= 1.0f - mask;
-
-  /* Auto-masking. */
-  avg *= auto_mask::factor_get(cache->automasking.get(), ss, vertex, automask_data);
-
-  return avg;
 }
 
 void SCULPT_calc_vertex_displacement(const SculptSession &ss,
@@ -3268,7 +3177,7 @@ static void sculpt_pbvh_update_pixels(PaintModeSettings &paint_mode_settings,
 {
   using namespace blender;
   BLI_assert(ob.type == OB_MESH);
-  Mesh *mesh = (Mesh *)ob.data;
+  const Mesh &mesh = *static_cast<const Mesh *>(ob.data);
 
   Image *image;
   ImageUser *image_user;
@@ -3276,7 +3185,7 @@ static void sculpt_pbvh_update_pixels(PaintModeSettings &paint_mode_settings,
     return;
   }
 
-  bke::pbvh::build_pixels(*ss.pbvh, mesh, image, image_user);
+  bke::pbvh::build_pixels(*ss.pbvh, mesh, *image, *image_user);
 }
 
 /** \} */
@@ -4810,7 +4719,7 @@ static void sculpt_update_brush_delta(UnifiedPaintSettings &ups, Object &ob, con
   if (SCULPT_stroke_is_first_brush_step_of_symmetry_pass(*ss.cache)) {
     if (tool == SCULPT_TOOL_GRAB && brush.flag & BRUSH_GRAB_ACTIVE_VERTEX) {
       copy_v3_v3(cache->orig_grab_location,
-                 SCULPT_vertex_co_for_grab_active_get(ss, SCULPT_active_vertex_get(ss)));
+                 SCULPT_vertex_co_for_grab_active_get(ss, ss.active_vertex()));
     }
     else {
       copy_v3_v3(cache->orig_grab_location, cache->true_location);
@@ -5316,9 +5225,10 @@ bool SCULPT_cursor_geometry_info_update(bContext *C,
   }
 
   /* Update the active vertex of the SculptSession. */
-  ss.active_vertex = srd.active_vertex;
+  const PBVHVertRef active_vertex = srd.active_vertex;
+  ss.set_active_vertex(active_vertex);
   SCULPT_vertex_random_access_ensure(ss);
-  copy_v3_v3(out->active_vertex_co, SCULPT_active_vertex_co_get(ss));
+  copy_v3_v3(out->active_vertex_co, SCULPT_vertex_co_get(ss, active_vertex));
 
   switch (ss.pbvh->type()) {
     case bke::pbvh::Type::Mesh:
@@ -5557,8 +5467,11 @@ static void sculpt_restore_mesh(const Sculpt &sd, Object &ob)
   SculptSession &ss = *ob.sculpt;
   const Brush *brush = BKE_paint_brush_for_read(&sd.paint);
 
-  /* Brushes that also use original coordinates and will need a "restore" step.
-   *  - SCULPT_TOOL_BOUNDARY
+  /* Brushes that use original coordinates and need a "restore" step.
+   *
+   * Note: Despite the Cloth and Boundary brush using original coordinates, the brushes do not
+   * expect this restoration to happen on every stroke step. Performing this restoration causes
+   * issues with the cloth simulation mode for those brushes.
    * TODO: Investigate removing this step using the same technique as the layer brush-- in the
    * brush, apply the translation between the result of the last brush step and the result of the
    * latest brush step.
@@ -5567,8 +5480,7 @@ static void sculpt_restore_mesh(const Sculpt &sd, Object &ob)
            SCULPT_TOOL_ELASTIC_DEFORM,
            SCULPT_TOOL_GRAB,
            SCULPT_TOOL_THUMB,
-           SCULPT_TOOL_ROTATE,
-           SCULPT_TOOL_POSE))
+           SCULPT_TOOL_ROTATE))
   {
     undo::restore_from_undo_step(sd, ob);
     return;
@@ -5928,28 +5840,6 @@ static void sculpt_stroke_update_step(bContext *C,
 
   /* Hack to fix noise texture tearing mesh. */
   sculpt_fix_noise_tear(sd, ob);
-
-  /* TODO(sergey): This is not really needed for the solid shading,
-   * which does use pBVH drawing anyway, but texture and wireframe
-   * requires this.
-   *
-   * Could be optimized later, but currently don't think it's so
-   * much common scenario.
-   *
-   * Same applies to the DEG_id_tag_update() invoked from
-   * sculpt_flush_update_step().
-   *
-   * For some brushes, flushing is done in the brush code itself.
-   */
-  if ((ELEM(brush.sculpt_tool, SCULPT_TOOL_BOUNDARY) || ss.pbvh->type() != bke::pbvh::Type::Mesh))
-  {
-    if (ss.deform_modifiers_active) {
-      SCULPT_flush_stroke_deform(sd, ob, sculpt_tool_is_proxy_used(brush.sculpt_tool));
-    }
-    else if (ss.shapekey_active) {
-      sculpt_update_keyblock(ob);
-    }
-  }
 
   ss.cache->first_time = false;
   copy_v3_v3(ss.cache->true_last_location, ss.cache->true_location);
