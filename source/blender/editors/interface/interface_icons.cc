@@ -49,6 +49,8 @@
 
 #include "interface_intern.hh"
 
+#include "fmt/format.h"
+
 struct IconImage {
   int w;
   int h;
@@ -1295,6 +1297,82 @@ static int get_draw_size(enum eIconSizes size)
   }
 }
 
+static void svg_replace_color_attributes(std::string &svg,
+                                         const std::string name,
+                                         const std::string hexcolor)
+{
+  size_t g_start = svg.find(name);
+  if (g_start == std::string::npos) {
+    return;
+  }
+  size_t g_end = svg.find(">", g_start);
+  if (g_end == std::string::npos) {
+    return;
+  }
+
+  size_t att_start = svg.find("fill=\"", g_start);
+  if (att_start != std::string::npos || att_start < g_end) {
+    size_t att_end = svg.find("\"", att_start + 6);
+    if (att_end != std::string::npos || att_end - att_start < 20) {
+      svg.replace(att_start, att_end - att_start + 1, "fill=\"#" + hexcolor + "\"");
+    }
+  }
+}
+
+static void icon_source_edit_cb(std::string &svg)
+{
+  bTheme *btheme = UI_GetTheme();
+
+  /* Tool colors hardcoded for now. */
+  uchar tool_add[] = {117, 255, 175, 255};
+  uchar tool_remove[] = {245, 107, 91, 255};
+  uchar tool_transform[] = {217, 175, 245, 255};
+  uchar tool_select[] = {255, 176, 43, 255};
+
+  struct ColorItem {
+    const char *name;
+    uchar *col = nullptr;
+    int colorid = TH_UNDEFINED;
+    int spacetype = SPACE_TYPE_ANY;
+  } items[] = {
+      {"view3d.mesh_selected", btheme->space_view3d.vertex_select},
+      {"widget.regular_inner", btheme->tui.wcol_regular.inner},
+      {"widget.back", nullptr, TH_BACK},
+      {"widget.text", nullptr, TH_TEXT},
+      {"widget.text_hi", nullptr, TH_TEXT_HI},
+      {"theme.red_alert", nullptr, TH_REDALERT},
+      {"theme.error", nullptr, TH_INFO_ERROR, SPACE_INFO},
+      {"theme.warning", nullptr, TH_INFO_WARNING, SPACE_INFO},
+      {"theme.info", nullptr, TH_INFO_INFO, SPACE_INFO},
+      {"tool.add", tool_add},
+      {"tool.remove", tool_add},
+      {"tool.transform", tool_add},
+      {"tool.select", tool_add},
+  };
+
+  for (const ColorItem &item : items) {
+    uchar color[4];
+    if (item.col) {
+      memcpy(color, item.col, sizeof(color));
+    }
+    else if (item.colorid != TH_UNDEFINED) {
+      if (item.spacetype != SPACE_TYPE_ANY) {
+        UI_GetThemeColorType4ubv(item.colorid, item.spacetype, color);
+      }
+      else {
+        UI_GetThemeColor4ubv(item.colorid, color);
+      }
+    }
+    else {
+      continue;
+    }
+
+    std::string hexcolor = fmt::format(
+        "{:02x}{:02x}{:02x}{:02x}", color[0], color[1], color[2], color[3]);
+    svg_replace_color_attributes(svg, item.name, hexcolor);
+  }
+}
+
 static void icon_draw_size(float x,
                            float y,
                            int icon_id,
@@ -1404,7 +1482,8 @@ static void icon_draw_size(float x,
                       float(draw_size) / aspect,
                       color,
                       outline_intensity,
-                      di->type == ICON_TYPE_SVG_COLOR);
+                      di->type == ICON_TYPE_SVG_COLOR,
+                      icon_source_edit_cb);
 
     if (text_overlay && text_overlay->text[0] != '\0') {
       /* Handle the little numbers on top of the icon. */
