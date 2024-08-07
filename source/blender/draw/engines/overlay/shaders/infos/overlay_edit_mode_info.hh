@@ -150,6 +150,10 @@ GPU_SHADER_CREATE_INFO(overlay_edit_mesh_facedot)
 
 GPU_SHADER_CREATE_INFO(overlay_edit_mesh_normal)
     .do_static_compilation(true)
+    .define("WORKAROUND_INDEX_LOAD_INCLUDE")
+    /* WORKAROUND: Needed to support OpenSubdiv vertex format. Should be removed. */
+    .push_constant(Type::IVEC2, "gpu_attr_0")
+    .push_constant(Type::IVEC2, "gpu_attr_1")
     .vertex_in(0, Type::VEC3, "pos")
     .vertex_in(1, Type::VEC4, "lnor")
     .vertex_in(2, Type::VEC4, "vnor")

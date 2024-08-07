@@ -69,8 +69,11 @@ void Instance::init()
   resources.weight_ramp_tx.wrap(G_draw.weight_ramp);
   {
     eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ;
-    float data[1] = {0.0f};
-    resources.dummy_depth_tx.ensure_2d(GPU_DEPTH24_STENCIL8, int2(1, 1), usage, data);
+    if (resources.dummy_depth_tx.ensure_2d(GPU_DEPTH24_STENCIL8, int2(1, 1), usage)) {
+      uint32_t data = 0;
+      GPU_texture_update_sub(
+          resources.dummy_depth_tx, GPU_DATA_UINT_24_8, &data, 0, 0, 0, 1, 1, 1);
+    }
   }
 }
 

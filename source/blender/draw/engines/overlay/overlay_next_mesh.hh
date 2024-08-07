@@ -8,24 +8,25 @@
 
 #pragma once
 
-#include "draw_cache_impl.hh"
-#include "draw_common_c.hh"
-#include "overlay_next_private.hh"
+#include "BKE_global.hh"
 
-#include "ED_lattice.hh"
+#include "draw_cache_impl.hh"
+
+#include "overlay_next_private.hh"
 
 namespace blender::draw::overlay {
 
 class Meshes {
  private:
-  PassSimple edit_mesh_normals_ps_ = {"Normals"};
+  PassMain edit_mesh_normals_ps_ = {"Normals"};
+  PassMain::Sub *face_normals_ = nullptr;
+  PassMain::Sub *loop_normals_ = nullptr;
+  PassMain::Sub *vert_normals_ = nullptr;
+
   PassSimple edit_mesh_analysis_ps_ = {"Mesh Analysis"};
 
   bool show_retopology = false;
   bool show_mesh_analysis = false;
-  bool show_face_nor = false;
-  bool show_vert_nor = false;
-  bool show_loop_nor = false;
   bool show_face = false;
 
  public:
@@ -34,10 +35,10 @@ class Meshes {
     int edit_flag = state.v3d->overlay.edit_flag;
     show_retopology = (edit_flag & V3D_OVERLAY_EDIT_RETOPOLOGY);
     show_mesh_analysis = (edit_flag & V3D_OVERLAY_EDIT_STATVIS);
-    show_face_nor = (edit_flag & V3D_OVERLAY_EDIT_FACE_NORMALS);
-    show_vert_nor = (edit_flag & V3D_OVERLAY_EDIT_VERT_NORMALS);
-    show_loop_nor = (edit_flag & V3D_OVERLAY_EDIT_LOOP_NORMALS);
     show_face = ((edit_flag & V3D_OVERLAY_EDIT_FACES));
+    const bool show_face_nor = (edit_flag & V3D_OVERLAY_EDIT_FACE_NORMALS);
+    const bool show_loop_nor = (edit_flag & V3D_OVERLAY_EDIT_LOOP_NORMALS);
+    const bool show_vert_nor = (edit_flag & V3D_OVERLAY_EDIT_VERT_NORMALS);
 
     if (state.xray_enabled) {
       /* We should not render the mesh opaque. */
@@ -63,14 +64,34 @@ class Meshes {
       auto &pass = edit_mesh_normals_ps_;
       pass.init();
       pass.state_set(pass_state);
-      pass.shader_set(res.shaders.mesh_normal.get());
-      pass.bind_ubo("globalsBlock", &res.globals_buf);
-      pass.bind_texture("depthTex", depth_tex);
-      pass.push_constant("alpha", backwire_opacity);
-      pass.push_constant("isConstantScreenSizeNormals", use_screen_size);
-      pass.push_constant("normalSize", state.overlay.normals_length);
-      pass.push_constant("normalScreenSize", state.overlay.normals_constant_screen_size);
-      pass.push_constant("retopologyOffset", retopology_offset);
+
+      auto shader_pass = [&](GPUShader *shader, const char *name) {
+        auto &sub = pass.sub(name);
+        sub.shader_set(shader);
+        sub.bind_ubo("globalsBlock", &res.globals_buf);
+        sub.bind_texture("depthTex", depth_tex);
+        sub.push_constant("alpha", backwire_opacity);
+        sub.push_constant("isConstantScreenSizeNormals", use_screen_size);
+        sub.push_constant("normalSize", state.overlay.normals_length);
+        sub.push_constant("normalScreenSize", state.overlay.normals_constant_screen_size);
+        sub.push_constant("retopologyOffset", retopology_offset);
+        return &sub;
+      };
+
+      face_normals_ = loop_normals_ = vert_normals_ = nullptr;
+
+      if (show_face_nor) {
+        face_normals_ = shader_pass(res.shaders.mesh_face_normal.get(), "FaceNor");
+      }
+      if (show_loop_nor) {
+        GPUShader *sh = (state.scene->r.perf_flag & SCE_PERF_HQ_NORMALS) ?
+                            res.shaders.mesh_loop_normal_hq.get() :
+                            res.shaders.mesh_loop_normal.get();
+        loop_normals_ = shader_pass(sh, "LoopNor");
+      }
+      if (show_vert_nor) {
+        vert_normals_ = shader_pass(res.shaders.mesh_vert_normal.get(), "VertexNor");
+      }
     }
     {
       auto &pass = edit_mesh_analysis_ps_;
@@ -95,17 +116,17 @@ class Meshes {
       gpu::Batch *geom = DRW_cache_mesh_surface_mesh_analysis_get(ob);
       edit_mesh_analysis_ps_.draw(geom, res_handle);
     }
-    if (show_vert_nor) {
-      gpu::Batch *geom = DRW_mesh_batch_cache_get_edit_vert_normals(mesh);
-      edit_mesh_normals_ps_.draw_expand(geom, GPU_PRIM_LINES, 1, 1, res_handle);
-    }
-    if (show_loop_nor) {
-      gpu::Batch *geom = DRW_mesh_batch_cache_get_edit_loop_normals(mesh);
-      edit_mesh_normals_ps_.draw_expand(geom, GPU_PRIM_LINES, 1, 1, res_handle);
-    }
-    if (show_face_nor) {
+    if (face_normals_) {
       gpu::Batch *geom = DRW_mesh_batch_cache_get_edit_facedots(mesh);
-      edit_mesh_normals_ps_.draw_expand(geom, GPU_PRIM_LINES, 1, 1, res_handle);
+      face_normals_->draw_expand(geom, GPU_PRIM_LINES, 1, 1, res_handle);
+    }
+    if (loop_normals_) {
+      gpu::Batch *geom = DRW_mesh_batch_cache_get_edit_loop_normals(mesh);
+      loop_normals_->draw_expand(geom, GPU_PRIM_LINES, 1, 1, res_handle);
+    }
+    if (vert_normals_) {
+      gpu::Batch *geom = DRW_mesh_batch_cache_get_edit_vert_normals(mesh);
+      vert_normals_->draw_expand(geom, GPU_PRIM_LINES, 1, 1, res_handle);
     }
   }
 

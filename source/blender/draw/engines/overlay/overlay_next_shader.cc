@@ -72,22 +72,55 @@ ShaderModule::ShaderPtr ShaderModule::selectable_shader(
 
 using namespace blender::gpu::shader;
 
+static void shader_patch_common(gpu::shader::ShaderCreateInfo &info)
+{
+  info.additional_infos_.clear();
+  info.additional_info(
+      "draw_view", "draw_modelmat_new", "draw_resource_handle_new", "draw_globals");
+}
+
+static void shader_patch_edit_mesh_normal_common(gpu::shader::ShaderCreateInfo &info)
+{
+  shader_patch_common(info);
+  info.defines_.clear(); /* Removes WORKAROUND_INDEX_LOAD_INCLUDE. */
+  info.vertex_inputs_.clear();
+  info.additional_info("gpu_index_load");
+  info.storage_buf(1, Qualifier::READ, "float", "pos[]", Frequency::GEOMETRY);
+}
+
 ShaderModule::ShaderModule(const SelectionType selection_type, const bool clipping_enabled)
     : selection_type_(selection_type), clipping_enabled_(clipping_enabled)
 {
   /** Shaders */
 
-  mesh_analysis = shader("overlay_edit_mesh_analysis", [](gpu::shader::ShaderCreateInfo &info) {
-    info.additional_infos_.clear();
-    info.additional_info(
-        "draw_view", "draw_modelmat_new", "draw_resource_handle_new", "draw_globals");
+  mesh_analysis = shader("overlay_edit_mesh_analysis",
+                         [](gpu::shader::ShaderCreateInfo &info) { shader_patch_common(info); });
+
+  mesh_face_normal = shader("overlay_edit_mesh_normal", [](gpu::shader::ShaderCreateInfo &info) {
+    shader_patch_edit_mesh_normal_common(info);
+    info.define("FACE_NORMAL");
+    info.storage_buf(0, Qualifier::READ, "uint", "norAndFlag[]", Frequency::GEOMETRY);
   });
 
-  mesh_normal = shader("overlay_edit_mesh_normal", [](gpu::shader::ShaderCreateInfo &info) {
-    info.additional_infos_.clear();
-    info.additional_info(
-        "draw_view", "draw_modelmat_new", "draw_resource_handle_new", "draw_globals");
+  mesh_vert_normal = shader("overlay_edit_mesh_normal", [](gpu::shader::ShaderCreateInfo &info) {
+    shader_patch_edit_mesh_normal_common(info);
+    info.define("VERT_NORMAL");
+    info.storage_buf(0, Qualifier::READ, "uint", "vnor[]", Frequency::GEOMETRY);
   });
+
+  mesh_loop_normal = shader("overlay_edit_mesh_normal", [](gpu::shader::ShaderCreateInfo &info) {
+    shader_patch_edit_mesh_normal_common(info);
+    info.define("LOOP_NORMAL");
+    info.storage_buf(0, Qualifier::READ, "uint", "lnor[]", Frequency::GEOMETRY);
+  });
+
+  mesh_loop_normal_hq = shader(
+      "overlay_edit_mesh_normal", [](gpu::shader::ShaderCreateInfo &info) {
+        shader_patch_common(info);
+        info.define("LOOP_NORMAL");
+        info.define("HQ_NORMAL");
+        info.storage_buf(0, Qualifier::READ, "float", "lnor[]", Frequency::GEOMETRY);
+      });
 
   /** Selectable Shaders */
 

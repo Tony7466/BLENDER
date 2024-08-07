@@ -16,6 +16,12 @@ uint gpu_attr_load_index(uint vertex_index, ivec2 stride_and_offset)
   return vertex_index * uint(stride_and_offset.x) + uint(stride_and_offset.y);
 }
 
+vec4 gpu_attr_decode_snorm1010102(uint data)
+{
+  vec4 vdata = vec4((uint4(data) >> uint4(0, 10, 20, 30)) & uint4(0x3FFu, 0x3FFu, 0x3FFu, 0x3u));
+  return (vdata - 512.0) / 511.0;
+}
+
 /* TODO(fclem): Once the stride and offset are made obsolete, we can think of wrapping vec3 into
  * structs of floats as they do not have the 16byte alignment restriction. */
 
@@ -33,3 +39,7 @@ uint gpu_attr_load_index(uint vertex_index, ivec2 stride_and_offset)
 /* Assumes _data is declared as an array of int. */
 #define gpu_attr_load_int3(_data, _stride_and_offset, _i) \
   gpu_attr_load_triplet(uvec3, _data, _stride_and_offset, _i)
+
+/* Assumes _data is declared as an array of uint. */
+#define gpu_attr_load_snorm1010102(_data, _stride_and_offset, _i) \
+  gpu_attr_decode_snorm1010102(_data[gpu_attr_load_index(_i, _stride_and_offset)])

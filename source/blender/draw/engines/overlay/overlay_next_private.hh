@@ -144,7 +144,9 @@ class ShaderModule {
   ShaderPtr background_fill = shader("overlay_background");
   ShaderPtr background_clip_bound = shader("overlay_clipbound");
   ShaderPtr mesh_analysis;
-  ShaderPtr mesh_normal;
+  ShaderPtr mesh_face_normal;
+  ShaderPtr mesh_loop_normal, mesh_loop_normal_hq;
+  ShaderPtr mesh_vert_normal;
 
   /** Selectable Shaders */
   ShaderPtr armature_sphere_outline;
