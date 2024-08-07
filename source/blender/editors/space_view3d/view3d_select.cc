@@ -4335,47 +4335,30 @@ static bool do_grease_pencil_box_select(const ViewContext *vc,
                                         const eSelectOp sel_op)
 {
   using namespace blender;
-  Scene *scene = vc->scene;
   const Object *ob_eval = DEG_get_evaluated_object(vc->depsgraph,
                                                    const_cast<Object *>(vc->obedit));
-  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(vc->obedit->data);
-
-  /* Get selection domain from tool settings. */
+  const GreasePencil &grease_pencil = *static_cast<GreasePencil *>(vc->obedit->data);
   const bke::AttrDomain selection_domain = ED_grease_pencil_selection_domain_get(
-      scene->toolsettings);
+      vc->scene->toolsettings);
 
-  bool changed = false;
-  const Vector<ed::greasepencil::MutableDrawingInfo> drawings =
-      ed::greasepencil::retrieve_editable_drawings(*scene, grease_pencil);
-  for (const ed::greasepencil::MutableDrawingInfo info : drawings) {
-    const bke::greasepencil::Layer &layer = *grease_pencil.layer(info.layer_index);
-    bke::crazyspace::GeometryDeformation deformation =
-        bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
-            ob_eval, *vc->obedit, info.layer_index, info.frame_number);
-    IndexMaskMemory memory;
-    const IndexMask elements = ed::greasepencil::retrieve_editable_elements(
-        *vc->obedit, info, selection_domain, memory);
-    if (elements.is_empty()) {
-      continue;
-    }
-    const float4x4 layer_to_world = layer.to_world_space(*ob_eval);
-    const float4x4 projection = ED_view3d_ob_project_mat_get_from_obmat(vc->rv3d, layer_to_world);
-    changed |= ed::curves::select_box(*vc,
-                                      info.drawing.strokes_for_write(),
-                                      deformation,
-                                      projection,
-                                      elements,
-                                      selection_domain,
-                                      *rect,
-                                      sel_op);
-  }
+  return grease_pencil_select_operation(
+      vc,
+      sel_op,
+      [&](const ed::greasepencil::MutableDrawingInfo &info,
+          const IndexMask &mask,
+          IndexMaskMemory &memory) {
+        bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
+        const bke::greasepencil::Layer &layer = *grease_pencil.layer(info.layer_index);
+        const bke::crazyspace::GeometryDeformation deformation =
+            bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
+                ob_eval, *vc->obedit, info.layer_index, info.frame_number);
+        const float4x4 layer_to_world = layer.to_world_space(*ob_eval);
+        const float4x4 projection = ED_view3d_ob_project_mat_get_from_obmat(vc->rv3d,
+                                                                            layer_to_world);
 
-  if (changed) {
-    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
-    WM_event_add_notifier(vc->C, NC_GEOM | ND_DATA, &grease_pencil);
-  }
-
-  return changed;
+        return ed::curves::select_box_mask(
+            *vc, curves, deformation, projection, mask, selection_domain, *rect, memory);
+      });
 }
 
 static int view3d_box_select_exec(bContext *C, wmOperator *op)

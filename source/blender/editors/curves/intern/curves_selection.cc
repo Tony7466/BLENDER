@@ -1203,6 +1203,35 @@ IndexMask select_mask_from_predicates(bke::CurvesGeometry &curves,
   return {};
 }
 
+IndexMask select_box_mask(const ViewContext &vc,
+                          bke::CurvesGeometry &curves,
+                          const bke::crazyspace::GeometryDeformation &deformation,
+                          const float4x4 &projection,
+                          const IndexMask &mask,
+                          const bke::AttrDomain selection_domain,
+                          const rcti &rect,
+                          IndexMaskMemory &memory)
+{
+  const Span<float3> positions = deformation.positions;
+
+  auto point_predicate = [&](const int point_i) {
+    const float2 pos_proj = ED_view3d_project_float_v2_m4(
+        vc.region, positions[point_i], projection);
+    /* Check the lasso bounding box first as an optimization. */
+    return BLI_rcti_isect_pt_v(&rect, int2(pos_proj));
+  };
+  auto line_predicate = [&](const int /*curve_i*/, const int point_i, const int next_point_i) {
+    const float2 pos_proj = ED_view3d_project_float_v2_m4(
+        vc.region, positions[point_i], projection);
+    const float2 next_pos_proj = ED_view3d_project_float_v2_m4(
+        vc.region, positions[next_point_i], projection);
+    return BLI_rcti_isect_segment(&rect, int2(pos_proj), int2(next_pos_proj));
+  };
+
+  return select_mask_from_predicates(
+      curves, mask, selection_domain, memory, point_predicate, line_predicate);
+}
+
 IndexMask select_lasso_mask(const ViewContext &vc,
                             bke::CurvesGeometry &curves,
                             const bke::crazyspace::GeometryDeformation &deformation,
