@@ -5216,7 +5216,7 @@ bool SCULPT_cursor_geometry_info_update(bContext *C,
 
   /* Update the active vertex of the SculptSession. */
   const PBVHVertRef active_vertex = srd.active_vertex;
-  ss.set_active_vert_(active_vertex);
+  ss.set_active_vert(active_vertex);
   SCULPT_vertex_random_access_ensure(ss);
   copy_v3_v3(out->active_vertex_co, SCULPT_vertex_co_get(ss, active_vertex));
 

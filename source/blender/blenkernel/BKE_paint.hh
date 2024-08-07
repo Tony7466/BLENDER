@@ -595,7 +595,7 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
   PBVHVertRef active_vert_ref() const;
   ActiveVertex active_vert() const;
 
-  void set_active_vert_(PBVHVertRef vert);
+  void set_active_vert(PBVHVertRef vert);
 
  private:
   PBVHVertRef active_vert_ = PBVHVertRef{PBVH_REF_NONE};

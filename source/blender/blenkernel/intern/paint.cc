@@ -1769,7 +1769,7 @@ ActiveVertex SculptSession::active_vert() const
   return {};
 }
 
-void SculptSession::set_active_vert_(const PBVHVertRef vert)
+void SculptSession::set_active_vert(const PBVHVertRef vert)
 {
   active_vert_ = vert;
 }
