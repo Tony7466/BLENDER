@@ -178,27 +178,6 @@ struct SculptRakeData {
   float angle;
 };
 
-/*************** Brush testing declarations ****************/
-struct SculptBrushTest {
-  float radius_squared;
-  float radius;
-  blender::float3 location;
-  float dist;
-  ePaintSymmetryFlags mirror_symmetry_pass;
-
-  int radial_symmetry_pass;
-  blender::float4x4 symm_rot_mat_inv;
-
-  /* For circle (not sphere) projection. */
-  float plane_view[4];
-
-  /* Some tool code uses a plane for its calculations. */
-  float plane_tool[4];
-
-  /* View3d clipping - only set rv3d for clipping */
-  RegionView3D *clip_rv3d;
-};
-
 /* Defines how transform tools are going to apply its displacement. */
 enum SculptTransformDisplacementMode {
   /* Displaces the elements from their original coordinates. */
@@ -1176,11 +1155,6 @@ void SCULPT_flip_quat_by_symm_area(float quat[4],
                                    ePaintSymmetryFlags symm,
                                    ePaintSymmetryAreas symmarea,
                                    const float pivot[3]);
-
-/**
- * Initialize a point-in-brush test
- */
-void SCULPT_brush_test_init(const SculptSession &ss, SculptBrushTest &test);
 
 namespace blender::ed::sculpt_paint {
 
