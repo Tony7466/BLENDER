@@ -1728,19 +1728,16 @@ void average_data_bmesh(Span<T> src, const Set<BMVert *, 0> &verts, MutableSpan<
 
 /* Surface Smooth Brush. */
 
-void surface_smooth_laplacian_step(SculptSession &ss,
-                                   float *disp,
-                                   const float co[3],
+void surface_smooth_laplacian_step(Span<float3> positions,
+                                   Span<float3> orig_positions,
+                                   Span<float3> average_positions,
+                                   float alpha,
                                    MutableSpan<float3> laplacian_disp,
-                                   PBVHVertRef vertex,
-                                   const float origco[3],
-                                   float alpha);
-void surface_smooth_displace_step(SculptSession &ss,
-                                  float *co,
-                                  MutableSpan<float3> laplacian_disp,
-                                  PBVHVertRef vertex,
+                                   MutableSpan<float3> translations);
+void surface_smooth_displace_step(Span<float3> laplacian_disp,
+                                  Span<float3> average_laplacian_disp,
                                   float beta,
-                                  float fade);
+                                  MutableSpan<float3> translations);
 
 /* Slide/Relax */
 void relax_vertex(SculptSession &ss,
