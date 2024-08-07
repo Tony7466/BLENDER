@@ -1749,6 +1749,26 @@ PBVHVertRef SculptSession::active_vertex() const
   return {PBVH_REF_NONE};
 }
 
+ActiveVertex SculptSession::active_vertex_typed() const
+{
+  /* TODO: While this code currently translates the stored PBVHVertRef into the given type, once
+   * we stored the actual field as ActiveVertex, this call can replace #active_vertex. */
+  switch (this->pbvh->type()) {
+    case blender::bke::pbvh::Type::Mesh:
+      return (int)active_vertex_.i;
+    case blender::bke::pbvh::Type::Grids: {
+      const CCGKey key = BKE_subdiv_ccg_key_top_level(*this->subdiv_ccg);
+      return SubdivCCGCoord::from_index(key, active_vertex_.i);
+    }
+    case blender::bke::pbvh::Type::BMesh:
+      return reinterpret_cast<BMVert *>(active_vertex_.i);
+    default:
+      BLI_assert_unreachable();
+  }
+
+  return {};
+}
+
 void SculptSession::set_active_vertex(const PBVHVertRef vert)
 {
   active_vertex_ = vert;

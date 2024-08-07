@@ -9,6 +9,7 @@
  */
 
 #include <optional>
+#include <variant>
 
 #include "BLI_array.hh"
 #include "BLI_bit_vector.hh"
@@ -76,6 +77,7 @@ struct Scene;
 struct Sculpt;
 struct SculptSession;
 struct SubdivCCG;
+struct SubdivCCGCoord;
 struct Tex;
 struct ToolSettings;
 struct UnifiedPaintSettings;
@@ -485,6 +487,8 @@ struct SculptTopologyIslandCache {
   blender::Array<uint8_t> vert_island_ids;
 };
 
+using ActiveVertex = std::variant<std::monostate, int, SubdivCCGCoord, BMVert *>;
+
 struct SculptSession : blender::NonCopyable, blender::NonMovable {
   /* Mesh data (not copied) can come either directly from a Mesh, or from a MultiresDM */
   struct { /* Special handling for multires meshes */
@@ -667,6 +671,8 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
   ~SculptSession();
 
   PBVHVertRef active_vertex() const;
+  ActiveVertex active_vertex_typed() const;
+
   void set_active_vertex(PBVHVertRef vert);
 
  private:
