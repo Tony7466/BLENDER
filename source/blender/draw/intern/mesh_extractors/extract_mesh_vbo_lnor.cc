@@ -259,11 +259,13 @@ static const GPUVertFormat &get_subdiv_lnor_format()
   return format;
 }
 
-void extract_normals_subdiv(const DRWSubdivCache &subdiv_cache,
+void extract_normals_subdiv(const MeshRenderData &mr,
+                            const DRWSubdivCache &subdiv_cache,
                             gpu::VertBuf &pos_nor,
                             gpu::VertBuf &lnor)
 {
-  GPU_vertbuf_init_build_on_device(lnor, get_subdiv_lnor_format(), subdiv_cache.num_subdiv_loops);
+  GPU_vertbuf_init_build_on_device(
+      lnor, get_subdiv_lnor_format(), subdiv_full_vbo_size(mr, subdiv_cache));
   draw_subdiv_build_lnor_buffer(subdiv_cache, &pos_nor, &lnor);
 }
 

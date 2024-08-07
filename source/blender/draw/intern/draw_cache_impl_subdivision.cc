@@ -926,30 +926,32 @@ static bool draw_subdiv_topology_info_cb(const bke::subdiv::ForeachContext *fore
   /* Initialize cache buffers, prefer dynamic usage so we can reuse memory on the host even after
    * it was sent to the device, since we may use the data while building other buffers on the CPU
    * side. */
-  cache->patch_coords = GPU_vertbuf_calloc();
-  GPU_vertbuf_init_with_format_ex(
-      *cache->patch_coords, get_blender_patch_coords_format(), GPU_USAGE_DYNAMIC);
-  GPU_vertbuf_data_alloc(*cache->patch_coords, cache->num_subdiv_loops);
+  if (cache->num_subdiv_loops > 0) {
+    cache->patch_coords = GPU_vertbuf_calloc();
+    GPU_vertbuf_init_with_format_ex(
+        *cache->patch_coords, get_blender_patch_coords_format(), GPU_USAGE_DYNAMIC);
+    GPU_vertbuf_data_alloc(*cache->patch_coords, cache->num_subdiv_loops);
 
-  cache->corner_patch_coords = GPU_vertbuf_calloc();
-  GPU_vertbuf_init_with_format_ex(
-      *cache->corner_patch_coords, get_blender_patch_coords_format(), GPU_USAGE_DYNAMIC);
-  GPU_vertbuf_data_alloc(*cache->corner_patch_coords, cache->num_subdiv_loops);
+    cache->corner_patch_coords = GPU_vertbuf_calloc();
+    GPU_vertbuf_init_with_format_ex(
+        *cache->corner_patch_coords, get_blender_patch_coords_format(), GPU_USAGE_DYNAMIC);
+    GPU_vertbuf_data_alloc(*cache->corner_patch_coords, cache->num_subdiv_loops);
 
-  cache->verts_orig_index = GPU_vertbuf_calloc();
-  GPU_vertbuf_init_with_format_ex(
-      *cache->verts_orig_index, get_origindex_format(), GPU_USAGE_DYNAMIC);
-  GPU_vertbuf_data_alloc(*cache->verts_orig_index, cache->num_subdiv_loops);
+    cache->verts_orig_index = GPU_vertbuf_calloc();
+    GPU_vertbuf_init_with_format_ex(
+        *cache->verts_orig_index, get_origindex_format(), GPU_USAGE_DYNAMIC);
+    GPU_vertbuf_data_alloc(*cache->verts_orig_index, cache->num_subdiv_loops);
 
-  cache->edges_orig_index = GPU_vertbuf_calloc();
-  GPU_vertbuf_init_with_format_ex(
-      *cache->edges_orig_index, get_origindex_format(), GPU_USAGE_DYNAMIC);
-  GPU_vertbuf_data_alloc(*cache->edges_orig_index, cache->num_subdiv_loops);
+    cache->edges_orig_index = GPU_vertbuf_calloc();
+    GPU_vertbuf_init_with_format_ex(
+        *cache->edges_orig_index, get_origindex_format(), GPU_USAGE_DYNAMIC);
+    GPU_vertbuf_data_alloc(*cache->edges_orig_index, cache->num_subdiv_loops);
 
-  cache->edges_draw_flag = GPU_vertbuf_calloc();
-  GPU_vertbuf_init_with_format_ex(
-      *cache->edges_draw_flag, get_origindex_format(), GPU_USAGE_DYNAMIC);
-  GPU_vertbuf_data_alloc(*cache->edges_draw_flag, cache->num_subdiv_loops);
+    cache->edges_draw_flag = GPU_vertbuf_calloc();
+    GPU_vertbuf_init_with_format_ex(
+        *cache->edges_draw_flag, get_origindex_format(), GPU_USAGE_DYNAMIC);
+    GPU_vertbuf_data_alloc(*cache->edges_draw_flag, cache->num_subdiv_loops);
+  }
 
   cache->subdiv_loop_subdiv_vert_index = static_cast<int *>(
       MEM_mallocN(cache->num_subdiv_loops * sizeof(int), "subdiv_loop_subdiv_vert_index"));
