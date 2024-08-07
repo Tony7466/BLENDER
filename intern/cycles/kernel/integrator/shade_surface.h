@@ -83,9 +83,7 @@ ccl_device_forceinline float3 integrate_surface_ray_offset(KernelGlobals kg,
   if (ray_triangle_intersect_self(local_ray_P, local_ray_D, verts)) {
     return ray_P;
   }
-  else {
-    return ray_offset(ray_P, sd->Ng);
-  }
+  return ray_offset(ray_P, sd->Ng);
 }
 
 ccl_device_forceinline bool integrate_surface_holdout(KernelGlobals kg,
