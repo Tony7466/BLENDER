@@ -378,12 +378,22 @@ void WM_window_title(wmWindowManager *wm, wmWindow *win, const char *title = nul
 bool WM_stereo3d_enabled(wmWindow *win, bool skip_stereo3d_check);
 
 /** Client-Side Window Decorations (CSD). */
-void WM_window_set_use_csd(const wmWindow *win, bool use_csd);
-void WM_window_set_titlebar_csd_color(const wmWindow *win,
-                                      const float background_color[4],
-                                      const float title_text_color[4]);
+/* Flags for WM_window_decoration_set_style().
+ * NOTE: To be kept in sync with GHOST_TWindowDecorationFlags. */
+enum eWM_DecorationStyleFlag {
+  /** No Decorations / System Decorations. */
+  WM_DECORATION_NONE = 0,
+  /** Custom Colored Titlebar. */
+  WM_DECORATION_COLORED_TITLEBAR = (1 << 0),
+};
+ENUM_OPERATORS(eWM_DecorationStyleFlag, WM_DECORATION_COLORED_TITLEBAR)
 
-void WM_window_update_decorations(const wmWindow *win, const bScreen *screen);
+eWM_DecorationStyleFlag WM_window_decoration_get_style(const wmWindow *win);
+void WM_window_decoration_set_style(const wmWindow *win, eWM_DecorationStyleFlag style_flags);
+void WM_window_decoration_set_titlebar_colors(const wmWindow *win,
+                                              const float background_color[4],
+                                              const float title_text_color[4]);
+void WM_window_decoration_update(const wmWindow *win, const bScreen *screen);
 
 /* `wm_files.cc`. */
 

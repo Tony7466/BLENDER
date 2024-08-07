@@ -90,18 +90,27 @@ class GHOST_Window : public GHOST_IWindow {
   }
 
   /**
-   * Enable or disable custom client-side window decorations (CSD).
-   * \param useCSD: Whether to use custom client-side window decorations.
+   * Return the current client-side window decoration (CSD) style flags.
    */
-  virtual void setUseCSD(bool useCSD) override;
+  virtual GHOST_TWindowDecorationStyleFlags getWindowDecorationStyle() override;
+
+  /**
+   * Set the window client-side decorations (CSD) style flags.
+   * \param style_flags: Decoration style flags.
+   */
+  virtual GHOST_TSuccess setWindowDecorationStyle(
+      GHOST_TWindowDecorationStyleFlags style_flags) override;
 
   /**
    * Set colors to be used by custom titlebar client-side window decorations (CSD).
    * \param backgroundColor: Titlebar background color.
    * \param titleTextColor: Titlebar title text color.
    */
-  virtual void setTitlebarCSDColors(const float /*backgroundColor*/[4],
-                                    const float /*titleTextColor*/[4]) override{};
+  virtual GHOST_TSuccess setWindowDecorationTitlebarColors(
+      const float /*backgroundColor*/[4], const float /*titleTextColor*/[4]) override
+  {
+    return GHOST_kFailure;
+  };
 
   /**
    * Returns the current cursor shape.
@@ -383,6 +392,15 @@ class GHOST_Window : public GHOST_IWindow {
                                                     int hotY,
                                                     bool canInvertColor) = 0;
 
+  /**
+   * Update the window client-side decorations (CSD)
+   * depending on decoration style flags.
+   */
+  virtual GHOST_TSuccess updateWindowDecorations()
+  {
+    return GHOST_kSuccess;
+  }
+
   GHOST_TSuccess releaseNativeHandles();
 
   /** The drawing context installed in this window. */
@@ -425,7 +443,7 @@ class GHOST_Window : public GHOST_IWindow {
   bool m_fullScreen;
 
   /** Stores whether the windows has custom client-side decorations. */
-  bool m_useCSD;
+  GHOST_TWindowDecorationStyleFlags m_windowDecorationFlags;
 
   /** Whether to attempt to initialize a context with a stereo frame-buffer. */
   bool m_wantStereoVisual;

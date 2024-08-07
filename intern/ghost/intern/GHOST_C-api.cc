@@ -608,19 +608,26 @@ GHOST_TSuccess GHOST_SetPath(GHOST_WindowHandle windowhandle, const char *filepa
   return window->setPath(filepath);
 }
 
-void GHOST_SetUseCSD(GHOST_WindowHandle windowhandle, bool useCSD)
+GHOST_TWindowDecorationStyleFlags GHOST_GetWindowDecorationStyle(GHOST_WindowHandle windowhandle)
 {
   GHOST_IWindow *window = (GHOST_IWindow *)windowhandle;
-  window->setUseCSD(useCSD);
+  return window->getWindowDecorationStyle();
 }
 
-extern void GHOST_SetTitlebarCSDColors(GHOST_WindowHandle windowhandle,
-                                       const float backgroundColor[4],
-                                       const float titleTextColor[4])
+GHOST_TSuccess GHOST_SetWindowDecorationStyle(GHOST_WindowHandle windowhandle,
+                                              GHOST_TWindowDecorationStyleFlags style_flags)
+{
+  GHOST_IWindow *window = (GHOST_IWindow *)windowhandle;
+  return window->setWindowDecorationStyle(style_flags);
+}
+
+GHOST_TSuccess GHOST_SetWindowDecorationTitlebarColors(GHOST_WindowHandle windowhandle,
+                                                       const float backgroundColor[4],
+                                                       const float titleTextColor[4])
 {
 
   GHOST_IWindow *window = (GHOST_IWindow *)windowhandle;
-  window->setTitlebarCSDColors(backgroundColor, titleTextColor);
+  return window->setWindowDecorationTitlebarColors(backgroundColor, titleTextColor);
 }
 
 GHOST_RectangleHandle GHOST_GetWindowBounds(GHOST_WindowHandle windowhandle)

@@ -32,7 +32,7 @@ GHOST_Window::GHOST_Window(uint32_t width,
       m_progressBarVisible(false),
       m_canAcceptDragOperation(false),
       m_isUnsavedChanges(false),
-      m_useCSD(false),
+      m_windowDecorationFlags(GHOST_kDecorationNone),
       m_wantStereoVisual(wantStereoVisual),
       m_nativePixelSize(1.0f),
       m_context(new GHOST_ContextNone(false))
@@ -56,9 +56,16 @@ void *GHOST_Window::getOSWindow() const
   return nullptr;
 }
 
-void GHOST_Window::setUseCSD(const bool useCSD)
+GHOST_TWindowDecorationStyleFlags GHOST_Window::getWindowDecorationStyle()
 {
-  m_useCSD = useCSD;
+  return m_windowDecorationFlags;
+}
+
+GHOST_TSuccess GHOST_Window::setWindowDecorationStyle(
+    GHOST_TWindowDecorationStyleFlags style_flags)
+{
+  m_windowDecorationFlags = style_flags;
+  return updateWindowDecorations();
 }
 
 GHOST_TSuccess GHOST_Window::setDrawingContextType(GHOST_TDrawingContextType type)

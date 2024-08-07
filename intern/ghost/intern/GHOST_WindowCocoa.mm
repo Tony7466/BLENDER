@@ -546,14 +546,8 @@ GHOST_TSuccess GHOST_WindowCocoa::setPath(const char *filepath)
   return success;
 }
 
-void GHOST_WindowCocoa::setUseCSD(const bool useCSD)
-{
-  m_window.titlebarAppearsTransparent = useCSD;
-  GHOST_Window::setUseCSD(useCSD);
-}
-
-void GHOST_WindowCocoa::setTitlebarCSDColors(const float backgroundColor[4],
-                                             const float /*titleTextColor*/[4])
+GHOST_TSuccess GHOST_WindowCocoa::setWindowDecorationTitlebarColors(
+    const float backgroundColor[4], const float /*titleTextColor*/[4])
 {
   @autoreleasepool {
     /* Titlebar background color. */
@@ -575,6 +569,7 @@ void GHOST_WindowCocoa::setTitlebarCSDColors(const float backgroundColor[4],
                                                           NSAppearanceNameVibrantLight;
     m_window.appearance = [NSAppearance appearanceNamed:win_appearance];
   }
+  return GHOST_kSuccess;
 }
 
 void GHOST_WindowCocoa::getWindowBounds(GHOST_Rect &bounds) const
@@ -1268,6 +1263,15 @@ GHOST_TSuccess GHOST_WindowCocoa::setWindowCustomCursorShape(
     loadCursor(getCursorVisibility(), GHOST_kStandardCursorCustom);
   }
   [pool drain];
+  return GHOST_kSuccess;
+}
+
+GHOST_TSuccess GHOST_WindowCocoa::updateWindowDecorations()
+{
+  @autoreleasepool {
+    m_window.titlebarAppearsTransparent = m_windowDecorationFlags &
+                                          GHOST_kDecorationColoredTitleBar;
+  }
   return GHOST_kSuccess;
 }
 

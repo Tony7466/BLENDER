@@ -703,6 +703,11 @@ typedef enum {
   /* Can be extended as needed. */
 } GHOST_TUserSpecialDirTypes;
 
+typedef enum {
+  GHOST_kDecorationNone = 0,
+  GHOST_kDecorationColoredTitleBar = (1 << 0),
+} GHOST_TWindowDecorationStyleFlags;
+
 typedef struct {
   /** Number of pixels on a line. */
   uint32_t xPixels;

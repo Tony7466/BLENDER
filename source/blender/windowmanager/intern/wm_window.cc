@@ -595,48 +595,77 @@ void WM_window_set_dpi(const wmWindow *win)
   U.widget_unit = int(roundf(18.0f * U.scale_factor)) + (2 * pixelsize);
 }
 
-void WM_window_set_use_csd(const wmWindow *win, bool use_csd)
+eWM_DecorationStyleFlag WM_window_decoration_get_style(const wmWindow *win)
 {
-  /* Enable Client-Side Window Decorations (CSD). */
-  GHOST_SetUseCSD(static_cast<GHOST_WindowHandle>(win->ghostwin), use_csd);
+  const GHOST_TWindowDecorationStyleFlags ghost_style_flags = GHOST_GetWindowDecorationStyle(
+      static_cast<GHOST_WindowHandle>(win->ghostwin));
+
+  eWM_DecorationStyleFlag wm_style_flags = WM_DECORATION_NONE;
+
+  if (ghost_style_flags & GHOST_kDecorationColoredTitleBar) {
+    wm_style_flags |= WM_DECORATION_COLORED_TITLEBAR;
+  }
+
+  return wm_style_flags;
 }
 
-void WM_window_set_titlebar_csd_color(const wmWindow *win,
-                                      const float background_color[4],
-                                      const float title_text_color[4])
+void WM_window_decoration_set_style(const wmWindow *win, eWM_DecorationStyleFlag style_flags)
 {
-  GHOST_SetTitlebarCSDColors(
+  unsigned int ghost_style_flags = GHOST_kDecorationNone;
+
+  if (style_flags & WM_DECORATION_COLORED_TITLEBAR) {
+    ghost_style_flags |= GHOST_kDecorationColoredTitleBar;
+  }
+
+  GHOST_SetWindowDecorationStyle(
+      static_cast<GHOST_WindowHandle>(win->ghostwin),
+      static_cast<GHOST_TWindowDecorationStyleFlags>(ghost_style_flags));
+}
+
+void WM_window_decoration_set_titlebar_colors(const wmWindow *win,
+                                              const float background_color[4],
+                                              const float title_text_color[4])
+{
+  GHOST_SetWindowDecorationTitlebarColors(
       static_cast<GHOST_WindowHandle>(win->ghostwin), background_color, title_text_color);
 }
 
-void WM_window_update_decorations(const wmWindow *win, const bScreen *screen)
+void WM_window_decoration_update(const wmWindow *win, const bScreen *screen)
 {
-  /* Update the Client-Side Decorations titlebar color by parsing the theme */
-  /* For main windows, use the topbar color. */
-  if (WM_window_should_have_global_areas(win)) {
-    UI_SetTheme(SPACE_TOPBAR, RGN_TYPE_HEADER);
-  }
-  /* For single editor floating windows, use the editor header color. */
-  else if (BLI_listbase_is_single(&screen->areabase)) {
-    /* Except for the View 3D editor which has a transparent titlebar, in which case use the
-     * window background color instead. */
-    const ScrArea *main_area = static_cast<ScrArea *>(screen->areabase.first);
-    if (main_area->spacetype == SPACE_VIEW3D) {
-      UI_SetTheme(main_area->spacetype, RGN_TYPE_WINDOW);
-    }
-    else {
-      UI_SetTheme(main_area->spacetype, RGN_TYPE_HEADER);
-    }
-  }
-  /* For floating window with multiple editors/areas, use the default space color. */
-  else {
-    UI_SetTheme(0, RGN_TYPE_WINDOW);
-  }
+  switch (WM_window_decoration_get_style(win)) {
+    case WM_DECORATION_NONE:
+      break;
+    /* Update custom titlebar color by parsing the current theme */
+    case WM_DECORATION_COLORED_TITLEBAR: {
+      /* For main windows, use the topbar color. */
+      if (WM_window_should_have_global_areas(win)) {
+        UI_SetTheme(SPACE_TOPBAR, RGN_TYPE_HEADER);
+      }
+      /* For single editor floating windows, use the editor header color. */
+      else if (BLI_listbase_is_single(&screen->areabase)) {
+        const ScrArea *main_area = static_cast<ScrArea *>(screen->areabase.first);
+        /* Except for the View 3D editor which has a transparent titlebar, in which case use the
+         * window background color instead. */
+        if (main_area->spacetype == SPACE_VIEW3D) {
+          UI_SetTheme(main_area->spacetype, RGN_TYPE_WINDOW);
+        }
+        else {
+          UI_SetTheme(main_area->spacetype, RGN_TYPE_HEADER);
+        }
+      }
+      /* For floating window with multiple editors/areas, use the default space color. */
+      else {
+        UI_SetTheme(0, RGN_TYPE_WINDOW);
+      }
 
-  float tb_background_color[4], tb_title_color[4];
-  UI_GetThemeColor4fv(TH_BACK, tb_background_color);
-  UI_GetThemeColor4fv(TH_BUTBACK_TEXT, tb_title_color);
-  WM_window_set_titlebar_csd_color(win, tb_background_color, tb_title_color);
+      float tb_background_color[4], tb_title_color[4];
+      UI_GetThemeColor4fv(TH_BACK, tb_background_color);
+      UI_GetThemeColor4fv(TH_BUTBACK_TEXT, tb_title_color);
+      WM_window_decoration_set_titlebar_colors(win, tb_background_color, tb_title_color);
+
+      break;
+    }
+  }
 }
 
 /**
@@ -899,7 +928,9 @@ static void wm_window_ghostwindow_ensure(wmWindowManager *wm, wmWindow *win, boo
 
     WM_window_set_dpi(win);
 
-    WM_window_set_use_csd(win, true);
+    if (WM_capabilities_flag() & WM_CAPABILITY_CLIENT_SIDE_WINDOW_DECORATIONS) {
+      WM_window_decoration_set_style(win, WM_DECORATION_COLORED_TITLEBAR);
+    }
   }
 
   /* Add key-map handlers (1 handler for all keys in map!). */

@@ -92,17 +92,12 @@ class GHOST_WindowCocoa : public GHOST_Window {
   GHOST_TSuccess setPath(const char *filepath);
 
   /**
-   * Enable or disable custom client-side window decorations (CSD).
-   * \param useCSD: Whether to use custom client-side window decorations.
-   */
-  void setUseCSD(bool useCSD);
-
-  /**
    * Set colors to be used by custom titlebar client-side window decorations (CSD).
    * \param backgroundColor: Titlebar background color.
    * \param titleTextColor: Titlebar title text color.
    */
-  void setTitlebarCSDColors(const float backgroundColor[4], const float titleTextColor[4]);
+  GHOST_TSuccess setWindowDecorationTitlebarColors(const float backgroundColor[4],
+                                                   const float titleTextColor[4]);
 
   /**
    * Returns the window rectangle dimensions.
@@ -306,6 +301,12 @@ class GHOST_WindowCocoa : public GHOST_Window {
                                             int hotX,
                                             int hotY,
                                             bool canInvertColor);
+
+  /**
+   * Update the window client-side decorations (CSD)
+   * depending on decoration style flags.
+   */
+  GHOST_TSuccess updateWindowDecorations();
 
   /** The window containing the view */
   CocoaWindow *m_window;
