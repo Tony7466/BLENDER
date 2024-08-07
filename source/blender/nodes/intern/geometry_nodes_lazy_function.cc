@@ -2809,13 +2809,22 @@ struct GeometryNodesLazyFunctionBuilder {
     Vector<const lf::FunctionNode *> &local_side_effect_nodes =
         scope_.construct<Vector<const lf::FunctionNode *>>();
     for (const bNode *bnode : btree_.nodes_by_type("GeometryNodeWarning")) {
-      const bNodeTreeZone *zone = tree_zones_->get_zone_by_node(bnode->identifier);
-      if (!zone) {
-        const lf::Socket *lf_socket = root_graph_build_params_->lf_inputs_by_bsocket.lookup(
-            &bnode->input_socket(0))[0];
-        const lf::FunctionNode &lf_node = static_cast<const lf::FunctionNode &>(lf_socket->node());
-        local_side_effect_nodes.append(&lf_node);
+      if (bnode->output_socket(0).is_directly_linked()) {
+        /* The warning node is not a side-effect node. Instead, the user explicitly used the output
+         * socket to specify when the warning node should be used. */
+        continue;
       }
+      if (tree_zones_->get_zone_by_node(bnode->identifier)) {
+        /* "Global" warning nodes that are evaluated whenever the node group is evaluated, must not
+         * be in a zone. */
+        continue;
+      }
+      /* Add warning node as side-effect node so that it is always evaluated if the node group is
+       * evaluated. */
+      const lf::Socket *lf_socket = root_graph_build_params_->lf_inputs_by_bsocket.lookup(
+          &bnode->input_socket(0))[0];
+      const lf::FunctionNode &lf_node = static_cast<const lf::FunctionNode &>(lf_socket->node());
+      local_side_effect_nodes.append(&lf_node);
     }
 
     function.function = &scope_.construct<lf::GraphExecutor>(
@@ -3940,12 +3949,28 @@ struct GeometryNodesLazyFunctionBuilder {
       graph_params.lf_inputs_by_bsocket.add(&bsocket, &lf_socket);
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
     }
+    for (const int i : bnode.output_sockets().index_range()) {
+      const bNodeSocket &bsocket = bnode.output_socket(i);
+      lf::OutputSocket &lf_socket = lf_node.output(i);
+      graph_params.lf_output_by_bsocket.add(&bsocket, &lf_socket);
+      mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
+    }
 
-    /* The warning node is used if any of the output sockets is used. */
-    lf::OutputSocket *warning_node_usage = this->or_socket_usages(group_output_used_sockets_,
-                                                                  graph_params);
-    for (const bNodeSocket *socket : bnode.input_sockets()) {
-      graph_params.usage_by_bsocket.add(socket, warning_node_usage);
+    const bNodeSocket &output_bsocket = bnode.output_socket(0);
+
+    lf::OutputSocket *lf_usage = nullptr;
+    if (output_bsocket.is_directly_linked()) {
+      /* The warning node is only used if the output socket is used. */
+      lf_usage = graph_params.usage_by_bsocket.lookup_default(&output_bsocket, nullptr);
+    }
+    else {
+      /* The warning node is used if any of the output sockets is used. */
+      lf_usage = this->or_socket_usages(group_output_used_sockets_, graph_params);
+    }
+    if (lf_usage) {
+      for (const bNodeSocket *socket : bnode.input_sockets()) {
+        graph_params.usage_by_bsocket.add(socket, lf_usage);
+      }
     }
   }
 

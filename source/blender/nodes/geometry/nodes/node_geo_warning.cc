@@ -13,7 +13,11 @@ namespace blender::nodes::node_geo_warning_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
+  b.use_custom_socket_order();
+  b.allow_any_socket_order();
+
   b.add_input<decl::Bool>("Show").default_value(false).hide_value();
+  b.add_output<decl::Bool>("Show").align_with_previous();
   b.add_input<decl::String>("Message").hide_label();
 }
 
@@ -23,19 +27,24 @@ class LazyFunctionForWarningNode : public LazyFunction {
  public:
   LazyFunctionForWarningNode(const bNode &node) : node_(node)
   {
-    inputs_.append_as("Show", CPPType::get<SocketValueVariant>(), lf::ValueUsage::Used);
-    inputs_.append_as("Message", CPPType::get<SocketValueVariant>());
+    const CPPType &type = CPPType::get<SocketValueVariant>();
+    inputs_.append_as("Show", type, lf::ValueUsage::Used);
+    inputs_.append_as("Message", type);
+    outputs_.append_as("Show", type);
   }
 
   void execute_impl(lf::Params &params, const lf::Context &context) const override
   {
-    const bool show = params.get_input<SocketValueVariant>(0).get<bool>();
+    const SocketValueVariant show_variant = params.get_input<SocketValueVariant>(0);
+    const bool show = show_variant.get<bool>();
     if (!show) {
+      params.set_output(0, show_variant);
       return;
     }
     SocketValueVariant *message_variant =
         params.try_get_input_data_ptr_or_request<SocketValueVariant>(1);
     if (!message_variant) {
+      /* Wait for the message to be computed. */
       return;
     }
     std::string message = message_variant->extract<std::string>();
@@ -48,6 +57,8 @@ class LazyFunctionForWarningNode : public LazyFunction {
           *tree_logger->allocator,
           {node_.identifier, {this->get_warning_type(), std::move(message)}});
     }
+    /* Only set output in the end so that this node is not finished before the warning is set. */
+    params.set_output(0, show_variant);
   }
 
   NodeWarningType get_warning_type() const
