@@ -1561,8 +1561,8 @@ void BKE_libblock_copy_in_lib(Main *bmain,
     /* TODO: Do we want/need to copy more from ID struct itself? */
   }
   else {
-    new_id = static_cast<ID *>(
-        BKE_libblock_alloc_in_lib(bmain, owner_library, GS(id->name), id->name + 2, flag));
+    new_id = static_cast<ID *>(BKE_libblock_alloc_in_lib(
+        bmain, owner_library, GS(id->name), BKE_id_ui_name_get(*id), flag));
   }
   BLI_assert(new_id != nullptr);
 
