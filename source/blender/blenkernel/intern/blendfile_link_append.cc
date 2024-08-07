@@ -596,7 +596,7 @@ static void loose_data_instantiate_obdata_preprocess(
       continue;
     }
 
-    id->tag |= LIB_TAG_DOIT;
+    id->tag |= ID_TAG_DOIT;
   }
   for (BlendfileLinkAppendContextItem *item : lapp_context->items) {
     ID *id = item->new_id;
@@ -607,10 +607,10 @@ static void loose_data_instantiate_obdata_preprocess(
     Object *ob = (Object *)id;
     Object *new_ob = (Object *)id->newid;
     if (ob->data != nullptr) {
-      ((ID *)(ob->data))->tag &= ~LIB_TAG_DOIT;
+      ((ID *)(ob->data))->tag &= ~ID_TAG_DOIT;
     }
     if (new_ob != nullptr && new_ob->data != nullptr) {
-      ((ID *)(new_ob->data))->tag &= ~LIB_TAG_DOIT;
+      ((ID *)(new_ob->data))->tag &= ~ID_TAG_DOIT;
     }
   }
 }
@@ -624,7 +624,7 @@ static bool loose_data_instantiate_collection_parents_check_recursive(Collection
        parent_collection != nullptr;
        parent_collection = parent_collection->next)
   {
-    if ((parent_collection->collection->id.tag & LIB_TAG_DOIT) != 0) {
+    if ((parent_collection->collection->id.tag & ID_TAG_DOIT) != 0) {
       return true;
     }
     if (loose_data_instantiate_collection_parents_check_recursive(parent_collection->collection)) {
@@ -689,7 +689,7 @@ static void loose_data_instantiate_collection_process(
       }
     }
     if (do_add_collection) {
-      collection->id.tag |= LIB_TAG_DOIT;
+      collection->id.tag |= ID_TAG_DOIT;
     }
   }
 
@@ -702,7 +702,7 @@ static void loose_data_instantiate_collection_process(
     }
 
     Collection *collection = (Collection *)id;
-    bool do_add_collection = (id->tag & LIB_TAG_DOIT) != 0;
+    bool do_add_collection = (id->tag & ID_TAG_DOIT) != 0;
 
     if (!do_add_collection) {
       continue;
@@ -844,7 +844,7 @@ static void loose_data_instantiate_obdata_process(LooseDataInstantiateContext *i
     if (!OB_DATA_SUPPORT_ID(idcode)) {
       continue;
     }
-    if ((id->tag & LIB_TAG_DOIT) == 0) {
+    if ((id->tag & ID_TAG_DOIT) == 0) {
       continue;
     }
 
@@ -869,7 +869,7 @@ static void loose_data_instantiate_obdata_process(LooseDataInstantiateContext *i
 
     copy_v3_v3(ob->loc, scene->cursor.location);
 
-    id->tag &= ~LIB_TAG_DOIT;
+    id->tag &= ~ID_TAG_DOIT;
   }
 }
 
@@ -1159,7 +1159,7 @@ static void blendfile_append_define_actions(BlendfileLinkAppendContext *lapp_con
     }
     BLI_assert((item->tag & LINK_APPEND_TAG_LIBOVERRIDE_DEPENDENCY_ONLY) == 0);
 
-    if (id->tag & LIB_TAG_PRE_EXISTING) {
+    if (id->tag & ID_TAG_PRE_EXISTING) {
       CLOG_INFO(&LOG, 3, "Appended ID '%s' was already linked, duplicating it.", id->name);
       item->action = LINK_APPEND_ACT_COPY_LOCAL;
     }
@@ -1240,7 +1240,7 @@ static void compute_locked_hash_for_data_block_recursive(
           XXH3_128bits_update(locked_hash_state, &some_data, sizeof(some_data));
           return IDWALK_RET_NOP;
         }
-        if (referenced_id->flag & LIB_EMBEDDED_DATA) {
+        if (referenced_id->flag & ID_FLAG_EMBEDDED_DATA) {
           return IDWALK_RET_NOP;
         }
         if (current_stack.contains(referenced_id)) {
@@ -1465,7 +1465,7 @@ static int foreach_libblock_link_finalize_cb(LibraryIDLinkCallbackData *cb_data)
   const BlendfileLinkAppendContextCallBack *data =
       static_cast<BlendfileLinkAppendContextCallBack *>(cb_data->user_data);
 
-  if ((id->tag & LIB_TAG_PRE_EXISTING) != 0) {
+  if ((id->tag & ID_TAG_PRE_EXISTING) != 0) {
     /* About to re-use a linked data that was already there, and that will stay linked. This case
      * does not need any further processing of the child hierarchy (existing linked data
      * instantiation status should not be modified here). */
@@ -1562,7 +1562,7 @@ void BKE_blendfile_link(BlendfileLinkAppendContext *lapp_context, ReportList *re
     lib = mainl->curlib;
     BLI_assert(lib != nullptr);
     /* In case lib was already existing but not found originally, see #99820. */
-    lib->id.tag &= ~LIB_TAG_MISSING;
+    lib->id.tag &= ~ID_TAG_MISSING;
 
     if (mainl->versionfile < 250) {
       BKE_reportf(reports,
@@ -1640,8 +1640,8 @@ void BKE_blendfile_override(BlendfileLinkAppendContext *lapp_context,
         continue;
       }
       /* Do not consider regular liboverrides if runtime ones are requested, and vice-versa. */
-      if ((set_runtime && (id_iter->tag & LIB_TAG_RUNTIME) == 0) ||
-          (!set_runtime && (id_iter->tag & LIB_TAG_RUNTIME) != 0))
+      if ((set_runtime && (id_iter->tag & ID_TAG_RUNTIME) == 0) ||
+          (!set_runtime && (id_iter->tag & ID_TAG_RUNTIME) != 0))
       {
         continue;
       }
@@ -1666,16 +1666,16 @@ void BKE_blendfile_override(BlendfileLinkAppendContext *lapp_context,
     if (item->liboverride_id == nullptr) {
       item->liboverride_id = BKE_lib_override_library_create_from_id(bmain, id, false);
       if (set_runtime) {
-        item->liboverride_id->tag |= LIB_TAG_RUNTIME;
-        if ((id->tag & LIB_TAG_PRE_EXISTING) == 0) {
+        item->liboverride_id->tag |= ID_TAG_RUNTIME;
+        if ((id->tag & ID_TAG_PRE_EXISTING) == 0) {
           /* If the linked ID is newly linked, in case its override is runtime-only, assume its
            * reference to be indirectly linked.
            *
            * This is more of an heuristic for 'as best as possible' user feedback in the UI
            * (Outliner), which is expected to be valid in almost all practical use-cases. Direct or
            * indirect linked status is properly checked before saving .blend file. */
-          id->tag &= ~LIB_TAG_EXTERN;
-          id->tag |= LIB_TAG_INDIRECT;
+          id->tag &= ~ID_TAG_EXTERN;
+          id->tag |= ID_TAG_INDIRECT;
         }
       }
     }
@@ -1711,7 +1711,7 @@ static void blendfile_library_relocate_remap(Main *bmain,
               new_id->us);
     BKE_libblock_remap_locked(bmain, old_id, new_id, remap_flags);
 
-    if (old_id->flag & LIB_FAKEUSER) {
+    if (old_id->flag & ID_FLAG_FAKEUSER) {
       id_fake_user_clear(old_id);
       id_fake_user_set(new_id);
     }
@@ -1724,7 +1724,7 @@ static void blendfile_library_relocate_remap(Main *bmain,
               new_id->us);
 
     /* In some cases, new_id might become direct link, remove parent of library in this case. */
-    if (new_id->lib->runtime.parent && (new_id->tag & LIB_TAG_INDIRECT) == 0) {
+    if (new_id->lib->runtime.parent && (new_id->tag & ID_TAG_INDIRECT) == 0) {
       if (do_reload) {
         BLI_assert_unreachable(); /* Should not happen in 'pure' reload case... */
       }
@@ -1828,7 +1828,7 @@ void BKE_blendfile_library_relocate(BlendfileLinkAppendContext *lapp_context,
     return;
   }
 
-  BKE_main_id_tag_all(bmain, LIB_TAG_PRE_EXISTING, true);
+  BKE_main_id_tag_all(bmain, ID_TAG_PRE_EXISTING, true);
 
   /* We do not want any instantiation here! */
   BKE_blendfile_link(lapp_context, reports);
@@ -1902,7 +1902,7 @@ void BKE_blendfile_library_relocate(BlendfileLinkAppendContext *lapp_context,
   while (keep_looping) {
     keep_looping = false;
 
-    BKE_main_id_tag_all(bmain, LIB_TAG_DOIT, false);
+    BKE_main_id_tag_all(bmain, ID_TAG_DOIT, false);
     for (BlendfileLinkAppendContextItem *item : lapp_context->items) {
       ID *old_id = static_cast<ID *>(item->userdata);
 
@@ -1936,18 +1936,18 @@ void BKE_blendfile_library_relocate(BlendfileLinkAppendContext *lapp_context,
       }
 
       if (old_id->us == 0) {
-        old_id->tag |= LIB_TAG_DOIT;
+        old_id->tag |= ID_TAG_DOIT;
         item->userdata = nullptr;
         keep_looping = true;
         Key *old_key = BKE_key_from_id(old_id);
         if (old_key != nullptr) {
-          old_key->id.tag |= LIB_TAG_DOIT;
+          old_key->id.tag |= ID_TAG_DOIT;
         }
       }
     }
     BKE_id_multi_tagged_delete(bmain);
     /* Should not be needed, all tagged IDs should have been deleted above, just 'in case'. */
-    BKE_main_id_tag_all(bmain, LIB_TAG_DOIT, false);
+    BKE_main_id_tag_all(bmain, ID_TAG_DOIT, false);
   }
 
   /* Some datablocks can get reloaded/replaced 'silently' because they are not linkable
@@ -1958,27 +1958,27 @@ void BKE_blendfile_library_relocate(BlendfileLinkAppendContext *lapp_context,
     for (id = static_cast<ID *>(lbarray[lba_idx]->first); id; id = id_next) {
       id_next = static_cast<ID *>(id->next);
       /* XXX That check may be a bit to generic/permissive? */
-      if (id->lib && (id->flag & LIB_TAG_PRE_EXISTING) && id->us == 0) {
+      if (id->lib && (id->flag & ID_TAG_PRE_EXISTING) && id->us == 0) {
         BKE_id_free(bmain, id);
       }
     }
   }
 
   /* Get rid of no more used libraries... */
-  BKE_main_id_tag_idcode(bmain, ID_LI, LIB_TAG_DOIT, true);
+  BKE_main_id_tag_idcode(bmain, ID_LI, ID_TAG_DOIT, true);
   lba_idx = set_listbasepointers(bmain, lbarray);
   while (lba_idx--) {
     ID *id;
     for (id = static_cast<ID *>(lbarray[lba_idx]->first); id; id = static_cast<ID *>(id->next)) {
       if (id->lib) {
-        id->lib->id.tag &= ~LIB_TAG_DOIT;
+        id->lib->id.tag &= ~ID_TAG_DOIT;
       }
     }
   }
   Library *lib, *lib_next;
   for (lib = static_cast<Library *>(which_libbase(bmain, ID_LI)->first); lib; lib = lib_next) {
     lib_next = static_cast<Library *>(lib->id.next);
-    if (lib->id.tag & LIB_TAG_DOIT) {
+    if (lib->id.tag & ID_TAG_DOIT) {
       id_us_clear_real(&lib->id);
       if (lib->id.us == 0) {
         BKE_id_delete(bmain, lib);
@@ -1990,14 +1990,14 @@ void BKE_blendfile_library_relocate(BlendfileLinkAppendContext *lapp_context,
   ID *id;
   FOREACH_MAIN_ID_BEGIN (bmain, id) {
     if (ID_IS_LINKED(id) || !ID_IS_OVERRIDE_LIBRARY_REAL(id) ||
-        (id->tag & LIB_TAG_PRE_EXISTING) == 0)
+        (id->tag & ID_TAG_PRE_EXISTING) == 0)
     {
       continue;
     }
-    if ((id->override_library->reference->tag & LIB_TAG_MISSING) == 0) {
-      id->tag &= ~LIB_TAG_MISSING;
+    if ((id->override_library->reference->tag & ID_TAG_MISSING) == 0) {
+      id->tag &= ~ID_TAG_MISSING;
     }
-    if ((id->override_library->reference->tag & LIB_TAG_PRE_EXISTING) == 0) {
+    if ((id->override_library->reference->tag & ID_TAG_PRE_EXISTING) == 0) {
       BKE_lib_override_library_update(bmain, id);
     }
   }

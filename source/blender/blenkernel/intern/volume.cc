@@ -267,7 +267,7 @@ static void volume_blend_read_data(BlendDataReader *reader, ID *id)
   volume->runtime->frame = 0;
 
   /* materials */
-  BLO_read_pointer_array(reader, (void **)&volume->mat);
+  BLO_read_pointer_array(reader, volume->totcol, (void **)&volume->mat);
 }
 
 static void volume_blend_read_after_liblink(BlendLibReader * /*reader*/, ID *id)
@@ -787,7 +787,7 @@ void BKE_volume_grids_backup_restore(Volume *volume, VolumeGridVector *grids, co
 #ifdef WITH_OPENVDB
   /* Restore grids after datablock was re-copied from original by depsgraph,
    * we don't want to load them again if possible. */
-  BLI_assert(volume->id.tag & LIB_TAG_COPIED_ON_EVAL);
+  BLI_assert(volume->id.tag & ID_TAG_COPIED_ON_EVAL);
   BLI_assert(volume->runtime->grids != nullptr && grids != nullptr);
 
   if (!grids->is_loaded()) {

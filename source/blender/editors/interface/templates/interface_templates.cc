@@ -80,6 +80,7 @@
 #include "ED_object.hh"
 #include "ED_render.hh"
 #include "ED_screen.hh"
+#include "ED_screen_types.hh"
 #include "ED_undo.hh"
 
 #include "IMB_imbuf.hh"
@@ -450,11 +451,11 @@ static void id_search_cb_tagged(const bContext *C,
 
   /* ID listbase */
   LISTBASE_FOREACH (ID *, id, lb) {
-    if (id->tag & LIB_TAG_DOIT) {
+    if (id->tag & ID_TAG_DOIT) {
       if (id_search_allows_id(template_ui, flag, id, str)) {
         search.add(BKE_id_ui_name_get(*id), id);
       }
-      id->tag &= ~LIB_TAG_DOIT;
+      id->tag &= ~ID_TAG_DOIT;
     }
   }
 
@@ -488,10 +489,10 @@ static void id_search_cb_objects_from_scene(const bContext *C,
     scene = CTX_data_scene(C);
   }
 
-  BKE_main_id_flag_listbase(lb, LIB_TAG_DOIT, false);
+  BKE_main_id_flag_listbase(lb, ID_TAG_DOIT, false);
 
   FOREACH_SCENE_OBJECT_BEGIN (scene, ob_iter) {
-    ob_iter->id.tag |= LIB_TAG_DOIT;
+    ob_iter->id.tag |= ID_TAG_DOIT;
   }
   FOREACH_SCENE_OBJECT_END;
   id_search_cb_tagged(C, arg_template, str, items);
@@ -591,7 +592,7 @@ static void template_id_liboverride_hierarchy_collection_root_find_recursive(
 static void template_id_liboverride_hierarchy_collections_tag_recursive(
     Collection *root_collection, ID *target_id, const bool do_parents)
 {
-  root_collection->id.tag |= LIB_TAG_DOIT;
+  root_collection->id.tag |= ID_TAG_DOIT;
 
   /* Tag all local parents of the root collection, so that usages of the root collection and other
    * linked ones can be replaced by the local overrides in those parents too. */
@@ -604,7 +605,7 @@ static void template_id_liboverride_hierarchy_collections_tag_recursive(
       if (ID_IS_LINKED(iter->collection)) {
         continue;
       }
-      iter->collection->id.tag |= LIB_TAG_DOIT;
+      iter->collection->id.tag |= ID_TAG_DOIT;
     }
   }
 
@@ -747,7 +748,7 @@ ID *ui_template_id_liboverride_hierarchy_make(
       {
         template_id_liboverride_hierarchy_collections_tag_recursive(collection_active, id, true);
         if (object_active != nullptr) {
-          object_active->id.tag |= LIB_TAG_DOIT;
+          object_active->id.tag |= ID_TAG_DOIT;
         }
         BKE_lib_override_library_create(bmain,
                                         scene,
@@ -762,7 +763,7 @@ ID *ui_template_id_liboverride_hierarchy_make(
       else if (object_active != nullptr && !ID_IS_LINKED(object_active) &&
                &object_active->instance_collection->id == id)
       {
-        object_active->id.tag |= LIB_TAG_DOIT;
+        object_active->id.tag |= ID_TAG_DOIT;
         BKE_lib_override_library_create(bmain,
                                         scene,
                                         view_layer,
@@ -780,7 +781,7 @@ ID *ui_template_id_liboverride_hierarchy_make(
       {
         template_id_liboverride_hierarchy_collections_tag_recursive(collection_active, id, true);
         if (object_active != nullptr) {
-          object_active->id.tag |= LIB_TAG_DOIT;
+          object_active->id.tag |= ID_TAG_DOIT;
         }
         BKE_lib_override_library_create(bmain,
                                         scene,
@@ -794,7 +795,7 @@ ID *ui_template_id_liboverride_hierarchy_make(
       }
       else {
         if (object_active != nullptr) {
-          object_active->id.tag |= LIB_TAG_DOIT;
+          object_active->id.tag |= ID_TAG_DOIT;
         }
         BKE_lib_override_library_create(
             bmain, scene, view_layer, nullptr, id, nullptr, nullptr, &id_override, false);
@@ -821,7 +822,7 @@ ID *ui_template_id_liboverride_hierarchy_make(
         {
           template_id_liboverride_hierarchy_collections_tag_recursive(collection_active, id, true);
           if (object_active != nullptr) {
-            object_active->id.tag |= LIB_TAG_DOIT;
+            object_active->id.tag |= ID_TAG_DOIT;
           }
           BKE_lib_override_library_create(bmain,
                                           scene,
@@ -834,7 +835,7 @@ ID *ui_template_id_liboverride_hierarchy_make(
                                           false);
         }
         else {
-          object_active->id.tag |= LIB_TAG_DOIT;
+          object_active->id.tag |= ID_TAG_DOIT;
           BKE_lib_override_library_create(bmain,
                                           scene,
                                           view_layer,
@@ -982,7 +983,7 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
       break;
     case UI_ID_FAKE_USER:
       if (id) {
-        if (id->flag & LIB_FAKEUSER) {
+        if (id->flag & ID_FLAG_FAKEUSER) {
           id_us_plus(id);
         }
         else {
@@ -1434,7 +1435,7 @@ static void template_ID(const bContext *C,
       }
       else if (ID_IS_LINKED(id)) {
         const bool disabled = !BKE_idtype_idcode_is_localizable(GS(id->name));
-        if (id->tag & LIB_TAG_INDIRECT) {
+        if (id->tag & ID_TAG_INDIRECT) {
           but = uiDefIconBut(block,
                              UI_BTYPE_BUT,
                              0,
@@ -3023,11 +3024,9 @@ static void draw_exporter_item(uiList * /*ui_list*/,
                                int /*index*/,
                                int /*flt_flag*/)
 {
-  char name[MAX_IDPROP_NAME];
-  RNA_string_get(itemptr, "name", name);
-
   uiLayout *row = uiLayoutRow(layout, false);
-  uiItemL(row, name, ICON_NONE);
+  uiLayoutSetEmboss(row, UI_EMBOSS_NONE);
+  uiItemR(row, itemptr, "name", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 void uiTemplateCollectionExporters(uiLayout *layout, bContext *C)
@@ -6366,6 +6365,39 @@ void uiTemplateReportsBanner(uiLayout *layout, bContext *C)
   UI_block_emboss_set(block, previous_emboss);
 }
 
+static bool uiTemplateInputStatusAzone(uiLayout *layout, AZone *az, ARegion *region)
+{
+  if (az->type == AZONE_AREA) {
+    uiItemL(layout, nullptr, ICON_MOUSE_LMB_DRAG);
+    if (U.experimental.use_docking) {
+      uiItemL(layout, IFACE_("Split/Dock"), ICON_NONE);
+    }
+    else {
+      uiItemL(layout, IFACE_("Split/Join"), ICON_NONE);
+    }
+    uiItemS_ex(layout, 0.7f);
+    uiItemL(layout, "", ICON_EVENT_SHIFT);
+    uiItemL(layout, nullptr, ICON_MOUSE_LMB_DRAG);
+    uiItemL(layout, IFACE_("Duplicate into Window"), ICON_NONE);
+    uiItemS_ex(layout, 0.7f);
+    uiItemL(layout, "", ICON_EVENT_CTRL);
+    uiItemS_ex(layout, 1.5f);
+    uiItemL(layout, nullptr, ICON_MOUSE_LMB_DRAG);
+    uiItemL(layout, IFACE_("Swap Areas"), ICON_NONE);
+    return true;
+  }
+
+  if (az->type == AZONE_REGION) {
+    uiItemL(layout, nullptr, ICON_MOUSE_LMB_DRAG);
+    uiItemL(layout,
+            (region->visible) ? IFACE_("Resize Region") : IFACE_("Show Hidden Region"),
+            ICON_NONE);
+    return true;
+  }
+
+  return false;
+}
+
 void uiTemplateInputStatus(uiLayout *layout, bContext *C)
 {
   wmWindow *win = CTX_wm_window(C);
@@ -6383,6 +6415,10 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
         if (item.inverted) {
           but->drawflag |= UI_BUT_ICON_INVERT;
         }
+        const float offset = ui_event_icon_offset(item.icon);
+        if (offset != 0.0f) {
+          uiItemS_ex(row, offset);
+        }
       }
     }
     return;
@@ -6392,11 +6428,38 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
     return;
   }
 
+  bScreen *screen = CTX_wm_screen(C);
+  ARegion *region = screen->active_region;
+  uiLayout *row = uiLayoutRow(layout, true);
+
+  if (region == nullptr) {
+    /* Check if over an action zone. */
+    LISTBASE_FOREACH (ScrArea *, area_iter, &screen->areabase) {
+      LISTBASE_FOREACH (AZone *, az, &area_iter->actionzones) {
+        if (BLI_rcti_isect_pt_v(&az->rect, win->eventstate->xy)) {
+          region = az->region;
+          if (uiTemplateInputStatusAzone(row, az, region)) {
+            return;
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  if (!region) {
+    /* On a gap between editors. */
+    uiItemL(row, nullptr, ICON_MOUSE_LMB_DRAG);
+    uiItemL(row, IFACE_("Resize"), ICON_NONE);
+    uiItemS_ex(row, 0.7f);
+    uiItemL(row, nullptr, ICON_MOUSE_RMB);
+    uiItemS_ex(row, -0.5f);
+    uiItemL(row, IFACE_("Options"), ICON_NONE);
+    return;
+  }
+
   /* Otherwise should cursor keymap status. */
   for (int i = 0; i < 3; i++) {
-    uiLayout *box = uiLayoutRow(layout, false);
-    uiLayout *col = uiLayoutColumn(box, false);
-    uiLayout *row = uiLayoutRow(col, true);
     uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_LEFT);
 
     const char *msg = CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT,
@@ -6404,20 +6467,18 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
     const char *msg_drag = CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT,
                                       WM_window_cursor_keymap_status_get(win, i, 1));
 
-    if (msg || (msg_drag == nullptr)) {
-      /* Icon and text separately are closer together with aligned layout. */
+    if (msg) {
       uiItemL(row, "", (ICON_MOUSE_LMB + i));
+      uiItemS_ex(row, -0.5f);
       uiItemL(row, msg ? msg : "", ICON_NONE);
+      uiItemS_ex(row, 0.7f);
     }
 
     if (msg_drag) {
       uiItemL(row, "", (ICON_MOUSE_LMB_DRAG + i));
       uiItemL(row, msg_drag, ICON_NONE);
+      uiItemS_ex(row, 0.7f);
     }
-
-    /* Use trick with empty string to keep icons in same position. */
-    row = uiLayoutRow(col, false);
-    uiItemL(row, "                                                                   ", ICON_NONE);
   }
 }
 
@@ -6833,8 +6894,6 @@ int uiTemplateStatusBarModalItem(uiLayout *layout,
       icon = UI_icon_from_keymap_item(kmi_z, icon_mod);
 #endif
       uiItemL(layout, "", icon);
-
-      uiItemS_ex(layout, 0.3f);
       uiItemL(layout, xyz_label, ICON_NONE);
       uiItemS_ex(layout, 0.7f);
       return 3;
@@ -6865,17 +6924,17 @@ bool uiTemplateEventFromKeymapItem(uiLayout *layout,
 
     /* Icon and text separately is closer together with aligned layout. */
 
-    if (icon >= ICON_MOUSE_LMB && icon <= ICON_MOUSE_RMB_DRAG) {
-      /* Negative space before all narrow mice icons. */
-      uiItemS_ex(layout, -0.5f);
-    }
     uiItemL(layout, "", icon);
-    if (icon >= ICON_MOUSE_LMB && icon <= ICON_MOUSE_RMB) {
-      /* Negative space after non-drag mice icons. */
+    if (icon >= ICON_MOUSE_LMB && icon <= ICON_MOUSE_MMB_SCROLL) {
+      /* Negative space after narrow mice icons. */
       uiItemS_ex(layout, -0.5f);
     }
 
-    uiItemS_ex(layout, 0.3f);
+    const float offset = ui_event_icon_offset(icon);
+    if (offset != 0.0f) {
+      uiItemS_ex(layout, offset);
+    }
+
     uiItemL(layout, CTX_IFACE_(BLT_I18NCONTEXT_ID_WINDOWMANAGER, text), ICON_NONE);
     uiItemS_ex(layout, 0.7f);
     ok = true;
