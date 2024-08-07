@@ -8716,8 +8716,8 @@ class VIEW3D_MT_greasepencil_edit_context_menu(Menu):
             col.operator("grease_pencil.separate", text="Separate").mode = 'SELECTED'
 
 
-class GREASE_PENCIL_MT_LAYERS(Menu):
-    bl_label = "Layers list"
+class GREASE_PENCIL_MT_Layers(Menu):
+    bl_label = "Layers"
 
     def draw(self, context):
         layout = self.layout
@@ -8776,7 +8776,7 @@ class VIEW3D_PT_greasepencil_draw_context_menu(Panel):
             layout.label(text="Active Layer")
             row = layout.row(align=True)
             row.operator_context = 'EXEC_REGION_WIN'
-            row.menu("GREASE_PENCIL_MT_LAYERS", text='', icon='GREASEPENCIL')
+            row.menu("GREASE_PENCIL_MT_Layers", text='', icon='GREASEPENCIL')
             row.prop(layer, "name", text='')
             row.operator("grease_pencil.layer_remove", text="", icon='X')
 
@@ -9651,7 +9651,7 @@ classes = (
     VIEW3D_AST_brush_gpencil_sculpt,
     VIEW3D_AST_brush_gpencil_vertex,
     VIEW3D_AST_brush_gpencil_weight,
-    GREASE_PENCIL_MT_LAYERS,
+    GREASE_PENCIL_MT_Layers,
     VIEW3D_PT_greasepencil_draw_context_menu,
 )
 
