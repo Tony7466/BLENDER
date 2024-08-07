@@ -105,7 +105,6 @@ void SEQ_render_thumbnails_base_set(const SeqRenderData *context,
                                     const rctf *view_area,
                                     const bool *stop);
 
-void SEQ_render_init_colorspace(Sequence *seq);
 void SEQ_render_new_render_data(Main *bmain,
                                 Depsgraph *depsgraph,
                                 Scene *scene,
@@ -114,8 +113,7 @@ void SEQ_render_new_render_data(Main *bmain,
                                 int preview_render_size,
                                 int for_render,
                                 SeqRenderData *r_context);
-int SEQ_render_evaluate_frame(ListBase *seqbase, int timeline_frame);
-StripElem *SEQ_render_give_stripelem(const Scene *scene, Sequence *seq, int timeline_frame);
+StripElem *SEQ_render_give_stripelem(const Scene *scene, const Sequence *seq, int timeline_frame);
 
 void SEQ_render_imbuf_from_sequencer_space(Scene *scene, ImBuf *ibuf);
 void SEQ_render_pixel_from_sequencer_space_v4(Scene *scene, float pixel[4]);

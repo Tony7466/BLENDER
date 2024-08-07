@@ -245,7 +245,7 @@ void SEQ_render_new_render_data(Main *bmain,
   r_context->is_prefetch_render = false;
 }
 
-StripElem *SEQ_render_give_stripelem(const Scene *scene, Sequence *seq, int timeline_frame)
+StripElem *SEQ_render_give_stripelem(const Scene *scene, const Sequence *seq, int timeline_frame)
 {
   StripElem *se = seq->strip->stripdata;
 

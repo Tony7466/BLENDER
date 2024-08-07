@@ -50,7 +50,6 @@ bool seq_cache_put_if_possible(
 bool seq_cache_recycle_item(Scene *scene);
 void seq_cache_free_temp_cache(Scene *scene, short id, int timeline_frame);
 void seq_cache_destruct(Scene *scene);
-void seq_cache_cleanup_all(Main *bmain);
 void seq_cache_cleanup_sequence(Scene *scene,
                                 Sequence *seq,
                                 Sequence *seq_changed,

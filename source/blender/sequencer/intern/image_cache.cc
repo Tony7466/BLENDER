@@ -600,14 +600,6 @@ void seq_cache_destruct(Scene *scene)
   scene->ed->cache = nullptr;
 }
 
-void seq_cache_cleanup_all(Main *bmain)
-{
-  for (Scene *scene = static_cast<Scene *>(bmain->scenes.first); scene != nullptr;
-       scene = static_cast<Scene *>(scene->id.next))
-  {
-    SEQ_cache_cleanup(scene);
-  }
-}
 void SEQ_cache_cleanup(Scene *scene)
 {
   SEQ_prefetch_stop(scene);
