@@ -2164,6 +2164,7 @@ static void calc_area_normal_and_center_node_bmesh(const Object &object,
       const bool normal_test_r = use_area_nos && distances_sq[i] <= normal_radius_sq;
       const bool area_test_r = use_area_cos && distances_sq[i] <= position_radius_sq;
       if (!normal_test_r && !area_test_r) {
+        i++;
         continue;
       }
       const float3 &normal = normals[i];
@@ -2196,6 +2197,7 @@ static void calc_area_normal_and_center_node_bmesh(const Object &object,
     const bool normal_test_r = use_area_nos && distances_sq[i] <= normal_radius_sq;
     const bool area_test_r = use_area_cos && distances_sq[i] <= position_radius_sq;
     if (!normal_test_r && !area_test_r) {
+      i++;
       continue;
     }
     const float3 &normal = vert->no;
@@ -2209,11 +2211,6 @@ static void calc_area_normal_and_center_node_bmesh(const Object &object,
       accumulate_area_normal(normal, distance, normal_radius_inv, flip_index, anctd);
     }
     i++;
-  }
-  for (BMVert *vert : verts) {
-    if (BM_elem_flag_test(vert, BM_ELEM_HIDDEN)) {
-      continue;
-    }
   }
 }
 
