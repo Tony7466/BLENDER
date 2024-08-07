@@ -8,6 +8,7 @@
 
 #include "BLI_array_utils.hh"
 #include "BLI_assert.h"
+#include "BLI_index_mask.hh"
 #include "BLI_lasso_2d.hh"
 #include "BLI_math_geom.h"
 #include "BLI_rand.hh"
@@ -1234,6 +1235,56 @@ IndexMask select_circle_mask(const ViewContext &vc,
             const float distance_proj_sq = dist_squared_to_line_segment_v2(
                 float2(coord), pos_proj, next_pos_proj);
             return distance_proj_sq <= radius_sq;
+          });
+    default:
+      BLI_assert_unreachable();
+      break;
+  }
+  return {};
+}
+
+IndexMask select_lasso_mask(const ViewContext &vc,
+                            bke::CurvesGeometry &curves,
+                            const bke::crazyspace::GeometryDeformation &deformation,
+                            const float4x4 &projection,
+                            const IndexMask &mask,
+                            const bke::AttrDomain selection_domain,
+                            const Span<int2> lasso_coords,
+                            IndexMaskMemory &memory)
+{
+  rcti bbox;
+  BLI_lasso_boundbox(&bbox, lasso_coords);
+  const Span<float3> positions = deformation.positions;
+
+  switch (selection_domain) {
+    case bke::AttrDomain::Point:
+      return select_points_from_predicate(
+          curves, mask, GrainSize(1024), memory, [&](const int point_i) {
+            const float2 pos_proj = ED_view3d_project_float_v2_m4(
+                vc.region, positions[point_i], projection);
+            /* Check the lasso bounding box first as an optimization. */
+            return BLI_rcti_isect_pt_v(&bbox, int2(pos_proj)) &&
+                   BLI_lasso_is_point_inside(
+                       lasso_coords, int(pos_proj.x), int(pos_proj.y), IS_CLIPPED);
+          });
+    case bke::AttrDomain::Curve:
+      return select_curves_from_predicate(
+          curves,
+          mask,
+          GrainSize(512),
+          memory,
+          [&](const int /*curve_i*/, const int point_i, const int next_point_i) {
+            const float2 pos_proj = ED_view3d_project_float_v2_m4(
+                vc.region, positions[point_i], projection);
+            const float2 next_pos_proj = ED_view3d_project_float_v2_m4(
+                vc.region, positions[next_point_i], projection);
+            return BLI_rcti_isect_segment(&bbox, int2(pos_proj), int2(next_pos_proj)) &&
+                   BLI_lasso_is_edge_inside(lasso_coords,
+                                            int(pos_proj.x),
+                                            int(pos_proj.y),
+                                            int(next_pos_proj.x),
+                                            int(next_pos_proj.y),
+                                            IS_CLIPPED);
           });
     default:
       BLI_assert_unreachable();

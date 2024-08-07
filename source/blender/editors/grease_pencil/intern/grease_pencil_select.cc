@@ -37,7 +37,7 @@ inline int clamp_range(const IndexRange range, const int index)
 }
 
 /**
- * Callback for each segment. Each segment can have two point ranges, second range may be empty.
+ * Callback for each segment. Each segment can have two point ranges, one of them may be empty.
  * Returns the total number of segments, or zero if the curve is cyclic and can be regarded as a
  * single contiguous range.
  *
