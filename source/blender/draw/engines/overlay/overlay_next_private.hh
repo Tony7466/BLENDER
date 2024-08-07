@@ -110,6 +110,10 @@ class ShapeCache {
   BatchPtr light_area_square_lines;
   BatchPtr light_spot_volume;
 
+  BatchPtr field_force;
+  BatchPtr field_wind;
+  BatchPtr field_vortex;
+
   BatchPtr lightprobe_cube;
   BatchPtr lightprobe_planar;
   BatchPtr lightprobe_grid;
@@ -279,6 +283,19 @@ struct Resources : public select::SelectMap {
   {
     ThemeColorID theme_id = object_wire_theme_id(ob_ref, state);
     return object_wire_color(ob_ref, theme_id);
+  }
+
+  float4 background_blend_color(ThemeColorID theme_id) const
+  {
+    float4 color;
+    UI_GetThemeColorBlendShade4fv(theme_id, TH_BACK, 0.5, 0, color);
+    return color;
+  }
+
+  float4 object_background_blend_color(const ObjectRef &ob_ref, const State &state) const
+  {
+    ThemeColorID theme_id = object_wire_theme_id(ob_ref, state);
+    return background_blend_color(theme_id);
   }
 };
 
