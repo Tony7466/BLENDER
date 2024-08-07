@@ -1701,7 +1701,6 @@ bool SCULPT_get_redraw_rect(const ARegion &region,
   return true;
 }
 
-
 const float *SCULPT_brush_frontface_normal_from_falloff_shape(const SculptSession &ss,
                                                               char falloff_shape)
 {
@@ -1834,17 +1833,17 @@ static float area_normal_and_center_get_position_radius(const SculptSession &ss,
 }
 
 /* Weight the normals towards the center. */
-static inline float area_normal_calc_weight(const float distance, const float radius_inv)
+static float area_normal_calc_weight(const float distance, const float radius_inv)
 {
   float p = 1.0f - (distance * radius_inv);
   return std::clamp(3.0f * p * p - 2.0f * p * p * p, 0.0f, 1.0f);
 }
 
 /* Weight the coordinates towards the center. */
-static inline float3 area_center_calc_weighted(const float3 &test_location,
-                                               const float distance,
-                                               const float radius_inv,
-                                               const float3 &co)
+static float3 area_center_calc_weighted(const float3 &test_location,
+                                        const float distance,
+                                        const float radius_inv,
+                                        const float3 &co)
 {
   /* Weight the coordinates towards the center. */
   float p = 1.0f - (distance * radius_inv);
@@ -1895,7 +1894,6 @@ static void calc_area_normal_and_center_node_mesh(const Object &object,
   const SculptSession &ss = *object.sculpt;
   const float3 &location = ss.cache ? ss.cache->location : ss.cursor_location;
   const float3 &view_normal = ss.cache ? ss.cache->view_normal : ss.cursor_view_normal;
-
   const float position_radius = area_normal_and_center_get_position_radius(ss, brush);
   const float position_radius_sq = position_radius * position_radius;
   const float position_radius_inv = math::rcp(position_radius);
@@ -1979,7 +1977,6 @@ static void calc_area_normal_and_center_node_grids(const Object &object,
   const SculptSession &ss = *object.sculpt;
   const float3 &location = ss.cache ? ss.cache->location : ss.cursor_location;
   const float3 &view_normal = ss.cache ? ss.cache->view_normal : ss.cursor_view_normal;
-
   const float position_radius = area_normal_and_center_get_position_radius(ss, brush);
   const float position_radius_sq = position_radius * position_radius;
   const float position_radius_inv = math::rcp(position_radius);
@@ -2083,7 +2080,6 @@ static void calc_area_normal_and_center_node_bmesh(const Object &object,
   const SculptSession &ss = *object.sculpt;
   const float3 &location = ss.cache ? ss.cache->location : ss.cursor_location;
   const float3 &view_normal = ss.cache ? ss.cache->view_normal : ss.cursor_view_normal;
-
   const float position_radius = area_normal_and_center_get_position_radius(ss, brush);
   const float position_radius_sq = position_radius * position_radius;
   const float position_radius_inv = math::rcp(position_radius);
@@ -2130,7 +2126,6 @@ static void calc_area_normal_and_center_node_bmesh(const Object &object,
       if (!normal_test_r && !area_test_r) {
         continue;
       }
-
       const float3 normal = math::normal_tri(float3(orco_coords[orco_tris[i][0]]),
                                              float3(orco_coords[orco_tris[i][1]]),
                                              float3(orco_coords[orco_tris[i][2]]));
