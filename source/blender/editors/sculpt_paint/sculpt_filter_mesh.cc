@@ -1341,14 +1341,13 @@ static void calc_sharpen_filter(const Sculpt &sd,
           for (const int i : grids.index_range()) {
             const int node_verts_start = i * key.grid_area;
             const int grid = grids[i];
-            const int grid_verts_start = grid * key.grid_area;
             CCGElem *elem = elems[grid];
             for (const short y : IndexRange(key.grid_size)) {
               for (const short x : IndexRange(key.grid_size)) {
                 const int offset = CCG_grid_xy_to_index(key.grid_size, x, y);
                 const int node_vert = node_verts_start + offset;
 
-                const float3 &position = CCG_elem_offset_co(key, elem, offset);
+                const float3 &position = positions[node_vert];
 
                 float3 disp_sharpen(0.0f);
                 SubdivCCGNeighbors neighbors;
