@@ -21,6 +21,7 @@
 #include "BKE_context.hh"
 #include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
+#include "BKE_main.hh"
 
 #include "DEG_depsgraph_build.hh"
 
