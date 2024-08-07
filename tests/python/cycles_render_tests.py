@@ -197,7 +197,7 @@ def create_argparse():
     parser.add_argument("-outdir", nargs=1)
     parser.add_argument("-oiiotool", nargs=1)
     parser.add_argument("-device", nargs=1)
-    parser.add_argument("-blocklist", nargs="*")
+    parser.add_argument("-blocklist", nargs="*", default=[])
     parser.add_argument("-osl", default=False, action='store_true')
     parser.add_argument('--batch', default=False, action='store_true')
     return parser

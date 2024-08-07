@@ -721,7 +721,6 @@ if(WITH_CYCLES OR WITH_GPU_RENDER_TESTS)
                 -testdir "${TEST_SRC_DIR}/render/${render_test}"
                 -outdir "${TEST_OUT_DIR}/cycles_osl"
                 -device ${_cycles_device}
-                -blocklist ""
                 -osl
               )
               # Doesn't do anything until OptiX is enabled
