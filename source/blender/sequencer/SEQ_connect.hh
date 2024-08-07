@@ -10,7 +10,6 @@
 
 #include "BLI_vector_set.hh"
 
-struct SeqConnection;
 struct Sequence;
 struct ListBase;
 
@@ -32,7 +31,7 @@ void SEQ_connect_pair(Sequence *seq1, Sequence *seq2);
  * Connect a list of strips so that they may be selected together. Any connections the
  * strips already have will be severed before reconnection.
  */
-void SEQ_connect_multiple(blender::VectorSet<Sequence *> seq_list);
+void SEQ_connect_multiple(blender::VectorSet<Sequence *> &seq_list);
 
 /**
  * Check whether a strip has any connections.

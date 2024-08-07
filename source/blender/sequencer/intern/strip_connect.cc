@@ -60,7 +60,7 @@ void SEQ_connect_pair(Sequence *seq1, Sequence *seq2)
   SEQ_connect_multiple(seq_list);
 }
 
-void SEQ_connect_multiple(blender::VectorSet<Sequence *> seq_list)
+void SEQ_connect_multiple(blender::VectorSet<Sequence *> &seq_list)
 {
   for (Sequence *seq1 : seq_list) {
     SEQ_disconnect(seq1);
@@ -70,7 +70,6 @@ void SEQ_connect_multiple(blender::VectorSet<Sequence *> seq_list)
       }
       SeqConnection *con = MEM_cnew<SeqConnection>("seqconnection");
       con->seq_ref = seq2;
-      con->orig_start = SEQ_time_start_frame_get(seq2);
       BLI_addtail(&seq1->connections, con);
     }
   }

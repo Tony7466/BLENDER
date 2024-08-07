@@ -783,12 +783,12 @@ static bool select_connected_keys(const Scene *scene,
                                   const SeqRetimingKey *source,
                                   const Sequence *source_owner)
 {
-  bool changed = false;
   if (!SEQ_is_strip_connected(source_owner)) {
-    return changed;
+    return false;
   }
 
   const int frame = SEQ_retiming_key_timeline_frame_get(scene, source_owner, source);
+  bool changed = false;
   LISTBASE_FOREACH (SeqConnection *, con, &source_owner->connections) {
     Sequence *connection = con->seq_ref;
     SeqRetimingKey *con_key = SEQ_retiming_key_get_by_timeline_frame(scene, connection, frame);

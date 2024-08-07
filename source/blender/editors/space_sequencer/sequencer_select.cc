@@ -208,8 +208,8 @@ static void select_linked_time_seq(const Scene *scene,
 
       if (left_match && right_match) {
         /* Direct match, copy all selection settings. */
-        seq_dest->flag &= ~(SELECT | SEQ_LEFTSEL | SEQ_RIGHTSEL);
-        seq_dest->flag |= seq_source->flag & (SELECT | SEQ_LEFTSEL | SEQ_RIGHTSEL);
+        seq_dest->flag &= ~(SEQ_ALLSEL);
+        seq_dest->flag |= seq_source->flag & (SEQ_ALLSEL);
         recurs_sel_seq(seq_dest);
       }
       else if (left_match && handle_clicked == SEQ_HANDLE_LEFT) {
@@ -883,8 +883,8 @@ static void sequencer_select_connected_strips(const StripSelection &selection)
       Sequence *connection = con->seq_ref;
 
       /* Copy selection settings exactly for connected strips. */
-      connection->flag &= ~(SELECT | SEQ_LEFTSEL | SEQ_RIGHTSEL);
-      connection->flag |= source->flag & (SELECT | SEQ_LEFTSEL | SEQ_RIGHTSEL);
+      connection->flag &= ~(SEQ_ALLSEL);
+      connection->flag |= source->flag & (SEQ_ALLSEL);
     }
   }
 }

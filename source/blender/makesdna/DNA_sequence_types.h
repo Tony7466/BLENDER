@@ -314,9 +314,6 @@ typedef struct SeqTimelineChannel {
 typedef struct SeqConnection {
   struct SeqConnection *next, *prev;
   Sequence *seq_ref;
-  /* For calculating delays, currently unused. */
-  int orig_start;
-  char _pad[4];
 } SeqConnection;
 
 typedef struct EditingRuntime {
