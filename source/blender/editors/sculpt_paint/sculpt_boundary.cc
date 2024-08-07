@@ -3109,7 +3109,7 @@ static void init_boundary_mesh(Object &object,
   const Span<float3> positions_eval = BKE_pbvh_get_vert_positions(pbvh);
   const Span<float3> vert_normals = BKE_pbvh_get_vert_normals(pbvh);
 
-  ActiveVertex initial_vert_ref = ss.active_vertex_typed();
+  ActiveVertex initial_vert_ref = ss.active_vert();
   if (std::holds_alternative<std::monostate>(initial_vert_ref)) {
     return;
   }
@@ -3167,7 +3167,7 @@ static void init_boundary_grids(Object &object,
   const CCGKey &key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
   Span<CCGElem *> grids = subdiv_ccg.grids;
 
-  ActiveVertex initial_vert_ref = ss.active_vertex_typed();
+  ActiveVertex initial_vert_ref = ss.active_vert();
   if (std::holds_alternative<std::monostate>(initial_vert_ref)) {
     return;
   }
@@ -3227,7 +3227,7 @@ static void init_boundary_bmesh(Object &object,
 
   BMesh *bm = ss.bm;
 
-  ActiveVertex initial_vert_ref = ss.active_vertex_typed();
+  ActiveVertex initial_vert_ref = ss.active_vert();
   if (std::holds_alternative<std::monostate>(initial_vert_ref)) {
     return;
   }

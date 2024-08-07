@@ -670,13 +670,13 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
   SculptSession();
   ~SculptSession();
 
-  PBVHVertRef active_vertex() const;
-  ActiveVertex active_vertex_typed() const;
+  PBVHVertRef active_vert_ref() const;
+  ActiveVertex active_vert() const;
 
-  void set_active_vertex(PBVHVertRef vert);
+  void set_active_vert_(PBVHVertRef vert);
 
  private:
-  PBVHVertRef active_vertex_ = PBVHVertRef{PBVH_REF_NONE};
+  PBVHVertRef active_vert_ = PBVHVertRef{PBVH_REF_NONE};
 };
 
 void BKE_sculptsession_free(Object *ob);
