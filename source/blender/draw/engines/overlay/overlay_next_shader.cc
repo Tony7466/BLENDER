@@ -116,10 +116,18 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
 
   mesh_loop_normal_hq = shader(
       "overlay_edit_mesh_normal", [](gpu::shader::ShaderCreateInfo &info) {
-        shader_patch_common(info);
+        shader_patch_edit_mesh_normal_common(info);
         info.define("LOOP_NORMAL");
-        info.define("HQ_NORMAL");
-        info.storage_buf(0, Qualifier::READ, "float", "lnor[]", Frequency::GEOMETRY);
+        info.define("SHORT_NORMAL");
+        info.storage_buf(0, Qualifier::READ, "uint", "lnor[]", Frequency::GEOMETRY);
+      });
+
+  mesh_loop_normal_subdiv = shader(
+      "overlay_edit_mesh_normal", [](gpu::shader::ShaderCreateInfo &info) {
+        shader_patch_edit_mesh_normal_common(info);
+        info.define("LOOP_NORMAL");
+        info.define("FLOAT_NORMAL");
+        info.storage_buf(0, Qualifier::READ, "uint", "lnor[]", Frequency::GEOMETRY);
       });
 
   /** Selectable Shaders */

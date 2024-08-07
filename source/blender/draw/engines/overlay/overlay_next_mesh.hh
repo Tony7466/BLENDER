@@ -9,6 +9,7 @@
 #pragma once
 
 #include "BKE_global.hh"
+#include "BKE_subdiv_modifier.hh"
 
 #include "draw_cache_impl.hh"
 
@@ -18,10 +19,11 @@ namespace blender::draw::overlay {
 
 class Meshes {
  private:
-  PassMain edit_mesh_normals_ps_ = {"Normals"};
-  PassMain::Sub *face_normals_ = nullptr;
-  PassMain::Sub *loop_normals_ = nullptr;
-  PassMain::Sub *vert_normals_ = nullptr;
+  PassSimple edit_mesh_normals_ps_ = {"Normals"};
+  PassSimple::Sub *face_normals_ = nullptr;
+  PassSimple::Sub *loop_normals_ = nullptr;
+  PassSimple::Sub *loop_normals_subdiv_ = nullptr;
+  PassSimple::Sub *vert_normals_ = nullptr;
 
   PassSimple edit_mesh_analysis_ps_ = {"Mesh Analysis"};
 
@@ -78,7 +80,7 @@ class Meshes {
         return &sub;
       };
 
-      face_normals_ = loop_normals_ = vert_normals_ = nullptr;
+      face_normals_ = loop_normals_ = vert_normals_ = vert_normals_ = nullptr;
 
       if (show_face_nor) {
         face_normals_ = shader_pass(res.shaders.mesh_face_normal.get(), "FaceNor");
@@ -88,6 +90,7 @@ class Meshes {
                             res.shaders.mesh_loop_normal_hq.get() :
                             res.shaders.mesh_loop_normal.get();
         loop_normals_ = shader_pass(sh, "LoopNor");
+        loop_normals_subdiv_ = shader_pass(res.shaders.mesh_loop_normal_subdiv.get(), "SubdivNor");
       }
       if (show_vert_nor) {
         vert_normals_ = shader_pass(res.shaders.mesh_vert_normal.get(), "VertexNor");
@@ -122,7 +125,12 @@ class Meshes {
     }
     if (loop_normals_) {
       gpu::Batch *geom = DRW_mesh_batch_cache_get_edit_loop_normals(mesh);
-      loop_normals_->draw_expand(geom, GPU_PRIM_LINES, 1, 1, res_handle);
+      /* WORKAROUND: GPU subdiv uses a different normal format. Remove this once GPU subdiv is
+       * refactored. */
+      const bool use_gpu_subdiv = BKE_subsurf_modifier_has_gpu_subdiv(
+          static_cast<Mesh *>(ob->data));
+      (use_gpu_subdiv ? loop_normals_subdiv_ : loop_normals_)
+          ->draw_expand(geom, GPU_PRIM_LINES, 1, 1, res_handle);
     }
     if (vert_normals_) {
       gpu::Batch *geom = DRW_mesh_batch_cache_get_edit_vert_normals(mesh);

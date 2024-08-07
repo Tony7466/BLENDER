@@ -16,10 +16,24 @@ uint gpu_attr_load_index(uint vertex_index, ivec2 stride_and_offset)
   return vertex_index * uint(stride_and_offset.x) + uint(stride_and_offset.y);
 }
 
-vec4 gpu_attr_decode_snorm1010102(uint data)
+vec4 gpu_attr_decode_1010102_snorm(uint data)
 {
-  vec4 vdata = vec4((uint4(data) >> uint4(0, 10, 20, 30)) & uint4(0x3FFu, 0x3FFu, 0x3FFu, 0x3u));
-  return (vdata - 512.0) / 511.0;
+  /* TODO(fclem): Improve this. */
+  uint4 v_data = uint4(data) >> uint4(0, 10, 20, 30);
+  bvec4 v_sign = greaterThan(v_data & uint4(0x3FF, 0x3FF, 0x3FF, 0x3),
+                             uint4(0x1FF, 0x1FF, 0x1FF, 0x1));
+  vec4 mag = float4(mix(v_data, ~v_data, v_sign) & uint4(0x1FF, 0x1FF, 0x1FF, 0x1)) /
+             vec4(0x1FF, 0x1FF, 0x1FF, 0x1);
+  return mix(mag, -mag, v_sign);
+}
+
+vec4 gpu_attr_decode_short4_to_float4_snorm(uint data0, uint data1)
+{
+  /* TODO(fclem): Improve this. */
+  uint4 v_data = uint4(data0, data0 >> 16u, data1, data1 >> 16u);
+  bvec4 v_sign = greaterThan(v_data & uint4(0xFFFF), uint4(0x7FFF));
+  vec4 mag = float4(mix(v_data, ~v_data, v_sign) & 0x7FFF) / float(0x7FFF);
+  return mix(mag, -mag, v_sign);
 }
 
 /* TODO(fclem): Once the stride and offset are made obsolete, we can think of wrapping vec3 into
@@ -41,5 +55,13 @@ vec4 gpu_attr_decode_snorm1010102(uint data)
   gpu_attr_load_triplet(uvec3, _data, _stride_and_offset, _i)
 
 /* Assumes _data is declared as an array of uint. */
-#define gpu_attr_load_snorm1010102(_data, _stride_and_offset, _i) \
-  gpu_attr_decode_snorm1010102(_data[gpu_attr_load_index(_i, _stride_and_offset)])
+#define gpu_attr_load_uint_1010102_snorm(_data, _stride_and_offset, _i) \
+  gpu_attr_decode_1010102_snorm(_data[gpu_attr_load_index(_i, _stride_and_offset)])
+
+/* TODO(fclem): Once the stride and offset are made obsolete, we can think of wrapping short4 into
+ * structs of uint as they do not have the 16byte alignment restriction. */
+
+/* Assumes _data is declared as an array of uint. */
+#define gpu_attr_load_short4_snorm(_data, _stride_and_offset, _i) \
+  gpu_attr_decode_short4_to_float4_snorm(_data[gpu_attr_load_index(_i, _stride_and_offset) + 0], \
+                                         _data[gpu_attr_load_index(_i, _stride_and_offset) + 1])

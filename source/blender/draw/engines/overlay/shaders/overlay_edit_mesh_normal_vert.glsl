@@ -50,16 +50,19 @@ void main()
 
   vec3 nor;
 #if defined(FACE_NORMAL)
-  nor = gpu_attr_load_snorm1010102(norAndFlag, gpu_attr_0, vert_i).xyz;
+  nor = gpu_attr_load_uint_1010102_snorm(norAndFlag, gpu_attr_0, vert_i).xyz;
   finalColor = colorNormal;
 #elif defined(VERT_NORMAL)
-  nor = gpu_attr_load_snorm1010102(vnor, gpu_attr_0, vert_i).xyz;
+  nor = gpu_attr_load_uint_1010102_snorm(vnor, gpu_attr_0, vert_i).xyz;
   finalColor = colorVNormal;
 #elif defined(LOOP_NORMAL)
-#  if defined(HQ_NORMAL)
+#  if defined(FLOAT_NORMAL)
+  /* Path for opensubdiv. To be phased out at some point. */
   nor = gpu_attr_load_float3(lnor, gpu_attr_0, vert_i);
+#  elif defined(SHORT_NORMAL)
+  nor = gpu_attr_load_short4_snorm(lnor, gpu_attr_0, vert_i).xyz;
 #  else
-  nor = gpu_attr_load_snorm1010102(lnor, gpu_attr_0, vert_i).xyz;
+  nor = gpu_attr_load_uint_1010102_snorm(lnor, gpu_attr_0, vert_i).xyz;
 #  endif
   finalColor = colorLNormal;
 #else

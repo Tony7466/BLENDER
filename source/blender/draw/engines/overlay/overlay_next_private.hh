@@ -145,7 +145,7 @@ class ShaderModule {
   ShaderPtr background_clip_bound = shader("overlay_clipbound");
   ShaderPtr mesh_analysis;
   ShaderPtr mesh_face_normal;
-  ShaderPtr mesh_loop_normal, mesh_loop_normal_hq;
+  ShaderPtr mesh_loop_normal, mesh_loop_normal_hq, mesh_loop_normal_subdiv;
   ShaderPtr mesh_vert_normal;
 
   /** Selectable Shaders */
