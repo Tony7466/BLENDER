@@ -951,25 +951,25 @@ static bool draw_subdiv_topology_info_cb(const bke::subdiv::ForeachContext *fore
     GPU_vertbuf_init_with_format_ex(
         *cache->edges_draw_flag, get_origindex_format(), GPU_USAGE_DYNAMIC);
     GPU_vertbuf_data_alloc(*cache->edges_draw_flag, cache->num_subdiv_loops);
+
+    cache->subdiv_loop_subdiv_vert_index = static_cast<int *>(
+        MEM_mallocN(cache->num_subdiv_loops * sizeof(int), "subdiv_loop_subdiv_vert_index"));
+
+    cache->subdiv_loop_subdiv_edge_index = static_cast<int *>(
+        MEM_mallocN(cache->num_subdiv_loops * sizeof(int), "subdiv_loop_subdiv_edge_index"));
+
+    cache->subdiv_loop_face_index = static_cast<int *>(
+        MEM_mallocN(cache->num_subdiv_loops * sizeof(int), "subdiv_loop_face_index"));
+
+    /* Initialize context pointers and temporary buffers. */
+    ctx->patch_coords = cache->patch_coords->data<CompressedPatchCoord>().data();
+    ctx->subdiv_loop_vert_index = cache->verts_orig_index->data<int>().data();
+    ctx->subdiv_loop_edge_index = cache->edges_orig_index->data<int>().data();
+    ctx->subdiv_loop_edge_draw_flag = cache->edges_draw_flag->data<int>().data();
+    ctx->subdiv_loop_subdiv_vert_index = cache->subdiv_loop_subdiv_vert_index;
+    ctx->subdiv_loop_subdiv_edge_index = cache->subdiv_loop_subdiv_edge_index;
+    ctx->subdiv_loop_face_index = cache->subdiv_loop_face_index;
   }
-
-  cache->subdiv_loop_subdiv_vert_index = static_cast<int *>(
-      MEM_mallocN(cache->num_subdiv_loops * sizeof(int), "subdiv_loop_subdiv_vert_index"));
-
-  cache->subdiv_loop_subdiv_edge_index = static_cast<int *>(
-      MEM_mallocN(cache->num_subdiv_loops * sizeof(int), "subdiv_loop_subdiv_edge_index"));
-
-  cache->subdiv_loop_face_index = static_cast<int *>(
-      MEM_mallocN(cache->num_subdiv_loops * sizeof(int), "subdiv_loop_face_index"));
-
-  /* Initialize context pointers and temporary buffers. */
-  ctx->patch_coords = cache->patch_coords->data<CompressedPatchCoord>().data();
-  ctx->subdiv_loop_vert_index = cache->verts_orig_index->data<int>().data();
-  ctx->subdiv_loop_edge_index = cache->edges_orig_index->data<int>().data();
-  ctx->subdiv_loop_edge_draw_flag = cache->edges_draw_flag->data<int>().data();
-  ctx->subdiv_loop_subdiv_vert_index = cache->subdiv_loop_subdiv_vert_index;
-  ctx->subdiv_loop_subdiv_edge_index = cache->subdiv_loop_subdiv_edge_index;
-  ctx->subdiv_loop_face_index = cache->subdiv_loop_face_index;
 
   ctx->orig_index_vert = static_cast<const int *>(
       CustomData_get_layer(&ctx->coarse_mesh->vert_data, CD_ORIGINDEX));
@@ -1245,22 +1245,24 @@ static bool draw_subdiv_build_cache(DRWSubdivCache &cache,
 
   /* Save coordinates for corners, as attributes may vary for each loop connected to the same
    * vertex. */
-  memcpy(cache.corner_patch_coords->data<CompressedPatchCoord>().data(),
-         cache_building_context.patch_coords,
-         sizeof(CompressedPatchCoord) * cache.num_subdiv_loops);
+  if (cache.num_subdiv_loops > 0) {
+    memcpy(cache.corner_patch_coords->data<CompressedPatchCoord>().data(),
+           cache_building_context.patch_coords,
+           sizeof(CompressedPatchCoord) * cache.num_subdiv_loops);
 
-  for (int i = 0; i < cache.num_subdiv_loops; i++) {
-    const int vertex = cache_building_context.subdiv_loop_subdiv_vert_index[i];
-    if (first_loop_index[vertex] != -1) {
-      continue;
+    for (int i = 0; i < cache.num_subdiv_loops; i++) {
+      const int vertex = cache_building_context.subdiv_loop_subdiv_vert_index[i];
+      if (first_loop_index[vertex] != -1) {
+        continue;
+      }
+      first_loop_index[vertex] = i;
     }
-    first_loop_index[vertex] = i;
-  }
 
-  for (int i = 0; i < cache.num_subdiv_loops; i++) {
-    const int vertex = cache_building_context.subdiv_loop_subdiv_vert_index[i];
-    cache_building_context.patch_coords[i] =
-        cache_building_context.patch_coords[first_loop_index[vertex]];
+    for (int i = 0; i < cache.num_subdiv_loops; i++) {
+      const int vertex = cache_building_context.subdiv_loop_subdiv_vert_index[i];
+      cache_building_context.patch_coords[i] =
+          cache_building_context.patch_coords[first_loop_index[vertex]];
+    }
   }
 
   /* Cleanup. */
