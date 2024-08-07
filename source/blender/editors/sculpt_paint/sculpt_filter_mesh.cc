@@ -1252,13 +1252,11 @@ static void calc_sharpen_filter(const Sculpt &sd,
             const float3 &position = positions_eval[vert];
 
             float3 disp_sharpen(0.0f);
-            SculptVertexNeighborIter ni;
-            SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (ss, PBVHVertRef{vert}, ni) {
-              float3 disp_n = positions_eval[ni.index] - position;
-              disp_n *= ss.filter_cache->sharpen_factor[ni.index];
+            for (const int neighbor : neighbors[i]) {
+              float3 disp_n = positions_eval[neighbor] - position;
+              disp_n *= ss.filter_cache->sharpen_factor[neighbor];
               disp_sharpen += disp_n;
             }
-            SCULPT_VERTEX_NEIGHBORS_ITER_END(ni);
 
             disp_sharpen *= (1.0f - ss.filter_cache->sharpen_factor[vert]);
 
