@@ -1046,16 +1046,13 @@ static int sequencer_connect_exec(bContext *C, wmOperator * /*op*/)
 
 void SEQUENCER_OT_connect(wmOperatorType *ot)
 {
-  /* Identifiers. */
   ot->name = "Connect Strips";
   ot->idname = "SEQUENCER_OT_connect";
   ot->description = "Connect strips so that they are selected together";
 
-  /* Api callbacks. */
   ot->exec = sequencer_connect_exec;
   ot->poll = sequencer_edit_poll;
 
-  /* Flags. */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
@@ -1088,16 +1085,13 @@ static int sequencer_disconnect_exec(bContext *C, wmOperator * /*op*/)
 
 void SEQUENCER_OT_disconnect(wmOperatorType *ot)
 {
-  /* Identifiers. */
   ot->name = "Disconnect Strips";
   ot->idname = "SEQUENCER_OT_disconnect";
   ot->description = "Disconnect selected strips so that they can be selected individually";
 
-  /* Api callbacks. */
   ot->exec = sequencer_disconnect_exec;
   ot->poll = sequencer_edit_poll;
 
-  /* Flags. */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
