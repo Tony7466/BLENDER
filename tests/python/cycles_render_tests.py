@@ -22,12 +22,13 @@ BLOCKLIST_ALL = [
     "visibility_particles.blend",
 ]
 
+# Blocklist that disables OSL specific tests for configurations that do not support OSL backend.
 BLOCKLIST_EXPLICIT_OSL = [
-    # OSL only supported on CPU.
     '.*_osl.blend',
     'osl_.*.blend',
 ]
 
+# Blocklist for SVM tests that are forced to run with OSL to test consistency between the two backends.
 BLOCKLIST_OSL = [
     # Block tests that fail with OSL due to differences from SVM.
     # Note: Most of the tests below are expected to be different between OSL and SVM
@@ -91,7 +92,7 @@ BLOCKLIST_OPTIX_OSL = [
     'bump_with_displacement.blend',
     'ray_portal.blend',
     # TODO: Investigate every other failing case and add them here.
-    # Note: Many tests are failing due to CUDA errors. Some are these are driver issues that NVIDIA is currently looking into.
+    # Note: Many tests are failing due to CUDA errors. Some of these are driver issues that NVIDIA is currently looking into.
     #
     # Currently failing tests that aren't in this list are:
     # ray_portal*.blend - CUDA error
@@ -138,7 +139,7 @@ BLOCKLIST_GPU = [
 ]
 
 
-class Cycles_Report(render_report.Report):
+class CyclesReport(render_report.Report):
     def __init__(self, title, output_dir, oiiotool, device=None, blocklist=[], osl=False):
         super().__init__(title, output_dir, oiiotool, device=device, blocklist=blocklist)
         self.osl = osl
@@ -226,7 +227,7 @@ def main():
     if args.osl:
         blocklist += BLOCKLIST_OSL
 
-    report = Cycles_Report('Cycles', output_dir, oiiotool, device, blocklist, args.osl)
+    report = CyclesReport('Cycles', output_dir, oiiotool, device, blocklist, args.osl)
     report.set_pixelated(True)
     report.set_reference_dir("cycles_renders")
     if device == 'CPU':
