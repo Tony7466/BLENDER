@@ -242,7 +242,7 @@ void calc_brush_distances(const SculptSession &ss,
                           MutableSpan<float> r_distances);
 void calc_brush_distances_sq(const SculptSession &ss,
                              Span<float3> positions,
-                             const eBrushFalloffShape falloff_shape,
+                             eBrushFalloffShape falloff_shape,
                              MutableSpan<float> r_distances);
 
 /** Set the factor to zero for all distances greater than the radius. */
