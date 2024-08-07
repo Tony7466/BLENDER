@@ -1391,6 +1391,7 @@ static void calc_sharpen_filter(const Sculpt &sd,
     }
     case bke::pbvh::Type::BMesh: {
       BMesh &bm = *ss.bm;
+      BM_mesh_elem_index_ensure(&bm, BM_VERT);
       threading::EnumerableThreadSpecific<LocalData> all_tls;
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
         LocalData &tls = all_tls.local();
@@ -1425,9 +1426,10 @@ static void calc_sharpen_filter(const Sculpt &sd,
 
           int i = 0;
           for (BMVert *vert : verts) {
-            const float3 &position = vert->co;
+            const float3 position = vert->co;
 
             float3 disp_sharpen(0.0f);
+            neighbors.clear();
             for (const BMVert *neighbor : vert_neighbors_get_bmesh(*vert, neighbors)) {
               float3 disp_n = float3(neighbor->co) - position;
               disp_n *= ss.filter_cache->sharpen_factor[BM_elem_index_get(neighbor)];
