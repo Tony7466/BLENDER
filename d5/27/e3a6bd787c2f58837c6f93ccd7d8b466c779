@@ -3,3 +3,4 @@ Referenced by pull request #125268, Fix #125157: Sculpt multires crashes on box 
 Referenced by commit 338140f1e68612ba6756a016296ddc93ffc973dd, Fix #125157: Sculpt multires crashes on box mask and duplicated stroke
 Referenced by pull request #125396, Fix #125375: Sculpt undo with duplicate object causes crash
 Referenced by commit 8a812e334d07fa8be186bc66f5a14a9ba86e702d, Fix #125375: Sculpt undo with duplicate object causes crash
+Referenced by pull request #126020, Fix #125375: Sculpt undo with duplicate object causes crash
