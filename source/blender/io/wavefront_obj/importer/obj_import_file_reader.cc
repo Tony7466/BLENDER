@@ -85,18 +85,7 @@ static void geom_add_vertex(const char *p, const char *end, GlobalVertices &r_gl
     if (srgb.x >= 0 && srgb.y >= 0 && srgb.z >= 0) {
       float3 linear;
       srgb_to_linearrgb_v3_v3(linear, srgb);
-
-      auto &blocks = r_global_vertices.vertex_colors;
-      /* If we don't have vertex colors yet, or the previous vertex
-       * was without color, we need to start a new vertex colors block. */
-      if (blocks.is_empty() || (blocks.last().start_vertex_index + blocks.last().colors.size() !=
-                                r_global_vertices.vertices.size() - 1))
-      {
-        GlobalVertices::VertexColorsBlock block;
-        block.start_vertex_index = r_global_vertices.vertices.size() - 1;
-        blocks.append(block);
-      }
-      blocks.last().colors.append(linear);
+      r_global_vertices.set_vertex_color(r_global_vertices.vertices.size() - 1, linear);
     }
   }
   UNUSED_VARS(p);
@@ -123,20 +112,9 @@ static void geom_add_mrgb_colors(const char *p, const char *end, GlobalVertices 
     float linear[4];
     srgb_to_linearrgb_uchar4(linear, srgb);
 
-    auto &blocks = r_global_vertices.vertex_colors;
-    /* If we don't have vertex colors yet, or the previous vertex
-     * was without color, we need to start a new vertex colors block. */
-    if (blocks.is_empty() || (blocks.last().start_vertex_index + blocks.last().colors.size() !=
-                              r_global_vertices.vertices.size()))
-    {
-      GlobalVertices::VertexColorsBlock block;
-      block.start_vertex_index = r_global_vertices.vertices.size();
-      blocks.append(block);
-    }
-    blocks.last().colors.append({linear[0], linear[1], linear[2]});
-    /* MRGB colors are specified after vertex positions; each new color
-     * "pushes" the vertex colors block further back into which vertices it is for. */
-    blocks.last().start_vertex_index--;
+    /* MRGB colors are specified after vertex positions;
+     * the colors go in the same order as the positions. */
+    r_global_vertices.vertex_colors.append(float3(linear[0], linear[1], linear[2]));
 
     p += mrgb_length;
   }
