@@ -1241,10 +1241,64 @@ static void calc_surface_smooth_filter(const Sculpt &sd,
                 object, *ss.filter_cache->automasking, *nodes[i], grids, factors);
           }
           scale_factors(factors, strength);
+          clamp_factors(factors, 0.0f, 1.0f);
 
+          tls.average_positions.resize(positions.size());
+          const MutableSpan<float3> average_positions = tls.average_positions;
+          smooth::neighbor_position_average_grids(subdiv_ccg, grids, average_positions);
+
+          tls.laplacian_disp.resize(positions.size());
+          const MutableSpan<float3> laplacian_disp = tls.laplacian_disp;
           tls.translations.resize(positions.size());
           const MutableSpan<float3> translations = tls.translations;
-          // TODO
+          smooth::surface_smooth_laplacian_step(positions,
+                                                orig_data.positions,
+                                                average_positions,
+                                                ss.filter_cache->surface_smooth_shape_preservation,
+                                                laplacian_disp,
+                                                translations);
+          scale_translations(translations, factors);
+
+          scatter_data_grids(subdiv_ccg, laplacian_disp.as_span(), grids, all_laplacian_disp);
+
+          zero_disabled_axis_components(*ss.filter_cache, translations);
+          clip_and_lock_translations(sd, ss, orig_data.positions, translations);
+          apply_translations(translations, grids, subdiv_ccg);
+
+          BKE_pbvh_node_mark_positions_update(nodes[i]);
+        }
+      });
+      threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+        LocalData &tls = all_tls.local();
+        for (const int i : range) {
+          const Span<int> grids = bke::pbvh::node_grid_indices(*nodes[i]);
+          const OrigPositionData orig_data = orig_position_data_get_grids(object, *nodes[i]);
+
+          tls.factors.resize(orig_data.positions.size());
+          const MutableSpan<float> factors = tls.factors;
+          fill_factor_from_hide_and_mask(subdiv_ccg, grids, factors);
+          if (ss.filter_cache->automasking) {
+            auto_mask::calc_grids_factors(
+                object, *ss.filter_cache->automasking, *nodes[i], grids, factors);
+          }
+          scale_factors(factors, strength);
+          clamp_factors(factors, 0.0f, 1.0f);
+
+          const MutableSpan<float3> laplacian_disp = gather_data_grids(
+              subdiv_ccg, all_laplacian_disp.as_span(), grids, tls.laplacian_disp);
+
+          tls.average_positions.resize(orig_data.positions.size());
+          const MutableSpan<float3> average_laplacian_disps = tls.average_positions;
+          smooth::neighbor_data_average_mesh(
+              all_laplacian_disp.as_span(), tls.vert_neighbors, average_laplacian_disps);
+
+          tls.translations.resize(orig_data.positions.size());
+          const MutableSpan<float3> translations = tls.translations;
+          smooth::surface_smooth_displace_step(laplacian_disp,
+                                               average_laplacian_disps,
+                                               ss.filter_cache->surface_smooth_current_vertex,
+                                               translations);
+          scale_translations(translations, factors);
 
           zero_disabled_axis_components(*ss.filter_cache, translations);
           clip_and_lock_translations(sd, ss, orig_data.positions, translations);
@@ -1275,10 +1329,66 @@ static void calc_surface_smooth_filter(const Sculpt &sd,
                 object, *ss.filter_cache->automasking, *nodes[i], verts, factors);
           }
           scale_factors(factors, strength);
+          clamp_factors(factors, 0.0f, 1.0f);
+
+          tls.average_positions.resize(verts.size());
+          const MutableSpan<float3> average_positions = tls.average_positions;
+          smooth::neighbor_position_average_bmesh(verts, average_positions);
+
+          tls.laplacian_disp.resize(verts.size());
+          const MutableSpan<float3> laplacian_disp = tls.laplacian_disp;
+          tls.translations.resize(verts.size());
+          const MutableSpan<float3> translations = tls.translations;
+          smooth::surface_smooth_laplacian_step(positions,
+                                                orig_positions,
+                                                average_positions,
+                                                ss.filter_cache->surface_smooth_shape_preservation,
+                                                laplacian_disp,
+                                                translations);
+          scale_translations(translations, factors);
+
+          scatter_data_vert_bmesh(laplacian_disp.as_span(), verts, all_laplacian_disp);
+
+          zero_disabled_axis_components(*ss.filter_cache, translations);
+          clip_and_lock_translations(sd, ss, orig_positions, translations);
+          apply_translations(translations, verts);
+
+          BKE_pbvh_node_mark_positions_update(nodes[i]);
+        }
+      });
+      threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+        LocalData &tls = all_tls.local();
+        for (const int i : range) {
+          const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(nodes[i]);
+          const Span<float3> positions = gather_bmesh_positions(verts, tls.positions);
+          Array<float3> orig_positions(verts.size());
+          Array<float3> orig_normals(verts.size());
+          orig_position_data_gather_bmesh(*ss.bm_log, verts, orig_positions, orig_normals);
+
+          tls.factors.resize(verts.size());
+          const MutableSpan<float> factors = tls.factors;
+          fill_factor_from_hide_and_mask(bm, verts, factors);
+          if (ss.filter_cache->automasking) {
+            auto_mask::calc_vert_factors(
+                object, *ss.filter_cache->automasking, *nodes[i], verts, factors);
+          }
+          scale_factors(factors, strength);
+          clamp_factors(factors, 0.0f, 1.0f);
+
+          const MutableSpan<float3> laplacian_disp = gather_data_vert_bmesh(
+              all_laplacian_disp.as_span(), verts, tls.laplacian_disp);
+
+          tls.average_positions.resize(verts.size());
+          const MutableSpan<float3> average_laplacian_disps = tls.average_positions;
+          smooth::average_data_bmesh(all_laplacian_disp.as_span(), verts, average_laplacian_disps);
 
           tls.translations.resize(verts.size());
           const MutableSpan<float3> translations = tls.translations;
-          // TODO
+          smooth::surface_smooth_displace_step(laplacian_disp,
+                                               average_laplacian_disps,
+                                               ss.filter_cache->surface_smooth_current_vertex,
+                                               translations);
+          scale_translations(translations, factors);
 
           zero_disabled_axis_components(*ss.filter_cache, translations);
           clip_and_lock_translations(sd, ss, orig_positions, translations);
