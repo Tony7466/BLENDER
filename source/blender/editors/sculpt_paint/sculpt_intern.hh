@@ -1684,8 +1684,6 @@ namespace blender::ed::sculpt_paint::smooth {
  */
 void bmesh_four_neighbor_average(float avg[3], const float3 &direction, const BMVert *v);
 
-float3 neighbor_coords_average(SculptSession &ss, PBVHVertRef vertex);
-
 void neighbor_color_average(OffsetIndices<int> faces,
                             Span<int> corner_verts,
                             GroupedSpan<int> vert_to_face_map,

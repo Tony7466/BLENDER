@@ -357,27 +357,6 @@ void bmesh_four_neighbor_average(float avg[3], const float3 &direction, const BM
   }
 }
 
-/* Generic functions for laplacian smoothing. These functions do not take boundary vertices into
- * account. */
-
-float3 neighbor_coords_average(SculptSession &ss, PBVHVertRef vertex)
-{
-  float3 avg(0);
-  int total = 0;
-
-  SculptVertexNeighborIter ni;
-  SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (ss, vertex, ni) {
-    avg += SCULPT_vertex_co_get(ss, ni.vertex);
-    total++;
-  }
-  SCULPT_VERTEX_NEIGHBORS_ITER_END(ni);
-
-  if (total > 0) {
-    return avg / total;
-  }
-  return SCULPT_vertex_co_get(ss, vertex);
-}
-
 void neighbor_color_average(const OffsetIndices<int> faces,
                             const Span<int> corner_verts,
                             const GroupedSpan<int> vert_to_face_map,
