@@ -2249,7 +2249,7 @@ struct GeometryNodesLazyFunctionBuilder {
    * Interface boolean sockets that have to be passed in from the outside and indicate whether a
    * specific output will be used.
    */
-  Vector<const lf::GraphInputSocket *> group_output_used_sockets_;
+  Vector<lf::GraphInputSocket *> group_output_used_sockets_;
   /**
    * Interface boolean sockets that can be used as group output that indicate whether a specific
    * input will be used (this may depend on the used outputs as well as other inputs).
@@ -3941,7 +3941,12 @@ struct GeometryNodesLazyFunctionBuilder {
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
     }
 
-    /* TODO: Need socket usage? */
+    /* The warning node is used if any of the output sockets is used. */
+    lf::OutputSocket *warning_node_usage = this->or_socket_usages(group_output_used_sockets_,
+                                                                  graph_params);
+    for (const bNodeSocket *socket : bnode.input_sockets()) {
+      graph_params.usage_by_bsocket.add(socket, warning_node_usage);
+    }
   }
 
   void build_menu_switch_node(const bNode &bnode, BuildGraphParams &graph_params)
