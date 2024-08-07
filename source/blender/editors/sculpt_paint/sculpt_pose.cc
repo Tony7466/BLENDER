@@ -195,7 +195,9 @@ static void calc_mesh(const Sculpt &sd,
       write_translations(sd, object, positions_eval, verts, translations, positions_orig);
       break;
     case BRUSH_DEFORM_TARGET_CLOTH_SIM:
-      apply_translations(translations, verts, cache.cloth_sim->deformation_pos);
+      add_arrays(translations, orig_data.positions);
+      scatter_data_mesh(
+          translations.as_span(), verts, cache.cloth_sim->deformation_pos.as_mutable_span());
       break;
   }
 }
@@ -812,7 +814,7 @@ static std::unique_ptr<SculptPoseIKChain> pose_ik_chain_init_face_sets(Object &o
 
   int current_face_set = SCULPT_FACE_SET_NONE;
 
-  PBVHVertRef current_vertex = SCULPT_active_vertex_get(ss);
+  PBVHVertRef current_vertex = ss.active_vertex();
 
   for (const int i : ik_chain->segments.index_range()) {
     const bool is_first_iteration = i == 0;
@@ -935,7 +937,7 @@ static std::unique_ptr<SculptPoseIKChain> pose_ik_chain_init_face_sets_fk(
 
   std::unique_ptr<SculptPoseIKChain> ik_chain = pose_ik_chain_new(1, totvert);
 
-  const PBVHVertRef active_vertex = SCULPT_active_vertex_get(ss);
+  const PBVHVertRef active_vertex = ss.active_vertex();
   int active_vertex_index = BKE_pbvh_vertex_to_index(*ss.pbvh, active_vertex);
 
   const int active_face_set = face_set::active_face_set_get(ss);
