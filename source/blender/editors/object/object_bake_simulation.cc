@@ -1111,6 +1111,7 @@ static int unpack_single_bake_exec(bContext *C, wmOperator *op)
   if (!bake_path) {
     const char *base_path = ID_BLEND_PATH(bmain, &object->id);
     if (StringRef(base_path).is_empty()) {
+      WM_report(RPT_ERROR, "Can't unpack without a file path");
       return OPERATOR_CANCELLED;
     }
     const std::string directory = bake::get_default_node_bake_directory(
