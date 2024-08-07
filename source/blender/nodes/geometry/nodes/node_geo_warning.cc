@@ -4,6 +4,11 @@
 
 #include "node_geometry_util.hh"
 
+#include "UI_interface.hh"
+#include "UI_resources.hh"
+
+#include "NOD_rna_define.hh"
+
 namespace blender::nodes::node_geo_warning_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
@@ -41,10 +46,48 @@ class LazyFunctionForWarningNode : public LazyFunction {
     {
       tree_logger->node_warnings.append(
           *tree_logger->allocator,
-          {node_.identifier, {NodeWarningType::Warning, std::move(message)}});
+          {node_.identifier, {this->get_warning_type(), std::move(message)}});
     }
   }
+
+  NodeWarningType get_warning_type() const
+  {
+    switch (NodeGeometryWarningType(node_.custom1)) {
+      case GEO_NODE_WARNING_TYPE_ERROR:
+        return NodeWarningType::Error;
+      case GEO_NODE_WARNING_TYPE_WARNING:
+        return NodeWarningType::Warning;
+      case GEO_NODE_WARNING_TYPE_INFO:
+        return NodeWarningType::Info;
+    }
+    BLI_assert_unreachable();
+    return NodeWarningType::Error;
+  }
 };
+
+static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
+{
+  uiLayoutSetPropSep(layout, true);
+  uiLayoutSetPropDecorate(layout, false);
+  uiItemR(layout, ptr, "warning_type", UI_ITEM_NONE, "", ICON_NONE);
+}
+
+static void node_rna(StructRNA *srna)
+{
+  static EnumPropertyItem warning_type_items[] = {
+      {GEO_NODE_WARNING_TYPE_ERROR, "ERROR", 0, "Error", ""},
+      {GEO_NODE_WARNING_TYPE_WARNING, "WARNING", 0, "Warning", ""},
+      {GEO_NODE_WARNING_TYPE_INFO, "INFO", 0, "Info", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  RNA_def_node_enum(srna,
+                    "warning_type",
+                    "Warning Type",
+                    "",
+                    warning_type_items,
+                    NOD_inline_enum_accessors(custom1));
+}
 
 static void node_register()
 {
@@ -52,7 +95,10 @@ static void node_register()
 
   geo_node_type_base(&ntype, GEO_NODE_WARNING, "Warning", NODE_CLASS_OUTPUT);
   ntype.declare = node_declare;
+  ntype.draw_buttons = node_layout;
   blender::bke::nodeRegisterType(&ntype);
+
+  node_rna(ntype.rna_ext.srna);
 }
 NOD_REGISTER_NODE(node_register)
 

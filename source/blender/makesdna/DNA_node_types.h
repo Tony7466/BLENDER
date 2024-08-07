@@ -2970,3 +2970,9 @@ typedef enum NodeGeometryTransformMode {
   GEO_NODE_TRANSFORM_MODE_COMPONENTS = 0,
   GEO_NODE_TRANSFORM_MODE_MATRIX = 1,
 } NodeGeometryTransformMode;
+
+typedef enum NodeGeometryWarningType {
+  GEO_NODE_WARNING_TYPE_ERROR = 0,
+  GEO_NODE_WARNING_TYPE_WARNING = 1,
+  GEO_NODE_WARNING_TYPE_INFO = 2,
+} NodeGeometryWarningType;
