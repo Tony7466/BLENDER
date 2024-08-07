@@ -278,6 +278,12 @@ def main() -> None:
     use_default_paths = not (bool(args.paths) or bool(args.changed_only))
 
     paths = compute_paths(args.paths, use_default_paths)
+
+    no_files_to_format = bool(args.paths) and not bool(paths)
+    if no_files_to_format:
+        print("Skip format: no target to format")
+        return
+
     print("Operating on:" + (" ({:d} changed paths)".format(len(paths)) if args.changed_only else ""))
     for p in paths:
         print(" ", p)
