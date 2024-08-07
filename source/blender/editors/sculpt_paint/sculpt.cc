@@ -1910,7 +1910,7 @@ static void calc_area_normal_and_center_node_mesh(const Object &object,
 
       tls.distances.reinitialize(verts.size());
       const MutableSpan<float> distances_sq = tls.distances;
-      calc_brush_distances_sq(
+      calc_brush_distances_squared(
           ss, orig_positions, eBrushFalloffShape(brush.falloff_shape), distances_sq);
 
       for (const int i : verts.index_range()) {
@@ -1940,7 +1940,7 @@ static void calc_area_normal_and_center_node_mesh(const Object &object,
 
   tls.distances.reinitialize(verts.size());
   const MutableSpan<float> distances_sq = tls.distances;
-  calc_brush_distances_sq(
+  calc_brush_distances_squared(
       ss, vert_positions, verts, eBrushFalloffShape(brush.falloff_shape), distances_sq);
 
   for (const int i : verts.index_range()) {
@@ -1997,7 +1997,7 @@ static void calc_area_normal_and_center_node_grids(const Object &object,
 
       tls.distances.reinitialize(orig_positions.size());
       const MutableSpan<float> distances_sq = tls.distances;
-      calc_brush_distances_sq(
+      calc_brush_distances_squared(
           ss, orig_positions, eBrushFalloffShape(brush.falloff_shape), distances_sq);
 
       for (const int i : grids.index_range()) {
@@ -2033,7 +2033,8 @@ static void calc_area_normal_and_center_node_grids(const Object &object,
   const Span<float3> positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
   tls.distances.reinitialize(positions.size());
   const MutableSpan<float> distances_sq = tls.distances;
-  calc_brush_distances_sq(ss, positions, eBrushFalloffShape(brush.falloff_shape), distances_sq);
+  calc_brush_distances_squared(
+      ss, positions, eBrushFalloffShape(brush.falloff_shape), distances_sq);
 
   for (const int i : grids.index_range()) {
     const int node_verts_start = i * key.grid_area;
@@ -2118,7 +2119,8 @@ static void calc_area_normal_and_center_node_bmesh(const Object &object,
 
     tls.distances.reinitialize(positions.size());
     const MutableSpan<float> distances_sq = tls.distances;
-    calc_brush_distances_sq(ss, positions, eBrushFalloffShape(brush.falloff_shape), distances_sq);
+    calc_brush_distances_squared(
+        ss, positions, eBrushFalloffShape(brush.falloff_shape), distances_sq);
 
     for (int i = 0; i < orco_tris_num; i++) {
       const bool normal_test_r = use_area_nos && distances_sq[i] <= normal_radius_sq;
@@ -2153,7 +2155,8 @@ static void calc_area_normal_and_center_node_bmesh(const Object &object,
 
     tls.distances.reinitialize(positions.size());
     const MutableSpan<float> distances_sq = tls.distances;
-    calc_brush_distances_sq(ss, positions, eBrushFalloffShape(brush.falloff_shape), distances_sq);
+    calc_brush_distances_squared(
+        ss, positions, eBrushFalloffShape(brush.falloff_shape), distances_sq);
 
     int i = 0;
     for (BMVert *vert : verts) {
@@ -2186,7 +2189,8 @@ static void calc_area_normal_and_center_node_bmesh(const Object &object,
 
   tls.distances.reinitialize(positions.size());
   const MutableSpan<float> distances_sq = tls.distances;
-  calc_brush_distances_sq(ss, positions, eBrushFalloffShape(brush.falloff_shape), distances_sq);
+  calc_brush_distances_squared(
+      ss, positions, eBrushFalloffShape(brush.falloff_shape), distances_sq);
 
   int i = 0;
   for (BMVert *vert : verts) {
@@ -6878,11 +6882,11 @@ void filter_region_clip_factors(const SculptSession &ss,
   }
 }
 
-void calc_brush_distances_sq(const SculptSession &ss,
-                             const Span<float3> positions,
-                             const Span<int> verts,
-                             const eBrushFalloffShape falloff_shape,
-                             const MutableSpan<float> r_distances)
+void calc_brush_distances_squared(const SculptSession &ss,
+                                  const Span<float3> positions,
+                                  const Span<int> verts,
+                                  const eBrushFalloffShape falloff_shape,
+                                  const MutableSpan<float> r_distances)
 {
   BLI_assert(verts.size() == r_distances.size());
 
@@ -6911,16 +6915,16 @@ void calc_brush_distances(const SculptSession &ss,
                           const eBrushFalloffShape falloff_shape,
                           const MutableSpan<float> r_distances)
 {
-  calc_brush_distances_sq(ss, positions, verts, falloff_shape, r_distances);
+  calc_brush_distances_squared(ss, positions, verts, falloff_shape, r_distances);
   for (float &value : r_distances) {
     value = std::sqrt(value);
   }
 }
 
-void calc_brush_distances_sq(const SculptSession &ss,
-                             const Span<float3> positions,
-                             const eBrushFalloffShape falloff_shape,
-                             const MutableSpan<float> r_distances)
+void calc_brush_distances_squared(const SculptSession &ss,
+                                  const Span<float3> positions,
+                                  const eBrushFalloffShape falloff_shape,
+                                  const MutableSpan<float> r_distances)
 {
   BLI_assert(positions.size() == r_distances.size());
 
@@ -6948,7 +6952,7 @@ void calc_brush_distances(const SculptSession &ss,
                           const eBrushFalloffShape falloff_shape,
                           const MutableSpan<float> r_distances)
 {
-  calc_brush_distances_sq(ss, positions, falloff_shape, r_distances);
+  calc_brush_distances_squared(ss, positions, falloff_shape, r_distances);
   for (float &value : r_distances) {
     value = std::sqrt(value);
   }
