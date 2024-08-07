@@ -264,8 +264,15 @@ void extract_normals_subdiv(const MeshRenderData &mr,
                             gpu::VertBuf &pos_nor,
                             gpu::VertBuf &lnor)
 {
-  GPU_vertbuf_init_build_on_device(
-      lnor, get_subdiv_lnor_format(), subdiv_full_vbo_size(mr, subdiv_cache));
+  const int vbo_size = subdiv_full_vbo_size(mr, subdiv_cache);
+  const int loose_geom_start = subdiv_cache.num_subdiv_loops;
+
+  const float4 up(0.0f, 0.0f, 1.0f, 0.0f);
+  for (const int i : IndexRange::from_begin_end(loose_geom_start, vbo_size)) {
+    GPU_vertbuf_update_sub(&lnor, i * sizeof(float4), sizeof(float4), &up);
+  }
+
+  GPU_vertbuf_init_build_on_device(lnor, get_subdiv_lnor_format(), vbo_size);
   draw_subdiv_build_lnor_buffer(subdiv_cache, &pos_nor, &lnor);
 }
 
