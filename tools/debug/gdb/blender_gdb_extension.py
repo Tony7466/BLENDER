@@ -1,3 +1,26 @@
+'''
+This file can be loaded into GDB to improve the debugging experience.
+
+It has the following features:
+* Pretty printers for various types like `blender::Map` and `blender::IndexMask`.
+* Frame filters to reduce the complexity of backtraces.
+
+The basic setup is simple. Add the following line to a `~/.gdbinit` file.
+Everything in this file is run by GDB when it is started.
+```
+source ~/blender-git/blender/tools/debug/gdb/blender_gdb_extension.py
+```
+
+Integration into code editors varies. For vscode, one has to install an
+extension that debugs with GDB and that supports to required features.
+For example the "Native Debug" extension. In the launch configuration
+use `"valuesFormatting": "prettyPrinters"` to show pretty-printer results
+in vscode.
+
+Frame filters are not yet support with this extension. Maybe that functionality
+will be added though: https://github.com/WebFreak001/code-debug/pull/436.
+'''
+
 import gdb
 from contextlib import contextmanager
 from gdb.FrameDecorator import FrameDecorator
