@@ -674,8 +674,11 @@ bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawing &draw
 /* BVHTree and associated data for 2D curve projection. */
 struct Curves2DBVHTree {
   BVHTree *tree = nullptr;
+  /* Projected coordinates for each tree element. */
   Array<float2> start_positions;
   Array<float2> end_positions;
+  /* BVH element index range for each drawing. */
+  Array<int> drawing_offsets;
 };
 
 /**

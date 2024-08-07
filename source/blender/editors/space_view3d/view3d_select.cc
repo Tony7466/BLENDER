@@ -445,10 +445,8 @@ static bool grease_pencil_select_operation(const ViewContext *vc,
     tree_data = ed::greasepencil::build_curves_2d_bvh_from_visible(
         *vc, *ob_eval, grease_pencil, drawings);
   }
+  OffsetIndices tree_data_by_drawing = OffsetIndices<int>(tree_data.drawing_offsets);
 
-  /* Range of points in tree data matching for the current curve, for re-using screen space
-   * positions. */
-  IndexRange tree_data_range = IndexRange();
   for (const int i_drawing : drawings.index_range()) {
     const ed::greasepencil::MutableDrawingInfo &info = drawings[i_drawing];
     bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
@@ -465,8 +463,7 @@ static bool grease_pencil_select_operation(const ViewContext *vc,
     if (use_segment_selection) {
       /* Range of points in tree data matching this curve, for re-using screen space positions.
        */
-      tree_data_range = tree_data_range.after(curves.points_num());
-
+      const IndexRange tree_data_range = tree_data_by_drawing[i_drawing];
       changed |= ed::greasepencil::apply_mask_as_segment_selection(
           curves, changed_element_mask, tree_data, tree_data_range, GrainSize(4096), sel_op);
     }
@@ -3261,6 +3258,7 @@ static bool ed_curves_select_pick(bContext &C, const int mval[2], const SelectPi
 
 struct ClosestGreasePencilDrawing {
   blender::StringRef selection_attribute_name;
+  int drawing_index = -1;
   blender::bke::greasepencil::Drawing *drawing = nullptr;
   blender::ed::curves::FindClosestData elem = {};
 };
@@ -3288,6 +3286,17 @@ static bool ed_grease_pencil_select_pick(bContext *C,
   /* Get selection domain from tool settings. */
   const bke::AttrDomain selection_domain = ED_grease_pencil_selection_domain_get(
       vc.scene->toolsettings);
+  const bool use_segment_selection = ED_grease_pencil_segment_selection_enabled(
+      vc.scene->toolsettings);
+
+  /* Construct BVH tree for segment selection. */
+  ed::greasepencil::Curves2DBVHTree tree_data;
+  BLI_SCOPED_DEFER([&]() { ed::greasepencil::free_curves_2d_bvh_data(tree_data); });
+  if (use_segment_selection) {
+    tree_data = ed::greasepencil::build_curves_2d_bvh_from_visible(
+        vc, *ob_eval, grease_pencil, drawings);
+  }
+  OffsetIndices tree_data_by_drawing = OffsetIndices<int>(tree_data.drawing_offsets);
 
   const ClosestGreasePencilDrawing closest = threading::parallel_reduce(
       drawings.index_range(),
@@ -3336,6 +3345,7 @@ static bool ed_grease_pencil_select_pick(bContext *C,
             if (new_closest_elem) {
               new_closest.selection_attribute_name = selection_attribute_name;
               new_closest.elem = *new_closest_elem;
+              new_closest.drawing_index = i;
               new_closest.drawing = &info.drawing;
             }
           };
@@ -3368,6 +3378,7 @@ static bool ed_grease_pencil_select_pick(bContext *C,
         if (!ed::curves::has_anything_selected(curves, elements)) {
           continue;
         }
+
         ed::curves::foreach_selection_attribute_writer(
             curves, selection_domain, [](bke::GSpanAttributeWriter &selection) {
               ed::curves::fill_selection_false(selection.span);
@@ -3388,24 +3399,24 @@ static bool ed_grease_pencil_select_pick(bContext *C,
     return deselected;
   }
 
-  if (selection_domain == bke::AttrDomain::Point) {
-    bke::GSpanAttributeWriter selection = ed::curves::ensure_selection_attribute(
-        closest.drawing->strokes_for_write(),
-        bke::AttrDomain::Point,
-        CD_PROP_BOOL,
-        closest.selection_attribute_name);
-    ed::curves::apply_selection_operation_at_index(
-        selection.span, closest.elem.index, params.sel_op);
-    selection.finish();
+  const IndexMask selection_mask = IndexRange::from_single(closest.elem.index);
+  if (use_segment_selection) {
+    /* Range of points in tree data matching this curve, for re-using screen space positions.
+     */
+    const IndexRange tree_data_range = tree_data_by_drawing[closest.drawing_index];
+    ed::greasepencil::apply_mask_as_segment_selection(closest.drawing->strokes_for_write(),
+                                                      selection_mask,
+                                                      tree_data,
+                                                      tree_data_range,
+                                                      GrainSize(4096),
+                                                      params.sel_op);
   }
-  else if (selection_domain == bke::AttrDomain::Curve) {
-    ed::curves::foreach_selection_attribute_writer(
-        closest.drawing->strokes_for_write(),
-        bke::AttrDomain::Curve,
-        [&](bke::GSpanAttributeWriter &selection) {
-          ed::curves::apply_selection_operation_at_index(
-              selection.span, closest.elem.index, params.sel_op);
-        });
+  else {
+    ed::greasepencil::apply_mask_as_selection(closest.drawing->strokes_for_write(),
+                                              selection_mask,
+                                              selection_domain,
+                                              GrainSize(4096),
+                                              params.sel_op);
   }
 
   /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a

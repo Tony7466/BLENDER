@@ -1334,6 +1334,7 @@ Curves2DBVHTree build_curves_2d_bvh_from_visible(const ViewContext &vc,
   data.tree = BLI_bvhtree_new(max_bvh_lines, 0.0f, 4, 6);
   data.start_positions.reinitialize(max_bvh_lines);
   data.end_positions.reinitialize(max_bvh_lines);
+  data.drawing_offsets.reinitialize(drawings.size() + 1);
 
   /* Insert a line for each point except end points. */
   for (const int i_drawing : drawings.index_range()) {
@@ -1347,6 +1348,8 @@ Curves2DBVHTree build_curves_2d_bvh_from_visible(const ViewContext &vc,
     const Span<float3> evaluated_positions = curves.evaluated_positions();
 
     const IndexMask curves_mask = curves.curves_range();
+
+    data.drawing_offsets[i_drawing] = evaluated_positions.size();
 
     curves_mask.foreach_index([&](const int i_curve) {
       const bool is_cyclic = cyclic[i_curve];
@@ -1382,6 +1385,8 @@ Curves2DBVHTree build_curves_2d_bvh_from_visible(const ViewContext &vc,
   }
 
   BLI_bvhtree_balance(data.tree);
+  offset_indices::accumulate_counts_to_offsets(data.drawing_offsets);
+
   return data;
 }
 
@@ -1391,6 +1396,9 @@ void free_curves_2d_bvh_data(Curves2DBVHTree &data)
     BLI_bvhtree_free(data.tree);
     data.tree = nullptr;
   }
+  data.drawing_offsets.reinitialize(0);
+  data.start_positions.reinitialize(0);
+  data.end_positions.reinitialize(0);
 }
 
 void find_curve_intersections(const bke::CurvesGeometry &curves,
