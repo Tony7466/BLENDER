@@ -1795,7 +1795,7 @@ const bNodeZoneType *zone_type_by_node_type(const int node_type);
     return *static_cast<const StorageT *>(node.storage); \
   }
 
-#define NODE_DEFAULT_MAX_WIDTH 700
-#define GROUP_NODE_DEFAULT_WIDTH 140
-#define GROUP_NODE_MAX_WIDTH NODE_DEFAULT_MAX_WIDTH
-#define GROUP_NODE_MIN_WIDTH 40
+constexpr int NODE_DEFAULT_MAX_WIDTH = 700;
+constexpr int GROUP_NODE_DEFAULT_WIDTH = 140;
+constexpr int GROUP_NODE_MAX_WIDTH = NODE_DEFAULT_MAX_WIDTH;
+constexpr int GROUP_NODE_MIN_WIDTH = 40;
