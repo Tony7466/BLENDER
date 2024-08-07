@@ -1125,6 +1125,8 @@ static void calc_surface_smooth_filter(const Sculpt &sd,
     Vector<float3> translations;
   };
   SculptSession &ss = *object.sculpt;
+  const float alpha = ss.filter_cache->surface_smooth_shape_preservation;
+  const float beta = ss.filter_cache->surface_smooth_current_vertex;
   const MutableSpan<float3> all_laplacian_disp = ss.filter_cache->surface_smooth_laplacian_disp;
   switch (ss.pbvh->type()) {
     case bke::pbvh::Type::Mesh: {
@@ -1167,7 +1169,7 @@ static void calc_surface_smooth_filter(const Sculpt &sd,
           smooth::surface_smooth_laplacian_step(positions,
                                                 orig_data.positions,
                                                 average_positions,
-                                                ss.filter_cache->surface_smooth_shape_preservation,
+                                                alpha,
                                                 laplacian_disp,
                                                 translations);
           scale_translations(translations, factors);
@@ -1209,10 +1211,8 @@ static void calc_surface_smooth_filter(const Sculpt &sd,
 
           tls.translations.resize(verts.size());
           const MutableSpan<float3> translations = tls.translations;
-          smooth::surface_smooth_displace_step(laplacian_disp,
-                                               average_laplacian_disps,
-                                               ss.filter_cache->surface_smooth_current_vertex,
-                                               translations);
+          smooth::surface_smooth_displace_step(
+              laplacian_disp, average_laplacian_disps, beta, translations);
           scale_translations(translations, factors);
 
           zero_disabled_axis_components(*ss.filter_cache, translations);
@@ -1254,7 +1254,7 @@ static void calc_surface_smooth_filter(const Sculpt &sd,
           smooth::surface_smooth_laplacian_step(positions,
                                                 orig_data.positions,
                                                 average_positions,
-                                                ss.filter_cache->surface_smooth_shape_preservation,
+                                                alpha,
                                                 laplacian_disp,
                                                 translations);
           scale_translations(translations, factors);
@@ -1294,10 +1294,8 @@ static void calc_surface_smooth_filter(const Sculpt &sd,
 
           tls.translations.resize(orig_data.positions.size());
           const MutableSpan<float3> translations = tls.translations;
-          smooth::surface_smooth_displace_step(laplacian_disp,
-                                               average_laplacian_disps,
-                                               ss.filter_cache->surface_smooth_current_vertex,
-                                               translations);
+          smooth::surface_smooth_displace_step(
+              laplacian_disp, average_laplacian_disps, beta, translations);
           scale_translations(translations, factors);
 
           zero_disabled_axis_components(*ss.filter_cache, translations);
@@ -1339,12 +1337,8 @@ static void calc_surface_smooth_filter(const Sculpt &sd,
           const MutableSpan<float3> laplacian_disp = tls.laplacian_disp;
           tls.translations.resize(verts.size());
           const MutableSpan<float3> translations = tls.translations;
-          smooth::surface_smooth_laplacian_step(positions,
-                                                orig_positions,
-                                                average_positions,
-                                                ss.filter_cache->surface_smooth_shape_preservation,
-                                                laplacian_disp,
-                                                translations);
+          smooth::surface_smooth_laplacian_step(
+              positions, orig_positions, average_positions, alpha, laplacian_disp, translations);
           scale_translations(translations, factors);
 
           scatter_data_vert_bmesh(laplacian_disp.as_span(), verts, all_laplacian_disp);
@@ -1384,10 +1378,8 @@ static void calc_surface_smooth_filter(const Sculpt &sd,
 
           tls.translations.resize(verts.size());
           const MutableSpan<float3> translations = tls.translations;
-          smooth::surface_smooth_displace_step(laplacian_disp,
-                                               average_laplacian_disps,
-                                               ss.filter_cache->surface_smooth_current_vertex,
-                                               translations);
+          smooth::surface_smooth_displace_step(
+              laplacian_disp, average_laplacian_disps, beta, translations);
           scale_translations(translations, factors);
 
           zero_disabled_axis_components(*ss.filter_cache, translations);
