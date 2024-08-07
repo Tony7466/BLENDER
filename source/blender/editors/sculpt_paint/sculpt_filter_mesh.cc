@@ -1203,6 +1203,7 @@ static void calc_sharpen_filter(const Sculpt &sd,
     Vector<float3> positions;
     Vector<Vector<int>> vert_neighbors;
     Vector<float3> smooth_positions;
+    Vector<float> sharpen_factors;
     Vector<float3> translations;
   };
   SculptSession &ss = *object.sculpt;
@@ -1245,6 +1246,9 @@ static void calc_sharpen_filter(const Sculpt &sd,
           const MutableSpan<float3> smooth_positions = tls.smooth_positions;
           smooth::neighbor_data_average_mesh(positions_eval, neighbors, smooth_positions);
 
+          const Span<float> sharpen_factors = gather_data_mesh(
+              ss.filter_cache->sharpen_factor.as_span(), verts, tls.sharpen_factors);
+
           tls.translations.resize(verts.size());
           const MutableSpan<float3> translations = tls.translations;
           for (const int i : verts.index_range()) {
@@ -1258,7 +1262,7 @@ static void calc_sharpen_filter(const Sculpt &sd,
               disp_sharpen += disp_n;
             }
 
-            disp_sharpen *= (1.0f - ss.filter_cache->sharpen_factor[vert]);
+            disp_sharpen *= (1.0f - sharpen_factors[i]);
             translations[i] = disp_sharpen;
           }
 
@@ -1266,14 +1270,14 @@ static void calc_sharpen_filter(const Sculpt &sd,
             const int vert = verts[i];
 
             float3 disp_avg = smooth_positions[i] - positions[i];
-            disp_avg = disp_avg * smooth_ratio * pow2f(ss.filter_cache->sharpen_factor[vert]);
+            disp_avg = disp_avg * smooth_ratio * pow2f(sharpen_factors[i]);
             translations[i] += disp_avg;
             /* Intensify details. */
             if (ss.filter_cache->sharpen_intensify_detail_strength > 0.0f) {
               float3 detail_strength = ss.filter_cache->detail_directions[vert];
               translations[i] += detail_strength *
                                  -ss.filter_cache->sharpen_intensify_detail_strength *
-                                 ss.filter_cache->sharpen_factor[vert];
+                                 sharpen_factors[i];
             }
           }
 
