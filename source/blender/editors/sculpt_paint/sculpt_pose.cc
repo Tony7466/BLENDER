@@ -608,7 +608,8 @@ void calc_pose_data(Object &ob,
 
   /* Calculate the pose rotation point based on the boundaries of the brush factor. */
   flood_fill::FillData flood = flood_fill::init_fill(ss);
-  flood_fill::add_initial_with_symmetry(ob, ss, flood, ss.active_vertex(), !r_pose_factor.is_empty() ? radius : 0.0f);
+  flood_fill::add_initial_with_symmetry(
+      ob, ss, flood, ss.active_vertex(), !r_pose_factor.is_empty() ? radius : 0.0f);
 
   const int symm = SCULPT_mesh_symmetry_xyz_get(ob);
 
