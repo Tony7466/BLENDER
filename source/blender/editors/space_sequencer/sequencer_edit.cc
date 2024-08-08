@@ -1026,7 +1026,7 @@ void SEQUENCER_OT_unlock(wmOperatorType *ot)
 /** \name Connect Strips Operator
  * \{ */
 
-static int sequencer_connect_exec(bContext *C, wmOperator * /*op*/)
+static int sequencer_connect_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
   Editing *ed = SEQ_editing_get(scene);
@@ -1038,7 +1038,22 @@ static int sequencer_connect_exec(bContext *C, wmOperator * /*op*/)
     return OPERATOR_CANCELLED;
   }
 
-  SEQ_connect_multiple(selected);
+  const bool toggle = RNA_boolean_get(op->ptr, "toggle");
+  bool clear_all = false;
+  if (toggle) {
+    for (Sequence *seq : selected) {
+      if (SEQ_is_strip_connected(seq)) {
+        clear_all = true;
+        break;
+      }
+    }
+  }
+  if (clear_all) {
+    SEQ_disconnect_multiple(selected);
+  }
+  else {
+    SEQ_connect_multiple(selected);
+  }
 
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
   return OPERATOR_FINISHED;
@@ -1054,6 +1069,8 @@ void SEQUENCER_OT_connect(wmOperatorType *ot)
   ot->poll = sequencer_edit_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  RNA_def_boolean(ot->srna, "toggle", false, "Toggle", "Toggle strip connections");
 }
 
 /** \} */

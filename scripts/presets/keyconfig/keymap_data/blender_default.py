@@ -2944,6 +2944,8 @@ def km_sequencer(params):
          {"properties": [("unselected", True)]}),
         ("sequencer.lock", {"type": 'H', "value": 'PRESS', "ctrl": True}, None),
         ("sequencer.unlock", {"type": 'H', "value": 'PRESS', "ctrl": True, "alt": True}, None),
+        ("sequencer.connect", {"type": 'C', "value": 'PRESS', "ctrl": True, "alt": True},
+         {"properties": [("toggle", True)]}),
         ("sequencer.reassign_inputs", {"type": 'R', "value": 'PRESS'}, None),
         ("sequencer.reload", {"type": 'R', "value": 'PRESS', "alt": True}, None),
         ("sequencer.reload", {"type": 'R', "value": 'PRESS', "shift": True, "alt": True},

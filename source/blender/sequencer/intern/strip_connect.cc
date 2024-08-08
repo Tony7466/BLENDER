@@ -51,6 +51,16 @@ bool SEQ_disconnect(Sequence *seq)
   return true;
 }
 
+bool SEQ_disconnect_multiple(blender::VectorSet<Sequence *> &seq_list)
+{
+  bool changed = false;
+  for (Sequence *seq : seq_list) {
+    changed |= SEQ_disconnect(seq);
+  }
+
+  return changed;
+}
+
 void SEQ_connect_pair(Sequence *seq1, Sequence *seq2)
 {
   blender::VectorSet<Sequence *> seq_list;

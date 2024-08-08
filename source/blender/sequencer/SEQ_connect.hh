@@ -20,6 +20,7 @@ void SEQ_connections_duplicate(ListBase *connections_dst, ListBase *connections_
  * frees the allocated memory as necessary. Returns false if the strip was not already connected.
  */
 bool SEQ_disconnect(Sequence *seq);
+bool SEQ_disconnect_multiple(blender::VectorSet<Sequence *> &seq_list);
 
 /**
  * Connect two strips `seq1` and `seq2` so that they may be selected together. Any connections the

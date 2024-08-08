@@ -141,6 +141,13 @@ static bool retiming_fake_key_is_clicked(const bContext *C,
   return distance < RETIME_KEY_MOUSEOVER_THRESHOLD;
 }
 
+void realize_fake_keys(const Scene *scene, Sequence *seq)
+{
+  SEQ_retiming_data_ensure(seq);
+  SEQ_retiming_add_key(scene, seq, SEQ_time_left_handle_frame_get(scene, seq));
+  SEQ_retiming_add_key(scene, seq, SEQ_time_right_handle_frame_get(scene, seq));
+}
+
 SeqRetimingKey *try_to_realize_fake_keys(const bContext *C, Sequence *seq, const int mval[2])
 {
   Scene *scene = CTX_data_scene(C);

@@ -31,6 +31,7 @@
 #include "RNA_define.hh"
 
 #include "SEQ_channels.hh"
+#include "SEQ_connect.hh"
 #include "SEQ_effects.hh"
 #include "SEQ_iterator.hh"
 #include "SEQ_relations.hh"
@@ -1192,6 +1193,11 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
     if (!was_retiming) {
       ED_sequencer_deselect_all(scene);
     }
+    if (SEQ_is_strip_connected(seq_key_owner)) {
+      LISTBASE_FOREACH (SeqConnection *, con, &seq_key_owner->connections) {
+        realize_fake_keys(scene, con->seq_ref);
+      }
+    }
     return sequencer_retiming_key_select_exec(C, op, key, seq_key_owner);
   }
 
@@ -1424,6 +1430,7 @@ static int sequencer_select_handle_exec(bContext *C, wmOperator *op)
                                                                              SEQ_HANDLE_LEFT;
     sequencer_select_strip_impl(ed, selection.seq2, seq2_handle_clicked, false, false, false);
   }
+  sequencer_select_connected_strips(selection);
 
   sequencer_select_do_updates(C, scene);
   sequencer_select_set_active(scene, selection.seq1);
