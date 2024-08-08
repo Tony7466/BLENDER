@@ -211,6 +211,8 @@ Brush *BKE_paint_brush(Paint *paint);
 const Brush *BKE_paint_brush_for_read(const Paint *paint);
 Brush *BKE_paint_brush_from_essentials(Main *bmain, const char *name);
 AssetWeakReference *BKE_paint_brush_asset_reference_from_essentials(const char *name);
+void BKE_paint_brush_asset_reference_from_essentials(const char *name,
+                                                     AssetWeakReference *r_weak_ref);
 
 /**
  * Activates \a brush for painting, and updates #Paint.brush_asset_reference so the brush can be

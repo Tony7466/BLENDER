@@ -680,9 +680,19 @@ AssetWeakReference *BKE_paint_brush_asset_reference_from_essentials(const char *
 {
   AssetWeakReference *weak_ref = MEM_new<AssetWeakReference>(__func__);
   weak_ref->asset_library_type = eAssetLibraryType::ASSET_LIBRARY_ESSENTIALS;
+  weak_ref->asset_library_identifier = nullptr;
   weak_ref->relative_asset_identifier = BLI_sprintfN("brushes/essentials_brushes.blend/Brush/%s",
                                                      name);
   return weak_ref;
+}
+
+void BKE_paint_brush_asset_reference_from_essentials(const char *name,
+                                                     AssetWeakReference *r_weak_ref)
+{
+  r_weak_ref->asset_library_type = eAssetLibraryType::ASSET_LIBRARY_ESSENTIALS;
+  r_weak_ref->asset_library_identifier = nullptr;
+  r_weak_ref->relative_asset_identifier = BLI_sprintfN("brushes/essentials_brushes.blend/Brush/%s",
+                                                       name);
 }
 
 Brush *BKE_paint_brush_from_essentials(Main *bmain, const char *name)
