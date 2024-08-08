@@ -8780,6 +8780,13 @@ class VIEW3D_PT_greasepencil_draw_context_menu(Panel):
             row.prop(layer, "name", text='')
             row.operator("grease_pencil.layer_remove", text="", icon='X')
 
+        layout.label(text="Active Material")
+        row = layout.row(align=True)
+        row.menu("VIEW3D_MT_greasepencil_material_active", text='', icon='MATERIAL')
+        ob = context.active_object
+        if ob.active_material:
+            row.prop(ob.active_material, "name", text='')
+
 
 def draw_gpencil_layer_active(context, layout):
     gpl = context.active_gpencil_layer
