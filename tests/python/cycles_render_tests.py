@@ -70,20 +70,12 @@ BLOCKLIST_GPU = [
 ]
 
 
-class Cycles_report(render_report.Report):
+class CyclesReport(render_report.Report):
     def __init__(self, title, output_dir, oiiotool, device=None, blocklist=[]):
-        self.use_hwrt = False
-        if device == "HIP-HWRT":
-            device = "HIP"
-            self.use_hwrt = True
-        if device == "ONEAPI-HWRT":
-            device = "ONEAPI"
-            self.use_hwrt = True
-        if device == "METAL-HWRT":
-            device = "METAL"
-            self.use_hwrt = True
-        if device == "CUDA-HWRT":
-            device = "OPTIX"
+        # Split device name in format "<device_type>[-<HWRT>]" into individual
+        # tokens, setting the HWRT suffix to an empty string if its not specified.
+        device, suffix = (device.split("-") + [""])[:2]
+        self.use_hwrt = (suffix == "HWRT")
 
         super().__init__(title, output_dir, oiiotool, device, blocklist)
 
@@ -123,12 +115,15 @@ def get_arguments(filepath, output_filepath, use_hwrt=False):
         args.extend(["--python-expr", f"import bpy; bpy.context.scene.cycles.samples *= {spp_multiplier}"])
 
     cycles_pref = "bpy.context.preferences.addons['cycles'].preferences"
-    if use_hwrt:
-        args.extend(
-            ["--python-expr", f"import bpy; {cycles_pref}.use_hiprt = True; {cycles_pref}.use_oneapirt = True; {cycles_pref}.metalrt = 'ON'"])
-    else:
-        args.extend(
-            ["--python-expr", f"import bpy; {cycles_pref}.use_hiprt = False; {cycles_pref}.use_oneapirt = False; {cycles_pref}.metalrt = 'OFF'"])
+    use_hwrt_bool_value = "True" if use_hwrt else "False"
+    use_hwrt_on_off_value = "'ON'" if use_hwrt else "'OFF'"
+    args.extend([
+        "--python-expr",
+        (f"import bpy;"
+         f"{cycles_pref}.use_hiprt = {use_hwrt_bool_value};"
+         f"{cycles_pref}.use_oneapirt = {use_hwrt_bool_value};"
+         f"{cycles_pref}.metalrt = {use_hwrt_on_off_value}")
+    ])
 
     if subject == 'bake':
         args.extend(['--python', os.path.join(basedir, "util", "render_bake.py")])
@@ -172,7 +167,7 @@ def main():
     if device == 'METAL':
         blocklist += BLOCKLIST_METAL
 
-    report = Cycles_report('Cycles', output_dir, oiiotool, device, blocklist)
+    report = CyclesReport('Cycles', output_dir, oiiotool, device, blocklist)
     report.set_pixelated(True)
     report.set_reference_dir("cycles_renders")
     if device == 'CPU':
