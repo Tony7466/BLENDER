@@ -404,9 +404,6 @@ static void extract_edituv_points_subdiv_bm(const MeshRenderData &mr,
                                             const bool sync_selection,
                                             GPUIndexBufBuilder &builder)
 {
-  if (subdiv_cache.num_subdiv_quads == 0) {
-    return;
-  }
   const BMesh &bm = *mr.bm;
   const Span<int> subdiv_loop_vert_index = subdiv_cache.verts_orig_index->data<int>();
   const Span<int> subdiv_loop_face_index(subdiv_cache.subdiv_loop_face_index,
@@ -433,9 +430,6 @@ static void extract_edituv_points_subdiv_mesh(const MeshRenderData &mr,
                                               const bool sync_selection,
                                               GPUIndexBufBuilder &builder)
 {
-  if (subdiv_cache.num_subdiv_quads == 0) {
-    return;
-  }
   const Span<int> subdiv_loop_vert_index = subdiv_cache.verts_orig_index->data<int>();
   const Span<int> subdiv_loop_face_index(subdiv_cache.subdiv_loop_face_index,
                                          subdiv_cache.num_subdiv_loops);

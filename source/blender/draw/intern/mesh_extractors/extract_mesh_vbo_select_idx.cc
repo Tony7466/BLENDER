@@ -239,9 +239,7 @@ void extract_vert_index_subdiv(const DRWSubdivCache &subdiv_cache,
 {
   /* Each element points to an element in the `ibo.points`. */
   draw_subdiv_init_origindex_buffer(vbo,
-                                    subdiv_cache.verts_orig_index ?
-                                        subdiv_cache.verts_orig_index->data<int32_t>().data() :
-                                        nullptr,
+                                    subdiv_cache.verts_orig_index->data<int32_t>().data(),
                                     subdiv_cache.num_subdiv_loops,
                                     subdiv_full_vbo_size(mr, subdiv_cache));
   if (!mr.orig_index_vert) {
@@ -287,9 +285,7 @@ void extract_edge_index_subdiv(const DRWSubdivCache &subdiv_cache,
                                gpu::VertBuf &vbo)
 {
   draw_subdiv_init_origindex_buffer(vbo,
-                                    subdiv_cache.edges_orig_index ?
-                                        subdiv_cache.edges_orig_index->data<int32_t>().data() :
-                                        nullptr,
+                                    subdiv_cache.edges_orig_index->data<int32_t>().data(),
                                     subdiv_cache.num_subdiv_loops,
                                     subdiv_loose_edges_num(mr, subdiv_cache) * 2);
   extract_edge_idx_loose_geom_subdiv(subdiv_cache, mr, vbo);

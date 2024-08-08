@@ -159,9 +159,6 @@ static void extract_edituv_subdiv_data_bm(const MeshRenderData &mr,
                                           MutableSpan<EditLoopData> vbo_data)
 {
   const int corners_num = subdiv_cache.num_subdiv_loops;
-  if (corners_num == 0) {
-    return;
-  }
   const Span<int> subdiv_loop_face_index(subdiv_cache.subdiv_loop_face_index, corners_num);
   const Span<int> subdiv_loop_vert_index = subdiv_cache.verts_orig_index->data<int>();
   /* NOTE: #subdiv_loop_edge_index already has the origindex layer baked in. */
@@ -187,9 +184,6 @@ static void extract_edituv_subdiv_data_mesh(const MeshRenderData &mr,
                                             MutableSpan<EditLoopData> vbo_data)
 {
   const int corners_num = subdiv_cache.num_subdiv_loops;
-  if (corners_num == 0) {
-    return;
-  }
   const Span<int> subdiv_loop_face_index(subdiv_cache.subdiv_loop_face_index, corners_num);
   const Span<int> subdiv_loop_vert_index = subdiv_cache.verts_orig_index->data<int>();
   /* NOTE: #subdiv_loop_edge_index already has the origindex layer baked in. */
