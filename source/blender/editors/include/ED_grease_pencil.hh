@@ -709,6 +709,7 @@ void find_curve_intersections(const bke::CurvesGeometry &curves,
                               const IndexMask &curve_mask,
                               const Span<float2> screen_space_positions,
                               const Curves2DBVHTree &tree_data,
+                              IndexRange tree_data_range,
                               MutableSpan<bool> r_hits,
                               std::optional<MutableSpan<float>> r_first_intersect_factors,
                               std::optional<MutableSpan<float>> r_last_intersect_factors);
@@ -763,20 +764,21 @@ struct CurveSegmentsData {
 CurveSegmentsData find_curve_segments(const bke::CurvesGeometry &curves,
                                       const IndexMask &curve_mask,
                                       const Span<float2> screen_space_positions,
-                                      const Curves2DBVHTree &tree_data);
+                                      const Curves2DBVHTree &tree_data,
+                                      IndexRange tree_data_range);
 
 bool apply_mask_as_segment_selection(bke::CurvesGeometry &curves,
                                      const IndexMask &point_selection,
                                      const Curves2DBVHTree &tree_data,
-                                     const IndexRange tree_data_range,
-                                     const GrainSize grain_size,
-                                     const eSelectOp sel_op);
+                                     IndexRange tree_data_range,
+                                     GrainSize grain_size,
+                                     eSelectOp sel_op);
 
 bool apply_mask_as_selection(bke::CurvesGeometry &curves,
                              const IndexMask &selection,
-                             const bke::AttrDomain selection_domain,
-                             const GrainSize grain_size,
-                             const eSelectOp sel_op);
+                             bke::AttrDomain selection_domain,
+                             GrainSize grain_size,
+                             eSelectOp sel_op);
 
 namespace cutter {
 bke::CurvesGeometry trim_curve_segments(const bke::CurvesGeometry &src,

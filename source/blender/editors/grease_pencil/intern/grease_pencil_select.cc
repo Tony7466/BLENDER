@@ -105,7 +105,6 @@ bool apply_mask_as_segment_selection(bke::CurvesGeometry &curves,
                                      const GrainSize grain_size,
                                      const eSelectOp sel_op)
 {
-
   if (point_selection_mask.is_empty()) {
     return false;
   }
@@ -119,7 +118,7 @@ bool apply_mask_as_segment_selection(bke::CurvesGeometry &curves,
       tree_data_range);
 
   const CurveSegmentsData segment_data = ed::greasepencil::find_curve_segments(
-      curves, changed_curve_mask, screen_space_positions, tree_data);
+      curves, changed_curve_mask, screen_space_positions, tree_data, tree_data_range);
 
   const OffsetIndices<int> segments_by_curve = OffsetIndices<int>(segment_data.segment_offsets);
   Vector<bke::GSpanAttributeWriter> attribute_writers;

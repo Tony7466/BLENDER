@@ -1334,7 +1334,14 @@ Curves2DBVHTree build_curves_2d_bvh_from_visible(const ViewContext &vc,
   data.tree = BLI_bvhtree_new(max_bvh_lines, 0.0f, 4, 6);
   data.start_positions.reinitialize(max_bvh_lines);
   data.end_positions.reinitialize(max_bvh_lines);
+  /* Compute offsets array in advance. */
   data.drawing_offsets.reinitialize(drawings.size() + 1);
+  for (const int i_drawing : drawings.index_range()) {
+    const MutableDrawingInfo &info = drawings[i_drawing];
+    data.drawing_offsets[i_drawing] = info.drawing.strokes().evaluated_points_num();
+  }
+  OffsetIndices bvh_elements_by_drawing = offset_indices::accumulate_counts_to_offsets(
+      data.drawing_offsets);
 
   /* Insert a line for each point except end points. */
   for (const int i_drawing : drawings.index_range()) {
@@ -1346,10 +1353,14 @@ Curves2DBVHTree build_curves_2d_bvh_from_visible(const ViewContext &vc,
     const OffsetIndices evaluated_points_by_curve = curves.evaluated_points_by_curve();
     const VArray<bool> cyclic = curves.cyclic();
     const Span<float3> evaluated_positions = curves.evaluated_positions();
-
     const IndexMask curves_mask = curves.curves_range();
 
-    data.drawing_offsets[i_drawing] = evaluated_positions.size();
+    /* Range of indices in the BVH tree for this drawing. */
+    const IndexRange bvh_index_range = bvh_elements_by_drawing[i_drawing];
+    const MutableSpan<float2> start_positions = data.start_positions.as_mutable_span().slice(
+        bvh_index_range);
+    const MutableSpan<float2> end_positions = data.end_positions.as_mutable_span().slice(
+        bvh_index_range);
 
     curves_mask.foreach_index([&](const int i_curve) {
       const bool is_cyclic = cyclic[i_curve];
@@ -1359,33 +1370,32 @@ Curves2DBVHTree build_curves_2d_bvh_from_visible(const ViewContext &vc,
       for (const int i_point : evaluated_points) {
         const float2 co = ED_view3d_project_float_v2_m4(
             vc.region, evaluated_positions[i_point], projection);
-        data.start_positions[i_point] = co;
+        start_positions[i_point] = co;
 
         /* Last point is only valid for cyclic curves, gets ignored for non-cyclic curves. */
         const int i_prev_point = (i_point > 0 ? i_point - 1 : evaluated_points.last());
-        data.end_positions[i_prev_point] = co;
+        end_positions[i_prev_point] = co;
       }
 
       for (const int i_point : evaluated_points.drop_back(1)) {
-        const float2 &start = data.start_positions[i_point];
-        const float2 &end = data.end_positions[i_point];
+        const float2 &start = start_positions[i_point];
+        const float2 &end = end_positions[i_point];
 
         const float bb[6] = {start.x, start.y, 0.0f, end.x, end.y, 0.0f};
-        BLI_bvhtree_insert(data.tree, i_point, bb, 2);
+        BLI_bvhtree_insert(data.tree, bvh_index_range[i_point], bb, 2);
       }
       /* Last->first point segment only used for cyclic curves. */
       if (is_cyclic) {
-        const float2 &start = data.start_positions.last();
-        const float2 &end = data.end_positions.first();
+        const float2 &start = start_positions.last();
+        const float2 &end = end_positions.first();
 
         const float bb[6] = {start.x, start.y, 0.0f, end.x, end.y, 0.0f};
-        BLI_bvhtree_insert(data.tree, evaluated_points.last(), bb, 2);
+        BLI_bvhtree_insert(data.tree, bvh_index_range[evaluated_points.last()], bb, 2);
       }
     });
   }
 
   BLI_bvhtree_balance(data.tree);
-  offset_indices::accumulate_counts_to_offsets(data.drawing_offsets);
 
   return data;
 }
@@ -1405,6 +1415,7 @@ void find_curve_intersections(const bke::CurvesGeometry &curves,
                               const IndexMask &curve_mask,
                               const Span<float2> screen_space_positions,
                               const Curves2DBVHTree &tree_data,
+                              const IndexRange tree_data_range,
                               MutableSpan<bool> r_hits,
                               std::optional<MutableSpan<float>> r_first_intersect_factors,
                               std::optional<MutableSpan<float>> r_last_intersect_factors)
@@ -1463,7 +1474,10 @@ void find_curve_intersections(const bke::CurvesGeometry &curves,
     float length;
     const float2 dir = math::normalize_and_get_length(end - start, length);
 
-    RaycastArgs args = {tree_data, index_back, index, index_forward};
+    RaycastArgs args = {tree_data,
+                        index_back >= 0 ? int(tree_data_range[index_back]) : -1,
+                        int(tree_data_range[index]),
+                        index_forward >= 0 ? int(tree_data_range[index_forward]) : -1};
     BVHTreeRayHit hit;
     hit.index = -1;
     hit.dist = FLT_MAX;
@@ -1516,7 +1530,8 @@ void find_curve_intersections(const bke::CurvesGeometry &curves,
 CurveSegmentsData find_curve_segments(const bke::CurvesGeometry &curves,
                                       const IndexMask &curve_mask,
                                       const Span<float2> screen_space_positions,
-                                      const Curves2DBVHTree &tree_data)
+                                      const Curves2DBVHTree &tree_data,
+                                      const IndexRange tree_data_range)
 {
   const OffsetIndices points_by_curve = curves.points_by_curve();
   const VArray<bool> cyclic = curves.cyclic();
@@ -1528,6 +1543,7 @@ CurveSegmentsData find_curve_segments(const bke::CurvesGeometry &curves,
                            curve_mask,
                            screen_space_positions,
                            tree_data,
+                           tree_data_range,
                            hits,
                            first_hit_factors,
                            last_hit_factors);
