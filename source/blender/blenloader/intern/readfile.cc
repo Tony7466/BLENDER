@@ -1859,8 +1859,6 @@ static void *read_struct(FileData *fd, BHead *bh, const char *blockname, const i
 #endif
   }
 
-  printf("Old: %p, New: %p\n", bh->old, temp);
-
   return temp;
 }
 
