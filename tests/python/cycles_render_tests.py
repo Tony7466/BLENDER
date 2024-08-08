@@ -34,10 +34,7 @@ BLOCKLIST_OSL = [
     # Note: Most of the tests below are expected to be different between OSL and SVM
     # As such many of these tests have both a SVM and OSL file. Blocking the SVM
     # tests here doesn't loose any test permutations.
-    # Point Density is disabled on surfaces in SVM.
-    # This was a performance optimization that wasn't carried over to OSL.
-    'T49936.blend',
-    'T49936_indirect.blend',
+    #
     # AOVs are not supported. See 73266
     'aov_position.blend',
     'render_passes_aov.*.blend',
