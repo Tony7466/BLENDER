@@ -2815,7 +2815,7 @@ struct GeometryNodesLazyFunctionBuilder {
         continue;
       }
       if (tree_zones_->get_zone_by_node(bnode->identifier)) {
-        /* "Global" warning nodes that are evaluated whenever the node group is evaluated, must not
+        /* "Global" warning nodes that are evaluated whenever the node group is evaluated must not
          * be in a zone. */
         continue;
       }
