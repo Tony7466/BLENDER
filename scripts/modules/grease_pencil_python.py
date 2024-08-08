@@ -114,21 +114,21 @@ class GreasePencilStrokePointSlice:
             if not self._is_valid_index(key):
                 raise IndexError(f"Key {key} is out of range")
             # Turn the key into an index.
-            point_i = key % self._size
+            point_i = self._start + (key % self._size)
             return GreasePencilStrokePoint(self._drawing, point_i)
         elif isinstance(key, slice):
             if key.step and key.step != 1:
                 raise ValueError("Step values != 1 not supported")
-            # Default to the current start and stop values and a step of 1.
-            start = key.start or self._start
-            stop = key.stop or self._stop
-            # Take the current start into account
-            start = start + self._start
-            stop = stop + self._start
+            # Default to 0 and size for the start and stop values.
+            start = key.start if key.start is not None else 0
+            stop = key.stop if key.stop is not None else self._size
+            # Wrap negative indices.
+            start = self._size + start if start < 0 else start
+            stop = self._size + stop if stop < 0 else stop
             # Clamp start and stop.
-            start = max(self._start, min(start, self._stop))
-            stop = max(self._start, min(stop, self._stop))
-            return GreasePencilStrokePointSlice(self._drawing, start, stop)
+            start = max(0, min(start, self._size))
+            stop = max(0, min(stop, self._size))
+            return GreasePencilStrokePointSlice(self._drawing, self._start + start, self._start + stop)
         else:
             raise TypeError(f"Unexpected index of type {type(key)}")
 
@@ -217,21 +217,21 @@ class GreasePencilStrokeSlice:
             if not self._is_valid_index(key):
                 raise IndexError(f"Key {key} is out of range")
             # Turn the key into an index.
-            curve_i = key % self._size
+            curve_i = self._start + (key % self._size)
             offsets = self._curve_offsets
             return GreasePencilStroke(self._drawing, curve_i, offsets[curve_i].value, offsets[curve_i + 1].value)
         elif isinstance(key, slice):
             if key.step and key.step != 1:
                 raise ValueError("Step values != 1 not supported")
-            # Default to the current start and stop values.
-            start = key.start or self._start
-            stop = key.stop or self._stop
-            # Take the current start into account
-            start = start + self._start
-            stop = stop + self._start
+            # Default to 0 and size for the start and stop values.
+            start = key.start if key.start is not None else 0
+            stop = key.stop if key.stop is not None else self._size
+            # Wrap negative indices.
+            start = self._size + start if start < 0 else start
+            stop = self._size + stop if stop < 0 else stop
             # Clamp start and stop.
-            start = max(self._start, min(start, self._stop))
-            stop = max(self._start, min(stop, self._stop))
-            return GreasePencilStrokeSlice(self._drawing, start, stop)
+            start = max(0, min(start, self._size))
+            stop = max(0, min(stop, self._size))
+            return GreasePencilStrokeSlice(self._drawing, self._start + start, self._start + stop)
         else:
             raise TypeError(f"Unexpected index of type {type(key)}")
