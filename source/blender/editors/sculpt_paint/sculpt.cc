@@ -7315,7 +7315,14 @@ void write_translations(const Sculpt &sd,
     apply_crazyspace_to_translations(ss.deform_imats, verts, translations);
   }
 
-  apply_translations(translations, verts, positions_orig);
+  Mesh &mesh = *static_cast<Mesh *>(object.data);
+  KeyBlock *active_key = BKE_keyblock_from_object(&object);
+  const bool relative_shapekey_active = active_key != nullptr && active_key != mesh.key->refkey;
+  if (!relative_shapekey_active) {
+    /* If a relative shapekey is active, we do not want to write any data to the original mesh. */
+    apply_translations(translations, verts, positions_orig);
+  }
+
   apply_translations_to_shape_keys(object, verts, translations, positions_orig);
 }
 
