@@ -40,7 +40,6 @@ static ThreadMutex thumb_cache_lock = BLI_MUTEX_INITIALIZER;
 struct ThumbnailCache {
   struct FrameEntry {
     int frame_index = 0;
-    //@TODO: do we need timecode?
     ImBuf *thumb = nullptr;
   };
 
@@ -135,10 +134,6 @@ static std::string get_path_from_seq(Scene *scene, const Sequence *seq, float ti
       BLI_path_join(
           filepath, sizeof(filepath), seq->strip->dirpath, seq->strip->stripdata->filename);
       BLI_path_abs(filepath, ID_BLEND_PATH_FROM_GLOBAL(&scene->id));
-
-      // seq_open_anim_file(context->scene, seq, false);
-      // StripAnim *sanim = static_cast<StripAnim *>(seq->anims.first);
-      // ibuf = seq_render_movie_strip_view(context, seq, timeline_frame, sanim, r_is_proxy_image);
       break;
   }
   return filepath;
@@ -164,7 +159,7 @@ static ImBuf* make_thumb_for_image(Scene *scene, const ThumbnailCache::Request& 
   //if (seq->alpha_mode == SEQ_ALPHA_PREMUL) { //@TODO
   //  flag |= IB_alphamode_premul;
   //}
-  ImBuf *ibuf = IMB_loadiffname(request.file_path.c_str(), flag, nullptr); //@TODO: seq->strip->colorspace_settings.name
+  ImBuf *ibuf = IMB_loadiffname(request.file_path.c_str(), flag, nullptr);
   if (ibuf == nullptr) {
     return nullptr;
   }
@@ -173,24 +168,54 @@ static ImBuf* make_thumb_for_image(Scene *scene, const ThumbnailCache::Request& 
     imb_freerectImBuf(ibuf);
   }
 
-  /* All sequencer color is done in SRGB space, linear gives odd cross-fades. */
   seq_imbuf_to_sequencer_space(scene, ibuf, false);
   seq_imbuf_assign_spaces(scene, ibuf);
+  return ibuf;
+}
+
+static ImBuf* make_thumb_for_movie(Scene* scene, const ThumbnailCache::Request& request)
+{
+  int flag = IB_rect;
+  //if (seq->flag & SEQ_FILTERY) {
+  //  flag |= IB_animdeinterlace; //@TODO
+  //}
+  int stream_index = 0; //@TODO: seq->streamindex
+  ImBufAnim *anim = IMB_open_anim(request.file_path.c_str(), flag, stream_index, nullptr);
+  if (anim == nullptr) {
+    return nullptr;
+  }
+
+  int frame_index = request.frame_index;
+  ImBuf *ibuf = IMB_anim_absolute(anim, frame_index, IMB_TC_NONE, IMB_PROXY_NONE);
+
+  if (ibuf != nullptr) {
+    seq_imbuf_assign_spaces(scene, ibuf);
+  }
+  IMB_free_anim(anim);
+
+  return ibuf;
+}
+
+static ImBuf *scale_to_thumbnail_size(Scene *scene, ImBuf *ibuf)
+{
+  if (ibuf == nullptr) {
+    return nullptr;
+  }
+  int width = ibuf->x;
+  int height = ibuf->y;
+  image_size_to_thumb_size(width, height);
+  if (width == ibuf->x && height == ibuf->y) {
+    return ibuf;
+  }
 
   /* Scale ibuf to thumbnail size. */
-  int width = request.full_width;
-  int height = request.full_height;
-  image_size_to_thumb_size(width, height);
-
   ImBuf *scaled_ibuf = IMB_allocImBuf(
       width, height, 32, ibuf->float_buffer.data ? IB_rectfloat : IB_rect);
   sequencer_thumbnail_transform(ibuf, scaled_ibuf);
   seq_imbuf_assign_spaces(scene, scaled_ibuf);
   IMB_freeImBuf(ibuf);
-
   return scaled_ibuf;
 }
-
 
 class ThumbGenerationJob {
   Scene *scene_ = nullptr;
@@ -205,7 +230,6 @@ public:
 
 private:
   static void run_fn(void *customdata, wmJobWorkerStatus *worker_status);
-  static void update_fn(void *customdata);
   static void end_fn(void *customdata);
   static void free_fn(void *customdata);
 };
@@ -221,7 +245,7 @@ void ThumbGenerationJob::ensure_job(const bContext *C, ThumbnailCache *cache)
     ThumbGenerationJob *tj = MEM_new<ThumbGenerationJob>("ThumbGenerationJob", scene, cache);
     WM_jobs_customdata_set(wm_job, tj, free_fn);
     WM_jobs_timer(wm_job, 0.1, NC_SCENE | ND_SEQUENCER, NC_SCENE | ND_SEQUENCER);
-    WM_jobs_callbacks(wm_job, run_fn, nullptr, update_fn, end_fn);
+    WM_jobs_callbacks(wm_job, run_fn, nullptr, nullptr, end_fn);
 
     WM_jobs_start(wm, wm_job);
   }
@@ -235,13 +259,15 @@ void ThumbGenerationJob::free_fn(void *customdata)
 
 void ThumbGenerationJob::run_fn(void *customdata, wmJobWorkerStatus *worker_status)
 {
+  clock_t t0 = clock();
+  int total_thumbs = 0, total_images = 0, total_movies = 0;
+
   ThumbGenerationJob *job = static_cast<ThumbGenerationJob *>(customdata);
   Set<ThumbnailCache::Request> requests;
   while (!worker_status->stop) {
-    /* Move all the current requests (under cache mutex lock). */
+    /* Copy all current requests (under cache mutex lock). */
     BLI_mutex_lock(&thumb_cache_lock);
-    requests = job->cache_->requests_; //@TODO: more efficient with some sort of move thingy?
-    job->cache_->requests_.clear();
+    requests = job->cache_->requests_;
     BLI_mutex_unlock(&thumb_cache_lock);
 
     if (requests.is_empty()) {
@@ -254,20 +280,20 @@ void ThumbGenerationJob::run_fn(void *customdata, wmJobWorkerStatus *worker_stat
         break;
       }
 
+      ++total_thumbs;
       ImBuf *thumb = nullptr;
       if (request.seq_type == SEQ_TYPE_IMAGE) {
+        ++total_images;
         thumb = make_thumb_for_image(job->scene_, request);
       }
-      else {
-        //@TODO: for now just a test random colored image
-        int img_width = request.full_width;
-        int img_height = request.full_height;
-        image_size_to_thumb_size(img_width, img_height);
-        thumb = IMB_allocImBuf(img_width, img_height, 32, IB_rect);
-        float col[4] = {
-            (rand() % 100) / 100.0f, (rand() % 100) / 100.0f, (rand() % 100) / 100.0f, 1.0f};
-        IMB_rectfill(thumb, col);
+      else if (request.seq_type == SEQ_TYPE_MOVIE) {
+        ++total_movies;
+        thumb = make_thumb_for_movie(job->scene_, request);
       }
+      else {
+        BLI_assert_unreachable();
+      }
+      thumb = scale_to_thumbnail_size(job->scene_, thumb);
 
       /* Add result into the cache (under cache mutex lock). */
       BLI_mutex_lock(&thumb_cache_lock);
@@ -278,14 +304,18 @@ void ThumbGenerationJob::run_fn(void *customdata, wmJobWorkerStatus *worker_stat
       else {
         IMB_freeImBuf(thumb);
       }
+      /* Remove the request from original set. */
+      job->cache_->requests_.remove(request);
       BLI_mutex_unlock(&thumb_cache_lock);
+
+      if (thumb) {
+        worker_status->do_update = true;
+      }
     }
   }
-}
 
-void ThumbGenerationJob::update_fn(void *customdata)
-{
-  ThumbGenerationJob *job = static_cast<ThumbGenerationJob *>(customdata);
+  clock_t t1 = clock(); //@TODO: debug log
+  printf("Thumb job new: %i thumbs (%i img, %i movie) in %.3f sec\n", total_thumbs, total_images, total_movies, double(t1 - t0) / CLOCKS_PER_SEC);
 }
 
 void ThumbGenerationJob::end_fn(void *customdata)
@@ -293,8 +323,6 @@ void ThumbGenerationJob::end_fn(void *customdata)
   ThumbGenerationJob *job = static_cast<ThumbGenerationJob *>(customdata);
   WM_main_add_notifier(NC_SCENE | ND_SEQUENCER, job->scene_);
 }
-
-
 
 static ImBuf *query_thumbnail(ThumbnailCache &cache,
                               const std::string &key,
@@ -353,8 +381,13 @@ ImBuf *thumbnail_cache_get(const bContext *C,
     return nullptr;
   }
 
+  timeline_frame = math::round(timeline_frame);
+
   const std::string key = get_path_from_seq(scene, seq, timeline_frame);
-  const int frame_index = SEQ_give_frame_index(scene, seq, timeline_frame);
+  int frame_index = SEQ_give_frame_index(scene, seq, timeline_frame);
+  if (seq->type == SEQ_TYPE_MOVIE) {
+    frame_index += seq->anim_startofs;
+  }
 
   BLI_mutex_lock(&thumb_cache_lock);
   ThumbnailCache *cache = ensure_thumbnail_cache(scene);
