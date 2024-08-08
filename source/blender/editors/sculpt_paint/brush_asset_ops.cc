@@ -48,45 +48,6 @@
 
 namespace blender::ed::sculpt_paint {
 
-static StringRef brush_type_idname_get(const Brush *brush, const PaintMode paint_mode)
-{
-  std::optional<int> brush_type = BKE_paint_get_brush_tool_from_paintmode(brush, paint_mode);
-  if (!brush_type) {
-    return "";
-  }
-
-  const EnumPropertyItem *type_enum = BKE_paint_get_tool_enum_from_paintmode(paint_mode);
-  const int item_idx = RNA_enum_from_value(type_enum, *brush_type);
-  if (item_idx == -1) {
-    return "";
-  }
-  return type_enum[item_idx].identifier;
-}
-
-static bool brush_compatible_with_active_tool(bContext *C, const Brush *brush)
-{
-  if (!WM_toolsystem_active_tool_is_brush(C)) {
-    return false;
-  }
-
-  const bToolRef *active_tool = WM_toolsystem_ref_from_context(C);
-  /* "Brush" tool supports all brushes. */
-  if (STREQ(active_tool->idname, "builtin.brush")) {
-    return true;
-  }
-
-  const PaintMode paint_mode = BKE_paintmode_get_active_from_context(C);
-  BLI_assert(paint_mode == BKE_paintmode_get_from_tool(active_tool));
-
-  const StringRef type_from_tool = active_tool->runtime->data_block;
-  const StringRef type_from_brush = brush_type_idname_get(brush, paint_mode);
-  if (type_from_tool != type_from_brush) {
-    return false;
-  }
-
-  return true;
-}
-
 static int brush_asset_activate_exec(bContext *C, wmOperator *op)
 {
   /* This operator currently covers both cases: the file/asset browser file list and the asset list
@@ -111,13 +72,14 @@ static int brush_asset_activate_exec(bContext *C, wmOperator *op)
     return OPERATOR_FINISHED;
   }
 
-  if (!brush_compatible_with_active_tool(C, brush)) {
-    const PaintMode paint_mode = BKE_paintmode_get_active_from_context(C);
-    StringRef brush_type_idname = brush_type_idname_get(brush, paint_mode);
+  const PaintMode paint_mode = BKE_paintmode_get_active_from_context(C);
+  std::optional<int> brush_type = BKE_paint_get_brush_tool_from_paintmode(brush, paint_mode);
 
-    std::optional<StringRefNull> compatible_tool = WM_toolsystem_find_id_from_data_block(
-        C, brush_type_idname);
-    WM_toolsystem_ref_set_by_id(C, compatible_tool.value_or("builtin.brush").c_str());
+  if (brush_type) {
+    WM_toolsystem_activate_compatible_tool_for_brush_type(C, *brush_type, paint_mode);
+  }
+  else {
+    BLI_assert_unreachable();
   }
 
   WM_main_add_notifier(NC_ASSET | NA_ACTIVATED, nullptr);

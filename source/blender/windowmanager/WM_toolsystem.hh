@@ -10,6 +10,7 @@
 #include <optional>
 
 #include "BLI_compiler_attrs.h"
+#include "BLI_utildefines.h"
 
 struct IDProperty;
 struct Main;
@@ -31,6 +32,8 @@ namespace blender {
 class StringRef;
 class StringRefNull;
 };  // namespace blender
+
+enum class PaintMode : int8_t;
 
 /* `wm_toolsystem.cc` */
 
@@ -57,6 +60,16 @@ bToolRef *WM_toolsystem_ref_set_by_id(bContext *C, const char *name);
 
 bToolRef_Runtime *WM_toolsystem_runtime_from_context(bContext *C);
 bToolRef_Runtime *WM_toolsystem_runtime_find(WorkSpace *workspace, const bToolKey *tkey);
+
+/**
+ * Activate a tool appropriate for a certain brush type, call when changing the active brush.
+ *
+ * The tool system handles the other way internally, that is, changing the active brush when a
+ * different brush based tool gets activated.
+ */
+void WM_toolsystem_activate_compatible_tool_for_brush_type(bContext *C,
+                                                           const int brush_type,
+                                                           const PaintMode paint_mode);
 
 void WM_toolsystem_unlink(bContext *C, WorkSpace *workspace, const bToolKey *tkey);
 void WM_toolsystem_refresh(bContext *C, WorkSpace *workspace, const bToolKey *tkey);
@@ -103,9 +116,6 @@ void WM_toolsystem_update_from_context(
  */
 bool WM_toolsystem_active_tool_is_brush(const bContext *C);
 bool WM_toolsystem_active_tool_has_custom_cursor(const bContext *C);
-
-std::optional<blender::StringRefNull> WM_toolsystem_find_id_from_data_block(
-    const bContext *C, blender::StringRef data_block);
 
 /** Follow #wmMsgNotifyFn spec. */
 void WM_toolsystem_do_msg_notify_tag_refresh(bContext *C,

@@ -676,6 +676,15 @@ bool BKE_paint_brush_set(Paint *paint, Brush *brush)
   return true;
 }
 
+AssetWeakReference *BKE_paint_brush_asset_reference_from_essentials(const char *name)
+{
+  AssetWeakReference *weak_ref = MEM_new<AssetWeakReference>(__func__);
+  weak_ref->asset_library_type = eAssetLibraryType::ASSET_LIBRARY_ESSENTIALS;
+  weak_ref->relative_asset_identifier = BLI_sprintfN("brushes/essentials_brushes.blend/Brush/%s",
+                                                     name);
+  return weak_ref;
+}
+
 Brush *BKE_paint_brush_from_essentials(Main *bmain, const char *name)
 {
   AssetWeakReference weak_ref;
@@ -692,11 +701,7 @@ static void paint_brush_set_essentials_reference(Paint *paint, const char *name)
   /* Set brush asset reference to a named brush in the essentials asset library. */
   MEM_delete(paint->brush_asset_reference);
 
-  AssetWeakReference *weak_ref = MEM_new<AssetWeakReference>(__func__);
-  weak_ref->asset_library_type = eAssetLibraryType::ASSET_LIBRARY_ESSENTIALS;
-  weak_ref->relative_asset_identifier = BLI_sprintfN("brushes/essentials_brushes.blend/Brush/%s",
-                                                     name);
-  paint->brush_asset_reference = weak_ref;
+  paint->brush_asset_reference = BKE_paint_brush_asset_reference_from_essentials(name);
   paint->brush = nullptr;
 }
 
@@ -705,11 +710,7 @@ static void paint_eraser_brush_set_essentials_reference(Paint *paint, const char
   /* Set brush asset reference to a named brush in the essentials asset library. */
   MEM_delete(paint->eraser_brush_asset_reference);
 
-  AssetWeakReference *weak_ref = MEM_new<AssetWeakReference>(__func__);
-  weak_ref->asset_library_type = eAssetLibraryType::ASSET_LIBRARY_ESSENTIALS;
-  weak_ref->relative_asset_identifier = BLI_sprintfN("brushes/essentials_brushes.blend/Brush/%s",
-                                                     name);
-  paint->eraser_brush_asset_reference = weak_ref;
+  paint->eraser_brush_asset_reference = BKE_paint_brush_asset_reference_from_essentials(name);
   paint->eraser_brush = nullptr;
 }
 
