@@ -29,6 +29,10 @@
 
 #include <fmt/format.h>
 
+#include "render.hh"
+
+void sequencer_thumbnail_transform(ImBuf *in, ImBuf *out);  // render.cc @TODO cleanup
+
 namespace blender::seq {
 
 static ThreadMutex thumb_cache_lock = BLI_MUTEX_INITIALIZER;
@@ -125,8 +129,7 @@ static std::string get_path_from_seq(Scene *scene, const Sequence *seq, float ti
       if (s_elem != nullptr) {
         BLI_path_join(filepath, sizeof(filepath), seq->strip->dirpath, s_elem->filename);
         BLI_path_abs(filepath, ID_BLEND_PATH_FROM_GLOBAL(&scene->id));
-      }
-      // ibuf = seq_render_image_strip_view(context, seq, filepath, prefix, ext, context->view_id);
+      }      
     } break;
     case SEQ_TYPE_MOVIE:
       BLI_path_join(
@@ -140,6 +143,54 @@ static std::string get_path_from_seq(Scene *scene, const Sequence *seq, float ti
   }
   return filepath;
 }
+
+static void image_size_to_thumb_size(int& r_width, int& r_height)
+{
+  float aspect = float(r_width) / float(r_height);
+  constexpr int THUMB_SIZE = 256; //@TODO: use SEQ_RENDER_THUMB_SIZE
+  if (r_width > r_height) {
+    r_width = THUMB_SIZE;
+    r_height = round_fl_to_int(THUMB_SIZE / aspect);
+  }
+  else {
+    r_height = THUMB_SIZE;
+    r_width = round_fl_to_int(THUMB_SIZE * aspect);
+  }
+}
+
+static ImBuf* make_thumb_for_image(Scene *scene, const ThumbnailCache::Request& request)
+{
+  int flag = IB_rect | IB_metadata;
+  //if (seq->alpha_mode == SEQ_ALPHA_PREMUL) { //@TODO
+  //  flag |= IB_alphamode_premul;
+  //}
+  ImBuf *ibuf = IMB_loadiffname(request.file_path.c_str(), flag, nullptr); //@TODO: seq->strip->colorspace_settings.name
+  if (ibuf == nullptr) {
+    return nullptr;
+  }
+  /* Keep only float buffer if we have both byte & float. */
+  if (ibuf->float_buffer.data != nullptr && ibuf->byte_buffer.data != nullptr) {
+    imb_freerectImBuf(ibuf);
+  }
+
+  /* All sequencer color is done in SRGB space, linear gives odd cross-fades. */
+  seq_imbuf_to_sequencer_space(scene, ibuf, false);
+  seq_imbuf_assign_spaces(scene, ibuf);
+
+  /* Scale ibuf to thumbnail size. */
+  int width = request.full_width;
+  int height = request.full_height;
+  image_size_to_thumb_size(width, height);
+
+  ImBuf *scaled_ibuf = IMB_allocImBuf(
+      width, height, 32, ibuf->float_buffer.data ? IB_rectfloat : IB_rect);
+  sequencer_thumbnail_transform(ibuf, scaled_ibuf);
+  seq_imbuf_assign_spaces(scene, scaled_ibuf);
+  IMB_freeImBuf(ibuf);
+
+  return scaled_ibuf;
+}
+
 
 class ThumbGenerationJob {
   Scene *scene_ = nullptr;
@@ -202,24 +253,21 @@ void ThumbGenerationJob::run_fn(void *customdata, wmJobWorkerStatus *worker_stat
       if (worker_status->stop) {
         break;
       }
-      //@TODO: for now just a test random colored image
-      int img_width = request.full_width;
-      int img_height = request.full_height;
-      float aspect = float(img_width) / float(img_height);
-      constexpr int THUMB_SIZE = 256;  // SEQ_RENDER_THUMB_SIZE
-      if (img_width > img_height) {
-        img_width = THUMB_SIZE;
-        img_height = round_fl_to_int(THUMB_SIZE / aspect);
+
+      ImBuf *thumb = nullptr;
+      if (request.seq_type == SEQ_TYPE_IMAGE) {
+        thumb = make_thumb_for_image(job->scene_, request);
       }
       else {
-        img_height = THUMB_SIZE;
-        img_width = round_fl_to_int(THUMB_SIZE * aspect);
+        //@TODO: for now just a test random colored image
+        int img_width = request.full_width;
+        int img_height = request.full_height;
+        image_size_to_thumb_size(img_width, img_height);
+        thumb = IMB_allocImBuf(img_width, img_height, 32, IB_rect);
+        float col[4] = {
+            (rand() % 100) / 100.0f, (rand() % 100) / 100.0f, (rand() % 100) / 100.0f, 1.0f};
+        IMB_rectfill(thumb, col);
       }
-
-      ImBuf *thumb = IMB_allocImBuf(img_width, img_height, 32, IB_rect);
-      float col[4] = {
-          (rand() % 100) / 100.0f, (rand() % 100) / 100.0f, (rand() % 100) / 100.0f, 1.0f};
-      IMB_rectfill(thumb, col);
 
       /* Add result into the cache (under cache mutex lock). */
       BLI_mutex_lock(&thumb_cache_lock);
@@ -359,7 +407,9 @@ std::string thumbnail_cache_get_stats(Scene* scene)
     for (const auto &kvp : cache->map_.items()) {
       entries += kvp.value.size();
       for (const auto &thumb : kvp.value) {
-        bytes += thumb.thumb->x * thumb.thumb->y * 4;
+        if (thumb.thumb) {
+          bytes += thumb.thumb->x * thumb.thumb->y * 4;
+        }
       }
     }
     stats = fmt::format("Thumb cache (new): {} file paths, {} thumbs, {:.1f} MB, {} requests",

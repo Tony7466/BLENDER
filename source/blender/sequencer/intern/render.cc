@@ -508,7 +508,7 @@ static void sequencer_image_crop_init(const Sequence *seq,
   BLI_rctf_init(r_crop, left, in->x - right, bottom, in->y - top);
 }
 
-static void sequencer_thumbnail_transform(ImBuf *in, ImBuf *out)
+void sequencer_thumbnail_transform(ImBuf *in, ImBuf *out)
 {
   float image_scale_factor = float(out->x) / in->x;
   float transform_matrix[4][4];
