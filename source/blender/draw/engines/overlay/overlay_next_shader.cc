@@ -99,36 +99,38 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
   mesh_face_normal = shader("overlay_edit_mesh_normal", [](gpu::shader::ShaderCreateInfo &info) {
     shader_patch_edit_mesh_normal_common(info);
     info.define("FACE_NORMAL");
+    info.push_constant(gpu::shader::Type::BOOL, "hq_normals");
     info.storage_buf(0, Qualifier::READ, "uint", "norAndFlag[]", Frequency::GEOMETRY);
   });
 
-  mesh_vert_normal = shader("overlay_edit_mesh_normal", [](gpu::shader::ShaderCreateInfo &info) {
-    shader_patch_edit_mesh_normal_common(info);
-    info.define("VERT_NORMAL");
-    info.storage_buf(0, Qualifier::READ, "uint", "vnor[]", Frequency::GEOMETRY);
-  });
+  mesh_face_normal_subdiv = shader(
+      "overlay_edit_mesh_normal", [](gpu::shader::ShaderCreateInfo &info) {
+        shader_patch_edit_mesh_normal_common(info);
+        info.define("FACE_NORMAL");
+        info.define("FLOAT_NORMAL");
+        info.storage_buf(0, Qualifier::READ, "vec4", "norAndFlag[]", Frequency::GEOMETRY);
+      });
 
   mesh_loop_normal = shader("overlay_edit_mesh_normal", [](gpu::shader::ShaderCreateInfo &info) {
     shader_patch_edit_mesh_normal_common(info);
     info.define("LOOP_NORMAL");
+    info.push_constant(gpu::shader::Type::BOOL, "hq_normals");
     info.storage_buf(0, Qualifier::READ, "uint", "lnor[]", Frequency::GEOMETRY);
   });
-
-  mesh_loop_normal_hq = shader(
-      "overlay_edit_mesh_normal", [](gpu::shader::ShaderCreateInfo &info) {
-        shader_patch_edit_mesh_normal_common(info);
-        info.define("LOOP_NORMAL");
-        info.define("SHORT_NORMAL");
-        info.storage_buf(0, Qualifier::READ, "uint", "lnor[]", Frequency::GEOMETRY);
-      });
 
   mesh_loop_normal_subdiv = shader(
       "overlay_edit_mesh_normal", [](gpu::shader::ShaderCreateInfo &info) {
         shader_patch_edit_mesh_normal_common(info);
         info.define("LOOP_NORMAL");
         info.define("FLOAT_NORMAL");
-        info.storage_buf(0, Qualifier::READ, "uint", "lnor[]", Frequency::GEOMETRY);
+        info.storage_buf(0, Qualifier::READ, "vec4", "lnor[]", Frequency::GEOMETRY);
       });
+
+  mesh_vert_normal = shader("overlay_edit_mesh_normal", [](gpu::shader::ShaderCreateInfo &info) {
+    shader_patch_edit_mesh_normal_common(info);
+    info.define("VERT_NORMAL");
+    info.storage_buf(0, Qualifier::READ, "uint", "vnor[]", Frequency::GEOMETRY);
+  });
 
   /** Selectable Shaders */
 

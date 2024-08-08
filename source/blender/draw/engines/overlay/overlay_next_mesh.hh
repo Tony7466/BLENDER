@@ -21,6 +21,7 @@ class Meshes {
  private:
   PassSimple edit_mesh_normals_ps_ = {"Normals"};
   PassSimple::Sub *face_normals_ = nullptr;
+  PassSimple::Sub *face_normals_subdiv_ = nullptr;
   PassSimple::Sub *loop_normals_ = nullptr;
   PassSimple::Sub *loop_normals_subdiv_ = nullptr;
   PassSimple::Sub *vert_normals_ = nullptr;
@@ -56,6 +57,7 @@ class Meshes {
     {
       /* Normals */
       const bool use_screen_size = (edit_flag & V3D_OVERLAY_EDIT_CONSTANT_SCREEN_SIZE_NORMALS);
+      const bool use_hq_normals = state.scene->r.perf_flag & SCE_PERF_HQ_NORMALS;
 
       DRWState pass_state = DRW_STATE_WRITE_DEPTH | DRW_STATE_WRITE_COLOR |
                             DRW_STATE_DEPTH_LESS_EQUAL | state.clipping_state;
@@ -77,20 +79,19 @@ class Meshes {
         sub.push_constant("normalSize", state.overlay.normals_length);
         sub.push_constant("normalScreenSize", state.overlay.normals_constant_screen_size);
         sub.push_constant("retopologyOffset", retopology_offset);
+        sub.push_constant("hq_normals", use_hq_normals);
         return &sub;
       };
 
       face_normals_ = loop_normals_ = vert_normals_ = vert_normals_ = nullptr;
 
       if (show_face_nor) {
+        face_normals_subdiv_ = shader_pass(res.shaders.mesh_face_normal_subdiv.get(), "SubdFNor");
         face_normals_ = shader_pass(res.shaders.mesh_face_normal.get(), "FaceNor");
       }
       if (show_loop_nor) {
-        GPUShader *sh = (state.scene->r.perf_flag & SCE_PERF_HQ_NORMALS) ?
-                            res.shaders.mesh_loop_normal_hq.get() :
-                            res.shaders.mesh_loop_normal.get();
-        loop_normals_ = shader_pass(sh, "LoopNor");
-        loop_normals_subdiv_ = shader_pass(res.shaders.mesh_loop_normal_subdiv.get(), "SubdivNor");
+        loop_normals_subdiv_ = shader_pass(res.shaders.mesh_loop_normal_subdiv.get(), "SubdLNor");
+        loop_normals_ = shader_pass(res.shaders.mesh_loop_normal.get(), "LoopNor");
       }
       if (show_vert_nor) {
         vert_normals_ = shader_pass(res.shaders.mesh_vert_normal.get(), "VertexNor");
@@ -112,6 +113,9 @@ class Meshes {
 
     Object *ob = ob_ref.object;
     Mesh &mesh = *static_cast<Mesh *>(ob->data);
+    /* WORKAROUND: GPU subdiv uses a different normal format. Remove this once GPU subdiv is
+     * refactored. */
+    const bool use_gpu_subdiv = BKE_subsurf_modifier_has_gpu_subdiv(static_cast<Mesh *>(ob->data));
 
     bool draw_as_solid = (ob->dt > OB_WIRE);
 
@@ -121,14 +125,11 @@ class Meshes {
     }
     if (face_normals_) {
       gpu::Batch *geom = DRW_mesh_batch_cache_get_edit_facedots(mesh);
-      face_normals_->draw_expand(geom, GPU_PRIM_LINES, 1, 1, res_handle);
+      (use_gpu_subdiv ? face_normals_subdiv_ : face_normals_)
+          ->draw_expand(geom, GPU_PRIM_LINES, 1, 1, res_handle);
     }
     if (loop_normals_) {
       gpu::Batch *geom = DRW_mesh_batch_cache_get_edit_loop_normals(mesh);
-      /* WORKAROUND: GPU subdiv uses a different normal format. Remove this once GPU subdiv is
-       * refactored. */
-      const bool use_gpu_subdiv = BKE_subsurf_modifier_has_gpu_subdiv(
-          static_cast<Mesh *>(ob->data));
       (use_gpu_subdiv ? loop_normals_subdiv_ : loop_normals_)
           ->draw_expand(geom, GPU_PRIM_LINES, 1, 1, res_handle);
     }

@@ -50,22 +50,40 @@ void main()
 
   vec3 nor;
 #if defined(FACE_NORMAL)
-  nor = gpu_attr_load_uint_1010102_snorm(norAndFlag, gpu_attr_0, vert_i).xyz;
+#  if defined(FLOAT_NORMAL)
+  /* Path for opensubdiv. To be phased out at some point. */
+  nor = norAndFlag[vert_i].xyz;
+#  else
+  if (hq_normals) {
+    nor = gpu_attr_load_short4_snorm(norAndFlag, gpu_attr_0, vert_i).xyz;
+  }
+  else {
+    nor = gpu_attr_load_uint_1010102_snorm(norAndFlag, gpu_attr_0, vert_i).xyz;
+  }
+#  endif
+
   finalColor = colorNormal;
+
 #elif defined(VERT_NORMAL)
   nor = gpu_attr_load_uint_1010102_snorm(vnor, gpu_attr_0, vert_i).xyz;
   finalColor = colorVNormal;
+
 #elif defined(LOOP_NORMAL)
 #  if defined(FLOAT_NORMAL)
   /* Path for opensubdiv. To be phased out at some point. */
-  nor = gpu_attr_load_float3(lnor, gpu_attr_0, vert_i);
-#  elif defined(SHORT_NORMAL)
-  nor = gpu_attr_load_short4_snorm(lnor, gpu_attr_0, vert_i).xyz;
+  nor = lnor[vert_i].xyz;
 #  else
-  nor = gpu_attr_load_uint_1010102_snorm(lnor, gpu_attr_0, vert_i).xyz;
+  if (hq_normals) {
+    nor = gpu_attr_load_short4_snorm(lnor, gpu_attr_0, vert_i).xyz;
+  }
+  else {
+    nor = gpu_attr_load_uint_1010102_snorm(lnor, gpu_attr_0, vert_i).xyz;
+  }
 #  endif
   finalColor = colorLNormal;
+
 #else
+
   /* Select the right normal by checking if the generic attribute is used. */
   if (!all(equal(lnor.xyz, vec3(0)))) {
     if (lnor.w < 0.0) {
