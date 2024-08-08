@@ -113,6 +113,8 @@ class ShapeCache {
   BatchPtr field_force;
   BatchPtr field_wind;
   BatchPtr field_vortex;
+  BatchPtr field_curve;
+  BatchPtr field_sphere_limit;
 
   BatchPtr lightprobe_cube;
   BatchPtr lightprobe_planar;

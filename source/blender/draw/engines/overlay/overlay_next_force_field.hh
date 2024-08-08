@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include "BKE_anim_path.h"
+
 #include "DNA_object_force_types.h"
 
 #include "overlay_next_private.hh"
@@ -26,6 +28,8 @@ class ForceFields {
     ForceFieldsInstanceBuf field_force_buf = {selection_type_, "field_force_buf"};
     ForceFieldsInstanceBuf field_wind_buf = {selection_type_, "field_wind_buf"};
     ForceFieldsInstanceBuf field_vortex_buf = {selection_type_, "field_vortex_buf"};
+    ForceFieldsInstanceBuf field_curve_buf = {selection_type_, "field_curve_buf"};
+    ForceFieldsInstanceBuf field_sphere_limit_buf = {selection_type_, "field_sphere_limit_buf"};
   } call_buffers_;
 
  public:
@@ -36,6 +40,8 @@ class ForceFields {
     call_buffers_.field_force_buf.clear();
     call_buffers_.field_wind_buf.clear();
     call_buffers_.field_vortex_buf.clear();
+    call_buffers_.field_curve_buf.clear();
+    call_buffers_.field_sphere_limit_buf.clear();
   }
 
   void object_sync(const ObjectRef &ob_ref, Resources &res, const State &state)
@@ -51,7 +57,6 @@ class ForceFields {
     float &size_x = matrix[0][3];
     float &size_y = matrix[1][3];
     float &size_z = matrix[2][3];
-    float3 &pos = matrix.location();
 
     size_x = size_y = size_z = ob->empty_drawsize;
 
@@ -67,23 +72,23 @@ class ForceFields {
         size_y = (pd->f_strength < 0.0f) ? -size_y : size_y;
         call_buffers_.field_vortex_buf.append(data, select_id);
         break;
-        // case PFIELD_GUIDE:
-        //   if (cu && (cu->flag & CU_PATH) && ob->runtime->curve_cache->anim_path_accum_length) {
-        //     instdata.size_x = instdata.size_y = instdata.size_z = pd->f_strength;
-        //     float pos[4];
-        //     BKE_where_on_path(ob, 0.0f, pos, nullptr, nullptr, nullptr, nullptr);
-        //     copy_v3_v3(instdata.pos, ob->object_to_world().location());
-        //     translate_m4(instdata.mat, pos[0], pos[1], pos[2]);
-        //     DRW_buffer_add_entry(cb->field_curve, color, &instdata);
+      case PFIELD_GUIDE:
+        if (cu && (cu->flag & CU_PATH) && ob->runtime->curve_cache->anim_path_accum_length) {
+          size_x = size_y = size_z = pd->f_strength;
+          float4 pos;
+          BKE_where_on_path(ob, 0.0f, pos, nullptr, nullptr, nullptr, nullptr);
+          matrix.location() = ob->object_to_world().location();
+          matrix = math::translate(matrix, pos.xyz());
+          call_buffers_.field_curve_buf.append(data, select_id);
 
-        //     BKE_where_on_path(ob, 1.0f, pos, nullptr, nullptr, nullptr, nullptr);
-        //     copy_v3_v3(instdata.pos, ob->object_to_world().location());
-        //     translate_m4(instdata.mat, pos[0], pos[1], pos[2]);
-        //     DRW_buffer_add_entry(cb->field_sphere_limit, color, &instdata);
-        //     /* Restore */
-        //     copy_v3_v3(instdata.pos, ob->object_to_world().location());
-        //   }
-        //   break;
+          BKE_where_on_path(ob, 1.0f, pos, nullptr, nullptr, nullptr, nullptr);
+          matrix.location() = ob->object_to_world().location();
+          matrix = math::translate(matrix, pos.xyz());
+          call_buffers_.field_sphere_limit_buf.append(data, select_id);
+          /* Restore */
+          matrix.location() = ob->object_to_world().location();
+        }
+        break;
     }
 
     // if (pd->falloff == PFIELD_FALL_TUBE) {
@@ -142,6 +147,8 @@ class ForceFields {
     call_buffers_.field_force_buf.end_sync(ps_, shapes.field_force.get());
     call_buffers_.field_wind_buf.end_sync(ps_, shapes.field_wind.get());
     call_buffers_.field_vortex_buf.end_sync(ps_, shapes.field_vortex.get());
+    call_buffers_.field_curve_buf.end_sync(ps_, shapes.field_curve.get());
+    call_buffers_.field_sphere_limit_buf.end_sync(ps_, shapes.field_sphere_limit.get());
   }
 
   void draw(Framebuffer &framebuffer, Manager &manager, View &view)

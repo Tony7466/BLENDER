@@ -817,16 +817,43 @@ ShapeCache::ShapeCache()
   {
     constexpr int spiral_resol = 32;
     const Vector<float2> ring = ring_vertices(1.0f, spiral_resol);
+
     Vector<Vertex> verts;
 
     for (const int i : IndexRange(ring.size() * 2 + 1)) {
-      const int a = i - spiral_resol;
-      const float r = a / float(spiral_resol);
+      /* r: [-1, .., 0, .., 1] */
+      const float r = (i - spiral_resol) / float(spiral_resol);
+      /* index: [9, spiral_resol - 1, spiral_resol - 2, .., 2, 1, 0, 1, 2, .., spiral_resol - 1, 0]
+       */
       const float2 point = ring[abs(spiral_resol - i) % spiral_resol] * r;
       verts.append({float3(point.y, point.x, 0.0f), VCLASS_EMPTY_SIZE});
     }
     field_vortex = BatchPtr(GPU_batch_create_ex(
         GPU_PRIM_LINE_STRIP, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* field_curve */
+  {
+    constexpr int circle_resol = 32;
+    const Vector<float2> ring = ring_vertices(1.0f, circle_resol);
+
+    Vector<Vertex> verts;
+
+    append_line_loop(verts, ring, 0.0f, VCLASS_EMPTY_SIZE | VCLASS_SCREENALIGNED);
+
+    field_curve = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* field_sphere_limit */
+  {
+    constexpr int circle_resol = 32 * 2;
+    const Vector<float2> ring = ring_vertices(1.0f, circle_resol);
+
+    Vector<Vertex> verts;
+
+    append_line_loop(verts, ring, 0.0f, VCLASS_EMPTY_SIZE | VCLASS_SCREENALIGNED, true);
+
+    field_sphere_limit = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
   }
   /* lightprobe_cube */
   {
