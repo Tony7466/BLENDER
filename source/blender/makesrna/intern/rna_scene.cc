@@ -23,6 +23,7 @@
 #include "DNA_view3d_types.h"
 #include "DNA_world_types.h"
 
+#include "IMB_colormanagement.hh"
 #include "IMB_imbuf_types.hh"
 
 #include "BLI_listbase.h"
@@ -1385,6 +1386,8 @@ static void rna_ImageFormatSettings_file_format_set(PointerRNA *ptr, int value)
 #  endif
     (void)rd;
   }
+
+  BKE_image_format_update_color_space_for_type(imf);
 }
 
 static const EnumPropertyItem *rna_ImageFormatSettings_file_format_itemf(bContext * /*C*/,
@@ -2083,11 +2086,11 @@ static void object_simplify_update(Scene *scene,
   ModifierData *md;
   ParticleSystem *psys;
 
-  if ((ob->id.tag & LIB_TAG_DOIT) == 0) {
+  if ((ob->id.tag & ID_TAG_DOIT) == 0) {
     return;
   }
 
-  ob->id.tag &= ~LIB_TAG_DOIT;
+  ob->id.tag &= ~ID_TAG_DOIT;
 
   for (md = static_cast<ModifierData *>(ob->modifiers.first); md; md = md->next) {
     if (md->type == eModifierType_Nodes && depsgraph != nullptr) {
@@ -2139,7 +2142,7 @@ static void rna_Scene_simplify_update_impl(Main *bmain,
   Scene *sce_iter;
   Base *base;
 
-  BKE_main_id_tag_listbase(&bmain->objects, LIB_TAG_DOIT, true);
+  BKE_main_id_tag_listbase(&bmain->objects, ID_TAG_DOIT, true);
   FOREACH_SCENE_OBJECT_BEGIN (sce, ob) {
     object_simplify_update(sce, ob, update_normals, depsgraph);
   }
@@ -8323,6 +8326,14 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 
   /* Fast GI approximation */
+
+  prop = RNA_def_property(srna, "use_fast_gi", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", SCE_EEVEE_FAST_GI_ENABLED);
+  RNA_def_property_ui_text(prop,
+                           "Fast GI Approximation",
+                           "Use faster global illumination technique for high roughness surfaces");
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 
   prop = RNA_def_property(srna, "fast_gi_thickness_near", PROP_FLOAT, PROP_DISTANCE);
   RNA_def_property_ui_text(

@@ -504,7 +504,7 @@ static bool init_structDNA(SDNA *sdna, bool do_endian_swap, const char **r_error
 
   /* Calculate 'sdna->pointer_size'.
    *
-   * NOTE: Cannot just do `sizeof(void *)` here, since the current DNA may come from a blendfile
+   * NOTE: Cannot just do `sizeof(void *)` here, since the current DNA may come from a blend-file
    * saved on a different system, using a different pointer size. So instead, use half the size of
    * the #ListBase struct (only made of two pointers).
    */
@@ -520,8 +520,8 @@ static bool init_structDNA(SDNA *sdna, bool do_endian_swap, const char **r_error
     const SDNA_Struct *struct_info = sdna->structs[struct_index];
     sdna->pointer_size = sdna->types_size[struct_info->type_index] / 2;
 
-    /* Should never fail, double-check that #ListBase struct is still what is should be (akak a
-     * couple of pointers and nothing else). */
+    /* Should never fail, double-check that #ListBase struct is still what is should be
+     * (a couple of pointers and nothing else). */
     if (UNLIKELY(struct_info->members_num != 2 || !ELEM(sdna->pointer_size, 4, 8))) {
       *r_error_message = "ListBase struct error: invalid computed pointer-size.";
       return false;
@@ -549,14 +549,10 @@ static bool init_structDNA(SDNA *sdna, bool do_endian_swap, const char **r_error
     uint dummy_index = 0;
     const int mat4x4f_struct_index = DNA_struct_find_index_without_alias_ex(
         sdna, "mat4x4f", &dummy_index);
-    if (mat4x4f_struct_index >= 0) {
-#if 0 /* FIXME: This is using the wrong index. Code should be: */
+    if (mat4x4f_struct_index > 0) {
       SDNA_Struct *struct_info = sdna->structs[mat4x4f_struct_index];
       const int mat4x4f_type_index = struct_info->type_index;
       sdna->types_alignment[mat4x4f_type_index] = alignof(blender::float4x4);
-#else
-      sdna->types_alignment[mat4x4f_struct_index] = alignof(blender::float4x4);
-#endif
     }
   }
 

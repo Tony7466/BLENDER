@@ -98,8 +98,7 @@ void add_initial_with_symmetry(const Object &ob,
     else {
       BLI_assert(radius > 0.0f);
       const float radius_squared = (radius == FLT_MAX) ? FLT_MAX : radius * radius;
-      float3 location;
-      flip_v3_v3(location, SCULPT_vertex_co_get(ss, vertex), ePaintSymmetryFlags(i));
+      float3 location = symmetry_flip(SCULPT_vertex_co_get(ss, vertex), ePaintSymmetryFlags(i));
       v = nearest_vert_calc(ob, location, radius_squared, false);
     }
 
@@ -137,8 +136,7 @@ void FillDataMesh::add_initial_with_symmetry(const Object &object,
     else {
       BLI_assert(radius > 0.0f);
       const float radius_squared = (radius == FLT_MAX) ? FLT_MAX : radius * radius;
-      float3 location;
-      flip_v3_v3(location, vert_positions[vertex], ePaintSymmetryFlags(i));
+      float3 location = symmetry_flip(vert_positions[vertex], ePaintSymmetryFlags(i));
       vert_to_add = nearest_vert_calc_mesh(
           pbvh, vert_positions, hide_vert, location, radius_squared, false);
     }
@@ -175,10 +173,9 @@ void FillDataGrids::add_initial_with_symmetry(const Object &object,
     else {
       BLI_assert(radius > 0.0f);
       const float radius_squared = (radius == FLT_MAX) ? FLT_MAX : radius * radius;
-      float3 location;
       CCGElem *elem = subdiv_ccg.grids[vertex.grid_index];
-      flip_v3_v3(
-          location, CCG_grid_elem_co(key, elem, vertex.x, vertex.y), ePaintSymmetryFlags(i));
+      float3 location = symmetry_flip(CCG_grid_elem_co(key, elem, vertex.x, vertex.y),
+                                      ePaintSymmetryFlags(i));
       vert_to_add = nearest_vert_calc_grids(pbvh, subdiv_ccg, location, radius_squared, false);
     }
 
@@ -211,8 +208,7 @@ void FillDataBMesh::add_initial_with_symmetry(const Object &object,
     else {
       BLI_assert(radius > 0.0f);
       const float radius_squared = (radius == FLT_MAX) ? FLT_MAX : radius * radius;
-      float3 location;
-      flip_v3_v3(location, vertex->co, ePaintSymmetryFlags(i));
+      float3 location = symmetry_flip(vertex->co, ePaintSymmetryFlags(i));
       vert_to_add = nearest_vert_calc_bmesh(pbvh, location, radius_squared, false);
     }
 
@@ -220,35 +216,6 @@ void FillDataBMesh::add_initial_with_symmetry(const Object &object,
       this->add_initial(*vert_to_add);
     }
   }
-}
-
-void add_active(const Object &ob, const SculptSession &ss, FillData &flood, float radius)
-{
-  add_initial_with_symmetry(ob, ss, flood, SCULPT_active_vertex_get(ss), radius);
-}
-
-void FillDataMesh::add_active(const Object &object, const SculptSession &ss, const float radius)
-{
-  PBVHVertRef active_vert = SCULPT_active_vertex_get(ss);
-  this->add_initial_with_symmetry(object, *ss.pbvh, active_vert.i, radius);
-}
-
-void FillDataGrids::add_active(const Object &object, const SculptSession &ss, const float radius)
-{
-  PBVHVertRef active_vert = SCULPT_active_vertex_get(ss);
-
-  const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
-  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-  SubdivCCGCoord coord = SubdivCCGCoord::from_index(key, active_vert.i);
-
-  this->add_initial_with_symmetry(object, *ss.pbvh, subdiv_ccg, coord, radius);
-}
-
-void FillDataBMesh::add_active(const Object &object, const SculptSession &ss, const float radius)
-{
-  PBVHVertRef active_vert = SCULPT_active_vertex_get(ss);
-  this->add_initial_with_symmetry(
-      object, *ss.pbvh, reinterpret_cast<BMVert *>(active_vert.i), radius);
 }
 
 void execute(SculptSession &ss,
