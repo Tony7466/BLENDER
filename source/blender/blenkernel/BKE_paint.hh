@@ -318,7 +318,7 @@ struct SculptFakeNeighbors {
   float current_max_distance;
 
   /* Indexed by vertex, stores the vertex index of its fake neighbor if available. */
-  int *fake_neighbor_index;
+  blender::Array<int> fake_neighbor_index;
 };
 
 /* Session data (mode-specific) */
@@ -422,9 +422,7 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
   /* Depsgraph for the Cloth Brush solver to get the colliders. */
   Depsgraph *depsgraph = nullptr;
 
-  /* These are always assigned to base mesh data when using Type::Mesh and Type::Grids.
-   */
-  blender::MutableSpan<blender::float3> vert_positions;
+  /* These are always assigned to base mesh data when using Type::Mesh. */
   blender::OffsetIndices<int> faces;
   blender::Span<int> corner_verts;
 
@@ -510,8 +508,7 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
   Scene *scene = nullptr;
 
   /* Dynamic mesh preview */
-  PBVHVertRef *preview_vert_list = nullptr;
-  int preview_vert_count = 0;
+  blender::Array<int> preview_verts;
 
   /* Pose Brush Preview */
   blender::float3 pose_origin;

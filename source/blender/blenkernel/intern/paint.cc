@@ -1662,12 +1662,10 @@ static void sculptsession_free_pbvh(Object *object)
   ss->vert_to_edge_indices = {};
   ss->vert_to_edge_map = {};
 
-  MEM_SAFE_FREE(ss->preview_vert_list);
-  ss->preview_vert_count = 0;
+  ss->preview_verts = {};
 
   ss->vertex_info.boundary.clear_and_shrink();
-
-  MEM_SAFE_FREE(ss->fake_neighbors.fake_neighbor_index);
+  ss->fake_neighbors.fake_neighbor_index = {};
 }
 
 void BKE_sculptsession_bm_to_me_for_render(Object *object)
@@ -1938,7 +1936,6 @@ static void sculpt_update_object(Depsgraph *depsgraph,
 
     /* These are assigned to the base mesh in Multires. This is needed because Face Sets operators
      * and tools use the Face Sets data from the base mesh when Multires is active. */
-    ss.vert_positions = mesh_orig->vert_positions_for_write();
     ss.faces = mesh_orig->faces();
     ss.corner_verts = mesh_orig->corner_verts();
   }
@@ -1946,7 +1943,6 @@ static void sculpt_update_object(Depsgraph *depsgraph,
     ss.totvert = mesh_orig->verts_num;
     ss.faces_num = mesh_orig->faces_num;
     ss.totfaces = mesh_orig->faces_num;
-    ss.vert_positions = mesh_orig->vert_positions_for_write();
     ss.faces = mesh_orig->faces();
     ss.corner_verts = mesh_orig->corner_verts();
     ss.multires.active = false;
