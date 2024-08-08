@@ -178,7 +178,7 @@ class Meshes {
       pass.init();
       pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA |
                      DRW_STATE_WRITE_DEPTH | state.clipping_state);
-      pass.shader_set(res.shaders.mesh_edit_vert.get());
+      pass.shader_set(res.shaders.mesh_edit_facedot.get());
       mesh_edit_common_resource_bind(pass, backwire_opacity);
     }
   }

@@ -203,6 +203,21 @@ GPU_SHADER_CREATE_INFO(overlay_edit_mesh_facedot)
     .fragment_source("overlay_point_varying_color_frag.glsl")
     .additional_info("draw_modelmat", "overlay_edit_mesh_common");
 
+GPU_SHADER_CREATE_INFO(overlay_edit_mesh_facedot_next)
+    .do_static_compilation(true)
+    .define("FACEDOT")
+    .vertex_in(0, Type::VEC3, "pos")
+    .vertex_in(1, Type::UVEC4, "data")
+    .vertex_in(2, Type::VEC4, "norAndFlag")
+    .define("vnor", "norAndFlag.xyz")
+    .vertex_source("overlay_edit_mesh_facedot_vert.glsl")
+    .vertex_out(overlay_edit_flat_color_iface)
+    .fragment_source("overlay_point_varying_color_frag.glsl")
+    .additional_info("draw_view",
+                     "draw_modelmat_new",
+                     "draw_resource_handle_new",
+                     "overlay_edit_mesh_common");
+
 GPU_SHADER_CREATE_INFO(overlay_edit_mesh_normal)
     .do_static_compilation(true)
     .define("WORKAROUND_INDEX_LOAD_INCLUDE")
