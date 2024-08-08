@@ -525,8 +525,14 @@ int blf_font_draw_mono(
 }
 
 #ifndef WITH_HEADLESS
-void blf_draw_svg_icon(
-    FontBLF *font, uint icon_id, float x, float y, float size, float color[4], float outline_alpha)
+void blf_draw_svg_icon(FontBLF *font,
+                       uint icon_id,
+                       float x,
+                       float y,
+                       float size,
+                       float color[4],
+                       float outline_alpha,
+                       bool multicolor)
 {
   blf_font_size(font, size);
   font->pos[0] = int(x);
@@ -551,7 +557,7 @@ void blf_draw_svg_icon(
   GlyphCacheBLF *gc = blf_glyph_cache_acquire(font);
   blf_batch_draw_begin(font);
 
-  GlyphBLF *g = blf_glyph_ensure_icon(gc, icon_id, color == nullptr);
+  GlyphBLF *g = blf_glyph_ensure_icon(gc, icon_id, multicolor);
   if (g) {
     blf_glyph_draw(font, gc, g, 0, 0);
   }
@@ -901,8 +907,8 @@ static void blf_font_boundbox_ex(FontBLF *font,
     }
     const ft_pix pen_x_next = pen_x + g->advance_x;
 
-    const ft_pix gbox_xmin = pen_x;
-    const ft_pix gbox_xmax = pen_x_next;
+    const ft_pix gbox_xmin = std::min(pen_x, pen_x + g->box_xmin);
+    const ft_pix gbox_xmax = std::max(pen_x_next, pen_x + g->box_xmax);
     const ft_pix gbox_ymin = g->box_ymin + pen_y;
     const ft_pix gbox_ymax = g->box_ymax + pen_y;
 

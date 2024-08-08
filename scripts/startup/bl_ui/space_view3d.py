@@ -3112,7 +3112,7 @@ class VIEW3D_MT_object_context_menu(Menu):
 
             if obj.empty_display_type == 'IMAGE':
                 layout.operator("image.convert_to_mesh_plane", text="Convert to Mesh Plane")
-                layout.operator("gpencil.trace_image")
+                layout.operator("grease_pencil.trace_image")
 
                 layout.separator()
 
@@ -3512,7 +3512,7 @@ class VIEW3D_MT_object_convert(Menu):
             # Potrace lib dependency.
             if bpy.app.build_options.potrace:
                 layout.operator("image.convert_to_mesh_plane", text="Convert to Mesh Plane", icon='MESH_PLANE')
-                layout.operator("gpencil.trace_image", icon='OUTLINER_OB_GREASEPENCIL')
+                layout.operator("grease_pencil.trace_image", icon='OUTLINER_OB_GREASEPENCIL')
 
         if ob and ob.type == 'CURVES':
             layout.operator("curves.convert_to_particle_system", text="Particle System")
@@ -6022,6 +6022,14 @@ class VIEW3D_MT_edit_greasepencil_animation(Menu):
         layout.operator("grease_pencil.insert_blank_frame", text="Insert Blank Keyframe (Active Layer)")
         layout.operator("grease_pencil.insert_blank_frame", text="Insert Blank Keyframe (All Layers)").all_layers = True
 
+        layout.separator()
+        layout.operator("grease_pencil.frame_duplicate", text="Duplicate Active Keyframe (Active Layer)").all = False
+        layout.operator("grease_pencil.frame_duplicate", text="Duplicate Active Keyframe (All Layer)").all = True
+
+        layout.separator()
+        layout.operator("grease_pencil.active_frame_delete", text="Delete Active Keyframe (Active Layer)").all = False
+        layout.operator("grease_pencil.active_frame_delete", text="Delete Active Keyframe (All Layer)").all = True
+
 
 class VIEW3D_MT_edit_gpencil_transform(Menu):
     bl_label = "Transform"
@@ -6148,6 +6156,7 @@ class VIEW3D_MT_edit_greasepencil_stroke(Menu):
         layout.separator()
 
         layout.operator_menu_enum("grease_pencil.set_curve_type", property="type")
+        layout.operator("grease_pencil.set_curve_resolution")
 
 
 class VIEW3D_MT_edit_greasepencil_point(Menu):
@@ -8707,6 +8716,79 @@ class VIEW3D_MT_greasepencil_edit_context_menu(Menu):
             col.operator("grease_pencil.separate", text="Separate").mode = 'SELECTED'
 
 
+class GREASE_PENCIL_MT_Layers(Menu):
+    bl_label = "Layers"
+
+    def draw(self, context):
+        layout = self.layout
+        grease_pencil = context.active_object.data
+
+        layout.operator("grease_pencil.layer_add", text="New Layer", icon='ADD')
+
+        if not grease_pencil.layers:
+            return
+
+        layout.separator()
+
+        # Display layers in layer stack order. The last layer is the top most layer.
+        for i in range(len(grease_pencil.layers) - 1, -1, -1):
+            layer = grease_pencil.layers[i]
+            if layer == grease_pencil.layers.active:
+                icon = 'GREASEPENCIL'
+            else:
+                icon = 'NONE'
+            layout.operator("grease_pencil.layer_active", text=layer.name, icon=icon).layer = i
+
+
+class VIEW3D_PT_greasepencil_draw_context_menu(Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'WINDOW'
+    bl_label = "Draw"
+    bl_ui_units_x = 12
+
+    def draw(self, context):
+        layout = self.layout
+        tool_settings = context.tool_settings
+        settings = tool_settings.gpencil_paint
+        brush = settings.brush
+        gp_settings = brush.gpencil_settings
+
+        is_pin_vertex = gp_settings.brush_draw_mode == 'VERTEXCOLOR'
+        is_vertex = settings.color_mode == 'VERTEXCOLOR' or brush.gpencil_tool == 'TINT' or is_pin_vertex
+
+        if brush.gpencil_tool not in {'ERASE', 'CUTTER', 'EYEDROPPER'} and is_vertex:
+            split = layout.split(factor=0.1)
+            split.prop(brush, "color", text="")
+            split.template_color_picker(brush, "color", value_slider=True)
+
+            col = layout.column()
+            col.separator()
+            col.prop_menu_enum(gp_settings, "vertex_mode", text="Mode")
+            col.separator()
+
+        if brush.gpencil_tool not in {'FILL', 'CUTTER'}:
+            layout.prop(brush, "size", slider=True)
+        if brush.gpencil_tool not in {'ERASE', 'FILL', 'CUTTER'}:
+            layout.prop(gp_settings, "pen_strength")
+
+        layer = context.object.data.layers.active
+
+        if layer:
+            layout.label(text="Active Layer")
+            row = layout.row(align=True)
+            row.operator_context = 'EXEC_REGION_WIN'
+            row.menu("GREASE_PENCIL_MT_Layers", text='', icon='GREASEPENCIL')
+            row.prop(layer, "name", text='')
+            row.operator("grease_pencil.layer_remove", text="", icon='X')
+
+        layout.label(text="Active Material")
+        row = layout.row(align=True)
+        row.menu("VIEW3D_MT_greasepencil_material_active", text='', icon='MATERIAL')
+        ob = context.active_object
+        if ob.active_material:
+            row.prop(ob.active_material, "name", text='')
+
+
 def draw_gpencil_layer_active(context, layout):
     gpl = context.active_gpencil_layer
     if gpl:
@@ -9577,6 +9659,8 @@ classes = (
     VIEW3D_AST_brush_gpencil_sculpt,
     VIEW3D_AST_brush_gpencil_vertex,
     VIEW3D_AST_brush_gpencil_weight,
+    GREASE_PENCIL_MT_Layers,
+    VIEW3D_PT_greasepencil_draw_context_menu,
 )
 
 
