@@ -287,6 +287,89 @@ struct Cache {
 
 }
 
+/** Pose Brush IK Chain. */
+struct SculptPoseIKChainSegment {
+  float3 orig;
+  float3 head;
+
+  float3 initial_orig;
+  float3 initial_head;
+  float len;
+  float3 scale;
+  float rot[4];
+  Array<float> weights;
+
+  /* Store a 4x4 transform matrix for each of the possible combinations of enabled XYZ symmetry
+   * axis. */
+  std::array<float4x4, PAINT_SYMM_AREAS> trans_mat;
+  std::array<float4x4, PAINT_SYMM_AREAS> pivot_mat;
+  std::array<float4x4, PAINT_SYMM_AREAS> pivot_mat_inv;
+};
+
+struct SculptPoseIKChain {
+  Array<SculptPoseIKChainSegment> segments;
+  float3 grab_delta_offset;
+};
+
+struct SculptBoundary {
+  /* Vertex indices of the active boundary. */
+  Vector<int> verts;
+
+  /* Distance from a vertex in the boundary to initial vertex indexed by vertex index, taking into
+   * account the length of all edges between them. Any vertex that is not in the boundary will have
+   * a distance of 0. */
+  Map<int, float> distance;
+
+  /* Data for drawing the preview. */
+  Vector<std::pair<float3, float3>> edges;
+
+  /* Initial vertex index in the boundary which is closest to the current sculpt active vertex. */
+  int initial_vert_i;
+
+  /* Vertex that at max_propagation_steps from the boundary and closest to the original active
+   * vertex that was used to initialize the boundary. This is used as a reference to check how much
+   * the deformation will go into the mesh and to calculate the strength of the brushes. */
+  float3 pivot_position;
+
+  /* Stores the initial positions of the pivot and boundary initial vertex as they may be deformed
+   * during the brush action. This allows to use them as a reference positions and vectors for some
+   * brush effects. */
+  float3 initial_vert_position;
+
+  /* Maximum number of topology steps that were calculated from the boundary. */
+  int max_propagation_steps;
+
+  /* Indexed by vertex index, contains the topology information needed for boundary deformations.
+   */
+  struct {
+    /* Vertex index from where the topology propagation reached this vertex. */
+    Array<int> original_vertex_i;
+
+    /* How many steps were needed to reach this vertex from the boundary. */
+    Array<int> propagation_steps_num;
+
+    /* Strength that is used to deform this vertex. */
+    Array<float> strength_factor;
+  } edit_info;
+
+  /* Bend Deform type. */
+  struct {
+    Array<float3> pivot_rotation_axis;
+    Array<float3> pivot_positions;
+  } bend;
+
+  /* Slide Deform type. */
+  struct {
+    Array<float3> directions;
+  } slide;
+
+  /* Twist Deform type. */
+  struct {
+    float3 rotation_axis;
+    float3 pivot_position;
+  } twist;
+};
+
 /**
  * This structure contains all the temporary data
  * needed for individual brush strokes.
@@ -819,18 +902,14 @@ const blender::float3 SCULPT_vertex_normal_get(const SculptSession &ss, PBVHVert
 
 bool SCULPT_vertex_is_occluded(SculptSession &ss, PBVHVertRef vertex, bool original);
 
+namespace blender::ed::sculpt_paint {
+
 /**
  * Coordinates used for manipulating the base mesh when Grab Active Vertex is enabled.
  */
-const float *SCULPT_vertex_co_for_grab_active_get(const SculptSession &ss, PBVHVertRef vertex);
+Span<float3> vert_positions_for_grab_active_get(const Object &object);
 
-/**
- * Returns the pointer to the coordinates that should be edited from a brush tool iterator
- * depending on the given deformation target.
- */
-float *SCULPT_brush_deform_target_vertex_co_get(SculptSession &ss,
-                                                int deform_target,
-                                                PBVHVertexIter *iter);
+}
 
 void SCULPT_vertex_neighbors_get(const SculptSession &ss,
                                  PBVHVertRef vertex,
@@ -877,13 +956,6 @@ Span<int> vert_neighbors_get_mesh(int vert,
                                   Span<bool> hide_poly,
                                   Vector<int> &r_neighbors);
 }
-
-PBVHVertRef SCULPT_active_vertex_get(const SculptSession &ss);
-const float *SCULPT_active_vertex_co_get(const SculptSession &ss);
-
-/* Returns pbvh::Tree deformed vertices array if shape keys or deform modifiers are used, otherwise
- * returns mesh original vertices array. */
-blender::MutableSpan<blender::float3> SCULPT_mesh_deformed_positions_get(SculptSession &ss);
 
 /* Fake Neighbors */
 
@@ -963,22 +1035,17 @@ int active_face_set_get(const SculptSession &ss);
 int vert_face_set_get(const SculptSession &ss, PBVHVertRef vertex);
 
 bool vert_has_face_set(const SculptSession &ss, PBVHVertRef vertex, int face_set);
-bool vert_has_face_set(const GroupedSpan<int> vert_to_face_map,
+bool vert_has_face_set(GroupedSpan<int> vert_to_face_map,
                        const int *face_sets,
-                       const int vert,
-                       const int face_set);
-bool vert_has_face_set(const SubdivCCG &subdiv_ccg,
-                       const int *face_sets,
-                       const int grid,
-                       const int face_set);
-bool vert_has_face_set(const int face_set_offset, const BMVert &vert, const int face_set);
+                       int vert,
+                       int face_set);
+bool vert_has_face_set(const SubdivCCG &subdiv_ccg, const int *face_sets, int grid, int face_set);
+bool vert_has_face_set(int face_set_offset, const BMVert &vert, int face_set);
 bool vert_has_unique_face_set(const SculptSession &ss, PBVHVertRef vertex);
-bool vert_has_unique_face_set(const GroupedSpan<int> vert_to_face_map,
-                              const int *face_sets,
-                              int vert);
-bool vert_has_unique_face_set(const GroupedSpan<int> vert_to_face_map,
-                              const Span<int> corner_verts,
-                              const OffsetIndices<int> faces,
+bool vert_has_unique_face_set(GroupedSpan<int> vert_to_face_map, const int *face_sets, int vert);
+bool vert_has_unique_face_set(GroupedSpan<int> vert_to_face_map,
+                              Span<int> corner_verts,
+                              OffsetIndices<int> faces,
                               const int *face_sets,
                               const SubdivCCG &subdiv_ccg,
                               SubdivCCGCoord coord);
@@ -1064,20 +1131,20 @@ PBVHVertRef nearest_vert_calc(const Object &object,
                               float max_distance,
                               bool use_original);
 std::optional<int> nearest_vert_calc_mesh(const bke::pbvh::Tree &pbvh,
-                                          const Span<float3> vert_positions,
-                                          const Span<bool> hide_vert,
+                                          Span<float3> vert_positions,
+                                          Span<bool> hide_vert,
                                           const float3 &location,
-                                          const float max_distance,
-                                          const bool use_original);
+                                          float max_distance,
+                                          bool use_original);
 std::optional<SubdivCCGCoord> nearest_vert_calc_grids(const bke::pbvh::Tree &pbvh,
                                                       const SubdivCCG &subdiv_ccg,
                                                       const float3 &location,
-                                                      const float max_distance,
-                                                      const bool use_original);
+                                                      float max_distance,
+                                                      bool use_original);
 std::optional<BMVert *> nearest_vert_calc_bmesh(const bke::pbvh::Tree &pbvh,
                                                 const float3 &location,
-                                                const float max_distance,
-                                                const bool use_original);
+                                                float max_distance,
+                                                bool use_original);
 }
 
 float SCULPT_brush_plane_offset_get(const Sculpt &sd, const SculptSession &ss);
@@ -1107,11 +1174,6 @@ void SCULPT_flip_quat_by_symm_area(float quat[4],
 void SCULPT_brush_test_init(const SculptSession &ss, SculptBrushTest &test);
 
 bool SCULPT_brush_test_sphere_sq(SculptBrushTest &test, const float co[3]);
-bool SCULPT_brush_test_cube(SculptBrushTest &test,
-                            const float co[3],
-                            const float local[4][4],
-                            const float roundness,
-                            const float tip_scale_x);
 bool SCULPT_brush_test_circle_sq(SculptBrushTest &test, const float co[3]);
 
 namespace blender::ed::sculpt_paint {
@@ -1145,7 +1207,7 @@ void SCULPT_cube_tip_init(const Sculpt &sd, const Object &ob, const Brush &brush
 void sculpt_apply_texture(const SculptSession &ss,
                           const Brush &brush,
                           const float brush_point[3],
-                          const int thread_id,
+                          int thread_id,
                           float *r_value,
                           float r_rgba[4]);
 
@@ -1195,7 +1257,6 @@ struct FillDataMesh {
                                  const bke::pbvh::Tree &pbvh,
                                  int vertex,
                                  float radius);
-  void add_active(const Object &object, const SculptSession &ss, float radius);
   void execute(Object &object,
                GroupedSpan<int> vert_to_face_map,
                FunctionRef<bool(int from_v, int to_v)> func);
@@ -1214,7 +1275,6 @@ struct FillDataGrids {
                                  const SubdivCCG &subdiv_ccg,
                                  SubdivCCGCoord vertex,
                                  float radius);
-  void add_active(const Object &object, const SculptSession &ss, float radius);
   void execute(
       Object &object,
       const SubdivCCG &subdiv_ccg,
@@ -1233,7 +1293,6 @@ struct FillDataBMesh {
                                  const bke::pbvh::Tree &pbvh,
                                  BMVert *vertex,
                                  float radius);
-  void add_active(const Object &object, const SculptSession &ss, float radius);
   void execute(Object &object, FunctionRef<bool(BMVert *from_v, BMVert *to_v)> func);
 };
 
@@ -1244,7 +1303,6 @@ FillData init_fill(SculptSession &ss);
 
 void add_initial(FillData &flood, PBVHVertRef vertex);
 void add_and_skip_initial(FillData &flood, PBVHVertRef vertex);
-void add_active(const Object &ob, const SculptSession &ss, FillData &flood, float radius);
 void add_initial_with_symmetry(
     const Object &ob, const SculptSession &ss, FillData &flood, PBVHVertRef vertex, float radius);
 void execute(SculptSession &ss,
@@ -1298,39 +1356,37 @@ constexpr float RELATIVE_SCALE_FACTOR = 0.4f;
 /**
  * Converts from Sculpt#constant_detail to the pbvh::Tree max edge length.
  */
-float constant_to_detail_size(const float constant_detail, const Object &ob);
+float constant_to_detail_size(float constant_detail, const Object &ob);
 
 /**
  * Converts from Sculpt#detail_percent to the pbvh::Tree max edge length.
  */
-float brush_to_detail_size(const float brush_percent, const float brush_radius);
+float brush_to_detail_size(float brush_percent, float brush_radius);
 
 /**
  * Converts from Sculpt#detail_size to the pbvh::Tree max edge length.
  */
-float relative_to_detail_size(const float relative_detail,
-                              const float brush_radius,
-                              const float pixel_radius,
-                              const float pixel_size);
+float relative_to_detail_size(float relative_detail,
+                              float brush_radius,
+                              float pixel_radius,
+                              float pixel_size);
 
 /**
  * Converts from Sculpt#constant_detail to equivalent Sculpt#detail_percent value.
  *
  * Corresponds to a change from Constant & Manual Detailing to Brush Detailing.
  */
-float constant_to_brush_detail(const float constant_detail,
-                               const float brush_radius,
-                               const Object &ob);
+float constant_to_brush_detail(float constant_detail, float brush_radius, const Object &ob);
 
 /**
  * Converts from Sculpt#constant_detail to equivalent Sculpt#detail_size value.
  *
  * Corresponds to a change from Constant & Manual Detailing to Relative Detailing.
  */
-float constant_to_relative_detail(const float constant_detail,
-                                  const float brush_radius,
-                                  const float pixel_radius,
-                                  const float pixel_size,
+float constant_to_relative_detail(float constant_detail,
+                                  float brush_radius,
+                                  float pixel_radius,
+                                  float pixel_size,
                                   const Object &ob);
 }
 }
@@ -1617,8 +1673,6 @@ namespace blender::ed::sculpt_paint::smooth {
  */
 void bmesh_four_neighbor_average(float avg[3], const float3 &direction, const BMVert *v);
 
-float3 neighbor_coords_average(SculptSession &ss, PBVHVertRef vertex);
-
 void neighbor_color_average(OffsetIndices<int> faces,
                             Span<int> corner_verts,
                             GroupedSpan<int> vert_to_face_map,
@@ -1661,19 +1715,16 @@ void average_data_bmesh(Span<T> src, const Set<BMVert *, 0> &verts, MutableSpan<
 
 /* Surface Smooth Brush. */
 
-void surface_smooth_laplacian_step(SculptSession &ss,
-                                   float *disp,
-                                   const float co[3],
+void surface_smooth_laplacian_step(Span<float3> positions,
+                                   Span<float3> orig_positions,
+                                   Span<float3> average_positions,
+                                   float alpha,
                                    MutableSpan<float3> laplacian_disp,
-                                   PBVHVertRef vertex,
-                                   const float origco[3],
-                                   float alpha);
-void surface_smooth_displace_step(SculptSession &ss,
-                                  float *co,
-                                  MutableSpan<float3> laplacian_disp,
-                                  PBVHVertRef vertex,
+                                   MutableSpan<float3> translations);
+void surface_smooth_displace_step(Span<float3> laplacian_disp,
+                                  Span<float3> average_laplacian_disp,
                                   float beta,
-                                  float fade);
+                                  MutableSpan<float3> translations);
 
 /* Slide/Relax */
 void relax_vertex(SculptSession &ss,
@@ -1731,7 +1782,7 @@ void push_begin(Object &ob, const wmOperator *op);
  */
 void push_begin_ex(Object &ob, const char *name);
 void push_end(Object &ob);
-void push_end_ex(Object &ob, const bool use_nested_undo);
+void push_end_ex(Object &ob, bool use_nested_undo);
 
 void restore_from_bmesh_enter_geometry(const StepData &step_data, Mesh &mesh);
 BMLogEntry *get_bmesh_log_entry();
@@ -2042,11 +2093,11 @@ void calc_pose_data(Object &ob,
                     float3 &r_pose_origin,
                     MutableSpan<float> r_pose_factor);
 void pose_brush_init(Object &ob, SculptSession &ss, const Brush &brush);
-std::unique_ptr<SculptPoseIKChain> ik_chain_init(Object &ob,
-                                                 SculptSession &ss,
-                                                 const Brush &brush,
-                                                 const float3 &initial_location,
-                                                 float radius);
+std::unique_ptr<SculptPoseIKChainPreview> preview_ik_chain_init(Object &ob,
+                                                                SculptSession &ss,
+                                                                const Brush &brush,
+                                                                const float3 &initial_location,
+                                                                float radius);
 
 }
 
@@ -2104,9 +2155,7 @@ void swap_gathered_colors(Span<int> indices,
                           MutableSpan<float4> r_colors);
 
 /* Stores colors from the elements in indices into colors. */
-void gather_colors(const GSpan color_attribute,
-                   const Span<int> indices,
-                   MutableSpan<float4> r_colors);
+void gather_colors(GSpan color_attribute, Span<int> indices, MutableSpan<float4> r_colors);
 
 /* Like gather_colors but handles loop->vert conversion */
 void gather_colors_vert(OffsetIndices<int> faces,
