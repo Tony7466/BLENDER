@@ -602,7 +602,7 @@ void draw_seq_strip_thumbnail(View2D *v2d,
     /* Get the image. */
     ImBuf *ibuf = nullptr;
     if (new_thumbs) {
-      ibuf = seq::thumbnail_cache_get(context.scene, seq, timeline_frame);
+      ibuf = seq::thumbnail_cache_get(C, context.scene, seq, timeline_frame);
       if (ibuf && clipped) {
         ImBuf *ibuf_cropped = IMB_dupImBuf(ibuf);
         if (crop.xmin < 0 || crop.ymin < 0) {
