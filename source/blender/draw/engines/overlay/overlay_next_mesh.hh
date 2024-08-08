@@ -36,10 +36,16 @@ class Meshes {
   PassSimple edit_mesh_edges_ps_ = {"Edges"};
   PassSimple edit_mesh_faces_ps_ = {"Faces"};
   PassSimple edit_mesh_verts_ps_ = {"Verts"};
+  PassSimple edit_mesh_facedots_ps_ = {"FaceDots"};
 
   bool show_retopology = false;
   bool show_mesh_analysis = false;
   bool show_face = false;
+  bool show_face_dots = false;
+
+  bool select_edge = false;
+  bool select_face = false;
+  bool select_vert = false;
 
  public:
   void begin_sync(Resources &res, const State &state)
@@ -47,23 +53,27 @@ class Meshes {
     int edit_flag = state.v3d->overlay.edit_flag;
     show_retopology = (edit_flag & V3D_OVERLAY_EDIT_RETOPOLOGY);
     show_mesh_analysis = (edit_flag & V3D_OVERLAY_EDIT_STATVIS);
-    show_face = ((edit_flag & V3D_OVERLAY_EDIT_FACES));
+    show_face = (edit_flag & V3D_OVERLAY_EDIT_FACES);
+    show_face_dots = (edit_flag & V3D_OVERLAY_EDIT_FACE_DOT) && show_face;
     const bool show_face_nor = (edit_flag & V3D_OVERLAY_EDIT_FACE_NORMALS);
     const bool show_loop_nor = (edit_flag & V3D_OVERLAY_EDIT_LOOP_NORMALS);
     const bool show_vert_nor = (edit_flag & V3D_OVERLAY_EDIT_VERT_NORMALS);
 
     ToolSettings *tsettings = state.scene->toolsettings;
-    const bool select_edge = (tsettings->selectmode & SCE_SELECT_EDGE);
-    const bool select_face = (tsettings->selectmode & SCE_SELECT_FACE);
-    const bool select_vert = (tsettings->selectmode & SCE_SELECT_VERTEX);
+    select_edge = (tsettings->selectmode & SCE_SELECT_EDGE);
+    select_face = (tsettings->selectmode & SCE_SELECT_FACE);
+    select_vert = (tsettings->selectmode & SCE_SELECT_VERTEX);
 
     const bool do_smooth_wire = (U.gpu_flag & USER_GPU_FLAG_NO_EDIT_MODE_SMOOTH_WIRE) == 0;
+    const bool is_wire_shading_mode = (state.v3d->shading.type == OB_WIRE);
 
     uint4 data_mask = data_mask_get(edit_flag);
 
     if (state.xray_enabled) {
       /* We should not render the mesh opaque. */
       show_mesh_analysis = false;
+      /* Force Face dots in xray mode for visibility. */
+      show_face_dots = show_face;
     }
 
     float backwire_opacity = (state.xray_enabled) ? 0.5f : 1.0f;
@@ -123,6 +133,19 @@ class Meshes {
       pass.shader_set(res.shaders.mesh_analysis.get());
       pass.bind_texture("weightTex", res.weight_ramp_tx);
     }
+
+    auto mesh_edit_common_resource_bind = [&](PassSimple &pass, float alpha) {
+      pass.bind_texture("depthTex", depth_tex);
+      /* TODO(fclem): UBO. */
+      pass.push_constant("wireShading", is_wire_shading_mode);
+      pass.push_constant("selectFace", select_face);
+      pass.push_constant("selectEdge", select_edge);
+      pass.push_constant("alpha", alpha);
+      pass.push_constant("retopologyOffset", retopology_offset);
+      pass.push_constant("dataMask", int4(data_mask));
+      pass.bind_ubo("globalsBlock", &res.globals_buf);
+    };
+
     {
       auto &pass = edit_mesh_edges_ps_;
       pass.init();
@@ -130,22 +153,33 @@ class Meshes {
       pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA |
                      DRW_STATE_FIRST_VERTEX_CONVENTION | state.clipping_state);
       pass.shader_set(res.shaders.mesh_edit_edge.get());
-      pass.bind_ubo("globalsBlock", &res.globals_buf);
-      pass.bind_texture("depthTex", depth_tex);
-      pass.push_constant("dataMask", int4(data_mask));
-      pass.push_constant("alpha", backwire_opacity);
-      pass.push_constant("selectEdge", select_edge);
       pass.push_constant("do_smooth_wire", do_smooth_wire);
       pass.push_constant("use_vertex_selection", select_vert);
-      pass.push_constant("retopologyOffset", retopology_offset);
+      mesh_edit_common_resource_bind(pass, backwire_opacity);
     }
     {
       auto &pass = edit_mesh_faces_ps_;
       pass.init();
+      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA |
+                     state.clipping_state);
+      pass.shader_set(res.shaders.mesh_edit_face.get());
+      mesh_edit_common_resource_bind(pass, face_alpha);
     }
     {
       auto &pass = edit_mesh_verts_ps_;
       pass.init();
+      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA |
+                     DRW_STATE_WRITE_DEPTH | state.clipping_state);
+      pass.shader_set(res.shaders.mesh_edit_vert.get());
+      mesh_edit_common_resource_bind(pass, backwire_opacity);
+    }
+    {
+      auto &pass = edit_mesh_facedots_ps_;
+      pass.init();
+      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA |
+                     DRW_STATE_WRITE_DEPTH | state.clipping_state);
+      pass.shader_set(res.shaders.mesh_edit_vert.get());
+      mesh_edit_common_resource_bind(pass, backwire_opacity);
     }
   }
 
@@ -185,7 +219,15 @@ class Meshes {
     }
     {
       gpu::Batch *geom = DRW_mesh_batch_cache_get_edit_triangles(mesh);
-      // edit_mesh_faces_ps_.draw(geom, res_handle);
+      edit_mesh_faces_ps_.draw(geom, res_handle);
+    }
+    if (select_vert) {
+      gpu::Batch *geom = DRW_mesh_batch_cache_get_edit_vertices(mesh);
+      edit_mesh_verts_ps_.draw(geom, res_handle);
+    }
+    if (show_face_dots) {
+      gpu::Batch *geom = DRW_mesh_batch_cache_get_edit_facedots(mesh);
+      edit_mesh_facedots_ps_.draw(geom, res_handle);
     }
   }
 
@@ -194,9 +236,10 @@ class Meshes {
     GPU_framebuffer_bind(framebuffer);
     manager.submit(edit_mesh_analysis_ps_, view);
     manager.submit(edit_mesh_normals_ps_, view);
+    manager.submit(edit_mesh_faces_ps_, view);
     manager.submit(edit_mesh_edges_ps_, view);
-    // manager.submit(edit_mesh_faces_ps_, view);
-    // manager.submit(edit_mesh_verts_ps_, view);
+    manager.submit(edit_mesh_verts_ps_, view);
+    manager.submit(edit_mesh_facedots_ps_, view);
   }
 
  private:

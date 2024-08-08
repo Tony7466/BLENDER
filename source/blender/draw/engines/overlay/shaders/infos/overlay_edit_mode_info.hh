@@ -69,6 +69,21 @@ GPU_SHADER_CREATE_INFO(overlay_edit_mesh_vert)
     .fragment_source("overlay_point_varying_color_frag.glsl")
     .additional_info("draw_modelmat", "overlay_edit_mesh_common");
 
+GPU_SHADER_CREATE_INFO(overlay_edit_mesh_vert_next)
+    .do_static_compilation(true)
+    .builtins(BuiltinBits::POINT_SIZE)
+    .define("VERT")
+    .vertex_in(0, Type::VEC3, "pos")
+    .vertex_in(1, Type::UVEC4, "data")
+    .vertex_in(2, Type::VEC3, "vnor")
+    .vertex_source("overlay_edit_mesh_vertex_vert.glsl")
+    .vertex_out(overlay_edit_mesh_vert_iface)
+    .fragment_source("overlay_point_varying_color_frag.glsl")
+    .additional_info("draw_view",
+                     "draw_modelmat_new",
+                     "draw_resource_handle_new",
+                     "overlay_edit_mesh_common");
+
 GPU_SHADER_INTERFACE_INFO(overlay_edit_mesh_edge_iface, "geometry_in")
     .smooth(Type::VEC4, "finalColor_")
     .smooth(Type::VEC4, "finalColorOuter_")
@@ -117,7 +132,7 @@ GPU_SHADER_CREATE_INFO(overlay_edit_mesh_edge_no_geom)
 #endif
 
 /* Vertex Pull version for overlay next. */
-GPU_SHADER_CREATE_INFO(overlay_edit_mesh_edge_vpull)
+GPU_SHADER_CREATE_INFO(overlay_edit_mesh_edge_next)
     .do_static_compilation(true)
     .define("EDGE")
     .storage_buf(0, Qualifier::READ, "float", "pos[]", Frequency::GEOMETRY)
@@ -131,7 +146,7 @@ GPU_SHADER_CREATE_INFO(overlay_edit_mesh_edge_vpull)
     .vertex_out(overlay_edit_mesh_edge_geom_iface)
     .vertex_out(overlay_edit_mesh_edge_geom_flat_iface)
     .vertex_out(overlay_edit_mesh_edge_geom_noperspective_iface)
-    .vertex_source("overlay_edit_mesh_vert_vpull.glsl")
+    .vertex_source("overlay_edit_mesh_edge_vert.glsl")
     .fragment_source("overlay_edit_mesh_frag.glsl")
     .additional_info("draw_view",
                      "draw_modelmat_new",
@@ -161,6 +176,20 @@ GPU_SHADER_CREATE_INFO(overlay_edit_mesh_face)
     .vertex_out(overlay_edit_flat_color_iface)
     .fragment_source("overlay_varying_color.glsl")
     .additional_info("draw_modelmat", "overlay_edit_mesh_common");
+
+GPU_SHADER_CREATE_INFO(overlay_edit_mesh_face_next)
+    .do_static_compilation(true)
+    .define("FACE")
+    .define("vnor", "vec3(0.0)")
+    .vertex_in(0, Type::VEC3, "pos")
+    .vertex_in(1, Type::UVEC4, "data")
+    .vertex_source("overlay_edit_mesh_face_vert.glsl")
+    .vertex_out(overlay_edit_flat_color_iface)
+    .fragment_source("overlay_varying_color.glsl")
+    .additional_info("draw_view",
+                     "draw_modelmat_new",
+                     "draw_resource_handle_new",
+                     "overlay_edit_mesh_common");
 
 GPU_SHADER_CREATE_INFO(overlay_edit_mesh_facedot)
     .do_static_compilation(true)
