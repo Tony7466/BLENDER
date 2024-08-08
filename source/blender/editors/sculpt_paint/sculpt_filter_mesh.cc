@@ -1022,8 +1022,6 @@ static void calc_relax_filter(const Sculpt &sd,
         for (const int node_index : range) {
           const Span<int> verts = bke::pbvh::node_unique_verts(*nodes[node_index]);
           const Span<float3> positions = gather_data_mesh(positions_eval, verts, tls.positions);
-          const OrigPositionData orig_data = orig_position_data_get_mesh(object,
-                                                                         *nodes[node_index]);
 
           tls.factors.resize(verts.size());
           const MutableSpan<float> factors = tls.factors;
@@ -1042,8 +1040,7 @@ static void calc_relax_filter(const Sculpt &sd,
           }
           tls.translations.resize(verts.size());
           const MutableSpan<float3> translations = tls.translations;
-          translations_from_new_positions(new_positions, orig_data.positions, translations);
-          reset_translations_to_original(translations, positions, orig_data.positions);
+          translations_from_new_positions(new_positions, positions, translations);
 
           zero_disabled_axis_components(*ss.filter_cache, translations);
           write_translations(sd, object, positions_eval, verts, translations, positions_orig);
@@ -1062,8 +1059,6 @@ static void calc_relax_filter(const Sculpt &sd,
         for (const int node_index : range) {
           const Span<int> grids = bke::pbvh::node_grid_indices(*nodes[node_index]);
           const Span<float3> positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
-          const OrigPositionData orig_data = orig_position_data_get_grids(object,
-                                                                          *nodes[node_index]);
 
           tls.factors.resize(positions.size());
           const MutableSpan<float> factors = tls.factors;
@@ -1092,11 +1087,10 @@ static void calc_relax_filter(const Sculpt &sd,
           }
           tls.translations.resize(positions.size());
           const MutableSpan<float3> translations = tls.translations;
-          translations_from_new_positions(new_positions, orig_data.positions, translations);
-          reset_translations_to_original(translations, positions, orig_data.positions);
+          translations_from_new_positions(new_positions, positions, translations);
 
           zero_disabled_axis_components(*ss.filter_cache, translations);
-          clip_and_lock_translations(sd, ss, orig_data.positions, translations);
+          clip_and_lock_translations(sd, ss, positions, translations);
           apply_translations(translations, grids, subdiv_ccg);
 
           BKE_pbvh_node_mark_positions_update(nodes[node_index]);
@@ -1112,8 +1106,6 @@ static void calc_relax_filter(const Sculpt &sd,
         for (const int node_index : range) {
           const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(nodes[node_index]);
           const Span<float3> positions = gather_bmesh_positions(verts, tls.positions);
-          Array<float3> orig_positions(verts.size());
-          orig_position_data_gather_bmesh(*ss.bm_log, verts, orig_positions, {});
 
           tls.factors.resize(verts.size());
           const MutableSpan<float> factors = tls.factors;
@@ -1137,11 +1129,10 @@ static void calc_relax_filter(const Sculpt &sd,
           }
           tls.translations.resize(verts.size());
           const MutableSpan<float3> translations = tls.translations;
-          translations_from_new_positions(new_positions, orig_positions, translations);
-          reset_translations_to_original(translations, positions, orig_positions);
+          translations_from_new_positions(new_positions, positions, translations);
 
           zero_disabled_axis_components(*ss.filter_cache, translations);
-          clip_and_lock_translations(sd, ss, orig_positions, translations);
+          clip_and_lock_translations(sd, ss, positions, translations);
           apply_translations(translations, verts);
 
           BKE_pbvh_node_mark_positions_update(nodes[node_index]);
@@ -1183,8 +1174,6 @@ static void calc_relax_face_sets_filter(const Sculpt &sd,
         for (const int node_index : range) {
           const Span<int> verts = bke::pbvh::node_unique_verts(*nodes[node_index]);
           const Span<float3> positions = gather_data_mesh(positions_eval, verts, tls.positions);
-          const OrigPositionData orig_data = orig_position_data_get_mesh(object,
-                                                                         *nodes[node_index]);
 
           tls.factors.resize(verts.size());
           const MutableSpan<float> factors = tls.factors;
@@ -1196,11 +1185,11 @@ static void calc_relax_face_sets_filter(const Sculpt &sd,
           scale_factors(factors, strength);
           clamp_factors(factors, 0.0f, 1.0f);
 
-          if (relax_face_sets) {
-            for (const int i : verts.index_range()) {
-              if (face_set::vert_has_unique_face_set(vert_to_face_map, ss.face_sets, verts[i])) {
-                factors[i] = 0.0f;
-              }
+          for (const int i : verts.index_range()) {
+            if (relax_face_sets ==
+                face_set::vert_has_unique_face_set(vert_to_face_map, ss.face_sets, verts[i]))
+            {
+              factors[i] = 0.0f;
             }
           }
 
@@ -1216,8 +1205,7 @@ static void calc_relax_face_sets_filter(const Sculpt &sd,
           }
           tls.translations.resize(verts.size());
           const MutableSpan<float3> translations = tls.translations;
-          translations_from_new_positions(new_positions, orig_data.positions, translations);
-          reset_translations_to_original(translations, positions, orig_data.positions);
+          translations_from_new_positions(new_positions, positions, translations);
 
           zero_disabled_axis_components(*ss.filter_cache, translations);
           write_translations(sd, object, positions_eval, verts, translations, positions_orig);
@@ -1240,8 +1228,6 @@ static void calc_relax_face_sets_filter(const Sculpt &sd,
         for (const int node_index : range) {
           const Span<int> grids = bke::pbvh::node_grid_indices(*nodes[node_index]);
           const Span<float3> positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
-          const OrigPositionData orig_data = orig_position_data_get_grids(object,
-                                                                          *nodes[node_index]);
 
           tls.factors.resize(positions.size());
           const MutableSpan<float> factors = tls.factors;
@@ -1253,23 +1239,22 @@ static void calc_relax_face_sets_filter(const Sculpt &sd,
           scale_factors(factors, strength);
           clamp_factors(factors, 0.0f, 1.0f);
 
-          if (relax_face_sets) {
-            for (const int i : grids.index_range()) {
-              const int node_start = i * key.grid_area;
-              const int grid = grids[i];
-              for (const short y : IndexRange(key.grid_size)) {
-                for (const short x : IndexRange(key.grid_size)) {
-                  const int offset = CCG_grid_xy_to_index(key.grid_size, x, y);
-                  const int node_vert = node_start + offset;
-                  if (face_set::vert_has_unique_face_set(vert_to_face_map,
-                                                         corner_verts,
-                                                         faces,
-                                                         ss.face_sets,
-                                                         subdiv_ccg,
-                                                         SubdivCCGCoord{grid, x, y}))
-                  {
-                    factors[node_vert] = 0.0f;
-                  }
+          for (const int i : grids.index_range()) {
+            const int node_start = i * key.grid_area;
+            const int grid = grids[i];
+            for (const short y : IndexRange(key.grid_size)) {
+              for (const short x : IndexRange(key.grid_size)) {
+                const int offset = CCG_grid_xy_to_index(key.grid_size, x, y);
+                const int node_vert = node_start + offset;
+                if (relax_face_sets ==
+                    face_set::vert_has_unique_face_set(vert_to_face_map,
+                                                       corner_verts,
+                                                       faces,
+                                                       ss.face_sets,
+                                                       subdiv_ccg,
+                                                       SubdivCCGCoord{grid, x, y}))
+                {
+                  factors[node_vert] = 0.0f;
                 }
               }
             }
@@ -1299,11 +1284,10 @@ static void calc_relax_face_sets_filter(const Sculpt &sd,
           }
           tls.translations.resize(positions.size());
           const MutableSpan<float3> translations = tls.translations;
-          translations_from_new_positions(new_positions, orig_data.positions, translations);
-          reset_translations_to_original(translations, positions, orig_data.positions);
+          translations_from_new_positions(new_positions, positions, translations);
 
           zero_disabled_axis_components(*ss.filter_cache, translations);
-          clip_and_lock_translations(sd, ss, orig_data.positions, translations);
+          clip_and_lock_translations(sd, ss, positions, translations);
           apply_translations(translations, grids, subdiv_ccg);
 
           BKE_pbvh_node_mark_positions_update(nodes[node_index]);
@@ -1319,8 +1303,6 @@ static void calc_relax_face_sets_filter(const Sculpt &sd,
         for (const int node_index : range) {
           const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(nodes[node_index]);
           const Span<float3> positions = gather_bmesh_positions(verts, tls.positions);
-          Array<float3> orig_positions(verts.size());
-          orig_position_data_gather_bmesh(*ss.bm_log, verts, orig_positions, {});
 
           tls.factors.resize(verts.size());
           const MutableSpan<float> factors = tls.factors;
@@ -1332,14 +1314,12 @@ static void calc_relax_face_sets_filter(const Sculpt &sd,
           scale_factors(factors, strength);
           clamp_factors(factors, 0.0f, 1.0f);
 
-          if (relax_face_sets) {
-            int i = 0;
-            for (BMVert *vert : verts) {
-              if (face_set::vert_has_unique_face_set(vert)) {
-                factors[i] = 0.0f;
-              }
-              i++;
+          int i = 0;
+          for (BMVert *vert : verts) {
+            if (relax_face_sets == face_set::vert_has_unique_face_set(vert)) {
+              factors[i] = 0.0f;
             }
+            i++;
           }
 
           tls.new_positions.resize(verts.size());
@@ -1359,11 +1339,10 @@ static void calc_relax_face_sets_filter(const Sculpt &sd,
           }
           tls.translations.resize(verts.size());
           const MutableSpan<float3> translations = tls.translations;
-          translations_from_new_positions(new_positions, orig_positions, translations);
-          reset_translations_to_original(translations, positions, orig_positions);
+          translations_from_new_positions(new_positions, positions, translations);
 
           zero_disabled_axis_components(*ss.filter_cache, translations);
-          clip_and_lock_translations(sd, ss, orig_positions, translations);
+          clip_and_lock_translations(sd, ss, positions, translations);
           apply_translations(translations, verts);
 
           BKE_pbvh_node_mark_positions_update(nodes[node_index]);
