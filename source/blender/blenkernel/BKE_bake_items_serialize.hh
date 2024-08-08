@@ -192,16 +192,9 @@ class DiskBlobWriter : public BlobWriter {
                             FunctionRef<void(std::ostream &)> fn) override;
 };
 
-class MemoryBlobReader : public BlobReader {
- private:
-  Map<StringRef, Span<std::byte>> blob_by_name_;
-
- public:
-  void add(StringRef name, Span<std::byte> blob);
-
-  [[nodiscard]] bool read(const BlobSlice &slice, void *r_data) const override;
-};
-
+/**
+ * A specific #BlobWriter that keeps all data in memory.
+ */
 class MemoryBlobWriter : public BlobWriter {
  public:
   struct OutputStream {
@@ -227,6 +220,19 @@ class MemoryBlobWriter : public BlobWriter {
   {
     return stream_by_name_;
   }
+};
+
+/**
+ * A specific #BlobReader that reads data from in-memory buffers.
+ */
+class MemoryBlobReader : public BlobReader {
+ private:
+  Map<StringRef, Span<std::byte>> blob_by_name_;
+
+ public:
+  void add(StringRef name, Span<std::byte> blob);
+
+  [[nodiscard]] bool read(const BlobSlice &slice, void *r_data) const override;
 };
 
 void serialize_bake(const BakeState &bake_state,
