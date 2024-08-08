@@ -1305,17 +1305,29 @@ static void svg_replace_color_attributes(std::string &svg,
   if (g_start == std::string::npos) {
     return;
   }
-  size_t g_end = svg.find(">", g_start);
+  size_t g_end = svg.find("</g>", g_start);
   if (g_end == std::string::npos) {
     return;
   }
 
   size_t att_start = svg.find("fill=\"", g_start);
+  size_t att_end;
   if (att_start != std::string::npos || att_start < g_end) {
-    size_t att_end = svg.find("\"", att_start + 6);
+    att_end = svg.find("\"", att_start + 6);
     if (att_end != std::string::npos || att_end - att_start < 20) {
       svg.replace(att_start, att_end - att_start + 1, "fill=\"#" + hexcolor + "\"");
     }
+  }
+
+  att_end = g_start;
+  while (1) {
+    att_start = svg.find("fill:", att_end);
+    if (att_start == std::string::npos || att_start > g_end) {
+      break;
+    }
+    svg.replace(att_start, 12, "fill:#" + hexcolor);
+    att_end = att_start + 12;
+    continue;
   }
 }
 
@@ -1328,6 +1340,8 @@ static void icon_source_edit_cb(std::string &svg)
   uchar tool_remove[] = {245, 107, 91, 255};
   uchar tool_transform[] = {217, 175, 245, 255};
   uchar tool_select[] = {255, 176, 43, 255};
+  uchar tool_red[] = {214, 45, 48, 255};
+  uchar tool_white[] = {255, 255, 255, 255};
 
   struct ColorItem {
     const char *name;
@@ -1345,9 +1359,11 @@ static void icon_source_edit_cb(std::string &svg)
       {"theme.warning", nullptr, TH_INFO_WARNING, SPACE_INFO},
       {"theme.info", nullptr, TH_INFO_INFO, SPACE_INFO},
       {"tool.add", tool_add},
-      {"tool.remove", tool_add},
-      {"tool.transform", tool_add},
-      {"tool.select", tool_add},
+      {"tool.remove", tool_remove},
+      {"tool.transform", tool_transform},
+      {"tool.select", tool_select},
+      {"tool.red", tool_red},
+      {"tool.white", tool_white},
   };
 
   for (const ColorItem &item : items) {
