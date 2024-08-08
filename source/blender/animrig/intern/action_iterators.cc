@@ -16,6 +16,7 @@ void action_foreach_fcurve(Action &action,
                            slot_handle_t handle,
                            FunctionRef<void(FCurve &fcurve)> callback)
 {
+  BLI_assert(action.is_action_layered());
   for (Layer *layer : action.layers()) {
     for (Strip *strip : layer->strips()) {
       if (!strip->is<KeyframeStrip>()) {

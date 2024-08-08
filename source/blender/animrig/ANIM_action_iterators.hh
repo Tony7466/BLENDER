@@ -29,8 +29,7 @@ using slot_handle_t = decltype(::ActionSlot::handle);
 
 /**
  * Iterates over all FCurves of the given slot handle in the Action and executes the callback on
- * it. If the callback returns true, the FCurve is added to the Vector returned at the end of the
- * function.
+ * it. Only works on layered Actions.
  *
  * \note Use lambdas to have access to specific data in the callback.
  */
