@@ -53,7 +53,7 @@ typedef enum eSDNA_Type {
    * Type used for untyped raw bytes buffers (written by #BLO_write_raw and read by
    * #BLO_read_data_address).
    *
-   * Techincally, it also covers all 'raw data' types above.
+   * Technically, it also covers all 'raw data' types above.
    */
   SDNA_TYPE_RAW_DATA = 13,
 } eSDNA_Type;

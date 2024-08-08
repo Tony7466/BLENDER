@@ -1326,12 +1326,15 @@ static int make_structDNA(const char *base_directory,
   add_type("void", 0);     /* SDNA_TYPE_VOID */
   add_type("int8_t", 1);   /* SDNA_TYPE_INT8 */
 
-  /* Fake struct definition used to get an identifier for raw, untyped bytes buffers in
-   * blendfiles.
+  /* Fake place-holder struct definition used to get an identifier for raw, untyped bytes buffers
+   * in blend-files.
    *
-   * NOTE: While not critical, since all blendfiles before introduction of this 'raw_data'
+   * It will be written into the blend-files SDNA, but it must never be used in the source code.
+   * Trying to declare `struct raw_data` in DNA headers will cause a build error.
+   *
+   * NOTE: While not critical, since all blend-files before introduction of this 'raw_data'
    * type/struct have been using the `0` value for raw data #BHead.SDNAnr, it's best to reserve
-   * that first struct index to this raw data explicitely. */
+   * that first struct index to this raw data explicitly. */
   const int raw_data_type_index = add_type("raw_data", 0); /* SDNA_TYPE_RAW_DATA */
   short *raw_data_struct_info = add_struct(raw_data_type_index);
   /* There are no members in this struct. */
