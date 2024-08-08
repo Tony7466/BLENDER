@@ -673,13 +673,9 @@ static void tree_element_modifier_activate(bContext *C,
   }
 }
 
-static void tree_element_node_tree_activate(Scene *scene,
-                                            ViewLayer *view_layer,
-                                            TreeStoreElem *tselem,
-                                            const eOLSetState set)
+static void tree_element_node_tree_activate(TreeStoreElem *tselem, const eOLSetState set)
 {
   if (set == OL_SETSEL_NORMAL) {
-    BKE_view_layer_base_deselect_all(scene, view_layer);
     tselem->flag |= TSE_SELECTED;
   }
   else if (set == OL_SETSEL_EXTEND) {
@@ -858,7 +854,7 @@ void tree_element_type_active_set(bContext *C,
       tree_element_psys_activate(C, tselem);
       break;
     case TSE_LINKED_NODE_TREE:
-      tree_element_node_tree_activate(tvc->scene, tvc->view_layer, tselem, set);
+      tree_element_node_tree_activate(tselem, set);
       break;
     case TSE_POSE_BASE:
       return;
