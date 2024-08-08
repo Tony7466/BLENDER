@@ -836,9 +836,10 @@ int sequencer_retiming_key_select_exec(bContext *C,
   const bool wait_to_deselect_others = RNA_boolean_get(op->ptr, "wait_to_deselect_others");
   const bool toggle = RNA_boolean_get(op->ptr, "toggle");
 
-  /* Click on unselected key. */
+  /* Clicked on an unselected key. */
   if (!SEQ_retiming_selection_contains(ed, key) && !toggle) {
     select_key(ed, key, false, deselect_all);
+    select_connected_keys(scene, key, key_owner);
   }
 
   /* Clicked on a key that is already selected, waiting to click release. */
@@ -846,9 +847,12 @@ int sequencer_retiming_key_select_exec(bContext *C,
     return OPERATOR_RUNNING_MODAL;
   }
 
-  /* Selection after click is released. */
+  /* The key is already selected, but deselect other selected keys after click is released if no
+   * transform or toggle happened. */
   bool changed = select_key(ed, key, toggle, deselect_all);
-  changed |= select_connected_keys(scene, key, key_owner);
+  if (!toggle) {
+    changed |= select_connected_keys(scene, key, key_owner);
+  }
 
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
   return changed ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
