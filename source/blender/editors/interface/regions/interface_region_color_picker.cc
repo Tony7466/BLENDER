@@ -704,12 +704,12 @@ static void ui_block_colorpicker(uiBlock *block,
     UI_but_number_slider_precision_set(bt, 3);
     UI_but_func_set(bt, ui_colorpicker_rgba_update_cb, bt, nullptr);
     bt->custom_data = cpicker;
-
-    UI_block_align_end(block);
   }
   else {
     rgba_scene_linear[3] = 1.0f;
   }
+
+  UI_block_align_end(block);
 
   /* Hex color is in sRGB space. */
   float rgb_hex[3];
