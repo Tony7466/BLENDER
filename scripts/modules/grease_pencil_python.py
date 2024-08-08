@@ -117,7 +117,7 @@ class GreasePencilStrokePointSlice:
             point_i = self._start + (key % self._size)
             return GreasePencilStrokePoint(self._drawing, point_i)
         elif isinstance(key, slice):
-            if key.step and key.step != 1:
+            if key.step is not None and key.step != 1:
                 raise ValueError("Step values != 1 not supported")
             # Default to 0 and size for the start and stop values.
             start = key.start if key.start is not None else 0
@@ -221,7 +221,7 @@ class GreasePencilStrokeSlice:
             offsets = self._curve_offsets
             return GreasePencilStroke(self._drawing, curve_i, offsets[curve_i].value, offsets[curve_i + 1].value)
         elif isinstance(key, slice):
-            if key.step and key.step != 1:
+            if key.step is not None and key.step != 1:
                 raise ValueError("Step values != 1 not supported")
             # Default to 0 and size for the start and stop values.
             start = key.start if key.start is not None else 0
