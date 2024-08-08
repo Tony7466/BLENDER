@@ -343,10 +343,21 @@ bool select_circle(const ViewContext &vc,
                    eSelectOp sel_op);
 
 /**
+ * Mask of points adjacent to a selected point, or unselected point if deselect is true.
+ */
+IndexMask select_adjacent_mask(const bke::CurvesGeometry &curves,
+                               bool deselect,
+                               IndexMaskMemory &memory);
+IndexMask select_adjacent_mask(const bke::CurvesGeometry &curves,
+                               const IndexMask &curves_mask,
+                               bool deselect,
+                               IndexMaskMemory &memory);
+
+/**
  * Select points or curves in a (screen-space) rectangle.
  */
 IndexMask select_box_mask(const ViewContext &vc,
-                          bke::CurvesGeometry &curves,
+                          const bke::CurvesGeometry &curves,
                           const bke::crazyspace::GeometryDeformation &deformation,
                           const float4x4 &projection,
                           const IndexMask &mask,
@@ -358,7 +369,7 @@ IndexMask select_box_mask(const ViewContext &vc,
  * Select points or curves in a (screen-space) poly shape.
  */
 IndexMask select_lasso_mask(const ViewContext &vc,
-                            bke::CurvesGeometry &curves,
+                            const bke::CurvesGeometry &curves,
                             const bke::crazyspace::GeometryDeformation &deformation,
                             const float4x4 &projection,
                             const IndexMask &mask,
@@ -370,7 +381,7 @@ IndexMask select_lasso_mask(const ViewContext &vc,
  * Select points or curves in a (screen-space) circle.
  */
 IndexMask select_circle_mask(const ViewContext &vc,
-                             bke::CurvesGeometry &curves,
+                             const bke::CurvesGeometry &curves,
                              const bke::crazyspace::GeometryDeformation &deformation,
                              const float4x4 &projection,
                              const IndexMask &mask,

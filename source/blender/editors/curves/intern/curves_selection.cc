@@ -1159,7 +1159,7 @@ bool select_circle(const ViewContext &vc,
 }
 
 template<typename PointSelectFn, typename LineSelectFn>
-IndexMask select_mask_from_predicates(bke::CurvesGeometry &curves,
+IndexMask select_mask_from_predicates(const bke::CurvesGeometry &curves,
                                       const IndexMask &mask,
                                       const bke::AttrDomain selection_domain,
                                       IndexMaskMemory &memory,
@@ -1203,8 +1203,66 @@ IndexMask select_mask_from_predicates(bke::CurvesGeometry &curves,
   return {};
 }
 
+IndexMask select_adjacent_mask(const bke::CurvesGeometry &curves,
+                               const IndexMask &curves_mask,
+                               const bool deselect,
+                               IndexMaskMemory &memory)
+{
+  const OffsetIndices points_by_curve = curves.points_by_curve();
+  const VArray<bool> cyclic = curves.cyclic();
+
+  VArraySpan<bool> selection = *curves.attributes().lookup_or_default<bool>(
+      ".selection", bke::AttrDomain::Point, true);
+
+  /* Mask of points that are not selected yet but adjacent. */
+  Array<bool> changed_points(curves.points_num());
+
+  auto is_point_changed1 = [&](const int point, const int neighbor) {
+    return deselect ? (selection[point] && !selection[neighbor]) :
+                      (!selection[point] && selection[neighbor]);
+  };
+  auto is_point_changed2 = [&](const int point, const int neighbor1, const int neighbor2) {
+    return deselect ? (selection[point] && (!selection[neighbor1] || !selection[neighbor2])) :
+                      (!selection[point] && (selection[neighbor1] || selection[neighbor2]));
+  };
+
+  curves_mask.foreach_index([&](const int64_t curve_i) {
+    const IndexRange points = points_by_curve[curve_i];
+    if (points.size() == 1) {
+      /* Single point curve does not add anything to the mask. */
+      return;
+    }
+
+    if (cyclic[curve_i]) {
+      changed_points[points.first()] = is_point_changed2(
+          points.first(), points.last(), points.first() + 1);
+      for (const int point_i : points.drop_front(1).drop_back(1)) {
+        changed_points[point_i] = is_point_changed2(point_i, point_i - 1, point_i + 1);
+      }
+      changed_points[points.last()] = is_point_changed2(
+          points.last(), points.last() - 1, points.first());
+    }
+    else {
+      changed_points[points.first()] = is_point_changed1(points.first(), points.first() + 1);
+      for (const int point_i : points.drop_front(1).drop_back(1)) {
+        changed_points[point_i] = is_point_changed2(point_i, point_i - 1, point_i + 1);
+      }
+      changed_points[points.last()] = is_point_changed1(points.last(), points.last() - 1);
+    }
+  });
+
+  return IndexMask::from_bools(changed_points, memory);
+}
+
+IndexMask select_adjacent_mask(const bke::CurvesGeometry &curves,
+                               const bool deselect,
+                               IndexMaskMemory &memory)
+{
+  return select_adjacent_mask(curves, curves.curves_range(), deselect, memory);
+}
+
 IndexMask select_box_mask(const ViewContext &vc,
-                          bke::CurvesGeometry &curves,
+                          const bke::CurvesGeometry &curves,
                           const bke::crazyspace::GeometryDeformation &deformation,
                           const float4x4 &projection,
                           const IndexMask &mask,
@@ -1233,7 +1291,7 @@ IndexMask select_box_mask(const ViewContext &vc,
 }
 
 IndexMask select_lasso_mask(const ViewContext &vc,
-                            bke::CurvesGeometry &curves,
+                            const bke::CurvesGeometry &curves,
                             const bke::crazyspace::GeometryDeformation &deformation,
                             const float4x4 &projection,
                             const IndexMask &mask,
@@ -1271,7 +1329,7 @@ IndexMask select_lasso_mask(const ViewContext &vc,
 }
 
 IndexMask select_circle_mask(const ViewContext &vc,
-                             bke::CurvesGeometry &curves,
+                             const bke::CurvesGeometry &curves,
                              const bke::crazyspace::GeometryDeformation &deformation,
                              const float4x4 &projection,
                              const IndexMask &mask,
