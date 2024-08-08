@@ -843,7 +843,9 @@ static int BKE_packedfile_unpack_geometry_nodes_bake(Main &bmain,
       const bake::BakePath bake_path = prepare_original_path();
       if (!disk_bake_exists(bake_path)) {
         delete_bake_on_disk(bake_path);
-        bake::unpack_bake_to_disk(*bake.packed, bake_path, reports);
+        if (!bake::unpack_bake_to_disk(*bake.packed, bake_path, reports)) {
+          return RET_ERROR;
+        }
       }
       free_packed_bake();
       return RET_OK;
@@ -851,7 +853,9 @@ static int BKE_packedfile_unpack_geometry_nodes_bake(Main &bmain,
     case PF_WRITE_ORIGINAL: {
       const bake::BakePath bake_path = prepare_original_path();
       delete_bake_on_disk(bake_path);
-      bake::unpack_bake_to_disk(*bake.packed, bake_path, reports);
+      if (!bake::unpack_bake_to_disk(*bake.packed, bake_path, reports)) {
+        return RET_ERROR;
+      }
       free_packed_bake();
       return RET_OK;
     }
@@ -859,7 +863,9 @@ static int BKE_packedfile_unpack_geometry_nodes_bake(Main &bmain,
       const bake::BakePath bake_path = prepare_local_path();
       if (!disk_bake_exists(bake_path)) {
         delete_bake_on_disk(bake_path);
-        bake::unpack_bake_to_disk(*bake.packed, bake_path, reports);
+        if (!bake::unpack_bake_to_disk(*bake.packed, bake_path, reports)) {
+          return RET_ERROR;
+        }
       }
       free_packed_bake();
       return RET_OK;
@@ -867,7 +873,9 @@ static int BKE_packedfile_unpack_geometry_nodes_bake(Main &bmain,
     case PF_WRITE_LOCAL: {
       const bake::BakePath bake_path = prepare_local_path();
       delete_bake_on_disk(bake_path);
-      bake::unpack_bake_to_disk(*bake.packed, bake_path, reports);
+      if (!bake::unpack_bake_to_disk(*bake.packed, bake_path, reports)) {
+        return RET_ERROR;
+      }
       free_packed_bake();
       return RET_OK;
     }
