@@ -616,7 +616,7 @@ void BLF_draw_svg_icon(uint icon_id,
                        float color[4],
                        float outline_alpha,
                        bool multicolor,
-                       std::function<void(std::string &)> edit_source_cb)
+                       blender::FunctionRef<void(std::string &)> edit_source_cb)
 {
 #ifndef WITH_HEADLESS
   FontBLF *font = global_font[0];
