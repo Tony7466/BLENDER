@@ -1402,20 +1402,6 @@ class GreasePencilDrawing(StructRNA):
     __slots__ = ()
 
     @property
-    def num_strokes(self):
-        """
-        The number of strokes in the drawing.
-        """
-        return self.attributes.domain_size('CURVE')
-
-    @property
-    def num_points(self):
-        """
-        The number of points in the drawing.
-        """
-        return self.attributes.domain_size('POINT')
-
-    @property
     def strokes(self):
         """
         Return a collection of all the Grease Pencil strokes in this drawing.
@@ -1423,5 +1409,6 @@ class GreasePencilDrawing(StructRNA):
         .. note:: This API should *not* be used for performance critical operations.
         Use the :class:`GreasePencilDrawing.attributes` API instead.
         """
-        if self.num_strokes > 0:
-            return GreasePencilStrokeSlice(self, 0, self.num_strokes)
+        num_strokes = self.attributes.domain_size('CURVE')
+        if num_strokes > 0:
+            return GreasePencilStrokeSlice(self, 0, num_strokes)
