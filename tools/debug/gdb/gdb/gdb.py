@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2024 Blender Authors
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 from __future__ import annotations
 import enum
 import typing as t

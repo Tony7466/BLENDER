@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2024 Blender Authors
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 '''
 This file can be loaded into GDB to improve the debugging experience.
 
