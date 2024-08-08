@@ -141,6 +141,13 @@ string HIPRTDevice::compile_kernel(const uint kernel_features, const char *name,
   hipDeviceGetAttribute(&minor, hipDeviceAttributeComputeCapabilityMinor, hipDevId);
   const std::string arch = hipDeviceArch(hipDevId);
 
+  string source_path = path_get("source");
+  string hiprt_path_runtime = "HIPRT_PATH=" + path_join(source_path, "kernel//device//hiprt");
+  char* hiprt_path_env = const_cast<char*>(hiprt_path_runtime.c_str());
+  putenv(hiprt_path_env);
+  //set HIPRT_PATH env for BVH kernels
+
+
   if (!use_adaptive_compilation()) {
     const string fatbin = path_get(string_printf("lib/%s_rt_gfx.hipfb.zst", name));
     VLOG(1) << "Testing for pre-compiled kernel " << fatbin << ".";
@@ -150,7 +157,7 @@ string HIPRTDevice::compile_kernel(const uint kernel_features, const char *name,
     }
   }
 
-  string source_path = path_get("source");
+  //string source_path = path_get("source");
   const string source_md5 = path_files_md5_hash(source_path);
 
   string common_cflags = compile_kernel_get_common_cflags(kernel_features);
@@ -218,7 +225,7 @@ string HIPRTDevice::compile_kernel(const uint kernel_features, const char *name,
 
   double starttime = time_dt();
 
-  const string hiprt_path = getenv("HIPRT_ROOT_DIR");
+  const string hiprt_path = getenv("HIPRT_PATH");
   // First, app kernels are compiled into bitcode, without access to implementation of HIP RT
   // functions
   if (!path_exists(bitcode)) {
