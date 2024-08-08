@@ -3556,6 +3556,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             _brush_tool,
             _defs_grease_pencil_paint.fill,
             _defs_grease_pencil_paint.erase,
+            None,
             _defs_grease_pencil_paint.cutter,
             None,
             _defs_grease_pencil_paint.line,
