@@ -106,7 +106,20 @@ void BKE_packedfile_free(PackedFile *pf);
 
 /* Info. */
 
-int BKE_packedfile_count_all(Main *bmain);
+struct PackedFileCount {
+  /** Counts e.g. packed images and sounds. */
+  int individual_files = 0;
+  /** Counts bakes that may consist of multiple files. */
+  int bakes = 0;
+
+  int total() const
+  {
+    return this->individual_files + this->bakes;
+  }
+};
+
+PackedFileCount BKE_packedfile_count_all(Main *bmain);
+
 /**
  * This function compares a packed file to a 'real' file.
  * It returns an integer indicating if:

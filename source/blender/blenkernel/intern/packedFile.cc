@@ -109,26 +109,27 @@ int BKE_packedfile_read(PackedFile *pf, void *data, int size)
   return size;
 }
 
-int BKE_packedfile_count_all(Main *bmain)
+PackedFileCount BKE_packedfile_count_all(Main *bmain)
 {
   Image *ima;
   VFont *vf;
   bSound *sound;
   Volume *volume;
-  int count = 0;
+
+  PackedFileCount count;
 
   /* let's check if there are packed files... */
   for (ima = static_cast<Image *>(bmain->images.first); ima;
        ima = static_cast<Image *>(ima->id.next))
   {
     if (BKE_image_has_packedfile(ima) && !ID_IS_LINKED(ima)) {
-      count++;
+      count.individual_files++;
     }
   }
 
   for (vf = static_cast<VFont *>(bmain->fonts.first); vf; vf = static_cast<VFont *>(vf->id.next)) {
     if (vf->packedfile && !ID_IS_LINKED(vf)) {
-      count++;
+      count.individual_files++;
     }
   }
 
@@ -136,7 +137,7 @@ int BKE_packedfile_count_all(Main *bmain)
        sound = static_cast<bSound *>(sound->id.next))
   {
     if (sound->packedfile && !ID_IS_LINKED(sound)) {
-      count++;
+      count.individual_files++;
     }
   }
 
@@ -144,7 +145,7 @@ int BKE_packedfile_count_all(Main *bmain)
        volume = static_cast<Volume *>(volume->id.next))
   {
     if (volume->packedfile && !ID_IS_LINKED(volume)) {
-      count++;
+      count.individual_files++;
     }
   }
 
@@ -157,20 +158,7 @@ int BKE_packedfile_count_all(Main *bmain)
         NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
         for (const NodesModifierBake &bake : blender::Span{nmd->bakes, nmd->bakes_num}) {
           if (bake.packed) {
-            for (const NodesModifierBakeFile &meta_file :
-                 blender::Span{bake.packed->meta_files, bake.packed->meta_files_num})
-            {
-              if (meta_file.packed_file) {
-                count++;
-              }
-            }
-            for (const NodesModifierBakeFile &blob_file :
-                 blender::Span{bake.packed->blob_files, bake.packed->blob_files_num})
-            {
-              if (blob_file.packed_file) {
-                count++;
-              }
-            }
+            count.bakes++;
           }
         }
       }

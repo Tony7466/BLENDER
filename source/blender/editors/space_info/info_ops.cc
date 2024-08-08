@@ -8,6 +8,7 @@
 
 #include <cstdio>
 #include <cstring>
+#include <fmt/format.h>
 
 #include "DNA_space_types.h"
 #include "DNA_windowmanager_types.h"
@@ -256,25 +257,19 @@ static int unpack_all_invoke(bContext *C, wmOperator *op, const wmEvent * /*even
   Main *bmain = CTX_data_main(C);
   uiPopupMenu *pup;
   uiLayout *layout;
-  char title[64];
-  int count = 0;
 
-  count = BKE_packedfile_count_all(bmain);
+  const PackedFileCount count = BKE_packedfile_count_all(bmain);
 
-  if (!count) {
+  if (count.total() == 0) {
     BKE_report(op->reports, RPT_WARNING, "No packed files to unpack");
     G.fileflags &= ~G_FILE_AUTOPACK;
     return OPERATOR_CANCELLED;
   }
 
-  if (count == 1) {
-    STRNCPY_UTF8(title, IFACE_("Unpack 1 File"));
-  }
-  else {
-    SNPRINTF(title, IFACE_("Unpack %d Files"), count);
-  }
+  const std::string title = fmt::format(
+      IFACE_("Unpack - Files: {}, Bakes: {}"), count.individual_files, count.bakes);
 
-  pup = UI_popup_menu_begin(C, title, ICON_NONE);
+  pup = UI_popup_menu_begin(C, title.c_str(), ICON_NONE);
   layout = UI_popup_menu_layout(pup);
 
   uiLayoutSetOperatorContext(layout, WM_OP_EXEC_DEFAULT);

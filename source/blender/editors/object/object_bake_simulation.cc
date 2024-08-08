@@ -32,7 +32,7 @@
 #include "BKE_main.hh"
 #include "BKE_modifier.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_packedFile.h"
+#include "BKE_packedFile.hh"
 #include "BKE_report.hh"
 #include "BKE_scene.hh"
 
@@ -1128,7 +1128,9 @@ static int unpack_single_bake_exec(bContext *C, wmOperator *op)
   BLI_delete(bake_path->meta_dir.c_str(), true, true);
   BLI_delete(bake_path->blobs_dir.c_str(), true, true);
 
-  bake::unpack_bake_to_disk(*bake->packed, *bake_path, op->reports);
+  if (bake::unpack_bake_to_disk(*bake->packed, *bake_path, op->reports)) {
+    return OPERATOR_CANCELLED;
+  }
 
   blender::nodes_modifier_packed_bake_free(bake->packed);
   bake->packed = nullptr;
