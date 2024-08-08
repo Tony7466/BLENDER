@@ -141,7 +141,7 @@ class VertBuf {
    */
   template<typename T> MutableSpan<T> data()
   {
-    return MutableSpan<uchar>(data_, this->size_alloc_get()).cast<T>();
+    return data_ ? MutableSpan<uchar>(data_, this->size_alloc_get()).cast<T>() : MutableSpan<T>();
   }
 
   virtual void update_sub(uint start, uint len, const void *data) = 0;

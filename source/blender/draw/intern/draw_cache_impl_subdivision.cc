@@ -568,7 +568,7 @@ void draw_subdiv_init_origindex_buffer(gpu::VertBuf &buffer,
   GPU_vertbuf_init_with_format_ex(buffer, get_origindex_format(), GPU_USAGE_STATIC);
   GPU_vertbuf_data_alloc(buffer, num_loops + loose_len);
 
-  buffer.data<int32_t>().copy_from({vert_origindex, num_loops});
+  buffer.data<int32_t>().take_front(num_loops).copy_from({vert_origindex, num_loops});
 }
 
 gpu::VertBuf *draw_subdiv_build_origindex_buffer(int *vert_origindex, uint num_loops)
