@@ -55,24 +55,10 @@ class LazyFunctionForWarningNode : public LazyFunction {
     {
       tree_logger->node_warnings.append(
           *tree_logger->allocator,
-          {node_.identifier, {this->get_warning_type(), std::move(message)}});
+          {node_.identifier, {NodeWarningType(node_.custom1), std::move(message)}});
     }
     /* Only set output in the end so that this node is not finished before the warning is set. */
     params.set_output(0, show_variant);
-  }
-
-  NodeWarningType get_warning_type() const
-  {
-    switch (NodeGeometryWarningType(node_.custom1)) {
-      case GEO_NODE_WARNING_TYPE_ERROR:
-        return NodeWarningType::Error;
-      case GEO_NODE_WARNING_TYPE_WARNING:
-        return NodeWarningType::Warning;
-      case GEO_NODE_WARNING_TYPE_INFO:
-        return NodeWarningType::Info;
-    }
-    BLI_assert_unreachable();
-    return NodeWarningType::Error;
   }
 };
 
@@ -86,9 +72,9 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 static void node_rna(StructRNA *srna)
 {
   static EnumPropertyItem warning_type_items[] = {
-      {GEO_NODE_WARNING_TYPE_ERROR, "ERROR", 0, "Error", ""},
-      {GEO_NODE_WARNING_TYPE_WARNING, "WARNING", 0, "Warning", ""},
-      {GEO_NODE_WARNING_TYPE_INFO, "INFO", 0, "Info", ""},
+      {int(NodeWarningType::Error), "ERROR", 0, "Error", ""},
+      {int(NodeWarningType::Warning), "WARNING", 0, "Warning", ""},
+      {int(NodeWarningType::Info), "INFO", 0, "Info", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
