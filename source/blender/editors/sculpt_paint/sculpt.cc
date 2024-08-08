@@ -4595,12 +4595,30 @@ static void sculpt_update_brush_delta(UnifiedPaintSettings &ups,
 
   if (SCULPT_stroke_is_first_brush_step_of_symmetry_pass(*ss.cache)) {
     if (tool == SCULPT_TOOL_GRAB && brush.flag & BRUSH_GRAB_ACTIVE_VERTEX) {
-      if (ss.pbvh->type() == bke::pbvh::Type::Mesh) {
-        const Span<float3> positions = vert_positions_for_grab_active_get(ob);
-        cache->orig_grab_location = positions[ss.active_vert_ref().i];
-      }
-      else {
-        cache->orig_grab_location = SCULPT_vertex_co_get(ss, ss.active_vert_ref());
+      switch (ss.pbvh->type()) {
+        case bke::pbvh::Type::Mesh: {
+          const Span<float3> positions = vert_positions_for_grab_active_get(ob);
+          cache->orig_grab_location = positions[std::get<int>(ss.active_vert())];
+          break;
+        }
+        case bke::pbvh::Type::Grids: {
+          const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+          const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+          const Span<CCGElem *> grids = subdiv_ccg.grids;
+
+          const SubdivCCGCoord active_vert = std::get<SubdivCCGCoord>(ss.active_vert());
+
+          cache->orig_grab_location = CCG_grid_elem_co(
+              key, grids[active_vert.grid_index], active_vert.x, active_vert.y);
+          break;
+        }
+        case bke::pbvh::Type::BMesh:
+          cache->orig_grab_location = std::get<BMVert *>(ss.active_vert())->co;
+          break;
+        default:
+          BLI_assert_unreachable();
+          cache->orig_grab_location = float3(0.0f);
+          break;
       }
     }
     else {
