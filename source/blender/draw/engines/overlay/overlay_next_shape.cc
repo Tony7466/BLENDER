@@ -889,8 +889,6 @@ ShapeCache::ShapeCache()
 
     Vector<Vertex> verts;
 
-    int v = 0;
-    int flag = VCLASS_EMPTY_SIZE;
     /* Caps */
     for (const int i : IndexRange(2)) {
       const float z = i * 2.0f - 1.0f;
