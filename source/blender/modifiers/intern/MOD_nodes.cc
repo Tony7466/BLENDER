@@ -967,26 +967,32 @@ static void ensure_bake_loaded(bake::NodeBakeCache &bake_cache, bake::FrameCache
   if (!frame_cache.state.items_by_id.is_empty()) {
     return;
   }
-  if (bake_cache.memory_blob_reader && frame_cache.meta_buffer.has_value()) {
-    const std::string meta_str{reinterpret_cast<const char *>(frame_cache.meta_buffer->data()),
-                               size_t(frame_cache.meta_buffer->size())};
-    std::istringstream meta_stream{meta_str};
-    std::optional<bake::BakeState> bake_state = bake::deserialize_bake(
-        meta_stream, *bake_cache.memory_blob_reader, *bake_cache.blob_sharing);
-    if (!bake_state.has_value()) {
+  if (!frame_cache.meta_data_source.has_value()) {
+    return;
+  }
+  if (bake_cache.memory_blob_reader) {
+    if (const auto *meta_buffer = std::get_if<Span<std::byte>>(&*frame_cache.meta_data_source)) {
+      const std::string meta_str{reinterpret_cast<const char *>(meta_buffer->data()),
+                                 size_t(meta_buffer->size())};
+      std::istringstream meta_stream{meta_str};
+      std::optional<bake::BakeState> bake_state = bake::deserialize_bake(
+          meta_stream, *bake_cache.memory_blob_reader, *bake_cache.blob_sharing);
+      if (!bake_state.has_value()) {
+        return;
+      }
+      frame_cache.state = std::move(*bake_state);
       return;
     }
-    frame_cache.state = std::move(*bake_state);
-    return;
   }
   if (!bake_cache.blobs_dir) {
     return;
   }
-  if (!frame_cache.meta_path) {
+  const auto *meta_path = std::get_if<std::string>(&*frame_cache.meta_data_source);
+  if (!meta_path) {
     return;
   }
   bake::DiskBlobReader blob_reader{*bake_cache.blobs_dir};
-  fstream meta_file{*frame_cache.meta_path};
+  fstream meta_file{*meta_path};
   std::optional<bake::BakeState> bake_state = bake::deserialize_bake(
       meta_file, blob_reader, *bake_cache.blob_sharing);
   if (!bake_state.has_value()) {
@@ -1028,7 +1034,7 @@ static bool try_find_baked_data(const NodesModifierBake &bake,
       const NodesModifierBakeFile &meta_file = *file_by_frame.lookup(frame);
       auto frame_cache = std::make_unique<bake::FrameCache>();
       frame_cache->frame = frame;
-      frame_cache->meta_buffer = meta_file.data();
+      frame_cache->meta_data_source = meta_file.data();
       bake_cache.frames.append(std::move(frame_cache));
     }
 
@@ -1054,7 +1060,7 @@ static bool try_find_baked_data(const NodesModifierBake &bake,
   for (const bake::MetaFile &meta_file : meta_files) {
     auto frame_cache = std::make_unique<bake::FrameCache>();
     frame_cache->frame = meta_file.frame;
-    frame_cache->meta_path = meta_file.path;
+    frame_cache->meta_data_source = meta_file.path;
     bake_cache.frames.append(std::move(frame_cache));
   }
   bake_cache.blobs_dir = bake_path->blobs_dir;
@@ -1555,7 +1561,7 @@ class NodesModifierBakeParams : public nodes::GeoNodesBakeParams {
   [[nodiscard]] bool check_read_error(const bake::FrameCache &frame_cache,
                                       nodes::BakeNodeBehavior &behavior) const
   {
-    if (frame_cache.meta_path && frame_cache.state.items_by_id.is_empty()) {
+    if (frame_cache.meta_data_source && frame_cache.state.items_by_id.is_empty()) {
       auto &read_error_info = behavior.behavior.emplace<sim_output::ReadError>();
       read_error_info.message = RPT_("Cannot load the baked data");
       return true;

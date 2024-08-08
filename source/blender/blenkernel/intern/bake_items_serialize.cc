@@ -200,7 +200,6 @@ BlobSlice MemoryBlobWriter::write_as_stream(const StringRef file_extension,
       base_name_, independent_file_count_, file_extension);
   OutputStream stream{std::make_unique<std::ostringstream>(std::ios::binary)};
   fn(*stream.stream);
-  /* TODO: Find a better way to access the size. */
   const int64_t size = stream.stream->tellp();
   stream_by_name_.add_new(name, std::move(stream));
   total_written_size_ += size;

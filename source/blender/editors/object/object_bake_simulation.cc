@@ -1128,7 +1128,7 @@ static int unpack_single_bake_exec(bContext *C, wmOperator *op)
   BLI_delete(bake_path->meta_dir.c_str(), true, true);
   BLI_delete(bake_path->blobs_dir.c_str(), true, true);
 
-  if (bake::unpack_bake_to_disk(*bake->packed, *bake_path, op->reports)) {
+  if (!bake::unpack_bake_to_disk(*bake->packed, *bake_path, op->reports)) {
     return OPERATOR_CANCELLED;
   }
 

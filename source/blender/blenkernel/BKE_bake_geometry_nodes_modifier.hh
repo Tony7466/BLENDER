@@ -37,9 +37,11 @@ enum class CacheStatus {
 struct FrameCache {
   SubFrame frame;
   BakeState state;
-  /** Used when the baked data is loaded lazily. */
-  std::optional<std::string> meta_path;
-  std::optional<Span<std::byte>> meta_buffer;
+  /**
+   * Used when the baked data is loaded lazily. The meta data either has to be loaded from a file
+   * or from an in-memory buffer.
+   */
+  std::optional<std::variant<std::string, Span<std::byte>>> meta_data_source;
 };
 
 /**
