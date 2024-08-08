@@ -855,6 +855,58 @@ ShapeCache::ShapeCache()
     field_sphere_limit = BatchPtr(
         GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
   }
+  /* field_tube_limit */
+  {
+    constexpr int circle_resol = 32;
+    constexpr int side_stipple = 32;
+    const Vector<float2> ring = ring_vertices(1.0f, circle_resol);
+    const Vector<float2> diamond = ring_vertices(1.0f, 4);
+
+    Vector<Vertex> verts;
+
+    /* Caps */
+    for (const int i : IndexRange(2)) {
+      const float z = i * 2.0f - 1.0f;
+      append_line_loop(verts, ring, z, VCLASS_EMPTY_SIZE, true);
+    }
+    /* Side Edges */
+    for (const float2 &point : diamond) {
+      for (const int i : IndexRange(side_stipple)) {
+        const float z = (i / float(side_stipple)) * 2.0f - 1.0f;
+        verts.append({float3(point.y, point.x, z), VCLASS_EMPTY_SIZE});
+      }
+    }
+
+    field_tube_limit = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  /* field_cone_limit */
+  {
+    constexpr int circle_resol = 32;
+    constexpr int side_stipple = 32;
+    const Vector<float2> ring = ring_vertices(1.0f, circle_resol);
+    const Vector<float2> diamond = ring_vertices(1.0f, 4);
+
+    Vector<Vertex> verts;
+
+    int v = 0;
+    int flag = VCLASS_EMPTY_SIZE;
+    /* Caps */
+    for (const int i : IndexRange(2)) {
+      const float z = i * 2.0f - 1.0f;
+      append_line_loop(verts, ring, z, VCLASS_EMPTY_SIZE, true);
+    }
+    /* Side Edges */
+    for (const float2 &point : diamond) {
+      for (const int i : IndexRange(side_stipple)) {
+        const float z = (i / float(side_stipple)) * 2.0f - 1.0f;
+        verts.append({float3(point.y * z, point.x * z, z), VCLASS_EMPTY_SIZE});
+      }
+    }
+
+    field_cone_limit = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
   /* lightprobe_cube */
   {
     constexpr float r = 14.0f;

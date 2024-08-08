@@ -10,6 +10,8 @@
 
 #include "BKE_anim_path.h"
 
+#include "BLI_math_rotation.h"
+
 #include "DNA_object_force_types.h"
 
 #include "overlay_next_private.hh"
@@ -30,6 +32,8 @@ class ForceFields {
     ForceFieldsInstanceBuf field_vortex_buf = {selection_type_, "field_vortex_buf"};
     ForceFieldsInstanceBuf field_curve_buf = {selection_type_, "field_curve_buf"};
     ForceFieldsInstanceBuf field_sphere_limit_buf = {selection_type_, "field_sphere_limit_buf"};
+    ForceFieldsInstanceBuf field_tube_limit_buf = {selection_type_, "field_tube_limit_buf"};
+    ForceFieldsInstanceBuf field_cone_limit_buf = {selection_type_, "field_cone_limit_buf"};
   } call_buffers_;
 
  public:
@@ -42,6 +46,8 @@ class ForceFields {
     call_buffers_.field_vortex_buf.clear();
     call_buffers_.field_curve_buf.clear();
     call_buffers_.field_sphere_limit_buf.clear();
+    call_buffers_.field_tube_limit_buf.clear();
+    call_buffers_.field_cone_limit_buf.clear();
   }
 
   void object_sync(const ObjectRef &ob_ref, Resources &res, const State &state)
@@ -91,48 +97,48 @@ class ForceFields {
         break;
     }
 
-    // if (pd->falloff == PFIELD_FALL_TUBE) {
-    //   if (pd->flag & (PFIELD_USEMAX | PFIELD_USEMAXR)) {
-    //     instdata.size_z = (pd->flag & PFIELD_USEMAX) ? pd->maxdist : 0.0f;
-    //     instdata.size_x = (pd->flag & PFIELD_USEMAXR) ? pd->maxrad : 1.0f;
-    //     instdata.size_y = instdata.size_x;
-    //     DRW_buffer_add_entry(cb->field_tube_limit, color, &instdata);
-    //   }
-    //   if (pd->flag & (PFIELD_USEMIN | PFIELD_USEMINR)) {
-    //     instdata.size_z = (pd->flag & PFIELD_USEMIN) ? pd->mindist : 0.0f;
-    //     instdata.size_x = (pd->flag & PFIELD_USEMINR) ? pd->minrad : 1.0f;
-    //     instdata.size_y = instdata.size_x;
-    //     DRW_buffer_add_entry(cb->field_tube_limit, color, &instdata);
-    //   }
-    // }
-    // else if (pd->falloff == PFIELD_FALL_CONE) {
-    //   if (pd->flag & (PFIELD_USEMAX | PFIELD_USEMAXR)) {
-    //     float radius = DEG2RADF((pd->flag & PFIELD_USEMAXR) ? pd->maxrad : 1.0f);
-    //     float distance = (pd->flag & PFIELD_USEMAX) ? pd->maxdist : 0.0f;
-    //     instdata.size_x = distance * sinf(radius);
-    //     instdata.size_z = distance * cosf(radius);
-    //     instdata.size_y = instdata.size_x;
-    //     DRW_buffer_add_entry(cb->field_cone_limit, color, &instdata);
-    //   }
-    //   if (pd->flag & (PFIELD_USEMIN | PFIELD_USEMINR)) {
-    //     float radius = DEG2RADF((pd->flag & PFIELD_USEMINR) ? pd->minrad : 1.0f);
-    //     float distance = (pd->flag & PFIELD_USEMIN) ? pd->mindist : 0.0f;
-    //     instdata.size_x = distance * sinf(radius);
-    //     instdata.size_z = distance * cosf(radius);
-    //     instdata.size_y = instdata.size_x;
-    //     DRW_buffer_add_entry(cb->field_cone_limit, color, &instdata);
-    //   }
-    // }
-    // else if (pd->falloff == PFIELD_FALL_SPHERE) {
-    //   if (pd->flag & PFIELD_USEMAX) {
-    //     instdata.size_x = instdata.size_y = instdata.size_z = pd->maxdist;
-    //     DRW_buffer_add_entry(cb->field_sphere_limit, color, &instdata);
-    //   }
-    //   if (pd->flag & PFIELD_USEMIN) {
-    //     instdata.size_x = instdata.size_y = instdata.size_z = pd->mindist;
-    //     DRW_buffer_add_entry(cb->field_sphere_limit, color, &instdata);
-    //   }
-    // }
+    if (pd->falloff == PFIELD_FALL_TUBE) {
+      if (pd->flag & (PFIELD_USEMAX | PFIELD_USEMAXR)) {
+        size_z = (pd->flag & PFIELD_USEMAX) ? pd->maxdist : 0.0f;
+        size_x = (pd->flag & PFIELD_USEMAXR) ? pd->maxrad : 1.0f;
+        size_y = size_x;
+        call_buffers_.field_tube_limit_buf.append(data, select_id);
+      }
+      if (pd->flag & (PFIELD_USEMIN | PFIELD_USEMINR)) {
+        size_z = (pd->flag & PFIELD_USEMIN) ? pd->mindist : 0.0f;
+        size_x = (pd->flag & PFIELD_USEMINR) ? pd->minrad : 1.0f;
+        size_y = size_x;
+        call_buffers_.field_tube_limit_buf.append(data, select_id);
+      }
+    }
+    else if (pd->falloff == PFIELD_FALL_CONE) {
+      if (pd->flag & (PFIELD_USEMAX | PFIELD_USEMAXR)) {
+        float radius = DEG2RADF((pd->flag & PFIELD_USEMAXR) ? pd->maxrad : 1.0f);
+        float distance = (pd->flag & PFIELD_USEMAX) ? pd->maxdist : 0.0f;
+        size_x = distance * sinf(radius);
+        size_z = distance * cosf(radius);
+        size_y = size_x;
+        call_buffers_.field_cone_limit_buf.append(data, select_id);
+      }
+      if (pd->flag & (PFIELD_USEMIN | PFIELD_USEMINR)) {
+        float radius = DEG2RADF((pd->flag & PFIELD_USEMINR) ? pd->minrad : 1.0f);
+        float distance = (pd->flag & PFIELD_USEMIN) ? pd->mindist : 0.0f;
+        size_x = distance * sinf(radius);
+        size_z = distance * cosf(radius);
+        size_y = size_x;
+        call_buffers_.field_cone_limit_buf.append(data, select_id);
+      }
+    }
+    else if (pd->falloff == PFIELD_FALL_SPHERE) {
+      if (pd->flag & PFIELD_USEMAX) {
+        size_x = size_y = size_z = pd->maxdist;
+        call_buffers_.field_sphere_limit_buf.append(data, select_id);
+      }
+      if (pd->flag & PFIELD_USEMIN) {
+        size_x = size_y = size_z = pd->mindist;
+        call_buffers_.field_sphere_limit_buf.append(data, select_id);
+      }
+    }
   }
 
   void end_sync(Resources &res, ShapeCache &shapes, const State &state)
@@ -149,6 +155,8 @@ class ForceFields {
     call_buffers_.field_vortex_buf.end_sync(ps_, shapes.field_vortex.get());
     call_buffers_.field_curve_buf.end_sync(ps_, shapes.field_curve.get());
     call_buffers_.field_sphere_limit_buf.end_sync(ps_, shapes.field_sphere_limit.get());
+    call_buffers_.field_tube_limit_buf.end_sync(ps_, shapes.field_tube_limit.get());
+    call_buffers_.field_cone_limit_buf.end_sync(ps_, shapes.field_cone_limit.get());
   }
 
   void draw(Framebuffer &framebuffer, Manager &manager, View &view)
