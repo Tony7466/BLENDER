@@ -145,7 +145,7 @@ class ShaderModule {
   ShaderPtr background_clip_bound = shader("overlay_clipbound");
   ShaderPtr grid = shader("overlay_grid");
   ShaderPtr mesh_analysis;
-  ShaderPtr mesh_edit_edge;
+  ShaderPtr mesh_edit_edge = shader("overlay_edit_mesh_edge_vpull");
   ShaderPtr mesh_edit_face;
   ShaderPtr mesh_edit_vert;
   ShaderPtr mesh_face_normal, mesh_face_normal_subdiv;

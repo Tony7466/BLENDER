@@ -132,10 +132,11 @@ class Meshes {
       pass.shader_set(res.shaders.mesh_edit_edge.get());
       pass.bind_ubo("globalsBlock", &res.globals_buf);
       pass.bind_texture("depthTex", depth_tex);
-      pass.push_constant("dataMask", data_mask);
+      pass.push_constant("dataMask", int4(data_mask));
       pass.push_constant("alpha", backwire_opacity);
       pass.push_constant("selectEdge", select_edge);
       pass.push_constant("do_smooth_wire", do_smooth_wire);
+      pass.push_constant("use_vertex_selection", select_vert);
       pass.push_constant("retopologyOffset", retopology_offset);
     }
     {
@@ -180,7 +181,7 @@ class Meshes {
     }
     {
       gpu::Batch *geom = DRW_mesh_batch_cache_get_edit_edges(mesh);
-      edit_mesh_edges_ps_.draw(geom, res_handle);
+      edit_mesh_edges_ps_.draw_expand(geom, GPU_PRIM_TRIS, 2, 1, res_handle);
     }
     {
       gpu::Batch *geom = DRW_mesh_batch_cache_get_edit_triangles(mesh);

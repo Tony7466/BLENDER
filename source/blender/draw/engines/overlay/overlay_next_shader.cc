@@ -101,14 +101,6 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
   mesh_analysis = shader("overlay_edit_mesh_analysis",
                          [](gpu::shader::ShaderCreateInfo &info) { shader_patch_common(info); });
 
-  mesh_edit_edge = shader("overlay_edit_mesh_edge", [](gpu::shader::ShaderCreateInfo &info) {
-    shader_patch_common(info);
-#ifdef WITH_METAL_BACKEND
-    info.additional_info("overlay_edit_mesh_common_no_geom");
-#else
-    info.additional_info("overlay_edit_mesh_common");
-#endif
-  });
   mesh_edit_face = shader("overlay_edit_mesh_face", [](gpu::shader::ShaderCreateInfo &info) {
     shader_patch_common(info);
     info.additional_info("overlay_edit_mesh_common");

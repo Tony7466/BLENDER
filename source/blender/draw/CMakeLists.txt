@@ -670,6 +670,7 @@ set(GLSL_SRC
   engines/overlay/shaders/overlay_edit_mesh_skin_root_vert.glsl
   engines/overlay/shaders/overlay_edit_mesh_vert.glsl
   engines/overlay/shaders/overlay_edit_mesh_vert_no_geom.glsl
+  engines/overlay/shaders/overlay_edit_mesh_vert_vpull.glsl
   engines/overlay/shaders/overlay_edit_particle_point_vert.glsl
   engines/overlay/shaders/overlay_edit_particle_strand_vert.glsl
   engines/overlay/shaders/overlay_edit_uv_edges_frag.glsl
