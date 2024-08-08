@@ -793,7 +793,14 @@ static int BKE_packedfile_unpack_geometry_nodes_bake(Main &bmain,
                                                      NodesModifierBake &bake,
                                                      enum ePF_FileStatus how)
 {
+  using namespace blender;
   using namespace blender::bke;
+
+  if (StringRef(BKE_main_blendfile_path(&bmain)).is_empty()) {
+    BKE_report(reports, RPT_ERROR, "Can only unpack bake if the current .blend file is saved");
+    return RET_ERROR;
+  }
+
   DEG_id_tag_update(&object.id, ID_RECALC_GEOMETRY);
 
   auto prepare_local_path = [&]() {
