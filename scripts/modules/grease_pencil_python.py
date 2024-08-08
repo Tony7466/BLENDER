@@ -127,10 +127,6 @@ class GreasePencilStrokePointSlice:
         else:
             raise TypeError(f"Unexpected index of type {type(key)}")
 
-    def __iter__(self):
-        for point_i in range(self._start, self._stop):
-            yield GreasePencilStrokePoint(self._drawing, point_i)
-
 
 # Define the list of attributes that should be exposed as read/write properties on the class.
 @DefAttributeGetterSetters([
@@ -229,8 +225,3 @@ class GreasePencilStrokeSlice:
             return GreasePencilStrokeSlice(self._drawing, start, stop)
         else:
             raise TypeError(f"Unexpected index of type {type(key)}")
-
-    def __iter__(self):
-        offsets = self._curve_offsets
-        for curve_i in range(self._start, self._stop):
-            yield GreasePencilStroke(self._drawing, curve_i, offsets[curve_i].value, offsets[curve_i + 1].value)
