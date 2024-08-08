@@ -2796,6 +2796,9 @@ TreeElementIcon tree_element_get_icon(TreeStoreElem *tselem, TreeElement *te)
         }
         break;
       }
+      case TSE_LINKED_NODE_TREE:
+        data.icon = ICON_NODETREE;
+        break;
       case TSE_POSE_BASE:
         data.icon = ICON_ARMATURE_DATA;
         break;
@@ -3473,7 +3476,7 @@ static void outliner_draw_tree_element(bContext *C,
     }
 
     const TreeElementRNAStruct *te_rna_struct = tree_element_cast<TreeElementRNAStruct>(te);
-    if (ELEM(tselem->type, TSE_SOME_ID, TSE_LAYER_COLLECTION) ||
+    if (ELEM(tselem->type, TSE_SOME_ID, TSE_LAYER_COLLECTION, TSE_LINKED_NODE_TREE) ||
         (te_rna_struct && RNA_struct_is_ID(te_rna_struct->get_pointer_rna().type)))
     {
       const BIFIconID lib_icon = UI_icon_from_library(tselem->id);

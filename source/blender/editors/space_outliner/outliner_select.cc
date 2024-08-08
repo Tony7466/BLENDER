@@ -673,6 +673,23 @@ static void tree_element_modifier_activate(bContext *C,
   }
 }
 
+static void tree_element_node_tree_activate(Scene *scene,
+                                            ViewLayer *view_layer,
+                                            TreeStoreElem *tselem,
+                                            const eOLSetState set)
+{
+  if (set == OL_SETSEL_NORMAL) {
+    BKE_view_layer_base_deselect_all(scene, view_layer);
+    tselem->flag |= TSE_SELECTED;
+  }
+  else if (set == OL_SETSEL_EXTEND) {
+    tselem->flag |= TSE_SELECTED;
+  }
+  else {
+    tselem->flag &= ~TSE_SELECTED;
+  }
+}
+
 static void tree_element_psys_activate(bContext *C, TreeStoreElem *tselem)
 {
   Object *ob = (Object *)tselem->id;
@@ -839,6 +856,9 @@ void tree_element_type_active_set(bContext *C,
       break;
     case TSE_LINKED_PSYS:
       tree_element_psys_activate(C, tselem);
+      break;
+    case TSE_LINKED_NODE_TREE:
+      tree_element_node_tree_activate(tvc->scene, tvc->view_layer, tselem, set);
       break;
     case TSE_POSE_BASE:
       return;
@@ -1425,6 +1445,7 @@ static void do_outliner_item_activate_tree_element(bContext *C,
            TSE_SEQ_STRIP,
            TSE_SEQUENCE_DUP,
            TSE_EBONE,
+           TSE_LINKED_NODE_TREE,
            TSE_LAYER_COLLECTION))
   {
     /* Note about TSE_EBONE: In case of a same ID_AR datablock shared among several

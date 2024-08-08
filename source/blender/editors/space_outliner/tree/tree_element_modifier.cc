@@ -98,7 +98,7 @@ void TreeElementModifier::expand(SpaceOutliner & /*space_outliner*/) const
                   reinterpret_cast<ID *>(((NodesModifierData *)md)->node_group),
                   nullptr,
                   &legacy_te_,
-                  TSE_SOME_ID,
+                  TSE_LINKED_NODE_TREE,
                   0);
     }
     else if (md->type == eModifierType_ParticleSystem) {
