@@ -73,6 +73,7 @@ static Geometry *create_geometry(Geometry *const prev_geometry,
 
 static void geom_add_vertex(const char *p, const char *end, GlobalVertices &r_global_vertices)
 {
+  r_global_vertices.flush_mrgb_block();
   float3 vert;
   p = parse_floats(p, end, 0.0f, vert, 3);
   r_global_vertices.vertices.append(vert);
@@ -112,9 +113,7 @@ static void geom_add_mrgb_colors(const char *p, const char *end, GlobalVertices 
     float linear[4];
     srgb_to_linearrgb_uchar4(linear, srgb);
 
-    /* MRGB colors are specified after vertex positions;
-     * the colors go in the same order as the positions. */
-    r_global_vertices.vertex_colors.append(float3(linear[0], linear[1], linear[2]));
+    r_global_vertices.mrgb_block.append(float3(linear[0], linear[1], linear[2]));
 
     p += mrgb_length;
   }
@@ -680,6 +679,7 @@ void OBJParser::parse(Vector<std::unique_ptr<Geometry>> &r_all_geometries,
     buffer_offset = left_size;
   }
 
+  r_global_vertices.flush_mrgb_block();
   use_all_vertices_if_no_faces(curr_geom, r_all_geometries, r_global_vertices);
   add_default_mtl_library();
 }

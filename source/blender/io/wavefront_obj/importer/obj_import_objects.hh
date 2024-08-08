@@ -31,6 +31,11 @@ struct GlobalVertices {
    * Being shorter than vertices also means the missing vertices had no color.
    */
   Vector<float3> vertex_colors;
+  /**
+   * Block of colors buffered for #MRGB extension.
+   * Flushed to vertex_colors when complete (at next vertex or end-of-file).
+   */
+  Vector<float3> mrgb_block;
 
   void set_vertex_color(size_t index, float3 color)
   {
@@ -43,6 +48,25 @@ struct GlobalVertices {
   bool has_vertex_color(size_t index) const
   {
     return index < vertex_colors.size() && vertex_colors[index].x >= 0.0;
+  }
+
+  void flush_mrgb_block()
+  {
+    if (!mrgb_block.is_empty()) {
+      /* Set color of the last mrgb_block.size() verts. */
+      size_t start_of_block = 0;
+      if (mrgb_block.size() <= vertices.size()) {
+        start_of_block = vertices.size() - mrgb_block.size();
+      }
+      if (start_of_block == 0) {
+        vertex_colors = std::move(mrgb_block);
+      }
+      else {
+        vertex_colors.resize(start_of_block, float3(-1.0, -1.0, -1.0));
+        vertex_colors.extend(mrgb_block);
+      }
+      mrgb_block.clear();
+    }
   }
 };
 
