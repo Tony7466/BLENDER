@@ -2417,6 +2417,9 @@ typedef struct NodesModifierBakeFile {
 #endif
 } NodesModifierBakeFile;
 
+/**
+ * A packed bake. The format is the same as if the bake was stored on disk.
+ */
 typedef struct NodesModifierPackedBake {
   int meta_files_num;
   int blob_files_num;

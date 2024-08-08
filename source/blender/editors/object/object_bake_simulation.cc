@@ -358,9 +358,15 @@ static void bake_geometry_nodes_startjob(void *customdata, wmJobWorkerStatus *wo
     worker_status->do_update = true;
   }
 
+  /* Update bake sizes. */
   for (NodeBakeRequest &request : job.bake_requests) {
     NodesModifierBake *bake = request.nmd->find_bake(request.bake_id);
     bake->bake_size = size_by_bake.lookup_default(&request, 0);
+  }
+
+  /* Store gathered data as packed data. */
+  for (NodeBakeRequest &request : job.bake_requests) {
+    NodesModifierBake *bake = request.nmd->find_bake(request.bake_id);
 
     PackedBake *packed_data = packed_data_by_bake.lookup_ptr(&request);
     if (!packed_data) {
