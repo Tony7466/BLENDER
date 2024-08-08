@@ -20,6 +20,7 @@
 #include "DNA_windowmanager_types.h"
 
 #include "BLI_ghash.h"
+#include "BLI_math_base.hh"
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
@@ -64,7 +65,7 @@
 // #include "bmesh_iterators.hh"
 #include "uvedit_intern.hh"
 
-using blender::Vector;
+using namespace blender;
 
 /* ********************** smart stitch operator *********************** */
 
@@ -1671,9 +1672,9 @@ static void stitch_calculate_edge_normal(const int cd_loop_uv_offset,
 
 /**
  */
-static void stitch_draw_vbo(blender::gpu::VertBuf *vbo, GPUPrimType prim_type, const float col[4])
+static void stitch_draw_vbo(gpu::VertBuf *vbo, GPUPrimType prim_type, const float col[4])
 {
-  blender::gpu::Batch *batch = GPU_batch_create_ex(prim_type, vbo, nullptr, GPU_BATCH_OWNS_VBO);
+  gpu::Batch *batch = GPU_batch_create_ex(prim_type, vbo, nullptr, GPU_BATCH_OWNS_VBO);
   GPU_batch_program_set_builtin(batch, GPU_SHADER_3D_UNIFORM_COLOR);
   GPU_batch_uniform_4fv(batch, "color", col);
   GPU_batch_draw(batch);
@@ -2796,7 +2797,7 @@ void UV_OT_stitch(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
-static void flood_fill_BFS(blender::Vector<blender::Vector<BMLoop *>> Starting_points,
+static void flood_fill_BFS(Vector<Vector<BMLoop *>> Starting_points,
                            bContext *C,
                            std::unordered_map<BMLoop *, std::pair<BMLoop *, float>> *topodistance,
                            BMUVOffsets offsets,
@@ -2823,20 +2824,20 @@ static void flood_fill_BFS(blender::Vector<blender::Vector<BMLoop *>> Starting_p
         }
       }
 
-      blender::float2 poppedLooppos = BM_ELEM_CD_GET_FLOAT_P(poppedLoop, offsets.uv);
+      float2 poppedLooppos = BM_ELEM_CD_GET_FLOAT_P(poppedLoop, offsets.uv);
 
       BMVert *vert = poppedLoop->v;
       BMIter viter;
       BMLoop *l;
       BM_ITER_ELEM (l, &viter, vert, BM_LOOPS_OF_VERT) {
-        blender::float2 lpos = BM_ELEM_CD_GET_FLOAT_P(l, offsets.uv);
+        float2 lpos = BM_ELEM_CD_GET_FLOAT_P(l, offsets.uv);
         if (lpos[0] == poppedLooppos[0] && lpos[1] == poppedLooppos[1]) {
           (*topodistance)[l] = std::make_pair(startingloop, poppedDistance);
 
-          blender::Vector<BMLoop *> endpoints = {l->prev, l->next};
+          Vector<BMLoop *> endpoints = {l->prev, l->next};
           for (auto endpoint : endpoints) {
-            blender::float2 endpointpos = BM_ELEM_CD_GET_FLOAT_P(endpoint, offsets.uv);
-            float dist_sq = blender::math::distance_squared(endpointpos, poppedLooppos);
+            float2 endpointpos = BM_ELEM_CD_GET_FLOAT_P(endpoint, offsets.uv);
+            float dist_sq = math::distance_squared(endpointpos, poppedLooppos);
             q.push(std::make_pair(endpoint, poppedDistance + dist_sq));
           }
         }
@@ -2853,19 +2854,19 @@ static void flood_fill_BFS(blender::Vector<blender::Vector<BMLoop *>> Starting_p
 static bool uvedit_uv_loops_softselect(
     bContext *C,
     wmOperator *op,
-    blender::Vector<blender::Vector<blender::Vector<BMLoop *>>> edgeloops_arr,
-    blender::Vector<BMUVOffsets> offsetmap_arr,
-    std::unordered_map<BMLoop *, blender::float2, BMLoopPtrHash, BMLoopPtrEqual> *uvs)
+    Vector<Vector<Vector<BMLoop *>>> edgeloops_arr,
+    Vector<BMUVOffsets> offsetmap_arr,
+    std::unordered_map<BMLoop *, float2, BMLoopPtrHash, BMLoopPtrEqual> *uvs)
 {
   Scene *scene = CTX_data_scene(C);
   SpaceImage *sima = CTX_wm_space_image(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
   Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data_with_uvs(
       scene, view_layer, nullptr);
-  const float threshold_sq = std::pow(RNA_float_get(op->ptr, "threshold_deform"), 2);
+  const float threshold_sq = math::square(RNA_float_get(op->ptr, "threshold_deform"));
 
   // figure out the displacement vector for every loop in edgeloops_arr
-  std::unordered_map<BMLoop *, blender::float2> UVcoordDisplacementMap;
+  std::unordered_map<BMLoop *, float2> UVcoordDisplacementMap;
   for (int i = 0; i < edgeloops_arr.size(); i++) {
     for (int j = 0; j < edgeloops_arr[i].size(); j++) {
       float UVcoord_displacement[2] = {0.0f, 0.0f};
@@ -2917,124 +2918,12 @@ static bool uvedit_uv_loops_softselect(
         continue;
       }
       float factor = 1.0f - (pair.second.second / maxTopoDistance);
-      blender::float2 closestseamloopDisplacement = UVcoordDisplacementMap[closestseamloop];
+      float2 closestseamloopDisplacement = UVcoordDisplacementMap[closestseamloop];
       float *luv = BM_ELEM_CD_GET_FLOAT_P(loop, offsetmap_arr[i].uv);
       luv[0] += (closestseamloopDisplacement[0] * factor);
       luv[1] += (closestseamloopDisplacement[1] * factor);
     }
   }
-  return true;
-
-  // // figure out the displacement vector for every edge in edgeloops_arr
-  // std::unordered_map<std::pair<BMLoop *, BMLoop *>, blender::float2, pair_hash>
-  // edge_deformations; for (int i = 0; i < edgeloops_arr.size(); i++) {
-  //   for (int j = 0; j < edgeloops_arr[i].size(); j++) {
-  //     for (int k = 0; k < edgeloops_arr[i][j].size(); k++) {
-  //       BMLoop *loop = edgeloops_arr[i][j][k];
-  //       blender::Vector<BMLoop *> endpoints = {loop->prev, loop->next};
-  //       for (auto endpoint : endpoints) {
-  //         std::pair<BMLoop *, BMLoop *> edge;
-  //         if (loop < endpoint) {
-  //           edge = std::make_pair(loop, endpoint);
-  //         }
-  //         else {
-  //           edge = std::make_pair(endpoint, loop);
-  //         }
-  //         if (edge_deformations.count(edge) == 0) {
-  //           if (uvedit_uv_select_test(scene, endpoint, offsetmap_arr[i])) {
-  //             float p1_displacement[2] = {0.0f, 0.0f};
-  //             float p2_displacement[2] = {0.0f, 0.0f};
-  //             sub_v2_v2v2(p1_displacement,
-  //                         BM_ELEM_CD_GET_FLOAT_P(loop, offsetmap_arr[i].uv),
-  //                         (*uvs)[loop]);
-  //             sub_v2_v2v2(p2_displacement,
-  //                         BM_ELEM_CD_GET_FLOAT_P(endpoint, offsetmap_arr[i].uv),
-  //                         (*uvs)[endpoint]);
-  //             blender::float2 displacement_vector;
-  //             add_v2_v2v2(displacement_vector, p1_displacement, p2_displacement);
-  //             displacement_vector /= 2;
-  //             edge_deformations[edge] = displacement_vector;
-  //           }
-  //         }
-  //       }
-  //     }
-  //   }
-  // }
-
-  // OLD Logic
-  //  for (Object *obedit : objects) {
-  //    BMEditMesh *em = BKE_editmesh_from_object(obedit);
-  //    BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
-
-  //   /* If both edgeloops come from the same island then concatentate them into the same
-  //    * vector */
-
-  //   islandcounter = -1;
-  //   LISTBASE_FOREACH_MUTABLE (FaceIsland *, island, &island_list) {
-  //     for (int i = 0; i < island->faces_len; i++) {
-  //       BMLoop *l;
-  //       BMIter liter;
-  //       BM_ITER_ELEM (l, &liter, island->faces[i], BM_LOOPS_OF_FACE) {
-
-  //         if (!uvedit_uv_select_test(scene, l, offsets) ||
-  //             !uvedit_uv_select_test(scene, l->next, offsets))
-  //         {
-  //           blender::Vector<BMLoop *> edge = {l, l->next};
-  //           float mindist = 100.0f;  // Do this another way
-  //           std::pair<BMLoop *, BMLoop *> closestedge;
-  //           for (auto pair : edge_deformations) {
-  //             if (pair.first.first->f->head.index != l->f->head.index) {
-  //               continue;
-  //             }
-  //             std::pair<BMLoop *, BMLoop *> seamedge = pair.first;
-  //             const float *seamedgeluv1 = BM_ELEM_CD_GET_FLOAT_P(seamedge.first, offsets.uv);
-  //             const float *seamedgeluv2 = BM_ELEM_CD_GET_FLOAT_P(seamedge.second, offsets.uv);
-  //             const float *luv1 = BM_ELEM_CD_GET_FLOAT_P(edge[0], offsets.uv);
-  //             const float *luv2 = BM_ELEM_CD_GET_FLOAT_P(edge[1], offsets.uv);
-  //             // get the distnace between the edge and the seam edge
-  //             float closest_on_seamedge[2];
-  //             float closest_on_loopedge[2];
-  //             float lambda_on_seamedge;
-  //             float lambda_on_loopedge;
-  //             float dist_sq = closest_seg_seg_v2(closest_on_seamedge,
-  //                                                closest_on_loopedge,
-  //                                                &lambda_on_seamedge,
-  //                                                &lambda_on_loopedge,
-  //                                                seamedgeluv1,
-  //                                                seamedgeluv2,
-  //                                                luv1,
-  //                                                luv2);
-  //             if (dist_sq < mindist) {
-  //               mindist = dist_sq;
-  //               closestedge.first = seamedge.first;
-  //               closestedge.second = seamedge.second;
-  //             }
-  //           }
-  //           if (mindist < threshold && mindist != 0.0f) {
-  //             blender::float2 deformation_vector = edge_deformations[closestedge];
-  //             float factor = 1.0f - (mindist / threshold);
-  //             mul_v2_fl(deformation_vector, factor);
-  //             for (auto endpoint : edge) {
-  //               float *endpointpos = BM_ELEM_CD_GET_FLOAT_P(endpoint, offsets.uv);
-  //               BMVert *v = endpoint->v;
-  //               BMLoop *cl;
-  //               BMIter cliter;
-  //               BM_ITER_ELEM (cl, &cliter, v, BM_LOOPS_OF_VERT) {
-  //                 float *currloopuv = BM_ELEM_CD_GET_FLOAT_P(cl, offsets.uv);
-  //                 if (currloopuv[0] == endpointpos[0] && currloopuv[1] == endpointpos[1]) {
-  //                   currloopuv[0] += deformation_vector[0];
-  //                   currloopuv[1] += deformation_vector[1];
-  //                 }
-  //               }
-  //             }
-  //           }
-  //         }
-  //       }
-  //     }
-
-  //     islandcounter--;
-  //   }
-  // }
   return true;
 }
 
@@ -3052,9 +2941,9 @@ static bool uvedit_uv_threshold_weld(bContext *C, wmOperator *op)
       scene, view_layer, nullptr);
 
   bool changed = false;
-  const float threshold_sq = pow(RNA_float_get(op->ptr, "threshold"), 2);
-  blender::Vector<blender::Vector<blender::Vector<BMLoop *>>> edgeloops_arr;
-  blender::Vector<BMUVOffsets> offsetmap_arr;
+  const float threshold_sq = math::square(RNA_float_get(op->ptr, "threshold"));
+  Vector<Vector<Vector<BMLoop *>>> edgeloops_arr;
+  Vector<BMUVOffsets> offsetmap_arr;
 
   /*Constructs array of edgeloops. The data is nested in the following order
    * structure edgeloops->UVcoordinates->BMloops. If UV_get_edgeloops returns false it means
@@ -3075,9 +2964,9 @@ static bool uvedit_uv_threshold_weld(bContext *C, wmOperator *op)
   /* This code block gets the endpoints of each respective edge loop and the data is nested
      with the same heirarchy as edgeloops_arr.*/
 
-  blender::Vector<blender::Vector<blender::Vector<BMLoop *>>> endpoints_arr;
+  Vector<Vector<Vector<BMLoop *>>> endpoints_arr;
   for (int i = 0; i < edgeloops_arr.size(); i++) {
-    blender::Vector<blender::Vector<BMLoop *>> curredgeloopendpoints_arr;
+    Vector<Vector<BMLoop *>> curredgeloopendpoints_arr;
     for (int j = 0; j < edgeloops_arr[i].size(); j++) {
 
       /*If any of the loops for the current UV coordinate have an index of -1 they are a
@@ -3126,7 +3015,7 @@ static bool uvedit_uv_threshold_weld(bContext *C, wmOperator *op)
   }
   // iterate through all the loops in edgeloops and store the current location in
   // a hashmap with loop as key and location as value
-  std::unordered_map<BMLoop *, blender::float2, BMLoopPtrHash, BMLoopPtrEqual> uvs;
+  std::unordered_map<BMLoop *, float2, BMLoopPtrHash, BMLoopPtrEqual> uvs;
   for (int i = 0; i < edgeloops_arr.size(); i++) {
     for (int j = 0; j < edgeloops_arr[i].size(); j++) {
       for (int k = 0; k < edgeloops_arr[i][j].size(); k++) {
@@ -3135,7 +3024,7 @@ static bool uvedit_uv_threshold_weld(bContext *C, wmOperator *op)
         float posx = *pos;
         pos += 1;
         float posy = *pos;
-        blender::float2 floatpos = {posx, posy};
+        float2 floatpos = {posx, posy};
         uvs[loop] = floatpos;
       }
     }
@@ -3144,10 +3033,10 @@ static bool uvedit_uv_threshold_weld(bContext *C, wmOperator *op)
   /*Iterates through 2 selected edgeloops starting at endpoints.
   This logic uses pointers in BMLoop to traverse edgeloops.*/
 
-  blender::Vector<BMLoop *> line1_iterator = endpoints_arr[0][0];
-  blender::Vector<BMLoop *> line2_iterator = endpoints_arr[1][0];
-  blender::Vector<BMLoop *> line1_prev;
-  blender::Vector<BMLoop *> line2_prev;
+  Vector<BMLoop *> line1_iterator = endpoints_arr[0][0];
+  Vector<BMLoop *> line2_iterator = endpoints_arr[1][0];
+  Vector<BMLoop *> line1_prev;
+  Vector<BMLoop *> line2_prev;
   while (line1_iterator != line1_prev and line2_iterator != line2_prev) {
     if (ED_uvedit_shift_pair_of_UV_coordinates(offsetmap_arr[0],
                                                offsetmap_arr[1],
@@ -3169,17 +3058,17 @@ static bool uvedit_uv_threshold_weld(bContext *C, wmOperator *op)
       nextv2_set.insert(loop->prev->v->head.index);
     }
 
-    blender::Vector<BMLoop *> tmp1 = line1_iterator;
-    blender::Vector<BMLoop *> tmp2 = line2_iterator;
+    Vector<BMLoop *> tmp1 = line1_iterator;
+    Vector<BMLoop *> tmp2 = line2_iterator;
 
-    for (blender::Vector<BMLoop *> &UVcoord : edgeloops_arr[0]) {
+    for (Vector<BMLoop *> &UVcoord : edgeloops_arr[0]) {
       if (nextv1_set.find(UVcoord[0]->v->head.index) != nextv1_set.end() and UVcoord != line1_prev)
       {
         line1_iterator = UVcoord;
         break;
       }
     }
-    for (blender::Vector<BMLoop *> &UVcoord : edgeloops_arr[1]) {
+    for (Vector<BMLoop *> &UVcoord : edgeloops_arr[1]) {
       if (nextv2_set.find(UVcoord[0]->v->head.index) != nextv2_set.end() and UVcoord != line2_prev)
       {
         line2_iterator = UVcoord;
