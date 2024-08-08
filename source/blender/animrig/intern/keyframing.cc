@@ -592,8 +592,8 @@ CombinedKeyingResult insert_keyframe(Main *bmain,
   AnimData *adt = BKE_animdata_from_id(&id);
   /* If only inserting to available keys and there isn't already an action, we can exit early. */
   if ((flag & INSERTKEY_AVAILABLE) && (adt == nullptr || adt->action == nullptr)) {
-    // combined_result.add(SingleKeyingResult::CANNOT_CREATE_FCURVE);
-    // return combined_result;
+    combined_result.add(SingleKeyingResult::CANNOT_CREATE_FCURVE);
+    return combined_result;
   }
 
   PointerRNA ptr;
