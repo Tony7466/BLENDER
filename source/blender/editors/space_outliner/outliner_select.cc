@@ -1177,6 +1177,8 @@ eOLDrawState tree_element_type_active_state_get(const bContext *C,
       return tree_element_ebone_state_get(te);
     case TSE_MODIFIER:
       return tree_element_modifier_state_get(te, tselem);
+    case TSE_LINKED_NODE_TREE:
+      return OL_DRAWSEL_NONE;
     case TSE_LINKED_OB:
       return tree_element_object_state_get(tvc, tselem);
     case TSE_LINKED_PSYS:
@@ -1339,6 +1341,8 @@ static void outliner_set_properties_tab(bContext *C, TreeElement *te, TreeStoreE
             BKE_modifier_panel_expand(md);
           }
         }
+        break;
+      case TSE_LINKED_NODE_TREE:
         break;
       case TSE_GPENCIL_EFFECT_BASE:
       case TSE_GPENCIL_EFFECT:
