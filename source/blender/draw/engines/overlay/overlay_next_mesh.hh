@@ -8,7 +8,12 @@
 
 #pragma once
 
+#include "DNA_mesh_types.h"
+
+#include "BKE_customdata.hh"
+#include "BKE_editmesh.hh"
 #include "BKE_global.hh"
+#include "BKE_mesh_types.hh"
 #include "BKE_subdiv_modifier.hh"
 
 #include "draw_cache_impl.hh"
@@ -28,6 +33,10 @@ class Meshes {
 
   PassSimple edit_mesh_analysis_ps_ = {"Mesh Analysis"};
 
+  PassSimple edit_mesh_edges_ps_ = {"Edges"};
+  PassSimple edit_mesh_faces_ps_ = {"Faces"};
+  PassSimple edit_mesh_verts_ps_ = {"Verts"};
+
   bool show_retopology = false;
   bool show_mesh_analysis = false;
   bool show_face = false;
@@ -42,6 +51,15 @@ class Meshes {
     const bool show_face_nor = (edit_flag & V3D_OVERLAY_EDIT_FACE_NORMALS);
     const bool show_loop_nor = (edit_flag & V3D_OVERLAY_EDIT_LOOP_NORMALS);
     const bool show_vert_nor = (edit_flag & V3D_OVERLAY_EDIT_VERT_NORMALS);
+
+    ToolSettings *tsettings = state.scene->toolsettings;
+    const bool select_edge = (tsettings->selectmode & SCE_SELECT_EDGE);
+    const bool select_face = (tsettings->selectmode & SCE_SELECT_FACE);
+    const bool select_vert = (tsettings->selectmode & SCE_SELECT_VERTEX);
+
+    const bool do_smooth_wire = (U.gpu_flag & USER_GPU_FLAG_NO_EDIT_MODE_SMOOTH_WIRE) == 0;
+
+    uint4 data_mask = data_mask_get(edit_flag);
 
     if (state.xray_enabled) {
       /* We should not render the mesh opaque. */
@@ -105,6 +123,29 @@ class Meshes {
       pass.shader_set(res.shaders.mesh_analysis.get());
       pass.bind_texture("weightTex", res.weight_ramp_tx);
     }
+    {
+      auto &pass = edit_mesh_edges_ps_;
+      pass.init();
+      /* Change first vertex convention to match blender loop structure. */
+      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA |
+                     DRW_STATE_FIRST_VERTEX_CONVENTION | state.clipping_state);
+      pass.shader_set(res.shaders.mesh_edit_edge.get());
+      pass.bind_ubo("globalsBlock", &res.globals_buf);
+      pass.bind_texture("depthTex", depth_tex);
+      pass.push_constant("dataMask", data_mask);
+      pass.push_constant("alpha", backwire_opacity);
+      pass.push_constant("selectEdge", select_edge);
+      pass.push_constant("do_smooth_wire", do_smooth_wire);
+      pass.push_constant("retopologyOffset", retopology_offset);
+    }
+    {
+      auto &pass = edit_mesh_faces_ps_;
+      pass.init();
+    }
+    {
+      auto &pass = edit_mesh_verts_ps_;
+      pass.init();
+    }
   }
 
   void edit_object_sync(Manager &manager, const ObjectRef &ob_ref, Resources & /*res*/)
@@ -137,6 +178,14 @@ class Meshes {
       gpu::Batch *geom = DRW_mesh_batch_cache_get_edit_vert_normals(mesh);
       vert_normals_->draw_expand(geom, GPU_PRIM_LINES, 1, 1, res_handle);
     }
+    {
+      gpu::Batch *geom = DRW_mesh_batch_cache_get_edit_edges(mesh);
+      edit_mesh_edges_ps_.draw(geom, res_handle);
+    }
+    {
+      gpu::Batch *geom = DRW_mesh_batch_cache_get_edit_triangles(mesh);
+      // edit_mesh_faces_ps_.draw(geom, res_handle);
+    }
   }
 
   void draw(Framebuffer &framebuffer, Manager &manager, View &view)
@@ -144,6 +193,44 @@ class Meshes {
     GPU_framebuffer_bind(framebuffer);
     manager.submit(edit_mesh_analysis_ps_, view);
     manager.submit(edit_mesh_normals_ps_, view);
+    manager.submit(edit_mesh_edges_ps_, view);
+    // manager.submit(edit_mesh_faces_ps_, view);
+    // manager.submit(edit_mesh_verts_ps_, view);
+  }
+
+ private:
+  uint4 data_mask_get(const int flag)
+  {
+    uint4 mask = {0xFF, 0xFF, 0x00, 0x00};
+    SET_FLAG_FROM_TEST(mask[0], flag & V3D_OVERLAY_EDIT_FACES, VFLAG_FACE_SELECTED);
+    SET_FLAG_FROM_TEST(mask[0], flag & V3D_OVERLAY_EDIT_FREESTYLE_FACE, VFLAG_FACE_FREESTYLE);
+    SET_FLAG_FROM_TEST(mask[1], flag & V3D_OVERLAY_EDIT_FREESTYLE_EDGE, VFLAG_EDGE_FREESTYLE);
+    SET_FLAG_FROM_TEST(mask[1], flag & V3D_OVERLAY_EDIT_SEAMS, VFLAG_EDGE_SEAM);
+    SET_FLAG_FROM_TEST(mask[1], flag & V3D_OVERLAY_EDIT_SHARP, VFLAG_EDGE_SHARP);
+    SET_FLAG_FROM_TEST(mask[2], flag & V3D_OVERLAY_EDIT_CREASES, 0xFF);
+    SET_FLAG_FROM_TEST(mask[3], flag & V3D_OVERLAY_EDIT_BWEIGHTS, 0xFF);
+    return mask;
+  }
+
+  static bool mesh_has_skin_roots(const Object *ob)
+  {
+    const Mesh &mesh = *static_cast<const Mesh *>(ob->data);
+    if (BMEditMesh *em = mesh.runtime->edit_mesh.get()) {
+      return CustomData_get_offset(&em->bm->vdata, CD_MVERT_SKIN) != -1;
+    }
+    return false;
+  }
+
+  static bool mesh_has_edit_cage(const Object *ob)
+  {
+    const Mesh &mesh = *static_cast<const Mesh *>(ob->data);
+    if (BMEditMesh *em = mesh.runtime->edit_mesh.get()) {
+      const Mesh *editmesh_eval_final = BKE_object_get_editmesh_eval_final(ob);
+      const Mesh *editmesh_eval_cage = BKE_object_get_editmesh_eval_cage(ob);
+
+      return (editmesh_eval_cage != nullptr) && (editmesh_eval_cage != editmesh_eval_final);
+    }
+    return false;
   }
 };
 }  // namespace blender::draw::overlay

@@ -16,8 +16,13 @@ ShaderModule::ShaderPtr ShaderModule::shader(
     const char *create_info_name,
     const FunctionRef<void(gpu::shader::ShaderCreateInfo &info)> patch)
 {
-  gpu::shader::ShaderCreateInfo info = *reinterpret_cast<const gpu::shader::ShaderCreateInfo *>(
-      GPU_shader_create_info_get(create_info_name));
+  const gpu::shader::ShaderCreateInfo *info_ptr =
+      reinterpret_cast<const gpu::shader::ShaderCreateInfo *>(
+          GPU_shader_create_info_get(create_info_name));
+  BLI_assert(info_ptr != nullptr);
+
+  /* Perform a copy for patching. */
+  gpu::shader::ShaderCreateInfo info = *info_ptr;
 
   patch(info);
 
@@ -95,6 +100,23 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
 
   mesh_analysis = shader("overlay_edit_mesh_analysis",
                          [](gpu::shader::ShaderCreateInfo &info) { shader_patch_common(info); });
+
+  mesh_edit_edge = shader("overlay_edit_mesh_edge", [](gpu::shader::ShaderCreateInfo &info) {
+    shader_patch_common(info);
+#ifdef WITH_METAL_BACKEND
+    info.additional_info("overlay_edit_mesh_common_no_geom");
+#else
+    info.additional_info("overlay_edit_mesh_common");
+#endif
+  });
+  mesh_edit_face = shader("overlay_edit_mesh_face", [](gpu::shader::ShaderCreateInfo &info) {
+    shader_patch_common(info);
+    info.additional_info("overlay_edit_mesh_common");
+  });
+  mesh_edit_vert = shader("overlay_edit_mesh_vert", [](gpu::shader::ShaderCreateInfo &info) {
+    shader_patch_common(info);
+    info.additional_info("overlay_edit_mesh_common");
+  });
 
   mesh_face_normal = shader("overlay_edit_mesh_normal", [](gpu::shader::ShaderCreateInfo &info) {
     shader_patch_edit_mesh_normal_common(info);
