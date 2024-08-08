@@ -1172,6 +1172,7 @@ static bool modifier_apply_obdata(
     /* Anonymous attributes shouldn't be available on original geometry. */
     grease_pencil_eval.attributes_for_write().remove_anonymous();
     Array<int> layer_eval_map(grease_pencil_eval.layers().size());
+    TreeNode *previous_node = nullptr;
     for (const int layer_eval_i : grease_pencil_eval.layers().index_range()) {
       const Layer *layer_eval = grease_pencil_eval.layer(layer_eval_i);
       Drawing *drawing_eval = grease_pencil_eval.get_drawing_at(*layer_eval, eval_frame);
@@ -1193,6 +1194,12 @@ static bool modifier_apply_obdata(
           drawing_orig->strokes_for_write() = std::move(drawing_eval->strokes_for_write());
           drawing_orig->tag_topology_changed();
         }
+
+        if (previous_node) {
+          grease_pencil.move_node_after(layer_orig.as_node(), *previous_node);
+        }
+        previous_node = node_orig;
+
         layer_eval_map[layer_eval_i] = *grease_pencil.get_layer_index(layer_orig);
       }
       else {
@@ -1206,6 +1213,12 @@ static bool modifier_apply_obdata(
           drawing_orig.strokes_for_write() = std::move(drawing_eval->strokes_for_write());
           drawing_orig.tag_topology_changed();
         }
+
+        if (previous_node) {
+          grease_pencil.move_node_after(layer_orig.as_node(), *previous_node);
+        }
+        previous_node = &layer_orig.as_node();
+
         layer_eval_map[layer_eval_i] = *grease_pencil.get_layer_index(layer_orig);
       }
     }
