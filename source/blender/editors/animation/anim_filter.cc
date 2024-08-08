@@ -1656,7 +1656,7 @@ static size_t animfilter_action_slot(bAnimContext *ac,
 
     /* Add channel groups and their member channels. */
     for (bActionGroup *group : channel_bag->channel_groups()) {
-      animfilter_act_group_channel_bag(
+      items += animfilter_act_group_channel_bag(
           ac, anim_data, action, slot, *channel_bag, *group, filter_mode, animated_id);
     }
 
