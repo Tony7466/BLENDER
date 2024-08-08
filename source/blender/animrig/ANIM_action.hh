@@ -753,6 +753,71 @@ class ChannelBag : public ::ActionChannelBag {
    */
   void fcurves_clear();
 
+  /* Channel group access. */
+  blender::Span<const bActionGroup *> channel_groups() const;
+  blender::MutableSpan<bActionGroup *> channel_groups();
+  const bActionGroup *channel_group(int64_t index) const;
+  bActionGroup *channel_group(int64_t index);
+
+  /**
+   * Find the first bActionGroup (channel group) with the given name.
+   *
+   * Note that channel groups with the same name are allowed, and this simply
+   * returns the first match.
+   *
+   * If no matching group is found, `nullptr` is returned.
+   */
+  const bActionGroup *channel_group_find(StringRef name) const;
+  bActionGroup *channel_group_find(StringRef name);
+
+  /**
+   * Find the channel group that contains the given fcurve index as a member.
+   *
+   * \return A pointer to the channel group if found, or nullptr if no such
+   * group is found.
+   */
+  bActionGroup *channel_group_containing_index(int fcurve_index);
+
+  /**
+   * Create a new empty channel group with the given name.
+   *
+   * The new group is added to the end of the channel group array of the
+   * ChannelBag.
+   *
+   * \return A reference to the new channel group.
+   */
+  bActionGroup &channel_group_create(StringRefNull name);
+
+  /**
+   * Find a channel group with the given name, or if none exists create one.
+   *
+   * If a new group is created, it's added to the end of the channel group array
+   * of the ChannelBag.
+   *
+   * \return A reference to the channel group.
+   */
+  bActionGroup &channel_group_ensure(StringRefNull name);
+
+  /**
+   * Remove the given channel group from the channel bag, *without* preserving
+   * invariants.
+   *
+   * This is a low-level function that only manipulates the channel group array.
+   * It does not modify the channel groups' fcurve indices at all, and thus may
+   * leave a gap in the fcurve indices of the groups. However, fcurve
+   * membership will still be correct.
+   *
+   * Calling `recompute_channel_group_indices()` will collapse any such gaps,
+   * but in a way that disregards fcurve membership.
+   *
+   * TODO: implement a higher-level `channel_group_remove()` method that handles
+   * all of that stuff correctly for call sites that need that.
+   *
+   * \return true when the channel group was found & removed, false if it wasn't
+   * found.
+   */
+  bool channel_group_remove_raw(bActionGroup &group);
+
  protected:
   /**
    * Create an F-Curve.
@@ -767,6 +832,20 @@ class ChannelBag : public ::ActionChannelBag {
    * responsibility of the caller.
    */
   FCurve &fcurve_create(Main *bmain, FCurveDescriptor fcurve_descriptor);
+
+ private:
+  /**
+   * Recompute the fcurve indices of all channel groups to be consistent.
+   *
+   * This works by assuming that the channel groups are in order and have
+   * correct fcurve *counts*. It simply starts at index zero, and then sets
+   * each channel group index such that they are perfectly packed with no
+   * overlap and no gaps.
+   *
+   * Note that this does *not* move fcurves around to keep their group
+   * membership stable. That should be done separately if it's needed/desired.
+   */
+  void recompute_channel_group_indices();
 };
 static_assert(sizeof(ChannelBag) == sizeof(::ActionChannelBag),
               "DNA struct and its C++ wrapper must have the same size");
@@ -831,6 +910,10 @@ Action *get_action(ID &animated_id);
  *    an animatable type, no Action assigned, or no Slot assigned.
  */
 std::optional<std::pair<Action *, Slot *>> get_action_slot_pair(ID &animated_id);
+
+const animrig::ChannelBag *channelbag_for_action_slot(const Action &action,
+                                                      slot_handle_t slot_handle);
+animrig::ChannelBag *channelbag_for_action_slot(Action &action, slot_handle_t slot_handle);
 
 /**
  * Return the F-Curves for this specific slot handle.

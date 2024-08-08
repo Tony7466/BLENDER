@@ -1505,6 +1505,106 @@ static size_t animfilter_act_group(bAnimContext *ac,
   return items;
 }
 
+static size_t animfilter_act_group_channel_bag(bAnimContext *ac,
+                                               ListBase *anim_data,
+                                               animrig::Action &action,
+                                               animrig::Slot &slot,
+                                               animrig::ChannelBag &channel_bag,
+                                               bActionGroup &channel_group,
+                                               eAnimFilter_Flags filter_mode,
+                                               ID *animated_id)
+{
+  ListBase tmp_data = {nullptr, nullptr};
+  size_t tmp_items = 0;
+  size_t items = 0;
+
+  /* If we care about the selection status of the channels, but the group isn't
+   * expanded (1)...
+   *
+   * (1) This only matters if we actually care about the hierarchy though.
+   *   - Hierarchy matters: this hack should be applied.
+   *   - Hierarchy ignored: cases like #21276 won't work properly, unless we
+   *     skip this hack.
+   */
+  if (
+      /* Care about hierarchy but group isn't expanded. */
+      ((filter_mode & ANIMFILTER_LIST_VISIBLE) && EXPANDED_AGRP(ac, &channel_group) == 0) &&
+      /* Care about selection status. */
+      (filter_mode & (ANIMFILTER_SEL | ANIMFILTER_UNSEL)))
+  {
+    /* If the group itself isn't selected appropriately, we shouldn't consider
+     * its children either. */
+    if (ANIMCHANNEL_SELOK(SEL_AGRP(&channel_group)) == 0) {
+      return 0;
+    }
+
+    /* If we're still here, then the selection status of the curves within this
+     * group should not matter, since this creates too much overhead for
+     * animators (i.e. making a slow workflow).
+     *
+     * Tools affected by this at time of coding (2010 Feb 09):
+     * - Inserting keyframes on selected channels only.
+     * - Pasting keyframes.
+     * - Creating ghost curves in Graph Editor.
+     */
+    filter_mode &= ~(ANIMFILTER_SEL | ANIMFILTER_UNSEL | ANIMFILTER_LIST_VISIBLE);
+  }
+
+  /* Add grouped F-Curves. */
+  BEGIN_ANIMFILTER_SUBCHANNELS (EXPANDED_AGRP(ac, &channel_group)) {
+    /* Special filter so that we can get just the F-Curves within the active group. */
+    if (!(filter_mode & ANIMFILTER_ACTGROUPED) || (channel_group.flag & AGRP_ACTIVE)) {
+      /* For the Graph Editor, curves may be set to not be visible in the view
+       * to lessen clutter, but to do this, we need to check that the group
+       * doesn't have its not-visible flag set preventing all its sub-curves to
+       * be shown. */
+      if (!(filter_mode & ANIMFILTER_CURVE_VISIBLE) || !(channel_group.flag & AGRP_NOTVISIBLE)) {
+        /* Group must be editable for its children to be editable (if we care
+         * about this). */
+        if (!(filter_mode & ANIMFILTER_FOREDIT) || EDITABLE_AGRP(&channel_group)) {
+          /* Add the fcurves in the group to the temporary filter list. */
+          Span<FCurve *> fcurves = channel_bag.fcurves().slice(channel_group.fcurve_index,
+                                                               channel_group.fcurve_count);
+          tmp_items += animfilter_fcurves_span(
+              ac, &tmp_data, fcurves, slot.handle, filter_mode, animated_id, &action.id);
+        }
+      }
+    }
+  }
+  END_ANIMFILTER_SUBCHANNELS;
+
+  /* Did we find anything? */
+  if (tmp_items) {
+    /* Add this group as a channel first. */
+    if (filter_mode & ANIMFILTER_LIST_CHANNELS) {
+      /* Filter selection of channel specially here again, since may be open and
+       * not subject to previous test. */
+      if (ANIMCHANNEL_SELOK(SEL_AGRP(&channel_group))) {
+        if (filter_mode & ANIMFILTER_TMP_PEEK) {
+          return 1;
+        }
+
+        bAnimListElem *ale = make_new_animlistelem(
+            ac->bmain, &channel_group, ANIMTYPE_GROUP, animated_id, &action.id);
+        ale->slot_handle = slot.handle;
+
+        if (ale) {
+          BLI_addtail(anim_data, ale);
+          items++;
+        }
+      }
+    }
+
+    /* Now add the list of collected channels. */
+    BLI_movelisttolist(anim_data, &tmp_data);
+    BLI_assert(BLI_listbase_is_empty(&tmp_data));
+    items += tmp_items;
+  }
+
+  /* Return the number of items added to the list. */
+  return items;
+}
+
 /**
  * Add a channel for each Slot, with their FCurves when the Slot is expanded.
  */
@@ -1549,10 +1649,29 @@ static size_t animfilter_action_slot(bAnimContext *ac,
   const bool expansion_is_ok = !visible_only || !show_slot_channel || slot.is_expanded();
 
   if (show_fcurves_only || expansion_is_ok) {
-    /* Add list elements for the F-Curves for this Slot. */
-    Span<FCurve *> fcurves = animrig::fcurves_for_action_slot(action, slot.handle);
-    items += animfilter_fcurves_span(
-        ac, anim_data, fcurves, slot.handle, filter_mode, animated_id, &action.id);
+    animrig::ChannelBag *channel_bag = animrig::channelbag_for_action_slot(action, slot.handle);
+    if (channel_bag == nullptr) {
+      return items;
+    }
+
+    /* Add channel groups and their member channels. */
+    for (bActionGroup *group : channel_bag->channel_groups()) {
+      animfilter_act_group_channel_bag(
+          ac, anim_data, action, slot, *channel_bag, *group, filter_mode, animated_id);
+    }
+
+    /* Add ungrouped channels. */
+    if (!(filter_mode & ANIMFILTER_ACTGROUPED)) {
+      int first_ungrouped_fcurve_index = 0;
+      if (!channel_bag->channel_groups().is_empty()) {
+        const bActionGroup *last_group = channel_bag->channel_groups().last();
+        first_ungrouped_fcurve_index = last_group->fcurve_index + last_group->fcurve_count;
+      }
+
+      Span<FCurve *> fcurves = channel_bag->fcurves().drop_front(first_ungrouped_fcurve_index);
+      items += animfilter_fcurves_span(
+          ac, anim_data, fcurves, slot.handle, filter_mode, animated_id, &action.id);
+    }
   }
 
   return items;

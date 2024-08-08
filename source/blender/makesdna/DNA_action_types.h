@@ -677,10 +677,30 @@ typedef struct bActionGroup {
   struct bActionGroup *next, *prev;
 
   /**
+   * List of channels in this group for legacy actions.
+   *
    * NOTE: this must not be touched by standard listbase functions
    * which would clear links to other channels.
    */
   ListBase channels;
+
+  /**
+   * List of channels in this group for layered actions.
+   *
+   * This specifies that list as a range of items in the fcurve list in a
+   * ChannelBag.  The index is the first item, and the count is the number of
+   * items total.
+   */
+  int fcurve_index;
+  int fcurve_count;
+
+  /**
+   * For layered actions: the ChannelBag this group belongs to.
+   *
+   * This is needed in the keyframe drawing code, etc., to give direct access to
+   * the fcurves in this group.
+   */
+  struct ActionChannelBag *channel_bag;
 
   /** Settings for this action-group. */
   int flag;
@@ -1216,6 +1236,12 @@ typedef struct KeyframeActionStrip {
  */
 typedef struct ActionChannelBag {
   int32_t slot_handle;
+
+  /* Channel groups. */
+  int group_array_num;
+  struct bActionGroup **group_array;
+
+  uint8_t _pad[4];
 
   int fcurve_array_num;
   struct FCurve **fcurve_array; /* Array of 'fcurve_array_num' FCurves. */
