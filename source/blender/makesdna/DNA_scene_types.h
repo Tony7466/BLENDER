@@ -832,9 +832,9 @@ typedef struct RenderData {
   /** Precision used by the GPU execution of the compositor tree. */
   int compositor_precision; /* eCompositorPrecision */
 
-  /* If true and U.experimental.enable_new_cpu_compositor is also true, use the new experimental
-   * CPU compositor implementation. */
-  char use_new_cpu_compositor;
+  /* If false and the experimental enable_new_cpu_compositor is true, use the new experimental
+   * CPU compositor implementation, otherwise, use the old CPU compositor. */
+  char use_old_cpu_compositor;
   char _pad10[7];
 } RenderData;
 

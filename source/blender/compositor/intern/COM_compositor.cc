@@ -6,6 +6,8 @@
 
 #include "BLT_translation.hh"
 
+#include "DNA_userdef_types.h"
+
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_scene.hh"
@@ -78,7 +80,7 @@ void COM_execute(Render *render,
   compositor_reset_node_tree_status(node_tree);
 
   if (scene->r.compositor_device == SCE_COMPOSITOR_DEVICE_GPU ||
-      (U.experimental.enable_new_cpu_compositor && scene->r.use_new_cpu_compositor))
+      (USER_EXPERIMENTAL_TEST(&U, enable_new_cpu_compositor) && !scene->r.use_old_cpu_compositor))
   {
     /* Realtime compositor. */
     RE_compositor_execute(

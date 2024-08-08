@@ -844,11 +844,30 @@ class NODE_PT_quality(bpy.types.Panel):
         col = layout.column()
         col.prop(rd, "compositor_device", text="Device")
         col.prop(rd, "compositor_precision", text="Precision")
-        if rd.compositor_device == "CPU" and context.preferences.experimental.enable_new_cpu_compositor:
-            col.prop(rd, "use_new_cpu_compositor", text="Use Experimental Implementation")
 
         col = layout.column()
         col.prop(tree, "use_viewer_border")
+
+class NODE_PT_compositor_debug(Panel):
+    bl_space_type = 'NODE_EDITOR'
+    bl_region_type = 'UI'
+    bl_category = "Options"
+    bl_label = "Debug"
+    bl_parent_id = "NODE_PT_quality"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        render_data = context.scene.render
+        if render_data.compositor_device != "CPU":
+            return False
+
+        preferences = context.preferences
+        return preferences.view.show_developer_ui and preferences.experimental.enable_new_cpu_compositor
+
+    def draw(self, context):
+        render_data = context.scene.render
+        self.layout.prop(render_data, "use_new_cpu_compositor", text="Experimental CPU Implementation")
 
 
 class NODE_PT_overlay(Panel):
@@ -1074,6 +1093,7 @@ classes = (
     NODE_PT_active_tool,
     NODE_PT_backdrop,
     NODE_PT_quality,
+    NODE_PT_compositor_debug,
     NODE_PT_annotation,
     NODE_PT_overlay,
     NODE_PT_active_node_properties,
