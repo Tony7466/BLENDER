@@ -364,8 +364,10 @@ void AnimManager::strip_anims_acquire(const Scene *scene, Sequence *seq)
   sh_anim.acquire_anims(scene, seq);
 }
 
-void AnimManager::strip_anims_release(const Scene *scene, blender::Vector<Sequence *> &strips)
+void AnimManager::strip_anims_release(const Scene *scene, blender::Vector<Sequence *> strips)
 {
+  strips = remove_duplicates_for_parallel_load(scene, strips);
+
   for (Sequence *seq : strips) {
     if (seq->type == SEQ_TYPE_MOVIE) {
       ShareableAnim &sh_anim = this->cache_entry_get(scene, seq);

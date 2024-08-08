@@ -47,7 +47,7 @@ class AnimManager {
   /**
    * Unlock anims used by strips.
    */
-  void strip_anims_release(const Scene *scene, blender::Vector<Sequence *> &strips);
+  void strip_anims_release(const Scene *scene, blender::Vector<Sequence *> strips);
   void strip_anims_release(const Scene *scene, Sequence *seq);
   /**
    * Get anims used by `seq`.
