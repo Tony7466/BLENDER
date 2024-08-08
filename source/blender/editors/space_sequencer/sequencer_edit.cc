@@ -38,6 +38,7 @@
 #include "SEQ_render.hh"
 #include "SEQ_select.hh"
 #include "SEQ_sequencer.hh"
+#include "SEQ_thumbnail_cache.hh"
 #include "SEQ_time.hh"
 #include "SEQ_transform.hh"
 #include "SEQ_utils.hh"
@@ -1094,6 +1095,7 @@ static int sequencer_refresh_all_exec(bContext *C, wmOperator * /*op*/)
 
   SEQ_relations_free_imbuf(scene, &ed->seqbase, false);
   blender::seq::media_presence_free(scene);
+  blender::seq::thumbnail_cache_destroy(scene);
 
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
 

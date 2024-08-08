@@ -46,6 +46,7 @@
 #include "SEQ_retiming.hh"
 #include "SEQ_select.hh"
 #include "SEQ_sequencer.hh"
+#include "SEQ_thumbnail_cache.hh"
 #include "SEQ_time.hh"
 #include "SEQ_transform.hh"
 #include "SEQ_utils.hh"
@@ -1551,6 +1552,19 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
 
   /* Draw icons. */
   draw_strip_icons(timeline_ctx, strips);
+
+  //@TODO: temp for new thumb cache stats
+  {
+    SpaceSeq *sseq = CTX_wm_space_seq(timeline_ctx->C);
+    const bool new_thumbs = (sseq->timeline_overlay.flag & SEQ_TIMELINE_NEW_THUMBS) != 0;
+    if (new_thumbs) {
+      std::string stats = seq::thumbnail_cache_get_stats(timeline_ctx->scene);
+      uchar stats_col[4] = {255, 192, 32, 255};
+      UI_view2d_text_cache_add_rectf(
+          timeline_ctx->v2d, &timeline_ctx->v2d->cur, stats.c_str(), stats.size(), stats_col);
+    }
+
+  }
 
   /* Draw text labels. */
   UI_view2d_text_cache_draw(timeline_ctx->region);

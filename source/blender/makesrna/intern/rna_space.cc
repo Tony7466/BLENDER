@@ -55,6 +55,7 @@
 #include "SEQ_proxy.hh"
 #include "SEQ_relations.hh"
 #include "SEQ_sequencer.hh"
+#include "SEQ_thumbnail_cache.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -2427,6 +2428,7 @@ static void rna_SpaceConsole_rect_update(Main * /*bmain*/, Scene * /*scene*/, Po
 static void rna_SequenceEditor_update_cache(Main * /*bmain*/, Scene *scene, PointerRNA * /*ptr*/)
 {
   SEQ_cache_cleanup(scene);
+  blender::seq::thumbnail_cache_clear(scene);
 }
 
 static void seq_build_proxy(bContext *C, PointerRNA *ptr)
@@ -6011,7 +6013,7 @@ static void rna_def_space_sequencer_timeline_overlay(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(
       prop, nullptr, "timeline_overlay.flag", SEQ_TIMELINE_NEW_THUMBS);
   RNA_def_property_ui_text(prop, "New Thumbnail Cache", "Use new thumbnail cache implementation (TODO temporary setting during dev)");
-  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_SEQUENCER, nullptr);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_SEQUENCER, "rna_SequenceEditor_update_cache");
 }
 
 static void rna_def_space_sequencer_cache_overlay(BlenderRNA *brna)

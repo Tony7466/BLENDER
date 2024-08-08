@@ -26,6 +26,7 @@
 #include "SEQ_relations.hh"
 #include "SEQ_render.hh"
 #include "SEQ_sequencer.hh"
+#include "SEQ_thumbnail_cache.hh"
 #include "SEQ_time.hh"
 
 #include "WM_api.hh"
@@ -534,6 +535,8 @@ void draw_seq_strip_thumbnail(View2D *v2d,
   Editing *ed = SEQ_editing_get(scene);
   ListBase *channels = ed ? SEQ_channels_displayed_get(ed) : nullptr;
 
+  const bool new_thumbs = (sseq->timeline_overlay.flag & SEQ_TIMELINE_NEW_THUMBS) != 0; //@TODO: remove flag after finished
+
   float thumb_width, image_width, image_height;
   const float thumb_height = y2 - y1;
   seq_get_thumb_image_dimensions(
@@ -597,21 +600,41 @@ void draw_seq_strip_thumbnail(View2D *v2d,
     BLI_rcti_init(&crop, cropx_min, cropx_max - 1, 0, int(image_height) - 1);
 
     /* Get the image. */
-    ImBuf *ibuf = SEQ_get_thumbnail(&context, seq, timeline_frame, &crop, clipped);
-
-    if (!ibuf) {
-      sequencer_thumbnail_start_job_if_necessary(C, scene->ed, v2d, true, thumb_height);
-
-      ibuf = sequencer_thumbnail_closest_from_memory(
-          &context, seq, timeline_frame, last_displayed_thumbnails, &crop, clipped);
+    ImBuf *ibuf = nullptr;
+    if (new_thumbs) {
+      ibuf = seq::thumbnail_cache_get(context.scene, seq, timeline_frame);
+      if (ibuf && clipped) {
+        ImBuf *ibuf_cropped = IMB_dupImBuf(ibuf);
+        if (crop.xmin < 0 || crop.ymin < 0) {
+          crop.xmin = 0;
+          crop.ymin = 0;
+        }
+        if (crop.xmax >= ibuf->x || crop.ymax >= ibuf->y) {
+          crop.xmax = ibuf->x - 1;
+          crop.ymax = ibuf->y - 1;
+        }
+        IMB_rect_crop(ibuf_cropped, &crop);
+        IMB_freeImBuf(ibuf);
+        ibuf = ibuf_cropped;
+      }
     }
-    /* Store recently rendered frames, so they can be reused when zooming. */
-    else if (!sequencer_thumbnail_v2d_is_navigating(C)) {
-      /* Clear images in frame range occupied by new thumbnail. */
-      last_displayed_thumbnails_list_cleanup(
-          last_displayed_thumbnails, timeline_frame, thumb_x_end);
-      /* Insert new thumbnail frame to list. */
-      BLI_gset_add(last_displayed_thumbnails, POINTER_FROM_INT(timeline_frame));
+    else {
+      ibuf = SEQ_get_thumbnail(&context, seq, timeline_frame, &crop, clipped);
+
+      if (!ibuf) {
+        sequencer_thumbnail_start_job_if_necessary(C, scene->ed, v2d, true, thumb_height);
+
+        ibuf = sequencer_thumbnail_closest_from_memory(
+            &context, seq, timeline_frame, last_displayed_thumbnails, &crop, clipped);
+      }
+      /* Store recently rendered frames, so they can be reused when zooming. */
+      else if (!sequencer_thumbnail_v2d_is_navigating(C)) {
+        /* Clear images in frame range occupied by new thumbnail. */
+        last_displayed_thumbnails_list_cleanup(
+            last_displayed_thumbnails, timeline_frame, thumb_x_end);
+        /* Insert new thumbnail frame to list. */
+        BLI_gset_add(last_displayed_thumbnails, POINTER_FROM_INT(timeline_frame));
+      }
     }
 
     /* If there is no image still, abort. */

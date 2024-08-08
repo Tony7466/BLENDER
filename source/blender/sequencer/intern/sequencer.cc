@@ -42,6 +42,7 @@
 #include "SEQ_select.hh"
 #include "SEQ_sequencer.hh"
 #include "SEQ_sound.hh"
+#include "SEQ_thumbnail_cache.hh"
 #include "SEQ_time.hh"
 #include "SEQ_utils.hh"
 
@@ -293,6 +294,7 @@ void SEQ_editing_free(Scene *scene, const bool do_id_user)
   BLI_freelistN(&ed->metastack);
   SEQ_sequence_lookup_free(scene);
   blender::seq::media_presence_free(scene);
+  blender::seq::thumbnail_cache_destroy(scene);
   SEQ_channels_free(&ed->channels);
 
   MEM_freeN(ed);

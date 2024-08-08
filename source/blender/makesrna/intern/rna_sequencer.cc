@@ -50,6 +50,7 @@
 #include "SEQ_select.hh"
 #include "SEQ_sequencer.hh"
 #include "SEQ_sound.hh"
+#include "SEQ_thumbnail_cache.hh"
 #include "SEQ_time.hh"
 #include "SEQ_transform.hh"
 #include "SEQ_utils.hh"
@@ -309,6 +310,7 @@ static void rna_SequenceEditor_update_cache(Main * /*bmain*/, Scene *scene, Poin
 
   SEQ_relations_free_imbuf(scene, &ed->seqbase, false);
   SEQ_cache_cleanup(scene);
+  blender::seq::thumbnail_cache_clear(scene);
 }
 
 /* internal use */

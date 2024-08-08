@@ -31,10 +31,13 @@ struct bSound;
 #ifdef __cplusplus
 namespace blender::seq {
 struct MediaPresence;
+struct ThumbnailCache;
 }  // namespace blender::seq
 using MediaPresence = blender::seq::MediaPresence;
+using ThumbnailCache = blender::seq::ThumbnailCache;
 #else
 typedef struct MediaPresence MediaPresence;
+typedef struct ThumbnailCache ThumbnailCache;
 #endif
 
 /* -------------------------------------------------------------------- */
@@ -311,6 +314,8 @@ typedef struct SeqTimelineChannel {
 typedef struct EditingRuntime {
   struct SequenceLookup *sequence_lookup;
   MediaPresence *media_presence;
+  ThumbnailCache *thumbnail_cache;
+  void *_pad;
 } EditingRuntime;
 
 typedef struct Editing {
