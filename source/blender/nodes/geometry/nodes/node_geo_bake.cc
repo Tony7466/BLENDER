@@ -726,6 +726,7 @@ bool get_bake_draw_context(const bContext *C, const bNode &node, BakeDrawContext
   r_ctx.bake_still = node.type == GEO_NODE_BAKE &&
                      r_ctx.bake->bake_mode == NODES_MODIFIER_BAKE_MODE_STILL;
   r_ctx.is_baked = r_ctx.baked_range.has_value();
+  r_ctx.bake_target = bke::bake::get_node_bake_target(*r_ctx.object, *r_ctx.nmd, r_ctx.bake->id);
 
   return true;
 }
@@ -786,33 +787,49 @@ void draw_bake_button_row(const BakeDrawContext &ctx,
     uiLayout *subrow = uiLayoutRow(row, true);
     uiLayoutSetActive(subrow, ctx.is_baked);
     if (show_pack_operator) {
-      if (ctx.bake->packed) {
-        PointerRNA ptr;
-        uiItemFullO(subrow,
-                    "OBJECT_OT_geometry_node_bake_unpack_single",
-                    "",
-                    ICON_PACKAGE,
-                    nullptr,
-                    WM_OP_INVOKE_DEFAULT,
-                    UI_ITEM_NONE,
-                    &ptr);
-        WM_operator_properties_id_lookup_set_from_id(&ptr, &ctx.object->id);
-        RNA_string_set(&ptr, "modifier_name", ctx.nmd->modifier.name);
-        RNA_int_set(&ptr, "bake_id", ctx.bake->id);
+      if (ctx.is_baked && !G.is_rendering) {
+        if (ctx.bake->packed) {
+          PointerRNA ptr;
+          uiItemFullO(subrow,
+                      "OBJECT_OT_geometry_node_bake_unpack_single",
+                      "",
+                      ICON_PACKAGE,
+                      nullptr,
+                      WM_OP_INVOKE_DEFAULT,
+                      UI_ITEM_NONE,
+                      &ptr);
+          WM_operator_properties_id_lookup_set_from_id(&ptr, &ctx.object->id);
+          RNA_string_set(&ptr, "modifier_name", ctx.nmd->modifier.name);
+          RNA_int_set(&ptr, "bake_id", ctx.bake->id);
+        }
+        else {
+          PointerRNA ptr;
+          uiItemFullO(subrow,
+                      "OBJECT_OT_geometry_node_bake_pack_single",
+                      "",
+                      ICON_UGLYPACKAGE,
+                      nullptr,
+                      WM_OP_INVOKE_DEFAULT,
+                      UI_ITEM_NONE,
+                      &ptr);
+          WM_operator_properties_id_lookup_set_from_id(&ptr, &ctx.object->id);
+          RNA_string_set(&ptr, "modifier_name", ctx.nmd->modifier.name);
+          RNA_int_set(&ptr, "bake_id", ctx.bake->id);
+        }
       }
       else {
+        /* If the data is not yet baked, still show the icon based on the derived bake target.*/
+        const int icon = ctx.bake_target == NODES_MODIFIER_BAKE_TARGET_DISK ? ICON_UGLYPACKAGE :
+                                                                              ICON_PACKAGE;
         PointerRNA ptr;
         uiItemFullO(subrow,
                     "OBJECT_OT_geometry_node_bake_pack_single",
                     "",
-                    ICON_UGLYPACKAGE,
+                    icon,
                     nullptr,
                     WM_OP_INVOKE_DEFAULT,
                     UI_ITEM_NONE,
                     &ptr);
-        WM_operator_properties_id_lookup_set_from_id(&ptr, &ctx.object->id);
-        RNA_string_set(&ptr, "modifier_name", ctx.nmd->modifier.name);
-        RNA_int_set(&ptr, "bake_id", ctx.bake->id);
       }
     }
     {

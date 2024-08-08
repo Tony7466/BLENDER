@@ -6,6 +6,7 @@
 
 #include <optional>
 
+#include "DNA_modifier_types.h"
 #include "DNA_node_types.h"
 
 #include "NOD_geo_simulation.hh"
@@ -90,6 +91,7 @@ struct BakeDrawContext {
   std::optional<IndexRange> frame_range;
   bool bake_still;
   bool is_baked;
+  std::optional<NodesModifierBakeTarget> bake_target;
 };
 
 [[nodiscard]] bool get_bake_draw_context(const bContext *C,
