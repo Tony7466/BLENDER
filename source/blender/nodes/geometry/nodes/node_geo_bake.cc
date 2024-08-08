@@ -582,7 +582,7 @@ static void node_layout(uiLayout *layout, bContext *C, PointerRNA *ptr)
     uiLayoutSetEnabled(row, !ctx.is_baked);
     uiItemR(row, &ctx.bake_rna, "bake_mode", UI_ITEM_R_EXPAND, IFACE_("Mode"), ICON_NONE);
   }
-  draw_bake_button(ctx, col);
+  draw_bake_button_row(ctx, col);
 }
 
 static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
@@ -605,11 +605,10 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
       uiItemR(row, &ctx.bake_rna, "bake_mode", UI_ITEM_R_EXPAND, IFACE_("Mode"), ICON_NONE);
     }
 
-    draw_bake_button(ctx, col);
+    draw_bake_button_row(ctx, col, true);
     if (const std::optional<std::string> bake_state_str = get_bake_state_string(ctx)) {
       uiLayout *row = uiLayoutRow(col, true);
       uiItemL(row, bake_state_str->c_str(), ICON_NONE);
-      draw_pack_unpack_button(ctx, row);
     }
   }
 
@@ -763,7 +762,9 @@ std::optional<std::string> get_bake_state_string(const BakeDrawContext &ctx)
   return std::nullopt;
 }
 
-void draw_bake_button(const BakeDrawContext &ctx, uiLayout *layout)
+void draw_bake_button_row(const BakeDrawContext &ctx,
+                          uiLayout *layout,
+                          const bool show_pack_operator)
 {
   uiLayout *col = uiLayoutColumn(layout, true);
   uiLayout *row = uiLayoutRow(col, true);
@@ -784,44 +785,42 @@ void draw_bake_button(const BakeDrawContext &ctx, uiLayout *layout)
   {
     uiLayout *subrow = uiLayoutRow(row, true);
     uiLayoutSetActive(subrow, ctx.is_baked);
-    PointerRNA ptr;
-    uiItemFullO(subrow,
-                "OBJECT_OT_geometry_node_bake_delete_single",
-                "",
-                ICON_TRASH,
-                nullptr,
-                WM_OP_INVOKE_DEFAULT,
-                UI_ITEM_NONE,
-                &ptr);
-    WM_operator_properties_id_lookup_set_from_id(&ptr, &ctx.object->id);
-    RNA_string_set(&ptr, "modifier_name", ctx.nmd->modifier.name);
-    RNA_int_set(&ptr, "bake_id", ctx.bake->id);
-  }
-}
-
-void draw_pack_unpack_button(const BakeDrawContext &ctx, uiLayout *layout)
-{
-  if (ctx.is_baked) {
-    if (ctx.bake->packed) {
-      PointerRNA ptr;
-      uiItemFullO(layout,
-                  "OBJECT_OT_geometry_node_bake_unpack_single",
-                  "",
-                  ICON_PACKAGE,
-                  nullptr,
-                  WM_OP_INVOKE_DEFAULT,
-                  UI_ITEM_NONE,
-                  &ptr);
-      WM_operator_properties_id_lookup_set_from_id(&ptr, &ctx.object->id);
-      RNA_string_set(&ptr, "modifier_name", ctx.nmd->modifier.name);
-      RNA_int_set(&ptr, "bake_id", ctx.bake->id);
+    if (show_pack_operator) {
+      if (ctx.bake->packed) {
+        PointerRNA ptr;
+        uiItemFullO(subrow,
+                    "OBJECT_OT_geometry_node_bake_unpack_single",
+                    "",
+                    ICON_PACKAGE,
+                    nullptr,
+                    WM_OP_INVOKE_DEFAULT,
+                    UI_ITEM_NONE,
+                    &ptr);
+        WM_operator_properties_id_lookup_set_from_id(&ptr, &ctx.object->id);
+        RNA_string_set(&ptr, "modifier_name", ctx.nmd->modifier.name);
+        RNA_int_set(&ptr, "bake_id", ctx.bake->id);
+      }
+      else {
+        PointerRNA ptr;
+        uiItemFullO(subrow,
+                    "OBJECT_OT_geometry_node_bake_pack_single",
+                    "",
+                    ICON_UGLYPACKAGE,
+                    nullptr,
+                    WM_OP_INVOKE_DEFAULT,
+                    UI_ITEM_NONE,
+                    &ptr);
+        WM_operator_properties_id_lookup_set_from_id(&ptr, &ctx.object->id);
+        RNA_string_set(&ptr, "modifier_name", ctx.nmd->modifier.name);
+        RNA_int_set(&ptr, "bake_id", ctx.bake->id);
+      }
     }
-    else {
+    {
       PointerRNA ptr;
-      uiItemFullO(layout,
-                  "OBJECT_OT_geometry_node_bake_pack_single",
+      uiItemFullO(subrow,
+                  "OBJECT_OT_geometry_node_bake_delete_single",
                   "",
-                  ICON_UGLYPACKAGE,
+                  ICON_TRASH,
                   nullptr,
                   WM_OP_INVOKE_DEFAULT,
                   UI_ITEM_NONE,

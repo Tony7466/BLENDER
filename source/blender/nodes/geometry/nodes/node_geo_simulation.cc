@@ -323,11 +323,10 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *current_no
 
   {
     uiLayout *col = uiLayoutColumn(layout, false);
-    draw_bake_button(ctx, col);
+    draw_bake_button_row(ctx, col, true);
     if (const std::optional<std::string> bake_state_str = get_bake_state_string(ctx)) {
       uiLayout *row = uiLayoutRow(col, true);
       uiItemL(row, bake_state_str->c_str(), ICON_NONE);
-      draw_pack_unpack_button(ctx, row);
     }
   }
   draw_common_bake_settings(C, ctx, layout);
