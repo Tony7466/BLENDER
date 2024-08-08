@@ -8730,6 +8730,7 @@ class GREASE_PENCIL_MT_Layers(Menu):
 
         layout.separator()
 
+        # Display layers in layer stack order. The last layer is the top most layer.
         for i in range(len(grease_pencil.layers) - 1, -1, -1):
             layer = grease_pencil.layers[i]
             if layer == grease_pencil.layers.active:
