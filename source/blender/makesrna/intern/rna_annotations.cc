@@ -52,9 +52,9 @@ bool rna_GPencil_datablocks_annotations_poll(PointerRNA * /*ptr*/, const Pointer
 }
 
 static bGPDframe *rna_annotation_frame_new(bGPDlayer *layer,
-                                            ReportList *reports,
-                                            int frame_number,
-                                            bool active)
+                                           ReportList *reports,
+                                           int frame_number,
+                                           bool active)
 {
   bGPDframe *frame;
 
@@ -73,8 +73,8 @@ static bGPDframe *rna_annotation_frame_new(bGPDlayer *layer,
 }
 
 static void rna_annotation_frame_remove(bGPDlayer *layer,
-                                         ReportList *reports,
-                                         PointerRNA *frame_ptr)
+                                        ReportList *reports,
+                                        PointerRNA *frame_ptr)
 {
   bGPDframe *frame = static_cast<bGPDframe *>(frame_ptr->data);
   if (BLI_findindex(&layer->frames, frame) == -1) {
