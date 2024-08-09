@@ -25,6 +25,8 @@ ShaderModule::ShaderPtr ShaderModule::selectable_shader(const char *create_info_
   gpu::shader::ShaderCreateInfo info = *reinterpret_cast<const gpu::shader::ShaderCreateInfo *>(
       GPU_shader_create_info_get(create_info_name));
 
+  info.define("OVERLAY_NEXT");
+
   if (selection_type_ != SelectionType::DISABLED) {
     info.define("SELECT_ENABLE");
   }
@@ -41,6 +43,8 @@ ShaderModule::ShaderPtr ShaderModule::selectable_shader(
       GPU_shader_create_info_get(create_info_name));
 
   patch(info);
+
+  info.define("OVERLAY_NEXT");
 
   if (selection_type_ != SelectionType::DISABLED) {
     info.define("SELECT_ENABLE");

@@ -234,6 +234,7 @@ BLI_STATIC_ASSERT_ALIGN(ExtraInstanceData, 16)
 
 struct VertexData {
   float4 pos_;
+  /* TODO: change to color_id. Idea expressed in #125894. */
   float4 color_;
 };
 BLI_STATIC_ASSERT_ALIGN(VertexData, 16)
