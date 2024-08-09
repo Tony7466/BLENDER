@@ -35,6 +35,8 @@ void sequencer_thumbnail_transform(ImBuf *in, ImBuf *out);  // render.cc @TODO c
 
 namespace blender::seq {
 
+constexpr int THUMB_SIZE = 256; //@TODO: use SEQ_RENDER_THUMB_SIZE and/or remove that one
+
 static ThreadMutex thumb_cache_lock = BLI_MUTEX_INITIALIZER;
 
 struct ThumbnailCache {
@@ -144,7 +146,6 @@ static std::string get_path_from_seq(Scene *scene, const Sequence *seq, float ti
 static void image_size_to_thumb_size(int& r_width, int& r_height)
 {
   float aspect = float(r_width) / float(r_height);
-  constexpr int THUMB_SIZE = 256; //@TODO: use SEQ_RENDER_THUMB_SIZE
   if (r_width > r_height) {
     r_width = THUMB_SIZE;
     r_height = round_fl_to_int(THUMB_SIZE / aspect);
@@ -157,11 +158,8 @@ static void image_size_to_thumb_size(int& r_width, int& r_height)
 
 static ImBuf* make_thumb_for_image(Scene *scene, const ThumbnailCache::Request& request)
 {
-  int flag = IB_rect | IB_metadata;
-  //if (seq->alpha_mode == SEQ_ALPHA_PREMUL) { //@TODO
-  //  flag |= IB_alphamode_premul;
-  //}
-  ImBuf *ibuf = IMB_loadiffname(request.file_path.c_str(), flag, nullptr);
+  //@TODO: IMB_thumb_load_image skips files larger than 100MB if they don't have a dedicated thumbnail code path. Need to add flags to stop checking that.
+  ImBuf *ibuf = IMB_thumb_load_image(request.file_path.c_str(), THUMB_SIZE, nullptr);
   if (ibuf == nullptr) {
     return nullptr;
   }
@@ -245,8 +243,6 @@ void ThumbGenerationJob::run_fn(void *customdata, wmJobWorkerStatus *worker_stat
   Vector<ThumbnailCache::Request> requests;
   while (!worker_status->stop) {
     /* Copy all current requests (under cache mutex lock). */
-    //@TODO: put into array, order by timestamp / file / frame,
-    // for movies share the opened animation between neighbors when possible.
     //@TODO: multi-thread processing via TaskPool or just parallel for (see sequencer_preview.cc)
     BLI_mutex_lock(&thumb_cache_lock);
     requests.clear();
