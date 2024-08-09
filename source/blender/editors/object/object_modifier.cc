@@ -987,11 +987,12 @@ static void remove_invalid_attribute_strings(Mesh &mesh)
   }
 }
 
-static GreasePencil *create_applied_grease_pencil_for_modifier(Depsgraph *depsgraph,
-                                                               Object *ob_eval,
-                                                               GreasePencil &grease_pencil_orig,
-                                                               ModifierData *md_eval,
-                                                               ReportList *reports)
+static bool apply_grease_pencil_for_modifier(Depsgraph *depsgraph,
+                                             Object *ob,
+                                             Object *ob_eval,
+                                             GreasePencil &grease_pencil_orig,
+                                             ModifierData *md_eval,
+                                             ReportList *reports)
 {
   using namespace bke;
   using namespace bke::greasepencil;
@@ -1013,10 +1014,10 @@ static GreasePencil *create_applied_grease_pencil_for_modifier(Depsgraph *depsgr
     BKE_report(reports,
                RPT_ERROR,
                "Evaluated geometry from modifier does not contain grease pencil geometry");
-    return nullptr;
+    return false;
   }
   GreasePencil &grease_pencil_result =
-      *geometry_set.get_component_for_write<GreasePencilComponent>().release();
+      *geometry_set.get_component_for_write<GreasePencilComponent>().get_for_write();
 
   /* Anonymous attributes shouldn't be available on original geometry. */
   grease_pencil_result.attributes_for_write().remove_anonymous();
@@ -1154,7 +1155,9 @@ static GreasePencil *create_applied_grease_pencil_for_modifier(Depsgraph *depsgr
     return true;
   });
 
-  return &grease_pencil_result;
+  Main *bmain = DEG_get_bmain(depsgraph);
+  BKE_object_material_from_eval_data(bmain, ob, &grease_pencil_result.id);
+  return true;
 }
 
 static bool modifier_apply_obdata(
@@ -1324,14 +1327,11 @@ static bool modifier_apply_obdata(
     }
     Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
     GreasePencil &grease_pencil_orig = *static_cast<GreasePencil *>(ob->data);
-    GreasePencil *grease_pencil_result = create_applied_grease_pencil_for_modifier(
-        depsgraph, ob_eval, grease_pencil_orig, md_eval, reports);
-    if (!grease_pencil_result) {
+    if (!apply_grease_pencil_for_modifier(
+            depsgraph, ob, ob_eval, grease_pencil_orig, md_eval, reports))
+    {
       return false;
     }
-
-    Main *bmain = DEG_get_bmain(depsgraph);
-    BKE_object_material_from_eval_data(bmain, ob, &grease_pencil_result->id);
   }
   else {
     /* TODO: implement for volumes. */
