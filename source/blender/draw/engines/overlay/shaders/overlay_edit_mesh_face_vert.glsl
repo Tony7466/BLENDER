@@ -15,4 +15,5 @@ void main()
   VertOut vert_out = vertex_main(vert_in);
 
   gl_Position = vert_out.gpu_position;
+  finalColor = vert_out.final_color;
 }
