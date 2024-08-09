@@ -296,6 +296,12 @@ void Instance::draw(Manager &manager)
 
   draw_layer(regular, resources.overlay_line_fb);
 
+  auto draw_layer_color_only = [&](OverlayLayer &layer, Framebuffer &framebuffer) {
+    layer.light_probes.draw_color_only(framebuffer, manager, view);
+  };
+
+  draw_layer_color_only(regular, resources.overlay_color_only_fb);
+
   grid.draw(resources, manager, view);
 
   /* TODO(: Breaks selection on M1 Max. */
