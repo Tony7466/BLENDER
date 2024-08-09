@@ -142,11 +142,11 @@ string HIPRTDevice::compile_kernel(const uint kernel_features, const char *name,
   const std::string arch = hipDeviceArch(hipDevId);
 
   string source_path = path_get("source");
-  string hiprt_path_runtime = "HIPRT_PATH=" + path_join(source_path, "kernel//device//hiprt");
-  char* hiprt_path_env = const_cast<char*>(hiprt_path_runtime.c_str());
-  putenv(hiprt_path_env);
-  //set HIPRT_PATH env for BVH kernels
 
+  /* Set HIPRT_PATH env for BVH kernels. */
+  string hiprt_path_runtime = "HIPRT_PATH=" + path_join(source_path, "kernel//device//hiprt");
+  char *hiprt_path_env = const_cast<char *>(hiprt_path_runtime.c_str());
+  putenv(hiprt_path_env);
 
   if (!use_adaptive_compilation()) {
     const string fatbin = path_get(string_printf("lib/%s_rt_gfx.hipfb.zst", name));
@@ -157,7 +157,6 @@ string HIPRTDevice::compile_kernel(const uint kernel_features, const char *name,
     }
   }
 
-  //string source_path = path_get("source");
   const string source_md5 = path_files_md5_hash(source_path);
 
   string common_cflags = compile_kernel_get_common_cflags(kernel_features);
@@ -808,7 +807,6 @@ hiprtScene HIPRTDevice::build_tlas(BVHHIPRT *bvh,
 {
 
   size_t num_object = objects.size();
-
   if (num_object == 0) {
     return 0;
   }

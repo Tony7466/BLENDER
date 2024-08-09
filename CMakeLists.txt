@@ -708,7 +708,6 @@ if(NOT APPLE AND NOT (WIN32 AND CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64"))
 
   option(WITH_CYCLES_DEVICE_HIPRT "Enable Cycles AMD HIPRT support" OFF)
   mark_as_advanced(WITH_CYCLES_DEVICE_HIPRT)
-
 endif()
 
 # Apple Metal

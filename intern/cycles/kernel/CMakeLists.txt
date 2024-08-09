@@ -690,7 +690,6 @@ endif()
 # HIP RT module
 
 if(WITH_CYCLES_DEVICE_HIPRT AND WITH_CYCLES_HIP_BINARIES)
-
   set(hiprt_sources device/hiprt/kernel.cpp
     ${SRC_KERNEL_HEADERS}
     ${SRC_KERNEL_DEVICE_GPU_HEADERS}
@@ -863,9 +862,8 @@ if(WITH_CYCLES_DEVICE_HIPRT AND WITH_CYCLES_HIP_BINARIES)
     set(BVH_INSTALL_PATH ${CMAKE_INSTALL_PREFIX}/lib)
   endif()
 
- delayed_install("${CMAKE_CURRENT_BINARY_DIR}" "${bvh_file}"     ${BVH_INSTALL_PATH})
- delayed_install("${CMAKE_CURRENT_BINARY_DIR}" "${bvh_file_oro}" ${BVH_INSTALL_PATH})
-
+  delayed_install("${CMAKE_CURRENT_BINARY_DIR}" "${bvh_file}"     ${BVH_INSTALL_PATH})
+  delayed_install("${CMAKE_CURRENT_BINARY_DIR}" "${bvh_file_oro}" ${BVH_INSTALL_PATH})
 
   add_custom_command(
     OUTPUT ${hiprt_file_compressed}
