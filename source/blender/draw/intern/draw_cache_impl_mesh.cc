@@ -556,7 +556,7 @@ static bool mesh_batch_cache_valid(Object &object, Mesh &mesh)
     return false;
   }
 
-  /* NOTE: PBVH draw data should not be checked here. */
+  /* NOTE: bke::pbvh::Tree draw data should not be checked here. */
 
   if (cache->is_editmode != (mesh.runtime->edit_mesh != nullptr)) {
     return false;
@@ -1490,7 +1490,7 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph &task_graph,
     return;
   }
 
-  /* TODO(pablodp606): This always updates the sculpt normals for regular drawing (non-PBVH).
+  /* TODO(pablodp606): This always updates the sculpt normals for regular drawing (non-pbvh::Tree).
    * This makes tools that sample the surface per step get wrong normals until a redraw happens.
    * Normal updates should be part of the brush loop and only run during the stroke when the
    * brush needs to sample the surface. The drawing code should only update the normals
@@ -1669,6 +1669,10 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph &task_graph,
     DRW_ibo_request(cache.batch.edit_vertices, &mbuflist->ibo.points);
     DRW_vbo_request(cache.batch.edit_vertices, &mbuflist->vbo.pos);
     DRW_vbo_request(cache.batch.edit_vertices, &mbuflist->vbo.edit_data);
+    if (!do_subdivision) {
+      /* For GPU subdivision, vertex normals are included in the `pos` VBO. */
+      DRW_vbo_request(cache.batch.edit_vertices, &mbuflist->vbo.vnor);
+    }
   }
   assert_deps_valid(MBC_EDIT_EDGES,
                     {BUFFER_INDEX(ibo.lines), BUFFER_INDEX(vbo.pos), BUFFER_INDEX(vbo.edit_data)});
@@ -1676,6 +1680,10 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph &task_graph,
     DRW_ibo_request(cache.batch.edit_edges, &mbuflist->ibo.lines);
     DRW_vbo_request(cache.batch.edit_edges, &mbuflist->vbo.pos);
     DRW_vbo_request(cache.batch.edit_edges, &mbuflist->vbo.edit_data);
+    if (!do_subdivision) {
+      /* For GPU subdivision, vertex normals are included in the `pos` VBO. */
+      DRW_vbo_request(cache.batch.edit_edges, &mbuflist->vbo.vnor);
+    }
   }
   assert_deps_valid(MBC_EDIT_VNOR,
                     {BUFFER_INDEX(ibo.points), BUFFER_INDEX(vbo.pos), BUFFER_INDEX(vbo.vnor)});

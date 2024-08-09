@@ -207,14 +207,26 @@ bool Action::layer_remove(Layer &layer_to_remove)
   return true;
 }
 
-void Action::layer_ensure_at_least_one()
+void Action::layer_keystrip_ensure()
 {
-  if (!this->layers().is_empty()) {
-    return;
+  /* Ensure a layer. */
+  Layer *layer;
+  if (this->layers().is_empty()) {
+    layer = &this->layer_add(DATA_(layer_default_name));
+  }
+  else {
+    layer = this->layer(0);
   }
 
-  Layer &layer = this->layer_add(DATA_(layer_default_name));
-  layer.strip_add(Strip::Type::Keyframe);
+  /* Ensure a KeyframeStrip. */
+  if (layer->strips().is_empty()) {
+    layer->strip_add<KeyframeStrip>();
+  }
+
+  /* Within the limits of Baklava Phase 1, the above code should not have
+   * created more than one layer, or more than one strip on the layer. And if a
+   * layer + strip already existed, that must have been a keyframe strip. */
+  assert_baklava_phase_1_invariants(*this);
 }
 
 int64_t Action::find_layer_index(const Layer &layer) const
@@ -483,6 +495,9 @@ Layer *Action::get_layer_for_keyframing()
 
 bool Action::assign_id(Slot *slot, ID &animated_id)
 {
+  BLI_assert_msg(!slot || this->slots().as_span().contains(slot),
+                 "Slot should be owned by this Action");
+
   AnimData *adt = BKE_animdata_ensure_id(&animated_id);
   if (!adt) {
     return false;
@@ -627,9 +642,9 @@ static void strip_ptr_destructor(ActionStrip **dna_strip_ptr)
   MEM_delete(&strip);
 };
 
-bool Layer::strip_remove(Strip &strip_to_remove)
+bool Layer::strip_remove(Strip &strip)
 {
-  const int64_t strip_index = this->find_strip_index(strip_to_remove);
+  const int64_t strip_index = this->find_strip_index(strip);
   if (strip_index < 0) {
     return false;
   }
@@ -1043,6 +1058,15 @@ const ChannelBag *KeyframeStrip::channelbag_for_slot(const slot_handle_t slot_ha
   }
   return nullptr;
 }
+int64_t KeyframeStrip::find_channelbag_index(const ChannelBag &channelbag) const
+{
+  for (int64_t index = 0; index < this->channelbag_array_num; index++) {
+    if (this->channelbag(index) == &channelbag) {
+      return index;
+    }
+  }
+  return -1;
+}
 ChannelBag *KeyframeStrip::channelbag_for_slot(const slot_handle_t slot_handle)
 {
   const auto *const_this = const_cast<const KeyframeStrip *>(this);
@@ -1072,51 +1096,111 @@ ChannelBag &KeyframeStrip::channelbag_for_slot_add(const Slot &slot)
   return channels;
 }
 
-FCurve *KeyframeStrip::fcurve_find(const Slot &slot, const FCurveDescriptor fcurve_descriptor)
+ChannelBag &KeyframeStrip::channelbag_for_slot_ensure(const Slot &slot)
 {
-  ChannelBag *channels = this->channelbag_for_slot(slot);
-  if (channels == nullptr) {
-    return nullptr;
+  ChannelBag *channel_bag = this->channelbag_for_slot(slot);
+  if (channel_bag != nullptr) {
+    return *channel_bag;
   }
-
-  /* Copy of the logic in BKE_fcurve_find(), but then compatible with our array-of-FCurves
-   * instead of ListBase. */
-
-  for (FCurve *fcu : channels->fcurves()) {
-    /* Check indices first, much cheaper than a string comparison. */
-    /* Simple string-compare (this assumes that they have the same root...) */
-    if (fcu->array_index == fcurve_descriptor.array_index && fcu->rna_path &&
-        StringRef(fcu->rna_path) == fcurve_descriptor.rna_path)
-    {
-      return fcu;
-    }
-  }
-  return nullptr;
+  return this->channelbag_for_slot_add(slot);
 }
 
-FCurve &KeyframeStrip::fcurve_find_or_create(const Slot &slot,
-                                             const FCurveDescriptor fcurve_descriptor)
+static void channelbag_ptr_destructor(ActionChannelBag **dna_channelbag_ptr)
 {
-  if (FCurve *existing_fcurve = this->fcurve_find(slot, fcurve_descriptor)) {
+  ChannelBag &channelbag = (*dna_channelbag_ptr)->wrap();
+  MEM_delete(&channelbag);
+};
+
+bool KeyframeStrip::channelbag_remove(ChannelBag &channelbag_to_remove)
+{
+  const int64_t channelbag_index = this->find_channelbag_index(channelbag_to_remove);
+  if (channelbag_index < 0) {
+    return false;
+  }
+
+  dna::array::remove_index(&this->channelbag_array,
+                           &this->channelbag_array_num,
+                           nullptr,
+                           channelbag_index,
+                           channelbag_ptr_destructor);
+
+  return true;
+}
+
+const FCurve *ChannelBag::fcurve_find(const FCurveDescriptor fcurve_descriptor) const
+{
+  return animrig::fcurve_find(this->fcurves(), fcurve_descriptor);
+}
+
+FCurve *ChannelBag::fcurve_find(const FCurveDescriptor fcurve_descriptor)
+{
+  /* Intermediate variable needed to disambiguate const/non-const overloads. */
+  Span<FCurve *> fcurves = this->fcurves();
+  return animrig::fcurve_find(fcurves, fcurve_descriptor);
+}
+
+FCurve &ChannelBag::fcurve_ensure(Main *bmain, const FCurveDescriptor fcurve_descriptor)
+{
+  if (FCurve *existing_fcurve = this->fcurve_find(fcurve_descriptor)) {
     return *existing_fcurve;
   }
+  return this->fcurve_create(bmain, fcurve_descriptor);
+}
 
+FCurve *ChannelBag::fcurve_create_unique(Main *bmain, FCurveDescriptor fcurve_descriptor)
+{
+  if (this->fcurve_find(fcurve_descriptor)) {
+    return nullptr;
+  }
+  return &this->fcurve_create(bmain, fcurve_descriptor);
+}
+
+FCurve &ChannelBag::fcurve_create(Main *bmain, FCurveDescriptor fcurve_descriptor)
+{
   FCurve *new_fcurve = create_fcurve_for_channel(fcurve_descriptor);
 
-  ChannelBag *channels = this->channelbag_for_slot(slot);
-  if (channels == nullptr) {
-    channels = &this->channelbag_for_slot_add(slot);
-  }
-
-  if (channels->fcurve_array_num == 0) {
+  if (this->fcurve_array_num == 0) {
     new_fcurve->flag |= FCURVE_ACTIVE; /* First curve is added active. */
   }
 
-  grow_array_and_append(&channels->fcurve_array, &channels->fcurve_array_num, new_fcurve);
+  grow_array_and_append(&this->fcurve_array, &this->fcurve_array_num, new_fcurve);
+
+  if (bmain) {
+    DEG_relations_tag_update(bmain);
+  }
+
   return *new_fcurve;
 }
 
-SingleKeyingResult KeyframeStrip::keyframe_insert(const Slot &slot,
+static void fcurve_ptr_destructor(FCurve **fcurve_ptr)
+{
+  BKE_fcurve_free(*fcurve_ptr);
+};
+
+bool ChannelBag::fcurve_remove(FCurve &fcurve_to_remove)
+{
+  const int64_t fcurve_index = this->fcurves().as_span().first_index_try(&fcurve_to_remove);
+  if (fcurve_index < 0) {
+    return false;
+  }
+
+  dna::array::remove_index(
+      &this->fcurve_array, &this->fcurve_array_num, nullptr, fcurve_index, fcurve_ptr_destructor);
+
+  /* As an optimization, this function could call `DEG_relations_tag_update(bmain)` to prune any
+   * relationships that are now no longer necessary. This is not needed for correctness of the
+   * depsgraph evaluation results though. */
+
+  return true;
+}
+
+void ChannelBag::fcurves_clear()
+{
+  dna::array::clear(&this->fcurve_array, &this->fcurve_array_num, nullptr, fcurve_ptr_destructor);
+}
+
+SingleKeyingResult KeyframeStrip::keyframe_insert(Main *bmain,
+                                                  const Slot &slot,
                                                   const FCurveDescriptor fcurve_descriptor,
                                                   const float2 time_value,
                                                   const KeyframeSettings &settings,
@@ -1124,9 +1208,17 @@ SingleKeyingResult KeyframeStrip::keyframe_insert(const Slot &slot,
 {
   /* Get the fcurve, or create one if it doesn't exist and the keying flags
    * allow. */
-  FCurve *fcurve = key_insertion_may_create_fcurve(insert_key_flags) ?
-                       &this->fcurve_find_or_create(slot, fcurve_descriptor) :
-                       this->fcurve_find(slot, fcurve_descriptor);
+  FCurve *fcurve = nullptr;
+  if (key_insertion_may_create_fcurve(insert_key_flags)) {
+    fcurve = &this->channelbag_for_slot_ensure(slot).fcurve_ensure(bmain, fcurve_descriptor);
+  }
+  else {
+    ChannelBag *channels = this->channelbag_for_slot(slot);
+    if (channels != nullptr) {
+      fcurve = channels->fcurve_find(fcurve_descriptor);
+    }
+  }
+
   if (!fcurve) {
     std::fprintf(stderr,
                  "FCurve %s[%d] for slot %s was not created due to either the Only Insert "
@@ -1200,11 +1292,6 @@ const FCurve *ChannelBag::fcurve(const int64_t index) const
 FCurve *ChannelBag::fcurve(const int64_t index)
 {
   return this->fcurve_array[index];
-}
-
-const FCurve *ChannelBag::fcurve_find(const StringRefNull rna_path, const int array_index) const
-{
-  return animrig::fcurve_find(this->fcurves(), {rna_path, array_index});
 }
 
 /* Utility function implementations. */
@@ -1325,6 +1412,9 @@ FCurve *action_fcurve_find(bAction *act, FCurveDescriptor fcurve_descriptor)
   if (act == nullptr) {
     return nullptr;
   }
+#ifdef WITH_ANIM_BAKLAVA
+  BLI_assert(act->wrap().is_action_legacy());
+#endif
   return BKE_fcurve_find(
       &act->curves, fcurve_descriptor.rna_path.c_str(), fcurve_descriptor.array_index);
 }
@@ -1371,12 +1461,12 @@ FCurve *action_fcurve_ensure(Main *bmain,
     Slot &slot = action.slot_ensure_for_id(*ptr->owner_id);
     action.assign_id(&slot, *ptr->owner_id);
 
-    action.layer_ensure_at_least_one();
+    action.layer_keystrip_ensure();
 
     assert_baklava_phase_1_invariants(action);
     KeyframeStrip &strip = action.layer(0)->strip(0)->as<KeyframeStrip>();
 
-    return &strip.fcurve_find_or_create(slot, fcurve_descriptor);
+    return &strip.channelbag_for_slot_ensure(slot).fcurve_ensure(bmain, fcurve_descriptor);
   }
 
   /* Try to find f-curve matching for this setting.
@@ -1438,6 +1528,25 @@ FCurve *action_fcurve_ensure(Main *bmain,
   DEG_relations_tag_update(bmain);
 
   return fcu;
+}
+
+bool action_fcurve_remove(Action &action, FCurve &fcu)
+{
+  for (Layer *layer : action.layers()) {
+    for (Strip *strip : layer->strips()) {
+      if (!(strip->type() == Strip::Type::Keyframe)) {
+        continue;
+      }
+      KeyframeStrip &key_strip = strip->template as<KeyframeStrip>();
+      for (ChannelBag *bag : key_strip.channelbags()) {
+        const bool removed = bag->fcurve_remove(fcu);
+        if (removed) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
 }
 
 ID *action_slot_get_id_for_keying(Main &bmain,

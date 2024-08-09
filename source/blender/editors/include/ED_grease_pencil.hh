@@ -33,6 +33,7 @@ struct UndoType;
 struct ViewDepths;
 struct View3D;
 struct ViewContext;
+struct GreasePencilLineartModifierData;
 namespace blender {
 namespace bke {
 enum class AttrDomain : int8_t;
@@ -59,6 +60,8 @@ void ED_operatortypes_grease_pencil_material();
 void ED_operatortypes_grease_pencil_primitives();
 void ED_operatortypes_grease_pencil_weight_paint();
 void ED_operatortypes_grease_pencil_interpolate();
+void ED_operatortypes_grease_pencil_lineart();
+void ED_operatortypes_grease_pencil_trace();
 void ED_operatormacros_grease_pencil();
 void ED_keymap_grease_pencil(wmKeyConfig *keyconf);
 void ED_primitivetool_modal_keymap(wmKeyConfig *keyconf);
@@ -106,6 +109,10 @@ class DrawingPlacement {
                    const View3D &view3d,
                    const Object &eval_object,
                    const bke::greasepencil::Layer *layer);
+  DrawingPlacement(const DrawingPlacement &other);
+  DrawingPlacement(DrawingPlacement &&other);
+  DrawingPlacement &operator=(const DrawingPlacement &other);
+  DrawingPlacement &operator=(DrawingPlacement &&other);
   ~DrawingPlacement();
 
  public:
@@ -227,7 +234,10 @@ bool has_any_frame_selected(const bke::greasepencil::Layer &layer);
  * create one when auto-key is on (taking additive drawing setting into account).
  * \return false when no keyframe could be found or created.
  */
-bool ensure_active_keyframe(bContext *C, GreasePencil &grease_pencil, bool &r_inserted_keyframe);
+bool ensure_active_keyframe(bContext *C,
+                            GreasePencil &grease_pencil,
+                            bool duplicate_previous_key,
+                            bool &r_inserted_keyframe);
 
 void create_keyframe_edit_data_selected_frames_list(KeyframeEditData *ked,
                                                     const bke::greasepencil::Layer &layer);
@@ -250,7 +260,9 @@ float radius_from_input_sample(const RegionView3D *rv3d,
                                float3 location,
                                float4x4 to_world,
                                const BrushGpencilSettings *settings);
-int grease_pencil_draw_operator_invoke(bContext *C, wmOperator *op);
+int grease_pencil_draw_operator_invoke(bContext *C,
+                                       wmOperator *op,
+                                       bool use_duplicate_previous_key);
 float4x2 calculate_texture_space(const Scene *scene,
                                  const ARegion *region,
                                  const float2 &mouse,
@@ -309,6 +321,16 @@ IndexMask retrieve_visible_strokes(Object &grease_pencil_object,
 IndexMask retrieve_visible_points(Object &object,
                                   const bke::greasepencil::Drawing &drawing,
                                   IndexMaskMemory &memory);
+
+IndexMask retrieve_visible_bezier_handle_points(Object &object,
+                                                const bke::greasepencil::Drawing &drawing,
+                                                int layer_index,
+                                                IndexMaskMemory &memory);
+IndexMask retrieve_visible_bezier_handle_elements(Object &object,
+                                                  const bke::greasepencil::Drawing &drawing,
+                                                  int layer_index,
+                                                  bke::AttrDomain selection_domain,
+                                                  IndexMaskMemory &memory);
 
 IndexMask retrieve_editable_and_selected_strokes(Object &grease_pencil_object,
                                                  const bke::greasepencil::Drawing &drawing,
@@ -648,5 +670,24 @@ bke::CurvesGeometry trim_curve_segments(const bke::CurvesGeometry &src,
                                         const Vector<Vector<int>> &selected_points_in_curves,
                                         bool keep_caps);
 };  // namespace cutter
+
+/* Lineart */
+
+/* Stores the maximum calculation range in the whole modifier stack for line art so the cache can
+ * cover everything that will be visible. */
+struct LineartLimitInfo {
+  int16_t edge_types;
+  uint8_t min_level;
+  uint8_t max_level;
+  uint8_t shadow_selection;
+  uint8_t silhouette_selection;
+};
+
+void get_lineart_modifier_limits(const Object &ob, LineartLimitInfo &info);
+void set_lineart_modifier_limits(GreasePencilLineartModifierData &lmd,
+                                 const LineartLimitInfo &info,
+                                 const bool is_first_lineart);
+
+GreasePencilLineartModifierData *get_first_lineart_modifier(const Object &ob);
 
 }  // namespace blender::ed::greasepencil

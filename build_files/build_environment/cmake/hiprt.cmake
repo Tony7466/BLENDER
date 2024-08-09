@@ -59,14 +59,14 @@ else()
   ExternalProject_Add_Step(external_hiprt after_install
     COMMAND ${CMAKE_COMMAND} -E rename
       ${LIBDIR}/hiprt/bin/${LIBPREFIX}hiprt${HIPRT_LIBRARY_VERSION}64.so ${LIBDIR}/hiprt/bin/${LIBPREFIX}hiprt64.so
-    
+
     COMMAND ${CMAKE_COMMAND} -E copy_directory
       ${HIPRT_SOURCE_DIR}/hiprt/
       ${LIBDIR}/hiprt/include/hiprt/
-    
+
     COMMAND ${CMAKE_COMMAND} -E copy_directory
       ${HIPRT_SOURCE_DIR}/contrib/Orochi/ParallelPrimitives
-      ${LIBDIR}/hiprt/include/Orochi/ParallelPrimitives  
+      ${LIBDIR}/hiprt/include/Orochi/ParallelPrimitives
 
     DEPENDEES install
   )
