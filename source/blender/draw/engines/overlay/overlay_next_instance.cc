@@ -123,7 +123,7 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
   OverlayLayer &layer = (ob_ref.object->dtx & OB_DRAW_IN_FRONT) ? infront : regular;
 
   if (draw_facing) {
-    (!state.use_in_front ? regular : layer).facing.object_sync(manager, ob_ref, state);
+    (state.use_in_front ? layer : regular).facing.object_sync(manager, ob_ref, state);
   }
 
   if (needs_prepass) {
