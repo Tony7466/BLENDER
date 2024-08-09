@@ -2791,13 +2791,14 @@ void UV_OT_stitch(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
-/* Note: Since we are using len squared for distance its possible that in certain
-scenarios that two distances caluclated will be mistakely considered the same
-value due to the precision of the float data type. In such a scenario the function may
-incorrectly pair up edgeloop endpoints. */
-
 static bool uvedit_uv_threshold_weld(bContext *C, wmOperator *op)
 {
+
+  /* Note: Since we are using len squared for distance its possible that in certain
+  scenarios that two distances caluclated will be mistakely considered the same
+  value due to the precision of the float data type. In such a scenario the function may
+  incorrectly pair up edgeloop endpoints. */
+
   Scene *scene = CTX_data_scene(C);
   SpaceImage *sima = CTX_wm_space_image(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
@@ -2809,9 +2810,9 @@ static bool uvedit_uv_threshold_weld(bContext *C, wmOperator *op)
   blender::Vector<blender::Vector<blender::Vector<BMLoop *>>> edgeloops_arr;
   blender::Vector<BMUVOffsets> offsetmap_arr;
 
-  /*Constructs array of edgeloops. The data is nested in the following order
+  /* Constructs array of edgeloops. The data is nested in the following order
    * structure edgeloops->UVcoordinates->BMloops. If UV_get_edgeloops returns false it means one of
-   * the continuous selections was not an edgeloop*/
+   * the continuous selections was not an edgeloop. */
 
   for (Object *objedit : objects) {
     BMEditMesh *em = BKE_editmesh_from_object(objedit);
@@ -2826,21 +2827,20 @@ static bool uvedit_uv_threshold_weld(bContext *C, wmOperator *op)
   }
 
   /* This code block gets the endpoints of each respective edge loop and the data is nested with
-     the same heirarchy as edgeloops_arr.*/
+   * the same heirarchy as edgeloops_arr.*/
 
   blender::Vector<blender::Vector<blender::Vector<BMLoop *>>> endpoints_arr;
   for (int i = 0; i < edgeloops_arr.size(); i++) {
     blender::Vector<blender::Vector<BMLoop *>> curredgeloopendpoints_arr;
     for (int j = 0; j < edgeloops_arr[i].size(); j++) {
 
-      /*If any of the loops for the current UV coordinate have an index of -1 they are a endpoint*/
+      /* If any of the loops for the current UV coordinate have an index of -1 they are a endpoint.
+       */
 
       if (edgeloops_arr[i][j][0]->head.index == -1) {
         curredgeloopendpoints_arr.append(edgeloops_arr[i][j]);
       }
     }
-
-    /*If edgeloop does not have 2 endpoints it is cyclic*/
 
     if (curredgeloopendpoints_arr.size() > 0) {
       endpoints_arr.append(curredgeloopendpoints_arr);
@@ -2850,14 +2850,12 @@ static bool uvedit_uv_threshold_weld(bContext *C, wmOperator *op)
     }
   }
 
-  /*This function requires there be only 2 edgeloops selected.*/
-
   if (endpoints_arr.size() != 2) {
     return false;
   }
 
-  /*Find correct pairing of endpoints between edgeloops
-  by searching for combination with smalled distance.*/
+  /* Find correct pairing of endpoints between edgeloops
+  by searching for combination with smalled distance. */
 
   const auto &edgeloop1_endpoints_arr = endpoints_arr[0];
   const auto &edgeloop2_endpoints_arr = endpoints_arr[1];
@@ -2877,8 +2875,8 @@ static bool uvedit_uv_threshold_weld(bContext *C, wmOperator *op)
     std::swap(endpoints_arr[1][0], endpoints_arr[1][1]);
   }
 
-  /*Iterates through 2 selected edgeloops starting at endpoints.
-  This logic uses pointers in BMLoop to traverse edgeloops.*/
+  /* Iterates through 2 selected edgeloops starting at endpoints.
+  This logic uses pointers in BMLoop to traverse edgeloops. */
 
   blender::Vector<BMLoop *> line1_iterator = endpoints_arr[0][0];
   blender::Vector<BMLoop *> line2_iterator = endpoints_arr[1][0];
