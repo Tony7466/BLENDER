@@ -928,8 +928,7 @@ static bool draw_subdiv_topology_info_cb(const bke::subdiv::ForeachContext *fore
    * side.
    *
    * These VBOs are created even when there are no faces and only loose geometry. This avoids the
-   * need for many null checks. Binding them must be avoided if they are empty though.
-   * */
+   * need for many null checks. Binding them must be avoided if they are empty though. */
   cache->patch_coords = GPU_vertbuf_calloc();
   GPU_vertbuf_init_with_format_ex(
       *cache->patch_coords, get_blender_patch_coords_format(), GPU_USAGE_DYNAMIC);
