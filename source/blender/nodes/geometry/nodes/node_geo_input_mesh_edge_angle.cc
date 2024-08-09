@@ -15,15 +15,13 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Float>("Unsigned Angle")
       .field_source()
       .description(
-          "The shortest angle in radians between two faces where they meet at an edge. Flat edges "
-          "and Non-manifold edges have an angle of zero. Computing this value is faster than the "
-          "signed angle");
+          "The shortest angle between two faces. Flat non-degenerate and Non-manifold surfaces "
+          "have an angle of zero");
   b.add_output<decl::Float>("Signed Angle")
       .field_source()
       .description(
-          "The signed angle in radians between two faces where they meet at an edge. Flat edges "
-          "and Non-manifold edges have an angle of zero. Concave angles are positive and convex "
-          "angles are negative. Computing this value is slower than the unsigned angle");
+          "The signed angle between two faces. Flat non-degenerate and Non-manifold surfaces have "
+          "an angle of zero. Concave angles are positive and convex angles are negative");
 }
 
 struct EdgeMapEntry {
