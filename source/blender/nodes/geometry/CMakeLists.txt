@@ -23,6 +23,7 @@ set(INC
   ../../io/common
   ../../io/stl
   ../../io/wavefront_obj
+  ../../io/ply
   # RNA_prototypes.hh
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
@@ -67,6 +68,7 @@ set(SRC
   nodes/node_geo_curve_topology_curve_of_point.cc
   nodes/node_geo_curve_topology_points_of_curve.cc
   nodes/node_geo_curve_trim.cc
+  nodes/node_geo_curves_to_grease_pencil.cc
   nodes/node_geo_deform_curves_on_surface.cc
   nodes/node_geo_delete_geometry.cc
   nodes/node_geo_distribute_points_in_grid.cc
@@ -87,11 +89,13 @@ set(SRC
   nodes/node_geo_gizmo_dial.cc
   nodes/node_geo_gizmo_linear.cc
   nodes/node_geo_gizmo_transform.cc
+  nodes/node_geo_grease_pencil_to_curves.cc
   nodes/node_geo_grid_to_mesh.cc
   nodes/node_geo_image.cc
   nodes/node_geo_image_info.cc
   nodes/node_geo_image_texture.cc
   nodes/node_geo_import_obj.cc
+  nodes/node_geo_import_ply.cc
   nodes/node_geo_import_stl.cc
   nodes/node_geo_index_of_nearest.cc
   nodes/node_geo_index_switch.cc
@@ -224,6 +228,7 @@ set(SRC
   nodes/node_geo_volume_to_mesh.cc
 
   include/NOD_geo_bake.hh
+  include/NOD_geo_capture_attribute.hh
   include/NOD_geo_index_switch.hh
   include/NOD_geo_menu_switch.hh
   include/NOD_geo_repeat.hh
@@ -256,6 +261,14 @@ if(WITH_IO_STL)
   add_definitions(-DWITH_IO_STL)
 endif()
 
+if(WITH_IO_PLY)
+  list(APPEND LIB
+    PRIVATE bf_io_common
+    PRIVATE bf_io_ply
+  )
+  add_definitions(-DWITH_IO_PLY)
+endif()
+
 if(WITH_IO_WAVEFRONT_OBJ)
   list(APPEND LIB
     PRIVATE bf_io_common
@@ -276,10 +289,6 @@ if(WITH_BULLET)
 endif()
 
 if(WITH_TBB)
-  list(APPEND INC_SYS
-    ${TBB_INCLUDE_DIRS}
-  )
-  add_definitions(-DWITH_TBB)
   if(WIN32)
     # TBB includes Windows.h which will define min/max macros
     # that will collide with the stl versions.
