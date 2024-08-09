@@ -1021,24 +1021,6 @@ static GreasePencil *create_applied_grease_pencil_for_modifier(Depsgraph *depsgr
   /* Anonymous attributes shouldn't be available on original geometry. */
   grease_pencil_result.attributes_for_write().remove_anonymous();
 
-  /* Get the original material pointers from the result geometry. */
-  VectorSet<Material *> original_materials;
-  for (Material *eval_material :
-       Span{grease_pencil_result.material_array, grease_pencil_result.material_array_num})
-  {
-    BLI_assert(eval_material->id.orig_id != nullptr);
-    original_materials.add_new(reinterpret_cast<Material *>(eval_material->id.orig_id));
-  }
-
-  /* Build material indices mapping. */
-  Array<int> material_indices_map(grease_pencil_orig.material_array_num);
-  for (const int mat_i : IndexRange(grease_pencil_orig.material_array_num)) {
-    Material *material = grease_pencil_orig.material_array[mat_i];
-    const int map_index = original_materials.index_of_try(material);
-    BLI_assert(map_index != -1);
-    material_indices_map[mat_i] = map_index;
-  }
-
   Map<const Layer *, const Layer *> eval_to_orig_layer_map;
   TreeNode *previous_node = nullptr;
   for (const int layer_eval_i : grease_pencil_result.layers().index_range()) {
@@ -1101,25 +1083,51 @@ static GreasePencil *create_applied_grease_pencil_for_modifier(Depsgraph *depsgr
         return !mapped_original_layers.contains(layer_i);
       });
 
+  /* Get the original material pointers from the result geometry. */
+  VectorSet<Material *> original_materials;
+  for (Material *eval_material :
+       Span{grease_pencil_result.material_array, grease_pencil_result.material_array_num})
+  {
+    BLI_assert(eval_material->id.orig_id != nullptr);
+    original_materials.add_new(reinterpret_cast<Material *>(eval_material->id.orig_id));
+  }
+
+  /* Build material indices mapping. */
+  Array<int> material_indices_map(grease_pencil_orig.material_array_num);
+  for (const int mat_i : IndexRange(grease_pencil_orig.material_array_num)) {
+    Material *material = grease_pencil_orig.material_array[mat_i];
+    const int map_index = original_materials.index_of_try(material);
+    BLI_assert(map_index != -1);
+    material_indices_map[mat_i] = map_index;
+  }
+
   /* Remap material indices for all other drawings. */
-  for (GreasePencilDrawingBase *base : grease_pencil_orig.drawings()) {
-    if (base->type != GP_DRAWING) {
-      continue;
-    }
-    Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(base)->wrap();
-    if (all_updated_drawings.contains(&drawing)) {
-      /* Skip remapping drawings that already have been updated. */
-      continue;
-    }
-    MutableAttributeAccessor attributes = drawing.strokes_for_write().attributes_for_write();
-    SpanAttributeWriter<int> material_indices = attributes.lookup_or_add_for_write_span<int>(
-        "material_index", AttrDomain::Curve);
-    for (int &material_index : material_indices.span) {
-      if (material_index >= 0 && material_index < material_indices_map.size()) {
-        material_index = material_indices_map[material_index];
+  if (!material_indices_map.is_empty() &&
+      !array_utils::indices_are_range(material_indices_map,
+                                      IndexRange(grease_pencil_orig.material_array_num)))
+  {
+    for (GreasePencilDrawingBase *base : grease_pencil_orig.drawings()) {
+      if (base->type != GP_DRAWING) {
+        continue;
       }
+      Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(base)->wrap();
+      if (all_updated_drawings.contains(&drawing)) {
+        /* Skip remapping drawings that already have been updated. */
+        continue;
+      }
+      MutableAttributeAccessor attributes = drawing.strokes_for_write().attributes_for_write();
+      if (!attributes.contains("material_index")) {
+        continue;
+      }
+      SpanAttributeWriter<int> material_indices = attributes.lookup_or_add_for_write_span<int>(
+          "material_index", AttrDomain::Curve);
+      for (int &material_index : material_indices.span) {
+        if (material_index >= 0 && material_index < material_indices_map.size()) {
+          material_index = material_indices_map[material_index];
+        }
+      }
+      material_indices.finish();
     }
-    material_indices.finish();
   }
 
   /* Propagate layer attributes. */
