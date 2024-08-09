@@ -23,6 +23,7 @@
 #include "DNA_fluid_types.h"
 #include "DNA_key_types.h"
 #include "DNA_lattice_types.h"
+#include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_force_types.h"
@@ -1151,15 +1152,20 @@ static bool modifier_apply_obdata(
     if (mti->modify_geometry_set == nullptr) {
       return false;
     }
+    GreasePencil &grease_pencil_orig = *static_cast<GreasePencil *>(ob->data);
+    Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
+    GreasePencil *grease_pencil_src = ob_eval->runtime->data_orig ?
+                                          reinterpret_cast<GreasePencil *>(
+                                              ob_eval->runtime->data_orig) :
+                                          &grease_pencil_orig;
     const int eval_frame = int(DEG_get_ctime(depsgraph));
-    GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob->data);
-    /* Setup the eval frame for modifier evaluation. */
-    grease_pencil.runtime->eval_frame = eval_frame;
-
+    GreasePencil *grease_pencil_temp = reinterpret_cast<GreasePencil *>(
+        BKE_id_copy_ex(nullptr, &grease_pencil_src->id, nullptr, LIB_ID_COPY_LOCALIZE));
+    grease_pencil_temp->runtime->eval_frame = eval_frame;
     bke::GeometrySet geometry_set = bke::GeometrySet::from_grease_pencil(
-        &grease_pencil, bke::GeometryOwnershipType::ReadOnly);
+        grease_pencil_temp, bke::GeometryOwnershipType::Owned);
 
-    ModifierEvalContext mectx = {depsgraph, ob, ModifierApplyFlag(0)};
+    ModifierEvalContext mectx = {depsgraph, ob_eval, MOD_APPLY_TO_ORIGINAL};
     mti->modify_geometry_set(md_eval, &mectx, &geometry_set);
     if (!geometry_set.has_grease_pencil()) {
       BKE_report(reports,
@@ -1167,66 +1173,109 @@ static bool modifier_apply_obdata(
                  "Evaluated geometry from modifier does not contain grease pencil geometry");
       return false;
     }
-    GreasePencil &grease_pencil_eval = *geometry_set.get_grease_pencil_for_write();
+    GreasePencil &grease_pencil_result =
+        *geometry_set.get_component_for_write<bke::GreasePencilComponent>().release();
 
     /* Anonymous attributes shouldn't be available on original geometry. */
-    grease_pencil_eval.attributes_for_write().remove_anonymous();
-    Array<int> layer_eval_map(grease_pencil_eval.layers().size());
+    grease_pencil_result.attributes_for_write().remove_anonymous();
+
+    /* Get the original material pointers from the result geometry. */
+    VectorSet<Material *> all_result_materials;
+    for (Material *eval_material :
+         Span{grease_pencil_result.material_array, grease_pencil_result.material_array_num})
+    {
+      BLI_assert(eval_material->id.orig_id != nullptr);
+      all_result_materials.add_new(reinterpret_cast<Material *>(eval_material->id.orig_id));
+    }
+    /* Build material indices mapping. */
+    Array<int> material_indices_map(grease_pencil_orig.material_array_num);
+    for (const int mat_i : IndexRange(grease_pencil_orig.material_array_num)) {
+      Material *material = grease_pencil_orig.material_array[mat_i];
+      const int map_index = all_result_materials.index_of_try(material);
+      BLI_assert(map_index != -1);
+      material_indices_map[mat_i] = map_index;
+    }
+
+    /* Write to existing layers or add new layers. */
+    Array<int> layer_eval_map(grease_pencil_result.layers().size());
+    VectorSet<Drawing *> all_updated_drawings;
     TreeNode *previous_node = nullptr;
-    for (const int layer_eval_i : grease_pencil_eval.layers().index_range()) {
-      const Layer *layer_eval = grease_pencil_eval.layer(layer_eval_i);
-      Drawing *drawing_eval = grease_pencil_eval.get_drawing_at(*layer_eval, eval_frame);
+    for (const int layer_eval_i : grease_pencil_result.layers().index_range()) {
+      const Layer *layer_eval = grease_pencil_result.layer(layer_eval_i);
+      Drawing *drawing_eval = grease_pencil_result.get_drawing_at(*layer_eval, eval_frame);
       if (drawing_eval) {
         /* Anonymous attributes shouldn't be available on original geometry. */
         drawing_eval->strokes_for_write().attributes_for_write().remove_anonymous();
       }
 
       /* Check if the original geometry has a layer with the same name. */
-      TreeNode *node_orig = grease_pencil.find_node_by_name(layer_eval->name());
+      TreeNode *node_orig = grease_pencil_orig.find_node_by_name(layer_eval->name());
       if (node_orig && node_orig->is_layer()) {
         /* Use the existing layer. */
         Layer &layer_orig = node_orig->as_layer();
         layer_orig.opacity = layer_eval->opacity;
         layer_orig.set_local_transform(layer_eval->local_transform());
 
-        Drawing *drawing_orig = grease_pencil.get_drawing_at(layer_orig, eval_frame);
+        Drawing *drawing_orig = grease_pencil_orig.get_drawing_at(layer_orig, eval_frame);
         if (drawing_orig && drawing_eval) {
           drawing_orig->strokes_for_write() = std::move(drawing_eval->strokes_for_write());
           drawing_orig->tag_topology_changed();
+          all_updated_drawings.add_new(drawing_orig);
         }
 
         if (previous_node) {
-          grease_pencil.move_node_after(layer_orig.as_node(), *previous_node);
+          grease_pencil_orig.move_node_after(layer_orig.as_node(), *previous_node);
         }
         previous_node = node_orig;
 
-        layer_eval_map[layer_eval_i] = *grease_pencil.get_layer_index(layer_orig);
+        layer_eval_map[layer_eval_i] = *grease_pencil_orig.get_layer_index(layer_orig);
       }
       else {
         /* Create a new layer. */
-        Layer &layer_orig = grease_pencil.add_layer(layer_eval->name());
+        Layer &layer_orig = grease_pencil_orig.add_layer(layer_eval->name());
         layer_orig.opacity = layer_eval->opacity;
         layer_orig.set_local_transform(layer_eval->local_transform());
 
-        Drawing &drawing_orig = *grease_pencil.insert_frame(layer_orig, eval_frame);
+        Drawing *drawing_orig = grease_pencil_orig.insert_frame(layer_orig, eval_frame);
         if (drawing_eval) {
-          drawing_orig.strokes_for_write() = std::move(drawing_eval->strokes_for_write());
-          drawing_orig.tag_topology_changed();
+          drawing_orig->strokes_for_write() = std::move(drawing_eval->strokes_for_write());
+          drawing_orig->tag_topology_changed();
+          all_updated_drawings.add_new(drawing_orig);
         }
 
         if (previous_node) {
-          grease_pencil.move_node_after(layer_orig.as_node(), *previous_node);
+          grease_pencil_orig.move_node_after(layer_orig.as_node(), *previous_node);
         }
         previous_node = &layer_orig.as_node();
 
-        layer_eval_map[layer_eval_i] = *grease_pencil.get_layer_index(layer_orig);
+        layer_eval_map[layer_eval_i] = *grease_pencil_orig.get_layer_index(layer_orig);
       }
     }
 
+    /* Remap material indices for all other drawings. */
+    for (GreasePencilDrawingBase *base : grease_pencil_orig.drawings()) {
+      if (base->type != GP_DRAWING) {
+        continue;
+      }
+      Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(base)->wrap();
+      if (all_updated_drawings.contains(&drawing)) {
+        /* Skip remapping drawings that already have been updated. */
+        continue;
+      }
+      bke::MutableAttributeAccessor attributes =
+          drawing.strokes_for_write().attributes_for_write();
+      bke::SpanAttributeWriter<int> material_indices =
+          attributes.lookup_or_add_for_write_span<int>("material_index", bke::AttrDomain::Curve);
+      for (int &material_index : material_indices.span) {
+        if (material_index >= 0 && material_index < material_indices_map.size()) {
+          material_index = material_indices_map[material_index];
+        }
+      }
+      material_indices.finish();
+    }
+
     Main *bmain = DEG_get_bmain(depsgraph);
-    BKE_object_material_from_eval_data(bmain, ob, &grease_pencil_eval.id);
-    /* Reset the eval frame. */
-    grease_pencil.runtime->eval_frame = 0;
+    BKE_object_material_from_eval_data(bmain, ob, &grease_pencil_result.id);
   }
   else {
     /* TODO: implement for volumes. */
