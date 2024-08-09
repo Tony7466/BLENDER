@@ -106,8 +106,8 @@ class GHOST_Window : public GHOST_IWindow {
    * \param backgroundColor: Titlebar background color.
    * \param titleTextColor: Titlebar title text color.
    */
-  virtual GHOST_TSuccess setDecorationTitlebarColors(const float /*backgroundColor*/[4],
-                                                     const float /*titleTextColor*/[4]) override
+  virtual GHOST_TSuccess setDecorationTitlebarColors(const float /*backgroundColor*/[3],
+                                                     const float /*titlebarColor*/[3]) override
   {
     return GHOST_kFailure;
   };

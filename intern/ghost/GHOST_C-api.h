@@ -613,8 +613,8 @@ extern GHOST_TSuccess GHOST_SetDecorationStyle(GHOST_WindowHandle windowhandle,
  * \param titleTextColor: Titlebar title text color.
  */
 extern GHOST_TSuccess GHOST_SetDecorationTitlebarColors(GHOST_WindowHandle windowhandle,
-                                                        const float backgroundColor[4],
-                                                        const float titleTextColor[4]);
+                                                        const float backgroundColor[3],
+                                                        const float titleTextColor[3]);
 
 /**
  * Returns the window rectangle dimensions.

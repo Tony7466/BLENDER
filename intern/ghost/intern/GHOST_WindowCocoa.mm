@@ -546,15 +546,15 @@ GHOST_TSuccess GHOST_WindowCocoa::setPath(const char *filepath)
   return success;
 }
 
-GHOST_TSuccess GHOST_WindowCocoa::setDecorationTitlebarColors(const float backgroundColor[4],
-                                                              const float /*titleTextColor*/[4])
+GHOST_TSuccess GHOST_WindowCocoa::setDecorationTitlebarColors(const float backgroundColor[3],
+                                                              const float /*titlebarColor*/[3])
 {
   @autoreleasepool {
     /* Titlebar background color. */
     m_window.backgroundColor = [NSColor colorWithRed:backgroundColor[0]
                                                green:backgroundColor[1]
                                                 blue:backgroundColor[2]
-                                               alpha:backgroundColor[3]];
+                                               alpha:1.0];
 
     /**
      * Titlebar title text color.

@@ -96,8 +96,8 @@ class GHOST_WindowCocoa : public GHOST_Window {
    * \param backgroundColor: Titlebar background color.
    * \param titleTextColor: Titlebar title text color.
    */
-  GHOST_TSuccess setDecorationTitlebarColors(const float backgroundColor[4],
-                                             const float titleTextColor[4]);
+  GHOST_TSuccess setDecorationTitlebarColors(const float backgroundColor[3],
+                                             const float titleTextColor[3]);
 
   /**
    * Returns the window rectangle dimensions.

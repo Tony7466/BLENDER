@@ -103,8 +103,8 @@ class GHOST_IWindow {
    * \param backgroundColor: Titlebar background color.
    * \param titleTextColor: Titlebar title text color.
    */
-  virtual GHOST_TSuccess setDecorationTitlebarColors(const float backgroundColor[4],
-                                                     const float titleTextColor[4]) = 0;
+  virtual GHOST_TSuccess setDecorationTitlebarColors(const float backgroundColor[3],
+                                                     const float titleTextColor[3]) = 0;
 
   /**
    * Returns the window rectangle dimensions.

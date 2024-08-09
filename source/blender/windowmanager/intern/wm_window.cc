@@ -622,8 +622,8 @@ void WM_window_decoration_set_style(const wmWindow *win, eWM_DecorationStyleFlag
 }
 
 void WM_window_decoration_set_titlebar_colors(const wmWindow *win,
-                                              const float background_color[4],
-                                              const float title_text_color[4])
+                                              const float background_color[3],
+                                              const float title_text_color[3])
 {
   GHOST_SetDecorationTitlebarColors(
       static_cast<GHOST_WindowHandle>(win->ghostwin), background_color, title_text_color);
@@ -657,9 +657,9 @@ void WM_window_decoration_update(const wmWindow *win, const bScreen *screen)
         UI_SetTheme(0, RGN_TYPE_WINDOW);
       }
 
-      float tb_background_color[4], tb_title_color[4];
-      UI_GetThemeColor4fv(TH_BACK, tb_background_color);
-      UI_GetThemeColor4fv(TH_BUTBACK_TEXT, tb_title_color);
+      float tb_background_color[3], tb_title_color[3];
+      UI_GetThemeColor3fv(TH_BACK, tb_background_color);
+      UI_GetThemeColor3fv(TH_BUTBACK_TEXT, tb_title_color);
       WM_window_decoration_set_titlebar_colors(win, tb_background_color, tb_title_color);
 
       break;
