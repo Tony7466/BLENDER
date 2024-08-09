@@ -1129,17 +1129,17 @@ static GreasePencil *create_applied_grease_pencil_for_modifier(Depsgraph *depsgr
     if (meta_data.data_type == CD_PROP_STRING) {
       return true;
     }
-    const GAttributeReader src = src_attributes.lookup(id, AttrDomain::Layer);
+    const GVArraySpan src = *src_attributes.lookup(id, AttrDomain::Layer);
     GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
         id, AttrDomain::Layer, meta_data.data_type);
     if (!dst) {
       return true;
     }
-    attribute_math::convert_to_static_type(src.varray.type(), [&](auto dummy) {
+    attribute_math::convert_to_static_type(src.type(), [&](auto dummy) {
       using T = decltype(dummy);
       array_utils::scatter(
-          src.varray.typed<T>(), eval_to_orig_layer_indices_map.as_span(), dst.span.typed<T>());
-      src.varray.type().default_construct_indices(dst.span.data(), unmapped_original_layers);
+          src.typed<T>(), eval_to_orig_layer_indices_map.as_span(), dst.span.typed<T>());
+      src.type().default_construct_indices(dst.span.data(), unmapped_original_layers);
     });
     dst.finish();
     return true;
