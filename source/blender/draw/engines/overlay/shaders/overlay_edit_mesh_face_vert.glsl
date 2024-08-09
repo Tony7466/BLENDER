@@ -9,7 +9,7 @@ void main()
   VertIn vert_in;
   vert_in.lP = pos;
   vert_in.lN = vnor;
-  vert_in.data = data;
+  vert_in.e_data = data;
 
   /* Vertex, Facedot and Face case. */
   VertOut vert_out = vertex_main(vert_in);

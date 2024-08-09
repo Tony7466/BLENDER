@@ -25,7 +25,7 @@ VertIn input_assembly(uint in_vertex_id)
     vert_in.lN.y = uintBitsToFloat(vnor[gpu_attr_load_index(v_i, gpu_attr_1) + 1]);
     vert_in.lN.z = uintBitsToFloat(vnor[gpu_attr_load_index(v_i, gpu_attr_1) + 2]);
   }
-  vert_in.data = gpu_attr_load_uchar4(data, gpu_attr_2, v_i);
+  vert_in.e_data = gpu_attr_load_uchar4(data, gpu_attr_2, v_i);
   return vert_in;
 }
 
@@ -60,17 +60,17 @@ void strip_EmitVertex(const uint strip_index,
 void do_vertex(const uint strip_index,
                uint out_vertex_id,
                uint out_primitive_id,
-               vec4 color,
-               vec4 pos,
+               vec4 final_color,
+               vec4 position,
                float coord,
                vec2 offset)
 {
   GeomOut geom_out;
-  geom_out.final_color = color;
+  geom_out.final_color = final_color;
   geom_out.edge_coord = coord;
-  geom_out.gpu_position = pos;
+  geom_out.gpu_position = position;
   /* Multiply offset by 2 because gl_Position range is [-1..1]. */
-  geom_out.gpu_position.xy += offset * 2.0 * pos.w;
+  geom_out.gpu_position.xy += offset * 2.0 * position.w;
   strip_EmitVertex(strip_index, out_vertex_id, out_primitive_id, geom_out);
 }
 

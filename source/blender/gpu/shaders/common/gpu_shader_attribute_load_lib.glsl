@@ -16,10 +16,10 @@ uint gpu_attr_load_index(uint vertex_index, ivec2 stride_and_offset)
   return vertex_index * uint(stride_and_offset.x) + uint(stride_and_offset.y);
 }
 
-vec4 gpu_attr_decode_1010102_snorm(uint data)
+vec4 gpu_attr_decode_1010102_snorm(uint in_data)
 {
   /* TODO(fclem): Improve this. */
-  uint4 v_data = uint4(data) >> uint4(0, 10, 20, 30);
+  uint4 v_data = uint4(in_data) >> uint4(0, 10, 20, 30);
   bvec4 v_sign = greaterThan(v_data & uint4(0x3FF, 0x3FF, 0x3FF, 0x3),
                              uint4(0x1FF, 0x1FF, 0x1FF, 0x1));
   uint4 v_data_u = floatBitsToUint(mix(uintBitsToFloat(v_data), uintBitsToFloat(~v_data), v_sign));
@@ -37,9 +37,9 @@ vec4 gpu_attr_decode_short4_to_float4_snorm(uint data0, uint data1)
   return mix(mag, -mag, v_sign);
 }
 
-uvec4 gpu_attr_decode_uchar4_to_uint4(uint data)
+uvec4 gpu_attr_decode_uchar4_to_uint4(uint in_data)
 {
-  return (uvec4(data) >> uvec4(0, 8, 16, 24)) & uvec4(0xFF);
+  return (uvec4(in_data) >> uvec4(0, 8, 16, 24)) & uvec4(0xFF);
 }
 
 /* TODO(fclem): Once the stride and offset are made obsolete, we can think of wrapping vec3 into

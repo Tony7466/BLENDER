@@ -15,7 +15,7 @@ void main()
   int instance_id = gl_VertexID / 64;
   int vert_id = gl_VertexID % 64;
   /* TODO(fclem): Use correct vertex format. For now we read the format manually. */
-  vec3 circle_size = size[instance_id * 4];
+  float circle_size = size[instance_id * 4];
   vec3 lP = vec3(size[instance_id * 4 + 1], size[instance_id * 4 + 2], size[instance_id * 4 + 3]);
 
   float theta = M_TAU * (float(vert_id) / 63.0);
@@ -23,7 +23,7 @@ void main()
   finalColor = colorSkinRoot;
 #else
   vec3 lP = local_pos;
-  vec3 circle_size = size;
+  float circle_size = size;
   vec3 circle_P = pos;
   /* Manual stipple: one segment out of 2 is transparent. */
   finalColor = ((gl_VertexID & 1) == 0) ? colorSkinRoot : vec4(0.0);

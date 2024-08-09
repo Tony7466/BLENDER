@@ -14,7 +14,7 @@ struct VertIn {
   /* Local Vertex Normal. */
   vec3 lN;
   /* Edit Flags and Data. */
-  uvec4 data;
+  uvec4 e_data;
 };
 
 bool test_occlusion(vec4 gpu_position)
@@ -52,7 +52,7 @@ VertOut vertex_main(VertIn vert_in)
   vert_out.gpu_position.z += get_homogenous_z_offset(
       view_pos.z, vert_out.gpu_position.w, retopologyOffset);
 
-  uvec4 m_data = vert_in.data & uvec4(dataMask);
+  uvec4 m_data = vert_in.e_data & uvec4(dataMask);
 
 #if defined(VERT)
   vertexCrease = float(m_data.z >> 4) / 15.0;
