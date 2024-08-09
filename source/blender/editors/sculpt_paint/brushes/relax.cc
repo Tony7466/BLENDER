@@ -118,17 +118,18 @@ static float3 average_positions(const CCGKey &key,
                                 const int current_grid,
                                 const int current_grid_start)
 {
-  float3 sum(0);
+  const float factor = math::rcp(float(neighbors.size()));
+  float3 result(0);
   for (const SubdivCCGCoord &coord : neighbors) {
     if (current_grid == coord.grid_index) {
       const int offset = CCG_grid_xy_to_index(key.grid_size, coord.x, coord.y);
-      sum += positions[current_grid_start + offset];
+      result += positions[current_grid_start + offset] * factor;
     }
     else {
-      sum += CCG_grid_elem_co(key, elems[coord.grid_index], coord.x, coord.y);
+      result += CCG_grid_elem_co(key, elems[coord.grid_index], coord.x, coord.y) * factor;
     }
   }
-  return sum / neighbors.size();
+  return result;
 }
 
 static bool get_normal_boundary(const float3 &current_position,
