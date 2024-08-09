@@ -294,6 +294,7 @@ set(SRC
   engines/overlay/overlay_next_bounds.hh
   engines/overlay/overlay_next_empty.hh
   engines/overlay/overlay_next_camera.hh
+  engines/overlay/overlay_next_force_field.hh
   engines/overlay/overlay_next_grid.hh
   engines/overlay/overlay_next_instance.hh
   engines/overlay/overlay_next_lattice.hh
@@ -303,6 +304,7 @@ set(SRC
   engines/overlay/overlay_next_metaball.hh
   engines/overlay/overlay_next_prepass.hh
   engines/overlay/overlay_next_private.hh
+  engines/overlay/overlay_next_relation.hh
   engines/overlay/overlay_next_speaker.hh
   engines/overlay/overlay_private.hh
   engines/select/select_defines.hh
