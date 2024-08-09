@@ -10,6 +10,8 @@
 
 #include "BLI_function_ref.hh"
 
+#include "GPU_matrix.hh"
+
 #include "DRW_gpu_wrapper.hh"
 #include "DRW_render.hh"
 #include "UI_resources.hh"
@@ -56,7 +58,24 @@ struct State {
   short v3d_gridflag; /* TODO: move to #View3DOverlay. */
   int cfra;
   DRWState clipping_state;
+
+  float view_dist_get(const float4x4 &winmat) const
+  {
+    float view_dist = rv3d->dist;
+    /* Special exception for orthographic camera:
+     * `view_dist` isn't used as the depth range isn't the same. */
+    if (rv3d->persp == RV3D_CAMOB && rv3d->is_persp == false) {
+      view_dist = 1.0f / max_ff(fabsf(winmat[0][0]), fabsf(winmat[1][1]));
+    }
+    return view_dist;
+  }
 };
+
+static inline float4x4 winmat_polygon_offset(float4x4 winmat, float view_dist, float offset)
+{
+  winmat[3][2] -= GPU_polygon_offset_calc(winmat.ptr(), view_dist, offset);
+  return winmat;
+}
 
 /**
  * Contains all overlay generic geometry batches.

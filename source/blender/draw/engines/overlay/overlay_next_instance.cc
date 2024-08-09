@@ -94,7 +94,7 @@ void Instance::begin_sync()
     layer.lights.begin_sync();
     layer.light_probes.begin_sync(resources, state);
     layer.metaballs.begin_sync();
-    layer.meshes.begin_sync(resources, state);
+    layer.meshes.begin_sync(resources, state, view);
     layer.prepass.begin_sync(resources, state);
     layer.speakers.begin_sync();
   };

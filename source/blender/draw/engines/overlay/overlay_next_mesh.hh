@@ -47,9 +47,18 @@ class Meshes {
   bool select_face = false;
   bool select_vert = false;
 
+  /* TODO(fclem): This is quite wasteful and expensive, prefer in shader Z modification like the
+   * retopology offset. */
+  View view_edit_cage = {"view_edit_cage"};
+  View view_edit_edge = {"view_edit_edge"};
+  View view_edit_vert = {"view_edit_vert"};
+  float view_dist = 0.0f;
+
  public:
-  void begin_sync(Resources &res, const State &state)
+  void begin_sync(Resources &res, const State &state, const View &view)
   {
+    view_dist = state.view_dist_get(view.winmat());
+
     int edit_flag = state.v3d->overlay.edit_flag;
     show_retopology = (edit_flag & V3D_OVERLAY_EDIT_RETOPOLOGY);
     show_mesh_analysis = (edit_flag & V3D_OVERLAY_EDIT_STATVIS);
@@ -233,13 +242,17 @@ class Meshes {
 
   void draw(Framebuffer &framebuffer, Manager &manager, View &view)
   {
+    view_edit_cage.sync(view.viewmat(), winmat_polygon_offset(view.winmat(), view_dist, 0.5f));
+    view_edit_edge.sync(view.viewmat(), winmat_polygon_offset(view.winmat(), view_dist, 1.0f));
+    view_edit_vert.sync(view.viewmat(), winmat_polygon_offset(view.winmat(), view_dist, 1.5f));
+
     GPU_framebuffer_bind(framebuffer);
     manager.submit(edit_mesh_analysis_ps_, view);
     manager.submit(edit_mesh_normals_ps_, view);
     manager.submit(edit_mesh_faces_ps_, view);
-    manager.submit(edit_mesh_edges_ps_, view);
-    manager.submit(edit_mesh_verts_ps_, view);
-    manager.submit(edit_mesh_facedots_ps_, view);
+    manager.submit(edit_mesh_edges_ps_, view_edit_edge);
+    manager.submit(edit_mesh_verts_ps_, view_edit_vert);
+    manager.submit(edit_mesh_facedots_ps_, view_edit_vert);
   }
 
  private:
