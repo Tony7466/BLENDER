@@ -34,8 +34,7 @@ class Facing {
     if (state.xray_enabled) {
       return;
     }
-    Object *ob = ob_ref.object;
-    const bool use_sculpt_pbvh = BKE_sculptsession_use_pbvh_draw(ob, state.rv3d) &&
+    const bool use_sculpt_pbvh = BKE_sculptsession_use_pbvh_draw(ob_ref.object, state.rv3d) &&
                                  !DRW_state_is_image_render();
 
     if (use_sculpt_pbvh) {
@@ -43,7 +42,7 @@ class Facing {
       // DRW_shgroup_call_sculpt(pd->facing_grp[is_xray], ob, false, false, false, false, false);
     }
     else {
-      blender::gpu::Batch *geom = DRW_cache_object_surface_get(ob);
+      blender::gpu::Batch *geom = DRW_cache_object_surface_get(ob_ref.object);
       if (geom) {
         ResourceHandle res_handle = manager.resource_handle(ob_ref);
         ps_.draw(geom, res_handle);
