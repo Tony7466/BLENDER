@@ -1139,7 +1139,8 @@ static GreasePencil *create_applied_grease_pencil_for_modifier(Depsgraph *depsgr
       using T = decltype(dummy);
       array_utils::scatter(
           src.typed<T>(), eval_to_orig_layer_indices_map.as_span(), dst.span.typed<T>());
-      src.type().default_construct_indices(dst.span.data(), unmapped_original_layers);
+      src.type().fill_construct_indices(
+          src.type().default_value(), dst.span.data(), unmapped_original_layers);
     });
     dst.finish();
     return true;
