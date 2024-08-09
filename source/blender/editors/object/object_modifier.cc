@@ -1148,6 +1148,7 @@ static bool modifier_apply_obdata(
     BKE_pointcloud_nomain_to_pointcloud(pointcloud_eval, &points);
   }
   else if (ob->type == OB_GREASE_PENCIL) {
+    using namespace bke;
     using namespace bke::greasepencil;
     if (mti->modify_geometry_set == nullptr) {
       return false;
@@ -1162,8 +1163,8 @@ static bool modifier_apply_obdata(
     GreasePencil *grease_pencil_temp = reinterpret_cast<GreasePencil *>(
         BKE_id_copy_ex(nullptr, &grease_pencil_src->id, nullptr, LIB_ID_COPY_LOCALIZE));
     grease_pencil_temp->runtime->eval_frame = eval_frame;
-    bke::GeometrySet geometry_set = bke::GeometrySet::from_grease_pencil(
-        grease_pencil_temp, bke::GeometryOwnershipType::Owned);
+    GeometrySet geometry_set = GeometrySet::from_grease_pencil(grease_pencil_temp,
+                                                               GeometryOwnershipType::Owned);
 
     ModifierEvalContext mectx = {depsgraph, ob_eval, MOD_APPLY_TO_ORIGINAL};
     mti->modify_geometry_set(md_eval, &mectx, &geometry_set);
@@ -1174,7 +1175,7 @@ static bool modifier_apply_obdata(
       return false;
     }
     GreasePencil &grease_pencil_result =
-        *geometry_set.get_component_for_write<bke::GreasePencilComponent>().release();
+        *geometry_set.get_component_for_write<GreasePencilComponent>().release();
 
     /* Anonymous attributes shouldn't be available on original geometry. */
     grease_pencil_result.attributes_for_write().remove_anonymous();
@@ -1243,12 +1244,22 @@ static bool modifier_apply_obdata(
       eval_to_orig_layer_map.add_new(layer_eval, layer_orig);
     }
 
-    Array<int> eval_to_orig_indices_map(grease_pencil_result.layers().size());
+    Set<int> mapped_original_layers;
+    Array<int> eval_to_orig_layer_indices_map(grease_pencil_result.layers().size());
     for (const int layer_eval_i : grease_pencil_result.layers().index_range()) {
       const Layer *layer_eval = grease_pencil_result.layer(layer_eval_i);
       const Layer *layer_orig = eval_to_orig_layer_map.lookup(layer_eval);
-      eval_to_orig_indices_map[layer_eval_i] = *grease_pencil_orig.get_layer_index(*layer_orig);
+      const int layer_orig_index = *grease_pencil_orig.get_layer_index(*layer_orig);
+      eval_to_orig_layer_indices_map[layer_eval_i] = layer_orig_index;
+      mapped_original_layers.add_new(layer_orig_index);
     }
+
+    IndexMaskMemory memory;
+    const IndexMask unmapped_original_layers = IndexMask::from_predicate(
+        grease_pencil_orig.layers().index_range(),
+        GrainSize(1),
+        memory,
+        [&](const int64_t layer_i) { return !mapped_original_layers.contains(layer_i); });
 
     /* Remap material indices for all other drawings. */
     for (GreasePencilDrawingBase *base : grease_pencil_orig.drawings()) {
@@ -1260,10 +1271,9 @@ static bool modifier_apply_obdata(
         /* Skip remapping drawings that already have been updated. */
         continue;
       }
-      bke::MutableAttributeAccessor attributes =
-          drawing.strokes_for_write().attributes_for_write();
-      bke::SpanAttributeWriter<int> material_indices =
-          attributes.lookup_or_add_for_write_span<int>("material_index", bke::AttrDomain::Curve);
+      MutableAttributeAccessor attributes = drawing.strokes_for_write().attributes_for_write();
+      SpanAttributeWriter<int> material_indices = attributes.lookup_or_add_for_write_span<int>(
+          "material_index", AttrDomain::Curve);
       for (int &material_index : material_indices.span) {
         if (material_index >= 0 && material_index < material_indices_map.size()) {
           material_index = material_indices_map[material_index];
@@ -1272,13 +1282,27 @@ static bool modifier_apply_obdata(
       material_indices.finish();
     }
 
-    /* Copy layer attributes from the result to the original. */
-    bke::scatter_attributes(grease_pencil_result.attributes(),
-                            bke::AttrDomain::Layer,
-                            {},
-                            {},
-                            eval_to_orig_indices_map,
-                            grease_pencil_orig.attributes_for_write());
+    AttributeAccessor src_attributes = grease_pencil_result.attributes();
+    MutableAttributeAccessor dst_attributes = grease_pencil_orig.attributes_for_write();
+    src_attributes.for_all([&](const AttributeIDRef &id, const AttributeMetaData meta_data) {
+      if (meta_data.data_type == CD_PROP_STRING) {
+        return true;
+      }
+      const GAttributeReader src = src_attributes.lookup(id, AttrDomain::Layer);
+      GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
+          id, AttrDomain::Layer, meta_data.data_type);
+      if (!dst) {
+        return true;
+      }
+      attribute_math::convert_to_static_type(src.varray.type(), [&](auto dummy) {
+        using T = decltype(dummy);
+        VArray<T> src_varray = src.varray.typed<T>();
+        array_utils::scatter(src_varray, eval_to_orig_layer_indices_map, dst.typed<T>());
+        src.varray.type().default_construct_indices(dst.span.data(), unmapped_original_layers);
+      });
+      dst.finish();
+      return true;
+    });
 
     Main *bmain = DEG_get_bmain(depsgraph);
     BKE_object_material_from_eval_data(bmain, ob, &grease_pencil_result.id);

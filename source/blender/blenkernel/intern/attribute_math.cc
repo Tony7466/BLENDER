@@ -291,20 +291,4 @@ void gather_to_groups(const OffsetIndices<int> dst_offsets,
   });
 }
 
-void scatter(const GSpan src, const Span<int> map, GMutableSpan dst)
-{
-  attribute_math::convert_to_static_type(src.type(), [&](auto dummy) {
-    using T = decltype(dummy);
-    array_utils::scatter(src.typed<T>(), map, dst.typed<T>());
-  });
-}
-
-void scatter(const GVArray &src, const Span<int> map, GMutableSpan dst)
-{
-  attribute_math::convert_to_static_type(src.type(), [&](auto dummy) {
-    using T = decltype(dummy);
-    array_utils::scatter(src.typed<T>(), map, dst.typed<T>());
-  });
-}
-
 }  // namespace blender::bke::attribute_math
