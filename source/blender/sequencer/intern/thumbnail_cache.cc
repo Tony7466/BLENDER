@@ -45,6 +45,8 @@ struct ThumbnailCache {
 
   typedef Vector<FrameEntry> Value;
 
+  //@TODO: add timestamp, when processing order by timestamps (starting from most recent)
+  //@TODO: cull/remove requests that are outside of current view (we've navigated elsewhere)
   struct Request {
     std::string file_path;
     int frame_index = 0;
@@ -173,29 +175,6 @@ static ImBuf* make_thumb_for_image(Scene *scene, const ThumbnailCache::Request& 
   return ibuf;
 }
 
-static ImBuf* make_thumb_for_movie(Scene* scene, const ThumbnailCache::Request& request)
-{
-  int flag = IB_rect;
-  //if (seq->flag & SEQ_FILTERY) {
-  //  flag |= IB_animdeinterlace; //@TODO
-  //}
-  int stream_index = 0; //@TODO: seq->streamindex
-  ImBufAnim *anim = IMB_open_anim(request.file_path.c_str(), flag, stream_index, nullptr);
-  if (anim == nullptr) {
-    return nullptr;
-  }
-
-  int frame_index = request.frame_index;
-  ImBuf *ibuf = IMB_anim_absolute(anim, frame_index, IMB_TC_NONE, IMB_PROXY_NONE);
-
-  if (ibuf != nullptr) {
-    seq_imbuf_assign_spaces(scene, ibuf);
-  }
-  IMB_free_anim(anim);
-
-  return ibuf;
-}
-
 static ImBuf *scale_to_thumbnail_size(Scene *scene, ImBuf *ibuf)
 {
   if (ibuf == nullptr) {
@@ -263,16 +242,36 @@ void ThumbGenerationJob::run_fn(void *customdata, wmJobWorkerStatus *worker_stat
   int total_thumbs = 0, total_images = 0, total_movies = 0;
 
   ThumbGenerationJob *job = static_cast<ThumbGenerationJob *>(customdata);
-  Set<ThumbnailCache::Request> requests;
+  Vector<ThumbnailCache::Request> requests;
   while (!worker_status->stop) {
     /* Copy all current requests (under cache mutex lock). */
+    //@TODO: put into array, order by timestamp / file / frame,
+    // for movies share the opened animation between neighbors when possible.
+    //@TODO: multi-thread processing via TaskPool or just parallel for (see sequencer_preview.cc)
     BLI_mutex_lock(&thumb_cache_lock);
-    requests = job->cache_->requests_;
+    requests.clear();
+    requests.reserve(job->cache_->requests_.size());
+    for (const auto &request : job->cache_->requests_) {
+      requests.append(request);
+    }
     BLI_mutex_unlock(&thumb_cache_lock);
 
     if (requests.is_empty()) {
       break;
     }
+
+    /* Sort requests by file and increasing frame number. */
+    std::sort(requests.begin(),
+              requests.end(),
+              [](const ThumbnailCache::Request &a, const ThumbnailCache::Request &b) {
+                if (a.file_path != b.file_path) {
+                  return a.file_path < b.file_path;
+                }
+                return a.frame_index < b.frame_index;
+              });
+
+    ImBufAnim *cur_anim = nullptr;
+    std::string cur_anim_path;
 
     /* Process the requests. */
     for (auto &request : requests) {
@@ -288,7 +287,31 @@ void ThumbGenerationJob::run_fn(void *customdata, wmJobWorkerStatus *worker_stat
       }
       else if (request.seq_type == SEQ_TYPE_MOVIE) {
         ++total_movies;
-        thumb = make_thumb_for_movie(job->scene_, request);
+
+        /* Are we swiching to a different movie file? */
+        if (request.file_path != cur_anim_path) {
+          if (cur_anim != nullptr) {
+            IMB_free_anim(cur_anim);
+            cur_anim = nullptr;
+          }
+
+          cur_anim_path = request.file_path;
+          int flag = IB_rect;
+          // if (seq->flag & SEQ_FILTERY) {
+          //   flag |= IB_animdeinterlace; //@TODO
+          // }
+          int stream_index = 0;  //@TODO: seq->streamindex
+          cur_anim = IMB_open_anim(cur_anim_path.c_str(), flag, stream_index, nullptr);
+        }
+
+        /* Decode the movie frame. */
+        if (cur_anim != nullptr) {
+          int frame_index = request.frame_index;
+          thumb = IMB_anim_absolute(cur_anim, frame_index, IMB_TC_NONE, IMB_PROXY_NONE);
+          if (thumb != nullptr) {
+            seq_imbuf_assign_spaces(job->scene_, thumb);
+          }
+        }
       }
       else {
         BLI_assert_unreachable();
@@ -311,6 +334,11 @@ void ThumbGenerationJob::run_fn(void *customdata, wmJobWorkerStatus *worker_stat
       if (thumb) {
         worker_status->do_update = true;
       }
+    }
+
+    if (cur_anim != nullptr) {
+      IMB_free_anim(cur_anim);
+      cur_anim = nullptr;
     }
   }
 
