@@ -1830,18 +1830,6 @@ if(WIN32)
   endforeach()
 endif()
 
-if(WIN32)
-  if(WITH_CYCLES_DEVICE_HIPRT)
-    if(EXISTS ${LIBDIR}/hiprt/bin/hiprt64.dll)
-      windows_install_shared_manifest(
-        FILES
-        ${LIBDIR}/hiprt/bin/hiprt64.dll
-        ALL
-      )
-    endif()
-  endif()
-endif()
-
 # `vcpkg` substitutes our libraries with theirs, which will cause issues when you you run
 # these builds on other systems due to missing DLL's. So we opt out the use of `vcpkg`.
 if(WIN32)

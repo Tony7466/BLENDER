@@ -141,13 +141,6 @@ string HIPRTDevice::compile_kernel(const uint kernel_features, const char *name,
   hipDeviceGetAttribute(&minor, hipDeviceAttributeComputeCapabilityMinor, hipDevId);
   const std::string arch = hipDeviceArch(hipDevId);
 
-  string source_path = path_get("source");
-  string hiprt_path_runtime = "HIPRT_PATH=" + path_join(source_path, "kernel//device//hiprt");
-  char* hiprt_path_env = const_cast<char*>(hiprt_path_runtime.c_str());
-  putenv(hiprt_path_env);
-  //set HIPRT_PATH env for BVH kernels
-
-
   if (!use_adaptive_compilation()) {
     const string fatbin = path_get(string_printf("lib/%s_rt_gfx.hipfb.zst", name));
     VLOG(1) << "Testing for pre-compiled kernel " << fatbin << ".";
@@ -157,19 +150,24 @@ string HIPRTDevice::compile_kernel(const uint kernel_features, const char *name,
     }
   }
 
-  //string source_path = path_get("source");
+  string source_path = path_get("source");
   const string source_md5 = path_files_md5_hash(source_path);
 
   string common_cflags = compile_kernel_get_common_cflags(kernel_features);
   const string kernel_md5 = util_md5_string(source_md5 + common_cflags);
 
   const string include_path = source_path;
-  const string bitcode_file = string_printf(
+  const string cycles_bc = string_printf(
       "cycles_%s_%s_%s.bc", name, arch.c_str(), kernel_md5.c_str());
-  const string bitcode = path_cache_get(path_join("kernels", bitcode_file));
+  const string cycles_bitcode = path_cache_get(path_join("kernels", cycles_bc));
   const string fatbin_file = string_printf(
       "cycles_%s_%s_%s.hipfb", name, arch.c_str(), kernel_md5.c_str());
   const string fatbin = path_cache_get(path_join("kernels", fatbin_file));
+  const string hiprt_bc = string_printf(
+      "hiprt_%s_%s_%s.bc", name, arch.c_str(), kernel_md5.c_str());
+  const string hiprt_bitcode = path_cache_get(path_join("kernels", hiprt_bc));
+
+  const string hiprt_include_path = path_join(source_path, "kernel//device//hiprt");
 
   VLOG(1) << "Testing for locally compiled kernel " << fatbin << ".";
   if (path_exists(fatbin)) {
@@ -218,6 +216,12 @@ string HIPRTDevice::compile_kernel(const uint kernel_features, const char *name,
 
   path_create_directories(fatbin);
 
+  std::string rtc_options;
+  rtc_options.append(" --offload-arch=").append(arch.c_str());
+  rtc_options.append(" -D __HIPRT__");
+  rtc_options.append(" -ffast-math -O3 -std=c++17");
+  rtc_options.append(" -fgpu-rdc -c --gpu-bundle-output -c -emit-llvm");
+
   source_path = path_join(path_join(source_path, "kernel"),
                           path_join("device", path_join(base, string_printf("%s.cpp", name))));
 
@@ -225,25 +229,44 @@ string HIPRTDevice::compile_kernel(const uint kernel_features, const char *name,
 
   double starttime = time_dt();
 
-  const string hiprt_path = getenv("HIPRT_PATH");
-  // First, app kernels are compiled into bitcode, without access to implementation of HIP RT
-  // functions
-  if (!path_exists(bitcode)) {
-
-    std::string rtc_options;
-
-    rtc_options.append(" --offload-arch=").append(arch.c_str());
-    rtc_options.append(" -D __HIPRT__");
-    rtc_options.append(" -ffast-math -O3 -std=c++17");
-    rtc_options.append(" -fgpu-rdc -c --gpu-bundle-output -c -emit-llvm");
+  if (!path_exists(cycles_bitcode)) {
 
     string command = string_printf("%s %s -I %s  -I %s %s -o \"%s\"",
                                    hipcc,
                                    rtc_options.c_str(),
                                    include_path.c_str(),
-                                   hiprt_path.c_str(),
+                                   hiprt_include_path.c_str(),
                                    source_path.c_str(),
-                                   bitcode.c_str());
+                                   cycles_bitcode.c_str());
+
+    printf("Compiling %sHIP kernel ...\n%s\n",
+           (use_adaptive_compilation()) ? "adaptive " : "",
+           command.c_str());
+
+#  ifdef _WIN32
+    command = "call " + command;
+#  endif
+    if (system(command.c_str()) != 0) {
+      set_error(
+          "Failed to execute compilation command, "
+          "see console for details.");
+      return string();
+    }
+  }
+
+  if (!path_exists(hiprt_bitcode)) {
+
+    rtc_options.append(" -x hip");
+    rtc_options.append(" -D HIPRT_BITCODE_LINKING ");
+
+    string source_path = path_join(hiprt_include_path, "//hiprt//impl//hiprt_kernels_bitcode.h");
+
+    string command = string_printf("%s %s -I %s %s -o \"%s\"",
+                                   hipcc,
+                                   rtc_options.c_str(),
+                                   hiprt_include_path.c_str(),
+                                   source_path.c_str(),
+                                   hiprt_bitcode.c_str());
 
     printf("Compiling %sHIP kernel ...\n%s\n",
            (use_adaptive_compilation()) ? "adaptive " : "",
@@ -265,13 +288,11 @@ string HIPRTDevice::compile_kernel(const uint kernel_features, const char *name,
   string linker_options;
   linker_options.append(" --offload-arch=").append(arch.c_str());
   linker_options.append(" -fgpu-rdc --hip-link --cuda-device-only ");
-  string hiprt_ver(HIPRT_VERSION_STR);
-  string hiprt_bc = hiprt_path + "\\dist\\bin\\Release\\hiprt" + hiprt_ver + "_amd_lib_win.bc";
 
-  string linker_command = string_printf("clang++ %s \"%s\" %s -o \"%s\"",
+  string linker_command = string_printf("clang++ %s \"%s\" \"%s\" -o \"%s\"",
                                         linker_options.c_str(),
-                                        bitcode.c_str(),
-                                        hiprt_bc.c_str(),
+                                        cycles_bitcode.c_str(),
+                                        hiprt_bitcode.c_str(),
                                         fatbin.c_str());
 
 #  ifdef _WIN32
