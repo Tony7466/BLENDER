@@ -1361,28 +1361,30 @@ static void svg_replace_color_attributes(std::string &svg,
 
     size_t att_start = start;
     while (1) {
-      att_start = svg.find("fill=\"", att_start);
+      constexpr static blender::StringRef key = "fill=\"";
+      att_start = svg.find(key, att_start);
       if (att_start == std::string::npos || att_start > end) {
         break;
       }
-      const size_t att_end = svg.find("\"", att_start + 6);
-      if (att_end != std::string::npos && att_end - att_start < 20) {
-        svg.replace(att_start, att_end - att_start, "fill=\"#" + hexcolor);
+      const size_t att_end = svg.find("\"", att_start + key.size());
+      if (att_end != std::string::npos && att_end < end) {
+        svg.replace(att_start, att_end - att_start, key + "#" + hexcolor);
       }
-      att_start += 16;
+      att_start += blender::StringRef(key + "#rrggbbaa\"").size();
     }
 
     att_start = start;
     while (1) {
-      att_start = svg.find("fill:", att_start);
+      constexpr static blender::StringRef key = "fill:";
+      att_start = svg.find(key, att_start);
       if (att_start == std::string::npos || att_start > end) {
         break;
       }
-      const size_t att_end = svg.find(";", att_start + 6);
-      if (att_end != std::string::npos && att_end - att_start < 20) {
-        svg.replace(att_start, att_end - att_start, "fill:#" + hexcolor);
+      const size_t att_end = svg.find(";", att_start + key.size());
+      if (att_end != std::string::npos && att_end - att_start < end) {
+        svg.replace(att_start, att_end - att_start, key + "#" + hexcolor);
       }
-      att_start += 14;
+      att_start += blender::StringRef(key + "#rrggbbaa").size();
     }
   }
 }
@@ -1395,7 +1397,8 @@ static void icon_source_edit_cb(std::string &svg)
 
   while (1) {
     /* Look for a blender id, quick exit if not found. */
-    const size_t id_start = svg.find("id=\"blender.", g_start);
+    constexpr static blender::StringRef key = "id=\"";
+    const size_t id_start = svg.find(key + "blender.", g_start);
     if (id_start == std::string::npos) {
       return;
     }
@@ -1415,9 +1418,9 @@ static void icon_source_edit_cb(std::string &svg)
     }
 
     /* Get group id name. */
-    const size_t id_end = svg.find("\"", id_start + 4);
+    const size_t id_end = svg.find("\"", id_start + key.size());
     if (id_end != std::string::npos) {
-      std::string id_name = svg.substr(id_start + 4, id_end - id_start - 4);
+      std::string id_name = svg.substr(id_start + key.size(), id_end - id_start - key.size());
       /* Replace this group's colors. */
       svg_replace_color_attributes(svg, id_name, g_start, g_end);
     }
