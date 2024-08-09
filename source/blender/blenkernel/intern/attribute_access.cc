@@ -930,6 +930,43 @@ void gather_attributes(const AttributeAccessor src_attributes,
   }
 }
 
+void scatter_attributes(const AttributeAccessor src_attributes,
+                        const AttrDomain domain,
+                        const AnonymousAttributePropagationInfo &propagation_info,
+                        const Set<std::string> &skip,
+                        const Span<int> indices,
+                        MutableAttributeAccessor dst_attributes)
+{
+  if (array_utils::indices_are_range(indices, IndexRange(src_attributes.domain_size(domain)))) {
+    copy_attributes(src_attributes, domain, propagation_info, skip, dst_attributes);
+  }
+  else {
+    src_attributes.for_all([&](const AttributeIDRef &id, const AttributeMetaData meta_data) {
+      if (meta_data.domain != domain) {
+        return true;
+      }
+      if (meta_data.data_type == CD_PROP_STRING) {
+        return true;
+      }
+      if (id.is_anonymous() && !propagation_info.propagate(id.anonymous_id())) {
+        return true;
+      }
+      if (skip.contains(id.name())) {
+        return true;
+      }
+      const GAttributeReader src = src_attributes.lookup(id, domain);
+      GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
+          id, domain, meta_data.data_type);
+      if (!dst) {
+        return true;
+      }
+      attribute_math::scatter(src.varray, indices, dst.span);
+      dst.finish();
+      return true;
+    });
+  }
+}
+
 void gather_attributes_group_to_group(const AttributeAccessor src_attributes,
                                       const AttrDomain domain,
                                       const AnonymousAttributePropagationInfo &propagation_info,
