@@ -35,6 +35,7 @@ class Meshes {
 
   PassSimple edit_mesh_edges_ps_ = {"Edges"};
   PassSimple edit_mesh_faces_ps_ = {"Faces"};
+  PassSimple edit_mesh_cages_ps_ = {"Cages"}; /* Same as faces but with a different offset. */
   PassSimple edit_mesh_verts_ps_ = {"Verts"};
   PassSimple edit_mesh_facedots_ps_ = {"FaceDots"};
 
@@ -175,6 +176,14 @@ class Meshes {
       mesh_edit_common_resource_bind(pass, face_alpha);
     }
     {
+      auto &pass = edit_mesh_cages_ps_;
+      pass.init();
+      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA |
+                     state.clipping_state);
+      pass.shader_set(res.shaders.mesh_edit_face.get());
+      mesh_edit_common_resource_bind(pass, face_alpha);
+    }
+    {
       auto &pass = edit_mesh_verts_ps_;
       pass.init();
       pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA |
@@ -228,7 +237,8 @@ class Meshes {
     }
     {
       gpu::Batch *geom = DRW_mesh_batch_cache_get_edit_triangles(mesh);
-      edit_mesh_faces_ps_.draw(geom, res_handle);
+      (mesh_has_edit_cage(ob) ? &edit_mesh_cages_ps_ : &edit_mesh_faces_ps_)
+          ->draw(geom, res_handle);
     }
     if (select_vert) {
       gpu::Batch *geom = DRW_mesh_batch_cache_get_edit_vertices(mesh);
@@ -250,6 +260,7 @@ class Meshes {
     manager.submit(edit_mesh_analysis_ps_, view);
     manager.submit(edit_mesh_normals_ps_, view);
     manager.submit(edit_mesh_faces_ps_, view);
+    manager.submit(edit_mesh_cages_ps_, view_edit_cage);
     manager.submit(edit_mesh_edges_ps_, view_edit_edge);
     manager.submit(edit_mesh_verts_ps_, view_edit_vert);
     manager.submit(edit_mesh_facedots_ps_, view_edit_vert);
