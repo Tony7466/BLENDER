@@ -7281,24 +7281,6 @@ void clip_and_lock_translations(const Sculpt &sd,
   }
 }
 
-static void apply_translations_to_dependent_shape_keys(Object &object,
-                                                       const KeyBlock &active_key,
-                                                       const Span<int> verts,
-                                                       const Span<float3> translations)
-{
-  Mesh &mesh = *static_cast<Mesh *>(object.data);
-  if (bool *dependent = BKE_keyblock_get_dependent_keys(mesh.key, object.shapenr - 1)) {
-    int i;
-    LISTBASE_FOREACH_INDEX (KeyBlock *, other_key, &mesh.key->block, i) {
-      if ((other_key != &active_key) && dependent[i]) {
-        MutableSpan<float3> data(static_cast<float3 *>(other_key->data), other_key->totelem);
-        apply_translations(translations, verts, data);
-      }
-    }
-    MEM_freeN(dependent);
-  }
-}
-
 void update_shape_keys(Object &object,
                        const Mesh &mesh,
                        const KeyBlock &active_key,
@@ -7316,7 +7298,16 @@ void update_shape_keys(Object &object,
     apply_translations(translations, verts, active_key_data);
   }
 
-  apply_translations_to_dependent_shape_keys(object, active_key, verts, translations);
+  if (bool *dependent = BKE_keyblock_get_dependent_keys(mesh.key, object.shapenr - 1)) {
+    int i;
+    LISTBASE_FOREACH_INDEX (KeyBlock *, other_key, &mesh.key->block, i) {
+      if ((other_key != &active_key) && dependent[i]) {
+        MutableSpan<float3> data(static_cast<float3 *>(other_key->data), other_key->totelem);
+        apply_translations(translations, verts, data);
+      }
+    }
+    MEM_freeN(dependent);
+  }
 }
 
 void apply_translations_to_pbvh(bke::pbvh::Tree &pbvh,
@@ -7356,7 +7347,6 @@ void write_translations(const Sculpt &sd,
     apply_translations(translations, verts, positions_orig);
     return;
   }
-  BLI_assert(active_key);
 
   const bool basis_shapekey_active = active_key == mesh.key->refkey;
   if (basis_shapekey_active) {
