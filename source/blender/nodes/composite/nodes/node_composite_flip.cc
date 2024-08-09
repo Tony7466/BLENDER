@@ -62,17 +62,17 @@ class FlipOperation : public NodeOperation {
     GPU_shader_uniform_1b(
         shader, "flip_y", ELEM(get_flip_mode(), CMP_NODE_FLIP_Y, CMP_NODE_FLIP_X_Y));
 
-    input.bind_as_texture(shader, "input_tx");
+    input.texture.bind_as_texture(shader, "input_tx");
 
     const Domain domain = compute_domain();
 
     result.allocate_texture(domain);
-    result.bind_as_image(shader, "output_img");
+    result.texture.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
-    input.unbind_as_texture();
-    result.unbind_as_image();
+    input.texture.unbind_as_texture();
+    result.texture.unbind_as_image();
     GPU_shader_unbind();
   }
 

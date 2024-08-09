@@ -244,8 +244,7 @@ class Context : public realtime_compositor::Context {
           size.x,
           size.y,
           1,
-          get_precision() == realtime_compositor::ResultPrecision::Half ? GPU_RGBA16F :
-                                                                          GPU_RGBA32F,
+          get_precision() == realtime_compositor::DataPrecision::Half ? GPU_RGBA16F : GPU_RGBA32F,
           GPU_TEXTURE_USAGE_GENERAL,
           nullptr);
     }
@@ -276,8 +275,7 @@ class Context : public realtime_compositor::Context {
           size.x,
           size.y,
           1,
-          get_precision() == realtime_compositor::ResultPrecision::Half ? GPU_RGBA16F :
-                                                                          GPU_RGBA32F,
+          get_precision() == realtime_compositor::DataPrecision::Half ? GPU_RGBA16F : GPU_RGBA32F,
           GPU_TEXTURE_USAGE_GENERAL,
           nullptr);
     }
@@ -342,23 +340,23 @@ class Context : public realtime_compositor::Context {
     return input_data_.view_name;
   }
 
-  realtime_compositor::ResultPrecision get_precision() const override
+  realtime_compositor::DataPrecision get_precision() const override
   {
     switch (input_data_.scene->r.compositor_precision) {
       case SCE_COMPOSITOR_PRECISION_AUTO:
         /* Auto uses full precision for final renders and half procession otherwise. */
         if (this->render_context()) {
-          return realtime_compositor::ResultPrecision::Full;
+          return realtime_compositor::DataPrecision::Full;
         }
         else {
-          return realtime_compositor::ResultPrecision::Half;
+          return realtime_compositor::DataPrecision::Half;
         }
       case SCE_COMPOSITOR_PRECISION_FULL:
-        return realtime_compositor::ResultPrecision::Full;
+        return realtime_compositor::DataPrecision::Full;
     }
 
     BLI_assert_unreachable();
-    return realtime_compositor::ResultPrecision::Full;
+    return realtime_compositor::DataPrecision::Full;
   }
 
   void set_info_message(StringRef /*message*/) const override

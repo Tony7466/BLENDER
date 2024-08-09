@@ -77,13 +77,12 @@ SymmetricSeparableBlurWeights::SymmetricSeparableBlurWeights(Context &context,
     weights[i] /= sum;
   }
 
-  texture_ = GPU_texture_create_1d(
-      "Weights",
-      size,
-      1,
-      Result::texture_format(ResultType::Float, context.get_precision()),
-      GPU_TEXTURE_USAGE_GENERAL,
-      weights.data());
+  texture_ = GPU_texture_create_1d("Weights",
+                                   size,
+                                   1,
+                                   Texture::gpu_format(DataType::Float, context.get_precision()),
+                                   GPU_TEXTURE_USAGE_GENERAL,
+                                   weights.data());
   GPU_texture_filter_mode(texture_, true);
   GPU_texture_extend_mode(texture_, GPU_SAMPLER_EXTEND_MODE_EXTEND);
 }

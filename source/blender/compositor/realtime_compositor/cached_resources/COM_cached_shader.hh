@@ -24,9 +24,9 @@ namespace blender::realtime_compositor {
 class CachedShaderKey {
  public:
   std::string info_name;
-  ResultPrecision precision;
+  DataPrecision precision;
 
-  CachedShaderKey(const char *info_name, ResultPrecision precision);
+  CachedShaderKey(const char *info_name, DataPrecision precision);
 
   uint64_t hash() const;
 };
@@ -43,7 +43,7 @@ class CachedShader : public CachedResource {
   GPUShader *shader_ = nullptr;
 
  public:
-  CachedShader(const char *info_name, ResultPrecision precision);
+  CachedShader(const char *info_name, DataPrecision precision);
 
   ~CachedShader();
 
@@ -64,7 +64,7 @@ class CachedShaderContainer : public CachedResourceContainer {
    * container, if one exists, return its shader, otherwise, return the shader of a newly created
    * one and add it to the container. In both cases, tag the cached resource as needed to keep it
    * cached for the next evaluation. */
-  GPUShader *get(const char *info_name, ResultPrecision precision);
+  GPUShader *get(const char *info_name, DataPrecision precision);
 };
 
 }  // namespace blender::realtime_compositor

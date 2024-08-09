@@ -37,20 +37,20 @@ static void sum_causal_and_non_causal_results(Context &context,
   GPUShader *shader = context.get_shader("compositor_deriche_gaussian_blur_sum");
   GPU_shader_bind(shader);
 
-  causal_input.bind_as_texture(shader, "causal_input_tx");
-  non_causal_input.bind_as_texture(shader, "non_causal_input_tx");
+  causal_input.texture.bind_as_texture(shader, "causal_input_tx");
+  non_causal_input.texture.bind_as_texture(shader, "non_causal_input_tx");
 
   const Domain domain = causal_input.domain();
   const int2 transposed_domain = int2(domain.size.y, domain.size.x);
   output.allocate_texture(transposed_domain);
-  output.bind_as_image(shader, "output_img");
+  output.texture.bind_as_image(shader, "output_img");
 
   compute_dispatch_threads_at_least(shader, domain.size);
 
   GPU_shader_unbind();
-  causal_input.unbind_as_texture();
-  non_causal_input.unbind_as_texture();
-  output.unbind_as_image();
+  causal_input.texture.unbind_as_texture();
+  non_causal_input.texture.unbind_as_texture();
+  output.texture.unbind_as_image();
 }
 
 static void blur_pass(Context &context, Result &input, Result &output, float sigma)
@@ -75,26 +75,26 @@ static void blur_pass(Context &context, Result &input, Result &output, float sig
                         "non_causal_boundary_coefficient",
                         float(coefficients.non_causal_boundary_coefficient()));
 
-  input.bind_as_texture(shader, "input_tx");
+  input.texture.bind_as_texture(shader, "input_tx");
 
   const Domain domain = input.domain();
 
-  Result causal_result = context.create_result(ResultType::Color);
+  Result causal_result = context.create_result(DataType::Color);
   causal_result.allocate_texture(domain);
-  causal_result.bind_as_image(shader, "causal_output_img");
+  causal_result.texture.bind_as_image(shader, "causal_output_img");
 
-  Result non_causal_result = context.create_result(ResultType::Color);
+  Result non_causal_result = context.create_result(DataType::Color);
   non_causal_result.allocate_texture(domain);
-  non_causal_result.bind_as_image(shader, "non_causal_output_img");
+  non_causal_result.texture.bind_as_image(shader, "non_causal_output_img");
 
   /* The second dispatch dimension is two dispatches, one for the causal filter and one for the non
    * causal one. */
   compute_dispatch_threads_at_least(shader, int2(domain.size.y, 2), int2(128, 2));
 
   GPU_shader_unbind();
-  input.unbind_as_texture();
-  causal_result.unbind_as_image();
-  non_causal_result.unbind_as_image();
+  input.texture.unbind_as_texture();
+  causal_result.texture.unbind_as_image();
+  non_causal_result.texture.unbind_as_image();
 
   sum_causal_and_non_causal_results(context, causal_result, non_causal_result, output);
   causal_result.release();
@@ -110,7 +110,7 @@ void deriche_gaussian_blur(Context &context, Result &input, Result &output, floa
                  "Deriche filter is not accurate nor numerically stable for sigma values larger "
                  "than 32. Use Van Vliet filter instead.");
 
-  Result horizontal_pass_result = context.create_result(ResultType::Color);
+  Result horizontal_pass_result = context.create_result(DataType::Color);
   blur_pass(context, input, horizontal_pass_result, sigma.x);
   blur_pass(context, horizontal_pass_result, output, sigma.y);
   horizontal_pass_result.release();

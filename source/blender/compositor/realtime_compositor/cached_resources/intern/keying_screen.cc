@@ -168,14 +168,13 @@ KeyingScreen::KeyingScreen(Context &context,
   const int colors_ssbo_location = GPU_shader_get_ssbo_binding(shader, "marker_colors");
   GPU_storagebuf_bind(colors_ssbo, colors_ssbo_location);
 
-  texture_ = GPU_texture_create_2d(
-      "Keying Screen",
-      size.x,
-      size.y,
-      1,
-      Result::texture_format(ResultType::Color, context.get_precision()),
-      GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE,
-      nullptr);
+  texture_ = GPU_texture_create_2d("Keying Screen",
+                                   size.x,
+                                   size.y,
+                                   1,
+                                   Texture::gpu_format(DataType::Color, context.get_precision()),
+                                   GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE,
+                                   nullptr);
   const int image_unit = GPU_shader_get_sampler_binding(shader, "output_img");
   GPU_texture_image_bind(texture_, image_unit);
 

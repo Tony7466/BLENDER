@@ -18,9 +18,7 @@ namespace blender::realtime_compositor {
  * Realize On Domain Operation
  */
 
-RealizeOnDomainOperation::RealizeOnDomainOperation(Context &context,
-                                                   Domain domain,
-                                                   ResultType type)
+RealizeOnDomainOperation::RealizeOnDomainOperation(Context &context, Domain domain, DataType type)
     : SimpleOperation(context), domain_(domain)
 {
   InputDescriptor input_descriptor;

@@ -133,24 +133,24 @@ class DefocusOperation : public NodeOperation {
     GPU_shader_uniform_1b(shader, "gamma_correct", node_storage(bnode()).gamco);
     GPU_shader_uniform_1i(shader, "search_radius", maximum_defocus_radius);
 
-    input.bind_as_texture(shader, "input_tx");
+    input.texture.bind_as_texture(shader, "input_tx");
 
-    radius.bind_as_texture(shader, "radius_tx");
+    radius.texture.bind_as_texture(shader, "radius_tx");
 
     GPU_texture_filter_mode(bokeh_kernel.texture(), true);
     bokeh_kernel.bind_as_texture(shader, "weights_tx");
 
     const Domain domain = compute_domain();
     output.allocate_texture(domain);
-    output.bind_as_image(shader, "output_img");
+    output.texture.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
     GPU_shader_unbind();
-    input.unbind_as_texture();
-    radius.unbind_as_texture();
+    input.texture.unbind_as_texture();
+    radius.texture.unbind_as_texture();
     bokeh_kernel.unbind_as_texture();
-    output.unbind_as_image();
+    output.texture.unbind_as_image();
 
     radius.release();
   }
@@ -174,18 +174,18 @@ class DefocusOperation : public NodeOperation {
     GPU_shader_uniform_1f(shader, "max_radius", node_storage(bnode()).maxblur);
 
     Result &input_radius = get_input("Z");
-    input_radius.bind_as_texture(shader, "radius_tx");
+    input_radius.texture.bind_as_texture(shader, "radius_tx");
 
-    Result output_radius = context().create_result(ResultType::Float);
+    Result output_radius = context().create_result(DataType::Float);
     const Domain domain = input_radius.domain();
     output_radius.allocate_texture(domain);
-    output_radius.bind_as_image(shader, "radius_img");
+    output_radius.texture.bind_as_image(shader, "radius_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
     GPU_shader_unbind();
-    input_radius.unbind_as_texture();
-    output_radius.unbind_as_image();
+    input_radius.texture.unbind_as_texture();
+    output_radius.texture.unbind_as_image();
 
     return output_radius;
   }
@@ -203,25 +203,25 @@ class DefocusOperation : public NodeOperation {
     GPU_shader_uniform_1f(shader, "distance_to_image_of_focus", distance_to_image_of_focus);
 
     Result &input_depth = get_input("Z");
-    input_depth.bind_as_texture(shader, "depth_tx");
+    input_depth.texture.bind_as_texture(shader, "depth_tx");
 
-    Result output_radius = context().create_result(ResultType::Float);
+    Result output_radius = context().create_result(DataType::Float);
     const Domain domain = input_depth.domain();
     output_radius.allocate_texture(domain);
-    output_radius.bind_as_image(shader, "radius_img");
+    output_radius.texture.bind_as_image(shader, "radius_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
     GPU_shader_unbind();
-    input_depth.unbind_as_texture();
-    output_radius.unbind_as_image();
+    input_depth.texture.unbind_as_texture();
+    output_radius.texture.unbind_as_image();
 
     /* We apply a dilate morphological operator on the radius computed from depth, the operator
      * radius is the maximum possible defocus radius. This is done such that objects in
      * focus---that is, objects whose defocus radius is small---are not affected by nearby out of
      * focus objects, hence the use of dilation. */
     const float morphological_radius = compute_maximum_defocus_radius();
-    Result eroded_radius = context().create_result(ResultType::Float);
+    Result eroded_radius = context().create_result(DataType::Float);
     morphological_blur(context(), output_radius, eroded_radius, float2(morphological_radius));
     output_radius.release();
 

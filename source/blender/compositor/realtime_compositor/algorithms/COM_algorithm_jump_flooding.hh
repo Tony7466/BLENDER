@@ -19,7 +19,7 @@ namespace blender::realtime_compositor {
  * The input is expected to be initialized by the initialize_jump_flooding_value function from the
  * gpu_shader_compositor_jump_flooding_lib.glsl library. Seed pixels should specify true for the
  * is_seed argument, and false otherwise. The texel input should be the texel location of the
- * pixel. Both the input and output results should be of type ResultType::Int2.
+ * pixel. Both the input and output results should be of type DataType::Int2.
  *
  * To compute a Voronoi diagram, the pixels lying at the centroid of the Voronoi cell should be
  * marked as seed pixels. To compute an euclidean distance transform of a region or flood fill a

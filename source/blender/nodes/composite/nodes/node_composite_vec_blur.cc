@@ -95,18 +95,18 @@ class VectorBlurOperation : public NodeOperation {
     GPU_shader_uniform_1b(shader, "is_initial_reduction", true);
 
     Result &input = get_input("Speed");
-    input.bind_as_texture(shader, "input_tx");
+    input.texture.bind_as_texture(shader, "input_tx");
 
-    Result output = context().create_result(ResultType::Color);
+    Result output = context().create_result(DataType::Color);
     const int2 tiles_count = math::divide_ceil(input.domain().size, int2(32));
     output.allocate_texture(Domain(tiles_count));
-    output.bind_as_image(shader, "output_img");
+    output.texture.bind_as_image(shader, "output_img");
 
     GPU_compute_dispatch(shader, tiles_count.x, tiles_count.y, 1);
 
     GPU_shader_unbind();
-    input.unbind_as_texture();
-    output.unbind_as_image();
+    input.texture.unbind_as_texture();
+    output.texture.unbind_as_image();
 
     return output;
   }
@@ -124,7 +124,7 @@ class VectorBlurOperation : public NodeOperation {
 
     GPU_shader_uniform_1f(shader, "shutter_speed", node_storage(bnode()).fac);
 
-    max_tile_velocity.bind_as_texture(shader, "input_tx");
+    max_tile_velocity.texture.bind_as_texture(shader, "input_tx");
 
     /* The shader assumes a maximum input size of 16k, and since the max tile velocity image is
      * composed of blocks of 32, we get 16k / 32 = 512. So the table is 512x512, but we store two
@@ -139,7 +139,7 @@ class VectorBlurOperation : public NodeOperation {
     compute_dispatch_threads_at_least(shader, max_tile_velocity.domain().size);
 
     GPU_shader_unbind();
-    max_tile_velocity.unbind_as_texture();
+    max_tile_velocity.texture.unbind_as_texture();
     GPU_storagebuf_unbind(tile_indirection_buffer);
 
     return tile_indirection_buffer;
@@ -154,15 +154,15 @@ class VectorBlurOperation : public NodeOperation {
     GPU_shader_uniform_1f(shader, "shutter_speed", node_storage(bnode()).fac);
 
     Result &input = get_input("Image");
-    input.bind_as_texture(shader, "input_tx");
+    input.texture.bind_as_texture(shader, "input_tx");
 
     Result &depth = get_input("Z");
-    depth.bind_as_texture(shader, "depth_tx");
+    depth.texture.bind_as_texture(shader, "depth_tx");
 
     Result &velocity = get_input("Speed");
-    velocity.bind_as_texture(shader, "velocity_tx");
+    velocity.texture.bind_as_texture(shader, "velocity_tx");
 
-    max_tile_velocity.bind_as_texture(shader, "max_velocity_tx");
+    max_tile_velocity.texture.bind_as_texture(shader, "max_velocity_tx");
 
     GPU_memory_barrier(GPU_BARRIER_SHADER_STORAGE);
     const int slot = GPU_shader_get_ssbo_binding(shader, "tile_indirection_buf");
@@ -171,16 +171,16 @@ class VectorBlurOperation : public NodeOperation {
     Result &output = get_result("Image");
     const Domain domain = compute_domain();
     output.allocate_texture(domain);
-    output.bind_as_image(shader, "output_img");
+    output.texture.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, output.domain().size);
 
     GPU_shader_unbind();
-    input.unbind_as_texture();
-    depth.unbind_as_texture();
-    velocity.unbind_as_texture();
-    max_tile_velocity.unbind_as_texture();
-    output.unbind_as_image();
+    input.texture.unbind_as_texture();
+    depth.texture.unbind_as_texture();
+    velocity.texture.unbind_as_texture();
+    max_tile_velocity.texture.unbind_as_texture();
+    output.texture.unbind_as_image();
   }
 };
 

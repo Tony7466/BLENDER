@@ -96,7 +96,7 @@ CachedTexture::CachedTexture(Context &context,
       size.x,
       size.y,
       1,
-      Result::texture_format(ResultType::Color, context.get_precision()),
+      Texture::gpu_format(DataType::Color, context.get_precision()),
       GPU_TEXTURE_USAGE_SHADER_READ,
       *color_pixels.data());
 
@@ -105,7 +105,7 @@ CachedTexture::CachedTexture(Context &context,
       size.x,
       size.y,
       1,
-      Result::texture_format(ResultType::Float, context.get_precision()),
+      Texture::gpu_format(DataType::Float, context.get_precision()),
       GPU_TEXTURE_USAGE_SHADER_READ,
       value_pixels.data());
 }

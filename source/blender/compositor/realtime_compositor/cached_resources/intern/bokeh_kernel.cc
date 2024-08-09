@@ -75,14 +75,13 @@ BokehKernel::BokehKernel(Context &context,
                          float catadioptric,
                          float lens_shift)
 {
-  texture_ = GPU_texture_create_2d(
-      "Bokeh Kernel",
-      size.x,
-      size.y,
-      1,
-      Result::texture_format(ResultType::Color, context.get_precision()),
-      GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE,
-      nullptr);
+  texture_ = GPU_texture_create_2d("Bokeh Kernel",
+                                   size.x,
+                                   size.y,
+                                   1,
+                                   Texture::gpu_format(DataType::Color, context.get_precision()),
+                                   GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE,
+                                   nullptr);
 
   GPUShader *shader = context.get_shader("compositor_bokeh_image");
   GPU_shader_bind(shader);

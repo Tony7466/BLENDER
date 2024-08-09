@@ -27,7 +27,7 @@ class RealizeOnDomainOperation : public SimpleOperation {
   Domain domain_;
 
  public:
-  RealizeOnDomainOperation(Context &context, Domain domain, ResultType type);
+  RealizeOnDomainOperation(Context &context, Domain domain, DataType type);
 
   void execute() override;
 

@@ -33,7 +33,7 @@ DSocket get_input_origin_socket(DInputSocket input);
 DOutputSocket get_output_linked_to_input(DInputSocket input);
 
 /** Get the result type that corresponds to the type of the given socket. */
-ResultType get_node_socket_result_type(const bNodeSocket *socket);
+DataType get_node_socket_result_type(const bNodeSocket *socket);
 
 /**
  * Returns true if any of the nodes linked to the given output satisfies the given condition,

@@ -60,18 +60,18 @@ DOutputSocket get_output_linked_to_input(DInputSocket input)
   return DOutputSocket(origin);
 }
 
-ResultType get_node_socket_result_type(const bNodeSocket *socket)
+DataType get_node_socket_result_type(const bNodeSocket *socket)
 {
   switch (socket->type) {
     case SOCK_FLOAT:
-      return ResultType::Float;
+      return DataType::Float;
     case SOCK_VECTOR:
-      return ResultType::Vector;
+      return DataType::Vector;
     case SOCK_RGBA:
-      return ResultType::Color;
+      return DataType::Color;
     default:
       BLI_assert_unreachable();
-      return ResultType::Float;
+      return DataType::Float;
   }
 }
 
@@ -211,25 +211,25 @@ void compute_preview_from_result(Context &context, const DNode &node, Result &in
   GPUShader *shader = context.get_shader("compositor_compute_preview");
   GPU_shader_bind(shader);
 
-  if (input_result.type() == ResultType::Float) {
-    GPU_texture_swizzle_set(input_result.texture(), "rrr1");
+  if (input_result.type() == DataType::Float) {
+    GPU_texture_swizzle_set(input_result.texture, "rrr1");
   }
 
-  input_result.bind_as_texture(shader, "input_tx");
+  input_result.texture.bind_as_texture(shader, "input_tx");
 
-  Result preview_result = context.create_result(ResultType::Color);
+  Result preview_result = context.create_result(DataType::Color);
   preview_result.allocate_texture(Domain(preview_size));
-  preview_result.bind_as_image(shader, "preview_img");
+  preview_result.texture.bind_as_image(shader, "preview_img");
 
   compute_dispatch_threads_at_least(shader, preview_size);
 
-  input_result.unbind_as_texture();
-  preview_result.unbind_as_image();
+  input_result.texture.unbind_as_texture();
+  preview_result.texture.unbind_as_image();
   GPU_shader_unbind();
 
   GPU_memory_barrier(GPU_BARRIER_TEXTURE_FETCH);
   float *preview_pixels = static_cast<float *>(
-      GPU_texture_read(preview_result.texture(), GPU_DATA_FLOAT, 0));
+      GPU_texture_read(preview_result.texture, GPU_DATA_FLOAT, 0));
   preview_result.release();
 
   ColormanageProcessor *color_processor = IMB_colormanagement_display_processor_new(
@@ -246,8 +246,8 @@ void compute_preview_from_result(Context &context, const DNode &node, Result &in
   });
 
   /* Restore original swizzle mask set above. */
-  if (input_result.type() == ResultType::Float) {
-    GPU_texture_swizzle_set(input_result.texture(), "rgba");
+  if (input_result.type() == DataType::Float) {
+    GPU_texture_swizzle_set(input_result.texture, "rgba");
   }
 
   IMB_colormanagement_processor_free(color_processor);

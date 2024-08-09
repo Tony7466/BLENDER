@@ -61,30 +61,30 @@ class DisplaceOperation : public NodeOperation {
     GPU_shader_bind(shader);
 
     const Result &input_image = get_input("Image");
-    GPU_texture_mipmap_mode(input_image.texture(), true, true);
-    GPU_texture_anisotropic_filter(input_image.texture(), true);
-    GPU_texture_extend_mode(input_image.texture(), GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER);
-    input_image.bind_as_texture(shader, "input_tx");
+    GPU_texture_mipmap_mode(input_image.texture, true, true);
+    GPU_texture_anisotropic_filter(input_image.texture, true);
+    GPU_texture_extend_mode(input_image.texture, GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER);
+    input_image.texture.bind_as_texture(shader, "input_tx");
 
     const Result &input_displacement = get_input("Vector");
-    input_displacement.bind_as_texture(shader, "displacement_tx");
+    input_displacement.texture.bind_as_texture(shader, "displacement_tx");
     const Result &input_x_scale = get_input("X Scale");
-    input_x_scale.bind_as_texture(shader, "x_scale_tx");
+    input_x_scale.texture.bind_as_texture(shader, "x_scale_tx");
     const Result &input_y_scale = get_input("Y Scale");
-    input_y_scale.bind_as_texture(shader, "y_scale_tx");
+    input_y_scale.texture.bind_as_texture(shader, "y_scale_tx");
 
     const Domain domain = compute_domain();
     Result &output_image = get_result("Image");
     output_image.allocate_texture(domain);
-    output_image.bind_as_image(shader, "output_img");
+    output_image.texture.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
-    input_image.unbind_as_texture();
-    input_displacement.unbind_as_texture();
-    input_x_scale.unbind_as_texture();
-    input_y_scale.unbind_as_texture();
-    output_image.unbind_as_image();
+    input_image.texture.unbind_as_texture();
+    input_displacement.texture.unbind_as_texture();
+    input_x_scale.texture.unbind_as_texture();
+    input_y_scale.texture.unbind_as_texture();
+    output_image.texture.unbind_as_image();
     GPU_shader_unbind();
   }
 

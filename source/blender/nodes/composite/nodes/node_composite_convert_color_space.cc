@@ -98,16 +98,16 @@ class ConvertColorSpaceOperation : public NodeOperation {
       return;
     }
 
-    input_image.bind_as_texture(shader, ocio_shader.input_sampler_name());
+    input_image.texture.bind_as_texture(shader, ocio_shader.input_sampler_name());
 
     const Domain domain = compute_domain();
     output_image.allocate_texture(domain);
-    output_image.bind_as_image(shader, ocio_shader.output_image_name());
+    output_image.texture.bind_as_image(shader, ocio_shader.output_image_name());
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
-    input_image.unbind_as_texture();
-    output_image.unbind_as_image();
+    input_image.texture.unbind_as_texture();
+    output_image.texture.unbind_as_image();
     ocio_shader.unbind_shader_and_resources();
   }
 

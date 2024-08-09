@@ -99,19 +99,19 @@ class BoxMaskOperation : public NodeOperation {
     GPU_shader_uniform_1f(shader, "cos_angle", std::cos(get_angle()));
     GPU_shader_uniform_1f(shader, "sin_angle", std::sin(get_angle()));
 
-    input_mask.bind_as_texture(shader, "base_mask_tx");
+    input_mask.texture.bind_as_texture(shader, "base_mask_tx");
 
     const Result &value = get_input("Value");
-    value.bind_as_texture(shader, "mask_value_tx");
+    value.texture.bind_as_texture(shader, "mask_value_tx");
 
     output_mask.allocate_texture(domain);
-    output_mask.bind_as_image(shader, "output_mask_img");
+    output_mask.texture.bind_as_image(shader, "output_mask_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
-    input_mask.unbind_as_texture();
-    value.unbind_as_texture();
-    output_mask.unbind_as_image();
+    input_mask.texture.unbind_as_texture();
+    value.texture.unbind_as_texture();
+    output_mask.texture.unbind_as_image();
     GPU_shader_unbind();
   }
 

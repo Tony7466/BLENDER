@@ -38,7 +38,7 @@ using namespace nodes::derived_node_tree_types;
 NodeOperation::NodeOperation(Context &context, DNode node) : Operation(context), node_(node)
 {
   for (const bNodeSocket *output : node->output_sockets()) {
-    const ResultType result_type = get_node_socket_result_type(output);
+    const DataType result_type = get_node_socket_result_type(output);
     populate_result(output->identifier, context.create_result(result_type));
   }
 

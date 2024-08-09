@@ -31,16 +31,16 @@ void morphological_distance(Context &context, Result &input, Result &output, int
   /* Pass the absolute value of the distance. We have specialized shaders for each sign. */
   GPU_shader_uniform_1i(shader, "radius", math::abs(distance));
 
-  input.bind_as_texture(shader, "input_tx");
+  input.texture.bind_as_texture(shader, "input_tx");
 
   output.allocate_texture(input.domain());
-  output.bind_as_image(shader, "output_img");
+  output.texture.bind_as_image(shader, "output_img");
 
   compute_dispatch_threads_at_least(shader, input.domain().size);
 
   GPU_shader_unbind();
-  output.unbind_as_image();
-  input.unbind_as_texture();
+  output.texture.unbind_as_image();
+  input.texture.unbind_as_texture();
 }
 
 }  // namespace blender::realtime_compositor

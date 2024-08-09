@@ -137,7 +137,7 @@ class BlurOperation : public NodeOperation {
     GPU_shader_uniform_1b(shader, "gamma_correct", node_storage(bnode()).gamma);
 
     const Result &input_image = get_input("Image");
-    input_image.bind_as_texture(shader, "input_tx");
+    input_image.texture.bind_as_texture(shader, "input_tx");
 
     const float2 blur_radius = compute_blur_radius();
 
@@ -153,13 +153,13 @@ class BlurOperation : public NodeOperation {
 
     Result &output_image = get_result("Image");
     output_image.allocate_texture(domain);
-    output_image.bind_as_image(shader, "output_img");
+    output_image.texture.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
     GPU_shader_unbind();
-    output_image.unbind_as_image();
-    input_image.unbind_as_texture();
+    output_image.texture.unbind_as_image();
+    input_image.texture.unbind_as_texture();
     weights.unbind_as_texture();
   }
 
@@ -172,7 +172,7 @@ class BlurOperation : public NodeOperation {
     GPU_shader_uniform_1b(shader, "gamma_correct", node_storage(bnode()).gamma);
 
     const Result &input_image = get_input("Image");
-    input_image.bind_as_texture(shader, "input_tx");
+    input_image.texture.bind_as_texture(shader, "input_tx");
 
     const float2 blur_radius = compute_blur_radius();
 
@@ -181,7 +181,7 @@ class BlurOperation : public NodeOperation {
     weights.bind_as_texture(shader, "weights_tx");
 
     const Result &input_size = get_input("Size");
-    input_size.bind_as_texture(shader, "size_tx");
+    input_size.texture.bind_as_texture(shader, "size_tx");
 
     Domain domain = compute_domain();
     if (get_extend_bounds()) {
@@ -191,15 +191,15 @@ class BlurOperation : public NodeOperation {
 
     Result &output_image = get_result("Image");
     output_image.allocate_texture(domain);
-    output_image.bind_as_image(shader, "output_img");
+    output_image.texture.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
     GPU_shader_unbind();
-    output_image.unbind_as_image();
-    input_image.unbind_as_texture();
+    output_image.texture.unbind_as_image();
+    input_image.texture.unbind_as_texture();
     weights.unbind_as_texture();
-    input_size.unbind_as_texture();
+    input_size.texture.unbind_as_texture();
   }
 
   float2 compute_blur_radius()

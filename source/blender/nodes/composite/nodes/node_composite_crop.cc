@@ -105,18 +105,18 @@ class CropOperation : public NodeOperation {
     GPU_shader_uniform_2iv(shader, "upper_bound", upper_bound);
 
     const Result &input_image = get_input("Image");
-    input_image.bind_as_texture(shader, "input_tx");
+    input_image.texture.bind_as_texture(shader, "input_tx");
 
     const Domain domain = compute_domain();
 
     Result &output_image = get_result("Image");
     output_image.allocate_texture(domain);
-    output_image.bind_as_image(shader, "output_img");
+    output_image.texture.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
-    input_image.unbind_as_texture();
-    output_image.unbind_as_image();
+    input_image.texture.unbind_as_texture();
+    output_image.texture.unbind_as_image();
     GPU_shader_unbind();
   }
 
@@ -139,18 +139,18 @@ class CropOperation : public NodeOperation {
     GPU_shader_uniform_2iv(shader, "lower_bound", lower_bound);
 
     const Result &input_image = get_input("Image");
-    input_image.bind_as_texture(shader, "input_tx");
+    input_image.texture.bind_as_texture(shader, "input_tx");
 
     const int2 size = upper_bound - lower_bound;
 
     Result &output_image = get_result("Image");
     output_image.allocate_texture(Domain(size, compute_domain().transformation));
-    output_image.bind_as_image(shader, "output_img");
+    output_image.texture.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, size);
 
-    input_image.unbind_as_texture();
-    output_image.unbind_as_image();
+    input_image.texture.unbind_as_texture();
+    output_image.texture.unbind_as_image();
     GPU_shader_unbind();
   }
 

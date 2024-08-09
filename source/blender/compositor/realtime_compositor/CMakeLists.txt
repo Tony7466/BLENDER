@@ -41,6 +41,7 @@ set(SRC
   intern/shader_operation.cc
   intern/simple_operation.cc
   intern/static_cache_manager.cc
+  intern/texture.cc
   intern/texture_pool.cc
   intern/utilities.cc
 
@@ -64,6 +65,7 @@ set(SRC
   COM_shader_operation.hh
   COM_simple_operation.hh
   COM_static_cache_manager.hh
+  COM_texture.hh
   COM_texture_pool.hh
   COM_utilities.hh
 

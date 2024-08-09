@@ -20,20 +20,20 @@
 
 namespace blender::realtime_compositor {
 
-static const char *get_blur_shader(ResultType type)
+static const char *get_blur_shader(DataType type)
 {
   switch (type) {
-    case ResultType::Float:
+    case DataType::Float:
       return "compositor_symmetric_separable_blur_variable_size_float";
-    case ResultType::Float2:
+    case DataType::Float2:
       return "compositor_symmetric_separable_blur_variable_size_float2";
-    case ResultType::Vector:
-    case ResultType::Color:
+    case DataType::Vector:
+    case DataType::Color:
       return "compositor_symmetric_separable_blur_variable_size_float4";
-    case ResultType::Float3:
+    case DataType::Float3:
       /* GPU module does not support float3 outputs. */
       break;
-    case ResultType::Int2:
+    case DataType::Int2:
       /* Blur does not support integer types. */
       break;
   }
@@ -50,14 +50,14 @@ static Result horizontal_pass(
 
   GPU_shader_uniform_1b(shader, "is_vertical_pass", false);
 
-  input.bind_as_texture(shader, "input_tx");
+  input.texture.bind_as_texture(shader, "input_tx");
 
   const SymmetricSeparableBlurWeights &weights =
       context.cache_manager().symmetric_separable_blur_weights.get(
           context, filter_type, weights_resolution);
   weights.bind_as_texture(shader, "weights_tx");
 
-  radius.bind_as_texture(shader, "radius_tx");
+  radius.texture.bind_as_texture(shader, "radius_tx");
 
   /* We allocate an output image of a transposed size, that is, with a height equivalent to the
    * width of the input and vice versa. This is done as a performance optimization. The shader
@@ -72,15 +72,15 @@ static Result horizontal_pass(
 
   Result output = context.create_result(input.type());
   output.allocate_texture(transposed_domain);
-  output.bind_as_image(shader, "output_img");
+  output.texture.bind_as_image(shader, "output_img");
 
   compute_dispatch_threads_at_least(shader, domain.size);
 
   GPU_shader_unbind();
-  input.unbind_as_texture();
+  input.texture.unbind_as_texture();
   weights.unbind_as_texture();
-  radius.unbind_as_texture();
-  output.unbind_as_image();
+  radius.texture.unbind_as_texture();
+  output.texture.unbind_as_image();
 
   return output;
 }
@@ -98,28 +98,28 @@ static void vertical_pass(Context &context,
 
   GPU_shader_uniform_1b(shader, "is_vertical_pass", true);
 
-  horizontal_pass_result.bind_as_texture(shader, "input_tx");
+  horizontal_pass_result.texture.bind_as_texture(shader, "input_tx");
 
   const SymmetricSeparableBlurWeights &weights =
       context.cache_manager().symmetric_separable_blur_weights.get(
           context, filter_type, weights_resolution);
   weights.bind_as_texture(shader, "weights_tx");
 
-  radius.bind_as_texture(shader, "radius_tx");
+  radius.texture.bind_as_texture(shader, "radius_tx");
 
   Domain domain = original_input.domain();
   output.allocate_texture(domain);
-  output.bind_as_image(shader, "output_img");
+  output.texture.bind_as_image(shader, "output_img");
 
   /* Notice that the domain is transposed, see the note on the horizontal pass method for more
    * information on the reasoning behind this. */
   compute_dispatch_threads_at_least(shader, int2(domain.size.y, domain.size.x));
 
   GPU_shader_unbind();
-  horizontal_pass_result.unbind_as_texture();
-  output.unbind_as_image();
+  horizontal_pass_result.texture.unbind_as_texture();
+  output.texture.unbind_as_image();
   weights.unbind_as_texture();
-  radius.unbind_as_texture();
+  radius.texture.unbind_as_texture();
 }
 
 void symmetric_separable_blur_variable_size(Context &context,

@@ -116,27 +116,27 @@ class ScaleOperation : public NodeOperation {
     GPU_shader_bind(shader);
 
     Result &input = get_input("Image");
-    GPU_texture_filter_mode(input.texture(), true);
-    GPU_texture_extend_mode(input.texture(), GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER);
-    input.bind_as_texture(shader, "input_tx");
+    GPU_texture_filter_mode(input.texture, true);
+    GPU_texture_extend_mode(input.texture, GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER);
+    input.texture.bind_as_texture(shader, "input_tx");
 
     Result &x_scale = get_input("X");
-    x_scale.bind_as_texture(shader, "x_scale_tx");
+    x_scale.texture.bind_as_texture(shader, "x_scale_tx");
 
     Result &y_scale = get_input("Y");
-    y_scale.bind_as_texture(shader, "y_scale_tx");
+    y_scale.texture.bind_as_texture(shader, "y_scale_tx");
 
     Result &output = get_result("Image");
     const Domain domain = compute_domain();
     output.allocate_texture(domain);
-    output.bind_as_image(shader, "output_img");
+    output.texture.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
-    input.unbind_as_texture();
-    x_scale.unbind_as_texture();
-    y_scale.unbind_as_texture();
-    output.unbind_as_image();
+    input.texture.unbind_as_texture();
+    x_scale.texture.unbind_as_texture();
+    y_scale.texture.unbind_as_texture();
+    output.texture.unbind_as_image();
     GPU_shader_unbind();
   }
 

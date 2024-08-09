@@ -465,7 +465,7 @@ class ImageOperation : public NodeOperation {
       return;
     }
 
-    const ResultPrecision precision = Result::precision(GPU_texture_format(image_texture));
+    const DataPrecision precision = Texture::precision(GPU_texture_format(image_texture));
 
     /* Alpha is mot an actual pass, but one that is extracted from the combined pass. So we need to
      * extract it using a shader. */
@@ -484,13 +484,13 @@ class ImageOperation : public NodeOperation {
     const int2 size = int2(GPU_texture_width(image_texture), GPU_texture_height(image_texture));
     result.allocate_texture(Domain(size));
 
-    result.bind_as_image(shader, "output_img");
+    result.texture.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, size);
 
     GPU_shader_unbind();
     GPU_texture_unbind(image_texture);
-    result.unbind_as_image();
+    result.texture.unbind_as_image();
   }
 
   /* Get the name of the pass corresponding to the output with the given identifier. */
@@ -753,7 +753,7 @@ class RenderLayerOperation : public NodeOperation {
       return;
     }
 
-    const ResultPrecision precision = Result::precision(GPU_texture_format(pass_texture));
+    const DataPrecision precision = Texture::precision(GPU_texture_format(pass_texture));
     GPUShader *shader = context().get_shader(shader_name, precision);
     GPU_shader_bind(shader);
 
@@ -770,13 +770,13 @@ class RenderLayerOperation : public NodeOperation {
 
     const int2 compositing_region_size = context().get_compositing_region_size();
     result.allocate_texture(Domain(compositing_region_size));
-    result.bind_as_image(shader, "output_img");
+    result.texture.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, compositing_region_size);
 
     GPU_shader_unbind();
     GPU_texture_unbind(pass_texture);
-    result.unbind_as_image();
+    result.texture.unbind_as_image();
   }
 };
 

@@ -77,7 +77,7 @@ class CornerPinOperation : public NodeOperation {
     }
 
     Result plane_mask = compute_plane_mask(homography_matrix);
-    Result anti_aliased_plane_mask = context().create_result(ResultType::Float);
+    Result anti_aliased_plane_mask = context().create_result(DataType::Float);
     smaa(context(), plane_mask, anti_aliased_plane_mask);
     plane_mask.release();
 
@@ -101,23 +101,23 @@ class CornerPinOperation : public NodeOperation {
     GPU_shader_uniform_mat3_as_mat4(shader, "homography_matrix", homography_matrix.ptr());
 
     Result &input_image = get_input("Image");
-    GPU_texture_mipmap_mode(input_image.texture(), true, true);
-    GPU_texture_anisotropic_filter(input_image.texture(), true);
-    GPU_texture_extend_mode(input_image.texture(), GPU_SAMPLER_EXTEND_MODE_EXTEND);
-    input_image.bind_as_texture(shader, "input_tx");
+    GPU_texture_mipmap_mode(input_image.texture, true, true);
+    GPU_texture_anisotropic_filter(input_image.texture, true);
+    GPU_texture_extend_mode(input_image.texture, GPU_SAMPLER_EXTEND_MODE_EXTEND);
+    input_image.texture.bind_as_texture(shader, "input_tx");
 
-    plane_mask.bind_as_texture(shader, "mask_tx");
+    plane_mask.texture.bind_as_texture(shader, "mask_tx");
 
     const Domain domain = compute_domain();
     Result &output_image = get_result("Image");
     output_image.allocate_texture(domain);
-    output_image.bind_as_image(shader, "output_img");
+    output_image.texture.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
-    input_image.unbind_as_texture();
-    plane_mask.unbind_as_texture();
-    output_image.unbind_as_image();
+    input_image.texture.unbind_as_texture();
+    plane_mask.texture.unbind_as_texture();
+    output_image.texture.unbind_as_image();
     GPU_shader_unbind();
   }
 
@@ -129,13 +129,13 @@ class CornerPinOperation : public NodeOperation {
     GPU_shader_uniform_mat3_as_mat4(shader, "homography_matrix", homography_matrix.ptr());
 
     const Domain domain = compute_domain();
-    Result plane_mask = context().create_result(ResultType::Float);
+    Result plane_mask = context().create_result(DataType::Float);
     plane_mask.allocate_texture(domain);
-    plane_mask.bind_as_image(shader, "mask_img");
+    plane_mask.texture.bind_as_image(shader, "mask_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
-    plane_mask.unbind_as_image();
+    plane_mask.texture.unbind_as_image();
     GPU_shader_unbind();
 
     return plane_mask;

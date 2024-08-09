@@ -19,34 +19,34 @@
 
 namespace blender::realtime_compositor {
 
-static void set_shader_luminance_coefficients(GPUShader *shader, ResultType type)
+static void set_shader_luminance_coefficients(GPUShader *shader, DataType type)
 {
   switch (type) {
-    case ResultType::Color: {
+    case DataType::Color: {
       float luminance_coefficients[3];
       IMB_colormanagement_get_luminance_coefficients(luminance_coefficients);
       GPU_shader_uniform_3fv(shader, "luminance_coefficients", luminance_coefficients);
       return;
     }
-    case ResultType::Vector: {
+    case DataType::Vector: {
       float luminance_coefficients[3] = {1.0f, 1.0f, 1.0f};
       GPU_shader_uniform_3fv(shader, "luminance_coefficients", luminance_coefficients);
       return;
     }
-    case ResultType::Float: {
+    case DataType::Float: {
       float luminance_coefficients[3] = {1.0f, 0.0f, 0.0f};
       GPU_shader_uniform_3fv(shader, "luminance_coefficients", luminance_coefficients);
       return;
     }
-    case ResultType::Float2: {
+    case DataType::Float2: {
       float luminance_coefficients[3] = {1.0f, 1.0f, 0.0f};
       GPU_shader_uniform_3fv(shader, "luminance_coefficients", luminance_coefficients);
       return;
     }
-    case ResultType::Float3:
+    case DataType::Float3:
       /* GPU module does not support float3 outputs. */
       break;
-    case ResultType::Int2:
+    case DataType::Int2:
       /* SMAA does not support integer types. */
       break;
   }
@@ -67,18 +67,18 @@ static Result detect_edges(Context &context,
   GPU_shader_uniform_1f(
       shader, "smaa_local_contrast_adaptation_factor", local_contrast_adaptation_factor);
 
-  GPU_texture_filter_mode(input.texture(), true);
-  input.bind_as_texture(shader, "input_tx");
+  GPU_texture_filter_mode(input.texture, true);
+  input.texture.bind_as_texture(shader, "input_tx");
 
-  Result edges = context.create_result(ResultType::Color);
+  Result edges = context.create_result(DataType::Color);
   edges.allocate_texture(input.domain());
-  edges.bind_as_image(shader, "edges_img");
+  edges.texture.bind_as_image(shader, "edges_img");
 
   compute_dispatch_threads_at_least(shader, input.domain().size);
 
   GPU_shader_unbind();
-  input.unbind_as_texture();
-  edges.unbind_as_image();
+  input.texture.unbind_as_texture();
+  edges.texture.unbind_as_image();
 
   return edges;
 }
@@ -90,43 +90,43 @@ static Result calculate_blending_weights(Context &context, Result &edges, int co
 
   GPU_shader_uniform_1i(shader, "smaa_corner_rounding", corner_rounding);
 
-  GPU_texture_filter_mode(edges.texture(), true);
-  edges.bind_as_texture(shader, "edges_tx");
+  GPU_texture_filter_mode(edges.texture, true);
+  edges.texture.bind_as_texture(shader, "edges_tx");
 
   const SMAAPrecomputedTextures &smaa_precomputed_textures =
       context.cache_manager().smaa_precomputed_textures.get();
   smaa_precomputed_textures.bind_area_texture(shader, "area_tx");
   smaa_precomputed_textures.bind_search_texture(shader, "search_tx");
 
-  Result weights = context.create_result(ResultType::Color);
+  Result weights = context.create_result(DataType::Color);
   weights.allocate_texture(edges.domain());
-  weights.bind_as_image(shader, "weights_img");
+  weights.texture.bind_as_image(shader, "weights_img");
 
   compute_dispatch_threads_at_least(shader, edges.domain().size);
 
   GPU_shader_unbind();
-  edges.unbind_as_texture();
+  edges.texture.unbind_as_texture();
   smaa_precomputed_textures.unbind_area_texture();
   smaa_precomputed_textures.unbind_search_texture();
-  weights.unbind_as_image();
+  weights.texture.unbind_as_image();
 
   return weights;
 }
 
-static const char *get_blend_shader_name(ResultType type)
+static const char *get_blend_shader_name(DataType type)
 {
   switch (type) {
-    case ResultType::Color:
-    case ResultType::Vector:
+    case DataType::Color:
+    case DataType::Vector:
       return "compositor_smaa_neighborhood_blending_float4";
-    case ResultType::Float2:
+    case DataType::Float2:
       return "compositor_smaa_neighborhood_blending_float2";
-    case ResultType::Float:
+    case DataType::Float:
       return "compositor_smaa_neighborhood_blending_float";
-    case ResultType::Float3:
+    case DataType::Float3:
       /* GPU module does not support float3 outputs. */
       break;
-    case ResultType::Int2:
+    case DataType::Int2:
       /* SMAA does not support integer types. */
       break;
   }
@@ -140,21 +140,21 @@ static void blend_neighborhood(Context &context, Result &input, Result &weights,
   GPUShader *shader = context.get_shader(get_blend_shader_name(input.type()));
   GPU_shader_bind(shader);
 
-  GPU_texture_filter_mode(input.texture(), true);
-  input.bind_as_texture(shader, "input_tx");
+  GPU_texture_filter_mode(input.texture, true);
+  input.texture.bind_as_texture(shader, "input_tx");
 
-  GPU_texture_filter_mode(weights.texture(), true);
-  weights.bind_as_texture(shader, "weights_tx");
+  GPU_texture_filter_mode(weights.texture, true);
+  weights.texture.bind_as_texture(shader, "weights_tx");
 
   output.allocate_texture(input.domain());
-  output.bind_as_image(shader, "output_img");
+  output.texture.bind_as_image(shader, "output_img");
 
   compute_dispatch_threads_at_least(shader, input.domain().size);
 
   GPU_shader_unbind();
-  input.unbind_as_texture();
-  weights.unbind_as_texture();
-  output.unbind_as_image();
+  input.texture.unbind_as_texture();
+  weights.texture.unbind_as_texture();
+  output.texture.unbind_as_image();
 }
 
 void smaa(Context &context,

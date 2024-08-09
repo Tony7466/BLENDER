@@ -53,19 +53,18 @@ class InpaintOperation : public NodeOperation {
     Result inpainting_boundary = compute_inpainting_boundary();
 
     /* Compute a jump flooding table to get the closest boundary pixel to each pixel. */
-    Result flooded_boundary = context().create_result(ResultType::Int2, ResultPrecision::Half);
+    Result flooded_boundary = context().create_result(DataType::Int2, DataPrecision::Half);
     jump_flooding(context(), inpainting_boundary, flooded_boundary);
     inpainting_boundary.release();
 
-    Result filled_region = context().create_result(ResultType::Color);
-    Result distance_to_boundary = context().create_result(ResultType::Float,
-                                                          ResultPrecision::Half);
-    Result smoothing_radius = context().create_result(ResultType::Float, ResultPrecision::Half);
+    Result filled_region = context().create_result(DataType::Color);
+    Result distance_to_boundary = context().create_result(DataType::Float, DataPrecision::Half);
+    Result smoothing_radius = context().create_result(DataType::Float, DataPrecision::Half);
     fill_inpainting_region(
         flooded_boundary, filled_region, distance_to_boundary, smoothing_radius);
     flooded_boundary.release();
 
-    Result smoothed_region = context().create_result(ResultType::Color);
+    Result smoothed_region = context().create_result(DataType::Color);
     symmetric_separable_blur_variable_size(context(),
                                            filled_region,
                                            smoothed_region,
@@ -86,21 +85,21 @@ class InpaintOperation : public NodeOperation {
   Result compute_inpainting_boundary()
   {
     GPUShader *shader = context().get_shader("compositor_inpaint_compute_boundary",
-                                             ResultPrecision::Half);
+                                             DataPrecision::Half);
     GPU_shader_bind(shader);
 
     const Result &input = get_input("Image");
-    input.bind_as_texture(shader, "input_tx");
+    input.texture.bind_as_texture(shader, "input_tx");
 
-    Result inpainting_boundary = context().create_result(ResultType::Int2, ResultPrecision::Half);
+    Result inpainting_boundary = context().create_result(DataType::Int2, DataPrecision::Half);
     const Domain domain = compute_domain();
     inpainting_boundary.allocate_texture(domain);
-    inpainting_boundary.bind_as_image(shader, "boundary_img");
+    inpainting_boundary.texture.bind_as_image(shader, "boundary_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
-    input.unbind_as_texture();
-    inpainting_boundary.unbind_as_image();
+    input.texture.unbind_as_texture();
+    inpainting_boundary.texture.unbind_as_image();
     GPU_shader_unbind();
 
     return inpainting_boundary;
@@ -119,27 +118,27 @@ class InpaintOperation : public NodeOperation {
     GPU_shader_uniform_1i(shader, "max_distance", get_max_distance());
 
     const Result &input = get_input("Image");
-    input.bind_as_texture(shader, "input_tx");
+    input.texture.bind_as_texture(shader, "input_tx");
 
-    flooded_boundary.bind_as_texture(shader, "flooded_boundary_tx");
+    flooded_boundary.texture.bind_as_texture(shader, "flooded_boundary_tx");
 
     const Domain domain = compute_domain();
     filled_region.allocate_texture(domain);
-    filled_region.bind_as_image(shader, "filled_region_img");
+    filled_region.texture.bind_as_image(shader, "filled_region_img");
 
     distance_to_boundary.allocate_texture(domain);
-    distance_to_boundary.bind_as_image(shader, "distance_to_boundary_img");
+    distance_to_boundary.texture.bind_as_image(shader, "distance_to_boundary_img");
 
     smoothing_radius.allocate_texture(domain);
-    smoothing_radius.bind_as_image(shader, "smoothing_radius_img");
+    smoothing_radius.texture.bind_as_image(shader, "smoothing_radius_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
-    input.unbind_as_texture();
-    flooded_boundary.unbind_as_texture();
-    filled_region.unbind_as_image();
-    distance_to_boundary.unbind_as_image();
-    smoothing_radius.unbind_as_image();
+    input.texture.unbind_as_texture();
+    flooded_boundary.texture.unbind_as_texture();
+    filled_region.texture.unbind_as_image();
+    distance_to_boundary.texture.unbind_as_image();
+    smoothing_radius.texture.unbind_as_image();
     GPU_shader_unbind();
   }
 
@@ -153,22 +152,22 @@ class InpaintOperation : public NodeOperation {
     GPU_shader_uniform_1i(shader, "max_distance", get_max_distance());
 
     const Result &input = get_input("Image");
-    input.bind_as_texture(shader, "input_tx");
+    input.texture.bind_as_texture(shader, "input_tx");
 
-    inpainted_region.bind_as_texture(shader, "inpainted_region_tx");
-    distance_to_boundary.bind_as_texture(shader, "distance_to_boundary_tx");
+    inpainted_region.texture.bind_as_texture(shader, "inpainted_region_tx");
+    distance_to_boundary.texture.bind_as_texture(shader, "distance_to_boundary_tx");
 
     const Domain domain = compute_domain();
     Result &output = get_result("Image");
     output.allocate_texture(domain);
-    output.bind_as_image(shader, "output_img");
+    output.texture.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
-    input.unbind_as_texture();
-    inpainted_region.unbind_as_texture();
-    distance_to_boundary.unbind_as_texture();
-    output.unbind_as_image();
+    input.texture.unbind_as_texture();
+    inpainted_region.texture.unbind_as_texture();
+    distance_to_boundary.texture.unbind_as_texture();
+    output.texture.unbind_as_image();
     GPU_shader_unbind();
   }
 

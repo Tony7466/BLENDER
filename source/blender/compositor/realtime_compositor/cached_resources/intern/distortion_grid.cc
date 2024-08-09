@@ -88,14 +88,13 @@ DistortionGrid::DistortionGrid(
 
   BKE_tracking_distortion_free(distortion);
 
-  texture_ = GPU_texture_create_2d(
-      "Distortion Grid",
-      size.x,
-      size.y,
-      1,
-      Result::texture_format(ResultType::Float2, context.get_precision()),
-      GPU_TEXTURE_USAGE_SHADER_READ,
-      *distortion_grid.data());
+  texture_ = GPU_texture_create_2d("Distortion Grid",
+                                   size.x,
+                                   size.y,
+                                   1,
+                                   Texture::gpu_format(DataType::Float2, context.get_precision()),
+                                   GPU_TEXTURE_USAGE_SHADER_READ,
+                                   *distortion_grid.data());
 }
 
 DistortionGrid::~DistortionGrid()

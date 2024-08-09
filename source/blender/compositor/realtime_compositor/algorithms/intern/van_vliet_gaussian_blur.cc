@@ -39,24 +39,24 @@ static void sum_causal_and_non_causal_results(Context &context,
   GPUShader *shader = context.get_shader("compositor_van_vliet_gaussian_blur_sum");
   GPU_shader_bind(shader);
 
-  first_causal_input.bind_as_texture(shader, "first_causal_input_tx");
-  first_non_causal_input.bind_as_texture(shader, "first_non_causal_input_tx");
-  second_causal_input.bind_as_texture(shader, "second_causal_input_tx");
-  second_non_causal_input.bind_as_texture(shader, "second_non_causal_input_tx");
+  first_causal_input.texture.bind_as_texture(shader, "first_causal_input_tx");
+  first_non_causal_input.texture.bind_as_texture(shader, "first_non_causal_input_tx");
+  second_causal_input.texture.bind_as_texture(shader, "second_causal_input_tx");
+  second_non_causal_input.texture.bind_as_texture(shader, "second_non_causal_input_tx");
 
   const Domain domain = first_causal_input.domain();
   const int2 transposed_domain = int2(domain.size.y, domain.size.x);
   output.allocate_texture(transposed_domain);
-  output.bind_as_image(shader, "output_img");
+  output.texture.bind_as_image(shader, "output_img");
 
   compute_dispatch_threads_at_least(shader, domain.size);
 
   GPU_shader_unbind();
-  first_causal_input.unbind_as_texture();
-  first_non_causal_input.unbind_as_texture();
-  second_causal_input.unbind_as_texture();
-  second_non_causal_input.unbind_as_texture();
-  output.unbind_as_image();
+  first_causal_input.texture.unbind_as_texture();
+  first_non_causal_input.texture.unbind_as_texture();
+  second_causal_input.texture.unbind_as_texture();
+  second_non_causal_input.texture.unbind_as_texture();
+  output.texture.unbind_as_image();
 }
 
 static void blur_pass(Context &context, Result &input, Result &output, float sigma)
@@ -96,25 +96,25 @@ static void blur_pass(Context &context, Result &input, Result &output, float sig
                         "second_non_causal_boundary_coefficient",
                         float(coefficients.second_non_causal_boundary_coefficient()));
 
-  input.bind_as_texture(shader, "input_tx");
+  input.texture.bind_as_texture(shader, "input_tx");
 
   const Domain domain = input.domain();
 
-  Result first_causal_result = context.create_result(ResultType::Color);
+  Result first_causal_result = context.create_result(DataType::Color);
   first_causal_result.allocate_texture(domain);
-  first_causal_result.bind_as_image(shader, "first_causal_output_img");
+  first_causal_result.texture.bind_as_image(shader, "first_causal_output_img");
 
-  Result first_non_causal_result = context.create_result(ResultType::Color);
+  Result first_non_causal_result = context.create_result(DataType::Color);
   first_non_causal_result.allocate_texture(domain);
-  first_non_causal_result.bind_as_image(shader, "first_non_causal_output_img");
+  first_non_causal_result.texture.bind_as_image(shader, "first_non_causal_output_img");
 
-  Result second_causal_result = context.create_result(ResultType::Color);
+  Result second_causal_result = context.create_result(DataType::Color);
   second_causal_result.allocate_texture(domain);
-  second_causal_result.bind_as_image(shader, "second_causal_output_img");
+  second_causal_result.texture.bind_as_image(shader, "second_causal_output_img");
 
-  Result second_non_causal_result = context.create_result(ResultType::Color);
+  Result second_non_causal_result = context.create_result(DataType::Color);
   second_non_causal_result.allocate_texture(domain);
-  second_non_causal_result.bind_as_image(shader, "second_non_causal_output_img");
+  second_non_causal_result.texture.bind_as_image(shader, "second_non_causal_output_img");
 
   /* The second dispatch dimension is 4 dispatches, one for the first causal filter, one for the
    * first non causal filter, one for the second causal filter, and one for the second non causal
@@ -122,11 +122,11 @@ static void blur_pass(Context &context, Result &input, Result &output, float sig
   compute_dispatch_threads_at_least(shader, int2(domain.size.y, 4), int2(64, 4));
 
   GPU_shader_unbind();
-  input.unbind_as_texture();
-  first_causal_result.unbind_as_image();
-  first_non_causal_result.unbind_as_image();
-  second_causal_result.unbind_as_image();
-  second_non_causal_result.unbind_as_image();
+  input.texture.unbind_as_texture();
+  first_causal_result.texture.unbind_as_image();
+  first_non_causal_result.texture.unbind_as_image();
+  second_causal_result.texture.unbind_as_image();
+  second_non_causal_result.texture.unbind_as_image();
 
   sum_causal_and_non_causal_results(context,
                                     first_causal_result,
@@ -146,7 +146,7 @@ void van_vliet_gaussian_blur(Context &context, Result &input, Result &output, fl
                  "Van Vliet filter is less accurate for sigma values less than 32. Use Deriche "
                  "filter instead or direct convolution instead.");
 
-  Result horizontal_pass_result = context.create_result(ResultType::Color);
+  Result horizontal_pass_result = context.create_result(DataType::Color);
   blur_pass(context, input, horizontal_pass_result, sigma.x);
   blur_pass(context, horizontal_pass_result, output, sigma.y);
   horizontal_pass_result.release();

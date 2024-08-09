@@ -121,20 +121,20 @@ class MovieDistortionOperation : public NodeOperation {
     GPUShader *shader = context().get_shader("compositor_movie_distortion");
     GPU_shader_bind(shader);
 
-    GPU_texture_extend_mode(input_image.texture(), GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER);
-    GPU_texture_filter_mode(input_image.texture(), true);
-    input_image.bind_as_texture(shader, "input_tx");
+    GPU_texture_extend_mode(input_image.texture, GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER);
+    GPU_texture_filter_mode(input_image.texture, true);
+    input_image.texture.bind_as_texture(shader, "input_tx");
 
     distortion_grid.bind_as_texture(shader, "distortion_grid_tx");
 
     output_image.allocate_texture(domain);
-    output_image.bind_as_image(shader, "output_img");
+    output_image.texture.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
-    input_image.unbind_as_texture();
+    input_image.texture.unbind_as_texture();
     distortion_grid.unbind_as_texture();
-    output_image.unbind_as_image();
+    output_image.texture.unbind_as_image();
     GPU_shader_unbind();
   }
 

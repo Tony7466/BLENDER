@@ -57,17 +57,17 @@ class PixelateOperation : public NodeOperation {
 
     GPU_shader_uniform_1i(shader, "pixel_size", pixel_size);
 
-    input_image.bind_as_texture(shader, "input_tx");
+    input_image.texture.bind_as_texture(shader, "input_tx");
 
     const Domain domain = compute_domain();
     output_image.allocate_texture(domain);
-    output_image.bind_as_image(shader, "output_img");
+    output_image.texture.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
     GPU_shader_unbind();
-    output_image.unbind_as_image();
-    input_image.unbind_as_texture();
+    output_image.texture.unbind_as_image();
+    input_image.texture.unbind_as_texture();
   }
 
   float get_pixel_size()

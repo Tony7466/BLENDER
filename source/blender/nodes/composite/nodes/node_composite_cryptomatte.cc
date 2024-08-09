@@ -294,7 +294,7 @@ class BaseCryptoMatteOperation : public NodeOperation {
   void compute_pick(Vector<GPUTexture *> &layers)
   {
     /* See the comment below for why full precision is necessary. */
-    GPUShader *shader = context().get_shader("compositor_cryptomatte_pick", ResultPrecision::Full);
+    GPUShader *shader = context().get_shader("compositor_cryptomatte_pick", DataPrecision::Full);
     GPU_shader_bind(shader);
 
     GPUTexture *first_layer = layers[0];
@@ -305,19 +305,19 @@ class BaseCryptoMatteOperation : public NodeOperation {
 
     /* Promote to full precision since it stores the identifiers of the first Cryptomatte rank,
      * which is a 32-bit float. See the shader for more information. */
-    output_pick.set_precision(ResultPrecision::Full);
+    output_pick.set_precision(DataPrecision::Full);
 
     output_pick.meta_data.is_non_color_data = true;
 
     const Domain domain = compute_domain();
     output_pick.allocate_texture(domain);
-    output_pick.bind_as_image(shader, "output_img");
+    output_pick.texture.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
     GPU_shader_unbind();
     GPU_texture_unbind(first_layer);
-    output_pick.unbind_as_image();
+    output_pick.texture.unbind_as_image();
   }
 
   /* Computes and returns the matte by accumulating the coverage of all entities whose identifiers
@@ -325,12 +325,12 @@ class BaseCryptoMatteOperation : public NodeOperation {
   Result compute_matte(Vector<GPUTexture *> &layers)
   {
     const Domain domain = compute_domain();
-    Result output_matte = context().create_result(ResultType::Float);
+    Result output_matte = context().create_result(DataType::Float);
     output_matte.allocate_texture(domain);
 
     /* Clear the matte to zero to ready it to accumulate the coverage. */
     const float4 zero_color = float4(0.0f);
-    GPU_texture_clear(output_matte.texture(), GPU_DATA_FLOAT, zero_color);
+    GPU_texture_clear(output_matte.texture, GPU_DATA_FLOAT, zero_color);
 
     Vector<float> identifiers = get_identifiers();
     /* The user haven't selected any entities, return the currently zero matte. */
@@ -349,12 +349,12 @@ class BaseCryptoMatteOperation : public NodeOperation {
       GPU_texture_bind(layer, input_unit);
 
       /* Bind the matte with read access, since we will be accumulating in it. */
-      output_matte.bind_as_image(shader, "matte_img", true);
+      output_matte.texture.bind_as_image(shader, "matte_img", true);
 
       compute_dispatch_threads_at_least(shader, domain.size);
 
       GPU_texture_unbind(layer);
-      output_matte.unbind_as_image();
+      output_matte.texture.unbind_as_image();
     }
 
     GPU_shader_unbind();
@@ -369,21 +369,21 @@ class BaseCryptoMatteOperation : public NodeOperation {
     GPU_shader_bind(shader);
 
     Result &input_image = get_input_image();
-    input_image.bind_as_texture(shader, "input_tx");
+    input_image.texture.bind_as_texture(shader, "input_tx");
 
-    matte.bind_as_texture(shader, "matte_tx");
+    matte.texture.bind_as_texture(shader, "matte_tx");
 
     const Domain domain = compute_domain();
     Result &image_output = get_result("Image");
     image_output.allocate_texture(domain);
-    image_output.bind_as_image(shader, "output_img");
+    image_output.texture.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
     GPU_shader_unbind();
-    input_image.unbind_as_texture();
-    matte.unbind_as_texture();
-    image_output.unbind_as_image();
+    input_image.texture.unbind_as_texture();
+    matte.texture.unbind_as_texture();
+    image_output.texture.unbind_as_image();
   }
 
   /* Get the identifiers of the entities selected by the user to generate a matte from. The
@@ -832,7 +832,7 @@ class LegacyCryptoMatteOperation : public BaseCryptoMatteOperation {
     Vector<GPUTexture *> layers;
     /* Add all textures of all inputs except the first input, which is the input image. */
     for (const bNodeSocket *socket : bnode().input_sockets().drop_front(1)) {
-      layers.append(get_input(socket->identifier).texture());
+      layers.append(get_input(socket->identifier).texture);
     }
     return layers;
   }

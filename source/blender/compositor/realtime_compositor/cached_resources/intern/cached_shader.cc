@@ -22,7 +22,7 @@ namespace blender::realtime_compositor {
  * Cached Shader Key.
  */
 
-CachedShaderKey::CachedShaderKey(const char *info_name, ResultPrecision precision)
+CachedShaderKey::CachedShaderKey(const char *info_name, DataPrecision precision)
     : info_name(info_name), precision(precision)
 {
 }
@@ -41,7 +41,7 @@ bool operator==(const CachedShaderKey &a, const CachedShaderKey &b)
  * Cached Shader.
  */
 
-CachedShader::CachedShader(const char *info_name, ResultPrecision precision)
+CachedShader::CachedShader(const char *info_name, DataPrecision precision)
 {
   using namespace gpu::shader;
   ShaderCreateInfo info = *reinterpret_cast<const ShaderCreateInfo *>(
@@ -55,7 +55,7 @@ CachedShader::CachedShader(const char *info_name, ResultPrecision precision)
     if (resource.bind_type != ShaderCreateInfo::Resource::BindType::IMAGE) {
       continue;
     }
-    resource.image.format = Result::texture_format(resource.image.format, precision);
+    resource.image.format = Texture::gpu_format(resource.image.format, precision);
   }
 
   shader_ = GPU_shader_create_from_info(reinterpret_cast<const GPUShaderCreateInfo *>(&info));
@@ -87,7 +87,7 @@ void CachedShaderContainer::reset()
   }
 }
 
-GPUShader *CachedShaderContainer::get(const char *info_name, ResultPrecision precision)
+GPUShader *CachedShaderContainer::get(const char *info_name, DataPrecision precision)
 {
   const CachedShaderKey key(info_name, precision);
 

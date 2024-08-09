@@ -84,7 +84,7 @@ class CompositeOperation : public NodeOperation {
   void execute_ignore_alpha()
   {
     GPUShader *shader = context().get_shader("compositor_write_output_opaque",
-                                             ResultPrecision::Half);
+                                             DataPrecision::Half);
     GPU_shader_bind(shader);
 
     /* The compositing space might be limited to a subset of the output texture, so only write into
@@ -96,7 +96,7 @@ class CompositeOperation : public NodeOperation {
     GPU_shader_uniform_2iv(shader, "upper_bound", upper_bound);
 
     const Result &image = get_input("Image");
-    image.bind_as_texture(shader, "input_tx");
+    image.texture.bind_as_texture(shader, "input_tx");
 
     GPUTexture *output_texture = context().get_output_texture();
     const int image_unit = GPU_shader_get_sampler_binding(shader, "output_img");
@@ -105,7 +105,7 @@ class CompositeOperation : public NodeOperation {
     const int2 compositing_region_size = context().get_compositing_region_size();
     compute_dispatch_threads_at_least(shader, compositing_region_size);
 
-    image.unbind_as_texture();
+    image.texture.unbind_as_texture();
     GPU_texture_image_unbind(output_texture);
     GPU_shader_unbind();
   }
@@ -114,7 +114,7 @@ class CompositeOperation : public NodeOperation {
    * to the output texture. */
   void execute_copy()
   {
-    GPUShader *shader = context().get_shader("compositor_write_output", ResultPrecision::Half);
+    GPUShader *shader = context().get_shader("compositor_write_output", DataPrecision::Half);
     GPU_shader_bind(shader);
 
     /* The compositing space might be limited to a subset of the output texture, so only write into
@@ -126,7 +126,7 @@ class CompositeOperation : public NodeOperation {
     GPU_shader_uniform_2iv(shader, "upper_bound", upper_bound);
 
     const Result &image = get_input("Image");
-    image.bind_as_texture(shader, "input_tx");
+    image.texture.bind_as_texture(shader, "input_tx");
 
     GPUTexture *output_texture = context().get_output_texture();
     const int image_unit = GPU_shader_get_sampler_binding(shader, "output_img");
@@ -135,7 +135,7 @@ class CompositeOperation : public NodeOperation {
     const int2 compositing_region_size = context().get_compositing_region_size();
     compute_dispatch_threads_at_least(shader, compositing_region_size);
 
-    image.unbind_as_texture();
+    image.texture.unbind_as_texture();
     GPU_texture_image_unbind(output_texture);
     GPU_shader_unbind();
   }
@@ -143,8 +143,7 @@ class CompositeOperation : public NodeOperation {
   /* Executes when the alpha channel of the image is set as the value of the input alpha. */
   void execute_set_alpha()
   {
-    GPUShader *shader = context().get_shader("compositor_write_output_alpha",
-                                             ResultPrecision::Half);
+    GPUShader *shader = context().get_shader("compositor_write_output_alpha", DataPrecision::Half);
     GPU_shader_bind(shader);
 
     /* The compositing space might be limited to a subset of the output texture, so only write into
@@ -156,10 +155,10 @@ class CompositeOperation : public NodeOperation {
     GPU_shader_uniform_2iv(shader, "upper_bound", upper_bound);
 
     const Result &image = get_input("Image");
-    image.bind_as_texture(shader, "input_tx");
+    image.texture.bind_as_texture(shader, "input_tx");
 
     const Result &alpha = get_input("Alpha");
-    alpha.bind_as_texture(shader, "alpha_tx");
+    alpha.texture.bind_as_texture(shader, "alpha_tx");
 
     GPUTexture *output_texture = context().get_output_texture();
     const int image_unit = GPU_shader_get_sampler_binding(shader, "output_img");
@@ -168,8 +167,8 @@ class CompositeOperation : public NodeOperation {
     const int2 compositing_region_size = context().get_compositing_region_size();
     compute_dispatch_threads_at_least(shader, compositing_region_size);
 
-    image.unbind_as_texture();
-    alpha.unbind_as_texture();
+    image.texture.unbind_as_texture();
+    alpha.texture.unbind_as_texture();
     GPU_texture_image_unbind(output_texture);
     GPU_shader_unbind();
   }

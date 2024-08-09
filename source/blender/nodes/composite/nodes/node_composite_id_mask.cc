@@ -58,21 +58,21 @@ class IDMaskOperation : public NodeOperation {
 
     GPU_shader_uniform_1i(shader, "index", get_index());
 
-    input_mask.bind_as_texture(shader, "input_mask_tx");
+    input_mask.texture.bind_as_texture(shader, "input_mask_tx");
 
     /* If anti-aliasing is disabled, write to the output directly, otherwise, write to a temporary
      * result to later perform anti-aliasing. */
-    Result non_anti_aliased_mask = context().create_result(ResultType::Float);
+    Result non_anti_aliased_mask = context().create_result(DataType::Float);
     Result &output_mask = use_anti_aliasing() ? non_anti_aliased_mask : get_result("Alpha");
 
     const Domain domain = compute_domain();
     output_mask.allocate_texture(domain);
-    output_mask.bind_as_image(shader, "output_mask_img");
+    output_mask.texture.bind_as_image(shader, "output_mask_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
-    input_mask.unbind_as_texture();
-    output_mask.unbind_as_image();
+    input_mask.texture.unbind_as_texture();
+    output_mask.texture.unbind_as_image();
     GPU_shader_unbind();
 
     if (use_anti_aliasing()) {

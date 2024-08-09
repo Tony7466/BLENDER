@@ -89,13 +89,13 @@ class BokehBlurOperation : public NodeOperation {
     GPU_shader_uniform_1b(shader, "extend_bounds", get_extend_bounds());
 
     const Result &input_image = get_input("Image");
-    input_image.bind_as_texture(shader, "input_tx");
+    input_image.texture.bind_as_texture(shader, "input_tx");
 
     const Result &input_weights = get_input("Bokeh");
-    input_weights.bind_as_texture(shader, "weights_tx");
+    input_weights.texture.bind_as_texture(shader, "weights_tx");
 
     const Result &input_mask = get_input("Bounding box");
-    input_mask.bind_as_texture(shader, "mask_tx");
+    input_mask.texture.bind_as_texture(shader, "mask_tx");
 
     Domain domain = compute_domain();
     if (get_extend_bounds()) {
@@ -105,15 +105,15 @@ class BokehBlurOperation : public NodeOperation {
 
     Result &output_image = get_result("Image");
     output_image.allocate_texture(domain);
-    output_image.bind_as_image(shader, "output_img");
+    output_image.texture.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
     GPU_shader_unbind();
-    output_image.unbind_as_image();
-    input_image.unbind_as_texture();
-    input_weights.unbind_as_texture();
-    input_mask.unbind_as_texture();
+    output_image.texture.unbind_as_image();
+    input_image.texture.unbind_as_texture();
+    input_weights.texture.unbind_as_texture();
+    input_mask.texture.unbind_as_texture();
   }
 
   void execute_variable_size()
@@ -127,36 +127,36 @@ class BokehBlurOperation : public NodeOperation {
     GPU_shader_uniform_1i(shader, "search_radius", search_radius);
 
     const Result &input_image = get_input("Image");
-    input_image.bind_as_texture(shader, "input_tx");
+    input_image.texture.bind_as_texture(shader, "input_tx");
 
     const Result &input_weights = get_input("Bokeh");
-    input_weights.bind_as_texture(shader, "weights_tx");
+    input_weights.texture.bind_as_texture(shader, "weights_tx");
 
     const Result &input_size = get_input("Size");
-    input_size.bind_as_texture(shader, "size_tx");
+    input_size.texture.bind_as_texture(shader, "size_tx");
 
     const Result &input_mask = get_input("Bounding box");
-    input_mask.bind_as_texture(shader, "mask_tx");
+    input_mask.texture.bind_as_texture(shader, "mask_tx");
 
     const Domain domain = compute_domain();
     Result &output_image = get_result("Image");
     output_image.allocate_texture(domain);
-    output_image.bind_as_image(shader, "output_img");
+    output_image.texture.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
     GPU_shader_unbind();
-    output_image.unbind_as_image();
-    input_image.unbind_as_texture();
-    input_weights.unbind_as_texture();
-    input_size.unbind_as_texture();
-    input_mask.unbind_as_texture();
+    output_image.texture.unbind_as_image();
+    input_image.texture.unbind_as_texture();
+    input_weights.texture.unbind_as_texture();
+    input_size.texture.unbind_as_texture();
+    input_mask.texture.unbind_as_texture();
   }
 
   int compute_variable_size_search_radius()
   {
     const Result &input_size = get_input("Size");
-    const float maximum_size = maximum_float(context(), input_size.texture());
+    const float maximum_size = maximum_float(context(), input_size.texture);
 
     const float base_size = compute_blur_radius();
     return math::clamp(int(maximum_size * base_size), 0, get_max_size());

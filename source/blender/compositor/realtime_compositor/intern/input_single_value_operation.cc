@@ -17,7 +17,7 @@ const StringRef InputSingleValueOperation::output_identifier_ = StringRef("Outpu
 InputSingleValueOperation::InputSingleValueOperation(Context &context, DInputSocket input_socket)
     : Operation(context), input_socket_(input_socket)
 {
-  const ResultType result_type = get_node_socket_result_type(input_socket_.bsocket());
+  const DataType result_type = get_node_socket_result_type(input_socket_.bsocket());
   Result result = context.create_result(result_type);
 
   /* The result of an input single value operation is guaranteed to have a single user. */
@@ -36,14 +36,14 @@ void InputSingleValueOperation::execute()
 
   /* Set the value of the result to the default value of the input socket. */
   switch (result.type()) {
-    case ResultType::Float:
+    case DataType::Float:
       result.set_float_value(bsocket->default_value_typed<bNodeSocketValueFloat>()->value);
       break;
-    case ResultType::Vector:
+    case DataType::Vector:
       result.set_vector_value(
           float4(float3(bsocket->default_value_typed<bNodeSocketValueVector>()->value), 0.0f));
       break;
-    case ResultType::Color:
+    case DataType::Color:
       result.set_color_value(float4(bsocket->default_value_typed<bNodeSocketValueRGBA>()->value));
       break;
     default:

@@ -137,14 +137,13 @@ CachedMask::CachedMask(Context &context,
     BKE_maskrasterize_handle_free(handle);
   }
 
-  texture_ = GPU_texture_create_2d(
-      "Cached Mask",
-      size.x,
-      size.y,
-      1,
-      Result::texture_format(ResultType::Float, context.get_precision()),
-      GPU_TEXTURE_USAGE_SHADER_READ,
-      evaluated_mask.data());
+  texture_ = GPU_texture_create_2d("Cached Mask",
+                                   size.x,
+                                   size.y,
+                                   1,
+                                   Texture::gpu_format(DataType::Float, context.get_precision()),
+                                   GPU_TEXTURE_USAGE_SHADER_READ,
+                                   evaluated_mask.data());
 }
 
 CachedMask::~CachedMask()

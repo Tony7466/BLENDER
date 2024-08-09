@@ -135,13 +135,13 @@ class MovieClipOperation : public NodeOperation {
     const int input_unit = GPU_shader_get_sampler_binding(shader, "input_tx");
     GPU_texture_bind(movie_clip_texture, input_unit);
 
-    result.bind_as_image(shader, "output_img");
+    result.texture.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, size);
 
     GPU_shader_unbind();
     GPU_texture_unbind(movie_clip_texture);
-    result.unbind_as_image();
+    result.texture.unbind_as_image();
   }
 
   void compute_alpha(GPUTexture *movie_clip_texture)
@@ -172,13 +172,13 @@ class MovieClipOperation : public NodeOperation {
     const int input_unit = GPU_shader_get_sampler_binding(shader, "input_tx");
     GPU_texture_bind(movie_clip_texture, input_unit);
 
-    result.bind_as_image(shader, "output_img");
+    result.texture.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, size);
 
     GPU_shader_unbind();
     GPU_texture_unbind(movie_clip_texture);
-    result.unbind_as_image();
+    result.texture.unbind_as_image();
   }
 
   void compute_stabilization_data(GPUTexture *movie_clip_texture)

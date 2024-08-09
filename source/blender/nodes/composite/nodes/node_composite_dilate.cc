@@ -112,7 +112,7 @@ class DilateErodeOperation : public NodeOperation {
     GPU_shader_uniform_1i(shader, "radius", math::abs(get_distance()));
 
     const Result &input_mask = get_input("Mask");
-    input_mask.bind_as_texture(shader, "input_tx");
+    input_mask.texture.bind_as_texture(shader, "input_tx");
 
     /* We allocate an output image of a transposed size, that is, with a height equivalent to the
      * width of the input and vice versa. This is done as a performance optimization. The shader
@@ -125,15 +125,15 @@ class DilateErodeOperation : public NodeOperation {
     const Domain domain = compute_domain();
     const int2 transposed_domain = int2(domain.size.y, domain.size.x);
 
-    Result horizontal_pass_result = context().create_result(ResultType::Color);
+    Result horizontal_pass_result = context().create_result(DataType::Color);
     horizontal_pass_result.allocate_texture(transposed_domain);
-    horizontal_pass_result.bind_as_image(shader, "output_img");
+    horizontal_pass_result.texture.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
     GPU_shader_unbind();
-    input_mask.unbind_as_texture();
-    horizontal_pass_result.unbind_as_image();
+    input_mask.texture.unbind_as_texture();
+    horizontal_pass_result.texture.unbind_as_image();
 
     return horizontal_pass_result;
   }
@@ -146,20 +146,20 @@ class DilateErodeOperation : public NodeOperation {
     /* Pass the absolute value of the distance. We have specialized shaders for each sign. */
     GPU_shader_uniform_1i(shader, "radius", math::abs(get_distance()));
 
-    horizontal_pass_result.bind_as_texture(shader, "input_tx");
+    horizontal_pass_result.texture.bind_as_texture(shader, "input_tx");
 
     const Domain domain = compute_domain();
     Result &output_mask = get_result("Mask");
     output_mask.allocate_texture(domain);
-    output_mask.bind_as_image(shader, "output_img");
+    output_mask.texture.bind_as_image(shader, "output_img");
 
     /* Notice that the domain is transposed, see the note on the horizontal pass method for more
      * information on the reasoning behind this. */
     compute_dispatch_threads_at_least(shader, int2(domain.size.y, domain.size.x));
 
     GPU_shader_unbind();
-    horizontal_pass_result.unbind_as_texture();
-    output_mask.unbind_as_image();
+    horizontal_pass_result.texture.unbind_as_texture();
+    output_mask.texture.unbind_as_image();
   }
 
   const char *get_morphological_step_shader_name()
@@ -193,18 +193,18 @@ class DilateErodeOperation : public NodeOperation {
     GPU_shader_uniform_1i(shader, "distance", get_distance());
 
     const Result &input_mask = get_input("Mask");
-    input_mask.bind_as_texture(shader, "input_tx");
+    input_mask.texture.bind_as_texture(shader, "input_tx");
 
     const Domain domain = compute_domain();
-    Result output_mask = context().create_result(ResultType::Float);
+    Result output_mask = context().create_result(DataType::Float);
     output_mask.allocate_texture(domain);
-    output_mask.bind_as_image(shader, "output_img");
+    output_mask.texture.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
     GPU_shader_unbind();
-    output_mask.unbind_as_image();
-    input_mask.unbind_as_texture();
+    output_mask.texture.unbind_as_image();
+    input_mask.texture.unbind_as_texture();
 
     /* For configurations where there is little user-specified inset, anti-alias the result for
      * smoother edges. */

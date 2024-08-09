@@ -18,7 +18,7 @@ namespace blender::realtime_compositor {
  * value of which shall serve as the single value of the output result. */
 class ReduceToSingleValueOperation : public SimpleOperation {
  public:
-  ReduceToSingleValueOperation(Context &context, ResultType type);
+  ReduceToSingleValueOperation(Context &context, DataType type);
 
   /* Download the input pixel from the GPU texture and set its value to the value of the allocated
    * single value output result. */

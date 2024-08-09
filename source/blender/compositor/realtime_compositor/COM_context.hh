@@ -100,7 +100,7 @@ class Context {
   virtual StringRef get_view_name() const = 0;
 
   /* Get the precision of the intermediate results of the compositor. */
-  virtual ResultPrecision get_precision() const = 0;
+  virtual DataPrecision get_precision() const = 0;
 
   /* Set an info message. This is called by the compositor evaluator to inform or warn the user
    * about something, typically an error. The implementation should display the message in an
@@ -161,16 +161,16 @@ class Context {
   float get_time() const;
 
   /* Get a GPU shader with the given info name and precision. */
-  GPUShader *get_shader(const char *info_name, ResultPrecision precision);
+  GPUShader *get_shader(const char *info_name, DataPrecision precision);
 
   /* Get a GPU shader with the given info name and context's precision. */
   GPUShader *get_shader(const char *info_name);
 
   /* Create a result of the given type and precision. */
-  Result create_result(ResultType type, ResultPrecision precision);
+  Result create_result(DataType type, DataPrecision precision);
 
   /* Create a result of the given type using the context's precision. */
-  Result create_result(ResultType type);
+  Result create_result(DataType type);
 
   /* Get a reference to the texture pool of this context. */
   TexturePool &texture_pool();

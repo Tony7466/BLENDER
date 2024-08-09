@@ -34,13 +34,13 @@ void ConversionOperation::execute()
   GPUShader *shader = get_conversion_shader();
   GPU_shader_bind(shader);
 
-  input.bind_as_texture(shader, "input_tx");
-  result.bind_as_image(shader, "output_img");
+  input.texture.bind_as_texture(shader, "input_tx");
+  result.texture.bind_as_image(shader, "output_img");
 
   compute_dispatch_threads_at_least(shader, input.domain().size);
 
-  input.unbind_as_texture();
-  result.unbind_as_image();
+  input.texture.unbind_as_texture();
+  result.texture.unbind_as_image();
   GPU_shader_unbind();
 }
 
@@ -48,33 +48,33 @@ SimpleOperation *ConversionOperation::construct_if_needed(Context &context,
                                                           const Result &input_result,
                                                           const InputDescriptor &input_descriptor)
 {
-  ResultType result_type = input_result.type();
-  ResultType expected_type = input_descriptor.type;
+  DataType result_type = input_result.type();
+  DataType expected_type = input_descriptor.type;
 
   /* If the result type differs from the expected type, return an instance of an appropriate
    * conversion operation. Otherwise, return a null pointer. */
 
-  if (result_type == ResultType::Float && expected_type == ResultType::Vector) {
+  if (result_type == DataType::Float && expected_type == DataType::Vector) {
     return new ConvertFloatToVectorOperation(context);
   }
 
-  if (result_type == ResultType::Float && expected_type == ResultType::Color) {
+  if (result_type == DataType::Float && expected_type == DataType::Color) {
     return new ConvertFloatToColorOperation(context);
   }
 
-  if (result_type == ResultType::Color && expected_type == ResultType::Float) {
+  if (result_type == DataType::Color && expected_type == DataType::Float) {
     return new ConvertColorToFloatOperation(context);
   }
 
-  if (result_type == ResultType::Color && expected_type == ResultType::Vector) {
+  if (result_type == DataType::Color && expected_type == DataType::Vector) {
     return new ConvertColorToVectorOperation(context);
   }
 
-  if (result_type == ResultType::Vector && expected_type == ResultType::Float) {
+  if (result_type == DataType::Vector && expected_type == DataType::Float) {
     return new ConvertVectorToFloatOperation(context);
   }
 
-  if (result_type == ResultType::Vector && expected_type == ResultType::Color) {
+  if (result_type == DataType::Vector && expected_type == DataType::Color) {
     return new ConvertVectorToColorOperation(context);
   }
 
@@ -91,9 +91,9 @@ ConvertFloatToVectorOperation::ConvertFloatToVectorOperation(Context &context)
     : ConversionOperation(context)
 {
   InputDescriptor input_descriptor;
-  input_descriptor.type = ResultType::Float;
+  input_descriptor.type = DataType::Float;
   declare_input_descriptor(input_descriptor);
-  populate_result(context.create_result(ResultType::Vector));
+  populate_result(context.create_result(DataType::Vector));
 }
 
 void ConvertFloatToVectorOperation::execute_single(const Result &input, Result &output)
@@ -116,9 +116,9 @@ ConvertFloatToColorOperation::ConvertFloatToColorOperation(Context &context)
     : ConversionOperation(context)
 {
   InputDescriptor input_descriptor;
-  input_descriptor.type = ResultType::Float;
+  input_descriptor.type = DataType::Float;
   declare_input_descriptor(input_descriptor);
-  populate_result(context.create_result(ResultType::Color));
+  populate_result(context.create_result(DataType::Color));
 }
 
 void ConvertFloatToColorOperation::execute_single(const Result &input, Result &output)
@@ -143,9 +143,9 @@ ConvertColorToFloatOperation::ConvertColorToFloatOperation(Context &context)
     : ConversionOperation(context)
 {
   InputDescriptor input_descriptor;
-  input_descriptor.type = ResultType::Color;
+  input_descriptor.type = DataType::Color;
   declare_input_descriptor(input_descriptor);
-  populate_result(context.create_result(ResultType::Float));
+  populate_result(context.create_result(DataType::Float));
 }
 
 void ConvertColorToFloatOperation::execute_single(const Result &input, Result &output)
@@ -169,9 +169,9 @@ ConvertColorToVectorOperation::ConvertColorToVectorOperation(Context &context)
     : ConversionOperation(context)
 {
   InputDescriptor input_descriptor;
-  input_descriptor.type = ResultType::Color;
+  input_descriptor.type = DataType::Color;
   declare_input_descriptor(input_descriptor);
-  populate_result(context.create_result(ResultType::Vector));
+  populate_result(context.create_result(DataType::Vector));
 }
 
 void ConvertColorToVectorOperation::execute_single(const Result &input, Result &output)
@@ -195,9 +195,9 @@ ConvertVectorToFloatOperation::ConvertVectorToFloatOperation(Context &context)
     : ConversionOperation(context)
 {
   InputDescriptor input_descriptor;
-  input_descriptor.type = ResultType::Vector;
+  input_descriptor.type = DataType::Vector;
   declare_input_descriptor(input_descriptor);
-  populate_result(context.create_result(ResultType::Float));
+  populate_result(context.create_result(DataType::Float));
 }
 
 void ConvertVectorToFloatOperation::execute_single(const Result &input, Result &output)
@@ -221,9 +221,9 @@ ConvertVectorToColorOperation::ConvertVectorToColorOperation(Context &context)
     : ConversionOperation(context)
 {
   InputDescriptor input_descriptor;
-  input_descriptor.type = ResultType::Vector;
+  input_descriptor.type = DataType::Vector;
   declare_input_descriptor(input_descriptor);
-  populate_result(context.create_result(ResultType::Color));
+  populate_result(context.create_result(DataType::Color));
 }
 
 void ConvertVectorToColorOperation::execute_single(const Result &input, Result &output)

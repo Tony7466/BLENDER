@@ -16,7 +16,7 @@
 
 namespace blender::realtime_compositor {
 
-ReduceToSingleValueOperation::ReduceToSingleValueOperation(Context &context, ResultType type)
+ReduceToSingleValueOperation::ReduceToSingleValueOperation(Context &context, DataType type)
     : SimpleOperation(context)
 {
   InputDescriptor input_descriptor;
@@ -31,18 +31,18 @@ void ReduceToSingleValueOperation::execute()
   GPU_memory_barrier(GPU_BARRIER_TEXTURE_UPDATE);
 
   const Result &input = get_input();
-  float *pixel = static_cast<float *>(GPU_texture_read(input.texture(), GPU_DATA_FLOAT, 0));
+  float *pixel = static_cast<float *>(GPU_texture_read(input.texture, GPU_DATA_FLOAT, 0));
 
   Result &result = get_result();
   result.allocate_single_value();
   switch (result.type()) {
-    case ResultType::Color:
+    case DataType::Color:
       result.set_color_value(pixel);
       break;
-    case ResultType::Vector:
+    case DataType::Vector:
       result.set_vector_value(pixel);
       break;
-    case ResultType::Float:
+    case DataType::Float:
       result.set_float_value(*pixel);
       break;
     default:

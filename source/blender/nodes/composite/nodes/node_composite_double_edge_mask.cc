@@ -66,16 +66,14 @@ class DoubleEdgeMaskOperation : public NodeOperation {
 
     /* Compute an image that marks the boundary pixels of the masks as seed pixels in the format
      * expected by the jump flooding algorithm. */
-    Result inner_boundary = context().create_result(ResultType::Int2, ResultPrecision::Half);
-    Result outer_boundary = context().create_result(ResultType::Int2, ResultPrecision::Half);
+    Result inner_boundary = context().create_result(DataType::Int2, DataPrecision::Half);
+    Result outer_boundary = context().create_result(DataType::Int2, DataPrecision::Half);
     compute_boundary(inner_boundary, outer_boundary);
 
     /* Compute a jump flooding table for each mask boundary to get a distance transform to each of
      * the boundaries. */
-    Result flooded_inner_boundary = context().create_result(ResultType::Int2,
-                                                            ResultPrecision::Half);
-    Result flooded_outer_boundary = context().create_result(ResultType::Int2,
-                                                            ResultPrecision::Half);
+    Result flooded_inner_boundary = context().create_result(DataType::Int2, DataPrecision::Half);
+    Result flooded_outer_boundary = context().create_result(DataType::Int2, DataPrecision::Half);
     jump_flooding(context(), inner_boundary, flooded_inner_boundary);
     jump_flooding(context(), outer_boundary, flooded_outer_boundary);
     inner_boundary.release();
@@ -90,32 +88,32 @@ class DoubleEdgeMaskOperation : public NodeOperation {
   void compute_boundary(Result &inner_boundary, Result &outer_boundary)
   {
     GPUShader *shader = context().get_shader("compositor_double_edge_mask_compute_boundary",
-                                             ResultPrecision::Half);
+                                             DataPrecision::Half);
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_1b(shader, "include_all_inner_edges", include_all_inner_edges());
     GPU_shader_uniform_1b(shader, "include_edges_of_image", include_edges_of_image());
 
     const Result &inner_mask = get_input("Inner Mask");
-    inner_mask.bind_as_texture(shader, "inner_mask_tx");
+    inner_mask.texture.bind_as_texture(shader, "inner_mask_tx");
 
     const Result &outer_mask = get_input("Outer Mask");
-    outer_mask.bind_as_texture(shader, "outer_mask_tx");
+    outer_mask.texture.bind_as_texture(shader, "outer_mask_tx");
 
     const Domain domain = compute_domain();
 
     inner_boundary.allocate_texture(domain);
-    inner_boundary.bind_as_image(shader, "inner_boundary_img");
+    inner_boundary.texture.bind_as_image(shader, "inner_boundary_img");
 
     outer_boundary.allocate_texture(domain);
-    outer_boundary.bind_as_image(shader, "outer_boundary_img");
+    outer_boundary.texture.bind_as_image(shader, "outer_boundary_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
-    inner_mask.unbind_as_texture();
-    outer_mask.unbind_as_texture();
-    inner_boundary.unbind_as_image();
-    outer_boundary.unbind_as_image();
+    inner_mask.texture.unbind_as_texture();
+    outer_mask.texture.unbind_as_texture();
+    inner_boundary.texture.unbind_as_image();
+    outer_boundary.texture.unbind_as_image();
     GPU_shader_unbind();
   }
 
@@ -125,24 +123,24 @@ class DoubleEdgeMaskOperation : public NodeOperation {
     GPU_shader_bind(shader);
 
     const Result &inner_mask = get_input("Inner Mask");
-    inner_mask.bind_as_texture(shader, "inner_mask_tx");
+    inner_mask.texture.bind_as_texture(shader, "inner_mask_tx");
 
     const Result &outer_mask = get_input("Outer Mask");
-    outer_mask.bind_as_texture(shader, "outer_mask_tx");
+    outer_mask.texture.bind_as_texture(shader, "outer_mask_tx");
 
-    flooded_inner_boundary.bind_as_texture(shader, "flooded_inner_boundary_tx");
-    flooded_outer_boundary.bind_as_texture(shader, "flooded_outer_boundary_tx");
+    flooded_inner_boundary.texture.bind_as_texture(shader, "flooded_inner_boundary_tx");
+    flooded_outer_boundary.texture.bind_as_texture(shader, "flooded_outer_boundary_tx");
 
     const Domain domain = compute_domain();
     Result &output = get_result("Mask");
     output.allocate_texture(domain);
-    output.bind_as_image(shader, "output_img");
+    output.texture.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
-    inner_mask.unbind_as_texture();
-    outer_mask.unbind_as_texture();
-    output.unbind_as_image();
+    inner_mask.texture.unbind_as_texture();
+    outer_mask.texture.unbind_as_texture();
+    output.texture.unbind_as_image();
     GPU_shader_unbind();
   }
 

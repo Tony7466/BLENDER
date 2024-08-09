@@ -29,7 +29,7 @@ static Result horizontal_pass(Context &context, Result &input, int distance, int
   GPUShader *shader = context.get_shader(get_shader_name(distance));
   GPU_shader_bind(shader);
 
-  input.bind_as_texture(shader, "input_tx");
+  input.texture.bind_as_texture(shader, "input_tx");
 
   const MorphologicalDistanceFeatherWeights &weights =
       context.cache_manager().morphological_distance_feather_weights.get(
@@ -48,17 +48,17 @@ static Result horizontal_pass(Context &context, Result &input, int distance, int
   const Domain domain = input.domain();
   const int2 transposed_domain = int2(domain.size.y, domain.size.x);
 
-  Result output = context.create_result(ResultType::Float);
+  Result output = context.create_result(DataType::Float);
   output.allocate_texture(transposed_domain);
-  output.bind_as_image(shader, "output_img");
+  output.texture.bind_as_image(shader, "output_img");
 
   compute_dispatch_threads_at_least(shader, domain.size);
 
   GPU_shader_unbind();
-  input.unbind_as_texture();
+  input.texture.unbind_as_texture();
   weights.unbind_weights_as_texture();
   weights.unbind_distance_falloffs_as_texture();
-  output.unbind_as_image();
+  output.texture.unbind_as_image();
 
   return output;
 }
@@ -73,7 +73,7 @@ static void vertical_pass(Context &context,
   GPUShader *shader = context.get_shader(get_shader_name(distance));
   GPU_shader_bind(shader);
 
-  horizontal_pass_result.bind_as_texture(shader, "input_tx");
+  horizontal_pass_result.texture.bind_as_texture(shader, "input_tx");
 
   const MorphologicalDistanceFeatherWeights &weights =
       context.cache_manager().morphological_distance_feather_weights.get(
@@ -83,17 +83,17 @@ static void vertical_pass(Context &context,
 
   const Domain domain = original_input.domain();
   output.allocate_texture(domain);
-  output.bind_as_image(shader, "output_img");
+  output.texture.bind_as_image(shader, "output_img");
 
   /* Notice that the domain is transposed, see the note on the horizontal pass function for more
    * information on the reasoning behind this. */
   compute_dispatch_threads_at_least(shader, int2(domain.size.y, domain.size.x));
 
   GPU_shader_unbind();
-  horizontal_pass_result.unbind_as_texture();
+  horizontal_pass_result.texture.unbind_as_texture();
   weights.unbind_weights_as_texture();
   weights.unbind_distance_falloffs_as_texture();
-  output.unbind_as_image();
+  output.texture.unbind_as_image();
 }
 
 void morphological_distance_feather(

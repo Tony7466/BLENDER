@@ -117,31 +117,31 @@ class ZCombineOperation : public NodeOperation {
     GPU_shader_uniform_1b(shader, "use_alpha", use_alpha());
 
     const Result &first = get_input("Image");
-    first.bind_as_texture(shader, "first_tx");
+    first.texture.bind_as_texture(shader, "first_tx");
     const Result &first_z = get_input("Z");
-    first_z.bind_as_texture(shader, "first_z_tx");
+    first_z.texture.bind_as_texture(shader, "first_z_tx");
     const Result &second = get_input("Image_001");
-    second.bind_as_texture(shader, "second_tx");
+    second.texture.bind_as_texture(shader, "second_tx");
     const Result &second_z = get_input("Z_001");
-    second_z.bind_as_texture(shader, "second_z_tx");
+    second_z.texture.bind_as_texture(shader, "second_z_tx");
 
     Result &combined = get_result("Image");
     const Domain domain = compute_domain();
     combined.allocate_texture(domain);
-    combined.bind_as_image(shader, "combined_img");
+    combined.texture.bind_as_image(shader, "combined_img");
 
     Result &combined_z = get_result("Z");
     combined_z.allocate_texture(domain);
-    combined_z.bind_as_image(shader, "combined_z_img");
+    combined_z.texture.bind_as_image(shader, "combined_z_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
-    first.unbind_as_texture();
-    first_z.unbind_as_texture();
-    second.unbind_as_texture();
-    second_z.unbind_as_texture();
-    combined.unbind_as_image();
-    combined_z.unbind_as_image();
+    first.texture.unbind_as_texture();
+    first_z.texture.unbind_as_texture();
+    second.texture.unbind_as_texture();
+    second_z.texture.unbind_as_texture();
+    combined.texture.unbind_as_image();
+    combined_z.texture.unbind_as_image();
     GPU_shader_unbind();
   }
 
@@ -155,33 +155,33 @@ class ZCombineOperation : public NodeOperation {
     GPU_shader_uniform_1b(shader, "use_alpha", use_alpha());
 
     const Result &first = get_input("Image");
-    first.bind_as_texture(shader, "first_tx");
+    first.texture.bind_as_texture(shader, "first_tx");
     const Result &first_z = get_input("Z");
-    first_z.bind_as_texture(shader, "first_z_tx");
+    first_z.texture.bind_as_texture(shader, "first_z_tx");
     const Result &second = get_input("Image_001");
-    second.bind_as_texture(shader, "second_tx");
+    second.texture.bind_as_texture(shader, "second_tx");
     const Result &second_z = get_input("Z_001");
-    second_z.bind_as_texture(shader, "second_z_tx");
-    mask.bind_as_texture(shader, "mask_tx");
+    second_z.texture.bind_as_texture(shader, "second_z_tx");
+    mask.texture.bind_as_texture(shader, "mask_tx");
 
     Result &combined = get_result("Image");
     const Domain domain = compute_domain();
     combined.allocate_texture(domain);
-    combined.bind_as_image(shader, "combined_img");
+    combined.texture.bind_as_image(shader, "combined_img");
 
     Result &combined_z = get_result("Z");
     combined_z.allocate_texture(domain);
-    combined_z.bind_as_image(shader, "combined_z_img");
+    combined_z.texture.bind_as_image(shader, "combined_z_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
-    first.unbind_as_texture();
-    first_z.unbind_as_texture();
-    second.unbind_as_texture();
-    second_z.unbind_as_texture();
-    mask.unbind_as_texture();
-    combined.unbind_as_image();
-    combined_z.unbind_as_image();
+    first.texture.unbind_as_texture();
+    first_z.texture.unbind_as_texture();
+    second.texture.unbind_as_texture();
+    second_z.texture.unbind_as_texture();
+    mask.texture.unbind_as_texture();
+    combined.texture.unbind_as_image();
+    combined_z.texture.unbind_as_image();
     GPU_shader_unbind();
 
     mask.release();
@@ -193,23 +193,23 @@ class ZCombineOperation : public NodeOperation {
     GPU_shader_bind(shader);
 
     const Result &first_z = get_input("Z");
-    first_z.bind_as_texture(shader, "first_z_tx");
+    first_z.texture.bind_as_texture(shader, "first_z_tx");
     const Result &second_z = get_input("Z_001");
-    second_z.bind_as_texture(shader, "second_z_tx");
+    second_z.texture.bind_as_texture(shader, "second_z_tx");
 
     const Domain domain = compute_domain();
-    Result mask = context().create_result(ResultType::Float);
+    Result mask = context().create_result(DataType::Float);
     mask.allocate_texture(domain);
-    mask.bind_as_image(shader, "mask_img");
+    mask.texture.bind_as_image(shader, "mask_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
-    first_z.unbind_as_texture();
-    second_z.unbind_as_texture();
-    mask.unbind_as_image();
+    first_z.texture.unbind_as_texture();
+    second_z.texture.unbind_as_texture();
+    mask.texture.unbind_as_image();
     GPU_shader_unbind();
 
-    Result anti_aliased_mask = context().create_result(ResultType::Float);
+    Result anti_aliased_mask = context().create_result(DataType::Float);
     smaa(context(), mask, anti_aliased_mask);
     mask.release();
 

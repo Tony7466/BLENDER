@@ -122,18 +122,18 @@ class ToneMapOperation : public NodeOperation {
     GPU_shader_uniform_1f(shader, "inverse_gamma", inverse_gamma);
 
     const Result &input_image = get_input("Image");
-    input_image.bind_as_texture(shader, "input_tx");
+    input_image.texture.bind_as_texture(shader, "input_tx");
 
     const Domain domain = compute_domain();
     Result &output_image = get_result("Image");
     output_image.allocate_texture(domain);
-    output_image.bind_as_image(shader, "output_img");
+    output_image.texture.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
     GPU_shader_unbind();
-    output_image.unbind_as_image();
-    input_image.unbind_as_texture();
+    output_image.texture.unbind_as_image();
+    input_image.texture.unbind_as_texture();
   }
 
   /* Computes the scaling factor in equation (2) from Reinhard's 2002 paper. */
@@ -189,18 +189,18 @@ class ToneMapOperation : public NodeOperation {
     GPU_shader_uniform_3fv(shader, "luminance_coefficients", luminance_coefficients);
 
     const Result &input_image = get_input("Image");
-    input_image.bind_as_texture(shader, "input_tx");
+    input_image.texture.bind_as_texture(shader, "input_tx");
 
     const Domain domain = compute_domain();
     Result &output_image = get_result("Image");
     output_image.allocate_texture(domain);
-    output_image.bind_as_image(shader, "output_img");
+    output_image.texture.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
     GPU_shader_unbind();
-    output_image.unbind_as_image();
-    input_image.unbind_as_texture();
+    output_image.texture.unbind_as_image();
+    input_image.texture.unbind_as_texture();
   }
 
   /* Computes the global adaptation level from the trilinear interpolation equations constructed
@@ -223,7 +223,7 @@ class ToneMapOperation : public NodeOperation {
     }
 
     const Result &input = get_input("Image");
-    return sum_color(context(), input.texture()) / (input.domain().size.x * input.domain().size.y);
+    return sum_color(context(), input.texture) / (input.domain().size.x * input.domain().size.y);
   }
 
   float compute_average_luminance()
@@ -238,7 +238,7 @@ class ToneMapOperation : public NodeOperation {
     float luminance_coefficients[3];
     IMB_colormanagement_get_luminance_coefficients(luminance_coefficients);
     const Result &input = get_input("Image");
-    float sum = sum_luminance(context(), input.texture(), luminance_coefficients);
+    float sum = sum_luminance(context(), input.texture, luminance_coefficients);
     return sum / (input.domain().size.x * input.domain().size.y);
   }
 
@@ -278,7 +278,7 @@ class ToneMapOperation : public NodeOperation {
     float luminance_coefficients[3];
     IMB_colormanagement_get_luminance_coefficients(luminance_coefficients);
     const float sum_of_log_luminance = sum_log_luminance(
-        context(), input_image.texture(), luminance_coefficients);
+        context(), input_image.texture, luminance_coefficients);
 
     return sum_of_log_luminance / (input_image.domain().size.x * input_image.domain().size.y);
   }
@@ -288,7 +288,7 @@ class ToneMapOperation : public NodeOperation {
     float luminance_coefficients[3];
     IMB_colormanagement_get_luminance_coefficients(luminance_coefficients);
     const float maximum = maximum_luminance(
-        context(), get_input("Image").texture(), luminance_coefficients);
+        context(), get_input("Image").texture, luminance_coefficients);
     return std::log(math::max(maximum, 1e-5f));
   }
 
@@ -297,7 +297,7 @@ class ToneMapOperation : public NodeOperation {
     float luminance_coefficients[3];
     IMB_colormanagement_get_luminance_coefficients(luminance_coefficients);
     const float minimum = minimum_luminance(
-        context(), get_input("Image").texture(), luminance_coefficients);
+        context(), get_input("Image").texture, luminance_coefficients);
     return std::log(math::max(minimum, 1e-5f));
   }
 

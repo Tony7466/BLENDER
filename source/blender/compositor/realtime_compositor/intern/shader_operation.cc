@@ -140,14 +140,14 @@ void ShaderOperation::bind_inputs(GPUShader *shader)
    * the operation as well as the corresponding texture samples in the shader. */
   ListBase attributes = GPU_material_attributes(material_);
   LISTBASE_FOREACH (GPUMaterialAttribute *, attribute, &attributes) {
-    get_input(attribute->name).bind_as_texture(shader, attribute->name);
+    get_input(attribute->name).texture.bind_as_texture(shader, attribute->name);
   }
 }
 
 void ShaderOperation::bind_outputs(GPUShader *shader)
 {
   for (StringRefNull output_identifier : output_sockets_to_output_identifiers_map_.values()) {
-    get_result(output_identifier).bind_as_image(shader, output_identifier.c_str());
+    get_result(output_identifier).texture.bind_as_image(shader, output_identifier.c_str());
   }
 }
 
@@ -222,14 +222,14 @@ void ShaderOperation::link_node_input_external(DInputSocket input_socket,
   stack.link = output_to_material_attribute_map_.lookup(output_socket);
 }
 
-static const char *get_set_function_name(ResultType type)
+static const char *get_set_function_name(DataType type)
 {
   switch (type) {
-    case ResultType::Float:
+    case DataType::Float:
       return "set_value";
-    case ResultType::Vector:
+    case DataType::Vector:
       return "set_rgb";
-    case ResultType::Color:
+    case DataType::Color:
       return "set_rgba";
     default:
       /* Other types are internal and needn't be handled by operations. */
@@ -296,14 +296,14 @@ void ShaderOperation::populate_results_for_node(DNode node, GPUMaterial *materia
   }
 }
 
-static const char *get_store_function_name(ResultType type)
+static const char *get_store_function_name(DataType type)
 {
   switch (type) {
-    case ResultType::Float:
+    case DataType::Float:
       return "node_compositor_store_output_float";
-    case ResultType::Vector:
+    case DataType::Vector:
       return "node_compositor_store_output_vector";
-    case ResultType::Color:
+    case DataType::Color:
       return "node_compositor_store_output_color";
     default:
       /* Other types are internal and needn't be handled by operations. */
@@ -319,7 +319,7 @@ void ShaderOperation::populate_operation_result(DOutputSocket output_socket, GPU
   const uint output_id = output_sockets_to_output_identifiers_map_.size();
   std::string output_identifier = "output" + std::to_string(output_id);
 
-  const ResultType result_type = get_node_socket_result_type(output_socket.bsocket());
+  const DataType result_type = get_node_socket_result_type(output_socket.bsocket());
   const Result result = context().create_result(result_type);
   populate_result(output_identifier, result);
 
@@ -391,14 +391,14 @@ void ShaderOperation::generate_code(void *thunk,
 
 /* Texture storers in the shader always take a vec4 as an argument, so encode each type in a vec4
  * appropriately. */
-static const char *glsl_store_expression_from_result_type(ResultType type)
+static const char *glsl_store_expression_from_result_type(DataType type)
 {
   switch (type) {
-    case ResultType::Float:
+    case DataType::Float:
       return "vec4(value)";
-    case ResultType::Vector:
+    case DataType::Vector:
       return "vec4(vector, 0.0)";
-    case ResultType::Color:
+    case DataType::Color:
       return "color";
     default:
       /* Other types are internal and needn't be handled by operations. */
@@ -441,7 +441,7 @@ void ShaderOperation::generate_code_for_outputs(ShaderCreateInfo &shader_create_
 
     /* Add a write-only image for this output where its values will be written. */
     shader_create_info.image(0,
-                             result.get_texture_format(),
+                             result.texture.get_gpu_texture_format(),
                              Qualifier::WRITE,
                              ImageType::FLOAT_2D,
                              output_identifier,
@@ -457,13 +457,13 @@ void ShaderOperation::generate_code_for_outputs(ShaderCreateInfo &shader_create_
 
     /* Only add the case to the function with the matching type. */
     switch (result.type()) {
-      case ResultType::Float:
+      case DataType::Float:
         store_float_function << case_code.str();
         break;
-      case ResultType::Vector:
+      case DataType::Vector:
         store_vector_function << case_code.str();
         break;
-      case ResultType::Color:
+      case DataType::Color:
         store_color_function << case_code.str();
         break;
       default:
@@ -484,14 +484,14 @@ void ShaderOperation::generate_code_for_outputs(ShaderCreateInfo &shader_create_
                                                  store_color_function.str();
 }
 
-static const char *glsl_type_from_result_type(ResultType type)
+static const char *glsl_type_from_result_type(DataType type)
 {
   switch (type) {
-    case ResultType::Float:
+    case DataType::Float:
       return "float";
-    case ResultType::Vector:
+    case DataType::Vector:
       return "vec3";
-    case ResultType::Color:
+    case DataType::Color:
       return "vec4";
     default:
       /* Other types are internal and needn't be handled by operations. */
@@ -504,14 +504,14 @@ static const char *glsl_type_from_result_type(ResultType type)
 
 /* Texture loaders in the shader always return a vec4, so a swizzle is needed to retrieve the
  * actual value for each type. */
-static const char *glsl_swizzle_from_result_type(ResultType type)
+static const char *glsl_swizzle_from_result_type(DataType type)
 {
   switch (type) {
-    case ResultType::Float:
+    case DataType::Float:
       return "x";
-    case ResultType::Vector:
+    case DataType::Vector:
       return "xyz";
-    case ResultType::Color:
+    case DataType::Color:
       return "rgba";
     default:
       /* Other types are internal and needn't be handled by operations. */

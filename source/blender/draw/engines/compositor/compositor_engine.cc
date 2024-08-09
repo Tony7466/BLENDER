@@ -184,17 +184,17 @@ class Context : public realtime_compositor::Context {
     return view->name;
   }
 
-  realtime_compositor::ResultPrecision get_precision() const override
+  realtime_compositor::DataPrecision get_precision() const override
   {
     switch (get_scene().r.compositor_precision) {
       case SCE_COMPOSITOR_PRECISION_AUTO:
-        return realtime_compositor::ResultPrecision::Half;
+        return realtime_compositor::DataPrecision::Half;
       case SCE_COMPOSITOR_PRECISION_FULL:
-        return realtime_compositor::ResultPrecision::Full;
+        return realtime_compositor::DataPrecision::Full;
     }
 
     BLI_assert_unreachable();
-    return realtime_compositor::ResultPrecision::Half;
+    return realtime_compositor::DataPrecision::Half;
   }
 
   void set_info_message(StringRef message) const override

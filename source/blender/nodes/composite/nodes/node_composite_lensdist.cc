@@ -100,9 +100,9 @@ class LensDistortionOperation : public NodeOperation {
     GPU_shader_bind(shader);
 
     const Result &input_image = get_input("Image");
-    GPU_texture_filter_mode(input_image.texture(), true);
-    GPU_texture_extend_mode(input_image.texture(), GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER);
-    input_image.bind_as_texture(shader, "input_tx");
+    GPU_texture_filter_mode(input_image.texture, true);
+    GPU_texture_extend_mode(input_image.texture, GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER);
+    input_image.texture.bind_as_texture(shader, "input_tx");
 
     const Domain domain = compute_domain();
 
@@ -111,12 +111,12 @@ class LensDistortionOperation : public NodeOperation {
 
     Result &output_image = get_result("Image");
     output_image.allocate_texture(domain);
-    output_image.bind_as_image(shader, "output_img");
+    output_image.texture.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
-    input_image.unbind_as_texture();
-    output_image.unbind_as_image();
+    input_image.texture.unbind_as_texture();
+    output_image.texture.unbind_as_image();
     GPU_shader_unbind();
   }
 
@@ -126,9 +126,9 @@ class LensDistortionOperation : public NodeOperation {
     GPU_shader_bind(shader);
 
     const Result &input_image = get_input("Image");
-    GPU_texture_filter_mode(input_image.texture(), true);
-    GPU_texture_extend_mode(input_image.texture(), GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER);
-    input_image.bind_as_texture(shader, "input_tx");
+    GPU_texture_filter_mode(input_image.texture, true);
+    GPU_texture_extend_mode(input_image.texture, GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER);
+    input_image.texture.bind_as_texture(shader, "input_tx");
 
     const Domain domain = compute_domain();
 
@@ -139,12 +139,12 @@ class LensDistortionOperation : public NodeOperation {
 
     Result &output_image = get_result("Image");
     output_image.allocate_texture(domain);
-    output_image.bind_as_image(shader, "output_img");
+    output_image.texture.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
-    input_image.unbind_as_texture();
-    output_image.unbind_as_image();
+    input_image.texture.unbind_as_texture();
+    output_image.texture.unbind_as_image();
     GPU_shader_unbind();
   }
 

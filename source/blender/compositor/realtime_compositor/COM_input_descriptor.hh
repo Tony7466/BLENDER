@@ -27,7 +27,7 @@ class InputDescriptor {
   /* The type of input. This may be different that the type of result that the operation will
    * receive for the input, in which case, an implicit conversion operation will be added as an
    * input processor to convert it to the required type. */
-  ResultType type;
+  DataType type;
   /* The options that specify how the input should be realized. */
   InputRealizationOptions realization_options = {true};
   /* The priority of the input for determining the operation domain. The non-single value input

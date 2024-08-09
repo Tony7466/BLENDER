@@ -649,11 +649,11 @@ class FileOutputOperation : public NodeOperation {
     /* The image buffer in the file output will take ownership of this buffer and freeing it will
      * be its responsibility. */
     GPU_memory_barrier(GPU_BARRIER_TEXTURE_UPDATE);
-    float *buffer = static_cast<float *>(GPU_texture_read(result.texture(), GPU_DATA_FLOAT, 0));
+    float *buffer = static_cast<float *>(GPU_texture_read(result.texture, GPU_DATA_FLOAT, 0));
 
     const int2 size = result.domain().size;
     switch (result.type()) {
-      case ResultType::Color:
+      case DataType::Color:
         /* Use lowercase rgba for Cryptomatte layers because the EXR internal compression rules
          * specify that all uppercase RGBA channels will be compressed, and Cryptomatte should not
          * be compressed. */
@@ -664,7 +664,7 @@ class FileOutputOperation : public NodeOperation {
           file_output.add_pass(pass_name, view_name, "RGBA", buffer);
         }
         break;
-      case ResultType::Vector:
+      case DataType::Vector:
         if (result.meta_data.is_4d_vector) {
           file_output.add_pass(pass_name, view_name, "XYZW", buffer);
         }
@@ -672,7 +672,7 @@ class FileOutputOperation : public NodeOperation {
           file_output.add_pass(pass_name, view_name, "XYZ", float4_to_float3_image(size, buffer));
         }
         break;
-      case ResultType::Float:
+      case DataType::Float:
         file_output.add_pass(pass_name, view_name, "V", buffer);
         break;
       default:
@@ -689,17 +689,17 @@ class FileOutputOperation : public NodeOperation {
     /* The image buffer in the file output will take ownership of this buffer and freeing it will
      * be its responsibility. */
     GPU_memory_barrier(GPU_BARRIER_TEXTURE_UPDATE);
-    float *buffer = static_cast<float *>(GPU_texture_read(result.texture(), GPU_DATA_FLOAT, 0));
+    float *buffer = static_cast<float *>(GPU_texture_read(result.texture, GPU_DATA_FLOAT, 0));
 
     const int2 size = result.domain().size;
     switch (result.type()) {
-      case ResultType::Color:
+      case DataType::Color:
         file_output.add_view(view_name, 4, buffer);
         break;
-      case ResultType::Vector:
+      case DataType::Vector:
         file_output.add_view(view_name, 3, float4_to_float3_image(size, buffer));
         break;
-      case ResultType::Float:
+      case DataType::Float:
         file_output.add_view(view_name, 1, buffer);
         break;
       default:

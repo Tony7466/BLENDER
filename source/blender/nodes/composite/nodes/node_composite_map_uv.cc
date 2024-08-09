@@ -70,30 +70,30 @@ class MapUVOperation : public NodeOperation {
 
     const Result &input_image = get_input("Image");
     if (nearest_neighbour) {
-      GPU_texture_mipmap_mode(input_image.texture(), false, false);
-      GPU_texture_anisotropic_filter(input_image.texture(), false);
+      GPU_texture_mipmap_mode(input_image.texture, false, false);
+      GPU_texture_anisotropic_filter(input_image.texture, false);
     }
     else {
-      GPU_texture_mipmap_mode(input_image.texture(), true, true);
-      GPU_texture_anisotropic_filter(input_image.texture(), true);
+      GPU_texture_mipmap_mode(input_image.texture, true, true);
+      GPU_texture_anisotropic_filter(input_image.texture, true);
     }
 
-    GPU_texture_extend_mode(input_image.texture(), GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER);
-    input_image.bind_as_texture(shader, "input_tx");
+    GPU_texture_extend_mode(input_image.texture, GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER);
+    input_image.texture.bind_as_texture(shader, "input_tx");
 
     const Result &input_uv = get_input("UV");
-    input_uv.bind_as_texture(shader, "uv_tx");
+    input_uv.texture.bind_as_texture(shader, "uv_tx");
 
     const Domain domain = compute_domain();
     Result &output_image = get_result("Image");
     output_image.allocate_texture(domain);
-    output_image.bind_as_image(shader, "output_img");
+    output_image.texture.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
-    input_image.unbind_as_texture();
-    input_uv.unbind_as_texture();
-    output_image.unbind_as_image();
+    input_image.texture.unbind_as_texture();
+    input_uv.texture.unbind_as_texture();
+    output_image.texture.unbind_as_image();
     GPU_shader_unbind();
   }
 

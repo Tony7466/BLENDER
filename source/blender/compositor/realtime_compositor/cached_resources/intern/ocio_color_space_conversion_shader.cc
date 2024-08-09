@@ -75,7 +75,7 @@ using namespace blender::gpu::shader;
  * finally create the shader. */
 class GPUShaderCreator : public OCIO::GpuShaderCreator {
  public:
-  static std::shared_ptr<GPUShaderCreator> Create(ResultPrecision precision)
+  static std::shared_ptr<GPUShaderCreator> Create(DataPrecision precision)
   {
     std::shared_ptr<GPUShaderCreator> instance = std::make_shared<GPUShaderCreator>();
     instance->setLanguage(OCIO::GPU_LANGUAGE_GLSL_4_0);
@@ -231,9 +231,9 @@ class GPUShaderCreator : public OCIO::GpuShaderCreator {
     const std::string &resource_name = *resource_names_[resource_names_.size() - 1];
 
     GPUTexture *texture;
-    const ResultType result_type = (channel == TEXTURE_RGB_CHANNEL) ? ResultType::Float3 :
-                                                                      ResultType::Float;
-    const eGPUTextureFormat texture_format = Result::texture_format(result_type, precision_);
+    const DataType result_type = (channel == TEXTURE_RGB_CHANNEL) ? DataType::Float3 :
+                                                                    DataType::Float;
+    const eGPUTextureFormat texture_format = Texture::gpu_format(result_type, precision_);
     /* A height of 1 indicates a 1D texture according to the OCIO API. */
 #  if OCIO_VERSION_HEX >= 0x02030000
     if (dimensions == OCIO::GpuShaderDesc::TEXTURE_1D) {
@@ -270,15 +270,14 @@ class GPUShaderCreator : public OCIO::GpuShaderCreator {
     const std::string &resource_name = *resource_names_[resource_names_.size() - 1];
     shader_create_info_.sampler(textures_.size() + 1, ImageType::FLOAT_3D, resource_name);
 
-    GPUTexture *texture = GPU_texture_create_3d(
-        texture_name,
-        size,
-        size,
-        size,
-        1,
-        Result::texture_format(ResultType::Float3, precision_),
-        GPU_TEXTURE_USAGE_SHADER_READ,
-        values);
+    GPUTexture *texture = GPU_texture_create_3d(texture_name,
+                                                size,
+                                                size,
+                                                size,
+                                                1,
+                                                Texture::gpu_format(DataType::Float3, precision_),
+                                                GPU_TEXTURE_USAGE_SHADER_READ,
+                                                values);
     GPU_texture_filter_mode(texture, interpolation != OCIO::INTERP_NEAREST);
 
     textures_.add(sampler_name, texture);
@@ -309,7 +308,7 @@ class GPUShaderCreator : public OCIO::GpuShaderCreator {
     shader_create_info_.local_group_size(16, 16);
     shader_create_info_.sampler(0, ImageType::FLOAT_2D, input_sampler_name());
     shader_create_info_.image(0,
-                              Result::texture_format(ResultType::Color, precision_),
+                              Texture::gpu_format(DataType::Color, precision_),
                               Qualifier::WRITE,
                               ImageType::FLOAT_2D,
                               output_image_name());
@@ -442,7 +441,7 @@ class GPUShaderCreator : public OCIO::GpuShaderCreator {
 #  endif
 
   /* The precision of the OCIO resources as well as the output image. */
-  ResultPrecision precision_;
+  DataPrecision precision_;
 };
 
 #else
@@ -450,7 +449,7 @@ class GPUShaderCreator : public OCIO::GpuShaderCreator {
 /* A stub implementation in case OCIO is disabled at build time. */
 class GPUShaderCreator {
  public:
-  static std::shared_ptr<GPUShaderCreator> Create(ResultPrecision /* precision */)
+  static std::shared_ptr<GPUShaderCreator> Create(DataPrecision /* precision */)
   {
     return std::make_shared<GPUShaderCreator>();
   }

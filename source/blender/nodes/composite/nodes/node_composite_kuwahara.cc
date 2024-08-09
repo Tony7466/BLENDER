@@ -95,7 +95,7 @@ class ConvertKuwaharaOperation : public NodeOperation {
      * is enabled, since summed area tables are less precise. */
     Result &size_input = get_input("Size");
     if (!node_storage(bnode()).high_precision &&
-        (size_input.is_texture() || size_input.get_float_value() > 5.0f))
+        (!size_input.is_single_value() || size_input.get_float_value() > 5.0f))
     {
       execute_classic_summed_area_table();
       return;
@@ -105,33 +105,33 @@ class ConvertKuwaharaOperation : public NodeOperation {
     GPU_shader_bind(shader);
 
     const Result &input_image = get_input("Image");
-    input_image.bind_as_texture(shader, "input_tx");
+    input_image.texture.bind_as_texture(shader, "input_tx");
 
     if (size_input.is_single_value()) {
       GPU_shader_uniform_1i(shader, "size", int(size_input.get_float_value()));
     }
     else {
-      size_input.bind_as_texture(shader, "size_tx");
+      size_input.texture.bind_as_texture(shader, "size_tx");
     }
 
     const Domain domain = compute_domain();
     Result &output_image = get_result("Image");
     output_image.allocate_texture(domain);
-    output_image.bind_as_image(shader, "output_img");
+    output_image.texture.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
-    input_image.unbind_as_texture();
-    output_image.unbind_as_image();
+    input_image.texture.unbind_as_texture();
+    output_image.texture.unbind_as_image();
     GPU_shader_unbind();
   }
 
   void execute_classic_summed_area_table()
   {
-    Result table = context().create_result(ResultType::Color, ResultPrecision::Full);
+    Result table = context().create_result(DataType::Color, DataPrecision::Full);
     summed_area_table(context(), get_input("Image"), table);
 
-    Result squared_table = context().create_result(ResultType::Color, ResultPrecision::Full);
+    Result squared_table = context().create_result(DataType::Color, DataPrecision::Full);
     summed_area_table(
         context(), get_input("Image"), squared_table, SummedAreaTableOperation::Square);
 
@@ -143,22 +143,22 @@ class ConvertKuwaharaOperation : public NodeOperation {
       GPU_shader_uniform_1i(shader, "size", int(size_input.get_float_value()));
     }
     else {
-      size_input.bind_as_texture(shader, "size_tx");
+      size_input.texture.bind_as_texture(shader, "size_tx");
     }
 
-    table.bind_as_texture(shader, "table_tx");
-    squared_table.bind_as_texture(shader, "squared_table_tx");
+    table.texture.bind_as_texture(shader, "table_tx");
+    squared_table.texture.bind_as_texture(shader, "squared_table_tx");
 
     const Domain domain = compute_domain();
     Result &output_image = get_result("Image");
     output_image.allocate_texture(domain);
-    output_image.bind_as_image(shader, "output_img");
+    output_image.texture.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
-    table.unbind_as_texture();
-    squared_table.unbind_as_texture();
-    output_image.unbind_as_image();
+    table.texture.unbind_as_texture();
+    squared_table.texture.unbind_as_texture();
+    output_image.texture.unbind_as_image();
     GPU_shader_unbind();
 
     table.release();
@@ -173,7 +173,7 @@ class ConvertKuwaharaOperation : public NodeOperation {
   void execute_anisotropic()
   {
     Result structure_tensor = compute_structure_tensor();
-    Result smoothed_structure_tensor = context().create_result(ResultType::Color);
+    Result smoothed_structure_tensor = context().create_result(DataType::Color);
     symmetric_separable_blur(context(),
                              structure_tensor,
                              smoothed_structure_tensor,
@@ -187,28 +187,28 @@ class ConvertKuwaharaOperation : public NodeOperation {
     GPU_shader_uniform_1f(shader, "sharpness", get_sharpness());
 
     Result &input = get_input("Image");
-    input.bind_as_texture(shader, "input_tx");
+    input.texture.bind_as_texture(shader, "input_tx");
 
     Result &size_input = get_input("Size");
     if (size_input.is_single_value()) {
       GPU_shader_uniform_1f(shader, "size", size_input.get_float_value());
     }
     else {
-      size_input.bind_as_texture(shader, "size_tx");
+      size_input.texture.bind_as_texture(shader, "size_tx");
     }
 
-    smoothed_structure_tensor.bind_as_texture(shader, "structure_tensor_tx");
+    smoothed_structure_tensor.texture.bind_as_texture(shader, "structure_tensor_tx");
 
     const Domain domain = compute_domain();
     Result &output_image = get_result("Image");
     output_image.allocate_texture(domain);
-    output_image.bind_as_image(shader, "output_img");
+    output_image.texture.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
-    input.unbind_as_texture();
-    smoothed_structure_tensor.unbind_as_texture();
-    output_image.unbind_as_image();
+    input.texture.unbind_as_texture();
+    smoothed_structure_tensor.texture.unbind_as_texture();
+    output_image.texture.unbind_as_image();
     GPU_shader_unbind();
 
     smoothed_structure_tensor.release();
@@ -221,17 +221,17 @@ class ConvertKuwaharaOperation : public NodeOperation {
     GPU_shader_bind(shader);
 
     Result &input = get_input("Image");
-    input.bind_as_texture(shader, "input_tx");
+    input.texture.bind_as_texture(shader, "input_tx");
 
     const Domain domain = compute_domain();
-    Result structure_tensor = context().create_result(ResultType::Color);
+    Result structure_tensor = context().create_result(DataType::Color);
     structure_tensor.allocate_texture(domain);
-    structure_tensor.bind_as_image(shader, "structure_tensor_img");
+    structure_tensor.texture.bind_as_image(shader, "structure_tensor_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
-    input.unbind_as_texture();
-    structure_tensor.unbind_as_image();
+    input.texture.unbind_as_texture();
+    structure_tensor.texture.unbind_as_image();
     GPU_shader_unbind();
 
     return structure_tensor;

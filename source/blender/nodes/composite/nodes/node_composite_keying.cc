@@ -135,7 +135,7 @@ class KeyingOperation : public NodeOperation {
 
     Result chroma = extract_input_chroma();
 
-    Result blurred_chroma = context().create_result(ResultType::Color);
+    Result blurred_chroma = context().create_result(DataType::Color);
     symmetric_separable_blur(
         context(), chroma, blurred_chroma, float2(blur_size) / 2, R_FILTER_BOX);
     chroma.release();
@@ -152,17 +152,17 @@ class KeyingOperation : public NodeOperation {
     GPU_shader_bind(shader);
 
     Result &input = get_input("Image");
-    input.bind_as_texture(shader, "input_tx");
+    input.texture.bind_as_texture(shader, "input_tx");
 
-    Result output = context().create_result(ResultType::Color);
+    Result output = context().create_result(DataType::Color);
     output.allocate_texture(input.domain());
-    output.bind_as_image(shader, "output_img");
+    output.texture.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, input.domain().size);
 
     GPU_shader_unbind();
-    input.unbind_as_texture();
-    output.unbind_as_image();
+    input.texture.unbind_as_texture();
+    output.texture.unbind_as_image();
 
     return output;
   }
@@ -173,20 +173,20 @@ class KeyingOperation : public NodeOperation {
     GPU_shader_bind(shader);
 
     Result &input = get_input("Image");
-    input.bind_as_texture(shader, "input_tx");
+    input.texture.bind_as_texture(shader, "input_tx");
 
-    new_chroma.bind_as_texture(shader, "new_chroma_tx");
+    new_chroma.texture.bind_as_texture(shader, "new_chroma_tx");
 
-    Result output = context().create_result(ResultType::Color);
+    Result output = context().create_result(DataType::Color);
     output.allocate_texture(input.domain());
-    output.bind_as_image(shader, "output_img");
+    output.texture.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, input.domain().size);
 
     GPU_shader_unbind();
-    input.unbind_as_texture();
-    new_chroma.unbind_as_texture();
-    output.unbind_as_image();
+    input.texture.unbind_as_texture();
+    new_chroma.texture.unbind_as_texture();
+    output.texture.unbind_as_image();
 
     return output;
   }
@@ -198,21 +198,21 @@ class KeyingOperation : public NodeOperation {
 
     GPU_shader_uniform_1f(shader, "key_balance", node_storage(bnode()).screen_balance);
 
-    input.bind_as_texture(shader, "input_tx");
+    input.texture.bind_as_texture(shader, "input_tx");
 
     Result &key_color = get_input("Key Color");
-    key_color.bind_as_texture(shader, "key_tx");
+    key_color.texture.bind_as_texture(shader, "key_tx");
 
-    Result output = context().create_result(ResultType::Float);
+    Result output = context().create_result(DataType::Float);
     output.allocate_texture(input.domain());
-    output.bind_as_image(shader, "output_img");
+    output.texture.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, input.domain().size);
 
     GPU_shader_unbind();
-    input.unbind_as_texture();
-    key_color.unbind_as_texture();
-    output.unbind_as_image();
+    input.texture.unbind_as_texture();
+    key_color.texture.unbind_as_texture();
+    output.texture.unbind_as_image();
 
     return output;
   }
@@ -250,29 +250,29 @@ class KeyingOperation : public NodeOperation {
     GPU_shader_uniform_1f(shader, "black_level", black_level);
     GPU_shader_uniform_1f(shader, "white_level", white_level);
 
-    input_matte.bind_as_texture(shader, "input_matte_tx");
+    input_matte.texture.bind_as_texture(shader, "input_matte_tx");
 
     Result &garbage_matte = get_input("Garbage Matte");
-    garbage_matte.bind_as_texture(shader, "garbage_matte_tx");
+    garbage_matte.texture.bind_as_texture(shader, "garbage_matte_tx");
 
     Result &core_matte = get_input("Core Matte");
-    core_matte.bind_as_texture(shader, "core_matte_tx");
+    core_matte.texture.bind_as_texture(shader, "core_matte_tx");
 
-    Result output_matte = context().create_result(ResultType::Float);
+    Result output_matte = context().create_result(DataType::Float);
     output_matte.allocate_texture(input_matte.domain());
-    output_matte.bind_as_image(shader, "output_matte_img");
+    output_matte.texture.bind_as_image(shader, "output_matte_img");
 
     output_edges.allocate_texture(input_matte.domain());
-    output_edges.bind_as_image(shader, "output_edges_img");
+    output_edges.texture.bind_as_image(shader, "output_edges_img");
 
     compute_dispatch_threads_at_least(shader, input_matte.domain().size);
 
     GPU_shader_unbind();
-    input_matte.unbind_as_texture();
-    garbage_matte.unbind_as_texture();
-    core_matte.unbind_as_texture();
-    output_matte.unbind_as_image();
-    output_edges.unbind_as_image();
+    input_matte.texture.unbind_as_texture();
+    garbage_matte.texture.unbind_as_texture();
+    core_matte.texture.unbind_as_texture();
+    output_matte.texture.unbind_as_image();
+    output_edges.texture.unbind_as_image();
 
     return output_matte;
   }
@@ -289,7 +289,7 @@ class KeyingOperation : public NodeOperation {
       return output_matte;
     }
 
-    Result blurred_matte = context().create_result(ResultType::Float);
+    Result blurred_matte = context().create_result(DataType::Float);
     symmetric_separable_blur(
         context(), input_matte, blurred_matte, float2(blur_size) / 2, R_FILTER_BOX);
 
@@ -308,7 +308,7 @@ class KeyingOperation : public NodeOperation {
       return output_matte;
     }
 
-    Result morphed_matte = context().create_result(ResultType::Float);
+    Result morphed_matte = context().create_result(DataType::Float);
     morphological_distance(context(), input_matte, morphed_matte, distance);
 
     return morphed_matte;
@@ -326,7 +326,7 @@ class KeyingOperation : public NodeOperation {
       return output_matte;
     }
 
-    Result feathered_matte = context().create_result(ResultType::Float);
+    Result feathered_matte = context().create_result(DataType::Float);
     morphological_distance_feather(
         context(), input_matte, feathered_matte, distance, node_storage(bnode()).feather_falloff);
 
@@ -342,24 +342,24 @@ class KeyingOperation : public NodeOperation {
     GPU_shader_uniform_1f(shader, "despill_balance", node_storage(bnode()).despill_balance);
 
     Result &input = get_input("Image");
-    input.bind_as_texture(shader, "input_tx");
+    input.texture.bind_as_texture(shader, "input_tx");
 
     Result &key = get_input("Key Color");
-    key.bind_as_texture(shader, "key_tx");
+    key.texture.bind_as_texture(shader, "key_tx");
 
-    matte.bind_as_texture(shader, "matte_tx");
+    matte.texture.bind_as_texture(shader, "matte_tx");
 
     Result &output = get_result("Image");
     output.allocate_texture(matte.domain());
-    output.bind_as_image(shader, "output_img");
+    output.texture.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, input.domain().size);
 
     GPU_shader_unbind();
-    input.unbind_as_texture();
-    key.unbind_as_texture();
-    matte.unbind_as_texture();
-    output.unbind_as_image();
+    input.texture.unbind_as_texture();
+    key.texture.unbind_as_texture();
+    matte.texture.unbind_as_texture();
+    output.texture.unbind_as_image();
   }
 };
 

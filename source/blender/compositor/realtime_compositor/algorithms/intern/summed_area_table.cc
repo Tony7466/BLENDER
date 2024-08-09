@@ -58,27 +58,27 @@ static void compute_incomplete_prologues(Context &context,
                                          Result &incomplete_y_prologues)
 {
   GPUShader *shader = context.get_shader(get_compute_incomplete_prologues_shader(operation),
-                                         ResultPrecision::Full);
+                                         DataPrecision::Full);
   GPU_shader_bind(shader);
 
-  input.bind_as_texture(shader, "input_tx");
+  input.texture.bind_as_texture(shader, "input_tx");
 
   const int2 group_size = int2(16);
   const int2 input_size = input.domain().size;
   const int2 number_of_groups = math::divide_ceil(input_size, group_size);
 
   incomplete_x_prologues.allocate_texture(Domain(int2(input_size.y, number_of_groups.x)));
-  incomplete_x_prologues.bind_as_image(shader, "incomplete_x_prologues_img");
+  incomplete_x_prologues.texture.bind_as_image(shader, "incomplete_x_prologues_img");
 
   incomplete_y_prologues.allocate_texture(Domain(int2(input_size.x, number_of_groups.y)));
-  incomplete_y_prologues.bind_as_image(shader, "incomplete_y_prologues_img");
+  incomplete_y_prologues.texture.bind_as_image(shader, "incomplete_y_prologues_img");
 
   GPU_compute_dispatch(shader, number_of_groups.x, number_of_groups.y, 1);
 
   GPU_shader_unbind();
-  input.unbind_as_texture();
-  incomplete_x_prologues.unbind_as_image();
-  incomplete_y_prologues.unbind_as_image();
+  input.texture.unbind_as_texture();
+  incomplete_x_prologues.texture.unbind_as_image();
+  incomplete_y_prologues.texture.unbind_as_image();
 }
 
 /* Computes the complete X prologues and their sum from the incomplete X prologues using equation
@@ -95,27 +95,27 @@ static void compute_complete_x_prologues(Context &context,
                                          Result &complete_x_prologues_sum)
 {
   GPUShader *shader = context.get_shader(
-      "compositor_summed_area_table_compute_complete_x_prologues", ResultPrecision::Full);
+      "compositor_summed_area_table_compute_complete_x_prologues", DataPrecision::Full);
   GPU_shader_bind(shader);
 
-  incomplete_x_prologues.bind_as_texture(shader, "incomplete_x_prologues_tx");
+  incomplete_x_prologues.texture.bind_as_texture(shader, "incomplete_x_prologues_tx");
 
   const int2 group_size = int2(16);
   const int2 input_size = input.domain().size;
   const int2 number_of_groups = math::divide_ceil(input_size, group_size);
 
   complete_x_prologues.allocate_texture(incomplete_x_prologues.domain());
-  complete_x_prologues.bind_as_image(shader, "complete_x_prologues_img");
+  complete_x_prologues.texture.bind_as_image(shader, "complete_x_prologues_img");
 
   complete_x_prologues_sum.allocate_texture(Domain(number_of_groups));
-  complete_x_prologues_sum.bind_as_image(shader, "complete_x_prologues_sum_img");
+  complete_x_prologues_sum.texture.bind_as_image(shader, "complete_x_prologues_sum_img");
 
   GPU_compute_dispatch(shader, number_of_groups.y, 1, 1);
 
   GPU_shader_unbind();
-  incomplete_x_prologues.unbind_as_texture();
-  complete_x_prologues.unbind_as_image();
-  complete_x_prologues_sum.unbind_as_image();
+  incomplete_x_prologues.texture.unbind_as_texture();
+  complete_x_prologues.texture.unbind_as_image();
+  complete_x_prologues_sum.texture.unbind_as_image();
 }
 
 /* Computes the complete Y prologues from the incomplete Y prologues using equation (45) to
@@ -130,25 +130,25 @@ static void compute_complete_y_prologues(Context &context,
                                          Result &complete_y_prologues)
 {
   GPUShader *shader = context.get_shader(
-      "compositor_summed_area_table_compute_complete_y_prologues", ResultPrecision::Full);
+      "compositor_summed_area_table_compute_complete_y_prologues", DataPrecision::Full);
   GPU_shader_bind(shader);
 
-  incomplete_y_prologues.bind_as_texture(shader, "incomplete_y_prologues_tx");
-  complete_x_prologues_sum.bind_as_texture(shader, "complete_x_prologues_sum_tx");
+  incomplete_y_prologues.texture.bind_as_texture(shader, "incomplete_y_prologues_tx");
+  complete_x_prologues_sum.texture.bind_as_texture(shader, "complete_x_prologues_sum_tx");
 
   const int2 group_size = int2(16);
   const int2 input_size = input.domain().size;
   const int2 number_of_groups = math::divide_ceil(input_size, group_size);
 
   complete_y_prologues.allocate_texture(incomplete_y_prologues.domain());
-  complete_y_prologues.bind_as_image(shader, "complete_y_prologues_img");
+  complete_y_prologues.texture.bind_as_image(shader, "complete_y_prologues_img");
 
   GPU_compute_dispatch(shader, number_of_groups.x, 1, 1);
 
   GPU_shader_unbind();
-  incomplete_y_prologues.unbind_as_texture();
-  complete_x_prologues_sum.unbind_as_texture();
-  complete_y_prologues.unbind_as_image();
+  incomplete_y_prologues.texture.unbind_as_texture();
+  complete_x_prologues_sum.texture.unbind_as_texture();
+  complete_y_prologues.texture.unbind_as_image();
 }
 
 static const char *get_compute_complete_blocks_shader(SummedAreaTableOperation operation)
@@ -176,15 +176,15 @@ static void compute_complete_blocks(Context &context,
                                     Result &output)
 {
   GPUShader *shader = context.get_shader(get_compute_complete_blocks_shader(operation),
-                                         ResultPrecision::Full);
+                                         DataPrecision::Full);
   GPU_shader_bind(shader);
 
-  input.bind_as_texture(shader, "input_tx");
-  complete_x_prologues.bind_as_texture(shader, "complete_x_prologues_tx");
-  complete_y_prologues.bind_as_texture(shader, "complete_y_prologues_tx");
+  input.texture.bind_as_texture(shader, "input_tx");
+  complete_x_prologues.texture.bind_as_texture(shader, "complete_x_prologues_tx");
+  complete_y_prologues.texture.bind_as_texture(shader, "complete_y_prologues_tx");
 
   output.allocate_texture(input.domain());
-  output.bind_as_image(shader, "output_img", true);
+  output.texture.bind_as_image(shader, "output_img", true);
 
   const int2 group_size = int2(16);
   const int2 input_size = input.domain().size;
@@ -193,10 +193,10 @@ static void compute_complete_blocks(Context &context,
   GPU_compute_dispatch(shader, number_of_groups.x, number_of_groups.y, 1);
 
   GPU_shader_unbind();
-  input.unbind_as_texture();
-  complete_x_prologues.unbind_as_texture();
-  complete_y_prologues.unbind_as_texture();
-  output.unbind_as_image();
+  input.texture.unbind_as_texture();
+  complete_x_prologues.texture.unbind_as_texture();
+  complete_y_prologues.texture.unbind_as_texture();
+  output.texture.unbind_as_image();
 }
 
 void summed_area_table(Context &context,
@@ -204,19 +204,18 @@ void summed_area_table(Context &context,
                        Result &output,
                        SummedAreaTableOperation operation)
 {
-  Result incomplete_x_prologues = context.create_result(ResultType::Color, ResultPrecision::Full);
-  Result incomplete_y_prologues = context.create_result(ResultType::Color, ResultPrecision::Full);
+  Result incomplete_x_prologues = context.create_result(DataType::Color, DataPrecision::Full);
+  Result incomplete_y_prologues = context.create_result(DataType::Color, DataPrecision::Full);
   compute_incomplete_prologues(
       context, input, operation, incomplete_x_prologues, incomplete_y_prologues);
 
-  Result complete_x_prologues = context.create_result(ResultType::Color, ResultPrecision::Full);
-  Result complete_x_prologues_sum = context.create_result(ResultType::Color,
-                                                          ResultPrecision::Full);
+  Result complete_x_prologues = context.create_result(DataType::Color, DataPrecision::Full);
+  Result complete_x_prologues_sum = context.create_result(DataType::Color, DataPrecision::Full);
   compute_complete_x_prologues(
       context, input, incomplete_x_prologues, complete_x_prologues, complete_x_prologues_sum);
   incomplete_x_prologues.release();
 
-  Result complete_y_prologues = context.create_result(ResultType::Color, ResultPrecision::Full);
+  Result complete_y_prologues = context.create_result(DataType::Color, DataPrecision::Full);
   compute_complete_y_prologues(
       context, input, incomplete_y_prologues, complete_x_prologues_sum, complete_y_prologues);
   incomplete_y_prologues.release();

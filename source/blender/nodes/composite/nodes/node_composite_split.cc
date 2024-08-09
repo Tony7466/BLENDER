@@ -57,20 +57,20 @@ class SplitOperation : public NodeOperation {
     GPU_shader_uniform_1f(shader, "split_ratio", get_split_ratio());
 
     const Result &first_image = get_input("Image");
-    first_image.bind_as_texture(shader, "first_image_tx");
+    first_image.texture.bind_as_texture(shader, "first_image_tx");
     const Result &second_image = get_input("Image_001");
-    second_image.bind_as_texture(shader, "second_image_tx");
+    second_image.texture.bind_as_texture(shader, "second_image_tx");
 
     const Domain domain = compute_domain();
     Result &output_image = get_result("Image");
     output_image.allocate_texture(domain);
-    output_image.bind_as_image(shader, "output_img");
+    output_image.texture.bind_as_image(shader, "output_img");
 
     compute_dispatch_threads_at_least(shader, domain.size);
 
-    first_image.unbind_as_texture();
-    second_image.unbind_as_texture();
-    output_image.unbind_as_image();
+    first_image.texture.unbind_as_texture();
+    second_image.texture.unbind_as_texture();
+    output_image.texture.unbind_as_image();
     GPU_shader_unbind();
   }
 

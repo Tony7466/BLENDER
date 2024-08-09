@@ -41,16 +41,16 @@ static void apply_morphological_operator(Context &context,
   GPUShader *shader = context.get_shader(get_shader(operation));
   GPU_shader_bind(shader);
 
-  input.bind_as_texture(shader, "input_tx");
+  input.texture.bind_as_texture(shader, "input_tx");
 
-  blurred_input.bind_as_image(shader, "blurred_input_img", true);
+  blurred_input.texture.bind_as_image(shader, "blurred_input_img", true);
 
   Domain domain = input.domain();
   compute_dispatch_threads_at_least(shader, domain.size);
 
   GPU_shader_unbind();
-  input.unbind_as_texture();
-  blurred_input.unbind_as_image();
+  input.texture.unbind_as_texture();
+  blurred_input.texture.unbind_as_image();
 }
 
 void morphological_blur(Context &context,
@@ -60,7 +60,7 @@ void morphological_blur(Context &context,
                         MorphologicalBlurOperation operation,
                         int filter_type)
 {
-  BLI_assert(input.type() == ResultType::Float);
+  BLI_assert(input.type() == DataType::Float);
 
   symmetric_separable_blur(context, input, output, radius, filter_type);
   apply_morphological_operator(context, input, output, operation);
