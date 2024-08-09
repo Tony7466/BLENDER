@@ -136,7 +136,7 @@ class Meshes {
         return &sub;
       };
 
-      face_normals_ = loop_normals_ = vert_normals_ = vert_normals_ = nullptr;
+      face_normals_ = loop_normals_ = vert_normals_ = nullptr;
 
       if (show_face_nor) {
         face_normals_subdiv_ = shader_pass(res.shaders.mesh_face_normal_subdiv.get(), "SubdFNor");
@@ -333,7 +333,7 @@ class Meshes {
   static bool mesh_has_edit_cage(const Object *ob)
   {
     const Mesh &mesh = *static_cast<const Mesh *>(ob->data);
-    if (BMEditMesh *em = mesh.runtime->edit_mesh.get()) {
+    if (mesh.runtime->edit_mesh.get() != nullptr) {
       const Mesh *editmesh_eval_final = BKE_object_get_editmesh_eval_final(ob);
       const Mesh *editmesh_eval_cage = BKE_object_get_editmesh_eval_cage(ob);
 
