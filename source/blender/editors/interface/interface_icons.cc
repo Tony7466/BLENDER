@@ -1298,50 +1298,19 @@ static int get_draw_size(enum eIconSizes size)
 }
 
 static void svg_replace_color_attributes(std::string &svg,
-                                         const std::string name,
-                                         const std::string hexcolor)
-{
-  size_t g_start = svg.find(name);
-  if (g_start == std::string::npos) {
-    return;
-  }
-  size_t g_end = svg.find("</g>", g_start);
-  if (g_end == std::string::npos) {
-    return;
-  }
-
-  size_t att_start = svg.find("fill=\"", g_start);
-  size_t att_end;
-  if (att_start != std::string::npos || att_start < g_end) {
-    att_end = svg.find("\"", att_start + 6);
-    if (att_end != std::string::npos || att_end - att_start < 20) {
-      svg.replace(att_start, att_end - att_start + 1, "fill=\"#" + hexcolor + "\"");
-    }
-  }
-
-  att_end = g_start;
-  while (1) {
-    att_start = svg.find("fill:", att_end);
-    if (att_start == std::string::npos || att_start > g_end) {
-      break;
-    }
-    svg.replace(att_start, 12, "fill:#" + hexcolor);
-    att_end = att_start + 12;
-    continue;
-  }
-}
-
-static void icon_source_edit_cb(std::string &svg)
+                                         const std::string &name,
+                                         const size_t start,
+                                         const size_t end)
 {
   bTheme *btheme = UI_GetTheme();
 
   /* Tool colors hardcoded for now. */
   uchar tool_add[] = {117, 255, 175, 255};
   uchar tool_remove[] = {245, 107, 91, 255};
-  uchar tool_transform[] = {217, 175, 245, 255};
   uchar tool_select[] = {255, 176, 43, 255};
-  uchar tool_red[] = {214, 45, 48, 255};
+  uchar tool_transform[] = {217, 175, 245, 255};
   uchar tool_white[] = {255, 255, 255, 255};
+  uchar tool_red[] = {214, 45, 48, 255};
 
   struct ColorItem {
     const char *name;
@@ -1349,24 +1318,28 @@ static void icon_source_edit_cb(std::string &svg)
     int colorid = TH_UNDEFINED;
     int spacetype = SPACE_TYPE_ANY;
   } items[] = {
-      {"view3d.mesh_selected", btheme->space_view3d.vertex_select},
-      {"widget.regular_inner", btheme->tui.wcol_regular.inner},
-      {"widget.back", nullptr, TH_BACK},
-      {"widget.text", nullptr, TH_TEXT},
-      {"widget.text_hi", nullptr, TH_TEXT_HI},
-      {"theme.red_alert", nullptr, TH_REDALERT},
-      {"theme.error", nullptr, TH_INFO_ERROR, SPACE_INFO},
-      {"theme.warning", nullptr, TH_INFO_WARNING, SPACE_INFO},
-      {"theme.info", nullptr, TH_INFO_INFO, SPACE_INFO},
-      {"tool.add", tool_add},
-      {"tool.remove", tool_remove},
-      {"tool.transform", tool_transform},
-      {"tool.select", tool_select},
-      {"tool.red", tool_red},
-      {"tool.white", tool_white},
+      {"blender.selected", btheme->tui.wcol_regular.inner},
+      {"blender.mesh_selected", btheme->space_view3d.vertex_select},
+      {"blender.back", nullptr, TH_BACK},
+      {"blender.text", nullptr, TH_TEXT},
+      {"blender.text_hi", nullptr, TH_TEXT_HI},
+      {"blender.red_alert", nullptr, TH_REDALERT},
+      {"blender.error", nullptr, TH_INFO_ERROR, SPACE_INFO},
+      {"blender.warning", nullptr, TH_INFO_WARNING, SPACE_INFO},
+      {"blender.info", nullptr, TH_INFO_INFO, SPACE_INFO},
+      {"blender.tool_add", tool_add},
+      {"blender.tool_remove", tool_remove},
+      {"blender.tool_select", tool_select},
+      {"blender.tool_transform", tool_transform},
+      {"blender.tool_white", tool_white},
+      {"blender.tool_red", tool_red},
   };
 
   for (const ColorItem &item : items) {
+    if (name.compare(item.name) != 0) {
+      continue;
+    }
+
     uchar color[4];
     if (item.col) {
       memcpy(color, item.col, sizeof(color));
@@ -1385,7 +1358,71 @@ static void icon_source_edit_cb(std::string &svg)
 
     std::string hexcolor = fmt::format(
         "{:02x}{:02x}{:02x}{:02x}", color[0], color[1], color[2], color[3]);
-    svg_replace_color_attributes(svg, item.name, hexcolor);
+
+    size_t att_start = start;
+    while (1) {
+      att_start = svg.find("fill=\"", att_start);
+      if (att_start == std::string::npos || att_start > end) {
+        break;
+      }
+      const size_t att_end = svg.find("\"", att_start + 6);
+      if (att_end != std::string::npos && att_end - att_start < 20) {
+        svg.replace(att_start, att_end - att_start, "fill=\"#" + hexcolor);
+      }
+      att_start += 16;
+    }
+
+    att_start = start;
+    while (1) {
+      att_start = svg.find("fill:", att_start);
+      if (att_start == std::string::npos || att_start > end) {
+        break;
+      }
+      const size_t att_end = svg.find(";", att_start + 6);
+      if (att_end != std::string::npos && att_end - att_start < 20) {
+        svg.replace(att_start, att_end - att_start, "fill:#" + hexcolor);
+      }
+      att_start += 14;
+    }
+  }
+}
+
+static void icon_source_edit_cb(std::string &svg)
+{
+  size_t g_start = 0;
+
+  /* Scan string, processing only groups with our keyword ids. */
+
+  while (1) {
+    /* Look for a blender id, quick exit if not found. */
+    const size_t id_start = svg.find("id=\"blender.", g_start);
+    if (id_start == std::string::npos) {
+      return;
+    }
+
+    /* Scan back to beginning of this group element. */
+    g_start = svg.rfind("<g", id_start);
+    if (g_start == std::string::npos) {
+      /* Malformed. */
+      return;
+    }
+
+    /* Scan forward to end of the group. */
+    const size_t g_end = svg.find("</g>", id_start);
+    if (g_end == std::string::npos) {
+      /* Malformed. */
+      return;
+    }
+
+    /* Get group id name. */
+    const size_t id_end = svg.find("\"", id_start + 4);
+    if (id_end != std::string::npos) {
+      std::string id_name = svg.substr(id_start + 4, id_end - id_start - 4);
+      /* Replace this group's colors. */
+      svg_replace_color_attributes(svg, id_name, g_start, g_end);
+    }
+
+    g_start = g_end;
   }
 }
 
@@ -1492,14 +1529,27 @@ static void icon_draw_size(float x,
     }
 
     color[3] *= alpha;
-    BLF_draw_svg_icon(uint(icon_id),
-                      x,
-                      y,
-                      float(draw_size) / aspect,
-                      color,
-                      outline_intensity,
-                      di->type == ICON_TYPE_SVG_COLOR,
-                      icon_source_edit_cb);
+
+    if (di->type == ICON_TYPE_SVG_COLOR) {
+      BLF_draw_svg_icon(uint(icon_id),
+                        x,
+                        y,
+                        float(draw_size) / aspect,
+                        color,
+                        outline_intensity,
+                        true,
+                        icon_source_edit_cb);
+    }
+    else {
+      BLF_draw_svg_icon(uint(icon_id),
+                        x,
+                        y,
+                        float(draw_size) / aspect,
+                        color,
+                        outline_intensity,
+                        false,
+                        nullptr);
+    }
 
     if (text_overlay && text_overlay->text[0] != '\0') {
       /* Handle the little numbers on top of the icon. */
