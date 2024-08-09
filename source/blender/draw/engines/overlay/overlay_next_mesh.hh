@@ -64,31 +64,25 @@ class Meshes {
   {
     view_dist = state.view_dist_get(view.winmat());
 
-    int edit_flag = state.v3d->overlay.edit_flag;
-    show_retopology = (edit_flag & V3D_OVERLAY_EDIT_RETOPOLOGY);
-    show_mesh_analysis = (edit_flag & V3D_OVERLAY_EDIT_STATVIS);
-    show_face = (edit_flag & V3D_OVERLAY_EDIT_FACES);
-    show_face_dots = (edit_flag & V3D_OVERLAY_EDIT_FACE_DOT) && show_face;
-    const bool show_face_nor = (edit_flag & V3D_OVERLAY_EDIT_FACE_NORMALS);
-    const bool show_loop_nor = (edit_flag & V3D_OVERLAY_EDIT_LOOP_NORMALS);
-    const bool show_vert_nor = (edit_flag & V3D_OVERLAY_EDIT_VERT_NORMALS);
-
     ToolSettings *tsettings = state.scene->toolsettings;
     select_edge = (tsettings->selectmode & SCE_SELECT_EDGE);
     select_face = (tsettings->selectmode & SCE_SELECT_FACE);
     select_vert = (tsettings->selectmode & SCE_SELECT_VERTEX);
 
+    int edit_flag = state.v3d->overlay.edit_flag;
+    show_retopology = (edit_flag & V3D_OVERLAY_EDIT_RETOPOLOGY) && !state.xray_enabled;
+    show_mesh_analysis = (edit_flag & V3D_OVERLAY_EDIT_STATVIS);
+    show_face = (edit_flag & V3D_OVERLAY_EDIT_FACES);
+    show_face_dots = ((edit_flag & V3D_OVERLAY_EDIT_FACE_DOT) || state.xray_enabled) & select_face;
+
+    const bool show_face_nor = (edit_flag & V3D_OVERLAY_EDIT_FACE_NORMALS);
+    const bool show_loop_nor = (edit_flag & V3D_OVERLAY_EDIT_LOOP_NORMALS);
+    const bool show_vert_nor = (edit_flag & V3D_OVERLAY_EDIT_VERT_NORMALS);
+
     const bool do_smooth_wire = (U.gpu_flag & USER_GPU_FLAG_NO_EDIT_MODE_SMOOTH_WIRE) == 0;
     const bool is_wire_shading_mode = (state.v3d->shading.type == OB_WIRE);
 
     uint4 data_mask = data_mask_get(edit_flag);
-
-    if (state.xray_enabled) {
-      /* We should not render the mesh opaque. */
-      show_mesh_analysis = false;
-      /* Force Face dots in xray mode for visibility. */
-      show_face_dots = show_face;
-    }
 
     float backwire_opacity = (state.xray_enabled) ? 0.5f : 1.0f;
     float face_alpha = (show_face) ? 1.0f : 0.0f;
