@@ -110,6 +110,15 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
     info.additional_info("overlay_edit_mesh_common");
   });
 
+  mesh_edit_skin_root = shader(
+      "overlay_edit_mesh_skin_root", [](gpu::shader::ShaderCreateInfo &info) {
+        shader_patch_common(info);
+        /* TODO(fclem): Use correct vertex format. For now we read the format manually. */
+        info.storage_buf(0, Qualifier::READ, "float", "size[]", Frequency::GEOMETRY);
+        info.vertex_inputs_.clear();
+        info.define("VERTEX_PULL");
+      });
+
   mesh_face_normal = shader("overlay_edit_mesh_normal", [](gpu::shader::ShaderCreateInfo &info) {
     shader_patch_edit_mesh_normal_common(info);
     info.define("FACE_NORMAL");

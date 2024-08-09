@@ -38,6 +38,7 @@ class Meshes {
   PassSimple edit_mesh_cages_ps_ = {"Cages"}; /* Same as faces but with a different offset. */
   PassSimple edit_mesh_verts_ps_ = {"Verts"};
   PassSimple edit_mesh_facedots_ps_ = {"FaceDots"};
+  PassSimple edit_mesh_skin_roots_ps_ = {"SkinRoots"};
 
   bool show_retopology = false;
   bool show_mesh_analysis = false;
@@ -168,10 +169,15 @@ class Meshes {
       mesh_edit_common_resource_bind(pass, backwire_opacity);
     }
     {
+      /* Cull back-faces for retopology face pass.
+       * This makes it so back-faces are not drawn.
+       * Doing so lets us distinguish back-faces from front-faces. */
+      DRWState face_culling = (show_retopology) ? DRW_STATE_CULL_BACK : DRWState(0);
+
       auto &pass = edit_mesh_faces_ps_;
       pass.init();
       pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA |
-                     state.clipping_state);
+                     face_culling | state.clipping_state);
       pass.shader_set(res.shaders.mesh_edit_face.get());
       mesh_edit_common_resource_bind(pass, face_alpha);
     }
@@ -198,6 +204,15 @@ class Meshes {
                      DRW_STATE_WRITE_DEPTH | state.clipping_state);
       pass.shader_set(res.shaders.mesh_edit_facedot.get());
       mesh_edit_common_resource_bind(pass, backwire_opacity);
+    }
+    {
+      auto &pass = edit_mesh_skin_roots_ps_;
+      pass.init();
+      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA |
+                     DRW_STATE_WRITE_DEPTH | state.clipping_state);
+      pass.shader_set(res.shaders.mesh_edit_skin_root.get());
+      pass.push_constant("retopologyOffset", retopology_offset);
+      pass.bind_ubo("globalsBlock", &res.globals_buf);
     }
   }
 
@@ -248,6 +263,10 @@ class Meshes {
       gpu::Batch *geom = DRW_mesh_batch_cache_get_edit_facedots(mesh);
       edit_mesh_facedots_ps_.draw(geom, res_handle);
     }
+    if (mesh_has_skin_roots(ob)) {
+      gpu::Batch *geom = DRW_mesh_batch_cache_get_edit_skin_roots(mesh);
+      edit_mesh_skin_roots_ps_.draw_expand(geom, GPU_PRIM_LINES, 32, 1, res_handle);
+    }
   }
 
   void draw(Framebuffer &framebuffer, Manager &manager, View &view)
@@ -263,6 +282,7 @@ class Meshes {
     manager.submit(edit_mesh_cages_ps_, view_edit_cage);
     manager.submit(edit_mesh_edges_ps_, view_edit_edge);
     manager.submit(edit_mesh_verts_ps_, view_edit_vert);
+    manager.submit(edit_mesh_skin_roots_ps_, view_edit_vert);
     manager.submit(edit_mesh_facedots_ps_, view_edit_vert);
   }
 
@@ -301,4 +321,5 @@ class Meshes {
     return false;
   }
 };
+
 }  // namespace blender::draw::overlay
