@@ -298,6 +298,7 @@ void Instance::draw(Manager &manager)
 
   auto draw_layer_color_only = [&](OverlayLayer &layer, Framebuffer &framebuffer) {
     layer.light_probes.draw_color_only(framebuffer, manager, view);
+    layer.meshes.draw_color_only(framebuffer, manager, view);
   };
 
   draw_layer_color_only(regular, resources.overlay_color_only_fb);

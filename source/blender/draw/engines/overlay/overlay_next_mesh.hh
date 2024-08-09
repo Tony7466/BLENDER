@@ -43,6 +43,8 @@ class Meshes {
   /* Depth pre-pass to cull edit cage in case the object is not opaque. */
   PassSimple edit_mesh_prepass_ps_ = {"Prepass"};
 
+  bool xray_enabled = false;
+
   bool show_retopology = false;
   bool show_mesh_analysis = false;
   bool show_face = false;
@@ -63,6 +65,7 @@ class Meshes {
   void begin_sync(Resources &res, const State &state, const View &view)
   {
     view_dist = state.view_dist_get(view.winmat());
+    xray_enabled = state.xray_enabled;
 
     ToolSettings *tsettings = state.scene->toolsettings;
     select_edge = (tsettings->selectmode & SCE_SELECT_EDGE);
@@ -285,13 +288,38 @@ class Meshes {
 
   void draw(Framebuffer &framebuffer, Manager &manager, View &view)
   {
+    GPU_framebuffer_bind(framebuffer);
+    manager.submit(edit_mesh_prepass_ps_, view);
+    manager.submit(edit_mesh_analysis_ps_, view);
+
+    if (xray_enabled) {
+      return;
+    }
+
+    view_edit_cage.sync(view.viewmat(), winmat_polygon_offset(view.winmat(), view_dist, 0.5f));
+    view_edit_edge.sync(view.viewmat(), winmat_polygon_offset(view.winmat(), view_dist, 1.0f));
+    view_edit_vert.sync(view.viewmat(), winmat_polygon_offset(view.winmat(), view_dist, 1.5f));
+
+    manager.submit(edit_mesh_normals_ps_, view);
+    manager.submit(edit_mesh_faces_ps_, view);
+    manager.submit(edit_mesh_cages_ps_, view_edit_cage);
+    manager.submit(edit_mesh_edges_ps_, view_edit_edge);
+    manager.submit(edit_mesh_verts_ps_, view_edit_vert);
+    manager.submit(edit_mesh_skin_roots_ps_, view_edit_vert);
+    manager.submit(edit_mesh_facedots_ps_, view_edit_vert);
+  }
+
+  void draw_color_only(Framebuffer &framebuffer, Manager &manager, View &view)
+  {
+    if (!xray_enabled) {
+      return;
+    }
+
     view_edit_cage.sync(view.viewmat(), winmat_polygon_offset(view.winmat(), view_dist, 0.5f));
     view_edit_edge.sync(view.viewmat(), winmat_polygon_offset(view.winmat(), view_dist, 1.0f));
     view_edit_vert.sync(view.viewmat(), winmat_polygon_offset(view.winmat(), view_dist, 1.5f));
 
     GPU_framebuffer_bind(framebuffer);
-    manager.submit(edit_mesh_prepass_ps_, view);
-    manager.submit(edit_mesh_analysis_ps_, view);
     manager.submit(edit_mesh_normals_ps_, view);
     manager.submit(edit_mesh_faces_ps_, view);
     manager.submit(edit_mesh_cages_ps_, view_edit_cage);
