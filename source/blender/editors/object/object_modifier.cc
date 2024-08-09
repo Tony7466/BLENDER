@@ -1197,7 +1197,7 @@ static bool modifier_apply_obdata(
     }
 
     /* Write to existing layers or add new layers. */
-    Array<int> layer_eval_map(grease_pencil_result.layers().size());
+    Map<const Layer *, const Layer *> eval_to_orig_layer_map;
     VectorSet<Drawing *> all_updated_drawings;
     TreeNode *previous_node = nullptr;
     for (const int layer_eval_i : grease_pencil_result.layers().index_range()) {
@@ -1210,46 +1210,44 @@ static bool modifier_apply_obdata(
 
       /* Check if the original geometry has a layer with the same name. */
       TreeNode *node_orig = grease_pencil_orig.find_node_by_name(layer_eval->name());
+      Layer *layer_orig = nullptr;
+      Drawing *drawing_orig = nullptr;
       if (node_orig && node_orig->is_layer()) {
         /* Use the existing layer. */
-        Layer &layer_orig = node_orig->as_layer();
-        layer_orig.opacity = layer_eval->opacity;
-        layer_orig.set_local_transform(layer_eval->local_transform());
-
-        Drawing *drawing_orig = grease_pencil_orig.get_drawing_at(layer_orig, eval_frame);
-        if (drawing_orig && drawing_eval) {
-          drawing_orig->strokes_for_write() = std::move(drawing_eval->strokes_for_write());
-          drawing_orig->tag_topology_changed();
-          all_updated_drawings.add_new(drawing_orig);
-        }
-
-        if (previous_node) {
-          grease_pencil_orig.move_node_after(layer_orig.as_node(), *previous_node);
-        }
-        previous_node = node_orig;
-
-        layer_eval_map[layer_eval_i] = *grease_pencil_orig.get_layer_index(layer_orig);
+        layer_orig = &node_orig->as_layer();
+        drawing_orig = grease_pencil_orig.get_drawing_at(*layer_orig, eval_frame);
       }
       else {
         /* Create a new layer. */
-        Layer &layer_orig = grease_pencil_orig.add_layer(layer_eval->name());
-        layer_orig.opacity = layer_eval->opacity;
-        layer_orig.set_local_transform(layer_eval->local_transform());
-
-        Drawing *drawing_orig = grease_pencil_orig.insert_frame(layer_orig, eval_frame);
-        if (drawing_eval) {
-          drawing_orig->strokes_for_write() = std::move(drawing_eval->strokes_for_write());
-          drawing_orig->tag_topology_changed();
-          all_updated_drawings.add_new(drawing_orig);
-        }
-
-        if (previous_node) {
-          grease_pencil_orig.move_node_after(layer_orig.as_node(), *previous_node);
-        }
-        previous_node = &layer_orig.as_node();
-
-        layer_eval_map[layer_eval_i] = *grease_pencil_orig.get_layer_index(layer_orig);
+        layer_orig = &grease_pencil_orig.add_layer(layer_eval->name());
+        node_orig = &layer_orig->as_node();
+        drawing_orig = grease_pencil_orig.insert_frame(*layer_orig, eval_frame);
       }
+      BLI_assert(layer_orig != nullptr);
+      layer_orig->opacity = layer_eval->opacity;
+      layer_orig->set_local_transform(layer_eval->local_transform());
+
+      if (drawing_orig && drawing_eval) {
+        drawing_orig->strokes_for_write() = std::move(drawing_eval->strokes_for_write());
+        drawing_orig->tag_topology_changed();
+        all_updated_drawings.add_new(drawing_orig);
+      }
+
+      BLI_assert(node_orig != nullptr);
+      /* Insert the updated node after the previous node. This keeps the layer order consistent. */
+      if (previous_node) {
+        grease_pencil_orig.move_node_after(*node_orig, *previous_node);
+      }
+      previous_node = node_orig;
+
+      eval_to_orig_layer_map.add_new(layer_eval, layer_orig);
+    }
+
+    Array<int> layer_indices_map(grease_pencil_result.layers().size());
+    for (const int layer_eval_i : grease_pencil_result.layers().index_range()) {
+      const Layer *layer_eval = grease_pencil_result.layer(layer_eval_i);
+      const Layer *layer_orig = eval_to_orig_layer_map.lookup(layer_eval);
+      layer_indices_map[layer_eval_i] = *grease_pencil_orig.get_layer_index(*layer_orig);
     }
 
     /* Remap material indices for all other drawings. */
@@ -1273,6 +1271,14 @@ static bool modifier_apply_obdata(
       }
       material_indices.finish();
     }
+
+    /* Copy layer attributes from the result to the original. */
+    bke::scatter_attributes(grease_pencil_result.attributes(),
+                            bke::AttrDomain::Layer,
+                            {},
+                            {},
+                            layer_indices_map,
+                            grease_pencil_orig.attributes_for_write());
 
     Main *bmain = DEG_get_bmain(depsgraph);
     BKE_object_material_from_eval_data(bmain, ob, &grease_pencil_result.id);
