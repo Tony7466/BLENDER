@@ -643,14 +643,7 @@ void WM_window_decoration_update(const wmWindow *win, const bScreen *screen)
       /* For single editor floating windows, use the editor header color. */
       else if (BLI_listbase_is_single(&screen->areabase)) {
         const ScrArea *main_area = static_cast<ScrArea *>(screen->areabase.first);
-        /* Except for the View 3D editor which has a transparent titlebar, in which case use the
-         * window background color instead. */
-        if (main_area->spacetype == SPACE_VIEW3D) {
-          UI_SetTheme(main_area->spacetype, RGN_TYPE_WINDOW);
-        }
-        else {
-          UI_SetTheme(main_area->spacetype, RGN_TYPE_HEADER);
-        }
+        UI_SetTheme(main_area->spacetype, RGN_TYPE_HEADER);
       }
       /* For floating window with multiple editors/areas, use the default space color. */
       else {
