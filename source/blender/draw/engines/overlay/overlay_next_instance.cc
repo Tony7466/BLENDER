@@ -90,6 +90,7 @@ void Instance::begin_sync()
     layer.bounds.begin_sync();
     layer.cameras.begin_sync();
     layer.empties.begin_sync();
+    layer.facing.begin_sync(resources, state);
     layer.force_fields.begin_sync();
     layer.lattices.begin_sync(resources, state);
     layer.lights.begin_sync();
@@ -110,10 +111,20 @@ void Instance::begin_sync()
 
 void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
 {
+  const bool renderable = DRW_object_is_renderable(ob_ref.object);
+  const bool draw_surface = (ob_ref.object->dt >= OB_WIRE) &&
+                            (renderable || (ob_ref.object->dt == OB_WIRE));
+  const bool draw_facing = draw_surface && (state.overlay.flag & V3D_OVERLAY_FACE_ORIENTATION) &&
+                           (ob_ref.object->dt >= OB_SOLID) &&
+                           selection_type_ == SelectionType::DISABLED;
   const bool in_edit_mode = object_is_edit_mode(ob_ref.object);
   const bool needs_prepass = true; /* TODO */
 
   OverlayLayer &layer = (ob_ref.object->dtx & OB_DRAW_IN_FRONT) ? infront : regular;
+
+  if (draw_facing) {
+    layer.facing.object_sync(manager, ob_ref, state);
+  }
 
   if (needs_prepass) {
     switch (ob_ref.object->type) {
@@ -302,6 +313,7 @@ void Instance::draw(Manager &manager)
     layer.metaballs.draw(framebuffer, manager, view);
     layer.relations.draw(framebuffer, manager, view);
     layer.meshes.draw(framebuffer, manager, view);
+    layer.facing.draw(framebuffer, manager, view);
   };
 
   draw_layer(regular, resources.overlay_line_fb);
