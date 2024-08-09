@@ -396,10 +396,16 @@ void Hair::compute_bounds()
 {
   BoundBox bnds = BoundBox::empty;
   size_t curve_keys_size = curve_keys.size();
+  size_t curve_num = num_curves();
 
   if (curve_keys_size > 0) {
-    for (size_t i = 0; i < curve_keys_size; i++) {
-      bnds.grow(curve_keys[i], curve_radius[i]);
+    for (size_t i = 0; i < curve_num; i++) {
+      const Curve curve = get_curve(i);
+      const int num_segments = curve.num_segments();
+
+      for (int k = 0; k < num_segments; k++) {
+        curve.bounds_grow(k, &curve_keys[0], &curve_radius[0], bnds);
+      }
     }
 
     Attribute *curve_attr = attributes.find(ATTR_STD_MOTION_VERTEX_POSITION);
