@@ -110,6 +110,10 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
     info.additional_info("overlay_edit_mesh_common");
   });
 
+  mesh_edit_depth = shader("overlay_edit_mesh_depth", [](gpu::shader::ShaderCreateInfo &info) {
+    shader_patch_common(info);
+  });
+
   mesh_edit_skin_root = shader(
       "overlay_edit_mesh_skin_root", [](gpu::shader::ShaderCreateInfo &info) {
         shader_patch_common(info);

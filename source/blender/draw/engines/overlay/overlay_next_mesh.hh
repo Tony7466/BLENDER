@@ -40,6 +40,9 @@ class Meshes {
   PassSimple edit_mesh_facedots_ps_ = {"FaceDots"};
   PassSimple edit_mesh_skin_roots_ps_ = {"SkinRoots"};
 
+  /* Depth pre-pass to cull edit cage in case the object is not opaque. */
+  PassSimple edit_mesh_prepass_ps_ = {"Prepass"};
+
   bool show_retopology = false;
   bool show_mesh_analysis = false;
   bool show_face = false;
@@ -90,9 +93,20 @@ class Meshes {
     float backwire_opacity = (state.xray_enabled) ? 0.5f : 1.0f;
     float face_alpha = (show_face) ? 1.0f : 0.0f;
     float retopology_offset = RETOPOLOGY_OFFSET(state.v3d);
+    /* Cull back-faces for retopology face pass. This makes it so back-faces are not drawn.
+     * Doing so lets us distinguish back-faces from front-faces. */
+    DRWState face_culling = (show_retopology) ? DRW_STATE_CULL_BACK : DRWState(0);
 
     GPUTexture **depth_tex = (state.xray_enabled) ? &res.depth_tx : &res.dummy_depth_tx;
 
+    {
+      auto &pass = edit_mesh_prepass_ps_;
+      pass.init();
+      pass.state_set(DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL | face_culling |
+                     state.clipping_state);
+      pass.shader_set(res.shaders.mesh_edit_depth.get());
+      pass.push_constant("retopologyOffset", retopology_offset);
+    }
     {
       /* Normals */
       const bool use_screen_size = (edit_flag & V3D_OVERLAY_EDIT_CONSTANT_SCREEN_SIZE_NORMALS);
@@ -169,11 +183,6 @@ class Meshes {
       mesh_edit_common_resource_bind(pass, backwire_opacity);
     }
     {
-      /* Cull back-faces for retopology face pass.
-       * This makes it so back-faces are not drawn.
-       * Doing so lets us distinguish back-faces from front-faces. */
-      DRWState face_culling = (show_retopology) ? DRW_STATE_CULL_BACK : DRWState(0);
-
       auto &pass = edit_mesh_faces_ps_;
       pass.init();
       pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA |
@@ -225,13 +234,22 @@ class Meshes {
     /* WORKAROUND: GPU subdiv uses a different normal format. Remove this once GPU subdiv is
      * refactored. */
     const bool use_gpu_subdiv = BKE_subsurf_modifier_has_gpu_subdiv(static_cast<Mesh *>(ob->data));
+    const bool draw_as_solid = (ob->dt > OB_WIRE);
 
-    bool draw_as_solid = (ob->dt > OB_WIRE);
+    if (show_retopology) {
+      gpu::Batch *geom = DRW_mesh_batch_cache_get_edit_triangles(mesh);
+      edit_mesh_prepass_ps_.draw(geom, res_handle);
+    }
+    if (draw_as_solid) {
+      gpu::Batch *geom = DRW_cache_mesh_surface_get(ob);
+      edit_mesh_prepass_ps_.draw(geom, res_handle);
+    }
 
     if (show_mesh_analysis) {
       gpu::Batch *geom = DRW_cache_mesh_surface_mesh_analysis_get(ob);
       edit_mesh_analysis_ps_.draw(geom, res_handle);
     }
+
     if (face_normals_) {
       gpu::Batch *geom = DRW_mesh_batch_cache_get_edit_facedots(mesh);
       (use_gpu_subdiv ? face_normals_subdiv_ : face_normals_)
@@ -246,6 +264,7 @@ class Meshes {
       gpu::Batch *geom = DRW_mesh_batch_cache_get_edit_vert_normals(mesh);
       vert_normals_->draw_expand(geom, GPU_PRIM_LINES, 1, 1, res_handle);
     }
+
     {
       gpu::Batch *geom = DRW_mesh_batch_cache_get_edit_edges(mesh);
       edit_mesh_edges_ps_.draw_expand(geom, GPU_PRIM_TRIS, 2, 1, res_handle);
@@ -263,6 +282,7 @@ class Meshes {
       gpu::Batch *geom = DRW_mesh_batch_cache_get_edit_facedots(mesh);
       edit_mesh_facedots_ps_.draw(geom, res_handle);
     }
+
     if (mesh_has_skin_roots(ob)) {
       gpu::Batch *geom = DRW_mesh_batch_cache_get_edit_skin_roots(mesh);
       edit_mesh_skin_roots_ps_.draw_expand(geom, GPU_PRIM_LINES, 32, 1, res_handle);
@@ -276,6 +296,7 @@ class Meshes {
     view_edit_vert.sync(view.viewmat(), winmat_polygon_offset(view.winmat(), view_dist, 1.5f));
 
     GPU_framebuffer_bind(framebuffer);
+    manager.submit(edit_mesh_prepass_ps_, view);
     manager.submit(edit_mesh_analysis_ps_, view);
     manager.submit(edit_mesh_normals_ps_, view);
     manager.submit(edit_mesh_faces_ps_, view);
