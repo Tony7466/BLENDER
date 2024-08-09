@@ -13,6 +13,7 @@
 #include "BLI_function_ref.hh"
 #include "BLI_index_mask_fwd.hh"
 #include "BLI_linear_allocator.hh"
+#include "BLI_offset_indices.hh"
 #include "BLI_offset_span.hh"
 #include "BLI_task.hh"
 #include "BLI_unique_sorted_indices.hh"
@@ -255,6 +256,16 @@ class IndexMask : private IndexMaskData {
                                   GrainSize grain_size,
                                   IndexMaskMemory &memory,
                                   Fn &&predicate);
+
+  /** Construct a mask with using std::any_of for indices in range of each group of #groups. */
+  IndexMask any_of(OffsetIndices<int> groups, IndexMaskMemory &memory) const;
+  /** Same as #any_of but with using std::all_of instead. */
+  IndexMask all_of(OffsetIndices<int> groups, IndexMaskMemory &memory) const;
+
+  /** Consider current mask as selection of groups and construction mask for all elements of all
+   * groups. */
+  // IndexMask propagate_on_all(OffsetIndices<int> groups, IndexMaskMemory &memory) const;
+
   /** Sorts all indices from #universe into the different output masks. */
   template<typename T, typename Fn>
   static void from_groups(const IndexMask &universe,

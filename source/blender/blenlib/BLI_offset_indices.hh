@@ -38,6 +38,8 @@ template<typename T> class OffsetIndices {
     BLI_assert(offsets_.size() < 2 || std::is_sorted(offsets_.begin(), offsets_.end()));
   }
 
+  OffsetIndices(const std::initializer_list<T> &list) : OffsetIndices(Span(list)) {}
+
   /**
    * Same as above, but skips the debug check that indices are sorted, because that can have a
    * high performance impact making debug builds unusable for files that would be fine otherwise.
@@ -100,6 +102,14 @@ template<typename T> class OffsetIndices {
   Span<T> data() const
   {
     return offsets_;
+  }
+
+  IndexRange bounds() const
+  {
+    if (this->is_empty()) {
+      return IndexRange();
+    }
+    return IndexRange::from_begin_end(offsets_.first(), offsets_.last());
   }
 };
 

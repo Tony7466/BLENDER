@@ -5,6 +5,7 @@
 #include "testing/testing.h"
 
 #include "BLI_array.hh"
+#include "BLI_array_utils.hh"
 #include "BLI_index_mask.hh"
 #include "BLI_rand.hh"
 #include "BLI_set.hh"
@@ -905,6 +906,57 @@ TEST(index_mask, SliceAndShift)
     const IndexMask mask = IndexMask::from_indices<int>({10, 100}, memory);
     const IndexMask new_mask = mask.slice_and_shift(1, 0, 100, memory);
     EXPECT_TRUE(new_mask.is_empty());
+  }
+}
+
+TEST(index_mask, AllOf)
+{
+  IndexMaskMemory memory;
+  {
+    const IndexMask new_mask = IndexMask(10).any_of({0, 1}, memory);
+    EXPECT_EQ(new_mask, IndexMask(1));
+  }
+  {
+    const IndexMask new_mask = IndexMask(6).any_of({0, 6}, memory);
+    EXPECT_EQ(new_mask, IndexMask(1));
+  }
+  {
+    const IndexMask new_mask =
+        IndexMask::from_indices<int>({0, 1, 2, 3}, memory).any_of({0, 1, 2, 3, 4}, memory);
+    EXPECT_EQ(new_mask.size(), 4);
+    EXPECT_EQ(new_mask, IndexMask(4));
+  }
+  {
+    const IndexMask new_mask =
+        IndexMask::from_indices<int>({1, 2, 5, 6}, memory).any_of({0, 2, 4, 6, 8}, memory);
+    EXPECT_EQ(new_mask, IndexMask(4));
+  }
+  {
+    const IndexMask new_mask =
+        IndexMask::from_indices<int>({0, 4, 9, 20}, memory).any_of({0, 1, 10, 20, 21}, memory);
+    EXPECT_EQ(new_mask.size(), 3);
+    EXPECT_EQ(new_mask[0], 0);
+    EXPECT_EQ(new_mask[1], 1);
+    EXPECT_EQ(new_mask[2], 3);
+  }
+  {
+    const IndexMask new_mask =
+        IndexMask::from_indices<int>({0, 10, 19, 20}, memory).any_of({0, 1, 10, 20, 21}, memory);
+    EXPECT_EQ(new_mask.size(), 3);
+    EXPECT_EQ(new_mask[0], 0);
+    EXPECT_EQ(new_mask[1], 2);
+    EXPECT_EQ(new_mask[2], 3);
+  }
+  {
+    Array<int> offsets(index_mask::max_segment_size * 2);
+    array_utils::fill_index_range<int>(offsets);
+    const IndexMask new_mask = IndexMask::from_indices<int>({index_mask::max_segment_size - 1,
+                                                             index_mask::max_segment_size + 1},
+                                                            memory)
+                                   .any_of(offsets.as_span(), memory);
+    EXPECT_EQ(new_mask.size(), 2);
+    EXPECT_EQ(new_mask[0], index_mask::max_segment_size - 1);
+    EXPECT_EQ(new_mask[1], index_mask::max_segment_size + 1);
   }
 }
 
