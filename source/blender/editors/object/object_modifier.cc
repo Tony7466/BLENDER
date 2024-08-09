@@ -1180,18 +1180,18 @@ static bool modifier_apply_obdata(
     grease_pencil_result.attributes_for_write().remove_anonymous();
 
     /* Get the original material pointers from the result geometry. */
-    VectorSet<Material *> all_result_materials;
+    VectorSet<Material *> original_materials;
     for (Material *eval_material :
          Span{grease_pencil_result.material_array, grease_pencil_result.material_array_num})
     {
       BLI_assert(eval_material->id.orig_id != nullptr);
-      all_result_materials.add_new(reinterpret_cast<Material *>(eval_material->id.orig_id));
+      original_materials.add_new(reinterpret_cast<Material *>(eval_material->id.orig_id));
     }
     /* Build material indices mapping. */
     Array<int> material_indices_map(grease_pencil_orig.material_array_num);
     for (const int mat_i : IndexRange(grease_pencil_orig.material_array_num)) {
       Material *material = grease_pencil_orig.material_array[mat_i];
-      const int map_index = all_result_materials.index_of_try(material);
+      const int map_index = original_materials.index_of_try(material);
       BLI_assert(map_index != -1);
       material_indices_map[mat_i] = map_index;
     }
@@ -1243,11 +1243,11 @@ static bool modifier_apply_obdata(
       eval_to_orig_layer_map.add_new(layer_eval, layer_orig);
     }
 
-    Array<int> layer_indices_map(grease_pencil_result.layers().size());
+    Array<int> eval_to_orig_indices_map(grease_pencil_result.layers().size());
     for (const int layer_eval_i : grease_pencil_result.layers().index_range()) {
       const Layer *layer_eval = grease_pencil_result.layer(layer_eval_i);
       const Layer *layer_orig = eval_to_orig_layer_map.lookup(layer_eval);
-      layer_indices_map[layer_eval_i] = *grease_pencil_orig.get_layer_index(*layer_orig);
+      eval_to_orig_indices_map[layer_eval_i] = *grease_pencil_orig.get_layer_index(*layer_orig);
     }
 
     /* Remap material indices for all other drawings. */
@@ -1277,7 +1277,7 @@ static bool modifier_apply_obdata(
                             bke::AttrDomain::Layer,
                             {},
                             {},
-                            layer_indices_map,
+                            eval_to_orig_indices_map,
                             grease_pencil_orig.attributes_for_write());
 
     Main *bmain = DEG_get_bmain(depsgraph);
