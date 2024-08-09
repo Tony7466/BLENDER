@@ -1336,7 +1336,7 @@ static void svg_replace_color_attributes(std::string &svg,
   };
 
   for (const ColorItem &item : items) {
-    if (name.compare(item.name) != 0) {
+    if (name != item.name) {
       continue;
     }
 
