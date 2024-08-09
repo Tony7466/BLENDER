@@ -482,6 +482,16 @@ ccl_device_inline void volume_shader_eval(KernelGlobals kg,
     if (sd->object != OBJECT_NONE) {
       sd->object_flag |= kernel_data_fetch(object_flag, sd->object);
 
+#  ifdef __VISIBILITY_FLAG__
+      /* If volume is invisible to shadow ray, the hit is not registered, but the volume is still
+       * in the stack. Skip the volume in such cases. */
+      if ((path_flag & PATH_RAY_SHADOW) &&
+          !(kernel_data_fetch(objects, sd->object).visibility & path_flag))
+      {
+        continue;
+      }
+#  endif
+
 #  ifdef __OBJECT_MOTION__
       /* todo: this is inefficient for motion blur, we should be
        * caching matrices instead of recomputing them each step */
