@@ -2797,11 +2797,12 @@ void UV_OT_stitch(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
-static void flood_fill_BFS(Vector<Vector<BMLoop *>> Starting_points,
-                           bContext *C,
-                           std::unordered_map<BMLoop *, std::pair<BMLoop *, float>> *topodistance,
-                           BMUVOffsets offsets,
-                           float *maxTopoDistance)
+static void flood_fill_BFS(
+    Vector<Vector<BMLoop *>> Starting_points,
+    bContext *C,
+    std::unordered_map<BMLoop *, std::pair<BMLoop *, float>> *uvsDistanceMap,
+    BMUVOffsets offsets,
+    float *maxTopoDistance)
 {
   Scene *scene = CTX_data_scene(C);
   SpaceImage *sima = CTX_wm_space_image(C);
@@ -2813,50 +2814,57 @@ static void flood_fill_BFS(Vector<Vector<BMLoop *>> Starting_points,
     std::queue<std::pair<BMLoop *, float>> q;
     q.push(std::make_pair(startingloop, 0.0f));
     while (!q.empty()) {
-      std::pair poppedTopographicData = q.front();
-      BMLoop *poppedLoop = poppedTopographicData.first;
-      float poppedDistance = poppedTopographicData.second;
+      std::pair currentTopoData = q.front();
+      BMLoop *currentLoop = currentTopoData.first;
+      float currentDistance = currentTopoData.second;
       q.pop();
 
-      if (topodistance->find(poppedLoop) != topodistance->end()) {
-        if ((*topodistance)[poppedLoop].second <= poppedDistance) {
+      if (uvsDistanceMap->find(currentLoop) != uvsDistanceMap->end()) {
+        if ((*uvsDistanceMap)[currentLoop].second <= currentDistance) {
           continue;
         }
       }
 
-      float2 poppedLooppos = BM_ELEM_CD_GET_FLOAT_P(poppedLoop, offsets.uv);
+      float2 currentluv = BM_ELEM_CD_GET_FLOAT_P(currentLoop, offsets.uv);
 
-      BMVert *vert = poppedLoop->v;
+      BMVert *vert = currentLoop->v;
       BMIter viter;
       BMLoop *l;
       BM_ITER_ELEM (l, &viter, vert, BM_LOOPS_OF_VERT) {
-        float2 lpos = BM_ELEM_CD_GET_FLOAT_P(l, offsets.uv);
-        if (lpos[0] == poppedLooppos[0] && lpos[1] == poppedLooppos[1]) {
-          (*topodistance)[l] = std::make_pair(startingloop, poppedDistance);
+        float2 luv = BM_ELEM_CD_GET_FLOAT_P(l, offsets.uv);
+        if (luv[0] == currentluv[0] && luv[1] == currentluv[1]) {
+          (*uvsDistanceMap)[l] = std::make_pair(startingloop, currentDistance);
 
-          Vector<BMLoop *> endpoints = {l->prev, l->next};
-          for (auto endpoint : endpoints) {
-            float2 endpointpos = BM_ELEM_CD_GET_FLOAT_P(endpoint, offsets.uv);
-            float dist_sq = math::distance_squared(endpointpos, poppedLooppos);
-            q.push(std::make_pair(endpoint, poppedDistance + dist_sq));
+          Vector<BMLoop *> adjacentLoops = {l->prev, l->next};
+          for (auto adjacentLoop : adjacentLoops) {
+            float2 adjacentLoopPos = BM_ELEM_CD_GET_FLOAT_P(adjacentLoop, offsets.uv);
+            float dist_sq = math::distance_squared(adjacentLoopPos, currentluv);
+            q.push(std::make_pair(adjacentLoop, currentDistance + dist_sq));
           }
         }
       }
     }
   }
-  for (auto pair : *topodistance) {
-    if (pair.second.second > *maxTopoDistance) {
-      *maxTopoDistance = pair.second.second;
+
+  for (auto i = (*uvsDistanceMap).begin(); i != (*uvsDistanceMap).end();) {
+    if (i->second.second > *maxTopoDistance) {
+      *maxTopoDistance = i->second.second;
+    }
+    if (i->second.second == 0.0f) {
+      i = (*uvsDistanceMap).erase(i);
+    }
+    else {
+      i++;
     }
   }
 }
 
-static bool uvedit_uv_loops_softselect(
+static void uvedit_uv_loops_softselect(
     bContext *C,
     wmOperator *op,
     Vector<Vector<Vector<BMLoop *>>> edgeloops_arr,
     Vector<BMUVOffsets> offsetmap_arr,
-    std::unordered_map<BMLoop *, float2, BMLoopPtrHash, BMLoopPtrEqual> *uvs)
+    std::unordered_map<BMLoop *, float2, BMLoopPtrHash, BMLoopPtrEqual> *seam_uvs)
 {
   Scene *scene = CTX_data_scene(C);
   SpaceImage *sima = CTX_wm_space_image(C);
@@ -2865,26 +2873,27 @@ static bool uvedit_uv_loops_softselect(
       scene, view_layer, nullptr);
   const float threshold_sq = math::square(RNA_float_get(op->ptr, "threshold_deform"));
 
-  // figure out the displacement vector for every loop in edgeloops_arr
-  std::unordered_map<BMLoop *, float2> UVcoordDisplacementMap;
+  /* Calculate the displacement vector for every loop in edgeloops_arr. */
+  std::unordered_map<BMLoop *, float2> uvDisplacementMap;
   for (int i = 0; i < edgeloops_arr.size(); i++) {
     for (int j = 0; j < edgeloops_arr[i].size(); j++) {
       float UVcoord_displacement[2] = {0.0f, 0.0f};
       sub_v2_v2v2(UVcoord_displacement,
                   BM_ELEM_CD_GET_FLOAT_P(edgeloops_arr[i][j][0], offsetmap_arr[i].uv),
-                  (*uvs)[edgeloops_arr[i][j][0]]);
+                  (*seam_uvs)[edgeloops_arr[i][j][0]]);
       for (int k = 0; k < edgeloops_arr[i][j].size(); k++) {
         BMLoop *loop = edgeloops_arr[i][j][k];
-        UVcoordDisplacementMap[loop] = UVcoord_displacement;
+        uvDisplacementMap[loop] = UVcoord_displacement;
       }
     }
   }
 
-  int islandcounter = -1;
+  /* Tag all the faces of every single UV island in the scene with a unique index. */
+
+  int islandcounter = 0;
   for (Object *obedit : objects) {
     BMEditMesh *em = BKE_editmesh_from_object(obedit);
     BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
-    /*Tag all the faces of the islands for the current object to be negatice*/
     ListBase island_list = {nullptr};
     const float aspect_y = ED_uvedit_get_aspect_y(obedit);
     bm_mesh_calc_uv_islands(scene, em->bm, &island_list, false, false, true, aspect_y, offsets);
@@ -2893,13 +2902,15 @@ static bool uvedit_uv_loops_softselect(
       for (int i = 0; i < island->faces_len; i++) {
         BM_elem_index_set(island->faces[i], islandcounter);
       }
-      islandcounter--;
+      islandcounter++;
     }
   }
 
-  if (edgeloops_arr[0][0][0]->f->head.index < 0 &&
-      edgeloops_arr[0][0][0]->f->head.index == edgeloops_arr[1][0][0]->f->head.index)
-  {
+  /* If the two edgeloops have the same face index then that means they are on the same island. If
+   * this is the case then this logic combines the edgeloops into one array since flood_fill_BFS
+   * works ad the island level. */
+
+  if (edgeloops_arr[0][0][0]->f->head.index == edgeloops_arr[1][0][0]->f->head.index) {
     for (int j = 0; j < edgeloops_arr[1].size(); j++) {
       edgeloops_arr[0].append(edgeloops_arr[1][j]);
     }
@@ -2908,32 +2919,32 @@ static bool uvedit_uv_loops_softselect(
   }
 
   for (int i = 0; i < edgeloops_arr.size(); i++) {
-    std::unordered_map<BMLoop *, std::pair<BMLoop *, float>> topodistance;
+    std::unordered_map<BMLoop *, std::pair<BMLoop *, float>> uvsDistanceMap;
     float maxTopoDistance = 0.0f;
-    flood_fill_BFS(edgeloops_arr[i], C, &topodistance, offsetmap_arr[i], &maxTopoDistance);
-    for (auto pair : topodistance) {
+    flood_fill_BFS(edgeloops_arr[i], C, &uvsDistanceMap, offsetmap_arr[i], &maxTopoDistance);
+    for (auto pair : uvsDistanceMap) {
       BMLoop *loop = pair.first;
       BMLoop *closestseamloop = pair.second.first;
       if (pair.second.second == 0.0f || pair.second.second > threshold_sq) {
         continue;
       }
       float factor = 1.0f - (pair.second.second / maxTopoDistance);
-      float2 closestseamloopDisplacement = UVcoordDisplacementMap[closestseamloop];
+      float2 closestseamloopDisplacement = uvDisplacementMap[closestseamloop];
       float *luv = BM_ELEM_CD_GET_FLOAT_P(loop, offsetmap_arr[i].uv);
       luv[0] += (closestseamloopDisplacement[0] * factor);
       luv[1] += (closestseamloopDisplacement[1] * factor);
     }
   }
-  return true;
 }
-
-/* Note: Since we are using len squared for distance its possible that in certain
-scenarios that two distances caluclated will be mistakely considered the same
-value due to the precision of the float data type. In such a scenario the function may
-incorrectly pair up edgeloop endpoints. */
 
 static bool uvedit_uv_threshold_weld(bContext *C, wmOperator *op)
 {
+
+  /* Note: Since we are using len squared for distance its possible that in certain
+  scenarios that two distances caluclated will be mistakely considered the same
+  value due to the precision of the float data type. In such a scenario the function may
+  incorrectly pair up edgeloop endpoints. */
+
   Scene *scene = CTX_data_scene(C);
   SpaceImage *sima = CTX_wm_space_image(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
@@ -2947,7 +2958,7 @@ static bool uvedit_uv_threshold_weld(bContext *C, wmOperator *op)
 
   /*Constructs array of edgeloops. The data is nested in the following order
    * structure edgeloops->UVcoordinates->BMloops. If UV_get_edgeloops returns false it means
-   * one of the continuous selections was not an edgeloop*/
+   * one of the continuous selections was not an edgeloop. */
 
   for (Object *objedit : objects) {
     BMEditMesh *em = BKE_editmesh_from_object(objedit);
@@ -2962,22 +2973,22 @@ static bool uvedit_uv_threshold_weld(bContext *C, wmOperator *op)
   }
 
   /* This code block gets the endpoints of each respective edge loop and the data is nested
-     with the same heirarchy as edgeloops_arr.*/
+   * with the same heirarchy as edgeloops_arr. */
 
   Vector<Vector<Vector<BMLoop *>>> endpoints_arr;
   for (int i = 0; i < edgeloops_arr.size(); i++) {
     Vector<Vector<BMLoop *>> curredgeloopendpoints_arr;
     for (int j = 0; j < edgeloops_arr[i].size(); j++) {
 
-      /*If any of the loops for the current UV coordinate have an index of -1 they are a
-       * endpoint*/
+      /* If any of the loops for the current UV coordinate have an index of -1 they are an
+       * endpoint. */
 
       if (edgeloops_arr[i][j][0]->head.index == -1) {
         curredgeloopendpoints_arr.append(edgeloops_arr[i][j]);
       }
     }
 
-    /*If edgeloop does not have 2 endpoints it is cyclic*/
+    /* This logic filters out all edgeloops that are cyclic. */
 
     if (curredgeloopendpoints_arr.size() > 0) {
       endpoints_arr.append(curredgeloopendpoints_arr);
@@ -2987,14 +2998,12 @@ static bool uvedit_uv_threshold_weld(bContext *C, wmOperator *op)
     }
   }
 
-  /*This function requires there be only 2 edgeloops selected.*/
-
   if (endpoints_arr.size() != 2) {
     return false;
   }
 
-  /*Find correct pairing of endpoints between edgeloops
-  by searching for combination with smalled distance.*/
+  /* Find correct pairing of endpoints between edgeloops
+  by searching for combination with smalled distance. */
 
   const auto &edgeloop1_endpoints_arr = endpoints_arr[0];
   const auto &edgeloop2_endpoints_arr = endpoints_arr[1];
@@ -3013,8 +3022,7 @@ static bool uvedit_uv_threshold_weld(bContext *C, wmOperator *op)
   if (len_1 > len_2) {
     std::swap(endpoints_arr[1][0], endpoints_arr[1][1]);
   }
-  // iterate through all the loops in edgeloops and store the current location in
-  // a hashmap with loop as key and location as value
+
   std::unordered_map<BMLoop *, float2, BMLoopPtrHash, BMLoopPtrEqual> uvs;
   for (int i = 0; i < edgeloops_arr.size(); i++) {
     for (int j = 0; j < edgeloops_arr[i].size(); j++) {
@@ -3030,8 +3038,8 @@ static bool uvedit_uv_threshold_weld(bContext *C, wmOperator *op)
     }
   }
 
-  /*Iterates through 2 selected edgeloops starting at endpoints.
-  This logic uses pointers in BMLoop to traverse edgeloops.*/
+  /* Iterates through 2 selected edgeloops starting at endpoints.
+  This logic uses pointers in BMLoop to traverse edgeloops. */
 
   Vector<BMLoop *> line1_iterator = endpoints_arr[0][0];
   Vector<BMLoop *> line2_iterator = endpoints_arr[1][0];
@@ -3086,7 +3094,7 @@ static bool uvedit_uv_threshold_weld(bContext *C, wmOperator *op)
       WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
     }
   }
-  // only do this is deform option is selected
+
   if (RNA_boolean_get(op->ptr, "deform_suroundingmesh")) {
     uvedit_uv_loops_softselect(C, op, edgeloops_arr, offsetmap_arr, &uvs);
   }
