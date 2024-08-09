@@ -162,6 +162,17 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
     info.storage_buf(0, Qualifier::READ, "uint", "vnor[]", Frequency::GEOMETRY);
   });
 
+  outline_prepass_mesh = shader(
+      "overlay_outline_prepass_mesh", [](gpu::shader::ShaderCreateInfo &info) {
+        shader_patch_common(info);
+        info.additional_info("draw_object_infos_new", "overlay_outline_prepass");
+      });
+  outline_prepass_wire = shader(
+      "overlay_outline_prepass_wire", [](gpu::shader::ShaderCreateInfo &info) {
+        shader_patch_common(info);
+        info.additional_info("draw_object_infos_new", "overlay_outline_prepass");
+      });
+
   /** Selectable Shaders */
 
   armature_sphere_outline = selectable_shader(

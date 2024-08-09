@@ -22,6 +22,7 @@
 #include "overlay_next_lightprobe.hh"
 #include "overlay_next_mesh.hh"
 #include "overlay_next_metaball.hh"
+#include "overlay_next_outline.hh"
 #include "overlay_next_prepass.hh"
 #include "overlay_next_relation.hh"
 #include "overlay_next_speaker.hh"
@@ -48,6 +49,7 @@ class Instance {
 
   /** Overlay types. */
   Background background;
+  Outline outline;
 
   struct OverlayLayer {
     const SelectionType selection_type_;
@@ -84,6 +86,7 @@ class Instance {
 
  private:
   bool object_is_edit_mode(const Object *ob);
+  bool object_is_selected(const ObjectRef &ob_ref);
 };
 
 }  // namespace blender::draw::overlay

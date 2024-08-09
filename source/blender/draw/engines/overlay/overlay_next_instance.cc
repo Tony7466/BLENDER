@@ -85,6 +85,7 @@ void Instance::begin_sync()
   resources.begin_sync();
 
   background.begin_sync(resources, state);
+  outline.begin_sync(resources, state);
 
   auto begin_sync_layer = [&](OverlayLayer &layer) {
     layer.bounds.begin_sync();
@@ -111,7 +112,7 @@ void Instance::begin_sync()
 void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
 {
   const bool in_edit_mode = object_is_edit_mode(ob_ref.object);
-  const bool needs_prepass = true; /* TODO */
+  const bool needs_prepass = !state.xray_enabled; /* TODO */
 
   OverlayLayer &layer = (ob_ref.object->dtx & OB_DRAW_IN_FRONT) ? infront : regular;
 
@@ -188,6 +189,10 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
     }
     layer.bounds.object_sync(ob_ref, resources, state);
     layer.relations.object_sync(ob_ref, resources, state);
+
+    if (!in_edit_mode && object_is_selected(ob_ref)) {
+      outline.object_sync(manager, ob_ref, state);
+    }
   }
 }
 
@@ -272,12 +277,15 @@ void Instance::draw(Manager &manager)
                                      GPU_ATTACHMENT_TEXTURE(resources.overlay_tx),
                                      GPU_ATTACHMENT_TEXTURE(resources.line_tx));
     resources.overlay_in_front_fb.ensure(GPU_ATTACHMENT_TEXTURE(resources.depth_in_front_tx),
-                                         GPU_ATTACHMENT_TEXTURE(resources.color_overlay_tx));
+                                         GPU_ATTACHMENT_TEXTURE(resources.overlay_tx));
     resources.overlay_line_in_front_fb.ensure(GPU_ATTACHMENT_TEXTURE(resources.depth_in_front_tx),
-                                              GPU_ATTACHMENT_TEXTURE(resources.color_overlay_tx),
+                                              GPU_ATTACHMENT_TEXTURE(resources.overlay_tx),
                                               GPU_ATTACHMENT_TEXTURE(resources.line_tx));
   }
 
+  resources.overlay_line_only_fb.ensure(GPU_ATTACHMENT_NONE,
+                                        GPU_ATTACHMENT_TEXTURE(resources.overlay_tx),
+                                        GPU_ATTACHMENT_TEXTURE(resources.line_tx));
   resources.overlay_color_only_fb.ensure(GPU_ATTACHMENT_NONE,
                                          GPU_ATTACHMENT_TEXTURE(resources.overlay_tx));
   resources.overlay_output_fb.ensure(GPU_ATTACHMENT_NONE,
@@ -289,6 +297,8 @@ void Instance::draw(Manager &manager)
 
   regular.prepass.draw(resources.overlay_line_fb, manager, view);
   infront.prepass.draw(resources.overlay_line_in_front_fb, manager, view);
+
+  outline.draw(resources, manager, view);
 
   auto draw_layer = [&](OverlayLayer &layer, Framebuffer &framebuffer) {
     layer.bounds.draw(framebuffer, manager, view);
@@ -329,6 +339,12 @@ void Instance::draw(Manager &manager)
   resources.color_render_alloc_tx.release();
 
   resources.read_result();
+}
+
+bool Instance::object_is_selected(const ObjectRef & /*ob_ref*/)
+{
+  /* TODO */
+  return true;
 }
 
 bool Instance::object_is_edit_mode(const Object *ob)
