@@ -74,12 +74,15 @@ static Geometry *create_geometry(Geometry *const prev_geometry,
 static void geom_add_vertex(const char *p, const char *end, GlobalVertices &r_global_vertices)
 {
   float4 vert;
-  p = parse_floats(p, end, 1.f, vert, 4);
+  float weight = 1.f;
+  p = parse_floats(p, end, 1.f, vert, 3);
   r_global_vertices.vertices.append(vert.xyz());
-  r_global_vertices.weights.append(vert.w);
   /* OBJ extension: `xyzrgb` vertex colors, when the vertex position
    * is followed by 3 more RGB color components. See
-   * http://paulbourke.net/dataformats/obj/colour.html */
+   * http://paulbourke.net/dataformats/obj/colour.html.
+   * The vector can also be followed by the weight value, for free-
+   * form shapes.
+   */
   if (p < end) {
     float3 srgb;
     p = parse_floats(p, end, -1.0f, srgb, 3);
@@ -98,8 +101,12 @@ static void geom_add_vertex(const char *p, const char *end, GlobalVertices &r_gl
         blocks.append(block);
       }
       blocks.last().colors.append(linear);
+    } else if(srgb.x >= 0 && srgb.y < 0 && srgb.z < 0) {
+      weight = srgb.x;
     }
   }
+  r_global_vertices.weights.append(weight);
+
   UNUSED_VARS(p);
 }
 
@@ -608,7 +615,7 @@ void OBJParser::parse(Vector<std::unique_ptr<Geometry>> &r_all_geometries,
       /* Most common things that start with 'v': vertices, normals, UVs. */
       if (*p == 'v') {
         if (parse_keyword(p, end, "v")) {
-          geom_add_vertex(p, end, r_global_vertices);
+          geom_add_vertex(p, end, r_global_vertices, curr_geom->rational_);
         }
         else if (parse_keyword(p, end, "vn")) {
           geom_add_vertex_normal(p, end, r_global_vertices);
