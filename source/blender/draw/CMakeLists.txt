@@ -295,6 +295,7 @@ set(SRC
   engines/overlay/overlay_next_empty.hh
   engines/overlay/overlay_next_camera.hh
   engines/overlay/overlay_next_force_field.hh
+  engines/overlay/overlay_next_grease_pencil.hh
   engines/overlay/overlay_next_grid.hh
   engines/overlay/overlay_next_instance.hh
   engines/overlay/overlay_next_lattice.hh

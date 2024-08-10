@@ -16,6 +16,7 @@
 #include "overlay_next_camera.hh"
 #include "overlay_next_empty.hh"
 #include "overlay_next_force_field.hh"
+#include "overlay_next_grease_pencil.hh"
 #include "overlay_next_grid.hh"
 #include "overlay_next_lattice.hh"
 #include "overlay_next_light.hh"
@@ -57,6 +58,7 @@ class Instance {
     Cameras cameras = {selection_type_};
     Empties empties = {selection_type_};
     ForceFields force_fields = {selection_type_};
+    GreasePencil grease_pencil;
     Lattices lattices;
     Lights lights = {selection_type_};
     LightProbes light_probes = {selection_type_};

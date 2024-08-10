@@ -20,6 +20,7 @@ class Outline {
   PassMain outline_prepass_ps_ = {"Prepass"};
   PassMain::Sub *prepass_curves_ps_ = nullptr;
   PassMain::Sub *prepass_pointcloud_ps_ = nullptr;
+  PassMain::Sub *prepass_gpencil_ps_ = nullptr;
   /* Detect edges inside the ID pass and output color for each of them. */
   PassSimple outline_resolve_ps_ = {"Resolve"};
 
@@ -30,12 +31,22 @@ class Outline {
 
   bool enabled = false;
 
+  overlay::GreasePencil::ViewParameters grease_pencil_view;
+
  public:
   void begin_sync(Resources &res, const State &state)
   {
     enabled = (state.v3d_flag & V3D_SELECT_OUTLINE);
     if (!enabled) {
       return;
+    }
+
+    {
+      /* TODO(fclem): This is against design. We should not sync depending on view position.
+       * Eventually, we should do this in a compute shader prepass. */
+      float4x4 viewinv;
+      DRW_view_viewmat_get(nullptr, viewinv.ptr(), true);
+      grease_pencil_view = {DRW_view_is_persp_get(nullptr), viewinv};
     }
 
     const float outline_width = UI_GetThemeValuef(TH_OUTLINE_WIDTH);
@@ -62,6 +73,13 @@ class Outline {
         sub.push_constant("isTransform", is_transform);
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         prepass_pointcloud_ps_ = &sub;
+      }
+      {
+        auto &sub = pass.sub("GreasePencil");
+        sub.shader_set(res.shaders.outline_prepass_gpencil.get());
+        sub.push_constant("isTransform", is_transform);
+        sub.bind_ubo("globalsBlock", &res.globals_buf);
+        prepass_gpencil_ps_ = &sub;
       }
       pass.shader_set(state.xray_enabled_and_not_wire ? res.shaders.outline_prepass_wire.get() :
                                                         res.shaders.outline_prepass_mesh.get());
@@ -101,8 +119,19 @@ class Outline {
 
     gpu::Batch *geom;
     switch (ob_ref.object->type) {
-      case OB_VOLUME:
-        geom = DRW_cache_volume_selection_surface_get(ob_ref.object);
+      case OB_GPENCIL_LEGACY:
+        /* TODO ? */
+        break;
+      case OB_GREASE_PENCIL:
+        GreasePencil::draw_grease_pencil(
+            *prepass_gpencil_ps_, grease_pencil_view, state.scene, ob_ref.object, res_handle);
+        break;
+      case OB_CURVES:
+        geom = curves_sub_pass_setup(*prepass_curves_ps_, state.scene, ob_ref.object);
+        prepass_curves_ps_->draw(geom, res_handle);
+        break;
+      case OB_MESH:
+        geom = DRW_cache_mesh_surface_get(ob_ref.object);
         outline_prepass_ps_.draw(geom, res_handle);
         break;
       case OB_POINTCLOUD:
@@ -113,13 +142,9 @@ class Outline {
           prepass_pointcloud_ps_->draw(geom, res_handle);
         }
         break;
-      case OB_MESH:
-        geom = DRW_cache_mesh_surface_get(ob_ref.object);
+      case OB_VOLUME:
+        geom = DRW_cache_volume_selection_surface_get(ob_ref.object);
         outline_prepass_ps_.draw(geom, res_handle);
-        break;
-      case OB_CURVES:
-        geom = curves_sub_pass_setup(*prepass_curves_ps_, state.scene, ob_ref.object);
-        prepass_curves_ps_->draw(geom, res_handle);
         break;
       default:
         break;

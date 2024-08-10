@@ -183,6 +183,11 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
         info.additional_info(
             "draw_pointcloud_new", "draw_object_infos_new", "overlay_outline_prepass");
       });
+  outline_prepass_gpencil = shader(
+      "overlay_outline_prepass_gpencil", [](gpu::shader::ShaderCreateInfo &info) {
+        shader_patch_common(info);
+        info.additional_info("draw_gpencil_new", "draw_object_infos_new");
+      });
 
   /** Selectable Shaders */
 
