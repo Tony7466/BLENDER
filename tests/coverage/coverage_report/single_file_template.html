@@ -4,11 +4,28 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Code Coverage</title>
+
     <link
       rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css"
+      href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/styles/default.min.css"
+      integrity="sha512-hasIneQUHlh06VNBe7f6ZcHmeRTLIaQWFd43YriJ0UND19bvYRauxthDg8E4eVNPm9bRUhr5JGeqH7FRFXQu5g=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
     />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/styles/a11y-dark.min.css"
+      integrity="sha512-Vj6gPCk8EZlqnoveEyuGyYaWZ1+jyjMPg8g4shwyyNlRQl6d3L9At02ZHQr5K6s5duZl/+YKMnM3/8pDhoUphg=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"
+      integrity="sha512-6yoqbrcLAHDWAdQmiRlHG4+m0g/CT/V9AGyxabG8j7Jk8j3r3K6due7oqpiRMZqcYe9WM2gPcaNNxnl2ux+3tA=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
     <script
       src="https://cdnjs.cloudflare.com/ajax/libs/highlightjs-line-numbers.js/2.6.0/highlightjs-line-numbers.min.js"
       integrity="sha512-nkjLcPbHjdAof51b8uUd+6q4YH7YrMwh+kfTwSBrg5T/yMKrz8GUxM4uJJ1xAL7Q1lfAMIEowDsTzfWskZ5RcQ=="
@@ -65,106 +82,6 @@
         user-select: none;
       }
     </style>
-    <style>
-      /*!
-          Theme: a11y-dark
-          Author: @ericwbailey
-          Maintainer: @ericwbailey
-
-          Based on the Tomorrow Night Eighties theme: https://github.com/isagalaev/highlight.js/blob/master/src/styles/tomorrow-night-eighties.css
-      */
-
-      .hljs {
-        background: #2b2b2b;
-        color: #f8f8f2;
-      }
-
-      /* Comment */
-      .hljs-comment,
-      .hljs-quote {
-        color: #d4d0ab;
-      }
-
-      /* Red */
-      .hljs-variable,
-      .hljs-template-variable,
-      .hljs-tag,
-      .hljs-name,
-      .hljs-selector-id,
-      .hljs-selector-class,
-      .hljs-regexp,
-      .hljs-deletion {
-        color: #ffa07a;
-      }
-
-      /* Orange */
-      .hljs-number,
-      .hljs-built_in,
-      .hljs-literal,
-      .hljs-type,
-      .hljs-params,
-      .hljs-meta,
-      .hljs-link {
-        color: #f5ab35;
-      }
-
-      /* Yellow */
-      .hljs-attribute {
-        color: #ffd700;
-      }
-
-      /* Green */
-      .hljs-string,
-      .hljs-symbol,
-      .hljs-bullet,
-      .hljs-addition {
-        color: #abe338;
-      }
-
-      /* Blue */
-      .hljs-title,
-      .hljs-section {
-        color: #00e0e0;
-      }
-
-      /* Purple */
-      .hljs-keyword,
-      .hljs-selector-tag {
-        color: #dcc6e0;
-      }
-
-      .hljs-emphasis {
-        font-style: italic;
-      }
-
-      .hljs-strong {
-        font-weight: bold;
-      }
-
-      @media screen and (-ms-high-contrast: active) {
-        .hljs-addition,
-        .hljs-attribute,
-        .hljs-built_in,
-        .hljs-bullet,
-        .hljs-comment,
-        .hljs-link,
-        .hljs-literal,
-        .hljs-meta,
-        .hljs-number,
-        .hljs-params,
-        .hljs-string,
-        .hljs-symbol,
-        .hljs-type,
-        .hljs-quote {
-          color: highlight;
-        }
-
-        .hljs-keyword,
-        .hljs-selector-tag {
-          font-weight: bold;
-        }
-      }
-    </style>
   </head>
   <body>
     <div id="summary">
@@ -175,16 +92,18 @@
       <p>Functions: <span id="coverage-functions"></span></p>
     </div>
     <pre><code class="language-cpp" id="source-code"></code></pre>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/cpp.min.js"></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/es/languages/cpp.min.js"
+      integrity="sha512-W7ylVGHTqpHcaLw4Fk096Y7lV7Tz+/r7Ca+Og+oZiar+XxRf4Yd/LNgv4HpbRRpahPip1NihtK3CZ8r3eZ5Umw=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
     <script>
       window.addEventListener("DOMContentLoaded", async () => {
         source_code = await str_from_gzip_base64(source_code_compressed_base64);
-        analysis_data = JSON.parse(
-          await str_from_gzip_base64(analysis_data_compressed_base64)
-        );
+        analysis_data = JSON.parse(await str_from_gzip_base64(analysis_data_compressed_base64));
 
-        document.getElementById("source-code").innerHTML =
-          escapeHtml(source_code);
+        document.getElementById("source-code").innerHTML = escapeHtml(source_code);
 
         prepare_analysis_data();
 
@@ -212,9 +131,7 @@
       }
 
       function prepare_analysis_data() {
-        for (const [function_key, fdata] of Object.entries(
-          analysis_data.functions
-        )) {
+        for (const [function_key, fdata] of Object.entries(analysis_data.functions)) {
           num_functions++;
           if (fdata.execution_count > 0) {
             num_run_functions++;
@@ -228,9 +145,7 @@
             }
           }
         }
-        for (const [line_index_str, count] of Object.entries(
-          analysis_data.loose_lines
-        )) {
+        for (const [line_index_str, count] of Object.entries(analysis_data.loose_lines)) {
           const line_index = parseInt(line_index_str);
           count_by_line.set(line_index, count);
           num_executable_lines++;
@@ -262,17 +177,14 @@
 
       function augment_lines() {
         let line_index = 0;
-        for (const line_element of document.querySelectorAll(
-          ".hljs-ln-code .hljs-ln-line"
-        )) {
+        for (const line_element of document.querySelectorAll(".hljs-ln-code .hljs-ln-line")) {
           const hit_count = count_by_line.get(line_index++);
           if (!hit_count) {
             continue;
           }
           const call_count_element = document.createElement("span");
           call_count_element.className = "line-call-count";
-          call_count_element.innerText =
-            "  " + hit_count.toLocaleString() + "x";
+          call_count_element.innerText = "  " + hit_count.toLocaleString() + "x";
           line_element.appendChild(call_count_element);
         }
       }
