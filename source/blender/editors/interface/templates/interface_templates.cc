@@ -61,7 +61,7 @@
 #include "BKE_linestyle.h"
 #include "BKE_main.hh"
 #include "BKE_modifier.hh"
-#include "BKE_packedFile.h"
+#include "BKE_packedFile.hh"
 #include "BKE_report.hh"
 #include "BKE_scene.hh"
 #include "BKE_screen.hh"
@@ -6405,7 +6405,7 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
     if (msg) {
       uiItemL(row, "", (ICON_MOUSE_LMB + i));
       uiItemS_ex(row, -0.5f);
-      uiItemL(row, msg ? msg : "", ICON_NONE);
+      uiItemL(row, msg, ICON_NONE);
       uiItemS_ex(row, 0.7f);
     }
 
