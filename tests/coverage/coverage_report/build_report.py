@@ -1,14 +1,19 @@
-from pathlib import Path
-import json
-from pprint import pprint
-from collections import defaultdict
-import textwrap
-import html
-from .util import print_updateable_line
-import zipfile
-import shutil
-import gzip
+# SPDX-FileCopyrightText: 2024 Blender Authors
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 import base64
+import gzip
+import html
+import json
+import shutil
+import textwrap
+import zipfile
+
+from .util import print_updateable_line
+from collections import defaultdict
+from pathlib import Path
+from pprint import pprint
 
 index_template_path = Path(__file__).parent / "index_template.html"
 single_file_template_path = Path(__file__).parent / "single_file_template.html"

@@ -1,18 +1,24 @@
-from pathlib import Path
-import os
-import subprocess
-import random
-import multiprocessing
-import shutil
-import time
+# SPDX-FileCopyrightText: 2024 Blender Authors
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 import concurrent.futures
 import json
-import textwrap
-from collections import defaultdict
-from pprint import pprint
+import multiprocessing
+import os
+import random
+import shutil
+import subprocess
 import sys
-from .util import print_updateable_line
+import textwrap
+import time
 import zipfile
+
+from collections import defaultdict
+from pathlib import Path
+from pprint import pprint
+
+from .util import print_updateable_line
 
 
 def parse(build_dir, analysis_dir, gcov_binary="gcov"):
