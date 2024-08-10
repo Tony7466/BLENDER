@@ -615,7 +615,7 @@ void OBJParser::parse(Vector<std::unique_ptr<Geometry>> &r_all_geometries,
       /* Most common things that start with 'v': vertices, normals, UVs. */
       if (*p == 'v') {
         if (parse_keyword(p, end, "v")) {
-          geom_add_vertex(p, end, r_global_vertices, curr_geom->rational_);
+          geom_add_vertex(p, end, r_global_vertices/*, curr_geom->rational_ <- we xould add this so we could verify in geom_add_vertex() that we are getting weights in. */);
         }
         else if (parse_keyword(p, end, "vn")) {
           geom_add_vertex_normal(p, end, r_global_vertices);
