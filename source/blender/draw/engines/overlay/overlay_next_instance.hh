@@ -87,8 +87,13 @@ class Instance {
   void draw(Manager &manager);
 
  private:
-  bool object_is_edit_mode(const Object *ob);
   bool object_is_selected(const ObjectRef &ob_ref);
+  bool object_is_edit_mode(const Object *object);
+  bool object_is_paint_mode(const Object *object);
+  /* Checks for both curve sculpt and regular sculpt mode. */
+  bool object_is_sculpt_mode(const ObjectRef &ob_ref);
+  /* Checks only for sculpt mode. */
+  bool object_is_sculpt_mode(const Object *object);
 };
 
 }  // namespace blender::draw::overlay
