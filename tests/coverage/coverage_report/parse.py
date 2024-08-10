@@ -49,9 +49,9 @@ def parse(build_dir, analysis_dir, gcov_binary="gcov"):
 
     # Shuffle to make chunks more similar in size.
     random.shuffle(gcda_paths)
-    chunk_size = max(1, len(gcda_paths) // multiprocessing.cpu_count() // 8)
+    chunk_size = 10
     gcda_path_chunks = [
-        gcda_paths[i : i + chunk_size] for i in range(0, len(gcda_paths), chunk_size)
+        gcda_paths[i: i + chunk_size] for i in range(0, len(gcda_paths), chunk_size)
     ]
 
     def parse_with_gcov(file_paths):
@@ -63,7 +63,7 @@ def parse(build_dir, analysis_dir, gcov_binary="gcov"):
     print_updateable_line("[0/{}] parsed.".format(len(gcda_paths)))
     gathered_gcov_outputs = []
     with concurrent.futures.ThreadPoolExecutor(
-        max_workers=len(gcda_path_chunks)
+        max_workers=os.cpu_count()
     ) as executor:
         futures = {
             executor.submit(parse_with_gcov, file_paths): file_paths
@@ -232,12 +232,14 @@ def parse(build_dir, analysis_dir, gcov_binary="gcov"):
 
     print("Write per file analysis...")
     for i, file_path in enumerate(source_file_order):
+        analysis_file_path = analysis_dir / "files" / Path(file_path).relative_to("/")
+        analysis_file_path = str(analysis_file_path) + ".json.zip"
+
         data = new_data_by_source_file[file_path]
         print_updateable_line(
-            "[{}/{}] written: {}".format(i + 1, len(new_data_by_source_file), file_path)
+            "[{}/{}] written: {}".format(i + 1, len(new_data_by_source_file), analysis_file_path)
         )
-        analysis_file_path = analysis_dir / "files" / Path(file_path).relative_to("/")
-        write_dict_to_zip_file(str(analysis_file_path) + ".json.zip", data)
+        write_dict_to_zip_file(analysis_file_path, data)
     print()
     print("Parsed data written to {}.".format(analysis_dir))
 

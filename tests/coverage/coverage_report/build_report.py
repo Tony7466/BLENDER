@@ -30,7 +30,7 @@ def report_as_html(analysis_dir, report_dir):
 
     build_summary(analysis_dir, report_dir)
     build_file_pages(analysis_dir, report_dir)
-    print("Report written to {}.".format(report_dir/"index.html"))
+    print("Report written to {}.".format(report_dir / "index.html"))
 
 
 def build_summary(analysis_dir, report_dir):

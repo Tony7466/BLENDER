@@ -5,25 +5,51 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import argparse
-import textwrap
-import sys
 import os
-from coverage_report import parse, report_as_html
-from pathlib import Path
+import shutil
+import sys
+import textwrap
 import webbrowser
 
+from coverage_report import parse, report_as_html
+from coverage_report.util import print_updateable_line
+from pathlib import Path
+
+usage = textwrap.dedent("""\
+    coverage.py <command> [<args>]
+
+    Commands:
+        report [--build-directory]          Analyse coverage data and generate html report.
+        reset [--build-directory]           Delete coverage data, its analysis and report.
+        help                                Show this help.
+    """)
 
 def main():
-    usage = textwrap.dedent("""\
-        coverage --build-directory <build-dir>
-        """)
-
     parser = argparse.ArgumentParser(
         description="Blender test coverage",
         usage=usage)
 
-    parser.add_argument("--build-directory", type=str, default=os.getcwd())
-    args = parser.parse_args(sys.argv[1:])
+    parser.add_argument("command", nargs="?", default="help")
+    args = parser.parse_args(sys.argv[1:2])
+    command = args.command
+
+    argv = sys.argv[2:]
+
+    if command == "report":
+        run_report(argv)
+    elif command == "reset":
+        run_reset(argv)
+    elif command == "help":
+        print(usage)
+    else:
+        print("Unknown command: {}".format(command))
+        sys.exit(1)
+
+
+def run_report(argv):
+    parser = argparse.ArgumentParser(usage=usage)
+    parser.add_argument("--build-directory", type=str, default=".")
+    args = parser.parse_args(argv)
 
     build_dir = Path(args.build_directory).absolute()
     if not is_blender_build_directory(build_dir):
@@ -43,7 +69,33 @@ def main():
 
     webbrowser.open("file://" + str(report_dir / "index.html"))
 
+
+def run_reset(argv):
+    parser = argparse.ArgumentParser(usage=usage)
+    parser.add_argument("--build-directory", type=str, default=".")
+    args = parser.parse_args(argv)
+
+    build_dir = Path(args.build_directory).absolute()
+    if not is_blender_build_directory(build_dir):
+        print("Directory does not seem to be a Blender build directory.")
+        sys.exit(1)
+
+    print("Remove .gcda files...")
+    gcda_files = list(build_dir.glob("**/*.gcda"))
+    for i, path in enumerate(gcda_files):
+        print_updateable_line("[{}/{}] Remove: {}".format(i+1, len(gcda_files), path))
+        os.remove(path)
+    print()
+
+    coverage_dir = build_dir / "coverage"
+    print("Remove {}...".format(coverage_dir))
+    if coverage_dir.exists():
+        shutil.rmtree(coverage_dir)
+
+
 def is_blender_build_directory(build_dir):
     return (Path(build_dir) / "bin" / "blender").exists() or (Path(build_dir) / "bin" / "blender.exe").exists()
 
-main()
+
+if __name__ == '__main__':
+    main()
