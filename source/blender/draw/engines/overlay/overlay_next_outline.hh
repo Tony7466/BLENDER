@@ -10,12 +10,16 @@
 
 #include "overlay_next_private.hh"
 
+#include "draw_common.hh"
+
 namespace blender::draw::overlay {
 
 class Outline {
  private:
   /* Simple render pass that renders an object ID pass. */
   PassMain outline_prepass_ps_ = {"Prepass"};
+  PassMain::Sub *prepass_curves_ps_ = nullptr;
+  PassMain::Sub *prepass_pointcloud_ps_ = nullptr;
   /* Detect edges inside the ID pass and output color for each of them. */
   PassSimple outline_resolve_ps_ = {"Resolve"};
 
@@ -45,6 +49,20 @@ class Outline {
       pass.clear_color_depth_stencil(float4(0.0f), 1.0f, 0x0);
       pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL |
                      state.clipping_state);
+      {
+        auto &sub = pass.sub("Curves");
+        sub.shader_set(res.shaders.outline_prepass_curves.get());
+        sub.push_constant("isTransform", is_transform);
+        sub.bind_ubo("globalsBlock", &res.globals_buf);
+        prepass_curves_ps_ = &sub;
+      }
+      {
+        auto &sub = pass.sub("PointCloud");
+        sub.shader_set(res.shaders.outline_prepass_pointcloud.get());
+        sub.push_constant("isTransform", is_transform);
+        sub.bind_ubo("globalsBlock", &res.globals_buf);
+        prepass_pointcloud_ps_ = &sub;
+      }
       pass.shader_set(state.xray_enabled_and_not_wire ? res.shaders.outline_prepass_wire.get() :
                                                         res.shaders.outline_prepass_mesh.get());
       pass.push_constant("isTransform", is_transform);
@@ -68,7 +86,7 @@ class Outline {
     }
   }
 
-  void object_sync(Manager &manager, const ObjectRef &ob_ref, const State & /*state*/)
+  void object_sync(Manager &manager, const ObjectRef &ob_ref, const State &state)
   {
     if (!enabled) {
       return;
@@ -81,9 +99,30 @@ class Outline {
 
     ResourceHandle res_handle = manager.resource_handle(ob_ref);
 
-    gpu::Batch *geom = DRW_cache_object_surface_get(ob_ref.object);
-    if (geom != nullptr) {
-      outline_prepass_ps_.draw(geom, res_handle);
+    gpu::Batch *geom;
+    switch (ob_ref.object->type) {
+      case OB_VOLUME:
+        geom = DRW_cache_volume_selection_surface_get(ob_ref.object);
+        outline_prepass_ps_.draw(geom, res_handle);
+        break;
+      case OB_POINTCLOUD:
+        /* Looks bad in wireframe mode. Could be relaxed if we draw a wireframe of some sort in
+         * the future. */
+        if (!state.is_wireframe_mode) {
+          geom = point_cloud_sub_pass_setup(*prepass_pointcloud_ps_, ob_ref.object);
+          prepass_pointcloud_ps_->draw(geom, res_handle);
+        }
+        break;
+      case OB_MESH:
+        geom = DRW_cache_mesh_surface_get(ob_ref.object);
+        outline_prepass_ps_.draw(geom, res_handle);
+        break;
+      case OB_CURVES:
+        geom = curves_sub_pass_setup(*prepass_curves_ps_, state.scene, ob_ref.object);
+        prepass_curves_ps_->draw(geom, res_handle);
+        break;
+      default:
+        break;
     }
   }
 

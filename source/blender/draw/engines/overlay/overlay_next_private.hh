@@ -183,6 +183,8 @@ class ShaderModule {
   ShaderPtr mesh_vert_normal;
   ShaderPtr outline_prepass_mesh;
   ShaderPtr outline_prepass_wire;
+  ShaderPtr outline_prepass_curves;
+  ShaderPtr outline_prepass_pointcloud;
   ShaderPtr outline_detect = shader("overlay_outline_detect");
 
   /** Selectable Shaders */
