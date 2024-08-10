@@ -93,13 +93,9 @@
           await str_from_gzip_base64(analysis_data_compressed_base64)
         );
 
-        for (const [file_path, file_data] of Object.entries(
-          analysis_data.files
-        )) {
+        for (const [file_path, file_data] of Object.entries(analysis_data.files)) {
           if (!default_open_path) {
-            const default_path_index = file_path.indexOf(
-              default_open_path_segment
-            );
+            const default_path_index = file_path.indexOf(default_open_path_segment);
             if (default_path_index != -1) {
               default_open_path = file_path.substr(
                 0,
@@ -120,9 +116,7 @@
               if (!current_data.children.has(path_part)) {
                 current_data.children.set(
                   path_part,
-                  new_directory_data(
-                    current_data.path + (i > 1 ? "/" : "") + path_part
-                  )
+                  new_directory_data(current_data.path + (i > 1 ? "/" : "") + path_part)
                 );
               }
               current_data = current_data.children.get(path_part);
@@ -171,16 +165,18 @@
         }
 
         {
-          const lines_percent = ratio_to_percent(
-            data.num_lines_run,
-            data.num_lines
-          );
-
           const lines_percent_elem = document.createElement("span");
-          lines_percent_elem.style.color = `color-mix(in hsl, rgb(240, 50, 50), rgb(50, 240, 50) ${lines_percent}%)`;
-          lines_percent_elem.innerText = `${lines_percent}%`;
-          lines_percent_elem.className = "lines-percent-row";
           stats_elem.appendChild(lines_percent_elem);
+          lines_percent_elem.className = "lines-percent-row";
+
+          if (data.num_lines == 0) {
+            lines_percent_elem.style.color = "rgb(137 137 137)";
+            lines_percent_elem.innerText = "-";
+          } else {
+            const lines_percent = ratio_to_percent(data.num_lines_run, data.num_lines);
+            lines_percent_elem.style.color = `color-mix(in hsl, rgb(240, 50, 50), rgb(50, 240, 50) ${lines_percent}%)`;
+            lines_percent_elem.innerText = `${lines_percent}%`;
+          }
 
           const total_lines_elem = document.createElement("span");
           total_lines_elem.className = "lines-total-row";
@@ -211,29 +207,15 @@
           const directory_children = all_children.filter(
             (c) => c[1].source_file_path === undefined
           );
-          const file_children = all_children.filter(
-            (c) => c[1].source_file_path !== undefined
-          );
+          const file_children = all_children.filter((c) => c[1].source_file_path !== undefined);
 
           let child_index = index + 1;
           for (const [name, child_data] of directory_children) {
-            build_tree_for_directory(
-              children_container,
-              name,
-              child_data,
-              depth + 1,
-              child_index
-            );
+            build_tree_for_directory(children_container, name, child_data, depth + 1, child_index);
             child_index++;
           }
           for (const [name, child_data] of file_children) {
-            build_tree_for_directory(
-              children_container,
-              name,
-              child_data,
-              depth + 1,
-              child_index
-            );
+            build_tree_for_directory(children_container, name, child_data, depth + 1, child_index);
             child_index++;
           }
 
