@@ -51,6 +51,7 @@ enum {
  * \{ */
 
 void ED_operatortypes_grease_pencil();
+void ED_operatortypes_grease_pencil_bake_animation();
 void ED_operatortypes_grease_pencil_draw();
 void ED_operatortypes_grease_pencil_frames();
 void ED_operatortypes_grease_pencil_layers();
@@ -706,5 +707,20 @@ void set_lineart_modifier_limits(GreasePencilLineartModifierData &lmd,
                                  const bool is_first_lineart);
 
 GreasePencilLineartModifierData *get_first_lineart_modifier(const Object &ob);
+
+enum class ReprojectModes {
+  /* Axis */
+  Front = 0,
+  Side,
+  Top,
+  /** On same plane, parallel to view-plane. */
+  View,
+  /** Re-projected on to the scene geometry. */
+  Surface,
+  /** Re-projected on 3D cursor orientation. */
+  Cursor,
+  /** Keep equals (used in some operators). */
+  Keep,
+};
 
 }  // namespace blender::ed::greasepencil
