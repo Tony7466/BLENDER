@@ -427,6 +427,25 @@ def _template_items_select_lasso(params, operator):
         ]
 
 
+def _template_items_select_polyline(params, operator):
+    # Needed because of shortcut conflicts on CTRL-LMB on right click select with brush modes,
+    # all modifier keys are used together to unmask/deselect.
+    if params.select_mouse == 'RIGHTMOUSE':
+        return [
+            (operator, {"type": params.action_mouse, "value": 'CLICK', "shift": True, "ctrl": True},
+             {"properties": [("mode", 'SUB')]}),
+            (operator, {"type": params.action_mouse, "value": 'CLICK', "shift": True, "ctrl": True, "alt": True},
+             {"properties": [("mode", 'ADD')]}),
+        ]
+    else:
+        return [
+            (operator, {"type": params.action_mouse, "value": 'CLICK', "shift": True, "ctrl": True},
+             {"properties": [("mode", 'SUB')]}),
+            (operator, {"type": params.action_mouse, "value": 'CLICK', "ctrl": True},
+             {"properties": [("mode", 'ADD')]}),
+        ]
+
+
 def _template_items_hide_reveal_actions(op_hide, op_reveal):
     return [
         (op_reveal, {"type": 'H', "value": 'PRESS', "alt": True}, None),
@@ -5570,6 +5589,7 @@ def km_paint_face_mask(params):
     items.extend([
         *_template_items_select_actions(params, "paint.face_select_all"),
         *_template_items_select_lasso(params, "view3d.select_lasso"),
+        *_template_items_select_polyline(params, "view3d.select_polyline"),
         *_template_items_hide_reveal_actions("paint.face_select_hide", "paint.face_vert_reveal"),
         ("paint.face_select_linked", {"type": 'L', "value": 'PRESS', "ctrl": True}, None),
         ("paint.face_select_linked_pick", {"type": 'L', "value": 'PRESS'},
@@ -5599,6 +5619,7 @@ def km_paint_vertex_mask(params):
     items.extend([
         *_template_items_select_actions(params, "paint.vert_select_all"),
         *_template_items_select_lasso(params, "view3d.select_lasso"),
+        *_template_items_select_polyline(params, "view3d.select_polyline"),
         *_template_items_hide_reveal_actions("paint.vert_select_hide", "paint.face_vert_reveal"),
         ("view3d.select_box", {"type": 'B', "value": 'PRESS'}, None),
         ("view3d.select_circle", {"type": 'C', "value": 'PRESS'}, None),
@@ -7576,6 +7597,22 @@ def km_3d_view_tool_select_lasso(params, *, fallback):
     )
 
 
+def km_3d_view_tool_select_polyline(params, *, fallback):
+    return (
+        _fallback_id("3D View Tool: Select Polyline", fallback),
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": [
+            *([] if (fallback and not params.use_fallback_tool) else _template_items_tool_select_actions(
+                "view3d.select_polyline",
+                **({"type": params.select_mouse, "value": 'PRESS'} if (
+                    fallback and params.use_fallback_tool_select_mouse) else
+                   {"type": params.tool_mouse, "value": 'PRESS'}))),
+            # Instance weight/vertex selection actions here, see code-comment for details.
+            *([] if (params.select_mouse == 'RIGHTMOUSE') else _template_view3d_paint_mask_select_loop(params)),
+        ]}
+    )
+
+
 def km_3d_view_tool_transform(params):
     return (
         "3D View Tool: Transform",
@@ -9204,6 +9241,7 @@ def generate_keymaps(params=None):
         *(km_3d_view_tool_select_box(params, fallback=fallback) for fallback in (False, True)),
         *(km_3d_view_tool_select_circle(params, fallback=fallback) for fallback in (False, True)),
         *(km_3d_view_tool_select_lasso(params, fallback=fallback) for fallback in (False, True)),
+        *(km_3d_view_tool_select_polyline(params, fallback=fallback) for fallback in (False, True)),
         km_3d_view_tool_transform(params),
         km_3d_view_tool_move(params),
         km_3d_view_tool_rotate(params),

@@ -1833,6 +1833,7 @@ class VIEW3D_MT_select_object(Menu):
         layout.operator("view3d.select_box")
         layout.operator("view3d.select_circle")
         layout.operator_menu_enum("view3d.select_lasso", "mode")
+        layout.operator_menu_enum("view3d.select_polyline", "mode")
 
         layout.separator()
 
@@ -1892,6 +1893,7 @@ class VIEW3D_MT_select_pose(Menu):
         layout.operator("view3d.select_box")
         layout.operator("view3d.select_circle")
         layout.operator_menu_enum("view3d.select_lasso", "mode")
+        layout.operator_menu_enum("view3d.select_polyline", "mode")
 
         layout.separator()
 
@@ -1928,6 +1930,7 @@ class VIEW3D_MT_select_particle(Menu):
         layout.operator("view3d.select_box")
         layout.operator("view3d.select_circle")
         layout.operator_menu_enum("view3d.select_lasso", "mode")
+        layout.operator_menu_enum("view3d.select_polyline", "mode")
 
         layout.separator()
 
@@ -2036,6 +2039,7 @@ class VIEW3D_MT_select_edit_mesh(Menu):
         layout.operator("view3d.select_box")
         layout.operator("view3d.select_circle")
         layout.operator_menu_enum("view3d.select_lasso", "mode")
+        layout.operator_menu_enum("view3d.select_polyline", "mode")
 
         # numeric
         layout.separator()
@@ -2081,6 +2085,7 @@ class VIEW3D_MT_select_edit_curve(Menu):
         layout.operator("view3d.select_box")
         layout.operator("view3d.select_circle")
         layout.operator_menu_enum("view3d.select_lasso", "mode")
+        layout.operator_menu_enum("view3d.select_polyline", "mode")
 
         layout.separator()
 
@@ -2120,6 +2125,7 @@ class VIEW3D_MT_select_edit_surface(Menu):
         layout.operator("view3d.select_box")
         layout.operator("view3d.select_circle")
         layout.operator_menu_enum("view3d.select_lasso", "mode")
+        layout.operator_menu_enum("view3d.select_polyline", "mode")
 
         layout.separator()
 
@@ -2190,6 +2196,7 @@ class VIEW3D_MT_select_edit_metaball(Menu):
         layout.operator("view3d.select_box")
         layout.operator("view3d.select_circle")
         layout.operator_menu_enum("view3d.select_lasso", "mode")
+        layout.operator_menu_enum("view3d.select_polyline", "mode")
 
         layout.separator()
 
@@ -2230,6 +2237,7 @@ class VIEW3D_MT_select_edit_lattice(Menu):
         layout.operator("view3d.select_box")
         layout.operator("view3d.select_circle")
         layout.operator_menu_enum("view3d.select_lasso", "mode")
+        layout.operator_menu_enum("view3d.select_polyline", "mode")
 
         layout.separator()
 
@@ -2261,6 +2269,7 @@ class VIEW3D_MT_select_edit_armature(Menu):
         layout.operator("view3d.select_box")
         layout.operator("view3d.select_circle")
         layout.operator_menu_enum("view3d.select_lasso", "mode")
+        layout.operator_menu_enum("view3d.select_polyline", "mode")
 
         layout.separator()
 
@@ -2415,6 +2424,7 @@ class VIEW3D_MT_select_paint_mask(Menu):
         layout.operator("view3d.select_box")
         layout.operator("view3d.select_circle")
         layout.operator_menu_enum("view3d.select_lasso", "mode")
+        layout.operator_menu_enum("view3d.select_polyline", "mode")
 
         layout.separator()
 
@@ -2441,6 +2451,7 @@ class VIEW3D_MT_select_paint_mask_vertex(Menu):
         layout.operator("view3d.select_box")
         layout.operator("view3d.select_circle")
         layout.operator_menu_enum("view3d.select_lasso", "mode")
+        layout.operator_menu_enum("view3d.select_polyline", "mode")
 
         layout.separator()
 

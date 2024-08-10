@@ -465,6 +465,23 @@ class _defs_view3d_select:
         )
 
     @ToolDef.from_fn
+    def polyline():
+        def draw_settings(_context, layout, tool):
+            props = tool.operator_properties("view3d.select_polyline")
+            row = layout.row()
+            row.use_property_split = False
+            row.prop(props, "mode", text="", expand=True, icon_only=True)
+
+        return dict(
+            idname="builtin.select_polyline",
+            label="Select Polyline",
+            icon="ops.generic.select_polyline",
+            widget=None,
+            keymap="3D View Tool: Select Polyline",
+            draw_settings=draw_settings,
+        )
+
+    @ToolDef.from_fn
     def circle():
         def draw_settings(_context, layout, tool):
             props = tool.operator_properties("view3d.select_circle")
@@ -2370,6 +2387,23 @@ class _defs_image_uv_select:
         )
 
     @ToolDef.from_fn
+    def polyline():
+        def draw_settings(_context, layout, tool):
+            props = tool.operator_properties("uv.select_polyline")
+            row = layout.row()
+            row.use_property_split = False
+            row.prop(props, "mode", text="", expand=True, icon_only=True)
+
+        return dict(
+            idname="builtin.select_polyline",
+            label="Select Polyline",
+            icon="ops.generic.select_polyline",
+            widget=None,
+            keymap=(),
+            draw_settings=draw_settings,
+        )
+
+    @ToolDef.from_fn
     def circle():
         def draw_settings(_context, layout, tool):
             props = tool.operator_properties("uv.select_circle")
@@ -3328,6 +3362,7 @@ class IMAGE_PT_tools_active(ToolSelectPanelHelper, Panel):
             _defs_image_uv_select.box,
             _defs_image_uv_select.circle,
             _defs_image_uv_select.lasso,
+            _defs_image_uv_select.polyline,
         ),
     )
 
@@ -3485,6 +3520,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             _defs_view3d_select.box,
             _defs_view3d_select.circle,
             _defs_view3d_select.lasso,
+            _defs_view3d_select.polyline,
         ),
     )
 

@@ -1518,6 +1518,26 @@ void VIEW3D_OT_select_lasso(wmOperatorType *ot)
   WM_operator_properties_select_operation(ot);
 }
 
+void VIEW3D_OT_select_polyline(wmOperatorType *ot)
+{
+  ot->name = "Polyline Select";
+  ot->description = "Select items using polyline selection";
+  ot->idname = "VIEW3D_OT_select_polyline";
+
+  ot->invoke = WM_gesture_polyline_invoke;
+  ot->modal = WM_gesture_polyline_modal;
+  ot->exec = view3d_lasso_select_exec;
+  ot->poll = view3d_selectable_data;
+  ot->cancel = WM_gesture_polyline_cancel;
+
+  /* flags */
+  ot->flag = OPTYPE_UNDO | OPTYPE_DEPENDS_ON_CURSOR;
+
+  /* properties */
+  WM_operator_properties_gesture_polyline(ot);
+  WM_operator_properties_select_operation(ot);
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
