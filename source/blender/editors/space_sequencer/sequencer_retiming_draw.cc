@@ -136,7 +136,6 @@ static bool retiming_fake_key_frame_clicked(const bContext *C,
                                             const int mval[2],
                                             int &r_frame)
 {
-  const Scene *scene = CTX_data_scene(C);
   const View2D *v2d = UI_view2d_fromcontext(C);
 
   rctf box = seq_retiming_keys_box_get(CTX_data_scene(C), v2d, seq);
