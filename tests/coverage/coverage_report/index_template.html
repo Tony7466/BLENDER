@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Code Coverage Summary</title>
+
+    <style>
+      * {
+        padding: 0;
+        margin: 0;
+        border: 0;
+        font-family: monospace;
+        overflow: visible;
+      }
+
+      body {
+        background: #2b2b2b;
+      }
+
+      #summary {
+        color: #d4d0ab;
+        border-bottom: #535353 1px solid;
+        padding: 0.5em;
+        font-size: large;
+        font-family: monospace;
+      }
+
+      a {
+        color: #d4d0ab;
+        text-decoration: none;
+      }
+
+      a:hover {
+        color: #89dbdb;
+      }
+
+      .row {
+        padding-bottom: 0.25em;
+        padding-top: 0.25em;
+        min-width: 1000px;
+        width: 100%;
+      }
+
+      .row-label {
+        margin-left: 1em;
+        cursor: pointer;
+        display: inline-block;
+      }
+
+      #files-tree-view {
+        color: #d4d0ab;
+        width: 100%;
+      }
+
+      .row-stats {
+        display: inline-block;
+        margin-left: 1em;
+      }
+
+      .lines-percent-row {
+        display: inline-block;
+        text-align: right;
+        width: 3em;
+      }
+
+      .lines-total-row {
+        display: inline-block;
+        text-align: right;
+        font-size: smaller;
+        color: #7d7d7d;
+        margin-left: 1em;
+        width: 7em;
+      }
+
+      .odd {
+        background-color: rgba(0, 0, 0, 0.15);
+      }
+
+      /* .children-container {
+        background: rgba(208, 208, 236, 0.02);
+      } */
+    </style>
+  </head>
+  <body>
+    <div id="summary">
+      <p>Code Coverage Report</p>
+      <br />
+      <p>Files: <span id="coverage-files"></span></p>
+      <p>Functions: <span id="coverage-functions"></span></p>
+      <p>Lines: <span id="coverage-lines"></span></p>
+    </div>
+    <div id="files-tree-view"></div>
+    <script>
+      window.addEventListener("DOMContentLoaded", async () => {
+        var analysis_data = JSON.parse(
+          await str_from_gzip_base64(analysis_data_compressed_base64)
+        );
+
+        for (const [file_path, file_data] of Object.entries(
+          analysis_data.files
+        )) {
+          if (!default_open_path) {
+            const default_path_index = file_path.indexOf(
+              default_open_path_segment
+            );
+            if (default_path_index != -1) {
+              default_open_path = file_path.substr(
+                0,
+                default_path_index + default_open_path_segment.length
+              );
+            }
+          }
+
+          let path_parts = file_path.split("/");
+          current_path = "";
+
+          let current_data;
+          for (let i = 0; i < path_parts.length; i++) {
+            const path_part = path_parts[i];
+            if (i == 0) {
+              current_data = root_data;
+            } else {
+              if (!current_data.children.has(path_part)) {
+                current_data.children.set(
+                  path_part,
+                  new_directory_data(
+                    current_data.path + (i > 1 ? "/" : "") + path_part
+                  )
+                );
+              }
+              current_data = current_data.children.get(path_part);
+            }
+            current_data.num_lines += file_data.num_lines;
+            current_data.num_lines_run += file_data.num_lines_run;
+            current_data.num_functions += file_data.num_functions;
+            current_data.num_functions_run += file_data.num_functions_run;
+          }
+          current_data.source_file_path = file_path;
+        }
+
+        document.getElementById("coverage-files").innerText = Object.keys(
+          analysis_data.files
+        ).length.toLocaleString();
+        document.getElementById(
+          "coverage-lines"
+        ).innerText = `${root_data.num_lines_run.toLocaleString()} / ${root_data.num_lines.toLocaleString()}`;
+        document.getElementById(
+          "coverage-functions"
+        ).innerText = `${root_data.num_functions_run.toLocaleString()} / ${root_data.num_functions.toLocaleString()}`;
+
+        const tree_view = document.getElementById("files-tree-view");
+        build_tree_for_directory(tree_view, "/", root_data, 0, 0);
+      });
+
+      function build_tree_for_directory(parent, name, data, depth, index) {
+        const is_file = data.source_file_path !== undefined;
+        const is_directory = !is_file;
+
+        const row = document.createElement("div");
+        row.classList.add("row");
+        parent.appendChild(row);
+
+        const stats_elem = document.createElement("span");
+        const label_elem = document.createElement("span");
+        row.appendChild(stats_elem);
+        row.appendChild(label_elem);
+
+        label_elem.className = "row-label";
+        label_elem.style.paddingLeft = (depth * 0.8).toString() + "em";
+
+        stats_elem.className = "row-stats";
+        if (index % 2 == 1) {
+          row.classList.add("odd");
+        }
+
+        {
+          const lines_percent = ratio_to_percent(
+            data.num_lines_run,
+            data.num_lines
+          );
+
+          const lines_percent_elem = document.createElement("span");
+          lines_percent_elem.style.color = `color-mix(in hsl, rgb(240, 50, 50), rgb(50, 240, 50) ${lines_percent}%)`;
+          lines_percent_elem.innerText = `${lines_percent}%`;
+          lines_percent_elem.className = "lines-percent-row";
+          stats_elem.appendChild(lines_percent_elem);
+
+          const total_lines_elem = document.createElement("span");
+          total_lines_elem.className = "lines-total-row";
+          total_lines_elem.innerText = `${data.num_lines.toLocaleString()}`;
+          stats_elem.appendChild(total_lines_elem);
+        }
+
+        if (is_file) {
+          const link_elem = document.createElement("a");
+          link_elem.href = "./files" + data.source_file_path + ".html";
+          link_elem.innerText = name;
+          label_elem.appendChild(link_elem);
+        } else {
+          label_elem.innerText = name;
+
+          const children_container = document.createElement("div");
+          children_container.className = "children-container";
+          parent.appendChild(children_container);
+
+          if (default_open_path) {
+            const is_default_open = default_open_path.startsWith(data.path);
+            if (!is_default_open) {
+              children_container.style.display = "none";
+            }
+          }
+
+          const all_children = Array.from(data.children);
+          const directory_children = all_children.filter(
+            (c) => c[1].source_file_path === undefined
+          );
+          const file_children = all_children.filter(
+            (c) => c[1].source_file_path !== undefined
+          );
+
+          let child_index = index + 1;
+          for (const [name, child_data] of directory_children) {
+            build_tree_for_directory(
+              children_container,
+              name,
+              child_data,
+              depth + 1,
+              child_index
+            );
+            child_index++;
+          }
+          for (const [name, child_data] of file_children) {
+            build_tree_for_directory(
+              children_container,
+              name,
+              child_data,
+              depth + 1,
+              child_index
+            );
+            child_index++;
+          }
+
+          label_elem.addEventListener("click", () => {
+            if (children_container.style.display === "none") {
+              children_container.style.display = "block";
+            } else {
+              children_container.style.display = "none";
+            }
+          });
+        }
+      }
+
+      function ratio_to_percent(numerator, denominator) {
+        return fraction_to_percent(ratio_to_fraction(numerator, denominator));
+      }
+
+      function ratio_to_fraction(numerator, denominator) {
+        if (denominator == 0) {
+          return 1;
+        }
+        return numerator / denominator;
+      }
+
+      function fraction_to_percent(f) {
+        if (f >= 1) {
+          return 100;
+        }
+        if (f >= 0.99) {
+          // Avoid showing 100% if there is still something missing.
+          return 99;
+        }
+        if (f <= 0) {
+          return 0;
+        }
+        if (f <= 0.01) {
+          // Avoid showing 0% if there is some coverage already.
+          return 1;
+        }
+        return Math.round(f * 100);
+      }
+
+      function new_directory_data(path) {
+        return {
+          num_lines_run: 0,
+          num_lines: 0,
+          num_functions_run: 0,
+          num_functions: 0,
+          path: path,
+          children: new Map(),
+        };
+      }
+
+      async function str_from_gzip_base64(data_compressed_base64) {
+        const compressed = atob(data_compressed_base64);
+        const compressed_bytes = new Uint8Array(compressed.length);
+        for (let i = 0; i < compressed.length; i++) {
+          compressed_bytes[i] = compressed.charCodeAt(i);
+        }
+        const compressed_blob = new Blob([compressed_bytes]);
+        const stream = new Response(compressed_blob).body.pipeThrough(
+          new DecompressionStream("gzip")
+        );
+        const result = await new Response(stream).text();
+        return result;
+      }
+
+      const root_data = new_directory_data("/");
+
+      const default_open_path_segment = "/blender/source/blender";
+      let default_open_path = undefined;
+
+      const analysis_data_compressed_base64 = "ANALYSIS_DATA";
+    </script>
+  </body>
+</html>
