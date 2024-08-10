@@ -291,6 +291,12 @@ void Instance::draw(Manager &manager)
   regular.prepass.draw(resources.overlay_line_fb, manager, view);
   infront.prepass.draw(resources.overlay_line_in_front_fb, manager, view);
 
+  auto overlay_fb_draw = [&](OverlayLayer &layer, Framebuffer &framebuffer) {
+    regular.facing.draw(framebuffer, manager, view);
+  };
+
+  overlay_fb_draw(regular, resources.overlay_fb);
+
   auto draw_layer = [&](OverlayLayer &layer, Framebuffer &framebuffer) {
     layer.bounds.draw(framebuffer, manager, view);
     layer.cameras.draw(framebuffer, manager, view);
@@ -303,7 +309,6 @@ void Instance::draw(Manager &manager)
     layer.metaballs.draw(framebuffer, manager, view);
     layer.relations.draw(framebuffer, manager, view);
     layer.meshes.draw(framebuffer, manager, view);
-    layer.facing.draw(framebuffer, manager, view);
   };
 
   draw_layer(regular, resources.overlay_line_fb);
