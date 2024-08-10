@@ -26,6 +26,7 @@ usage = textwrap.dedent("""\
         help                                Show this help.
     """)
 
+
 def main():
     parser = argparse.ArgumentParser(
         description="Blender test coverage",
@@ -87,7 +88,7 @@ def run_reset(argv):
     print("Remove .gcda files...")
     gcda_files = list(build_dir.glob("**/*.gcda"))
     for i, path in enumerate(gcda_files):
-        print_updateable_line("[{}/{}] Remove: {}".format(i+1, len(gcda_files), path))
+        print_updateable_line("[{}/{}] Remove: {}".format(i + 1, len(gcda_files), path))
         os.remove(path)
     print()
 
