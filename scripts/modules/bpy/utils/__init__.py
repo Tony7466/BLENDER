@@ -598,6 +598,23 @@ def is_path_builtin(path):
     # If this is used in a draw-loop for example, we could cache some of the values.
     user_path = resource_path('USER')
 
+    def same_file(parent_path, path):
+        try:
+            return _os.path.samefile(
+                _os.path.commonpath([parent_path]),
+                _os.path.commonpath([parent_path, path])
+            )
+        except FileNotFoundError:
+            # The path we tried to look up doesn't exist.
+            return False
+        except ValueError:
+            # Happens on Windows when paths don't have the same drive.
+            return False
+
+    for parent_path in _preset_path_registry:
+        if same_file(parent_path, path):
+            return True
+
     for res in ('SYSTEM', 'LOCAL'):
         parent_path = resource_path(res)
         if not parent_path or parent_path == user_path:
@@ -606,18 +623,8 @@ def is_path_builtin(path):
             # This can happen on portable installs.
             continue
 
-        try:
-            if _os.path.samefile(
-                    _os.path.commonpath([parent_path]),
-                    _os.path.commonpath([parent_path, path])
-            ):
-                return True
-        except FileNotFoundError:
-            # The path we tried to look up doesn't exist.
-            pass
-        except ValueError:
-            # Happens on Windows when paths don't have the same drive.
-            pass
+        if same_file(parent_path, path):
+            return True
 
     return False
 
