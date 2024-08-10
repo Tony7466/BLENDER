@@ -111,6 +111,22 @@ std::ostream &operator<<(std::ostream &stream, const IndexMask &mask)
   return stream;
 }
 
+IndexMask drop_front(const IndexMask mask, const RawMaskIterator iterator, const int64_t index)
+{
+  BLI_assert(mask[index] == mask[iterator]);
+  IndexMask sliced = mask;
+  IndexMaskData &data = sliced.data_for_inplace_construction();
+  data.indices_num_ -= index;
+  data.segments_num_ -= iterator.segment_i;
+  data.indices_by_segment_ += iterator.segment_i;
+  data.segment_offsets_ += iterator.segment_i;
+  data.cumulative_segment_sizes_ += iterator.segment_i;
+  data.begin_index_in_segment_ = iterator.index_in_segment;
+  data.end_index_in_segment_;
+  BLI_assert(sliced == mask.slice(index, mask.size() - index));
+  return sliced;
+}
+
 IndexMask IndexMask::slice(const int64_t start, const int64_t size) const
 {
   if (size == 0) {
@@ -550,6 +566,26 @@ IndexMask IndexMask::from_initializers(const Span<Initializer> initializers,
   return IndexMask::from_indices(values_vec.as_span(), memory);
 }
 
+static std::optional<RawMaskIterator> iterator_decrement(const IndexMask mask, const RawMaskIterator iterator)
+{
+  const IndexMaskData &data = const_cast<IndexMask &>(mask).data_for_inplace_construction();
+  if (iterator.segment_i > 0) {
+    if (iterator.index_in_segment > 0) {
+      /* Previous element in same segment. */
+      return RawMaskIterator{iterator.segment_i, int16_t(iterator.index_in_segment - 1)};
+    }
+    /* Last element in previous segment. */
+    return RawMaskIterator{iterator.segment_i - 1,
+                           int16_t(data.cumulative_segment_sizes_[iterator.segment_i] -
+                                   data.cumulative_segment_sizes_[iterator.segment_i - 1] - 1)};
+  }
+  if (iterator.index_in_segment > data.begin_index_in_segment_) {
+    /* Previous element in same segment. */
+    return RawMaskIterator{0, int16_t(iterator.index_in_segment - 1)};
+  }
+  return std::nullopt;
+}
+
 IndexMask IndexMask::any_of(const OffsetIndices<int> groups, IndexMaskMemory &memory) const
 {
   const IndexRange groups_bound = groups.bounds();
@@ -566,7 +602,7 @@ IndexMask IndexMask::any_of(const OffsetIndices<int> groups, IndexMaskMemory &me
 
   return detail::from_predicate_impl(
       groups.index_range(),
-      GrainSize(4096),
+      GrainSize(102400000),
       memory,
       [&](const IndexMaskSegment indices, int16_t *__restrict r_true_indices) -> int64_t {
         const IndexRange range = unique_sorted_indices::non_empty_as_range(indices.base_span());
@@ -583,27 +619,37 @@ IndexMask IndexMask::any_of(const OffsetIndices<int> groups, IndexMaskMemory &me
           }
         }
 
-        return std::distance(
-            r_true_indices,
-            std::copy_if(
-                range.begin(), range.end(), r_true_indices, [&](const int64_t index) -> bool {
-                  const IndexRange content = groups[index + indices.offset()];
-                  const std::optional<RawMaskIterator> first_iter = local_mask.find_larger_equal(
-                      content.first());
-                  const std::optional<RawMaskIterator> last_iter = local_mask.find_smaller_equal(
-                      content.last());
-                  if (!first_iter || !last_iter) {
-                    return false;
-                  }
+        std::optional<RawMaskIterator> begin_iter = local_mask.find_larger_equal(groups[range.start() + indices.offset()].first());
 
-                  const int64_t first_index = local_mask.iterator_to_index(*first_iter);
-                  const int64_t last_index = local_mask.iterator_to_index(*last_iter);
-                  if (first_index > last_index) {
-                    return false;
-                  }
+        int16_t *r_current = r_true_indices;
+        for (const int64_t index : range) {
+          const IndexRange content = groups[index + indices.offset()];
+          const std::optional<RawMaskIterator> first_iter = begin_iter;
+          const std::optional<RawMaskIterator> end_iter = local_mask.find_larger_equal(content.one_after_last());
+          begin_iter = end_iter;
+          if (!first_iter || !end_iter) {
+            continue;
+          }
 
-                  return !IndexRange::from_begin_end_inclusive(first_index, last_index).is_empty();
-                }));
+          const std::optional<RawMaskIterator> last_iter = local_mask[*end_iter] >= content.one_after_last() ? iterator_decrement(local_mask, *end_iter) : end_iter;
+          if (!last_iter) {
+            continue;
+          }
+
+          const int64_t first_index = local_mask.iterator_to_index(*first_iter);
+          const int64_t last_index = local_mask.iterator_to_index(*last_iter);
+          if (first_index > last_index) {
+            continue;
+          }
+
+          BLI_assert(*local_mask.find_larger_equal(content.first()) == *first_iter);
+          BLI_assert(*local_mask.find_smaller_equal(content.last()) == *last_iter);
+
+          *r_current = int16_t(index);
+          r_current += !IndexRange::from_begin_end_inclusive(first_index, last_index).is_empty();
+        }
+        const int16_t true_indices_num = int16_t(r_current - r_true_indices);
+        return true_indices_num;
       });
 }
 
@@ -628,10 +674,7 @@ IndexMask IndexMask::all_of(const OffsetIndices<int> groups, IndexMaskMemory &me
       [&](const IndexMaskSegment indices, int16_t *__restrict r_true_indices) -> int64_t {
         const IndexRange range = unique_sorted_indices::non_empty_as_range(indices.base_span());
         const IndexRange content_range = groups[range.shift(indices.offset())];
-        const IndexMask local_mask = this->slice_content(content_range);
-        if (local_mask.is_empty()) {
-          return 0;
-        }
+        IndexMask local_mask = this->slice_content(content_range);
 
         if (const std::optional<IndexRange> local_mask_range = local_mask.to_range()) {
           /* TODO: Use binary search in offset indices for such case. */
@@ -640,28 +683,41 @@ IndexMask IndexMask::all_of(const OffsetIndices<int> groups, IndexMaskMemory &me
           }
         }
 
-        return std::distance(
-            r_true_indices,
-            std::copy_if(
-                range.begin(), range.end(), r_true_indices, [&](const int64_t index) -> bool {
-                  const IndexRange content = groups[index + indices.offset()];
-                  const std::optional<RawMaskIterator> first_iter = local_mask.find_larger_equal(
-                      content.first());
-                  const std::optional<RawMaskIterator> last_iter = local_mask.find_smaller_equal(
-                      content.last());
-                  if (!first_iter || !last_iter) {
-                    return false;
-                  }
+        int16_t *r_current = r_true_indices;
+        for (const int64_t index : range) {
+          *r_current = int16_t(index);
+          if (UNLIKELY(local_mask.is_empty())) {
+            break;
+          }
+          const IndexRange content = groups[index + indices.offset()];
+          BLI_assert(this->slice_content(content).is_empty() || local_mask.first() == this->slice_content(content).first());
 
-                  const int64_t first_index = local_mask.iterator_to_index(*first_iter);
-                  const int64_t last_index = local_mask.iterator_to_index(*last_iter);
-                  if (first_index > last_index) {
-                    return false;
-                  }
+          const std::optional<RawMaskIterator> last_iter = local_mask.find_smaller_equal(content.last());
+          const std::optional<RawMaskIterator> end_iter = local_mask.find_larger_equal(content.one_after_last());
+          if (!end_iter || !last_iter) {
+            if (end_iter) {
+              local_mask = drop_front(local_mask, *end_iter, local_mask.iterator_to_index(*end_iter));
+            } else if (last_iter) {
+              if (local_mask[*last_iter] >= content.start()) {
+                const int64_t current_size = local_mask.iterator_to_index(*last_iter);
+                BLI_assert(current_size + 1 == this->slice_content(content).size());
+                r_current += bool(current_size + 1 == content.size());
+              }
+            }
+            continue;
+          }
+          BLI_assert(this->slice_content(content).is_empty() || local_mask[*last_iter] == this->slice_content(content).last());
 
-                  return IndexRange::from_begin_end_inclusive(first_index, last_index).size() ==
-                         content.size();
-                }));
+          if (local_mask[*last_iter] >= content.start()) {
+            const int64_t current_size = local_mask.iterator_to_index(*last_iter);
+            local_mask = drop_front(local_mask, *end_iter, local_mask.iterator_to_index(*end_iter));
+            BLI_assert(current_size + 1 == this->slice_content(content).size());
+
+            r_current += bool(current_size + 1 == content.size());
+          }
+        }
+        const int16_t true_indices_num = int16_t(r_current - r_true_indices);
+        return true_indices_num;
       });
 }
 
@@ -841,22 +897,7 @@ std::optional<RawMaskIterator> IndexMask::find_smaller_equal(const int64_t query
     /* This is an exact hit. */
     return larger_equal_it;
   }
-  if (larger_equal_it->segment_i > 0) {
-    if (larger_equal_it->index_in_segment > 0) {
-      /* Previous element in same segment. */
-      return RawMaskIterator{larger_equal_it->segment_i,
-                             int16_t(larger_equal_it->index_in_segment - 1)};
-    }
-    /* Last element in previous segment. */
-    return RawMaskIterator{larger_equal_it->segment_i - 1,
-                           int16_t(cumulative_segment_sizes_[larger_equal_it->segment_i] -
-                                   cumulative_segment_sizes_[larger_equal_it->segment_i - 1] - 1)};
-  }
-  if (larger_equal_it->index_in_segment > begin_index_in_segment_) {
-    /* Previous element in same segment. */
-    return RawMaskIterator{0, int16_t(larger_equal_it->index_in_segment - 1)};
-  }
-  return std::nullopt;
+  return iterator_decrement(*this, *larger_equal_it);
 }
 
 bool IndexMask::contains(const int64_t query_index) const
