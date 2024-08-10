@@ -6,6 +6,7 @@ import sys
 import os
 from coverage_report import parse, report_as_html
 from pathlib import Path
+import webbrowser
 
 
 def main():
@@ -29,8 +30,14 @@ def main():
     analysis_dir = coverage_dir / "analysis"
     report_dir = coverage_dir / "report"
 
-    parse(build_dir, analysis_dir)
-    report_as_html(analysis_dir, report_dir)
+    try:
+        parse(build_dir, analysis_dir)
+        report_as_html(analysis_dir, report_dir)
+    except Exception as e:
+        print(e)
+        sys.exit(1)
+
+    webbrowser.open("file://" + str(report_dir / "index.html"))
 
 def is_blender_build_directory(build_dir):
     return (Path(build_dir) / "bin" / "blender").exists() or (Path(build_dir) / "bin" / "blender.exe").exists()

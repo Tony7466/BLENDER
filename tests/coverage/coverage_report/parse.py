@@ -7,6 +7,7 @@ import shutil
 import time
 import concurrent.futures
 import json
+import textwrap
 from collections import defaultdict
 from pprint import pprint
 import sys
@@ -28,13 +29,17 @@ def parse(build_dir, analysis_dir, gcov_binary="gcov"):
     gcov_binary = Path(gcov_binary).absolute()
 
     print("Gather .gcda files...")
-    last_line_length = 0
-
     gcda_paths = []
     for gcda_path in build_dir.glob("**/*.gcda"):
         gcda_paths.append(gcda_path)
         print_updateable_line("[{}]: {}".format(len(gcda_paths), gcda_path))
     print()
+
+    if len(gcda_paths) == 0:
+        raise RuntimeError(textwrap.dedent("""\
+            No .gcda files found. Make sure to run the tests in a debug build that has
+            been compiled with GCC with --coverage.
+            """))
 
     # Shuffle to make chunks more similar in size.
     random.shuffle(gcda_paths)
@@ -76,6 +81,9 @@ def parse(build_dir, analysis_dir, gcov_binary="gcov"):
     for data in gathered_gcov_outputs:
         for file_data in data["files"]:
             data_by_source_file[file_data["file"]].append(file_data)
+
+    if len(data_by_source_file) == 0:
+        raise RuntimeError("No coverage data found.")
 
     # Sort files to make the progress report more useful.
     source_file_order = list(sorted(list(data_by_source_file.keys())))
