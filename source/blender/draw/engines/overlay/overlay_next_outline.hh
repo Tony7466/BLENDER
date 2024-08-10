@@ -21,6 +21,8 @@ class Outline {
   PassMain::Sub *prepass_curves_ps_ = nullptr;
   PassMain::Sub *prepass_pointcloud_ps_ = nullptr;
   PassMain::Sub *prepass_gpencil_ps_ = nullptr;
+  PassMain::Sub *prepass_mesh_ps_ = nullptr;
+  PassMain::Sub *prepass_wire_ps_ = nullptr;
   /* Detect edges inside the ID pass and output color for each of them. */
   PassSimple outline_resolve_ps_ = {"Resolve"};
 
@@ -81,10 +83,20 @@ class Outline {
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         prepass_gpencil_ps_ = &sub;
       }
-      pass.shader_set(state.xray_enabled_and_not_wire ? res.shaders.outline_prepass_wire.get() :
-                                                        res.shaders.outline_prepass_mesh.get());
-      pass.push_constant("isTransform", is_transform);
-      pass.bind_ubo("globalsBlock", &res.globals_buf);
+      {
+        auto &sub = pass.sub("Mesh");
+        sub.shader_set(res.shaders.outline_prepass_mesh.get());
+        sub.push_constant("isTransform", is_transform);
+        sub.bind_ubo("globalsBlock", &res.globals_buf);
+        prepass_mesh_ps_ = &sub;
+      }
+      {
+        auto &sub = pass.sub("Wire");
+        sub.shader_set(res.shaders.outline_prepass_wire.get());
+        sub.push_constant("isTransform", is_transform);
+        sub.bind_ubo("globalsBlock", &res.globals_buf);
+        prepass_wire_ps_ = &sub;
+      }
     }
     {
       auto &pass = outline_resolve_ps_;
@@ -115,6 +127,7 @@ class Outline {
       return;
     }
 
+    /* TODO(fclem): Non-mandatory handle creation and reuse with other overlays. */
     ResourceHandle res_handle = manager.resource_handle(ob_ref);
 
     gpu::Batch *geom;
@@ -122,17 +135,33 @@ class Outline {
       case OB_GPENCIL_LEGACY:
         /* TODO ? */
         break;
-      case OB_GREASE_PENCIL:
-        GreasePencil::draw_grease_pencil(
-            *prepass_gpencil_ps_, grease_pencil_view, state.scene, ob_ref.object, res_handle);
-        break;
       case OB_CURVES:
         geom = curves_sub_pass_setup(*prepass_curves_ps_, state.scene, ob_ref.object);
         prepass_curves_ps_->draw(geom, res_handle);
         break;
+      case OB_GREASE_PENCIL:
+        GreasePencil::draw_grease_pencil(
+            *prepass_gpencil_ps_, grease_pencil_view, state.scene, ob_ref.object, res_handle);
+        break;
       case OB_MESH:
         geom = DRW_cache_mesh_surface_get(ob_ref.object);
-        outline_prepass_ps_.draw(geom, res_handle);
+        prepass_mesh_ps_->draw(geom, res_handle);
+        {
+          /* TODO(fclem): This is against design. We should not sync depending on view position.
+           * Eventually, add a bounding box display pass with some special culling phase. */
+
+          /* Display flat object as a line when view is orthogonal to them.
+           * This fixes only the biggest case which is a plane in ortho view. */
+          int flat_axis = 0;
+          bool is_flat_object_viewed_from_side = ((state.rv3d->persp == RV3D_ORTHO) &&
+                                                  DRW_object_is_flat(ob_ref.object, &flat_axis) &&
+                                                  DRW_object_axis_orthogonal_to_view(ob_ref.object,
+                                                                                     flat_axis));
+          if (is_flat_object_viewed_from_side) {
+            geom = DRW_cache_mesh_edge_detection_get(ob_ref.object, nullptr);
+            prepass_wire_ps_->draw(geom, res_handle);
+          }
+        }
         break;
       case OB_POINTCLOUD:
         /* Looks bad in wireframe mode. Could be relaxed if we draw a wireframe of some sort in
