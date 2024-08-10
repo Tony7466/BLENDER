@@ -141,6 +141,11 @@
 
         const tree_view = document.getElementById("files-tree-view");
         build_tree_for_directory(tree_view, "/", root_data, 0, 0);
+
+        const scroll_position = localStorage.getItem("scroll_position");
+        if (scroll_position) {
+          window.scrollTo(0, scroll_position);
+        }
       });
 
       function build_tree_for_directory(parent, name, data, depth, index) {
@@ -196,11 +201,11 @@
           children_container.className = "children-container";
           parent.appendChild(children_container);
 
-          if (default_open_path) {
-            const is_default_open = default_open_path.startsWith(data.path);
-            if (!is_default_open) {
-              children_container.style.display = "none";
-            }
+          const is_open = is_open_at_start(data.path);
+          if (is_open) {
+            current_open_paths.add(data.path);
+          } else {
+            children_container.style.display = "none";
           }
 
           const all_children = Array.from(data.children);
@@ -222,11 +227,27 @@
           label_elem.addEventListener("click", () => {
             if (children_container.style.display === "none") {
               children_container.style.display = "block";
+              current_open_paths.add(data.path);
             } else {
               children_container.style.display = "none";
+              current_open_paths.delete(data.path);
             }
+            localStorage.setItem(
+              open_paths_storage_key,
+              JSON.stringify(Array.from(current_open_paths))
+            );
           });
         }
+      }
+
+      function is_open_at_start(path) {
+        if (previous_open_paths !== undefined) {
+          return previous_open_paths.has(path);
+        }
+        if (default_open_path) {
+          return default_open_path.startsWith(path);
+        }
+        return false;
       }
 
       function ratio_to_percent(numerator, denominator) {
@@ -283,10 +304,23 @@
         return result;
       }
 
+      window.addEventListener("beforeunload", () => {
+        localStorage.setItem("scroll_position", window.scrollY);
+      });
+
       const root_data = new_directory_data("/");
 
       const default_open_path_segment = "/blender/source/blender";
       let default_open_path = undefined;
+
+      const open_paths_storage_key = "open_paths";
+      let previous_open_paths = localStorage.getItem(open_paths_storage_key);
+      if (previous_open_paths && previous_open_paths.length > 0) {
+        previous_open_paths = new Set(JSON.parse(previous_open_paths));
+      } else {
+        previous_open_paths = undefined;
+      }
+      const current_open_paths = new Set();
 
       const analysis_data_compressed_base64 = "ANALYSIS_DATA";
     </script>
