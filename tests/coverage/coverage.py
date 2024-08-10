@@ -93,7 +93,7 @@ def run_reset(argv):
 
 
 def is_blender_build_directory(build_dir):
-    return (Path(build_dir) / "bin" / "blender").exists() or (Path(build_dir) / "bin" / "blender.exe").exists()
+    return (Path(build_dir) / "CMakeCache.txt").exists()
 
 
 if __name__ == '__main__':
