@@ -1193,6 +1193,17 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
     if (!was_retiming) {
       ED_sequencer_deselect_all(scene);
     }
+    if (SEQ_is_strip_connected(seq_key_owner)) {
+      /* Attempt to realize any other connected strips' fake keys. */
+      const int key_frame = SEQ_retiming_key_timeline_frame_get(scene, seq_key_owner, key);
+      LISTBASE_FOREACH (SeqConnection *, con, &seq_key_owner->connections) {
+        if (key_frame == left_fake_key_frame_get(C, con->seq_ref) ||
+            key_frame == right_fake_key_frame_get(C, con->seq_ref))
+        {
+          realize_fake_keys(scene, con->seq_ref);
+        }
+      }
+    }
     return sequencer_retiming_key_select_exec(C, op, key, seq_key_owner);
   }
 

@@ -122,13 +122,7 @@ int right_fake_key_frame_get(const bContext *C, const Sequence *seq)
   const Scene *scene = CTX_data_scene(C);
   int sound_offset = SEQ_time_get_rounded_sound_offset(scene, seq);
   const int content_end = SEQ_time_content_end_frame_get(scene, seq) - 1 + sound_offset;
-  int right_frame = min_ii(content_end, SEQ_time_right_handle_frame_get(scene, seq));
-  /* `key_x_get()` compensates 1 frame offset of last key, however this can not
-   * be conveyed via `fake_key` alone. Therefore the same offset must be emulated. */
-  if (SEQ_time_right_handle_frame_get(scene, seq) >= SEQ_time_content_end_frame_get(scene, seq)) {
-    right_frame += 1;
-  }
-  return right_frame;
+  return min_ii(content_end, SEQ_time_right_handle_frame_get(scene, seq));
 }
 
 static bool retiming_fake_key_frame_clicked(const bContext *C,
@@ -136,9 +130,10 @@ static bool retiming_fake_key_frame_clicked(const bContext *C,
                                             const int mval[2],
                                             int &r_frame)
 {
+  const Scene *scene = CTX_data_scene(C);
   const View2D *v2d = UI_view2d_fromcontext(C);
 
-  rctf box = seq_retiming_keys_box_get(CTX_data_scene(C), v2d, seq);
+  rctf box = seq_retiming_keys_box_get(scene, v2d, seq);
   if (!BLI_rctf_isect_pt(&box, mval[0], mval[1])) {
     return false;
   }
@@ -147,14 +142,19 @@ static bool retiming_fake_key_frame_clicked(const bContext *C,
   const float left_distance = fabs(UI_view2d_view_to_region_x(v2d, left_frame) - mval[0]);
 
   const int right_frame = right_fake_key_frame_get(C, seq);
-  const float right_distance = fabs(UI_view2d_view_to_region_x(v2d, right_frame) - mval[0]);
+  int right_x = right_frame;
+  /* `key_x_get()` compensates 1 frame offset of last key, however this can not
+   * be conveyed via `fake_key` alone. Therefore the same offset must be emulated. */
+  if (SEQ_time_right_handle_frame_get(scene, seq) >= SEQ_time_content_end_frame_get(scene, seq)) {
+    right_x += 1;
+  }
+  const float right_distance = fabs(UI_view2d_view_to_region_x(v2d, right_x) - mval[0]);
 
   r_frame = (left_distance < right_distance) ? left_frame : right_frame;
-
   return min_ff(left_distance, right_distance) < RETIME_KEY_MOUSEOVER_THRESHOLD;
 }
 
-static void realize_fake_keys(const Scene *scene, Sequence *seq)
+void realize_fake_keys(const Scene *scene, Sequence *seq)
 {
   SEQ_retiming_data_ensure(seq);
   SEQ_retiming_add_key(scene, seq, SEQ_time_left_handle_frame_get(scene, seq));
@@ -166,20 +166,10 @@ SeqRetimingKey *try_to_realize_fake_keys(const bContext *C, Sequence *seq, const
   Scene *scene = CTX_data_scene(C);
   SeqRetimingKey *key = nullptr;
 
-  int clicked_frame;
-  if (retiming_fake_key_frame_clicked(C, seq, mval, clicked_frame)) {
+  int key_frame;
+  if (retiming_fake_key_frame_clicked(C, seq, mval, key_frame)) {
     realize_fake_keys(scene, seq);
-    key = SEQ_retiming_key_get_by_timeline_frame(scene, seq, clicked_frame);
-  }
-
-  if (SEQ_is_strip_connected(seq)) {
-    LISTBASE_FOREACH (SeqConnection *, con, &seq->connections) {
-      if (clicked_frame == left_fake_key_frame_get(C, con->seq_ref) ||
-          clicked_frame == right_fake_key_frame_get(C, con->seq_ref))
-      {
-        realize_fake_keys(scene, con->seq_ref);
-      }
-    }
+    key = SEQ_retiming_key_get_by_timeline_frame(scene, seq, key_frame);
   }
   return key;
 }
@@ -363,13 +353,11 @@ void sequencer_retiming_draw_continuity(const TimelineDrawContext *timeline_ctx,
   }
 }
 
-static SeqRetimingKey retiming_key_init(const Scene *scene,
-                                        const Sequence *seq,
-                                        int timeline_frame)
+static SeqRetimingKey fake_retiming_key_init(const Scene *scene, const Sequence *seq, int key_x)
 {
   int sound_offset = SEQ_time_get_rounded_sound_offset(scene, seq);
   SeqRetimingKey fake_key;
-  fake_key.strip_frame_index = (timeline_frame - SEQ_time_start_frame_get(seq) - sound_offset) *
+  fake_key.strip_frame_index = (key_x - SEQ_time_start_frame_get(seq) - sound_offset) *
                                SEQ_time_media_playback_rate_factor_get(scene, seq);
   fake_key.flag = 0;
   return fake_key;
@@ -390,7 +378,7 @@ static bool fake_keys_draw(const TimelineDrawContext *timeline_ctx,
 
   const int left_key_frame = left_fake_key_frame_get(timeline_ctx->C, seq);
   if (SEQ_retiming_key_get_by_timeline_frame(scene, seq, left_key_frame) == nullptr) {
-    SeqRetimingKey fake_key = retiming_key_init(scene, seq, left_key_frame);
+    SeqRetimingKey fake_key = fake_retiming_key_init(scene, seq, left_key_frame);
     retime_key_draw(timeline_ctx, strip_ctx, &fake_key, sh_bindings);
   }
 
@@ -401,7 +389,7 @@ static bool fake_keys_draw(const TimelineDrawContext *timeline_ctx,
     if (strip_ctx.right_handle >= SEQ_time_content_end_frame_get(scene, seq)) {
       right_key_frame += 1;
     }
-    SeqRetimingKey fake_key = retiming_key_init(scene, seq, right_key_frame);
+    SeqRetimingKey fake_key = fake_retiming_key_init(scene, seq, right_key_frame);
     retime_key_draw(timeline_ctx, strip_ctx, &fake_key, sh_bindings);
   }
   return true;
