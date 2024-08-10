@@ -18,10 +18,10 @@ def report_as_html(analysis_dir, report_dir):
     analysis_dir = Path(analysis_dir).absolute()
     report_dir = Path(report_dir).absolute()
 
-    # try:
-    #     shutil.rmtree(report_dir)
-    # except:
-    #     pass
+    try:
+        shutil.rmtree(report_dir)
+    except:
+        pass
 
     build_summary(analysis_dir, report_dir)
     build_file_pages(analysis_dir, report_dir)
