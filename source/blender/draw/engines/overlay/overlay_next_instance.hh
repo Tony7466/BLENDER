@@ -55,7 +55,7 @@ class Instance {
     Bounds bounds = {selection_type_};
     Cameras cameras = {selection_type_};
     Empties empties = {selection_type_};
-    Facing facing;
+    Facing facing = {selection_type_};
     ForceFields force_fields = {selection_type_};
     Lattices lattices;
     Lights lights = {selection_type_};

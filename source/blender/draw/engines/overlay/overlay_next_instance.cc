@@ -111,20 +111,11 @@ void Instance::begin_sync()
 
 void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
 {
-  const bool renderable = DRW_object_is_renderable(ob_ref.object);
-  const bool draw_surface = (ob_ref.object->dt >= OB_WIRE) &&
-                            (renderable || (ob_ref.object->dt == OB_WIRE));
-  const bool draw_facing = draw_surface && (state.overlay.flag & V3D_OVERLAY_FACE_ORIENTATION) &&
-                           (ob_ref.object->dt >= OB_SOLID) &&
-                           selection_type_ == SelectionType::DISABLED;
   const bool in_edit_mode = object_is_edit_mode(ob_ref.object);
   const bool needs_prepass = true; /* TODO */
 
-  OverlayLayer &layer = (ob_ref.object->dtx & OB_DRAW_IN_FRONT) ? infront : regular;
-
-  if (draw_facing) {
-    (state.use_in_front ? layer : regular).facing.object_sync(manager, ob_ref, state);
-  }
+  OverlayLayer &layer = (state.use_in_front && ob_ref.object->dtx & OB_DRAW_IN_FRONT) ? infront :
+                                                                                        regular;
 
   if (needs_prepass) {
     switch (ob_ref.object->type) {
@@ -194,9 +185,8 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
         layer.speakers.object_sync(ob_ref, resources, state);
         break;
     }
-    if (ob_ref.object->pd && ob_ref.object->pd->forcefield) {
-      layer.force_fields.object_sync(ob_ref, resources, state);
-    }
+    layer.facing.object_sync(manager, ob_ref, state);
+    layer.force_fields.object_sync(ob_ref, resources, state);
     layer.bounds.object_sync(ob_ref, resources, state);
     layer.relations.object_sync(ob_ref, resources, state);
   }
