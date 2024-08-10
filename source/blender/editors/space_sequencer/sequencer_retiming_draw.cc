@@ -30,6 +30,7 @@
 
 #include "UI_view2d.hh"
 
+#include "SEQ_connect.hh"
 #include "SEQ_retiming.hh"
 #include "SEQ_sequencer.hh"
 #include "SEQ_time.hh"
@@ -121,14 +122,21 @@ int right_fake_key_frame_get(const bContext *C, const Sequence *seq)
   const Scene *scene = CTX_data_scene(C);
   int sound_offset = SEQ_time_get_rounded_sound_offset(scene, seq);
   const int content_end = SEQ_time_content_end_frame_get(scene, seq) - 1 + sound_offset;
-  return min_ii(content_end, SEQ_time_right_handle_frame_get(scene, seq));
+  int right_frame = min_ii(content_end, SEQ_time_right_handle_frame_get(scene, seq));
+  /* `key_x_get()` compensates 1 frame offset of last key, however this can not
+   * be conveyed via `fake_key` alone. Therefore the same offset must be emulated. */
+  if (SEQ_time_right_handle_frame_get(scene, seq) >= SEQ_time_content_end_frame_get(scene, seq)) {
+    right_frame += 1;
+  }
+  return right_frame;
 }
 
-static bool retiming_fake_key_is_clicked(const bContext *C,
-                                         const Sequence *seq,
-                                         const int key_timeline_frame,
-                                         const int mval[2])
+static bool retiming_fake_key_frame_clicked(const bContext *C,
+                                            const Sequence *seq,
+                                            const int mval[2],
+                                            int &r_frame)
 {
+  const Scene *scene = CTX_data_scene(C);
   const View2D *v2d = UI_view2d_fromcontext(C);
 
   rctf box = seq_retiming_keys_box_get(CTX_data_scene(C), v2d, seq);
@@ -136,12 +144,18 @@ static bool retiming_fake_key_is_clicked(const bContext *C,
     return false;
   }
 
-  const float key_pos = UI_view2d_view_to_region_x(v2d, key_timeline_frame);
-  const float distance = fabs(key_pos - mval[0]);
-  return distance < RETIME_KEY_MOUSEOVER_THRESHOLD;
+  const int left_frame = left_fake_key_frame_get(C, seq);
+  const float left_distance = fabs(UI_view2d_view_to_region_x(v2d, left_frame) - mval[0]);
+
+  const int right_frame = right_fake_key_frame_get(C, seq);
+  const float right_distance = fabs(UI_view2d_view_to_region_x(v2d, right_frame) - mval[0]);
+
+  r_frame = (left_distance < right_distance) ? left_frame : right_frame;
+
+  return min_ff(left_distance, right_distance) < RETIME_KEY_MOUSEOVER_THRESHOLD;
 }
 
-void realize_fake_keys(const Scene *scene, Sequence *seq)
+static void realize_fake_keys(const Scene *scene, Sequence *seq)
 {
   SEQ_retiming_data_ensure(seq);
   SEQ_retiming_add_key(scene, seq, SEQ_time_left_handle_frame_get(scene, seq));
@@ -153,31 +167,21 @@ SeqRetimingKey *try_to_realize_fake_keys(const bContext *C, Sequence *seq, const
   Scene *scene = CTX_data_scene(C);
   SeqRetimingKey *key = nullptr;
 
-  if (retiming_fake_key_is_clicked(C, seq, left_fake_key_frame_get(C, seq), mval)) {
-    SEQ_retiming_data_ensure(seq);
-    int frame = SEQ_time_left_handle_frame_get(scene, seq);
-    key = SEQ_retiming_add_key(scene, seq, frame);
+  int clicked_frame;
+  if (retiming_fake_key_frame_clicked(C, seq, mval, clicked_frame)) {
+    realize_fake_keys(scene, seq);
+    key = SEQ_retiming_key_get_by_timeline_frame(scene, seq, clicked_frame);
   }
 
-  int right_key_frame = right_fake_key_frame_get(C, seq);
-  /* `key_x_get()` compensates 1 frame offset of last key, however this can not
-   * be conveyed via `fake_key` alone. Therefore the same offset must be emulated. */
-  if (SEQ_time_right_handle_frame_get(scene, seq) >= SEQ_time_content_end_frame_get(scene, seq)) {
-    right_key_frame += 1;
+  if (SEQ_is_strip_connected(seq)) {
+    LISTBASE_FOREACH (SeqConnection *, con, &seq->connections) {
+      if (clicked_frame == left_fake_key_frame_get(C, con->seq_ref) ||
+          clicked_frame == right_fake_key_frame_get(C, con->seq_ref))
+      {
+        realize_fake_keys(scene, con->seq_ref);
+      }
+    }
   }
-  if (retiming_fake_key_is_clicked(C, seq, right_key_frame, mval)) {
-    SEQ_retiming_data_ensure(seq);
-    const int frame = SEQ_time_right_handle_frame_get(scene, seq);
-    key = SEQ_retiming_add_key(scene, seq, frame);
-  }
-
-  /* Ensure both keys are realized so we only change the speed of what is visible in the strip,
-   * but return only the one that was clicked on. */
-  if (key != nullptr) {
-    SEQ_retiming_add_key(scene, seq, SEQ_time_right_handle_frame_get(scene, seq));
-    SEQ_retiming_add_key(scene, seq, SEQ_time_left_handle_frame_get(scene, seq));
-  }
-
   return key;
 }
 

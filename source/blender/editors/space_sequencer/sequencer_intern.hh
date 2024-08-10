@@ -382,7 +382,6 @@ void sequencer_retiming_keys_draw(const TimelineDrawContext *timeline_ctx,
                                   const StripDrawContext &strip_ctx);
 void sequencer_retiming_speed_draw(const TimelineDrawContext *timeline_ctx,
                                    const StripDrawContext &strip_ctx);
-void realize_fake_keys(const Scene *scene, Sequence *seq);
 SeqRetimingKey *try_to_realize_fake_keys(const bContext *C, Sequence *seq, const int mval[2]);
 SeqRetimingKey *retiming_mouseover_key_get(const bContext *C, const int mval[2], Sequence **r_seq);
 int left_fake_key_frame_get(const bContext *C, const Sequence *seq);
