@@ -1049,10 +1049,10 @@ static int sequencer_connect_exec(bContext *C, wmOperator *op)
     }
   }
   if (clear_all) {
-    SEQ_disconnect_multiple(selected);
+    SEQ_disconnect(selected);
   }
   else {
-    SEQ_connect_multiple(selected);
+    SEQ_connect(selected);
   }
 
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
@@ -1083,15 +1083,11 @@ static int sequencer_disconnect_exec(bContext *C, wmOperator * /*op*/)
 {
   Scene *scene = CTX_data_scene(C);
   Editing *ed = SEQ_editing_get(scene);
+  ListBase *active_seqbase = SEQ_active_seqbase_get(ed);
 
-  bool changed = false;
-  LISTBASE_FOREACH (Sequence *, seq, ed->seqbasep) {
-    if (seq->flag & SELECT) {
-      changed |= SEQ_disconnect(seq);
-    }
-  }
+  blender::VectorSet<Sequence *> selected = SEQ_query_selected_strips(active_seqbase);
 
-  if (changed) {
+  if (SEQ_disconnect(selected)) {
     WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
     return OPERATOR_FINISHED;
   }

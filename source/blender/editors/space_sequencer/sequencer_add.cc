@@ -896,7 +896,7 @@ static void sequencer_add_movie_multiple_strips(bContext *C,
       }
 
       if (RNA_boolean_get(op->ptr, "connect_strips")) {
-        SEQ_connect_pair(seq_movie, seq_sound);
+        SEQ_connect(seq_movie, seq_sound);
       }
 
       r_movie_strips.add(seq_movie);
@@ -967,7 +967,7 @@ static bool sequencer_add_movie_single_strip(bContext *C,
   }
 
   if (RNA_boolean_get(op->ptr, "connect_strips")) {
-    SEQ_connect_pair(seq_movie, seq_sound);
+    SEQ_connect(seq_movie, seq_sound);
   }
 
   r_movie_strips.add(seq_movie);

@@ -51,7 +51,7 @@ bool SEQ_disconnect(Sequence *seq)
   return true;
 }
 
-bool SEQ_disconnect_multiple(blender::VectorSet<Sequence *> &seq_list)
+bool SEQ_disconnect(blender::VectorSet<Sequence *> &seq_list)
 {
   bool changed = false;
   for (Sequence *seq : seq_list) {
@@ -61,16 +61,16 @@ bool SEQ_disconnect_multiple(blender::VectorSet<Sequence *> &seq_list)
   return changed;
 }
 
-void SEQ_connect_pair(Sequence *seq1, Sequence *seq2)
+void SEQ_connect(Sequence *seq1, Sequence *seq2)
 {
   blender::VectorSet<Sequence *> seq_list;
   seq_list.add(seq1);
   seq_list.add(seq2);
 
-  SEQ_connect_multiple(seq_list);
+  SEQ_connect(seq_list);
 }
 
-void SEQ_connect_multiple(blender::VectorSet<Sequence *> &seq_list)
+void SEQ_connect(blender::VectorSet<Sequence *> &seq_list)
 {
   for (Sequence *seq1 : seq_list) {
     SEQ_disconnect(seq1);
