@@ -23,6 +23,9 @@ def report_as_html(analysis_dir, report_dir):
     analysis_dir = Path(analysis_dir).absolute()
     report_dir = Path(report_dir).absolute()
 
+    if not analysis_dir.exists():
+        raise RuntimeError("Missing analysis at: {}".format(analysis_dir))
+
     try:
         shutil.rmtree(report_dir)
     except:

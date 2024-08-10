@@ -19,8 +19,10 @@ usage = textwrap.dedent("""\
     coverage.py <command> [<args>]
 
     Commands:
-        report [--build-directory]          Analyse coverage data and generate html report.
-        reset [--build-directory]           Delete coverage data, its analysis and report.
+        report                              Analyse coverage data and generate html report.
+          [--build-directory]                 Blender build directory. This will be scanned for .gcda files.
+          [--no-browser]                      Don't open the browser in the end.
+        reset [--build-directory]           Delete .gcda files.
         help                                Show this help.
     """)
 
@@ -49,6 +51,7 @@ def main():
 def run_report(argv):
     parser = argparse.ArgumentParser(usage=usage)
     parser.add_argument("--build-directory", type=str, default=".")
+    parser.add_argument("--no-browser", action="store_true", default=False)
     args = parser.parse_args(argv)
 
     build_dir = Path(args.build_directory).absolute()
@@ -67,7 +70,8 @@ def run_report(argv):
         print(e)
         sys.exit(1)
 
-    webbrowser.open("file://" + str(report_dir / "index.html"))
+    if not args.no_browser:
+        webbrowser.open("file://" + str(report_dir / "index.html"))
 
 
 def run_reset(argv):
@@ -86,11 +90,6 @@ def run_reset(argv):
         print_updateable_line("[{}/{}] Remove: {}".format(i+1, len(gcda_files), path))
         os.remove(path)
     print()
-
-    coverage_dir = build_dir / "coverage"
-    print("Remove {}...".format(coverage_dir))
-    if coverage_dir.exists():
-        shutil.rmtree(coverage_dir)
 
 
 def is_blender_build_directory(build_dir):
