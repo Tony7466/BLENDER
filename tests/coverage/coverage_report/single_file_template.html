@@ -27,12 +27,23 @@
       referrerpolicy="no-referrer"
     ></script>
     <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/languages/cpp.min.js"
+      integrity="sha512-GvXk866wSSbg5H/SHQ41QgYaKtp98r/+3vEa6vz3vB1q6Jpt53hGeWUDHjFyflWk/vv1EcrdNY2ZNz/gWxFIsg=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <script
       src="https://cdnjs.cloudflare.com/ajax/libs/highlightjs-line-numbers.js/2.6.0/highlightjs-line-numbers.min.js"
       integrity="sha512-nkjLcPbHjdAof51b8uUd+6q4YH7YrMwh+kfTwSBrg5T/yMKrz8GUxM4uJJ1xAL7Q1lfAMIEowDsTzfWskZ5RcQ=="
       crossorigin="anonymous"
       referrerpolicy="no-referrer"
     ></script>
-    <script src="https://cdn.jsdelivr.net/gh/TRSasasusu/highlightjs-highlight-lines.js@1.2.0/highlightjs-highlight-lines.min.js"></script>
+    <script
+      src="https://cdn.jsdelivr.net/gh/TRSasasusu/highlightjs-highlight-lines.js@1.2.0/highlightjs-highlight-lines.min.js"
+      integrity="sha512-6wevP4KzPut+rTlItH5T2H7vOiy/E/GJIK7SDCiGoxO2gdqpYjRv0MhFbk72HuRbbexVZ6vqV++w82DwRdiGPw=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
 
     <style>
       * {
@@ -92,12 +103,7 @@
       <p>Functions: <span id="coverage-functions"></span></p>
     </div>
     <pre><code class="language-cpp" id="source-code"></code></pre>
-    <script
-      src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/es/languages/cpp.min.js"
-      integrity="sha512-W7ylVGHTqpHcaLw4Fk096Y7lV7Tz+/r7Ca+Og+oZiar+XxRf4Yd/LNgv4HpbRRpahPip1NihtK3CZ8r3eZ5Umw=="
-      crossorigin="anonymous"
-      referrerpolicy="no-referrer"
-    ></script>
+
     <script>
       window.addEventListener("DOMContentLoaded", async () => {
         source_code = await str_from_gzip_base64(source_code_compressed_base64);
