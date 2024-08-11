@@ -161,6 +161,13 @@ static constexpr int edge_ab = 0;
 static constexpr int edge_bc = 1;
 static constexpr int edge_ca = 2;
 
+template<typename T>
+static void shift(const int offset, T &data)
+{
+  std::swap(data[offset], data[shift_front[offset]]);
+  std::swap(data[shift_front[offset]], data[shift_back[offset]]);
+}
+
 }  // namespace topo_set
 
 static float len_squared_to_tris(const std::array<float2, 3> tri, const float2 pos)
