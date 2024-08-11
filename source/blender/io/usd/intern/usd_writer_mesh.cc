@@ -637,7 +637,7 @@ static void get_vert_creases(const Mesh *mesh, USDMeshData &usd_mesh_data)
     return;
   }
   const VArraySpan creases(*attribute);
-  for (const float i : creases.index_range()) {
+  for (const int i : creases.index_range()) {
     const float crease = creases[i];
 
     if (crease > 0.0f) {
