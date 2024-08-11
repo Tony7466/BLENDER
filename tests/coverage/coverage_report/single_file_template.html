@@ -375,7 +375,7 @@
           name_elem.addEventListener("click", () => {
             const line_number = fdata.start_line + 1;
             const id = `source-line-${line_number}`;
-            history.pushState({ scroll_from: window.scrollY }, "", `#${id}`);
+            history.pushState({ scroll_from: window.scrollY }, "");
             document.getElementById(id).scrollIntoView({
               behavior: "smooth",
             });
@@ -401,7 +401,9 @@
         }
         // Remove argument list.
         const args_start = name.indexOf("(");
-        name = name.substring(0, args_start);
+        if (args_start >= 0) {
+          name = name.substring(0, args_start);
+        }
         return name;
       }
 
