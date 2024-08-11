@@ -55,12 +55,20 @@ enum class EyeMode : int8_t {
   Brush = 2,
 };
 
+enum class MaterialMode : int8_t {
+  Stroke = 0,
+  Fill = 1,
+  Both = 2,
+};
+
 struct EyedropperGreasePencil {
   ColorManagedDisplay *display;
   /** color under cursor RGB */
   float3 color;
   /** Mode */
   EyeMode mode;
+  /** Material Mode */
+  MaterialMode mat_mode;
 };
 
 /* Helper: Draw status message while the user is running the operator */
@@ -85,6 +93,7 @@ static bool eyedropper_grease_pencil_init(bContext *C, wmOperator *op)
   eye->display = IMB_colormanagement_display_get_named(display_device);
 
   eye->mode = (EyeMode)RNA_enum_get(op->ptr, "mode");
+  eye->mat_mode = (MaterialMode)RNA_enum_get(op->ptr, "material_mode");
   return true;
 }
 
@@ -99,9 +108,7 @@ static void eyedropper_grease_pencil_exit(bContext *C, wmOperator *op)
 
 static void eyedropper_add_material(bContext *C,
                                     const float3 col_conv,
-                                    const bool only_stroke,
-                                    const bool only_fill,
-                                    const bool both)
+                                    const MaterialMode mat_mode)
 {
   Main *bmain = CTX_data_main(C);
   Object *ob = CTX_data_active_object(C);
@@ -126,13 +133,17 @@ static void eyedropper_add_material(bContext *C,
       bool found_fill = compare_v3v3(gp_style->fill_rgba, col_conv, 0.01f) &&
                         (gp_style->flag & GP_MATERIAL_FILL_SHOW);
 
-      if ((only_stroke) && (found_stroke) && ((gp_style->flag & GP_MATERIAL_FILL_SHOW) == 0)) {
+      if ((mat_mode == MaterialMode::Stroke) && (found_stroke) &&
+          ((gp_style->flag & GP_MATERIAL_FILL_SHOW) == 0))
+      {
         found = true;
       }
-      else if ((only_fill) && (found_fill) && ((gp_style->flag & GP_MATERIAL_STROKE_SHOW) == 0)) {
+      else if ((mat_mode == MaterialMode::Fill) && found_fill &&
+               ((gp_style->flag & GP_MATERIAL_STROKE_SHOW) == 0))
+      {
         found = true;
       }
-      else if ((both) && (found_stroke) && (found_fill)) {
+      else if ((mat_mode == MaterialMode::Both) && found_stroke && found_fill) {
         found = true;
       }
 
@@ -161,7 +172,7 @@ static void eyedropper_add_material(bContext *C,
   BLI_assert(gp_style_new != nullptr);
 
   /* Only create Stroke (default option). */
-  if (only_stroke) {
+  if (mat_mode == MaterialMode::Stroke) {
     /* Stroke color. */
     gp_style_new->flag |= GP_MATERIAL_STROKE_SHOW;
     gp_style_new->flag &= ~GP_MATERIAL_FILL_SHOW;
@@ -169,7 +180,7 @@ static void eyedropper_add_material(bContext *C,
     zero_v4(gp_style_new->fill_rgba);
   }
   /* Fill Only. */
-  else if (only_fill) {
+  else if (mat_mode == MaterialMode::Fill) {
     /* Fill color. */
     gp_style_new->flag &= ~GP_MATERIAL_STROKE_SHOW;
     gp_style_new->flag |= GP_MATERIAL_FILL_SHOW;
@@ -177,7 +188,7 @@ static void eyedropper_add_material(bContext *C,
     copy_v3_v3(gp_style_new->fill_rgba, col_conv);
   }
   /* Stroke and Fill. */
-  else if (both) {
+  else if (mat_mode == MaterialMode::Both) {
     gp_style_new->flag |= GP_MATERIAL_STROKE_SHOW | GP_MATERIAL_FILL_SHOW;
     copy_v3_v3(gp_style_new->stroke_rgba, col_conv);
     copy_v3_v3(gp_style_new->fill_rgba, col_conv);
@@ -251,10 +262,19 @@ static void eyedropper_gpencil_color_set(bContext *C,
                                          const wmEvent *event,
                                          EyedropperGreasePencil *eye)
 {
+  const bool is_ctrl = (event->modifier & KM_CTRL) != 0;
+  const bool is_shift = (event->modifier & KM_SHIFT) != 0;
 
-  const bool only_stroke = (event->modifier & (KM_CTRL | KM_SHIFT)) == 0;
-  const bool only_fill = ((event->modifier & KM_CTRL) == 0 && (event->modifier & KM_SHIFT));
-  const bool both = ((event->modifier & KM_CTRL) && (event->modifier & KM_SHIFT));
+  MaterialMode mat_mode = eye->mat_mode;
+  if (is_ctrl && !is_shift) {
+    mat_mode = MaterialMode::Stroke;
+  }
+  if (is_shift && !is_ctrl) {
+    mat_mode = MaterialMode::Fill;
+  }
+  if (is_ctrl && is_shift) {
+    mat_mode = MaterialMode::Both;
+  }
 
   float3 col_conv = eye->color;
 
@@ -267,7 +287,7 @@ static void eyedropper_gpencil_color_set(bContext *C,
 
   switch (eye->mode) {
     case EyeMode::Material:
-      eyedropper_add_material(C, col_conv, only_stroke, only_fill, both);
+      eyedropper_add_material(C, col_conv, mat_mode);
       break;
     case EyeMode::Palette:
       eyedropper_add_palette_color(C, col_conv);
@@ -389,6 +409,13 @@ void UI_OT_eyedropper_grease_pencil_color(wmOperatorType *ot)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
+  static const EnumPropertyItem items_material_mode[] = {
+      {int(MaterialMode::Stroke), "STROKE", 0, "Stroke", ""},
+      {int(MaterialMode::Fill), "FILL", 0, "Fill", ""},
+      {int(MaterialMode::Both), "BOTH", 0, "Both", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   /* Identifiers. */
   ot->name = "Grease Pencil Eyedropper";
   ot->idname = "UI_OT_eyedropper_grease_pencil_color";
@@ -406,4 +433,10 @@ void UI_OT_eyedropper_grease_pencil_color(wmOperatorType *ot)
 
   /* Properties. */
   ot->prop = RNA_def_enum(ot->srna, "mode", items_mode, int(EyeMode::Material), "Mode", "");
+  ot->prop = RNA_def_enum(ot->srna,
+                          "material_mode",
+                          items_material_mode,
+                          int(MaterialMode::Stroke),
+                          "Material Mode",
+                          "");
 }
