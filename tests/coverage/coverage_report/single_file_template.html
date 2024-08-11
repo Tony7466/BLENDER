@@ -389,6 +389,8 @@
           name_elem.innerText = base_name;
 
           add_executed_line_tooltip(count_elem, fdata.start_line);
+          add_simple_tooltip(percentage_elem, "Line Coverage");
+          add_simple_tooltip(lines_elem, "Number of Lines");
 
           name_elem.addEventListener("click", () => {
             const line_number = fdata.start_line + 1;
@@ -399,6 +401,12 @@
             });
           });
         }
+      }
+
+      function add_simple_tooltip(element, message) {
+        const content = document.createElement("pre");
+        content.innerText = message;
+        tippy(element, { content: content, delay: 400 });
       }
 
       function extract_base_function_name(instantiation_name) {
