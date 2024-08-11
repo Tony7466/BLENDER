@@ -72,12 +72,47 @@ struct EyedropperGreasePencil {
 };
 
 /* Helper: Draw status message while the user is running the operator */
-static void eyedropper_grease_pencil_status_indicators(bContext *C)
+static void eyedropper_grease_pencil_status_indicators(bContext *C,
+                                                       wmOperator *op,
+                                                       const wmEvent *event)
 {
-  char msg_str[UI_MAX_DRAW_STR];
-  STRNCPY(msg_str, IFACE_("LMB: Stroke - Shift: Fill - Shift+Ctrl: Stroke + Fill"));
+  std::string header;
+  header += IFACE_("Current: ");
 
-  ED_workspace_status_text(C, msg_str);
+  const bool is_ctrl = (event->modifier & KM_CTRL) != 0;
+  const bool is_shift = (event->modifier & KM_SHIFT) != 0;
+
+  EyedropperGreasePencil *eye = (EyedropperGreasePencil *)op->customdata;
+
+  MaterialMode mat_mode = eye->mat_mode;
+  if (is_ctrl && !is_shift) {
+    mat_mode = MaterialMode::Stroke;
+  }
+  if (is_shift && !is_ctrl) {
+    mat_mode = MaterialMode::Fill;
+  }
+  if (is_ctrl && is_shift) {
+    mat_mode = MaterialMode::Both;
+  }
+
+  switch (mat_mode) {
+    case MaterialMode::Stroke: {
+      header += IFACE_("Stroke");
+      break;
+    }
+    case MaterialMode::Fill: {
+      header += IFACE_("Fill");
+      break;
+    }
+    case MaterialMode::Both: {
+      header += IFACE_("Both");
+      break;
+    }
+  }
+
+  header += IFACE_(", Ctrl: Stroke, Shift: Fill, Shift+Ctrl: Both");
+
+  ED_workspace_status_text(C, header.c_str());
 }
 
 /* Initialize. */
@@ -315,7 +350,9 @@ static void eyedropper_grease_pencil_cancel(bContext *C, wmOperator *op)
 /* Main modal status check. */
 static int eyedropper_grease_pencil_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
+  eyedropper_grease_pencil_status_indicators(C, op, event);
   EyedropperGreasePencil *eye = (EyedropperGreasePencil *)op->customdata;
+
   /* Handle modal keymap */
   switch (event->type) {
     case EVT_MODAL_MAP: {
@@ -357,14 +394,14 @@ static int eyedropper_grease_pencil_modal(bContext *C, wmOperator *op, const wmE
 }
 
 /* Modal Operator init */
-static int eyedropper_grease_pencil_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+static int eyedropper_grease_pencil_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   /* Init. */
   if (eyedropper_grease_pencil_init(C, op)) {
     /* Add modal temp handler. */
     WM_event_add_modal_handler(C, op);
     /* Status message. */
-    eyedropper_grease_pencil_status_indicators(C);
+    eyedropper_grease_pencil_status_indicators(C, op, event);
 
     return OPERATOR_RUNNING_MODAL;
   }
