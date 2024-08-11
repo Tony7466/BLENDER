@@ -548,7 +548,6 @@ class NODE_MT_category_simulation(Menu):
         node_add_menu.add_node_type(layout, "GeometryNodeInputBodyMass")
         node_add_menu.add_node_type(layout, "GeometryNodeInputBodyMotionState")
         node_add_menu.add_node_type(layout, "GeometryNodeInputBodyActivationState")
-        node_add_menu.add_node_type(layout, "GeometryNodeInputBodyPhysicsMode")
         node_add_menu.add_node_type(layout, "GeometryNodeSetBodyStatic")
         node_add_menu.add_node_type(layout, "GeometryNodeSetBodyKinematic")
         node_add_menu.add_node_type(layout, "GeometryNodeSetBodyActivationState")
