@@ -383,21 +383,21 @@ void UI_OT_eyedropper_grease_pencil_color(wmOperatorType *ot)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
-  /* identifiers */
+  /* Identifiers. */
   ot->name = "Grease Pencil Eyedropper";
   ot->idname = "UI_OT_eyedropper_grease_pencil_color";
   ot->description = "Sample a color from the Blender Window and create Grease Pencil material";
 
-  /* api callbacks */
+  /* Api callbacks. */
   ot->invoke = eyedropper_grease_pencil_invoke;
   ot->modal = eyedropper_grease_pencil_modal;
   ot->cancel = eyedropper_grease_pencil_cancel;
   ot->exec = eyedropper_grease_pencil_exec;
   ot->poll = eyedropper_grease_pencil_poll;
 
-  /* flags */
+  /* Flags. */
   ot->flag = OPTYPE_UNDO | OPTYPE_BLOCKING;
 
-  /* properties */
+  /* Properties. */
   ot->prop = RNA_def_enum(ot->srna, "mode", items_mode, int(EyeMode::Material), "Mode", "");
 }
