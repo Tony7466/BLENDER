@@ -427,7 +427,7 @@ static GlyphBLF *blf_glyph_cache_add_svg(GlyphCacheBLF *gc, uint charcode, bool 
         int64_t offs_in = (y * int64_t(dest_w) * 4) + (x * 4);
         int64_t offs_out = (y * int64_t(g->dims[0]) + x);
         g->bitmap[offs_out] = uchar(float(rgb_to_grayscale_byte(&render_bmp[int64_t(offs_in)])) *
-                                    +(float(render_bmp[int64_t(offs_in + 3)]) / 255.0f));
+                                    (float(render_bmp[int64_t(offs_in + 3)]) / 255.0f));
       }
     }
   }
