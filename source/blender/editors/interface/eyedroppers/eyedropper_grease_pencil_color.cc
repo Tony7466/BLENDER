@@ -49,6 +49,7 @@
 enum class EyeMode : int8_t {
   Material = 0,
   Palette = 1,
+  Brush = 2,
 };
 
 struct EyedropperGreasePencil {
@@ -219,6 +220,25 @@ static void eyedropper_add_palette_color(bContext *C, const float col_conv[4])
   }
 }
 
+/* Set the active brush's color. */
+static void eyedropper_set_brush_color(bContext *C, const float col_conv[4])
+{
+  Scene *scene = CTX_data_scene(C);
+  ToolSettings *ts = scene->toolsettings;
+  Paint *paint = &ts->gp_paint->paint;
+
+  if (paint == nullptr) {
+    return;
+  }
+
+  Brush *brush = paint->brush;
+  if (brush == nullptr) {
+    return;
+  }
+
+  copy_v3_v3(brush->rgb, col_conv);
+}
+
 /* Set the material or the palette color. */
 static void eyedropper_gpencil_color_set(bContext *C,
                                          const wmEvent *event,
@@ -231,10 +251,10 @@ static void eyedropper_gpencil_color_set(bContext *C,
 
   float col_conv[4];
 
-  /* Convert from linear rgb space to display space because palette colors are in display
+  /* Convert from linear rgb space to display space because palette and brush colors are in display
    *  space, and this conversion is needed to undo the conversion to linear performed by
    *  eyedropper_color_sample_fl. */
-  if ((eye->display) && (eye->mode == EyeMode::Palette)) {
+  if ((eye->display) && (eye->mode == EyeMode::Palette || eye->mode == EyeMode::Brush)) {
     copy_v3_v3(col_conv, eye->color);
     IMB_colormanagement_scene_linear_to_display_v3(col_conv, eye->display);
   }
@@ -242,12 +262,16 @@ static void eyedropper_gpencil_color_set(bContext *C,
     copy_v3_v3(col_conv, eye->color);
   }
 
-  /* Add material or Palette color. */
-  if (eye->mode == EyeMode::Material) {
-    eyedropper_add_material(C, col_conv, only_stroke, only_fill, both);
-  }
-  else {
-    eyedropper_add_palette_color(C, col_conv);
+  switch (eye->mode) {
+    case EyeMode::Material:
+      eyedropper_add_material(C, col_conv, only_stroke, only_fill, both);
+      break;
+    case EyeMode::Palette:
+      eyedropper_add_palette_color(C, col_conv);
+      break;
+    case EyeMode::Brush:
+      eyedropper_set_brush_color(C, col_conv);
+      break;
   }
 }
 
@@ -355,6 +379,7 @@ void UI_OT_eyedropper_grease_pencil_color(wmOperatorType *ot)
   static const EnumPropertyItem items_mode[] = {
       {int(EyeMode::Material), "MATERIAL", 0, "Material", ""},
       {int(EyeMode::Palette), "PALETTE", 0, "Palette", ""},
+      {int(EyeMode::Brush), "BRUSH", 0, "Brush", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
