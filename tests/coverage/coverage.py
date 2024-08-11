@@ -15,7 +15,8 @@ from coverage_report import parse, report_as_html
 from coverage_report.util import print_updateable_line
 from pathlib import Path
 
-usage = textwrap.dedent("""\
+usage = textwrap.dedent(
+    """\
     coverage.py <command> [<args>]
 
     Commands:
@@ -24,13 +25,12 @@ usage = textwrap.dedent("""\
           [--no-browser]                      Don't open the browser in the end.
         reset [--build-directory]           Delete .gcda files.
         help                                Show this help.
-    """)
+    """
+)
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Blender test coverage",
-        usage=usage)
+    parser = argparse.ArgumentParser(description="Blender test coverage", usage=usage)
 
     parser.add_argument("command", nargs="?", default="help")
     args = parser.parse_args(sys.argv[1:2])
