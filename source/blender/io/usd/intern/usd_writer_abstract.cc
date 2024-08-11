@@ -261,7 +261,14 @@ bool USDAbstractWriter::mark_as_instance(const HierarchyContext &context, const 
     return false;
   }
 
-  pxr::SdfPath ref_path(context.original_export_path);
+  std::string ref_path_str(usd_export_context_.export_params.root_prim_path);
+  ref_path_str += context.original_export_path;
+
+  pxr::SdfPath ref_path(ref_path_str);
+
+  /* To avoid USD errors, make sure the referenced path exists. */
+  usd_export_context_.stage->DefinePrim(ref_path);
+
   if (!prim.GetReferences().AddInternalReference(ref_path)) {
     /* See this URL for a description for why referencing may fail"
      * https://graphics.pixar.com/usd/docs/api/class_usd_references.html#Usd_Failing_References
