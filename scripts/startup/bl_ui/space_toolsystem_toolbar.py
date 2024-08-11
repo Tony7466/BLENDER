@@ -2211,11 +2211,22 @@ class _defs_grease_pencil_paint:
 
     @ToolDef.from_fn
     def eyedropper():
-        def draw_settings(_context, layout, tool):
+        def draw_settings(context, layout, tool):
             props = tool.operator_properties("ui.eyedropper_grease_pencil_color")
             row = layout.row()
             row.use_property_split = False
             row.prop(props, "mode", expand=True)
+
+            if props.mode == "PALETTE":
+                tool_settings = context.tool_settings
+                settings = tool_settings.gpencil_paint
+
+                col = layout.column()
+
+                row = col.row(align=True)
+                row.template_ID(settings, "palette", new="palette.new")
+                if settings.palette:
+                    col.template_palette(settings, "palette", color=True)
 
         return dict(
             idname="builtin.eyedropper",
