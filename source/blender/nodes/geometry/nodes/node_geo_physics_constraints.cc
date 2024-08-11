@@ -8,6 +8,8 @@
 
 #include "FN_field.hh"
 
+#include "GEO_join_geometries.hh"
+
 #include "NOD_rna_define.hh"
 
 #include "NOD_socket_declarations.hh"
@@ -72,44 +74,45 @@ static void node_geo_exec(GeoNodeExecParams params)
   const Field<bool> disable_collision_field = params.extract_input<Field<bool>>(
       "Disable Collision");
 
-  if (bke::PhysicsGeometry *physics = geometry_set.get_physics_for_write()) {
-    physics->resize(physics->bodies_num(), physics->constraints_num() + std::max(count, 0));
-    const IndexMask new_constraints = physics->constraints_range().take_back(count);
+  bke::PhysicsGeometry *physics = new bke::PhysicsGeometry(0, count, 0);
+  const IndexMask constraints = physics->constraints_range();
 
-    const bke::PhysicsFieldContext field_context{*physics, bke::AttrDomain::Edge};
-    fn::FieldEvaluator field_evaluator{field_context, &new_constraints};
-    field_evaluator.add(body1_field);
-    field_evaluator.add(body2_field);
-    field_evaluator.add(frame1_field);
-    field_evaluator.add(frame2_field);
-    field_evaluator.add(disable_collision_field);
-    field_evaluator.evaluate();
+  const bke::PhysicsFieldContext field_context{*physics, bke::AttrDomain::Edge};
+  fn::FieldEvaluator field_evaluator{field_context, &constraints};
+  field_evaluator.add(body1_field);
+  field_evaluator.add(body2_field);
+  field_evaluator.add(frame1_field);
+  field_evaluator.add(frame2_field);
+  field_evaluator.add(disable_collision_field);
+  field_evaluator.evaluate();
 
-    const VArray<int> src_type = VArray<int>::ForSingle(int(constraint_type),
-                                                        new_constraints.min_array_size());
-    const VArray<int> src_body1 = field_evaluator.get_evaluated<int>(0);
-    const VArray<int> src_body2 = field_evaluator.get_evaluated<int>(1);
-    const VArray<float4x4> src_frame1 = field_evaluator.get_evaluated<float4x4>(2);
-    const VArray<float4x4> src_frame2 = field_evaluator.get_evaluated<float4x4>(3);
-    const VArray<bool> src_disable_collision = field_evaluator.get_evaluated<bool>(4);
+  const VArray<int> src_type = VArray<int>::ForSingle(int(constraint_type),
+                                                      constraints.min_array_size());
+  const VArray<int> src_body1 = field_evaluator.get_evaluated<int>(0);
+  const VArray<int> src_body2 = field_evaluator.get_evaluated<int>(1);
+  const VArray<float4x4> src_frame1 = field_evaluator.get_evaluated<float4x4>(2);
+  const VArray<float4x4> src_frame2 = field_evaluator.get_evaluated<float4x4>(3);
+  const VArray<bool> src_disable_collision = field_evaluator.get_evaluated<bool>(4);
 
-    physics->create_constraints(new_constraints, src_type, src_body1, src_body2);
+  physics->create_constraints(constraints, src_type, src_body1, src_body2);
 
-    bke::AttributeWriter<float4x4> dst_frame1 = physics->constraint_frame1_for_write();
-    bke::AttributeWriter<float4x4> dst_frame2 = physics->constraint_frame2_for_write();
-    bke::AttributeWriter<bool> dst_disable_collision =
-        physics->constraint_disable_collision_for_write();
-    new_constraints.foreach_index([&](const int index) {
-      dst_frame1.varray.set(index, src_frame1[index]);
-      dst_frame2.varray.set(index, src_frame2[index]);
-      dst_disable_collision.varray.set(index, src_disable_collision[index]);
-    });
-    dst_frame1.finish();
-    dst_frame2.finish();
-    dst_disable_collision.finish();
-  }
+  bke::AttributeWriter<float4x4> dst_frame1 = physics->constraint_frame1_for_write();
+  bke::AttributeWriter<float4x4> dst_frame2 = physics->constraint_frame2_for_write();
+  bke::AttributeWriter<bool> dst_disable_collision =
+      physics->constraint_disable_collision_for_write();
+  constraints.foreach_index([&](const int index) {
+    dst_frame1.varray.set(index, src_frame1[index]);
+    dst_frame2.varray.set(index, src_frame2[index]);
+    dst_disable_collision.varray.set(index, src_disable_collision[index]);
+  });
+  dst_frame1.finish();
+  dst_frame2.finish();
+  dst_disable_collision.finish();
 
-  params.set_output("Physics", std::move(geometry_set));
+  GeometrySet output_geometry = geometry::join_geometries(
+      {std::move(geometry_set), bke::GeometrySet::from_physics(physics)}, {});
+
+  params.set_output("Physics", std::move(output_geometry));
 }
 
 static void node_rna(StructRNA *srna)

@@ -4,6 +4,7 @@
 
 set(INC
   .
+  intern
   ../blenkernel
   ../blentranslation
   ../bmesh
@@ -101,6 +102,7 @@ set(LIB
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
   PRIVATE bf::extern::fmtlib
+  PRIVATE bf::intern::clog
 )
 
 if(WITH_OPENVDB)

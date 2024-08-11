@@ -24,6 +24,10 @@ struct RealizeInstancesOptions {
    * instances. Otherwise, instance attributes are ignored.
    */
   bool realize_instance_attributes = true;
+  /**
+   * Move non-copyable physics world data if possible.
+   */
+  bool move_physics_world_data = false;
 
   bke::AnonymousAttributePropagationInfo propagation_info;
 };

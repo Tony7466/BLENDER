@@ -8,6 +8,7 @@
 #include "DNA_collection_types.h"
 
 #include "BLI_array_utils.hh"
+#include "BLI_math_matrix.hh"
 #include "BLI_math_quaternion_types.hh"
 #include "BLI_noise.hh"
 
@@ -205,6 +206,7 @@ struct RealizeEditDataTask {
 
 struct RealizePhysicsInfo {
   const bke::PhysicsGeometry *physics;
+  VArray<int> body_shapes;
   VArray<float3> positions;
   VArray<math::Quaternion> rotations;
   VArray<float3> velocities;
@@ -218,7 +220,6 @@ struct RealizePhysicsInfo {
 
 /** Start indices in the final output curves data-block. */
 struct PhysicsElementStartIndices {
-  bool has_world = false;
   int body = 0;
   int constraint = 0;
   int shape = 0;
@@ -294,7 +295,6 @@ struct AllPhysicsInfo {
   VectorSet<const bke::PhysicsGeometry *> order;
   /** Preprocessed data about every original geometry. This is ordered by #order. */
   Array<RealizePhysicsInfo> realize_info;
-  bool move_world = false;
   bool create_id_attribute = false;
 };
 
@@ -773,8 +773,6 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
                                                     &physics_info,
                                                     base_transform,
                                                     base_instance_context.physics});
-          /* Move data from the first input world. */
-          gather_info.r_offsets.physics_offsets.has_world |= physics->has_world();
           gather_info.r_offsets.physics_offsets.body += physics->bodies_num();
           gather_info.r_offsets.physics_offsets.constraint += physics->constraints_num();
           gather_info.r_offsets.physics_offsets.shape += physics->shapes_num();
@@ -2246,12 +2244,33 @@ static void execute_realize_edit_data_tasks(const Span<RealizeEditDataTask> task
 /** \name Physics
  * \{ */
 
+static StringRef body_shape_attribute_id = bke::PhysicsGeometry::body_attribute_name(
+    bke::PhysicsGeometry::BodyAttribute::collision_shape);
+static StringRef position_attribute_id = bke::PhysicsGeometry::body_attribute_name(
+    bke::PhysicsGeometry::BodyAttribute::position);
+static StringRef rotation_attribute_id = bke::PhysicsGeometry::body_attribute_name(
+    bke::PhysicsGeometry::BodyAttribute::rotation);
+static StringRef velocity_attribute_id = bke::PhysicsGeometry::body_attribute_name(
+    bke::PhysicsGeometry::BodyAttribute::velocity);
+static StringRef angular_velocity_attribute_id = bke::PhysicsGeometry::body_attribute_name(
+    bke::PhysicsGeometry::BodyAttribute::angular_velocity);
+static StringRef constraint_type_attribute_id = bke::PhysicsGeometry::constraint_attribute_name(
+    bke::PhysicsGeometry::ConstraintAttribute::constraint_type);
+static StringRef constraint_body1_attribute_id = bke::PhysicsGeometry::constraint_attribute_name(
+    bke::PhysicsGeometry::ConstraintAttribute::constraint_body1);
+static StringRef constraint_body2_attribute_id = bke::PhysicsGeometry::constraint_attribute_name(
+    bke::PhysicsGeometry::ConstraintAttribute::constraint_body2);
+
 static OrderedAttributes gather_generic_physics_attributes_to_propagate(
     const bke::GeometrySet &in_geometry_set,
     const RealizeInstancesOptions &options,
     const VariedDepthOptions &varied_depth_options,
     bool &r_create_id)
 {
+  using bke::PhysicsGeometry;
+  using BodyAttribute = PhysicsGeometry::BodyAttribute;
+  using ConstraintAttribute = PhysicsGeometry::ConstraintAttribute;
+
   Vector<bke::GeometryComponent::Type> src_component_types;
   src_component_types.append(bke::GeometryComponent::Type::Physics);
   if (options.realize_instance_attributes) {
@@ -2268,13 +2287,14 @@ static OrderedAttributes gather_generic_physics_attributes_to_propagate(
                                     attributes_to_propagate);
 
   OrderedAttributes ordered_attributes;
-  attributes_to_propagate.remove(bke::PhysicsGeometry::builtin_attributes.position);
-  attributes_to_propagate.remove(bke::PhysicsGeometry::builtin_attributes.rotation);
-  attributes_to_propagate.remove(bke::PhysicsGeometry::builtin_attributes.velocity);
-  attributes_to_propagate.remove(bke::PhysicsGeometry::builtin_attributes.angular_velocity);
-  attributes_to_propagate.remove(bke::PhysicsGeometry::builtin_attributes.constraint_type);
-  attributes_to_propagate.remove(bke::PhysicsGeometry::builtin_attributes.constraint_body1);
-  attributes_to_propagate.remove(bke::PhysicsGeometry::builtin_attributes.constraint_body2);
+  attributes_to_propagate.remove(body_shape_attribute_id);
+  attributes_to_propagate.remove(position_attribute_id);
+  attributes_to_propagate.remove(rotation_attribute_id);
+  attributes_to_propagate.remove(velocity_attribute_id);
+  attributes_to_propagate.remove(angular_velocity_attribute_id);
+  attributes_to_propagate.remove(constraint_type_attribute_id);
+  attributes_to_propagate.remove(constraint_body1_attribute_id);
+  attributes_to_propagate.remove(constraint_body2_attribute_id);
   r_create_id = attributes_to_propagate.pop_try("id").has_value();
   for (auto &&item : attributes_to_propagate.items()) {
     ordered_attributes.ids.add_new(item.key);
@@ -2284,16 +2304,14 @@ static OrderedAttributes gather_generic_physics_attributes_to_propagate(
 }
 
 static void gather_physics_to_realize(const bke::GeometrySet &geometry_set,
-                                      VectorSet<const bke::PhysicsGeometry *> &r_physics,
-                                      bool &r_move_world)
+                                      VectorSet<const bke::PhysicsGeometry *> &r_physics)
 {
   if (const bke::PhysicsGeometry *physics = geometry_set.get_physics()) {
     r_physics.add(physics);
-    r_move_world |= physics->has_world();
   }
   if (const Instances *instances = geometry_set.get_instances()) {
     instances->foreach_referenced_geometry([&](const bke::GeometrySet &instance_geometry_set) {
-      gather_physics_to_realize(instance_geometry_set, r_physics, r_move_world);
+      gather_physics_to_realize(instance_geometry_set, r_physics);
     });
   }
 }
@@ -2302,17 +2320,28 @@ static AllPhysicsInfo preprocess_physics(const bke::GeometrySet &geometry_set,
                                          const RealizeInstancesOptions &options,
                                          const VariedDepthOptions &varied_depth_option)
 {
-  UNUSED_VARS(options, varied_depth_option);
+  UNUSED_VARS(varied_depth_option);
   AllPhysicsInfo info;
+
+  gather_physics_to_realize(geometry_set, info.order);
+  info.realize_info.reinitialize(info.order.size());
+
+  /* Find physics index for world data to move. */
+
+  /* Update the cache before accessing attributes to avoid invalidating ids and pointers. */
+  for (const int physics_index : info.realize_info.index_range()) {
+    const bke::PhysicsGeometry *physics = info.order[physics_index];
+    physics->ensure_read_cache();
+  }
+
   info.attributes = gather_generic_physics_attributes_to_propagate(
       geometry_set, options, varied_depth_option, info.create_id_attribute);
 
-  gather_physics_to_realize(geometry_set, info.order, info.move_world);
-  info.realize_info.reinitialize(info.order.size());
   for (const int physics_index : info.realize_info.index_range()) {
     RealizePhysicsInfo &physics_info = info.realize_info[physics_index];
     const bke::PhysicsGeometry *physics = info.order[physics_index];
     physics_info.physics = physics;
+    physics_info.body_shapes = physics->body_shapes();
     physics_info.positions = physics->body_positions();
     physics_info.rotations = physics->body_rotations();
     physics_info.velocities = physics->body_velocities();
@@ -2320,8 +2349,7 @@ static AllPhysicsInfo preprocess_physics(const bke::GeometrySet &geometry_set,
     physics_info.constraint_types = physics->constraint_types();
     physics_info.constraint_bodies1 = physics->constraint_body1();
     physics_info.constraint_bodies2 = physics->constraint_body2();
-    /* Access attributes from custom data (ignore any realized physics data). */
-    bke::AttributeAccessor attributes = physics->attributes(/* force_cache */ true);
+    bke::AttributeAccessor attributes = physics->attributes();
     physics_info.attributes.reinitialize(info.attributes.size());
     for (const int attribute_index : info.attributes.index_range()) {
       const AttributeIDRef &attribute_id = info.attributes.ids[attribute_index];
@@ -2342,12 +2370,14 @@ static AllPhysicsInfo preprocess_physics(const bke::GeometrySet &geometry_set,
   return info;
 }
 
-static void execute_realize_physics_task(const RealizeInstancesOptions &options,
-                                         const AllPhysicsInfo &all_physics_info,
+static void execute_realize_physics_task(const RealizeInstancesOptions & /*options*/,
+                                         const AllPhysicsInfo & /*all_physics_info*/,
                                          const RealizePhysicsTask &task,
                                          const OrderedAttributes &ordered_attributes,
+                                         const bool world_was_moved,
                                          bke::PhysicsGeometry &dst_physics,
                                          MutableSpan<bke::CollisionShapePtr> all_dst_shapes,
+                                         MutableSpan<int> all_dst_body_shapes,
                                          MutableSpan<float3> all_dst_positions,
                                          MutableSpan<math::Quaternion> all_dst_rotations,
                                          MutableSpan<float3> all_dst_velocities,
@@ -2356,77 +2386,116 @@ static void execute_realize_physics_task(const RealizeInstancesOptions &options,
 {
   const RealizePhysicsInfo &physics_info = *task.physics_info;
   const bke::PhysicsGeometry &physics = *physics_info.physics;
+  /* Only change motion state of moved world data when the transform is non-zero. */
+  const bool write_motion_state = (world_was_moved ? (task.transform == float4x4::identity()) :
+                                                     true);
+  /* Don't recreate constraints in moved world data. */
+  const bool write_constraints = !world_was_moved;
+  /* Don't copy builtin attributes in moved world data. */
+  const bool write_builtin_attributes = !world_was_moved;
+  /* Copy shapes in any case. */
+  const bool write_shapes = true;
 
-  UNUSED_VARS(options, all_physics_info);
-
-  const Span<bke::CollisionShapePtr> src_shapes = physics.shapes();
-  const VArray<float3> src_positions = physics_info.positions;
-  const VArray<math::Quaternion> src_rotations = physics_info.rotations;
-  const VArray<float3> src_velocities = physics_info.velocities;
-  const VArray<float3> src_angular_velocities = physics_info.angular_velocities;
-  const VArray<int> src_constraint_types = physics_info.constraint_types;
-  const VArray<int> src_constraint_bodies1 = physics_info.constraint_bodies1;
-  const VArray<int> src_constraint_bodies2 = physics_info.constraint_bodies2;
-
-  // const bool move_world = !task.start_indices.has_world && physics.has_world();
   const IndexRange dst_body_range(task.start_indices.body, physics.bodies_num());
   const IndexRange dst_constraint_range(task.start_indices.constraint, physics.constraints_num());
   const IndexRange dst_shape_range(task.start_indices.shape, physics.shapes_num());
 
-  MutableSpan<bke::CollisionShapePtr> dst_shapes = all_dst_shapes.slice(dst_shape_range);
-  MutableSpan<float3> dst_positions = all_dst_positions.slice(dst_body_range);
-  MutableSpan<math::Quaternion> dst_rotations = all_dst_rotations.slice(dst_body_range);
-  MutableSpan<float3> dst_velocities = all_dst_velocities.slice(dst_body_range);
-  MutableSpan<float3> dst_angular_velocities = all_dst_angular_velocities.slice(dst_body_range);
+  if (write_shapes) {
+    const Span<bke::CollisionShapePtr> src_shapes = physics.shapes();
+    MutableSpan<bke::CollisionShapePtr> dst_shapes = all_dst_shapes.slice(dst_shape_range);
+    dst_shapes.copy_from(src_shapes);
 
-  dst_shapes.copy_from(src_shapes);
-  threading::parallel_for(src_positions.index_range(), 1024, [&](const IndexRange range) {
-    for (const int i : range) {
-      dst_positions[i] = math::transform_point(task.transform, src_positions[i]);
+    const VArray<int> src_body_shapes = physics_info.body_shapes;
+    MutableSpan<int> dst_body_shapes = all_dst_body_shapes.slice(dst_body_range);
+    for (const int i : src_body_shapes.index_range()) {
+      dst_body_shapes[i] = (src_shapes.index_range().contains(src_body_shapes[i]) ?
+                                dst_shape_range[src_body_shapes[i]] :
+                                -1);
     }
-  });
-  threading::parallel_for(src_rotations.index_range(), 1024, [&](const IndexRange range) {
-    for (const int i : range) {
-      dst_rotations[i] = math::to_quaternion(task.transform) * src_rotations[i];
-    }
-  });
-  threading::parallel_for(src_velocities.index_range(), 1024, [&](const IndexRange range) {
-    for (const int i : range) {
-      dst_velocities[i] = math::transform_direction(task.transform, src_velocities[i]);
-    }
-  });
-  threading::parallel_for(src_angular_velocities.index_range(), 1024, [&](const IndexRange range) {
-    for (const int i : range) {
-      dst_angular_velocities[i] = math::transform_direction(task.transform,
-                                                            src_angular_velocities[i]);
-    }
-  });
+  }
 
-  const VArray<int> dst_constraint_bodies1 = VArray<int>::ForFunc(
-      dst_constraint_range.size(),
-      [&](const int index) { return src_constraint_bodies1[index] + task.start_indices.body; });
-  const VArray<int> dst_constraint_bodies2 = VArray<int>::ForFunc(
-      dst_constraint_range.size(),
-      [&](const int index) { return src_constraint_bodies2[index] + task.start_indices.body; });
-  dst_physics.create_constraints(
-      dst_constraint_range, src_constraint_types, dst_constraint_bodies1, dst_constraint_bodies2);
+  if (write_motion_state) {
+    const VArray<float3> src_positions = physics_info.positions;
+    const VArray<math::Quaternion> src_rotations = physics_info.rotations;
+    const VArray<float3> src_velocities = physics_info.velocities;
+    const VArray<float3> src_angular_velocities = physics_info.angular_velocities;
 
-  copy_generic_attributes_to_result(
-      physics_info.attributes,
-      task.attribute_fallbacks,
-      ordered_attributes,
-      [&](const bke::AttrDomain domain) {
-        switch (domain) {
-          case bke::AttrDomain::Point:
-            return dst_body_range;
-          case bke::AttrDomain::Edge:
-            return dst_constraint_range;
-          default:
-            BLI_assert_unreachable();
-            return IndexRange();
-        }
-      },
-      dst_attribute_writers);
+    MutableSpan<float3> dst_positions = all_dst_positions.slice(dst_body_range);
+    MutableSpan<math::Quaternion> dst_rotations = all_dst_rotations.slice(dst_body_range);
+    MutableSpan<float3> dst_velocities = all_dst_velocities.slice(dst_body_range);
+    MutableSpan<float3> dst_angular_velocities = all_dst_angular_velocities.slice(dst_body_range);
+
+    threading::parallel_for(src_positions.index_range(), 1024, [&](const IndexRange range) {
+      for (const int i : range) {
+        dst_positions[i] = math::transform_point(task.transform, src_positions[i]);
+      }
+    });
+    threading::parallel_for(src_rotations.index_range(), 1024, [&](const IndexRange range) {
+      for (const int i : range) {
+        dst_rotations[i] = math::to_quaternion(task.transform) * src_rotations[i];
+      }
+    });
+    threading::parallel_for(src_velocities.index_range(), 1024, [&](const IndexRange range) {
+      for (const int i : range) {
+        dst_velocities[i] = math::transform_direction(task.transform, src_velocities[i]);
+      }
+    });
+    threading::parallel_for(
+        src_angular_velocities.index_range(), 1024, [&](const IndexRange range) {
+          for (const int i : range) {
+            dst_angular_velocities[i] = math::transform_direction(task.transform,
+                                                                  src_angular_velocities[i]);
+          }
+        });
+  }
+
+  if (write_constraints) {
+    const VArray<int> src_constraint_types = physics_info.constraint_types;
+    const VArray<int> src_constraint_bodies1 = physics_info.constraint_bodies1;
+    const VArray<int> src_constraint_bodies2 = physics_info.constraint_bodies2;
+
+    /* Source varrays are relative to the original constraint range, make sure to offset when
+     * accessing the original varrays. */
+    const int src_constraint_start = task.start_indices.constraint;
+    const VArray<int> dst_constraint_types = VArray<int>::ForFunc(
+        dst_constraint_range.one_after_last(),
+        [&](const int index) { return src_constraint_types[index - src_constraint_start]; });
+    /* Offset body indices to match the new destination range. */
+    const VArray<int> dst_constraint_bodies1 = VArray<int>::ForFunc(
+        dst_constraint_range.one_after_last(), [&](const int index) {
+          return src_constraint_bodies1[index - src_constraint_start] + task.start_indices.body;
+        });
+    const VArray<int> dst_constraint_bodies2 = VArray<int>::ForFunc(
+        dst_constraint_range.one_after_last(), [&](const int index) {
+          return src_constraint_bodies2[index - src_constraint_start] + task.start_indices.body;
+        });
+
+    dst_physics.create_constraints(dst_constraint_range,
+                                   dst_constraint_types,
+                                   dst_constraint_bodies1,
+                                   dst_constraint_bodies2);
+  }
+
+  /* XXX This will also disable copy of dynamic attributes!
+   * Needs a list of just the dynamic attributes plus fallbacks. */
+  if (write_builtin_attributes) {
+    copy_generic_attributes_to_result(
+        physics_info.attributes,
+        task.attribute_fallbacks,
+        ordered_attributes,
+        [&](const bke::AttrDomain domain) {
+          switch (domain) {
+            case bke::AttrDomain::Point:
+              return dst_body_range;
+            case bke::AttrDomain::Edge:
+              return dst_constraint_range;
+            default:
+              BLI_assert_unreachable();
+              return IndexRange();
+          }
+        },
+        dst_attribute_writers);
+  }
 }
 
 static void execute_realize_physics_tasks(const RealizeInstancesOptions &options,
@@ -2449,24 +2518,24 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
   bke::PhysicsGeometry *dst_physics = new bke::PhysicsGeometry(
       bodies_num, constraints_num, shapes_num);
 
-  /* If world data is moved it must happen in advance before accessing attributes. */
-  if (all_physics_info.move_world) {
-    dst_physics->create_world(false);
-    threading::parallel_for(tasks.index_range(), 100, [&](const IndexRange task_range) {
-      for (const int task_index : task_range) {
-        const RealizePhysicsTask &task = tasks[task_index];
-        const bke::PhysicsGeometry &src_physics = *task.physics_info->physics;
-        const bool move_world = !task.start_indices.has_world && src_physics.has_world();
-        dst_physics->move_world_data(src_physics,
-                                     move_world,
-                                     src_physics.bodies_range(),
-                                     src_physics.constraints_range(),
-                                     src_physics.shapes_range(),
-                                     task.start_indices.body,
-                                     task.start_indices.constraint,
-                                     task.start_indices.shape);
+  /* Move physics data ahead of copying attributes. */
+  int world_data_task = -1;
+  if (options.move_physics_world_data) {
+    for (const int task_index : tasks.index_range()) {
+      const RealizePhysicsTask &task = tasks[task_index];
+      const bke::PhysicsGeometry *physics = task.physics_info->physics;
+      if (physics->has_world()) {
+        dst_physics->try_move_data(*physics,
+                                   dst_physics->bodies_num(),
+                                   dst_physics->constraints_num(),
+                                   physics->bodies_range(),
+                                   physics->constraints_range(),
+                                   task.start_indices.body,
+                                   task.start_indices.constraint);
+        world_data_task = task_index;
+        break;
       }
-    });
+    }
   }
 
   r_realized_geometry.replace_physics(dst_physics);
@@ -2485,16 +2554,18 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
   }
 
   MutableSpan<bke::CollisionShapePtr> shapes = dst_physics->shapes_for_write();
+  SpanAttributeWriter<int> body_shapes = dst_attributes.lookup_or_add_for_write_only_span<int>(
+      body_shape_attribute_id, bke::AttrDomain::Point);
   SpanAttributeWriter<float3> position = dst_attributes.lookup_or_add_for_write_only_span<float3>(
-      bke::PhysicsGeometry::builtin_attributes.position, bke::AttrDomain::Point);
+      position_attribute_id, bke::AttrDomain::Point);
   SpanAttributeWriter<math::Quaternion> rotation =
-      dst_attributes.lookup_or_add_for_write_only_span<math::Quaternion>(
-          bke::PhysicsGeometry::builtin_attributes.rotation, bke::AttrDomain::Point);
+      dst_attributes.lookup_or_add_for_write_only_span<math::Quaternion>(rotation_attribute_id,
+                                                                         bke::AttrDomain::Point);
   SpanAttributeWriter<float3> velocity = dst_attributes.lookup_or_add_for_write_only_span<float3>(
-      bke::PhysicsGeometry::builtin_attributes.velocity, bke::AttrDomain::Point);
+      velocity_attribute_id, bke::AttrDomain::Point);
   SpanAttributeWriter<float3> angular_velocity =
-      dst_attributes.lookup_or_add_for_write_only_span<float3>(
-          bke::PhysicsGeometry::builtin_attributes.angular_velocity, bke::AttrDomain::Point);
+      dst_attributes.lookup_or_add_for_write_only_span<float3>(angular_velocity_attribute_id,
+                                                               bke::AttrDomain::Point);
 
   /* Prepare generic output attributes. */
   Vector<GSpanAttributeWriter> dst_attribute_writers;
@@ -2504,18 +2575,22 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
     const eCustomDataType data_type = ordered_attributes.kinds[attribute_index].data_type;
     dst_attribute_writers.append(
         dst_attributes.lookup_or_add_for_write_only_span(attribute_id, domain, data_type));
+    BLI_assert(bool(dst_attribute_writers.last()));
   }
 
   /* Actually execute all tasks. */
   threading::parallel_for(tasks.index_range(), 100, [&](const IndexRange task_range) {
     for (const int task_index : task_range) {
       const RealizePhysicsTask &task = tasks[task_index];
+      const bool world_was_moved = (task_index == world_data_task);
       execute_realize_physics_task(options,
                                    all_physics_info,
                                    task,
                                    ordered_attributes,
+                                   world_was_moved,
                                    *dst_physics,
                                    shapes,
+                                   body_shapes.span,
                                    position.span,
                                    rotation.span,
                                    velocity.span,
@@ -2529,6 +2604,7 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
     dst_attribute.finish();
   }
   dst_physics->tag_collision_shapes_changed();
+  body_shapes.finish();
   position.finish();
   rotation.finish();
   velocity.finish();

@@ -53,7 +53,8 @@ static void node_geo_exec(GeoNodeExecParams params)
 
     bke::AttributeWriter<int> activation_state_writer =
         physics->attributes_for_write().lookup_for_write<int>(
-            bke::PhysicsGeometry::builtin_attributes.activation_state);
+            bke::PhysicsGeometry::body_attribute_name(
+                bke::PhysicsGeometry::BodyAttribute::activation_state));
 
     selection.foreach_index(
         [&](const int index) { activation_state_writer.varray.set(index, int(state)); });

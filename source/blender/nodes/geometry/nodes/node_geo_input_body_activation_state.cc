@@ -47,21 +47,18 @@ static void node_geo_exec(GeoNodeExecParams params)
 {
   using BodyActivationState = bke::PhysicsGeometry::BodyActivationState;
 
+  const StringRef attribute = bke::PhysicsGeometry::body_attribute_name(
+      bke::PhysicsGeometry::BodyAttribute::activation_state);
   Field<bool> always_active_field =
-      AttributeEnumToBoolFieldInput<int(BodyActivationState::AlwaysActive)>::Create(
-          bke::PhysicsGeometry::builtin_attributes.activation_state);
+      AttributeEnumToBoolFieldInput<int(BodyActivationState::AlwaysActive)>::Create(attribute);
   Field<bool> active_field =
-      AttributeEnumToBoolFieldInput<int(BodyActivationState::Active)>::Create(
-          bke::PhysicsGeometry::builtin_attributes.activation_state);
+      AttributeEnumToBoolFieldInput<int(BodyActivationState::Active)>::Create(attribute);
   Field<bool> wants_to_sleep_field =
-      AttributeEnumToBoolFieldInput<int(BodyActivationState::WantsSleep)>::Create(
-          bke::PhysicsGeometry::builtin_attributes.activation_state);
+      AttributeEnumToBoolFieldInput<int(BodyActivationState::WantsSleep)>::Create(attribute);
   Field<bool> sleeping_field =
-      AttributeEnumToBoolFieldInput<int(BodyActivationState::Sleeping)>::Create(
-          bke::PhysicsGeometry::builtin_attributes.activation_state);
+      AttributeEnumToBoolFieldInput<int(BodyActivationState::Sleeping)>::Create(attribute);
   Field<bool> always_sleeping_field =
-      AttributeEnumToBoolFieldInput<int(BodyActivationState::AlwaysSleeping)>::Create(
-          bke::PhysicsGeometry::builtin_attributes.activation_state);
+      AttributeEnumToBoolFieldInput<int(BodyActivationState::AlwaysSleeping)>::Create(attribute);
 
   params.set_output("Always Active", std::move(always_active_field));
   params.set_output("Active", std::move(active_field));

@@ -69,52 +69,46 @@ class PhysicsGeometry {
   const PhysicsGeometryImpl *impl_ = nullptr;
 
  public:
-  static const struct BuiltinAttributes {
-    /* Increment this when adding attributes! */
-    const int num_builtin_attributes = 36;
-    std::array<std::string, 36> all;
-    /* Attributes that should not be copied when there is a physics world. */
-    std::array<std::string, 36> skip_copy;
+  enum class BodyAttribute {
+    id,
+    collision_shape,
+    is_static,
+    is_kinematic,
+    mass,
+    inertia,
+    center_of_mass,
+    position,
+    rotation,
+    velocity,
+    angular_velocity,
+    activation_state,
+    friction,
+    rolling_friction,
+    spinning_friction,
+    restitution,
+    linear_damping,
+    angular_damping,
+    linear_sleeping_threshold,
+    angular_sleeping_threshold,
+    total_force,
+    total_torque,
+  };
 
-    /* Body attributes. */
-    std::string id;
-    std::string collision_shape;
-    std::string is_static;
-    std::string is_kinematic;
-    std::string mass;
-    std::string inertia;
-    std::string center_of_mass;
-    std::string position;
-    std::string rotation;
-    std::string velocity;
-    std::string angular_velocity;
-    std::string activation_state;
-    std::string friction;
-    std::string rolling_friction;
-    std::string spinning_friction;
-    std::string restitution;
-    std::string linear_damping;
-    std::string angular_damping;
-    std::string linear_sleeping_threshold;
-    std::string angular_sleeping_threshold;
-    std::string total_force;
-    std::string total_torque;
-
-    /* Constraint attributes. */
-    std::string constraint_type;
-    std::string constraint_body1;
-    std::string constraint_body2;
-    std::string constraint_enabled;
-    std::string constraint_frame1;
-    std::string constraint_frame2;
-    std::string applied_impulse;
-    std::string applied_force1;
-    std::string applied_force2;
-    std::string applied_torque1;
-    std::string applied_torque2;
-    std::string breaking_impulse_threshold;
-    std::string disable_collision;
-  } builtin_attributes;
+  enum class ConstraintAttribute {
+    constraint_type,
+    constraint_body1,
+    constraint_body2,
+    constraint_enabled,
+    constraint_frame1,
+    constraint_frame2,
+    applied_impulse,
+    applied_force1,
+    applied_force2,
+    applied_torque1,
+    applied_torque2,
+    breaking_impulse_threshold,
+    disable_collision,
+  };
 
   PhysicsGeometry();
   explicit PhysicsGeometry(int bodies_num, int constraints_num, int shapes_num);
@@ -125,8 +119,8 @@ class PhysicsGeometry {
   PhysicsGeometryImpl &impl_for_write();
 
   bool has_world() const;
-  void create_world(bool copy_attributes = true);
-  void destroy_world(bool copy_attributes = true);
+  void create_world();
+  void destroy_world();
 
   int bodies_num() const;
   int constraints_num() const;
@@ -136,22 +130,17 @@ class PhysicsGeometry {
   IndexRange constraints_range() const;
   IndexRange shapes_range() const;
 
-  void resize(int bodies_num, int constraints_num);
-
-  void move_world_data(const PhysicsGeometry &from,
-                       bool move_world,
-                       const IndexMask &body_mask,
-                       const IndexMask &constraint_mask,
-                       const IndexMask &shape_mask,
-                       int body_offset,
-                       int constraint_offset,
-                       int shape_offset);
-
   void move_or_copy_selection(const PhysicsGeometry &from,
                               const IndexMask &body_mask,
                               const IndexMask &constraint_mask,
-                              const IndexMask &shape_mask,
                               const bke::AnonymousAttributePropagationInfo &propagation_info);
+  bool try_move_data(const PhysicsGeometry &src,
+                     int body_num,
+                     int constraint_num,
+                     const IndexMask &src_body_mask,
+                     const IndexMask &src_constraint_mask,
+                     int dst_body_offset,
+                     int dst_constraint_offset);
 
   void set_overlap_filter(OverlapFilterFn fn);
   void clear_overlap_filter();
@@ -163,16 +152,18 @@ class PhysicsGeometry {
 
   void step_simulation(float delta_time);
 
+  void ensure_read_cache() const;
+  void ensure_custom_data_attribute(BodyAttribute attribute) const;
+  void ensure_custom_data_attribute(ConstraintAttribute attribute) const;
+
   Span<CollisionShapePtr> shapes() const;
   MutableSpan<CollisionShapePtr> shapes_for_write();
-  void set_body_shapes(const IndexMask &selection,
-                       Span<int> shape_handles,
-                       bool update_local_inertia);
 
   VArray<int> body_ids() const;
   AttributeWriter<int> body_ids_for_write();
 
   VArray<int> body_shapes() const;
+  AttributeWriter<int> body_shapes_for_write();
 
   VArray<bool> body_is_static() const;
 
@@ -212,6 +203,8 @@ class PhysicsGeometry {
   void apply_angular_impulse(const IndexMask &selection, const VArray<float3> &angular_impulses);
   void clear_forces(const IndexMask &selection);
 
+  void compute_local_inertia(const IndexMask &selection);
+
   void create_constraints(const IndexMask &selection,
                           const VArray<int> &types,
                           const VArray<int> &bodies1,
@@ -243,41 +236,25 @@ class PhysicsGeometry {
   void tag_topology_changed();
   void tag_physics_changed();
 
-  bke::AttributeAccessor attributes(bool force_cache = false) const;
-  bke::MutableAttributeAccessor attributes_for_write(bool force_cache = false);
+  static StringRef body_attribute_name(BodyAttribute attribute);
+  static StringRef constraint_attribute_name(ConstraintAttribute attribute);
+
+  bke::AttributeAccessor attributes() const;
+  bke::MutableAttributeAccessor attributes_for_write();
+
+  /* XXX Attributes functions on components can nominally return a nullopt, but some parts of the
+   * code don't check for that return value case
+   * (realize_instances.cc::gather_attributes_for_propagation).
+   * These dummy functions return a placeholder accessor that can be used as a fallback to avoid
+   * this bug */
+  static AttributeAccessor dummy_attributes();
+  static MutableAttributeAccessor dummy_attributes_for_write();
+
+  /* Validate internal world data.
+   * Should only be used in tests. */
+  bool validate_world_data() const;
 
   friend class BuiltinPhysicsAttributeBase;
 };
-
-// XXX Below: possible separation of world data and cache.
-
-// struct PhysicsWorldData;
-
-// class PhysicsWorldState {
-//  private:
-//   CustomData body_data_;
-//   CustomData constraint_data_;
-
-//  public:
-//   bke::AttributeAccessor attributes() const;
-//   bke::MutableAttributeAccessor attributes_for_write();
-// };
-
-// class PhysicsWorld : NonCopyable, NonMovable {
-//  private:
-//   std::unique_ptr<PhysicsWorldData> data_;
-
-//  public:
-//   PhysicsWorldState copy_state() const;
-//   PhysicsWorldState copy_state(const IndexMask &body_mask, const IndexMask &constraint_mask)
-//   const;
-
-//   void apply_state(const PhysicsWorldState &state);
-//   void apply_state(const PhysicsWorldState &state, const IndexMask &body_mask, const IndexMask
-//   &constraint_mask);
-
-//   bke::AttributeAccessor attributes() const;
-//   bke::MutableAttributeAccessor attributes_for_write();
-// };
 
 }  // namespace blender::bke

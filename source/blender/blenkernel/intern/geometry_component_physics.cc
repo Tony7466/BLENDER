@@ -132,12 +132,14 @@ namespace blender::bke {
 
 std::optional<AttributeAccessor> PhysicsComponent::attributes() const
 {
-  return physics_ ? std::make_optional(physics_->attributes()) : std::nullopt;
+  return std::make_optional(physics_ ? physics_->attributes() :
+                                       PhysicsGeometry::dummy_attributes());
 }
 
 std::optional<MutableAttributeAccessor> PhysicsComponent::attributes_for_write()
 {
-  return physics_ ? std::make_optional(physics_->attributes_for_write()) : std::nullopt;
+  return physics_ ? physics_->attributes_for_write() :
+                    PhysicsGeometry::dummy_attributes_for_write();
 }
 
 }  // namespace blender::bke

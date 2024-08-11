@@ -21,25 +21,26 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
-  params.set_output(
-      "Static",
-      AttributeFieldInput::Create<bool>(bke::PhysicsGeometry::builtin_attributes.is_static));
-  params.set_output(
-      "Kinematic",
-      AttributeFieldInput::Create<bool>(bke::PhysicsGeometry::builtin_attributes.is_kinematic));
+  params.set_output("Static",
+                    AttributeFieldInput::Create<bool>(bke::PhysicsGeometry::body_attribute_name(
+                        bke::PhysicsGeometry::BodyAttribute::is_static)));
+  params.set_output("Kinematic",
+                    AttributeFieldInput::Create<bool>(bke::PhysicsGeometry::body_attribute_name(
+                        bke::PhysicsGeometry::BodyAttribute::is_kinematic)));
 
+  params.set_output("Position",
+                    AttributeFieldInput::Create<float3>(bke::PhysicsGeometry::body_attribute_name(
+                        bke::PhysicsGeometry::BodyAttribute::position)));
   params.set_output(
-      "Position",
-      AttributeFieldInput::Create<float3>(bke::PhysicsGeometry::builtin_attributes.position));
-  params.set_output("Rotation",
-                    AttributeFieldInput::Create<math::Quaternion>(
-                        bke::PhysicsGeometry::builtin_attributes.rotation));
-  params.set_output(
-      "Velocity",
-      AttributeFieldInput::Create<float3>(bke::PhysicsGeometry::builtin_attributes.velocity));
+      "Rotation",
+      AttributeFieldInput::Create<math::Quaternion>(bke::PhysicsGeometry::body_attribute_name(
+          bke::PhysicsGeometry::BodyAttribute::rotation)));
+  params.set_output("Velocity",
+                    AttributeFieldInput::Create<float3>(bke::PhysicsGeometry::body_attribute_name(
+                        bke::PhysicsGeometry::BodyAttribute::velocity)));
   params.set_output("Angular Velocity",
-                    AttributeFieldInput::Create<float3>(
-                        bke::PhysicsGeometry::builtin_attributes.angular_velocity));
+                    AttributeFieldInput::Create<float3>(bke::PhysicsGeometry::body_attribute_name(
+                        bke::PhysicsGeometry::BodyAttribute::angular_velocity)));
 }
 
 static void node_register()

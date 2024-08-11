@@ -87,14 +87,14 @@ static void geometry_set_points_to_rigid_bodies(
   auto *physics = new bke::PhysicsGeometry(num_bodies, 0, shapes.size());
   physics->shapes_for_write().copy_from(shapes);
 
-  Array<int> body_shape_handles(num_bodies);
-  selection.foreach_index(GrainSize(512), [&](const int index, const int pos) {
-    const int shape_index = src_shape_index[index];
-    body_shape_handles[pos] = shapes.index_range().contains(shape_index) ? shape_index : -1;
-  });
-  physics->set_body_shapes(IndexRange(num_bodies), body_shape_handles, true);
+  // Array<int> body_shape_handles(num_bodies);
+  // selection.foreach_index(GrainSize(512), [&](const int index, const int pos) {
+  //   const int shape_index = src_shape_index[index];
+  //   body_shape_handles[pos] = shapes.index_range().contains(shape_index) ? shape_index : -1;
+  // });
 
   AttributeWriter<int> dst_ids = physics->body_ids_for_write();
+  AttributeWriter<int> dst_body_shapes = physics->body_shapes_for_write();
   AttributeWriter<float> dst_masses = physics->body_masses_for_write();
   AttributeWriter<float3> dst_inertias = physics->body_inertias_for_write();
   AttributeWriter<float3> dst_positions = physics->body_positions_for_write();
@@ -104,6 +104,7 @@ static void geometry_set_points_to_rigid_bodies(
 
   selection.foreach_index(GrainSize(512), [&](const int index, const int pos) {
     dst_ids.varray.set(pos, src_ids[index]);
+    dst_body_shapes.varray.set(pos, src_shape_index[index]);
     dst_masses.varray.set(pos, src_masses[index]);
     dst_inertias.varray.set(pos, src_inertias[index]);
     dst_positions.varray.set(pos, src_positions[index]);
@@ -113,6 +114,7 @@ static void geometry_set_points_to_rigid_bodies(
   });
 
   dst_ids.finish();
+  dst_body_shapes.finish();
   dst_masses.finish();
   dst_inertias.finish();
   dst_positions.finish();

@@ -221,7 +221,7 @@ static btCollisionShape *make_triangle_mesh_shape(TriangleMeshInterface *mesh_in
   constexpr const bool use_quantized_aabb_compression = true;
   constexpr const bool build_bvh = true;
 
-  if (mesh_interface == nullptr) {
+  if (mesh_interface == nullptr || mesh_interface->indices.is_empty()) {
     return new btEmptyShape();
   }
 

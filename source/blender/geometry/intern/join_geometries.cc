@@ -247,6 +247,7 @@ static void join_component_type(const bke::GeometryComponent::Type component_typ
   options.keep_original_ids = true;
   options.realize_instance_attributes = false;
   options.propagation_info = propagation_info;
+  options.move_physics_world_data = true;
   GeometrySet joined_components = realize_instances(
       GeometrySet::from_instances(instances.release()), options);
   result.add(joined_components.get_component_for_write(component_type));

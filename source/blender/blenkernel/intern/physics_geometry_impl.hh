@@ -15,6 +15,7 @@
 #include "BKE_collision_shape.hh"
 #include "BKE_physics_geometry.hh"
 
+#include <BulletDynamics/Dynamics/btDynamicsWorld.h>
 #include <shared_mutex>
 
 #ifdef WITH_BULLET
@@ -34,59 +35,41 @@ class btTypedConstraint;
 
 namespace blender::bke {
 
-/**
- * Physics data can be in one of three states:
- * - Mutable: Only one user and has physics data.
- * - Read-Only: Has physics data, but more than one user.
- * - Cached: No physics data (user count irrelevant, always read-only).
- *
- * State can change between Mutable and Read-Only when adding or removing users.
- * Once physics data has been moved the component becomes Cached, at which point going back to
- * mutable or read-only state is impossible (data cannot be added back).
- */
+class PhysicsWorldData;
 
 struct PhysicsGeometryImpl : public ImplicitSharingMixin {
-  /* If true then the data is read-only and the attribute cache is used instead of direct access to
-   * physics data. No Bullet instances are held by this component when cached. */
-  std::atomic<bool> is_empty = true;
+  using BodyAttribute = PhysicsGeometry::BodyAttribute;
+  using ConstraintAttribute = PhysicsGeometry::ConstraintAttribute;
 
-  /* Protects shared read/write access to physics data. */
-  mutable std::shared_mutex data_mutex;
+  using OverlapFilterFn = std::function<bool(const int a, const int b)>;
 
-  /* Cache to ensure mapping from body and constraint pointers to indices. */
-  mutable CacheMutex shape_index_cache;
-  mutable CacheMutex body_index_cache;
-  mutable CacheMutex body_collision_shape_cache;
-  mutable Array<int> body_collision_shapes;
-  mutable CacheMutex constraint_index_cache;
+  using CacheFlag = std::atomic<bool>;
+
+  /* Cache for readers storing copies of physics data in custom data. */
+  mutable CacheFlag custom_data_read_cache_dirty;
+  /* When dirty the body collision shape pointers need to be updated to match pointers from the
+   * shapes list, as stored in the body shapes index attribute. */
+  mutable CacheFlag body_collision_shapes_dirty;
   /* Cache for disable_collisions flags of constraints. These are stored indirectly by Bullet: a
    * constraint disables collisions by adding "constraint refs" to bodies, when adding a constraint
    * to the world. To determine if a constraint disables collisions after the fact requires looping
    * over all constraint refs of the affected bodies. The cache avoids doing that multiple times
    * for each body. */
-  mutable CacheMutex constraint_disable_collision_cache;
-  mutable Array<bool> constraint_disable_collision;
+  mutable CacheFlag constraint_disable_collision_dirty;
 
   int body_num_;
   int constraint_num_;
   CustomData body_data_;
   CustomData constraint_data_;
 
-  btDiscreteDynamicsWorld *world = nullptr;
-  btCollisionConfiguration *config = nullptr;
-  btCollisionDispatcher *dispatcher = nullptr;
-  btBroadphaseInterface *broadphase = nullptr;
-  btConstraintSolver *constraint_solver = nullptr;
-  btOverlapFilterCallback *overlap_filter = nullptr;
-
   Array<CollisionShapePtr> shapes;
-  Array<btRigidBody *> rigid_bodies;
-  Array<btMotionState *> motion_states;
-  Array<btTypedConstraint *> constraints;
-  Array<btJointFeedback> constraint_feedback;
+
+  mutable PhysicsWorldData *world_data = nullptr;
+  /* Protects shared read/write access to world data. */
+  mutable std::mutex data_mutex;
 
   PhysicsGeometryImpl();
-  PhysicsGeometryImpl(int bodies_num, int constraints_num, int shapes_num);
+  PhysicsGeometryImpl(int body_num, int constraint_num, int shape_num);
   PhysicsGeometryImpl(const PhysicsGeometryImpl &other);
   ~PhysicsGeometryImpl();
 
@@ -94,42 +77,170 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
 
   void delete_self() override;
 
-  void resize(int body_num, int constraint_num);
-  void realloc();
-
+  void tag_read_cache_changed();
   void tag_body_topology_changed();
-  void tag_body_collision_shape_changed();
+  void tag_body_collision_shapes_changed();
   void tag_constraint_disable_collision_changed();
 
-  void ensure_body_indices() const;
+  bool has_builtin_attribute_custom_data_layer(BodyAttribute attribute) const;
+  bool has_builtin_attribute_custom_data_layer(ConstraintAttribute attribute) const;
+
+  void ensure_read_cache() const;
   void ensure_body_collision_shapes() const;
-  void ensure_constraint_indices() const;
-  void ensure_constraint_disable_collision() const;
+  void ensure_custom_data_attribute(BodyAttribute attribute) const;
+  void ensure_custom_data_attribute(ConstraintAttribute attribute) const;
 
   void create_world();
   void destroy_world();
-  void move_world(PhysicsGeometryImpl &src);
 
-  bool try_copy_to_world_data(const PhysicsGeometryImpl &src,
+  void set_overlap_filter(OverlapFilterFn fn);
+  void clear_overlap_filter();
+
+  float3 gravity() const;
+  void set_gravity(const float3 &gravity);
+  void set_solver_iterations(int num_solver_iterations);
+  void set_split_impulse(bool split_impulse);
+
+  void step_simulation(float delta_time);
+
+  void remove_attributes_from_customdata();
+
+  void move_or_copy_selection(const PhysicsGeometryImpl &src,
                               const IndexMask &src_body_mask,
                               const IndexMask &src_constraint_mask,
-                              const Set<std::string> &ignored_attributes);
-  bool try_copy_to_custom_data(const PhysicsGeometryImpl &src,
-                               const IndexMask &src_body_mask,
-                               const IndexMask &src_constraint_mask,
-                               const Set<std::string> &ignored_attributes);
-  void remove_attributes_from_customdata();
+                              const bke::AnonymousAttributePropagationInfo &propagation_info);
   bool try_move_data(const PhysicsGeometryImpl &src,
-                     bool move_world,
+                     int body_num,
+                     int constraint_num,
                      const IndexMask &src_body_mask,
                      const IndexMask &src_constraint_mask,
-                     const IndexMask &src_shape_mask,
                      int dst_body_offset,
-                     int dst_constraint_offset,
-                     int dst_shape_offset);
+                     int dst_constraint_offset);
 
-  bke::AttributeAccessor attributes(bool force_cache = false) const;
-  bke::MutableAttributeAccessor attributes_for_write(bool force_cache = false);
+  void compute_local_inertia(const IndexMask &selection);
+
+  void apply_force(const IndexMask &selection,
+                   const VArray<float3> &forces,
+                   const VArray<float3> &relative_positions = {});
+  void apply_torque(const IndexMask &selection, const VArray<float3> &torques);
+
+  void apply_impulse(const IndexMask &selection,
+                     const VArray<float3> &impulses,
+                     const VArray<float3> &relative_positions = {});
+  void apply_angular_impulse(const IndexMask &selection, const VArray<float3> &angular_impulses);
+  void clear_forces(const IndexMask &selection);
+
+  void create_constraints(const IndexMask &selection,
+                          const VArray<int> &types,
+                          const VArray<int> &bodies1,
+                          const VArray<int> &bodies2);
+
+  /* Validate internal relations, for debugging and testing purposes.
+   * Should only be used in tests or debug mode. */
+  bool validate_world_data() const;
+
+  bke::AttributeAccessor attributes() const;
+  bke::MutableAttributeAccessor attributes_for_write();
+
+ private:
+  void ensure_body_collision_shapes_no_lock() const;
+  void ensure_custom_data_attribute_no_lock(BodyAttribute attribute);
+  void ensure_custom_data_attribute_no_lock(ConstraintAttribute attribute);
+
+  bke::AttributeAccessor custom_data_attributes() const;
+  bke::MutableAttributeAccessor custom_data_attributes_for_write();
+  bke::AttributeAccessor world_data_attributes() const;
+  bke::MutableAttributeAccessor world_data_attributes_for_write();
+};
+
+class PhysicsWorldData : NonCopyable, NonMovable {
+ public:
+  using OverlapFilterFn = std::function<bool(const int a, const int b)>;
+
+ private:
+  btDiscreteDynamicsWorld *world_ = nullptr;
+  btCollisionConfiguration *config_ = nullptr;
+  btCollisionDispatcher *dispatcher_ = nullptr;
+  btBroadphaseInterface *broadphase_ = nullptr;
+  btConstraintSolver *constraint_solver_ = nullptr;
+  btOverlapFilterCallback *overlap_filter_ = nullptr;
+
+  Array<btRigidBody *> rigid_bodies_;
+  Array<btMotionState *> motion_states_;
+  Array<btTypedConstraint *> constraints_;
+  Array<btJointFeedback> constraint_feedback_;
+
+  mutable CacheMutex body_index_cache_;
+  mutable CacheMutex constraint_index_cache_;
+  mutable CacheMutex bodies_in_world_cache_;
+
+ public:
+  PhysicsWorldData();
+  PhysicsWorldData(int body_num, int constraint_num);
+  ~PhysicsWorldData();
+
+  void resize(int body_num, int constraint_num);
+  void resize(int body_num,
+              int constraint_num,
+              const IndexMask &src_body_mask,
+              const IndexMask &src_constraint_mask,
+              int dst_body_offset,
+              int dst_constraint_offset);
+  void move(const IndexMask &src_body_mask,
+            const IndexMask &src_constraint_mask,
+            int dst_body_offset,
+            int dst_constraint_offset);
+
+  void ensure_body_indices() const;
+  void ensure_constraint_indices() const;
+  void ensure_bodies_in_world();
+
+  /* Compute the indices of body collision shape pointers in the span. */
+  void compute_body_shape_indices(Span<CollisionShapePtr> shapes,
+                                  MutableSpan<int> r_indices) const;
+  /* Compute which constraints disable collisions, this is not stored directly in Bullet
+   * constraints. */
+  void compute_disable_collision_flags(MutableSpan<bool> r_flags);
+
+  void create_constraints(const IndexMask &selection,
+                          const VArray<int> &types,
+                          const VArray<int> &bodies1,
+                          const VArray<int> &bodies2);
+
+  void set_overlap_filter(OverlapFilterFn fn);
+  void clear_overlap_filter();
+
+  float3 gravity() const;
+  void set_gravity(const float3 &gravity);
+  void set_solver_iterations(int num_solver_iterations);
+  void set_split_impulse(bool split_impulse);
+
+  void step_simulation(float delta_time);
+
+  void set_body_shapes(const IndexMask &selection,
+                       const Span<CollisionShapePtr> shapes,
+                       const Span<int> shape_handles,
+                       bool update_local_inertia);
+
+  void apply_force(const IndexMask &selection,
+                   const VArray<float3> &forces,
+                   const VArray<float3> &relative_positions = {});
+  void apply_torque(const IndexMask &selection, const VArray<float3> &torques);
+
+  void apply_impulse(const IndexMask &selection,
+                     const VArray<float3> &impulses,
+                     const VArray<float3> &relative_positions = {});
+  void apply_angular_impulse(const IndexMask &selection, const VArray<float3> &angular_impulses);
+  void clear_forces(const IndexMask &selection);
+
+  /* For VArray access. */
+  Span<btRigidBody *> bodies() const;
+  Span<btTypedConstraint *> constraints() const;
+  const btDynamicsWorld &world() const;
+
+ private:
+  void create_world();
+  void destroy_world();
 };
 
 struct CollisionShapeImpl {
