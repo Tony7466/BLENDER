@@ -2209,6 +2209,24 @@ class _defs_grease_pencil_paint:
             draw_settings=draw_settings,
         )
 
+    @ToolDef.from_fn
+    def eyedropper():
+        def draw_settings(_context, layout, tool):
+            props = tool.operator_properties("ui.eyedropper_grease_pencil_color")
+            row = layout.row()
+            row.use_property_split = False
+            row.prop(props, "mode", expand=True)
+
+        return dict(
+            idname="builtin.eyedropper",
+            label="Eyedropper",
+            icon="ops.paint.eyedropper_add",
+            cursor='EYEDROPPER',
+            widget=None,
+            keymap=(),
+            draw_settings=draw_settings,
+        )
+
 
 class _defs_grease_pencil_edit:
     @ToolDef.from_fn
@@ -3777,6 +3795,8 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             None,
             _defs_grease_pencil_paint.generate_from_brushes,
             _defs_grease_pencil_paint.cutter,
+            None,
+            _defs_grease_pencil_paint.eyedropper,
             None,
             _defs_grease_pencil_paint.line,
             _defs_grease_pencil_paint.polyline,
