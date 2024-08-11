@@ -66,7 +66,6 @@ def build_file_pages(analysis_dir, report_dir):
         relative_path = Path(str(relative_path)[: -len(".json.zip")])
         source_path = "/" / relative_path
         report_path = Path(str(report_dir / "files" / relative_path) + ".html")
-
         index_page_link = "../" * len(relative_path.parents) + "index.html"
 
         build_report_for_source_file(template, source_path, analysis_path, report_path, index_page_link)

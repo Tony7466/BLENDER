@@ -64,12 +64,8 @@ def run_report(argv):
     analysis_dir = coverage_dir / "analysis"
     report_dir = coverage_dir / "report"
 
-    try:
-        parse(build_dir, analysis_dir)
-        report_as_html(analysis_dir, report_dir)
-    except Exception as e:
-        print(e)
-        sys.exit(1)
+    parse(build_dir, analysis_dir)
+    report_as_html(analysis_dir, report_dir)
 
     if not args.no_browser:
         webbrowser.open("file://" + str(report_dir / "index.html"))
