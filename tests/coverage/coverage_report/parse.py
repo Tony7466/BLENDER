@@ -54,7 +54,7 @@ def parse(build_dir, analysis_dir, gcov_binary="gcov"):
     # Shuffle to make chunks more similar in size.
     random.shuffle(gcda_paths)
     chunk_size = 10
-    gcda_path_chunks = [gcda_paths[i : i + chunk_size] for i in range(0, len(gcda_paths), chunk_size)]
+    gcda_path_chunks = [gcda_paths[i: i + chunk_size] for i in range(0, len(gcda_paths), chunk_size)]
 
     def parse_with_gcov(file_paths):
         return subprocess.check_output([gcov_binary, "--stdout", "--json-format", *file_paths])
@@ -62,7 +62,7 @@ def parse(build_dir, analysis_dir, gcov_binary="gcov"):
     print("Parse files...")
     print_updateable_line("[0/{}] parsed.".format(len(gcda_paths)))
     gathered_gcov_outputs = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count() * 2) as executor:
         futures = {executor.submit(parse_with_gcov, file_paths): file_paths for file_paths in gcda_path_chunks}
 
         done_count = 0
