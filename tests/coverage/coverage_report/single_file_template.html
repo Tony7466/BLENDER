@@ -45,6 +45,19 @@
       referrerpolicy="no-referrer"
     ></script>
 
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/2.11.8/umd/popper.min.js"
+      integrity="sha512-TPh2Oxlg1zp+kz3nFA0C5vVC6leG/6mm1z9+mA81MI5eaUVqasPLO8Cuk4gMF4gUfP5etR73rgU/8PNMsSesoQ=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/tippy.js/6.3.7/tippy.umd.min.js"
+      integrity="sha512-2TtfktSlvvPzopzBA49C+MX6sdc7ykHGbBQUTH8Vk78YpkXVD5r6vrNU+nOmhhl1MyTWdVfxXdZfyFsvBvOllw=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+
     <style>
       * {
         margin: 0;
@@ -92,6 +105,21 @@
         font-size: 80%;
         user-select: none;
       }
+
+      .tippy-box {
+        background-color: #18110d;
+        border-radius: 3px;
+      }
+
+      .tippy-arrow {
+        color: #18110d;
+      }
+
+      .tippy-content {
+        max-width: calc(100% - 20px);
+        overflow: auto;
+        padding: 0.3em;
+      }
     </style>
   </head>
   <body>
@@ -103,6 +131,9 @@
       <p>Functions: <span id="coverage-functions"></span></p>
     </div>
     <pre><code class="language-cpp" id="source-code"></code></pre>
+
+    <!-- Support scrolling past the end. -->
+    <div style="height: 90vh"></div>
 
     <script>
       window.addEventListener("DOMContentLoaded", async () => {
@@ -184,15 +215,77 @@
       function augment_lines() {
         let line_index = 0;
         for (const line_element of document.querySelectorAll(".hljs-ln-code .hljs-ln-line")) {
-          const hit_count = count_by_line.get(line_index++);
+          const current_line_index = line_index++;
+          const hit_count = count_by_line.get(current_line_index);
           if (!hit_count) {
             continue;
           }
           const call_count_element = document.createElement("span");
           call_count_element.className = "line-call-count";
-          call_count_element.innerText = "  " + hit_count.toLocaleString() + "x";
+          call_count_element.innerText = `  ${hit_count.toLocaleString()}x`;
           line_element.appendChild(call_count_element);
+          add_executed_line_tooltip(call_count_element, current_line_index);
         }
+      }
+
+      function add_executed_line_tooltip(elem, line_index) {
+        tippy(elem, {
+          content() {
+            return "Loading...";
+          },
+          onShow(instance) {
+            if (!instance.tooltip_generated) {
+              instance.setContent(generate_executed_line_tooltip(line_index));
+              instance.tooltip_generated = true;
+              instance.show();
+            }
+          },
+          placement: "bottom",
+          arrow: true,
+          interactive: true,
+          maxWidth: "none",
+        });
+      }
+
+      function generate_executed_line_tooltip(query_line_index) {
+        const instantiations = [];
+        for (const [function_key, fdata] of Object.entries(analysis_data.functions)) {
+          if (query_line_index < fdata.start_line && fdata.end_line < query_line_index) {
+            continue;
+          }
+          for (const [instantiation_name, idata] of Object.entries(fdata.instantiations)) {
+            for (const [line_index_str, count] of Object.entries(idata.lines)) {
+              if (parseInt(line_index_str) == query_line_index) {
+                instantiations.push({ name: idata.demangled, count: count });
+              }
+            }
+          }
+        }
+        if (instantiations === 0) {
+          return "No instantiations";
+        }
+
+        const container = document.createElement("div");
+
+        const header = document.createElement("h4");
+        header.innerText = "Instantiations";
+        container.appendChild(header);
+
+        instantiations.sort((a, b) => b.count - a.count);
+        const max_count = instantiations[0].count;
+        const num_count_chars = max_count.toLocaleString().length;
+
+        for (const { name, count } of instantiations) {
+          if (count == 0) {
+            continue;
+          }
+          const elem = document.createElement("pre");
+          const count_label = count.toLocaleString().padStart(num_count_chars, " ");
+          const escaped_name = escapeHtml(name);
+          elem.innerHTML = `${count_label}x ${escaped_name}`;
+          container.appendChild(elem);
+        }
+        return container;
       }
 
       function create_overview() {
