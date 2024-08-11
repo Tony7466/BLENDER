@@ -208,10 +208,13 @@ static void eyedropper_add_palette_color(bContext *C, const float3 col_conv)
       BKE_paint_palette_set(vertexpaint, palette);
     }
   }
+
   /* Check if the color exist already. */
   Palette *palette = paint->palette;
-  LISTBASE_FOREACH (PaletteColor *, palcolor, &palette->colors) {
+  int i;
+  LISTBASE_FOREACH_INDEX (PaletteColor *, palcolor, &palette->colors, i) {
     if (compare_v3v3(palcolor->rgb, col_conv, 0.01f)) {
+      palette->active_color = i;
       return;
     }
   }
@@ -219,6 +222,7 @@ static void eyedropper_add_palette_color(bContext *C, const float3 col_conv)
   /* Create Colors. */
   PaletteColor *palcol = BKE_palette_color_add(palette);
   if (palcol) {
+    palette->active_color = BLI_listbase_count(&palette->colors) - 1;
     copy_v3_v3(palcol->rgb, col_conv);
   }
 }
