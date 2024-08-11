@@ -5,7 +5,7 @@ Referenced by issue #125357, Blender crashed while using camera DEPTH of Field
 Referenced by issue #125454, problème avec blender 4.2.0
 Referenced by issue #125682, Eevee: Fireflies in shadows
 Referenced by issue #125711, Blender 4.2 crashes during stereo render when saving EXR using "Stereo 3D"
-Referenced by issue #125848, Any render in EEVEE crashes the program on AMD GPU
+Referenced by issue #125848, EEVEE render crashes on older AMD Mesa driver
 Referenced by issue #126025, Crash when opening a shading preview on Blender 4.2
 Referenced by issue #126114, viewport shadow crash
 Referenced by issue #126119, Blender EGL_BAD_MATCH linux
