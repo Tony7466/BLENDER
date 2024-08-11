@@ -42,33 +42,28 @@ def parse(build_dir, analysis_dir, gcov_binary="gcov"):
     print()
 
     if len(gcda_paths) == 0:
-        raise RuntimeError(textwrap.dedent("""\
+        raise RuntimeError(
+            textwrap.dedent(
+                """\
             No .gcda files found. Make sure to run the tests in a debug build that has
             been compiled with GCC with --coverage.
-            """))
+            """
+            )
+        )
 
     # Shuffle to make chunks more similar in size.
     random.shuffle(gcda_paths)
     chunk_size = 10
-    gcda_path_chunks = [
-        gcda_paths[i: i + chunk_size] for i in range(0, len(gcda_paths), chunk_size)
-    ]
+    gcda_path_chunks = [gcda_paths[i : i + chunk_size] for i in range(0, len(gcda_paths), chunk_size)]
 
     def parse_with_gcov(file_paths):
-        return subprocess.check_output(
-            [gcov_binary, "--stdout", "--json-format", *file_paths]
-        )
+        return subprocess.check_output([gcov_binary, "--stdout", "--json-format", *file_paths])
 
     print("Parse files...")
     print_updateable_line("[0/{}] parsed.".format(len(gcda_paths)))
     gathered_gcov_outputs = []
-    with concurrent.futures.ThreadPoolExecutor(
-        max_workers=os.cpu_count()
-    ) as executor:
-        futures = {
-            executor.submit(parse_with_gcov, file_paths): file_paths
-            for file_paths in gcda_path_chunks
-        }
+    with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
+        futures = {executor.submit(parse_with_gcov, file_paths): file_paths for file_paths in gcda_path_chunks}
 
         done_count = 0
         for future in concurrent.futures.as_completed(futures):
@@ -97,9 +92,7 @@ def parse(build_dir, analysis_dir, gcov_binary="gcov"):
     new_data_by_source_file = {}
     for i, file_path in enumerate(source_file_order):
         raw_data_for_file = data_by_source_file[file_path]
-        print_updateable_line(
-            "[{}/{}] merged: {}".format(i + 1, len(data_by_source_file), file_path)
-        )
+        print_updateable_line("[{}/{}] merged: {}".format(i + 1, len(data_by_source_file), file_path))
         new_fdata_by_key = {}
         loose_lines = defaultdict(int)
 
@@ -107,14 +100,12 @@ def parse(build_dir, analysis_dir, gcov_binary="gcov"):
 
         for data in raw_data_for_file:
             for fdata in data["functions"]:
-                start_line = fdata["start_line"]
-                end_line = fdata["end_line"]
+                start_line = gcov_line_number_to_index(fdata["start_line"])
+                end_line = gcov_line_number_to_index(fdata["end_line"])
                 start_column = fdata["start_column"]
                 end_column = fdata["end_column"]
 
-                function_key = "{}:{}-{}:{}".format(
-                    start_line, start_column, end_line, end_column
-                )
+                function_key = "{}:{}-{}:{}".format(start_line, start_column, end_line, end_column)
                 if function_key not in new_fdata_by_key:
                     new_fdata_by_key[function_key] = {
                         "start_line": start_line,
@@ -134,11 +125,13 @@ def parse(build_dir, analysis_dir, gcov_binary="gcov"):
 
                 new_fdata = new_fdata_by_key[function_key]
                 new_fdata["execution_count"] += execution_count
-                new_fdata["instantiations"][name] = {
-                    "demangled": demanged_name,
-                    "execution_count": execution_count,
-                    "lines": defaultdict(int),
-                }
+                if name not in new_fdata["instantiations"]:
+                    new_fdata["instantiations"][name] = {
+                        "demangled": demanged_name,
+                        "execution_count": 0,
+                        "lines": defaultdict(int),
+                    }
+                new_fdata["instantiations"][name]["execution_count"] += execution_count
 
             for ldata in data["lines"]:
                 line_index = gcov_line_number_to_index(ldata["line_number"])
@@ -164,9 +157,7 @@ def parse(build_dir, analysis_dir, gcov_binary="gcov"):
     summary_by_source_file = {}
     for i, file_path in enumerate(source_file_order):
         data = new_data_by_source_file[file_path]
-        print_updateable_line(
-            "[{}/{}] written: {}".format(i + 1, len(new_data_by_source_file), file_path)
-        )
+        print_updateable_line("[{}/{}] written: {}".format(i + 1, len(new_data_by_source_file), file_path))
 
         num_instantiated_lines = 0
         num_instantiated_lines_run = 0
@@ -236,9 +227,7 @@ def parse(build_dir, analysis_dir, gcov_binary="gcov"):
         analysis_file_path = str(analysis_file_path) + ".json.zip"
 
         data = new_data_by_source_file[file_path]
-        print_updateable_line(
-            "[{}/{}] written: {}".format(i + 1, len(new_data_by_source_file), analysis_file_path)
-        )
+        print_updateable_line("[{}/{}] written: {}".format(i + 1, len(new_data_by_source_file), analysis_file_path))
         write_dict_to_zip_file(analysis_file_path, data)
     print()
     print("Parsed data written to {}.".format(analysis_dir))
