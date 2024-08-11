@@ -142,6 +142,11 @@
       .function-name-in-table:hover {
         color: #89dbdb;
       }
+
+      .lines-in-function {
+        font-size: smaller;
+        color: #7d7d7d;
+      }
     </style>
   </head>
   <body>
@@ -350,10 +355,13 @@
 
           const percentage_elem = document.createElement("td");
           percentage_elem.style.textAlign = "right";
+          const lines_elem = document.createElement("td");
+          lines_elem.style.textAlign = "right";
           const count_elem = document.createElement("td");
           count_elem.style.textAlign = "right";
           const name_elem = document.createElement("td");
           row_elem.appendChild(percentage_elem);
+          row_elem.appendChild(lines_elem);
           row_elem.appendChild(count_elem);
           row_elem.appendChild(name_elem);
 
@@ -364,6 +372,9 @@
           count_elem.innerText = `${fdata.execution_count.toLocaleString()}x`;
           percentage_elem.innerText = `${lines_percent}%`;
           percentage_elem.style.color = `color-mix(in hsl, rgb(240, 50, 50), rgb(50, 240, 50) ${lines_percent}%)`;
+
+          lines_elem.innerText = `${num_lines}`;
+          lines_elem.className = "lines-in-function";
 
           name_elem.classList.add("function-name-in-table");
           const first_instantiation_name = Array.from(Object.values(fdata.instantiations))[0]
