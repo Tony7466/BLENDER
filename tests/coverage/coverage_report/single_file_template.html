@@ -67,11 +67,10 @@
 
       body {
         background: #2b2b2b;
+        color: #e1dfcc;
       }
 
       #summary {
-        color: #e1dfcc;
-        border-bottom: #535353 1px solid;
         padding: 0.5em;
         font-size: large;
         font-family: monospace;
@@ -116,9 +115,23 @@
       }
 
       .tippy-content {
-        max-width: calc(100% - 20px);
+        max-width: calc(100vw - 20px);
         overflow: auto;
         padding: 0.3em;
+      }
+
+      table {
+        color: #e1dfcc;
+        font-family: monospace;
+      }
+
+      td {
+        padding: 0.2em;
+        padding-left: 1em;
+      }
+
+      hr {
+        border-top: #535353 1px solid;
       }
     </style>
   </head>
@@ -130,6 +143,9 @@
       <p>Lines: <span id="coverage-lines"></span></p>
       <p>Functions: <span id="coverage-functions"></span></p>
     </div>
+    <hr />
+    <table id="functions-overview"></table>
+    <hr />
     <pre><code class="language-cpp" id="source-code"></code></pre>
 
     <!-- Support scrolling past the end. -->
@@ -144,6 +160,8 @@
 
         prepare_analysis_data();
 
+        generate_functions_table();
+
         hljs.highlightAll();
         hljs.initLineNumbersOnLoad();
         set_line_background_colors();
@@ -154,6 +172,7 @@
             clearInterval(interval);
             create_overview();
             augment_lines();
+            scroll_to_line_from_url();
           }
         }, 10);
       });
@@ -213,10 +232,14 @@
       }
 
       function augment_lines() {
-        let line_index = 0;
-        for (const line_element of document.querySelectorAll(".hljs-ln-code .hljs-ln-line")) {
-          const current_line_index = line_index++;
-          const hit_count = count_by_line.get(current_line_index);
+        code_line_elements = Array.from(document.querySelectorAll(".hljs-ln-code .hljs-ln-line"));
+        for (let i = 0; i < code_line_elements.length; i++) {
+          const line_element = code_line_elements[i];
+          line_element.parentElement.parentElement.id = `source-line-${i + 1}`;
+        }
+        for (let i = 0; i < code_line_elements.length; i++) {
+          const line_element = code_line_elements[i];
+          const hit_count = count_by_line.get(i);
           if (!hit_count) {
             continue;
           }
@@ -224,7 +247,7 @@
           call_count_element.className = "line-call-count";
           call_count_element.innerText = `  ${hit_count.toLocaleString()}x`;
           line_element.appendChild(call_count_element);
-          add_executed_line_tooltip(call_count_element, current_line_index);
+          add_executed_line_tooltip(call_count_element, i);
         }
       }
 
@@ -244,31 +267,34 @@
           arrow: true,
           interactive: true,
           maxWidth: "none",
+          delay: 400,
         });
       }
 
       function generate_executed_line_tooltip(query_line_index) {
         const instantiations = [];
         for (const [function_key, fdata] of Object.entries(analysis_data.functions)) {
-          if (query_line_index < fdata.start_line && fdata.end_line < query_line_index) {
+          if (query_line_index < fdata.start_line || fdata.end_line < query_line_index) {
             continue;
           }
           for (const [instantiation_name, idata] of Object.entries(fdata.instantiations)) {
             for (const [line_index_str, count] of Object.entries(idata.lines)) {
-              if (parseInt(line_index_str) == query_line_index) {
-                instantiations.push({ name: idata.demangled, count: count });
+              if (count > 0) {
+                if (parseInt(line_index_str) == query_line_index) {
+                  instantiations.push({ name: idata.demangled, count: count });
+                }
               }
             }
           }
         }
-        if (instantiations === 0) {
-          return "No instantiations";
+        if (instantiations.length === 0) {
+          return "No used instantiations";
         }
 
         const container = document.createElement("div");
 
         const header = document.createElement("h4");
-        header.innerText = "Instantiations";
+        header.innerText = "Used Instantiations";
         container.appendChild(header);
 
         instantiations.sort((a, b) => b.count - a.count);
@@ -301,6 +327,78 @@
           num_run_functions,
           num_functions
         )}%)`;
+      }
+
+      function generate_functions_table() {
+        const table = document.getElementById("functions-overview");
+
+        const fdata_array = Array.from(Object.values(analysis_data.functions));
+        fdata_array.sort((a, b) => b.execution_count - a.execution_count);
+
+        for (const fdata of fdata_array) {
+          const row_elem = document.createElement("tr");
+          table.appendChild(row_elem);
+
+          const percentage_elem = document.createElement("td");
+          percentage_elem.style.textAlign = "right";
+          const count_elem = document.createElement("td");
+          count_elem.style.textAlign = "right";
+          const name_elem = document.createElement("td");
+          row_elem.appendChild(percentage_elem);
+          row_elem.appendChild(count_elem);
+          row_elem.appendChild(name_elem);
+
+          const execution_counts_array = Array.from(Object.values(fdata.lines));
+          const num_lines = execution_counts_array.length;
+          const num_lines_run = execution_counts_array.filter((x) => x > 0).length;
+          const lines_percent = ratio_to_percent(num_lines_run, num_lines);
+
+          const first_instantiation_name = Array.from(Object.values(fdata.instantiations))[0]
+            .demangled;
+          const base_name = extract_base_function_name(first_instantiation_name);
+
+          percentage_elem.innerText = `${lines_percent}%`;
+          percentage_elem.style.color = `color-mix(in hsl, rgb(240, 50, 50), rgb(50, 240, 50) ${lines_percent}%)`;
+
+          count_elem.innerText = `${fdata.execution_count.toLocaleString()}x`;
+          name_elem.innerText = base_name;
+
+          name_elem.addEventListener("click", () => {
+            const line_number = fdata.start_line + 1;
+            const id = `source-line-${line_number}`;
+            history.pushState({ scroll_from: window.scrollY }, "", `#${id}`);
+            document.getElementById(id).scrollIntoView({
+              behavior: "smooth",
+            });
+          });
+        }
+      }
+
+      function extract_base_function_name(instantiation_name) {
+        // Remove parts in parenthesis and templates.
+        let name = "";
+        let template_depth = 0;
+        for (const c of instantiation_name) {
+          if (c == "<") {
+            template_depth++;
+          } else if (c == ">") {
+            template_depth--;
+            if (template_depth === 0) {
+              name += "<>";
+            }
+          } else if (template_depth == 0) {
+            name += c;
+          }
+        }
+        return name;
+      }
+
+      function scroll_to_line_from_url() {
+        if (window.location.hash.startsWith("#source-line-")) {
+          const id = window.location.hash.slice(1);
+          const elem = document.getElementById(id);
+          elem.scrollIntoView();
+        }
       }
 
       function ratio_to_percent(numerator, denominator) {
@@ -357,6 +455,9 @@
       // Will be decompressed a bit later.
       let source_code = undefined;
       let analysis_data = undefined;
+
+      // Initialized when line counts have been added.
+      let code_line_elements = undefined;
     </script>
   </body>
 </html>

@@ -69,26 +69,18 @@ def build_file_pages(analysis_dir, report_dir):
 
         index_page_link = "../" * len(relative_path.parents) + "index.html"
 
-        build_report_for_source_file(
-            template, source_path, analysis_path, report_path, index_page_link
-        )
+        build_report_for_source_file(template, source_path, analysis_path, report_path, index_page_link)
 
-        print_updateable_line(
-            "[{}/{}] written: {}".format(i + 1, len(analysis_paths), report_path)
-        )
+        print_updateable_line("[{}/{}] written: {}".format(i + 1, len(analysis_paths), report_path))
     print()
 
 
-def build_report_for_source_file(
-    template_str, source_path, analysis_path, report_path, index_page_link
-):
+def build_report_for_source_file(template_str, source_path, analysis_path, report_path, index_page_link):
     result = template_str
     result = result.replace("INDEX_PAGE_LINK", index_page_link)
     result = result.replace("SOURCE_FILE_PATH", str(source_path))
     result = result.replace("SOURCE_CODE", file_to_compressed_base64(source_path))
-    result = result.replace(
-        "ANALYSIS_DATA", zip_file_to_compressed_base64(analysis_path)
-    )
+    result = result.replace("ANALYSIS_DATA", zip_file_to_compressed_base64(analysis_path))
 
     report_path.parent.mkdir(parents=True, exist_ok=True)
     with open(report_path, "w") as f:
