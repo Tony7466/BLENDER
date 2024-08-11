@@ -1304,6 +1304,11 @@ static void svg_replace_color_attributes(std::string &svg,
 {
   bTheme *btheme = UI_GetTheme();
 
+  uchar white[] = {255, 255, 255, 255};
+  uchar black[] = {0, 0, 0, 255};
+  uchar logo_orange[] = {232, 125, 13, 255};
+  uchar logo_blue[] = {38, 87, 135, 255};
+
   /* Tool colors hardcoded for now. */
   uchar tool_add[] = {117, 255, 175, 255};
   uchar tool_remove[] = {245, 107, 91, 255};
@@ -1318,6 +1323,10 @@ static void svg_replace_color_attributes(std::string &svg,
     int colorid = TH_UNDEFINED;
     int spacetype = SPACE_TYPE_ANY;
   } items[] = {
+      {"blender.white", white},
+      {"blender.black", black},
+      {"blender.logo_orange", logo_orange},
+      {"blender.logo_blue", logo_blue},
       {"blender.selected", btheme->tui.wcol_regular.inner},
       {"blender.mesh_selected", btheme->space_view3d.vertex_select},
       {"blender.back", nullptr, TH_BACK},
