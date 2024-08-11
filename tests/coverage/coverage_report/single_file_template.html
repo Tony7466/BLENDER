@@ -52,6 +52,13 @@
       crossorigin="anonymous"
       referrerpolicy="no-referrer"
     ></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/tippy.js/6.3.7/tippy.min.css"
+      integrity="sha512-HbPh+j4V7pXprvQMt2dtmK/zCEsUeZWYXRln4sOwmoyHPQAPqy/k9lIquKUyKNpNbDGAY06UdiDHcEkBc72yCQ=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
     <script
       src="https://cdnjs.cloudflare.com/ajax/libs/tippy.js/6.3.7/tippy.umd.min.js"
       integrity="sha512-2TtfktSlvvPzopzBA49C+MX6sdc7ykHGbBQUTH8Vk78YpkXVD5r6vrNU+nOmhhl1MyTWdVfxXdZfyFsvBvOllw=="
@@ -267,9 +274,7 @@
 
       function add_executed_line_tooltip(elem, line_index) {
         tippy(elem, {
-          content() {
-            return "Loading...";
-          },
+          content: "Loading...",
           onShow(instance) {
             if (!instance.tooltip_generated) {
               instance.setContent(generate_executed_line_tooltip(line_index));
@@ -370,6 +375,7 @@
           const num_lines_run = execution_counts_array.filter((x) => x > 0).length;
           const lines_percent = ratio_to_percent(num_lines_run, num_lines);
           count_elem.innerText = `${fdata.execution_count.toLocaleString()}x`;
+
           percentage_elem.innerText = `${lines_percent}%`;
           percentage_elem.style.color = `color-mix(in hsl, rgb(240, 50, 50), rgb(50, 240, 50) ${lines_percent}%)`;
 
