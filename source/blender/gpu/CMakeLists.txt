@@ -766,6 +766,7 @@ set(SRC_SHADER_CREATE_INFOS
   ../draw/intern/shaders/draw_fullscreen_info.hh
   ../draw/intern/shaders/draw_hair_refine_info.hh
   ../draw/intern/shaders/draw_object_infos_info.hh
+  ../draw/intern/shaders/draw_subdivision_info.hh
   ../draw/intern/shaders/draw_view_info.hh
 
   shaders/infos/gpu_clip_planes_info.hh

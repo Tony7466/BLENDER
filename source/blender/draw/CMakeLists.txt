@@ -232,6 +232,7 @@ set(SRC
   intern/draw_shader_shared.hh
   intern/draw_state.hh
   intern/draw_subdivision.hh
+  intern/draw_subdivision_shader_shared.hh
   intern/draw_texture_pool.hh
   intern/draw_view.hh
   intern/draw_view_c.hh
@@ -591,6 +592,7 @@ set(GLSL_SRC
   intern/draw_defines.hh
   intern/draw_pointcloud_private.hh
   intern/draw_shader_shared.hh
+  intern/draw_subdivision_shader_shared.hh
 
   engines/gpencil/shaders/gpencil_frag.glsl
   engines/gpencil/shaders/gpencil_vert.glsl
