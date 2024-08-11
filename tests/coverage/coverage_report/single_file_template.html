@@ -413,7 +413,18 @@
         // Remove parts in parenthesis and templates.
         let name = "";
         let template_depth = 0;
+        let braces_depth = 0;
+        let arguments_start = -1;
         for (const c of instantiation_name) {
+          if (c == "{") {
+            braces_depth++;
+          } else if (c == "}") {
+            braces_depth--;
+          }
+          if (c == "(" && template_depth === 0 && braces_depth === 0 && arguments_start === -1) {
+            arguments_start = name.length;
+          }
+
           if (c == "<") {
             template_depth++;
           } else if (c == ">") {
@@ -426,9 +437,12 @@
           }
         }
         // Remove argument list.
-        const args_start = name.indexOf("(");
-        if (args_start >= 0) {
-          name = name.substring(0, args_start);
+        if (arguments_start >= 0) {
+          name = name.substring(0, arguments_start);
+        }
+        // Fix case for operator().
+        if (name.endsWith("::operator")) {
+          name += "()";
         }
         return name;
       }
