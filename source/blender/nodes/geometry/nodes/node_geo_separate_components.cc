@@ -39,6 +39,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   point_clouds.name = name;
   volumes.name = name;
   instances.name = name;
+  physics.name = name;
 
   if (geometry_set.has<MeshComponent>()) {
     meshes.add(*geometry_set.get_component<MeshComponent>());

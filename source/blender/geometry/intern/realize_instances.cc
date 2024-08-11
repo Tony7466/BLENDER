@@ -2425,6 +2425,9 @@ static void execute_realize_physics_task(const RealizeInstancesOptions & /*optio
     MutableSpan<float3> dst_velocities = all_dst_velocities.slice(dst_body_range);
     MutableSpan<float3> dst_angular_velocities = all_dst_angular_velocities.slice(dst_body_range);
 
+    const math::Quaternion transform_rotation = math::to_quaternion(
+        math::normalize(task.transform));
+
     threading::parallel_for(src_positions.index_range(), 1024, [&](const IndexRange range) {
       for (const int i : range) {
         dst_positions[i] = math::transform_point(task.transform, src_positions[i]);
@@ -2432,7 +2435,7 @@ static void execute_realize_physics_task(const RealizeInstancesOptions & /*optio
     });
     threading::parallel_for(src_rotations.index_range(), 1024, [&](const IndexRange range) {
       for (const int i : range) {
-        dst_rotations[i] = math::to_quaternion(task.transform) * src_rotations[i];
+        dst_rotations[i] = transform_rotation * src_rotations[i];
       }
     });
     threading::parallel_for(src_velocities.index_range(), 1024, [&](const IndexRange range) {
