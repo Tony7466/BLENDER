@@ -48,6 +48,26 @@
         display: inline-block;
       }
 
+      .open-dir-label::before {
+        content: "";
+        display: inline-block;
+        width: 0.5em;
+        height: 0.5em;
+        background-color: #e1dfcc;
+        clip-path: polygon(0% 0%, 100% 0%, 50% 100%);
+        margin-right: 0.5em;
+      }
+
+      .closed-dir-label::before {
+        content: "";
+        display: inline-block;
+        width: 0.5em;
+        height: 0.5em;
+        background-color: #e1dfcc;
+        clip-path: polygon(0% 0%, 100% 50%, 0% 100%);
+        margin-right: 0.5em;
+      }
+
       #files-tree-view {
         color: #d4d0ab;
         width: 100%;
@@ -162,7 +182,7 @@
         row.appendChild(label_elem);
 
         label_elem.className = "row-label";
-        label_elem.style.paddingLeft = (depth * 0.8).toString() + "em";
+        label_elem.style.paddingLeft = `${depth}em`;
 
         stats_elem.className = "row-stats";
         if (index % 2 == 1) {
@@ -203,8 +223,10 @@
 
           const is_open = is_open_at_start(data.path);
           if (is_open) {
+            label_elem.classList.add("open-dir-label");
             current_open_paths.add(data.path);
           } else {
+            label_elem.classList.add("closed-dir-label");
             children_container.style.display = "none";
           }
 
@@ -228,9 +250,13 @@
             if (children_container.style.display === "none") {
               children_container.style.display = "block";
               current_open_paths.add(data.path);
+              label_elem.classList.remove("closed-dir-label");
+              label_elem.classList.add("open-dir-label");
             } else {
               children_container.style.display = "none";
               current_open_paths.delete(data.path);
+              label_elem.classList.remove("open-dir-label");
+              label_elem.classList.add("closed-dir-label");
             }
             localStorage.setItem(
               open_paths_storage_key,
