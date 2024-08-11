@@ -91,7 +91,7 @@ def parse_gcda_files_with_gcov(gcda_paths, gcov_path):
     # to reduce the total number of required gcov invocations. The chunks should not be too large
     # because then multi-threading is less useful.
     chunk_size = 10
-    gcda_path_chunks = [gcda_paths[i : i + chunk_size] for i in range(0, len(gcda_paths), chunk_size)]
+    gcda_path_chunks = [gcda_paths[i: i + chunk_size] for i in range(0, len(gcda_paths), chunk_size)]
 
     def parse_with_gcov(file_paths):
         return subprocess.check_output([gcov_path, "--stdout", "--json-format", *file_paths])
