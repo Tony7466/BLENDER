@@ -1385,26 +1385,26 @@ static void icon_draw_size(float x,
     icon_draw_rect_input(x, y, w, h, icon_id, aspect, alpha, inverted);
   }
   else if (ELEM(di->type, ICON_TYPE_SVG_MONO, ICON_TYPE_SVG_COLOR)) {
-    /* Monochrome icon that uses text or theme color. */
     float outline_intensity = mono_border ? (btheme->tui.icon_border_intensity > 0.0f ?
                                                  btheme->tui.icon_border_intensity :
                                                  0.5f) :
                                             0.0f;
-    if (di->type == ICON_TYPE_SVG_COLOR) {
-      BLF_draw_svg_icon(
-          uint(icon_id), x, y, float(draw_size) / aspect, nullptr, outline_intensity);
+    float color[4];
+    if (mono_rgba) {
+      rgba_uchar_to_float(color, (const uchar *)mono_rgba);
     }
     else {
-      float color[4];
-      if (mono_rgba) {
-        rgba_uchar_to_float(color, (const uchar *)mono_rgba);
-      }
-      else {
-        UI_GetThemeColor4fv(TH_TEXT, color);
-      }
-      color[3] *= alpha;
-      BLF_draw_svg_icon(uint(icon_id), x, y, float(draw_size) / aspect, color, outline_intensity);
+      UI_GetThemeColor4fv(TH_TEXT, color);
     }
+
+    color[3] *= alpha;
+    BLF_draw_svg_icon(uint(icon_id),
+                      x,
+                      y,
+                      float(draw_size) / aspect,
+                      color,
+                      outline_intensity,
+                      di->type == ICON_TYPE_SVG_COLOR);
 
     if (text_overlay && text_overlay->text[0] != '\0') {
       /* Handle the little numbers on top of the icon. */
@@ -1580,10 +1580,10 @@ int ui_id_icon_get(const bContext *C, ID *id, const bool big)
 int UI_icon_from_library(const ID *id)
 {
   if (ID_IS_LINKED(id)) {
-    if (id->tag & LIB_TAG_MISSING) {
+    if (id->tag & ID_TAG_MISSING) {
       return ICON_LIBRARY_DATA_BROKEN;
     }
-    if (id->tag & LIB_TAG_INDIRECT) {
+    if (id->tag & ID_TAG_INDIRECT) {
       return ICON_LIBRARY_DATA_INDIRECT;
     }
     return ICON_LIBRARY_DATA_DIRECT;
@@ -1859,6 +1859,8 @@ ImBuf *UI_icon_alert_imbuf_get(eAlertIcon icon, float size)
   return nullptr;
 #else
 
+  constexpr bool show_color = false;
+
   int icon_id = ICON_NONE;
   switch (icon) {
     case ALERT_ICON_WARNING:
@@ -1883,13 +1885,15 @@ ImBuf *UI_icon_alert_imbuf_get(eAlertIcon icon, float size)
 
   int width;
   int height;
-  blender::Array<uchar> bitmap = BLF_svg_icon_bitmap(icon_id, size, &width, &height);
+  blender::Array<uchar> bitmap = BLF_svg_icon_bitmap(icon_id, size, &width, &height, show_color);
   if (bitmap.is_empty()) {
     return nullptr;
   }
   ImBuf *ibuf = IMB_allocFromBuffer(bitmap.data(), nullptr, width, height, 4);
   IMB_flipy(ibuf);
-  IMB_premultiply_alpha(ibuf);
+  if (show_color) {
+    IMB_premultiply_alpha(ibuf);
+  }
   return ibuf;
 #endif
 }
