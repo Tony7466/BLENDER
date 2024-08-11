@@ -193,6 +193,7 @@
           const lines_percent_elem = document.createElement("span");
           stats_elem.appendChild(lines_percent_elem);
           lines_percent_elem.className = "lines-percent-row";
+          lines_percent_elem.title = "Line Coverage";
 
           if (data.num_lines == 0) {
             lines_percent_elem.style.color = "rgb(137 137 137)";
@@ -206,6 +207,7 @@
           const total_lines_elem = document.createElement("span");
           total_lines_elem.className = "lines-total-row";
           total_lines_elem.innerText = `${data.num_lines.toLocaleString()}`;
+          total_lines_elem.title = "Number of Lines";
           stats_elem.appendChild(total_lines_elem);
         }
 
