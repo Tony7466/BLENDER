@@ -24,6 +24,11 @@ bool SEQ_disconnect(Sequence *seq);
 bool SEQ_disconnect(blender::VectorSet<Sequence *> &seq_list);
 
 /**
+ * Ensure that the strip has only bidirectional connections (expected behavior).
+ */
+void SEQ_cut_one_way_connections(Sequence *seq);
+
+/**
  * Connect strips so that they may be selected together. Any connections the
  * strips already have will be severed before reconnection.
  */

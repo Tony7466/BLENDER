@@ -643,6 +643,9 @@ Sequence *SEQ_sequence_dupli_recursive(
 
   /* This does not need to be in recursive call itself, since it is already recursive... */
   seq_new_fix_links_recursive(seqn);
+  if (SEQ_is_strip_connected(seqn)) {
+    SEQ_cut_one_way_connections(seqn);
+  }
 
   return seqn;
 }
@@ -681,6 +684,12 @@ void SEQ_sequence_base_dupli_recursive(const Scene *scene_src,
   /* Fix effect, modifier, and connected strip links. */
   LISTBASE_FOREACH (Sequence *, seq, nseqbase) {
     seq_new_fix_links_recursive(seq);
+  }
+  /* One-way connections cannot be cut until after all connections are resolved. */
+  LISTBASE_FOREACH (Sequence *, seq, nseqbase) {
+    if (SEQ_is_strip_connected(seq)) {
+      SEQ_cut_one_way_connections(seq);
+    }
   }
 }
 

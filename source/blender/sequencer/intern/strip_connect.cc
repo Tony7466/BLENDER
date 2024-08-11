@@ -61,6 +61,25 @@ bool SEQ_disconnect(blender::VectorSet<Sequence *> &seq_list)
   return changed;
 }
 
+void SEQ_cut_one_way_connections(Sequence *seq)
+{
+  LISTBASE_FOREACH_MUTABLE (SeqConnection *, con_seq, &seq->connections) {
+    Sequence *other = con_seq->seq_ref;
+    bool is_one_way = true;
+    LISTBASE_FOREACH (SeqConnection *, con_other, &other->connections) {
+      if (con_other->seq_ref == seq) {
+        /* The `other` sequence has a bidirectional connection with `seq`. */
+        is_one_way = false;
+        break;
+      }
+    }
+    if (is_one_way) {
+      BLI_remlink(&seq->connections, con_seq);
+      MEM_delete(con_seq);
+    }
+  }
+}
+
 void SEQ_connect(Sequence *seq1, Sequence *seq2)
 {
   blender::VectorSet<Sequence *> seq_list;

@@ -2098,13 +2098,22 @@ static int sequencer_meta_make_exec(bContext *C, wmOperator *op)
    * Sequence is moved within the same edit, no need to re-generate the UID. */
   LISTBASE_FOREACH_MUTABLE (Sequence *, seq, active_seqbase) {
     if (seq != seqm && seq->flag & SELECT) {
-      BLI_remlink(active_seqbase, seq);
-      BLI_addtail(&seqm->seqbase, seq);
-      SEQ_relations_invalidate_cache_preprocessed(scene, seq);
-      channel_max = max_ii(seq->machine, channel_max);
-      channel_min = min_ii(seq->machine, channel_min);
-      meta_start_frame = min_ii(SEQ_time_left_handle_frame_get(scene, seq), meta_start_frame);
-      meta_end_frame = max_ii(SEQ_time_right_handle_frame_get(scene, seq), meta_end_frame);
+      blender::VectorSet<Sequence *> related;
+      related.add(seq);
+      if (SEQ_is_strip_connected(seq)) {
+        LISTBASE_FOREACH (SeqConnection *, con, &seq->connections) {
+          related.add(con->seq_ref);
+        }
+      }
+      for (Sequence *rel : related) {
+        BLI_remlink(active_seqbase, rel);
+        BLI_addtail(&seqm->seqbase, rel);
+        SEQ_relations_invalidate_cache_preprocessed(scene, rel);
+        channel_max = max_ii(rel->machine, channel_max);
+        channel_min = min_ii(rel->machine, channel_min);
+        meta_start_frame = min_ii(SEQ_time_left_handle_frame_get(scene, rel), meta_start_frame);
+        meta_end_frame = max_ii(SEQ_time_right_handle_frame_get(scene, rel), meta_end_frame);
+      }
     }
   }
 

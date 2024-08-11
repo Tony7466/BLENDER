@@ -425,10 +425,12 @@ Sequence *SEQ_edit_strip_split(Main *bmain,
     return nullptr;
   }
 
-  /* All connected strips at the cut point must also be duplicated. */
+  /* All (selected) connected strips at the cut point must also be duplicated. */
   LISTBASE_FOREACH (SeqConnection *, con, &seq->connections) {
     if (seq_edit_split_intersect_check(scene, con->seq_ref, timeline_frame)) {
-      strips.add(con->seq_ref);
+      if (con->seq_ref->flag & SELECT) {
+        strips.add(con->seq_ref);
+      }
     }
   }
 
