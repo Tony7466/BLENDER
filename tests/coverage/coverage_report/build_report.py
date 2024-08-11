@@ -77,6 +77,7 @@ def build_file_pages(analysis_dir, report_dir):
 
 def build_report_for_source_file(template_str, source_path, analysis_path, report_path, index_page_link):
     result = template_str
+    result = result.replace("TITLE", source_path.name)
     result = result.replace("INDEX_PAGE_LINK", index_page_link)
     result = result.replace("SOURCE_FILE_PATH", str(source_path))
     result = result.replace("SOURCE_CODE", file_to_compressed_base64(source_path))
