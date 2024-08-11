@@ -133,6 +133,14 @@
       hr {
         border-top: #535353 1px solid;
       }
+
+      .function-name-in-table {
+        cursor: pointer;
+      }
+
+      .function-name-in-table:hover {
+        color: #89dbdb;
+      }
     </style>
   </head>
   <body>
@@ -267,7 +275,7 @@
           arrow: true,
           interactive: true,
           maxWidth: "none",
-          delay: 400,
+          delay: [400, 0],
         });
       }
 
@@ -352,16 +360,17 @@
           const num_lines = execution_counts_array.length;
           const num_lines_run = execution_counts_array.filter((x) => x > 0).length;
           const lines_percent = ratio_to_percent(num_lines_run, num_lines);
-
-          const first_instantiation_name = Array.from(Object.values(fdata.instantiations))[0]
-            .demangled;
-          const base_name = extract_base_function_name(first_instantiation_name);
-
+          count_elem.innerText = `${fdata.execution_count.toLocaleString()}x`;
           percentage_elem.innerText = `${lines_percent}%`;
           percentage_elem.style.color = `color-mix(in hsl, rgb(240, 50, 50), rgb(50, 240, 50) ${lines_percent}%)`;
 
-          count_elem.innerText = `${fdata.execution_count.toLocaleString()}x`;
+          name_elem.classList.add("function-name-in-table");
+          const first_instantiation_name = Array.from(Object.values(fdata.instantiations))[0]
+            .demangled;
+          const base_name = extract_base_function_name(first_instantiation_name);
           name_elem.innerText = base_name;
+
+          add_executed_line_tooltip(count_elem, fdata.start_line);
 
           name_elem.addEventListener("click", () => {
             const line_number = fdata.start_line + 1;
@@ -390,6 +399,9 @@
             name += c;
           }
         }
+        // Remove argument list.
+        const args_start = name.indexOf("(");
+        name = name.substring(0, args_start);
         return name;
       }
 
