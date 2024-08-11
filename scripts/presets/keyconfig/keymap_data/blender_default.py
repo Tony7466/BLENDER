@@ -8627,6 +8627,8 @@ def km_3d_view_tool_paint_grease_pencil_eyedropper(params):
             ("ui.eyedropper_grease_pencil_color",
              {"type": params.tool_mouse, "value": 'PRESS', "shift": True}, None),
             ("ui.eyedropper_grease_pencil_color",
+             {"type": params.tool_mouse, "value": 'PRESS', "ctrl": True}, None),
+            ("ui.eyedropper_grease_pencil_color",
              {"type": params.tool_mouse, "value": 'PRESS', "shift": True, "ctrl": True}, None),
         ]},
     )
