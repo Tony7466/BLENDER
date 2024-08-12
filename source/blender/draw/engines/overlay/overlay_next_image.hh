@@ -20,7 +20,6 @@ namespace blender::draw::overlay {
 class Images {
   friend class Empties;
   using ImageInstanceBuf = ShapeInstanceBuf<ExtraInstanceData>;
-  // using PassSource = FunctionRef<PassMain *(const Object &ob, const bool use_alpha_blend)>;
 
   PassMain background_scene_ps_ = {"background_scene_ps_"};
   PassMain foreground_scene_ps_ = {"foreground_scene_ps_"};
