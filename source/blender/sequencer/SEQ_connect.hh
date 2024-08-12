@@ -36,6 +36,13 @@ void SEQ_connect(Sequence *seq1, Sequence *seq2);
 void SEQ_connect(blender::VectorSet<Sequence *> &seq_list);
 
 /**
+ * Returns a list of strips that the `seq` is connected to.
+ * NOTE: This does not include `seq` itself.
+ * This list is empty if `seq` is not connected.
+ */
+blender::VectorSet<Sequence *> SEQ_get_connected_strips(const Sequence *seq);
+
+/**
  * Check whether a strip has any connections.
  */
 bool SEQ_is_strip_connected(const Sequence *seq);

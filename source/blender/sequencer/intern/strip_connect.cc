@@ -104,7 +104,19 @@ void SEQ_connect(blender::VectorSet<Sequence *> &seq_list)
   }
 }
 
+blender::VectorSet<Sequence *> SEQ_get_connected_strips(const Sequence *seq)
+{
+  blender::VectorSet<Sequence *> connections;
+  LISTBASE_FOREACH (SeqConnection *, con, &seq->connections) {
+    connections.add(con->seq_ref);
+  }
+  return connections;
+}
+
 bool SEQ_is_strip_connected(const Sequence *seq)
 {
+  if (seq == nullptr) {
+    return false;
+  }
   return !BLI_listbase_is_empty(&seq->connections);
 }

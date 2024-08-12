@@ -2098,13 +2098,8 @@ static int sequencer_meta_make_exec(bContext *C, wmOperator *op)
    * Sequence is moved within the same edit, no need to re-generate the UID. */
   LISTBASE_FOREACH_MUTABLE (Sequence *, seq, active_seqbase) {
     if (seq != seqm && seq->flag & SELECT) {
-      blender::VectorSet<Sequence *> related;
+      blender::VectorSet<Sequence *> related = SEQ_get_connected_strips(seq);
       related.add(seq);
-      if (SEQ_is_strip_connected(seq)) {
-        LISTBASE_FOREACH (SeqConnection *, con, &seq->connections) {
-          related.add(con->seq_ref);
-        }
-      }
       for (Sequence *rel : related) {
         BLI_remlink(active_seqbase, rel);
         BLI_addtail(&seqm->seqbase, rel);

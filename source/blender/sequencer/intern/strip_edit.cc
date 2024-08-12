@@ -25,6 +25,8 @@
 #include "SEQ_add.hh"
 #include "SEQ_animation.hh"
 #include "SEQ_channels.hh"
+#include "SEQ_connect.hh"
+
 #include "SEQ_edit.hh"
 #include "SEQ_effects.hh"
 #include "SEQ_iterator.hh"
@@ -425,14 +427,12 @@ Sequence *SEQ_edit_strip_split(Main *bmain,
     return nullptr;
   }
 
-  /* All (selected) connected strips at the cut point must also be duplicated. */
-  LISTBASE_FOREACH (SeqConnection *, con, &seq->connections) {
-    if (seq_edit_split_intersect_check(scene, con->seq_ref, timeline_frame)) {
-      if (con->seq_ref->flag & SELECT) {
-        strips.add(con->seq_ref);
-      }
-    }
-  }
+  /* All connected strips (that are selected and at the cut frame) must also be duplicated. */
+  blender::VectorSet<Sequence *> connections = SEQ_get_connected_strips(seq);
+  connections.remove_if([&](Sequence *seq) {
+    return !(seq->flag & SELECT) || !seq_edit_split_intersect_check(scene, seq, timeline_frame);
+  });
+  strips.add_multiple(connections.as_span());
 
   /* Store `F-Curves`, so original ones aren't renamed. */
   SeqAnimationBackup animation_backup{};

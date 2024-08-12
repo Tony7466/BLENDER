@@ -789,8 +789,8 @@ static bool select_connected_keys(const Scene *scene,
 
   const int frame = SEQ_retiming_key_timeline_frame_get(scene, source_owner, source);
   bool changed = false;
-  LISTBASE_FOREACH (SeqConnection *, con, &source_owner->connections) {
-    Sequence *connection = con->seq_ref;
+  blender::VectorSet<Sequence *> connections = SEQ_get_connected_strips(source_owner);
+  for (Sequence *connection : connections) {
     SeqRetimingKey *con_key = SEQ_retiming_key_get_by_timeline_frame(scene, connection, frame);
 
     if (con_key) {

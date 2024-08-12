@@ -871,6 +871,42 @@ static bool element_already_selected(const StripSelection &selection)
   return seq1_already_selected && seq2_already_selected && both_handles_selected;
 }
 
+/* This function returns true if the strip is connected, but only some of its connections are
+ * selected, indicating the user wishes to operate only on those strips for now.
+ * Also returns true if the the strip is unconnected or does not exist.
+ */
+static bool disable_connected_strip_selection(Sequence *seq)
+{
+  if (!SEQ_is_strip_connected(seq)) {
+    return true;
+  }
+
+  blender::VectorSet<Sequence *> connections = SEQ_get_connected_strips(seq);
+  connections.add(seq);
+
+  blender::VectorSet<Sequence *> selected;
+  selected.add_multiple(connections.as_span());
+  selected.remove_if([&](Sequence *seq) { return !(seq->flag & SELECT); });
+
+  /* Either none or all of the strips are connected.
+   * Connected strip selection is not disabled. */
+  if (selected.size() == 0 || selected.size() == connections.size()) {
+    return false;
+  }
+  return true;
+}
+
+static bool disable_connected_strip_selection(const StripSelection &selection)
+{
+  /* The user has already individually selected the strips
+   * and so there should be no selection propagation. */
+  bool disable = disable_connected_strip_selection(selection.seq1);
+  if (selection.seq2) {
+    disable &= disable_connected_strip_selection(selection.seq2);
+  }
+  return disable;
+}
+
 static void sequencer_select_connected_strips(const StripSelection &selection)
 {
   blender::VectorSet<Sequence *> sources;
@@ -880,9 +916,8 @@ static void sequencer_select_connected_strips(const StripSelection &selection)
   }
 
   for (Sequence *source : sources) {
-    LISTBASE_FOREACH (SeqConnection *, con, &source->connections) {
-      Sequence *connection = con->seq_ref;
-
+    blender::VectorSet<Sequence *> connections = SEQ_get_connected_strips(source);
+    for (Sequence *connection : connections) {
       /* Copy selection settings exactly for connected strips. */
       connection->flag &= ~(SEQ_ALLSEL);
       connection->flag |= source->flag & (SEQ_ALLSEL);
@@ -1193,14 +1228,15 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
     if (!was_retiming) {
       ED_sequencer_deselect_all(scene);
     }
+    /* Attempt to realize any other connected strips' fake keys. */
     if (SEQ_is_strip_connected(seq_key_owner)) {
-      /* Attempt to realize any other connected strips' fake keys. */
       const int key_frame = SEQ_retiming_key_timeline_frame_get(scene, seq_key_owner, key);
-      LISTBASE_FOREACH (SeqConnection *, con, &seq_key_owner->connections) {
-        if (key_frame == left_fake_key_frame_get(C, con->seq_ref) ||
-            key_frame == right_fake_key_frame_get(C, con->seq_ref))
+      blender::VectorSet<Sequence *> connections = SEQ_get_connected_strips(seq_key_owner);
+      for (Sequence *connection : connections) {
+        if (key_frame == left_fake_key_frame_get(C, connection) ||
+            key_frame == right_fake_key_frame_get(C, connection))
         {
-          realize_fake_keys(scene, con->seq_ref);
+          realize_fake_keys(scene, connection);
         }
       }
     }
@@ -1259,6 +1295,7 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
     sequencer_select_set_active(scene, selection.seq1);
     return OPERATOR_FINISHED;
   }
+  bool disable_connected_sel = disable_connected_strip_selection(selection);
 
   const bool wait_to_deselect_others = RNA_boolean_get(op->ptr, "wait_to_deselect_others");
   const bool already_selected = element_already_selected(selection);
@@ -1303,7 +1340,8 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
     sequencer_select_strip_impl(ed, selection.seq2, seq2_handle_clicked, extend, deselect, toggle);
   }
 
-  if (!toggle) {
+  disable_connected_sel |= !WM_cursor_test_motion_and_update(mouse_co.region);
+  if (!toggle && !disable_connected_sel) {
     sequencer_select_connected_strips(selection);
   }
 
