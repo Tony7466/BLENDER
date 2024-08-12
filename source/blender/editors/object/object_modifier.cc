@@ -1028,7 +1028,7 @@ static bool apply_grease_pencil_for_modifier(Depsgraph *depsgraph,
     const Layer *layer_eval = grease_pencil_result.layer(layer_eval_i);
     /* Check if the original geometry has a layer with the same name. */
     TreeNode *node_orig = grease_pencil_orig.find_node_by_name(layer_eval->name());
-    if (!node_orig) {
+    if (!node_orig || node_orig->is_group()) {
       /* No layer with the same name found. Create a new layer. */
       Layer &layer_orig = grease_pencil_orig.add_layer(layer_eval->name());
       /* Make sure to add a new keyframe with a new drawing. */
