@@ -72,31 +72,21 @@ void OVERLAY_edit_grease_pencil_cache_init(OVERLAY_Data *vedata)
   const bool grid_xray = (v3d->gp_flag & V3D_GP_SHOW_GRID_XRAY);
 
   if (show_grid && show_overlays) {
-    // const char *grid_unit = nullptr;
-
-    float4 col_grid = float4(0.5f, 0.5f, 0.5f, v3d->overlay.gpencil_grid_opacity);
+    /* TODO: Add UI. */
+    const float3 base_color = float3(0.5f);
+    const float4 col_grid = float4(base_color, v3d->overlay.gpencil_grid_opacity);
 
     float4x4 mat = ob->object_to_world();
 
-    GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob->data);
-    blender::bke::greasepencil::Layer &layer = *grease_pencil.get_active_layer();
+    const GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob->data);
+    const blender::bke::greasepencil::Layer &layer = *grease_pencil.get_active_layer();
 
     if (ts->gp_sculpt.lock_axis != GP_LOCKAXIS_CURSOR) {
       mat = layer.to_world_space(*ob);
     }
     const View3DCursor *cursor = &scene->cursor;
 
-    float3 origin;
-
-    if (ts->gpencil_v3d_align & GP_PROJECT_CURSOR) {
-      origin = cursor->location;
-    }
-    else {
-      origin = layer.to_world_space(*ob).location();
-    }
-
-    // float viewinv[4][4];
-    // /* Set the grid in the selected axis */
+    /* Set the grid in the selected axis */
     switch (ts->gp_sculpt.lock_axis) {
       case GP_LOCKAXIS_X:
         std::swap(mat[0], mat[2]);
@@ -117,26 +107,12 @@ void OVERLAY_edit_grease_pencil_cache_init(OVERLAY_Data *vedata)
         break;
     }
 
-    mat.location() = origin;
-
-    // /* Move the grid to the right location depending of the align type.
-    //  * This is required only for 3D Cursor or Origin. */
-    // if (ts->gpencil_v3d_align & GP_PROJECT_CURSOR) {
-    //   copy_v3_v3(mat[3], cursor->location);
-    // }
-    // else if (ts->gpencil_v3d_align & GP_PROJECT_VIEWSPACE) {
-    //   copy_v3_v3(mat[3], ob->object_to_world().location());
-    // }
-
-    // translate_m4(mat, gpd->grid.offset[0], gpd->grid.offset[1], 0.0f);
-    // mul_v2_v2fl(size, gpd->grid.scale, 2.0f * ED_scene_grid_scale(scene, &grid_unit));
-    // const float3 scale_vec = {size[0], size[1], 0.0f};
-    // rescale_m4(mat, scale_vec);
-
-    // /* Apply layer loc transform, except cursor mode. */
-    // if ((gpl != nullptr) && (ts->gpencil_v3d_align & GP_PROJECT_CURSOR) == 0) {
-    //   add_v3_v3(mat[3], gpl->layer_mat[3]);
-    // }
+    if (ts->gpencil_v3d_align & GP_PROJECT_CURSOR) {
+      mat.location() = cursor->location;
+    }
+    else {
+      mat.location() = layer.to_world_space(*ob).location();
+    }
 
     const int gridlines = 4;
     const int line_count = gridlines * 4 + 2;
