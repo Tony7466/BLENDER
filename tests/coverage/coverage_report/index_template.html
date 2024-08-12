@@ -163,8 +163,15 @@
           "coverage-functions"
         ).innerText = `${root_row.num_functions_run.toLocaleString()} / ${root_row.num_functions.toLocaleString()}`;
 
-        const tree_view = document.getElementById("files-tree-view");
-        build_tree_for_directory(tree_view, root_row, 0);
+        if (!default_open_path) {
+          default_open_path = "/";
+        }
+        for (const path of previous_open_paths ? previous_open_paths : [default_open_path]) {
+          const row = row_by_path.get(path);
+          if (row) {
+            open_directory(row);
+          }
+        }
         update_odd_even_rows();
 
         const scroll_position = localStorage.getItem("scroll_position");
@@ -173,29 +180,39 @@
         }
       });
 
-      function build_tree_for_directory(parent, row, depth) {
-        create_row_dom_elements(row, depth);
-        parent.appendChild(row.dom_elem);
-        const is_directory = row.source_file_path === undefined;
-        if (is_directory) {
-          parent.appendChild(row.dom_children_elem);
-          build_directory_children_recursive(row, depth);
+      function ensure_dom_for_row(row) {
+        if (row.dom_elem) {
+          return;
+        }
+        const parent = row.parent;
+        if (parent) {
+          ensure_dom_for_row(parent);
+          const all_children = Array.from(parent.children);
+          const directory_children = all_children.filter(
+            (c) => c[1].source_file_path === undefined
+          );
+          const file_children = all_children.filter((c) => c[1].source_file_path !== undefined);
+
+          parent.sorted_children = [...directory_children, ...file_children].map(
+            ([child_name, child_row]) => child_row
+          );
+
+          for (const child_row of parent.sorted_children) {
+            create_row_dom_elements(child_row);
+            parent.dom_children_elem.appendChild(child_row.dom_elem);
+            if (child_row.dom_children_elem) {
+              parent.dom_children_elem.appendChild(child_row.dom_children_elem);
+            }
+          }
+        } else {
+          create_row_dom_elements(row);
+          const tree_view = document.getElementById("files-tree-view");
+          tree_view.appendChild(row.dom_elem);
+          tree_view.appendChild(row.dom_children_elem);
         }
       }
 
-      function build_directory_children_recursive(row, depth) {
-        const all_children = Array.from(row.children);
-        const directory_children = all_children.filter((c) => c[1].source_file_path === undefined);
-        const file_children = all_children.filter((c) => c[1].source_file_path !== undefined);
-
-        row.sorted_children = [...directory_children, ...file_children];
-
-        for (const [name, child_row] of row.sorted_children) {
-          build_tree_for_directory(row.dom_children_elem, child_row, depth + 1);
-        }
-      }
-
-      function create_row_dom_elements(row, depth) {
+      function create_row_dom_elements(row) {
         const name = row.name;
         const is_file = row.source_file_path !== undefined;
         const is_directory = !is_file;
@@ -213,7 +230,7 @@
         row.dom_label_elem = label_elem;
 
         label_elem.className = "row-label";
-        label_elem.style.paddingLeft = `${depth}em`;
+        label_elem.style.paddingLeft = `${row.depth}em`;
 
         stats_elem.className = "row-stats";
 
@@ -251,26 +268,14 @@
           children_container.className = "children-container";
           row.dom_children_elem = children_container;
 
-          const is_open = is_open_at_start(row.path);
-          if (is_open) {
-            label_elem.classList.add("open-dir-label");
-            current_open_paths.add(row.path);
-          } else {
-            label_elem.classList.add("closed-dir-label");
-            children_container.style.display = "none";
-          }
+          label_elem.classList.add("closed-dir-label");
+          children_container.style.display = "none";
 
           label_elem.addEventListener("click", () => {
             if (row.dom_children_elem.style.display === "none") {
-              row.dom_children_elem.style.display = "block";
-              current_open_paths.add(row.path);
-              label_elem.classList.remove("closed-dir-label");
-              label_elem.classList.add("open-dir-label");
+              open_directory(row);
             } else {
-              row.dom_children_elem.style.display = "none";
-              current_open_paths.delete(row.path);
-              label_elem.classList.remove("open-dir-label");
-              label_elem.classList.add("closed-dir-label");
+              close_directory(row);
             }
             localStorage.setItem(
               open_paths_storage_key,
@@ -279,6 +284,24 @@
             update_odd_even_rows();
           });
         }
+      }
+
+      function open_directory(directory_row) {
+        if (directory_row.parent) {
+          open_directory(directory_row.parent);
+        }
+        ensure_dom_for_row(directory_row.children.values().next().value);
+        directory_row.dom_children_elem.style.display = "block";
+        current_open_paths.add(directory_row.path);
+        directory_row.dom_label_elem.classList.remove("closed-dir-label");
+        directory_row.dom_label_elem.classList.add("open-dir-label");
+      }
+
+      function close_directory(directory_row) {
+        directory_row.dom_children_elem.style.display = "none";
+        current_open_paths.delete(directory_row.path);
+        directory_row.dom_label_elem.classList.remove("open-dir-label");
+        directory_row.dom_label_elem.classList.add("closed-dir-label");
       }
 
       function update_odd_even_rows() {
@@ -294,7 +317,7 @@
 
           if (row.sorted_children) {
             if (row.dom_children_elem.style.display !== "none") {
-              for (const [name, child_row] of row.sorted_children) {
+              for (const child_row of row.sorted_children) {
                 update_odd_even_rows_recursive(child_row);
               }
             }
@@ -302,16 +325,6 @@
         }
 
         update_odd_even_rows_recursive(root_row);
-      }
-
-      function is_open_at_start(path) {
-        if (previous_open_paths !== undefined) {
-          return previous_open_paths.has(path);
-        }
-        if (default_open_path) {
-          return default_open_path.startsWith(path);
-        }
-        return false;
       }
 
       function ratio_to_percent(numerator, denominator) {
@@ -344,7 +357,7 @@
       }
 
       function new_row_data(path, name, parent) {
-        return {
+        const data = {
           num_lines_run: 0,
           num_lines: 0,
           num_functions_run: 0,
@@ -352,10 +365,13 @@
           path: path,
           parent: parent,
           name: name,
+          depth: parent ? parent.depth + 1 : 0,
           children: new Map(),
           sorted_children: null,
           dom_elem: null,
         };
+        row_by_path.set(path, data);
+        return data;
       }
 
       async function str_from_gzip_base64(data_compressed_base64) {
@@ -376,6 +392,7 @@
         localStorage.setItem("scroll_position", window.scrollY);
       });
 
+      const row_by_path = new Map();
       const root_row = new_row_data("/", "/", null);
 
       const default_open_path_segment = "/blender/source/blender";
