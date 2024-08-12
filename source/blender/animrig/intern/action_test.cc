@@ -825,6 +825,92 @@ TEST_F(ChannelBagTest, channel_group_remove_raw)
   EXPECT_EQ(0, channel_bag->channel_groups().size());
 }
 
+TEST_F(ChannelBagTest, channel_group_remove)
+{
+  bActionGroup *group0 = &channel_bag->channel_group_create("Group0");
+  bActionGroup *group1 = &channel_bag->channel_group_create("Group1");
+  bActionGroup *group2 = &channel_bag->channel_group_create("Group2");
+
+  FCurve *fcu0 = &channel_bag->fcurve_ensure(nullptr, {"fcu0", 0, std::nullopt, "Group0"});
+  FCurve *fcu1 = &channel_bag->fcurve_ensure(nullptr, {"fcu1", 0, std::nullopt, "Group0"});
+  FCurve *fcu2 = &channel_bag->fcurve_ensure(nullptr, {"fcu2", 0, std::nullopt, "Group2"});
+  FCurve *fcu3 = &channel_bag->fcurve_ensure(nullptr, {"fcu3", 0, std::nullopt, "Group2"});
+  FCurve *fcu4 = &channel_bag->fcurve_ensure(nullptr, {"fcu4", 0, std::nullopt, std::nullopt});
+
+  ASSERT_EQ(3, channel_bag->channel_groups().size());
+  ASSERT_EQ(5, channel_bag->fcurves().size());
+
+  /* Attempt to remove a group that's not in the channel bag. Shouldn't do
+   * anything. */
+  bActionGroup bogus;
+  EXPECT_EQ(false, channel_bag->channel_group_remove(bogus));
+  ASSERT_EQ(3, channel_bag->channel_groups().size());
+  ASSERT_EQ(5, channel_bag->fcurves().size());
+  EXPECT_EQ(group0, channel_bag->channel_group(0));
+  EXPECT_EQ(group1, channel_bag->channel_group(1));
+  EXPECT_EQ(group2, channel_bag->channel_group(2));
+  EXPECT_EQ(fcu0, channel_bag->fcurve(0));
+  EXPECT_EQ(fcu1, channel_bag->fcurve(1));
+  EXPECT_EQ(fcu2, channel_bag->fcurve(2));
+  EXPECT_EQ(fcu3, channel_bag->fcurve(3));
+  EXPECT_EQ(fcu4, channel_bag->fcurve(4));
+  EXPECT_EQ(group0, fcu0->grp);
+  EXPECT_EQ(group0, fcu1->grp);
+  EXPECT_EQ(group2, fcu2->grp);
+  EXPECT_EQ(group2, fcu3->grp);
+  EXPECT_EQ(nullptr, fcu4->grp);
+
+  /* Removing an empty group shouldn't affect the fcurves at all. */
+  EXPECT_EQ(true, channel_bag->channel_group_remove(*group1));
+  ASSERT_EQ(2, channel_bag->channel_groups().size());
+  ASSERT_EQ(5, channel_bag->fcurves().size());
+  EXPECT_EQ(group0, channel_bag->channel_group(0));
+  EXPECT_EQ(group2, channel_bag->channel_group(1));
+  EXPECT_EQ(fcu0, channel_bag->fcurve(0));
+  EXPECT_EQ(fcu1, channel_bag->fcurve(1));
+  EXPECT_EQ(fcu2, channel_bag->fcurve(2));
+  EXPECT_EQ(fcu3, channel_bag->fcurve(3));
+  EXPECT_EQ(fcu4, channel_bag->fcurve(4));
+  EXPECT_EQ(group0, fcu0->grp);
+  EXPECT_EQ(group0, fcu1->grp);
+  EXPECT_EQ(group2, fcu2->grp);
+  EXPECT_EQ(group2, fcu3->grp);
+  EXPECT_EQ(nullptr, fcu4->grp);
+
+  /* Removing a group that's not at the end of the group array should move its
+   * fcurves to be just after the grouped fcurves. */
+  EXPECT_EQ(true, channel_bag->channel_group_remove(*group0));
+  ASSERT_EQ(1, channel_bag->channel_groups().size());
+  ASSERT_EQ(5, channel_bag->fcurves().size());
+  EXPECT_EQ(group2, channel_bag->channel_group(0));
+  EXPECT_EQ(fcu2, channel_bag->fcurve(0));
+  EXPECT_EQ(fcu3, channel_bag->fcurve(1));
+  EXPECT_EQ(fcu0, channel_bag->fcurve(2));
+  EXPECT_EQ(fcu1, channel_bag->fcurve(3));
+  EXPECT_EQ(fcu4, channel_bag->fcurve(4));
+  EXPECT_EQ(nullptr, fcu0->grp);
+  EXPECT_EQ(nullptr, fcu1->grp);
+  EXPECT_EQ(group2, fcu2->grp);
+  EXPECT_EQ(group2, fcu3->grp);
+  EXPECT_EQ(nullptr, fcu4->grp);
+
+  /* Removing a group at the end of the group array shouldn't move its
+   * fcurves. */
+  EXPECT_EQ(true, channel_bag->channel_group_remove(*group2));
+  ASSERT_EQ(0, channel_bag->channel_groups().size());
+  ASSERT_EQ(5, channel_bag->fcurves().size());
+  EXPECT_EQ(fcu2, channel_bag->fcurve(0));
+  EXPECT_EQ(fcu3, channel_bag->fcurve(1));
+  EXPECT_EQ(fcu0, channel_bag->fcurve(2));
+  EXPECT_EQ(fcu1, channel_bag->fcurve(3));
+  EXPECT_EQ(fcu4, channel_bag->fcurve(4));
+  EXPECT_EQ(nullptr, fcu0->grp);
+  EXPECT_EQ(nullptr, fcu1->grp);
+  EXPECT_EQ(nullptr, fcu2->grp);
+  EXPECT_EQ(nullptr, fcu3->grp);
+  EXPECT_EQ(nullptr, fcu4->grp);
+}
+
 TEST_F(ChannelBagTest, channel_group_find)
 {
   bActionGroup *group0a = &channel_bag->channel_group_create("Foo");

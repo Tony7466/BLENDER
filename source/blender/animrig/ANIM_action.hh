@@ -799,6 +799,17 @@ class ChannelBag : public ::ActionChannelBag {
   bActionGroup &channel_group_ensure(StringRefNull name);
 
   /**
+   * Remove the given channel group from the channel bag.
+   *
+   * Any fcurves that were part of this group will me moved to just after all
+   * grouped fcurves.
+   *
+   * \return true when the channel group was found & removed, false if it wasn't
+   * found.
+   */
+  bool channel_group_remove(bActionGroup &group);
+
+  /**
    * Remove the given channel group from the channel bag, *without* preserving
    * invariants.
    *

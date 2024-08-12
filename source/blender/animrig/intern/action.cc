@@ -156,6 +156,41 @@ template<typename T> static void shrink_array_and_remove(T **array, int *num, co
   *num = new_array_num;
 }
 
+/**
+ * Moves the given (end exclusive) range to index `to`, shifting other items
+ * before/after to make room.
+ *
+ * The range is moved such that the *start* ends up at `to`.
+ *
+ * `to` *must* be far away enough from the end of the array for the entire range
+ * to be moved there without spilling over the end of the array.
+ */
+template<typename T>
+static void array_shift_range(
+    T *array, const int num, const int range_start, const int range_end, const int to)
+{
+  BLI_assert(range_start <= range_end);
+  BLI_assert(range_end <= num);
+  BLI_assert(to <= num + range_start - range_end);
+
+  if (range_start == range_end || range_start == to) {
+    return;
+  }
+
+  if (to < range_start) {
+    T *start = array + to;
+    T *mid = array + range_start;
+    T *end = array + range_end;
+    std::rotate(start, mid, end);
+  }
+  else {
+    T *start = array + range_start;
+    T *mid = array + range_end;
+    T *end = array + to + range_end - range_start;
+    std::rotate(start, mid, end);
+  }
+}
+
 /* ----- Action implementation ----------- */
 
 bool Action::is_empty() const
@@ -1453,18 +1488,32 @@ bActionGroup &ChannelBag::channel_group_ensure(StringRefNull name)
   return this->channel_group_create(name);
 }
 
-bool ChannelBag::channel_group_remove_raw(bActionGroup &group)
+bool ChannelBag::channel_group_remove(bActionGroup &group)
 {
-  int group_index = -1;
-  int i = 0;
-  for (const bActionGroup *g : this->channel_groups()) {
-    if (g == &group) {
-      group_index = i;
-      break;
-    }
-    i++;
+  if (this->channel_groups().as_span().first_index_try(&group) == -1) {
+    return false;
   }
 
+  /* Move the group's fcurves to just passed the end of where the grouped
+   * fcurves will be after this group is removed. */
+  bActionGroup *last_group = this->channel_groups().last();
+  BLI_assert(last_group != nullptr);
+  const int to_index = last_group->fcurve_index + last_group->fcurve_count - group.fcurve_count;
+  array_shift_range(this->fcurve_array,
+                    this->fcurve_array_num,
+                    group.fcurve_index,
+                    group.fcurve_index + group.fcurve_count,
+                    to_index);
+
+  const bool success = this->channel_group_remove_raw(group);
+  BLI_assert(success == true);
+
+  return true;
+}
+
+bool ChannelBag::channel_group_remove_raw(bActionGroup &group)
+{
+  int group_index = this->channel_groups().as_span().first_index_try(&group);
   if (group_index == -1) {
     return false;
   }
