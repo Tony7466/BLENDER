@@ -58,11 +58,11 @@ class Instance {
 
   struct OverlayLayer {
     const SelectionType selection_type_;
-    Images &images;
+    const Images::PassSource &images_pass_source;
 
     Bounds bounds = {selection_type_};
-    Cameras cameras = {selection_type_, images};
-    Empties empties = {selection_type_, images};
+    Cameras cameras = {selection_type_};
+    Empties empties = {selection_type_};
     Facing facing = {selection_type_};
     ForceFields force_fields = {selection_type_};
     GreasePencil grease_pencil;
@@ -74,7 +74,8 @@ class Instance {
     Prepass prepass = {selection_type_};
     Relations relations;
     Speakers speakers = {selection_type_};
-  } regular{selection_type_, images}, infront{selection_type_, images};
+  } regular{selection_type_, images.pass_source},
+      infront{selection_type_, images.in_front_pass_source};
 
   Grid grid;
 

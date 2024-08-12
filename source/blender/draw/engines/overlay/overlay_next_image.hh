@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "BLI_function_ref.hh"
 #include "BLI_math_rotation.h"
 
 #include "DNA_image_types.h"
@@ -19,20 +20,58 @@ namespace blender::draw::overlay {
 class Images {
   friend class Empties;
   using ImageInstanceBuf = ShapeInstanceBuf<ExtraInstanceData>;
+  // using PassSource = FunctionRef<PassMain *(const Object &ob, const bool use_alpha_blend)>;
 
   PassMain background_scene_ps_ = {"background_scene_ps_"};
   PassMain foreground_scene_ps_ = {"foreground_scene_ps_"};
+
   PassMain background_ps_ = {"background_ps_"};
+  PassMain foreground_ps_ = {"foreground_ps_"};
+
   PassMain empties_back_ps_ = {"empties_back_ps_"};
+  PassMain empties_front_ps_ = {"empties_front_ps_"};
 
   PassMain empties_ps_ = {"empties_ps_"};
   PassMain empties_blend_ps_ = {"empties_blend_ps_"};
 
-  PassMain empties_front_ps_ = {"empties_front_ps_"};
-  PassMain foreground_ps_ = {"foreground_ps_"};
-
  public:
-  Images() {}
+  class PassSource {
+    const bool in_front;
+    Images &images;
+
+   public:
+    PassSource(Images &images, bool in_front) : in_front(in_front), images(images) {}
+
+    PassMain *operator()(const Object &ob, const bool use_alpha_blend) const
+    {
+      if (in_front) {
+        return &(images.empties_front_ps_);
+      }
+      const char depth_mode = DRW_state_is_depth() ? char(OB_EMPTY_IMAGE_DEPTH_DEFAULT) :
+                                                     ob.empty_image_depth;
+      switch (depth_mode) {
+        case OB_EMPTY_IMAGE_DEPTH_BACK:
+          return &(images.empties_back_ps_);
+        case OB_EMPTY_IMAGE_DEPTH_FRONT:
+          return &(images.empties_front_ps_);
+        case OB_EMPTY_IMAGE_DEPTH_DEFAULT:
+        default:
+          return &((use_alpha_blend) ? images.empties_blend_ps_ : images.empties_ps_);
+      }
+    }
+
+    PassMain *operator()(const bool is_foreground, const bool use_view_transform) const
+    {
+      return &(is_foreground ?
+                   (use_view_transform ? images.foreground_scene_ps_ : images.foreground_ps_) :
+                   (use_view_transform ? images.background_scene_ps_ : images.background_ps_));
+    }
+  };
+
+  const PassSource pass_source;
+  const PassSource in_front_pass_source;
+
+  Images() : pass_source(*this, false), in_front_pass_source(*this, true) {}
 
   void begin_sync(Resources &res, const State &state)
   {
@@ -62,12 +101,13 @@ class Images {
     init_pass(foreground_scene_ps_, draw_state);
   }
 
-  void object_sync_camera(const ObjectRef &ob_ref,
-                          select::ID select_id,
-                          ShapeCache &shapes,
-                          Manager &manager,
-                          const State &state,
-                          const SelectionType selection_type)
+  static void object_sync_camera(const ObjectRef &ob_ref,
+                                 select::ID select_id,
+                                 ShapeCache &shapes,
+                                 Manager &manager,
+                                 const State &state,
+                                 const SelectionType selection_type,
+                                 const PassSource &pass_source)
   {
     Object *ob = ob_ref.object;
     const Camera *cam = static_cast<Camera *>(ob->data);
@@ -107,29 +147,27 @@ class Images {
          * transparent foreground image due to the different blending modes they use. */
         const float4 color_premult_alpha{1.0f, 1.0f, 1.0f, std::min(bgpic->alpha, 0.999999f)};
 
-        PassMain *pass = is_foreground ?
-                             (use_view_transform ? &foreground_scene_ps_ : &foreground_ps_) :
-                             (use_view_transform ? &background_scene_ps_ : &background_ps_);
-
-        pass->bind_texture("imgTexture", tex);
-        pass->push_constant("imgPremultiplied", use_alpha_premult);
-        pass->push_constant("imgAlphaBlend", true);
-        pass->push_constant("isCameraBackground", true);
-        pass->push_constant("depthSet", true);
-        pass->push_constant("ucolor", color_premult_alpha);
+        PassMain &pass = *pass_source(is_foreground, use_view_transform);
+        pass.bind_texture("imgTexture", tex);
+        pass.push_constant("imgPremultiplied", use_alpha_premult);
+        pass.push_constant("imgAlphaBlend", true);
+        pass.push_constant("isCameraBackground", true);
+        pass.push_constant("depthSet", true);
+        pass.push_constant("ucolor", color_premult_alpha);
         ResourceHandle res_handle = manager.resource_handle(mat);
-        pass->draw(shapes.quad_solid.get(), res_handle, select_id.get());
+        pass.draw(shapes.quad_solid.get(), res_handle, select_id.get());
       }
     }
   }
 
-  void object_sync(const ObjectRef &ob_ref,
-                   select::ID select_id,
-                   ShapeCache &shapes,
-                   Manager &manager,
-                   Resources &res,
-                   const State &state,
-                   ImageInstanceBuf &empty_image_buf)
+  static void object_sync(const ObjectRef &ob_ref,
+                          select::ID select_id,
+                          ShapeCache &shapes,
+                          Manager &manager,
+                          Resources &res,
+                          const State &state,
+                          const PassSource &pass_source,
+                          ImageInstanceBuf &empty_image_buf)
   {
     Object *ob = ob_ref.object;
     GPUTexture *tex = nullptr;
@@ -173,42 +211,25 @@ class Images {
       madd_v3_v3fl(mat[3], mat[1], ob->ima_ofs[1] * 2.0f + 1.0f);
     }
 
-    /* Use the actual depth if we are doing depth tests to determine the distance to the object */
-    char depth_mode = DRW_state_is_depth() ? char(OB_EMPTY_IMAGE_DEPTH_DEFAULT) :
-                                             ob->empty_image_depth;
-    PassMain *pass = nullptr;
-    if ((ob->dtx & OB_DRAW_IN_FRONT) != 0) {
-      /* Object In Front overrides image empty depth mode. */
-      pass = &empties_front_ps_;
-    }
-    else {
-      switch (depth_mode) {
-        case OB_EMPTY_IMAGE_DEPTH_DEFAULT:
-          pass = (use_alpha_blend) ? &empties_blend_ps_ : &empties_ps_;
-          break;
-        case OB_EMPTY_IMAGE_DEPTH_BACK:
-          pass = &empties_back_ps_;
-          break;
-        case OB_EMPTY_IMAGE_DEPTH_FRONT:
-          pass = &empties_front_ps_;
-          break;
-      }
-    }
-
     if (show_frame) {
       const float4 color = res.object_wire_color(ob_ref, state);
       empty_image_buf.append(ExtraInstanceData(mat, color, 1.0f), select_id);
     }
 
     if (show_image && tex && ((ob->color[3] > 0.0f) || !use_alpha_blend)) {
-      pass->bind_texture("imgTexture", tex);
-      pass->push_constant("imgPremultiplied", use_alpha_premult);
-      pass->push_constant("imgAlphaBlend", use_alpha_blend);
-      pass->push_constant("isCameraBackground", false);
-      pass->push_constant("depthSet", depth_mode != OB_EMPTY_IMAGE_DEPTH_DEFAULT);
-      pass->push_constant("ucolor", float4(ob->color));
+      /* Use the actual depth if we are doing depth tests to determine the distance to the
+       * object. */
+      char depth_mode = DRW_state_is_depth() ? char(OB_EMPTY_IMAGE_DEPTH_DEFAULT) :
+                                               ob->empty_image_depth;
+      PassMain &pass = *pass_source(*ob, use_alpha_blend);
+      pass.bind_texture("imgTexture", tex);
+      pass.push_constant("imgPremultiplied", use_alpha_premult);
+      pass.push_constant("imgAlphaBlend", use_alpha_blend);
+      pass.push_constant("isCameraBackground", false);
+      pass.push_constant("depthSet", depth_mode != OB_EMPTY_IMAGE_DEPTH_DEFAULT);
+      pass.push_constant("ucolor", float4(ob->color));
       ResourceHandle res_handle = manager.resource_handle(mat);
-      pass->draw(shapes.quad_solid.get(), res_handle, select_id.get());
+      pass.draw(shapes.quad_solid.get(), res_handle, select_id.get());
     }
   }
 

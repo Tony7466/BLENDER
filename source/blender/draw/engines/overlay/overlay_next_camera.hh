@@ -86,8 +86,6 @@ class Cameras {
     Empties::CallBuffers empties{selection_type_};
   } call_buffers_;
 
-  Images &images;
-
   static void view3d_reconstruction(const select::ID select_id,
                                     const Scene *scene,
                                     const View3D *v3d,
@@ -347,8 +345,7 @@ class Cameras {
   }
 
  public:
-  Cameras(const SelectionType selection_type, Images &images)
-      : call_buffers_{selection_type}, images(images){};
+  Cameras(const SelectionType selection_type) : call_buffers_{selection_type} {};
 
   void begin_sync()
   {
@@ -364,8 +361,12 @@ class Cameras {
     Empties::begin_sync(call_buffers_.empties);
   }
 
-  void object_sync(
-      const ObjectRef &ob_ref, ShapeCache &shapes, Manager &manager, Resources &res, State &state)
+  void object_sync(const ObjectRef &ob_ref,
+                   ShapeCache &shapes,
+                   Manager &manager,
+                   Resources &res,
+                   State &state,
+                   const Images::PassSource &pass_source)
   {
     Object *ob = ob_ref.object;
     const select::ID select_id = res.select_id(ob_ref);
@@ -510,8 +511,14 @@ class Cameras {
     if (is_camera_view && (cam->flag & CAM_SHOW_BG_IMAGE) &&
         !BLI_listbase_is_empty(&cam->bg_images))
     {
-      images.object_sync_camera(
-          ob_ref, select_id, shapes, manager, state, call_buffers_.selection_type_);
+      Images::object_sync_camera(ob_ref,
+                                 select_id,
+                                 shapes,
+                                 manager,
+                                 state,
+                                 call_buffers_.selection_type_,
+
+                                 pass_source);
     }
   }
 

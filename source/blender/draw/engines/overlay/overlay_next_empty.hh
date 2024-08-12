@@ -32,11 +32,8 @@ class Empties {
     Images::ImageInstanceBuf image_buf = {selection_type_, "image_buf"};
   } call_buffers_;
 
-  Images &images;
-
  public:
-  Empties(const SelectionType selection_type, Images &images)
-      : call_buffers_{selection_type}, images(images){};
+  Empties(const SelectionType selection_type) : call_buffers_{selection_type} {};
 
   void begin_sync()
   {
@@ -59,12 +56,14 @@ class Empties {
                    ShapeCache &shapes,
                    Manager &manager,
                    Resources &res,
-                   const State &state)
+                   const State &state,
+                   const Images::PassSource &pass_source)
   {
     const float4 color = res.object_wire_color(ob_ref, state);
     const select::ID select_id = res.select_id(ob_ref);
     if (ob_ref.object->empty_drawtype == OB_EMPTY_IMAGE) {
-      images.object_sync(ob_ref, select_id, shapes, manager, res, state, call_buffers_.image_buf);
+      Images::object_sync(
+          ob_ref, select_id, shapes, manager, res, state, pass_source, call_buffers_.image_buf);
       return;
     }
     object_sync(select_id,
