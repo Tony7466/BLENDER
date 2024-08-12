@@ -119,6 +119,8 @@ void OVERLAY_grease_pencil_cache_init(OVERLAY_Data *vedata)
         break;
     }
 
+    mat *= 2.0f;
+
     if (ts->gpencil_v3d_align & GP_PROJECT_CURSOR) {
       mat.location() = cursor->location;
     }
