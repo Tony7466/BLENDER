@@ -26,11 +26,11 @@
 #include "physics_geometry_attributes.hh"
 #include "physics_geometry_impl.hh"
 
-#include <BulletCollision/CollisionDispatch/btCollisionObject.h>
 #include <functional>
 #include <mutex>
 
 #ifdef WITH_BULLET
+#  include <BulletCollision/CollisionDispatch/btCollisionObject.h>
 #  include <BulletCollision/CollisionShapes/btBoxShape.h>
 #  include <BulletCollision/CollisionShapes/btCollisionShape.h>
 #  include <BulletCollision/Gimpact/btGImpactCollisionAlgorithm.h>
@@ -603,8 +603,12 @@ void PhysicsWorldData::set_body_shapes(const IndexMask &selection,
       }
     }
     else {
+      /* Make body static when collision shape is not moveable. */
       body->setMassProps(0.0f, btVector3(0.0f, 0.0f, 0.0f));
       body->updateInertiaTensor();
+      body->setCollisionFlags(
+          (body->getCollisionFlags() & ~btCollisionObject::CF_KINEMATIC_OBJECT) |
+          btCollisionObject::CF_STATIC_OBJECT);
     }
   });
 }
@@ -839,6 +843,9 @@ void PhysicsGeometryImpl::ensure_read_cache() const
       }
       return;
     }
+
+    /* Some attributes require other updates before valid world data can be read. */
+    this->ensure_body_collision_shapes_no_lock();
 
     /* Write to cache attributes. */
     MutableAttributeAccessor dst_attributes = dst.custom_data_attributes_for_write();
@@ -1770,6 +1777,25 @@ AttributeWriter<int> PhysicsGeometry::body_shapes_for_write()
 VArray<bool> PhysicsGeometry::body_is_static() const
 {
   return attributes().lookup(body_attribute_name(BodyAttribute::is_static)).varray.typed<bool>();
+}
+
+AttributeWriter<bool> PhysicsGeometry::body_is_static_for_write()
+{
+  return attributes_for_write().lookup_for_write<bool>(
+      body_attribute_name(BodyAttribute::is_static));
+}
+
+VArray<bool> PhysicsGeometry::body_is_kinematic() const
+{
+  return attributes()
+      .lookup(body_attribute_name(BodyAttribute::is_kinematic))
+      .varray.typed<bool>();
+}
+
+AttributeWriter<bool> PhysicsGeometry::body_is_kinematic_for_write()
+{
+  return attributes_for_write().lookup_for_write<bool>(
+      body_attribute_name(BodyAttribute::is_kinematic));
 }
 
 VArray<float> PhysicsGeometry::body_masses() const

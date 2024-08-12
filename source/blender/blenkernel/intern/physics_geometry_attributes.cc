@@ -17,6 +17,7 @@
 #include "physics_geometry_attributes.hh"
 #include "physics_geometry_impl.hh"
 
+#include <BulletCollision/CollisionDispatch/btCollisionObject.h>
 #include <functional>
 
 #ifdef WITH_BULLET
@@ -97,17 +98,20 @@ static bool static_get_fn(const btRigidBody &body)
 }
 static void static_set_fn(btRigidBody &body, bool value)
 {
-  const bool is_moveable_shape = !body.getCollisionShape() ||
-                                 !body.getCollisionShape()->isNonMoving();
-  if (is_moveable_shape) {
-    if (value) {
-      body.setMassProps(0.0f, to_bullet(float3(0.0f)));
-      body.updateInertiaTensor();
-    }
-    else if (body.isStaticObject()) {
+  if (value) {
+    body.setMassProps(0.0f, to_bullet(float3(0.0f)));
+    body.updateInertiaTensor();
+    body.setCollisionFlags(body.getCollisionFlags() | btCollisionObject::CF_STATIC_OBJECT);
+  }
+  else {
+    const bool is_moveable_shape = !body.getCollisionShape() ||
+                                   !body.getCollisionShape()->isNonMoving();
+    /* Initialize default mass when making a static object dynamic again. */
+    if (body.isStaticObject() && is_moveable_shape) {
       body.setMassProps(1.0f, to_bullet(float3(1.0f)));
       body.updateInertiaTensor();
     }
+    body.setCollisionFlags(body.getCollisionFlags() & ~btCollisionObject::CF_STATIC_OBJECT);
   }
 }
 static bool kinematic_get_fn(const btRigidBody &body)
@@ -662,17 +666,6 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
         const PhysicsGeometryImpl *impl = static_cast<const PhysicsGeometryImpl *>(owner);
         return impl->constraint_num_;
       }};
-
-  /* Common update callback for most builtin attributes.
-   * Note: all attributes use the same flag and mutex. In some cases having a separate cache flag
-   * for each attribute might be useful, but most operations will change internal data and
-   * invalidate more than one attribute. This should be fine.
-   * Some attributes with more expensive updates have their own cache.
-   */
-  const auto read_cache_invalidate_cb = [](void *owner) {
-    PhysicsGeometryImpl &impl = *physics_access.get_physics(owner);
-    impl.tag_read_cache_changed();
-  };
 
   static BuiltinRigidBodyAttributeProvider<int, id_get_fn, id_set_fn> body_id(
       BodyAttribute::id, BuiltinAttributeProvider::NonDeletable, physics_access, allow_cache);

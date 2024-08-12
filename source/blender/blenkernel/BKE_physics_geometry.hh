@@ -166,6 +166,10 @@ class PhysicsGeometry {
   AttributeWriter<int> body_shapes_for_write();
 
   VArray<bool> body_is_static() const;
+  AttributeWriter<bool> body_is_static_for_write();
+
+  VArray<bool> body_is_kinematic() const;
+  AttributeWriter<bool> body_is_kinematic_for_write();
 
   /* Set to zero to make static bodies. */
   VArray<float> body_masses() const;

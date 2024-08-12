@@ -15,10 +15,8 @@
 #include "BKE_collision_shape.hh"
 #include "BKE_physics_geometry.hh"
 
-#include <BulletDynamics/Dynamics/btDynamicsWorld.h>
-#include <shared_mutex>
-
 #ifdef WITH_BULLET
+#  include <BulletDynamics/Dynamics/btDynamicsWorld.h>
 #  include <btBulletDynamicsCommon.h>
 #endif
 

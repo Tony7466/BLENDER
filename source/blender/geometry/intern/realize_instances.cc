@@ -2295,7 +2295,7 @@ static OrderedAttributes gather_generic_physics_attributes_to_propagate(
   attributes_to_propagate.remove(constraint_type_attribute_id);
   attributes_to_propagate.remove(constraint_body1_attribute_id);
   attributes_to_propagate.remove(constraint_body2_attribute_id);
-  r_create_id = attributes_to_propagate.pop_try("id").has_value();
+  // r_create_id = attributes_to_propagate.pop_try("id").has_value();
   for (auto &&item : attributes_to_propagate.items()) {
     ordered_attributes.ids.add_new(item.key);
     ordered_attributes.kinds.append(item.value);

@@ -641,6 +641,30 @@ TEST_F(PhysicsGeometryTest, update_read_cache)
     AttributeWriter<int> body_ids = geo2->body_ids_for_write();
     body_ids.varray.set_all({123, 456, 789});
     body_ids.finish();
+    AttributeWriter<float3> positions = geo2->body_positions_for_write();
+    positions.varray.set_all({float3(123), float3(456), float3(789)});
+    positions.finish();
+    AttributeWriter<bool> is_static = geo2->attributes_for_write().lookup_for_write<bool>(
+        "is_static");
+    is_static.varray.set_all({true, false, true});
+    is_static.finish();
+  }
+  {
+    const VArray<int> body_ids = geo2->body_ids();
+    EXPECT_EQ(3, body_ids.size());
+    EXPECT_EQ(123, body_ids[0]);
+    EXPECT_EQ(456, body_ids[1]);
+    EXPECT_EQ(789, body_ids[2]);
+    const VArray<float3> positions = geo2->body_positions();
+    EXPECT_EQ(3, positions.size());
+    EXPECT_EQ(float3(123), positions[0]);
+    EXPECT_EQ(float3(456), positions[1]);
+    EXPECT_EQ(float3(789), positions[2]);
+    const VArray<bool> is_static = geo2->body_is_static();
+    EXPECT_EQ(3, is_static.size());
+    EXPECT_EQ(true, is_static[0]);
+    EXPECT_EQ(false, is_static[1]);
+    EXPECT_EQ(true, is_static[2]);
   }
 
   Array<bke::GeometrySet> geometry_sets = {bke::GeometrySet::from_physics(geo1),
@@ -648,11 +672,98 @@ TEST_F(PhysicsGeometryTest, update_read_cache)
   GeometrySet result = geometry::join_geometries(geometry_sets, {});
 
   const PhysicsGeometry *geo_result = result.get_physics();
-  const VArray<int> result_body_ids = geo_result->body_ids();
-  EXPECT_EQ(3, result_body_ids.size());
-  EXPECT_EQ(123, result_body_ids[0]);
-  EXPECT_EQ(456, result_body_ids[1]);
-  EXPECT_EQ(789, result_body_ids[2]);
+  {
+    const VArray<int> body_ids = geo_result->body_ids();
+    EXPECT_EQ(3, body_ids.size());
+    EXPECT_EQ(123, body_ids[0]);
+    EXPECT_EQ(456, body_ids[1]);
+    EXPECT_EQ(789, body_ids[2]);
+    const VArray<float3> positions = geo2->body_positions();
+    EXPECT_EQ(3, positions.size());
+    EXPECT_EQ(float3(123), positions[0]);
+    EXPECT_EQ(float3(456), positions[1]);
+    EXPECT_EQ(float3(789), positions[2]);
+    const VArray<bool> is_static = geo2->body_is_static();
+    EXPECT_EQ(3, is_static.size());
+    EXPECT_EQ(true, is_static[0]);
+    EXPECT_EQ(false, is_static[1]);
+    EXPECT_EQ(true, is_static[2]);
+  }
+}
+
+/* Some attributes are connected internally. Changing mass, motion type (static/kinematic/dynamic)
+ * or the shape is expected to conditionally change the other attributes.  */
+TEST_F(PhysicsGeometryTest, motion_type_attribute_dependencies)
+{
+  AllShapesData all_shapes_data;
+
+  bke::PhysicsGeometry geo = bke::PhysicsGeometry(9, 0, 3);
+  geo.create_world();
+  test_data(geo, true, 9, 0, 3);
+
+  /* Static plane is a non-moveable shape and makes any body using it static. */
+  all_shapes_data.sphere_shape->add_user();
+  all_shapes_data.box_shape->add_user();
+  all_shapes_data.static_plane_shape->add_user();
+  geo.shapes_for_write().copy_from({CollisionShapePtr(all_shapes_data.static_plane_shape),
+                                    CollisionShapePtr(all_shapes_data.box_shape),
+                                    CollisionShapePtr(all_shapes_data.sphere_shape)});
+  geo.tag_collision_shapes_changed();
+  {
+    AttributeWriter<int> body_shapes = geo.body_shapes_for_write();
+    AttributeWriter<bool> is_static = geo.body_is_static_for_write();
+    AttributeWriter<bool> is_kinematic = geo.body_is_kinematic_for_write();
+    AttributeWriter<float> masses = geo.body_masses_for_write();
+    body_shapes.varray.set_all({0, 0, 0, 1, 1, 1, 2, 2, 2});
+    is_static.varray.set_all({true, true, true, false, false, false, false, false, false});
+    is_kinematic.varray.set_all({false, false, false, true, true, true, false, false, false});
+    masses.varray.set_all({0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f});
+    body_shapes.finish();
+    is_static.finish();
+    is_kinematic.finish();
+    masses.finish();
+  }
+  {
+    const VArraySpan<int> body_shapes = geo.body_shapes();
+    const VArraySpan<bool> is_static = geo.body_is_static();
+    const VArraySpan<bool> is_kinematic = geo.body_is_kinematic();
+    const VArraySpan<float> masses = geo.body_masses();
+    EXPECT_EQ_ARRAY(Span<int>{0, 0, 0, 1, 1, 1, 2, 2, 2}.data(), body_shapes.data(), 9);
+    EXPECT_EQ_ARRAY(Span<bool>{true, true, true, false, false, false, false, false, false}.data(),
+                    is_static.data(),
+                    9);
+    EXPECT_EQ_ARRAY(Span<bool>{false, false, false, true, true, true, false, false, false}.data(),
+                    is_kinematic.data(),
+                    9);
+    EXPECT_EQ_ARRAY(Span<float>{0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f}.data(),
+                    masses.data(),
+                    9);
+  }
+
+  /* Change shape:
+   * Switching a dynamic/kinematic body to a non-moveable shape makes it static.
+   * Switching shape of a static body keeps it static. */
+  {
+    AttributeWriter<int> body_shapes = geo.body_shapes_for_write();
+    body_shapes.varray.set_all({1, 0, 0, 0, 1, 1, 0, 2, 2});
+    body_shapes.finish();
+  }
+  {
+    const VArraySpan<int> body_shapes = geo.body_shapes();
+    const VArraySpan<bool> is_static = geo.body_is_static();
+    const VArraySpan<bool> is_kinematic = geo.body_is_kinematic();
+    const VArraySpan<float> masses = geo.body_masses();
+    EXPECT_EQ_ARRAY(Span<int>{1, 0, 0, 0, 1, 1, 0, 2, 2}.data(), body_shapes.data(), 9);
+    EXPECT_EQ_ARRAY(Span<bool>{true, true, true, true, false, false, true, false, false}.data(),
+                    is_static.data(),
+                    9);
+    EXPECT_EQ_ARRAY(Span<bool>{false, false, false, false, true, true, false, false, false}.data(),
+                    is_kinematic.data(),
+                    9);
+    EXPECT_EQ_ARRAY(Span<float>{0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f}.data(),
+                    masses.data(),
+                    9);
+  }
 }
 
 }  // namespace blender::bke::tests
