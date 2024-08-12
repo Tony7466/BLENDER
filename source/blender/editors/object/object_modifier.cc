@@ -1089,7 +1089,7 @@ static bool apply_grease_pencil_for_modifier(Depsgraph *depsgraph,
   for (Material *eval_material :
        Span{grease_pencil_result.material_array, grease_pencil_result.material_array_num})
   {
-    if (eval_material->id.orig_id != nullptr) {
+    if (eval_material != nullptr && eval_material->id.orig_id != nullptr) {
       original_materials.add_new(reinterpret_cast<Material *>(eval_material->id.orig_id));
     }
   }
