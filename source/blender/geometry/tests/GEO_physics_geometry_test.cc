@@ -629,4 +629,30 @@ TEST_F(PhysicsGeometryTest, body_shapes_update)
   test_data(geo, true, 8, 0, 1);
 }
 
+TEST_F(PhysicsGeometryTest, update_read_cache)
+{
+  bke::PhysicsGeometry *geo1 = new bke::PhysicsGeometry(0, 0, 0);
+  geo1->create_world();
+  test_data(*geo1, true, 0, 0, 0);
+
+  bke::PhysicsGeometry *geo2 = new bke::PhysicsGeometry(3, 2, 0);
+  test_data(*geo2, false, 3, 2, 0);
+  {
+    AttributeWriter<int> body_ids = geo2->body_ids_for_write();
+    body_ids.varray.set_all({123, 456, 789});
+    body_ids.finish();
+  }
+
+  Array<bke::GeometrySet> geometry_sets = {bke::GeometrySet::from_physics(geo1),
+                                           bke::GeometrySet::from_physics(geo2)};
+  GeometrySet result = geometry::join_geometries(geometry_sets, {});
+
+  const PhysicsGeometry *geo_result = result.get_physics();
+  const VArray<int> result_body_ids = geo_result->body_ids();
+  EXPECT_EQ(3, result_body_ids.size());
+  EXPECT_EQ(123, result_body_ids[0]);
+  EXPECT_EQ(456, result_body_ids[1]);
+  EXPECT_EQ(789, result_body_ids[2]);
+}
+
 }  // namespace blender::bke::tests
