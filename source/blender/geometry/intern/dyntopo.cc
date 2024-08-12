@@ -161,11 +161,42 @@ static constexpr int edge_ab = 0;
 static constexpr int edge_bc = 1;
 static constexpr int edge_ca = 2;
 
-template<typename T>
-static void shift(const int offset, T &data)
+template<typename CmpT, typename T>
+static std::pair<T, T> split_edge(const int edge_i, T data, CmpT lowest, CmpT highest)
 {
-  std::swap(data[offset], data[shift_front[offset]]);
-  std::swap(data[shift_front[offset]], data[shift_back[offset]]);
+  const int prev_edge_i = topo_set::shift_back[edge_i];
+  const int next_edge_i = topo_set::shift_front[edge_i];
+
+  T lowest_data;
+  lowest_data[prev_edge_i] = std::move(data[prev_edge_i]);
+  lowest_data[edge_i] = data[edge_i];
+  lowest_data[next_edge_i] = std::move(lowest);
+
+  T highest_data;
+  highest_data[prev_edge_i] = std::move(highest);
+  highest_data[edge_i] = std::move(data[edge_i]);
+  highest_data[next_edge_i] = std::move(data[next_edge_i]);
+
+  return std::make_pair<T, T>(std::move(lowest_data), std::move(highest_data));
+}
+
+template<typename CmpT, typename T>
+static std::pair<T, T> split_vert(const int edge_i, T data, CmpT shared)
+{
+  const int prev_edge_i = topo_set::shift_back[edge_i];
+  const int next_edge_i = topo_set::shift_front[edge_i];
+
+  T lowest_data;
+  lowest_data[prev_edge_i] = std::move(data[prev_edge_i]);
+  lowest_data[edge_i] = data[edge_i];
+  lowest_data[next_edge_i] = shared;
+
+  T highest_data;
+  highest_data[prev_edge_i] = std::move(data[prev_edge_i]);
+  highest_data[edge_i] = std::move(shared);
+  highest_data[next_edge_i] = std::move(data[next_edge_i]);
+
+  return std::make_pair<T, T>(std::move(lowest_data), std::move(highest_data));
 }
 
 }  // namespace topo_set
@@ -394,49 +425,23 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
     const float3 mid_3d = math::midpoint(tri_3d_points[split_edge[0]],
                                          tri_3d_points[split_edge[1]]);
 
-    std::array<Vector<float2>, 3> left_connected_2d_points;
-    std::array<Vector<float3>, 3> left_connected_3d_points;
-    std::array<float2, 3> left_tri_2d_points = tri_2d_points;
-    std::array<float3, 3> left_tri_3d_points = tri_3d_points;
-
-    left_connected_2d_points[largest_side_to_split] = connected_2d_points[largest_side_to_split];
-    left_connected_3d_points[largest_side_to_split] = connected_3d_points[largest_side_to_split];
-
-    left_connected_2d_points[topo_set::shift_front[largest_side_to_split]] = {
-        tri_2d_points[topo_set::shift_front[largest_side_to_split]]};
-    left_connected_3d_points[topo_set::shift_front[largest_side_to_split]] = {
-        tri_3d_points[topo_set::shift_front[largest_side_to_split]]};
-
-    left_connected_2d_points[topo_set::shift_back[largest_side_to_split]] = std::move(
-        connected_2d_points[topo_set::shift_back[largest_side_to_split]]);
-    left_connected_3d_points[topo_set::shift_back[largest_side_to_split]] = std::move(
-        connected_3d_points[topo_set::shift_back[largest_side_to_split]]);
-
-    left_tri_2d_points[topo_set::shift_front[largest_side_to_split]] = mid_2d;
-    left_tri_3d_points[topo_set::shift_front[largest_side_to_split]] = mid_3d;
+    auto [left_connected_2d_points, right_connected_2d_points] = topo_set::split_edge(
+        largest_side_to_split,
+        connected_2d_points,
+        Vector<float2>{tri_2d_points[split_edge[1]]},
+        Vector<float2>{tri_2d_points[split_edge[0]]});
+    auto [left_connected_3d_points, right_connected_3d_points] = topo_set::split_edge(
+        largest_side_to_split,
+        connected_3d_points,
+        Vector<float3>{tri_3d_points[split_edge[1]]},
+        Vector<float3>{tri_3d_points[split_edge[0]]});
+    auto [left_tri_2d_points, right_tri_2d_points] = topo_set::split_vert(
+        largest_side_to_split, tri_2d_points, mid_2d);
+    auto [left_tri_3d_points, right_tri_3d_points] = topo_set::split_vert(
+        largest_side_to_split, tri_3d_points, mid_3d);
 
     const int8_t left_edges_state =
         edges_state | edge_state::edges_real[topo_set::shift_front[largest_side_to_split]];
-
-    std::array<Vector<float2>, 3> right_connected_2d_points;
-    std::array<Vector<float3>, 3> right_connected_3d_points;
-    std::array<float2, 3> right_tri_2d_points = tri_2d_points;
-    std::array<float3, 3> right_tri_3d_points = tri_3d_points;
-
-    right_connected_2d_points[largest_side_to_split] = std::move(
-        connected_2d_points[largest_side_to_split]);
-    right_connected_3d_points[largest_side_to_split] = std::move(
-        connected_3d_points[largest_side_to_split]);
-
-    right_connected_2d_points[topo_set::shift_front[largest_side_to_split]] = std::move(
-        connected_2d_points[topo_set::shift_front[largest_side_to_split]]);
-    right_connected_3d_points[topo_set::shift_front[largest_side_to_split]] = std::move(
-        connected_3d_points[topo_set::shift_front[largest_side_to_split]]);
-
-    right_connected_2d_points[topo_set::shift_back[largest_side_to_split]] = {
-        tri_2d_points[largest_side_to_split]};
-    right_connected_3d_points[topo_set::shift_back[largest_side_to_split]] = {
-        tri_3d_points[largest_side_to_split]};
 
     right_tri_2d_points[largest_side_to_split] = mid_2d;
     right_tri_3d_points[largest_side_to_split] = mid_3d;
@@ -627,26 +632,20 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
           main_tri_2d_points[0], main_tri_2d_points[1], main_tri_2d_points[2], mid_2d);
     }
 
-    std::array<Vector<float2>, 3> left_connected_2d_points;
-    std::array<Vector<float3>, 3> left_connected_3d_points;
-    std::array<float2, 3> left_tri_2d_points = tri_2d_points;
-    std::array<float3, 3> left_tri_3d_points = tri_3d_points;
-
-    left_connected_2d_points[largest_side_to_split] = connected_2d_points[largest_side_to_split];
-    left_connected_3d_points[largest_side_to_split] = connected_3d_points[largest_side_to_split];
-
-    left_connected_2d_points[topo_set::shift_front[largest_side_to_split]] = {
-        tri_2d_points[topo_set::shift_front[largest_side_to_split]]};
-    left_connected_3d_points[topo_set::shift_front[largest_side_to_split]] = {
-        tri_3d_points[topo_set::shift_front[largest_side_to_split]]};
-
-    left_connected_2d_points[topo_set::shift_back[largest_side_to_split]] = std::move(
-        connected_2d_points[topo_set::shift_back[largest_side_to_split]]);
-    left_connected_3d_points[topo_set::shift_back[largest_side_to_split]] = std::move(
-        connected_3d_points[topo_set::shift_back[largest_side_to_split]]);
-
-    left_tri_2d_points[topo_set::shift_front[largest_side_to_split]] = mid_2d;
-    left_tri_3d_points[topo_set::shift_front[largest_side_to_split]] = mid_3d;
+    auto [left_connected_2d_points, right_connected_2d_points] = topo_set::split_edge(
+        largest_side_to_split,
+        connected_2d_points,
+        Vector<float2>{tri_2d_points[split_edge[1]]},
+        Vector<float2>{tri_2d_points[split_edge[0]]});
+    auto [left_connected_3d_points, right_connected_3d_points] = topo_set::split_edge(
+        largest_side_to_split,
+        connected_3d_points,
+        Vector<float3>{tri_3d_points[split_edge[1]]},
+        Vector<float3>{tri_3d_points[split_edge[0]]});
+    auto [left_tri_2d_points, right_tri_2d_points] = topo_set::split_vert(
+        largest_side_to_split, tri_2d_points, mid_2d);
+    auto [left_tri_3d_points, right_tri_3d_points] = topo_set::split_vert(
+        largest_side_to_split, tri_3d_points, mid_3d);
 
     const int8_t left_edges_state =
         edges_state | edge_state::edges_real[topo_set::shift_front[largest_side_to_split]] |
@@ -654,29 +653,6 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
 
     int3 left_tri_verts = tri_verts;
     left_tri_verts[topo_set::shift_front[largest_side_to_split]] = new_vert_i;
-
-    std::array<Vector<float2>, 3> right_connected_2d_points;
-    std::array<Vector<float3>, 3> right_connected_3d_points;
-    std::array<float2, 3> right_tri_2d_points = tri_2d_points;
-    std::array<float3, 3> right_tri_3d_points = tri_3d_points;
-
-    right_connected_2d_points[largest_side_to_split] = std::move(
-        connected_2d_points[largest_side_to_split]);
-    right_connected_3d_points[largest_side_to_split] = std::move(
-        connected_3d_points[largest_side_to_split]);
-
-    right_connected_2d_points[topo_set::shift_front[largest_side_to_split]] = std::move(
-        connected_2d_points[topo_set::shift_front[largest_side_to_split]]);
-    right_connected_3d_points[topo_set::shift_front[largest_side_to_split]] = std::move(
-        connected_3d_points[topo_set::shift_front[largest_side_to_split]]);
-
-    right_connected_2d_points[topo_set::shift_back[largest_side_to_split]] = {
-        tri_2d_points[largest_side_to_split]};
-    right_connected_3d_points[topo_set::shift_back[largest_side_to_split]] = {
-        tri_3d_points[largest_side_to_split]};
-
-    right_tri_2d_points[largest_side_to_split] = mid_2d;
-    right_tri_3d_points[largest_side_to_split] = mid_3d;
 
     const int8_t right_edges_state =
         (edges_state & (~edge_state::edges_real[topo_set::shift_back[largest_side_to_split]])) |
