@@ -4551,7 +4551,16 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 16)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 17)) {
+    FOREACH_NODETREE_BEGIN (bmain, tree, id) {
+      if (tree->default_group_node_width == 0) {
+        tree->default_group_node_width = GROUP_NODE_DEFAULT_WIDTH;
+      }
+    }
+    FOREACH_NODETREE_END;
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 18)) {
     LISTBASE_FOREACH (Object *, object, &bmain->objects) {
       LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
         if (md->type != eModifierType_Nodes) {
