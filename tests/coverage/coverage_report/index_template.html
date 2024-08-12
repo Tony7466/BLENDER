@@ -127,26 +127,26 @@
           let path_parts = file_path.split("/");
           current_path = "";
 
-          let current_data;
+          let current_row;
           for (let i = 0; i < path_parts.length; i++) {
             const path_part = path_parts[i];
             if (i == 0) {
-              current_data = root_data;
+              current_row = root_row;
             } else {
-              if (!current_data.children.has(path_part)) {
-                current_data.children.set(
+              if (!current_row.children.has(path_part)) {
+                current_row.children.set(
                   path_part,
-                  new_directory_data(current_data.path + (i > 1 ? "/" : "") + path_part)
+                  new_row_data(current_row.path + (i > 1 ? "/" : "") + path_part, current_row)
                 );
               }
-              current_data = current_data.children.get(path_part);
+              current_row = current_row.children.get(path_part);
             }
-            current_data.num_lines += file_data.num_lines;
-            current_data.num_lines_run += file_data.num_lines_run;
-            current_data.num_functions += file_data.num_functions;
-            current_data.num_functions_run += file_data.num_functions_run;
+            current_row.num_lines += file_data.num_lines;
+            current_row.num_lines_run += file_data.num_lines_run;
+            current_row.num_functions += file_data.num_functions;
+            current_row.num_functions_run += file_data.num_functions_run;
           }
-          current_data.source_file_path = file_path;
+          current_row.source_file_path = file_path;
         }
 
         document.getElementById("coverage-files").innerText = Object.keys(
@@ -154,13 +154,13 @@
         ).length.toLocaleString();
         document.getElementById(
           "coverage-lines"
-        ).innerText = `${root_data.num_lines_run.toLocaleString()} / ${root_data.num_lines.toLocaleString()}`;
+        ).innerText = `${root_row.num_lines_run.toLocaleString()} / ${root_row.num_lines.toLocaleString()}`;
         document.getElementById(
           "coverage-functions"
-        ).innerText = `${root_data.num_functions_run.toLocaleString()} / ${root_data.num_functions.toLocaleString()}`;
+        ).innerText = `${root_row.num_functions_run.toLocaleString()} / ${root_row.num_functions.toLocaleString()}`;
 
         const tree_view = document.getElementById("files-tree-view");
-        build_tree_for_directory(tree_view, "/", root_data, 0, 0);
+        build_tree_for_directory(tree_view, "/", root_row, 0, 0);
 
         const scroll_position = localStorage.getItem("scroll_position");
         if (scroll_position) {
@@ -168,25 +168,28 @@
         }
       });
 
-      function build_tree_for_directory(parent, name, data, depth, index) {
-        const is_file = data.source_file_path !== undefined;
+      function build_tree_for_directory(parent, name, row, depth, index) {
+        const is_file = row.source_file_path !== undefined;
         const is_directory = !is_file;
 
-        const row = document.createElement("div");
-        row.classList.add("row");
-        parent.appendChild(row);
+        const row_elem = document.createElement("div");
+        row_elem.classList.add("row");
+        parent.appendChild(row_elem);
+
+        row.dom_elem = row_elem;
+        row_elem.row_data = row;
 
         const stats_elem = document.createElement("span");
         const label_elem = document.createElement("span");
-        row.appendChild(stats_elem);
-        row.appendChild(label_elem);
+        row_elem.appendChild(stats_elem);
+        row_elem.appendChild(label_elem);
 
         label_elem.className = "row-label";
         label_elem.style.paddingLeft = `${depth}em`;
 
         stats_elem.className = "row-stats";
         if (index % 2 == 1) {
-          row.classList.add("odd");
+          row_elem.classList.add("odd");
         }
 
         {
@@ -195,25 +198,25 @@
           lines_percent_elem.className = "lines-percent-row";
           lines_percent_elem.title = "Line Coverage";
 
-          if (data.num_lines == 0) {
+          if (row.num_lines == 0) {
             lines_percent_elem.style.color = "rgb(137 137 137)";
             lines_percent_elem.innerText = "-";
           } else {
-            const lines_percent = ratio_to_percent(data.num_lines_run, data.num_lines);
+            const lines_percent = ratio_to_percent(row.num_lines_run, row.num_lines);
             lines_percent_elem.style.color = `color-mix(in hsl, rgb(240, 50, 50), rgb(50, 240, 50) ${lines_percent}%)`;
             lines_percent_elem.innerText = `${lines_percent}%`;
           }
 
           const total_lines_elem = document.createElement("span");
           total_lines_elem.className = "lines-total-row";
-          total_lines_elem.innerText = `${data.num_lines.toLocaleString()}`;
+          total_lines_elem.innerText = `${row.num_lines.toLocaleString()}`;
           total_lines_elem.title = "Number of Lines";
           stats_elem.appendChild(total_lines_elem);
         }
 
         if (is_file) {
           const link_elem = document.createElement("a");
-          link_elem.href = "./files" + data.source_file_path + ".html";
+          link_elem.href = "./files" + row.source_file_path + ".html";
           link_elem.innerText = name;
           label_elem.appendChild(link_elem);
         } else {
@@ -223,16 +226,16 @@
           children_container.className = "children-container";
           parent.appendChild(children_container);
 
-          const is_open = is_open_at_start(data.path);
+          const is_open = is_open_at_start(row.path);
           if (is_open) {
             label_elem.classList.add("open-dir-label");
-            current_open_paths.add(data.path);
+            current_open_paths.add(row.path);
           } else {
             label_elem.classList.add("closed-dir-label");
             children_container.style.display = "none";
           }
 
-          const all_children = Array.from(data.children);
+          const all_children = Array.from(row.children);
           const directory_children = all_children.filter(
             (c) => c[1].source_file_path === undefined
           );
@@ -249,14 +252,15 @@
           }
 
           label_elem.addEventListener("click", () => {
+            console.log(row_elem.row_data);
             if (children_container.style.display === "none") {
               children_container.style.display = "block";
-              current_open_paths.add(data.path);
+              current_open_paths.add(row.path);
               label_elem.classList.remove("closed-dir-label");
               label_elem.classList.add("open-dir-label");
             } else {
               children_container.style.display = "none";
-              current_open_paths.delete(data.path);
+              current_open_paths.delete(row.path);
               label_elem.classList.remove("open-dir-label");
               label_elem.classList.add("closed-dir-label");
             }
@@ -307,14 +311,16 @@
         return Math.round(f * 100);
       }
 
-      function new_directory_data(path) {
+      function new_row_data(path, parent) {
         return {
           num_lines_run: 0,
           num_lines: 0,
           num_functions_run: 0,
           num_functions: 0,
           path: path,
+          parent: parent,
           children: new Map(),
+          dom_elem: null,
         };
       }
 
@@ -336,7 +342,7 @@
         localStorage.setItem("scroll_position", window.scrollY);
       });
 
-      const root_data = new_directory_data("/");
+      const root_row = new_row_data("/", null);
 
       const default_open_path_segment = "/blender/source/blender";
       let default_open_path = undefined;
