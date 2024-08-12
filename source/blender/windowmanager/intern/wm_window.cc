@@ -621,6 +621,10 @@ void WM_window_decoration_set_style(const wmWindow *win, eWM_DecorationStyleFlag
                            static_cast<GHOST_TWindowDecorationStyleFlags>(ghost_style_flags));
 }
 
+void WM_window_decoration_apply(const wmWindow *win) {
+  GHOST_ApplyDecoration(static_cast<GHOST_WindowHandle>(win->ghostwin));
+}
+
 void WM_window_decoration_set_titlebar_colors(const wmWindow *win,
                                               const float background_color[3],
                                               const float title_text_color[3])
@@ -629,7 +633,6 @@ void WM_window_decoration_set_titlebar_colors(const wmWindow *win,
       static_cast<GHOST_WindowHandle>(win->ghostwin), background_color, title_text_color);
 }
 
-void WM_window_decoration_update(const wmWindow *win, const bScreen *screen)
 {
   switch (WM_window_decoration_get_style(win)) {
     case WM_DECORATION_NONE:
@@ -921,7 +924,9 @@ static void wm_window_ghostwindow_ensure(wmWindowManager *wm, wmWindow *win, boo
     WM_window_set_dpi(win);
 
     if (WM_capabilities_flag() & WM_CAPABILITY_CLIENT_SIDE_WINDOW_DECORATIONS) {
+      /* Only decoration style we have for now. */
       WM_window_decoration_set_style(win, WM_DECORATION_COLORED_TITLEBAR);
+      WM_window_decoration_apply(win);
     }
   }
 

@@ -546,6 +546,15 @@ GHOST_TSuccess GHOST_WindowCocoa::setPath(const char *filepath)
   return success;
 }
 
+GHOST_TSuccess GHOST_WindowCocoa::applyDecoration()
+{
+  @autoreleasepool {
+    m_window.titlebarAppearsTransparent = m_windowDecorationFlags &
+                                          GHOST_kDecorationColoredTitleBar;
+  }
+  return GHOST_kSuccess;
+}
+
 GHOST_TSuccess GHOST_WindowCocoa::setDecorationTitlebarColors(const float backgroundColor[3],
                                                               const float /*titlebarColor*/[3])
 {
@@ -1263,15 +1272,6 @@ GHOST_TSuccess GHOST_WindowCocoa::setWindowCustomCursorShape(
     loadCursor(getCursorVisibility(), GHOST_kStandardCursorCustom);
   }
   [pool drain];
-  return GHOST_kSuccess;
-}
-
-GHOST_TSuccess GHOST_WindowCocoa::updateDecorations()
-{
-  @autoreleasepool {
-    m_window.titlebarAppearsTransparent = m_windowDecorationFlags &
-                                          GHOST_kDecorationColoredTitleBar;
-  }
   return GHOST_kSuccess;
 }
 

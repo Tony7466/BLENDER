@@ -391,10 +391,12 @@ ENUM_OPERATORS(eWM_DecorationStyleFlag, WM_DECORATION_COLORED_TITLEBAR)
 
 eWM_DecorationStyleFlag WM_window_decoration_get_style(const wmWindow *win);
 void WM_window_decoration_set_style(const wmWindow *win, eWM_DecorationStyleFlag style_flags);
+void WM_window_decoration_apply(const wmWindow *win);
 void WM_window_decoration_set_titlebar_colors(const wmWindow *win,
                                               const float background_color[3],
                                               const float title_text_color[3]);
-void WM_window_decoration_update(const wmWindow *win, const bScreen *screen);
+
+void WM_window_decoration_parse(const wmWindow *win, const bScreen *screen);
 
 /* `wm_files.cc`. */
 

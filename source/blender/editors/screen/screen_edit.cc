@@ -646,7 +646,8 @@ void ED_screen_do_listen(bContext *C, const wmNotifier *note)
       }
       break;
     case NC_WINDOW:
-      WM_window_decoration_update(win, screen);
+      WM_window_decoration_parse(win, screen);
+      WM_window_decoration_apply(win);
       screen->do_draw = true;
       break;
     case NC_SCREEN:

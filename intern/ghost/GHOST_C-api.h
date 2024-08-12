@@ -601,11 +601,16 @@ extern GHOST_TSuccess GHOST_SetPath(GHOST_WindowHandle windowhandle, const char 
 extern GHOST_TWindowDecorationStyleFlags GHOST_GetDecorationStyle(GHOST_WindowHandle windowhandle);
 
 /**
- * Set client-side window decorations style flags.
- * \param style_flags: Decoration Style Flags
+ * Set the window client-side decorations (CSD) style flags.
+ * \param style_flags: Decoration style flags.
  */
-extern GHOST_TSuccess GHOST_SetDecorationStyle(GHOST_WindowHandle windowhandle,
+extern void GHOST_SetDecorationStyle(GHOST_WindowHandle windowhandle,
                                                GHOST_TWindowDecorationStyleFlags style_flags);
+
+/**
+ * Apply the window client-side decorations (CSD) using the current decoration style flags.
+ */
+extern GHOST_TSuccess GHOST_ApplyDecoration(GHOST_WindowHandle windowhandle);
 
 /**
  * Set colors to be used by custom titlebar client-side window decorations (CSD).

@@ -96,7 +96,12 @@ class GHOST_IWindow {
    * Set the window client-side decorations (CSD) style flags.
    * \param style_flags: Decoration style flags.
    */
-  virtual GHOST_TSuccess setDecorationStyle(GHOST_TWindowDecorationStyleFlags style_flags) = 0;
+  virtual void setDecorationStyle(GHOST_TWindowDecorationStyleFlags style_flags) = 0;
+
+  /**
+   * Apply the window client-side decorations (CSD) using the current decoration style flags.
+   */
+  virtual GHOST_TSuccess applyDecoration() = 0;
 
   /**
    * Set colors to be used by custom titlebar client-side window decorations (CSD).

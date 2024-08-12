@@ -61,10 +61,9 @@ GHOST_TWindowDecorationStyleFlags GHOST_Window::getDecorationStyle()
   return m_windowDecorationFlags;
 }
 
-GHOST_TSuccess GHOST_Window::setDecorationStyle(GHOST_TWindowDecorationStyleFlags style_flags)
+void GHOST_Window::setDecorationStyle(GHOST_TWindowDecorationStyleFlags style_flags)
 {
   m_windowDecorationFlags = style_flags;
-  return updateDecorations();
 }
 
 GHOST_TSuccess GHOST_Window::setDrawingContextType(GHOST_TDrawingContextType type)

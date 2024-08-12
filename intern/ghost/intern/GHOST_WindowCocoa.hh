@@ -92,6 +92,11 @@ class GHOST_WindowCocoa : public GHOST_Window {
   GHOST_TSuccess setPath(const char *filepath);
 
   /**
+   * Apply the window client-side decorations (CSD) using the current decoration style flags.
+   */
+  GHOST_TSuccess applyDecoration();
+
+  /**
    * Set colors to be used by custom titlebar client-side window decorations (CSD).
    * \param backgroundColor: Titlebar background color.
    * \param titleTextColor: Titlebar title text color.
@@ -301,12 +306,6 @@ class GHOST_WindowCocoa : public GHOST_Window {
                                             int hotX,
                                             int hotY,
                                             bool canInvertColor);
-
-  /**
-   * Update the window client-side decorations (CSD)
-   * depending on decoration style flags.
-   */
-  GHOST_TSuccess updateDecorations();
 
   /** The window containing the view */
   CocoaWindow *m_window;

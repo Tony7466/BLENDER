@@ -614,11 +614,17 @@ GHOST_TWindowDecorationStyleFlags GHOST_GetDecorationStyle(GHOST_WindowHandle wi
   return window->getDecorationStyle();
 }
 
-GHOST_TSuccess GHOST_SetDecorationStyle(GHOST_WindowHandle windowhandle,
+void GHOST_SetDecorationStyle(GHOST_WindowHandle windowhandle,
                                         GHOST_TWindowDecorationStyleFlags style_flags)
 {
   GHOST_IWindow *window = (GHOST_IWindow *)windowhandle;
-  return window->setDecorationStyle(style_flags);
+  window->setDecorationStyle(style_flags);
+}
+
+GHOST_TSuccess GHOST_ApplyDecoration(GHOST_WindowHandle windowhandle)
+{
+  GHOST_IWindow *window = (GHOST_IWindow *)windowhandle;
+  return window->applyDecoration();
 }
 
 GHOST_TSuccess GHOST_SetDecorationTitlebarColors(GHOST_WindowHandle windowhandle,

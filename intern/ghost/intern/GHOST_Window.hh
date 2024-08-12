@@ -98,8 +98,16 @@ class GHOST_Window : public GHOST_IWindow {
    * Set the window client-side decorations (CSD) style flags.
    * \param style_flags: Decoration style flags.
    */
-  virtual GHOST_TSuccess setDecorationStyle(
+  virtual void setDecorationStyle(
       GHOST_TWindowDecorationStyleFlags style_flags) override;
+
+  /**
+   * Apply the window client-side decorations (CSD) using the current decoration style flags.
+   */
+  virtual GHOST_TSuccess applyDecoration() override
+  {
+    return GHOST_kSuccess;
+  }
 
   /**
    * Set colors to be used by custom titlebar client-side window decorations (CSD).
@@ -391,15 +399,6 @@ class GHOST_Window : public GHOST_IWindow {
                                                     int hotX,
                                                     int hotY,
                                                     bool canInvertColor) = 0;
-
-  /**
-   * Update the window client-side decorations (CSD)
-   * from current decoration style flags.
-   */
-  virtual GHOST_TSuccess updateDecorations()
-  {
-    return GHOST_kSuccess;
-  }
 
   GHOST_TSuccess releaseNativeHandles();
 
