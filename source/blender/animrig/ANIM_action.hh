@@ -846,6 +846,8 @@ class ChannelBag : public ::ActionChannelBag {
    * membership stable. That should be done separately if it's needed/desired.
    */
   void recompute_channel_group_indices();
+
+  void update_fcurve_channel_group_pointers();
 };
 static_assert(sizeof(ChannelBag) == sizeof(::ActionChannelBag),
               "DNA struct and its C++ wrapper must have the same size");
@@ -914,6 +916,20 @@ std::optional<std::pair<Action *, Slot *>> get_action_slot_pair(ID &animated_id)
 const animrig::ChannelBag *channelbag_for_action_slot(const Action &action,
                                                       slot_handle_t slot_handle);
 animrig::ChannelBag *channelbag_for_action_slot(Action &action, slot_handle_t slot_handle);
+
+/**
+ * Return the channel groups for this specific slot handle.
+ *
+ * This is just a utility function, that's intended to become obsolete when multi-layer Actions
+ * are introduced. However, since Blender currently only supports a single layer with a single
+ * strip, of a single type, this function can be used.
+ *
+ * The use of this function is also an indicator for code that will have to be altered when
+ * multi-layered Actions are getting implemented.
+ */
+Span<bActionGroup *> channel_groups_for_action_slot(Action &action, slot_handle_t slot_handle);
+Span<const bActionGroup *> channel_groups_for_action_slot(const Action &action,
+                                                          slot_handle_t slot_handle);
 
 /**
  * Return the F-Curves for this specific slot handle.

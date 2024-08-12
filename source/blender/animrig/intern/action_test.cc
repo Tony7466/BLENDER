@@ -870,6 +870,7 @@ TEST_F(ChannelBagTest, channel_group_fcurve_creation)
    * created if it doesn't already exist. */
   channel_bag->fcurve_ensure(nullptr, {"fcu0", 0, std::nullopt, "group0"});
   EXPECT_EQ(1, channel_bag->fcurves().size());
+  EXPECT_EQ(nullptr, fcu0->grp);
   EXPECT_TRUE(channel_bag->channel_groups().is_empty());
 
   /* Creating a new fcurve with a channel group in the fcurve descriptor should
@@ -881,6 +882,8 @@ TEST_F(ChannelBagTest, channel_group_fcurve_creation)
   bActionGroup *group0 = channel_bag->channel_group(0);
   EXPECT_EQ(fcu1, channel_bag->fcurve(0));
   EXPECT_EQ(fcu0, channel_bag->fcurve(1));
+  EXPECT_EQ(group0, fcu1->grp);
+  EXPECT_EQ(nullptr, fcu0->grp);
   EXPECT_EQ(0, group0->fcurve_index);
   EXPECT_EQ(1, group0->fcurve_count);
 
@@ -896,6 +899,9 @@ TEST_F(ChannelBagTest, channel_group_fcurve_creation)
   EXPECT_EQ(fcu1, channel_bag->fcurve(0));
   EXPECT_EQ(fcu2, channel_bag->fcurve(1));
   EXPECT_EQ(fcu0, channel_bag->fcurve(2));
+  EXPECT_EQ(group0, fcu1->grp);
+  EXPECT_EQ(group1, fcu2->grp);
+  EXPECT_EQ(nullptr, fcu0->grp);
   EXPECT_EQ(0, group0->fcurve_index);
   EXPECT_EQ(1, group0->fcurve_count);
   EXPECT_EQ(1, group1->fcurve_index);
@@ -912,6 +918,10 @@ TEST_F(ChannelBagTest, channel_group_fcurve_creation)
   EXPECT_EQ(fcu3, channel_bag->fcurve(1));
   EXPECT_EQ(fcu2, channel_bag->fcurve(2));
   EXPECT_EQ(fcu0, channel_bag->fcurve(3));
+  EXPECT_EQ(group0, fcu1->grp);
+  EXPECT_EQ(group0, fcu3->grp);
+  EXPECT_EQ(group1, fcu2->grp);
+  EXPECT_EQ(nullptr, fcu0->grp);
   EXPECT_EQ(0, group0->fcurve_index);
   EXPECT_EQ(2, group0->fcurve_count);
   EXPECT_EQ(2, group1->fcurve_index);

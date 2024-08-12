@@ -1205,6 +1205,7 @@ FCurve &ChannelBag::fcurve_create(Main *bmain, FCurveDescriptor fcurve_descripto
   if (group) {
     group->fcurve_count += 1;
     this->recompute_channel_group_indices();
+    this->update_fcurve_channel_group_pointers();
   }
 
   if (bmain) {
@@ -1233,6 +1234,7 @@ bool ChannelBag::fcurve_remove(FCurve &fcurve_to_remove)
       this->channel_group_remove_raw(*group);
     }
     this->recompute_channel_group_indices();
+    this->update_fcurve_channel_group_pointers();
   }
 
   dna::array::remove_index(
@@ -1470,6 +1472,7 @@ bool ChannelBag::channel_group_remove_raw(bActionGroup &group)
   MEM_SAFE_FREE(this->group_array[group_index]);
   shrink_array_and_remove(&this->group_array, &this->group_array_num, group_index);
   this->recompute_channel_group_indices();
+  this->update_fcurve_channel_group_pointers();
 
   return true;
 }
@@ -1484,6 +1487,25 @@ void ChannelBag::recompute_channel_group_indices()
   }
 
   BLI_assert(index <= this->fcurve_array_num);
+}
+
+void ChannelBag::update_fcurve_channel_group_pointers()
+{
+  Span<bActionGroup *> groups = this->channel_groups();
+  for (bActionGroup *group : groups) {
+    for (FCurve *fcurve : this->fcurves().slice(group->fcurve_index, group->fcurve_count)) {
+      fcurve->grp = group;
+    }
+  }
+
+  int first_ungrouped_fcurve_index = 0;
+  if (!groups.is_empty()) {
+    first_ungrouped_fcurve_index = groups.last()->fcurve_index + groups.last()->fcurve_count;
+  }
+
+  for (FCurve *fcurve : this->fcurves().drop_front(first_ungrouped_fcurve_index)) {
+    fcurve->grp = nullptr;
+  }
 }
 
 /* Utility function implementations. */
@@ -1519,6 +1541,28 @@ animrig::ChannelBag *channelbag_for_action_slot(Action &action, const slot_handl
   const animrig::ChannelBag *const_bag = channelbag_for_action_slot(
       const_cast<const Action &>(action), slot_handle);
   return const_cast<animrig::ChannelBag *>(const_bag);
+}
+
+Span<bActionGroup *> channel_groups_for_action_slot(Action &action,
+                                                    const slot_handle_t slot_handle)
+{
+  assert_baklava_phase_1_invariants(action);
+  animrig::ChannelBag *bag = channelbag_for_action_slot(action, slot_handle);
+  if (!bag) {
+    return {};
+  }
+  return bag->channel_groups();
+}
+
+Span<const bActionGroup *> channel_groups_for_action_slot(const Action &action,
+                                                          const slot_handle_t slot_handle)
+{
+  assert_baklava_phase_1_invariants(action);
+  const animrig::ChannelBag *bag = channelbag_for_action_slot(action, slot_handle);
+  if (!bag) {
+    return {};
+  }
+  return bag->channel_groups();
 }
 
 Span<FCurve *> fcurves_for_action_slot(Action &action, const slot_handle_t slot_handle)
