@@ -31,6 +31,9 @@
 
 #include "BLI_bitmap.h"
 #include "BLI_blenlib.h"
+#include "BLI_endian_defines.h"
+#include "BLI_endian_switch.h"
+#include "BLI_fileops.hh"
 #include "BLI_ghash.h"
 #include "BLI_linklist.h"
 #include "BLI_map.hh"
@@ -1274,6 +1277,72 @@ static void compute_locked_hash_for_data_block_recursive(
   r_locked_hashes.add_new(&id, locked_hash);
 }
 
+static std::optional<blender::Vector<char>> read_file(const blender::StringRefNull path)
+{
+  blender::fstream stream{path.c_str(), std::ios_base::in | std::ios_base::binary};
+  stream.seekg(0, std::ios_base::end);
+  const int64_t size = stream.tellg();
+  stream.seekg(0, std::ios_base::beg);
+
+  blender::Vector<char> buffer(size);
+  stream.read(buffer.data(), size);
+  if (stream.bad()) {
+    return std::nullopt;
+  }
+
+  return buffer;
+}
+
+static std::optional<uint64_t> compute_file_hash(const blender::StringRefNull path)
+{
+  if (std::optional<blender::Vector<char>> buffer = read_file(path)) {
+    return XXH64(buffer->data(), buffer->size(), 0);
+  }
+  return std::nullopt;
+}
+
+/**
+ * Shallow hashes are only written in new files. This initializes the shallow hashes based on file
+ * hash of the source .blend file and ID names.
+ */
+static void compute_missing_shallow_hashes(BlendfileLinkAppendContext *lapp_context)
+{
+  blender::Map<std::string, std::optional<uint64_t>> hash_by_file;
+  XXH3_state_t *hash_state = XXH3_createState();
+  BLI_SCOPED_DEFER([&]() { XXH3_freeState(hash_state); });
+  for (BlendfileLinkAppendContextItem *item : lapp_context->items) {
+    ID *id = item->new_id;
+    if (id == nullptr) {
+      continue;
+    }
+    if (id->shallow_hash.is_valid()) {
+      continue;
+    }
+    if (!id->lib) {
+      continue;
+    }
+    const blender::StringRefNull name = id->name;
+    const blender::StringRefNull filepath = id->lib->runtime.filepath_abs;
+    const std::optional<uint64_t> file_hash_opt = hash_by_file.lookup_or_add_cb(
+        filepath, [&]() { return compute_file_hash(filepath); });
+    if (!file_hash_opt) {
+      continue;
+    }
+    uint64_t file_hash = *file_hash_opt;
+
+    if (ENDIAN_ORDER == B_ENDIAN) {
+      BLI_endian_switch_uint64(&file_hash);
+    }
+
+    XXH3_128bits_reset(hash_state);
+    XXH3_128bits_update(hash_state, &file_hash, sizeof(file_hash));
+    XXH3_128bits_update(hash_state, name.data(), name.size());
+    const XXH128_hash_t id_hash = XXH3_128bits_digest(hash_state);
+    static_assert(sizeof(id->shallow_hash) == sizeof(id_hash));
+    memcpy(&id->shallow_hash, &id_hash, sizeof(IDHash));
+  }
+}
+
 void BKE_blendfile_append(BlendfileLinkAppendContext *lapp_context, ReportList *reports)
 {
   if (lapp_context->num_items == 0) {
@@ -1305,6 +1374,11 @@ void BKE_blendfile_append(BlendfileLinkAppendContext *lapp_context, ReportList *
   /* Add missing items (the indirectly linked ones), and carefully define which action should be
    * applied to each of them. */
   blendfile_append_define_actions(lapp_context, reports);
+
+  /* Compute missing shallow hashes based on source file hash. */
+  if (lock_new_data_blocks) {
+    compute_missing_shallow_hashes(lapp_context);
+  }
 
   blender::Map<const ID *, std::optional<IDHash>> deep_hashes;
 
