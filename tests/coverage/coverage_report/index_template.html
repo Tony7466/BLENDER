@@ -5,6 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Blender Code Coverage</title>
 
+    <!-- Libraries for tooltips. -->
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/2.11.8/umd/popper.min.js"
+      integrity="sha512-TPh2Oxlg1zp+kz3nFA0C5vVC6leG/6mm1z9+mA81MI5eaUVqasPLO8Cuk4gMF4gUfP5etR73rgU/8PNMsSesoQ=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/tippy.js/6.3.7/tippy.min.css"
+      integrity="sha512-HbPh+j4V7pXprvQMt2dtmK/zCEsUeZWYXRln4sOwmoyHPQAPqy/k9lIquKUyKNpNbDGAY06UdiDHcEkBc72yCQ=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/tippy.js/6.3.7/tippy.umd.min.js"
+      integrity="sha512-2TtfktSlvvPzopzBA49C+MX6sdc7ykHGbBQUTH8Vk78YpkXVD5r6vrNU+nOmhhl1MyTWdVfxXdZfyFsvBvOllw=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+
     <style>
       * {
         padding: 0;
@@ -95,6 +116,19 @@
 
       .odd {
         background-color: rgba(0, 0, 0, 0.15);
+      }
+
+      .tippy-box {
+        background-color: #18110d;
+        border-radius: 3px;
+      }
+
+      .tippy-arrow {
+        color: #18110d;
+      }
+
+      .tippy-content {
+        padding: 0.3em;
       }
     </style>
   </head>
@@ -238,7 +272,7 @@
           const lines_percent_elem = document.createElement("span");
           stats_elem.appendChild(lines_percent_elem);
           lines_percent_elem.className = "lines-percent-row";
-          lines_percent_elem.title = "Line Coverage";
+          add_simple_tooltip(lines_percent_elem, "Line Coverage");
 
           if (row.num_lines == 0) {
             lines_percent_elem.style.color = "rgb(137 137 137)";
@@ -252,7 +286,7 @@
           const total_lines_elem = document.createElement("span");
           total_lines_elem.className = "lines-total-row";
           total_lines_elem.innerText = `${row.num_lines.toLocaleString()}`;
-          total_lines_elem.title = "Number of Lines";
+          add_simple_tooltip(total_lines_elem, "Number of executable lines");
           stats_elem.appendChild(total_lines_elem);
         }
 
@@ -325,6 +359,12 @@
         }
 
         update_odd_even_rows_recursive(root_row);
+      }
+
+      function add_simple_tooltip(element, message) {
+        const content = document.createElement("pre");
+        content.innerText = message;
+        tippy(element, { content: content, delay: 400 });
       }
 
       function ratio_to_percent(numerator, denominator) {
