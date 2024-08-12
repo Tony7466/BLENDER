@@ -174,13 +174,34 @@
       });
 
       function build_tree_for_directory(parent, row, depth) {
+        create_row_dom_elements(row, depth);
+        parent.appendChild(row.dom_elem);
+        const is_directory = row.source_file_path === undefined;
+        if (is_directory) {
+          parent.appendChild(row.dom_children_elem);
+          build_directory_children_recursive(row, depth);
+        }
+      }
+
+      function build_directory_children_recursive(row, depth) {
+        const all_children = Array.from(row.children);
+        const directory_children = all_children.filter((c) => c[1].source_file_path === undefined);
+        const file_children = all_children.filter((c) => c[1].source_file_path !== undefined);
+
+        row.sorted_children = [...directory_children, ...file_children];
+
+        for (const [name, child_row] of row.sorted_children) {
+          build_tree_for_directory(row.dom_children_elem, child_row, depth + 1);
+        }
+      }
+
+      function create_row_dom_elements(row, depth) {
         const name = row.name;
         const is_file = row.source_file_path !== undefined;
         const is_directory = !is_file;
 
         const row_elem = document.createElement("div");
         row_elem.classList.add("row");
-        parent.appendChild(row_elem);
 
         row.dom_elem = row_elem;
         row_elem.row_data = row;
@@ -189,6 +210,7 @@
         const label_elem = document.createElement("span");
         row_elem.appendChild(stats_elem);
         row_elem.appendChild(label_elem);
+        row.dom_label_elem = label_elem;
 
         label_elem.className = "row-label";
         label_elem.style.paddingLeft = `${depth}em`;
@@ -227,8 +249,7 @@
 
           const children_container = document.createElement("div");
           children_container.className = "children-container";
-          parent.appendChild(children_container);
-          row.children_container = children_container;
+          row.dom_children_elem = children_container;
 
           const is_open = is_open_at_start(row.path);
           if (is_open) {
@@ -239,26 +260,14 @@
             children_container.style.display = "none";
           }
 
-          const all_children = Array.from(row.children);
-          const directory_children = all_children.filter(
-            (c) => c[1].source_file_path === undefined
-          );
-          const file_children = all_children.filter((c) => c[1].source_file_path !== undefined);
-
-          row.sorted_children = [...directory_children, ...file_children];
-
-          for (const [name, child_row] of row.sorted_children) {
-            build_tree_for_directory(children_container, child_row, depth + 1);
-          }
-
           label_elem.addEventListener("click", () => {
-            if (children_container.style.display === "none") {
-              children_container.style.display = "block";
+            if (row.dom_children_elem.style.display === "none") {
+              row.dom_children_elem.style.display = "block";
               current_open_paths.add(row.path);
               label_elem.classList.remove("closed-dir-label");
               label_elem.classList.add("open-dir-label");
             } else {
-              children_container.style.display = "none";
+              row.dom_children_elem.style.display = "none";
               current_open_paths.delete(row.path);
               label_elem.classList.remove("open-dir-label");
               label_elem.classList.add("closed-dir-label");
@@ -284,7 +293,7 @@
           index++;
 
           if (row.sorted_children) {
-            if (row.children_container.style.display !== "none") {
+            if (row.dom_children_elem.style.display !== "none") {
               for (const [name, child_row] of row.sorted_children) {
                 update_odd_even_rows_recursive(child_row);
               }
