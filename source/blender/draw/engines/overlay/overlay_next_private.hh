@@ -200,6 +200,7 @@ class ShaderModule {
   ShaderPtr facing;
   ShaderPtr lattice_points;
   ShaderPtr lattice_wire;
+  ShaderPtr wireframe_mesh;
 
   ShaderModule(const SelectionType selection_type, const bool clipping_enabled);
 

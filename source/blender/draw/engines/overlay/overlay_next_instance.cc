@@ -103,6 +103,7 @@ void Instance::begin_sync()
     layer.prepass.begin_sync(resources, state);
     layer.relations.begin_sync();
     layer.speakers.begin_sync();
+    layer.wireframe.begin_sync(resources, state);
   };
   begin_sync_layer(regular);
   begin_sync_layer(infront);
@@ -194,6 +195,7 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
     layer.force_fields.object_sync(ob_ref, resources, state);
     layer.bounds.object_sync(ob_ref, resources, state);
     layer.relations.object_sync(ob_ref, resources, state);
+    layer.wireframe.object_sync(manager, ob_ref, resources);
 
     if (object_is_selected(ob_ref)) {
       if (in_edit_mode || in_paint_mode || in_sculpt_mode) {
@@ -318,13 +320,14 @@ void Instance::draw(Manager &manager)
   outline.draw(resources, manager, view);
 
   auto overlay_fb_draw = [&](OverlayLayer &layer, Framebuffer &framebuffer) {
-    regular.facing.draw(framebuffer, manager, view);
+    layer.facing.draw(framebuffer, manager, view);
   };
 
   overlay_fb_draw(regular, resources.overlay_fb);
 
   auto draw_layer = [&](OverlayLayer &layer, Framebuffer &framebuffer) {
     layer.bounds.draw(framebuffer, manager, view);
+    layer.wireframe.draw(framebuffer, manager, view);
     layer.cameras.draw(framebuffer, manager, view);
     layer.empties.draw(framebuffer, manager, view);
     layer.force_fields.draw(framebuffer, manager, view);
