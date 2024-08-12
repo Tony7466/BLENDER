@@ -9945,6 +9945,7 @@ static void def_geo_string_to_curves(StructRNA *srna)
 
 static void def_geo_sample_sound(StructRNA *srna)
 {
+  // TODO: make tooltips more concise
   static const EnumPropertyItem rna_node_geometry_sample_sound_window[] = {
       {GEO_NODE_SAMPLE_SOUND_WINDOW_RECTANGULAR, "RECTANGULAR", 0, "Rectangular", "Rectangular"},
       {GEO_NODE_SAMPLE_SOUND_WINDOW_HANN, "HANN", 0, "Hann", "Hann"},
@@ -9954,6 +9955,7 @@ static void def_geo_sample_sound(StructRNA *srna)
   };
 
   static const EnumPropertyItem rna_node_geometry_sample_sound_fft_size[] = {
+      {GEO_NODE_SAMPLE_SOUND_FFT_SIZE_ADAPTIVE, "ADAPTIVE", 0, "Adaptive", "Adaptive"},
       {GEO_NODE_SAMPLE_SOUND_FFT_SIZE_128, "128", 0, "128", "128"},
       {GEO_NODE_SAMPLE_SOUND_FFT_SIZE_256, "256", 0, "256", "256"},
       {GEO_NODE_SAMPLE_SOUND_FFT_SIZE_512, "512", 0, "512", "512"},
@@ -9968,15 +9970,7 @@ static void def_geo_sample_sound(StructRNA *srna)
 
   RNA_def_struct_sdna_from(srna, "NodeGeometrySampleSound", "storage");
 
-  // TODO: make tooltips more concise
   PropertyRNA *prop;
-  prop = RNA_def_property(srna, "downmix", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_ui_text(prop, "Downmix to Mono", "Downmix to Mono");
-  RNA_def_property_boolean_sdna(prop, nullptr, "downmix", 1);
-  RNA_def_property_boolean_default(prop, true);
-  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
-
   prop = RNA_def_property(srna, "window", PROP_ENUM, PROP_NONE);
   RNA_def_property_ui_text(prop, "Window function", "Window function");
   RNA_def_property_enum_sdna(prop, nullptr, "window");
@@ -9989,7 +9983,7 @@ static void def_geo_sample_sound(StructRNA *srna)
   RNA_def_property_ui_text(prop, "FFT size", "FFT size");
   RNA_def_property_enum_sdna(prop, nullptr, "fft_size");
   RNA_def_property_enum_items(prop, rna_node_geometry_sample_sound_fft_size);
-  RNA_def_property_enum_default(prop, GEO_NODE_SAMPLE_SOUND_FFT_SIZE_2048);
+  RNA_def_property_enum_default(prop, GEO_NODE_SAMPLE_SOUND_FFT_SIZE_ADAPTIVE);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }

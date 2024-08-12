@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <shared_mutex>
 #include <mutex>
 
 #include "BLI_array.hh"
@@ -20,11 +21,19 @@ namespace blender::bke::sound::fft_cache {
 
 struct FFTParameter {
   int aligned_sample_index;
+  std::optional<int> channel;
   int fft_size;
   int window;
-  std::optional<int> channel;
 
   BLI_STRUCT_EQUALITY_OPERATORS_4(FFTParameter, aligned_sample_index, fft_size, window, channel);
+
+  friend bool operator<(const FFTParameter &lhs, const FFTParameter &rhs)
+  {
+    int lhs_channel = lhs.channel.value_or(-1);
+    int rhs_channel = rhs.channel.value_or(-1);
+    return std::tie(lhs.aligned_sample_index, lhs_channel, lhs.fft_size, lhs.window) <
+           std::tie(rhs.aligned_sample_index, rhs_channel, rhs.fft_size, rhs.window);
+  }
 
   uint64_t hash() const;
 };

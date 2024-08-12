@@ -12,10 +12,10 @@
 using blender::bke::sound::fft_cache::FFTCache;
 using blender::bke::sound::fft_cache::FFTCacheRuntime;
 
-void BKE_sound_fft_cache_new(bSound *sound, int total_samples)
+void BKE_sound_fft_cache_new(bSound *sound, int length)
 {
   sound->fft_cache = MEM_new<FFTCacheRuntime>(__func__);
-  sound->fft_cache->cache = std::make_shared<FFTCache>(total_samples);
+  sound->fft_cache->cache = std::make_shared<FFTCache>(length * sound->samplerate);
 }
 
 void BKE_sound_fft_cache_delete(bSound *sound)
@@ -36,8 +36,11 @@ FFTCache::FFTCache(int total_samples) : total_samples_(total_samples) {}
 FFTResult *FFTCache::try_get_or_compute(const FFTParameter &parameter,
                                         const FunctionRef<std::unique_ptr<FFTResult>()> fn)
 {
+  // TODO: do not lock every time we read
   std::lock_guard lock{mutex_};
-  return map_.lookup_or_add_cb(parameter, fn).get();
+  FFTResult *result = map_.lookup_or_add_cb(parameter, fn).get();
+
+  return result;
 }
 
 }  // namespace blender::bke::sound::fft_cache
