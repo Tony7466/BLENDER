@@ -1089,8 +1089,9 @@ static bool apply_grease_pencil_for_modifier(Depsgraph *depsgraph,
   for (Material *eval_material :
        Span{grease_pencil_result.material_array, grease_pencil_result.material_array_num})
   {
-    BLI_assert(eval_material->id.orig_id != nullptr);
-    original_materials.add_new(reinterpret_cast<Material *>(eval_material->id.orig_id));
+    if (eval_material->id.orig_id != nullptr) {
+      original_materials.add_new(reinterpret_cast<Material *>(eval_material->id.orig_id));
+    }
   }
 
   /* Build material indices mapping. */
@@ -1098,8 +1099,9 @@ static bool apply_grease_pencil_for_modifier(Depsgraph *depsgraph,
   for (const int mat_i : IndexRange(grease_pencil_orig.material_array_num)) {
     Material *material = grease_pencil_orig.material_array[mat_i];
     const int map_index = original_materials.index_of_try(material);
-    BLI_assert(map_index != -1);
-    material_indices_map[mat_i] = map_index;
+    if (map_index != -1) {
+      material_indices_map[mat_i] = map_index;
+    }
   }
 
   /* Remap material indices for all other drawings. */
