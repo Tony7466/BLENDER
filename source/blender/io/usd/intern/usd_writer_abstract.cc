@@ -261,6 +261,9 @@ bool USDAbstractWriter::mark_as_instance(const HierarchyContext &context, const 
     return false;
   }
 
+  BLI_assert(!context.original_export_path.empty());
+  BLI_assert(context.original_export_path.front() == '/');
+
   std::string ref_path_str(usd_export_context_.export_params.root_prim_path);
   ref_path_str += context.original_export_path;
 
