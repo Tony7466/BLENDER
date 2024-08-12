@@ -89,6 +89,8 @@ void Instance::begin_sync()
   background.begin_sync(resources, state);
   outline.begin_sync(resources, state);
 
+  images.begin_sync(resources, state);
+
   auto begin_sync_layer = [&](OverlayLayer &layer) {
     layer.bounds.begin_sync();
     layer.cameras.begin_sync();
@@ -161,10 +163,10 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
   if (!state.hide_overlays) {
     switch (ob_ref.object->type) {
       case OB_EMPTY:
-        layer.empties.object_sync(ob_ref, resources, state);
+        layer.empties.object_sync(ob_ref, shapes, manager, resources, state);
         break;
       case OB_CAMERA:
-        layer.cameras.object_sync(ob_ref, resources, state);
+        layer.cameras.object_sync(ob_ref, shapes, manager, resources, state);
         break;
       case OB_ARMATURE:
         break;
@@ -311,6 +313,9 @@ void Instance::draw(Manager &manager)
   float4 clear_color(0.0f);
   GPU_framebuffer_bind(resources.overlay_line_fb);
   GPU_framebuffer_clear_color(resources.overlay_line_fb, clear_color);
+
+  images.draw_image_background(resources.overlay_fb, manager, view);
+  images.draw_image(resources.overlay_fb, manager, view);
 
   regular.prepass.draw(resources.overlay_line_fb, manager, view);
   infront.prepass.draw(resources.overlay_line_in_front_fb, manager, view);

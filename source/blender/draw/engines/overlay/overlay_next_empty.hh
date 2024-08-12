@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "overlay_next_image.hh"
 #include "overlay_next_private.hh"
 
 namespace blender::draw::overlay {
@@ -28,11 +29,14 @@ class Empties {
     EmptyInstanceBuf sphere_buf = {selection_type_, "sphere_buf"};
     EmptyInstanceBuf cone_buf = {selection_type_, "cone_buf"};
     EmptyInstanceBuf arrows_buf = {selection_type_, "arrows_buf"};
-    EmptyInstanceBuf image_buf = {selection_type_, "image_buf"};
+    Images::ImageInstanceBuf image_buf = {selection_type_, "image_buf"};
   } call_buffers_;
 
+  Images &images;
+
  public:
-  Empties(const SelectionType selection_type) : call_buffers_{selection_type} {};
+  Empties(const SelectionType selection_type, Images &images)
+      : call_buffers_{selection_type}, images(images){};
 
   void begin_sync()
   {
@@ -51,10 +55,18 @@ class Empties {
     call_buffers.image_buf.clear();
   }
 
-  void object_sync(const ObjectRef &ob_ref, Resources &res, const State &state)
+  void object_sync(const ObjectRef &ob_ref,
+                   ShapeCache &shapes,
+                   Manager &manager,
+                   Resources &res,
+                   const State &state)
   {
     const float4 color = res.object_wire_color(ob_ref, state);
     const select::ID select_id = res.select_id(ob_ref);
+    if (ob_ref.object->empty_drawtype == OB_EMPTY_IMAGE) {
+      images.object_sync(ob_ref, select_id, shapes, manager, res, state, call_buffers_.image_buf);
+      return;
+    }
     object_sync(select_id,
                 ob_ref.object->object_to_world(),
                 ob_ref.object->empty_drawsize,
@@ -93,10 +105,6 @@ class Empties {
         break;
       case OB_ARROWS:
         call_buffers.arrows_buf.append(data, select_id);
-        break;
-      case OB_EMPTY_IMAGE:
-        /* This only show the frame. See OVERLAY_image_empty_cache_populate() for the image. */
-        call_buffers.image_buf.append(data, select_id);
         break;
     }
   }

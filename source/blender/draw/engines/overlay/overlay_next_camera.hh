@@ -86,6 +86,8 @@ class Cameras {
     Empties::CallBuffers empties{selection_type_};
   } call_buffers_;
 
+  Images &images;
+
   static void view3d_reconstruction(const select::ID select_id,
                                     const Scene *scene,
                                     const View3D *v3d,
@@ -123,7 +125,9 @@ class Cameras {
 
     const float4x4 object_to_world{ob->object_to_world().ptr()};
 
-    LISTBASE_FOREACH (MovieTrackingObject *, tracking_object, &tracking->objects) {
+    for (MovieTrackingObject *tracking_object :
+         ListBaseWrapper<MovieTrackingObject>(&tracking->objects))
+    {
       float4x4 tracking_object_mat;
 
       if (tracking_object->flag & TRACKING_OBJECT_CAMERA) {
@@ -140,7 +144,9 @@ class Cameras {
         tracking_object_mat = object_to_world * math::invert(object_mat);
       }
 
-      LISTBASE_FOREACH (MovieTrackingTrack *, track, &tracking_object->tracks) {
+      for (MovieTrackingTrack *track :
+           ListBaseWrapper<MovieTrackingTrack>(&tracking_object->tracks))
+      {
         if ((track->flag & TRACK_HAS_BUNDLE) == 0) {
           continue;
         }
@@ -341,7 +347,8 @@ class Cameras {
   }
 
  public:
-  Cameras(const SelectionType selection_type) : call_buffers_{selection_type} {};
+  Cameras(const SelectionType selection_type, Images &images)
+      : call_buffers_{selection_type}, images(images){};
 
   void begin_sync()
   {
@@ -357,7 +364,8 @@ class Cameras {
     Empties::begin_sync(call_buffers_.empties);
   }
 
-  void object_sync(const ObjectRef &ob_ref, Resources &res, State &state)
+  void object_sync(
+      const ObjectRef &ob_ref, ShapeCache &shapes, Manager &manager, Resources &res, State &state)
   {
     Object *ob = ob_ref.object;
     const select::ID select_id = res.select_id(ob_ref);
@@ -499,12 +507,12 @@ class Cameras {
                             call_buffers_);
     }
 
-    // TODO: /* Background images. */
-    // if (look_through && (cam->flag & CAM_SHOW_BG_IMAGE) &&
-    // !BLI_listbase_is_empty(&cam->bg_images))
-    // {
-    //   OVERLAY_image_camera_cache_populate(vedata, ob);
-    // }
+    if (is_camera_view && (cam->flag & CAM_SHOW_BG_IMAGE) &&
+        !BLI_listbase_is_empty(&cam->bg_images))
+    {
+      images.object_sync_camera(
+          ob_ref, select_id, shapes, manager, state, call_buffers_.selection_type_);
+    }
   }
 
   void end_sync(Resources &res, ShapeCache &shapes, const State &state)
