@@ -17,7 +17,7 @@ class Wireframe {
   const SelectionType selection_type_;
 
   PassMain wireframe_ps_ = {"Wireframe"};
-  struct {
+  struct ColoringPass {
     PassMain::Sub *curves_ps_ = nullptr;
     PassMain::Sub *pointcloud_ps_ = nullptr;
     PassMain::Sub *gpencil_ps_ = nullptr;
@@ -88,9 +88,14 @@ class Wireframe {
       return;
     }
 
+    const bool all_wires = (ob_ref.object->dtx & OB_DRAW_ALL_EDGES) != 0;
+    const bool use_coloring =
+        true;  // !is_edit_mode && !instance_parent_in_edit_mode && !is_sculpt_mode;
+
     /* TODO(fclem): Non-mandatory handle creation and reuse with other overlays. */
     ResourceHandle res_handle = manager.resource_handle(ob_ref);
 
+    ColoringPass &coloring = use_coloring ? non_colored : colored;
     gpu::Batch *geom;
     switch (ob_ref.object->type) {
       case OB_CURVES:
@@ -99,7 +104,18 @@ class Wireframe {
         break;
       case OB_MESH:
         geom = DRW_cache_mesh_face_wireframe_get(ob_ref.object);
-        (non_colored).mesh_ps_->draw(geom, res_handle, res.select_id(ob_ref).get());
+        coloring.mesh_ps_->draw(geom, res_handle, res.select_id(ob_ref).get());
+#if 0 /* TODO */
+        if (!is_edit_mode || has_edit_mesh_cage) {
+          /* Draw loose geometry. */
+          if (is_mesh_verts_only) {
+            /* Draw loose verts. */
+          }
+          else {
+            /* Draw loose edges. */
+          }
+        }
+#endif
         break;
       case OB_POINTCLOUD:
         break;
