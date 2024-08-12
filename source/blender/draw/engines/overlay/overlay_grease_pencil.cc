@@ -23,9 +23,8 @@ void OVERLAY_edit_grease_pencil_cache_init(OVERLAY_Data *vedata)
   OVERLAY_PassList *psl = vedata->psl;
   OVERLAY_PrivateData *pd = vedata->stl->pd;
   const DRWContextState *draw_ctx = DRW_context_state_get();
-  Scene *scene = draw_ctx->scene;
-  ToolSettings *ts = scene->toolsettings;
-  const bke::AttrDomain selection_domain = ED_grease_pencil_selection_domain_get(ts);
+  const bke::AttrDomain selection_domain = ED_grease_pencil_selection_domain_get(
+      draw_ctx->scene->toolsettings);
   const View3D *v3d = draw_ctx->v3d;
   const bool use_weight = (draw_ctx->object_mode & OB_MODE_WEIGHT_GPENCIL_LEGACY) != 0;
 
@@ -60,6 +59,21 @@ void OVERLAY_edit_grease_pencil_cache_init(OVERLAY_Data *vedata)
   else {
     pd->edit_grease_pencil_points_grp = nullptr;
   }
+}
+
+void OVERLAY_grease_pencil_cache_init(OVERLAY_Data *vedata)
+{
+  using namespace blender;
+  OVERLAY_PassList *psl = vedata->psl;
+  OVERLAY_PrivateData *pd = vedata->stl->pd;
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  Scene *scene = draw_ctx->scene;
+  ToolSettings *ts = scene->toolsettings;
+  const bke::AttrDomain selection_domain = ED_grease_pencil_selection_domain_get(ts);
+  const View3D *v3d = draw_ctx->v3d;
+
+  GPUShader *sh;
+  DRWShadingGroup *grp;
 
   /* Default: Display nothing. */
   psl->grease_pencil_canvas_ps = nullptr;

@@ -229,6 +229,7 @@ static void OVERLAY_cache_init(void *vedata)
   OVERLAY_mode_transfer_cache_init(data);
   OVERLAY_extra_cache_init(data);
   OVERLAY_facing_cache_init(data);
+  OVERLAY_grease_pencil_cache_init(data);
   OVERLAY_gpencil_legacy_cache_init(data);
   OVERLAY_grid_cache_init(data);
   OVERLAY_image_cache_init(data);

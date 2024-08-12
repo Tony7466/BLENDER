@@ -563,6 +563,7 @@ void OVERLAY_gpencil_legacy_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_gpencil_legacy_draw(OVERLAY_Data *vedata);
 void OVERLAY_edit_gpencil_legacy_draw(OVERLAY_Data *vedata);
 
+void OVERLAY_grease_pencil_cache_init(OVERLAY_Data *vedata);
 void OVERLAY_edit_grease_pencil_cache_init(OVERLAY_Data *vedata);
 void OVERLAY_edit_grease_pencil_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_weight_grease_pencil_cache_populate(OVERLAY_Data *vedata, Object *ob);
