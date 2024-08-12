@@ -1046,7 +1046,7 @@ void blo_do_versions_userdef(UserDef *userdef)
       style->tooltip.shadowcolor = 0.0f;
     }
   }
-  if (!USER_VERSION_ATLEAST(403, 14)) {
+  if (!USER_VERSION_ATLEAST(403, 18)) {
     userdef->sequencer_editor_flag |= USER_SEQ_ED_CONNECT_STRIPS_BY_DEFAULT;
   }
 
