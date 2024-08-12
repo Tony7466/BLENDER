@@ -26,13 +26,13 @@ class ShareableAnim {
   void release_from_strip(Sequence *seq);
   void release_from_all_strips();
   void acquire_anims(const Scene *scene, Sequence *seq);
-  void unlock();
 };
 
 class AnimManager {
  public:
   blender::Map<std::string, std::unique_ptr<ShareableAnim>> anims_map;
   std::mutex mutex;
+  std::mutex freeing_mutex;
   std::thread prefetch_thread;
 
   /**
@@ -63,9 +63,7 @@ class AnimManager {
   ShareableAnim &cache_entry_get(const Scene *scene, const Sequence *seq);
   void free_unused_anims(blender::Vector<Sequence *> &strips);
   void free_unused_and_prefetch_anims(const Scene *scene);
-  void parallel_load_anims(const Scene *scene,
-                           blender::Vector<Sequence *> &strips,
-                           bool keep_locked);
+  void parallel_load_anims(const Scene *scene, blender::Vector<Sequence *> &strips);
 };
 
 AnimManager *seq_anim_manager_ensure(Editing *ed);

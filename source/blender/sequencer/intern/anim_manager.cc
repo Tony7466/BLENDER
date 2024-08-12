@@ -198,11 +198,6 @@ void ShareableAnim::acquire_anims(const Scene *scene, Sequence *seq)
   this->users.add(seq);
 }
 
-void ShareableAnim::unlock()
-{
-  this->mutex.unlock();
-}
-
 /* TODO: It would be simpler, and perhaps better for user to load n strips, instead of
  * relying on distance from CFRA. */
 static blender::Vector<Sequence *> strips_to_prefetch_get(const Scene *scene)
@@ -234,7 +229,7 @@ static blender::Vector<Sequence *> strips_to_prefetch_get(const Scene *scene)
 
 void AnimManager::free_unused_anims(blender::Vector<Sequence *> &strips)
 {
-  this->mutex.lock();
+  this->freeing_mutex.lock();
   for (std::unique_ptr<ShareableAnim> &sh_anim : this->anims_map.values()) {
     bool strips_use_anim = false;
     for (Sequence *user : sh_anim->users) {
@@ -248,7 +243,7 @@ void AnimManager::free_unused_anims(blender::Vector<Sequence *> &strips)
       sh_anim->release_from_all_strips();
     }
   }
-  this->mutex.unlock();
+  this->freeing_mutex.unlock();
 }
 
 /* The main purpose of this function is to create set of strips, which ensures, that all
@@ -295,26 +290,17 @@ static blender::Vector<Sequence *> remove_duplicates_for_parallel_load(
   return unique_strips;
 }
 
-void AnimManager::parallel_load_anims(const Scene *scene,
-                                      blender::Vector<Sequence *> &strips,
-                                      bool keep_locked)
+void AnimManager::parallel_load_anims(const Scene *scene, blender::Vector<Sequence *> &strips)
 {
   using namespace blender;
-
-  strips.remove_if([](Sequence *seq) { return seq->type != SEQ_TYPE_MOVIE; });
-  strips = remove_duplicates_for_parallel_load(scene, strips);
 
   threading::parallel_for(strips.index_range(), 1, [&](const IndexRange range) {
     for (const int i : range) {
       Sequence *seq = strips[i];
       ShareableAnim &sh_anim = this->cache_entry_get(scene, seq);
       sh_anim.mutex.lock();
-
       sh_anim.acquire_anims(scene, seq);
-
-      if (!keep_locked) {
-        sh_anim.unlock();
-      }
+      sh_anim.mutex.unlock();
     }
   });
 }
@@ -322,9 +308,11 @@ void AnimManager::parallel_load_anims(const Scene *scene,
 void AnimManager::free_unused_and_prefetch_anims(const Scene *scene)
 {
   blender::Vector<Sequence *> strips = strips_to_prefetch_get(scene);
+  strips.remove_if([](Sequence *seq) { return seq->type != SEQ_TYPE_MOVIE; });
+  strips = remove_duplicates_for_parallel_load(scene, strips);
 
   /* Prefetch first, to avoid freeing anim and loading it again. */
-  this->parallel_load_anims(scene, strips, false);
+  this->parallel_load_anims(scene, strips);
   this->free_unused_anims(strips);
 }
 
@@ -354,7 +342,16 @@ ShareableAnim &AnimManager::cache_entry_get(const Scene *scene, const Sequence *
 
 void AnimManager::strip_anims_acquire(const Scene *scene, blender::Vector<Sequence *> strips)
 {
-  this->parallel_load_anims(scene, strips, true);
+  strips.remove_if([](Sequence *seq) { return seq->type != SEQ_TYPE_MOVIE; });
+  strips = remove_duplicates_for_parallel_load(scene, strips);
+
+  this->freeing_mutex.lock();
+  this->parallel_load_anims(scene, strips);
+  for (Sequence *seq : strips) {
+    ShareableAnim &sh_anim = this->cache_entry_get(scene, seq);
+    sh_anim.mutex.lock();
+  }
+  this->freeing_mutex.unlock();
 }
 
 void AnimManager::strip_anims_acquire(const Scene *scene, Sequence *seq)
@@ -371,7 +368,7 @@ void AnimManager::strip_anims_release(const Scene *scene, blender::Vector<Sequen
   for (Sequence *seq : strips) {
     if (seq->type == SEQ_TYPE_MOVIE) {
       ShareableAnim &sh_anim = this->cache_entry_get(scene, seq);
-      sh_anim.unlock();
+      sh_anim.mutex.unlock();
     }
   }
 }
@@ -379,7 +376,7 @@ void AnimManager::strip_anims_release(const Scene *scene, blender::Vector<Sequen
 void AnimManager::strip_anims_release(const Scene *scene, Sequence *seq)
 {
   ShareableAnim &sh_anim = this->cache_entry_get(scene, seq);
-  sh_anim.unlock();
+  sh_anim.mutex.unlock();
 }
 
 blender::Vector<ImBufAnim *> AnimManager::strip_anims_get(const Scene *scene, const Sequence *seq)
