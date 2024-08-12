@@ -314,7 +314,7 @@ void Instance::draw(Manager &manager)
   GPU_framebuffer_bind(resources.overlay_line_fb);
   GPU_framebuffer_clear_color(resources.overlay_line_fb, clear_color);
 
-  images.draw_image_background(resources.overlay_fb, manager, view);
+  images.draw_image_background(resources.overlay_color_only_fb, manager, view);
   images.draw_image(resources.overlay_fb, manager, view);
 
   regular.prepass.draw(resources.overlay_line_fb, manager, view);
