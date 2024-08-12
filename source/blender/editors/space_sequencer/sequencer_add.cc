@@ -77,7 +77,6 @@ struct SequencerAddData {
 #define SEQPROP_FIT_METHOD (1 << 4)
 #define SEQPROP_VIEW_TRANSFORM (1 << 5)
 #define SEQPROP_PLAYBACK_RATE (1 << 6)
-#define SEQPROP_CONNECT_STRIPS (1 << 7)
 
 static const EnumPropertyItem scale_fit_methods[] = {
     {SEQ_SCALE_TO_FIT, "FIT", 0, "Scale to Fit", "Scale image to fit within the canvas"},
@@ -158,11 +157,6 @@ static void sequencer_generic_props__internal(wmOperatorType *ot, int flag)
                                true,
                                "Adjust Playback Rate",
                                "Play at normal speed regardless of scene FPS");
-  }
-
-  if (flag & SEQPROP_CONNECT_STRIPS) {
-    ot->prop = RNA_def_boolean(
-        ot->srna, "connect_strips", true, "Connect Strips", "Connect all loaded strips");
   }
 }
 
@@ -895,7 +889,7 @@ static void sequencer_add_movie_multiple_strips(bContext *C,
         seq_load_apply_generic_options(C, op, seq_movie);
       }
 
-      if (RNA_boolean_get(op->ptr, "connect_strips")) {
+      if ((U.sequencer_editor_flag & USER_SEQ_ED_CONNECT_STRIPS_BY_DEFAULT)) {
         SEQ_connect(seq_movie, seq_sound);
       }
 
@@ -966,7 +960,7 @@ static bool sequencer_add_movie_single_strip(bContext *C,
     seq_load_apply_generic_options(C, op, seq_movie);
   }
 
-  if (RNA_boolean_get(op->ptr, "connect_strips")) {
+  if ((U.sequencer_editor_flag & USER_SEQ_ED_CONNECT_STRIPS_BY_DEFAULT)) {
     SEQ_connect(seq_movie, seq_sound);
   }
 
@@ -1095,8 +1089,7 @@ void SEQUENCER_OT_movie_strip_add(wmOperatorType *ot)
                                  FILE_SORT_DEFAULT);
   sequencer_generic_props__internal(ot,
                                     SEQPROP_STARTFRAME | SEQPROP_FIT_METHOD |
-                                        SEQPROP_VIEW_TRANSFORM | SEQPROP_PLAYBACK_RATE |
-                                        SEQPROP_CONNECT_STRIPS);
+                                        SEQPROP_VIEW_TRANSFORM | SEQPROP_PLAYBACK_RATE);
   RNA_def_boolean(ot->srna, "sound", true, "Sound", "Load sound with the movie");
   RNA_def_boolean(ot->srna,
                   "use_framerate",

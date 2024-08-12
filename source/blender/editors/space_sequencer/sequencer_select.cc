@@ -871,16 +871,12 @@ static bool element_already_selected(const StripSelection &selection)
   return seq1_already_selected && seq2_already_selected && both_handles_selected;
 }
 
-/* This function returns true if the strip is connected, but only some of its connections are
- * selected, indicating the user wishes to operate only on those strips for now.
- * Also returns true if the the strip is unconnected or does not exist.
+/* This function returns true if the strip is connected, but only some of its connections
+ * (including itself) happen to be selected, indicating the user wishes to operate
+ * only on those strips for now.
  */
-static bool disable_connected_strip_selection(Sequence *seq)
+static bool is_individually_selected(Sequence *seq)
 {
-  if (!SEQ_is_strip_connected(seq)) {
-    return true;
-  }
-
   blender::VectorSet<Sequence *> connections = SEQ_get_connected_strips(seq);
   connections.add(seq);
 
@@ -888,8 +884,8 @@ static bool disable_connected_strip_selection(Sequence *seq)
   selected.add_multiple(connections.as_span());
   selected.remove_if([&](Sequence *seq) { return !(seq->flag & SELECT); });
 
-  /* Either none or all of the strips are connected.
-   * Connected strip selection is not disabled. */
+  /* Either none or all of the connected strips are selected.
+   * User has not individually selected strips. */
   if (selected.size() == 0 || selected.size() == connections.size()) {
     return false;
   }
@@ -898,11 +894,25 @@ static bool disable_connected_strip_selection(Sequence *seq)
 
 static bool disable_connected_strip_selection(const StripSelection &selection)
 {
-  /* The user has already individually selected the strips
-   * and so there should be no selection propagation. */
-  bool disable = disable_connected_strip_selection(selection.seq1);
+  if (!selection.seq1 ||
+      (!SEQ_is_strip_connected(selection.seq1) && !SEQ_is_strip_connected(selection.seq2)))
+  {
+    return true;
+  }
+
+  /* Always propagate selection if either strip is unselected. */
+  if (!(selection.seq1->flag & SELECT)) {
+    return false;
+  }
   if (selection.seq2) {
-    disable &= disable_connected_strip_selection(selection.seq2);
+    if (!(selection.seq2->flag & SELECT)) {
+      return false;
+    }
+  }
+
+  bool disable = is_individually_selected(selection.seq1);
+  if (selection.seq2) {
+    disable &= is_individually_selected(selection.seq2);
   }
   return disable;
 }
@@ -1295,6 +1305,7 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
     sequencer_select_set_active(scene, selection.seq1);
     return OPERATOR_FINISHED;
   }
+  /* This check must be done before any further strip selection changes. */
   bool disable_connected_sel = disable_connected_strip_selection(selection);
 
   const bool wait_to_deselect_others = RNA_boolean_get(op->ptr, "wait_to_deselect_others");
