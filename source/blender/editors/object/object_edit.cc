@@ -1821,7 +1821,7 @@ static int shade_auto_smooth_exec(bContext *C, wmOperator *op)
         id_us_plus(&node_group->id);
         MOD_nodes_update_interface(object, smooth_by_angle_nmd);
         smooth_by_angle_nmd->flag |= NODES_MODIFIER_HIDE_DATABLOCK_SELECTOR;
-        STRNCPY(smooth_by_angle_nmd->modifier.name, DATA_(node_group->id.name + 2));
+        STRNCPY(smooth_by_angle_nmd->modifier.name, DATA_(BKE_id_ui_name_get(node_group->id)));
         BKE_modifier_unique_name(&object->modifiers, &smooth_by_angle_nmd->modifier);
       }
 
