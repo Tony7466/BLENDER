@@ -386,7 +386,7 @@ ccl_device bool curve_intersect_recursive(const float3 ray_P,
       float2 tp0 = make_float2(tp.x, min(tp.y, tc_inner.x));
       float2 tp1 = make_float2(max(tp.x, tc_inner.y), tp.y);
       /* The X component should be smaller than the Y component for a valid intersection,
-       * but due to precisioin issues, the x component can sometimes be larger,
+       * but due to precision issues, the X component can sometimes be slightly larger,
        * leading to missing intersections. */
       bool valid0 = valid && ((tp0.x - tp0.y) < eps);
       bool valid1 = valid && ((tp1.x - tp1.y) < eps);
