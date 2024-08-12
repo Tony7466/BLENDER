@@ -52,6 +52,7 @@ class Outline {
     }
 
     const float outline_width = UI_GetThemeValuef(TH_OUTLINE_WIDTH);
+    const bool do_smooth_lines = (U.gpu_flag & USER_GPU_FLAG_OVERLAY_SMOOTH_WIRE) != 0;
     const bool do_expand = (U.pixelsize > 1.0) || (outline_width > 2.0f);
     const bool is_transform = (G.moving & G_TRANSFORM_OBJ) != 0;
 
@@ -107,7 +108,7 @@ class Outline {
       /* Don't occlude the outline if in xray mode as it causes too much flickering. */
       pass.push_constant("alphaOcclu", state.xray_enabled ? 1.0f : 0.35f);
       pass.push_constant("doThickOutlines", do_expand);
-      pass.push_constant("doAntiAliasing", state.xray_enabled_and_not_wire);
+      pass.push_constant("doAntiAliasing", do_smooth_lines);
       pass.bind_texture("outlineId", &object_id_tx_);
       pass.bind_texture("sceneDepth", &res.depth_tx);
       pass.bind_texture("outlineDepth", &tmp_depth_tx_);
