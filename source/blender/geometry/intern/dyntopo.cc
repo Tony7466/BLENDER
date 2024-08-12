@@ -279,20 +279,30 @@ static void edge_tris_split_and_skip(const float3 a_point_3d,
                                      const float radius,
                                      const float max_length_squared,
                                      Vector<float3> &r_points_3d,
-                                     Vector<float2> &r_points_2d)
+                                     Vector<float2> &r_points_2d,
+                                     Vector<int> &r_tris_data)
 {
   BLI_assert(r_points_3d.size() == r_points_2d.size());
+  BLI_assert(r_points_3d.size() == r_tris_data.size());
 
   const IndexRange range = r_points_2d.index_range();
   for (const int point_i : range) {
     const int r_point_i = range.last(point_i);
-    if (!triangle_is_in_range(a_point_2d, b_point_2d, r_points_2d[r_point_i], centre, radius)) {
-      r_points_3d.remove_and_reorder(r_point_i);
-      r_points_2d.remove_and_reorder(r_point_i);
-      continue;
-    }
+    // if (!triangle_is_in_range(a_point_2d, b_point_2d, r_points_2d[r_point_i], centre, radius)) {
+    //   r_points_3d.remove_and_reorder(r_point_i);
+    //   r_points_2d.remove_and_reorder(r_point_i);
+    //   r_tris_data.remove_and_reorder(r_point_i);
+    //   continue;
+    // }
 
     while (true) {
+      if (r_tris_data[r_point_i] <= 0) {
+        r_points_3d.remove_and_reorder(r_point_i);
+        r_points_2d.remove_and_reorder(r_point_i);
+        r_tris_data.remove_and_reorder(r_point_i);
+        break;
+      }
+
       const float3 c_point_3d = r_points_3d[r_point_i];
       const float2 c_point_2d = r_points_2d[r_point_i];
 
@@ -304,6 +314,7 @@ static void edge_tris_split_and_skip(const float3 a_point_3d,
 
       /* TODO. */
       BLI_assert(ac_length_squared != bc_length_squared);
+
       if (ac_length_squared < bc_length_squared) {
         r_points_3d[r_point_i] = math::midpoint(b_point_3d, c_point_3d);
         r_points_2d[r_point_i] = math::midpoint(b_point_2d, c_point_2d);
@@ -313,22 +324,35 @@ static void edge_tris_split_and_skip(const float3 a_point_3d,
         r_points_2d[r_point_i] = math::midpoint(a_point_2d, c_point_2d);
       }
 
-      if (!triangle_is_in_range(a_point_2d, b_point_2d, r_points_2d[r_point_i], centre, radius)) {
-        r_points_3d.remove_and_reorder(r_point_i);
-        r_points_2d.remove_and_reorder(r_point_i);
-        break;
-      }
+      r_tris_data[r_point_i]--;
+
+      // if (!triangle_is_in_range(a_point_2d, b_point_2d, r_points_2d[r_point_i], centre, radius))
+      // {
+      //   r_points_3d.remove_and_reorder(r_point_i);
+      //   r_points_2d.remove_and_reorder(r_point_i);
+      //   r_tris_data.remove_and_reorder(r_point_i);
+      //   break;
+      // }
     }
+  }
+}
+
+static void dectrees(MutableSpan<int> data)
+{
+  for (int &v : data) {
+    v--;
   }
 }
 
 static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
                            std::array<Vector<float3>, 3> connected_3d_points,
+                           std::array<Vector<int>, 3> connected_tris_data,
                            const std::array<float2, 3> tri_2d_points,
                            const std::array<float3, 3> tri_3d_points,
                            const float2 centre,
                            const float radius,
                            const float max_length,
+                           const int tri_data,
                            int &r_total_verts,
                            int &r_total_edges,
                            int &r_total_faces)
@@ -339,16 +363,20 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
       std::move(connected_2d_points)};
   Vector<std::array<Vector<float3>, 3>> connected_3d_points_stack = {
       std::move(connected_3d_points)};
+  Vector<std::array<Vector<int>, 3>> connected_tris_data_stack = {std::move(connected_tris_data)};
   Vector<std::array<float2, 3>> tri_2d_points_stack = {tri_2d_points};
   Vector<std::array<float3, 3>> tri_3d_points_stack = {tri_3d_points};
+  Vector<int> tri_data_stack = {tri_data};
 
   Vector<int8_t> edges_states = {0};
 
   while (!edges_states.is_empty()) {
     std::array<Vector<float2>, 3> connected_2d_points = connected_2d_points_stack.pop_last();
     std::array<Vector<float3>, 3> connected_3d_points = connected_3d_points_stack.pop_last();
+    std::array<Vector<int>, 3> connected_tris_data = connected_tris_data_stack.pop_last();
     const std::array<float2, 3> tri_2d_points = tri_2d_points_stack.pop_last();
     const std::array<float3, 3> tri_3d_points = tri_3d_points_stack.pop_last();
+    const int tri_data = tri_data_stack.pop_last();
 
     const int8_t edges_state = edges_states.pop_last();
 
@@ -375,13 +403,14 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
     std::sort(edge_indices.begin(), edge_indices.end(), [&](const int a, const int b) {
       return lengths_squared[a] > lengths_squared[b];
     });
-    edge_indices.remove_if([&](const int i) { return lengths_squared[i] <= max_length; });
+    // edge_indices.remove_if([&](const int i) { return lengths_squared[i] <= max_length; });
+
     // std::cout << lengths_squared << edge_indices << "\n";
 
-    if (edge_indices.is_empty()) {
-      r_total_faces++;
-      continue;
-    }
+    // if (edge_indices.is_empty()) {
+    //   r_total_faces++;
+    //   continue;
+    // }
 
     for (const int side_i : edge_indices) {
       edge_tris_split_and_skip(tri_3d_points[side_i],
@@ -392,13 +421,18 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
                                radius,
                                lengths_squared[side_i],
                                connected_3d_points[side_i],
-                               connected_2d_points[side_i]);
+                               connected_2d_points[side_i],
+                               connected_tris_data[side_i]);
     }
 
-    const bool is_affected = triangle_is_in_range(
-        tri_2d_points[0], tri_2d_points[1], tri_2d_points[2], centre, radius);
+    // const bool is_affected = triangle_is_in_range(tri_2d_points[0], tri_2d_points[1],
+    // tri_2d_points[2], centre, radius); if (!is_affected) {
+    //   edge_indices.remove_if([&](const int i) { return connected_3d_points[i].is_empty(); });
+    // }
+
+    const bool is_affected = tri_data > 0;
     if (!is_affected) {
-      edge_indices.remove_if([&](const int i) { return connected_3d_points[i].is_empty(); });
+      edge_indices.remove_if([&](const int i) { return connected_tris_data[i].is_empty(); });
     }
 
     const bool is_provocative = !edge_indices.is_empty();
@@ -420,6 +454,9 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
       r_total_verts++;
     }
 
+    const int sub_tri_data = tri_data - 1;
+    dectrees(connected_tris_data[largest_side_to_split]);
+
     const float2 mid_2d = math::midpoint(tri_2d_points[split_edge[0]],
                                          tri_2d_points[split_edge[1]]);
     const float3 mid_3d = math::midpoint(tri_3d_points[split_edge[0]],
@@ -435,6 +472,8 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
                                                             connected_3d_points,
                                                             Vector{tri_3d_points[split_edge[1]]},
                                                             Vector{tri_3d_points[split_edge[0]]});
+    auto [left_connected_tris_data, right_connected_tris_data] = topo_set::split_edge(
+        largest_side_to_split, connected_tris_data, Vector{sub_tri_data}, Vector{sub_tri_data});
     auto [left_tri_2d_points, right_tri_2d_points] = topo_set::split_vert(
         largest_side_to_split, tri_2d_points, mid_2d);
     auto [left_tri_3d_points, right_tri_3d_points] = topo_set::split_vert(
@@ -451,25 +490,31 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
 
     connected_2d_points_stack.append(std::move(left_connected_2d_points));
     connected_3d_points_stack.append(std::move(left_connected_3d_points));
+    connected_tris_data_stack.append(std::move(left_connected_tris_data));
     tri_2d_points_stack.append(std::move(left_tri_2d_points));
     tri_3d_points_stack.append(std::move(left_tri_3d_points));
+    tri_data_stack.append(std::move(sub_tri_data));
     edges_states.append(left_edges_state);
 
     connected_2d_points_stack.append(std::move(right_connected_2d_points));
     connected_3d_points_stack.append(std::move(right_connected_3d_points));
+    connected_tris_data_stack.append(std::move(right_connected_tris_data));
     tri_2d_points_stack.append(std::move(right_tri_2d_points));
     tri_3d_points_stack.append(std::move(right_tri_3d_points));
+    tri_data_stack.append(std::move(sub_tri_data));
     edges_states.append(right_edges_state);
   }
 }
 
 static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
                            std::array<Vector<float3>, 3> connected_3d_points,
+                           std::array<Vector<int>, 3> connected_tris_data,
                            const std::array<float2, 3> tri_2d_points,
                            const std::array<float3, 3> tri_3d_points,
                            const float2 centre,
                            const float radius,
                            const float max_length,
+                           const int tri_data,
                            const int3 tri_verts,
                            const std::array<IndexRange, 3> side_edge_verts_ranges,
                            const std::array<IndexRange, 3> side_edge_edges_ranges,
@@ -492,8 +537,10 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
       std::move(connected_2d_points)};
   Vector<std::array<Vector<float3>, 3>> connected_3d_points_stack = {
       std::move(connected_3d_points)};
+  Vector<std::array<Vector<int>, 3>> connected_tris_data_stack = {std::move(connected_tris_data)};
   Vector<std::array<float2, 3>> tri_2d_points_stack = {tri_2d_points};
   Vector<std::array<float3, 3>> tri_3d_points_stack = {tri_3d_points};
+  Vector<int> tri_data_stack = {tri_data};
 
   Vector<int3> tri_verts_stack = {tri_verts};
 
@@ -512,8 +559,10 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
   while (!edges_states.is_empty()) {
     std::array<Vector<float2>, 3> connected_2d_points = connected_2d_points_stack.pop_last();
     std::array<Vector<float3>, 3> connected_3d_points = connected_3d_points_stack.pop_last();
+    std::array<Vector<int>, 3> connected_tris_data = connected_tris_data_stack.pop_last();
     const std::array<float2, 3> tri_2d_points = tri_2d_points_stack.pop_last();
     const std::array<float3, 3> tri_3d_points = tri_3d_points_stack.pop_last();
+    const int tri_data = tri_data_stack.pop_last();
 
     const int3 tri_verts = tri_verts_stack.pop_last();
 
@@ -543,26 +592,27 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
     std::sort(edge_indices.begin(), edge_indices.end(), [&](const int a, const int b) {
       return lengths_squared[a] > lengths_squared[b];
     });
-    edge_indices.remove_if([&](const int i) { return lengths_squared[i] <= max_length; });
+    // edge_indices.remove_if([&](const int i) { return lengths_squared[i] <= max_length; });
+
     // std::cout << lengths_squared << edge_indices << "\n";
 
-    if (edge_indices.is_empty()) {
-      for (const int side_i : topo_set::face) {
-        if (edges_state & edge_state::edges_owned[side_i]) {
-          r_edge_indices[face_iter + side_i] = body_edges_range[edges_in_face.index_of_or_add(
-              topo_set::sample(tri_verts, topo_set::edges[side_i]))];
-        }
-        else {
-          const int edge_edge_i = edge_edges_iters[side_i];
-          edge_edges_iters[side_i]++;
-          const int edge_edge_index = side_edge_edges_ranges[side_i][edge_edge_i];
-          r_edge_indices[face_iter + side_i] = edge_edge_index;
-        }
-      }
-      face_iter += 3;
-      // std::cout << "\t" << "Skip lack of length" << "\n";
-      continue;
-    }
+    // if (edge_indices.is_empty()) {
+    //   for (const int side_i : topo_set::face) {
+    //     if (edges_state & edge_state::edges_owned[side_i]) {
+    //       r_edge_indices[face_iter + side_i] = body_edges_range[edges_in_face.index_of_or_add(
+    //           topo_set::sample(tri_verts, topo_set::edges[side_i]))];
+    //     }
+    //     else {
+    //       const int edge_edge_i = edge_edges_iters[side_i];
+    //       edge_edges_iters[side_i]++;
+    //       const int edge_edge_index = side_edge_edges_ranges[side_i][edge_edge_i];
+    //       r_edge_indices[face_iter + side_i] = edge_edge_index;
+    //     }
+    //   }
+    //   face_iter += 3;
+    //   // std::cout << "\t" << "Skip lack of length" << "\n";
+    //   continue;
+    // }
 
     for (const int side_i : edge_indices) {
       edge_tris_split_and_skip(tri_3d_points[side_i],
@@ -573,13 +623,19 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
                                radius,
                                lengths_squared[side_i],
                                connected_3d_points[side_i],
-                               connected_2d_points[side_i]);
+                               connected_2d_points[side_i],
+                               connected_tris_data[side_i]);
     }
 
-    const bool is_affected = triangle_is_in_range(
-        tri_2d_points[0], tri_2d_points[1], tri_2d_points[2], centre, radius);
+    // const bool is_affected = triangle_is_in_range(
+    //     tri_2d_points[0], tri_2d_points[1], tri_2d_points[2], centre, radius);
+    // if (!is_affected) {
+    //   edge_indices.remove_if([&](const int i) { return connected_3d_points[i].is_empty(); });
+    // }
+
+    const bool is_affected = tri_data > 0;
     if (!is_affected) {
-      edge_indices.remove_if([&](const int i) { return connected_3d_points[i].is_empty(); });
+      edge_indices.remove_if([&](const int i) { return connected_tris_data[i].is_empty(); });
     }
 
     const bool is_provocative = !edge_indices.is_empty();
@@ -602,6 +658,9 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
 
     const int largest_side_to_split = edge_indices.first();
     // std::cout << "\t" << "Split of:\t" << largest_side_to_split << "\n";
+
+    const int sub_tri_data = tri_data - 1;
+    dectrees(connected_tris_data[largest_side_to_split]);
 
     const int2 split_edge = topo_set::edges[largest_side_to_split];
     const int2 face_verts_to_split = topo_set::sample(tri_verts, split_edge);
@@ -642,6 +701,8 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
                                                             connected_3d_points,
                                                             Vector{tri_3d_points[split_edge[1]]},
                                                             Vector{tri_3d_points[split_edge[0]]});
+    auto [left_connected_tris_data, right_connected_tris_data] = topo_set::split_edge(
+        largest_side_to_split, connected_tris_data, Vector{sub_tri_data}, Vector{sub_tri_data});
     auto [left_tri_2d_points, right_tri_2d_points] = topo_set::split_vert(
         largest_side_to_split, tri_2d_points, mid_2d);
     auto [left_tri_3d_points, right_tri_3d_points] = topo_set::split_vert(
@@ -664,30 +725,38 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
     if (side_edge_dirrections[largest_side_to_split]) {
       connected_2d_points_stack.append(std::move(right_connected_2d_points));
       connected_3d_points_stack.append(std::move(right_connected_3d_points));
+      connected_tris_data_stack.append(std::move(right_connected_tris_data));
       tri_2d_points_stack.append(std::move(right_tri_2d_points));
       tri_3d_points_stack.append(std::move(right_tri_3d_points));
+      tri_data_stack.append(std::move(sub_tri_data));
       edges_states.append(right_edges_state);
       tri_verts_stack.append(right_tri_verts);
 
       connected_2d_points_stack.append(std::move(left_connected_2d_points));
       connected_3d_points_stack.append(std::move(left_connected_3d_points));
+      connected_tris_data_stack.append(std::move(left_connected_tris_data));
       tri_2d_points_stack.append(std::move(left_tri_2d_points));
       tri_3d_points_stack.append(std::move(left_tri_3d_points));
+      tri_data_stack.append(std::move(sub_tri_data));
       edges_states.append(left_edges_state);
       tri_verts_stack.append(left_tri_verts);
     }
     else {
       connected_2d_points_stack.append(std::move(left_connected_2d_points));
       connected_3d_points_stack.append(std::move(left_connected_3d_points));
+      connected_tris_data_stack.append(std::move(left_connected_tris_data));
       tri_2d_points_stack.append(std::move(left_tri_2d_points));
       tri_3d_points_stack.append(std::move(left_tri_3d_points));
+      tri_data_stack.append(std::move(sub_tri_data));
       edges_states.append(left_edges_state);
       tri_verts_stack.append(left_tri_verts);
 
       connected_2d_points_stack.append(std::move(right_connected_2d_points));
       connected_3d_points_stack.append(std::move(right_connected_3d_points));
+      connected_tris_data_stack.append(std::move(right_connected_tris_data));
       tri_2d_points_stack.append(std::move(right_tri_2d_points));
       tri_3d_points_stack.append(std::move(right_tri_3d_points));
+      tri_data_stack.append(std::move(sub_tri_data));
       edges_states.append(right_edges_state);
       tri_verts_stack.append(right_tri_verts);
     }
@@ -698,6 +767,7 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
 
 static void edge_subdivide(Vector<float2> connected_2d_points,
                            Vector<float3> connected_3d_points,
+                           Vector<int> connected_tris_data,
                            const std::array<float2, 2> edge_2d_points,
                            const std::array<float3, 2> edge_3d_points,
                            const float2 centre,
@@ -707,19 +777,21 @@ static void edge_subdivide(Vector<float2> connected_2d_points,
 {
   Vector<Vector<float2>> connected_2d_points_stack = {std::move(connected_2d_points)};
   Vector<Vector<float3>> connected_3d_points_stack = {std::move(connected_3d_points)};
+  Vector<Vector<int>> connected_tris_data_stack = {std::move(connected_tris_data)};
   Vector<std::array<float2, 2>> edge_2d_points_stack = {edge_2d_points};
   Vector<std::array<float3, 2>> edge_3d_points_stack = {edge_3d_points};
 
   while (!edge_2d_points_stack.is_empty()) {
     Vector<float2> connected_2d_points = connected_2d_points_stack.pop_last();
     Vector<float3> connected_3d_points = connected_3d_points_stack.pop_last();
+    Vector<int> connected_tris_data = connected_tris_data_stack.pop_last();
     const std::array<float2, 2> edge_2d_points = edge_2d_points_stack.pop_last();
     const std::array<float3, 2> edge_3d_points = edge_3d_points_stack.pop_last();
 
     const float length_squared = math::distance_squared(edge_3d_points[0], edge_3d_points[1]);
-    if (length_squared <= max_length) {
-      continue;
-    }
+    // if (length_squared <= max_length) {
+    //   continue;
+    // }
 
     edge_tris_split_and_skip(edge_3d_points[0],
                              edge_3d_points[1],
@@ -729,13 +801,20 @@ static void edge_subdivide(Vector<float2> connected_2d_points,
                              radius,
                              length_squared,
                              connected_3d_points,
-                             connected_2d_points);
+                             connected_2d_points,
+                             connected_tris_data);
 
-    if (connected_3d_points.is_empty()) {
+    if (connected_tris_data.is_empty()) {
       continue;
     }
 
+    // if (connected_3d_points.is_empty()) {
+    //   continue;
+    // }
+
     r_split_count++;
+
+    dectrees(connected_tris_data);
 
     const float2 a_2d_point = edge_2d_points[0];
     const float2 b_2d_point = edge_2d_points[1];
@@ -761,11 +840,13 @@ static void edge_subdivide(Vector<float2> connected_2d_points,
 
     connected_2d_points_stack.append(std::move(left_connected_2d_points));
     connected_3d_points_stack.append(std::move(left_connected_3d_points));
+    connected_tris_data_stack.append(connected_tris_data);
     edge_2d_points_stack.append(left_edge_2d_points);
     edge_3d_points_stack.append(left_edge_3d_points);
 
     connected_2d_points_stack.append(std::move(right_connected_2d_points));
     connected_3d_points_stack.append(std::move(right_connected_3d_points));
+    connected_tris_data_stack.append(std::move(connected_tris_data));
     edge_2d_points_stack.append(right_edge_2d_points);
     edge_3d_points_stack.append(right_edge_3d_points);
   }
@@ -773,6 +854,7 @@ static void edge_subdivide(Vector<float2> connected_2d_points,
 
 static void edge_subdivide(Vector<float2> connected_2d_points,
                            Vector<float3> connected_3d_points,
+                           Vector<int> connected_tris_data,
                            const std::array<float2, 2> edge_2d_points,
                            const std::array<float3, 2> edge_3d_points,
                            const float2 centre,
@@ -785,6 +867,7 @@ static void edge_subdivide(Vector<float2> connected_2d_points,
 {
   Vector<Vector<float2>> connected_2d_points_stack = {std::move(connected_2d_points)};
   Vector<Vector<float3>> connected_3d_points_stack = {std::move(connected_3d_points)};
+  Vector<Vector<int>> connected_tris_data_stack = {std::move(connected_tris_data)};
   Vector<std::array<float2, 2>> edge_2d_points_stack = {edge_2d_points};
   Vector<std::array<float3, 2>> edge_3d_points_stack = {edge_3d_points};
 
@@ -797,6 +880,7 @@ static void edge_subdivide(Vector<float2> connected_2d_points,
   while (!edge_2d_points_stack.is_empty()) {
     Vector<float2> connected_2d_points = connected_2d_points_stack.pop_last();
     Vector<float3> connected_3d_points = connected_3d_points_stack.pop_last();
+    Vector<int> connected_tris_data = connected_tris_data_stack.pop_last();
     const std::array<float2, 2> edge_2d_points = edge_2d_points_stack.pop_last();
     const std::array<float3, 2> edge_3d_points = edge_3d_points_stack.pop_last();
 
@@ -804,11 +888,11 @@ static void edge_subdivide(Vector<float2> connected_2d_points,
     const int2 edge_verts = edge_verts_stack.pop_last();
 
     const float length_squared = math::distance_squared(edge_3d_points[0], edge_3d_points[1]);
-    if (length_squared <= max_length) {
-      r_edges[edge_iter] = edge_verts;
-      edge_iter++;
-      continue;
-    }
+    // if (length_squared <= max_length) {
+    //   r_edges[edge_iter] = edge_verts;
+    //   edge_iter++;
+    //   continue;
+    // }
 
     edge_tris_split_and_skip(edge_3d_points[0],
                              edge_3d_points[1],
@@ -818,13 +902,22 @@ static void edge_subdivide(Vector<float2> connected_2d_points,
                              radius,
                              length_squared,
                              connected_3d_points,
-                             connected_2d_points);
+                             connected_2d_points,
+                             connected_tris_data);
 
-    if (connected_3d_points.is_empty()) {
+    if (connected_tris_data.is_empty()) {
       r_edges[edge_iter] = edge_verts;
       edge_iter++;
       continue;
     }
+
+    // if (connected_3d_points.is_empty()) {
+    //   r_edges[edge_iter] = edge_verts;
+    //   edge_iter++;
+    //   continue;
+    // }
+
+    dectrees(connected_tris_data);
 
     const float2 a_2d_point = edge_2d_points[0];
     const float2 b_2d_point = edge_2d_points[1];
@@ -864,6 +957,7 @@ static void edge_subdivide(Vector<float2> connected_2d_points,
 
     connected_2d_points_stack.append(std::move(right_connected_2d_points));
     connected_3d_points_stack.append(std::move(right_connected_3d_points));
+    connected_tris_data_stack.append(connected_tris_data);
     edge_2d_points_stack.append(right_edge_2d_points);
     edge_3d_points_stack.append(right_edge_3d_points);
     edge_verts_stack.append(right_edge_verts);
@@ -871,6 +965,7 @@ static void edge_subdivide(Vector<float2> connected_2d_points,
 
     connected_2d_points_stack.append(std::move(left_connected_2d_points));
     connected_3d_points_stack.append(std::move(left_connected_3d_points));
+    connected_tris_data_stack.append(std::move(connected_tris_data));
     edge_2d_points_stack.append(left_edge_2d_points);
     edge_3d_points_stack.append(left_edge_3d_points);
     edge_verts_stack.append(left_edge_verts);
@@ -950,6 +1045,7 @@ Mesh *subdivide(const Mesh &src_mesh,
     int total_verts = 0;
     edge_subdivide(std::move(connected_2d_points),
                    std::move(connected_3d_points),
+                   Vector<int>(edge_faces.size(), 4),
                    {a_2d_vert, b_2d_vert},
                    {a_3d_vert, b_3d_vert},
                    centre,
@@ -1030,11 +1126,15 @@ Mesh *subdivide(const Mesh &src_mesh,
 
     face_subdivide(std::move(connected_2d_points),
                    std::move(connected_3d_points),
+                   {Vector<int>(connected_2d_points[0].size(), 4),
+                    Vector<int>(connected_2d_points[1].size(), 4),
+                    Vector<int>(connected_2d_points[2].size(), 4)},
                    {a_2d_vert, b_2d_vert, c_2d_vert},
                    {a_3d_vert, b_3d_vert, c_3d_vert},
                    centre,
                    squared_radius,
                    squared_max_length,
+                   4,
                    total_verts,
                    total_edges,
                    total_faces);
@@ -1049,9 +1149,11 @@ Mesh *subdivide(const Mesh &src_mesh,
     face_total_faces[face_i] = total_faces;
   }
 
-  // std::cout << ">> Edges: " << edge_total_verts.as_span() << ";\n";
   // std::cout << std::endl;
-  // std::cout << ">> Faces: " << face_total_verts.as_span() << ";\n";
+  // std::cout << ">> Edge verts: " << edge_total_verts.as_span() << ";\n";
+  // std::cout << ">> Face verts: " << face_total_verts.as_span() << ";\n";
+  // std::cout << ">> Face edges: " << face_total_edges.as_span() << ";\n";
+  // std::cout << ">> Face faces: " << face_total_faces.as_span() << ";\n";
 
   IndexMaskMemory memory;
   const IndexMask changed_edges = IndexMask::from_predicate(
@@ -1094,6 +1196,7 @@ Mesh *subdivide(const Mesh &src_mesh,
   offset_indices::fill_constant_group_size(3, 0, dst_mesh->face_offsets_for_write());
 
   MutableSpan<float3> dst_positions = dst_mesh->vert_positions_for_write();
+  dst_positions.fill(float3(-1, -2, -3));
   MutableSpan<int2> dst_edges = dst_mesh->edges_for_write();
   dst_edges.fill({0, 1});
 
@@ -1150,6 +1253,7 @@ Mesh *subdivide(const Mesh &src_mesh,
                                               edge_verts_range.size() + 1);
     edge_subdivide(std::move(connected_2d_points),
                    std::move(connected_3d_points),
+                   Vector<int>(edge_faces.size(), 4),
                    {a_2d_vert, b_2d_vert},
                    {a_3d_vert, b_3d_vert},
                    centre,
@@ -1261,11 +1365,15 @@ Mesh *subdivide(const Mesh &src_mesh,
 
     face_subdivide(std::move(connected_2d_points),
                    std::move(connected_3d_points),
+                   {Vector<int>(connected_2d_points[0].size(), 4),
+                    Vector<int>(connected_2d_points[1].size(), 4),
+                    Vector<int>(connected_2d_points[2].size(), 4)},
                    {a_2d_vert, b_2d_vert, c_2d_vert},
                    {a_3d_vert, b_3d_vert, c_3d_vert},
                    centre,
                    squared_radius,
                    squared_max_length,
+                   4,
                    {a_vert, b_vert, c_vert},
                    {ab_edge_verts, bc_edge_verts, ca_edge_verts},
                    {ab_edge_edges, bc_edge_edges, ca_edge_edges},
@@ -1288,6 +1396,8 @@ Mesh *subdivide(const Mesh &src_mesh,
     dst_corner_edges[start + 2] = subdive_edge_verts[ca_edge_i].start() + ca_edge_i;
   });
 
+  // std::cout << "\n";
+  // std::cout << dst_positions << ";\n";
   // std::cout << dst_corner_edges << ";\n";
   // std::cout << dst_edges << ";\n";
 
