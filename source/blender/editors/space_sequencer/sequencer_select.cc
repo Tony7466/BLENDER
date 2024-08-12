@@ -1477,6 +1477,8 @@ static int sequencer_select_handle_exec(bContext *C, wmOperator *op)
     ED_sequencer_deselect_all(scene);
   }
 
+  bool disable_connected_sel = disable_connected_strip_selection(selection);
+
   /* Do actual selection. */
   sequencer_select_strip_impl(ed, selection.seq1, selection.handle, false, false, false);
   if (selection.seq2 != nullptr) {
@@ -1485,7 +1487,9 @@ static int sequencer_select_handle_exec(bContext *C, wmOperator *op)
                                                                              SEQ_HANDLE_LEFT;
     sequencer_select_strip_impl(ed, selection.seq2, seq2_handle_clicked, false, false, false);
   }
-  sequencer_select_connected_strips(selection);
+  if (!disable_connected_sel) {
+    sequencer_select_connected_strips(selection);
+  }
 
   sequencer_select_do_updates(C, scene);
   sequencer_select_set_active(scene, selection.seq1);
