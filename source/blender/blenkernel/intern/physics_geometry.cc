@@ -783,7 +783,7 @@ void PhysicsGeometryImpl::delete_self()
 
 void PhysicsGeometryImpl::tag_read_cache_changed()
 {
-  tag_cache_dirty(this->custom_data_read_cache_dirty);
+  tag_cache_dirty(this->custom_data_read_cache_valid);
 }
 
 void PhysicsGeometryImpl::tag_body_topology_changed()
@@ -793,12 +793,12 @@ void PhysicsGeometryImpl::tag_body_topology_changed()
 
 void PhysicsGeometryImpl::tag_body_collision_shapes_changed()
 {
-  tag_cache_dirty(this->body_collision_shapes_dirty);
+  tag_cache_dirty(this->body_collision_shapes_valid);
 }
 
 void PhysicsGeometryImpl::tag_constraint_disable_collision_changed()
 {
-  tag_cache_dirty(this->constraint_disable_collision_dirty);
+  tag_cache_dirty(this->constraint_disable_collision_valid);
 }
 
 bool PhysicsGeometryImpl::has_builtin_attribute_custom_data_layer(
@@ -827,7 +827,7 @@ void PhysicsGeometryImpl::ensure_read_cache() const
   const static StringRef disable_collision_id = PhysicsGeometry::constraint_attribute_name(
       ConstraintAttribute::disable_collision);
 
-  ensure_cache(this->data_mutex, this->custom_data_read_cache_dirty, [&]() {
+  ensure_cache(this->data_mutex, this->custom_data_read_cache_valid, [&]() {
     PhysicsGeometryImpl &dst = *const_cast<PhysicsGeometryImpl *>(this);
 
     if (this->world_data == nullptr) {
@@ -879,7 +879,7 @@ void PhysicsGeometryImpl::ensure_read_cache() const
 
 void PhysicsGeometryImpl::ensure_body_collision_shapes() const
 {
-  ensure_cache(this->data_mutex, this->body_collision_shapes_dirty, [&]() {
+  ensure_cache(this->data_mutex, this->body_collision_shapes_valid, [&]() {
     this->ensure_body_collision_shapes_no_lock();
   });
 }
@@ -889,7 +889,7 @@ void PhysicsGeometryImpl::ensure_body_collision_shapes_no_lock() const
   const static StringRef collision_shape_id = PhysicsGeometry::body_attribute_name(
       PhysicsGeometry::BodyAttribute::collision_shape);
 
-  if (!is_cache_dirty(this->body_collision_shapes_dirty)) {
+  if (!is_cache_dirty(this->body_collision_shapes_valid)) {
     return;
   }
   if (this->world_data == nullptr) {
@@ -1575,11 +1575,11 @@ PhysicsGeometryImpl &PhysicsGeometry::impl_for_write()
                           0,
                           0);
 
-  new_impl->custom_data_read_cache_dirty.store(impl_->custom_data_read_cache_dirty,
+  new_impl->custom_data_read_cache_valid.store(impl_->custom_data_read_cache_valid,
                                                std::memory_order_relaxed);
-  new_impl->body_collision_shapes_dirty.store(impl_->body_collision_shapes_dirty,
+  new_impl->body_collision_shapes_valid.store(impl_->body_collision_shapes_valid,
                                               std::memory_order_relaxed);
-  new_impl->constraint_disable_collision_dirty.store(impl_->constraint_disable_collision_dirty,
+  new_impl->constraint_disable_collision_valid.store(impl_->constraint_disable_collision_valid,
                                                      std::memory_order_relaxed);
 
   CustomData_copy(&impl_->body_data_, &new_impl->body_data_, CD_MASK_ALL, impl_->body_num_);

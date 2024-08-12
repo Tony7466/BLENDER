@@ -46,16 +46,16 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
   using CacheFlag = std::atomic<bool>;
 
   /* Cache for readers storing copies of physics data in custom data. */
-  mutable CacheFlag custom_data_read_cache_dirty;
+  mutable CacheFlag custom_data_read_cache_valid;
   /* When dirty the body collision shape pointers need to be updated to match pointers from the
    * shapes list, as stored in the body shapes index attribute. */
-  mutable CacheFlag body_collision_shapes_dirty;
+  mutable CacheFlag body_collision_shapes_valid;
   /* Cache for disable_collisions flags of constraints. These are stored indirectly by Bullet: a
    * constraint disables collisions by adding "constraint refs" to bodies, when adding a constraint
    * to the world. To determine if a constraint disables collisions after the fact requires looping
    * over all constraint refs of the affected bodies. The cache avoids doing that multiple times
    * for each body. */
-  mutable CacheFlag constraint_disable_collision_dirty;
+  mutable CacheFlag constraint_disable_collision_valid;
 
   int body_num_;
   int constraint_num_;
