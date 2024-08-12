@@ -673,19 +673,6 @@ static void tree_element_modifier_activate(bContext *C,
   }
 }
 
-static void tree_element_node_tree_activate(TreeStoreElem *tselem, const eOLSetState set)
-{
-  if (set == OL_SETSEL_NORMAL) {
-    tselem->flag |= TSE_SELECTED;
-  }
-  else if (set == OL_SETSEL_EXTEND) {
-    tselem->flag |= TSE_SELECTED;
-  }
-  else {
-    tselem->flag &= ~TSE_SELECTED;
-  }
-}
-
 static void tree_element_psys_activate(bContext *C, TreeStoreElem *tselem)
 {
   Object *ob = (Object *)tselem->id;
@@ -852,9 +839,6 @@ void tree_element_type_active_set(bContext *C,
       break;
     case TSE_LINKED_PSYS:
       tree_element_psys_activate(C, tselem);
-      break;
-    case TSE_LINKED_NODE_TREE:
-      tree_element_node_tree_activate(tselem, set);
       break;
     case TSE_POSE_BASE:
       return;
