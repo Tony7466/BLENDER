@@ -1,2 +1,3 @@
 Referenced by issue #120077, 4.1 regression: Artifacts in video output caused by threaded YUV conversion
 Referenced by pull request #120168, Fix #120077: Video output artifacts due to threaded YUV conversion
+Referenced by issue #126201, Frames are layered on top of each other separated by a scanline when exporting video with PNG video codec
