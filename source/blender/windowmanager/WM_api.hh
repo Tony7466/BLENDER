@@ -396,7 +396,7 @@ void WM_window_decoration_set_titlebar_colors(const wmWindow *win,
                                               const float background_color[3],
                                               const float title_text_color[3]);
 
-void WM_window_decoration_parse(const wmWindow *win, const bScreen *screen);
+void WM_window_decoration_parse_theme(const wmWindow *win, const bScreen *screen);
 
 /* `wm_files.cc`. */
 

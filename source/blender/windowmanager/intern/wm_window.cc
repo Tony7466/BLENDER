@@ -621,7 +621,8 @@ void WM_window_decoration_set_style(const wmWindow *win, eWM_DecorationStyleFlag
                            static_cast<GHOST_TWindowDecorationStyleFlags>(ghost_style_flags));
 }
 
-void WM_window_decoration_apply(const wmWindow *win) {
+void WM_window_decoration_apply(const wmWindow *win)
+{
   GHOST_ApplyDecoration(static_cast<GHOST_WindowHandle>(win->ghostwin));
 }
 
@@ -633,33 +634,30 @@ void WM_window_decoration_set_titlebar_colors(const wmWindow *win,
       static_cast<GHOST_WindowHandle>(win->ghostwin), background_color, title_text_color);
 }
 
+void WM_window_decoration_parse_theme(const wmWindow *win, const bScreen *screen)
 {
-  switch (WM_window_decoration_get_style(win)) {
-    case WM_DECORATION_NONE:
-      break;
-    /* Update custom titlebar color by parsing the current theme */
-    case WM_DECORATION_COLORED_TITLEBAR: {
-      /* For main windows, use the topbar color. */
-      if (WM_window_should_have_global_areas(win)) {
-        UI_SetTheme(SPACE_TOPBAR, RGN_TYPE_HEADER);
-      }
-      /* For single editor floating windows, use the editor header color. */
-      else if (BLI_listbase_is_single(&screen->areabase)) {
-        const ScrArea *main_area = static_cast<ScrArea *>(screen->areabase.first);
-        UI_SetTheme(main_area->spacetype, RGN_TYPE_HEADER);
-      }
-      /* For floating window with multiple editors/areas, use the default space color. */
-      else {
-        UI_SetTheme(0, RGN_TYPE_WINDOW);
-      }
+  const eWM_DecorationStyleFlag style_flags = WM_window_decoration_get_style(win);
 
-      float tb_background_color[3], tb_title_color[3];
-      UI_GetThemeColor3fv(TH_BACK, tb_background_color);
-      UI_GetThemeColor3fv(TH_BUTBACK_TEXT, tb_title_color);
-      WM_window_decoration_set_titlebar_colors(win, tb_background_color, tb_title_color);
-
-      break;
+  /* Update custom titlebar color by parsing the current theme. */
+  if (style_flags & WM_DECORATION_COLORED_TITLEBAR) {
+    /* For main windows, use the topbar color. */
+    if (WM_window_should_have_global_areas(win)) {
+      UI_SetTheme(SPACE_TOPBAR, RGN_TYPE_HEADER);
     }
+    /* For single editor floating windows, use the editor header color. */
+    else if (BLI_listbase_is_single(&screen->areabase)) {
+      const ScrArea *main_area = static_cast<ScrArea *>(screen->areabase.first);
+      UI_SetTheme(main_area->spacetype, RGN_TYPE_HEADER);
+    }
+    /* For floating window with multiple editors/areas, use the default space color. */
+    else {
+      UI_SetTheme(0, RGN_TYPE_WINDOW);
+    }
+
+    float tb_background_color[3], tb_title_color[3];
+    UI_GetThemeColor3fv(TH_BACK, tb_background_color);
+    UI_GetThemeColor3fv(TH_BUTBACK_TEXT, tb_title_color);
+    WM_window_decoration_set_titlebar_colors(win, tb_background_color, tb_title_color);
   }
 }
 
