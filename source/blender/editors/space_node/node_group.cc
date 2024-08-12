@@ -1370,23 +1370,17 @@ static int node_default_group_width_set_exec(bContext *C, wmOperator * /*op*/)
   SpaceNode *snode = CTX_wm_space_node(C);
   bNodeTree *ntree = snode->edittree;
 
-  const bNodeTreePath *last_path_item = static_cast<const bNodeTreePath *>(snode->treepath.last);
-  const bNodeTreePath *parent_path_item = last_path_item->prev;
+  bNodeTreePath *last_path_item = static_cast<bNodeTreePath *>(snode->treepath.last);
+  bNodeTreePath *parent_path_item = last_path_item->prev;
   if (!parent_path_item) {
     return OPERATOR_CANCELLED;
   }
-  const bNodeTree *parent_ntree = parent_path_item->nodetree;
+  bNodeTree *parent_ntree = parent_path_item->nodetree;
   if (!parent_ntree) {
     return OPERATOR_CANCELLED;
   }
   parent_ntree->ensure_topology_cache();
-  const bNode *parent_node = nullptr;
-  for (const bNode *node : parent_ntree->all_nodes()) {
-    if (STREQ(node->name, last_path_item->node_name)) {
-      parent_node = node;
-      break;
-    }
-  }
+  bNode *parent_node = bke::nodeFindNodebyName(parent_ntree, last_path_item->node_name);
   if (!parent_node) {
     return OPERATOR_CANCELLED;
   }
