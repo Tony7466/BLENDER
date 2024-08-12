@@ -136,7 +136,11 @@
               if (!current_row.children.has(path_part)) {
                 current_row.children.set(
                   path_part,
-                  new_row_data(current_row.path + (i > 1 ? "/" : "") + path_part, current_row)
+                  new_row_data(
+                    current_row.path + (i > 1 ? "/" : "") + path_part,
+                    path_part,
+                    current_row
+                  )
                 );
               }
               current_row = current_row.children.get(path_part);
@@ -160,7 +164,8 @@
         ).innerText = `${root_row.num_functions_run.toLocaleString()} / ${root_row.num_functions.toLocaleString()}`;
 
         const tree_view = document.getElementById("files-tree-view");
-        build_tree_for_directory(tree_view, "/", root_row, 0, 0);
+        build_tree_for_directory(tree_view, root_row, 0);
+        update_odd_even_rows();
 
         const scroll_position = localStorage.getItem("scroll_position");
         if (scroll_position) {
@@ -168,7 +173,8 @@
         }
       });
 
-      function build_tree_for_directory(parent, name, row, depth, index) {
+      function build_tree_for_directory(parent, row, depth) {
+        const name = row.name;
         const is_file = row.source_file_path !== undefined;
         const is_directory = !is_file;
 
@@ -188,9 +194,6 @@
         label_elem.style.paddingLeft = `${depth}em`;
 
         stats_elem.className = "row-stats";
-        if (index % 2 == 1) {
-          row_elem.classList.add("odd");
-        }
 
         {
           const lines_percent_elem = document.createElement("span");
@@ -225,6 +228,7 @@
           const children_container = document.createElement("div");
           children_container.className = "children-container";
           parent.appendChild(children_container);
+          row.children_container = children_container;
 
           const is_open = is_open_at_start(row.path);
           if (is_open) {
@@ -241,18 +245,13 @@
           );
           const file_children = all_children.filter((c) => c[1].source_file_path !== undefined);
 
-          let child_index = index + 1;
-          for (const [name, child_data] of directory_children) {
-            build_tree_for_directory(children_container, name, child_data, depth + 1, child_index);
-            child_index++;
-          }
-          for (const [name, child_data] of file_children) {
-            build_tree_for_directory(children_container, name, child_data, depth + 1, child_index);
-            child_index++;
+          row.sorted_children = [...directory_children, ...file_children];
+
+          for (const [name, child_row] of row.sorted_children) {
+            build_tree_for_directory(children_container, child_row, depth + 1);
           }
 
           label_elem.addEventListener("click", () => {
-            console.log(row_elem.row_data);
             if (children_container.style.display === "none") {
               children_container.style.display = "block";
               current_open_paths.add(row.path);
@@ -268,8 +267,32 @@
               open_paths_storage_key,
               JSON.stringify(Array.from(current_open_paths))
             );
+            update_odd_even_rows();
           });
         }
+      }
+
+      function update_odd_even_rows() {
+        let index = 0;
+
+        function update_odd_even_rows_recursive(row) {
+          if (index % 2) {
+            row.dom_elem.classList.add("odd");
+          } else {
+            row.dom_elem.classList.remove("odd");
+          }
+          index++;
+
+          if (row.sorted_children) {
+            if (row.children_container.style.display !== "none") {
+              for (const [name, child_row] of row.sorted_children) {
+                update_odd_even_rows_recursive(child_row);
+              }
+            }
+          }
+        }
+
+        update_odd_even_rows_recursive(root_row);
       }
 
       function is_open_at_start(path) {
@@ -311,7 +334,7 @@
         return Math.round(f * 100);
       }
 
-      function new_row_data(path, parent) {
+      function new_row_data(path, name, parent) {
         return {
           num_lines_run: 0,
           num_lines: 0,
@@ -319,7 +342,9 @@
           num_functions: 0,
           path: path,
           parent: parent,
+          name: name,
           children: new Map(),
+          sorted_children: null,
           dom_elem: null,
         };
       }
@@ -342,7 +367,7 @@
         localStorage.setItem("scroll_position", window.scrollY);
       });
 
-      const root_row = new_row_data("/", null);
+      const root_row = new_row_data("/", "/", null);
 
       const default_open_path_segment = "/blender/source/blender";
       let default_open_path = undefined;
