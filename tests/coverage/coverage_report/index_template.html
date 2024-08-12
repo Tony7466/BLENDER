@@ -143,11 +143,13 @@
     <div id="files-tree-view"></div>
     <script>
       window.addEventListener("DOMContentLoaded", async () => {
-        var analysis_data = JSON.parse(
-          await str_from_gzip_base64(analysis_data_compressed_base64)
-        );
+        analysis_data = JSON.parse(await str_from_gzip_base64(analysis_data_compressed_base64));
+        filter_analysis_data();
 
-        for (const [file_path, file_data] of Object.entries(analysis_data.files)) {
+        const analysis_files_entries = Object.entries(analysis_data.files);
+
+        let default_open_path = undefined;
+        for (const [file_path, file_data] of analysis_files_entries) {
           if (!default_open_path) {
             const default_path_index = file_path.indexOf(default_open_path_segment);
             if (default_path_index != -1) {
@@ -197,12 +199,29 @@
           "coverage-functions"
         ).innerText = `${root_row.num_functions_run.toLocaleString()} / ${root_row.num_functions.toLocaleString()}`;
 
-        if (!default_open_path) {
-          default_open_path = "/";
+        if (root_row.children.size == 0) {
+          return;
         }
-        for (const path of previous_open_paths ? previous_open_paths : [default_open_path]) {
+
+        let paths_to_open = [];
+        if (custom_root_paths) {
+          paths_to_open = paths_to_open.concat(Array.from(custom_root_paths.values()));
+        }
+        if (previous_open_paths) {
+          paths_to_open = paths_to_open.concat(Array.from(previous_open_paths));
+        }
+        if (paths_to_open.length == 0) {
+          if (default_open_path) {
+            paths_to_open.push(default_open_path);
+          } else {
+            paths_to_open.push("/");
+          }
+        }
+
+        for (const path of paths_to_open) {
           const row = row_by_path.get(path);
           if (row) {
+            ensure_dom_for_row(row);
             open_directory(row);
           }
         }
@@ -265,6 +284,7 @@
 
         label_elem.className = "row-label";
         label_elem.style.paddingLeft = `${row.depth}em`;
+        add_row_label_tooltip(row);
 
         stats_elem.className = "row-stats";
 
@@ -324,7 +344,9 @@
         if (directory_row.parent) {
           open_directory(directory_row.parent);
         }
-        ensure_dom_for_row(directory_row.children.values().next().value);
+        if (directory_row.children.size > 0) {
+          ensure_dom_for_row(directory_row.children.values().next().value);
+        }
         directory_row.dom_children_elem.style.display = "block";
         current_open_paths.add(directory_row.path);
         directory_row.dom_label_elem.classList.remove("closed-dir-label");
@@ -365,6 +387,40 @@
         const content = document.createElement("pre");
         content.innerText = message;
         tippy(element, { content: content, delay: 400 });
+      }
+
+      function add_row_label_tooltip(row) {
+        tippy(row.dom_label_elem, {
+          content: "Loading...",
+          onShow(instance) {
+            if (!instance.tooltip_generated) {
+              instance.setContent(generate_row_label_tooltip(row));
+              instance.tooltip_generated = true;
+              instance.show();
+            }
+          },
+          placement: "top",
+          arrow: false,
+          interactive: true,
+          followCursor: "initial",
+          maxWidth: "none",
+          delay: [400, 0],
+        });
+      }
+
+      function generate_row_label_tooltip(row) {
+        if (row.source_file_path) {
+          const content = document.createElement("pre");
+          content.innerText = "Open detailed file coverage";
+          return content;
+        } else {
+          const container_elem = document.createElement("div");
+          const link_elem = document.createElement("a");
+          link_elem.innerText = "Filter";
+          link_elem.href = `?filter=${row.path}`;
+          container_elem.appendChild(link_elem);
+          return container_elem;
+        }
       }
 
       function ratio_to_percent(numerator, denominator) {
@@ -414,6 +470,25 @@
         return data;
       }
 
+      function filter_analysis_data() {
+        const new_analysis_files = {};
+        const new_analysis_data = { files: new_analysis_files };
+
+        if (custom_root_paths.length > 0) {
+          for (const [path, fdata] of Object.entries(analysis_data.files)) {
+            for (const filter_path of custom_root_paths) {
+              if (path.startsWith(filter_path)) {
+                new_analysis_files[path] = fdata;
+              }
+            }
+          }
+        } else {
+          Object.assign(new_analysis_files, analysis_data.files);
+        }
+
+        analysis_data = new_analysis_data;
+      }
+
       async function str_from_gzip_base64(data_compressed_base64) {
         const compressed = atob(data_compressed_base64);
         const compressed_bytes = new Uint8Array(compressed.length);
@@ -436,7 +511,14 @@
       const root_row = new_row_data("/", "/", null);
 
       const default_open_path_segment = "/blender/source/blender";
-      let default_open_path = undefined;
+
+      let custom_root_paths = [];
+      const search_params = new URLSearchParams(location.search);
+      for (const [key, value] of search_params.entries()) {
+        if (key == "filter") {
+          custom_root_paths.push(value);
+        }
+      }
 
       const open_paths_storage_key = "open_paths";
       let previous_open_paths = localStorage.getItem(open_paths_storage_key);
@@ -448,6 +530,7 @@
       const current_open_paths = new Set();
 
       const analysis_data_compressed_base64 = "ANALYSIS_DATA";
+      let analysis_data = undefined;
     </script>
   </body>
 </html>
