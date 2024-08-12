@@ -203,27 +203,6 @@ void WM_toolsystem_activate_compatible_tool_for_brush_type(bContext *C,
   WM_toolsystem_ref_set_by_id(C, compatible_tool.value_or("builtin.brush").c_str());
 }
 
-static AssetWeakReference default_brush_asset_reference(blender::StringRef brush_type_name)
-{
-  const char *default_brush = [&brush_type_name]() -> const char * {
-    if (brush_type_name == "ERASE") {
-      return "Eraser Hard";
-    }
-    if (brush_type_name == "FILL") {
-      return "Fill Area";
-    }
-    if (brush_type_name == "DRAW") {
-      return "Draw";
-    }
-    BLI_assert_unreachable();
-    return nullptr;
-  }();
-
-  AssetWeakReference reference{};
-  BKE_paint_brush_asset_reference_from_essentials(default_brush, &reference);
-  return reference;
-}
-
 /**
  * Activate a brush compatible with \a tref, call when the active tool changes.
  *
@@ -272,13 +251,15 @@ static void activate_compatible_brush_from_toolref(bContext *C,
           BKE_paint_ensure_from_paintmode(bmain, scene, paint_mode);
           Paint *paint = BKE_paint_get_active_from_paintmode(scene, paint_mode);
 
-          std::optional<AssetWeakReference> brush_asset_reference = [&]() {
+          std::optional<AssetWeakReference> brush_asset_reference =
+              [&]() -> std::optional<AssetWeakReference> {
             if (AssetWeakReference *ref_from_tool = BKE_paint_toolslots_brush_asset_reference_get(
                     paint, slot_index))
             {
               return *ref_from_tool;
             }
-            return default_brush_asset_reference(tref->runtime->data_block);
+            return BKE_paint_brush_type_default_reference(eObjectMode(paint->runtime.ob_mode),
+                                                          tref->runtime->data_block);
           }();
 
           if (brush_asset_reference) {

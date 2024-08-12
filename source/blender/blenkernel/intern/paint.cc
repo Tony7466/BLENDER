@@ -724,20 +724,16 @@ static void paint_eraser_brush_set_essentials_reference(Paint *paint, const char
   paint->eraser_brush = nullptr;
 }
 
-static void paint_brush_set_default_reference(Paint *paint,
-                                              const bool do_regular = true,
-                                              const bool do_eraser = true)
+static void paint_brush_default_essentials_name_get(
+    eObjectMode ob_mode,
+    std::optional<blender::StringRef> brush_type_name,
+    blender::StringRefNull *r_name,
+    blender::StringRefNull *r_eraser_name = nullptr)
 {
-  if (!paint->runtime.initialized) {
-    /* Can happen when loading old file where toolsettings are created in versioning, without
-     * calling #paint_runtime_init(). Will be done later when necessary. */
-    return;
-  }
+  const char *name = "";
+  const char *eraser_name = "";
 
-  const char *name = nullptr;
-  const char *eraser_name = nullptr;
-
-  switch (paint->runtime.ob_mode) {
+  switch (ob_mode) {
     case OB_MODE_SCULPT:
       name = "Draw";
       break;
@@ -754,7 +750,20 @@ static void paint_brush_set_default_reference(Paint *paint,
       name = "Comb Curves";
       break;
     case OB_MODE_PAINT_GPENCIL_LEGACY:
-      name = "Pencil";
+      if (brush_type_name) {
+        if (brush_type_name == "ERASE") {
+          name = "Eraser Hard";
+        }
+        if (brush_type_name == "FILL") {
+          name = "Fill Area";
+        }
+        if (brush_type_name == "DRAW") {
+          name = "Draw";
+        }
+      }
+      else {
+        name = "Pencil";
+      }
       eraser_name = "Eraser Soft";
       break;
     case OB_MODE_VERTEX_GPENCIL_LEGACY:
@@ -768,14 +777,51 @@ static void paint_brush_set_default_reference(Paint *paint,
       break;
     default:
       BLI_assert_unreachable();
-      return;
+      break;
   }
 
-  if (do_regular && name) {
-    paint_brush_set_essentials_reference(paint, name);
+  *r_name = name;
+  if (r_eraser_name) {
+    *r_eraser_name = eraser_name;
   }
-  if (do_eraser && eraser_name) {
-    paint_eraser_brush_set_essentials_reference(paint, eraser_name);
+}
+
+std::optional<AssetWeakReference> BKE_paint_brush_type_default_reference(
+    eObjectMode ob_mode, std::optional<blender::StringRef> brush_type_name)
+{
+  blender::StringRefNull name;
+
+  paint_brush_default_essentials_name_get(ob_mode, brush_type_name, &name, nullptr);
+  if (name.is_empty()) {
+    return {};
+  }
+
+  AssetWeakReference asset_reference;
+  BKE_paint_brush_asset_reference_from_essentials(name.c_str(), &asset_reference);
+  return asset_reference;
+}
+
+static void paint_brush_set_default_reference(Paint *paint,
+                                              const bool do_regular = true,
+                                              const bool do_eraser = true)
+{
+  if (!paint->runtime.initialized) {
+    /* Can happen when loading old file where toolsettings are created in versioning, without
+     * calling #paint_runtime_init(). Will be done later when necessary. */
+    return;
+  }
+
+  blender::StringRefNull name;
+  blender::StringRefNull eraser_name;
+
+  paint_brush_default_essentials_name_get(
+      eObjectMode(paint->runtime.ob_mode), std::nullopt, &name, nullptr);
+
+  if (do_regular && !name.is_empty()) {
+    paint_brush_set_essentials_reference(paint, name.c_str());
+  }
+  if (do_eraser && !eraser_name.is_empty()) {
+    paint_eraser_brush_set_essentials_reference(paint, eraser_name.c_str());
   }
 }
 
