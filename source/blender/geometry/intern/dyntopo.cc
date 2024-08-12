@@ -425,16 +425,16 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
     const float3 mid_3d = math::midpoint(tri_3d_points[split_edge[0]],
                                          tri_3d_points[split_edge[1]]);
 
-    auto [left_connected_2d_points, right_connected_2d_points] = topo_set::split_edge(
-        largest_side_to_split,
-        connected_2d_points,
-        Vector<float2>{tri_2d_points[split_edge[1]]},
-        Vector<float2>{tri_2d_points[split_edge[0]]});
-    auto [left_connected_3d_points, right_connected_3d_points] = topo_set::split_edge(
-        largest_side_to_split,
-        connected_3d_points,
-        Vector<float3>{tri_3d_points[split_edge[1]]},
-        Vector<float3>{tri_3d_points[split_edge[0]]});
+    auto [left_connected_2d_points,
+          right_connected_2d_points] = topo_set::split_edge(largest_side_to_split,
+                                                            connected_2d_points,
+                                                            Vector{tri_2d_points[split_edge[1]]},
+                                                            Vector{tri_2d_points[split_edge[0]]});
+    auto [left_connected_3d_points,
+          right_connected_3d_points] = topo_set::split_edge(largest_side_to_split,
+                                                            connected_3d_points,
+                                                            Vector{tri_3d_points[split_edge[1]]},
+                                                            Vector{tri_3d_points[split_edge[0]]});
     auto [left_tri_2d_points, right_tri_2d_points] = topo_set::split_vert(
         largest_side_to_split, tri_2d_points, mid_2d);
     auto [left_tri_3d_points, right_tri_3d_points] = topo_set::split_vert(
@@ -632,16 +632,16 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
           main_tri_2d_points[0], main_tri_2d_points[1], main_tri_2d_points[2], mid_2d);
     }
 
-    auto [left_connected_2d_points, right_connected_2d_points] = topo_set::split_edge(
-        largest_side_to_split,
-        connected_2d_points,
-        Vector<float2>{tri_2d_points[split_edge[1]]},
-        Vector<float2>{tri_2d_points[split_edge[0]]});
-    auto [left_connected_3d_points, right_connected_3d_points] = topo_set::split_edge(
-        largest_side_to_split,
-        connected_3d_points,
-        Vector<float3>{tri_3d_points[split_edge[1]]},
-        Vector<float3>{tri_3d_points[split_edge[0]]});
+    auto [left_connected_2d_points,
+          right_connected_2d_points] = topo_set::split_edge(largest_side_to_split,
+                                                            connected_2d_points,
+                                                            Vector{tri_2d_points[split_edge[1]]},
+                                                            Vector{tri_2d_points[split_edge[0]]});
+    auto [left_connected_3d_points,
+          right_connected_3d_points] = topo_set::split_edge(largest_side_to_split,
+                                                            connected_3d_points,
+                                                            Vector{tri_3d_points[split_edge[1]]},
+                                                            Vector{tri_3d_points[split_edge[0]]});
     auto [left_tri_2d_points, right_tri_2d_points] = topo_set::split_vert(
         largest_side_to_split, tri_2d_points, mid_2d);
     auto [left_tri_3d_points, right_tri_3d_points] = topo_set::split_vert(
