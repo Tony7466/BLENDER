@@ -511,14 +511,8 @@ class Cameras {
     if (is_camera_view && (cam->flag & CAM_SHOW_BG_IMAGE) &&
         !BLI_listbase_is_empty(&cam->bg_images))
     {
-      Images::object_sync_camera(ob_ref,
-                                 select_id,
-                                 shapes,
-                                 manager,
-                                 state,
-                                 call_buffers_.selection_type_,
-
-                                 pass_source);
+      Images::object_sync_camera(
+          ob_ref, select_id, shapes, manager, state, call_buffers_.selection_type_, pass_source);
     }
   }
 

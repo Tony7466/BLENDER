@@ -163,10 +163,12 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
   if (!state.hide_overlays) {
     switch (ob_ref.object->type) {
       case OB_EMPTY:
-        layer.empties.object_sync(ob_ref, shapes, manager, resources, state, layer.images_pass_source);
+        layer.empties.object_sync(
+            ob_ref, shapes, manager, resources, state, layer.images_pass_source);
         break;
       case OB_CAMERA:
-        layer.cameras.object_sync(ob_ref, shapes, manager, resources, state, layer.images_pass_source);
+        layer.cameras.object_sync(
+            ob_ref, shapes, manager, resources, state, layer.images_pass_source);
         break;
       case OB_ARMATURE:
         break;
