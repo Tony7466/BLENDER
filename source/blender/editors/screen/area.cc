@@ -2849,6 +2849,8 @@ void ED_area_newspace(bContext *C, ScrArea *area, int type, const bool skip_regi
     WM_window_title(CTX_wm_manager(C), CTX_wm_window(C));
   }
 
+  WM_event_add_notifier(C, NC_WINDOW, nullptr);
+
   /* also redraw when re-used */
   ED_area_tag_redraw(area);
 }
