@@ -605,7 +605,7 @@ extern GHOST_TWindowDecorationStyleFlags GHOST_GetDecorationStyle(GHOST_WindowHa
  * \param style_flags: Decoration style flags.
  */
 extern void GHOST_SetDecorationStyle(GHOST_WindowHandle windowhandle,
-                                               GHOST_TWindowDecorationStyleFlags style_flags);
+                                     GHOST_TWindowDecorationStyleFlags style_flags);
 
 /**
  * Apply the window client-side decorations (CSD) using the current decoration style flags.

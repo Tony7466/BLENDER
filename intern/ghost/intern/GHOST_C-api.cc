@@ -615,7 +615,7 @@ GHOST_TWindowDecorationStyleFlags GHOST_GetDecorationStyle(GHOST_WindowHandle wi
 }
 
 void GHOST_SetDecorationStyle(GHOST_WindowHandle windowhandle,
-                                        GHOST_TWindowDecorationStyleFlags style_flags)
+                              GHOST_TWindowDecorationStyleFlags style_flags)
 {
   GHOST_IWindow *window = (GHOST_IWindow *)windowhandle;
   window->setDecorationStyle(style_flags);

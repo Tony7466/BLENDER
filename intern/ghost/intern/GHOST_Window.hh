@@ -98,8 +98,7 @@ class GHOST_Window : public GHOST_IWindow {
    * Set the window client-side decorations (CSD) style flags.
    * \param style_flags: Decoration style flags.
    */
-  virtual void setDecorationStyle(
-      GHOST_TWindowDecorationStyleFlags style_flags) override;
+  virtual void setDecorationStyle(GHOST_TWindowDecorationStyleFlags style_flags) override;
 
   /**
    * Apply the window client-side decorations (CSD) using the current decoration style flags.
