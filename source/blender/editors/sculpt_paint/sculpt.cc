@@ -135,8 +135,8 @@ bool report_if_shape_key_is_locked(const Object &ob, ReportList *reports)
 /* -------------------------------------------------------------------- */
 /** \name Sculpt bke::pbvh::Tree Abstraction API
  *
- * This is read-only, for writing use bke::pbvh::Tree vertex iterators. There vd.index matches
- * the indices used here.
+ * This is read-only, for writing use #bke::pbvh::Tree vertex iterators.
+ * There `vd.index` matches the indices used here.
  *
  * For multi-resolution, the same vertex in multiple grids is counted multiple times, with
  * different index for each grid.
@@ -1264,31 +1264,6 @@ SculptOrigVertData SCULPT_orig_vert_data_init(const Object &ob,
     data = {};
   }
   return data;
-}
-
-void SCULPT_orig_vert_data_update(SculptOrigVertData &orig_data, const PBVHVertexIter &iter)
-{
-  using namespace blender::ed::sculpt_paint;
-  if (orig_data.undo_type == undo::Type::Position) {
-    if (orig_data.bm_log) {
-      BM_log_original_vert_data(orig_data.bm_log, iter.bm_vert, &orig_data.co, &orig_data.no);
-    }
-    else {
-      orig_data.co = orig_data.coords[iter.i];
-      orig_data.no = orig_data.normals[iter.i];
-    }
-  }
-  else if (orig_data.undo_type == undo::Type::Color) {
-    orig_data.col = orig_data.colors[iter.i];
-  }
-  else if (orig_data.undo_type == undo::Type::Mask) {
-    if (orig_data.bm_log) {
-      orig_data.mask = BM_log_original_mask(orig_data.bm_log, iter.bm_vert);
-    }
-    else {
-      orig_data.mask = orig_data.vmasks[iter.i];
-    }
-  }
 }
 
 void SCULPT_orig_vert_data_update(SculptOrigVertData &orig_data, const BMVert &vert)
@@ -7346,7 +7321,13 @@ void write_translations(const Sculpt &sd,
     apply_crazyspace_to_translations(ss.deform_imats, verts, translations);
   }
 
-  apply_translations(translations, verts, positions_orig);
+  const Mesh &mesh = *static_cast<Mesh *>(object.data);
+  const KeyBlock *active_key = BKE_keyblock_from_object(&object);
+  const bool relative_shapekey_active = active_key != nullptr && active_key != mesh.key->refkey;
+  if (!relative_shapekey_active) {
+    apply_translations(translations, verts, positions_orig);
+  }
+
   apply_translations_to_shape_keys(object, verts, translations, positions_orig);
 }
 
