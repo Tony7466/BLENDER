@@ -1094,7 +1094,11 @@ static bool apply_grease_pencil_for_modifier(Depsgraph *depsgraph,
     }
   }
 
-  /* Build material indices mapping. */
+  /* Build material indices mapping. This maps the materials indices on the original geometry to
+   * the material indices used in the result geometry. The material indices for the drawings in the
+   * result geometry are already correct, but this might not be the case for all drawings in the
+   * original geometry (like for drawings that are not visible on the frame that the modifier is
+   * being applied on). */
   Array<int> material_indices_map(grease_pencil_orig.material_array_num);
   for (const int mat_i : IndexRange(grease_pencil_orig.material_array_num)) {
     Material *material = grease_pencil_orig.material_array[mat_i];
