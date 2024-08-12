@@ -65,7 +65,6 @@ void OVERLAY_grease_pencil_cache_init(OVERLAY_Data *vedata)
 {
   using namespace blender;
   OVERLAY_PassList *psl = vedata->psl;
-  OVERLAY_PrivateData *pd = vedata->stl->pd;
   const DRWContextState *draw_ctx = DRW_context_state_get();
   Scene *scene = draw_ctx->scene;
   ToolSettings *ts = scene->toolsettings;
@@ -86,7 +85,6 @@ void OVERLAY_grease_pencil_cache_init(OVERLAY_Data *vedata)
   const bool grid_xray = (v3d->gp_flag & V3D_GP_SHOW_GRID_XRAY);
 
   if (show_grid && show_overlays) {
-    /* TODO: Add UI. */
     const float3 base_color = float3(0.5f);
     const float4 col_grid = float4(base_color, v3d->overlay.gpencil_grid_opacity);
 
