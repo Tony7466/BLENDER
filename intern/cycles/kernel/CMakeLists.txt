@@ -732,11 +732,15 @@ if(WITH_CYCLES_DEVICE_HIPRT)
   set(bvh_file_oro ${CMAKE_CURRENT_BINARY_DIR}/oro_compiled_kernels.hipfb)
 
   if(WIN32)
+    set(hiprt_lib hiprt64.dll)
+    set(hiprt_lib_path ${LIBDIR}/hiprt/bin)
     set(hiprt_compile_command ${CMAKE_COMMAND})
     set(hiprt_compile_flags
       -E env "HIP_PATH=${HIP_ROOT_DIR}"
       ${HIP_HIPCC_EXECUTABLE}.bat)
   else()
+    set(hiprt_lib libhiprt64.so)
+    set(hiprt_lib_path ${LIBDIR}/hiprt/lib)
     set(hiprt_compile_command ${HIP_HIPCC_EXECUTABLE})
     set(hiprt_compile_flags)
   endif()
@@ -801,7 +805,7 @@ if(WITH_CYCLES_DEVICE_HIPRT)
 
   delayed_install("" "${bvh_file}"     ${cycles_kernel_runtime_lib_target_path})
   delayed_install("" "${bvh_file_oro}" ${cycles_kernel_runtime_lib_target_path})
-  delayed_install("${HIPRT_LIB_PATH}" "hiprt64.dll" ${cycles_kernel_runtime_lib_target_path})
+  delayed_install("${hiprt_lib_path}" "${hiprt_lib}" ${cycles_kernel_runtime_lib_target_path})
 
   if(WITH_CYCLES_HIP_BINARIES)
     set(hiprt_sources device/hiprt/kernel.cpp
