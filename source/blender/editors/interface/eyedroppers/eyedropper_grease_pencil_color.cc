@@ -63,8 +63,12 @@ enum class MaterialMode : int8_t {
 
 struct EyedropperGreasePencil {
   ColorManagedDisplay *display;
-  /** color under cursor RGB */
+
+  bool accum_start; /* has mouse been pressed */
+  float3 accum_col;
+  int accum_tot;
   float3 color;
+
   /** Mode */
   EyeMode mode;
   /** Material Mode */
@@ -127,6 +131,7 @@ static bool eyedropper_grease_pencil_init(bContext *C, wmOperator *op)
   display_device = scene->display_settings.display_device;
   eye->display = IMB_colormanagement_display_get_named(display_device);
 
+  eye->accum_start = true;
   eye->mode = (EyeMode)RNA_enum_get(op->ptr, "mode");
   eye->mat_mode = (MaterialMode)RNA_enum_get(op->ptr, "material_mode");
   return true;
@@ -338,7 +343,17 @@ static void eyedropper_grease_pencil_color_sample(bContext *C,
                                                   EyedropperGreasePencil *eye,
                                                   const int m_xy[2])
 {
-  eyedropper_color_sample_fl(C, m_xy, eye->color);
+  /* Accumulate color. */
+  float3 col;
+  eyedropper_color_sample_fl(C, m_xy, col);
+
+  eye->accum_col += col;
+  eye->accum_tot++;
+
+  eye->color = eye->accum_col;
+  if (eye->accum_tot > 1) {
+    eye->color = eye->accum_col / float(eye->accum_tot);
+  }
 }
 
 /* Cancel operator. */
@@ -357,9 +372,16 @@ static int eyedropper_grease_pencil_modal(bContext *C, wmOperator *op, const wmE
   switch (event->type) {
     case EVT_MODAL_MAP: {
       switch (event->val) {
-        case EYE_MODAL_SAMPLE_BEGIN: {
-          return OPERATOR_RUNNING_MODAL;
-        }
+        case EYE_MODAL_SAMPLE_BEGIN:
+          /* enable accum and make first sample */
+          eye->accum_start = true;
+          eyedropper_grease_pencil_color_sample(C, eye, event->xy);
+          break;
+        case EYE_MODAL_SAMPLE_RESET:
+          eye->accum_tot = 0;
+          eye->accum_col = float3(0.0f, 0.0f, 0.0f);
+          eyedropper_grease_pencil_color_sample(C, eye, event->xy);
+          break;
         case EYE_MODAL_CANCEL: {
           eyedropper_grease_pencil_cancel(C, op);
           return OPERATOR_CANCELLED;
@@ -382,7 +404,10 @@ static int eyedropper_grease_pencil_modal(bContext *C, wmOperator *op, const wmE
     }
     case MOUSEMOVE:
     case INBETWEEN_MOUSEMOVE: {
-      eyedropper_grease_pencil_color_sample(C, eye, event->xy);
+      if (eye->accum_start) {
+        /* button is pressed so keep sampling */
+        eyedropper_grease_pencil_color_sample(C, eye, event->xy);
+      }
       break;
     }
     default: {
