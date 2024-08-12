@@ -8799,8 +8799,11 @@ class VIEW3D_PT_greasepencil_sculpt_context_menu(Panel):
         brush = tool_settings.gpencil_sculpt_paint.brush
         layout = self.layout
 
-        layout.prop(tool_settings.unified_paint_settings, "size", text='')
-        layout.prop(brush, "strength", text='')
+        ups = tool_settings.unified_paint_settings
+        size_owner = ups if ups.use_unified_size else brush
+        strength_owner = ups if ups.use_unified_strength else brush
+        layout.prop(size_owner, "size", text='')
+        layout.prop(strength_owner, "strength", text='')
 
         layer = context.object.data.layers.active
 
