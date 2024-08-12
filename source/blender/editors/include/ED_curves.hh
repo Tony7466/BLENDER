@@ -67,6 +67,14 @@ void remove_selection_attributes(
     bke::MutableAttributeAccessor &attributes,
     Span<StringRef> selection_attribute_names = get_curves_all_selection_attribute_names());
 
+/**
+ * Get the position span associated with the given selection attribute name.
+ */
+Span<float3> get_selection_attribute_positions(
+    const bke::CurvesGeometry &curves,
+    const bke::crazyspace::GeometryDeformation &deformation,
+    const StringRef attribute_name);
+
 using SelectionRangeFn = FunctionRef<void(
     IndexRange range, Span<float3> positions, StringRef selection_attribute_name)>;
 /**
@@ -347,10 +355,12 @@ bool select_circle(const ViewContext &vc,
  * Mask of points adjacent to a selected point, or unselected point if deselect is true.
  */
 IndexMask select_adjacent_mask(const bke::CurvesGeometry &curves,
+                               StringRef attribute_name,
                                bool deselect,
                                IndexMaskMemory &memory);
 IndexMask select_adjacent_mask(const bke::CurvesGeometry &curves,
                                const IndexMask &curves_mask,
+                               StringRef attribute_name,
                                bool deselect,
                                IndexMaskMemory &memory);
 
@@ -363,6 +373,7 @@ IndexMask select_box_mask(const ViewContext &vc,
                           const float4x4 &projection,
                           const IndexMask &mask,
                           bke::AttrDomain selection_domain,
+                          StringRef attribute_name,
                           const rcti &rect,
                           IndexMaskMemory &memory);
 
@@ -375,6 +386,7 @@ IndexMask select_lasso_mask(const ViewContext &vc,
                             const float4x4 &projection,
                             const IndexMask &mask,
                             bke::AttrDomain selection_domain,
+                            StringRef attribute_name,
                             Span<int2> lasso_coords,
                             IndexMaskMemory &memory);
 
@@ -387,6 +399,7 @@ IndexMask select_circle_mask(const ViewContext &vc,
                              const float4x4 &projection,
                              const IndexMask &mask,
                              bke::AttrDomain selection_domain,
+                             StringRef attribute_name,
                              int2 coord,
                              float radius,
                              IndexMaskMemory &memory);

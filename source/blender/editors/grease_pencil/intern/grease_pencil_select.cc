@@ -99,18 +99,49 @@ static int foreach_curve_segment(const CurveSegmentsData &segment_data,
   return segments.size();
 }
 
+bool apply_mask_as_selection(bke::CurvesGeometry &curves,
+                             const IndexMask &selection_mask,
+                             const bke::AttrDomain selection_domain,
+                             const StringRef attribute_name,
+                             const GrainSize grain_size,
+                             const eSelectOp sel_op)
+{
+  if (selection_mask.is_empty()) {
+    return false;
+  }
+
+  const eCustomDataType create_type = CD_PROP_BOOL;
+  bke::GSpanAttributeWriter writer = ed::curves::ensure_selection_attribute(
+      curves, selection_domain, create_type, attribute_name);
+
+  selection_mask.foreach_index(grain_size, [&](const int64_t element_i) {
+    ed::curves::apply_selection_operation_at_index(writer.span, element_i, sel_op);
+  });
+
+  writer.finish();
+
+  return true;
+}
+
 bool apply_mask_as_segment_selection(bke::CurvesGeometry &curves,
                                      const IndexMask &point_selection_mask,
+                                     const StringRef attribute_name,
                                      const Curves2DBVHTree &tree_data,
                                      const IndexRange tree_data_range,
                                      const GrainSize grain_size,
                                      const eSelectOp sel_op)
 {
+  /* Use regular selection for anything other than the ".selection" attribute. */
+  if (attribute_name != ".selection") {
+    return apply_mask_as_selection(
+        curves, point_selection_mask, bke::AttrDomain::Point, attribute_name, grain_size, sel_op);
+  }
+
   if (point_selection_mask.is_empty()) {
     return false;
   }
-
   IndexMaskMemory memory;
+
   const IndexMask changed_curve_mask = ed::curves::curve_mask_from_points(
       curves, point_selection_mask, GrainSize(512), memory);
 
@@ -122,14 +153,9 @@ bool apply_mask_as_segment_selection(bke::CurvesGeometry &curves,
       curves, changed_curve_mask, screen_space_positions, tree_data, tree_data_range);
 
   const OffsetIndices<int> segments_by_curve = OffsetIndices<int>(segment_data.segment_offsets);
-  Vector<bke::GSpanAttributeWriter> attribute_writers;
   const eCustomDataType create_type = CD_PROP_BOOL;
-  const Span<StringRef> selection_attribute_names =
-      ed::curves::get_curves_selection_attribute_names(curves);
-  for (const int i : selection_attribute_names.index_range()) {
-    attribute_writers.append(ed::curves::ensure_selection_attribute(
-        curves, bke::AttrDomain::Point, create_type, selection_attribute_names[i]));
-  };
+  bke::GSpanAttributeWriter attribute_writer = ed::curves::ensure_selection_attribute(
+      curves, bke::AttrDomain::Point, create_type, attribute_name);
 
   /* Find all segments that have changed points and fill them. */
   Array<bool> changed_points(curves.points_num());
@@ -144,10 +170,8 @@ bool apply_mask_as_segment_selection(bke::CurvesGeometry &curves,
     return false;
   };
   auto update_points_range = [&](const IndexRange range) {
-    for (auto &attribute_writer : attribute_writers) {
-      for (const int point_i : range) {
-        ed::curves::apply_selection_operation_at_index(attribute_writer.span, point_i, sel_op);
-      }
+    for (const int point_i : range) {
+      ed::curves::apply_selection_operation_at_index(attribute_writer.span, point_i, sel_op);
     }
   };
 
@@ -173,37 +197,7 @@ bool apply_mask_as_segment_selection(bke::CurvesGeometry &curves,
         }
       });
 
-  for (auto &attribute_writer : attribute_writers) {
-    attribute_writer.finish();
-  }
-
-  return true;
-}
-
-bool apply_mask_as_selection(bke::CurvesGeometry &curves,
-                             const IndexMask &selection_mask,
-                             const bke::AttrDomain selection_domain,
-                             const GrainSize grain_size,
-                             const eSelectOp sel_op)
-{
-  if (selection_mask.is_empty()) {
-    return false;
-  }
-
-  const eCustomDataType create_type = CD_PROP_BOOL;
-  const Span<StringRef> selection_attribute_names =
-      ed::curves::get_curves_selection_attribute_names(curves);
-  for (const int i : selection_attribute_names.index_range()) {
-    bke::GSpanAttributeWriter writer = ed::curves::ensure_selection_attribute(
-        curves, selection_domain, create_type, selection_attribute_names[i]);
-
-    selection_mask.foreach_index(grain_size, [&](const int64_t element_i) {
-      ed::curves::apply_selection_operation_at_index(writer.span, element_i, sel_op);
-    });
-
-    writer.finish();
-  }
-
+  attribute_writer.finish();
   return true;
 }
 
@@ -269,6 +263,9 @@ static int select_more_exec(bContext *C, wmOperator * /*op*/)
 
   threading::parallel_for_each(drawings.index_range(), [&](const int drawing_i) {
     const MutableDrawingInfo &info = drawings[drawing_i];
+    const Span<StringRef> selection_attribute_names =
+        ed::curves::get_curves_selection_attribute_names(info.drawing.strokes());
+
     IndexMaskMemory memory;
     const IndexMask selectable_strokes = ed::greasepencil::retrieve_editable_strokes(
         *object, info.drawing, info.layer_index, memory);
@@ -276,26 +273,30 @@ static int select_more_exec(bContext *C, wmOperator * /*op*/)
       return;
     }
 
-    const IndexMask changed_point_mask = blender::ed::curves::select_adjacent_mask(
-        info.drawing.strokes(), false, memory);
+    for (const StringRef attribute_name : selection_attribute_names) {
+      const IndexMask changed_point_mask = blender::ed::curves::select_adjacent_mask(
+          info.drawing.strokes(), attribute_name, false, memory);
 
-    if (use_segment_selection) {
-      /* Range of points in tree data matching this curve, for re-using screen space positions.
-       */
-      const IndexRange tree_data_range = tree_data_by_drawing[drawing_i];
-      ed::greasepencil::apply_mask_as_segment_selection(info.drawing.strokes_for_write(),
-                                                        changed_point_mask,
-                                                        tree_data,
-                                                        tree_data_range,
-                                                        GrainSize(4096),
-                                                        SEL_OP_ADD);
-    }
-    else {
-      ed::greasepencil::apply_mask_as_selection(info.drawing.strokes_for_write(),
-                                                changed_point_mask,
-                                                bke::AttrDomain::Point,
-                                                GrainSize(4096),
-                                                SEL_OP_ADD);
+      if (use_segment_selection) {
+        /* Range of points in tree data matching this curve, for re-using screen space positions.
+         */
+        const IndexRange tree_data_range = tree_data_by_drawing[drawing_i];
+        ed::greasepencil::apply_mask_as_segment_selection(info.drawing.strokes_for_write(),
+                                                          changed_point_mask,
+                                                          attribute_name,
+                                                          tree_data,
+                                                          tree_data_range,
+                                                          GrainSize(4096),
+                                                          SEL_OP_ADD);
+      }
+      else {
+        ed::greasepencil::apply_mask_as_selection(info.drawing.strokes_for_write(),
+                                                  changed_point_mask,
+                                                  bke::AttrDomain::Point,
+                                                  attribute_name,
+                                                  GrainSize(4096),
+                                                  SEL_OP_ADD);
+      }
     }
   });
 
@@ -339,6 +340,9 @@ static int select_less_exec(bContext *C, wmOperator * /*op*/)
 
   threading::parallel_for_each(drawings.index_range(), [&](const int drawing_i) {
     const MutableDrawingInfo &info = drawings[drawing_i];
+    const Span<StringRef> selection_attribute_names =
+        ed::curves::get_curves_selection_attribute_names(info.drawing.strokes());
+
     IndexMaskMemory memory;
     const IndexMask selectable_strokes = ed::greasepencil::retrieve_editable_strokes(
         *object, info.drawing, info.layer_index, memory);
@@ -346,26 +350,30 @@ static int select_less_exec(bContext *C, wmOperator * /*op*/)
       return;
     }
 
-    const IndexMask changed_point_mask = blender::ed::curves::select_adjacent_mask(
-        info.drawing.strokes(), true, memory);
+    for (const StringRef attribute_name : selection_attribute_names) {
+      const IndexMask changed_point_mask = blender::ed::curves::select_adjacent_mask(
+          info.drawing.strokes(), attribute_name, true, memory);
 
-    if (use_segment_selection) {
-      /* Range of points in tree data matching this curve, for re-using screen space positions.
-       */
-      const IndexRange tree_data_range = tree_data_by_drawing[drawing_i];
-      ed::greasepencil::apply_mask_as_segment_selection(info.drawing.strokes_for_write(),
-                                                        changed_point_mask,
-                                                        tree_data,
-                                                        tree_data_range,
-                                                        GrainSize(4096),
-                                                        SEL_OP_SUB);
-    }
-    else {
-      ed::greasepencil::apply_mask_as_selection(info.drawing.strokes_for_write(),
-                                                changed_point_mask,
-                                                bke::AttrDomain::Point,
-                                                GrainSize(4096),
-                                                SEL_OP_SUB);
+      if (use_segment_selection) {
+        /* Range of points in tree data matching this curve, for re-using screen space positions.
+         */
+        const IndexRange tree_data_range = tree_data_by_drawing[drawing_i];
+        ed::greasepencil::apply_mask_as_segment_selection(info.drawing.strokes_for_write(),
+                                                          changed_point_mask,
+                                                          attribute_name,
+                                                          tree_data,
+                                                          tree_data_range,
+                                                          GrainSize(4096),
+                                                          SEL_OP_SUB);
+      }
+      else {
+        ed::greasepencil::apply_mask_as_selection(info.drawing.strokes_for_write(),
+                                                  changed_point_mask,
+                                                  bke::AttrDomain::Point,
+                                                  attribute_name,
+                                                  GrainSize(4096),
+                                                  SEL_OP_SUB);
+      }
     }
   });
 

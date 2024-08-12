@@ -12,8 +12,6 @@
 #include <cstring>
 #include <optional>
 
-#include "BKE_curves.hh"
-#include "BLI_index_mask_expression.hh"
 #include "DNA_action_types.h"
 #include "DNA_armature_types.h"
 #include "DNA_curve_types.h"
@@ -28,6 +26,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_bitmap.h"
+#include "BLI_function_ref.hh"
 #include "BLI_lasso_2d.hh"
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
@@ -45,8 +44,6 @@
 #endif
 
 /* vertex box select */
-#include "BKE_global.hh"
-#include "BKE_main.hh"
 #include "IMB_imbuf.hh"
 #include "IMB_imbuf_types.hh"
 
@@ -56,9 +53,12 @@
 #include "BKE_context.hh"
 #include "BKE_crazyspace.hh"
 #include "BKE_curve.hh"
+#include "BKE_curves.hh"
 #include "BKE_editmesh.hh"
+#include "BKE_global.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_layer.hh"
+#include "BKE_main.hh"
 #include "BKE_mball.hh"
 #include "BKE_mesh.hh"
 #include "BKE_object.hh"
@@ -418,10 +418,16 @@ static bool edbm_backbuf_check_and_select_faces_obmode(Mesh *mesh,
 /** \name Grease Pencil utilities
  * \{ */
 
-template<typename SelectOperation>
+namespace blender {
+using SelectOperation = FunctionRef<IndexMask(const ed::greasepencil::MutableDrawingInfo &info,
+                                              const IndexMask &universe,
+                                              StringRef attribute_name,
+                                              IndexMaskMemory &memory)>;
+}
+
 static bool grease_pencil_select_operation(const ViewContext *vc,
                                            const eSelectOp sel_op,
-                                           SelectOperation select_operation)
+                                           blender::SelectOperation select_operation)
 {
   using namespace blender;
   const Object *ob_eval = DEG_get_evaluated_object(vc->depsgraph,
@@ -450,6 +456,8 @@ static bool grease_pencil_select_operation(const ViewContext *vc,
   for (const int i_drawing : drawings.index_range()) {
     const ed::greasepencil::MutableDrawingInfo &info = drawings[i_drawing];
     bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
+    const Span<StringRef> selection_attribute_names =
+        ed::curves::get_curves_selection_attribute_names(curves);
 
     IndexMaskMemory memory;
     const IndexMask elements = ed::greasepencil::retrieve_editable_elements(
@@ -458,18 +466,30 @@ static bool grease_pencil_select_operation(const ViewContext *vc,
       continue;
     }
 
-    const IndexMask changed_element_mask = select_operation(info, elements, memory);
+    for (const StringRef attribute_name : selection_attribute_names) {
+      const IndexMask changed_element_mask = select_operation(
+          info, elements, attribute_name, memory);
 
-    if (use_segment_selection) {
-      /* Range of points in tree data matching this curve, for re-using screen space positions.
-       */
-      const IndexRange tree_data_range = tree_data_by_drawing[i_drawing];
-      changed |= ed::greasepencil::apply_mask_as_segment_selection(
-          curves, changed_element_mask, tree_data, tree_data_range, GrainSize(4096), sel_op);
-    }
-    else {
-      changed |= ed::greasepencil::apply_mask_as_selection(
-          curves, changed_element_mask, selection_domain, GrainSize(4096), sel_op);
+      if (use_segment_selection) {
+        /* Range of points in tree data matching this curve, for re-using screen space positions.
+         */
+        const IndexRange tree_data_range = tree_data_by_drawing[i_drawing];
+        changed |= ed::greasepencil::apply_mask_as_segment_selection(curves,
+                                                                     changed_element_mask,
+                                                                     attribute_name,
+                                                                     tree_data,
+                                                                     tree_data_range,
+                                                                     GrainSize(4096),
+                                                                     sel_op);
+      }
+      else {
+        changed |= ed::greasepencil::apply_mask_as_selection(curves,
+                                                             changed_element_mask,
+                                                             selection_domain,
+                                                             attribute_name,
+                                                             GrainSize(4096),
+                                                             sel_op);
+      }
     }
   }
 
@@ -1268,6 +1288,7 @@ static bool do_lasso_select_grease_pencil(const ViewContext *vc,
       sel_op,
       [&](const ed::greasepencil::MutableDrawingInfo &info,
           const IndexMask &mask,
+          const StringRef attribute_name,
           IndexMaskMemory &memory) {
         bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
         const bke::greasepencil::Layer &layer = *grease_pencil.layer(info.layer_index);
@@ -1278,8 +1299,15 @@ static bool do_lasso_select_grease_pencil(const ViewContext *vc,
         const float4x4 projection = ED_view3d_ob_project_mat_get_from_obmat(vc->rv3d,
                                                                             layer_to_world);
 
-        return ed::curves::select_lasso_mask(
-            *vc, curves, deformation, projection, mask, selection_domain, mcoords, memory);
+        return ed::curves::select_lasso_mask(*vc,
+                                             curves,
+                                             deformation,
+                                             projection,
+                                             mask,
+                                             selection_domain,
+                                             attribute_name,
+                                             mcoords,
+                                             memory);
       });
 }
 
@@ -3408,6 +3436,7 @@ static bool ed_grease_pencil_select_pick(bContext *C,
     const IndexRange tree_data_range = tree_data_by_drawing[closest.drawing_index];
     ed::greasepencil::apply_mask_as_segment_selection(closest.drawing->strokes_for_write(),
                                                       selection_mask,
+                                                      closest.selection_attribute_name,
                                                       tree_data,
                                                       tree_data_range,
                                                       GrainSize(4096),
@@ -3417,6 +3446,7 @@ static bool ed_grease_pencil_select_pick(bContext *C,
     ed::greasepencil::apply_mask_as_selection(closest.drawing->strokes_for_write(),
                                               selection_mask,
                                               selection_domain,
+                                              closest.selection_attribute_name,
                                               GrainSize(4096),
                                               params.sel_op);
   }
@@ -4359,6 +4389,7 @@ static bool do_grease_pencil_box_select(const ViewContext *vc,
       sel_op,
       [&](const ed::greasepencil::MutableDrawingInfo &info,
           const IndexMask &mask,
+          const StringRef attribute_name,
           IndexMaskMemory &memory) {
         bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
         const bke::greasepencil::Layer &layer = *grease_pencil.layer(info.layer_index);
@@ -4369,8 +4400,15 @@ static bool do_grease_pencil_box_select(const ViewContext *vc,
         const float4x4 projection = ED_view3d_ob_project_mat_get_from_obmat(vc->rv3d,
                                                                             layer_to_world);
 
-        return ed::curves::select_box_mask(
-            *vc, curves, deformation, projection, mask, selection_domain, *rect, memory);
+        return ed::curves::select_box_mask(*vc,
+                                           curves,
+                                           deformation,
+                                           projection,
+                                           mask,
+                                           selection_domain,
+                                           attribute_name,
+                                           *rect,
+                                           memory);
       });
 }
 
@@ -5204,6 +5242,7 @@ static bool grease_pencil_circle_select(const ViewContext *vc,
       sel_op,
       [&](const ed::greasepencil::MutableDrawingInfo &info,
           const IndexMask &mask,
+          const StringRef attribute_name,
           IndexMaskMemory &memory) {
         bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
         const bke::greasepencil::Layer &layer = *grease_pencil.layer(info.layer_index);
@@ -5214,8 +5253,16 @@ static bool grease_pencil_circle_select(const ViewContext *vc,
         const float4x4 projection = ED_view3d_ob_project_mat_get_from_obmat(vc->rv3d,
                                                                             layer_to_world);
 
-        return ed::curves::select_circle_mask(
-            *vc, curves, deformation, projection, mask, selection_domain, int2(mval), rad, memory);
+        return ed::curves::select_circle_mask(*vc,
+                                              curves,
+                                              deformation,
+                                              projection,
+                                              mask,
+                                              selection_domain,
+                                              attribute_name,
+                                              int2(mval),
+                                              rad,
+                                              memory);
       });
 }
 

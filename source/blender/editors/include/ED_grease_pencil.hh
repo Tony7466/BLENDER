@@ -767,18 +767,20 @@ CurveSegmentsData find_curve_segments(const bke::CurvesGeometry &curves,
                                       const Curves2DBVHTree &tree_data,
                                       IndexRange tree_data_range);
 
+bool apply_mask_as_selection(bke::CurvesGeometry &curves,
+                             const IndexMask &selection,
+                             bke::AttrDomain selection_domain,
+                             StringRef attribute_name,
+                             GrainSize grain_size,
+                             eSelectOp sel_op);
+
 bool apply_mask_as_segment_selection(bke::CurvesGeometry &curves,
                                      const IndexMask &point_selection,
+                                     StringRef attribute_name,
                                      const Curves2DBVHTree &tree_data,
                                      IndexRange tree_data_range,
                                      GrainSize grain_size,
                                      eSelectOp sel_op);
-
-bool apply_mask_as_selection(bke::CurvesGeometry &curves,
-                             const IndexMask &selection,
-                             bke::AttrDomain selection_domain,
-                             GrainSize grain_size,
-                             eSelectOp sel_op);
 
 namespace cutter {
 bke::CurvesGeometry trim_curve_segments(const bke::CurvesGeometry &src,

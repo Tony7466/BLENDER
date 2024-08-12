@@ -117,6 +117,24 @@ void remove_selection_attributes(bke::MutableAttributeAccessor &attributes,
   }
 }
 
+Span<float3> get_selection_attribute_positions(
+    const bke::CurvesGeometry &curves,
+    const bke::crazyspace::GeometryDeformation &deformation,
+    const StringRef attribute_name)
+{
+  if (attribute_name == ".selection") {
+    return deformation.positions;
+  }
+  if (attribute_name == ".selection_handle_left") {
+    return curves.handle_positions_left();
+  }
+  if (attribute_name == ".selection_handle_right") {
+    return curves.handle_positions_right();
+  }
+  BLI_assert_unreachable();
+  return {};
+}
+
 static Vector<bke::GSpanAttributeWriter> init_selection_writers(bke::CurvesGeometry &curves,
                                                                 bke::AttrDomain selection_domain)
 {
@@ -1250,6 +1268,7 @@ IndexMask select_mask_from_predicates(const bke::CurvesGeometry &curves,
 
 IndexMask select_adjacent_mask(const bke::CurvesGeometry &curves,
                                const IndexMask &curves_mask,
+                               const StringRef attribute_name,
                                const bool deselect,
                                IndexMaskMemory &memory)
 {
@@ -1257,7 +1276,7 @@ IndexMask select_adjacent_mask(const bke::CurvesGeometry &curves,
   const VArray<bool> cyclic = curves.cyclic();
 
   VArraySpan<bool> selection = *curves.attributes().lookup_or_default<bool>(
-      ".selection", bke::AttrDomain::Point, true);
+      attribute_name, bke::AttrDomain::Point, true);
 
   /* Mask of points that are not selected yet but adjacent. */
   Array<bool> changed_points(curves.points_num());
@@ -1300,10 +1319,11 @@ IndexMask select_adjacent_mask(const bke::CurvesGeometry &curves,
 }
 
 IndexMask select_adjacent_mask(const bke::CurvesGeometry &curves,
+                               const StringRef attribute_name,
                                const bool deselect,
                                IndexMaskMemory &memory)
 {
-  return select_adjacent_mask(curves, curves.curves_range(), deselect, memory);
+  return select_adjacent_mask(curves, curves.curves_range(), attribute_name, deselect, memory);
 }
 
 IndexMask select_box_mask(const ViewContext &vc,
@@ -1312,10 +1332,12 @@ IndexMask select_box_mask(const ViewContext &vc,
                           const float4x4 &projection,
                           const IndexMask &mask,
                           const bke::AttrDomain selection_domain,
+                          const StringRef attribute_name,
                           const rcti &rect,
                           IndexMaskMemory &memory)
 {
-  const Span<float3> positions = deformation.positions;
+  const Span<float3> positions = get_selection_attribute_positions(
+      curves, deformation, attribute_name);
 
   auto point_predicate = [&](const int point_i) {
     const float2 pos_proj = ED_view3d_project_float_v2_m4(
@@ -1341,12 +1363,14 @@ IndexMask select_lasso_mask(const ViewContext &vc,
                             const float4x4 &projection,
                             const IndexMask &mask,
                             const bke::AttrDomain selection_domain,
+                            const StringRef attribute_name,
                             const Span<int2> lasso_coords,
                             IndexMaskMemory &memory)
 {
   rcti bbox;
   BLI_lasso_boundbox(&bbox, lasso_coords);
-  const Span<float3> positions = deformation.positions;
+  const Span<float3> positions = get_selection_attribute_positions(
+      curves, deformation, attribute_name);
 
   auto point_predicate = [&](const int point_i) {
     const float2 pos_proj = ED_view3d_project_float_v2_m4(
@@ -1379,12 +1403,14 @@ IndexMask select_circle_mask(const ViewContext &vc,
                              const float4x4 &projection,
                              const IndexMask &mask,
                              const bke::AttrDomain selection_domain,
+                             const StringRef attribute_name,
                              const int2 coord,
                              const float radius,
                              IndexMaskMemory &memory)
 {
   const float radius_sq = pow2f(radius);
-  const Span<float3> positions = deformation.positions;
+  const Span<float3> positions = get_selection_attribute_positions(
+      curves, deformation, attribute_name);
 
   auto point_predicate = [&](const int point_i) {
     const float2 pos_proj = ED_view3d_project_float_v2_m4(
