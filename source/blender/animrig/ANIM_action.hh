@@ -810,19 +810,26 @@ class ChannelBag : public ::ActionChannelBag {
   bool channel_group_remove(bActionGroup &group);
 
   /**
-   * Remove the given channel group from the channel bag, *without* preserving
-   * invariants.
+   * Remove the given channel group from the channel bag, *without* moving
+   * fcurves to preserve group membership.
    *
-   * This is a low-level function that only manipulates the channel group array.
-   * It does not modify the channel groups' fcurve indices at all, and thus may
-   * leave a gap in the fcurve indices of the groups. However, fcurve
-   * membership will still be correct.
+   * This is a low-ish-level function that makes no attempt to preserve existing
+   * group membership. However, that doesn't mean it's behavior is arbitrary: on
+   * the contrary, it is specific and well defined so that other things can be
+   * built on top of it.
    *
-   * Calling `recompute_channel_group_indices()` will collapse any such gaps,
-   * but in a way that disregards fcurve membership.
+   * Imagine there are three groups: A, B, and C.  All groups have two fcurves
+   * as members. The way this method behaves is that if B is removed, C will
+   * shift over to fill in the gap. However, this method does *not* shift C's
+   * fcurves over with it, and therefore C will end up with what used to be B's
+   * fcurves as its own, and what used to be C's fcurves will be off the end of
+   * the grouped fcurves and thus ungrouped.
    *
-   * TODO: implement a higher-level `channel_group_remove()` method that handles
-   * all of that stuff correctly for call sites that need that.
+   * In other words, this method naively shifts groups over to fill the gap left
+   * by the removed one, and whatever fcurves they happen to land on are then
+   * their members.
+   *
+   * All critical invariants are still upheld by this method.
    *
    * \return true when the channel group was found & removed, false if it wasn't
    * found.
