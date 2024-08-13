@@ -45,9 +45,11 @@ void keymap_curves(wmKeyConfig *keyconf);
 float (*point_normals_array_create(const Curves *curves_id))[3];
 
 /**
- * Get selection attribute names need for given curve.
- * Possible outcomes: [".selection"] if Bezier curves are present,
- * [".selection", ".selection_handle_left", ".selection_handle_right"] otherwise. */
+ * Get selection attribute names need for given curve and domain.
+ * Possible outcomes:
+ * [".selection", ".selection_handle_left", ".selection_handle_right"] if Bezier curves are
+ * present, [".selection"] otherwise.
+ */
 Span<StringRef> get_curves_selection_attribute_names(const bke::CurvesGeometry &curves);
 
 /* Get all possible curve selection attribute names. */

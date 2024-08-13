@@ -24,8 +24,12 @@
 #include "BKE_curves_utils.hh"
 #include "BKE_grease_pencil.hh"
 
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
+
 #include "DNA_curves_types.h"
 
+#include "ED_curves.hh"
 #include "ED_grease_pencil.hh"
 #include "ED_view3d.hh"
 
@@ -1316,6 +1320,100 @@ bke::CurvesGeometry trim_curve_segments(const bke::CurvesGeometry &src,
 }
 
 }  // namespace cutter
+
+/* -------------------------------------------------------------------- */
+/** \name Generic Selection Update
+ * \{ */
+
+bool selection_update(const ViewContext *vc,
+                      const eSelectOp sel_op,
+                      SelectionUpdateFunc select_operation)
+{
+  using namespace blender;
+  const Object *ob_eval = DEG_get_evaluated_object(vc->depsgraph,
+                                                   const_cast<Object *>(vc->obedit));
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(vc->obedit->data);
+
+  /* Get selection domain from tool settings. */
+  const bke::AttrDomain selection_domain = ED_grease_pencil_selection_domain_get(
+      vc->scene->toolsettings);
+  const bool use_segment_selection = ED_grease_pencil_segment_selection_enabled(
+      vc->scene->toolsettings);
+
+  bool changed = false;
+  const Array<Vector<ed::greasepencil::MutableDrawingInfo>> drawings_by_frame =
+      ed::greasepencil::retrieve_editable_drawings_grouped_per_frame(*vc->scene, grease_pencil);
+
+  for (const Span<ed::greasepencil::MutableDrawingInfo> drawings : drawings_by_frame) {
+    if (drawings.is_empty()) {
+      continue;
+    }
+    const int frame_number = drawings.first().frame_number;
+
+    /* Construct BVH tree for all drawings on the same frame. */
+    ed::greasepencil::Curves2DBVHTree tree_data;
+    BLI_SCOPED_DEFER([&]() { ed::greasepencil::free_curves_2d_bvh_data(tree_data); });
+    if (use_segment_selection) {
+      tree_data = ed::greasepencil::build_curves_2d_bvh_from_visible(
+          *vc, *ob_eval, grease_pencil, drawings, frame_number);
+    }
+    OffsetIndices tree_data_by_drawing = OffsetIndices<int>(tree_data.drawing_offsets);
+
+    for (const int i_drawing : drawings.index_range()) {
+      // TODO optimize by lazy-initializing the tree data ONLY IF the changed_element_mask is not
+      // empty.
+
+      const ed::greasepencil::MutableDrawingInfo &info = drawings[i_drawing];
+      bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
+      const Span<StringRef> selection_attribute_names =
+          ed::curves::get_curves_selection_attribute_names(curves);
+
+      IndexMaskMemory memory;
+      const IndexMask elements = ed::greasepencil::retrieve_editable_elements(
+          *vc->obedit, info, selection_domain, memory);
+      if (elements.is_empty()) {
+        continue;
+      }
+
+      for (const StringRef attribute_name : selection_attribute_names) {
+        const IndexMask changed_element_mask = select_operation(
+            info, elements, attribute_name, memory);
+
+        if (use_segment_selection) {
+          /* Range of points in tree data matching this curve, for re-using screen space positions.
+           */
+          const IndexRange tree_data_range = tree_data_by_drawing[i_drawing];
+          changed |= ed::greasepencil::apply_mask_as_segment_selection(curves,
+                                                                       changed_element_mask,
+                                                                       attribute_name,
+                                                                       tree_data,
+                                                                       tree_data_range,
+                                                                       GrainSize(4096),
+                                                                       sel_op);
+        }
+        else {
+          changed |= ed::greasepencil::apply_mask_as_selection(curves,
+                                                               changed_element_mask,
+                                                               selection_domain,
+                                                               attribute_name,
+                                                               GrainSize(4096),
+                                                               sel_op);
+        }
+      }
+    }
+  }
+
+  if (changed) {
+    /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a
+     * generic attribute for now. */
+    DEG_id_tag_update(static_cast<ID *>(vc->obedit->data), ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(vc->C, NC_GEOM | ND_DATA, vc->obedit->data);
+  }
+
+  return changed;
+}
+
+/** \} */
 
 Curves2DBVHTree build_curves_2d_bvh_from_visible(const ViewContext &vc,
                                                  const Object &object,

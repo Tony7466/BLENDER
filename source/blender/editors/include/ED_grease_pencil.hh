@@ -671,6 +671,16 @@ bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawing &draw
                                           float outline_offset,
                                           int material_index);
 
+/* Function that generates an update mask for a selection operation. */
+using SelectionUpdateFunc = FunctionRef<IndexMask(const ed::greasepencil::MutableDrawingInfo &info,
+                                                  const IndexMask &universe,
+                                                  StringRef attribute_name,
+                                                  IndexMaskMemory &memory)>;
+
+bool selection_update(const ViewContext *vc,
+                      const eSelectOp sel_op,
+                      SelectionUpdateFunc select_operation);
+
 /* BVHTree and associated data for 2D curve projection. */
 struct Curves2DBVHTree {
   BVHTree *tree = nullptr;
