@@ -4498,7 +4498,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         LISTBASE_FOREACH (const bNodeSocket *, input, &node->inputs) {
           const NodeImageMultiFileSocket *input_storage = static_cast<NodeImageMultiFileSocket *>(
               input->storage);
-          if (input_storage->save_as_render != first_save_as_render) {
+          if (bool(input_storage->save_as_render) != first_save_as_render) {
             all_inputs_have_same_save_as_render = false;
             break;
           }
@@ -4543,6 +4543,21 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         BKE_collection_exporter_name_set(exporters, data, fh ? fh->label : DATA_("Undefined"));
       }
     }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 16)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      scene->eevee.flag |= SCE_EEVEE_FAST_GI_ENABLED;
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 17)) {
+    FOREACH_NODETREE_BEGIN (bmain, tree, id) {
+      if (tree->default_group_node_width == 0) {
+        tree->default_group_node_width = GROUP_NODE_DEFAULT_WIDTH;
+      }
+    }
+    FOREACH_NODETREE_END;
   }
 
   /**
