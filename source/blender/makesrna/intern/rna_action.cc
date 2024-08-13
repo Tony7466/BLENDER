@@ -643,6 +643,40 @@ static int rna_iterator_ChannelBag_groups_length(PointerRNA *ptr)
   return bag.channel_groups().size();
 }
 
+static bActionGroup *rna_ChannelBag_group_new(ActionChannelBag *dna_channelbag,
+                                              ReportList *reports,
+                                              const char *name)
+{
+  BLI_assert(name != nullptr);
+  if (name[0] == '\0') {
+    BKE_report(reports, RPT_ERROR, "F-Curve Group name empty, invalid argument");
+    return nullptr;
+  }
+
+  animrig::ChannelBag &self = dna_channelbag->wrap();
+  return &self.channel_group_create(name);
+}
+
+static void rna_ChannelBag_group_remove(ActionChannelBag *dna_channelbag,
+                                        ReportList *reports,
+                                        PointerRNA *agrp_ptr)
+{
+  animrig::ChannelBag &self = dna_channelbag->wrap();
+
+  bActionGroup *agrp = static_cast<bActionGroup *>(agrp_ptr->data);
+
+  if (!self.channel_group_remove(*agrp)) {
+    BKE_report(reports,
+               RPT_ERROR,
+               "Could not remove the F-Curve Group from the collection because it doesn't exist "
+               "in the collection");
+    return;
+  }
+
+  RNA_POINTER_INVALIDATE(agrp_ptr);
+  WM_main_add_notifier(NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
+}
+
 static ActionChannelBag *rna_KeyframeActionStrip_channels(KeyframeActionStrip *self,
                                                           const animrig::slot_handle_t slot_handle)
 {
@@ -1941,28 +1975,28 @@ static void rna_def_channelbag_groups(BlenderRNA *brna, PropertyRNA *cprop)
 {
   StructRNA *srna;
 
-  // FunctionRNA *func;
-  // PropertyRNA *parm;
+  FunctionRNA *func;
+  PropertyRNA *parm;
 
   RNA_def_property_srna(cprop, "ActionChannelBagGroups");
   srna = RNA_def_struct(brna, "ActionChannelBagGroups", nullptr);
-  RNA_def_struct_sdna(srna, "bAction");
+  RNA_def_struct_sdna(srna, "ActionChannelBag");
   RNA_def_struct_ui_text(srna, "F-Curve Groups", "Collection of f-curve groups");
 
-  // func = RNA_def_function(srna, "new", "rna_ChannelBag_groups_new");
-  // RNA_def_function_flag(func, FUNC_USE_REPORTS);
-  // RNA_def_function_ui_description(func, "Create a new action group and add it to the action");
-  // parm = RNA_def_string(func, "name", "Group", 0, "", "New name for the action group");
-  // RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
-  // parm = RNA_def_pointer(func, "action_group", "ActionGroup", "", "Newly created action group");
-  // RNA_def_function_return(func, parm);
+  func = RNA_def_function(srna, "new", "rna_ChannelBag_group_new");
+  RNA_def_function_flag(func, FUNC_USE_REPORTS);
+  RNA_def_function_ui_description(func, "Create a new action group and add it to the action");
+  parm = RNA_def_string(func, "name", "Group", 0, "", "New name for the action group");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  parm = RNA_def_pointer(func, "action_group", "ActionGroup", "", "Newly created action group");
+  RNA_def_function_return(func, parm);
 
-  // func = RNA_def_function(srna, "remove", "rna_ChannelBag_groups_remove");
-  // RNA_def_function_ui_description(func, "Remove action group");
-  // RNA_def_function_flag(func, FUNC_USE_REPORTS);
-  // parm = RNA_def_pointer(func, "action_group", "ActionGroup", "", "Action group to remove");
-  // RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
-  // RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, ParameterFlag(0));
+  func = RNA_def_function(srna, "remove", "rna_ChannelBag_group_remove");
+  RNA_def_function_ui_description(func, "Remove action group");
+  RNA_def_function_flag(func, FUNC_USE_REPORTS);
+  parm = RNA_def_pointer(func, "action_group", "ActionGroup", "", "Action group to remove");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
+  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, ParameterFlag(0));
 }
 
 static void rna_def_action_channelbag(BlenderRNA *brna)
