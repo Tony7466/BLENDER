@@ -16,6 +16,7 @@
 #include "BLI_implicit_sharing_ptr.hh"
 #include "BLI_map.hh"
 #include "BLI_math_vector_types.hh"
+#include "BLI_memory_counter_fwd.hh"
 
 /* For #Map. */
 #include "BKE_attribute.hh"
@@ -96,6 +97,8 @@ class GeometryComponent : public ImplicitSharingMixin {
    */
   virtual std::optional<AttributeAccessor> attributes() const;
   virtual std::optional<MutableAttributeAccessor> attributes_for_write();
+
+  virtual void count_memory(MemoryCounter &memory) const;
 
   /**
    * Copies the component. The returned component only has a single user and is therefor mutable.
@@ -439,6 +442,8 @@ struct GeometrySet {
     return Span(a.components_) == Span(b.components_) && a.name == b.name;
   }
 
+  void count_memory(MemoryCounter &memory) const;
+
  private:
   /**
    * Retrieve the pointer to a component without creating it if it does not exist,
@@ -494,6 +499,8 @@ class MeshComponent : public GeometryComponent {
 
   bool owns_direct_data() const override;
   void ensure_owns_direct_data() override;
+
+  void count_memory(MemoryCounter &memory) const override;
 
   static constexpr inline GeometryComponent::Type static_type = Type::Mesh;
 
@@ -687,6 +694,8 @@ class VolumeComponent : public GeometryComponent {
 
   bool owns_direct_data() const override;
   void ensure_owns_direct_data() override;
+
+  void count_memory(MemoryCounter &memory) const override;
 
   static constexpr inline GeometryComponent::Type static_type = Type::Volume;
 };
