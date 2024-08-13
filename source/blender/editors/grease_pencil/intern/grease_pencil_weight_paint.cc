@@ -379,6 +379,7 @@ static int grease_pencil_weight_invert_exec(bContext *C, wmOperator * /*op*/)
     /* Active vgroup index of drawing. */
     const int drawing_vgroup_index = BLI_findstringindex(
         &curves.vertex_group_names, active_defgroup->name, offsetof(bDeformGroup, name));
+    BLI_assert(drawing_vgroup_index != -1);
 
     VMutableArray<float> weights = bke::varray_for_mutable_deform_verts(
         curves.deform_verts_for_write(), drawing_vgroup_index);
@@ -387,7 +388,7 @@ static int grease_pencil_weight_invert_exec(bContext *C, wmOperator * /*op*/)
       return;
     }
 
-    for (int i : weights.index_range()) {
+    for (const int i : weights.index_range()) {
       const float invert_weight = 1 - weights[i];
       weights.set(i, invert_weight);
     }
