@@ -548,7 +548,7 @@
             filter_link = `./index.html`;
           } else {
             filter_text = "Filter Directory";
-            filter_link = `./index.html?filter=${row.path}`;
+            filter_link = `./index.html?filter=${encodeURIComponent(row.path)}`;
           }
           template = template.replace("FILTER_LINK", filter_link);
           template = template.replace("FILTER_TEXT", filter_text);
