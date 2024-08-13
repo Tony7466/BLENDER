@@ -59,7 +59,6 @@ void main()
   /* Output environment pass. */
 #ifdef MAT_RENDER_PASS_SUPPORT
   vec4 environment = out_background;
-
   environment.a = 1.0 - environment.a;
   environment.rgb *= environment.a;
   output_renderpass_color(uniform_buf.render_pass.environment_id, environment);
