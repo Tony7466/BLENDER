@@ -77,8 +77,8 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
 
   void tag_read_cache_changed();
   void tag_body_topology_changed();
-  void tag_body_collision_shapes_changed();
   void tag_constraint_disable_collision_changed();
+  void body_collision_shape_update();
 
   bool has_builtin_attribute_custom_data_layer(BodyAttribute attribute) const;
   bool has_builtin_attribute_custom_data_layer(ConstraintAttribute attribute) const;
@@ -217,8 +217,7 @@ class PhysicsWorldData : NonCopyable, NonMovable {
 
   void set_body_shapes(const IndexMask &selection,
                        const Span<CollisionShapePtr> shapes,
-                       const Span<int> shape_handles,
-                       bool update_local_inertia);
+                       const Span<int> shape_handles);
 
   void apply_force(const IndexMask &selection,
                    const VArray<float3> &forces,
