@@ -2871,7 +2871,7 @@ static void uvedit_uv_loops_softselect(
   ViewLayer *view_layer = CTX_data_view_layer(C);
   Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data_with_uvs(
       scene, view_layer, nullptr);
-  const float threshold_sq = math::square(RNA_float_get(op->ptr, "threshold_deform"));
+  const float threshold_sq = math::square(RNA_float_get(op->ptr, "deform_threshold"));
 
   /* Calculate the displacement vector for every loop in edgeloops_arr. */
   std::unordered_map<BMLoop *, float2> uvDisplacementMap;
@@ -2925,10 +2925,12 @@ static void uvedit_uv_loops_softselect(
     for (auto pair : uvsDistanceMap) {
       BMLoop *loop = pair.first;
       BMLoop *closestseamloop = pair.second.first;
-      if (pair.second.second == 0.0f || pair.second.second > threshold_sq) {
+      if (pair.second.second == 0.0f || pair.second.second >= threshold_sq) {
         continue;
       }
-      float factor = 1.0f - (pair.second.second / maxTopoDistance);
+      float factor = RNA_float_get(op->ptr, "deform_strength") *
+                     (1.0f - (pair.second.second / maxTopoDistance));
+      factor = std::min(1.0f, factor);
       float2 closestseamloopDisplacement = uvDisplacementMap[closestseamloop];
       float *luv = BM_ELEM_CD_GET_FLOAT_P(loop, offsetmap_arr[i].uv);
       luv[0] += (closestseamloopDisplacement[0] * factor);
@@ -3095,7 +3097,7 @@ static bool uvedit_uv_threshold_weld(bContext *C, wmOperator *op)
     }
   }
 
-  if (RNA_boolean_get(op->ptr, "deform_suroundingmesh")) {
+  if (RNA_boolean_get(op->ptr, "deform_mesh")) {
     uvedit_uv_loops_softselect(C, op, edgeloops_arr, offsetmap_arr, &uvs);
   }
 
@@ -3130,17 +3132,26 @@ void UV_OT_stitch_distance(wmOperatorType *ot)
                 0.0f,
                 1.0f);
   RNA_def_boolean(ot->srna,
-                  "deform_suroundingmesh",
+                  "deform_mesh",
                   false,
                   "Unselected",
                   "Deform surrounding mesh to preserve shape of geometry");
   RNA_def_float(ot->srna,
-                "threshold_deform",
+                "deform_threshold",
                 0.02f,
                 0.0f,
                 10.0f,
-                "Deform Disntace",
+                "Deform Threshold",
                 "Range for deforming surrounding mesh",
+                0.0f,
+                1.0f);
+  RNA_def_float(ot->srna,
+                "deform_strength",
+                0.02f,
+                0.0f,
+                10.0f,
+                "Deform Stength",
+                "Percentage strength for deforming surrounding mesh",
                 0.0f,
                 1.0f);
 }
