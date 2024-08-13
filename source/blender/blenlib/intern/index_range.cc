@@ -2,8 +2,6 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include <mutex>
-
 #include "BLI_index_range.hh"
 #include "BLI_utildefines.h"
 
