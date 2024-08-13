@@ -631,6 +631,18 @@ static void rna_ChannelBag_fcurve_clear(ID *dna_action_id,
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
 }
 
+static void rna_iterator_ChannelBag_groups_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
+{
+  animrig::ChannelBag &bag = rna_data_channelbag(ptr);
+  rna_iterator_array_begin(iter, bag.channel_groups());
+}
+
+static int rna_iterator_ChannelBag_groups_length(PointerRNA *ptr)
+{
+  animrig::ChannelBag &bag = rna_data_channelbag(ptr);
+  return bag.channel_groups().size();
+}
+
 static ActionChannelBag *rna_KeyframeActionStrip_channels(KeyframeActionStrip *self,
                                                           const animrig::slot_handle_t slot_handle)
 {
@@ -1925,6 +1937,34 @@ static void rna_def_channelbag_fcurves(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_function_ui_description(func, "Remove all F-Curves from this channelbag");
 }
 
+static void rna_def_channelbag_groups(BlenderRNA *brna, PropertyRNA *cprop)
+{
+  StructRNA *srna;
+
+  // FunctionRNA *func;
+  // PropertyRNA *parm;
+
+  RNA_def_property_srna(cprop, "ActionChannelBagGroups");
+  srna = RNA_def_struct(brna, "ActionChannelBagGroups", nullptr);
+  RNA_def_struct_sdna(srna, "bAction");
+  RNA_def_struct_ui_text(srna, "F-Curve Groups", "Collection of f-curve groups");
+
+  // func = RNA_def_function(srna, "new", "rna_ChannelBag_groups_new");
+  // RNA_def_function_flag(func, FUNC_USE_REPORTS);
+  // RNA_def_function_ui_description(func, "Create a new action group and add it to the action");
+  // parm = RNA_def_string(func, "name", "Group", 0, "", "New name for the action group");
+  // RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  // parm = RNA_def_pointer(func, "action_group", "ActionGroup", "", "Newly created action group");
+  // RNA_def_function_return(func, parm);
+
+  // func = RNA_def_function(srna, "remove", "rna_ChannelBag_groups_remove");
+  // RNA_def_function_ui_description(func, "Remove action group");
+  // RNA_def_function_flag(func, FUNC_USE_REPORTS);
+  // parm = RNA_def_pointer(func, "action_group", "ActionGroup", "", "Action group to remove");
+  // RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
+  // RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, ParameterFlag(0));
+}
+
 static void rna_def_action_channelbag(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -1940,6 +1980,7 @@ static void rna_def_action_channelbag(BlenderRNA *brna)
   prop = RNA_def_property(srna, "slot_handle", PROP_INT, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
+  /* ChannelBag.fcurves */
   prop = RNA_def_property(srna, "fcurves", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_funcs(prop,
                                     "rna_iterator_ChannelBag_fcurves_begin",
@@ -1953,6 +1994,24 @@ static void rna_def_action_channelbag(BlenderRNA *brna)
   RNA_def_property_struct_type(prop, "FCurve");
   RNA_def_property_ui_text(prop, "F-Curves", "The individual F-Curves that animate the slot");
   rna_def_channelbag_fcurves(brna, prop);
+
+  /* ChannelBag.groups */
+  prop = RNA_def_property(srna, "groups", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_collection_funcs(prop,
+                                    "rna_iterator_ChannelBag_groups_begin",
+                                    "rna_iterator_array_next",
+                                    "rna_iterator_array_end",
+                                    "rna_iterator_array_dereference_get",
+                                    "rna_iterator_ChannelBag_groups_length",
+                                    nullptr,
+                                    nullptr,
+                                    nullptr);
+  RNA_def_property_struct_type(prop, "ActionGroup");
+  RNA_def_property_ui_text(
+      prop,
+      "F-Curve Groups",
+      "Groupings of F-Curves for display purposes, in e.g. the dopesheet and graph editor");
+  rna_def_channelbag_groups(brna, prop);
 }
 #  endif  // WITH_ANIM_BAKLAVA
 
@@ -2052,7 +2111,6 @@ static void rna_def_action_groups(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_function_ui_description(func, "Create a new action group and add it to the action");
   parm = RNA_def_string(func, "name", "Group", 0, "", "New name for the action group");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
-
   parm = RNA_def_pointer(func, "action_group", "ActionGroup", "", "Newly created action group");
   RNA_def_function_return(func, parm);
 
