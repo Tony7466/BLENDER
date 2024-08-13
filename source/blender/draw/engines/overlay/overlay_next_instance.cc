@@ -89,7 +89,7 @@ void Instance::begin_sync()
   background.begin_sync(resources, state);
   outline.begin_sync(resources, state);
 
-  images.begin_sync(resources, state);
+  images.begin_sync(resources, state, view);
 
   auto begin_sync_layer = [&](OverlayLayer &layer) {
     layer.bounds.begin_sync();
@@ -163,9 +163,8 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
   if (!state.hide_overlays) {
     switch (ob_ref.object->type) {
       case OB_EMPTY: {
-        const float4x4 &viewinv = DRW_view_default_get()->storage.viewinv;
         layer.empties.object_sync(
-            ob_ref, shapes, manager, resources, state, viewinv, layer.images_pass_source);
+            ob_ref, shapes, manager, resources, state, layer.images_pass_source);
         break;
       }
       case OB_CAMERA:
@@ -360,6 +359,7 @@ void Instance::draw(Manager &manager)
 
   /* TODO(: Breaks selection on M1 Max. */
   // infront.lattices.draw(resources.overlay_line_in_front_fb, manager, view);
+  // images.draw_in_front(resources.overlay_in_front_fb, manager, view);
 
   /* Drawn onto the output framebuffer. */
   background.draw(manager);

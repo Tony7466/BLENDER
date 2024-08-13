@@ -36,6 +36,11 @@ class Images {
 
   Vector<MovieClip *> bg_movie_clips;
 
+  View view_reference_images = {"view_reference_images"};
+  float view_dist = 0.0f;
+
+  const float4x4 *viewinv;
+
  public:
   class PassSource {
     const bool in_front;
@@ -48,32 +53,33 @@ class Images {
                               const bool use_alpha_blend,
                               Resources &res,
                               const State &state,
-                              const float4x4 &viewinv,
                               const float4x4 &mat) const
     {
+      DRWState draw_state;
       if (in_front) {
-        return images.empties_front_ps_;
+        draw_state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL;
+        return Images::create_subpass(
+            images.empties_front_ps_, draw_state, res, state, *images.viewinv, mat);
       }
       const char depth_mode = DRW_state_is_depth() ? char(OB_EMPTY_IMAGE_DEPTH_DEFAULT) :
                                                      ob.empty_image_depth;
-      DRWState draw_state;
       switch (depth_mode) {
         case OB_EMPTY_IMAGE_DEPTH_BACK:
           draw_state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL |
                        DRW_STATE_BLEND_ALPHA_PREMUL;
           return Images::create_subpass(
-              images.empties_back_ps_, draw_state, res, state, viewinv, mat);
+              images.empties_back_ps_, draw_state, res, state, *images.viewinv, mat);
         case OB_EMPTY_IMAGE_DEPTH_FRONT:
           draw_state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL;
           return Images::create_subpass(
-              images.empties_front_ps_, draw_state, res, state, viewinv, mat);
+              images.empties_front_ps_, draw_state, res, state, *images.viewinv, mat);
         case OB_EMPTY_IMAGE_DEPTH_DEFAULT:
         default:
           draw_state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL |
                        DRW_STATE_BLEND_ALPHA_PREMUL;
           return use_alpha_blend ?
                      Images::create_subpass(
-                         images.empties_blend_ps_, draw_state, res, state, viewinv, mat) :
+                         images.empties_blend_ps_, draw_state, res, state, *images.viewinv, mat) :
                      images.empties_ps_;
       }
     }
@@ -89,8 +95,11 @@ class Images {
     free_movieclips_textures();
   }
 
-  void begin_sync(Resources &res, const State &state)
+  void begin_sync(Resources &res, const State &state, const View &view)
   {
+    view_dist = state.view_dist_get(view.winmat());
+    viewinv = &view.viewinv();
+
     auto init_pass = [&](PassMain &pass, DRWState draw_state) {
       pass.init();
       pass.state_set(draw_state | state.clipping_state);
@@ -185,7 +194,6 @@ class Images {
                           Resources &res,
                           const State &state,
                           const PassSource &pass_source,
-                          const float4x4 &viewinv,
                           ImageInstanceBuf &empty_image_buf)
   {
     Object *ob = ob_ref.object;
@@ -240,7 +248,7 @@ class Images {
        * object. */
       char depth_mode = DRW_state_is_depth() ? char(OB_EMPTY_IMAGE_DEPTH_DEFAULT) :
                                                ob->empty_image_depth;
-      PassMain::Sub &pass = pass_source(*ob, use_alpha_blend, res, state, viewinv, mat);
+      PassMain::Sub &pass = pass_source(*ob, use_alpha_blend, res, state, mat);
       pass.bind_texture("imgTexture", tex);
       pass.push_constant("imgPremultiplied", use_alpha_premult);
       pass.push_constant("imgAlphaBlend", use_alpha_blend);
@@ -279,8 +287,23 @@ class Images {
   void draw_image(Framebuffer &framebuffer, Manager &manager, View &view)
   {
     GPU_framebuffer_bind(framebuffer);
-    manager.submit(empties_ps_, view);
-    manager.submit(empties_blend_ps_, view);
+
+    view_reference_images.sync(view.viewmat(),
+                               winmat_polygon_offset(view.winmat(), view_dist, -1.0f));
+
+    manager.submit(empties_ps_, view_reference_images);
+    manager.submit(empties_blend_ps_, view_reference_images);
+  }
+
+  void draw_in_front(Framebuffer &framebuffer, Manager &manager, View &view)
+  {
+    GPU_framebuffer_bind(framebuffer);
+
+    view_reference_images.sync(view.viewmat(),
+                               winmat_polygon_offset(view.winmat(), view_dist, -1.0f));
+
+    manager.submit(empties_front_ps_, view_reference_images);
+    manager.submit(foreground_ps_, view_reference_images);
   }
 
  private:
