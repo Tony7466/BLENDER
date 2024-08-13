@@ -357,7 +357,7 @@ static void GREASE_PENCIL_OT_weight_toggle_direction(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-static int grease_pencil_weight_invert_exec(bContext *C, wmOperator *op)
+static int grease_pencil_weight_invert_exec(bContext *C, wmOperator * /*op*/)
 {
   const Scene &scene = *CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
@@ -378,9 +378,7 @@ static int grease_pencil_weight_invert_exec(bContext *C, wmOperator *op)
     bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
     /* Active vgroup index of drawing. */
     const int drawing_vgroup_index = BLI_findstringindex(
-        &curves.vertex_group_names,
-        active_defgroup->name,
-        offsetof(bDeformGroup, name));
+        &curves.vertex_group_names, active_defgroup->name, offsetof(bDeformGroup, name));
 
     VMutableArray<float> weights = bke::varray_for_mutable_deform_verts(
         curves.deform_verts_for_write(), drawing_vgroup_index);
