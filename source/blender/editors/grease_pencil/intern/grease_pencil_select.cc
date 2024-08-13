@@ -287,41 +287,22 @@ static int select_ends_exec(bContext *C, wmOperator *op)
 {
   const int amount_start = RNA_int_get(op->ptr, "amount_start");
   const int amount_end = RNA_int_get(op->ptr, "amount_end");
-  Scene *scene = CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+  const ViewContext vc = ED_view3d_viewcontext_init(C, CTX_data_depsgraph_pointer(C));
 
-  const Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
-  threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
-    bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
-
-    IndexMaskMemory memory;
-    const IndexMask selectable_strokes = ed::greasepencil::retrieve_editable_strokes(
-        *object, info.drawing, info.layer_index, memory);
-    if (selectable_strokes.is_empty()) {
-      return;
-    }
-    const IndexMask inverted_end_points_mask = ed::curves::end_points(
-        curves, selectable_strokes, amount_start, amount_end, true, memory);
-
-    const IndexMask selectable_points = ed::greasepencil::retrieve_editable_points(
-        *object, info.drawing, info.layer_index, memory);
-    const bool was_anything_selected = ed::curves::has_anything_selected(curves,
-                                                                         selectable_points);
-    bke::GSpanAttributeWriter selection = ed::curves::ensure_selection_attribute(
-        curves, bke::AttrDomain::Point, CD_PROP_BOOL);
-    if (!was_anything_selected) {
-      ed::curves::fill_selection_true(selection.span, selectable_points);
-    }
-
-    if (selection.span.type().is<bool>()) {
-      index_mask::masked_fill(selection.span.typed<bool>(), false, inverted_end_points_mask);
-    }
-    if (selection.span.type().is<float>()) {
-      index_mask::masked_fill(selection.span.typed<float>(), 0.0f, inverted_end_points_mask);
-    }
-    selection.finish();
-  });
+  ed::greasepencil::selection_update(
+      &vc,
+      SEL_OP_SET,
+      [&](const ed::greasepencil::MutableDrawingInfo &info,
+          const IndexMask & /*universe*/,
+          StringRef /*attribute_name*/,
+          IndexMaskMemory &memory) {
+        const IndexMask selectable_strokes = ed::greasepencil::retrieve_editable_strokes(
+            *object, info.drawing, info.layer_index, memory);
+        return ed::curves::end_points(
+            info.drawing.strokes(), selectable_strokes, amount_start, amount_end, false, memory);
+      });
 
   /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a generic
    * attribute for now. */

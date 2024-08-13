@@ -1549,8 +1549,20 @@ bool selection_update(const ViewContext *vc,
         const IndexMask changed_element_mask = select_operation(
             info, elements, attribute_name, memory);
 
+        /* Modes that un-set all elements not in the mask. */
+        if (ELEM(sel_op, SEL_OP_SET, SEL_OP_AND)) {
+          ed::curves::foreach_selection_attribute_writer(
+              curves, selection_domain, [&](bke::GSpanAttributeWriter &writer) {
+                for (const int element_i : IndexRange(writer.span.size())) {
+                  ed::curves::apply_selection_operation_at_index(
+                      writer.span, element_i, SEL_OP_SUB);
+                }
+              });
+        }
+
         if (use_segment_selection) {
-          /* Range of points in tree data matching this curve, for re-using screen space positions.
+          /* Range of points in tree data matching this curve, for re-using screen space
+           * positions.
            */
           const IndexRange tree_data_range = tree_data_by_drawing[i_drawing];
           changed |= ed::greasepencil::apply_mask_as_segment_selection(curves,
