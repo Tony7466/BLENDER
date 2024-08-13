@@ -1023,32 +1023,46 @@ static bool apply_grease_pencil_for_modifier(Depsgraph *depsgraph,
   grease_pencil_result.attributes_for_write().remove_anonymous();
 
   Map<const Layer *, const Layer *> eval_to_orig_layer_map;
-  TreeNode *previous_node = nullptr;
-  for (const int layer_eval_i : grease_pencil_result.layers().index_range()) {
-    const Layer *layer_eval = grease_pencil_result.layer(layer_eval_i);
-    /* Check if the original geometry has a layer with the same name. */
-    TreeNode *node_orig = grease_pencil_orig.find_node_by_name(layer_eval->name());
-    if (!node_orig || node_orig->is_group()) {
-      /* No layer with the same name found. Create a new layer. */
-      Layer &layer_orig = grease_pencil_orig.add_layer(layer_eval->name());
-      /* Make sure to add a new keyframe with a new drawing. */
-      grease_pencil_orig.insert_frame(layer_orig, eval_frame);
-      node_orig = &layer_orig.as_node();
-    }
-    BLI_assert(node_orig != nullptr);
-    Layer &layer_orig = node_orig->as_layer();
-    layer_orig.opacity = layer_eval->opacity;
-    layer_orig.set_local_transform(layer_eval->local_transform());
-
-    /* Insert the updated node after the previous node. This keeps the layer order consistent. */
-    if (previous_node) {
+  {
+    Set<Layer *> mapped_original_layers;
+    TreeNode *previous_node = nullptr;
+    const Span<const Layer *> result_layers = grease_pencil_result.layers();
+    for (const Layer *layer_eval : result_layers) {
+      /* Check if the original geometry has a layer with the same name. */
+      TreeNode *node_orig = grease_pencil_orig.find_node_by_name(layer_eval->name());
+      if (!node_orig || node_orig->is_group()) {
+        /* No layer with the same name found. Create a new layer. */
+        Layer &layer_orig = grease_pencil_orig.add_layer(layer_eval->name());
+        /* Make sure to add a new keyframe with a new drawing. */
+        grease_pencil_orig.insert_frame(layer_orig, eval_frame);
+        node_orig = &layer_orig.as_node();
+      }
       BLI_assert(node_orig != nullptr);
-      grease_pencil_orig.move_node_after(*node_orig, *previous_node);
-    }
-    previous_node = node_orig;
+      Layer &layer_orig = node_orig->as_layer();
+      layer_orig.opacity = layer_eval->opacity;
+      layer_orig.set_local_transform(layer_eval->local_transform());
 
-    /* Add new mapping for layer_eval -> layer_orig*/
-    eval_to_orig_layer_map.add_new(layer_eval, &layer_orig);
+      /* Insert the updated node after the previous node. This keeps the layer order consistent. */
+      if (previous_node) {
+        BLI_assert(node_orig != nullptr);
+        grease_pencil_orig.move_node_after(*node_orig, *previous_node);
+      }
+      previous_node = node_orig;
+
+      /* Add new mapping for layer_eval -> layer_orig*/
+      eval_to_orig_layer_map.add_new(layer_eval, &layer_orig);
+      mapped_original_layers.add_new(&layer_orig);
+    }
+
+    /* Remove all the unmapped layers from the original geometry. */
+    /* IMPORTANT: We copy the span of pointers into a local array here, because the runtime cache
+     * of the layers actually changes while we remove the layers. */
+    const Array<Layer *> original_layers = grease_pencil_orig.layers_for_write();
+    for (Layer *layer_orig : original_layers) {
+      if (!mapped_original_layers.contains(layer_orig)) {
+        grease_pencil_orig.remove_layer(*layer_orig);
+      }
+    }
   }
 
   /* Update the drawings. */
@@ -1068,27 +1082,11 @@ static bool apply_grease_pencil_for_modifier(Depsgraph *depsgraph,
     }
   }
 
-  Set<int> mapped_original_layers;
-  Array<int> eval_to_orig_layer_indices_map(grease_pencil_result.layers().size());
-  for (const int layer_eval_i : grease_pencil_result.layers().index_range()) {
-    const Layer *layer_eval = grease_pencil_result.layer(layer_eval_i);
-    const Layer *layer_orig = eval_to_orig_layer_map.lookup(layer_eval);
-    const int layer_orig_index = *grease_pencil_orig.get_layer_index(*layer_orig);
-    eval_to_orig_layer_indices_map[layer_eval_i] = layer_orig_index;
-    mapped_original_layers.add_new(layer_orig_index);
-  }
-
-  IndexMaskMemory memory;
-  const IndexMask unmapped_original_layers = IndexMask::from_predicate(
-      grease_pencil_orig.layers().index_range(), GrainSize(1), memory, [&](const int64_t layer_i) {
-        return !mapped_original_layers.contains(layer_i);
-      });
-
   /* Get the original material pointers from the result geometry. */
   VectorSet<Material *> original_materials;
-  for (Material *eval_material :
-       Span{grease_pencil_result.material_array, grease_pencil_result.material_array_num})
-  {
+  const Span<Material *> eval_materials = Span{grease_pencil_result.material_array,
+                                               grease_pencil_result.material_array_num};
+  for (Material *eval_material : eval_materials) {
     if (eval_material != nullptr && eval_material->id.orig_id != nullptr) {
       original_materials.add_new(reinterpret_cast<Material *>(eval_material->id.orig_id));
     }
@@ -1137,6 +1135,15 @@ static bool apply_grease_pencil_for_modifier(Depsgraph *depsgraph,
     }
   }
 
+  /* Convert the layer map into an index mapping. */
+  Array<int> eval_to_orig_layer_indices_map(grease_pencil_result.layers().size());
+  for (const int layer_eval_i : grease_pencil_result.layers().index_range()) {
+    const Layer *layer_eval = grease_pencil_result.layer(layer_eval_i);
+    const Layer *layer_orig = eval_to_orig_layer_map.lookup(layer_eval);
+    const int layer_orig_index = *grease_pencil_orig.get_layer_index(*layer_orig);
+    eval_to_orig_layer_indices_map[layer_eval_i] = layer_orig_index;
+  }
+
   /* Propagate layer attributes. */
   AttributeAccessor src_attributes = grease_pencil_result.attributes();
   MutableAttributeAccessor dst_attributes = grease_pencil_orig.attributes_for_write();
@@ -1154,8 +1161,6 @@ static bool apply_grease_pencil_for_modifier(Depsgraph *depsgraph,
       using T = decltype(dummy);
       array_utils::scatter(
           src.typed<T>(), eval_to_orig_layer_indices_map.as_span(), dst.span.typed<T>());
-      src.type().fill_construct_indices(
-          src.type().default_value(), dst.span.data(), unmapped_original_layers);
     });
     dst.finish();
     return true;
