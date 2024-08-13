@@ -5986,7 +5986,18 @@ class VIEW3D_MT_weight_grease_pencil(Menu):
     bl_label = "Weights"
 
     def draw(self, _context):
-        pass
+        layout = self.layout
+
+        layout.operator("grease_pencil.weight_sample", text="Sample Weight")
+
+        # layout.separator()
+
+        # layout.operator("grease_pencil.vertex_group_normalize_all", text="Normalize All")
+        # layout.operator("grease_pencil.vertex_group_normalize", text="Normalize")
+
+        layout.separator()
+
+        layout.operator("grease_pencil.vertex_group_invert", text="Invert")
 
 
 class VIEW3D_MT_gpencil_animation(Menu):
