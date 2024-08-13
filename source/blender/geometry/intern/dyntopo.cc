@@ -1074,27 +1074,58 @@ static void edge_subdivide(Vector<float2> connected_2d_points,
   }
 }
 
-static void smooth_propagate_pre_subdiv_level(const GroupedSpan<int> face_edges,
+static void smooth_propagate_pre_subdiv_level(const GroupedSpan<int> faces_edges,
                                               const GroupedSpan<int> edge_to_face_map,
+                                              const Span<int2> edges,
+                                              const Span<float3> positions,
                                               MutableSpan<int> face_pre_subdiv_level)
 {
-  std::priority_queue<std::pair<int, int>> level_face_queue;
+  std::priority_queue<std::pair<int, int>> level_edge_queue;
 
   for (const int face_i : face_pre_subdiv_level.index_range()) {
     if (face_pre_subdiv_level[face_i] > 0) {
-      level_face_queue.emplace(face_pre_subdiv_level[face_i], face_i);
+      for (const int edge_i : faces_edges[face_i]) {
+        level_edge_queue.emplace(face_pre_subdiv_level[face_i], edge_i);
+      }
     }
   }
 
-  while (!level_face_queue.empty()) {
-    const auto [level, face_i] = level_face_queue.top();
-    level_face_queue.pop();
-    if (face_pre_subdiv_level[face_i] >= level) {
-      continue;
-    }
+  while (!level_edge_queue.empty()) {
+    const auto [level, edge_index] = level_edge_queue.top();
+    level_edge_queue.pop();
 
-    for (const int edge_i : face_edges[face_i]) {
-      for (const int other_face_i : edge_to_face_map[edge_i]) {
+    for (const int face_i : edge_to_face_map[edge_index]) {
+      if (face_pre_subdiv_level[face_i] >= level) {
+        continue;
+      }
+      const int3 face_edges(
+          faces_edges[face_i][0], faces_edges[face_i][1], faces_edges[face_i][2]);
+      const int edge_i = topo_set::index_of(face_edges, edge_index);
+      const int prev_edge_index = face_edges[topo_set::shift_back[edge_i]];
+      const int next_edge_index = face_edges[topo_set::shift_front[edge_i]];
+
+      const float prev_edge_length = math::distance(positions[edges[prev_edge_index][0]],
+                                                    positions[edges[prev_edge_index][1]]);
+      const float edge_length = math::distance(positions[edges[edge_i][0]],
+                                               positions[edges[edge_i][1]]);
+      const float next_edge_length = math::distance(positions[edges[next_edge_index][0]],
+                                                    positions[edges[next_edge_index][1]]);
+
+      const bool prev_affected = prev_edge_length > edge_length * 1.6f;
+      const bool next_affected = next_edge_length > edge_length * 1.6f;
+      if (prev_affected || next_affected) {
+        face_pre_subdiv_level[face_i] = level - 1;
+      }
+      else {
+        face_pre_subdiv_level[face_i] = level * 16 / 25;
+      }
+
+      if (prev_affected) {
+        level_edge_queue.emplace(face_pre_subdiv_level[face_i], prev_edge_index);
+      }
+
+      if (next_affected) {
+        level_edge_queue.emplace(face_pre_subdiv_level[face_i], next_edge_index);
       }
     }
   }
@@ -1165,7 +1196,7 @@ Mesh *subdivide(const Mesh &src_mesh,
   });
 
   smooth_propagate_pre_subdiv_level(
-      {faces, corner_edges}, edge_to_face_map, face_pre_subdiv_level);
+      {faces, corner_edges}, edge_to_face_map, edges, src_positions, face_pre_subdiv_level);
 
   Array<int> edge_total_verts(src_mesh.edges_num + 1);
   Array<int> face_total_verts(src_mesh.faces_num + 1);
