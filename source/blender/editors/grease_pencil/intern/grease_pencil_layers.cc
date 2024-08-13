@@ -1049,18 +1049,19 @@ static int grease_pencil_merge_layer_exec(bContext *C, wmOperator *op)
       grease_pencil.remove_group(parent_node->as_group());
     }
     else {
-      bke::greasepencil::Layer *layer;
-      while (grease_pencil.layers_for_write().size() > 1) {
-        layer = grease_pencil.layers_for_write().first();
+      const Array<bke::greasepencil::Layer *> layers = grease_pencil.layers_for_write();
+      for (const int i : layers.index_range()) {
+        bke::greasepencil::Layer *layer = layers[i];
         if (layer == &target_layer) {
           continue;
         }
         grease_pencil.remove_layer(*layer);
       }
-      bke::greasepencil::LayerGroup *layer_group;
-      while (grease_pencil.layer_groups_for_write().size()) {
-        layer_group = grease_pencil.layer_groups_for_write().first();
-        grease_pencil.remove_group(*layer_group);
+      const Array<bke::greasepencil::LayerGroup *> layer_groups =
+          grease_pencil.layer_groups_for_write();
+      for (const int i : layer_groups.index_range()) {
+        bke::greasepencil::LayerGroup *group = layer_groups[i];
+        grease_pencil.remove_group(*group);
       }
     }
   }
