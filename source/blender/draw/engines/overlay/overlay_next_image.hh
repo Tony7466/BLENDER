@@ -21,6 +21,7 @@ class Images {
   friend class Empties;
   using ImageInstanceBuf = ShapeInstanceBuf<ExtraInstanceData>;
 
+ private:
   PassMain background_scene_ps_ = {"background_scene_ps_"};
   PassMain foreground_scene_ps_ = {"foreground_scene_ps_"};
 
@@ -32,6 +33,8 @@ class Images {
 
   PassMain empties_ps_ = {"empties_ps_"};
   PassMain empties_blend_ps_ = {"empties_blend_ps_"};
+
+  Vector<MovieClip *> bg_movie_clips;
 
  public:
   class PassSource {
@@ -58,19 +61,17 @@ class Images {
           return &((use_alpha_blend) ? images.empties_blend_ps_ : images.empties_ps_);
       }
     }
-
-    PassMain *operator()(const bool is_foreground, const bool use_view_transform) const
-    {
-      return &(is_foreground ?
-                   (use_view_transform ? images.foreground_scene_ps_ : images.foreground_ps_) :
-                   (use_view_transform ? images.background_scene_ps_ : images.background_ps_));
-    }
   };
 
   const PassSource pass_source;
   const PassSource in_front_pass_source;
 
   Images() : pass_source(*this, false), in_front_pass_source(*this, true) {}
+
+  ~Images()
+  {
+    free_movieclips_textures();
+  }
 
   void begin_sync(Resources &res, const State &state)
   {
@@ -98,15 +99,15 @@ class Images {
     init_pass(empties_front_ps_, draw_state);
     init_pass(foreground_ps_, draw_state);
     init_pass(foreground_scene_ps_, draw_state);
+    free_movieclips_textures();
   }
 
-  static void object_sync_camera(const ObjectRef &ob_ref,
-                                 select::ID select_id,
-                                 ShapeCache &shapes,
-                                 Manager &manager,
-                                 const State &state,
-                                 const SelectionType selection_type,
-                                 const PassSource &pass_source)
+  void object_sync_camera(const ObjectRef &ob_ref,
+                          select::ID select_id,
+                          ShapeCache &shapes,
+                          Manager &manager,
+                          const State &state,
+                          const SelectionType selection_type)
   {
     Object *ob = ob_ref.object;
     const Camera *cam = static_cast<Camera *>(ob->data);
@@ -146,7 +147,7 @@ class Images {
          * transparent foreground image due to the different blending modes they use. */
         const float4 color_premult_alpha{1.0f, 1.0f, 1.0f, std::min(bgpic->alpha, 0.999999f)};
 
-        PassMain &pass = *pass_source(is_foreground, use_view_transform);
+        PassMain &pass = get_camera_pass(is_foreground, use_view_transform);
         pass.bind_texture("imgTexture", tex);
         pass.push_constant("imgPremultiplied", use_alpha_premult);
         pass.push_constant("imgAlphaBlend", true);
@@ -232,8 +233,15 @@ class Images {
     }
   }
 
-  void draw_image_sccene_background(Framebuffer &framebuffer, Manager &manager, View &view)
+  void draw_image_scene_background(Framebuffer &framebuffer,
+                                   const State &state,
+                                   Manager &manager,
+                                   View &view)
   {
+    if (state.space_type != SPACE_VIEW3D) {
+      return;
+    }
+
     if (DRW_state_is_fbo()) {
       GPU_framebuffer_bind(framebuffer);
 
@@ -257,6 +265,20 @@ class Images {
   }
 
  private:
+  PassMain &get_camera_pass(const bool is_foreground, const bool use_view_transform)
+  {
+    return is_foreground ? (use_view_transform ? foreground_scene_ps_ : foreground_ps_) :
+                           (use_view_transform ? background_scene_ps_ : background_ps_);
+  }
+
+  void free_movieclips_textures()
+  {
+    /* Free Movie clip textures after rendering */
+    for (MovieClip *clip : bg_movie_clips) {
+      BKE_movieclip_free_gputexture(clip);
+    }
+  }
+
   static void overlay_image_calc_aspect(::Image *ima, const int size[2], float r_image_aspect[2])
   {
     float ima_x, ima_y;
@@ -383,11 +405,11 @@ class Images {
     rmat = translate * rotate * scale;
   }
 
-  static GPUTexture *image_camera_background_texture_get(const CameraBGImage *bgpic,
-                                                         const State state,
-                                                         float &r_aspect,
-                                                         bool &r_use_alpha_premult,
-                                                         bool &r_use_view_transform)
+  GPUTexture *image_camera_background_texture_get(const CameraBGImage *bgpic,
+                                                  const State state,
+                                                  float &r_aspect,
+                                                  bool &r_use_alpha_premult,
+                                                  bool &r_use_view_transform)
   {
     ::Image *image = bgpic->ima;
     ImageUser *iuser = (ImageUser *)&bgpic->iuser;
@@ -458,8 +480,7 @@ class Images {
         BKE_movieclip_get_size(clip, &bgpic->cuser, &width, &height);
 
         /* Save for freeing. */
-        /* TODO: */
-        // BLI_addtail(&pd->bg_movie_clips, BLI_genericNodeN(clip));
+        bg_movie_clips.append(clip);
         break;
       }
 

@@ -167,8 +167,7 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
             ob_ref, shapes, manager, resources, state, layer.images_pass_source);
         break;
       case OB_CAMERA:
-        layer.cameras.object_sync(
-            ob_ref, shapes, manager, resources, state, layer.images_pass_source);
+        layer.cameras.object_sync(ob_ref, shapes, manager, resources, state, images);
         break;
       case OB_ARMATURE:
         break;
@@ -315,6 +314,8 @@ void Instance::draw(Manager &manager)
   float4 clear_color(0.0f);
   GPU_framebuffer_bind(resources.overlay_line_fb);
   GPU_framebuffer_clear_color(resources.overlay_line_fb, clear_color);
+
+  images.draw_image_scene_background(resources.overlay_color_only_fb, state, manager, view);
 
   images.draw_image_background(resources.overlay_color_only_fb, manager, view);
   images.draw_image(resources.overlay_fb, manager, view);

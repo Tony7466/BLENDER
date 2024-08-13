@@ -366,7 +366,7 @@ class Cameras {
                    Manager &manager,
                    Resources &res,
                    State &state,
-                   const Images::PassSource &pass_source)
+                   Images &images)
   {
     Object *ob = ob_ref.object;
     const select::ID select_id = res.select_id(ob_ref);
@@ -511,8 +511,8 @@ class Cameras {
     if (is_camera_view && (cam->flag & CAM_SHOW_BG_IMAGE) &&
         !BLI_listbase_is_empty(&cam->bg_images))
     {
-      Images::object_sync_camera(
-          ob_ref, select_id, shapes, manager, state, call_buffers_.selection_type_, pass_source);
+      images.object_sync_camera(
+          ob_ref, select_id, shapes, manager, state, call_buffers_.selection_type_);
     }
   }
 
