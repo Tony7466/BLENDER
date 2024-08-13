@@ -3416,7 +3416,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     LISTBASE_FOREACH (Material *, material, &bmain->materials) {
       bool transparent_shadows = true;
       if (is_eevee) {
-        transparent_shadows = material->blend_shadow != MA_BS_SOLID;
+        transparent_shadows = material->blend_shadow == MA_BS_SOLID;
       }
       else if (IDProperty *cmat = version_cycles_properties_from_ID(&material->id)) {
         transparent_shadows = version_cycles_property_boolean(
