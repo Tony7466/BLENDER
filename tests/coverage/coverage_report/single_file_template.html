@@ -425,9 +425,9 @@
             arguments_start = name.length;
           }
 
-          if (c == "<") {
+          if (c == "<" && !(name.endsWith("::operator") || name.endsWith("::operator<"))) {
             template_depth++;
-          } else if (c == ">") {
+          } else if (c == ">" && !(name.endsWith("::operator") || name.endsWith("::operator>"))) {
             template_depth--;
             if (template_depth === 0) {
               name += "<>";
@@ -438,7 +438,8 @@
         }
         // Remove argument list.
         if (arguments_start >= 0) {
-          name = name.substring(0, arguments_start);
+          const arguments_end = name.lastIndexOf(")");
+          name = name.substring(0, arguments_start) + name.substring(arguments_end + 1);
         }
         // Fix case for operator().
         if (name.endsWith("::operator")) {
