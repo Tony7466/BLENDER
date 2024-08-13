@@ -156,12 +156,37 @@
         analysis_data = JSON.parse(await str_from_gzip_base64(analysis_data_compressed_base64));
         filter_analysis_data();
 
-        const analysis_files_entries = Object.entries(analysis_data.files);
+        const consolidated_tree = build_consolidated_tree();
+        root_row = build_row_data(consolidated_tree);
+        initialize_coverage_counts();
+        initialize_global_overview();
 
+        if (root_row.children_map.size == 0) {
+          return;
+        }
+
+        let paths_to_open = get_startup_paths_to_open();
+        for (const path of paths_to_open) {
+          const row = row_by_path.get(path);
+          if (row) {
+            ensure_dom_for_row(row);
+            open_directory(row);
+          }
+        }
+        update_odd_even_rows();
+
+        const scroll_position = localStorage.getItem("scroll_position");
+        if (scroll_position) {
+          window.scrollTo(0, scroll_position);
+        }
+      });
+
+      function build_consolidated_tree() {
+        // Build a tree where each directory is still separate.
         const root_children = new Map();
         for (const file_path of Object.keys(analysis_data.files)) {
           let current = root_children;
-          for (const part of split_into_path_parts(file_path)) {
+          for (const part of file_path.split("/").slice(1)) {
             if (!current.has(part)) {
               current.set(part, new Map());
             }
@@ -169,6 +194,8 @@
           }
         }
 
+        // Based on the tree above, build a new tree that has multiple directory levels
+        // joined together if there are directories with only one child.
         function consolidate_recursive(name, children) {
           if (children.size === 0) {
             return { name: name };
@@ -196,8 +223,13 @@
         if (!consolidated_root.name.startsWith("/")) {
           consolidated_root.name = "/" + consolidated_root.name;
         }
+        return consolidated_root;
+      }
 
-        function create_row_data(parent, name) {
+      // Builds a tree whereby each node corresponds to a row.
+      function build_row_data(consolidated_tree) {
+        function create_row_data(parent, data) {
+          const name = data.name;
           let path;
           if (parent) {
             if (parent.path == "/") {
@@ -219,7 +251,7 @@
             depth: parent ? parent.depth + 1 : 0,
             children_map: new Map(),
             sorted_children: [],
-            is_file: null,
+            is_file: !data.children,
             has_directory_separator: name.includes("/"),
             dom_elem: null,
             dom_children_elem: null,
@@ -233,12 +265,12 @@
         }
 
         function build_rows_recursive(data, parent_row) {
-          const row = create_row_data(parent_row, data.name);
-          row.is_file = !data.children;
+          const row = create_row_data(parent_row, data);
           if (data.children) {
             for (const child of data.children.values()) {
               build_rows_recursive(child, row);
             }
+            // Sort children so that directories come first.
             const directory_children = [];
             const file_children = [];
             for (const child_row of row.children_map.values()) {
@@ -255,9 +287,12 @@
           return row;
         }
 
-        root_row = build_rows_recursive(consolidated_root, null);
+        return build_rows_recursive(consolidated_tree, null);
+      }
 
-        for (const [file_path, file_data] of analysis_files_entries) {
+      function initialize_coverage_counts() {
+        // Initialize the counts at the leaf rows, i.e. the source files.
+        for (const [file_path, file_data] of Object.entries(analysis_data.files)) {
           const row = row_by_path.get(file_path);
           row.num_lines = file_data.num_lines;
           row.num_lines_run = file_data.num_lines_run;
@@ -265,6 +300,7 @@
           row.num_functions_run = file_data.num_functions_run;
         }
 
+        // Recursively propagate the counts up until the root directory.
         function count_directory_file_lines_recursive(row) {
           if (row.is_file) {
             return;
@@ -279,21 +315,35 @@
         }
 
         count_directory_file_lines_recursive(root_row);
+      }
 
-        // Find default open path when the file is first opened.
-        let default_open_path = undefined;
-        for (const [file_path, file_data] of analysis_files_entries) {
-          if (!default_open_path) {
-            const default_path_index = file_path.indexOf(default_open_path_segment);
-            if (default_path_index != -1) {
-              default_open_path = file_path.substr(
-                0,
-                default_path_index + default_open_path_segment.length
-              );
-            }
+      function get_startup_paths_to_open() {
+        let paths_to_open = [];
+        if (custom_root_paths) {
+          paths_to_open = paths_to_open.concat(Array.from(custom_root_paths.values()));
+        }
+        if (previous_open_paths) {
+          paths_to_open = paths_to_open.concat(Array.from(previous_open_paths));
+        }
+        if (paths_to_open.length == 0) {
+          paths_to_open.push(get_fallback_open_path());
+        }
+        return paths_to_open;
+      }
+
+      function get_fallback_open_path() {
+        for (const [file_path, file_data] of Object.entries(analysis_data.files)) {
+          // Used to find which path should be opened by default if there is no other information available.
+          const default_path_index = file_path.indexOf(fallback_default_path_segment);
+          if (default_path_index != -1) {
+            // Used to find which path should be opened by default if there is no other information available.
+            return file_path.substr(0, default_path_index + fallback_default_path_segment.length);
           }
         }
+        return root_row.name;
+      }
 
+      function initialize_global_overview() {
         document.getElementById("coverage-files").innerText = Object.keys(
           analysis_data.files
         ).length.toLocaleString();
@@ -303,45 +353,10 @@
         document.getElementById(
           "coverage-functions"
         ).innerText = `${root_row.num_functions_run.toLocaleString()} / ${root_row.num_functions.toLocaleString()}`;
-
-        if (root_row.children_map.size == 0) {
-          return;
-        }
-
-        let paths_to_open = [];
-        if (custom_root_paths) {
-          paths_to_open = paths_to_open.concat(Array.from(custom_root_paths.values()));
-        }
-        if (previous_open_paths) {
-          paths_to_open = paths_to_open.concat(Array.from(previous_open_paths));
-        }
-        if (paths_to_open.length == 0) {
-          if (default_open_path) {
-            paths_to_open.push(default_open_path);
-          } else {
-            paths_to_open.push("/");
-          }
-        }
-
-        for (const path of paths_to_open) {
-          const row = row_by_path.get(path);
-          if (row) {
-            ensure_dom_for_row(row);
-            open_directory(row);
-          }
-        }
-        update_odd_even_rows();
-
-        const scroll_position = localStorage.getItem("scroll_position");
-        if (scroll_position) {
-          window.scrollTo(0, scroll_position);
-        }
-      });
-
-      function split_into_path_parts(full_path) {
-        return full_path.split("/").slice(1);
       }
 
+      // Makes sure that the html elements for a specific row (and all its parents) have been created.
+      // This data is gnerated lazily to improve start-up time.
       function ensure_dom_for_row(row) {
         if (row.dom_elem) {
           return;
@@ -384,7 +399,7 @@
         label_elem.className = "row-label";
         let left_padding = row.depth;
         if (row.is_file && row.has_directory_separator) {
-          // Improve alignment.
+          // Add padding because this element does not have the open-directory icon.
           left_padding += 1;
         }
         label_elem.style.paddingLeft = `${left_padding}em`;
@@ -485,12 +500,6 @@
         update_odd_even_rows_recursive(root_row);
       }
 
-      function add_simple_tooltip(element, message) {
-        const content = document.createElement("pre");
-        content.innerText = message;
-        tippy(element, { content: content, delay: 400 });
-      }
-
       function add_row_tooltip(row) {
         const elems = [row.dom_stats_elem];
         // It's annoying if the tooltip shows up on mobiles devices when toggling a directory.
@@ -547,23 +556,6 @@
 
         const container_elem = document.createElement("div");
         container_elem.innerHTML = template;
-        return container_elem;
-
-        if (row.is_file) {
-          const content = document.createElement("pre");
-          content.innerText = "Open detailed file coverage";
-          container_elem.appendChild(content);
-        } else {
-          const link_elem = document.createElement("a");
-          if (custom_root_paths.includes(row.path)) {
-            link_elem.innerText = "Remove filter";
-            link_elem.href = `./index.html`;
-          } else {
-            link_elem.innerText = "Filter";
-            link_elem.href = `./index.html?filter=${row.path}`;
-          }
-          container_elem.appendChild(link_elem);
-        }
         return container_elem;
       }
 
@@ -640,11 +632,15 @@
         localStorage.setItem("scroll_position", window.scrollY);
       });
 
+      // Maps from a path to the corresponding row data which contains information
+      // like the children, corresponding DOM elements, etc.
       const row_by_path = new Map();
       let root_row = null;
 
-      const default_open_path_segment = "/blender/source/blender";
+      // Used to find which path should be opened by default if there is no other information available.
+      const fallback_default_path_segment = "/blender/source/blender";
 
+      // Get filters from URL.
       let custom_root_paths = [];
       const search_params = new URLSearchParams(location.search);
       for (const [key, value] of search_params.entries()) {
@@ -653,6 +649,8 @@
         }
       }
 
+      // Retrieve directories that have been open before to improve persistency
+      // when e.g. reloading the page.
       const open_paths_storage_key = "open_paths";
       let previous_open_paths = localStorage.getItem(open_paths_storage_key);
       if (previous_open_paths && previous_open_paths.length > 0) {
@@ -662,7 +660,10 @@
       }
       const current_open_paths = new Set();
 
+      // This data will be replaced by the script that builds the report. It still has to
+      // be uncompressed.
       const analysis_data_compressed_base64 = "ANALYSIS_DATA";
+      // Uncompressed analysis data. Uncompressing is done a bit later in an async context.
       let analysis_data = undefined;
     </script>
   </body>
