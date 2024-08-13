@@ -67,11 +67,13 @@ DrawingPlacement::DrawingPlacement(const Scene &scene,
     }
   }
 
-  /* Transform normal from world space to layer space. */
+  /* Account for layer transform. */
   if (scene.toolsettings->gp_sculpt.lock_axis != GP_LOCKAXIS_VIEW &&
       scene.toolsettings->gp_sculpt.lock_axis != GP_LOCKAXIS_CURSOR)
   {
-    placement_normal_ = math::transform_direction(layer_space_to_world_space_, placement_normal_);
+    /* Use the transpose inverse for normal. */
+    placement_normal_ = math::transform_direction(math::transpose(world_space_to_layer_space_),
+                                                  placement_normal_);
   }
 
   /* Initialize DrawingPlacementDepth from toolsettings. */
