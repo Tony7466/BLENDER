@@ -524,9 +524,12 @@
 
         template = template.replace(
           "FUNCTIONS",
-          `${row.num_functions_run} / ${row.num_functions}`
+          `${row.num_functions_run.toLocaleString()} / ${row.num_functions.toLocaleString()}`
         );
-        template = template.replace("LINES", `${row.num_lines_run} / ${row.num_lines}`);
+        template = template.replace(
+          "LINES",
+          `${row.num_lines_run.toLocaleString()} / ${row.num_lines.toLocaleString()}`
+        );
 
         if (!row.is_file) {
           let filter_text;
