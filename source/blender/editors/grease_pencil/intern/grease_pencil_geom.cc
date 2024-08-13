@@ -1320,7 +1320,8 @@ bke::CurvesGeometry trim_curve_segments(const bke::CurvesGeometry &src,
 Curves2DBVHTree build_curves_2d_bvh_from_visible(const ViewContext &vc,
                                                  const Object &object,
                                                  const GreasePencil &grease_pencil,
-                                                 Span<MutableDrawingInfo> drawings)
+                                                 Span<MutableDrawingInfo> drawings,
+                                                 const int frame_number)
 {
   Curves2DBVHTree data;
 
@@ -1328,7 +1329,9 @@ Curves2DBVHTree build_curves_2d_bvh_from_visible(const ViewContext &vc,
    * necessary. Not all points are added to the BVH tree. */
   int max_bvh_lines = 0;
   for (const int i_drawing : drawings.index_range()) {
-    max_bvh_lines += drawings[i_drawing].drawing.strokes().evaluated_points_num();
+    if (drawings[i_drawing].frame_number == frame_number) {
+      max_bvh_lines += drawings[i_drawing].drawing.strokes().evaluated_points_num();
+    }
   }
 
   data.tree = BLI_bvhtree_new(max_bvh_lines, 0.0f, 4, 6);
@@ -1338,7 +1341,9 @@ Curves2DBVHTree build_curves_2d_bvh_from_visible(const ViewContext &vc,
   data.drawing_offsets.reinitialize(drawings.size() + 1);
   for (const int i_drawing : drawings.index_range()) {
     const MutableDrawingInfo &info = drawings[i_drawing];
-    data.drawing_offsets[i_drawing] = info.drawing.strokes().evaluated_points_num();
+    data.drawing_offsets[i_drawing] = (drawings[i_drawing].frame_number == frame_number ?
+                                           info.drawing.strokes().evaluated_points_num() :
+                                           0);
   }
   OffsetIndices bvh_elements_by_drawing = offset_indices::accumulate_counts_to_offsets(
       data.drawing_offsets);
@@ -1346,6 +1351,10 @@ Curves2DBVHTree build_curves_2d_bvh_from_visible(const ViewContext &vc,
   /* Insert a line for each point except end points. */
   for (const int i_drawing : drawings.index_range()) {
     const MutableDrawingInfo &info = drawings[i_drawing];
+    if (drawings[i_drawing].frame_number != frame_number) {
+      continue;
+    }
+
     const bke::greasepencil::Layer &layer = *grease_pencil.layer(info.layer_index);
     const float4x4 layer_to_world = layer.to_world_space(object);
     const float4x4 projection = ED_view3d_ob_project_mat_get_from_obmat(vc.rv3d, layer_to_world);

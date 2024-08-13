@@ -441,54 +441,59 @@ static bool grease_pencil_select_operation(const ViewContext *vc,
       vc->scene->toolsettings);
 
   bool changed = false;
-  const Vector<ed::greasepencil::MutableDrawingInfo> drawings =
-      ed::greasepencil::retrieve_editable_drawings(*vc->scene, grease_pencil);
+  const Array<Vector<ed::greasepencil::MutableDrawingInfo>> drawings_by_frame =
+      ed::greasepencil::retrieve_editable_drawings_grouped_per_frame(*vc->scene, grease_pencil);
 
-  /* Construct BVH tree for segment selection. */
-  ed::greasepencil::Curves2DBVHTree tree_data;
-  BLI_SCOPED_DEFER([&]() { ed::greasepencil::free_curves_2d_bvh_data(tree_data); });
-  if (use_segment_selection) {
-    tree_data = ed::greasepencil::build_curves_2d_bvh_from_visible(
-        *vc, *ob_eval, grease_pencil, drawings);
-  }
-  OffsetIndices tree_data_by_drawing = OffsetIndices<int>(tree_data.drawing_offsets);
+  for (const Span<ed::greasepencil::MutableDrawingInfo> drawings : drawings_by_frame) {
+    BLI_assert(!drawings.is_empty());
+    const int frame_number = drawings.first().frame_number;
 
-  for (const int i_drawing : drawings.index_range()) {
-    const ed::greasepencil::MutableDrawingInfo &info = drawings[i_drawing];
-    bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
-    const Span<StringRef> selection_attribute_names =
-        ed::curves::get_curves_selection_attribute_names(curves);
-
-    IndexMaskMemory memory;
-    const IndexMask elements = ed::greasepencil::retrieve_editable_elements(
-        *vc->obedit, info, selection_domain, memory);
-    if (elements.is_empty()) {
-      continue;
+    /* Construct BVH tree for all drawings on the same frame. */
+    ed::greasepencil::Curves2DBVHTree tree_data;
+    BLI_SCOPED_DEFER([&]() { ed::greasepencil::free_curves_2d_bvh_data(tree_data); });
+    if (use_segment_selection) {
+      tree_data = ed::greasepencil::build_curves_2d_bvh_from_visible(
+          *vc, *ob_eval, grease_pencil, drawings, frame_number);
     }
+    OffsetIndices tree_data_by_drawing = OffsetIndices<int>(tree_data.drawing_offsets);
 
-    for (const StringRef attribute_name : selection_attribute_names) {
-      const IndexMask changed_element_mask = select_operation(
-          info, elements, attribute_name, memory);
+    for (const int i_drawing : drawings.index_range()) {
+      const ed::greasepencil::MutableDrawingInfo &info = drawings[i_drawing];
+      bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
+      const Span<StringRef> selection_attribute_names =
+          ed::curves::get_curves_selection_attribute_names(curves);
 
-      if (use_segment_selection) {
-        /* Range of points in tree data matching this curve, for re-using screen space positions.
-         */
-        const IndexRange tree_data_range = tree_data_by_drawing[i_drawing];
-        changed |= ed::greasepencil::apply_mask_as_segment_selection(curves,
-                                                                     changed_element_mask,
-                                                                     attribute_name,
-                                                                     tree_data,
-                                                                     tree_data_range,
-                                                                     GrainSize(4096),
-                                                                     sel_op);
+      IndexMaskMemory memory;
+      const IndexMask elements = ed::greasepencil::retrieve_editable_elements(
+          *vc->obedit, info, selection_domain, memory);
+      if (elements.is_empty()) {
+        continue;
       }
-      else {
-        changed |= ed::greasepencil::apply_mask_as_selection(curves,
-                                                             changed_element_mask,
-                                                             selection_domain,
-                                                             attribute_name,
-                                                             GrainSize(4096),
-                                                             sel_op);
+
+      for (const StringRef attribute_name : selection_attribute_names) {
+        const IndexMask changed_element_mask = select_operation(
+            info, elements, attribute_name, memory);
+
+        if (use_segment_selection) {
+          /* Range of points in tree data matching this curve, for re-using screen space positions.
+           */
+          const IndexRange tree_data_range = tree_data_by_drawing[i_drawing];
+          changed |= ed::greasepencil::apply_mask_as_segment_selection(curves,
+                                                                       changed_element_mask,
+                                                                       attribute_name,
+                                                                       tree_data,
+                                                                       tree_data_range,
+                                                                       GrainSize(4096),
+                                                                       sel_op);
+        }
+        else {
+          changed |= ed::greasepencil::apply_mask_as_selection(curves,
+                                                               changed_element_mask,
+                                                               selection_domain,
+                                                               attribute_name,
+                                                               GrainSize(4096),
+                                                               sel_op);
+        }
       }
     }
   }
@@ -3287,7 +3292,7 @@ static bool ed_curves_select_pick(bContext &C, const int mval[2], const SelectPi
 
 struct ClosestGreasePencilDrawing {
   blender::StringRef selection_attribute_name;
-  int drawing_index = -1;
+  int info_index = -1;
   blender::bke::greasepencil::Drawing *drawing = nullptr;
   blender::ed::curves::FindClosestData elem = {};
 };
@@ -3317,15 +3322,6 @@ static bool ed_grease_pencil_select_pick(bContext *C,
       vc.scene->toolsettings);
   const bool use_segment_selection = ED_grease_pencil_segment_selection_enabled(
       vc.scene->toolsettings);
-
-  /* Construct BVH tree for segment selection. */
-  ed::greasepencil::Curves2DBVHTree tree_data;
-  BLI_SCOPED_DEFER([&]() { ed::greasepencil::free_curves_2d_bvh_data(tree_data); });
-  if (use_segment_selection) {
-    tree_data = ed::greasepencil::build_curves_2d_bvh_from_visible(
-        vc, *ob_eval, grease_pencil, drawings);
-  }
-  OffsetIndices tree_data_by_drawing = OffsetIndices<int>(tree_data.drawing_offsets);
 
   const ClosestGreasePencilDrawing closest = threading::parallel_reduce(
       drawings.index_range(),
@@ -3375,7 +3371,7 @@ static bool ed_grease_pencil_select_pick(bContext *C,
             if (new_closest_elem) {
               new_closest.selection_attribute_name = selection_attribute_name;
               new_closest.elem = *new_closest_elem;
-              new_closest.drawing_index = i;
+              new_closest.info_index = i;
               new_closest.drawing = &info.drawing;
             }
           };
@@ -3431,9 +3427,21 @@ static bool ed_grease_pencil_select_pick(bContext *C,
 
   const IndexMask selection_mask = IndexRange::from_single(closest.elem.index);
   if (use_segment_selection) {
+    /* Construct BVH tree for all curves from the same frame as the picked element. */
+    const ed::greasepencil::MutableDrawingInfo &info = drawings[closest.info_index];
+    const int frame_number = info.frame_number;
+
+    ed::greasepencil::Curves2DBVHTree tree_data;
+    BLI_SCOPED_DEFER([&]() { ed::greasepencil::free_curves_2d_bvh_data(tree_data); });
+    if (use_segment_selection) {
+      tree_data = ed::greasepencil::build_curves_2d_bvh_from_visible(
+          vc, *ob_eval, grease_pencil, drawings, frame_number);
+    }
+    OffsetIndices tree_data_by_drawing = OffsetIndices<int>(tree_data.drawing_offsets);
+
     /* Range of points in tree data matching this curve, for re-using screen space positions.
      */
-    const IndexRange tree_data_range = tree_data_by_drawing[closest.drawing_index];
+    const IndexRange tree_data_range = tree_data_by_drawing[closest.info_index];
     ed::greasepencil::apply_mask_as_segment_selection(closest.drawing->strokes_for_write(),
                                                       selection_mask,
                                                       closest.selection_attribute_name,

@@ -687,7 +687,8 @@ struct Curves2DBVHTree {
 Curves2DBVHTree build_curves_2d_bvh_from_visible(const ViewContext &vc,
                                                  const Object &object,
                                                  const GreasePencil &grease_pencil,
-                                                 Span<MutableDrawingInfo> drawings);
+                                                 Span<MutableDrawingInfo> drawings,
+                                                 int frame_number);
 void free_curves_2d_bvh_data(Curves2DBVHTree &data);
 
 /**

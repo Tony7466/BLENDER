@@ -250,55 +250,61 @@ static int select_more_exec(bContext *C, wmOperator * /*op*/)
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
   const bool use_segment_selection = ED_grease_pencil_segment_selection_enabled(
       scene->toolsettings);
-  const Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
+  const Array<Vector<MutableDrawingInfo>> drawings_by_frame =
+      retrieve_editable_drawings_grouped_per_frame(*scene, grease_pencil);
 
-  ed::greasepencil::Curves2DBVHTree tree_data;
-  BLI_SCOPED_DEFER([&]() { ed::greasepencil::free_curves_2d_bvh_data(tree_data); });
-  if (use_segment_selection) {
-    const ViewContext vc = ED_view3d_viewcontext_init(C, CTX_data_depsgraph_pointer(C));
-    tree_data = ed::greasepencil::build_curves_2d_bvh_from_visible(
-        vc, *object, grease_pencil, drawings);
+  for (const Span<MutableDrawingInfo> drawings : drawings_by_frame) {
+    BLI_assert(!drawings.is_empty());
+    const int frame_number = drawings.first().frame_number;
+
+    ed::greasepencil::Curves2DBVHTree tree_data;
+    BLI_SCOPED_DEFER([&]() { ed::greasepencil::free_curves_2d_bvh_data(tree_data); });
+    if (use_segment_selection) {
+      const ViewContext vc = ED_view3d_viewcontext_init(C, CTX_data_depsgraph_pointer(C));
+      tree_data = ed::greasepencil::build_curves_2d_bvh_from_visible(
+          vc, *object, grease_pencil, drawings, frame_number);
+    }
+    OffsetIndices tree_data_by_drawing = OffsetIndices<int>(tree_data.drawing_offsets);
+
+    threading::parallel_for_each(drawings.index_range(), [&](const int drawing_i) {
+      const MutableDrawingInfo &info = drawings[drawing_i];
+      const Span<StringRef> selection_attribute_names =
+          ed::curves::get_curves_selection_attribute_names(info.drawing.strokes());
+
+      IndexMaskMemory memory;
+      const IndexMask selectable_strokes = ed::greasepencil::retrieve_editable_strokes(
+          *object, info.drawing, info.layer_index, memory);
+      if (selectable_strokes.is_empty()) {
+        return;
+      }
+
+      for (const StringRef attribute_name : selection_attribute_names) {
+        const IndexMask changed_point_mask = blender::ed::curves::select_adjacent_mask(
+            info.drawing.strokes(), attribute_name, false, memory);
+
+        if (use_segment_selection) {
+          /* Range of points in tree data matching this curve, for re-using screen space positions.
+           */
+          const IndexRange tree_data_range = tree_data_by_drawing[drawing_i];
+          ed::greasepencil::apply_mask_as_segment_selection(info.drawing.strokes_for_write(),
+                                                            changed_point_mask,
+                                                            attribute_name,
+                                                            tree_data,
+                                                            tree_data_range,
+                                                            GrainSize(4096),
+                                                            SEL_OP_ADD);
+        }
+        else {
+          ed::greasepencil::apply_mask_as_selection(info.drawing.strokes_for_write(),
+                                                    changed_point_mask,
+                                                    bke::AttrDomain::Point,
+                                                    attribute_name,
+                                                    GrainSize(4096),
+                                                    SEL_OP_ADD);
+        }
+      }
+    });
   }
-  OffsetIndices tree_data_by_drawing = OffsetIndices<int>(tree_data.drawing_offsets);
-
-  threading::parallel_for_each(drawings.index_range(), [&](const int drawing_i) {
-    const MutableDrawingInfo &info = drawings[drawing_i];
-    const Span<StringRef> selection_attribute_names =
-        ed::curves::get_curves_selection_attribute_names(info.drawing.strokes());
-
-    IndexMaskMemory memory;
-    const IndexMask selectable_strokes = ed::greasepencil::retrieve_editable_strokes(
-        *object, info.drawing, info.layer_index, memory);
-    if (selectable_strokes.is_empty()) {
-      return;
-    }
-
-    for (const StringRef attribute_name : selection_attribute_names) {
-      const IndexMask changed_point_mask = blender::ed::curves::select_adjacent_mask(
-          info.drawing.strokes(), attribute_name, false, memory);
-
-      if (use_segment_selection) {
-        /* Range of points in tree data matching this curve, for re-using screen space positions.
-         */
-        const IndexRange tree_data_range = tree_data_by_drawing[drawing_i];
-        ed::greasepencil::apply_mask_as_segment_selection(info.drawing.strokes_for_write(),
-                                                          changed_point_mask,
-                                                          attribute_name,
-                                                          tree_data,
-                                                          tree_data_range,
-                                                          GrainSize(4096),
-                                                          SEL_OP_ADD);
-      }
-      else {
-        ed::greasepencil::apply_mask_as_selection(info.drawing.strokes_for_write(),
-                                                  changed_point_mask,
-                                                  bke::AttrDomain::Point,
-                                                  attribute_name,
-                                                  GrainSize(4096),
-                                                  SEL_OP_ADD);
-      }
-    }
-  });
 
   /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a generic
    * attribute for now. */
@@ -327,55 +333,61 @@ static int select_less_exec(bContext *C, wmOperator * /*op*/)
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
   const bool use_segment_selection = ED_grease_pencil_segment_selection_enabled(
       scene->toolsettings);
-  const Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
+  const Array<Vector<MutableDrawingInfo>> drawings_by_frame =
+      retrieve_editable_drawings_grouped_per_frame(*scene, grease_pencil);
 
-  ed::greasepencil::Curves2DBVHTree tree_data;
-  BLI_SCOPED_DEFER([&]() { ed::greasepencil::free_curves_2d_bvh_data(tree_data); });
-  if (use_segment_selection) {
-    const ViewContext vc = ED_view3d_viewcontext_init(C, CTX_data_depsgraph_pointer(C));
-    tree_data = ed::greasepencil::build_curves_2d_bvh_from_visible(
-        vc, *object, grease_pencil, drawings);
+  for (const Span<MutableDrawingInfo> drawings : drawings_by_frame) {
+    BLI_assert(!drawings.is_empty());
+    const int frame_number = drawings.first().frame_number;
+
+    ed::greasepencil::Curves2DBVHTree tree_data;
+    BLI_SCOPED_DEFER([&]() { ed::greasepencil::free_curves_2d_bvh_data(tree_data); });
+    if (use_segment_selection) {
+      const ViewContext vc = ED_view3d_viewcontext_init(C, CTX_data_depsgraph_pointer(C));
+      tree_data = ed::greasepencil::build_curves_2d_bvh_from_visible(
+          vc, *object, grease_pencil, drawings, frame_number);
+    }
+    OffsetIndices tree_data_by_drawing = OffsetIndices<int>(tree_data.drawing_offsets);
+
+    threading::parallel_for_each(drawings.index_range(), [&](const int drawing_i) {
+      const MutableDrawingInfo &info = drawings[drawing_i];
+      const Span<StringRef> selection_attribute_names =
+          ed::curves::get_curves_selection_attribute_names(info.drawing.strokes());
+
+      IndexMaskMemory memory;
+      const IndexMask selectable_strokes = ed::greasepencil::retrieve_editable_strokes(
+          *object, info.drawing, info.layer_index, memory);
+      if (selectable_strokes.is_empty()) {
+        return;
+      }
+
+      for (const StringRef attribute_name : selection_attribute_names) {
+        const IndexMask changed_point_mask = blender::ed::curves::select_adjacent_mask(
+            info.drawing.strokes(), attribute_name, true, memory);
+
+        if (use_segment_selection) {
+          /* Range of points in tree data matching this curve, for re-using screen space positions.
+           */
+          const IndexRange tree_data_range = tree_data_by_drawing[drawing_i];
+          ed::greasepencil::apply_mask_as_segment_selection(info.drawing.strokes_for_write(),
+                                                            changed_point_mask,
+                                                            attribute_name,
+                                                            tree_data,
+                                                            tree_data_range,
+                                                            GrainSize(4096),
+                                                            SEL_OP_SUB);
+        }
+        else {
+          ed::greasepencil::apply_mask_as_selection(info.drawing.strokes_for_write(),
+                                                    changed_point_mask,
+                                                    bke::AttrDomain::Point,
+                                                    attribute_name,
+                                                    GrainSize(4096),
+                                                    SEL_OP_SUB);
+        }
+      }
+    });
   }
-  OffsetIndices tree_data_by_drawing = OffsetIndices<int>(tree_data.drawing_offsets);
-
-  threading::parallel_for_each(drawings.index_range(), [&](const int drawing_i) {
-    const MutableDrawingInfo &info = drawings[drawing_i];
-    const Span<StringRef> selection_attribute_names =
-        ed::curves::get_curves_selection_attribute_names(info.drawing.strokes());
-
-    IndexMaskMemory memory;
-    const IndexMask selectable_strokes = ed::greasepencil::retrieve_editable_strokes(
-        *object, info.drawing, info.layer_index, memory);
-    if (selectable_strokes.is_empty()) {
-      return;
-    }
-
-    for (const StringRef attribute_name : selection_attribute_names) {
-      const IndexMask changed_point_mask = blender::ed::curves::select_adjacent_mask(
-          info.drawing.strokes(), attribute_name, true, memory);
-
-      if (use_segment_selection) {
-        /* Range of points in tree data matching this curve, for re-using screen space positions.
-         */
-        const IndexRange tree_data_range = tree_data_by_drawing[drawing_i];
-        ed::greasepencil::apply_mask_as_segment_selection(info.drawing.strokes_for_write(),
-                                                          changed_point_mask,
-                                                          attribute_name,
-                                                          tree_data,
-                                                          tree_data_range,
-                                                          GrainSize(4096),
-                                                          SEL_OP_SUB);
-      }
-      else {
-        ed::greasepencil::apply_mask_as_selection(info.drawing.strokes_for_write(),
-                                                  changed_point_mask,
-                                                  bke::AttrDomain::Point,
-                                                  attribute_name,
-                                                  GrainSize(4096),
-                                                  SEL_OP_SUB);
-      }
-    }
-  });
 
   /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a generic
    * attribute for now. */
