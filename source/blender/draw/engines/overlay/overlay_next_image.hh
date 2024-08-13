@@ -215,27 +215,26 @@ class Images {
     {
       /* Calling 'BKE_image_get_size' may free the texture. Get the size from 'tex' instead,
        * see: #59347 */
-      int size[2] = {0};
+      int2 size = int2(0);
       if (ima != nullptr) {
         ImageUser iuser = *ob->iuser;
         camera_background_images_stereo_setup(state.scene, state.v3d, ima, &iuser);
         tex = BKE_image_get_gpu_texture(ima, &iuser);
         if (tex) {
-          size[0] = GPU_texture_original_width(tex);
-          size[1] = GPU_texture_original_height(tex);
+          size = int2(GPU_texture_original_width(tex), GPU_texture_original_height(tex));
         }
       }
-      CLAMP_MIN(size[0], 1);
-      CLAMP_MIN(size[1], 1);
+      CLAMP_MIN(size.x, 1);
+      CLAMP_MIN(size.y, 1);
 
-      float image_aspect[2];
+      float2 image_aspect;
       overlay_image_calc_aspect(ima, size, image_aspect);
 
       mat = ob->object_to_world();
-      mat.x_axis() *= image_aspect[0] * 0.5f * ob->empty_drawsize;
-      mat.y_axis() *= image_aspect[1] * 0.5f * ob->empty_drawsize;
-      madd_v3_v3fl(mat[3], mat[0], ob->ima_ofs[0] * 2.0f + 1.0f);
-      madd_v3_v3fl(mat[3], mat[1], ob->ima_ofs[1] * 2.0f + 1.0f);
+      mat.x_axis() *= image_aspect.x * 0.5f * ob->empty_drawsize;
+      mat.y_axis() *= image_aspect.y * 0.5f * ob->empty_drawsize;
+      mat[3].xyz() += mat[0].xyz() * (ob->ima_ofs[0] * 2.0f + 1.0f);
+      mat[3].xyz() += mat[1].xyz() * (ob->ima_ofs[1] * 2.0f + 1.0f);
     }
 
     if (show_frame) {
@@ -314,8 +313,8 @@ class Images {
                                        const float4x4 &viewinv,
                                        const float4x4 &mat)
   {
-    const float3 tmp = float3(viewinv[3]) - float3(mat[3]);
-    const float z = -math::dot(float3(viewinv[2]), tmp);
+    const float3 tmp = viewinv[3].xyz() - mat[3].xyz();
+    const float z = -math::dot(viewinv[2].xyz(), tmp);
     PassMain::Sub &pass = parent.sub("Sub", z);
     pass.state_set(draw_state | state.clipping_state);
     pass.shader_set(res.shaders.image.get());
@@ -336,38 +335,25 @@ class Images {
     }
   }
 
-  static void overlay_image_calc_aspect(::Image *ima, const int size[2], float r_image_aspect[2])
+  static void overlay_image_calc_aspect(::Image *ima, const int2 &size, float2 &r_image_aspect)
   {
-    float ima_x, ima_y;
-    if (ima) {
-      ima_x = size[0];
-      ima_y = size[1];
-    }
-    else {
-      /* if no image, make it a 1x1 empty square, honor scale & offset */
-      ima_x = ima_y = 1.0f;
-    }
+    /* if no image, make it a 1x1 empty square, honor scale & offset */
+    const float2 ima_dim = ima ? float2(size.x, size.y) : float2(1.0f);
+
     /* Get the image aspect even if the buffer is invalid */
-    float sca_x = 1.0f, sca_y = 1.0f;
+    float2 sca(1.0f);
     if (ima) {
       if (ima->aspx > ima->aspy) {
-        sca_y = ima->aspy / ima->aspx;
+        sca.y = ima->aspy / ima->aspx;
       }
       else if (ima->aspx < ima->aspy) {
-        sca_x = ima->aspx / ima->aspy;
+        sca.x = ima->aspx / ima->aspy;
       }
     }
 
-    const float scale_x_inv = ima_x * sca_x;
-    const float scale_y_inv = ima_y * sca_y;
-    if (scale_x_inv > scale_y_inv) {
-      r_image_aspect[0] = 1.0f;
-      r_image_aspect[1] = scale_y_inv / scale_x_inv;
-    }
-    else {
-      r_image_aspect[0] = scale_x_inv / scale_y_inv;
-      r_image_aspect[1] = 1.0f;
-    }
+    const float2 scale_inv(ima_dim.x * sca.x, ima_dim.y * sca.y);
+    r_image_aspect = (scale_inv.x > scale_inv.y) ? float2(1.0f, scale_inv.y / scale_inv.x) :
+                                                   float2(scale_inv.x / scale_inv.y, 1.0f);
   }
 
   static eStereoViews camera_background_images_stereo_eye(const Scene *scene, const View3D *v3d)
