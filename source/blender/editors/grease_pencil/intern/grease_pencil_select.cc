@@ -191,37 +191,33 @@ static int select_random_exec(bContext *C, wmOperator *op)
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
   bke::AttrDomain selection_domain = ED_grease_pencil_selection_domain_get(scene->toolsettings);
+  const ViewContext vc = ED_view3d_viewcontext_init(C, CTX_data_depsgraph_pointer(C));
 
-  const Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
-  threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
-    bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
-
-    IndexMaskMemory memory;
-    const IndexMask selectable_elements = retrieve_editable_elements(
-        *object, info, selection_domain, memory);
-    if (selectable_elements.is_empty()) {
-      return;
-    }
-
-    const IndexMask random_elements = ed::curves::random_mask(
-        curves,
-        selectable_elements,
-        selection_domain,
-        blender::get_default_hash<int>(seed, info.layer_index),
-        ratio,
-        memory);
-
-    const bool was_anything_selected = ed::curves::has_anything_selected(curves,
-                                                                         selectable_elements);
-    bke::GSpanAttributeWriter selection = ed::curves::ensure_selection_attribute(
-        curves, selection_domain, CD_PROP_BOOL);
-    if (!was_anything_selected) {
-      curves::fill_selection_true(selection.span, selectable_elements);
-    }
-
-    curves::fill_selection_false(selection.span, random_elements);
-    selection.finish();
-  });
+  /* Note: For segment selection this doesn't work very well, because it is based on random point
+   * selection. A segment has a high probability of getting at least one selected point and be
+   * itself selected.
+   * For better distribution the random value must be generated per segment and possibly weighted
+   * by segment length.
+   */
+  ed::greasepencil::selection_update(
+      &vc,
+      SEL_OP_SET,
+      [&](const ed::greasepencil::MutableDrawingInfo &info,
+          const IndexMask & /*universe*/,
+          StringRef /*attribute_name*/,
+          IndexMaskMemory &memory) -> IndexMask {
+        const IndexMask selectable_elements = retrieve_editable_elements(
+            *object, info, selection_domain, memory);
+        if (selectable_elements.is_empty()) {
+          return {};
+        }
+        return ed::curves::random_mask(info.drawing.strokes(),
+                                       selectable_elements,
+                                       selection_domain,
+                                       blender::get_default_hash<int>(seed, info.layer_index),
+                                       ratio,
+                                       memory);
+      });
 
   /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a generic
    * attribute for now. */
