@@ -67,7 +67,7 @@ DrawingPlacement::DrawingPlacement(const Scene &scene,
     }
   }
 
-  /* Transform normal from layer space to world space. */
+  /* Transform normal from world space to layer space. */
   if (scene.toolsettings->gp_sculpt.lock_axis != GP_LOCKAXIS_VIEW &&
       scene.toolsettings->gp_sculpt.lock_axis != GP_LOCKAXIS_CURSOR)
   {
