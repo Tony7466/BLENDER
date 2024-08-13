@@ -51,35 +51,22 @@ class Images {
 
     PassMain::Sub &operator()(const Object &ob,
                               const bool use_alpha_blend,
-                              Resources &res,
-                              const State &state,
                               const float4x4 &mat) const
     {
-      DRWState draw_state;
       if (in_front) {
-        draw_state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL;
-        return Images::create_subpass(
-            images.empties_front_ps_, draw_state, res, state, *images.viewinv, mat);
+        return Images::create_subpass(*images.viewinv, mat, images.empties_front_ps_);
       }
       const char depth_mode = DRW_state_is_depth() ? char(OB_EMPTY_IMAGE_DEPTH_DEFAULT) :
                                                      ob.empty_image_depth;
       switch (depth_mode) {
         case OB_EMPTY_IMAGE_DEPTH_BACK:
-          draw_state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL |
-                       DRW_STATE_BLEND_ALPHA_PREMUL;
-          return Images::create_subpass(
-              images.empties_back_ps_, draw_state, res, state, *images.viewinv, mat);
+          return Images::create_subpass(*images.viewinv, mat, images.empties_back_ps_);
         case OB_EMPTY_IMAGE_DEPTH_FRONT:
-          draw_state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL;
-          return Images::create_subpass(
-              images.empties_front_ps_, draw_state, res, state, *images.viewinv, mat);
+          return Images::create_subpass(*images.viewinv, mat, images.empties_front_ps_);
         case OB_EMPTY_IMAGE_DEPTH_DEFAULT:
         default:
-          draw_state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL |
-                       DRW_STATE_BLEND_ALPHA_PREMUL;
           return use_alpha_blend ?
-                     Images::create_subpass(
-                         images.empties_blend_ps_, draw_state, res, state, *images.viewinv, mat) :
+                     Images::create_subpass(*images.viewinv, mat, images.empties_blend_ps_) :
                      images.empties_ps_;
       }
     }
@@ -106,6 +93,14 @@ class Images {
       pass.shader_set(res.shaders.image.get());
       res.select_bind(pass);
     };
+
+    auto init_sortable = [&](PassSortable &pass, DRWState draw_state) {
+      pass.init();
+      pass.state_set(draw_state | state.clipping_state);
+      pass.shader_set(res.shaders.image.get());
+      res.select_bind(pass);
+    };
+
     DRWState draw_state;
     draw_state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_GREATER | DRW_STATE_BLEND_ALPHA_PREMUL;
     init_pass(background_ps_, draw_state);
@@ -117,14 +112,13 @@ class Images {
     init_pass(empties_ps_, draw_state);
 
     draw_state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA_PREMUL;
-    empties_back_ps_.init();
-    empties_blend_ps_.init();
+    init_sortable(empties_back_ps_, draw_state);
+    init_sortable(empties_blend_ps_, draw_state);
 
     draw_state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL;
+    init_sortable(empties_front_ps_, draw_state);
     init_pass(foreground_ps_, draw_state);
     init_pass(foreground_scene_ps_, draw_state);
-
-    empties_front_ps_.init();
 
     free_movieclips_textures();
   }
@@ -247,7 +241,7 @@ class Images {
        * object. */
       char depth_mode = DRW_state_is_depth() ? char(OB_EMPTY_IMAGE_DEPTH_DEFAULT) :
                                                ob->empty_image_depth;
-      PassMain::Sub &pass = pass_source(*ob, use_alpha_blend, res, state, mat);
+      PassMain::Sub &pass = pass_source(*ob, use_alpha_blend, mat);
       pass.bind_texture("imgTexture", tex);
       pass.push_constant("imgPremultiplied", use_alpha_premult);
       pass.push_constant("imgAlphaBlend", use_alpha_blend);
@@ -306,19 +300,13 @@ class Images {
   }
 
  private:
-  static PassMain::Sub &create_subpass(PassSortable &parent,
-                                       DRWState draw_state,
-                                       Resources &res,
-                                       const State &state,
-                                       const float4x4 &viewinv,
-                                       const float4x4 &mat)
+  static PassMain::Sub &create_subpass(const float4x4 &viewinv,
+                                       const float4x4 &mat,
+                                       PassSortable &parent)
   {
     const float3 tmp = viewinv[3].xyz() - mat[3].xyz();
     const float z = -math::dot(viewinv[2].xyz(), tmp);
-    PassMain::Sub &pass = parent.sub("Sub", z);
-    pass.state_set(draw_state | state.clipping_state);
-    pass.shader_set(res.shaders.image.get());
-    return pass;
+    return parent.sub("Sub", z);
   };
 
   PassMain &get_camera_pass(const bool is_foreground, const bool use_view_transform)
