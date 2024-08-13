@@ -167,7 +167,7 @@ string HIPRTDevice::compile_kernel(const uint kernel_features, const char *name,
       "hiprt_%s_%s_%s.bc", name, arch.c_str(), kernel_md5.c_str());
   const string hiprt_bitcode = path_cache_get(path_join("kernels", hiprt_bc));
 
-  const string hiprt_include_path = path_join(source_path, "kernel//device//hiprt");
+  const string hiprt_include_path = path_join(source_path, "kernel/device/hiprt");
 
   VLOG(1) << "Testing for locally compiled kernel " << fatbin << ".";
   if (path_exists(fatbin)) {
