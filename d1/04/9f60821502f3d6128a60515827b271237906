@@ -1,2 +1,3 @@
 Referenced by issue #126149, Viewport wireframe overlay broken for flat, inner faces on MacOS
 Referenced by pull request #126290, Fix #126149: Flat face wireframe edges hidden on some platforms
+Referenced by commit a716685f2f54f07910e1d47a6b38cdd0ec2edfbc, Fix #126149: Flat face wireframe edges hidden on some platforms
