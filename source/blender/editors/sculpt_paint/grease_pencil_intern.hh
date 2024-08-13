@@ -119,6 +119,8 @@ bke::crazyspace::GeometryDeformation get_drawing_deformation(
 /* Project points from layer space into 2D view space. */
 Array<float2> calculate_view_positions(const GreasePencilStrokeParams &params,
                                        const IndexMask &selection);
+Array<float> calculate_view_radii(const GreasePencilStrokeParams &params,
+                                  const IndexMask &selection);
 
 bool do_vertex_color_points(const Brush &brush);
 bool do_vertex_color_fill(const Brush &brush);
@@ -149,6 +151,10 @@ class GreasePencilStrokeOperationCommon : public GreasePencilStrokeOperation {
 
   void foreach_editable_drawing(
       const bContext &C, FunctionRef<bool(const GreasePencilStrokeParams &params)> fn) const;
+  void foreach_editable_drawing(
+      const bContext &C,
+      GrainSize grain_size,
+      FunctionRef<bool(const GreasePencilStrokeParams &params)> fn) const;
   void foreach_editable_drawing(const bContext &C,
                                 FunctionRef<bool(const GreasePencilStrokeParams &params,
                                                  const DrawingPlacement &placement)> fn) const;

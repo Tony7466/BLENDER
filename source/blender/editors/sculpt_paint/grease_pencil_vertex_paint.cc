@@ -47,7 +47,7 @@ void VertexPaintOperation::on_stroke_extended(const bContext &C,
   srgb_to_linearrgb_v3_v3(color_linear, BKE_brush_color_get(&scene, &brush));
   const ColorGeometry4f mix_color(color_linear[0], color_linear[1], color_linear[2], 1.0f);
 
-  this->foreach_editable_drawing(C, [&](const GreasePencilStrokeParams &params) {
+  this->foreach_editable_drawing(C, GrainSize(1), [&](const GreasePencilStrokeParams &params) {
     IndexMaskMemory memory;
     const IndexMask point_selection = point_selection_mask(params, is_masking, memory);
     if (!point_selection.is_empty() && do_points) {

@@ -42,7 +42,7 @@ void VertexAverageOperation::on_stroke_extended(const bContext &C,
   const bool do_points = do_vertex_color_points(brush);
   const bool do_fill = do_vertex_color_fill(brush);
 
-  this->foreach_editable_drawing(C, [&](const GreasePencilStrokeParams &params) {
+  this->foreach_editable_drawing(C, GrainSize(1), [&](const GreasePencilStrokeParams &params) {
     IndexMaskMemory memory;
     const IndexMask point_selection = point_selection_mask(params, is_masking, memory);
     if (!point_selection.is_empty() && do_points) {

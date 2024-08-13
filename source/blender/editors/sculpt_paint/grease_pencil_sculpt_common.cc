@@ -62,6 +62,7 @@ void init_brush(Brush &brush)
     BKE_brush_init_gpencil_settings(&brush);
   }
   BLI_assert(brush.gpencil_settings != nullptr);
+  BKE_curvemapping_init(brush.curve);
   BKE_curvemapping_init(brush.gpencil_settings->curve_strength);
   BKE_curvemapping_init(brush.gpencil_settings->curve_sensitivity);
   BKE_curvemapping_init(brush.gpencil_settings->curve_jitter);
@@ -265,6 +266,25 @@ Array<float2> calculate_view_positions(const GreasePencilStrokeParams &params,
   return view_positions;
 }
 
+Array<float> calculate_view_radii(const GreasePencilStrokeParams &params,
+                                  const IndexMask &selection)
+{
+  const RegionView3D *rv3d = static_cast<RegionView3D *>(params.region.regiondata);
+  bke::crazyspace::GeometryDeformation deformation = get_drawing_deformation(params);
+
+  const VArray<float> radii = params.drawing.radii();
+  Array<float> view_radii(radii.size());
+  /* Compute screen space radii. */
+  const float4x4 transform = params.layer.to_world_space(params.ob_eval);
+  selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {
+    const float pixel_size = ED_view3d_pixel_size(
+        rv3d, math::transform_point(transform, deformation.positions[point_i]));
+    view_radii[point_i] = radii[point_i] / pixel_size;
+  });
+
+  return view_radii;
+}
+
 bool do_vertex_color_points(const Brush &brush)
 {
   return brush.gpencil_settings != nullptr &&
@@ -302,7 +322,8 @@ void GreasePencilStrokeOperationCommon::foreach_editable_drawing(
 
   std::atomic<bool> changed = false;
   const Vector<MutableDrawingInfo> drawings = get_drawings_for_sculpt(C);
-  threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
+  for (const int64_t i : drawings.index_range()) {
+    const MutableDrawingInfo &info = drawings[i];
     GreasePencilStrokeParams params = GreasePencilStrokeParams::from_context(
         scene,
         depsgraph,
@@ -314,6 +335,45 @@ void GreasePencilStrokeOperationCommon::foreach_editable_drawing(
         info.drawing);
     if (fn(params)) {
       changed = true;
+    }
+  }
+
+  if (changed) {
+    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(&C, NC_GEOM | ND_DATA, &grease_pencil);
+  }
+}
+
+void GreasePencilStrokeOperationCommon::foreach_editable_drawing(
+    const bContext &C,
+    const GrainSize grain_size,
+    FunctionRef<bool(const GreasePencilStrokeParams &params)> fn) const
+{
+  using namespace blender::bke::greasepencil;
+
+  const Scene &scene = *CTX_data_scene(&C);
+  Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(&C);
+  ARegion &region = *CTX_wm_region(&C);
+  Object &object = *CTX_data_active_object(&C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
+
+  std::atomic<bool> changed = false;
+  const Vector<MutableDrawingInfo> drawings = get_drawings_for_sculpt(C);
+  threading::parallel_for(drawings.index_range(), grain_size.value, [&](const IndexRange range) {
+    for (const int64_t i : range) {
+      const MutableDrawingInfo &info = drawings[i];
+      GreasePencilStrokeParams params = GreasePencilStrokeParams::from_context(
+          scene,
+          depsgraph,
+          region,
+          object,
+          info.layer_index,
+          info.frame_number,
+          info.multi_frame_falloff,
+          info.drawing);
+      if (fn(params)) {
+        changed = true;
+      }
     }
   });
 
