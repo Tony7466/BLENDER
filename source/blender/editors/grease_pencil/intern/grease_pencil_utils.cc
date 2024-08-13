@@ -66,6 +66,14 @@ DrawingPlacement::DrawingPlacement(const Scene &scene,
       break;
     }
   }
+
+  /* Transform normal from layer space to world space. */
+  if (scene.toolsettings->gp_sculpt.lock_axis != GP_LOCKAXIS_VIEW &&
+      scene.toolsettings->gp_sculpt.lock_axis != GP_LOCKAXIS_CURSOR)
+  {
+    placement_normal_ = math::transform_direction(layer_space_to_world_space_, placement_normal_);
+  }
+
   /* Initialize DrawingPlacementDepth from toolsettings. */
   const char align_flag = scene.toolsettings->gpencil_v3d_align;
   if (align_flag & GP_PROJECT_VIEWSPACE) {
