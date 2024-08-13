@@ -58,28 +58,15 @@ void main()
     out_background.rgb = mix(out_background.rgb, radiance_sh, radiance_mix_factor);
   }
 
-  /* World opacity. */
-  out_background = mix(vec4(0.0, 0.0, 0.0, 1.0), out_background, world_opacity_fade);
-
+  /* Output environment pass. */
 #ifdef MAT_RENDER_PASS_SUPPORT
-  /* Clear Render Buffers. */
-  ivec2 texel = ivec2(gl_FragCoord.xy);
-
   vec4 environment = out_background;
+
+  // TODO: add depth test + ignore world opacity fade.
   environment.a = 1.0 - environment.a;
   environment.rgb *= environment.a;
   output_renderpass_color(uniform_buf.render_pass.environment_id, environment);
-
-  vec4 clear_color = vec4(0.0, 0.0, 0.0, 1.0);
-  output_renderpass_color(uniform_buf.render_pass.normal_id, clear_color);
-  output_renderpass_color(uniform_buf.render_pass.position_id, clear_color);
-  output_renderpass_color(uniform_buf.render_pass.diffuse_light_id, clear_color);
-  output_renderpass_color(uniform_buf.render_pass.specular_light_id, clear_color);
-  output_renderpass_color(uniform_buf.render_pass.diffuse_color_id, clear_color);
-  output_renderpass_color(uniform_buf.render_pass.specular_color_id, clear_color);
-  output_renderpass_color(uniform_buf.render_pass.emission_id, clear_color);
-  output_renderpass_value(uniform_buf.render_pass.shadow_id, 1.0);
-  /** NOTE: AO is done on its own pass. */
-  imageStoreFast(rp_cryptomatte_img, texel, vec4(0.0));
 #endif
+
+  out_background = mix(vec4(0.0, 0.0, 0.0, 1.0), out_background, world_opacity_fade);
 }
