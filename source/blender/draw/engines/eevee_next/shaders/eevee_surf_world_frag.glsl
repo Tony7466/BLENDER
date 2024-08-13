@@ -41,9 +41,7 @@ void main()
   out_background.rgb = colorspace_safe_color(g_emission) * (1.0 - g_holdout);
   out_background.a = saturate(average(g_transmittance)) * g_holdout;
 
-  if (g_data.ray_type == RAY_TYPE_CAMERA && world_background_blur != 0.0 &&
-      world_opacity_fade != 0.0)
-  {
+  if (g_data.ray_type == RAY_TYPE_CAMERA && world_background_blur != 0.0) {
     float base_lod = sphere_probe_roughness_to_lod(world_background_blur);
     float lod = max(1.0, base_lod);
     float mix_factor = min(1.0, base_lod);
@@ -62,7 +60,6 @@ void main()
 #ifdef MAT_RENDER_PASS_SUPPORT
   vec4 environment = out_background;
 
-  // TODO: add depth test + ignore world opacity fade.
   environment.a = 1.0 - environment.a;
   environment.rgb *= environment.a;
   output_renderpass_color(uniform_buf.render_pass.environment_id, environment);
