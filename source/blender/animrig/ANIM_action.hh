@@ -836,6 +836,16 @@ class ChannelBag : public ::ActionChannelBag {
    */
   bool channel_group_remove_raw(bActionGroup &group);
 
+  /**
+   * Assigns the given FCurve to the given channel group.
+   *
+   * Fails if either doesn't belong to this channel bag, but otherwise always
+   * succeeds.
+   *
+   * \return True on success, false on failure.
+   */
+  bool fcurve_assign_to_channel_group(FCurve &fcurve, bActionGroup &group);
+
  protected:
   /**
    * Create an F-Curve.

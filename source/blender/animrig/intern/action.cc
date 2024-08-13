@@ -1835,6 +1835,42 @@ bool action_fcurve_remove(Action &action, FCurve &fcu)
   return false;
 }
 
+bool ChannelBag::fcurve_assign_to_channel_group(FCurve &fcurve, bActionGroup &group)
+{
+
+  if (this->channel_groups().as_span().first_index_try(&group) == -1) {
+    return false;
+  }
+
+  const int fcurve_index = this->fcurves().as_span().first_index_try(&fcurve);
+  if (fcurve_index == -1) {
+    return false;
+  }
+
+  bActionGroup *from_group = this->channel_group_containing_index(fcurve_index);
+  if (from_group == &group) {
+    return true;
+  }
+  if (from_group != nullptr) {
+    from_group->fcurve_count--;
+    if (from_group->fcurve_count == 0) {
+      this->channel_group_remove_raw(*from_group);
+    }
+  }
+
+  array_shift_range(this->fcurve_array,
+                    this->fcurve_array_num,
+                    fcurve_index,
+                    fcurve_index + 1,
+                    group.fcurve_index + group.fcurve_count);
+  group.fcurve_count++;
+
+  this->recompute_channel_group_indices();
+  this->update_fcurve_channel_group_pointers();
+
+  return true;
+}
+
 ID *action_slot_get_id_for_keying(Main &bmain,
                                   Action &action,
                                   const slot_handle_t slot_handle,
