@@ -22,6 +22,7 @@ class Wireframe {
     PassMain::Sub *pointcloud_ps_ = nullptr;
     PassMain::Sub *gpencil_ps_ = nullptr;
     PassMain::Sub *mesh_ps_ = nullptr;
+    PassMain::Sub *mesh_all_wires_ps_ = nullptr;
   } colored, non_colored;
   /* Some objects types renders as points in wireframe draw mode. */
   PassMain point_ps_ = {"Loose Points"};
@@ -54,7 +55,6 @@ class Wireframe {
         sub.shader_set(shader);
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.bind_texture("depthTex", depth_tex);
-        sub.push_constant("wireStepParam", wire_threshold);
         sub.push_constant("wireOpacity", state.overlay.wireframe_opacity);
         sub.push_constant("isTransform", is_transform);
         sub.push_constant("colorType", state.v3d->shading.wire_color_type);
@@ -66,18 +66,32 @@ class Wireframe {
         non_colored.mesh_ps_ = shader_pass(res.shaders.wireframe_mesh.get(), "Mesh");
         non_colored.mesh_ps_->push_constant("isHair", false);
         non_colored.mesh_ps_->push_constant("useColoring", false);
-        colored.mesh_ps_ = shader_pass(res.shaders.wireframe_mesh.get(), "Mesh Colored");
+        non_colored.mesh_ps_->push_constant("wireStepParam", wire_threshold);
+        colored.mesh_ps_ = shader_pass(res.shaders.wireframe_mesh.get(), "MeshColored");
         colored.mesh_ps_->push_constant("isHair", false);
         colored.mesh_ps_->push_constant("useColoring", true);
+        colored.mesh_ps_->push_constant("wireStepParam", wire_threshold);
+      }
+      {
+        non_colored.mesh_all_wires_ps_ = shader_pass(res.shaders.wireframe_mesh.get(), "Wires");
+        non_colored.mesh_all_wires_ps_->push_constant("isHair", false);
+        non_colored.mesh_all_wires_ps_->push_constant("useColoring", false);
+        non_colored.mesh_all_wires_ps_->push_constant("wireStepParam", 1.0f);
+        colored.mesh_all_wires_ps_ = shader_pass(res.shaders.wireframe_mesh.get(), "WiresColored");
+        colored.mesh_all_wires_ps_->push_constant("isHair", false);
+        colored.mesh_all_wires_ps_->push_constant("useColoring", true);
+        colored.mesh_all_wires_ps_->push_constant("wireStepParam", 1.0f);
       }
       {
         /* For now just reuse the mesh shader. Eventually, we just replace it. */
         non_colored.curves_ps_ = shader_pass(res.shaders.wireframe_mesh.get(), "Curve");
         non_colored.curves_ps_->push_constant("isHair", true);
         non_colored.curves_ps_->push_constant("useColoring", false);
-        colored.curves_ps_ = shader_pass(res.shaders.wireframe_mesh.get(), "Curve Colored");
+        non_colored.curves_ps_->push_constant("wireStepParam", 10.0f);
+        colored.curves_ps_ = shader_pass(res.shaders.wireframe_mesh.get(), "CurveColored");
         colored.curves_ps_->push_constant("isHair", true);
         colored.curves_ps_->push_constant("useColoring", true);
+        colored.curves_ps_->push_constant("wireStepParam", 10.0f);
       }
     }
   }
@@ -104,7 +118,8 @@ class Wireframe {
         break;
       case OB_MESH:
         geom = DRW_cache_mesh_face_wireframe_get(ob_ref.object);
-        coloring.mesh_ps_->draw(geom, res_handle, res.select_id(ob_ref).get());
+        (all_wires ? coloring.mesh_all_wires_ps_ : coloring.mesh_ps_)
+            ->draw(geom, res_handle, res.select_id(ob_ref).get());
 #if 0 /* TODO */
         if (!is_edit_mode || has_edit_mesh_cage) {
           /* Draw loose geometry. */
