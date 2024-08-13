@@ -461,7 +461,7 @@ static int vertex_group_normalize(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static bool vertex_group_normalize_poll(bContext *C)
+static bool vertex_group_exists_poll(bContext *C)
 {
   if (!active_grease_pencil_poll(C)) {
     return false;
@@ -481,7 +481,7 @@ static void GREASE_PENCIL_OT_vertex_group_normalize(wmOperatorType *ot)
   ot->description = "Normalize weights of the active vertex group";
 
   /* Callbacks. */
-  ot->poll = vertex_group_normalize_poll;
+  ot->poll = vertex_group_exists_poll;
   ot->exec = vertex_group_normalize;
 
   /* Flags. */
@@ -561,7 +561,7 @@ static void GREASE_PENCIL_OT_vertex_group_normalize_all(wmOperatorType *ot)
       "weights is 1.0";
 
   /* Callbacks. */
-  ot->poll = vertex_group_normalize_poll;
+  ot->poll = vertex_group_exists_poll;
   ot->exec = vertex_group_normalize_all;
 
   /* Flags. */
