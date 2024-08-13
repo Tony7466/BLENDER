@@ -3333,12 +3333,15 @@ static bool ed_grease_pencil_select_pick(bContext *C,
                                      params.sel_op,
                                      [&](const ed::greasepencil::MutableDrawingInfo &info,
                                          const IndexMask & /*universe*/,
-                                         StringRef /*attribute_name*/,
+                                         StringRef attribute_name,
                                          IndexMaskMemory & /*memory*/) -> IndexMask {
                                        /* Selection update mask is already known, but only applies
                                         * to a specific drawing. */
-                                       return (&info.drawing == closest.drawing ? selection_mask :
-                                                                                  IndexMask{});
+                                       if (&info.drawing == closest.drawing &&
+                                           attribute_name == closest.selection_attribute_name) {
+                                         return selection_mask;
+                                       }
+                                       return {};
                                      });
 
   /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a
