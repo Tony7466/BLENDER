@@ -284,7 +284,7 @@ static int update_data(const float2 a_point_2d,
     return data - 1;
   }
   else {
-    return data * 16 / 25;
+    return data / 2;
   }
 }
 
@@ -1095,7 +1095,7 @@ static void smooth_propagate_pre_subdiv_level(const GroupedSpan<int> faces_edges
     level_edge_queue.pop();
 
     for (const int face_i : edge_to_face_map[edge_index]) {
-      if (face_pre_subdiv_level[face_i] >= level) {
+      if (face_pre_subdiv_level[face_i] >= level - 1) {
         continue;
       }
       const int3 face_edges(
@@ -1111,13 +1111,15 @@ static void smooth_propagate_pre_subdiv_level(const GroupedSpan<int> faces_edges
       const float next_edge_length = math::distance(positions[edges[next_edge_index][0]],
                                                     positions[edges[next_edge_index][1]]);
 
-      const bool prev_affected = prev_edge_length > edge_length * 1.6f;
-      const bool next_affected = next_edge_length > edge_length * 1.6f;
+      constexpr float threshold_factor = 1.2f;
+      // constexpr float length_threshold = 1.6f;
+      const bool prev_affected = prev_edge_length > edge_length * threshold_factor;
+      const bool next_affected = next_edge_length > edge_length * threshold_factor;
       if (prev_affected || next_affected) {
         face_pre_subdiv_level[face_i] = level - 1;
       }
       else {
-        face_pre_subdiv_level[face_i] = level * 16 / 25;
+        face_pre_subdiv_level[face_i] = level / 2;
       }
 
       if (prev_affected) {
@@ -1191,7 +1193,7 @@ Mesh *subdivide(const Mesh &src_mesh,
 
       const int length = max_edge / max_length;
 
-      face_pre_subdiv_level[face_i] = log2(length);
+      face_pre_subdiv_level[face_i] = log2(length) * 2;
     }
   });
 
