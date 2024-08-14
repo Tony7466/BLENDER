@@ -13,17 +13,29 @@
 namespace blender::disk_read_cache {
 
 class ReadKey {
-  virtual ~ReadKey();
+ public:
+  virtual ~ReadKey() = default;
 
   virtual uint64_t hash() const = 0;
   virtual bool equal_to(const ReadKey &other) const = 0;
+
+  friend bool operator==(const ReadKey &a, const ReadKey &b)
+  {
+    return a.equal_to(b);
+  }
+
+  friend bool operator!=(const ReadKey &a, const ReadKey &b)
+  {
+    return !(a == b);
+  }
 };
 
 class ReadValue {
-  virtual ~ReadValue();
+ public:
+  virtual ~ReadValue() = default;
 };
 
-const ReadValue *read(const ReadKey &key,
+const ReadValue *read(std::unique_ptr<ReadKey> key,
                       std::unique_ptr<ReadValue> (*read_fn)(const ReadKey &key));
 
 }  // namespace blender::disk_read_cache
