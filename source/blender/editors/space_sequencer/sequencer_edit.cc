@@ -1039,11 +1039,11 @@ static int sequencer_connect_exec(bContext *C, wmOperator *op)
   }
 
   const bool toggle = RNA_boolean_get(op->ptr, "toggle");
-  bool clear_all = false;
+  bool clear_all = true;
   if (toggle) {
     for (Sequence *seq : selected) {
-      if (SEQ_is_strip_connected(seq)) {
-        clear_all = true;
+      if (!SEQ_is_strip_connected(seq)) {
+        clear_all = false;
         break;
       }
     }
@@ -1063,14 +1063,14 @@ void SEQUENCER_OT_connect(wmOperatorType *ot)
 {
   ot->name = "Connect Strips";
   ot->idname = "SEQUENCER_OT_connect";
-  ot->description = "Connect strips so that they are selected together";
+  ot->description = "Link selected strips together for simplified group selection";
 
   ot->exec = sequencer_connect_exec;
   ot->poll = sequencer_edit_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  RNA_def_boolean(ot->srna, "toggle", false, "Toggle", "Toggle strip connections");
+  RNA_def_boolean(ot->srna, "toggle", true, "Toggle", "Toggle strip connections");
 }
 
 /** \} */
@@ -1100,7 +1100,7 @@ void SEQUENCER_OT_disconnect(wmOperatorType *ot)
 {
   ot->name = "Disconnect Strips";
   ot->idname = "SEQUENCER_OT_disconnect";
-  ot->description = "Disconnect selected strips so that they can be selected individually";
+  ot->description = "Unlink selected strips so that they can be selected individually";
 
   ot->exec = sequencer_disconnect_exec;
   ot->poll = sequencer_edit_poll;

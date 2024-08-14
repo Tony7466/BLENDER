@@ -892,29 +892,29 @@ static bool is_individually_selected(Sequence *seq)
   return true;
 }
 
-static bool disable_connected_strip_selection(const StripSelection &selection)
+static bool do_connected_strip_selection(const StripSelection &selection)
 {
   if (!selection.seq1 ||
       (!SEQ_is_strip_connected(selection.seq1) && !SEQ_is_strip_connected(selection.seq2)))
   {
-    return true;
+    return false;
   }
 
   /* Always propagate selection if either strip is unselected. */
   if (!(selection.seq1->flag & SELECT)) {
-    return false;
+    return true;
   }
   if (selection.seq2) {
     if (!(selection.seq2->flag & SELECT)) {
-      return false;
+      return true;
     }
   }
 
-  bool disable = is_individually_selected(selection.seq1);
+  bool is_toggling = is_individually_selected(selection.seq1);
   if (selection.seq2) {
-    disable &= is_individually_selected(selection.seq2);
+    is_toggling &= is_individually_selected(selection.seq2);
   }
-  return disable;
+  return !is_toggling;
 }
 
 static void sequencer_select_connected_strips(const StripSelection &selection)
@@ -1305,11 +1305,14 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
     sequencer_select_set_active(scene, selection.seq1);
     return OPERATOR_FINISHED;
   }
-  /* This check must be done before any further strip selection changes. */
-  bool disable_connected_sel = disable_connected_strip_selection(selection);
 
   const bool wait_to_deselect_others = RNA_boolean_get(op->ptr, "wait_to_deselect_others");
   const bool already_selected = element_already_selected(selection);
+  const bool ignore_connections = RNA_boolean_get(op->ptr, "ignore_connections");
+
+  /* This check must be done before any further strip selection changes. */
+  const bool select_connected = region->regiontype != RGN_TYPE_PREVIEW && !ignore_connections &&
+                                do_connected_strip_selection(selection);
 
   SpaceSeq *sseq = CTX_wm_space_seq(C);
   if (selection.handle != SEQ_HANDLE_NONE && already_selected) {
@@ -1351,8 +1354,7 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
     sequencer_select_strip_impl(ed, selection.seq2, seq2_handle_clicked, extend, deselect, toggle);
   }
 
-  disable_connected_sel |= !WM_cursor_test_motion_and_update(mouse_co.region);
-  if (!toggle && !disable_connected_sel) {
+  if (select_connected) {
     sequencer_select_connected_strips(selection);
   }
 
@@ -1425,6 +1427,13 @@ void SEQUENCER_OT_select(wmOperatorType *ot)
       "Side of Frame",
       "Select all strips on same side of the current frame as the mouse cursor");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+
+  prop = RNA_def_boolean(ot->srna,
+                         "ignore_connections",
+                         false,
+                         "Ignore Connections",
+                         "Select strips individually whether or not they are connected");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
 /** \} */
@@ -1477,7 +1486,9 @@ static int sequencer_select_handle_exec(bContext *C, wmOperator *op)
     ED_sequencer_deselect_all(scene);
   }
 
-  bool disable_connected_sel = disable_connected_strip_selection(selection);
+  /* This check must be done before any further strip selection changes. */
+  const bool ignore_connections = RNA_boolean_get(op->ptr, "ignore_connections");
+  const bool select_connected = !ignore_connections & do_connected_strip_selection(selection);
 
   /* Do actual selection. */
   sequencer_select_strip_impl(ed, selection.seq1, selection.handle, false, false, false);
@@ -1487,7 +1498,7 @@ static int sequencer_select_handle_exec(bContext *C, wmOperator *op)
                                                                              SEQ_HANDLE_LEFT;
     sequencer_select_strip_impl(ed, selection.seq2, seq2_handle_clicked, false, false, false);
   }
-  if (!disable_connected_sel) {
+  if (select_connected) {
     sequencer_select_connected_strips(selection);
   }
 

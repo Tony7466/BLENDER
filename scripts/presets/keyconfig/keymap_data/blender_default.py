@@ -5368,8 +5368,8 @@ def _template_sequencer_timeline_select(*, type, value, legacy):
         {"type": type, "value": value, **{m: True for m in mods}},
         {"properties": [(c, True) for c in props]},
     ) for props, mods in (
-        (("linked_handle",), ("alt",)),
-        (("linked_handle", "extend"), ("shift", "alt",)),
+        (("ignore_connections",), ("alt",)),
+        (("ignore_connections", "toggle"), ("shift", "alt",)),
 
         (("side_of_frame", "linked_time"), ("ctrl",)),
         (("side_of_frame", "linked_time", "extend"), ("ctrl", "shift")),
