@@ -5351,10 +5351,12 @@ def _template_sequencer_preview_select(*, type, value, legacy):
         {"properties": [(c, True) for c in props]},
     ) for props, mods in (
         (("center",), ("ctrl",)),
+        (("ignore_connections",), ("alt",)),
         # TODO:
         # (("enumerate",), ("alt",)),
         (("toggle", "center"), ("shift", "ctrl")),
         # (("center", "enumerate"), ("ctrl", "alt")),
+        (("toggle", "ignore_connections"), ("shift", "alt")),
         # (("toggle", "enumerate"), ("shift", "alt")),
         # (("toggle", "center", "enumerate"), ("shift", "ctrl", "alt")),
     )]

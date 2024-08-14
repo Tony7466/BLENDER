@@ -1311,8 +1311,7 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
   const bool ignore_connections = RNA_boolean_get(op->ptr, "ignore_connections");
 
   /* This check must be done before any further strip selection changes. */
-  const bool select_connected = region->regiontype != RGN_TYPE_PREVIEW && !ignore_connections &&
-                                do_connected_strip_selection(selection);
+  const bool select_connected = !ignore_connections && do_connected_strip_selection(selection);
 
   SpaceSeq *sseq = CTX_wm_space_seq(C);
   if (selection.handle != SEQ_HANDLE_NONE && already_selected) {
