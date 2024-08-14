@@ -149,6 +149,7 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
   bke::MutableAttributeAccessor attributes_for_write();
 
  private:
+  void ensure_write_cache_no_lock();
   void ensure_body_collision_shapes_no_lock();
   void ensure_body_is_static_no_lock();
   void ensure_body_masses_no_lock();

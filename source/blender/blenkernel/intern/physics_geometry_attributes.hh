@@ -369,10 +369,10 @@ static void physics_attribute_finish(PhysicsGeometryImpl &impl,
       impl.tag_body_collision_shape_changed();
       break;
     case BodyAttribute::is_static:
-      // impl.tag_body_is_static_changed();
+      impl.tag_body_is_static_changed();
       break;
     case BodyAttribute::mass:
-      // impl.tag_body_mass_changed();
+      impl.tag_body_mass_changed();
       break;
 
     case BodyAttribute::center_of_mass:

@@ -2265,7 +2265,7 @@ static OrderedAttributes gather_generic_physics_attributes_to_propagate(
     const bke::GeometrySet &in_geometry_set,
     const RealizeInstancesOptions &options,
     const VariedDepthOptions &varied_depth_options,
-    bool &r_create_id)
+    bool & /*r_create_id*/)
 {
   using bke::PhysicsGeometry;
   using BodyAttribute = PhysicsGeometry::BodyAttribute;

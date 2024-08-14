@@ -822,6 +822,7 @@ TEST_F(PhysicsGeometryTest, simple_time_step)
   }
 
   {
+    geo.ensure_read_cache();
     const VArray<float3> positions = geo.body_positions();
     const VArray<float3> velocities = geo.body_velocities();
     EXPECT_EQ(float3(0.0f, 0.0f, 0.0f), positions[0]);
@@ -835,9 +836,9 @@ TEST_F(PhysicsGeometryTest, simple_time_step)
   geo.step_simulation(delta_time);
 
   {
+    geo.ensure_read_cache();
     const VArray<float3> positions = geo.body_positions();
     const VArray<float3> velocities = geo.body_velocities();
-
     /* Not enough accuracy to meaningfully test for equality. */
     // const float dv = g * delta_time;
     // const float dx = 0.5f * g * delta_time * delta_time;

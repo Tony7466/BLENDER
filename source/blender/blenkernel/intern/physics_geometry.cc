@@ -908,9 +908,7 @@ void PhysicsGeometryImpl::ensure_read_cache() const
     }
 
     /* Some attributes require other updates before valid world data can be read. */
-    dst.ensure_body_collision_shapes_no_lock();
-    dst.ensure_body_is_static_no_lock();
-    dst.ensure_body_masses_no_lock();
+    dst.ensure_write_cache_no_lock();
 
     /* Write to cache attributes. */
     MutableAttributeAccessor dst_attributes = dst.custom_data_attributes_for_write();
@@ -960,6 +958,13 @@ void PhysicsGeometryImpl::ensure_write_cache()
        [&]() { this->ensure_body_masses_no_lock(); }});
 }
 
+void PhysicsGeometryImpl::ensure_write_cache_no_lock()
+{
+  this->ensure_body_collision_shapes_no_lock();
+  this->ensure_body_is_static_no_lock();
+  this->ensure_body_masses_no_lock();
+}
+
 void PhysicsGeometryImpl::ensure_body_collision_shapes_no_lock()
 {
   const static StringRef collision_shape_id = PhysicsGeometry::body_attribute_name(
@@ -1000,7 +1005,25 @@ void PhysicsGeometryImpl::ensure_body_is_static_no_lock()
   this->world_data->set_body_static(selection, is_static);
 }
 
-void PhysicsGeometryImpl::ensure_body_masses_no_lock() {}
+void PhysicsGeometryImpl::ensure_body_masses_no_lock()
+{
+  const static StringRef mass_id = PhysicsGeometry::body_attribute_name(
+      PhysicsGeometry::BodyAttribute::mass);
+
+  if (!is_cache_dirty(this->body_mass_valid)) {
+    return;
+  }
+  if (this->world_data == nullptr) {
+    return;
+  }
+
+  AttributeAccessor custom_data_attributes = this->custom_data_attributes();
+  const VArraySpan<float> masses = *custom_data_attributes.lookup_or_default<float>(
+      mass_id, AttrDomain::Point, 0.0f);
+
+  const IndexMask selection = this->world_data->bodies().index_range();
+  this->world_data->set_body_mass(selection, masses);
+}
 
 void PhysicsGeometryImpl::ensure_custom_data_attribute(
     PhysicsGeometryImpl::BodyAttribute attribute) const
@@ -1355,7 +1378,7 @@ void PhysicsGeometryImpl::step_simulation(float delta_time)
     return;
   }
 
-  this->ensure_body_collision_shapes_no_lock();
+  this->ensure_write_cache_no_lock();
   world_data->step_simulation(delta_time);
 
   this->tag_read_cache_changed();
