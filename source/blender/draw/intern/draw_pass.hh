@@ -554,13 +554,13 @@ class PassSortable : public PassMain {
   void sort()
   {
     if (sorted_ == false) {
-      Header *begin = headers_.begin() + headers_.size() - sorting_values_.size();
-      std::sort(begin, headers_.end(), [&](Header &a, Header &b) {
-        BLI_assert(a.type == Type::SubPass && b.type == Type::SubPass);
-        float a_val = sorting_values_[a.index];
-        float b_val = sorting_values_[b.index];
-        return a_val < b_val || (a_val == b_val && a.index < b.index);
-      });
+      std::sort(
+          headers_.end() - sorting_values_.size(), headers_.end(), [&](Header &a, Header &b) {
+            BLI_assert(a.type == Type::SubPass && b.type == Type::SubPass);
+            float a_val = sorting_values_[a.index];
+            float b_val = sorting_values_[b.index];
+            return a_val < b_val || (a_val == b_val && a.index < b.index);
+          });
       sorted_ = true;
     }
   }
