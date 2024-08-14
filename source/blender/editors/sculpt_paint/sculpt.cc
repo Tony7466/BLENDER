@@ -1467,6 +1467,7 @@ void restore_position_from_undo_step(Object &object)
 
             array_utils::scatter(undo_positions, verts, positions_eval);
 
+            const KeyBlock *active_key = BKE_keyblock_from_object(&object);
             if (positions_eval.data() != positions_orig.data()) {
               /* When the evaluated positions and original mesh positions don't point to the same
                * array, they must both be updated. */
@@ -1477,11 +1478,16 @@ void restore_position_from_undo_step(Object &object)
                 /* Because brush deformation is calculated for the evaluated deformed positions,
                  * the translations have to be transformed to the original space. */
                 apply_crazyspace_to_translations(ss.deform_imats, verts, tls.translations);
-                apply_translations(tls.translations, verts, positions_orig);
+                if (active_key == nullptr || mesh.key->refkey == active_key) {
+                  /* We only ever want to propagate changes back to the base mesh if we either have
+                   * no shape key active, or we are working on the basis shape key.
+                   * See #126199 for more information. */
+                  apply_translations(tls.translations, verts, positions_orig);
+                }
               }
             }
 
-            if (const KeyBlock *active_key = BKE_keyblock_from_object(&object)) {
+            if (active_key) {
               update_shape_keys(
                   object, mesh, *active_key, verts, tls.translations, positions_orig);
             }
