@@ -15,3 +15,4 @@ Referenced by issue #101651, Cycles prints core dump when rendering with OPTIX a
 Referenced by issue #74538, bpy.ops.gpencil.vertex_group_assign() doesn't work when invoked from the python console
 Referenced by issue #117305, Dozens of useless white windows when trying to open a new window or open a file path
 Referenced by issue #104903, Online Manual doesn't work for Panel Pin property
+Referenced by issue #103050, Measure Tool does not abide by snap settings. Specifically, exclude non-selectable doesn't seem to work in Blender 3.3.1
