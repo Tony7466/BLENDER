@@ -559,6 +559,7 @@ if(WITH_GTESTS)
     tests/BLI_math_vector_test.cc
     tests/BLI_math_vector_types_test.cc
     tests/BLI_memiter_test.cc
+    tests/BLI_memory_counter_test.cc
     tests/BLI_memory_utils_test.cc
     tests/BLI_mesh_boolean_test.cc
     tests/BLI_mesh_intersect_test.cc
