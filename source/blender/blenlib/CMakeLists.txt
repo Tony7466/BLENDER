@@ -60,6 +60,7 @@ set(SRC
   intern/cpp_type.cc
   intern/cpp_types.cc
   intern/delaunay_2d.cc
+  intern/disk_read_cache.cc
   intern/dot_export.cc
   intern/dynlib.cc
   intern/easing.c
@@ -215,6 +216,7 @@ set(SRC
   BLI_delaunay_2d.hh
   BLI_devirtualize_parameters.hh
   BLI_dial_2d.h
+  BLI_disk_read_cache.hh
   BLI_disjoint_set.hh
   BLI_dlrbTree.h
   BLI_dot_export.hh
