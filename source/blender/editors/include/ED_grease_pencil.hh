@@ -81,7 +81,7 @@ blender::bke::AttrDomain ED_grease_pencil_selection_domain_get(const ToolSetting
 
 namespace blender::ed::greasepencil {
 
-enum class ReprojectMode : uint8_t { Front, Side, Top, View, Cursor, Surface, Keep };
+enum class ReprojectMode : int8_t { Front, Side, Top, View, Cursor, Surface, Keep };
 
 enum class DrawingPlacementDepth { ObjectOrigin, Cursor, Surface, NearestStroke };
 
