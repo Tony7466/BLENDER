@@ -289,6 +289,44 @@ void update_mask_mesh(Object &object,
   mask.finish();
 }
 
+bool mask_equals_array_grids(const Span<CCGElem *> elems,
+                             const CCGKey &key,
+                             const Span<int> grids,
+                             const Span<float> values)
+{
+  BLI_assert(grids.size() * key.grid_area == values.size());
+
+  const IndexRange range = grids.index_range();
+  return std::all_of(range.begin(), range.end(), [&](const int i) {
+    const int grid = grids[i];
+    const int node_verts_start = i * key.grid_area;
+
+    CCGElem *elem = elems[grid];
+    for (const int offset : IndexRange(key.grid_area)) {
+      if (CCG_elem_offset_mask(key, elem, i) != values[node_verts_start + offset]) {
+        return false;
+      }
+    }
+    return true;
+  });
+}
+
+bool mask_equals_array_bmesh(const int mask_offset,
+                             const Set<BMVert *, 0> &verts,
+                             const Span<float> values)
+{
+  BLI_assert(verts.size() == values.size());
+
+  int i = 0;
+  for (const BMVert *vert : verts) {
+    if (BM_ELEM_CD_GET_FLOAT(vert, mask_offset) != values[i]) {
+      return false;
+    }
+    i++;
+  }
+  return true;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -803,11 +841,12 @@ static void gesture_apply_for_symmetry_pass(bContext & /*C*/, gesture::GestureDa
 static void gesture_end(bContext &C, gesture::GestureData &gesture_data)
 {
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(&C);
+  Object &object = *gesture_data.vc.obact;
   if (gesture_data.ss->pbvh->type() == bke::pbvh::Type::Grids) {
-    multires_mark_as_modified(depsgraph, gesture_data.vc.obact, MULTIRES_COORDS_MODIFIED);
+    multires_mark_as_modified(depsgraph, &object, MULTIRES_COORDS_MODIFIED);
   }
-  bke::pbvh::update_mask(*gesture_data.ss->pbvh);
-  undo::push_end(*gesture_data.vc.obact);
+  bke::pbvh::update_mask(object, *gesture_data.ss->pbvh);
+  undo::push_end(object);
 }
 
 static void init_operation(bContext &C, gesture::GestureData &gesture_data, wmOperator &op)
