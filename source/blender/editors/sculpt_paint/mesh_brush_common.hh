@@ -348,7 +348,7 @@ void project_translations(MutableSpan<float3> translations, const float3 &plane)
  * translations. This is used for tools that calculate new positions based on the original
  * positions for the entirety of an operation. Conceptually this is the same as resetting the
  * positions before each step of the operation, but combining that into the same loop should be
- * preferrable for performance.
+ * preferable for performance.
  */
 void reset_translations_to_original(MutableSpan<float3> translations,
                                     Span<float3> positions,
@@ -383,10 +383,12 @@ void clip_and_lock_translations(const Sculpt &sd,
  * shape key positions must be kept in sync, and shape keys dependent on the active key must also
  * be modified.
  */
-void apply_translations_to_shape_keys(Object &object,
-                                      Span<int> verts,
-                                      Span<float3> translations,
-                                      MutableSpan<float3> positions_mesh);
+void update_shape_keys(Object &object,
+                       const Mesh &mesh,
+                       const KeyBlock &active_key,
+                       Span<int> verts,
+                       Span<float3> translations,
+                       Span<float3> positions_orig);
 
 /**
  * Currently the pbvh::Tree owns its own copy of deformed positions that needs to be updated to

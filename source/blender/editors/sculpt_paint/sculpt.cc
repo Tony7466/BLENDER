@@ -132,16 +132,6 @@ bool report_if_shape_key_is_locked(const Object &ob, ReportList *reports)
 
 }  // namespace blender::ed::sculpt_paint
 
-/* -------------------------------------------------------------------- */
-/** \name Sculpt bke::pbvh::Tree Abstraction API
- *
- * This is read-only, for writing use bke::pbvh::Tree vertex iterators. There vd.index matches
- * the indices used here.
- *
- * For multi-resolution, the same vertex in multiple grids is counted multiple times, with
- * different index for each grid.
- * \{ */
-
 void SCULPT_vertex_random_access_ensure(SculptSession &ss)
 {
   if (ss.pbvh->type() == blender::bke::pbvh::Type::BMesh) {
@@ -260,12 +250,13 @@ int active_face_set_get(const SculptSession &ss)
 
 namespace hide {
 
-bool vert_visible_get(const SculptSession &ss, PBVHVertRef vertex)
+bool vert_visible_get(const Object &object, PBVHVertRef vertex)
 {
+  const SculptSession &ss = *object.sculpt;
   switch (ss.pbvh->type()) {
     case bke::pbvh::Type::Mesh: {
-      const Mesh *mesh = BKE_pbvh_get_mesh(*ss.pbvh);
-      const bke::AttributeAccessor attributes = mesh->attributes();
+      const Mesh &mesh = *static_cast<const Mesh *>(object.data);
+      const bke::AttributeAccessor attributes = mesh.attributes();
       const VArray hide_vert = *attributes.lookup_or_default<bool>(
           ".hide_vert", bke::AttrDomain::Point, false);
       return !hide_vert[vertex.i];
@@ -279,79 +270,6 @@ bool vert_visible_get(const SculptSession &ss, PBVHVertRef vertex)
       if (!ss.subdiv_ccg->grid_hidden.is_empty()) {
         return !ss.subdiv_ccg->grid_hidden[grid_index][index_in_grid];
       }
-    }
-  }
-  return true;
-}
-
-bool vert_any_face_visible_get(const SculptSession &ss, PBVHVertRef vertex)
-{
-  switch (ss.pbvh->type()) {
-    case bke::pbvh::Type::Mesh: {
-      if (!ss.hide_poly) {
-        return true;
-      }
-      for (const int face : ss.vert_to_face_map[vertex.i]) {
-        if (!ss.hide_poly[face]) {
-          return true;
-        }
-      }
-      return false;
-    }
-    case bke::pbvh::Type::BMesh:
-      return true;
-    case bke::pbvh::Type::Grids:
-      return true;
-  }
-  return true;
-}
-
-bool vert_all_faces_visible_get(const SculptSession &ss, PBVHVertRef vertex)
-{
-  switch (ss.pbvh->type()) {
-    case bke::pbvh::Type::Mesh: {
-      if (!ss.hide_poly) {
-        return true;
-      }
-      for (const int face : ss.vert_to_face_map[vertex.i]) {
-        if (ss.hide_poly[face]) {
-          return false;
-        }
-      }
-      return true;
-    }
-    case bke::pbvh::Type::BMesh: {
-      BMVert *v = (BMVert *)vertex.i;
-      BMEdge *e = v->e;
-
-      if (!e) {
-        return true;
-      }
-
-      do {
-        BMLoop *l = e->l;
-
-        if (!l) {
-          continue;
-        }
-
-        do {
-          if (BM_elem_flag_test(l->f, BM_ELEM_HIDDEN)) {
-            return false;
-          }
-        } while ((l = l->radial_next) != e->l);
-      } while ((e = BM_DISK_EDGE_NEXT(e, v)) != v->e);
-
-      return true;
-    }
-    case bke::pbvh::Type::Grids: {
-      if (!ss.hide_poly) {
-        return true;
-      }
-      const CCGKey key = BKE_subdiv_ccg_key_top_level(*ss.subdiv_ccg);
-      const int grid_index = vertex.i / key.grid_area;
-      const int face_index = BKE_subdiv_ccg_grid_to_face_index(*ss.subdiv_ccg, grid_index);
-      return !ss.hide_poly[face_index];
     }
   }
   return true;
@@ -438,6 +356,17 @@ int vert_face_set_get(const SculptSession &ss, PBVHVertRef vertex)
     }
   }
   return 0;
+}
+
+int vert_face_set_get(const GroupedSpan<int> vert_to_face_map,
+                      const Span<int> face_sets,
+                      const int vert)
+{
+  int face_set = std::numeric_limits<int>::lowest();
+  for (const int face : vert_to_face_map[vert]) {
+    face_set = std::max(face_sets[face], face_set);
+  }
+  return face_set;
 }
 
 bool vert_has_face_set(const GroupedSpan<int> vert_to_face_map,
@@ -826,7 +755,9 @@ bool vert_is_boundary(const SculptSession &ss, const PBVHVertRef vertex)
 {
   switch (ss.pbvh->type()) {
     case bke::pbvh::Type::Mesh: {
-      if (!hide::vert_all_faces_visible_get(ss, vertex)) {
+      if (!hide::vert_all_faces_visible_get(
+              Span(ss.hide_poly, ss.faces_num), ss.vert_to_face_map, vertex.i))
+      {
         return true;
       }
       return sculpt_check_boundary_vertex_in_base_mesh(ss, vertex.i);
@@ -868,7 +799,6 @@ bool vert_is_boundary(const Span<bool> hide_poly,
 }
 
 bool vert_is_boundary(const SubdivCCG &subdiv_ccg,
-                      const Span<bool> /*hide_poly*/,
                       const Span<int> corner_verts,
                       const OffsetIndices<int> faces,
                       const BitSpan boundary,
@@ -1221,104 +1151,13 @@ static bool sculpt_brush_needs_rake_rotation(const Brush &brush)
   return SCULPT_TOOL_HAS_RAKE(brush.sculpt_tool) && (brush.rake_factor != 0.0f);
 }
 
-}  // namespace blender::ed::sculpt_paint
-
 /** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Sculpt Init/Update
- * \{ */
 
 enum StrokeFlags {
   CLIP_X = 1,
   CLIP_Y = 2,
   CLIP_Z = 4,
 };
-
-static void orig_vert_data_unode_init(SculptOrigVertData &data,
-                                      const blender::ed::sculpt_paint::undo::Node &unode)
-{
-  data = {};
-  data.coords = unode.position.data();
-  data.normals = unode.normal.data();
-  data.vmasks = unode.mask.data();
-  data.colors = unode.col.data();
-}
-
-SculptOrigVertData SCULPT_orig_vert_data_init(const Object &ob,
-                                              const blender::bke::pbvh::Node &node,
-                                              const blender::ed::sculpt_paint::undo::Type type)
-{
-  using namespace blender::ed::sculpt_paint;
-  SculptOrigVertData data;
-  data.undo_type = type;
-  const SculptSession &ss = *ob.sculpt;
-  if (ss.bm) {
-    data.bm_log = ss.bm_log;
-  }
-  else if (const undo::Node *unode = undo::get_node(&node, type)) {
-    orig_vert_data_unode_init(data, *unode);
-    data.undo_type = type;
-  }
-  else {
-    data = {};
-  }
-  return data;
-}
-
-void SCULPT_orig_vert_data_update(SculptOrigVertData &orig_data, const PBVHVertexIter &iter)
-{
-  using namespace blender::ed::sculpt_paint;
-  if (orig_data.undo_type == undo::Type::Position) {
-    if (orig_data.bm_log) {
-      BM_log_original_vert_data(orig_data.bm_log, iter.bm_vert, &orig_data.co, &orig_data.no);
-    }
-    else {
-      orig_data.co = orig_data.coords[iter.i];
-      orig_data.no = orig_data.normals[iter.i];
-    }
-  }
-  else if (orig_data.undo_type == undo::Type::Color) {
-    orig_data.col = orig_data.colors[iter.i];
-  }
-  else if (orig_data.undo_type == undo::Type::Mask) {
-    if (orig_data.bm_log) {
-      orig_data.mask = BM_log_original_mask(orig_data.bm_log, iter.bm_vert);
-    }
-    else {
-      orig_data.mask = orig_data.vmasks[iter.i];
-    }
-  }
-}
-
-void SCULPT_orig_vert_data_update(SculptOrigVertData &orig_data, const BMVert &vert)
-{
-  using namespace blender::ed::sculpt_paint;
-  if (orig_data.undo_type == undo::Type::Position) {
-    BM_log_original_vert_data(
-        orig_data.bm_log, &const_cast<BMVert &>(vert), &orig_data.co, &orig_data.no);
-  }
-  else if (orig_data.undo_type == undo::Type::Mask) {
-    orig_data.mask = BM_log_original_mask(orig_data.bm_log, &const_cast<BMVert &>(vert));
-  }
-}
-
-void SCULPT_orig_vert_data_update(SculptOrigVertData &orig_data, const int i)
-{
-  using namespace blender::ed::sculpt_paint;
-  if (orig_data.undo_type == undo::Type::Position) {
-    orig_data.co = orig_data.coords[i];
-    orig_data.no = orig_data.normals[i];
-  }
-  else if (orig_data.undo_type == undo::Type::Color) {
-    orig_data.col = orig_data.colors[i];
-  }
-  else if (orig_data.undo_type == undo::Type::Mask) {
-    orig_data.mask = orig_data.vmasks[i];
-  }
-}
-
-namespace blender::ed::sculpt_paint {
 
 static void sculpt_rake_data_update(SculptRakeData *srd, const float co[3])
 {
@@ -1327,8 +1166,6 @@ static void sculpt_rake_data_update(SculptRakeData *srd, const float co[3])
     interp_v3_v3v3(srd->follow_co, srd->follow_co, co, rake_dist - srd->follow_dist);
   }
 }
-
-/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Sculpt Dynamic Topology
@@ -1496,8 +1333,8 @@ void restore_position_from_undo_step(Object &object)
         Vector<float3> translations;
       };
 
-      const bool need_translations = !ss.deform_imats.is_empty() ||
-                                     BKE_keyblock_from_object(&object);
+      const KeyBlock *active_key = BKE_keyblock_from_object(&object);
+      const bool need_translations = !ss.deform_imats.is_empty() || active_key;
 
       threading::EnumerableThreadSpecific<LocalData> all_tls;
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
@@ -1524,13 +1361,18 @@ void restore_position_from_undo_step(Object &object)
                 /* Because brush deformation is calculated for the evaluated deformed positions,
                  * the translations have to be transformed to the original space. */
                 apply_crazyspace_to_translations(ss.deform_imats, verts, tls.translations);
-                apply_translations(tls.translations, verts, positions_orig);
+                if (active_key == nullptr || mesh.key->refkey == active_key) {
+                  /* We only ever want to propagate changes back to the base mesh if we either have
+                   * no shape key active, or we are working on the basis shape key.
+                   * See #126199 for more information. */
+                  apply_translations(tls.translations, verts, positions_orig);
+                }
               }
             }
 
-            if (BKE_keyblock_from_object(&object)) {
-              /* Update dependent shape keys back to their original */
-              apply_translations_to_shape_keys(object, verts, tls.translations, positions_orig);
+            if (active_key) {
+              update_shape_keys(
+                  object, mesh, *active_key, verts, tls.translations, positions_orig);
             }
 
             BKE_pbvh_node_mark_positions_update(node);
@@ -4510,10 +4352,10 @@ static void sculpt_update_brush_delta(UnifiedPaintSettings &ups,
     if (tool == SCULPT_TOOL_GRAB && brush.flag & BRUSH_GRAB_ACTIVE_VERTEX) {
       if (ss.pbvh->type() == bke::pbvh::Type::Mesh) {
         const Span<float3> positions = vert_positions_for_grab_active_get(ob);
-        cache->orig_grab_location = positions[ss.active_vert_ref().i];
+        cache->orig_grab_location = positions[std::get<int>(ss.active_vert())];
       }
       else {
-        cache->orig_grab_location = SCULPT_vertex_co_get(ss, ss.active_vert_ref());
+        cache->orig_grab_location = ss.active_vert_position(ob);
       }
     }
     else {
@@ -5262,23 +5104,6 @@ static void sculpt_restore_mesh(const Sculpt &sd, Object &ob)
   SculptSession &ss = *ob.sculpt;
   const Brush *brush = BKE_paint_brush_for_read(&sd.paint);
 
-  /* Brushes that use original coordinates and need a "restore" step.
-   *
-   * Note: Despite the Cloth and Boundary brush using original coordinates, the brushes do not
-   * expect this restoration to happen on every stroke step. Performing this restoration causes
-   * issues with the cloth simulation mode for those brushes.
-   * TODO: Remove this with #reset_translations_to_original.
-   */
-  if (ELEM(brush->sculpt_tool,
-           SCULPT_TOOL_ELASTIC_DEFORM,
-           SCULPT_TOOL_GRAB,
-           SCULPT_TOOL_THUMB,
-           SCULPT_TOOL_ROTATE))
-  {
-    undo::restore_from_undo_step(sd, ob);
-    return;
-  }
-
   /* For the cloth brush it makes more sense to not restore the mesh state to keep running the
    * simulation from the previous state. */
   if (brush->sculpt_tool == SCULPT_TOOL_CLOTH) {
@@ -5348,7 +5173,7 @@ void flush_update_step(bContext *C, UpdateType update_type)
     rcti r;
 
     if (update_type == UpdateType::Position) {
-      bke::pbvh::update_bounds(*ss.pbvh);
+      bke::pbvh::update_bounds(ob, *ss.pbvh);
     }
 
     RegionView3D *rv3d = CTX_wm_region_view3d(C);
@@ -5457,7 +5282,7 @@ void flush_update_done(const bContext *C, Object &ob, UpdateType update_type)
   }
 
   if (update_type == UpdateType::Mask) {
-    bke::pbvh::update_mask(*ss.pbvh);
+    bke::pbvh::update_mask(ob, *ss.pbvh);
   }
 
   BKE_sculpt_attributes_destroy_temporary_stroke(&ob);
@@ -6195,24 +6020,22 @@ void SCULPT_fake_neighbors_free(Object &ob)
   sculpt_pose_fake_neighbors_free(ss);
 }
 
-bool SCULPT_vertex_is_occluded(SculptSession &ss, PBVHVertRef vertex, bool original)
+bool SCULPT_vertex_is_occluded(const Object &object, const float3 &position, bool original)
 {
   using namespace blender;
+  SculptSession &ss = *object.sculpt;
   float ray_start[3], ray_end[3], ray_normal[3], face_normal[3];
-  float co[3];
-
-  copy_v3_v3(co, SCULPT_vertex_co_get(ss, vertex));
 
   ViewContext *vc = ss.cache ? ss.cache->vc : &ss.filter_cache->vc;
 
   const blender::float2 mouse = ED_view3d_project_float_v2_m4(
-      vc->region, co, ss.cache ? ss.cache->projection_mat : ss.filter_cache->viewmat);
+      vc->region, position, ss.cache ? ss.cache->projection_mat : ss.filter_cache->viewmat);
 
   int depth = SCULPT_raycast_init(vc, mouse, ray_end, ray_start, ray_normal, original);
 
   negate_v3(ray_normal);
 
-  copy_v3_v3(ray_start, SCULPT_vertex_co_get(ss, vertex));
+  copy_v3_v3(ray_start, position);
   madd_v3_v3fl(ray_start, ray_normal, 0.002);
 
   SculptRaycastData srd = {nullptr};
@@ -6225,8 +6048,9 @@ bool SCULPT_vertex_is_occluded(SculptSession &ss, PBVHVertRef vertex, bool origi
   srd.face_normal = face_normal;
   srd.corner_verts = ss.corner_verts;
   if (ss.pbvh->type() == bke::pbvh::Type::Mesh) {
-    srd.corner_tris = BKE_pbvh_get_mesh(*ss.pbvh)->corner_tris();
-    srd.corner_tri_faces = BKE_pbvh_get_mesh(*ss.pbvh)->corner_tri_faces();
+    const Mesh &mesh = *static_cast<const Mesh *>(object.data);
+    srd.corner_tris = mesh.corner_tris();
+    srd.corner_tri_faces = mesh.corner_tri_faces();
   }
 
   isect_ray_tri_watertight_v3_precalc(&srd.isect_precalc, ray_normal);
@@ -7281,19 +7105,15 @@ void clip_and_lock_translations(const Sculpt &sd,
   }
 }
 
-void apply_translations_to_shape_keys(Object &object,
-                                      const Span<int> verts,
-                                      const Span<float3> translations,
-                                      const MutableSpan<float3> positions_orig)
+void update_shape_keys(Object &object,
+                       const Mesh &mesh,
+                       const KeyBlock &active_key,
+                       const Span<int> verts,
+                       const Span<float3> translations,
+                       const Span<float3> positions_orig)
 {
-  Mesh &mesh = *static_cast<Mesh *>(object.data);
-  KeyBlock *active_key = BKE_keyblock_from_object(&object);
-  if (!active_key) {
-    return;
-  }
-
-  MutableSpan active_key_data(static_cast<float3 *>(active_key->data), active_key->totelem);
-  if (active_key == mesh.key->refkey) {
+  const MutableSpan active_key_data(static_cast<float3 *>(active_key.data), active_key.totelem);
+  if (&active_key == mesh.key->refkey) {
     for (const int vert : verts) {
       active_key_data[vert] = positions_orig[vert];
     }
@@ -7302,11 +7122,10 @@ void apply_translations_to_shape_keys(Object &object,
     apply_translations(translations, verts, active_key_data);
   }
 
-  /* For relative keys editing of base should update other keys. */
   if (bool *dependent = BKE_keyblock_get_dependent_keys(mesh.key, object.shapenr - 1)) {
     int i;
     LISTBASE_FOREACH_INDEX (KeyBlock *, other_key, &mesh.key->block, i) {
-      if ((other_key != active_key) && dependent[i]) {
+      if ((other_key != &active_key) && dependent[i]) {
         MutableSpan<float3> data(static_cast<float3 *>(other_key->data), other_key->totelem);
         apply_translations(translations, verts, data);
       }
@@ -7346,8 +7165,19 @@ void write_translations(const Sculpt &sd,
     apply_crazyspace_to_translations(ss.deform_imats, verts, translations);
   }
 
-  apply_translations(translations, verts, positions_orig);
-  apply_translations_to_shape_keys(object, verts, translations, positions_orig);
+  const Mesh &mesh = *static_cast<Mesh *>(object.data);
+  const KeyBlock *active_key = BKE_keyblock_from_object(&object);
+  if (!active_key) {
+    apply_translations(translations, verts, positions_orig);
+    return;
+  }
+
+  const bool basis_shapekey_active = active_key == mesh.key->refkey;
+  if (basis_shapekey_active) {
+    apply_translations(translations, verts, positions_orig);
+  }
+
+  update_shape_keys(object, mesh, *active_key, verts, translations, positions_orig);
 }
 
 void scale_translations(const MutableSpan<float3> translations, const Span<float> factors)
