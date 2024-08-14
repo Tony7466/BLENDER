@@ -11,3 +11,4 @@ Referenced by issue #101250, Relocate library crashes to desktop in Blender 3.3
 Referenced by issue #101045, Deleting a baked action results in an error
 Referenced by issue #100824, Cycles GPU rendering is broken on Apple M1/macOS Ventura
 Referenced by issue #107018, [Regression] node input in-place swapping no longer works
+Referenced by issue #100996, Mesh Deform modifier doesn't deform after binding
