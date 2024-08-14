@@ -194,8 +194,7 @@ class GaborNoiseFunction : public mf::MultiFunction {
 static void build_multi_function(NodeMultiFunctionBuilder &builder)
 {
   const NodeTexGabor &storage = node_storage(builder.node());
-  builder.construct_and_set_matching_fn<GaborNoiseFunction>(
-      static_cast<NodeGaborType>(storage.type));
+  builder.construct_and_set_matching_fn<GaborNoiseFunction>(NodeGaborType(storage.type));
 }
 
 }  // namespace blender::nodes::node_shader_tex_gabor_cc

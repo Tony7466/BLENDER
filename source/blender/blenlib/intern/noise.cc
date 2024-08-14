@@ -2158,11 +2158,11 @@ static float compute_2d_gabor_standard_deviation(const float frequency)
  * noise while it is random for isotropic noise. The original Gabor noise paper mentions that the
  * weights should be uniformly distributed in the [-1, 1] range, however, Tavernier's paper showed
  * that using a Bernoulli distribution yields better results, so that is what we do. */
-float2 compute_2d_gabor_noise_cell(const float2 cell,
-                                   const float2 position,
-                                   const float frequency,
-                                   const float isotropy,
-                                   const float base_orientation)
+static float2 compute_2d_gabor_noise_cell(const float2 cell,
+                                          const float2 position,
+                                          const float frequency,
+                                          const float isotropy,
+                                          const float base_orientation)
 
 {
   float2 noise(0.0f);
@@ -2257,7 +2257,9 @@ static float compute_3d_gabor_standard_deviation(const float frequency)
 /* Computes the orientation of the Gabor kernel such that it is constant for anisotropic
  * noise while it is random for isotropic noise. We randomize in spherical coordinates for a
  * uniform distribution. */
-float3 compute_3d_orientation(const float3 orientation, const float isotropy, const float4 seed)
+static float3 compute_3d_orientation(const float3 orientation,
+                                     const float isotropy,
+                                     const float4 seed)
 {
   /* Return the base orientation in case we are completely anisotropic. */
   if (isotropy == 0.0) {
