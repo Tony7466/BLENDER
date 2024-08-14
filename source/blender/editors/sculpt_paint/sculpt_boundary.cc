@@ -3647,13 +3647,13 @@ std::unique_ptr<SculptBoundaryPreview> preview_data_init(Object &object,
 
   std::unique_ptr<SculptBoundary> boundary = nullptr;
   switch (ss.pbvh->type()) {
-    case (bke::pbvh::Type::Mesh):
+    case bke::pbvh::Type::Mesh:
       boundary = data_init_mesh(object, brush, std::get<int>(initial_vert), radius);
       break;
-    case (bke::pbvh::Type::Grids):
+    case bke::pbvh::Type::Grids:
       boundary = data_init_grids(object, brush, std::get<SubdivCCGCoord>(initial_vert), radius);
       break;
-    case (bke::pbvh::Type::BMesh):
+    case bke::pbvh::Type::BMesh:
       boundary = data_init_bmesh(object, brush, std::get<BMVert *>(initial_vert), radius);
       break;
     default:
