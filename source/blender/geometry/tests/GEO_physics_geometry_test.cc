@@ -412,8 +412,6 @@ TEST_F(PhysicsGeometryTest, assign_collision_shapes)
   }
 }
 
-TEST_F(PhysicsGeometryTest, detect_collision) {}
-
 TEST_F(PhysicsGeometryTest, realize_instances)
 {
   AllShapesData all_shapes_data;

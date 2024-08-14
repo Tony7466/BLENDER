@@ -366,6 +366,9 @@ static void physics_attribute_finish(PhysicsGeometryImpl &impl,
 
   switch (attribute) {
     case BodyAttribute::collision_shape:
+      impl.body_collision_shape_update();
+      break;
+
     case BodyAttribute::center_of_mass:
     case BodyAttribute::id:
     case BodyAttribute::is_static:

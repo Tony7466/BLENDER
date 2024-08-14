@@ -554,8 +554,7 @@ void PhysicsWorldData::step_simulation(float delta_time)
 
 void PhysicsWorldData::set_body_shapes(const IndexMask &selection,
                                        const Span<CollisionShapePtr> shapes,
-                                       const Span<int> shape_handles,
-                                       bool update_local_inertia)
+                                       const Span<int> shape_handles)
 {
   selection.foreach_index([&](const int index) {
     const int handle = shape_handles[index];
@@ -563,8 +562,6 @@ void PhysicsWorldData::set_body_shapes(const IndexMask &selection,
       return;
     }
     const CollisionShapePtr &shape_ptr = shapes[handle];
-    if (shape_ptr == nullptr) {
-    }
     const btCollisionShape *bt_shape = shape_ptr ? &shape_ptr->impl().as_bullet_shape() : nullptr;
     const bool is_moveable_shape = bt_shape && !bt_shape->isNonMoving();
 
@@ -588,27 +585,6 @@ void PhysicsWorldData::set_body_shapes(const IndexMask &selection,
       else {
         this->world_->addRigidBody(body);
       }
-    }
-    if (is_moveable_shape) {
-      if (update_local_inertia) {
-        if (bt_shape) {
-          btVector3 bt_local_inertia;
-          bt_shape->calculateLocalInertia(body->getMass(), bt_local_inertia);
-          body->setMassProps(body->getMass(), bt_local_inertia);
-        }
-        else {
-          body->setMassProps(body->getMass(), btVector3(1, 1, 1));
-        }
-        body->updateInertiaTensor();
-      }
-    }
-    else {
-      /* Make body static when collision shape is not moveable. */
-      body->setMassProps(0.0f, btVector3(0.0f, 0.0f, 0.0f));
-      body->updateInertiaTensor();
-      body->setCollisionFlags(
-          (body->getCollisionFlags() & ~btCollisionObject::CF_KINEMATIC_OBJECT) |
-          btCollisionObject::CF_STATIC_OBJECT);
     }
   });
 }
@@ -795,8 +771,35 @@ void PhysicsGeometryImpl::tag_body_topology_changed()
   this->tag_constraint_disable_collision_changed();
 }
 
-void PhysicsGeometryImpl::tag_body_collision_shapes_changed()
+void PhysicsGeometryImpl::body_collision_shape_update()
 {
+  /* Non-moveable collision shapes enforce static object and zero mass. */
+  MutableAttributeAccessor attributes = this->attributes_for_write();
+  const VArray<int> body_shapes = *attributes.lookup_or_default(
+      physics_attribute_name(BodyAttribute::collision_shape), AttrDomain::Point, -1);
+  AttributeWriter<bool> is_static = attributes.lookup_or_add_for_write<bool>(
+      physics_attribute_name(BodyAttribute::is_static), AttrDomain::Point);
+  AttributeWriter<float> masses = attributes.lookup_or_add_for_write<float>(
+      physics_attribute_name(BodyAttribute::mass), AttrDomain::Point);
+  for (const int body_i : IndexRange(this->body_num_)) {
+    const int shape_index = body_shapes[body_i];
+    if (!this->shapes.index_range().contains(shape_index)) {
+      continue;
+    }
+    const CollisionShapePtr &shape_ptr = this->shapes[shape_index];
+    if (!shape_ptr) {
+      continue;
+    }
+    if (shape_ptr->supports_motion()) {
+      continue;
+    }
+
+    is_static.varray.set(body_i, true);
+    masses.varray.set(body_i, 0.0f);
+  }
+  is_static.finish();
+  masses.finish();
+
   tag_cache_dirty(this->body_collision_shapes_valid);
 }
 
@@ -899,16 +902,15 @@ void PhysicsGeometryImpl::ensure_body_collision_shapes_no_lock() const
   if (!is_cache_dirty(this->body_collision_shapes_valid)) {
     return;
   }
-  if (this->world_data == nullptr) {
-    return;
-  }
 
   AttributeAccessor custom_data_attributes = this->custom_data_attributes();
   const VArraySpan<int> body_shapes = *custom_data_attributes.lookup_or_default(
       collision_shape_id, AttrDomain::Point, -1);
 
-  world_data->set_body_shapes(
-      this->world_data->bodies().index_range(), this->shapes, body_shapes, false);
+  const IndexMask selection = this->world_data->bodies().index_range();
+  if (this->world_data != nullptr) {
+    this->world_data->set_body_shapes(selection, this->shapes, body_shapes);
+  }
 }
 
 void PhysicsGeometryImpl::ensure_custom_data_attribute(
@@ -1157,7 +1159,7 @@ void PhysicsGeometryImpl::create_world()
       physics_attribute_name(ConstraintAttribute::constraint_body2), AttrDomain::Edge, -1);
 
   this->world_data = new PhysicsWorldData(this->body_num_, this->constraint_num_);
-  this->world_data->set_body_shapes(body_range, this->shapes, body_shapes, false);
+  this->world_data->set_body_shapes(body_range, this->shapes, body_shapes);
   this->world_data->create_constraints(
       constraint_range, constraint_types, constraint_bodies1, constraint_bodies2);
 }

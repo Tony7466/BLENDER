@@ -680,7 +680,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
       body_custom_data_access,
       [](void *owner) {
         PhysicsGeometryImpl &impl = *static_cast<PhysicsGeometryImpl *>(owner);
-        impl.tag_body_collision_shapes_changed();
+        impl.body_collision_shape_update();
       },
       {},
       &default_body_collision_shape);
