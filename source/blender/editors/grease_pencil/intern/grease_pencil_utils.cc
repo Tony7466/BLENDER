@@ -152,6 +152,14 @@ DrawingPlacement::DrawingPlacement(const Scene &scene,
     default:
       break;
   }
+
+  /* Account for layer transform. */
+  if (reproject_mode != ReprojectMode::View && reproject_mode != ReprojectMode::Cursor) {
+    /* Use the transpose inverse for normal. */
+    placement_normal_ = math::transform_direction(math::transpose(world_space_to_layer_space_),
+                                                  placement_normal_);
+  }
+
   /* Initialize DrawingPlacementDepth from mode. */
   switch (reproject_mode) {
     case ReprojectMode::Cursor:
