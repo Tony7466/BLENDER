@@ -86,34 +86,40 @@ static int sculpt_set_persistent_base_exec(bContext *C, wmOperator * /*op*/)
     return OPERATOR_CANCELLED;
   }
 
-  /* Do not allow in DynTopo just yet. */
-  if (!ss || (ss && ss->bm)) {
-    return OPERATOR_FINISHED;
+  if (!ss) {
+    return OPERATOR_CANCELLED;
   }
-  SCULPT_vertex_random_access_ensure(*ss);
+
+  /* Only mesh geometry supports attributes properly. */
+  if (ss->pbvh->type() != bke::pbvh::Type::Mesh) {
+    return OPERATOR_CANCELLED;
+  }
+
   BKE_sculpt_update_object_for_edit(depsgraph, &ob, false);
 
-  SculptAttributeParams params = {0};
-  params.permanent = true;
+  Mesh &mesh = *static_cast<Mesh *>(ob.data);
+  bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
+  attributes.remove(".sculpt_persistent_co");
+  attributes.remove(".sculpt_persistent_no");
+  attributes.remove(".sculpt_persistent_disp");
 
-  ss->attrs.persistent_co = BKE_sculpt_attribute_ensure(
-      &ob, bke::AttrDomain::Point, CD_PROP_FLOAT3, SCULPT_ATTRIBUTE_NAME(persistent_co), &params);
-  ss->attrs.persistent_no = BKE_sculpt_attribute_ensure(
-      &ob, bke::AttrDomain::Point, CD_PROP_FLOAT3, SCULPT_ATTRIBUTE_NAME(persistent_no), &params);
-  ss->attrs.persistent_disp = BKE_sculpt_attribute_ensure(
-      &ob, bke::AttrDomain::Point, CD_PROP_FLOAT, SCULPT_ATTRIBUTE_NAME(persistent_disp), &params);
-
-  const int totvert = SCULPT_vertex_count_get(*ss);
-
-  for (int i = 0; i < totvert; i++) {
-    PBVHVertRef vertex = BKE_pbvh_index_to_vertex(*ss->pbvh, i);
-
-    copy_v3_v3((float *)SCULPT_vertex_attr_get(vertex, ss->attrs.persistent_co),
-               SCULPT_vertex_co_get(*ss, vertex));
-    *(float3 *)SCULPT_vertex_attr_get(vertex, ss->attrs.persistent_no) = SCULPT_vertex_normal_get(
-        *ss, vertex);
-    (*(float *)SCULPT_vertex_attr_get(vertex, ss->attrs.persistent_disp)) = 0.0f;
+  const bke::AttributeReader positions = attributes.lookup<float3>("position");
+  if (positions.sharing_info && positions.varray.is_span()) {
+    attributes.add<float3>(".sculpt_persistent_co",
+                           bke::AttrDomain::Point,
+                           bke::AttributeInitShared(positions.varray.get_internal_span().data(),
+                                                    *positions.sharing_info));
   }
+  else {
+    attributes.add<float3>(".sculpt_persistent_co",
+                           bke::AttrDomain::Point,
+                           bke::AttributeInitVArray(positions.varray));
+  }
+
+  const Span<float3> vert_normals = BKE_pbvh_get_vert_normals(*ss->pbvh);
+  attributes.add<float3>(".sculpt_persistent_no",
+                         bke::AttrDomain::Point,
+                         bke::AttributeInitVArray(VArray<float3>::ForSpan(vert_normals)));
 
   return OPERATOR_FINISHED;
 }
@@ -589,7 +595,7 @@ void geometry_preview_lines_update(bContext *C, SculptSession &ss, float radius)
   const bke::AttributeAccessor attributes = mesh.attributes();
   const VArraySpan<bool> hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
 
-  const int active_vert = ss.active_vert_ref().i;
+  const int active_vert = std::get<int>(ss.active_vert());
   const float3 brush_co = positions[active_vert];
   const float radius_sq = radius * radius;
 
@@ -628,7 +634,6 @@ static int sculpt_sample_color_invoke(bContext *C, wmOperator *op, const wmEvent
   Object &ob = *CTX_data_active_object(C);
   Brush &brush = *BKE_paint_brush(&sd.paint);
   SculptSession &ss = *ob.sculpt;
-  PBVHVertRef active_vertex = ss.active_vert_ref();
 
   if (!SCULPT_handles_colors_report(ss, op->reports)) {
     return OPERATOR_CANCELLED;
@@ -654,8 +659,12 @@ static int sculpt_sample_color_invoke(bContext *C, wmOperator *op, const wmEvent
     active_vertex_color = float4(1.0f);
   }
   const GVArraySpan colors = *color_attribute;
-  active_vertex_color = color::color_vert_get(
-      faces, corner_verts, vert_to_face_map, colors, color_attribute.domain, active_vertex.i);
+  active_vertex_color = color::color_vert_get(faces,
+                                              corner_verts,
+                                              vert_to_face_map,
+                                              colors,
+                                              color_attribute.domain,
+                                              std::get<int>(ss.active_vert()));
 
   float color_srgb[3];
   IMB_colormanagement_scene_linear_to_srgb_v3(color_srgb, active_vertex_color);
@@ -776,7 +785,7 @@ static void sculpt_mask_by_color_contiguous(Object &object,
   flood_fill::FillData flood = flood_fill::init_fill(ss);
   flood_fill::add_initial(flood, vertex);
 
-  flood_fill::execute(ss, flood, [&](PBVHVertRef from_v, PBVHVertRef to_v, bool is_duplicate) {
+  flood_fill::execute(object, flood, [&](PBVHVertRef from_v, PBVHVertRef to_v, bool is_duplicate) {
     return sculpt_mask_by_color_contiguous_floodfill(
         ss, from_v, to_v, is_duplicate, colors, active_color, threshold, invert, new_mask);
   });
@@ -867,7 +876,7 @@ static int sculpt_mask_by_color_invoke(bContext *C, wmOperator *op, const wmEven
     sculpt_mask_by_color_full_mesh(ob, active_vertex, threshold, invert, preserve_mask);
   }
 
-  bke::pbvh::update_mask(*ss.pbvh);
+  bke::pbvh::update_mask(ob, *ss.pbvh);
   undo::push_end(ob);
 
   flush_update_done(C, ob, UpdateType::Mask);
@@ -1176,7 +1185,7 @@ static int sculpt_bake_cavity_exec(bContext *C, wmOperator *op)
           BKE_pbvh_node_mark_update_mask(nodes[i]);
         }
       });
-      bke::pbvh::update_mask(*ss.pbvh);
+      bke::pbvh::update_mask(ob, *ss.pbvh);
       break;
     }
     case bke::pbvh::Type::BMesh: {
@@ -1187,7 +1196,7 @@ static int sculpt_bake_cavity_exec(bContext *C, wmOperator *op)
           BKE_pbvh_node_mark_update_mask(nodes[i]);
         }
       });
-      bke::pbvh::update_mask(*ss.pbvh);
+      bke::pbvh::update_mask(ob, *ss.pbvh);
       break;
     }
   }
