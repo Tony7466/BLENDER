@@ -573,11 +573,11 @@ void PhysicsWorldData::set_split_impulse(const bool split_impulse)
 
 void PhysicsWorldData::step_simulation(float delta_time)
 {
-  constexpr const float fixed_time_step = 1.0f / 120.0f;
+  constexpr const float fixed_time_step = 1.0f / 60.0f;
 
   this->ensure_bodies_in_world();
 
-  world_->stepSimulation(delta_time, 100, fixed_time_step);
+  world_->stepSimulation(delta_time, 20, fixed_time_step);
 }
 
 void PhysicsWorldData::set_body_shapes(const IndexMask &selection,

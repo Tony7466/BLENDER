@@ -798,4 +798,54 @@ TEST_F(PhysicsGeometryTest, motion_type_attribute_dependencies)
   }
 }
 
+TEST_F(PhysicsGeometryTest, simple_time_step)
+{
+  AllShapesData all_shapes_data;
+
+  bke::PhysicsGeometry geo = bke::PhysicsGeometry(1, 0, 1);
+  geo.create_world();
+  test_data(geo, true, 1, 0, 1);
+
+  all_shapes_data.box_shape->add_user();
+  geo.shapes_for_write().copy_from({CollisionShapePtr(all_shapes_data.box_shape)});
+  geo.tag_collision_shapes_changed();
+  {
+    AttributeWriter<int> body_shapes = geo.body_shapes_for_write();
+    AttributeWriter<bool> is_static = geo.body_is_static_for_write();
+    AttributeWriter<float> masses = geo.body_masses_for_write();
+    body_shapes.varray.set(0, 0);
+    is_static.varray.set(0, false);
+    masses.varray.set(0, 1.0f);
+    body_shapes.finish();
+    is_static.finish();
+    masses.finish();
+  }
+
+  {
+    const VArray<float3> positions = geo.body_positions();
+    const VArray<float3> velocities = geo.body_velocities();
+    EXPECT_EQ(float3(0.0f, 0.0f, 0.0f), positions[0]);
+    EXPECT_EQ(float3(0.0f, 0.0f, 0.0f), velocities[0]);
+  }
+
+  constexpr float g = -9.81f;
+  geo.set_gravity(float3(0, 0, g));
+
+  constexpr float delta_time = 0.1f;
+  geo.step_simulation(delta_time);
+
+  {
+    const VArray<float3> positions = geo.body_positions();
+    const VArray<float3> velocities = geo.body_velocities();
+
+    /* Not enough accuracy to meaningfully test for equality. */
+    // const float dv = g * delta_time;
+    // const float dx = 0.5f * g * delta_time * delta_time;
+    // EXPECT_V3_NEAR(float3(0.0f, 0.0f, dx), positions[0], 1e-2f);
+    // EXPECT_V3_NEAR(float3(0.0f, 0.0f, dv), velocities[0], 1e-2f);
+    EXPECT_LT(positions[0].z, 0.0f);
+    EXPECT_LT(velocities[0].z, 0.0f);
+  }
+}
+
 }  // namespace blender::bke::tests
