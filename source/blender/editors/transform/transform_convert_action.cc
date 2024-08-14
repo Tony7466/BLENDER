@@ -49,41 +49,6 @@ static bool is_td2d_int(TransData2D *td2d)
 /** \name Grease Pencil Transform helpers
  * \{ */
 
-/* Store original frames to prevent losing data during the transform when frame gets overwritten.
- * This is used to restore the state before each update and after cancelling. */
-static void grease_pencil_transdata_store_frames(
-    blender::bke::greasepencil::LayerTransformData &trans_data,
-    const blender::bke::greasepencil::Layer &layer)
-{
-  using namespace blender::bke::greasepencil;
-
-  trans_data.orig_frame_numbers.reinitialize(layer.frames().size());
-  trans_data.orig_frame_data.reinitialize(layer.frames().size());
-  for (const int frame_i : layer.sorted_keys().index_range()) {
-    const int frame_number = layer.sorted_keys()[frame_i];
-    trans_data.orig_frame_numbers[frame_i] = frame_number;
-    trans_data.orig_frame_data[frame_i] = layer.frames().lookup(frame_number);
-  }
-}
-
-/* Restore the original frame data of the layer. This assumes that drawing indices remain valid. */
-static void grease_pencil_transdata_restore_frames(
-    const blender::bke::greasepencil::LayerTransformData &trans_data,
-    blender::bke::greasepencil::Layer &layer)
-{
-  using namespace blender::bke::greasepencil;
-
-  BLI_assert(trans_data.orig_frame_numbers.size() == trans_data.orig_frame_data.size());
-  layer.frames_for_write().clear();
-  layer.frames_for_write().reserve(trans_data.orig_frame_numbers.size());
-  for (const int frame_i : trans_data.orig_frame_numbers.index_range()) {
-    layer.frames_for_write().add_new(trans_data.orig_frame_numbers[frame_i],
-                                     trans_data.orig_frame_data[frame_i]);
-  }
-
-  layer.tag_frames_map_keys_changed();
-}
-
 /* Add a user to ensure drawings are not deleted during transform when a frame is overwritten
  * temporarily. The drawing_index of any existing frame will also remain valid. */
 static void grease_pencil_transdata_add_drawing_users(const GreasePencil &grease_pencil)
@@ -120,25 +85,50 @@ static void grease_pencil_transdata_remove_drawing_users(const GreasePencil &gre
   }
 }
 
-static bool grease_pencil_layer_initialize_trans_data(GreasePencil &grease_pencil,
+static bool grease_pencil_layer_initialize_trans_data(const GreasePencil &grease_pencil,
                                                       blender::bke::greasepencil::Layer &layer,
-                                                      const blender::Span<int> frames_affected)
+                                                      const blender::Span<int> frames_affected,
+                                                      const bool use_duplicates)
 {
   using namespace blender::bke::greasepencil;
-
   LayerTransformData &trans_data = layer.runtime->trans_data_;
 
   if (trans_data.status != LayerTransformData::TRANS_CLEAR) {
     return false;
   }
 
+  /* "Freeze" drawing indices by adding a user to each drawing. This ensures the draw_index in
+   * frame data remains valid and no data is lost if the drawing is temporarily unused during
+   * transform. */
+  grease_pencil_transdata_add_drawing_users(grease_pencil);
+
   /* Initialize the transformation data structure, by storing in separate maps frames that will
-   * remain static during the transformation, and frames that are affected by the transformation.
+   * remain static during the transformation, and frames that are affected by the
+   * transformation.
    */
   trans_data.frames_static = layer.frames();
   trans_data.frames_transformed.clear();
-  grease_pencil_transdata_add_drawing_users(grease_pencil);
-  grease_pencil_transdata_store_frames(trans_data, layer);
+
+  for (const int frame_number : frames_affected) {
+    const bool was_duplicated = use_duplicates &&
+                                trans_data.duplicated_frames_buffer.contains(frame_number);
+
+    /* Get the frame that is going to be affected by the transformation :
+     * if the frame was duplicated, then its the duplicated frame which is being transformed,
+     * otherwise it is the original frame, stored in the layer. */
+    const blender::Map<int, GreasePencilFrame> &frame_map =
+        was_duplicated ? trans_data.duplicated_frames_buffer : layer.frames();
+
+    const GreasePencilFrame frame_transformed = frame_map.lookup(frame_number);
+    trans_data.frames_transformed.add_overwrite(frame_number, frame_transformed);
+
+    if (!was_duplicated) {
+      /* Remove from the static map each frame that is affected by the transformation and that was
+       * not duplicated. Note that if the frame was duplicated, then the original frame is not
+       * affected by the transformation. */
+      trans_data.frames_static.remove_as(frame_number);
+    }
+  }
 
   trans_data.frames_duration.clear();
   trans_data.frames_destination.clear();
@@ -215,7 +205,8 @@ static bool grease_pencil_layer_update_trans_data(blender::bke::greasepencil::La
 
 static bool grease_pencil_layer_apply_trans_data(GreasePencil &grease_pencil,
                                                  blender::bke::greasepencil::Layer &layer,
-                                                 const bool canceled)
+                                                 const bool canceled,
+                                                 const bool duplicate)
 {
   using namespace blender::bke::greasepencil;
   LayerTransformData &trans_data = layer.runtime->trans_data_;
@@ -227,28 +218,32 @@ static bool grease_pencil_layer_apply_trans_data(GreasePencil &grease_pencil,
 
   /* Reset the frames to their initial state. */
   layer.frames_for_write() = trans_data.frames_static;
-  grease_pencil_transdata_restore_frames(trans_data, layer);
+  for (const auto [frame_number, frame] : trans_data.frames_transformed.items()) {
+    if (trans_data.duplicated_frames_buffer.contains(frame_number)) {
+      continue;
+    }
+    layer.frames_for_write().add_overwrite(frame_number, frame);
+  }
+  layer.tag_frames_map_keys_changed();
 
-  // if (!canceled) {
-  //   /* Moves all the selected frames according to the transformation, and inserts the potential
-  //    * duplicate frames in the layer. */
-  //   grease_pencil.move_duplicate_frames(
-  //       layer, trans_data.frames_destination, trans_data.duplicated_frames_buffer);
-  // }
+  if (!canceled) {
+    /* Moves all the selected frames according to the transformation, and inserts the potential
+     * duplicate frames in the layer. */
+    grease_pencil.move_duplicate_frames(
+        layer, trans_data.frames_destination, trans_data.duplicated_frames_buffer);
+  }
 
-  // if (canceled && duplicate) {
-  //   /* Duplicates were done, so we need to delete the corresponding duplicate drawings. */
-  //   for (const GreasePencilFrame &duplicate_frame :
-  //   trans_data.duplicated_frames_buffer.values()) {
-  //     GreasePencilDrawingBase *drawing_base =
-  //     grease_pencil.drawing(duplicate_frame.drawing_index); if (drawing_base->type ==
-  //     GP_DRAWING) {
-  //       reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap().remove_user();
-  //     }
-  //   }
-  //   grease_pencil.remove_drawings_with_no_users();
-  // }
+  if (canceled && duplicate) {
+    /* Duplicates were done, so we need to delete the corresponding duplicate drawings. */
+    for (const GreasePencilFrame &duplicate_frame : trans_data.duplicated_frames_buffer.values()) {
+      GreasePencilDrawingBase *drawing_base = grease_pencil.drawing(duplicate_frame.drawing_index);
+      if (drawing_base->type == GP_DRAWING) {
+        reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap().remove_user();
+      }
+    }
+  }
 
+  /* All frame data is updated, safe to remove the fake user and remove unused drawings. */
   grease_pencil_transdata_remove_drawing_users(grease_pencil);
   grease_pencil.remove_drawings_with_no_users();
 
@@ -256,8 +251,7 @@ static bool grease_pencil_layer_apply_trans_data(GreasePencil &grease_pencil,
   trans_data.frames_static.clear();
   trans_data.frames_transformed.clear();
   trans_data.frames_destination.clear();
-  trans_data.orig_frame_numbers.reinitialize(0);
-  trans_data.orig_frame_data.reinitialize(0);
+  trans_data.duplicated_frames_buffer.clear();
   trans_data.status = LayerTransformData::TRANS_CLEAR;
 
   return true;
@@ -330,7 +324,8 @@ static int count_gplayer_frames(bGPDlayer *gpl, char side, float cfra, bool is_p
 static int count_grease_pencil_frames(const blender::bke::greasepencil::Layer *layer,
                                       const char side,
                                       const float cfra,
-                                      const bool is_prop_edit)
+                                      const bool is_prop_edit,
+                                      const bool use_duplicated)
 {
   if (layer == nullptr) {
     return 0;
@@ -339,15 +334,22 @@ static int count_grease_pencil_frames(const blender::bke::greasepencil::Layer *l
   int count_selected = 0;
   int count_all = 0;
 
-  /* Only include points that occur on the right side of cfra. */
-  for (const auto &[frame_number, frame] : layer->frames().items()) {
-    if (!FrameOnMouseSide(side, float(frame_number), cfra)) {
-      continue;
+  if (use_duplicated) {
+    /* Only count the frames that were duplicated. */
+    count_selected += layer->runtime->trans_data_.duplicated_frames_buffer.size();
+    count_all += count_selected;
+  }
+  else {
+    /* Only include points that occur on the right side of cfra. */
+    for (const auto &[frame_number, frame] : layer->frames().items()) {
+      if (!FrameOnMouseSide(side, float(frame_number), cfra)) {
+        continue;
+      }
+      if (frame.is_selected()) {
+        count_selected++;
+      }
+      count_all++;
     }
-    if (frame.is_selected()) {
-      count_selected++;
-    }
-    count_all++;
   }
 
   if (is_prop_edit && count_selected > 0) {
@@ -530,7 +532,8 @@ static int GreasePencilLayerToTransData(TransData *td,
                                         const char side,
                                         const float cfra,
                                         const bool is_prop_edit,
-                                        const float ypos)
+                                        const float ypos,
+                                        const bool duplicate)
 {
   using namespace blender;
   using namespace bke::greasepencil;
@@ -576,7 +579,10 @@ static int GreasePencilLayerToTransData(TransData *td,
     any_frame_affected = true;
   };
 
-  for (const auto [frame_number, frame] : layer->frames().items()) {
+  const blender::Map<int, GreasePencilFrame> &frame_map =
+      duplicate ? (layer->runtime->trans_data_.duplicated_frames_buffer) : layer->frames();
+
+  for (const auto [frame_number, frame] : frame_map.items()) {
     grease_pencil_frame_to_trans_data(frame_number, frame.is_selected());
   }
 
@@ -587,7 +593,8 @@ static int GreasePencilLayerToTransData(TransData *td,
   /* If it was not previously done, initialize the transform data in the layer, and if some frames
    * are actually concerned by the transform. */
   if (any_frame_affected) {
-    grease_pencil_layer_initialize_trans_data(*grease_pencil, *layer, frames_affected.as_span());
+    grease_pencil_layer_initialize_trans_data(
+        *grease_pencil, *layer, frames_affected.as_span(), duplicate);
   }
 
   return total_trans_frames;
@@ -637,6 +644,10 @@ static void createTransActionData(bContext *C, TransInfo *t)
   Scene *scene = t->scene;
   TransData *td = nullptr;
   TransData2D *td2d = nullptr;
+
+  /* The T_DUPLICATED_KEYFRAMES flag is only set if we made some duplicates of the selected frames,
+   * and they are the ones that are being transformed. */
+  const bool use_duplicated = (t->flag & T_DUPLICATED_KEYFRAMES) != 0;
 
   rcti *mask = &t->region->v2d.mask;
   rctf *datamask = &t->region->v2d.cur;
@@ -701,7 +712,7 @@ static void createTransActionData(bContext *C, TransInfo *t)
       case ANIMTYPE_GREASE_PENCIL_LAYER: {
         using namespace blender::bke::greasepencil;
         adt_count = count_grease_pencil_frames(
-            static_cast<Layer *>(ale->data), t->frame_side, cfra, is_prop_edit);
+            static_cast<Layer *>(ale->data), t->frame_side, cfra, is_prop_edit, use_duplicated);
         break;
       }
       case ANIMTYPE_MASKLAYER:
@@ -814,7 +825,7 @@ static void createTransActionData(bContext *C, TransInfo *t)
       int i;
 
       i = GreasePencilLayerToTransData(
-          td, td2d, grease_pencil, layer, t->frame_side, cfra, is_prop_edit, ypos);
+          td, td2d, grease_pencil, layer, t->frame_side, cfra, is_prop_edit, ypos, use_duplicated);
       td += i;
       td2d += i;
     }
@@ -907,6 +918,15 @@ static void createTransActionData(bContext *C, TransInfo *t)
 
         for (const auto [frame_number, frame] : layer->frames().items()) {
           grease_pencil_closest_selected_frame(frame_number, frame.is_selected());
+        }
+
+        if (use_duplicated) {
+          /* Also count for duplicated frames. */
+          for (const auto [frame_number, frame] :
+               layer->runtime->trans_data_.duplicated_frames_buffer.items())
+          {
+            grease_pencil_closest_selected_frame(frame_number, frame.is_selected());
+          }
         }
       }
       else if (ale->type == ANIMTYPE_MASKLAYER) {
@@ -1276,7 +1296,8 @@ static void special_aftertrans_update__actedit(bContext *C, TransInfo *t)
           grease_pencil_layer_apply_trans_data(
               *grease_pencil,
               *static_cast<blender::bke::greasepencil::Layer *>(ale->data),
-              canceled);
+              canceled,
+              duplicate);
           break;
         }
         default:
@@ -1339,7 +1360,8 @@ static void special_aftertrans_update__actedit(bContext *C, TransInfo *t)
           grease_pencil_layer_apply_trans_data(
               *grease_pencil,
               *static_cast<blender::bke::greasepencil::Layer *>(ale->data),
-              canceled);
+              canceled,
+              duplicate);
           break;
         }
 

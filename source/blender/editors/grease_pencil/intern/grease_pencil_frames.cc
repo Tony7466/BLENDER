@@ -152,6 +152,7 @@ bool duplicate_selected_frames(GreasePencil &grease_pencil, bke::greasepencil::L
 {
   using namespace bke::greasepencil;
   bool changed = false;
+  LayerTransformData &trans_data = layer.runtime->trans_data_;
 
   for (auto [frame_number, frame] : layer.frames_for_write().items()) {
     if (!frame.is_selected()) {
@@ -163,7 +164,13 @@ bool duplicate_selected_frames(GreasePencil &grease_pencil, bke::greasepencil::L
     if (drawing == nullptr) {
       continue;
     }
+    const int duplicated_drawing_index = grease_pencil.drawings().size();
     grease_pencil.add_duplicate_drawings(1, *drawing);
+
+    /* Make a copy of the frame in the duplicates. */
+    GreasePencilFrame frame_duplicate = frame;
+    frame_duplicate.drawing_index = duplicated_drawing_index;
+    trans_data.duplicated_frames_buffer.add_overwrite(frame_number, frame_duplicate);
 
     /* Deselect the current frame, so that only the copy is selected. */
     frame.flag ^= GP_FRAME_SELECTED;

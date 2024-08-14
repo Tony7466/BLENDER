@@ -327,10 +327,6 @@ static_assert(sizeof(LayerMask) == sizeof(::GreasePencilLayerMask));
 struct LayerTransformData {
   enum FrameTransformationStatus { TRANS_CLEAR, TRANS_INIT, TRANS_RUNNING };
 
-  /* Original data that may need to be restored on update or cancel. */
-  Array<int> orig_frame_numbers;
-  Array<GreasePencilFrame> orig_frame_data;
-
   /* Map of frame keys describing the transformation of the frames. Keys of the map are the source
    * frame indices, and the values of the map are the destination frame indices. */
   Map<int, int> frames_destination;
@@ -346,6 +342,10 @@ struct LayerTransformData {
   /* Map containing the duration (in frames) for each frame in the layer that has a fixed duration,
    * i.e. each frame that is not an implicit hold. */
   Map<int, int> frames_duration;
+
+  /* Temporary copy of duplicated frames before we decide on a place to insert them.
+   * Used in the move+duplicate operator. */
+  Map<int, GreasePencilFrame> duplicated_frames_buffer;
 
   FrameTransformationStatus status{TRANS_CLEAR};
 };
