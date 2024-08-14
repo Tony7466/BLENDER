@@ -1896,8 +1896,8 @@ VArray<bool> PhysicsGeometry::body_is_static() const
 
 AttributeWriter<bool> PhysicsGeometry::body_is_static_for_write()
 {
-  return attributes_for_write().lookup_for_write<bool>(
-      body_attribute_name(BodyAttribute::is_static));
+  return attributes_for_write().lookup_or_add_for_write<bool>(
+      body_attribute_name(BodyAttribute::is_static), AttrDomain::Point);
 }
 
 VArray<bool> PhysicsGeometry::body_is_kinematic() const
@@ -1920,7 +1920,8 @@ VArray<float> PhysicsGeometry::body_masses() const
 
 AttributeWriter<float> PhysicsGeometry::body_masses_for_write()
 {
-  return attributes_for_write().lookup_for_write<float>(body_attribute_name(BodyAttribute::mass));
+  return attributes_for_write().lookup_or_add_for_write<float>(
+      body_attribute_name(BodyAttribute::mass), AttrDomain::Point);
 }
 
 VArray<float3> PhysicsGeometry::body_inertias() const
