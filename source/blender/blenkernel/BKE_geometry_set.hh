@@ -561,6 +561,8 @@ class PointCloudComponent : public GeometryComponent {
   bool owns_direct_data() const override;
   void ensure_owns_direct_data() override;
 
+  void count_memory(MemoryCounter &memory) const override;
+
   std::optional<AttributeAccessor> attributes() const final;
   std::optional<MutableAttributeAccessor> attributes_for_write() final;
 
@@ -607,6 +609,8 @@ class CurveComponent : public GeometryComponent {
   bool owns_direct_data() const override;
   void ensure_owns_direct_data() override;
 
+  void count_memory(MemoryCounter &memory) const override;
+
   /**
    * Create empty curve data used for rendering the spline's wire edges.
    * \note See comment on #curve_for_render_ for further explanation.
@@ -646,6 +650,8 @@ class InstancesComponent : public GeometryComponent {
 
   bool owns_direct_data() const override;
   void ensure_owns_direct_data() override;
+
+  void count_memory(MemoryCounter &memory) const override;
 
   std::optional<AttributeAccessor> attributes() const final;
   std::optional<MutableAttributeAccessor> attributes_for_write() final;

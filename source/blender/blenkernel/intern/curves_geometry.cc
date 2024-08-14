@@ -1196,6 +1196,12 @@ std::optional<Bounds<float3>> CurvesGeometry::bounds_min_max() const
   return this->runtime->bounds_cache.data();
 }
 
+void CurvesGeometry::count_memory(MemoryCounter &memory) const
+{
+  CustomData_count_memory(this->point_data, this->point_num, memory);
+  CustomData_count_memory(this->curve_data, this->curve_num, memory);
+}
+
 CurvesGeometry curves_copy_point_selection(
     const CurvesGeometry &curves,
     const IndexMask &points_to_copy,
