@@ -384,11 +384,6 @@ struct SculptAttribute {
 /* Convenience pointers for standard sculpt attributes. */
 
 struct SculptAttributePointers {
-  /* Persistent base. */
-  SculptAttribute *persistent_co = nullptr;
-  SculptAttribute *persistent_no = nullptr;
-  SculptAttribute *persistent_disp = nullptr;
-
   /* Precomputed auto-mask factor indexed by vertex, owned by the auto-masking system and
    * initialized in #auto_mask::cache_init when needed. */
   SculptAttribute *automasking_factor = nullptr;
@@ -591,6 +586,28 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
 
   PBVHVertRef active_vert_ref() const;
   ActiveVert active_vert() const;
+
+  /**
+   * Retrieves the corresponding index of the ActiveVert inside a mesh-sized array.
+   *
+   * Helpful in generic cases where we are unlikely to already be processing data in a backing-type
+   * specific manner.
+   *
+   * \note For BMesh, a call to SCULPT_vertex_random_access_ensure is needed to get valid results.
+   * \returns -1 if there is no currently active vertex.
+   */
+  int active_vert_index() const;
+
+  /**
+   * Retrieves the active vertex position.
+   *
+   * This method should be avoided if already working with the relevant position-backing structures
+   * for each of the mesh types. In cases where we want more generic code, this abstraction helps
+   * to remove boilerplate.
+   *
+   * \returns float3 at negative infinity if there is no currently active vertex
+   */
+  blender::float3 active_vert_position(const Object &object) const;
 
   void set_active_vert(PBVHVertRef vert);
 
