@@ -149,11 +149,29 @@ static int2 sample(const int3 all, const int2 indices)
   return int2{all[indices.x], all[indices.y]};
 }
 
-static const std::array<int2, 3> edges{int2(0, 1), int2(1, 2), int2(2, 0)};
 static const std::array<int, 3> face{0, 1, 2};
 
-static const int3 shift_front(1, 2, 0);
-static const int3 shift_back(2, 0, 1);
+// static const std::array<int2, 3> edges{int2(0, 1), int2(1, 2), int2(2, 0)};
+// static const int3 shift_front(1, 2, 0);
+// static const int3 shift_back(2, 0, 1);
+
+static int shift_front(const int side_i)
+{
+  BLI_assert(part_of(int3(0, 1, 2), side_i));
+  return (side_i << 1) & 3 | int(side_i == 0);
+}
+
+static int shift_back(const int side_i)
+{
+  BLI_assert(part_of(int3(0, 1, 2), side_i));
+  return (side_i >> 1) | (int(side_i == 0) << 1);
+}
+
+static int2 side_edge(const int side_i)
+{
+  BLI_assert(part_of(int3(0, 1, 2), side_i));
+  return int2(side_i, shift_front(side_i));
+}
 
 static constexpr int vert_a = 0;
 static constexpr int vert_b = 1;
@@ -166,8 +184,8 @@ static constexpr int edge_ca = 2;
 template<typename CmpT, typename T>
 static std::pair<T, T> split_edge(const int edge_i, T data, CmpT lowest, CmpT highest)
 {
-  const int prev_edge_i = topo_set::shift_back[edge_i];
-  const int next_edge_i = topo_set::shift_front[edge_i];
+  const int prev_edge_i = topo_set::shift_back(edge_i);
+  const int next_edge_i = topo_set::shift_front(edge_i);
 
   T lowest_data;
   lowest_data[prev_edge_i] = std::move(data[prev_edge_i]);
@@ -185,8 +203,8 @@ static std::pair<T, T> split_edge(const int edge_i, T data, CmpT lowest, CmpT hi
 template<typename CmpT, typename T>
 static std::pair<T, T> split_vert(const int edge_i, T data, CmpT shared)
 {
-  const int prev_edge_i = topo_set::shift_back[edge_i];
-  const int next_edge_i = topo_set::shift_front[edge_i];
+  const int prev_edge_i = topo_set::shift_back(edge_i);
+  const int next_edge_i = topo_set::shift_front(edge_i);
 
   T lowest_data;
   lowest_data[prev_edge_i] = std::move(data[prev_edge_i]);
@@ -438,9 +456,9 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
 
     for (const int side_i : edge_indices) {
       edge_tris_split_and_skip(tri_3d_points[side_i],
-                               tri_3d_points[topo_set::shift_front[side_i]],
+                               tri_3d_points[topo_set::shift_front(side_i)],
                                tri_2d_points[side_i],
-                               tri_2d_points[topo_set::shift_front[side_i]],
+                               tri_2d_points[topo_set::shift_front(side_i)],
                                centre,
                                radius,
                                lengths_squared[side_i],
@@ -468,7 +486,7 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
     const int largest_side_to_split = edge_indices.first();
     // std::cout << "\t" << "Split of:\t" << largest_side_to_split << "\n";
 
-    const int2 split_edge = topo_set::edges[largest_side_to_split];
+    const int2 split_edge = topo_set::side_edge(largest_side_to_split);
     const bool real_edge_split = edges_state & edge_state::edges_real[largest_side_to_split];
 
     r_total_edges++;
@@ -528,13 +546,13 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
               radius);
 
     const int8_t left_edges_state =
-        edges_state | edge_state::edges_real[topo_set::shift_front[largest_side_to_split]];
+        edges_state | edge_state::edges_real[topo_set::shift_front(largest_side_to_split)];
 
     right_tri_2d_points[largest_side_to_split] = mid_2d;
     right_tri_3d_points[largest_side_to_split] = mid_3d;
 
     const int8_t right_edges_state =
-        edges_state & (~edge_state::edges_real[topo_set::shift_back[largest_side_to_split]]);
+        edges_state & (~edge_state::edges_real[topo_set::shift_back(largest_side_to_split)]);
 
     connected_2d_points_stack.append(std::move(left_connected_2d_points));
     connected_3d_points_stack.append(std::move(left_connected_3d_points));
@@ -648,7 +666,7 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
     //   for (const int side_i : topo_set::face) {
     //     if (edges_state & edge_state::edges_owned[side_i]) {
     //       r_edge_indices[face_iter + side_i] = body_edges_range[edges_in_face.index_of_or_add(
-    //           topo_set::sample(tri_verts, topo_set::edges[side_i]))];
+    //           topo_set::sample(tri_verts, topo_set::side_edge(side_i)))];
     //     }
     //     else {
     //       const int edge_edge_i = edge_edges_iters[side_i];
@@ -664,9 +682,9 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
 
     for (const int side_i : edge_indices) {
       edge_tris_split_and_skip(tri_3d_points[side_i],
-                               tri_3d_points[topo_set::shift_front[side_i]],
+                               tri_3d_points[topo_set::shift_front(side_i)],
                                tri_2d_points[side_i],
-                               tri_2d_points[topo_set::shift_front[side_i]],
+                               tri_2d_points[topo_set::shift_front(side_i)],
                                centre,
                                radius,
                                lengths_squared[side_i],
@@ -690,7 +708,7 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
       for (const int side_i : topo_set::face) {
         if (edges_state & edge_state::edges_owned[side_i]) {
           r_edge_indices[face_iter + side_i] = body_edges_range[edges_in_face.index_of_or_add(
-              topo_set::sample(tri_verts, topo_set::edges[side_i]))];
+              topo_set::sample(tri_verts, topo_set::side_edge(side_i)))];
         }
         else {
           const int edge_edge_i = edge_edges_iters[side_i];
@@ -706,7 +724,7 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
     const int largest_side_to_split = edge_indices.first();
     // std::cout << "\t" << "Split of:\t" << largest_side_to_split << "\n";
 
-    const int2 split_edge = topo_set::edges[largest_side_to_split];
+    const int2 split_edge = topo_set::side_edge(largest_side_to_split);
     const int2 face_verts_to_split = topo_set::sample(tri_verts, split_edge);
 
     const bool real_edge_split = edges_state & edge_state::edges_real[largest_side_to_split];
@@ -780,15 +798,15 @@ static void face_subdivide(std::array<Vector<float2>, 3> connected_2d_points,
               radius);
 
     const int8_t left_edges_state =
-        edges_state | edge_state::edges_real[topo_set::shift_front[largest_side_to_split]] |
-        edge_state::edges_owned[topo_set::shift_front[largest_side_to_split]];
+        edges_state | edge_state::edges_real[topo_set::shift_front(largest_side_to_split)] |
+        edge_state::edges_owned[topo_set::shift_front(largest_side_to_split)];
 
     int3 left_tri_verts = tri_verts;
-    left_tri_verts[topo_set::shift_front[largest_side_to_split]] = new_vert_i;
+    left_tri_verts[topo_set::shift_front(largest_side_to_split)] = new_vert_i;
 
     const int8_t right_edges_state =
-        (edges_state & (~edge_state::edges_real[topo_set::shift_back[largest_side_to_split]])) |
-        edge_state::edges_owned[topo_set::shift_back[largest_side_to_split]];
+        (edges_state & (~edge_state::edges_real[topo_set::shift_back(largest_side_to_split)])) |
+        edge_state::edges_owned[topo_set::shift_back(largest_side_to_split)];
 
     int3 right_tri_verts = tri_verts;
     right_tri_verts[largest_side_to_split] = new_vert_i;
@@ -1101,8 +1119,8 @@ static void smooth_propagate_pre_subdiv_level(const GroupedSpan<int> faces_edges
       const int3 face_edges(
           faces_edges[face_i][0], faces_edges[face_i][1], faces_edges[face_i][2]);
       const int edge_i = topo_set::index_of(face_edges, edge_index);
-      const int prev_edge_index = face_edges[topo_set::shift_back[edge_i]];
-      const int next_edge_index = face_edges[topo_set::shift_front[edge_i]];
+      const int prev_edge_index = face_edges[topo_set::shift_back(edge_i)];
+      const int next_edge_index = face_edges[topo_set::shift_front(edge_i)];
 
       const float prev_edge_length = math::distance(positions[edges[prev_edge_index][0]],
                                                     positions[edges[prev_edge_index][1]]);
