@@ -154,17 +154,18 @@ static GVolumeGrid get_cached_grid(const StringRef file_path,
   /* A callback that actually loads the full grid including the tree when it's accessed. */
   auto load_grid_fn = [file_path = std::string(file_path),
                        grid_name = std::string(grid_cache.meta_data_grid->getName()),
-                       simplify_level]() {
+                       simplify_level]() -> LazyLoadedGrid {
     if (simplify_level == 0) {
-      return load_single_grid_from_disk(file_path, grid_name);
+      return {load_single_grid_from_disk(file_path, grid_name), nullptr};
     }
     /* Build the simplified grid from the main grid. */
     const GVolumeGrid main_grid = get_grid_from_file(file_path, grid_name, 0);
     const VolumeGridType grid_type = main_grid->grid_type();
     const float resolution_factor = 1.0f / (1 << simplify_level);
     VolumeTreeAccessToken tree_token;
-    return BKE_volume_grid_create_with_changed_resolution(
-        grid_type, main_grid->grid(tree_token), resolution_factor);
+    return {BKE_volume_grid_create_with_changed_resolution(
+                grid_type, main_grid->grid(tree_token), resolution_factor),
+            nullptr};
   };
   /* This allows the returned grid to already contain meta-data and transforms, even if the tree is
    * not loaded yet. */

@@ -70,7 +70,7 @@ VolumeGridData::VolumeGridData(std::shared_ptr<openvdb::GridBase> grid)
   tree_access_token_ = std::make_shared<AccessToken>(*this);
 }
 
-VolumeGridData::VolumeGridData(std::function<std::shared_ptr<openvdb::GridBase>()> lazy_load_grid,
+VolumeGridData::VolumeGridData(std::function<LazyLoadedGrid()> lazy_load_grid,
                                std::shared_ptr<openvdb::GridBase> meta_data_and_transform_grid)
     : grid_(std::move(meta_data_and_transform_grid)), lazy_load_grid_(std::move(lazy_load_grid))
 {
@@ -262,7 +262,7 @@ void VolumeGridData::ensure_grid_loaded() const
     return;
   }
   BLI_assert(lazy_load_grid_);
-  std::shared_ptr<openvdb::GridBase> loaded_grid;
+  LazyLoadedGrid loaded_grid;
   /* Isolate because the a mutex is locked. */
   threading::isolate_task([&]() {
     error_message_.clear();
@@ -276,38 +276,45 @@ void VolumeGridData::ensure_grid_loaded() const
       error_message_ = "Unknown error reading VDB file";
     }
   });
-  if (!loaded_grid) {
+  if (!loaded_grid.grid) {
+    BLI_assert(!loaded_grid.tree_sharing_info);
     if (grid_) {
       const openvdb::Name &grid_type = grid_->type();
       if (openvdb::GridBase::isRegistered(grid_type)) {
         /* Create a dummy grid of the expected type. */
-        loaded_grid = openvdb::GridBase::createGrid(grid_type);
+        loaded_grid.grid = openvdb::GridBase::createGrid(grid_type);
       }
     }
   }
-  if (!loaded_grid) {
+  if (!loaded_grid.grid) {
     /* Create a dummy grid. We can't really know the expected data type here. */
-    loaded_grid = openvdb::FloatGrid::create();
+    loaded_grid.grid = openvdb::FloatGrid::create();
   }
-  BLI_assert(loaded_grid);
-  BLI_assert(loaded_grid.use_count() == 1);
-  BLI_assert(loaded_grid->isTreeUnique());
+  BLI_assert(loaded_grid.grid);
+  BLI_assert(loaded_grid.grid.unique());
+
+  if (!loaded_grid.tree_sharing_info) {
+    BLI_assert(loaded_grid.grid->isTreeUnique());
+    loaded_grid.tree_sharing_info = MEM_new<OpenvdbTreeSharingInfo>(
+        __func__, loaded_grid.grid->baseTreePtr());
+  }
 
   if (grid_) {
     /* Keep the existing grid pointer and just insert the newly loaded data. */
     BLI_assert(!tree_loaded_);
     BLI_assert(meta_data_loaded_);
-    grid_->setTree(loaded_grid->baseTreePtr());
+    grid_->setTree(loaded_grid.grid->baseTreePtr());
     if (!transform_loaded_) {
-      grid_->setTransform(loaded_grid->transformPtr());
+      grid_->setTransform(loaded_grid.grid->transformPtr());
     }
   }
   else {
-    grid_ = std::move(loaded_grid);
+    grid_ = std::move(loaded_grid.grid);
   }
 
-  BLI_assert(tree_sharing_info_ == nullptr);
-  tree_sharing_info_ = MEM_new<OpenvdbTreeSharingInfo>(__func__, grid_->baseTreePtr());
+  BLI_assert(!tree_sharing_info_);
+  BLI_assert(loaded_grid.tree_sharing_info);
+  tree_sharing_info_ = loaded_grid.tree_sharing_info;
 
   tree_loaded_ = true;
   transform_loaded_ = true;

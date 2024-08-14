@@ -26,6 +26,11 @@
 
 namespace blender::bke::volume_grid {
 
+struct LazyLoadedGrid {
+  std::shared_ptr<openvdb::GridBase> grid;
+  const ImplicitSharingInfo *tree_sharing_info = nullptr;
+};
+
 /**
  * Main volume grid data structure. It wraps an OpenVDB grid and adds some features on top of it.
  *
@@ -98,7 +103,7 @@ class VolumeGridData : public ImplicitSharingMixin {
   /**
    * A function that can load the full grid or also just the tree lazily.
    */
-  std::function<std::shared_ptr<openvdb::GridBase>()> lazy_load_grid_;
+  std::function<LazyLoadedGrid()> lazy_load_grid_;
   /**
    * An error produced while trying to lazily load the grid.
    */
@@ -138,7 +143,7 @@ class VolumeGridData : public ImplicitSharingMixin {
    *   might come from e.g. #readAllGridMetadata. This allows working with the transform and
    *   meta-data without actually loading the tree.
    */
-  explicit VolumeGridData(std::function<std::shared_ptr<openvdb::GridBase>()> lazy_load_grid,
+  explicit VolumeGridData(std::function<LazyLoadedGrid()> lazy_load_grid,
                           std::shared_ptr<openvdb::GridBase> meta_data_and_transform_grid = {});
 
   ~VolumeGridData();
