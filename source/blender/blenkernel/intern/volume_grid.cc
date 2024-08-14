@@ -39,7 +39,7 @@ class OpenvdbTreeSharingInfo : public ImplicitSharingInfo {
 
 VolumeGridData::VolumeGridData()
 {
-  tree_access_token_ = std::make_shared<AccessToken>();
+  tree_access_token_ = std::make_shared<AccessToken>(*this);
 }
 
 struct CreateGridOp {
@@ -67,7 +67,7 @@ VolumeGridData::VolumeGridData(std::shared_ptr<openvdb::GridBase> grid)
   BLI_assert(grid_->isTreeUnique());
 
   tree_sharing_info_ = MEM_new<OpenvdbTreeSharingInfo>(__func__, grid_->baseTreePtr());
-  tree_access_token_ = std::make_shared<AccessToken>();
+  tree_access_token_ = std::make_shared<AccessToken>(*this);
 }
 
 VolumeGridData::VolumeGridData(std::function<std::shared_ptr<openvdb::GridBase>()> lazy_load_grid,
@@ -78,7 +78,7 @@ VolumeGridData::VolumeGridData(std::function<std::shared_ptr<openvdb::GridBase>(
     transform_loaded_ = true;
     meta_data_loaded_ = true;
   }
-  tree_access_token_ = std::make_shared<AccessToken>();
+  tree_access_token_ = std::make_shared<AccessToken>(*this);
 }
 
 VolumeGridData::~VolumeGridData()
@@ -369,6 +369,15 @@ VolumeGridType get_type(const openvdb::GridBase &grid)
     return VOLUME_GRID_POINTS;
   }
   return VOLUME_GRID_UNKNOWN;
+}
+
+VolumeTreeAccessToken::~VolumeTreeAccessToken()
+{
+  const VolumeGridData *grid = token_ ? &token_->grid : nullptr;
+  token_.reset();
+  if (grid) {
+    grid->unload_tree_if_possible();
+  }
 }
 
 #endif /* WITH_OPENVDB */

@@ -55,9 +55,13 @@ namespace blender::bke::volume_grid {
 class VolumeGridData : public ImplicitSharingMixin {
  private:
   /**
-   * Empty struct that exists so that it can be used as token in #VolumeTreeAccessToken.
+   * Exists so that it can be used as token in #VolumeTreeAccessToken.
    */
-  struct AccessToken {};
+  struct AccessToken {
+    const VolumeGridData &grid;
+
+    AccessToken(const VolumeGridData &grid) : grid(grid) {}
+  };
 
   /**
    * A mutex that needs to be locked whenever working with the data members below.
@@ -235,6 +239,13 @@ class VolumeTreeAccessToken {
   friend VolumeGridData;
 
  public:
+  VolumeTreeAccessToken() = default;
+  VolumeTreeAccessToken(const VolumeTreeAccessToken &) = default;
+  VolumeTreeAccessToken(VolumeTreeAccessToken &&) = default;
+  VolumeTreeAccessToken &operator=(const VolumeTreeAccessToken &) = default;
+  VolumeTreeAccessToken &operator=(VolumeTreeAccessToken &&) = default;
+  ~VolumeTreeAccessToken();
+
   /** True if the access token can be used with the given grid. */
   bool valid_for(const VolumeGridData &grid) const;
 
