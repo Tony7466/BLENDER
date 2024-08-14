@@ -227,8 +227,8 @@ class Images {
       mat = ob->object_to_world();
       mat.x_axis() *= image_aspect.x * 0.5f * ob->empty_drawsize;
       mat.y_axis() *= image_aspect.y * 0.5f * ob->empty_drawsize;
-      mat[3].xyz() += mat[0].xyz() * (ob->ima_ofs[0] * 2.0f + 1.0f);
-      mat[3].xyz() += mat[1].xyz() * (ob->ima_ofs[1] * 2.0f + 1.0f);
+      mat[3] += float4(mat.x_axis() * (ob->ima_ofs[0] * 2.0f + 1.0f) +
+                       mat.y_axis() * (ob->ima_ofs[1] * 2.0f + 1.0f));
     }
 
     if (show_frame) {
