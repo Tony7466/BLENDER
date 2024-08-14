@@ -1,0 +1,60 @@
+# SPDX-FileCopyrightText: 2023 Blender Authors
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+set(INC
+  .
+  importer
+  ../common
+  ../../blenkernel
+  ../../bmesh
+  ../../editors/include
+  ../../makesrna
+  ../../windowmanager
+)
+
+set(INC_SYS
+  ../../../../extern/fast_float
+)
+
+set(SRC
+  IO_csv.cc
+  importer/csv_import.cc
+
+  IO_csv.hh
+  importer/csv_import.hh
+)
+
+set(LIB
+  bf_blenkernel
+  PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
+  PRIVATE bf::dna
+  PRIVATE bf::intern::guardedalloc
+  bf_io_common
+  PRIVATE bf::extern::fmtlib
+)
+
+blender_add_lib(bf_io_csv "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+
+if(WITH_GTESTS)
+  set(TEST_SRC
+
+  )
+
+  set(TEST_INC
+    ${INC}
+
+    ../../blenloader
+    ../../../../tests/gtests
+  )
+
+  set(TEST_LIB
+    ${LIB}
+
+    bf_blenloader_test_util
+    bf_io_csv
+  )
+
+  blender_add_test_suite_lib(io_csv "${TEST_SRC}" "${TEST_INC}" "${INC_SYS}" "${TEST_LIB}")
+endif()

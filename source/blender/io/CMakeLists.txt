@@ -33,3 +33,6 @@ endif()
 if(WITH_USD)
   add_subdirectory(usd)
 endif()
+
+# TODO: WITH_IO_CSV if check
+add_subdirectory(csv)
