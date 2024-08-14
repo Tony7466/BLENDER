@@ -1449,8 +1449,8 @@ void restore_position_from_undo_step(Object &object)
         Vector<float3> translations;
       };
 
-      const bool need_translations = !ss.deform_imats.is_empty() ||
-                                     BKE_keyblock_from_object(&object);
+      const KeyBlock *active_key = BKE_keyblock_from_object(&object);
+      const bool need_translations = !ss.deform_imats.is_empty() || active_key;
 
       threading::EnumerableThreadSpecific<LocalData> all_tls;
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
@@ -1467,7 +1467,6 @@ void restore_position_from_undo_step(Object &object)
 
             array_utils::scatter(undo_positions, verts, positions_eval);
 
-            const KeyBlock *active_key = BKE_keyblock_from_object(&object);
             if (positions_eval.data() != positions_orig.data()) {
               /* When the evaluated positions and original mesh positions don't point to the same
                * array, they must both be updated. */
