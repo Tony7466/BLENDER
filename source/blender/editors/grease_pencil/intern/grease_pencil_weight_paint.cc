@@ -423,7 +423,7 @@ static int vertex_group_normalize(bContext *C, wmOperator *op)
         },
         [](const float a, const float b) { return math::max(a, b); });
 
-    if (max_weight_in_frame == 0.0f) {
+    if (max_weight_in_frame == 0.0f || max_weight_in_frame == 1.0f) {
       continue;
     }
 
@@ -504,6 +504,7 @@ static int vertex_group_normalize_all(bContext *C, wmOperator *op)
       object_locked_defgroups.add(dg->name);
     }
   }
+  const bool lock_active_group = RNA_boolean_get(op->ptr, "lock_active");
 
   /* Get all editable drawings. */
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
@@ -517,7 +518,7 @@ static int vertex_group_normalize_all(bContext *C, wmOperator *op)
 
       /* Get the active vertex group in the drawing when it needs to be locked. */
       int active_vertex_group = -1;
-      if (object_defgroup && RNA_boolean_get(op->ptr, "lock_active")) {
+      if (object_defgroup && lock_active_group) {
         active_vertex_group = BLI_findstringindex(
             &curves.vertex_group_names, object_defgroup->name, offsetof(bDeformGroup, name));
       }
