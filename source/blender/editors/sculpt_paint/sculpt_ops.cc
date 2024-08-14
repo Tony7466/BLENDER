@@ -72,11 +72,10 @@
 #include <cstdlib>
 #include <cstring>
 
-/* Reset the copy of the mesh that is being sculpted on (currently just for the layer brush). */
+namespace blender::ed::sculpt_paint {
 
 static int sculpt_set_persistent_base_exec(bContext *C, wmOperator * /*op*/)
 {
-  using namespace blender;
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   Object &ob = *CTX_data_active_object(C);
   SculptSession *ss = ob.sculpt;
@@ -87,46 +86,50 @@ static int sculpt_set_persistent_base_exec(bContext *C, wmOperator * /*op*/)
     return OPERATOR_CANCELLED;
   }
 
-  /* Do not allow in DynTopo just yet. */
-  if (!ss || (ss && ss->bm)) {
-    return OPERATOR_FINISHED;
+  if (!ss) {
+    return OPERATOR_CANCELLED;
   }
-  SCULPT_vertex_random_access_ensure(*ss);
+
+  /* Only mesh geometry supports attributes properly. */
+  if (ss->pbvh->type() != bke::pbvh::Type::Mesh) {
+    return OPERATOR_CANCELLED;
+  }
+
   BKE_sculpt_update_object_for_edit(depsgraph, &ob, false);
 
-  SculptAttributeParams params = {0};
-  params.permanent = true;
+  Mesh &mesh = *static_cast<Mesh *>(ob.data);
+  bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
+  attributes.remove(".sculpt_persistent_co");
+  attributes.remove(".sculpt_persistent_no");
+  attributes.remove(".sculpt_persistent_disp");
 
-  ss->attrs.persistent_co = BKE_sculpt_attribute_ensure(
-      &ob, bke::AttrDomain::Point, CD_PROP_FLOAT3, SCULPT_ATTRIBUTE_NAME(persistent_co), &params);
-  ss->attrs.persistent_no = BKE_sculpt_attribute_ensure(
-      &ob, bke::AttrDomain::Point, CD_PROP_FLOAT3, SCULPT_ATTRIBUTE_NAME(persistent_no), &params);
-  ss->attrs.persistent_disp = BKE_sculpt_attribute_ensure(
-      &ob, bke::AttrDomain::Point, CD_PROP_FLOAT, SCULPT_ATTRIBUTE_NAME(persistent_disp), &params);
-
-  const int totvert = SCULPT_vertex_count_get(*ss);
-
-  for (int i = 0; i < totvert; i++) {
-    PBVHVertRef vertex = BKE_pbvh_index_to_vertex(*ss->pbvh, i);
-
-    copy_v3_v3((float *)SCULPT_vertex_attr_get(vertex, ss->attrs.persistent_co),
-               SCULPT_vertex_co_get(*ss, vertex));
-    *(float3 *)SCULPT_vertex_attr_get(vertex, ss->attrs.persistent_no) = SCULPT_vertex_normal_get(
-        *ss, vertex);
-    (*(float *)SCULPT_vertex_attr_get(vertex, ss->attrs.persistent_disp)) = 0.0f;
+  const bke::AttributeReader positions = attributes.lookup<float3>("position");
+  if (positions.sharing_info && positions.varray.is_span()) {
+    attributes.add<float3>(".sculpt_persistent_co",
+                           bke::AttrDomain::Point,
+                           bke::AttributeInitShared(positions.varray.get_internal_span().data(),
+                                                    *positions.sharing_info));
   }
+  else {
+    attributes.add<float3>(".sculpt_persistent_co",
+                           bke::AttrDomain::Point,
+                           bke::AttributeInitVArray(positions.varray));
+  }
+
+  const Span<float3> vert_normals = BKE_pbvh_get_vert_normals(*ss->pbvh);
+  attributes.add<float3>(".sculpt_persistent_no",
+                         bke::AttrDomain::Point,
+                         bke::AttributeInitVArray(VArray<float3>::ForSpan(vert_normals)));
 
   return OPERATOR_FINISHED;
 }
 
 static void SCULPT_OT_set_persistent_base(wmOperatorType *ot)
 {
-  /* Identifiers. */
   ot->name = "Set Persistent Base";
   ot->idname = "SCULPT_OT_set_persistent_base";
   ot->description = "Reset the copy of the mesh that is being sculpted on";
 
-  /* API callbacks. */
   ot->exec = sculpt_set_persistent_base_exec;
   ot->poll = SCULPT_mode_poll;
 
@@ -151,12 +154,10 @@ static int sculpt_optimize_exec(bContext *C, wmOperator * /*op*/)
  * to recalculate it than toggling modes. */
 static void SCULPT_OT_optimize(wmOperatorType *ot)
 {
-  /* Identifiers. */
   ot->name = "Rebuild BVH";
   ot->idname = "SCULPT_OT_optimize";
   ot->description = "Recalculate the sculpt BVH to improve performance";
 
-  /* API callbacks. */
   ot->exec = sculpt_optimize_exec;
   ot->poll = SCULPT_mode_poll;
 
@@ -169,19 +170,18 @@ static bool sculpt_no_multires_poll(bContext *C)
 {
   Object *ob = CTX_data_active_object(C);
   if (SCULPT_mode_poll(C) && ob->sculpt && ob->sculpt->pbvh) {
-    return ob->sculpt->pbvh->type() != blender::bke::pbvh::Type::Grids;
+    return ob->sculpt->pbvh->type() != bke::pbvh::Type::Grids;
   }
   return false;
 }
 
 static int sculpt_symmetrize_exec(bContext *C, wmOperator *op)
 {
-  using namespace blender::ed::sculpt_paint;
   Main *bmain = CTX_data_main(C);
   Object &ob = *CTX_data_active_object(C);
   const Sculpt &sd = *CTX_data_tool_settings(C)->sculpt;
   SculptSession &ss = *ob.sculpt;
-  blender::bke::pbvh::Tree *pbvh = ss.pbvh.get();
+  bke::pbvh::Tree *pbvh = ss.pbvh.get();
   const float dist = RNA_float_get(op->ptr, "merge_tolerance");
 
   if (!pbvh) {
@@ -195,7 +195,7 @@ static int sculpt_symmetrize_exec(bContext *C, wmOperator *op)
   }
 
   switch (pbvh->type()) {
-    case blender::bke::pbvh::Type::BMesh: {
+    case bke::pbvh::Type::BMesh: {
       /* Dyntopo Symmetrize. */
 
       /* To simplify undo for symmetrize, all BMesh elements are logged
@@ -228,7 +228,7 @@ static int sculpt_symmetrize_exec(bContext *C, wmOperator *op)
 
       break;
     }
-    case blender::bke::pbvh::Type::Mesh: {
+    case bke::pbvh::Type::Mesh: {
       /* Mesh Symmetrize. */
       undo::geometry_begin(ob, op);
       Mesh *mesh = static_cast<Mesh *>(ob.data);
@@ -240,13 +240,12 @@ static int sculpt_symmetrize_exec(bContext *C, wmOperator *op)
 
       break;
     }
-    case blender::bke::pbvh::Type::Grids:
+    case bke::pbvh::Type::Grids:
       return OPERATOR_CANCELLED;
   }
 
   islands::invalidate(ss);
 
-  /* Redraw. */
   SCULPT_pbvh_clear(ob);
   WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, &ob);
 
@@ -255,12 +254,10 @@ static int sculpt_symmetrize_exec(bContext *C, wmOperator *op)
 
 static void SCULPT_OT_symmetrize(wmOperatorType *ot)
 {
-  /* Identifiers. */
   ot->name = "Symmetrize";
   ot->idname = "SCULPT_OT_symmetrize";
   ot->description = "Symmetrize the topology modifications";
 
-  /* API callbacks. */
   ot->exec = sculpt_symmetrize_exec;
   ot->poll = sculpt_no_multires_poll;
 
@@ -278,8 +275,6 @@ static void SCULPT_OT_symmetrize(wmOperatorType *ot)
 }
 
 /**** Toggle operator for turning sculpt mode on or off ****/
-
-namespace blender::ed::sculpt_paint {
 
 static void sculpt_init_session(Main &bmain, Depsgraph &depsgraph, Scene &scene, Object &ob)
 {
@@ -345,16 +340,13 @@ void ensure_valid_pivot(const Object &ob, Scene &scene)
   }
 }
 
-}  // namespace blender::ed::sculpt_paint
-
-void ED_object_sculptmode_enter_ex(Main &bmain,
-                                   Depsgraph &depsgraph,
-                                   Scene &scene,
-                                   Object &ob,
-                                   const bool force_dyntopo,
-                                   ReportList *reports)
+void object_sculpt_mode_enter(Main &bmain,
+                              Depsgraph &depsgraph,
+                              Scene &scene,
+                              Object &ob,
+                              const bool force_dyntopo,
+                              ReportList *reports)
 {
-  using namespace blender::ed::sculpt_paint;
   const int mode_flag = OB_MODE_SCULPT;
   Mesh *mesh = BKE_mesh_from_object(&ob);
 
@@ -441,19 +433,18 @@ void ED_object_sculptmode_enter_ex(Main &bmain,
   DEG_id_tag_update(&ob.id, ID_RECALC_SYNC_TO_EVAL);
 }
 
-void ED_object_sculptmode_enter(bContext *C, Depsgraph &depsgraph, ReportList *reports)
+void object_sculpt_mode_enter(bContext *C, Depsgraph &depsgraph, ReportList *reports)
 {
   Main &bmain = *CTX_data_main(C);
   Scene &scene = *CTX_data_scene(C);
   ViewLayer &view_layer = *CTX_data_view_layer(C);
   BKE_view_layer_synced_ensure(&scene, &view_layer);
   Object &ob = *BKE_view_layer_active_object_get(&view_layer);
-  ED_object_sculptmode_enter_ex(bmain, depsgraph, scene, ob, false, reports);
+  object_sculpt_mode_enter(bmain, depsgraph, scene, ob, false, reports);
 }
 
-void ED_object_sculptmode_exit_ex(Main &bmain, Depsgraph &depsgraph, Scene &scene, Object &ob)
+void object_sculpt_mode_exit(Main &bmain, Depsgraph &depsgraph, Scene &scene, Object &ob)
 {
-  using namespace blender::ed::sculpt_paint;
   const int mode_flag = OB_MODE_SCULPT;
   Mesh *mesh = BKE_mesh_from_object(&ob);
 
@@ -497,17 +488,15 @@ void ED_object_sculptmode_exit_ex(Main &bmain, Depsgraph &depsgraph, Scene &scen
   DEG_id_tag_update(&ob.id, ID_RECALC_SYNC_TO_EVAL);
 }
 
-void ED_object_sculptmode_exit(bContext *C, Depsgraph &depsgraph)
+void object_sculpt_mode_exit(bContext *C, Depsgraph &depsgraph)
 {
   Main &bmain = *CTX_data_main(C);
   Scene &scene = *CTX_data_scene(C);
   ViewLayer &view_layer = *CTX_data_view_layer(C);
   BKE_view_layer_synced_ensure(&scene, &view_layer);
   Object &ob = *BKE_view_layer_active_object_get(&view_layer);
-  ED_object_sculptmode_exit_ex(bmain, depsgraph, scene, ob);
+  object_sculpt_mode_exit(bmain, depsgraph, scene, ob);
 }
-
-namespace blender::ed::sculpt_paint {
 
 static int sculpt_mode_toggle_exec(bContext *C, wmOperator *op)
 {
@@ -529,13 +518,13 @@ static int sculpt_mode_toggle_exec(bContext *C, wmOperator *op)
   }
 
   if (is_mode_set) {
-    ED_object_sculptmode_exit_ex(bmain, *depsgraph, scene, ob);
+    object_sculpt_mode_exit(bmain, *depsgraph, scene, ob);
   }
   else {
     if (depsgraph) {
       depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
     }
-    ED_object_sculptmode_enter_ex(bmain, *depsgraph, scene, ob, false, op->reports);
+    object_sculpt_mode_enter(bmain, *depsgraph, scene, ob, false, op->reports);
     BKE_paint_brushes_validate(&bmain, &ts.sculpt->paint);
 
     if (ob.mode & mode_flag) {
@@ -564,12 +553,10 @@ static int sculpt_mode_toggle_exec(bContext *C, wmOperator *op)
 
 static void SCULPT_OT_sculptmode_toggle(wmOperatorType *ot)
 {
-  /* Identifiers. */
   ot->name = "Sculpt Mode";
   ot->idname = "SCULPT_OT_sculptmode_toggle";
   ot->description = "Toggle sculpt mode in 3D view";
 
-  /* API callbacks. */
   ot->exec = sculpt_mode_toggle_exec;
   ot->poll = ED_operator_object_active_editable_mesh;
 
@@ -608,7 +595,7 @@ void geometry_preview_lines_update(bContext *C, SculptSession &ss, float radius)
   const bke::AttributeAccessor attributes = mesh.attributes();
   const VArraySpan<bool> hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
 
-  const int active_vert = ss.active_vert_ref().i;
+  const int active_vert = std::get<int>(ss.active_vert());
   const float3 brush_co = positions[active_vert];
   const float radius_sq = radius * radius;
 
@@ -647,7 +634,6 @@ static int sculpt_sample_color_invoke(bContext *C, wmOperator *op, const wmEvent
   Object &ob = *CTX_data_active_object(C);
   Brush &brush = *BKE_paint_brush(&sd.paint);
   SculptSession &ss = *ob.sculpt;
-  PBVHVertRef active_vertex = ss.active_vert_ref();
 
   if (!SCULPT_handles_colors_report(ss, op->reports)) {
     return OPERATOR_CANCELLED;
@@ -673,8 +659,12 @@ static int sculpt_sample_color_invoke(bContext *C, wmOperator *op, const wmEvent
     active_vertex_color = float4(1.0f);
   }
   const GVArraySpan colors = *color_attribute;
-  active_vertex_color = color::color_vert_get(
-      faces, corner_verts, vert_to_face_map, colors, color_attribute.domain, active_vertex.i);
+  active_vertex_color = color::color_vert_get(faces,
+                                              corner_verts,
+                                              vert_to_face_map,
+                                              colors,
+                                              color_attribute.domain,
+                                              std::get<int>(ss.active_vert()));
 
   float color_srgb[3];
   IMB_colormanagement_scene_linear_to_srgb_v3(color_srgb, active_vertex_color);
@@ -687,12 +677,10 @@ static int sculpt_sample_color_invoke(bContext *C, wmOperator *op, const wmEvent
 
 static void SCULPT_OT_sample_color(wmOperatorType *ot)
 {
-  /* identifiers */
   ot->name = "Sample Color";
   ot->idname = "SCULPT_OT_sample_color";
   ot->description = "Sample the vertex color of the active vertex";
 
-  /* api callbacks */
   ot->invoke = sculpt_sample_color_invoke;
   ot->poll = SCULPT_mode_poll;
 
@@ -797,7 +785,7 @@ static void sculpt_mask_by_color_contiguous(Object &object,
   flood_fill::FillData flood = flood_fill::init_fill(ss);
   flood_fill::add_initial(flood, vertex);
 
-  flood_fill::execute(ss, flood, [&](PBVHVertRef from_v, PBVHVertRef to_v, bool is_duplicate) {
+  flood_fill::execute(object, flood, [&](PBVHVertRef from_v, PBVHVertRef to_v, bool is_duplicate) {
     return sculpt_mask_by_color_contiguous_floodfill(
         ss, from_v, to_v, is_duplicate, colors, active_color, threshold, invert, new_mask);
   });
@@ -888,7 +876,7 @@ static int sculpt_mask_by_color_invoke(bContext *C, wmOperator *op, const wmEven
     sculpt_mask_by_color_full_mesh(ob, active_vertex, threshold, invert, preserve_mask);
   }
 
-  bke::pbvh::update_mask(*ss.pbvh);
+  bke::pbvh::update_mask(ob, *ss.pbvh);
   undo::push_end(ob);
 
   flush_update_done(C, ob, UpdateType::Mask);
@@ -899,12 +887,10 @@ static int sculpt_mask_by_color_invoke(bContext *C, wmOperator *op, const wmEven
 
 static void SCULPT_OT_mask_by_color(wmOperatorType *ot)
 {
-  /* identifiers */
   ot->name = "Mask by Color";
   ot->idname = "SCULPT_OT_mask_by_color";
   ot->description = "Creates a mask based on the active color attribute";
 
-  /* api callbacks */
   ot->invoke = sculpt_mask_by_color_invoke;
   ot->poll = SCULPT_mode_poll;
 
@@ -1199,7 +1185,7 @@ static int sculpt_bake_cavity_exec(bContext *C, wmOperator *op)
           BKE_pbvh_node_mark_update_mask(nodes[i]);
         }
       });
-      bke::pbvh::update_mask(*ss.pbvh);
+      bke::pbvh::update_mask(ob, *ss.pbvh);
       break;
     }
     case bke::pbvh::Type::BMesh: {
@@ -1210,7 +1196,7 @@ static int sculpt_bake_cavity_exec(bContext *C, wmOperator *op)
           BKE_pbvh_node_mark_update_mask(nodes[i]);
         }
       });
-      bke::pbvh::update_mask(*ss.pbvh);
+      bke::pbvh::update_mask(ob, *ss.pbvh);
       break;
     }
   }
@@ -1267,7 +1253,6 @@ static void cavity_bake_ui(bContext *C, wmOperator *op)
 
 static void SCULPT_OT_mask_from_cavity(wmOperatorType *ot)
 {
-  /* identifiers */
   ot->name = "Mask From Cavity";
   ot->idname = "SCULPT_OT_mask_from_cavity";
   ot->description = "Creates a mask based on the curvature of the surface";
@@ -1282,7 +1267,6 @@ static void SCULPT_OT_mask_from_cavity(wmOperatorType *ot)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
-  /* api callbacks */
   ot->exec = sculpt_bake_cavity_exec;
   ot->poll = SCULPT_mode_poll;
 
