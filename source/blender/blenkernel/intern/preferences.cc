@@ -252,6 +252,15 @@ void BKE_preferences_extension_repo_module_set(UserDef *userdef,
                                                bUserExtensionRepo *repo,
                                                const char *module)
 {
+  const int folder_id = repo->source == USER_EXTENSION_REPO_SOURCE_USER ?
+    BLENDER_USER_EXTENSIONS :
+    BLENDER_SYSTEM_EXTENSIONS;
+
+  char old_module_dir[FILE_MAX];
+  char new_module_dir[FILE_MAX];
+  BLI_path_join(old_module_dir, PATH_MAX, BKE_appdir_folder_id(folder_id, nullptr)->c_str(), repo->module);
+  BLI_path_join(new_module_dir, PATH_MAX, BKE_appdir_folder_id(folder_id, nullptr)->c_str(), module);
+
   if (strncpy_py_module(repo->module, module, sizeof(repo->module)) == 0) {
     STRNCPY(repo->module, "repository");
   }
@@ -262,6 +271,10 @@ void BKE_preferences_extension_repo_module_set(UserDef *userdef,
                  '_',
                  offsetof(bUserExtensionRepo, module),
                  sizeof(repo->module));
+
+  if (BLI_exists(old_module_dir) && !BLI_exists(new_module_dir)) {
+    BLI_rename(old_module_dir, new_module_dir);
+  }
 }
 
 bool BKE_preferences_extension_repo_module_is_valid(const bUserExtensionRepo *repo)
