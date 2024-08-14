@@ -28,6 +28,9 @@ const ReadValue *read(std::unique_ptr<ReadKey> key,
   std::lock_guard lock{cache.mutex};
   const ReadKey &key_ref = *key;
   if (!cache.map.contains(key_ref)) {
+    if (cache.map.size() > 200) {
+      cache.map.clear();
+    }
     std::unique_ptr<ReadValue> value = read_fn(key_ref);
     cache.map.add(key_ref, std::move(value));
     cache.keys.append(std::move(key));
