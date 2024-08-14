@@ -2530,6 +2530,11 @@ static void widget_state(uiWidgetType *wt, const uiWidgetStateInfo *state, eUIEm
     }
   }
 
+  if (state->but_drawflag & UI_BUT_TEXT_WHITE) {
+    const uchar white[4] = {255, 255, 255, 255};
+    copy_v4_v4_uchar(wt->wcol.text, white);
+  }
+
   if (state->but_flag & UI_BUT_DRAG_MULTI) {
     /* the button isn't SELECT but we're editing this so draw with sel color */
     copy_v4_v4_uchar(wt->wcol.inner, wt->wcol.inner_sel);
@@ -4338,6 +4343,11 @@ static void widget_state_label(uiWidgetType *wt,
   if (state->but_flag & UI_BUT_REDALERT) {
     const uchar red[4] = {255, 0, 0};
     color_blend_v3_v3(wt->wcol.text, red, 0.4f);
+  }
+
+  if (state->but_drawflag & UI_BUT_TEXT_WHITE) {
+    const uchar white[4] = {255, 255, 255, 255};
+    copy_v4_v4_uchar(wt->wcol.text, white);
   }
 }
 
