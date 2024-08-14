@@ -358,7 +358,7 @@ static void GREASE_PENCIL_OT_weight_toggle_direction(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-static int grease_pencil_weight_invert_exec(bContext *C, wmOperator * op)
+static int grease_pencil_weight_invert_exec(bContext *C, wmOperator *op)
 {
   const Scene &scene = *CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
@@ -406,10 +406,10 @@ static int grease_pencil_weight_invert_exec(bContext *C, wmOperator * op)
   return OPERATOR_FINISHED;
 }
 
-static bool grease_pencil_vertex_group_weight_poll(bContext* C)
+static bool grease_pencil_vertex_group_weight_poll(bContext *C)
 {
   const Object *ob = CTX_data_active_object(C);
-  if (BLI_listbase_is_empty(BKE_object_defgroup_list(ob))) {
+  if (ob == nullptr || BLI_listbase_is_empty(BKE_object_defgroup_list(ob))) {
     return false;
   }
 
