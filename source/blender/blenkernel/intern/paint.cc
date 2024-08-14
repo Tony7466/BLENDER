@@ -1807,6 +1807,11 @@ blender::float3 SculptSession::active_vert_position(const Object & /*object*/) c
   return float3(std::numeric_limits<float>::infinity());
 }
 
+void SculptSession::clear_active_vert()
+{
+  active_vert_ = {PBVH_REF_NONE};
+}
+
 void SculptSession::set_active_vert(const PBVHVertRef vert)
 {
   active_vert_ = vert;
@@ -1951,6 +1956,8 @@ static void sculpt_update_object(Depsgraph *depsgraph,
 
   /* NOTE: Weight pPaint require mesh info for loop lookup, but it never uses multires code path,
    * so no extra checks is needed here. */
+  const bool was_active = ss.multires.active;
+  const int previous_level = ss.multires.level;
   if (mmd) {
     ss.multires.active = true;
     ss.multires.modifier = mmd;
@@ -1973,6 +1980,10 @@ static void sculpt_update_object(Depsgraph *depsgraph,
     ss.multires.active = false;
     ss.multires.modifier = nullptr;
     ss.multires.level = 0;
+  }
+
+  if (was_active != ss.multires.active || previous_level != ss.multires.level) {
+    ss.clear_active_vert();
   }
 
   /* Sculpt Face Sets. */

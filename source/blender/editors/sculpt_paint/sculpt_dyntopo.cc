@@ -108,6 +108,8 @@ void enable_ex(Main &bmain, Depsgraph &depsgraph, Object &ob)
   /* Enable logging for undo/redo. */
   ss.bm_log = BM_log_create(ss.bm);
 
+  ss.clear_active_vert();
+
   /* Update dependency graph, so modifiers that depend on dyntopo being enabled
    * are re-evaluated and the bke::pbvh::Tree is re-created. */
   DEG_id_tag_update(&ob.id, ID_RECALC_GEOMETRY);
@@ -159,6 +161,8 @@ static void disable(
     BM_log_free(ss.bm_log);
     ss.bm_log = nullptr;
   }
+
+  ss.clear_active_vert();
 
   BKE_particlesystem_reset_all(&ob);
   BKE_ptcache_object_reset(&scene, &ob, PTCACHE_RESET_OUTDATED);
