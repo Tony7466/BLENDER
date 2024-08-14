@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -27,44 +27,42 @@ class MemoryCounter : NonCopyable, NonMovable {
 
  public:
   MemoryCounter() = default;
+  ~MemoryCounter();
 
-  ~MemoryCounter()
-  {
-    for (const ImplicitSharingInfo *sharing_info : counted_shared_data_) {
-      sharing_info->remove_weak_user_and_delete_if_last();
-    }
-  }
-
+  /**
+   * Add bytes that are uniquely owned, i.e. not shared.
+   */
   void add(const int64_t bytes)
   {
     owned_bytes_ += bytes;
   }
 
+  /**
+   * Add (potentially) shared data which should not be counted twice.
+   *
+   * \param sharing_info: The sharing info that owns the data. If null, the data is assumed to be
+   *   uniquely owned.
+   * \param count_fn: Function to count the amount of memory used by the shared data. This is only
+   *   called if the shared memory was not counted before. It's a callback, because sometimes
+   *   counting the amount of used memory can be a bit more involved.
+   */
   void add_shared(const ImplicitSharingInfo *sharing_info,
-                  const FunctionRef<void(MemoryCounter &memory)> count_fn)
-  {
-    if (!sharing_info) {
-      /* Data is not actually shared. */
-      count_fn(*this);
-      return;
-    }
-    if (!counted_shared_data_.add(sharing_info)) {
-      /* Data was counted before, avoid counting it again. */
-      return;
-    }
-    sharing_info->add_weak_user();
-    /* Count into the `this` for now. In the future we could pass in a separate #MemoryCounter here
-     * if we needed to know the amount of memory used by each shared data. */
-    count_fn(*this);
-  }
+                  const FunctionRef<void(MemoryCounter &shared_memory)> count_fn);
 
-  void add_shared(const ImplicitSharingInfo *sharing_info, const int64_t bytes)
-  {
-    this->add_shared(sharing_info,
-                     [&](MemoryCounter &shared_memory) { shared_memory.add(bytes); });
-  }
+  /**
+   * Same as above, but takes in the number of bytes directly instead of callback. This is easier
+   * to use in cases where computing the number of bytes is very cheap.
+   */
+  void add_shared(const ImplicitSharingInfo *sharing_info, const int64_t bytes);
 
-  int64_t total_bytes() const
+  /**
+   * Get the total number of counted bytes.
+   *
+   * \note This is only a rough estimate of the actual used memory. Often, not every little bit of
+   * memory is counted, so this is generally a lower bound. The actual memory usage should not be
+   * significantly higher though.
+   */
+  int64_t counted_bytes() const
   {
     return owned_bytes_;
   }
