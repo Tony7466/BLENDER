@@ -1475,8 +1475,10 @@ static int sequencer_select_handle_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
   }
 
-  SpaceSeq *sseq = CTX_wm_space_seq(C);
+  /* This check must be done before any further strip selection changes. */
+  const bool select_connected = do_connected_strip_selection(selection);
 
+  SpaceSeq *sseq = CTX_wm_space_seq(C);
   if (element_already_selected(selection)) {
     sseq->flag &= ~SPACE_SEQ_DESELECT_STRIP_HANDLE;
     return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
@@ -1485,10 +1487,6 @@ static int sequencer_select_handle_exec(bContext *C, wmOperator *op)
     sseq->flag |= SPACE_SEQ_DESELECT_STRIP_HANDLE;
     ED_sequencer_deselect_all(scene);
   }
-
-  /* This check must be done before any further strip selection changes. */
-  const bool ignore_connections = RNA_boolean_get(op->ptr, "ignore_connections");
-  const bool select_connected = !ignore_connections & do_connected_strip_selection(selection);
 
   /* Do actual selection. */
   sequencer_select_strip_impl(ed, selection.seq1, selection.handle, false, false, false);
