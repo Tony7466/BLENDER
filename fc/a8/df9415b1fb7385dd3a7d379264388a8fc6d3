@@ -3,3 +3,4 @@ Referenced by issue #112761, Regression: Box select no longer works with tweak t
 Referenced by issue #113763, Spline attribute not rendered in Cycles (regression from 3.6)
 Referenced by issue #114498, Cycles F82 tint handling
 Referenced by issue #115414, Cycles shading artifacts with metallic materials on round surfaces
+Referenced by issue #112119, The Chinese input method does not work properly when searching
