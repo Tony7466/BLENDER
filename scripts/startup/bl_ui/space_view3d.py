@@ -5995,6 +5995,10 @@ class VIEW3D_MT_weight_grease_pencil(Menu):
         layout.operator("grease_pencil.vertex_group_normalize_all", text="Normalize All")
         layout.operator("grease_pencil.vertex_group_normalize", text="Normalize")
 
+        layout.separator()
+
+        layout.operator("grease_pencil.weight_invert", text="Invert Weight")
+
 
 class VIEW3D_MT_gpencil_animation(Menu):
     bl_label = "Animation"

@@ -384,21 +384,12 @@ struct SculptAttribute {
 /* Convenience pointers for standard sculpt attributes. */
 
 struct SculptAttributePointers {
-  /* Persistent base. */
-  SculptAttribute *persistent_co = nullptr;
-  SculptAttribute *persistent_no = nullptr;
-  SculptAttribute *persistent_disp = nullptr;
-
   /* Precomputed auto-mask factor indexed by vertex, owned by the auto-masking system and
    * initialized in #auto_mask::cache_init when needed. */
   SculptAttribute *automasking_factor = nullptr;
   SculptAttribute *automasking_occlusion = nullptr; /* CD_PROP_INT8. */
   SculptAttribute *automasking_stroke_id = nullptr;
   SculptAttribute *automasking_cavity = nullptr;
-
-  /* BMesh */
-  SculptAttribute *dyntopo_node_id_vertex = nullptr;
-  SculptAttribute *dyntopo_node_id_face = nullptr;
 };
 
 struct SculptTopologyIslandCache {
