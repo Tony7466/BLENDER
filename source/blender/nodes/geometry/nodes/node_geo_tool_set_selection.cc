@@ -15,21 +15,47 @@
 
 namespace blender::nodes::node_geo_tool_set_selection_cc {
 
+enum class SelectionType {
+  Boolean = 0,
+  Soft = 1,
+};
+
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Geometry");
-  b.add_input<decl::Bool>("Selection").default_value(true).field_on_all();
+  if (const bNode *node = b.node_or_null()) {
+    switch (SelectionType(node->custom2)) {
+      case SelectionType::Boolean:
+        b.add_input<decl::Bool>("Selection").default_value(true).field_on_all();
+        break;
+      case SelectionType::Soft:
+        b.add_input<decl::Float>("Selection").default_value(1.0f).field_on_all();
+        break;
+    }
+  }
   b.add_output<decl::Geometry>("Geometry");
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
   uiItemR(layout, ptr, "domain", UI_ITEM_NONE, "", ICON_NONE);
+  uiItemR(layout, ptr, "selection_type", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   node->custom1 = int16_t(AttrDomain::Point);
+  node->custom2 = int16_t(SelectionType::Boolean);
+}
+
+static GField invert_float_selection(GField selection)
+{
+  if (selection.cpp_type().is<bool>()) {
+    return selection;
+  }
+  static auto invert = mf::build::SI1_SO<float, float>(
+      "Invert Selection", [](const float value) { return 1.0f - value; });
+  return GField(FieldOperation::Create(invert, {std::move(selection)}));
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -44,21 +70,32 @@ static void node_geo_exec(GeoNodeExecParams params)
     params.set_output("Geometry", std::move(geometry));
     return;
   }
-  const Field<bool> selection = params.extract_input<Field<bool>>("Selection");
+  const GField selection = params.extract_input<GField>("Selection");
   const AttrDomain domain = AttrDomain(params.node().custom1);
+  const SelectionType type = SelectionType(params.node().custom2);
   geometry.modify_geometry_sets([&](GeometrySet &geometry) {
     if (Mesh *mesh = geometry.get_mesh_for_write()) {
       switch (domain) {
         case AttrDomain::Point:
-          /* Remove attributes in case they are on the wrong domain, which can happen after
-           * conversion to and from other geometry types. */
-          mesh->attributes_for_write().remove(".select_edge");
-          mesh->attributes_for_write().remove(".select_poly");
-          bke::try_capture_field_on_geometry(geometry.get_component_for_write<MeshComponent>(),
-                                             ".select_vert",
-                                             AttrDomain::Point,
-                                             selection);
-          bke::mesh_select_vert_flush(*mesh);
+          switch (type) {
+            case SelectionType::Boolean:
+              /* Remove attributes in case they are on the wrong domain, which can happen after
+               * conversion to and from other geometry types. */
+              mesh->attributes_for_write().remove(".select_edge");
+              mesh->attributes_for_write().remove(".select_poly");
+              bke::try_capture_field_on_geometry(geometry.get_component_for_write<MeshComponent>(),
+                                                 ".select_vert",
+                                                 AttrDomain::Point,
+                                                 selection);
+              bke::mesh_select_vert_flush(*mesh);
+              break;
+            case SelectionType::Soft:
+              bke::try_capture_field_on_geometry(geometry.get_component_for_write<MeshComponent>(),
+                                                 ".sculpt_mask",
+                                                 AttrDomain::Point,
+                                                 invert_float_selection(selection));
+              break;
+          }
           break;
         case AttrDomain::Edge:
           bke::try_capture_field_on_geometry(geometry.get_component_for_write<MeshComponent>(),
@@ -109,6 +146,28 @@ static void node_rna(StructRNA *srna)
                     rna_enum_attribute_domain_point_edge_face_curve_items,
                     NOD_inline_enum_accessors(custom1),
                     int(AttrDomain::Point));
+  static EnumPropertyItem mode_items[] = {
+      {int(SelectionType::Boolean),
+       "BOOLEAN",
+       0,
+       "Boolean",
+       "Store true or false selection values. For mesh geometry, only used in edit mode and paint "
+       "modes."},
+      {int(SelectionType::Soft),
+       "SOFT",
+       0,
+       "Soft",
+       "Store floating point selection values, intended to be clamped between zero and one. "
+       "For mesh geometry, stored inverted as the sculpt mode mask."},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+  RNA_def_node_enum(srna,
+                    "selection_type",
+                    "Selection Type",
+                    "",
+                    mode_items,
+                    NOD_inline_enum_accessors(custom2),
+                    int(SelectionType::Boolean));
 }
 
 static void node_register()
