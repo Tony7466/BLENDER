@@ -217,7 +217,8 @@ void VolumeGridData::count_memory(MemoryCounter &memory) const
     return;
   }
   const openvdb::TreeBase &tree = grid_->baseTree();
-  memory.add_shared(tree_sharing_info_, &tree, [&]() { return tree.memUsage(); });
+  memory.add_shared(tree_sharing_info_,
+                    [&](MemoryCounter &shared_memory) { shared_memory.add(tree.memUsage()); });
 }
 
 std::string VolumeGridData::error_message() const

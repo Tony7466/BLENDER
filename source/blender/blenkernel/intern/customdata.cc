@@ -5644,9 +5644,10 @@ void CustomData_count_memory(const CustomData &data,
                              blender::MemoryCounter &memory)
 {
   for (const CustomDataLayer &layer : Span{data.layers, data.totlayer}) {
-    memory.add_shared(layer.sharing_info, layer.data, [&]() {
+    memory.add_shared(layer.sharing_info, [&](blender::MemoryCounter &shared_memory) {
       /* Not quite correct for all types, but this is only a rough approximation anyway. */
-      return CustomData_get_elem_size(&layer) * totelem;
+      const int64_t elem_size = CustomData_get_elem_size(&layer);
+      shared_memory.add(totelem * elem_size);
     });
   }
 }

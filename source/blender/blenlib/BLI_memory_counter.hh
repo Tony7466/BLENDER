@@ -10,8 +10,8 @@
 
 #include "BLI_function_ref.hh"
 #include "BLI_implicit_sharing.hh"
-#include "BLI_map.hh"
 #include "BLI_memory_counter_fwd.hh"
+#include "BLI_set.hh"
 
 namespace blender {
 
@@ -22,46 +22,51 @@ namespace blender {
  */
 class MemoryCounter : NonCopyable, NonMovable {
  private:
-  int64_t uniquely_owned_bytes_ = 0;
-  Map<const ImplicitSharingInfo *, int64_t> shared_bytes_;
+  int64_t owned_bytes_ = 0;
+  Set<const ImplicitSharingInfo *> counted_shared_data_;
 
  public:
   MemoryCounter() = default;
 
   ~MemoryCounter()
   {
-    for (const ImplicitSharingInfo *sharing_info : shared_bytes_.keys()) {
+    for (const ImplicitSharingInfo *sharing_info : counted_shared_data_) {
       sharing_info->remove_weak_user_and_delete_if_last();
     }
   }
 
   void add(const int64_t bytes)
   {
-    uniquely_owned_bytes_ += bytes;
+    owned_bytes_ += bytes;
   }
 
   void add_shared(const ImplicitSharingInfo *sharing_info,
-                  const void *data,
-                  const FunctionRef<int64_t()> get_size_fn)
+                  const FunctionRef<void(MemoryCounter &memory)> count_fn)
   {
-    if (!data) {
+    if (!sharing_info) {
+      /* Data is not actually shared. */
+      count_fn(*this);
       return;
     }
-    if (!sharing_info) {
-      uniquely_owned_bytes_ = get_size_fn();
+    if (!counted_shared_data_.add(sharing_info)) {
+      /* Data was counted before, avoid counting it again. */
       return;
     }
     sharing_info->add_weak_user();
-    shared_bytes_.lookup_or_add_cb(sharing_info, get_size_fn);
+    /* Count into the `this` for now. In the future we could pass in a separate #MemoryCounter here
+     * if we needed to know the amount of memory used by each shared data. */
+    count_fn(*this);
+  }
+
+  void add_shared(const ImplicitSharingInfo *sharing_info, const int64_t bytes)
+  {
+    this->add_shared(sharing_info,
+                     [&](MemoryCounter &shared_memory) { shared_memory.add(bytes); });
   }
 
   int64_t total_bytes() const
   {
-    int64_t bytes = uniquely_owned_bytes_;
-    for (const int64_t shared_bytes : shared_bytes_.values()) {
-      bytes += shared_bytes;
-    }
-    return bytes;
+    return owned_bytes_;
   }
 };
 

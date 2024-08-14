@@ -690,9 +690,8 @@ MutableSpan<MDeformVert> Mesh::deform_verts_for_write()
 
 void Mesh::count_memory(blender::MemoryCounter &memory) const
 {
-  memory.add_shared(this->runtime->face_offsets_sharing_info, this->face_offset_indices, [&]() {
-    return this->faces_num * sizeof(*this->face_offset_indices);
-  });
+  memory.add_shared(this->runtime->face_offsets_sharing_info,
+                    this->face_offsets().size_in_bytes());
   CustomData_count_memory(this->vert_data, this->verts_num, memory);
   CustomData_count_memory(this->edge_data, this->edges_num, memory);
   CustomData_count_memory(this->face_data, this->faces_num, memory);

@@ -596,7 +596,9 @@ void GeometrySet::count_memory(MemoryCounter &memory) const
 {
   for (const GeometryComponentPtr &component : components_) {
     if (component) {
-      component->count_memory(memory);
+      memory.add_shared(component.get(), [&](MemoryCounter &shared_memory) {
+        component->count_memory(shared_memory);
+      });
     }
   }
 }
