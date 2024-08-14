@@ -1,1 +1,2 @@
 Referenced by commit 2af62ba0f67b5bff9fc45982caf58f299142103c, Refactor: Sculpt: Reduce usage of BVH tree geometry back pointers
+Referenced by commit d065d54972bf66d26a9f7fa6ae0b34d9c175bc07, Fix: Missing sculpt overlays for dynamic topology
