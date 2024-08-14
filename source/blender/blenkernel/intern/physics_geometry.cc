@@ -135,12 +135,40 @@ static void ensure_cache(std::mutex &mutex,
   flag.store(true, std::memory_order_release);
 }
 
-void tag_cache_dirty(std::atomic<bool> &flag)
+/* Same as ensure_cache but updates if any flag is dirty. */
+static void ensure_cache_any(std::mutex &mutex,
+                             Span<std::atomic<bool> *> flags,
+                             Span<const FunctionRef<void()>> compute_caches)
+{
+  bool all_valid = true;
+  for (const int i : flags.index_range()) {
+    if (!flags[i]->load(std::memory_order_acquire)) {
+      all_valid = false;
+      break;
+    }
+  }
+  if (all_valid) {
+    return;
+  }
+  std::scoped_lock lock{mutex};
+  /* Double checked lock. */
+  for (const int i : flags.index_range()) {
+    if (!flags[i]->load(std::memory_order_acquire)) {
+      /* Use task isolation because a mutex is locked and the cache computation might use
+       * multi-threading. */
+      threading::isolate_task(compute_caches[i]);
+
+      flags[i]->store(true, std::memory_order_release);
+    }
+  }
+}
+
+static void tag_cache_dirty(std::atomic<bool> &flag)
 {
   flag.store(false);
 }
 
-bool is_cache_dirty(const std::atomic<bool> &flag)
+static bool is_cache_dirty(const std::atomic<bool> &flag)
 {
   return !flag.load(std::memory_order_relaxed);
 }
@@ -563,7 +591,6 @@ void PhysicsWorldData::set_body_shapes(const IndexMask &selection,
     }
     const CollisionShapePtr &shape_ptr = shapes[handle];
     const btCollisionShape *bt_shape = shape_ptr ? &shape_ptr->impl().as_bullet_shape() : nullptr;
-    const bool is_moveable_shape = bt_shape && !bt_shape->isNonMoving();
 
     btRigidBody *body = this->rigid_bodies_[index];
     if (body->getCollisionShape() == bt_shape) {
@@ -577,6 +604,12 @@ void PhysicsWorldData::set_body_shapes(const IndexMask &selection,
       body->setCollisionShape(nullptr);
     }
     else {
+      /* Motion type and mass must be compatible with the shape. */
+      if (bt_shape->isNonMoving()) {
+        body->setMassProps(0.0f, btVector3(0.0f, 0.0f, 0.0f));
+        body->setCollisionFlags(body->getCollisionFlags() | btCollisionObject::CF_STATIC_OBJECT);
+      }
+
       body->setCollisionShape(const_cast<btCollisionShape *>(bt_shape));
       if (body->isInWorld()) {
         this->broadphase_->getOverlappingPairCache()->cleanProxyFromPairs(
@@ -585,6 +618,47 @@ void PhysicsWorldData::set_body_shapes(const IndexMask &selection,
       else {
         this->world_->addRigidBody(body);
       }
+    }
+  });
+}
+
+void PhysicsWorldData::set_body_static(const IndexMask &selection, const Span<bool> is_static)
+{
+  selection.foreach_index([&](const int index) {
+    btRigidBody *body = this->rigid_bodies_[index];
+
+    /* Body must also be static if the collision shape is non-moveable. */
+    const bool set_static = is_static[index] || (body->getCollisionShape() &&
+                                                 body->getCollisionShape()->isNonMoving());
+
+    if (set_static) {
+      /* Static body must have zero mass. */
+      body->setMassProps(0.0f, btVector3(0.0f, 0.0f, 0.0f));
+
+      body->setCollisionFlags(body->getCollisionFlags() | btCollisionObject::CF_STATIC_OBJECT);
+    }
+    else {
+      body->setCollisionFlags(body->getCollisionFlags() & ~btCollisionObject::CF_STATIC_OBJECT);
+    }
+  });
+}
+
+void PhysicsWorldData::set_body_mass(const IndexMask &selection, const Span<float> masses)
+{
+  selection.foreach_index([&](const int index) {
+    btRigidBody *body = this->rigid_bodies_[index];
+
+    /* Body must have zero mass if static or the collision shape is non-moveable. */
+    const bool set_zero_mass = (body->getCollisionFlags() & btCollisionObject::CF_STATIC_OBJECT) ||
+                               (body->getCollisionShape() &&
+                                body->getCollisionShape()->isNonMoving());
+
+    if (set_zero_mass) {
+      /* Static body must have zero mass. */
+      body->setMassProps(0.0f, btVector3(0.0f, 0.0f, 0.0f));
+    }
+    else {
+      body->setMassProps(masses[index], body->getLocalInertia());
     }
   });
 }
@@ -771,36 +845,19 @@ void PhysicsGeometryImpl::tag_body_topology_changed()
   this->tag_constraint_disable_collision_changed();
 }
 
-void PhysicsGeometryImpl::body_collision_shape_update()
+void PhysicsGeometryImpl::tag_body_collision_shape_changed()
 {
-  /* Non-moveable collision shapes enforce static object and zero mass. */
-  MutableAttributeAccessor attributes = this->attributes_for_write();
-  const VArray<int> body_shapes = *attributes.lookup_or_default(
-      physics_attribute_name(BodyAttribute::collision_shape), AttrDomain::Point, -1);
-  AttributeWriter<bool> is_static = attributes.lookup_or_add_for_write<bool>(
-      physics_attribute_name(BodyAttribute::is_static), AttrDomain::Point);
-  AttributeWriter<float> masses = attributes.lookup_or_add_for_write<float>(
-      physics_attribute_name(BodyAttribute::mass), AttrDomain::Point);
-  for (const int body_i : IndexRange(this->body_num_)) {
-    const int shape_index = body_shapes[body_i];
-    if (!this->shapes.index_range().contains(shape_index)) {
-      continue;
-    }
-    const CollisionShapePtr &shape_ptr = this->shapes[shape_index];
-    if (!shape_ptr) {
-      continue;
-    }
-    if (shape_ptr->supports_motion()) {
-      continue;
-    }
-
-    is_static.varray.set(body_i, true);
-    masses.varray.set(body_i, 0.0f);
-  }
-  is_static.finish();
-  masses.finish();
-
   tag_cache_dirty(this->body_collision_shapes_valid);
+}
+
+void PhysicsGeometryImpl::tag_body_is_static_changed()
+{
+  tag_cache_dirty(this->body_is_static_valid);
+}
+
+void PhysicsGeometryImpl::tag_body_mass_changed()
+{
+  tag_cache_dirty(this->body_mass_valid);
 }
 
 void PhysicsGeometryImpl::tag_constraint_disable_collision_changed()
@@ -831,6 +888,9 @@ void PhysicsGeometryImpl::ensure_read_cache() const
 
   const static StringRef collision_shape_id = PhysicsGeometry::body_attribute_name(
       BodyAttribute::collision_shape);
+  const static StringRef is_static_id = PhysicsGeometry::body_attribute_name(
+      BodyAttribute::is_static);
+  const static StringRef mass_id = PhysicsGeometry::body_attribute_name(BodyAttribute::mass);
   const static StringRef disable_collision_id = PhysicsGeometry::constraint_attribute_name(
       ConstraintAttribute::disable_collision);
 
@@ -848,7 +908,9 @@ void PhysicsGeometryImpl::ensure_read_cache() const
     }
 
     /* Some attributes require other updates before valid world data can be read. */
-    this->ensure_body_collision_shapes_no_lock();
+    dst.ensure_body_collision_shapes_no_lock();
+    dst.ensure_body_is_static_no_lock();
+    dst.ensure_body_masses_no_lock();
 
     /* Write to cache attributes. */
     MutableAttributeAccessor dst_attributes = dst.custom_data_attributes_for_write();
@@ -862,7 +924,8 @@ void PhysicsGeometryImpl::ensure_read_cache() const
     /* Read from world data and ignore the cache.
      * Important! This also prevents deadlock caused by re-entering this function. */
     const AttributeAccessor src_attributes = this->world_data_attributes();
-    Set<std::string> skip_attributes = {collision_shape_id, disable_collision_id};
+    Set<std::string> skip_attributes = {
+        collision_shape_id, is_static_id, mass_id, disable_collision_id};
     /* Only use builtin attributes, dynamic attributes are already in custom data. */
     src_attributes.for_all(
         [&](const AttributeIDRef &id, const AttributeMetaData & /*meta_data*/) -> bool {
@@ -887,19 +950,25 @@ void PhysicsGeometryImpl::ensure_read_cache() const
   });
 }
 
-void PhysicsGeometryImpl::ensure_body_collision_shapes() const
+void PhysicsGeometryImpl::ensure_write_cache()
 {
-  ensure_cache(this->data_mutex, this->body_collision_shapes_valid, [&]() {
-    this->ensure_body_collision_shapes_no_lock();
-  });
+  ensure_cache_any(
+      this->data_mutex,
+      {&this->body_collision_shapes_valid, &this->body_is_static_valid, &this->body_mass_valid},
+      {[&]() { this->ensure_body_collision_shapes_no_lock(); },
+       [&]() { this->ensure_body_is_static_no_lock(); },
+       [&]() { this->ensure_body_masses_no_lock(); }});
 }
 
-void PhysicsGeometryImpl::ensure_body_collision_shapes_no_lock() const
+void PhysicsGeometryImpl::ensure_body_collision_shapes_no_lock()
 {
   const static StringRef collision_shape_id = PhysicsGeometry::body_attribute_name(
       PhysicsGeometry::BodyAttribute::collision_shape);
 
   if (!is_cache_dirty(this->body_collision_shapes_valid)) {
+    return;
+  }
+  if (this->world_data == nullptr) {
     return;
   }
 
@@ -908,10 +977,30 @@ void PhysicsGeometryImpl::ensure_body_collision_shapes_no_lock() const
       collision_shape_id, AttrDomain::Point, -1);
 
   const IndexMask selection = this->world_data->bodies().index_range();
-  if (this->world_data != nullptr) {
-    this->world_data->set_body_shapes(selection, this->shapes, body_shapes);
-  }
+  this->world_data->set_body_shapes(selection, this->shapes, body_shapes);
 }
+
+void PhysicsGeometryImpl::ensure_body_is_static_no_lock()
+{
+  const static StringRef is_static_id = PhysicsGeometry::body_attribute_name(
+      PhysicsGeometry::BodyAttribute::is_static);
+
+  if (!is_cache_dirty(this->body_is_static_valid)) {
+    return;
+  }
+  if (this->world_data == nullptr) {
+    return;
+  }
+
+  AttributeAccessor custom_data_attributes = this->custom_data_attributes();
+  const VArraySpan<bool> is_static = *custom_data_attributes.lookup_or_default<bool>(
+      is_static_id, AttrDomain::Point, -1);
+
+  const IndexMask selection = this->world_data->bodies().index_range();
+  this->world_data->set_body_static(selection, is_static);
+}
+
+void PhysicsGeometryImpl::ensure_body_masses_no_lock() {}
 
 void PhysicsGeometryImpl::ensure_custom_data_attribute(
     PhysicsGeometryImpl::BodyAttribute attribute) const
@@ -1428,7 +1517,7 @@ bool PhysicsGeometryImpl::try_move_data(const PhysicsGeometryImpl &src,
   return true;
 }
 
-bool PhysicsGeometryImpl::validate_world_data() const
+bool PhysicsGeometryImpl::validate_world_data()
 {
   bool ok = true;
 
@@ -1436,7 +1525,7 @@ bool PhysicsGeometryImpl::validate_world_data() const
     this->world_data->ensure_body_indices();
     this->world_data->ensure_constraint_indices();
     this->world_data->ensure_bodies_in_world();
-    this->ensure_body_collision_shapes();
+    this->ensure_write_cache();
 
     AttributeAccessor cached_attributes = custom_data_attributes();
     const Span<btRigidBody *> rigid_bodies = this->world_data->bodies();
@@ -1445,22 +1534,46 @@ bool PhysicsGeometryImpl::validate_world_data() const
         this->world_data->world().getCollisionObjectArray();
 
     for (const int i : rigid_bodies.index_range()) {
+      const btRigidBody *body = rigid_bodies[i];
+
       /* Bodies should always be allocated. */
-      if (rigid_bodies[i] == nullptr) {
+      if (body == nullptr) {
         BLI_assert_unreachable();
         ok = false;
       }
-      if (get_body_index(*rigid_bodies[i]) != i) {
+      if (get_body_index(*body) != i) {
         BLI_assert_unreachable();
         ok = false;
       }
       /* All bodies must be in the world, except if they don't have a collision shape. */
-      if (rigid_bodies[i]->getCollisionShape() != nullptr &&
-          (!rigid_bodies[i]->isInWorld() ||
-           bt_collision_objects.findLinearSearch(rigid_bodies[i]) >= bt_collision_objects.size()))
+      if (body->getCollisionShape() != nullptr &&
+          (!body->isInWorld() || bt_collision_objects.findLinearSearch(const_cast<btRigidBody *>(
+                                     body)) >= bt_collision_objects.size()))
       {
         BLI_assert_unreachable();
         ok = false;
+      }
+
+      /* Bodies with a non-moving collision shape must be static and zero-mass. */
+      if (body->getCollisionShape() != nullptr && body->getCollisionShape()->isNonMoving()) {
+        if (!body->isStaticObject() || body->getMass() != 0.0f) {
+          BLI_assert_unreachable();
+          ok = false;
+        }
+      }
+      /* Static bodies must have zero mass. */
+      if (body->isStaticObject()) {
+        if (body->getMass() != 0.0f) {
+          BLI_assert_unreachable();
+          ok = false;
+        }
+      }
+      /* Zero mass bodies must be static. */
+      if (body->getMass() == 0.0f) {
+        if (!body->isStaticObject()) {
+          BLI_assert_unreachable();
+          ok = false;
+        }
       }
     }
     for (const int i : constraints.index_range()) {
@@ -2036,9 +2149,9 @@ StringRef PhysicsGeometry::constraint_attribute_name(ConstraintAttribute attribu
   return bke::physics_attribute_name(attribute);
 }
 
-bool PhysicsGeometry::validate_world_data() const
+bool PhysicsGeometry::validate_world_data()
 {
-  return impl_->validate_world_data();
+  return impl_for_write().validate_world_data();
 }
 
 AttributeAccessor PhysicsGeometry::attributes() const

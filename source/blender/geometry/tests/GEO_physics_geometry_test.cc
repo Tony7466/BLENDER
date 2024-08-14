@@ -43,7 +43,7 @@ class PhysicsGeometryTest : public testing::Test {
     CLG_exit();
   }
 
-  void test_data(const bke::PhysicsGeometry &physics,
+  void test_data(bke::PhysicsGeometry &physics,
                  const bool has_world,
                  const int bodies_num,
                  const int constraints_num,
@@ -474,7 +474,7 @@ TEST_F(PhysicsGeometryTest, realize_instances)
   GeometrySet result = geometry::realize_instances(instances_geo, options);
 
   EXPECT_TRUE(result.has_physics());
-  const bke::PhysicsGeometry &geo_result = *result.get_physics();
+  bke::PhysicsGeometry &geo_result = *result.get_physics_for_write();
   test_data(geo_result, false, 7, 3, 4);
   /* Custom attribute stitched together from different input geometries. */
   test_attribute(
@@ -557,7 +557,7 @@ TEST_F(PhysicsGeometryTest, join_geometry)
   GeometrySet result = geometry::join_geometries(geometry_sets, {});
 
   EXPECT_TRUE(result.has_physics());
-  const bke::PhysicsGeometry &geo_result = *result.get_physics();
+  bke::PhysicsGeometry &geo_result = *result.get_physics_for_write();
   test_data(geo_result, true, 7, 3, 4);
   /* Custom attribute stitched together from different input geometries. */
   test_attribute(
@@ -642,8 +642,8 @@ TEST_F(PhysicsGeometryTest, update_read_cache)
     AttributeWriter<float3> positions = geo2->body_positions_for_write();
     positions.varray.set_all({float3(123), float3(456), float3(789)});
     positions.finish();
-    AttributeWriter<bool> is_static = geo2->attributes_for_write().lookup_for_write<bool>(
-        "is_static");
+    AttributeWriter<bool> is_static = geo2->attributes_for_write().lookup_or_add_for_write<bool>(
+        "is_static", AttrDomain::Point);
     is_static.varray.set_all({true, false, true});
     is_static.finish();
   }
@@ -690,7 +690,8 @@ TEST_F(PhysicsGeometryTest, update_read_cache)
 }
 
 /* Some attributes are connected internally. Changing mass, motion type (static/kinematic/dynamic)
- * or the shape is expected to conditionally change the other attributes.  */
+ * or the shape is expected to conditionally change the other attributes on the Bullet side.
+ * Attributes remain untouched, these read/write from custom data. */
 TEST_F(PhysicsGeometryTest, motion_type_attribute_dependencies)
 {
   AllShapesData all_shapes_data;
@@ -710,30 +711,23 @@ TEST_F(PhysicsGeometryTest, motion_type_attribute_dependencies)
   {
     AttributeWriter<int> body_shapes = geo.body_shapes_for_write();
     AttributeWriter<bool> is_static = geo.body_is_static_for_write();
-    AttributeWriter<bool> is_kinematic = geo.body_is_kinematic_for_write();
     AttributeWriter<float> masses = geo.body_masses_for_write();
     body_shapes.varray.set_all({0, 0, 0, 1, 1, 1, 2, 2, 2});
     is_static.varray.set_all({true, true, true, false, false, false, false, false, false});
-    is_kinematic.varray.set_all({false, false, false, true, true, true, false, false, false});
-    masses.varray.set_all({0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f});
+    masses.varray.set_all({0.0f, 0.0f, 0.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f});
     body_shapes.finish();
     is_static.finish();
-    is_kinematic.finish();
     masses.finish();
   }
   {
     const VArraySpan<int> body_shapes = geo.body_shapes();
     const VArraySpan<bool> is_static = geo.body_is_static();
-    const VArraySpan<bool> is_kinematic = geo.body_is_kinematic();
     const VArraySpan<float> masses = geo.body_masses();
     EXPECT_EQ_ARRAY(Span<int>{0, 0, 0, 1, 1, 1, 2, 2, 2}.data(), body_shapes.data(), 9);
     EXPECT_EQ_ARRAY(Span<bool>{true, true, true, false, false, false, false, false, false}.data(),
                     is_static.data(),
                     9);
-    EXPECT_EQ_ARRAY(Span<bool>{false, false, false, true, true, true, false, false, false}.data(),
-                    is_kinematic.data(),
-                    9);
-    EXPECT_EQ_ARRAY(Span<float>{0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f}.data(),
+    EXPECT_EQ_ARRAY(Span<float>{0.0f, 0.0f, 0.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f}.data(),
                     masses.data(),
                     9);
   }
@@ -749,16 +743,56 @@ TEST_F(PhysicsGeometryTest, motion_type_attribute_dependencies)
   {
     const VArraySpan<int> body_shapes = geo.body_shapes();
     const VArraySpan<bool> is_static = geo.body_is_static();
-    const VArraySpan<bool> is_kinematic = geo.body_is_kinematic();
     const VArraySpan<float> masses = geo.body_masses();
     EXPECT_EQ_ARRAY(Span<int>{1, 0, 0, 0, 1, 1, 0, 2, 2}.data(), body_shapes.data(), 9);
-    EXPECT_EQ_ARRAY(Span<bool>{true, true, true, true, false, false, true, false, false}.data(),
+    EXPECT_EQ_ARRAY(Span<bool>{true, true, true, false, false, false, false, false, false}.data(),
                     is_static.data(),
                     9);
-    EXPECT_EQ_ARRAY(Span<bool>{false, false, false, false, true, true, false, false, false}.data(),
-                    is_kinematic.data(),
+    EXPECT_EQ_ARRAY(Span<float>{0.0f, 0.0f, 0.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f}.data(),
+                    masses.data(),
                     9);
-    EXPECT_EQ_ARRAY(Span<float>{0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f}.data(),
+  }
+
+  /* Change 'static' flag:
+   * Only change to dynamic if body has a moveable shape.
+   * Making a body static enforces zero mass.
+   * Making a body dynamic enforces non-zero mass (1.0 by default).
+   */
+  {
+    AttributeWriter<bool> body_is_static = geo.body_is_static_for_write();
+    body_is_static.varray.set_all({true, false, true, true, true, false, true, true, false});
+    body_is_static.finish();
+  }
+  {
+    const VArraySpan<int> body_shapes = geo.body_shapes();
+    const VArraySpan<bool> is_static = geo.body_is_static();
+    const VArraySpan<float> masses = geo.body_masses();
+    EXPECT_EQ_ARRAY(Span<int>{1, 0, 0, 0, 1, 1, 0, 2, 2}.data(), body_shapes.data(), 9);
+    EXPECT_EQ_ARRAY(Span<bool>{true, false, true, true, true, false, true, true, false}.data(),
+                    is_static.data(),
+                    9);
+    EXPECT_EQ_ARRAY(Span<float>{0.0f, 0.0f, 0.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f}.data(),
+                    masses.data(),
+                    9);
+  }
+
+  /* Change mass:
+   * Remains zero if body is static or the shape is non-moving.
+   */
+  {
+    AttributeWriter<float> body_masses = geo.body_masses_for_write();
+    body_masses.varray.set_all({0.0f, 0.0f, 10.0f, 5.0f, 5.0f, 10.0f, 5.0f, 5.0f, 10.0f});
+    body_masses.finish();
+  }
+  {
+    const VArraySpan<int> body_shapes = geo.body_shapes();
+    const VArraySpan<bool> is_static = geo.body_is_static();
+    const VArraySpan<float> masses = geo.body_masses();
+    EXPECT_EQ_ARRAY(Span<int>{1, 0, 0, 0, 1, 1, 0, 2, 2}.data(), body_shapes.data(), 9);
+    EXPECT_EQ_ARRAY(Span<bool>{true, false, true, true, true, false, true, true, false}.data(),
+                    is_static.data(),
+                    9);
+    EXPECT_EQ_ARRAY(Span<float>{0.0f, 0.0f, 10.0f, 5.0f, 5.0f, 10.0f, 5.0f, 5.0f, 10.0f}.data(),
                     masses.data(),
                     9);
   }

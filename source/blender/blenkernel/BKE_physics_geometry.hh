@@ -256,7 +256,7 @@ class PhysicsGeometry {
 
   /* Validate internal world data.
    * Should only be used in tests. */
-  bool validate_world_data() const;
+  bool validate_world_data();
 
   friend class BuiltinPhysicsAttributeBase;
 };

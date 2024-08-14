@@ -92,28 +92,6 @@ static void id_set_fn(btRigidBody &body, int value)
 {
   body.setUserIndex(value);
 }
-static bool static_get_fn(const btRigidBody &body)
-{
-  return body.isStaticObject();
-}
-static void static_set_fn(btRigidBody &body, bool value)
-{
-  if (value) {
-    body.setMassProps(0.0f, to_bullet(float3(0.0f)));
-    body.updateInertiaTensor();
-    body.setCollisionFlags(body.getCollisionFlags() | btCollisionObject::CF_STATIC_OBJECT);
-  }
-  else {
-    const bool is_moveable_shape = !body.getCollisionShape() ||
-                                   !body.getCollisionShape()->isNonMoving();
-    /* Initialize default mass when making a static object dynamic again. */
-    if (body.isStaticObject() && is_moveable_shape) {
-      body.setMassProps(1.0f, to_bullet(float3(1.0f)));
-      body.updateInertiaTensor();
-    }
-    body.setCollisionFlags(body.getCollisionFlags() & ~btCollisionObject::CF_STATIC_OBJECT);
-  }
-}
 static bool kinematic_get_fn(const btRigidBody &body)
 {
   return body.isKinematicObject();
@@ -123,19 +101,6 @@ static void kinematic_set_fn(btRigidBody &body, bool value)
   int bt_collision_flags = body.getCollisionFlags();
   SET_FLAG_FROM_TEST(bt_collision_flags, value, btCollisionObject::CF_KINEMATIC_OBJECT);
   body.setCollisionFlags(bt_collision_flags);
-}
-static float mass_get_fn(const btRigidBody &body)
-{
-  return body.getMass();
-}
-static void mass_set_fn(btRigidBody &body, float value)
-{
-  const bool is_moveable_shape = !body.getCollisionShape() ||
-                                 !body.getCollisionShape()->isNonMoving();
-  if (is_moveable_shape) {
-    body.setMassProps(value, body.getLocalInertia());
-    body.updateInertiaTensor();
-  }
 }
 static float3 inertia_get_fn(const btRigidBody &body)
 {
@@ -680,22 +645,35 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
       body_custom_data_access,
       [](void *owner) {
         PhysicsGeometryImpl &impl = *static_cast<PhysicsGeometryImpl *>(owner);
-        impl.body_collision_shape_update();
+        physics_attribute_finish(impl, PhysicsGeometry::BodyAttribute::collision_shape);
       },
       {},
       &default_body_collision_shape);
-  static BuiltinRigidBodyAttributeProvider<bool, static_get_fn, static_set_fn> body_static(
-      BodyAttribute::is_static,
+  static BuiltinCustomDataLayerProvider body_static(
+      physics_attribute_name(BodyAttribute::is_static),
+      AttrDomain::Point,
+      CD_PROP_BOOL,
       BuiltinAttributeProvider::NonDeletable,
-      physics_access,
-      allow_cache);
+      body_custom_data_access,
+      [](void *owner) {
+        PhysicsGeometryImpl &impl = *static_cast<PhysicsGeometryImpl *>(owner);
+        physics_attribute_finish(impl, PhysicsGeometry::BodyAttribute::is_static);
+      });
   static BuiltinRigidBodyAttributeProvider<bool, kinematic_get_fn, kinematic_set_fn>
       body_kinematic(BodyAttribute::is_kinematic,
                      BuiltinAttributeProvider::NonDeletable,
                      physics_access,
                      allow_cache);
-  static BuiltinRigidBodyAttributeProvider<float, mass_get_fn, mass_set_fn> body_mass(
-      BodyAttribute::mass, BuiltinAttributeProvider::NonDeletable, physics_access, allow_cache);
+  static BuiltinCustomDataLayerProvider body_mass(
+      physics_attribute_name(BodyAttribute::mass),
+      AttrDomain::Point,
+      CD_PROP_FLOAT,
+      BuiltinAttributeProvider::NonDeletable,
+      body_custom_data_access,
+      [](void *owner) {
+        PhysicsGeometryImpl &impl = *static_cast<PhysicsGeometryImpl *>(owner);
+        physics_attribute_finish(impl, PhysicsGeometry::BodyAttribute::mass);
+      });
   static BuiltinRigidBodyAttributeProvider<float3, inertia_get_fn, inertia_set_fn> body_inertia(
       BodyAttribute::inertia, BuiltinAttributeProvider::NonDeletable, physics_access, allow_cache);
   static BuiltinRigidBodyAttributeProvider<float4x4, center_of_mass_get_fn, center_of_mass_set_fn>

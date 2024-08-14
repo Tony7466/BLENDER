@@ -45,9 +45,13 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
 
   /* Cache for readers storing copies of physics data in custom data. */
   mutable CacheFlag custom_data_read_cache_valid;
-  /* When dirty the body collision shape pointers need to be updated to match pointers from the
+  /* Valid when body collision shape pointers match pointers from the
    * shapes list, as stored in the body shapes index attribute. */
   mutable CacheFlag body_collision_shapes_valid;
+  /* Valid when is_static flags match the world data motion type for each body. */
+  mutable CacheFlag body_is_static_valid;
+  /* Valid when mass matches the world data motion type for each body. */
+  mutable CacheFlag body_mass_valid;
   /* Cache for disable_collisions flags of constraints. These are stored indirectly by Bullet: a
    * constraint disables collisions by adding "constraint refs" to bodies, when adding a constraint
    * to the world. To determine if a constraint disables collisions after the fact requires looping
@@ -78,13 +82,17 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
   void tag_read_cache_changed();
   void tag_body_topology_changed();
   void tag_constraint_disable_collision_changed();
-  void body_collision_shape_update();
+  void tag_body_collision_shape_changed();
+  void tag_body_is_static_changed();
+  void tag_body_mass_changed();
 
   bool has_builtin_attribute_custom_data_layer(BodyAttribute attribute) const;
   bool has_builtin_attribute_custom_data_layer(ConstraintAttribute attribute) const;
 
+  /* Make sure all world data has been copied to the custom data read cache. */
   void ensure_read_cache() const;
-  void ensure_body_collision_shapes() const;
+  /* Make sure attributes with write caches have been transferred to world data. */
+  void ensure_write_cache();
   void ensure_custom_data_attribute(BodyAttribute attribute) const;
   void ensure_custom_data_attribute(ConstraintAttribute attribute) const;
 
@@ -135,13 +143,15 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
 
   /* Validate internal relations, for debugging and testing purposes.
    * Should only be used in tests or debug mode. */
-  bool validate_world_data() const;
+  bool validate_world_data();
 
   bke::AttributeAccessor attributes() const;
   bke::MutableAttributeAccessor attributes_for_write();
 
  private:
-  void ensure_body_collision_shapes_no_lock() const;
+  void ensure_body_collision_shapes_no_lock();
+  void ensure_body_is_static_no_lock();
+  void ensure_body_masses_no_lock();
   void ensure_custom_data_attribute_no_lock(BodyAttribute attribute);
   void ensure_custom_data_attribute_no_lock(ConstraintAttribute attribute);
 
@@ -218,6 +228,8 @@ class PhysicsWorldData : NonCopyable, NonMovable {
   void set_body_shapes(const IndexMask &selection,
                        const Span<CollisionShapePtr> shapes,
                        const Span<int> shape_handles);
+  void set_body_static(const IndexMask &selection, const Span<bool> is_static);
+  void set_body_mass(const IndexMask &selection, const Span<float> masses);
 
   void apply_force(const IndexMask &selection,
                    const VArray<float3> &forces,
