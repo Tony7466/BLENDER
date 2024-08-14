@@ -1047,6 +1047,8 @@ void blo_do_versions_userdef(UserDef *userdef)
     }
   }
 
+  userdef->border_width = 3;
+
   /**
    * Always bump subversion in BKE_blender_version.h when adding versioning
    * code here, and wrap it inside a USER_VERSION_ATLEAST check.

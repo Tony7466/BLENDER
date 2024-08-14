@@ -1058,12 +1058,10 @@ static void wm_draw_window_onscreen(bContext *C, wmWindow *win, int view)
   /* Draw into the window frame-buffer, in full window coordinates. */
   wmWindowViewport(win);
 
-/* We draw on all pixels of the windows so we don't need to clear them before.
- * Actually this is only a problem when resizing the window.
- * If it becomes a problem we should clear only when window size changes. */
-#if 0
-  GPU_clear_color(0, 0, 0, 0);
-#endif
+  // get floats of gutter color
+  float col[3];
+  UI_GetThemeColor3fv(TH_EDITOR_OUTLINE, col);
+  GPU_clear_color(col[0], col[1], col[2], 255);
 
   /* Blit non-overlapping area regions. */
   ED_screen_areas_iter (win, screen, area) {

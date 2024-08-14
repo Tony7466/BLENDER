@@ -145,10 +145,10 @@ static void drawscredge_area_draw(
  */
 static void drawscredge_area(ScrArea *area, int sizex, int sizey, float edge_thickness)
 {
-  short x1 = area->v1->vec.x;
-  short y1 = area->v1->vec.y;
-  short x2 = area->v3->vec.x;
-  short y2 = area->v3->vec.y;
+  short x1 = area->totrct.xmin - 1;
+  short y1 = area->totrct.ymin - 1;
+  short x2 = area->totrct.xmax + 2;
+  short y2 = area->totrct.ymax + 2;
 
   drawscredge_area_draw(sizex, sizey, x1, y1, x2, y2, edge_thickness);
 }

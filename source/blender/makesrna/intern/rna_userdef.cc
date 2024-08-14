@@ -5026,6 +5026,11 @@ static void rna_def_userdef_view(BlenderRNA *brna)
   RNA_def_property_ui_range(prop, 0.5f, 3.0f, 1, 2);
   RNA_def_property_update(prop, 0, "rna_userdef_gpu_update");
 
+  prop = RNA_def_property(srna, "border_width", PROP_INT, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Border Width", "Gutter space between editors");
+  RNA_def_property_range(prop, 3.0f, 20.f);
+  RNA_def_property_update(prop, 0, "rna_userdef_gpu_update");
+
   prop = RNA_def_property(srna, "ui_line_width", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, line_width);
   RNA_def_property_ui_text(
