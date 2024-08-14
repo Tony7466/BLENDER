@@ -35,6 +35,20 @@ static void sh_node_tex_gabor_declare(NodeDeclarationBuilder &b)
       .description(
           "The rate at which the Gabor noise changes across space. This is different from the "
           "Scale input in that it only scales perpendicular to the Gabor noise direction");
+  b.add_input<decl::Float>("Radius")
+      .min(0.0f)
+      .max(1.0f)
+      .default_value(1.0f)
+      .subtype(PROP_FACTOR)
+      .description("Controls the radius of the kernel");
+  b.add_input<decl::Float>("Phase Shift")
+      .subtype(PROP_ANGLE)
+      .description("The phase shift of the Gabor noise");
+  b.add_input<decl::Float>("Impulses")
+      .min(0.0f)
+      .max(16.0f)
+      .default_value(8.0f)
+      .description("The number of impulses per cell");
   b.add_input<decl::Float>("Anisotropy")
       .default_value(1.0f)
       .min(0.0f)
@@ -63,6 +77,7 @@ static void sh_node_tex_gabor_declare(NodeDeclarationBuilder &b)
 static void node_shader_buts_tex_gabor(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
   uiItemR(layout, ptr, "gabor_type", UI_ITEM_R_SPLIT_EMPTY_NAME, "", ICON_NONE);
+  uiItemR(layout, ptr, "normalize", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, ICON_NONE);
 }
 
 static void node_shader_init_tex_gabor(bNodeTree * /*ntree*/, bNode *node)
@@ -72,6 +87,7 @@ static void node_shader_init_tex_gabor(bNodeTree * /*ntree*/, bNode *node)
   BKE_texture_colormapping_default(&storage->base.color_mapping);
 
   storage->type = SHD_GABOR_TYPE_2D;
+  storage->normalize = 1;
 
   node->storage = storage;
 }
@@ -97,15 +113,19 @@ static int node_shader_gpu_tex_gabor(GPUMaterial *material,
   node_shader_gpu_tex_mapping(material, node, in, out);
 
   const float type = float(node_storage(*node).type);
-  return GPU_stack_link(material, node, "node_tex_gabor", in, out, GPU_constant(&type));
+  const float normalize = float(node_storage(*node).normalize);
+  return GPU_stack_link(
+      material, node, "node_tex_gabor", in, out, GPU_constant(&type), GPU_constant(&normalize));
 }
 
 class GaborNoiseFunction : public mf::MultiFunction {
  private:
   NodeGaborType type_;
+  bool normalize_;
 
  public:
-  GaborNoiseFunction(const NodeGaborType type) : type_(type)
+  GaborNoiseFunction(const NodeGaborType type, const bool normalize)
+      : type_(type), normalize_(normalize)
   {
     static std::array<mf::Signature, 2> signatures{
         create_signature(SHD_GABOR_TYPE_2D),
@@ -122,7 +142,10 @@ class GaborNoiseFunction : public mf::MultiFunction {
     builder.single_input<float3>("Vector");
     builder.single_input<float>("Scale");
     builder.single_input<float>("Frequency");
-    builder.single_input<float>("Anistropy");
+    builder.single_input<float>("Radius");
+    builder.single_input<float>("Phase Shift");
+    builder.single_input<float>("Impulses");
+    builder.single_input<float>("Anisotropy");
 
     if (type == SHD_GABOR_TYPE_2D) {
       builder.single_input<float>("Orientation");
@@ -143,22 +166,29 @@ class GaborNoiseFunction : public mf::MultiFunction {
     const VArray<float3> &vector = params.readonly_single_input<float3>(0, "Vector");
     const VArray<float> &scale = params.readonly_single_input<float>(1, "Scale");
     const VArray<float> &frequency = params.readonly_single_input<float>(2, "Frequency");
-    const VArray<float> &anistropy = params.readonly_single_input<float>(3, "Anistropy");
-    /* A parameter index of 4 is reserved for Orientation input below. */
-    MutableSpan<float> r_value = params.uninitialized_single_output_if_required<float>(5, "Value");
-    MutableSpan<float> r_phase = params.uninitialized_single_output_if_required<float>(6, "Phase");
+    const VArray<float> &radius = params.readonly_single_input<float>(3, "Radius");
+    const VArray<float> &phase = params.readonly_single_input<float>(4, "Phase Shift");
+    const VArray<float> &impulses = params.readonly_single_input<float>(5, "Impulses");
+    const VArray<float> &anisotropy = params.readonly_single_input<float>(6, "Anisotropy");
+    /* A parameter index of 7 is reserved for Orientation input below. */
+    MutableSpan<float> r_value = params.uninitialized_single_output_if_required<float>(8, "Value");
+    MutableSpan<float> r_phase = params.uninitialized_single_output_if_required<float>(9, "Phase");
     MutableSpan<float> r_intensity = params.uninitialized_single_output_if_required<float>(
-        7, "Intensity");
+        10, "Intensity");
 
     switch (type_) {
       case SHD_GABOR_TYPE_2D: {
-        const VArray<float> &orientation = params.readonly_single_input<float>(4, "Orientation");
+        const VArray<float> &orientation = params.readonly_single_input<float>(7, "Orientation");
         mask.foreach_index([&](const int64_t i) {
           noise::gabor(vector[i].xy(),
                        scale[i],
                        frequency[i],
-                       anistropy[i],
+                       radius[i],
+                       phase[i],
+                       impulses[i],
+                       anisotropy[i],
                        orientation[i],
+                       normalize_,
                        r_value.is_empty() ? nullptr : &r_value[i],
                        r_phase.is_empty() ? nullptr : &r_phase[i],
                        r_intensity.is_empty() ? nullptr : &r_intensity[i]);
@@ -166,13 +196,17 @@ class GaborNoiseFunction : public mf::MultiFunction {
         break;
       }
       case SHD_GABOR_TYPE_3D: {
-        const VArray<float3> &orientation = params.readonly_single_input<float3>(4, "Orientation");
+        const VArray<float3> &orientation = params.readonly_single_input<float3>(7, "Orientation");
         mask.foreach_index([&](const int64_t i) {
           noise::gabor(vector[i],
                        scale[i],
                        frequency[i],
-                       anistropy[i],
+                       radius[i],
+                       phase[i],
+                       impulses[i],
+                       anisotropy[i],
                        orientation[i],
+                       normalize_,
                        r_value.is_empty() ? nullptr : &r_value[i],
                        r_phase.is_empty() ? nullptr : &r_phase[i],
                        r_intensity.is_empty() ? nullptr : &r_intensity[i]);
@@ -194,7 +228,8 @@ class GaborNoiseFunction : public mf::MultiFunction {
 static void build_multi_function(NodeMultiFunctionBuilder &builder)
 {
   const NodeTexGabor &storage = node_storage(builder.node());
-  builder.construct_and_set_matching_fn<GaborNoiseFunction>(NodeGaborType(storage.type));
+  builder.construct_and_set_matching_fn<GaborNoiseFunction>(NodeGaborType(storage.type),
+                                                            bool(storage.normalize));
 }
 
 }  // namespace blender::nodes::node_shader_tex_gabor_cc

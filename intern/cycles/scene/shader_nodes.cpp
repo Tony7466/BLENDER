@@ -1233,9 +1233,14 @@ NODE_DEFINE(GaborTextureNode)
   type_enum.insert("3D", NODE_GABOR_TYPE_3D);
   SOCKET_ENUM(type, "Type", type_enum, NODE_GABOR_TYPE_2D);
 
+  SOCKET_BOOLEAN(use_normalize, "Normalize", true);
+
   SOCKET_IN_POINT(vector, "Vector", zero_float3(), SocketType::LINK_TEXTURE_GENERATED);
   SOCKET_IN_FLOAT(scale, "Scale", 5.0f);
   SOCKET_IN_FLOAT(frequency, "Frequency", 2.0f);
+  SOCKET_IN_FLOAT(radius, "Radius", 1.0f);
+  SOCKET_IN_FLOAT(phase_shift, "Phase Shift", 0.0f);
+  SOCKET_IN_FLOAT(impulses, "Impulses", 8.0f);
   SOCKET_IN_FLOAT(anisotropy, "Anisotropy", 1.0f);
   SOCKET_IN_FLOAT(orientation_2d, "Orientation 2D", M_PI_F / 4.0f);
   SOCKET_IN_VECTOR(orientation_3d, "Orientation 3D", make_float3(M_SQRT2_F, M_SQRT2_F, 0.0f));
@@ -1254,6 +1259,9 @@ void GaborTextureNode::compile(SVMCompiler &compiler)
   ShaderInput *vector_in = input("Vector");
   ShaderInput *scale_in = input("Scale");
   ShaderInput *frequency_in = input("Frequency");
+  ShaderInput *radius_in = input("Radius");
+  ShaderInput *phase_shift_in = input("Phase Shift");
+  ShaderInput *impulses_in = input("Impulses");
   ShaderInput *anisotropy_in = input("Anisotropy");
   ShaderInput *orientation_2d_in = input("Orientation 2D");
   ShaderInput *orientation_3d_in = input("Orientation 3D");
@@ -1265,6 +1273,9 @@ void GaborTextureNode::compile(SVMCompiler &compiler)
   int vector_stack_offset = tex_mapping.compile_begin(compiler, vector_in);
   int scale_stack_offset = compiler.stack_assign_if_linked(scale_in);
   int frequency_stack_offset = compiler.stack_assign_if_linked(frequency_in);
+  int radius_stack_offset = compiler.stack_assign_if_linked(radius_in);
+  int phase_shift_stack_offset = compiler.stack_assign_if_linked(phase_shift_in);
+  int impulses_stack_offset = compiler.stack_assign_if_linked(impulses_in);
   int anisotropy_stack_offset = compiler.stack_assign_if_linked(anisotropy_in);
   int orientation_2d_stack_offset = compiler.stack_assign_if_linked(orientation_2d_in);
   int orientation_3d_stack_offset = compiler.stack_assign(orientation_3d_in);
@@ -1287,7 +1298,13 @@ void GaborTextureNode::compile(SVMCompiler &compiler)
       __float_as_int(scale),
       __float_as_int(frequency),
       __float_as_int(anisotropy));
-  compiler.add_node(__float_as_int(orientation_2d));
+  compiler.add_node(__float_as_int(orientation_2d), use_normalize);
+
+  compiler.add_node(
+      compiler.encode_uchar4(radius_stack_offset, phase_shift_stack_offset, impulses_stack_offset),
+      __float_as_int(radius),
+      __float_as_int(phase_shift),
+      __float_as_int(impulses));
 
   tex_mapping.compile_end(compiler, vector_in, vector_stack_offset);
 }
@@ -1296,6 +1313,7 @@ void GaborTextureNode::compile(OSLCompiler &compiler)
 {
   tex_mapping.compile(compiler);
   compiler.parameter(this, "type");
+  compiler.parameter(this, "use_normalize");
   compiler.add(this, "node_gabor_texture");
 }
 

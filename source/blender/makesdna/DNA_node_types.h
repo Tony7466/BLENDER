@@ -1317,7 +1317,8 @@ typedef struct NodeTexGabor {
   NodeTexBase base;
   /* Stores NodeGaborType. */
   char type;
-  char _pad[7];
+  char normalize;
+  char _pad[6];
 } NodeTexGabor;
 
 typedef struct NodeTexGradient {

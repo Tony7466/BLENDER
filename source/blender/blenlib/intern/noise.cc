@@ -2077,7 +2077,22 @@ template float fractal_voronoi_distance_to_edge<float4>(const VoronoiParams &par
  * are sampled using a Bernoulli distribution, as shown in Figure (3). By stratified sampling, they
  * mean a constant number of impulses per cell, so the stratification is the grid itself in that
  * sense, as described in the supplementary material of the paper. */
-static constexpr int gabor_impulses_count = 8;
+static constexpr float max_impulses_count = 16.0f;
+
+/* Calculate impulses per cell. Performance is optimised when impulses are set to whole numbers.
+ * It's useful to allow impulses less than 1 to create spotted textures which is why int(impulses)
+ * is not directly used. Above 1 this provides a linear increase in impulses as the input value
+ * increases. */
+static int impulses_per_cell(const float3 cell, const float impulses)
+{
+  const int n = int(impulses);
+  const float remainder = impulses - math::floor(impulses);
+  if (remainder > 0.0f) {
+    const float probabililty = noise::hash_float_to_float(cell);
+    return (probabililty <= remainder) ? n + 1 : n;
+  }
+  return n;
+}
 
 /* Computes a 2D Gabor kernel based on Equation (6) in the original Gabor noise paper. Where the
  * frequency argument is the F_0 parameter and the orientation argument is the w_0 parameter. We
@@ -2106,15 +2121,18 @@ static constexpr int gabor_impulses_count = 8;
  * normalization", to ensure a zero mean, which should help with normalization. */
 static float2 compute_2d_gabor_kernel(const float2 position,
                                       const float frequency,
-                                      const float orientation)
+                                      const float orientation,
+                                      const float radius,
+                                      const float phase)
 {
-  const float distance_squared = math::length_squared(position);
+  const float distance_squared = math::length_squared(position) / radius;
   const float hann_window = 0.5f + 0.5f * math::cos(math::numbers::pi * distance_squared);
   const float gaussian_envelop = math::exp(-math::numbers::pi * distance_squared);
   const float windowed_gaussian_envelope = gaussian_envelop * hann_window;
 
   const float2 frequency_vector = frequency * float2(cos(orientation), sin(orientation));
-  const float angle = 2.0f * math::numbers::pi * math::dot(position, frequency_vector);
+  const float angle = 2.0f * math::numbers::pi * math::dot(position, frequency_vector) + phase;
+
   const float2 phasor = float2(math::cos(angle), math::sin(angle));
 
   return windowed_gaussian_envelope * phasor;
@@ -2146,11 +2164,11 @@ static float2 compute_2d_gabor_kernel(const float2 position,
  *  \lim_{x \to \infty} \frac{1 - e^{-2 \pi f_0^2}}{4}
  *
  * To get an approximation of 0.25. */
-static float compute_2d_gabor_standard_deviation()
+static float compute_2d_gabor_standard_deviation(const float impulses)
 {
   const float integral_of_gabor_squared = 0.25f;
   const float second_moment = 0.5f;
-  return math::sqrt(gabor_impulses_count * second_moment * integral_of_gabor_squared);
+  return math::sqrt(math::max(1.0f, impulses) * second_moment * integral_of_gabor_squared);
 }
 
 /* Computes the Gabor noise value at the given position for the given cell. This is essentially the
@@ -2163,11 +2181,16 @@ static float2 compute_2d_gabor_noise_cell(const float2 cell,
                                           const float2 position,
                                           const float frequency,
                                           const float isotropy,
-                                          const float base_orientation)
+                                          const float base_orientation,
+                                          const float radius,
+                                          const float phase,
+                                          const float impulses)
 
 {
   float2 noise(0.0f);
-  for (const int i : IndexRange(gabor_impulses_count)) {
+  const int impulse_count = impulses_per_cell(float3(cell.x, cell.y, 1.0f), impulses);
+
+  for (const int i : IndexRange(impulse_count)) {
     /* Compute unique seeds for each of the needed random variables. */
     const float3 seed_for_orientation(cell.x, cell.y, i * 3);
     const float3 seed_for_kernel_center(cell.x, cell.y, i * 3 + 1);
@@ -2194,7 +2217,8 @@ static float2 compute_2d_gabor_noise_cell(const float2 cell,
      * probability. */
     const float weight = noise::hash_float_to_float(seed_for_weight) < 0.5f ? -1.0f : 1.0f;
 
-    noise += weight * compute_2d_gabor_kernel(position_in_kernel_space, frequency, orientation);
+    noise += weight * compute_2d_gabor_kernel(
+                          position_in_kernel_space, frequency, orientation, radius, phase);
   }
   return noise;
 }
@@ -2204,8 +2228,15 @@ static float2 compute_2d_gabor_noise_cell(const float2 cell,
 static float2 compute_2d_gabor_noise(const float2 coordinates,
                                      const float frequency,
                                      const float isotropy,
-                                     const float base_orientation)
+                                     const float base_orientation,
+                                     const float radius,
+                                     const float phase,
+                                     const float impulses)
 {
+  if (radius <= 0.0f || impulses <= 0.0f) {
+    return float2(0.0f);
+  }
+
   const float2 cell_position = math::floor(coordinates);
   const float2 local_position = coordinates - cell_position;
 
@@ -2215,8 +2246,14 @@ static float2 compute_2d_gabor_noise(const float2 coordinates,
       const float2 cell_offset = float2(i, j);
       const float2 current_cell_position = cell_position + cell_offset;
       const float2 position_in_cell_space = local_position - cell_offset;
-      sum += compute_2d_gabor_noise_cell(
-          current_cell_position, position_in_cell_space, frequency, isotropy, base_orientation);
+      sum += compute_2d_gabor_noise_cell(current_cell_position,
+                                         position_in_cell_space,
+                                         frequency,
+                                         isotropy,
+                                         base_orientation,
+                                         radius,
+                                         phase,
+                                         impulses);
     }
   }
 
@@ -2229,15 +2266,17 @@ static float2 compute_2d_gabor_noise(const float2 coordinates,
  * vector, so we just need to scale it by the frequency value. */
 static float2 compute_3d_gabor_kernel(const float3 position,
                                       const float frequency,
-                                      const float3 orientation)
+                                      const float3 orientation,
+                                      const float radius,
+                                      const float phase)
 {
-  const float distance_squared = math::length_squared(position);
+  const float distance_squared = math::length_squared(position) / radius;
   const float hann_window = 0.5f + 0.5f * math::cos(math::numbers::pi * distance_squared);
   const float gaussian_envelop = math::exp(-math::numbers::pi * distance_squared);
   const float windowed_gaussian_envelope = gaussian_envelop * hann_window;
 
   const float3 frequency_vector = frequency * orientation;
-  const float angle = 2.0f * math::numbers::pi * math::dot(position, frequency_vector);
+  const float angle = 2.0f * math::numbers::pi * math::dot(position, frequency_vector) + phase;
   const float2 phasor = float2(math::cos(angle), math::sin(angle));
 
   return windowed_gaussian_envelope * phasor;
@@ -2246,11 +2285,11 @@ static float2 compute_3d_gabor_kernel(const float3 position,
 /* Identical to compute_2d_gabor_standard_deviation except we do triple integration in 3D. The only
  * difference is the denominator in the integral expression, which is 2^{5 / 2} for the 3D case
  * instead of 4 for the 2D case. Similarly, the limit evaluates to 1 / (4 * sqrt(2)). */
-static float compute_3d_gabor_standard_deviation()
+static float compute_3d_gabor_standard_deviation(const float impulses)
 {
   const float integral_of_gabor_squared = 1.0f / (4.0f * math::numbers::sqrt2);
   const float second_moment = 0.5f;
-  return math::sqrt(gabor_impulses_count * second_moment * integral_of_gabor_squared);
+  return math::sqrt(math::max(1.0f, impulses) * second_moment * integral_of_gabor_squared);
 }
 
 /* Computes the orientation of the Gabor kernel such that it is constant for anisotropic
@@ -2288,11 +2327,16 @@ static float2 compute_3d_gabor_noise_cell(const float3 cell,
                                           const float3 position,
                                           const float frequency,
                                           const float isotropy,
-                                          const float3 base_orientation)
+                                          const float3 base_orientation,
+                                          const float radius,
+                                          const float phase,
+                                          const float impulses)
 
 {
   float2 noise(0.0f);
-  for (const int i : IndexRange(gabor_impulses_count)) {
+  const int impulse_count = impulses_per_cell(cell, impulses);
+
+  for (const int i : IndexRange(impulse_count)) {
     /* Compute unique seeds for each of the needed random variables. */
     const float4 seed_for_orientation(cell.x, cell.y, cell.z, i * 3);
     const float4 seed_for_kernel_center(cell.x, cell.y, cell.z, i * 3 + 1);
@@ -2314,7 +2358,8 @@ static float2 compute_3d_gabor_noise_cell(const float3 cell,
      * probability. */
     const float weight = noise::hash_float_to_float(seed_for_weight) < 0.5f ? -1.0f : 1.0f;
 
-    noise += weight * compute_3d_gabor_kernel(position_in_kernel_space, frequency, orientation);
+    noise += weight * compute_3d_gabor_kernel(
+                          position_in_kernel_space, frequency, orientation, radius, phase);
   }
   return noise;
 }
@@ -2323,8 +2368,15 @@ static float2 compute_3d_gabor_noise_cell(const float3 cell,
 static float2 compute_3d_gabor_noise(const float3 coordinates,
                                      const float frequency,
                                      const float isotropy,
-                                     const float3 base_orientation)
+                                     const float3 base_orientation,
+                                     const float radius,
+                                     const float phase,
+                                     const float impulses)
 {
+  if (radius <= 0.0f || impulses <= 0.0f) {
+    return float2(0.0f);
+  }
+
   const float3 cell_position = math::floor(coordinates);
   const float3 local_position = coordinates - cell_position;
 
@@ -2335,8 +2387,14 @@ static float2 compute_3d_gabor_noise(const float3 coordinates,
         const float3 cell_offset = float3(i, j, k);
         const float3 current_cell_position = cell_position + cell_offset;
         const float3 position_in_cell_space = local_position - cell_offset;
-        sum += compute_3d_gabor_noise_cell(
-            current_cell_position, position_in_cell_space, frequency, isotropy, base_orientation);
+        sum += compute_3d_gabor_noise_cell(current_cell_position,
+                                           position_in_cell_space,
+                                           frequency,
+                                           isotropy,
+                                           base_orientation,
+                                           radius,
+                                           phase,
+                                           impulses);
       }
     }
   }
@@ -2347,28 +2405,34 @@ static float2 compute_3d_gabor_noise(const float3 coordinates,
 void gabor(const float2 coordinates,
            const float scale,
            const float frequency,
+           const float radius,
+           const float phase,
+           const float impulses,
            const float anisotropy,
            const float orientation,
+           const bool use_normalization,
            float *r_value,
            float *r_phase,
            float *r_intensity)
 {
   const float2 scaled_coordinates = coordinates * scale;
   const float isotropy = 1.0f - math::clamp(anisotropy, 0.0f, 1.0f);
-  const float sanitized_frequency = math::max(0.001f, frequency);
+  const float impulses_count = math::min(impulses, max_impulses_count);
+  const float clamped_radius = math::clamp(radius, 0.0f, 1.0f);
 
   const float2 phasor = compute_2d_gabor_noise(
-      scaled_coordinates, sanitized_frequency, isotropy, orientation);
-  const float standard_deviation = compute_2d_gabor_standard_deviation();
+      scaled_coordinates, frequency, isotropy, orientation, clamped_radius, phase, impulses_count);
+  const float standard_deviation = compute_2d_gabor_standard_deviation(impulses_count);
 
   /* Normalize the noise by dividing by six times the standard deviation, which was determined
    * empirically. */
   const float normalization_factor = 6.0f * standard_deviation;
 
   /* As discussed in compute_2d_gabor_kernel, we use the imaginary part of the phasor as the Gabor
-   * value. But remap to [0, 1] from [-1, 1]. */
+   * value. Optionally remap to [0, 1] from [-1, 1]. */
   if (r_value) {
-    *r_value = (phasor.y / normalization_factor) * 0.5f + 0.5f;
+    const float val = phasor.y / normalization_factor;
+    *r_value = use_normalization ? val * 0.5f + 0.5f : val;
   }
 
   /* Compute the phase based on equation (9) in Tricard's paper. But remap the phase into the
@@ -2386,29 +2450,40 @@ void gabor(const float2 coordinates,
 void gabor(const float3 coordinates,
            const float scale,
            const float frequency,
+           const float radius,
+           const float phase,
+           const float impulses,
            const float anisotropy,
            const float3 orientation,
+           const bool use_normalization,
            float *r_value,
            float *r_phase,
            float *r_intensity)
 {
   const float3 scaled_coordinates = coordinates * scale;
   const float isotropy = 1.0f - math::clamp(anisotropy, 0.0f, 1.0f);
-  const float sanitized_frequency = math::max(0.001f, frequency);
+  const float impulses_count = math::min(impulses, max_impulses_count);
+  const float clamped_radius = math::clamp(radius, 0.0f, 1.0f);
 
   const float3 normalized_orientation = math::normalize(orientation);
-  const float2 phasor = compute_3d_gabor_noise(
-      scaled_coordinates, sanitized_frequency, isotropy, normalized_orientation);
-  const float standard_deviation = compute_3d_gabor_standard_deviation();
+  const float2 phasor = compute_3d_gabor_noise(scaled_coordinates,
+                                               frequency,
+                                               isotropy,
+                                               normalized_orientation,
+                                               clamped_radius,
+                                               phase,
+                                               impulses_count);
+  const float standard_deviation = compute_3d_gabor_standard_deviation(impulses_count);
 
   /* Normalize the noise by dividing by six times the standard deviation, which was determined
    * empirically. */
   const float normalization_factor = 6.0f * standard_deviation;
 
   /* As discussed in compute_2d_gabor_kernel, we use the imaginary part of the phasor as the Gabor
-   * value. But remap to [0, 1] from [-1, 1]. */
+   * value. Optionally remap to [0, 1] from [-1, 1]. */
   if (r_value) {
-    *r_value = (phasor.y / normalization_factor) * 0.5f + 0.5f;
+    const float val = phasor.y / normalization_factor;
+    *r_value = use_normalization ? val * 0.5f + 0.5f : val;
   }
 
   /* Compute the phase based on equation (9) in Tricard's paper. But remap the phase into the

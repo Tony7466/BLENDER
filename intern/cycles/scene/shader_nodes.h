@@ -246,9 +246,13 @@ class GaborTextureNode : public TextureNode {
   SHADER_NODE_CLASS(GaborTextureNode)
 
   NODE_SOCKET_API(NodeGaborType, type)
+  NODE_SOCKET_API(bool, use_normalize)
   NODE_SOCKET_API(float3, vector)
   NODE_SOCKET_API(float, scale)
   NODE_SOCKET_API(float, frequency)
+  NODE_SOCKET_API(float, radius)
+  NODE_SOCKET_API(float, phase_shift)
+  NODE_SOCKET_API(float, impulses)
   NODE_SOCKET_API(float, anisotropy)
   NODE_SOCKET_API(float, orientation_2d)
   NODE_SOCKET_API(float3, orientation_3d)

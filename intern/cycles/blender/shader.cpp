@@ -949,6 +949,7 @@ static ShaderNode *add_node(Scene *scene,
     BL::ShaderNodeTexGabor b_gabor_node(b_node);
     GaborTextureNode *gabor = graph->create_node<GaborTextureNode>();
     gabor->set_type((NodeGaborType)b_gabor_node.gabor_type());
+    gabor->set_use_normalize(b_gabor_node.normalize());
     BL::TexMapping b_texture_mapping(b_gabor_node.texture_mapping());
     get_tex_mapping(gabor, b_texture_mapping);
     node = gabor;

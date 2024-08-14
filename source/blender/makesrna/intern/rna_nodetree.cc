@@ -4964,6 +4964,11 @@ static void def_sh_tex_gabor(StructRNA *srna)
   RNA_def_property_enum_items(prop, prop_gabor_types);
   RNA_def_property_ui_text(prop, "Type", "The type of Gabor noise to evaluate");
   RNA_def_property_update(prop, 0, "rna_ShaderNode_socket_update");
+
+  prop = RNA_def_property(srna, "normalize", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "normalize", 0);
+  RNA_def_property_ui_text(prop, "Normalize", "Normalize output to 0.0 to 1.0 range");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
 static void def_sh_tex_image(StructRNA *srna)
