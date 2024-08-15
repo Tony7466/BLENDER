@@ -4120,6 +4120,22 @@ static int area_join_modal(bContext *C, wmOperator *op, const wmEvent *event)
           return OPERATOR_CANCELLED;
         }
 
+        /* Areas changed, update window(s) title. */
+        if (jd->close_win) {
+          if (jd->win2) {
+            WM_window_title(CTX_wm_manager(C), jd->win2);
+          }
+        }
+        else {
+          if (jd->win1) {
+            WM_window_title(CTX_wm_manager(C), jd->win1);
+          }
+          if (jd->win2 && jd->win1 != jd->win2) {
+            /* Drag and dropping an area from one window to another. */
+            WM_window_title(CTX_wm_manager(C), jd->win2);
+          }
+        }
+
         const bool do_close_win = jd->close_win;
         wmWindow *close_win = jd->win1;
         area_join_exit(C, op);
