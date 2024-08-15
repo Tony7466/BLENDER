@@ -8,8 +8,8 @@
 
 #include "BLI_map.hh"
 #include "BLI_math_base.h"
-#include "BLI_set.hh"
 #include "BLI_path_util.h"
+#include "BLI_set.hh"
 #include "BLI_task.hh"
 #include "BLI_threads.h"
 #include "BLI_vector.hh"
@@ -36,7 +36,7 @@ void sequencer_thumbnail_transform(ImBuf *in, ImBuf *out);  // render.cc @TODO c
 
 namespace blender::seq {
 
-constexpr int THUMB_SIZE = 256; //@TODO: use SEQ_RENDER_THUMB_SIZE and/or remove that one
+constexpr int THUMB_SIZE = 256;  //@TODO: use SEQ_RENDER_THUMB_SIZE and/or remove that one
 
 static ThreadMutex thumb_cache_lock = BLI_MUTEX_INITIALIZER;
 
@@ -58,10 +58,12 @@ struct ThumbnailCache {
     int full_width = 0;
     int full_height = 0;
 
-    uint64_t hash() const {
+    uint64_t hash() const
+    {
       return get_default_hash(file_path, frame_index, seq_type);
     }
-    bool operator==(const Request& o) const {
+    bool operator==(const Request &o) const
+    {
       return frame_index == o.frame_index && seq_type == o.seq_type && file_path == o.file_path;
     }
   };
@@ -133,7 +135,7 @@ static std::string get_path_from_seq(Scene *scene, const Sequence *seq, float ti
       if (s_elem != nullptr) {
         BLI_path_join(filepath, sizeof(filepath), seq->strip->dirpath, s_elem->filename);
         BLI_path_abs(filepath, ID_BLEND_PATH_FROM_GLOBAL(&scene->id));
-      }      
+      }
     } break;
     case SEQ_TYPE_MOVIE:
       BLI_path_join(
@@ -144,7 +146,7 @@ static std::string get_path_from_seq(Scene *scene, const Sequence *seq, float ti
   return filepath;
 }
 
-static void image_size_to_thumb_size(int& r_width, int& r_height)
+static void image_size_to_thumb_size(int &r_width, int &r_height)
 {
   float aspect = float(r_width) / float(r_height);
   if (r_width > r_height) {
@@ -157,9 +159,10 @@ static void image_size_to_thumb_size(int& r_width, int& r_height)
   }
 }
 
-static ImBuf* make_thumb_for_image(Scene *scene, const ThumbnailCache::Request& request)
+static ImBuf *make_thumb_for_image(Scene *scene, const ThumbnailCache::Request &request)
 {
-  //@TODO: IMB_thumb_load_image skips files larger than 100MB if they don't have a dedicated thumbnail code path. Need to add flags to stop checking that.
+  //@TODO: IMB_thumb_load_image skips files larger than 100MB if they don't have a dedicated
+  //thumbnail code path. Need to add flags to stop checking that.
   ImBuf *ibuf = IMB_thumb_load_image(request.file_path.c_str(), THUMB_SIZE, nullptr);
   if (ibuf == nullptr) {
     return nullptr;
@@ -199,14 +202,12 @@ class ThumbGenerationJob {
   Scene *scene_ = nullptr;
   ThumbnailCache *cache_ = nullptr;
 
-public:
-  ThumbGenerationJob(Scene *scene, ThumbnailCache *cache) : scene_(scene), cache_(cache)
-  {
-  }
+ public:
+  ThumbGenerationJob(Scene *scene, ThumbnailCache *cache) : scene_(scene), cache_(cache) {}
 
   static void ensure_job(const bContext *C, ThumbnailCache *cache);
 
-private:
+ private:
   static void run_fn(void *customdata, wmJobWorkerStatus *worker_status);
   static void end_fn(void *customdata);
   static void free_fn(void *customdata);
@@ -266,7 +267,6 @@ void ThumbGenerationJob::run_fn(void *customdata, wmJobWorkerStatus *worker_stat
                 }
                 return a.frame_index < b.frame_index;
               });
-
 
     /* Process the requests in parallel. Split requests into approximately 4 groups:
      * we don't want to go too wide since that would potentially mean that a single input
@@ -342,11 +342,10 @@ void ThumbGenerationJob::run_fn(void *customdata, wmJobWorkerStatus *worker_stat
         IMB_free_anim(cur_anim);
         cur_anim = nullptr;
       }
-
     });
   }
 
-  clock_t t1 = clock(); //@TODO: debug log
+  clock_t t1 = clock();  //@TODO: debug log
   printf("Thumb job new: %i thumbs (%i img, %i movie) in %.3f sec\n",
          total_thumbs.load(),
          total_images.load(),
@@ -436,7 +435,7 @@ ImBuf *thumbnail_cache_get(const bContext *C,
   return res;
 }
 
-void thumbnail_cache_invalidate_strip(Scene* scene, const Sequence* seq)
+void thumbnail_cache_invalidate_strip(Scene *scene, const Sequence *seq)
 {
   if (!can_have_thumbnail(scene, seq)) {
     return;
@@ -444,7 +443,7 @@ void thumbnail_cache_invalidate_strip(Scene* scene, const Sequence* seq)
   //@TODO implement, and call this when reloading strips
 }
 
-void thumbnail_cache_clear(Scene* scene)
+void thumbnail_cache_clear(Scene *scene)
 {
   BLI_mutex_lock(&thumb_cache_lock);
   ThumbnailCache *cache = query_thumbnail_cache(scene);
@@ -466,7 +465,7 @@ void thumbnail_cache_destroy(Scene *scene)
   BLI_mutex_unlock(&thumb_cache_lock);
 }
 
-std::string thumbnail_cache_get_stats(Scene* scene)
+std::string thumbnail_cache_get_stats(Scene *scene)
 {
   std::string stats = "<no cache>";
   BLI_mutex_lock(&thumb_cache_lock);
@@ -492,4 +491,3 @@ std::string thumbnail_cache_get_stats(Scene* scene)
 }
 
 }  // namespace blender::seq
-

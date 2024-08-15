@@ -1563,7 +1563,6 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
       UI_view2d_text_cache_add_rectf(
           timeline_ctx->v2d, &timeline_ctx->v2d->cur, stats.c_str(), stats.size(), stats_col);
     }
-
   }
 
   /* Draw text labels. */
