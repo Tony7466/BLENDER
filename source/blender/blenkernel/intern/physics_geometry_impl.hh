@@ -35,6 +35,18 @@ namespace blender::bke {
 
 class PhysicsWorldData;
 
+// /* Utility with an atomic flag indicating when a cache needs to be updated. */
+// struct CacheGuard {
+//  private:
+//   std::atomic<bool> flag_ = false;
+
+//  public:
+//   bool is_valid() const;
+//   bool is_dirty() const;
+//   void tag_dirty();
+//   void ensure(std::mutex &mutex, FunctionRef<void()> compute_cache);
+// };
+
 struct PhysicsGeometryImpl : public ImplicitSharingMixin {
   using BodyAttribute = PhysicsGeometry::BodyAttribute;
   using ConstraintAttribute = PhysicsGeometry::ConstraintAttribute;
@@ -44,20 +56,20 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
   using CacheFlag = std::atomic<bool>;
 
   /* Cache for readers storing copies of physics data in custom data. */
-  mutable CacheFlag custom_data_read_cache_valid;
+  mutable CacheFlag custom_data_read_cache_valid = false;
   /* Valid when body collision shape pointers match pointers from the
    * shapes list, as stored in the body shapes index attribute. */
-  mutable CacheFlag body_collision_shapes_valid;
+  mutable CacheFlag body_collision_shapes_valid = false;
   /* Valid when is_static flags match the world data motion type for each body. */
-  mutable CacheFlag body_is_static_valid;
+  mutable CacheFlag body_is_static_valid = false;
   /* Valid when mass matches the world data motion type for each body. */
-  mutable CacheFlag body_mass_valid;
+  mutable CacheFlag body_mass_valid = false;
   /* Cache for disable_collisions flags of constraints. These are stored indirectly by Bullet: a
    * constraint disables collisions by adding "constraint refs" to bodies, when adding a constraint
    * to the world. To determine if a constraint disables collisions after the fact requires looping
    * over all constraint refs of the affected bodies. The cache avoids doing that multiple times
    * for each body. */
-  mutable CacheFlag constraint_disable_collision_valid;
+  mutable CacheFlag constraint_disable_collision_valid = false;
 
   int body_num_;
   int constraint_num_;
