@@ -1357,6 +1357,8 @@ static size_t animfilter_fcurves_span(bAnimContext *ac,
   const bool show_only_errors = ac->ads && (ac->ads->filterflag & ADS_FILTER_ONLY_ERRORS);
   const bool filter_by_name = ac->ads && (ac->ads->searchstr[0] != '\0');
 
+  /* This means that ANIMFILTER_SELEDIT only works if ANIMFILTER_FOREDIT is also set. Given the
+   * description on ANIMFILTER_SELEDIT this seems reasonable. */
   if (editability_matters && (filter_mode & ANIMFILTER_SELEDIT)) {
     selection_matters = true;
     must_be_selected = true;
