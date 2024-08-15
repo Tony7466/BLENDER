@@ -10,18 +10,18 @@ namespace blender::nodes::node_geo_tool_selection_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_output<decl::Bool>("Selection")
+  b.add_output<decl::Bool>("Boolean", "Selection")
       .field_source()
       .description(
           "True or false selection values. For mesh geometry this is the edit mode selection.");
-  b.add_output<decl::Float>("Soft").field_source().description(
+  b.add_output<decl::Float>("Float").field_source().description(
       "Floating point selection values between zero and one. For mesh geometry this is the "
       "inverted sculpt mask.");
 }
 
 class BooleanSelectionFieldInput final : public bke::GeometryFieldInput {
  public:
-  BooleanSelectionFieldInput() : bke::GeometryFieldInput(CPPType::get<bool>(), "Selection")
+  BooleanSelectionFieldInput() : bke::GeometryFieldInput(CPPType::get<bool>(), "Boolean Selection")
   {
     category_ = Category::NamedAttribute;
   }
@@ -56,7 +56,7 @@ class BooleanSelectionFieldInput final : public bke::GeometryFieldInput {
 
 class SoftSelectionFieldInput final : public bke::GeometryFieldInput {
  public:
-  SoftSelectionFieldInput() : bke::GeometryFieldInput(CPPType::get<float>(), "Soft Selection")
+  SoftSelectionFieldInput() : bke::GeometryFieldInput(CPPType::get<float>(), "Float Selection")
   {
     category_ = Category::NamedAttribute;
   }
@@ -94,11 +94,11 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
   if (params.user_data()->call_data->operator_data->mode == OB_MODE_OBJECT) {
     params.set_output("Selection", true);
-    params.set_output("Soft", 1.0f);
+    params.set_output("Float", 1.0f);
   }
   else {
     params.set_output("Selection", Field<bool>(std::make_shared<BooleanSelectionFieldInput>()));
-    params.set_output("Soft", Field<float>(std::make_shared<SoftSelectionFieldInput>()));
+    params.set_output("Float", Field<float>(std::make_shared<SoftSelectionFieldInput>()));
   }
 }
 

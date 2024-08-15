@@ -17,7 +17,7 @@ namespace blender::nodes::node_geo_tool_set_selection_cc {
 
 enum class SelectionType {
   Boolean = 0,
-  Soft = 1,
+  Float = 1,
 };
 
 static void node_declare(NodeDeclarationBuilder &b)
@@ -28,7 +28,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       case SelectionType::Boolean:
         b.add_input<decl::Bool>("Selection").default_value(true).field_on_all();
         break;
-      case SelectionType::Soft:
+      case SelectionType::Float:
         b.add_input<decl::Float>("Selection").default_value(1.0f).field_on_all();
         break;
     }
@@ -89,7 +89,7 @@ static void node_geo_exec(GeoNodeExecParams params)
                                                  selection);
               bke::mesh_select_vert_flush(*mesh);
               break;
-            case SelectionType::Soft:
+            case SelectionType::Float:
               bke::try_capture_field_on_geometry(geometry.get_component_for_write<MeshComponent>(),
                                                  ".sculpt_mask",
                                                  AttrDomain::Point,
@@ -153,10 +153,10 @@ static void node_rna(StructRNA *srna)
        "Boolean",
        "Store true or false selection values. For mesh geometry, only used in edit mode and paint "
        "modes."},
-      {int(SelectionType::Soft),
+      {int(SelectionType::Float),
        "SOFT",
        0,
-       "Soft",
+       "Float",
        "Store floating point selection values, intended to be clamped between zero and one. "
        "For mesh geometry, stored inverted as the sculpt mode mask."},
       {0, nullptr, 0, nullptr, nullptr},
