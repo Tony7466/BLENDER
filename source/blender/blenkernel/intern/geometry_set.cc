@@ -4,6 +4,7 @@
 
 #include "BLI_bounds.hh"
 #include "BLI_map.hh"
+#include "BLI_memory_counter.hh"
 #include "BLI_task.hh"
 
 #include "BLT_translation.hh"
@@ -82,6 +83,8 @@ std::optional<MutableAttributeAccessor> GeometryComponent::attributes_for_write(
 {
   return std::nullopt;
 }
+
+void GeometryComponent::count_memory(MemoryCounter & /*memory*/) const {}
 
 GeometryComponent::Type GeometryComponent::type() const
 {
@@ -623,6 +626,17 @@ GreasePencil *GeometrySet::get_grease_pencil_for_write()
 {
   GreasePencilComponent *component = this->get_component_ptr<GreasePencilComponent>();
   return component == nullptr ? nullptr : component->get_for_write();
+}
+
+void GeometrySet::count_memory(MemoryCounter &memory) const
+{
+  for (const GeometryComponentPtr &component : components_) {
+    if (component) {
+      memory.add_shared(component.get(), [&](MemoryCounter &shared_memory) {
+        component->count_memory(shared_memory);
+      });
+    }
+  }
 }
 
 PhysicsGeometry *GeometrySet::get_physics_for_write()
