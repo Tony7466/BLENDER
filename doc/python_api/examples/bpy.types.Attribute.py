@@ -62,7 +62,7 @@ However, in cases where multiple values should be read at once, it is better to 
   Some attribute types use different named properties to access their value.
   Instead of ``value``, vectors use ``vector``, and colors use ``color``.
 
-Writing to attributes is very similar. You can simply assign to a value directly.
+Writing to different attribute types is very similar. You can simply assign to a value directly.
 Again, when writing to multiple values, it is recommended to use the ``foreach_set`` function to write the values from a ``numpy`` buffer.
 
 .. code-block:: python
