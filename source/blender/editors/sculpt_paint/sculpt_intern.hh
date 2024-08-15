@@ -178,29 +178,6 @@ struct SculptRakeData {
   float angle;
 };
 
-/*************** Brush testing declarations ****************/
-struct SculptBrushTest {
-  float radius_squared;
-  float radius;
-  blender::float3 location;
-  float dist;
-  ePaintSymmetryFlags mirror_symmetry_pass;
-
-  int radial_symmetry_pass;
-  blender::float4x4 symm_rot_mat_inv;
-
-  /* For circle (not sphere) projection. */
-  float plane_view[4];
-
-  /* Some tool code uses a plane for its calculations. */
-  float plane_tool[4];
-
-  /* View3d clipping - only set rv3d for clipping */
-  RegionView3D *clip_rv3d;
-};
-
-using SculptBrushTestFn = bool (*)(SculptBrushTest &test, const float co[3]);
-
 /* Defines how transform tools are going to apply its displacement. */
 enum SculptTransformDisplacementMode {
   /* Displaces the elements from their original coordinates. */
@@ -624,7 +601,7 @@ struct Cache {
 
   /* Indexed by base mesh face index, precalculated falloff value of that face. These values are
    * calculated from the per vertex falloff (*vert_falloff) when needed. */
-  float *face_falloff;
+  Array<float> face_falloff;
   float max_face_falloff;
 
   /* Falloff value of the active element (vertex or base mesh face) that Expand will expand to. */
@@ -797,11 +774,6 @@ void flush_update_done(const bContext *C, Object &ob, UpdateType update_type);
 void SCULPT_pbvh_clear(Object &ob);
 
 /**
- * Flush displacement from deformed blender::bke::pbvh::Tree to original layer.
- */
-void SCULPT_flush_stroke_deform(const Sculpt &sd, Object &ob, bool is_proxy_used);
-
-/**
  * Should be used after modifying the mask or Face Sets IDs.
  */
 void SCULPT_tag_update_overlays(bContext *C);
@@ -895,12 +867,14 @@ void sculpt_project_v3_normal_align(const SculptSession &ss,
 void SCULPT_vertex_random_access_ensure(SculptSession &ss);
 
 int SCULPT_vertex_count_get(const SculptSession &ss);
-const float *SCULPT_vertex_co_get(const SculptSession &ss, PBVHVertRef vertex);
+const float *SCULPT_vertex_co_get(const Object &object, PBVHVertRef vertex);
 
 /** Get the normal for a given sculpt vertex; do not modify the result */
-const blender::float3 SCULPT_vertex_normal_get(const SculptSession &ss, PBVHVertRef vertex);
+const blender::float3 SCULPT_vertex_normal_get(const Object &object, PBVHVertRef vertex);
 
-bool SCULPT_vertex_is_occluded(SculptSession &ss, PBVHVertRef vertex, bool original);
+bool SCULPT_vertex_is_occluded(const Object &object,
+                               const blender::float3 &position,
+                               bool original);
 
 namespace blender::ed::sculpt_paint {
 
@@ -988,7 +962,6 @@ bool vert_is_boundary(Span<bool> hide_poly,
                       BitSpan boundary,
                       int vert);
 bool vert_is_boundary(const SubdivCCG &subdiv_ccg,
-                      Span<bool> hide_poly,
                       Span<int> corner_verts,
                       OffsetIndices<int> faces,
                       BitSpan boundary,
@@ -1009,17 +982,14 @@ Span<int> node_visible_verts(const bke::pbvh::Node &node,
                              Span<bool> hide_vert,
                              Vector<int> &indices);
 
-bool vert_visible_get(const SculptSession &ss, PBVHVertRef vertex);
+bool vert_visible_get(const Object &object, PBVHVertRef vertex);
 
 /* Determines if all faces attached to a given vertex are visible. */
-bool vert_all_faces_visible_get(const SculptSession &ss, PBVHVertRef vertex);
 bool vert_all_faces_visible_get(Span<bool> hide_poly, GroupedSpan<int> vert_to_face_map, int vert);
 bool vert_all_faces_visible_get(Span<bool> hide_poly,
                                 const SubdivCCG &subdiv_ccg,
                                 SubdivCCGCoord vert);
 bool vert_all_faces_visible_get(BMVert *vert);
-
-bool vert_any_face_visible_get(const SculptSession &ss, PBVHVertRef vertex);
 
 }
 
@@ -1033,6 +1003,7 @@ namespace face_set {
 
 int active_face_set_get(const SculptSession &ss);
 int vert_face_set_get(const SculptSession &ss, PBVHVertRef vertex);
+int vert_face_set_get(GroupedSpan<int> vert_to_face_map, Span<int> face_sets, int vert);
 
 bool vert_has_face_set(const SculptSession &ss, PBVHVertRef vertex, int face_set);
 bool vert_has_face_set(GroupedSpan<int> vert_to_face_map,
@@ -1068,29 +1039,26 @@ int ensure_face_sets_bmesh(Object &object);
 Array<int> duplicate_face_sets(const Mesh &mesh);
 Set<int> gather_hidden_face_sets(Span<bool> hide_poly, Span<int> face_sets);
 
-}
+void filter_verts_with_unique_face_sets_mesh(GroupedSpan<int> vert_to_face_map,
+                                             const int *face_sets,
+                                             bool unique,
+                                             Span<int> verts,
+                                             MutableSpan<float> factors);
+void filter_verts_with_unique_face_sets_grids(GroupedSpan<int> vert_to_face_map,
+                                              Span<int> corner_verts,
+                                              OffsetIndices<int> faces,
+                                              const SubdivCCG &subdiv_ccg,
+                                              const int *face_sets,
+                                              bool unique,
+                                              Span<int> grids,
+                                              MutableSpan<float> factors);
+void filter_verts_with_unique_face_sets_bmesh(bool unique,
+                                              const Set<BMVert *, 0> verts,
+                                              MutableSpan<float> factors);
 
 }
 
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Original Data API
- * \{ */
-
-/**
- * Initialize a #SculptOrigVertData for accessing original vertex data;
- * handles #BMesh, #Mesh, and multi-resolution.
- */
-SculptOrigVertData SCULPT_orig_vert_data_init(const Object &ob,
-                                              const blender::bke::pbvh::Node &node,
-                                              blender::ed::sculpt_paint::undo::Type type);
-/**
- * Update a #SculptOrigVertData for a particular vertex from the blender::bke::pbvh::Tree iterator.
- */
-void SCULPT_orig_vert_data_update(SculptOrigVertData &orig_data, const PBVHVertexIter &iter);
-void SCULPT_orig_vert_data_update(SculptOrigVertData &orig_data, const BMVert &vert);
-void SCULPT_orig_vert_data_update(SculptOrigVertData &orig_data, int i);
+}
 
 /** \} */
 
@@ -1168,14 +1136,6 @@ void SCULPT_flip_quat_by_symm_area(float quat[4],
                                    ePaintSymmetryAreas symmarea,
                                    const float pivot[3]);
 
-/**
- * Initialize a point-in-brush test
- */
-void SCULPT_brush_test_init(const SculptSession &ss, SculptBrushTest &test);
-
-bool SCULPT_brush_test_sphere_sq(SculptBrushTest &test, const float co[3]);
-bool SCULPT_brush_test_circle_sq(SculptBrushTest &test, const float co[3]);
-
 namespace blender::ed::sculpt_paint {
 
 bool node_fully_masked_or_hidden(const bke::pbvh::Node &node);
@@ -1190,15 +1150,6 @@ bool node_in_cylinder(const DistRayAABB_Precalc &dist_ray_precalc,
 
 }
 
-/**
- * Initialize a point-in-brush test with a given falloff shape.
- *
- * \param falloff_shape: #PAINT_FALLOFF_SHAPE_SPHERE or #PAINT_FALLOFF_SHAPE_TUBE.
- * \return The brush falloff function.
- */
-SculptBrushTestFn SCULPT_brush_test_init_with_falloff_shape(const SculptSession &ss,
-                                                            SculptBrushTest &test,
-                                                            char falloff_shape);
 const float *SCULPT_brush_frontface_normal_from_falloff_shape(const SculptSession &ss,
                                                               char falloff_shape);
 void SCULPT_cube_tip_init(const Sculpt &sd, const Object &ob, const Brush &brush, float mat[4][4]);
@@ -1303,9 +1254,11 @@ FillData init_fill(SculptSession &ss);
 
 void add_initial(FillData &flood, PBVHVertRef vertex);
 void add_and_skip_initial(FillData &flood, PBVHVertRef vertex);
-void add_initial_with_symmetry(
-    const Object &ob, const SculptSession &ss, FillData &flood, PBVHVertRef vertex, float radius);
-void execute(SculptSession &ss,
+void add_initial_with_symmetry(const Object &ob,
+                               FillData &flood,
+                               PBVHVertRef vertex,
+                               float radius);
+void execute(Object &object,
              FillData &flood,
              FunctionRef<bool(PBVHVertRef from_v, PBVHVertRef to_v, bool is_duplicate)> func);
 
@@ -1421,28 +1374,6 @@ struct Cache {
   bool can_reuse_mask;
   uchar current_stroke_id;
 };
-
-struct NodeData {
-  std::optional<SculptOrigVertData> orig_data;
-};
-
-/**
- * Call before pbvh::Tree vertex iteration.
- */
-NodeData node_begin(const Object &object, const Cache *automasking, const bke::pbvh::Node &node);
-
-/* Call before factor_get. */
-void node_update(NodeData &automask_data, const PBVHVertexIter &vd);
-void node_update(NodeData &automask_data, const BMVert &vert);
-/**
- * Call before factor_get. The index is in the range of the pbvh::Tree node's vertex indices.
- */
-void node_update(NodeData &automask_data, int i);
-
-float factor_get(const Cache *automasking,
-                 SculptSession &ss,
-                 PBVHVertRef vertex,
-                 const NodeData *automask_data);
 
 /* Returns the automasking cache depending on the active tool. Used for code that can run both for
  * brushes and filter. */
@@ -1713,6 +1644,9 @@ void average_data_grids(const SubdivCCG &subdiv_ccg,
 template<typename T>
 void average_data_bmesh(Span<T> src, const Set<BMVert *, 0> &verts, MutableSpan<T> dst);
 
+/* Average the data in the argument span across vertex neighbors. */
+void blur_geometry_data_array(const Object &object, int iterations, MutableSpan<float> data);
+
 /* Surface Smooth Brush. */
 
 void surface_smooth_laplacian_step(Span<float3> positions,
@@ -1726,12 +1660,37 @@ void surface_smooth_displace_step(Span<float3> laplacian_disp,
                                   float beta,
                                   MutableSpan<float3> translations);
 
-/* Slide/Relax */
-void relax_vertex(SculptSession &ss,
-                  PBVHVertexIter *vd,
-                  float factor,
-                  bool filter_boundary_face_sets,
-                  float *r_final_pos);
+void calc_relaxed_translations_faces(Span<float3> vert_positions,
+                                     Span<float3> vert_normals,
+                                     OffsetIndices<int> faces,
+                                     Span<int> corner_verts,
+                                     GroupedSpan<int> vert_to_face_map,
+                                     BitSpan boundary_verts,
+                                     const int *face_sets,
+                                     Span<bool> hide_poly,
+                                     bool filter_boundary_face_sets,
+                                     Span<int> verts,
+                                     Span<float> factors,
+                                     Vector<Vector<int>> &neighbors,
+                                     MutableSpan<float3> translations);
+void calc_relaxed_translations_grids(const SubdivCCG &subdiv_ccg,
+                                     OffsetIndices<int> faces,
+                                     Span<int> corner_verts,
+                                     const int *face_sets,
+                                     GroupedSpan<int> vert_to_face_map,
+                                     BitSpan boundary_verts,
+                                     Span<int> grids,
+                                     bool filter_boundary_face_sets,
+                                     Span<float> factors,
+                                     Span<float3> positions,
+                                     Vector<Vector<SubdivCCGCoord>> &neighbors,
+                                     MutableSpan<float3> translations);
+void calc_relaxed_translations_bmesh(const Set<BMVert *, 0> &verts,
+                                     Span<float3> positions,
+                                     bool filter_boundary_face_sets,
+                                     Span<float> factors,
+                                     Vector<Vector<BMVert *>> &neighbors,
+                                     MutableSpan<float3> translations);
 
 }
 
@@ -2125,7 +2084,6 @@ std::unique_ptr<SculptBoundary> data_init_bmesh(Object &object,
                                                 float radius);
 std::unique_ptr<SculptBoundaryPreview> preview_data_init(Object &object,
                                                          const Brush *brush,
-                                                         PBVHVertRef initial_vertex,
                                                          float radius);
 
 /* Main Brush Function. */
@@ -2269,23 +2227,62 @@ float sculpt_calc_radius(const ViewContext &vc,
                          float3 location);
 }
 
-inline void *SCULPT_vertex_attr_get(const PBVHVertRef vertex, const SculptAttribute *attr)
+inline void *SCULPT_vertex_attr_get(const PBVHVertRef vert, const SculptAttribute *attr)
 {
   if (attr->data) {
     char *p = (char *)attr->data;
-    int idx = (int)vertex.i;
+    int idx = (int)vert.i;
 
     if (attr->data_for_bmesh) {
-      BMElem *v = (BMElem *)vertex.i;
+      BMElem *v = (BMElem *)vert.i;
       idx = v->head.index;
     }
 
-    return p + attr->elem_size * (int)idx;
-  }
-  else {
-    BMElem *v = (BMElem *)vertex.i;
-    return BM_ELEM_CD_GET_VOID_P(v, attr->bmesh_cd_offset);
+    return p + attr->elem_size * idx;
   }
 
-  return NULL;
+  BMElem *v = (BMElem *)vert.i;
+  return BM_ELEM_CD_GET_VOID_P(v, attr->bmesh_cd_offset);
+}
+inline void *SCULPT_vertex_attr_get(const int vert, const SculptAttribute *attr)
+{
+  if (attr->data) {
+    char *p = (char *)attr->data;
+
+    return p + attr->elem_size * vert;
+  }
+
+  BLI_assert_unreachable();
+  return nullptr;
+}
+
+inline void *SCULPT_vertex_attr_get(const CCGKey &key,
+                                    const SubdivCCGCoord vert,
+                                    const SculptAttribute *attr)
+{
+  if (attr->data) {
+    char *p = (char *)attr->data;
+    int idx = vert.to_index(key);
+
+    return p + attr->elem_size * idx;
+  }
+
+  BLI_assert_unreachable();
+  return nullptr;
+}
+
+inline void *SCULPT_vertex_attr_get(const BMVert *vert, const SculptAttribute *attr)
+{
+  if (attr->data) {
+    char *p = (char *)attr->data;
+    int idx = BM_elem_index_get(vert);
+
+    if (attr->data_for_bmesh) {
+      idx = vert->head.index;
+    }
+
+    return p + attr->elem_size * idx;
+  }
+
+  return BM_ELEM_CD_GET_VOID_P(vert, attr->bmesh_cd_offset);
 }

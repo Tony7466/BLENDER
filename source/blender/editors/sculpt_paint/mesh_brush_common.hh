@@ -235,6 +235,15 @@ void calc_brush_distances(const SculptSession &ss,
                           Span<float3> positions,
                           eBrushFalloffShape falloff_shape,
                           MutableSpan<float> r_distances);
+void calc_brush_distances_squared(const SculptSession &ss,
+                                  Span<float3> vert_positions,
+                                  Span<int> vert_indices,
+                                  eBrushFalloffShape falloff_shape,
+                                  MutableSpan<float> r_distances);
+void calc_brush_distances_squared(const SculptSession &ss,
+                                  Span<float3> positions,
+                                  eBrushFalloffShape falloff_shape,
+                                  MutableSpan<float> r_distances);
 
 /** Set the factor to zero for all distances greater than the radius. */
 void filter_distances_with_radius(float radius, Span<float> distances, MutableSpan<float> factors);
@@ -297,16 +306,49 @@ void calc_vert_factors(const Object &object,
                        const bke::pbvh::Node &node,
                        Span<int> verts,
                        MutableSpan<float> factors);
+inline void calc_vert_factors(const Object &object,
+                              const Cache *cache,
+                              const bke::pbvh::Node &node,
+                              Span<int> verts,
+                              MutableSpan<float> factors)
+{
+  if (cache == nullptr) {
+    return;
+  }
+  calc_vert_factors(object, *cache, node, verts, factors);
+}
 void calc_grids_factors(const Object &object,
                         const Cache &cache,
                         const bke::pbvh::Node &node,
                         Span<int> grids,
                         MutableSpan<float> factors);
+inline void calc_grids_factors(const Object &object,
+                               const Cache *cache,
+                               const bke::pbvh::Node &node,
+                               Span<int> grids,
+                               MutableSpan<float> factors)
+{
+  if (cache == nullptr) {
+    return;
+  }
+  calc_grids_factors(object, *cache, node, grids, factors);
+}
 void calc_vert_factors(const Object &object,
                        const Cache &cache,
                        const bke::pbvh::Node &node,
                        const Set<BMVert *, 0> &verts,
                        MutableSpan<float> factors);
+inline void calc_vert_factors(const Object &object,
+                              const Cache *cache,
+                              const bke::pbvh::Node &node,
+                              const Set<BMVert *, 0> &verts,
+                              MutableSpan<float> factors)
+{
+  if (cache == nullptr) {
+    return;
+  }
+  calc_vert_factors(object, *cache, node, verts, factors);
+}
 
 /**
  * Calculate all auto-masking influence on each face.
@@ -333,6 +375,17 @@ void apply_translations(Span<float3> translations, const Set<BMVert *, 0> &verts
 
 /** Align the translations with plane normal. */
 void project_translations(MutableSpan<float3> translations, const float3 &plane);
+
+/**
+ * Cancel out translations already applied over the course of the operation from the new
+ * translations. This is used for tools that calculate new positions based on the original
+ * positions for the entirety of an operation. Conceptually this is the same as resetting the
+ * positions before each step of the operation, but combining that into the same loop should be
+ * preferable for performance.
+ */
+void reset_translations_to_original(MutableSpan<float3> translations,
+                                    Span<float3> positions,
+                                    Span<float3> orig_positions);
 
 /**
  * Rotate translations to account for rotations from procedural deformation.
@@ -363,10 +416,12 @@ void clip_and_lock_translations(const Sculpt &sd,
  * shape key positions must be kept in sync, and shape keys dependent on the active key must also
  * be modified.
  */
-void apply_translations_to_shape_keys(Object &object,
-                                      Span<int> verts,
-                                      Span<float3> translations,
-                                      MutableSpan<float3> positions_mesh);
+void update_shape_keys(Object &object,
+                       const Mesh &mesh,
+                       const KeyBlock &active_key,
+                       Span<int> verts,
+                       Span<float3> translations,
+                       Span<float3> positions_orig);
 
 /**
  * Currently the pbvh::Tree owns its own copy of deformed positions that needs to be updated to

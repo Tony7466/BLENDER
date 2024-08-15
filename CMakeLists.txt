@@ -410,6 +410,10 @@ option(WITH_OPENMP "Enable OpenMP (has to be supported by the compiler)" ON)
 if(UNIX AND NOT APPLE)
   option(WITH_OPENMP_STATIC "Link OpenMP statically (only used by the release environment)" OFF)
   mark_as_advanced(WITH_OPENMP_STATIC)
+elseif(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang" AND CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64")
+  # At time of testing (LLVM 18.1.6) OMP is not included in public LLVM builds for Windows ARM64
+  set(WITH_OPENMP OFF)
+  set(WITH_OPENMP_STATIC OFF)
 endif()
 
 if(WITH_GHOST_X11)
@@ -649,12 +653,17 @@ Build Cycles kernels with address sanitizer when WITH_COMPILER_ASAN is on, even 
 set(CYCLES_TEST_DEVICES CPU CACHE STRING "\
 Run regression tests on the specified device types (CPU CUDA OPTIX HIP)"
 )
+option(WITH_CYCLES_TEST_OSL "\
+Run additional Cycles test with OSL enabled"
+  OFF
+)
 mark_as_advanced(WITH_CYCLES_KERNEL_ASAN)
 mark_as_advanced(WITH_CYCLES_LOGGING)
 mark_as_advanced(WITH_CYCLES_DEBUG_NAN)
 mark_as_advanced(WITH_CYCLES_NATIVE_ONLY)
 mark_as_advanced(WITH_CYCLES_PRECOMPUTE)
 mark_as_advanced(CYCLES_TEST_DEVICES)
+mark_as_advanced(WITH_CYCLES_TEST_OSL)
 
 # NVIDIA CUDA & OptiX
 if(NOT APPLE AND NOT (WIN32 AND CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64"))
@@ -1212,6 +1221,7 @@ set_and_warn_dependency(WITH_BOOST WITH_USD            OFF)
 if(WITH_CYCLES)
   set_and_warn_dependency(WITH_BOOST   WITH_CYCLES_OSL   OFF)
   set_and_warn_dependency(WITH_PUGIXML WITH_CYCLES_OSL   OFF)
+  set_and_warn_dependency(WITH_CYCLES_OSL WITH_CYCLES_TEST_OSL   OFF)
 endif()
 
 set_and_warn_dependency(WITH_TBB WITH_CYCLES            OFF)
@@ -2167,6 +2177,9 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
       C_WARN_CLANG_CL_BITFIELD_ENUM_CONVERSION -Wno-bitfield-enum-conversion # 1
       C_WARN_CLANG_CL_UNUSED_LAMBDA_CAPTURE -Wno-unused-lambda-capture # 1
       C_WARN_CLANG_CL_SHADOW_FIELD_IN_CONSTRUCTOR_MODIFIED -Wno-shadow-field-in-constructor-modified # 1
+      # And some additional ones that came up when using LLVM 18.1.8 on Windows ARM64
+      C_WARN_CLANG_CL_SWITCH_DEFAULT -Wno-switch-default
+      C_WARN_CLANG_CL_NAN_INFINITY_DISABLED -Wno-nan-infinity-disabled
     )
 
   add_check_cxx_compiler_flags(
@@ -2298,6 +2311,9 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
       CXX_WARN_CLANG_CL_BITFIELD_ENUM_CONVERSION -Wno-bitfield-enum-conversion # 1
       CXX_WARN_CLANG_CL_UNUSED_LAMBDA_CAPTURE -Wno-unused-lambda-capture # 1
       CXX_WARN_CLANG_CL_SHADOW_FIELD_IN_CONSTRUCTOR_MODIFIED -Wno-shadow-field-in-constructor-modified # 1
+      # And some additional ones that came up when using LLVM 18.1.8 on Windows ARM64
+      CXX_WARN_CLANG_CL_SWITCH_DEFAULT -Wno-switch-default
+      CXX_WARN_CLANG_CL_NAN_INFINITY_DISABLED -Wno-nan-infinity-disabled
     )
   endif()
 

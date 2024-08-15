@@ -149,9 +149,7 @@ static void calc_faces(const Sculpt &sd,
   apply_hardness_to_distances(cache, distances);
   calc_brush_strength_factors(cache, brush, distances, factors);
 
-  if (cache.automasking) {
-    auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
-  }
+  auto_mask::calc_vert_factors(object, cache.automasking.get(), node, verts, factors);
 
   calc_brush_texture_factors(ss, brush, positions, factors);
 
@@ -244,9 +242,7 @@ static void calc_grids(const Sculpt &sd,
   apply_hardness_to_distances(cache, distances);
   calc_brush_strength_factors(cache, brush, distances, factors);
 
-  if (cache.automasking) {
-    auto_mask::calc_grids_factors(object, *cache.automasking, node, grids, factors);
-  }
+  auto_mask::calc_grids_factors(object, cache.automasking.get(), node, grids, factors);
 
   calc_brush_texture_factors(ss, brush, positions, factors);
 
@@ -310,9 +306,7 @@ static void calc_bmesh(const Sculpt &sd,
   apply_hardness_to_distances(cache, distances);
   calc_brush_strength_factors(cache, brush, distances, factors);
 
-  if (cache.automasking) {
-    auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
-  }
+  auto_mask::calc_vert_factors(object, cache.automasking.get(), node, verts, factors);
 
   calc_brush_texture_factors(ss, brush, positions, factors);
 
@@ -368,19 +362,22 @@ void do_layer_brush(const Sculpt &sd, Object &object, Span<bke::pbvh::Node *> no
                                                                         bke::AttrDomain::Point);
       const VArraySpan persistent_normal = *attributes.lookup<float3>(".sculpt_persistent_no",
                                                                       bke::AttrDomain::Point);
-      bke::SpanAttributeWriter persistent_disp_attr = attributes.lookup_for_write_span<float>(
-          ".sculpt_persistent_disp");
 
+      bke::SpanAttributeWriter<float> persistent_disp_attr;
       bool use_persistent_base = false;
       MutableSpan<float> displacement;
-      if (brush.flag & BRUSH_PERSISTENT && !persistent_position.is_empty() &&
-          !persistent_normal.is_empty() && bool(persistent_disp_attr) &&
-          persistent_disp_attr.domain == bke::AttrDomain::Point)
-      {
-        use_persistent_base = true;
-        displacement = persistent_disp_attr.span;
+      if (brush.flag & BRUSH_PERSISTENT) {
+        if (!persistent_position.is_empty() && !persistent_normal.is_empty()) {
+          persistent_disp_attr = attributes.lookup_or_add_for_write_span<float>(
+              ".sculpt_persistent_disp", bke::AttrDomain::Point);
+          if (persistent_disp_attr) {
+            use_persistent_base = true;
+            displacement = persistent_disp_attr.span;
+          }
+        }
       }
-      else {
+
+      if (displacement.is_empty()) {
         if (ss.cache->layer_displacement_factor.is_empty()) {
           ss.cache->layer_displacement_factor = Array<float>(SCULPT_vertex_count_get(ss), 0.0f);
         }
