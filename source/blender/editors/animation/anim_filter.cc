@@ -1350,16 +1350,26 @@ static size_t animfilter_fcurves_span(bAnimContext *ac,
   BLI_assert(animated_id);
 
   const bool active_matters = filter_mode & ANIMFILTER_ACTIVE;
-  const bool selection_matters = filter_mode & (ANIMFILTER_SEL | ANIMFILTER_UNSEL);
-  const bool must_be_selected = filter_mode & ANIMFILTER_SEL;
+  bool selection_matters = filter_mode & (ANIMFILTER_SEL | ANIMFILTER_UNSEL);
+  bool must_be_selected = filter_mode & ANIMFILTER_SEL;
   const bool visibility_matters = filter_mode & ANIMFILTER_CURVE_VISIBLE;
+  const bool editability_matters = filter_mode & ANIMFILTER_FOREDIT;
   const bool show_only_errors = ac->ads && (ac->ads->filterflag & ADS_FILTER_ONLY_ERRORS);
   const bool filter_by_name = ac->ads && (ac->ads->searchstr[0] != '\0');
+
+  if (editability_matters && (filter_mode & ANIMFILTER_SELEDIT)) {
+    selection_matters = true;
+    must_be_selected = true;
+  }
 
   for (FCurve *fcu : fcurves) {
     /* make_new_animlistelem will return nullptr when fcu == nullptr, and that's
      * going to cause problems. */
     BLI_assert(fcu);
+
+    if (editability_matters && (fcu->flag & FCURVE_PROTECTED)) {
+      continue;
+    }
 
     if (selection_matters && bool(fcu->flag & FCURVE_SELECTED) != must_be_selected) {
       continue;
