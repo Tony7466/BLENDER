@@ -10,6 +10,7 @@
 #include "BLI_math_base.h"
 #include "BLI_set.hh"
 #include "BLI_path_util.h"
+#include "BLI_task.hh"
 #include "BLI_threads.h"
 #include "BLI_vector.hh"
 
@@ -237,7 +238,7 @@ void ThumbGenerationJob::free_fn(void *customdata)
 void ThumbGenerationJob::run_fn(void *customdata, wmJobWorkerStatus *worker_status)
 {
   clock_t t0 = clock();
-  int total_thumbs = 0, total_images = 0, total_movies = 0;
+  std::atomic<int> total_thumbs = 0, total_images = 0, total_movies = 0;
 
   ThumbGenerationJob *job = static_cast<ThumbGenerationJob *>(customdata);
   Vector<ThumbnailCache::Request> requests;
@@ -266,80 +267,91 @@ void ThumbGenerationJob::run_fn(void *customdata, wmJobWorkerStatus *worker_stat
                 return a.frame_index < b.frame_index;
               });
 
-    ImBufAnim *cur_anim = nullptr;
-    std::string cur_anim_path;
 
-    /* Process the requests. */
-    for (auto &request : requests) {
-      if (worker_status->stop) {
-        break;
-      }
+    /* Process the requests in parallel. Split requests into approximately 4 groups:
+     * we don't want to go too wide since that would potentially mean that a single input
+     * movie gets assigned to more than one thread, and the thumbnail loading itself
+     * is somewhat-threaded already. */
+    int64_t grain_size = math::max(8ll, requests.size() / 4);
+    threading::parallel_for(requests.index_range(), grain_size, [&](IndexRange range) {
+      ImBufAnim *cur_anim = nullptr;
+      std::string cur_anim_path;
+      for (const int i : range) {
+        const ThumbnailCache::Request &request = requests[i];
+        if (worker_status->stop) {
+          break;
+        }
 
-      ++total_thumbs;
-      ImBuf *thumb = nullptr;
-      if (request.seq_type == SEQ_TYPE_IMAGE) {
-        ++total_images;
-        thumb = make_thumb_for_image(job->scene_, request);
-      }
-      else if (request.seq_type == SEQ_TYPE_MOVIE) {
-        ++total_movies;
+        ++total_thumbs;
+        ImBuf *thumb = nullptr;
+        if (request.seq_type == SEQ_TYPE_IMAGE) {
+          ++total_images;
+          thumb = make_thumb_for_image(job->scene_, request);
+        }
+        else if (request.seq_type == SEQ_TYPE_MOVIE) {
+          ++total_movies;
 
-        /* Are we swiching to a different movie file? */
-        if (request.file_path != cur_anim_path) {
+          /* Are we swiching to a different movie file? */
+          if (request.file_path != cur_anim_path) {
+            if (cur_anim != nullptr) {
+              IMB_free_anim(cur_anim);
+              cur_anim = nullptr;
+            }
+
+            cur_anim_path = request.file_path;
+            int flag = IB_rect;
+            // if (seq->flag & SEQ_FILTERY) {
+            //   flag |= IB_animdeinterlace; //@TODO
+            // }
+            int stream_index = 0;  //@TODO: seq->streamindex
+            cur_anim = IMB_open_anim(cur_anim_path.c_str(), flag, stream_index, nullptr);
+          }
+
+          /* Decode the movie frame. */
           if (cur_anim != nullptr) {
-            IMB_free_anim(cur_anim);
-            cur_anim = nullptr;
-          }
-
-          cur_anim_path = request.file_path;
-          int flag = IB_rect;
-          // if (seq->flag & SEQ_FILTERY) {
-          //   flag |= IB_animdeinterlace; //@TODO
-          // }
-          int stream_index = 0;  //@TODO: seq->streamindex
-          cur_anim = IMB_open_anim(cur_anim_path.c_str(), flag, stream_index, nullptr);
-        }
-
-        /* Decode the movie frame. */
-        if (cur_anim != nullptr) {
-          int frame_index = request.frame_index;
-          thumb = IMB_anim_absolute(cur_anim, frame_index, IMB_TC_NONE, IMB_PROXY_NONE);
-          if (thumb != nullptr) {
-            seq_imbuf_assign_spaces(job->scene_, thumb);
+            int frame_index = request.frame_index;
+            thumb = IMB_anim_absolute(cur_anim, frame_index, IMB_TC_NONE, IMB_PROXY_NONE);
+            if (thumb != nullptr) {
+              seq_imbuf_assign_spaces(job->scene_, thumb);
+            }
           }
         }
-      }
-      else {
-        BLI_assert_unreachable();
-      }
-      thumb = scale_to_thumbnail_size(job->scene_, thumb);
+        else {
+          BLI_assert_unreachable();
+        }
+        thumb = scale_to_thumbnail_size(job->scene_, thumb);
 
-      /* Add result into the cache (under cache mutex lock). */
-      BLI_mutex_lock(&thumb_cache_lock);
-      ThumbnailCache::Value *val = job->cache_->map_.lookup_ptr(request.file_path);
-      if (val != nullptr) {
-        val->append({request.frame_index, thumb});
-      }
-      else {
-        IMB_freeImBuf(thumb);
-      }
-      /* Remove the request from original set. */
-      job->cache_->requests_.remove(request);
-      BLI_mutex_unlock(&thumb_cache_lock);
+        /* Add result into the cache (under cache mutex lock). */
+        BLI_mutex_lock(&thumb_cache_lock);
+        ThumbnailCache::Value *val = job->cache_->map_.lookup_ptr(request.file_path);
+        if (val != nullptr) {
+          val->append({request.frame_index, thumb});
+        }
+        else {
+          IMB_freeImBuf(thumb);
+        }
+        /* Remove the request from original set. */
+        job->cache_->requests_.remove(request);
+        BLI_mutex_unlock(&thumb_cache_lock);
 
-      if (thumb) {
-        worker_status->do_update = true;
+        if (thumb) {
+          worker_status->do_update = true;
+        }
       }
-    }
+      if (cur_anim != nullptr) {
+        IMB_free_anim(cur_anim);
+        cur_anim = nullptr;
+      }
 
-    if (cur_anim != nullptr) {
-      IMB_free_anim(cur_anim);
-      cur_anim = nullptr;
-    }
+    });
   }
 
   clock_t t1 = clock(); //@TODO: debug log
-  printf("Thumb job new: %i thumbs (%i img, %i movie) in %.3f sec\n", total_thumbs, total_images, total_movies, double(t1 - t0) / CLOCKS_PER_SEC);
+  printf("Thumb job new: %i thumbs (%i img, %i movie) in %.3f sec\n",
+         total_thumbs.load(),
+         total_images.load(),
+         total_movies.load(),
+         double(t1 - t0) / CLOCKS_PER_SEC);
 }
 
 void ThumbGenerationJob::end_fn(void *customdata)
