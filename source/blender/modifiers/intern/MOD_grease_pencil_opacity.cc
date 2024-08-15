@@ -6,11 +6,8 @@
  * \ingroup modifiers
  */
 
-#include "MEM_guardedalloc.h"
-
 #include "DNA_defaults.h"
 #include "DNA_modifier_types.h"
-#include "DNA_scene_types.h"
 
 #include "BKE_colortools.hh"
 #include "BKE_curves.hh"
@@ -23,24 +20,20 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "WM_types.hh"
 
 #include "RNA_access.hh"
-#include "RNA_enum_types.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "MOD_grease_pencil_util.hh"
-#include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"
-
-#include <iostream>
 
 namespace blender {
 
 using bke::greasepencil::Drawing;
-using bke::greasepencil::FramesMapKey;
+using bke::greasepencil::FramesMapKeyT;
 using bke::greasepencil::Layer;
 
 static void init_data(ModifierData *md)
@@ -90,10 +83,8 @@ static void modify_stroke_color(const GreasePencilOpacityModifierData &omd,
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
   bke::SpanAttributeWriter<float> opacities = attributes.lookup_or_add_for_write_span<float>(
       "opacity", bke::AttrDomain::Point);
-  const VArray<float> vgroup_weights =
-      attributes
-          .lookup_or_default<float>(omd.influence.vertex_group_name, bke::AttrDomain::Point, 1.0f)
-          .varray;
+  const VArray<float> vgroup_weights = modifier::greasepencil::get_influence_vertex_weights(
+      curves, omd.influence);
 
   curves_mask.foreach_index(GrainSize(512), [&](const int64_t curve_i) {
     const IndexRange points = points_by_curve[curve_i];
@@ -118,7 +109,7 @@ static void modify_stroke_color(const GreasePencilOpacityModifierData &omd,
         const float vgroup_weight = vgroup_weights[point_i];
         const float vgroup_influence = invert_vertex_group ? 1.0f - vgroup_weight : vgroup_weight;
         opacities.span[point_i] = std::clamp(
-            opacities.span[point_i] + omd.color_factor * curve_factor * vgroup_influence - 1.0f,
+            opacities.span[point_i] + (omd.color_factor * curve_factor - 1.0f) * vgroup_influence,
             0.0f,
             1.0f);
       }
@@ -140,10 +131,11 @@ static void modify_fill_color(const GreasePencilOpacityModifierData &omd,
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
   /* Fill color opacity per stroke. */
   bke::SpanAttributeWriter<float> fill_opacities = attributes.lookup_or_add_for_write_span<float>(
-      "fill_opacity", bke::AttrDomain::Curve);
-  const StringRef vgroup_name = omd.influence.vertex_group_name;
-  const VArray<float> vgroup_weights =
-      attributes.lookup_or_default<float>(vgroup_name, bke::AttrDomain::Point, 1.0f).varray;
+      "fill_opacity",
+      bke::AttrDomain::Curve,
+      bke::AttributeInitVArray(VArray<float>::ForSingle(1.0f, curves.curves_num())));
+  const VArray<float> vgroup_weights = modifier::greasepencil::get_influence_vertex_weights(
+      curves, omd.influence);
 
   curves_mask.foreach_index(GrainSize(512), [&](int64_t curve_i) {
     if (use_vgroup_opacity) {
@@ -162,22 +154,20 @@ static void modify_fill_color(const GreasePencilOpacityModifierData &omd,
   fill_opacities.finish();
 }
 
-static void modify_hardness(const GreasePencilOpacityModifierData &omd,
+static void modify_softness(const GreasePencilOpacityModifierData &omd,
                             bke::CurvesGeometry &curves,
                             const IndexMask &curves_mask)
 {
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
-  bke::SpanAttributeWriter<float> hardnesses = attributes.lookup_for_write_span<float>("hardness");
-  if (!hardnesses) {
-    return;
-  }
+  bke::SpanAttributeWriter<float> softness = attributes.lookup_or_add_for_write_span<float>(
+      "softness", bke::AttrDomain::Curve);
 
   curves_mask.foreach_index(GrainSize(512), [&](int64_t curve_i) {
-    hardnesses.span[curve_i] = std::clamp(
-        hardnesses.span[curve_i] * omd.hardness_factor, 0.0f, 1.0f);
+    softness.span[curve_i] =
+        1.0f - std::clamp((1.0f - softness.span[curve_i]) * omd.hardness_factor, 0.0f, 1.0f);
   });
 
-  hardnesses.finish();
+  softness.finish();
 }
 
 static void modify_curves(ModifierData *md,
@@ -202,7 +192,7 @@ static void modify_curves(ModifierData *md,
       modify_fill_color(*omd, curves, curves_mask);
       break;
     case MOD_GREASE_PENCIL_COLOR_HARDNESS:
-      modify_hardness(*omd, curves, curves_mask);
+      modify_softness(*omd, curves, curves_mask);
       break;
   }
 }
@@ -262,8 +252,8 @@ static void panel_draw(const bContext *C, Panel *panel)
     }
   }
 
-  if (uiLayout *influence_panel = uiLayoutPanel(
-          C, layout, "Influence", ptr, "open_influence_panel"))
+  if (uiLayout *influence_panel = uiLayoutPanelProp(
+          C, layout, ptr, "open_influence_panel", "Influence"))
   {
     modifier::greasepencil::draw_layer_filter_settings(C, influence_panel, ptr);
     modifier::greasepencil::draw_material_filter_settings(C, influence_panel, ptr);
@@ -302,9 +292,8 @@ ModifierTypeInfo modifierType_GreasePencilOpacity = {
     /*struct_name*/ "GreasePencilOpacityModifierData",
     /*struct_size*/ sizeof(GreasePencilOpacityModifierData),
     /*srna*/ &RNA_GreasePencilOpacityModifier,
-    /*type*/ ModifierTypeType::Nonconstructive,
-    /*flags*/
-    eModifierTypeFlag_AcceptsGreasePencil | eModifierTypeFlag_SupportsEditmode |
+    /*type*/ ModifierTypeType::NonGeometrical,
+    /*flags*/ eModifierTypeFlag_AcceptsGreasePencil | eModifierTypeFlag_SupportsEditmode |
         eModifierTypeFlag_EnableInEditmode | eModifierTypeFlag_SupportsMapping,
     /*icon*/ ICON_MOD_OPACITY,
 

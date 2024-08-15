@@ -62,8 +62,8 @@ const char *nodeTypeAsString(NodeType type)
       return "SEQUENCER";
     case NodeType::LAYER_COLLECTIONS:
       return "LAYER_COLLECTIONS";
-    case NodeType::COPY_ON_WRITE:
-      return "COPY_ON_WRITE";
+    case NodeType::COPY_ON_EVAL:
+      return "COPY_ON_EVAL";
     case NodeType::OBJECT_FROM_LAYER:
       return "OBJECT_FROM_LAYER";
     case NodeType::HIERARCHY:
@@ -97,6 +97,8 @@ const char *nodeTypeAsString(NodeType type)
       return "ARMATURE";
     case NodeType::GENERIC_DATABLOCK:
       return "GENERIC_DATABLOCK";
+    case NodeType::SCENE:
+      return "SCENE";
     case NodeType::VISIBILITY:
       return "VISIBILITY";
     case NodeType::NTREE_OUTPUT:
@@ -139,12 +141,13 @@ eDepsSceneComponentType nodeTypeToSceneComponent(NodeType type)
     case NodeType::TIMESOURCE:
     case NodeType::ID_REF:
     case NodeType::LAYER_COLLECTIONS:
-    case NodeType::COPY_ON_WRITE:
+    case NodeType::COPY_ON_EVAL:
     case NodeType::OBJECT_FROM_LAYER:
     case NodeType::HIERARCHY:
     case NodeType::AUDIO:
     case NodeType::ARMATURE:
     case NodeType::GENERIC_DATABLOCK:
+    case NodeType::SCENE:
     case NodeType::PARTICLE_SYSTEM:
     case NodeType::PARTICLE_SETTINGS:
     case NodeType::POINT_CACHE:
@@ -222,12 +225,13 @@ eDepsObjectComponentType nodeTypeToObjectComponent(NodeType type)
     case NodeType::ID_REF:
     case NodeType::SEQUENCER:
     case NodeType::LAYER_COLLECTIONS:
-    case NodeType::COPY_ON_WRITE:
+    case NodeType::COPY_ON_EVAL:
     case NodeType::OBJECT_FROM_LAYER:
     case NodeType::HIERARCHY:
     case NodeType::AUDIO:
     case NodeType::ARMATURE:
     case NodeType::GENERIC_DATABLOCK:
+    case NodeType::SCENE:
     case NodeType::PARTICLE_SYSTEM:
     case NodeType::PARTICLE_SETTINGS:
     case NodeType::POINT_CACHE:

@@ -8,7 +8,7 @@
  */
 
 /* struct DerivedMesh is used directly */
-#include "BKE_DerivedMesh.hh"
+#include "BKE_mesh_legacy_derived_mesh.hh"
 
 /* Thread sync primitives used directly. */
 #include "BLI_ordered_edge.hh"
@@ -26,7 +26,9 @@ struct Mesh;
 struct MeshElemMap;
 struct MultiresModifierData;
 struct Object;
-struct PBVH;
+namespace blender::bke::pbvh {
+class Tree;
+}
 struct SubsurfModifierData;
 
 /**************************** External *****************************/
@@ -93,13 +95,6 @@ struct CCGDerivedMesh {
     int startFace;
     CCGFace *face;
   } *faceMap;
-
-  int *reverseFaceMap;
-
-  PBVH *pbvh;
-
-  MeshElemMap *pmap;
-  int *pmap_mem;
 
   CCGElem **gridData;
   int *gridOffset;

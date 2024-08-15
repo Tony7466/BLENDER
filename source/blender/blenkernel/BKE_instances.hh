@@ -19,29 +19,26 @@
  * which is then stored per instance. Many instances can use the same #InstanceReference.
  */
 
-#include <mutex>
 #include <optional>
 
 #include "BLI_array.hh"
 #include "BLI_function_ref.hh"
+#include "BLI_index_mask_fwd.hh"
 #include "BLI_math_matrix_types.hh"
+#include "BLI_shared_cache.hh"
+#include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
+#include "BLI_virtual_array_fwd.hh"
 
 #include "DNA_customdata_types.h"
 
 struct Object;
 struct Collection;
-namespace blender {
-namespace index_mask {
-class IndexMask;
-}
-using index_mask::IndexMask;
-namespace bke {
+namespace blender::bke {
 class AnonymousAttributePropagationInfo;
 class AttributeAccessor;
 class MutableAttributeAccessor;
-}  // namespace bke
-}  // namespace blender
+}  // namespace blender::bke
 
 namespace blender::bke {
 
@@ -90,6 +87,16 @@ class InstanceReference {
   GeometrySet &geometry_set();
   const GeometrySet &geometry_set() const;
 
+  /**
+   * Converts the instance reference to a geometry set, even if it was an object or collection
+   * before.
+   *
+   * \note Uses out-parameter to be able to use #GeometrySet forward declaration.
+   */
+  void to_geometry_set(GeometrySet &r_geometry_set) const;
+
+  StringRefNull name() const;
+
   bool owns_direct_data() const;
   void ensure_owns_direct_data();
 
@@ -104,19 +111,20 @@ class Instances {
    */
   Vector<InstanceReference> references_;
 
-  /** Indices into `references_`. Determines what data is instanced. */
-  Vector<int> reference_handles_;
-  /** Transformation of the instances. */
-  Vector<float4x4> transforms_;
+  int instances_num_ = 0;
+
+  CustomData attributes_;
+
+  /**
+   * Caches how often each reference is used.
+   */
+  mutable SharedCache<Array<int>> reference_user_counts_;
 
   /* These almost unique ids are generated based on the `id` attribute, which might not contain
    * unique ids at all. They are *almost* unique, because under certain very unlikely
    * circumstances, they are not unique. Code using these ids should not crash when they are not
    * unique but can generally expect them to be unique. */
-  mutable std::mutex almost_unique_ids_mutex_;
-  mutable Array<int> almost_unique_ids_;
-
-  CustomData attributes_;
+  mutable SharedCache<Array<int>> almost_unique_ids_cache_;
 
  public:
   Instances();
@@ -141,6 +149,10 @@ class Instances {
    * Otherwise a new handle is added.
    */
   int add_reference(const InstanceReference &reference);
+  /**
+   * Same as above, but does not deduplicate with existing references.
+   */
+  int add_new_reference(const InstanceReference &reference);
   std::optional<int> find_reference_handle(const InstanceReference &query);
   /**
    * Add a reference to the instance reference with an index specified by the #instance_handle
@@ -166,9 +178,9 @@ class Instances {
   GeometrySet &geometry_set_from_reference(int reference_index);
 
   Span<int> reference_handles() const;
-  MutableSpan<int> reference_handles();
-  MutableSpan<float4x4> transforms();
+  MutableSpan<int> reference_handles_for_write();
   Span<float4x4> transforms() const;
+  MutableSpan<float4x4> transforms_for_write();
 
   int instances_num() const;
   int references_num() const;
@@ -183,6 +195,11 @@ class Instances {
    */
   Span<int> almost_unique_ids() const;
 
+  /**
+   * Get cached user counts for every reference.
+   */
+  Span<int> reference_user_counts() const;
+
   bke::AttributeAccessor attributes() const;
   bke::MutableAttributeAccessor attributes_for_write();
 
@@ -194,7 +211,16 @@ class Instances {
 
   bool owns_direct_data() const;
   void ensure_owns_direct_data();
+
+  void tag_reference_handles_changed()
+  {
+    reference_user_counts_.tag_dirty();
+    almost_unique_ids_cache_.tag_dirty();
+  }
 };
+
+VArray<float3> instance_position_varray(const Instances &instances);
+VMutableArray<float3> instance_position_varray_for_write(Instances &instances);
 
 /* -------------------------------------------------------------------- */
 /** \name #InstanceReference Inline Methods
@@ -212,14 +238,6 @@ inline InstanceReference::InstanceReference(Object &object) : type_(Type::Object
 inline InstanceReference::InstanceReference(Collection &collection)
     : type_(Type::Collection), data_(&collection)
 {
-}
-
-inline InstanceReference::InstanceReference(const InstanceReference &other)
-    : type_(other.type_), data_(other.data_)
-{
-  if (other.geometry_set_) {
-    geometry_set_ = std::make_unique<GeometrySet>(*other.geometry_set_);
-  }
 }
 
 inline InstanceReference::InstanceReference(InstanceReference &&other)

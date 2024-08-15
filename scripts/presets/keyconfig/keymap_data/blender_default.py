@@ -78,14 +78,6 @@ class Params:
         # File selector actions on single click.
         "use_file_single_click",
 
-        # Experimental variables:
-        # Options for experimental features.
-        #
-        # NOTE: don't pass the experimental struct directly as this makes it less
-        # clear which experimental options impact shortcuts. Further, any experimental option
-        # that adjust shortcuts need to reload the key-configuration (see: `rna_userdef.cc`).
-        "use_experimental_grease_pencil_version3",
-
         # Convenience variables:
         # (derived from other settings).
         #
@@ -134,7 +126,6 @@ class Params:
             use_file_single_click=False,
             v3d_tilde_action='VIEW',
             v3d_alt_mmb_drag_action='RELATIVE',
-            use_experimental_grease_pencil_version3=False,
     ):
         self.legacy = legacy
 
@@ -214,9 +205,6 @@ class Params:
 
         self.use_fallback_tool = use_fallback_tool
 
-        # Experimental variables:
-        self.use_experimental_grease_pencil_version3 = use_experimental_grease_pencil_version3
-
         # Convenience variables:
         self.use_fallback_tool_select_handled = (
             True if (select_mouse == 'LEFT') else
@@ -277,6 +265,10 @@ def op_menu_pie(menu, kmi_args):
 
 def op_panel(menu, kmi_args, kmi_data=()):
     return ("wm.call_panel", kmi_args, {"properties": [("name", menu), *kmi_data]})
+
+
+def op_asset_shelf_popup(asset_shelf, kmi_args):
+    return ("wm.call_asset_shelf_popover", kmi_args, {"properties": [("name", asset_shelf)]})
 
 
 def op_tool(tool, kmi_args):
@@ -357,7 +349,6 @@ def _template_items_transform_actions(
         use_shear=False,
 ):
     items = [
-        ("transform.translate", {"type": params.select_mouse, "value": 'CLICK_DRAG'}, None),
         op_tool_optional(
             ("transform.translate", {"type": 'G', "value": 'PRESS'}, None),
             (op_tool_cycle, "builtin.move"), params),
@@ -367,6 +358,8 @@ def _template_items_transform_actions(
         op_tool_optional(
             ("transform.resize", {"type": 'S', "value": 'PRESS'}, None),
             (op_tool_cycle, "builtin.scale"), params),
+
+        ("transform.translate", {"type": params.select_mouse, "value": 'CLICK_DRAG'}, None),
     ]
 
     if use_bend:
@@ -610,7 +603,7 @@ def _template_items_tool_select(
     else:
         # For right mouse, set the cursor.
         return [
-            (cursor_operator, {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
+            (cursor_operator, {"type": 'LEFTMOUSE', "value": 'PRESS'}, None) if cursor_operator is not None else (),
             ("transform.translate", {"type": 'LEFTMOUSE', "value": 'CLICK_DRAG'},
              {"properties": [("release_confirm", True), ("cursor_transform", True)]}),
         ]
@@ -743,7 +736,7 @@ def km_window(params):
             ("wm.batch_rename", {"type": 'F2', "value": 'PRESS', "ctrl": True}, None),
             ("wm.search_menu", {"type": 'F3', "value": 'PRESS'}, None),
             op_menu("TOPBAR_MT_file_context_menu", {"type": 'F4', "value": 'PRESS'}),
-            # Pass through when when no tool-system exists or the fallback isn't available.
+            # Pass through when no tool-system exists or the fallback isn't available.
             ("wm.toolbar_fallback_pie", {"type": 'W', "value": 'PRESS', "alt": True}, None),
         ])
 
@@ -767,7 +760,7 @@ def km_window(params):
                 ("wm.search_menu", {"type": 'SPACE', "value": 'PRESS'}, None),
             )
         else:
-            assert False
+            assert False, "unreachable"
 
     return keymap
 
@@ -1199,15 +1192,6 @@ def km_property_editor(_params):
         ("object.modifier_copy", {"type": 'D', "value": 'PRESS', "shift": True}, None),
         ("object.add_modifier_menu", {"type": 'A', "value": 'PRESS', "shift": True}, None),
         ("object.modifier_apply", {"type": 'A', "value": 'PRESS', "ctrl": True}, {"properties": [("report", True)]}),
-        # Grease pencil modifier panels
-        ("object.gpencil_modifier_remove",
-         {"type": 'X', "value": 'PRESS'}, {"properties": [("report", True)]}),
-        ("object.gpencil_modifier_remove",
-         {"type": 'DEL', "value": 'PRESS'}, {"properties": [("report", True)]}),
-        ("object.gpencil_modifier_copy",
-         {"type": 'D', "value": 'PRESS', "shift": True}, None),
-        ("object.gpencil_modifier_apply",
-         {"type": 'A', "value": 'PRESS', "ctrl": True}, {"properties": [("report", True)]}),
         # ShaderFX panels
         ("object.shaderfx_remove", {"type": 'X', "value": 'PRESS'}, {"properties": [("report", True)]}),
         ("object.shaderfx_remove", {"type": 'DEL', "value": 'PRESS'}, {"properties": [("report", True)]}),
@@ -1315,6 +1299,8 @@ def km_outliner(params):
         ("outliner.collection_exclude_clear", {"type": 'E', "value": 'PRESS', "alt": True}, None),
         ("outliner.hide", {"type": 'H', "value": 'PRESS'}, None),
         ("outliner.unhide_all", {"type": 'H', "value": 'PRESS', "alt": True}, None),
+        ("outliner.start_filter", {"type": 'F', "value": 'PRESS', "ctrl": True}, None),
+        ("outliner.clear_filter", {"type": 'F', "value": 'PRESS', "alt": True}, None),
         # Copy/paste.
         ("outliner.id_copy", {"type": 'C', "value": 'PRESS', "ctrl": True}, None),
         ("outliner.id_paste", {"type": 'V', "value": 'PRESS', "ctrl": True}, None),
@@ -2175,6 +2161,14 @@ def km_node_editor(params):
          {"type": 'LEFTMOUSE' if params.legacy else 'RIGHTMOUSE', "value": 'CLICK_DRAG', "ctrl": True}, None),
         ("node.links_mute", {"type": 'RIGHTMOUSE', "value": 'CLICK_DRAG', "ctrl": True, "alt": True}, None),
         ("node.select_link_viewer", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True, "ctrl": True}, None),
+        # Shortcut is added three times, one for geometry nodes editor, and two for shader editor.
+        # It's duplicated in shader editor so that it can act as stand-in for viewer node until it's added.
+        ("node.connect_to_output", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True, "alt": True},
+         {"properties": [("run_in_geometry_nodes", True)]}),
+        ("node.connect_to_output", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True, "ctrl": True},
+         {"properties": [("run_in_geometry_nodes", False)]}),
+        ("node.connect_to_output", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True, "alt": True},
+         {"properties": [("run_in_geometry_nodes", False)]}),
         ("node.backimage_move", {"type": 'MIDDLEMOUSE', "value": 'PRESS', "alt": True}, None),
         ("node.backimage_zoom", {"type": 'V', "value": 'PRESS', "repeat": True},
          {"properties": [("factor", 1.0 / 1.2)]}),
@@ -2329,8 +2323,7 @@ def km_file_browser(params):
         ("file.next", {"type": 'BACK_SPACE', "value": 'PRESS', "shift": True}, None),
         ("wm.context_toggle", {"type": 'H', "value": 'PRESS'},
          {"properties": [("data_path", 'space_data.params.show_hidden')]}),
-        ("file.directory_new", {"type": 'I', "value": 'PRESS'},
-         {"properties": [("confirm", False)]}),
+        ("file.directory_new", {"type": 'I', "value": 'PRESS'}, None),
         ("file.rename", {"type": 'F2', "value": 'PRESS'}, None),
         ("file.delete", {"type": 'X', "value": 'PRESS'}, None),
         ("file.delete", {"type": 'DEL', "value": 'PRESS'}, None),
@@ -2957,6 +2950,8 @@ def km_sequencer(params):
          {"properties": [("adjust_length", True)]}),
         ("sequencer.offset_clear", {"type": 'O', "value": 'PRESS', "alt": True}, None),
         ("sequencer.duplicate_move", {"type": 'D', "value": 'PRESS', "shift": True}, None),
+        ("sequencer.retiming_key_delete", {"type": 'X', "value": 'PRESS'}, None),
+        ("sequencer.retiming_key_delete", {"type": 'DEL', "value": 'PRESS'}, None),
         ("sequencer.delete", {"type": 'X', "value": 'PRESS'}, None),
         ("sequencer.delete", {"type": 'DEL', "value": 'PRESS'}, None),
         ("sequencer.copy", {"type": 'C', "value": 'PRESS', "ctrl": True}, None),
@@ -3027,7 +3022,7 @@ def km_sequencer(params):
         ("transform.seq_slide", {"type": 'G', "value": 'PRESS'},
          {"properties": [("view2d_edge_pan", True)]}),
         ("transform.seq_slide", {"type": params.select_mouse, "value": 'CLICK_DRAG'},
-         {"properties": [("view2d_edge_pan", True)]}),
+         {"properties": [("view2d_edge_pan", True), ("use_restore_handle_selection", True)]}),
         ("transform.transform", {"type": 'E', "value": 'PRESS'},
          {"properties": [("mode", 'TIME_EXTEND')]}),
         ("marker.add", {"type": 'M', "value": 'PRESS'}, None),
@@ -3529,7 +3524,7 @@ def km_frames(params):
                 ("screen.animation_play", {"type": 'SPACE', "value": 'PRESS'}, None),
             )
         else:
-            assert False
+            assert False, "unreachable"
 
         items.extend([
             ("screen.animation_play", {"type": 'SPACE', "value": 'PRESS', "shift": True, "ctrl": True},
@@ -3656,7 +3651,7 @@ def km_animation_channels(params):
 # ------------------------------------------------------------------------------
 # Object Grease Pencil Modes
 
-def km_grease_pencil(params):
+def km_gpencil_legacy(params):
     items = []
     keymap = (
         "Grease Pencil",
@@ -3694,7 +3689,7 @@ def km_grease_pencil(params):
     return keymap
 
 
-def _grease_pencil_selection(params, *, alt_select=False):
+def _gpencil_legacy_selection(params, *, alt_select=False):
     return [
         # Select all
         *_template_items_select_actions(params, "gpencil.select_all"),
@@ -3727,7 +3722,7 @@ def _grease_pencil_selection(params, *, alt_select=False):
     ]
 
 
-def _grease_pencil_display():
+def _gpencil_legacy_display():
     return [
         ("wm.context_toggle", {"type": 'Q', "value": 'PRESS', "shift": True},
          {"properties": [("data_path", 'space_data.overlay.use_gpencil_edit_lines')]}),
@@ -3736,7 +3731,7 @@ def _grease_pencil_display():
     ]
 
 
-def km_grease_pencil_stroke_edit_mode(params):
+def km_gpencil_legacy_stroke_edit_mode(params):
     items = []
     keymap = (
         "Grease Pencil Stroke Edit Mode",
@@ -3751,7 +3746,7 @@ def km_grease_pencil_stroke_edit_mode(params):
             (op_tool_cycle, "builtin.interpolate"), params),
         ("gpencil.interpolate_sequence", {"type": 'E', "value": 'PRESS', "shift": True, "ctrl": True}, None),
         # Selection
-        *_grease_pencil_selection(params),
+        *_gpencil_legacy_selection(params),
         ("gpencil.select_lasso", {"type": params.action_mouse, "value": 'CLICK_DRAG', "ctrl": True},
          {"properties": [("mode", 'ADD')]}),
         ("gpencil.select_lasso", {"type": params.action_mouse, "value": 'CLICK_DRAG', "shift": True, "ctrl": True},
@@ -3795,7 +3790,7 @@ def km_grease_pencil_stroke_edit_mode(params):
         *_template_items_hide_reveal_actions("gpencil.hide", "gpencil.reveal"),
         ("gpencil.selection_opacity_toggle", {"type": 'H', "value": 'PRESS', "ctrl": True}, None),
         # Display
-        *_grease_pencil_display(),
+        *_gpencil_legacy_display(),
         # Isolate layer
         ("gpencil.layer_isolate", {"type": 'NUMPAD_ASTERIX', "value": 'PRESS'}, None),
         # Move to layer
@@ -3843,7 +3838,7 @@ def km_grease_pencil_stroke_edit_mode(params):
     return keymap
 
 
-def km_grease_pencil_stroke_curve_edit_mode(_params):
+def km_gpencil_legacy_stroke_curve_edit_mode(_params):
     items = []
     keymap = (
         "Grease Pencil Stroke Curve Edit Mode",
@@ -3859,7 +3854,7 @@ def km_grease_pencil_stroke_curve_edit_mode(_params):
     return keymap
 
 
-def km_grease_pencil_stroke_paint_mode(params):
+def km_gpencil_legacy_stroke_paint_mode(params):
     items = []
     keymap = (
         "Grease Pencil Stroke Paint Mode",
@@ -3906,12 +3901,16 @@ def km_grease_pencil_stroke_paint_mode(params):
         ("gpencil.select_box", {"type": 'B', "value": 'PRESS'}, None),
         # Lasso erase
         ("gpencil.select_lasso", {"type": params.action_mouse, "value": 'CLICK_DRAG', "ctrl": True, "alt": True}, None),
+        op_asset_shelf_popup(
+            "VIEW3D_AST_brush_gpencil_paint",
+            {"type": 'SPACE', "value": 'PRESS', "shift": True}
+        ),
     ])
 
     return keymap
 
 
-def km_grease_pencil_stroke_paint_draw_brush(params):
+def km_gpencil_legacy_stroke_paint_draw_brush(params):
     items = []
     keymap = (
         "Grease Pencil Stroke Paint (Draw brush)",
@@ -3920,27 +3919,18 @@ def km_grease_pencil_stroke_paint_draw_brush(params):
     )
 
     # Draw
-    if params.use_experimental_grease_pencil_version3:
-        items.extend([
-            ("grease_pencil.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
-            ("grease_pencil.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
-             {"properties": [("mode", 'INVERT')]}),
-            ("grease_pencil.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
-             {"properties": [("mode", 'SMOOTH')]}),
-        ])
-    else:
-        items.extend([
-            ("gpencil.draw", {"type": 'LEFTMOUSE', "value": 'PRESS'},
-             {"properties": [("mode", 'DRAW'), ("wait_for_input", False)]}),
-            ("gpencil.draw", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
-             {"properties": [("mode", 'DRAW'), ("wait_for_input", False)]}),
-            # Draw - straight lines
-            ("gpencil.draw", {"type": 'LEFTMOUSE', "value": 'PRESS', "alt": True},
-             {"properties": [("mode", 'DRAW_STRAIGHT'), ("wait_for_input", False)]}),
-            # Erase
-            ("gpencil.draw", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
-             {"properties": [("mode", 'ERASER'), ("wait_for_input", False)]}),
-        ])
+    items.extend([
+        ("gpencil.draw", {"type": 'LEFTMOUSE', "value": 'PRESS'},
+            {"properties": [("mode", 'DRAW'), ("wait_for_input", False)]}),
+        ("gpencil.draw", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
+            {"properties": [("mode", 'DRAW'), ("wait_for_input", False)]}),
+        # Draw - straight lines
+        ("gpencil.draw", {"type": 'LEFTMOUSE', "value": 'PRESS', "alt": True},
+            {"properties": [("mode", 'DRAW_STRAIGHT'), ("wait_for_input", False)]}),
+        # Erase
+        ("gpencil.draw", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
+            {"properties": [("mode", 'ERASER'), ("wait_for_input", False)]}),
+    ])
 
     items.extend([
         # Tablet Mappings for Drawing ------------------ */
@@ -3953,7 +3943,7 @@ def km_grease_pencil_stroke_paint_draw_brush(params):
     return keymap
 
 
-def km_grease_pencil_stroke_paint_erase(_params):
+def km_gpencil_legacy_stroke_paint_erase(_params):
     items = []
     keymap = (
         "Grease Pencil Stroke Paint (Erase)",
@@ -3972,7 +3962,7 @@ def km_grease_pencil_stroke_paint_erase(_params):
     return keymap
 
 
-def km_grease_pencil_stroke_paint_fill(_params):
+def km_gpencil_legacy_stroke_paint_fill(_params):
     items = []
     keymap = (
         "Grease Pencil Stroke Paint (Fill)",
@@ -4008,7 +3998,7 @@ def km_grease_pencil_stroke_paint_fill(_params):
     return keymap
 
 
-def km_grease_pencil_stroke_paint_tint(_params):
+def km_gpencil_legacy_stroke_paint_tint(_params):
     items = []
     keymap = (
         "Grease Pencil Stroke Paint (Tint)",
@@ -4027,7 +4017,7 @@ def km_grease_pencil_stroke_paint_tint(_params):
     return keymap
 
 
-def km_grease_pencil_stroke_sculpt_mode(params):
+def km_gpencil_legacy_stroke_sculpt_mode(params):
     items = []
     keymap = (
         "Grease Pencil Stroke Sculpt Mode",
@@ -4037,7 +4027,7 @@ def km_grease_pencil_stroke_sculpt_mode(params):
 
     items.extend([
         # Selection
-        *_grease_pencil_selection(params, alt_select=True),
+        *_gpencil_legacy_selection(params, alt_select=True),
         *_template_items_select_lasso(params, "gpencil.select_lasso"),
         # Selection mode
         ("wm.context_toggle", {"type": 'ONE', "value": 'PRESS'},
@@ -4060,7 +4050,7 @@ def km_grease_pencil_stroke_sculpt_mode(params):
         # Copy
         ("gpencil.copy", {"type": 'C', "value": 'PRESS', "ctrl": True}, None),
         # Display
-        *_grease_pencil_display(),
+        *_gpencil_legacy_display(),
         # Active layer
         op_menu("GPENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),
         # Active material
@@ -4081,12 +4071,16 @@ def km_grease_pencil_stroke_sculpt_mode(params):
             "VIEW3D_MT_sculpt_gpencil_automasking_pie",
             {"type": 'A', "shift": True, "alt": True, "value": 'PRESS'},
         ),
+        op_asset_shelf_popup(
+            "VIEW3D_AST_brush_gpencil_sculpt",
+            {"type": 'SPACE', "value": 'PRESS', "shift": True}
+        ),
     ])
 
     return keymap
 
 
-def km_grease_pencil_stroke_sculpt_smooth(_params):
+def km_gpencil_legacy_stroke_sculpt_smooth(_params):
     items = []
     keymap = (
         "Grease Pencil Stroke Sculpt (Smooth)",
@@ -4106,7 +4100,7 @@ def km_grease_pencil_stroke_sculpt_smooth(_params):
     return keymap
 
 
-def km_grease_pencil_stroke_sculpt_thickness(_params):
+def km_gpencil_legacy_stroke_sculpt_thickness(_params):
     items = []
     keymap = (
         "Grease Pencil Stroke Sculpt (Thickness)",
@@ -4126,7 +4120,7 @@ def km_grease_pencil_stroke_sculpt_thickness(_params):
     return keymap
 
 
-def km_grease_pencil_stroke_sculpt_strength(_params):
+def km_gpencil_legacy_stroke_sculpt_strength(_params):
     items = []
     keymap = (
         "Grease Pencil Stroke Sculpt (Strength)",
@@ -4146,7 +4140,7 @@ def km_grease_pencil_stroke_sculpt_strength(_params):
     return keymap
 
 
-def km_grease_pencil_stroke_sculpt_grab(_params):
+def km_gpencil_legacy_stroke_sculpt_grab(_params):
     items = []
     keymap = (
         "Grease Pencil Stroke Sculpt (Grab)",
@@ -4166,7 +4160,7 @@ def km_grease_pencil_stroke_sculpt_grab(_params):
     return keymap
 
 
-def km_grease_pencil_stroke_sculpt_push(_params):
+def km_gpencil_legacy_stroke_sculpt_push(_params):
     items = []
     keymap = (
         "Grease Pencil Stroke Sculpt (Push)",
@@ -4186,7 +4180,7 @@ def km_grease_pencil_stroke_sculpt_push(_params):
     return keymap
 
 
-def km_grease_pencil_stroke_sculpt_twist(_params):
+def km_gpencil_legacy_stroke_sculpt_twist(_params):
     items = []
     keymap = (
         "Grease Pencil Stroke Sculpt (Twist)",
@@ -4206,7 +4200,7 @@ def km_grease_pencil_stroke_sculpt_twist(_params):
     return keymap
 
 
-def km_grease_pencil_stroke_sculpt_pinch(_params):
+def km_gpencil_legacy_stroke_sculpt_pinch(_params):
     items = []
     keymap = (
         "Grease Pencil Stroke Sculpt (Pinch)",
@@ -4226,7 +4220,7 @@ def km_grease_pencil_stroke_sculpt_pinch(_params):
     return keymap
 
 
-def km_grease_pencil_stroke_sculpt_randomize(_params):
+def km_gpencil_legacy_stroke_sculpt_randomize(_params):
     items = []
     keymap = (
         "Grease Pencil Stroke Sculpt (Randomize)",
@@ -4246,7 +4240,7 @@ def km_grease_pencil_stroke_sculpt_randomize(_params):
     return keymap
 
 
-def km_grease_pencil_stroke_sculpt_clone(_params):
+def km_gpencil_legacy_stroke_sculpt_clone(_params):
     items = []
     keymap = (
         "Grease Pencil Stroke Sculpt (Clone)",
@@ -4266,7 +4260,7 @@ def km_grease_pencil_stroke_sculpt_clone(_params):
     return keymap
 
 
-def km_grease_pencil_stroke_weight_mode(params):
+def km_gpencil_legacy_stroke_weight_mode(params):
     items = []
     keymap = (
         "Grease Pencil Stroke Weight Mode",
@@ -4290,7 +4284,7 @@ def km_grease_pencil_stroke_weight_mode(params):
         ("brush.scale_size", {"type": 'RIGHT_BRACKET', "value": 'PRESS', "repeat": True},
          {"properties": [("scalar", 1.0 / 0.9)]}),
         # Display
-        *_grease_pencil_display(),
+        *_gpencil_legacy_display(),
         # Active layer
         op_menu("GPENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),
         # Merge Layer
@@ -4308,6 +4302,10 @@ def km_grease_pencil_stroke_weight_mode(params):
         ("gpencil.weight_toggle_direction", {"type": 'D', "value": 'PRESS'}, None),
         # Weight sample
         ("gpencil.weight_sample", {"type": 'X', "value": 'PRESS', "shift": True}, None),
+        op_asset_shelf_popup(
+            "VIEW3D_AST_brush_gpencil_weight",
+            {"type": 'SPACE', "value": 'PRESS', "shift": True}
+        ),
     ])
 
     if params.select_mouse == 'LEFTMOUSE':
@@ -4319,7 +4317,7 @@ def km_grease_pencil_stroke_weight_mode(params):
     return keymap
 
 
-def km_grease_pencil_stroke_weight_draw(_params):
+def km_gpencil_legacy_stroke_weight_draw(_params):
     items = []
     keymap = (
         "Grease Pencil Stroke Weight (Draw)",
@@ -4336,7 +4334,7 @@ def km_grease_pencil_stroke_weight_draw(_params):
     return keymap
 
 
-def km_grease_pencil_stroke_weight_blur(_params):
+def km_gpencil_legacy_stroke_weight_blur(_params):
     items = []
     keymap = (
         "Grease Pencil Stroke Weight (Blur)",
@@ -4353,7 +4351,7 @@ def km_grease_pencil_stroke_weight_blur(_params):
     return keymap
 
 
-def km_grease_pencil_stroke_weight_average(_params):
+def km_gpencil_legacy_stroke_weight_average(_params):
     items = []
     keymap = (
         "Grease Pencil Stroke Weight (Average)",
@@ -4370,7 +4368,7 @@ def km_grease_pencil_stroke_weight_average(_params):
     return keymap
 
 
-def km_grease_pencil_stroke_weight_smear(_params):
+def km_gpencil_legacy_stroke_weight_smear(_params):
     items = []
     keymap = (
         "Grease Pencil Stroke Weight (Smear)",
@@ -4387,7 +4385,7 @@ def km_grease_pencil_stroke_weight_smear(_params):
     return keymap
 
 
-def km_grease_pencil_stroke_vertex_mode(params):
+def km_gpencil_legacy_stroke_vertex_mode(params):
     items = []
     keymap = (
         "Grease Pencil Stroke Vertex Mode",
@@ -4397,7 +4395,7 @@ def km_grease_pencil_stroke_vertex_mode(params):
 
     items.extend([
         # Selection
-        *_grease_pencil_selection(params, alt_select=True),
+        *_gpencil_legacy_selection(params, alt_select=True),
         *_template_items_select_lasso(params, "gpencil.select_lasso"),
         # Selection mode
         ("wm.context_toggle", {"type": 'ONE', "value": 'PRESS'},
@@ -4422,7 +4420,7 @@ def km_grease_pencil_stroke_vertex_mode(params):
         # Color Flip
         ("gpencil.tint_flip", {"type": 'X', "value": 'PRESS'}, None),
         # Display
-        *_grease_pencil_display(),
+        *_gpencil_legacy_display(),
         # Active layer
         op_menu("GPENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),
         # Merge Layer
@@ -4437,12 +4435,16 @@ def km_grease_pencil_stroke_vertex_mode(params):
 
         # Vertex Paint context menu
         op_panel("VIEW3D_PT_gpencil_vertex_context_menu", params.context_menu_event),
+        op_asset_shelf_popup(
+            "VIEW3D_AST_brush_gpencil_vertex",
+            {"type": 'SPACE', "value": 'PRESS', "shift": True}
+        ),
     ])
 
     return keymap
 
 
-def km_grease_pencil_stroke_vertex_draw(_params):
+def km_gpencil_legacy_stroke_vertex_draw(_params):
     items = []
     keymap = (
         "Grease Pencil Stroke Vertex (Draw)",
@@ -4469,7 +4471,7 @@ def km_grease_pencil_stroke_vertex_draw(_params):
     return keymap
 
 
-def km_grease_pencil_stroke_vertex_blur(_params):
+def km_gpencil_legacy_stroke_vertex_blur(_params):
     items = []
     keymap = (
         "Grease Pencil Stroke Vertex (Blur)",
@@ -4494,7 +4496,7 @@ def km_grease_pencil_stroke_vertex_blur(_params):
     return keymap
 
 
-def km_grease_pencil_stroke_vertex_average(_params):
+def km_gpencil_legacy_stroke_vertex_average(_params):
     items = []
     keymap = (
         "Grease Pencil Stroke Vertex (Average)",
@@ -4521,7 +4523,7 @@ def km_grease_pencil_stroke_vertex_average(_params):
     return keymap
 
 
-def km_grease_pencil_stroke_vertex_smear(_params):
+def km_gpencil_legacy_stroke_vertex_smear(_params):
     items = []
     keymap = (
         "Grease Pencil Stroke Vertex (Smear)",
@@ -4546,7 +4548,7 @@ def km_grease_pencil_stroke_vertex_smear(_params):
     return keymap
 
 
-def km_grease_pencil_stroke_vertex_replace(_params):
+def km_gpencil_legacy_stroke_vertex_replace(_params):
     items = []
     keymap = (
         "Grease Pencil Stroke Vertex (Replace)",
@@ -4566,7 +4568,8 @@ def km_grease_pencil_stroke_vertex_replace(_params):
     return keymap
 
 
-def km_grease_pencil_paint(_params):
+# Grease Pencil v3
+def km_grease_pencil_paint_mode(params):
     items = []
     keymap = (
         "Grease Pencil Paint Mode",
@@ -4575,16 +4578,6 @@ def km_grease_pencil_paint(_params):
     )
 
     items.extend([
-        *_template_paint_radial_control("gpencil_paint"),
-        ("brush.scale_size", {"type": 'LEFT_BRACKET', "value": 'PRESS', "repeat": True},
-         {"properties": [("scalar", 0.9)]}),
-        ("brush.scale_size", {"type": 'RIGHT_BRACKET', "value": 'PRESS', "repeat": True},
-         {"properties": [("scalar", 1.0 / 0.9)]}),
-        ("grease_pencil.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
-        ("grease_pencil.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
-         {"properties": [("mode", 'INVERT')]}),
-        ("grease_pencil.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
-         {"properties": [("mode", 'SMOOTH')]}),
         # Active material
         op_menu("VIEW3D_MT_greasepencil_material_active", {"type": 'U', "value": 'PRESS'}),
         # Active layer
@@ -4594,12 +4587,58 @@ def km_grease_pencil_paint(_params):
         *_template_items_hide_reveal_actions("grease_pencil.layer_hide", "grease_pencil.layer_reveal"),
 
         ("paint.sample_color", {"type": 'X', "value": 'PRESS', "shift": True}, None),
+
+        # Isolate Layer
+        ("grease_pencil.layer_isolate", {"type": 'NUMPAD_ASTERIX', "value": 'PRESS'}, None),
+
+        # Keyframe Menu
+        op_menu("VIEW3D_MT_edit_greasepencil_animation", {"type": 'I', "value": 'PRESS'}),
+
+        op_tool_optional(
+            ("grease_pencil.interpolate", {"type": 'E', "value": 'PRESS', "ctrl": True}, None),
+            (op_tool_cycle, "builtin.interpolate"), params),
+
+        op_asset_shelf_popup(
+            "VIEW3D_AST_brush_gpencil_paint",
+            {"type": 'SPACE', "value": 'PRESS', "shift": True}
+        ),
     ])
 
     return keymap
 
 
-def km_grease_pencil_edit(params):
+def km_grease_pencil_brush_stroke(_params):
+    items = []
+    keymap = (
+        "Grease Pencil Brush Stroke",
+        {"space_type": 'EMPTY', "region_type": 'WINDOW'},
+        {"items": items},
+    )
+
+    items.extend([
+        ("grease_pencil.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
+        ("grease_pencil.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
+         {"properties": [("mode", 'ERASE')]}),
+        ("grease_pencil.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
+         {"properties": [("mode", 'SMOOTH')]}),
+        # Brush size
+        ("wm.radial_control", {"type": 'F', "value": 'PRESS'},
+         {"properties": [("data_path_primary", 'tool_settings.gpencil_paint.brush.size')]}),
+        # Brush strength
+        ("wm.radial_control", {"type": 'F', "value": 'PRESS', "shift": True},
+         {"properties": [("data_path_primary", 'tool_settings.gpencil_paint.brush.strength')]}),
+        # Increase/Decrease brush size
+        ("brush.scale_size", {"type": 'LEFT_BRACKET', "value": 'PRESS', "repeat": True},
+         {"properties": [("scalar", 0.9)]}),
+        ("brush.scale_size", {"type": 'RIGHT_BRACKET', "value": 'PRESS', "repeat": True},
+         {"properties": [("scalar", 1.0 / 0.9)]}),
+        *_template_items_context_panel("VIEW3D_PT_greasepencil_draw_context_menu", _params.context_menu_event),
+    ])
+
+    return keymap
+
+
+def km_grease_pencil_edit_mode(params):
     items = []
     keymap = (
         "Grease Pencil Edit Mode",
@@ -4620,6 +4659,15 @@ def km_grease_pencil_edit(params):
         # Dissolve
         ("grease_pencil.dissolve", {"type": 'X', "value": 'PRESS', "ctrl": True}, None),
         ("grease_pencil.dissolve", {"type": 'DEL', "value": 'PRESS', "ctrl": True}, None),
+        # Copy/paste
+        ("grease_pencil.copy", {"type": 'C', "value": 'PRESS', "ctrl": True}, None),
+        ("grease_pencil.paste", {"type": 'V', "value": 'PRESS', "ctrl": True}, None),
+        ("grease_pencil.paste", {"type": 'V', "value": 'PRESS', "shift": True, "ctrl": True},
+         {"properties": [("paste_back", True)]}),
+        # Snap
+        op_menu_pie("GREASE_PENCIL_MT_snap_pie", {"type": 'S', "value": 'PRESS', "shift": True}),
+        # Separate
+        ("grease_pencil.separate", {"type": 'P', "value": 'PRESS'}, None),
         # Delete all active frames
         ("grease_pencil.delete_frame", {"type": 'DEL', "value": 'PRESS', "shift": True},
          {"properties": [("type", "ALL_FRAMES")]}),
@@ -4647,11 +4695,181 @@ def km_grease_pencil_edit(params):
 
         ("grease_pencil.duplicate_move", {"type": 'D', "value": 'PRESS', "shift": True}, None),
 
+        # Extrude and move selected points
+        op_tool_optional(
+            ("grease_pencil.extrude_move", {"type": 'E', "value": 'PRESS'}, None),
+            (op_tool_cycle, "builtin.extrude"), params),
+
         # Active layer
         op_menu("GREASE_PENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),
 
+        # Move to layer
+        op_menu("GREASE_PENCIL_MT_move_to_layer", {"type": 'M', "value": 'PRESS'}),
+
         # Context menu
         *_template_items_context_menu("VIEW3D_MT_greasepencil_edit_context_menu", params.context_menu_event),
+
+        # Reorder
+        ("grease_pencil.reorder", {"type": 'UP_ARROW', "value": 'PRESS',
+         "ctrl": True, "shift": True}, {"properties": [("direction", "TOP")]}),
+        ("grease_pencil.reorder", {"type": 'UP_ARROW', "value": 'PRESS',
+         "ctrl": True, "repeat": True}, {"properties": [("direction", "UP")]}),
+        ("grease_pencil.reorder", {"type": 'DOWN_ARROW', "value": 'PRESS',
+         "ctrl": True, "repeat": True}, {"properties": [("direction", "DOWN")]}),
+        ("grease_pencil.reorder", {"type": 'DOWN_ARROW', "value": 'PRESS',
+         "ctrl": True, "shift": True}, {"properties": [("direction", "BOTTOM")]}),
+
+        # Isolate Layer
+        ("grease_pencil.layer_isolate", {"type": 'NUMPAD_ASTERIX', "value": 'PRESS'}, None),
+
+        # Select mode
+        ("grease_pencil.set_selection_mode", {"type": 'ONE', "value": 'PRESS'}, {"properties": [("mode", 'POINT')]}),
+        ("grease_pencil.set_selection_mode", {"type": 'TWO', "value": 'PRESS'}, {"properties": [("mode", 'STROKE')]}),
+
+        # Set Handle Type
+        ("grease_pencil.set_handle_type", {"type": 'V', "value": 'PRESS'}, None),
+
+        op_tool_optional(
+            ("grease_pencil.interpolate", {"type": 'E', "value": 'PRESS', "ctrl": True}, None),
+            (op_tool_cycle, "builtin.interpolate"), params),
+    ])
+
+    return keymap
+
+
+def km_grease_pencil_sculpt_mode(params):
+    items = []
+    keymap = (
+        "Grease Pencil Sculpt Mode",
+        {"space_type": 'EMPTY', "region_type": 'WINDOW'},
+        {"items": items}
+    )
+
+    items.extend([
+        ("brush.scale_size", {"type": 'LEFT_BRACKET', "value": 'PRESS', "repeat": True},
+         {"properties": [("scalar", 0.9)]}),
+        ("brush.scale_size", {"type": 'RIGHT_BRACKET', "value": 'PRESS', "repeat": True},
+         {"properties": [("scalar", 1.0 / 0.9)]}),
+        # Invoke sculpt operator
+        ("grease_pencil.sculpt_paint", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
+        ("grease_pencil.sculpt_paint", {"type": 'LEFTMOUSE', "value": 'PRESS',
+         "ctrl": True}, {"properties": [("mode", 'INVERT')]}),
+        ("grease_pencil.sculpt_paint", {"type": 'LEFTMOUSE', "value": 'PRESS',
+         "shift": True}, {"properties": [("mode", 'SMOOTH')]}),
+        *_template_paint_radial_control("gpencil_sculpt_paint"),
+        op_asset_shelf_popup(
+            "VIEW3D_AST_brush_gpencil_sculpt",
+            {"type": 'SPACE', "value": 'PRESS', "shift": True}
+        ),
+        *_template_items_context_panel("VIEW3D_PT_greasepencil_sculpt_context_menu", params.context_menu_event),
+    ])
+
+    return keymap
+
+
+def km_grease_pencil_weight_paint(params):
+    # NOTE: This keymap falls through to "Pose" when an armature modifying the GP object
+    # is selected in weight paint mode. When editing the key-map take care that pose operations
+    # (such as transforming bones) is not impacted.
+    items = []
+    keymap = (
+        "Grease Pencil Weight Paint",
+        {"space_type": 'EMPTY', "region_type": 'WINDOW'},
+        {"items": items},
+    )
+
+    items.extend([
+        # Paint weight
+        ("grease_pencil.weight_brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
+        ("grease_pencil.weight_brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
+         {"properties": [("mode", 'INVERT')]}),
+        # Increase/Decrease brush size
+        ("brush.scale_size", {"type": 'LEFT_BRACKET', "value": 'PRESS', "repeat": True},
+         {"properties": [("scalar", 0.9)]}),
+        ("brush.scale_size", {"type": 'RIGHT_BRACKET', "value": 'PRESS', "repeat": True},
+         {"properties": [("scalar", 1.0 / 0.9)]}),
+        # Radial controls
+        *_template_paint_radial_control("gpencil_weight_paint"),
+        ("wm.radial_control", {"type": 'F', "value": 'PRESS', "ctrl": True},
+         radial_control_properties("gpencil_weight_paint", 'weight', 'use_unified_weight')),
+        # Toggle Add/Subtract for weight draw tool
+        ("grease_pencil.weight_toggle_direction", {"type": 'D', "value": 'PRESS'}, None),
+        # Sample weight
+        ("grease_pencil.weight_sample", {"type": 'X', "value": 'PRESS', "shift": True}, None),
+        # Context menu
+        *_template_items_context_panel("VIEW3D_PT_gpencil_weight_context_menu", params.context_menu_event),
+
+        # Show/hide layer
+        *_template_items_hide_reveal_actions("grease_pencil.layer_hide", "grease_pencil.layer_reveal"),
+
+        op_asset_shelf_popup(
+            "VIEW3D_AST_brush_gpencil_weight",
+            {"type": 'SPACE', "value": 'PRESS', "shift": True}
+        ),
+    ])
+
+    if params.select_mouse == 'LEFTMOUSE':
+        # Bone selection for combined weight paint + pose mode (Alt).
+        items.extend([
+            ("view3d.select", {"type": 'LEFTMOUSE', "value": 'PRESS', "alt": True}, None),
+            ("view3d.select", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True, "alt": True},
+             {"properties": [("toggle", True)]}),
+
+            # Ctrl-Shift-LMB is needed for MMB emulation (which conflicts with Alt).
+            # NOTE: this works reasonably well for pose-mode where typically selecting a single bone is sufficient.
+            # For selecting faces/vertices, this is less useful. Selection tools are needed in this case.
+            ("view3d.select", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True, "shift": True}, None),
+        ])
+
+    return keymap
+
+
+# Grease Pencil v3 Fill Tool.
+def km_grease_pencil_fill_tool(_params):
+    items = []
+    keymap = (
+        "Grease Pencil Fill Tool",
+        {"space_type": 'EMPTY', "region_type": 'WINDOW'},
+        {"items": items},
+    )
+
+    items.extend([
+        # Fill operator.
+        ("grease_pencil.fill", {"type": 'LEFTMOUSE', "value": 'PRESS'},
+         None),
+        ("grease_pencil.fill", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
+         {"properties": [("invert", True)]}),
+        # Use regular stroke operator when holding shift to draw lines.
+        ("grease_pencil.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
+         None),
+    ])
+
+    return keymap
+
+
+def km_grease_pencil_fill_tool_modal_map(params):
+    items = []
+    keymap = (
+        "Fill Tool Modal Map",
+        {"space_type": 'EMPTY', "region_type": 'WINDOW', "modal": True},
+        {"items": items},
+    )
+
+    items.extend([
+        ("CANCEL", {"type": 'ESC', "value": 'PRESS', "any": True}, None),
+        ("CANCEL", {"type": 'RIGHTMOUSE', "value": 'PRESS'}, None),
+        ("CONFIRM", {"type": 'LEFTMOUSE', "value": 'PRESS', "any": True}, None),
+        ("EXTENSION_MODE_TOGGLE", {"type": 'S', "value": 'PRESS'}, None),
+        ("EXTENSION_LENGTHEN", {"type": 'PAGE_UP', "value": 'PRESS', "repeat": True}, None),
+        ("EXTENSION_LENGTHEN", {"type": 'WHEELUPMOUSE', "value": 'PRESS'}, None),
+        ("EXTENSION_SHORTEN", {"type": 'PAGE_DOWN', "value": 'PRESS', "repeat": True}, None),
+        ("EXTENSION_SHORTEN", {"type": 'WHEELDOWNMOUSE', "value": 'PRESS'}, None),
+        ("EXTENSION_DRAG", {"type": 'MIDDLEMOUSE', "value": 'PRESS'}, None),
+        ("EXTENSION_COLLIDE", {"type": 'D', "value": 'PRESS'}, None),
+        ("INVERT", {"type": 'LEFT_CTRL', "value": 'ANY', "any": True}, None),
+        ("INVERT", {"type": 'RIGHT_CTRL', "value": 'ANY', "any": True}, None),
+        ("PRECISION", {"type": 'LEFT_SHIFT', "value": 'ANY', "any": True}, None),
+        ("PRECISION", {"type": 'RIGHT_SHIFT', "value": 'ANY', "any": True}, None),
     ])
 
     return keymap
@@ -4711,9 +4929,9 @@ def km_object_mode(params):
         ("object.join", {"type": 'J', "value": 'PRESS', "ctrl": True}, None),
         ("wm.context_toggle", {"type": 'PERIOD', "value": 'PRESS', "ctrl": True},
          {"properties": [("data_path", 'tool_settings.use_transform_data_origin')]}),
-        ("anim.keyframe_insert", {"type": 'I', "value": 'PRESS'}, None),
+        ("anim.keyframe_insert_menu", {"type": 'K', "value": 'PRESS'}, {"properties": [("always_prompt", True)]}),
         ("anim.keyframe_delete_v3d", {"type": 'I', "value": 'PRESS', "alt": True}, None),
-        ("anim.keying_set_active_set", {"type": 'I', "value": 'PRESS', "shift": True, "ctrl": True, "alt": True}, None),
+        ("anim.keying_set_active_set", {"type": 'K', "value": 'PRESS', "shift": True}, None),
         ("collection.create", {"type": 'G', "value": 'PRESS', "ctrl": True}, None),
         ("collection.objects_remove", {"type": 'G', "value": 'PRESS', "ctrl": True, "alt": True}, None),
         ("collection.objects_remove_all",
@@ -4729,6 +4947,16 @@ def km_object_mode(params):
         *_template_object_hide_collection_from_number_keys(),
         *_template_items_context_menu("VIEW3D_MT_object_context_menu", params.context_menu_event),
     ])
+
+    if params.use_pie_click_drag:
+        items.extend([
+            ("anim.keyframe_insert", {"type": 'I', "value": 'CLICK'}, None),
+            op_menu_pie("ANIM_MT_keyframe_insert_pie", {"type": 'I', "value": 'CLICK_DRAG'}),
+        ])
+    else:
+        items.extend([
+            ("anim.keyframe_insert", {"type": 'I', "value": 'PRESS'}, None),
+        ])
 
     if params.legacy:
         items.extend([
@@ -4850,16 +5078,27 @@ def km_pose(params):
         ("armature.assign_to_collection", {"type": 'M', "value": 'PRESS', "shift": True}, None),
         ("armature.move_to_collection", {"type": 'M', "value": 'PRESS'}, None),
         ("transform.bbone_resize", {"type": 'S', "value": 'PRESS', "shift": True, "ctrl": True, "alt": True}, None),
-        ("anim.keyframe_insert", {"type": 'I', "value": 'PRESS'}, None),
+        ("anim.keyframe_insert_menu", {"type": 'K', "value": 'PRESS'}, {"properties": [("always_prompt", True)]}),
         ("anim.keyframe_delete_v3d", {"type": 'I', "value": 'PRESS', "alt": True}, None),
-        ("anim.keying_set_active_set", {"type": 'I', "value": 'PRESS', "shift": True, "ctrl": True, "alt": True}, None),
+        ("anim.keying_set_active_set", {"type": 'K', "value": 'PRESS', "shift": True}, None),
         ("pose.push", {"type": 'E', "value": 'PRESS', "ctrl": True}, None),
         ("pose.relax", {"type": 'E', "value": 'PRESS', "alt": True}, None),
         ("pose.breakdown", {"type": 'E', "value": 'PRESS', "shift": True}, None),
         ("pose.blend_to_neighbor", {"type": 'E', "value": 'PRESS', "shift": True, "alt": True}, None),
         op_menu("VIEW3D_MT_pose_propagate", {"type": 'P', "value": 'PRESS', "alt": True}),
         *_template_items_context_menu("VIEW3D_MT_pose_context_menu", params.context_menu_event),
+        op_menu("POSE_MT_selection_sets_select", {"type": 'W', "value": 'PRESS', "shift": True, "alt": True}),
     ])
+
+    if params.use_pie_click_drag:
+        items.extend([
+            ("anim.keyframe_insert", {"type": 'I', "value": 'CLICK'}, None),
+            op_menu_pie("ANIM_MT_keyframe_insert_pie", {"type": 'I', "value": 'CLICK_DRAG'}),
+        ])
+    else:
+        items.extend([
+            ("anim.keyframe_insert", {"type": 'I', "value": 'PRESS'}, None),
+        ])
 
     return keymap
 
@@ -4895,6 +5134,10 @@ def km_paint_curve(params):
         ("transform.translate", {"type": params.select_mouse, "value": 'CLICK_DRAG'}, None),
         ("transform.rotate", {"type": 'R', "value": 'PRESS'}, None),
         ("transform.resize", {"type": 'S', "value": 'PRESS'}, None),
+        op_asset_shelf_popup(
+            "VIEW3D_AST_brush_sculpt_curves",
+            {"type": 'SPACE', "value": 'PRESS', "shift": True}
+        ),
     ])
 
     return keymap
@@ -5172,6 +5415,14 @@ def km_image_paint(params):
         ("wm.context_menu_enum", {"type": 'E', "value": 'PRESS', "alt": True},
          {"properties": [("data_path", 'tool_settings.image_paint.brush.stroke_method')]}),
         *_template_items_context_panel("VIEW3D_PT_paint_texture_context_menu", params.context_menu_event),
+        op_asset_shelf_popup(
+            "VIEW3D_AST_brush_texture_paint",
+            {"type": 'SPACE', "value": 'PRESS', "shift": True}
+        ),
+        op_asset_shelf_popup(
+            "IMAGE_AST_brush_paint",
+            {"type": 'SPACE', "value": 'PRESS', "shift": True}
+        ),
     ])
 
     if params.legacy:
@@ -5222,6 +5473,10 @@ def km_vertex_paint(params):
          {"properties": [("data_path", 'tool_settings.vertex_paint.brush.stroke_method')]}),
         ("paint.face_vert_reveal", {"type": 'H', "value": 'PRESS', "alt": True}, None),
         *_template_items_context_panel("VIEW3D_PT_paint_vertex_context_menu", params.context_menu_event),
+        op_asset_shelf_popup(
+            "VIEW3D_AST_brush_vertex_paint",
+            {"type": 'SPACE', "value": 'PRESS', "shift": True}
+        ),
     ])
 
     if params.legacy:
@@ -5279,6 +5534,10 @@ def km_weight_paint(params):
         op_menu_pie("VIEW3D_MT_wpaint_vgroup_lock_pie", {"type": 'K', "value": 'PRESS'}),
         ("paint.face_vert_reveal", {"type": 'H', "value": 'PRESS', "alt": True}, None),
         *_template_items_context_panel("VIEW3D_PT_paint_weight_context_menu", params.context_menu_event),
+        op_asset_shelf_popup(
+            "VIEW3D_AST_brush_weight_paint",
+            {"type": 'SPACE', "value": 'PRESS', "shift": True}
+        ),
     ])
 
     if params.select_mouse == 'LEFTMOUSE':
@@ -5415,8 +5674,12 @@ def km_sculpt(params):
          {"properties": [("mode", 'TOGGLE')]}),
         ("sculpt.face_set_change_visibility", {"type": 'H', "value": 'PRESS'},
          {"properties": [("mode", 'HIDE_ACTIVE')]}),
-        ("paint.hide_show", {"type": 'H', "value": 'PRESS', "alt": True},
-         {"properties": [("action", "SHOW"), ("area", "ALL")]}),
+        ("paint.hide_show_all", {"type": 'H', "value": 'PRESS', "alt": True},
+         {"properties": [("action", "SHOW")]}),
+        ("paint.visibility_filter", {"type": 'PAGE_UP', "value": 'PRESS', "repeat": True},
+         {"properties": [("action", 'GROW')]}),
+        ("paint.visibility_filter", {"type": 'PAGE_DOWN', "value": 'PRESS', "repeat": True},
+         {"properties": [("action", 'SHRINK')]}),
         ("sculpt.face_set_edit", {"type": 'W', "value": 'PRESS', "ctrl": True},
          {"properties": [("mode", 'GROW')]}),
         ("sculpt.face_set_edit", {"type": 'W', "value": 'PRESS', "ctrl": True, "alt": True},
@@ -5474,27 +5737,41 @@ def km_sculpt(params):
         op_menu_pie("VIEW3D_MT_sculpt_automasking_pie", {"type": 'A', "alt": True, "value": 'PRESS'}),
         op_menu_pie("VIEW3D_MT_sculpt_face_sets_edit_pie", {"type": 'W', "value": 'PRESS', "alt": True}),
         *_template_items_context_panel("VIEW3D_PT_sculpt_context_menu", params.context_menu_event),
-        # Tools
-        ("paint.brush_select", {"type": 'V', "value": 'PRESS'},
-         {"properties": [("sculpt_tool", 'DRAW')]}),
-        ("paint.brush_select", {"type": 'S', "value": 'PRESS'},
-         {"properties": [("sculpt_tool", 'SMOOTH')]}),
-        ("paint.brush_select", {"type": 'P', "value": 'PRESS'},
-         {"properties": [("sculpt_tool", 'PINCH')]}),
-        ("paint.brush_select", {"type": 'I', "value": 'PRESS'},
-         {"properties": [("sculpt_tool", 'INFLATE')]}),
-        ("paint.brush_select", {"type": 'G', "value": 'PRESS'},
-         {"properties": [("sculpt_tool", 'GRAB')]}),
-        ("paint.brush_select", {"type": 'T', "value": 'PRESS', "shift": True},
-         {"properties": [("sculpt_tool", 'SCRAPE')]}),
-        ("paint.brush_select", {"type": 'C', "value": 'PRESS'},
-         {"properties": [("sculpt_tool", 'CLAY_STRIPS')]}),
-        ("paint.brush_select", {"type": 'C', "value": 'PRESS', "shift": True},
-         {"properties": [("sculpt_tool", 'CREASE')]}),
-        ("paint.brush_select", {"type": 'K', "value": 'PRESS'},
-         {"properties": [("sculpt_tool", 'SNAKE_HOOK')]}),
-        ("paint.brush_select", {"type": 'M', "value": 'PRESS'},
-         {"properties": [("sculpt_tool", 'MASK'), ("toggle", True), ("create_missing", True)]}),
+        # Brushes
+        ("brush.asset_activate", {"type": 'V', "value": 'PRESS'},
+         {"properties": [("asset_library_type", 'ESSENTIALS'),
+                         ("relative_asset_identifier", "brushes/essentials_brushes.blend/Brush/Draw")]}),
+        ("brush.asset_activate", {"type": 'S', "value": 'PRESS'},
+         {"properties": [("asset_library_type", 'ESSENTIALS'),
+                         ("relative_asset_identifier", "brushes/essentials_brushes.blend/Brush/Smooth")]}),
+        ("brush.asset_activate", {"type": 'P', "value": 'PRESS'},
+         {"properties": [("asset_library_type", 'ESSENTIALS'),
+                         ("relative_asset_identifier", "brushes/essentials_brushes.blend/Brush/Pinch/Magnify")]}),
+        ("brush.asset_activate", {"type": 'I', "value": 'PRESS'},
+         {"properties": [("asset_library_type", 'ESSENTIALS'),
+                         ("relative_asset_identifier", "brushes/essentials_brushes.blend/Brush/Inflate/Deflate")]}),
+        ("brush.asset_activate", {"type": 'G', "value": 'PRESS'},
+         {"properties": [("asset_library_type", 'ESSENTIALS'),
+                         ("relative_asset_identifier", "brushes/essentials_brushes.blend/Brush/Grab")]}),
+        ("brush.asset_activate", {"type": 'T', "value": 'PRESS', "shift": True},
+         {"properties": [("asset_library_type", 'ESSENTIALS'),
+                         ("relative_asset_identifier", "brushes/essentials_brushes.blend/Brush/Scrape/Fill")]}),
+        ("brush.asset_activate", {"type": 'C', "value": 'PRESS'},
+         {"properties": [("asset_library_type", 'ESSENTIALS'),
+                         ("relative_asset_identifier", "brushes/essentials_brushes.blend/Brush/Clay Strips")]}),
+        ("brush.asset_activate", {"type": 'C', "value": 'PRESS', "shift": True},
+         {"properties": [("asset_library_type", 'ESSENTIALS'),
+                         ("relative_asset_identifier", "brushes/essentials_brushes.blend/Brush/Crease")]}),
+        ("brush.asset_activate", {"type": 'K', "value": 'PRESS'},
+         {"properties": [("asset_library_type", 'ESSENTIALS'),
+                         ("relative_asset_identifier", "brushes/essentials_brushes.blend/Brush/Snake Hook")]}),
+        ("brush.asset_activate", {"type": 'M', "value": 'PRESS'},
+         {"properties": [("asset_library_type", 'ESSENTIALS'),
+                         ("relative_asset_identifier", "brushes/essentials_brushes.blend/Brush/Mask")]}),
+        op_asset_shelf_popup(
+            "VIEW3D_AST_brush_sculpt",
+            {"type": 'SPACE', "value": 'PRESS', "shift": True}
+        ),
     ])
 
     # Lasso Masking.
@@ -6099,6 +6376,10 @@ def km_edit_curves(params):
             (op_tool_cycle, "builtin.tilt"), params),
         ("transform.transform", {"type": 'S', "value": 'PRESS', "alt": True},
          {"properties": [("mode", 'CURVE_SHRINKFATTEN')]}),
+        ("curves.cyclic_toggle", {"type": 'C', "value": 'PRESS', "alt": True}, None),
+        ("curves.handle_type_set", {"type": 'V', "value": 'PRESS'}, None),
+        op_menu("VIEW3D_MT_edit_curves_add", {"type": 'A', "value": 'PRESS', "shift": True}),
+        *_template_items_context_menu("VIEW3D_MT_edit_curves_context_menu", params.context_menu_event),
     ])
 
     return keymap
@@ -6351,6 +6632,26 @@ def km_gesture_lasso(_params):
     )
 
     items.extend([
+        ("MOVE", {"type": 'SPACE', "value": 'ANY', "any": True}, None),
+    ])
+
+    return keymap
+
+
+def km_gesture_polyline(_params):
+    items = []
+    keymap = (
+        "Gesture Polyline",
+        {"space_type": 'EMPTY', "region_type": 'WINDOW', "modal": True},
+        {"items": items},
+    )
+
+    items.extend([
+        ("CONFIRM", {"type": 'RET', "value": 'PRESS', "any": True}, None),
+        ("CONFIRM", {"type": 'LEFTMOUSE', "value": 'DOUBLE_CLICK', "any": True}, None),
+        ("CANCEL", {"type": 'ESC', "value": 'PRESS', "any": True}, None),
+        ("CANCEL", {"type": 'RIGHTMOUSE', "value": 'ANY', "any": True}, None),
+        ("SELECT", {"type": 'LEFTMOUSE', "value": 'PRESS', "any": True}, None),
         ("MOVE", {"type": 'SPACE', "value": 'ANY', "any": True}, None),
     ])
 
@@ -7021,21 +7322,53 @@ def km_image_editor_tool_uv_rip_region(params):
     )
 
 
-def km_image_editor_tool_uv_sculpt_stroke(params):
+def km_image_editor_tool_uv_grab(params):
     return (
-        "Image Editor Tool: Uv, Sculpt Stroke",
+        "Image Editor Tool: Uv, Grab",
         {"space_type": 'IMAGE_EDITOR', "region_type": 'WINDOW'},
         {"items": [
-            ("sculpt.uv_sculpt_stroke", {"type": params.tool_mouse, "value": 'PRESS'}, None),
-            ("sculpt.uv_sculpt_stroke", {"type": params.tool_mouse, "value": 'PRESS', "ctrl": True},
-             {"properties": [("mode", 'INVERT')]}),
-            ("sculpt.uv_sculpt_stroke", {"type": params.tool_mouse, "value": 'PRESS', "shift": True},
-             {"properties": [("mode", 'RELAX')]}),
-            ("brush.scale_size", {"type": 'LEFT_BRACKET', "value": 'PRESS', "repeat": True},
-             {"properties": [("scalar", 0.9)]}),
-            ("brush.scale_size", {"type": 'RIGHT_BRACKET', "value": 'PRESS', "repeat": True},
-             {"properties": [("scalar", 1.0 / 0.9)]}),
-            *_template_paint_radial_control("uv_sculpt"),
+            ("sculpt.uv_sculpt_grab", {"type": params.tool_mouse, "value": 'PRESS'}, None),
+            ("sculpt.uv_sculpt_grab", {"type": params.tool_mouse, "value": 'PRESS', "ctrl": True},
+             {"properties": [("use_invert", True)]}),
+            ("sculpt.uv_sculpt_relax", {"type": params.tool_mouse, "value": 'PRESS', "shift": True}, None),
+            ("wm.radial_control", {"type": 'F', "value": 'PRESS'},
+             {"properties": [("data_path_primary", "tool_settings.uv_sculpt.size"), ], }),
+            ("wm.radial_control", {"type": 'F', "value": 'PRESS', "shift": True},
+             {"properties": [("data_path_primary", "tool_settings.uv_sculpt.strength"), ], }),
+        ]},
+    )
+
+
+def km_image_editor_tool_uv_relax(params):
+    return (
+        "Image Editor Tool: Uv, Relax",
+        {"space_type": 'IMAGE_EDITOR', "region_type": 'WINDOW'},
+        {"items": [
+            ("sculpt.uv_sculpt_relax", {"type": params.tool_mouse, "value": 'PRESS'}, None),
+            ("sculpt.uv_sculpt_relax", {"type": params.tool_mouse, "value": 'PRESS', "ctrl": True},
+             {"properties": [("use_invert", True)]}),
+            ("sculpt.uv_sculpt_relax", {"type": params.tool_mouse, "value": 'PRESS', "shift": True}, None),
+            ("wm.radial_control", {"type": 'F', "value": 'PRESS'},
+             {"properties": [("data_path_primary", "tool_settings.uv_sculpt.size"), ], }),
+            ("wm.radial_control", {"type": 'F', "value": 'PRESS', "shift": True},
+             {"properties": [("data_path_primary", "tool_settings.uv_sculpt.strength"), ], }),
+        ]},
+    )
+
+
+def km_image_editor_tool_uv_pinch(params):
+    return (
+        "Image Editor Tool: Uv, Pinch",
+        {"space_type": 'IMAGE_EDITOR', "region_type": 'WINDOW'},
+        {"items": [
+            ("sculpt.uv_sculpt_pinch", {"type": params.tool_mouse, "value": 'PRESS'}, None),
+            ("sculpt.uv_sculpt_pinch", {"type": params.tool_mouse, "value": 'PRESS', "ctrl": True},
+             {"properties": [("use_invert", True)]}),
+            ("sculpt.uv_sculpt_relax", {"type": params.tool_mouse, "value": 'PRESS', "shift": True}, None),
+            ("wm.radial_control", {"type": 'F', "value": 'PRESS'},
+             {"properties": [("data_path_primary", "tool_settings.uv_sculpt.size"), ], }),
+            ("wm.radial_control", {"type": 'F', "value": 'PRESS', "shift": True},
+             {"properties": [("data_path_primary", "tool_settings.uv_sculpt.strength"), ], }),
         ]},
     )
 
@@ -7833,21 +8166,6 @@ def km_3d_view_tool_edit_curve_extrude_to_cursor(params):
 # ------------------------------------------------------------------------------
 # Tool System (3D View, Sculpt)
 
-def km_3d_view_tool_sculpt_box_hide(params):
-    return (
-        "3D View Tool: Sculpt, Box Hide",
-        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
-        {"items": [
-            ("paint.hide_show", params.tool_maybe_tweak_event,
-             {"properties": [("action", 'HIDE')]}),
-            ("paint.hide_show", {**params.tool_maybe_tweak_event, "ctrl": True},
-             {"properties": [("action", 'SHOW')]}),
-            ("paint.hide_show", {"type": params.select_mouse, "value": params.select_mouse_value},
-             {"properties": [("action", 'SHOW'), ("area", 'ALL')]}),
-        ]},
-    )
-
-
 def km_3d_view_tool_sculpt_box_mask(params):
     return (
         "3D View Tool: Sculpt, Box Mask",
@@ -7874,6 +8192,90 @@ def km_3d_view_tool_sculpt_lasso_mask(params):
     )
 
 
+def km_3d_view_tool_sculpt_line_mask(params):
+    return (
+        "3D View Tool: Sculpt, Line Mask",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": [
+            ("paint.mask_line_gesture", params.tool_maybe_tweak_event,
+             {"properties": [("value", 1.0)]}),
+            ("paint.mask_line_gesture", {**params.tool_maybe_tweak_event, "ctrl": True},
+             {"properties": [("value", 0.0)]}),
+        ]},
+    )
+
+
+def km_3d_view_tool_sculpt_polyline_mask(params):
+    return (
+        "3D View Tool: Sculpt, Polyline Mask",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": [
+            ("paint.mask_polyline_gesture", {"type": params.tool_mouse, "value": "PRESS"},
+             {"properties": [("value", 1.0)]}),
+            ("paint.mask_polyline_gesture", {"type": params.tool_mouse, "value": "PRESS", "ctrl": True},
+             {"properties": [("value", 0.0)]}),
+        ]},
+    )
+
+
+def km_3d_view_tool_sculpt_box_hide(params):
+    return (
+        "3D View Tool: Sculpt, Box Hide",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": [
+            ("paint.hide_show", params.tool_maybe_tweak_event,
+             {"properties": [("action", 'HIDE')]}),
+            ("paint.hide_show", {**params.tool_maybe_tweak_event, "ctrl": True},
+             {"properties": [("action", 'SHOW')]}),
+            ("paint.hide_show_all", {"type": params.select_mouse, "value": params.select_mouse_value},
+             {"properties": [("action", 'SHOW')]}),
+        ]},
+    )
+
+
+def km_3d_view_tool_sculpt_lasso_hide(params):
+    return (
+        "3D View Tool: Sculpt, Lasso Hide",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": [
+            ("paint.hide_show_lasso_gesture", params.tool_maybe_tweak_event,
+             {"properties": [("action", 'HIDE')]}),
+            ("paint.hide_show_lasso_gesture", {**params.tool_maybe_tweak_event, "ctrl": True},
+             {"properties": [("action", 'SHOW')]}),
+            ("paint.hide_show_all", {"type": params.select_mouse, "value": params.select_mouse_value},
+             {"properties": [("action", 'SHOW')]}),
+        ]},
+    )
+
+
+def km_3d_view_tool_sculpt_line_hide(params):
+    return (
+        "3D View Tool: Sculpt, Line Hide",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": [
+            ("paint.hide_show_line_gesture", params.tool_maybe_tweak_event,
+             {"properties": [("action", 'HIDE')]}),
+            ("paint.hide_show_line_gesture", {**params.tool_maybe_tweak_event, "ctrl": True},
+             {"properties": [("action", 'SHOW')]}),
+            ("paint.hide_show_all", {"type": params.select_mouse, "value": params.select_mouse_value},
+             {"properties": [("action", 'SHOW')]}),
+        ]},
+    )
+
+
+def km_3d_view_tool_sculpt_polyline_hide(params):
+    return (
+        "3D View Tool: Sculpt, Polyline Hide",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": [
+            ("paint.hide_show_polyline_gesture", {"type": params.tool_mouse, "value": "PRESS"},
+             {"properties": [("action", 'HIDE')]}),
+            ("paint.hide_show_polyline_gesture", {"type": params.tool_mouse, "value": "PRESS", "ctrl": True},
+             {"properties": [("action", 'SHOW')]}),
+        ]},
+    )
+
+
 def km_3d_view_tool_sculpt_box_face_set(params):
     return (
         "3D View Tool: Sculpt, Box Face Set",
@@ -7890,6 +8292,26 @@ def km_3d_view_tool_sculpt_lasso_face_set(params):
         {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
         {"items": [
             ("sculpt.face_set_lasso_gesture", params.tool_maybe_tweak_event, None),
+        ]},
+    )
+
+
+def km_3d_view_tool_sculpt_line_face_set(params):
+    return (
+        "3D View Tool: Sculpt, Line Face Set",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": [
+            ("sculpt.face_set_line_gesture", params.tool_maybe_tweak_event, None),
+        ]},
+    )
+
+
+def km_3d_view_tool_sculpt_polyline_face_set(params):
+    return (
+        "3D View Tool: Sculpt, Polyline Face Set",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": [
+            ("sculpt.face_set_polyline_gesture", {"type": params.tool_mouse, "value": "PRESS"}, None)
         ]},
     )
 
@@ -7914,16 +8336,23 @@ def km_3d_view_tool_sculpt_lasso_trim(params):
     )
 
 
-def km_3d_view_tool_sculpt_line_mask(params):
+def km_3d_view_tool_sculpt_line_trim(params):
     return (
-        "3D View Tool: Sculpt, Line Mask",
+        "3D View Tool: Sculpt, Line Trim",
         {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
         {"items": [
-            ("paint.mask_line_gesture", params.tool_maybe_tweak_event,
-             {"properties": [("value", 1.0)]}),
-            ("paint.mask_line_gesture", {**params.tool_maybe_tweak_event, "ctrl": True},
-             {"properties": [("value", 0.0)]}),
+            ("sculpt.trim_line_gesture", params.tool_maybe_tweak_event, None),
         ]},
+    )
+
+
+def km_3d_view_tool_sculpt_polyline_trim(params):
+    return (
+        "3D View Tool: Sculpt, Polyline Trim",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": [
+            ("sculpt.trim_polyline_gesture", {"type": params.tool_mouse, "value": "PRESS"}, None)
+        ]}
     )
 
 
@@ -7996,6 +8425,7 @@ def km_3d_view_tool_paint_weight_sample_weight(params):
         {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
         {"items": [
             ("paint.weight_sample", {"type": params.tool_mouse, "value": 'PRESS'}, None),
+            ("grease_pencil.weight_sample", {"type": params.tool_mouse, "value": 'PRESS'}, None),
         ]},
     )
 
@@ -8023,35 +8453,61 @@ def km_3d_view_tool_paint_weight_gradient(params):
 # ------------------------------------------------------------------------------
 # Tool System (3D View, Grease Pencil, Paint)
 
+
+def km_grease_pencil_primitive_tool_modal_map(params):
+    items = []
+    keymap = (
+        "Primitive Tool Modal Map",
+        {"space_type": 'EMPTY', "region_type": 'WINDOW', "modal": True},
+        {"items": items},
+    )
+
+    items.extend([
+        ("CANCEL", {"type": 'ESC', "value": 'PRESS', "any": True}, None),
+        ("CANCEL", {"type": 'Q', "value": 'PRESS', "any": True}, None),
+        ("PANNING", {"type": 'MIDDLEMOUSE', "value": 'ANY', "any": True}, None),
+        ("CONFIRM", {"type": 'RET', "value": 'PRESS', "any": True}, None),
+        ("CONFIRM", {"type": 'NUMPAD_ENTER', "value": 'PRESS', "any": True}, None),
+        ("EXTRUDE", {"type": 'E', "value": 'PRESS'}, None),
+        ("GRAB", {"type": 'G', "value": 'PRESS'}, None),
+        ("ROTATE", {"type": 'R', "value": 'PRESS'}, None),
+        ("SCALE", {"type": 'S', "value": 'PRESS'}, None),
+        ("INCREASE_SUBDIVISION", {"type": 'UP_ARROW', "value": 'PRESS', "repeat": True}, None),
+        ("DECREASE_SUBDIVISION", {"type": 'DOWN_ARROW', "value": 'PRESS', "repeat": True}, None),
+    ])
+
+    return keymap
+
+
 def km_3d_view_tool_paint_gpencil_line(params):
     return (
-        "3D View Tool: Paint Gpencil, Line",
+        "3D View Tool: Paint Grease Pencil, Line",
         {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
         {"items": [
-            ("gpencil.primitive_line", params.tool_maybe_tweak_event,
-             {"properties": [("wait_for_input", False)]}),
-            ("gpencil.primitive_line", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
-             {"properties": [("wait_for_input", False)]}),
-            ("gpencil.primitive_line", {"type": 'LEFTMOUSE', "value": 'PRESS', "alt": True},
-             {"properties": [("wait_for_input", False)]}),
+            ("grease_pencil.primitive_line", params.tool_maybe_tweak_event,
+                {"properties": []}),
+            ("grease_pencil.primitive_line", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
+                {"properties": []}),
+            ("grease_pencil.primitive_line", {"type": 'LEFTMOUSE', "value": 'PRESS', "alt": True},
+                {"properties": []}),
             # Lasso select
-            ("gpencil.select_lasso",
-             {"type": params.action_mouse, "value": 'CLICK_DRAG', "ctrl": True, "alt": True}, None),
+            ("grease_pencil.select_lasso",
+                {"type": params.action_mouse, "value": 'CLICK_DRAG', "ctrl": True, "alt": True}, None),
         ]},
     )
 
 
 def km_3d_view_tool_paint_gpencil_polyline(params):
     return (
-        "3D View Tool: Paint Gpencil, Polyline",
+        "3D View Tool: Paint Grease Pencil, Polyline",
         {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
         {"items": [
-            ("gpencil.primitive_polyline", params.tool_maybe_tweak_event,
-             {"properties": [("wait_for_input", False)]}),
-            ("gpencil.primitive_polyline", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
-             {"properties": [("wait_for_input", False)]}),
+            ("grease_pencil.primitive_polyline", {"type": 'LEFTMOUSE', "value": 'PRESS'},
+             {"properties": []}),
+            ("grease_pencil.primitive_polyline", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
+             {"properties": []}),
             # Lasso select
-            ("gpencil.select_lasso",
+            ("grease_pencil.select_lasso",
              {"type": params.action_mouse, "value": 'CLICK_DRAG', "ctrl": True, "alt": True}, None),
         ]},
     )
@@ -8059,17 +8515,17 @@ def km_3d_view_tool_paint_gpencil_polyline(params):
 
 def km_3d_view_tool_paint_gpencil_box(params):
     return (
-        "3D View Tool: Paint Gpencil, Box",
+        "3D View Tool: Paint Grease Pencil, Box",
         {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
         {"items": [
-            ("gpencil.primitive_box", params.tool_maybe_tweak_event,
-             {"properties": [("wait_for_input", False)]}),
-            ("gpencil.primitive_box", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
-             {"properties": [("wait_for_input", False)]}),
-            ("gpencil.primitive_box", {"type": 'LEFTMOUSE', "value": 'PRESS', "alt": True},
-             {"properties": [("wait_for_input", False)]}),
+            ("grease_pencil.primitive_box", params.tool_maybe_tweak_event,
+             {"properties": []}),
+            ("grease_pencil.primitive_box", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
+             {"properties": []}),
+            ("grease_pencil.primitive_box", {"type": 'LEFTMOUSE', "value": 'PRESS', "alt": True},
+             {"properties": []}),
             # Lasso select
-            ("gpencil.select_lasso",
+            ("grease_pencil.select_lasso",
              {"type": params.action_mouse, "value": 'CLICK_DRAG', "ctrl": True, "alt": True}, None),
         ]},
     )
@@ -8077,17 +8533,17 @@ def km_3d_view_tool_paint_gpencil_box(params):
 
 def km_3d_view_tool_paint_gpencil_circle(params):
     return (
-        "3D View Tool: Paint Gpencil, Circle",
+        "3D View Tool: Paint Grease Pencil, Circle",
         {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
         {"items": [
-            ("gpencil.primitive_circle", params.tool_maybe_tweak_event,
-             {"properties": [("wait_for_input", False)]}),
-            ("gpencil.primitive_circle", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
-             {"properties": [("wait_for_input", False)]}),
-            ("gpencil.primitive_circle", {"type": 'LEFTMOUSE', "value": 'PRESS', "alt": True},
-             {"properties": [("wait_for_input", False)]}),
+            ("grease_pencil.primitive_circle", params.tool_maybe_tweak_event,
+             {"properties": []}),
+            ("grease_pencil.primitive_circle", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
+             {"properties": []}),
+            ("grease_pencil.primitive_circle", {"type": 'LEFTMOUSE', "value": 'PRESS', "alt": True},
+             {"properties": []}),
             # Lasso select
-            ("gpencil.select_lasso",
+            ("grease_pencil.select_lasso",
              {"type": params.action_mouse, "value": 'CLICK_DRAG', "ctrl": True, "alt": True}, None),
         ]},
     )
@@ -8095,17 +8551,17 @@ def km_3d_view_tool_paint_gpencil_circle(params):
 
 def km_3d_view_tool_paint_gpencil_arc(params):
     return (
-        "3D View Tool: Paint Gpencil, Arc",
+        "3D View Tool: Paint Grease Pencil, Arc",
         {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
         {"items": [
-            ("gpencil.primitive_curve", params.tool_maybe_tweak_event,
-             {"properties": [("type", 'ARC'), ("wait_for_input", False)]}),
-            ("gpencil.primitive_curve", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
-             {"properties": [("type", 'ARC'), ("wait_for_input", False)]}),
-            ("gpencil.primitive_curve", {"type": 'LEFTMOUSE', "value": 'PRESS', "alt": True},
-             {"properties": [("type", 'ARC'), ("wait_for_input", False)]}),
+            ("grease_pencil.primitive_arc", params.tool_maybe_tweak_event,
+             {"properties": []}),
+            ("grease_pencil.primitive_arc", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
+             {"properties": []}),
+            ("grease_pencil.primitive_arc", {"type": 'LEFTMOUSE', "value": 'PRESS', "alt": True},
+             {"properties": []}),
             # Lasso select
-            ("gpencil.select_lasso",
+            ("grease_pencil.select_lasso",
              {"type": params.action_mouse, "value": 'CLICK_DRAG', "ctrl": True, "alt": True}, None),
         ]},
     )
@@ -8113,13 +8569,13 @@ def km_3d_view_tool_paint_gpencil_arc(params):
 
 def km_3d_view_tool_paint_gpencil_curve(params):
     return (
-        "3D View Tool: Paint Gpencil, Curve",
+        "3D View Tool: Paint Grease Pencil, Curve",
         {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
         {"items": [
-            ("gpencil.primitive_curve", params.tool_maybe_tweak_event,
-             {"properties": [("type", 'CURVE'), ("wait_for_input", False)]}),
+            ("grease_pencil.primitive_curve", params.tool_maybe_tweak_event,
+             {"properties": []}),
             # Lasso select
-            ("gpencil.select_lasso",
+            ("grease_pencil.select_lasso",
              {"type": params.action_mouse, "value": 'CLICK_DRAG', "ctrl": True, "alt": True}, None),
         ]},
     )
@@ -8134,6 +8590,16 @@ def km_3d_view_tool_paint_gpencil_cutter(params):
             # Lasso select
             ("gpencil.select_lasso",
              {"type": params.action_mouse, "value": 'CLICK_DRAG', "ctrl": True, "alt": True}, None),
+        ]},
+    )
+
+
+def km_3d_view_tool_paint_grease_pencil_cutter(params):
+    return (
+        "3D View Tool: Paint Grease Pencil, Cutter",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": [
+            ("grease_pencil.stroke_cutter", {"type": params.tool_mouse, "value": 'PRESS'}, None),
         ]},
     )
 
@@ -8162,6 +8628,27 @@ def km_3d_view_tool_paint_gpencil_interpolate(params):
              {"properties": [("release_confirm", True)]}),
         ]},
     )
+
+
+def km_grease_pencil_interpolate_tool_modal_map(params):
+    items = []
+    keymap = (
+        "Interpolate Tool Modal Map",
+        {"space_type": 'EMPTY', "region_type": 'WINDOW', "modal": True},
+        {"items": items},
+    )
+
+    items.extend([
+        ("CANCEL", {"type": 'ESC', "value": 'PRESS', "any": True}, None),
+        ("CANCEL", {"type": 'RIGHTMOUSE', "value": 'PRESS', "any": True}, None),
+        ("CONFIRM", {"type": 'RET', "value": 'PRESS', "any": True}, None),
+        ("CONFIRM", {"type": 'NUMPAD_ENTER', "value": 'PRESS', "any": True}, None),
+        ("CONFIRM", {"type": 'LEFTMOUSE', "value": 'RELEASE', "any": True}, None),
+        ("INCREASE", {"type": 'WHEELUPMOUSE', "value": 'PRESS'}, None),
+        ("DECREASE", {"type": 'WHEELDOWNMOUSE', "value": 'PRESS'}, None),
+    ])
+
+    return keymap
 
 
 # ------------------------------------------------------------------------------
@@ -8349,26 +8836,38 @@ def km_3d_view_tool_sculpt_gpencil_select_lasso(params):
 # ------------------------------------------------------------------------------
 # Tool System (Sequencer, Generic)
 
-def km_sequencer_editor_tool_generic_select(params, *, fallback):
+def km_sequencer_editor_tool_generic_select_timeline_rcs(params, fallback):
+    return [
+        ("sequencer.select_handle", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
+        *_template_items_change_frame(params),
+        # Frame change can be canceled if click happens on strip handle. In such case move the handle.
+        ("transform.seq_slide", {"type": 'LEFTMOUSE', "value": 'PRESS'},
+         {"properties": [("view2d_edge_pan", True), ("use_restore_handle_selection", True)]}),
+    ]
+
+
+def km_sequencer_editor_tool_generic_select_timeline_lcs(params, fallback):
+    return [
+        *_template_items_tool_select(
+            params, "sequencer.select", None, cursor_prioritize=True, fallback=fallback),
+        *_template_items_change_frame(params),
+    ]
+
+
+def km_sequencer_editor_tool_generic_select_timeline(params, *, fallback):
     return (
-        _fallback_id("Sequencer Tool: Tweak", fallback),
+        _fallback_id("Sequencer Timeline Tool: Tweak", fallback),
         {"space_type": 'SEQUENCE_EDITOR', "region_type": 'WINDOW'},
         {"items": [
-            *([] if (fallback and (params.select_mouse == 'RIGHTMOUSE')) else _template_items_tool_select(
-                params, "sequencer.select", "sequencer.cursor_set", cursor_prioritize=True, fallback=fallback)),
-
-            *([] if params.use_fallback_tool_select_handled else
-              _template_sequencer_preview_select(
-                  type=params.select_mouse, value=params.select_mouse_value, legacy=params.legacy)),
-            # Ignored for preview.
-            *_template_items_change_frame(params),
+            *(km_sequencer_editor_tool_generic_select_timeline_rcs(params, fallback) if (params.select_mouse == 'RIGHTMOUSE')
+              else km_sequencer_editor_tool_generic_select_timeline_lcs(params, fallback)),
         ]},
     )
 
 
-def km_sequencer_editor_tool_generic_select_box(params, *, fallback):
+def km_sequencer_editor_tool_generic_select_box_timeline(params, *, fallback):
     return (
-        _fallback_id("Sequencer Tool: Select Box", fallback),
+        _fallback_id("Sequencer Timeline Tool: Select Box", fallback),
         {"space_type": 'SEQUENCE_EDITOR', "region_type": 'WINDOW'},
         {"items": [
             # Don't use `tool_maybe_tweak_event`, see comment for this slot.
@@ -8377,11 +8876,40 @@ def km_sequencer_editor_tool_generic_select_box(params, *, fallback):
                 **(params.select_tweak_event if (fallback and params.use_fallback_tool_select_mouse) else
                    params.tool_tweak_event),
                 properties=[("tweak", params.select_mouse == 'LEFTMOUSE')])),
-
             # RMB select can already set the frame, match the tweak tool.
             # Ignored for preview.
             *(_template_items_change_frame(params)
               if params.select_mouse == 'LEFTMOUSE' else []),
+        ]},
+    )
+
+
+def km_sequencer_editor_tool_generic_select_preview(params, *, fallback):
+    return (
+        _fallback_id("Sequencer Preview Tool: Tweak", fallback),
+        {"space_type": 'SEQUENCE_EDITOR', "region_type": 'WINDOW'},
+        {"items": [
+            *([] if (fallback and (params.select_mouse == 'RIGHTMOUSE')) else _template_items_tool_select(
+                params, "sequencer.select", "sequencer.cursor_set", cursor_prioritize=True, fallback=fallback)),
+
+            *([] if params.use_fallback_tool_select_handled else
+              _template_sequencer_preview_select(
+                  type=params.select_mouse, value=params.select_mouse_value, legacy=params.legacy)),
+        ]},
+    )
+
+
+def km_sequencer_editor_tool_generic_select_box_preview(params, *, fallback):
+    return (
+        _fallback_id("Sequencer Preview Tool: Select Box", fallback),
+        {"space_type": 'SEQUENCE_EDITOR', "region_type": 'WINDOW'},
+        {"items": [
+            # Don't use `tool_maybe_tweak_event`, see comment for this slot.
+            *([] if (fallback and not params.use_fallback_tool) else _template_items_tool_select_actions_simple(
+                "sequencer.select_box",
+                **(params.select_tweak_event if (fallback and params.use_fallback_tool_select_mouse) else
+                   params.tool_tweak_event),
+                properties=[("tweak", params.select_mouse == 'LEFTMOUSE')])),
         ]},
     )
 
@@ -8464,6 +8992,28 @@ def km_sequencer_editor_tool_scale(params):
     )
 
 
+def km_3d_view_tool_edit_grease_pencil_interpolate(params):
+    return (
+        "3D View Tool: Edit Grease Pencil, Interpolate",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": [
+            ("grease_pencil.interpolate", params.tool_maybe_tweak_event,
+             None),
+        ]},
+    )
+
+
+def km_3d_view_tool_paint_grease_pencil_interpolate(params):
+    return (
+        "3D View Tool: Paint Grease Pencil, Interpolate",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": [
+            ("grease_pencil.interpolate", params.tool_maybe_tweak_event,
+             None),
+        ]},
+    )
+
+
 # ------------------------------------------------------------------------------
 # Full Configuration
 
@@ -8524,37 +9074,43 @@ def generate_keymaps(params=None):
         km_animation_channels(params),
 
         # Modes.
-        km_grease_pencil(params),  # TODO: Rename to km_annotate
-        km_grease_pencil_stroke_curve_edit_mode(params),
-        km_grease_pencil_stroke_edit_mode(params),
-        km_grease_pencil_stroke_paint_mode(params),
-        km_grease_pencil_stroke_paint_draw_brush(params),
-        km_grease_pencil_stroke_paint_erase(params),
-        km_grease_pencil_stroke_paint_fill(params),
-        km_grease_pencil_stroke_paint_tint(params),
-        km_grease_pencil_stroke_sculpt_mode(params),
-        km_grease_pencil_stroke_sculpt_smooth(params),
-        km_grease_pencil_stroke_sculpt_thickness(params),
-        km_grease_pencil_stroke_sculpt_strength(params),
-        km_grease_pencil_stroke_sculpt_grab(params),
-        km_grease_pencil_stroke_sculpt_push(params),
-        km_grease_pencil_stroke_sculpt_twist(params),
-        km_grease_pencil_stroke_sculpt_pinch(params),
-        km_grease_pencil_stroke_sculpt_randomize(params),
-        km_grease_pencil_stroke_sculpt_clone(params),
-        km_grease_pencil_stroke_weight_mode(params),
-        km_grease_pencil_stroke_weight_draw(params),
-        km_grease_pencil_stroke_weight_blur(params),
-        km_grease_pencil_stroke_weight_average(params),
-        km_grease_pencil_stroke_weight_smear(params),
-        km_grease_pencil_stroke_vertex_mode(params),
-        km_grease_pencil_stroke_vertex_draw(params),
-        km_grease_pencil_stroke_vertex_blur(params),
-        km_grease_pencil_stroke_vertex_average(params),
-        km_grease_pencil_stroke_vertex_smear(params),
-        km_grease_pencil_stroke_vertex_replace(params),
-        km_grease_pencil_paint(params),
-        km_grease_pencil_edit(params),
+        # Grease Pencil v2
+        km_gpencil_legacy(params),  # TODO: Rename to km_annotate
+        km_gpencil_legacy_stroke_curve_edit_mode(params),
+        km_gpencil_legacy_stroke_edit_mode(params),
+        km_gpencil_legacy_stroke_paint_mode(params),
+        km_gpencil_legacy_stroke_paint_draw_brush(params),
+        km_gpencil_legacy_stroke_paint_erase(params),
+        km_gpencil_legacy_stroke_paint_fill(params),
+        km_gpencil_legacy_stroke_paint_tint(params),
+        km_gpencil_legacy_stroke_sculpt_mode(params),
+        km_gpencil_legacy_stroke_sculpt_smooth(params),
+        km_gpencil_legacy_stroke_sculpt_thickness(params),
+        km_gpencil_legacy_stroke_sculpt_strength(params),
+        km_gpencil_legacy_stroke_sculpt_grab(params),
+        km_gpencil_legacy_stroke_sculpt_push(params),
+        km_gpencil_legacy_stroke_sculpt_twist(params),
+        km_gpencil_legacy_stroke_sculpt_pinch(params),
+        km_gpencil_legacy_stroke_sculpt_randomize(params),
+        km_gpencil_legacy_stroke_sculpt_clone(params),
+        km_gpencil_legacy_stroke_weight_mode(params),
+        km_gpencil_legacy_stroke_weight_draw(params),
+        km_gpencil_legacy_stroke_weight_blur(params),
+        km_gpencil_legacy_stroke_weight_average(params),
+        km_gpencil_legacy_stroke_weight_smear(params),
+        km_gpencil_legacy_stroke_vertex_mode(params),
+        km_gpencil_legacy_stroke_vertex_draw(params),
+        km_gpencil_legacy_stroke_vertex_blur(params),
+        km_gpencil_legacy_stroke_vertex_average(params),
+        km_gpencil_legacy_stroke_vertex_smear(params),
+        km_gpencil_legacy_stroke_vertex_replace(params),
+        # Grease Pencil v3
+        km_grease_pencil_paint_mode(params),
+        km_grease_pencil_edit_mode(params),
+        km_grease_pencil_sculpt_mode(params),
+        km_grease_pencil_weight_paint(params),
+        km_grease_pencil_brush_stroke(params),
+        km_grease_pencil_fill_tool(params),
         # Object mode.
         km_object_mode(params),
         km_object_non_modal(params),
@@ -8589,6 +9145,7 @@ def generate_keymaps(params=None):
         km_gesture_zoom_border(params),
         km_gesture_straight_line(params),
         km_gesture_lasso(params),
+        km_gesture_polyline(params),
         km_standard_modal_map(params),
         km_knife_tool_modal_map(params),
         km_custom_normals_modal_map(params),
@@ -8604,6 +9161,9 @@ def generate_keymaps(params=None):
         km_sculpt_mesh_filter_modal_map(params),
         km_curve_pen_modal_map(params),
         km_node_link_modal_map(params),
+        km_grease_pencil_primitive_tool_modal_map(params),
+        km_grease_pencil_fill_tool_modal_map(params),
+        km_grease_pencil_interpolate_tool_modal_map(params),
 
         # Gizmos.
         km_generic_gizmo(params),
@@ -8629,7 +9189,9 @@ def generate_keymaps(params=None):
         *(km_image_editor_tool_uv_select_circle(params, fallback=fallback) for fallback in (False, True)),
         *(km_image_editor_tool_uv_select_lasso(params, fallback=fallback) for fallback in (False, True)),
         km_image_editor_tool_uv_rip_region(params),
-        km_image_editor_tool_uv_sculpt_stroke(params),
+        km_image_editor_tool_uv_grab(params),
+        km_image_editor_tool_uv_relax(params),
+        km_image_editor_tool_uv_pinch(params),
         km_image_editor_tool_uv_move(params),
         km_image_editor_tool_uv_rotate(params),
         km_image_editor_tool_uv_scale(params),
@@ -8691,14 +9253,22 @@ def generate_keymaps(params=None):
         km_3d_view_tool_edit_curve_extrude(params),
         km_3d_view_tool_edit_curve_extrude_to_cursor(params),
         km_3d_view_tool_edit_curves_draw(params),
-        km_3d_view_tool_sculpt_box_hide(params),
         km_3d_view_tool_sculpt_box_mask(params),
         km_3d_view_tool_sculpt_lasso_mask(params),
+        km_3d_view_tool_sculpt_line_mask(params),
+        km_3d_view_tool_sculpt_polyline_mask(params),
+        km_3d_view_tool_sculpt_box_hide(params),
+        km_3d_view_tool_sculpt_lasso_hide(params),
+        km_3d_view_tool_sculpt_line_hide(params),
+        km_3d_view_tool_sculpt_polyline_hide(params),
         km_3d_view_tool_sculpt_box_face_set(params),
         km_3d_view_tool_sculpt_lasso_face_set(params),
+        km_3d_view_tool_sculpt_line_face_set(params),
+        km_3d_view_tool_sculpt_polyline_face_set(params),
         km_3d_view_tool_sculpt_box_trim(params),
         km_3d_view_tool_sculpt_lasso_trim(params),
-        km_3d_view_tool_sculpt_line_mask(params),
+        km_3d_view_tool_sculpt_line_trim(params),
+        km_3d_view_tool_sculpt_polyline_trim(params),
         km_3d_view_tool_sculpt_line_project(params),
         km_3d_view_tool_sculpt_mesh_filter(params),
         km_3d_view_tool_sculpt_cloth_filter(params),
@@ -8732,14 +9302,19 @@ def generate_keymaps(params=None):
         km_3d_view_tool_sculpt_gpencil_select_box(params),
         km_3d_view_tool_sculpt_gpencil_select_circle(params),
         km_3d_view_tool_sculpt_gpencil_select_lasso(params),
-        *(km_sequencer_editor_tool_generic_select(params, fallback=fallback) for fallback in (False, True)),
-        *(km_sequencer_editor_tool_generic_select_box(params, fallback=fallback) for fallback in (False, True)),
+        *(km_sequencer_editor_tool_generic_select_timeline(params, fallback=fallback) for fallback in (False, True)),
+        *(km_sequencer_editor_tool_generic_select_box_timeline(params, fallback=fallback) for fallback in (False, True)),
+        *(km_sequencer_editor_tool_generic_select_preview(params, fallback=fallback) for fallback in (False, True)),
+        *(km_sequencer_editor_tool_generic_select_box_preview(params, fallback=fallback) for fallback in (False, True)),
+        km_3d_view_tool_paint_grease_pencil_cutter(params),
         km_sequencer_editor_tool_generic_cursor(params),
         km_sequencer_editor_tool_blade(params),
         km_sequencer_editor_tool_sample(params),
         km_sequencer_editor_tool_move(params),
         km_sequencer_editor_tool_rotate(params),
         km_sequencer_editor_tool_scale(params),
+        km_3d_view_tool_edit_grease_pencil_interpolate(params),
+        km_3d_view_tool_paint_grease_pencil_interpolate(params),
     ]
 
 # ------------------------------------------------------------------------------

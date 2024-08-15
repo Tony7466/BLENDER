@@ -67,7 +67,7 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 {
-  const bNodeType &node_type = params.node_type();
+  const bke::bNodeType &node_type = params.node_type();
   const NodeDeclaration &declaration = *params.node_type().static_declaration;
   search_link_ops_for_declarations(params, declaration.inputs);
 
@@ -207,12 +207,12 @@ static void node_rna(StructRNA *srna)
                     rna_enum_attribute_domain_items,
                     NOD_inline_enum_accessors(custom1),
                     int(AttrDomain::Point),
-                    enums::domain_experimental_grease_pencil_version3_fn);
+                    nullptr);
 }
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static bke::bNodeType ntype;
 
   geo_node_type_base(
       &ntype, GEO_NODE_PRINCIPAL_COMPONENTS, "Principal Components", NODE_CLASS_ATTRIBUTE);

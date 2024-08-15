@@ -6,6 +6,8 @@
  * \ingroup bke
  */
 
+#include <optional>
+
 #include "MEM_guardedalloc.h"
 
 #include "DNA_defaults.h"
@@ -29,11 +31,12 @@
 #include "BLI_task.hh"
 #include "BLI_utildefines.h"
 
-#include "BKE_anim_data.h"
-#include "BKE_bpath.h"
+#include "BKE_anim_data.hh"
+#include "BKE_bake_data_block_id.hh"
+#include "BKE_bpath.hh"
 #include "BKE_geometry_set.hh"
-#include "BKE_global.h"
-#include "BKE_idtype.h"
+#include "BKE_global.hh"
+#include "BKE_idtype.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_query.hh"
 #include "BKE_lib_remap.hh"
@@ -41,15 +44,15 @@
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_object_types.hh"
-#include "BKE_packedFile.h"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_packedFile.hh"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 #include "BKE_volume.hh"
 #include "BKE_volume_grid.hh"
 #include "BKE_volume_grid_file_cache.hh"
 #include "BKE_volume_openvdb.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DEG_depsgraph_query.hh"
 
@@ -147,7 +150,11 @@ static void volume_init_data(ID *id)
   STRNCPY(volume->velocity_grid, "velocity");
 }
 
-static void volume_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, const int /*flag*/)
+static void volume_copy_data(Main * /*bmain*/,
+                             std::optional<Library *> /*owner_library*/,
+                             ID *id_dst,
+                             const ID *id_src,
+                             const int /*flag*/)
 {
   Volume *volume_dst = (Volume *)id_dst;
   const Volume *volume_src = (const Volume *)id_src;
@@ -170,6 +177,11 @@ static void volume_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, con
   STRNCPY(volume_dst->runtime->velocity_y_grid, volume_src->runtime->velocity_y_grid);
   STRNCPY(volume_dst->runtime->velocity_z_grid, volume_src->runtime->velocity_z_grid);
 
+  if (volume_src->runtime->bake_materials) {
+    volume_dst->runtime->bake_materials = std::make_unique<blender::bke::bake::BakeMaterialsList>(
+        *volume_src->runtime->bake_materials);
+  }
+
   volume_dst->batch_cache = nullptr;
 }
 
@@ -179,6 +191,10 @@ static void volume_free_data(ID *id)
   BKE_animdata_free(&volume->id, false);
   BKE_volume_batch_cache_free(volume);
   MEM_SAFE_FREE(volume->mat);
+  if (volume->packedfile) {
+    BKE_packedfile_free(volume->packedfile);
+    volume->packedfile = nullptr;
+  }
 #ifdef WITH_OPENVDB
   MEM_delete(volume->runtime->grids);
   volume->runtime->grids = nullptr;
@@ -202,7 +218,7 @@ static void volume_foreach_cache(ID *id,
 {
   Volume *volume = (Volume *)id;
   IDCacheKey key = {
-      /*id_session_uuid*/ id->session_uuid,
+      /*id_session_uid*/ id->session_uid,
       /*identifier*/ 1,
   };
 
@@ -251,7 +267,7 @@ static void volume_blend_read_data(BlendDataReader *reader, ID *id)
   volume->runtime->frame = 0;
 
   /* materials */
-  BLO_read_pointer_array(reader, (void **)&volume->mat);
+  BLO_read_pointer_array(reader, volume->totcol, (void **)&volume->mat);
 }
 
 static void volume_blend_read_after_liblink(BlendLibReader * /*reader*/, ID *id)
@@ -267,6 +283,7 @@ static void volume_blend_read_after_liblink(BlendLibReader * /*reader*/, ID *id)
 IDTypeInfo IDType_ID_VO = {
     /*id_code*/ ID_VO,
     /*id_filter*/ FILTER_ID_VO,
+    /*dependencies_id_types*/ FILTER_ID_MA,
     /*main_listbase_index*/ INDEX_ID_VO,
     /*struct_size*/ sizeof(Volume),
     /*name*/ "Volume",
@@ -770,19 +787,19 @@ void BKE_volume_grids_backup_restore(Volume *volume, VolumeGridVector *grids, co
 #ifdef WITH_OPENVDB
   /* Restore grids after datablock was re-copied from original by depsgraph,
    * we don't want to load them again if possible. */
-  BLI_assert(volume->id.tag & LIB_TAG_COPIED_ON_WRITE);
+  BLI_assert(volume->id.tag & ID_TAG_COPIED_ON_EVAL);
   BLI_assert(volume->runtime->grids != nullptr && grids != nullptr);
 
   if (!grids->is_loaded()) {
-    /* No grids loaded in CoW datablock, nothing lost by discarding. */
+    /* No grids loaded in evaluated datablock, nothing lost by discarding. */
     MEM_delete(grids);
   }
   else if (!STREQ(volume->filepath, filepath)) {
-    /* Filepath changed, discard grids from CoW datablock. */
+    /* Filepath changed, discard grids from evaluated datablock. */
     MEM_delete(grids);
   }
   else {
-    /* Keep grids from CoW datablock. We might still unload them a little
+    /* Keep grids from evaluated datablock. We might still unload them a little
      * later in BKE_volume_eval_geometry if the frame changes. */
     MEM_delete(volume->runtime->grids);
     volume->runtime->grids = grids;

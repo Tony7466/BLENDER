@@ -12,8 +12,6 @@
 #include "BLI_rand.hh"
 #include "BLI_vector.hh"
 
-#include "PIL_time.h"
-
 #include "DEG_depsgraph.hh"
 
 #include "BKE_attribute_math.hh"
@@ -29,7 +27,7 @@
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_paint.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "DNA_brush_enums.h"
 #include "DNA_brush_types.h"
@@ -179,9 +177,7 @@ struct AddOperationExecutor {
       return;
     }
 
-    const double time = PIL_check_seconds_timer() * 1000000.0;
-    /* Use a pointer cast to avoid overflow warnings. */
-    RandomNumberGenerator rng{*(uint32_t *)(&time)};
+    RandomNumberGenerator rng = RandomNumberGenerator::from_random_seed();
 
     /* Sample points on the surface using one of multiple strategies. */
     Vector<float2> sampled_uvs;
@@ -211,12 +207,15 @@ struct AddOperationExecutor {
     add_inputs.uvs = sampled_uvs;
     add_inputs.interpolate_length = brush_settings_->flag &
                                     BRUSH_CURVES_SCULPT_FLAG_INTERPOLATE_LENGTH;
+    add_inputs.interpolate_radius = brush_settings_->flag &
+                                    BRUSH_CURVES_SCULPT_FLAG_INTERPOLATE_RADIUS;
     add_inputs.interpolate_shape = brush_settings_->flag &
                                    BRUSH_CURVES_SCULPT_FLAG_INTERPOLATE_SHAPE;
     add_inputs.interpolate_point_count = brush_settings_->flag &
                                          BRUSH_CURVES_SCULPT_FLAG_INTERPOLATE_POINT_COUNT;
     add_inputs.interpolate_resolution = curves_orig_->attributes().contains("resolution");
     add_inputs.fallback_curve_length = brush_settings_->curve_length;
+    add_inputs.fallback_curve_radius = brush_settings_->curve_radius;
     add_inputs.fallback_point_count = std::max(2, brush_settings_->points_per_curve);
     add_inputs.transforms = &transforms_;
     add_inputs.surface_corner_tris = surface_corner_tris_orig;
@@ -224,8 +223,9 @@ struct AddOperationExecutor {
     add_inputs.surface = &surface_orig;
     add_inputs.corner_normals_su = corner_normals_su;
 
-    if (add_inputs.interpolate_length || add_inputs.interpolate_shape ||
-        add_inputs.interpolate_point_count || add_inputs.interpolate_resolution)
+    if (add_inputs.interpolate_length || add_inputs.interpolate_radius ||
+        add_inputs.interpolate_shape || add_inputs.interpolate_point_count ||
+        add_inputs.interpolate_resolution)
     {
       this->ensure_curve_roots_kdtree();
       add_inputs.old_roots_kdtree = self_->curve_roots_kdtree_;

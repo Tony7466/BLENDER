@@ -18,8 +18,7 @@
 
 #include "BLI_listbase.h"
 
-#include "BKE_blender_undo.h"
-#include "BKE_context.hh"
+#include "BKE_blender_undo.hh"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_undo_system.hh"
 
@@ -30,7 +29,7 @@
 
 #include "DEG_depsgraph.hh"
 
-#include "gpencil_intern.h"
+#include "gpencil_intern.hh"
 
 struct bGPundonode {
   bGPundonode *next, *prev;

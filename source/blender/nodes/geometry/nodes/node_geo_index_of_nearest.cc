@@ -137,7 +137,7 @@ class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
 
   uint64_t hash() const final
   {
-    return get_default_hash_2(positions_field_, group_field_);
+    return get_default_hash(positions_field_, group_field_);
   }
 
   bool is_equal_to(const fn::FieldNode &other) const final
@@ -205,7 +205,7 @@ class HasNeighborFieldInput final : public bke::GeometryFieldInput {
 
   uint64_t hash() const final
   {
-    return get_default_hash_2(39847876, group_field_);
+    return get_default_hash(39847876, group_field_);
   }
 
   bool is_equal_to(const fn::FieldNode &other) const final
@@ -242,12 +242,12 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_INDEX_OF_NEAREST, "Index of Nearest", NODE_CLASS_CONVERTER);
   ntype.geometry_node_execute = node_geo_exec;
   ntype.declare = node_declare;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 

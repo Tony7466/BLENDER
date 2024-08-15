@@ -10,6 +10,7 @@
 #include "GEO_mesh_primitive_cuboid.hh"
 #include "GEO_mesh_primitive_grid.hh"
 #include "GEO_mesh_primitive_line.hh"
+#include "GEO_transform.hh"
 
 #include "node_geometry_util.hh"
 
@@ -75,13 +76,13 @@ static Mesh *create_cube_mesh(const float3 size,
     }
     if (verts_y == 1) { /* XZ plane. */
       Mesh *mesh = geometry::create_grid_mesh(verts_x, verts_z, size.x, size.z, uv_map_id);
-      transform_mesh(
+      geometry::transform_mesh(
           *mesh, float3(0), math::to_quaternion(math::EulerXYZ(M_PI_2, 0.0f, 0.0f)), float3(1));
       return mesh;
     }
     /* YZ plane. */
     Mesh *mesh = geometry::create_grid_mesh(verts_z, verts_y, size.z, size.y, uv_map_id);
-    transform_mesh(
+    geometry::transform_mesh(
         *mesh, float3(0), math::to_quaternion(math::EulerXYZ(0.0f, M_PI_2, 0.0f)), float3(1));
     return mesh;
   }
@@ -111,12 +112,12 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_MESH_PRIMITIVE_CUBE, "Cube", NODE_CLASS_GEOMETRY);
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 

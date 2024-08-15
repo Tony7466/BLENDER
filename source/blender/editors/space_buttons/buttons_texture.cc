@@ -15,7 +15,7 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_ID.h"
 #include "DNA_brush_types.h"
@@ -30,17 +30,15 @@
 #include "DNA_windowmanager_types.h"
 
 #include "BKE_context.hh"
-#include "BKE_gpencil_modifier_legacy.h"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_linestyle.h"
 #include "BKE_modifier.hh"
-#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_paint.hh"
 #include "BKE_particle.h"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -53,7 +51,7 @@
 
 #include "../interface/interface_intern.hh"
 
-#include "buttons_intern.h" /* own include */
+#include "buttons_intern.hh" /* own include */
 
 static ScrArea *find_area_properties(const bContext *C);
 static SpaceProperties *find_space_properties(const bContext *C);
@@ -112,6 +110,8 @@ static void buttons_texture_user_node_add(ListBase *users,
                                           ID *id,
                                           bNodeTree *ntree,
                                           bNode *node,
+                                          PointerRNA ptr,
+                                          PropertyRNA *prop,
                                           const char *category,
                                           int icon,
                                           const char *name)
@@ -121,6 +121,8 @@ static void buttons_texture_user_node_add(ListBase *users,
   user->id = id;
   user->ntree = ntree;
   user->node = node;
+  user->ptr = ptr;
+  user->prop = prop;
   user->category = category;
   user->icon = icon;
   user->name = name;
@@ -136,13 +138,23 @@ static void buttons_texture_users_find_nodetree(ListBase *users,
 {
   if (ntree) {
     LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-      if (node->typeinfo->nclass == NODE_CLASS_TEXTURE) {
+      if (node->type == CMP_NODE_TEXTURE) {
         PointerRNA ptr = RNA_pointer_create(&ntree->id, &RNA_Node, node);
-        // PropertyRNA *prop; /* UNUSED */
-        // prop = RNA_struct_find_property(&ptr, "texture"); /* UNUSED */
-
+        PropertyRNA *prop = RNA_struct_find_property(&ptr, "texture");
         buttons_texture_user_node_add(
-            users, id, ntree, node, category, RNA_struct_ui_icon(ptr.type), node->name);
+            users, id, ntree, node, ptr, prop, category, RNA_struct_ui_icon(ptr.type), node->name);
+      }
+      else if (node->typeinfo->nclass == NODE_CLASS_TEXTURE) {
+        PointerRNA ptr = RNA_pointer_create(&ntree->id, &RNA_Node, node);
+        buttons_texture_user_node_add(users,
+                                      id,
+                                      ntree,
+                                      node,
+                                      {nullptr},
+                                      nullptr,
+                                      category,
+                                      RNA_struct_ui_icon(ptr.type),
+                                      node->name);
       }
       else if (node->type == NODE_GROUP && node->id) {
         buttons_texture_users_find_nodetree(users, id, (bNodeTree *)node->id, category);
@@ -221,26 +233,6 @@ static void buttons_texture_modifier_foreach(void *user_data,
   }
 }
 
-static void buttons_texture_modifier_gpencil_foreach(void *user_data,
-                                                     Object *ob,
-                                                     GpencilModifierData *md,
-                                                     const char *propname)
-{
-  PropertyRNA *prop;
-  ListBase *users = static_cast<ListBase *>(user_data);
-
-  PointerRNA ptr = RNA_pointer_create(&ob->id, &RNA_GpencilModifier, md);
-  prop = RNA_struct_find_property(&ptr, propname);
-
-  buttons_texture_user_property_add(users,
-                                    &ob->id,
-                                    ptr,
-                                    prop,
-                                    N_("Grease Pencil Modifiers"),
-                                    RNA_struct_ui_icon(ptr.type),
-                                    md->name);
-}
-
 static void buttons_texture_users_from_context(ListBase *users,
                                                const bContext *C,
                                                SpaceProperties *sbuts)
@@ -287,6 +279,10 @@ static void buttons_texture_users_from_context(ListBase *users,
   /* fill users */
   BLI_listbase_clear(users);
 
+  if (scene && scene->nodetree) {
+    buttons_texture_users_find_nodetree(users, &scene->id, scene->nodetree, N_("Compositor"));
+  }
+
   if (linestyle && !limited_mode) {
     buttons_texture_users_find_nodetree(
         users, &linestyle->id, linestyle->nodetree, N_("Line Style"));
@@ -299,9 +295,6 @@ static void buttons_texture_users_from_context(ListBase *users,
 
     /* modifiers */
     BKE_modifiers_foreach_tex_link(ob, buttons_texture_modifier_foreach, users);
-
-    /* grease pencil modifiers */
-    BKE_gpencil_modifiers_foreach_tex_link(ob, buttons_texture_modifier_gpencil_foreach, users);
 
     /* particle systems */
     if (psys && !limited_mode) {
@@ -439,9 +432,9 @@ static void template_texture_select(bContext *C, void *user_p, void * /*arg*/)
 
     /* Not totally sure if we should also change selection? */
     for (bNode *node : user->ntree->all_nodes()) {
-      nodeSetSelected(node, false);
+      blender::bke::nodeSetSelected(node, false);
     }
-    nodeSetSelected(user->node, true);
+    blender::bke::nodeSetSelected(user->node, true);
     WM_event_add_notifier(C, NC_NODE | NA_SELECTED, nullptr);
   }
   if (user->ptr.data) {
@@ -517,8 +510,6 @@ static void template_texture_user_menu(bContext *C, uiLayout *layout, void * /*a
                            UI_UNIT_X * 4,
                            UI_UNIT_Y,
                            nullptr,
-                           0.0,
-                           0.0,
                            0.0,
                            0.0,
                            "");
@@ -688,8 +679,6 @@ void uiTemplateTextureShow(uiLayout *layout, const bContext *C, PointerRNA *ptr,
                      UI_UNIT_X,
                      UI_UNIT_Y,
                      nullptr,
-                     0.0,
-                     0.0,
                      0.0,
                      0.0,
                      TIP_("Show texture in texture tab"));

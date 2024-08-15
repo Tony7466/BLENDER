@@ -16,7 +16,6 @@
 #include <Python.h>
 #include <cstddef>
 
-#include "BLI_ghash.h"
 #include "BLI_linklist.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
@@ -24,14 +23,14 @@
 
 #include "BKE_blendfile_link_append.hh"
 #include "BKE_context.hh"
-#include "BKE_idtype.h"
+#include "BKE_idtype.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "DNA_space_types.h" /* FILE_LINK, FILE_RELPATH */
 
-#include "BLO_readfile.h"
+#include "BLO_readfile.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -72,7 +71,7 @@ struct BPy_Library {
   bool bmain_is_temp;
 };
 
-static PyObject *bpy_lib_load(BPy_PropertyRNA *self, PyObject *args, PyObject *kwds);
+static PyObject *bpy_lib_load(BPy_PropertyRNA *self, PyObject *args, PyObject *kw);
 static PyObject *bpy_lib_enter(BPy_Library *self);
 static PyObject *bpy_lib_exit(BPy_Library *self, PyObject *args);
 static PyObject *bpy_lib_dir(BPy_Library *self);
@@ -152,6 +151,7 @@ static PyTypeObject bpy_lib_Type = {
 };
 
 PyDoc_STRVAR(
+    /* Wrap. */
     bpy_lib_load_doc,
     ".. method:: load("
     "filepath, "
@@ -468,16 +468,18 @@ static PyObject *bpy_lib_exit(BPy_Library *self, PyObject * /*args*/)
    */
   BLI_assert(!do_append || !create_liboverrides);
 
-  BKE_main_id_tag_all(bmain, LIB_TAG_PRE_EXISTING, true);
+  BKE_main_id_tag_all(bmain, ID_TAG_PRE_EXISTING, true);
 
   /* here appending/linking starts */
-  const int id_tag_extra = self->bmain_is_temp ? LIB_TAG_TEMP_MAIN : 0;
+  const int id_tag_extra = self->bmain_is_temp ? int(ID_TAG_TEMP_MAIN) : 0;
   LibraryLink_Params liblink_params;
   BLO_library_link_params_init(&liblink_params, bmain, self->flag, id_tag_extra);
 
   BlendfileLinkAppendContext *lapp_context = BKE_blendfile_link_append_context_new(
       &liblink_params);
+  /* NOTE: Transfers the ownership of the `blo_handle` to the `lapp_context`. */
   BKE_blendfile_link_append_context_library_add(lapp_context, self->abspath, self->blo_handle);
+  self->blo_handle = nullptr;
 
   int idcode_step = 0;
   short idcode;
@@ -569,11 +571,8 @@ static PyObject *bpy_lib_exit(BPy_Library *self, PyObject * /*args*/)
   }
 #endif  // USE_RNA_DATABLOCKS
 
-  BLO_blendhandle_close(self->blo_handle);
-  self->blo_handle = nullptr;
-
   BKE_blendfile_link_append_context_free(lapp_context);
-  BKE_main_id_tag_all(bmain, LIB_TAG_PRE_EXISTING, false);
+  BKE_main_id_tag_all(bmain, ID_TAG_PRE_EXISTING, false);
 
   BKE_reports_free(&self->reports);
 

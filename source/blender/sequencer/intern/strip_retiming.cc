@@ -18,22 +18,9 @@
 #include "BLI_span.hh"
 #include "BLI_vector.hh"
 
-#include "BKE_fcurve.h"
-#include "BKE_movieclip.h"
-#include "BKE_scene.h"
 #include "BKE_sound.h"
 
-#include "DNA_anim_types.h"
-#include "DNA_sound_types.h"
-
-#include "IMB_imbuf.h"
-
-#include "RNA_prototypes.h"
-
-#include "SEQ_channels.hh"
 #include "SEQ_iterator.hh"
-#include "SEQ_relations.hh"
-#include "SEQ_render.hh"
 #include "SEQ_retiming.hh"
 #include "SEQ_sequencer.hh"
 #include "SEQ_time.hh"
@@ -41,7 +28,6 @@
 
 #include "sequencer.hh"
 #include "strip_time.hh"
-#include "utils.hh"
 
 using blender::MutableSpan;
 
@@ -121,9 +107,39 @@ void SEQ_retiming_data_ensure(Sequence *seq)
 
 void SEQ_retiming_data_clear(Sequence *seq)
 {
-  seq->retiming_keys = nullptr;
-  seq->retiming_keys_num = 0;
+  if (seq->retiming_keys != nullptr) {
+    MEM_freeN(seq->retiming_keys);
+    seq->retiming_keys = nullptr;
+    seq->retiming_keys_num = 0;
+  }
   seq->flag &= ~SEQ_SHOW_RETIMING;
+}
+
+static void retiming_key_overlap(Scene *scene, Sequence *seq)
+{
+  ListBase *seqbase = SEQ_active_seqbase_get(SEQ_editing_get(scene));
+  blender::VectorSet<Sequence *> strips;
+  blender::VectorSet<Sequence *> dependant;
+  dependant.add(seq);
+  SEQ_iterator_set_expand(scene, seqbase, dependant, SEQ_query_strip_effect_chain);
+  strips.add_multiple(dependant);
+  dependant.remove(seq);
+  SEQ_transform_handle_overlap(scene, seqbase, strips, dependant, true);
+}
+
+void SEQ_retiming_reset(Scene *scene, Sequence *seq)
+{
+  if (!SEQ_retiming_is_allowed(seq)) {
+    return;
+  }
+
+  SEQ_retiming_data_clear(seq);
+
+  blender::Span effects = seq_sequence_lookup_effects_by_seq(scene, seq);
+  seq_time_update_effects_strip_range(scene, effects);
+  SEQ_time_update_meta_strip_range(scene, seq_sequence_lookup_meta_by_seq(scene, seq));
+
+  retiming_key_overlap(scene, seq);
 }
 
 bool SEQ_retiming_is_active(const Sequence *seq)
@@ -189,8 +205,8 @@ static void seq_retiming_line_segments_tangent_circle(const SeqRetimingKey *star
   sub_v2_v2v2_db(v1, s1_1, s1_2);
   sub_v2_v2v2_db(v2, s2_1, s2_2);
   /* Rotate segments by 90 degrees around seg. 1 end and seg. 2 start point. */
-  SWAP(double, v1[0], v1[1]);
-  SWAP(double, v2[0], v2[1]);
+  std::swap(v1[0], v1[1]);
+  std::swap(v2[0], v2[1]);
   v1[0] *= -1;
   v2[0] *= -1;
   copy_v2_v2_db(s1_1, s1_2);
@@ -280,10 +296,15 @@ float seq_retiming_evaluate(const Sequence *seq, const float frame_index)
 
 SeqRetimingKey *SEQ_retiming_add_key(const Scene *scene, Sequence *seq, const int timeline_frame)
 {
-  float frame_index = (timeline_frame - SEQ_time_start_frame_get(seq)) *
+  int sound_offset = SEQ_time_get_rounded_sound_offset(scene, seq);
+  float frame_index = (timeline_frame - SEQ_time_start_frame_get(seq) - sound_offset) *
                       SEQ_time_media_playback_rate_factor_get(scene, seq);
 
-  if (timeline_frame >= SEQ_time_content_end_frame_get(scene, seq) - 1) {
+  /* Clamp timeline frame to strip content range. */
+  if (frame_index <= 0) {
+    return &seq->retiming_keys[0];
+  }
+  if (frame_index >= SEQ_time_strip_length_get(scene, seq)) {
     return SEQ_retiming_last_key_get(seq); /* This is expected for strips with no offsets. */
   }
 
@@ -615,7 +636,7 @@ class RetimingRange {
       : start(start_frame), end(end_frame), speed(speed), type(type)
   {
     if (type == TRANSITION) {
-      speed = 1.0f;
+      this->speed = 1.0f;
       claculate_speed_table_from_seq(seq);
     }
   }
@@ -636,7 +657,7 @@ class RetimingRange {
 
   /* Create new range representing overlap of 2 ranges.
    * Returns overlapping range. */
-  RetimingRange operator*(const RetimingRange rhs_range)
+  RetimingRange operator*(const RetimingRange &rhs_range)
   {
     RetimingRange new_range = RetimingRange(0, 0, 0, LINEAR);
 
@@ -698,13 +719,14 @@ class RetimingRange {
 
   void claculate_speed_table_from_seq(const Sequence *seq)
   {
-    for (int frame = start; frame <= end; frame++) {
+    for (int timeline_frame = start; timeline_frame <= end; timeline_frame++) {
       /* We need number actual number of frames here. */
       const double normal_step = 1 / double(seq->len);
 
+      const int frame_index = timeline_frame - SEQ_time_start_frame_get(seq);
       /* Who needs calculus, when you can have slow code? */
-      const double val_prev = seq_retiming_evaluate(seq, frame - 1);
-      const double val = seq_retiming_evaluate(seq, frame);
+      const double val_prev = seq_retiming_evaluate(seq, frame_index - 1);
+      const double val = seq_retiming_evaluate(seq, frame_index);
       const double speed_at_frame = (val - val_prev) / normal_step;
       speed_table.append(speed_at_frame);
     }
@@ -742,13 +764,13 @@ class RetimingRangeData {
       int frame_start = SEQ_time_start_frame_get(seq) + key_prev->strip_frame_index;
       int frame_end = SEQ_time_start_frame_get(seq) + key.strip_frame_index;
 
-      eRangeType type = SEQ_retiming_key_is_transition_type(key_prev) ? TRANSITION : LINEAR;
+      eRangeType type = SEQ_retiming_key_is_transition_start(key_prev) ? TRANSITION : LINEAR;
       RetimingRange range = RetimingRange(seq, frame_start, frame_end, speed, type);
       ranges.append(range);
     }
   }
 
-  RetimingRangeData &operator*=(const RetimingRangeData rhs)
+  RetimingRangeData &operator*=(const RetimingRangeData &rhs)
   {
     if (ranges.is_empty()) {
       for (const RetimingRange &rhs_range : rhs.ranges) {
@@ -817,6 +839,8 @@ void SEQ_retiming_sound_animation_data_set(const Scene *scene, const Sequence *s
         seq->scene_sound, seq_start - seq->anim_startofs, seq_start, 1.0f);
   }
 
+  int sound_offset = SEQ_time_get_rounded_sound_offset(scene, seq);
+
   RetimingRangeData retiming_data = seq_retiming_range_data_get(scene, seq);
   for (int i = 0; i < retiming_data.ranges.size(); i++) {
     RetimingRange range = retiming_data.ranges[i];
@@ -826,15 +850,12 @@ void SEQ_retiming_sound_animation_data_set(const Scene *scene, const Sequence *s
       for (int i = 0; i <= range_length; i++) {
         const int frame = range.start + i;
         BKE_sound_set_scene_sound_pitch_at_frame(
-            seq->scene_sound, frame, range.speed_table[i], true);
+            seq->scene_sound, frame + sound_offset, range.speed_table[i], true);
       }
     }
     else {
-      const int range_start = max_ii(0, range.start);
-      const int range_end = max_ii(0, range.end);
-
       BKE_sound_set_scene_sound_pitch_constant_range(
-          seq->scene_sound, range_start, range_end, range.speed);
+          seq->scene_sound, range.start + sound_offset, range.end + sound_offset, range.speed);
     }
   }
 }
@@ -843,7 +864,8 @@ int SEQ_retiming_key_timeline_frame_get(const Scene *scene,
                                         const Sequence *seq,
                                         const SeqRetimingKey *key)
 {
-  return round_fl_to_int(SEQ_time_start_frame_get(seq) +
+  int sound_offset = SEQ_time_get_rounded_sound_offset(scene, seq);
+  return round_fl_to_int(SEQ_time_start_frame_get(seq) + sound_offset +
                          key->strip_frame_index /
                              SEQ_time_media_playback_rate_factor_get(scene, seq));
 }
@@ -1068,7 +1090,9 @@ void SEQ_retiming_selection_remove(SeqRetimingKey *key)
 blender::Map<SeqRetimingKey *, Sequence *> SEQ_retiming_selection_get(const Editing *ed)
 {
   blender::Map<SeqRetimingKey *, Sequence *> selection;
-
+  if (!ed) {
+    return selection;
+  }
   LISTBASE_FOREACH (Sequence *, seq, ed->seqbasep) {
     for (SeqRetimingKey &key : SEQ_retiming_keys_get(seq)) {
       if ((key.flag & SEQ_KEY_SELECTED) != 0) {
@@ -1082,7 +1106,7 @@ blender::Map<SeqRetimingKey *, Sequence *> SEQ_retiming_selection_get(const Edit
 bool SEQ_retiming_selection_contains(const Editing *ed, const SeqRetimingKey *key)
 {
   LISTBASE_FOREACH (Sequence *, seq, ed->seqbasep) {
-    for (SeqRetimingKey &key_iter : SEQ_retiming_keys_get(seq)) {
+    for (const SeqRetimingKey &key_iter : SEQ_retiming_keys_get(seq)) {
       if ((key_iter.flag & SEQ_KEY_SELECTED) != 0 && &key_iter == key) {
         return true;
       }

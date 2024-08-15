@@ -57,8 +57,8 @@ BVHLayoutMask HIPRTDevice::get_bvh_layout_mask(const uint /* kernel_features */)
   return BVH_LAYOUT_HIPRT;
 }
 
-HIPRTDevice::HIPRTDevice(const DeviceInfo &info, Stats &stats, Profiler &profiler)
-    : HIPDevice(info, stats, profiler),
+HIPRTDevice::HIPRTDevice(const DeviceInfo &info, Stats &stats, Profiler &profiler, bool headless)
+    : HIPDevice(info, stats, profiler, headless),
       global_stack_buffer(this, "global_stack_buffer", MEM_DEVICE_ONLY),
       hiprt_context(NULL),
       scene(NULL),
@@ -138,16 +138,10 @@ string HIPRTDevice::compile_kernel(const uint kernel_features, const char *name,
   int major, minor;
   hipDeviceGetAttribute(&major, hipDeviceAttributeComputeCapabilityMajor, hipDevId);
   hipDeviceGetAttribute(&minor, hipDeviceAttributeComputeCapabilityMinor, hipDevId);
-  hipDeviceProp_t props;
-  hipGetDeviceProperties(&props, hipDevId);
-
-  char *arch = strtok(props.gcnArchName, ":");
-  if (arch == NULL) {
-    arch = props.gcnArchName;
-  }
+  const std::string arch = hipDeviceArch(hipDevId);
 
   if (!use_adaptive_compilation()) {
-    const string fatbin = path_get(string_printf("lib/%s_rt_gfx.hipfb", name));
+    const string fatbin = path_get(string_printf("lib/%s_rt_gfx.hipfb.zst", name));
     VLOG(1) << "Testing for pre-compiled kernel " << fatbin << ".";
     if (path_exists(fatbin)) {
       VLOG(1) << "Using precompiled kernel.";
@@ -162,10 +156,11 @@ string HIPRTDevice::compile_kernel(const uint kernel_features, const char *name,
   const string kernel_md5 = util_md5_string(source_md5 + common_cflags);
 
   const string include_path = source_path;
-  const string bitcode_file = string_printf("cycles_%s_%s_%s.bc", name, arch, kernel_md5.c_str());
+  const string bitcode_file = string_printf(
+      "cycles_%s_%s_%s.bc", name, arch.c_str(), kernel_md5.c_str());
   const string bitcode = path_cache_get(path_join("kernels", bitcode_file));
   const string fatbin_file = string_printf(
-      "cycles_%s_%s_%s.hipfb", name, arch, kernel_md5.c_str());
+      "cycles_%s_%s_%s.hipfb", name, arch.c_str(), kernel_md5.c_str());
   const string fatbin = path_cache_get(path_join("kernels", fatbin_file));
 
   VLOG(1) << "Testing for locally compiled kernel " << fatbin << ".";
@@ -229,7 +224,7 @@ string HIPRTDevice::compile_kernel(const uint kernel_features, const char *name,
 
     std::string rtc_options;
 
-    rtc_options.append(" --offload-arch=").append(arch);
+    rtc_options.append(" --offload-arch=").append(arch.c_str());
     rtc_options.append(" -D __HIPRT__");
     rtc_options.append(" -ffast-math -O3 -std=c++17");
     rtc_options.append(" -fgpu-rdc -c --gpu-bundle-output -c -emit-llvm");
@@ -260,7 +255,7 @@ string HIPRTDevice::compile_kernel(const uint kernel_features, const char *name,
   // After compilation, the bitcode produced is linked with HIP RT bitcode (containing
   // implementations of HIP RT functions, e.g. traversal, to produce the final executable code
   string linker_options;
-  linker_options.append(" --offload-arch=").append(arch);
+  linker_options.append(" --offload-arch=").append(arch.c_str());
   linker_options.append(" -fgpu-rdc --hip-link --cuda-device-only ");
   string hiprt_ver(HIPRT_VERSION_STR);
   string hiprt_bc = hiprt_path + "\\dist\\bin\\Release\\hiprt" + hiprt_ver + "_amd_lib_win.bc";
@@ -314,8 +309,7 @@ bool HIPRTDevice::load_kernels(const uint kernel_features)
   string fatbin_data;
   hipError_t result;
 
-  if (path_read_text(fatbin, fatbin_data)) {
-
+  if (path_read_compressed_text(fatbin, fatbin_data)) {
     result = hipModuleLoadData(&hipModule, fatbin_data.c_str());
   }
   else
@@ -423,6 +417,7 @@ hiprtGeometryBuildInput HIPRTDevice::prepare_triangle_blas(BVHHIPRT *bvh, Mesh *
 
       bvh->custom_primitive_bound.alloc(num_triangles * num_bvh_steps);
       bvh->custom_prim_info.resize(num_triangles * num_bvh_steps);
+      bvh->prims_time.resize(num_triangles * num_bvh_steps);
 
       for (uint j = 0; j < num_triangles; j++) {
         Mesh::Triangle t = mesh->get_triangle(j);
@@ -803,6 +798,12 @@ hiprtScene HIPRTDevice::build_tlas(BVHHIPRT *bvh,
                                    hiprtBuildOptions options,
                                    bool refit)
 {
+
+  size_t num_object = objects.size();
+  if (num_object == 0) {
+    return 0;
+  }
+
   hiprtBuildOperation build_operation = refit ? hiprtBuildOperationUpdate :
                                                 hiprtBuildOperationBuild;
 
@@ -816,7 +817,6 @@ hiprtScene HIPRTDevice::build_tlas(BVHHIPRT *bvh,
   size_t num_instances = 0;
   int blender_instance_id = 0;
 
-  size_t num_object = objects.size();
   user_instance_id.alloc(num_object);
   prim_visibility.alloc(num_object);
   hiprt_blas_ptr.alloc(num_object);
@@ -889,6 +889,7 @@ hiprtScene HIPRTDevice::build_tlas(BVHHIPRT *bvh,
             int time_offset = bvh->prims_time.size();
             prim_time_map[geom] = time_offset;
 
+            bvh->prims_time.resize(time_offset + current_bvh->prims_time.size());
             memcpy(bvh->prims_time.data() + time_offset,
                    current_bvh->prims_time.data(),
                    current_bvh->prims_time.size() * sizeof(float2));

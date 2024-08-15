@@ -11,11 +11,11 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 
-#include "rna_internal.h"
+#include "rna_internal.hh"
 
 #ifdef RNA_RUNTIME
 
-#  include "BKE_global.h"
+#  include "BKE_global.hh"
 
 #  include "ED_fileselect.hh"
 #  include "ED_screen.hh"
@@ -177,7 +177,7 @@ void rna_def_object_type_visibility_flags_common(StructRNA *srna,
        {"show_object_viewport_empty", "show_object_select_empty"},
        {"Show empties", "Allow selection of empties"}},
       {"Grease Pencil",
-       (1 << OB_GPENCIL_LEGACY),
+       (1 << OB_GREASE_PENCIL),
        {"show_object_viewport_grease_pencil", "show_object_select_grease_pencil"},
        {"Show grease pencil objects", "Allow selection of grease pencil objects"}},
       {"Camera",

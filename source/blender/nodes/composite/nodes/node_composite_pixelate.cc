@@ -6,7 +6,7 @@
  * \ingroup cmpnodes
  */
 
-#include "GPU_shader.h"
+#include "GPU_shader.hh"
 
 #include "COM_node_operation.hh"
 #include "COM_utilities.hh"
@@ -46,7 +46,8 @@ class PixelateOperation : public NodeOperation {
   {
     Result &input_image = get_input("Color");
     Result &output_image = get_result("Color");
-    if (input_image.is_single_value()) {
+    const int pixel_size = get_pixel_size();
+    if (input_image.is_single_value() || pixel_size == 1) {
       input_image.pass_through(output_image);
       return;
     }
@@ -54,7 +55,7 @@ class PixelateOperation : public NodeOperation {
     GPUShader *shader = context().get_shader("compositor_pixelate");
     GPU_shader_bind(shader);
 
-    GPU_shader_uniform_1i(shader, "pixel_size", get_pixel_size());
+    GPU_shader_uniform_1i(shader, "pixel_size", pixel_size);
 
     input_image.bind_as_texture(shader, "input_tx");
 
@@ -86,7 +87,7 @@ void register_node_type_cmp_pixelate()
 {
   namespace file_ns = blender::nodes::node_composite_pixelate_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_PIXELATE, "Pixelate", NODE_CLASS_OP_FILTER);
   ntype.declare = file_ns::cmp_node_pixelate_declare;
@@ -94,5 +95,5 @@ void register_node_type_cmp_pixelate()
   ntype.initfunc = file_ns::node_composit_init_pixelate;
   ntype.get_compositor_operation = file_ns::get_compositor_operation;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

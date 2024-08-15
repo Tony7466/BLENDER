@@ -28,7 +28,7 @@ class OpenvdbTreeSharingInfo : public ImplicitSharingInfo {
 
   void delete_self_with_data() override
   {
-    MEM_freeN(this);
+    MEM_delete(this);
   }
 
   void delete_data_only() override
@@ -63,7 +63,7 @@ VolumeGridData::VolumeGridData(std::shared_ptr<openvdb::GridBase> grid)
     : grid_(std::move(grid)), tree_loaded_(true), transform_loaded_(true), meta_data_loaded_(true)
 {
   BLI_assert(grid_);
-  BLI_assert(grid_.unique());
+  BLI_assert(grid_.use_count() == 1);
   BLI_assert(grid_->isTreeUnique());
 
   tree_sharing_info_ = MEM_new<OpenvdbTreeSharingInfo>(__func__, grid_->baseTreePtr());
@@ -221,10 +221,13 @@ void VolumeGridData::unload_tree_if_possible() const
   if (!grid_) {
     return;
   }
+  if (!tree_loaded_) {
+    return;
+  }
   if (!this->is_reloadable()) {
     return;
   }
-  if (!tree_access_token_.unique()) {
+  if (tree_access_token_.use_count() != 1) {
     /* Some code is using the tree currently, so it can't be freed. */
     return;
   }
@@ -275,16 +278,19 @@ void VolumeGridData::ensure_grid_loaded() const
   });
   if (!loaded_grid) {
     if (grid_) {
-      /* Create a dummy grid of the expected type. */
-      loaded_grid = grid_->createGrid("");
-    }
-    else {
-      /* Create a dummy grid. We can't really know the expected data type here. */
-      loaded_grid = openvdb::FloatGrid::create();
+      const openvdb::Name &grid_type = grid_->type();
+      if (openvdb::GridBase::isRegistered(grid_type)) {
+        /* Create a dummy grid of the expected type. */
+        loaded_grid = openvdb::GridBase::createGrid(grid_type);
+      }
     }
   }
+  if (!loaded_grid) {
+    /* Create a dummy grid. We can't really know the expected data type here. */
+    loaded_grid = openvdb::FloatGrid::create();
+  }
   BLI_assert(loaded_grid);
-  BLI_assert(loaded_grid.unique());
+  BLI_assert(loaded_grid.use_count() == 1);
   BLI_assert(loaded_grid->isTreeUnique());
 
   if (grid_) {
@@ -383,8 +389,8 @@ VolumeGridType get_type(const VolumeGridData &volume_grid)
   return volume_grid.grid_type();
 #else
   UNUSED_VARS(volume_grid);
-#endif
   return VOLUME_GRID_UNKNOWN;
+#endif
 }
 
 int get_channels_num(const VolumeGridType type)

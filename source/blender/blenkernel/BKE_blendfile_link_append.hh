@@ -29,7 +29,7 @@ void BKE_blendfile_link_append_context_free(BlendfileLinkAppendContext *lapp_con
  *
  * \param flag: A combination of:
  * - #eFileSel_Params_Flag from `DNA_space_types.h` &
- * - #eBLOLibLinkFlags * from `BLO_readfile.h`.
+ * - #eBLOLibLinkFlags * from `BLO_readfile.hh`.
  * \param do_set: Set the given \a flag if true, clear it otherwise.
  */
 void BKE_blendfile_link_append_context_flag_set(BlendfileLinkAppendContext *lapp_context,
@@ -52,9 +52,10 @@ void BKE_blendfile_link_append_context_embedded_blendfile_clear(
  * Add a new source library to search for items to be linked to the given link/append context.
  *
  * \param libname: the absolute path to the library blend file.
- * \param blo_handle: the blend file handle of the library, NULL is not available. Note that this
- *                    is only borrowed for linking purpose, no releasing or other management will
- *                    be performed by #BKE_blendfile_link_append code on it.
+ * \param blo_handle: the blend file handle of the library, `nullptr` if not available. Note that
+ *                    the ownership of this handle is always stolen, because readfile code may
+ *                    forcefully clear this handle after reading in some cases (endianness
+ *                    conversion, see usages of the #FD_FLAGS_SWITCH_ENDIAN flag).
  *
  * \note *Never* call #BKE_blendfile_link_append_context_library_add()
  * after having added some items.
@@ -168,6 +169,12 @@ void BKE_blendfile_append(BlendfileLinkAppendContext *lapp_context, ReportList *
 void BKE_blendfile_link(BlendfileLinkAppendContext *lapp_context, ReportList *reports);
 
 /**
+ * Instantiate loose data in the scene (e.g. add object to the active collection).
+ */
+void BKE_blendfile_link_append_instantiate_loose(BlendfileLinkAppendContext *lapp_context,
+                                                 ReportList *reports);
+
+/**
  * Options controlling the behavior of liboverrides creation.
  */
 enum eBKELibLinkOverride {
@@ -182,7 +189,7 @@ enum eBKELibLinkOverride {
   BKE_LIBLINK_OVERRIDE_USE_EXISTING_LIBOVERRIDES = 1 << 0,
   /**
    * Create (or return an existing) runtime liboverride, instead of a regular saved-in-blend-files
-   * one. See also the #LIB_TAG_RUNTIME tag of IDs in DNA_ID.h.
+   * one. See also the #ID_TAG_RUNTIME tag of IDs in DNA_ID.h.
    *
    * \note Typically, usage of this flag implies that no linked IDs are instantiated, such that
    * their usages remain indirect.

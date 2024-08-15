@@ -28,7 +28,7 @@
 #include "BLI_fileops.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_path_util.h"
-#include "BLO_readfile.h"
+#include "BLO_readfile.hh"
 
 #include "BKE_node_runtime.hh"
 
@@ -36,8 +36,9 @@
 
 #include "WM_api.hh"
 
-#include "usd.h"
-#include "usd_writer_material.h"
+#include "usd.hh"
+#include "usd_utils.hh"
+#include "usd_writer_material.hh"
 
 namespace blender::io::usd {
 
@@ -263,9 +264,9 @@ TEST_F(UsdExportTest, usd_export_material)
   }
 
   /* File sanity checks. */
-  EXPECT_EQ(BLI_listbase_count(&bfile->main->objects), 1);
-  /* There are two materials because of the Dots Stroke. */
-  EXPECT_EQ(BLI_listbase_count(&bfile->main->materials), 2);
+  EXPECT_EQ(BLI_listbase_count(&bfile->main->objects), 3);
+  /* There are 4 materials because of the Dots Stroke. */
+  EXPECT_EQ(BLI_listbase_count(&bfile->main->materials), 4);
 
   Material *material = reinterpret_cast<Material *>(
       BKE_libblock_find_name(bfile->main, ID_MA, "Material"));
@@ -309,6 +310,33 @@ TEST_F(UsdExportTest, usd_export_material)
                                 << output_filename;
 
   compare_blender_image_to_usd_image_shader(image_node, image_prim);
+}
+
+TEST(utilities, make_safe_name)
+{
+  ASSERT_EQ(make_safe_name("", false), std::string("_"));
+  ASSERT_EQ(make_safe_name("1", false), std::string("_"));
+  ASSERT_EQ(make_safe_name("1Test", false), std::string("_Test"));
+
+  ASSERT_EQ(make_safe_name("Test", false), std::string("Test"));
+  ASSERT_EQ(make_safe_name("Test|$bézier @ world", false), std::string("Test__b__zier___world"));
+  ASSERT_EQ(make_safe_name("Test|ハローワールド", false),
+            std::string("Test______________________"));
+  ASSERT_EQ(make_safe_name("Test|Γεια σου κόσμε", false),
+            std::string("Test___________________________"));
+  ASSERT_EQ(make_safe_name("Test|∧hello ○ wórld", false), std::string("Test____hello_____w__rld"));
+
+#if PXR_VERSION >= 2403
+  ASSERT_EQ(make_safe_name("", true), std::string("_"));
+  ASSERT_EQ(make_safe_name("1", true), std::string("_"));
+  ASSERT_EQ(make_safe_name("1Test", true), std::string("_Test"));
+
+  ASSERT_EQ(make_safe_name("Test", true), std::string("Test"));
+  ASSERT_EQ(make_safe_name("Test|$bézier @ world", true), std::string("Test__bézier___world"));
+  ASSERT_EQ(make_safe_name("Test|ハローワールド", true), std::string("Test_ハローワールド"));
+  ASSERT_EQ(make_safe_name("Test|Γεια σου κόσμε", true), std::string("Test_Γεια_σου_κόσμε"));
+  ASSERT_EQ(make_safe_name("Test|∧hello ○ wórld", true), std::string("Test__hello___wórld"));
+#endif
 }
 
 }  // namespace blender::io::usd

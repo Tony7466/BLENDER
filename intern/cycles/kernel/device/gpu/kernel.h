@@ -190,12 +190,14 @@ ccl_gpu_kernel(GPU_KERNEL_BLOCK_NUM_THREADS, GPU_KERNEL_MAX_REGISTERS)
                              ccl_global const int *path_index_array,
                              const int work_size)
 {
+#  ifdef __VOLUME__
   const int global_index = ccl_gpu_global_id_x();
 
   if (ccl_gpu_kernel_within_bounds(global_index, work_size)) {
     const int state = (path_index_array) ? path_index_array[global_index] : global_index;
     ccl_gpu_kernel_call(integrator_intersect_volume_stack(NULL, state));
   }
+#  endif
 }
 ccl_gpu_kernel_postfix
 
@@ -809,6 +811,7 @@ ccl_device_inline void kernel_gpu_film_convert_half_write(ccl_global uchar4 *rgb
                                int width, \
                                int offset, \
                                int stride, \
+                               int channel_offset, \
                                int rgba_offset, \
                                int rgba_stride) \
   { \
@@ -824,7 +827,7 @@ ccl_device_inline void kernel_gpu_film_convert_half_write(ccl_global uchar4 *rgb
     ccl_global const float *buffer = render_buffer + offset + \
                                      buffer_pixel_index * kfilm_convert.pass_stride; \
 \
-    ccl_global float *pixel = pixels + \
+    ccl_global float *pixel = pixels + channel_offset + \
                               (render_pixel_index + rgba_offset) * kfilm_convert.pixel_stride; \
 \
     FILM_GET_PASS_PIXEL_F32(variant, input_channel_count); \

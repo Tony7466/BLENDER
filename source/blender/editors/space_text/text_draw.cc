@@ -6,9 +6,11 @@
  * \ingroup sptext
  */
 
+#include <algorithm>
+
 #include "MEM_guardedalloc.h"
 
-#include "BLF_api.h"
+#include "BLF_api.hh"
 
 #include "BLI_blenlib.h"
 
@@ -23,12 +25,11 @@
 
 #include "ED_text.hh"
 
-#include "GPU_immediate.h"
-#include "GPU_state.h"
+#include "GPU_immediate.hh"
+#include "GPU_state.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
-#include "UI_view2d.hh"
 
 #include "text_format.hh"
 #include "text_intern.hh"
@@ -271,7 +272,7 @@ void space_text_wrap_offset(
 
       while (chars--) {
         if (i + columns - start > max) {
-          end = MIN2(end, i);
+          end = std::min(end, i);
 
           if (chop && linep == linein && i >= cursin) {
             if (i == cursin) {
@@ -348,7 +349,7 @@ void space_text_wrap_offset_in_line(
 
     while (chars--) {
       if (i + columns - start > max) {
-        end = MIN2(end, i);
+        end = std::min(end, i);
 
         if (chop && i >= cursin) {
           if (i == cursin) {
@@ -847,12 +848,12 @@ int space_text_get_visible_lines(const SpaceText *st, const ARegion *region, con
 
 int space_text_get_span_wrap(const SpaceText *st,
                              const ARegion *region,
-                             TextLine *from,
-                             TextLine *to)
+                             const TextLine *from,
+                             const TextLine *to)
 {
   if (st->wordwrap) {
     int ret = 0;
-    TextLine *tmp = from;
+    const TextLine *tmp = from;
 
     /* Look forwards */
     while (tmp) {
@@ -939,7 +940,7 @@ static void calc_text_rcts(SpaceText *st, ARegion *region, rcti *scroll, rcti *b
       st, region, static_cast<TextLine *>(st->text->lines.first), st->text->curl);
   sell_off = space_text_get_span_wrap(
       st, region, static_cast<TextLine *>(st->text->lines.first), st->text->sell);
-  lhlstart = MIN2(curl_off, sell_off);
+  lhlstart = std::min(curl_off, sell_off);
   lhlend = std::max(curl_off, sell_off);
 
   if (ltexth > 0) {
@@ -959,7 +960,7 @@ static void calc_text_rcts(SpaceText *st, ARegion *region, rcti *scroll, rcti *b
       else if (lhlstart > st->top + st->runtime->viewlines && hlstart < barstart + barheight &&
                hlstart > barstart)
       {
-        /* push hl start down */
+        /* Push `hlstart` down. */
         hlstart = barstart + barheight;
       }
       else if (lhlend > st->top && lhlstart < st->top && hlstart > barstart) {
@@ -980,13 +981,13 @@ static void calc_text_rcts(SpaceText *st, ARegion *region, rcti *scroll, rcti *b
                 (pix_bardiff * (lhlend - st->top) / st->runtime->viewlines);
       }
       else if (lhlend < st->top && hlend >= barstart - 2 && hlend < barstart + barheight) {
-        /* push hl end up */
+        /* Push `hlend` up. */
         hlend = barstart;
       }
       else if (lhlend > st->top + st->runtime->viewlines &&
                lhlstart < st->top + st->runtime->viewlines && hlend < barstart + barheight)
       {
-        /* fill out end */
+        /* Fill out end. */
         hlend = barstart + barheight;
       }
 
@@ -1012,7 +1013,7 @@ static void calc_text_rcts(SpaceText *st, ARegion *region, rcti *scroll, rcti *b
   CLAMP(st->runtime->scroll_region_select.ymax, pix_bottom_margin, region->winy - pix_top_margin);
 }
 
-static void draw_textscroll(const SpaceText *st, rcti *scroll, rcti *back)
+static void draw_textscroll(const SpaceText *st, const rcti *scroll, const rcti *back)
 {
   bTheme *btheme = UI_GetTheme();
   uiWidgetColors wcol = btheme->tui.wcol_scroll;
@@ -1672,7 +1673,7 @@ void space_text_update_character_width(SpaceText *st)
 
   text_font_begin(&tdc);
   st->runtime->cwidth_px = BLF_fixed_width(tdc.font_id);
-  st->runtime->cwidth_px = MAX2(st->runtime->cwidth_px, char(1));
+  st->runtime->cwidth_px = std::max(st->runtime->cwidth_px, 1);
   text_font_end(&tdc);
 }
 

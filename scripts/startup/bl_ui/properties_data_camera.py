@@ -123,6 +123,15 @@ class DATA_PT_lens(CameraButtonsPanel, Panel):
                     col.prop(cam, "fisheye_polynomial_k2", text="K2")
                     col.prop(cam, "fisheye_polynomial_k3", text="K3")
                     col.prop(cam, "fisheye_polynomial_k4", text="K4")
+                elif cam.panorama_type == 'CENTRAL_CYLINDRICAL':
+                    sub = col.column(align=True)
+                    sub.prop(cam, "central_cylindrical_range_v_min", text="Height Min")
+                    sub.prop(cam, "central_cylindrical_range_v_max", text="Max")
+                    sub = col.column(align=True)
+                    sub.prop(cam, "central_cylindrical_range_u_min", text="Longitude Min")
+                    sub.prop(cam, "central_cylindrical_range_u_max", text="Max")
+                    sub = col.column(align=True)
+                    sub.prop(cam, "central_cylindrical_radius", text="Cylinder radius")
 
             elif engine in {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT', 'BLENDER_WORKBENCH'}:
                 if cam.lens_unit == 'MILLIMETERS':
@@ -156,8 +165,7 @@ class DATA_PT_camera_stereoscopy(CameraButtonsPanel, Panel):
     @classmethod
     def poll(cls, context):
         render = context.scene.render
-        return (super().poll(context) and render.use_multiview and
-                render.views_format == 'STEREO_3D')
+        return (super().poll(context) and render.use_multiview and render.views_format == 'STEREO_3D')
 
     def draw(self, context):
         layout = self.layout
@@ -254,9 +262,15 @@ class DATA_PT_camera_dof(CameraButtonsPanel, Panel):
         col.prop(dof, "focus_object", text="Focus on Object")
         if dof.focus_object and dof.focus_object.type == 'ARMATURE':
             col.prop_search(dof, "focus_subtarget", dof.focus_object.data, "bones", text="Focus on Bone")
+
         sub = col.column()
         sub.active = (dof.focus_object is None)
-        sub.prop(dof, "focus_distance", text="Focus Distance")
+        row = sub.row(align=True)
+        row.prop(dof, "focus_distance", text="Focus Distance")
+        row.operator(
+            "ui.eyedropper_depth",
+            icon='EYEDROPPER',
+            text="").prop_data_path = "scene.camera.data.dof.focus_distance"
 
 
 class DATA_PT_camera_dof_aperture(CameraButtonsPanel, Panel):
@@ -307,7 +321,7 @@ class DATA_PT_camera_background_image(CameraButtonsPanel, Panel):
         use_multiview = context.scene.render.use_multiview
 
         col = layout.column()
-        col.operator("view3d.background_image_add", text="Add Image")
+        col.operator("view3d.camera_background_image_add", text="Add Image")
 
         for i, bg in enumerate(cam.background_images):
             layout.active = cam.show_background_images
@@ -331,7 +345,7 @@ class DATA_PT_camera_background_image(CameraButtonsPanel, Panel):
                 icon='RESTRICT_VIEW_OFF' if bg.show_background_image else 'RESTRICT_VIEW_ON',
             )
 
-            row.operator("view3d.background_image_remove", text="", emboss=False, icon='X').index = i
+            row.operator("view3d.camera_background_image_remove", text="", emboss=False, icon='X').index = i
 
             if bg.show_expanded:
                 row = box.row()
@@ -380,7 +394,7 @@ class DATA_PT_camera_background_image(CameraButtonsPanel, Panel):
                     col = box.column()
                     if bg.image is not None:
                         col.prop(bg.image, "use_view_as_render")
-                    col.prop(bg, "alpha", slider=True)
+                    col.prop(bg, "alpha")
                     col.row().prop(bg, "display_depth", expand=True)
 
                     col.row().prop(bg, "frame_method", expand=True)

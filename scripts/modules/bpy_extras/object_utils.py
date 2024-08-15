@@ -11,7 +11,7 @@ __all__ = (
     "object_add_grid_scale",
     "object_add_grid_scale_apply_operator",
     "world_to_camera_view",
-    "object_verify_active_shape_key_is_editable",
+    "object_report_if_active_shape_key_is_locked",
 )
 
 
@@ -282,7 +282,7 @@ def object_report_if_active_shape_key_is_locked(obj, operator):
 
     if key and key.lock_shape:
         if operator:
-            operator.report({'ERROR'}, "The active shape key of %s is locked" % obj.name)
+            operator.report({'ERROR'}, "The active shape key of {:s} is locked".format(obj.name))
 
         return True
 

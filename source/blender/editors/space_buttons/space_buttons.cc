@@ -16,7 +16,6 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_context.hh"
-#include "BKE_gpencil_modifier_legacy.h" /* Types for registering panels. */
 #include "BKE_lib_query.hh"
 #include "BKE_lib_remap.hh"
 #include "BKE_modifier.hh"
@@ -33,15 +32,13 @@
 #include "WM_types.hh"
 
 #include "RNA_access.hh"
-#include "RNA_define.hh"
-#include "RNA_enum_types.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
 #include "BLO_read_write.hh"
 
-#include "buttons_intern.h" /* own include */
+#include "buttons_intern.hh" /* own include */
 
 /* -------------------------------------------------------------------- */
 /** \name Default Callbacks for Properties Space
@@ -305,7 +302,8 @@ static void buttons_main_region_layout_properties(const bContext *C,
 
   const char *contexts[2] = {buttons_main_region_context_string(sbuts->mainb), nullptr};
 
-  ED_region_panels_layout_ex(C, region, &region->type->paneltypes, contexts, nullptr);
+  ED_region_panels_layout_ex(
+      C, region, &region->type->paneltypes, WM_OP_INVOKE_REGION_WIN, contexts, nullptr);
 }
 
 /** \} */
@@ -316,21 +314,28 @@ static void buttons_main_region_layout_properties(const bContext *C,
 
 const char *ED_buttons_search_string_get(SpaceProperties *sbuts)
 {
-  return sbuts->runtime->search_string;
+  return (sbuts->runtime) ? sbuts->runtime->search_string : "";
 }
 
 int ED_buttons_search_string_length(SpaceProperties *sbuts)
 {
-  return BLI_strnlen(sbuts->runtime->search_string, sizeof(sbuts->runtime->search_string));
+  return (sbuts->runtime) ?
+             BLI_strnlen(sbuts->runtime->search_string, sizeof(sbuts->runtime->search_string)) :
+             0;
 }
 
 void ED_buttons_search_string_set(SpaceProperties *sbuts, const char *value)
 {
-  STRNCPY(sbuts->runtime->search_string, value);
+  if (sbuts->runtime) {
+    STRNCPY(sbuts->runtime->search_string, value);
+  }
 }
 
 bool ED_buttons_tab_has_search_result(SpaceProperties *sbuts, const int index)
 {
+  if (!sbuts->runtime) {
+    return false;
+  }
   return BLI_BITMAP_TEST(sbuts->runtime->tab_search_results, index);
 }
 
@@ -727,6 +732,7 @@ static void buttons_area_listener(const wmSpaceTypeListenerParams *params)
           buttons_area_redraw(area, BCONTEXT_PHYSICS);
           /* Needed to refresh context path when changing active particle system index. */
           buttons_area_redraw(area, BCONTEXT_PARTICLE);
+          buttons_area_redraw(area, BCONTEXT_TOOL);
           break;
         case ND_DRAW_ANIMVIZ:
           buttons_area_redraw(area, BCONTEXT_OBJECT);
@@ -812,12 +818,13 @@ static void buttons_area_listener(const wmSpaceTypeListenerParams *params)
       }
       break;
     case NC_GPENCIL:
-      switch (wmn->data) {
-        case ND_DATA:
-          if (ELEM(wmn->action, NA_EDITED, NA_ADDED, NA_REMOVED, NA_SELECTED, NA_RENAME)) {
-            ED_area_tag_redraw(area);
-          }
-          break;
+      if (wmn->data == ND_DATA) {
+        if (ELEM(wmn->action, NA_EDITED, NA_ADDED, NA_REMOVED, NA_SELECTED, NA_RENAME)) {
+          ED_area_tag_redraw(area);
+        }
+      }
+      else if (wmn->action == NA_EDITED) {
+        ED_area_tag_redraw(area);
       }
       break;
     case NC_NODE:
@@ -855,20 +862,20 @@ static void buttons_area_listener(const wmSpaceTypeListenerParams *params)
   }
 }
 
-static void buttons_id_remap(ScrArea * /*area*/, SpaceLink *slink, const IDRemapper *mappings)
+static void buttons_id_remap(ScrArea * /*area*/,
+                             SpaceLink *slink,
+                             const blender::bke::id::IDRemapper &mappings)
 {
   SpaceProperties *sbuts = (SpaceProperties *)slink;
 
-  if (BKE_id_remapper_apply(mappings, &sbuts->pinid, ID_REMAP_APPLY_DEFAULT) ==
-      ID_REMAP_RESULT_SOURCE_UNASSIGNED)
-  {
+  if (mappings.apply(&sbuts->pinid, ID_REMAP_APPLY_DEFAULT) == ID_REMAP_RESULT_SOURCE_UNASSIGNED) {
     sbuts->flag &= ~SB_PIN_CONTEXT;
   }
 
   if (sbuts->path) {
     ButsContextPath *path = static_cast<ButsContextPath *>(sbuts->path);
     for (int i = 0; i < path->len; i++) {
-      switch (BKE_id_remapper_apply(mappings, &path->ptr[i].owner_id, ID_REMAP_APPLY_DEFAULT)) {
+      switch (mappings.apply(&path->ptr[i].owner_id, ID_REMAP_APPLY_DEFAULT)) {
         case ID_REMAP_RESULT_SOURCE_UNASSIGNED: {
           path->len = i;
           if (i != 0) {
@@ -902,7 +909,7 @@ static void buttons_id_remap(ScrArea * /*area*/, SpaceLink *slink, const IDRemap
 
   if (sbuts->texuser) {
     ButsContextTexture *ct = static_cast<ButsContextTexture *>(sbuts->texuser);
-    BKE_id_remapper_apply(mappings, (ID **)&ct->texture, ID_REMAP_APPLY_DEFAULT);
+    mappings.apply(reinterpret_cast<ID **>(&ct->texture), ID_REMAP_APPLY_DEFAULT);
     BLI_freelistN(&ct->users);
     ct->user = nullptr;
   }
@@ -914,7 +921,7 @@ static void buttons_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data
   const int data_flags = BKE_lib_query_foreachid_process_flags_get(data);
   const bool is_readonly = (data_flags & IDWALK_READONLY) != 0;
 
-  BKE_LIB_FOREACHID_PROCESS_ID(data, sbuts->pinid, IDWALK_CB_NOP);
+  BKE_LIB_FOREACHID_PROCESS_ID(data, sbuts->pinid, IDWALK_CB_DIRECT_WEAK_LINK);
   if (!is_readonly) {
     if (sbuts->pinid == nullptr) {
       sbuts->flag &= ~SB_PIN_CONTEXT;
@@ -926,7 +933,7 @@ static void buttons_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data
 
   if (sbuts->texuser) {
     ButsContextTexture *ct = static_cast<ButsContextTexture *>(sbuts->texuser);
-    BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, ct->texture, IDWALK_CB_NOP);
+    BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, ct->texture, IDWALK_CB_DIRECT_WEAK_LINK);
 
     if (!is_readonly) {
       BLI_freelistN(&ct->users);
@@ -970,7 +977,7 @@ static void buttons_space_blend_write(BlendWriter *writer, SpaceLink *sl)
 
 void ED_spacetype_buttons()
 {
-  SpaceType *st = static_cast<SpaceType *>(MEM_callocN(sizeof(SpaceType), "spacetype buttons"));
+  std::unique_ptr<SpaceType> st = std::make_unique<SpaceType>();
   ARegionType *art;
 
   st->spaceid = SPACE_PROPERTIES;
@@ -1009,12 +1016,6 @@ void ED_spacetype_buttons()
       mti->panel_register(art);
     }
   }
-  for (int i = 0; i < NUM_GREASEPENCIL_MODIFIER_TYPES; i++) {
-    const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(GpencilModifierType(i));
-    if (mti != nullptr && mti->panel_register != nullptr) {
-      mti->panel_register(art);
-    }
-  }
   for (int i = 0; i < NUM_SHADER_FX_TYPES; i++) {
     if (i == eShaderFxType_Light_deprecated) {
       continue;
@@ -1047,7 +1048,7 @@ void ED_spacetype_buttons()
   art->message_subscribe = buttons_navigation_bar_region_message_subscribe;
   BLI_addhead(&st->regiontypes, art);
 
-  BKE_spacetype_register(st);
+  BKE_spacetype_register(std::move(st));
 }
 
 /** \} */

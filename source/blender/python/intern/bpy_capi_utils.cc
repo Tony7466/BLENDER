@@ -11,7 +11,6 @@
 
 #include <Python.h>
 
-#include "BLI_dynstr.h"
 #include "BLI_listbase.h"
 #include "BLI_utildefines.h"
 
@@ -19,10 +18,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BKE_context.hh"
-#include "BKE_report.h"
-
-#include "BLT_translation.h"
+#include "BKE_report.hh"
 
 #include "../generic/py_capi_utils.h"
 
@@ -56,7 +52,7 @@ void BPy_reports_write_stdout(const ReportList *reports, const char *header)
 }
 
 bool BPy_errors_to_report_ex(ReportList *reports,
-                             const char *err_prefix,
+                             const char *error_prefix,
                              const bool use_full,
                              const bool use_location)
 {
@@ -74,9 +70,9 @@ bool BPy_errors_to_report_ex(ReportList *reports,
     err_str_len -= 1;
   }
 
-  if (err_prefix == nullptr) {
+  if (error_prefix == nullptr) {
     /* Not very helpful, better than nothing. */
-    err_prefix = "Python";
+    error_prefix = "Python";
   }
 
   const char *location_filepath = nullptr;
@@ -104,14 +100,14 @@ bool BPy_errors_to_report_ex(ReportList *reports,
                 "%s: %.*s\n"
                 /* Location (when available). */
                 "Location: %s:%d",
-                err_prefix,
+                error_prefix,
                 int(err_str_len),
                 err_str,
                 location_filepath,
                 location_line_number);
   }
   else {
-    BKE_reportf(reports, RPT_ERROR, "%s: %.*s", err_prefix, int(err_str_len), err_str);
+    BKE_reportf(reports, RPT_ERROR, "%s: %.*s", error_prefix, int(err_str_len), err_str);
   }
 
   if (reports != reports_orig) {

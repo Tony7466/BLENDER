@@ -8,7 +8,7 @@
 
 #include "BKE_studiolight.h"
 
-#include "BKE_appdir.h"
+#include "BKE_appdir.hh"
 #include "BKE_icons.h"
 
 #include "BLI_dynstr.h"
@@ -17,23 +17,23 @@
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
 #include "BLI_math_color.h"
-#include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
-#include "BLI_string_utils.hh"
 
 #include "DNA_listBase.h"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
-#include "IMB_openexr.h"
+#include "IMB_imbuf.hh"
+#include "IMB_interp.hh"
+#include "IMB_openexr.hh"
 
-#include "GPU_texture.h"
+#include "GPU_texture.hh"
 
 #include "MEM_guardedalloc.h"
 
 #include <cstring>
+
+using blender::float4;
 
 /* Statics */
 static ListBase studiolights;
@@ -345,7 +345,7 @@ static void studiolight_multilayer_addpass(void *base,
 static void studiolight_load_equirect_image(StudioLight *sl)
 {
   if (sl->flag & STUDIOLIGHT_EXTERNAL_FILE) {
-    ImBuf *ibuf = IMB_loadiffname(sl->filepath, IB_multilayer, nullptr);
+    ImBuf *ibuf = IMB_loadiffname(sl->filepath, IB_multilayer | IB_alphamode_ignore, nullptr);
     ImBuf *specular_ibuf = nullptr;
     ImBuf *diffuse_ibuf = nullptr;
     const bool failed = (ibuf == nullptr);
@@ -487,11 +487,11 @@ static void studiolight_create_matcap_specular_gputexture(StudioLight *sl)
   sl->flag |= STUDIOLIGHT_MATCAP_SPECULAR_GPUTEXTURE;
 }
 
-static void studiolight_calculate_radiance(ImBuf *ibuf, float color[4], const float direction[3])
+static float4 studiolight_calculate_radiance(ImBuf *ibuf, const float direction[3])
 {
   float uv[2];
   direction_to_equirect(uv, direction);
-  nearest_interpolation_color_wrap(ibuf, nullptr, color, uv[0] * ibuf->x, uv[1] * ibuf->y);
+  return blender::imbuf::interpolate_nearest_border_fl(ibuf, uv[0] * ibuf->x, uv[1] * ibuf->y);
 }
 
 /*
@@ -504,7 +504,7 @@ BLI_INLINE float area_element(float x, float y)
 
 static float brdf_approx(float spec_color, float roughness, float NV)
 {
-  /* Very rough own approx. We don't need it to be correct, just fast.
+  /* Very rough approximation. We don't need it to be correct, just fast.
    * Just simulate fresnel effect with roughness attenuation. */
   float fresnel = exp2(-8.35f * NV) * (1.0f - roughness);
   return spec_color * (1.0f - fresnel) + fresnel;
@@ -609,13 +609,13 @@ static void studiolight_add_files_from_datafolder(const int folder_id,
                                                   const char *subfolder,
                                                   int flag)
 {
-  const char *folder = BKE_appdir_folder_id(folder_id, subfolder);
+  const std::optional<std::string> folder = BKE_appdir_folder_id(folder_id, subfolder);
   if (!folder) {
     return;
   }
 
   direntry *dirs;
-  const uint dirs_num = BLI_filelist_dir_contents(folder, &dirs);
+  const uint dirs_num = BLI_filelist_dir_contents(folder->c_str(), &dirs);
   int i;
   for (i = 0; i < dirs_num; i++) {
     if (dirs[i].type & S_IFREG) {
@@ -692,15 +692,15 @@ static void studiolight_radiance_preview(uint *icon_buffer, StudioLight *sl)
 
     uint alphamask = alpha_circle_mask(dx, dy, 0.5f - texel_size[0], 0.5f);
     if (alphamask != 0) {
-      float normal[3], direction[3], color[4];
+      float normal[3], direction[3];
       const float incoming[3] = {0.0f, 0.0f, -1.0f};
       sphere_normal_from_uv(normal, dx, dy);
       reflect_v3_v3v3(direction, incoming, normal);
       /* We want to see horizon not poles. */
-      SWAP(float, direction[1], direction[2]);
+      std::swap(direction[1], direction[2]);
       direction[1] = -direction[1];
 
-      studiolight_calculate_radiance(sl->equirect_radiance_buffer, color, direction);
+      float4 color = studiolight_calculate_radiance(sl->equirect_radiance_buffer, direction);
 
       *pixel = rgb_to_cpack(linearrgb_to_srgb(color[0]),
                             linearrgb_to_srgb(color[1]),
@@ -716,6 +716,8 @@ static void studiolight_radiance_preview(uint *icon_buffer, StudioLight *sl)
 
 static void studiolight_matcap_preview(uint *icon_buffer, StudioLight *sl, bool flipped)
 {
+  using namespace blender;
+
   BKE_studiolight_ensure_flag(sl, STUDIOLIGHT_EXTERNAL_IMAGE_LOADED);
 
   ImBuf *diffuse_buffer = sl->matcap_diffuse.ibuf;
@@ -728,14 +730,12 @@ static void studiolight_matcap_preview(uint *icon_buffer, StudioLight *sl, bool 
       dx = 1.0f - dx;
     }
 
-    float color[4];
     float u = dx * diffuse_buffer->x - 1.0f;
     float v = dy * diffuse_buffer->y - 1.0f;
-    nearest_interpolation_color(diffuse_buffer, nullptr, color, u, v);
+    float4 color = imbuf::interpolate_nearest_border_fl(diffuse_buffer, u, v);
 
     if (specular_buffer) {
-      float specular[4];
-      nearest_interpolation_color(specular_buffer, nullptr, specular, u, v);
+      float4 specular = imbuf::interpolate_nearest_border_fl(specular_buffer, u, v);
       add_v3_v3(color, specular);
     }
 
@@ -760,7 +760,7 @@ static void studiolight_irradiance_preview(uint *icon_buffer, StudioLight *sl)
       float normal[3], color[3];
       sphere_normal_from_uv(normal, dx, dy);
       /* We want to see horizon not poles. */
-      SWAP(float, normal[1], normal[2]);
+      std::swap(normal[1], normal[2]);
       normal[1] = -normal[1];
 
       studiolight_lights_eval(sl, color, normal);
@@ -840,21 +840,17 @@ void BKE_studiolight_init()
   BLI_addtail(&studiolights, sl);
 
   /* Go over the preset folder and add a studio-light for every image with its path. */
-  /* For portable installs (where USER and SYSTEM paths are the same),
-   * only go over LOCAL data-files once. */
   /* Also reserve icon space for it. */
-  if (!BKE_appdir_app_is_portable_install()) {
-    studiolight_add_files_from_datafolder(BLENDER_USER_DATAFILES,
-                                          STUDIOLIGHT_LIGHTS_FOLDER,
-                                          STUDIOLIGHT_TYPE_STUDIO | STUDIOLIGHT_USER_DEFINED |
-                                              STUDIOLIGHT_SPECULAR_HIGHLIGHT_PASS);
-    studiolight_add_files_from_datafolder(BLENDER_USER_DATAFILES,
-                                          STUDIOLIGHT_WORLD_FOLDER,
-                                          STUDIOLIGHT_TYPE_WORLD | STUDIOLIGHT_USER_DEFINED);
-    studiolight_add_files_from_datafolder(BLENDER_USER_DATAFILES,
-                                          STUDIOLIGHT_MATCAP_FOLDER,
-                                          STUDIOLIGHT_TYPE_MATCAP | STUDIOLIGHT_USER_DEFINED);
-  }
+  studiolight_add_files_from_datafolder(BLENDER_USER_DATAFILES,
+                                        STUDIOLIGHT_LIGHTS_FOLDER,
+                                        STUDIOLIGHT_TYPE_STUDIO | STUDIOLIGHT_USER_DEFINED |
+                                            STUDIOLIGHT_SPECULAR_HIGHLIGHT_PASS);
+  studiolight_add_files_from_datafolder(BLENDER_USER_DATAFILES,
+                                        STUDIOLIGHT_WORLD_FOLDER,
+                                        STUDIOLIGHT_TYPE_WORLD | STUDIOLIGHT_USER_DEFINED);
+  studiolight_add_files_from_datafolder(BLENDER_USER_DATAFILES,
+                                        STUDIOLIGHT_MATCAP_FOLDER,
+                                        STUDIOLIGHT_TYPE_MATCAP | STUDIOLIGHT_USER_DEFINED);
   studiolight_add_files_from_datafolder(BLENDER_SYSTEM_DATAFILES,
                                         STUDIOLIGHT_LIGHTS_FOLDER,
                                         STUDIOLIGHT_TYPE_STUDIO |

@@ -2,11 +2,11 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BLI_rect.h"
 
-#include "GPU_capabilities.h"
-#include "GPU_framebuffer.h"
+#include "GPU_capabilities.hh"
+#include "GPU_framebuffer.hh"
 
 #include "ED_screen.hh"
 #include "ED_view3d.hh"
@@ -112,6 +112,8 @@ static void eevee_draw_scene(void *vedata)
   STRNCPY(ved->info, ved->instance->info.c_str());
   /* Reset view for other following engines. */
   DRW_view_set_active(nullptr);
+  DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
+  GPU_framebuffer_viewport_reset(dfbl->default_fb);
 }
 
 static void eevee_cache_init(void *vedata)
@@ -165,7 +167,7 @@ static void eevee_render_to_image(void *vedata,
   rcti visible_rect = rect;
 
   instance->init(size, &rect, &visible_rect, engine, depsgraph, camera_original_ob, layer);
-  instance->render_frame(layer, viewname);
+  instance->render_frame(engine, layer, viewname);
 
   EEVEE_Data *ved = static_cast<EEVEE_Data *>(vedata);
   delete ved->instance;
