@@ -427,36 +427,91 @@ static BitVector<> enabled_state_to_bitmap(const Object &object, const Cache &ex
  * enabled vertices. This is defined as vertices that are enabled and at least have one connected
  * vertex that is not enabled.
  */
-static IndexMask boundary_from_enabled(SculptSession &ss,
+static IndexMask boundary_from_enabled(Object &object,
                                        const BitSpan enabled_verts,
                                        const bool use_mesh_boundary,
                                        IndexMaskMemory &memory)
 {
+  SculptSession &ss = *object.sculpt;
   const int totvert = SCULPT_vertex_count_get(ss);
 
+  const IndexMask enabled_mask = IndexMask::from_bits(enabled_verts, memory);
+
   BitVector<> boundary_verts(totvert);
-  return IndexMask::from_predicate(
-      enabled_verts.index_range(), GrainSize(1024), memory, [&](const int vert) {
-        if (!enabled_verts[vert]) {
-          return false;
-        }
-
-        PBVHVertRef vert_ref = BKE_pbvh_index_to_vertex(*ss.pbvh, vert);
-
-        SculptVertexNeighborIter ni;
-        SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (ss, vert_ref, ni) {
-          if (!enabled_verts[ni.index]) {
+  switch (ss.pbvh->type()) {
+    case bke::pbvh::Type::Mesh: {
+      const Mesh &mesh = *static_cast<const Mesh *>(object.data);
+      const OffsetIndices faces = mesh.faces();
+      const Span<int> corner_verts = mesh.corner_verts();
+      const GroupedSpan<int> vert_to_face_map = mesh.vert_to_face_map();
+      const bke::AttributeAccessor attributes = mesh.attributes();
+      const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
+      return IndexMask::from_predicate(enabled_mask, GrainSize(1024), memory, [&](const int vert) {
+        Vector<int> neighbors;
+        for (const int neighbor : vert_neighbors_get_mesh(
+                 vert, faces, corner_verts, vert_to_face_map, hide_poly, neighbors))
+        {
+          if (!enabled_verts[neighbor]) {
             return true;
           }
         }
-        SCULPT_VERTEX_NEIGHBORS_ITER_END(ni);
 
-        if (use_mesh_boundary && boundary::vert_is_boundary(ss, vert_ref)) {
+        if (use_mesh_boundary &&
+            boundary::vert_is_boundary(hide_poly, vert_to_face_map, ss.vertex_info.boundary, vert))
+        {
           return true;
         }
 
         return false;
       });
+    }
+    case bke::pbvh::Type::Grids: {
+      const Mesh &base_mesh = *static_cast<const Mesh *>(object.data);
+      const OffsetIndices faces = base_mesh.faces();
+      const Span<int> corner_verts = base_mesh.corner_verts();
+
+      const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+      return IndexMask::from_predicate(enabled_mask, GrainSize(1024), memory, [&](const int vert) {
+        const SubdivCCGCoord coord = SubdivCCGCoord::from_index(key, vert);
+        SubdivCCGNeighbors neighbors;
+        BKE_subdiv_ccg_neighbor_coords_get(subdiv_ccg, coord, false, neighbors);
+        for (const SubdivCCGCoord neighbor : neighbors.coords) {
+          if (!enabled_verts[neighbor.to_index(key)]) {
+            return true;
+          }
+        }
+
+        if (use_mesh_boundary &&
+            boundary::vert_is_boundary(
+                subdiv_ccg, corner_verts, faces, ss.vertex_info.boundary, coord))
+        {
+          return true;
+        }
+
+        return false;
+      });
+    }
+    case bke::pbvh::Type::BMesh: {
+      return IndexMask::from_predicate(enabled_mask, GrainSize(1024), memory, [&](const int vert) {
+        BMVert *bm_vert = BM_vert_at_index(ss.bm, vert);
+        Vector<BMVert *, 64> neighbors;
+        for (const BMVert *neighbor : vert_neighbors_get_bmesh(*bm_vert, neighbors)) {
+          if (!enabled_verts[BM_elem_index_get(neighbor)]) {
+            return true;
+          }
+        }
+
+        if (use_mesh_boundary && BM_vert_is_boundary(bm_vert)) {
+          return true;
+        }
+
+        return false;
+      });
+    }
+  }
+  BLI_assert_unreachable();
+  return {};
 }
 
 static void check_topology_islands(Object &ob, FalloffType falloff_type)
@@ -486,14 +541,13 @@ static PBVHVertRef get_vert_index_for_symmetry_pass(Object &ob,
                                                     const char symm_it,
                                                     const PBVHVertRef original_vertex)
 {
-  SculptSession &ss = *ob.sculpt;
   PBVHVertRef symm_vertex = {SCULPT_EXPAND_VERTEX_NONE};
 
   if (symm_it == 0) {
     symm_vertex = original_vertex;
   }
   else {
-    const float3 location = symmetry_flip(SCULPT_vertex_co_get(ss, original_vertex),
+    const float3 location = symmetry_flip(SCULPT_vertex_co_get(ob, original_vertex),
                                           ePaintSymmetryFlags(symm_it));
     symm_vertex = nearest_vert_calc(ob, location, FLT_MAX, false);
   }
@@ -546,9 +600,9 @@ static Array<float> topology_falloff_create(Object &ob, const PBVHVertRef v)
   Array<float> dists(totvert, 0.0f);
 
   flood_fill::FillData flood = flood_fill::init_fill(ss);
-  flood_fill::add_initial_with_symmetry(ob, ss, flood, v, FLT_MAX);
+  flood_fill::add_initial_with_symmetry(ob, flood, v, FLT_MAX);
 
-  flood_fill::execute(ss, flood, [&](PBVHVertRef from_v, PBVHVertRef to_v, bool is_duplicate) {
+  flood_fill::execute(ob, flood, [&](PBVHVertRef from_v, PBVHVertRef to_v, bool is_duplicate) {
     return topology_floodfill_fn(ss, from_v, to_v, is_duplicate, dists);
   });
 
@@ -560,18 +614,16 @@ static Array<float> topology_falloff_create(Object &ob, const PBVHVertRef v)
  * each vertex and the previous one.
  * This creates falloff patterns that follow and snap to the hard edges of the object.
  */
-static bool normal_floodfill_fn(SculptSession &ss,
-                                PBVHVertRef from_v,
-                                PBVHVertRef to_v,
-                                bool is_duplicate,
-                                FloodFillData *data)
+static bool normal_floodfill_fn(
+    Object &object, PBVHVertRef from_v, PBVHVertRef to_v, bool is_duplicate, FloodFillData *data)
 {
+  const SculptSession &ss = *object.sculpt;
   int from_v_i = BKE_pbvh_vertex_to_index(*ss.pbvh, from_v);
   int to_v_i = BKE_pbvh_vertex_to_index(*ss.pbvh, to_v);
 
   if (!is_duplicate) {
-    float3 current_normal = SCULPT_vertex_normal_get(ss, to_v);
-    float3 prev_normal = SCULPT_vertex_normal_get(ss, from_v);
+    float3 current_normal = SCULPT_vertex_normal_get(object, to_v);
+    float3 prev_normal = SCULPT_vertex_normal_get(object, from_v);
     const float from_edge_factor = data->edge_factor[from_v_i];
     data->edge_factor[to_v_i] = dot_v3v3(current_normal, prev_normal) * from_edge_factor;
     data->dists[to_v_i] = dot_v3v3(data->original_normal, current_normal) *
@@ -598,16 +650,16 @@ static Array<float> normals_falloff_create(Object &ob,
   Array<float> edge_factor(totvert, 1.0f);
 
   flood_fill::FillData flood = flood_fill::init_fill(ss);
-  flood_fill::add_initial_with_symmetry(ob, ss, flood, v, FLT_MAX);
+  flood_fill::add_initial_with_symmetry(ob, flood, v, FLT_MAX);
 
   FloodFillData fdata;
   fdata.dists = dists;
   fdata.edge_factor = edge_factor;
   fdata.edge_sensitivity = edge_sensitivity;
-  fdata.original_normal = SCULPT_vertex_normal_get(ss, v);
+  fdata.original_normal = SCULPT_vertex_normal_get(ob, v);
 
-  flood_fill::execute(ss, flood, [&](PBVHVertRef from_v, PBVHVertRef to_v, bool is_duplicate) {
-    return normal_floodfill_fn(ss, from_v, to_v, is_duplicate, &fdata);
+  flood_fill::execute(ob, flood, [&](PBVHVertRef from_v, PBVHVertRef to_v, bool is_duplicate) {
+    return normal_floodfill_fn(ob, from_v, to_v, is_duplicate, &fdata);
   });
 
   smooth::blur_geometry_data_array(ob, blur_steps, dists);
@@ -638,11 +690,11 @@ static Array<float> spherical_falloff_create(Object &ob, const PBVHVertRef v)
     }
     const PBVHVertRef symm_vertex = get_vert_index_for_symmetry_pass(ob, symm_it, v);
     if (symm_vertex.i != SCULPT_EXPAND_VERTEX_NONE) {
-      const float *co = SCULPT_vertex_co_get(ss, symm_vertex);
+      const float *co = SCULPT_vertex_co_get(ob, symm_vertex);
       for (int i = 0; i < totvert; i++) {
         PBVHVertRef vertex = BKE_pbvh_index_to_vertex(*ss.pbvh, i);
 
-        dists[i] = min_ff(dists[i], len_v3v3(co, SCULPT_vertex_co_get(ss, vertex)));
+        dists[i] = min_ff(dists[i], len_v3v3(co, SCULPT_vertex_co_get(ob, vertex)));
       }
     }
   }
@@ -890,11 +942,10 @@ static void geodesics_from_state_boundary(Object &ob,
                                           Cache &expand_cache,
                                           const BitSpan enabled_verts)
 {
-  SculptSession &ss = *ob.sculpt;
-  BLI_assert(ss.pbvh->type() == bke::pbvh::Type::Mesh);
+  BLI_assert(ob.sculpt->pbvh->type() == bke::pbvh::Type::Mesh);
 
   IndexMaskMemory memory;
-  const IndexMask boundary_verts = boundary_from_enabled(ss, enabled_verts, false, memory);
+  const IndexMask boundary_verts = boundary_from_enabled(ob, enabled_verts, false, memory);
   Set<int> initial_verts;
   boundary_verts.foreach_index([&](const int vert) { initial_verts.add(vert); });
 
@@ -920,7 +971,7 @@ static void topology_from_state_boundary(Object &ob,
   expand_cache.vert_falloff.fill(0);
 
   IndexMaskMemory memory;
-  const IndexMask boundary_verts = boundary_from_enabled(ss, enabled_verts, false, memory);
+  const IndexMask boundary_verts = boundary_from_enabled(ob, enabled_verts, false, memory);
 
   flood_fill::FillData flood = flood_fill::init_fill(ss);
   boundary_verts.foreach_index([&](const int vert) {
@@ -929,7 +980,7 @@ static void topology_from_state_boundary(Object &ob,
   });
 
   MutableSpan<float> dists = expand_cache.vert_falloff;
-  flood_fill::execute(ss, flood, [&](PBVHVertRef from_v, PBVHVertRef to_v, bool is_duplicate) {
+  flood_fill::execute(ob, flood, [&](PBVHVertRef from_v, PBVHVertRef to_v, bool is_duplicate) {
     return topology_floodfill_fn(ss, from_v, to_v, is_duplicate, dists);
   });
 }
@@ -1183,12 +1234,13 @@ static void restore_color_data(Object &ob, Cache &expand_cache)
   color_attribute.finish();
 }
 
-static void write_mask_data(SculptSession &ss, const Span<float> mask)
+static void write_mask_data(Object &object, const Span<float> mask)
 {
+  SculptSession &ss = *object.sculpt;
   switch (ss.pbvh->type()) {
     case bke::pbvh::Type::Mesh: {
-      Mesh *mesh = BKE_pbvh_get_mesh(*ss.pbvh);
-      bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
+      Mesh &mesh = *static_cast<Mesh *>(object.data);
+      bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
       attributes.remove(".sculpt_mask");
       attributes.add<float>(".sculpt_mask",
                             bke::AttrDomain::Point,
@@ -1231,10 +1283,9 @@ static void write_mask_data(SculptSession &ss, const Span<float> mask)
  * operation. */
 static void restore_original_state(bContext *C, Object &ob, Cache &expand_cache)
 {
-  SculptSession &ss = *ob.sculpt;
   switch (expand_cache.target) {
     case TargetType::Mask:
-      write_mask_data(ss, expand_cache.original_mask);
+      write_mask_data(ob, expand_cache.original_mask);
       flush_update_step(C, UpdateType::Mask);
       flush_update_done(C, ob, UpdateType::Mask);
       SCULPT_tag_update_overlays(C);
@@ -1697,7 +1748,7 @@ static void reposition_pivot(bContext *C, Object &ob, Cache &expand_cache)
 
   IndexMaskMemory memory;
   const IndexMask boundary_verts = boundary_from_enabled(
-      ss, enabled_verts, use_mesh_boundary, memory);
+      ob, enabled_verts, use_mesh_boundary, memory);
 
   /* Ignore invert state, as this is the expected behavior in most cases and mask are created in
    * inverted state by default. */
@@ -1706,7 +1757,7 @@ static void reposition_pivot(bContext *C, Object &ob, Cache &expand_cache)
   int total = 0;
   float avg[3] = {0.0f};
 
-  const float *expand_init_co = SCULPT_vertex_co_get(ss, expand_cache.initial_active_vertex);
+  const float *expand_init_co = SCULPT_vertex_co_get(ob, expand_cache.initial_active_vertex);
 
   boundary_verts.foreach_index([&](const int vert) {
     if (!is_vert_in_active_component(ss, expand_cache, vert)) {
@@ -1714,7 +1765,7 @@ static void reposition_pivot(bContext *C, Object &ob, Cache &expand_cache)
     }
 
     PBVHVertRef vertex = BKE_pbvh_index_to_vertex(*ss.pbvh, vert);
-    const float *vertex_co = SCULPT_vertex_co_get(ss, vertex);
+    const float *vertex_co = SCULPT_vertex_co_get(ob, vertex);
 
     if (!SCULPT_check_vertex_pivot_symmetry(vertex_co, expand_init_co, symm)) {
       return;
@@ -2290,7 +2341,7 @@ static int sculpt_expand_invoke(bContext *C, wmOperator *op, const wmEvent *even
 
     if (RNA_boolean_get(op->ptr, "use_auto_mask")) {
       if (any_nonzero_mask(ob)) {
-        write_mask_data(ss, Array<float>(SCULPT_vertex_count_get(ss), 1.0f));
+        write_mask_data(ob, Array<float>(SCULPT_vertex_count_get(ss), 1.0f));
       }
     }
   }
