@@ -524,16 +524,17 @@ TEST_F(PhysicsGeometryTest, join_geometry)
   {
     AttributeWriter<int> body_shapes = geo1->body_shapes_for_write();
     AttributeWriter<float> masses = geo1->body_masses_for_write();
+    AttributeWriter<int> constraint_types = geo1->constraint_types_for_write();
+    AttributeWriter<int> constraint_body1 = geo1->constraint_body1_for_write();
+    AttributeWriter<int> constraint_body2 = geo1->constraint_body2_for_write();
     body_shapes.varray.set_all({2, 0, 2, -1, 1});
     masses.varray.set_all({5, 15, 25, 35, 45});
+    constraint_types.varray.set_all({int(ConstraintType::Point), int(ConstraintType::Slider)});
+    constraint_body1.varray.set_all({2, 0});
+    constraint_body2.varray.set_all({1, 2});
     body_shapes.finish();
     masses.finish();
     geo1->compute_local_inertia(geo1->bodies_range());
-    geo1->create_constraints(
-        geo1->constraints_range(),
-        VArray<int>::ForSpan({int(ConstraintType::Point), int(ConstraintType::Slider)}),
-        VArray<int>::ForSpan({2, 0}),
-        VArray<int>::ForSpan({1, 2}));
   }
   test_data(*geo1, false, 5, 2, 3);
 
@@ -553,16 +554,18 @@ TEST_F(PhysicsGeometryTest, join_geometry)
   {
     AttributeWriter<int> body_shapes = geo3->body_shapes_for_write();
     AttributeWriter<float> masses = geo3->body_masses_for_write();
+    AttributeWriter<int> constraint_types = geo1->constraint_types_for_write();
+    AttributeWriter<int> constraint_body1 = geo1->constraint_body1_for_write();
+    AttributeWriter<int> constraint_body2 = geo1->constraint_body2_for_write();
     body_shapes.varray.set_all({0, 100});
     masses.varray.set_all({3, 33});
+    constraint_types.varray.set_all({int(ConstraintType::Fixed)});
+    constraint_body1.varray.set_all({-1});
+    constraint_body2.varray.set_all({1});
     body_shapes.finish();
     masses.finish();
     geo3->compute_local_inertia(geo3->bodies_range());
   }
-  geo3->create_constraints(geo3->constraints_range(),
-                           VArray<int>::ForSpan({int(ConstraintType::Fixed)}),
-                           VArray<int>::ForSpan({-1}),
-                           VArray<int>::ForSpan({1}));
   test_data(*geo3, true, 2, 1, 1);
 
   Array<bke::GeometrySet> geometry_sets = {bke::GeometrySet::from_physics(geo1),

@@ -64,6 +64,8 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
   mutable CacheFlag body_is_static_valid = false;
   /* Valid when mass matches the world data motion type for each body. */
   mutable CacheFlag body_mass_valid = false;
+  /* Valid when internal constraints have been updated to specified types and bodies. */
+  mutable CacheFlag constraints_valid = false;
   /* Cache for disable_collisions flags of constraints. These are stored indirectly by Bullet: a
    * constraint disables collisions by adding "constraint refs" to bodies, when adding a constraint
    * to the world. To determine if a constraint disables collisions after the fact requires looping
@@ -97,6 +99,7 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
   void tag_body_collision_shape_changed();
   void tag_body_is_static_changed();
   void tag_body_mass_changed();
+  void tag_constraints_changed();
 
   bool has_builtin_attribute_custom_data_layer(BodyAttribute attribute) const;
   bool has_builtin_attribute_custom_data_layer(ConstraintAttribute attribute) const;
@@ -105,6 +108,7 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
   void ensure_read_cache() const;
   /* Make sure attributes with write caches have been transferred to world data. */
   void ensure_motion_type();
+  void ensure_constraints();
   void ensure_custom_data_attribute(BodyAttribute attribute) const;
   void ensure_custom_data_attribute(ConstraintAttribute attribute) const;
 
@@ -148,10 +152,10 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
   void apply_angular_impulse(const IndexMask &selection, const VArray<float3> &angular_impulses);
   void clear_forces(const IndexMask &selection);
 
-  void create_constraints(const IndexMask &selection,
-                          const VArray<int> &types,
-                          const VArray<int> &bodies1,
-                          const VArray<int> &bodies2);
+  // void create_constraints(const IndexMask &selection,
+  //                         const VArray<int> &types,
+  //                         const VArray<int> &bodies1,
+  //                         const VArray<int> &bodies2);
 
   /* Validate internal relations, for debugging and testing purposes.
    * Should only be used in tests or debug mode. */
@@ -165,6 +169,7 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
   void ensure_body_collision_shapes_no_lock();
   void ensure_body_is_static_no_lock();
   void ensure_body_masses_no_lock();
+  void ensure_constraints_no_lock();
   void ensure_custom_data_attribute_no_lock(BodyAttribute attribute);
   void ensure_custom_data_attribute_no_lock(ConstraintAttribute attribute);
 
@@ -427,35 +432,35 @@ inline btTypedConstraintType to_bullet(bke::PhysicsGeometry::ConstraintType type
   return FIXED_CONSTRAINT_TYPE;
 }
 
-inline bke::PhysicsGeometry::ConstraintType to_blender(btTypedConstraintType type)
-{
-  using ConstraintType = bke::PhysicsGeometry::ConstraintType;
-  switch (type) {
-    case FIXED_CONSTRAINT_TYPE:
-      return ConstraintType::Fixed;
-    case POINT2POINT_CONSTRAINT_TYPE:
-      return ConstraintType::Point;
-    case HINGE_CONSTRAINT_TYPE:
-      return ConstraintType::Hinge;
-    case SLIDER_CONSTRAINT_TYPE:
-      return ConstraintType::Slider;
-    case CONETWIST_CONSTRAINT_TYPE:
-      return ConstraintType::ConeTwist;
-    case D6_CONSTRAINT_TYPE:
-      return ConstraintType::SixDoF;
-    case D6_SPRING_CONSTRAINT_TYPE:
-      return ConstraintType::SixDoFSpring;
-    case D6_SPRING_2_CONSTRAINT_TYPE:
-      return ConstraintType::SixDoFSpring2;
-    case CONTACT_CONSTRAINT_TYPE:
-      return ConstraintType::Contact;
-    case GEAR_CONSTRAINT_TYPE:
-      return ConstraintType::Gear;
-
-    default:
-      return ConstraintType::None;
-  }
-}
+// inline bke::PhysicsGeometry::ConstraintType to_blender(btTypedConstraintType type)
+//{
+//   using ConstraintType = bke::PhysicsGeometry::ConstraintType;
+//   switch (type) {
+//     case FIXED_CONSTRAINT_TYPE:
+//       return ConstraintType::Fixed;
+//     case POINT2POINT_CONSTRAINT_TYPE:
+//       return ConstraintType::Point;
+//     case HINGE_CONSTRAINT_TYPE:
+//       return ConstraintType::Hinge;
+//     case SLIDER_CONSTRAINT_TYPE:
+//       return ConstraintType::Slider;
+//     case CONETWIST_CONSTRAINT_TYPE:
+//       return ConstraintType::ConeTwist;
+//     case D6_CONSTRAINT_TYPE:
+//       return ConstraintType::SixDoF;
+//     case D6_SPRING_CONSTRAINT_TYPE:
+//       return ConstraintType::SixDoFSpring;
+//     case D6_SPRING_2_CONSTRAINT_TYPE:
+//       return ConstraintType::SixDoFSpring2;
+//     case CONTACT_CONSTRAINT_TYPE:
+//       return ConstraintType::Contact;
+//     case GEAR_CONSTRAINT_TYPE:
+//       return ConstraintType::Gear;
+//
+//     default:
+//       return ConstraintType::None;
+//   }
+// }
 
 inline std::optional<CollisionShape::ShapeType> to_blender(const int bt_shape_type)
 {

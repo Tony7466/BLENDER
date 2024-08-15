@@ -209,14 +209,17 @@ class PhysicsGeometry {
 
   void compute_local_inertia(const IndexMask &selection);
 
-  void create_constraints(const IndexMask &selection,
-                          const VArray<int> &types,
-                          const VArray<int> &bodies1,
-                          const VArray<int> &bodies2);
+  // void create_constraints(const IndexMask &selection,
+  //                         const VArray<int> &types,
+  //                         const VArray<int> &bodies1,
+  //                         const VArray<int> &bodies2);
 
   VArray<int> constraint_types() const;
+  AttributeWriter<int> constraint_types_for_write();
   VArray<int> constraint_body1() const;
+  AttributeWriter<int> constraint_body1_for_write();
   VArray<int> constraint_body2() const;
+  AttributeWriter<int> constraint_body2_for_write();
 
   VArray<bool> constraint_enabled() const;
   AttributeWriter<bool> constraint_enabled_for_write();

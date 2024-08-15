@@ -211,7 +211,6 @@ struct RealizePhysicsInfo {
   VArray<math::Quaternion> rotations;
   VArray<float3> velocities;
   VArray<float3> angular_velocities;
-  VArray<int> constraint_types;
   VArray<int> constraint_bodies1;
   VArray<int> constraint_bodies2;
   /** Matches the order in #AllMeshesInfo.attributes. */
@@ -2346,7 +2345,6 @@ static AllPhysicsInfo preprocess_physics(const bke::GeometrySet &geometry_set,
     physics_info.rotations = physics->body_rotations();
     physics_info.velocities = physics->body_velocities();
     physics_info.angular_velocities = physics->body_angular_velocities();
-    physics_info.constraint_types = physics->constraint_types();
     physics_info.constraint_bodies1 = physics->constraint_body1();
     physics_info.constraint_bodies2 = physics->constraint_body2();
     bke::AttributeAccessor attributes = physics->attributes();
@@ -2382,6 +2380,8 @@ static void execute_realize_physics_task(const RealizeInstancesOptions & /*optio
                                          MutableSpan<math::Quaternion> all_dst_rotations,
                                          MutableSpan<float3> all_dst_velocities,
                                          MutableSpan<float3> all_dst_angular_velocities,
+                                         MutableSpan<int> all_dst_constraint_body1,
+                                         MutableSpan<int> all_dst_constraint_body2,
                                          MutableSpan<GSpanAttributeWriter> dst_attribute_writers)
 {
   const RealizePhysicsInfo &physics_info = *task.physics_info;
@@ -2453,30 +2453,22 @@ static void execute_realize_physics_task(const RealizeInstancesOptions & /*optio
   }
 
   if (write_constraints) {
-    const VArray<int> src_constraint_types = physics_info.constraint_types;
-    const VArray<int> src_constraint_bodies1 = physics_info.constraint_bodies1;
-    const VArray<int> src_constraint_bodies2 = physics_info.constraint_bodies2;
+    const VArray<int> src_constraint_body1 = physics_info.constraint_bodies1;
+    const VArray<int> src_constraint_body2 = physics_info.constraint_bodies2;
 
-    /* Source varrays are relative to the original constraint range, make sure to offset when
-     * accessing the original varrays. */
-    const int src_constraint_start = task.start_indices.constraint;
-    const VArray<int> dst_constraint_types = VArray<int>::ForFunc(
-        dst_constraint_range.one_after_last(),
-        [&](const int index) { return src_constraint_types[index - src_constraint_start]; });
-    /* Offset body indices to match the new destination range. */
-    const VArray<int> dst_constraint_bodies1 = VArray<int>::ForFunc(
-        dst_constraint_range.one_after_last(), [&](const int index) {
-          return src_constraint_bodies1[index - src_constraint_start] + task.start_indices.body;
-        });
-    const VArray<int> dst_constraint_bodies2 = VArray<int>::ForFunc(
-        dst_constraint_range.one_after_last(), [&](const int index) {
-          return src_constraint_bodies2[index - src_constraint_start] + task.start_indices.body;
-        });
+    MutableSpan<int> dst_constraint_body1 = all_dst_constraint_body1.slice(dst_constraint_range);
+    MutableSpan<int> dst_constraint_body2 = all_dst_constraint_body2.slice(dst_constraint_range);
 
-    dst_physics.create_constraints(dst_constraint_range,
-                                   dst_constraint_types,
-                                   dst_constraint_bodies1,
-                                   dst_constraint_bodies2);
+    threading::parallel_for(src_constraint_body1.index_range(), 1024, [&](const IndexRange range) {
+      for (const int i : range) {
+        dst_constraint_body1[i] = dst_body_range[src_constraint_body1[i]];
+      }
+    });
+    threading::parallel_for(src_constraint_body2.index_range(), 1024, [&](const IndexRange range) {
+      for (const int i : range) {
+        dst_constraint_body2[i] = dst_body_range[src_constraint_body2[i]];
+      }
+    });
   }
 
   /* XXX This will also disable copy of dynamic attributes!
@@ -2569,6 +2561,12 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
   SpanAttributeWriter<float3> angular_velocity =
       dst_attributes.lookup_or_add_for_write_only_span<float3>(angular_velocity_attribute_id,
                                                                bke::AttrDomain::Point);
+  SpanAttributeWriter<int> constraint_body1 =
+      dst_attributes.lookup_or_add_for_write_only_span<int>(constraint_body1_attribute_id,
+                                                            bke::AttrDomain::Edge);
+  SpanAttributeWriter<int> constraint_body2 =
+      dst_attributes.lookup_or_add_for_write_only_span<int>(constraint_body2_attribute_id,
+                                                            bke::AttrDomain::Edge);
 
   /* Prepare generic output attributes. */
   Vector<GSpanAttributeWriter> dst_attribute_writers;
@@ -2598,6 +2596,8 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
                                    rotation.span,
                                    velocity.span,
                                    angular_velocity.span,
+                                   constraint_body1.span,
+                                   constraint_body2.span,
                                    dst_attribute_writers);
     }
   });
@@ -2612,6 +2612,8 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
   rotation.finish();
   velocity.finish();
   angular_velocity.finish();
+  constraint_body1.finish();
+  constraint_body2.finish();
 }
 
 /** \} */

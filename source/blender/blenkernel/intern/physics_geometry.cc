@@ -488,7 +488,8 @@ void PhysicsWorldData::create_constraints(const IndexMask &selection,
 
     if (constraints_[index]) {
       const btTypedConstraint &current_constraint = *constraints_[index];
-      const ConstraintType current_type = to_blender(current_constraint.getConstraintType());
+      const ConstraintType current_type = ConstraintType(
+          current_constraint.getUserConstraintType());
       const btRigidBody *current_body1 = &current_constraint.getRigidBodyA();
       const btRigidBody *current_body2 = &current_constraint.getRigidBodyB();
       if (current_type == type && current_body1 == body1 && current_body2 == body2) {
@@ -863,9 +864,15 @@ void PhysicsGeometryImpl::tag_body_mass_changed()
   tag_cache_dirty(this->body_mass_valid);
 }
 
+void PhysicsGeometryImpl::tag_constraints_changed()
+{
+  tag_cache_dirty(this->constraints_valid);
+}
+
 void PhysicsGeometryImpl::tag_constraint_disable_collision_changed()
 {
   tag_cache_dirty(this->constraint_disable_collision_valid);
+  this->tag_read_cache_changed();
 }
 
 bool PhysicsGeometryImpl::has_builtin_attribute_custom_data_layer(
@@ -1026,6 +1033,42 @@ void PhysicsGeometryImpl::ensure_body_masses_no_lock()
 
   const IndexMask selection = this->world_data->bodies().index_range();
   this->world_data->set_body_mass(selection, masses);
+}
+
+void PhysicsGeometryImpl::ensure_constraints()
+{
+  ensure_cache(
+      this->data_mutex, this->constraints_valid, [&]() { this->ensure_constraints_no_lock(); });
+}
+
+void PhysicsGeometryImpl::ensure_constraints_no_lock()
+{
+  using ConstraintType = PhysicsGeometry::ConstraintType;
+
+  const static StringRef constraint_type_id = PhysicsGeometry::constraint_attribute_name(
+      PhysicsGeometry::ConstraintAttribute::constraint_type);
+  const static StringRef constraint_body1_id = PhysicsGeometry::constraint_attribute_name(
+      PhysicsGeometry::ConstraintAttribute::constraint_body1);
+  const static StringRef constraint_body2_id = PhysicsGeometry::constraint_attribute_name(
+      PhysicsGeometry::ConstraintAttribute::constraint_body2);
+
+  if (!is_cache_dirty(this->constraints_valid)) {
+    return;
+  }
+  if (this->world_data == nullptr) {
+    return;
+  }
+
+  AttributeAccessor custom_data_attributes = this->custom_data_attributes();
+  const VArray<int> types = *custom_data_attributes.lookup_or_default<int>(
+      constraint_type_id, AttrDomain::Edge, int(ConstraintType::None));
+  const VArray<int> body1 = *custom_data_attributes.lookup_or_default<int>(
+      constraint_body1_id, AttrDomain::Edge, -1);
+  const VArray<int> body2 = *custom_data_attributes.lookup_or_default<int>(
+      constraint_body2_id, AttrDomain::Edge, -1);
+
+  const IndexMask selection = this->world_data->constraints().index_range();
+  this->world_data->create_constraints(selection, types, body1, body2);
 }
 
 void PhysicsGeometryImpl::ensure_custom_data_attribute(
@@ -1194,50 +1237,51 @@ void PhysicsGeometryImpl::clear_forces(const IndexMask &selection)
   this->tag_read_cache_changed();
 }
 
-void PhysicsGeometryImpl::create_constraints(const IndexMask &selection,
-                                             const VArray<int> &types,
-                                             const VArray<int> &bodies1,
-                                             const VArray<int> &bodies2)
-{
-  const static StringRef constraint_type_id = PhysicsGeometry::constraint_attribute_name(
-      PhysicsGeometry::ConstraintAttribute::constraint_type);
-  const static StringRef constraint_body1_id = PhysicsGeometry::constraint_attribute_name(
-      PhysicsGeometry::ConstraintAttribute::constraint_body1);
-  const static StringRef constraint_body2_id = PhysicsGeometry::constraint_attribute_name(
-      PhysicsGeometry::ConstraintAttribute::constraint_body2);
-
-  auto write_to_custom_data = [&]() {
-    this->ensure_custom_data_attribute(PhysicsGeometry::ConstraintAttribute::constraint_type);
-    this->ensure_custom_data_attribute(PhysicsGeometry::ConstraintAttribute::constraint_body1);
-    this->ensure_custom_data_attribute(PhysicsGeometry::ConstraintAttribute::constraint_body2);
-    MutableAttributeAccessor attributes = this->custom_data_attributes_for_write();
-    SpanAttributeWriter<int> dst_types = attributes.lookup_for_write_span<int>(constraint_type_id);
-    SpanAttributeWriter<int> dst_body1 = attributes.lookup_for_write_span<int>(
-        constraint_body1_id);
-    SpanAttributeWriter<int> dst_body2 = attributes.lookup_for_write_span<int>(
-        constraint_body2_id);
-    types.materialize_to_uninitialized(selection, dst_types.span);
-    bodies1.materialize_to_uninitialized(selection, dst_body1.span);
-    bodies2.materialize_to_uninitialized(selection, dst_body2.span);
-    dst_types.finish();
-    dst_body1.finish();
-    dst_body2.finish();
-  };
-
-  if (world_data == nullptr) {
-    write_to_custom_data();
-    return;
-  }
-  std::scoped_lock lock(this->data_mutex);
-  if (world_data == nullptr) {
-    write_to_custom_data();
-    return;
-  }
-
-  world_data->create_constraints(selection, types, bodies1, bodies2);
-
-  this->tag_read_cache_changed();
-}
+// void PhysicsGeometryImpl::create_constraints(const IndexMask &selection,
+//                                              const VArray<int> &types,
+//                                              const VArray<int> &bodies1,
+//                                              const VArray<int> &bodies2)
+//{
+//   const static StringRef constraint_type_id = PhysicsGeometry::constraint_attribute_name(
+//       PhysicsGeometry::ConstraintAttribute::constraint_type);
+//   const static StringRef constraint_body1_id = PhysicsGeometry::constraint_attribute_name(
+//       PhysicsGeometry::ConstraintAttribute::constraint_body1);
+//   const static StringRef constraint_body2_id = PhysicsGeometry::constraint_attribute_name(
+//       PhysicsGeometry::ConstraintAttribute::constraint_body2);
+//
+//   auto write_to_custom_data = [&]() {
+//     this->ensure_custom_data_attribute(PhysicsGeometry::ConstraintAttribute::constraint_type);
+//     this->ensure_custom_data_attribute(PhysicsGeometry::ConstraintAttribute::constraint_body1);
+//     this->ensure_custom_data_attribute(PhysicsGeometry::ConstraintAttribute::constraint_body2);
+//     MutableAttributeAccessor attributes = this->custom_data_attributes_for_write();
+//     SpanAttributeWriter<int> dst_types =
+//     attributes.lookup_for_write_span<int>(constraint_type_id); SpanAttributeWriter<int>
+//     dst_body1 = attributes.lookup_for_write_span<int>(
+//         constraint_body1_id);
+//     SpanAttributeWriter<int> dst_body2 = attributes.lookup_for_write_span<int>(
+//         constraint_body2_id);
+//     types.materialize_to_uninitialized(selection, dst_types.span);
+//     bodies1.materialize_to_uninitialized(selection, dst_body1.span);
+//     bodies2.materialize_to_uninitialized(selection, dst_body2.span);
+//     dst_types.finish();
+//     dst_body1.finish();
+//     dst_body2.finish();
+//   };
+//
+//   if (world_data == nullptr) {
+//     write_to_custom_data();
+//     return;
+//   }
+//   std::scoped_lock lock(this->data_mutex);
+//   if (world_data == nullptr) {
+//     write_to_custom_data();
+//     return;
+//   }
+//
+//   world_data->create_constraints(selection, types, bodies1, bodies2);
+//
+//   this->tag_read_cache_changed();
+// }
 
 void PhysicsGeometryImpl::create_world()
 {
@@ -2065,13 +2109,13 @@ void PhysicsGeometry::compute_local_inertia(const IndexMask &selection)
   this->impl_for_write().compute_local_inertia(selection);
 }
 
-void PhysicsGeometry::create_constraints(const IndexMask &selection,
-                                         const VArray<int> &types,
-                                         const VArray<int> &bodies1,
-                                         const VArray<int> &bodies2)
-{
-  this->impl_for_write().create_constraints(selection, types, bodies1, bodies2);
-}
+// void PhysicsGeometry::create_constraints(const IndexMask &selection,
+//                                          const VArray<int> &types,
+//                                          const VArray<int> &bodies1,
+//                                          const VArray<int> &bodies2)
+//{
+//   this->impl_for_write().create_constraints(selection, types, bodies1, bodies2);
+// }
 
 VArray<bool> PhysicsGeometry::constraint_enabled() const
 {
@@ -2093,6 +2137,12 @@ VArray<int> PhysicsGeometry::constraint_types() const
       .varray;
 }
 
+AttributeWriter<int> PhysicsGeometry::constraint_types_for_write()
+{
+  return attributes_for_write().lookup_for_write<int>(
+      constraint_attribute_name(ConstraintAttribute::constraint_type));
+}
+
 VArray<int> PhysicsGeometry::constraint_body1() const
 {
   return attributes()
@@ -2100,11 +2150,23 @@ VArray<int> PhysicsGeometry::constraint_body1() const
       .varray;
 }
 
+AttributeWriter<int> PhysicsGeometry::constraint_body1_for_write()
+{
+  return attributes_for_write().lookup_for_write<int>(
+      constraint_attribute_name(ConstraintAttribute::constraint_body1));
+}
+
 VArray<int> PhysicsGeometry::constraint_body2() const
 {
   return attributes()
       .lookup<int>(constraint_attribute_name(ConstraintAttribute::constraint_body2))
       .varray;
+}
+
+AttributeWriter<int> PhysicsGeometry::constraint_body2_for_write()
+{
+  return attributes_for_write().lookup_for_write<int>(
+      constraint_attribute_name(ConstraintAttribute::constraint_body2));
 }
 
 VArray<float4x4> PhysicsGeometry::constraint_frame1() const

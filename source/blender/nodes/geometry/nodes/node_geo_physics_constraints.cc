@@ -86,25 +86,32 @@ static void node_geo_exec(GeoNodeExecParams params)
   field_evaluator.add(disable_collision_field);
   field_evaluator.evaluate();
 
-  const VArray<int> src_type = VArray<int>::ForSingle(int(constraint_type),
-                                                      constraints.min_array_size());
+  const VArray<int> src_types = VArray<int>::ForSingle(int(constraint_type),
+                                                       constraints.min_array_size());
   const VArray<int> src_body1 = field_evaluator.get_evaluated<int>(0);
   const VArray<int> src_body2 = field_evaluator.get_evaluated<int>(1);
   const VArray<float4x4> src_frame1 = field_evaluator.get_evaluated<float4x4>(2);
   const VArray<float4x4> src_frame2 = field_evaluator.get_evaluated<float4x4>(3);
   const VArray<bool> src_disable_collision = field_evaluator.get_evaluated<bool>(4);
 
-  physics->create_constraints(constraints, src_type, src_body1, src_body2);
-
+  bke::AttributeWriter<int> dst_types = physics->constraint_types_for_write();
+  bke::AttributeWriter<int> dst_body1 = physics->constraint_body1_for_write();
+  bke::AttributeWriter<int> dst_body2 = physics->constraint_body2_for_write();
   bke::AttributeWriter<float4x4> dst_frame1 = physics->constraint_frame1_for_write();
   bke::AttributeWriter<float4x4> dst_frame2 = physics->constraint_frame2_for_write();
   bke::AttributeWriter<bool> dst_disable_collision =
       physics->constraint_disable_collision_for_write();
   constraints.foreach_index([&](const int index) {
+    dst_types.varray.set(index, src_types[index]);
+    dst_body1.varray.set(index, src_body1[index]);
+    dst_body2.varray.set(index, src_body2[index]);
     dst_frame1.varray.set(index, src_frame1[index]);
     dst_frame2.varray.set(index, src_frame2[index]);
     dst_disable_collision.varray.set(index, src_disable_collision[index]);
   });
+  dst_types.finish();
+  dst_body1.finish();
+  dst_body2.finish();
   dst_frame1.finish();
   dst_frame2.finish();
   dst_disable_collision.finish();

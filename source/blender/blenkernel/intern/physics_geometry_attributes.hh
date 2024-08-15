@@ -408,6 +408,12 @@ static void physics_attribute_finish(PhysicsGeometryImpl &impl,
     case ConstraintAttribute::constraint_type:
     case ConstraintAttribute::constraint_body1:
     case ConstraintAttribute::constraint_body2:
+      impl.tag_constraints_changed();
+      break;
+    case ConstraintAttribute::disable_collision:
+      impl.tag_constraint_disable_collision_changed();
+      break;
+
     case ConstraintAttribute::constraint_frame1:
     case ConstraintAttribute::constraint_frame2:
     case ConstraintAttribute::constraint_enabled:
@@ -417,11 +423,6 @@ static void physics_attribute_finish(PhysicsGeometryImpl &impl,
     case ConstraintAttribute::applied_torque1:
     case ConstraintAttribute::applied_torque2:
     case ConstraintAttribute::breaking_impulse_threshold:
-      impl.tag_read_cache_changed();
-      break;
-
-    case ConstraintAttribute::disable_collision:
-      impl.tag_constraint_disable_collision_changed();
       impl.tag_read_cache_changed();
       break;
   }
@@ -436,12 +437,21 @@ template<typename T> using ConstraintSetFn = void (*)(btTypedConstraint *constra
 template<typename ElemT, RigidBodyGetFn<ElemT> GetFn, RigidBodySetFn<ElemT> SetFn>
 class VMutableArrayImpl_For_PhysicsBodies final : public VMutableArrayImpl<ElemT> {
  private:
-  const PhysicsWorldData *world_data_;
+  PhysicsWorldData *world_data_;
 
  public:
-  VMutableArrayImpl_For_PhysicsBodies(const PhysicsWorldData &world_data)
+  VMutableArrayImpl_For_PhysicsBodies(PhysicsWorldData &world_data)
       : VMutableArrayImpl<ElemT>(world_data.bodies().size()),
         world_data_(&world_data) /*, lock_(impl_->data_mutex)*/
+  {
+  }
+
+  /* Construct from constant world data.
+   * This avoids the need for a separate VArrayImpl class.
+   */
+  VMutableArrayImpl_For_PhysicsBodies(const PhysicsWorldData &world_data)
+      : VMutableArrayImpl<ElemT>(world_data.bodies().size()),
+        world_data_(const_cast<PhysicsWorldData *>(&world_data)) /*, lock_(impl_->data_mutex)*/
   {
   }
 
@@ -492,11 +502,20 @@ class VMutableArrayImpl_For_PhysicsBodies final : public VMutableArrayImpl<ElemT
 template<typename ElemT, ConstraintGetFn<ElemT> GetFn, ConstraintSetFn<ElemT> SetFn>
 class VMutableArrayImpl_For_PhysicsConstraints final : public VMutableArrayImpl<ElemT> {
  private:
-  const PhysicsWorldData *world_data_;
+  PhysicsWorldData *world_data_;
 
  public:
-  VMutableArrayImpl_For_PhysicsConstraints(const PhysicsWorldData &world_data)
+  VMutableArrayImpl_For_PhysicsConstraints(PhysicsWorldData &world_data)
       : VMutableArrayImpl<ElemT>(world_data.constraints().size()), world_data_(&world_data)
+  {
+  }
+
+  /* Construct from constant world data.
+   * This avoids the need for a separate VArrayImpl class.
+   */
+  VMutableArrayImpl_For_PhysicsConstraints(const PhysicsWorldData &world_data)
+      : VMutableArrayImpl<ElemT>(world_data.constraints().size()),
+        world_data_(const_cast<PhysicsWorldData *>(&world_data))
   {
   }
 
