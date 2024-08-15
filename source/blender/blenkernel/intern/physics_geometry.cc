@@ -257,42 +257,6 @@ static bool is_constraint_valid(const btTypedConstraint &constraint)
   return true;
 }
 
-static void add_to_world(btDynamicsWorld *world,
-                         Span<btRigidBody *> bodies,
-                         Span<btTypedConstraint *> constraints)
-{
-  if (!world) {
-    return;
-  }
-  for (btRigidBody *body : bodies) {
-    world->addRigidBody(body);
-  }
-  for (btTypedConstraint *constraint : constraints) {
-    if (!constraint || !is_constraint_valid(*constraint)) {
-      continue;
-    }
-    world->addConstraint(constraint);
-  }
-}
-
-static void remove_from_world(btDynamicsWorld *world,
-                              Span<btRigidBody *> bodies,
-                              Span<btTypedConstraint *> constraints)
-{
-  if (!world) {
-    return;
-  }
-  for (btRigidBody *body : bodies) {
-    world->removeRigidBody(body);
-  }
-  for (btTypedConstraint *constraint : constraints) {
-    if (!constraint) {
-      continue;
-    }
-    world->removeConstraint(constraint);
-  }
-}
-
 PhysicsWorldData::PhysicsWorldData()
 {
   this->create_world();
@@ -411,6 +375,11 @@ void PhysicsWorldData::move(const IndexMask &src_body_mask,
                src_constraint_mask,
                dst_body_offset,
                dst_constraint_offset);
+}
+
+void PhysicsWorldData::tag_bodies_in_world() const
+{
+  bodies_in_world_cache_.tag_dirty();
 }
 
 void PhysicsWorldData::ensure_body_indices() const
@@ -584,6 +553,7 @@ void PhysicsWorldData::set_body_shapes(const IndexMask &selection,
                                        const Span<CollisionShapePtr> shapes,
                                        const Span<int> shape_handles)
 {
+  bool removed_body = false;
   selection.foreach_index([&](const int index) {
     const int handle = shape_handles[index];
     if (!shapes.index_range().contains(handle)) {
@@ -597,39 +567,53 @@ void PhysicsWorldData::set_body_shapes(const IndexMask &selection,
       /* Shape is correct, nothing to do. */
       return;
     }
+    const bool was_static = body->isStaticObject();
 
     // XXX is const_cast safe here? not sure why Bullet wants a mutable shape.
     if (bt_shape == nullptr) {
-      this->world_->removeRigidBody(body);
+      world_->removeRigidBody(body);
       body->setCollisionShape(nullptr);
+      removed_body = true;
     }
     else {
       /* Motion type and mass must be compatible with the shape. */
-      if (bt_shape->isNonMoving()) {
+      const bool set_static = bt_shape->isNonMoving();
+      if (set_static != was_static) {
+        world_->removeRigidBody(body);
+        // this->broadphase_->getOverlappingPairCache()->cleanProxyFromPairs(
+        //    body->getBroadphaseProxy(), this->dispatcher_);
+        removed_body = true;
+      }
+
+      if (set_static) {
         body->setMassProps(0.0f, btVector3(0.0f, 0.0f, 0.0f));
         body->setCollisionFlags(body->getCollisionFlags() | btCollisionObject::CF_STATIC_OBJECT);
       }
 
       body->setCollisionShape(const_cast<btCollisionShape *>(bt_shape));
-      if (body->isInWorld()) {
-        this->broadphase_->getOverlappingPairCache()->cleanProxyFromPairs(
-            body->getBroadphaseProxy(), this->dispatcher_);
-      }
-      else {
-        this->world_->addRigidBody(body);
-      }
     }
   });
+  if (removed_body) {
+    this->tag_bodies_in_world();
+  }
 }
 
 void PhysicsWorldData::set_body_static(const IndexMask &selection, const Span<bool> is_static)
 {
+  bool removed_body = false;
   selection.foreach_index([&](const int index) {
     btRigidBody *body = this->rigid_bodies_[index];
 
     /* Body must also be static if the collision shape is non-moveable. */
+    const bool was_static = body->isStaticObject();
     const bool set_static = is_static[index] || (body->getCollisionShape() &&
                                                  body->getCollisionShape()->isNonMoving());
+    if (set_static != was_static) {
+      world_->removeRigidBody(body);
+      // this->broadphase_->getOverlappingPairCache()->cleanProxyFromPairs(
+      //    body->getBroadphaseProxy(), this->dispatcher_);
+      removed_body = true;
+    }
 
     if (set_static) {
       /* Static body must have zero mass. */
@@ -641,17 +625,28 @@ void PhysicsWorldData::set_body_static(const IndexMask &selection, const Span<bo
       body->setCollisionFlags(body->getCollisionFlags() & ~btCollisionObject::CF_STATIC_OBJECT);
     }
   });
+  if (removed_body) {
+    this->tag_bodies_in_world();
+  }
 }
 
 void PhysicsWorldData::set_body_mass(const IndexMask &selection, const Span<float> masses)
 {
+  bool removed_body = false;
   selection.foreach_index([&](const int index) {
     btRigidBody *body = this->rigid_bodies_[index];
 
     /* Body must have zero mass if static or the collision shape is non-moveable. */
+    const bool was_static = body->isStaticObject();
     const bool set_zero_mass = (body->getCollisionFlags() & btCollisionObject::CF_STATIC_OBJECT) ||
                                (body->getCollisionShape() &&
                                 body->getCollisionShape()->isNonMoving());
+    if (set_zero_mass != was_static) {
+      world_->removeRigidBody(body);
+      // this->broadphase_->getOverlappingPairCache()->cleanProxyFromPairs(
+      //    body->getBroadphaseProxy(), this->dispatcher_);
+      removed_body = true;
+    }
 
     if (set_zero_mass) {
       /* Static body must have zero mass. */
@@ -661,6 +656,9 @@ void PhysicsWorldData::set_body_mass(const IndexMask &selection, const Span<floa
       body->setMassProps(masses[index], body->getLocalInertia());
     }
   });
+  if (removed_body) {
+    this->tag_bodies_in_world();
+  }
 }
 
 void PhysicsWorldData::apply_force(const IndexMask &selection,
@@ -749,14 +747,19 @@ void PhysicsWorldData::create_world()
   constraint_solver_ = new btSequentialImpulseConstraintSolver();
 
   world_ = new btDiscreteDynamicsWorld(dispatcher_, broadphase_, constraint_solver_, config_);
-
-  /* Add all bodies and constraints to the world. */
-  add_to_world(world_, rigid_bodies_.as_span(), constraints_.as_span());
 }
 
 void PhysicsWorldData::destroy_world()
 {
-  remove_from_world(world_, rigid_bodies_, constraints_);
+  for (btRigidBody *body : rigid_bodies_) {
+    world_->removeRigidBody(body);
+  }
+  for (btTypedConstraint *constraint : constraints_) {
+    if (!constraint) {
+      continue;
+    }
+    world_->removeConstraint(constraint);
+  }
 
   delete world_;
   delete constraint_solver_;
@@ -908,7 +911,7 @@ void PhysicsGeometryImpl::ensure_read_cache() const
     }
 
     /* Some attributes require other updates before valid world data can be read. */
-    dst.ensure_write_cache_no_lock();
+    dst.ensure_motion_type_no_lock();
 
     /* Write to cache attributes. */
     MutableAttributeAccessor dst_attributes = dst.custom_data_attributes_for_write();
@@ -948,7 +951,7 @@ void PhysicsGeometryImpl::ensure_read_cache() const
   });
 }
 
-void PhysicsGeometryImpl::ensure_write_cache()
+void PhysicsGeometryImpl::ensure_motion_type()
 {
   ensure_cache_any(
       this->data_mutex,
@@ -958,7 +961,7 @@ void PhysicsGeometryImpl::ensure_write_cache()
        [&]() { this->ensure_body_masses_no_lock(); }});
 }
 
-void PhysicsGeometryImpl::ensure_write_cache_no_lock()
+void PhysicsGeometryImpl::ensure_motion_type_no_lock()
 {
   this->ensure_body_collision_shapes_no_lock();
   this->ensure_body_is_static_no_lock();
@@ -1378,7 +1381,7 @@ void PhysicsGeometryImpl::step_simulation(float delta_time)
     return;
   }
 
-  this->ensure_write_cache_no_lock();
+  this->ensure_motion_type_no_lock();
   world_data->step_simulation(delta_time);
 
   this->tag_read_cache_changed();
@@ -1545,10 +1548,10 @@ bool PhysicsGeometryImpl::validate_world_data()
   bool ok = true;
 
   if (world_data != nullptr) {
+    this->ensure_motion_type();
     this->world_data->ensure_body_indices();
     this->world_data->ensure_constraint_indices();
     this->world_data->ensure_bodies_in_world();
-    this->ensure_write_cache();
 
     AttributeAccessor cached_attributes = custom_data_attributes();
     const Span<btRigidBody *> rigid_bodies = this->world_data->bodies();

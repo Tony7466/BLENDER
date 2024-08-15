@@ -92,7 +92,7 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
   /* Make sure all world data has been copied to the custom data read cache. */
   void ensure_read_cache() const;
   /* Make sure attributes with write caches have been transferred to world data. */
-  void ensure_write_cache();
+  void ensure_motion_type();
   void ensure_custom_data_attribute(BodyAttribute attribute) const;
   void ensure_custom_data_attribute(ConstraintAttribute attribute) const;
 
@@ -149,7 +149,7 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
   bke::MutableAttributeAccessor attributes_for_write();
 
  private:
-  void ensure_write_cache_no_lock();
+  void ensure_motion_type_no_lock();
   void ensure_body_collision_shapes_no_lock();
   void ensure_body_is_static_no_lock();
   void ensure_body_masses_no_lock();
@@ -199,6 +199,8 @@ class PhysicsWorldData : NonCopyable, NonMovable {
             const IndexMask &src_constraint_mask,
             int dst_body_offset,
             int dst_constraint_offset);
+
+  void tag_bodies_in_world() const;
 
   void ensure_body_indices() const;
   void ensure_constraint_indices() const;

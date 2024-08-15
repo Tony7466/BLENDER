@@ -522,8 +522,11 @@ TEST_F(PhysicsGeometryTest, join_geometry)
   geo1->tag_collision_shapes_changed();
   {
     AttributeWriter<int> body_shapes = geo1->body_shapes_for_write();
+    AttributeWriter<float> masses = geo1->body_masses_for_write();
     body_shapes.varray.set_all({2, 0, 2, -1, 1});
+    masses.varray.set_all({5, 15, 25, 35, 45});
     body_shapes.finish();
+    masses.finish();
     geo1->compute_local_inertia(geo1->bodies_range());
   }
 
@@ -545,8 +548,11 @@ TEST_F(PhysicsGeometryTest, join_geometry)
   /* Invalid shape index should be handled fine. */
   {
     AttributeWriter<int> body_shapes = geo3->body_shapes_for_write();
+    AttributeWriter<float> masses = geo3->body_masses_for_write();
     body_shapes.varray.set_all({0, 100});
+    masses.varray.set_all({3, 33});
     body_shapes.finish();
+    masses.finish();
     geo3->compute_local_inertia(geo3->bodies_range());
   }
   test_data(*geo3, true, 2, 1, 1);
@@ -578,6 +584,8 @@ TEST_F(PhysicsGeometryTest, join_geometry)
   EXPECT_EQ(3, result_body_shapes[5]);
   /* Starts as 100, all out-of-bounds indices become -1. */
   EXPECT_EQ(-1, result_body_shapes[6]);
+  const VArraySpan<float> masses = geo_result.body_masses();
+  EXPECT_EQ_ARRAY(Span<float>{5, 15, 25, 35, 45, 3, 33}.data(), masses.data(), masses.size());
 
   /* Original geometries should be unmodified. */
   test_data(*geo1, false, 5, 2, 3);
