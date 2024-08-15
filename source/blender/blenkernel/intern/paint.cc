@@ -1783,13 +1783,12 @@ int SculptSession::active_vert_index() const
   return -1;
 }
 
-blender::float3 SculptSession::active_vert_position(const Object & /*object*/) const
+blender::float3 SculptSession::active_vert_position(const Depsgraph &depsgraph,
+                                                    const Object &object) const
 {
   const ActiveVert vert = this->active_vert();
   if (std::holds_alternative<int>(vert)) {
-    /* TODO: When we remove mesh positions from PBVH, this should be replaced with the positions
-     * array accessed via the object param */
-    const Span<float3> positions = BKE_pbvh_get_vert_positions(*this->pbvh);
+    const Span<float3> positions = blender::bke::pbvh::vert_positions_eval(depsgraph, object);
     return positions[std::get<int>(vert)];
   }
   else if (std::holds_alternative<SubdivCCGCoord>(vert)) {
@@ -2117,7 +2116,7 @@ void BKE_sculpt_update_object_before_eval(Object *ob_eval)
         /* pbvh::Tree nodes may contain dirty normal tags. To avoid losing that information when
          * the pbvh::Tree is deleted, make sure all tagged geometry normals are up to date.
          * See #122947 for more information. */
-        blender::bke::pbvh::update_normals(*ss->pbvh, ss->subdiv_ccg);
+        blender::bke::pbvh::update_normals_from_eval(*ob_eval, *ss->pbvh);
       }
       /* We free pbvh on changes, except in the middle of drawing a stroke
        * since it can't deal with changing PVBH node organization, we hope
