@@ -1472,7 +1472,20 @@ bActionGroup &ChannelBag::channel_group_create(StringRefNull name)
   /* Make it selected. */
   new_group->flag = AGRP_SELECTED;
 
-  STRNCPY_UTF8(new_group->name, name.c_str());
+  /* Ensure it has a unique name. */
+  std::string unique_name = BLI_uniquename_cb(
+      [&](const StringRef name) {
+        for (bActionGroup *group : this->channel_groups()) {
+          if (STREQ(group->name, name.data())) {
+            return true;
+          }
+        }
+        return false;
+      },
+      '.',
+      name[0] == '\0' ? DATA_("Group") : name);
+
+  STRNCPY_UTF8(new_group->name, unique_name.c_str());
 
   grow_array_and_append(&this->group_array, &this->group_array_num, new_group);
 

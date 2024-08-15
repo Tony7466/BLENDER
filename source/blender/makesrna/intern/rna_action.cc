@@ -648,10 +648,6 @@ static bActionGroup *rna_ChannelBag_group_new(ActionChannelBag *dna_channelbag,
                                               const char *name)
 {
   BLI_assert(name != nullptr);
-  if (name[0] == '\0') {
-    BKE_report(reports, RPT_ERROR, "F-Curve Group name empty, invalid argument");
-    return nullptr;
-  }
 
   animrig::ChannelBag &self = dna_channelbag->wrap();
   return &self.channel_group_create(name);
