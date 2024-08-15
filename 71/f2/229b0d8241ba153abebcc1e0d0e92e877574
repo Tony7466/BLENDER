@@ -2,3 +2,4 @@ Referenced by issue #71052, Eyedropper for props does not work in dialog boxes
 Referenced by issue #70080, Newly created objects not visible when using local collections
 Referenced by issue #68091, Adding a corrupt video crashes/confuses Blender
 Referenced by pull request #126368, Fix: incorrect ffmpeg video length estimation logic
+Referenced by commit 8903205dd9df71ee15df5d24f3e578245a7ccabb, Fix: incorrect ffmpeg video length estimation logic
