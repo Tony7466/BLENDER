@@ -43,10 +43,8 @@ class VKBuffer {
   /**
    * Free the buffer.
    *
-   * If a context is available the freeing will be postponed until it isn't used.
-   * When context isn't available it is assumed that the resource is not in use and the resource
-   * can be freed immediately. Context should normally be available, unless Blender is being
-   * exited. The VKContext is destroyed before mesh cache and dummy textures are freed.
+   * Discards the buffer so it can be destroyed safely later. Buffers can still be used when
+   * rendering so we can only destroy them after the rendering is completed.
    */
   bool free();
 
