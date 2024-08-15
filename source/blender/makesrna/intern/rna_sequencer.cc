@@ -310,7 +310,6 @@ static void rna_SequenceEditor_update_cache(Main * /*bmain*/, Scene *scene, Poin
 
   SEQ_relations_free_imbuf(scene, &ed->seqbase, false);
   SEQ_cache_cleanup(scene);
-  blender::seq::thumbnail_cache_clear(scene);
 }
 
 /* internal use */

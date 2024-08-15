@@ -2428,6 +2428,13 @@ static void rna_SpaceConsole_rect_update(Main * /*bmain*/, Scene * /*scene*/, Po
 static void rna_SequenceEditor_update_cache(Main * /*bmain*/, Scene *scene, PointerRNA * /*ptr*/)
 {
   SEQ_cache_cleanup(scene);
+}
+
+static void rna_SequenceEditor_clear_thumb_cache(Main * /*bmain*/,
+                                                 Scene *scene,
+                                                 PointerRNA * /*ptr*/)
+{
+  SEQ_cache_cleanup(scene);
   blender::seq::thumbnail_cache_clear(scene);
 }
 
@@ -6010,10 +6017,13 @@ static void rna_def_space_sequencer_timeline_overlay(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_SEQUENCER, nullptr);
 
   prop = RNA_def_property(srna, "use_new_thumbnails", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(
-      prop, nullptr, "timeline_overlay.flag", SEQ_TIMELINE_NEW_THUMBS);
-  RNA_def_property_ui_text(prop, "New Thumbnail Cache", "Use new thumbnail cache implementation (TODO temporary setting during dev)");
-  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_SEQUENCER, "rna_SequenceEditor_update_cache");
+  RNA_def_property_boolean_sdna(prop, nullptr, "timeline_overlay.flag", SEQ_TIMELINE_NEW_THUMBS);
+  RNA_def_property_ui_text(
+      prop,
+      "New Thumbnail Cache",
+      "Use new thumbnail cache implementation (TODO temporary setting during dev)");
+  RNA_def_property_update(
+      prop, NC_SPACE | ND_SPACE_SEQUENCER, "rna_SequenceEditor_clear_thumb_cache");
 }
 
 static void rna_def_space_sequencer_cache_overlay(BlenderRNA *brna)
