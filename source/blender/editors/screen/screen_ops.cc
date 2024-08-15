@@ -4009,7 +4009,7 @@ static void area_join_cancel(bContext *C, wmOperator *op)
 /* modal callback while selecting area (space) that will be removed */
 static int area_join_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  if (op->customdata == (void*)0xbad) {
+  if (op->customdata == (void*)0xBAD) {
     /* The operator is being wrongly re-run due to the modal handler interpretating a change in
      * window context as the operator being freed, and wrongfully calling the operator again.
      * See wm_handler_operator_call() in wm_event_system.cc for more details. */
