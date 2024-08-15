@@ -50,6 +50,7 @@ set(SRC
   intern/thumbs.cc
   intern/thumbs_blend.cc
   intern/thumbs_font.cc
+  intern/thumbs_win32.cc
   intern/transform.cc
   intern/util.cc
   intern/util_gpu.cc
@@ -64,6 +65,7 @@ set(SRC
   IMB_moviecache.hh
   IMB_openexr.hh
   IMB_thumbs.hh
+  IMB_thumbs_win32.hh
   intern/IMB_allocimbuf.hh
   intern/IMB_anim.hh
   intern/IMB_colormanagement_intern.hh

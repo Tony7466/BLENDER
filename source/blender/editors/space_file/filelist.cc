@@ -46,6 +46,7 @@
 
 #ifdef WIN32
 #  include "BLI_winstuff.h"
+#  include "IMB_thumbs_win32.hh"
 #endif
 
 #include "BKE_asset.hh"
@@ -1525,9 +1526,12 @@ static void filelist_cache_preview_runf(TaskPool *__restrict pool, void *taskdat
   //  printf("%s: Start (%d)...\n", __func__, threadid);
 
   //  printf("%s: %d - %s - %p\n", __func__, preview->index, preview->path, preview->img);
+
+#ifndef WIN32
   BLI_assert(preview->flags &
              (FILE_TYPE_IMAGE | FILE_TYPE_MOVIE | FILE_TYPE_FTFONT | FILE_TYPE_BLENDER |
               FILE_TYPE_OBJECT_IO | FILE_TYPE_BLENDER_BACKUP | FILE_TYPE_BLENDERLIB));
+#endif
 
   if (preview->flags & FILE_TYPE_IMAGE) {
     source = THB_SOURCE_IMAGE;
@@ -1644,12 +1648,15 @@ static void filelist_cache_previews_push(FileList *filelist, FileDirEntry *entry
     return;
   }
 
+  /* Allow previews of anything on Windows. */
+#ifndef WIN32
   if (!(entry->typeflag &
         (FILE_TYPE_IMAGE | FILE_TYPE_MOVIE | FILE_TYPE_FTFONT | FILE_TYPE_OBJECT_IO |
          FILE_TYPE_BLENDER | FILE_TYPE_BLENDER_BACKUP | FILE_TYPE_BLENDERLIB)))
   {
     return;
   }
+#endif
 
   /* If we know this is an external ID without a preview, skip loading the preview. Can save quite
    * some time in heavy files, because otherwise for each missing preview and for each preview
@@ -1682,6 +1689,27 @@ static void filelist_cache_previews_push(FileList *filelist, FileDirEntry *entry
   preview->flags = entry->typeflag;
   preview->icon_id = 0;
 
+  if (entry->redirection_path) {
+    BLI_strncpy(preview->filepath, entry->redirection_path, FILE_MAXDIR);
+  }
+  else {
+    BLI_path_join(
+        preview->filepath, sizeof(preview->filepath), filelist->filelist.root, entry->relpath);
+  }
+
+#ifdef WIN32
+  const char *path_ext = BLI_path_extension_or_end(preview->filepath);
+  if (entry->typeflag & (FILE_TYPE_OBJECT_IO) || STREQ(path_ext, ".exe")) {
+    ImBuf *imbuf = IMB_thumb_win32(preview->filepath, 256);
+    if (imbuf) {
+      preview->icon_id = BKE_icon_imbuf_create(imbuf);
+    }
+    BLI_thread_queue_push(cache->previews_done, preview);
+    cache->previews_todo_count++;
+    return;
+  }
+#endif
+
   if (preview_in_memory) {
     /* TODO(mano-wii): No need to use the thread API here. */
     BLI_assert(BKE_previewimg_is_finished(preview_in_memory, ICON_SIZE_PREVIEW));
@@ -1693,14 +1721,6 @@ static void filelist_cache_previews_push(FileList *filelist, FileDirEntry *entry
     BLI_thread_queue_push(cache->previews_done, preview);
   }
   else {
-    if (entry->redirection_path) {
-      BLI_strncpy(preview->filepath, entry->redirection_path, FILE_MAXDIR);
-    }
-    else {
-      filelist_file_get_full_path(filelist, entry, preview->filepath);
-    }
-    // printf("%s: %d - %s\n", __func__, preview->index, preview->filepath);
-
     FileListEntryPreviewTaskData *preview_taskdata = MEM_cnew<FileListEntryPreviewTaskData>(
         __func__);
     preview_taskdata->preview = preview;
