@@ -686,21 +686,116 @@ static ActionChannelBag *rna_KeyframeActionStrip_channels(KeyframeActionStrip *s
 
 #  endif  // WITH_ANIM_BAKLAVA
 
+/**
+ * Iterator for the fcurves in a channel group.
+ *
+ * We need a custom iterator for this because legacy actions store their fcurves
+ * in a listbase, whereas layered actions store them in an array.  Therefore
+ * this iterator needs to handle both kinds of iteration.
+ *
+ * In the future when legacy actions are fully deprecated this can be changed to
+ * a simple array iterator.
+ */
+struct ActionGroupChannelsIterator {
+  /* Which kind of iterator it is. */
+  enum {
+    ARRAY,
+    LISTBASE,
+  } tag;
+
+  union {
+    ArrayIterator array;
+    ListBaseIterator listbase;
+  };
+};
+
+static void rna_ActionGroup_channels_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
+{
+  bActionGroup *group = (bActionGroup *)ptr->data;
+
+  ActionGroupChannelsIterator *custom = static_cast<ActionGroupChannelsIterator *>(
+      MEM_callocN(sizeof(ActionGroupChannelsIterator), __func__));
+
+  iter->internal.custom = custom;
+
+  /* Group from a layered action. */
+  if (group->channel_bag != nullptr) {
+    MutableSpan<FCurve *> fcurves = group->channel_bag->wrap().fcurves();
+
+    custom->tag = ActionGroupChannelsIterator::ARRAY;
+    custom->array.ptr = reinterpret_cast<char *>(fcurves.data() + group->fcurve_index);
+    custom->array.endptr = reinterpret_cast<char *>(fcurves.data() + group->fcurve_index +
+                                                    group->fcurve_count);
+    custom->array.itemsize = sizeof(FCurve *);
+    custom->array.length = group->fcurve_count;
+
+    iter->valid = group->fcurve_count != 0;
+
+    return;
+  }
+
+  /* Group from a legacy action. */
+  custom->tag = ActionGroupChannelsIterator::LISTBASE;
+  custom->listbase.link = static_cast<Link *>(group->channels.first);
+
+  iter->valid = custom->listbase.link != nullptr;
+}
+
+static void rna_ActionGroup_channels_end(CollectionPropertyIterator *iter)
+{
+  MEM_freeN(iter->internal.custom);
+}
+
 static void rna_ActionGroup_channels_next(CollectionPropertyIterator *iter)
 {
-  ListBaseIterator *internal = &iter->internal.listbase;
-  FCurve *fcu = (FCurve *)internal->link;
-  bActionGroup *grp = fcu->grp;
+  BLI_assert(iter->internal.custom != nullptr);
+  BLI_assert(iter->valid);
 
-  /* only continue if the next F-Curve (if existent) belongs in the same group */
-  if ((fcu->next) && (fcu->next->grp == grp)) {
-    internal->link = (Link *)fcu->next;
+  ActionGroupChannelsIterator *custom = static_cast<ActionGroupChannelsIterator *>(
+      iter->internal.custom);
+
+  switch (custom->tag) {
+    case ActionGroupChannelsIterator::ARRAY: {
+      custom->array.ptr += custom->array.itemsize;
+      iter->valid = (custom->array.ptr != custom->array.endptr);
+      break;
+    }
+    case ActionGroupChannelsIterator::LISTBASE: {
+      FCurve *fcurve = (FCurve *)custom->listbase.link;
+      bActionGroup *grp = fcurve->grp;
+      /* Only continue if the next F-Curve (if existent) belongs in the same
+       * group. */
+      if ((fcurve->next) && (fcurve->next->grp == grp)) {
+        custom->listbase.link = custom->listbase.link->next;
+        iter->valid = (custom->listbase.link != nullptr);
+      }
+      else {
+        custom->listbase.link = nullptr;
+        iter->valid = false;
+      }
+      break;
+    }
   }
-  else {
-    internal->link = nullptr;
+}
+
+static PointerRNA rna_ActionGroup_channels_get(CollectionPropertyIterator *iter)
+{
+  BLI_assert(iter->internal.custom != nullptr);
+  BLI_assert(iter->valid);
+  ActionGroupChannelsIterator *custom = static_cast<ActionGroupChannelsIterator *>(
+      iter->internal.custom);
+
+  FCurve *fcurve;
+  switch (custom->tag) {
+    case ActionGroupChannelsIterator::ARRAY:
+      fcurve = *reinterpret_cast<FCurve **>(custom->array.ptr);
+      break;
+    case ActionGroupChannelsIterator::LISTBASE:
+      fcurve = reinterpret_cast<FCurve *>(custom->listbase.link);
+      break;
   }
 
-  iter->valid = (internal->link != nullptr);
+  return rna_pointer_inherit_refine(&iter->parent, &RNA_FCurve, fcurve);
 }
 
 static bActionGroup *rna_Action_groups_new(bAction *act, ReportList *reports, const char name[])
@@ -2049,8 +2144,6 @@ static void rna_def_action_channelbag(BlenderRNA *brna)
 }
 #  endif  // WITH_ANIM_BAKLAVA
 
-/* =========================== Legacy Action interface =========================== */
-
 static void rna_def_action_group(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -2079,10 +2172,10 @@ static void rna_def_action_group(BlenderRNA *brna)
   RNA_def_property_collection_sdna(prop, nullptr, "channels", nullptr);
   RNA_def_property_struct_type(prop, "FCurve");
   RNA_def_property_collection_funcs(prop,
-                                    nullptr,
+                                    "rna_ActionGroup_channels_begin",
                                     "rna_ActionGroup_channels_next",
-                                    nullptr,
-                                    nullptr,
+                                    "rna_ActionGroup_channels_end",
+                                    "rna_ActionGroup_channels_get",
                                     nullptr,
                                     nullptr,
                                     nullptr,
@@ -2126,6 +2219,8 @@ static void rna_def_action_group(BlenderRNA *brna)
   /* color set */
   rna_def_actionbone_group_common(srna, NC_ANIMATION | ND_ANIMCHAN | NA_EDITED, nullptr);
 }
+
+/* =========================== Legacy Action interface =========================== */
 
 /* fcurve.keyframe_points */
 static void rna_def_action_groups(BlenderRNA *brna, PropertyRNA *cprop)
