@@ -206,6 +206,72 @@ Array<int> duplicate_face_sets(const Mesh &mesh)
   return face_sets;
 }
 
+void filter_verts_with_unique_face_sets_mesh(const GroupedSpan<int> vert_to_face_map,
+                                             const int *face_sets,
+                                             const bool unique,
+                                             const Span<int> verts,
+                                             const MutableSpan<float> factors)
+{
+  BLI_assert(verts.size() == factors.size());
+
+  for (const int i : verts.index_range()) {
+    if (unique == face_set::vert_has_unique_face_set(vert_to_face_map, face_sets, verts[i])) {
+      factors[i] = 0.0f;
+    }
+  }
+}
+
+void filter_verts_with_unique_face_sets_grids(const GroupedSpan<int> vert_to_face_map,
+                                              const Span<int> corner_verts,
+                                              const OffsetIndices<int> faces,
+                                              const SubdivCCG &subdiv_ccg,
+                                              const int *face_sets,
+                                              const bool unique,
+                                              const Span<int> grids,
+                                              const MutableSpan<float> factors)
+{
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+  BLI_assert(grids.size() * key.grid_area == factors.size());
+
+  for (const int i : grids.index_range()) {
+    const int node_start = i * key.grid_area;
+    for (const int y : IndexRange(key.grid_size)) {
+      for (const int x : IndexRange(key.grid_size)) {
+        const int offset = CCG_grid_xy_to_index(key.grid_size, x, y);
+        const int node_vert = node_start + offset;
+        if (factors[node_vert] == 0.0f) {
+          continue;
+        }
+
+        SubdivCCGCoord coord{};
+        coord.grid_index = grids[i];
+        coord.x = x;
+        coord.y = y;
+        if (unique == face_set::vert_has_unique_face_set(
+                          vert_to_face_map, corner_verts, faces, face_sets, subdiv_ccg, coord))
+        {
+          factors[node_vert] = 0.0f;
+        }
+      }
+    }
+  }
+}
+
+void filter_verts_with_unique_face_sets_bmesh(const bool unique,
+                                              const Set<BMVert *, 0> verts,
+                                              const MutableSpan<float> factors)
+{
+  BLI_assert(verts.size() == factors.size());
+
+  int i = 0;
+  for (const BMVert *vert : verts) {
+    if (unique == face_set::vert_has_unique_face_set(vert)) {
+      factors[i] = 0.0f;
+    }
+    i++;
+  }
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -889,7 +955,7 @@ static int change_visibility_exec(bContext *C, wmOperator *op)
     UnifiedPaintSettings *ups = &CTX_data_tool_settings(C)->unified_paint_settings;
 
     float location[3];
-    copy_v3_v3(location, SCULPT_vertex_co_get(ss, ss.active_vert_ref()));
+    copy_v3_v3(location, ss.active_vert_position(object));
     mul_m4_v3(object.object_to_world().ptr(), location);
     copy_v3_v3(ups->average_stroke_accum, location);
     ups->average_stroke_counter = 1;
@@ -898,7 +964,7 @@ static int change_visibility_exec(bContext *C, wmOperator *op)
 
   undo::push_end(object);
 
-  bke::pbvh::update_visibility(*ss.pbvh);
+  bke::pbvh::update_visibility(object, *ss.pbvh);
   BKE_sculpt_hide_poly_pointer_update(object);
 
   islands::invalidate(*object.sculpt);
@@ -1170,18 +1236,27 @@ static void edit_fairing(const Sculpt &sd,
   SculptSession &ss = *ob.sculpt;
   Mesh &mesh = *static_cast<Mesh *>(ob.data);
   const bke::pbvh::Tree &pbvh = *ss.pbvh;
-
-  const Span<float3> positions = BKE_pbvh_get_vert_positions(pbvh);
-  MutableSpan<float3> positions_orig = mesh.vert_positions_for_write();
-
-  Array<bool> fair_verts(positions.size());
-
   boundary::ensure_boundary_info(ob);
 
+  const Span<float3> positions = bke::pbvh::vert_positions_eval(ob);
+  MutableSpan<float3> positions_orig = mesh.vert_positions_for_write();
+  const GroupedSpan<int> vert_to_face_map = mesh.vert_to_face_map();
+  const BitSpan boundary_verts = ss.vertex_info.boundary;
+  const bke::AttributeAccessor attributes = mesh.attributes();
+  const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
+
+  Array<bool> fair_verts(positions.size(), false);
   for (const int vert : positions.index_range()) {
-    fair_verts[vert] = !boundary::vert_is_boundary(ss, PBVHVertRef{vert}) &&
-                       vert_has_face_set(ss, PBVHVertRef{vert}, active_face_set_id) &&
-                       vert_has_unique_face_set(ss, PBVHVertRef{vert});
+    if (boundary::vert_is_boundary(hide_poly, vert_to_face_map, boundary_verts, vert)) {
+      continue;
+    }
+    if (!vert_has_face_set(vert_to_face_map, ss.face_sets, vert, active_face_set_id)) {
+      continue;
+    }
+    if (!vert_has_unique_face_set(vert_to_face_map, ss.face_sets, vert)) {
+      continue;
+    }
+    fair_verts[vert] = true;
   }
 
   Array<float3> new_positions = positions;
@@ -1473,7 +1548,7 @@ static void gesture_apply_mesh(gesture::GestureData &gesture_data,
   SculptSession &ss = *gesture_data.ss;
   const bke::pbvh::Tree &pbvh = *ss.pbvh;
 
-  const Span<float3> positions = BKE_pbvh_get_vert_positions(pbvh);
+  const Span<float3> positions = bke::pbvh::vert_positions_eval(object);
   const OffsetIndices<int> faces = mesh.faces();
   const Span<int> corner_verts = mesh.corner_verts();
   const Span<int> tri_faces = mesh.corner_tri_faces();
