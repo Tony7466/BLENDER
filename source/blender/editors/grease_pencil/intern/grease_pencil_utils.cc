@@ -66,6 +66,16 @@ DrawingPlacement::DrawingPlacement(const Scene &scene,
       break;
     }
   }
+
+  /* Account for layer transform. */
+  if (scene.toolsettings->gp_sculpt.lock_axis != GP_LOCKAXIS_VIEW &&
+      scene.toolsettings->gp_sculpt.lock_axis != GP_LOCKAXIS_CURSOR)
+  {
+    /* Use the transpose inverse for normal. */
+    placement_normal_ = math::transform_direction(math::transpose(world_space_to_layer_space_),
+                                                  placement_normal_);
+  }
+
   /* Initialize DrawingPlacementDepth from toolsettings. */
   const char align_flag = scene.toolsettings->gpencil_v3d_align;
   if (align_flag & GP_PROJECT_VIEWSPACE) {
@@ -104,6 +114,71 @@ DrawingPlacement::DrawingPlacement(const Scene &scene,
   if (plane_ != DrawingPlacementPlane::View) {
     plane_from_point_normal_v3(placement_plane_, placement_loc_, placement_normal_);
   }
+}
+
+DrawingPlacement::DrawingPlacement(const DrawingPlacement &other)
+{
+  region_ = other.region_;
+  view3d_ = other.view3d_;
+
+  depth_ = other.depth_;
+  plane_ = other.plane_;
+
+  if (other.depth_cache_ != nullptr) {
+    depth_cache_ = static_cast<ViewDepths *>(MEM_dupallocN(other.depth_cache_));
+    depth_cache_->depths = static_cast<float *>(MEM_dupallocN(other.depth_cache_->depths));
+  }
+  use_project_only_selected_ = other.use_project_only_selected_;
+
+  surface_offset_ = other.surface_offset_;
+
+  placement_loc_ = other.placement_loc_;
+  placement_normal_ = other.placement_normal_;
+  placement_plane_ = other.placement_plane_;
+
+  layer_space_to_world_space_ = other.layer_space_to_world_space_;
+  world_space_to_layer_space_ = other.world_space_to_layer_space_;
+}
+
+DrawingPlacement::DrawingPlacement(DrawingPlacement &&other)
+{
+  region_ = other.region_;
+  view3d_ = other.view3d_;
+
+  depth_ = other.depth_;
+  plane_ = other.plane_;
+
+  std::swap(depth_cache_, other.depth_cache_);
+  use_project_only_selected_ = other.use_project_only_selected_;
+
+  surface_offset_ = other.surface_offset_;
+
+  placement_loc_ = other.placement_loc_;
+  placement_normal_ = other.placement_normal_;
+  placement_plane_ = other.placement_plane_;
+
+  layer_space_to_world_space_ = other.layer_space_to_world_space_;
+  world_space_to_layer_space_ = other.world_space_to_layer_space_;
+}
+
+DrawingPlacement &DrawingPlacement::operator=(const DrawingPlacement &other)
+{
+  if (this == &other) {
+    return *this;
+  }
+  std::destroy_at(this);
+  new (this) DrawingPlacement(other);
+  return *this;
+}
+
+DrawingPlacement &DrawingPlacement::operator=(DrawingPlacement &&other)
+{
+  if (this == &other) {
+    return *this;
+  }
+  std::destroy_at(this);
+  new (this) DrawingPlacement(std::move(other));
+  return *this;
 }
 
 DrawingPlacement::~DrawingPlacement()

@@ -69,9 +69,7 @@ static void calc_faces(const Sculpt &sd,
   apply_hardness_to_distances(cache, distances);
   calc_brush_strength_factors(cache, brush, distances, factors);
 
-  if (cache.automasking) {
-    auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
-  }
+  auto_mask::calc_vert_factors(object, cache.automasking.get(), node, verts, factors);
 
   calc_brush_texture_factors(ss, brush, positions_eval, verts, factors);
 
@@ -115,17 +113,14 @@ static void calc_grids(const Sculpt &sd,
   apply_hardness_to_distances(cache, distances);
   calc_brush_strength_factors(cache, brush, distances, factors);
 
-  if (cache.automasking) {
-    auto_mask::calc_grids_factors(object, *cache.automasking, node, grids, factors);
-  }
+  auto_mask::calc_grids_factors(object, cache.automasking.get(), node, grids, factors);
 
   calc_brush_texture_factors(ss, brush, positions, factors);
 
   scale_factors(factors, strength);
 
-  tls.translations.resize(positions.size());
-  const MutableSpan<float3> translations = tls.translations;
-  gather_data_grids(subdiv_ccg, all_translations, grids, translations);
+  const MutableSpan<float3> translations = gather_data_grids(
+      subdiv_ccg, all_translations, grids, tls.translations);
   scale_translations(translations, factors);
 
   clip_and_lock_translations(sd, ss, positions, translations);
@@ -161,17 +156,14 @@ static void calc_bmesh(const Sculpt &sd,
   apply_hardness_to_distances(cache, distances);
   calc_brush_strength_factors(cache, brush, distances, factors);
 
-  if (cache.automasking) {
-    auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
-  }
+  auto_mask::calc_vert_factors(object, cache.automasking.get(), node, verts, factors);
 
   calc_brush_texture_factors(ss, brush, positions, factors);
 
   scale_factors(factors, strength);
 
-  tls.translations.resize(verts.size());
-  const MutableSpan<float3> translations = tls.translations;
-  gather_data_vert_bmesh(all_translations, verts, translations);
+  const MutableSpan<float3> translations = gather_data_vert_bmesh(
+      all_translations, verts, tls.translations);
   scale_translations(translations, factors);
 
   clip_and_lock_translations(sd, ss, positions, translations);

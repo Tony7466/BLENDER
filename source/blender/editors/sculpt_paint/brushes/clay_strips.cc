@@ -67,14 +67,12 @@ static void calc_faces(const Sculpt &sd,
 
   tls.distances.resize(verts.size());
   const MutableSpan<float> distances = tls.distances;
-  calc_brush_cube_distances(ss, brush, mat, positions_eval, verts, distances, factors);
+  calc_brush_cube_distances(brush, mat, positions_eval, verts, distances, factors);
   scale_factors(distances, cache.radius);
   apply_hardness_to_distances(cache, distances);
   calc_brush_strength_factors(cache, brush, distances, factors);
 
-  if (cache.automasking) {
-    auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
-  }
+  auto_mask::calc_vert_factors(object, cache.automasking.get(), node, verts, factors);
 
   calc_brush_texture_factors(ss, brush, positions_eval, verts, factors);
 
@@ -123,14 +121,12 @@ static void calc_grids(const Sculpt &sd,
 
   tls.distances.resize(positions.size());
   const MutableSpan<float> distances = tls.distances;
-  calc_brush_cube_distances(ss, brush, mat, positions, distances, factors);
+  calc_brush_cube_distances(brush, mat, positions, distances, factors);
   scale_factors(distances, cache.radius);
   apply_hardness_to_distances(cache, distances);
   calc_brush_strength_factors(cache, brush, distances, factors);
 
-  if (cache.automasking) {
-    auto_mask::calc_grids_factors(object, *cache.automasking, node, grids, factors);
-  }
+  auto_mask::calc_grids_factors(object, cache.automasking.get(), node, grids, factors);
 
   calc_brush_texture_factors(ss, brush, positions, factors);
 
@@ -179,14 +175,12 @@ static void calc_bmesh(const Sculpt &sd,
 
   tls.distances.resize(verts.size());
   const MutableSpan<float> distances = tls.distances;
-  calc_brush_cube_distances(ss, brush, mat, positions, distances, factors);
+  calc_brush_cube_distances(brush, mat, positions, distances, factors);
   scale_factors(distances, cache.radius);
   apply_hardness_to_distances(cache, distances);
   calc_brush_strength_factors(cache, brush, distances, factors);
 
-  if (cache.automasking) {
-    auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
-  }
+  auto_mask::calc_vert_factors(object, cache.automasking.get(), node, verts, factors);
 
   calc_brush_texture_factors(ss, brush, positions, factors);
 

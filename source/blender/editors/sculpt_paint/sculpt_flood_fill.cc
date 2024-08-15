@@ -72,7 +72,6 @@ void FillDataBMesh::add_and_skip_initial(BMVert *vertex, const int index)
 }
 
 void add_initial_with_symmetry(const Object &ob,
-                               const SculptSession &ss,
                                FillData &flood,
                                PBVHVertRef vertex,
                                const float radius)
@@ -98,7 +97,7 @@ void add_initial_with_symmetry(const Object &ob,
     else {
       BLI_assert(radius > 0.0f);
       const float radius_squared = (radius == FLT_MAX) ? FLT_MAX : radius * radius;
-      float3 location = symmetry_flip(SCULPT_vertex_co_get(ss, vertex), ePaintSymmetryFlags(i));
+      float3 location = symmetry_flip(SCULPT_vertex_co_get(ob, vertex), ePaintSymmetryFlags(i));
       v = nearest_vert_calc(ob, location, radius_squared, false);
     }
 
@@ -218,39 +217,11 @@ void FillDataBMesh::add_initial_with_symmetry(const Object &object,
   }
 }
 
-void add_active(const Object &ob, const SculptSession &ss, FillData &flood, float radius)
-{
-  add_initial_with_symmetry(ob, ss, flood, SCULPT_active_vertex_get(ss), radius);
-}
-
-void FillDataMesh::add_active(const Object &object, const SculptSession &ss, const float radius)
-{
-  PBVHVertRef active_vert = SCULPT_active_vertex_get(ss);
-  this->add_initial_with_symmetry(object, *ss.pbvh, active_vert.i, radius);
-}
-
-void FillDataGrids::add_active(const Object &object, const SculptSession &ss, const float radius)
-{
-  PBVHVertRef active_vert = SCULPT_active_vertex_get(ss);
-
-  const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
-  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-  SubdivCCGCoord coord = SubdivCCGCoord::from_index(key, active_vert.i);
-
-  this->add_initial_with_symmetry(object, *ss.pbvh, subdiv_ccg, coord, radius);
-}
-
-void FillDataBMesh::add_active(const Object &object, const SculptSession &ss, const float radius)
-{
-  PBVHVertRef active_vert = SCULPT_active_vertex_get(ss);
-  this->add_initial_with_symmetry(
-      object, *ss.pbvh, reinterpret_cast<BMVert *>(active_vert.i), radius);
-}
-
-void execute(SculptSession &ss,
+void execute(Object &object,
              FillData &flood,
              FunctionRef<bool(PBVHVertRef from_v, PBVHVertRef to_v, bool is_duplicate)> func)
 {
+  SculptSession &ss = *object.sculpt;
   while (!flood.queue.empty()) {
     PBVHVertRef from_v = flood.queue.front();
     flood.queue.pop();
@@ -264,7 +235,7 @@ void execute(SculptSession &ss,
         continue;
       }
 
-      if (!hide::vert_visible_get(ss, to_v)) {
+      if (!hide::vert_visible_get(object, to_v)) {
         continue;
       }
 

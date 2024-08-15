@@ -44,7 +44,7 @@
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_object_types.hh"
-#include "BKE_packedFile.h"
+#include "BKE_packedFile.hh"
 #include "BKE_report.hh"
 #include "BKE_scene.hh"
 #include "BKE_volume.hh"
@@ -600,6 +600,19 @@ bool BKE_volume_save(const Volume *volume,
 #endif
 }
 
+void BKE_volume_count_memory(const Volume &volume, blender::MemoryCounter &memory)
+{
+#ifdef WITH_OPENVDB
+  if (const VolumeGridVector *grids = volume.runtime->grids) {
+    for (const GVolumeGrid &grid : *grids) {
+      grid->count_memory(memory);
+    }
+  }
+#else
+  UNUSED_VARS(volume, memory);
+#endif
+}
+
 std::optional<blender::Bounds<blender::float3>> BKE_volume_min_max(const Volume *volume)
 {
 #ifdef WITH_OPENVDB
@@ -787,7 +800,7 @@ void BKE_volume_grids_backup_restore(Volume *volume, VolumeGridVector *grids, co
 #ifdef WITH_OPENVDB
   /* Restore grids after datablock was re-copied from original by depsgraph,
    * we don't want to load them again if possible. */
-  BLI_assert(volume->id.tag & LIB_TAG_COPIED_ON_EVAL);
+  BLI_assert(volume->id.tag & ID_TAG_COPIED_ON_EVAL);
   BLI_assert(volume->runtime->grids != nullptr && grids != nullptr);
 
   if (!grids->is_loaded()) {

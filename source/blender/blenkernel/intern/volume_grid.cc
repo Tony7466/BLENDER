@@ -5,6 +5,7 @@
 #include "BKE_volume_grid.hh"
 #include "BKE_volume_openvdb.hh"
 
+#include "BLI_memory_counter.hh"
 #include "BLI_task.hh"
 
 #ifdef WITH_OPENVDB
@@ -63,7 +64,7 @@ VolumeGridData::VolumeGridData(std::shared_ptr<openvdb::GridBase> grid)
     : grid_(std::move(grid)), tree_loaded_(true), transform_loaded_(true), meta_data_loaded_(true)
 {
   BLI_assert(grid_);
-  BLI_assert(grid_.unique());
+  BLI_assert(grid_.use_count() == 1);
   BLI_assert(grid_->isTreeUnique());
 
   tree_sharing_info_ = MEM_new<OpenvdbTreeSharingInfo>(__func__, grid_->baseTreePtr());
@@ -209,6 +210,17 @@ bool VolumeGridData::is_loaded() const
   return tree_loaded_ && transform_loaded_ && meta_data_loaded_;
 }
 
+void VolumeGridData::count_memory(MemoryCounter &memory) const
+{
+  std::lock_guard lock{mutex_};
+  if (!tree_loaded_) {
+    return;
+  }
+  const openvdb::TreeBase &tree = grid_->baseTree();
+  memory.add_shared(tree_sharing_info_,
+                    [&](MemoryCounter &shared_memory) { shared_memory.add(tree.memUsage()); });
+}
+
 std::string VolumeGridData::error_message() const
 {
   std::lock_guard lock{mutex_};
@@ -221,10 +233,13 @@ void VolumeGridData::unload_tree_if_possible() const
   if (!grid_) {
     return;
   }
+  if (!tree_loaded_) {
+    return;
+  }
   if (!this->is_reloadable()) {
     return;
   }
-  if (!tree_access_token_.unique()) {
+  if (tree_access_token_.use_count() != 1) {
     /* Some code is using the tree currently, so it can't be freed. */
     return;
   }
@@ -287,7 +302,7 @@ void VolumeGridData::ensure_grid_loaded() const
     loaded_grid = openvdb::FloatGrid::create();
   }
   BLI_assert(loaded_grid);
-  BLI_assert(loaded_grid.unique());
+  BLI_assert(loaded_grid.use_count() == 1);
   BLI_assert(loaded_grid->isTreeUnique());
 
   if (grid_) {
@@ -476,6 +491,15 @@ bool is_loaded(const VolumeGridData &grid)
 #else
   UNUSED_VARS(grid);
   return false;
+#endif
+}
+
+void count_memory(const VolumeGridData &grid, MemoryCounter &memory)
+{
+#ifdef WITH_OPENVDB
+  grid.count_memory(memory);
+#else
+  UNUSED_VARS(grid, memory);
 #endif
 }
 
