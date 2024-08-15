@@ -16,6 +16,7 @@
 #include "vk_common.hh"
 #include "vk_debug.hh"
 #include "vk_descriptor_pools.hh"
+#include "vk_resource_pool.hh"
 
 namespace blender::gpu {
 class VKFrameBuffer;
@@ -31,6 +32,8 @@ class VKContext : public Context, NonCopyable {
 
   VkExtent2D vk_extent_ = {};
   VkFormat swap_chain_format_ = {};
+  uint32_t current_swap_chain_index_ = UINT32_MAX;
+  Vector<VKResourcePool> swap_chain_resources;
   GPUTexture *surface_texture_ = nullptr;
   void *ghost_context_;
 
@@ -112,6 +115,14 @@ class VKContext : public Context, NonCopyable {
 
   static void swap_buffers_pre_callback(const GHOST_VulkanSwapChainData *data);
   static void swap_buffers_post_callback();
+
+  /**
+   * Get the active resource pool.
+   *
+   * When a context is has a swap chain the resource pool of the current swap chain is returned.
+   * In case the context doesn't have a swap chain a default resource pool will be returned.
+   */
+  VKResourcePool &resource_pool_get();
 
  private:
   void swap_buffers_pre_handler(const GHOST_VulkanSwapChainData &data);

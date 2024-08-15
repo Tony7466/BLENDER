@@ -76,8 +76,8 @@ VKImageView::VKImageView(VKImageView &&other) : info(other.info)
 VKImageView::~VKImageView()
 {
   if (vk_image_view_ != VK_NULL_HANDLE) {
-    VKDevice &device = VKBackend::get().device;
-    device.discard_image_view(vk_image_view_);
+    VKContext &context = *VKContext::get();
+    context.resource_pool_get().discard_image_view(vk_image_view_);
     vk_image_view_ = VK_NULL_HANDLE;
   }
   vk_format_ = VK_FORMAT_UNDEFINED;

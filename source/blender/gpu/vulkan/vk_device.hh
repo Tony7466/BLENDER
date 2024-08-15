@@ -19,6 +19,7 @@
 #include "vk_descriptor_pools.hh"
 #include "vk_descriptor_set_layouts.hh"
 #include "vk_pipeline_pool.hh"
+#include "vk_resource_pool.hh"
 #include "vk_samplers.hh"
 
 namespace blender::gpu {
@@ -99,16 +100,13 @@ class VKDevice : public NonCopyable {
   /** Buffer to bind to unbound resource locations. */
   VKBuffer dummy_buffer_;
 
-  Vector<std::pair<VkImage, VmaAllocation>> discarded_images_;
-  Vector<std::pair<VkBuffer, VmaAllocation>> discarded_buffers_;
-  Vector<VkImageView> discarded_image_views_;
-
   std::string glsl_patch_;
   Vector<render_graph::VKRenderGraph *> render_graphs_;
 
  public:
   render_graph::VKResourceStateTracker resources;
   VKPipelinePool pipelines;
+  VKResourcePool resource_pool;
 
   /**
    * This struct contains the functions pointer to extension provided functions.
@@ -249,11 +247,6 @@ class VKDevice : public NonCopyable {
   {
     return dummy_buffer_;
   }
-
-  void discard_image(VkImage vk_image, VmaAllocation vma_allocation);
-  void discard_image_view(VkImageView vk_image_view);
-  void discard_buffer(VkBuffer vk_buffer, VmaAllocation vma_allocation);
-  void destroy_discarded_resources();
 
   void memory_statistics_get(int *r_total_mem_kb, int *r_free_mem_kb) const;
   void debug_print();

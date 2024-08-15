@@ -50,7 +50,7 @@ void VKDevice::deinit()
 
   dummy_buffer_.free();
   samplers_.free();
-  destroy_discarded_resources();
+  resource_pool.destroy_discarded_resources();
   pipelines.free_data();
   vkDestroyPipelineCache(vk_device_, vk_pipeline_cache_, vk_allocation_callbacks);
   descriptor_set_layouts_.deinit();
@@ -382,43 +382,6 @@ Span<std::reference_wrapper<VKContext>> VKDevice::contexts_get() const
   return contexts_;
 };
 
-void VKDevice::discard_image(VkImage vk_image, VmaAllocation vma_allocation)
-{
-  discarded_images_.append(std::pair(vk_image, vma_allocation));
-}
-
-void VKDevice::discard_image_view(VkImageView vk_image_view)
-{
-  discarded_image_views_.append(vk_image_view);
-}
-
-void VKDevice::discard_buffer(VkBuffer vk_buffer, VmaAllocation vma_allocation)
-{
-  discarded_buffers_.append(std::pair(vk_buffer, vma_allocation));
-}
-
-void VKDevice::destroy_discarded_resources()
-{
-  VK_ALLOCATION_CALLBACKS
-
-  while (!discarded_image_views_.is_empty()) {
-    VkImageView vk_image_view = discarded_image_views_.pop_last();
-    vkDestroyImageView(vk_device_, vk_image_view, vk_allocation_callbacks);
-  }
-
-  while (!discarded_images_.is_empty()) {
-    std::pair<VkImage, VmaAllocation> image_allocation = discarded_images_.pop_last();
-    resources.remove_image(image_allocation.first);
-    vmaDestroyImage(mem_allocator_get(), image_allocation.first, image_allocation.second);
-  }
-
-  while (!discarded_buffers_.is_empty()) {
-    std::pair<VkBuffer, VmaAllocation> buffer_allocation = discarded_buffers_.pop_last();
-    resources.remove_buffer(buffer_allocation.first);
-    vmaDestroyBuffer(mem_allocator_get(), buffer_allocation.first, buffer_allocation.second);
-  }
-}
-
 void VKDevice::memory_statistics_get(int *r_total_mem_kb, int *r_free_mem_kb) const
 {
   VmaBudget budgets[VK_MAX_MEMORY_HEAPS];
@@ -459,10 +422,6 @@ void VKDevice::debug_print()
   os << " Compute: " << pipelines.compute_pipelines_.size() << "\n";
   os << "Descriptor sets\n";
   os << " VkDescriptorSetLayouts: " << descriptor_set_layouts_.size() << "\n";
-  os << "Discarded resources\n";
-  os << " VkImageView: " << discarded_image_views_.size() << "\n";
-  os << " VkImage: " << discarded_images_.size() << "\n";
-  os << " VkBuffer: " << discarded_buffers_.size() << "\n";
   os << "\n";
 }
 

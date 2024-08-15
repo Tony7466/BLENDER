@@ -38,6 +38,8 @@ VKContext::VKContext(void *ghost_window,
   active_fb = framebuffer;
 
   compiler = new ShaderCompilerGeneric();
+
+  swap_chain_resources.resize(5);
 }
 
 VKContext::~VKContext()
@@ -52,6 +54,14 @@ VKContext::~VKContext()
   imm = nullptr;
 
   delete compiler;
+}
+
+VKResourcePool &VKContext::resource_pool_get()
+{
+  if (current_swap_chain_index_ >= swap_chain_resources.size()) {
+    return swap_chain_resources[0];
+  }
+  return swap_chain_resources[current_swap_chain_index_];
 }
 
 void VKContext::sync_backbuffer()
@@ -69,6 +79,9 @@ void VKContext::sync_backbuffer()
   if (ghost_window_) {
     GHOST_VulkanSwapChainData swap_chain_data = {};
     GHOST_GetVulkanSwapChainFormat((GHOST_WindowHandle)ghost_window_, &swap_chain_data);
+
+    current_swap_chain_index_ = swap_chain_data.swap_chain_index;
+    resource_pool_get().destroy_discarded_resources();
 
     const bool reset_framebuffer = swap_chain_format_ != swap_chain_data.format ||
                                    vk_extent_.width != swap_chain_data.extent.width ||
@@ -339,7 +352,6 @@ void VKContext::swap_buffers_pre_handler(const GHOST_VulkanSwapChainData &swap_c
 #if 0
   device.debug_print();
 #endif
-  device.destroy_discarded_resources();
 }
 
 void VKContext::swap_buffers_post_handler()
