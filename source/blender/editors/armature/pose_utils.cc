@@ -37,6 +37,7 @@
 #include "ED_keyframing.hh"
 
 #include "ANIM_action.hh"
+#include "ANIM_action_iterators.hh"
 #include "ANIM_keyframing.hh"
 #include "ANIM_keyingsets.hh"
 
@@ -70,14 +71,15 @@ typedef enum eAction_TransformFlags {
   ACT_TRANS_ALL = (ACT_TRANS_ONLY | ACT_TRANS_PROP),
 } eAction_TransformFlags;
 
-static eAction_TransformFlags get_item_transform_flags(AnimData &anim_data,
-                                                       Object &ob,
+static eAction_TransformFlags get_item_transform_flags(Object &ob,
                                                        bPoseChannel &pchan,
                                                        ListBase &curves)
 {
-  if (!anim_data.action) {
+  if (!ob.adt->action) {
     return eAction_TransformFlags(0);
   }
+  blender::animrig::Action &action = ob.adt->action->wrap();
+
   short flags = 0;
 
   /* Build PointerRNA from provided data to obtain the paths to use. */
@@ -89,39 +91,27 @@ static eAction_TransformFlags get_item_transform_flags(AnimData &anim_data,
     return eAction_TransformFlags(0);
   }
 
-  blender::Vector<FCurve *> fcurves;
-  bAction *dna_action = anim_data.action;
-  blender::animrig::Action &action = dna_action->wrap();
-  if (action.is_action_layered()) {
-    fcurves = blender::animrig::fcurves_for_action_slot(action, anim_data.slot_handle);
-  }
-  else {
-    LISTBASE_FOREACH (FCurve *, fcu, &dna_action->curves) {
-      fcurves.append(fcu);
-    }
-  }
-
   /* Search F-Curves for the given properties
    * - we cannot use the groups, since they may not be grouped in that way...
    */
-  for (FCurve *fcu : fcurves) {
+  blender::animrig::action_foreach_fcurve(action, ob.adt->slot_handle, [&](FCurve &fcurve) {
     const char *bPtr = nullptr, *pPtr = nullptr;
 
     /* If enough flags have been found,
      * we can stop checking unless we're also getting the curves. */
     if ((flags == ACT_TRANS_ALL)) {
-      break;
+      return;
     }
 
-    if (fcu->rna_path == nullptr) {
-      continue;
+    if (fcurve.rna_path == nullptr) {
+      return;
     }
 
     /* Step 1: check for matching base path */
-    bPtr = strstr(fcu->rna_path, basePath->c_str());
+    bPtr = strstr(fcurve.rna_path, basePath->c_str());
 
     if (!bPtr) {
-      continue;
+      return;
     }
 
     /* We must add len(basePath) bytes to the match so that we are at the end of the
@@ -141,8 +131,8 @@ static eAction_TransformFlags get_item_transform_flags(AnimData &anim_data,
       if (pPtr) {
         flags |= ACT_TRANS_LOC;
 
-        BLI_addtail(&curves, BLI_genericNodeN(fcu));
-        continue;
+        BLI_addtail(&curves, BLI_genericNodeN(&fcurve));
+        return;
       }
     }
 
@@ -151,8 +141,8 @@ static eAction_TransformFlags get_item_transform_flags(AnimData &anim_data,
       if (pPtr) {
         flags |= ACT_TRANS_SCALE;
 
-        BLI_addtail(&curves, BLI_genericNodeN(fcu));
-        continue;
+        BLI_addtail(&curves, BLI_genericNodeN(&fcurve));
+        return;
       }
     }
 
@@ -161,8 +151,8 @@ static eAction_TransformFlags get_item_transform_flags(AnimData &anim_data,
       if (pPtr) {
         flags |= ACT_TRANS_ROT;
 
-        BLI_addtail(&curves, BLI_genericNodeN(fcu));
-        continue;
+        BLI_addtail(&curves, BLI_genericNodeN(&fcurve));
+        return;
       }
     }
 
@@ -171,8 +161,8 @@ static eAction_TransformFlags get_item_transform_flags(AnimData &anim_data,
       if (pPtr) {
         flags |= ACT_TRANS_BBONE;
 
-        BLI_addtail(&curves, BLI_genericNodeN(fcu));
-        continue;
+        BLI_addtail(&curves, BLI_genericNodeN(&fcurve));
+        return;
       }
     }
 
@@ -182,24 +172,21 @@ static eAction_TransformFlags get_item_transform_flags(AnimData &anim_data,
       if (pPtr) {
         flags |= ACT_TRANS_PROP;
 
-        BLI_addtail(&curves, BLI_genericNodeN(fcu));
-        continue;
+        BLI_addtail(&curves, BLI_genericNodeN(&fcurve));
+        return;
       }
     }
-  }
+  });
 
   /* return flags found */
   return eAction_TransformFlags(flags);
 }
 
 /* helper for poseAnim_mapping_get() -> get the relevant F-Curves per PoseChannel */
-static void fcurves_to_pchan_links_get(ListBase &pfLinks,
-                                       Object &ob,
-                                       AnimData &anim_data,
-                                       bPoseChannel &pchan)
+static void fcurves_to_pchan_links_get(ListBase &pfLinks, Object &ob, bPoseChannel &pchan)
 {
   ListBase curves = {nullptr, nullptr};
-  const eAction_TransformFlags transFlags = get_item_transform_flags(anim_data, ob, pchan, curves);
+  const eAction_TransformFlags transFlags = get_item_transform_flags(ob, pchan, curves);
 
   pchan.flag &= ~(POSE_LOC | POSE_ROT | POSE_SIZE | POSE_BBONE_SHAPE);
 
@@ -294,7 +281,7 @@ void poseAnim_mapping_get(bContext *C, ListBase *pfLinks)
       continue;
     }
 
-    fcurves_to_pchan_links_get(*pfLinks, *ob_pose_armature, *ob_pose_armature->adt, *pchan);
+    fcurves_to_pchan_links_get(*pfLinks, *ob_pose_armature, *pchan);
   }
   CTX_DATA_END;
 
@@ -319,7 +306,7 @@ void poseAnim_mapping_get(bContext *C, ListBase *pfLinks)
         continue;
       }
 
-      fcurves_to_pchan_links_get(*pfLinks, *ob_pose_armature, *ob_pose_armature->adt, *pchan);
+      fcurves_to_pchan_links_get(*pfLinks, *ob_pose_armature, *pchan);
     }
     CTX_DATA_END;
   }
