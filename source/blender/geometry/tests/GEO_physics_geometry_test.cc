@@ -507,10 +507,11 @@ TEST_F(PhysicsGeometryTest, realize_instances)
 
 TEST_F(PhysicsGeometryTest, join_geometry)
 {
+  using ConstraintType = bke::PhysicsGeometry::ConstraintType;
+
   AllShapesData all_shapes_data;
 
   bke::PhysicsGeometry *geo1 = new bke::PhysicsGeometry(5, 2, 3);
-  test_data(*geo1, false, 5, 2, 3);
   add_value_attribute(*geo1, bke::AttrDomain::Point, 1);
   /* Set actual shape pointers. */
   all_shapes_data.box_shape->add_user();
@@ -528,23 +529,26 @@ TEST_F(PhysicsGeometryTest, join_geometry)
     body_shapes.finish();
     masses.finish();
     geo1->compute_local_inertia(geo1->bodies_range());
+    geo1->create_constraints(
+        geo1->constraints_range(),
+        VArray<int>::ForSpan({int(ConstraintType::Point), int(ConstraintType::Slider)}),
+        VArray<int>::ForSpan({2, 0}),
+        VArray<int>::ForSpan({1, 2}));
   }
+  test_data(*geo1, false, 5, 2, 3);
 
   bke::PhysicsGeometry *geo2 = new bke::PhysicsGeometry(0, 0, 0);
   geo2->create_world();
-  test_data(*geo2, true, 0, 0, 0);
   add_value_attribute(*geo2, bke::AttrDomain::Point, 2);
+  test_data(*geo2, true, 0, 0, 0);
 
   bke::PhysicsGeometry *geo3 = new bke::PhysicsGeometry(2, 1, 1);
   geo3->create_world();
-  test_data(*geo3, true, 2, 1, 1);
   add_value_attribute(*geo3, bke::AttrDomain::Point, 3);
   all_shapes_data.sphere_shape->add_user();
   geo3->shapes_for_write().copy_from({CollisionShapePtr(all_shapes_data.sphere_shape)});
   geo3->tag_collision_shapes_changed();
-  test_data(*geo3, true, 2, 1, 1);
   geo3->tag_collision_shapes_changed();
-  test_data(*geo3, true, 2, 1, 1);
   /* Invalid shape index should be handled fine. */
   {
     AttributeWriter<int> body_shapes = geo3->body_shapes_for_write();
@@ -555,6 +559,10 @@ TEST_F(PhysicsGeometryTest, join_geometry)
     masses.finish();
     geo3->compute_local_inertia(geo3->bodies_range());
   }
+  geo3->create_constraints(geo3->constraints_range(),
+                           VArray<int>::ForSpan({int(ConstraintType::Fixed)}),
+                           VArray<int>::ForSpan({-1}),
+                           VArray<int>::ForSpan({1}));
   test_data(*geo3, true, 2, 1, 1);
 
   Array<bke::GeometrySet> geometry_sets = {bke::GeometrySet::from_physics(geo1),
@@ -586,6 +594,17 @@ TEST_F(PhysicsGeometryTest, join_geometry)
   EXPECT_EQ(-1, result_body_shapes[6]);
   const VArraySpan<float> masses = geo_result.body_masses();
   EXPECT_EQ_ARRAY(Span<float>{5, 15, 25, 35, 45, 3, 33}.data(), masses.data(), masses.size());
+  const VArraySpan<int> constraint_types = geo_result.constraint_types();
+  const VArraySpan<int> constraint_body1 = geo_result.constraint_body1();
+  const VArraySpan<int> constraint_body2 = geo_result.constraint_body2();
+  EXPECT_EQ_ARRAY(Span<int>{int(ConstraintType::Point),
+                            int(ConstraintType::Slider),
+                            int(ConstraintType::Fixed)}
+                      .data(),
+                  constraint_types.data(),
+                  constraint_types.size());
+  EXPECT_EQ_ARRAY(Span<int>{2, 0, -1}.data(), constraint_body1.data(), constraint_body1.size());
+  EXPECT_EQ_ARRAY(Span<int>{1, 2, 1}.data(), constraint_body2.data(), constraint_body2.size());
 
   /* Original geometries should be unmodified. */
   test_data(*geo1, false, 5, 2, 3);
