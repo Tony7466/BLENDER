@@ -82,17 +82,17 @@ StringRef CollisionShape::type_name(const CollisionShape::ShapeType type)
     case ShapeType::Tetrahedral:
       return "Tetrahedral";
     case ShapeType::ConvexTriangleMesh:
-      return "ConvexTriangleMesh";
+      return "Convex Triangle Mesh";
     case ShapeType::ConvexHull:
-      return "ConvexHull";
+      return "Convex Hull";
     case ShapeType::ConvexPointCloud:
-      return "ConvexPointCloud";
+      return "Convex Point Cloud";
     // case ShapeType::CustomPolyhedral:
     //   return "CustomPolyhedral";
     case ShapeType::Sphere:
       return "Sphere";
     case ShapeType::MultiSphere:
-      return "MultiSphere";
+      return "Multi Sphere";
     case ShapeType::Capsule:
       return "Capsule";
     case ShapeType::Cone:
@@ -100,23 +100,23 @@ StringRef CollisionShape::type_name(const CollisionShape::ShapeType type)
     case ShapeType::Cylinder:
       return "Cylinder";
     case ShapeType::UniformScaling:
-      return "UniformScaling";
+      return "Uniform Scaling";
     case ShapeType::MinkowskiSum:
-      return "MinkowskiSum";
+      return "Minkowski Sum";
     case ShapeType::MinkowskiDifference:
-      return "MinkowskiDifference";
+      return "Minkowski Difference";
     case ShapeType::Box2D:
-      return "Box2D";
+      return "Box 2D";
     case ShapeType::Convex2D:
-      return "Convex2D";
+      return "Convex 2D";
     // case ShapeType::CustomConvex:
     //   return "CustomConvex";
     case ShapeType::TriangleMesh:
-      return "TriangleMesh";
+      return "Triangle Mesh";
     case ShapeType::ScaledTriangleMesh:
-      return "ScaledTriangleMesh";
+      return "Scaled Triangle Mesh";
     case ShapeType::StaticPlane:
-      return "StaticPlane";
+      return "Static Plane";
     // case ShapeType::CustomConcave:
     //   return "CustomConcave";
     case ShapeType::Compound:
