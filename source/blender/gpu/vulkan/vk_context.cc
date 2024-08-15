@@ -52,11 +52,6 @@ VKContext::~VKContext()
   delete compiler;
 }
 
-VKResourcePool &VKContext::resource_pool_get()
-{
-  return thread_data_.resource_pool_get();
-}
-
 void VKContext::sync_backbuffer()
 {
   VKDevice &device = VKBackend::get().device;
@@ -74,7 +69,7 @@ void VKContext::sync_backbuffer()
                             swap_chain_data.swap_chain_index))
     {
       thread_data_.current_swap_chain_index = swap_chain_data.swap_chain_index;
-      VKResourcePool &resource_pool = resource_pool_get();
+      VKResourcePool &resource_pool = thread_data_.resource_pool_get();
       resource_pool.destroy_discarded_resources(device);
       resource_pool.descriptor_pools.reset();
     }
@@ -158,12 +153,12 @@ void VKContext::memory_statistics_get(int *r_total_mem_kb, int *r_free_mem_kb)
 
 VKDescriptorPools &VKContext::descriptor_pools_get()
 {
-  return resource_pool_get().descriptor_pools;
+  return thread_data_.resource_pool_get().descriptor_pools;
 }
 
 VKDescriptorSetTracker &VKContext::descriptor_set_get()
 {
-  return resource_pool_get().descriptor_set;
+  return thread_data_.resource_pool_get().descriptor_set;
 }
 
 VKStateManager &VKContext::state_manager_get() const

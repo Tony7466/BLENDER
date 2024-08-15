@@ -106,11 +106,6 @@ class VKContext : public Context, NonCopyable {
   static void swap_buffers_pre_callback(const GHOST_VulkanSwapChainData *data);
   static void swap_buffers_post_callback();
 
-  /**
-   * Get the active resource pool.
-   */
-  VKResourcePool &resource_pool_get();
-
  private:
   void swap_buffers_pre_handler(const GHOST_VulkanSwapChainData &data);
   void swap_buffers_post_handler();
