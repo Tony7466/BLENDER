@@ -1254,6 +1254,9 @@ class NodeTreeMainUpdater {
     if (node.type == NODE_GROUP_OUTPUT) {
       return true;
     }
+    if (node.type == GEO_NODE_WARNING) {
+      return true;
+    }
     if (nodes::gizmos::is_builtin_gizmo_node(node)) {
       return true;
     }
