@@ -217,6 +217,10 @@ static std::optional<PreprocessedSampleData> preprocess_sample(StringRefNull iob
   const CurvePeriodicity periodicity = smp.getWrap();
   const UcharArraySamplePtr orders = smp.getOrders();
 
+  if (positions->size() == 0) {
+    return {};
+  }
+
   const IFloatGeomParam widths_param = schema.getWidthsParam();
   FloatArraySamplePtr radii;
   if (widths_param.valid()) {
