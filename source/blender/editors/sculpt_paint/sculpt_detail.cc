@@ -185,14 +185,13 @@ static void sample_detail_voxel(bContext *C, ViewContext *vc, const int mval[2])
   Object &ob = *vc->obact;
   SculptSession &ss = *ob.sculpt;
   Mesh &mesh = *static_cast<Mesh *>(ob.data);
-  const Span<float3> positions = BKE_pbvh_get_vert_positions(*ss.pbvh);
+  const Span<float3> positions = bke::pbvh::vert_positions_eval(ob);
   const OffsetIndices faces = mesh.faces();
   const Span<int> corner_verts = mesh.corner_verts();
   const bke::AttributeAccessor attributes = mesh.attributes();
   const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
 
   SculptCursorGeometryInfo sgi;
-  SCULPT_vertex_random_access_ensure(ss);
 
   /* Update the active vertex. */
   const float mval_fl[2] = {float(mval[0]), float(mval[1])};
@@ -200,7 +199,7 @@ static void sample_detail_voxel(bContext *C, ViewContext *vc, const int mval[2])
   BKE_sculpt_update_object_for_edit(depsgraph, &ob, false);
 
   /* Average the edge length of the connected edges to the active vertex. */
-  const int active_vert = ss.active_vert_ref().i;
+  const int active_vert = std::get<int>(ss.active_vert());
   const float3 active_vert_position = positions[active_vert];
   float edge_length = 0.0f;
   Vector<int> neighbors;
@@ -590,7 +589,7 @@ static void dyntopo_detail_size_sample_from_surface(Object &ob,
                                                     DyntopoDetailSizeEditCustomData *cd)
 {
   SculptSession &ss = *ob.sculpt;
-  BMVert *active_vertex = reinterpret_cast<BMVert *>(ss.active_vert_ref().i);
+  BMVert *active_vertex = std::get<BMVert *>(ss.active_vert());
 
   float len_accum = 0;
   Vector<BMVert *, 64> neighbors;

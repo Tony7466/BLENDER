@@ -294,7 +294,9 @@ set(SRC
   engines/overlay/overlay_next_bounds.hh
   engines/overlay/overlay_next_empty.hh
   engines/overlay/overlay_next_camera.hh
+  engines/overlay/overlay_next_facing.hh
   engines/overlay/overlay_next_force_field.hh
+  engines/overlay/overlay_next_grease_pencil.hh
   engines/overlay/overlay_next_grid.hh
   engines/overlay/overlay_next_instance.hh
   engines/overlay/overlay_next_lattice.hh
@@ -302,6 +304,7 @@ set(SRC
   engines/overlay/overlay_next_lightprobe.hh
   engines/overlay/overlay_next_mesh.hh
   engines/overlay/overlay_next_metaball.hh
+  engines/overlay/overlay_next_outline.hh
   engines/overlay/overlay_next_prepass.hh
   engines/overlay/overlay_next_private.hh
   engines/overlay/overlay_next_relation.hh
@@ -451,6 +454,7 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_lightprobe_sphere_remap_comp.glsl
   engines/eevee_next/shaders/eevee_lightprobe_sphere_select_comp.glsl
   engines/eevee_next/shaders/eevee_lightprobe_sphere_sunlight_comp.glsl
+  engines/eevee_next/shaders/eevee_renderpass_clear_frag.glsl
   engines/eevee_next/shaders/eevee_renderpass_lib.glsl
   engines/eevee_next/shaders/eevee_sampling_lib.glsl
   engines/eevee_next/shaders/eevee_shadow_debug_frag.glsl
