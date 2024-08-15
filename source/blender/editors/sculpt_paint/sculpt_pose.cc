@@ -171,9 +171,7 @@ static void calc_mesh(const Sculpt &sd,
   tls.factors.resize(verts.size());
   const MutableSpan<float> factors = tls.factors;
   fill_factor_from_hide_and_mask(mesh, verts, factors);
-  if (cache.automasking) {
-    auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
-  }
+  auto_mask::calc_vert_factors(object, cache.automasking.get(), node, verts, factors);
 
   tls.translations.resize(verts.size());
   const MutableSpan<float3> translations = tls.translations;
@@ -222,9 +220,7 @@ static void calc_grids(const Sculpt &sd,
   tls.factors.resize(positions.size());
   const MutableSpan<float> factors = tls.factors;
   fill_factor_from_hide_and_mask(subdiv_ccg, grids, factors);
-  if (cache.automasking) {
-    auto_mask::calc_grids_factors(object, *cache.automasking, node, grids, factors);
-  }
+  auto_mask::calc_grids_factors(object, cache.automasking.get(), node, grids, factors);
 
   tls.translations.resize(positions.size());
   const MutableSpan<float3> translations = tls.translations;
@@ -277,9 +273,7 @@ static void calc_bmesh(const Sculpt &sd,
   tls.factors.resize(verts.size());
   const MutableSpan<float> factors = tls.factors;
   fill_factor_from_hide_and_mask(*ss.bm, verts, factors);
-  if (cache.automasking) {
-    auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
-  }
+  auto_mask::calc_vert_factors(object, cache.automasking.get(), node, verts, factors);
 
   tls.translations.resize(verts.size());
   const MutableSpan<float3> translations = tls.translations;
@@ -449,7 +443,6 @@ static void grow_factors_bmesh(const ePaintSymmetryFlags symm,
 
   Vector<BMVert *, 64> neighbors;
 
-  int i = 0;
   for (BMVert *bm_vert : verts) {
     const int vert = BM_elem_index_get(bm_vert);
 
@@ -472,8 +465,6 @@ static void grow_factors_bmesh(const ePaintSymmetryFlags symm,
         gftd.pos_count++;
       }
     }
-
-    i++;
   }
 }
 
@@ -813,7 +804,7 @@ void calc_pose_data(Object &ob,
   int tot_co = 0;
   float3 pose_origin(0);
   float3 fallback_floodfill_origin = initial_location;
-  flood_fill::execute(ss, flood, [&](PBVHVertRef /*from_v*/, PBVHVertRef to_v, bool is_duplicate) {
+  flood_fill::execute(ob, flood, [&](PBVHVertRef /*from_v*/, PBVHVertRef to_v, bool is_duplicate) {
     return pose_topology_floodfill(ss,
                                    initial_location,
                                    radius,
@@ -842,112 +833,6 @@ void calc_pose_data(Object &ob,
    */
   if (pose_offset != 0.0f && !r_pose_factor.is_empty()) {
     sculpt_pose_grow_pose_factor(ob, ss, pose_origin, pose_origin, 0, nullptr, r_pose_factor);
-  }
-}
-
-static void smooth_geometry_data_array(const Object &object,
-                                       const int iterations,
-                                       const MutableSpan<float> data)
-{
-  struct LocalData {
-    Vector<int> vert_indices;
-    Vector<Vector<int>> vert_neighbors;
-    Vector<float> new_factors;
-  };
-  const SculptSession &ss = *object.sculpt;
-  Vector<bke::pbvh::Node *> nodes = bke::pbvh::search_gather(*ss.pbvh, {});
-
-  threading::EnumerableThreadSpecific<LocalData> all_tls;
-  switch (ss.pbvh->type()) {
-    case bke::pbvh::Type::Mesh: {
-      const Mesh &mesh = *static_cast<const Mesh *>(object.data);
-      const OffsetIndices faces = mesh.faces();
-      const Span<int> corner_verts = mesh.corner_verts();
-      const GroupedSpan<int> vert_to_face_map = mesh.vert_to_face_map();
-      const bke::AttributeAccessor attributes = mesh.attributes();
-      const VArraySpan<bool> hide_vert = *attributes.lookup<bool>(".hide_vert",
-                                                                  bke::AttrDomain::Point);
-      const VArraySpan<bool> hide_poly = *attributes.lookup<bool>(".hide_poly",
-                                                                  bke::AttrDomain::Face);
-      for ([[maybe_unused]] const int _ : IndexRange(iterations)) {
-        threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-          LocalData &tls = all_tls.local();
-          for (const int i : range) {
-            const Span<int> verts = hide::node_visible_verts(
-                *nodes[i], hide_vert, tls.vert_indices);
-
-            tls.vert_neighbors.resize(verts.size());
-            const MutableSpan<Vector<int>> neighbors = tls.vert_neighbors;
-            calc_vert_neighbors(
-                faces, corner_verts, vert_to_face_map, hide_poly, verts, neighbors);
-
-            tls.new_factors.resize(verts.size());
-            const MutableSpan<float> new_factors = tls.new_factors;
-            smooth::neighbor_data_average_mesh(data.as_span(), neighbors, new_factors);
-
-            scatter_data_mesh(new_factors.as_span(), verts, data);
-          }
-        });
-      }
-      break;
-    }
-    case bke::pbvh::Type::Grids: {
-      const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
-      const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-      const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
-      for ([[maybe_unused]] const int _ : IndexRange(iterations)) {
-        threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-          LocalData &tls = all_tls.local();
-          for (const int i : range) {
-            const Span<int> grids = bke::pbvh::node_grid_indices(*nodes[i]);
-            const int grid_verts_num = key.grid_area * grids.size();
-
-            tls.new_factors.resize(grid_verts_num);
-            const MutableSpan<float> new_factors = tls.new_factors;
-            smooth::average_data_grids(subdiv_ccg, data.as_span(), grids, new_factors);
-
-            if (grid_hidden.is_empty()) {
-              scatter_data_grids(subdiv_ccg, new_factors.as_span(), grids, data);
-            }
-            else {
-              for (const int i : grids.index_range()) {
-                const int node_start = i * key.grid_area;
-                BKE_subdiv_ccg_foreach_visible_grid_vert(
-                    key, grid_hidden, grids[i], [&](const int offset) {
-                      data[i] = new_factors[node_start + offset];
-                    });
-              }
-            }
-          }
-        });
-      }
-      break;
-    }
-    case bke::pbvh::Type::BMesh: {
-      for ([[maybe_unused]] const int _ : IndexRange(iterations)) {
-        threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-          LocalData &tls = all_tls.local();
-          for (const int node_index : range) {
-            const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(nodes[node_index]);
-
-            tls.new_factors.resize(verts.size());
-            const MutableSpan<float> new_factors = tls.new_factors;
-            smooth::average_data_bmesh(data.as_span(), verts, new_factors);
-
-            int i = 0;
-            for (const BMVert *vert : verts) {
-              if (BM_elem_flag_test(vert, BM_ELEM_HIDDEN)) {
-                i++;
-                continue;
-              }
-              data[BM_elem_index_get(vert)] = new_factors[i];
-              i++;
-            }
-          }
-        });
-      }
-      break;
-    }
   }
 }
 
@@ -1117,7 +1002,7 @@ static std::unique_ptr<SculptPoseIKChain> pose_ik_chain_init_face_sets(Object &o
 
     const float3 pose_initial_co = SCULPT_vertex_co_get(ss, current_vertex);
     flood_fill::execute(
-        ss, flood, [&](PBVHVertRef /*from_v*/, PBVHVertRef to_v, bool is_duplicate) {
+        ob, flood, [&](PBVHVertRef /*from_v*/, PBVHVertRef to_v, bool is_duplicate) {
           return pose_face_sets_floodfill(ss,
                                           pose_initial_co,
                                           radius,
@@ -1234,7 +1119,7 @@ static std::unique_ptr<SculptPoseIKChain> pose_ik_chain_init_face_sets_fk(
     int masked_face_set_it = 0;
     flood_fill::FillData flood = flood_fill::init_fill(ss);
     flood_fill::add_initial(flood, active_vertex);
-    flood_fill::execute(ss, flood, [&](PBVHVertRef from_v, PBVHVertRef to_v, bool is_duplicate) {
+    flood_fill::execute(ob, flood, [&](PBVHVertRef from_v, PBVHVertRef to_v, bool is_duplicate) {
       return pose_face_sets_fk_find_masked_floodfill(ss,
                                                      active_face_set,
                                                      from_v,
@@ -1296,7 +1181,7 @@ static std::unique_ptr<SculptPoseIKChain> pose_ik_chain_init_face_sets_fk(
     flood_fill::add_initial_with_symmetry(ob, ss, flood, ss.active_vert_ref(), radius);
     MutableSpan<float> fk_weights = ik_chain->segments[0].weights;
     flood_fill::execute(
-        ss, flood, [&](PBVHVertRef /*from_v*/, PBVHVertRef to_v, bool /*is_duplicate*/) {
+        ob, flood, [&](PBVHVertRef /*from_v*/, PBVHVertRef to_v, bool /*is_duplicate*/) {
           return pose_face_sets_fk_set_weights_floodfill(ss, to_v, masked_face_set, fk_weights);
         });
   }
@@ -1347,7 +1232,7 @@ void pose_brush_init(Object &ob, SculptSession &ss, const Brush &brush)
 
   /* Smooth the weights of each segment for cleaner deformation. */
   for (SculptPoseIKChainSegment &segment : ss.cache->pose_ik_chain->segments) {
-    smooth_geometry_data_array(ob, brush.pose_smooth_iterations, segment.weights);
+    smooth::blur_geometry_data_array(ob, brush.pose_smooth_iterations, segment.weights);
   }
 }
 
