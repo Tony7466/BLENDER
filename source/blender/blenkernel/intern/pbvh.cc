@@ -2790,19 +2790,19 @@ void get_frustum_planes(const Tree &pbvh, PBVHFrustumPlanes *planes)
 
 Span<float3> vert_positions_eval(const Object &object)
 {
-  BLI_assert(object.sculpt->pbvh.type() == Type::Mesh);
+  BLI_assert(object.sculpt->pbvh->type() == Type::Mesh);
   return object.sculpt->pbvh->vert_positions_;
 }
 
 MutableSpan<float3> vert_positions_eval_for_write(Object &object)
 {
-  BLI_assert(object.sculpt->pbvh.type() == Type::Mesh);
+  BLI_assert(object.sculpt->pbvh->type() == Type::Mesh);
   return object.sculpt->pbvh->vert_positions_;
 }
 
 Span<float3> vert_normals_eval(const Object &object)
 {
-  BLI_assert(object.sculpt->pbvh.type() == Type::Mesh);
+  BLI_assert(object.sculpt->pbvh->type() == Type::Mesh);
   return object.sculpt->pbvh->vert_normals_;
 }
 
