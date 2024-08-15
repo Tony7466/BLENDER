@@ -382,14 +382,14 @@ static void action_blend_write_make_legacy_channel_groups_listbase(
 
   /* Set the fcurve listbase pointers. */
   for (bActionGroup *group : channel_groups) {
-    if (group->fcurve_count == 0) {
+    if (group->fcurve_range_length == 0) {
       group->channels = {nullptr, nullptr};
       continue;
     }
     Span<FCurve *> fcurves = group->channel_bag->wrap().fcurves();
     group->channels = {
-        fcurves[group->fcurve_index],
-        fcurves[group->fcurve_index + group->fcurve_count - 1],
+        fcurves[group->fcurve_range_start],
+        fcurves[group->fcurve_range_start + group->fcurve_range_length - 1],
     };
   }
 

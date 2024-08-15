@@ -723,13 +723,13 @@ static void rna_ActionGroup_channels_begin(CollectionPropertyIterator *iter, Poi
     MutableSpan<FCurve *> fcurves = group->channel_bag->wrap().fcurves();
 
     custom->tag = ActionGroupChannelsIterator::ARRAY;
-    custom->array.ptr = reinterpret_cast<char *>(fcurves.data() + group->fcurve_index);
-    custom->array.endptr = reinterpret_cast<char *>(fcurves.data() + group->fcurve_index +
-                                                    group->fcurve_count);
+    custom->array.ptr = reinterpret_cast<char *>(fcurves.data() + group->fcurve_range_start);
+    custom->array.endptr = reinterpret_cast<char *>(fcurves.data() + group->fcurve_range_start +
+                                                    group->fcurve_range_length);
     custom->array.itemsize = sizeof(FCurve *);
-    custom->array.length = group->fcurve_count;
+    custom->array.length = group->fcurve_range_length;
 
-    iter->valid = group->fcurve_count != 0;
+    iter->valid = group->fcurve_range_length != 0;
 
     return;
   }

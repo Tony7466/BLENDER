@@ -1563,8 +1563,8 @@ static size_t animfilter_act_group_channel_bag(bAnimContext *ac,
          * about this). */
         if (!(filter_mode & ANIMFILTER_FOREDIT) || EDITABLE_AGRP(&channel_group)) {
           /* Add the fcurves in the group to the temporary filter list. */
-          Span<FCurve *> fcurves = channel_bag.fcurves().slice(channel_group.fcurve_index,
-                                                               channel_group.fcurve_count);
+          Span<FCurve *> fcurves = channel_bag.fcurves().slice(channel_group.fcurve_range_start,
+                                                               channel_group.fcurve_range_length);
           tmp_items += animfilter_fcurves_span(
               ac, &tmp_data, fcurves, slot.handle, filter_mode, animated_id, &action.id);
         }
@@ -1665,7 +1665,8 @@ static size_t animfilter_action_slot(bAnimContext *ac,
       int first_ungrouped_fcurve_index = 0;
       if (!channel_bag->channel_groups().is_empty()) {
         const bActionGroup *last_group = channel_bag->channel_groups().last();
-        first_ungrouped_fcurve_index = last_group->fcurve_index + last_group->fcurve_count;
+        first_ungrouped_fcurve_index = last_group->fcurve_range_start +
+                                       last_group->fcurve_range_length;
       }
 
       Span<FCurve *> fcurves = channel_bag->fcurves().drop_front(first_ungrouped_fcurve_index);

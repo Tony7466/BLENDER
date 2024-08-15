@@ -1216,7 +1216,8 @@ void action_group_to_keylist(AnimData *adt,
     return;
   }
   animrig::ChannelBag channel_bag = agrp->channel_bag->wrap();
-  Span<FCurve *> fcurves = channel_bag.fcurves().slice(agrp->fcurve_index, agrp->fcurve_count);
+  Span<FCurve *> fcurves = channel_bag.fcurves().slice(agrp->fcurve_range_start,
+                                                       agrp->fcurve_range_start);
   for (FCurve *fcurve : fcurves) {
     fcurve_to_keylist(adt, fcurve, keylist, saction_flag, range);
   }

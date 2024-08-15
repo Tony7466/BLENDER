@@ -685,14 +685,13 @@ typedef struct bActionGroup {
   ListBase channels;
 
   /**
-   * List of channels in this group for layered actions.
+   * Span of channels in this group for layered actions.
    *
-   * This specifies that list as a range of items in the fcurve list in a
-   * ChannelBag.  The index is the first item, and the count is the number of
-   * items total.
+   * This specifies that span as a range of items in a ChannelBag's fcurve
+   * array.
    */
-  int fcurve_index;
-  int fcurve_count;
+  int fcurve_range_start;
+  int fcurve_range_length;
 
   /**
    * For layered actions: the ChannelBag this group belongs to.

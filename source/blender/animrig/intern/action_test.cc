@@ -762,29 +762,29 @@ TEST_F(ChannelBagTest, channel_group_create)
   bActionGroup *group0 = &channel_bag->channel_group_create("Foo");
   ASSERT_EQ(channel_bag->channel_groups().size(), 1);
   EXPECT_EQ(StringRef{group0->name}, StringRef{"Foo"});
-  EXPECT_EQ(group0->fcurve_index, 0);
-  EXPECT_EQ(group0->fcurve_count, 0);
+  EXPECT_EQ(group0->fcurve_range_start, 0);
+  EXPECT_EQ(group0->fcurve_range_length, 0);
   EXPECT_EQ(group0, channel_bag->channel_group(0));
 
   /* Set for testing purposes. Does not reflect actual fcurves in this test. */
-  group0->fcurve_count = 2;
+  group0->fcurve_range_length = 2;
 
   bActionGroup *group1 = &channel_bag->channel_group_create("Bar");
   ASSERT_EQ(channel_bag->channel_groups().size(), 2);
   EXPECT_EQ(StringRef{group1->name}, StringRef{"Bar"});
-  EXPECT_EQ(group1->fcurve_index, 2);
-  EXPECT_EQ(group1->fcurve_count, 0);
+  EXPECT_EQ(group1->fcurve_range_start, 2);
+  EXPECT_EQ(group1->fcurve_range_length, 0);
   EXPECT_EQ(group0, channel_bag->channel_group(0));
   EXPECT_EQ(group1, channel_bag->channel_group(1));
 
   /* Set for testing purposes. Does not reflect actual fcurves in this test. */
-  group1->fcurve_count = 1;
+  group1->fcurve_range_length = 1;
 
   bActionGroup *group2 = &channel_bag->channel_group_create("Yar");
   ASSERT_EQ(channel_bag->channel_groups().size(), 3);
   EXPECT_EQ(StringRef{group2->name}, StringRef{"Yar"});
-  EXPECT_EQ(group2->fcurve_index, 3);
-  EXPECT_EQ(group2->fcurve_count, 0);
+  EXPECT_EQ(group2->fcurve_range_start, 3);
+  EXPECT_EQ(group2->fcurve_range_length, 0);
   EXPECT_EQ(group0, channel_bag->channel_group(0));
   EXPECT_EQ(group1, channel_bag->channel_group(1));
   EXPECT_EQ(group2, channel_bag->channel_group(2));
@@ -970,8 +970,8 @@ TEST_F(ChannelBagTest, channel_group_fcurve_creation)
   EXPECT_EQ(fcu0, channel_bag->fcurve(1));
   EXPECT_EQ(group0, fcu1->grp);
   EXPECT_EQ(nullptr, fcu0->grp);
-  EXPECT_EQ(0, group0->fcurve_index);
-  EXPECT_EQ(1, group0->fcurve_count);
+  EXPECT_EQ(0, group0->fcurve_range_start);
+  EXPECT_EQ(1, group0->fcurve_range_length);
 
   /* Creating a new fcurve with a second channel group in the fcurve descriptor
    * should create the group and put the fcurve in it.  This also implies that
@@ -988,10 +988,10 @@ TEST_F(ChannelBagTest, channel_group_fcurve_creation)
   EXPECT_EQ(group0, fcu1->grp);
   EXPECT_EQ(group1, fcu2->grp);
   EXPECT_EQ(nullptr, fcu0->grp);
-  EXPECT_EQ(0, group0->fcurve_index);
-  EXPECT_EQ(1, group0->fcurve_count);
-  EXPECT_EQ(1, group1->fcurve_index);
-  EXPECT_EQ(1, group1->fcurve_count);
+  EXPECT_EQ(0, group0->fcurve_range_start);
+  EXPECT_EQ(1, group0->fcurve_range_length);
+  EXPECT_EQ(1, group1->fcurve_range_start);
+  EXPECT_EQ(1, group1->fcurve_range_length);
 
   /* Creating a new fcurve with the first channel group again should put it at
    * the end of that group. */
@@ -1008,10 +1008,10 @@ TEST_F(ChannelBagTest, channel_group_fcurve_creation)
   EXPECT_EQ(group0, fcu3->grp);
   EXPECT_EQ(group1, fcu2->grp);
   EXPECT_EQ(nullptr, fcu0->grp);
-  EXPECT_EQ(0, group0->fcurve_index);
-  EXPECT_EQ(2, group0->fcurve_count);
-  EXPECT_EQ(2, group1->fcurve_index);
-  EXPECT_EQ(1, group1->fcurve_count);
+  EXPECT_EQ(0, group0->fcurve_range_start);
+  EXPECT_EQ(2, group0->fcurve_range_length);
+  EXPECT_EQ(2, group1->fcurve_range_start);
+  EXPECT_EQ(1, group1->fcurve_range_length);
 
   /* Finally, creating a new fcurve with the second channel group again should
    * also put it at the end of that group. */
@@ -1025,10 +1025,10 @@ TEST_F(ChannelBagTest, channel_group_fcurve_creation)
   EXPECT_EQ(fcu2, channel_bag->fcurve(2));
   EXPECT_EQ(fcu4, channel_bag->fcurve(3));
   EXPECT_EQ(fcu0, channel_bag->fcurve(4));
-  EXPECT_EQ(0, group0->fcurve_index);
-  EXPECT_EQ(2, group0->fcurve_count);
-  EXPECT_EQ(2, group1->fcurve_index);
-  EXPECT_EQ(2, group1->fcurve_count);
+  EXPECT_EQ(0, group0->fcurve_range_start);
+  EXPECT_EQ(2, group0->fcurve_range_length);
+  EXPECT_EQ(2, group1->fcurve_range_start);
+  EXPECT_EQ(2, group1->fcurve_range_length);
 }
 
 TEST_F(ChannelBagTest, channel_group_fcurve_removal)
@@ -1041,26 +1041,26 @@ TEST_F(ChannelBagTest, channel_group_fcurve_removal)
 
   ASSERT_EQ(5, channel_bag->fcurves().size());
   ASSERT_EQ(2, channel_bag->channel_groups().size());
-  EXPECT_EQ(0, channel_bag->channel_group(0)->fcurve_index);
-  EXPECT_EQ(2, channel_bag->channel_group(0)->fcurve_count);
-  EXPECT_EQ(2, channel_bag->channel_group(1)->fcurve_index);
-  EXPECT_EQ(2, channel_bag->channel_group(1)->fcurve_count);
+  EXPECT_EQ(0, channel_bag->channel_group(0)->fcurve_range_start);
+  EXPECT_EQ(2, channel_bag->channel_group(0)->fcurve_range_length);
+  EXPECT_EQ(2, channel_bag->channel_group(1)->fcurve_range_start);
+  EXPECT_EQ(2, channel_bag->channel_group(1)->fcurve_range_length);
 
   channel_bag->fcurve_remove(*fcu3);
   ASSERT_EQ(4, channel_bag->fcurves().size());
   ASSERT_EQ(2, channel_bag->channel_groups().size());
-  EXPECT_EQ(0, channel_bag->channel_group(0)->fcurve_index);
-  EXPECT_EQ(2, channel_bag->channel_group(0)->fcurve_count);
-  EXPECT_EQ(2, channel_bag->channel_group(1)->fcurve_index);
-  EXPECT_EQ(1, channel_bag->channel_group(1)->fcurve_count);
+  EXPECT_EQ(0, channel_bag->channel_group(0)->fcurve_range_start);
+  EXPECT_EQ(2, channel_bag->channel_group(0)->fcurve_range_length);
+  EXPECT_EQ(2, channel_bag->channel_group(1)->fcurve_range_start);
+  EXPECT_EQ(1, channel_bag->channel_group(1)->fcurve_range_length);
 
   channel_bag->fcurve_remove(*fcu0);
   ASSERT_EQ(3, channel_bag->fcurves().size());
   ASSERT_EQ(2, channel_bag->channel_groups().size());
-  EXPECT_EQ(0, channel_bag->channel_group(0)->fcurve_index);
-  EXPECT_EQ(1, channel_bag->channel_group(0)->fcurve_count);
-  EXPECT_EQ(1, channel_bag->channel_group(1)->fcurve_index);
-  EXPECT_EQ(1, channel_bag->channel_group(1)->fcurve_count);
+  EXPECT_EQ(0, channel_bag->channel_group(0)->fcurve_range_start);
+  EXPECT_EQ(1, channel_bag->channel_group(0)->fcurve_range_length);
+  EXPECT_EQ(1, channel_bag->channel_group(1)->fcurve_range_start);
+  EXPECT_EQ(1, channel_bag->channel_group(1)->fcurve_range_length);
 
   bActionGroup *group1 = channel_bag->channel_group(1);
 
@@ -1068,14 +1068,14 @@ TEST_F(ChannelBagTest, channel_group_fcurve_removal)
   ASSERT_EQ(2, channel_bag->fcurves().size());
   ASSERT_EQ(1, channel_bag->channel_groups().size());
   EXPECT_EQ(group1, channel_bag->channel_group(0));
-  EXPECT_EQ(0, channel_bag->channel_group(0)->fcurve_index);
-  EXPECT_EQ(1, channel_bag->channel_group(0)->fcurve_count);
+  EXPECT_EQ(0, channel_bag->channel_group(0)->fcurve_range_start);
+  EXPECT_EQ(1, channel_bag->channel_group(0)->fcurve_range_length);
 
   channel_bag->fcurve_remove(*fcu4);
   ASSERT_EQ(1, channel_bag->fcurves().size());
   ASSERT_EQ(1, channel_bag->channel_groups().size());
-  EXPECT_EQ(0, channel_bag->channel_group(0)->fcurve_index);
-  EXPECT_EQ(1, channel_bag->channel_group(0)->fcurve_count);
+  EXPECT_EQ(0, channel_bag->channel_group(0)->fcurve_range_start);
+  EXPECT_EQ(1, channel_bag->channel_group(0)->fcurve_range_length);
 
   channel_bag->fcurve_remove(*fcu2);
   ASSERT_EQ(0, channel_bag->fcurves().size());

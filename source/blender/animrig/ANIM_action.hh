@@ -771,12 +771,13 @@ class ChannelBag : public ::ActionChannelBag {
   bActionGroup *channel_group_find(StringRef name);
 
   /**
-   * Find the channel group that contains the given fcurve index as a member.
+   * Find the channel group that contains the fcurve at `fcurve_array_index` as
+   * a member.
    *
    * \return A pointer to the channel group if found, or nullptr if no such
    * group is found.
    */
-  bActionGroup *channel_group_containing_index(int fcurve_index);
+  bActionGroup *channel_group_containing_index(int fcurve_array_index);
 
   /**
    * Create a new empty channel group with the given name.
