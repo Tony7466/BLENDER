@@ -80,6 +80,8 @@ class CollisionShape : public ImplicitSharingMixin {
 
   ShapeType type() const;
 
+  static StringRef type_name(const CollisionShape::ShapeType type);
+
   /** Shape type is supported for dynamic bodies.
    *  Concave shapes and some other types can only be used for static bodies.
    */

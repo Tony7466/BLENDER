@@ -68,6 +68,64 @@ CollisionShape::ShapeType CollisionShape::type() const
   return shape_type ? *shape_type : bke::CollisionShape::ShapeType::Invalid;
 }
 
+StringRef CollisionShape::type_name(const CollisionShape::ShapeType type)
+{
+  switch (type) {
+    case ShapeType::Invalid:
+      return "Invalid";
+    case ShapeType::Empty:
+      return "Empty";
+    case ShapeType::Box:
+      return "Box";
+    case ShapeType::Triangle:
+      return "Triangle";
+    case ShapeType::Tetrahedral:
+      return "Tetrahedral";
+    case ShapeType::ConvexTriangleMesh:
+      return "ConvexTriangleMesh";
+    case ShapeType::ConvexHull:
+      return "ConvexHull";
+    case ShapeType::ConvexPointCloud:
+      return "ConvexPointCloud";
+    // case ShapeType::CustomPolyhedral:
+    //   return "CustomPolyhedral";
+    case ShapeType::Sphere:
+      return "Sphere";
+    case ShapeType::MultiSphere:
+      return "MultiSphere";
+    case ShapeType::Capsule:
+      return "Capsule";
+    case ShapeType::Cone:
+      return "Cone";
+    case ShapeType::Cylinder:
+      return "Cylinder";
+    case ShapeType::UniformScaling:
+      return "UniformScaling";
+    case ShapeType::MinkowskiSum:
+      return "MinkowskiSum";
+    case ShapeType::MinkowskiDifference:
+      return "MinkowskiDifference";
+    case ShapeType::Box2D:
+      return "Box2D";
+    case ShapeType::Convex2D:
+      return "Convex2D";
+    // case ShapeType::CustomConvex:
+    //   return "CustomConvex";
+    case ShapeType::TriangleMesh:
+      return "TriangleMesh";
+    case ShapeType::ScaledTriangleMesh:
+      return "ScaledTriangleMesh";
+    case ShapeType::StaticPlane:
+      return "StaticPlane";
+    // case ShapeType::CustomConcave:
+    //   return "CustomConcave";
+    case ShapeType::Compound:
+      return "Compound";
+  }
+  BLI_assert_unreachable();
+  return "";
+}
+
 bool CollisionShape::supports_motion() const
 {
   return !impl_->as_bullet_shape().isNonMoving();

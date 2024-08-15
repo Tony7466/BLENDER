@@ -523,7 +523,7 @@ class PhysicsViewItem : public DataSetViewItem {
 
   void build_row(uiLayout &row) override
   {
-    uiItemL(&row, label_.c_str(), ICON_CURVE_DATA);
+    uiItemL(&row, label_.c_str(), ICON_PHYSICS);
   }
 };
 

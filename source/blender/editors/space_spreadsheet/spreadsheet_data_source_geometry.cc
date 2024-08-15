@@ -6,6 +6,7 @@
 #include "BLI_virtual_array.hh"
 
 #include "BKE_attribute.hh"
+#include "BKE_collision_shape.hh"
 #include "BKE_compute_contexts.hh"
 #include "BKE_context.hh"
 #include "BKE_curves.hh"
@@ -190,9 +191,13 @@ void GeometryDataSource::foreach_default_column_ids(
   if (component_->type() == bke::GeometryComponent::Type::Instance) {
     fn({(char *)"Name"}, false);
   }
-
   if (component_->type() == bke::GeometryComponent::Type::GreasePencil) {
     fn({(char *)"Name"}, false);
+  }
+  if (component_->type() == bke::GeometryComponent::Type::Physics) {
+    if (domain_ == bke::AttrDomain::Instance) {
+      fn({(char *)"Type"}, false);
+    }
   }
 
   extra_columns_.foreach_default_column_ids(fn);
@@ -309,6 +314,23 @@ std::unique_ptr<ColumnValues> GeometryDataSource::get_column_values(
               *mesh, domain_, column_id.name))
       {
         return values;
+      }
+    }
+  }
+  else if (component_->type() == bke::GeometryComponent::Type::Physics) {
+    if (const bke::PhysicsGeometry *physics =
+            static_cast<const bke::PhysicsComponent &>(*component_).get())
+    {
+      if (domain_ == bke::AttrDomain::Instance && STREQ(column_id.name, "Type")) {
+        const Span<bke::CollisionShapePtr> shapes = physics->shapes();
+        return std::make_unique<ColumnValues>(
+            column_id.name, VArray<std::string>::ForFunc(domain_num, [shapes](int64_t index) {
+              const bke::CollisionShapePtr &shape = shapes[index];
+              if (shape) {
+                return std::string(bke::CollisionShape::type_name(shapes[index]->type()));
+              }
+              return std::string("---");
+            }));
       }
     }
   }
