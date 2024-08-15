@@ -345,7 +345,7 @@ static void eyedropper_grease_pencil_color_sample(bContext *C,
 {
   /* Accumulate color. */
   float3 col;
-  eyedropper_color_sample_fl(C, m_xy, col);
+  eyedropper_color_sample_fl(C, nullptr, m_xy, col);
 
   eye->accum_col += col;
   eye->accum_tot++;
