@@ -1392,8 +1392,8 @@ static int node_default_group_width_set_exec(bContext *C, wmOperator * /*op*/)
 void NODE_OT_default_group_width_set(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Set Default Node Group Width";
-  ot->description = "Set the width based on the parent node group in the current context";
+  ot->name = "Set Default Group Node Width";
+  ot->description = "Set the width based on the parent group node in the current context";
   ot->idname = "NODE_OT_default_group_width_set";
 
   /* api callbacks */
