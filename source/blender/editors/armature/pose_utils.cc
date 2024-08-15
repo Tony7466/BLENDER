@@ -75,7 +75,7 @@ static eAction_TransformFlags get_item_transform_flags(Object &ob,
                                                        bPoseChannel &pchan,
                                                        ListBase &curves)
 {
-  if (!ob.adt->action) {
+  if (!ob.adt || !ob.adt->action) {
     return eAction_TransformFlags(0);
   }
   blender::animrig::Action &action = ob.adt->action->wrap();
