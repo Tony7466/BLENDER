@@ -465,8 +465,6 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
 
   /* Object is deformed with some modifiers. */
   bool deform_modifiers_active = false;
-  /* Coords of un-deformed mesh. */
-  blender::Array<blender::float3> orig_cos;
   /* Coords of deformed mesh but without stroke displacement. */
   blender::Array<blender::float3, 0> deform_cos;
   /* Crazy-space deformation matrices. */
@@ -577,6 +575,10 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
   uchar last_automask_stroke_id = 0;
   std::unique_ptr<SculptTopologyIslandCache> topology_island_cache;
 
+ private:
+  PBVHVertRef active_vert_ = PBVHVertRef{PBVH_REF_NONE};
+
+ public:
   SculptSession();
   ~SculptSession();
 
@@ -603,12 +605,9 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
    *
    * \returns float3 at negative infinity if there is no currently active vertex
    */
-  blender::float3 active_vert_position(const Object &object) const;
+  blender::float3 active_vert_position(const Depsgraph &depsgraph, const Object &object) const;
 
   void set_active_vert(PBVHVertRef vert);
-
- private:
-  PBVHVertRef active_vert_ = PBVHVertRef{PBVH_REF_NONE};
 };
 
 void BKE_sculptsession_free(Object *ob);

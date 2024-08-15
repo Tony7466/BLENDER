@@ -83,9 +83,9 @@ namespace blender::ed::greasepencil {
 
 enum class ReprojectMode : int8_t { Front, Side, Top, View, Cursor, Surface, Keep };
 
-enum class DrawingPlacementDepth { ObjectOrigin, Cursor, Surface, NearestStroke };
+enum class DrawingPlacementDepth : int8_t { ObjectOrigin, Cursor, Surface, NearestStroke };
 
-enum class DrawingPlacementPlane { View, Front, Side, Top, Cursor };
+enum class DrawingPlacementPlane : int8_t { View, Front, Side, Top, Cursor };
 
 class DrawingPlacement {
   const ARegion *region_;
