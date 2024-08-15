@@ -165,10 +165,12 @@ bool VKBuffer::free()
     unmap();
   }
 
-  VKContext &context = *VKContext::get();
-  context.resource_pool_get().discard_buffer(vk_buffer_, allocation_);
+  VKDevice &device = VKBackend::get().device;
+  device.current_thread_data().resource_pool_get().discard_buffer(vk_buffer_, allocation_);
+
   allocation_ = VK_NULL_HANDLE;
   vk_buffer_ = VK_NULL_HANDLE;
+
   return true;
 }
 

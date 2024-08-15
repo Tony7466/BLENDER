@@ -40,8 +40,8 @@ static VkImageAspectFlags to_vk_image_aspect_single_bit(const VkImageAspectFlags
 VKTexture::~VKTexture()
 {
   if (vk_image_ != VK_NULL_HANDLE && allocation_ != VK_NULL_HANDLE) {
-    VKContext &context = *VKContext::get();
-    context.resource_pool_get().discard_image(vk_image_, allocation_);
+    VKDevice &device = VKBackend::get().device;
+    device.current_thread_data().resource_pool_get().discard_image(vk_image_, allocation_);
     vk_image_ = VK_NULL_HANDLE;
     allocation_ = VK_NULL_HANDLE;
   }

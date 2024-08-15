@@ -24,16 +24,12 @@ class VKVertexAttributeObject;
 class VKBatch;
 class VKStateManager;
 class VKShader;
+class VKThreadData;
 
 class VKContext : public Context, NonCopyable {
  private:
-  VKDescriptorPools descriptor_pools_;
-  VKDescriptorSetTracker descriptor_set_;
-
   VkExtent2D vk_extent_ = {};
   VkFormat swap_chain_format_ = {};
-  uint32_t current_swap_chain_index_ = UINT32_MAX;
-  Vector<VKResourcePool> swap_chain_resources;
   GPUTexture *surface_texture_ = nullptr;
   void *ghost_context_;
 
@@ -42,10 +38,12 @@ class VKContext : public Context, NonCopyable {
 
   bool is_init_ = false;
 
+  VKThreadData &thread_data_;
+
  public:
   render_graph::VKRenderGraph &render_graph;
 
-  VKContext(void *ghost_window, void *ghost_context, render_graph::VKRenderGraph &render_graph);
+  VKContext(void *ghost_window, void *ghost_context, VKThreadData &thread_data);
   virtual ~VKContext();
 
   void activate() override;
@@ -101,16 +99,8 @@ class VKContext : public Context, NonCopyable {
     return static_cast<VKContext *>(Context::get());
   }
 
-  VKDescriptorPools &descriptor_pools_get()
-  {
-    return descriptor_pools_;
-  }
-
-  VKDescriptorSetTracker &descriptor_set_get()
-  {
-    return descriptor_set_;
-  }
-
+  VKDescriptorPools &descriptor_pools_get();
+  VKDescriptorSetTracker &descriptor_set_get();
   VKStateManager &state_manager_get() const;
 
   static void swap_buffers_pre_callback(const GHOST_VulkanSwapChainData *data);
@@ -118,9 +108,6 @@ class VKContext : public Context, NonCopyable {
 
   /**
    * Get the active resource pool.
-   *
-   * When a context is has a swap chain the resource pool of the current swap chain is returned.
-   * In case the context doesn't have a swap chain a default resource pool will be returned.
    */
   VKResourcePool &resource_pool_get();
 

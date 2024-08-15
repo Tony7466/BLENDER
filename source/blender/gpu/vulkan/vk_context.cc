@@ -21,10 +21,8 @@
 
 namespace blender::gpu {
 
-VKContext::VKContext(void *ghost_window,
-                     void *ghost_context,
-                     render_graph::VKRenderGraph &render_graph)
-    : render_graph(render_graph)
+VKContext::VKContext(void *ghost_window, void *ghost_context, VKThreadData &thread_data)
+    : thread_data_(thread_data), render_graph(thread_data_.render_graph)
 {
   ghost_window_ = ghost_window;
   ghost_context_ = ghost_context;
@@ -38,8 +36,6 @@ VKContext::VKContext(void *ghost_window,
   active_fb = framebuffer;
 
   compiler = new ShaderCompilerGeneric();
-
-  swap_chain_resources.resize(5);
 }
 
 VKContext::~VKContext()
@@ -58,30 +54,30 @@ VKContext::~VKContext()
 
 VKResourcePool &VKContext::resource_pool_get()
 {
-  if (current_swap_chain_index_ >= swap_chain_resources.size()) {
-    return swap_chain_resources[0];
-  }
-  return swap_chain_resources[current_swap_chain_index_];
+  return thread_data_.resource_pool_get();
 }
 
 void VKContext::sync_backbuffer()
 {
+  VKDevice &device = VKBackend::get().device;
   if (ghost_context_) {
-    VKDevice &device = VKBackend::get().device;
     if (!is_init_) {
       is_init_ = true;
-      descriptor_pools_.init(device);
       device.init_dummy_buffer(*this);
     }
-    descriptor_pools_.reset();
   }
 
   if (ghost_window_) {
     GHOST_VulkanSwapChainData swap_chain_data = {};
     GHOST_GetVulkanSwapChainFormat((GHOST_WindowHandle)ghost_window_, &swap_chain_data);
-
-    current_swap_chain_index_ = swap_chain_data.swap_chain_index;
-    resource_pool_get().destroy_discarded_resources();
+    if (assign_if_different(thread_data_.current_swap_chain_index,
+                            swap_chain_data.swap_chain_index))
+    {
+      thread_data_.current_swap_chain_index = swap_chain_data.swap_chain_index;
+      VKResourcePool &resource_pool = resource_pool_get();
+      resource_pool.destroy_discarded_resources(device);
+      resource_pool.descriptor_pools.reset();
+    }
 
     const bool reset_framebuffer = swap_chain_format_ != swap_chain_data.format ||
                                    vk_extent_.width != swap_chain_data.extent.width ||
@@ -159,6 +155,16 @@ void VKContext::memory_statistics_get(int *r_total_mem_kb, int *r_free_mem_kb)
 /* -------------------------------------------------------------------- */
 /** \name State manager
  * \{ */
+
+VKDescriptorPools &VKContext::descriptor_pools_get()
+{
+  return resource_pool_get().descriptor_pools;
+}
+
+VKDescriptorSetTracker &VKContext::descriptor_set_get()
+{
+  return resource_pool_get().descriptor_set;
+}
 
 VKStateManager &VKContext::state_manager_get() const
 {
@@ -276,8 +282,9 @@ void VKContext::update_pipeline_data(VKShader &vk_shader,
   /* Update descriptor set. */
   r_pipeline_data.vk_descriptor_set = VK_NULL_HANDLE;
   if (vk_shader.has_descriptor_set()) {
-    descriptor_set_.update(*this);
-    r_pipeline_data.vk_descriptor_set = descriptor_set_get().active_descriptor_set()->vk_handle();
+    VKDescriptorSetTracker &descriptor_set = descriptor_set_get();
+    descriptor_set.update(*this);
+    r_pipeline_data.vk_descriptor_set = descriptor_set.active_descriptor_set()->vk_handle();
   }
 }
 

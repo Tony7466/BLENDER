@@ -55,6 +55,35 @@ struct VKWorkarounds {
   } vertex_formats;
 };
 
+/**
+ * Shared resources between contexts that run in the same thread.
+ */
+class VKThreadData : public NonCopyable, NonMovable {
+ public:
+  /** Thread ID this instance belongs to. */
+  pthread_t thread_id;
+  render_graph::VKRenderGraph render_graph;
+  uint32_t current_swap_chain_index = UINT32_MAX;
+  Vector<VKResourcePool> swap_chain_resources;
+
+  VKThreadData(VKDevice &device,
+               pthread_t thread_id,
+               std::unique_ptr<render_graph::VKCommandBufferInterface> command_buffer,
+               render_graph::VKResourceStateTracker &resources);
+  void deinit(VKDevice &device);
+
+  /**
+   * Get the active resource pool.
+   */
+  VKResourcePool &resource_pool_get()
+  {
+    if (current_swap_chain_index >= swap_chain_resources.size()) {
+      return swap_chain_resources[0];
+    }
+    return swap_chain_resources[current_swap_chain_index];
+  }
+};
+
 class VKDevice : public NonCopyable {
  private:
   /** Copies of the handles owned by the GHOST context. */
@@ -101,12 +130,11 @@ class VKDevice : public NonCopyable {
   VKBuffer dummy_buffer_;
 
   std::string glsl_patch_;
-  Vector<render_graph::VKRenderGraph *> render_graphs_;
+  Vector<VKThreadData *> thread_data_;
 
  public:
   render_graph::VKResourceStateTracker resources;
   VKPipelinePool pipelines;
-  VKResourcePool resource_pool;
 
   /**
    * This struct contains the functions pointer to extension provided functions.
@@ -236,9 +264,9 @@ class VKDevice : public NonCopyable {
    * \{ */
 
   /**
-   * Get the render graph associated with the current thread. Create a new one when not existing.
+   * Get or create current thread data.
    */
-  render_graph::VKRenderGraph &render_graph();
+  VKThreadData &current_thread_data();
   void context_register(VKContext &context);
   void context_unregister(VKContext &context);
   Span<std::reference_wrapper<VKContext>> contexts_get() const;

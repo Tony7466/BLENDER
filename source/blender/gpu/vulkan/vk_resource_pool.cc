@@ -12,6 +12,16 @@
 
 namespace blender::gpu {
 
+void VKResourcePool::init(VKDevice &device)
+{
+  descriptor_pools.init(device);
+}
+
+void VKResourcePool::deinit(VKDevice &device)
+{
+  destroy_discarded_resources(device);
+}
+
 void VKResourcePool::discard_image(VkImage vk_image, VmaAllocation vma_allocation)
 {
   discarded_images_.append(std::pair(vk_image, vma_allocation));
@@ -27,9 +37,17 @@ void VKResourcePool::discard_buffer(VkBuffer vk_buffer, VmaAllocation vma_alloca
   discarded_buffers_.append(std::pair(vk_buffer, vma_allocation));
 }
 
-void VKResourcePool::destroy_discarded_resources()
+void VKResourcePool::discard_shader_module(VkShaderModule vk_shader_module)
 {
-  VKDevice &device = VKBackend::get().device;
+  discarded_shader_modules_.append(vk_shader_module);
+}
+void VKResourcePool::discard_pipeline_layout(VkPipelineLayout vk_pipeline_layout)
+{
+  discarded_pipeline_layouts_.append(vk_pipeline_layout);
+}
+
+void VKResourcePool::destroy_discarded_resources(VKDevice &device)
+{
   VK_ALLOCATION_CALLBACKS
 
   while (!discarded_image_views_.is_empty()) {
@@ -49,6 +67,18 @@ void VKResourcePool::destroy_discarded_resources()
     vmaDestroyBuffer(
         device.mem_allocator_get(), buffer_allocation.first, buffer_allocation.second);
   }
+
+  while (!discarded_pipeline_layouts_.is_empty()) {
+    VkPipelineLayout vk_pipeline_layout = discarded_pipeline_layouts_.pop_last();
+    vkDestroyPipelineLayout(device.vk_handle(), vk_pipeline_layout, vk_allocation_callbacks);
+  }
+
+  while (!discarded_shader_modules_.is_empty()) {
+    VkShaderModule vk_shader_module = discarded_shader_modules_.pop_last();
+    vkDestroyShaderModule(device.vk_handle(), vk_shader_module, vk_allocation_callbacks);
+  }
+
+  descriptor_pools.reset();
 }
 
 }  // namespace blender::gpu

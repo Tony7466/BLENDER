@@ -40,17 +40,17 @@ void VKDevice::deinit()
     return;
   }
 
-  {
-    std::scoped_lock mutex(resources.mutex);
-    for (render_graph::VKRenderGraph *render_graph : render_graphs_) {
-      delete render_graph;
-    }
-    render_graphs_.clear();
-  }
-
   dummy_buffer_.free();
   samplers_.free();
-  resource_pool.destroy_discarded_resources();
+
+  {
+    while (!thread_data_.is_empty()) {
+      VKThreadData *thread_data = thread_data_.pop_last();
+      thread_data->deinit(*this);
+      delete thread_data;
+    }
+    thread_data_.clear();
+  }
   pipelines.free_data();
   vkDestroyPipelineCache(vk_device_, vk_pipeline_cache_, vk_allocation_callbacks);
   descriptor_set_layouts_.deinit();
@@ -347,25 +347,53 @@ std::string VKDevice::driver_version() const
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name VKThreadData
+ * \{ */
+
+VKThreadData::VKThreadData(VKDevice &device,
+                           pthread_t thread_id,
+                           std::unique_ptr<render_graph::VKCommandBufferInterface> command_buffer,
+                           render_graph::VKResourceStateTracker &resources)
+    : thread_id(thread_id), render_graph(std::move(command_buffer), resources)
+{
+  swap_chain_resources.resize(5);
+  for (VKResourcePool &resource_pool : swap_chain_resources) {
+    resource_pool.init(device);
+  }
+}
+
+void VKThreadData::deinit(VKDevice &device)
+{
+  for (VKResourcePool &resource_pool : swap_chain_resources) {
+    resource_pool.deinit(device);
+  }
+  swap_chain_resources.clear();
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Resource management
  * \{ */
 
-render_graph::VKRenderGraph &VKDevice::render_graph()
+VKThreadData &VKDevice::current_thread_data()
 {
   std::scoped_lock mutex(resources.mutex);
   pthread_t current_thread_id = pthread_self();
 
-  for (render_graph::VKRenderGraph *render_graph : render_graphs_) {
-    if (pthread_equal(render_graph->thread_id, current_thread_id)) {
-      return *render_graph;
+  for (VKThreadData *thread_data : thread_data_) {
+    if (pthread_equal(thread_data->thread_id, current_thread_id)) {
+      return *thread_data;
     }
   }
 
-  render_graph::VKRenderGraph *render_graph = new render_graph::VKRenderGraph(
-      std::make_unique<render_graph::VKCommandBufferWrapper>(), resources);
-  render_graph->thread_id = current_thread_id;
-  render_graphs_.append(render_graph);
-  return *render_graph;
+  VKThreadData *thread_data = new VKThreadData(
+      *this,
+      current_thread_id,
+      std::make_unique<render_graph::VKCommandBufferWrapper>(),
+      resources);
+  thread_data_.append(thread_data);
+  return *thread_data;
 }
 
 void VKDevice::context_register(VKContext &context)

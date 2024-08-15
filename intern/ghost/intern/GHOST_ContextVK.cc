@@ -813,6 +813,9 @@ GHOST_TSuccess GHOST_ContextVK::createSwapchain()
   if (image_count > capabilities.maxImageCount && capabilities.maxImageCount > 0) {
     image_count = capabilities.maxImageCount;
   }
+  if (capabilities.minImageCount <= 3 && image_count > 3) {
+    image_count = 3;
+  }
 
   VkSwapchainCreateInfoKHR create_info = {};
   create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
