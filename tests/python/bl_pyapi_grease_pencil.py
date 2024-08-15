@@ -128,7 +128,7 @@ class TestGreasePencilDrawing(unittest.TestCase):
         self.assertEqual(len(self.drawing.strokes[4:]), 0)
         self.assertEqual(len(self.drawing.strokes[:0]), 0)
         self.assertEqual(len(self.drawing.strokes[:-4]), 0)
-        
+
         strokes = self.drawing.strokes[1:]
         self.assertEqual(len(strokes), 3)
         self.assertEqual(len(strokes[0].points), 5)
@@ -144,7 +144,7 @@ class TestGreasePencilDrawing(unittest.TestCase):
         strokes = self.drawing.strokes[:1]
         self.assertEqual(len(strokes), 1)
         self.assertEqual(len(strokes[0].points), 3)
-        
+
         strokes = self.drawing.strokes[-1:]
         self.assertEqual(len(strokes), 1)
         self.assertEqual(len(strokes[0].points), 11)
