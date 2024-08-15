@@ -1732,7 +1732,7 @@ static void paint_cursor_preview_boundary_data_update(PaintCursorContext *pconte
   BKE_sculpt_update_object_for_edit(pcontext->depsgraph, pcontext->vc.obact, false);
 
   ss.boundary_preview = boundary::preview_data_init(
-      *pcontext->vc.obact, pcontext->brush, ss.active_vert_ref(), pcontext->radius);
+      *pcontext->vc.obact, pcontext->brush, pcontext->radius);
 }
 
 static void paint_cursor_draw_3d_view_brush_cursor_inactive(PaintCursorContext *pcontext)
@@ -1826,7 +1826,7 @@ static void paint_cursor_draw_3d_view_brush_cursor_inactive(PaintCursorContext *
     cursor_draw_point_screen_space(
         pcontext->pos,
         pcontext->region,
-        SCULPT_vertex_co_get(*pcontext->ss, pcontext->ss->expand_cache->initial_active_vertex),
+        SCULPT_vertex_co_get(active_object, pcontext->ss->expand_cache->initial_active_vertex),
         active_object.object_to_world().ptr(),
         2);
   }

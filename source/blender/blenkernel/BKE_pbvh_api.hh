@@ -181,9 +181,6 @@ class Tree {
   /* Memory backing for Node.prim_indices. */
   Array<int> prim_indices_;
 
-  /* Mesh data. The evaluated deform mesh for mesh sculpting, and the base mesh for grids. */
-  Mesh *mesh_ = nullptr;
-
   /** Local array used when not sculpting base mesh positions directly. */
   Array<float3> vert_positions_deformed_;
   /** Local array used when not sculpting base mesh positions directly. */
@@ -276,7 +273,7 @@ std::unique_ptr<Tree> build_grids(Mesh *mesh, SubdivCCG *subdiv_ccg);
  */
 std::unique_ptr<Tree> build_bmesh(BMesh *bm);
 
-void build_pixels(Tree &pbvh, const Mesh &mesh, Image &image, ImageUser &image_user);
+void build_pixels(Object &object, Image &image, ImageUser &image_user);
 void free(std::unique_ptr<Tree> &pbvh);
 
 /* Hierarchical Search in the BVH, two methods:
@@ -303,6 +300,7 @@ bool raycast_node(Tree &pbvh,
                   Node &node,
                   const float (*origco)[3],
                   bool use_origco,
+                  Span<float3> vert_positions,
                   Span<int> corner_verts,
                   Span<int3> corner_tris,
                   Span<int> corner_tri_faces,
@@ -344,6 +342,7 @@ bool find_nearest_to_ray_node(Tree &pbvh,
                               Node &node,
                               const float (*origco)[3],
                               bool use_origco,
+                              Span<float3> vert_positions,
                               Span<int> corner_verts,
                               Span<int3> corner_tris,
                               Span<int> corner_tri_faces,
@@ -357,7 +356,7 @@ bool find_nearest_to_ray_node(Tree &pbvh,
 void set_frustum_planes(Tree &pbvh, PBVHFrustumPlanes *planes);
 void get_frustum_planes(const Tree &pbvh, PBVHFrustumPlanes *planes);
 
-void draw_cb(const Mesh &mesh,
+void draw_cb(const Object &object_eval,
              Tree &pbvh,
              bool update_only_visible,
              const PBVHFrustumPlanes &update_frustum,
@@ -514,7 +513,9 @@ void store_bounds_orig(Tree &pbvh);
 
 void update_mask(const Object &object, Tree &pbvh);
 void update_visibility(const Object &object, Tree &pbvh);
-void update_normals(Tree &pbvh, SubdivCCG *subdiv_ccg);
+void update_normals(Object &object, Tree &pbvh);
+/** Update geometry normals (potentially on the original object geometry). */
+void update_normals_from_eval(Object &object_eval, Tree &pbvh);
 
 }  // namespace blender::bke::pbvh
 
