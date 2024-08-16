@@ -14,12 +14,12 @@
 #include "BLI_vector.hh"
 
 namespace blender::io::csv {
-enum class CsvColumnType { INT, FLOAT, STRING };
+enum class CsvColumnType { INT, FLOAT };
 
 struct CsvColumn {
   std::string name;
   CsvColumnType type;
-  void *vector;
+  void *vector;  // Use array, GArray
 };
 
 class CsvData {
@@ -30,7 +30,7 @@ class CsvData {
   // CsvData();
 
   void add_column(std::string &name, CsvColumnType &type);
-  void add_data_to_column(std::string &name, void *data);
+  void add_data_to_column(std::string &name, void *data);  // use GMutableSpan
 
  private:
   void *create_vector_for_type(CsvColumnType &type);
