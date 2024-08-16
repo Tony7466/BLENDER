@@ -17,8 +17,14 @@
 namespace blender::memory_cache {
 
 struct StoredValue {
+  /**
+   * The corresponding key. It's stored here, because only a reference to it is used as key in the
+   * hash table.
+   */
   std::unique_ptr<const GenericKey> key;
+  /** The user-provided value. */
   std::shared_ptr<CachedValue> value;
+  /** A logical time that indicates when the value was last used. Lower values are older. */
   int64_t last_use_time = 0;
 };
 
@@ -38,13 +44,23 @@ using ConcurrentMap =
     tbb::concurrent_hash_map<std::reference_wrapper<const GenericKey>, StoredValue, Hasher>;
 
 struct Cache {
-  std::atomic<int64_t> logical_time = 0;
-  std::atomic<int64_t> size_in_bytes = 0;
-  std::atomic<int64_t> approximate_limit = 1024 * 1024 * 1024;
   ConcurrentMap map;
 
+  std::atomic<int64_t> logical_time = 0;
+  std::atomic<int64_t> approximate_limit = 1024 * 1024 * 1024;
+  /**
+   * This is derived from `memory` below, but is atomic for safe access when the global mutex is
+   * not locked.
+   */
+  std::atomic<int64_t> size_in_bytes = 0;
+
   std::mutex global_mutex;
+  /** Amount of memory current used in the cache. */
   MemoryCount memory;
+  /**
+   * Keys currently cached. This is stored separately from the map, because the map does not allow
+   * thread-safe iteration.
+   */
   Vector<const GenericKey *> keys;
 };
 
@@ -123,10 +139,10 @@ std::shared_ptr<CachedValue> get_base(const GenericKey &key,
   return result;
 }
 
-void set_approximate_size_limit(const int64_t capacity)
+void set_approximate_size_limit(const int64_t limit_in_bytes)
 {
   Cache &cache = get_cache();
-  cache.approximate_limit = capacity;
+  cache.approximate_limit = limit_in_bytes;
   try_enforce_limit();
 }
 
@@ -136,9 +152,13 @@ static void try_enforce_limit()
   const int64_t old_size = cache.size_in_bytes.load(std::memory_order_relaxed);
   const int64_t approximate_limit = cache.approximate_limit.load(std::memory_order_relaxed);
   if (old_size < approximate_limit) {
+    /* Nothing to do, the current cache size is still within the right limits. */
     return;
   }
+
   std::lock_guard lock{cache.global_mutex};
+
+  /* Gather all the keys with their latest usage times. */
   Vector<std::pair<int64_t, const GenericKey *>> keys_with_time;
   for (const GenericKey *key : cache.keys) {
     ConcurrentMap::const_accessor accessor;
@@ -147,10 +167,11 @@ static void try_enforce_limit()
     }
     keys_with_time.append({accessor->second.last_use_time, key});
   }
+  /* Sort the items so that the newest keys come first. */
   std::sort(keys_with_time.begin(), keys_with_time.end());
   std::reverse(keys_with_time.begin(), keys_with_time.end());
 
-  /* Count used memory starting at the most recently cached element. Stop at the element when the
+  /* Count used memory starting at the most recently touched element. Stop at the element when the
    * amount became larger than the capacity. */
   cache.memory.reset();
   MemoryCounter memory_counter{cache.memory};
@@ -194,12 +215,16 @@ static void try_enforce_limit()
     const GenericKey &key = *keys_with_time[i].second;
     cache.map.erase(key);
   }
+
+  /* Update keys vector. */
   cache.keys.clear();
   for (const int i : keys_with_time.index_range().take_front(*first_bad_index)) {
     cache.keys.append(keys_with_time[i].second);
   }
 
   if (need_memory_recount) {
+    /* Recount memory another time, because the last count does not accurately represent the actual
+     * value. */
     cache.memory.reset();
     MemoryCounter memory_counter{cache.memory};
     for (const int i : keys_with_time.index_range().take_front(*first_bad_index)) {
