@@ -51,10 +51,28 @@ struct ThumbnailCache {
   //@TODO: add timestamp, when processing order by timestamps (starting from most recent)
   //@TODO: cull/remove requests that are outside of current view (we've navigated elsewhere)
   struct Request {
+    explicit Request(const std::string &path,
+                     int frame,
+                     SequenceType type,
+                     float time_frame,
+                     int ch,
+                     int width,
+                     int height)
+        : file_path(path),
+          frame_index(frame),
+          seq_type(type),
+          timeline_frame(time_frame),
+          channel(ch),
+          full_width(width),
+          full_height(height)
+    {
+    }
     std::string file_path;
     int frame_index = 0;
     SequenceType seq_type = SEQ_TYPE_IMAGE;
 
+    float timeline_frame = 0;
+    int channel = 0;
     int full_width = 0;
     int full_height = 0;
 
@@ -362,6 +380,7 @@ void ThumbGenerationJob::end_fn(void *customdata)
 static ImBuf *query_thumbnail(ThumbnailCache &cache,
                               const std::string &key,
                               int frame_index,
+                              float timeline_frame,
                               const bContext *C,
                               const Sequence *seq)
 {
@@ -397,8 +416,7 @@ static ImBuf *query_thumbnail(ThumbnailCache &cache,
     const StripElem *se = seq->strip->stripdata;
     int img_width = se->orig_width;
     int img_height = se->orig_height;
-    ThumbnailCache::Request request{
-        key, frame_index, SequenceType(seq->type), img_width, img_height};
+    ThumbnailCache::Request request(key, frame_index, SequenceType(seq->type), timeline_frame, seq->machine, img_width, img_height);
     cache.requests_.add(request);
     ThumbGenerationJob::ensure_job(C, &cache);
   }
@@ -426,7 +444,7 @@ ImBuf *thumbnail_cache_get(const bContext *C,
 
   BLI_mutex_lock(&thumb_cache_lock);
   ThumbnailCache *cache = ensure_thumbnail_cache(scene);
-  ImBuf *res = query_thumbnail(*cache, key, frame_index, C, seq);
+  ImBuf *res = query_thumbnail(*cache, key, frame_index, timeline_frame, C, seq);
   BLI_mutex_unlock(&thumb_cache_lock);
 
   if (res) {
@@ -489,5 +507,21 @@ std::string thumbnail_cache_get_stats(Scene *scene)
   BLI_mutex_unlock(&thumb_cache_lock);
   return stats;
 }
+
+void thumbnail_cache_for_each_request(
+    Scene *scene, FunctionRef<void(int index, float timeline_frame, int channel, int frame_index)> callback)
+{
+  BLI_mutex_lock(&thumb_cache_lock);
+  ThumbnailCache *cache = query_thumbnail_cache(scene);
+  if (cache != nullptr) {
+    int index = 0;
+    for (const ThumbnailCache::Request &request : cache->requests_) {
+      callback(index, request.timeline_frame, request.channel, request.frame_index);
+      index++;
+    }
+  }
+  BLI_mutex_unlock(&thumb_cache_lock);
+}
+
 
 }  // namespace blender::seq
