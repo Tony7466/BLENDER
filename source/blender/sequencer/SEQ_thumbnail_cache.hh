@@ -10,6 +10,7 @@
 
 struct bContext;
 struct ImBuf;
+struct rctf;
 struct Sequence;
 struct Scene;
 
@@ -24,6 +25,7 @@ ImBuf *thumbnail_cache_get(const bContext *C,
                            const Sequence *seq,
                            float timeline_frame);
 void thumbnail_cache_invalidate_strip(Scene *scene, const Sequence *seq);
+void thumbnail_cache_discard_requests_outside(Scene *scene, const rctf &rect);
 void thumbnail_cache_clear(Scene *scene);
 void thumbnail_cache_destroy(Scene *scene);
 

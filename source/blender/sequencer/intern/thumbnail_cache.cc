@@ -40,6 +40,7 @@ constexpr int THUMB_SIZE = 256;  //@TODO: use SEQ_RENDER_THUMB_SIZE and/or remov
 
 static ThreadMutex thumb_cache_lock = BLI_MUTEX_INITIALIZER;
 
+//@TODO: cache cleanup when full
 struct ThumbnailCache {
   struct FrameEntry {
     int frame_index = 0;
@@ -49,7 +50,6 @@ struct ThumbnailCache {
   typedef Vector<FrameEntry> Value;
 
   //@TODO: add timestamp, when processing order by timestamps (starting from most recent)
-  //@TODO: cull/remove requests that are outside of current view (we've navigated elsewhere)
   struct Request {
     explicit Request(const std::string &path,
                      int frame,
@@ -180,7 +180,7 @@ static void image_size_to_thumb_size(int &r_width, int &r_height)
 static ImBuf *make_thumb_for_image(Scene *scene, const ThumbnailCache::Request &request)
 {
   //@TODO: IMB_thumb_load_image skips files larger than 100MB if they don't have a dedicated
-  //thumbnail code path. Need to add flags to stop checking that.
+  // thumbnail code path. Need to add flags to stop checking that.
   ImBuf *ibuf = IMB_thumb_load_image(request.file_path.c_str(), THUMB_SIZE, nullptr);
   if (ibuf == nullptr) {
     return nullptr;
@@ -263,7 +263,6 @@ void ThumbGenerationJob::run_fn(void *customdata, wmJobWorkerStatus *worker_stat
   Vector<ThumbnailCache::Request> requests;
   while (!worker_status->stop) {
     /* Copy all current requests (under cache mutex lock). */
-    //@TODO: multi-thread processing via TaskPool or just parallel for (see sequencer_preview.cc)
     BLI_mutex_lock(&thumb_cache_lock);
     requests.clear();
     requests.reserve(job->cache_->requests_.size());
@@ -416,7 +415,13 @@ static ImBuf *query_thumbnail(ThumbnailCache &cache,
     const StripElem *se = seq->strip->stripdata;
     int img_width = se->orig_width;
     int img_height = se->orig_height;
-    ThumbnailCache::Request request(key, frame_index, SequenceType(seq->type), timeline_frame, seq->machine, img_width, img_height);
+    ThumbnailCache::Request request(key,
+                                    frame_index,
+                                    SequenceType(seq->type),
+                                    timeline_frame,
+                                    seq->machine,
+                                    img_width,
+                                    img_height);
     cache.requests_.add(request);
     ThumbGenerationJob::ensure_job(C, &cache);
   }
@@ -459,6 +464,19 @@ void thumbnail_cache_invalidate_strip(Scene *scene, const Sequence *seq)
     return;
   }
   //@TODO implement, and call this when reloading strips
+}
+
+void thumbnail_cache_discard_requests_outside(Scene *scene, const rctf &rect)
+{
+  BLI_mutex_lock(&thumb_cache_lock);
+  ThumbnailCache *cache = query_thumbnail_cache(scene);
+  if (cache != nullptr) {
+    cache->requests_.remove_if([&](const ThumbnailCache::Request &request) {
+      return request.timeline_frame < rect.xmin || request.timeline_frame > rect.xmax ||
+             request.channel < rect.ymin || request.channel > rect.ymax;
+    });
+  }
+  BLI_mutex_unlock(&thumb_cache_lock);
 }
 
 void thumbnail_cache_clear(Scene *scene)
@@ -509,7 +527,8 @@ std::string thumbnail_cache_get_stats(Scene *scene)
 }
 
 void thumbnail_cache_for_each_request(
-    Scene *scene, FunctionRef<void(int index, float timeline_frame, int channel, int frame_index)> callback)
+    Scene *scene,
+    FunctionRef<void(int index, float timeline_frame, int channel, int frame_index)> callback)
 {
   BLI_mutex_lock(&thumb_cache_lock);
   ThumbnailCache *cache = query_thumbnail_cache(scene);
@@ -522,6 +541,5 @@ void thumbnail_cache_for_each_request(
   }
   BLI_mutex_unlock(&thumb_cache_lock);
 }
-
 
 }  // namespace blender::seq
