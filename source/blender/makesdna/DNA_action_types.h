@@ -1237,7 +1237,11 @@ typedef struct ActionChannelBag {
   int32_t slot_handle;
 
   /* Channel groups. These index into the `fcurve_array` below to specify group
-   * membership of the fcurves
+   * membership of the fcurves.
+   *
+   * Note that although the fcurves also have pointers back to the groups they
+   * belong to, those pointers are not the source of truth. The source of truth
+   * for membership is the information in the channel groups here.
    *
    * Invariant: the grouped fcurves are tightly packed, starting at the first
    * fcurve and having no gaps of ungrouped fcurves between them. Ungrouped
