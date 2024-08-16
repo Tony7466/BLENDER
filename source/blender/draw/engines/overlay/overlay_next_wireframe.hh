@@ -20,7 +20,6 @@ class Wireframe {
   struct ColoringPass {
     /* TODO(fclem): Not yet implemented. */
     // PassMain::Sub *curves_ps_ = nullptr;
-    PassMain::Sub *pointcloud_ps_ = nullptr;
     PassMain::Sub *gpencil_ps_ = nullptr;
     PassMain::Sub *mesh_ps_ = nullptr;
     /* Variant for meshes that force drawing all edges. */
@@ -51,6 +50,7 @@ class Wireframe {
       pass.init();
       pass.state_set(DRW_STATE_FIRST_VERTEX_CONVENTION | DRW_STATE_WRITE_COLOR |
                      DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL | state.clipping_state);
+      res.select_bind(pass);
 
       auto shader_pass =
           [&](GPUShader *shader, const char *name, bool use_coloring, float wire_threshold) {
@@ -74,7 +74,16 @@ class Wireframe {
       };
 
       coloring_pass(non_colored, false);
-      coloring_pass(colored, false);
+      coloring_pass(colored, true);
+    }
+    {
+      auto &pass = point_ps_;
+      pass.init();
+      pass.state_set(DRW_STATE_FIRST_VERTEX_CONVENTION | DRW_STATE_WRITE_COLOR |
+                     DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL | state.clipping_state);
+      pass.shader_set(res.shaders.wireframe_points.get());
+      pass.bind_ubo("globalsBlock", &res.globals_buf);
+      res.select_bind(pass);
     }
   }
 
@@ -116,6 +125,8 @@ class Wireframe {
 #endif
         break;
       case OB_POINTCLOUD:
+        geom = DRW_pointcloud_batch_cache_get_dots(ob_ref.object);
+        point_ps_.draw(geom, res_handle, res.select_id(ob_ref).get());
         break;
       case OB_VOLUME:
         break;

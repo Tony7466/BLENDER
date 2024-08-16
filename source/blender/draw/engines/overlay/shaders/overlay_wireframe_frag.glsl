@@ -3,17 +3,34 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
+#pragma BLENDER_REQUIRE(select_lib.glsl)
 
 void main()
 {
+#ifndef POINTS
   /* Needed only because of wireframe slider.
    * If we could get rid of it would be nice because of performance drain of discard. */
   if (edgeStart.r == -1.0) {
     discard;
     return;
   }
+#endif
 
-#ifndef SELECT_EDGES
+  lineOutput = vec4(0.0);
+
+#if defined(POINTS)
+  vec2 centered = abs(gl_PointCoord - vec2(0.5));
+  float dist = max(centered.x, centered.y);
+
+  float fac = dist * dist * 4.0;
+  /* Create a small gradient so that dense objects have a small fresnel effect. */
+  /* Non linear blend. */
+  vec4 col1 = sqrt(finalColorInner);
+  vec4 col2 = sqrt(finalColor);
+  fragColor = mix(col1, col2, 0.45 + fac * 0.65);
+  fragColor *= fragColor;
+
+#elif !defined(SELECT_EDGES)
   lineOutput = pack_line_data(gl_FragCoord.xy, edgeStart, edgePos);
   fragColor = finalColor;
 
@@ -37,12 +54,16 @@ void main()
 
   float delta = abs(depth_occluder - depth_min);
 
+#    ifndef SELECT_ENABLE
   if (gl_FragCoord.z < (depth_occluder + delta) && gl_FragCoord.z > depth_occluder) {
     gl_FragDepth = depth_occluder;
   }
   else {
     gl_FragDepth = gl_FragCoord.z;
   }
+#    endif
 #  endif
 #endif
+
+  select_id_output(select_id);
 }
