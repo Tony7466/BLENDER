@@ -39,7 +39,8 @@ class Images {
   View view_reference_images = {"view_reference_images"};
   float view_dist = 0.0f;
 
-  const float4x4 *viewinv;
+  float3 camera_forward;
+  float3 camera_up;
 
  public:
   class PassSource {
@@ -54,19 +55,23 @@ class Images {
                               const float4x4 &mat) const
     {
       if (in_front) {
-        return Images::create_subpass(*images.viewinv, mat, images.empties_front_ps_);
+        return Images::create_subpass(
+            images.camera_forward, images.camera_up, mat, images.empties_front_ps_);
       }
       const char depth_mode = DRW_state_is_depth() ? char(OB_EMPTY_IMAGE_DEPTH_DEFAULT) :
                                                      ob.empty_image_depth;
       switch (depth_mode) {
         case OB_EMPTY_IMAGE_DEPTH_BACK:
-          return Images::create_subpass(*images.viewinv, mat, images.empties_back_ps_);
+          return Images::create_subpass(
+              images.camera_forward, images.camera_up, mat, images.empties_back_ps_);
         case OB_EMPTY_IMAGE_DEPTH_FRONT:
-          return Images::create_subpass(*images.viewinv, mat, images.empties_front_ps_);
+          return Images::create_subpass(
+              images.camera_forward, images.camera_up, mat, images.empties_front_ps_);
         case OB_EMPTY_IMAGE_DEPTH_DEFAULT:
         default:
           return use_alpha_blend ?
-                     Images::create_subpass(*images.viewinv, mat, images.empties_blend_ps_) :
+                     Images::create_subpass(
+                         images.camera_forward, images.camera_up, mat, images.empties_blend_ps_) :
                      images.empties_ps_;
       }
     }
@@ -85,7 +90,8 @@ class Images {
   void begin_sync(Resources &res, const State &state, const View &view)
   {
     view_dist = state.view_dist_get(view.winmat());
-    viewinv = &view.viewinv();
+    camera_forward = view.viewinv()[3].xyz();
+    camera_up = view.viewinv()[2].xyz();
 
     auto init_pass = [&](PassMain &pass, DRWState draw_state) {
       pass.init();
@@ -300,12 +306,13 @@ class Images {
   }
 
  private:
-  static PassMain::Sub &create_subpass(const float4x4 &viewinv,
+  static PassMain::Sub &create_subpass(const float3 &camera_forward,
+                                       const float3 &camera_up,
                                        const float4x4 &mat,
                                        PassSortable &parent)
   {
-    const float3 tmp = viewinv[3].xyz() - mat[3].xyz();
-    const float z = -math::dot(viewinv[2].xyz(), tmp);
+    const float3 tmp = camera_forward - mat[3].xyz();
+    const float z = -math::dot(camera_up, tmp);
     return parent.sub("Sub", z);
   };
 
