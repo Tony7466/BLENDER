@@ -16,7 +16,6 @@
 #include "BLI_endian_defines.h"
 #include "BLI_endian_switch.h"
 #include "BLI_math_matrix_types.hh"
-#include "BLI_memory_cache.hh"
 #include "BLI_path_util.h"
 
 #include "DNA_material_types.h"
@@ -200,41 +199,16 @@ std::shared_ptr<io::serialize::DictionaryValue> BlobWriteSharing::write_deduplic
   return slice.serialize();
 }
 
-class BlobSliceKey : public GenericKey {
- public:
-  std::string key;
-
-  uint64_t hash() const override
-  {
-    return get_default_hash(this->key);
-  }
-
-  BLI_STRUCT_EQUALITY_OPERATORS_1(BlobSliceKey, key)
-
-  bool equal_to(const GenericKey &other) const override
-  {
-    if (const auto *other_typed = dynamic_cast<const BlobSliceKey *>(&other)) {
-      return *this == *other_typed;
-    }
-    return false;
-  }
-
-  std::unique_ptr<GenericKey> to_storable() const override
-  {
-    return std::make_unique<BlobSliceKey>(*this);
-  }
-};
-
 std::optional<ImplicitSharingInfoAndData> BlobReadSharing::read_shared(
     const DictionaryValue &io_data,
     FunctionRef<std::optional<ImplicitSharingInfoAndData>()> read_fn) const
 {
+  std::lock_guard lock{mutex_};
+
   io::serialize::JsonFormatter formatter;
   std::stringstream ss;
   formatter.serialize(ss, io_data);
   const std::string key = ss.str();
-
-  std::lock_guard lock{mutex_};
 
   if (const ImplicitSharingInfoAndData *shared_data = runtime_by_stored_.lookup_ptr(key)) {
     shared_data->sharing_info->add_user();

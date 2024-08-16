@@ -26,6 +26,8 @@ void MemoryCounter::add_shared(const ImplicitSharingInfo *sharing_info,
     return;
   }
   sharing_info->add_weak_user();
+  /* Count into the `this` for now. In the future we could pass in a separate #MemoryCounter here
+   * if we needed to know the amount of memory used by each shared data. */
   count_fn(*this);
 }
 
