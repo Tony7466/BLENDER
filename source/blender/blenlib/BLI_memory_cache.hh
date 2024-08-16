@@ -18,13 +18,12 @@
 namespace blender::memory_cache {
 
 using memory_counter::MemoryBySharedData;
-using memory_counter::OwnedMemory;
 
 class MemoryCache {
  private:
   struct Value {
     std::unique_ptr<GenericKey> key;
-    OwnedMemory memory;
+    // OwnedMemory memory;
     int64_t last_use = 0;
     std::function<void()> free_fn;
   };
@@ -51,8 +50,8 @@ class MemoryCache {
  private:
   void free_if_necessary();
 
-  void add_memory_of(const OwnedMemory &memory);
-  void subtract_memory_of(const OwnedMemory &memory);
+  void add_memory_of(const memory_counter::SharedDataInfo &memory);
+  void subtract_memory_of(const memory_counter::SharedDataInfo &memory);
 };
 
 MemoryCache &global_cache();

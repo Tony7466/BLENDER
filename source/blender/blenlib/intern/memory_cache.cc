@@ -29,15 +29,14 @@ void MemoryCache::add(std::unique_ptr<GenericKey> key,
   const GenericKey &key_ref = *key;
   BLI_assert(!cache_.contains(key_ref));
 
-  OwnedMemory owned_memory;
-  MemoryCounter memory_counter{owned_memory, memory_by_shared_data_};
+  MemoryCounter memory_counter{memory_by_shared_data_, nullptr};
   count_memory_fn(memory_counter);
 
-  this->add_memory_of(owned_memory);
+  this->add_memory_of(memory_by_shared_data_.map.lookup(nullptr));
 
   Value value;
   value.key = std::move(key);
-  value.memory = std::move(owned_memory);
+  // value.memory = std::move(owned_memory);
   value.last_use = ++logical_time_;
   value.free_fn = std::move(free_fn);
 
@@ -50,7 +49,7 @@ void MemoryCache::remove(const GenericKey &key)
 {
   std::lock_guard lock{mutex_};
   const Value value = cache_.pop(key);
-  this->subtract_memory_of(value.memory);
+  // this->subtract_memory_of(value.memory);
 }
 
 void MemoryCache::touch(const GenericKey &key)
@@ -71,18 +70,18 @@ void MemoryCache::free_if_necessary()
   while (current_bytes_ > capacity_in_bytes_) {
     const GenericKey &key = *time_with_keys[index++].second;
     const Value value = cache_.pop(key);
-    this->subtract_memory_of(value.memory);
+    // this->subtract_memory_of(value.memory);
     value.free_fn();
   }
 }
 
-void MemoryCache::add_memory_of(const OwnedMemory &memory)
+void MemoryCache::add_memory_of(const memory_counter::SharedDataInfo &memory)
 {
   /* TODO: Handle shared memory. */
   current_bytes_ += memory.uniquely_owned_bytes;
 }
 
-void MemoryCache::subtract_memory_of(const OwnedMemory &memory)
+void MemoryCache::subtract_memory_of(const memory_counter::SharedDataInfo &memory)
 {
   /* TODO: Handle shared memory. */
   current_bytes_ -= memory.uniquely_owned_bytes;

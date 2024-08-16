@@ -17,6 +17,7 @@
 #include "BLI_array.hh"
 #include "BLI_listbase.h"
 #include "BLI_math_vector_types.hh"
+#include "BLI_memory_counter.hh"
 #include "BLI_multi_value_map.hh"
 #include "BLI_path_util.h"
 #include "BLI_set.hh"
@@ -1077,6 +1078,26 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
         break;
       }
     }
+
+    // memory_counter::OwnedMemory memory;
+    // memory_counter::MemoryBySharedData shared_memory;
+    // MemoryCounter memory_counter{memory, shared_memory};
+    // Vector<int> bake_ids;
+    // bake_ids.extend(modifier_cache_->simulation_cache_by_id.keys().begin(),
+    //                 modifier_cache_->simulation_cache_by_id.keys().end());
+    // bake_ids.extend(modifier_cache_->bake_cache_by_id.keys().begin(),
+    //                 modifier_cache_->bake_cache_by_id.keys().end());
+    // for (const int id : bake_ids) {
+    //   if (const bake::NodeBakeCache *node_cache = modifier_cache_->get_node_bake_cache(id)) {
+    //     for (const std::unique_ptr<bake::FrameCache> &frame : node_cache->frames) {
+    //       if (frame) {
+    //         frame->state.count_memory(memory_counter);
+    //       }
+    //     }
+    //   }
+    // }
+
+    // std::cout << memory_counter.counted_bytes() << "\n";
   }
 
   void reset_invalid_node_bakes()

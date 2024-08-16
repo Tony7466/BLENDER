@@ -118,6 +118,7 @@ set(SRC
   intern/math_vector.c
   intern/math_vector_inline.c
   intern/memory_cache.cc
+  intern/memory_cache2.cc
   intern/memory_counter.cc
   intern/memory_utils.c
   intern/mesh_boolean.cc
