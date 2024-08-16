@@ -50,6 +50,7 @@ class PhysicsWorldData;
 struct PhysicsGeometryImpl : public ImplicitSharingMixin {
   using BodyAttribute = PhysicsGeometry::BodyAttribute;
   using ConstraintAttribute = PhysicsGeometry::ConstraintAttribute;
+  using ConstraintType = PhysicsGeometry::ConstraintType;
 
   using OverlapFilterFn = std::function<bool(const int a, const int b)>;
 
@@ -402,35 +403,35 @@ inline bke::PhysicsGeometry::BodyActivationState activation_state_to_blender(int
   }
 }
 
-inline btTypedConstraintType to_bullet(bke::PhysicsGeometry::ConstraintType type)
-{
-  using ConstraintType = bke::PhysicsGeometry::ConstraintType;
-  switch (type) {
-    case ConstraintType::None:
-      return FIXED_CONSTRAINT_TYPE;
-    case ConstraintType::Fixed:
-      return FIXED_CONSTRAINT_TYPE;
-    case ConstraintType::Point:
-      return POINT2POINT_CONSTRAINT_TYPE;
-    case ConstraintType::Hinge:
-      return HINGE_CONSTRAINT_TYPE;
-    case ConstraintType::Slider:
-      return SLIDER_CONSTRAINT_TYPE;
-    case ConstraintType::ConeTwist:
-      return CONETWIST_CONSTRAINT_TYPE;
-    case ConstraintType::SixDoF:
-      return D6_CONSTRAINT_TYPE;
-    case ConstraintType::SixDoFSpring:
-      return D6_SPRING_CONSTRAINT_TYPE;
-    case ConstraintType::SixDoFSpring2:
-      return D6_SPRING_2_CONSTRAINT_TYPE;
-    case ConstraintType::Contact:
-      return CONTACT_CONSTRAINT_TYPE;
-    case ConstraintType::Gear:
-      return GEAR_CONSTRAINT_TYPE;
-  }
-  return FIXED_CONSTRAINT_TYPE;
-}
+// inline btTypedConstraintType to_bullet(bke::PhysicsGeometry::ConstraintType type)
+// {
+//   using ConstraintType = bke::PhysicsGeometry::ConstraintType;
+//   switch (type) {
+//     case ConstraintType::None:
+//       return FIXED_CONSTRAINT_TYPE;
+//     case ConstraintType::Fixed:
+//       return FIXED_CONSTRAINT_TYPE;
+//     case ConstraintType::Point:
+//       return POINT2POINT_CONSTRAINT_TYPE;
+//     case ConstraintType::Hinge:
+//       return HINGE_CONSTRAINT_TYPE;
+//     case ConstraintType::Slider:
+//       return SLIDER_CONSTRAINT_TYPE;
+//     case ConstraintType::ConeTwist:
+//       return CONETWIST_CONSTRAINT_TYPE;
+//     case ConstraintType::SixDoF:
+//       return D6_CONSTRAINT_TYPE;
+//     case ConstraintType::SixDoFSpring:
+//       return D6_SPRING_CONSTRAINT_TYPE;
+//     case ConstraintType::SixDoFSpring2:
+//       return D6_SPRING_2_CONSTRAINT_TYPE;
+//     case ConstraintType::Contact:
+//       return CONTACT_CONSTRAINT_TYPE;
+//     case ConstraintType::Gear:
+//       return GEAR_CONSTRAINT_TYPE;
+//   }
+//   return FIXED_CONSTRAINT_TYPE;
+// }
 
 // inline bke::PhysicsGeometry::ConstraintType to_blender(btTypedConstraintType type)
 //{

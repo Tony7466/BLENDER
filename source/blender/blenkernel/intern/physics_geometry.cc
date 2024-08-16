@@ -194,6 +194,40 @@ static void create_bodies(MutableSpan<btRigidBody *> rigid_bodies,
   return create_bodies(rigid_bodies, motion_states, rigid_bodies.index_range());
 }
 
+static bool validate_bullet_constraint_type(const PhysicsGeometry::ConstraintType type,
+                                            const btTypedConstraint *constraint)
+{
+  using ConstraintType = PhysicsGeometry::ConstraintType;
+
+  switch (type) {
+    case ConstraintType::None:
+      return constraint == nullptr;
+    case ConstraintType::Fixed:
+      return dynamic_cast<const btFixedConstraint *>(constraint) != nullptr;
+    case ConstraintType::Point:
+      return dynamic_cast<const btPoint2PointConstraint *>(constraint) != nullptr;
+    case ConstraintType::Hinge:
+      return dynamic_cast<const btHinge2Constraint *>(constraint) != nullptr;
+    case ConstraintType::Slider:
+      return dynamic_cast<const btSliderConstraint *>(constraint) != nullptr;
+    case ConstraintType::ConeTwist:
+      return dynamic_cast<const btConeTwistConstraint *>(constraint) != nullptr;
+    case ConstraintType::SixDoF:
+      return dynamic_cast<const btGeneric6DofConstraint *>(constraint) != nullptr;
+    case ConstraintType::SixDoFSpring:
+      return dynamic_cast<const btGeneric6DofSpringConstraint *>(constraint) != nullptr;
+    case ConstraintType::SixDoFSpring2:
+      return dynamic_cast<const btGeneric6DofSpring2Constraint *>(constraint) != nullptr;
+    case ConstraintType::Contact:
+      /* Can't be created manually. */
+      return constraint == nullptr;
+    case ConstraintType::Gear:
+      return dynamic_cast<const btGearConstraint *>(constraint) != nullptr;
+  }
+  BLI_assert_unreachable();
+  return false;
+}
+
 static btTypedConstraint *make_bullet_constraint_type(const PhysicsGeometry::ConstraintType type,
                                                       btRigidBody &body1,
                                                       btRigidBody &body2)
@@ -1602,100 +1636,136 @@ bool PhysicsGeometryImpl::validate_world_data()
 {
   bool ok = true;
 
-  if (world_data != nullptr) {
-    this->ensure_motion_type();
-    this->world_data->ensure_body_indices();
-    this->world_data->ensure_constraint_indices();
-    this->world_data->ensure_bodies_in_world();
+  if (world_data == nullptr) {
+    return ok;
+  }
 
-    AttributeAccessor cached_attributes = custom_data_attributes();
-    const Span<btRigidBody *> rigid_bodies = this->world_data->bodies();
-    const Span<btTypedConstraint *> constraints = this->world_data->constraints();
-    const btCollisionObjectArray &bt_collision_objects =
-        this->world_data->world().getCollisionObjectArray();
+  this->ensure_motion_type();
+  this->world_data->ensure_body_indices();
+  this->world_data->ensure_constraint_indices();
+  this->world_data->ensure_bodies_in_world();
 
-    for (const int i : rigid_bodies.index_range()) {
-      const btRigidBody *body = rigid_bodies[i];
+  AttributeAccessor cached_attributes = custom_data_attributes();
+  const Span<btRigidBody *> rigid_bodies = this->world_data->bodies();
+  const Span<btTypedConstraint *> constraints = this->world_data->constraints();
+  const btCollisionObjectArray &bt_collision_objects =
+      this->world_data->world().getCollisionObjectArray();
 
-      /* Bodies should always be allocated. */
-      if (body == nullptr) {
-        BLI_assert_unreachable();
-        ok = false;
-      }
-      if (get_body_index(*body) != i) {
-        BLI_assert_unreachable();
-        ok = false;
-      }
-      /* All bodies must be in the world, except if they don't have a collision shape. */
-      if (body->getCollisionShape() != nullptr &&
-          (!body->isInWorld() || bt_collision_objects.findLinearSearch(const_cast<btRigidBody *>(
-                                     body)) >= bt_collision_objects.size()))
-      {
-        BLI_assert_unreachable();
-        ok = false;
-      }
+  for (const int i : rigid_bodies.index_range()) {
+    const btRigidBody *body = rigid_bodies[i];
 
-      /* Bodies with a non-moving collision shape must be static and zero-mass. */
-      if (body->getCollisionShape() != nullptr && body->getCollisionShape()->isNonMoving()) {
-        if (!body->isStaticObject() || body->getMass() != 0.0f) {
-          BLI_assert_unreachable();
-          ok = false;
-        }
-      }
-      /* Static bodies must have zero mass. */
-      if (body->isStaticObject()) {
-        if (body->getMass() != 0.0f) {
-          BLI_assert_unreachable();
-          ok = false;
-        }
-      }
-      /* Zero mass bodies must be static. */
-      if (body->getMass() == 0.0f) {
-        if (!body->isStaticObject()) {
-          BLI_assert_unreachable();
-          ok = false;
-        }
-      }
-    }
-    for (const int i : constraints.index_range()) {
-      /* Null pointer is allowed for constraints. */
-      if (constraints[i] == nullptr) {
-        continue;
-      }
-      if (get_constraint_index(*constraints[i]) != i) {
-        BLI_assert_unreachable();
-        ok = false;
-      }
-    }
-
-    const VArray<int> cached_body_shapes = *cached_attributes.lookup<int>(
-        physics_attribute_name(BodyAttribute::collision_shape), AttrDomain::Point);
-    const IndexRange shape_range = this->shapes.index_range();
-    if (rigid_bodies.size() != cached_body_shapes.size()) {
+    /* Bodies should always be allocated. */
+    if (body == nullptr) {
       BLI_assert_unreachable();
       ok = false;
     }
-    for (const int i : cached_body_shapes.index_range()) {
-      /* Internal shape pointers must match the body shape index attribute. */
-      const int shape_index = cached_body_shapes[i];
-      if (shape_range.contains(shape_index)) {
-        /* Shape pointer must match indicated shape. */
-        const CollisionShapePtr shape_ptr = this->shapes[shape_index];
-        const btCollisionShape *bt_indicated_shape = shape_ptr ?
-                                                         &shape_ptr->impl().as_bullet_shape() :
-                                                         nullptr;
-        const btCollisionShape *bt_shape = rigid_bodies[i]->getCollisionShape();
-        if (bt_shape != bt_indicated_shape) {
-          BLI_assert_unreachable();
-          ok = false;
-        }
+    if (get_body_index(*body) != i) {
+      BLI_assert_unreachable();
+      ok = false;
+    }
+    /* All bodies must be in the world, except if they don't have a collision shape. */
+    if (body->getCollisionShape() != nullptr &&
+        (!body->isInWorld() || bt_collision_objects.findLinearSearch(const_cast<btRigidBody *>(
+                                   body)) >= bt_collision_objects.size()))
+    {
+      BLI_assert_unreachable();
+      ok = false;
+    }
+
+    /* Bodies with a non-moving collision shape must be static and zero-mass. */
+    if (body->getCollisionShape() != nullptr && body->getCollisionShape()->isNonMoving()) {
+      if (!body->isStaticObject() || body->getMass() != 0.0f) {
+        BLI_assert_unreachable();
+        ok = false;
       }
-      else {
-        const btCollisionShape *bt_shape = rigid_bodies[i]->getCollisionShape();
-        if (bt_shape != nullptr) {
-          BLI_assert_unreachable();
-          ok = false;
-        }
+    }
+    /* Static bodies must have zero mass. */
+    if (body->isStaticObject()) {
+      if (body->getMass() != 0.0f) {
+        BLI_assert_unreachable();
+        ok = false;
+      }
+    }
+    /* Zero mass bodies must be static. */
+    if (body->getMass() == 0.0f) {
+      if (!body->isStaticObject()) {
+        BLI_assert_unreachable();
+        ok = false;
+      }
+    }
+  }
+
+  const VArray<int> cached_constraint_types = *cached_attributes.lookup<int>(
+      physics_attribute_name(ConstraintAttribute::constraint_type), AttrDomain::Edge);
+  const VArray<int> cached_constraint_body1 = *cached_attributes.lookup<int>(
+      physics_attribute_name(ConstraintAttribute::constraint_body1), AttrDomain::Edge);
+  const VArray<int> cached_constraint_body2 = *cached_attributes.lookup<int>(
+      physics_attribute_name(ConstraintAttribute::constraint_body2), AttrDomain::Edge);
+  for (const int i : constraints.index_range()) {
+    const btTypedConstraint *constraint = constraints[i];
+
+    /* Constraint class should match the type enum. */
+    if (!validate_bullet_constraint_type(
+            PhysicsGeometry::ConstraintType(cached_constraint_types[i]), constraint))
+    {
+      BLI_assert_unreachable();
+      ok = false;
+    }
+    /* Null pointer is allowed for constraints. */
+    if (constraint == nullptr) {
+      continue;
+    }
+
+    const int cached_body1 = cached_constraint_body1[i];
+    const int cached_body2 = cached_constraint_body2[i];
+    const btRigidBody *bt_body1_expected = (rigid_bodies.index_range().contains(cached_body1) ?
+                                                rigid_bodies[cached_body1] :
+                                                &btTypedConstraint::getFixedBody());
+    const btRigidBody *bt_body2_expected = (rigid_bodies.index_range().contains(cached_body2) ?
+                                                rigid_bodies[cached_body2] :
+                                                &btTypedConstraint::getFixedBody());
+    if (&constraint->getRigidBodyA() != bt_body1_expected) {
+      BLI_assert_unreachable();
+      ok = false;
+    }
+    if (&constraint->getRigidBodyB() != bt_body2_expected) {
+      BLI_assert_unreachable();
+      ok = false;
+    }
+
+    if (get_constraint_index(*constraint) != i) {
+      BLI_assert_unreachable();
+      ok = false;
+    }
+  }
+
+  const VArray<int> cached_body_shapes = *cached_attributes.lookup<int>(
+      physics_attribute_name(BodyAttribute::collision_shape), AttrDomain::Point);
+  const IndexRange shape_range = this->shapes.index_range();
+  if (rigid_bodies.size() != cached_body_shapes.size()) {
+    BLI_assert_unreachable();
+    ok = false;
+  }
+  for (const int i : cached_body_shapes.index_range()) {
+    /* Internal shape pointers must match the body shape index attribute. */
+    const int shape_index = cached_body_shapes[i];
+    if (shape_range.contains(shape_index)) {
+      /* Shape pointer must match indicated shape. */
+      const CollisionShapePtr shape_ptr = this->shapes[shape_index];
+      const btCollisionShape *bt_indicated_shape = shape_ptr ?
+                                                       &shape_ptr->impl().as_bullet_shape() :
+                                                       nullptr;
+      const btCollisionShape *bt_shape = rigid_bodies[i]->getCollisionShape();
+      if (bt_shape != bt_indicated_shape) {
+        BLI_assert_unreachable();
+        ok = false;
+      }
+    }
+    else {
+      const btCollisionShape *bt_shape = rigid_bodies[i]->getCollisionShape();
+      if (bt_shape != nullptr) {
+        BLI_assert_unreachable();
+        ok = false;
       }
     }
   }
