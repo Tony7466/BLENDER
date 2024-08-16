@@ -22,16 +22,30 @@ class Images {
   using ImageInstanceBuf = ShapeInstanceBuf<ExtraInstanceData>;
 
  private:
-  PassMain background_scene_ps_ = {"background_scene_ps_"};
-  PassMain foreground_scene_ps_ = {"foreground_scene_ps_"};
-
+  /* Camera background images with "Depth" switched to "Back".
+   * Shown in camera view behind all objects. */
   PassMain background_ps_ = {"background_ps_"};
+  /* Camera background images with "Depth" switched to "Front".
+   * Shown in camera view in front of all objects. */
   PassMain foreground_ps_ = {"foreground_ps_"};
 
+  /* Same as `background_ps_` with "View as Render" checked. */
+  PassMain background_scene_ps_ = {"background_scene_ps_"};
+  /* Same as `foreground_ps_` with "View as Render" checked. */
+  PassMain foreground_scene_ps_ = {"foreground_scene_ps_"};
+
+  /* Images added by Image > Background. Both added in preset view (like Top, Front, ..) and in
+   * custom view. Object property "In Front" unchecked. */
   PassSortable empties_back_ps_ = {"empties_back_ps_"};
+  /* All Empty images from cases of `empties_ps_`, `empties_blend_ps_`, `empties_back_ps_`
+   * with object property "In Front" checked. */
   PassSortable empties_front_ps_ = {"empties_front_ps_"};
 
+  /* Images added by Empty > Image and Image > Reference with unchecked image "Opacity".
+   * Object property "In Front" unchecked. */
   PassMain empties_ps_ = {"empties_ps_"};
+  /* Images added by Empty > Image and Image > Reference with image "Opacity" checked.
+   * Object property "In Front" unchecked. */
   PassSortable empties_blend_ps_ = {"empties_blend_ps_"};
 
   Vector<MovieClip *> bg_movie_clips;
