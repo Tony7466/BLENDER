@@ -231,6 +231,30 @@ TEST(imbuf_scaling, nearest_2x_smaller_fl4)
   IMB_freeImBuf(res);
 }
 
+TEST(imbuf_scaling, nearest_to_1x1_fl3)
+{
+  ImBuf *res = scale_to_1x1(true, false, 3);
+  const float3 *got = reinterpret_cast<float3 *>(res->float_buffer.data);
+  EXPECT_V3_NEAR(got[0], float3(0, 0.125f, 0.25f), EPS);
+  IMB_freeImBuf(res);
+}
+
+TEST(imbuf_scaling, threaded_to_1x1_fl3)
+{
+  ImBuf *res = scale_to_1x1(false, true, 3);
+  const float3 *got = reinterpret_cast<float3 *>(res->float_buffer.data);
+  EXPECT_V3_NEAR(got[0], float3(0, 0.125f, 0.25f), EPS);
+  IMB_freeImBuf(res);
+}
+
+TEST(imbuf_scaling, bilinear_to_1x1_fl3)
+{
+  ImBuf *res = scale_to_1x1(false, false, 3);
+  const float3 *got = reinterpret_cast<float3 *>(res->float_buffer.data);
+  EXPECT_V3_NEAR(got[0], float3(2.45269f, 2.76539f, 2.49159f), EPS);
+  IMB_freeImBuf(res);
+}
+
 TEST(imbuf_scaling, bilinear_2x_smaller_fl3)
 {
   ImBuf *res = scale_2x_smaller(false, false, 3);

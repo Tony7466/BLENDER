@@ -60,6 +60,19 @@ static void imb_scale_via_transform(ImBuf *&src,
   src = dst;
 }
 
+static void imb_xform_nearest(ImBuf *&src, int width, int height)
+{
+  imb_scale_via_transform(src, width, height, IMB_FILTER_NEAREST);
+}
+static void imb_xform_bilinear(ImBuf *&src, int width, int height)
+{
+  imb_scale_via_transform(src, width, height, IMB_FILTER_BILINEAR);
+}
+static void imb_xform_box(ImBuf *&src, int width, int height)
+{
+  imb_scale_via_transform(src, width, height, IMB_FILTER_BOX);
+}
+
 static void scale_nearest(bool use_float)
 {
   ImBuf *img = create_src_image(use_float);
@@ -77,9 +90,9 @@ static void xform_nearest(bool use_float)
   ImBuf *img = create_src_image(use_float);
   {
     SCOPED_TIMER("xform_nearest");
-    imb_scale_via_transform(img, DST_LARGER_X, DST_LARGER_Y, IMB_FILTER_NEAREST);
-    imb_scale_via_transform(img, SRC_X, SRC_Y, IMB_FILTER_NEAREST);
-    imb_scale_via_transform(img, DST_SMALLER_X, DST_SMALLER_Y, IMB_FILTER_NEAREST);
+    imb_xform_nearest(img, DST_LARGER_X, DST_LARGER_Y);
+    imb_xform_nearest(img, SRC_X, SRC_Y);
+    imb_xform_nearest(img, DST_SMALLER_X, DST_SMALLER_Y);
   }
   IMB_freeImBuf(img);
 }
@@ -89,9 +102,9 @@ static void xform_boxfilt(bool use_float)
   ImBuf *img = create_src_image(use_float);
   {
     SCOPED_TIMER("xform_boxfilt");
-    imb_scale_via_transform(img, DST_LARGER_X, DST_LARGER_Y, IMB_FILTER_BOX);
-    imb_scale_via_transform(img, SRC_X, SRC_Y, IMB_FILTER_BOX);
-    imb_scale_via_transform(img, DST_SMALLER_X, DST_SMALLER_Y, IMB_FILTER_BOX);
+    imb_xform_box(img, DST_LARGER_X, DST_LARGER_Y);
+    imb_xform_box(img, SRC_X, SRC_Y);
+    imb_xform_box(img, DST_SMALLER_X, DST_SMALLER_Y);
   }
   IMB_freeImBuf(img);
 }
@@ -125,9 +138,9 @@ static void xform_bilinear(bool use_float)
   ImBuf *img = create_src_image(use_float);
   {
     SCOPED_TIMER("xform_bilinear");
-    imb_scale_via_transform(img, DST_LARGER_X, DST_LARGER_Y, IMB_FILTER_BILINEAR);
-    imb_scale_via_transform(img, SRC_X, SRC_Y, IMB_FILTER_BILINEAR);
-    imb_scale_via_transform(img, DST_SMALLER_X, DST_SMALLER_Y, IMB_FILTER_BILINEAR);
+    imb_xform_bilinear(img, DST_LARGER_X, DST_LARGER_Y);
+    imb_xform_bilinear(img, SRC_X, SRC_Y);
+    imb_xform_bilinear(img, DST_SMALLER_X, DST_SMALLER_Y);
   }
   IMB_freeImBuf(img);
 }
