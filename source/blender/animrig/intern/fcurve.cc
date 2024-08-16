@@ -419,7 +419,7 @@ SingleKeyingResult insert_vert_fcurve(FCurve *fcu,
     if (remap_cyclic_keyframe_location(fcu, &remapped_position.x, &remapped_position.y) !=
         FCU_CYCLE_PERFECT)
     {
-      /* Inhibit action from insert_vert_fcurve unless it's a perfect cycle. */
+      /* Inhibit action from insert_bezt_fcurve unless it's a perfect cycle. */
       flag &= ~INSERTKEY_CYCLE_AWARE;
     }
   }
