@@ -2402,15 +2402,16 @@ static void execute_realize_physics_task(const RealizeInstancesOptions & /*optio
 
   if (write_shapes) {
     const Span<bke::CollisionShapePtr> src_shapes = physics.shapes();
+    const IndexRange src_shapes_range = src_shapes.index_range();
     MutableSpan<bke::CollisionShapePtr> dst_shapes = all_dst_shapes.slice(dst_shape_range);
     dst_shapes.copy_from(src_shapes);
 
     const VArray<int> src_body_shapes = physics_info.body_shapes;
     MutableSpan<int> dst_body_shapes = all_dst_body_shapes.slice(dst_body_range);
     for (const int i : src_body_shapes.index_range()) {
-      dst_body_shapes[i] = (src_shapes.index_range().contains(src_body_shapes[i]) ?
-                                dst_shape_range[src_body_shapes[i]] :
-                                -1);
+      const int src_index = src_body_shapes[i];
+      dst_body_shapes[i] = (src_shapes_range.contains(src_index) ? dst_shape_range[src_index] :
+                                                                   -1);
     }
   }
 
@@ -2453,6 +2454,7 @@ static void execute_realize_physics_task(const RealizeInstancesOptions & /*optio
   }
 
   if (write_constraints) {
+    const IndexRange src_body_range = physics.constraints_range();
     const VArray<int> src_constraint_body1 = physics_info.constraint_bodies1;
     const VArray<int> src_constraint_body2 = physics_info.constraint_bodies2;
 
@@ -2461,12 +2463,16 @@ static void execute_realize_physics_task(const RealizeInstancesOptions & /*optio
 
     threading::parallel_for(src_constraint_body1.index_range(), 1024, [&](const IndexRange range) {
       for (const int i : range) {
-        dst_constraint_body1[i] = dst_body_range[src_constraint_body1[i]];
+        const int src_index = src_constraint_body1[i];
+        dst_constraint_body1[i] = (src_body_range.contains(src_index) ? dst_body_range[src_index] :
+                                                                        -1);
       }
     });
     threading::parallel_for(src_constraint_body2.index_range(), 1024, [&](const IndexRange range) {
       for (const int i : range) {
-        dst_constraint_body2[i] = dst_body_range[src_constraint_body2[i]];
+        const int src_index = src_constraint_body2[i];
+        dst_constraint_body2[i] = (src_body_range.contains(src_index) ? dst_body_range[src_index] :
+                                                                        -1);
       }
     });
   }

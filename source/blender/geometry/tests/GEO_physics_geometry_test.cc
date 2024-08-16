@@ -554,9 +554,9 @@ TEST_F(PhysicsGeometryTest, join_geometry)
   {
     AttributeWriter<int> body_shapes = geo3->body_shapes_for_write();
     AttributeWriter<float> masses = geo3->body_masses_for_write();
-    AttributeWriter<int> constraint_types = geo1->constraint_types_for_write();
-    AttributeWriter<int> constraint_body1 = geo1->constraint_body1_for_write();
-    AttributeWriter<int> constraint_body2 = geo1->constraint_body2_for_write();
+    AttributeWriter<int> constraint_types = geo3->constraint_types_for_write();
+    AttributeWriter<int> constraint_body1 = geo3->constraint_body1_for_write();
+    AttributeWriter<int> constraint_body2 = geo3->constraint_body2_for_write();
     body_shapes.varray.set_all({0, 100});
     masses.varray.set_all({3, 33});
     constraint_types.varray.set_all({int(ConstraintType::Fixed)});

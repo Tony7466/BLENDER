@@ -901,6 +901,12 @@ void PhysicsGeometryImpl::ensure_read_cache() const
   const static StringRef is_static_id = PhysicsGeometry::body_attribute_name(
       BodyAttribute::is_static);
   const static StringRef mass_id = PhysicsGeometry::body_attribute_name(BodyAttribute::mass);
+  const static StringRef constraint_type_id = PhysicsGeometry::constraint_attribute_name(
+      ConstraintAttribute::constraint_type);
+  const static StringRef constraint_body1_id = PhysicsGeometry::constraint_attribute_name(
+      ConstraintAttribute::constraint_body1);
+  const static StringRef constraint_body2_id = PhysicsGeometry::constraint_attribute_name(
+      ConstraintAttribute::constraint_body2);
   const static StringRef disable_collision_id = PhysicsGeometry::constraint_attribute_name(
       ConstraintAttribute::disable_collision);
 
@@ -932,8 +938,13 @@ void PhysicsGeometryImpl::ensure_read_cache() const
     /* Read from world data and ignore the cache.
      * Important! This also prevents deadlock caused by re-entering this function. */
     const AttributeAccessor src_attributes = this->world_data_attributes();
-    Set<std::string> skip_attributes = {
-        collision_shape_id, is_static_id, mass_id, disable_collision_id};
+    Set<std::string> skip_attributes = {collision_shape_id,
+                                        is_static_id,
+                                        mass_id,
+                                        constraint_type_id,
+                                        constraint_body1_id,
+                                        constraint_body2_id,
+                                        disable_collision_id};
     /* Only use builtin attributes, dynamic attributes are already in custom data. */
     src_attributes.for_all(
         [&](const AttributeIDRef &id, const AttributeMetaData & /*meta_data*/) -> bool {
@@ -2139,8 +2150,12 @@ VArray<int> PhysicsGeometry::constraint_types() const
 
 AttributeWriter<int> PhysicsGeometry::constraint_types_for_write()
 {
-  return attributes_for_write().lookup_for_write<int>(
-      constraint_attribute_name(ConstraintAttribute::constraint_type));
+  const VArray<int> default_varray = VArray<int>::ForSingle(
+      int(PhysicsGeometry::ConstraintType::None), this->constraints_num());
+  return attributes_for_write().lookup_or_add_for_write<int>(
+      constraint_attribute_name(ConstraintAttribute::constraint_type),
+      AttrDomain::Edge,
+      AttributeInitVArray(default_varray));
 }
 
 VArray<int> PhysicsGeometry::constraint_body1() const
@@ -2152,8 +2167,11 @@ VArray<int> PhysicsGeometry::constraint_body1() const
 
 AttributeWriter<int> PhysicsGeometry::constraint_body1_for_write()
 {
-  return attributes_for_write().lookup_for_write<int>(
-      constraint_attribute_name(ConstraintAttribute::constraint_body1));
+  const VArray<int> default_varray = VArray<int>::ForSingle(-1, this->constraints_num());
+  return attributes_for_write().lookup_or_add_for_write<int>(
+      constraint_attribute_name(ConstraintAttribute::constraint_body1),
+      AttrDomain::Edge,
+      AttributeInitVArray(default_varray));
 }
 
 VArray<int> PhysicsGeometry::constraint_body2() const
@@ -2165,8 +2183,11 @@ VArray<int> PhysicsGeometry::constraint_body2() const
 
 AttributeWriter<int> PhysicsGeometry::constraint_body2_for_write()
 {
-  return attributes_for_write().lookup_for_write<int>(
-      constraint_attribute_name(ConstraintAttribute::constraint_body2));
+  const VArray<int> default_varray = VArray<int>::ForSingle(-1, this->constraints_num());
+  return attributes_for_write().lookup_or_add_for_write<int>(
+      constraint_attribute_name(ConstraintAttribute::constraint_body2),
+      AttrDomain::Edge,
+      AttributeInitVArray(default_varray));
 }
 
 VArray<float4x4> PhysicsGeometry::constraint_frame1() const
