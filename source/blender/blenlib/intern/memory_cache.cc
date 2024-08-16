@@ -40,6 +40,7 @@ using ConcurrentMap =
 struct Cache {
   std::atomic<int64_t> logical_time = 0;
   std::atomic<int64_t> size_in_bytes = 0;
+  std::atomic<int64_t> approximate_limit = 1024 * 1024 * 1024;
   ConcurrentMap map;
 
   std::mutex global_mutex;
@@ -53,6 +54,8 @@ static Cache &get_cache()
   return cache;
 }
 
+static void try_enforce_limit();
+
 std::shared_ptr<CachedValue> get_base(const GenericKey &key,
                                       const FunctionRef<std::unique_ptr<CachedValue>()> compute_fn)
 {
@@ -64,9 +67,7 @@ std::shared_ptr<CachedValue> get_base(const GenericKey &key,
 
     if (newly_inserted) {
       accessor->second.key = key.to_storable();
-      threading::isolate_task([&]() {
-        accessor->second.value = compute_fn();
-      });
+      threading::isolate_task([&]() { accessor->second.value = compute_fn(); });
       /* Modifying the key should be fine because the new key is equal to the original key. */
       const_cast<std::reference_wrapper<const GenericKey> &>(accessor->first) = std::ref(
           *accessor->second.key);
@@ -84,14 +85,23 @@ std::shared_ptr<CachedValue> get_base(const GenericKey &key,
     accessor->second.last_use_time = cache.logical_time.fetch_add(1, std::memory_order_relaxed);
     result = accessor->second.value;
   }
-  free_to_fit(int64_t(4) * 1024 * 1024 * 1024);
+  try_enforce_limit();
   return result;
 }
 
-void free_to_fit(const int64_t capacity)
+void set_approximate_size_limit(const int64_t capacity)
 {
   Cache &cache = get_cache();
-  if (cache.size_in_bytes < capacity) {
+  cache.approximate_limit = capacity;
+  try_enforce_limit();
+}
+
+static void try_enforce_limit()
+{
+  Cache &cache = get_cache();
+  const int64_t old_size = cache.size_in_bytes.load(std::memory_order_relaxed);
+  const int64_t approximate_limit = cache.approximate_limit.load(std::memory_order_relaxed);
+  if (old_size < approximate_limit) {
     return;
   }
   std::lock_guard lock{cache.global_mutex};
@@ -118,7 +128,10 @@ void free_to_fit(const int64_t capacity)
       continue;
     }
     accessor->second.value->count_memory(memory_counter);
-    if (cache.memory.total_bytes <= capacity) {
+    /* Undershoot a little bit. This typically results in more things being freed that have not
+     * been used in a while. The benefit is that we have to do the decision what to free less
+     * often than if we were always just freeing the minimum amount necessary. */
+    if (cache.memory.total_bytes <= approximate_limit * 0.75) {
       continue;
     }
     first_bad_index = i;
@@ -132,7 +145,7 @@ void free_to_fit(const int64_t capacity)
    * The alternative would be to subtract the last item from the counted memory again, but that is
    * not implemented yet. */
   bool need_memory_recount = false;
-  if (cache.memory.total_bytes < capacity * 1.25) {
+  if (cache.memory.total_bytes < approximate_limit * 1.1) {
     *first_bad_index += 1;
     if (*first_bad_index == keys_with_time.size()) {
       return;
@@ -164,6 +177,7 @@ void free_to_fit(const int64_t capacity)
       accessor->second.value->count_memory(memory_counter);
     }
   }
+  cache.size_in_bytes = cache.memory.total_bytes;
 }
 
 }  // namespace blender::memory_cache

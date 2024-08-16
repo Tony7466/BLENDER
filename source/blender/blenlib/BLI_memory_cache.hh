@@ -27,6 +27,6 @@ inline std::shared_ptr<const T> get(const GenericKey &key,
   return std::static_pointer_cast<const T>(get_base(key, compute_fn));
 }
 
-void free_to_fit(int64_t capacity);
+void set_approximate_size_limit(int64_t capacity);
 
 }  // namespace blender::memory_cache
