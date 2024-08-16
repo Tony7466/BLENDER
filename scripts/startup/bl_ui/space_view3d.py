@@ -6156,15 +6156,12 @@ class VIEW3D_MT_edit_greasepencil_stroke(Menu):
 
         layout.operator("grease_pencil.set_uniform_thickness")
         layout.operator("grease_pencil.set_uniform_opacity")
+        layout.prop(settings, "use_scale_thickness", text="Scale Thickness")
 
         layout.separator()
 
         layout.operator_menu_enum("grease_pencil.set_curve_type", property="type")
         layout.operator("grease_pencil.set_curve_resolution")
-
-        layout.separator()
-
-        layout.prop(settings, "use_scale_thickness", text="Scale Thickness")
 
 
 class VIEW3D_MT_edit_greasepencil_point(Menu):
