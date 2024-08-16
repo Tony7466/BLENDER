@@ -56,49 +56,69 @@ static Cache &get_cache()
 
 static void try_enforce_limit();
 
+static void set_new_logical_time(const StoredValue &stored_value, const int64_t new_time)
+{
+  /* Don't want to use `std::atomic` directory in the struct, because that makes it
+   * non-movable. Could also use a non-const accessor, but that may degrade performance more.
+   * It's not necessary for correctness that the time is exactly the right value. */
+  reinterpret_cast<std::atomic<int64_t> *>(const_cast<int64_t *>(&stored_value.last_use_time))
+      ->store(new_time, std::memory_order_relaxed);
+}
+
 std::shared_ptr<CachedValue> get_base(const GenericKey &key,
                                       const FunctionRef<std::unique_ptr<CachedValue>()> compute_fn)
 {
   Cache &cache = get_cache();
-  std::shared_ptr<CachedValue> result;
+  /* "Touch" the cached value so that we know that it is still used. This makes it less likely that
+   * it removed. */
+  const int64_t new_time = cache.logical_time.fetch_add(1, std::memory_order_relaxed);
+  {
+    /* Fast path when the value is already cached. */
+    ConcurrentMap::const_accessor accessor;
+    if (cache.map.find(accessor, std::ref(key))) {
+      set_new_logical_time(accessor->second, new_time);
+      return accessor->second.value;
+    }
+  }
+
+  /* Compute value while no locks are held to avoid potential for dead-locks. Not using a lock also
+   * means that the value may be computed more than once, but that's still better than locking all
+   * the time. It may be possible to implement something smarter in the future. */
+  std::shared_ptr<CachedValue> result = compute_fn();
+  /* Result should be valid. Use exception to propagate error if necessary. */
+  BLI_assert(result);
+
   {
     ConcurrentMap::accessor accessor;
     const bool newly_inserted = cache.map.insert(accessor, std::ref(key));
-
-    if (newly_inserted) {
-      accessor->second.key = key.to_storable();
-      std::exception_ptr exception;
-      threading::isolate_task([&]() {
-        try {
-          accessor->second.value = compute_fn();
-        }
-        catch (...) {
-          exception = std::current_exception();
-        }
-      });
-      if (exception) {
-        /* There was an error while computing the value. */
-        cache.map.erase(accessor);
-        std::rethrow_exception(exception);
-      }
-
-      /* Modifying the key should be fine because the new key is equal to the original key. */
-      const_cast<std::reference_wrapper<const GenericKey> &>(accessor->first) = std::ref(
-          *accessor->second.key);
-
-      {
-        std::lock_guard lock{cache.global_mutex};
-        memory_counter::MemoryCounter memory_counter{cache.memory};
-        accessor->second.value->count_memory(memory_counter);
-        cache.keys.append(&accessor->first.get());
-        cache.size_in_bytes = cache.memory.total_bytes;
-      }
+    if (!newly_inserted) {
+      /* The value is available already. The we unfortunately computed the value unnecessarily.
+       * Use the value created by the other thread instead. */
+      return accessor->second.value;
     }
+    /* We want to store the key in the map, but the reference we got passed in may go out of scope.
+     * So make a storable copy of it that we use in the map. */
+    accessor->second.key = key.to_storable();
+    /* Modifying the key should be fine because the new key is equal to the original key. */
+    const_cast<std::reference_wrapper<const GenericKey> &>(accessor->first) = std::ref(
+        *accessor->second.key);
 
-    /* Update time this was last used, so that it is not freed. */
-    accessor->second.last_use_time = cache.logical_time.fetch_add(1, std::memory_order_relaxed);
-    result = accessor->second.value;
+    /* Store the value. Don't move, because we still want to return the value from the function. */
+    accessor->second.value = result;
+    /* Set initial logical time for the new cached entry. */
+    set_new_logical_time(accessor->second, new_time);
+
+    {
+      /* Update global data of the cache. */
+      std::lock_guard lock{cache.global_mutex};
+      memory_counter::MemoryCounter memory_counter{cache.memory};
+      accessor->second.value->count_memory(memory_counter);
+      cache.keys.append(&accessor->first.get());
+      cache.size_in_bytes = cache.memory.total_bytes;
+    }
   }
+  /* Potentially free elements from the cache. Note, even if this would free the value we just
+   * added, it would still work correctly, because we already have a shared_ptr to it. */
   try_enforce_limit();
   return result;
 }
