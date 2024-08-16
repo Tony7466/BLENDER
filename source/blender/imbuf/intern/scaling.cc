@@ -8,6 +8,7 @@
 
 #include <cmath>
 
+#include "BLI_task.hh"
 #include "BLI_utildefines.h"
 #include "MEM_guardedalloc.h"
 
@@ -1148,118 +1149,58 @@ bool IMB_scalefastImBuf(ImBuf *ibuf, uint newx, uint newy)
   return true;
 }
 
-/* ******** threaded scaling ******** */
-
-struct ScaleTreadInitData {
-  ImBuf *ibuf;
-
-  uint newx;
-  uint newy;
-
-  uchar *byte_buffer;
-  float *float_buffer;
-};
-
-struct ScaleThreadData {
-  ImBuf *ibuf;
-
-  uint newx;
-  uint newy;
-
-  int start_line;
-  int tot_line;
-
-  uchar *byte_buffer;
-  float *float_buffer;
-};
-
-static void scale_thread_init(void *data_v, int start_line, int tot_line, void *init_data_v)
-{
-  ScaleThreadData *data = (ScaleThreadData *)data_v;
-  ScaleTreadInitData *init_data = (ScaleTreadInitData *)init_data_v;
-
-  data->ibuf = init_data->ibuf;
-
-  data->newx = init_data->newx;
-  data->newy = init_data->newy;
-
-  data->start_line = start_line;
-  data->tot_line = tot_line;
-
-  data->byte_buffer = init_data->byte_buffer;
-  data->float_buffer = init_data->float_buffer;
-}
-
-static void *do_scale_thread(void *data_v)
-{
-  using namespace blender::imbuf;
-  ScaleThreadData *data = (ScaleThreadData *)data_v;
-  ImBuf *ibuf = data->ibuf;
-  int i;
-  float factor_x = float(ibuf->x) / data->newx;
-  float factor_y = float(ibuf->y) / data->newy;
-
-  for (i = 0; i < data->tot_line; i++) {
-    int y = data->start_line + i;
-    int x;
-
-    for (x = 0; x < data->newx; x++) {
-      float u = float(x + 0.5f) * factor_x - 0.5f;
-      float v = float(y + 0.5f) * factor_y - 0.5f;
-      int offset = y * data->newx + x;
-
-      if (data->byte_buffer) {
-        interpolate_bilinear_byte(ibuf, data->byte_buffer + 4 * offset, u, v);
-      }
-
-      if (data->float_buffer) {
-        float *pixel = data->float_buffer + ibuf->channels * offset;
-        blender::math::interpolate_bilinear_fl(
-            ibuf->float_buffer.data, pixel, ibuf->x, ibuf->y, ibuf->channels, u, v);
-      }
-    }
-  }
-
-  return nullptr;
-}
-
 void IMB_scaleImBuf_threaded(ImBuf *ibuf, uint newx, uint newy)
 {
+  using namespace blender;
+  using namespace blender::imbuf;
   BLI_assert_msg(newx > 0 && newy > 0, "Images must be at least 1 on both dimensions!");
 
-  ScaleTreadInitData init_data = {nullptr};
-
-  /* prepare initialization data */
-  init_data.ibuf = ibuf;
-
-  init_data.newx = newx;
-  init_data.newy = newy;
-
+  /* Create destination buffers. */
+  uchar *dst_byte_buffer = nullptr;
   if (ibuf->byte_buffer.data) {
-    init_data.byte_buffer = static_cast<uchar *>(
-        MEM_mallocN(4 * newx * newy * sizeof(char), "threaded scale byte buffer"));
+    dst_byte_buffer = static_cast<uchar *>(
+        MEM_mallocN(sizeof(uchar) * 4 * newx * newy, "threaded scale byte buffer"));
   }
-
+  float *dst_float_buffer = nullptr;
   if (ibuf->float_buffer.data) {
-    init_data.float_buffer = static_cast<float *>(
-        MEM_mallocN(ibuf->channels * newx * newy * sizeof(float), "threaded scale float buffer"));
+    dst_float_buffer = static_cast<float *>(
+        MEM_mallocN(sizeof(float) * ibuf->channels * newx * newy, "threaded scale float buffer"));
   }
 
-  /* actual scaling threads */
-  IMB_processor_apply_threaded(
-      newy, sizeof(ScaleThreadData), &init_data, scale_thread_init, do_scale_thread);
+  /* Threaded processing. */
+  threading::parallel_for(IndexRange(newy), 32, [&](IndexRange y_range) {
+    float factor_x = float(ibuf->x) / newx;
+    float factor_y = float(ibuf->y) / newy;
 
-  /* alter image buffer */
+    for (const int y : y_range) {
+      float v = (float(y) + 0.5f) * factor_y - 0.5f;
+      for (int x = 0; x < newx; x++) {
+        float u = (float(x) + 0.5f) * factor_x - 0.5f;
+        int64_t offset = int64_t(y) * newx + x;
+
+        if (dst_byte_buffer) {
+          interpolate_bilinear_byte(ibuf, dst_byte_buffer + 4 * offset, u, v);
+        }
+
+        if (dst_float_buffer) {
+          float *pixel = dst_float_buffer + ibuf->channels * offset;
+          blender::math::interpolate_bilinear_fl(
+              ibuf->float_buffer.data, pixel, ibuf->x, ibuf->y, ibuf->channels, u, v);
+        }
+      }
+    }
+  });
+
+  /* Alter the image. */
   ibuf->x = newx;
   ibuf->y = newy;
 
   if (ibuf->byte_buffer.data) {
     imb_freerectImBuf(ibuf);
-    IMB_assign_byte_buffer(ibuf, init_data.byte_buffer, IB_TAKE_OWNERSHIP);
+    IMB_assign_byte_buffer(ibuf, dst_byte_buffer, IB_TAKE_OWNERSHIP);
   }
-
   if (ibuf->float_buffer.data) {
     imb_freerectfloatImBuf(ibuf);
-    IMB_assign_float_buffer(ibuf, init_data.float_buffer, IB_TAKE_OWNERSHIP);
+    IMB_assign_float_buffer(ibuf, dst_float_buffer, IB_TAKE_OWNERSHIP);
   }
 }
