@@ -858,34 +858,39 @@ class ChannelBag : public ::ActionChannelBag {
   void channel_group_remove_raw(int channel_group_index);
 
   /**
-   * Recompute all channel groups' fcurve indices so that there are no gaps of
-   * ungrouped fcurves between the groups.
+   * Move channel groups' fcurve spans so that there are no gaps between them,
+   * and to start at the first fcurve.
    *
-   * This alters neither the order of the channel groups in the channel group
-   * array nor the number of fcurves in each group. It simply changes the start
-   * indices of each group so that the groups come exactly after each other,
-   * with no gaps or overlap in their fcurves.  It also ensures that the first
-   * group starts at the first fcurve.
+   * This does *not* alter the order of the channel groups nor the number of
+   * fcurves in each group. It simply changes the start indices of each group so
+   * that the groups are packed together at the start of the fcurves.
    *
-   * For example, if the mapping of the groups to fcurves looks like this, where
-   * the dots are ungrouped fcurves and the `g0` etc. are the positions of the
-   * groups over the fcurves:
+   * For example, if the mapping of groups to fcurves looks like this (g* are
+   * the groups, dots indicate ungrouped areas, and f* are the fcurves, so e.g.
+   * f1 and f2 are part of group g0):
    *
    * ```
-   * ...|g0|g1|..|g3|.|g4|
+   *  ..| g0  |..|g1|.....| g2  |..
+   * |f0|f1|f2|f3|f4|f5|f6|f7|f8|f9|
    * ```
    *
    * Then after calling this function they will look like this:
    *
    * ```
-   * |g0|g1|g3|g4|......
+   * | g0  |g1| g2  |..............
+   * |f0|f1|f2|f3|f4|f5|f6|f7|f8|f9|
    * ```
    *
    * Note that this specifically does *not* move the fcurves, and therefore this
    * alters fcurve membership in a way that depends on how the groups are
-   * shifted.  It also does not update the group pointers inside the fcurves, so
+   * shifted. It also does not update the group pointers inside the fcurves, so
    * `update_fcurve_channel_group_pointers()` must be called at some point after
    * this to fix those up.
+   *
+   * This upholds critical invariants and should be called any time gaps might
+   * be introduced (changing the fcurve span of or removing a group).
+   *
+   * \see `update_fcurve_channel_group_pointers()`
    */
   void collapse_channel_group_gaps();
 
@@ -895,6 +900,11 @@ class ChannelBag : public ::ActionChannelBag {
    * The indices in the channel groups are considered the source of truth, and
    * the pointers in the fcurves are simply updated to match those.  Fcurves
    * that don't belong to a group will have their group pointer set to null.
+   *
+   * This upholds critical invariants and should always be called after
+   * modifications to either the array of fcurves (changing the array position
+   * of, adding, or removing fcurves) or to the array of groups (changing the
+   * fcurve span of, removing, or adding groups).
    */
   void update_fcurve_channel_group_pointers();
 };
