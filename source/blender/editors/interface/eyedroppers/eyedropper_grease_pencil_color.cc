@@ -86,7 +86,7 @@ static void eyedropper_grease_pencil_status_indicators(bContext *C,
   const bool is_ctrl = (event->modifier & KM_CTRL) != 0;
   const bool is_shift = (event->modifier & KM_SHIFT) != 0;
 
-  EyedropperGreasePencil *eye = (EyedropperGreasePencil *)op->customdata;
+  EyedropperGreasePencil *eye = static_cast<EyedropperGreasePencil *>(op->customdata);
 
   MaterialMode mat_mode = eye->mat_mode;
   if (is_ctrl && !is_shift) {
@@ -366,7 +366,7 @@ static void eyedropper_grease_pencil_cancel(bContext *C, wmOperator *op)
 static int eyedropper_grease_pencil_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
   eyedropper_grease_pencil_status_indicators(C, op, event);
-  EyedropperGreasePencil *eye = (EyedropperGreasePencil *)op->customdata;
+  EyedropperGreasePencil *eye = static_cast<EyedropperGreasePencil *>(op->customdata);
 
   /* Handle modal keymap */
   switch (event->type) {
