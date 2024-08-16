@@ -1643,15 +1643,14 @@ void BKE_sculptsession_bm_to_me(Object *ob, bool reorder)
   }
 }
 
-static void sculptsession_free_pbvh(Object *object)
+void BKE_sculptsession_free_pbvh(SculptSession *ss)
 {
-  using namespace blender;
-  SculptSession *ss = object->sculpt;
   if (!ss) {
     return;
   }
+  printf("SCULPTSESSION_FREE_PBVH\n");
 
-  bke::pbvh::free(ss->pbvh);
+  blender::bke::pbvh::free(ss->pbvh);
   ss->vert_to_face_map = {};
   ss->edge_to_face_offsets = {};
   ss->edge_to_face_indices = {};
@@ -1664,6 +1663,8 @@ static void sculptsession_free_pbvh(Object *object)
 
   ss->vertex_info.boundary.clear_and_shrink();
   ss->fake_neighbors.fake_neighbor_index = {};
+
+  ss->clear_active_vert();
 }
 
 void BKE_sculptsession_bm_to_me_for_render(Object *object)
@@ -1700,7 +1701,7 @@ void BKE_sculptsession_free(Object *ob)
       BM_mesh_free(ss->bm);
     }
 
-    sculptsession_free_pbvh(ob);
+    BKE_sculptsession_free_pbvh(ss);
 
     MEM_delete(ss);
 
@@ -1924,6 +1925,7 @@ static void sculpt_update_object(Depsgraph *depsgraph,
                                  Object *ob_eval,
                                  bool is_paint_tool)
 {
+  printf("SCULPT_UPDATE_OBJECT\n");
   Scene *scene = DEG_get_input_scene(depsgraph);
   Sculpt *sd = scene->toolsettings->sculpt;
   SculptSession &ss = *ob->sculpt;
@@ -2121,7 +2123,7 @@ void BKE_sculpt_update_object_before_eval(Object *ob_eval)
       /* We free pbvh on changes, except in the middle of drawing a stroke
        * since it can't deal with changing PVBH node organization, we hope
        * topology does not change in the meantime .. weak. */
-      sculptsession_free_pbvh(ob_eval);
+      BKE_sculptsession_free_pbvh(ss);
 
       BKE_sculptsession_free_deformMats(ob_eval->sculpt);
 
