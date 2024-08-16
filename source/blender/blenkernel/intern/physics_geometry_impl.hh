@@ -200,6 +200,7 @@ class PhysicsWorldData : NonCopyable, NonMovable {
   mutable CacheMutex body_index_cache_;
   mutable CacheMutex constraint_index_cache_;
   mutable CacheMutex bodies_in_world_cache_;
+  mutable CacheMutex constraints_in_world_cache_;
 
  public:
   PhysicsWorldData();
@@ -219,10 +220,10 @@ class PhysicsWorldData : NonCopyable, NonMovable {
             int dst_constraint_offset);
 
   void tag_bodies_in_world() const;
+  void tag_constraints_in_world() const;
 
-  void ensure_body_indices() const;
-  void ensure_constraint_indices() const;
-  void ensure_bodies_in_world();
+  void ensure_body_and_constraint_indices() const;
+  void ensure_bodies_and_constraints_in_world();
 
   /* Compute the indices of body collision shape pointers in the span. */
   void compute_body_shape_indices(Span<CollisionShapePtr> shapes,

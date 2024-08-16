@@ -834,6 +834,53 @@ TEST_F(PhysicsGeometryTest, motion_type_attribute_dependencies)
   }
 }
 
+TEST_F(PhysicsGeometryTest, change_constraint_types)
+{
+  using ConstraintType = PhysicsGeometry::ConstraintType;
+
+  AllShapesData all_shapes_data;
+
+  bke::PhysicsGeometry geo = bke::PhysicsGeometry(3, 2, 1);
+  geo.create_world();
+  all_shapes_data.box_shape->add_user();
+  geo.shapes_for_write().copy_from({CollisionShapePtr(all_shapes_data.box_shape)});
+  geo.tag_collision_shapes_changed();
+  {
+    AttributeWriter<int> body_shapes = geo.body_shapes_for_write();
+    AttributeWriter<bool> is_static = geo.body_is_static_for_write();
+    AttributeWriter<float> masses = geo.body_masses_for_write();
+    AttributeWriter<int> constraint_types = geo.constraint_types_for_write();
+    AttributeWriter<int> constraint_body1 = geo.constraint_body1_for_write();
+    AttributeWriter<int> constraint_body2 = geo.constraint_body2_for_write();
+    body_shapes.varray.set_all({0, 0, 0});
+    is_static.varray.set_all({false, true, false});
+    masses.varray.set_all({1.0f, 1.0f, 1.0f});
+    constraint_types.varray.set_all({int(ConstraintType::Fixed), int(ConstraintType::Hinge)});
+    constraint_body1.varray.set_all({1, 1});
+    constraint_body2.varray.set_all({0, 2});
+    body_shapes.finish();
+    is_static.finish();
+    masses.finish();
+    constraint_types.finish();
+    constraint_body1.finish();
+    constraint_body2.finish();
+  }
+  test_data(geo, true, 3, 2, 1);
+
+  {
+    AttributeWriter<int> constraint_types = geo.constraint_types_for_write();
+    constraint_types.varray.set_all({int(ConstraintType::Point), int(ConstraintType::Hinge)});
+    constraint_types.finish();
+  }
+  {
+    const VArraySpan<int> constraint_types = geo.constraint_types();
+    EXPECT_EQ_ARRAY(Span<int>{int(ConstraintType::Point), int(ConstraintType::Hinge)}.data(),
+                    constraint_types.data(),
+                    constraint_types.size());
+  }
+  test_data(geo, true, 3, 2, 1);
+}
+
 TEST_F(PhysicsGeometryTest, simple_time_step)
 {
   AllShapesData all_shapes_data;

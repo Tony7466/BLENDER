@@ -101,14 +101,41 @@ static void set_body_index(btRigidBody &body, const int index)
   body.setUserIndex3(index);
 }
 
+/* Note: Bullet does not keep track of which constraints have been added to the world. We use one
+ * of the ID bits to store this flag. */
+
+static constexpr int BulletConstraintFlagBits = 1;
+static constexpr int BulletConstraintFlagMask = (1 << BulletConstraintFlagBits) - 1;
+static constexpr int BulletConstraintIdMask = 0xffffffff >> BulletConstraintFlagBits;
+
+enum BulletConstraintFlags {
+  InWorld = 1,
+};
+
 static int get_constraint_index(const btTypedConstraint &constraint)
 {
-  return constraint.getUserConstraintId();
+  return constraint.getUserConstraintId() >> BulletConstraintFlagBits;
 }
 
 static void set_constraint_index(btTypedConstraint &constraint, const int index)
 {
-  constraint.setUserConstraintId(index);
+  constraint.setUserConstraintId((index & BulletConstraintIdMask) << BulletConstraintFlagBits);
+}
+
+static bool is_constraint_in_world(const btTypedConstraint &constraint)
+{
+  return (constraint.getUserConstraintId() & BulletConstraintFlags::InWorld) != 0;
+}
+
+static void set_constraint_in_world(btTypedConstraint &constraint, const bool in_world)
+{
+  const int user_id = constraint.getUserConstraintId();
+  if (in_world) {
+    constraint.setUserConstraintId(user_id | BulletConstraintFlags::InWorld);
+  }
+  else {
+    constraint.setUserConstraintId(user_id & ~BulletConstraintFlags::InWorld);
+  }
 }
 
 /* -------------------------------------------------------------------- */
@@ -276,19 +303,14 @@ static btTypedConstraint *make_constraint_type(const PhysicsGeometry::Constraint
 {
   btTypedConstraint *constraint = make_bullet_constraint_type(type, body1, body2);
   if (constraint) {
+    constraint->setUserConstraintType(int(type));
+    /* The user ID value is used to store the index and some flags in the lower bits. Initialize
+     * this to zero to clear those bits initially (index is lazy-initialized). */
+    constraint->setUserConstraintId(0);
     // constraint->enableFeedback(true);
     constraint->setJointFeedback(feedback);
   }
   return constraint;
-}
-
-/* Various checks on constraints to ensure Bullet doesn't crash. */
-static bool is_constraint_valid(const btTypedConstraint &constraint)
-{
-  if (&constraint.getRigidBodyA() == &constraint.getRigidBodyB()) {
-    return false;
-  }
-  return true;
 }
 
 PhysicsWorldData::PhysicsWorldData()
@@ -416,7 +438,12 @@ void PhysicsWorldData::tag_bodies_in_world() const
   bodies_in_world_cache_.tag_dirty();
 }
 
-void PhysicsWorldData::ensure_body_indices() const
+void PhysicsWorldData::tag_constraints_in_world() const
+{
+  constraints_in_world_cache_.tag_dirty();
+}
+
+void PhysicsWorldData::ensure_body_and_constraint_indices() const
 {
   body_index_cache_.ensure([&]() {
     for (const int i : rigid_bodies_.index_range()) {
@@ -426,10 +453,6 @@ void PhysicsWorldData::ensure_body_indices() const
       set_body_index(body, i);
     }
   });
-}
-
-void PhysicsWorldData::ensure_constraint_indices() const
-{
   constraint_index_cache_.ensure([&]() {
     for (const int i : constraints_.index_range()) {
       /* Note: Technically the btTypedConstraint is not mutable here! We're just using it as a
@@ -442,13 +465,24 @@ void PhysicsWorldData::ensure_constraint_indices() const
   });
 }
 
-void PhysicsWorldData::ensure_bodies_in_world()
+void PhysicsWorldData::ensure_bodies_and_constraints_in_world()
 {
   bodies_in_world_cache_.ensure([&]() {
     for (const int i : rigid_bodies_.index_range()) {
       btRigidBody &body = *rigid_bodies_[i];
       if (!body.isInWorld()) {
         world_->addRigidBody(&body);
+      }
+    }
+  });
+
+  /* Note: Bullet does a linear search for every single constraint removal, not great. */
+  constraints_in_world_cache_.ensure([&]() {
+    for (const int i : constraints_.index_range()) {
+      btTypedConstraint *constraint = constraints_[i];
+      if (constraint != nullptr && !is_constraint_in_world(*constraint)) {
+        world_->addConstraint(constraint);
+        set_constraint_in_world(*constraint, true);
       }
     }
   });
@@ -486,7 +520,8 @@ void PhysicsWorldData::compute_disable_collision_flags(MutableSpan<bool> r_flags
 {
   BLI_assert(r_flags.size() == constraints_.size());
 
-  ensure_constraint_indices();
+  /* Technically only need constraint indices here. */
+  ensure_body_and_constraint_indices();
 
   r_flags.fill(false);
   for (const int i_body : rigid_bodies_.index_range()) {
@@ -509,6 +544,8 @@ void PhysicsWorldData::create_constraints(const IndexMask &selection,
 {
   using ConstraintType = PhysicsGeometry::ConstraintType;
 
+  bool changed = false;
+
   const IndexRange bodies_range = rigid_bodies_.index_range();
   selection.foreach_index([&](const int index) {
     const ConstraintType type = ConstraintType(types[index]);
@@ -527,14 +564,26 @@ void PhysicsWorldData::create_constraints(const IndexMask &selection,
       const btRigidBody *current_body1 = &current_constraint.getRigidBodyA();
       const btRigidBody *current_body2 = &current_constraint.getRigidBodyB();
       if (current_type == type && current_body1 == body1 && current_body2 == body2) {
+        /* All valid, no changes. */
         return;
       }
 
+      world_->removeConstraint(const_cast<btTypedConstraint *>(&current_constraint));
       delete constraints_[index];
+      constraints_[index] = nullptr;
+      changed = true;
     }
 
     constraints_[index] = make_constraint_type(type, *body1, *body2, &constraint_feedback_[index]);
+    if (constraints_[index]) {
+      changed = true;
+    }
   });
+
+  if (changed) {
+    constraint_index_cache_.tag_dirty();
+    tag_constraints_in_world();
+  }
 }
 
 void PhysicsWorldData::set_overlap_filter(OverlapFilterFn fn)
@@ -579,7 +628,7 @@ void PhysicsWorldData::step_simulation(float delta_time)
 {
   constexpr const float fixed_time_step = 1.0f / 60.0f;
 
-  this->ensure_bodies_in_world();
+  this->ensure_bodies_and_constraints_in_world();
 
   world_->stepSimulation(delta_time, 20, fixed_time_step);
 }
@@ -1644,9 +1693,8 @@ bool PhysicsGeometryImpl::validate_world_data()
 
   this->ensure_motion_type();
   this->ensure_constraints();
-  this->world_data->ensure_body_indices();
-  this->world_data->ensure_constraint_indices();
-  this->world_data->ensure_bodies_in_world();
+  this->world_data->ensure_body_and_constraint_indices();
+  this->world_data->ensure_bodies_and_constraints_in_world();
 
   AttributeAccessor cached_attributes = custom_data_attributes();
   const Span<btRigidBody *> rigid_bodies = this->world_data->bodies();
@@ -1666,6 +1714,7 @@ bool PhysicsGeometryImpl::validate_world_data()
       BLI_assert_unreachable();
       ok = false;
     }
+
     /* All bodies must be in the world, except if they don't have a collision shape. */
     if (body->getCollisionShape() != nullptr &&
         (!body->isInWorld() || bt_collision_objects.findLinearSearch(const_cast<btRigidBody *>(
@@ -1719,6 +1768,11 @@ bool PhysicsGeometryImpl::validate_world_data()
       continue;
     }
 
+    if (get_constraint_index(*constraint) != i) {
+      BLI_assert_unreachable();
+      ok = false;
+    }
+
     const int cached_body1 = cached_constraint_body1[i];
     const int cached_body2 = cached_constraint_body2[i];
     const btRigidBody *bt_body1_expected = (rigid_bodies.index_range().contains(cached_body1) ?
@@ -1736,7 +1790,19 @@ bool PhysicsGeometryImpl::validate_world_data()
       ok = false;
     }
 
-    if (get_constraint_index(*constraint) != i) {
+    /* Bullet does not keep track of which constraints have been added to the world. This flag is
+     * set by us to know when to add or remove a constraint. */
+    if (!is_constraint_in_world(*constraint)) {
+      BLI_assert_unreachable();
+      ok = false;
+    }
+    bool world_has_constraint_ref = false;
+    for (const int i : IndexRange(this->world_data->world().getNumConstraints())) {
+      if (this->world_data->world().getConstraint(i) == constraint) {
+        world_has_constraint_ref = true;
+      }
+    }
+    if (!world_has_constraint_ref) {
       BLI_assert_unreachable();
       ok = false;
     }
