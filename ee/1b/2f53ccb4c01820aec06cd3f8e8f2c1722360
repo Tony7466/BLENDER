@@ -1,0 +1,1 @@
+Referenced by issue #126394, ffmpeg for Windows is built with no CPU SIMD optimizations since 4.0
