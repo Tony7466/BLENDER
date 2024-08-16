@@ -1243,9 +1243,12 @@ typedef struct ActionChannelBag {
    * belong to, those pointers are not the source of truth. The source of truth
    * for membership is the information in the channel groups here.
    *
-   * Invariant: the grouped fcurves are tightly packed, starting at the first
-   * fcurve and having no gaps of ungrouped fcurves between them. Ungrouped
-   * fcurves come at the end, after all of the grouped fcurves. */
+   * Invariants:
+   * 1. The groups are stored in this array in the same order as thier indices
+   *    into the fcurve array.
+   * 2. The grouped fcurves are tightly packed, starting at the first fcurve and
+   *    having no gaps of ungrouped fcurves between them. Ungrouped fcurves come
+   *    at the end, after all of the grouped fcurves. */
   int group_array_num;
   struct bActionGroup **group_array;
 
