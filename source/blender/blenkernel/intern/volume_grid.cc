@@ -16,28 +16,6 @@ namespace blender::bke::volume_grid {
 
 #ifdef WITH_OPENVDB
 
-/**
- * Multiple #VolumeDataGrid can implicitly share the same underlying tree with different
- * meta-data/transforms.
- */
-class OpenvdbTreeSharingInfo : public ImplicitSharingInfo {
- private:
-  std::shared_ptr<openvdb::tree::TreeBase> tree_;
-
- public:
-  OpenvdbTreeSharingInfo(std::shared_ptr<openvdb::tree::TreeBase> tree) : tree_(std::move(tree)) {}
-
-  void delete_self_with_data() override
-  {
-    MEM_delete(this);
-  }
-
-  void delete_data_only() override
-  {
-    tree_.reset();
-  }
-};
-
 VolumeGridData::VolumeGridData()
 {
   tree_access_token_ = std::make_shared<AccessToken>(*this);
@@ -67,8 +45,7 @@ VolumeGridData::VolumeGridData(std::shared_ptr<openvdb::GridBase> grid)
   BLI_assert(grid_.use_count() == 1);
   BLI_assert(grid_->isTreeUnique());
 
-  tree_sharing_info_ = ImplicitSharingPtr<>(
-      MEM_new<OpenvdbTreeSharingInfo>(__func__, grid_->baseTreePtr()));
+  tree_sharing_info_ = OpenvdbTreeSharingInfo::make(grid_->baseTreePtr());
   tree_access_token_ = std::make_shared<AccessToken>(*this);
 }
 
@@ -122,8 +99,7 @@ std::shared_ptr<openvdb::GridBase> VolumeGridData::grid_ptr_for_write(
   else {
     auto tree_copy = grid_->baseTree().copy();
     grid_->setTree(tree_copy);
-    tree_sharing_info_ = ImplicitSharingPtr<>(
-        MEM_new<OpenvdbTreeSharingInfo>(__func__, std::move(tree_copy)));
+    tree_sharing_info_ = OpenvdbTreeSharingInfo::make(std::move(tree_copy));
   }
   /* Can't reload the grid anymore if it has been changed. */
   lazy_load_grid_ = {};
@@ -301,8 +277,7 @@ void VolumeGridData::ensure_grid_loaded() const
 
   if (!loaded_grid.tree_sharing_info) {
     BLI_assert(loaded_grid.grid->isTreeUnique());
-    loaded_grid.tree_sharing_info = ImplicitSharingPtr<>(
-        MEM_new<OpenvdbTreeSharingInfo>(__func__, loaded_grid.grid->baseTreePtr()));
+    loaded_grid.tree_sharing_info = OpenvdbTreeSharingInfo::make(loaded_grid.grid->baseTreePtr());
   }
 
   if (grid_) {
@@ -382,6 +357,26 @@ VolumeGridType get_type(const openvdb::GridBase &grid)
     return VOLUME_GRID_POINTS;
   }
   return VOLUME_GRID_UNKNOWN;
+}
+
+ImplicitSharingPtr<> OpenvdbTreeSharingInfo::make(std::shared_ptr<openvdb::tree::TreeBase> tree)
+{
+  return ImplicitSharingPtr<>{MEM_new<OpenvdbTreeSharingInfo>(__func__, std::move(tree))};
+}
+
+OpenvdbTreeSharingInfo::OpenvdbTreeSharingInfo(std::shared_ptr<openvdb::tree::TreeBase> tree)
+    : tree_(std::move(tree))
+{
+}
+
+void OpenvdbTreeSharingInfo::delete_self_with_data()
+{
+  MEM_delete(this);
+}
+
+void OpenvdbTreeSharingInfo::delete_data_only()
+{
+  tree_.reset();
 }
 
 VolumeTreeAccessToken::~VolumeTreeAccessToken()

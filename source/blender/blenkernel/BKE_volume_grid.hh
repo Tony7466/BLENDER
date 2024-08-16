@@ -26,6 +26,10 @@
 
 namespace blender::bke::volume_grid {
 
+/**
+ * A grid or tree may be loaded lazily when it's accessed. This is especially useful for grids that
+ * are loaded from disk. Those may even be unloaded temporarily to avoid using too much memory.
+ */
 struct LazyLoadedGrid {
   std::shared_ptr<openvdb::GridBase> grid;
   ImplicitSharingPtr<> tree_sharing_info;
@@ -239,6 +243,24 @@ class VolumeGridData : public ImplicitSharingMixin {
   void delete_self();
 };
 
+/**
+ * Multiple #VolumeDataGrid can implicitly share the same underlying tree with different
+ * meta-data/transforms. Note that this is different from using a `shared_ptr`, because that is
+ * only used to please different APIs and does not enforce that shared data is immutable.
+ */
+class OpenvdbTreeSharingInfo : public ImplicitSharingInfo {
+ private:
+  std::shared_ptr<openvdb::tree::TreeBase> tree_;
+
+ public:
+  OpenvdbTreeSharingInfo(std::shared_ptr<openvdb::tree::TreeBase> tree);
+
+  static ImplicitSharingPtr<> make(std::shared_ptr<openvdb::tree::TreeBase> tree);
+
+  void delete_self_with_data() override;
+  void delete_data_only() override;
+};
+
 class VolumeTreeAccessToken {
  private:
   std::shared_ptr<VolumeGridData::AccessToken> token_;
@@ -246,6 +268,11 @@ class VolumeTreeAccessToken {
   friend VolumeGridData;
 
  public:
+  /**
+   * Defaulting everything but the destructor is fine, because the default behavior works
+   * correctly on the single data member. The destructor has a special implementation because it
+   * may automatically unload the volume tree if it's not used anymore to conserve memory.
+   */
   VolumeTreeAccessToken() = default;
   VolumeTreeAccessToken(const VolumeTreeAccessToken &) = default;
   VolumeTreeAccessToken(VolumeTreeAccessToken &&) = default;

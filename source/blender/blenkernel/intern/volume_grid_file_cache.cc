@@ -7,7 +7,6 @@
 #  include "BKE_volume_grid_file_cache.hh"
 #  include "BKE_volume_openvdb.hh"
 
-#  include "BLI_implicit_sharing_ptr.hh"
 #  include "BLI_map.hh"
 #  include "BLI_memory_cache.hh"
 #  include "BLI_memory_counter.hh"
@@ -152,24 +151,6 @@ class GridReadKey : public GenericKey {
   }
 };
 
-class TreeSharingInfo : public ImplicitSharingInfo {
- private:
-  std::shared_ptr<openvdb::tree::TreeBase> tree_;
-
- public:
-  TreeSharingInfo(std::shared_ptr<openvdb::tree::TreeBase> tree) : tree_(std::move(tree)) {}
-
-  void delete_self_with_data() override
-  {
-    MEM_delete(this);
-  }
-
-  void delete_data_only() override
-  {
-    tree_.reset();
-  }
-};
-
 class GridReadValue : public memory_cache::CachedValue {
  private:
   mutable std::atomic<int64_t> bytes_ = 0;
@@ -220,8 +201,7 @@ static LazyLoadedGrid load_single_grid_from_disk_cached(const StringRef file_pat
         openvdb::GridBase::Ptr grid = load_single_grid_from_disk(key.file_path, key.grid_name);
         auto value = std::make_unique<GridReadValue>();
         value->grid = std::move(grid);
-        value->tree_sharing_info = ImplicitSharingPtr<>{
-            MEM_new<TreeSharingInfo>("tree sharing", value->grid->baseTreePtr())};
+        value->tree_sharing_info = OpenvdbTreeSharingInfo::make(value->grid->baseTreePtr());
         return value;
       });
 
