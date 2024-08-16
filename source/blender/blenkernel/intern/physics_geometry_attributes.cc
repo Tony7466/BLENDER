@@ -333,6 +333,8 @@ static float4x4 constraint_frame1_get_fn(const btTypedConstraint *constraint)
     case ConstraintType::Contact:
       return float4x4::identity();
   }
+  BLI_assert_unreachable();
+  return float4x4::identity();
 }
 static void constraint_frame1_set_fn(btTypedConstraint *constraint, float4x4 value)
 {
@@ -388,8 +390,8 @@ static void constraint_frame1_set_fn(btTypedConstraint *constraint, float4x4 val
       typed_constraint->setAxisA(bt_axis);
       break;
     }
-    default:
-      BLI_assert_unreachable();
+    case ConstraintType::None:
+    case ConstraintType::Contact:
       break;
   }
 }
@@ -440,10 +442,12 @@ static float4x4 constraint_frame2_get_fn(const btTypedConstraint *constraint)
       const auto *typed_constraint = static_cast<const btGearConstraint *>(constraint);
       return math::from_up_axis<float4x4>(to_blender(typed_constraint->getAxisB()));
     }
-    default:
-      BLI_assert_unreachable();
+    case ConstraintType::None:
+    case ConstraintType::Contact:
       return float4x4::identity();
   }
+  BLI_assert_unreachable();
+  return float4x4::identity();
 }
 static void constraint_frame2_set_fn(btTypedConstraint *constraint, float4x4 value)
 {
@@ -499,8 +503,8 @@ static void constraint_frame2_set_fn(btTypedConstraint *constraint, float4x4 val
       typed_constraint->setAxisB(bt_axis);
       break;
     }
-    default:
-      BLI_assert_unreachable();
+    case ConstraintType::None:
+    case ConstraintType::Contact:
       break;
   }
 }
