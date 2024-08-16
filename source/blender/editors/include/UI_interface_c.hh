@@ -1951,6 +1951,7 @@ void UI_but_drag_set_rna(uiBut *but, PointerRNA *ptr);
  * \param path: The path to drag. The passed string may be destructed, button keeps a copy.
  */
 void UI_but_drag_set_path(uiBut *but, const char *path);
+void UI_but_drag_set_path(uiBut *but, blender::Span<const char *> paths);
 void UI_but_drag_set_name(uiBut *but, const char *name);
 
 /**

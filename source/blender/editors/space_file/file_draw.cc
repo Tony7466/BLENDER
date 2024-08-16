@@ -354,7 +354,9 @@ static void draw_tile_background(const rcti *draw_rect, int colorid, int shade)
 static void file_but_enable_drag(uiBut *but,
                                  const SpaceFile *sfile,
                                  const FileDirEntry *file,
+                                 const eDirEntry_SelectFlag file_selflag,
                                  const char *path,
+                                 blender::Vector<const char *> selected_paths,
                                  const ImBuf *preview_image,
                                  int icon,
                                  float scale)
@@ -375,12 +377,25 @@ static void file_but_enable_drag(uiBut *but,
 
     UI_but_drag_set_asset(but, file->asset, import_method, icon, preview_image, scale);
   }
-  else if (preview_image) {
-    UI_but_drag_set_image(but, path, icon, preview_image, scale);
-  }
   else {
-    /* path is no more static, cannot give it directly to but... */
-    UI_but_drag_set_path(but, path);
+    if (preview_image) {
+      // XXX this is bit stupid - UI_but_drag_set_image does set path and we overwrite it below.
+      // Perhaps this could be split.
+      UI_but_drag_set_image(but, path, icon, preview_image, scale);
+    }
+
+    if (file_selflag == FILE_SEL_SELECTED) { /* Add multiple paths. */
+      /* Not prepending active filepath as first item, because it breaks image sequences. */
+      /* selected_paths.remove_if(
+          [&](const char *sel_path) { return BLI_strcaseeq(sel_path, path); });
+      selected_paths.prepend(path); */
+
+      /* path is no more static, cannot give it directly to but... */  // XXX ???
+      UI_but_drag_set_path(but, selected_paths.as_span());
+    }
+    else { /* Add single path */
+      UI_but_drag_set_path(but, path);
+    }
   }
 }
 
@@ -515,7 +530,9 @@ static void file_add_preview_drag_but(const SpaceFile *sfile,
                                       uiBlock *block,
                                       FileLayout *layout,
                                       const FileDirEntry *file,
+                                      const eDirEntry_SelectFlag file_selflag,
                                       const char *path,
+                                      blender::Vector<const char *> &selected_paths,
                                       const rcti *tile_draw_rect,
                                       const ImBuf *preview_image,
                                       const int icon,
@@ -539,7 +556,8 @@ static void file_add_preview_drag_but(const SpaceFile *sfile,
                         0.0,
                         0.0,
                         nullptr);
-  file_but_enable_drag(but, sfile, file, path, preview_image, icon, scale);
+  file_but_enable_drag(
+      but, sfile, file, file_selflag, path, selected_paths, preview_image, icon, scale);
 
   if (file->asset) {
     UI_but_func_tooltip_set(but, file_draw_asset_tooltip_func, file->asset, nullptr);
@@ -1210,6 +1228,19 @@ void file_draw_list(const bContext *C, ARegion *region)
 
   UI_GetThemeColor4ubv(TH_TEXT, text_col);
 
+  blender::Vector<const char *> selected_file_paths;  // XXX needs freeing :(((
+  for (i = 0; i < numfiles; i++) {
+    file = filelist_file(files, i);
+
+    if (filelist_entry_select_get(sfile->files, file, CHECK_ALL) != FILE_SEL_SELECTED) {
+      continue;
+    }
+
+    char path[FILE_MAX_LIBEXTRA];
+    filelist_file_get_full_path(files, file, path);
+    selected_file_paths.append(BLI_strdupn(path, BLI_strnlen(path, sizeof(path))));
+  }
+
   for (i = offset; (i < numfiles) && (i < offset + numfiles_layout); i++) {
     eDirEntry_SelectFlag file_selflag;
     const int padx = 0.1f * UI_UNIT_X;
@@ -1269,8 +1300,17 @@ void file_draw_list(const bContext *C, ARegion *region)
                         /* Returns the scale which is needed below. */
                         &scale);
       if (do_drag) {
-        file_add_preview_drag_but(
-            sfile, block, layout, file, path, &tile_draw_rect, imb, icon, scale);
+        file_add_preview_drag_but(sfile,
+                                  block,
+                                  layout,
+                                  file,
+                                  file_selflag,
+                                  path,
+                                  selected_file_paths,
+                                  &tile_draw_rect,
+                                  imb,
+                                  icon,
+                                  scale);
       }
     }
     else {
@@ -1298,7 +1338,15 @@ void file_draw_list(const bContext *C, ARegion *region)
                                      0,
                                      nullptr);
           UI_but_dragflag_enable(drag_but, UI_BUT_DRAG_FULL_BUT);
-          file_but_enable_drag(drag_but, sfile, file, path, nullptr, icon, UI_SCALE_FAC);
+          file_but_enable_drag(drag_but,
+                               sfile,
+                               file,
+                               file_selflag,
+                               path,
+                               selected_file_paths,
+                               nullptr,
+                               icon,
+                               UI_SCALE_FAC);
           UI_but_func_tooltip_custom_set(drag_but,
                                          file_draw_tooltip_custom_func,
                                          file_tooltip_data_create(sfile, file),
@@ -1319,7 +1367,15 @@ void file_draw_list(const bContext *C, ARegion *region)
       if (do_drag) {
         /* For some reason the dragging is unreliable for the icon button if we don't explicitly
          * enable dragging, even though the dummy drag button above covers the same area. */
-        file_but_enable_drag(icon_but, sfile, file, path, nullptr, icon, UI_SCALE_FAC);
+        file_but_enable_drag(icon_but,
+                             sfile,
+                             file,
+                             file_selflag,
+                             path,
+                             selected_file_paths,
+                             nullptr,
+                             icon,
+                             UI_SCALE_FAC);
       }
     }
 
@@ -1349,12 +1405,12 @@ void file_draw_list(const bContext *C, ARegion *region)
 
         file_params_rename_end(wm, win, sfile, file);
 
-        /* After the rename button is removed, we need to make sure the view is redrawn once more,
-         * in case selection changed. Usually UI code would trigger that redraw, but the rename
-         * operator may have been called from a different region.
-         * Tagging regions for redrawing while drawing is rightfully prevented. However, this
-         * active button removing basically introduces handling logic to drawing code. So a
-         * notifier should be an acceptable workaround. */
+        /* After the rename button is removed, we need to make sure the view is redrawn once
+         * more, in case selection changed. Usually UI code would trigger that redraw, but the
+         * rename operator may have been called from a different region. Tagging regions for
+         * redrawing while drawing is rightfully prevented. However, this active button removing
+         * basically introduces handling logic to drawing code. So a notifier should be an
+         * acceptable workaround. */
         WM_event_add_notifier_ex(wm, win, NC_SPACE | ND_SPACE_FILE_PARAMS, nullptr);
 
         file_selflag = filelist_entry_select_get(sfile->files, file, CHECK_ALL);
@@ -1460,7 +1516,8 @@ static void file_draw_invalid_asset_library_hint(const bContext *C,
     UI_icon_draw(sx, sy - UI_UNIT_Y, ICON_INFO);
 
     const char *suggestion = RPT_(
-        "Asset Libraries are local directories that can contain .blend files with assets inside.\n"
+        "Asset Libraries are local directories that can contain .blend files with assets "
+        "inside.\n"
         "Manage Asset Libraries from the File Paths section in Preferences");
     file_draw_string_multiline(
         sx + UI_UNIT_X, sy, suggestion, width - UI_UNIT_X, line_height, text_col, nullptr, &sy);
@@ -1574,9 +1631,9 @@ bool file_draw_hint_if_invalid(const bContext *C, const SpaceFile *sfile, ARegio
      *     `FL_HAS_INVALID_LIBRARY` file-list flag could be set.
      *   - Reports from it could also be stored in `FileList` rather than being ignored
      *     (`RPT_STORE` must be set!).
-     *   - Then we could just check for `is_library_browser` and the `FL_HAS_INVALID_LIBRARY` flag
-     *     here, and draw the hint with the reports in the file-list. (We would not draw a hint for
-     *     recursive loading, even if the file-list has the "has invalid library" flag set, which
+     *   - Then we could just check for `is_library_browser` and the `FL_HAS_INVALID_LIBRARY`
+     * flag here, and draw the hint with the reports in the file-list. (We would not draw a hint
+     * for recursive loading, even if the file-list has the "has invalid library" flag set, which
      *     seems like the wanted behavior.)
      *   - The call to BKE_blendfile_is_readable() would not be needed then.
      */

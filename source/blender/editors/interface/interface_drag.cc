@@ -68,6 +68,16 @@ void UI_but_drag_set_path(uiBut *but, const char *path)
   but->dragflag |= UI_BUT_DRAGPOIN_FREE;
 }
 
+void UI_but_drag_set_path(uiBut *but, blender::Span<const char *> paths)
+{
+  but->dragtype = WM_DRAG_PATH;
+  if (but->dragflag & UI_BUT_DRAGPOIN_FREE) {
+    WM_drag_data_free(but->dragtype, but->dragpoin);
+  }
+  but->dragpoin = WM_drag_create_path_data(paths);
+  but->dragflag |= UI_BUT_DRAGPOIN_FREE;
+}
+
 void UI_but_drag_set_name(uiBut *but, const char *name)
 {
   but->dragtype = WM_DRAG_NAME;

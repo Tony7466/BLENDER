@@ -314,23 +314,26 @@ static void sequencer_drop_copy(bContext *C, wmDrag *drag, wmDropBox *drop)
     return;
   }
 
-  const char *path = WM_drag_get_single_path(drag);
+  blender::Span<std::string> paths = WM_drag_get_paths(drag);
+  const char *act_path = paths[0].c_str();
   /* Path dropped. */
-  if (path) {
+  if (act_path) {
     if (RNA_struct_find_property(drop->ptr, "filepath")) {
-      RNA_string_set(drop->ptr, "filepath", path);
+      RNA_string_set(drop->ptr, "filepath", act_path);
     }
     if (RNA_struct_find_property(drop->ptr, "directory")) {
-      PointerRNA itemptr;
-      char dir[FILE_MAX], file[FILE_MAX];
-
-      BLI_path_split_dir_file(path, dir, sizeof(dir), file, sizeof(file));
-
-      RNA_string_set(drop->ptr, "directory", dir);
-
       RNA_collection_clear(drop->ptr, "files");
-      RNA_collection_add(drop->ptr, "files", &itemptr);
-      RNA_string_set(&itemptr, "name", file);
+
+      for (std::string path : paths) {
+        char dir[FILE_MAX], file[FILE_MAX];
+        BLI_path_split_dir_file(path.c_str(), dir, sizeof(dir), file, sizeof(file));
+
+        RNA_string_set(drop->ptr, "directory", dir);
+
+        PointerRNA itemptr;
+        RNA_collection_add(drop->ptr, "files", &itemptr);
+        RNA_string_set(&itemptr, "name", file);
+      }
     }
   }
 }
