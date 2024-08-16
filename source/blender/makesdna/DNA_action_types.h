@@ -1236,7 +1236,12 @@ typedef struct KeyframeActionStrip {
 typedef struct ActionChannelBag {
   int32_t slot_handle;
 
-  /* Channel groups. */
+  /* Channel groups. These index into the `fcurve_array` below to specify group
+   * membership of the fcurves
+   *
+   * Invariant: the grouped fcurves are tightly packed, starting at the first
+   * fcurve and having no gaps of ungrouped fcurves between them. Ungrouped
+   * fcurves come at the end, after all of the grouped fcurves. */
   int group_array_num;
   struct bActionGroup **group_array;
 
