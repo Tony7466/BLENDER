@@ -12,6 +12,7 @@
 
 #include "BLI_memory_cache.hh"
 #include "BLI_memory_counter.hh"
+#include "BLI_task.hh"
 
 namespace blender::memory_cache {
 
@@ -63,7 +64,9 @@ std::shared_ptr<CachedValue> get_base(const GenericKey &key,
 
     if (newly_inserted) {
       accessor->second.key = key.to_storable();
-      accessor->second.value = compute_fn();
+      threading::isolate_task([&]() {
+        accessor->second.value = compute_fn();
+      });
       /* Modifying the key should be fine because the new key is equal to the original key. */
       const_cast<std::reference_wrapper<const GenericKey> &>(accessor->first) = std::ref(
           *accessor->second.key);

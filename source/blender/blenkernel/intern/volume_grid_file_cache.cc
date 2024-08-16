@@ -132,13 +132,14 @@ class GridReadKey : public GenericKey {
  public:
   std::string file_path;
   std::string grid_name;
+  int simplify_level;
 
   uint64_t hash() const override
   {
-    return get_default_hash(this->file_path, this->grid_name);
+    return get_default_hash(this->file_path, this->grid_name, this->simplify_level);
   }
 
-  BLI_STRUCT_EQUALITY_OPERATORS_2(GridReadKey, file_path, grid_name)
+  BLI_STRUCT_EQUALITY_OPERATORS_3(GridReadKey, file_path, grid_name, simplify_level)
 
   bool equal_to(const GenericKey &other) const override
   {
@@ -194,15 +195,29 @@ static openvdb::GridBase::Ptr load_single_grid_from_disk(const StringRef file_pa
  * and the tree.
  */
 static LazyLoadedGrid load_single_grid_from_disk_cached(const StringRef file_path,
-                                                        const StringRef grid_name)
+                                                        const StringRef grid_name,
+                                                        const int simplify_level)
 {
   GridReadKey key;
   key.file_path = file_path;
   key.grid_name = grid_name;
+  key.simplify_level = simplify_level;
 
   std::shared_ptr<const GridReadValue> value = memory_cache::get<GridReadValue>(
       std::move(key), [&key]() {
-        openvdb::GridBase::Ptr grid = load_single_grid_from_disk(key.file_path, key.grid_name);
+        openvdb::GridBase::Ptr grid;
+        if (key.simplify_level == 0) {
+          grid = load_single_grid_from_disk(key.file_path, key.grid_name);
+        }
+        else {
+          /* Build the simplified grid from the main grid. */
+          const GVolumeGrid main_grid = get_grid_from_file(key.file_path, key.grid_name, 0);
+          const VolumeGridType grid_type = main_grid->grid_type();
+          const float resolution_factor = 1.0f / (1 << key.simplify_level);
+          VolumeTreeAccessToken tree_token;
+          grid = BKE_volume_grid_create_with_changed_resolution(
+              grid_type, main_grid->grid(tree_token), resolution_factor);
+        }
         auto value = std::make_unique<GridReadValue>();
         value->grid = std::move(grid);
         value->tree_sharing_info = OpenvdbTreeSharingInfo::make(value->grid->baseTreePtr());
@@ -228,17 +243,7 @@ static GVolumeGrid get_cached_grid(const StringRef file_path,
   auto load_grid_fn = [file_path = std::string(file_path),
                        grid_name = std::string(grid_cache.meta_data_grid->getName()),
                        simplify_level]() -> LazyLoadedGrid {
-    if (simplify_level == 0) {
-      return load_single_grid_from_disk_cached(file_path, grid_name);
-    }
-    /* Build the simplified grid from the main grid. */
-    const GVolumeGrid main_grid = get_grid_from_file(file_path, grid_name, 0);
-    const VolumeGridType grid_type = main_grid->grid_type();
-    const float resolution_factor = 1.0f / (1 << simplify_level);
-    VolumeTreeAccessToken tree_token;
-    return {BKE_volume_grid_create_with_changed_resolution(
-                grid_type, main_grid->grid(tree_token), resolution_factor),
-            nullptr};
+    return load_single_grid_from_disk_cached(file_path, grid_name, simplify_level);
   };
   /* This allows the returned grid to already contain meta-data and transforms, even if the tree is
    * not loaded yet. */
