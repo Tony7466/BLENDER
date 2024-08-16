@@ -4,56 +4,29 @@
 
 #pragma once
 
-/** \file
- * \ingroup bli
- */
-
-#include <functional>
-#include <mutex>
-
+#include "BLI_function_ref.hh"
 #include "BLI_generic_key.hh"
-#include "BLI_memory_counter.hh"
-#include "BLI_set.hh"
+#include "BLI_memory_counter_fwd.hh"
 
-namespace blender::memory_cache {
+namespace blender::memory_cache2 {
 
-using memory_counter::MemoryBySharedData;
-
-class MemoryCache {
- private:
-  struct Value {
-    std::unique_ptr<GenericKey> key;
-    // OwnedMemory memory;
-    int64_t last_use = 0;
-    std::function<void()> free_fn;
-  };
-
-  std::mutex mutex_;
-  int64_t capacity_in_bytes_ = 0;
-  int64_t current_bytes_ = 0;
-  MemoryBySharedData memory_by_shared_data_;
-  int64_t logical_time_ = 0;
-
-  Map<std::reference_wrapper<const GenericKey>, Value> cache_;
-
+class CachedValue {
  public:
-  MemoryCache(const int64_t capacity_in_bytes = 1024 * 1024 * 1024);
+  virtual ~CachedValue() = default;
 
-  void add(std::unique_ptr<GenericKey> key,
-           FunctionRef<void(MemoryCounter &memory)> count_memory_fn,
-           std::function<void()> free_fn);
-
-  void remove(const GenericKey &key);
-
-  void touch(const GenericKey &key);
-
- private:
-  void free_if_necessary();
-
-  void add_memory_of(const memory_counter::SharedDataInfo &memory);
-  void subtract_memory_of(const memory_counter::SharedDataInfo &memory);
+  virtual void count_memory(MemoryCounter &memory) const = 0;
 };
 
-MemoryCache &global_cache();
+std::shared_ptr<CachedValue> get(const GenericKey &key,
+                                 FunctionRef<std::unique_ptr<CachedValue>()> compute_fn);
 
-}  // namespace blender::memory_cache
+template<typename T>
+inline std::shared_ptr<const T> get_typed(const GenericKey &key,
+                                          FunctionRef<std::unique_ptr<T>()> compute_fn)
+{
+  return std::static_pointer_cast<const T>(get(key, compute_fn));
+}
+
+void free_to_fit(int64_t capacity);
+
+}  // namespace blender::memory_cache2

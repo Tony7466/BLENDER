@@ -60,7 +60,6 @@ set(SRC
   intern/cpp_type.cc
   intern/cpp_types.cc
   intern/delaunay_2d.cc
-  intern/disk_read_cache.cc
   intern/dot_export.cc
   intern/dynlib.cc
   intern/easing.c
@@ -118,7 +117,6 @@ set(SRC
   intern/math_vector.c
   intern/math_vector_inline.c
   intern/memory_cache.cc
-  intern/memory_cache2.cc
   intern/memory_counter.cc
   intern/memory_utils.c
   intern/mesh_boolean.cc
@@ -219,7 +217,6 @@ set(SRC
   BLI_delaunay_2d.hh
   BLI_devirtualize_parameters.hh
   BLI_dial_2d.h
-  BLI_disk_read_cache.hh
   BLI_disjoint_set.hh
   BLI_dlrbTree.h
   BLI_dot_export.hh
@@ -565,7 +562,6 @@ if(WITH_GTESTS)
     tests/BLI_math_vector_test.cc
     tests/BLI_math_vector_types_test.cc
     tests/BLI_memiter_test.cc
-    tests/BLI_memory_cache_test.cc
     tests/BLI_memory_counter_test.cc
     tests/BLI_memory_utils_test.cc
     tests/BLI_mesh_boolean_test.cc

@@ -9,7 +9,7 @@
 
 #  include "BLI_implicit_sharing_ptr.hh"
 #  include "BLI_map.hh"
-#  include "BLI_memory_cache2.hh"
+#  include "BLI_memory_cache.hh"
 #  include "BLI_memory_counter.hh"
 
 #  include <openvdb/openvdb.h>
