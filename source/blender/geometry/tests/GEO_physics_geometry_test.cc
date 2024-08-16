@@ -534,6 +534,9 @@ TEST_F(PhysicsGeometryTest, join_geometry)
     constraint_body2.varray.set_all({1, 2});
     body_shapes.finish();
     masses.finish();
+    constraint_types.finish();
+    constraint_body1.finish();
+    constraint_body2.finish();
     geo1->compute_local_inertia(geo1->bodies_range());
   }
   test_data(*geo1, false, 5, 2, 3);
@@ -564,6 +567,9 @@ TEST_F(PhysicsGeometryTest, join_geometry)
     constraint_body2.varray.set_all({1});
     body_shapes.finish();
     masses.finish();
+    constraint_types.finish();
+    constraint_body1.finish();
+    constraint_body2.finish();
     geo3->compute_local_inertia(geo3->bodies_range());
   }
   test_data(*geo3, true, 2, 1, 1);

@@ -2267,8 +2267,6 @@ static OrderedAttributes gather_generic_physics_attributes_to_propagate(
     bool & /*r_create_id*/)
 {
   using bke::PhysicsGeometry;
-  using BodyAttribute = PhysicsGeometry::BodyAttribute;
-  using ConstraintAttribute = PhysicsGeometry::ConstraintAttribute;
 
   Vector<bke::GeometryComponent::Type> src_component_types;
   src_component_types.append(bke::GeometryComponent::Type::Physics);
@@ -2291,9 +2289,6 @@ static OrderedAttributes gather_generic_physics_attributes_to_propagate(
   attributes_to_propagate.remove(rotation_attribute_id);
   attributes_to_propagate.remove(velocity_attribute_id);
   attributes_to_propagate.remove(angular_velocity_attribute_id);
-  attributes_to_propagate.remove(constraint_type_attribute_id);
-  attributes_to_propagate.remove(constraint_body1_attribute_id);
-  attributes_to_propagate.remove(constraint_body2_attribute_id);
   // r_create_id = attributes_to_propagate.pop_try("id").has_value();
   for (auto &&item : attributes_to_propagate.items()) {
     ordered_attributes.ids.add_new(item.key);
@@ -2373,7 +2368,7 @@ static void execute_realize_physics_task(const RealizeInstancesOptions & /*optio
                                          const RealizePhysicsTask &task,
                                          const OrderedAttributes &ordered_attributes,
                                          const bool world_was_moved,
-                                         bke::PhysicsGeometry &dst_physics,
+                                         bke::PhysicsGeometry & /*dst_physics*/,
                                          MutableSpan<bke::CollisionShapePtr> all_dst_shapes,
                                          MutableSpan<int> all_dst_body_shapes,
                                          MutableSpan<float3> all_dst_positions,
