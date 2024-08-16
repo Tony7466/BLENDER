@@ -331,7 +331,7 @@ class IndexRangePrinter:
         return f"Size: {size}, [{start} - {start + size - 1}]"
 
     def display_hint(self):
-        return "string"
+        return None
 
 
 class IndexMaskPrinter:

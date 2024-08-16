@@ -19,7 +19,15 @@ namespace blender::memory_counter {
 
 class MemoryCount {
  public:
+  /**
+   * Get the total number of counted bytes.
+   *
+   * \note This is only a rough estimate of the actual used memory. Often, not every little bit of
+   * memory is counted, so this is generally a lower bound. The actual memory usage should not be
+   * significantly higher though.
+   */
   int64_t total_bytes = 0;
+
   Set<WeakImplicitSharingPtr> handled_shared_data;
 
   void reset();
