@@ -209,7 +209,7 @@ static LazyLoadedGrid load_single_grid_from_disk_cached(const StringRef file_pat
   key.file_path = file_path;
   key.grid_name = grid_name;
 
-  std::shared_ptr<const GridReadValue> value = memory_cache::get_typed<GridReadValue>(
+  std::shared_ptr<const GridReadValue> value = memory_cache::get<GridReadValue>(
       std::move(key), [&key]() {
         openvdb::GridBase::Ptr grid = load_single_grid_from_disk(key.file_path, key.grid_name);
         auto value = std::make_unique<GridReadValue>();

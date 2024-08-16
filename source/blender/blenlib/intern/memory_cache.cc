@@ -52,8 +52,8 @@ static Cache &get_cache()
   return cache;
 }
 
-std::shared_ptr<CachedValue> get(const GenericKey &key,
-                                 const FunctionRef<std::unique_ptr<CachedValue>()> compute_fn)
+std::shared_ptr<CachedValue> get_base(const GenericKey &key,
+                                      const FunctionRef<std::unique_ptr<CachedValue>()> compute_fn)
 {
   Cache &cache = get_cache();
   std::shared_ptr<CachedValue> result;
