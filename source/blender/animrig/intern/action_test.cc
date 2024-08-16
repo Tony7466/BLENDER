@@ -790,41 +790,6 @@ TEST_F(ChannelBagTest, channel_group_create)
   EXPECT_EQ(group2, channel_bag->channel_group(2));
 }
 
-TEST_F(ChannelBagTest, channel_group_remove_raw)
-{
-  bActionGroup *group0 = &channel_bag->channel_group_create("Group0");
-  bActionGroup *group1 = &channel_bag->channel_group_create("Group1");
-  bActionGroup *group2 = &channel_bag->channel_group_create("Group2");
-  bActionGroup *group3 = &channel_bag->channel_group_create("Group3");
-
-  ASSERT_EQ(4, channel_bag->channel_groups().size());
-
-  /* Attempt to remove a group that's not in the channel bag. Shouldn't do
-   * anything. */
-  bActionGroup bogus;
-  EXPECT_EQ(false, channel_bag->channel_group_remove_raw(bogus));
-  EXPECT_EQ(4, channel_bag->channel_groups().size());
-
-  /* Now remove the groups that are in the channel bag, one by one. */
-  EXPECT_EQ(true, channel_bag->channel_group_remove_raw(*group1));
-  EXPECT_EQ(3, channel_bag->channel_groups().size());
-  EXPECT_EQ(group0, channel_bag->channel_group(0));
-  EXPECT_EQ(group2, channel_bag->channel_group(1));
-  EXPECT_EQ(group3, channel_bag->channel_group(2));
-
-  EXPECT_EQ(true, channel_bag->channel_group_remove_raw(*group3));
-  EXPECT_EQ(2, channel_bag->channel_groups().size());
-  EXPECT_EQ(group0, channel_bag->channel_group(0));
-  EXPECT_EQ(group2, channel_bag->channel_group(1));
-
-  EXPECT_EQ(true, channel_bag->channel_group_remove_raw(*group0));
-  EXPECT_EQ(1, channel_bag->channel_groups().size());
-  EXPECT_EQ(group2, channel_bag->channel_group(0));
-
-  EXPECT_EQ(true, channel_bag->channel_group_remove_raw(*group2));
-  EXPECT_EQ(0, channel_bag->channel_groups().size());
-}
-
 TEST_F(ChannelBagTest, channel_group_remove)
 {
   bActionGroup *group0 = &channel_bag->channel_group_create("Group0");

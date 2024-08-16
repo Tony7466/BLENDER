@@ -811,33 +811,6 @@ class ChannelBag : public ::ActionChannelBag {
   bool channel_group_remove(bActionGroup &group);
 
   /**
-   * Remove the given channel group from the channel bag, *without* moving
-   * fcurves to preserve group membership.
-   *
-   * This is a low-ish-level function that makes no attempt to preserve existing
-   * group membership. However, that doesn't mean it's behavior is arbitrary: on
-   * the contrary, it is specific and well defined so that other things can be
-   * built on top of it.
-   *
-   * Imagine there are three groups: A, B, and C.  All groups have two fcurves
-   * as members. The way this method behaves is that if B is removed, C will
-   * shift over to fill in the gap. However, this method does *not* shift C's
-   * fcurves over with it, and therefore C will end up with what used to be B's
-   * fcurves as its own, and what used to be C's fcurves will be off the end of
-   * the grouped fcurves and thus ungrouped.
-   *
-   * In other words, this method naively shifts groups over to fill the gap left
-   * by the removed one, and whatever fcurves they happen to land on are then
-   * their members.
-   *
-   * All critical invariants are still upheld by this method.
-   *
-   * \return true when the channel group was found & removed, false if it wasn't
-   * found.
-   */
-  bool channel_group_remove_raw(bActionGroup &group);
-
-  /**
    * Assigns the given FCurve to the given channel group.
    *
    * Fails if either doesn't belong to this channel bag, but otherwise always
@@ -863,6 +836,27 @@ class ChannelBag : public ::ActionChannelBag {
   FCurve &fcurve_create(Main *bmain, FCurveDescriptor fcurve_descriptor);
 
  private:
+  /**
+   * Remove the channel group at `channel_group_index` from the channel group
+   * array.
+   *
+   * This is a low-level function that *only* manipulates the channel group
+   * array in the most basic way. It literally just removes the given item from
+   * the array and frees it, just like `erase()` on `std::vector`.
+   *
+   * It specifically does *not* maintain any of the semantic invariants of the
+   * group array or its relationship to the fcurves.
+   *
+   * Both `recompute_channel_group_indices()` and
+   * `update_fcurve_channel_group_pointers()` should be called at some point
+   * after this to restore the semantic invariants.
+   *
+   * \see `recompute_channel_group_indices()`
+   *
+   * \see `update_fcurve_channel_group_pointers()`
+   */
+  void channel_group_remove_raw(int channel_group_index);
+
   /**
    * Recompute the fcurve indices of all channel groups to be consistent.
    *

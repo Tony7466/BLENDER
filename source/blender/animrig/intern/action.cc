@@ -1267,7 +1267,8 @@ bool ChannelBag::fcurve_remove(FCurve &fcurve_to_remove)
   if (group) {
     group->fcurve_range_length -= 1;
     if (group->fcurve_range_length <= 0) {
-      this->channel_group_remove_raw(*group);
+      const int group_index = this->channel_groups().as_span().first_index_try(group);
+      this->channel_group_remove_raw(group_index);
     }
     this->recompute_channel_group_indices();
     this->update_fcurve_channel_group_pointers();
@@ -1504,7 +1505,8 @@ bActionGroup &ChannelBag::channel_group_ensure(StringRefNull name)
 
 bool ChannelBag::channel_group_remove(bActionGroup &group)
 {
-  if (this->channel_groups().as_span().first_index_try(&group) == -1) {
+  const int group_index = this->channel_groups().as_span().first_index_try(&group);
+  if (group_index == -1) {
     return false;
   }
 
@@ -1520,25 +1522,19 @@ bool ChannelBag::channel_group_remove(bActionGroup &group)
                     group.fcurve_range_start + group.fcurve_range_length,
                     to_index);
 
-  const bool success = this->channel_group_remove_raw(group);
-  BLI_assert(success == true);
-
-  return true;
-}
-
-bool ChannelBag::channel_group_remove_raw(bActionGroup &group)
-{
-  int group_index = this->channel_groups().as_span().first_index_try(&group);
-  if (group_index == -1) {
-    return false;
-  }
-
-  MEM_SAFE_FREE(this->group_array[group_index]);
-  shrink_array_and_remove(&this->group_array, &this->group_array_num, group_index);
+  this->channel_group_remove_raw(group_index);
   this->recompute_channel_group_indices();
   this->update_fcurve_channel_group_pointers();
 
   return true;
+}
+
+void ChannelBag::channel_group_remove_raw(const int group_index)
+{
+  BLI_assert(group_index >= 0 && group_index < this->channel_groups().size());
+
+  MEM_SAFE_FREE(this->group_array[group_index]);
+  shrink_array_and_remove(&this->group_array, &this->group_array_num, group_index);
 }
 
 void ChannelBag::recompute_channel_group_indices()
@@ -1872,7 +1868,8 @@ bool ChannelBag::fcurve_assign_to_channel_group(FCurve &fcurve, bActionGroup &gr
   if (from_group != nullptr) {
     from_group->fcurve_range_length--;
     if (from_group->fcurve_range_length == 0) {
-      this->channel_group_remove_raw(*from_group);
+      const int from_group_index = this->channel_groups().as_span().first_index_try(from_group);
+      this->channel_group_remove_raw(from_group_index);
     }
   }
 
