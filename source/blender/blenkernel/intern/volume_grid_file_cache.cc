@@ -10,6 +10,7 @@
 #  include "BLI_disk_read_cache.hh"
 #  include "BLI_implicit_sharing_ptr.hh"
 #  include "BLI_map.hh"
+#  include "BLI_memory_counter.hh"
 
 #  include <openvdb/openvdb.h>
 
@@ -125,7 +126,7 @@ static FileCache &get_file_cache(const StringRef file_path)
                                                    [&]() { return create_file_cache(file_path); });
 }
 
-class GridReadKey : public disk_read_cache::ReadKey {
+class GridReadKey : public GenericKey {
  public:
   std::string file_path;
   std::string grid_name;
@@ -137,12 +138,17 @@ class GridReadKey : public disk_read_cache::ReadKey {
 
   BLI_STRUCT_EQUALITY_OPERATORS_2(GridReadKey, file_path, grid_name)
 
-  bool equal_to(const disk_read_cache::ReadKey &other) const override
+  bool equal_to(const GenericKey &other) const override
   {
     if (const auto *other_typed = dynamic_cast<const GridReadKey *>(&other)) {
       return *this == *other_typed;
     }
     return false;
+  }
+
+  std::unique_ptr<GenericKey> to_storable() const override
+  {
+    return std::make_unique<GridReadKey>(*this);
   }
 };
 
@@ -168,6 +174,11 @@ class GridReadValue : public disk_read_cache::ReadValue {
  public:
   ImplicitSharingPtr<TreeSharingInfo> tree_sharing_info;
   openvdb::GridBase::Ptr grid;
+
+  void count_memory(MemoryCounter &memory) const override
+  {
+    memory.add(grid->baseTree().memUsage());
+  }
 };
 
 /**
@@ -177,33 +188,31 @@ class GridReadValue : public disk_read_cache::ReadValue {
 static LazyLoadedGrid load_single_grid_from_disk(const StringRef file_path,
                                                  const StringRef grid_name)
 {
-  auto key = std::make_unique<GridReadKey>();
-  key->file_path = file_path;
-  key->grid_name = grid_name;
+  GridReadKey key;
+  key.file_path = file_path;
+  key.grid_name = grid_name;
 
-  auto *value = dynamic_cast<const GridReadValue *>(disk_read_cache::read(
-      std::move(key),
-      [](const disk_read_cache::ReadKey &key_) -> std::unique_ptr<disk_read_cache::ReadValue> {
-        const auto &key = dynamic_cast<const GridReadKey &>(key_);
+  std::shared_ptr<const GridReadValue> value = std::static_pointer_cast<const GridReadValue>(
+      disk_read_cache::read(std::move(key),
+                            [&key]() -> std::unique_ptr<disk_read_cache::ReadValue> {
+                              /* Disable delay loading and file copying, this has poor performance
+                               * on network drivers. */
+                              const bool delay_load = false;
 
-        /* Disable delay loading and file copying, this has poor performance
-         * on network drivers. */
-        const bool delay_load = false;
+                              openvdb::io::File file(key.file_path);
+                              file.setCopyMaxBytes(0);
+                              file.open(delay_load);
+                              openvdb::GridBase::Ptr grid = file.readGrid(key.grid_name);
 
-        openvdb::io::File file(key.file_path);
-        file.setCopyMaxBytes(0);
-        file.open(delay_load);
-        openvdb::GridBase::Ptr grid = file.readGrid(key.grid_name);
-
-        auto value = std::make_unique<GridReadValue>();
-        value->grid = std::move(grid);
-        value->tree_sharing_info = ImplicitSharingPtr{
-            MEM_new<TreeSharingInfo>(__func__, value->grid->baseTreePtr())};
-        return value;
-      }));
+                              auto value = std::make_unique<GridReadValue>();
+                              value->grid = std::move(grid);
+                              value->tree_sharing_info = ImplicitSharingPtr{
+                                  MEM_new<TreeSharingInfo>(__func__, value->grid->baseTreePtr())};
+                              return value;
+                            }));
   value->tree_sharing_info->add_user();
   openvdb::GridBase &grid = *value->grid;
-  return {value->grid->copyGrid(), value->tree_sharing_info.get()};
+  return {grid.copyGrid(), value->tree_sharing_info.get()};
 }
 
 /**

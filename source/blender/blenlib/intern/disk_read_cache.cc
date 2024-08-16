@@ -6,13 +6,13 @@
 
 #include "BLI_disk_read_cache.hh"
 #include "BLI_map.hh"
+#include "BLI_memory_cache.hh"
 
 namespace blender::disk_read_cache {
 
 struct Cache {
   std::mutex mutex;
-  Vector<std::unique_ptr<ReadKey>> keys;
-  Map<std::reference_wrapper<const ReadKey>, std::unique_ptr<ReadValue>> map;
+  Map<std::reference_wrapper<const GenericKey>, std::shared_ptr<ReadValue>> map;
 };
 
 static Cache &get_cache()
@@ -21,21 +21,37 @@ static Cache &get_cache()
   return cache;
 }
 
-const ReadValue *read(std::unique_ptr<ReadKey> key,
-                      std::unique_ptr<ReadValue> (*read_fn)(const ReadKey &key))
+std::shared_ptr<const ReadValue> read(const GenericKey &key,
+                                      const FunctionRef<std::unique_ptr<ReadValue>()> read_fn)
 {
   Cache &cache = get_cache();
-  std::lock_guard lock{cache.mutex};
-  const ReadKey &key_ref = *key;
-  if (!cache.map.contains(key_ref)) {
-    if (cache.map.size() > 200) {
-      cache.map.clear();
+  std::shared_ptr<const ReadValue> result;
+  bool newly_added = false;
+  {
+    std::lock_guard lock{cache.mutex};
+    if (!cache.map.contains(key)) {
+      /* Don't use #lookup_or_add_cb because the callback might add another value. */
+      std::unique_ptr<ReadValue> value = read_fn();
+      ReadValue &value_ref = *value;
+      value_ref.key = key.to_storable();
+      cache.map.add(*value_ref.key, std::move(value));
+      newly_added = true;
     }
-    std::unique_ptr<ReadValue> value = read_fn(key_ref);
-    cache.map.add(key_ref, std::move(value));
-    cache.keys.append(std::move(key));
+    result = cache.map.lookup(key);
   }
-  return cache.map.lookup(key_ref).get();
+
+  if (newly_added) {
+    memory_cache::MemoryCache &global_memory_cache = memory_cache::global_cache();
+    global_memory_cache.add(
+        key.to_storable(),
+        [&](MemoryCounter &memory) { result->count_memory(memory); },
+        [cache = &cache, key = result->key.get()]() {
+          std::lock_guard lock{cache->mutex};
+          cache->map.remove(*key);
+        });
+  }
+
+  return result;
 }
 
 }  // namespace blender::disk_read_cache

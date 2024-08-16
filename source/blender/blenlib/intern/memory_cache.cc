@@ -12,7 +12,7 @@ namespace blender::memory_cache {
 
 MemoryCache &global_cache()
 {
-  static MemoryCache cache;
+  static MemoryCache cache{int64_t(5) * 1024 * 1024 * 1024};
   return cache;
 }
 

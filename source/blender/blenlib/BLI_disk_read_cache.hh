@@ -8,34 +8,21 @@
 
 #include "BLI_any.hh"
 #include "BLI_function_ref.hh"
+#include "BLI_generic_key.hh"
+#include "BLI_memory_counter_fwd.hh"
 #include "BLI_utildefines.h"
 
 namespace blender::disk_read_cache {
 
-class ReadKey {
- public:
-  virtual ~ReadKey() = default;
-
-  virtual uint64_t hash() const = 0;
-  virtual bool equal_to(const ReadKey &other) const = 0;
-
-  friend bool operator==(const ReadKey &a, const ReadKey &b)
-  {
-    return a.equal_to(b);
-  }
-
-  friend bool operator!=(const ReadKey &a, const ReadKey &b)
-  {
-    return !(a == b);
-  }
-};
-
 class ReadValue {
  public:
+  std::unique_ptr<GenericKey> key;
+
   virtual ~ReadValue() = default;
+
+  virtual void count_memory(MemoryCounter &memory) const = 0;
 };
 
-const ReadValue *read(std::unique_ptr<ReadKey> key,
-                      std::unique_ptr<ReadValue> (*read_fn)(const ReadKey &key));
+std::shared_ptr< const ReadValue> read(const GenericKey &key, FunctionRef<std::unique_ptr<ReadValue>()> read_fn);
 
 }  // namespace blender::disk_read_cache
