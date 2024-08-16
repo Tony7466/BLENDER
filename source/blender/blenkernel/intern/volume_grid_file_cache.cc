@@ -171,13 +171,19 @@ class TreeSharingInfo : public ImplicitSharingInfo {
 };
 
 class GridReadValue : public memory_cache::CachedValue {
+ private:
+  mutable std::atomic<int64_t> bytes_ = 0;
+
  public:
   ImplicitSharingPtr<> tree_sharing_info;
   openvdb::GridBase::Ptr grid;
 
   void count_memory(MemoryCounter &memory) const override
   {
-    memory.add(grid->baseTree().memUsage());
+    if (bytes_ == 0) {
+      this->bytes_ = grid->baseTree().memUsage();
+    }
+    memory.add(bytes_);
   }
 };
 
