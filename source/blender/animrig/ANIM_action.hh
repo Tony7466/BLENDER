@@ -847,29 +847,55 @@ class ChannelBag : public ::ActionChannelBag {
    * It specifically does *not* maintain any of the semantic invariants of the
    * group array or its relationship to the fcurves.
    *
-   * Both `recompute_channel_group_indices()` and
+   * Both `collapse_channel_group_gaps()` and
    * `update_fcurve_channel_group_pointers()` should be called at some point
    * after this to restore the semantic invariants.
    *
-   * \see `recompute_channel_group_indices()`
+   * \see `collapse_channel_group_gaps()`
    *
    * \see `update_fcurve_channel_group_pointers()`
    */
   void channel_group_remove_raw(int channel_group_index);
 
   /**
-   * Recompute the fcurve indices of all channel groups to be consistent.
+   * Recompute all channel groups' fcurve indices so that there are no gaps of
+   * ungrouped fcurves between the groups.
    *
-   * This works by assuming that the channel groups are in order and have
-   * correct fcurve *counts*. It simply starts at index zero, and then sets
-   * each channel group index such that they are perfectly packed with no
-   * overlap and no gaps.
+   * This alters neither the order of the channel groups in the channel group
+   * array nor the number of fcurves in each group. It simply changes the start
+   * indices of each group so that the groups come exactly after each other,
+   * with no gaps or overlap in their fcurves.  It also ensures that the first
+   * group starts at the first fcurve.
    *
-   * Note that this does *not* move fcurves around to keep their group
-   * membership stable. That should be done separately if it's needed/desired.
+   * For example, if the mapping of the groups to fcurves looks like this, where
+   * the dots are ungrouped fcurves and the `g0` etc. are the positions of the
+   * groups over the fcurves:
+   *
+   * ```
+   * ...|g0|g1|..|g3|.|g4|
+   * ```
+   *
+   * Then after calling this function they will look like this:
+   *
+   * ```
+   * |g0|g1|g3|g4|......
+   * ```
+   *
+   * Note that this specifically does *not* move the fcurves, and therefore this
+   * alters fcurve membership in a way that depends on how the groups are
+   * shifted.  It also does not update the group pointers inside the fcurves, so
+   * `update_fcurve_channel_group_pointers()` must be called at some point after
+   * this to fix those up.
    */
-  void recompute_channel_group_indices();
+  void collapse_channel_group_gaps();
 
+  /**
+   * Updates all fcurves to point at the channel group that they belong to.
+   *
+   * The indices in the channel groups are considered the source of truth, and
+   * the pointers in the fcurves are simply updated to match those.  Fcurves
+   * that don't belong to a group will have their group pointer set to null.
+   */
   void update_fcurve_channel_group_pointers();
 };
 static_assert(sizeof(ChannelBag) == sizeof(::ActionChannelBag),

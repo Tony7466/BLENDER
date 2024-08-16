@@ -1240,7 +1240,7 @@ FCurve &ChannelBag::fcurve_create(Main *bmain, FCurveDescriptor fcurve_descripto
   grow_array_and_insert(&this->fcurve_array, &this->fcurve_array_num, insert_index, new_fcurve);
   if (group) {
     group->fcurve_range_length += 1;
-    this->recompute_channel_group_indices();
+    this->collapse_channel_group_gaps();
     this->update_fcurve_channel_group_pointers();
   }
 
@@ -1270,7 +1270,7 @@ bool ChannelBag::fcurve_remove(FCurve &fcurve_to_remove)
       const int group_index = this->channel_groups().as_span().first_index_try(group);
       this->channel_group_remove_raw(group_index);
     }
-    this->recompute_channel_group_indices();
+    this->collapse_channel_group_gaps();
     this->update_fcurve_channel_group_pointers();
   }
 
@@ -1523,7 +1523,7 @@ bool ChannelBag::channel_group_remove(bActionGroup &group)
                     to_index);
 
   this->channel_group_remove_raw(group_index);
-  this->recompute_channel_group_indices();
+  this->collapse_channel_group_gaps();
   this->update_fcurve_channel_group_pointers();
 
   return true;
@@ -1537,7 +1537,7 @@ void ChannelBag::channel_group_remove_raw(const int group_index)
   shrink_array_and_remove(&this->group_array, &this->group_array_num, group_index);
 }
 
-void ChannelBag::recompute_channel_group_indices()
+void ChannelBag::collapse_channel_group_gaps()
 {
   int index = 0;
 
@@ -1880,7 +1880,7 @@ bool ChannelBag::fcurve_assign_to_channel_group(FCurve &fcurve, bActionGroup &gr
                     group.fcurve_range_start + group.fcurve_range_length);
   group.fcurve_range_length++;
 
-  this->recompute_channel_group_indices();
+  this->collapse_channel_group_gaps();
   this->update_fcurve_channel_group_pointers();
 
   return true;
