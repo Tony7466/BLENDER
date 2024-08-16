@@ -233,14 +233,14 @@ class VolumeGridData : public ImplicitSharingMixin {
    */
   bool is_reloadable() const;
 
+ private:
+  void ensure_grid_loaded() const;
+  void delete_self();
+
   /**
    * Unloads the tree data if it's reloadable and no one is using it right now.
    */
   void unload_tree_if_possible() const;
-
- private:
-  void ensure_grid_loaded() const;
-  void delete_self();
 };
 
 /**

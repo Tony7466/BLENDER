@@ -125,6 +125,9 @@ static FileCache &get_file_cache(const StringRef file_path)
                                                    [&]() { return create_file_cache(file_path); });
 }
 
+/**
+ * Identifies a grid in the global memory cache.
+ */
 class GridReadKey : public GenericKey {
  public:
   std::string file_path;
@@ -161,6 +164,7 @@ class GridReadValue : public memory_cache::CachedValue {
 
   void count_memory(MemoryCounter &memory) const override
   {
+    /* Avoid computing the amount of memory from scratch every time. */
     if (bytes_ == 0) {
       this->bytes_ = grid->baseTree().memUsage();
     }

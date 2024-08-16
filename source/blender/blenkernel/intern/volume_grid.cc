@@ -431,15 +431,6 @@ int get_channels_num(const VolumeGridType type)
   return 0;
 }
 
-void unload_tree_if_possible(const VolumeGridData &grid)
-{
-#ifdef WITH_OPENVDB
-  grid.unload_tree_if_possible();
-#else
-  UNUSED_VARS(grid);
-#endif
-}
-
 float4x4 get_transform_matrix(const VolumeGridData &grid)
 {
 #ifdef WITH_OPENVDB
