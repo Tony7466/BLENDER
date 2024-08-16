@@ -132,8 +132,8 @@ static bool eyedropper_grease_pencil_init(bContext *C, wmOperator *op)
   eye->display = IMB_colormanagement_display_get_named(display_device);
 
   eye->accum_start = true;
-  eye->mode = (EyeMode)RNA_enum_get(op->ptr, "mode");
-  eye->mat_mode = (MaterialMode)RNA_enum_get(op->ptr, "material_mode");
+  eye->mode = EyeMode(RNA_enum_get(op->ptr, "mode"));
+  eye->mat_mode = MaterialMode(RNA_enum_get(op->ptr, "material_mode"));
   return true;
 }
 
