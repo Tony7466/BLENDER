@@ -121,7 +121,7 @@ static void eyedropper_grease_pencil_status_indicators(bContext *C,
 
 static bool eyedropper_grease_pencil_init(bContext *C, wmOperator *op)
 {
-  EyedropperGreasePencil *eye = MEM_cnew<EyedropperGreasePencil>(__func__);
+  EyedropperGreasePencil *eye = MEM_new<EyedropperGreasePencil>(__func__);
 
   op->customdata = eye;
   Scene *scene = CTX_data_scene(C);
@@ -141,7 +141,11 @@ static void eyedropper_grease_pencil_exit(bContext *C, wmOperator *op)
   /* Clear status message area. */
   ED_workspace_status_text(C, nullptr);
 
-  MEM_SAFE_FREE(op->customdata);
+  EyedropperGreasePencil *eye = static_cast<EyedropperGreasePencil *>(op->customdata);
+
+  MEM_delete<EyedropperGreasePencil>(eye);
+  /* Clear pointer. */
+  op->customdata = nullptr;
 }
 
 static void eyedropper_add_material(bContext *C,
