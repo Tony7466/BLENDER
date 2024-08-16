@@ -18,11 +18,13 @@ class Wireframe {
 
   PassMain wireframe_ps_ = {"Wireframe"};
   struct ColoringPass {
-    PassMain::Sub *curves_ps_ = nullptr;
+    /* TODO(fclem): Not yet implemented. */
+    // PassMain::Sub *curves_ps_ = nullptr;
     PassMain::Sub *pointcloud_ps_ = nullptr;
     PassMain::Sub *gpencil_ps_ = nullptr;
     PassMain::Sub *mesh_ps_ = nullptr;
-    PassMain::Sub *mesh_all_wires_ps_ = nullptr;
+    /* Variant for meshes that force drawing all edges. */
+    PassMain::Sub *mesh_all_edges_ps_ = nullptr;
   } colored, non_colored;
   /* Some objects types renders as points in wireframe draw mode. */
   PassMain point_ps_ = {"Loose Points"};
@@ -59,39 +61,25 @@ class Wireframe {
         sub.push_constant("isTransform", is_transform);
         sub.push_constant("colorType", state.v3d->shading.wire_color_type);
         sub.push_constant("useColoring", false);
+        sub.push_constant("isHair", false);
         return &sub;
       };
 
       {
         non_colored.mesh_ps_ = shader_pass(res.shaders.wireframe_mesh.get(), "Mesh");
-        non_colored.mesh_ps_->push_constant("isHair", false);
         non_colored.mesh_ps_->push_constant("useColoring", false);
         non_colored.mesh_ps_->push_constant("wireStepParam", wire_threshold);
         colored.mesh_ps_ = shader_pass(res.shaders.wireframe_mesh.get(), "MeshColored");
-        colored.mesh_ps_->push_constant("isHair", false);
         colored.mesh_ps_->push_constant("useColoring", true);
         colored.mesh_ps_->push_constant("wireStepParam", wire_threshold);
       }
       {
-        non_colored.mesh_all_wires_ps_ = shader_pass(res.shaders.wireframe_mesh.get(), "Wires");
-        non_colored.mesh_all_wires_ps_->push_constant("isHair", false);
-        non_colored.mesh_all_wires_ps_->push_constant("useColoring", false);
-        non_colored.mesh_all_wires_ps_->push_constant("wireStepParam", 1.0f);
-        colored.mesh_all_wires_ps_ = shader_pass(res.shaders.wireframe_mesh.get(), "WiresColored");
-        colored.mesh_all_wires_ps_->push_constant("isHair", false);
-        colored.mesh_all_wires_ps_->push_constant("useColoring", true);
-        colored.mesh_all_wires_ps_->push_constant("wireStepParam", 1.0f);
-      }
-      {
-        /* For now just reuse the mesh shader. Eventually, we just replace it. */
-        non_colored.curves_ps_ = shader_pass(res.shaders.wireframe_mesh.get(), "Curve");
-        non_colored.curves_ps_->push_constant("isHair", true);
-        non_colored.curves_ps_->push_constant("useColoring", false);
-        non_colored.curves_ps_->push_constant("wireStepParam", 10.0f);
-        colored.curves_ps_ = shader_pass(res.shaders.wireframe_mesh.get(), "CurveColored");
-        colored.curves_ps_->push_constant("isHair", true);
-        colored.curves_ps_->push_constant("useColoring", true);
-        colored.curves_ps_->push_constant("wireStepParam", 10.0f);
+        non_colored.mesh_all_edges_ps_ = shader_pass(res.shaders.wireframe_mesh.get(), "Wires");
+        non_colored.mesh_all_edges_ps_->push_constant("useColoring", false);
+        non_colored.mesh_all_edges_ps_->push_constant("wireStepParam", 1.0f);
+        colored.mesh_all_edges_ps_ = shader_pass(res.shaders.wireframe_mesh.get(), "WiresColored");
+        colored.mesh_all_edges_ps_->push_constant("useColoring", true);
+        colored.mesh_all_edges_ps_->push_constant("wireStepParam", 1.0f);
       }
     }
   }
@@ -102,7 +90,7 @@ class Wireframe {
       return;
     }
 
-    const bool all_wires = (ob_ref.object->dtx & OB_DRAW_ALL_EDGES) != 0;
+    const bool all_edges = (ob_ref.object->dtx & OB_DRAW_ALL_EDGES) != 0;
     const bool use_coloring =
         true;  // !is_edit_mode && !instance_parent_in_edit_mode && !is_sculpt_mode;
 
@@ -113,12 +101,13 @@ class Wireframe {
     gpu::Batch *geom;
     switch (ob_ref.object->type) {
       case OB_CURVES:
+        /* TODO(fclem): Not yet implemented. */
         break;
       case OB_GREASE_PENCIL:
         break;
       case OB_MESH:
         geom = DRW_cache_mesh_face_wireframe_get(ob_ref.object);
-        (all_wires ? coloring.mesh_all_wires_ps_ : coloring.mesh_ps_)
+        (all_edges ? coloring.mesh_all_edges_ps_ : coloring.mesh_ps_)
             ->draw(geom, res_handle, res.select_id(ob_ref).get());
 #if 0 /* TODO */
         if (!is_edit_mode || has_edit_mesh_cage) {
