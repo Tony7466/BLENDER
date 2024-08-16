@@ -6002,11 +6002,6 @@ void uiTemplateRunningJobs(uiLayout *layout, bContext *C)
       icon = ICON_SEQUENCE;
       break;
     }
-    if (WM_jobs_test(wm, scene, WM_JOB_TYPE_SEQ_DRAW_THUMBNAIL_NEW)) {
-      handle_event = B_STOPSEQ;
-      icon = ICON_SEQUENCE;
-      break;
-    }
     if (WM_jobs_test(wm, scene, WM_JOB_TYPE_CLIP_BUILD_PROXY)) {
       handle_event = B_STOPCLIP;
       icon = ICON_TRACKER;

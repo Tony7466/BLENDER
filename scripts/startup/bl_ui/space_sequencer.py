@@ -181,7 +181,6 @@ class SEQUENCER_HT_header(Header):
         row.prop(tool_settings, "use_snap_sequencer", text="")
         sub = row.row(align=True)
         sub.popover(panel="SEQUENCER_PT_snapping")
-        row.prop(st.timeline_overlay, "use_new_thumbnails", text="New Thumb Cache")  # @TODO testing only
         layout.separator_spacer()
 
         if st.view_type in {'PREVIEW', 'SEQUENCER_PREVIEW'}:

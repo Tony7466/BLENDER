@@ -1551,28 +1551,23 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
 
   draw_strips_foreground(timeline_ctx, strips_batch, strips);
 
-  //@TODO: temp for new thumb cache stats
+  //@TODO: temp display of thumb cache stats
   {
-    const bool new_thumbs = (timeline_ctx->sseq->timeline_overlay.flag &
-                             SEQ_TIMELINE_NEW_THUMBS) != 0;
-    if (new_thumbs) {
-
 #if 0
-      seq::thumbnail_cache_for_each_request(
-          timeline_ctx->scene,
-          [&](int index, float timeline_frame, int channel, int /*frame_index*/)
-        {
-            uchar4 col((index*15) & 0xFF, 0xFF - ((index * 11) & 0xFF), 128, 255);
-            timeline_ctx->quads->add_wire_quad(timeline_frame - 0.1f, channel, timeline_frame + 1.1f, channel + 1, col);
+    seq::thumbnail_cache_for_each_request(
+        timeline_ctx->scene,
+        [&](int index, float timeline_frame, int channel, int /*frame_index*/) {
+          uchar4 col((index * 15) & 0xFF, 0xFF - ((index * 11) & 0xFF), 128, 255);
+          timeline_ctx->quads->add_wire_quad(
+              timeline_frame - 0.1f, channel, timeline_frame + 1.1f, channel + 1, col);
         });
-      timeline_ctx->quads->draw();
+    timeline_ctx->quads->draw();
 #endif
 
-      uchar stats_col[4] = {255, 192, 32, 255};
-      std::string stats = seq::thumbnail_cache_get_stats(timeline_ctx->scene);
-      UI_view2d_text_cache_add_rectf(
-          timeline_ctx->v2d, &timeline_ctx->v2d->cur, stats.c_str(), stats.size(), stats_col);
-    }
+    uchar stats_col[4] = {255, 192, 32, 255};
+    std::string stats = seq::thumbnail_cache_get_stats(timeline_ctx->scene);
+    UI_view2d_text_cache_add_rectf(
+        timeline_ctx->v2d, &timeline_ctx->v2d->cur, stats.c_str(), stats.size(), stats_col);
   }
 
   /* Draw icons. */
@@ -1589,17 +1584,14 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx, StripsDrawBatch &
     return;
   }
 
-  const bool new_thumbs = (timeline_ctx->sseq->timeline_overlay.flag & SEQ_TIMELINE_NEW_THUMBS) !=
-                          0;
-  if (new_thumbs) {
-    rctf rect = timeline_ctx->v2d->cur;
-    rect.xmin -= 30;
-    rect.xmax += 30;
-    rect.ymin -= 2;
-    rect.ymax += 2;
-    seq::thumbnail_cache_discard_requests_outside(timeline_ctx->scene, rect);
-    seq::thumbnail_cache_maintain_capacity(timeline_ctx->scene, BLI_time_now_seconds());
-  }
+  /* Discard thumbnail requests that are far enough from viewing area. */
+  rctf rect = timeline_ctx->v2d->cur;
+  rect.xmin -= 30;
+  rect.xmax += 30;
+  rect.ymin -= 2;
+  rect.ymax += 2;
+  seq::thumbnail_cache_discard_requests_outside(timeline_ctx->scene, rect);
+  seq::thumbnail_cache_maintain_capacity(timeline_ctx->scene, BLI_time_now_seconds());
 
   Vector<StripDrawContext> bottom_layer, top_layer;
   visible_strips_ordered_get(timeline_ctx, bottom_layer, top_layer);

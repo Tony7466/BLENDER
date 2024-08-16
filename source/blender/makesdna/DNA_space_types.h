@@ -644,8 +644,6 @@ typedef enum eSpaceSeq_SequencerTimelineOverlay_Flag {
   SEQ_TIMELINE_SHOW_STRIP_SOURCE = (1 << 15),
   SEQ_TIMELINE_SHOW_STRIP_DURATION = (1 << 16),
   SEQ_TIMELINE_SHOW_GRID = (1 << 18),
-
-  SEQ_TIMELINE_NEW_THUMBS = (1 << 19), // DEBUG only while developing
 } eSpaceSeq_SequencerTimelineOverlay_Flag;
 
 typedef struct SequencerCacheOverlay {

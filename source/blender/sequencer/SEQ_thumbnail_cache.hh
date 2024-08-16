@@ -20,6 +20,8 @@ struct Scene;
 
 namespace blender::seq {
 
+static constexpr int SEQ_THUMB_SIZE = 256;
+
 ImBuf *thumbnail_cache_get(
     const bContext *C, Scene *scene, const Sequence *seq, float timeline_frame, double cur_time);
 void thumbnail_cache_maintain_capacity(Scene *scene, double cur_time);

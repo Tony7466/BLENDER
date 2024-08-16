@@ -8,6 +8,7 @@
 
 #include "BLI_map.hh"
 #include "BLI_math_base.h"
+#include "BLI_math_matrix.h"
 #include "BLI_path_util.h"
 #include "BLI_set.hh"
 #include "BLI_task.hh"
@@ -32,11 +33,9 @@
 
 #include "render.hh"
 
-void sequencer_thumbnail_transform(ImBuf *in, ImBuf *out);  // render.cc @TODO cleanup
-
 namespace blender::seq {
 
-constexpr int THUMB_SIZE = 256;  //@TODO: use SEQ_RENDER_THUMB_SIZE and/or remove that one
+static constexpr int MAX_THUMBNAILS = 5000;
 
 static ThreadMutex thumb_cache_lock = BLI_MUTEX_INITIALIZER;
 
@@ -98,7 +97,6 @@ struct ThumbnailCache {
 
   //@TODO: do we need something for multi-view/stereo?
   Map<std::string, FileEntry> map_;
-
   Set<Request> requests_;
 
   ~ThumbnailCache()
@@ -129,6 +127,31 @@ struct ThumbnailCache {
     map_.remove_contained(path);
   }
 };
+
+//@TODO: simplify this, unnecessarily complex
+static void scale_thumbnail(const ImBuf *in, ImBuf *out)
+{
+  float image_scale_factor = float(out->x) / in->x;
+  float transform_matrix[4][4];
+
+  /* Set to keep same loc,scale,rot but change scale to thumb size limit. */
+  const float scale_x = 1 * image_scale_factor;
+  const float scale_y = 1 * image_scale_factor;
+  const float image_center_offs_x = (out->x - in->x) / 2;
+  const float image_center_offs_y = (out->y - in->y) / 2;
+  const float pivot[3] = {in->x / 2.0f, in->y / 2.0f, 0.0f};
+
+  float rotation_matrix[3][3];
+  unit_m3(rotation_matrix);
+  loc_rot_size_to_mat4(transform_matrix,
+                       float3{image_center_offs_x, image_center_offs_y, 0.0f},
+                       rotation_matrix,
+                       float3{scale_x, scale_y, 1.0f});
+  transform_pivot_set_m4(transform_matrix, pivot);
+  invert_m4(transform_matrix);
+  IMB_transform(
+      in, out, IMB_TRANSFORM_MODE_REGULAR, IMB_FILTER_NEAREST, transform_matrix, nullptr);
+}
 
 static ThumbnailCache *ensure_thumbnail_cache(Scene *scene)
 {
@@ -190,19 +213,19 @@ static void image_size_to_thumb_size(int &r_width, int &r_height)
 {
   float aspect = float(r_width) / float(r_height);
   if (r_width > r_height) {
-    r_width = THUMB_SIZE;
-    r_height = round_fl_to_int(THUMB_SIZE / aspect);
+    r_width = SEQ_THUMB_SIZE;
+    r_height = round_fl_to_int(SEQ_THUMB_SIZE / aspect);
   }
   else {
-    r_height = THUMB_SIZE;
-    r_width = round_fl_to_int(THUMB_SIZE * aspect);
+    r_height = SEQ_THUMB_SIZE;
+    r_width = round_fl_to_int(SEQ_THUMB_SIZE * aspect);
   }
 }
 
 static ImBuf *make_thumb_for_image(Scene *scene, const ThumbnailCache::Request &request)
 {
   ImBuf *ibuf = IMB_thumb_load_image(
-      request.file_path.c_str(), THUMB_SIZE, nullptr, IMBThumbLoadFlags::LoadLargeFiles);
+      request.file_path.c_str(), SEQ_THUMB_SIZE, nullptr, IMBThumbLoadFlags::LoadLargeFiles);
   if (ibuf == nullptr) {
     return nullptr;
   }
@@ -231,7 +254,7 @@ static ImBuf *scale_to_thumbnail_size(Scene *scene, ImBuf *ibuf)
   /* Scale ibuf to thumbnail size. */
   ImBuf *scaled_ibuf = IMB_allocImBuf(
       width, height, 32, ibuf->float_buffer.data ? IB_rectfloat : IB_rect);
-  sequencer_thumbnail_transform(ibuf, scaled_ibuf);
+  scale_thumbnail(ibuf, scaled_ibuf);
   seq_imbuf_assign_spaces(scene, scaled_ibuf);
   IMB_freeImBuf(ibuf);
   return scaled_ibuf;
@@ -258,7 +281,7 @@ void ThumbGenerationJob::ensure_job(const bContext *C, ThumbnailCache *cache)
   wmWindow *win = CTX_wm_window(C);
   Scene *scene = CTX_data_scene(C);
   wmJob *wm_job = WM_jobs_get(
-      wm, win, scene, "Strip Thumbnails", eWM_JobFlag(0), WM_JOB_TYPE_SEQ_DRAW_THUMBNAIL_NEW);
+      wm, win, scene, "Strip Thumbnails", eWM_JobFlag(0), WM_JOB_TYPE_SEQ_DRAW_THUMBNAIL);
   if (!WM_jobs_is_running(wm_job)) {
     ThumbGenerationJob *tj = MEM_new<ThumbGenerationJob>("ThumbGenerationJob", scene, cache);
     WM_jobs_customdata_set(wm_job, tj, free_fn);
@@ -506,8 +529,6 @@ void thumbnail_cache_maintain_capacity(Scene *scene, double cur_time)
   BLI_mutex_lock(&thumb_cache_lock);
   ThumbnailCache *cache = query_thumbnail_cache(scene);
   if (cache != nullptr) {
-    constexpr int MAX_THUMBNAILS =
-        5000;  //@TODO THUMB_CACHE_LIMIT reuse or remove that one (or configurable?)
     int64_t entries = 0;
     std::string oldest_file;
     double oldest_time = cur_time - 1.0;
