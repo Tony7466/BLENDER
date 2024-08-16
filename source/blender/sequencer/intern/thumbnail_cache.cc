@@ -37,8 +37,19 @@ namespace blender::seq {
 
 static constexpr int MAX_THUMBNAILS = 5000;
 
+// #define DEBUG_PRINT_THUMB_JOB_TIMES 1
+
 static ThreadMutex thumb_cache_lock = BLI_MUTEX_INITIALIZER;
 
+/* Thumbnail cache is a map keyed by media file path, with values being
+ * the various thumbnails that are loaded for it (mostly images would contain just
+ * one thumbnail frame, but movies can contain multiple).
+ *
+ * File entries and individual frame entries also record the timestamp when they were
+ * last accessed, so that when the cache is full, some of the old entries can be removed.
+ *
+ * Thumbnails that are requested but do not have an exact match in the cache, are added
+ * to the "requests" set. The requests are processed in the background by a WM job. */
 struct ThumbnailCache {
   struct FrameEntry {
     int frame_index = 0;
@@ -46,12 +57,13 @@ struct ThumbnailCache {
     ImBuf *thumb = nullptr;
     double used_at = 0;
   };
+
   struct FileEntry {
     Vector<FrameEntry> frames;
     double used_at = 0;
   };
 
-  //@TODO: add timestamp, when processing order by timestamps (starting from most recent)
+  //@TODO: when processing order by timestamps (starting from most recent) somehow?
   struct Request {
     explicit Request(const std::string &path,
                      int frame,
@@ -73,11 +85,13 @@ struct ThumbnailCache {
           full_height(height)
     {
     }
+    /* These determine request uniqueness (for equality/hash in a Set). */
     std::string file_path;
     int frame_index = 0;
     int stream_index = 0;
     SequenceType seq_type = SEQ_TYPE_IMAGE;
 
+    /* The following members are payload and do not contribute to uniqueness. */
     double requested_at = 0;
     float timeline_frame = 0;
     int channel = 0;
@@ -260,6 +274,7 @@ static ImBuf *scale_to_thumbnail_size(Scene *scene, ImBuf *ibuf)
   return scaled_ibuf;
 }
 
+/* Background job that processes in-flight thumbnail requests. */
 class ThumbGenerationJob {
   Scene *scene_ = nullptr;
   ThumbnailCache *cache_ = nullptr;
@@ -300,13 +315,18 @@ void ThumbGenerationJob::free_fn(void *customdata)
 
 void ThumbGenerationJob::run_fn(void *customdata, wmJobWorkerStatus *worker_status)
 {
+#if DEBUG_PRINT_THUMB_JOB_TIMES
   clock_t t0 = clock();
   std::atomic<int> total_thumbs = 0, total_images = 0, total_movies = 0;
+#endif
 
   ThumbGenerationJob *job = static_cast<ThumbGenerationJob *>(customdata);
   Vector<ThumbnailCache::Request> requests;
   while (!worker_status->stop) {
-    /* Copy all current requests (under cache mutex lock). */
+    /* Under cache mutex lock: copy all current requests into a vector for processing.
+     * Note: keep the requests set intact! We don't want to add new requests for same
+     * items while we are processing them. They will be removed from the set once
+     * they are finished, one by one. */
     BLI_mutex_lock(&thumb_cache_lock);
     requests.clear();
     requests.reserve(job->cache_->requests_.size());
@@ -319,7 +339,7 @@ void ThumbGenerationJob::run_fn(void *customdata, wmJobWorkerStatus *worker_stat
       break;
     }
 
-    /* Sort requests by file, stream and increasing frame number. */
+    /* Sort requests by file, stream and increasing frame index. */
     std::sort(requests.begin(),
               requests.end(),
               [](const ThumbnailCache::Request &a, const ThumbnailCache::Request &b) {
@@ -338,6 +358,9 @@ void ThumbGenerationJob::run_fn(void *customdata, wmJobWorkerStatus *worker_stat
      * is somewhat-threaded already. */
     int64_t grain_size = math::max(8ll, requests.size() / 4);
     threading::parallel_for(requests.index_range(), grain_size, [&](IndexRange range) {
+      /* Often the same movie file is chopped into multiple strips next to each other.
+       * Since the requests are sorted by file path and frame index, we can reuse ImBufAnim
+       * objects between them for performance. */
       ImBufAnim *cur_anim = nullptr;
       std::string cur_anim_path;
       int cur_stream = 0;
@@ -347,14 +370,22 @@ void ThumbGenerationJob::run_fn(void *customdata, wmJobWorkerStatus *worker_stat
           break;
         }
 
+#if DEBUG_PRINT_THUMB_JOB_TIMES
         ++total_thumbs;
+#endif
         ImBuf *thumb = nullptr;
         if (request.seq_type == SEQ_TYPE_IMAGE) {
+          /* Load thumbnail for an image. */
+#if DEBUG_PRINT_THUMB_JOB_TIMES
           ++total_images;
+#endif
           thumb = make_thumb_for_image(job->scene_, request);
         }
         else if (request.seq_type == SEQ_TYPE_MOVIE) {
+          /* Load thumbnail for an movie. */
+#if DEBUG_PRINT_THUMB_JOB_TIMES
           ++total_movies;
+#endif
 
           /* Are we swiching to a different movie file / stream? */
           if (request.file_path != cur_anim_path || request.stream_index != cur_stream) {
@@ -383,6 +414,7 @@ void ThumbGenerationJob::run_fn(void *customdata, wmJobWorkerStatus *worker_stat
         else {
           BLI_assert_unreachable();
         }
+
         thumb = scale_to_thumbnail_size(job->scene_, thumb);
 
         /* Add result into the cache (under cache mutex lock). */
@@ -411,12 +443,14 @@ void ThumbGenerationJob::run_fn(void *customdata, wmJobWorkerStatus *worker_stat
     });
   }
 
-  clock_t t1 = clock();  //@TODO: debug log
-  printf("Thumb job new: %i thumbs (%i img, %i movie) in %.3f sec\n",
+#if DEBUG_PRINT_THUMB_JOB_TIMES
+  clock_t t1 = clock();
+  printf("VSE thumb job: %i thumbs (%i img, %i movie) in %.3f sec\n",
          total_thumbs.load(),
          total_images.load(),
          total_movies.load(),
          double(t1 - t0) / CLOCKS_PER_SEC);
+#endif
 }
 
 void ThumbGenerationJob::end_fn(void *customdata)
@@ -451,6 +485,7 @@ static ImBuf *query_thumbnail(ThumbnailCache &cache,
   int64_t best_index = -1;
   int best_score = INT_MAX;
   for (int64_t index = 0; index < val->frames.size(); index++) {
+    /* Make video stream mismatch count way more than a frame mismatch. */
     int score = math::abs(frame_index - val->frames[index].frame_index) +
                 math::abs(seq->streamindex - val->frames[index].stream_index) * 1024;
     if (score < best_score) {
@@ -529,8 +564,11 @@ void thumbnail_cache_maintain_capacity(Scene *scene, double cur_time)
   BLI_mutex_lock(&thumb_cache_lock);
   ThumbnailCache *cache = query_thumbnail_cache(scene);
   if (cache != nullptr) {
+
+    /* Count total number of thumbnails, and track which one is the least recently used file. */
     int64_t entries = 0;
     std::string oldest_file;
+    /* Do not remove thumbnails for files used within last 1 sec. */
     double oldest_time = cur_time - 1.0;
     int64_t oldest_entries = 0;
     for (const auto &kvp : cache->map_.items()) {
@@ -542,11 +580,14 @@ void thumbnail_cache_maintain_capacity(Scene *scene, double cur_time)
       }
     }
 
+    /* If we're beyond capacity and have a long-unused file, remove that. */
     if (entries > MAX_THUMBNAILS && !oldest_file.empty()) {
       cache->remove_entry(oldest_file);
       entries -= oldest_entries;
     }
 
+    /* If we're still beyond capacity, remove individual long-unused (but not within last 10 sec)
+     * individual frames. */
     if (entries > MAX_THUMBNAILS) {
       for (const auto &kvp : cache->map_.items()) {
         for (int64_t i = 0; i < kvp.value.frames.size(); i++) {
