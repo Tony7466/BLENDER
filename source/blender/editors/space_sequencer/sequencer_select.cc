@@ -871,52 +871,6 @@ static bool element_already_selected(const StripSelection &selection)
   return seq1_already_selected && seq2_already_selected && both_handles_selected;
 }
 
-/* This function returns true if the strip is connected, but only some of its connections
- * (including itself) happen to be selected, indicating the user wishes to operate
- * only on those strips for now.
- */
-static bool is_individually_selected(Sequence *seq)
-{
-  blender::VectorSet<Sequence *> connections = SEQ_get_connected_strips(seq);
-  connections.add(seq);
-
-  blender::VectorSet<Sequence *> selected;
-  selected.add_multiple(connections.as_span());
-  selected.remove_if([&](Sequence *seq) { return !(seq->flag & SELECT); });
-
-  /* Either none or all of the connected strips are selected.
-   * User has not individually selected strips. */
-  if (selected.size() == 0 || selected.size() == connections.size()) {
-    return false;
-  }
-  return true;
-}
-
-static bool do_connected_strip_selection(const StripSelection &selection)
-{
-  if (!selection.seq1 ||
-      (!SEQ_is_strip_connected(selection.seq1) && !SEQ_is_strip_connected(selection.seq2)))
-  {
-    return false;
-  }
-
-  /* Always propagate selection if either strip is unselected. */
-  if (!(selection.seq1->flag & SELECT)) {
-    return true;
-  }
-  if (selection.seq2) {
-    if (!(selection.seq2->flag & SELECT)) {
-      return true;
-    }
-  }
-
-  bool is_toggling = is_individually_selected(selection.seq1);
-  if (selection.seq2) {
-    is_toggling &= is_individually_selected(selection.seq2);
-  }
-  return !is_toggling;
-}
-
 static void sequencer_select_connected_strips(const StripSelection &selection)
 {
   blender::VectorSet<Sequence *> sources;
@@ -1308,10 +1262,6 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
 
   const bool wait_to_deselect_others = RNA_boolean_get(op->ptr, "wait_to_deselect_others");
   const bool already_selected = element_already_selected(selection);
-  const bool ignore_connections = RNA_boolean_get(op->ptr, "ignore_connections");
-
-  /* This check must be done before any further strip selection changes. */
-  const bool select_connected = !ignore_connections && do_connected_strip_selection(selection);
 
   SpaceSeq *sseq = CTX_wm_space_seq(C);
   if (selection.handle != SEQ_HANDLE_NONE && already_selected) {
@@ -1353,7 +1303,8 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
     sequencer_select_strip_impl(ed, selection.seq2, seq2_handle_clicked, extend, deselect, toggle);
   }
 
-  if (select_connected) {
+  const bool ignore_connections = RNA_boolean_get(op->ptr, "ignore_connections");
+  if (!ignore_connections) {
     sequencer_select_connected_strips(selection);
   }
 
@@ -1474,9 +1425,6 @@ static int sequencer_select_handle_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
   }
 
-  /* This check must be done before any further strip selection changes. */
-  const bool select_connected = do_connected_strip_selection(selection);
-
   SpaceSeq *sseq = CTX_wm_space_seq(C);
   if (element_already_selected(selection)) {
     sseq->flag &= ~SPACE_SEQ_DESELECT_STRIP_HANDLE;
@@ -1495,7 +1443,9 @@ static int sequencer_select_handle_exec(bContext *C, wmOperator *op)
                                                                              SEQ_HANDLE_LEFT;
     sequencer_select_strip_impl(ed, selection.seq2, seq2_handle_clicked, false, false, false);
   }
-  if (select_connected) {
+
+  const bool ignore_connections = RNA_boolean_get(op->ptr, "ignore_connections");
+  if (!ignore_connections) {
     sequencer_select_connected_strips(selection);
   }
 
@@ -1519,6 +1469,8 @@ static int sequencer_select_handle_invoke(bContext *C, wmOperator *op, const wmE
 
 void SEQUENCER_OT_select_handle(wmOperatorType *ot)
 {
+  PropertyRNA *prop;
+
   /* Identifiers. */
   ot->name = "Select Handle";
   ot->idname = "SEQUENCER_OT_select_handle";
@@ -1534,6 +1486,13 @@ void SEQUENCER_OT_select_handle(wmOperatorType *ot)
 
   /* Properties. */
   WM_operator_properties_generic_select(ot);
+
+  prop = RNA_def_boolean(ot->srna,
+                         "ignore_connections",
+                         false,
+                         "Ignore Connections",
+                         "Select strips individually whether or not they are connected");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
 /** \} */
